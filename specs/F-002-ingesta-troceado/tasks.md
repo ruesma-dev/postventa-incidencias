@@ -49,7 +49,7 @@
       **Verificación**: los tests fallan por no existir el adaptador; **traza
       pegada** en `progress/impl_F-002.md`.
 
-- [ ] **T6**: Implementar `domain/ports/pdf.py` (`PdfPort`) e
+- [x] **T6**: Implementar `domain/ports/pdf.py` (`PdfPort`) e
       `infrastructure/documentos/pdf_pymupdf.py` (`AdaptadorPdfPyMuPdf`) con
       el cálculo de huella descrito en `design.md` §4.
       **Verificación**: los tests de T5 en verde.

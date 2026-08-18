@@ -20,12 +20,12 @@ from collections.abc import Sequence
 
 import pymupdf
 import pytest
+
 from domain.models.errores import PdfIlegible
 from infrastructure.documentos.pdf_pymupdf import (
     UMBRAL_TEXTO_UTIL,
     AdaptadorPdfPyMuPdf,
 )
-
 from tests.utiles_pdf import pdf_con_textos, remesa_escaneada, remesa_sintetica
 
 
@@ -49,10 +49,19 @@ def _huella_esperada(contenido: bytes, paginas: Sequence[int]) -> str:
     return digestor.hexdigest()
 
 
-def _texto_de(contenido: bytes, pagina: int = 0) -> str:
-    documento = pymupdf.open(stream=contenido, filetype="pdf")
+def _pdf_cifrado() -> bytes:
+    """PDF sintético protegido con una clave inventada aquí mismo.
+
+    No es una credencial de nada: es el ingrediente que hace que PyMuPDF
+    declare el documento como «necesita contraseña».
+    """
+    documento = pymupdf.open(stream=remesa_sintetica([1]), filetype="pdf")
     try:
-        return documento[pagina].get_text()
+        return documento.tobytes(
+            encryption=pymupdf.PDF_ENCRYPT_AES_256,
+            owner_pw="clave-sintetica-de-test",
+            user_pw="clave-sintetica-de-test",
+        )
     finally:
         documento.close()
 
@@ -191,6 +200,19 @@ def test_f002_extraer_paginas_devuelve_las_paginas_pedidas_en_orden():
         documento.close()
 
 
+def test_f002_r15_el_aviso_mira_las_paginas_del_parte_y_no_las_del_documento():
+    """R15 · se miran exactamente las páginas del parte, no las del PDF.
+
+    Un documento con una hoja en blanco y otra escrita: el parte de la hoja en
+    blanco se lleva el aviso, el otro no.
+    """
+    adaptador = AdaptadorPdfPyMuPdf()
+    documento = pdf_con_textos(["", "algo escrito aquí"])
+
+    assert adaptador.paginas_sin_contenido(documento, [1]) is True
+    assert adaptador.paginas_sin_contenido(documento, [2]) is False
+
+
 def test_f002_r15_una_pagina_en_blanco_no_tiene_contenido():
     """R15 · sin texto ni imágenes no hay de qué calcular huella."""
     adaptador = AdaptadorPdfPyMuPdf()
@@ -228,3 +250,16 @@ def test_f002_r4_un_pdf_corrupto_levanta_pdf_ilegible():
 
     with pytest.raises(PdfIlegible):
         adaptador.texto_por_pagina(b"esto no es un PDF")
+
+
+def test_f002_r4_un_pdf_cifrado_levanta_pdf_ilegible():
+    """R4 · un PDF con contraseña se abre, pero no se puede leer.
+
+    PyMuPDF lo abre sin protestar y revienta después, al tocar sus páginas.
+    Si eso llegase al pipeline, un solo fichero protegido tumbaría la remesa
+    entera, que es justo lo que R4 prohíbe.
+    """
+    adaptador = AdaptadorPdfPyMuPdf()
+
+    with pytest.raises(PdfIlegible):
+        adaptador.texto_por_pagina(_pdf_cifrado())

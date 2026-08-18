@@ -31,12 +31,27 @@ class ModoDeteccion(str, Enum):
     UNA_PAGINA_POR_PARTE = "una_pagina_por_parte"
 
 
+def es_nombre_de_pdf(nombre: str) -> bool:
+    """¿Ese nombre de fichero es el de un PDF?
+
+    Por la extensión, y no abriendo el fichero: la ingesta clasifica sin leer
+    (R1), y un PDF que se anuncia como tal pero está roto lo descarta después
+    el troceado con su propio aviso (R4).
+    """
+    return nombre.lower().endswith(".pdf")
+
+
 @dataclass(frozen=True)
 class DocumentoEntrada:
     """Un fichero tal y como llega: su nombre y sus bytes."""
 
     nombre: str
     contenido: bytes
+
+    @property
+    def es_pdf(self) -> bool:
+        """¿Esta entrada se anuncia como PDF?"""
+        return es_nombre_de_pdf(self.nombre)
 
 
 @dataclass(frozen=True)

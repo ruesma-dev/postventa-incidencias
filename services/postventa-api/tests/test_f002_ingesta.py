@@ -240,12 +240,13 @@ def test_f002_r6_zip_que_supera_el_limite_se_rechaza_sin_descomprimir(monkeypatc
     rechazar una bomba de descompresión y comérsela.
     """
 
+    crudo = zip_con({"gordo.pdf": b"\x00" * 200})
+
     def _prohibido(*args, **kwargs):
         raise AssertionError("no se puede leer una entrada antes de medir el ZIP")
 
     monkeypatch.setattr(zipfile.ZipFile, "open", _prohibido)
     monkeypatch.setattr(zip_estandar, "MAX_BYTES_DESCOMPRIMIDOS", 100)
-    crudo = zip_con({"gordo.pdf": b"\x00" * 200})
 
     with pytest.raises(LimiteDeEntradaSuperado):
         AdaptadorZipEstandar().extraer_pdfs(

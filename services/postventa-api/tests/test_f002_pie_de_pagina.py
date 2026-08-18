@@ -14,7 +14,6 @@ un documento **pierde una incidencia**, que es el error caro.
 from __future__ import annotations
 
 from domain.models.pie_de_pagina import PieDePagina
-
 from tests.utiles_pdf import pagina_de_parte
 
 

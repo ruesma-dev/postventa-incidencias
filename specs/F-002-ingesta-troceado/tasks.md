@@ -64,7 +64,7 @@
       `LimiteDeEntradaSuperado` **sin descomprimir**.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-002.md`.
 
-- [ ] **T8**: Implementar `domain/ports/comprimido.py` e
+- [x] **T8**: Implementar `domain/ports/comprimido.py` e
       `infrastructure/documentos/zip_estandar.py` (`AdaptadorZipEstandar`),
       con `MAX_ENTRADAS_ZIP` y `MAX_BYTES_DESCOMPRIMIDOS` comprobados sobre el
       índice del ZIP.

@@ -12,7 +12,7 @@ En curso: **F-002**.
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | en curso | critico | `feature/F-002-ingesta-troceado` |
-| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | pendiente | critico | `feature/F-003-extraccion` |
+| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | spec lista | critico | `feature/F-003-extraccion` |
 | F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
 | F-006 | Nombrado y archivo en SharePoint | 6 | pendiente | critico | `feature/F-006-sharepoint` |
@@ -41,7 +41,7 @@ Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y 
 
 ### F-003 · Extracción multimodal del parte, manuscritos incluidos
 
-estado **pendiente** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
+estado **spec lista** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
 
 Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, chalet, nº de incidencia, fecha, descripción y lo escrito a mano: DNI y observaciones.
 

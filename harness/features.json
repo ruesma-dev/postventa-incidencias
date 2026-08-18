@@ -57,7 +57,7 @@
         "Tests con respuesta de IA simulada: ni una llamada real en la suite",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
       "priority": 3,

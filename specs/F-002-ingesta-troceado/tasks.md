@@ -84,7 +84,7 @@
       `paso_ingesta.py` y `paso_troceado.py`.
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f002_ingesta.py tests/test_f002_troceado.py -q` en verde.
 
-- [ ] **T11 · RED**: Escribir `tests/test_f002_split_http.py` (R16–R18) y
+- [x] **T11 · RED**: Escribir `tests/test_f002_split_http.py` (R16–R18) y
       `tests/test_f002_arquitectura.py` (R19): `POST /api/split` multipart
       devuelve 200 con el contrato exacto de `design.md` §4; sin ficheros,
       400; ZIP fuera de límite, 413; el JSON **no** trae campos de negocio; y

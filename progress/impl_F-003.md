@@ -122,3 +122,20 @@ ERROR tests/test_f003_prompts_yaml.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
 1 error in 0.23s
 ```
+
+### T9 · R2, R4, R6, R7, R13, R16 — el paso del pipeline no existía
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f003_paso_extraccion.py -q
+```
+
+```
+Traceback:
+tests\test_f003_paso_extraccion.py:15: in <module>
+    from application.pipelines import paso_extraccion as modulo_paso
+E   ImportError: cannot import name 'paso_extraccion' from 'application.pipelines' (...\application\pipelines\__init__.py)
+=========================== short test summary info ===========================
+ERROR tests/test_f003_paso_extraccion.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.23s
+```

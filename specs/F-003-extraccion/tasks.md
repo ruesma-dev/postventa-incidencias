@@ -99,7 +99,7 @@
       `.venv/Scripts/python.exe -c "from infrastructure.prompts.prompts_yaml import RepositorioPromptsYaml; p = RepositorioPromptsYaml('config/prompts.yaml').obtener('parte_posventa_es'); print(p.clave, p.version, p.schema, p.huella)"`
       imprime la clave, la versión, el schema y la huella (no imprime el texto).
 
-- [ ] **T9 · RED**: Escribir `tests/test_f003_paso_extraccion.py` (R2, R4, R6,
+- [x] **T9 · RED**: Escribir `tests/test_f003_paso_extraccion.py` (R2, R4, R6,
       R7, R13, R16) contra `ExtractorFalso`: el resultado trae **siempre las
       nueve claves**; un campo ausente sale `None`/`0` con aviso; una clave
       inventada por el modelo se descarta con aviso; confianza `120` → `100`,

@@ -21,7 +21,6 @@ from application.pipelines.paso_troceado import paso_troceado
 from domain.models.remesa import DocumentoEntrada, ModoDeteccion
 from infrastructure.documentos.pdf_pymupdf import AdaptadorPdfPyMuPdf
 from infrastructure.documentos.zip_estandar import AdaptadorZipEstandar
-
 from tests.utiles_pdf import (
     pagina_de_parte,
     pdf_con_textos,

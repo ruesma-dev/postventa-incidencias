@@ -80,7 +80,7 @@
       lista de hashes en el mismo orden** (R14).
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-002.md`.
 
-- [ ] **T10**: Implementar `application/pipelines/contexto.py`,
+- [x] **T10**: Implementar `application/pipelines/contexto.py`,
       `paso_ingesta.py` y `paso_troceado.py`.
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f002_ingesta.py tests/test_f002_troceado.py -q` en verde.
 

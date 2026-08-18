@@ -10,9 +10,9 @@ ficheros— a una lista de PDFs, **sin abrir ninguno**. Dos ideas mandan aquí:
    comprueban sobre los tamaños que declara el índice del ZIP, antes de leer
    ni una entrada.
 
-Los tests que dependen del pipeline (`paso_ingesta`) y del handler HTTP
-importan dentro del cuerpo, como los de F-001: así el fichero se puede
-recoger aunque esas piezas todavía no existan.
+Los límites del ZIP se prueban contra el adaptador; lo demás, contra los pasos
+del pipeline. El caso «no queda ni un PDF utilizable» (R5) se prueba donde de
+verdad ocurre, que es el endpoint: `tests/test_f002_split_http.py`.
 """
 
 from __future__ import annotations
@@ -22,9 +22,13 @@ import zipfile
 
 import pytest
 
-from domain.models.errores import LimiteDeEntradaSuperado, RemesaSinPdfUtilizable
+from application.pipelines.contexto import ContextoRemesa
+from application.pipelines.paso_ingesta import paso_ingesta
+from application.pipelines.paso_troceado import paso_troceado
+from domain.models.errores import LimiteDeEntradaSuperado
 from domain.models.remesa import DocumentoEntrada
 from infrastructure.documentos import zip_estandar
+from infrastructure.documentos.pdf_pymupdf import AdaptadorPdfPyMuPdf
 from infrastructure.documentos.zip_estandar import (
     MAX_BYTES_DESCOMPRIMIDOS,
     MAX_ENTRADAS_ZIP,
@@ -35,17 +39,12 @@ from tests.utiles_pdf import remesa_sintetica, zip_con
 
 def _ingesta(entradas):
     """Ejecuta el paso de ingesta con el adaptador real de ZIP."""
-    from application.pipelines.contexto import ContextoRemesa
-    from application.pipelines.paso_ingesta import paso_ingesta
-
     return paso_ingesta(ContextoRemesa(entradas=list(entradas)), AdaptadorZipEstandar())
 
 
 def _trocear(entradas):
-    """Ejecuta el pipeline completo, tal y como lo compone el endpoint."""
-    from interface_adapters.api.split import trocear_remesa
-
-    return trocear_remesa(list(entradas))
+    """Ingesta + troceado, que es donde se descarta el PDF ilegible."""
+    return paso_troceado(_ingesta(entradas), AdaptadorPdfPyMuPdf())
 
 
 def test_f002_r1_conserva_orden_y_nombre_de_origen():
@@ -200,35 +199,22 @@ def test_f002_r4_pdf_corrupto_no_tumba_la_remesa():
         DocumentoEntrada(nombre="buena.pdf", contenido=remesa_sintetica([1, 1])),
     ]
 
-    resultado = _trocear(entradas)
+    contexto = _trocear(entradas)
 
-    assert resultado["total_partes"] == 2
-    assert all(parte["origen"] == "buena.pdf" for parte in resultado["partes"])
-    assert any("roto.pdf" in aviso for aviso in resultado["avisos"])
-
-
-def test_f002_r5_sin_pdf_utilizable_levanta_el_error_de_dominio():
-    """R5 · si no queda ni un PDF utilizable no se trocea nada.
-
-    El error lleva los avisos: sin ellos, quien lo recibe no sabe qué mandó
-    mal.
-    """
-    entradas = [DocumentoEntrada(nombre="notas.txt", contenido=b"hola")]
-
-    with pytest.raises(RemesaSinPdfUtilizable) as fallo:
-        _trocear(entradas)
-
-    assert any("notas.txt" in aviso for aviso in fallo.value.avisos)
+    assert len(contexto.partes) == 2
+    assert all(parte.origen == "buena.pdf" for parte in contexto.partes)
+    assert any("roto.pdf" in aviso for aviso in contexto.avisos)
 
 
-def test_f002_r5_un_pdf_ilegible_como_unica_entrada_tampoco_deja_partes():
-    """R5 · el PDF roto pasa la ingesta, pero al final no hay nada que dar."""
+def test_f002_r4_un_pdf_ilegible_como_unica_entrada_no_deja_partes():
+    """R4 · si el único PDF de la remesa está roto, no hay partes, pero sí
+    aviso: el «no hay nada que dar» lo decide después el endpoint (R5)."""
     entradas = [DocumentoEntrada(nombre="roto.pdf", contenido=b"no soy un PDF")]
 
-    with pytest.raises(RemesaSinPdfUtilizable) as fallo:
-        _trocear(entradas)
+    contexto = _trocear(entradas)
 
-    assert any("roto.pdf" in aviso for aviso in fallo.value.avisos)
+    assert contexto.partes == []
+    assert any("roto.pdf" in aviso for aviso in contexto.avisos)
 
 
 def test_f002_r6_zip_que_supera_el_limite_se_rechaza_sin_descomprimir(monkeypatch):

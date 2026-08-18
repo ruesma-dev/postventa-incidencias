@@ -40,7 +40,7 @@
       `domain/models/remesa.py` y `domain/models/errores.py`.
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f002_pie_de_pagina.py -q` en verde.
 
-- [ ] **T5 · RED**: Escribir los tests del adaptador de PDF (R12, R15) contra
+- [x] **T5 · RED**: Escribir los tests del adaptador de PDF (R12, R15) contra
       PDFs sintéticos: `texto_por_pagina` devuelve una entrada por página;
       `huella_de_paginas` es SHA-256 hex de 64 caracteres, **estable entre dos
       llamadas** y **distinta** para páginas distintas; la huella de la página

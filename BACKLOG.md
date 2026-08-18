@@ -9,7 +9,7 @@ Resumen: **13 features**, 12 abiertas, 1 terminadas.
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-002 | Ingesta y troceado de la remesa en partes | 2 | pendiente | critico | `feature/F-002-ingesta-troceado` |
+| F-002 | Ingesta y troceado de la remesa en partes | 2 | spec lista | critico | `feature/F-002-ingesta-troceado` |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | pendiente | critico | `feature/F-003-extraccion` |
 | F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
@@ -32,7 +32,7 @@ Resumen: **13 features**, 12 abiertas, 1 terminadas.
 
 ### F-002 · Ingesta y troceado de la remesa en partes
 
-estado **pendiente** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
+estado **spec lista** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
 
 Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.
 

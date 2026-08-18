@@ -68,7 +68,7 @@
       `domain/models/errores.py` (`design.md` §4.1–§4.5).
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f003_extraccion_dominio.py -q` en verde.
 
-- [ ] **T6 · RED + verde**: El campo **`numero_pagina`** (R2 bis, decisión D1
+- [x] **T6 · RED + verde**: El campo **`numero_pagina`** (R2 bis, decisión D1
       del humano). Primero el test —`test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie`
       en `tests/test_f003_extraccion_dominio.py`: el campo está declarado, es
       **impreso** (no entra en `CAMPOS_MANUSCRITOS`) y una respuesta simulada

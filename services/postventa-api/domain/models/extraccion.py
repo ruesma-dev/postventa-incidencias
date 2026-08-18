@@ -23,6 +23,11 @@ from dataclasses import dataclass
 #: dato. Se llama `unidad` (decisión del humano del 2026-08-18) porque es como
 #: la nombra la estructura de archivo de Posventa
 #: (`PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`).
+#:
+#: El noveno, **`numero_pagina`**, es el «Página N» del pie impreso (R2 bis).
+#: Está aquí porque el modelo **sí ve ese pie** aunque el escaneo no tenga
+#: capa de texto, que es justo lo que F-002 no pudo leer. F-003 lo lee y lo
+#: devuelve; **quien reagrupe el parte de dos hojas con él es F-014**.
 CAMPOS_DEL_PARTE: tuple[str, ...] = (
     "promocion",
     "codigo_obra",
@@ -32,6 +37,7 @@ CAMPOS_DEL_PARTE: tuple[str, ...] = (
     "descripcion",
     "dni_cliente",
     "observaciones",
+    "numero_pagina",
 )
 
 #: Los campos que van escritos a mano en el papel

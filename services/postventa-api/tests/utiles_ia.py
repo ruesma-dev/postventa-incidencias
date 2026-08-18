@@ -50,6 +50,7 @@ CAMPOS_DE_EJEMPLO: dict[str, tuple[str | None, Any]] = {
     "descripcion": ("Sellado de encuentro de falsos techos de porches", 92),
     "dni_cliente": ("00000000T", 61),
     "observaciones": ("Se aprecia que se han hecho parcheados", 74),
+    "numero_pagina": ("1", 98),
 }
 
 

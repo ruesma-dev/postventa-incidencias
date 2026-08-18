@@ -61,3 +61,47 @@ ERROR tests/test_f003_extraccion_dominio.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
 1 error in 0.30s
 ```
+
+### T6 · R2 bis — el noveno campo no estaba declarado
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f003_extraccion_dominio.py -q -k r2bis
+```
+
+```
+================================== FAILURES ===================================
+_____________ test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie ______________
+    def test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie():
+>       assert "numero_pagina" in CAMPOS_DEL_PARTE
+E       AssertionError: assert 'numero_pagina' in ('promocion', 'codigo_obra', 'unidad', 'numero_incidencia', 'fecha_servicio', 'descripcion', ...)
+
+tests\test_f003_extraccion_dominio.py:85: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f003_extraccion_dominio.py::test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie - AssertionError: assert 'numero_pagina' in ('promocion', 'codigo_obra', 'uni...
+1 failed, 13 deselected in 0.68s
+```
+
+Y el segundo test de R2 bis, el que vigila que **no se reagrupe**:
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f003_paso_extraccion.py -q
+```
+
+```
+Traceback:
+tests\test_f003_paso_extraccion.py:12: in <module>
+    from application.pipelines.contexto_parte import ContextoParte
+E   ModuleNotFoundError: No module named 'application.pipelines.contexto_parte'
+=========================== short test summary info ===========================
+ERROR tests/test_f003_paso_extraccion.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.24s
+```
+
+**Nota de orden, deliberada y escrita en la propia spec.** Tras T6 el primero
+de los dos queda en verde (14 tests del dominio) y el segundo **sigue en rojo
+hasta T10**, que es cuando existe el paso del pipeline. No es un descuido: la
+verificación de T10 lo dice con estas palabras —«en verde, **incluido el
+`test_f003_r2bis_la_extraccion_no_reagrupa_paginas` de T6**»—. El mismo ritmo
+que T7→T8 y T9→T10: el test se escribe en su tarea y se pone verde en la
+siguiente.

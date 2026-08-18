@@ -18,6 +18,8 @@ from domain.models.extraccion import (
     TrazaExtraccion,
 )
 
+from tests.utiles_ia import respuesta_simulada
+
 #: Los ocho campos de contenido de R1, en el orden de la tabla del requisito.
 CAMPOS_DE_CONTENIDO = (
     "promocion",
@@ -69,6 +71,24 @@ def test_f003_r1_los_tres_manuscritos_estan_marcados_como_tales():
         {"fecha_servicio", "dni_cliente", "observaciones"}
     )
     assert CAMPOS_MANUSCRITOS.issubset(set(CAMPOS_DEL_PARTE))
+
+
+def test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie():
+    """R2 bis · el «Página N» del pie es el noveno campo, y es **impreso**.
+
+    Está en el pie que imprime Sigrid, así que no entra en
+    `CAMPOS_MANUSCRITOS` y viaja por el mismo camino que los otros ocho: sin
+    ninguna rama de código propia. Existe para que **F-014** pueda reagrupar
+    el parte de dos hojas que F-002 no supo detectar —el escaneo no tiene capa
+    de texto, pero el modelo sí ve el pie—.
+    """
+    assert "numero_pagina" in CAMPOS_DEL_PARTE
+    assert "numero_pagina" not in CAMPOS_MANUSCRITOS
+
+    respuesta = respuesta_simulada(numero_pagina=("2", 98))
+
+    assert respuesta.campos["numero_pagina"].valor == "2"
+    assert respuesta.campos["numero_pagina"].confianza_pct == 98
 
 
 def test_f003_r3_cada_campo_trae_su_confianza():

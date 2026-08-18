@@ -242,9 +242,24 @@
       **Resultado esperado**: las **nueve** claves presentes, la traza con
       `proveedor=gemini` y `modelo=gemini-3.7-flash`, `codigo_obra` y
       `numero_incidencia` con los valores que el generador sintético imprime
-      (`0677` y `RS26.08/0123`) y `numero_pagina = "1"`. Aquí **sí** se pueden
+      (`0677` y `RS26.08/0001`) y `numero_pagina = "1"`. Aquí **sí** se pueden
       imprimir los valores: son inventados. El resultado real se anota en
       `progress/current.md`.
+
+      > **OJO con el número de incidencia esperado**, corregido el 2026-08-19
+      > tras ejecutar la verificación: `remesa_sintetica()` numera correlativo
+      > (`utiles_pdf.py:121`, `RS26.08/{n:04d}`), así que el **primer** parte
+      > dice `RS26.08/0001`. El `RS26.08/0123` que aparece en `design.md` y en
+      > `requirements.md` es el valor **por defecto de `pagina_de_parte()`**
+      > (`utiles_pdf.py:43`), que es otra función: vale como ejemplo del papel,
+      > no como resultado de esta verificación.
+
+      **EJECUTADA POR EL HUMANO el 2026-08-19. Resultado real: correcto.** Las
+      nueve claves, traza `gemini` / `gemini-3.7-flash` / `parte_posventa_es`
+      versión 1 huella `2306ac1d07f1`, `codigo_obra = 0677` y
+      `numero_incidencia = RS26.08/0001` (ambos confianza 99),
+      `numero_pagina = "1"`, sin avisos. Los tres manuscritos salieron vacíos
+      con confianza 0, que es lo correcto: **el PDF sintético no los imprime**.
 
 - [ ] **T18 · PENDIENTE DEL HUMANO**: **MANUAL (humano)** — acierto sobre **un parte real** de la
       remesa de Mirasierra. **Es el momento de la verdad del proyecto entero**:

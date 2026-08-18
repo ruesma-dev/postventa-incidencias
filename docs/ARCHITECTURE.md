@@ -92,10 +92,25 @@ igual que hoy, y por debajo se suben los PDFs.
 3. **La firma debe ser humana.** Una casilla vacía, una aspa, o un trazo
    geométrico sin estructura de firma **no** son conformidad del cliente. Un
    parte sin firma válida no se archiva ni se cierra: va a revisión manual.
+   Solo firma el cliente: la columna del técnico viene vacía en toda la
+   remesa de ejemplo, así que exigirla dejaría fuera todos los partes.
+3 bis. **Firmado no es conforme.** En la remesa de ejemplo hay un parte
+   firmado cuya observación manuscrita dice "se aprecia que se han hecho
+   parcheados, no se reparó la totalidad". **Un parte con observaciones
+   manuscritas nunca se cierra solo**: va a revisión manual con el texto
+   delante de quien decide. Cerrarlo por tener firma sería dar por resuelta
+   una reparación que el cliente dice que no lo está.
 4. **Lo manuscrito es dato de primera, no decoración.** DNI y observaciones
    se escriben a mano y hay que extraerlos. Descartarlos porque "no es texto
    impreso" es un bug, no una simplificación.
-5. **El número de incidencia lo emite Sigrid.** Sin él no se puede nombrar ni
+4 bis. **No se exige lo que la realidad deja en blanco.** Fecha de servicio,
+   horas, nombre y DNI del cliente están vacíos en casi toda la remesa. Una
+   validación que los exija manda a revisión manual el 100 % de los partes.
+   Los únicos campos que deciden son: código de obra, nº de incidencia,
+   firma y observaciones.
+5. **El número de incidencia lo emite Sigrid** y se escribe `RS26.08/0123`
+   (con barra) en el ERP y en el parte impreso, pero con guion en el nombre
+   del fichero. Sin él no se puede nombrar ni
    cerrar nada: el parte va a revisión manual, nunca se inventa ni se deduce.
 6. **Cerrar en Sigrid es escritura en producción.** Siempre dry-run primero;
    `commit: true` solo después de confirmación explícita (del usuario en el
@@ -197,9 +212,14 @@ Eso quita de en medio la dependencia de un endpoint nuevo en `sigrid-api`
 (F-012). Un `UPDATE` de estado con `WHERE` no reserva `ide` ni maneja
 binarios, así que cabe en la escritura genérica de la pasarela.
 
-**Riesgo a confirmar en F-008**: que cerrar desde la UI de Sigrid no dispare
-nada más que el cambio de estado (una fecha, `solrcp`). Sigrid no tiene
-triggers: lo que no escribamos, no se escribe solo.
+**Aviso serio, descubierto en las capturas de la guía**: el proceso «Cerrar
+parte» de Sigrid **comprueba que la reclamación tenga algún gráfico o
+documento multimedia asociado** antes de cerrarla — por eso el menú ofrece
+además una opción 6, "Cerrar parte sin archivo (RPV)". Un `UPDATE con.est`
+directo se saltaría esa comprobación y dejaría la incidencia cerrada sin su
+parte, que es justo lo que el ERP impide hacer a mano. Y «Cerrar parte» es un
+**proceso**, no un campo: no consta qué más toca. Hasta que F-008 lo aclare
+en el ERP real, **el alcance del cierre en v1 está en el aire**.
 
 ### Lo que queda por confirmar contra el ERP real (F-008, solo lecturas)
 

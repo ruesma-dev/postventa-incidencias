@@ -35,7 +35,7 @@
       "description": "Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.",
       "acceptance": [
         "Un ZIP y un PDF multi-parte producen la misma lista normalizada de partes",
-        "El troceado acierta el número de partes en las muestras reales de Mirasierra",
+        "El troceado acierta el número de partes en la remesa real de Mirasierra (22 páginas = 22 partes), y detecta el parte de dos hojas por el 'Página 2' del pie",
         "Cada parte troceado lleva su hash, para que reprocesar no duplique",
         "Los tests usan PDFs sintéticos generados en el propio test: no dependen de muestras/, que no se versiona",
         "bash harness/init.sh en verde"
@@ -66,11 +66,13 @@
     {
       "id": "F-004",
       "title": "Validación del parte y clasificación de la firma",
-      "description": "Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana y los campos obligatorios legibles.",
+      "description": "Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme.",
       "acceptance": [
         "La clasificación de firma distingue firma de aspa en las muestras reales",
-        "Un parte sin nº de incidencia nunca queda apto, pase lo que pase el resto",
-        "Cada parte sale con veredicto (apto / revisión manual) y el motivo, en texto entendible por Posventa",
+        "Un parte con observaciones manuscritas va SIEMPRE a revisión manual, aunque esté firmado, con el texto extraído delante",
+        "Un parte sin nº de incidencia o sin código de obra nunca queda apto",
+        "No se exigen campos que la realidad deja en blanco (fecha de servicio, horas, DNI, nombre): exigirlos mandaría a revisión el 100% de la remesa",
+        "Cada parte sale con veredicto y motivo, en texto entendible por Posventa",
         "Las reglas de validación son dominio puro y se prueban sin IA",
         "bash harness/init.sh en verde"
       ],
@@ -134,13 +136,13 @@
     {
       "id": "F-008",
       "title": "Modelo de posventa en Sigrid: confirmar contra el ERP",
-      "description": "Confirmar contra el ERP lo que ya está documentado (azure-apps/sigrid_tablas.md, sigrid_api.md §9, y la guía de Alicia en docs/referencia/): rcp es la reclamación, extensión 1:1 de con; el estado vive en con.est con catálogo en conest; y el parte se adjunta como gráfico (gra) vinculado por rcg. Falta cerrar: el con.tip de la reclamación y el estado CERRADA en conest; qué es RS26.08 y qué es 0123 en el nombre; qué campos se rellenan al importar el gráfico; si gra vive en ruesma o en ruesma_rep; y si cerrar exige rellenar solrcp o alguna fecha. Solo lecturas.",
+      "description": "Confirmar contra el ERP lo que ya está documentado en azure-apps/sigrid_tablas.md, sigrid_api.md §9 y docs/referencia/01_cierre_incidencia_sigrid.md. Lo crítico: el proceso 'Cerrar parte' de Sigrid comprueba que la reclamación tenga un gráfico asociado, y existe una opción 6 'Cerrar parte sin archivo (RPV)'. Hay que averiguar qué escribe realmente cada uno de esos dos procesos antes de decidir el alcance del cierre. Además: el con.tip de la reclamación y el estado CERRADA en conest (el estado PENDIENTE es 3/PTE), en qué base vive gra, y si 'Asociar URL de Internet' permite referenciar el PDF de SharePoint en vez de incrustar el binario. Solo lecturas.",
       "acceptance": [
         "Queda escrito el con.tip de la reclamación y los estados de conest para ese tipo, con el de cierre identificado",
-        "Queda resuelto si RS26.08 - 0123 es codigo de obra + incidencia o el con.cod entero de la reclamación",
-        "Queda escrito en qué base vive gra y qué campos exige un gráfico vinculado por rcg",
+        "Queda documentado, comparando una incidencia cerrada con una pendiente, qué filas toca de verdad 'Cerrar parte' y en qué se diferencia de 'Cerrar parte sin archivo (RPV)'",
+        "Queda escrito si un gráfico puede ser una URL a SharePoint en lugar de un binario incrustado",
         "Ni una escritura contra Sigrid en toda la feature",
-        "docs/referencia/ recoge la guía de Posventa; lo que ya está en azure-apps se enlaza, no se copia",
+        "docs/referencia/ recoge lo nuevo; lo que ya está en azure-apps se enlaza, no se copia",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",
@@ -152,7 +154,7 @@
     {
       "id": "F-009",
       "title": "Cierre de la incidencia en Sigrid (solo estado)",
-      "description": "Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. En esta versión NO se sube el PDF a Sigrid (eso es F-012), así que basta la escritura genérica de sigrid-api: un UPDATE con WHERE, sin reservar ide ni manejar binarios. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.",
+      "description": "Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.",
       "acceptance": [
         "El estado de cierre se resuelve contra conest en tiempo de ejecución; ni un número de estado en el código",
         "Sin confirmación explícita no se ejecuta ningún commit, ni por error de flujo",
@@ -165,7 +167,8 @@
       "sdd": true,
       "rigor": "critico",
       "priority": 9,
-      "branch": "feature/F-009-cierre-sigrid"
+      "branch": "feature/F-009-cierre-sigrid",
+      "blocked_by": "F-008: hasta saber qué hace realmente 'Cerrar parte' y si vale cerrar sin documento adjunto, no se puede especificar esta feature."
     },
     {
       "id": "F-010",

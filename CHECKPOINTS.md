@@ -81,6 +81,8 @@ medición automática, no la disciplina.
 - [ ] **Lo manuscrito no se descarta** (DNI, observaciones), y una marca
       simple —aspa, trazo geométrico, casilla vacía— nunca cuenta como firma
       del cliente.
+- [ ] **Firmado no es conforme**: un parte con observaciones manuscritas va a
+      revisión manual aunque esté firmado.
 - [ ] **Reprocesar no duplica**: el mismo parte, subido dos veces, sigue
       siendo uno (hash del PDF troceado + número de incidencia).
 - [ ] Nada contra Sigrid **hardcodea un número de estado**: se resuelve

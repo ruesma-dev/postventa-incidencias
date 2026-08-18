@@ -38,7 +38,9 @@ documento, no una tarea posterior.
 
 | Fichero | Qué es |
 |---|---|
-| — | Todavía no hay documentos incorporados. El primero previsto es el modelo de datos de Sigrid, en la feature F-008. |
+| `01_cierre_incidencia_sigrid.md` | Cómo cierra Posventa una incidencia (guía de Alicia Echevarría, 2026-08-18): pasos, campos del gráfico, menú Procesos y la comprobación que hace «Cerrar parte». Redactado: nombre del propietario y servidor interno. |
+| `02_parte_de_trabajo.md` | Anatomía del parte escaneado (remesa de Mirasierra, 2026-08-17): campos impresos, campos manuscritos y por qué firma no equivale a conformidad. Redactado: sin nombres ni DNI. |
+| — | El modelo de datos de Sigrid **no está aquí**: vive en `azure-apps/sigrid_tablas.md` y `azure-apps/sigrid_api.md`. |
 
 ## Formato
 

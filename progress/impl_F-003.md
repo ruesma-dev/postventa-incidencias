@@ -156,3 +156,66 @@ ERROR tests/test_f003_adaptador_gemini.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
 1 error in 0.22s
 ```
+
+### T13 · R11, R12 — la fábrica no existía
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f003_fabrica.py -q
+```
+
+```
+Traceback:
+tests\test_f003_fabrica.py:20: in <module>
+    from infrastructure.llm.fabrica import PROVEEDORES, construir_extractor
+E   ModuleNotFoundError: No module named 'infrastructure.llm.fabrica'
+=========================== short test summary info ===========================
+ERROR tests/test_f003_fabrica.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.25s
+```
+
+### T13 bis · R13 y R8 — los dos guardianes, rotos a propósito en una copia
+
+Los otros dos tests de T13 —`test_f003_r13_dominio_y_aplicacion_no_importan_proveedores`
+y `test_f003_r8_ningun_modulo_incrusta_el_texto_del_prompt`— **no tienen
+código de producción cuyo fallo previo enseñar**: el entregable es el propio
+test, y en un árbol sano pasan desde el primer minuto. Es exactamente el caso
+que `CHECKPOINTS.md` C4 bis contempla: la fase RED se demuestra **rompiendo
+deliberadamente lo que el test vigila, en una copia aislada y nunca en el
+árbol real**.
+
+Copia del servicio (sin `.venv`) en `%TEMP%\f003-red-arquitectura`, dos
+violaciones inyectadas —`import yaml` e `import tenacity` en
+`domain/models/extraccion.py`, y la primera frase larga del prompt copiada
+dentro de `infrastructure/llm/gemini.py`— y la suite lanzada **desde la
+copia**, con el intérprete del venv real:
+
+```bash
+cd "$TEMP/f003-red-arquitectura" && <venv>/python.exe -m pytest tests/test_f003_arquitectura.py -q -k "r13 or r8"
+```
+
+```
+>       assert culpables == {}
+E       AssertionError: assert {'domain\\mod...ity', 'yaml']} == {}
+E
+E         Left contains 1 more item:
+E         {'domain\\models\\extraccion.py': ['tenacity', 'yaml']}
+
+>       assert incrustados == {}
+E       AssertionError: assert {'infrastruct...venta de una'} == {}
+E
+E         Left contains 1 more item:
+E         {'infrastructure\\llm\\gemini.py': 'Eres un extractor de datos de PARTES DE '
+E                                            'TRABAJO de posventa de una'}
+
+tests\test_f003_arquitectura.py:152: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f003_arquitectura.py::test_f003_r13_dominio_y_aplicacion_no_importan_proveedores - AssertionError: assert {'domain\\mod...ity', 'yaml']} == {}
+FAILED tests/test_f003_arquitectura.py::test_f003_r8_ningun_modulo_incrusta_el_texto_del_prompt - AssertionError: assert {'infrastruct...venta de una'} == {}
+2 failed, 1 deselected in 2.31s
+```
+
+La copia se borró después y el árbol real quedó limpio (`git status` sin
+rastro de ella). Nótese que el test de R8 **no lleva escrita ninguna frase del
+prompt**: las saca del YAML en tiempo de ejecución, así que sigue valiendo
+cuando el prompt se reescriba.

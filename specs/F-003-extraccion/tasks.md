@@ -131,7 +131,7 @@
       **Verificación**: los tests de T11 en verde. Ningún test abre red (la
       guardia de T3 lo garantiza).
 
-- [ ] **T13 · RED**: Escribir `tests/test_f003_fabrica.py` (R11, R12): con la
+- [x] **T13 · RED**: Escribir `tests/test_f003_fabrica.py` (R11, R12): con la
       configuración por defecto la fábrica devuelve el adaptador de Gemini y el
       modelo es `gemini-3.7-flash`; `GEMINI_MODEL` cambia el modelo sin tocar
       nada más; `IA_PROVIDER=inventado` levanta `ProveedorNoSoportado`

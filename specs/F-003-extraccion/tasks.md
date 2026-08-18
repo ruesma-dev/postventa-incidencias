@@ -27,7 +27,7 @@
 > `MANUAL (humano)` pasan a ser **T17** y **T18**, justo detrás del endpoint, y
 > la documentación y la campaña de mutación bajan a **T19** y **T20**.
 
-- [ ] **T1**: Declarar `google-genai>=0.3`, `pyyaml>=6.0` y
+- [x] **T1**: Declarar `google-genai>=0.3`, `pyyaml>=6.0` y
       `tenacity>=8.2,<10.0` en `services/postventa-api/requirements.txt` e
       instalarlos en el venv del servicio.
       **Verificación**: `cd services/postventa-api && .venv/Scripts/python.exe -m pip install -r requirements-dev.txt && .venv/Scripts/python.exe -c "import google.genai, yaml, tenacity; print('ok')"`

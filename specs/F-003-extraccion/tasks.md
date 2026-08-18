@@ -40,7 +40,7 @@
       **Verificación**: el test falla porque **hoy la conexión se intenta de
       verdad**; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T3**: Implementar la **guardia de red** en
+- [x] **T3**: Implementar la **guardia de red** en
       `services/postventa-api/tests/conftest.py` (fixture autouse que sustituye
       `socket.socket.connect`), sin tocar la fixture `entorno_de_test` que ya
       existe.

@@ -57,7 +57,7 @@
       a `extraer_paginas`): **PARAR**, marcar la feature `blocked` y anotarlo
       en `progress/current.md`. Nada de workarounds.
 
-- [ ] **T7 · RED**: Escribir `tests/test_f002_ingesta.py` (R1–R6): orden y
+- [x] **T7 · RED**: Escribir `tests/test_f002_ingesta.py` (R1–R6): orden y
       nombre de origen conservados; ZIP aporta sus PDF en orden alfabético;
       lo que no es PDF se descarta con aviso; ZIP anidado con aviso; PDF
       corrupto no tumba la remesa; ZIP que se pasa de los límites levanta

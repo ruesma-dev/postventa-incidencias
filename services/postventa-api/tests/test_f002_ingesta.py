@@ -17,6 +17,7 @@ verdad ocurre, que es el endpoint: `tests/test_f002_split_http.py`.
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import zipfile
 
@@ -71,6 +72,19 @@ def test_f002_r1_la_ingesta_no_abre_los_pdf():
     contexto = _ingesta(entradas)
 
     assert [pdf.nombre for pdf in contexto.pdfs] == ["roto.pdf"]
+
+
+def test_f002_r1_el_documento_de_entrada_no_se_puede_retocar():
+    """R1 · lo que subió el usuario es lo que se procesa.
+
+    El documento de entrada viaja por todo el pipeline; si un paso pudiera
+    cambiarle el nombre o los bytes, el `origen` que acompaña a cada parte
+    dejaría de decir de dónde salió de verdad.
+    """
+    entrada = DocumentoEntrada(nombre="remesa.pdf", contenido=b"%PDF")
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        entrada.nombre = "otra.pdf"
 
 
 def test_f002_r2_el_zip_se_reconoce_por_su_nombre():

@@ -15,6 +15,10 @@ documento no se ha podido mirar».
 
 from __future__ import annotations
 
+import dataclasses
+
+import pytest
+
 from application.pipelines.contexto import ContextoRemesa
 from application.pipelines.paso_ingesta import paso_ingesta
 from application.pipelines.paso_troceado import paso_troceado
@@ -252,6 +256,19 @@ def test_f002_r15_un_parte_con_contenido_no_lleva_aviso():
     contexto = _de_un_pdf(remesa_escaneada(2))
 
     assert all(parte.avisos == () for parte in contexto.partes)
+
+
+def test_f002_r13_el_parte_troceado_no_se_puede_retocar():
+    """R13 · el parte, una vez calculado, es un dato cerrado.
+
+    Su hash es la clave con la que F-005 decidirá si un parte ya estaba: si
+    alguien pudiera cambiárselo —o cambiarle las páginas de origen— después de
+    calcularlo, «reprocesar no duplica» dejaría de ser cierto.
+    """
+    parte = _de_un_pdf(remesa_sintetica([1])).partes[0]
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        parte.hash = "otro"
 
 
 def test_f002_r1_el_orden_de_los_documentos_se_conserva_en_los_partes():

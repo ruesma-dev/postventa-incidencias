@@ -105,8 +105,13 @@ class AdaptadorPdfPyMuPdf:
 
     @staticmethod
     def _xrefs_de_imagen(pagina: pymupdf.Page) -> list[int]:
-        """Referencias de las imágenes incrustadas, en orden de xref."""
-        return sorted(imagen[0] for imagen in pagina.get_images(full=True))
+        """Referencias de las imágenes incrustadas, en orden de xref.
+
+        De cada imagen solo interesa su `xref`, que es el primer elemento de
+        la tupla que devuelve PyMuPDF; el resto de campos —máscara, tamaño,
+        espacio de color— no entra en la huella.
+        """
+        return sorted(imagen[0] for imagen in pagina.get_images())
 
     @classmethod
     def _texto_util(cls, pagina: pymupdf.Page) -> str:

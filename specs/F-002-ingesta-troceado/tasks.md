@@ -105,7 +105,7 @@
       **Verificación**: el diff del documento lo refleja y
       `bash harness/init.sh` sigue en verde.
 
-- [ ] **T14**: Campaña de mutación y análisis de supervivientes.
+- [x] **T14**: Campaña de mutación y análisis de supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-002` genera
       `progress/mutacion_F-002.md` con **cero supervivientes** (nivel
       `critico`), o cada superviviente con su análisis escrito y aceptado por

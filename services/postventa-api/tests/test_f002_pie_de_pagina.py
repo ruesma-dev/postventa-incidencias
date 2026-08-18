@@ -13,6 +13,10 @@ un documento **pierde una incidencia**, que es el error caro.
 
 from __future__ import annotations
 
+import dataclasses
+
+import pytest
+
 from domain.models.pie_de_pagina import PieDePagina
 from tests.utiles_pdf import pagina_de_parte
 
@@ -110,6 +114,19 @@ def test_f002_r8_la_ultima_aparicion_manda_tambien_cuando_es_continuacion():
 
     assert pie.numero == 2
     assert pie.es_continuacion is True
+
+
+def test_f002_r9_lo_leido_del_pie_no_se_puede_retocar_despues():
+    """R9 · el pie es lo que se leyó de la página, y no se corrige a mano.
+
+    Si se pudiera cambiar el número después de leerlo, la regla de troceado
+    dejaría de depender del papel y pasaría a depender de quién tocó el objeto
+    por el camino.
+    """
+    pie = PieDePagina.desde_texto(pagina_de_parte(numero_pagina=1))
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        pie.numero = 2
 
 
 def test_f002_r8_el_pie_se_lee_aunque_llegue_sin_tilde_ni_mayuscula():

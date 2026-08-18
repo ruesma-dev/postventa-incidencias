@@ -10,6 +10,9 @@ Endpoints:
     POST /api/split
         Trocea una remesa (`multipart/form-data`) en partes de trabajo.
 
+    POST /api/extraer
+        Lee **un** parte con el modelo multimodal y devuelve sus campos.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
@@ -22,8 +25,14 @@ import logging
 
 import azure.functions as func
 from config.logging_config import configurar_logging
-from domain.models.errores import LimiteDeEntradaSuperado, RemesaSinPdfUtilizable
+from domain.models.errores import (
+    ExtraccionFallida,
+    LimiteDeEntradaSuperado,
+    ParteDemasiadoGrande,
+    RemesaSinPdfUtilizable,
+)
 from domain.models.remesa import DocumentoEntrada
+from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.health import estado_del_servicio
 from interface_adapters.api.split import trocear_remesa
 
@@ -70,4 +79,32 @@ def split(req: func.HttpRequest) -> func.HttpResponse:
         log.info("split fuera de límite: %s", error.motivo)
         return _json({"error": error.motivo}, 413)
     log.info("split: %s partes de %s ficheros", cuerpo["total_partes"], len(entradas))
+    return _json(cuerpo, 200)
+
+
+@app.route(route="extraer", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def extraer(req: func.HttpRequest) -> func.HttpResponse:
+    """Lee un parte con el modelo y devuelve sus campos con su confianza.
+
+    Solo traduce: saca el fichero de la petición, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. Los tres códigos dicen cosas distintas
+    a propósito: **400** no mandaste parte, **413** el parte no cabe —al modelo
+    ni se le ha llamado— y **502** el proveedor no dio una respuesta
+    utilizable.
+    """
+    fichero = next(iter(req.files.values()), None)
+    if fichero is None:
+        log.info("extraer rechazado: la petición no trae ningún fichero")
+        return _json({"error": "la petición no trae ningún fichero"}, 400)
+
+    contenido = fichero.read()
+    try:
+        cuerpo = extraer_parte(contenido, hash_parte=req.form.get("hash", ""))
+    except ParteDemasiadoGrande as error:
+        log.info("extraer fuera de límite: %s", error.motivo)
+        return _json({"error": error.motivo}, 413)
+    except ExtraccionFallida as error:
+        log.warning("extraer fallido: %s", error.motivo)
+        return _json({"error": error.motivo}, 502)
+    log.info("extraer: %d bytes, %d avisos", len(contenido), len(cuerpo["avisos"]))
     return _json(cuerpo, 200)

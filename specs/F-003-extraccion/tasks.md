@@ -183,7 +183,7 @@
       > mutantes sin cubrir, y T20 sacaría supervivientes que habría que
       > justificar a mano en vez de matarlos con una línea de test.
 
-- [ ] **T16**: Implementar `interface_adapters/api/extraer.py` (handler +
+- [x] **T16**: Implementar `interface_adapters/api/extraer.py` (handler +
       composición) y añadir la ruta `extraer` en `function_app.py` con el mapeo
       de errores a 400 / 413 / 502.
       **Verificación**: los tests de T15 en verde y la suite completa también.

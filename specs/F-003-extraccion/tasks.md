@@ -50,7 +50,7 @@
       aprobada en `design.md` §6.3 y anotarlo; cualquier tercera vía es
       `blocked`.
 
-- [ ] **T4 · RED**: Escribir `tests/utiles_ia.py` (`respuesta_simulada`,
+- [x] **T4 · RED**: Escribir `tests/utiles_ia.py` (`respuesta_simulada`,
       `json_del_modelo`, `prompt_de_prueba`, `ExtractorFalso`,
       `ClienteGenaiFalso`) **con datos inventados**, y
       `tests/test_f003_extraccion_dominio.py` (R1, R3, R5): los ocho campos de

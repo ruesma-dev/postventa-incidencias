@@ -34,7 +34,7 @@
       imprime `ok`, y `.venv/Scripts/python.exe -m pytest -q` sigue en verde
       (F-001 y F-002 intactas).
 
-- [ ] **T2 · RED**: Escribir `tests/test_f003_arquitectura.py` con
+- [x] **T2 · RED**: Escribir `tests/test_f003_arquitectura.py` con
       `test_f003_r19_la_suite_no_puede_abrir_conexiones_de_red` (R19): abrir un
       socket contra cualquier host debe levantar el error de la guardia.
       **Verificación**: el test falla porque **hoy la conexión se intenta de

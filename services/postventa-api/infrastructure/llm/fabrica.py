@@ -19,6 +19,7 @@ from collections.abc import Callable
 from config.settings import Ajustes
 from domain.models.errores import ConfiguracionIaIncompleta, ProveedorNoSoportado
 from domain.ports.extractor import ExtractorPort
+
 from infrastructure.llm.gemini import AdaptadorGeminiVision
 
 

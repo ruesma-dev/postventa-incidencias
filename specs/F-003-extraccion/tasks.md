@@ -62,7 +62,7 @@
       **Verificación**: rojo por `ModuleNotFoundError` / `ImportError`; **traza
       pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T5**: Implementar `domain/models/extraccion.py`,
+- [x] **T5**: Implementar `domain/models/extraccion.py`,
       `domain/models/prompt.py`, `domain/ports/extractor.py`,
       `domain/ports/prompts.py` y las excepciones nuevas en
       `domain/models/errores.py` (`design.md` §4.1–§4.5).

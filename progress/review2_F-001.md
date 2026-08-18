@@ -2,11 +2,134 @@
 # F-001 · Esqueleto del monorepo y /health — SEGUNDA review
 
 Revisor: agente `reviewer`. Fecha: 2026-08-18.
-Rama revisada: `feature/F-001-esqueleto` (HEAD `3dab4d0`).
+Rama revisada: `feature/F-001-esqueleto`.
 Base de integración: `dev` (`8cb6c66`).
 Review anterior: `progress/review_F-001.md` (RECHAZADO).
 
-## Veredicto
+- **Primera pasada de esta segunda review**: HEAD `3dab4d0` → RECHAZADO.
+- **Revalidación**: HEAD `36b825f` → **APROBADO**.
+
+Este documento conserva **íntegro** lo que se rechazó en la primera pasada. Lo
+que sigue debajo del apartado de revalidación es el texto original tal cual se
+escribió contra `3dab4d0`: no se ha borrado nada, para que quede el rastro de
+qué se exigió y por qué.
+
+---
+
+## Veredicto tras la revalidación (HEAD `36b825f`)
+
+**APROBADO** (`APPROVED`).
+
+Los dos únicos motivos de rechazo están corregidos en el commit `36b825f`
+(«F-001: corregir el aviso de ruff del test nuevo y completar las
+evidencias»), y **verificados por este reviewer**, no leídos del informe.
+
+### 1. `ruff` — CORREGIDO
+
+```
+$ .venv/Scripts/python.exe -m ruff check services/ tests/
+All checks passed!
+
+$ .venv/Scripts/python.exe -m ruff check .
+Found 11 errors.
+```
+
+El `I001` de `services/postventa-api/tests/test_f001_adaptador_http.py:12` ya
+no está: el diff de `36b825f` elimina la línea en blanco que partía el bloque
+de imports (`1 deletion` en ese fichero). El contador global vuelve de **12 a
+11 avisos**, que es el número que la review 1 dejó registrado como deuda
+previa de `harness/*.py`. Confirmado en el portero:
+`[AVISO] ruff: 11 avisos (deuda previa, no bloquea)`.
+
+Y la afirmación del informe está corregida con honestidad, sin borrar lo que
+pasó: `| ruff check services/ tests/ | All checks passed (tras corregir un
+I001 que introdujo el test nuevo) |`. Deja constancia de que hubo un aviso, en
+vez de reescribir la historia. Es la forma correcta de arreglarlo.
+
+### 2. «Evidencias» con los cuatro números — COMPLETA
+
+Leída la sección en `progress/impl_F-001.md`:
+
+| Número | Valor |
+|---|---|
+| **Tests** | 10 en verde (3 en la raíz, 7 en el servicio `api`), 0 fallos |
+| **Tiempo de las suites** | 0,03 s la de la raíz y 0,21 s la del servicio (0,24 s en total) |
+| **Cobertura de las líneas de la feature** | 100 % (40/40), umbral 80 % |
+| **Mutación** | 3 mutantes: 2 muertos, 1 superviviente |
+| **Portero** | `init.sh` → ENTORNO LISTO, exit 0 |
+
+Los **cuatro** que exige C4 bis están: tests y resultado, cobertura de las
+líneas cambiadas, mutantes y supervivientes, y **tiempo de la suite**, que era
+el que faltaba. La fila del portero se queda como quinta, que no estorba. Las
+cifras de tiempo son coherentes con lo que mido yo (`3 passed in 0.04s` /
+`7 passed in 0.40s` en esta ejecución; 0,01 s / 0,20 s en la anterior): varían
+entre ejecuciones, están en el orden de magnitud correcto y la explicación que
+acompaña —«tan bajo porque ningún test toca red, BBDD ni el runtime de
+Functions»— es exactamente para lo que sirve ese número.
+
+### 3. Nada más se ha roto por el camino — comprobado, no supuesto
+
+`36b825f` toca tres ficheros: `progress/impl_F-001.md` (+1/-1 línea),
+`progress/review2_F-001.md` (este informe, que se commiteó) y una línea en
+blanco de menos en `test_f001_adaptador_http.py`. Aun así lo he revalidado
+entero, porque un cambio en un fichero de test podría haber movido el alcance:
+
+```
+$ bash harness/init.sh
+[AVISO] ruff: 11 avisos (deuda previa, no bloquea).
+3 passed in 0.04s
+[OK] pytest en verde (con medición de cobertura)
+[OK] harness/servicios.json válido
+7 passed in 0.40s
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] PUERTA COBERTURA: 100.0% de 40 líneas cambiadas cubiertas
+     (40/40, umbral 80%, nivel estandar)
+[OK] Rama actual: feature/F-001-esqueleto
+ENTORNO LISTO. Puedes trabajar.
+EXIT_CODE=0
+```
+
+- **Las 10 pruebas siguen en verde** (3 + 7), ninguna se ha perdido al tocar
+  los imports del fichero de test.
+- **La cobertura sigue al 100 % de 40 líneas.**
+- **El alcance y la campaña de mutación siguen siendo válidos.** Recalculado
+  con HEAD en `36b825f`: 14 ficheros, 159 líneas, mismo `ref_diff`
+  (`8cb6c66..feature/F-001-esqueleto`), y los **mismos 3 mutantes**, con el
+  mismo operador y el mismo texto original→mutado que ya verifiqué en §5. El
+  cambio del fichero de test no altera nada porque `harness/alcance` excluye
+  `tests`. `progress/mutacion_F-001.md` **sigue fresco**: ningún commit
+  posterior a la campaña toca código de producción.
+- `git status --short` **vacío**; los cinco commits mantienen el formato
+  `F-001: <descripción>`.
+
+### Estado final de los checkpoints
+
+Con la revalidación, **todos los checkboxes de C1–C5 quedan en `[x]` o en
+`N/A` justificado por escrito**, con una sola excepción, que es la que el
+humano aceptó expresamente:
+
+- **C4 bis · Fase RED: `[ ]`**, incumplimiento **aceptado por el humano** y
+  documentado por escrito en `progress/impl_F-001.md`, sin traza fabricada.
+- **C3 bis · originales `.docx`/`.pdf` en el árbol**: deuda anterior a esta
+  rama, aceptada; C3 bis es N/A en esta feature porque no toca
+  `docs/referencia/`.
+
+Ambas constan en el apartado siguiente y **no se cierran con la feature**: son
+deuda declarada, no deuda escondida.
+
+Las cuatro observaciones que no bloquean (mapeo generoso de los
+`test_f001_r4_*`, el `.env` como fichero sin probar, `logging_config.py`
+cubierto por arrastre y las propuestas de mejora del arnés) siguen vigentes y
+se mantienen tal cual al final del documento, para F-002 y para el humano.
+
+---
+
+# Historial: primera pasada de esta review (HEAD `3dab4d0`) — RECHAZADO
+
+> Lo que sigue es el informe original, conservado sin cambios. Sus dos motivos
+> de rechazo están resueltos según la revalidación de arriba.
+
+## Veredicto de la primera pasada
 
 **RECHAZADO** (`CHANGES_REQUESTED`).
 
@@ -74,7 +197,7 @@ exige, según `harness/rigor.json` y la tabla de `CHECKPOINTS.md`:
 | Cobertura de líneas cambiadas ≥ 80 % | sí | **[x] OK — 100,0 % (40/40)** |
 | Campaña de mutación con supervivientes analizados | sí | **[x] OK — 3 mutantes, 2 muertos, 1 superviviente equivalente y bien argumentado** |
 | Cero supervivientes | no (solo `critico`) | n/a |
-| Sección «Evidencias» con los 4 números | sí | **[ ] 3 de 4: falta el tiempo de la suite** |
+| Sección «Evidencias» con los 4 números | sí | **[ ] 3 de 4 en `3dab4d0`: falta el tiempo de la suite** → **[x] completa en `36b825f`** |
 
 ---
 
@@ -234,6 +357,9 @@ el `staticwebapp.config.json` con `<TENANT_ID>` ya ni siquiera está en juego.
 
 ### 7. `ruff` — hay un aviso NUEVO, y es de esta feature
 
+> *(Corregido en `36b825f`; ver la revalidación al principio del documento.
+> El texto original de la primera pasada se conserva.)*
+
 ```
 $ .venv/Scripts/python.exe -m ruff check services/ tests/
 I001 [*] Import block is un-sorted or un-formatted
@@ -375,7 +501,9 @@ la feature (§6) y salió limpio, con los patrones escritos ahí.
       `PENDIENTE`.** El único superviviente lo tiene, y **el análisis es
       honesto** (juicio razonado abajo). El nivel `estandar` no exige cero
       supervivientes.
-- [ ] **Sección «Evidencias» con los cuatro números.** **NO SE CUMPLE: hay 3
+- [ ] **Sección «Evidencias» con los cuatro números.** *(En la revalidación
+      con HEAD `36b825f` este checkbox pasa a `[x]`: la fila «Tiempo de las
+      suites» ya está.)* **NO SE CUMPLE en `3dab4d0`: hay 3
       de 4.** La tabla trae tests (10 en verde), cobertura (100 %, 40/40) y
       mutación (3 mutantes: 2 muertos, 1 superviviente), pero la cuarta fila
       es «Portero: ENTORNO LISTO, exit 0», que no es uno de los cuatro
@@ -505,6 +633,9 @@ no son relleno.
 ---
 
 ## Cambios requeridos
+
+> **AMBOS RESUELTOS** en el commit `36b825f` y verificados en la revalidación
+> del principio de este documento. Se conservan tal cual se escribieron.
 
 Solo dos. Ninguno toca código de producción.
 

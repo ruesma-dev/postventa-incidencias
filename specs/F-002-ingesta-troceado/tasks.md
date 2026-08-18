@@ -71,7 +71,7 @@
       **Verificación**: los tests de ingesta que no dependen del pipeline, en
       verde.
 
-- [ ] **T9 · RED**: Escribir `tests/test_f002_troceado.py` (R7–R15) sobre los
+- [x] **T9 · RED**: Escribir `tests/test_f002_troceado.py` (R7–R15) sobre los
       pasos del pipeline: `remesa_sintetica([1,1,2,1])` → **3 partes** con
       `paginas_origen` `[1]`, `[2,3]`, `[4]`; `remesa_sintetica([2,1])` → 2
       partes y **aviso** en el primero; `remesa_escaneada(22)` → 22 partes y

@@ -1,0 +1,60 @@
+<!-- services/postventa-front/index.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Incidencias de Posventa · Ruesma</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine va con defer y con versión fija: se ejecuta después de nuestros
+       scripts (al final del body), que es lo que necesita para encontrar
+       appPostventa. Con 3.x.x, un cambio del CDN podría romper el front. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div x-data="appPostventa()" x-init="comprobarBackend()" class="min-h-screen flex flex-col">
+
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto max-w-5xl px-6 py-5 flex items-baseline justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight">Incidencias de Posventa</h1>
+          <p class="text-sm text-slate-500">Partes firmados: validar, archivar y cerrar</p>
+        </div>
+        <span class="text-xs text-slate-400" x-text="version"></span>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+      <section class="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Estado del servicio</h2>
+
+        <div class="mt-4 flex items-center gap-3">
+          <span class="inline-block h-2.5 w-2.5 rounded-full"
+                :class="{
+                  'bg-emerald-500': estado === 'ok',
+                  'bg-red-500': estado === 'error',
+                  'bg-slate-300 animate-pulse': estado === 'comprobando'
+                }"></span>
+          <span class="text-sm" x-text="mensaje"></span>
+        </div>
+
+        <p class="mt-6 text-sm text-slate-500">
+          Aquí irán la carga de partes y la revisión. De momento esta pantalla
+          solo comprueba que el front habla con el backend.
+        </p>
+      </section>
+    </main>
+
+    <footer class="border-t border-slate-200 bg-white">
+      <div class="mx-auto max-w-5xl px-6 py-4 text-xs text-slate-400">
+        Construcciones Ruesma
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

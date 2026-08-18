@@ -23,7 +23,7 @@
         "Test unitario del handler de health, sin red ni BBDD",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "sdd": false,
       "rigor": "estandar",
       "priority": 1,

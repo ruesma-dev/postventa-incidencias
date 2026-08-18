@@ -1,0 +1,5 @@
+.venv/
+tests/
+.env
+.env.example
+local.settings.json

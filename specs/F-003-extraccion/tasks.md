@@ -156,7 +156,7 @@
       > impide que alguien vuelva a incrustar el prompt en el código, o sea, el
       > requisito que más se degrada solo.
 
-- [ ] **T14**: Ampliar `config/settings.py` con los ajustes de IA de
+- [x] **T14**: Ampliar `config/settings.py` con los ajustes de IA de
       `design.md` §8 (credencial **opcional**), actualizar `.env.example` con
       placeholders, e implementar `infrastructure/llm/fabrica.py`.
       **Verificación**: los tests de T13 en verde y la suite completa del

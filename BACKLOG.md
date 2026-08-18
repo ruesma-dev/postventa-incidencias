@@ -5,11 +5,13 @@
 
 Resumen: **15 features**, 13 abiertas, 2 terminadas.
 
+En curso: **F-003**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | spec lista | critico | `feature/F-003-extraccion` |
+| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | en curso | critico | `feature/F-003-extraccion` |
 | F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
 | F-006 | Nombrado y archivo en SharePoint | 6 | pendiente | critico | `feature/F-006-sharepoint` |
@@ -34,7 +36,7 @@ Resumen: **15 features**, 13 abiertas, 2 terminadas.
 
 ### F-003 · Extracción multimodal del parte, manuscritos incluidos
 
-estado **spec lista** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
+estado **en curso** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
 
 Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.
 

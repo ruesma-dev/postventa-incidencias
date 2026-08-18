@@ -115,7 +115,7 @@
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f003_paso_extraccion.py -q` en verde, incluido el
       `test_f003_r2bis_la_extraccion_no_reagrupa_paginas` de T6.
 
-- [ ] **T11 · RED**: Escribir `tests/test_f003_adaptador_gemini.py` (R14, R15)
+- [x] **T11 · RED**: Escribir `tests/test_f003_adaptador_gemini.py` (R14, R15)
       con `ClienteGenaiFalso` y `espera_inicial_s=0`: un error transitorio se
       reintenta y la segunda respuesta vale; agotados los reintentos, sale
       `ExtraccionFallida`; una respuesta que no es JSON, o que no es un mapping,

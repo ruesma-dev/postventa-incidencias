@@ -139,3 +139,20 @@ ERROR tests/test_f003_paso_extraccion.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
 1 error in 0.23s
 ```
+
+### T11 · R14, R15 — el adaptador de Gemini no existía
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f003_adaptador_gemini.py -q
+```
+
+```
+Traceback:
+tests\test_f003_adaptador_gemini.py:24: in <module>
+    from infrastructure.llm.gemini import PROVEEDOR, AdaptadorGeminiVision
+E   ModuleNotFoundError: No module named 'infrastructure.llm'
+=========================== short test summary info ===========================
+ERROR tests/test_f003_adaptador_gemini.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.22s
+```

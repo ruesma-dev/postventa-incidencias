@@ -141,6 +141,25 @@ def test_f002_r2_el_zip_anidado_se_nombra_como_tal_en_el_aviso():
     assert avisos == ["remesa.zip/anidado.zip: descartado, es un ZIP anidado"]
 
 
+def test_f002_r2_una_ruta_que_sale_del_zip_se_descarta_con_aviso():
+    """R2 · una entrada con `..` en la ruta no entra en la remesa.
+
+    Nada se escribe en disco, así que no habría por dónde escaparse; pero una
+    remesa con rutas así no la ha hecho el escáner de Posventa, y lo que no se
+    entiende no se procesa: se nombra y se descarta.
+    """
+    crudo = zip_con({"../fuera.pdf": remesa_sintetica([1])})
+
+    pdfs, avisos = AdaptadorZipEstandar().extraer_pdfs(
+        DocumentoEntrada(nombre="remesa.zip", contenido=crudo)
+    )
+
+    assert pdfs == []
+    assert avisos == [
+        "remesa.zip/../fuera.pdf: descartado, la ruta interna sale del ZIP"
+    ]
+
+
 def test_f002_r2_un_zip_corrupto_se_descarta_con_aviso():
     """R2 · un ZIP que ni se puede abrir tampoco tumba la remesa."""
     pdfs, avisos = AdaptadorZipEstandar().extraer_pdfs(

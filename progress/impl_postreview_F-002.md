@@ -260,3 +260,165 @@ de los tres).
 2. Nada más: los trabajos 1, 2 y 3 están cerrados y verificados. La rama
    `chore/postreview-F-002` está lista para que la mergees a `dev` detrás de
    F-002 (cuando tú lo hagas: los agentes no hacen push ni PR).
+
+---
+
+# Cierre del trabajo 3 · La actualización del arnés, completada como 1.5.2
+
+Sesión posterior, misma rama `chore/postreview-F-002`. Resuelve el bloqueo de
+arriba con la **opción A**, y con una corrección del humano encima: se completa
+la 1.5.1 en este repositorio, **pero la versión resultante se llama 1.5.2**.
+
+Motivo textual: «me preocupa que se haya actualizado a la 1.5.1 y trabajes
+sobre código viejo y rompamos algo». De ahí que lo primero no fuera copiar
+nada, sino barrer el payload entero.
+
+## 1 · Barrido completo del payload (la respuesta a «¿código viejo?»)
+
+Comparado **fichero a fichero** `arnes-base/arnes-base/` contra este
+repositorio, ignorando finales de línea (aquí CRLF, allí LF) con
+`diff --strip-trailing-cr`. Se excluyen del barrido `__pycache__/` y
+`.pytest_cache/` (basura del árbol de `arnes-base`, no payload) y
+`harness/gitignore.arnes`, que el instalador lista como excluido y no copia.
+
+**32 ficheros comparados: 20 idénticos, 11 distintos, 1 ausente.**
+
+| Fichero | Estado | Veredicto |
+|---|---|---|
+| `.claude/agents/implementer.md` | idéntico | — |
+| `.claude/agents/leader.md` | idéntico | — |
+| `.claude/agents/reviewer.md` | idéntico | ya trae la mejora del punto 4 |
+| `.claude/agents/spec-author.md` | idéntico | — |
+| `.claude/settings.json` | idéntico | — |
+| `harness/__init__.py` | idéntico | — |
+| `harness/alcance.py` | idéntico | — |
+| `harness/backlog.py` | idéntico | — |
+| `harness/cobertura.py` | idéntico | — |
+| `harness/mutacion_paralela.py` | idéntico | — |
+| `harness/rigor.json` | idéntico | — |
+| `harness/rigor.py` | idéntico | — |
+| `harness/rutas_sensibles.py` y `.ejemplo.json` | idénticos | — |
+| `harness/servicios.py` y `.ejemplo.json` | idénticos | — |
+| `scripts/despierto_hook.sh` | idéntico | — |
+| `scripts/mantener_despierto.ps1` | idéntico | — |
+| `specs/SPECS.md` | idéntico | — |
+| `tests/test_backlog_md.py` | idéntico | — |
+| `CLAUDE.md` | difiere (54 líneas) | **adaptación**: nombre del proyecto, mapa del monorepo, prohibiciones propias (Sigrid, PostgreSQL compartido, SharePoint, `muestras/`) y el límite de servicio reescrito para monorepo. Solo regiones marcadas para adaptar |
+| `CHECKPOINTS.md` | difiere (31 líneas) | **adaptación**: las dos regiones marcadas, rellenas con las trampas del dominio y con la regla de los originales no versionados. El resto, byte a byte igual: **C4 bis ya está** |
+| `docs/ARCHITECTURE.md` | difiere (255 líneas) | **adaptación**: es el documento del proyecto entero frente a la plantilla |
+| `docs/CONVENTIONS.md` | difiere (8 líneas) | **este repositorio va por delante**, no por detrás: es el trabajo 2 de este mismo post-review (commit `6048c19`), que distingue componer un PDF de manipularlo citando `infrastructure/documentos/pdf_pymupdf.py`. Ver «Observación» abajo |
+| `docs/referencia/README.md` | difiere (8 líneas) | **adaptación**: la tabla de documentos, rellena con los dos que hay |
+| `harness/features.json` | difiere (267 líneas) | **adaptación**: es el backlog real |
+| `harness/init.sh` | difiere (6 líneas) | **adaptación**: `REQUIERE_ENV=0` (los `.env` viven en cada servicio) y las dos cabeceras de adaptación ya resueltas. Nada más |
+| `progress/current.md` | difiere (59 líneas) | **adaptación**: memoria viva del proyecto |
+| `progress/history.md` | difiere (102 líneas) | **adaptación**: historial real |
+| `harness/mutacion.py` | difiere (107 líneas) | **atraso real**: le faltaba la 1.5.1 |
+| `tests/test_mutacion_informe.py` | **ausente** | **atraso real**: es de la 1.5.1 |
+| `harness/VERSION` | difiere (2 líneas) | el propio sello: `1.5.0` frente a `1.5.1` |
+
+**Conclusión: ninguna divergencia inesperada.** Todo lo que difiere es
+adaptación legítima de este proyecto o exactamente los dos ficheros conocidos
+de la 1.5.1. No había código viejo escondido en ningún otro rincón del arnés, y
+por tanto no procedía responder `blocked`.
+
+### Observación (no bloquea, pero conviene decidirla)
+
+`docs/CONVENTIONS.md` es el único fichero donde **este repositorio adelanta a
+`arnes-base`**. El párrafo añadido en el trabajo 2 cita un fichero de este
+proyecto, y por eso se trató como adaptación local; pero la regla que enuncia
+—«ReportLab compone, PyMuPDF lee lo que no ha escrito él»— es genérica y quizá
+merezca subir a `arnes-base` en su propia versión. **No se ha hecho**: no
+estaba en el encargo y `CONVENTIONS.md` no figura entre los ficheros
+adaptables, así que fusionarlo por mi cuenta habría sido improvisar.
+
+## 2 · Lo que se ha copiado
+
+Copia **literal** desde `arnes-base/arnes-base/`, verificada después con
+`diff --strip-trailing-cr` contra el origen:
+
+| Fichero | Cómo |
+|---|---|
+| `harness/mutacion.py` | sobrescrito. Comprobado **antes** de copiar que este repositorio no tenía ninguna adaptación local: era byte a byte el de la 1.5.0 (`git show 11f24fb^:arnes-base/harness/mutacion.py`, diff vacío) |
+| `tests/test_mutacion_informe.py` | nuevo, 148 líneas, 6 casos |
+
+## 3 · Verificaciones reales (lo que el humano temía)
+
+| Qué | Comando | Resultado |
+|---|---|---|
+| Test del fichero nuevo | `python -m pytest tests/test_mutacion_informe.py -q` | **6 passed in 0.09s** |
+| Suite del arnés completa | `python -m pytest tests/ -q` | **16 passed in 0.29s** (eran 10; +6, ninguno roto) |
+| Campaña de mutación operativa | `python -m harness.mutacion --feature F-002 --salida <TEMP>/mut_check/mutacion_F-002.md` | **45 mutantes generados, 45 evaluados, 45 muertos, 0 supervivientes, 0 timeouts en 14,5 s**; campaña completa, sin muestreo |
+| Árbol limpio tras la campaña | `git status --short` | vacío |
+| Alcance recalculado | el informe generado | idéntico al de la review: mismos 13 ficheros, **749 líneas** en alcance |
+| Portero | `bash harness/init.sh` | exit 0, primera línea `Arnés v1.5.2 (2026-08-18)`, `ENTORNO LISTO` |
+
+La salida del informe fue a un directorio temporal del sistema, **fuera de
+`progress/`**, así que `progress/mutacion_F-002.md` sigue siendo el del
+implementer, sin pisar.
+
+**Por qué 45 mutantes y no los 44 de la review**, comprobado en vez de supuesto:
+el alcance sale del diff de la rama de F-002, pero los mutantes se generan del
+árbol de trabajo actual, que ya lleva la línea del trabajo 1. El mutante extra
+es exactamente `paso_troceado.py:52 [not] if not textos: -> if textos:`
+(enumerado con `harness.mutacion.generar_mutantes` sobre ese fichero), y está
+**muerto**: el test del trabajo 1 lo caza. Confirmación cruzada de que aquel
+arreglo tiene test de verdad.
+
+## 4 · Renombrado a 1.5.2 en `arnes-base`
+
+La mejora del reviewer (commit `8b5148d`) se había metido dentro de la 1.5.1,
+que era otra cosa. Un mismo número describiendo dos contenidos distintos según
+el repositorio es justo lo que `harness/VERSION` existe para evitar. Por tanto,
+en `arnes-base` (repositorio aparte, commit local, **sin push**):
+
+- `arnes-base/harness/VERSION` → `ARNES_VERSION=1.5.2`, `ARNES_FECHA=2026-08-18`.
+- `GUIA_INSTALACION.md`: la sección pasa a titularse **1.5.2** y se le antepone
+  una sección nueva que documenta la **1.5.1** por lo que de verdad fue (el
+  cambio de `harness/mutacion.py`: repetir campaña ya no borra el análisis de
+  los supervivientes, con `tests/test_mutacion_informe.py` detrás). Cada una
+  dice explícitamente que la otra no forma parte de ella.
+- **Historial intacto**: commit nuevo encima; `11f24fb` y `8b5148d` se quedan
+  como estaban.
+
+## 5 · Sello en este repositorio
+
+- `harness/VERSION` → `ARNES_VERSION=1.5.2`, `ARNES_FECHA=2026-08-18`.
+- `harness/ARNES_VERSION.md`: entrada nueva con **las dos mitades** —la 1.5.1
+  (los dos ficheros copiados literalmente de `arnes-base`) y la 1.5.2 (la
+  mejora del reviewer, que **nació aquí** y se portó a `arnes-base`)— más el
+  resultado del barrido y la verificación de la campaña. Redactado **sin** el
+  literal de la marca de adaptación entre corchetes, para no dejar un aviso
+  falso permanente en la sección 8 de `init.sh` (comprobado con `grep`: no
+  aparece).
+
+## Commits
+
+**`postventa-incidencias`**, rama `chore/postreview-F-002` (local, sin push):
+
+| Commit | Qué |
+|---|---|
+| `56dfac5` | Arnés 1.5.1: los dos ficheros que faltaban, copia literal |
+| el de cierre | Arnés 1.5.2: sello de versión, `ARNES_VERSION.md` y este informe |
+
+**`arnes-base`**, rama `main` (local, sin push):
+
+| Commit | Qué |
+|---|---|
+| `9224a5a` | 1.5.2: la mejora del reviewer se separa de la 1.5.1 y pasa a versión propia |
+
+`git add` siempre con rutas concretas, nunca `-A` ni `.`. **No se ha tocado**
+`harness/features.json`, ni `specs/`, ni `progress/spec_F-003.md`, ni
+`progress/explore_F-003.md`, ni nada de F-003.
+
+## Qué queda pendiente
+
+1. **Nada del arnés en este repositorio.** El bloqueo de arriba queda resuelto:
+   lleva la 1.5.2 completa y el sello dice la verdad, verificado contra el
+   payload fichero a fichero.
+2. La decisión sobre `docs/CONVENTIONS.md` (observación del punto 1): si la
+   regla ReportLab/PyMuPDF debe subir a `arnes-base`, sería una versión nueva
+   allí.
+3. `arnes-base` acumula **tres commits sin publicar** (`11f24fb`, `8b5148d`,
+   `9224a5a`). Publicar es decisión del humano: los agentes no hacen push.
+4. La rama `chore/postreview-F-002` sigue lista para mergear a `dev` detrás de
+   F-002, cuando lo haga el humano.

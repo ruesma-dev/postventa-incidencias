@@ -197,7 +197,7 @@
 > entera.** Es un cambio de orden, no de alcance: las 21 tareas siguen siendo
 > las mismas y `bash harness/init.sh` en verde sigue siendo la última.
 
-- [ ] **T17**: **MANUAL (humano)** — humo contra el modelo **real** con un
+- [ ] **T17 · PENDIENTE DEL HUMANO**: **MANUAL (humano)** — humo contra el modelo **real** con un
       parte **sintético** (sin ningún dato personal). Requiere `GEMINI_API_KEY`
       en el `.env` local del servicio; **la clave no se pega en ningún informe
       ni en ningún commit**.
@@ -246,7 +246,7 @@
       imprimir los valores: son inventados. El resultado real se anota en
       `progress/current.md`.
 
-- [ ] **T18**: **MANUAL (humano)** — acierto sobre **un parte real** de la
+- [ ] **T18 · PENDIENTE DEL HUMANO**: **MANUAL (humano)** — acierto sobre **un parte real** de la
       remesa de Mirasierra. **Es el momento de la verdad del proyecto entero**:
       lo que se comprueba aquí no es el contrato de F-003 (eso ya lo demuestra
       la suite) sino si el modelo **lee de verdad estos manuscritos y estos

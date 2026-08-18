@@ -28,7 +28,7 @@
       *(Sin fase RED: el generador es material de test, no código de
       producción cuyo fallo previo se pueda enseñar.)*
 
-- [ ] **T3 · RED**: Escribir `tests/test_f002_pie_de_pagina.py` (R7–R10) sobre
+- [x] **T3 · RED**: Escribir `tests/test_f002_pie_de_pagina.py` (R7–R10) sobre
       `PieDePagina`: `Página 1` abre parte, `Página 2` con plantilla es
       continuación, `Página 2` **sin** el marcador de plantilla abre parte,
       texto sin pie abre parte, y se toma la **última** aparición de `Página N`

@@ -10,6 +10,36 @@
 `in_progress`, rama `feature/F-003-extraccion`, rigor `critico`.
 **Implementada, revisión APROBADA, y a falta de UNA comprobación del humano.**
 
+## Cómo retomar en una sesión nueva
+
+**Prompt de arranque** (pégalo tal cual en una sesión limpia de Claude Code,
+abierta en `C:\Users\pgris\PycharmProjects\postventa-incidencias`):
+
+> Lee CLAUDE.md, actúa como líder y sigue el protocolo. Retoma F-003 desde
+> `progress/current.md`: está implementada y aprobada, y solo falta el barrido
+> de la remesa entera. Dame el comando, lo ejecuto yo y te pego la salida.
+
+Lo que la sesión nueva debe hacer, en este orden, sin repetir trabajo:
+
+1. `bash harness/init.sh` (tiene que decir `Arnés v1.5.2` y `ENTORNO LISTO`).
+2. Leer este fichero entero. **No hace falta releer el proyecto**: lo que se
+   decidió y lo que se verificó está aquí, y el detalle en los informes que se
+   citan.
+3. Pedir al humano el barrido de los 22 partes (comando justo debajo). **No lo
+   ejecuta un agente**: necesita credencial de IA y el PDF real, que no se
+   versiona.
+4. Con la salida pegada: anotar aquí los recuentos y confianzas —**nunca
+   valores**, los partes llevan DNI—, marcar T18 en
+   `specs/F-003-extraccion/tasks.md`, pasar F-003 a `done` en
+   `harness/features.json`, mover el resumen a `progress/history.md`, dejar
+   este fichero limpio y entregar el resumen de cierre al humano.
+5. Solo entonces, F-004.
+
+**Lo que NO debe hacer la sesión nueva**: reabrir F-002 ni F-003 (cerradas y
+revisadas), tocar el historial de git de ninguna rama, hacer `push` o PR, ni
+aplicar por su cuenta las propuestas P1/P2/P3 ni lo de `CONVENTIONS.md` — son
+decisiones del humano y están listadas más abajo.
+
 ## Lo primero que hay que hacer mañana
 
 Ejecutar el barrido de la remesa entera (22 llamadas a Gemini, un par de

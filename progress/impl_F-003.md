@@ -219,3 +219,20 @@ La copia se borró después y el árbol real quedó limpio (`git status` sin
 rastro de ella). Nótese que el test de R8 **no lleva escrita ninguna frase del
 prompt**: las saca del YAML en tiempo de ejecución, así que sigue valiendo
 cuando el prompt se reescriba.
+
+### T15 · R17, R18 — el endpoint no existía
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f003_extraer_http.py -q
+```
+
+```
+Traceback:
+tests	est_f003_extraer_http.py:27: in <module>
+    from interface_adapters.api.extraer import extraer_parte
+E   ModuleNotFoundError: No module named 'interface_adapters.api.extraer'
+=========================== short test summary info ===========================
+ERROR tests/test_f003_extraer_http.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.34s
+```

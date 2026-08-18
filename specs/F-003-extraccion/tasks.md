@@ -162,7 +162,7 @@
       **Verificación**: los tests de T13 en verde y la suite completa del
       servicio también. `.env` **no se toca**.
 
-- [ ] **T15 · RED**: Escribir `tests/test_f003_extraer_http.py` (R17, R18) con
+- [x] **T15 · RED**: Escribir `tests/test_f003_extraer_http.py` (R17, R18) con
       **los cuatro caminos de respuesta**, uno por test:
       - `test_f003_r17_extraer_devuelve_200_con_el_contrato`: `POST` con un PDF
         devuelve **200** con el contrato exacto de `design.md` §4.6 —**nueve**

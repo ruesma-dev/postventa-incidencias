@@ -151,6 +151,21 @@ def test_f003_r9_una_entrada_con_texto_en_blanco_tampoco_vale(tmp_path):
     assert "system" in fallo.value.motivo
 
 
+def test_f003_r9_una_entrada_que_no_es_mapping_falla(tmp_path):
+    """R9 · una clave cuyo valor es texto suelto no es un prompt.
+
+    Es el YAML mal indentado de toda la vida: la entrada queda como cadena y
+    no como bloque. Sin este control, el fallo saldría por un `AttributeError`
+    ilegible en vez de por el error de dominio que dice qué clave está mal.
+    """
+    ruta = _escribir(tmp_path, "parte_posventa_es: esto no es un bloque\n")
+
+    with pytest.raises(PromptNoEncontrado) as fallo:
+        RepositorioPromptsYaml(ruta)
+
+    assert "parte_posventa_es" in fallo.value.motivo
+
+
 def test_f003_r10_la_huella_del_prompt_cambia_si_cambia_el_texto(tmp_path):
     """R10 · tocar una coma cambia la huella, aunque la versión no se toque.
 

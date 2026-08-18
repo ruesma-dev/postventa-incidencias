@@ -90,7 +90,7 @@
       por el propio test con `tmp_path`).
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T8**: Escribir `services/postventa-api/config/prompts.yaml` con la clave
+- [x] **T8**: Escribir `services/postventa-api/config/prompts.yaml` con la clave
       `parte_posventa_es` según el contenido normativo de `design.md` §5.2
       —los nueve campos, incluida la línea de `numero_pagina` («lee el pie
       impreso; si no se ve, `null`; **no lo deduzcas**»)— y **sin un solo dato

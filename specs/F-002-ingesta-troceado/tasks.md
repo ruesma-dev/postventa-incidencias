@@ -10,14 +10,14 @@
 > La suite del servicio se ejecuta así (desde la raíz del repositorio):
 > `cd services/postventa-api && .venv/Scripts/python.exe -m pytest -q`
 
-- [ ] **T1**: Declarar `pymupdf>=1.24,<2.0` en
+- [x] **T1**: Declarar `pymupdf>=1.24,<2.0` en
       `services/postventa-api/requirements.txt` e instalarlo en el venv del
       servicio.
       **Verificación**: `cd services/postventa-api && .venv/Scripts/python.exe -m pip install -r requirements-dev.txt && .venv/Scripts/python.exe -c "import pymupdf; print(pymupdf.__doc__)"`
       imprime la versión, y `.venv/Scripts/python.exe -m pytest -q` sigue en
       verde (F-001 intacta).
 
-- [ ] **T2**: Escribir el generador de PDFs sintéticos
+- [x] **T2**: Escribir el generador de PDFs sintéticos
       `services/postventa-api/tests/utiles_pdf.py` (`pagina_de_parte`,
       `remesa_sintetica`, `remesa_escaneada`, `zip_con`) imitando la plantilla
       y el pie de `docs/referencia/02_parte_de_trabajo.md`, **sin ningún dato

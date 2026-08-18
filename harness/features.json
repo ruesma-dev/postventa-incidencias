@@ -100,9 +100,9 @@
     {
       "id": "F-006",
       "title": "Nombrado y archivo en SharePoint",
-      "description": "Nombrar cada parte apto y archivarlo en SharePoint. Pendiente de F-008: el nombre que usa Posventa hoy es 'RS26.08 - 0123 PARTE FIRMADO' y hay que confirmar qué parte es el código de obra y cuál el número de incidencia. Pendiente también de decidir con el humano si se crea biblioteca nueva en el sitio de IT o se respeta la estructura que Posventa ya usa (Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS).",
+      "description": "Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.",
       "acceptance": [
-        "El nombre generado es <código de obra> - <nº incidencia>, con el código de obra tal y como lo tiene Sigrid",
+        "El nombre generado lleva código de obra, código de incidencia y el sufijo ' PARTE FIRMADO'",
         "La carpeta destino se crea sola si no existe, por código de obra",
         "Subir dos veces el mismo parte no genera un duplicado con sufijo",
         "Ninguna subida real desde local ni desde los tests",
@@ -151,22 +151,21 @@
     },
     {
       "id": "F-009",
-      "title": "Cierre de la incidencia en Sigrid: gráfico + estado",
-      "description": "Cerrar la incidencia replicando lo que Posventa hace a mano: INSERT del PDF en gra, INSERT en rcg vinculándolo a la reclamación, y UPDATE de con.est al estado de cierre. Las tres o ninguna. DEPENDE de un endpoint de dominio nuevo en sigrid-api: hoy la pasarela lee documentos pero no los escribe, y sql/write ni reserva ide con applock ni está pensado para BLOBs. Ese endpoint se implementa en el repositorio sigrid-api, no aquí.",
+      "title": "Cierre de la incidencia en Sigrid (solo estado)",
+      "description": "Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. En esta versión NO se sube el PDF a Sigrid (eso es F-012), así que basta la escritura genérica de sigrid-api: un UPDATE con WHERE, sin reservar ide ni manejar binarios. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.",
       "acceptance": [
-        "Las tres escrituras son atómicas: si falla la vinculación o el cambio de estado, no queda un gráfico huérfano en Sigrid",
+        "El estado de cierre se resuelve contra conest en tiempo de ejecución; ni un número de estado en el código",
         "Sin confirmación explícita no se ejecuta ningún commit, ni por error de flujo",
-        "El dry-run se muestra al usuario antes de cerrar: qué incidencia, qué documento y qué estado quedaría",
+        "El dry-run se muestra al usuario antes de cerrar: qué incidencia y de qué estado a cuál pasaría",
         "La preferencia de auto-cierre se guarda por usuario y se puede revocar",
-        "Un cierre fallido deja el parte marcado y reintentar no adjunta el PDF dos veces",
+        "Un cierre fallido deja el parte marcado, y reintentar sobre una incidencia ya cerrada no la vuelve a tocar",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
       "priority": 9,
-      "branch": "feature/F-009-cierre-sigrid",
-      "blocked_by": "Endpoint de escritura de documentos en sigrid-api (otro repositorio). Se propone al humano antes de empezar."
+      "branch": "feature/F-009-cierre-sigrid"
     },
     {
       "id": "F-010",
@@ -199,6 +198,38 @@
       "rigor": "estandar",
       "priority": 11,
       "branch": "feature/F-011-buzon-correo"
+    },
+    {
+      "id": "F-012",
+      "title": "Futuro: subir el parte a Sigrid como gráfico de la incidencia",
+      "description": "Replicar el 'importar desde archivo' que hace Posventa a mano: INSERT del PDF en gra (binario en ima) e INSERT en rcg para vincularlo al concepto de la reclamación, atómico con el cambio de estado. REQUIERE un endpoint de dominio nuevo en sigrid-api: hoy la pasarela lee documentos pero no los escribe, y sql/write ni reserva ide con applock ni está pensado para BLOBs. Ese endpoint se implementa en el repositorio sigrid-api, no aquí.",
+      "acceptance": [
+        "El gráfico queda vinculado a la reclamación y visible desde la UI de Sigrid",
+        "Las escrituras son atómicas: ni gráficos huérfanos ni incidencias cerradas sin su parte",
+        "Subir dos veces el mismo parte no duplica el gráfico",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 12,
+      "branch": "feature/F-012-grafico-sigrid",
+      "blocked_by": "Endpoint de escritura de documentos en sigrid-api (otro repositorio). Se propone al humano antes de empezar."
+    },
+    {
+      "id": "F-013",
+      "title": "Futuro: mudar el archivo a la biblioteca de Posventa",
+      "description": "Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.",
+      "acceptance": [
+        "La ruta destino es configuración, no código: cambiarla no toca el pipeline",
+        "Lo archivado en IT durante dev queda localizable o migrado, según se decida con Posventa",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 13,
+      "branch": "feature/F-013-archivo-posventa"
     }
   ]
 }

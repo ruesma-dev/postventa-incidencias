@@ -61,7 +61,7 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    (DNI, observaciones). Un escaneo no tiene capa de texto: esto es visión.
 4. **Validación** — firma presente y humana, campos obligatorios legibles,
    coherencia con Sigrid (la incidencia existe y está abierta).
-5. **Nombrado** — `<código de obra> - <nº incidencia>.pdf`.
+5. **Nombrado** — con el código de obra y el de la incidencia, más el sufijo ` PARTE FIRMADO`.
 6. **Archivo** — subida a SharePoint.
 7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
    entonces `commit: true`.
@@ -85,10 +85,10 @@ igual que hoy, y por debajo se suben los PDFs.
 1. **La unidad de trabajo es el parte, no el fichero.** Un PDF de remesa
    contiene N partes de N incidencias distintas. Nada del dominio se razona
    "por fichero".
-2. **El nombre canónico es `<código de obra> - <número de incidencia>`.** El
-   `CHALET XX - NNNN` que usa hoy Posventa a mano era un ejemplo de su
-   nomenclatura interna, no la convención del sistema: el código de obra es
-   lo que cuadra con Sigrid, el nombre comercial ("Mirasierra") no.
+2. **`RS26.08 – 0123` es el código de la incidencia**, no obra + número: lo
+   emite Sigrid entero (serie + correlativo). El **código de obra es otra
+   cosa** —`0677` en Mirasierra— y va impreso en el parte, en su propio
+   campo. No confundirlos es lo que decide el nombrado y la carpeta.
 3. **La firma debe ser humana.** Una casilla vacía, una aspa, o un trazo
    geométrico sin estructura de firma **no** son conformidad del cliente. Un
    parte sin firma válida no se archiva ni se cierra: va a revisión manual.
@@ -103,8 +103,9 @@ igual que hoy, y por debajo se suben los PDFs.
 7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.**
    Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en
    Sigrid da por resuelta una incidencia que sigue viva.
-8. **La carpeta de archivo va por código de obra**:
-   `Postventa/<código de obra>/<código de obra> - <nº incidencia>.pdf`.
+8. **La carpeta de archivo va por código de obra**, y el fichero conserva el
+   sufijo ` PARTE FIRMADO` que usa Posventa: distingue el parte conformado de
+   cualquier otro documento de la misma incidencia.
 9. **Reprocesar una remesa no puede duplicar nada.** El mismo parte, subido
    dos veces, es el mismo parte: se identifica por hash del PDF troceado y
    por número de incidencia.
@@ -114,7 +115,7 @@ igual que hoy, y por debajo se suben los PDFs.
 | Sistema | Uso | Límites |
 |---|---|---|
 | `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la incidencia; cierre por escritura. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. La escritura está apagada por defecto y los endpoints de dominio son dry-run salvo `commit: true`. |
-| SharePoint (Graph) | Archivo de los PDF validados, en **biblioteca propia** dentro del sitio de **IT** (donde vive la de albaranes). Ruta `Postventa/<código de obra>/`. | La biblioteca **no existe todavía**: crearla es parte de la feature de archivo. El código de obra es el de Sigrid, no el nombre comercial de la promoción. |
+| SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. | Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature F-013, no un detalle de despliegue. |
 | PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones y preferencias de usuario. **Schema propio** del proyecto. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento. |
 | Gemini (`gemini-2.5-flash`) | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`: el proveedor se cambia por configuración, no editando el pipeline. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
@@ -181,11 +182,20 @@ escribirlos**. No hay endpoint de dominio para esto, y `sql/write` no reserva
 endpoint nuevo en `sigrid-api`** —otro repositorio, otro proyecto—: se
 propone al humano, no se implementa aquí (regla de LÍMITE DE SERVICIO).
 
-### El PDF tiene dos destinos, no uno
+### Alcance del cierre en la primera versión
 
-El parte firmado va **a SharePoint** (archivo de Posventa) **y a Sigrid**
-(como gráfico de la reclamación). No son alternativas: hoy Posventa hace las
-dos cosas, y la de Sigrid es la que da por documentada la incidencia.
+Posventa hace hoy dos cosas: sube el PDF a Sigrid como gráfico **y** cambia el
+estado. **En la primera versión solo se hace lo segundo**: el parte se archiva
+en SharePoint y en Sigrid únicamente se mueve `con.est` a CERRADA.
+
+Eso quita de en medio la dependencia de un endpoint nuevo en `sigrid-api`
+—escribir el BLOB de `gra` y su fila en `rcg`— que queda como feature futura
+(F-012). Un `UPDATE` de estado con `WHERE` no reserva `ide` ni maneja
+binarios, así que cabe en la escritura genérica de la pasarela.
+
+**Riesgo a confirmar en F-008**: que cerrar desde la UI de Sigrid no dispare
+nada más que el cambio de estado (una fecha, `solrcp`). Sigrid no tiene
+triggers: lo que no escribamos, no se escribe solo.
 
 ### Lo que queda por confirmar contra el ERP real (F-008, solo lecturas)
 

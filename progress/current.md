@@ -9,8 +9,17 @@ rama `feature/F-002-ingesta-troceado`, rigor `critico`.
 `bash harness/init.sh` termina en verde, exit 0. Informe completo con las
 trazas de la fase RED y las evidencias: **`progress/impl_F-002.md`**.
 
-Pendiente: la verificación MANUAL de abajo y el veredicto del reviewer contra
-`CHECKPOINTS.md`. La feature **no se marca `done`** hasta las dos cosas.
+**Revisión APROBADA** (2026-08-18): `progress/review_F-002.md`. El reviewer
+recorrió `CHECKPOINTS.md` entero y verificó por su cuenta —sin fiarse del
+informe— el portero, las dos suites, la cobertura recalculada a mano, el
+alcance y el número de mutantes, y **reejecutó la campaña de mutación completa**
+(44 evaluados, 44 muertos, 0 supervivientes en 29,7 s). Comprobó también contra
+el historial de git que en los commits RED estaba el test y **no** el módulo de
+producción.
+
+Pendiente para cerrar: **solo la verificación MANUAL de abajo (T15)**, que es
+del humano. La feature **no se marca `done`** hasta que se ejecute y se anote
+aquí su resultado real. Nada depende ya del implementer.
 
 ## Números de esta implementación
 

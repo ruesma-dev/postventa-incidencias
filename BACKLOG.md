@@ -3,13 +3,15 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **13 features**, 12 abiertas, 1 terminadas.
+Resumen: **14 features**, 13 abiertas, 1 terminadas.
+
+En curso: **F-002**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-002 | Ingesta y troceado de la remesa en partes | 2 | spec lista | critico | `feature/F-002-ingesta-troceado` |
+| F-002 | Ingesta y troceado de la remesa en partes | 2 | en curso | critico | `feature/F-002-ingesta-troceado` |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | pendiente | critico | `feature/F-003-extraccion` |
 | F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
@@ -21,6 +23,7 @@ Resumen: **13 features**, 12 abiertas, 1 terminadas.
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
+| F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 
 ## Terminadas
 
@@ -32,7 +35,7 @@ Resumen: **13 features**, 12 abiertas, 1 terminadas.
 
 ### F-002 · Ingesta y troceado de la remesa en partes
 
-estado **spec lista** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
+estado **en curso** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
 
 Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.
 
@@ -101,6 +104,12 @@ Replicar el 'importar desde archivo' que hace Posventa a mano: INSERT del PDF en
 estado **pendiente** · prioridad 13 · rigor `estandar` · SDD sí · rama `feature/F-013-archivo-posventa`
 
 Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
+
+### F-014 · Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción
+
+estado **pendiente** · prioridad 14 · rigor `critico` · SDD sí · rama `feature/F-014-reagrupar-pagina-2`
+
+Las remesas reales llegan escaneadas sin capa de texto (Mirasierra: 22 páginas, 0 caracteres), así que el troceado de F-002 no puede leer el pie y degrada a 'una página, un parte': un parte de dos hojas sale partido en dos. F-003 ya pasa cada página por un modelo multimodal, que sí ve el pie impreso. Esta feature aprovecha esa lectura: si la extracción devuelve 'Página 2' (o N mayor que 1), esa página se reagrupa como continuación del parte anterior en vez de quedarse como parte suelto. Es la reagrupación posterior al troceado, no un segundo troceador.
 
 ### F-001 · Esqueleto del monorepo y /health
 

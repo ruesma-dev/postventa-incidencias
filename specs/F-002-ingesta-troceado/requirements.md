@@ -85,6 +85,11 @@ manual; fundir dos partes en un documento **pierde una incidencia**.
 con ella igualmente y marcar ese parte con un aviso de troceado: no hay parte
 anterior al que engancharla y descartarla perdería un parte.
 
+> **Aprobado por el humano el 2026-08-18**: la degradación de R11 se acepta
+> para F-002. La reagrupación del parte de dos hojas a partir del «Página N»
+> que lea la extracción multimodal es la feature **F-014** (prioridad 14,
+> `blocked_by` F-003) y **no se implementa aquí**.
+
 **R11.** MIENTRAS ninguna página de un PDF de remesa tenga capa de texto
 útil, el sistema debe declarar para sus partes el modo de detección
 `una_pagina_por_parte` —en vez de `por_pie_de_pagina`—, de forma que quien

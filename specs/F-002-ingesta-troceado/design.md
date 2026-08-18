@@ -36,9 +36,23 @@ es una **etiqueta informativa** calculada por documento, no un `if` que
 bifurque el algoritmo. Un solo camino = menos superficie de mutantes y nada
 que se pudra sin ejercitarse.
 
-**Decisión abierta para el humano** (también en `progress/spec_F-002.md`):
-hasta que las remesas lleguen con OCR, el parte de dos hojas no se detectará
-en producción. Alternativas evaluadas en §7.
+**Decisión del humano (2026-08-18): degradación ACEPTADA para F-002.** Hasta
+que las remesas lleguen con OCR, el parte de dos hojas no se detectará en
+producción, y eso es admisible porque `modo_deteccion` lo declara. Alternativas
+evaluadas en §7.
+
+La recuperación queda planificada, no olvidada: **`F-014` · «Reagrupar el parte
+de dos hojas con el "Página 2" que lee la extracción»** (prioridad 14,
+`blocked_by` F-003). Cuando la extracción multimodal de F-003 lea el pie
+impreso —que un modelo sí ve aunque no haya capa de texto—, una página cuyo pie
+diga `Página N` con N ≥ 2 se reagrupará como continuación del parte anterior.
+
+**Qué significa esto para el implementer de F-002**: nada que implementar aquí,
+pero **no cierres la puerta**. La salida de cada parte debe conservar
+`paginas_origen` y `origen` con la precisión suficiente para que después se
+puedan unir dos partes contiguos sin volver a abrir el PDF de la remesa. No
+añadas ganchos, banderas ni código muerto «preparando» F-014: eso se diseña en
+su spec.
 
 ## 1 · Ficheros a crear
 

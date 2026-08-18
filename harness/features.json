@@ -100,7 +100,7 @@
     {
       "id": "F-006",
       "title": "Nombrado y archivo en SharePoint",
-      "description": "Crear la biblioteca de Posventa dentro del sitio de IT (donde vive la de albaranes), y subir cada parte apto como '<código de obra> - <nº incidencia>.pdf' en la ruta Postventa/<código de obra>/.",
+      "description": "Nombrar cada parte apto y archivarlo en SharePoint. Pendiente de F-008: el nombre que usa Posventa hoy es 'RS26.08 - 0123 PARTE FIRMADO' y hay que confirmar qué parte es el código de obra y cuál el número de incidencia. Pendiente también de decidir con el humano si se crea biblioteca nueva en el sitio de IT o se respeta la estructura que Posventa ya usa (Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS).",
       "acceptance": [
         "El nombre generado es <código de obra> - <nº incidencia>, con el código de obra tal y como lo tiene Sigrid",
         "La carpeta destino se crea sola si no existe, por código de obra",
@@ -133,14 +133,14 @@
     },
     {
       "id": "F-008",
-      "title": "Modelo de posventa en Sigrid (investigación)",
-      "description": "Confirmar contra el ERP real el modelo de posventa ya documentado en azure-apps/sigrid_tablas.md y sigrid_api.md §9: rcp (Reclamación) es extensión 1:1 de con, upv es la Unidad Postventa y el estado vive en con.est con catálogo en conest. Falta cerrar: qué con.tip es la reclamación, qué estados declara conest para ese tipo y cuál es el de cierre, si el número impreso en el parte es con.cod, y si cerrar exige rellenar solrcp o alguna fecha. Solo lecturas contra sigrid-api.",
+      "title": "Modelo de posventa en Sigrid: confirmar contra el ERP",
+      "description": "Confirmar contra el ERP lo que ya está documentado (azure-apps/sigrid_tablas.md, sigrid_api.md §9, y la guía de Alicia en docs/referencia/): rcp es la reclamación, extensión 1:1 de con; el estado vive en con.est con catálogo en conest; y el parte se adjunta como gráfico (gra) vinculado por rcg. Falta cerrar: el con.tip de la reclamación y el estado CERRADA en conest; qué es RS26.08 y qué es 0123 en el nombre; qué campos se rellenan al importar el gráfico; si gra vive en ruesma o en ruesma_rep; y si cerrar exige rellenar solrcp o alguna fecha. Solo lecturas.",
       "acceptance": [
-        "Queda escrito el con.tip de la reclamación y la lista de estados de conest para ese tipo, con el de cierre identificado",
-        "Queda resuelto de qué campo sale el número de incidencia que va impreso en el parte",
-        "Queda escrito qué hace falta para cerrar (endpoint de dominio en sigrid-api o sql/write) y por qué",
+        "Queda escrito el con.tip de la reclamación y los estados de conest para ese tipo, con el de cierre identificado",
+        "Queda resuelto si RS26.08 - 0123 es codigo de obra + incidencia o el con.cod entero de la reclamación",
+        "Queda escrito en qué base vive gra y qué campos exige un gráfico vinculado por rcg",
         "Ni una escritura contra Sigrid en toda la feature",
-        "docs/referencia/ solo recoge lo NUEVO: lo que ya está en azure-apps se enlaza, no se copia",
+        "docs/referencia/ recoge la guía de Posventa; lo que ya está en azure-apps se enlaza, no se copia",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",
@@ -151,20 +151,22 @@
     },
     {
       "id": "F-009",
-      "title": "Cierre de la incidencia en Sigrid",
-      "description": "Cerrar en Sigrid las incidencias de los partes aptos: dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.",
+      "title": "Cierre de la incidencia en Sigrid: gráfico + estado",
+      "description": "Cerrar la incidencia replicando lo que Posventa hace a mano: INSERT del PDF en gra, INSERT en rcg vinculándolo a la reclamación, y UPDATE de con.est al estado de cierre. Las tres o ninguna. DEPENDE de un endpoint de dominio nuevo en sigrid-api: hoy la pasarela lee documentos pero no los escribe, y sql/write ni reserva ide con applock ni está pensado para BLOBs. Ese endpoint se implementa en el repositorio sigrid-api, no aquí.",
       "acceptance": [
+        "Las tres escrituras son atómicas: si falla la vinculación o el cambio de estado, no queda un gráfico huérfano en Sigrid",
         "Sin confirmación explícita no se ejecuta ningún commit, ni por error de flujo",
-        "El dry-run se muestra al usuario antes de cerrar: qué incidencia y qué estado quedaría",
+        "El dry-run se muestra al usuario antes de cerrar: qué incidencia, qué documento y qué estado quedaría",
         "La preferencia de auto-cierre se guarda por usuario y se puede revocar",
-        "Un cierre fallido deja el parte marcado y reintentar no cierra dos veces",
+        "Un cierre fallido deja el parte marcado y reintentar no adjunta el PDF dos veces",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
       "priority": 9,
-      "branch": "feature/F-009-cierre-sigrid"
+      "branch": "feature/F-009-cierre-sigrid",
+      "blocked_by": "Endpoint de escritura de documentos en sigrid-api (otro repositorio). Se propone al humano antes de empezar."
     },
     {
       "id": "F-010",

@@ -146,10 +146,59 @@ no se duplica aquí.
 - El código legible y el nombre salen de `con.cod` / `con.res`, no de la
   extensión.
 
-Queda por **confirmar contra el ERP real** (feature F-008, solo lecturas): qué
-`con.tip` corresponde a la reclamación, qué estados declara `conest` para ese
-tipo y cuál es el de cierre, si el número impreso en el parte es `con.cod`, y
-si al cerrar hay que rellenar además `solrcp` o alguna fecha.
+### Cómo se cierra hoy una incidencia, a mano
+
+Documentado por Alicia Echevarría (Posventa) en su guía del 2026-08-18, que
+vive en `docs/referencia/` (el original `.docx` no se versiona):
+
+1. **Renombra** el parte firmado: `RS26.08 – 0123 PARTE FIRMADO`.
+2. Entra en la obra → unidad de obra → busca la incidencia → **gráficos →
+   importar → importar desde archivo**, y sube el PDF. Rellena unos datos en
+   esa ventana.
+3. Vuelve a la incidencia y **cambia el estado a CERRADA** ("Opción 3. Cerrar
+   parte"), y confirma el mensaje.
+
+También se puede localizar la incidencia por la **pestaña de reclamaciones**,
+sin entrar en la unidad.
+
+### Qué es eso en tablas, y qué implica
+
+El "importar gráfico" son dos tablas:
+
+| Tabla | Papel |
+|---|---|
+| `gra` | El documento: `ima` (binario), `nom` / `nomori` (nombre), `cod`, `res`, `fec`, `usu`, `gratipide` (clase, catálogo `auxgra`), `guid`. |
+| `rcg` | **Gráficos en conceptos**: la N:N que ata el gráfico (`gra`) al concepto (`con`) de la reclamación, con `pos` y `cla`. |
+
+Por tanto **cerrar una incidencia son tres escrituras**, y en este orden:
+`INSERT` en `gra` con el PDF → `INSERT` en `rcg` vinculándolo a la
+reclamación → `UPDATE con.est` al estado de cierre. Las tres, o ninguna.
+
+**Consecuencia dura para el diseño**: `sigrid-api` hoy sabe **leer**
+documentos (`POST /api/documents/read` contra `ruesma_rep`) pero **no sabe
+escribirlos**. No hay endpoint de dominio para esto, y `sql/write` no reserva
+`ide` con applock ni está pensado para BLOBs. Así que **F-009 depende de un
+endpoint nuevo en `sigrid-api`** —otro repositorio, otro proyecto—: se
+propone al humano, no se implementa aquí (regla de LÍMITE DE SERVICIO).
+
+### El PDF tiene dos destinos, no uno
+
+El parte firmado va **a SharePoint** (archivo de Posventa) **y a Sigrid**
+(como gráfico de la reclamación). No son alternativas: hoy Posventa hace las
+dos cosas, y la de Sigrid es la que da por documentada la incidencia.
+
+### Lo que queda por confirmar contra el ERP real (F-008, solo lecturas)
+
+- Qué `con.tip` corresponde a la reclamación y qué estados declara `conest`
+  para ese tipo, incluido el de cierre ("CERRADA").
+- **Qué es `RS26.08` y qué es `0123`** en `RS26.08 – 0123`: si es código de
+  obra + número de incidencia, o si `RS26.08 – 0123` es entero el `con.cod`
+  de la reclamación (serie `sercon` + correlativo). Decide el nombrado.
+- Qué campos se rellenan al importar el gráfico (la guía dice "añado los
+  datos que subrayo" y lo enseña en una captura): probablemente `res`, `cod`
+  y la clase `gratipide`.
+- Si la tabla `gra` vive en `ruesma` o en `ruesma_rep`, y si cerrar exige
+  además rellenar `solrcp` o alguna fecha.
 
 ## Infra y despliegue
 

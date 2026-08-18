@@ -1,7 +1,6 @@
 {
   "$schema_doc": "Estados: pending -> spec_ready (aprueba humano) -> in_progress -> done. 'blocked' = parada con motivo en progress/current.md. Máximo UNA in_progress (lo valida init.sh). sdd=false salta la spec: 'acceptance' hace de mini-spec y el reviewer valida contra ella.",
   "$rigor_doc": "El campo 'rigor' de cada feature declara cuanta evidencia se le exige: documental, estandar o critico (ver CHECKPOINTS.md y harness/rigor.json). Si una feature NO lo declara se le aplica el mas exigente: omitirlo no relaja nada.",
-  "$adaptar": "Sustituye la feature de ejemplo por el backlog real del proyecto. Deja una primera feature trivial de calentamiento: sirve para validar el circuito completo del arnés antes de jugarse nada. 'priority' ordena el backlog; el líder coge la primera no terminada.",
   "rules": {
     "one_feature_at_a_time": true,
     "require_init_green_to_close": true,
@@ -10,18 +9,186 @@
   "features": [
     {
       "id": "F-001",
-      "title": "[ADAPTAR] Feature de calentamiento",
-      "description": "Una tarea trivial (un comando version, un endpoint /health...) para validar el circuito completo del arnés en este proyecto: rama, spec o acceptance, implementer, reviewer y cierre.",
+      "title": "Esqueleto del monorepo y /health",
+      "description": "Crear services/postventa-api (Function App Python con settings, logging y un endpoint /health) y services/postventa-front vacío pero arrancable. Feature de calentamiento: valida el circuito completo del arnés antes de jugarse nada.",
       "acceptance": [
-        "[ADAPTAR] criterio observable 1",
-        "[ADAPTAR] criterio observable 2 (test sin red ni BBDD)",
+        "GET /api/health devuelve 200 con nombre del servicio y versión",
+        "La configuración se lee de .env con pydantic-settings y falla claro si falta una variable obligatoria",
+        "Test unitario del handler de health, sin red ni BBDD",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
       "priority": 1,
-      "branch": "feature/F-001-calentamiento"
+      "branch": "feature/F-001-esqueleto"
+    },
+    {
+      "id": "F-002",
+      "title": "Ingesta y troceado de la remesa en partes",
+      "description": "Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.",
+      "acceptance": [
+        "Un ZIP y un PDF multi-parte producen la misma lista normalizada de partes",
+        "El troceado acierta el número de partes en las muestras reales de Mirasierra",
+        "Cada parte troceado lleva su hash, para que reprocesar no duplique",
+        "Los tests usan PDFs sintéticos generados en el propio test: no dependen de muestras/, que no se versiona",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 2,
+      "branch": "feature/F-002-ingesta-troceado"
+    },
+    {
+      "id": "F-003",
+      "title": "Extracción multimodal del parte, manuscritos incluidos",
+      "description": "Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, chalet, nº de incidencia, fecha, descripción y lo escrito a mano: DNI y observaciones.",
+      "acceptance": [
+        "El puerto permite cambiar de proveedor por configuración, sin tocar el pipeline",
+        "El resultado incluye los campos manuscritos y una confianza por campo",
+        "Los prompts viven en config/prompts.yaml, no incrustados en el código",
+        "Tests con respuesta de IA simulada: ni una llamada real en la suite",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 3,
+      "branch": "feature/F-003-extraccion"
+    },
+    {
+      "id": "F-004",
+      "title": "Validación del parte y clasificación de la firma",
+      "description": "Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana y los campos obligatorios legibles.",
+      "acceptance": [
+        "La clasificación de firma distingue firma de aspa en las muestras reales",
+        "Un parte sin nº de incidencia nunca queda apto, pase lo que pase el resto",
+        "Cada parte sale con veredicto (apto / revisión manual) y el motivo, en texto entendible por Posventa",
+        "Las reglas de validación son dominio puro y se prueban sin IA",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 4,
+      "branch": "feature/F-004-validacion"
+    },
+    {
+      "id": "F-005",
+      "title": "Persistencia en el PostgreSQL compartido",
+      "description": "Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.",
+      "acceptance": [
+        "El DDL es idempotente: dos arranques seguidos no fallan ni duplican",
+        "Todo el DDL vive en el schema propio; ni una sentencia a nivel de servidor",
+        "Reprocesar la misma remesa actualiza, no duplica (clave por hash del parte)",
+        "Tests contra base efímera, nunca contra el servidor compartido",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 5,
+      "branch": "feature/F-005-persistencia"
+    },
+    {
+      "id": "F-006",
+      "title": "Nombrado y archivo en SharePoint",
+      "description": "Crear la biblioteca de Posventa dentro del sitio de IT (donde vive la de albaranes), y subir cada parte apto como 'CHALET XX - NNNN.pdf' en la ruta Postventa/<código de obra>/.",
+      "acceptance": [
+        "El nombre generado respeta la convención de Posventa, con el número de chalet a dos dígitos",
+        "La carpeta destino se crea sola si no existe, por código de obra",
+        "Subir dos veces el mismo parte no genera un duplicado con sufijo",
+        "Ninguna subida real desde local ni desde los tests",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 6,
+      "branch": "feature/F-006-sharepoint"
+    },
+    {
+      "id": "F-007",
+      "title": "Front de carga y revisión",
+      "description": "Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar.",
+      "acceptance": [
+        "Se puede soltar un PDF, un ZIP o seleccionar una carpeta, y se ve el progreso por parte",
+        "Cada parte se muestra con su veredicto, sus campos extraídos y su PDF, editable antes de confirmar",
+        "La concurrencia de llamadas está limitada: una remesa larga no dispara N peticiones a la vez",
+        "Arranca en local con dev_server.py contra la Function en func start",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 7,
+      "branch": "feature/F-007-front"
+    },
+    {
+      "id": "F-008",
+      "title": "Modelo de posventa en Sigrid (investigación)",
+      "description": "Averiguar dónde viven las incidencias de posventa en Sigrid, qué campo marca el estado y qué significa exactamente cerrar una incidencia. Material: capturas del humano y el PDF de modelo de datos de Sigrid, que se convierte a Markdown en docs/referencia/. Solo lecturas contra sigrid-api.",
+      "acceptance": [
+        "docs/referencia/ documenta tablas, campos de estado y el efecto real de cerrar, con origen y fecha",
+        "Queda escrito qué endpoint hace falta en sigrid-api (o si basta sql/write) y por qué",
+        "Ni una escritura contra Sigrid en toda la feature",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 8,
+      "branch": "feature/F-008-modelo-sigrid"
+    },
+    {
+      "id": "F-009",
+      "title": "Cierre de la incidencia en Sigrid",
+      "description": "Cerrar en Sigrid las incidencias de los partes aptos: dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.",
+      "acceptance": [
+        "Sin confirmación explícita no se ejecuta ningún commit, ni por error de flujo",
+        "El dry-run se muestra al usuario antes de cerrar: qué incidencia y qué estado quedaría",
+        "La preferencia de auto-cierre se guarda por usuario y se puede revocar",
+        "Un cierre fallido deja el parte marcado y reintentar no cierra dos veces",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 9,
+      "branch": "feature/F-009-cierre-sigrid"
+    },
+    {
+      "id": "F-010",
+      "title": "Despliegue en Azure y tarjeta en el portal",
+      "description": "Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este.",
+      "acceptance": [
+        "Los scripts de infra/ se pueden ejecutar dos veces seguidas sin romper nada",
+        "Ningún secreto en el repositorio: App Settings con referencia a Key Vault",
+        "El acceso queda restringido al grupo de Posventa",
+        "Queda escrito qué hay que cambiar en front-portal/public/assets/js/catalog.js",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 10,
+      "branch": "feature/F-010-despliegue"
+    },
+    {
+      "id": "F-011",
+      "title": "Fase 2: ingesta desde buzón de correo",
+      "description": "Recoger automáticamente las remesas que lleguen a un buzón corporativo, reaprovechando el pipeline existente. Patrón de albaranes-email y partes-email.",
+      "acceptance": [
+        "El pipeline se reutiliza tal cual: el correo es una entrada más, no un camino paralelo",
+        "Un correo procesado dos veces no duplica partes",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 11,
+      "branch": "feature/F-011-buzon-correo"
     }
   ]
 }

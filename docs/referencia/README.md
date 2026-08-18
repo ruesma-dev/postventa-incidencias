@@ -20,12 +20,12 @@ está en el código sino en una norma de negocio.
 
 ## Índice
 
-[ADAPTAR: una fila por documento incorporado. Mantenerlo al día es parte de
-añadir un documento, no una tarea posterior.]
+Una fila por documento incorporado. Mantenerlo al día es parte de añadir un
+documento, no una tarea posterior.
 
 | Fichero | Qué es |
 |---|---|
-| `01_<tema>.md` | [ADAPTAR: qué es, de qué fecha, y si es una versión redactada.] |
+| — | Todavía no hay documentos incorporados. El primero previsto es el modelo de datos de Sigrid, en la feature F-008. |
 
 ## Formato
 

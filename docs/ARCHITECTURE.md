@@ -1,37 +1,143 @@
 <!-- docs/ARCHITECTURE.md -->
-# Arquitectura · [ADAPTAR: nombre-del-proyecto]
+# Arquitectura · postventa-incidencias
 
 > Este documento es NORMATIVO: el spec-author diseña contra él y el
 > reviewer rechaza lo que lo incumpla. Si no está aquí, no es un requisito.
-> Rellenar las secciones [ADAPTAR] al instalar el arnés (ver
-> GUIA_INSTALACION.md — puede redactarlo el propio Claude Code leyendo el
-> repo, pero el humano DEBE revisarlo antes del primer uso real).
+>
+> Lo marcado `[PENDIENTE]` está sin decidir y **bloquea** la feature que lo
+> necesite: no se resuelve inventando, se pregunta al humano.
 
 ## Qué hace este proyecto
 
-[ADAPTAR: 2-4 frases. Qué problema resuelve, quién lo usa, dónde se
-despliega (microservicio Azure Container Apps / Function App / job...).]
+Automatiza el circuito de los **partes de posventa firmados** del
+departamento de Posventa. Entra una remesa escaneada —un PDF con varios
+partes, un ZIP o una carpeta— y salen tres cosas: cada parte troceado,
+validado y renombrado con la convención de Posventa; archivado en
+SharePoint; y su incidencia cerrada en Sigrid.
+
+Lo usa el departamento de Posventa (interlocutora: Ana Bello, Jefa de
+Posventa). Se despliega en Azure con el patrón de nóminas: **Static Web App**
+para el front y **Function App en Python** para el backend, con
+autenticación de Entra ID.
+
+Hoy ese trabajo es manual: alguien abre el PDF, localiza cada parte,
+comprueba que está firmado, lo renombra `CHALET XX - Nº INCIDENCIA`, lo
+guarda y lo cierra a mano en Sigrid.
 
 ## Capas y estructura
 
-[ADAPTAR: hexagonal concreto de este repo. Qué hay en domain, application,
-infrastructure. Si hay pipeline: lista de steps y su orden. Punto de
-entrada y comandos disponibles.]
+Monorepo con un servicio por responsabilidad, igual que `partes` y
+`albaranes`. Un solo arnés, en la raíz.
+
+```
+services/
+  postventa-api/            # backend: Function App Python
+    domain/                 # entidades puras: Parte, Remesa, Validacion, Firma
+      models/
+      ports/                # interfaces: ExtractorPort, ArchivoPort, ErpPort
+    application/
+      pipelines/            # orquestación por pasos (abajo)
+      services/
+    infrastructure/
+      llm/                  # adaptador Gemini (y los que vengan)
+      sharepoint/           # adaptador Graph
+      sigrid/               # cliente de sigrid-api
+      persistencia/         # PostgreSQL
+    interface_adapters/api/ # handlers HTTP de la Function
+    config/                 # settings (pydantic-settings) y prompts.yaml
+  postventa-front/          # front estático: HTML + Tailwind CDN + Alpine.js
+infra/                      # scripts PowerShell de despliegue
+tests/                      # unit tests: sin red, sin BBDD, sin IA
+```
+
+### Pasos del pipeline
+
+1. **Ingesta** — normaliza la entrada (PDF suelto, ZIP, varios ficheros,
+   carpeta seleccionada en el navegador) a una lista de PDFs.
+2. **Troceado** — parte cada PDF de remesa en documentos de **un parte**,
+   detectando el comienzo por la plantilla impresa.
+3. **Extracción** — modelo multimodal sobre las páginas del parte: promoción,
+   chalet, nº de incidencia, fecha, descripción **y todo lo manuscrito**
+   (DNI, observaciones). Un escaneo no tiene capa de texto: esto es visión.
+4. **Validación** — firma presente y humana, campos obligatorios legibles,
+   coherencia con Sigrid (la incidencia existe y está abierta).
+5. **Nombrado** — `CHALET XX - NNNN.pdf`.
+6. **Archivo** — subida a SharePoint.
+7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
+   entonces `commit: true`.
+
+### Por qué el proceso va parte a parte y no de una tacada
+
+La Function App corta a los **230 s**. Una remesa de 5 MB con veinte partes,
+a una llamada de IA por parte, se pasa de largo. Por eso el contrato HTTP es:
+`POST /split` (rápido, devuelve N partes) y luego **una llamada por parte**
+desde el front, con concurrencia limitada. Efecto lateral bienvenido: barra
+de progreso real.
+
+### Por qué el front sube los ficheros aunque el usuario "indique una ruta"
+
+Una Function App en Azure no ve `C:\...` ni un recurso de red interno. El
+front usa el selector de carpeta del navegador: el usuario elige la carpeta
+igual que hoy, y por debajo se suben los PDFs.
 
 ## Semántica de dominio imprescindible
 
-[ADAPTAR: las 3-10 reglas que un agente NO puede inferir del código y que
-son fuente de bugs si se ignoran. Ejemplos del estilo: significados de
-campos ambiguos, invariantes de negocio, qué NO se puede sumar/mezclar,
-convenciones de fechas/importes, campos que se llaman distinto en tablas
-distintas.]
+1. **La unidad de trabajo es el parte, no el fichero.** Un PDF de remesa
+   contiene N partes de N incidencias distintas. Nada del dominio se razona
+   "por fichero".
+2. **El nombre canónico es `CHALET XX - NNNN`**: unidad + número de
+   incidencia. No es promoción + incidencia. Es la convención que Posventa ya
+   usa para archivar, y cambiarla rompe su archivo histórico.
+3. **La firma debe ser humana.** Una casilla vacía, una aspa, o un trazo
+   geométrico sin estructura de firma **no** son conformidad del cliente. Un
+   parte sin firma válida no se archiva ni se cierra: va a revisión manual.
+4. **Lo manuscrito es dato de primera, no decoración.** DNI y observaciones
+   se escriben a mano y hay que extraerlos. Descartarlos porque "no es texto
+   impreso" es un bug, no una simplificación.
+5. **El número de incidencia lo emite Sigrid.** Sin él no se puede nombrar ni
+   cerrar nada: el parte va a revisión manual, nunca se inventa ni se deduce.
+6. **Cerrar en Sigrid es escritura en producción.** Siempre dry-run primero;
+   `commit: true` solo después de confirmación explícita (del usuario en el
+   front, o de su preferencia de auto-cierre guardada).
+7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.**
+   Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en
+   Sigrid da por resuelta una incidencia que sigue viva.
+8. **La carpeta de archivo va por código de obra**, no por nombre comercial:
+   `Postventa/<código de obra>/CHALET XX - NNNN.pdf`. El nombre de la
+   promoción ("Mirasierra") es para las personas; el código de obra es la
+   clave con la que cuadra con Sigrid.
+9. **Reprocesar una remesa no puede duplicar nada.** El mismo parte, subido
+   dos veces, es el mismo parte: se identifica por hash del PDF troceado y
+   por número de incidencia.
 
 ## Acceso a datos y sistemas externos
 
-[ADAPTAR: contra qué sistemas habla el proyecto, con qué límites (solo
-lectura, timeouts, paginación) y qué está PROHIBIDO tocar desde local.]
+| Sistema | Uso | Límites |
+|---|---|---|
+| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la incidencia; cierre por escritura. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. La escritura está apagada por defecto y los endpoints de dominio son dry-run salvo `commit: true`. |
+| SharePoint (Graph) | Archivo de los PDF validados, en **biblioteca propia** dentro del sitio de **IT** (donde vive la de albaranes). Ruta `Postventa/<código de obra>/`. | La biblioteca **no existe todavía**: crearla es parte de la feature de archivo. El código de obra es el de Sigrid, no el nombre comercial de la promoción. |
+| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones y preferencias de usuario. **Schema propio** del proyecto. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento. |
+| Gemini (`gemini-2.5-flash`) | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`: el proveedor se cambia por configuración, no editando el pipeline. |
+| Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
+
+**Prohibido desde local**: escribir en Sigrid (ni siquiera con `commit:false`
+contra endpoints que no sean de lectura), escribir en el SharePoint de
+Posventa y ejecutar DDL en el PostgreSQL compartido fuera del schema propio.
+
+`[PENDIENTE]` **Modelo de datos de posventa en Sigrid**: qué tablas guardan
+las incidencias, qué campo marca el estado y qué significa exactamente
+"cerrar". Se resuelve en su feature, con las capturas del humano y el PDF de
+modelo de datos de Sigrid.
 
 ## Infra y despliegue
 
-[ADAPTAR: dónde se despliega, con qué scripts de `infra/`, y las reglas
-duras (tags fechados, secretos como secrets, .env nunca viaja).]
+- **Front**: Azure Static Web App sirviendo `services/postventa-front/`, con
+  auth de Entra en `staticwebapp.config.json` y la Function App enlazada.
+- **Backend**: Azure Function App (Python), desplegada desde
+  `services/postventa-api/`.
+- **Scripts** en `infra/`, re-ejecutables, en PowerShell, siguiendo el
+  patrón de `partes/infra`.
+- **Secretos**: en App Settings con referencia a Key Vault. `.env` es solo
+  local y **nunca** viaja al despliegue ni a git.
+- **Desarrollo local**: `func start` para el backend y el `dev_server.py` del
+  front con proxy a `/api/*`, igual que en nóminas.

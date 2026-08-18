@@ -73,10 +73,18 @@ medición automática, no la disciplina.
       relativa.
 - [ ] Sin `print()` de debug, sin TODOs sin contexto, sin secretos
       hardcodeados, sin dependencias nuevas no previstas en la spec.
-- [ ] [ADAPTAR] Reglas de dominio propias del proyecto respetadas según
-      `docs/ARCHITECTURE.md` (añadir aquí las 2-3 trampas típicas del
-      dominio que el reviewer debe vigilar siempre: campos ambiguos,
-      invariantes de negocio, qué no se puede sumar o mezclar).
+- [ ] La unidad de trabajo es el **parte**, no el fichero: nada razona "por
+      PDF" cuando una remesa lleva N partes de N incidencias distintas.
+- [ ] **Nada se archiva ni se cierra sin haber pasado todas las
+      validaciones**, y ningún `commit` contra Sigrid ocurre sin
+      confirmación explícita: dry-run siempre primero.
+- [ ] **Lo manuscrito no se descarta** (DNI, observaciones), y una marca
+      simple —aspa, trazo geométrico, casilla vacía— nunca cuenta como firma
+      del cliente.
+- [ ] **Reprocesar no duplica**: el mismo parte, subido dos veces, sigue
+      siendo uno (hash del PDF troceado + número de incidencia).
+- [ ] Ningún parte escaneado ni PDF con datos personales ha entrado en git
+      (compruébalo con `git log --diff-filter=A`, no solo con el árbol).
 
 ## C3 bis — Los documentos que entran de fuera son seguros
 

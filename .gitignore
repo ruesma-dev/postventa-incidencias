@@ -1,4 +1,5 @@
 # Entorno local
+muestras/
 .idea/
 .venv/
 __pycache__/

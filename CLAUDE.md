@@ -1,5 +1,5 @@
 <!-- CLAUDE.md -->
-# Arnés · [ADAPTAR: nombre-del-proyecto]
+# Arnés · postventa-incidencias
 
 Eres parte de un sistema de agentes (arnés) de este repositorio. Tu punto de
 entrada es el rol **líder**: lee `.claude/agents/leader.md` y actúa según su
@@ -60,17 +60,22 @@ confirmación cubre el plan que se enseñó, no lo que apareció después.
 
 ## Mapa del repositorio (no leas todo el proyecto, ve a lo que necesites)
 
-[ADAPTAR: lista de carpetas/ficheros clave del proyecto y qué contiene cada
-uno. Objetivo: que un agente encuentre lo que necesita sin leer todo el repo.
-Ejemplo de formato:]
+Monorepo con un servicio por responsabilidad, como `partes` y `albaranes`.
+Un solo arnés, en la raíz.
 
-- `main.py` — punto de entrada / CLI.
-- `config/` — settings (pydantic-settings sobre `.env`) y YAML de
-  parametrización.
-- `<paquete>/domain/` — entidades puras (sin dependencias externas).
-- `<paquete>/application/` — orquestador + steps (patrón pipeline).
-- `<paquete>/infrastructure/` — adaptadores (BBDD, HTTP, colas...).
-- `tests/` — los unit tests NO tocan red ni BBDD.
+- `services/postventa-api/` — backend, Function App en Python.
+  - `domain/` — entidades puras (`Parte`, `Remesa`, `Firma`) y `ports/`.
+  - `application/pipelines/` — los pasos del proceso, en orden.
+  - `infrastructure/` — adaptadores: `llm/` (Gemini), `sharepoint/`,
+    `sigrid/` (cliente de `sigrid-api`), `persistencia/` (PostgreSQL).
+  - `interface_adapters/api/` — handlers HTTP de la Function.
+  - `config/` — settings (pydantic-settings sobre `.env`) y `prompts.yaml`.
+- `services/postventa-front/` — front estático: HTML + Tailwind (CDN) +
+  Alpine.js + `dev_server.py`, patrón `front-nominas`.
+- `infra/` — scripts PowerShell de despliegue, re-ejecutables.
+- `muestras/` — partes escaneados reales para desarrollo. **No se versiona**
+  (son documentos con datos personales).
+- `tests/` — los unit tests NO tocan red, ni BBDD, ni IA.
 - `specs/` — especificaciones SDD (una carpeta por feature).
 - `progress/` — memoria externa del arnés (`current.md`, `history.md`,
   informes `impl_*.md` / `review_*.md` / `explore_*.md` por subagente).
@@ -83,7 +88,6 @@ Ejemplo de formato:]
   recorre antes de cerrar cualquier feature.
 - `harness/ARNES_VERSION.md` — qué versión del arnés genérico lleva este
   repositorio. Lo escribe el instalador; no lo edites a mano.
-- `infra/` — scripts de despliegue (si aplica).
 
 ## Documentos que llegan de fuera (PDF y ofimática)
 
@@ -110,9 +114,16 @@ original NO se versiona: al repositorio entra solo el Markdown.
   contra `CHECKPOINTS.md`.
 - PROHIBIDO tocar `.env` o subirlo a git. Los secretos no se escriben en
   ningún fichero del repo ni en specs ni en progress.
-- [ADAPTAR: prohibiciones de escritura contra sistemas reales. Ejemplos:
-  "solo lectura contra el ERP", "nunca contra BBDD de producción",
-  "las colas se simulan con Azurite en local".]
+- PROHIBIDO escribir en Sigrid desde local o desde tests. El cierre de una
+  incidencia es escritura en el ERP de producción: se hace desde el entorno
+  desplegado, siempre con dry-run previo y confirmación explícita.
+- PROHIBIDO ejecutar DDL en el PostgreSQL compartido `psql-albaranes-rs9k2`
+  fuera del schema propio de este proyecto, y PROHIBIDO tocar nada a nivel de
+  servidor: lo comparten albaranes y compañía.
+- PROHIBIDO subir nada al SharePoint de Posventa desde local.
+- PROHIBIDO versionar los partes escaneados (`muestras/`, PDFs sueltos):
+  llevan datos personales de clientes —DNI incluido— y el historial de git no
+  suelta lo que entra.
 - Cada feature se desarrolla en su rama `feature/F-XXX-slug`. Nunca commits
   directos a `dev` ni a `main`.
 - ANTI TELÉFONO-DESCOMPUESTO: por el chat no circula código ni informes
@@ -126,11 +137,12 @@ original NO se versiona: al repositorio entra solo el Markdown.
   variables ni decoración (la allowlist de permisos cubre el comando limpio).
 - Convenciones de código: `docs/CONVENTIONS.md`. Arquitectura:
   `docs/ARCHITECTURE.md`. Léelos antes de diseñar o implementar.
-- LÍMITE DE MICROSERVICIO: este repo es UN microservicio con una
-  responsabilidad acotada. Si una feature exige lógica que se sale de ese
-  límite (otra responsabilidad, otro dominio, integración que merece vida
-  propia), NO se implementa aquí: se marca `blocked` y se propone al humano
-  extraerla a otro microservicio.
+- LÍMITE DE SERVICIO: este repo es un **monorepo de microservicios**
+  (`services/*`), cada uno con una responsabilidad acotada. Una feature no
+  mezcla responsabilidades de dos servicios: si la necesita, se parte. Y si
+  exige lógica que no es de este dominio (por ejemplo, tocar el catálogo del
+  portal, que vive en `front-portal`), NO se implementa aquí: se marca
+  `blocked` y se propone al humano dónde va.
 - Los agentes NO hacen `git push` ni crean PRs salvo petición explícita del
   humano. Commits locales sí, según protocolo del implementer.
 

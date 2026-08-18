@@ -4,9 +4,19 @@
 **F-003 · Extracción multimodal del parte, manuscritos incluidos** — estado
 `in_progress`, rama `feature/F-003-extraccion`, rigor `critico`.
 
-**Spec aprobada por el humano el 2026-08-18**, ya con sus cuatro decisiones y
-las seis correcciones posteriores aplicadas. El implementer ejecuta
-`specs/F-003-extraccion/tasks.md` (21 tareas, 8 de ellas RED).
+**Implementación TERMINADA y revisión APROBADA** (2026-08-18):
+`progress/impl_F-003.md` y `progress/review_F-003.md`. 207 tests del servicio
+(112 de F-003), cobertura de lo cambiado 100 % (631/631), mutación 127
+generados y 127 muertos con **cero supervivientes**, portero en verde.
+
+El reviewer verificó por su cuenta y estrenó la exigencia del arnés 1.5.2:
+**reejecutó la campaña de mutación entera** (101,0 s, mismos cuatro totales,
+salida fuera de `progress/`, árbol limpio después). Los muertos están
+comprobados, no solo contados.
+
+**Pendiente para cerrar: solo las dos verificaciones MANUAL del humano** (T17
+y T18, abajo). La feature **no se marca `done`** hasta que se ejecuten y se
+anote aquí su resultado real. Nada depende ya del implementer.
 
 ## Cadena de ramas (importante para el merge, que es del humano)
 
@@ -23,8 +33,8 @@ orden**, o se mergea directamente la última cuando todo esté cerrado.
   reagrupa nada** (eso es F-014, y hay un test que lo vigila).
 - El endpoint **`POST /api/extraer`** entra en F-003.
 - Los campos se llaman **`unidad`** y **`fecha_servicio`**. El papel imprime
-  «Vivienda», el backlog decía «chalet». **Pendiente**: `docs/ARCHITECTURE.md`
-  todavía dice «chalet».
+  «Vivienda», el backlog decía «chalet». `docs/ARCHITECTURE.md` quedó alineado
+  en T19 (commit `81a1a90`), comprobado por el reviewer.
 - El modelo por defecto es **`gemini-3.7-flash`**. `azure-apps` documenta el
   proveedor pero **no fija versión**, así que ninguna afirmación de la spec
   puede decir qué versión corre en otro proyecto.
@@ -160,3 +170,27 @@ tocando el prompt (`config/prompts.yaml`) o cambiando de modelo.
 - Hallazgos de dominio que mandan sobre el diseño, en `docs/ARCHITECTURE.md` y
   `docs/referencia/`: «Cerrar parte» de Sigrid **exige documento adjunto**, y
   un parte firmado con observaciones manuscritas **no** es un parte conforme.
+
+## Propuestas de automejora del arnés que dejó la review de F-003
+
+Ninguna aplicada; las tres necesitan decisión del humano y **dos son
+genéricas**, así que irían a `arnes-base` por la regla de propagación.
+
+- **P1 · La campaña de mutación debería usar la base real de la rama.**
+  `harness/alcance.py` resuelve el origen del diff con una ref que en cadenas
+  de ramas no es la base de la feature: en F-003 el alcance arrastró 27
+  ficheros y 1912 líneas (incluido `harness/mutacion.py`, que aportó 32 de los
+  127 mutantes) mientras la cobertura, que usa `--base dev` explícito, medía
+  631 líneas. No es un defecto —el alcance es más ancho, nunca más estrecho, y
+  los 127 murieron— pero los números no son comparables entre features.
+  Propuesta: campo `base` en `harness/features.json`, con `dev` por defecto,
+  usado por `harness.cobertura` y `harness.mutacion`.
+- **P2 · `CHECKPOINTS.md` C5 no contempla las tareas `MANUAL (humano)`.** Hoy
+  exige todas las tareas `[x]`, y una feature `critico` está obligada a tener
+  verificaciones que ningún agente puede ejecutar. El reviewer tuvo que
+  improvisar. Propuesta: una tarea `MANUAL` pendiente no vacía el checkpoint
+  pero impide el paso a `done`, y el reviewer la lista con su comando.
+- **P3 · C4 bis debería nombrar la comprobación de «no medido»** en la
+  cobertura: un 100 % sobre ficheros que no aparecen en el informe de
+  `coverage` sería falso. El mecanismo existe en `harness/cobertura.py`; lo que
+  falta es que el checkpoint obligue al reviewer a verificarlo.

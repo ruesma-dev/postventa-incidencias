@@ -36,7 +36,9 @@ F-014: la reagrupación se diseña en su spec, con este campo ya disponible.
 
 Consultado `C:\Users\pgris\PycharmProjects\azure-apps` (documento `partes.md`,
 §3.2 y §5; `albaranes.md` §3) **antes** de diseñar. El ecosistema ya extrae
-documentos con `gemini-2.5-flash` y su patrón es:
+documentos con Gemini —`azure-apps` documenta el proveedor pero **no fija
+versión de modelo**, así que nada de allí contradice la elegida en §8— y su
+patrón es:
 
 - SDK **`google-genai`** (`from google import genai`), no la librería vieja
   `google.generativeai`.
@@ -345,6 +347,11 @@ class RepositorioPromptsYaml:          # implementa RepositorioPromptsPort
 Las tres últimas son fallos de **configuración**: revientan al construir, no
 en mitad de una remesa.
 
+`ParteDemasiadoGrande` → **413** y nunca `502`: al modelo no se le ha llamado
+(R16), así que no hay proveedor roto que reportar; lo que hay es una petición
+demasiado grande, y eso lo arregla el cliente. R18 de `requirements.md` y la
+tarea **T16** dicen exactamente esto mismo, y **T15** le pone su test.
+
 ### 4.6 Interfaz
 
 ```python
@@ -381,7 +388,7 @@ Contrato de respuesta (R17):
   },
   "traza": {
     "proveedor": "gemini",
-    "modelo": "gemini-2.5-flash",
+    "modelo": "gemini-3.7-flash",
     "prompt_key": "parte_posventa_es",
     "version_prompt": "1",
     "huella_prompt": "3f9a1c2b7d04"
@@ -521,7 +528,7 @@ sin cliente HTTP propio.
 |---|---|---|---|
 | `ia_proveedor` | `IA_PROVIDER` | `gemini` | criterio `acceptance` 1 |
 | `gemini_api_key` | `GEMINI_API_KEY` | `None` | **secreto**: en Azure va por Key Vault; en local, `.env` (que no se versiona ni se toca) |
-| `gemini_model` | `GEMINI_MODEL` | `gemini-2.5-flash` | el que corre hoy en `albaranes` y `partes` |
+| `gemini_model` | `GEMINI_MODEL` | `gemini-3.7-flash` | decisión del humano del 2026-08-18. Ver la nota de abajo |
 | `ia_timeout_s` | `IA_TIMEOUT_S` | `120` | la Function corta a 230 s; una llamada colgada no puede comérselos |
 | `ia_reintentos` | `IA_REINTENTOS` | `3` | R14 |
 | `prompt_key` | `PROMPT_KEY` | `parte_posventa_es` | |
@@ -531,6 +538,26 @@ sin cliente HTTP propio.
 `/health` dejaría de arrancar sin clave de IA y la suite entera necesitaría una
 credencial falsa en el entorno. Quien la exige es la fábrica, en el momento en
 que de verdad hace falta (R12).
+
+**Sobre el modelo `gemini-3.7-flash`.** Lo elige el humano (2026-08-18) y es
+**configuración pura**: el adaptador no depende de la versión del modelo —habla
+con el SDK `google-genai` y le pasa el nombre que venga de `GEMINI_MODEL`—, así
+que el cambio de modelo **no altera ni una decisión de diseño**: ni los puertos,
+ni el paso del pipeline, ni el schema estructurado, ni los tests (que usan
+dobles). `azure-apps` documenta que `partes` y `albaranes` usan Gemini pero **no
+fija versión**, luego nada de allí lo contradice; y este proyecto todavía no
+tiene documento propio en `azure-apps` (se crea en F-010), así que aquí no hay
+nada que actualizar fuera del repositorio.
+
+> **Comprobación obligatoria antes de la primera llamada real.** El
+> identificador exacto del modelo **se confirma contra la API** como **primer
+> paso de la verificación de humo T17**, antes de gastar una sola llamada de
+> extracción. Motivo: un ID mal escrito **no falla en los tests** —ahí el modelo
+> está simulado y la suite seguiría verde— sino en tiempo de ejecución, y el
+> síntoma (un 404 del proveedor) es fácil de confundir con un problema de
+> credencial o de red. Si la API no reconociera el identificador, **es una
+> parada**: se le pregunta al humano cuál es el nombre correcto, no se sustituye
+> por otro modelo por iniciativa propia.
 
 ## 9 · Riesgos y decisiones
 
@@ -579,7 +606,7 @@ la extracción**, porque el modelo está simulado y la suite seguiría verde con
 prompt roto—. Pero una verificación declarada cuyo comando nadie puede ejecutar
 es **protección falsa**, que es justo contra lo que avisa
 `harness/rutas_sensibles.ejemplo.json`. Mientras F-015 no exista, el hueco lo
-tapa la verificación `MANUAL (humano)` **T20**, que es la misma comprobación
+tapa la verificación `MANUAL (humano)` **T18**, que es la misma comprobación
 hecha a mano.
 
 Material para F-015 — el borrador de la declaración, ya escrito:
@@ -619,7 +646,13 @@ deja escritos los tres nombres para que nadie lo lea como un descuido.
 **Riesgo 1 · el acierto real del modelo no lo mide ningún test.** La suite
 demuestra el *contrato*, no la *calidad de lectura*. Con manuscritos de mala
 letra y escaneos flojos, la única medida es contra partes reales, y eso es
-`MANUAL (humano)` (**T20**) hasta que exista **F-015**.
+`MANUAL (humano)` (**T18**) hasta que exista **F-015**.
+
+Por eso **T18 se ejecuta en cuanto el adaptador y el endpoint están hechos**
+(justo detrás de T16), y no al final de la lista: si el modelo no lee estos
+manuscritos, no falla F-003 —su contrato se cumpliría igual— sino la premisa del
+proyecto, y enterarse antes ahorra la documentación (T19) y **la campaña de
+mutación entera** (T20).
 
 **Riesgo 2 · el coste y el tiempo por parte.** Una llamada multimodal por
 parte, 22 partes por remesa. Si el modelo tarda más de lo previsto, la

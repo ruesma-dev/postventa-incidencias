@@ -1,3 +1,8 @@
+# Entorno local
+.idea/
+.venv/
+__pycache__/
+
 # >>> ARNES-BASE: reglas anadidas por el instalador del arnes. >>>
 .env
 .arnes_cache/

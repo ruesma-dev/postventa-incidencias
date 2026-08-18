@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-001.md -->
 # F-001 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-001` el 2026-08-18 14:04.
+Generado por `python -m harness.mutacion --feature F-001` el 2026-08-18 14:06.
 
 ## Alcance
 
@@ -31,10 +31,10 @@ Origen del diff: **rama** (`8cb6c66bb3c0d54cf8514a7357eb8ea55d62014a` .. `featur
 |---|---|
 | Mutantes generados | 3 |
 | Mutantes evaluados | 3 |
-| Muertos | 1 |
-| Supervivientes | 2 |
+| Muertos | 2 |
+| Supervivientes | 1 |
 | Timeouts | 0 |
-| Tiempo total | 1.8 s |
+| Tiempo total | 3.0 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
@@ -46,18 +46,22 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 - Original: `@lru_cache(maxsize=1)`
 - Mutado:   `@lru_cache(maxsize=2)`
 
-#### Análisis (PENDIENTE del implementer)
+#### Análisis
 
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
-
-### 2. `services/postventa-api/function_app.py:36` [booleano]
-
-- Original: `json.dumps(cuerpo, ensure_ascii=False),`
-- Mutado:   `json.dumps(cuerpo, ensure_ascii=True),`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+> **Por qué ningún test lo caza**: `obtener_ajustes()` no recibe argumentos, así
+> que su caché LRU nunca puede contener más de una entrada. Con `maxsize=1` o
+> con `maxsize=2` el comportamiento observable es idéntico: misma instancia
+> devuelta en todas las llamadas, mismo número de lecturas del entorno.
+>
+> **Decisión: mutante equivalente justificado.** No se añade test. Un test que
+> distinguiera `maxsize=1` de `maxsize=2` tendría que inspeccionar
+> `cache_info()`, es decir, afirmar sobre el detalle de implementación de la
+> caché en vez de sobre el comportamiento del servicio. Sería un test que se
+> rompe al refactorizar sin que nada esté mal, que es justo el tipo de test que
+> estas campañas no pretenden provocar.
+>
+> El otro superviviente de la primera pasada (`ensure_ascii=False` →
+> `ensure_ascii=True` en `function_app.py:36`) **sí era un hueco real** y se
+> mató con `test_f001_r1_el_json_no_escapa_los_acentos`: el servicio devolverá
+> motivos de validación en español y nadie protegía esa decisión.
 

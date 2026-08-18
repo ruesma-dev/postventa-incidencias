@@ -119,12 +119,14 @@
     {
       "id": "F-007",
       "title": "Front de carga y revisión",
-      "description": "Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar.",
+      "description": "Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar. PUNTO DE PARTIDA: el esqueleto del front ya está escrito y verificado en la rama feature/F-007-front (se sacó de F-001 porque su dev_server.py hundía la puerta de cobertura). Recuperarlo con: git checkout feature/F-007-front -- services/postventa-front. Ya resuelto ahí: los scripts propios van SIN defer al final del body (con defer, Alpine arranca antes de que exista la función del x-data), Alpine con versión fija 3.14.1, el proxy apunta al puerto 7073, y el staticwebapp.config.json lleva <TENANT_ID> como marcador porque el ID de tenant no se versiona.",
       "acceptance": [
         "Se puede soltar un PDF, un ZIP o seleccionar una carpeta, y se ve el progreso por parte",
         "Cada parte se muestra con su veredicto, sus campos extraídos y su PDF, editable antes de confirmar",
         "La concurrencia de llamadas está limitada: una remesa larga no dispara N peticiones a la vez",
         "Arranca en local con dev_server.py contra la Function en func start",
+        "El servicio front queda declarado en harness/servicios.json con su comando_tests: hoy NADIE comprueba el front",
+        "Decidido y documentado cómo se trata dev_server.py frente a la puerta de cobertura (el arnés no tiene exclusión configurable para scripts de desarrollo)",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",

@@ -306,6 +306,6 @@
       `critico`), o cada superviviente con su análisis escrito y aceptado por
       el humano.
 
-- [ ] **T21**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T21**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la puerta de cobertura de las líneas
       cambiadas en `[OK]` (umbral 80 %).

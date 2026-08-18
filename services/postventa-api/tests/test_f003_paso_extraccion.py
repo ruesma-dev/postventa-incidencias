@@ -255,6 +255,36 @@ def test_f003_r16_parte_demasiado_grande_no_llama_al_modelo(monkeypatch):
     assert "10" in fallo.value.motivo
 
 
+def test_f003_r16_el_tope_declarado_son_quince_megas():
+    """R16 · el tope es una decisión, no un número que se pueda mover solo.
+
+    Un parte troceado son 1–2 páginas escaneadas: quince megas es holgado para
+    eso y ajustado para que no pase por aquí una remesa entera por error.
+    """
+    assert modulo_paso.MAX_BYTES_PARTE == 15 * 1024 * 1024
+
+
+def test_f003_r16_un_parte_que_ocupa_justo_el_tope_si_se_procesa(monkeypatch):
+    """R16 · el límite es **hasta** el tope, no antes.
+
+    El caso frontera importa: con `>=` en vez de `>`, un parte que ocupara
+    exactamente el máximo se rechazaría con un 413 sin que nadie entendiera
+    por qué, y el mensaje diría que se pasa de un límite que no se pasa.
+    """
+    monkeypatch.setattr(modulo_paso, "MAX_BYTES_PARTE", 10)
+    extractor = ExtractorFalso()
+
+    contexto = paso_extraccion(
+        ContextoParte(parte=_parte(contenido=b"x" * 10)),
+        extractor,
+        PromptsFalsos(),
+        "parte_posventa_es",
+    )
+
+    assert len(extractor.llamadas) == 1
+    assert contexto.extraccion is not None
+
+
 def test_f003_r16_el_mensaje_del_rechazo_no_lleva_el_contenido_del_parte(monkeypatch):
     """R16 · el motivo habla de tamaños, no del parte: lleva DNI (riesgo 4)."""
     monkeypatch.setattr(modulo_paso, "MAX_BYTES_PARTE", 10)

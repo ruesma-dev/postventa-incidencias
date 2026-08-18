@@ -9,16 +9,21 @@ resultado los traiga siempre todos y saneados es del paso del pipeline
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 from domain.models.extraccion import (
     CAMPOS_DEL_PARTE,
     CAMPOS_MANUSCRITOS,
+    CampoBruto,
     CampoExtraido,
     ExtraccionParte,
+    RespuestaModelo,
     TrazaExtraccion,
 )
+from domain.models.prompt import huella_de_prompt
 
-from tests.utiles_ia import respuesta_simulada
+from tests.utiles_ia import prompt_de_prueba, respuesta_simulada
 
 #: Los ocho campos de contenido de R1, en el orden de la tabla del requisito.
 CAMPOS_DE_CONTENIDO = (
@@ -148,6 +153,80 @@ def test_f003_r5_la_fecha_manuscrita_no_se_reformatea(escrito):
     )
 
     assert extraccion.campo("fecha_servicio").valor == escrito
+
+
+@pytest.mark.parametrize(
+    ("clase", "argumentos", "campo"),
+    [
+        (CampoBruto, {"valor": "0677", "confianza_pct": 99}, "valor"),
+        (CampoExtraido, {"valor": "0677", "confianza_pct": 99}, "valor"),
+        (
+            RespuestaModelo,
+            {"proveedor": "gemini", "modelo": "m", "campos": {}},
+            "modelo",
+        ),
+        (
+            TrazaExtraccion,
+            {
+                "proveedor": "gemini",
+                "modelo": "m",
+                "prompt_key": "k",
+                "version_prompt": "1",
+                "huella_prompt": "h",
+            },
+            "modelo",
+        ),
+    ],
+)
+def test_f003_r5_lo_extraido_es_inmutable(clase, argumentos, campo):
+    """R5 · lo que se leyó del parte no se retoca después de leerlo.
+
+    Los modelos son `frozen` a propósito: F-004 valida, F-005 guarda y F-006
+    nombra el fichero, y **ninguno de los tres puede reescribir el dato
+    original**. Si alguien necesita otro valor, construye otro objeto y deja
+    rastro; mutar el que ya viajaba haría imposible saber qué leyó el modelo.
+    """
+    objeto = clase(**argumentos)
+
+    with pytest.raises(FrozenInstanceError):
+        setattr(objeto, campo, "otro valor")
+
+
+def test_f003_r6_la_extraccion_entera_tambien_es_inmutable():
+    """R6 · y el resultado completo igual: la traza no se reescribe.
+
+    Una traza que se pudiera cambiar después no serviría para lo único para lo
+    que existe: saber meses después con qué modelo y qué prompt se leyó eso.
+    """
+    extraccion = _extraccion()
+
+    with pytest.raises(FrozenInstanceError):
+        extraccion.hash_parte = "otro-hash"
+
+
+def test_f003_r10_la_huella_del_prompt_tiene_doce_hexadecimales():
+    """R10 · doce caracteres: bastan para distinguir dos redacciones.
+
+    El largo es una decisión, no un accidente: cabe en una línea de log sin
+    estorbar y viaja en la traza de cada parte que se guarde (F-005).
+    """
+    huella = huella_de_prompt("un system", "una task")
+
+    assert len(huella) == 12
+    assert huella != huella_de_prompt("un system", "otra task")
+    assert set(huella) <= set("0123456789abcdef")
+
+
+def test_f003_r10_el_prompt_cargado_tampoco_se_puede_retocar():
+    """R10 · un `PromptSpec` mutable haría mentir a su propia huella.
+
+    La huella se calcula al cargar; si el texto se pudiera cambiar después,
+    la traza diría que se llamó con un prompt que ya no es el que se usó.
+    """
+    prompt = prompt_de_prueba()
+
+    with pytest.raises(FrozenInstanceError):
+        prompt.system = "otro system"
 
 
 def test_f003_r5_un_campo_que_no_esta_no_se_inventa():

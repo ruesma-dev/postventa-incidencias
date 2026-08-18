@@ -21,7 +21,11 @@ import logging
 
 import pytest
 from domain.models.errores import ExtraccionFallida
-from infrastructure.llm.gemini import PROVEEDOR, AdaptadorGeminiVision
+from infrastructure.llm.gemini import (
+    CODIGOS_TRANSITORIOS,
+    PROVEEDOR,
+    AdaptadorGeminiVision,
+)
 
 from tests.utiles_ia import (
     ClienteGenaiFalso,
@@ -101,6 +105,55 @@ def test_f003_r14_la_peticion_lleva_el_prompt_el_pdf_y_el_schema_de_nueve_campos
     assert "numero_pagina" in esquema["properties"]
 
 
+@pytest.mark.parametrize("codigo", sorted(CODIGOS_TRANSITORIOS))
+def test_f003_r14_cada_codigo_transitorio_se_reintenta(codigo):
+    """R14 · los seis códigos que merecen otro intento, uno por uno.
+
+    408, 429 y los 5xx significan «vuelve a preguntar», no «este parte está
+    mal». Se prueban de uno en uno y no en bloque a propósito: si alguien
+    quita uno de la lista, tiene que caerse **ese** caso y no una comprobación
+    difusa que nadie sepa leer.
+    """
+    cliente = ClienteGenaiFalso(error_del_proveedor(codigo), json_del_modelo())
+    adaptador = AdaptadorGeminiVision(
+        api_key="no-es-una-credencial",
+        modelo=MODELO,
+        espera_inicial_s=0,
+        cliente=cliente,
+    )
+
+    respuesta = _extraer(adaptador)
+
+    assert respuesta.campos["codigo_obra"].valor == "0677"
+    assert len(cliente.llamadas) == 2
+
+
+@pytest.mark.parametrize(
+    "no_transitorio", [400, 401, 403, 404, 409, 422, 501, 505]
+)
+def test_f003_r15_los_codigos_que_no_mejoran_no_se_reintentan(no_transitorio):
+    """R15 · lo que no va a cambiar no se pregunta tres veces.
+
+    Una credencial inválida, un permiso que falta o una petición mal formada
+    dan el mismo error las tres veces: reintentarlos quema cuota y minutos de
+    una Function que corta a los 230 s.
+    """
+    cliente = ClienteGenaiFalso(
+        error_del_proveedor(no_transitorio), json_del_modelo()
+    )
+    adaptador = AdaptadorGeminiVision(
+        api_key="no-es-una-credencial",
+        modelo=MODELO,
+        espera_inicial_s=0,
+        cliente=cliente,
+    )
+
+    with pytest.raises(ExtraccionFallida):
+        _extraer(adaptador)
+
+    assert len(cliente.llamadas) == 1
+
+
 @pytest.mark.parametrize(
     "transitorio",
     [error_del_proveedor(429), error_del_proveedor(503), TimeoutError("se agotó")],
@@ -137,10 +190,11 @@ def test_f003_r15_reintentos_agotados_levantan_extraccion_fallida():
         cliente=cliente,
     )
 
-    with pytest.raises(ExtraccionFallida):
+    with pytest.raises(ExtraccionFallida) as fallo:
         _extraer(adaptador)
 
     assert len(cliente.llamadas) == 3
+    assert "503" in fallo.value.motivo
 
 
 def test_f003_r15_error_no_transitorio_no_se_reintenta():
@@ -158,10 +212,11 @@ def test_f003_r15_error_no_transitorio_no_se_reintenta():
         cliente=cliente,
     )
 
-    with pytest.raises(ExtraccionFallida):
+    with pytest.raises(ExtraccionFallida) as fallo:
         _extraer(adaptador)
 
     assert len(cliente.llamadas) == 1
+    assert "400" in fallo.value.motivo
 
 
 @pytest.mark.parametrize(
@@ -227,6 +282,76 @@ def test_f003_r15_un_campo_que_no_es_objeto_no_tumba_la_extraccion():
 
     assert respuesta.campos["codigo_obra"].valor == "0677"
     assert respuesta.campos["numero_pagina"].valor == "2"
+
+
+def test_f003_r14_el_timeout_viaja_al_sdk_en_milisegundos():
+    """R14 · el SDK cuenta en **milisegundos** y nosotros en segundos.
+
+    Es el clásico error de tres ceros, y aquí sale caro en las dos
+    direcciones: mil veces menos corta todas las llamadas al instante, y mil
+    veces más deja una llamada colgada comiéndose los 230 s de la Function.
+    """
+    cliente = ClienteGenaiFalso(json_del_modelo())
+    adaptador = AdaptadorGeminiVision(
+        api_key="no-es-una-credencial",
+        modelo=MODELO,
+        timeout_s=42,
+        espera_inicial_s=0,
+        cliente=cliente,
+    )
+
+    _extraer(adaptador)
+
+    assert cliente.llamadas[0]["config"].http_options.timeout == 42_000
+
+
+def test_f003_r14_los_valores_por_defecto_del_adaptador():
+    """R14 · 120 segundos y 3 intentos, aunque nadie los pase.
+
+    El adaptador se construye a mano en las verificaciones manuales y lo
+    construirá F-004 si le conviene; sus defectos tienen que ser los mismos
+    que declara la configuración, o el comportamiento cambiaría según quién
+    lo instancie.
+    """
+    adaptador = AdaptadorGeminiVision(api_key="no-es-una-credencial", modelo=MODELO)
+
+    assert vars(adaptador)["_timeout_s"] == 120
+    assert vars(adaptador)["_reintentos"] == 3
+
+
+def test_f003_r15_el_log_registra_la_duracion_y_no_un_reloj(caplog):
+    """R15 · lo que se registra es cuánto tardó, no qué hora era.
+
+    Un `+` donde va un `-` imprimiría el reloj monótono de la máquina: un
+    número enorme, con pinta de duración, que haría inútil cualquier medida de
+    rendimiento del día que el modelo empiece a ir lento.
+    """
+    with caplog.at_level(logging.INFO):
+        _extraer(_adaptador(json_del_modelo()))
+
+    lineas = [
+        registro.getMessage()
+        for registro in caplog.records
+        if "segundos=" in registro.getMessage()
+    ]
+
+    assert len(lineas) == 1
+    segundos = float(lineas[0].split("segundos=")[1].split()[0])
+    assert 0 <= segundos < 60
+
+
+def test_f003_r15_el_log_registra_el_tamano_del_parte_y_no_su_contenido(caplog):
+    """R15 · el tamaño en bytes sí; los bytes, no.
+
+    Saber cuánto ocupaba el parte es lo que permite entender un 413 o una
+    llamada lenta meses después, y no cuesta ni un dato personal.
+    """
+    with caplog.at_level(logging.INFO):
+        _extraer(_adaptador(json_del_modelo()))
+
+    registrado = "\n".join(registro.getMessage() for registro in caplog.records)
+
+    assert f"bytes={len(PARTE_CON_DATOS)}" in registrado
 
 
 def test_f003_r14_el_cliente_del_sdk_no_se_construye_hasta_la_primera_llamada():

@@ -300,7 +300,7 @@
       **Verificación**: el diff del documento lo refleja y
       `bash harness/init.sh` sigue en verde.
 
-- [ ] **T20**: Campaña de mutación y análisis de supervivientes.
+- [x] **T20**: Campaña de mutación y análisis de supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-003` genera
       `progress/mutacion_F-003.md` con **cero supervivientes** (nivel
       `critico`), o cada superviviente con su análisis escrito y aceptado por

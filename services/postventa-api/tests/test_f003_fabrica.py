@@ -126,6 +126,25 @@ def test_f003_r12_el_extractor_no_expone_la_credencial_en_su_repr(monkeypatch):
     assert CREDENCIAL_FALSA not in str(vars(extractor).get("modelo", ""))
 
 
+def test_f003_r11_los_valores_por_defecto_de_los_ajustes_de_ia(monkeypatch):
+    """R11 · lo que trae la configuración cuando nadie la toca.
+
+    Los cuatro números están escritos por un motivo y no son intercambiables:
+    **120 s** porque la Function corta a los 230 y una llamada colgada no
+    puede comérselos; **3 intentos** porque más es insistir contra un
+    proveedor que ya dijo que no; y la clave y la ruta del prompt porque son
+    las que se despliegan.
+    """
+    ajustes = _ajustes(monkeypatch)
+
+    assert ajustes.ia_proveedor == "gemini"
+    assert ajustes.gemini_model == "gemini-3.7-flash"
+    assert ajustes.ia_timeout_s == 120
+    assert ajustes.ia_reintentos == 3
+    assert ajustes.prompt_key == "parte_posventa_es"
+    assert ajustes.prompts_yaml == "config/prompts.yaml"
+
+
 def test_f003_r11_los_ajustes_de_ia_llegan_al_adaptador(monkeypatch):
     """R11 · timeout y reintentos también son configuración, no constantes.
 

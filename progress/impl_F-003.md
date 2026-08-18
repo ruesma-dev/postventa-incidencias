@@ -105,3 +105,20 @@ verificación de T10 lo dice con estas palabras —«en verde, **incluido el
 `test_f003_r2bis_la_extraccion_no_reagrupa_paginas` de T6**»—. El mismo ritmo
 que T7→T8 y T9→T10: el test se escribe en su tarea y se pone verde en la
 siguiente.
+
+### T7 · R8, R9, R10 — el repositorio de prompts no existía
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f003_prompts_yaml.py -q
+```
+
+```
+Traceback:
+tests\test_f003_prompts_yaml.py:21: in <module>
+    from infrastructure.prompts.prompts_yaml import RepositorioPromptsYaml
+E   ModuleNotFoundError: No module named 'infrastructure.prompts'
+=========================== short test summary info ===========================
+ERROR tests/test_f003_prompts_yaml.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.23s
+```

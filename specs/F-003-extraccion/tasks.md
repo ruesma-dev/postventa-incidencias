@@ -82,7 +82,7 @@
       entra en T8, y el schema estructurado se genera solo desde
       `CAMPOS_DEL_PARTE`: no hay una tercera copia que mantener.
 
-- [ ] **T7 · RED**: Escribir `tests/test_f003_prompts_yaml.py` (R8, R9, R10):
+- [x] **T7 · RED**: Escribir `tests/test_f003_prompts_yaml.py` (R8, R9, R10):
       el prompt se carga del YAML con `system`, `task`, `schema` y `version`;
       un fichero inexistente falla nombrando la ruta; una clave desconocida
       falla listando las disponibles; una entrada sin `system` o sin `task`

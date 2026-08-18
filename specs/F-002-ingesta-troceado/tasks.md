@@ -98,7 +98,7 @@
       **Verificación**: los tests de T11 en verde y la suite completa del
       servicio también.
 
-- [ ] **T13**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/documentos/`
+- [x] **T13**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/documentos/`
       en el árbol, y en el paso 2 del pipeline la nota de que el modo de
       detección degrada a «una página, un parte» cuando el PDF no trae capa de
       texto.

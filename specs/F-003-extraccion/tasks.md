@@ -124,7 +124,7 @@
       contiene los bytes del parte ni ningún valor extraído**.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T12**: Implementar `infrastructure/llm/gemini.py`
+- [x] **T12**: Implementar `infrastructure/llm/gemini.py`
       (`AdaptadorGeminiVision`) con el schema estructurado generado desde
       `CAMPOS_DEL_PARTE` —los nueve campos, todos `required`— y el logging sin
       datos del parte (`design.md` §4.4).

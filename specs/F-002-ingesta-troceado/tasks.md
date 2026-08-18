@@ -92,7 +92,7 @@
       ni `infrastructure` (recorrido con `ast` sobre los ficheros).
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-002.md`.
 
-- [ ] **T12**: Implementar `interface_adapters/api/split.py` (handler +
+- [x] **T12**: Implementar `interface_adapters/api/split.py` (handler +
       composición del pipeline) y añadir la ruta `split` en
       `function_app.py`, con el mapeo de errores a 400 y 413.
       **Verificación**: los tests de T11 en verde y la suite completa del

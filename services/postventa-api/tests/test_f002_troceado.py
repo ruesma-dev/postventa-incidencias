@@ -28,6 +28,7 @@ from infrastructure.documentos.zip_estandar import AdaptadorZipEstandar
 from tests.utiles_pdf import (
     pagina_de_parte,
     pdf_con_textos,
+    pdf_sin_paginas,
     remesa_escaneada,
     remesa_sintetica,
     zip_con,
@@ -269,6 +270,27 @@ def test_f002_r13_el_parte_troceado_no_se_puede_retocar():
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         parte.hash = "otro"
+
+
+def test_f002_pdf_valido_de_cero_paginas_se_descarta_con_aviso():
+    """Lo que se descarta, se nombra: también el PDF que no tiene páginas.
+
+    No lo exige ningún requisito de F-002 —R3 habla de «no es un PDF» y R4 de
+    «no se puede abrir», y este se abre perfectamente—, pero era el único
+    hueco por el que un fichero de la remesa desaparecía del resultado sin
+    dejar rastro (observación 1 de `progress/review_F-002.md`). Quien recibe
+    22 partes de un envío de 23 ficheros tiene derecho a saber qué pasó con el
+    que falta.
+    """
+    contexto = _trocear(
+        [
+            DocumentoEntrada(nombre="vacio.pdf", contenido=pdf_sin_paginas()),
+            DocumentoEntrada(nombre="remesa.pdf", contenido=remesa_sintetica([1])),
+        ]
+    )
+
+    assert [parte.origen for parte in contexto.partes] == ["remesa.pdf"]
+    assert contexto.avisos == ["vacio.pdf: descartado, el PDF no tiene páginas"]
 
 
 def test_f002_r1_el_orden_de_los_documentos_se_conserva_en_los_partes():

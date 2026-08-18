@@ -143,6 +143,39 @@ def remesa_escaneada(n_paginas: int = 1) -> bytes:
         documento.close()
 
 
+def pdf_sin_paginas() -> bytes:
+    """PDF **válido y sin páginas**: se abre sin protestar y no tiene nada.
+
+    Es el hueco que dejó F-002: un fichero así no es «no es un PDF» (R3) ni
+    «no se puede abrir» (R4), así que atravesaba la ingesta y desaparecía en
+    el troceado sin dejar rastro.
+
+    No se fabrica con PyMuPDF porque **no sabe escribirlo**: `save()` corta con
+    `ValueError: cannot save with zero pages`. Por eso, y solo por eso, este
+    caso se arma a mano con la estructura mínima de un PDF —catálogo y árbol de
+    páginas con `/Count 0`—, que es lo que produciría una herramienta que
+    borrase la última página de un documento.
+    """
+    objetos = [
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+        b"2 0 obj\n<< /Type /Pages /Kids [] /Count 0 >>\nendobj\n",
+    ]
+    salida = bytearray(b"%PDF-1.4\n")
+    desplazamientos: list[int] = []
+    for objeto in objetos:
+        desplazamientos.append(len(salida))
+        salida += objeto
+    inicio_xref = len(salida)
+    salida += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objetos) + 1)
+    for desplazamiento in desplazamientos:
+        salida += b"%010d 00000 n \n" % desplazamiento
+    salida += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objetos) + 1,
+        inicio_xref,
+    )
+    return bytes(salida)
+
+
 def zip_con(ficheros: Mapping[str, bytes]) -> bytes:
     """ZIP en memoria con las entradas dadas, en el orden en que llegan.
 

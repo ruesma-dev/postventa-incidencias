@@ -78,6 +78,7 @@ Lo que ya se sabe y F-007 no tiene que volver a descubrir:
 | Número | Valor |
 |---|---|
 | **Tests** | 10 en verde (3 en la raíz, 7 en el servicio `api`), 0 fallos |
+| **Tiempo de las suites** | 0,03 s la de la raíz y 0,21 s la del servicio (0,24 s en total). Tan bajo porque ningún test toca red, BBDD ni el runtime de Functions |
 | **Cobertura de las líneas de la feature** | **100 %** (40/40), umbral 80 % |
 | **Mutación** | 3 mutantes: **2 muertos, 1 superviviente** (equivalente, analizado en `progress/mutacion_F-001.md`) |
 | **Portero** | `bash harness/init.sh` → **ENTORNO LISTO**, exit 0 |
@@ -88,7 +89,7 @@ Lo que ya se sabe y F-007 no tiene que volver a descubrir:
 |---|---|
 | `bash harness/init.sh` | **ENTORNO LISTO** |
 | Suite de la raíz / suite de `api` | 3 passed / 7 passed |
-| `ruff check services/ tests/` | All checks passed |
+| `ruff check services/ tests/` | All checks passed (tras corregir un `I001` que introdujo el test nuevo) |
 | Puerta de cobertura | 100.0 % de 40 líneas (40/40) |
 | Campaña de mutación | 2 muertos, 1 superviviente equivalente |
 | Import de `function_app` | OK, función `health` registrada |

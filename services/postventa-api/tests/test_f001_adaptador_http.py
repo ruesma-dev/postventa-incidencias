@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 
 import azure.functions as func
-
 from config.settings import NOMBRE_SERVICIO, VERSION_SERVICIO
 
 

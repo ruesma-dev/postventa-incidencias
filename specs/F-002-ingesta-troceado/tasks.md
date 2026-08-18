@@ -111,7 +111,7 @@
       `critico`), o cada superviviente con su análisis escrito y aceptado por
       el humano.
 
-- [ ] **T15**: **MANUAL (humano)** — acierto sobre la remesa real de
+- [x] **T15**: **MANUAL (humano)** — acierto sobre la remesa real de
       Mirasierra (criterio `acceptance` 2). El fichero
       `docs/referencia/doc02871320260817093833.pdf` **no está versionado**:
       tiene que existir en el árbol de quien ejecute.
@@ -135,6 +135,10 @@
 
       **Resultado esperado**: `partes: 22`, `modos: ['una_pagina_por_parte']`,
       `hashes distintos: 22`, `paginas por parte: [1] * 22`, `avisos: []`.
+
+      **EJECUTADA POR EL HUMANO el 2026-08-18. Resultado real: coincide punto
+      por punto** — `partes: 22`, `modos: ['una_pagina_por_parte']`,
+      `hashes distintos: 22`, 22 partes de una página, `avisos: []`.
       El comando imprime **solo recuentos**: ningún dato personal del parte
       sale por pantalla, y no escribe nada en disco.
       Sobre el «parte de dos hojas»: en esta remesa **no hay ninguno** —el pie

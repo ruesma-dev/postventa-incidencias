@@ -40,7 +40,7 @@
         "Los tests usan PDFs sintéticos generados en el propio test: no dependen de muestras/, que no se versiona",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 2,

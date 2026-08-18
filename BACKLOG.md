@@ -3,15 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **15 features**, 14 abiertas, 1 terminadas.
-
-En curso: **F-002**.
+Resumen: **15 features**, 13 abiertas, 2 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-002 | Ingesta y troceado de la remesa en partes | 2 | en curso | critico | `feature/F-002-ingesta-troceado` |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | spec lista | critico | `feature/F-003-extraccion` |
 | F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
@@ -31,14 +28,9 @@ En curso: **F-002**.
 | # | Feature | Prioridad | Rigor |
 |---|---|---|---|
 | F-001 | Esqueleto del monorepo y /health | 1 | estandar |
+| F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 
 ## Detalle
-
-### F-002 · Ingesta y troceado de la remesa en partes
-
-estado **en curso** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
-
-Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.
 
 ### F-003 · Extracción multimodal del parte, manuscritos incluidos
 
@@ -123,3 +115,9 @@ Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
 
 Crear services/postventa-api (Function App Python con settings, logging y un endpoint /health) y services/postventa-front vacío pero arrancable. Feature de calentamiento: valida el circuito completo del arnés antes de jugarse nada.
+
+### F-002 · Ingesta y troceado de la remesa en partes
+
+estado **terminada** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
+
+Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.

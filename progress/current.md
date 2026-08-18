@@ -4,42 +4,84 @@
 **F-002 · Ingesta y troceado de la remesa en partes** — estado `in_progress`,
 rama `feature/F-002-ingesta-troceado`, rigor `critico`.
 
-**Spec aprobada por el humano el 2026-08-18.** El implementer ejecuta
-`specs/F-002-ingesta-troceado/tasks.md` (16 tareas, RED antes que
-implementación).
+**Implementación TERMINADA.** Las 16 tareas de
+`specs/F-002-ingesta-troceado/tasks.md` están marcadas (T15 es del humano) y
+`bash harness/init.sh` termina en verde, exit 0. Informe completo con las
+trazas de la fase RED y las evidencias: **`progress/impl_F-002.md`**.
 
-## Lo que el humano decidió al aprobar
+Pendiente: la verificación MANUAL de abajo y el veredicto del reviewer contra
+`CHECKPOINTS.md`. La feature **no se marca `done`** hasta las dos cosas.
+
+## Números de esta implementación
+
+- 104 tests en verde (94 del servicio —87 de F-002— y 10 del arnés).
+- Cobertura de las líneas cambiadas: **100 %** (273/273, umbral 80 %).
+- Mutación: **44 mutantes, 44 muertos, 0 supervivientes**
+  (`progress/mutacion_F-002.md`).
+- `ruff`: 32 avisos, la deuda previa exacta. Cero avisos nuevos.
+
+## Lo que el humano decidió al aprobar (respetado)
 
 1. **Degradación aceptada.** Las remesas reales llegan escaneadas sin capa de
-   texto (Mirasierra: 22 páginas, 0 caracteres), así que la regla del pie no
-   se dispara y el troceado es «una página, un parte». Queda declarado en el
-   campo `modo_deteccion` de cada parte.
-2. **Recuperación planificada: `F-014`** · «Reagrupar el parte de dos hojas
-   con el "Página 2" que lee la extracción» (prioridad 14, `blocked_by`
-   F-003). Cuando la extracción multimodal lea el pie impreso —que el modelo
-   ve aunque no haya capa de texto—, una página con `Página N` (N ≥ 2) se
-   reagrupará como continuación del parte anterior.
-3. **F-002 no prepara F-014**: nada de ganchos ni banderas ni código muerto.
-   Solo conserva `paginas_origen` y `origen` con precisión suficiente para que
-   la reagrupación posterior sea posible sin reabrir la remesa.
+   texto, así que la regla del pie no se dispara y el troceado es «una página,
+   un parte». Queda declarado en el campo `modo_deteccion` de cada parte.
+2. **Recuperación planificada: `F-014`** (prioridad 14, `blocked_by` F-003).
+3. **F-002 no prepara F-014**: no se ha dejado ni un gancho, ni una bandera,
+   ni código muerto. Solo `origen` y `paginas_origen` con precisión suficiente
+   —qué fichero y qué páginas suyas— para reagrupar después sin reabrir la
+   remesa.
 
-## Compromiso heredado de F-001 (vigente)
+## Riesgo 4 del diseño: comprobado y descartado
 
-Se empieza por los tests, con la traza real en rojo pegada en
-`progress/impl_F-002.md`. Rigor `critico`: cobertura sobre lo cambiado,
-campaña de mutación y cero supervivientes sin justificación aceptada.
+`design.md` §7 mandaba parar si `extraer_paginas` no conservara el contenido
+de la página. **No pasa**: la página extraída da la misma huella que en la
+remesa de origen, con capa de texto y escaneada. R14 se cumple. No hubo que
+bloquear nada.
 
-## Pendiente de verificación humana al cerrar
+## PENDIENTE · verificación MANUAL (humano)
 
-`tasks.md` T15 es **MANUAL (humano)**: acierto del troceado sobre la remesa
-real de Mirasierra (22 páginas = 22 partes). No se puede automatizar porque
-`muestras/` y los PDF de `docs/referencia/` no se versionan.
+`tasks.md` T15 — acierto del troceado sobre la **remesa real de Mirasierra**
+(criterio `acceptance` 2). No se puede automatizar: el PDF
+`docs/referencia/doc02871320260817093833.pdf` no se versiona (datos
+personales) y tiene que estar en el árbol de quien lo ejecute.
+
+```bash
+cd services/postventa-api && .venv/Scripts/python.exe -c "
+from pathlib import Path
+from domain.models.remesa import DocumentoEntrada
+from interface_adapters.api.split import trocear_remesa
+ruta = Path('../../docs/referencia/doc02871320260817093833.pdf')
+res = trocear_remesa([DocumentoEntrada(nombre=ruta.name, contenido=ruta.read_bytes())])
+print('partes:', res['total_partes'])
+print('modos:', sorted({p['modo_deteccion'] for p in res['partes']}))
+print('hashes distintos:', len({p['hash'] for p in res['partes']}))
+print('paginas por parte:', [len(p['paginas_origen']) for p in res['partes']])
+print('avisos:', res['avisos'])
+"
+```
+
+**Esperado**: `partes: 22`, `modos: ['una_pagina_por_parte']`,
+`hashes distintos: 22`, `paginas por parte: [1] * 22`, `avisos: []`.
+Solo imprime recuentos: ningún dato personal sale por pantalla y no escribe
+nada en disco. **Resultado real: PENDIENTE de ejecutar por el humano** — se
+anota aquí cuando se ejecute.
+
+## AVISO · trabajo de otra sesión colado en esta rama
+
+El commit `3211984` («F-002 T11: …») arrastró, además de sus tests, ficheros
+que no son de F-002: `specs/F-003-extraccion/` (los tres documentos),
+`progress/spec_F-003.md`, `BACKLOG.md` y el estado de F-003 en
+`harness/features.json`. Otra sesión los tenía preparados en el índice de git
+y el commit se los llevó por delante.
+
+**No se han tocado**: sacarlos de la rama podría destruir ese trabajo, y esa
+decisión es del líder o del humano. No afecta a nada de lo verificado en
+F-002.
 
 ## Contexto de la sesión
 
-- Agentes del arnés (`spec-author`, `implementer`, `reviewer`) **cargados**:
-  se delega de verdad, el líder no implementa.
-- Arnés actualizado a **1.5.0** en esta sesión (merge `f5328f2` en `dev`).
+- Agentes del arnés (`spec-author`, `implementer`, `reviewer`) **cargados**.
+- Arnés **1.5.0**.
 - Hallazgos de dominio que mandan sobre el diseño, en `docs/ARCHITECTURE.md` y
   `docs/referencia/`: «Cerrar parte» de Sigrid **exige documento adjunto**, y
   un parte firmado con observaciones manuscritas **no** es un parte conforme.

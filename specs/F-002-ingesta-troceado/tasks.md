@@ -145,6 +145,6 @@
       humano.
       El resultado real de esta ejecución se anota en `progress/current.md`.
 
-- [ ] **T16**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T16**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la puerta de cobertura de las líneas
       cambiadas en `[OK]` (umbral 80 %).

@@ -25,7 +25,13 @@
   `Field()`.
 - Configuración: `config/settings.py` (pydantic-settings) leyendo `.env`.
 - Logging con structlog. Reintentos con tenacity.
-- PDF en servidor: ReportLab (no HTML/CSS print).
+- PDF en servidor, según lo que se haga con él:
+  - **Componer un PDF nuevo** desde cero (informes, etiquetas, acuses):
+    ReportLab, no HTML/CSS print.
+  - **Manipular un PDF de entrada** —abrirlo, leer su texto, extraer páginas—:
+    PyMuPDF, porque ReportLab no sabe leer lo que no ha escrito él. Es lo que
+    hace `infrastructure/documentos/pdf_pymupdf.py` al trocear una remesa: el
+    PDF de cada parte son páginas del original, no una composición nueva.
 
 ## SQL (borrar si el proyecto no lleva SQL)
 

@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-003.md -->
 # F-003 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-003` el 2026-08-18 22:32.
+Generado por `python -m harness.mutacion --feature F-003` el 2026-08-18 22:35.
 
 ## Alcance
 
@@ -44,23 +44,13 @@ Origen del diff: **rama** (`f5328f2a5b5f12d38eda7d1b8a783f09d508e424` .. `featur
 |---|---|
 | Mutantes generados | 127 |
 | Mutantes evaluados | 127 |
-| Muertos | 126 |
-| Supervivientes | 1 |
+| Muertos | 127 |
+| Supervivientes | 0 |
 | Timeouts | 0 |
-| Tiempo total | 102.4 s |
+| Tiempo total | 103.7 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
 
-Cada superviviente es una línea que ningún test comprueba de verdad, o una mutación equivalente. Distinguirlo es trabajo del implementer: ningún análisis puede quedarse sin completar al cerrar la feature.
-
-### 1. `services/postventa-api/infrastructure/llm/gemini.py:45` [entero]
-
-- Original: `CODIGOS_TRANSITORIOS = frozenset({408, 429, 500, 502, 503, 504})`
-- Mutado:   `CODIGOS_TRANSITORIOS = frozenset({408, 429, 500, 503, 503, 504})`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+Ninguno: cada mutación aplicada la cazó al menos un test.
 

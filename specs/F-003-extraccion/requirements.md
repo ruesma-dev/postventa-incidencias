@@ -6,6 +6,12 @@
 > Rigor declarado: **`critico`** (fase RED, cobertura, campaña de mutación con
 > cero supervivientes, y verificaciones `MANUAL (humano)` con su comando
 > exacto y su resultado real).
+>
+> **Decisiones del humano del 2026-08-18, ya incorporadas** (detalle en
+> `progress/spec_F-003.md`): entra `numero_pagina` en el contrato (R2 bis),
+> entra el endpoint `POST /api/extraer` (R17–R18), el campo de la unidad de
+> posventa se llama **`unidad`**, y la ruta sensible del prompt **no** se
+> declara aquí (es F-015).
 
 ## Alcance
 
@@ -21,14 +27,22 @@ Fuera de alcance, explícitamente (y vigilado por R7):
 | Guardar nada en PostgreSQL | **F-005** |
 | Nombrar el fichero y subirlo a SharePoint | **F-006** |
 | Tocar Sigrid (leer o cerrar) | **F-008 / F-009** |
-| Reagrupar el parte de dos hojas por el «Página N» | **F-014** |
+| **Reagrupar** el parte de dos hojas con el «Página N» | **F-014** |
+| Evaluar el acierto del prompt contra partes reales | **F-015** |
+
+> **Matiz importante sobre F-014.** F-003 **lee** el número de página del pie y
+> lo devuelve (R2 bis), porque el modelo lo ve aunque el escaneo no tenga capa
+> de texto. Pero **F-003 no reagrupa nada**: no une páginas, no altera
+> `paginas_origen` y no toca el troceado de F-002. Leer es de esta feature;
+> reagrupar es de F-014.
 
 ## Vocabulario
 
-- **Parte troceado**: el `ParteTroceado` de F-002 — `hash`, `origen`,
-  `paginas_origen`, `modo_deteccion`, `contenido` (PDF de una o dos páginas)
-  y `avisos`. Es **la entrada** de esta feature y no se modifica aquí.
-- **Campo del parte**: cada uno de los ocho datos declarados en R1.
+- **Parte troceado**: el `ParteTroceado` de F-002 (`domain/models/remesa.py`) —
+  `hash`, `origen`, `paginas_origen`, `modo_deteccion`, `contenido` (PDF de una
+  o dos páginas) y `avisos`. Es **la entrada** de esta feature y no se modifica
+  aquí.
+- **Campo del parte**: cada uno de los datos declarados en R1 y R2 bis.
 - **Confianza**: entero `0–100` que el modelo declara para **cada** campo
   (`confianza_pct`, el mismo nombre que ya usan `partes` y `albaranes` en el
   ecosistema).
@@ -45,27 +59,40 @@ Fuera de alcance, explícitamente (y vigilado por R7):
 ## 1 · El contrato de la extracción
 
 **R1.** El sistema debe extraer de un parte troceado **exactamente estos ocho
-campos**, y ninguno más:
+campos de contenido**, y ninguno más:
 
 | Campo | Etiqueta en el papel | Bloque | Ejemplo (inventado) |
 |---|---|---|---|
 | `promocion` | Promoción | impreso | `15 VIVIENDAS UNIFAMILIARES EN MIRASIERRA(MADRID)` |
 | `codigo_obra` | Código Obra | impreso | `0677` |
-| `vivienda` | Vivienda | impreso | `Viviendas Bloque Villa 5` |
+| `unidad` | Vivienda | impreso | `Viviendas Bloque Villa 5` |
 | `numero_incidencia` | Nº Incidencia | impreso | `RS26.08/0123` |
 | `fecha_servicio` | Fecha servicio | **manuscrito** | `05/08/26` |
 | `descripcion` | Descripción | impreso | `Sellado de encuentro de falsos techos` |
 | `dni_cliente` | Fdo. / DNI (columna izquierda) | **manuscrito** | `00000000T` |
 | `observaciones` | Observaciones de reparación | **manuscrito** | `Se aprecia que se han hecho parcheados` |
 
-> `vivienda` es lo que la descripción de la feature y `docs/ARCHITECTURE.md`
-> llaman «chalet»: la **unidad de posventa**. Se nombra por la etiqueta
-> impresa del papel (`docs/referencia/02_parte_de_trabajo.md`) para que nadie
-> tenga que traducir entre el código y el documento. `fecha_servicio` es la
-> fecha **manuscrita** del bloque «SERVICIO REALIZADO Y CONFORME», no la
-> fecha de impresión del pie.
+> **`unidad` es la unidad de posventa.** El papel la imprime con la etiqueta
+> «Vivienda» (`docs/referencia/02_parte_de_trabajo.md`) y el backlog la llamaba
+> «chalet» (descripción de F-003 y `docs/ARCHITECTURE.md`). Se nombra `unidad`
+> por decisión del humano del 2026-08-18: es el término que ya usa la estructura
+> de archivo de Posventa (`PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`,
+> F-013), así que el mismo concepto se llama igual en el código y en el archivo.
+> No es un descuido: son tres nombres del mismo dato.
+>
+> `fecha_servicio` es la fecha **manuscrita** del bloque «SERVICIO REALIZADO Y
+> CONFORME», no la fecha de impresión del pie.
 
-**R2.** El resultado debe contener **los ocho campos siempre**, también los que
+**R2 bis.** El sistema debe extraer además el **número de página que el pie
+impreso declara** (`numero_pagina`: `"1"`, `"2"`, … o `None` si el pie no se
+lee), con su confianza como cualquier otro campo. El modelo multimodal **sí ve
+ese pie** aunque el escaneo no tenga capa de texto, que es exactamente lo que
+F-002 no pudo leer. **F-003 solo lo lee y lo devuelve**: quien lo use para
+reagrupar el parte de dos hojas es **F-014**, y esta feature no une páginas ni
+toca `paginas_origen`.
+
+**R2.** El resultado debe contener **todos los campos declarados siempre** —los
+ocho de R1 más el `numero_pagina` de R2 bis: **nueve claves**—, también los que
 el parte deja en blanco. SI la respuesta del modelo omite un campo, ENTONCES el
 sistema debe incluirlo con `valor = None` y `confianza_pct = 0`, y dejar un
 aviso que lo nombre. Un campo que falta como clave rompería a F-004, y el papel
@@ -93,7 +120,7 @@ qué modelo y qué prompt produjeron ese dato.
 **R7.** El resultado de F-003 **no** debe contener veredicto de validación,
 clasificación de firma, nombre de fichero, ruta de SharePoint, identificador de
 base de datos ni estado de Sigrid: el conjunto de claves del resultado es
-exactamente el declarado en R1 + R6 + avisos.
+exactamente el declarado en R1 + R2 bis + R6 + avisos.
 
 ## 2 · Los prompts viven fuera del código
 
@@ -149,7 +176,7 @@ modelo**.
 
 **R17.** CUANDO se hace `POST /api/extraer` con el PDF de **un** parte en
 `multipart/form-data`, el sistema debe responder `200` con un JSON que
-contenga: el `hash` del parte, los ocho `campos` con su `valor` y su
+contenga: el `hash` del parte, los **nueve** `campos` con su `valor` y su
 `confianza_pct`, la `traza` (R6) y la lista de `avisos`.
 
 **R18.** SI la petición no trae ningún fichero, ENTONCES el sistema debe
@@ -171,8 +198,9 @@ versionan.
 
 | Req | Test (nombre trazable) |
 |---|---|
-| R1 | `test_f003_r1_los_campos_declarados_son_los_ocho_del_parte` |
-| R2 | `test_f003_r2_un_campo_ausente_sale_vacio_con_confianza_cero_y_aviso`, `test_f003_r2_el_resultado_siempre_trae_las_ocho_claves` |
+| R1 | `test_f003_r1_los_ocho_campos_de_contenido_estan_declarados` |
+| R2 bis | `test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie`, `test_f003_r2bis_la_extraccion_no_reagrupa_paginas` |
+| R2 | `test_f003_r2_un_campo_ausente_sale_vacio_con_confianza_cero_y_aviso`, `test_f003_r2_el_resultado_siempre_trae_las_nueve_claves` |
 | R3 | `test_f003_r3_cada_campo_trae_su_confianza`, `test_f003_r3_los_manuscritos_tambien_traen_confianza` |
 | R4 | `test_f003_r4_confianza_fuera_de_rango_se_ajusta_con_aviso`, `test_f003_r4_confianza_no_numerica_pasa_a_cero_con_aviso` |
 | R5 | `test_f003_r5_el_numero_de_incidencia_conserva_la_barra`, `test_f003_r5_la_fecha_manuscrita_no_se_reformatea` |
@@ -199,5 +227,6 @@ inventados.
 
 **Verificación `MANUAL (humano)`**: que el modelo real acierte de verdad sobre
 partes reales **no lo puede demostrar la suite**. Va como tarea manual con su
-comando exacto en `tasks.md` (T13 y T14), y su resultado real se anota en
-`progress/current.md`.
+comando exacto en `tasks.md` (**T19** y **T20**), y su resultado real se anota
+en `progress/current.md`. Medir ese acierto de forma sistemática y repetible es
+**F-015**, no esta feature.

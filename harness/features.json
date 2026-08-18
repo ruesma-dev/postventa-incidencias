@@ -49,7 +49,7 @@
     {
       "id": "F-003",
       "title": "Extracción multimodal del parte, manuscritos incluidos",
-      "description": "Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, chalet, nº de incidencia, fecha, descripción y lo escrito a mano: DNI y observaciones.",
+      "description": "Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.",
       "acceptance": [
         "El puerto permite cambiar de proveedor por configuración, sin tocar el pipeline",
         "El resultado incluye los campos manuscritos y una confianza por campo",
@@ -254,6 +254,25 @@
       "priority": 14,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
+    },
+    {
+      "id": "F-015",
+      "title": "Evaluación del prompt de extracción contra partes reales",
+      "description": "Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md.",
+      "acceptance": [
+        "El evaluador se ejecuta con un comando y deja un informe con veredicto y el acierto por campo",
+        "El juego de partes de prueba y su verdad esperada NO se versionan: llevan datos personales, y el repositorio solo guarda el umbral y el informe sin valores extraídos",
+        "harness/rutas_sensibles.json declara config/prompts.yaml apuntando a ese comando, y bash harness/init.sh lo hace valer",
+        "Cambiar el prompt sin presentar informe fresco tumba el portero; presentarlo lo deja en verde",
+        "La parte genérica del mecanismo queda portada a arnes-base, con su versión",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 15,
+      "branch": "feature/F-015-evaluacion-prompt",
+      "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     }
   ]
 }

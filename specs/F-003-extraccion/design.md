@@ -11,7 +11,7 @@
 un parte, una o dos páginas) y `avisos`. **F-003 no lo modifica, no lo
 reordena y no lo vuelve a trocear**: lo lee.
 
-**Salida**: un `ExtraccionParte` con los ocho campos, su confianza y la traza.
+**Salida**: un `ExtraccionParte` con los nueve campos, su confianza y la traza.
 Nada más. F-004 tomará ese objeto y decidirá; F-005 lo guardará.
 
 **Por qué el modelo ve un PDF y no imágenes sueltas**: la remesa real de
@@ -21,11 +21,16 @@ páginas: cabe de sobra en una petición en línea, y el proveedor ya sabe
 rasterizarlo. Rasterizarlo nosotros con PyMuPDF añadiría un paso, un formato
 más que decidir (DPI, JPEG/PNG) y ninguna ventaja medible en esta fase.
 
-**Lo que F-003 deja preparado para F-014, sin implementarlo**: nada de código.
-Si el humano aprueba la **decisión D1** (§9), el contrato gana un noveno campo
-`numero_pagina` con el «Página N» que el modelo lee del pie; sin esa
-aprobación, F-014 tendrá que pedirlo entonces. **No se añaden ganchos ni
-banderas «preparando» F-014**: eso se diseña en su spec.
+**Lo que F-003 le deja a F-014, y lo que no.** Por decisión del humano del
+2026-08-18 (D1, §9), el contrato incluye un noveno campo: **`numero_pagina`**,
+el «Página N» que el modelo lee del pie impreso. Existe **para que F-014 pueda
+reagrupar** el parte de dos hojas que F-002 no supo detectar —el escaneo no
+tiene capa de texto, pero el modelo sí ve el pie—.
+
+**F-003 no reagrupa nada.** Lo lee y lo devuelve, y ahí acaba: no une páginas,
+no altera `paginas_origen`, no cambia `modo_deteccion` y no reordena la lista
+de partes. Tampoco se añaden ganchos, banderas ni código muerto «preparando»
+F-014: la reagrupación se diseña en su spec, con este campo ya disponible.
 
 ## 1 · Reutilización del patrón que ya corre en producción
 
@@ -94,8 +99,8 @@ reviewer no lo lea como un olvido.
 | Ruta | Contenido |
 |---|---|
 | `services/postventa-api/tests/utiles_ia.py` | dobles y respuestas simuladas (§6). **Entregable**, como `utiles_pdf.py` en F-002 |
-| `services/postventa-api/tests/test_f003_extraccion_dominio.py` | R1, R3, R5 |
-| `services/postventa-api/tests/test_f003_paso_extraccion.py` | R2, R4, R6, R7, R13 |
+| `services/postventa-api/tests/test_f003_extraccion_dominio.py` | R1, R2 bis, R3, R5 |
+| `services/postventa-api/tests/test_f003_paso_extraccion.py` | R2, R2 bis, R4, R6, R7, R13, R16 |
 | `services/postventa-api/tests/test_f003_prompts_yaml.py` | R8, R9, R10 |
 | `services/postventa-api/tests/test_f003_fabrica.py` | R11, R12 |
 | `services/postventa-api/tests/test_f003_adaptador_gemini.py` | R14, R15, R16 |
@@ -112,7 +117,7 @@ reviewer no lo lea como un olvido.
 | `services/postventa-api/function_app.py` | Añade la ruta `@app.route(route="extraer", methods=["POST"])`, que solo traduce `func.HttpRequest` ↔ handler y mapea `ExtraccionFallida`/`ParteDemasiadoGrande` → 502/413 y «sin fichero» → 400. |
 | `services/postventa-api/domain/models/errores.py` | Añade las excepciones de dominio de §4.5. Se amplía el fichero que ya existe en vez de crear un segundo cajón de errores. |
 | `services/postventa-api/tests/conftest.py` | Añade la **guardia de red** autouse (§6.3), que es el mecanismo de R19. |
-| `docs/ARCHITECTURE.md` | Añade `infrastructure/prompts/` al árbol; detalla en el paso 3 del pipeline que la extracción devuelve **confianza por campo** y no juzga la firma; anota en la tabla de sistemas externos las variables `IA_PROVIDER` / `GEMINI_MODEL`. |
+| `docs/ARCHITECTURE.md` | Añade `infrastructure/prompts/` al árbol; detalla en el paso 3 del pipeline que la extracción devuelve **confianza por campo**, que **lee** el «Página N» del pie **sin reagrupar** (eso es F-014) y que no juzga la firma; anota en la tabla de sistemas externos las variables `IA_PROVIDER` / `GEMINI_MODEL`. |
 
 ## 4 · Clases y funciones
 
@@ -122,8 +127,9 @@ reviewer no lo lea como un olvido.
 # domain/models/extraccion.py
 
 CAMPOS_DEL_PARTE: tuple[str, ...] = (
-    "promocion", "codigo_obra", "vivienda", "numero_incidencia",
+    "promocion", "codigo_obra", "unidad", "numero_incidencia",
     "fecha_servicio", "descripcion", "dni_cliente", "observaciones",
+    "numero_pagina",               # R2 bis: el «Página N» del pie, para F-014
 )
 CAMPOS_MANUSCRITOS: frozenset[str] = frozenset(
     {"fecha_servicio", "dni_cliente", "observaciones"}
@@ -172,6 +178,14 @@ class ExtraccionParte:
   (`docs/referencia/02_parte_de_trabajo.md`), no algo que el modelo declare:
   **quién es manuscrito lo sabe el dominio**, no la IA. Lo usará F-004 para la
   regla «firmado no es conforme» sin volver a preguntarle a nadie.
+- **`unidad`** es la unidad de posventa: el papel la imprime como «Vivienda» y
+  el backlog la llamaba «chalet». Se llama `unidad` por decisión del humano del
+  2026-08-18, para que coincida con la estructura de archivo de Posventa
+  (`PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`, F-013).
+- **`numero_pagina`** es campo **impreso** (está en el pie), así que no entra en
+  `CAMPOS_MANUSCRITOS`, y viaja por el mismo camino que los otros ocho: sin
+  ninguna rama de código propia. Eso importa para el rigor `critico`: un camino
+  especial para un solo campo sería superficie de mutantes gratis.
 - `CampoBruto.confianza_pct` es `object` a propósito: el modelo puede devolver
   `"85"`, `120` o `null`, y quien lo saneé es la aplicación (R4), en un sitio
   probable sin proveedor.
@@ -275,7 +289,7 @@ class AdaptadorGeminiVision:          # implementa ExtractorPort
 - La llamada usa el patrón de `partes` (`azure-apps/partes.md` §3.2):
   `system_instruction=prompt.system`, contenido = `[prompt.task, Part.from_bytes(...)]`,
   `response_mime_type="application/json"` y `response_json_schema` con el schema
-  de los ocho campos (§5.2).
+  de los nueve campos (§5.2).
 - **Reintentos con `tenacity`** (`docs/CONVENTIONS.md`): `retry` solo sobre
   `ERRORES_TRANSITORIOS`, `wait_exponential` a partir de `espera_inicial_s`,
   `stop_after_attempt(reintentos)`. Un error no transitorio sale a la primera
@@ -357,12 +371,13 @@ Contrato de respuesta (R17):
   "campos": {
     "promocion":         {"valor": "15 VIVIENDAS UNIFAMILIARES EN MIRASIERRA(MADRID)", "confianza_pct": 96},
     "codigo_obra":       {"valor": "0677", "confianza_pct": 99},
-    "vivienda":          {"valor": "Viviendas Bloque Villa 5", "confianza_pct": 94},
+    "unidad":            {"valor": "Viviendas Bloque Villa 5", "confianza_pct": 94},
     "numero_incidencia": {"valor": "RS26.08/0123", "confianza_pct": 97},
     "fecha_servicio":    {"valor": null, "confianza_pct": 0},
     "descripcion":       {"valor": "Sellado de encuentro de falsos techos de porches", "confianza_pct": 92},
     "dni_cliente":       {"valor": "00000000T", "confianza_pct": 61},
-    "observaciones":     {"valor": "Se aprecia que se han hecho parcheados", "confianza_pct": 74}
+    "observaciones":     {"valor": "Se aprecia que se han hecho parcheados", "confianza_pct": 74},
+    "numero_pagina":     {"valor": "1", "confianza_pct": 98}
   },
   "traza": {
     "proveedor": "gemini",
@@ -390,7 +405,7 @@ parte_posventa_es:
   system: |
     Eres un extractor de datos de PARTES DE TRABAJO de posventa …
   task: |
-    Extrae los campos … Devuelve SIEMPRE los ocho campos …
+    Extrae los campos … Devuelve SIEMPRE los nueve campos …
 ```
 
 Una clave por prompt; `PROMPT_KEY` elige cuál. Versionado en dos niveles, a
@@ -419,14 +434,21 @@ solo dato personal real**:
   escrita. Nada de reformatear ni completar.
 - **Una confianza `0–100` por campo**, incluidos los manuscritos: es tu certeza
   de haber leído *ese* campo, no de que el parte esté bien.
+- **`numero_pagina`**: lee el **pie impreso** de la página
+  (`(RCP_Parte_de_Trabajos.xjs) Parte de Trabajo … Página N`) y devuelve solo
+  ese número como texto (`"1"`, `"2"`); si el pie no se lee, `null`. **No lo
+  deduzcas** del número de páginas del documento ni de nada más: si no se ve,
+  es `null` (R2 bis).
 - **No juzgues la firma ni digas si el parte es válido**: eso no es tu trabajo
   (F-004). No devuelvas ningún campo que no esté en el schema.
 - Salida: **JSON válido conforme al schema `parte_posventa`** y nada más.
 
-El schema estructurado que viaja con la petición es el mismo objeto de ocho
+El schema estructurado que viaja con la petición es el mismo objeto de **nueve**
 campos, cada uno `{"valor": string|null, "confianza_pct": integer}`, con los
-ocho `required`. Se genera **desde `CAMPOS_DEL_PARTE`**, no se escribe a mano
-dos veces: una única fuente de verdad para el contrato y para el modelo.
+nueve `required`. Se genera **desde `CAMPOS_DEL_PARTE`**, no se escribe a mano
+dos veces: una única fuente de verdad para el contrato y para el modelo. Añadir
+un campo en el futuro es tocar la tupla del dominio y la línea del prompt que lo
+describe, nada más.
 
 ## 6 · Los dobles de prueba y las respuestas de ejemplo
 
@@ -451,7 +473,7 @@ class ClienteGenaiFalso:   # secuencia programable: errores y/o respuestas
 ### 6.2 De dónde salen las respuestas de ejemplo
 
 **Se construyen en el propio test**, con `respuesta_simulada(...)` /
-`json_del_modelo(...)`, y **con datos inventados**: promoción y vivienda de
+`json_del_modelo(...)`, y **con datos inventados**: promoción y unidad de
 mentira, DNI `00000000T`, observaciones escritas para el test. **No** hay
 ficheros JSON de ejemplo capturados de una llamada real, y **no** se lee
 `muestras/` ni `docs/referencia/*.pdf`.
@@ -523,34 +545,44 @@ que de verdad hace falta (R12).
 | Guardia de red en `conftest.py` | Confiar en que nadie llame de verdad | «Ni una llamada real» debe ser **imposible**, no una promesa |
 | Prompt con `version` **y** huella calculada | Solo la versión declarada | Nadie sube la versión el día que toca una coma. La huella no se olvida |
 
-### Decisiones que necesitan al humano
+### Decisiones del humano, resueltas el 2026-08-18
 
-**D1 · ¿Entra `numero_pagina` en el contrato de F-003?** F-014 («reagrupar el
-parte de dos hojas») necesita el «Página N» del pie, y **el modelo lo ve
-aunque el escaneo no tenga capa de texto** — que es justo lo que F-002 no pudo
-leer. Sería un noveno campo: `numero_pagina` (`valor` = `"1"`, `"2"`, o `null`
-si el pie no se lee). Coste: una línea en el prompt, una entrada en
-`CAMPOS_DEL_PARTE`, un test. **No se da por hecho** (restricción del líder):
-si el humano lo aprueba **antes de implementar**, se añade como `R2 bis` con su
-test `test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie` y una tarea entre T4
-y T5; si no, F-014 lo pedirá en su momento y F-003 se cierra con ocho campos.
+Las cuatro decisiones que este diseño dejó abiertas están **resueltas**. Se
+conservan aquí, con lo decidido, porque explican por qué el diseño es como es.
 
-**D2 · ¿Entra el endpoint `POST /api/extraer` en F-003?** Los cinco criterios
-`acceptance` no lo piden, pero `docs/ARCHITECTURE.md` define el contrato HTTP
-como «`/split` rápido y luego **una llamada por parte**», y sin endpoint la
-extracción no la puede ejercitar nadie —ni el front (F-007), ni la
-verificación manual contra un parte real—. **Este diseño lo incluye**
-(R17, R18). Si el humano prefiere dejarlo para F-004, se caen R17, R18, el
-fichero `interface_adapters/api/extraer.py`, su test y las tareas T9/T10, y el
-resto del diseño no cambia.
+**D1 · `numero_pagina` entra en el contrato de F-003. RESUELTA: SÍ.** F-014
+(«reagrupar el parte de dos hojas») necesita el «Página N» del pie, y **el
+modelo lo ve aunque el escaneo no tenga capa de texto** — justo lo que F-002 no
+pudo leer. Es el noveno campo de `CAMPOS_DEL_PARTE` (§4.1), con su línea en el
+prompt (§5.2), su requisito **R2 bis**, sus tests
+(`test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie`,
+`test_f003_r2bis_la_extraccion_no_reagrupa_paginas`) y su tarea **T6**.
+**F-003 lo lee y lo devuelve; no reagrupa nada** (§0).
 
-**D3 · ¿Se declara `harness/rutas_sensibles.json` para el prompt?** Este
-repositorio **no** lo tiene, así que hoy el bloque C4 ter de `CHECKPOINTS.md`
-es N/A. Y `config/prompts.yaml` es el caso de manual del mecanismo: **ningún
-test unitario detecta que un cambio de redacción empeore la extracción**; la
-suite seguiría verde con el prompt roto, porque el modelo está simulado.
+**D2 · El endpoint `POST /api/extraer` entra en F-003. RESUELTA: SÍ.** Los
+cinco criterios `acceptance` no lo piden, pero `docs/ARCHITECTURE.md` define el
+contrato HTTP como «`/split` rápido y luego **una llamada por parte**», y sin
+endpoint la extracción no la puede ejercitar nadie: ni el front (F-007), ni las
+verificaciones manuales contra partes reales. Se queda R17, R18,
+`interface_adapters/api/extraer.py` y las tareas T15/T16.
 
-Recomendación: **sí, declararlo, pero no en F-003**. Lo que haría falta:
+**D3 · `harness/rutas_sensibles.json` NO se declara en F-003. RESUELTA:
+aceptada la recomendación.** El evaluador del prompt se abre como feature
+propia: **F-015 · «Evaluación del prompt de extracción contra partes reales»**
+(prioridad 15, `blocked_by` F-003), que la registra el líder en
+`harness/features.json`. La ruta sensible se declarará **cuando el comando
+exista**, no antes.
+
+El razonamiento, que sigue vigente: `config/prompts.yaml` es el caso de manual
+del mecanismo —**ningún test unitario detecta que un cambio de redacción empeore
+la extracción**, porque el modelo está simulado y la suite seguiría verde con el
+prompt roto—. Pero una verificación declarada cuyo comando nadie puede ejecutar
+es **protección falsa**, que es justo contra lo que avisa
+`harness/rutas_sensibles.ejemplo.json`. Mientras F-015 no exista, el hueco lo
+tapa la verificación `MANUAL (humano)` **T20**, que es la misma comprobación
+hecha a mano.
+
+Material para F-015 — el borrador de la declaración, ya escrito:
 
 ```jsonc
 {
@@ -568,23 +600,26 @@ Recomendación: **sí, declararlo, pero no en F-003**. Lo que haría falta:
 }
 ```
 
-Y aquí está el problema: **ese comando no existe**. Declararlo hoy sería
-declarar una verificación que nadie puede ejecutar, y el propio ejemplo del
-arnés avisa de que un patrón —o una verificación— que no se puede cumplir es
-protección falsa. Construir el evaluador (un juego de partes de prueba, una
-llamada real con credencial, un umbral de acierto y un informe) **es una
-feature en sí misma**, y encima genérica: su sitio natural sería `arnes-base`,
-por la regla de propagación. Propuesta al humano: **abrir esa feature**
-(«evaluación del prompt contra partes reales») y declarar `rutas_sensibles.json`
-cuando el comando exista. Mientras tanto, F-003 cubre el hueco con la
-verificación `MANUAL (humano)` T14, que es la misma comprobación hecha a mano.
+Y el aviso que F-015 debe tener delante desde el primer día: **ese evaluador
+sería genérico**. Un juego de documentos de prueba, una llamada real con
+credencial, un umbral de acierto y un informe con veredicto le sirve igual a
+`partes` y a `albaranes`. Por la **regla de propagación** del arnés, su sitio
+natural es **`arnes-base`**, no este repositorio; lo específico de posventa
+—los partes de prueba y el umbral— es lo único que se queda aquí.
+
+**D4 · El campo de la unidad de posventa se llama `unidad`. RESUELTA.** Ni
+`chalet` (como decía el backlog) ni `vivienda` (como lo imprime el papel):
+**`unidad`**, que es el término que ya usa la estructura de archivo de Posventa
+(`PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`, F-013). El mismo concepto se
+llama igual en el código y en el archivo. La tabla de R1 en `requirements.md`
+deja escritos los tres nombres para que nadie lo lea como un descuido.
 
 ### Riesgos abiertos
 
 **Riesgo 1 · el acierto real del modelo no lo mide ningún test.** La suite
 demuestra el *contrato*, no la *calidad de lectura*. Con manuscritos de mala
 letra y escaneos flojos, la única medida es contra partes reales, y eso es
-`MANUAL (humano)` (T14) hasta que exista D3.
+`MANUAL (humano)` (**T20**) hasta que exista **F-015**.
 
 **Riesgo 2 · el coste y el tiempo por parte.** Una llamada multimodal por
 parte, 22 partes por remesa. Si el modelo tarda más de lo previsto, la
@@ -618,7 +653,7 @@ persistencia es F-005, con su propio schema. Ni una sentencia, ni un fichero
 F-003 cae **entera** dentro de `services/postventa-api/`. No toca el front
 (F-007), no toca `sigrid-api`, no toca SharePoint, no toca el PostgreSQL
 compartido y no ejecuta SQL. La única pieza que *no* pertenecería a este
-servicio es el **evaluador de prompts** de la decisión D3: es herramienta de
+servicio es el **evaluador de prompts** de **F-015**: es herramienta de
 arnés, valdría para `partes` y `albaranes` igual, y su sitio es `arnes-base`
 —por eso se propone, y no se implementa aquí—.
 
@@ -639,7 +674,8 @@ arnés, valdría para `partes` y `albaranes` igual, y su sitio es `arnes-base`
   (F-008/F-009). R7 lo vigila con un test sobre las claves del resultado.
 - `services/postventa-front/` — consume `/api/extraer` en F-007. No se toca ni
   se declara en `harness/servicios.json`.
-- `harness/rutas_sensibles.json` — **no se crea** en esta feature: ver D3.
+- `harness/rutas_sensibles.json` — **no se crea** en esta feature: es F-015
+  (decisión D3, resuelta el 2026-08-18).
 - `muestras/`, `docs/referencia/*.pdf`, `.gitignore`, `.env` — los originales
   no se versionan, `.env` no se toca jamás, y **ningún test los mira**.
 - `azure-apps/` — este servicio aún no tiene documento allí (F-010).

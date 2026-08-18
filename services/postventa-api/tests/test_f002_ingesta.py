@@ -22,7 +22,6 @@ import io
 import zipfile
 
 import pytest
-
 from application.pipelines.contexto import ContextoRemesa
 from application.pipelines.paso_ingesta import paso_ingesta
 from application.pipelines.paso_troceado import paso_troceado
@@ -35,6 +34,7 @@ from infrastructure.documentos.zip_estandar import (
     MAX_ENTRADAS_ZIP,
     AdaptadorZipEstandar,
 )
+
 from tests.utiles_pdf import remesa_sintetica, zip_con
 
 

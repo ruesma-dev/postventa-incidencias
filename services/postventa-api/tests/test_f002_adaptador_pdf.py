@@ -20,12 +20,12 @@ from collections.abc import Sequence
 
 import pymupdf
 import pytest
-
 from domain.models.errores import PdfIlegible
 from infrastructure.documentos.pdf_pymupdf import (
     UMBRAL_TEXTO_UTIL,
     AdaptadorPdfPyMuPdf,
 )
+
 from tests.utiles_pdf import pdf_con_textos, remesa_escaneada, remesa_sintetica
 
 

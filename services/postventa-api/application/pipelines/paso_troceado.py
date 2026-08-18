@@ -17,11 +17,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from application.pipelines.contexto import ContextoRemesa
 from domain.models.errores import PdfIlegible
 from domain.models.pie_de_pagina import PieDePagina
 from domain.models.remesa import DocumentoEntrada, ModoDeteccion, ParteTroceado
 from domain.ports.pdf import PdfPort
+
+from application.pipelines.contexto import ContextoRemesa
 
 #: Aviso del parte cuya primera página ya era una continuación (R10).
 AVISO_CONTINUACION_SUELTA = (

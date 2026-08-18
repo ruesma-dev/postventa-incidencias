@@ -12,8 +12,9 @@ que sí eran buenos (R3, R4).
 
 from __future__ import annotations
 
-from application.pipelines.contexto import ContextoRemesa
 from domain.ports.comprimido import ComprimidoPort
+
+from application.pipelines.contexto import ContextoRemesa
 
 
 def paso_ingesta(contexto: ContextoRemesa, comprimido: ComprimidoPort) -> ContextoRemesa:

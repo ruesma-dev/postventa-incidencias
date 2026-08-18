@@ -21,7 +21,6 @@ import json
 import logging
 
 import azure.functions as func
-
 from config.logging_config import configurar_logging
 from domain.models.errores import LimiteDeEntradaSuperado, RemesaSinPdfUtilizable
 from domain.models.remesa import DocumentoEntrada

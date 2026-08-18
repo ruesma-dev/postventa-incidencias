@@ -18,13 +18,13 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
-
 from application.pipelines.contexto import ContextoRemesa
 from application.pipelines.paso_ingesta import paso_ingesta
 from application.pipelines.paso_troceado import paso_troceado
 from domain.models.remesa import DocumentoEntrada, ModoDeteccion
 from infrastructure.documentos.pdf_pymupdf import AdaptadorPdfPyMuPdf
 from infrastructure.documentos.zip_estandar import AdaptadorZipEstandar
+
 from tests.utiles_pdf import (
     pagina_de_parte,
     pdf_con_textos,

@@ -23,7 +23,6 @@ from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 
 import pymupdf
-
 from domain.models.errores import PdfIlegible
 
 #: Caracteres no en blanco por página a partir de los cuales se considera que

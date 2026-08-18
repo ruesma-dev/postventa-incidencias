@@ -16,8 +16,8 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
-
 from domain.models.pie_de_pagina import PieDePagina
+
 from tests.utiles_pdf import pagina_de_parte
 
 

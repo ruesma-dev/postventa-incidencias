@@ -36,6 +36,14 @@ from tests.utiles_ia import (
 
 MODELO = "gemini-3.7-flash"
 
+#: Los códigos que merecen otro intento, **escritos aquí a mano**.
+#:
+#: No se sacan de `CODIGOS_TRANSITORIOS` a propósito, y la lección costó un
+#: superviviente en la campaña de mutación: un test que se parametriza con la
+#: constante que vigila se queda sin caso justo cuando alguien borra un código
+#: de ella, y aplaude el cambio en vez de cazarlo.
+CODIGOS_QUE_MERECEN_OTRO_INTENTO = (408, 429, 500, 502, 503, 504)
+
 #: Un parte de mentira con algo que parece un dato personal, para comprobar
 #: que no se escapa por ningún mensaje. El DNI `00000000T` no es válido.
 PARTE_CON_DATOS = b"%PDF-1.4 Fdo. Cliente Inventado DNI 00000000T observaciones"
@@ -105,7 +113,17 @@ def test_f003_r14_la_peticion_lleva_el_prompt_el_pdf_y_el_schema_de_nueve_campos
     assert "numero_pagina" in esquema["properties"]
 
 
-@pytest.mark.parametrize("codigo", sorted(CODIGOS_TRANSITORIOS))
+def test_f003_r14_la_lista_de_codigos_transitorios_es_esa_y_no_otra():
+    """R14 · qué se reintenta y qué no es una decisión, escrita en dos sitios.
+
+    Aquí está la lista a mano y en el adaptador la constante: si dejan de
+    coincidir, este test se cae. Es la contrapartida de no parametrizar los
+    casos con la propia constante.
+    """
+    assert CODIGOS_TRANSITORIOS == frozenset(CODIGOS_QUE_MERECEN_OTRO_INTENTO)
+
+
+@pytest.mark.parametrize("codigo", CODIGOS_QUE_MERECEN_OTRO_INTENTO)
 def test_f003_r14_cada_codigo_transitorio_se_reintenta(codigo):
     """R14 · los seis códigos que merecen otro intento, uno por uno.
 

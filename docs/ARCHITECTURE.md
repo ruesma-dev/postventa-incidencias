@@ -61,7 +61,7 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    (DNI, observaciones). Un escaneo no tiene capa de texto: esto es visión.
 4. **Validación** — firma presente y humana, campos obligatorios legibles,
    coherencia con Sigrid (la incidencia existe y está abierta).
-5. **Nombrado** — `CHALET XX - NNNN.pdf`.
+5. **Nombrado** — `<código de obra> - <nº incidencia>.pdf`.
 6. **Archivo** — subida a SharePoint.
 7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
    entonces `commit: true`.
@@ -85,9 +85,10 @@ igual que hoy, y por debajo se suben los PDFs.
 1. **La unidad de trabajo es el parte, no el fichero.** Un PDF de remesa
    contiene N partes de N incidencias distintas. Nada del dominio se razona
    "por fichero".
-2. **El nombre canónico es `CHALET XX - NNNN`**: unidad + número de
-   incidencia. No es promoción + incidencia. Es la convención que Posventa ya
-   usa para archivar, y cambiarla rompe su archivo histórico.
+2. **El nombre canónico es `<código de obra> - <número de incidencia>`.** El
+   `CHALET XX - NNNN` que usa hoy Posventa a mano era un ejemplo de su
+   nomenclatura interna, no la convención del sistema: el código de obra es
+   lo que cuadra con Sigrid, el nombre comercial ("Mirasierra") no.
 3. **La firma debe ser humana.** Una casilla vacía, una aspa, o un trazo
    geométrico sin estructura de firma **no** son conformidad del cliente. Un
    parte sin firma válida no se archiva ni se cierra: va a revisión manual.
@@ -102,10 +103,8 @@ igual que hoy, y por debajo se suben los PDFs.
 7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.**
    Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en
    Sigrid da por resuelta una incidencia que sigue viva.
-8. **La carpeta de archivo va por código de obra**, no por nombre comercial:
-   `Postventa/<código de obra>/CHALET XX - NNNN.pdf`. El nombre de la
-   promoción ("Mirasierra") es para las personas; el código de obra es la
-   clave con la que cuadra con Sigrid.
+8. **La carpeta de archivo va por código de obra**:
+   `Postventa/<código de obra>/<código de obra> - <nº incidencia>.pdf`.
 9. **Reprocesar una remesa no puede duplicar nada.** El mismo parte, subido
    dos veces, es el mismo parte: se identifica por hash del PDF troceado y
    por número de incidencia.
@@ -124,10 +123,33 @@ igual que hoy, y por debajo se suben los PDFs.
 contra endpoints que no sean de lectura), escribir en el SharePoint de
 Posventa y ejecutar DDL en el PostgreSQL compartido fuera del schema propio.
 
-`[PENDIENTE]` **Modelo de datos de posventa en Sigrid**: qué tablas guardan
-las incidencias, qué campo marca el estado y qué significa exactamente
-"cerrar". Se resuelve en su feature, con las capturas del humano y el PDF de
-modelo de datos de Sigrid.
+### Posventa en Sigrid: lo que ya se sabe
+
+Está en `azure-apps/sigrid_tablas.md` (diccionario de la BBDD) y en
+`azure-apps/sigrid_api.md` §9. **Se lee antes de diseñar nada contra Sigrid**;
+no se duplica aquí.
+
+| Tabla | Qué es |
+|---|---|
+| `upv` | **Unidad Postventa**: `obride` (obra), `cliide` (propietario), `peride` (contacto) y las fechas de garantía: vicios/defectos, habitabilidad/instalaciones, estructura, escrituración, visita del técnico. |
+| `rcp` | **Reclamación** = la incidencia. `upvide` a la unidad, `fec`, `cliide`, `recide` (quien reclama), `tex` (descripción), `motrcp`, `resubi` (ubicación), `texurg` (urgencia), `ofcide` (oficio) y **`solrcp` (solución)**. Clase en `auxrcp`, tipo en `auxtrcp`. |
+| `rcpint` | Intervinientes de la reclamación, con `cauave` (causante de la avería). |
+| `act`, `tar` | Actividades y tareas colgadas de la reclamación (`act.rcpide`, `tar.rcpide`). |
+
+**`rcp` es una extensión 1:1 de `con`**, así que:
+
+- El **estado no está en `rcp`**: está en `con.est`, con el catálogo en
+  `conest` (join por `con.tip = conest.tip AND con.est = conest.est`).
+  **Cerrar una incidencia es mover `con.est`** al estado de cierre.
+- **Nunca se hardcodea el número de un estado**: es configurable por
+  instalación y se resuelve contra `conest`.
+- El código legible y el nombre salen de `con.cod` / `con.res`, no de la
+  extensión.
+
+Queda por **confirmar contra el ERP real** (feature F-008, solo lecturas): qué
+`con.tip` corresponde a la reclamación, qué estados declara `conest` para ese
+tipo y cuál es el de cierre, si el número impreso en el parte es `con.cod`, y
+si al cerrar hay que rellenar además `solrcp` o alguna fecha.
 
 ## Infra y despliegue
 

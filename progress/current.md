@@ -1,87 +1,126 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> **Cierre de la sesión del 2026-08-18/19.** Este fichero es autosuficiente:
-> una sesión limpia puede retomar leyendo `CLAUDE.md`, este documento y, si
-> hace falta el detalle, los informes que se citan. No hay que releer el
-> proyecto entero.
+> **Cierre de la sesión del 2026-08-19.** F-003 queda **cerrada**: su resumen
+> completo está en `progress/history.md`. Este fichero es autosuficiente para
+> arrancar la siguiente sesión: contiene lo que sigue vivo y nada de lo ya
+> consumido. No hace falta releer el proyecto entero.
 
-**F-003 · Extracción multimodal del parte, manuscritos incluidos** — estado
-`in_progress`, rama `feature/F-003-extraccion`, rigor `critico`.
-**Implementada, revisión APROBADA, y a falta de UNA comprobación del humano.**
+**Ninguna feature `in_progress`.** Lo siguiente es **F-004 · Validación del
+parte y clasificación de la firma** (`pending`, rigor `critico`), que empieza
+por su spec.
 
 ## Cómo retomar en una sesión nueva
 
 **Prompt de arranque** (pégalo tal cual en una sesión limpia de Claude Code,
 abierta en `C:\Users\pgris\PycharmProjects\postventa-incidencias`):
 
-> Lee CLAUDE.md, actúa como líder y sigue el protocolo. Retoma F-003 desde
-> `progress/current.md`: está implementada y aprobada, y solo falta el barrido
-> de la remesa entera. Dame el comando, lo ejecuto yo y te pego la salida.
+> Lee CLAUDE.md, actúa como líder y sigue el protocolo. F-003 está cerrada;
+> arranca F-004 por su spec con `spec-author`, según `progress/current.md`.
 
-Lo que la sesión nueva debe hacer, en este orden, sin repetir trabajo:
+Lo que la sesión nueva debe hacer, en este orden:
 
-1. `bash harness/init.sh` (tiene que decir `Arnés v1.5.2` y `ENTORNO LISTO`).
-2. Leer este fichero entero. **No hace falta releer el proyecto**: lo que se
-   decidió y lo que se verificó está aquí, y el detalle en los informes que se
-   citan.
-3. Pedir al humano el barrido de los 22 partes (comando justo debajo). **No lo
-   ejecuta un agente**: necesita credencial de IA y el PDF real, que no se
-   versiona.
-4. Con la salida pegada: anotar aquí los recuentos y confianzas —**nunca
-   valores**, los partes llevan DNI—, marcar T18 en
-   `specs/F-003-extraccion/tasks.md`, pasar F-003 a `done` en
-   `harness/features.json`, mover el resumen a `progress/history.md`, dejar
-   este fichero limpio y entregar el resumen de cierre al humano.
-5. Solo entonces, F-004.
+1. `bash harness/init.sh` (tiene que decir `ENTORNO LISTO`).
+2. Leer este fichero entero. El detalle de F-003 está en `progress/history.md`
+   y en los informes `impl_F-003.md` / `review_F-003.md`.
+3. Lanzar `spec-author` para **F-004**, con las tres decisiones de dominio de
+   más abajo delante: mandan sobre su diseño.
+4. Enseñar la spec al humano y esperar su aprobación antes de implementar
+   (PARADA 1 del `CLAUDE.md`).
 
-**Lo que NO debe hacer la sesión nueva**: reabrir F-002 ni F-003 (cerradas y
-revisadas), tocar el historial de git de ninguna rama, hacer `push` o PR, ni
-aplicar por su cuenta las propuestas P1/P2/P3 ni lo de `CONVENTIONS.md` — son
-decisiones del humano y están listadas más abajo.
+**Lo que NO debe hacer la sesión nueva**: reabrir F-001, F-002 ni F-003
+(cerradas y revisadas), tocar el historial de git de ninguna rama, hacer `push`
+o PR, ni aplicar por su cuenta las propuestas P1/P2/P3 ni lo de
+`CONVENTIONS.md` — son decisiones del humano, listadas justo abajo.
 
-## Lo primero que hay que hacer mañana
+## Pendiente del humano (cola de decisiones)
 
-Ejecutar el barrido de la remesa entera (22 llamadas a Gemini, un par de
-minutos, coste ridículo) y pegar el resumen:
+1. **Merge de la cadena de ramas** a `dev`:
 
-```powershell
-& "C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\.venv\Scripts\python.exe" $HOME\f3_real.py todos
-```
+   ```
+   dev
+    └── feature/F-002-ingesta-troceado      (F-002 cerrada y aprobada)
+         └── chore/postreview-F-002         (3 decisiones de la review + arnés 1.5.2)
+              └── feature/F-003-extraccion  (F-003 cerrada y aprobada)
+   ```
 
-Con ese resultado se cierra F-003 (`done`), se anota el resumen en
-`progress/history.md` y se pasa a F-004.
+   Cada rama sale de la anterior porque depende de su código. Se mergean **en
+   ese orden**, o directamente la última cuando todo esté cerrado. **Ningún
+   agente hace `push` ni PR.**
 
-**Qué responde ese barrido, y por qué importa más que cerrar la feature**: si
-Gemini lee o no la letra manuscrita de estos escaneos. Es la premisa del
-proyecto. Además da dos datos que necesitan features posteriores: cuántos
-partes de una remesa real llevan observaciones (**F-004** lo necesita para
-decidir qué es «conforme») y la línea base de acierto que **F-015** convertirá
-en umbral.
+2. **Tres propuestas de automejora** que dejó la review de F-003, ninguna
+   aplicada:
+   - **P1** · que la campaña de mutación use la base real de la rama. Con la
+     cadena actual, el alcance de mutación arrastró 27 ficheros y 1912 líneas
+     (incluido `harness/mutacion.py`, 32 de los 127 mutantes) mientras la
+     cobertura medía 631. No es un defecto —el alcance es más ancho, nunca más
+     estrecho— pero los números no son comparables entre features. Propuesta:
+     campo `base` en `harness/features.json`, usado por `harness.cobertura` y
+     `harness.mutacion`.
+   - **P2** · que `CHECKPOINTS.md` C5 contemple las tareas `MANUAL (humano)`
+     pendientes: hoy exige todas `[x]` y una feature `critico` está obligada a
+     tener verificaciones que ningún agente puede ejecutar. **Genérica: iría a
+     `arnes-base`.**
+   - **P3** · que C4 bis nombre la comprobación de «no medido» en la cobertura.
+     **Genérica: iría a `arnes-base`.**
 
-Si `observaciones` sale en 0 de 22, **no está claro que sea un fallo**: puede
-que el papel esté en blanco. Lo distingue el humano mirando un parte que sepa
-que lleva algo escrito a mano, y pasando su índice: `f3_real.py 7`.
+3. **Decisión suelta**: si la regla de `docs/CONVENTIONS.md` sobre ReportLab
+   (componer un PDF) frente a PyMuPDF (manipular uno de entrada) debe subir a
+   `arnes-base` en su propia versión. Es el único fichero donde este
+   repositorio adelanta al arnés genérico.
 
-## Estado real de las dos verificaciones MANUAL
+## Siguiente trabajo: F-004
 
-| Tarea | Estado | Resultado real |
-|---|---|---|
-| **Paso 0** · el identificador del modelo existe | **HECHA** 2026-08-19 | `GEMINI_MODEL = gemini-3.7-flash`, `reconocido: True` |
-| **T17** · humo con parte sintético | **HECHA** 2026-08-19 | **Correcta.** Nueve claves, traza `gemini` / `gemini-3.7-flash` / `parte_posventa_es` v1 huella `2306ac1d07f1`; `codigo_obra = 0677` y `numero_incidencia = RS26.08/0001` con confianza 99; `numero_pagina = "1"`; sin avisos |
-| **T18** · parte real de Mirasierra | **HECHA A MEDIAS** | Solo el parte 0 de 22. Los cinco campos impresos vinieron con **confianza 100** y `numero_pagina = "1"`, sin avisos. Los tres manuscritos, vacíos con confianza 0 |
+**F-004 · Validación del parte y clasificación de la firma** (prioridad 4,
+`sdd: true`, rigor `critico`, `pending`). Consume los **nueve campos y sus
+confianzas** que produce F-003.
 
-**Por qué T18 no basta todavía**: ese parte traía los tres manuscritos en
-blanco, así que no distingue «el papel no tiene nada escrito» de «el modelo no
-lee la letra». De ahí el barrido de los 22.
+**Tres decisiones de dominio que el humano tomó el 2026-08-19 y que mandan
+sobre su diseño:**
 
-**Corrección hecha al ejecutar T17** (ya aplicada en `tasks.md` con su nota):
-el resultado esperado decía `numero_incidencia = RS26.08/0123` y es
-`RS26.08/0001`. `remesa_sintetica()` numera correlativo
-(`tests/utiles_pdf.py:121`); el `0123` es el valor por defecto de
-`pagina_de_parte()` (`:43`), que es otra función y vale como ejemplo del papel,
-no como resultado de la verificación. **El modelo leyó bien**: el error estaba
-en la expectativa escrita.
+1. Un parte **sin DNI del cliente SÍ pasa como conforme**. La ausencia de DNI
+   no es motivo de rechazo.
+2. Un parte **con observaciones manuscritas NO es conforme**. Es el **único
+   motivo de rechazo, de momento**.
+3. El parte rechazado va a una **cola de VALIDACIÓN HUMANA**, con las
+   observaciones transcritas delante de quien decide.
+
+**Dato de dimensionado** (barrido de T18, 2026-08-19): **2 de 22 partes
+(~9 %)** traen observaciones manuscritas. Esa es la carga esperable de la cola
+de validación humana.
+
+**Fuera de F-004**: interpretar automáticamente el contenido de esas
+observaciones. Es **F-016 · Interpretación automática de las
+observaciones manuscritas**, dada de alta hoy en `harness/features.json`
+(`pending`, `sdd`, rigor `critico`, bloqueada por F-004). F-004 detecta que
+hay observaciones y las transcribe; F-016 las juzga para encoger la cola.
+
+**Hallazgo de dominio que sigue vigente**: «cerrar parte» en Sigrid **exige
+documento adjunto**. Está en `docs/ARCHITECTURE.md` y en `docs/referencia/`.
+
+## Observación abierta
+
+**El SDK avisa en cada llamada real**: «Direct use of automatic function
+calling (AFC) in `Models.generate_content` is not recommended». Volvió a salir
+en el barrido de hoy. No rompe nada —los resultados son correctos— pero sugiere
+que el schema se pasa de una forma que activa la llamada automática de
+funciones. Merece una revisión del adaptador
+(`services/postventa-api/infrastructure/llm/gemini.py`). **No bloquea.**
+
+## Apuntes para features futuras
+
+- **F-014 · Reagrupar el parte de dos hojas.** La remesa de Mirasierra **no
+  sirve** para verificarla: sus 22 partes dieron `numero_pagina` «1», así que
+  no hay ni un solo parte de dos hojas con el que probar la reagrupación. Hará
+  falta **otro escaneo**, pedido al humano antes de empezar la feature.
+- **F-015 · Evaluación del prompt de extracción.** Línea base de acierto medida
+  hoy sobre 22 partes reales: **impresos ~99** de confianza media,
+  **manuscritos 82-90** (`dni_cliente` 89,3; `observaciones` 82,5). Y una
+  sospecha que hay que medir: la **regla 1 de `config/prompts.yaml`** nombra la
+  fecha de servicio como «casi siempre en blanco», y esa pista podría estar
+  **induciendo falsos negativos** en `fecha_servicio` (0/22 hoy, aunque el
+  humano confirmó que el papel también está en blanco). El evaluador de F-015
+  es el sitio para comprobar si la pista ayuda o estorba.
 
 ## Los scripts de las verificaciones manuales
 
@@ -104,98 +143,6 @@ en `specs/F-003-extraccion/tasks.md`, T17 y T18.
 **El `.env` ya existe** en `services/postventa-api/` con la credencial real. No
 se versiona y ningún agente lo toca.
 
-## Qué hay hecho en F-003 (verificado, no declarado)
-
-`progress/impl_F-003.md` y `progress/review_F-003.md`.
-
-- **207 tests** en el servicio (112 de F-003) y 16 en la raíz.
-- **Cobertura de lo cambiado: 100 %** (631/631, umbral 80 %), sin ficheros «no
-  medidos».
-- **Mutación: 127 generados, 127 muertos, 0 supervivientes.** El reviewer
-  **reejecutó la campaña entera** (101,0 s, mismos totales, salida fuera de
-  `progress/`, árbol limpio) estrenando la exigencia del arnés 1.5.2.
-- Buscados activamente y sin hallazgos: datos personales o respuesta cruda del
-  modelo en logs, fixtures o informes; credenciales en el repositorio; ganchos
-  preparando F-014; campos de otras features en la respuesta.
-
-La lección de su campaña de mutación, que vale para cualquier feature: un test
-que se parametriza con **la propia constante que vigila** no vigila nada — al
-borrarse el valor de la constante desaparece también el caso de prueba y la
-campaña aplaude el cambio. Pasó con los códigos HTTP transitorios y se arregló
-escribiéndolos a mano.
-
-## Observación abierta de la sesión
-
-**El SDK avisa en cada llamada real**: «Direct use of automatic function
-calling (AFC) in `Models.generate_content` is not recommended». No rompe nada
-—los resultados son correctos— pero sugiere que el schema se pasa de una forma
-que activa la llamada automática de funciones. Merece una revisión del
-adaptador (`infrastructure/llm/gemini.py`) después de cerrar F-003. No bloquea.
-
-## Cadena de ramas (el merge es del humano, sigue pendiente)
-
-```
-dev
- └── feature/F-002-ingesta-troceado      (F-002 cerrada y aprobada)
-      └── chore/postreview-F-002         (3 decisiones de la review + arnés 1.5.2)
-           └── feature/F-003-extraccion  (aquí estamos)
-```
-
-Cada rama sale de la anterior porque depende de su código. Se mergean **en ese
-orden**, o directamente la última cuando todo esté cerrado. **Ningún agente
-hace `push` ni PR.**
-
-## Decisiones del humano vigentes sobre F-003
-
-- **`numero_pagina`** entra en el contrato: F-003 lo lee y lo devuelve; **no
-  reagrupa nada** (eso es F-014, con test que lo vigila).
-- El endpoint **`POST /api/extraer`** entra en F-003.
-- Los campos se llaman **`unidad`** y **`fecha_servicio`** (el papel imprime
-  «Vivienda»; el backlog decía «chalet»). `docs/ARCHITECTURE.md` ya alineado.
-- El modelo es **`gemini-3.7-flash`**. `azure-apps` documenta el proveedor pero
-  **no fija versión**: ninguna afirmación puede decir qué versión corre en otro
-  proyecto del ecosistema.
-- **Dependencias aprobadas** e instaladas: `google-genai>=0.3`, `pyyaml>=6.0`,
-  `tenacity>=8.2,<10.0`.
-- La ruta sensible de `config/prompts.yaml` no se declara aún: hace falta antes
-  el evaluador, que es **F-015**.
-
-## Pendiente del humano (cola de decisiones)
-
-1. **El barrido de los 22 partes** (arriba). Bloquea el cierre de F-003.
-2. **Merge de la cadena de ramas** a `dev`.
-3. **Tres propuestas de automejora** que dejó la review de F-003, ninguna
-   aplicada:
-   - **P1** · que la campaña de mutación use la base real de la rama. Con la
-     cadena actual, el alcance de mutación arrastró 27 ficheros y 1912 líneas
-     (incluido `harness/mutacion.py`, 32 de los 127 mutantes) mientras la
-     cobertura medía 631. No es un defecto —el alcance es más ancho, nunca más
-     estrecho— pero los números no son comparables entre features. Propuesta:
-     campo `base` en `harness/features.json`, usado por `harness.cobertura` y
-     `harness.mutacion`.
-   - **P2** · que `CHECKPOINTS.md` C5 contemple las tareas `MANUAL (humano)`
-     pendientes: hoy exige todas `[x]` y una feature `critico` está obligada a
-     tener verificaciones que ningún agente puede ejecutar. **Genérica: iría a
-     `arnes-base`.**
-   - **P3** · que C4 bis nombre la comprobación de «no medido» en la cobertura.
-     **Genérica: iría a `arnes-base`.**
-4. **Decisión suelta**: si la regla de `docs/CONVENTIONS.md` sobre ReportLab
-   (componer un PDF) frente a PyMuPDF (manipular uno de entrada) debe subir a
-   `arnes-base` en su propia versión. Es el único fichero donde este
-   repositorio adelanta al arnés genérico.
-
-## Siguiente feature, cuando F-003 cierre
-
-**F-004 · Validación del parte y clasificación de la firma** (prioridad 4,
-`sdd: true`, rigor `critico`, `pending`). Consumirá los nueve campos y sus
-confianzas que produce F-003. Dos hallazgos de dominio mandan sobre su diseño,
-y están en `docs/ARCHITECTURE.md` y `docs/referencia/`:
-
-- «Cerrar parte» de Sigrid **exige documento adjunto**.
-- Un parte firmado **con observaciones manuscritas no es un parte conforme**.
-  Por eso el recuento de `observaciones` del barrido es material de diseño para
-  F-004, no una curiosidad.
-
 ## Contexto del proyecto y del arnés
 
 - **Arnés 1.5.2**, verificado contra el payload de `arnes-base` fichero a
@@ -204,13 +151,14 @@ y están en `docs/ARCHITECTURE.md` y `docs/referencia/`:
   la reejecuta cuando declara menos de 5 minutos.
 - `BACKLOG.md` se genera desde `harness/features.json` y lo regenera
   `bash harness/init.sh`: **no se edita a mano**.
-- **Backlog: 15 features.** F-001 y F-002 `done`; F-003 `in_progress`; F-014
+- **Backlog**: F-001, F-002 y F-003 `done`; F-004 es la siguiente. F-014
   (reagrupar el parte de dos hojas con el «Página N») y F-015 (evaluación del
-  prompt) nacieron en esta sesión.
+  prompt) nacieron en la sesión de F-003; F-016 (interpretación de las
+  observaciones manuscritas) nació hoy. **16 features.**
 - Los agentes del arnés (`spec-author`, `implementer`, `reviewer`) están
   cargados: **se delega**, el líder orquesta y no implementa.
 
-### Dos lecciones operativas de esta sesión
+## Dos lecciones operativas vigentes
 
 1. **Dos agentes a la vez en la misma rama se pisan en el índice de git.** Un
    `git add -A` de uno arrastró al commit el trabajo del otro (commit
@@ -218,7 +166,7 @@ y están en `docs/ARCHITECTURE.md` y `docs/referencia/`:
    revisada costaba más que documentarlo). Si se vuelve a paralelizar: el
    segundo agente no toca git y commitea el líder, o se aísla en otra rama.
 2. **El humano trabaja en PowerShell.** No admite `&&`, y al pegar comandos
-   multilínea con Python en `-c` los indenta y revientan con `IndentationError`;
-   las líneas muy largas se parten al pegarse. Para cualquier verificación
-   manual: **un script en el home y una línea corta para invocarlo**, nunca un
-   comando largo de Bash.
+   multilínea con Python en `-c` los indenta y revientan con
+   `IndentationError`; las líneas muy largas se parten al pegarse. Para
+   cualquier verificación manual: **un script en el home y una línea corta para
+   invocarlo**, nunca un comando largo de Bash.

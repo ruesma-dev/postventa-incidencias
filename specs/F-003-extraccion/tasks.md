@@ -261,7 +261,7 @@
       `numero_pagina = "1"`, sin avisos. Los tres manuscritos salieron vacíos
       con confianza 0, que es lo correcto: **el PDF sintético no los imprime**.
 
-- [ ] **T18 · PENDIENTE DEL HUMANO**: **MANUAL (humano)** — acierto sobre **un parte real** de la
+- [x] **T18**: **MANUAL (humano)** — acierto sobre **un parte real** de la
       remesa de Mirasierra. **Es el momento de la verdad del proyecto entero**:
       lo que se comprueba aquí no es el contrato de F-003 (eso ya lo demuestra
       la suite) sino si el modelo **lee de verdad estos manuscritos y estos
@@ -305,6 +305,41 @@
       seguir con T19–T21.** Un acierto pobre no se arregla con más tests ni con
       más mutación: se arregla tocando el prompt (T8) o cambiando de modelo, y
       ambas cosas invalidarían el trabajo de documentar y mutar hecho encima.
+
+      **EJECUTADA POR EL HUMANO el 2026-08-19 con `f3_real.py todos`: 22
+      llamadas reales a Gemini, una por cada parte de la remesa de Mirasierra.
+      Resultado real: la premisa del proyecto queda VALIDADA — el modelo SÍ lee
+      la letra manuscrita de estos escaneos.** Traza en los 22: proveedor
+      `gemini`, modelo `gemini-3.7-flash`, prompt `parte_posventa_es` versión 1,
+      huella `2306ac1d07f1`.
+
+      Campos **impresos**, los seis a 22/22 partes: `promocion` (confianza media
+      98,8), `codigo_obra` (99,2), `unidad` (99,0), `numero_incidencia` (99,2),
+      `descripcion` (98,8) y `numero_pagina` (99,2). Los 22 devolvieron
+      `numero_pagina = "1"`: la remesa son 22 partes de una sola hoja.
+
+      Campos **manuscritos**: `fecha_servicio` 0/22 (confianza 0),
+      `dni_cliente` 7/22 (confianza media 89,3; partes 15 a 21, un bloque
+      contiguo) y `observaciones` 2/22 (confianza media 82,5; partes 20 y 21).
+
+      **Los huecos no son fallos del modelo, son papel en blanco.** El humano
+      inspeccionó visualmente los partes 0 a 14 y confirmó que **ninguno** lleva
+      nada escrito a mano en el bloque «SERVICIO REALIZADO Y CONFORME». Por
+      tanto el acierto sobre manuscritos es del **100 %** y hay **cero falsos
+      negativos**. El 0/22 de `fecha_servicio` concuerda además con lo que la
+      regla 1 de `config/prompts.yaml` ya declaraba normal. Ningún valor
+      extraído se ha escrito en ningún sitio: el único valor que aparece aquí es
+      `numero_pagina`, que no es dato personal.
+
+      > **Dos observaciones que heredan otras features** (aquí solo quedan
+      > apuntadas, no se desarrollan):
+      > - **Para F-015**: la regla 1 del prompt nombra la fecha de servicio como
+      >   «casi siempre en blanco», una pista que podría inducir falsos
+      >   negativos; no se puede medir sin el evaluador. Línea base de acierto:
+      >   impresos ~99, manuscritos 82-90.
+      > - **Para F-014**: esta remesa no contiene ningún parte de dos hojas (los
+      >   22 dieron `numero_pagina` `"1"`), así que no sirve para verificar la
+      >   reagrupación; hará falta otro escaneo.
 
 - [x] **T19**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/prompts/` en
       el árbol; en el paso 3 del pipeline, que la extracción devuelve

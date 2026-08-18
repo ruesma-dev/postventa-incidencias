@@ -124,6 +124,19 @@ igual que hoy, y por debajo se suben los PDFs.
    manuscritas nunca se cierra solo**: va a revisión manual con el texto
    delante de quien decide. Cerrarlo por tener firma sería dar por resuelta
    una reparación que el cliente dice que no lo está.
+   Precisado el 2026-08-19, y manda sobre el diseño de F-004:
+   - **Las observaciones manuscritas son, de momento, el único motivo de
+     rechazo.** Ningún otro dato manuscrito descalifica el parte.
+   - **Rechazado no es descartado.** El parte va a una **cola de validación
+     humana** que presenta las observaciones transcritas para que una persona
+     decida. Ni se cierra solo ni se tira: espera a que alguien lo mire.
+   - El dimensionado esperable de esa cola sale del dato real: en la remesa
+     de Mirasierra son **2 partes de 22** (~9 %).
+   - **Interpretar automáticamente el contenido de la observación** —separar
+     la inocua de la que impide dar la reparación por buena, y así encoger la
+     cola humana— **no es F-004**: es **F-016**, dada de alta el
+     2026-08-19 en `harness/features.json` y bloqueada por F-004. F-004 detecta que hay
+     observaciones y las transcribe; no las juzga.
 4. **Lo manuscrito es dato de primera, no decoración.** DNI y observaciones
    se escriben a mano y hay que extraerlos. Descartarlos porque "no es texto
    impreso" es un bug, no una simplificación.
@@ -132,6 +145,11 @@ igual que hoy, y por debajo se suben los PDFs.
    validación que los exija manda a revisión manual el 100 % de los partes.
    Los únicos campos que deciden son: código de obra, nº de incidencia,
    firma y observaciones.
+   En particular, y aunque suene contraintuitivo: **un parte sin DNI del
+   cliente pasa como conforme**. La ausencia de DNI manuscrito no descalifica
+   nada. El dato real lo respalda: en la remesa de Mirasierra solo **7 de los
+   22 partes** traen DNI, así que exigirlo dejaría fuera a dos tercios de una
+   remesa normal.
 5. **El número de incidencia lo emite Sigrid** y se escribe `RS26.08/0123`
    (con barra) en el ERP y en el parte impreso, pero con guion en el nombre
    del fichero. Sin él no se puede nombrar ni

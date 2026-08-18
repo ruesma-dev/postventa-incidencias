@@ -2,7 +2,14 @@
 muestras/
 .idea/
 .venv/
+**/.venv/
 __pycache__/
+local.settings.json
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.json
+services/*/coverage.json
 
 # >>> ARNES-BASE: reglas anadidas por el instalador del arnes. >>>
 .env

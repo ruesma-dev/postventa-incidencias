@@ -1,0 +1,6 @@
+# Herramientas del arnés y de la suite común de la raíz.
+# Las dependencias de cada servicio viven en services/<servicio>/requirements*.txt
+pytest>=8.0,<9.0
+ruff>=0.6,<1.0
+coverage>=7.5,<8.0
+pymupdf>=1.24,<2.0

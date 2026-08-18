@@ -36,7 +36,7 @@
       **Verificación**: los tests fallan con `ModuleNotFoundError` / `ImportError`;
       **traza pegada** en `progress/impl_F-002.md`.
 
-- [ ] **T4**: Implementar `domain/models/pie_de_pagina.py`,
+- [x] **T4**: Implementar `domain/models/pie_de_pagina.py`,
       `domain/models/remesa.py` y `domain/models/errores.py`.
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f002_pie_de_pagina.py -q` en verde.
 

@@ -110,7 +110,7 @@
       **sin que el doble reciba ninguna llamada**.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T10**: Implementar `application/pipelines/contexto_parte.py` y
+- [x] **T10**: Implementar `application/pipelines/contexto_parte.py` y
       `application/pipelines/paso_extraccion.py` (`design.md` §4.3).
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f003_paso_extraccion.py -q` en verde, incluido el
       `test_f003_r2bis_la_extraccion_no_reagrupa_paginas` de T6.

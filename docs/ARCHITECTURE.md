@@ -61,7 +61,7 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    (DNI, observaciones). Un escaneo no tiene capa de texto: esto es visión.
 4. **Validación** — firma presente y humana, campos obligatorios legibles,
    coherencia con Sigrid (la incidencia existe y está abierta).
-5. **Nombrado** — con el código de obra y el de la incidencia, más el sufijo ` PARTE FIRMADO`.
+5. **Nombrado** — `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`: código de obra, código de incidencia y sufijo.
 6. **Archivo** — subida a SharePoint.
 7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
    entonces `commit: true`.
@@ -103,9 +103,13 @@ igual que hoy, y por debajo se suben los PDFs.
 7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.**
    Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en
    Sigrid da por resuelta una incidencia que sigue viva.
-8. **La carpeta de archivo va por código de obra**, y el fichero conserva el
-   sufijo ` PARTE FIRMADO` que usa Posventa: distingue el parte conformado de
-   cualquier otro documento de la misma incidencia.
+8. **El nombre del fichero es `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`**
+   —por ejemplo `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`— y la carpeta va por
+   código de obra. El sufijo se conserva porque distingue el parte conformado
+   de cualquier otro documento de la misma incidencia.
+   Los separadores se normalizan a ` - ` con guion normal: el código que emite
+   Sigrid puede traer guion largo (`–`), y un nombre de fichero no es sitio
+   para depender de eso.
 9. **Reprocesar una remesa no puede duplicar nada.** El mismo parte, subido
    dos veces, es el mismo parte: se identifica por hash del PDF troceado y
    por número de incidencia.

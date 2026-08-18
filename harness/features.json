@@ -102,7 +102,7 @@
       "title": "Nombrado y archivo en SharePoint",
       "description": "Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.",
       "acceptance": [
-        "El nombre generado lleva código de obra, código de incidencia y el sufijo ' PARTE FIRMADO'",
+        "El nombre generado es '<cod obra> - <cod incidencia> PARTE FIRMADO.pdf' (p.ej. '0677 - RS26.08 - 0123 PARTE FIRMADO.pdf'), con los separadores normalizados a guion normal",
         "La carpeta destino se crea sola si no existe, por código de obra",
         "Subir dos veces el mismo parte no genera un duplicado con sufijo",
         "Ninguna subida real desde local ni desde los tests",

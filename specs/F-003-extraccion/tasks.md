@@ -291,7 +291,7 @@
       más mutación: se arregla tocando el prompt (T8) o cambiando de modelo, y
       ambas cosas invalidarían el trabajo de documentar y mutar hecho encima.
 
-- [ ] **T19**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/prompts/` en
+- [x] **T19**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/prompts/` en
       el árbol; en el paso 3 del pipeline, que la extracción devuelve
       **confianza por campo**, que lee el «Página N» del pie **sin reagrupar**
       (eso es F-014) y que **no juzga la firma** (eso es el paso 4); y en la

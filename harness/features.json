@@ -4,7 +4,13 @@
   "rules": {
     "one_feature_at_a_time": true,
     "require_init_green_to_close": true,
-    "valid_status": ["pending", "spec_ready", "in_progress", "done", "blocked"]
+    "valid_status": [
+      "pending",
+      "spec_ready",
+      "in_progress",
+      "done",
+      "blocked"
+    ]
   },
   "features": [
     {
@@ -94,9 +100,9 @@
     {
       "id": "F-006",
       "title": "Nombrado y archivo en SharePoint",
-      "description": "Crear la biblioteca de Posventa dentro del sitio de IT (donde vive la de albaranes), y subir cada parte apto como 'CHALET XX - NNNN.pdf' en la ruta Postventa/<código de obra>/.",
+      "description": "Crear la biblioteca de Posventa dentro del sitio de IT (donde vive la de albaranes), y subir cada parte apto como '<código de obra> - <nº incidencia>.pdf' en la ruta Postventa/<código de obra>/.",
       "acceptance": [
-        "El nombre generado respeta la convención de Posventa, con el número de chalet a dos dígitos",
+        "El nombre generado es <código de obra> - <nº incidencia>, con el código de obra tal y como lo tiene Sigrid",
         "La carpeta destino se crea sola si no existe, por código de obra",
         "Subir dos veces el mismo parte no genera un duplicado con sufijo",
         "Ninguna subida real desde local ni desde los tests",
@@ -128,11 +134,13 @@
     {
       "id": "F-008",
       "title": "Modelo de posventa en Sigrid (investigación)",
-      "description": "Averiguar dónde viven las incidencias de posventa en Sigrid, qué campo marca el estado y qué significa exactamente cerrar una incidencia. Material: capturas del humano y el PDF de modelo de datos de Sigrid, que se convierte a Markdown en docs/referencia/. Solo lecturas contra sigrid-api.",
+      "description": "Confirmar contra el ERP real el modelo de posventa ya documentado en azure-apps/sigrid_tablas.md y sigrid_api.md §9: rcp (Reclamación) es extensión 1:1 de con, upv es la Unidad Postventa y el estado vive en con.est con catálogo en conest. Falta cerrar: qué con.tip es la reclamación, qué estados declara conest para ese tipo y cuál es el de cierre, si el número impreso en el parte es con.cod, y si cerrar exige rellenar solrcp o alguna fecha. Solo lecturas contra sigrid-api.",
       "acceptance": [
-        "docs/referencia/ documenta tablas, campos de estado y el efecto real de cerrar, con origen y fecha",
-        "Queda escrito qué endpoint hace falta en sigrid-api (o si basta sql/write) y por qué",
+        "Queda escrito el con.tip de la reclamación y la lista de estados de conest para ese tipo, con el de cierre identificado",
+        "Queda resuelto de qué campo sale el número de incidencia que va impreso en el parte",
+        "Queda escrito qué hace falta para cerrar (endpoint de dominio en sigrid-api o sql/write) y por qué",
         "Ni una escritura contra Sigrid en toda la feature",
+        "docs/referencia/ solo recoge lo NUEVO: lo que ya está en azure-apps se enlaza, no se copia",
         "bash harness/init.sh en verde"
       ],
       "status": "pending",

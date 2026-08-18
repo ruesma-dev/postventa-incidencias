@@ -83,6 +83,8 @@ medición automática, no la disciplina.
       del cliente.
 - [ ] **Reprocesar no duplica**: el mismo parte, subido dos veces, sigue
       siendo uno (hash del PDF troceado + número de incidencia).
+- [ ] Nada contra Sigrid **hardcodea un número de estado**: se resuelve
+      contra `conest`, porque es configurable por instalación.
 - [ ] Ningún parte escaneado ni PDF con datos personales ha entrado en git
       (compruébalo con `git log --diff-filter=A`, no solo con el árbol).
 

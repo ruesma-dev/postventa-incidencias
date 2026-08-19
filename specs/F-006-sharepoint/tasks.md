@@ -258,7 +258,7 @@
       **Verificación**: el diff del documento lo refleja y `bash harness/init.sh`
       sigue en verde.
 
-- [ ] **T15**: Añadir a **`docs/INTEGRACION.md`** (el documento que crea F-005,
+- [x] **T15**: Añadir a **`docs/INTEGRACION.md`** (el documento que crea F-005,
       **no se crea otro**) la sección «SharePoint (Microsoft Graph)»: qué sitio
       y qué biblioteca **por nombre de variable**, qué identidad (app-only), qué
       permisos, qué carpeta base, qué volumen se espera (una remesa real son 22

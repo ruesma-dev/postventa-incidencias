@@ -823,3 +823,56 @@ agujero del tamaño de un fichero**, así que se resolvió al revés:
   el barrido prohíbe. Lo que sí se acota es **cuántos** puede haber en cada
   fichero (exactamente uno), para que la excepción no se convierta en un
   desagüe.
+
+---
+
+## T15 · VERDE · La sección de SharePoint en `docs/INTEGRACION.md`
+
+Fichero: `docs/INTEGRACION.md` (el que creó F-005; **no se crea otro**), más
+`specs/F-006-sharepoint/design.md` con el riesgo aceptado de permisos.
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_arquitectura.py tests/test_f005_integracion_sin_secretos.py -q
+39 passed in 1.88s
+
+$ .venv/Scripts/python.exe -m pytest -q
+865 passed, 10 skipped in 18.94s
+```
+
+Los dos tests de R32 que T13 dejó rojos a propósito están **en verde**, y el
+barrido de secretos que F-005 dejó puesto sigue pasando: ni un FQDN, ni un
+GUID, ni una credencial han entrado en el documento.
+
+### Qué se añadió, y por qué esas cosas y no otras
+
+Sección **§3 · SharePoint: dónde se archivan los partes**, entre la base de
+datos y las variables de entorno (las secciones 3–8 se renumeraron a 4–9 y las
+referencias internas `§3` y `§4` se ajustaron con ellas). Contiene lo que T15
+pedía: qué sitio y qué biblioteca **por nombre de variable**, con qué identidad
+(app-only), con qué permisos, qué carpeta base, qué volumen se espera —una
+remesa real son 22 partes— y **qué se rompe si alguien cambia la biblioteca o
+revoca el permiso**, con cinco filas concretas.
+
+La tabla de «qué se rompe» incluye un caso que no estaba en la spec y que es el
+más traicionero de todos: **si alguien borra a mano un parte ya archivado, no
+lo detectamos**. La traza sigue diciendo `archivado`, R14 corta el reintento y
+reprocesar el parte no basta. Quien administre eso tiene que saberlo.
+
+### El riesgo aceptado de permisos, escrito en dos sitios
+
+Decisión **D-c** del humano del 2026-08-20 (sección 0 de este informe):
+
+- **`specs/F-006-sharepoint/design.md` §9, «Riesgo 7 · ACEPTADO»**: qué se
+  verificó en Azure, por qué importa —`Sites.FullControl.All` alcanza a todo el
+  tenant y es más amplio que `Files.ReadWrite.All`, que **esta misma spec
+  descartó por excesivo**—, qué decidió el humano y que la dueña del recorte es
+  **F-018 · Mínimo privilegio en Graph**.
+- **`docs/INTEGRACION.md` §3, «Permisos: qué necesitamos y qué tenemos hoy»**:
+  lo mismo, en el documento que lee quien administra el tenant.
+
+De paso se marcaron como resueltas en `design.md` §10 las decisiones abiertas
+**D1** (`httpx`, 2026-08-20) y **D6** (la biblioteca y el app registration ya
+existen, 2026-08-20), que era lo que bloqueaba T17.
+
+**Ningún identificador entró en ningún fichero** —ni de aplicación, ni de
+tenant, ni de sitio, ni de biblioteca—, ni siquiera para documentar el riesgo.

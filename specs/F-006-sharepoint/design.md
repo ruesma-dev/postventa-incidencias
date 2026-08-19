@@ -673,6 +673,55 @@ que son puros.
 suyos (§1). Mitigación: el rebase de T1 y la suite completa; si algo no
 encaja, `blocked` y se habla con el humano — **no se parchea la spec ajena**.
 
+### Riesgo 7 · ACEPTADO por el humano el 2026-08-20 · permisos de Graph más amplios de lo necesario
+
+> Se añade a esta spec **después** de aprobarla, porque el riesgo se descubrió
+> al verificar Azure el 2026-08-20 y la decisión de aceptarlo la tomó el humano
+> ese mismo día. El resto del documento no se reescribe.
+
+**Qué se verificó.** El app registration de este proyecto tiene consentimiento
+de administrador para **tres** permisos de aplicación de Microsoft Graph:
+`Sites.Selected` —el que pedía esta spec, y el único que hace falta—,
+`Sites.ReadWrite.All` y `Sites.FullControl.All`.
+
+**Por qué importa.** Los dos últimos alcanzan a **todos** los sitios de
+SharePoint del tenant, no solo a la biblioteca de Posventa, y **vuelven
+irrelevante al primero**: con `Sites.FullControl.All` la aplicación puede
+escribir en el sitio de RRHH o de dirección igual que en el suyo. Es más amplio
+incluso que `Files.ReadWrite.All`, que **esta misma spec descartó por excesivo**
+en §10 (D1). Dicho sin rodeos: el mínimo privilegio que el diseño perseguía
+**hoy no se cumple**.
+
+**Por qué está así, y no es un descuido de nadie.** Es lo que pasa al
+configurar `Sites.Selected`: exige el paso extra de asignar la biblioteca
+concreta a la aplicación por Graph, mientras que los permisos amplios funcionan
+a la primera. El camino fácil funciona y el correcto pide trabajo.
+
+**Lo decidido (humano, 2026-08-20).** Arrancar F-006 con los permisos actuales
+y **recortar después**, para no mezclar un cambio de configuración del tenant
+con una implementación. El recorte **no lo hace un agente**: tocar permisos del
+tenant es del humano, en Azure.
+
+**Quién es la dueña del recorte: F-018 · Mínimo privilegio en Graph**, ya dada
+de alta en `harness/features.json`. Sus criterios de aceptación incluyen dejar
+solo `Sites.Selected`, asignar la biblioteca explícitamente, comprobar que un
+intento contra cualquier otro sitio del tenant devuelve `403`, y **retirar este
+riesgo de esta spec**, porque entonces dejará de existir.
+
+**Lo que F-006 sí hace mientras tanto**, que es lo que está en su mano:
+
+- No usa en ningún momento el alcance ancho: el adaptador va a **una**
+  biblioteca, la que dice `SHAREPOINT_DRIVE_ID`, y nunca enumera sitios.
+- Deja el riesgo **escrito donde lo vea quien administre el tenant**:
+  `docs/INTEGRACION.md`, §3, sección de permisos.
+- No escribe **ningún identificador** —ni de aplicación, ni de tenant, ni de
+  sitio, ni de biblioteca— en ningún fichero del repositorio, ni siquiera para
+  documentar este riesgo.
+
+**Lo que este riesgo no justifica**: relajar ninguna de las tres puertas de §5.
+Que la aplicación pueda escribir de más en Azure es exactamente un motivo para
+que desde un puesto de trabajo no pueda escribir en absoluto.
+
 ---
 
 ## 10 · Decisiones abiertas que necesita validar el humano
@@ -683,12 +732,12 @@ encaja, `blocked` y se habla con el humano — **no se parchea la spec ajena**.
 
 | # | Decisión | ¿Bloquea? |
 |---|---|---|
-| **D1** | **Qué reutilizar de `partes`/`albaranes`**: librería cliente de Graph (aquí se propone `msal` + `requests`), app registration, y permisos (`Sites.Selected` acotado a la biblioteca, que es lo mínimo, frente a `Files.ReadWrite.All`, que es todo el tenant). `azure-apps/` no lo documenta: hay que mirarlo en el repositorio `partes` o preguntar. Si resulta ser otra librería, **solo cambia `infrastructure/sharepoint/`** | No |
+| **D1** | ✅ **RESUELTA el 2026-08-20**: se usa **`httpx`**, como `partes`, y no `msal` + `requests`. Lo de abajo es el enunciado original. **Qué reutilizar de `partes`/`albaranes`**: librería cliente de Graph (aquí se propone `msal` + `requests`), app registration, y permisos (`Sites.Selected` acotado a la biblioteca, que es lo mínimo, frente a `Files.ReadWrite.All`, que es todo el tenant). `azure-apps/` no lo documenta: hay que mirarlo en el repositorio `partes` o preguntar. Si resulta ser otra librería, **solo cambia `infrastructure/sharepoint/`** | No |
 | **D2** | **Mismo nombre, otro `hash`** (dos escaneos distintos de la misma incidencia): la spec **reemplaza y avisa**. La alternativa es fallar y mandarlo a revisión humana. Se implementa el reemplazo porque el archivo de Posventa debe quedarse con la última versión conformada | No |
 | **D3** | ✅ **RESUELTA el 2026-08-19 · opción (a)** — ver detalle bajo la tabla | Ya no |
 | **D4** | El endpoint **recibe** el veredicto en el cuerpo y lo vuelve a comprobar. Leerlo de la base sería más fuerte, pero exige un método nuevo en `RepositorioPartesPort` (F-005), y F-006 **no cambia specs ajenas** | No |
 | **D5** | `EstadoArchivo` (F-005) no tiene `ya_archivado`: el caso «ya estaba» sale como `archivado` + aviso. Añadir el estado sería más limpio, pero es un cambio en F-005 | No |
-| **D6** | **Nadie ha creado todavía** la biblioteca de dev en el sitio de IT ni el app registration con permiso sobre ella. Hace falta que el humano (o IT) lo cree y pase los identificadores por `.env`, **nunca por el repositorio**. Falta además decidir **qué permiso de Graph** se pide: `Sites.Selected` acotado a esa biblioteca (lo mínimo y lo prudente) frente a `Files.ReadWrite.All` (todo el tenant) | **SÍ** (T17, T18) |
+| **D6** | ✅ **RESUELTA el 2026-08-20**: la biblioteca de dev, el app registration y los permisos **ya existen**, así que **T17 deja de estar bloqueada**. Sobre qué permiso se pidió, ver el **riesgo 7 aceptado** de §9: hay más de los necesarios y los recorta **F-018**. Enunciado original: **Nadie ha creado todavía** la biblioteca de dev en el sitio de IT ni el app registration con permiso sobre ella. Hace falta que el humano (o IT) lo cree y pase los identificadores por `.env`, **nunca por el repositorio**. Falta además decidir **qué permiso de Graph** se pide: `Sites.Selected` acotado a esa biblioteca (lo mínimo y lo prudente) frente a `Files.ReadWrite.All` (todo el tenant) | ~~SÍ~~ **ya no** |
 
 ### D3 · RESUELTA el 2026-08-19 — opción (a)
 

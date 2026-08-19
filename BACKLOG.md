@@ -12,8 +12,8 @@ En curso: **F-004**.
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-004 | Validación del parte y clasificación de la firma | 4 | en curso | critico | `feature/F-004-validacion` |
-| F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
-| F-006 | Nombrado y archivo en SharePoint | 6 | pendiente | critico | `feature/F-006-sharepoint` |
+| F-005 | Persistencia en el PostgreSQL compartido | 5 | spec lista | critico | `feature/F-005-persistencia` |
+| F-006 | Nombrado y archivo en SharePoint | 6 | spec lista | critico | `feature/F-006-sharepoint` |
 | F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 8 | pendiente | documental | `feature/F-008-modelo-sigrid` |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 9 | pendiente | critico | `feature/F-009-cierre-sigrid` |
@@ -44,13 +44,13 @@ Reglas de validación sobre lo extraído y clasificación de la firma en: firma 
 
 ### F-005 · Persistencia en el PostgreSQL compartido
 
-estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
+estado **spec lista** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
 
 Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.
 
 ### F-006 · Nombrado y archivo en SharePoint
 
-estado **pendiente** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
+estado **spec lista** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
 
 Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.
 
@@ -106,7 +106,7 @@ Las remesas reales llegan escaneadas sin capa de texto (Mirasierra: 22 páginas,
 
 estado **pendiente** · prioridad 15 · rigor `critico` · SDD sí · rama `feature/F-015-evaluacion-prompt`
 
-Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md.
+Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md. ENCARGO AÑADIDO EL 2026-08-19 desde el cierre de F-004: falta el CONTROL NEGATIVO de la clasificación de firma. T14 midió las cuatro etiquetas sobre los 22 partes reales de Mirasierra y salió 22/22 'humana' con confianza media 98,2, cero 'ilegible', cero 'marca_simple' y cero 'casilla_vacia'. Eso confirmó la decisión D1 (la regla estricta no manda a revisión ningún parte real) pero NO demuestra el criterio de aceptación de F-004 'la clasificación distingue firma de aspa': en la remesa no había ni un aspa, así que un clasificador que respondiera 'humana' a todo habría dado la misma salida. Lo que falta es pasar por el clasificador partes SINTÉTICOS con aspa y con casilla vacía (tests/utiles_pdf.py sabe componerlos) y comprobar que no los etiqueta 'humana'. El humano decidió el 2026-08-19 cerrar F-004 sin ello y traerlo aquí, que es el sitio natural de la evaluación de prompts.
 
 ### F-016 · Interpretación automática de las observaciones manuscritas
 
@@ -118,7 +118,7 @@ Hoy F-004 rechaza en bloque cualquier parte con observaciones manuscritas y lo m
 
 estado **pendiente** · prioridad 17 · rigor `documental` · SDD no · rama `feature/F-017-checkpoints-manual`
 
-Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-19 como baja prioridad. (P2) C5 exige hoy todas las tareas de tasks.md en [x], pero el nivel de rigor critico OBLIGA a tener verificaciones MANUAL (humano) que ningún agente puede ejecutar: el reviewer queda entre rechazar un trabajo impecable, marcar como hecho algo que nadie ejecutó, o aprobar saltándose la letra de C5. Pasó con F-003 y lo único que impidió cerrarla con T18 sin ejecutar fue una nota escrita a mano en progress/current.md. Se propone que C5 distinga la tarea de agente pendiente (trabajo incompleto, CHANGES_REQUESTED) de la tarea MANUAL (humano) pendiente (estado propio: aprobado pero no cerrable hasta que el humano la ejecute). (P3) Que C4 bis nombre explícitamente la comprobación de ficheros «no medidos» en la puerta de cobertura, que hoy se hace pero no está escrita. Las dos son GENÉRICAS: se portan a arnes-base en el mismo trabajo, según la regla de propagación de CLAUDE.md.
+Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-19 como baja prioridad. (P2) C5 exige hoy todas las tareas de tasks.md en [x], pero el nivel de rigor critico OBLIGA a tener verificaciones MANUAL (humano) que ningún agente puede ejecutar: el reviewer queda entre rechazar un trabajo impecable, marcar como hecho algo que nadie ejecutó, o aprobar saltándose la letra de C5. Pasó con F-003 y lo único que impidió cerrarla con T18 sin ejecutar fue una nota escrita a mano en progress/current.md. Se propone que C5 distinga la tarea de agente pendiente (trabajo incompleto, CHANGES_REQUESTED) de la tarea MANUAL (humano) pendiente (estado propio: aprobado pero no cerrable hasta que el humano la ejecute). (P3) Que C4 bis nombre explícitamente la comprobación de ficheros «no medidos» en la puerta de cobertura, que hoy se hace pero no está escrita. Las dos son GENÉRICAS: se portan a arnes-base en el mismo trabajo, según la regla de propagación de CLAUDE.md. AÑADIDO EL 2026-08-19 desde F-005 (decisión D5): el DDL contra el PostgreSQL compartido es candidato reconocido a ruta sensible del arnés, pero declararlo cambiaría el arnés para todas las features, así que la decisión se trae aquí. Hoy no existe harness/rutas_sensibles.json y C4 ter es N/A. AÑADIDO desde F-006 (decisión D3): el humano eligió cerrar F-006 con su verificación de subida real declarada y pendiente hasta que F-010 despliegue; ese cierre necesita autorización expresa ante C5 y es el segundo caso real que justifica P2.
 
 ### F-001 · Esqueleto del monorepo y /health
 

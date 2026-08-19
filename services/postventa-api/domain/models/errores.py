@@ -230,3 +230,25 @@ class ConfiguracionPgIncompleta(ErrorDePersistencia):
     nunca sus valores. Se exige en la fábrica y no al leer los ajustes, por lo
     mismo que `GEMINI_API_KEY`: `/health` tiene que arrancar sin base de datos.
     """
+
+
+class NombradoImposible(Exception):
+    """No se puede componer el nombre del fichero de un parte (F-006, R6, R7).
+
+    Dos casos, y los dos acaban igual —el parte va a revisión manual— pero
+    por motivos distintos: falta uno de los dos códigos, o el nombre que sale
+    lleva algo que SharePoint no admite.
+
+    Lo que **no** hace este error es dejar que el proceso siga. La alternativa
+    —inventarse el dato que falta, o sustituir el carácter raro por `_`—
+    archivaría en el archivo de Posventa un fichero con un nombre que nadie
+    pidió, en una carpeta que se consulta a mano, y nadie se enteraría.
+
+    En la práctica no debería llegar aquí ningún parte sin códigos: F-004 no
+    los declara aptos. Por eso esto es una **red de seguridad**, no el camino
+    normal.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo

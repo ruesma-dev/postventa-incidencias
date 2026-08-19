@@ -206,3 +206,39 @@ mutación aparece como superviviente, que en `critico` es un fallo—. Se saca a
 una función pública, se prueba directamente con sus siete casos y
 `nombre_de_archivo` la usa. Misma semántica, misma severidad; solo cambia
 dónde se puede apuntar el test.
+
+---
+
+## T3 · VERDE · `domain/models/nombrado.py` + `NombradoImposible`
+
+Ficheros: `services/postventa-api/domain/models/nombrado.py` (nuevo) y
+`domain/models/errores.py` (se le añade `NombradoImposible`).
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_nombrado.py -q
+71 passed in 0.10s
+
+$ .venv/Scripts/python.exe -m pytest -q
+753 passed, 10 skipped in 11.96s
+```
+
+Sin regresiones: la suite completa pasa de 682 a 753 tests.
+
+**Decisiones de implementación:**
+
+- `str.maketrans` con los siete guiones, en una sola pasada, en vez de siete
+  `replace` encadenados.
+- El orden de `nombre_de_archivo` es el de `design.md` §4.2: normalizar →
+  barra a ` - ` → **volver a colapsar** espacios → componer → comprobar. El
+  segundo colapso no es redundante: `RS26.08 / 0123` (barra con espacios)
+  produciría espacios dobles sin él.
+- `carpeta_de_archivo` recorta la base por los extremos y le quita la barra
+  final: `Postventa/` y `Postventa` son la misma carpeta base, pero la
+  primera produce `Postventa//0677`, que para Graph es otra ruta.
+- `carpeta_de_archivo` **no** repite la comprobación de caracteres
+  prohibidos. No hace falta y sobra: `componer_destino` compone siempre las
+  dos cosas, así que un código de obra con `/` revienta igualmente en
+  `nombre_de_archivo` **antes de que nadie llame al proveedor**. Duplicar la
+  guardia habría dejado una rama que ningún test puede distinguir de la otra
+  —y por tanto un mutante superviviente garantizado, que en `critico` es un
+  fallo.

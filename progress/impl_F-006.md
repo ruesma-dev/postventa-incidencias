@@ -363,3 +363,37 @@ actualizado para decir qué sigue vedado.
 - **`AVISO_REEMPLAZADO` sale solo cuando de verdad había un homónimo.** Un
   aviso que sale siempre es un aviso que nadie lee, y este significa que
   desapareció una versión anterior del parte conformado.
+
+---
+
+## T6 · RED · Los tests de las dos puertas que impiden subir desde local
+
+Fichero: `services/postventa-api/tests/test_f006_fabrica.py` (R19, R20, R28).
+
+**Traza real de la fase RED**, con el comando exacto:
+
+```
+$ cd services/postventa-api
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_fabrica.py -q
+=================================== ERRORS ====================================
+_________________ ERROR collecting tests/test_f006_fabrica.py _________________
+ImportError while importing test module '...\tests\test_f006_fabrica.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_f006_fabrica.py:26: in <module>
+    from domain.models.errores import (
+E   ImportError: cannot import name 'ArchivoDeshabilitado' from 'domain.models.errores'
+=========================== short test summary info ===========================
+ERROR tests/test_f006_fabrica.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.38s
+```
+
+Rojo por lo que tenía que estar rojo: no existen ni los dos errores nuevos, ni
+`infrastructure/sharepoint/`.
+
+**Este fichero es el único de la suite que nombra `AdaptadorSharePointGraph`**,
+y lo nombra para comprobar que **se niega a construirse**. Que siga siendo el
+único lo vigila `test_f006_r21_ningun_test_construye_el_adaptador_real` (T13).

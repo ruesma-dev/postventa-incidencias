@@ -42,7 +42,9 @@ services/
       documentos/           # adaptadores de los ficheros que entran: PDF y ZIP
       llm/                  # adaptador Gemini (y los que vengan) + su fábrica
       prompts/              # carga de config/prompts.yaml
-      sharepoint/           # adaptador Graph
+      sharepoint/           # adaptador Graph + su fábrica (F-006).
+                            # ÚNICO paquete del servicio que conoce Graph:
+                            # ni domain/ ni application/ importan httpx
       sigrid/               # cliente de sigrid-api
       persistencia/         # PostgreSQL
     interface_adapters/api/ # handlers HTTP de la Function
@@ -107,8 +109,33 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
      segunda puerta, posterior y aparte—, e interpretar **qué dice** la
      observación, que es **F-016**. Guardar la cola es F-005; pintarla,
      F-007/F-011.
-5. **Nombrado** — `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`: código de obra, código de incidencia y sufijo.
-6. **Archivo** — subida a SharePoint.
+5. **Nombrado** — `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`: código de obra,
+   código de incidencia y sufijo. **Dominio puro** (`domain/models/nombrado.py`):
+   sin reloj, sin red y sin configuración, para que volver a nombrar un parte
+   meses después dé exactamente el mismo fichero. Cuatro reglas que no se
+   negocian:
+   - **La barra del código de incidencia pasa a guion.** `RS26.08/0123` se
+     nombra `RS26.08 - 0123`: la barra es un separador de ruta y dejarla
+     partiría el fichero en dos carpetas.
+   - **Los ceros a la izquierda se conservan.** `0677` nunca es `677`:
+     `int("0677")` es un bug, no una normalización, y `677` es otra obra.
+   - **El sufijo va literal.** ` PARTE FIRMADO` en mayúsculas y `.pdf`: es lo
+     que ya usa Posventa y lo que distingue el parte conformado.
+   - **Un nombre imposible es un error, nunca un saneo silencioso.** Si falta
+     un código o el nombre lleva algo que SharePoint no admite, el parte va a
+     revisión manual. Sustituir el carácter raro por `_` archivaría en el
+     archivo de Posventa un fichero que nadie pidió, y nadie se enteraría.
+6. **Archivo** — subida a SharePoint, en `<carpeta base>/<código de obra>/`.
+   **Solo se archiva lo que el paso 4 declaró apto**; con cualquier otro
+   destino no se sube nada y ni siquiera se crea la carpeta. Reprocesar una
+   remesa no puede duplicar, y para eso hay **tres capas**:
+   - **traza** — si ya consta archivado ese `hash` de parte, no se llama a
+     nadie: ni token, ni red, ni bytes;
+   - **reemplazo** — la subida pide **siempre** reemplazar el homónimo, nunca
+     renombrar. Renombrar produce el `... (1).pdf` que el criterio de
+     aceptación prohíbe, y es el comportamiento por defecto de más de un
+     cliente de Graph;
+   - **carpeta** — crearla dos veces es un éxito, no un error.
 7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
    entonces `commit: true`.
 
@@ -208,7 +235,7 @@ igual que hoy, y por debajo se suben los PDFs.
 | Sistema | Uso | Límites |
 |---|---|---|
 | `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la incidencia; cierre por escritura. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. La escritura está apagada por defecto y los endpoints de dominio son dry-run salvo `commit: true`. |
-| SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. | Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature F-013, no un detalle de despliegue. |
+| SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
 | PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |

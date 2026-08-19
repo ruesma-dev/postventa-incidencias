@@ -218,7 +218,7 @@
 
 ## Fase 6 · Arquitectura y datos personales
 
-- [ ] **T13 · RED (por rotura deliberada)**: Escribir
+- [x] **T13 · RED (por rotura deliberada)**: Escribir
       `tests/test_f006_arquitectura.py` (R21, R22, R26, R29, R32):
       - `test_f006_r21_la_suite_no_puede_abrir_conexiones` con un
         `ArchivoPort` delante: la guardia de F-003 sigue mordiendo.
@@ -249,7 +249,7 @@
 
 ## Fase 7 · Documentación (parte del trabajo, no un «luego»)
 
-- [ ] **T14**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/sharepoint/`
+- [x] **T14**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/sharepoint/`
       en el árbol; paso 5 con la regla de la barra, la de los ceros y la del
       sufijo; paso 6 con las tres capas de idempotencia; y en la tabla de
       sistemas externos, la fila de SharePoint con las variables de destino y

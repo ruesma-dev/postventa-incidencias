@@ -43,7 +43,7 @@ Tres bloques encadenados, y el orden no es negociable:
 
 ## Bloque 1 · La firma (T1–T5)
 
-- [ ] **T1 · RED**: Escribir `tests/utiles_validacion.py` con
+- [x] **T1 · RED**: Escribir `tests/utiles_validacion.py` con
       `lectura_de_firma(clasificacion="humana", confianza=93)` y
       `respuesta_de_firma(etiqueta="humana", confianza=93)` (`design.md` §6), y
       `tests/test_f004_firma_dominio.py` con R1, R2 y R14:
@@ -61,7 +61,7 @@ Tres bloques encadenados, y el orden no es negociable:
       **Verificación**: rojo por `ModuleNotFoundError` / `ImportError`; **traza
       pegada** en `progress/impl_F-004.md`.
 
-- [ ] **T2**: Implementar `domain/models/firma.py` (`ClasificacionFirma`,
+- [x] **T2**: Implementar `domain/models/firma.py` (`ClasificacionFirma`,
       `CAMPO_CLASIFICACION`, `CAMPOS_DE_LA_FIRMA`, `clasificacion_desde_texto`,
       `LecturaFirma.es_conformidad_del_cliente` y
       `LecturaFirma.clasificacion_efectiva`) y añadir a
@@ -72,7 +72,7 @@ Tres bloques encadenados, y el orden no es negociable:
       `.venv/Scripts/python.exe -m pytest tests/test_f004_firma_dominio.py -q`
       en verde y la suite completa del servicio sin regresiones.
 
-- [ ] **T3 · RED**: Escribir `tests/test_f004_prompts_firma.py` con R4 y R5:
+- [x] **T3 · RED**: Escribir `tests/test_f004_prompts_firma.py` con R4 y R5:
       - `test_f004_r4_el_prompt_de_firma_existe_y_es_otro`: la clave
         `firma_parte_es` se carga del YAML con `system`, `task`, `schema` y
         `version`, y su huella **no** es la de `parte_posventa_es`.
@@ -91,7 +91,7 @@ Tres bloques encadenados, y el orden no es negociable:
 
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-004.md`.
 
-- [ ] **T4 · RED + verde**: Implementar `domain/models/schemas.py`
+- [x] **T4 · RED + verde**: Implementar `domain/models/schemas.py`
       (`CAMPOS_POR_SCHEMA`, `campos_del_schema`) y convertir
       `schema_del_parte()` en `schema_para(nombre)` en
       `infrastructure/llm/gemini.py`, resolviendo contra el registro y usando
@@ -105,7 +105,7 @@ Tres bloques encadenados, y el orden no es negociable:
       La parte RED es el rojo previo de T3; si al adaptar F-003 hubiera que
       tocar una aserción de verdad, **es una parada**.
 
-- [ ] **T5**: Añadir a `config/prompts.yaml` la clave `firma_parte_es` con el
+- [x] **T5**: Añadir a `config/prompts.yaml` la clave `firma_parte_es` con el
       contenido normativo de `design.md` §5 —una casilla, la del **cliente**
       (columna izquierda, «Fdo.» / «DNI»), las cuatro etiquetas con su
       criterio, «ante la duda, `ilegible`», «no transcribas el nombre ni el
@@ -123,7 +123,7 @@ Tres bloques encadenados, y el orden no es negociable:
 
 ## Bloque 2 · Las reglas y la tubería (T6–T13)
 
-- [ ] **T6 · RED**: Ampliar `tests/utiles_validacion.py` con
+- [x] **T6 · RED**: Ampliar `tests/utiles_validacion.py` con
       `extraccion_de_ejemplo(**cambios)` —los nueve campos, reutilizando
       `CAMPOS_DE_EJEMPLO` de `utiles_ia.py`, **todo inventado**— y escribir
       `tests/test_f004_reglas_validacion.py` con **R6 a R19**, un test por
@@ -158,7 +158,7 @@ Tres bloques encadenados, y el orden no es negociable:
 
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-004.md`.
 
-- [ ] **T7**: Implementar `domain/models/validacion.py` (`Veredicto`,
+- [x] **T7**: Implementar `domain/models/validacion.py` (`Veredicto`,
       `Destino`, `CodigoMotivo`, `Motivo`, `ResultadoValidacion`,
       `CAMPOS_DECISIVOS`, `UMBRAL_CONFIANZA = 50`, `validar_parte`) con los
       cinco pasos y los seis textos de `design.md` §4.2. **Función pura**: sin
@@ -170,7 +170,7 @@ Tres bloques encadenados, y el orden no es negociable:
       `.venv/Scripts/python.exe -m pytest tests/test_f004_reglas_validacion.py -q`
       en verde, con **todos** los tests de T6 pasando.
 
-- [ ] **T8 · RED**: Escribir `tests/test_f004_paso_firma.py` (R2, R3) y
+- [x] **T8 · RED**: Escribir `tests/test_f004_paso_firma.py` (R2, R3) y
       `tests/test_f004_paso_validacion.py` (R21) contra dobles:
       el paso traduce el campo único a la enumeración; una etiqueta desconocida
       sale `ILEGIBLE` **con aviso**; la confianza se sanea con la **misma**
@@ -182,7 +182,7 @@ Tres bloques encadenados, y el orden no es negociable:
       `ValidacionSinDatos` **sin inventarse veredicto**.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-004.md`.
 
-- [ ] **T9**: Extraer el saneo de confianza a
+- [x] **T9**: Extraer el saneo de confianza a
       `application/pipelines/confianza.py` (`sanear_confianza`,
       `CONFIANZA_MINIMA`, `CONFIANZA_MAXIMA`) y hacer que
       `paso_extraccion.py` lo importe en vez de tener copia propia.
@@ -194,7 +194,7 @@ Tres bloques encadenados, y el orden no es negociable:
       `.venv/Scripts/python.exe -m pytest tests/test_f003_paso_extraccion.py -q`
       en verde y la suite completa también.
 
-- [ ] **T10**: Implementar `application/pipelines/paso_firma.py` y
+- [x] **T10**: Implementar `application/pipelines/paso_firma.py` y
       `application/pipelines/paso_validacion.py` (`design.md` §4.3).
       `MAX_BYTES_PARTE` se **importa** de `paso_extraccion`, no se duplica;
       `paso_validacion` **no recibe puertos**.
@@ -202,7 +202,7 @@ Tres bloques encadenados, y el orden no es negociable:
       `.venv/Scripts/python.exe -m pytest tests/test_f004_paso_firma.py tests/test_f004_paso_validacion.py -q`
       en verde y la suite completa del servicio también.
 
-- [ ] **T11 · RED**: Escribir `tests/test_f004_firma_http.py` (R23) y
+- [x] **T11 · RED**: Escribir `tests/test_f004_firma_http.py` (R23) y
       `tests/test_f004_validar_http.py` (R24), **un test por camino de
       respuesta**, con dobles inyectados:
       - `test_f004_r23_el_endpoint_de_firma_devuelve_el_contrato`: **200** con
@@ -235,7 +235,7 @@ Tres bloques encadenados, y el orden no es negociable:
       > supervivientes que habría que justificar a mano en vez de matarlos con
       > una línea de test.
 
-- [ ] **T12**: Implementar `interface_adapters/api/firma.py` (`leer_firma`, con
+- [x] **T12**: Implementar `interface_adapters/api/firma.py` (`leer_firma`, con
       la composición del paso) e `interface_adapters/api/validar.py`
       (`validar`, **sin IA y sin PDF**), y añadir en `function_app.py` las dos
       rutas `POST /api/firma` y `POST /api/validar` con el mapeo de errores a
@@ -243,7 +243,7 @@ Tres bloques encadenados, y el orden no es negociable:
       contrato no gana ninguna clave.
       **Verificación**: los tests de T11 en verde y la suite completa también.
 
-- [ ] **T13 · RED + verde**: Escribir `tests/test_f004_arquitectura.py` con
+- [x] **T13 · RED + verde**: Escribir `tests/test_f004_arquitectura.py` con
       R20, R22, R25 y R26:
       - `test_f004_r20_las_reglas_no_importan_infraestructura` y
         `test_f004_r22_el_modulo_de_validacion_no_conoce_sigrid`: recorrido con
@@ -268,7 +268,9 @@ Tres bloques encadenados, y el orden no es negociable:
 
 ## Bloque 3 · El dato que decide D1 (T14)
 
-- [ ] **T14 · MANUAL (humano)**: **la distribución real de las cuatro etiquetas
+- [ ] **T14 · MANUAL (humano)** — PENDIENTE DEL HUMANO. Script entregado en
+      `C:\Users\pgris\f4_firma.py` (detalle en `progress/impl_F-004.md`).
+      Mide **la distribución real de las cuatro etiquetas
       de firma sobre los 22 partes de la remesa de Mirasierra.** Es lo que
       decide **D1** (`design.md` §7): si la firma puede o no bloquear un parte.
       Va aquí, y no al final, por el Riesgo 1 del diseño.
@@ -328,7 +330,7 @@ Tres bloques encadenados, y el orden no es negociable:
 
 ## Bloque 4 · Cierre (T15–T18)
 
-- [ ] **T15**: Actualizar `docs/ARCHITECTURE.md`: en el **paso 4** del
+- [x] **T15**: Actualizar `docs/ARCHITECTURE.md`: en el **paso 4** del
       pipeline, los **dos destinos** (`cola_validacion_humana` para decidir,
       `revision_manual` para arreglar), qué campos son decisivos y qué queda
       para **F-008** (coherencia con Sigrid) y **F-016** (interpretar las
@@ -341,7 +343,7 @@ Tres bloques encadenados, y el orden no es negociable:
       **Verificación**: el diff de ambos ficheros lo refleja y
       `bash harness/init.sh` sigue en verde.
 
-- [ ] **T16**: Cobertura de las líneas cambiadas.
+- [x] **T16**: Cobertura de las líneas cambiadas.
       **Verificación**: `bash harness/init.sh` imprime la puerta de cobertura
       en **`[OK]`** con el porcentaje de las líneas cambiadas (umbral 80 %). Si
       sale por debajo, se añaden los tests que falten **a los ficheros de test
@@ -350,7 +352,7 @@ Tres bloques encadenados, y el orden no es negociable:
       El detalle por fichero se obtiene con
       `python -m harness.cobertura --feature F-004` desde la raíz.
 
-- [ ] **T17**: Campaña de mutación y análisis de supervivientes.
+- [x] **T17**: Campaña de mutación y análisis de supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-004` desde la
       raíz del repositorio genera `progress/mutacion_F-004.md` con **cero
       supervivientes** (nivel `critico`), o cada superviviente con su análisis
@@ -363,7 +365,7 @@ Tres bloques encadenados, y el orden no es negociable:
       > test que falta es el del **borde** (`49`, `50`, `51`), no uno más del
       > caso feliz.
 
-- [ ] **T18**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T18**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la puerta de cobertura de las líneas
       cambiadas en `[OK]` (umbral 80 %) y `ENTORNO LISTO`. El informe del
       implementer cierra con la sección **«Evidencias»** y sus cuatro números:

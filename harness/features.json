@@ -95,7 +95,7 @@
         "Tests contra base efímera, nunca contra el servidor compartido",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 5,

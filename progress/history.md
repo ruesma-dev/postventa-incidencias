@@ -232,3 +232,69 @@ Deuda declarada al cerrar (ninguna bloquea):
   limitación explicada delante, y figura como **no demostrado** en la
   trazabilidad de F-004.
 - **El aviso AFC del SDK sigue saliendo** en cada llamada real. Sin resolver.
+
+## F-005 · Persistencia en el PostgreSQL compartido — CERRADA el 2026-08-20
+
+Rama `feature/F-005-persistencia`. Rigor `critico`. **Veredicto: APROBADO** en
+segunda pasada (`progress/review_F-005.md`); la primera fue
+`CHANGES_REQUESTED` y se conserva íntegra en ese mismo informe.
+
+Palabras del reviewer: **«esta feature es, con diferencia, la mejor verificada
+del proyecto hasta hoy»**.
+
+### Qué entrega
+
+El esquema propio `postventa` dentro de la base `postventa`, en el servidor
+compartido `psql-albaranes-rs9k2`: seis tablas —remesas, partes,
+validaciones, archivos, cierres y preferencias por usuario—, con DDL
+idempotente aplicado al arranque, la conexión con `search_path` **sin
+`public`** y sin la contraseña en el DSN, el adaptador de psycopg 3, el mapeo
+derivado de `CAMPOS_DEL_PARTE` y el paso de persistencia hablando por el
+puerto, nunca con el adaptador.
+
+### Las puertas del rigor `critico`
+
+| Puerta | Resultado |
+|---|---|
+| Fase RED con traza real | cumplida en los requisitos centrales |
+| Cobertura de líneas cambiadas | **97,0 %** (umbral 80 %) |
+| Campaña de mutación | **106 mutantes, 0 supervivientes**, 3 timeouts justificados |
+| Manuales con resultado real | las tres, contra Docker y contra el servidor real |
+| `bash harness/init.sh` | verde, exit 0 |
+
+El reviewer **no se fió del informe**: relanzó la suite (678 passed, 10
+skipped), recalculó el alcance de la mutación, verificó empíricamente los tres
+timeouts bajo reloj y pasó sus propios barridos de DNI y de secretos.
+
+### Las tres verificaciones manuales, ejecutadas por el humano
+
+- **M1** (2026-08-19): 10 tests contra un PostgreSQL 16 efímero en Docker; el
+  contenedor queda destruido.
+- **M2** (2026-08-19): la base real de dev creada, con las seis tablas, 13
+  índices, **nada en `public`** y 0 filas. **Idempotente en dos pasadas**: la
+  segunda no tocó ni rol ni base y dejó el catálogo idéntico.
+- **M3**: hecha a medias **por decisión del humano** — el documento de
+  integración y la fila del índice están escritos en el árbol de `azure-apps`,
+  **sin commitear allí**. Es la única deuda abierta de F-005 y su dueño es el
+  humano.
+
+### Los dos defectos que encontró la review
+
+1. **Un FQDN real dentro de un test versionado.** Lo delató que la propia
+   F-005 se prohíbe ese patrón en otros tres sitios. Corregido con un host
+   inventado. **Lección**: el historial de git no suelta lo que entra, y por
+   eso el arreglo era urgente, no cosmético.
+2. **La observación O1 heredada de F-004**: el valor crudo del modelo se
+   persistía verbatim, sin que nadie decidiera nada. **El humano decidió el
+   2026-08-19 recortarlo** (decisión **D7**): `_RECORTE_AVISO = 240`, por
+   aviso y no sobre el JSON entero, con la señal `…` como en `ddl.py`, y un
+   test que fija que el aviso legítimo más largo del pipeline no se mutila.
+   **Lección**: una opción permisiva elegida por omisión sigue siendo una
+   decisión, y en rigor `critico` hay que escribirla.
+
+### Condición de merge, dictada por el reviewer
+
+**El árbol quedó limpio, pero el historial de la rama no**: los 24 commits
+anteriores al arreglo siguen conteniendo el FQDN. **Se mergea a `dev` con
+squash**, para que ese valor no entre nunca en `dev`. No se reescribe la
+historia de una rama de 31 commits: el coste y el riesgo superan al beneficio.

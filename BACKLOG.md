@@ -3,13 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **17 features**, 13 abiertas, 4 terminadas.
+Resumen: **17 features**, 12 abiertas, 5 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-005 | Persistencia en el PostgreSQL compartido | 5 | spec lista | critico | `feature/F-005-persistencia` |
 | F-006 | Nombrado y archivo en SharePoint | 6 | spec lista | critico | `feature/F-006-sharepoint` |
 | F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 8 | pendiente | documental | `feature/F-008-modelo-sigrid` |
@@ -31,14 +30,9 @@ Resumen: **17 features**, 13 abiertas, 4 terminadas.
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
 | F-004 | Validación del parte y clasificación de la firma | 4 | critico |
+| F-005 | Persistencia en el PostgreSQL compartido | 5 | critico |
 
 ## Detalle
-
-### F-005 · Persistencia en el PostgreSQL compartido
-
-estado **spec lista** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
-
-Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.
 
 ### F-006 · Nombrado y archivo en SharePoint
 
@@ -135,3 +129,9 @@ Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo q
 estado **terminada** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-004-validacion`
 
 Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme. DECISIONES DE DOMINIO DEL HUMANO (2026-08-19, mandan sobre el diseño): (1) un parte SIN DNI del cliente SÍ pasa como conforme, la ausencia de DNI no descalifica; (2) un parte CON observaciones manuscritas NO es conforme, y de momento ese es el ÚNICO motivo de rechazo; (3) el parte rechazado por observaciones no se descarta: va a una COLA DE VALIDACIÓN HUMANA que presenta las observaciones transcritas para que una persona decida. Dato real que respalda el dimensionado de esa cola: en la remesa real de Mirasierra 2 de 22 partes (~9 %) traen observaciones manuscritas, y solo 7 de 22 traen DNI.
+
+### F-005 · Persistencia en el PostgreSQL compartido
+
+estado **terminada** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
+
+Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.

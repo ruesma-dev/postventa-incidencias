@@ -1,0 +1,170 @@
+<!-- docs/INTEGRACION.md -->
+# Integración con el ecosistema · postventa-incidencias
+
+> **Origen**: este repositorio. **Fecha**: 2026-08-19. **Feature**: F-005.
+>
+> Este documento es la **fuente de verdad** de lo que `postventa-incidencias`
+> consume del ecosistema de Ruesma y de lo que expone a los demás. Se copia a
+> `azure-apps/postventa_incidencias.md` (regla 1 del `README.md` de
+> `azure-apps/`), y **el dueño del documento es este proyecto**: si cambia lo
+> que consumimos, se actualiza aquí en el mismo trabajo, no después.
+>
+> **Ni un valor de conexión.** Aquí van nombres de recurso y nombres de
+> variable de entorno; ni hosts, ni usuarios, ni contraseñas, ni IDs de
+> suscripción, tenant u objeto, ni direcciones internas. Lo vigila
+> `services/postventa-api/tests/test_f005_integracion_sin_secretos.py`, que
+> falla si alguno entra.
+
+## 1 · Qué consumimos hoy
+
+| Recurso | Compartido con | Qué hacemos | Desde |
+|---|---|---|---|
+| PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo y cierres | **F-005** |
+| `sigrid-api` | todo el ecosistema | Lectura de la incidencia; cierre por escritura desde el entorno desplegado | F-008 / F-009 |
+| SharePoint (Graph) | IT | Archivo de los PDF validados | F-006 |
+| Gemini | — | Extracción multimodal y clasificación de firma | F-003 |
+| Entra ID | todo el ecosistema | Autenticación del front y de la tarjeta del portal | F-010 |
+
+**Lo nuevo de F-005 es la primera fila**, y es la única que mete a este
+proyecto como **cuarto inquilino** de un servidor que ya usaban otros tres. El
+resto de este documento va de eso.
+
+## 2 · La base de datos: qué pedimos y qué no tocamos
+
+```
+Servidor  psql-albaranes-rs9k2      COMPARTIDO — no tocamos nada suyo
+   └── Base  postventa              propia; la crea el humano, una vez
+         └── Esquema  postventa     propio; lo crea el DDL de la aplicación
+               ├── remesas                 una subida de partes
+               ├── partes                  la unidad de trabajo, PK = hash del PDF
+               ├── validaciones            la cola de revisión humana
+               ├── archivos                traza de lo subido a SharePoint
+               ├── cierres                 traza del cierre en Sigrid
+               └── preferencias_usuario    auto-cierre por usuario
+```
+
+**Base propia y esquema nominado, las dos cosas.** La base propia es cómo
+aísla el ecosistema (`albaranes`, `partes`, `sigrid_dm`: un servidor, varias
+bases). El esquema nominado —en vez del `public` que usan los demás— es
+cinturón sobre tirantes: el `search_path` de nuestras sesiones es solo
+`postventa`, **sin `public`**, así que una sentencia sin cualificar no puede
+aterrizar donde no debe ni por descuido ni por copiar y pegar.
+
+### Lo que este proyecto NO hace, y consta por escrito
+
+| No hacemos | Por qué |
+|---|---|
+| `CREATE DATABASE` desde la aplicación | Crear bases al arrancar un servicio, en un servidor de producción ajeno, es justo lo que prohíbe `CLAUDE.md`. La base y el rol los crea el humano con `infra/crear_base_postventa.ps1`, una vez |
+| `CREATE ROLE`, `GRANT`, `ALTER SYSTEM`, `CREATE EXTENSION` | Son cambios a nivel de servidor y afectan a los otros tres proyectos. Están en la lista negra del validador de DDL, que se ejecuta **antes de abrir la conexión** |
+| Tocar el esquema `public` de ninguna base | Es donde trabajan `albaranes` y `partes` |
+| Guardar los bytes de los PDF | El disco es compartido, solo crece y ya se llenó una vez (ver §4). Los PDF van a SharePoint; en la base quedan metadatos y hash |
+| Guardar JSON crudo de la extracción | Duplicaría datos personales y engordaría el disco de todos |
+
+El DDL se aplica **idempotente al arranque** (`CREATE ... IF NOT EXISTS`,
+`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`), es
+el mismo patrón que ya usan `albaranes` y `partes`, y va protegido por un
+`pg_advisory_lock` para que dos instancias arrancando a la vez no choquen. Un
+DBA que mire `pg_stat_activity` nos verá con un `application_name` propio del
+servicio y del entorno.
+
+## 3 · Variables de entorno (nombres, nunca valores)
+
+Los nombres son deliberadamente los que ya usa el ecosistema, para que quien
+despliegue no tenga que aprender dos vocabularios.
+
+| Variable | Obligatoria | Notas |
+|---|---|---|
+| `PG_HOST` | sí, para persistir | Sin ella la aplicación arranca igual: `/health` no necesita base |
+| `PG_PORT` | no | Puerto estándar de PostgreSQL por defecto |
+| `PG_DB` | no | Por defecto, la base propia del proyecto |
+| `PG_USER` | sí, para persistir | Rol de aplicación, propio de este proyecto |
+| `PG_PASSWORD` | sí, para persistir | **Secreto**. En Azure va por referencia a Key Vault; nunca en el repositorio, ni en `.env.example`, ni en un fichero de despliegue |
+| `PG_SCHEMA` | no | Por defecto, el esquema propio |
+| `PG_SSLMODE` | no | Por defecto exige TLS, como pide Azure Flexible Server |
+| `PG_MAX_CONEXIONES` | no | Techo bajo a propósito (§4, conexiones) |
+| `PG_STATEMENT_TIMEOUT_S` | no | Ninguna consulta nuestra se eterniza en un servidor ajeno |
+| `PG_LOCK_TIMEOUT_S` | no | Ni espera indefinidamente por un bloqueo |
+| `PG_IDLE_IN_TRANSACTION_TIMEOUT_S` | no | Ni deja una transacción abierta ocupando una conexión |
+
+`POSTVENTA_PG_TEST_DSN` es aparte: solo la usa la suite de base de datos
+(`tests_bbdd/`) contra una base **efímera y local**, y su `conftest.py` aborta
+si apunta a un host que no sea local. La suite normal del proyecto no abre ni
+una conexión.
+
+## 4 · Qué le hacemos al servidor compartido, en números
+
+Los tres límites que importan, y por qué nos importan:
+
+**Disco.** El servidor tiene 32 GB compartidos, el almacenamiento **solo
+crece, nunca decrece**, y el punto de restauración es del **servidor entero**:
+no se puede volver atrás nuestra base sin arrastrar las ajenas. El 2026-08-09
+el disco llegó al 93,4 % y el servidor quedó en solo-lectura diez minutos por
+el build de otro proyecto. Ese precedente es el motivo de que ni los PDF ni el
+JSON crudo entren en la base.
+
+**Nuestro volumen esperado es minúsculo.** Una remesa real ronda los 22
+partes; una fila de parte son unos cientos de bytes de texto más sus
+confianzas. Con el ritmo previsto de Posventa, el crecimiento anual se cuenta
+en megabytes, no en gigabytes. Si alguna vez deja de ser así, lo primero que
+crecerá es `partes` y el primer sitio donde mirar es esta sección.
+
+**Conexiones.** El servidor es pequeño y las conexiones las comparten cuatro
+proyectos. Una Function App que escale a N instancias podría comérselas, así
+que el techo de conexiones está bajo por defecto y las sesiones llevan los
+tres timeouts de §3. Nada nuestro debería quedar colgado en
+`pg_stat_activity`.
+
+**CPU y memoria.** No ejecutamos analítica ni `VACUUM FULL` ni cargas masivas:
+son inserciones y actualizaciones de una fila, con índices por número de
+incidencia, código de obra y remesa.
+
+## 5 · Qué se rompe si alguien toca algo
+
+| Si alguien... | Nos pasa esto | Aviso |
+|---|---|---|
+| Cambia parámetros del servidor, autenticación o almacenamiento | Nos afecta igual que a `albaranes` y `partes`; es un cambio de los cuatro, no de uno | Avisar a los cuatro proyectos |
+| Llena el disco desde otro proyecto | El servidor pasa a solo-lectura y **dejamos de poder guardar partes**: la validación humana se queda sin cola nueva | Ya pasó el 2026-08-09 |
+| Borra o renombra la base `postventa` o su esquema | El servicio no arranca la parte de persistencia | Nadie más debería tocarla: es nuestra |
+| Restaura el servidor a un punto anterior | Perdemos las filas posteriores a ese punto, sin manera de aislarlo | Coordinar antes: el PITR es del servidor entero |
+| Toca el esquema `public` | A nosotros, nada: no tenemos ni una tabla ahí, y un test contra base efímera lo comprueba | — |
+
+Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
+las reglas de §2. La única superficie compartida real es el **disco** y el
+**cupo de conexiones**, y las dos están acotadas a propósito.
+
+## 6 · Datos personales
+
+La base guarda **datos personales de clientes**: DNI y observaciones
+manuscritas del parte, además de la promoción y la unidad, que localizan una
+vivienda. También el identificador opaco de Entra (`oid`) del empleado que
+sube la remesa o confirma un cierre; nunca su correo ni su nombre.
+
+Consecuencias para quien administre el servidor:
+
+- El DNI vive en **una sola columna de una sola tabla**, nunca duplicado en
+  otra ni en un blob; quien lo necesite hace `JOIN`.
+- **Nunca** se escribe en logs, ni completo ni parcial.
+- **Nunca** entra en el repositorio: los ejemplos de tests y specs son
+  inventados y hay un test que barre el árbol buscando patrones de DNI y NIE.
+- Una copia de la base, un volcado o una captura de pantalla del contenido de
+  `partes` es un fichero con datos personales y se trata como tal.
+
+El detalle columna a columna está en `specs/F-005-persistencia/design.md` §6.
+
+## 7 · Qué exponemos nosotros
+
+Hoy, nada hacia otros proyectos: no publicamos API que consuman terceros ni
+escribimos en bases ajenas. Cuando el portal muestre la tarjeta de Posventa
+(F-010) y el backend exponga sus endpoints (F-007), esta sección se rellena
+en el mismo trabajo que lo haga.
+
+## 8 · Dónde está cada cosa
+
+| Qué | Dónde |
+|---|---|
+| El DDL, en `.sql` numerados | `services/postventa-api/infrastructure/persistencia/sql/` |
+| El validador que lo revisa antes de aplicarlo | `services/postventa-api/infrastructure/persistencia/ddl.py` |
+| Crear la base y el rol, una vez | `infra/crear_base_postventa.ps1` |
+| Suite contra base efímera en Docker | `infra/pruebas_bbdd_efimera.ps1` |
+| Diseño completo y decisiones | `specs/F-005-persistencia/` |
+| Documento gemelo del ecosistema | `azure-apps/postventa_incidencias.md` |

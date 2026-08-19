@@ -645,3 +645,45 @@ dobles usan valores distintos a propósito, para que se vea cuál gana.
 - **`httpx.Client` se construye en la primera llamada**, no en el `__init__`,
   como en el adaptador de Gemini: el adaptador tiene que poder existir sin
   abrir nada.
+
+---
+
+## T11 · RED · Los tests del borde HTTP
+
+Fichero: `services/postventa-api/tests/test_f006_archivar_http.py` (R30, R31).
+
+**Traza real de la fase RED**, con el comando exacto:
+
+```
+$ cd services/postventa-api
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_archivar_http.py -q
+=================================== ERRORS ====================================
+______________ ERROR collecting tests/test_f006_archivar_http.py ______________
+ImportError while importing test module '...\tests\test_f006_archivar_http.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_f006_archivar_http.py:36: in <module>
+    from interface_adapters.api.archivar import archivar_parte
+E   ModuleNotFoundError: No module named 'interface_adapters.api.archivar'
+=========================== short test summary info ===========================
+ERROR tests/test_f006_archivar_http.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.54s
+```
+
+### El test del 503 es el que más dice de toda la feature
+
+`test_f006_r31_archivo_deshabilitado_responde_503` es **el único del fichero
+que no inyecta dobles**: deja que el handler construya lo de verdad. Con
+`ENTORNO=test` —lo que `conftest.py` fija para toda la suite— la fábrica se
+niega y el borde responde 503.
+
+Es, de paso, la demostración de que **el endpoint no puede archivar desde un
+puesto de trabajo aunque alguien lo llame a mano**, que es el `acceptance` 4 de
+la feature visto desde fuera.
+
+En los seis caminos de error se comprueba además que la biblioteca falsa
+**sigue vacía**: R31 dice «en los cuatro casos, sin haber subido nada», y eso
+es lo que de verdad importa, no el número.

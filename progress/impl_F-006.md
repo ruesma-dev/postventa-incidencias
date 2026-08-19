@@ -157,3 +157,52 @@ ENTORNO LISTO. Puedes trabajar.
 **No** se ha inventado ningún modelo gemelo: `ResultadoValidacion`, `Destino`,
 `TrazaArchivo`, `EstadoArchivo` y `RepositorioPartesPort.guardar_archivo` se
 consumen tal cual los dejaron F-004 y F-005 (`design.md` §1).
+
+---
+
+## T2 · RED · Los tests del nombrado, antes que el nombrado
+
+Fichero: `services/postventa-api/tests/test_f006_nombrado.py` (R1–R9).
+
+**Traza real de la fase RED**, con el comando exacto:
+
+```
+$ cd services/postventa-api
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_nombrado.py -q
+=================================== ERRORS ====================================
+________________ ERROR collecting tests/test_f006_nombrado.py _________________
+ImportError while importing test module '...\tests\test_f006_nombrado.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_f006_nombrado.py:30: in <module>
+    from domain.models.errores import NombradoImposible
+E   ImportError: cannot import name 'NombradoImposible' from 'domain.models.errores'
+=========================== short test summary info ===========================
+ERROR tests/test_f006_nombrado.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.31s
+```
+
+Rojo por lo que tenía que estar rojo: ni `NombradoImposible` ni
+`domain/models/nombrado.py` existen todavía.
+
+### Dos decisiones de los tests que conviene no perder
+
+**1 · Las constantes se comprueban contra literales escritos a mano.** Ni
+`GUIONES_EQUIVALENTES` ni `CARACTERES_PROHIBIDOS` se recorren para generar los
+casos: los siete guiones y los nueve caracteres prohibidos están escritos uno
+a uno en la parametrización. Un test que itera la constante que vigila da
+verde aunque alguien la vacíe, y eso es exactamente el mutante que el nivel
+`critico` no puede dejar vivo.
+
+**2 · `nombre_admisible()` es público, y es una desviación menor de la spec.**
+`design.md` §4.2 dejaba la comprobación de R7 dentro de `nombre_de_archivo`.
+Ahí las tres ramas «empieza en espacio», «acaba en espacio» y «acaba en punto»
+son **inalcanzables**: los códigos se recortan antes y el nombre siempre acaba
+en `.pdf`. Una guardia inalcanzable no se puede probar —y en la campaña de
+mutación aparece como superviviente, que en `critico` es un fallo—. Se saca a
+una función pública, se prueba directamente con sus siete casos y
+`nombre_de_archivo` la usa. Misma semántica, misma severidad; solo cambia
+dónde se puede apuntar el test.

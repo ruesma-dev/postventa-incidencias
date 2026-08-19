@@ -3,13 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **15 features**, 13 abiertas, 2 terminadas.
+Resumen: **16 features**, 13 abiertas, 3 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | spec lista | critico | `feature/F-003-extraccion` |
 | F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
 | F-006 | Nombrado y archivo en SharePoint | 6 | pendiente | critico | `feature/F-006-sharepoint` |
@@ -22,6 +21,7 @@ Resumen: **15 features**, 13 abiertas, 2 terminadas.
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
+| F-016 | Interpretación automática de las observaciones manuscritas | 16 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
 
 ## Terminadas
 
@@ -29,20 +29,15 @@ Resumen: **15 features**, 13 abiertas, 2 terminadas.
 |---|---|---|---|
 | F-001 | Esqueleto del monorepo y /health | 1 | estandar |
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
+| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
 
 ## Detalle
-
-### F-003 · Extracción multimodal del parte, manuscritos incluidos
-
-estado **spec lista** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
-
-Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.
 
 ### F-004 · Validación del parte y clasificación de la firma
 
 estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-004-validacion`
 
-Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme.
+Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme. DECISIONES DE DOMINIO DEL HUMANO (2026-08-19, mandan sobre el diseño): (1) un parte SIN DNI del cliente SÍ pasa como conforme, la ausencia de DNI no descalifica; (2) un parte CON observaciones manuscritas NO es conforme, y de momento ese es el ÚNICO motivo de rechazo; (3) el parte rechazado por observaciones no se descarta: va a una COLA DE VALIDACIÓN HUMANA que presenta las observaciones transcritas para que una persona decida. Dato real que respalda el dimensionado de esa cola: en la remesa real de Mirasierra 2 de 22 partes (~9 %) traen observaciones manuscritas, y solo 7 de 22 traen DNI.
 
 ### F-005 · Persistencia en el PostgreSQL compartido
 
@@ -110,6 +105,12 @@ estado **pendiente** · prioridad 15 · rigor `critico` · SDD sí · rama `feat
 
 Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md.
 
+### F-016 · Interpretación automática de las observaciones manuscritas
+
+estado **pendiente** · prioridad 16 · rigor `critico` · SDD sí · rama `feature/F-016-interpretacion-observaciones`
+
+Hoy F-004 rechaza en bloque cualquier parte con observaciones manuscritas y lo manda entero a la cola de validación humana, dé lo mismo que ponga 'falta rematar el rodapié' o 'firmado a satisfacción'. Esta feature interpreta el texto que ya transcribe F-003 para distinguir la observación inocua —una nota, una aclaración, un comentario que no discute la reparación— de la que de verdad impide dar la reparación por buena, y así reducir la cola humana a lo que la merece. Mejora posterior, no bloqueante: el circuito funciona sin ella, solo con más trabajo manual. En la remesa real de Mirasierra la cola serían 2 de 22 partes (~9 %), así que el ahorro se mide antes de complicar el modelo. Ante la duda, a la cola: la clasificación nunca da por buena una reparación por su cuenta si no está segura.
+
 ### F-001 · Esqueleto del monorepo y /health
 
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
@@ -121,3 +122,9 @@ Crear services/postventa-api (Function App Python con settings, logging y un end
 estado **terminada** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
 
 Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.
+
+### F-003 · Extracción multimodal del parte, manuscritos incluidos
+
+estado **terminada** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
+
+Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas. CERRADA el 2026-08-19: revisión APROBADA y última verificación manual completada (T18, barrido de los 22 partes reales de Mirasierra), con el modelo leyendo la letra manuscrita y cero falsos negativos.

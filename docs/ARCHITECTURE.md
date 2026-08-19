@@ -40,7 +40,8 @@ services/
       services/
     infrastructure/
       documentos/           # adaptadores de los ficheros que entran: PDF y ZIP
-      llm/                  # adaptador Gemini (y los que vengan)
+      llm/                  # adaptador Gemini (y los que vengan) + su fábrica
+      prompts/              # carga de config/prompts.yaml
       sharepoint/           # adaptador Graph
       sigrid/               # cliente de sigrid-api
       persistencia/         # PostgreSQL
@@ -65,8 +66,23 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    podido mirar». Recuperar el parte de dos hojas en remesas escaneadas es
    F-014, apoyándose en la lectura multimodal del paso 3.
 3. **Extracción** — modelo multimodal sobre las páginas del parte: promoción,
-   chalet, nº de incidencia, fecha, descripción **y todo lo manuscrito**
-   (DNI, observaciones). Un escaneo no tiene capa de texto: esto es visión.
+   código de obra, **unidad**, nº de incidencia, fecha de servicio,
+   descripción **y todo lo manuscrito** (DNI, observaciones). Un escaneo no
+   tiene capa de texto: esto es visión. Tres precisiones que decidió F-003:
+   - **Cada campo viaja con su confianza** (`confianza_pct`, entero 0–100),
+     también los manuscritos. Un dato leído a medias no vale lo mismo que uno
+     impreso, y quien valida (paso 4) necesita saberlo.
+   - **Lee el «Página N» del pie impreso y lo devuelve, pero no reagrupa
+     nada.** El modelo ve ese pie aunque el escaneo no tenga capa de texto,
+     que es justo lo que el troceado no pudo leer. Unir las dos hojas de un
+     parte con ese dato es **F-014**; la extracción no toca `paginas_origen`
+     ni el troceado.
+   - **No juzga la firma ni dice si el parte es válido**: eso es el paso 4.
+   El dato de la unidad se llama **`unidad`** en todo el proyecto: el papel lo
+   imprime con la etiqueta «Vivienda» y el backlog lo llamaba «chalet», pero
+   `unidad` es como lo nombra la estructura de archivo de Posventa
+   (`PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`). Son tres nombres del
+   mismo dato y en el código hay uno solo.
 4. **Validación** — firma presente y humana, campos obligatorios legibles,
    coherencia con Sigrid (la incidencia existe y está abierta).
 5. **Nombrado** — `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`: código de obra, código de incidencia y sufijo.
@@ -108,6 +124,19 @@ igual que hoy, y por debajo se suben los PDFs.
    manuscritas nunca se cierra solo**: va a revisión manual con el texto
    delante de quien decide. Cerrarlo por tener firma sería dar por resuelta
    una reparación que el cliente dice que no lo está.
+   Precisado el 2026-08-19, y manda sobre el diseño de F-004:
+   - **Las observaciones manuscritas son, de momento, el único motivo de
+     rechazo.** Ningún otro dato manuscrito descalifica el parte.
+   - **Rechazado no es descartado.** El parte va a una **cola de validación
+     humana** que presenta las observaciones transcritas para que una persona
+     decida. Ni se cierra solo ni se tira: espera a que alguien lo mire.
+   - El dimensionado esperable de esa cola sale del dato real: en la remesa
+     de Mirasierra son **2 partes de 22** (~9 %).
+   - **Interpretar automáticamente el contenido de la observación** —separar
+     la inocua de la que impide dar la reparación por buena, y así encoger la
+     cola humana— **no es F-004**: es **F-016**, dada de alta el
+     2026-08-19 en `harness/features.json` y bloqueada por F-004. F-004 detecta que hay
+     observaciones y las transcribe; no las juzga.
 4. **Lo manuscrito es dato de primera, no decoración.** DNI y observaciones
    se escriben a mano y hay que extraerlos. Descartarlos porque "no es texto
    impreso" es un bug, no una simplificación.
@@ -116,6 +145,11 @@ igual que hoy, y por debajo se suben los PDFs.
    validación que los exija manda a revisión manual el 100 % de los partes.
    Los únicos campos que deciden son: código de obra, nº de incidencia,
    firma y observaciones.
+   En particular, y aunque suene contraintuitivo: **un parte sin DNI del
+   cliente pasa como conforme**. La ausencia de DNI manuscrito no descalifica
+   nada. El dato real lo respalda: en la remesa de Mirasierra solo **7 de los
+   22 partes** traen DNI, así que exigirlo dejaría fuera a dos tercios de una
+   remesa normal.
 5. **El número de incidencia lo emite Sigrid** y se escribe `RS26.08/0123`
    (con barra) en el ERP y en el parte impreso, pero con guion en el nombre
    del fichero. Sin él no se puede nombrar ni
@@ -144,7 +178,7 @@ igual que hoy, y por debajo se suben los PDFs.
 | `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la incidencia; cierre por escritura. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. La escritura está apagada por defecto y los endpoints de dominio son dry-run salvo `commit: true`. |
 | SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. | Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature F-013, no un detalle de despliegue. |
 | PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones y preferencias de usuario. **Schema propio** del proyecto. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento. |
-| Gemini (`gemini-2.5-flash`) | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`: el proveedor se cambia por configuración, no editando el pipeline. |
+| Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
 
 **Prohibido desde local**: escribir en Sigrid (ni siquiera con `commit:false`

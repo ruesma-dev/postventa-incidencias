@@ -106,3 +106,78 @@ Deuda declarada al cerrar (ninguna bloquea):
   de git entre dos agentes en la misma rama. Contenido correcto, reparto por
   commits imperfecto; se decidió no reescribir el historial de una rama ya
   revisada.
+
+---
+
+## F-003 · Extracción multimodal del parte, manuscritos incluidos — 2026-08-19
+
+**Cerrada.** Rama `feature/F-003-extraccion`, rigor `critico`, spec SDD
+aprobada por el humano, review **APROBADA**
+(`progress/impl_F-003.md`, `progress/review_F-003.md`).
+
+Qué queda en el repositorio: el adaptador de IA detrás de `ExtractorPort`
+—Gemini, modelo configurable por `GEMINI_MODEL`—, el prompt versionado en
+`config/prompts.yaml` con huella propia, el paso de extracción en
+`application/pipelines/` y el endpoint **`POST /api/extraer`**. De cada parte
+salen nueve campos con su confianza: los seis impresos (`promocion`,
+`codigo_obra`, `unidad`, `numero_incidencia`, `descripcion`, `numero_pagina`)
+y los tres manuscritos (`fecha_servicio`, `dni_cliente`, `observaciones`).
+`numero_pagina` se lee y se devuelve, pero **no reagrupa nada**: eso es F-014,
+con un test que lo vigila.
+
+Evidencias: **207 tests** en verde en el servicio (112 de F-003) y 16 en la
+raíz; cobertura de lo cambiado **100 %** (631/631, umbral 80 %), sin ficheros
+«no medidos»; mutación **127 generados, 127 muertos, 0 supervivientes**, con el
+reviewer **reejecutando la campaña entera** (101,0 s, mismos totales, árbol
+limpio) al estrenar esa exigencia del arnés 1.5.2. Buscados activamente y sin
+hallazgos: datos personales o respuesta cruda del modelo en logs, fixtures o
+informes; credenciales en el repositorio; ganchos adelantando F-014; campos de
+otras features en la respuesta.
+
+**Verificación MANUAL (T18) ejecutada por el humano**: barrido de los **22
+partes** de la remesa real de Mirasierra, modelo `gemini-3.7-flash`, prompt
+`parte_posventa_es` v1 huella `2306ac1d07f1`.
+
+- **Seis campos impresos: 22/22 partes**, confianzas medias entre **98,8 y
+  99,2** (`promocion` 98,8; `codigo_obra` 99,2; `unidad` 99,0;
+  `numero_incidencia` 99,2; `descripcion` 98,8; `numero_pagina` 99,2, con los
+  22 partes dando «1»).
+- **Tres campos manuscritos**: `fecha_servicio` 0/22 (confianza 0);
+  `dni_cliente` 7/22 (media 89,3, partes 15 a 21); `observaciones` 2/22 (media
+  82,5, partes 20 y 21).
+
+**Veredicto: la premisa del proyecto queda VALIDADA.** El modelo lee la letra
+manuscrita de estos escaneos. Los huecos no son fallos, son papel en blanco: el
+humano inspeccionó uno a uno los partes 0 a 14 y confirmó que ninguno lleva
+nada escrito a mano en el bloque «SERVICIO REALIZADO Y CONFORME». Acierto sobre
+manuscritos del **100 %**, **cero falsos negativos**.
+
+Lo que enseñó esta feature:
+
+- **Un test parametrizado con la propia constante que vigila no vigila nada.**
+  Al borrar el mutante el valor de la constante desaparece también el caso de
+  prueba, y la campaña aplaude el cambio. Pasó con los códigos HTTP
+  transitorios y se arregló escribiéndolos a mano en el test. Vale para
+  cualquier feature.
+- **El resultado de una verificación manual puede corregir la expectativa, no
+  el código.** En T17 el esperado decía `numero_incidencia = RS26.08/0123` y
+  salió `RS26.08/0001`: `remesa_sintetica()` numera correlativo y el `0123` era
+  el valor por defecto de otra función. El modelo leyó bien.
+- **Un solo parte real no demuestra nada sobre manuscritos**: con los tres
+  campos en blanco no se distingue «el papel no tiene nada escrito» de «el
+  modelo no lee la letra». Solo el barrido de la remesa entera, contrastado con
+  la inspección visual del papel, cierra esa duda.
+
+Deuda declarada al cerrar (ninguna bloquea):
+
+- **Aviso del SDK en cada llamada real**: «Direct use of automatic function
+  calling (AFC) in `Models.generate_content` is not recommended». Los
+  resultados son correctos, pero sugiere que el schema se pasa de una forma que
+  activa la llamada automática de funciones. Pendiente revisar
+  `infrastructure/llm/gemini.py`.
+- **Tres propuestas de automejora de la review sin aplicar** (P1 base de la
+  campaña de mutación; P2 tareas `MANUAL (humano)` en C5; P3 «no medido» en C4
+  bis). P2 y P3 son genéricas y van a `arnes-base`.
+- **La remesa de Mirasierra no sirve para F-014**: sus 22 partes dieron
+  `numero_pagina` «1», así que no hay ningún parte de dos hojas con el que
+  verificar la reagrupación.

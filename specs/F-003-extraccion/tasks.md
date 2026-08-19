@@ -27,20 +27,20 @@
 > `MANUAL (humano)` pasan a ser **T17** y **T18**, justo detrás del endpoint, y
 > la documentación y la campaña de mutación bajan a **T19** y **T20**.
 
-- [ ] **T1**: Declarar `google-genai>=0.3`, `pyyaml>=6.0` y
+- [x] **T1**: Declarar `google-genai>=0.3`, `pyyaml>=6.0` y
       `tenacity>=8.2,<10.0` en `services/postventa-api/requirements.txt` e
       instalarlos en el venv del servicio.
       **Verificación**: `cd services/postventa-api && .venv/Scripts/python.exe -m pip install -r requirements-dev.txt && .venv/Scripts/python.exe -c "import google.genai, yaml, tenacity; print('ok')"`
       imprime `ok`, y `.venv/Scripts/python.exe -m pytest -q` sigue en verde
       (F-001 y F-002 intactas).
 
-- [ ] **T2 · RED**: Escribir `tests/test_f003_arquitectura.py` con
+- [x] **T2 · RED**: Escribir `tests/test_f003_arquitectura.py` con
       `test_f003_r19_la_suite_no_puede_abrir_conexiones_de_red` (R19): abrir un
       socket contra cualquier host debe levantar el error de la guardia.
       **Verificación**: el test falla porque **hoy la conexión se intenta de
       verdad**; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T3**: Implementar la **guardia de red** en
+- [x] **T3**: Implementar la **guardia de red** en
       `services/postventa-api/tests/conftest.py` (fixture autouse que sustituye
       `socket.socket.connect`), sin tocar la fixture `entorno_de_test` que ya
       existe.
@@ -50,7 +50,7 @@
       aprobada en `design.md` §6.3 y anotarlo; cualquier tercera vía es
       `blocked`.
 
-- [ ] **T4 · RED**: Escribir `tests/utiles_ia.py` (`respuesta_simulada`,
+- [x] **T4 · RED**: Escribir `tests/utiles_ia.py` (`respuesta_simulada`,
       `json_del_modelo`, `prompt_de_prueba`, `ExtractorFalso`,
       `ClienteGenaiFalso`) **con datos inventados**, y
       `tests/test_f003_extraccion_dominio.py` (R1, R3, R5): los ocho campos de
@@ -62,13 +62,13 @@
       **Verificación**: rojo por `ModuleNotFoundError` / `ImportError`; **traza
       pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T5**: Implementar `domain/models/extraccion.py`,
+- [x] **T5**: Implementar `domain/models/extraccion.py`,
       `domain/models/prompt.py`, `domain/ports/extractor.py`,
       `domain/ports/prompts.py` y las excepciones nuevas en
       `domain/models/errores.py` (`design.md` §4.1–§4.5).
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f003_extraccion_dominio.py -q` en verde.
 
-- [ ] **T6 · RED + verde**: El campo **`numero_pagina`** (R2 bis, decisión D1
+- [x] **T6 · RED + verde**: El campo **`numero_pagina`** (R2 bis, decisión D1
       del humano). Primero el test —`test_f003_r2bis_el_numero_de_pagina_se_lee_del_pie`
       en `tests/test_f003_extraccion_dominio.py`: el campo está declarado, es
       **impreso** (no entra en `CAMPOS_MANUSCRITOS`) y una respuesta simulada
@@ -82,7 +82,7 @@
       entra en T8, y el schema estructurado se genera solo desde
       `CAMPOS_DEL_PARTE`: no hay una tercera copia que mantener.
 
-- [ ] **T7 · RED**: Escribir `tests/test_f003_prompts_yaml.py` (R8, R9, R10):
+- [x] **T7 · RED**: Escribir `tests/test_f003_prompts_yaml.py` (R8, R9, R10):
       el prompt se carga del YAML con `system`, `task`, `schema` y `version`;
       un fichero inexistente falla nombrando la ruta; una clave desconocida
       falla listando las disponibles; una entrada sin `system` o sin `task`
@@ -90,7 +90,7 @@
       por el propio test con `tmp_path`).
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T8**: Escribir `services/postventa-api/config/prompts.yaml` con la clave
+- [x] **T8**: Escribir `services/postventa-api/config/prompts.yaml` con la clave
       `parte_posventa_es` según el contenido normativo de `design.md` §5.2
       —los nueve campos, incluida la línea de `numero_pagina` («lee el pie
       impreso; si no se ve, `null`; **no lo deduzcas**»)— y **sin un solo dato
@@ -99,7 +99,7 @@
       `.venv/Scripts/python.exe -c "from infrastructure.prompts.prompts_yaml import RepositorioPromptsYaml; p = RepositorioPromptsYaml('config/prompts.yaml').obtener('parte_posventa_es'); print(p.clave, p.version, p.schema, p.huella)"`
       imprime la clave, la versión, el schema y la huella (no imprime el texto).
 
-- [ ] **T9 · RED**: Escribir `tests/test_f003_paso_extraccion.py` (R2, R4, R6,
+- [x] **T9 · RED**: Escribir `tests/test_f003_paso_extraccion.py` (R2, R4, R6,
       R7, R13, R16) contra `ExtractorFalso`: el resultado trae **siempre las
       nueve claves**; un campo ausente sale `None`/`0` con aviso; una clave
       inventada por el modelo se descarta con aviso; confianza `120` → `100`,
@@ -110,12 +110,12 @@
       **sin que el doble reciba ninguna llamada**.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T10**: Implementar `application/pipelines/contexto_parte.py` y
+- [x] **T10**: Implementar `application/pipelines/contexto_parte.py` y
       `application/pipelines/paso_extraccion.py` (`design.md` §4.3).
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f003_paso_extraccion.py -q` en verde, incluido el
       `test_f003_r2bis_la_extraccion_no_reagrupa_paginas` de T6.
 
-- [ ] **T11 · RED**: Escribir `tests/test_f003_adaptador_gemini.py` (R14, R15)
+- [x] **T11 · RED**: Escribir `tests/test_f003_adaptador_gemini.py` (R14, R15)
       con `ClienteGenaiFalso` y `espera_inicial_s=0`: un error transitorio se
       reintenta y la segunda respuesta vale; agotados los reintentos, sale
       `ExtraccionFallida`; una respuesta que no es JSON, o que no es un mapping,
@@ -124,14 +124,14 @@
       contiene los bytes del parte ni ningún valor extraído**.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
 
-- [ ] **T12**: Implementar `infrastructure/llm/gemini.py`
+- [x] **T12**: Implementar `infrastructure/llm/gemini.py`
       (`AdaptadorGeminiVision`) con el schema estructurado generado desde
       `CAMPOS_DEL_PARTE` —los nueve campos, todos `required`— y el logging sin
       datos del parte (`design.md` §4.4).
       **Verificación**: los tests de T11 en verde. Ningún test abre red (la
       guardia de T3 lo garantiza).
 
-- [ ] **T13 · RED**: Escribir `tests/test_f003_fabrica.py` (R11, R12): con la
+- [x] **T13 · RED**: Escribir `tests/test_f003_fabrica.py` (R11, R12): con la
       configuración por defecto la fábrica devuelve el adaptador de Gemini y el
       modelo es `gemini-3.7-flash`; `GEMINI_MODEL` cambia el modelo sin tocar
       nada más; `IA_PROVIDER=inventado` levanta `ProveedorNoSoportado`
@@ -156,13 +156,13 @@
       > impide que alguien vuelva a incrustar el prompt en el código, o sea, el
       > requisito que más se degrada solo.
 
-- [ ] **T14**: Ampliar `config/settings.py` con los ajustes de IA de
+- [x] **T14**: Ampliar `config/settings.py` con los ajustes de IA de
       `design.md` §8 (credencial **opcional**), actualizar `.env.example` con
       placeholders, e implementar `infrastructure/llm/fabrica.py`.
       **Verificación**: los tests de T13 en verde y la suite completa del
       servicio también. `.env` **no se toca**.
 
-- [ ] **T15 · RED**: Escribir `tests/test_f003_extraer_http.py` (R17, R18) con
+- [x] **T15 · RED**: Escribir `tests/test_f003_extraer_http.py` (R17, R18) con
       **los cuatro caminos de respuesta**, uno por test:
       - `test_f003_r17_extraer_devuelve_200_con_el_contrato`: `POST` con un PDF
         devuelve **200** con el contrato exacto de `design.md` §4.6 —**nueve**
@@ -183,7 +183,7 @@
       > mutantes sin cubrir, y T20 sacaría supervivientes que habría que
       > justificar a mano en vez de matarlos con una línea de test.
 
-- [ ] **T16**: Implementar `interface_adapters/api/extraer.py` (handler +
+- [x] **T16**: Implementar `interface_adapters/api/extraer.py` (handler +
       composición) y añadir la ruta `extraer` en `function_app.py` con el mapeo
       de errores a 400 / 413 / 502.
       **Verificación**: los tests de T15 en verde y la suite completa también.
@@ -197,7 +197,7 @@
 > entera.** Es un cambio de orden, no de alcance: las 21 tareas siguen siendo
 > las mismas y `bash harness/init.sh` en verde sigue siendo la última.
 
-- [ ] **T17**: **MANUAL (humano)** — humo contra el modelo **real** con un
+- [ ] **T17 · PENDIENTE DEL HUMANO**: **MANUAL (humano)** — humo contra el modelo **real** con un
       parte **sintético** (sin ningún dato personal). Requiere `GEMINI_API_KEY`
       en el `.env` local del servicio; **la clave no se pega en ningún informe
       ni en ningún commit**.
@@ -242,11 +242,26 @@
       **Resultado esperado**: las **nueve** claves presentes, la traza con
       `proveedor=gemini` y `modelo=gemini-3.7-flash`, `codigo_obra` y
       `numero_incidencia` con los valores que el generador sintético imprime
-      (`0677` y `RS26.08/0123`) y `numero_pagina = "1"`. Aquí **sí** se pueden
+      (`0677` y `RS26.08/0001`) y `numero_pagina = "1"`. Aquí **sí** se pueden
       imprimir los valores: son inventados. El resultado real se anota en
       `progress/current.md`.
 
-- [ ] **T18**: **MANUAL (humano)** — acierto sobre **un parte real** de la
+      > **OJO con el número de incidencia esperado**, corregido el 2026-08-19
+      > tras ejecutar la verificación: `remesa_sintetica()` numera correlativo
+      > (`utiles_pdf.py:121`, `RS26.08/{n:04d}`), así que el **primer** parte
+      > dice `RS26.08/0001`. El `RS26.08/0123` que aparece en `design.md` y en
+      > `requirements.md` es el valor **por defecto de `pagina_de_parte()`**
+      > (`utiles_pdf.py:43`), que es otra función: vale como ejemplo del papel,
+      > no como resultado de esta verificación.
+
+      **EJECUTADA POR EL HUMANO el 2026-08-19. Resultado real: correcto.** Las
+      nueve claves, traza `gemini` / `gemini-3.7-flash` / `parte_posventa_es`
+      versión 1 huella `2306ac1d07f1`, `codigo_obra = 0677` y
+      `numero_incidencia = RS26.08/0001` (ambos confianza 99),
+      `numero_pagina = "1"`, sin avisos. Los tres manuscritos salieron vacíos
+      con confianza 0, que es lo correcto: **el PDF sintético no los imprime**.
+
+- [x] **T18**: **MANUAL (humano)** — acierto sobre **un parte real** de la
       remesa de Mirasierra. **Es el momento de la verdad del proyecto entero**:
       lo que se comprueba aquí no es el contrato de F-003 (eso ya lo demuestra
       la suite) sino si el modelo **lee de verdad estos manuscritos y estos
@@ -291,7 +306,42 @@
       más mutación: se arregla tocando el prompt (T8) o cambiando de modelo, y
       ambas cosas invalidarían el trabajo de documentar y mutar hecho encima.
 
-- [ ] **T19**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/prompts/` en
+      **EJECUTADA POR EL HUMANO el 2026-08-19 con `f3_real.py todos`: 22
+      llamadas reales a Gemini, una por cada parte de la remesa de Mirasierra.
+      Resultado real: la premisa del proyecto queda VALIDADA — el modelo SÍ lee
+      la letra manuscrita de estos escaneos.** Traza en los 22: proveedor
+      `gemini`, modelo `gemini-3.7-flash`, prompt `parte_posventa_es` versión 1,
+      huella `2306ac1d07f1`.
+
+      Campos **impresos**, los seis a 22/22 partes: `promocion` (confianza media
+      98,8), `codigo_obra` (99,2), `unidad` (99,0), `numero_incidencia` (99,2),
+      `descripcion` (98,8) y `numero_pagina` (99,2). Los 22 devolvieron
+      `numero_pagina = "1"`: la remesa son 22 partes de una sola hoja.
+
+      Campos **manuscritos**: `fecha_servicio` 0/22 (confianza 0),
+      `dni_cliente` 7/22 (confianza media 89,3; partes 15 a 21, un bloque
+      contiguo) y `observaciones` 2/22 (confianza media 82,5; partes 20 y 21).
+
+      **Los huecos no son fallos del modelo, son papel en blanco.** El humano
+      inspeccionó visualmente los partes 0 a 14 y confirmó que **ninguno** lleva
+      nada escrito a mano en el bloque «SERVICIO REALIZADO Y CONFORME». Por
+      tanto el acierto sobre manuscritos es del **100 %** y hay **cero falsos
+      negativos**. El 0/22 de `fecha_servicio` concuerda además con lo que la
+      regla 1 de `config/prompts.yaml` ya declaraba normal. Ningún valor
+      extraído se ha escrito en ningún sitio: el único valor que aparece aquí es
+      `numero_pagina`, que no es dato personal.
+
+      > **Dos observaciones que heredan otras features** (aquí solo quedan
+      > apuntadas, no se desarrollan):
+      > - **Para F-015**: la regla 1 del prompt nombra la fecha de servicio como
+      >   «casi siempre en blanco», una pista que podría inducir falsos
+      >   negativos; no se puede medir sin el evaluador. Línea base de acierto:
+      >   impresos ~99, manuscritos 82-90.
+      > - **Para F-014**: esta remesa no contiene ningún parte de dos hojas (los
+      >   22 dieron `numero_pagina` `"1"`), así que no sirve para verificar la
+      >   reagrupación; hará falta otro escaneo.
+
+- [x] **T19**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/prompts/` en
       el árbol; en el paso 3 del pipeline, que la extracción devuelve
       **confianza por campo**, que lee el «Página N» del pie **sin reagrupar**
       (eso es F-014) y que **no juzga la firma** (eso es el paso 4); y en la
@@ -300,12 +350,12 @@
       **Verificación**: el diff del documento lo refleja y
       `bash harness/init.sh` sigue en verde.
 
-- [ ] **T20**: Campaña de mutación y análisis de supervivientes.
+- [x] **T20**: Campaña de mutación y análisis de supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-003` genera
       `progress/mutacion_F-003.md` con **cero supervivientes** (nivel
       `critico`), o cada superviviente con su análisis escrito y aceptado por
       el humano.
 
-- [ ] **T21**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T21**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la puerta de cobertura de las líneas
       cambiadas en `[OK]` (umbral 80 %).

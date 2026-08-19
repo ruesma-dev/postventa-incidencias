@@ -49,7 +49,7 @@
     {
       "id": "F-003",
       "title": "Extracción multimodal del parte, manuscritos incluidos",
-      "description": "Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.",
+      "description": "Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas. CERRADA el 2026-08-19: revisión APROBADA y última verificación manual completada (T18, barrido de los 22 partes reales de Mirasierra), con el modelo leyendo la letra manuscrita y cero falsos negativos.",
       "acceptance": [
         "El puerto permite cambiar de proveedor por configuración, sin tocar el pipeline",
         "El resultado incluye los campos manuscritos y una confianza por campo",
@@ -57,7 +57,7 @@
         "Tests con respuesta de IA simulada: ni una llamada real en la suite",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 3,
@@ -66,10 +66,12 @@
     {
       "id": "F-004",
       "title": "Validación del parte y clasificación de la firma",
-      "description": "Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme.",
+      "description": "Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme. DECISIONES DE DOMINIO DEL HUMANO (2026-08-19, mandan sobre el diseño): (1) un parte SIN DNI del cliente SÍ pasa como conforme, la ausencia de DNI no descalifica; (2) un parte CON observaciones manuscritas NO es conforme, y de momento ese es el ÚNICO motivo de rechazo; (3) el parte rechazado por observaciones no se descarta: va a una COLA DE VALIDACIÓN HUMANA que presenta las observaciones transcritas para que una persona decida. Dato real que respalda el dimensionado de esa cola: en la remesa real de Mirasierra 2 de 22 partes (~9 %) traen observaciones manuscritas, y solo 7 de 22 traen DNI.",
       "acceptance": [
         "La clasificación de firma distingue firma de aspa en las muestras reales",
-        "Un parte con observaciones manuscritas va SIEMPRE a revisión manual, aunque esté firmado, con el texto extraído delante",
+        "Un parte con observaciones manuscritas NO es conforme y va SIEMPRE a la cola de validación humana, aunque esté firmado, con las observaciones transcritas delante para que la persona decida",
+        "Las observaciones manuscritas son, de momento, el único motivo de rechazo: ninguna otra regla manda un parte a la cola por su cuenta",
+        "Un parte SIN DNI del cliente sale conforme: la ausencia de DNI no descalifica (solo 7 de 22 partes de Mirasierra lo traen)",
         "Un parte sin nº de incidencia o sin código de obra nunca queda apto",
         "No se exigen campos que la realidad deja en blanco (fecha de servicio, horas, DNI, nombre): exigirlos mandaría a revisión el 100% de la remesa",
         "Cada parte sale con veredicto y motivo, en texto entendible por Posventa",
@@ -273,6 +275,25 @@
       "priority": 15,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
+    },
+    {
+      "id": "F-016",
+      "title": "Interpretación automática de las observaciones manuscritas",
+      "description": "Hoy F-004 rechaza en bloque cualquier parte con observaciones manuscritas y lo manda entero a la cola de validación humana, dé lo mismo que ponga 'falta rematar el rodapié' o 'firmado a satisfacción'. Esta feature interpreta el texto que ya transcribe F-003 para distinguir la observación inocua —una nota, una aclaración, un comentario que no discute la reparación— de la que de verdad impide dar la reparación por buena, y así reducir la cola humana a lo que la merece. Mejora posterior, no bloqueante: el circuito funciona sin ella, solo con más trabajo manual. En la remesa real de Mirasierra la cola serían 2 de 22 partes (~9 %), así que el ahorro se mide antes de complicar el modelo. Ante la duda, a la cola: la clasificación nunca da por buena una reparación por su cuenta si no está segura.",
+      "acceptance": [
+        "Cada observación transcrita sale clasificada como inocua o como impeditiva, con su motivo en texto entendible por Posventa",
+        "Una observación clasificada como inocua deja el parte conforme; cualquier otra, incluida la dudosa, sigue yendo a la cola de validación humana",
+        "La persona que revisa ve siempre la transcripción original junto a la clasificación, y su decisión manda sobre la automática",
+        "El juego de observaciones de prueba y su verdad esperada NO se versionan: son texto manuscrito de clientes",
+        "La lógica de clasificación se prueba sin llamadas reales a IA, con respuestas simuladas",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 16,
+      "branch": "feature/F-016-interpretacion-observaciones",
+      "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     }
   ]
 }

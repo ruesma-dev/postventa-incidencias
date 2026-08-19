@@ -36,7 +36,7 @@ Resumen: **15 features**, 13 abiertas, 2 terminadas.
 
 estado **spec lista** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
 
-Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.
+Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo que usa Ruesma; azure-apps documenta el proveedor pero no fija version), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.
 
 ### F-004 · Validación del parte y clasificación de la firma
 

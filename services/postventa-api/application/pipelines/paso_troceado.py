@@ -11,6 +11,10 @@ mirar» (R11).
 
 La regla es conservadora a propósito: trocear de más manda un parte a revisión
 manual, fundir dos partes **pierde una incidencia**.
+
+Y lo que no da ningún parte se descarta **nombrándolo**, igual que hace la
+ingesta: tanto el PDF que no se puede abrir como el que se abre y no tiene ni
+una página. Ninguno puede desaparecer de la remesa en silencio.
 """
 
 from __future__ import annotations
@@ -44,6 +48,11 @@ def paso_troceado(contexto: ContextoRemesa, pdf: PdfPort) -> ContextoRemesa:
             textos = pdf.texto_por_pagina(documento.contenido)
         except PdfIlegible as error:
             contexto.avisos.append(f"{documento.nombre}: descartado, {error.motivo}")
+            continue
+        if not textos:
+            contexto.avisos.append(
+                f"{documento.nombre}: descartado, el PDF no tiene páginas"
+            )
             continue
         modo = _modo_de_deteccion(textos)
         for paginas, avisos in _agrupar_en_partes(textos):

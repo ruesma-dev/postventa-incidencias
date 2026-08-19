@@ -142,7 +142,7 @@ redacción sea detectable aunque nadie suba la `version` declarada.
 
 **R11.** El sistema debe elegir el adaptador de IA por configuración
 —`IA_PROVIDER`, con `gemini` por defecto— y el modelo por `GEMINI_MODEL`, con
-`gemini-2.5-flash` por defecto. Cambiar de proveedor o de modelo **no debe
+`gemini-3.7-flash` por defecto. Cambiar de proveedor o de modelo **no debe
 tocar** el paso del pipeline, el dominio ni los puertos.
 
 **R12.** SI `IA_PROVIDER` nombra un proveedor no soportado, o falta la
@@ -180,9 +180,16 @@ contenga: el `hash` del parte, los **nueve** `campos` con su `valor` y su
 `confianza_pct`, la `traza` (R6) y la lista de `avisos`.
 
 **R18.** SI la petición no trae ningún fichero, ENTONCES el sistema debe
-responder `400` con el motivo **sin llamar al modelo**; y SI la extracción
-falla (R15/R16), ENTONCES debe responder `502` con el motivo, sin devolver el
-contenido del parte.
+responder `400` con el motivo **sin llamar al modelo**; SI la extracción falla
+(R15), ENTONCES debe responder `502` con el motivo, sin devolver el contenido
+del parte; y SI el parte supera el tamaño máximo (R16), ENTONCES debe responder
+`413`, **no** `502`.
+
+> El `413` (*Payload Too Large*) es deliberado y es el único código correcto
+> para R16: nadie ha fallado río arriba, la petición es demasiado grande y quien
+> puede arreglarlo es el cliente. Un `502` diría lo contrario —que el proveedor
+> de IA se rompió— cuando al modelo **ni se le ha llamado**. Este requisito,
+> `design.md` §4.5 y la tarea T16 dicen los tres lo mismo: `400` / `413` / `502`.
 
 ## 6 · Ni una llamada real a la IA en la suite
 
@@ -216,7 +223,7 @@ versionan.
 | R15 | `test_f003_r15_reintentos_agotados_levantan_extraccion_fallida`, `test_f003_r15_json_invalido_levanta_extraccion_fallida`, `test_f003_r15_error_no_transitorio_no_se_reintenta`, `test_f003_r15_el_mensaje_de_error_no_lleva_el_contenido_del_parte` |
 | R16 | `test_f003_r16_parte_demasiado_grande_no_llama_al_modelo` |
 | R17 | `test_f003_r17_extraer_devuelve_200_con_el_contrato` |
-| R18 | `test_f003_r18_extraer_sin_fichero_responde_400`, `test_f003_r18_extraccion_fallida_responde_502` |
+| R18 | `test_f003_r18_extraer_sin_fichero_responde_400`, `test_f003_r18_extraccion_fallida_responde_502`, `test_f003_r18_parte_demasiado_grande_responde_413` |
 | R19 | `test_f003_r19_la_suite_no_puede_abrir_conexiones_de_red` |
 
 Todos los tests usan **respuestas de IA simuladas construidas en el propio
@@ -227,6 +234,6 @@ inventados.
 
 **Verificación `MANUAL (humano)`**: que el modelo real acierte de verdad sobre
 partes reales **no lo puede demostrar la suite**. Va como tarea manual con su
-comando exacto en `tasks.md` (**T19** y **T20**), y su resultado real se anota
+comando exacto en `tasks.md` (**T17** y **T18**), y su resultado real se anota
 en `progress/current.md`. Medir ese acierto de forma sistemática y repetible es
 **F-015**, no esta feature.

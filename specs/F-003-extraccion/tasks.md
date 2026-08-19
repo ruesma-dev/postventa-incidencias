@@ -15,7 +15,17 @@
 > `numero_pagina` (T6), entra el endpoint `POST /api/extraer` (T15–T16), el
 > campo de la unidad de posventa se llama **`unidad`**, y
 > `harness/rutas_sensibles.json` **no se toca aquí** (es F-015). **No queda
-> ninguna tarea condicional**: las 21 se ejecutan.
+> ninguna tarea condicional**: las 21 se ejecutan, **8 de ellas con fase RED**
+> (T2, T4, T6, T7, T9, T11, T13, T15).
+>
+> **Modelo por defecto: `gemini-3.7-flash`** (decisión del humano, 2026-08-18).
+> Es configuración —`GEMINI_MODEL`—, no diseño: el adaptador no depende de la
+> versión. Su identificador se confirma contra la API en el primer paso de
+> **T17**.
+>
+> **Correcciones de orden aplicadas el 2026-08-18**: las dos verificaciones
+> `MANUAL (humano)` pasan a ser **T17** y **T18**, justo detrás del endpoint, y
+> la documentación y la campaña de mutación bajan a **T19** y **T20**.
 
 - [ ] **T1**: Declarar `google-genai>=0.3`, `pyyaml>=6.0` y
       `tenacity>=8.2,<10.0` en `services/postventa-api/requirements.txt` e
@@ -123,15 +133,28 @@
 
 - [ ] **T13 · RED**: Escribir `tests/test_f003_fabrica.py` (R11, R12): con la
       configuración por defecto la fábrica devuelve el adaptador de Gemini y el
-      modelo es `gemini-2.5-flash`; `GEMINI_MODEL` cambia el modelo sin tocar
+      modelo es `gemini-3.7-flash`; `GEMINI_MODEL` cambia el modelo sin tocar
       nada más; `IA_PROVIDER=inventado` levanta `ProveedorNoSoportado`
       **listando los válidos**; sin `GEMINI_API_KEY` levanta
       `ConfiguracionIaIncompleta` nombrando la variable y **sin que el valor de
       la credencial aparezca en el mensaje**. Añadir a
-      `tests/test_f003_arquitectura.py` el test de R13: recorrido con `ast` de
-      `domain/` y `application/` comprobando que ninguno importa `google`,
-      `yaml`, `tenacity` ni `infrastructure`.
+      `tests/test_f003_arquitectura.py` **dos** tests más:
+      `test_f003_r13_dominio_y_aplicacion_no_importan_proveedores` (R13):
+      recorrido con `ast` de `domain/` y `application/` comprobando que ninguno
+      importa `google`, `yaml`, `tenacity` ni `infrastructure`; y
+      `test_f003_r8_ningun_modulo_incrusta_el_texto_del_prompt` (**segunda mitad
+      de R8**): ningún módulo bajo `services/postventa-api/` fuera de
+      `config/prompts.yaml` contiene el texto del prompt —se comprueba con una
+      firma del `system`/`task` cargados del YAML, o con las frases normativas de
+      `design.md` §5.2—, de forma que el único sitio donde vive el prompt siga
+      siendo el YAML.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
+
+      > El test de R8 estaba declarado en la tabla de trazabilidad de
+      > `requirements.md` y asignado a `test_f003_arquitectura.py` en
+      > `design.md` §2, pero **ninguna tarea lo mandaba escribir**. Es el que
+      > impide que alguien vuelva a incrustar el prompt en el código, o sea, el
+      > requisito que más se degrada solo.
 
 - [ ] **T14**: Ampliar `config/settings.py` con los ajustes de IA de
       `design.md` §8 (credencial **opcional**), actualizar `.env.example` con
@@ -139,37 +162,68 @@
       **Verificación**: los tests de T13 en verde y la suite completa del
       servicio también. `.env` **no se toca**.
 
-- [ ] **T15 · RED**: Escribir `tests/test_f003_extraer_http.py` (R17, R18):
-      `POST` con un PDF devuelve 200 con el contrato exacto de `design.md` §4.6
-      —**nueve** campos— con dobles inyectados; sin fichero, 400 y el doble
-      **no** recibe llamada; si el extractor levanta `ExtraccionFallida`, 502 y
-      la respuesta **no** contiene el contenido del parte.
+- [ ] **T15 · RED**: Escribir `tests/test_f003_extraer_http.py` (R17, R18) con
+      **los cuatro caminos de respuesta**, uno por test:
+      - `test_f003_r17_extraer_devuelve_200_con_el_contrato`: `POST` con un PDF
+        devuelve **200** con el contrato exacto de `design.md` §4.6 —**nueve**
+        campos— con dobles inyectados.
+      - `test_f003_r18_extraer_sin_fichero_responde_400`: sin fichero, **400** y
+        el doble **no** recibe llamada.
+      - `test_f003_r18_parte_demasiado_grande_responde_413`: un cuerpo por encima
+        de `MAX_BYTES_PARTE` responde **413** (no 502), el doble **no** recibe
+        llamada y la respuesta no lleva el contenido del parte.
+      - `test_f003_r18_extraccion_fallida_responde_502`: si el extractor levanta
+        `ExtraccionFallida`, **502** y la respuesta **no** contiene el contenido
+        del parte.
+
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-003.md`.
+
+      > El camino 413 se prueba **porque el rigor es `critico`**: sin su test, el
+      > mapeo de `ParteDemasiadoGrande` en `function_app.py` es superficie de
+      > mutantes sin cubrir, y T20 sacaría supervivientes que habría que
+      > justificar a mano en vez de matarlos con una línea de test.
 
 - [ ] **T16**: Implementar `interface_adapters/api/extraer.py` (handler +
       composición) y añadir la ruta `extraer` en `function_app.py` con el mapeo
       de errores a 400 / 413 / 502.
       **Verificación**: los tests de T15 en verde y la suite completa también.
 
-- [ ] **T17**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/prompts/` en
-      el árbol; en el paso 3 del pipeline, que la extracción devuelve
-      **confianza por campo**, que lee el «Página N» del pie **sin reagrupar**
-      (eso es F-014) y que **no juzga la firma** (eso es el paso 4); y en la
-      tabla de sistemas externos, que el proveedor y el modelo se eligen con
-      `IA_PROVIDER` / `GEMINI_MODEL`.
-      **Verificación**: el diff del documento lo refleja y
-      `bash harness/init.sh` sigue en verde.
+> **A partir de aquí, el orden importa y no es el obvio.** Las dos
+> verificaciones `MANUAL (humano)` van **inmediatamente después de T16**, en
+> cuanto el adaptador y el endpoint están hechos, y **antes** de documentar
+> (T19) y de la campaña de mutación (T20). Razón, en una línea: **si el modelo
+> no lee estos manuscritos no falla F-003 —su contrato se cumpliría igual—,
+> falla la premisa del proyecto, y saberlo antes ahorra la campaña de mutación
+> entera.** Es un cambio de orden, no de alcance: las 21 tareas siguen siendo
+> las mismas y `bash harness/init.sh` en verde sigue siendo la última.
 
-- [ ] **T18**: Campaña de mutación y análisis de supervivientes.
-      **Verificación**: `python -m harness.mutacion --feature F-003` genera
-      `progress/mutacion_F-003.md` con **cero supervivientes** (nivel
-      `critico`), o cada superviviente con su análisis escrito y aceptado por
-      el humano.
-
-- [ ] **T19**: **MANUAL (humano)** — humo contra el modelo **real** con un
+- [ ] **T17**: **MANUAL (humano)** — humo contra el modelo **real** con un
       parte **sintético** (sin ningún dato personal). Requiere `GEMINI_API_KEY`
       en el `.env` local del servicio; **la clave no se pega en ningún informe
       ni en ningún commit**.
+
+      **Primer paso, antes de gastar ninguna llamada de extracción: confirmar
+      contra la API que el identificador del modelo existe tal y como está
+      escrito** (`design.md` §8). Un ID mal escrito **no lo caza ningún test**
+      —ahí el modelo está simulado— y revienta en tiempo de ejecución con un 404
+      del proveedor, fácil de confundir con un problema de credencial:
+
+      ```bash
+      cd services/postventa-api && .venv/Scripts/python.exe -c "
+      from config.settings import obtener_ajustes
+      from google import genai
+      ajustes = obtener_ajustes()
+      cliente = genai.Client(api_key=ajustes.gemini_api_key)
+      nombres = [m.name for m in cliente.models.list()]
+      print('GEMINI_MODEL =', ajustes.gemini_model)
+      print('reconocido:', any(ajustes.gemini_model in n for n in nombres))
+      "
+      ```
+
+      Si sale `reconocido: False`, **es una parada**: se le pregunta al humano
+      cuál es el identificador correcto; **no** se sustituye por otro modelo por
+      iniciativa propia. Confirmado el ID, el humo:
+
       **Verificación**: `MANUAL (humano)`. Comando exacto, desde la raíz:
 
       ```bash
@@ -186,14 +240,17 @@
       ```
 
       **Resultado esperado**: las **nueve** claves presentes, la traza con
-      `proveedor=gemini` y `modelo=gemini-2.5-flash`, `codigo_obra` y
+      `proveedor=gemini` y `modelo=gemini-3.7-flash`, `codigo_obra` y
       `numero_incidencia` con los valores que el generador sintético imprime
       (`0677` y `RS26.08/0123`) y `numero_pagina = "1"`. Aquí **sí** se pueden
       imprimir los valores: son inventados. El resultado real se anota en
       `progress/current.md`.
 
-- [ ] **T20**: **MANUAL (humano)** — acierto sobre **un parte real** de la
-      remesa de Mirasierra. El fichero
+- [ ] **T18**: **MANUAL (humano)** — acierto sobre **un parte real** de la
+      remesa de Mirasierra. **Es el momento de la verdad del proyecto entero**:
+      lo que se comprueba aquí no es el contrato de F-003 (eso ya lo demuestra
+      la suite) sino si el modelo **lee de verdad estos manuscritos y estos
+      escaneos**. Por eso va aquí y no al final. El fichero
       `docs/referencia/doc02871320260817093833.pdf` **no está versionado**:
       tiene que existir en el árbol de quien ejecute.
       **Verificación**: `MANUAL (humano)`. Comando exacto, desde la raíz:
@@ -228,6 +285,26 @@
       lleva DNI, y no escribe nada en disco. Lo que se anota en
       `progress/current.md` son esos booleanos y confianzas, **nunca los
       valores**.
+
+      **Si el resultado es malo, se para y se habla con el humano antes de
+      seguir con T19–T21.** Un acierto pobre no se arregla con más tests ni con
+      más mutación: se arregla tocando el prompt (T8) o cambiando de modelo, y
+      ambas cosas invalidarían el trabajo de documentar y mutar hecho encima.
+
+- [ ] **T19**: Actualizar `docs/ARCHITECTURE.md`: `infrastructure/prompts/` en
+      el árbol; en el paso 3 del pipeline, que la extracción devuelve
+      **confianza por campo**, que lee el «Página N» del pie **sin reagrupar**
+      (eso es F-014) y que **no juzga la firma** (eso es el paso 4); y en la
+      tabla de sistemas externos, que el proveedor y el modelo se eligen con
+      `IA_PROVIDER` / `GEMINI_MODEL`.
+      **Verificación**: el diff del documento lo refleja y
+      `bash harness/init.sh` sigue en verde.
+
+- [ ] **T20**: Campaña de mutación y análisis de supervivientes.
+      **Verificación**: `python -m harness.mutacion --feature F-003` genera
+      `progress/mutacion_F-003.md` con **cero supervivientes** (nivel
+      `critico`), o cada superviviente con su análisis escrito y aceptado por
+      el humano.
 
 - [ ] **T21**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la puerta de cobertura de las líneas

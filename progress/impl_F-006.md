@@ -242,3 +242,65 @@ Sin regresiones: la suite completa pasa de 682 a 753 tests.
   guardia habría dejado una rama que ningún test puede distinguir de la otra
   —y por tanto un mutante superviviente garantizado, que en `critico` es un
   fallo.
+
+---
+
+## T4 · RED · Los dobles y los tests del paso de archivo
+
+Ficheros: `services/postventa-api/tests/utiles_sharepoint.py` (entregable) y
+`services/postventa-api/tests/test_f006_paso_archivo.py` (R10–R18, R23, R24,
+R27, más R6 en su vertiente «no sube nada»).
+
+**Traza real de la fase RED**, con el comando exacto:
+
+```
+$ cd services/postventa-api
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_paso_archivo.py -q
+=================================== ERRORS ====================================
+______________ ERROR collecting tests/test_f006_paso_archivo.py _______________
+ImportError while importing test module '...\tests\test_f006_paso_archivo.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_f006_paso_archivo.py:23: in <module>
+    from application.pipelines.paso_archivo import (
+E   ModuleNotFoundError: No module named 'application.pipelines.paso_archivo'
+=========================== short test summary info ===========================
+ERROR tests/test_f006_paso_archivo.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.32s
+```
+
+Rojo por lo que tenía que estar rojo: no existen ni `paso_archivo`, ni
+`domain/ports/archivo.py`, ni los tres errores nuevos.
+
+### `BibliotecaFalsa` y su control negativo
+
+`design.md` §6.4 pedía un doble que **imitase** el comportamiento real en vez
+de un mock al que preguntarle «¿te pedí `replace`?». Está implementado con los
+tres comportamientos ante homónimo: `reemplazar` pisa y **conserva el
+`item_id`**, `renombrar` crea `nombre (1).pdf` como haría el servicio de
+verdad, y `fallar` levanta un conflicto.
+
+Y se añade lo que la spec no pedía y sin lo cual el test estrella no probaría
+nada: **el control negativo**
+`test_f006_r15_la_biblioteca_falsa_si_renombraria_el_control_negativo`. Se
+construye a propósito un adaptador mal hecho —el que renombra— y se comprueba
+que **sí** aparece el `(1)`. Sin él,
+`test_f006_r15_subir_dos_veces_deja_un_solo_elemento` podría estar en verde
+porque el doble no sabe duplicar, no porque el paso lo evite.
+
+### `test_f006_r15_nunca_se_pide_renombrar`, resuelto sobre la firma del puerto
+
+El puerto no tiene ningún parámetro de comportamiento ante conflicto: la
+decisión está cerrada dentro del adaptador. Así que el test afirma sobre la
+**firma real de `ArchivoPort.subir`**: renombrar no es expresable desde la
+aplicación, ni por error ni a propósito. Es más fuerte que comprobar que en
+esta ejecución concreta no se pidió.
+
+### Los dobles no traen ni un identificador con forma real
+
+`drive-de-mentira`, `item-0001`, `https://ejemplo.invalido/...`. Ninguno tiene
+forma de GUID **a propósito**: quien lea el repositorio no puede distinguir un
+GUID inventado de uno real, así que aquí no entra ninguno de los dos.

@@ -79,7 +79,7 @@
 
 ## Fase 2 · El puerto, el paso y la idempotencia
 
-- [ ] **T4 · RED**: Escribir `tests/utiles_sharepoint.py` con **`BibliotecaFalsa`**
+- [x] **T4 · RED**: Escribir `tests/utiles_sharepoint.py` con **`BibliotecaFalsa`**
       (`design.md` §6.4: un diccionario `ruta -> elemento` que **imita** el
       comportamiento real — reemplazar pisa y conserva `item_id`, renombrar
       crea `nombre (1).pdf`, `asegurar_carpeta` es idempotente y cuenta
@@ -111,7 +111,7 @@
       > más importa de la feature**: es el `acceptance` 3 escrito como
       > comportamiento observable, no como aserción sobre una constante.
 
-- [ ] **T5**: Implementar `domain/ports/archivo.py` (`ItemArchivado`,
+- [x] **T5**: Implementar `domain/ports/archivo.py` (`ItemArchivado`,
       `ArchivoPort`), `application/pipelines/paso_archivo.py` (`design.md` §6.2,
       los ocho pasos **en ese orden**), añadir `ParteNoApto` y `ArchivoFallido`
       a `domain/models/errores.py` y `archivo: TrazaArchivo | None` a

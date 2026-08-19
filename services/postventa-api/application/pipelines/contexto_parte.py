@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 
 from domain.models.extraccion import ExtraccionParte
 from domain.models.firma import LecturaFirma
+from domain.models.persistencia import TrazaArchivo
 from domain.models.remesa import ParteTroceado
 from domain.models.validacion import ResultadoValidacion
 
@@ -31,10 +32,15 @@ class ContextoParte:
     necesita el resultado de la otra, y por eso el front puede pedirlas en
     paralelo (`design.md` §2). `validacion` necesita las dos, y si le falta
     alguna no se inventa un veredicto: levanta `ValidacionSinDatos` (R21).
+
+    `archivo` es la traza de F-005 que deja el paso de archivo (F-006). Va
+    aquí y no en un contexto nuevo por lo mismo que `validacion`: enganchar un
+    paso detrás no puede obligar a cambiar la firma de los que ya existían.
     """
 
     parte: ParteTroceado
     extraccion: ExtraccionParte | None = None
     lectura_firma: LecturaFirma | None = None
     validacion: ResultadoValidacion | None = None
+    archivo: TrazaArchivo | None = None
     avisos: list[str] = field(default_factory=list)

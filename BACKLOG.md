@@ -3,14 +3,13 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **13 features**, 12 abiertas, 1 terminadas.
+Resumen: **15 features**, 13 abiertas, 2 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-002 | Ingesta y troceado de la remesa en partes | 2 | pendiente | critico | `feature/F-002-ingesta-troceado` |
-| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | pendiente | critico | `feature/F-003-extraccion` |
+| F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | spec lista | critico | `feature/F-003-extraccion` |
 | F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
 | F-006 | Nombrado y archivo en SharePoint | 6 | pendiente | critico | `feature/F-006-sharepoint` |
@@ -21,26 +20,23 @@ Resumen: **13 features**, 12 abiertas, 1 terminadas.
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
+| F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
+| F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
 
 ## Terminadas
 
 | # | Feature | Prioridad | Rigor |
 |---|---|---|---|
 | F-001 | Esqueleto del monorepo y /health | 1 | estandar |
+| F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 
 ## Detalle
 
-### F-002 · Ingesta y troceado de la remesa en partes
-
-estado **pendiente** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
-
-Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.
-
 ### F-003 · Extracción multimodal del parte, manuscritos incluidos
 
-estado **pendiente** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
+estado **spec lista** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-003-extraccion`
 
-Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, chalet, nº de incidencia, fecha, descripción y lo escrito a mano: DNI y observaciones.
+Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.
 
 ### F-004 · Validación del parte y clasificación de la firma
 
@@ -102,8 +98,26 @@ estado **pendiente** · prioridad 13 · rigor `estandar` · SDD sí · rama `fea
 
 Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
 
+### F-014 · Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción
+
+estado **pendiente** · prioridad 14 · rigor `critico` · SDD sí · rama `feature/F-014-reagrupar-pagina-2`
+
+Las remesas reales llegan escaneadas sin capa de texto (Mirasierra: 22 páginas, 0 caracteres), así que el troceado de F-002 no puede leer el pie y degrada a 'una página, un parte': un parte de dos hojas sale partido en dos. F-003 ya pasa cada página por un modelo multimodal, que sí ve el pie impreso. Esta feature aprovecha esa lectura: si la extracción devuelve 'Página 2' (o N mayor que 1), esa página se reagrupa como continuación del parte anterior en vez de quedarse como parte suelto. Es la reagrupación posterior al troceado, no un segundo troceador.
+
+### F-015 · Evaluación del prompt de extracción contra partes reales
+
+estado **pendiente** · prioridad 15 · rigor `critico` · SDD sí · rama `feature/F-015-evaluacion-prompt`
+
+Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md.
+
 ### F-001 · Esqueleto del monorepo y /health
 
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
 
 Crear services/postventa-api (Function App Python con settings, logging y un endpoint /health) y services/postventa-front vacío pero arrancable. Feature de calentamiento: valida el circuito completo del arnés antes de jugarse nada.
+
+### F-002 · Ingesta y troceado de la remesa en partes
+
+estado **terminada** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-002-ingesta-troceado`
+
+Normalizar la entrada (PDF suelto, ZIP, varios ficheros) a una lista de PDFs, y trocear cada remesa en documentos de UN parte detectando el comienzo por la plantilla impresa. Endpoint POST /split. Se diseña contra los partes reales de muestras/.

@@ -39,6 +39,7 @@ services/
       pipelines/            # orquestación por pasos (abajo)
       services/
     infrastructure/
+      documentos/           # adaptadores de los ficheros que entran: PDF y ZIP
       llm/                  # adaptador Gemini (y los que vengan)
       sharepoint/           # adaptador Graph
       sigrid/               # cliente de sigrid-api
@@ -55,7 +56,14 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
 1. **Ingesta** — normaliza la entrada (PDF suelto, ZIP, varios ficheros,
    carpeta seleccionada en el navegador) a una lista de PDFs.
 2. **Troceado** — parte cada PDF de remesa en documentos de **un parte**,
-   detectando el comienzo por la plantilla impresa.
+   detectando el comienzo por la plantilla impresa. La señal es el pie que
+   imprime Sigrid: una página cuyo pie diga `Página N` con N ≥ 2 es la segunda
+   hoja del parte anterior. Esa señal **solo se puede leer si el PDF trae capa
+   de texto**; un escaneo sin OCR no la tiene, así que el troceado degrada a
+   «una página, un parte» y cada parte declara en `modo_deteccion` cómo se
+   troceó, para que nadie confunda «no había parte de dos hojas» con «no se ha
+   podido mirar». Recuperar el parte de dos hojas en remesas escaneadas es
+   F-014, apoyándose en la lectura multimodal del paso 3.
 3. **Extracción** — modelo multimodal sobre las páginas del parte: promoción,
    chalet, nº de incidencia, fecha, descripción **y todo lo manuscrito**
    (DNI, observaciones). Un escaneo no tiene capa de texto: esto es visión.

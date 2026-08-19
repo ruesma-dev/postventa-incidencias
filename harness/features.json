@@ -40,7 +40,7 @@
         "Los tests usan PDFs sintéticos generados en el propio test: no dependen de muestras/, que no se versiona",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 2,
@@ -49,7 +49,7 @@
     {
       "id": "F-003",
       "title": "Extracción multimodal del parte, manuscritos incluidos",
-      "description": "Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, chalet, nº de incidencia, fecha, descripción y lo escrito a mano: DNI y observaciones.",
+      "description": "Adaptador de IA tras ExtractorPort, arrancando con gemini-2.5-flash (el modelo que corre hoy en albaranes), configurable por GEMINI_MODEL. Extrae promoción, código de obra, unidad (el papel la imprime como 'Vivienda'), nº de incidencia, fecha de servicio, descripción y lo escrito a mano: DNI y observaciones. Lee además el 'Página N' del pie, que F-014 necesitará para reagrupar el parte de dos hojas.",
       "acceptance": [
         "El puerto permite cambiar de proveedor por configuración, sin tocar el pipeline",
         "El resultado incluye los campos manuscritos y una confianza por campo",
@@ -57,7 +57,7 @@
         "Tests con respuesta de IA simulada: ni una llamada real en la suite",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
       "priority": 3,
@@ -235,6 +235,44 @@
       "rigor": "estandar",
       "priority": 13,
       "branch": "feature/F-013-archivo-posventa"
+    },
+    {
+      "id": "F-014",
+      "title": "Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción",
+      "description": "Las remesas reales llegan escaneadas sin capa de texto (Mirasierra: 22 páginas, 0 caracteres), así que el troceado de F-002 no puede leer el pie y degrada a 'una página, un parte': un parte de dos hojas sale partido en dos. F-003 ya pasa cada página por un modelo multimodal, que sí ve el pie impreso. Esta feature aprovecha esa lectura: si la extracción devuelve 'Página 2' (o N mayor que 1), esa página se reagrupa como continuación del parte anterior en vez de quedarse como parte suelto. Es la reagrupación posterior al troceado, no un segundo troceador.",
+      "acceptance": [
+        "Una remesa escaneada sin OCR cuyo parte de dos hojas llega partido en dos por F-002 acaba con un solo parte de dos páginas tras la reagrupación",
+        "La página que se reagrupa hereda el hash y el orden del parte al que se une: reprocesar la remesa no duplica ni reordena",
+        "SI la primera página de la remesa dice 'Página 2', no hay parte anterior al que unirla: se conserva como parte suelto con su aviso, nunca se descarta",
+        "El modo de detección declarado por cada parte refleja que hubo reagrupación, para que la revisión humana sepa por qué un parte tiene dos páginas",
+        "Los tests usan PDFs y lecturas sintéticas generadas en el propio test: no dependen de muestras/, que no se versiona",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 14,
+      "branch": "feature/F-014-reagrupar-pagina-2",
+      "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
+    },
+    {
+      "id": "F-015",
+      "title": "Evaluación del prompt de extracción contra partes reales",
+      "description": "Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md.",
+      "acceptance": [
+        "El evaluador se ejecuta con un comando y deja un informe con veredicto y el acierto por campo",
+        "El juego de partes de prueba y su verdad esperada NO se versionan: llevan datos personales, y el repositorio solo guarda el umbral y el informe sin valores extraídos",
+        "harness/rutas_sensibles.json declara config/prompts.yaml apuntando a ese comando, y bash harness/init.sh lo hace valer",
+        "Cambiar el prompt sin presentar informe fresco tumba el portero; presentarlo lo deja en verde",
+        "La parte genérica del mecanismo queda portada a arnes-base, con su versión",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 15,
+      "branch": "feature/F-015-evaluacion-prompt",
+      "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     }
   ]
 }

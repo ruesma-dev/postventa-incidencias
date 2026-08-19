@@ -876,3 +876,90 @@ existen, 2026-08-20), que era lo que bloqueaba T17.
 
 **Ningún identificador entró en ningún fichero** —ni de aplicación, ni de
 tenant, ni de sitio, ni de biblioteca—, ni siquiera para documentar el riesgo.
+
+---
+
+## T16 · VERDE · Los dos scripts de verificación manual
+
+Ficheros: `infra/verificar_destino_sharepoint.ps1`,
+`infra/verificar_archivo_dev.ps1` y `tests/test_f006_scripts_infra.py`.
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_scripts_infra.py -q
+20 passed in 0.07s
+
+$ .venv/Scripts/python.exe -m pytest -q
+885 passed, 10 skipped in 12.88s
+```
+
+Los dos van en **ASCII puro y CRLF sin BOM**, como los dos de F-005, y ninguno
+lleva un valor dentro: todo sale de variables de entorno de la sesión de quien
+los ejecuta.
+
+### La verificación que pedía la tarea, ejecutada
+
+```
+$ powershell -ExecutionPolicy Bypass -File infra\verificar_destino_sharepoint.ps1 -WhatIf
+
+verificar_destino_sharepoint.ps1 - solo lecturas, NO SUBE NADA
+-------------------------------------------------------------
+Variables que necesita en esta sesion (solo nombres):
+  GRAPH_TENANT_ID          FALTA
+  GRAPH_CLIENT_ID          FALTA
+  GRAPH_CLIENT_SECRET      FALTA
+  SHAREPOINT_SITE_ID       FALTA
+  SHAREPOINT_DRIVE_ID      FALTA
+  SHAREPOINT_CARPETA_BASE  sin definir; se usara 'Postventa'
+
+El script NO imprime el token ni el secreto en ningun caso.
+Para ejecutarlo de verdad, quita -WhatIf.
+
+-WhatIf: no se ha llamado a nada.
+```
+
+Imprime la ayuda y **de cada variable si está puesta o no, jamás su valor**, y
+no llama a nada. El de T18 hace lo mismo, y **sin `-BaseUrl` se niega**
+explicando que contra un servicio local no funciona ni debe.
+
+### El script de T17 no escribe, y eso es un test, no una promesa
+
+`test_f006_t17_el_script_del_destino_no_escribe_nada` comprueba que **no hay
+ni un `-Method Put`, `Patch` o `Delete`**, y que el **único** `-Method Post` de
+todo el fichero es el del punto de token, porque Entra no da un token con un
+`GET`. Un «ya que estamos, creo la carpeta» sería una escritura en el
+SharePoint de Posventa lanzada desde un puesto de trabajo.
+
+### Un extra útil: el script de T17 enseña los permisos de la aplicación
+
+Decodifica el claim `roles` del token —sin validar firma; no está autenticando
+a nadie, solo mirando qué trae— y lista los permisos concedidos. Con eso
+resuelve `permiso_escritura: True/False` **sin escribir nada**, que era el
+problema de fondo: no hay forma de comprobar permiso de escritura escribiendo
+sin, precisamente, escribir.
+
+Y de paso **avisa en amarillo** cuando aparecen los permisos amplios, citando
+el riesgo aceptado del 2026-08-20 y a **F-018**. El humano lo va a ver cada vez
+que lo ejecute, que es justo lo que se pretende: un riesgo aceptado que nadie
+vuelve a ver es un riesgo olvidado.
+
+### DESVIACIÓN anotada en el propio script de T18: `item_id` y el aviso
+
+T18 esperaba comprobar «el mismo `item_id`» y «aviso de ya estaba archivado».
+Ninguna de las dos cosas es observable desde el endpoint, y el script lo
+explica en su cabecera para que quien ejecute T18 en F-010 no persiga un
+fantasma:
+
+- **`item_id` no está en la respuesta.** R30 fija **seis** claves y dice «y
+  nada más»; `item_id` no es una de ellas. El equivalente observable es la
+  `web_url`, que apunta al mismo elemento, y eso es lo que compara el script.
+- **El aviso «ya estaba archivado» no va a salir.** Esa es la capa L1, y solo
+  salta cuando quien llama **aporta la traza anterior**. El endpoint no la
+  consulta: haría falta un método nuevo en `RepositorioPartesPort`, que es de
+  **F-005**, y F-006 no cambia specs ajenas (misma razón que D4 y D5). Lo que
+  garantiza que no haya duplicado por esta vía es la capa **L2, el reemplazo**,
+  que es literalmente lo que pide el `acceptance` 3.
+
+El script comprueba por tanto lo que el sistema **de verdad** garantiza: dos
+llamadas con 200, mismo destino, y —si hay credenciales de Graph en la sesión—
+un listado de la carpeta **en solo lectura** que confirma un solo elemento y
+ningún nombre con `(1)`.

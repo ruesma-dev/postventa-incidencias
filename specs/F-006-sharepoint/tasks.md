@@ -269,7 +269,7 @@
       en verde, y **ni un GUID, ni un secreto, ni un tenant** en el documento
       (lo comprueba el mismo test).
 
-- [ ] **T16**: Escribir los dos scripts de verificación manual en `infra/`,
+- [x] **T16**: Escribir los dos scripts de verificación manual en `infra/`,
       **sin un solo valor dentro**: leen todo de variables de entorno de la
       sesión del humano y **no imprimen nunca el token ni el secreto**.
       - `infra/verificar_destino_sharepoint.ps1` — **solo lectura**: pide token

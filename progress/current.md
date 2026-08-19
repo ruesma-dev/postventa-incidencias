@@ -28,22 +28,20 @@ código que aún no está en `dev`**.
 
 ## Pendiente del humano (cola de decisiones)
 
-1. **El commit en `azure-apps`** (deuda de M3, T26). Los dos ficheros están
-   escritos en el árbol de ese repositorio —`postventa_incidencias.md`, 172
-   líneas con cabecera correcta y barrido de secretos limpio, y la fila del
-   `README.md`— pero **sin commitear**, por decisión tomada el 2026-08-19.
-   `azure-apps` **sí es un repositorio git** (su último commit es `6bfa3ed`).
-   Sin commit no hay fecha ni historial, y una limpieza del árbol se lleva el
-   documento por delante.
-2. **D6 de F-006** (bloqueante para esa feature): no existen todavía la
-   biblioteca de dev en el sitio de IT ni el app registration con permiso de
-   escritura sobre ella; los crea el humano o IT, y sus identificadores van
-   por `.env`, **nunca por el repositorio**. Falta además decidir el permiso
-   de Graph: `Sites.Selected` acotado a esa biblioteca (lo mínimo y lo
-   prudente) frente a `Files.ReadWrite.All` (todo el tenant). Bloquea T17 y
-   T18. Su D3 **sí** está resuelta: F-006 se cierra con la verificación de
-   subida real diferida a F-010, lo que exigirá autorización expresa ante
-   `CHECKPOINTS.md` C5.
+1. ~~El commit en `azure-apps`~~ — **CERRADO el 2026-08-20: el humano no hace
+   commits en `azure-apps`.** Es una decisión permanente, no una tarea
+   pendiente: **no se vuelve a proponer**. Los dos ficheros
+   (`postventa_incidencias.md` y la fila del `README.md`) quedan escritos en
+   el árbol de ese repositorio y ahí se quedan. Consecuencia asumida: ese
+   documento no tiene fecha comprobable ni historial.
+2. ~~D6 de F-006~~ — **RESUELTA el 2026-08-20. F-006 ya NO está bloqueada.**
+   La biblioteca, el app registration y los permisos **ya existen**, según el
+   humano, y así lo confirmé en Azure: el registro `postventa-incidencias`
+   está dado de alta y su service principal tiene consentimiento de
+   administrador. **Su D3 sigue resuelta**: F-006 se cierra con la
+   verificación de subida real diferida a F-010, lo que exigirá autorización
+   expresa ante `CHECKPOINTS.md` C5. Ver «Lo que hay que saber de Graph»,
+   abajo.
 3. **P1 y P2 del reviewer de F-004** (propuestas de arnés, genéricas): afinar
    `CHECKPOINTS.md` C4 para las verificaciones manuales ya ejecutadas, y
    añadir a C5 el checkpoint de la deuda con dueño citado por identificador.
@@ -62,24 +60,48 @@ código que aún no está en `dev`**.
 
 - **`done`**: F-001, F-002, F-003, F-004, **F-005**.
 - **`spec_ready`**: **F-006 · Nombrado y archivo en SharePoint**, en su rama
-  `feature/F-006-sharepoint`, salida de `dev` y **con D6 bloqueando**.
-- **`pending`**: F-007 a F-017.
+  `feature/F-006-sharepoint`, salida de `dev` y **ya desbloqueada** (D6
+  resuelta el 2026-08-20). Es la siguiente.
+- **`pending`**: F-007 a F-018.
 - **Ninguna `in_progress`.**
 
 `BACKLOG.md` se genera desde `harness/features.json` y lo regenera
 `bash harness/init.sh`: **no se edita a mano**.
 
-## Qué se puede arrancar después del merge
+## Lo siguiente: F-006, y lo que hay que saber de Graph
 
-**F-006 está bloqueada por D6**, que es del humano y no la resuelve ningún
-agente. Si D6 no se desbloquea, lo sensato es tomar la siguiente `pending` por
-prioridad en vez de dejar la sesión parada. Dos candidatas con trabajo real y
-sin dependencias externas:
+**F-006 · Nombrado y archivo en SharePoint** es la siguiente feature. Su spec
+está escrita, sus seis decisiones están resueltas y **D6 dejó de bloquear el
+2026-08-20**. Solo falta la PARADA 1: enseñar la propuesta al humano.
 
-- **F-015 · Evaluación del prompt de extracción.** Tiene tres encargos ya
-  escritos y una línea base medida (abajo).
-- **F-017 · Mejoras de `CHECKPOINTS`**: es donde viven las propuestas de arnés
-  acumuladas de F-004 y F-005.
+### Lo verificado en Azure el 2026-08-20
+
+- **App registration `postventa-incidencias`**, appId `8a8ad580-dbd9-4560-88f8-9ba42891a63b`,
+  con service principal y consentimiento de administrador.
+- **D1 queda respondida de paso**: `partes` ya tiene cliente de SharePoint y
+  proveedor de token reutilizables
+  (`services/partes-persistencia/infrastructure/storage/sharepoint_parte_storage.py`
+  y `infrastructure/graph/token_provider.py`), y usan **`httpx`, no `msal`**,
+  al contrario de lo que proponía la spec. Mirarlos antes de escribir nada.
+
+### ⚠️ Riesgo aceptado: los permisos son más amplios de lo necesario
+
+El service principal tiene **tres** permisos de aplicación consentidos:
+`Sites.Selected` (el que pedía la spec), **`Sites.ReadWrite.All`** y
+**`Sites.FullControl.All`**. Los dos últimos alcanzan a **todos** los sitios
+de SharePoint del tenant y vuelven irrelevante al primero: nada impide
+técnicamente que la aplicación escriba en el sitio de RRHH o de dirección.
+`Sites.FullControl.All` es más amplio incluso que `Files.ReadWrite.All`, que
+la propia spec de F-006 descartó por excesivo.
+
+**El humano decidió el 2026-08-20**: F-006 arranca con los permisos actuales y
+el recorte se hace después, como **F-018 · Mínimo privilegio en Graph**, ya
+dada de alta con dueño y criterios propios. Motivo: no mezclar un cambio de
+configuración del tenant con una implementación.
+
+**Encargo para F-006**: documentar este riesgo aceptado, con su fecha, en su
+`design.md`, y citar a F-018 como dueña del recorte. La deuda tiene dueño; no
+se pierde.
 
 ## Deuda declarada, con dueño
 
@@ -87,7 +109,8 @@ sin dependencias externas:
   clasificación acertó sobre 22 firmas reales, pero **en la remesa no había ni
   un aspa ni una casilla vacía**, así que falta demostrar que no etiqueta
   `humana` lo que no lo es. Ya es criterio de aceptación de su ficha.
-- **M3 de F-005**: el commit en `azure-apps` (punto 1 de la cola).
+- **F-018 · mínimo privilegio en Graph** (nacida el 2026-08-20): recortar los
+  permisos del app registration a solo `Sites.Selected`. Ver arriba.
 
 ## Observación abierta
 

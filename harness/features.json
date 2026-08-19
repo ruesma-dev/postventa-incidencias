@@ -312,6 +312,24 @@
       "rigor": "documental",
       "priority": 17,
       "branch": "feature/F-017-checkpoints-manual"
+    },
+    {
+      "id": "F-018",
+      "title": "Mínimo privilegio en Graph: la app solo Sites.Selected",
+      "description": "El app registration `postventa-incidencias` (verificado el 2026-08-20) tiene consentimiento de administrador para TRES permisos de aplicación de Microsoft Graph: Sites.Selected, Sites.ReadWrite.All y Sites.FullControl.All. Los dos últimos alcanzan a TODOS los sitios de SharePoint del tenant, no solo a la biblioteca de Posventa, y vuelven irrelevante al primero: con Sites.FullControl.All la aplicación puede escribir en el sitio de RRHH o de dirección igual que en el suyo. Es más amplio incluso que Files.ReadWrite.All, que la spec de F-006 ya descartó por excesivo. No es un fallo: es lo que pasa al configurar Sites.Selected, que exige el paso extra de asignar la biblioteca concreta por Graph, mientras que los amplios funcionan a la primera. EL HUMANO DECIDIÓ EL 2026-08-20 arrancar F-006 con los permisos actuales y recortar después, en esta feature, para no mezclar un cambio de configuración del tenant con una implementación. Mientras tanto el riesgo queda documentado en la spec de F-006. El recorte lo ejecuta el humano en Azure: un agente no toca permisos del tenant.",
+      "acceptance": [
+        "La app conserva solo Sites.Selected; Sites.ReadWrite.All y Sites.FullControl.All quedan revocados",
+        "La biblioteca de Posventa está asignada explícitamente a la app por Graph, con permiso de escritura",
+        "El archivo de un parte sigue funcionando end-to-end tras el recorte (verificación MANUAL del humano)",
+        "Un intento de escritura contra cualquier otro sitio del tenant devuelve 403",
+        "El riesgo aceptado que F-006 documentó se retira de su spec, porque deja de existir",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 18,
+      "branch": "feature/F-018-minimo-privilegio-graph"
     }
   ]
 }

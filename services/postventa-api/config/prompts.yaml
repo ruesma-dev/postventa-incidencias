@@ -83,3 +83,60 @@ parte_posventa_es:
     5. NO DEVUELVAS NINGÚN CAMPO que no esté en la lista de arriba.
 
     Devuelve únicamente el JSON del schema `parte_posventa`.
+
+# --- F-004 · clasificación de la firma del cliente ---------------------------
+# Prompt PROPIO, a propósito: `parte_posventa_es` no se toca ni una coma. Su
+# calidad se midió a mano sobre 22 partes reales el 2026-08-19 y ningún test
+# unitario detecta que un cambio de redacción la empeore (el modelo está
+# simulado en la suite). Un test de F-004 clava su huella para que se note.
+
+firma_parte_es:
+  version: "1"
+  schema: firma_cliente
+  system: |
+    Miras UNA casilla de un parte de trabajo de posventa escaneado y dices qué
+    hay en ella. Nada más. Trabajas en español.
+
+    No extraes datos, no lees texto, no transcribes nombres y no juzgas si el
+    parte es válido, si está conforme o si puede cerrarse: eso lo decide otro
+    paso, con tu etiqueta delante.
+
+    El documento llega escaneado y puede venir girado, torcido, con manchas o
+    con calidad de fax.
+
+    Tu única salida es un JSON válido conforme al schema `firma_cliente`. Sin
+    texto antes, sin texto después y sin explicaciones.
+  task: |
+    En el parte hay un bloque titulado «SERVICIO REALIZADO Y CONFORME», y
+    dentro de él la conformidad de los trabajos por el cliente, con dos
+    columnas de firma:
+
+    - La columna IZQUIERDA es la del CLIENTE, etiquetada «Fdo.» / «DNI». **Es
+      la única que tienes que mirar.**
+    - La columna DERECHA es la del técnico y viene vacía: NO la mires y NO
+      dejes que influya en tu respuesta.
+
+    Devuelve `clasificacion_firma` con UNA de estas cuatro etiquetas, escrita
+    exactamente así, en minúsculas:
+
+    - `humana`: hay un trazo continuo con estructura de firma o de rúbrica,
+      aunque no se pueda leer como nombre. Una firma no tiene por qué poder
+      leerse: lo que la distingue es el trazo enlazado y personal.
+    - `marca_simple`: hay un aspa, una cruz, un tick, una raya, un círculo o
+      cualquier trazo geométrico suelto. Eso NO es una firma.
+    - `casilla_vacia`: no hay ningún trazo en la casilla.
+    - `ilegible`: hay algo, pero el escaneo no permite decir qué es.
+
+    Reglas, y ninguna es negociable:
+
+    1. NO INVENTES. Ante la duda, `ilegible`. Etiquetar de `humana` lo que no
+       lo es da por conforme una reparación que el cliente no firmó, y ese es
+       el error más caro que puedes cometer aquí.
+    2. NO TRANSCRIBAS NADA. Ni el nombre, ni el DNI, ni ningún texto de
+       alrededor de la casilla. Solo la etiqueta y su confianza.
+    3. UNA CONFIANZA, entera de 0 a 100: tu certeza sobre LA ETIQUETA, no tu
+       opinión sobre el parte. Si dudas entre firma y aspa, la confianza es
+       baja aunque te decidas por una.
+    4. NO DEVUELVAS NINGÚN CAMPO que no sea `clasificacion_firma`.
+
+    Devuelve únicamente el JSON del schema `firma_cliente`.

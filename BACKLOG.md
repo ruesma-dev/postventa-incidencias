@@ -3,13 +3,15 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **16 features**, 13 abiertas, 3 terminadas.
+Resumen: **17 features**, 14 abiertas, 3 terminadas.
+
+En curso: **F-004**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-004 | Validación del parte y clasificación de la firma | 4 | pendiente | critico | `feature/F-004-validacion` |
+| F-004 | Validación del parte y clasificación de la firma | 4 | en curso | critico | `feature/F-004-validacion` |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | pendiente | critico | `feature/F-005-persistencia` |
 | F-006 | Nombrado y archivo en SharePoint | 6 | pendiente | critico | `feature/F-006-sharepoint` |
 | F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
@@ -22,6 +24,7 @@ Resumen: **16 features**, 13 abiertas, 3 terminadas.
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
 | F-016 | Interpretación automática de las observaciones manuscritas | 16 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
+| F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 17 | pendiente | documental | `feature/F-017-checkpoints-manual` |
 
 ## Terminadas
 
@@ -35,7 +38,7 @@ Resumen: **16 features**, 13 abiertas, 3 terminadas.
 
 ### F-004 · Validación del parte y clasificación de la firma
 
-estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-004-validacion`
+estado **en curso** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-004-validacion`
 
 Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme. DECISIONES DE DOMINIO DEL HUMANO (2026-08-19, mandan sobre el diseño): (1) un parte SIN DNI del cliente SÍ pasa como conforme, la ausencia de DNI no descalifica; (2) un parte CON observaciones manuscritas NO es conforme, y de momento ese es el ÚNICO motivo de rechazo; (3) el parte rechazado por observaciones no se descarta: va a una COLA DE VALIDACIÓN HUMANA que presenta las observaciones transcritas para que una persona decida. Dato real que respalda el dimensionado de esa cola: en la remesa real de Mirasierra 2 de 22 partes (~9 %) traen observaciones manuscritas, y solo 7 de 22 traen DNI.
 
@@ -110,6 +113,12 @@ Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml
 estado **pendiente** · prioridad 16 · rigor `critico` · SDD sí · rama `feature/F-016-interpretacion-observaciones`
 
 Hoy F-004 rechaza en bloque cualquier parte con observaciones manuscritas y lo manda entero a la cola de validación humana, dé lo mismo que ponga 'falta rematar el rodapié' o 'firmado a satisfacción'. Esta feature interpreta el texto que ya transcribe F-003 para distinguir la observación inocua —una nota, una aclaración, un comentario que no discute la reparación— de la que de verdad impide dar la reparación por buena, y así reducir la cola humana a lo que la merece. Mejora posterior, no bloqueante: el circuito funciona sin ella, solo con más trabajo manual. En la remesa real de Mirasierra la cola serían 2 de 22 partes (~9 %), así que el ahorro se mide antes de complicar el modelo. Ante la duda, a la cola: la clasificación nunca da por buena una reparación por su cuenta si no está segura.
+
+### F-017 · Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida
+
+estado **pendiente** · prioridad 17 · rigor `documental` · SDD no · rama `feature/F-017-checkpoints-manual`
+
+Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-19 como baja prioridad. (P2) C5 exige hoy todas las tareas de tasks.md en [x], pero el nivel de rigor critico OBLIGA a tener verificaciones MANUAL (humano) que ningún agente puede ejecutar: el reviewer queda entre rechazar un trabajo impecable, marcar como hecho algo que nadie ejecutó, o aprobar saltándose la letra de C5. Pasó con F-003 y lo único que impidió cerrarla con T18 sin ejecutar fue una nota escrita a mano en progress/current.md. Se propone que C5 distinga la tarea de agente pendiente (trabajo incompleto, CHANGES_REQUESTED) de la tarea MANUAL (humano) pendiente (estado propio: aprobado pero no cerrable hasta que el humano la ejecute). (P3) Que C4 bis nombre explícitamente la comprobación de ficheros «no medidos» en la puerta de cobertura, que hoy se hace pero no está escrita. Las dos son GENÉRICAS: se portan a arnes-base en el mismo trabajo, según la regla de propagación de CLAUDE.md.
 
 ### F-001 · Esqueleto del monorepo y /health
 

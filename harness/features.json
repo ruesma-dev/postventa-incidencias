@@ -78,7 +78,7 @@
         "Las reglas de validación son dominio puro y se prueban sin IA",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 4,
@@ -294,6 +294,23 @@
       "priority": 16,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
+    },
+    {
+      "id": "F-017",
+      "title": "Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida",
+      "description": "Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-19 como baja prioridad. (P2) C5 exige hoy todas las tareas de tasks.md en [x], pero el nivel de rigor critico OBLIGA a tener verificaciones MANUAL (humano) que ningún agente puede ejecutar: el reviewer queda entre rechazar un trabajo impecable, marcar como hecho algo que nadie ejecutó, o aprobar saltándose la letra de C5. Pasó con F-003 y lo único que impidió cerrarla con T18 sin ejecutar fue una nota escrita a mano en progress/current.md. Se propone que C5 distinga la tarea de agente pendiente (trabajo incompleto, CHANGES_REQUESTED) de la tarea MANUAL (humano) pendiente (estado propio: aprobado pero no cerrable hasta que el humano la ejecute). (P3) Que C4 bis nombre explícitamente la comprobación de ficheros «no medidos» en la puerta de cobertura, que hoy se hace pero no está escrita. Las dos son GENÉRICAS: se portan a arnes-base en el mismo trabajo, según la regla de propagación de CLAUDE.md.",
+      "acceptance": [
+        "CHECKPOINTS.md C5 distingue la tarea de agente pendiente de la tarea MANUAL (humano) pendiente, y solo la primera es CHANGES_REQUESTED",
+        "Una feature con verificaciones manuales sin ejecutar no puede marcarse done, y el motivo queda visible sin depender de una nota en progress/",
+        "CHECKPOINTS.md C4 bis nombra la comprobación de ficheros no medidos en la puerta de cobertura",
+        "Ambos cambios portados a arnes-base con su versión de arnés subida",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 17,
+      "branch": "feature/F-017-checkpoints-manual"
     }
   ]
 }

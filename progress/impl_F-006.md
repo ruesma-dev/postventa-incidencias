@@ -732,3 +732,94 @@ Es la decisión **D4** de `design.md` §10, aplicada tal cual. Se reconstruye
 como `ResultadoValidacion` y `paso_archivo` lo comprueba contra el destino
 igual que si viniera de dentro: el borde no puede saltarse la puerta de
 aptitud por el hecho de ser el borde.
+
+---
+
+## T13 · RED por rotura deliberada · Los tests de arquitectura
+
+Fichero: `services/postventa-api/tests/test_f006_arquitectura.py` (R21, R22,
+R26, R29, R32).
+
+Aquí el entregable **es el test**, así que la fase RED no se demuestra
+importando algo que no existe: se demuestra **rompiendo a propósito lo que los
+tests vigilan** y enseñando que saltan. Y se hace **en una copia aislada del
+árbol, nunca en el árbol real** (`CHECKPOINTS.md` C4 bis).
+
+### Cómo se hizo la rotura
+
+```
+$ COPIA=<scratchpad>/rotura_f006
+$ tar --exclude='.venv' --exclude='__pycache__' -cf - . | (cd "$COPIA" && tar -xf -)
+```
+
+Sobre esa copia, tres roturas:
+
+1. `import httpx` metido en `domain/models/nombrado.py` — el dominio pasa a
+   conocer el cliente HTTP (R22).
+2. Una construcción de `AdaptadorSharePointGraph(...)` añadida a
+   `tests/test_health.py`, que no está en la lista blanca (R21).
+3. Un identificador con forma de GUID incrustado en `config/settings.py`
+   (R26).
+
+### La traza real de los cuatro fallos
+
+```
+$ cd "$COPIA"
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_arquitectura.py -q -p no:cacheprovider \
+    -k "construye_el_adaptador or no_conocen_graph or solo_infrastructure or incrusta_un_identificador"
+
+____________ test_f006_r21_ningun_test_construye_el_adaptador_real ____________
+E       AssertionError: assert ['tests/test_health.py'] == []
+E         Left contains one more item: 'tests/test_health.py'
+_____________ test_f006_r22_dominio_y_aplicacion_no_conocen_graph _____________
+E       AssertionError: assert {'domain/mode...y': ['httpx']} == {}
+E         Left contains 1 more item:
+E         {'domain/models/nombrado.py': ['httpx']}
+_________ test_f006_r22_solo_infrastructure_sharepoint_importa_graph __________
+E       AssertionError: assert ['domain/models/nombrado.py'] == []
+E         Left contains one more item: 'domain/models/nombrado.py'
+_____ test_f006_r26_ningun_fichero_del_servicio_incrusta_un_identificador _____
+E       AssertionError: assert {'config/sett...a2b3c4d5e6f']} == {}
+E         Left contains 1 more item:
+E         {'config/settings.py': ['b7e41c92-3f5a-4d18-9e60-1a2b3c4d5e6f']}
+=========================== short test summary info ===========================
+4 failed, 13 deselected in 1.33s
+```
+
+Las tres roturas saltaron, y cada mensaje dice **qué fichero** las provocó, que
+es lo que distingue un guardián útil de uno que solo dice «no». La copia se
+borró después; `git status` confirma que el árbol real solo tiene el fichero
+nuevo de esta tarea.
+
+### Los dos tests de R32 quedan rojos a propósito
+
+```
+FAILED tests/test_f006_arquitectura.py::test_f006_r32_integracion_declara_el_consumo_de_sharepoint
+FAILED tests/test_f006_arquitectura.py::test_f006_r32_integracion_dice_que_se_rompe_si_alguien_toca_el_destino
+2 failed, 15 passed in 1.46s
+```
+
+Esa es su fase RED, y es de la buena: `docs/INTEGRACION.md` todavía no tiene la
+sección de SharePoint porque la escribe **T15**. El test existe antes que el
+documento que vigila, que es el orden correcto.
+
+### Dos guardianes que se delataban a sí mismos
+
+Al escribirlos, `test_f006_r21_ningun_test_construye_el_adaptador_real` y
+`test_f006_r26_ningun_fichero_del_servicio_incrusta_un_identificador` fallaron
+**por culpa de este mismo fichero**: contenía el literal
+`AdaptadorSharePointGraph(` en un docstring y los dos GUID de F-005 en su
+lista de excepciones.
+
+La salida fácil era meter el propio fichero en su lista de excepciones. **Un
+guardián que necesita una excepción para sí mismo es un guardián con un
+agujero del tamaño de un fichero**, así que se resolvió al revés:
+
+- el nombre de la clase se **compone en memoria**
+  (`"Adaptador" + "SharePoint" + "Graph"`), y el literal ya no está en el
+  fichero;
+- los GUID tolerados se declaran **por ruta y nunca por valor**, porque
+  escribirlos para poder excluirlos sería meter en el repositorio justo lo que
+  el barrido prohíbe. Lo que sí se acota es **cuántos** puede haber en cada
+  fichero (exactamente uno), para que la excepción no se convierta en un
+  desagüe.

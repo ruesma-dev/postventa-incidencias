@@ -234,6 +234,22 @@ def test_f004_r24_un_campo_que_falta_en_la_extraccion_es_400():
     assert "codigo_obra" in _json(respuesta)["error"]
 
 
+def test_f004_r24_unos_campos_que_no_son_un_objeto_son_400():
+    """R24 · `campos` tiene que ser un objeto, y si no lo es se dice.
+
+    Un `"campos": []` mandado a mano reventaría con un `TypeError` dentro del
+    dominio y saldría como un 500 sin explicación. Aquí sale como lo que es:
+    una petición mal formada.
+    """
+    torcida = _cuerpo_de_extraer()
+    torcida["campos"] = ["codigo_obra", "numero_incidencia"]
+
+    respuesta = _respuesta({"extraccion": torcida, "firma": _cuerpo_de_firma()})
+
+    assert respuesta.status_code == 400
+    assert "campos" in _json(respuesta)["error"]
+
+
 def test_f004_r24_una_etiqueta_de_firma_desconocida_no_cuela_como_humana():
     """R24 · el cuerpo llega de fuera: aquí tampoco se da nada por firmado.
 

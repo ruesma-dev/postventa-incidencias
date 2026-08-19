@@ -78,7 +78,7 @@
         "Las reglas de validación son dominio puro y se prueban sin IA",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 4,

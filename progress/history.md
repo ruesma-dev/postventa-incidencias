@@ -181,3 +181,54 @@ Deuda declarada al cerrar (ninguna bloquea):
 - **La remesa de Mirasierra no sirve para F-014**: sus 22 partes dieron
   `numero_pagina` «1», así que no hay ningún parte de dos hojas con el que
   verificar la reagrupación.
+
+---
+
+## F-004 · Validación del parte y clasificación de la firma — CERRADA 2026-08-19
+
+Rama `feature/F-004-validacion`, salida de `dev` con F-002 y F-003 dentro.
+Rigor `critico`. Spec en `specs/F-004-validacion/`, informes en
+`progress/impl_F-004.md` y `progress/review_F-004.md`. **Veredicto: APROBADO.**
+
+Qué se construyó: las reglas de validación del parte como dominio puro, la
+clasificación de la firma en cuatro etiquetas con su prompt propio
+(`firma_parte_es`, separado del de extracción para no tocar el que ya se midió
+sobre 22 partes reales), y los endpoints `POST /api/firma` y `POST /api/validar`.
+
+Cifras verificadas, no declaradas: `bash harness/init.sh` en verde, **cobertura
+100 % de las 305 líneas cambiadas** y **campaña de mutación 43 generados / 43
+muertos / 0 supervivientes**, reejecutada de forma independiente por el reviewer.
+
+**T14, la verificación manual que decidía D1**, la ejecutó el humano con
+`f4_firma.py todos`: sobre los 22 partes de Mirasierra, `humana` **22/22
+(100 %)** con confianza media **98,2**; `marca_simple`, `casilla_vacia` e
+`ilegible`, cero. Prompt `firma_parte_es` v1, huella `a1d86fcd9a99`.
+
+Lo que enseñó esta feature:
+
+- **Una tensión entre dos reglas del dominio se resuelve leyendo, no
+  eligiendo.** «La firma debe ser humana» y «las observaciones son el único
+  motivo de rechazo» parecían incompatibles. No lo eran: el alcance de «único
+  motivo» son los **datos manuscritos**, y la firma no es un dato transcrito
+  sino la conformidad misma. De ahí salieron **dos destinos distintos para dos
+  trabajos distintos**: `cola_validacion_humana` (alguien **decide** sobre la
+  reparación) y `revision_manual` (alguien **arregla** el parte).
+- **Un 22/22 puede demostrar menos de lo que parece.** `humana` en los 22
+  partes confirmó D1 —la regla estricta no manda a revisión ni un parte real—
+  pero **no** demuestra que el modelo distinga una firma de un aspa: en la
+  remesa no había ninguno, y un clasificador que dijera `humana` a todo habría
+  dado la misma salida. Es la simétrica de la lección de F-003: allí un 0/22
+  era ambiguo, aquí lo es un 22/22. Lo que falta es un **control negativo**.
+- **Los subagentes trabajan en paralelo sin pisarse si cada uno va en su propio
+  worktree de git.** Las specs de F-005 y F-006 se escribieron mientras el
+  implementer trabajaba en el árbol principal. Corrige la lección de F-003, que
+  solo sabía prohibir la concurrencia.
+
+Deuda declarada al cerrar (ninguna bloquea):
+
+- **El control negativo de la clasificación de firma pasa a F-015**, con
+  criterio de aceptación propio: partes sintéticos con aspa y con casilla vacía
+  no deben etiquetarse `humana`. El humano decidió cerrar sin él, con la
+  limitación explicada delante, y figura como **no demostrado** en la
+  trazabilidad de F-004.
+- **El aviso AFC del SDK sigue saliendo** en cada llamada real. Sin resolver.

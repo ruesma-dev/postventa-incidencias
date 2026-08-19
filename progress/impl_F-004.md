@@ -18,6 +18,12 @@ una con su commit. `bash harness/init.sh` termina en verde con exit code 0.
 D1. Está preparada y explicada más abajo; no bloquea la revisión del código,
 pero sí conviene ejecutarla antes de cerrar la feature.
 
+> **Nota posterior (líder, 2026-08-19): T14 ya se ejecutó.** Este informe se
+> conserva tal cual —es el registro de lo que hizo el implementer—; el
+> resultado real está en `specs/F-004-validacion/tasks.md` T14, y esta nota
+> vale también para la sección «Verificaciones MANUAL pendientes» de más
+> abajo.
+
 ---
 
 ## Evidencias de la fase RED

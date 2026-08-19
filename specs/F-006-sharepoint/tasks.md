@@ -303,10 +303,26 @@
 > con fecha**. Sigue firme que subir desde local «solo para probar» **no** es
 > una opción.
 
-- [ ] **T17 · MANUAL (humano)** — *(depende de **D6**)*. Confirmar que el
+- [ ] **T17 · MANUAL (humano) · LISTA PARA EJECUTAR** — *(**D6 RESUELTA el
+      2026-08-20**: la biblioteca de dev, el app registration y los permisos ya
+      existen, así que esta tarea **ya no está bloqueada**)*. Confirmar que el
       destino de dev existe y que la identidad tiene permiso, **solo con
-      lecturas**. Antes, en la misma sesión de PowerShell, el humano fija sus
-      variables (**los valores no se pegan en ningún informe ni commit**):
+      lecturas**. El script no sube, no crea y no borra nada, y hay un test que
+      lo comprueba (`test_f006_t17_el_script_del_destino_no_escribe_nada`).
+
+      **Paso 1** — en la sesión de PowerShell, fijar las cinco variables. Los
+      valores los tiene el humano; **no se pegan en ningún informe, en ningún
+      commit y en ningún chat**:
+
+      ```
+      $env:GRAPH_TENANT_ID     = "<tenant>"
+      $env:GRAPH_CLIENT_ID     = "<aplicacion>"
+      $env:GRAPH_CLIENT_SECRET = "<secreto>"
+      $env:SHAREPOINT_SITE_ID  = "<sitio>"
+      $env:SHAREPOINT_DRIVE_ID = "<biblioteca>"
+      ```
+
+      **Paso 2** — copiar el script fuera del repositorio y ejecutarlo:
 
       ```
       copy infra\verificar_destino_sharepoint.ps1 $HOME\
@@ -315,14 +331,30 @@
       Línea de invocación:
 
       ```
-      powershell -File $HOME\verificar_destino_sharepoint.ps1
+      powershell -ExecutionPolicy Bypass -File $HOME\verificar_destino_sharepoint.ps1
       ```
 
-      **Resultado esperado**: imprime el nombre de la biblioteca, si la carpeta
-      base existe y `permiso_escritura: True`. **No sube nada.** El resultado
-      real se anota en `progress/current.md` **sin identificadores**: solo
-      «biblioteca localizada: sí/no», «carpeta base: existe/creada»,
-      «permiso de escritura: sí/no».
+      Para ver antes qué va a hacer, **sin llamar a nada**:
+
+      ```
+      powershell -ExecutionPolicy Bypass -File $HOME\verificar_destino_sharepoint.ps1 -WhatIf
+      ```
+
+      **Resultado esperado**: imprime el nombre del sitio y de la biblioteca,
+      la lista de permisos concedidos a la aplicación, y las tres líneas
+      finales `biblioteca_localizada`, `carpeta_base_existe` y
+      `permiso_escritura: True`. **No sube nada.**
+
+      **Se espera además un aviso en amarillo** sobre `Sites.ReadWrite.All` y
+      `Sites.FullControl.All`: es el **riesgo aceptado** del 2026-08-20
+      (`design.md` §9, riesgo 7), y lo recorta **F-018**. Que salga es lo
+      correcto; que **no** salga significaría que los permisos ya se
+      recortaron.
+
+      El resultado real se anota en `progress/current.md` **sin
+      identificadores**: solo «biblioteca localizada: sí/no», «carpeta base:
+      existe/no existe», «permiso de escritura: sí/no» y «permisos amplios
+      presentes: sí/no».
 
 - [ ] **T18 · MANUAL (humano) · DIFERIDA A F-010** — *(D3 resuelta el
       **2026-08-19**, opción **(a)**)*. **La única subida real de toda la
@@ -375,16 +407,26 @@
       casilla. **No se pega la URL del despliegue, ni el `item_id`, ni ningún
       identificador.**
 
-- [ ] **T19 · MANUAL (humano)** — Copiar la sección nueva de
-      `docs/INTEGRACION.md` a **`azure-apps/postventa_incidencias.md`**, con su
-      cabecera de origen y fecha (regla 2 de `azure-apps/README.md`). Es **otro
-      repositorio git** y ningún agente commitea en un repositorio que no es el
-      suyo. Es la parte de la regla de `CLAUDE.md` que dice que el documento se
-      actualiza **en el mismo trabajo**, no después.
-      **Verificación**: `MANUAL (humano)`. En `azure-apps`, el documento
-      recoge el consumo de SharePoint (sitio y biblioteca **por nombre de
-      variable**, identidad, permisos, volumen y qué se rompe) y **no** trae ni
-      un valor. Anotar en `progress/current.md` que se ha hecho.
+- [x] **T19 · N/A · DECISIÓN DEL HUMANO DEL 2026-08-20** — ~~Copiar la
+      sección nueva de `docs/INTEGRACION.md` a
+      `azure-apps/postventa_incidencias.md`~~.
+
+      **El humano decidió el 2026-08-20 que no hace commits en `azure-apps`.**
+      Esta tarea, por tanto, **no está pendiente: ya no aplica**. No se queda
+      `[ ]` esperando a nadie ni se apunta como deuda, porque no lo es.
+
+      **Lo que sí se ha hecho, y cubre el fondo del asunto**: la sección de
+      SharePoint está escrita en **`docs/INTEGRACION.md`** (T15), que vive en
+      **este** repositorio y es la fuente de verdad declarada de lo que
+      consumimos —sitio y biblioteca por nombre de variable, identidad,
+      permisos, volumen y qué se rompe si alguien lo toca—. Lo que decae es
+      **la copia** a otro repositorio, no la obligación de documentarlo.
+
+      **Consecuencia que conviene no perder de vista**: mientras esa copia no
+      exista, quien lea solo `azure-apps/` **no se enterará** de que este
+      proyecto es un inquilino nuevo del sitio de IT con permiso de escritura.
+      Si algún día se quiere cerrar ese hueco, el material está listo para
+      copiar y pegar.
 
 ---
 
@@ -430,7 +472,7 @@ completo, el identificador es **F-017**.
 | Tarea | Depende de | Estado |
 |---|---|---|
 | T1 | F-004 y F-005 mergeadas en `dev` | fuera de esta rama |
-| T8 | **D1** (qué librería de Graph reutilizar) | abierta, **no bloquea** |
-| T17 | **D6** (biblioteca de dev y app registration creados) | abierta, **BLOQUEA** |
+| T8 | **D1** (qué librería de Graph reutilizar) | **RESUELTA 2026-08-20**: `httpx` |
+| T17 | **D6** (biblioteca de dev y app registration creados) | **RESUELTA 2026-08-20**: ya existen. T17 lista para que la ejecute el humano |
 | T18 | **F-010** (entorno desplegado) + D6 | **D3 resuelta 2026-08-19 (a)**: tarea **DIFERIDA a F-010**, no bloquea el cierre pero lo condiciona (ver «El cierre de F-006 necesita autorización expresa del humano») |
-| T19 | T15 hecha | interna |
+| T19 | ~~T15 hecha~~ | **N/A 2026-08-20**: el humano no commitea en `azure-apps` |

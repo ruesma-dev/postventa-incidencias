@@ -963,3 +963,67 @@ El script comprueba por tanto lo que el sistema **de verdad** garantiza: dos
 llamadas con 200, mismo destino, y —si hay credenciales de Graph en la sesión—
 un listado de la carpeta **en solo lectura** que confirma un solo elemento y
 ningún nombre con `(1)`.
+
+---
+
+## T17 · PREPARADA para el humano · T18 · DIFERIDA · T19 · N/A
+
+### T17 — lista para ejecutar, ya no bloqueada
+
+**D6 está resuelta** (decisión D-d del 2026-08-20): la biblioteca de dev, el
+app registration y los permisos ya existen, así que T17 deja de estar
+bloqueada. Queda `[ ]` porque **la ejecuta el humano**, no un agente, y en
+`tasks.md` está escrita con sus comandos exactos, partidos en dos pasos porque
+PowerShell no admite `&&` y los comandos largos se parten al pegarlos:
+
+```
+$env:GRAPH_TENANT_ID     = "<tenant>"
+$env:GRAPH_CLIENT_ID     = "<aplicacion>"
+$env:GRAPH_CLIENT_SECRET = "<secreto>"
+$env:SHAREPOINT_SITE_ID  = "<sitio>"
+$env:SHAREPOINT_DRIVE_ID = "<biblioteca>"
+```
+
+```
+copy infra\verificar_destino_sharepoint.ps1 $HOME\
+```
+
+```
+powershell -ExecutionPolicy Bypass -File $HOME\verificar_destino_sharepoint.ps1
+```
+
+**Qué se espera ver**: el nombre del sitio y de la biblioteca, la lista de
+permisos concedidos, y `biblioteca_localizada`, `carpeta_base_existe` y
+`permiso_escritura: True`. **No sube nada.**
+
+Y **se espera un aviso en amarillo** sobre los permisos amplios: es el riesgo
+aceptado del 2026-08-20. Que salga es lo correcto; que **no** salga
+significaría que F-018 ya se ejecutó.
+
+El resultado se anota **sin identificadores**: solo sí/no por línea.
+
+### T18 — no se ha tocado
+
+Sigue **DIFERIDA a F-010** por la decisión **D3** del humano del 2026-08-19
+(opción (a)). Su casilla queda `[ ]` **a propósito**: es una verificación
+aplazada por una dependencia declarada, no una tarea olvidada. Su script se
+entrega dentro de F-006 (T16); lo que se aplaza es ejecutarlo.
+
+Esto es lo que obliga a que **el cierre de F-006 necesite autorización expresa
+del humano ante `CHECKPOINTS.md` C5**, y es el caso que motiva **F-017**.
+
+### T19 — N/A por decisión del humano del 2026-08-20
+
+**El humano no hace commits en `azure-apps`.** T19 no es una tarea pendiente:
+es una tarea que **ya no aplica**, y así queda escrito en la propia tarea con
+su fecha. No se deja `[ ]` esperando a nadie ni se apunta como deuda.
+
+Lo que **sí** se ha hecho y cubre el fondo del asunto es **T15**: la sección de
+SharePoint está en `docs/INTEGRACION.md`, en este repositorio, que es la fuente
+de verdad declarada. Lo que decae es **la copia** a otro repositorio, no la
+obligación de documentarlo.
+
+**Consecuencia que conviene no perder de vista, y por eso está escrita**:
+mientras esa copia no exista, quien lea solo `azure-apps/` no se enterará de
+que este proyecto es un inquilino nuevo del sitio de IT con permiso de
+escritura. El material está listo para copiar y pegar el día que se quiera.

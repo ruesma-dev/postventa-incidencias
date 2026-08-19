@@ -12,9 +12,11 @@ Dos cosas que no son de estilo, sino reglas:
   un error. Se registran modelo, tamaño en bytes, intento y duración; nunca
   los bytes, nunca la respuesta cruda, nunca un valor leído. El parte lleva
   DNI de clientes (R15, riesgo 4).
-- **El schema se genera desde `CAMPOS_DEL_PARTE`.** No se escribe a mano una
-  segunda lista de campos: el contrato del dominio y el que se le manda al
-  modelo son la misma fuente.
+- **El schema se genera desde el dominio.** No se escribe a mano una segunda
+  lista de campos: el contrato del dominio y el que se le manda al modelo son
+  la misma fuente. Desde F-004 **cuál** de esas listas toca lo dice el prompt
+  (`PromptSpec.schema`), no este fichero: el adaptador sirve a los dos prompts
+  —el del parte y el de la firma— sin saber de ninguno.
 """
 
 from __future__ import annotations
@@ -26,8 +28,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from domain.models.errores import ExtraccionFallida
-from domain.models.extraccion import CAMPOS_DEL_PARTE, CampoBruto, RespuestaModelo
+from domain.models.extraccion import CampoBruto, RespuestaModelo
 from domain.models.prompt import PromptSpec
+from domain.models.schemas import campos_del_schema
 from google import genai
 from google.genai import types
 from tenacity import Retrying, retry_if_exception, stop_after_attempt, wait_exponential
@@ -52,17 +55,27 @@ def es_transitorio(error: BaseException) -> bool:
     return getattr(error, "code", None) in CODIGOS_TRANSITORIOS
 
 
-def schema_del_parte() -> dict[str, Any]:
-    """El schema estructurado de los nueve campos, generado del dominio.
+def schema_para(nombre: str) -> dict[str, Any]:
+    """El schema estructurado de ese nombre, generado del dominio (F-004, R5).
 
-    Los nueve son `required` a propósito: es la mitad de R2 que se le puede
-    exigir al modelo. La otra mitad —completar lo que aun así falte— la hace
-    la aplicación, porque un `required` no es una garantía.
+    Antes de F-004 esta función era `schema_del_parte()` y mandaba **siempre**
+    los nueve campos: el adaptador sabía de memoria a qué prompt servía. Ahora
+    resuelve el nombre que declara el prompt contra `CAMPOS_POR_SCHEMA`, y por
+    eso una feature futura puede añadir un prompt sin tocar infraestructura.
+
+    Todos los campos van como `required` a propósito: es la mitad de R2 que se
+    le puede exigir al modelo. La otra mitad —completar lo que aun así falte—
+    la hace la aplicación, porque un `required` no es una garantía.
+
+    Levanta `SchemaDesconocido` si el nombre no está registrado, y se llama
+    **antes** de entrar en los reintentos: llamar al modelo con el schema
+    equivocado cuesta dinero y devuelve campos que nadie sabe leer.
     """
+    campos = campos_del_schema(nombre)
     return {
         "type": "object",
         "properties": {
-            nombre: {
+            campo: {
                 "type": "object",
                 "properties": {
                     "valor": {"type": ["string", "null"]},
@@ -70,9 +83,9 @@ def schema_del_parte() -> dict[str, Any]:
                 },
                 "required": ["valor", "confianza_pct"],
             }
-            for nombre in CAMPOS_DEL_PARTE
+            for campo in campos
         },
-        "required": list(CAMPOS_DEL_PARTE),
+        "required": list(campos),
     }
 
 
@@ -110,9 +123,16 @@ class AdaptadorGeminiVision:
     def extraer(
         self, *, documento: bytes, mime: str, prompt: PromptSpec
     ) -> RespuestaModelo:
-        """Manda el documento al modelo y devuelve sus campos **en bruto**."""
+        """Manda el documento al modelo y devuelve sus campos **en bruto**.
+
+        El schema se resuelve **aquí**, antes de entrar en los reintentos: un
+        nombre no registrado tiene que salir como `SchemaDesconocido` —un
+        fallo de configuración— y no disfrazado de `ExtraccionFallida` tras
+        tres intentos que nunca llegaron a salir (R5).
+        """
+        esquema = schema_para(prompt.schema)
         texto = self._llamar_con_reintentos(
-            documento=documento, mime=mime, prompt=prompt
+            documento=documento, mime=mime, prompt=prompt, esquema=esquema
         )
         return RespuestaModelo(
             proveedor=PROVEEDOR,
@@ -121,7 +141,12 @@ class AdaptadorGeminiVision:
         )
 
     def _llamar_con_reintentos(
-        self, *, documento: bytes, mime: str, prompt: PromptSpec
+        self,
+        *,
+        documento: bytes,
+        mime: str,
+        prompt: PromptSpec,
+        esquema: dict[str, Any],
     ) -> str:
         """Llama al modelo reintentando solo lo que puede mejorar (R14, R15)."""
         reintentador = Retrying(
@@ -132,7 +157,11 @@ class AdaptadorGeminiVision:
         )
         try:
             return reintentador(
-                self._una_llamada, documento=documento, mime=mime, prompt=prompt
+                self._una_llamada,
+                documento=documento,
+                mime=mime,
+                prompt=prompt,
+                esquema=esquema,
             )
         except Exception as error:
             raise ExtraccionFallida(
@@ -140,7 +169,14 @@ class AdaptadorGeminiVision:
                 f"{type(error).__name__} (código {getattr(error, 'code', 'ninguno')})"
             ) from error
 
-    def _una_llamada(self, *, documento: bytes, mime: str, prompt: PromptSpec) -> str:
+    def _una_llamada(
+        self,
+        *,
+        documento: bytes,
+        mime: str,
+        prompt: PromptSpec,
+        esquema: dict[str, Any],
+    ) -> str:
         """Un intento contra el SDK. Registra tamaños y tiempos, nunca datos."""
         arranque = time.monotonic()
         respuesta = self._asegurar_cliente().models.generate_content(
@@ -152,7 +188,7 @@ class AdaptadorGeminiVision:
             config=types.GenerateContentConfig(
                 system_instruction=prompt.system,
                 response_mime_type="application/json",
-                response_json_schema=schema_del_parte(),
+                response_json_schema=esquema,
                 http_options=types.HttpOptions(timeout=self._timeout_s * 1000),
             ),
         )

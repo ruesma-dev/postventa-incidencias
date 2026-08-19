@@ -147,15 +147,29 @@ marca simple y la ilegible.
 → `test_f004_r13_la_casilla_vacia_no_es_conformidad_del_cliente`
 → `test_f004_r13_una_firma_ilegible_va_a_revision_manual`
 
-> **R13 depende de la decisión abierta D1** (`design.md` §7). Se implementa tal
-> y como está escrito porque es lo que dice `docs/ARCHITECTURE.md` (semántica
-> 3) y lo que exige `CHECKPOINTS.md` C3, pero el humano tiene que confirmarlo
-> a la vista de la medida de T14.
+> **R13 depende de D1, que el humano APLAZÓ a propósito el 2026-08-19**
+> (`design.md` §7). **Se implementa tal y como está escrito** —opción 1—
+> porque es lo que dice `docs/ARCHITECTURE.md` (semántica 3) y lo que exige
+> `CHECKPOINTS.md` C3. No bloquea a nadie: el humano confirma o cambia a la
+> opción 2 **con el resultado de T14 delante**, y T14 se adelanta a cuanto el
+> endpoint de firma funcione.
 
 **R14.** MIENTRAS la clasificación sea `humana` pero su confianza esté por
 debajo del umbral, el sistema debe tratarla como `ilegible` (ante la duda
 nunca se da por buena la conformidad).
 → `test_f004_r14_una_firma_humana_dudosa_se_trata_como_ilegible`
+
+**R14 bis.** CUANDO R14 degrada una firma `humana` dudosa, el sistema debe
+**publicar la etiqueta degradada**: tanto `ResultadoValidacion.clasificacion_firma`
+como el campo `firma.clasificacion` del JSON de `/api/validar` deben decir
+`ilegible`, **nunca** `humana`. Publicar `humana` junto a un destino de
+revisión manual sería incomprensible para quien lo lea en Posventa.
+→ `test_f004_r14bis_la_firma_degradada_se_publica_como_ilegible`
+→ `test_f004_r14bis_el_json_de_validar_publica_la_etiqueta_degradada`
+
+> **Resuelto por el humano el 2026-08-19** (decisión D4 de `design.md` §7).
+> La lectura cruda del modelo no se pierde: sigue viajando en la respuesta de
+> `POST /api/firma`, que es la entrada de `/api/validar`.
 
 ### Lo que NO se exige (y es deliberado)
 

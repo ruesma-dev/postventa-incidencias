@@ -8,7 +8,9 @@
 
 **Ninguna feature `in_progress`.** Lo siguiente es **F-004 · Validación del
 parte y clasificación de la firma** (`pending`, rigor `critico`): **su spec ya
-está escrita** y espera la aprobación del humano (PARADA 1 del `CLAUDE.md`).
+está escrita**, sus **cinco decisiones D1–D5 están resueltas** (2026-08-19,
+anotadas en la propia spec) y espera la aprobación del humano (PARADA 1 del
+`CLAUDE.md`).
 
 ## La spec de F-004 está escrita y espera aprobación
 
@@ -40,57 +42,53 @@ faltan los mínimos: alguien tiene que **arreglarlo**). Así conviven la decisi�
 2 del humano —las observaciones son el único motivo de rechazo— y la semántica
 3 de `docs/ARCHITECTURE.md` —sin firma humana no se archiva ni se cierra—.
 
-### DECISIONES ABIERTAS que necesita validar el humano
+### Las cinco decisiones D1–D5: RESUELTAS por el humano el 2026-08-19
 
-**D1 · ¿Qué hace el sistema con un parte cuya firma NO es humana?** Es **la**
-decisión de esta spec, y es la única que puede cambiar código.
+**Ya no son decisiones abiertas y no bloquean al `implementer`.** Están
+registradas en la spec (`design.md` §7, sección «Decisiones D1–D5 · RESUELTAS
+por el humano el 2026-08-19»), que es donde manda el detalle. Resumen:
 
-- **Opción 1, la que implementa la spec**: `no_apto` + `revision_manual`, nunca
-  apto. Es lo que dicen `docs/ARCHITECTURE.md` (semántica 3) y
-  `CHECKPOINTS.md` C3 («una marca simple nunca cuenta como firma del
-  cliente»).
-- **Opción 2**: la clasificación se emite **solo como aviso**, el parte sale
-  apto igualmente y las observaciones son literalmente lo único que bloquea.
-  Respeta la lectura más estricta de la decisión 2, pero **choca con dos
-  documentos normativos** y permitiría archivar y cerrar un parte con la
-  casilla de la firma vacía.
-- **Lo que debería decidirlo es un dato, y se mide en T14**: la distribución de
-  las cuatro etiquetas sobre los 22 partes reales. Por eso T14 va **antes** de
-  documentar, cubrir y mutar. Criterios de lectura fijados de antemano en
-  `tasks.md` T14. **Coste de cambiar de opción después de T14: una rama de
-  `validar_parte` y sus tests.** Ni el contrato HTTP, ni el dominio, ni los
-  pasos se mueven.
+- **D1 · parte cuya firma NO es humana → APLAZADA a propósito.** La spec se
+  implementa **tal como está**: opción 1, `no_apto` + `revision_manual`, la
+  coherente con `docs/ARCHITECTURE.md` (semántica 3) y `CHECKPOINTS.md` C3. Se
+  aplaza porque depende de un dato que aún no existe: el reparto de las cuatro
+  etiquetas de firma sobre los 22 partes reales de Mirasierra. **⚠️ D1 VUELVE A
+  LA MESA cuando T14 dé ese reparto** — ver el punto vivo de abajo.
+- **D2 · los dos endpoints ENTRAN en F-004.** Razón aceptada: sin
+  `/api/validar`, las reglas acabarían reescritas en JavaScript en el front,
+  que es una fuga de dominio. **R23 y R24 se quedan**, con T11 y T12.
+- **D3 · se mantiene el test que clava la huella del prompt de extracción**
+  (R4, huella `2306ac1d07f1`). Es la red que garantiza que F-004 no roza el
+  prompt cuya calidad se midió sobre 22 partes reales. **El efecto lateral es
+  buscado**: quien lo cambie en F-015 actualizará la constante a conciencia y
+  volverá a medir.
+- **D4 · se publica la etiqueta DEGRADADA: `ilegible`.** Cuando una firma
+  `humana` viene con confianza por debajo del umbral y R14 la degrada, lo que
+  sale en `ResultadoValidacion.clasificacion_firma` y en el JSON de
+  `/api/validar` es `ilegible`, **nunca** `humana`. Motivo del humano: es la
+  única coherente con el motivo que se emite; publicar `humana` junto a un
+  destino de revisión manual es incomprensible para quien lo lea en Posventa.
+  **Es la única de las cinco que cambió el contenido de la spec**: está
+  aplicada en **R14 bis** de `requirements.md`, en §4.1, §4.2 y §4.5 de
+  `design.md` (propiedad `clasificacion_efectiva`) y en T1, T2, T6, T7 y T11
+  de `tasks.md`. **No se añadió ningún campo al contrato** para conservar la
+  lectura cruda: no hace falta, porque la respuesta de `/api/firma` ya la
+  publica y es justo la entrada de `/api/validar`.
+- **D5 · se queda como está.** T13, con `caplog` sobre la validación, es lo que
+  pide R25. **No** se añade una línea de log explícita en `paso_validacion`.
 
-**D2 · ¿Entran los dos endpoints (`/api/firma` y `/api/validar`) en F-004?** El
-`acceptance` no los pide. La spec los incluye porque sin `/api/validar` las
-reglas acabarían reescritas en JavaScript en el front, que es una fuga de
-dominio de libro. Si el humano prefiere dejarlos para F-007, **se caen R23 y
-R24 con sus tareas T11 y T12** y el resto de la spec no se mueve.
+### ⚠️ Lo único que sigue vivo de D1: T14 la reabre
 
-**D3 · ¿Se clava la huella del prompt de extracción con un test?** La spec dice
-que sí (R4, con la huella `2306ac1d07f1`): es lo único que garantiza que F-004
-no ha rozado el prompt medido sobre 22 partes. Efecto lateral **buscado**: el
-día que alguien lo cambie legítimamente —F-015— tendrá que actualizar la
-constante a conciencia y volver a medir. Si el humano lo considera un freno, se
-sustituye por un test más flojo y se pierde esa red.
+**T14 se adelanta**: se ejecuta **en cuanto el endpoint de firma funcione**
+(justo después de T12), **no al final**. Con su reparto de etiquetas delante,
+el humano **confirma la opción 1 o cambia a la opción 2** (la clasificación
+viaja como aviso y no bloquea). Los criterios de lectura están fijados de
+antemano en `tasks.md` T14: mayoría `humana` → opción 1 confirmada; un tercio o
+más `ilegible` → **PARADA** y se habla con el humano antes de T15–T18.
 
-**D4 · Hueco detectado al escribir `tasks.md`, NO resuelto por el agente.**
-R14 dice que una firma `humana` con confianza por debajo del umbral **se trata
-como `ilegible`**, y `design.md` §4.2 lo implementa dentro de
-`es_conformidad_del_cliente`. Lo que ninguno de los dos ficheros dice es **qué
-etiqueta se publica en `ResultadoValidacion.clasificacion_firma` y en el JSON
-de respuesta en ese caso**: la que devolvió el modelo (`humana`) o la degradada
-(`ilegible`). Las dos son defendibles —la primera conserva la lectura real, la
-segunda es coherente con el motivo que se emite—. **No se ha tocado ninguno de
-los dos ficheros**: lo decide el humano y se anota en la spec antes de
-implementar T7.
-
-**D5 · Detalle menor, misma naturaleza.** R25 exige que el log no lleve la
-transcripción de las observaciones ni el DNI, pero ni `requirements.md` ni
-`design.md` dicen **qué módulo escribe ese log** en el camino de validación.
-`tasks.md` T13 lo prueba con `caplog` sobre la validación, que es lo que el
-requisito pide; si el humano quiere una línea de log explícita en
-`paso_validacion`, es una línea y su test.
+**Coste de cambiar de opción entonces: una función pura (`validar_parte`) y sus
+tests.** Ni el contrato HTTP, ni el dominio, ni los pasos se mueven. **Esto no
+se puede perder**: es la razón entera de que T14 vaya donde va.
 
 ## Cómo retomar en una sesión nueva
 
@@ -107,11 +105,13 @@ Lo que la sesión nueva debe hacer, en este orden:
    y en los informes `impl_F-003.md` / `review_F-003.md`.
 3. Leer los tres ficheros de `specs/F-004-validacion/`. **La spec ya existe:
    no se vuelve a lanzar `spec-author`.**
-4. Enseñar la spec al humano con **las cinco decisiones abiertas D1–D5** de
-   arriba delante, y **esperar su aprobación antes de implementar** (PARADA 1
-   del `CLAUDE.md`). D1 y D4 hay que cerrarlas antes de T7; D2 antes de T11.
+4. **Las cinco decisiones D1–D5 ya están resueltas** (2026-08-19) y anotadas
+   en la spec: **no hay que volver a preguntarlas**. Lo que sí sigue vigente
+   es la PARADA 1 del `CLAUDE.md`: enseñar la propuesta al humano y esperar su
+   aprobación antes de implementar.
 5. Con la spec aprobada: `harness/features.json` a `in_progress` y lanzar
-   `implementer` sobre `tasks.md`.
+   `implementer` sobre `tasks.md`. **T14 se ejecuta en cuanto T12 deje el
+   endpoint de firma funcionando**, no al final: es lo que reabre D1.
 
 **Lo que NO debe hacer la sesión nueva**: reabrir F-001, F-002 ni F-003
 (cerradas y revisadas), tocar el historial de git de ninguna rama, hacer `push`
@@ -120,9 +120,11 @@ o PR, ni aplicar por su cuenta las propuestas P1/P2/P3 ni lo de
 
 ## Pendiente del humano (cola de decisiones)
 
-1. **Las cinco decisiones abiertas de la spec de F-004** (D1 a D5, arriba).
-   Bloquean el arranque del `implementer`. D1 es la de fondo; D4 hay que
-   cerrarla antes de T7 y D2 antes de T11.
+1. ~~Las cinco decisiones abiertas de la spec de F-004 (D1 a D5)~~ —
+   **RESUELTAS el 2026-08-19 y anotadas en la spec.** Ya no bloquean el
+   arranque del `implementer`. Queda **un solo punto vivo**: **D1 vuelve a la
+   mesa cuando T14 dé el reparto de las cuatro etiquetas de firma** sobre los
+   22 partes de Mirasierra (ver el aviso de arriba).
 
 2. **P1** · que la campaña de mutación use la base real de la rama. Con la
    cadena que existía al medir F-003, el alcance de mutación arrastró 27

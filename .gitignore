@@ -34,3 +34,6 @@ services/*/coverage.json
 *.xls
 *.ppt
 # <<< ARNES-BASE: fin del bloque. <<<
+
+# Worktrees temporales de los subagentes del arnes
+.claude/worktrees/

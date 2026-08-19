@@ -248,11 +248,24 @@ class LecturaFirma:
     @property
     def es_conformidad_del_cliente(self) -> bool:
         """HUMANA y con confianza suficiente. Cualquier duda, no (R14)."""
+
+    @property
+    def clasificacion_efectiva(self) -> ClasificacionFirma:
+        """La etiqueta que se PUBLICA: ILEGIBLE si una HUMANA no llega
+        al umbral; en cualquier otro caso, la que dijo el modelo (R14 bis)."""
 ```
 
 - Capa **dominio**. `clasificacion_desde_texto` **nunca** devuelve `HUMANA`
   ante una etiqueta desconocida (R2): el fallo por defecto cae siempre del lado
   seguro. Normaliza minúsculas y espacios; nada más.
+- **`clasificacion_efectiva` es la que sale al mundo** (decisión **D4**,
+  resuelta por el humano el 2026-08-19): cuando R14 degrada una `humana`
+  dudosa, lo que se publica es `ilegible`. Es la única etiqueta coherente con
+  el motivo que se emite: publicar `humana` al lado de un destino de revisión
+  manual es incomprensible para quien lo lea en Posventa. La lectura cruda
+  sigue viva en `clasificacion` —y viaja entera en la respuesta de
+  `/api/firma`, que es justo la entrada de `/api/validar`—, así que **no se
+  añade ningún campo al contrato** para conservarla.
 - Se reutiliza `TrazaExtraccion` de F-003 en vez de inventar una traza gemela:
   es exactamente el mismo dato (proveedor, modelo, prompt, versión, huella).
 
@@ -293,7 +306,7 @@ class ResultadoValidacion:
     veredicto: Veredicto
     destino: Destino
     motivos: tuple[Motivo, ...]
-    clasificacion_firma: ClasificacionFirma
+    clasificacion_firma: ClasificacionFirma   # la EFECTIVA (D4), no la cruda
     observaciones: str | None          # transcripción literal, para la cola
     confianza_observaciones: int
     avisos: tuple[str, ...] = ()
@@ -319,6 +332,13 @@ reloj, sin azar, sin red. Hace exactamente esto, en este orden:
 4. Cualquier otro caso → `NO_APTO` + `REVISION_MANUAL` (R19).
 5. La transcripción de las observaciones viaja **siempre** que la haya, vaya el
    parte a la cola o a revisión manual: quien lo mire la necesita delante.
+
+**`clasificacion_firma` se rellena con `firma.clasificacion_efectiva`, no con
+`firma.clasificacion`** (R14 bis, decisión **D4** de §7). Así, una `humana` con
+confianza por debajo del umbral sale del resultado —y del JSON de
+`/api/validar`— como `ilegible`, que es lo mismo que dice el motivo
+`firma_no_humana` que la acompaña. Una única fuente para las dos cosas: si
+alguien lee la etiqueta y el motivo, no puede leerlos contradiciéndose.
 
 **Por qué la regla vive en `domain/models/`** y no en un paquete nuevo: es el
 patrón que ya sigue este servicio —`domain/models/remesa.py` alberga
@@ -445,6 +465,13 @@ Respuesta (ejemplo **inventado**, un parte firmado con observaciones):
 }
 ```
 
+En ese ejemplo la firma vino `humana` con 93 de confianza y se publica tal
+cual. **Si hubiera venido `humana` por debajo del umbral, `firma.clasificacion`
+de esta respuesta diría `ilegible`** (R14 bis / D4): este campo sale de
+`ResultadoValidacion.clasificacion_firma`, que ya es la etiqueta efectiva. La
+respuesta de `/api/firma`, en cambio, sigue publicando la lectura **cruda** del
+modelo: es la que registra qué vio, y es la entrada de este endpoint.
+
 Textos de los motivos, en castellano llano y sin jerga (R6):
 
 | Código | Texto |
@@ -528,10 +555,27 @@ también esta suite: R26 no es una promesa, es imposible saltársela.
 | Ante etiqueta desconocida, `ILEGIBLE` | `HUMANA` por defecto, o error | El fallo cae del lado seguro: nunca se da por firmado lo que no se entendió |
 | Sanear la confianza en **una** función compartida | Copiarla en `paso_firma` | Dos copias de una regla numérica divergen; y la campaña de mutación las contaría dos veces |
 
-### Decisiones abiertas que necesita validar el humano
+### Decisiones D1–D5 · RESUELTAS por el humano el 2026-08-19
+
+> Las cinco quedaron resueltas antes de arrancar el `implementer`. Se
+> conservan aquí con su razonamiento porque explican **por qué** la spec dice
+> lo que dice; ninguna sigue abierta ni bloquea. La única que cambió el
+> contenido de la spec es **D4**.
 
 **D1 · ¿Qué hace el sistema con un parte cuya firma no es humana?** Es **la**
 decisión de esta spec.
+
+> **RESUELTA el 2026-08-19: APLAZADA a propósito. La spec se implementa tal y
+> como está** —opción 1, `no_apto` + `revision_manual`—, que es la coherente
+> con `docs/ARCHITECTURE.md` y `CHECKPOINTS.md`.
+>
+> Se aplaza porque **depende de un dato que todavía no existe**: el reparto de
+> las cuatro etiquetas de firma sobre los 22 partes reales de Mirasierra. Por
+> eso **T14 se adelanta**: se ejecuta **en cuanto el endpoint de firma
+> funcione**, no al final, y con su resultado delante el humano confirma la
+> opción 1 o cambia a la 2. Lo que cuesta cambiar entonces es **una función
+> pura y sus tests**, no el diseño: ni el contrato HTTP, ni el dominio, ni los
+> pasos se mueven.
 
 - **Lo que implementa la spec (opción 1)**: `no_apto` + `revision_manual`,
   nunca apto. Es lo que dicen `docs/ARCHITECTURE.md` (semántica 3) y
@@ -554,6 +598,12 @@ decisión de esta spec.
   tests. Ni el contrato HTTP, ni el dominio, ni los pasos cambian.
 
 **D2 · ¿Entran los dos endpoints en F-004?** El `acceptance` no los pide.
+
+> **RESUELTA el 2026-08-19: SÍ, los dos endpoints ENTRAN en F-004.** El humano
+> acepta la razón de fondo: sin `/api/validar`, las reglas de validación
+> acabarían reescritas en JavaScript en el front, que es una fuga de dominio.
+> **R23 y R24 se quedan**, con sus tareas T11 y T12.
+
 Se incluyen por la misma razón que en F-003 (decisión D2 de aquella spec): sin
 endpoint no hay quien ejercite la validación, y **sin `/api/validar` las reglas
 acabarían reescritas en JavaScript en el front**, que es una fuga de dominio de
@@ -566,6 +616,37 @@ Efecto lateral, buscado: el día que alguien cambie ese prompt legítimamente
 —F-015— tendrá que actualizar la constante **a conciencia** y volver a medir.
 Si el humano lo considera un freno, se sustituye por un test más flojo (que la
 clave siga existiendo) y se pierde esa red.
+
+> **RESUELTA el 2026-08-19: SÍ, se mantiene el test que clava la huella
+> (R4).** Es la red que garantiza que F-004 no roza el prompt cuya calidad se
+> midió sobre 22 partes reales. **El efecto lateral es buscado**: quien lo
+> cambie en F-015 actualizará la constante a conciencia y volverá a medir.
+
+**D4 · Cuando R14 degrada una firma `humana` dudosa, ¿qué etiqueta se
+publica?** El hueco se detectó al escribir `tasks.md`: R14 dice que una
+`humana` por debajo del umbral **se trata como `ilegible`**, pero ni
+`requirements.md` ni `design.md` decían qué salía en
+`ResultadoValidacion.clasificacion_firma` y en el JSON de respuesta: la
+etiqueta que devolvió el modelo (`humana`) o la degradada (`ilegible`).
+
+> **RESUELTA el 2026-08-19: se publica la etiqueta DEGRADADA, `ilegible`.**
+> Motivo del humano: es la única coherente con el motivo que se emite;
+> publicar `humana` junto a un destino «revisión manual» es incomprensible
+> para quien lo lea en Posventa.
+>
+> **Es la única de las cinco que cambió el contenido de la spec.** Está
+> aplicado en **R14 bis** de `requirements.md` y en §4.1, §4.2 y §4.5 de este
+> documento (`clasificacion_efectiva`). **No se añade ningún campo al
+> contrato** para conservar la lectura cruda: no hace falta, porque la
+> respuesta de `/api/firma` ya la publica y es la entrada de `/api/validar`.
+
+**D5 · ¿Qué módulo escribe el log del camino de validación?** R25 exige que el
+log no lleve la transcripción de las observaciones ni el DNI, pero ni
+`requirements.md` ni `design.md` nombraban al módulo que lo escribe.
+
+> **RESUELTA el 2026-08-19: se queda como está.** T13, con `caplog` sobre la
+> validación, es exactamente lo que pide el requisito. **No se añade** una
+> línea de log explícita en `paso_validacion`.
 
 ### Riesgos
 

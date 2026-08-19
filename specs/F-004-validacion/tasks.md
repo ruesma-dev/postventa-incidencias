@@ -53,13 +53,18 @@ Tres bloques encadenados, y el orden no es negociable:
       (`test_f004_r2_una_etiqueta_desconocida_es_ilegible`,
       `test_f004_r2_sin_etiqueta_es_ilegible_nunca_humana`); y una `HUMANA` con
       confianza por debajo del umbral **no** es conformidad del cliente
-      (`test_f004_r14_una_firma_humana_dudosa_se_trata_como_ilegible`).
+      (`test_f004_r14_una_firma_humana_dudosa_se_trata_como_ilegible`) y
+      **su `clasificacion_efectiva` es `ILEGIBLE`**, mientras que
+      `clasificacion` conserva la lectura cruda `HUMANA`
+      (`test_f004_r14bis_la_firma_degradada_se_publica_como_ilegible`,
+      decisión **D4** resuelta el 2026-08-19).
       **Verificación**: rojo por `ModuleNotFoundError` / `ImportError`; **traza
       pegada** en `progress/impl_F-004.md`.
 
 - [ ] **T2**: Implementar `domain/models/firma.py` (`ClasificacionFirma`,
       `CAMPO_CLASIFICACION`, `CAMPOS_DE_LA_FIRMA`, `clasificacion_desde_texto`,
-      `LecturaFirma.es_conformidad_del_cliente`) y añadir a
+      `LecturaFirma.es_conformidad_del_cliente` y
+      `LecturaFirma.clasificacion_efectiva`) y añadir a
       `domain/models/errores.py` las tres excepciones nuevas de `design.md`
       §4.4: `SchemaDesconocido`, `ValidacionSinDatos` y
       `CuerpoDeValidacionInvalido`.
@@ -135,6 +140,11 @@ Tres bloques encadenados, y el orden no es negociable:
       - **R13** las tres etiquetas no humanas → `firma_no_humana` +
         `revision_manual`, con **tres textos distintos** (casilla vacía, marca
         simple, ilegible).
+      - **R14 / R14 bis** una firma `humana` con confianza por debajo del
+        umbral se trata como `ilegible` **y se publica como `ilegible`**:
+        `resultado.clasificacion_firma` dice `ilegible`, **nunca** `humana`
+        (decisión **D4**, resuelta el 2026-08-19). El caso simétrico también:
+        una `humana` con confianza suficiente se publica `humana`.
       - **R15/R16/R17** sin DNI sale `apto`; ningún campo no decisivo vacío
         cambia el veredicto; **ningún** formato se exige al `numero_incidencia`
         (un valor con barra y otro sin ella salen igual de aptos).
@@ -153,6 +163,9 @@ Tres bloques encadenados, y el orden no es negociable:
       `CAMPOS_DECISIVOS`, `UMBRAL_CONFIANZA = 50`, `validar_parte`) con los
       cinco pasos y los seis textos de `design.md` §4.2. **Función pura**: sin
       reloj, sin azar, sin red, sin imports de `infrastructure`.
+      `clasificacion_firma` se rellena con **`firma.clasificacion_efectiva`**
+      (la propiedad de `design.md` §4.1), **no** con `firma.clasificacion`:
+      esa es la decisión **D4**, resuelta por el humano el 2026-08-19.
       **Verificación**:
       `.venv/Scripts/python.exe -m pytest tests/test_f004_reglas_validacion.py -q`
       en verde, con **todos** los tests de T6 pasando.
@@ -208,6 +221,11 @@ Tres bloques encadenados, y el orden no es negociable:
         solo sobre el 200).
       - `test_f004_r24_un_cuerpo_incompleto_es_400`: falta `extraccion`, falta
         `firma` o falta el `hash_parte` → **400 diciendo qué falta**.
+      - `test_f004_r14bis_el_json_de_validar_publica_la_etiqueta_degradada`:
+        con un cuerpo cuya firma viene `humana` por debajo del umbral, el JSON
+        de respuesta trae `firma.clasificacion == "ilegible"` (D4). La
+        respuesta de `/api/firma`, en cambio, sigue publicando la lectura
+        cruda: se comprueba en el test del contrato de arriba.
 
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-004.md`.
 
@@ -254,6 +272,12 @@ Tres bloques encadenados, y el orden no es negociable:
       de firma sobre los 22 partes de la remesa de Mirasierra.** Es lo que
       decide **D1** (`design.md` §7): si la firma puede o no bloquear un parte.
       Va aquí, y no al final, por el Riesgo 1 del diseño.
+
+      **El humano aplazó D1 a propósito el 2026-08-19 y adelantó esta tarea**:
+      se ejecuta **en cuanto el endpoint de firma funcione** (T12), no al
+      final. Hasta entonces la spec se implementa tal cual —opción 1—, y con
+      el reparto de etiquetas delante el humano confirma o cambia a la opción
+      2. Cambiar cuesta **una función pura y sus tests**, no el diseño.
 
       Requiere `GEMINI_API_KEY` en el `.env` local del servicio (ya existe) y
       el PDF `docs/referencia/doc02871320260817093833.pdf`, que **no está

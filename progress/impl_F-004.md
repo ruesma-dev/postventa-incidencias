@@ -137,3 +137,36 @@ ERROR tests/test_f004_validar_http.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
 2 errors in 0.61s
 ```
+
+### T13 · R25 · el log no puede llevar observaciones ni DNI
+
+Los tests de arquitectura de R20, R22 y R26 nacieron en verde porque el código
+de T7 a T12 ya cumplía la regla. Para R25, `CHECKPOINTS.md` C4 bis exige
+demostrar que el test **muerde**: se rompió a propósito la línea de log de
+`function_app.validar` (`log.info("validar: %s", cuerpo)`, que vuelca el cuerpo
+entero), se ejecutó el test, y después se restauró con `git checkout`.
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f004_arquitectura.py::test_f004_r25_el_log_no_lleva_observaciones_ni_dni -q
+            respuesta = function_app.validar(peticion)
+
+        registrado = "\n".join(registro.getMessage() for registro in caplog.records)
+        cuerpo = json.loads(respuesta.get_body())
+
+        # Lo que NO puede estar en el log.
+>       assert OBSERVACION_RECONOCIBLE not in registrado
+E       assert 'Falta remat...ón inventado' not in "validar: {'...avisos': []}"
+E
+E         'Falta rematar el r...del salón inventado' is contained here:
+E           'texto': 'Falta rematar el rodapié del salón inventado', 'confianza_pct': 74}, 'avisos': []}
+
+tests\test_f004_arquitectura.py:288: AssertionError
+------------------------------ Captured log call ------------------------------
+INFO     function_app:function_app.py:180 validar: {'hash_parte': '9f2b0011', 'veredicto': 'no_apto', 'destino': 'cola_validacion_humana', 'motivos': [...], 'firma': {...}, 'observaciones': {'texto': 'Falta rematar el rodapié del salón inventado', 'confianza_pct': 74}, 'avisos': []}
+=========================== short test summary info ===========================
+FAILED tests/test_f004_arquitectura.py::test_f004_r25_el_log_no_lleva_observaciones_ni_dni
+1 failed in 1.01s
+```
+
+Con la línea de log correcta —hash, veredicto, destino y códigos de motivo, y
+nada más— los seis tests del fichero pasan.

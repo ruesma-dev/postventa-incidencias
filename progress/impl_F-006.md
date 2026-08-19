@@ -447,3 +447,78 @@ Obligatorias, por tanto: `SHAREPOINT_DRIVE_ID`, `GRAPH_TENANT_ID`,
 `GRAPH_CLIENT_ID` y `GRAPH_CLIENT_SECRET`, y se nombran **todas las que
 falten de una vez**: descubrirlas de una en una son tres vueltas de
 despliegue.
+
+---
+
+## T8 · `httpx` en `requirements.txt` — decisión D-a del humano (2026-08-20)
+
+```
+$ .venv/Scripts/python.exe -m pip install -r requirements.txt
+$ .venv/Scripts/python.exe -c "import httpx; print('httpx', httpx.__version__)"
+httpx 0.28.1
+
+$ .venv/Scripts/python.exe -m pytest -q
+804 passed, 10 skipped in 14.46s
+```
+
+Se declara `httpx>=0.27,<1.0`, con rango de versión al estilo de las demás
+dependencias del fichero, y **no** se declaran `msal` ni `requests`, que era lo
+que proponía la spec. Motivo: la decisión **D-a** del humano del 2026-08-20
+(sección 0 de este informe), que cierra la decisión abierta **D1** de
+`design.md` §10 alineando este servicio con `partes`, que ya resuelve lo mismo
+en producción.
+
+Coste de la decisión: **cero fuera de `infrastructure/sharepoint/`**, que es
+exactamente lo que D1 predijo. El test de arquitectura de R22 ya vigilaba
+`httpx` junto a `msal` y `requests`, así que tampoco cambia.
+
+### Lo que se reutiliza del patrón de `partes`
+
+Leídos `infrastructure/graph/token_provider.py` e
+`infrastructure/storage/sharepoint_parte_storage.py` de
+`partes/services/partes-persistencia`. Se adopta:
+
+- **Token app-only pedido a mano** contra
+  `login.microsoftonline.com/<tenant>/oauth2/v2.0/token` con
+  `grant_type=client_credentials` y `scope=.../.default`, en vez de meter una
+  librería entera para tres campos de un formulario.
+- **Token cacheado por su vencimiento**, con un margen antes de que caduque.
+- **`httpx.Client` con `httpx.Timeout(total, connect=...)`**.
+- **La familia de códigos transitorios** (`429`, `5xx`) y la de excepciones de
+  red de `httpx` (`ConnectTimeout`, `ConnectError`, `ReadTimeout`,
+  `RemoteProtocolError`), que es la lista que a `partes` le ha costado
+  descubrir en producción.
+- **Respetar `Retry-After`** cuando el servicio lo manda.
+- **La subida por `PUT .../root:/<ruta>:/content`**, que es la simple y vale
+  para el PDF de un parte.
+
+### Cinco defectos del patrón de `partes` que NO se heredan
+
+Se dicen porque el encargo lo pedía explícitamente, y porque arrastrarlos
+habría roto requisitos de esta feature:
+
+1. **`_safe_filename` sanea en silencio.** `partes` sustituye por `_` todo
+   carácter que SharePoint no admite. Eso es exactamente lo que **R7
+   prohíbe**: archivaría en Posventa un fichero con un nombre que nadie pidió
+   y nadie se enteraría. Aquí el nombre imposible es un error ruidoso.
+2. **La subida no declara el comportamiento ante conflicto.** `partes` hace
+   `PUT ...:/content` a secas y se queda con el valor por defecto del
+   servicio. **R15 exige pedir el reemplazo explícitamente**: depender de un
+   valor por defecto ajeno para el criterio de aceptación de la feature es
+   confiar en que Microsoft no lo cambie.
+3. **`raise_for_status()` y `response.text[:500]` filtran.** El mensaje de
+   `httpx.HTTPStatusError` lleva la URL completa —con el identificador de la
+   biblioteca dentro— y el cuerpo de la respuesta. Con **R26** eso no puede
+   salir a un log. Aquí todo fallo se traduce a `ArchivoFallido` con un motivo
+   que lleva **el código de estado y nada más**.
+4. **`assert` para validar precondiciones.** `partes` usa `assert self._creds`
+   y `assert self._hostname and self._site_path`. Con `python -O` los `assert`
+   desaparecen y la comprobación con ellos. Aquí, comprobaciones de verdad.
+5. **El backoff está escrito a mano** con `time.sleep` dentro del bucle.
+   `docs/CONVENTIONS.md` de este proyecto manda `tenacity`, que ya está en el
+   `requirements.txt` y es lo que usa `infrastructure/llm/gemini.py`. Un
+   segundo mecanismo de reintentos en la misma casa diverge.
+
+Ninguno de los cinco es un reproche a `partes`: son decisiones razonables en
+un servicio con otros requisitos. Aquí hay requisitos escritos que las
+descartan.

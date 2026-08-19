@@ -155,7 +155,11 @@
 
 ## Fase 4 · El adaptador de Graph
 
-- [ ] **T8**: Declarar `msal>=1.28,<2.0` y `requests>=2.31,<3.0` en
+- [x] **T8**: ~~Declarar `msal>=1.28,<2.0` y `requests>=2.31,<3.0`~~ →
+      **DECISIÓN DEL HUMANO DEL 2026-08-20**: se declara **`httpx`**, no `msal`
+      ni `requests`. El servicio no tenía cliente HTTP y `partes` ya resuelve
+      esto en producción con `httpx`; se cierra así la decisión abierta **D1**
+      de `design.md` §10. Declarado `httpx>=0.27,<1.0` en
       `services/postventa-api/requirements.txt` e instalarlos en el venv del
       servicio. **Si la decisión abierta D1 dice que el ecosistema usa otra
       librería, se cambia aquí y solo aquí**: el puerto aísla al resto.

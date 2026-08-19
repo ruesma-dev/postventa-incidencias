@@ -15,6 +15,8 @@ cambio en vez de cazarlo.
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 from domain.models.firma import (
     CAMPO_CLASIFICACION,
@@ -104,6 +106,23 @@ def test_f004_r1_el_schema_de_la_firma_declara_un_unico_campo():
     """R1 · a la casilla se le pregunta **una** cosa, y se llama así."""
     assert CAMPO_CLASIFICACION == "clasificacion_firma"
     assert CAMPOS_DE_LA_FIRMA == ("clasificacion_firma",)
+
+
+def test_f004_r1_la_lectura_de_la_firma_es_inmutable():
+    """R1 · lo que se leyó de la casilla no se puede reescribir después.
+
+    No es formalismo: la lectura de la firma es la prueba de que el cliente
+    dio —o no dio— su conformidad, y viaja hasta el veredicto que cierra una
+    incidencia en el ERP. Si fuera mutable, cualquier paso posterior podría
+    «arreglar» un `casilla_vacia` a `humana` sin dejar rastro, y ningún test
+    de comportamiento lo notaría.
+    """
+    lectura = lectura_de_firma("casilla_vacia", 90)
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        lectura.clasificacion = ClasificacionFirma.HUMANA
+
+    assert lectura.clasificacion == ClasificacionFirma.CASILLA_VACIA
 
 
 @pytest.mark.parametrize("confianza", [0, 1, 30, 48, 49])

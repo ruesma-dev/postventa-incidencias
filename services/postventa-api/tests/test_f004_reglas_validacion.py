@@ -26,6 +26,8 @@ mutación de F-003).
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 from domain.models.validacion import (
     CAMPOS_DECISIVOS,
@@ -117,6 +119,27 @@ def test_f004_r6_todos_los_motivos_tienen_texto_para_posventa():
         assert motivo.texto.endswith(".")
         for jerga in JERGA_PROHIBIDA:
             assert jerga not in motivo.texto
+
+
+def test_f004_r6_el_veredicto_y_sus_motivos_son_inmutables():
+    """R6 · un veredicto emitido no se retoca por el camino.
+
+    Lo que sale de aquí decide si una incidencia del ERP se cierra y si un
+    parte se archiva. Si `ResultadoValidacion` o `Motivo` fueran mutables, un
+    paso posterior podría cambiar un `no_apto` a `apto` —o el texto que lee
+    Posventa— sin dejar rastro y sin que ningún test de comportamiento lo
+    notara. Quien quiera otro veredicto tiene que volver a validar.
+    """
+    resultado = _validar(firma="casilla_vacia", observaciones=None)
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        resultado.veredicto = Veredicto.APTO
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        resultado.motivos[0].texto = "da igual lo que ponga"
+
+    assert resultado.veredicto == Veredicto.NO_APTO
+    assert resultado.motivos[0].texto != "da igual lo que ponga"
 
 
 def test_f004_r6_los_cuatro_codigos_de_motivo_son_esos_y_no_otros():

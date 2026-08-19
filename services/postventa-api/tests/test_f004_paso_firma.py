@@ -216,6 +216,28 @@ def test_f004_r23_un_parte_demasiado_grande_no_llega_al_modelo(monkeypatch):
     assert "%PDF" not in fallo.value.motivo
 
 
+def test_f004_r23_un_parte_que_ocupa_justo_el_tope_si_se_lee(monkeypatch):
+    """R23 · el tope es «se pasa de», no «llega a»: en el borde el parte vale.
+
+    Un `>=` donde va un `>` rechazaría con un 413 un parte que cabe. Es el
+    mismo borde que vigila F-003 en la extracción, y aquí hay que vigilarlo
+    otra vez porque es otra comparación en otro fichero.
+    """
+    contenido = b"0123456789"
+    monkeypatch.setattr(modulo_extraccion, "MAX_BYTES_PARTE", len(contenido))
+    extractor = ExtractorFalso(respuesta_de_firma("humana", 93))
+
+    contexto = paso_firma(
+        ContextoParte(parte=_parte(contenido)),
+        extractor,
+        PromptsFalsos(),
+        CLAVE,
+    )
+
+    assert len(extractor.llamadas) == 1
+    assert contexto.lectura_firma.clasificacion == ClasificacionFirma.HUMANA
+
+
 def test_f004_r23_el_tope_de_tamano_no_se_duplica_en_el_paso_de_firma():
     """R23 · una segunda constante con el mismo número se desincroniza sola.
 

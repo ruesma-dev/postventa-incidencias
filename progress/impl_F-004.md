@@ -41,3 +41,24 @@ ERROR tests/test_f004_firma_dominio.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
 1 error in 0.28s
 ```
+
+### T3 · el prompt de la firma y el registro de schemas (R4, R5)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f004_prompts_firma.py -q
+=================================== ERRORS ====================================
+______________ ERROR collecting tests/test_f004_prompts_firma.py ______________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f004_prompts_firma.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f004_prompts_firma.py:25: in <module>
+    from domain.models.schemas import CAMPOS_POR_SCHEMA, campos_del_schema
+E   ModuleNotFoundError: No module named 'domain.models.schemas'
+=========================== short test summary info ===========================
+ERROR tests/test_f004_prompts_firma.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.32s
+```

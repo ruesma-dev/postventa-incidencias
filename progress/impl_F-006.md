@@ -687,3 +687,48 @@ la feature visto desde fuera.
 En los seis caminos de error se comprueba además que la biblioteca falsa
 **sigue vacía**: R31 dice «en los cuatro casos, sin haber subido nada», y eso
 es lo que de verdad importa, no el número.
+
+---
+
+## T12 · VERDE · El handler y la ruta
+
+Ficheros: `interface_adapters/api/archivar.py` (nuevo), `function_app.py`
+(ruta `POST /api/archivar` y el mapeo de errores), `domain/models/errores.py`
+(`CuerpoDeArchivoInvalido`).
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_archivar_http.py -q
+12 passed in 1.03s
+
+$ .venv/Scripts/python.exe -m pytest -q
+848 passed, 10 skipped in 18.18s
+```
+
+### DESVIACIÓN menor: un error nuevo, `CuerpoDeArchivoInvalido`
+
+`design.md` §3.2 enumera cinco errores nuevos y este no está. Hace falta
+igual: R31 exige **400** cuando «el cuerpo no cumple el contrato», y eso
+incluye un `veredicto` o un `destino` con un valor que el dominio no reconoce.
+
+Las alternativas eran peores:
+
+- **Reutilizar `CuerpoDeValidacionInvalido`** (F-004): su docstring dice
+  literalmente «el cuerpo de `/api/validar`». Un error que miente sobre de
+  dónde viene hace perder media hora a quien lea el log.
+- **Tratar el valor desconocido como «no apto»**: daría un 409 engañoso.
+- **Tratarlo como apto**: archivaría un parte que nadie ha validado. Ni de
+  broma.
+
+### El endpoint no pide los nueve campos del parte, y es a propósito
+
+Solo `codigo_obra` y `numero_incidencia`, que son los que deciden el nombre.
+Los otros siete se reconstruyen vacíos. Pedirlos obligaría al front a
+reenviar el DNI y las observaciones manuscritas del cliente **en cada
+archivo**, y ese es justo el dato que no debe viajar de más.
+
+### El veredicto llega en el cuerpo y se vuelve a comprobar
+
+Es la decisión **D4** de `design.md` §10, aplicada tal cual. Se reconstruye
+como `ResultadoValidacion` y `paso_archivo` lo comprueba contra el destino
+igual que si viniera de dentro: el borde no puede saltarse la puerta de
+aptitud por el hecho de ser el borde.

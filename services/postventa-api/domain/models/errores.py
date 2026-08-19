@@ -331,3 +331,23 @@ class ConfiguracionSharePointIncompleta(Exception):
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+class CuerpoDeArchivoInvalido(Exception):
+    """El cuerpo de `/api/archivar` no trae lo que dice el contrato (F-006, R31).
+
+    Falta un campo, o el veredicto o el destino traen un valor que el dominio
+    no reconoce. El borde lo traduce a **400**, y no a 409: la petición está
+    mal formada, no es que el parte no se pueda archivar.
+
+    Esa distinción no es cosmética. Un veredicto desconocido tratado «como si
+    fuera no apto» daría un 409 engañoso; tratado al revés —«como si fuera
+    apto»— archivaría un parte que nadie ha validado. Se rechaza y punto.
+
+    El motivo dice **qué falta** y nunca lo que sí venía: el cuerpo lleva los
+    códigos del parte y este texto acaba en un log.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo

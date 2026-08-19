@@ -199,7 +199,7 @@
 
 ## Fase 5 · El borde HTTP
 
-- [ ] **T11 · RED**: Escribir `tests/test_f006_archivar_http.py` (R30, R31)
+- [x] **T11 · RED**: Escribir `tests/test_f006_archivar_http.py` (R30, R31)
       con **los cinco caminos**, uno por test, todos con dobles inyectados:
       200 con el contrato exacto de `design.md` §8.2; 400 sin fichero; 409 con
       parte no apto; 409 con nombre imposible; 503 con archivo deshabilitado;
@@ -208,7 +208,7 @@
       contenido del parte**.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-006.md`.
 
-- [ ] **T12**: Implementar `interface_adapters/api/archivar.py` (handler +
+- [x] **T12**: Implementar `interface_adapters/api/archivar.py` (handler +
       composición, con los dos puertos inyectables como costura de test) y
       añadir la ruta `archivar` en `function_app.py` con el mapeo a
       400 / 409 / 502 / 503.

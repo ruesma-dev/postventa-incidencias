@@ -287,9 +287,17 @@
 > corta**, porque los comandos largos se parten al pegarlos y PowerShell no
 > admite `&&`.
 >
-> **T17 y T18 dependen de decisiones abiertas del humano** (D6 y D3 de
-> `design.md` §10). Si no están resueltas, quedan **PENDIENTE DEL HUMANO** y se
-> anota así en `progress/current.md`: no se sustituyen por una prueba local.
+> **T17 depende de una decisión abierta del humano** (D6 de `design.md` §10).
+> Si no está resuelta, queda **PENDIENTE DEL HUMANO** y se anota así en
+> `progress/current.md`: no se sustituye por una prueba local.
+>
+> **T18 ya no depende de una decisión abierta: está DIFERIDA.** El humano
+> resolvió **D3** el **2026-08-19** por la opción **(a)** (`design.md` §10):
+> F-006 se implementa y se cierra con **T18 declarada y PENDIENTE**, y esa
+> verificación se ejecuta **cuando F-010 despliegue el entorno**. No está
+> olvidada ni pendiente de decidir: está **aplazada por decisión del humano,
+> con fecha**. Sigue firme que subir desde local «solo para probar» **no** es
+> una opción.
 
 - [ ] **T17 · MANUAL (humano)** — *(depende de **D6**)*. Confirmar que el
       destino de dev existe y que la identidad tiene permiso, **solo con
@@ -312,10 +320,19 @@
       «biblioteca localizada: sí/no», «carpeta base: existe/creada»,
       «permiso de escritura: sí/no».
 
-- [ ] **T18 · MANUAL (humano)** — *(depende de **D3** y de que exista un
-      despliegue, **F-010**)*. **La única subida real de toda la feature.**
-      Se ejecuta **contra el servicio desplegado** y **sobre el destino de
-      dev**, nunca desde local:
+- [ ] **T18 · MANUAL (humano) · DIFERIDA A F-010** — *(D3 resuelta el
+      **2026-08-19**, opción **(a)**)*. **La única subida real de toda la
+      feature**, y **la única tarea de F-006 que queda sin ejecutar al
+      cerrarla**. Se ejecuta **contra el servicio desplegado** y **sobre el
+      destino de dev**, nunca desde local:
+
+      **Cuándo**: cuando **F-010** haya desplegado el entorno de dev y exista
+      una URL de despliegue. Antes de eso **no se puede ejecutar y no se
+      sustituye por nada**. Al cerrar F-006, esta casilla queda `[ ]` y así
+      debe quedar: es una verificación **aplazada**, no olvidada.
+
+      **Comando previsto** (el script `infra/verificar_archivo_dev.ps1` sí se
+      entrega dentro de F-006, en T16; lo que se difiere es *ejecutarlo*):
 
       ```
       copy infra\verificar_archivo_dev.ps1 $HOME\
@@ -326,6 +343,15 @@
       ```
       powershell -File $HOME\verificar_archivo_dev.ps1 -BaseUrl <url-de-dev>
       ```
+
+      **Criterio de verificación** — qué se comprueba y contra qué destino:
+      se comprueba que **el nombrado y la idempotencia funcionan de verdad
+      contra una biblioteca real**, no contra el doble de test. El destino es
+      la **biblioteca de dev dentro del sitio de IT** (la de D6), a través del
+      **servicio desplegado por F-010**; nunca el archivo real de Posventa y
+      nunca desde una máquina de desarrollo. La tarea se da por verificada si
+      y solo si se cumplen los tres puntos siguientes **con resultado real
+      anotado**, y hasta entonces sigue `[ ]`.
 
       **Resultado esperado**, con un parte **sintético** (obra `0677`,
       incidencia `RS26.08/0001`, ambos inventados):
@@ -340,8 +366,10 @@
       seguir. Ese es exactamente el fallo que el `acceptance` prohíbe, y no se
       arregla con más tests.
 
-      El resultado real se anota en `progress/current.md`. **No se pega la URL
-      del despliegue, ni el `item_id`, ni ningún identificador.**
+      El resultado real se anota en `progress/current.md` **el día que se
+      ejecute, dentro del trabajo de F-010**, y solo entonces se marca esta
+      casilla. **No se pega la URL del despliegue, ni el `item_id`, ni ningún
+      identificador.**
 
 - [ ] **T19 · MANUAL (humano)** — Copiar la sección nueva de
       `docs/INTEGRACION.md` a **`azure-apps/postventa_incidencias.md`**, con su
@@ -371,6 +399,26 @@
       **Verificación**: exit code 0, con la puerta de cobertura de las líneas
       cambiadas en `[OK]` (umbral 80 %).
 
+### El cierre de F-006 necesita autorización expresa del humano (C5)
+
+Dicho sin rodeos, porque es justo donde esto se pierde: con la opción (a) de
+**D3**, F-006 llega al `reviewer` con **una verificación manual sin resultado
+real** —**T18**—, y el rigor `critico` de esta feature **la exige**.
+`CHECKPOINTS.md` **C5** pide `tasks.md` con **todas** las tareas `[x]`, y T18
+va a quedar `[ ]`.
+
+Por tanto: **ese cierre lo autoriza el humano, no el arnés.** El `reviewer`
+no puede dar por cumplido C5 por su cuenta ni relajar el criterio; necesita la
+autorización expresa del humano, dejada por escrito en `progress/`, para
+aprobar F-006 con T18 pendiente. Sin esa autorización, el veredicto correcto
+es `CHANGES_REQUESTED`.
+
+**Este caso es exactamente el que motiva F-017**: la propuesta de que C5
+distinga la **tarea de agente pendiente** (que nunca debe pasar) de la
+**verificación `MANUAL (humano)` pendiente por una dependencia declarada**
+(que puede pasar con autorización y fecha). Quien lea esto y quiera el hilo
+completo, el identificador es **F-017**.
+
 ---
 
 ## Resumen de dependencias externas
@@ -380,5 +428,5 @@
 | T1 | F-004 y F-005 mergeadas en `dev` | fuera de esta rama |
 | T8 | **D1** (qué librería de Graph reutilizar) | abierta, **no bloquea** |
 | T17 | **D6** (biblioteca de dev y app registration creados) | abierta, **BLOQUEA** |
-| T18 | **D3** (entorno desplegado, F-010) + D6 | abierta, **BLOQUEA** |
+| T18 | **F-010** (entorno desplegado) + D6 | **D3 resuelta 2026-08-19 (a)**: tarea **DIFERIDA a F-010**, no bloquea el cierre pero lo condiciona (ver «El cierre de F-006 necesita autorización expresa del humano») |
 | T19 | T15 hecha | interna |

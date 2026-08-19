@@ -93,6 +93,27 @@ F-006              (rebase de feature/F-006-sharepoint sobre dev, y a implementa
 **F-006 se implementa la tercera.** La tarea **T1** de `tasks.md` es
 exactamente esa comprobación, y si no se cumple la feature se marca `blocked`.
 
+### Y una dependencia más, hacia adelante: **F-010**
+
+F-004 y F-005 condicionan **cuándo se implementa** F-006. **F-010** condiciona
+**cuándo se puede dar por verificada del todo**: la única subida real
+permitida ocurre desde el entorno desplegado, y ese entorno lo crea F-010.
+
+Por decisión del humano del **2026-08-19** (**D3**, opción (a), §10), F-006
+**no espera a F-010 para implementarse ni para cerrarse**: se cierra con la
+verificación manual **T18 declarada y pendiente**, diferida a F-010. Queda
+por tanto un hilo abierto entre features que hay que recoger allí:
+
+```
+F-004 → dev  →  F-005 → dev  →  F-006 (implementación y cierre)
+                                   ↓ deja T18 pendiente
+                                F-010 (despliegue) → se ejecuta T18
+```
+
+**Quien trabaje F-010 tiene que ejecutar T18 de F-006** y anotar su resultado
+real. No es una tarea de F-010, pero sin ella F-006 nunca queda verificada
+por completo.
+
 **Alternativas descartadas a propósito**, las dos por el mismo motivo (dos
 modelos del mismo concepto divergen siempre):
 
@@ -620,11 +641,15 @@ entorno desplegado (§5). El endpoint es lo que hace posible T18.
 | **g** · Sin DDL propio | Crear aquí la tabla `archivos` | Es de F-005. Dos dueños del mismo DDL es el acoplamiento que `albaranes.md` ya documenta como problema («gana el que arranque primero») |
 | **h** · Endpoint HTTP propio | Solo el paso del pipeline | Sin endpoint no hay forma legítima de ejercitar la subida real desde el entorno desplegado |
 
-**Riesgo 1 · La feature no se puede cerrar sin entorno desplegado.** El
+**Riesgo 1 · La subida real no se puede verificar sin entorno desplegado.** El
 `acceptance` de rigor `critico` exige verificaciones manuales «con su
 resultado real», y la única subida real permitida es desde el despliegue, que
-es **F-010** (prioridad 10). Es la decisión abierta **D3**, y **bloquea el
-cierre**, no la implementación.
+es **F-010** (prioridad 10). Era la decisión **D3**, **resuelta el 2026-08-19
+por la opción (a)** (§10): F-006 se cierra con **T18 declarada y pendiente**,
+diferida a F-010. El riesgo no desaparece, **se traslada**: F-006 queda
+cerrada con una verificación manual sin resultado real, y ese cierre necesita
+la **autorización expresa del humano ante `CHECKPOINTS.md` C5** (ver §10, D3,
+y **F-017**).
 
 **Riesgo 2 · El destino de dev todavía no existe.** Nadie ha creado aún la
 biblioteca propia en el sitio de IT ni el app registration con permisos sobre
@@ -652,16 +677,59 @@ encaja, `blocked` y se habla con el humano — **no se parchea la spec ajena**.
 
 ## 10 · Decisiones abiertas que necesita validar el humano
 
-> Detalle y contexto en `progress/explore_F-006.md`. **Dos bloquean**.
+> Detalle y contexto en `progress/explore_F-006.md`. Eran seis: **D3 está
+> RESUELTA** (2026-08-19, ver abajo); de las cinco que siguen abiertas,
+> **D6 bloquea** y D1, D2, D4 y D5 no.
 
 | # | Decisión | ¿Bloquea? |
 |---|---|---|
 | **D1** | **Qué reutilizar de `partes`/`albaranes`**: librería cliente de Graph (aquí se propone `msal` + `requests`), app registration, y permisos (`Sites.Selected` acotado a la biblioteca, que es lo mínimo, frente a `Files.ReadWrite.All`, que es todo el tenant). `azure-apps/` no lo documenta: hay que mirarlo en el repositorio `partes` o preguntar. Si resulta ser otra librería, **solo cambia `infrastructure/sharepoint/`** | No |
 | **D2** | **Mismo nombre, otro `hash`** (dos escaneos distintos de la misma incidencia): la spec **reemplaza y avisa**. La alternativa es fallar y mandarlo a revisión humana. Se implementa el reemplazo porque el archivo de Posventa debe quedarse con la última versión conformada | No |
-| **D3** | **La verificación manual de una subida real necesita entorno desplegado**, que es **F-010** (prioridad 10, cuatro features más tarde). Opciones: (a) F-006 cierra con T18 declarada y **pendiente**, y se ejecuta al desplegar; (b) se adelanta un despliegue mínimo. Lo que **no** es opción es subir desde local | **SÍ** |
+| **D3** | ✅ **RESUELTA el 2026-08-19 · opción (a)** — ver detalle bajo la tabla | Ya no |
 | **D4** | El endpoint **recibe** el veredicto en el cuerpo y lo vuelve a comprobar. Leerlo de la base sería más fuerte, pero exige un método nuevo en `RepositorioPartesPort` (F-005), y F-006 **no cambia specs ajenas** | No |
 | **D5** | `EstadoArchivo` (F-005) no tiene `ya_archivado`: el caso «ya estaba» sale como `archivado` + aviso. Añadir el estado sería más limpio, pero es un cambio en F-005 | No |
-| **D6** | **Nadie ha creado todavía** la biblioteca de dev en el sitio de IT ni el app registration con permiso sobre ella. Hace falta que el humano (o IT) lo cree y pase los identificadores por `.env`, **nunca por el repositorio** | **SÍ** (T17, T18) |
+| **D6** | **Nadie ha creado todavía** la biblioteca de dev en el sitio de IT ni el app registration con permiso sobre ella. Hace falta que el humano (o IT) lo cree y pase los identificadores por `.env`, **nunca por el repositorio**. Falta además decidir **qué permiso de Graph** se pide: `Sites.Selected` acotado a esa biblioteca (lo mínimo y lo prudente) frente a `Files.ReadWrite.All` (todo el tenant) | **SÍ** (T17, T18) |
+
+### D3 · RESUELTA el 2026-08-19 — opción (a)
+
+**El enunciado.** El rigor `critico` exige verificaciones `MANUAL (humano)`
+con su **resultado real**, y la única subida real permitida es desde el
+entorno desplegado. Pero el despliegue es **F-010** (prioridad 10), cuatro
+features más tarde que F-006 (prioridad 6).
+
+**Lo resuelto por el humano el 2026-08-19 — opción (a).** F-006 **se
+implementa y se cierra** con la verificación manual de la subida real
+(**T18**) **declarada y PENDIENTE**, a ejecutar **cuando F-010 despliegue el
+entorno**. En `tasks.md`, T18 queda marcada `MANUAL (humano) · DIFERIDA A
+F-010`, con su comando previsto y su criterio de verificación, para que quien
+la lea entienda que **no está olvidada, sino aplazada por decisión del humano
+y con fecha**.
+
+**Opciones descartadas:**
+
+- **(b)** Adelantar un despliegue mínimo de la Function App a dev solo para
+  poder cerrar F-006. **Descartada.**
+- **(c)** Reordenar el backlog y meter F-010 por delante de F-006.
+  **Descartada.**
+
+**Lo que sigue sin ser opción, y no cambia:** subir a SharePoint desde local
+«solo para probar». `CLAUDE.md` lo prohíbe sin matices y el `acceptance` de la
+feature lo repite. La resolución de D3 aplaza la verificación; **no** abre una
+puerta trasera para adelantarla.
+
+**Consecuencia, dicha sin rodeos.** Con la opción (a), F-006 llega al
+`reviewer` con **una verificación manual sin resultado real**, y el rigor
+`critico` la exige; `CHECKPOINTS.md` **C5** pide además `tasks.md` con todas
+las tareas `[x]`, y T18 va a quedar `[ ]`. **Ese cierre lo autoriza el humano,
+no el arnés**: el `reviewer` necesita la **autorización expresa del humano
+ante C5**, por escrito en `progress/`, para aprobar F-006 con T18 pendiente.
+Sin ella, el veredicto correcto es `CHANGES_REQUESTED`.
+
+**Y este caso es exactamente el que motiva F-017**: la propuesta de que C5
+distinga la **tarea de agente pendiente** —que nunca debe pasar— de la
+**verificación `MANUAL (humano)` pendiente por una dependencia declarada**
+—que puede pasar con autorización y fecha—. Se nombra por identificador,
+**F-017**, para que el `reviewer` y el humano encuentren el hilo.
 
 ---
 

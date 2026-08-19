@@ -98,29 +98,43 @@
 
 ---
 
-## 3 · DECISIONES ABIERTAS QUE NECESITA VALIDAR EL HUMANO
+## 3 · ESTADO DE LAS DECISIONES
 
-**Seis. Dos bloquean.**
+**Seis en total: una RESUELTA (D3), una BLOQUEANTE viva (D6) y cuatro
+abiertas que no bloquean (D1, D2, D4, D5).**
 
-### 🔴 D3 — BLOQUEA · La verificación manual de una subida real necesita entorno desplegado
+Actualizado el **2026-08-19**, cuando el humano resolvió D3. Las otras cinco
+siguen exactamente como estaban: **nadie las ha decidido**.
+
+### ✅ D3 — RESUELTA el 2026-08-19 · opción (a)
 
 El rigor `critico` exige verificaciones `MANUAL (humano)` **con su resultado
 real**, y la única subida real permitida es desde el entorno desplegado. Pero
 el despliegue es **F-010** (prioridad 10), cuatro features más tarde que
 F-006 (prioridad 6).
 
-**Opciones:**
+**Resuelto por el humano: opción (a).** F-006 se implementa y **se cierra**
+con **T18 declarada y PENDIENTE**, a ejecutar cuando **F-010** despliegue el
+entorno. En `tasks.md`, T18 queda como `MANUAL (humano) · DIFERIDA A F-010`,
+con su comando previsto y su criterio de verificación: aplazada con fecha, no
+olvidada.
 
-- **(a)** F-006 se implementa y cierra con **T18 declarada y PENDIENTE**, y se
-  ejecuta cuando F-010 despliegue. El reviewer tendría que aceptar un cierre
-  con una verificación manual pendiente, y eso lo autoriza el humano, no el
-  arnés.
-- **(b)** Se adelanta un despliegue mínimo de la Function App a dev antes de
-  cerrar F-006.
-- **(c)** Se reordena el backlog y F-010 pasa por delante de F-006.
+**Descartadas:**
 
-**Lo que NO es opción**: subir desde local «solo para probar». `CLAUDE.md` lo
-prohíbe sin matices y el `acceptance` lo repite.
+- **(b)** Adelantar un despliegue mínimo de la Function App a dev antes de
+  cerrar F-006. **Descartada.**
+- **(c)** Reordenar el backlog para que F-010 pase por delante de F-006.
+  **Descartada.**
+
+**Lo que NO es opción, y sigue firme**: subir desde local «solo para probar».
+`CLAUDE.md` lo prohíbe sin matices y el `acceptance` lo repite.
+
+**Consecuencia que hay que llevar al reviewer**: F-006 llegará a la revisión
+con una verificación manual **sin resultado real**, y el rigor `critico` la
+exige. Ese cierre necesita **autorización expresa del humano ante
+`CHECKPOINTS.md` C5**; el arnés por sí solo no puede darlo por bueno. Es
+exactamente el caso que motiva **F-017** (que C5 distinga la tarea de agente
+pendiente de la verificación `MANUAL (humano)` pendiente).
 
 ### 🔴 D6 — BLOQUEA · El destino de dev todavía no existe
 
@@ -186,5 +200,10 @@ criterio del humano.
 1. Aprobación de la spec por el humano (PARADA 1 de `CLAUDE.md`).
 2. **F-004 y F-005 mergeadas en `dev`**, en ese orden, y esta rama rebasada
    sobre `dev` (T1). Si no, `blocked`.
-3. Resolución de **D1** (recomendable antes de T8) y de **D6** y **D3** (antes
-   de T17 y T18; el resto de la feature se puede implementar sin ellas).
+3. Resolución de **D1** (recomendable antes de T8) y de **D6** (antes de T17;
+   el resto de la feature se puede implementar sin ella).
+4. **D3 ya no hace falta esperarla**: resuelta el 2026-08-19 por la opción
+   (a). **T18 no se ejecuta dentro de F-006**, se difiere a **F-010**. Al
+   cerrar la feature, el `reviewer` encontrará T18 en `[ ]` y necesitará la
+   autorización expresa del humano ante `CHECKPOINTS.md` **C5** (motivo de
+   **F-017**).

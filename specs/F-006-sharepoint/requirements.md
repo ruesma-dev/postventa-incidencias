@@ -306,3 +306,9 @@ biblioteca de dev **no lo puede demostrar la suite**, y **no puede hacerse
 desde local**. Van como tareas manuales con su comando exacto en `tasks.md`
 (**T17**, **T18** y **T19**), ejecutadas por el humano desde el entorno
 desplegado y sobre el destino de dev.
+
+**T18 está DIFERIDA a F-010** por decisión del humano del **2026-08-19**
+(**D3**, opción (a); ver `design.md` §10): F-006 se cierra con esa
+verificación **declarada y pendiente**, y se ejecuta cuando F-010 despliegue
+el entorno. Ese cierre necesita la **autorización expresa del humano ante
+`CHECKPOINTS.md` C5**, y es el caso que motiva **F-017**.

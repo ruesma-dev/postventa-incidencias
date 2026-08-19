@@ -31,7 +31,7 @@
 
 ## Fase 0 · Precondición
 
-- [ ] **T1**: Comprobar que `dev` trae ya F-004 y F-005, y **rebasar** esta
+- [x] **T1**: Comprobar que `dev` trae ya F-004 y F-005, y **rebasar** esta
       rama sobre `dev`. F-006 consume `ResultadoValidacion`, `Veredicto`,
       `Destino` (F-004) y `TrazaArchivo`, `EstadoArchivo`,
       `RepositorioPartesPort.guardar_archivo`, la tabla `postventa.archivos` y

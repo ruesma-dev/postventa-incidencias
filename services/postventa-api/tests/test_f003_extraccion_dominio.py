@@ -107,6 +107,8 @@ def test_f003_r3_cada_campo_trae_su_confianza():
 
 def test_f003_r3_los_manuscritos_tambien_traen_confianza():
     """R3 · lo manuscrito es dato de primera: DNI y observaciones también."""
+    # Los dos valores son **inventados**: `00000000T` es un número de DNI no
+    # emitido, usado como marcador (F-005, R38), y el texto está escrito aquí.
     extraccion = _extraccion(
         dni_cliente=CampoExtraido(valor="00000000T", confianza_pct=61),
         observaciones=CampoExtraido(valor="Falta rematar el sellado", confianza_pct=74),

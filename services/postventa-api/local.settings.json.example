@@ -4,6 +4,17 @@
     "AzureWebJobsStorage": "",
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "ENTORNO": "local",
-    "NIVEL_LOG": "INFO"
+    "NIVEL_LOG": "INFO",
+    "PG_HOST": "",
+    "PG_PORT": "5432",
+    "PG_DB": "postventa",
+    "PG_USER": "",
+    "PG_PASSWORD": "",
+    "PG_SCHEMA": "postventa",
+    "PG_SSLMODE": "require",
+    "PG_MAX_CONEXIONES": "4",
+    "PG_STATEMENT_TIMEOUT_S": "30",
+    "PG_LOCK_TIMEOUT_S": "5",
+    "PG_IDLE_IN_TRANSACTION_TIMEOUT_S": "60"
   }
 }

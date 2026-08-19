@@ -1,6 +1,6 @@
 # services/postventa-api/domain/models/errores.py
 """Errores de dominio: de la ingesta de remesas (F-002), de la extracción
-(F-003) y de la validación (F-004).
+(F-003), de la validación (F-004) y de la persistencia (F-005).
 
 Los de la ingesta son los casos en los que algo de la entrada **no se puede
 trocear**. Los dos que dejan la remesa entera sin resultado tienen su código
@@ -19,6 +19,11 @@ Los de la validación siguen el mismo reparto: `SchemaDesconocido` es
 configuración —un prompt que declara un schema que no existe— y revienta antes
 de gastar una llamada; `ValidacionSinDatos` y `CuerpoDeValidacionInvalido` son
 peticiones mal formadas y acaban en un 400.
+
+Los de la persistencia cuelgan todos de `ErrorDePersistencia` para poder
+capturarlos juntos, y dos de ellos son **guardarraíles de un servidor
+compartido**: `DdlInseguro` y `DdlNoPermitidoAqui` se levantan antes de abrir
+ninguna conexión, así que lo que prohíbe `CLAUDE.md` no llega ni a intentarse.
 
 El dominio no sabe de HTTP: quien traduce a 400 / 413 / 502 es el borde.
 """
@@ -175,3 +180,53 @@ class ConfiguracionIaIncompleta(Exception):
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+class ErrorDePersistencia(Exception):
+    """Raíz de los errores de la persistencia (F-005).
+
+    Existe para poder capturarlos juntos en el borde: quien compone el
+    pipeline no necesita distinguir «el DDL es inseguro» de «falta el host»
+    para decidir que la remesa no se puede guardar.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class DdlInseguro(ErrorDePersistencia):
+    """Una sentencia del DDL se sale del esquema propio, o toca el servidor.
+
+    Es el error más importante de F-005 y se levanta **antes de abrir
+    ninguna conexión** (R5, R6). El servidor es compartido con la producción
+    de otros proyectos: un `CREATE DATABASE`, un `GRANT` o una tabla sin
+    cualificar no pueden llegar a intentarse.
+    """
+
+
+class DdlNoPermitidoAqui(ErrorDePersistencia):
+    """Se ha intentado aplicar el DDL desde `local` contra un host remoto.
+
+    No es lo mismo que `DdlInseguro`: el DDL puede ser impecable y aun así no
+    ser este el sitio desde donde se aplica (R11). Escribir contra la base
+    compartida desde el portátil de alguien es exactamente lo que `CLAUDE.md`
+    reserva al entorno desplegado.
+    """
+
+
+class PersistenciaNoDisponible(ErrorDePersistencia):
+    """No se ha podido hablar con la base de datos.
+
+    El motivo dice **qué** falló y **jamás** el DSN ni la contraseña: estos
+    mensajes acaban en un log.
+    """
+
+
+class ConfiguracionPgIncompleta(ErrorDePersistencia):
+    """Falta configuración para construir el repositorio (R30).
+
+    El motivo nombra **las variables** que faltan —`PG_HOST`, `PG_USER`…— y
+    nunca sus valores. Se exige en la fábrica y no al leer los ajustes, por lo
+    mismo que `GEMINI_API_KEY`: `/health` tiene que arrancar sin base de datos.
+    """

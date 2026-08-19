@@ -3,13 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **17 features**, 13 abiertas, 4 terminadas.
+Resumen: **18 features**, 13 abiertas, 5 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-005 | Persistencia en el PostgreSQL compartido | 5 | spec lista | critico | `feature/F-005-persistencia` |
 | F-006 | Nombrado y archivo en SharePoint | 6 | spec lista | critico | `feature/F-006-sharepoint` |
 | F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 8 | pendiente | documental | `feature/F-008-modelo-sigrid` |
@@ -22,6 +21,7 @@ Resumen: **17 features**, 13 abiertas, 4 terminadas.
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
 | F-016 | Interpretación automática de las observaciones manuscritas | 16 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
 | F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 17 | pendiente | documental | `feature/F-017-checkpoints-manual` |
+| F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 18 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
 
 ## Terminadas
 
@@ -31,14 +31,9 @@ Resumen: **17 features**, 13 abiertas, 4 terminadas.
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
 | F-004 | Validación del parte y clasificación de la firma | 4 | critico |
+| F-005 | Persistencia en el PostgreSQL compartido | 5 | critico |
 
 ## Detalle
-
-### F-005 · Persistencia en el PostgreSQL compartido
-
-estado **spec lista** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
-
-Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.
 
 ### F-006 · Nombrado y archivo en SharePoint
 
@@ -112,6 +107,12 @@ estado **pendiente** · prioridad 17 · rigor `documental` · SDD no · rama `fe
 
 Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-19 como baja prioridad. (P2) C5 exige hoy todas las tareas de tasks.md en [x], pero el nivel de rigor critico OBLIGA a tener verificaciones MANUAL (humano) que ningún agente puede ejecutar: el reviewer queda entre rechazar un trabajo impecable, marcar como hecho algo que nadie ejecutó, o aprobar saltándose la letra de C5. Pasó con F-003 y lo único que impidió cerrarla con T18 sin ejecutar fue una nota escrita a mano en progress/current.md. Se propone que C5 distinga la tarea de agente pendiente (trabajo incompleto, CHANGES_REQUESTED) de la tarea MANUAL (humano) pendiente (estado propio: aprobado pero no cerrable hasta que el humano la ejecute). (P3) Que C4 bis nombre explícitamente la comprobación de ficheros «no medidos» en la puerta de cobertura, que hoy se hace pero no está escrita. Las dos son GENÉRICAS: se portan a arnes-base en el mismo trabajo, según la regla de propagación de CLAUDE.md. AÑADIDO EL 2026-08-19 desde F-005 (decisión D5): el DDL contra el PostgreSQL compartido es candidato reconocido a ruta sensible del arnés, pero declararlo cambiaría el arnés para todas las features, así que la decisión se trae aquí. Hoy no existe harness/rutas_sensibles.json y C4 ter es N/A. AÑADIDO desde F-006 (decisión D3): el humano eligió cerrar F-006 con su verificación de subida real declarada y pendiente hasta que F-010 despliegue; ese cierre necesita autorización expresa ante C5 y es el segundo caso real que justifica P2.
 
+### F-018 · Mínimo privilegio en Graph: la app solo Sites.Selected
+
+estado **pendiente** · prioridad 18 · rigor `documental` · SDD no · rama `feature/F-018-minimo-privilegio-graph`
+
+El app registration `postventa-incidencias` (verificado el 2026-08-20) tiene consentimiento de administrador para TRES permisos de aplicación de Microsoft Graph: Sites.Selected, Sites.ReadWrite.All y Sites.FullControl.All. Los dos últimos alcanzan a TODOS los sitios de SharePoint del tenant, no solo a la biblioteca de Posventa, y vuelven irrelevante al primero: con Sites.FullControl.All la aplicación puede escribir en el sitio de RRHH o de dirección igual que en el suyo. Es más amplio incluso que Files.ReadWrite.All, que la spec de F-006 ya descartó por excesivo. No es un fallo: es lo que pasa al configurar Sites.Selected, que exige el paso extra de asignar la biblioteca concreta por Graph, mientras que los amplios funcionan a la primera. EL HUMANO DECIDIÓ EL 2026-08-20 arrancar F-006 con los permisos actuales y recortar después, en esta feature, para no mezclar un cambio de configuración del tenant con una implementación. Mientras tanto el riesgo queda documentado en la spec de F-006. El recorte lo ejecuta el humano en Azure: un agente no toca permisos del tenant.
+
 ### F-001 · Esqueleto del monorepo y /health
 
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
@@ -135,3 +136,9 @@ Adaptador de IA tras ExtractorPort, arrancando con gemini-3.7-flash (el modelo q
 estado **terminada** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-004-validacion`
 
 Reglas de validación sobre lo extraído y clasificación de la firma en: firma humana / marca simple (aspa, trazo geométrico) / casilla vacía / ilegible. Un parte solo es apto si tiene firma humana del cliente, código de obra y nº de incidencia legibles, y NO trae observaciones manuscritas: firmado no es lo mismo que conforme. DECISIONES DE DOMINIO DEL HUMANO (2026-08-19, mandan sobre el diseño): (1) un parte SIN DNI del cliente SÍ pasa como conforme, la ausencia de DNI no descalifica; (2) un parte CON observaciones manuscritas NO es conforme, y de momento ese es el ÚNICO motivo de rechazo; (3) el parte rechazado por observaciones no se descarta: va a una COLA DE VALIDACIÓN HUMANA que presenta las observaciones transcritas para que una persona decida. Dato real que respalda el dimensionado de esa cola: en la remesa real de Mirasierra 2 de 22 partes (~9 %) traen observaciones manuscritas, y solo 7 de 22 traen DNI.
+
+### F-005 · Persistencia en el PostgreSQL compartido
+
+estado **terminada** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
+
+Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.

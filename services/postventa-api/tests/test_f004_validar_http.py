@@ -108,7 +108,7 @@ def test_f004_r24_validar_devuelve_el_veredicto_sin_llamar_al_modelo(monkeypatch
     alguien mete una llamada de IA aquí «para completar un campo», este test
     es el único que lo caza.
     """
-    import infrastructure.llm.fabrica as fabrica
+    from infrastructure.llm import fabrica
 
     extractor = ExtractorFalso()
     construcciones: list[object] = []

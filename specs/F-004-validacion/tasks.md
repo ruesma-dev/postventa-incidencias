@@ -268,7 +268,8 @@ Tres bloques encadenados, y el orden no es negociable:
 
 ## Bloque 3 · El dato que decide D1 (T14)
 
-- [ ] **T14 · MANUAL (humano)** — PENDIENTE DEL HUMANO. Script entregado en
+- [x] **T14 · MANUAL (humano)** — **EJECUTADA POR EL HUMANO el 2026-08-19**
+      (resultado al final de la tarea). Script entregado en
       `C:\Users\pgris\f4_firma.py` (detalle en `progress/impl_F-004.md`).
       Mide **la distribución real de las cuatro etiquetas
       de firma sobre los 22 partes de la remesa de Mirasierra.** Es lo que
@@ -328,6 +329,53 @@ Tres bloques encadenados, y el orden no es negociable:
         `acceptance` «la clasificación distingue firma de aspa» y de
         `CHECKPOINTS.md` C3. Se anota expresamente.
 
+      ### Resultado real (humano, 2026-08-19)
+
+      Comando ejecutado: `f4_firma.py todos`. **22 llamadas reales**, una por
+      cada parte de la remesa de Mirasierra, con el prompt `firma_parte_es`
+      versión 1, huella `a1d86fcd9a99`, modelo `gemini-3.7-flash`.
+
+      Reparto de las cuatro etiquetas sobre los 22 partes:
+
+      | Etiqueta | Partes | Confianza media |
+      |---|---|---|
+      | `humana` | **22/22 (100 %)** | **98,2** |
+      | `marca_simple` | 0/22 | — |
+      | `casilla_vacia` | 0/22 | — |
+      | `ilegible` | 0/22 | — |
+
+      **D1 queda RESUELTA: se confirma la opción 1**, la que la spec ya
+      implementa —un parte sin firma humana es `no_apto` y va a
+      `revision_manual`—. La resolución con su fecha está registrada en
+      `design.md` §7. El motivo, con el dato delante: `ilegible` es residual
+      (cero de 22), así que la regla estricta **no manda a revisión manual ni
+      un solo parte de una remesa real**, que era exactamente el riesgo por el
+      que se aplazó la decisión. El umbral de parada fijado de antemano —«un
+      tercio o más `ilegible`»— queda muy lejos. Ningún valor extraído del
+      parte se ha escrito en ningún sitio: etiquetas, recuentos y confianzas no
+      son datos personales.
+
+      ### Lo que este resultado NO demuestra
+
+      Un 22/22 `humana` **no demuestra** el criterio `acceptance` de F-004 «La
+      clasificación de firma distingue firma de aspa en las muestras reales».
+      En esta remesa no había ni un aspa ni una casilla vacía que distinguir,
+      de modo que **un clasificador que respondiera `humana` a todo habría
+      producido exactamente esta misma salida**. Lo que se midió es que el
+      clasificador acierta sobre firmas reales; lo que falta medir es que no
+      etiqueta `humana` lo que no lo es.
+
+      Lo que falta es un **control negativo**: pasar por el clasificador partes
+      **sintéticos** con aspa y con casilla vacía —`tests/utiles_pdf.py` sabe
+      componerlos— y comprobar que no salen `humana`.
+
+      **El humano decidió el 2026-08-19, con esta limitación explicada delante,
+      cerrar F-004 sin ese control negativo y traspasarlo a F-015**, la feature
+      del evaluador de prompts, que es su sitio natural. Ya está anotado en la
+      ficha de F-015 de `harness/features.json` (commit `89e0a30`), con un
+      criterio de aceptación nuevo. La tabla de trazabilidad de
+      `requirements.md` §3 recoge ese criterio como **no demostrado por T14**.
+
 ## Bloque 4 · Cierre (T15–T18)
 
 - [x] **T15**: Actualizar `docs/ARCHITECTURE.md`: en el **paso 4** del
@@ -381,6 +429,12 @@ Una sola, y está detallada arriba:
 | Tarea | Qué mide | Cómo se invoca (PowerShell) |
 |---|---|---|
 | **T14** | Distribución de las cuatro etiquetas de firma sobre los 22 partes reales de Mirasierra. **Decide D1** | `python C:\Users\pgris\f4_firma.py todos` |
+
+**Ejecutada el 2026-08-19**: 22/22 `humana`, confianza media 98,2; cero
+`marca_simple`, `casilla_vacia` e `ilegible`. **D1 resuelta, opción 1
+confirmada.** No demuestra el criterio «distingue firma de aspa» —falta el
+control negativo, diferido a **F-015** por decisión del humano—; el detalle
+está en T14 y en `requirements.md` §3.
 
 El script vive **fuera del repositorio**, en el home del humano, por la lección
 operativa 2 de `progress/current.md`: PowerShell no admite `&&`, indenta los

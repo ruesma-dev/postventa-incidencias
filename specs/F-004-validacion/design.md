@@ -577,6 +577,24 @@ decisión de esta spec.
 > pura y sus tests**, no el diseño: ni el contrato HTTP, ni el dominio, ni los
 > pasos se mueven.
 
+> **CERRADA el 2026-08-19 con el dato de T14 delante: se CONFIRMA la opción
+> 1**, la que la spec ya implementa (un parte cuya firma no es humana sale
+> `no_apto` y va a `revision_manual`). **No hay que cambiar nada.**
+>
+> El dato que la cierra: las 22 llamadas de T14 sobre la remesa de Mirasierra
+> devolvieron `humana` en **22/22 partes (100 %)**, confianza media **98,2**, y
+> **cero** `ilegible`, **cero** `marca_simple` y **cero** `casilla_vacia`. Con
+> `ilegible` residual, la regla estricta **no manda a revisión manual ni un
+> solo parte de una remesa real**, que era exactamente el riesgo por el que se
+> aplazó la decisión. El umbral de parada que se fijó de antemano en
+> `tasks.md` —«un tercio o más `ilegible`»— queda muy lejos.
+>
+> **Lo que este dato no cierra** está anotado en T14 de `tasks.md`: un 22/22
+> `humana` no demuestra que el clasificador **distinga** una firma de un aspa,
+> porque en la remesa no había ningún aspa que distinguir. Eso es el control
+> negativo diferido a **F-015**; no afecta a D1, que solo preguntaba qué hacer
+> con una firma no humana cuando aparezca.
+
 - **Lo que implementa la spec (opción 1)**: `no_apto` + `revision_manual`,
   nunca apto. Es lo que dicen `docs/ARCHITECTURE.md` (semántica 3) y
   `CHECKPOINTS.md` C3 —«una marca simple nunca cuenta como firma del

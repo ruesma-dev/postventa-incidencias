@@ -255,7 +255,7 @@ ni abrir red, ni leer `muestras/` ni ningún PDF con datos personales.
 
 | `acceptance` de F-004 | Requisitos |
 |---|---|
-| La clasificación de firma distingue firma de aspa en las muestras reales | R1, R2, R13 + verificación **MANUAL** T14 |
+| La clasificación de firma distingue firma de aspa en las muestras reales | R1, R2, R13 — **NO demostrado por T14**, ver nota abajo |
 | Un parte con observaciones NO es conforme y va siempre a la cola, con las observaciones transcritas | R8, R9 |
 | Las observaciones son el único motivo de rechazo: ninguna otra regla manda un parte **a la cola** | R9, R19 (y D1 en `design.md` §7) |
 | Un parte SIN DNI sale conforme | R15 |
@@ -264,3 +264,25 @@ ni abrir red, ni leer `muestras/` ni ningún PDF con datos personales.
 | Cada parte sale con veredicto y motivo, en texto entendible por Posventa | R6 |
 | Las reglas son dominio puro y se prueban sin IA | R20, R21, R26 |
 | `bash harness/init.sh` en verde | T18 |
+
+### Nota sobre el primer criterio: qué demuestra T14 y qué no
+
+T14 se ejecutó el 2026-08-19 sobre los 22 partes reales de la remesa de
+Mirasierra (detalle en `tasks.md`). Resultado: **22/22 `humana`** con confianza
+media **98,2**, y cero `marca_simple`, cero `casilla_vacia` y cero `ilegible`.
+
+Ese dato **resuelve D1** —la regla estricta no manda a revisión manual ningún
+parte de una remesa real— pero **no demuestra** este criterio de aceptación. En
+la remesa no había ni un aspa ni una casilla vacía que distinguir, así que un
+clasificador que respondiera `humana` a todo habría producido la misma salida.
+R1, R2 y R13 cubren el lado del **dominio** —las cuatro etiquetas existen, lo
+desconocido cae en `ILEGIBLE` y las tres etiquetas no humanas producen
+`firma_no_humana` + `revision_manual`—, que es lo que la suite puede demostrar
+sin IA; lo que queda sin medir es el **acierto del modelo** distinguiendo firma
+de aspa.
+
+Lo que falta es un **control negativo**: partes sintéticos con aspa y con
+casilla vacía que el clasificador no etiquete `humana`. **El humano decidió el
+2026-08-19 cerrar F-004 sin él y traspasarlo a F-015** (evaluador de prompts),
+donde ya consta como criterio de aceptación propio en su ficha de
+`harness/features.json`.

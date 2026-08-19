@@ -5,11 +5,13 @@
 
 Resumen: **18 features**, 13 abiertas, 5 terminadas.
 
+En curso: **F-006**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-006 | Nombrado y archivo en SharePoint | 6 | spec lista | critico | `feature/F-006-sharepoint` |
+| F-006 | Nombrado y archivo en SharePoint | 6 | en curso | critico | `feature/F-006-sharepoint` |
 | F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 8 | pendiente | documental | `feature/F-008-modelo-sigrid` |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 9 | pendiente | critico | `feature/F-009-cierre-sigrid` |
@@ -37,7 +39,7 @@ Resumen: **18 features**, 13 abiertas, 5 terminadas.
 
 ### F-006 · Nombrado y archivo en SharePoint
 
-estado **spec lista** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
+estado **en curso** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
 
 Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.
 

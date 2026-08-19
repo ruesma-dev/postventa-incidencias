@@ -392,3 +392,162 @@ def preexistente(
 ) -> ElementoFalso:
     """Deja en la biblioteca un fichero **de otro parte** con ese nombre (R16)."""
     return biblioteca.subir(carpeta=carpeta, nombre=nombre, contenido=contenido)
+
+
+# ==========================================================================
+# El doble del cliente HTTP, para probar el adaptador de Graph sin red
+# ==========================================================================
+#
+# Imita la parte de la interfaz de `httpx.Client` que usa el adaptador, y solo
+# esa. En particular **no** ofrece `.text` ni `raise_for_status()`: son
+# justamente las dos cosas del patrón de `partes` que aquí no se heredan,
+# porque vuelcan la URL con el identificador de la biblioteca dentro y el
+# cuerpo de la respuesta en el mensaje de error (R26). Si alguien las usa, el
+# doble se lo dice con un `AttributeError` en vez de dejarlo pasar.
+
+
+@dataclass
+class RespuestaFalsa:
+    """Lo que devolvería Graph: un código, un cuerpo y unas cabeceras."""
+
+    status_code: int
+    payload: dict[str, Any] | None = None
+    headers: dict[str, str] = field(default_factory=dict)
+
+    def json(self) -> dict[str, Any]:
+        if self.payload is None:
+            raise ValueError("esta respuesta no trae cuerpo JSON")
+        return self.payload
+
+
+def ok(payload: dict[str, Any] | None = None) -> RespuestaFalsa:
+    """200 con el cuerpo que se le pase."""
+    return RespuestaFalsa(200, payload if payload is not None else {})
+
+
+def creado(payload: dict[str, Any] | None = None) -> RespuestaFalsa:
+    """201, que es lo que devuelve Graph al crear una carpeta o un fichero."""
+    return RespuestaFalsa(201, payload if payload is not None else {})
+
+
+def no_encontrado() -> RespuestaFalsa:
+    """404: la carpeta o el fichero no están. **No es un error**."""
+    return RespuestaFalsa(404)
+
+
+def conflicto() -> RespuestaFalsa:
+    """409 `nameAlreadyExists`: otro lo creó a la vez. Cuenta como éxito (R12)."""
+    return RespuestaFalsa(409, {"error": {"code": "nameAlreadyExists"}})
+
+
+def fallo(codigo: int, *, retry_after: str | None = None) -> RespuestaFalsa:
+    """Un código de error cualquiera, con su `Retry-After` si lo trae."""
+    cabeceras = {} if retry_after is None else {"Retry-After": retry_after}
+    return RespuestaFalsa(codigo, {"error": {"code": "loQueSea"}}, cabeceras)
+
+
+def item_de_graph(
+    *, item_id: str = "item-0001", nombre: str = "un-parte.pdf", ruta: str = "Postventa/0677"
+) -> dict[str, Any]:
+    """El `driveItem` que devuelve Graph, con lo poco que el adaptador lee."""
+    return {
+        "id": item_id,
+        "name": nombre,
+        "webUrl": f"{HOST_FALSO}/{ruta}/{nombre}".replace(" ", "%20"),
+        "parentReference": {"driveId": DRIVE_FALSO, "path": f"/drive/root:/{ruta}"},
+    }
+
+
+class ClienteGraphFalso:
+    """Un `httpx.Client` de mentira que sirve un **guion** de respuestas.
+
+    Las respuestas se consumen **en orden**, lo que convierte al propio guion
+    en una aserción sobre la secuencia de llamadas que hace el adaptador: si
+    cambia el orden, el test se entera. Una llamada de más se cae diciendo
+    que el guion se agotó, en vez de devolver un vacío de consolación que
+    escondería el fallo.
+
+    Las peticiones de **token** van aparte y no consumen guion: no son parte de
+    lo que cada test quiere describir, y contarlas por separado es lo que
+    permite comprobar que el token se cachea.
+
+    Una entrada del guion puede ser una excepción en vez de una respuesta: es
+    como se simulan los cortes de red de `httpx` sin red.
+    """
+
+    #: Lo que devuelve el punto de token. **Inventado**: no es un token.
+    TOKEN_DE_MENTIRA = "token-de-mentira-que-no-abre-nada"
+
+    def __init__(
+        self,
+        *guion: RespuestaFalsa | Exception,
+        token: str | None = None,
+        expira_en: int = 3600,
+    ) -> None:
+        self.guion: list[RespuestaFalsa | Exception] = list(guion)
+        self.token = token if token is not None else self.TOKEN_DE_MENTIRA
+        self.expira_en = expira_en
+        self.llamadas: list[tuple[str, str]] = []
+        self.cuerpos: list[Any] = []
+        self.cabeceras: list[dict[str, str]] = []
+        self.peticiones_de_token = 0
+        self.cerrado = False
+
+    # ------------------------------------------------- interfaz de httpx
+    def get(self, url: str, *, headers: dict[str, str] | None = None) -> RespuestaFalsa:
+        return self._responder("GET", url, headers, None)
+
+    def post(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        json: Any = None,
+        data: Any = None,
+    ) -> RespuestaFalsa:
+        if "login.microsoftonline.com" in url:
+            return self._token(url, data)
+        return self._responder("POST", url, headers, json)
+
+    def put(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        content: bytes | None = None,
+    ) -> RespuestaFalsa:
+        return self._responder("PUT", url, headers, content)
+
+    def close(self) -> None:
+        self.cerrado = True
+
+    # ------------------------------------------------------------ ayudas
+    @property
+    def urls(self) -> list[str]:
+        """Solo las URL, en orden. Sin las del token."""
+        return [url for _, url in self.llamadas]
+
+    @property
+    def metodos(self) -> list[str]:
+        return [metodo for metodo, _ in self.llamadas]
+
+    def _token(self, url: str, data: Any) -> RespuestaFalsa:
+        self.peticiones_de_token += 1
+        self.cuerpos.append(data)
+        return ok({"access_token": self.token, "expires_in": self.expira_en})
+
+    def _responder(
+        self, metodo: str, url: str, headers: dict[str, str] | None, cuerpo: Any
+    ) -> RespuestaFalsa:
+        self.llamadas.append((metodo, url))
+        self.cabeceras.append(dict(headers or {}))
+        self.cuerpos.append(cuerpo)
+        if not self.guion:
+            raise AssertionError(
+                f"el guion del cliente falso se ha agotado: {metodo} {url} no "
+                f"estaba previsto en este test"
+            )
+        siguiente = self.guion.pop(0)
+        if isinstance(siguiente, Exception):
+            raise siguiente
+        return siguiente

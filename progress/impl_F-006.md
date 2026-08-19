@@ -522,3 +522,72 @@ habría roto requisitos de esta feature:
 Ninguno de los cinco es un reproche a `partes`: son decisiones razonables en
 un servicio con otros requisitos. Aquí hay requisitos escritos que las
 descartan.
+
+---
+
+## T9 · RED · Los tests del adaptador de Graph
+
+Ficheros: `services/postventa-api/tests/test_f006_adaptador_graph.py` (R11,
+R12, R15, R16, R25, R26) y la parte de `ClienteGraphFalso` de
+`tests/utiles_sharepoint.py`.
+
+**Traza real de la fase RED**, con el comando exacto:
+
+```
+$ cd services/postventa-api
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_adaptador_graph.py -q
+=================================== ERRORS ====================================
+_____________ ERROR collecting tests/test_f006_adaptador_graph.py _____________
+ImportError while importing test module '...\tests\test_f006_adaptador_graph.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests\test_f006_adaptador_graph.py:36: in <module>
+    from infrastructure.sharepoint.graph import (
+E   ImportError: cannot import name 'CODIGOS_TRANSITORIOS' from 'infrastructure.sharepoint.graph'
+=========================== short test summary info ===========================
+ERROR tests/test_f006_adaptador_graph.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.29s
+```
+
+Rojo: de `graph.py` solo existe la puerta de entorno que puso T7; ni las tres
+operaciones, ni los reintentos, ni las constantes.
+
+### El guion del cliente falso **es** la aserción sobre el orden de llamadas
+
+`ClienteGraphFalso` sirve las respuestas **en orden** y se cae diciéndolo si
+el adaptador hace una llamada de más. Eso convierte cada guion en una
+descripción exacta de la conversación esperada con Graph, en vez de un mock
+permisivo que devuelve lo mismo se le pregunte lo que se le pregunte.
+
+El doble **no ofrece `.text` ni `raise_for_status()`** a propósito: son las
+dos vías por las que el patrón de `partes` filtraría la URL con el
+identificador de la biblioteca y el cuerpo de la respuesta a un mensaje de
+error (R26). Si alguien las usa, el doble lo parte con un `AttributeError` en
+vez de dejarlo pasar.
+
+### DESVIACIÓN de la spec, y por qué: la lista blanca de T13
+
+`T13` dice que el barrido de `test_f006_r21_ningun_test_construye_el_adaptador_real`
+debe autorizar **un solo** fichero, `test_f006_fabrica.py`. Pero **T9 manda
+crear un fichero cuyo objeto es probar el adaptador**, y dice literalmente que
+`ENTORNO=dev` en él «es lo que hace construible el adaptador». Las dos cosas no
+pueden ser verdad a la vez: la lista blanca de T13 se escribió antes que el
+fichero que T9 obliga a crear.
+
+No es una ambigüedad sobre **qué debe hacer el sistema** —eso está claro—, sino
+una inconsistencia entre dos tareas sobre qué nombres de fichero aparecen en
+una lista. Se resuelve **sin debilitar nada**, y de hecho endureciéndolo:
+
+- la lista blanca pasa a tener **dos** ficheros, `test_f006_fabrica.py` y
+  `test_f006_adaptador_graph.py`;
+- y se añade una comprobación que la spec no pedía: en
+  `test_f006_adaptador_graph.py`, **toda** construcción del adaptador tiene que
+  pasar `cliente=` —el doble—, verificado con `ast`. Así el invariante que de
+  verdad importa deja de ser «qué fichero puede nombrar la clase» y pasa a ser
+  «ninguna construcción del adaptador en la suite puede llegar a la red».
+
+Queda anotado aquí para que el reviewer lo juzgue: es una desviación
+consciente del texto de T13, no un descuido.

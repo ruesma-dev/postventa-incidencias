@@ -78,7 +78,7 @@
         "Las reglas de validación son dominio puro y se prueban sin IA",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 4,
@@ -95,7 +95,7 @@
         "Tests contra base efímera, nunca contra el servidor compartido",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
       "priority": 5,
@@ -112,7 +112,7 @@
         "Ninguna subida real desde local ni desde los tests",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
       "priority": 6,
@@ -260,14 +260,15 @@
     {
       "id": "F-015",
       "title": "Evaluación del prompt de extracción contra partes reales",
-      "description": "Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md.",
+      "description": "Ningún test unitario detecta que un cambio de redacción de config/prompts.yaml empeore la extracción: en la suite el modelo está simulado y todo seguiría verde con el prompt roto. Esta feature crea el evaluador que falta —juego de partes de prueba con su verdad esperada, llamada real con credencial, umbral de acierto por campo e informe con veredicto— y, solo cuando ese comando exista, declara harness/rutas_sensibles.json para que tocar el prompt obligue a presentar evidencia. OJO A LA REGLA DE PROPAGACIÓN: el evaluador es genérico (vale igual para partes y albaranes), así que el mecanismo se porta a arnes-base en el mismo trabajo; aquí se queda solo el juego de partes y el umbral, que sí son de este dominio. El borrador de la declaración está en specs/F-003-extraccion/design.md. ENCARGO AÑADIDO EL 2026-08-19 desde el cierre de F-004: falta el CONTROL NEGATIVO de la clasificación de firma. T14 midió las cuatro etiquetas sobre los 22 partes reales de Mirasierra y salió 22/22 'humana' con confianza media 98,2, cero 'ilegible', cero 'marca_simple' y cero 'casilla_vacia'. Eso confirmó la decisión D1 (la regla estricta no manda a revisión ningún parte real) pero NO demuestra el criterio de aceptación de F-004 'la clasificación distingue firma de aspa': en la remesa no había ni un aspa, así que un clasificador que respondiera 'humana' a todo habría dado la misma salida. Lo que falta es pasar por el clasificador partes SINTÉTICOS con aspa y con casilla vacía (tests/utiles_pdf.py sabe componerlos) y comprobar que no los etiqueta 'humana'. El humano decidió el 2026-08-19 cerrar F-004 sin ello y traerlo aquí, que es el sitio natural de la evaluación de prompts.",
       "acceptance": [
         "El evaluador se ejecuta con un comando y deja un informe con veredicto y el acierto por campo",
         "El juego de partes de prueba y su verdad esperada NO se versionan: llevan datos personales, y el repositorio solo guarda el umbral y el informe sin valores extraídos",
         "harness/rutas_sensibles.json declara config/prompts.yaml apuntando a ese comando, y bash harness/init.sh lo hace valer",
         "Cambiar el prompt sin presentar informe fresco tumba el portero; presentarlo lo deja en verde",
         "La parte genérica del mecanismo queda portada a arnes-base, con su versión",
-        "bash harness/init.sh en verde"
+        "bash harness/init.sh en verde",
+        "Control negativo de la clasificación de firma: partes sintéticos con aspa y con casilla vacía NO se etiquetan como 'humana' (deuda heredada del cierre de F-004)"
       ],
       "status": "pending",
       "sdd": true,
@@ -294,6 +295,23 @@
       "priority": 16,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
+    },
+    {
+      "id": "F-017",
+      "title": "Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida",
+      "description": "Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-19 como baja prioridad. (P2) C5 exige hoy todas las tareas de tasks.md en [x], pero el nivel de rigor critico OBLIGA a tener verificaciones MANUAL (humano) que ningún agente puede ejecutar: el reviewer queda entre rechazar un trabajo impecable, marcar como hecho algo que nadie ejecutó, o aprobar saltándose la letra de C5. Pasó con F-003 y lo único que impidió cerrarla con T18 sin ejecutar fue una nota escrita a mano en progress/current.md. Se propone que C5 distinga la tarea de agente pendiente (trabajo incompleto, CHANGES_REQUESTED) de la tarea MANUAL (humano) pendiente (estado propio: aprobado pero no cerrable hasta que el humano la ejecute). (P3) Que C4 bis nombre explícitamente la comprobación de ficheros «no medidos» en la puerta de cobertura, que hoy se hace pero no está escrita. Las dos son GENÉRICAS: se portan a arnes-base en el mismo trabajo, según la regla de propagación de CLAUDE.md. AÑADIDO EL 2026-08-19 desde F-005 (decisión D5): el DDL contra el PostgreSQL compartido es candidato reconocido a ruta sensible del arnés, pero declararlo cambiaría el arnés para todas las features, así que la decisión se trae aquí. Hoy no existe harness/rutas_sensibles.json y C4 ter es N/A. AÑADIDO desde F-006 (decisión D3): el humano eligió cerrar F-006 con su verificación de subida real declarada y pendiente hasta que F-010 despliegue; ese cierre necesita autorización expresa ante C5 y es el segundo caso real que justifica P2.",
+      "acceptance": [
+        "CHECKPOINTS.md C5 distingue la tarea de agente pendiente de la tarea MANUAL (humano) pendiente, y solo la primera es CHANGES_REQUESTED",
+        "Una feature con verificaciones manuales sin ejecutar no puede marcarse done, y el motivo queda visible sin depender de una nota en progress/",
+        "CHECKPOINTS.md C4 bis nombra la comprobación de ficheros no medidos en la puerta de cobertura",
+        "Ambos cambios portados a arnes-base con su versión de arnés subida",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 17,
+      "branch": "feature/F-017-checkpoints-manual"
     }
   ]
 }

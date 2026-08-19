@@ -1,6 +1,6 @@
 # services/postventa-api/domain/models/errores.py
-"""Errores de dominio: de la ingesta de remesas (F-002) y de la extracción
-(F-003).
+"""Errores de dominio: de la ingesta de remesas (F-002), de la extracción
+(F-003) y de la validación (F-004).
 
 Los de la ingesta son los casos en los que algo de la entrada **no se puede
 trocear**. Los dos que dejan la remesa entera sin resultado tienen su código
@@ -14,6 +14,11 @@ lo que falla **procesando un parte** (`ParteDemasiadoGrande`,
 (`PromptNoEncontrado`, `ProveedorNoSoportado`, `ConfiguracionIaIncompleta`).
 Los segundos revientan al construir las piezas, no en mitad de una remesa de
 veintidós partes.
+
+Los de la validación siguen el mismo reparto: `SchemaDesconocido` es
+configuración —un prompt que declara un schema que no existe— y revienta antes
+de gastar una llamada; `ValidacionSinDatos` y `CuerpoDeValidacionInvalido` son
+peticiones mal formadas y acaban en un 400.
 
 El dominio no sabe de HTTP: quien traduce a 400 / 413 / 502 es el borde.
 """
@@ -88,6 +93,46 @@ class ExtraccionFallida(Exception):
     mapping. El `motivo` dice **qué** pasó y **nunca** lleva el contenido del
     parte ni los valores leídos: el parte lleva DNI de clientes y este texto
     acaba en un log.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class SchemaDesconocido(Exception):
+    """Un prompt declara un `schema` que el dominio no registra (F-004, R5).
+
+    Es un fallo de **configuración**, no de un parte: alguien ha escrito en el
+    YAML un nombre de schema que no existe en `CAMPOS_POR_SCHEMA`. Revienta
+    **antes** de llamar al modelo, porque llamarlo con el schema equivocado
+    devolvería campos que nadie sabe leer, y caro.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ValidacionSinDatos(Exception):
+    """Se pide validar un parte sin extracción o sin lectura de firma (R21).
+
+    Un veredicto inventado sobre datos que no están es peor que un error: se
+    archivaría o se cerraría una incidencia sin haber mirado el parte. El
+    borde lo traduce a **400**.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CuerpoDeValidacionInvalido(Exception):
+    """El cuerpo de `/api/validar` no trae lo que dice el contrato (R24).
+
+    El motivo dice **qué falta** —y nunca lo que sí venía—: el cuerpo lleva
+    los valores leídos del parte, con DNI incluido, y este texto acaba en un
+    log.
     """
 
     def __init__(self, motivo: str) -> None:

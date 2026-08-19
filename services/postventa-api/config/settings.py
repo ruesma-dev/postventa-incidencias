@@ -50,7 +50,7 @@ class Ajustes(BaseSettings):
         description="Nivel de logging raíz del servicio.",
     )
 
-    # --- Extracción con IA (F-003) -------------------------------------
+    # --- Extracción con IA (F-003) y lectura de la firma (F-004) -------
     # Los nombres de las variables son los que ya usan `partes` y
     # `albaranes` en el ecosistema (`azure-apps`): mismo concepto, mismo
     # nombre, para que quien configure un despliegue no tenga que aprender
@@ -98,6 +98,16 @@ class Ajustes(BaseSettings):
         default="parte_posventa_es",
         validation_alias="PROMPT_KEY",
         description="Clave del prompt de extracción dentro del YAML.",
+    )
+    prompt_key_firma: str = Field(
+        default="firma_parte_es",
+        validation_alias="PROMPT_KEY_FIRMA",
+        description=(
+            "Clave del prompt que clasifica la firma del cliente (F-004). Es "
+            "una clave aparte porque la lectura de la firma se puede cambiar "
+            "o reintentar sin rozar el prompt de extracción, cuya calidad se "
+            "midió sobre 22 partes reales."
+        ),
     )
     prompts_yaml: str = Field(
         default="config/prompts.yaml",

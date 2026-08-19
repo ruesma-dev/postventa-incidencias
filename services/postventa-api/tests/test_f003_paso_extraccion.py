@@ -209,9 +209,16 @@ def test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas():
         "traza",
         "avisos",
     }
+    # El contexto sí crece feature a feature, y eso es lo que se diseñó: F-004
+    # le añadió `lectura_firma` y `validacion` (`design.md` §3.2). Lo que este
+    # test sigue impidiendo es que aparezcan aquí la ruta de SharePoint
+    # (F-006), un identificador de base de datos (F-005) o el estado de Sigrid
+    # (F-008/F-009): quien añada uno tiene que pasar por esta línea.
     assert {campo.name for campo in fields(ContextoParte)} == {
         "parte",
         "extraccion",
+        "lectura_firma",
+        "validacion",
         "avisos",
     }
 

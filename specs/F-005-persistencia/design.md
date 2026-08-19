@@ -560,6 +560,12 @@ Los partes llevan DNI y observaciones manuscritas de clientes. **Esto es lo
 único que hay que saber para no versionar nada indebido, para no registrarlo
 en logs y para responder mañana a un ejercicio de derechos.**
 
+> **D2, resuelta el 2026-08-19: el DNI del cliente SÍ se persiste**, en
+> `partes.dni_cliente`. Por eso esta sección no es informativa: es el
+> **contrato de salvaguardas** que acompaña a esa decisión. Hay dato personal
+> directo confirmado en una base de datos compartida por cuatro proyectos, así
+> que cada regla de abajo tiene su requisito EARS (R37–R40) y su verificación.
+
 | Columna | Qué contiene | Grado |
 |---|---|---|
 | `partes.dni_cliente` | DNI manuscrito del cliente | **Personal directo** |
@@ -568,19 +574,20 @@ en logs y para responder mañana a un ejercicio de derechos.**
 | `partes.promocion`, `partes.unidad` | localizan la vivienda concreta de una persona | **Personal indirecto** |
 | `remesas.usuario_oid`, `cierres.confirmado_por`, `preferencias_usuario.usuario_oid` | identificador opaco de Entra ID de un empleado | **Personal seudónimo** |
 
-Reglas que se aplican, y que el reviewer puede comprobar:
+Reglas que se aplican, cada una con su requisito y su verificación, y que el
+reviewer puede comprobar una por una:
 
-1. **Nunca en el repositorio**: ni en esta spec, ni en fixtures, ni en
-   ejemplos, ni en `docs/`. Los ejemplos de los tests son inventados y van
-   marcados como tales en el propio fichero.
-2. **Nunca en el log** (R29). El logging estructurado de un parte registra
-   `hash_parte`, estado y confianzas; de un campo manuscrito, como mucho, si
-   venía vacío. Un test lo vigila.
-3. **Nunca duplicadas**: la transcripción vive en `partes.observaciones` y en
-   ningún otro sitio (R21).
-4. **El PDF no entra en la base** (R12): vive en SharePoint. Menos copias del
-   DNI, menos disco compartido gastado.
-5. **De los empleados se guarda el `oid`**, no el correo ni el nombre.
+| # | Regla | Requisito | Cómo se comprueba |
+|---|---|---|---|
+| 1 | **Nunca en el repositorio** | R38 | ni en esta spec, ni en fixtures, ni en ejemplos, ni en `docs/`, ni en `tests_bbdd/`. Los ejemplos de los tests son **inventados** y van marcados como tales en el propio fichero. `tests/test_f005_repo_sin_datos_personales.py` barre los ficheros de la feature buscando un patrón de DNI español y falla si encuentra alguno (T19 bis) |
+| 2 | **Nunca en el log** | R29, R37 | el logging estructurado de un parte registra `hash_parte`, estado y confianzas; de un campo manuscrito, como mucho, **si venía vacío** y su confianza. `tests/test_f005_logs_sin_datos_personales.py` captura el logger con un DNI y unas observaciones **inventados** y comprueba que ninguno de los dos valores aparece en la salida; el test falla si se quita el saneado (T19) |
+| 3 | **Nunca duplicados en otra tabla** | R21, R39 | el DNI vive **solo** en `partes.dni_cliente` y la transcripción **solo** en `partes.observaciones`. Ninguna otra tabla los copia: `validaciones` los recupera con un `JOIN`. Un test comprueba que ninguna otra tabla del DDL declara una columna con ese nombre o equivalente |
+| 4 | **El PDF no entra en la base** | R12, R40 | el DDL no declara ni una columna binaria; el PDF vive en SharePoint y de él se guardan solo metadatos y hash. Menos copias del DNI, menos disco compartido gastado. Lo vigila el validador de `ddl.py`, que ya rechaza `bytea` y large objects |
+| 5 | **De los empleados se guarda el `oid`** | R27 | identificador opaco de Entra ID, nunca el correo ni el nombre |
+
+Las reglas 1 a 4 son la contrapartida de **D2**: el humano decidió guardar el
+DNI, y a cambio el dato queda **en un único sitio, sin salir nunca de la base**
+—ni al log, ni al repositorio, ni a un segundo blob—.
 
 *(Ejemplo inventado de cómo se ve una fila, para que se entienda la forma —
 ningún dato es real: `hash_parte='9f2b…', codigo_obra='0000',
@@ -676,7 +683,12 @@ Dos verificaciones, con su comando exacto en `tasks.md`:
 
 `infra/pruebas_bbdd_efimera.ps1` (M1):
 
-1. Comprueba que hay Docker; si no, dice qué falta y sale.
+1. Comprueba que hay Docker **y que el demonio responde** (`docker info`). Si
+   no, sale con un mensaje accionable, distinguiendo los dos casos: Docker no
+   instalado, o Docker instalado con el demonio parado → «arranca Docker
+   Desktop» (R35). Nada de dejar caer un error opaco de conexión tres pasos
+   después. **En ningún punto se usa `psql`** (R36): no está en el `PATH` del
+   puesto; se espera y se comprueba con `psycopg` o con `docker exec`.
 2. `docker run --rm -d -p 55432:5432 -e POSTGRES_PASSWORD=... postgres:16-alpine`
    con contraseña generada al vuelo, **nunca versionada**.
 3. Espera a que acepte conexiones.
@@ -746,9 +758,24 @@ delgado; la lógica está en `sentencias.py` y `mapeo.py`, que son puros.
 
 ---
 
-## 10 · Decisiones abiertas que necesita validar el humano
+## 10 · Decisiones del humano (las seis, resueltas el 2026-08-19)
+
+> Las seis decisiones que esta sección planteaba **están resueltas**. El humano
+> las respondió el **2026-08-19**, antes de escribir una sola línea de código.
+> Ya **no** bloquean la implementación. Cada apartado conserva el planteamiento
+> original —para que se entienda qué se sopesó— y abre con la resolución.
+>
+> Cinco confirman lo que el diseño ya proponía; **D2** y **D5** añaden trabajo
+> concreto, recogido en §6 y en `tasks.md`.
 
 **D1 · ¿Base propia `postventa` o esquema dentro de una base existente?**
+
+> **RESUELTA el 2026-08-19 · CONFIRMADO el diseño: base propia `postventa`**,
+> con esquema nominado `postventa` dentro y `search_path` sin `public`. Motivo
+> aceptado: el ecosistema aísla por base, y meter un esquema en `albaranes`
+> ataría el ciclo de vida de dos proyectos. **La base la crea el humano a mano;
+> la aplicación nunca** (R7). Sin cambios en el diseño.
+
 El diseño pide **base propia** `postventa` con esquema `postventa` dentro,
 porque es lo que hace el ecosistema (`albaranes`, `partes`, `sigrid_dm`: «un
 servidor, tres bases»). `docs/ARCHITECTURE.md` dice «schema propio», que se
@@ -760,6 +787,20 @@ del humano en cualquier caso** (R7). Coste de cambiar después: el valor de
 `PG_DB` y volver a aplicar el DDL.
 
 **D2 · ¿Se persiste el DNI del cliente, o solo si lo había?**
+
+> **RESUELTA el 2026-08-19 · SÍ se persiste el DNI del cliente**, en
+> `partes.dni_cliente`. Decisión expresa del humano: *«si guarda el DNI es
+> importante»*. Queda **descartada** la alternativa de guardar solo un booleano
+> `dni_presente` con su confianza.
+>
+> Consecuencia, y es la única parte del diseño que D2 mueve: hay **dato personal
+> directo confirmado en una base compartida**, así que las salvaguardas dejan de
+> ser una nota de contexto y pasan a ser explícitas y comprobables. Están en
+> **§6**, ampliada, y en los requisitos **R37–R40** de `requirements.md`: el DNI
+> nunca en el log (con test), nunca en el repositorio ni en fixtures, nunca
+> duplicado en otra tabla, y el PDF fuera de la base. El esquema de `partes` no
+> cambia respecto a lo ya diseñado.
+
 El diseño lo **persiste**, en columna marcada como dato personal (§6), con dos
 argumentos: la fila del parte es la traza de lo que el modelo leyó, y el DNI ya
 queda retenido de todos modos dentro del PDF archivado en SharePoint, así que
@@ -771,6 +812,22 @@ de datos, no técnica, y la toma el humano.** Coste de cambiar después: una
 columna y su mapeo.
 
 **D3 · ¿Docker para la base efímera, o PostgreSQL local con `initdb`?**
+
+> **RESUELTA el 2026-08-19 · CONFIRMADO el diseño: Docker**
+> (`postgres:16-alpine`, contenedor `--rm`). Dos datos verificados ese mismo día
+> en el puesto del humano, que condicionan el script:
+>
+> 1. **Docker 29.5.3 está instalado**, pero el **demonio estaba parado** (Docker
+>    Desktop cerrado). `infra/pruebas_bbdd_efimera.ps1` debe detectarlo y salir
+>    con un mensaje **claro y accionable** —«arranca Docker Desktop»— en vez de
+>    un error opaco de conexión al final.
+> 2. **No hay `psql` en el PATH.** Ni el script ni la suite pueden depender de
+>    que exista: la espera a que la base acepte conexiones y toda comprobación
+>    se hacen con el cliente Python (`psycopg`) del `.venv` del servicio, o
+>    dentro del contenedor con `docker exec`.
+>
+> Recogido en `tasks.md`, T21. Queda descartado el `initdb` local.
+
 El diseño asume **Docker** (`postgres:16-alpine`, contenedor `--rm`), que es
 lo más limpio y no deja nada instalado. Si el puesto no tiene Docker Desktop,
 la alternativa es un `initdb` en un directorio temporal contra un PostgreSQL
@@ -778,6 +835,13 @@ ya instalado. Hace falta saber con qué cuenta el humano antes de escribir
 `infra/pruebas_bbdd_efimera.ps1`.
 
 **D4 · ¿`numero_incidencia` debe ser único?**
+
+> **RESUELTA el 2026-08-19 · CONFIRMADO el diseño: `numero_incidencia` indexado
+> pero NO único.** La deduplicación la hace el hash del parte. Motivos aceptados
+> por el humano: una misma incidencia puede tener **más de un parte** (más de una
+> visita), y un índice único **rompería** el día que F-014 reagrupe un parte de
+> dos hojas. Queda descartado el único parcial. Sin cambios en el diseño.
+
 El diseño lo deja **indexado pero no único**. `docs/ARCHITECTURE.md` (semántica
 9) dice que un parte se identifica «por hash del PDF troceado **y** por número
 de incidencia», y la deduplicación real la hace el hash. Hacerlo único
@@ -789,6 +853,22 @@ negocio. **Afecta a qué pasa cuando llegan dos partes de la misma
 incidencia**, y eso es una regla de negocio que decide Posventa.
 
 **D5 · ¿Se declara el DDL como ruta sensible del arnés?**
+
+> **RESUELTA el 2026-08-19 · NO se declara ahora.** F-005 **no** crea
+> `harness/rutas_sensibles.json` y el checkpoint C4 ter sigue siendo **N/A**.
+> Motivo del humano: hacerlo aquí cambiaría el arnés para **todas** las features
+> y obligaría a portarlo a `arnes-base` en el mismo trabajo.
+>
+> **No es un olvido, y que quede escrito para quien lo lea mañana:**
+> `services/postventa-api/infrastructure/persistencia/sql/**` es un **candidato
+> reconocido a ruta sensible** —DDL contra un servidor compartido por cuatro
+> proyectos—, y **la decisión vive en F-017**, que ya está dada de alta, va a
+> tocar `CHECKPOINTS.md` y va a viajar a `arnes-base`. Si F-017 la declara,
+> F-005 no necesita ningún cambio retroactivo: se limitaría a exigir informe de
+> verificación a las features **posteriores** que toquen ese directorio.
+>
+> `harness/features.json` no se toca desde esta spec: lo lleva el líder.
+
 Hoy no existe `harness/rutas_sensibles.json`, así que el checkpoint C4 ter es
 N/A. Un DDL contra un servidor compartido es el candidato de manual a ruta
 sensible: se podría declarar `infrastructure/persistencia/sql/**` exigiendo un
@@ -798,6 +878,12 @@ features y, por la regla de propagación de `CLAUDE.md`, habría que portarlo a
 `arnes-base` en el mismo trabajo.
 
 **D6 · ¿Se guarda quién sube la remesa (`usuario_oid`) ya en F-005?**
+
+> **RESUELTA el 2026-08-19 · CONFIRMADO el diseño: la columna `usuario_oid` se
+> crea ya y queda `NULL`** hasta F-007/F-010, que son las que conocen al usuario
+> autenticado. Motivo aceptado: cuesta cero ahora y ahorra un `ALTER TABLE`
+> contra una base compartida después. Sin cambios en el diseño.
+
 La columna está diseñada, pero quien conoce al usuario autenticado es el front
 con Entra (F-007/F-010). En F-005 quedará siempre `NULL`. Se puede dejar la
 columna preparada (lo que propone el diseño) o retrasarla a F-007. Dejarla

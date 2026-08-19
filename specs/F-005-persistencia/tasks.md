@@ -20,12 +20,14 @@
       y `git show dev:services/postventa-api/domain/models/validacion.py`
       existe.
 
-- [ ] **T2**: Registrar en `progress/impl_F-005.md` la respuesta del humano a
-      las **seis decisiones abiertas** D1–D6 de `design.md`. Si alguna sigue
-      sin respuesta y bloquea (D1 y D3 bloquean; D2 bloquea el esquema de
-      `partes`), marcar la feature `blocked` y parar.
-      **Verificación**: la sección «Decisiones D1–D6» del informe está
-      completa, sin ningún `PENDIENTE`.
+- [ ] **T2**: Copiar a `progress/impl_F-005.md` las **seis decisiones D1–D6, ya
+      resueltas por el humano el 2026-08-19** y registradas en `design.md` §10.
+      Ninguna bloquea: D1, D3, D4 y D6 confirman el diseño; **D2** obliga a las
+      salvaguardas de `design.md` §6 y R37–R40 (T19 y T19 bis); **D3** fija cómo
+      se comporta el script de Docker (T21); **D5** deja el DDL como candidato
+      reconocido a ruta sensible, con la decisión en **F-017**.
+      **Verificación**: la sección «Decisiones D1–D6» del informe está completa,
+      sin ningún `PENDIENTE`, y cita la fecha 2026-08-19.
 
 ## Fase 1 · Configuración y dependencia
 
@@ -143,8 +145,16 @@
 - [ ] **T19**: Añadir `tests/test_f005_logs_sin_datos_personales.py`: capturar
       el logger mientras se guarda un parte con DNI y observaciones
       **inventados** y comprobar que ninguno de los dos valores aparece en la
-      salida (R29).
+      salida (R29, R37).
       **Verificación**: el test pasa, y falla si se quita el saneado.
+
+- [ ] **T19 bis**: Añadir `tests/test_f005_repo_sin_datos_personales.py`: barrer
+      los ficheros de la feature —`specs/F-005-persistencia/`, `tests/`,
+      `tests_bbdd/`, `infrastructure/persistencia/`— buscando un patrón de DNI
+      español y fallar si aparece alguno (R38). Es la salvaguarda que exige D2:
+      el DNI se guarda en base, **nunca en el repositorio**.
+      **Verificación**: el test pasa sobre el árbol real, y falla si se le
+      inyecta un DNI de prueba en un fichero temporal.
 
 ## Fase 5 · Base efímera
 
@@ -159,7 +169,26 @@
 - [ ] **T21**: Crear `infra/pruebas_bbdd_efimera.ps1` (levanta, ejecuta y tira
       la base desechable, con `try/finally`) y `infra/crear_base_postventa.ps1`
       (una sola vez, con confirmación escrita). Ningún secreto versionado.
-      **Verificación**: revisión del script + M1 más abajo.
+
+      **Lo que fija la decisión D3 del humano (2026-08-19), verificado en su
+      puesto**: hay **Docker 29.5.3 instalado**, el **demonio puede estar
+      parado** (Docker Desktop cerrado) y **no hay `psql` en el `PATH`**. Por
+      tanto:
+
+      1. El script comprueba **lo primero** que el demonio responde
+         (`docker info`) y, si no, **aborta con un mensaje accionable** —del
+         tipo «Docker está instalado pero el demonio no responde: arranca
+         Docker Desktop y vuelve a lanzar»— en vez de seguir y morir con un
+         error opaco de conexión a la base (R35). Distinguir los dos casos:
+         Docker no instalado, y Docker instalado con el demonio parado.
+      2. **No se usa `psql` en ningún punto** (R36): la espera a que la base
+         acepte conexiones y cualquier comprobación se hacen con `psycopg`
+         desde el `.venv` del servicio, o con `docker exec` dentro del
+         contenedor.
+
+      **Verificación**: revisión del script; con Docker Desktop cerrado el
+      script sale con el mensaje accionable y **código de salida distinto de
+      cero**, sin dejar contenedores vivos; con Docker arrancado, M1 más abajo.
 
 ## Fase 6 · Documentación del ecosistema
 
@@ -180,6 +209,9 @@
       lanzar.
 
 - [ ] **T24**: **MANUAL (humano) · M1 — suite contra base efímera.**
+      **Requisito previo**: Docker Desktop **abierto** (el 2026-08-19 estaba
+      instalado —29.5.3— pero con el demonio parado; si sigue parado, el script
+      lo dirá y saldrá, T21).
       Comando exacto, una línea, sin `&&` ni pipes, desde la raíz del
       repositorio en PowerShell:
 

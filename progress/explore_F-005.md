@@ -11,8 +11,11 @@
 ## Qué se entrega
 
 `specs/F-005-persistencia/` con los tres ficheros de `specs/SPECS.md`:
-`requirements.md` (34 requisitos EARS trazados uno a uno contra los cinco
-criterios `acceptance`), `design.md` y `tasks.md` (27 tareas, T1–T27).
+`requirements.md` (40 requisitos EARS trazados uno a uno contra los cinco
+criterios `acceptance`), `design.md` y `tasks.md` (28 tareas, T1–T27 más
+T19 bis).
+
+**Actualizada el 2026-08-19** con las seis decisiones del humano (ver abajo).
 
 ## Lo que se leyó antes de diseñar
 
@@ -82,12 +85,18 @@ ficheros `.py`**, así que un `.sql` escaparía a las puertas. Se tapa dejando e
 DDL en `.sql` (convención) y **todo lo que lo interpreta en `.py`**, cuyos
 tests leen los `.sql` reales.
 
-## Precondición dura
+## PRECONDICIÓN DURA — sigue vigente tras resolverse las seis decisiones
 
-**F-005 no se implementa hasta que F-004 esté mergeada en `dev`**: los puertos
-hablan `ResultadoValidacion`, `Veredicto`, `Destino` y `ClasificacionFirma`,
-que hoy solo existen en `feature/F-004-validacion`. Es la tarea T1. Se descartó
-inventar un modelo gemelo de persistencia para poder empezar antes.
+**F-005 NO se implementa hasta que F-004 esté mergeada en `dev`.** Los puertos
+de F-005 hablan `ResultadoValidacion`, `Veredicto`, `Destino` y
+`ClasificacionFirma`, que hoy **solo existen en `feature/F-004-validacion`**.
+Es la tarea **T1**, y es una parada, no un aviso: si F-004 no está mergeada, se
+para. Se descartó inventar un modelo gemelo de persistencia para poder empezar
+antes.
+
+Que las seis decisiones estén resueltas **no levanta esta precondición**: eran
+dos bloqueos distintos. Las decisiones bloqueaban el *qué*; F-004 bloquea el
+*cuándo*.
 
 No se ha pedido ningún cambio a F-004. Único apunte, sin tocarla: su
 `ResultadoValidacion` transporta `observaciones` y `confianza_observaciones`,
@@ -117,46 +126,59 @@ base. Todos los ejemplos de la spec están inventados y marcados como tales.
 
 ---
 
-# DECISIONES ABIERTAS QUE NECESITA VALIDAR EL HUMANO
+# LAS SEIS DECISIONES, RESUELTAS POR EL HUMANO EL 2026-08-19
 
-Son **seis**. Están desarrolladas en `design.md` §10 con su alternativa y su
-coste de cambiar después. **D1 y D3 bloquean la implementación; D2 bloquea el
-esquema de `partes`.**
+**Ya no son decisiones abiertas y ninguna bloquea.** Están registradas con su
+fecha en `design.md` §10, que conserva el planteamiento original de cada una
+para que se entienda qué se sopesó. Cinco **confirman** lo que el diseño ya
+proponía; **D2** y **D5** añadieron trabajo concreto a la spec.
 
-1. **D1 · ¿Base propia `postventa`, o esquema dentro de una base existente?**
-   El diseño pide base propia (es lo que hace el ecosistema). La alternativa
-   —un esquema dentro de `albaranes` o `partes`— mezcla el ciclo de vida de dos
-   proyectos y solo tiene sentido si crear bases en ese servidor está vetado.
-   **Crear la base la crea el humano en cualquier caso.** BLOQUEA.
+1. **D1 · CONFIRMADA: base propia `postventa`**, con esquema nominado dentro y
+   `search_path` sin `public`, tal y como se diseñó. Motivo: el ecosistema
+   aísla por base, y meter un esquema en `albaranes` ataría el ciclo de vida de
+   dos proyectos. La base **la crea el humano a mano; la aplicación nunca**.
 
-2. **D2 · ¿Se persiste el DNI del cliente, o solo si lo había?** El diseño lo
-   persiste (la fila es la traza de lo que el modelo leyó, y el DNI ya queda
-   retenido dentro del PDF archivado en SharePoint). El argumento contrario es
-   minimización: nadie aguas abajo lo usa. Es una decisión de protección de
-   datos, no técnica. BLOQUEA el esquema de `partes`.
+2. **D2 · RESUELTA: SÍ se persiste el DNI del cliente.** Decisión expresa del
+   humano: *«si guarda el DNI es importante»*. Descartada la alternativa del
+   booleano «traía DNI». Como ahora hay **dato personal directo confirmado en
+   una base compartida**, las salvaguardas pasan de insinuadas a explícitas y
+   verificables: `design.md` §6 es ahora una tabla regla → requisito →
+   verificación, y `requirements.md` gana **R37–R40** (nunca en el log, nunca
+   en el repositorio ni en fixtures, nunca duplicado en otra tabla, y el PDF
+   fuera de la base). `tasks.md` gana **T19 bis**, el barrido del repositorio.
+   El esquema de `partes` no cambia.
 
-3. **D3 · ¿Docker para la base efímera, o `initdb` contra un PostgreSQL local?**
-   El diseño asume Docker (`postgres:16-alpine`, `--rm`). Hace falta saber con
-   qué cuenta el puesto antes de escribir el script. BLOQUEA T21/T24.
+3. **D3 · CONFIRMADA: Docker** (`postgres:16-alpine`, `--rm`). Dos datos
+   verificados ese día en el puesto del humano, ya escritos en **T21**:
+   **Docker 29.5.3 está instalado** pero el **demonio estaba parado** (Docker
+   Desktop cerrado), y **no hay `psql` en el `PATH`**. El script comprueba lo
+   primero que el demonio responde y aborta con un mensaje accionable
+   —«arranca Docker Desktop»— en vez de un error opaco de conexión (**R35**), y
+   no depende de `psql` en ningún punto (**R36**).
 
-4. **D4 · ¿`numero_incidencia` único?** El diseño lo deja indexado y **no**
-   único: la deduplicación la hace el hash, y un único rompería el día que
-   F-014 reagrupe un parte de dos hojas. Decide qué pasa si llegan dos partes
-   de la misma incidencia — regla de negocio de Posventa.
+4. **D4 · CONFIRMADA: `numero_incidencia` indexado pero NO único.** La
+   deduplicación la hace el hash del parte. Motivos aceptados: una misma
+   incidencia puede tener más de un parte (más de una visita), y un índice
+   único rompería el día que F-014 reagrupe un parte de dos hojas.
 
-5. **D5 · ¿Se declara el DDL como ruta sensible del arnés?** Hoy no existe
-   `harness/rutas_sensibles.json` y C4 ter es N/A. Un DDL contra un servidor
-   compartido es el candidato de manual. **No se hace sin permiso**: cambiaría
-   el arnés para todas las features y habría que portarlo a `arnes-base` en el
-   mismo trabajo.
+5. **D5 · RESUELTA: NO se declara ahora el DDL como ruta sensible.** F-005 no
+   crea `harness/rutas_sensibles.json` y C4 ter sigue **N/A**. Motivo:
+   cambiaría el arnés para todas las features y obligaría a portarlo a
+   `arnes-base` en el mismo trabajo. **Su sitio es F-017**, ya dada de alta,
+   que va a tocar `CHECKPOINTS.md` y a viajar a `arnes-base`. Queda escrito en
+   `design.md` §10 que el DDL es **candidato reconocido** a ruta sensible y que
+   la decisión vive en F-017, para que nadie lo lea como un olvido.
 
-6. **D6 · ¿Se guarda ya `usuario_oid` en F-005?** La columna está diseñada,
-   pero quien conoce al usuario autenticado es el front (F-007/F-010): en F-005
-   quedaría siempre `NULL`.
+6. **D6 · CONFIRMADA: la columna `usuario_oid` se crea ya y queda `NULL`**
+   hasta F-007/F-010. Cuesta cero ahora y ahorra un `ALTER TABLE` contra una
+   base compartida después.
 
 ## Estado
 
-`specs/F-005-persistencia/` escrita y commiteada en
-`feature/F-005-persistencia`. **Pendiente de aprobación del humano** y de las
-seis decisiones. No se ha escrito ni una línea de código, ni se ha tocado
-`harness/features.json`.
+`specs/F-005-persistencia/` escrita, con las seis decisiones registradas, y
+commiteada en `feature/F-005-persistencia` (worktree aislado). **No se ha
+escrito ni una línea de código.** No se ha tocado `harness/features.json`: lo
+lleva el líder.
+
+Lo único que sigue en pie antes de implementar es la **precondición dura de más
+arriba**: F-004 mergeada en `dev`.

@@ -287,3 +287,47 @@ class ArchivoFallido(Exception):
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+class ArchivoDeshabilitado(Exception):
+    """Este sitio no puede archivar en SharePoint (F-006, R19, R20).
+
+    Dos motivos, y los dos son **puertas a propósito**, no fallos:
+
+    - el entorno no es `dev` ni `pro` —típicamente, es un puesto de trabajo—, y
+      `CLAUDE.md` prohíbe sin matices subir al SharePoint de Posventa desde
+      local;
+    - `ARCHIVO_HABILITADO` no está encendido, que es el estado por defecto de
+      un `.env` recién copiado y de un despliegue a medio configurar.
+
+    El borde lo traduce a **503**: no es culpa de quien manda la petición ni
+    del proveedor; es que aquí no se archiva.
+
+    Se levanta en la fábrica **y en el constructor del adaptador**. No es
+    redundancia decorativa: componer las piezas de otra manera —un script
+    suelto, un `python -c`, un test «solo para probar»— tiene que toparse
+    igual con la puerta, porque lo que se sube a SharePoint lo ve Posventa y
+    no se puede deshacer.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ConfiguracionSharePointIncompleta(Exception):
+    """Falta configuración para construir el archivador (F-006, R28).
+
+    El motivo nombra **las variables** que faltan —`SHAREPOINT_DRIVE_ID`,
+    `GRAPH_TENANT_ID`…— y **jamás sus valores**, ni enteros ni en fragmentos:
+    `GRAPH_CLIENT_SECRET` es una credencial y estos mensajes acaban en un log.
+
+    Se exige en la fábrica y no al leer los ajustes, por lo mismo que
+    `GEMINI_API_KEY` y `PG_PASSWORD`: `/health` tiene que arrancar sin
+    configuración de SharePoint y la suite entera tiene que correr sin
+    credenciales en el entorno.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo

@@ -123,7 +123,7 @@
 
 ## Fase 3 · La puerta que impide subir desde local
 
-- [ ] **T6 · RED**: Escribir `tests/test_f006_fabrica.py` (R19, R20, R28):
+- [x] **T6 · RED**: Escribir `tests/test_f006_fabrica.py` (R19, R20, R28):
       - `test_f006_r19_en_entorno_local_la_fabrica_no_construye_el_adaptador`:
         con `ENTORNO=local` (y con `test`) sale `ArchivoDeshabilitado`.
       - `test_f006_r19_el_constructor_del_adaptador_tambien_muerde`: construir
@@ -141,7 +141,7 @@
         aparece en el mensaje** ni entero ni en fragmentos.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-006.md`.
 
-- [ ] **T7**: Ampliar `config/settings.py` con los ajustes de `design.md` §7
+- [x] **T7**: Ampliar `config/settings.py` con los ajustes de `design.md` §7
       (todos **opcionales en el modelo**, `archivo_habilitado` por defecto
       `False`), actualizar `.env.example` y `local.settings.json.example` con
       **placeholders y ningún valor**, y escribir

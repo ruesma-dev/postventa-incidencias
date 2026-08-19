@@ -397,3 +397,53 @@ Rojo por lo que tenía que estar rojo: no existen ni los dos errores nuevos, ni
 **Este fichero es el único de la suite que nombra `AdaptadorSharePointGraph`**,
 y lo nombra para comprobar que **se niega a construirse**. Que siga siendo el
 único lo vigila `test_f006_r21_ningun_test_construye_el_adaptador_real` (T13).
+
+---
+
+## T7 · VERDE · Los ajustes, los ejemplos y la fábrica fail-closed
+
+Ficheros nuevos: `infrastructure/sharepoint/__init__.py`,
+`infrastructure/sharepoint/graph.py` (de momento, solo la puerta de entorno),
+`infrastructure/sharepoint/fabrica.py`. Modificados: `config/settings.py`
+(nueve ajustes de `design.md` §7), `domain/models/errores.py`
+(`ArchivoDeshabilitado`, `ConfiguracionSharePointIncompleta`),
+`.env.example` y `local.settings.json.example`.
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_fabrica.py -q
+24 passed in 0.31s
+
+$ .venv/Scripts/python.exe -m pytest -q
+804 passed, 10 skipped in 12.64s
+```
+
+`.env` **no se ha tocado** y `git status` no lo muestra, que era la otra mitad
+de la verificación de la tarea.
+
+### Las dos puertas dan motivos distintos, y el orden entre ellas importa
+
+1. `exigir_entorno_con_archivo` — «aquí no se archiva». Va **la primera**. Si
+   se comprobara antes la configuración, un puesto de trabajo con el `.env`
+   completo recibiría el error equivocado y alguien podría creer que solo le
+   falta rellenar una variable. Tiene su test.
+2. `ARCHIVO_HABILITADO` — «no lo has encendido». Es una puerta distinta a
+   propósito: en `dev` puede haber momentos en los que no se quiera archivar,
+   y apagar el interruptor tiene que bastar sin tener que mentir sobre el
+   entorno.
+
+La lista `ENTORNOS_CON_ARCHIVO` vive en `graph.py` y la fábrica la importa de
+ahí. Dos listas de entornos permitidos divergen, y la que se quedara corta
+sería la que dejara subir desde donde no se debe.
+
+### `SHAREPOINT_SITE_ID` es opcional, y es una decisión, no un olvido
+
+`design.md` §7 lo declaraba junto a los demás. En la fábrica **no se exige**:
+el adaptador va directo a la biblioteca por su identificador y no lo usa. Lo
+usan el script de verificación de `infra/` (T16) y `docs/INTEGRACION.md`
+(T15). Exigir configuración que nadie lee es una vuelta más de despliegue a
+cambio de nada, y la variable sigue declarada y documentada.
+
+Obligatorias, por tanto: `SHAREPOINT_DRIVE_ID`, `GRAPH_TENANT_ID`,
+`GRAPH_CLIENT_ID` y `GRAPH_CLIENT_SECRET`, y se nombran **todas las que
+falten de una vez**: descubrirlas de una en una son tres vueltas de
+despliegue.

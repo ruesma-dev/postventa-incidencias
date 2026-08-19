@@ -83,8 +83,30 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    `unidad` es como lo nombra la estructura de archivo de Posventa
    (`PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`). Son tres nombres del
    mismo dato y en el código hay uno solo.
-4. **Validación** — firma presente y humana, campos obligatorios legibles,
-   coherencia con Sigrid (la incidencia existe y está abierta).
+4. **Validación** — qué se hace con el parte. Lo decidió F-004, y son reglas
+   de **dominio puro**: sin red, sin base de datos y sin IA, para poder
+   probarlas enteras sin un proveedor delante.
+   - **Los campos que deciden son dos**: código de obra y nº de incidencia. Un
+     campo cuenta como leído si trae valor —«solo espacios» es vacío— y su
+     confianza llega al umbral (**50**, constante del dominio y no
+     configuración: aflojar una regla de negocio no puede ser un cambio de
+     variable de entorno).
+   - **La firma se lee aparte**, con su propio prompt y su propia llamada
+     (`POST /api/firma`), y se clasifica en `humana`, `marca_simple`,
+     `casilla_vacia` o `ilegible`. Ante cualquier duda, `ilegible`: nunca se
+     da por firmado lo que no se entendió. Una `humana` con confianza por
+     debajo del umbral **se publica ya como `ilegible`**, para que la etiqueta
+     y el motivo no se contradigan delante de quien los lea.
+   - **Dos destinos, porque son dos trabajos para dos personas distintas**:
+     `cola_validacion_humana` es «hay algo que **decidir**» —el parte está
+     completo y firmado, pero el cliente escribió algo, y la transcripción
+     viaja con él—; `revision_manual` es «hay algo que **arreglar**»: falta un
+     campo decisivo o no hay firma humana, y toca volver al papel.
+   - **Lo que NO hace este paso**: comprobar contra Sigrid que la incidencia
+     exista y esté abierta —eso necesita red, es **F-008/F-009** y es una
+     segunda puerta, posterior y aparte—, e interpretar **qué dice** la
+     observación, que es **F-016**. Guardar la cola es F-005; pintarla,
+     F-007/F-011.
 5. **Nombrado** — `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`: código de obra, código de incidencia y sufijo.
 6. **Archivo** — subida a SharePoint.
 7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
@@ -118,6 +140,16 @@ igual que hoy, y por debajo se suben los PDFs.
    parte sin firma válida no se archiva ni se cierra: va a revisión manual.
    Solo firma el cliente: la columna del técnico viene vacía en toda la
    remesa de ejemplo, así que exigirla dejaría fuera todos los partes.
+   **Cómo convive esto con «las observaciones son el único motivo de
+   rechazo»** (3 bis), que parece lo contrario: son dos cosas distintas y las
+   dos se sostienen. El alcance de «único motivo» son **los datos
+   manuscritos** —DNI, fecha, horas, nombre—, no la firma, que no es un dato
+   transcrito sino la conformidad misma; y el criterio está redactado sobre
+   **la cola**: a la cola de validación humana no entra nadie más que quien
+   trae observaciones. Un parte sin firma humana no va a la cola: va a
+   revisión manual, que es otro destino y otro trabajo. Si se leyera «único
+   motivo» como «lo único que impide ser apto», chocaría con el criterio
+   —de la misma lista— de que un parte sin nº de incidencia nunca queda apto.
 3 bis. **Firmado no es conforme.** En la remesa de ejemplo hay un parte
    firmado cuya observación manuscrita dice "se aprecia que se han hecho
    parcheados, no se reparó la totalidad". **Un parte con observaciones

@@ -43,9 +43,14 @@ CAMPOS_DEL_PARTE: tuple[str, ...] = (
 #: Los campos que van escritos a mano en el papel
 #: (`docs/referencia/02_parte_de_trabajo.md`).
 #:
-#: Quién es manuscrito **lo sabe el dominio**, no el modelo: F-004 decide con
-#: esto la regla «firmado no es conforme», y esa decisión no puede depender de
-#: lo que una IA declare en una respuesta.
+#: Quién es manuscrito **lo sabe el dominio**, no el modelo, y esa decisión no
+#: puede depender de lo que una IA declare en una respuesta.
+#:
+#: Ojo con lo que este conjunto **no** es. Tras la decisión del humano del
+#: 2026-08-19, el campo que decide la regla «firmado no es conforme» es **solo
+#: `observaciones`**: ni la fecha de servicio ni el DNI descalifican un parte,
+#: y de hecho vienen en blanco en casi toda la remesa real. Quien lo aplica es
+#: `domain/models/validacion.py` (F-004), que no usa este conjunto.
 CAMPOS_MANUSCRITOS: frozenset[str] = frozenset(
     {"fecha_servicio", "dni_cliente", "observaciones"}
 )

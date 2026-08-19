@@ -168,7 +168,7 @@
       termina bien, `.venv/Scripts/python.exe -c "import msal, requests; print('ok')"`
       imprime `ok`, y la suite sigue en verde.
 
-- [ ] **T9 · RED**: Escribir `tests/test_f006_adaptador_graph.py` (R11, R12,
+- [x] **T9 · RED**: Escribir `tests/test_f006_adaptador_graph.py` (R11, R12,
       R15, R16, R25, R26) contra `ClienteGraphFalso` y con
       `espera_inicial_s=0`, **con `ENTORNO=dev` forzado solo en ese fichero**
       (es lo que hace construible el adaptador; la red la sigue impidiendo la
@@ -189,7 +189,7 @@
         se comprueba que ni el token simulado ni el secreto simulado aparecen.
       **Verificación**: rojo; **traza pegada** en `progress/impl_F-006.md`.
 
-- [ ] **T10**: Implementar `infrastructure/sharepoint/graph.py`
+- [x] **T10**: Implementar `infrastructure/sharepoint/graph.py`
       (`design.md` §8.1), **con la puerta de entorno en el propio
       constructor** (§5, puerta 1).
       **Verificación**: los tests de T9 en verde. Ningún test abre red (la

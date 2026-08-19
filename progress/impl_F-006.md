@@ -591,3 +591,57 @@ una lista. Se resuelve **sin debilitar nada**, y de hecho endureciéndolo:
 
 Queda anotado aquí para que el reviewer lo juzgue: es una desviación
 consciente del texto de T13, no un descuido.
+
+---
+
+## T10 · VERDE · El adaptador de Graph
+
+Fichero: `services/postventa-api/infrastructure/sharepoint/graph.py`.
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f006_adaptador_graph.py -q
+32 passed in 0.74s
+
+$ .venv/Scripts/python.exe -m pytest -q
+836 passed, 10 skipped in 15.16s
+```
+
+### Un test tuvo que corregirse, y el motivo importa
+
+`test_f006_r16_buscar_devuelve_el_elemento_ante_un_200` afirmaba que el
+`drive_id` del elemento devuelto era el de la **configuración**. El adaptador
+usa el que responde Graph en `parentReference.driveId`, y cayó:
+
+```
+>       assert item.drive_id == DRIVE
+E       AssertionError: assert 'drive-de-mentira' == 'drive-inventado'
+```
+
+El comportamiento del código es el correcto: la traza tiene que decir dónde
+está el fichero **de verdad**, y quien manda sobre eso es el servicio, no
+nuestro `.env`. Se corrigió el test —no el código— y se **añadió** uno nuevo,
+`test_f006_r16_sin_parent_reference_se_usa_la_biblioteca_configurada`, para el
+único caso en que la configuración sí manda: cuando Graph no lo dice. Los dos
+dobles usan valores distintos a propósito, para que se vea cuál gana.
+
+### Decisiones de implementación
+
+- **La carpeta se asegura tramo a tramo.** `design.md` §8.1 describía un `GET`
+  y un `POST`, pero crear `Postventa/0677` de una tacada contra una biblioteca
+  donde `Postventa` aún no existe falla, y falla de una forma que parece un
+  problema de permisos. Se recorre la ruta por segmentos.
+- **Dos comportamientos ante conflicto distintos, y es a propósito**:
+  `replace` al subir el fichero (R15) y `fail` al crear una carpeta.
+  Reemplazar una carpeta que ya está borraría los partes que tuviera dentro; lo
+  que se tolera ahí es el **código 409**, que es otra cosa (R12).
+- **`_con_reintentos` centraliza qué es un error**, con una lista de códigos
+  «tolerados» por operación: el `404` de `buscar` y el `409` de crear carpeta.
+  Sin eso habría dos criterios de qué es un fallo en el mismo módulo.
+- **`ErrorDeGraph` es interno y lleva solo el código.** No sale del módulo: lo
+  que sale es `ArchivoFallido`. No lleva ni la URL —que contiene el
+  identificador de la biblioteca— ni el cuerpo de la respuesta (R26).
+- **El token se cachea** con 60 s de margen antes de su vencimiento. Pedirlo
+  en cada operación son 66 peticiones a Entra por remesa de 22 partes.
+- **`httpx.Client` se construye en la primera llamada**, no en el `__init__`,
+  como en el adaptador de Gemini: el adaptador tiene que poder existir sin
+  abrir nada.

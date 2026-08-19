@@ -40,6 +40,7 @@ from infrastructure.sharepoint.graph import (
     AdaptadorSharePointGraph,
 )
 from tests.utiles_sharepoint import (
+    DRIVE_FALSO,
     ClienteGraphFalso,
     conflicto,
     creado,
@@ -197,7 +198,13 @@ def test_f006_r16_buscar_devuelve_none_ante_un_404():
 
 
 def test_f006_r16_buscar_devuelve_el_elemento_ante_un_200():
-    """R16 · y si está, se devuelve con lo que hace falta para la traza."""
+    """R16 · y si está, se devuelve con lo que hace falta para la traza.
+
+    El `drive_id` que se guarda es **el que responde Graph**, no el que
+    llevamos en configuración. Los dos dobles usan valores distintos a
+    propósito para que se vea cuál gana: la traza tiene que decir dónde está
+    el fichero de verdad, y quien manda sobre eso es el servicio.
+    """
     adap, cliente = adaptador(
         ok(item_de_graph(item_id="item-0007", nombre=NOMBRE, ruta=CARPETA))
     )
@@ -208,9 +215,22 @@ def test_f006_r16_buscar_devuelve_el_elemento_ante_un_200():
     assert item.item_id == "item-0007"
     assert item.nombre == NOMBRE
     assert item.carpeta == CARPETA
-    assert item.drive_id == DRIVE
+    assert item.drive_id == DRIVE_FALSO
     assert item.web_url.startswith("https://")
     assert "%20" in cliente.urls[0], "el nombre lleva espacios y va codificado"
+
+
+def test_f006_r16_sin_parent_reference_se_usa_la_biblioteca_configurada():
+    """R16 · si Graph no dice de qué biblioteca es, se usa la nuestra.
+
+    Es el único caso en que la configuración manda, y es el correcto: una
+    traza sin `drive_id` no sirve para volver al fichero.
+    """
+    adap, _ = adaptador(ok({"id": "item-0009", "name": NOMBRE, "webUrl": ""}))
+
+    item = adap.buscar(carpeta=CARPETA, nombre=NOMBRE)
+
+    assert item.drive_id == DRIVE
 
 
 def test_f006_r16_buscar_no_lista_la_carpeta_entera():

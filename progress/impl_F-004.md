@@ -83,3 +83,31 @@ ERROR tests/test_f004_reglas_validacion.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
 1 error in 0.92s
 ```
+
+### T8 · los pasos del pipeline (R2, R3, R21, y la mitad de R23)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f004_paso_firma.py tests/test_f004_paso_validacion.py -q
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f004_paso_firma.py:20: in <module>
+    from application.pipelines.paso_firma import MIME_PDF, paso_firma
+E   ModuleNotFoundError: No module named 'application.pipelines.paso_firma'
+_____________ ERROR collecting tests/test_f004_paso_validacion.py _____________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f004_paso_validacion.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f004_paso_validacion.py:19: in <module>
+    from application.pipelines.paso_validacion import paso_validacion
+E   ModuleNotFoundError: No module named 'application.pipelines.paso_validacion'
+=========================== short test summary info ===========================
+ERROR tests/test_f004_paso_firma.py
+ERROR tests/test_f004_paso_validacion.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
+2 errors in 2.03s
+```

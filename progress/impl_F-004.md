@@ -111,3 +111,29 @@ ERROR tests/test_f004_paso_validacion.py
 !!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
 2 errors in 2.03s
 ```
+
+### T11 · los dos endpoints (R23, R24, R14 bis)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f004_firma_http.py tests/test_f004_validar_http.py -q
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f004_firma_http.py:28: in <module>
+    from interface_adapters.api.firma import leer_firma
+E   ModuleNotFoundError: No module named 'interface_adapters.api.firma'
+______________ ERROR collecting tests/test_f004_validar_http.py _______________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f004_validar_http.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f004_validar_http.py:25: in <module>
+    from interface_adapters.api.validar import validar
+E   ModuleNotFoundError: No module named 'interface_adapters.api.validar'
+=========================== short test summary info ===========================
+ERROR tests/test_f004_firma_http.py
+ERROR tests/test_f004_validar_http.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
+2 errors in 0.61s
+```

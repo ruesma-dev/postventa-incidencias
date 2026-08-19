@@ -47,7 +47,7 @@
 
 ## Fase 1 · El nombrado (dominio puro)
 
-- [ ] **T2 · RED**: Escribir `tests/test_f006_nombrado.py` (R1–R9), con
+- [x] **T2 · RED**: Escribir `tests/test_f006_nombrado.py` (R1–R9), con
       **ejemplos inventados y marcados como tales**:
       - `test_f006_r1_el_nombre_sigue_la_convencion_de_posventa`: obra `0677` e
         incidencia `RS26.08/0123` → `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`.
@@ -70,7 +70,7 @@
       **Verificación**: rojo por `ModuleNotFoundError`; **traza pegada** en
       `progress/impl_F-006.md`.
 
-- [ ] **T3**: Implementar `domain/models/nombrado.py` (`design.md` §4.2) y
+- [x] **T3**: Implementar `domain/models/nombrado.py` (`design.md` §4.2) y
       añadir `NombradoImposible` a `domain/models/errores.py`.
       **Verificación**: `.venv/Scripts/python.exe -m pytest tests/test_f006_nombrado.py -q`
       en verde, y la suite completa sin regresiones.

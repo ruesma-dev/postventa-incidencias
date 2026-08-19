@@ -170,3 +170,46 @@ FAILED tests/test_f004_arquitectura.py::test_f004_r25_el_log_no_lleva_observacio
 
 Con la línea de log correcta —hash, veredicto, destino y códigos de motivo, y
 nada más— los seis tests del fichero pasan.
+
+---
+
+## T14 · VERIFICACIÓN MANUAL PENDIENTE (la ejecuta el humano)
+
+**Es la que decide D1** (`design.md` §7): si la clasificación de la firma puede
+o no bloquear un parte. Se adelantó a propósito, en cuanto el endpoint de firma
+funcionó (T12), por el Riesgo 1 del diseño.
+
+Script entregado **fuera del repositorio**, en el home del humano, igual que
+`f3_real.py`: **`C:\Users\pgris\f4_firma.py`** (155 líneas, sintaxis
+verificada). Se invoca con **una línea corta**, que es lo que PowerShell admite
+sin partirla:
+
+```
+python C:\Users\pgris\f4_firma.py todos
+```
+
+Acepta también `f4_firma.py` (solo el primer parte) y `f4_firma.py 0 7 15`.
+Imprime, por parte, índice, etiqueta y confianza; y al final el recuento de las
+cuatro etiquetas con la confianza media de cada una. **No imprime ni escribe en
+disco ningún valor extraído del parte**: ni nombre, ni DNI, ni observaciones.
+La etiqueta de la firma y su confianza no son datos personales, y el prompt de
+T5 ni siquiera pide los que sí lo son.
+
+Comprobado que sus dos prerrequisitos existen en este árbol: el `.env` del
+servicio y `docs/referencia/doc02871320260817093833.pdf` (no versionado). El
+script para con un mensaje claro si falta alguno o si la clave sigue con el
+placeholder. **La clave no aparece en ningún informe ni en ningún commit.**
+
+**Cómo se lee el resultado** (decidido de antemano, y el propio script lo
+imprime):
+
+| Resultado | Qué significa |
+|---|---|
+| Mayoría `humana`, `ilegible` residual | **D1 opción 1 confirmada**: la spec queda como está |
+| Un tercio o más `ilegible` | **PARADA**: o se mejora el prompt `firma_parte_es` y se repite, o se pasa a la opción 2 de D1 (la firma no bloquea). Cuesta **una función pura y sus tests**: `_motivos` de `domain/models/validacion.py`. Ni el contrato HTTP, ni el dominio, ni los pasos se mueven |
+| Alguna `marca_simple` | Prueba directa del criterio «distingue firma de aspa» y de `CHECKPOINTS.md` C3 |
+
+T15 a T18 se han completado **sin** este dato porque ninguna de ellas cambia
+según el resultado: si D1 se moviera a la opción 2, lo que habría que rehacer
+es esa función pura, sus tests, un párrafo de `ARCHITECTURE.md` y volver a
+lanzar cobertura y mutación.

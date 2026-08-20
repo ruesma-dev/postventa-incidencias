@@ -208,3 +208,102 @@ exigiría levantar un servidor real, que es exactamente lo que R33 prohíbe.
 la puerta de cobertura es **D1/O1 — probarlo**, está razonada en `design.md` §9
 con las cinco opciones y sus motivos, y se resume en el `README.md` del front
 (T12).
+
+---
+
+## T4 · La cola: el límite de concurrencia — HECHA
+
+`tests_js/cola.test.js` **primero**, `js/cola.js` después, más el puente
+`tests/test_f007_js.py`.
+
+### Fase RED de R7–R12 (traza real)
+
+Test escrito, módulo inexistente:
+
+```
+$ cd services\postventa-front
+$ node --test "tests_js/*.test.js"
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module '../js/cola.js'
+Require stack:
+- C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\tests_js\cola.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (...\tests_js\cola.test.js:16:31)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  ...
+}
+```
+
+### Verde tras escribir `js/cola.js`
+
+```
+$ node --test "tests_js/*.test.js"
+✔ f007 R7: nunca hay más tareas vivas que el límite (8.3361ms)
+✔ f007 R7: no arranca la siguiente hasta que una plaza queda libre (2.0237ms)
+✔ f007 R7: un límite mayor que el número de tareas no rompe nada (1.5988ms)
+✔ f007 R7: una lista vacía de tareas devuelve una lista vacía (0.2743ms)
+✔ f007 R7: un límite menor que 1 es un error, no un «sin límite» silencioso (0.9555ms)
+✔ f007 R9: alTerminar se llama exactamente una vez por tarea (0.3072ms)
+✔ f007 R9: el progreso también avanza cuando un parte termina en error (0.2783ms)
+✔ f007 R10: un error no para a los demás y viaja como resultado, no como excepción (0.2572ms)
+✔ f007 R10: una tarea que lanza de forma síncrona tampoco tumba la cola (0.2693ms)
+✔ f007 R10: los resultados salen en el orden de entrada aunque terminen desordenados (0.3648ms)
+✔ f007 R11: reintentar un parte suelto pasa por la misma cola y el mismo límite (1.6876ms)
+✔ f007 R12: una tarea que falla libera su plaza, no la deja ocupada para siempre (0.574ms)
+✔ f007 R7: la cola no llama a una tarea más de una vez (0.381ms)
+ℹ tests 13
+ℹ pass 13
+ℹ fail 0
+```
+
+Ni un reloj real: todas las promesas son diferidas que el test resuelve a mano.
+Un test de concurrencia que dependa de tiempos falla en la máquina de otro.
+
+### Desviación respecto a `tasks.md`: el argumento de `node --test`
+
+`tasks.md` y `design.md` documentan `node --test tests_js`. **En Node 24 eso no
+funciona**: un argumento que es un directorio se intenta cargar como módulo y
+la ejecución muere con `MODULE_NOT_FOUND` antes de descubrir ningún test:
+
+```
+$ node --test tests_js
+Error: Cannot find module 'C:\...\services\postventa-front\tests_js'
+    code: 'MODULE_NOT_FOUND'
+✖ tests_js (126.9105ms)
+```
+
+Se usa el **patrón** `node --test "tests_js/*.test.js"`, que lo expande el
+propio Node y funciona igual en PowerShell y en Git Bash. Es un hecho del
+entorno, no un cambio de diseño: el mecanismo, el alcance y el contrato de la
+tarea son los mismos. Queda documentado en el puente, en el `README.md` del
+front y aquí.
+
+### El puente (R32)
+
+`tests/test_f007_js.py`, tres tests:
+
+- `node` está en el PATH — y **si no está, la suite FALLA diciéndolo**, no se
+  salta con un `skip`. Un `skip` silencioso volvería a dejar el front sin
+  comprobar, que es el agujero que cierra F-007.
+- `node --test tests_js/*.test.js` termina en 0; si no, la aserción **propaga
+  la salida entera** de Node, para que el motivo se lea sin volver a lanzarlo.
+- hay al menos un `*.test.js`: un patrón sin coincidencias no es un error para
+  Node, y sería un verde que no significa nada.
+
+```
+$ cd services\postventa-front
+$ python -m pytest -q
+.................................                                        [100%]
+33 passed in 0.37s
+```

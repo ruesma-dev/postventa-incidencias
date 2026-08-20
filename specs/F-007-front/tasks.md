@@ -71,7 +71,7 @@
 
 ## Fase 2 · La lógica que se prueba (JavaScript)
 
-- [ ] **T4**: `tests_js/cola.test.js` **primero** y luego `js/cola.js`
+- [x] **T4**: `tests_js/cola.test.js` **primero** y luego `js/cola.js`
       (`ejecutarConLimite`). Cubre R7–R12: máximo simultáneo observado ≤
       límite, orden de resultados = orden de entrada, un error no para al
       resto, `alTerminar` una vez por tarea, `limite < 1` es error.

@@ -1,27 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-08-20 (tarde) · **F-010 EN CURSO, PARADA EN D2**
+> ## Estado al 2026-08-20 (tarde) · **F-010 IMPLEMENTADA, PENDIENTE DE REVISIÓN**
 >
-> La spec de F-010 está escrita y aprobada. La implementación va por
-> **diez tareas de doce hechas**: T3, T4, T6, T7, T8, T10, T11, T12, T20 y
-> T21, cada una con su commit. Detalle en `progress/impl_F-010.md`.
+> **D2 resuelta por el humano** (opción (a), con la medición delante) y con
+> ella desbloqueadas T5 y T9. **Las doce tareas de agente están hechas**, cada
+> una con su commit; el detalle, en `progress/impl_F-010.md`.
 >
-> **Dónde está parada, y qué se necesita del humano.** **T5 y T9 están sin
-> hacer**: fijan los tiempos de espera (`IA_TIMEOUT_S`, `GRAPH_TIMEOUT_S`,
-> `TIMEOUT_PETICION_MS`) contra el presupuesto de 45 s del proxy, y **esos
-> números los decide el humano** (D2). El implementer no los ha elegido.
->
-> **El dato que faltaba ya está medido** (T2, en local, con una remesa real de
-> 22 partes): el peor `/api/extraer` es **6,5 s** con seis peticiones vivas,
-> `/api/firma` 5,5 s y `/api/split` 2,4 s. El criterio escrito en T2 era «si
-> el peor `/api/extraer` queda holgadamente por debajo de 35 s, se sigue con
-> la opción (a)»: 6,5 s es el **14 %** del presupuesto. La medición no incluye
-> el salto de región ni el arranque en frío, y aun así el margen es enorme.
+> **El escalonado de tiempos, que es el criterio y no los números**: la IA
+> abandona a los 35 s, el front a los 40, el proxy corta a los 45. Cada capa
+> cede antes que la de fuera, para que el usuario reciba **nuestro** error
+> explicado y no un corte opaco de la plataforma con una llamada zombi
+> gastando cuota. Medido antes de fijarlo: el peor `/api/extraer` real fue
+> **6,5 s**.
 >
 > **Nada se ha ejecutado contra Azure**: ni un recurso, ni un secreto, ni una
-> subida a SharePoint. Las diez tareas `MANUAL (humano)` están preparadas con
-> su comando exacto, T18 incluida (la que exige autorización ante C5).
+> subida a SharePoint. Quedan **las nueve verificaciones `MANUAL (humano)`**,
+> preparadas con su comando exacto, incluida T18 —la subida real, que cierra
+> una casilla de F-006 y **exige autorización expresa ante C5**—.
+>
+> **Un hallazgo para el humano, que no es de esta feature**: la campaña de
+> mutación deja bytecode mutado en `__pycache__` y eso puede poner el portero
+> en rojo con el árbol limpio **y**, peor, dar un falso «0 supervivientes».
+> Está documentado en `progress/impl_F-010.md` y en
+> `progress/mutacion_F-010.md`, con el arreglo propuesto para `arnes-base`.
 
 > ## Estado al 2026-08-20 · **F-007 CERRADA Y APROBADA**
 >

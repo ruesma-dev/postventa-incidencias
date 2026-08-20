@@ -347,13 +347,17 @@ Dos recordatorios que no son formalidades:
 
 | Evidencia | Valor medido |
 |---|---|
-| **Tests ejecutados** (servicio `api`) | **1.044 pasados**, 1 saltado |
-| **Tests de F-010** | **120 pasados**, 1 saltado (`-k f010`) |
+| **Tests ejecutados** (servicio `api`) | **1.063 pasados**, 1 saltado |
+| **Tests ejecutados** (servicio `front`) | **74 pasados** en Python + **104** en `node --test` |
+| **Tests de F-010** | **165 pasados**, 1 saltado (`-k "f010 or integracion"`) |
 | **Suite raíz del arnés** | 16 pasados |
 | **Cobertura de las líneas cambiadas** | **98,3 %** (114/116, umbral 80 %, nivel `estandar`) |
 | **Mutantes generados / supervivientes** | **20 / 3**, 17 muertos, 0 timeouts |
-| **Tiempo de la suite** | 14,98 s (servicio `api`), 0,38 s (raíz) |
-| **Tiempo de la campaña de mutación** | 10,4 s |
+| **Tiempo de la suite** | 12,7 s (`api`), 1,6 s (`front`), 0,4 s (raíz) |
+| **Tiempo de la campaña de mutación** | 11,1 s |
+
+**`bash harness/init.sh` termina en verde**, con las **dos** suites de servicio
+ejecutadas de verdad (no por caché) y la puerta de cobertura pasada.
 
 **La cobertura de las líneas cambiadas no ha bajado**: F-010 no añade ni una
 línea de producción en Python. Las dos líneas no cubiertas de las 116 son
@@ -366,6 +370,9 @@ el mismo caso: el ancho del separador decorativo del banner de arranque de
 alteran ningún comportamiento observable, y un test que fijara el ancho de un
 adorno se rompería en cada retoque sin proteger nada.
 
+La campaña se relanzó al terminar T5 y T9, como pedía el líder. **Y de paso
+destapó un fallo del arnés que no es de esta feature**, contado abajo.
+
 **Alcance real de la campaña, dicho por adelantado en la propia spec (T20)**:
 la herramienta solo muta `.py`, y F-010 **no cambia ni una línea de
 comportamiento en Python** —T8 quedó en cabecera y test—. Los dos ficheros del
@@ -374,6 +381,77 @@ del diff de rama, no porque F-010 los haya reescrito. Lo que esta feature
 entrega —cuatro scripts de PowerShell y documentación— **queda fuera de lo que
 la campaña sabe mutar**; su disciplina la sostienen los tests de contrato de la
 fase 1, que leen los scripts como texto.
+
+---
+
+---
+
+## Hallazgo que hay que subir al humano · la campaña de mutación envenena `__pycache__`
+
+**No es de F-010 y no lo arregla F-010**, pero se ha topado con él de frente y
+le va a pasar a la siguiente feature igual.
+
+**Qué pasa.** `python -m harness.mutacion` modifica el `.py` en el sitio y lo
+restaura al terminar. Muchas mutaciones **conservan el tamaño exacto** del
+fichero (`==` → `!=`, `60` → `61`) y la fecha queda dentro de la granularidad
+con la que Python decide si un `.pyc` sigue siendo válido. Resultado: el
+bytecode de `__pycache__` **conserva el mutante** y Python lo da por bueno.
+
+**Cómo se manifestó aquí, y por qué cuesta reconocerlo.** Tras una campaña, el
+portero se puso en rojo con esto, con el árbol de trabajo **limpio** según
+`git status`:
+
+```
+usage: __main__.py [-h] [--port PORT] [--api API] [--root ROOT]
+__main__.py: error: unrecognized arguments: tests/ -q
+INTERNALERROR> ... SystemExit: 2
+[KO] servicio front (services/postventa-front): pytest en rojo
+[KO] PUERTA COBERTURA: 30.2% de 116 líneas cambiadas cubiertas
+```
+
+El mutante superviviente en la caché era `if __name__ != "__main__":`, así que
+importar `dev_server.py` ejecutaba `main()` **durante la recolección de
+pytest** y el `argparse` del servidor mataba la sesión entera. Comprobado
+desensamblando el `.pyc`: `COMPARE_OP 55 (!=)` sobre `__name__`, con el fuente
+diciendo `==`.
+
+**La consecuencia silenciosa es peor que la ruidosa.** Con la caché sucia, dos
+campañas seguidas dieron **0 supervivientes**; con `__pycache__` borrada, la
+misma campaña da **3**, que es lo que dio la primera del día. El falso negativo
+va en la dirección peligrosa: dice que todo está cazado cuando no lo está. Si
+esto hubiera pasado en una feature de rigor `critico` —donde cero
+supervivientes es criterio de cierre—, habría cerrado con un cero falso.
+
+**Cómo se ha trabajado mientras tanto**: borrando la caché antes y después de
+cada campaña.
+
+```
+find services -name "__pycache__" -type d -prune -exec rm -rf {} +
+```
+
+**Todos los números de este informe se han obtenido con la caché limpia**, y
+`init.sh` se ha vuelto a ejecutar en verde después.
+
+**Qué se propone, y quién decide.** El arreglo natural es que la campaña borre
+el `__pycache__` del fichero mutado al restaurarlo (o que ejecute con
+`PYTHONDONTWRITEBYTECODE=1`). Como vale **para cualquier proyecto**, la regla
+de propagación de `CLAUDE.md` pide llevarlo a `arnes-base`. **Eso no lo decide
+el implementer**: queda propuesto aquí y en `progress/mutacion_F-010.md`, y lo
+resuelve el humano.
+
+---
+
+## Un test de F-007 que T9 tuvo que actualizar
+
+`services/postventa-front/tests/test_f007_estaticos.py` comprobaba, leyendo
+`config.js`, que `TIMEOUT_PETICION_MS` valía **180000**. Al bajarlo a 40000 se
+puso en rojo, que es exactamente lo que tenía que hacer.
+
+**No se ha relajado el test** —habría sido lo cómodo y lo equivocado—: se ha
+cambiado el número esperado y se ha escrito al lado **por qué** cambia, que
+180000 estaba **por encima** del corte de 45 s del proxy y por tanto el front
+no llegaba nunca a abortar por su cuenta. Un test que fija un valor tiene que
+seguir fijándolo; lo que cambia es el valor y la razón, no la vigilancia.
 
 ---
 
@@ -388,5 +466,8 @@ fase 1, que leen los scripts como texto.
   §9 bis).
 - **No se ha tocado `.env`** ni se ha añadido ninguna dependencia al
   manifiesto del proyecto.
-- **No se han elegido los tiempos de espera nuevos**: es la decisión D2 y la
-  toma el humano con la medición delante.
+- **No se eligieron los tiempos de espera**: el implementer midió, paró y los
+  fijó **después** de que el humano resolviera D2 con el dato delante.
+- **No se arregló el fallo del arnés** que destapó la campaña de mutación: vale
+  para cualquier proyecto, así que su sitio es `arnes-base` y su decisión es
+  del humano.

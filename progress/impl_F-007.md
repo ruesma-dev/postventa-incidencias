@@ -782,3 +782,57 @@ $ bash harness/init.sh
 ----------------------------------------
 ENTORNO LISTO. Puedes trabajar.
 ```
+
+---
+
+## T12 · `README.md` y las dos guardias documentales — HECHA
+
+`services/postventa-front/README.md`: cómo se arranca (las dos terminales, en
+líneas cortas para PowerShell), cómo se prueba, cómo está organizado y **por qué
+se puede probar sin navegador**, las tres decisiones del `index.html`, el
+resumen de la decisión **D1** con las cuatro opciones descartadas y su motivo, y
+una sección **«Lo que este front NO hace (a propósito)»** con D4/F-019, F-010,
+F-008/F-009 y el 503 de archivar.
+
+### `tests/test_f007_documentacion.py` (R35), 8 tests
+
+No juzgan la prosa; comprueban que el README **nombra la decisión, las opciones
+descartadas y su motivo**: que dice literalmente que `dev_server.py` **se
+prueba**, que cita `harness/alcance.py` (el motivo mecánico, que es el que
+zanja la discusión) y **F-001** (el precedente), que recoge O2, O3, O4 y O5, que
+menciona **F-019** y que `localStorage` está **prohibido**, que nombra
+`webkitdirectory` (D5), y que explica cómo arrancar y cómo probar. Más uno que
+comprueba que la decisión sigue también en `design.md` §9, porque R35 pide las
+dos.
+
+### `tests/test_f007_sin_datos_reales.py` (R30), 4 tests
+
+Barre **todo el árbol del front**:
+
+1. **Ningún binario de parte**: `.pdf`, `.zip`, `.jpg`, `.png`, `.tif`.
+2. **Ningún DNI que no sea evidentemente inventado.** Convención explícita de
+   la suite: un DNI de ejemplo tiene los **ocho dígitos iguales** (`00000000T`,
+   `11111111H`). Cualquier otro `8 dígitos + letra` falla **diciendo el fichero
+   y la línea**.
+3. **Ninguna tirada larga de base64**, que es la forma en que un PDF real se
+   colaría dentro de un fichero de texto.
+4. Un test de la propia guardia, para que no pueda estar mirando al vacío.
+
+El barrido **mordió al escribirlo**, que es la mejor prueba de que sirve:
+
+```
+E       AssertionError: posibles DNI reales en el repositorio:
+        ['js/traza.js:26 (12…Z)', 'tests/test_f007_sin_datos_reales.py:121 (12…Z)'].
+        Un DNI de ejemplo tiene los ocho dígitos iguales (00000000T)
+```
+
+Los dos eran ejemplos ilustrativos, no datos de nadie: el comentario de
+`traza.js` pasó a `00000000T`, y el DNI del auto-test se compone en trozos
+(`"1234" + "5678" + "Z"`) con el porqué escrito al lado —de una pieza, el
+barrido marcaría su propio fichero—.
+
+```
+$ python -m pytest -q
+..................................................................       [100%]
+66 passed in 1.21s
+```

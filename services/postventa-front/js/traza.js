@@ -23,7 +23,7 @@
    * ¿Es un valor seguro de registrar tal cual?
    *
    * Solo primitivos. Un objeto o un array anidado podría traer dentro un campo
-   * personal —`{valor: "12345678Z"}`— y el filtro por claves no lo vería.
+   * personal —`{valor: "00000000T"}` (inventado)— y el filtro por claves no lo vería.
    */
   function esPrimitivo(valor) {
     return (

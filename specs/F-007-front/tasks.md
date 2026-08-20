@@ -144,7 +144,7 @@
 
 ## Fase 4 · Dejar constancia
 
-- [ ] **T12**: `services/postventa-front/README.md` (cómo se arranca, cómo se
+- [x] **T12**: `services/postventa-front/README.md` (cómo se arranca, cómo se
       prueba y **el resumen de la decisión de `design.md` §9**),
       `tests/test_f007_documentacion.py` (R35) y
       `tests/test_f007_sin_datos_reales.py` (R30: ningún fichero del front

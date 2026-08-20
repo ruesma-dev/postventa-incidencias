@@ -781,7 +781,11 @@ E         Left contains one more item: 'domain/models/nombrado.py'
 _____ test_f006_r26_ningun_fichero_del_servicio_incrusta_un_identificador _____
 E       AssertionError: assert {'config/sett...a2b3c4d5e6f']} == {}
 E         Left contains 1 more item:
-E         {'config/settings.py': ['b7e41c92-3f5a-4d18-9e60-1a2b3c4d5e6f']}
+E         {'config/settings.py': ['xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx']}
+                                  ^ el GUID que inyecté para la rotura iba aquí; se enmascara
+                                    al pegarlo. Era inventado, pero quien lea este informe no
+                                    puede distinguirlo de uno real, y esa es justo la regla
+                                    que el test de R26 defiende.
 =========================== short test summary info ===========================
 4 failed, 13 deselected in 1.33s
 ```

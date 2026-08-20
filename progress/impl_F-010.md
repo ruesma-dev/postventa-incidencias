@@ -746,3 +746,55 @@ texto; por eso cada defecto se arregló **empezando por su test**.
 - **No se tocó `harness/VERSION`**, por lo mismo.
 - **No se tocaron los dos worktrees `.claude/worktrees/agent-*`**: no son de
   esta limpieza.
+
+## Veredicto de la review — APROBADO el 2026-08-20
+
+**Segunda pasada APROBADA** (`progress/review_F-010.md`); la primera fue
+CHANGES_REQUESTED por cinco defectos de los scripts de `infra/`, los cinco
+corregidos en esta rama.
+
+**F-010 queda aprobada a la espera de que el humano ejecute sus nueve tareas
+`MANUAL (humano)`.** No se marca `done` hasta entonces: el reviewer verificó lo
+que le corresponde —que estén preparadas con su comando exacto, que ninguna se
+haya ejecutado por su cuenta y que lo entregado sea correcto— y las tres cosas
+se cumplen.
+
+### Lo que la review dejó cerrado, y conviene no reabrir
+
+- **El bytecode envenenado no invalida F-005 ni F-006.** Demostrado con
+  evidencia en disco: quedaban 16 worktrees huérfanos de la campaña de F-005,
+  prueba de que se ejecutó en paralelo con una caché por worker. Y el número
+  que lo cierra es el **coste por mutante**: ~50 s en F-005, ≥14 s en F-006, y
+  **0,55 s en F-010**, la primera campaña del repositorio que muta un fichero
+  del `front`, cuya suite tarda 1,4 s. Las del `api` están dos órdenes de
+  magnitud por encima del umbral donde el fallo aparece.
+- **Corrección de un dato que el líder dio mal al encargar la review**: F-006
+  **no** cerró con cero supervivientes, sino con **cinco justificados y
+  aceptados**. El único cero era el de F-005, y para F-005 la respuesta es que
+  el cero era bueno.
+- **Por qué el fallo era peligroso**: con la caché envenenada, si un mutante
+  rompe la recolección de pytest, **todos los siguientes ven la suite en rojo y
+  se anotan como muertos**. El error va en la dirección que tranquiliza.
+
+### El desfase del arnés: 1.5.2 aquí, 1.6.3 en `arnes-base`
+
+El líder preguntó si eso era un defecto a corregir dentro de F-010. **El
+reviewer dice que no, y con razón**: `harness/ARNES_VERSION.md` **no finge
+nada**. Declara que este repositorio no lleva la 1.6.x completa, que
+`harness/VERSION` sigue en `1.5.2` **a propósito**, que de la rama 1.6 se ha
+traído **solo** el parche de la 1.6.3, y por qué las demás esperan: **la 1.6.0
+rehace `harness/mutacion.py` entero** y sus números no son comparables con los
+de antes.
+
+Sellar `VERSION=1.6.3` sería **mentir**, que es el mismo pecado corregido en la
+cabecera de `desplegar_front.ps1`. Y traerse la 1.6.x entera dentro de F-010
+sería peor: metería un motor de mutación reescrito y sin revisar en mitad de
+una review de despliegue, invalidando las campañas recién verificadas. Es el
+LÍMITE DE SERVICIO del `CLAUDE.md`.
+
+**Queda como trabajo aparte, y el reviewer recomienda que sea el siguiente.**
+El argumento es medido y con fecha: en `arnes-base` hay un encargo del
+**2026-08-19**, escrito desde `datamart-seg-anual`, que describe **este mismo
+defecto del bytecode** y lo arregló allí como 1.6.0. **Hemos gastado una review
+entera redescubriendo un fallo ya resuelto río arriba.** Ese es el coste real
+del desfase.

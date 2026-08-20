@@ -6,10 +6,11 @@
   Puertas exigibles: fase RED en los requisitos centrales, PUERTA COBERTURA
   en `[OK]`, campaña de mutación con análisis de todos los supervivientes
   (sin exigir cero supervivientes, eso es `critico`), sección «Evidencias».
-- **Veredicto:** **CHANGES_REQUESTED (RECHAZADO)** — por **cinco defectos
-  concretos y baratos en los scripts de `infra/`** (§10 bis), **no** por las
-  nueve tareas `MANUAL (humano)`, que están correctamente preparadas y sin
-  ejecutar. Todo lo demás está aprobado: ver §11.
+- **Veredicto:** **APROBADO** (2.ª ronda, 2026-08-20). Los cinco defectos de
+  §10 bis están corregidos **y sus tests también**, que era la condición dura.
+  Verificación completa en **§13**.
+  _(1.ª ronda: CHANGES_REQUESTED por esos cinco defectos — histórico en §10 bis
+  y §11.)_
 - **Encargo prioritario (bytecode envenenado):** respondido en §1. **F-005 y
   F-006 NO están invalidadas**; no hay que reejecutar ninguna campaña cerrada.
 
@@ -977,4 +978,222 @@ la que falló (F-010: 0,55 s). Vale para cualquier proyecto: a `arnes-base`.
 en el protocolo del reviewer para «cero mutantes»; propongo la gemela para
 «cero supervivientes» en nivel `critico`: un cero solo es creíble si la campaña
 se ejecutó con la caché limpia **o** si el ciclo por mutante supera el segundo.
+
+---
+
+# 13 · SEGUNDA RONDA · verificación de las correcciones (2026-08-20)
+
+Reviso **solo** lo corregido, según instrucción del líder. Lo demás quedó dado
+por bueno en la 1.ª ronda y el implementer tenía orden expresa de no tocarlo.
+
+Punto de partida verificado: `git status` limpio, ocho commits nuevos
+(`c800232`, `823e8e3`, `2818d66`, `df9c9cc`, `613e9a3`, `054dc74`, `b8b3128`,
+`4b8dad3`). Las nueve tareas `MANUAL (humano)` siguen en `[ ]`: **nada se ha
+ejecutado contra Azure ni SharePoint**.
+
+## 13.1 · El listón que puse: ¿se arreglaron TAMBIÉN los tests?
+
+Era la condición dura, porque los defectos 1 y 3 eran **requisitos EARS
+incumplidos con su test en verde**. **Sí, y bien.**
+
+### R27 (defecto 1) — `verificar_despliegue.ps1`
+
+El script ahora **falla cerrado**: `if ($ventana -ne "false")`. Solo llama
+cuando la lectura **demuestra** que la ventana está cerrada; con `"true"` y con
+`"desconocida"` no llama, y cada caso da su mensaje. **Y va más allá de lo que
+pedí**: el veredicto final exige `$ventanaOk`, así que `DESPLIEGUE VERIFICADO`
+ya no puede imprimirse habiéndose saltado una de las tres comprobaciones. Esa
+mejora no estaba en mi lista y es correcta: *una comprobación que no se ha
+hecho no es una comprobación superada*.
+
+**El test que daba R27 por bueno exigía literalmente el defecto**, y se
+corrigió:
+
+```python
+-    assert 'if ($ventana -eq "true")' in cuerpo
++    assert 'if ($ventana -ne "false")' in cuerpo
+```
+
+Más dos tests nuevos con dientes de verdad:
+
+- `test_f010_t7_la_guarda_de_la_ventana_falla_cerrada` extrae **las guardas de
+  nivel superior** por expresión regular y afirma `guardas == ['-ne "false"']`
+  — **igualdad exacta de lista**, no una pertenencia. Una regresión a
+  `-eq "true"` da `['-eq "true"']` y falla. Y distingue bien: permite que
+  *dentro* se separe `"true"` de `"desconocida"` para dar un mensaje u otro,
+  porque eso no decide la llamada.
+- `test_f010_t7_el_veredicto_no_sale_en_verde_con_la_ventana_desconocida` fija
+  `$ventanaOk` dentro de la condición del veredicto y su definición.
+
+### R6 (defecto 3) — `desplegar_front.ps1`
+
+`$tokenPrevio = $env:SWA_CLI_DEPLOYMENT_TOKEN` sube a la línea **136**, **antes
+del `try` de la 189**; la asignación de la 395 pasa a comentario. Cualquier
+salida temprana —`-WhatIf`, confirmación denegada, cualquier `Salir-Con`— ya
+restaura el valor real y no `$null`.
+
+El test nuevo es el que cierra el hueco de verdad:
+`test_f010_r6_el_valor_previo_se_lee_antes_del_try_que_lo_restaura` está
+**parametrizado sobre todos los scripts que escriben** y comprueba, para
+**cada** `$env:` que se asigne, que su lectura previa ocurre antes del `try`.
+No parchea el caso concreto: fija la propiedad.
+
+### Los dos tienen dientes, y se demuestra sin ejecutarlos
+
+Ambos fallan **por construcción** sobre el código anterior:
+`['-eq "true"'] != ['-ne "false"']`, y la lectura de `$tokenPrevio` estaba en
+la 389 con el `try` en la 160, así que `lectura.start() < inicio_try` era
+falso.
+
+## 13.2 · Los otros tres defectos
+
+| # | Qué pedí | Qué hay ahora | |
+|---|---|---|---|
+| 2 | Comprobar las dos escrituras al Key Vault | `:371-379`, cada `secret set` con su `if ($LASTEXITCODE -ne 0)` y **código de salida propio nuevo** (`$SALIDA_SIN_KEYVAULT = 9`), más la **guarda de existencia del vault** en `:257`, que faltaba. El mensaje del segundo avisa de que «el secreto acaba de generarse y NO ha quedado guardado» | ✔ |
+| 4 | Que el `.DESCRIPTION` deje de mentir | `:44-46`: «con `-SoloFront` no se genera nada **Y TAMPOCO SE LEE NADA** […] no hay un solo `az keyvault secret show` en él». Verificado: siguen siendo **cero** ocurrencias | ✔ |
+| 5 | Declarar que las credenciales se acumulan | `:54` explica que `--append` **no invalida** las anteriores, `:62` da el `az ad app credential delete` para retirarlas, y el resumen final (`:466`) **imprime cuántas credenciales `swa` hay** | ✔ |
+
+El 5 se resolvió mejor de lo que pedí: no solo se documenta, se **mide y se
+enseña** al terminar.
+
+Los tres llevan test propio, y el de la cabecera está bien pensado: afirma
+`afirma_que_lee == lee_de_verdad`, es decir, fija que la nota y el código
+**digan lo mismo**, no que digan una cosa concreta. Es el patrón de R32
+aplicado a otra cabecera.
+
+## 13.3 · El arreglo del arnés, comprobado ejecutándolo
+
+`harness/mutacion.py:310-319` pasa
+`env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}` al subproceso: exactamente
+la P5 que propuse, con `os.environ` heredado.
+`tests/test_mutacion_sin_bytecode.py` vigila **las dos mitades** —la variable, y
+que se herede el entorno—, y la segunda importa tanto como la primera: sin
+heredar `PATH` y `VIRTUAL_ENV`, todos los mutantes «morirían» por fallo de
+importación y la campaña mataría el 100 % sin comprobar nada. La suite raíz
+pasa de 16 a **17 tests**.
+
+**Verificado empíricamente por mí**, que es como había que cerrarlo. Campaña en
+serie (`--workers 1`, el peor caso para el envenenamiento), con `__pycache__`
+borrada antes:
+
+```
+20 mutantes evaluados, 17 muertos, 3 supervivientes, 0 timeouts en 21,7 s
+--- pyc de dev_server tras la campaña ---
+  NO existe __pycache__ en postventa-front: no se ha escrito bytecode
+--- suite del front inmediatamente después ---
+74 passed in 1.65s
+```
+
+**No queda ni un `.pyc`**, y la suite del front pasa **inmediatamente después**
+de la campaña: exactamente el escenario que antes la ponía en rojo con el árbol
+limpio. Y los totales vuelven a ser **20 / 17 / 3**, los mismos de la 1.ª
+ronda: confirma otra vez que aquellos números no estaban falseados.
+
+Los **16 worktrees huérfanos** están limpiados: `git worktree list` pasa de 19
+a **3** (el principal y dos de agente, ajenos a esto). **O4 cerrado.**
+
+## 13.4 · La regla del coste por mutante, mejorada — y un matiz
+
+El factor de workers es una **corrección real y necesaria** a mi P6, y la
+acepto: la campaña es paralela por defecto y su «Tiempo total» es tiempo de
+reloj. Sin el factor, toda campaña paralela sana se marca como sospechosa, y
+*una regla que salta en falso se desactiva sola a la tercera vez*. Que
+«Evidencias» declare ahora los workers es lo que la hace comprobable.
+
+**El matiz, para que quede escrito**: la fórmula
+`total × workers ÷ mutantes` supone que **todos** los workers están saturados.
+Cuando hay más workers que mutantes —16 y 20, el caso de esta misma feature— la
+mayoría queda ociosa enseguida y la fórmula **sobreestima**: da 8,9 s donde el
+ciclo real por mutante del servicio `front` es 0,86 s. Es decir, **en esa
+configuración la regla no habría marcado la campaña envenenada**.
+
+Lo que la salva es su segunda mitad, que ya está en el texto: «**o muy por
+debajo del tiempo de la suite que el propio informe declara**». Ese es el
+criterio robusto —el coste por mutante no puede bajar de lo que tarda la
+suite— y funciona con y sin paralelismo. **No pido cambiarlo**; sugiero que en
+`arnes-base` la comparación contra el tiempo de la suite se presente como el
+criterio **principal**, el umbral de un segundo como atajo, y que el factor use
+`min(workers, mutantes)`.
+
+## 13.5 · Sobre `ARNES_VERSION=1.5.2` frente a `arnes-base` 1.6.3
+
+El líder pregunta si el desfase es un defecto a corregir dentro de F-010.
+**Mi criterio: no — y además está bien documentado, mejor de lo que la
+pregunta sugiere.**
+
+`harness/ARNES_VERSION.md` **no finge nada**. Dice literalmente que este
+repositorio **no lleva la 1.6.x completa**, que `harness/VERSION` sigue en
+`1.5.2` **a propósito**, que de la rama 1.6 se ha traído **únicamente** el
+parche de la 1.6.3, y que 1.6.0/1.6.1/1.6.2 están pendientes — con el motivo
+concreto: **la 1.6.0 rehace `harness/mutacion.py` entero** (línea base de la
+suite, veredicto «base rota», mutación de `is`/`is not`) y **sus números no son
+comparables** con los de antes.
+
+Eso es exactamente para lo que existe ese fichero. Sellar `VERSION=1.6.3`
+sería **mentir**, y es el mismo pecado que acabo de hacer corregir en la
+cabecera de `desplegar_front.ps1`. Y traerse la 1.6.x entera dentro de F-010
+sería peor: metería un motor de mutación **reescrito y sin revisar** en mitad
+de una review, invalidando las campañas que acabo de verificar, dentro de una
+feature de despliegue. Eso es el LÍMITE DE SERVICIO de `CLAUDE.md`.
+
+**Trabajo aparte, y recomiendo que sea el siguiente.** El dato que lo justifica
+lo aporta el propio líder: en `arnes-base` hay un encargo del **2026-08-19**,
+escrito desde `datamart-seg-anual`, que describe **este mismo defecto del
+bytecode** y lo arregló allí como **1.6.0**. Es decir: **hemos gastado una
+review entera redescubriendo un fallo ya resuelto río arriba**. Ese es el coste
+real del desfase, medido y con fecha, y es el mejor argumento para no dejarlo
+crecer. Propongo darlo de alta como feature de arnés, con la 1.6.0 revisada
+aparte por lo que toca del motor de mutación.
+
+## 13.6 · Portero, suites y árbol
+
+Ejecutado todo por mí, con `__pycache__` borrada antes:
+
+| Comprobación | Resultado |
+|---|---|
+| `bash harness/init.sh` | **VERDE** — `ENTORNO LISTO` |
+| Suite raíz del arnés | **17 pasados** (16 + el nuevo del bytecode) |
+| Suite `api` | **1.070 pasados**, 13 saltados, 14,7 s |
+| `test_f010_scripts_infra.py` | **110 pasados**, 3 saltados |
+| Suite `front` | **74 pasados**, 1,65 s |
+| PUERTA COBERTURA | **[OK] 98,3 %** de 116 líneas (114/116, umbral 80 %) |
+| `ruff` | 56 avisos, **la misma deuda previa**, ninguno nuevo |
+| `git status` | **limpio** |
+| `git worktree list` | 3 (era 19) |
+
+Comprobado además que el nuevo test de R6 **no se salta donde importa**: de sus
+tres parametrizaciones, las dos que se saltan son scripts sin `try/finally`
+(con su motivo impreso) y la que **se ejecuta es `desplegar_front.ps1`**, que
+es justo el script del defecto.
+
+---
+
+# 14 · VEREDICTO DE LA SEGUNDA RONDA
+
+# APROBADO
+
+Los cinco defectos están corregidos **y los tests que los daban por buenos
+están corregidos con ellos** — que era la condición que puse y la única que
+importaba de verdad. Tres correcciones van **más allá** de lo pedido (el
+`$ventanaOk` del veredicto, el código de salida propio del Key Vault con su
+guarda de existencia, y el recuento de credenciales en el resumen), y ninguna
+ha tocado nada de lo aprobado en la 1.ª ronda.
+
+Los tres encargos que acepté están cumplidos: la regla del coste por mutante
+está en `CHECKPOINTS.md` **y mejorada**, los worktrees huérfanos limpiados, y
+el arreglo del arnés portado a `arnes-base` 1.6.3 con test propio y verificado
+por mí ejecutándolo.
+
+**F-010 queda APROBADA a la espera de que el humano ejecute las nueve tareas
+`MANUAL (humano)`.** Siguen intactas las condiciones de cierre de §11, y
+subrayo las dos que no son formalidades:
+
+- **T14 bis —tope de gasto y alerta en el proveedor de IA— va ANTES de T16.**
+  En cuanto el front esté publicado, `/api/extraer` y `/api/firma` son
+  alcanzables, y son anónimos por diseño.
+- **T18 exige autorización expresa nombrando `CHECKPOINTS.md` C5**, porque
+  cierra una casilla de F-006. Y un fichero con sufijo `(1)` es **PARADA**.
+
+`F-010` **sigue `in_progress`**: no pasa a `done` hasta que esas nueve estén
+ejecutadas y anotadas con su resultado real.
 

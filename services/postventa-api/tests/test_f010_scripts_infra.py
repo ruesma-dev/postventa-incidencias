@@ -46,6 +46,9 @@ SCRIPT_VARS = INFRA / "00_vars_postventa.ps1"
 #: T4 · crea o reutiliza el Key Vault y sube los once secretos.
 SCRIPT_SECRETOS = INFRA / "cargar_secretos_postventa.ps1"
 
+#: T5 · el backend: recursos, identidad, referencias a Key Vault y publicacion.
+SCRIPT_BACKEND = INFRA / "desplegar_backend.ps1"
+
 #: T6 · el front: registro de aplicacion, Static Web App y enlace del backend.
 SCRIPT_FRONT = INFRA / "desplegar_front.ps1"
 
@@ -401,6 +404,182 @@ def test_f010_r7_ningun_script_repite_un_nombre_de_recurso(script):
 
     texto = script.read_text(encoding="ascii")
     culpables = [nombre for nombre in NOMBRES_DE_RECURSO if nombre in texto]
+
+    assert culpables == []
+
+
+# --- T5 · el despliegue del backend -----------------------------------------
+#
+# El primero de este bloque -R33, la ventana de escritura- es el que se
+# escribio ANTES que el script y se le vio fallar. La traza de ese fallo esta
+# en `progress/impl_F-010.md`. No es ceremonia: es el unico requisito de esta
+# feature cuyo incumplimiento pone un servicio que escribe en SharePoint al
+# alcance de cualquiera que sepa el nombre de host.
+
+
+@pytest.fixture
+def backend() -> str:
+    return SCRIPT_BACKEND.read_text(encoding="ascii")
+
+
+def test_f010_r33_el_despliegue_deja_la_ventana_de_escritura_cerrada(backend):
+    """R33 · `ARCHIVO_HABILITADO` se despliega **apagado**. FASE RED.
+
+    Es el candado principal de todo el despliegue (`design.md` seccion 9 bis,
+    capa 3). La Function App queda anonima porque la plataforma lo exige, asi
+    que lo unico que impide que un desconocido suba un PDF a SharePoint es que
+    esta App Setting valga `false` el dia que el servicio sale a internet.
+
+    El valor por defecto del codigo ya es `false`, pero eso no basta: el
+    servicio se despliega con `ENTORNO=dev`, y en dev la otra puerta -la que
+    impide subir desde un puesto de trabajo- esta abierta por diseno. Si el
+    script no fija la App Setting explicitamente, basta que alguien la
+    encienda una vez y se olvide para que quede encendida para siempre.
+
+    Por eso se comprueba que la fija, que la fija en `false`, y que en ninguna
+    parte del script la pone en `true`.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert "ARCHIVO_HABILITADO=false" in cuerpo
+    assert "ARCHIVO_HABILITADO=true" not in cuerpo
+
+
+def test_f010_r33_el_script_explica_por_que_la_ventana_nace_cerrada(backend):
+    """R33 · y por que no se enciende "ya que estamos".
+
+    Un `false` sin explicacion es un `false` que el siguiente cambia. La
+    cabecera tiene que decir que se enciende a mano, solo cuando toca, y que
+    se vuelve a apagar.
+    """
+    assert "ventana de escritura" in backend.lower()
+    assert "503" in backend
+    assert "se apaga" in backend.lower() or "se vuelve a apagar" in backend.lower()
+
+
+def test_f010_t5_el_script_del_backend_existe():
+    assert SCRIPT_BACKEND.is_file()
+
+
+def test_f010_r10_los_secretos_van_por_referencia_a_key_vault(backend):
+    """R10 · ninguna App Setting con un secreto dentro. Ninguna.
+
+    La forma de la referencia es `@Microsoft.KeyVault(SecretUri=...)`, y la
+    resuelve la identidad gestionada en tiempo de arranque. Lo que queda en la
+    configuracion de la Function App es una URI, no una credencial: quien
+    tenga acceso de lectura a las App Settings ve el nombre del secreto, no su
+    valor.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert "@Microsoft.KeyVault(SecretUri=" in cuerpo
+    assert "$PostventaAppSettingsSecretas" in cuerpo
+
+
+def test_f010_r11_el_rol_sobre_el_key_vault_va_antes_de_las_app_settings(backend):
+    """R11 · y se comprueba que ha quedado puesto.
+
+    El orden importa de verdad: si las referencias se fijan antes de que la
+    identidad pueda leer el vault, la Function App arranca sin poder
+    resolverlas y falla en tiempo de ejecucion, con un error que no dice que
+    el problema es un rol. Mejor fallar aqui, con un mensaje que lo diga.
+    """
+    cuerpo = sin_comentarios(backend)
+    posicion_rol = cuerpo.find("az role assignment create")
+    posicion_settings = cuerpo.find("az functionapp config appsettings set")
+
+    assert -1 < posicion_rol < posicion_settings
+    assert "$SALIDA_SIN_PERMISO_KEYVAULT" in cuerpo
+    assert "Key Vault Secrets User" in cuerpo
+
+
+def test_f010_r20_los_tiempos_de_espera_caben_en_el_presupuesto(backend):
+    """R20 · por debajo de los 45 s del proxy, y con margen.
+
+    El escalonado completo: la IA abandona a los 35 s, el front a los 40 y el
+    proxy corta a los 45. Cada capa cede antes que la de fuera, para que el
+    usuario reciba NUESTRO error explicado y no un corte opaco de la
+    plataforma con una llamada zombi por detras gastando cuota.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    # Los dos numeros viven en una constante con nombre, no repartidos por el
+    # script: se comprueba la constante Y que la App Setting la usa. Si alguien
+    # cambia el numero, este test lo ve; si alguien deja de usar la constante y
+    # escribe el numero a mano en la App Setting, tambien.
+    constantes = {
+        nombre: int(valor)
+        for nombre, valor in re.findall(r"\$(TIEMPO_\w+_S) = (\d+)", cuerpo)
+    }
+
+    assert constantes["TIEMPO_IA_S"] == 35
+    assert constantes["TIEMPO_GRAPH_S"] == 35
+    assert "IA_TIMEOUT_S=$TIEMPO_IA_S" in cuerpo
+    assert "GRAPH_TIMEOUT_S=$TIEMPO_GRAPH_S" in cuerpo
+
+    # Y lo que de verdad importa: los dos por debajo del corte del proxy, con
+    # margen para el front, que aborta a los 40.
+    for nombre, valor in constantes.items():
+        assert valor < 40, f"{nombre} no deja que el front aborte primero"
+        assert valor < 45, f"{nombre} no cabe en el presupuesto del proxy"
+
+
+def test_f010_r28_ninguna_variable_de_sigrid_entra_en_el_despliegue(backend):
+    """R28 · el ERP no se toca en este piloto, y eso empieza por no configurarlo.
+
+    F-008 y F-009 estan fuera a proposito. Una variable `SIGRID_*` colada aqui
+    seria la primera pieza de un cierre en produccion que nadie ha aprobado.
+    """
+    assert re.findall(r"\bSIGRID_[A-Z_]+", backend) == []
+
+
+def test_f010_r2_cada_recurso_se_crea_solo_si_no_existe(backend):
+    """R2 · re-ejecutable: la segunda vez reutiliza y termina en 0.
+
+    Se comprueba que cada `create` tiene su comprobacion de existencia
+    delante, y no de cualquier manera: la comprobacion tiene que estar ANTES
+    en el texto, que es lo que hace que el script se pueda lanzar dos veces
+    seguidas sin duplicar nada ni romperse.
+    """
+    cuerpo = sin_comentarios(backend)
+    creaciones = (
+        ("az group create", "Existe-Grupo"),
+        ("az storage account create", "Existe-Almacenamiento"),
+        ("az monitor log-analytics workspace create", "Existe-LogAnalytics"),
+        ("az identity create", "Existe-Identidad"),
+        ("az functionapp create", "Existe-FunctionApp"),
+    )
+
+    for creacion, comprobacion in creaciones:
+        posicion_creacion = cuerpo.find(creacion)
+        posicion_comprobacion = cuerpo.find(comprobacion)
+
+        assert posicion_creacion > -1, f"falta {creacion}"
+        assert -1 < posicion_comprobacion < posicion_creacion, (
+            f"{creacion} no tiene su comprobacion de existencia delante"
+        )
+
+
+def test_f010_t5_la_identidad_gestionada_es_quien_lee_el_vault(backend):
+    """La Function App no lleva credencial para el Key Vault: lleva identidad.
+
+    Es lo que hace que las referencias se resuelvan sin que ningun secreto
+    viaje por una App Setting ni por el script.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert "$PostventaIdentidad" in cuerpo
+    assert "--assign-identity" in cuerpo or "az functionapp identity assign" in cuerpo
+
+
+def test_f010_t5_no_imprime_ningun_identificador(backend):
+    """Su salida se pega en un chat o en un ticket, como la de los demas."""
+    culpables = [
+        linea.strip()
+        for linea in backend.splitlines()
+        if "Write-Host" in linea
+        and re.search(r"\$(identidadId|principalId|vaultId|suscripcion|hostFuncion)\b", linea)
+    ]
 
     assert culpables == []
 

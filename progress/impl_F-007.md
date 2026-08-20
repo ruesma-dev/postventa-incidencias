@@ -918,3 +918,45 @@ demo. Comprueba:
 - que **`-Ayuda` imprime el uso, sale con 0 y no anuncia ningún servidor
   sirviendo**. Si `powershell` no está en el PATH, **falla diciéndolo**, igual
   que con `node` (R32).
+
+---
+
+## T14 · Verificación MANUAL (humano) — PENDIENTE
+
+**No la puede firmar un agente**: hace falta abrir el navegador y soltar un
+parte de verdad. Queda **pendiente del humano** y es la única casilla de F-007
+que no está cerrada por la máquina.
+
+**Terminal A** (backend; una línea por línea, sin `&&`):
+
+```
+cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api
+func start --port 7073
+```
+
+*(Si no existe `local.settings.json`, copiarlo antes de
+`local.settings.json.example` y rellenarlo. El **7073** no es el puerto por
+defecto de `func`: es el que espera el proxy.)*
+
+**Terminal B** (front):
+
+```
+cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front
+.\dev_front.ps1
+```
+
+Los ocho puntos que hay que ver, y anotar aquí el resultado real:
+
+| | Qué hay que ver | Resultado |
+|---|---|---|
+| 1 | `http://localhost:5173/` abre y el semáforo de servicio sale verde (`/api/health` por el proxy) | PENDIENTE |
+| 2 | Al soltar un PDF de remesa, sale el número de partes y la lista | PENDIENTE |
+| 3 | En **DevTools → Red**, procesando la remesa, **nunca más de 6 peticiones a `/api/` en vuelo** (3 partes × 2 llamadas). Es la comprobación visual del criterio 3 | PENDIENTE |
+| 4 | El progreso llega a «M de M» y ningún parte se queda colgado | PENDIENTE |
+| 5 | Al abrir un parte se ve su PDF y sus campos con la confianza | PENDIENTE |
+| 6 | Corregir un campo y revalidar cambia el veredicto **sin** llamar a `/api/extraer` ni a `/api/firma` (se ve en Red) | PENDIENTE |
+| 7 | Archivar responde **503 «este entorno no archiva»**. **Es lo correcto**: la puerta de entorno de F-006 está apagada. **No se toca esa puerta para «arreglarlo»** y desde local **no se sube nada a SharePoint** | PENDIENTE |
+| 8 | En la consola del navegador **no aparece** ningún DNI ni ninguna observación (R28) | PENDIENTE |
+
+**Nada de esa ejecución se copia al repositorio**: los partes de `muestras/`
+llevan datos personales y no se versionan.

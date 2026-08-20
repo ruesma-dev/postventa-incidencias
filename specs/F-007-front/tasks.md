@@ -159,15 +159,26 @@
       imprime la ayuda sin arrancar nada, y `bash harness/init.sh` sigue en
       verde.
 
-- [ ] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4:
+- [x] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4:
       arrancar el front en local contra la Function.
 
       **Terminal A** (backend; una línea por línea, sin `&&`):
 
       ```
       cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api
+      .\.venv\Scripts\Activate.ps1
       func start --port 7073
       ```
+
+      **La línea de `Activate.ps1` no es opcional** (corregido el
+      2026-08-20 al ejecutar la tarea): sin ella `func` arrastra el
+      `.venv` de la raíz del repositorio —el del arnés, sin las
+      dependencias del servicio— y muere con `ModuleNotFoundError: No
+      module named 'pydantic'`. `cd` no cambia el entorno virtual activo.
+
+      Si al abrir el front sale `[WinError 10061] ... el equipo de destino
+      denegó expresamente dicha conexión`, es que **esta terminal no está
+      arrancada**: el proxy está llamando a un puerto vacío.
 
       *(Si no existe `local.settings.json`, copiarlo antes de
       `local.settings.json.example` y rellenarlo. El puerto **7073** no es el

@@ -1198,3 +1198,63 @@ agente, y hay que hacerla **antes de enseñar el front a Posventa**.
 
 Las tres son hechos del entorno o comprobaciones de más, no cambios de
 contrato. Ninguna toca `services/postventa-api/` ni el arnés genérico.
+
+## T14 · MANUAL — EJECUTADA POR EL HUMANO el 2026-08-20. **Funciona.**
+
+Front arrancado en local contra la Function, con la remesa real delante.
+Veredicto del humano, literal: **«funciona a la perfección»**.
+
+### ⚠️ Defecto de la propia T14, encontrado al ejecutarla
+
+**El comando de la tarea no basta.** Tal y como estaba escrito —`cd` al
+servicio y `func start`— **falla siempre** con:
+
+```
+ModuleNotFoundError: No module named 'pydantic'
+```
+
+El motivo está en el `sys.path` del error: `func` arrastra el **`.venv` de la
+raíz del repositorio** —el del arnés, que no tiene las dependencias del
+servicio— porque `cd` no cambia el entorno virtual activo. Hay que activar el
+del servicio primero:
+
+```
+cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api
+.\.venv\Scripts\Activate.ps1
+func start --port 7073
+```
+
+Comprobado: el `.venv` del servicio tiene `pydantic 2.13.4`, `pymupdf`,
+`psycopg` y `httpx`. **T14 se corrige con ese paso intermedio**, porque
+cualquiera que siga la tarea al pie de la letra choca con el mismo error.
+
+Segundo tropiezo, este del humano y no de la tarea: la primera vez solo se
+levantó el front, y el proxy respondió `[WinError 10061] ... el equipo de
+destino denegó expresamente dicha conexión`. Es el síntoma exacto de «la
+Function no está arrancada»; conviene que la tarea lo nombre, porque el
+mensaje de Windows no lo dice.
+
+Ruido esperado que **no** es un fallo: `Unable to create client for
+AzureWebJobsStorage`. En local, sin emulador de almacenamiento, las funciones
+HTTP funcionan igual; solo importaría con disparadores de temporizador o cola,
+que no tenemos.
+
+### Las tres observaciones de diseño → **F-020**
+
+Al ver la pantalla de trabajo con la remesa real, el humano señaló tres cosas.
+**Ninguna es un fallo**: el front hace lo que promete. Son de uso, y se han
+dado de alta como **F-020 · Ajustes de diseño del front**:
+
+1. **El campo de observaciones se queda pequeño** para un texto manuscrito
+   transcrito, que es de longitud variable.
+2. **El PDF se ve pequeño**, que es el problema de fondo: es el documento que
+   la persona está leyendo para decidir, y es lo que menos sitio ocupa.
+3. **La vista del PDF está partida en dos y el reparto está al revés**: la
+   tira de previsualización debe ser muy estrecha, lo justo para navegar, y
+   cederle el espacio a la página.
+
+El criterio que ordena las tres, y que conviene no perder: **en una pantalla
+de revisión, el documento manda y todo lo demás le cede sitio.**
+
+Esto es exactamente lo que una verificación manual sirve para descubrir: nada
+de esto lo habría encontrado un test.

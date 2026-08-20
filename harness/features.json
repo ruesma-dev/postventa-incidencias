@@ -152,7 +152,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 8,
+      "priority": 9,
       "branch": "feature/F-008-modelo-sigrid"
     },
     {
@@ -170,14 +170,14 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 9,
+      "priority": 10,
       "branch": "feature/F-009-cierre-sigrid",
       "blocked_by": "F-008: hasta saber qué hace realmente 'Cerrar parte' y si vale cerrar sin documento adjunto, no se puede especificar esta feature."
     },
     {
       "id": "F-010",
       "title": "Despliegue en Azure y tarjeta en el portal",
-      "description": "Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este.",
+      "description": "Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este. PRIORIDAD SUBIDA EL 2026-08-20 por el humano, por delante de F-008 y F-009 (las dos de Sigrid): quiere que **negocio pruebe el circuito completo desplegado sin tocar Sigrid todavía**. Encaja con lo que ya hay: F-002 a F-007 cubren entrada, extracción, validación, archivo y front, y el cierre en el ERP es justamente lo que queda fuera. Efecto lateral que importa: F-010 es quien **desbloquea T18 de F-006**, la verificación de subida real a SharePoint, que está diferida esperando un entorno desplegado.",
       "acceptance": [
         "Los scripts de infra/ se pueden ejecutar dos veces seguidas sin romper nada",
         "Ningún secreto en el repositorio: App Settings con referencia a Key Vault",
@@ -188,7 +188,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 10,
+      "priority": 8,
       "branch": "feature/F-010-despliegue"
     },
     {
@@ -349,6 +349,24 @@
       "rigor": "estandar",
       "priority": 19,
       "branch": "feature/F-019-endpoints-persistencia"
+    },
+    {
+      "id": "F-020",
+      "title": "Ajustes de diseño del front: el PDF manda en la pantalla",
+      "description": "Tres observaciones del humano al probar el front por primera vez el 2026-08-20 (F-007, T14), con la remesa real delante. Ninguna es un fallo: el front funciona. Son de uso, y salen de mirar la pantalla de trabajo de quien va a revisar 22 partes seguidos. (1) **El campo de observaciones se queda pequeño**: es texto manuscrito transcrito, de longitud variable, y hay que poder leerlo y corregirlo entero sin pelearse con una caja de una línea. (2) **El PDF se ve pequeño**, que es el problema de fondo: el documento es lo que la persona está leyendo para decidir, y hoy es lo que menos sitio ocupa. (3) **La vista del PDF está partida en dos** —a la izquierda la previsualización de páginas, a la derecha la página— y el reparto está al revés: la tira de previsualización debe ser **muy estrecha**, lo justo para navegar, y cederle el espacio a la página. Criterio que ordena las tres: en una pantalla de revisión, el documento manda y todo lo demás le cede sitio.",
+      "acceptance": [
+        "El campo de observaciones permite leer y editar un texto largo sin recortarlo ni obligar a desplazarse por una caja de una línea",
+        "La página del PDF ocupa la mayor parte del ancho de la vista de documento",
+        "La tira de previsualización de páginas es estrecha y no compite con la página por el espacio",
+        "La revisión de un parte se puede hacer sin hacer zoom del navegador",
+        "Sigue sin aparecer ningún dato personal en consola, localStorage, sessionStorage ni URL (R28-R30 de F-007)",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "documental",
+      "priority": 20,
+      "branch": "feature/F-020-diseno-front"
     }
   ]
 }

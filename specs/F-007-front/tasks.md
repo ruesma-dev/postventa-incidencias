@@ -32,7 +32,7 @@
 
 ## Fase 0 · Recuperar lo que ya existe
 
-- [ ] **T1**: Recuperar el esqueleto del front desde la rama que lo guarda,
+- [x] **T1**: Recuperar el esqueleto del front desde la rama que lo guarda,
       sin reescribir nada:
       `git checkout feature/F-007-front -- services/postventa-front`
       Deben aparecer los seis ficheros de `design.md` §1.

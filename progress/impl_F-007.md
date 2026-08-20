@@ -945,18 +945,52 @@ cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front
 .\dev_front.ps1
 ```
 
-Los ocho puntos que hay que ver, y anotar aquí el resultado real:
+Los diez puntos, con el **resultado real** de la ejecución del humano del
+2026-08-20. Veredicto suyo, literal: **«funciona a la perfección»**.
 
 | | Qué hay que ver | Resultado |
 |---|---|---|
-| 1 | `http://localhost:5173/` abre y el semáforo de servicio sale verde (`/api/health` por el proxy) | PENDIENTE |
-| 2 | Al soltar un PDF de remesa, sale el número de partes y la lista | PENDIENTE |
-| 3 | En **DevTools → Red**, procesando la remesa, **nunca más de 6 peticiones a `/api/` en vuelo** (3 partes × 2 llamadas). Es la comprobación visual del criterio 3 | PENDIENTE |
-| 4 | El progreso llega a «M de M» y ningún parte se queda colgado | PENDIENTE |
-| 5 | Al abrir un parte se ve su PDF y sus campos con la confianza | PENDIENTE |
-| 6 | Corregir un campo y revalidar cambia el veredicto **sin** llamar a `/api/extraer` ni a `/api/firma` (se ve en Red) | PENDIENTE |
-| 7 | Archivar responde **503 «este entorno no archiva»**. **Es lo correcto**: la puerta de entorno de F-006 está apagada. **No se toca esa puerta para «arreglarlo»** y desde local **no se sube nada a SharePoint** | PENDIENTE |
-| 8 | En la consola del navegador **no aparece** ningún DNI ni ninguna observación (R28) | PENDIENTE |
+| 1 | `http://localhost:5173/` abre y el semáforo de servicio sale verde (`/api/health` por el proxy) | **OK** — `health` responde 200 |
+| 2 | Al soltar un PDF de remesa, sale el número de partes y la lista | **OK** — `split` responde 200 (7,2 MB de entrada) y la lista se pinta |
+| 3 | En **DevTools → Red**, procesando la remesa, **nunca más de 6 peticiones a `/api/` en vuelo** (3 partes × 2 llamadas) | **OK** — ver abajo |
+| 4 | El progreso llega a «M de M» y ningún parte se queda colgado | **OK** — todas las peticiones en 200, ninguna colgada ni fallida |
+| 5 | Al abrir un parte se ve su PDF y sus campos con la confianza | **OK** |
+| 6 | Corregir un campo y revalidar cambia el veredicto **sin** llamar a `/api/extraer` ni a `/api/firma` | **OK** — ver abajo |
+| 7 | Archivar responde **503 «este entorno no archiva»** | **OK** — «archivar correcto» |
+| 8 | En la consola del navegador **no aparece** ningún DNI ni ninguna observación (R28) | **OK** — ver abajo |
+| 9 | **R19** · el primer clic en archivar **no dispara**: pide confirmación, y solo el segundo actúa | **OK** |
+| 10 | **R22** · la respuesta de archivar se pinta en el resumen | **OK** |
+
+### La evidencia de los tres puntos que solo se ven en DevTools
+
+**Punto 3 · la concurrencia.** Captura de la pestaña Red aportada por el humano
+(no se versiona). La cascada muestra **tandas escalonadas de unas seis barras
+solapadas**, con huecos entre grupos, en vez de las 44 llamadas de la remesa
+disparadas a la vez. El patrón por parte es el esperado —`extraer` y `firma` en
+paralelo, y `validar` después—, todas en **200**. Es la comprobación **visual**
+que pedía el criterio de aceptación 3, y la que une los tests de `js/cola.js`
+con el navegador real. Precisión honesta: es una **lectura de la cascada**, no
+un recuento instante a instante; lo que descarta es justo lo que preocupaba,
+que una remesa larga dispare N peticiones simultáneas.
+
+**Punto 6 · revalidar no reprocesa.** Traza real de la consola al revalidar un
+campo corregido:
+
+```
+{hash: 'e2cd481b…', paso: 'validar', estado: 'ok', http: 200}
+```
+
+**Un solo registro, y su paso es `validar`.** Si el front hubiera reprocesado,
+al lado habría registros de `extraer` y de `firma`. No los hay: corregir un
+campo a mano **no gasta ni una llamada de IA**, que es lo que R17 promete.
+
+**Punto 8 · la consola no publica datos personales.** Esa misma traza enseña
+**exactamente cuatro claves** —`hash`, `paso`, `estado`, `http`— y ninguna más.
+Es `js/traza.js` haciendo su trabajo: acepta esas cuatro y **tira el resto**,
+así que un descuido futuro que intente registrar el DNI o las observaciones no
+llega a la consola. Es un filtro con test, no una buena intención. El `hash` es
+el SHA-256 del contenido del parte: identifica al parte **sin nombrarlo**, y no
+es dato personal.
 
 **Nada de esa ejecución se copia al repositorio**: los partes de `muestras/`
 llevan datos personales y no se versionan.

@@ -212,7 +212,7 @@
       **explicados** (`CHECKPOINTS.md` C4 bis). Si la campaña baja de 5
       minutos, el reviewer la reejecutará: se deja el árbol limpio.
 
-- [ ] **T16**: Ejecutar `bash harness/init.sh` **en verde** (exit 0), con la
+- [x] **T16**: Ejecutar `bash harness/init.sh` **en verde** (exit 0), con la
       suite del front ejecutándose y `PUERTA COBERTURA` en `[OK]` (umbral
       80 %), y escribir el informe `progress/impl_F-007.md` con la sección
       **Evidencias**: tests ejecutados y resultado, cobertura de las líneas

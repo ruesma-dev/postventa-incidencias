@@ -1,52 +1,50 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-08-20 · **F-006 IMPLEMENTADA, a la espera de revisión**
+> ## Estado al 2026-08-20 · **F-007 IMPLEMENTADA, a la espera de revisión**
 >
-> La implementación está terminada en `feature/F-006-sharepoint`. El informe
-> completo —fases RED con su traza, decisiones, desviaciones y evidencias— está
-> en **`progress/impl_F-006.md`**; la campaña de mutación, en
-> `progress/mutacion_F-006.md`.
+> La implementación está terminada en `feature/F-007-front`. El informe
+> completo —las cinco fases RED con su traza real, las decisiones, las tres
+> desviaciones y la sección **Evidencias**— está en
+> **`progress/impl_F-007.md`**; la campaña de mutación, en
+> `progress/mutacion_F-007.md`.
 >
-> **Números medidos**: 895 tests en verde (+213), cobertura de líneas cambiadas
-> **98,2 %** (336/342, umbral 80 %), **64 mutantes / 59 muertos / 5
-> supervivientes**, 0 timeouts, y `bash harness/init.sh` con **exit code 0**.
+> **Números medidos**: **158 tests nuevos** del front en verde (74 de `pytest`
+> + 84 de `node --test`), 1.014 en todo el repositorio; cobertura de líneas
+> cambiadas **98,3 %** (114/116, umbral 80 %, nivel `estandar`); **20 mutantes
+> / 17 muertos / 3 supervivientes**, 0 timeouts, los tres analizados y ninguno
+> en `PENDIENTE`; **0 avisos nuevos de `ruff`**; y `bash harness/init.sh` con
+> **exit code 0**.
 >
-> **19 de 21 tareas `[x]`.** Las dos abiertas lo están a propósito:
+> **15 de 16 tareas `[x]`.** La única abierta es **T14**, `MANUAL (humano)`:
+> arrancar el front en local contra la Function y comprobar los ocho puntos
+> —entre ellos que en DevTools nunca hay más de 6 peticiones a `/api/` en
+> vuelo, y que en la consola no aparece ningún DNI—. Está lista para ejecutar,
+> con sus dos terminales en líneas cortas, en `specs/F-007-front/tasks.md` y
+> repetida en el informe.
 >
-> - **T17** — `MANUAL (humano)`, **lista para ejecutar**: D6 se resolvió el
->   2026-08-20. Su comando exacto está en `specs/F-006-sharepoint/tasks.md`.
->   El script es de **solo lectura** y no sube nada.
-> - **T18** — `MANUAL (humano)`, **DIFERIDA a F-010** por decisión del humano
->   del 2026-08-19 (D3, opción (a)). Su script se entrega dentro de F-006; lo
->   que se aplaza es ejecutarlo.
+> ### Lo que el humano tiene que saber antes de cerrar
 >
-> **T19 quedó N/A** por la decisión del 2026-08-20 (el humano no commitea en
-> `azure-apps`), escrita y fechada en la propia tarea.
+> 1. **Autorizar el cierre con T14 pendiente** ante `CHECKPOINTS.md` **C5**,
+>    que pide todas las tareas `[x]`; o ejecutarla antes. Mismo caso que T18 de
+>    F-006: es lo que motiva **F-017**.
+> 2. **El front NO persiste nada** (decisión D4 del 2026-08-20). Recargar la
+>    pestaña pierde el trabajo de revisión y hay que volver a subir la remesa.
+>    Se aceptó para el piloto, y la solución está dada de alta como
+>    **F-019 · Endpoints de persistencia**, que es de `postventa-api`. Hay un
+>    test que impide tomar el atajo de `localStorage`: los partes llevan DNI y
+>    observaciones de clientes.
+> 3. **Archivar desde un puesto de trabajo responde 503 y eso es lo correcto.**
+>    El front lo pinta en azul, no en rojo, con el texto «este entorno no
+>    archiva». **No se toca la puerta de entorno de F-006 para «arreglarlo».**
 >
-> ### Tres cosas que el humano tiene que decidir antes del cierre
+> ### Dos hechos del entorno que cambiaron un comando de la spec
 >
-> 1. **Autorizar el cierre con T18 pendiente** ante `CHECKPOINTS.md` **C5**,
->    que pide todas las tareas `[x]`. Sin esa autorización por escrito, el
->    veredicto correcto del reviewer es `CHANGES_REQUESTED`. Es el caso que
->    motiva **F-017**.
-> 2. **Aceptar el análisis de los 5 mutantes supervivientes**, como pide el
->    nivel `critico`. Los cinco están analizados y ninguno queda `PENDIENTE`;
->    los cinco son equivalentes o constantes de operación, y **ninguno** toca
->    el nombrado, la puerta de entorno ni la idempotencia.
-> 3. **Tener presente el riesgo aceptado de permisos** (2026-08-20): la
->    aplicación puede escribir hoy en cualquier sitio de SharePoint del
->    inquilino. Documentado en `design.md` §9 y en `docs/INTEGRACION.md` §3, y
->    lo recorta **F-018**.
->
-> **Ninguna subida real a SharePoint se ha hecho** desde local ni desde los
-> tests, y no ha entrado en el repositorio ni un identificador de inquilino,
-> sitio, biblioteca o aplicación.
-
-> **F-005 quedó CERRADA, APROBADA y MERGEADA a `dev`** el 2026-08-20, con
-> squash. Su resumen vive en `progress/history.md` y el detalle en
-> `progress/impl_F-005.md` y `progress/review_F-005.md`. **Nada de F-005 sigue
-> pendiente**: lo que se lee más abajo sobre ella es contexto, no tarea.
+> - **`node --test "tests_js/*.test.js"`**, no `node --test tests_js`: desde
+>   Node 24 un directorio como argumento se carga como módulo y muere con
+>   `MODULE_NOT_FOUND` sin descubrir ningún test.
+> - **`.\dev_front.ps1 -Ayuda`**, no `-?`: con `powershell -File`,
+>   PowerShell 5.1 no imprime nada con `-?`.
 
 ## Cómo se mergeó F-005, y por qué importa para la próxima
 

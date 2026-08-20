@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-007.md -->
 # F-007 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-007` el 2026-08-20 11:25.
+Generado por `python -m harness.mutacion --feature F-007` el 2026-08-20 11:26.
 
 ## Alcance
 
@@ -21,7 +21,7 @@ Origen del diff: **rama** (`0705d881d4a1c329006db5fe970c45bcb93c2e75` .. `featur
 | Muertos | 17 |
 | Supervivientes | 3 |
 | Timeouts | 0 |
-| Tiempo total | 13.6 s |
+| Tiempo total | 12.1 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
@@ -59,6 +59,8 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 > Nivel `estandar`: no se exigen cero supervivientes, se exige que estén
 > explicados (`CHECKPOINTS.md` C4 bis).
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 2. `services/postventa-front/dev_server.py:171` [entero]
 
 - Original: `log.info("=" * 60)`
@@ -90,6 +92,8 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 > Nivel `estandar`: no se exigen cero supervivientes, se exige que estén
 > explicados (`CHECKPOINTS.md` C4 bis).
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 3. `services/postventa-front/dev_server.py:175` [entero]
 
 - Original: `log.info("=" * 60)`
@@ -120,4 +124,6 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 >
 > Nivel `estandar`: no se exigen cero supervivientes, se exige que estén
 > explicados (`CHECKPOINTS.md` C4 bis).
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 

@@ -1021,3 +1021,180 @@ gente a no fiarse de la suite.
 > **exige el árbol limpio**. La primera vez avisó de ello y no arrancó; se
 > commiteó y se relanzó. El árbol queda limpio para que el reviewer la
 > reejecute: baja de 15 s.
+
+---
+
+## T16 · Portero en verde e informe — HECHA
+
+### `ruff`: cero avisos nuevos
+
+El portero pasó de **56 a 66 avisos** al añadir la suite del front. Los diez
+eran míos (orden de imports, `noqa` de una regla no activada, comillas
+sobrantes en anotaciones, alias `re.I`), no deuda previa, así que se
+corrigieron:
+
+```
+$ python -m ruff check services/postventa-front --fix --output-format=concise
+Found 10 errors (10 fixed, 0 remaining).
+$ python -m ruff check services/postventa-front --output-format=concise
+All checks passed!
+```
+
+`init.sh` vuelve a decir **56 avisos**, exactamente la deuda que había antes de
+F-007: **la feature no añade ni uno**.
+
+### Portero completo, salida real
+
+```
+$ bash harness/init.sh
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] Python: Python 3.12.7
+[OK] Existe CLAUDE.md
+[OK] Existe CHECKPOINTS.md
+[OK] Existe harness/features.json
+[OK] Existe harness/rigor.json
+[OK] Existe specs/SPECS.md
+[OK] Existe progress/current.md
+[OK] Existe progress/history.md
+[OK] Existe docs/ARCHITECTURE.md
+[OK] Existe docs/CONVENTIONS.md
+    19 features, 13 abiertas, en curso: ['F-007'], bloqueadas: ninguna
+[OK] features.json válido
+[OK] BACKLOG.md al día
+    niveles: critico, documental, estandar; por defecto critico; umbral de cobertura 80%
+[OK] harness/rigor.json y niveles declarados: válidos
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 56 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+................                                                         [100%]
+16 passed in 0.51s
+[OK] pytest en verde (con medición de cobertura)
+    2 servicio(s): api (python), front (python)
+[OK] harness/servicios.json válido
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+........................................................................ [ 97%]
+..                                                                       [100%]
+74 passed in 1.80s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 98.3% de 116 líneas cambiadas cubiertas (114/116, umbral 80%, nivel estandar)
+[OK] Rama actual: feature/F-007-front
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+
+EXIT=0
+```
+
+---
+
+# Evidencias
+
+Números **medidos**, no estimados, sobre el árbol final de la rama.
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados (F-007)** | **158 en verde, 0 rojos**: 74 de `pytest` en el servicio `front` + 84 de `node --test` | `python -m pytest -q` y `node --test "tests_js/*.test.js"` en `services/postventa-front` |
+| **Tests del repositorio entero** | **1.014 en verde, 10 saltados**: 16 (raíz) + 924 (+10 skips, `api`) + 74 (`front`) | `bash harness/init.sh` |
+| **Cobertura de las líneas cambiadas** | **98,3 % (114/116)**, umbral 80 %, nivel `estandar` → `[OK]` | línea `PUERTA COBERTURA` de `bash harness/init.sh` |
+| **Mutantes generados / evaluados** | **20 / 20** (campaña completa, sin muestreo) | `python -m harness.mutacion --feature F-007` |
+| **Mutantes muertos** | **17** | ídem |
+| **Supervivientes** | **3**, todos analizados; **0 secciones en `PENDIENTE`** | `progress/mutacion_F-007.md` |
+| **Timeouts de mutación** | **0** | ídem |
+| **Tiempo de la campaña de mutación** | **12,1 s** | ídem |
+| **Tiempo de la suite del front** | **1,80 s** (`pytest`, incluye el puente a `node`); los 84 tests JS solos, **0,35 s** | salida de cada suite |
+| **Tiempo de la suite de la raíz** | **0,51 s** | `bash harness/init.sh` |
+| **Tiempo de la suite de la api** | **23,31 s** (924 tests; **no la toca F-007**) | la suite del servicio `api` |
+| **Tiempo del portero completo** | **~10 s** (con la caché de suite del servicio `api`) | cronometrado sobre `bash harness/init.sh` |
+| **Avisos de `ruff` añadidos por F-007** | **0** (el portero sigue en los 56 de deuda previa) | `bash harness/init.sh` |
+
+Las **2 líneas de 116 sin cubrir** son `DevHandler.__init__` —llama al
+`__init__` del handler de la biblioteca estándar, que exige un socket
+aceptado— y el `sys.exit(main())` del `if __name__ == "__main__"`. Cubrirlas
+exigiría levantar un servidor real, que es lo que R33 prohíbe.
+
+## Ficheros tocados
+
+**Nuevos (20):**
+
+```
+services/postventa-front/README.md
+services/postventa-front/dev_front.ps1
+services/postventa-front/js/api.js
+services/postventa-front/js/cola.js
+services/postventa-front/js/pipeline.js
+services/postventa-front/js/seleccion.js
+services/postventa-front/js/traza.js
+services/postventa-front/tests/conftest.py
+services/postventa-front/tests/test_f007_declaracion.py
+services/postventa-front/tests/test_f007_dev_front_ps1.py
+services/postventa-front/tests/test_f007_dev_server.py
+services/postventa-front/tests/test_f007_documentacion.py
+services/postventa-front/tests/test_f007_estaticos.py
+services/postventa-front/tests/test_f007_js.py
+services/postventa-front/tests/test_f007_sin_datos_reales.py
+services/postventa-front/tests_js/api.test.js
+services/postventa-front/tests_js/cola.test.js
+services/postventa-front/tests_js/pipeline.test.js
+services/postventa-front/tests_js/seleccion.test.js
+services/postventa-front/tests_js/traza.test.js
+```
+
+**Modificados (5):**
+
+```
+harness/servicios.json                     <- se declara el servicio `front`
+services/postventa-front/index.html        <- la pantalla real + los 7 scripts
+services/postventa-front/js/app.js         <- pegamento de Alpine
+services/postventa-front/js/config.js      <- las cinco constantes nuevas
+specs/F-007-front/tasks.md                 <- casillas marcadas
+```
+
+**Recuperados sin tocar (2):** `dev_server.py` y `staticwebapp.config.json`.
+
+**NO se ha tocado ni un fichero de `services/postventa-api/`**, ni
+`harness/*.py`, ni `harness/init.sh`, ni `CHECKPOINTS.md`, ni `specs/SPECS.md`.
+El arnés genérico sale intacto de F-007 (decisión D1: opción O2 descartada).
+
+## Los siete criterios de aceptación
+
+| | Criterio | Estado |
+|---|---|---|
+| 1 | Soltar PDF / ZIP / carpeta y ver el progreso por parte | **Hecho** (R1–R6, R9). Comprobación visual: T14 |
+| 2 | Cada parte con su veredicto, campos y PDF, editable antes de confirmar | **Hecho** (R13–R18). Comprobación visual: T14 |
+| 3 | Concurrencia limitada: una remesa larga no dispara N peticiones | **Hecho y probado**: `CONCURRENCIA_PARTES: 3` (D2) y 13 tests de la cola, incluido el del **máximo simultáneo observado** sobre las 22 tareas de una remesa como la de Mirasierra |
+| 4 | Arranca en local con `dev_server.py` contra `func start` | **Hecho**; su comprobación es **MANUAL (T14)**, pendiente del humano |
+| 5 | El servicio `front` declarado en `harness/servicios.json`: hoy nadie comprueba el front | **Hecho**. El portero ejecuta 158 tests del front y se pone en rojo si fallan |
+| 6 | Decidido y documentado cómo se trata `dev_server.py` frente a la puerta de cobertura | **Hecho**: D1/O1 en `design.md` §9 y en el `README.md` del front, con las cuatro opciones descartadas y su motivo, y 8 tests que vigilan que siga escrito |
+| 7 | `bash harness/init.sh` en verde | **Hecho**, exit 0 |
+
+## Verificaciones MANUAL pendientes
+
+Una sola: **T14** (R36 y criterio de aceptación 4), con sus ocho puntos
+detallados más arriba. Es la única casilla de F-007 que no puede firmar un
+agente, y hay que hacerla **antes de enseñar el front a Posventa**.
+
+## Lo que queda fuera del alcance, y de quién es
+
+| Qué | De quién |
+|---|---|
+| **Persistir** la remesa, los partes y las validaciones. Hoy recargar la pestaña pierde el trabajo de revisión (**D4**) | **F-019 · Endpoints de persistencia**, en `postventa-api` |
+| Pintar la **cola de validación humana** guardada entre sesiones | Necesita esos endpoints: después de F-019 |
+| Login, `/.auth/me`, resolver `<TENANT_ID>`, desplegar la Static Web App | **F-010** |
+| Cerrar la incidencia en Sigrid y su botón | **F-008 / F-009** (y un endpoint nuevo en otro repositorio) |
+| Ingesta desde buzón de correo | **F-011** |
+| Reagrupar el parte de dos hojas | **F-014** |
+
+## Desviaciones respecto a la spec, todas documentadas arriba
+
+1. **`node --test "tests_js/*.test.js"`** en vez de `node --test tests_js`:
+   desde Node 24, un directorio como argumento se intenta cargar como módulo y
+   la ejecución muere con `MODULE_NOT_FOUND` sin descubrir ningún test (T4).
+2. **`-Ayuda`** en vez de `-?` en `dev_front.ps1`: con `powershell -File`,
+   PowerShell 5.1 no imprime nada con `-?`, y `Get-Help` solo indexa la ayuda
+   por comentarios si el bloque es lo primero del fichero, lo que choca con la
+   convención de abrir cada fichero con su ruta (T13).
+3. **Dos comprobaciones no previstas en `design.md` §2.1**:
+   `tests/test_f007_dev_front_ps1.py` —el script que ejecuta el humano— y las
+   guardias de `app.js` dentro de `test_f007_estaticos.py`. Ambas **añaden**
+   comprobaciones; ninguna cambia el diseño.
+
+Las tres son hechos del entorno o comprobaciones de más, no cambios de
+contrato. Ninguna toca `services/postventa-api/` ni el arnés genérico.

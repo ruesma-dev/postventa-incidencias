@@ -594,3 +594,69 @@ ella, y hay un test que lo comprueba.
 `cuerpoDeArchivo` **lanza** si el parte no es apto o si ya está archivado. No
 basta con no pintar el botón: aunque el usuario lo pulse dos veces, la petición
 no se llega a componer.
+
+---
+
+## T9 · `tests/test_f007_estaticos.py`: el contrato de los ficheros estáticos — HECHA
+
+Un front sin cadena de build no tiene compilador que avise: si alguien añade un
+`defer` «para que cargue antes», la pantalla queda muerta y el fallo solo se ve
+abriendo el navegador. Este fichero es ese compilador. 9 tests:
+
+- Los scripts **propios** van al final del `<body>`, **sin `defer`** y sin
+  `type="module"` (un módulo se difiere de forma implícita: el mismo fallo por
+  otra puerta).
+- **Alpine** va una vez, **con `defer`**, en el `<head>` y con la **versión
+  fija 3.14.1**.
+- Los scripts propios van **en orden de dependencia** y `app.js` es **el
+  último**: es el pegamento y necesita a los demás cargados. La lista canónica
+  (`ORDEN_CANONICO`) es la de los siete de T10, así que la guardia ya vigila lo
+  que llega en la tarea siguiente.
+- Un script propio **no declarado** en esa lista también es un problema: nadie
+  añade un `js/loquesea.js` sin pasar por aquí.
+- `baseApi: "/api"`, proxy del `dev_server` en **7073**, y el marcador
+  `<TENANT_ID>` **sin resolver** (además de un barrido de GUIDs sobre el
+  fichero entero, por si alguien lo pone en otro sitio).
+
+### Fase RED de la propia guardia (traza real, copia rota FUERA del árbol)
+
+La comprobación es una **función pura sobre el texto**
+(`problemas_del_index(html)`), lo que permite demostrarla. Se copió el
+`index.html` real al directorio temporal de la sesión —**fuera del
+repositorio**—, se le añadió `defer` y se ejecutó la misma aserción:
+
+```
+$ sed 's|<script src="js/app.js"></script>|<script defer src="js/app.js"></script>|' index.html > %TEMP%\...\index_roto.html
+$ python -m pytest %TEMP%\...\test_red_t9.py -q
+F                                                                        [100%]
+================================== FAILURES ===================================
+_____________ test_f007_r36_el_index_cumple_el_contrato_de_carga ______________
+
+    def test_f007_r36_el_index_cumple_el_contrato_de_carga():
+        problemas = problemas_del_index(ROTO.read_text(encoding="utf-8"))
+>       assert problemas == [], "\n".join(problemas)
+E       AssertionError: js/app.js lleva defer: Alpine arrancaría antes de que exista appPostventa y la pantalla quedaría muerta
+E       assert ['js/app.js l...daría muerta'] == []
+E
+E         Left contains one more item: 'js/app.js lleva defer: Alpine arrancaría antes de que exista appPostventa y la pantalla quedaría muerta'
+E         Use -v to get more diff
+
+...\scratchpad\test_red_t9.py:13: AssertionError
+=========================== short test summary info ===========================
+FAILED ...\scratchpad\test_red_t9.py::test_f007_r36_el_index_cumple_el_contrato_de_carga
+1 failed in 1.02s
+```
+
+Ni el HTML roto ni ese test temporal se han versionado. Lo que **sí** queda en
+el repositorio es el mismo destrozo hecho **en memoria**: tres tests
+(`la guardia caza un index estropeado` con `defer` y con `type=module`, y
+`la guardia caza los scripts desordenados`) construyen la copia rota a partir
+del `index.html` real y comprueban que la guardia la caza. Sin ellos,
+`problemas_del_index` podría estar devolviendo siempre lista vacía y nadie se
+enteraría.
+
+```
+$ python -m pytest tests/test_f007_estaticos.py -q
+.........                                                                [100%]
+9 passed in 0.03s
+```

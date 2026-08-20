@@ -116,7 +116,7 @@
 
 ## Fase 3 · La pantalla
 
-- [ ] **T9**: `tests/test_f007_estaticos.py`: los scripts propios van al final
+- [x] **T9**: `tests/test_f007_estaticos.py`: los scripts propios van al final
       del `body` y **sin `defer`**, Alpine con `3.14.1` fijo y con `defer` en
       el `head`, ningún `type="module"`, el marcador `<TENANT_ID>` intacto,
       el proxy en 7073 y `baseApi: "/api"`.

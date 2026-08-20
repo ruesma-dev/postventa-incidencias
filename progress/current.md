@@ -63,9 +63,6 @@ el historial de git no suelta lo que entra, y el squash es la salida barata.
 - **No se reescribe** la historia de una rama de 31 commits: el coste y el
   riesgo superan al beneficio.
 
-Mientras el merge no esté hecho, **F-006 no debe arrancar en paralelo sobre
-código que aún no está en `dev`**.
-
 ## Pendiente del humano (cola de decisiones)
 
 1. ~~El commit en `azure-apps`~~ — **CERRADO el 2026-08-20: el humano no hace
@@ -96,55 +93,39 @@ código que aún no está en `dev`**.
    frente a PyMuPDF sube a `arnes-base`. Recomendación del líder: dejarla
    aquí, porque solo sirve a proyectos que manipulen PDF.
 
-## Estado del backlog: 18 features
+## Estado del backlog
 
-- **`done`**: F-001, F-002, F-003, F-004, **F-005**.
-- **`in_progress`**: **F-006 · Nombrado y archivo en SharePoint**, en su rama
-  `feature/F-006-sharepoint`. Implementada, **RECHAZADA en la primera review**
-  por higiene de un dato y dos firmas que faltan (ver arriba). Ninguna otra
-  feature está en curso.
-- **`pending`**: F-007 a F-018.
+**No se duplica aquí.** `BACKLOG.md` se genera desde `harness/features.json` y
+lo regenera `bash harness/init.sh`: está siempre al día, y esta sección no.
+Copiar el estado a mano ya produjo un defecto —la review de F-007 lo cazó—, así
+que la regla es mirar `BACKLOG.md` y no fiarse de ningún resumen escrito aquí.
 
-`BACKLOG.md` se genera desde `harness/features.json` y lo regenera
-`bash harness/init.sh`: **no se edita a mano**.
+Lo único que conviene tener a mano, porque no se lee del JSON: **F-010 ·
+Despliegue subió de prioridad el 2026-08-20**, por delante de las dos features
+de Sigrid, para que negocio pruebe el circuito desplegado sin tocar el ERP.
+Además **F-010 desbloquea T18 de F-006**, la subida real a SharePoint.
 
-## Lo siguiente: F-006, y lo que hay que saber de Graph
+## ⚠️ Los permisos de Graph son más amplios de lo necesario
 
-**F-006 · Nombrado y archivo en SharePoint** es la siguiente feature. Su spec
-está escrita, sus seis decisiones están resueltas y **D6 dejó de bloquear el
-2026-08-20**. Solo falta la PARADA 1: enseñar la propuesta al humano.
-
-### Lo verificado en Azure el 2026-08-20
-
-- **El app registration `postventa-incidencias` existe**, con su service
-  principal y consentimiento de administrador. **Su appId no se escribe aquí**:
-  se consulta con `az ad app list` cuando haga falta. (Estuvo escrito en este
-  fichero entre el 2026-08-20 y la review de F-006, que lo cazó; ver H1 de
-  `progress/review_F-006.md`.)
-- **D1 queda respondida de paso**: `partes` ya tiene cliente de SharePoint y
-  proveedor de token reutilizables
-  (`services/partes-persistencia/infrastructure/storage/sharepoint_parte_storage.py`
-  y `infrastructure/graph/token_provider.py`), y usan **`httpx`, no `msal`**,
-  al contrario de lo que proponía la spec. Mirarlos antes de escribir nada.
-
-### ⚠️ Riesgo aceptado: los permisos son más amplios de lo necesario
-
-El service principal tiene **tres** permisos de aplicación consentidos:
+Sigue vivo aunque F-006 esté cerrada. El service principal
+`postventa-incidencias` tiene **tres** permisos de aplicación consentidos:
 `Sites.Selected` (el que pedía la spec), **`Sites.ReadWrite.All`** y
-**`Sites.FullControl.All`**. Los dos últimos alcanzan a **todos** los sitios
-de SharePoint del tenant y vuelven irrelevante al primero: nada impide
+**`Sites.FullControl.All`**. Los dos últimos alcanzan a **todos** los sitios de
+SharePoint del inquilino y vuelven irrelevante al primero: nada impide
 técnicamente que la aplicación escriba en el sitio de RRHH o de dirección.
-`Sites.FullControl.All` es más amplio incluso que `Files.ReadWrite.All`, que
-la propia spec de F-006 descartó por excesivo.
 
-**El humano decidió el 2026-08-20**: F-006 arranca con los permisos actuales y
-el recorte se hace después, como **F-018 · Mínimo privilegio en Graph**, ya
-dada de alta con dueño y criterios propios. Motivo: no mezclar un cambio de
-configuración del tenant con una implementación.
+**El humano decidió el 2026-08-20** cerrar F-006 con los permisos actuales y
+recortarlos después, en **F-018 · Mínimo privilegio en Graph**, para no mezclar
+un cambio de configuración del inquilino con una implementación. El riesgo
+queda documentado en el `design.md` de F-006 citando a F-018. **La deuda tiene
+dueño; no se pierde.**
 
-**Encargo para F-006**: documentar este riesgo aceptado, con su fecha, en su
-`design.md`, y citar a F-018 como dueña del recorte. La deuda tiene dueño; no
-se pierde.
+**Su appId no se escribe en el repositorio**: se consulta con `az ad app list`.
+Estuvo escrito aquí un rato y la review de F-006 lo cazó (H1).
+
+**Dato reutilizable**: `partes` ya tiene cliente de SharePoint y proveedor de
+token (`services/partes-persistencia/infrastructure/`), sobre **`httpx`**. De
+ahí salió el patrón que usa F-006.
 
 ## Deuda declarada, con dueño
 

@@ -104,7 +104,16 @@ $marcadorInquilino = "<TENANT_ID>"
 # identificador ya sustituido y el fichero con el cuerpo de la llamada a Graph.
 $copiaDeTrabajo = $null
 $cuerpoGraph = $null
-$tokenPrevio = $null
+
+# El valor previo de la variable de entorno se lee AQUI, ANTES del `try`, y no
+# donde se asigna. Motivo: `exit` dentro del `try` ejecuta igualmente el
+# `finally`, asi que cualquier salida temprana -`-WhatIf`, la confirmacion
+# denegada, cualquier `Salir-Con`- restauraria el respaldo. Si ese respaldo
+# siguiera a `$null`, la restauracion BORRARIA un SWA_CLI_DEPLOYMENT_TOKEN que
+# el operador ya tuviera puesto en su consola, y `-WhatIf` promete no tocar
+# nada (R6: la sesion queda COMO ESTABA). Leyendolo aqui, restaurar es siempre
+# devolver el valor de verdad.
+$tokenPrevio = $env:SWA_CLI_DEPLOYMENT_TOKEN
 
 
 function Salir-Con {
@@ -386,7 +395,7 @@ try {
             "revisa el recurso en el portal de Azure."
     }
 
-    $tokenPrevio = $env:SWA_CLI_DEPLOYMENT_TOKEN
+    # El valor previo ya esta guardado desde antes del `try`: aqui solo se pisa.
     $env:SWA_CLI_DEPLOYMENT_TOKEN = $token
     $token = $null
 
@@ -427,6 +436,7 @@ finally {
     if ($cuerpoGraph -and (Test-Path $cuerpoGraph)) {
         Remove-Item -Path $cuerpoGraph -Force -ErrorAction SilentlyContinue
     }
-    # Y la consola queda como estaba: el token de despliegue no sobrevive.
+    # Y la consola queda COMO ESTABA: el token de despliegue no sobrevive, y
+    # el que hubiera antes vuelve a su sitio. Tambien si se salio por -WhatIf.
     $env:SWA_CLI_DEPLOYMENT_TOKEN = $tokenPrevio
 }

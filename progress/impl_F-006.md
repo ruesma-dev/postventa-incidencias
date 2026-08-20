@@ -1027,3 +1027,86 @@ obligación de documentarlo.
 mientras esa copia no exista, quien lea solo `azure-apps/` no se enterará de
 que este proyecto es un inquilino nuevo del sitio de IT con permiso de
 escritura. El material está listo para copiar y pegar el día que se quiera.
+
+---
+
+## T20 · Campaña de mutación: de 20 supervivientes a 5, y lo que destapó
+
+> **Copia durable.** `progress/mutacion_F-006.md` lo **regenera** la siguiente
+> campaña y se lleva por delante todo lo escrito a mano. Esto de aquí
+> sobrevive.
+
+```
+$ python -m harness.mutacion --feature F-006
+64 mutantes evaluados, 59 muertos, 5 supervivientes, 0 timeouts en 235.2 s
+Informe: progress/mutacion_F-006.md
+```
+
+| Campaña | Mutantes | Muertos | Supervivientes | Timeouts |
+|---|---|---|---|---|
+| 1.ª | 68 | 48 | 20 | 0 |
+| 2.ª | 64 | 58 | 6 | 0 |
+| 3.ª (final) | 64 | **59** | **5** | 0 |
+
+### Lo importante no es el número: es lo que encontró
+
+La primera campaña destapó **tres huecos reales de test y dos de código**. Los
+cinco estaban en verde y ninguno se habría visto leyendo el diff.
+
+**1 · La puerta de aptitud se podía saltar.** El mutante cambiaba el `or` de
+`veredicto != APTO or destino != ARCHIVO_Y_CIERRE` por un `and`, y **no rompía
+ni un test**. Motivo: todos mis casos no aptos fallaban **las dos** condiciones
+a la vez, así que el `and` seguía levantando `ParteNoApto`. Con el `and`, un
+parte con `veredicto=apto` y destino `cola_validacion_humana` **se habría
+archivado**, que es exactamente lo que prohíbe `CHECKPOINTS.md` C3. Y no es
+teoría: es lo que llega si alguien compone a mano el cuerpo de
+`POST /api/archivar`. Dos tests nuevos, uno por mitad.
+
+**2 · La caché del token miraba si existía, no si valía.** Dos mutantes
+—`and`→`or` en la condición, y el signo del margen— sobrevivían, y los dos
+producen lo mismo: **seguir usando un token vencido**. En producción eso es un
+`401`, que además **no se reintenta** (R25), así que el parte no se archiva.
+Dos tests nuevos: uno con un token que nace caducado y otro con uno vigente,
+porque sin el segundo el primero se «arregla» pidiendo el token siempre.
+
+**3 · `con_token` era un parámetro muerto.** Se declaraba en `_con_reintentos`,
+se pasaba en la llamada del token… y no se usaba en ninguna parte. Por eso
+sobrevivían sus dos mutantes: **no hay test que pueda matar código que no
+hace nada**. Eliminado.
+
+**4 · `timeout_s` y `reintentos` tenían valor por defecto que nadie usaba.** La
+fábrica es el único sitio que construye el adaptador y los pasa **siempre**
+desde `config/settings.py`. Un valor por defecto que nadie usa es una segunda
+fuente de verdad esperando a divergir. Ahora son obligatorios.
+
+**5 · El log registraba la duración y nadie comprobaba que fuera una resta.**
+`time.monotonic() - arranque` → `+` sobrevivía. La diferencia no es cosmética:
+`monotonic()` cuenta desde el arranque de la máquina, así que la suma da un
+número de siete cifras que nadie leería como un error, solo como «esto va
+lentísimo». Test nuevo: la duración registrada está entre 0 y 60.
+
+Y una lección de método que ya había aparecido en T2 y T13, y que volvió a
+morder: **un test que se compara contra la constante que vigila sigue al
+mutante**. `assert cliente.timeout.connect == TIMEOUT_DE_CONEXION_S` daba verde
+con la constante mutada. El `30` va literal.
+
+### Los cinco supervivientes, con su análisis
+
+Ninguno queda `PENDIENTE`. El detalle completo está en
+`progress/mutacion_F-006.md`; el resumen, aquí:
+
+| # | Qué es | Veredicto | Por qué |
+|---|---|---|---|
+| 1 | `GRAPH_TIMEOUT_S` por defecto (60→61) | **Equivalente justificado** | Constante de operación. El requisito es una propiedad —que quepa en los 230 s de la Function—, no el número. Un `assert == 60` sería un detector de cambios |
+| 2 | `GRAPH_REINTENTOS` por defecto (3→4) | **Equivalente justificado** | **Qué** se reintenta sí está cubierto a fondo (los seis códigos uno a uno, y que un `403` da **una** llamada). Esto solo toca el valor por omisión, que ningún test consume |
+| 3 | `MARGEN_DE_TOKEN_S` (60→61) | **Equivalente justificado** | Cazarlo exige un `expires_in` justo en la frontera, y el test pasaría a depender de que entre dos llamadas en memoria pase menos de **un segundo de reloj real**. Un test que falla a veces es peor que no tenerlo |
+| 4 | `<` → `<=` sobre `time.monotonic()` | **Equivalente estricto** | Solo difieren si dos flotantes de nanosegundos coinciden bit a bit. No hay entrada que lo distinga: es la definición de mutante equivalente |
+| 5 | `expires_in` de reserva (3599→3600) | **Equivalente justificado** | Exige **una hora de reloj real**, y solo si Entra incumple su contrato y omite el campo |
+
+**Ninguno de los cinco toca lo que T20 pedía mirar con lupa**: ni el nombrado
+—separadores, sufijo, orden de las sustituciones—, ni la puerta de entorno, ni
+la idempotencia. Ahí no sobrevive nada.
+
+> El nivel `critico` pide **cero supervivientes o cada uno con su análisis
+> aceptado por el humano**. Quedan cinco, los cinco analizados y los cinco de
+> la segunda clase. **Esa aceptación es del humano, no mía.**

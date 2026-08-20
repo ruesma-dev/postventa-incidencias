@@ -87,7 +87,7 @@
       **Verificación**: `node --test tests_js` en verde; y un test que
       compruebe que el valor de un campo personal **no** aparece en la salida.
 
-- [ ] **T6**: `js/seleccion.js` y `tests_js/seleccion.test.js` (R1–R4):
+- [x] **T6**: `js/seleccion.js` y `tests_js/seleccion.test.js` (R1–R4):
       filtrado a `.pdf`/`.zip` con el recuento de descartados, selección vacía
       rechazada sin llamar a nadie, y `FormData` con **un nombre de campo
       distinto por fichero** (`fichero_0`, `fichero_1`, …).

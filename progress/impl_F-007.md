@@ -347,3 +347,49 @@ $ node --test "tests_js/*.test.js"
 ℹ pass 22
 ℹ fail 0
 ```
+
+---
+
+## T6 · `js/seleccion.js`: qué entra en la remesa y cómo se envía — HECHA
+
+R1–R4. Lógica pura: recibe un array de `File` (o cualquier cosa con `name` y
+`size`) y no toca el DOM, que es lo que la hace probable sin navegador.
+
+- `filtrarAdmitidos(ficheros)` → `{admitidos, descartados, mensajeDescartes}`.
+  Los descartes traen **nombre y motivo**, y el mensaje dice **cuántos** (R2).
+- `motivoDeRechazo(resultado)` devuelve **texto**, no un booleano: quien llama
+  no tiene que inventarse el mensaje, y R3 exige explicar qué formatos se
+  admiten.
+- `formatearTamano(bytes)` para listar nombre y tamaño (R1).
+- `formDataDeRemesa(ficheros)` con **un nombre de campo por índice**
+  (`fichero_0`, `fichero_1`, …), no por nombre de fichero.
+
+El test que justifica R4 por sí solo: **dos ficheros que se llaman igual**
+—dos carpetas distintas con la misma remesa— siguen ocupando campos distintos.
+Con el mismo nombre de campo, el backend (`req.files.values()`, un valor por
+clave) perdería uno en silencio y una remesa de 3 PDFs entraría como 1.
+
+Y `formDataDeRemesa([])` **lanza**: sin ficheros admitidos no se llega a
+construir el cuerpo del `POST`, así que R3 se cumple por construcción, no por
+buena voluntad de `app.js`.
+
+```
+$ node --test "tests_js/seleccion.test.js"
+✔ f007 R1: una selección de PDFs y ZIPs se acepta entera (2.5946ms)
+✔ f007 R1: cada fichero se puede listar con su nombre y su tamaño (0.2995ms)
+✔ f007 R2: de una carpeta solo se queda lo que el backend sabe trocear (0.4424ms)
+✔ f007 R2: se dice cuántos ficheros se han descartado y por qué (0.4362ms)
+✔ f007 R2: la extensión se reconoce sin importar mayúsculas (0.2617ms)
+✔ f007 R2: un nombre con puntos no engaña al filtro (0.1279ms)
+✔ f007 R3: una selección sin PDF ni ZIP se rechaza y explica qué se admite (0.2684ms)
+✔ f007 R3: una selección vacía también se rechaza en el navegador (0.2326ms)
+✔ f007 R3: sin ficheros admitidos no se puede ni construir el cuerpo del POST (0.5747ms)
+✔ f007 R4: cada fichero viaja con un nombre de campo distinto (21.8323ms)
+✔ f007 R4: dos ficheros que se llaman IGUAL no comparten nombre de campo (0.3776ms)
+✔ f007 R4: el nombre original del fichero llega al backend (0.2239ms)
+✔ f007 R4: una remesa de 22 partes son 22 campos distintos (0.5122ms)
+✔ f007 R4: el FormData es inyectable, para no depender del entorno (0.195ms)
+ℹ tests 14
+ℹ pass 14
+ℹ fail 0
+```

@@ -94,3 +94,58 @@ porque hasta ahora la carpeta no estaba en el árbol.
    **fase RED de R34**. Las 114 líneas son las de `dev_server.py`, que llega
    entero como fichero nuevo frente a `dev`. Es literalmente el problema que
    expulsó al front de F-001, y es lo que cierra T3 con D1/O1.
+
+---
+
+## T2 · El front entra en el arnés — HECHA
+
+Tres ficheros:
+
+- `harness/servicios.json`: se declara el servicio `front`
+  (`ruta: services/postventa-front`, `lenguaje: python`, **sin `venv` y sin
+  `comando_tests`**), con el porqué de las tres decisiones escrito en el
+  `$doc` del fichero.
+- `services/postventa-front/tests/conftest.py`: raíz del front en `sys.path`
+  (para `import dev_server` sin instalar nada) y **guardia de red de sesión**
+  (R33), calcada de la del backend.
+- `services/postventa-front/tests/test_f007_declaracion.py`: cuatro tests de
+  R31 —el servicio está declarado, apunta a esta carpeta, va como `python` y
+  no declara `venv` ni `comando_tests`—.
+
+Suite del front en verde:
+
+```
+$ cd services\postventa-front
+$ python -m pytest -q
+....                                                                     [100%]
+4 passed in 0.02s
+```
+
+### Fase RED de R34 — la puerta de cobertura, que es el problema de fondo
+
+`bash harness/init.sh` ya **no** falla por la declaración (el front aparece
+como servicio y su suite se ejecuta), pero sigue en rojo por la puerta de
+cobertura. Salida real:
+
+```
+$ bash harness/init.sh
+...
+[OK] pytest en verde (con medición de cobertura)
+    2 servicio(s): api (python), front (python)
+[OK] harness/servicios.json válido
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+....                                                                     [100%]
+4 passed in 0.03s
+[OK] servicio front (services/postventa-front): pytest en verde
+[KO] PUERTA COBERTURA: 0.0% de 114 líneas cambiadas cubiertas (0/114, umbral 80%, nivel estandar)
+[OK] Rama actual: feature/F-007-front
+----------------------------------------
+1 comprobaciones fallidas. NO empieces a trabajar.
+```
+
+**Ese `0/114` es el problema que expulsó al front de F-001**, ahora medido y
+con nombre. Son las líneas ejecutables de `dev_server.py`, que llega entero
+como fichero nuevo frente a `dev`: `harness/alcance.py` mete en el alcance
+cualquier `.py` que no lleve un segmento `tests`, `specs`, `progress` o `docs`
+en su ruta, y no existe lista de exclusiones. **No hay opción «no tocarlo»**.
+Se cierra en T3 escribiéndole tests (decisión **D1**, opción O1).

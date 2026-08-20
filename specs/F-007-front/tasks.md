@@ -45,7 +45,7 @@
 
 ## Fase 1 · El front entra en el arnés
 
-- [ ] **T2**: Declarar el servicio en `harness/servicios.json`
+- [x] **T2**: Declarar el servicio en `harness/servicios.json`
       (`nombre: front`, `ruta: services/postventa-front`,
       `lenguaje: python`, **sin `venv` y sin `comando_tests`**, con el porqué
       en el `$doc`), y crear `services/postventa-front/tests/conftest.py`

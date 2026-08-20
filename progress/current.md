@@ -43,20 +43,20 @@
 > tests, y no ha entrado en el repositorio ni un identificador de inquilino,
 > sitio, biblioteca o aplicación.
 
-> **Estado al 2026-08-20.** **F-005 está CERRADA y APROBADA.** El resumen
-> completo, con las lecciones, vive en `progress/history.md`; el detalle, en
-> `progress/impl_F-005.md` y `progress/review_F-005.md`.
->
-> **No hay ninguna feature `in_progress`.** Lo siguiente es el merge de F-005
-> a `dev` **con squash** (condición del reviewer, explicada abajo) y decidir
-> qué feature se arranca.
+> **F-005 quedó CERRADA, APROBADA y MERGEADA a `dev`** el 2026-08-20, con
+> squash. Su resumen vive en `progress/history.md` y el detalle en
+> `progress/impl_F-005.md` y `progress/review_F-005.md`. **Nada de F-005 sigue
+> pendiente**: lo que se lee más abajo sobre ella es contexto, no tarea.
 
-## ⚠️ Lo primero: el merge de F-005 a `dev`, CON SQUASH
+## Cómo se mergeó F-005, y por qué importa para la próxima
 
-**El árbol de la rama está limpio, pero su historial no.** El arreglo del FQDN
-del servidor compartido cambió el fichero en `HEAD`, pero **los 24 commits
-anteriores de la rama siguen conteniendo el valor**: eso es exactamente lo que
-significa que el historial de git no suelta lo que entra.
+Se mergeó **con squash** por indicación del reviewer. El árbol de la rama
+estaba limpio, pero su historial no: el arreglo del FQDN del servidor
+compartido cambió el fichero en `HEAD`, y los 24 commits anteriores seguían
+conteniendo el valor. Con squash ese valor **no entró nunca en `dev`**.
+
+Es la lección a repetir cuando una rama corrija un dato que no debió entrar:
+el historial de git no suelta lo que entra, y el squash es la salida barata.
 
 - **Con squash, el valor no entra nunca en `dev`.** Es lo que dictó el
   reviewer y lo que hay que hacer.
@@ -98,14 +98,14 @@ código que aún no está en `dev`**.
    frente a PyMuPDF sube a `arnes-base`. Recomendación del líder: dejarla
    aquí, porque solo sirve a proyectos que manipulen PDF.
 
-## Estado del backlog: 17 features
+## Estado del backlog: 18 features
 
 - **`done`**: F-001, F-002, F-003, F-004, **F-005**.
-- **`spec_ready`**: **F-006 · Nombrado y archivo en SharePoint**, en su rama
-  `feature/F-006-sharepoint`, salida de `dev` y **ya desbloqueada** (D6
-  resuelta el 2026-08-20). Es la siguiente.
+- **`in_progress`**: **F-006 · Nombrado y archivo en SharePoint**, en su rama
+  `feature/F-006-sharepoint`. Implementada, **RECHAZADA en la primera review**
+  por higiene de un dato y dos firmas que faltan (ver arriba). Ninguna otra
+  feature está en curso.
 - **`pending`**: F-007 a F-018.
-- **Ninguna `in_progress`.**
 
 `BACKLOG.md` se genera desde `harness/features.json` y lo regenera
 `bash harness/init.sh`: **no se edita a mano**.
@@ -118,8 +118,11 @@ está escrita, sus seis decisiones están resueltas y **D6 dejó de bloquear el
 
 ### Lo verificado en Azure el 2026-08-20
 
-- **App registration `postventa-incidencias`**, appId `8a8ad580-dbd9-4560-88f8-9ba42891a63b`,
-  con service principal y consentimiento de administrador.
+- **El app registration `postventa-incidencias` existe**, con su service
+  principal y consentimiento de administrador. **Su appId no se escribe aquí**:
+  se consulta con `az ad app list` cuando haga falta. (Estuvo escrito en este
+  fichero entre el 2026-08-20 y la review de F-006, que lo cazó; ver H1 de
+  `progress/review_F-006.md`.)
 - **D1 queda respondida de paso**: `partes` ya tiene cliente de SharePoint y
   proveedor de token reutilizables
   (`services/partes-persistencia/infrastructure/storage/sharepoint_parte_storage.py`

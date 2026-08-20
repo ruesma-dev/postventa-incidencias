@@ -1,6 +1,43 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-20 (noche) · **F-010 · CORREGIDA LA REVIEW, LISTA PARA RE-REVIEW**
+>
+> La review salió **CHANGES_REQUESTED** con un rechazo estrecho: el propio
+> reviewer la llamó «aprobable y de calidad alta». **Los cinco defectos de
+> `infra/` (§10 bis) están corregidos**, cada uno con su commit, y los tres
+> encargos aceptados por el humano, hechos. Detalle completo al final de
+> `progress/impl_F-010.md`, sección «Ronda de correcciones tras la review».
+>
+> **Dos de los cinco eran requisitos EARS incumplidos con su test en verde**
+> (R27, la guarda de la ventana que fallaba abierta; R6, `-WhatIf` borrando el
+> token de la consola). En los dos casos se arregló **también el test** que los
+> daba por buenos, empezando por él: fase RED con ocho tests en rojo.
+>
+> **El fallo del arnés está arreglado y portado**: `PYTHONDONTWRITEBYTECODE` en
+> el subproceso de `harness/mutacion.py`, con su test, y en `arnes-base` sellado
+> como **1.6.3** (commits `c73b040` y `f1b250e` de aquel repositorio).
+> **Este repositorio sigue en 1.5.2 a propósito**: se ha traído el parche, no la
+> rama 1.6 entera; la 1.6.0 rehace `mutacion.py` completo y sus números no son
+> comparables. Actualizar es decisión del humano; el motivo está en
+> `harness/ARNES_VERSION.md`.
+>
+> **Regla nueva en `CHECKPOINTS.md` C4 bis**: el coste por mutante. Ojo, porque
+> la primera redacción estaba mal y se corrigió con la campaña real delante: la
+> campaña es **paralela**, su «Tiempo total» es de reloj, y la cuenta lleva el
+> factor de workers («Tiempo total» × workers ÷ mutantes). Sin él marcaba como
+> sospechosa una campaña sana.
+>
+> **Los 16 worktrees huérfanos de `mutacion_F-005_zllkg8wf` están retirados**,
+> comprobado antes uno a uno que no llevaban trabajo sin guardar: cuatro tenían
+> modificaciones y las cuatro eran mutantes abandonados.
+>
+> **Sigue sin ejecutarse nada contra Azure ni SharePoint.** Las **nueve tareas
+> `MANUAL (humano)`** siguen preparadas y pendientes, con el orden que fijó el
+> reviewer: T14 bis (tope de gasto de IA) **antes** de T16; T18 con autorización
+> expresa nombrando C5; cerrar la ventana de escritura después de T18; T19 en
+> `front-portal`.
+
 > ## Estado al 2026-08-20 (tarde) · **F-010 IMPLEMENTADA, PENDIENTE DE REVISIÓN**
 >
 > **D2 resuelta por el humano** (opción (a), con la medición delante) y con

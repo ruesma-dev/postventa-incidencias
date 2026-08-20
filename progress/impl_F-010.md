@@ -471,3 +471,278 @@ seguir fijándolo; lo que cambia es el valor y la razón, no la vigilancia.
 - **No se arregló el fallo del arnés** que destapó la campaña de mutación: vale
   para cualquier proyecto, así que su sitio es `arnes-base` y su decisión es
   del humano.
+
+---
+
+# Ronda de correcciones tras la review (2026-08-20)
+
+`progress/review_F-010.md` salió **CHANGES_REQUESTED** por cinco defectos
+concretos en `infra/`, más tres encargos aceptados por el humano. Esto es lo
+que se ha hecho, defecto a defecto. **Un commit por arreglo.**
+
+Lo que el reviewer aprobó tal cual —D3/R32 y su control negativo, la ventana de
+escritura que nace apagada, el escalonado 35/40/45 y el test de F-007
+actualizado, el análisis del bytecode envenenado— **no se ha tocado**.
+
+## Fase RED de esta ronda
+
+Dos de los cinco defectos son **requisitos EARS incumplidos con su test en
+verde** (R27 y R6), así que el arreglo empieza por el test que los daba por
+buenos. Los tests se escribieron **antes** de tocar los scripts. Traza real:
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest \
+    tests/test_f010_scripts_infra.py -k "guarda_de_la_ventana or veredicto_no_sale_en_verde \
+    or valor_previo_se_lee_antes or key_vault or descripcion_no_afirma \
+    or credenciales_se_acumulan or no_llama_a_archivar" -p no:randomly --no-header -q --tb=line
+
+...FFFFFFFssF                                                            [100%]
+================================== FAILURES ===================================
+test_f010_scripts_infra.py:765: AssertionError: la escritura en el Key Vault de la linea 260 no comprueba su resultado
+test_f010_scripts_infra.py:780: assert -1 < -1
+test_f010_scripts_infra.py:796: assert True == False
+test_f010_scripts_infra.py:809: AssertionError: assert 'no invalida' in '# infra/desplegar_front.ps1 ...'
+test_f010_scripts_infra.py:876: assert 'if ($ventana -ne "false")' in '... exit $SALIDA_EN_ROJO'
+test_f010_scripts_infra.py:896: AssertionError: comparar contra 'true' deja pasar 'desconocida': la guarda falla abierta
+test_f010_scripts_infra.py:914: AssertionError: assert '$ventanaOk' in '$saludOk -and $archivarOk -and $frontOk'
+test_f010_scripts_infra.py:1068: AssertionError: $env:SWA_CLI_DEPLOYMENT_TOKEN se asigna sin leer antes su valor previo
+=========================== short test summary info ===========================
+FAILED test_f010_t6_cada_escritura_en_el_key_vault_comprueba_su_resultado
+FAILED test_f010_t6_no_escribe_en_el_key_vault_sin_comprobar_que_existe
+FAILED test_f010_r32_la_descripcion_no_afirma_lecturas_que_no_hace
+FAILED test_f010_t6_la_cabecera_declara_que_las_credenciales_se_acumulan
+FAILED test_f010_t7_no_llama_a_archivar_si_la_ventana_esta_abierta
+FAILED test_f010_t7_la_guarda_de_la_ventana_falla_cerrada
+FAILED test_f010_t7_el_veredicto_no_sale_en_verde_con_la_ventana_desconocida
+FAILED test_f010_r6_el_valor_previo_se_lee_antes_del_try_que_lo_restaura[desplegar_front.ps1]
+8 failed, 3 passed, 2 skipped, 100 deselected in 0.07s
+```
+
+Ocho tests en rojo contra el código de la review. Uno de ellos
+—`la_guarda_de_la_ventana_falla_cerrada`— se **refinó después** de esta traza:
+su primera redacción prohibía el literal de la comparación en todo el fichero, y
+eso también prohibía la comparación *interior*, la que solo elige el mensaje.
+Ahora mira **la guarda de nivel superior**, la que decide la llamada. Contra el
+código original seguía saliendo en rojo (encontraba `-eq "true"` donde exige
+`-ne "false"`); es un cambio de precisión, no de veredicto.
+
+Y el defecto del arnés, con su propia RED:
+
+```
+$ python -m pytest tests/test_mutacion_sin_bytecode.py -p no:randomly --no-header -q
+F                                                                        [100%]
+tests\test_mutacion_sin_bytecode.py:51: in test_la_suite_de_mutacion_se_lanza_sin_escribir_bytecode
+    entorno = capturado["opciones"]["env"]
+E   KeyError: 'env'
+1 failed in 0.08s
+```
+
+## Los cinco defectos
+
+### 1 · `verificar_despliegue.ps1` — la guarda fallaba abierta (commit `c800232`)
+
+`Get-Ventana-De-Escritura` devuelve **tres** valores y la guarda comparaba
+contra uno: `"desconocida"` —lo que devuelve la lectura cuando `az` falla— caía
+en la rama que **sí** hace el POST. Ahora se compara contra `"false"`, el único
+valor que demuestra que la ventana está cerrada; dentro se distingue `"true"`
+de `"desconocida"` solo para dar un mensaje u otro, con el diagnóstico de qué
+mirar (sesión, suscripción, nombre del recurso).
+
+Y el veredicto final gana `$ventanaOk`: **no puede salir en verde con la
+ventana en estado desconocido**. Antes eso ya lo tapaba de rebote
+`$archivarOk = $false`, pero por accidente y no por decisión; ahora está
+escrito y hay un test que lo sujeta.
+
+El `.DESCRIPTION` se actualizó en el mismo commit: prometía una guarda que no
+era la que había.
+
+### 2 · `desplegar_front.ps1` — el Key Vault sin comprobar (commit `2818d66`)
+
+Las dos escrituras de secreto iban sin mirar `$LASTEXITCODE`; el `if` guardaba
+solo la tercera llamada. Ahora cada una mira el suyo, con un mensaje que dice
+qué permiso falta, y el de `swa-client-secret` avisa además de que el secreto
+**acaba de generarse y no ha quedado guardado**.
+
+Se añade también la guarda previa de existencia del vault que ya tenía
+`desplegar_backend.ps1`, con código de salida propio `$SALIDA_SIN_KEYVAULT = 9`,
+y su línea en el resumen de «qué se va a hacer».
+
+### 3 · `desplegar_front.ps1` — `-WhatIf` borraba el token (commit `823e8e3`)
+
+`$tokenPrevio` nacía a `$null` y solo recibía valor a mitad del `try`. Como
+`exit` dentro de un `try` ejecuta el `finally`, **cualquier** salida temprana
+—`-WhatIf`, confirmación denegada, cualquier `Salir-Con`— restauraba `$null`,
+y eso **borra** la variable de entorno. Un script que promete no tocar nada se
+llevaba por delante el `SWA_CLI_DEPLOYMENT_TOKEN` del operador.
+
+Arreglo: leer el valor previo **antes** del `try`. Así restaurar es siempre
+devolver el valor de verdad, se salga por donde se salga.
+
+El test de R6 pasaba porque comprobaba que hubiera restauración en un
+`finally`, no que la restauración fuera **correcta**. El hueco lo cierra
+`test_f010_r6_el_valor_previo_se_lee_antes_del_try_que_lo_restaura`, que exige
+que la lectura del previo esté por delante del `try` y se aplica a **todos** los
+scripts que escriben, no solo a este.
+
+### 4 y 5 · La cabecera que mentía y el secreto que se acumula (commit `df9c9cc`)
+
+- **4**: el `.DESCRIPTION` decía que con `-SoloFront` «se leen del Key Vault los
+  que ya hay». No hay una sola lectura de secreto en el fichero. Ahora dice lo
+  que pasa de verdad —el bloque se salta entero y las App Settings se quedan
+  como estén— y **lo que eso implica**: `-SoloFront` **no** repara unas App
+  Settings borradas a mano; para eso hay que volver en modo completo.
+  `test_f010_r32_la_descripcion_no_afirma_lecturas_que_no_hace` ata las dos
+  mitades: si el texto afirma que lee, el código tiene que leer.
+- **5**: `--append` no revoca la credencial anterior. Se mantiene —es lo que
+  evita repetir el incidente del portal—, pero ahora la cabecera lo dice, con
+  el comando exacto para retirar las viejas y la advertencia de no borrar la
+  última, y el resumen final imprime **cuántas credenciales `swa` vivas hay**,
+  avisando en amarillo en cuanto pasan de una.
+
+## Los tres encargos
+
+### El arnés (commit `613e9a3`) y su porte a `arnes-base`
+
+`harness/mutacion.py`, `EjecutorPytest.ejecutar`, ahora lanza el subproceso con
+`env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}`, con el comentario que
+explica por qué: el `.pyc` compilado desde el código mutado sobrevive a la
+restauración del `.py` porque CPython valida la caché por (tamaño, mtime) y la
+restauración deja los dos iguales.
+
+`tests/test_mutacion_sin_bytecode.py` vigila **las dos mitades**: la variable, y
+que se herede `os.environ`. Sin lo segundo el subproceso pierde `PATH` y
+`VIRTUAL_ENV`, todos los mutantes «mueren» por fallo de importación y sale una
+campaña que mata el 100 % sin haber comprobado nada.
+
+**Portado a `arnes-base` en el mismo trabajo** (regla de propagación), sellado
+allí como **1.6.3** sobre la 1.6.2 que ya existía: commits `c73b040` y `f1b250e`
+de ese repositorio, con su sección en `GUIA_INSTALACION.md`.
+
+> **Punto para el humano.** `harness/VERSION` de este repositorio **sigue
+> diciendo `1.5.2`, y es deliberado.** Aquí se ha aplicado *el parche* de la
+> 1.6.3, no la rama 1.6 entera: las **1.6.0, 1.6.1 y 1.6.2 están pendientes**, y
+> la 1.6.0 no es un parche —rehace `mutacion.py` completo (línea base de la
+> suite, veredicto «base rota», mutación de `is`/`is not`) y sus números **no
+> son comparables** con los de antes—. Poner `1.6.3` en el sello daría a
+> entender que ese trabajo está hecho. `harness/ARNES_VERSION.md` lo explica
+> y deja la actualización como decisión suya. **La marca de adaptación entre
+> corchetes no se ha escrito en ese fichero** (comprobado: 0 apariciones), para
+> no dejar al portero un aviso falso permanente.
+
+### La regla nueva de `CHECKPOINTS.md` (commits `613e9a3` y `054dc74`)
+
+C4 bis gana el punto del **coste por mutante**. Y aquí hay que contar algo,
+porque la primera redacción estaba mal:
+
+Escrita como pedía el encargo —«Tiempo total» entre número de mutantes, menos
+de un segundo es sospechoso—, la probé contra la campaña real que acababa de
+reejecutar: **20 mutantes, 14,1 s, 0,7 s por mutante**. La marcaba como
+sospechosa. Y es una campaña sana. El motivo es que **la campaña es paralela
+por defecto** y su «Tiempo total» es tiempo de **reloj**, no de CPU.
+
+La regla quedó, por tanto, así:
+
+> coste por mutante = «Tiempo total» × nº de workers ÷ nº de mutantes
+
+Con esta campaña: 14,1 × 16 / 20 ≈ **11 s por mutante**, coherente con lo que
+tarda la suite del servicio. Y «Evidencias» pasa a exigir **el nº de workers**,
+sin el cual la cuenta no se puede hacer. Corregido también en `arnes-base`.
+
+Lo digo explícitamente porque una regla que marca en rojo el caso sano no
+sobrevive: se desactiva sola a la tercera vez que salta, y así es como se
+pierde un control.
+
+### Los 16 worktrees huérfanos
+
+Retirados los 16 de `mutacion_F-005_zllkg8wf`, y el directorio raíz con ellos.
+**Comprobado antes, uno a uno**, que no llevaban trabajo sin guardar:
+
+- 12 estaban limpios; **4** tenían modificaciones (`wk_0`, `wk_1`, `wk_6`,
+  `wk_15`), y las cuatro son **mutantes abandonados**, no trabajo humano:
+  `auto_cierre=False` a `True`, `group(1)` a `group(2)`, un `*` convertido en
+  `//`, y un `if not filas` convertido en `if filas`.
+- **0 ficheros no versionados** y **0 commits propios** por encima de `48fb104`
+  en los dieciséis.
+
+`git worktree list` queda solo con el árbol principal y los dos worktrees de
+agente, que no son de esta limpieza. Se retiró también el directorio vacío
+`mutacion_F-005_8q6g52nk`, que ya no estaba registrado en git.
+
+## Un commit que no es un arreglo
+
+`b8b3128` versiona `progress/review_F-010.md`, que estaba sin añadir. Los ocho
+informes de review anteriores sí lo están, y además un árbol sucio **impide**
+lanzar la campaña de mutación en paralelo, que era justo lo que había que
+reejecutar.
+
+## Verificación
+
+`bash harness/init.sh`, tal cual, **en verde con las dos suites**:
+
+```
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] features.json válido      20 features, 13 abiertas, en curso: ['F-010']
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 56 avisos (deuda previa, no bloquea)
+[OK] pytest en verde (con medición de cobertura)        17 passed
+[OK] servicio api (services/postventa-api): pytest en verde     1070 passed, 13 skipped in 24.82s
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios)
+[OK] PUERTA COBERTURA: 98.3% de 116 líneas cambiadas cubiertas (114/116, umbral 80%, nivel estandar)
+[OK] Rama actual: feature/F-010-despliegue
+ENTORNO LISTO. Puedes trabajar.
+```
+
+Campaña de mutación **relanzada con la caché limpia** (`__pycache__`,
+`.pytest_cache` y `.pyc` borrados antes de arrancar), porque se tocó código
+Python de producción del alcance:
+
+```
+20 mutantes evaluados, 17 muertos, 3 supervivientes, 0 timeouts en 14.1 s
+```
+
+**Mismos totales que la campaña anterior** (20 / 17 / 3). Es la confirmación
+independiente de lo que el reviewer ya concluyó: aquellos números **no estaban
+falseados** por el bytecode envenenado.
+
+Los tres supervivientes son el mismo mutante repetido en tres líneas —el ancho
+del separador decorativo del banner de `dev_server.py`— y los tres tienen su
+análisis **completado** en `progress/mutacion_F-010.md`: **mutantes
+equivalentes**, ningún comportamiento observable cambia y el fichero ni siquiera
+se despliega. Ninguna sección queda en `PENDIENTE`.
+
+`harness/mutacion.py` entra en el alcance con 10 líneas pero **genera 0
+mutantes**: el cambio es un literal de diccionario y comentarios, sin ningún
+operador que el mutador sepa sustituir.
+
+## Evidencias · ronda de correcciones
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados y resultado | **1087 pasan**, 13 saltados, 0 fallos (17 arnés + 1070 api; front por caché de árbol limpio) |
+| Tests nuevos de esta ronda | **7** (6 en `test_f010_scripts_infra.py`, 1 en `tests/test_mutacion_sin_bytecode.py`), más 2 corregidos |
+| Cobertura de las líneas cambiadas | **98,3 %** — 114/116, umbral 80 %, nivel `estandar` (línea `PUERTA COBERTURA`) |
+| Mutantes generados / supervivientes | **20 / 3**, 17 muertos, 0 timeouts — los 3 analizados y cerrados como equivalentes |
+| Workers de la campaña | **16** (paralela, por defecto) |
+| Coste por mutante | 14,1 s × 16 / 20 ≈ **11 s**, coherente con la suite: la regla nueva no salta |
+| Tiempo de ejecución de la suite | **24,8 s** (`api`), 0,45 s (arnés), 14,1 s la campaña de mutación |
+
+Los cinco scripts corregidos son **PowerShell**: no entran ni en la cobertura
+de líneas cambiadas ni en la campaña de mutación, que el arnés solo mide sobre
+Python. Lo que los sujeta son los **113 tests** de
+`services/postventa-api/tests/test_f010_scripts_infra.py`, que los leen como
+texto; por eso cada defecto se arregló **empezando por su test**.
+
+## Lo que esta ronda NO hizo
+
+- **Ni una tarea `MANUAL (humano)`**: cero recursos en Azure, cero despliegues,
+  `ARCHIVO_HABILITADO` sin tocar, nada subido a SharePoint. Las nueve siguen
+  preparadas y pendientes, con el orden y las condiciones que fijó el reviewer
+  (T14 bis antes de T16; T18 con autorización expresa nombrando C5; cerrar la
+  ventana después de T18; T19 en `front-portal`).
+- **Ningún `git push` ni PR**, ni aquí ni en `arnes-base`. Solo commits locales.
+- **Ni un identificador real** entra en el repositorio.
+- **No se actualizó el arnés a la 1.6.x**: decisión del humano, con el motivo
+  escrito arriba.
+- **No se tocó `harness/VERSION`**, por lo mismo.
+- **No se tocaron los dos worktrees `.claude/worktrees/agent-*`**: no son de
+  esta limpieza.

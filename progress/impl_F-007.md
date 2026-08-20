@@ -1258,3 +1258,298 @@ de revisión, el documento manda y todo lo demás le cede sitio.**
 
 Esto es exactamente lo que una verificación manual sirve para descubrir: nada
 de esto lo habría encontrado un test.
+
+---
+
+# Cambio 2 de la review · Trazabilidad de R5, R6, R19 y R22 (C4)
+
+*(Escrito el 2026-08-20 por el implementer. Los cambios **1** y **3** de
+`progress/review_F-007.md` los lleva el líder; esta sección cubre **solo** el
+cambio 2. No se rehízo nada más de F-007, y **la tabla de resultados de T14 no
+se ha tocado**: es del líder.)*
+
+## Qué estaba mal
+
+`specs/F-007-front/requirements.md` afirmaba que R1–R6 y R13–R22 los cubrían
+`tests_js/pipeline.test.js` y `tests_js/seleccion.test.js`. Para **R5, R6, R19
+y R22 no era cierto**: no existía ningún test que los comprobara. Estaban
+implementados, pero solo en `index.html` y `js/app.js`, que `design.md` §3 deja
+sin tests a propósito.
+
+La salida es **mixta**, según decidió el humano: **R19 gana su test**; **R5, R6
+y R22** pasan a `MANUAL (humano), T14`, con el porqué escrito.
+
+---
+
+## Commit `788751a` · R19 sale de `app.js` y se prueba
+
+**Por qué este sí y los otros no.** R19 parecía presentación —«sale un
+¿seguro?»— pero es una **decisión**: disparar o no disparar **una tanda de
+subidas reales a SharePoint**, una por parte apto. Estaba escrita en `app.js`,
+sin test **y sin punto en T14**: ni el «funciona a la perfección» del humano ni
+ninguno de los ocho puntos manuales la miraban.
+
+### El módulo nuevo
+
+`services/postventa-front/js/confirmacion.js` — lógica pura, sin DOM, sin
+Alpine y **con el reloj inyectado por parámetro**:
+
+| Función | Qué hace |
+|---|---|
+| `armar(ahoraMs)` | Primer clic. Devuelve `{armadaEn}`. **Lanza** si el reloj no es un número finito: sin reloj no hay caducidad, y una confirmación que no caduca nunca es justo lo que este módulo viene a evitar |
+| `pendiente(estado)` | ¿Se pinta el «¿Seguro?»? **No mira el reloj, a propósito** (ver abajo) |
+| `resolver(estado, ahoraMs, [ventanaMs])` | Segundo clic. Devuelve `{dispara, estado, motivo}` |
+| `cancelar()` | Vuelve al estado inicial |
+
+**Tres decisiones de diseño, con su porqué:**
+
+1. **La confirmación caduca al minuto** (`VENTANA_MS = 60000`). El humano dejó
+   la caducidad a criterio del diseño y se implementa: un minuto sobra para
+   leer «se subirán a SharePoint» y decidir, y no deja la pantalla armada
+   mientras el usuario se va a comer. Sin caducidad, un clic al volver sube la
+   remesa entera sin que nadie haya confirmado nada **en ese momento**.
+2. **`resolver` devuelve SIEMPRE `estado: null`**, dispare o no. El armado
+   queda consumido pase lo que pase. Es la defensa contra el doble clic sobre
+   «Sí, archivar», que si no lanzaría **dos** tandas de subidas.
+3. **`pendiente()` no mira el reloj**, y es deliberado: el reloj no es reactivo
+   en Alpine, así que un panel que dependiera de él no se cerraría solo al
+   caducar. La caducidad la descubre **el clic**, dentro de `resolver`, que
+   cierra el panel y saca «La confirmación caducó». La alternativa —un
+   `setTimeout` en `app.js`— está **prohibida por la guardia estática**, y con
+   razón.
+
+También se rechaza un **reloj que salta hacia atrás** (cambio de hora,
+sincronización NTP): `transcurrido < 0` se trata como caducada. Ante la duda,
+no se archiva.
+
+### El estado es un objeto plano, no un objeto con métodos
+
+Se descartó un `crearConfirmacion()` con estado dentro. `app.js` guarda lo que
+el módulo devuelve —`{armadaEn}` o `null`— y **lo reasigna, nunca lo muta**.
+Así Alpine ve el cambio sin depender de que haga proxy profundo de un objeto
+con métodos dentro, que es un comportamiento del que este código no debería
+colgar.
+
+### Fase RED · las dos trazas
+
+**Rojo 1 — el módulo no existe.** Comando exacto, desde
+`services\postventa-front`:
+
+```
+node --test tests_js/confirmacion.test.js
+
+Error: Cannot find module '../js/confirmacion.js'
+Require stack:
+- C:\...\services\postventa-front\tests_js\confirmacion.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at Object.<anonymous> (...\tests_js\confirmacion.test.js:15:22) {
+  code: 'MODULE_NOT_FOUND',
+}
+ℹ tests 1
+ℹ pass 0
+ℹ fail 1
+```
+
+**Rojo 2 — de aserción, que es el que vale.** Un `MODULE_NOT_FOUND` demuestra
+que el fichero no está, no que los tests miren algo. Así que se escribió un
+**stub trampa** que dispara siempre (`resolver: () => ({dispara: true, ...})`)
+y se relanzó el mismo comando:
+
+```
+node --test tests_js/confirmacion.test.js
+
+X f007 R19: sin armar, un solo clic NO dispara nada (2.0105ms)
+v f007 R19: el segundo clic si dispara (0.2466ms)
+X f007 R19: tras disparar, la confirmacion queda desarmada (0.2776ms)
+X f007 R19: una confirmacion olvidada caduca y NO dispara (0.2286ms)
+v f007 R19: justo en el borde de la ventana todavia dispara (1.1457ms)
+X f007 R19: la ventana se puede acortar para probarla (0.2567ms)
+X f007 R19: un reloj que va hacia atras no dispara (0.2332ms)
+X f007 R19: un estado corrupto no dispara (0.245ms)
+v f007 R19: resolver NO muta el estado que recibe (1.1638ms)
+X f007 R19: pendiente() dice si hay que pintar el «seguro?» (0.4112ms)
+v f007 R19: cancelar deja la confirmacion sin armar (0.1617ms)
+X f007 R19: armar exige un reloj de verdad (0.408ms)
+v f007 R19: la ventana por defecto es un tiempo humano (0.2129ms)
+i tests 13
+i pass 5
+i fail 8
+
+X failing tests:
+
+X f007 R19: sin armar, un solo clic NO dispara nada (2.0105ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  true !== false
+
+      at TestContext.<anonymous> (...\tests_js\confirmacion.test.js:23:10)
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual'
+```
+
+**8 rojos de aserción contra un módulo que disparaba siempre**, incluidos los
+dos que el humano pidió como mínimo: «un solo clic no dispara nada» y la
+caducidad. Los 5 que pasaban con el stub son los que no dependen de la decisión
+(el segundo clic sí dispara, el borde de la ventana, la no mutación,
+`cancelar`, la cota de `VENTANA_MS`): están para fijar el contrato, no para
+cazar este fallo.
+
+**Verde, con el módulo real y el mismo comando:**
+
+```
+node --test tests_js/confirmacion.test.js
+
+i tests 13
+i suites 0
+i pass 13
+i fail 0
+i cancelled 0
+i skipped 0
+i todo 0
+i duration_ms 160.8604
+```
+
+### Los 13 tests
+
+Todos con el reloj por parámetro: **ni un `setTimeout`, ni un `Date.now()`
+real**. Un test de caducidad que dependa del reloj de la máquina es un test que
+falla en la máquina de otro — mismo criterio que ya seguía `cola.test.js`.
+
+Los dos que el humano exigió: `sin armar, un solo clic NO dispara nada` y
+`el segundo clic sí dispara`. Los demás cubren la caducidad y su borde exacto,
+el reloj hacia atrás, el estado corrupto (`{}`, `{armadaEn: "ayer"}`, `NaN`,
+`undefined`, `0`, `""`), que `resolver` no muta lo que recibe, que tras
+disparar queda desarmada, que `armar` exige un reloj de verdad y que la ventana
+por defecto es un tiempo humano (entre 5 s y 5 min).
+
+### Cómo quedó cableado
+
+- **`js/app.js`**: `confirmandoArchivo: false` (un booleano suelto) pasa a
+  `confirmacionArchivo: null` + `avisoArchivo: ""`, y
+  `pedirConfirmacionArchivo`, `confirmacionPendiente`, `cancelarArchivo` y
+  `confirmarArchivo` **delegan** en `window.Confirmacion`. Sigue siendo
+  pegamento: ni una decisión dentro.
+- **`index.html`**: `x-if="confirmacionPendiente()"`,
+  `@click="cancelarArchivo()"` —antes la plantilla **asignaba el flag a
+  mano**— y un aviso ámbar para `avisoArchivo`. Script nuevo cargado **antes**
+  de `app.js`, sin `defer`.
+- **`tests/test_f007_estaticos.py`**: `js/confirmacion.js` entra en
+  `ORDEN_CANONICO` y `window.Confirmacion` en la guardia
+  `test_f007_r36_app_js_usa_los_modulos_probados`. **Si la lógica vuelve a
+  `app.js`, el test lo caza.**
+
+---
+
+## Commit `9a6db89` · la tabla de trazabilidad dice la verdad
+
+En `requirements.md`, la fila «R1–R6, R13–R22» se parte en tres:
+
+| Requisitos | Dónde se prueban |
+|---|---|
+| R1–R4, R13–R18, R20, R21 | `tests_js/pipeline.test.js`, `tests_js/seleccion.test.js` |
+| **R5, R6, R22** | **MANUAL (humano)**, T14 |
+| **R19** | `tests_js/confirmacion.test.js` |
+
+**No se inventó ningún test de presentación** para cumplir el expediente.
+
+### Por qué R5, R6 y R22 se verifican a mano y R13–R18 y R20–R21 no
+
+*(La razón está escrita, además, en `requirements.md` justo debajo de la tabla,
+que es donde la va a leer el siguiente. Aquí queda el mismo argumento.)*
+
+**R5, R6, R22 y R36 son presentación pura.** Lo único que les queda por
+comprobar es **que el dato acaba en la pantalla**: la fila por parte y el
+`total_partes`, el mensaje de error del 400 y la vuelta al estado inicial, el
+`nombre_fichero`/`carpeta`/`estado` y su enlace. Eso vive en `index.html` y
+`js/app.js`, sin tests **a propósito** (`design.md` §3), porque probarlo
+exigiría un DOM y una herramienta de navegador — justo la dependencia que la
+feature evita (`design.md` §9). Un test de presentación que no abre un
+navegador **no mira la pantalla**: da tranquilidad falsa y encima hay que
+mantenerlo. Por eso se eligió corregir la tabla y no fabricarlos.
+
+**Y la lógica que hay debajo sí está probada**, que es lo que hace aceptable la
+salida manual — la mitad que se verifica a mano es la última pulgada, no el
+requisito entero:
+
+| Req | Lo que sí tiene test | Lo que se ve a mano (T14) |
+|---|---|---|
+| R5 | `f007 R4:` — trocear envía el multipart de la remesa tal cual (`seleccion.test.js`) | que la lista de partes aparece en pantalla |
+| R6 | `api.test.js` — el `error` y los `avisos` del 400 se propagan al llamante | que la pantalla vuelve al estado inicial sin filas a medias |
+| R22 | `pipeline.test.js` — qué viaja a `/api/archivar` y qué no (R29) | que la respuesta se pinta con su enlace |
+| R36 | los módulos, uno a uno | que la pantalla entera funciona contra la Function |
+
+**R13–R18 y R20–R21 son otra cosa: son decisiones, no pinturas.** Qué campo es
+dudoso, qué se manda a revalidar, qué cuerpo se compone, qué parte es
+archivable, por qué cola van las peticiones. Una decisión equivocada **no se ve
+mirando la pantalla** —sale un número plausible y nadie sospecha—, así que se
+prueba en la unidad, donde se puede afirmar el valor exacto.
+
+Ese es el criterio, y es exactamente el que **movió a R19 de un lado al otro**:
+parecía pintura y era decisión.
+
+### T14 gana los puntos 9 y 10
+
+Añadidos en `specs/F-007-front/tasks.md` (confirmado: están en el commit
+`9a6db89`, líneas 214 y 224 del fichero), para que la próxima ejecución manual
+los cubra explícitamente:
+
+- **Punto 9 (R19)** — el **primer** clic en «Archivar los partes aptos» **no
+  lanza ninguna petición**: en DevTools → Red, **cero** llamadas a
+  `/api/archivar`; solo sale el «¿Seguro? Se subirán a SharePoint». La petición
+  sale con el **segundo** clic. «Cancelar» cierra el aviso sin llamar a nada. Y
+  si entre los dos clics pasa **más de un minuto**, el segundo **tampoco**
+  archiva: sale «La confirmación caducó».
+- **Punto 10 (R22)** — en el resumen salen `nombre_fichero`, `carpeta` y
+  `estado` por parte, y el enlace «abrir en SharePoint» **solo** cuando la
+  respuesta trae `web_url`. Desde local esto se ve con el 503 del punto 7, que
+  es lo esperado; la comprobación completa es del entorno desplegado.
+
+El enunciado de T14 pasa a nombrar también **R5, R6, R19 y R22**, no solo R36.
+
+---
+
+## Ficheros tocados
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-front/js/confirmacion.js` | **Nuevo.** El módulo de R19 |
+| `services/postventa-front/tests_js/confirmacion.test.js` | **Nuevo.** 13 tests |
+| `services/postventa-front/js/app.js` | Delega en el módulo; deja de tener la lógica |
+| `services/postventa-front/index.html` | `confirmacionPendiente()`, `cancelarArchivo()`, aviso de caducidad, script nuevo |
+| `services/postventa-front/tests/test_f007_estaticos.py` | El módulo entra en las dos guardias |
+| `services/postventa-front/README.md` | Mapa de capas |
+| `specs/F-007-front/requirements.md` | Tabla de trazabilidad corregida + el porqué |
+| `specs/F-007-front/tasks.md` | T14: puntos 9 y 10, y su enunciado |
+| `specs/F-007-front/design.md` | El módulo, en §2.1 y §3 |
+
+**Ni un fichero de `services/postventa-api/`.** No se tocaron
+`progress/current.md` ni la tabla de resultados de T14: son del líder.
+
+## Evidencias · cambio 2
+
+| Evidencia | Valor |
+|---|---|
+| **Tests ejecutados** | `front`: **74 passed en 2,20 s** (pytest, sin caché), y dentro va la suite JS — **97 pass, 0 fail, 0 skipped, 332,9 ms** (`node --test "tests_js/*.test.js"`, Node v24.14.1): **84 antes, +13 de R19**. `api`: **924 passed, 10 skipped en 23,98 s**, relanzada a mano porque `init.sh` la dio por caché. Raíz: **16 passed en 0,60 s** |
+| **Cobertura de las líneas cambiadas** | `[OK] PUERTA COBERTURA: 98.3% de 116 líneas cambiadas cubiertas (114/116, umbral 80%, nivel estandar)` — **igual que antes**, y tenía que serlo: la puerta mide Python y este cambio no añade ni una línea de Python de producción |
+| **Mutantes y supervivientes** | **20 / 3, sin cambios.** Comprobado, no supuesto: `alcance_de_feature("F-007")` devuelve **`services/postventa-front/dev_server.py: 188 líneas` y nada más**. `js/confirmacion.js` es JavaScript —fuera del alcance del motor, que solo muta `.py`— y los dos `.py` tocados están bajo `tests/`, que el arnés excluye. `progress/mutacion_F-007.md` sigue vigente tal cual. **La campaña no se reejecutó a propósito**: el árbol tenía los cambios del líder, lo que habría forzado `--workers 1`, que es justo lo que envenenó el bytecode durante la review (sección 16 de `review_F-007.md`) |
+| **Tiempo de la suite** | front 2,20 s · api 23,98 s · raíz 0,60 s · JS 0,33 s |
+
+**Limitación que conviene no tapar** (es la propuesta **P1** del reviewer, y
+ahora pesa un poco más): los 13 tests nuevos son JavaScript, así que la campaña
+de mutación **no los evalúa**. `js/confirmacion.js` está probado, pero ningún
+mutante comprueba que sus tests muerdan. Lo que sí hay es la **fase RED con el
+stub trampa** de más arriba, que es la defensa manual equivalente: 8 de los 13
+fallaron contra un módulo que disparaba siempre.
+
+`bash harness/init.sh` tras los commits: **`ENTORNO LISTO. Puedes trabajar.`,
+exit 0**, con las dos suites (`api` y `front`).
+
+## Verificaciones MANUAL pendientes de este cambio
+
+Los **puntos 9 y 10** de T14, nuevos. El resto de T14 ya lo ejecutó el humano
+el 2026-08-20. El punto 9 se comprueba **en la misma pasada** que los puntos 3,
+6 y 8 del cambio 1: con la remesa cargada y DevTools → Red abierto, mirando que
+el **primer** clic de archivar no genere ninguna llamada.

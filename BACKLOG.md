@@ -3,15 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **18 features**, 13 abiertas, 5 terminadas.
-
-En curso: **F-006**.
+Resumen: **18 features**, 12 abiertas, 6 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-006 | Nombrado y archivo en SharePoint | 6 | en curso | critico | `feature/F-006-sharepoint` |
 | F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 8 | pendiente | documental | `feature/F-008-modelo-sigrid` |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 9 | pendiente | critico | `feature/F-009-cierre-sigrid` |
@@ -34,14 +31,9 @@ En curso: **F-006**.
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
 | F-004 | Validación del parte y clasificación de la firma | 4 | critico |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | critico |
+| F-006 | Nombrado y archivo en SharePoint | 6 | critico |
 
 ## Detalle
-
-### F-006 · Nombrado y archivo en SharePoint
-
-estado **en curso** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
-
-Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.
 
 ### F-007 · Front de carga y revisión
 
@@ -144,3 +136,9 @@ Reglas de validación sobre lo extraído y clasificación de la firma en: firma 
 estado **terminada** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-005-persistencia`
 
 Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado de validación, trazas de archivo y cierre, y preferencias por usuario (incluida la de auto-cierre). DDL idempotente al arranque, como hace sv3 en albaranes.
+
+### F-006 · Nombrado y archivo en SharePoint
+
+estado **terminada** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
+
+Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.

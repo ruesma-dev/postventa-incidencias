@@ -4,7 +4,11 @@
 > Informe escrito **de forma incremental**, conforme verificaba, no al final.
 > **TERMINADO** el 2026-08-20.
 
-- **Veredicto: `CHANGES_REQUESTED` (RECHAZADO).**
+- **Veredicto final: `APPROVED` (APROBADO)** — segunda revisión, 2026-08-20.
+  Los cuatro cambios requeridos están resueltos y verificados: ver
+  **«Segunda revisión»** al final de este informe.
+  *(Primera revisión: `CHANGES_REQUESTED`. Se conserva íntegra abajo, porque es
+  la evidencia de qué se pidió y por qué.)*
 - **Rama:** `feature/F-006-sharepoint`
 - **Rigor declarado:** `critico` (`features.json`) → exige fase RED, puerta de
   cobertura, campaña de mutación con **cero supervivientes** o análisis escrito
@@ -525,3 +529,148 @@ acepta viaja a `arnes-base` en el mismo trabajo.
 es el segundo caso real que la justifica. Mientras no exista, cada feature con
 una verificación manual diferida obliga al reviewer a rechazar o al humano a
 firmar a mano, y eso último es lo correcto pero cuesta una vuelta entera.
+
+---
+
+# Segunda revisión · 2026-08-20 · **APROBADO**
+
+Reviso **solo los cuatro cambios requeridos**. Todo lo demás quedó verificado y
+dado por bueno en la primera pasada, y **ni una línea de código de producción ha
+cambiado desde entonces** —comprobado con `git diff --name-only 1d4885e..HEAD`:
+solo cuatro ficheros de `progress/` y un fichero de tests nuevo—, así que mi
+campaña de mutación independiente (V4) sigue siendo válida sin reejecutarla.
+
+## Cambio 1 · El appId (H1) — **RESUELTO**
+
+- **Barrido propio, otra vez**: el valor **no aparece en ningún fichero del
+  árbol**, ni en el código, ni en `progress/`, ni en mi propio informe (el líder
+  enmascaró las dos citas y **no tocó ninguna conclusión**: lo he comparado).
+- Lo que queda en `progress/current.md` es lo correcto: el registro **nombrado**,
+  la vía para consultarlo (`az ad app list`) y la nota de que estuvo escrito.
+  Dejar constancia de que estuvo, sin el valor, es mejor que borrarlo en
+  silencio.
+- Los únicos identificadores con forma de GUID que quedan en el árbol son los
+  **tres declarados y acotados**: dos controles negativos de F-005 y el GUID
+  todo a ceros que cito en este informe.
+
+**Corrijo una imprecisión mía de la primera pasada.** Escribí que el humano
+debía «decidir si además hay que rotar algo». **El líder tiene razón y lo
+recojo**: un appId **no es una credencial**. Viaja en claro en los flujos de
+OAuth, es público por diseño y no abre nada por sí solo; lo que da acceso es el
+**client secret**, que **nunca estuvo en el repositorio** (lo verifiqué entonces
+y lo he vuelto a verificar ahora). **No hay nada que rotar.**
+
+Lo que **sí** sostengo, sin rebajarlo:
+
+- La regla del proyecto prohíbe identificadores en git **sin matices**, y
+  `design.md` §9 prometía explícitamente que no entraba ninguno. Era un
+  incumplimiento real, no un formalismo.
+- Entró en `f2e317b`, que **ya está en `dev`**, y de ahí no sale sin reescribir
+  el historial. El humano tiene el dato para decidir; **comparto la
+  recomendación del líder: no compensa**, precisamente porque no es una
+  credencial.
+
+## Cambio 2 · El hueco del barrido — **RESUELTO, y bien resuelto**
+
+`tests/test_f006_repo_sin_identificadores.py` (29 tests, todos en verde,
+ejecutados por mí). No me he quedado en que pase: he mirado si **caza lo que se
+escapó** y si **aguanta puesto**.
+
+- **Caza el caso exacto de H1**:
+  `test_f006_r26_el_barrido_caza_un_guid_escrito_en_un_informe` monta un
+  `progress/impl_F-999.md` en `tmp_path` con la frase «App registration, appId
+  …» y exige que el barrido lo señale. Es literalmente el fallo que encontré,
+  convertido en test. Y ejercita **el barrido entero** —recorrido, filtros y
+  recuento—, no solo la expresión regular, que es la diferencia entre un
+  guardián y una regex con buena prensa.
+- **Cubre el punto ciego por nombre, no por casualidad**:
+  `..._cubre_el_punto_ciego_que_dejo_pasar_h1` exige que `progress/current.md`
+  —el fichero de H1— esté entre los barridos, además de `docs/`, `specs/`,
+  `infra/` y la raíz. Y `..._mira_ficheros_de_verdad` impide el fallo más
+  silencioso de todos: un filtro roto que deja el test en verde por no vigilar
+  nada.
+- **Controles negativos suficientes**: 18 frases parametrizadas sacadas de
+  prosa real de `progress/` y de la salida del arnés —hablar de `appId`, de
+  `SHAREPOINT_SITE_ID`, de `Sites.FullControl.All`, un hash de parte, un SHA
+  corto de commit, y **las trazas enmascaradas a propósito**—, más los tres
+  bordes por longitud y uno no hexadecimal. Es la parte que evita que el test
+  muera por molesto, que es como mueren de verdad los guardianes.
+- **El alcance excluye con criterio**: `.git/`, `.venv/`, `.idea/`,
+  `muestras/`, `.env` y `local.settings.json` quedan fuera **porque ahí un
+  identificador real es lo normal y lo correcto**, y hay un control positivo que
+  lo fija. Un barrido que fallara al rellenar el `.env` se desactivaría en tres
+  semanas.
+- **El mensaje de fallo dice `{ruta: nº}` y jamás el valor**, y la tolerancia se
+  expresa por **recuento**, nunca por valor, con un test que impide ampliarla en
+  silencio. Las dos decisiones son correctas: un guardián de secretos que
+  imprime el secreto lo reparte por el log de CI.
+- Detalle: el patrón se **importa** de la otra mitad en vez de copiarse. Dos
+  regex gemelas divergen siempre.
+
+**Nit, sin consecuencias**: la tolerancia fija en **1** el GUID de
+`progress/review_F-006.md` —este informe—, así que quien lo edite no puede
+añadir ni quitar un GUID sin tocar el test. Está justificado por escrito (no
+alterar la evidencia de una review) y lo he respetado al redactar esta sección.
+Si algún día molesta, la salida es sustituir esa entrada por una exclusión de
+`progress/review_*.md` **acotada al GUID nulo**, no ampliar la tolerancia.
+
+## Cambio 3 · Las dos firmas del humano — **DADAS**
+
+En `progress/impl_F-006.md`, commit `00092ac`, **firmado por el humano**
+(`pablogris`), con fecha 2026-08-20 y con razonamiento, no con un «vale»:
+
+1. **Los cinco supervivientes: ACEPTADOS.** La tabla los clasifica en un
+   equivalente de manual (el `<` → `<=`) y cuatro constantes operativas, y
+   explica por qué **no** se escriben tests para ellos: un `assert
+   graph_timeout_s == 60` repite la constante que dice vigilar. Coincide con lo
+   que yo había verificado por mi cuenta, y cita la trampa que ya mordió en
+   F-003. Con esto, el último `[ ]` de **C4 bis** queda cerrado.
+2. **Cerrar con T18 pendiente ante C5: AUTORIZADO.** Coherente con D3 del
+   2026-08-19, con la etiqueta, el comando y el criterio ya escritos, y
+   reconociendo que hoy esa distinción la sostiene una firma a mano hasta que
+   exista **F-017**. Con esto, **C5** queda cerrado.
+
+Es exactamente lo que pedí: la autorización que el nivel `critico` reserva al
+humano, **por escrito en `progress/`** y no por chat.
+
+## Cambio 4 · `progress/current.md` limpio — **RESUELTO**
+
+Fuera el bloque de la sesión de F-005 que decía «no hay ninguna feature
+`in_progress`» y «F-006 está `spec_ready`». Ahora el fichero declara
+`in_progress: F-006` y describe la sesión activa, rechazo de la primera review
+incluido. **C2** queda cerrado.
+
+*(Nit sin consecuencias: sobrevive el encabezado «Lo siguiente: F-006 … solo
+falta la PARADA 1», que ya no es cierto. Habla de la feature activa, así que no
+es residuo de otra sesión; es solo redacción vieja.)*
+
+## Verificación final, ejecutada por mí
+
+| Comprobación | Resultado |
+|---|---|
+| `bash harness/init.sh` | **exit 0**. `PUERTA COBERTURA [OK] 98.2% (336/342, umbral 80%, nivel critico)` |
+| Suite del servicio, relanzada sin caché | **924 passed, 10 skipped** (+29 del barrido nuevo; antes 895) |
+| Barrido del appId en todo el árbol | **cero apariciones** |
+| GUID en el árbol versionado | **3**, los tres declarados y acotados por test |
+| Código de producción cambiado desde mi campaña de mutación | **ninguno** → los totales 64/59/5/0 siguen valiendo |
+| `git status` | **limpio** (salvo este informe, sin trackear) |
+| Campaña de mutación del informe | reejecutada **también** por el implementer con `--workers 1` (905,7 s): mismos 64/59/5/0. Coincide con mi ejecución independiente de 257 s |
+
+## Checkpoints que estaban vacíos
+
+- **C2** · `current.md` solo con la sesión activa → **[x]**
+- **C3** · sin secretos ni identificadores → **[x]**
+- **C4 bis** · cero supervivientes salvo justificación **aceptada por el
+  humano** → **[x]** (aceptación firmada el 2026-08-20)
+- **C5** · `tasks.md` con todas las tareas `[x]` → **[x]** *con la autorización
+  expresa del humano*, que es la única vía que `CHECKPOINTS.md` deja hoy para
+  una verificación `MANUAL (humano)` aplazada por una dependencia declarada.
+  T17 y T18 siguen `[ ]` **por diseño y con firma**, no por trabajo sin hacer.
+
+**C1–C5 completos. Veredicto: APROBADO.**
+
+Se mantienen, sin bloquear: **mergear a `dev` con squash** (H2: el GUID de
+ejemplo de la traza de T13 sigue en el historial de la rama), **recoger la deuda
+de la capa L1 de idempotencia** en F-007 o F-010, e **inyectar el reloj** en el
+adaptador si algún día se quiere matar dos de los cinco supervivientes. El
+merge lo decide el humano; yo no lo hago.

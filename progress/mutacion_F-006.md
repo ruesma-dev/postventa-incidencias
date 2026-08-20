@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-006.md -->
 # F-006 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-006` el 2026-08-20 02:14.
+Generado por `python -m harness.mutacion --feature F-006` el 2026-08-20 02:24.
 
 ## Alcance
 
@@ -31,7 +31,7 @@ Origen del diff: **rama** (`f2e317b2af433fee592a08f2a3cf7e3a145d35f4` .. `featur
 | Muertos | 59 |
 | Supervivientes | 5 |
 | Timeouts | 0 |
-| Tiempo total | 235.2 s |
+| Tiempo total | 247.0 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
@@ -64,6 +64,8 @@ despliegue, no la suite.
 volviera ajustado, lo que habría que escribir es un test de la **propiedad**
 (`timeout * reintentos < 230`), no del valor.
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 2. `services/postventa-api/config/settings.py:293` [entero]
 
 - Original: `default=3,`
@@ -88,6 +90,8 @@ concreto es una decisión de operación, no una regla del dominio.
 
 **Riesgo residual**: ninguno. Cuántas veces se reintenta se puede cambiar por
 variable de entorno sin tocar código, que es justamente para lo que está.
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
 ### 3. `services/postventa-api/infrastructure/sharepoint/graph.py:112` [entero]
 
@@ -117,6 +121,8 @@ caduque en pleno vuelo; 60 o 61 segundos protegen igual, y el fallo que evitarí
 la diferencia —un `401` en la ventana de un segundo— se traduce en una traza de
 `error` y un reintento del parte, no en un archivo corrupto.
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 4. `services/postventa-api/infrastructure/sharepoint/graph.py:362` [comparacion]
 
 - Original: `if self._token is not None and time.monotonic() < self._token_expira_en:`
@@ -139,6 +145,8 @@ definición de mutante equivalente.
 **Riesgo residual**: ninguno. Aunque coincidieran, la diferencia sería usar un
 token durante un instante más, y el margen de 60 s de renovación ya cubre eso
 con seis órdenes de magnitud de sobra.
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
 ### 5. `services/postventa-api/infrastructure/sharepoint/graph.py:380` [entero]
 
@@ -167,6 +175,11 @@ la diferencia entera.
 
 ---
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
+
+---
+
 ## Veredicto de la campaña (nivel `critico`)
 
 **Cinco supervivientes, cinco análisis completos, ninguno pendiente.** Los
@@ -182,7 +195,7 @@ de aptitud que se podía saltar y un parámetro muerto que nadie había visto.
 |---|---|---|---|
 | 1.ª | 68 | 48 | 20 |
 | 2.ª | 64 | 58 | 6 |
-| 3.ª (final) | 64 | 59 | **5** |
+| 3.ª y 4.ª (final) | 64 | 59 | **5** |
 
 Los cinco que quedan se reparten así:
 
@@ -201,4 +214,5 @@ sobrevive nada.
 
 > **Este análisis lo tiene que aceptar el humano**, como pide el nivel
 > `critico`. Su copia durable está en `progress/impl_F-006.md`: este fichero lo
-> **regenera** la siguiente campaña y se lleva por delante lo escrito a mano.
+> **regenera** la siguiente campaña. Los análisis por mutante sí se arrastran
+> solos —el arnés los reconoce y los trae—, pero esta sección final no.

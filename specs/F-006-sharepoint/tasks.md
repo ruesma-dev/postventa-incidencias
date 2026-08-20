@@ -432,7 +432,7 @@
 
 ## Fase 9 · Cierre
 
-- [ ] **T20**: Campaña de mutación y análisis de supervivientes.
+- [x] **T20**: Campaña de mutación y análisis de supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-006` genera
       `progress/mutacion_F-006.md` con **cero supervivientes** (nivel
       `critico`), o cada superviviente con su análisis escrito y aceptado por
@@ -441,7 +441,7 @@
       puerta de entorno de §5: si alguno sobrevive, es que la regla dura no
       está probada de verdad.
 
-- [ ] **T21**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T21**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la puerta de cobertura de las líneas
       cambiadas en `[OK]` (umbral 80 %).
 

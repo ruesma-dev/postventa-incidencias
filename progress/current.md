@@ -1,6 +1,48 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-20 · **F-006 IMPLEMENTADA, a la espera de revisión**
+>
+> La implementación está terminada en `feature/F-006-sharepoint`. El informe
+> completo —fases RED con su traza, decisiones, desviaciones y evidencias— está
+> en **`progress/impl_F-006.md`**; la campaña de mutación, en
+> `progress/mutacion_F-006.md`.
+>
+> **Números medidos**: 895 tests en verde (+213), cobertura de líneas cambiadas
+> **98,2 %** (336/342, umbral 80 %), **64 mutantes / 59 muertos / 5
+> supervivientes**, 0 timeouts, y `bash harness/init.sh` con **exit code 0**.
+>
+> **19 de 21 tareas `[x]`.** Las dos abiertas lo están a propósito:
+>
+> - **T17** — `MANUAL (humano)`, **lista para ejecutar**: D6 se resolvió el
+>   2026-08-20. Su comando exacto está en `specs/F-006-sharepoint/tasks.md`.
+>   El script es de **solo lectura** y no sube nada.
+> - **T18** — `MANUAL (humano)`, **DIFERIDA a F-010** por decisión del humano
+>   del 2026-08-19 (D3, opción (a)). Su script se entrega dentro de F-006; lo
+>   que se aplaza es ejecutarlo.
+>
+> **T19 quedó N/A** por la decisión del 2026-08-20 (el humano no commitea en
+> `azure-apps`), escrita y fechada en la propia tarea.
+>
+> ### Tres cosas que el humano tiene que decidir antes del cierre
+>
+> 1. **Autorizar el cierre con T18 pendiente** ante `CHECKPOINTS.md` **C5**,
+>    que pide todas las tareas `[x]`. Sin esa autorización por escrito, el
+>    veredicto correcto del reviewer es `CHANGES_REQUESTED`. Es el caso que
+>    motiva **F-017**.
+> 2. **Aceptar el análisis de los 5 mutantes supervivientes**, como pide el
+>    nivel `critico`. Los cinco están analizados y ninguno queda `PENDIENTE`;
+>    los cinco son equivalentes o constantes de operación, y **ninguno** toca
+>    el nombrado, la puerta de entorno ni la idempotencia.
+> 3. **Tener presente el riesgo aceptado de permisos** (2026-08-20): la
+>    aplicación puede escribir hoy en cualquier sitio de SharePoint del
+>    inquilino. Documentado en `design.md` §9 y en `docs/INTEGRACION.md` §3, y
+>    lo recorta **F-018**.
+>
+> **Ninguna subida real a SharePoint se ha hecho** desde local ni desde los
+> tests, y no ha entrado en el repositorio ni un identificador de inquilino,
+> sitio, biblioteca o aplicación.
+
 > **Estado al 2026-08-20.** **F-005 está CERRADA y APROBADA.** El resumen
 > completo, con las lecciones, vive en `progress/history.md`; el detalle, en
 > `progress/impl_F-005.md` y `progress/review_F-005.md`.

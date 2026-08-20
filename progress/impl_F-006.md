@@ -1110,3 +1110,149 @@ la idempotencia. Ahí no sobrevive nada.
 > El nivel `critico` pide **cero supervivientes o cada uno con su análisis
 > aceptado por el humano**. Quedan cinco, los cinco analizados y los cinco de
 > la segunda clase. **Esa aceptación es del humano, no mía.**
+
+---
+
+## T21 · `bash harness/init.sh` en verde
+
+Ejecutado tal cual, sin pipes ni decoración:
+
+```
+$ bash harness/init.sh
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] features.json válido
+[OK] BACKLOG.md al día
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 56 avisos (deuda previa, no bloquea)
+[OK] pytest en verde (con medición de cobertura)
+895 passed, 10 skipped in 33.20s
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] PUERTA COBERTURA: 98.2% de 342 líneas cambiadas cubiertas (336/342, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-006-sharepoint
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+EXIT CODE: 0
+```
+
+**Sobre los avisos de ruff.** Al empezar F-006 había 53 y ahora hay 56. Los que
+eran **míos** están corregidos (un import sobrante, dos `pytest.raises(Exception)`
+que ahora esperan `FrozenInstanceError` —más estricto, no menos— y dos `noqa`
+justificados). Lo que queda es **`I001`, orden de imports**, que dispara en
+**todos** los ficheros del servicio, también en los de F-002 a F-005: la
+convención de este proyecto —`config`/`domain` antes que `application`/
+`infrastructure`— no coincide con la de `isort`. Reordenar solo los míos los
+dejaría inconsistentes con los otros 55; reordenarlos todos es un cambio de
+repositorio que no toca a esta feature. Se deja anotado como deuda.
+
+---
+
+## Ficheros tocados
+
+### Nuevos
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-api/domain/models/nombrado.py` | El nombrado, dominio puro |
+| `services/postventa-api/domain/ports/archivo.py` | `ArchivoPort` e `ItemArchivado` |
+| `services/postventa-api/application/pipelines/paso_archivo.py` | El paso que decide |
+| `services/postventa-api/infrastructure/sharepoint/__init__.py` | El paquete |
+| `services/postventa-api/infrastructure/sharepoint/graph.py` | El adaptador de Graph |
+| `services/postventa-api/infrastructure/sharepoint/fabrica.py` | La fábrica fail-closed |
+| `services/postventa-api/interface_adapters/api/archivar.py` | El handler HTTP |
+| `infra/verificar_destino_sharepoint.ps1` | T17, solo lecturas |
+| `infra/verificar_archivo_dev.ps1` | T18, contra el servicio desplegado |
+| `services/postventa-api/tests/utiles_sharepoint.py` | `BibliotecaFalsa` y los demás dobles |
+| `tests/test_f006_nombrado.py` · `_paso_archivo.py` · `_fabrica.py` · `_adaptador_graph.py` · `_archivar_http.py` · `_arquitectura.py` · `_scripts_infra.py` | Las siete suites |
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `config/settings.py` | Nueve ajustes de destino y credencial |
+| `domain/models/errores.py` | Seis errores nuevos |
+| `application/pipelines/contexto_parte.py` | `archivo: TrazaArchivo \| None` |
+| `function_app.py` | Ruta `POST /api/archivar` y el mapeo 400/409/502/503 |
+| `requirements.txt` | `httpx>=0.27,<1.0` |
+| `.env.example`, `local.settings.json.example` | Placeholders, sin un solo valor |
+| `docs/ARCHITECTURE.md` | Pasos 5 y 6, y la fila de SharePoint |
+| `docs/INTEGRACION.md` | Sección §3 nueva |
+| `specs/F-006-sharepoint/design.md` | Riesgo 7 aceptado; D1 y D6 resueltas |
+| `specs/F-006-sharepoint/tasks.md` | Tareas marcadas; T8 y T19 rectificadas |
+| `tests/test_f003_paso_extraccion.py` | La guardia de campos de `ContextoParte` |
+
+**No se ha tocado**: `tests/conftest.py` (la guardia de red de F-003, intacta),
+`harness/*`, los modelos de F-004 y F-005, `muestras/` ni `.env`.
+
+---
+
+## Verificaciones MANUAL (humano) pendientes
+
+| Tarea | Estado | Quién y cuándo |
+|---|---|---|
+| **T17** | **Lista para ejecutar.** D6 resuelta el 2026-08-20 | El humano, con el comando exacto que hay en `tasks.md` |
+| **T18** | **DIFERIDA a F-010** (D3, 2026-08-19). Su script se entrega aquí | Quien trabaje F-010 |
+| **T19** | **N/A** (decisión del humano, 2026-08-20) | Nadie: ya no aplica |
+
+---
+
+## Lo que queda fuera del alcance, y de quién es
+
+| Qué | De quién |
+|---|---|
+| Recortar los permisos de Graph al mínimo privilegio | **F-018** (riesgo aceptado, documentado) |
+| Ejecutar la subida real contra la biblioteca de dev | **F-010** (T18) |
+| Enseñar el resultado y dejar reintentar a una persona | F-007 |
+| Mudar el archivo a la biblioteca de Posventa | F-013 (sale casi gratis: es configuración) |
+| Cerrar la incidencia en Sigrid y subir el PDF al ERP | F-008 / F-009 / F-012 |
+| Reagrupar el parte de dos hojas | F-014 |
+
+---
+
+## Evidencias
+
+Números **medidos**, no estimados, todos de las ejecuciones pegadas arriba.
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados y resultado** | **895 pasan, 10 se saltan, 0 fallan** | `pytest -q` del servicio, dentro de `bash harness/init.sh` |
+| **Tests añadidos por F-006** | **+213** (682 al empezar → 895) | Diferencia contra el estado inicial de la rama |
+| **Cobertura de las líneas cambiadas** | **98,2 % · 336 de 342 líneas** (umbral 80 %, nivel `critico`) | Línea `PUERTA COBERTURA` de `bash harness/init.sh` |
+| **Mutantes generados / evaluados** | **64 / 64** (campaña completa, sin muestreo) | `python -m harness.mutacion --feature F-006` |
+| **Mutantes muertos** | **59** | Ídem |
+| **Mutantes supervivientes** | **5**, los cinco analizados y ninguno `PENDIENTE` | `progress/mutacion_F-006.md` |
+| **Timeouts de la campaña** | **0** | Ídem |
+| **Tiempo de la campaña** | **247,0 s** | Ídem |
+| **Tiempo de ejecución de la suite** | **33,20 s** (la del servicio, dentro de `init.sh`) | Salida de la propia suite |
+| **`bash harness/init.sh`** | **Exit code 0** | Ejecutado tal cual |
+
+**Las diez fases RED están documentadas con su traza real en rojo** en este
+informe: T2, T4, T6, T9, T11 (rojo por código inexistente) y T13 (rojo por
+rotura deliberada en una copia aislada del árbol, con las tres roturas y sus
+cuatro fallos pegados).
+
+---
+
+## Lo que hay que saber antes de aprobar esto
+
+Tres cosas, dichas sin adornos:
+
+1. **T18 queda sin ejecutar**, y el rigor `critico` exige verificaciones
+   manuales con resultado real. Es la opción (a) de **D3**, decidida por el
+   humano el 2026-08-19, y `CHECKPOINTS.md` **C5** pide todas las tareas `[x]`.
+   **Ese cierre lo autoriza el humano, no el arnés.** Sin esa autorización por
+   escrito, el veredicto correcto del reviewer es `CHANGES_REQUESTED`. Es el
+   caso que motiva **F-017**.
+2. **Quedan 5 mutantes supervivientes.** Están analizados uno a uno y los cinco
+   son equivalentes o constantes de operación, pero el nivel `critico` pide que
+   **el humano acepte** ese análisis.
+3. **La aplicación tiene hoy más permisos de Graph de los que necesita**, y
+   puede escribir en cualquier sitio de SharePoint del inquilino. Es un riesgo
+   **aceptado y fechado** (2026-08-20), documentado en `design.md` §9 y en
+   `docs/INTEGRACION.md` §3, y lo recorta **F-018**. F-006 no lo usa: va a una
+   sola biblioteca y nunca enumera sitios.
+
+Y tres desviaciones de la spec, todas anotadas en su tarea: `httpx` en vez de
+`msal`+`requests` (T8, decisión del humano), la lista blanca de T13 con **dos**
+ficheros en vez de uno —endurecida con una comprobación que la spec no pedía—,
+y `CuerpoDeArchivoInvalido`, un error que `design.md` no enumeraba y que R31
+necesita.

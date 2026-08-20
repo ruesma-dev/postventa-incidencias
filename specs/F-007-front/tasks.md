@@ -159,8 +159,10 @@
       imprime la ayuda sin arrancar nada, y `bash harness/init.sh` sigue en
       verde.
 
-- [x] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4:
-      arrancar el front en local contra la Function.
+- [x] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4, más la
+      pintura de **R5**, **R6**, **R19** y **R22** (los requisitos que
+      `requirements.md` marca `MANUAL (humano)`): arrancar el front en local
+      contra la Function.
 
       **Terminal A** (backend; una línea por línea, sin `&&`):
 
@@ -209,6 +211,22 @@
          sube nada a SharePoint**.
       8. En la consola del navegador **no aparece** ningún DNI ni ninguna
          observación (R28).
+      9. **R19 · la confirmación de archivar**: el **primer** clic en
+         «Archivar los partes aptos» **no lanza ninguna petición** —se ve en
+         **DevTools → Red**: cero llamadas a `/api/archivar`—, solo saca el
+         «¿Seguro? Se subirán a SharePoint». La petición sale con el
+         **segundo** clic, el de «Sí, archivar». *(Añadido en la review de
+         F-007: es lo único que separa un clic accidental de una tanda de
+         subidas reales, y no lo miraba ningún punto.)* «Cancelar» cierra el
+         aviso sin llamar a nada. Si entre los dos clics pasa **más de un
+         minuto**, el segundo clic **tampoco** archiva: sale «La confirmación
+         caducó» y hay que empezar de nuevo.
+      10. **R22 · la respuesta de archivar se pinta**: en el resumen sale, por
+          parte, su `nombre_fichero`, su `carpeta` y su `estado`, y el enlace
+          «abrir en SharePoint» **solo** cuando la respuesta trae `web_url`.
+          *(Desde local esto se ve con el 503 del punto 7, que es lo
+          esperado: la lista de resultados queda vacía y sale el aviso de
+          entorno. La comprobación completa es del entorno desplegado.)*
 
       **Nada de esa ejecución se copia al repositorio**: los partes de
       `muestras/` llevan datos personales y no se versionan.

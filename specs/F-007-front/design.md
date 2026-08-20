@@ -47,6 +47,7 @@ aquí hace falta es el limitador de concurrencia: allí es una llamada, aquí so
 | `services/postventa-front/js/cola.js` | **Limitador de concurrencia**. Función pura `ejecutarConLimite(tareas, limite)`: como mucho `limite` tareas vivas, el resto esperando; un error no para las demás. Sin `fetch`, sin DOM, sin Alpine. |
 | `services/postventa-front/js/api.js` | **Cliente de los seis endpoints**. Una función por endpoint (`salud`, `trocear`, `extraer`, `firma`, `validar`, `archivar`), más `peticion()` con timeout (`AbortController`), reintento con backoff y clasificación del error. `fetch` y el temporizador se **inyectan** (parámetros con valor por defecto) para poder probarlo sin red. |
 | `services/postventa-front/js/pipeline.js` | **Orquestación de un parte**: `procesarParte(parte, api)` → extraer + firma en paralelo, luego validar; y `cuerpoDeValidacion(extraccion, firma)`, `cuerpoDeArchivo(parte)`, `esArchivable(validacion)`. Sin DOM. |
+| `services/postventa-front/js/confirmacion.js` | **La confirmación en dos pasos antes de archivar (R19)**: `armar(ahoraMs)`, `pendiente(estado)`, `resolver(estado, ahoraMs)`, `cancelar()`. Lógica pura, con el reloj inyectado. *(Añadido en la review de F-007: vivía en `app.js`, donde no lo comprobaba nadie, y es lo único que separa un clic accidental de una tanda de subidas reales a SharePoint.)* |
 | `services/postventa-front/js/traza.js` | **El único registro permitido**: `traza({hash, paso, estado, http})`. Descarta cualquier clave que no sea una de esas cuatro (R28). |
 | `services/postventa-front/js/seleccion.js` | Filtrado de la selección de ficheros: `filtrarAdmitidos(ficheros)` → `{admitidos, descartados}`; y `formDataDeRemesa(ficheros)` con nombres de campo distintos (R4). |
 | `services/postventa-front/tests/conftest.py` | Pone la raíz del front en `sys.path` y monta la **guardia de red** de la suite (R33). Vive dentro de `tests/`, que el arnés excluye del alcance. |
@@ -58,7 +59,8 @@ aquí hace falta es el limitador de concurrencia: allí es una llamada, aquí so
 | `services/postventa-front/tests/test_f007_documentacion.py` | El `README.md` del front documenta la decisión de §9 (R35). |
 | `services/postventa-front/tests_js/cola.test.js` | R7–R12. |
 | `services/postventa-front/tests_js/api.test.js` | R23–R27. |
-| `services/postventa-front/tests_js/pipeline.test.js` | R8, R13–R22, R29. |
+| `services/postventa-front/tests_js/pipeline.test.js` | R8, R13–R18, R20–R21, R29. |
+| `services/postventa-front/tests_js/confirmacion.test.js` | R19. |
 | `services/postventa-front/tests_js/seleccion.test.js` | R1–R4. |
 | `services/postventa-front/tests_js/traza.test.js` | R28. |
 | `services/postventa-front/README.md` | Cómo se arranca en local, cómo se prueba y **la decisión de §9**. |
@@ -69,7 +71,7 @@ aquí hace falta es el limitador de concurrencia: allí es una llamada, aquí so
 
 | Ruta | Qué cambia |
 |---|---|
-| `services/postventa-front/index.html` | Se sustituye el bloque «Estado del servicio» por la pantalla real (zona de carga, progreso, lista de partes, panel de detalle con PDF). Se añaden los cinco `<script>` nuevos al final del `body`, **sin `defer`**, en orden de dependencia: `config`, `traza`, `cola`, `api`, `seleccion`, `pipeline`, `app`. |
+| `services/postventa-front/index.html` | Se sustituye el bloque «Estado del servicio» por la pantalla real (zona de carga, progreso, lista de partes, panel de detalle con PDF). Se añaden los cinco `<script>` nuevos al final del `body`, **sin `defer`**, en orden de dependencia: `config`, `traza`, `cola`, `api`, `seleccion`, `pipeline`, `confirmacion`, `app`. |
 | `services/postventa-front/js/config.js` | Se añaden `CONCURRENCIA_PARTES: 3`, `TIMEOUT_PETICION_MS: 180000`, `REINTENTOS: 2`, `ESPERAS_MS: [1000, 3000]`, `UMBRAL_CONFIANZA: 50`. `baseApi` no se toca. |
 | `services/postventa-front/js/app.js` | Pasa de comprobar `/health` a ser el estado de Alpine: selección, arranque de la cola, progreso, parte seleccionado, edición, revalidación, archivo. **Solo pegamento**: la lógica vive en los módulos de §2.1, que son los que se prueban. |
 | `harness/servicios.json` | Se declara el servicio del front (§8.1). |
@@ -99,6 +101,7 @@ js/cola.js       lógica pura        sin fetch, sin DOM   ← el 80 % de los tes
 js/pipeline.js   orquestación       recibe `api` inyectada
 js/seleccion.js  lógica pura        sin DOM (recibe File[])
 js/traza.js      lógica pura
+js/confirmacion.js  lógica pura     el doble clic antes de archivar (R19)
 js/api.js        adaptador HTTP     `fetch` y timers inyectables
 js/app.js        pegamento Alpine   NO se prueba: no debe tener lógica
 ```

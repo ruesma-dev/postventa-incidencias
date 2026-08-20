@@ -261,7 +261,9 @@ servicio del front declarado y su suite ejecutándose.
 
 | Requisitos | Dónde se prueban |
 |---|---|
-| R1–R6, R13–R22 | `tests_js/pipeline.test.js`, `tests_js/seleccion.test.js` (node:test) |
+| R1–R4, R13–R18, R20, R21 | `tests_js/pipeline.test.js`, `tests_js/seleccion.test.js` (node:test) |
+| **R5, R6, R22** | **MANUAL (humano)**, T14 — ver la nota de abajo |
+| **R19** | `tests_js/confirmacion.test.js` |
 | R7–R12 | `tests_js/cola.test.js` |
 | R23–R27 | `tests_js/api.test.js` |
 | R28–R29 | `tests_js/traza.test.js`, `tests_js/pipeline.test.js` |
@@ -275,3 +277,40 @@ servicio del front declarado y su suite ejecutándose.
 Nombres trazables, según `docs/CONVENTIONS.md`: en Python
 `test_f007_rN_<qué>`; en los tests de node, el nombre del `test()` empieza por
 `f007 RN:`.
+
+### Por qué R5, R6, R22 y R36 se verifican a mano y R13–R18 y R20–R21 no
+
+*(Corregido en la review de F-007: hasta entonces la tabla decía que los
+cubrían `pipeline.test.js` y `seleccion.test.js`, y no era cierto.)*
+
+**R5, R6, R22 y R36 son presentación pura**: pintar `total_partes` y una fila
+por parte, pintar el `error` y volver al estado inicial, pintar
+`nombre_fichero`/`carpeta`/`estado` y el enlace a `web_url`. Lo único que
+queda por comprobar en ellos es **que el dato acaba en la pantalla**, y eso
+vive en `index.html` y en `js/app.js`, que `design.md` §3 deja sin tests **a
+propósito**: probarlos exigiría un DOM y una herramienta de navegador, que es
+justo la dependencia que la feature evita (§9). La alternativa —inventar tests
+de presentación que en realidad no miran la pantalla— sería cumplir el
+expediente sin ganar seguridad.
+
+**Y la lógica que hay debajo de esos cuatro sí está probada**, que es lo que
+hace aceptable la salida manual:
+
+| Requisito | Lo que sí tiene test | Lo que se ve a mano (T14) |
+|---|---|---|
+| R5 | `f007 R4:` — trocear envía el multipart de la remesa tal cual (`seleccion.test.js`) | que la lista de partes aparece en pantalla |
+| R6 | `api.test.js` — `error` y `avisos` del 400 se propagan al llamante | que la pantalla vuelve al estado inicial sin filas a medias |
+| R22 | `pipeline.test.js` — qué viaja a `/api/archivar` y qué no (R29) | que la respuesta se pinta con su enlace |
+| R36 | los módulos, uno a uno | que la pantalla entera funciona contra la Function |
+
+**R13–R18 y R20–R21 son distintos**: no son «pintar un dato», son **decisiones**
+—qué campo es dudoso, qué se envía a revalidar, qué cuerpo se compone, qué
+parte es archivable, por qué cola van las peticiones—. Una decisión equivocada
+no se ve mirando la pantalla, así que se prueba en la unidad.
+
+**R19 era el caso peor y por eso cambió de bando**: parecía presentación
+—«sale un ¿seguro?»— pero es una **decisión** (disparar o no disparar una tanda
+de subidas reales a SharePoint) que estaba escrita en `app.js`, sin test **y
+sin punto en T14**. La lógica se sacó a `js/confirmacion.js` y se prueba como
+el resto. Lo que queda a mano es solo su pintura, y ahora tiene punto propio en
+T14.

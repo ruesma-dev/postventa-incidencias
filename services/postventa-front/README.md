@@ -82,6 +82,7 @@ js/cola.js       lógica pura        sin fetch, sin DOM   ← el grueso de los t
 js/pipeline.js   orquestación       recibe `api` inyectada
 js/seleccion.js  lógica pura        sin DOM (recibe File[])
 js/traza.js      lógica pura
+js/confirmacion.js  lógica pura     el doble clic antes de archivar (R19)
 js/api.js        adaptador HTTP     `fetch` y temporizadores inyectables
 js/app.js        pegamento Alpine   NO se prueba: no debe tener lógica
 ```

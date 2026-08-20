@@ -94,7 +94,7 @@
       **Verificación**: `node --test tests_js` en verde, con un test que
       falle si dos ficheros comparten nombre de campo.
 
-- [ ] **T7**: `tests_js/api.test.js` **primero** y luego `js/api.js` (R23–R27):
+- [x] **T7**: `tests_js/api.test.js` **primero** y luego `js/api.js` (R23–R27):
       `fetch` y `esperar` inyectados; 502 y fallo de red reintentan 2 veces
       con esperas 1 s y 3 s; 400/409/413 no reintentan y propagan el `error`
       del backend; 503 sale como `tipo: entorno`; respuesta no-JSON sale como

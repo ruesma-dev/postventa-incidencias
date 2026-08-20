@@ -393,3 +393,89 @@ $ node --test "tests_js/seleccion.test.js"
 ℹ pass 14
 ℹ fail 0
 ```
+
+---
+
+## T7 · `js/api.js`: el cliente HTTP — HECHA
+
+R12 y R23–R27. `tests_js/api.test.js` **primero**, módulo después.
+
+### Fase RED (traza real)
+
+```
+$ cd services\postventa-front
+$ node --test "tests_js/api.test.js"
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module '../js/api.js'
+Require stack:
+- C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\tests_js\api.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (...\tests_js\api.test.js:11:32)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  ...
+}
+```
+
+### Verde tras escribir `js/api.js`
+
+```
+$ node --test "tests_js/api.test.js"
+✔ f007 R27: la pantalla consulta GET /api/health al cargar (2.5588ms)
+✔ f007 R27: los seis endpoints cuelgan de baseApi (0.3468ms)
+✔ f007 R23: un 502 se reintenta 2 veces con esperas de 1 s y 3 s (1.0677ms)
+✔ f007 R23: un fallo de conexión también se reintenta (0.3597ms)
+✔ f007 R23: si el reintento va bien, el usuario no ve ningún error (0.2504ms)
+✔ f007 R24: un 400 no se reintenta y muestra el error del backend (0.2781ms)
+✔ f007 R24: un 413 no se reintenta y sale como error de petición (0.2593ms)
+✔ f007 R24: un 409 sale como no_apto y no se reintenta (18.972ms)
+✔ f007 R24: sin campo `error`, el mensaje no queda vacío (0.5078ms)
+✔ f007 R25: un 503 en archivar dice que este entorno no archiva y no reintenta (0.5171ms)
+✔ f007 R26: una respuesta HTML sale como desconocido con su código HTTP (0.3178ms)
+✔ f007 R26: un error 500 con cuerpo HTML tampoco lanza excepción sin capturar (0.2045ms)
+✔ f007 R26: un cuerpo vacío en un 200 también es respuesta inesperada (0.1693ms)
+✔ f007 R12: cada petición se programa para abortar a los 180 s (0.1205ms)
+✔ f007 R12: la señal de aborto viaja en la petición (0.0948ms)
+✔ f007 R12: al dispararse el timeout, la petición se aborta y es transitoria (7.3561ms)
+✔ f007 R8: extraer y firma envían el fichero y el hash del parte (2.25ms)
+✔ f007 R8: firma usa su propio endpoint (0.2442ms)
+✔ f007 R17: validar va en JSON y no toca extraer ni firma (0.1788ms)
+✔ f007 R4: trocear envía el multipart de la remesa tal cual (0.1918ms)
+✔ f007 R26: el multipart NO lleva Content-Type puesto a mano (0.143ms)
+✔ f007 R28: la traza del cliente lleva solo hash, paso, estado y http (0.3601ms)
+✔ f007 R28: la traza de un error tampoco lleva el cuerpo de la respuesta (0.1556ms)
+ℹ tests 23
+ℹ pass 23
+ℹ fail 0
+```
+
+### Decisiones de diseño que conviene no deshacer
+
+- **Una sola forma de error**: `ErrorApi {tipo, http, mensaje, avisos}` con
+  `tipo ∈ {transitorio, peticion, no_apto, entorno, desconocido}`. `clasificar`
+  es una función **pura** y por eso se prueba código a código.
+- **Solo se reintenta lo `transitorio`** (502, fallo de red, aborto por
+  timeout). Un 400 no mejora repitiéndolo y un 503 de archivar es la **puerta
+  de entorno**: insistir no la ablanda.
+- **El 503 tiene texto propio**: «Este entorno no archiva… No es un fallo y no
+  hay nada que arreglar aquí». Pintarlo como error rojo genérico es lo que
+  llevaría a alguien a «arreglarlo» tocando `ARCHIVO_HABILITADO`, que es
+  exactamente lo que no puede pasar.
+- **Códigos no contemplados (500, 404…)**: `desconocido` y **sin reintento**.
+  No hay razón para creer que mejoren y se enseñan tal cual en vez de
+  esconderlos.
+- **El multipart NO lleva `Content-Type` puesto a mano**: ponerlo rompe el
+  `boundary` que genera el navegador y el backend recibe un cuerpo que no sabe
+  parsear. Hay un test que lo vigila.
+- **`fetch`, `esperar` y `programarTimeout` se inyectan.** El backoff de R23
+  se prueba en milisegundos y **ni un test abre red**.

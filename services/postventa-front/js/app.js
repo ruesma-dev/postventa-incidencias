@@ -7,6 +7,7 @@
 //   js/cola.js       el límite de concurrencia               (R7-R12)
 //   js/api.js        timeout, reintentos, clasificación      (R23-R27)
 //   js/pipeline.js   qué se pide, en qué orden y qué viaja   (R8, R13-R22)
+//   js/confirmacion.js  el doble clic antes de archivar      (R19)
 //   js/traza.js      el único registro permitido             (R28)
 //
 // Aquí no hay ni un bucle de reintento, ni un cálculo de veredicto, ni una
@@ -45,7 +46,10 @@ function appPostventa() {
     CAMPOS: window.Pipeline.CAMPOS_DEL_PARTE,
 
     // --- archivo (R19-R22, R25) ---
-    confirmandoArchivo: false,
+    // El estado de la confirmación lo compone `js/confirmacion.js`: aquí solo
+    // se guarda lo que devuelve, sin interpretarlo.
+    confirmacionArchivo: null,
+    avisoArchivo: "",
     entornoNoArchiva: "",
     resultadosArchivo: [],
 
@@ -279,11 +283,34 @@ function appPostventa() {
 
     pedirConfirmacionArchivo() {
       // R19: confirmación explícita ANTES de la primera petición.
-      this.confirmandoArchivo = true;
+      this.confirmacionArchivo = window.Confirmacion.armar(Date.now());
+      this.avisoArchivo = "";
+    },
+
+    confirmacionPendiente() {
+      return window.Confirmacion.pendiente(this.confirmacionArchivo);
+    },
+
+    cancelarArchivo() {
+      this.confirmacionArchivo = window.Confirmacion.cancelar();
+      this.avisoArchivo = "";
     },
 
     async confirmarArchivo() {
-      this.confirmandoArchivo = false;
+      const decision = window.Confirmacion.resolver(
+        this.confirmacionArchivo,
+        Date.now(),
+      );
+      this.confirmacionArchivo = decision.estado;
+      if (!decision.dispara) {
+        this.avisoArchivo =
+          decision.motivo === window.Confirmacion.CADUCADA
+            ? window.Confirmacion.AVISO_CADUCADA
+            : "";
+        return;
+      }
+      this.avisoArchivo = "";
+
       const pendientes = this.archivables();
       if (!pendientes.length) {
         return;
@@ -336,7 +363,8 @@ function appPostventa() {
       this.partes = [];
       this.terminados = 0;
       this.parteAbierto = null;
-      this.confirmandoArchivo = false;
+      this.confirmacionArchivo = window.Confirmacion.cancelar();
+      this.avisoArchivo = "";
       this.entornoNoArchiva = "";
       this.resultadosArchivo = [];
     },

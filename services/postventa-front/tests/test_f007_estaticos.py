@@ -47,6 +47,7 @@ ORDEN_CANONICO = (
     "js/api.js",
     "js/seleccion.js",
     "js/pipeline.js",
+    "js/confirmacion.js",
     "js/app.js",
 )
 
@@ -357,8 +358,16 @@ def test_f007_r36_app_js_es_solo_pegamento():
 
 
 def test_f007_r36_app_js_usa_los_modulos_probados():
-    """El pegamento pega: llama a los cinco módulos, no los reimplementa."""
+    """El pegamento pega: llama a los módulos probados, no los reimplementa."""
     codigo = (RAIZ_FRONT / "js" / "app.js").read_text(encoding="utf-8")
 
-    for modulo in ("window.Seleccion", "window.Cola", "window.Api", "window.Pipeline"):
+    for modulo in (
+        "window.Seleccion",
+        "window.Cola",
+        "window.Api",
+        "window.Pipeline",
+        # R19: la confirmación de archivo salió de aquí en la review de F-007.
+        # Si vuelve a `app.js`, este test lo caza.
+        "window.Confirmacion",
+    ):
         assert modulo in codigo, f"app.js no usa {modulo}"

@@ -240,16 +240,21 @@
                   class="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300">
             Archivar los partes aptos
           </button>
-          <template x-if="confirmandoArchivo">
+          <template x-if="confirmacionPendiente()">
             <span class="flex items-center gap-2 text-sm">
               <span class="text-slate-600">¿Seguro? Se subirán a SharePoint.</span>
               <button type="button" @click="confirmarArchivo()"
                       class="rounded bg-emerald-700 px-3 py-1 text-xs text-white">Sí, archivar</button>
-              <button type="button" @click="confirmandoArchivo = false"
+              <button type="button" @click="cancelarArchivo()"
                       class="rounded border border-slate-300 px-3 py-1 text-xs">Cancelar</button>
             </span>
           </template>
         </div>
+
+        <!-- R19: la confirmación caduca. Si el segundo clic llega tarde, no
+             se sube nada y se dice por qué. -->
+        <p x-show="avisoArchivo" x-text="avisoArchivo"
+           class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
 
         <!-- El 503 tiene pantalla propia: es la puerta de entorno de F-006,
              no un fallo. Pintarlo en rojo llevaría a alguien a «arreglarlo». -->
@@ -289,6 +294,7 @@
   <script src="js/api.js"></script>
   <script src="js/seleccion.js"></script>
   <script src="js/pipeline.js"></script>
+  <script src="js/confirmacion.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

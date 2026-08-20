@@ -88,6 +88,7 @@ $ErrorActionPreference = "Stop"
 #   6  fallo del despliegue
 #   7  no existe la Function App: no hay backend que enlazar
 #   8  no existe el grupo de seguridad: no hay a quien restringir el acceso
+#   9  no existe el Key Vault, o no se puede escribir en el
 $SALIDA_SIN_SESION = 2
 $SALIDA_SIN_HERRAMIENTA = 3
 $SALIDA_NOMBRE_OCUPADO = 4
@@ -95,6 +96,7 @@ $SALIDA_SIN_CONFIRMAR = 5
 $SALIDA_FALLO = 6
 $SALIDA_SIN_BACKEND = 7
 $SALIDA_SIN_GRUPO = 8
+$SALIDA_SIN_KEYVAULT = 9
 
 $raiz = Split-Path -Parent $PSScriptRoot
 $origenFront = Join-Path $raiz "services\postventa-front"
@@ -190,6 +192,7 @@ try {
     $appExiste = $null -ne (Id-De-Aplicacion $PostventaAppRegistro)
     $funcionResourceId = Valor-De-Az @("functionapp", "show", "--name", $PostventaFunction, "--resource-group", $PostventaGrupo, "--query", "id", "-o", "tsv")
     $grupoSeguridadExiste = $null -ne (Id-De-Grupo $PostventaGrupoSeguridad)
+    $vaultExiste = $null -ne (Valor-De-Az @("keyvault", "show", "--name", $PostventaKeyVault, "--resource-group", $PostventaGrupo, "--query", "properties.vaultUri", "-o", "tsv"))
 
     # --- Que se va a hacer ---------------------------------------------------
 
@@ -201,6 +204,7 @@ try {
     Write-Host ("  Region del front   : {0}" -f $PostventaRegionFront)
     Write-Host ("  Registro de app    : {0} {1}" -f $PostventaAppRegistro, $(if ($appExiste) { "(ya existe, se reutiliza)" } else { "(se crea)" }))
     Write-Host ("  Grupo de seguridad : {0} {1}" -f $PostventaGrupoSeguridad, $(if ($grupoSeguridadExiste) { "(existe)" } else { "(NO EXISTE)" }))
+    Write-Host ("  Key Vault          : {0} {1}" -f $PostventaKeyVault, $(if ($vaultExiste) { "(existe)" } else { "(NO EXISTE)" }))
     Write-Host ("  Backend a enlazar  : {0} {1}" -f $PostventaFunction, $(if ($funcionResourceId) { "(existe)" } else { "(NO EXISTE)" }))
     Write-Host ""
     Write-Host "  El acceso queda restringido al grupo: asignacion OBLIGATORIA en la"
@@ -226,6 +230,14 @@ try {
     if (-not $SoloFront -and -not $grupoSeguridadExiste) {
         Salir-Con ("No existe el grupo de seguridad {0}." -f $PostventaGrupoSeguridad) $SALIDA_SIN_GRUPO `
             "creado en Entra con los miembros del piloto (T1) y vuelve a lanzarlo. Si le pusiste otro nombre, cambialo en 00_vars_postventa.ps1."
+    }
+
+    # Mismo patron que desplegar_backend.ps1: si el vault no esta, se dice
+    # ANTES y con un codigo propio, en vez de descubrirlo a mitad del
+    # despliegue con un mensaje de `az` que no dice que hacer.
+    if (-not $SoloFront -and -not $vaultExiste) {
+        Salir-Con ("No existe el Key Vault {0}: el secreto de cliente no tendria donde guardarse." -f $PostventaKeyVault) $SALIDA_SIN_KEYVAULT `
+            "ejecuta antes cargar_secretos_postventa.ps1."
     }
 
     $confirmacion = Read-Host "Escribe DESPLEGAR para continuar (cualquier otra cosa aborta)"
@@ -333,8 +345,21 @@ try {
             Salir-Con "No se ha podido generar el secreto de cliente." $SALIDA_FALLO `
                 "comprueba los permisos sobre el registro de aplicacion."
         }
+        # Las DOS escrituras del vault se comprueban una a una. Con un solo
+        # `if` al final, un fallo aqui -vault inexistente, sin el rol Secrets
+        # Officer- dejaba el secreto solo en la Static Web App y el script
+        # terminaba en verde, rompiendo en silencio el 'un solo sitio donde
+        # mirar' de la cabecera.
         az keyvault secret set --vault-name $PostventaKeyVault --name "swa-client-id" --value $appId --only-show-errors | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Salir-Con "No se ha podido guardar swa-client-id en el Key Vault." $SALIDA_SIN_KEYVAULT `
+                "comprueba que tienes el rol 'Key Vault Secrets Officer' sobre el vault."
+        }
         az keyvault secret set --vault-name $PostventaKeyVault --name "swa-client-secret" --value $secreto --only-show-errors | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Salir-Con "No se ha podido guardar swa-client-secret en el Key Vault." $SALIDA_SIN_KEYVAULT `
+                "comprueba que tienes el rol 'Key Vault Secrets Officer' sobre el vault. El secreto acaba de generarse y NO ha quedado guardado: vuelve a lanzarlo cuando tengas el permiso."
+        }
         az staticwebapp appsettings set --name $PostventaStaticWebApp --resource-group $PostventaGrupo `
             --setting-names "AZURE_CLIENT_ID=$appId" "AZURE_CLIENT_SECRET=$secreto" --only-show-errors | Out-Null
         if ($LASTEXITCODE -ne 0) {

@@ -21,11 +21,12 @@ subida a SharePoint.
 `api` en verde, de los que **120 son de F-010**; campaña de mutación ejecutada
 con sus tres supervivientes analizados.
 
-**Qué quedó fuera, y por qué**: **T5 y T9 están sin hacer y bloqueadas por D2**
-—fijan los tiempos de espera, y el implementer no elige esos números—. Las diez
-tareas `MANUAL (humano)` están preparadas, no ejecutadas.
+**Qué quedó fuera, y por qué**: las diez tareas `MANUAL (humano)` están
+preparadas con su comando exacto, **no ejecutadas**. Nada más queda fuera:
+**D2 se resolvió el 2026-08-20** (opción (a)) y con ella se desbloquearon y se
+completaron T5 y T9.
 
-**Qué falta para cerrar**: la decisión de D2, T5, T9, y las manuales.
+**Qué falta para cerrar**: solo las verificaciones manuales del humano.
 
 ---
 
@@ -34,14 +35,14 @@ tareas `MANUAL (humano)` están preparadas, no ejecutadas.
 | Tarea | Estado | Nota |
 |---|---|---|
 | T1 · MANUAL | Preparada | El humano crea `posventa-usuarios` en Entra |
-| T2 · MANUAL, alimenta **D2** | **MEDIDA** | La ejecutó el implementer a petición del líder |
+| T2 · MANUAL, alimenta **D2** | **MEDIDA** · **D2 resuelta** | La ejecutó el implementer a petición del líder |
 | T3 | **Hecha** | `infra/00_vars_postventa.ps1` |
 | T4 | **Hecha** | `infra/cargar_secretos_postventa.ps1` |
-| T5 | **BLOQUEADA por D2** | Fija `IA_TIMEOUT_S` y `GRAPH_TIMEOUT_S` |
+| T5 | **Hecha** · **FASE RED** | `infra/desplegar_backend.ps1`, con `ARCHIVO_HABILITADO` apagado |
 | T6 | **Hecha** | `infra/desplegar_front.ps1` |
 | T7 | **Hecha** | `infra/verificar_despliegue.ps1` |
 | T8 | **Hecha** | Cabecera de `function_app.py` + test |
-| T9 | **BLOQUEADA por D2** | Fija `TIMEOUT_PETICION_MS` |
+| T9 | **Hecha** | `TIMEOUT_PETICION_MS` a 40000 + test de JS |
 | T10 | **Hecha** | `docs/DESPLIEGUE.md` + bloque de la tarjeta |
 | T11 | **Hecha** | `docs/INTEGRACION.md` §8 |
 | T12 | **Hecha** | `docs/ARCHITECTURE.md` §Infra y despliegue |
@@ -122,11 +123,31 @@ medición es en local y el despliegue no lo es:**
 4. **`split` no escala con el tamaño como se podría temer**: 22 partes de una
    remesa de 5,2 MB en 2,4 s. No es el endpoint en riesgo.
 
-**Decisión pendiente, y por eso esta feature no se cierra aquí.** El
-implementer **no fija los valores nuevos**: T5 (`IA_TIMEOUT_S`,
-`GRAPH_TIMEOUT_S`) y T9 (`TIMEOUT_PETICION_MS`) quedan sin tocar hasta que el
-humano decida con estos números delante. Lo que la spec propone es la opción
-(a): 35 s y 40000 ms.
+**La decisión, tomada con estos números delante.** El implementer paró aquí y
+**no fijó ningún valor**. El humano resolvió **D2 el 2026-08-20** por la
+**opción (a)**, y lo que hay que conservar es el criterio, no las cifras:
+
+> **Cada capa cede antes que la de fuera.** La IA abandona a los 35 s, el front
+> a los 40, el proxy corta a los 45.
+
+Ese orden es lo que hace que el usuario reciba **nuestro** error —explicado,
+reintentable y que libera la plaza de la cola— en vez de un corte opaco de la
+plataforma con una llamada zombi por detrás gastando cuota de IA.
+
+Y el margen es deliberado: 35 s son **más de cinco veces** el peor caso medido
+(6,5 s). Ese colchón es exactamente lo que cubre los tres matices de arriba —el
+salto de región, el arranque en frío y un mal día del proveedor—, que son los
+que **no se pueden medir en local**. No es un número redondo por casualidad: es
+el peor caso más el riesgo que no se puede medir.
+
+**`GRAPH_TIMEOUT_S` queda también en 35 s**, y no es una elección libre: es lo
+que concreta `design.md` §5 («`IA_TIMEOUT_S` y `GRAPH_TIMEOUT_S` bajan a 35 s»).
+Encaja además con el escalonado, y por la misma razón: `POST /api/archivar`
+también viaja por el proxy, así que la llamada a Graph tiene que rendirse antes
+de que el front aborte a los 40. Ponerla más alta que la de IA no compraría
+nada —una subida a SharePoint que tarde más de 35 s no va a caber en 45— y
+dejaría una petición viva escribiendo después de que el usuario haya visto un
+error, que es justo lo que el escalonado evita.
 
 **Coste de la medición**: diez llamadas reales al proveedor de IA
 (cuatro secuenciales y seis concurrentes) más un troceado. Ninguna escritura,
@@ -142,6 +163,7 @@ ningún recurso de Azure tocado, nada subido a SharePoint.
 |---|---|---|
 | `infra/00_vars_postventa.ps1` | Fuente única de nombres, regiones y tags | T3 |
 | `infra/cargar_secretos_postventa.ps1` | Key Vault y los once secretos | T4 |
+| `infra/desplegar_backend.ps1` | Recursos, identidad, referencias y publicación | T5 |
 | `infra/desplegar_front.ps1` | Entra, Static Web App y subida | T6 |
 | `infra/verificar_despliegue.ps1` | Las tres comprobaciones, solo lecturas | T7 |
 | `docs/DESPLIEGUE.md` | Runbook + bloque de la tarjeta del portal | T10 |
@@ -149,6 +171,7 @@ ningún recurso de Azure tocado, nada subido a SharePoint.
 | `services/postventa-api/tests/test_f010_endpoints_protegidos.py` | R18, R32 | T8 |
 | `services/postventa-api/tests/test_f010_tarjeta_portal.py` | R23, R24, R25, R34 | T10 |
 | `services/postventa-api/tests/test_f010_integracion_expuesto.py` | R26 | T11 |
+| `services/postventa-front/tests_js/test_config_timeout.test.js` | R19, R21, R22 | T9 |
 
 ### Modificados
 
@@ -157,6 +180,7 @@ ningún recurso de Azure tocado, nada subido a SharePoint.
 | `services/postventa-api/function_app.py` | **Solo la cabecera**: por qué los seis endpoints siguen anónimos y dónde está el control de acceso | T8 |
 | `docs/INTEGRACION.md` | §8 rellenada + filas del despliegue en §9 | T11 |
 | `docs/ARCHITECTURE.md` | §«Infra y despliegue»: recursos, regiones, 45 s y anonimidad | T12 |
+| `services/postventa-front/js/config.js` | `TIMEOUT_PETICION_MS` 180000 → **40000**, con el escalonado explicado | T9 |
 | `.gitignore` | `infra/*.local.ps1` | T3 |
 
 ### Deliberadamente NO tocados
@@ -209,9 +233,67 @@ la copia de trabajo: es código de más en un sitio expuesto a internet.
 
 El rigor de esta feature es **`estandar`**, y la spec sitúa **la fase RED en
 R33** (T5): el test que exige que `desplegar_backend.ps1` deje
-`ARCHIVO_HABILITADO` apagado se escribe antes que el script. **T5 está
-bloqueada por D2**, así que esa fase RED **queda pendiente** y se hará en el
-mismo trabajo que T5. No se ha simulado ni se ha dado por hecha.
+`ARCHIVO_HABILITADO` apagado se escribe **antes** que el script.
+
+### Paso 1 · El test existe y el script no
+
+```
+$ ls ../../infra/desplegar_backend.ps1
+ls: cannot access '../../infra/desplegar_backend.ps1': No such file or directory
+
+$ python -m pytest tests/test_f010_scripts_infra.py -q -k "r33"
+E       FileNotFoundError: [Errno 2] No such file or directory:
+        'C:\Users\pgris\PycharmProjects\postventa-incidencias\infra\desplegar_backend.ps1'
+ERROR tests/test_f010_scripts_infra.py::test_f010_r33_el_despliegue_deja_la_ventana_de_escritura_cerrada
+ERROR tests/test_f010_scripts_infra.py::test_f010_r33_el_script_explica_por_que_la_ventana_nace_cerrada
+93 deselected, 2 errors in 0.28s
+```
+
+**Pero eso es un rojo pobre**, y merece decirse: un fichero que falta hace
+fallar cualquier test que lo lea. No demuestra que este test cace **el
+descuido**, que es lo que R33 previene. Así que se dio un segundo paso.
+
+### Paso 2 · El script completo, con el descuido real dentro
+
+Se escribió `desplegar_backend.ps1` **entero** —grupo de recursos,
+almacenamiento, Log Analytics, Application Insights, identidad, rol sobre el
+Key Vault, Function App, App Settings y publicación— **omitiendo únicamente la
+línea de `ARCHIVO_HABILITADO`**. Es exactamente el despliegue que alguien
+escribiría sin haber leído `design.md` §9 bis: funciona, crea todo, y deja la
+ventana de escritura a merced de lo que hubiera antes.
+
+```
+$ python -m pytest tests/test_f010_scripts_infra.py -q -k "r33"
+>       assert "ARCHIVO_HABILITADO=false" in cuerpo
+E       assert 'ARCHIVO_HABILITADO=false' in '  ...  exit 0
+'
+tests	est_f010_scripts_infra.py:444: AssertionError
+
+>       assert "se apaga" in backend.lower() or "se vuelve a apagar" in backend.lower()
+E       assert ('se apaga' in '# infra/desplegar_backend.ps1 ...' or ...)
+tests	est_f010_scripts_infra.py:457: AssertionError
+
+FAILED tests/test_f010_scripts_infra.py::test_f010_r33_el_despliegue_deja_la_ventana_de_escritura_cerrada
+FAILED tests/test_f010_scripts_infra.py::test_f010_r33_el_script_explica_por_que_la_ventana_nace_cerrada
+2 failed, 101 passed, 1 skipped in 0.15s
+```
+
+**Rojo por aserción, sobre un script que por lo demás está bien.** Ese es el
+fallo que importa: el que no se ve revisando el diff, porque no hay nada malo
+escrito —lo que hay es algo que falta—.
+
+### Paso 3 · Verde
+
+Se añadió la App Setting `ARCHIVO_HABILITADO=false` y el bloque de la cabecera
+que explica por qué nace cerrada, cuándo se enciende y que **se vuelve a
+apagar**:
+
+```
+$ python -m pytest tests/test_f010_scripts_infra.py -q
+103 passed, 1 skipped in 0.23s
+```
+
+### Y la otra mitad del riesgo: que el test de R32 también tenga dientes
 
 Lo que sí se ha demostrado con una traza real es que **el test de R32 tiene
 dientes**, que es la otra mitad del riesgo 1 bis del diseño. Se cambió un solo

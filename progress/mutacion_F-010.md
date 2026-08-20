@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-010.md -->
 # F-010 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-010` el 2026-08-20 14:15.
+Generado por `python -m harness.mutacion --feature F-010` el 2026-08-20 15:17.
 
 ## Alcance
 
@@ -19,72 +19,15 @@ Origen del diff: **rama** (`0705d881d4a1c329006db5fe970c45bcb93c2e75` .. `featur
 |---|---|
 | Mutantes generados | 20 |
 | Mutantes evaluados | 20 |
-| Muertos | 17 |
-| Supervivientes | 3 |
+| Muertos | 20 |
+| Supervivientes | 0 |
 | Timeouts | 0 |
-| Tiempo total | 10.4 s |
+| Tiempo total | 17.6 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
 
-Cada superviviente es una línea que ningún test comprueba de verdad, o una mutación equivalente. Distinguirlo es trabajo del implementer: ningún análisis puede quedarse sin completar al cerrar la feature.
-
-### 1. `services/postventa-front/dev_server.py:169` [entero]
-
-- Original: `log.info("=" * 60)`
-- Mutado:   `log.info("=" * 61)`
-
-#### Análisis (completado por el implementer, 2026-08-20)
-
-> **Por qué ningún test lo caza**: es el ancho del separador del banner que
-> `dev_server.py` imprime al arrancar (`log.info("=" * 60)`). Ninguna prueba
-> mira cuántos signos igual lleva esa línea, y no debería mirarlo: un test que
-> fijara el ancho de un adorno se rompería en cada retoque de la salida y no
-> protegería nada.
->
-> **Decisión**: **mutante equivalente**. Cambiar 60 por 61 no altera ningún
-> comportamiento observable —ni un código de respuesta, ni una ruta, ni un
-> byte que viaje al navegador—: solo la anchura de una línea decorativa en el
-> log de arranque del servidor de desarrollo local, que además no se despliega
-> (`desplegar_front.ps1` lo excluye de la copia que sube). No se añade test.
-
-### 2. `services/postventa-front/dev_server.py:171` [entero]
-
-- Original: `log.info("=" * 60)`
-- Mutado:   `log.info("=" * 61)`
-
-#### Análisis (completado por el implementer, 2026-08-20)
-
-> **Por qué ningún test lo caza**: es el ancho del separador del banner que
-> `dev_server.py` imprime al arrancar (`log.info("=" * 60)`). Ninguna prueba
-> mira cuántos signos igual lleva esa línea, y no debería mirarlo: un test que
-> fijara el ancho de un adorno se rompería en cada retoque de la salida y no
-> protegería nada.
->
-> **Decisión**: **mutante equivalente**. Cambiar 60 por 61 no altera ningún
-> comportamiento observable —ni un código de respuesta, ni una ruta, ni un
-> byte que viaje al navegador—: solo la anchura de una línea decorativa en el
-> log de arranque del servidor de desarrollo local, que además no se despliega
-> (`desplegar_front.ps1` lo excluye de la copia que sube). No se añade test.
-
-### 3. `services/postventa-front/dev_server.py:175` [entero]
-
-- Original: `log.info("=" * 60)`
-- Mutado:   `log.info("=" * 61)`
-
-#### Análisis (completado por el implementer, 2026-08-20)
-
-> **Por qué ningún test lo caza**: es el ancho del separador del banner que
-> `dev_server.py` imprime al arrancar (`log.info("=" * 60)`). Ninguna prueba
-> mira cuántos signos igual lleva esa línea, y no debería mirarlo: un test que
-> fijara el ancho de un adorno se rompería en cada retoque de la salida y no
-> protegería nada.
->
-> **Decisión**: **mutante equivalente**. Cambiar 60 por 61 no altera ningún
-> comportamiento observable —ni un código de respuesta, ni una ruta, ni un
-> byte que viaje al navegador—: solo la anchura de una línea decorativa en el
-> log de arranque del servidor de desarrollo local, que además no se despliega
-> (`desplegar_front.ps1` lo excluye de la copia que sube). No se añade test.
+Ninguno: cada mutación aplicada la cazó al menos un test.
 
 ## Nota de alcance de esta campaña (F-010)
 
@@ -100,6 +43,34 @@ no porque F-010 los haya reescrito:
 Lo que F-010 entrega de verdad —cinco scripts de PowerShell, un cambio en JS y
 documentación— **queda fuera de lo que la campaña sabe mutar**: la herramienta
 solo muta `.py`. La disciplina de esa parte la sostienen los tests de contrato
-de la fase 1 (`test_f010_scripts_infra.py`, 84 comprobaciones sobre el texto de
-los scripts), `test_f010_tarjeta_portal.py`, `test_f010_endpoints_protegidos.py`
-y la fase RED de T5, que está pendiente junto con la decisión D2.
+de la fase 1 (`test_f010_scripts_infra.py`), `test_f010_tarjeta_portal.py`,
+`test_f010_endpoints_protegidos.py`, `test_config_timeout.test.js` y la fase
+RED de T5, cuya traza está en `progress/impl_F-010.md`.
+
+## Las dos campañas de esta feature, y por qué los números no coinciden
+
+Esta feature ha lanzado la campaña **dos veces**, y conviene dejar escrito lo
+que salió en cada una en vez de enseñar solo la última:
+
+| Cuándo | Resultado |
+|---|---|
+| Antes de T5 y T9 (con la feature parada en D2) | 20 mutantes, 17 muertos, **3 supervivientes** |
+| Con la feature terminada (esta) | 20 mutantes, **20 muertos, 0 supervivientes** |
+
+Los tres supervivientes de la primera eran **el mismo caso**: el ancho del
+separador decorativo del banner de arranque de `dev_server.py`
+(`log.info("=" * 60)` → `"=" * 61`). En la campaña final los tres mueren.
+
+**No se ha añadido ningún test para matarlos**, así que la diferencia no la
+explica un cambio nuestro sobre esas líneas: entre una campaña y otra solo
+entraron `desplegar_backend.ps1`, sus tests, `config.js` y su test de JS, y
+ninguno toca `dev_server.py`. El resultado de 0 supervivientes se ha
+**reproducido dos veces**, en modo paralelo y con `--workers 1`, que es
+determinista. Se deja constancia de la discrepancia en vez de justificarla con
+una causa que no se ha comprobado.
+
+En cualquiera de las dos lecturas la conclusión práctica es la misma: esas
+tres mutaciones no alteran ningún comportamiento observable —solo la anchura
+de una línea decorativa en el log de arranque del servidor de desarrollo
+local, que además ni siquiera se despliega, porque `desplegar_front.ps1` lo
+excluye de la copia que sube.

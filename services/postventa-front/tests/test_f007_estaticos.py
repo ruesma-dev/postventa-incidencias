@@ -301,7 +301,13 @@ def test_f007_r7_el_limite_de_concurrencia_es_una_constante_de_config():
 @pytest.mark.parametrize(
     "clave, patron",
     [
-        ("TIMEOUT_PETICION_MS", r"TIMEOUT_PETICION_MS\s*:\s*180000\b"),
+        # 40000 desde F-010 (D2). Era 180000, que estaba POR ENCIMA del corte
+        # de 45 s del proxy de la Static Web App: el front nunca llegaba a
+        # abortar por su cuenta y quien cortaba era la plataforma, con un
+        # error opaco y la llamada a la IA viva por detrás. El escalonado
+        # completo -IA 35, front 40, proxy 45- lo fija y lo explica
+        # `tests_js/test_config_timeout.test.js`.
+        ("TIMEOUT_PETICION_MS", r"TIMEOUT_PETICION_MS\s*:\s*40000\b"),
         ("REINTENTOS", r"REINTENTOS\s*:\s*2\b"),
         ("ESPERAS_MS", r"ESPERAS_MS\s*:\s*\[\s*1000\s*,\s*3000\s*\]"),
         ("UMBRAL_CONFIANZA", r"UMBRAL_CONFIANZA\s*:\s*50\b"),

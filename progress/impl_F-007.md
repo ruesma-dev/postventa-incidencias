@@ -960,3 +960,64 @@ Los ocho puntos que hay que ver, y anotar aquí el resultado real:
 
 **Nada de esa ejecución se copia al repositorio**: los partes de `muestras/`
 llevan datos personales y no se versionan.
+
+---
+
+## T15 · Campaña de mutación y análisis de los supervivientes — HECHA
+
+El nivel de F-007 es **`estandar`**, y `harness/rigor.json` deja claro que ese
+nivel **sí exige mutación** (`"mutacion": true`, `supervivientes_maximos: null`).
+Lo que `estandar` **no** exige es **cero** supervivientes: exige que estén
+**explicados** (`CHECKPOINTS.md` C4 bis).
+
+### Primera campaña
+
+```
+$ python -m harness.mutacion --feature F-007
+F-007: 1 fichero(s), 188 línea(s) de producción (origen rama, 0705d881..feature/F-007-front)
+Campaña paralela: hasta 16 workers, uno por worktree.
+...
+20 mutantes evaluados, 14 muertos, 6 supervivientes, 0 timeouts en 13.6 s
+```
+
+Los seis supervivientes, leídos uno a uno, **no eran todos equivalentes**: tres
+eran huecos de verdad, y de los que importan en la práctica.
+
+| Superviviente | ¿Hueco real? | Qué se hizo |
+|---|---|---|
+| `dev_server.py:87` `timeout=300 → 301` | **Sí.** Es el timeout del proxy hacia el backend. Una extracción puede tardar decenas de segundos y la Function corta a los 230: un proxy con un timeout más corto cortaría él la petición y el front vería un 502 donde no lo hay | Test nuevo: el doble de conexión ya registraba el `timeout`, solo faltaba afirmarlo |
+| `dev_server.py:147` `daemon_threads = True → False` | **Sí.** Sin hilos demonio, un `Ctrl+C` con una petición de IA en vuelo deja el proceso colgado y el humano tiene que matar la terminal | Test nuevo por atributo, sin abrir socket (R33) |
+| `dev_server.py:148` `allow_reuse_address = True → False` | **Sí.** En desarrollo se para y se arranca constantemente; sin esto, el socket se queda en `TIME_WAIT` y el siguiente arranque falla con «address in use» | Test nuevo por atributo |
+| `dev_server.py:169/171/175` `"=" * 60 → "=" * 61` | **No: equivalente.** Es la anchura del separador del rótulo de arranque | Se documenta y se deja vivo |
+
+Se añadieron cuatro tests (los tres de arriba más uno que comprueba que el
+destino del proxy sale de `--api` y no de un valor cableado).
+
+### Segunda campaña, tras los tests nuevos
+
+```
+$ python -m harness.mutacion --feature F-007
+...
+[18/20] superviviente services/postventa-front/dev_server.py:169 [entero] log.info("=" * 60) -> log.info("=" * 61)
+[19/20] superviviente services/postventa-front/dev_server.py:171 [entero] log.info("=" * 60) -> log.info("=" * 61)
+[20/20] superviviente services/postventa-front/dev_server.py:175 [entero] log.info("=" * 60) -> log.info("=" * 61)
+20 mutantes evaluados, 17 muertos, 3 supervivientes, 0 timeouts en 12.9 s
+Informe: progress/mutacion_F-007.md
+```
+
+**20 mutantes, 17 muertos, 3 supervivientes, 0 timeouts.** Los tres son **la
+misma mutación repetida** en las tres líneas del rótulo (169, 171 y 175), no
+tres huecos distintos, y los tres tienen su análisis **completo** en
+`progress/mutacion_F-007.md`: **ninguna sección queda en `PENDIENTE`**.
+
+El razonamiento, resumido: un rótulo de 61 iguales en vez de 60 no cambia el
+comportamiento del proxy, ni el código de salida, ni una sola respuesta HTTP;
+cambia cuántos `=` ve el humano en su terminal. Fijarlo con un test compraría un
+mutante muerto a cambio de un test que se rompe la próxima vez que alguien
+ajuste el rótulo sin haber roto nada — justo el tipo de test que enseña a la
+gente a no fiarse de la suite.
+
+> Nota de operación: la campaña paralela crea worktrees desde `HEAD`, así que
+> **exige el árbol limpio**. La primera vez avisó de ello y no arrancó; se
+> commiteó y se relanzó. El árbol queda limpio para que el reviewer la
+> reejecute: baja de 15 s.

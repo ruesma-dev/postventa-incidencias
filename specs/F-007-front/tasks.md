@@ -159,7 +159,7 @@
       imprime la ayuda sin arrancar nada, y `bash harness/init.sh` sigue en
       verde.
 
-- [ ] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4:
+- [x] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4:
       arrancar el front en local contra la Function.
 
       **Terminal A** (backend; una línea por línea, sin `&&`):
@@ -204,7 +204,7 @@
 
 ## Fase 5 · Puertas del rigor `estandar`
 
-- [ ] **T15**: Campaña de mutación y análisis de los supervivientes.
+- [x] **T15**: Campaña de mutación y análisis de los supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-007` genera
       `progress/mutacion_F-007.md` con sus totales, y **cada superviviente
       tiene su sección de análisis completada** (ninguna en `PENDIENTE`).

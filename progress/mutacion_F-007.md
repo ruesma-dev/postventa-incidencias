@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-007.md -->
 # F-007 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-007` el 2026-08-20 11:21.
+Generado por `python -m harness.mutacion --feature F-007` el 2026-08-20 11:22.
 
 ## Alcance
 
@@ -18,73 +18,97 @@ Origen del diff: **rama** (`0705d881d4a1c329006db5fe970c45bcb93c2e75` .. `featur
 |---|---|
 | Mutantes generados | 20 |
 | Mutantes evaluados | 20 |
-| Muertos | 14 |
-| Supervivientes | 6 |
+| Muertos | 17 |
+| Supervivientes | 3 |
 | Timeouts | 0 |
-| Tiempo total | 13.6 s |
+| Tiempo total | 12.9 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
 
 Cada superviviente es una línea que ningún test comprueba de verdad, o una mutación equivalente. Distinguirlo es trabajo del implementer: ningún análisis puede quedarse sin completar al cerrar la feature.
 
-### 1. `services/postventa-front/dev_server.py:87` [entero]
-
-- Original: `conn = conn_cls(target.hostname, target.port, timeout=300)`
-- Mutado:   `conn = conn_cls(target.hostname, target.port, timeout=301)`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
-
-### 2. `services/postventa-front/dev_server.py:147` [booleano]
-
-- Original: `daemon_threads = True`
-- Mutado:   `daemon_threads = False`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
-
-### 3. `services/postventa-front/dev_server.py:148` [booleano]
-
-- Original: `allow_reuse_address = True`
-- Mutado:   `allow_reuse_address = False`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
-
-### 4. `services/postventa-front/dev_server.py:169` [entero]
+### 1. `services/postventa-front/dev_server.py:169` [entero]
 
 - Original: `log.info("=" * 60)`
 - Mutado:   `log.info("=" * 61)`
 
-#### Análisis (PENDIENTE del implementer)
+#### Análisis (implementer, 2026-08-20)
 
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+> **Por qué ningún test lo caza:** es la **anchura del separador** del rótulo
+> que `main()` imprime al arrancar (`====…`, línea 169). Ningún test afirma
+> nada sobre esa decoración, y no debería: lo que importa de `main()` —que
+> configura el handler con `--port`, `--api` y `--root`, que se niega a arrancar
+> sin `index.html` devolviendo 1, y que un `Ctrl+C` apaga y devuelve 0— sí está
+> cubierto, y los mutantes que tocan eso murieron todos.
+>
+> **Decisión: mutante equivalente justificado.** Un rótulo de 61 iguales en vez
+> de 60 no cambia ni el comportamiento del proxy, ni el código de salida, ni una
+> sola respuesta HTTP: cambia cuántos `=` ve el humano en su terminal. Fijarlo
+> con un test —capturar el log y afirmar `len(linea) == 60`— compraría un
+> mutante muerto a cambio de un test que se rompe la próxima vez que alguien
+> ajuste el rótulo, sin haber roto nada. Eso es el tipo de test que enseña a la
+> gente a no fiarse de la suite.
+>
+> Los tres supervivientes son **la misma mutación repetida** en las tres líneas
+> del rótulo (169, 171 y 175), no tres huecos distintos.
+>
+> Nivel `estandar`: no se exigen cero supervivientes, se exige que estén
+> explicados (`CHECKPOINTS.md` C4 bis).
 
-### 5. `services/postventa-front/dev_server.py:171` [entero]
+### 2. `services/postventa-front/dev_server.py:171` [entero]
 
 - Original: `log.info("=" * 60)`
 - Mutado:   `log.info("=" * 61)`
 
-#### Análisis (PENDIENTE del implementer)
+#### Análisis (implementer, 2026-08-20)
 
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+> **Por qué ningún test lo caza:** es la **anchura del separador** del rótulo
+> que `main()` imprime al arrancar (`====…`, línea 171). Ningún test afirma
+> nada sobre esa decoración, y no debería: lo que importa de `main()` —que
+> configura el handler con `--port`, `--api` y `--root`, que se niega a arrancar
+> sin `index.html` devolviendo 1, y que un `Ctrl+C` apaga y devuelve 0— sí está
+> cubierto, y los mutantes que tocan eso murieron todos.
+>
+> **Decisión: mutante equivalente justificado.** Un rótulo de 61 iguales en vez
+> de 60 no cambia ni el comportamiento del proxy, ni el código de salida, ni una
+> sola respuesta HTTP: cambia cuántos `=` ve el humano en su terminal. Fijarlo
+> con un test —capturar el log y afirmar `len(linea) == 60`— compraría un
+> mutante muerto a cambio de un test que se rompe la próxima vez que alguien
+> ajuste el rótulo, sin haber roto nada. Eso es el tipo de test que enseña a la
+> gente a no fiarse de la suite.
+>
+> Los tres supervivientes son **la misma mutación repetida** en las tres líneas
+> del rótulo (169, 171 y 175), no tres huecos distintos.
+>
+> Nivel `estandar`: no se exigen cero supervivientes, se exige que estén
+> explicados (`CHECKPOINTS.md` C4 bis).
 
-### 6. `services/postventa-front/dev_server.py:175` [entero]
+### 3. `services/postventa-front/dev_server.py:175` [entero]
 
 - Original: `log.info("=" * 60)`
 - Mutado:   `log.info("=" * 61)`
 
-#### Análisis (PENDIENTE del implementer)
+#### Análisis (implementer, 2026-08-20)
 
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+> **Por qué ningún test lo caza:** es la **anchura del separador** del rótulo
+> que `main()` imprime al arrancar (`====…`, línea 175). Ningún test afirma
+> nada sobre esa decoración, y no debería: lo que importa de `main()` —que
+> configura el handler con `--port`, `--api` y `--root`, que se niega a arrancar
+> sin `index.html` devolviendo 1, y que un `Ctrl+C` apaga y devuelve 0— sí está
+> cubierto, y los mutantes que tocan eso murieron todos.
+>
+> **Decisión: mutante equivalente justificado.** Un rótulo de 61 iguales en vez
+> de 60 no cambia ni el comportamiento del proxy, ni el código de salida, ni una
+> sola respuesta HTTP: cambia cuántos `=` ve el humano en su terminal. Fijarlo
+> con un test —capturar el log y afirmar `len(linea) == 60`— compraría un
+> mutante muerto a cambio de un test que se rompe la próxima vez que alguien
+> ajuste el rótulo, sin haber roto nada. Eso es el tipo de test que enseña a la
+> gente a no fiarse de la suite.
+>
+> Los tres supervivientes son **la misma mutación repetida** en las tres líneas
+> del rótulo (169, 171 y 175), no tres huecos distintos.
+>
+> Nivel `estandar`: no se exigen cero supervivientes, se exige que estén
+> explicados (`CHECKPOINTS.md` C4 bis).
 

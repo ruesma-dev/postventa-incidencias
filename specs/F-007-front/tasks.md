@@ -103,7 +103,7 @@
       `node --test tests_js` en verde. **Ni un test abre red**: el `fetch` es
       siempre un doble.
 
-- [ ] **T8**: `tests_js/pipeline.test.js` **primero** y luego `js/pipeline.js`
+- [x] **T8**: `tests_js/pipeline.test.js` **primero** y luego `js/pipeline.js`
       (R8, R13–R22, R29): extraer y firma **en paralelo** y validar solo
       después; el cuerpo de `/api/validar` se compone con las dos respuestas
       **verbatim**; un campo editado viaja con `confianza_pct` 100 (D3); las

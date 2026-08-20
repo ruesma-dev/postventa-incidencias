@@ -479,3 +479,118 @@ $ node --test "tests_js/api.test.js"
   parsear. Hay un test que lo vigila.
 - **`fetch`, `esperar` y `programarTimeout` se inyectan.** El backoff de R23
   se prueba en milisegundos y **ni un test abre red**.
+
+---
+
+## T8 · `js/pipeline.js`: la orquestación de un parte — HECHA
+
+R8, R13–R22 y R29. `tests_js/pipeline.test.js` **primero**, módulo después.
+
+### Fase RED (traza real)
+
+```
+$ cd services\postventa-front
+$ node --test "tests_js/pipeline.test.js"
+node:internal/modules/cjs/loader:1459
+  throw err;
+  ^
+
+Error: Cannot find module '../js/pipeline.js'
+Require stack:
+- C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\tests_js\pipeline.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1066:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1071:22)
+    at Module._load (node:internal/modules/cjs/loader:1242:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.require (node:internal/modules/cjs/loader:1556:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (...\tests_js\pipeline.test.js:23:5)
+    at Module._compile (node:internal/modules/cjs/loader:1812:14)
+    at Object..js (node:internal/modules/cjs/loader:1943:10) {
+  code: 'MODULE_NOT_FOUND',
+  ...
+}
+```
+
+Un segundo rojo, ya con el módulo escrito, que merece constar porque **el fallo
+era del test, no del código**: `assert.equal(fichero.size, 5)` sobre
+`"JVBERg=="`, que son los **cuatro** bytes de `%PDF`.
+
+```
+✖ f007 R14: el PDF del parte se reconstruye desde contenido_b64 (1.273ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  4 !== 5
+      at TestContext.<anonymous> (...\tests_js\pipeline.test.js:455:10)
+```
+
+Corregida la expectativa (4 bytes), no el módulo.
+
+### Verde
+
+```
+$ node --test "tests_js/pipeline.test.js"
+✔ f007 R8: extraer y firma se piden EN PARALELO (9.4194ms)
+✔ f007 R8: validar NO se pide hasta que las dos han respondido (0.8664ms)
+✔ f007 R8: el cuerpo de validar son las DOS respuestas verbatim (0.3632ms)
+✔ f007 R8: un fallo de extraer se propaga y no se valida a medias (0.7773ms)
+✔ f007 R18: el cuerpo de validar lleva SIEMPRE las nueve claves (0.1922ms)
+✔ f007 R18: un campo vacío viaja como valor null, no como cadena vacía (0.1816ms)
+✔ f007 R18: las nueve claves son las del dominio, ni una más (0.1253ms)
+✔ f007 R16: un campo corregido a mano viaja con confianza 100 (D3) (0.1289ms)
+✔ f007 R16: el campo corregido queda MARCADO como editado (D3) (0.1762ms)
+✔ f007 R16: corregir un campo no toca el resto del cuerpo ni la traza (0.2306ms)
+✔ f007 R15: se destacan los campos por debajo del umbral del dominio (0.1857ms)
+✔ f007 R15: un campo corregido a mano deja de ser dudoso (0.1421ms)
+✔ f007 R17: revalidar llama SOLO a validar (0.3074ms)
+✔ f007 R17: revalidar sin extracción previa es un error de programación (0.3195ms)
+✔ f007 R13: el semáforo sale de veredicto y destino, no de una escala nueva (0.1232ms)
+✔ f007 R13: sin veredicto todavía, no hay semáforo que pintar (0.0903ms)
+✔ f007 R13: un apto con destino que no es archivo_y_cierre NO es verde (0.0599ms)
+✔ f007 R21: solo es archivable apto + archivo_y_cierre (0.0923ms)
+✔ f007 R21: componer el cuerpo de archivo de un parte no apto es imposible (0.2774ms)
+✔ f007 R21: un parte ya archivado no se vuelve a componer (0.2065ms)
+✔ f007 R20: el cuerpo de archivar lleva el fichero y los cinco campos (21.3853ms)
+✔ f007 R29: al archivar NO viajan ni el DNI ni las observaciones (0.4195ms)
+✔ f007 R20: el cuerpo de archivo usa el valor CORREGIDO del código de obra (0.1565ms)
+✔ f007 R14: el PDF del parte se reconstruye desde contenido_b64 (0.3128ms)
+✔ f007 R14: sin contenido_b64 no se inventa un PDF vacío (0.1956ms)
+ℹ tests 25
+ℹ pass 25
+ℹ fail 0
+```
+
+### Los contratos del backend, verificados contra el código real (sin tocarlo)
+
+Antes de escribir el módulo se leyeron los handlers para no inventarse nada:
+
+- Los **nueve campos** y su orden salen de
+  `domain/models/extraccion.py::CAMPOS_DEL_PARTE`: `promocion`, `codigo_obra`,
+  `unidad`, `numero_incidencia`, `fecha_servicio`, `descripcion`,
+  `dni_cliente`, `observaciones`, `numero_pagina`. Hay un test que fija esa
+  lista: si el dominio cambia, el front se entera por un rojo y no por un 400
+  en producción.
+- Los **cinco campos de archivo** salen de
+  `interface_adapters/api/archivar.py::CAMPOS_OBLIGATORIOS`.
+- Los valores de `veredicto` y `destino`, de
+  `domain/models/validacion.py` (`Veredicto`, `Destino`).
+- El **umbral 50** de R15, de `domain/models/firma.py::UMBRAL_CONFIANZA`.
+
+**No se ha modificado ni un fichero de `services/postventa-api/`.**
+
+### D3 aplicada, y por qué el «editado» importa
+
+`aplicarEdiciones` marca el campo corregido con `editado: true` y
+`confianza_pct: 100`. El efecto que se ve en pantalla lo prueba un test
+explícito: **un campo corregido a mano deja de aparecer entre los dudosos**, o
+sea, corregirlo sirve para algo y el semáforo puede pasar a verde. Si se
+mantuviera la confianza del modelo, el parte seguiría no apto para siempre.
+
+La extracción original **no se muta**: se conserva íntegra para poder volver a
+ella, y hay un test que lo comprueba.
+
+### R21, defendido por construcción
+
+`cuerpoDeArchivo` **lanza** si el parte no es apto o si ya está archivado. No
+basta con no pintar el botón: aunque el usuario lo pulse dos veces, la petición
+no se llega a componer.

@@ -378,10 +378,20 @@ entre regiones se paga en latencia y se descuenta del presupuesto de abajo.
 El proxy de la Static Web App **corta cualquier petición a los 45 s**. Es un
 límite de la plataforma —`azure-apps/portal.md` §9, aprendido con la app de
 nóminas—, y manda sobre los tiempos de espera del proyecto:
-`IA_TIMEOUT_S` y `GRAPH_TIMEOUT_S` en el backend, `TIMEOUT_PETICION_MS` en el
-front. Los tres tienen que quedar **por debajo**, para que quien aborte sea el
-front —que sabe reintentar y liberar la plaza de la cola— y no el proxy, que
-devuelve un error opaco que nadie ha generado.
+
+```
+IA_TIMEOUT_S / GRAPH_TIMEOUT_S = 35 s  →  TIMEOUT_PETICION_MS = 40 s  →  proxy = 45 s
+```
+
+**Cada capa cede antes que la de fuera**, y ese es el criterio, no los números.
+Así quien aborta es el front —que sabe reintentar y liberar la plaza de la
+cola— y no el proxy, que devuelve un error opaco que nadie ha generado y deja
+la llamada a la IA viva por detrás gastando cuota.
+
+El peor caso medido del circuito (F-010, T2, con una remesa real de 22 partes)
+es **6,5 s** en `/api/extraer` con seis peticiones vivas. Los 35 s son colchón
+para lo que no se puede medir en local: el salto de región, el arranque en frío
+y un mal día del proveedor de IA.
 
 El `functionTimeout` de cinco minutos de `host.json` **no es** el límite que
 aprieta: es el techo de la Function, no el del proxy.

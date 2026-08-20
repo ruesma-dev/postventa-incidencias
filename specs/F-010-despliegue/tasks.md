@@ -97,7 +97,7 @@
       escribe ficheros, no deja variables de sesión (R6), admite `-WhatIf`
       (R3) y trae confirmación escrita antes de la primera escritura (R4).
 
-- [ ] **T5 · FASE RED en R33**: `infra/desplegar_backend.ps1`. Primero se
+- [x] **T5 · FASE RED en R33**: `infra/desplegar_backend.ps1`. Primero se
       escribe el test que exige que el script deje `ARCHIVO_HABILITADO`
       **apagado** y **se le ve fallar** (aún no hay script); después el
       script. Es el candado principal de D3 (`design.md` §9 bis, capa 3) y por
@@ -149,7 +149,7 @@
       alguien cambia una cosa sin la otra, falla) y
       `test_f010_r18_health_sigue_anonimo`.
 
-- [ ] **T9**: `TIMEOUT_PETICION_MS` de `services/postventa-front/js/config.js`
+- [x] **T9**: `TIMEOUT_PETICION_MS` de `services/postventa-front/js/config.js`
       al presupuesto del proxy (R21), con el comentario que explica de dónde
       sale el número y que enlaza a `design.md` §5.
       **Verificación**: `tests_js/test_config_timeout.test.js` — el valor está

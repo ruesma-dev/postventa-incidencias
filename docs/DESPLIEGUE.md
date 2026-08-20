@@ -221,10 +221,28 @@ El proxy de la Static Web App **corta cualquier petición a los 45 s**. Es un
 límite de la plataforma, no una elección nuestra: lo documenta
 `azure-apps/portal.md` §9 y lo escribió quien lo sufrió con la app de nóminas.
 
-Los tiempos de espera del backend (`IA_TIMEOUT_S`, `GRAPH_TIMEOUT_S`) y el del
-front (`TIMEOUT_PETICION_MS`) tienen que quedar **por debajo** de ese tope,
-para que quien aborte sea el front —que sabe reintentar y liberar la plaza de
-la cola— y no el proxy, que devuelve un error opaco que nadie ha generado.
+**El escalonado, que es el criterio y no los números:**
+
+```
+la IA abandona a los 35 s  →  el front aborta a los 40  →  el proxy corta a los 45
+```
+
+**Cada capa cede antes que la de fuera.** Ese orden es lo que hace que el
+usuario reciba **nuestro** error —explicado, reintentable y que libera la plaza
+de la cola— en vez de un corte opaco de la plataforma, con una llamada zombi
+por detrás gastando cuota de IA.
+
+| Dónde | Variable | Valor | Quién lo fija |
+|---|---|---|---|
+| Backend | `IA_TIMEOUT_S` | **35** | `desplegar_backend.ps1` |
+| Backend | `GRAPH_TIMEOUT_S` | **35** | `desplegar_backend.ps1` |
+| Front | `TIMEOUT_PETICION_MS` | **40000** | `js/config.js` |
+| Plataforma | corte del proxy | 45 s | No lo fijamos nosotros |
+
+Subir el del front por encima de 45 s no da más margen: da un corte del proxy
+que el front no se entera de que ha ocurrido. Si de verdad hiciera falta más
+tiempo, lo que hay que cambiar es el montaje —patrón asíncrono, encolar y
+consultar—, no estos números.
 
 **Medición real del circuito** (T2, en local, con una remesa de 22 partes):
 
@@ -234,9 +252,12 @@ la cola— y no el proxy, que devuelve un error opaco que nadie ha generado.
 | `POST /api/extraer` | 5,5 s | **6,5 s** |
 | `POST /api/firma` | 4,1 s | 5,5 s |
 
-> **Pendiente de decisión (D2).** Los valores concretos que se fijan en el
-> despliegue los decide el humano con esa medición delante. Hasta entonces,
-> `desplegar_backend.ps1` (T5) y `TIMEOUT_PETICION_MS` (T9) no están fijados.
+El peor caso medido, **6,5 s**, es el **14 %** del presupuesto. Los 35 s del
+backend no son el caso normal: son colchón para lo que **no se puede medir en
+local** —el salto de región entre `westeurope` y `spaincentral`, el arranque en
+frío de la primera petición del día y un día malo del proveedor de IA—.
+
+> **D2 resuelta el 2026-08-20**, opción (a): se despliega con estos tiempos.
 
 ## 8 · Dónde está cada cosa
 

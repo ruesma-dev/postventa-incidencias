@@ -5,11 +5,13 @@
 
 Resumen: **20 features**, 13 abiertas, 7 terminadas.
 
+En curso: **F-010**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-010 | Despliegue en Azure y tarjeta en el portal | 8 | pendiente | estandar | `feature/F-010-despliegue` |
+| F-010 | Despliegue en Azure y tarjeta en el portal | 8 | en curso | estandar | `feature/F-010-despliegue` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | pendiente | documental | `feature/F-008-modelo-sigrid` |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | pendiente | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
@@ -39,7 +41,7 @@ Resumen: **20 features**, 13 abiertas, 7 terminadas.
 
 ### F-010 · Despliegue en Azure y tarjeta en el portal
 
-estado **pendiente** · prioridad 8 · rigor `estandar` · SDD sí · rama `feature/F-010-despliegue`
+estado **en curso** · prioridad 8 · rigor `estandar` · SDD sí · rama `feature/F-010-despliegue`
 
 Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este. PRIORIDAD SUBIDA EL 2026-08-20 por el humano, por delante de F-008 y F-009 (las dos de Sigrid): quiere que **negocio pruebe el circuito completo desplegado sin tocar Sigrid todavía**. Encaja con lo que ya hay: F-002 a F-007 cubren entrada, extracción, validación, archivo y front, y el cierre en el ERP es justamente lo que queda fuera. Efecto lateral que importa: F-010 es quien **desbloquea T18 de F-006**, la verificación de subida real a SharePoint, que está diferida esperando un entorno desplegado.
 

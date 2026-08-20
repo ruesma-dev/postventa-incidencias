@@ -230,3 +230,124 @@ class ConfiguracionPgIncompleta(ErrorDePersistencia):
     nunca sus valores. Se exige en la fábrica y no al leer los ajustes, por lo
     mismo que `GEMINI_API_KEY`: `/health` tiene que arrancar sin base de datos.
     """
+
+
+class NombradoImposible(Exception):
+    """No se puede componer el nombre del fichero de un parte (F-006, R6, R7).
+
+    Dos casos, y los dos acaban igual —el parte va a revisión manual— pero
+    por motivos distintos: falta uno de los dos códigos, o el nombre que sale
+    lleva algo que SharePoint no admite.
+
+    Lo que **no** hace este error es dejar que el proceso siga. La alternativa
+    —inventarse el dato que falta, o sustituir el carácter raro por `_`—
+    archivaría en el archivo de Posventa un fichero con un nombre que nadie
+    pidió, en una carpeta que se consulta a mano, y nadie se enteraría.
+
+    En la práctica no debería llegar aquí ningún parte sin códigos: F-004 no
+    los declara aptos. Por eso esto es una **red de seguridad**, no el camino
+    normal.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ParteNoApto(Exception):
+    """Se ha pedido archivar un parte que no está listo (F-006, R17, R18).
+
+    Dos casos, y el motivo los distingue porque se arreglan de forma distinta:
+    **no consta veredicto** —hay que revalidar el parte— o **el veredicto dice
+    que no** —hay que volver al papel, o que alguien decida a mano—.
+
+    Archivar «por si acaso» un parte que F-004 mandó a la cola de validación
+    humana es exactamente lo que prohíbe `CHECKPOINTS.md` C3: alguien tenía que
+    decidir sobre él y ya no va a poder.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ArchivoFallido(Exception):
+    """El proveedor del archivo no ha respondido de forma utilizable (F-006).
+
+    Reintentos agotados, error no transitorio, o respuesta que no trae lo que
+    el contrato promete. El borde lo traduce a **502**: el fallo es de un
+    sistema externo, no de quien mandó la petición.
+
+    El `motivo` dice **qué** pasó y **nunca** los bytes del parte, ni el DNI,
+    ni las observaciones manuscritas, ni el token, ni el secreto de cliente
+    (R26): el parte lleva datos personales y este texto acaba en la base y en
+    un log que sobrevive al parte.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ArchivoDeshabilitado(Exception):
+    """Este sitio no puede archivar en SharePoint (F-006, R19, R20).
+
+    Dos motivos, y los dos son **puertas a propósito**, no fallos:
+
+    - el entorno no es `dev` ni `pro` —típicamente, es un puesto de trabajo—, y
+      `CLAUDE.md` prohíbe sin matices subir al SharePoint de Posventa desde
+      local;
+    - `ARCHIVO_HABILITADO` no está encendido, que es el estado por defecto de
+      un `.env` recién copiado y de un despliegue a medio configurar.
+
+    El borde lo traduce a **503**: no es culpa de quien manda la petición ni
+    del proveedor; es que aquí no se archiva.
+
+    Se levanta en la fábrica **y en el constructor del adaptador**. No es
+    redundancia decorativa: componer las piezas de otra manera —un script
+    suelto, un `python -c`, un test «solo para probar»— tiene que toparse
+    igual con la puerta, porque lo que se sube a SharePoint lo ve Posventa y
+    no se puede deshacer.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ConfiguracionSharePointIncompleta(Exception):
+    """Falta configuración para construir el archivador (F-006, R28).
+
+    El motivo nombra **las variables** que faltan —`SHAREPOINT_DRIVE_ID`,
+    `GRAPH_TENANT_ID`…— y **jamás sus valores**, ni enteros ni en fragmentos:
+    `GRAPH_CLIENT_SECRET` es una credencial y estos mensajes acaban en un log.
+
+    Se exige en la fábrica y no al leer los ajustes, por lo mismo que
+    `GEMINI_API_KEY` y `PG_PASSWORD`: `/health` tiene que arrancar sin
+    configuración de SharePoint y la suite entera tiene que correr sin
+    credenciales en el entorno.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CuerpoDeArchivoInvalido(Exception):
+    """El cuerpo de `/api/archivar` no trae lo que dice el contrato (F-006, R31).
+
+    Falta un campo, o el veredicto o el destino traen un valor que el dominio
+    no reconoce. El borde lo traduce a **400**, y no a 409: la petición está
+    mal formada, no es que el parte no se pueda archivar.
+
+    Esa distinción no es cosmética. Un veredicto desconocido tratado «como si
+    fuera no apto» daría un 409 engañoso; tratado al revés —«como si fuera
+    apto»— archivaría un parte que nadie ha validado. Se rechaza y punto.
+
+    El motivo dice **qué falta** y nunca lo que sí venía: el cuerpo lleva los
+    códigos del parte y este texto acaba en un log.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo

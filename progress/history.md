@@ -298,3 +298,82 @@ timeouts bajo reloj y pasó sus propios barridos de DNI y de secretos.
 anteriores al arreglo siguen conteniendo el FQDN. **Se mergea a `dev` con
 squash**, para que ese valor no entre nunca en `dev`. No se reescribe la
 historia de una rama de 31 commits: el coste y el riesgo superan al beneficio.
+
+## F-006 · Nombrado y archivo en SharePoint — CERRADA el 2026-08-20
+
+Rama `feature/F-006-sharepoint`. Rigor `critico`. **Veredicto: APROBADO** en
+segunda pasada (`progress/review_F-006.md`); la primera fue RECHAZADO y se
+conserva íntegra en ese informe.
+
+### Qué entrega
+
+El nombre canónico del parte —`<obra> - <incidencia> PARTE FIRMADO.pdf`, con
+los separadores normalizados—, la carpeta por código de obra creada sola si no
+existe, la subida a la biblioteca de Posventa por Microsoft Graph y la
+garantía de que subir dos veces el mismo parte **no** genera un duplicado con
+sufijo. El endpoint es `POST /api/archivar`. Ninguna subida real ocurre desde
+local ni desde los tests: van contra el doble `BibliotecaFalsa`.
+
+### Las puertas del rigor `critico`
+
+| Puerta | Resultado |
+|---|---|
+| Fases RED con traza real | seis, todas pegadas |
+| Cobertura de líneas cambiadas | **98,2 %** (336/342, umbral 80 %) |
+| Campaña de mutación | 64 mutantes / 59 muertos / **5 supervivientes aceptados** / 0 timeouts |
+| Suite | **924 passed**, 10 skipped, relanzada por el reviewer sin caché |
+| `bash harness/init.sh` | verde, exit 0 |
+
+### Lo que de verdad valió la pena: la mutación encontró tres bugs
+
+No fueron mutantes de adorno. La campaña destapó:
+
+1. **Una puerta de aptitud que se podía saltar**: cambiar el `or` por un `and`
+   no mataba ningún test, porque **todos** los casos no aptos de la suite
+   fallaban las **dos** condiciones a la vez. Los tests pasaban por
+   casualidad, no por cobertura.
+2. **Una caché de token que comprobaba que el token existiera, no que
+   siguiera siendo válido.**
+3. Un parámetro muerto.
+
+Los tres corregidos con tests. **Esta es la justificación empírica del coste
+de la campaña de mutación en este proyecto.**
+
+### Los dos defectos que encontró la review
+
+1. **H1 · un appId real escrito en `progress/current.md`**, y **lo escribió el
+   líder**, no el implementer, al verificar el registro en Azure. Retirado del
+   árbol. Precisión que quedó escrita: **un appId no es una credencial** —viaja
+   en claro en OAuth y no da acceso por sí solo—, así que **no hubo nada que
+   rotar**; lo que sí vale es que la regla del proyecto prohíbe identificadores
+   en git y que el valor entró en `f2e317b`, ya en `dev`. Se decidió **no**
+   reescribir el historial: no compensa.
+2. **El guardián no cubría donde ocurrió el fallo.** El barrido de
+   identificadores solo miraba `services/postventa-api/`, y los identificadores
+   se escriben en los informes de `progress/`. Ampliado a todo el repositorio,
+   con control negativo para no morder prosa legítima. **Lección**: un
+   guardián que no cubre el sitio donde de verdad se escribe el dato da una
+   falsa sensación de seguridad.
+
+### Decisiones del humano del 2026-08-20
+
+- **`httpx` en vez de `msal` + `requests`**, reutilizando el patrón de
+  `partes` —con **cinco defectos de ese patrón deliberadamente no heredados**,
+  listados en el informe—.
+- **T19 marcada N/A**: el humano no hace commits en `azure-apps`. T15, que
+  toca `docs/INTEGRACION.md` en este repositorio, sí se hizo.
+- **Riesgo aceptado de permisos**: el app registration tiene
+  `Sites.FullControl.All` y `Sites.ReadWrite.All` sobre todo el inquilino
+  cuando bastaría `Sites.Selected`. Documentado en `design.md` §9 y en
+  `docs/INTEGRACION.md` §3, con **F-018** como dueña del recorte.
+- **Los cinco supervivientes, aceptados**: uno equivalente de manual y cuatro
+  constantes operativas sin requisito que fije su valor. Se decidió no
+  escribir tests que solo repitieran la constante, que es la trampa de F-003.
+- **Cierre con T18 pendiente, autorizado** ante C5. Sigue **diferida a F-010**,
+  con su comando y su criterio ya escritos. Es el **segundo caso real que
+  motiva F-017**.
+
+### Lo que queda vivo
+
+**T18** — la subida real a SharePoint, a ejecutar cuando F-010 despliegue el
+entorno. **F-018** — el recorte de permisos a `Sites.Selected`.

@@ -57,7 +57,7 @@ aterrizar donde no debe ni por descuido ni por copiar y pegar.
 | `CREATE DATABASE` desde la aplicación | Crear bases al arrancar un servicio, en un servidor de producción ajeno, es justo lo que prohíbe `CLAUDE.md`. La base y el rol los crea el humano con `infra/crear_base_postventa.ps1`, una vez |
 | `CREATE ROLE`, `GRANT`, `ALTER SYSTEM`, `CREATE EXTENSION` | Son cambios a nivel de servidor y afectan a los otros tres proyectos. Están en la lista negra del validador de DDL, que se ejecuta **antes de abrir la conexión** |
 | Tocar el esquema `public` de ninguna base | Es donde trabajan `albaranes` y `partes` |
-| Guardar los bytes de los PDF | El disco es compartido, solo crece y ya se llenó una vez (ver §4). Los PDF van a SharePoint; en la base quedan metadatos y hash |
+| Guardar los bytes de los PDF | El disco es compartido, solo crece y ya se llenó una vez (ver §5). Los PDF van a SharePoint; en la base quedan metadatos y hash |
 | Guardar JSON crudo de la extracción | Duplicaría datos personales y engordaría el disco de todos |
 
 El DDL se aplica **idempotente al arranque** (`CREATE ... IF NOT EXISTS`,
@@ -67,7 +67,90 @@ el mismo patrón que ya usan `albaranes` y `partes`, y va protegido por un
 DBA que mire `pg_stat_activity` nos verá con un `application_name` propio del
 servicio y del entorno.
 
-## 3 · Variables de entorno (nombres, nunca valores)
+## 3 · SharePoint: dónde se archivan los partes
+
+**Lo nuevo de F-006.** Con esta feature el proyecto pasa a consumir un segundo
+recurso compartido: **SharePoint del tenant**, a través de **Microsoft Graph**.
+Los dueños de `albaranes` y de `partes` —que ya archivan en ese mismo sitio—
+tienen derecho a saber que hay otro inquilino y otra aplicación con permiso de
+escritura sobre él.
+
+### Qué escribimos y dónde
+
+| Qué | Valor |
+|---|---|
+| Sitio | El de **IT**, el mismo donde vive la biblioteca de albaranes. Por variable: `SHAREPOINT_SITE_ID` |
+| Biblioteca | **Propia de este proyecto**, no la de nadie más. Por variable: `SHAREPOINT_DRIVE_ID` |
+| Carpeta raíz | `SHAREPOINT_CARPETA_BASE`, y debajo **una carpeta por código de obra** |
+| Qué se sube | El PDF de **un parte ya validado**, y nada más. Ni la remesa entera, ni ficheros intermedios, ni JSON |
+| Cómo se llama | `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf` |
+| Con qué identidad | **App-only** (client credentials) del app registration del proyecto |
+| Con qué cliente | `httpx`, igual que `partes`. Decisión del humano del 2026-08-20 |
+
+**Mientras estemos en dev es una biblioteca propia dentro del sitio de IT.** Al
+pasar a producción el archivo se muda a la biblioteca de Posventa: es la
+feature **F-013**, y sale casi gratis porque la ruta es configuración y no
+código.
+
+### Volumen esperado
+
+Minúsculo, y por el mismo motivo que en §2: una remesa real ronda los **22
+partes**, y un parte escaneado es del orden de cientos de kilobytes. El
+crecimiento anual se cuenta en cientos de megabytes, no en terabytes. Una
+subida por parte, sin listados de carpeta: se pide el fichero por su nombre
+exacto, nunca el contenido entero de la carpeta de una obra.
+
+### Permisos: qué necesitamos y qué tenemos hoy
+
+Lo que la aplicación **necesita** es escribir en **una** biblioteca:
+`Sites.Selected`, con esa biblioteca asignada explícitamente.
+
+Lo que la aplicación **tiene hoy**, verificado el 2026-08-20, es más que eso:
+además de `Sites.Selected`, dos permisos de aplicación que alcanzan a **todos
+los sitios del tenant** y que vuelven irrelevante al primero. No es un fallo:
+es lo que pasa al configurar `Sites.Selected`, que exige el paso extra de
+asignar la biblioteca concreta por Graph, mientras que los amplios funcionan a
+la primera.
+
+**El humano decidió el 2026-08-20 arrancar así y recortar después**, para no
+mezclar un cambio de configuración del tenant con una implementación. El
+recorte es la feature **F-018 · Mínimo privilegio en Graph**, lo ejecuta el
+humano en Azure —un agente no toca permisos del tenant— y **hasta que ocurra,
+esta aplicación puede escribir en sitios de SharePoint que no son el suyo**.
+Quien administre el tenant merece saberlo por escrito, y por eso está aquí.
+
+### La puerta que impide subir desde un puesto de trabajo
+
+`CLAUDE.md` prohíbe subir al SharePoint de Posventa desde local. Eso **no
+depende de la disciplina de nadie**: el código lo impide con tres cierres
+independientes.
+
+1. `ENTORNO` tiene que ser `dev` o `pro`. Se comprueba en la fábrica **y en el
+   constructor del adaptador**, así que componer las piezas a mano tampoco
+   sirve.
+2. `ARCHIVO_HABILITADO` tiene que estar encendido, y está **apagado por
+   defecto**: un despliegue a medio configurar no sube nada.
+3. La suite de tests no puede abrir conexiones de red, y ningún test construye
+   un adaptador capaz de llegar a Graph.
+
+La única subida real permitida se hace **desde el entorno desplegado**.
+
+### Qué se rompe si alguien toca algo
+
+| Si alguien... | Nos pasa esto | Aviso |
+|---|---|---|
+| Mueve, renombra o borra **la biblioteca** de dev | Dejamos de archivar: cada parte apto acaba con traza en estado `error`. No se pierde nada, el parte se reintenta, pero no avanza ni un cierre | Es nuestra: nadie más debería tocarla |
+| Revoca el **permiso** de la aplicación sobre el sitio | Igual que lo anterior, y con un `403` que **no se reintenta**: la aplicación no insiste contra un permiso denegado | Coordinar con IT antes |
+| Cambia la carpeta raíz sin avisar | Los partes nuevos se archivan en otro sitio y los viejos se quedan donde estaban. El archivo de Posventa queda partido en dos | Es cambiar `SHAREPOINT_CARPETA_BASE`: hay que decirlo |
+| Rota el secreto de la aplicación sin actualizarlo | Dejamos de archivar con un `401`, tampoco reintentable | El secreto vive en Key Vault, nunca en el repositorio |
+| Borra a mano un parte ya archivado | No lo detectamos: la traza sigue diciendo `archivado` y no se vuelve a subir | Reprocesar el parte no basta; hay que borrar su traza |
+
+Y al revés, lo que **nosotros** podemos romperles: mientras los permisos sigan
+siendo los amplios de hoy, esta aplicación **podría** escribir en cualquier
+sitio del tenant. No lo hace, solo toca su biblioteca, pero la única garantía
+real es el recorte de **F-018**.
+
+## 4 · Variables de entorno (nombres, nunca valores)
 
 Los nombres son deliberadamente los que ya usa el ecosistema, para que quien
 despliegue no tenga que aprender dos vocabularios.
@@ -81,17 +164,36 @@ despliegue no tenga que aprender dos vocabularios.
 | `PG_PASSWORD` | sí, para persistir | **Secreto**. En Azure va por referencia a Key Vault; nunca en el repositorio, ni en `.env.example`, ni en un fichero de despliegue |
 | `PG_SCHEMA` | no | Por defecto, el esquema propio |
 | `PG_SSLMODE` | no | Por defecto exige TLS, como pide Azure Flexible Server |
-| `PG_MAX_CONEXIONES` | no | Techo bajo a propósito (§4, conexiones) |
+| `PG_MAX_CONEXIONES` | no | Techo bajo a propósito (§5, conexiones) |
 | `PG_STATEMENT_TIMEOUT_S` | no | Ninguna consulta nuestra se eterniza en un servidor ajeno |
 | `PG_LOCK_TIMEOUT_S` | no | Ni espera indefinidamente por un bloqueo |
 | `PG_IDLE_IN_TRANSACTION_TIMEOUT_S` | no | Ni deja una transacción abierta ocupando una conexión |
+
+
+### Las de SharePoint (F-006)
+
+| Variable | Obligatoria | Notas |
+|---|---|---|
+| `ARCHIVO_HABILITADO` | no | **Interruptor maestro, apagado por defecto.** Sin encenderlo no se sube nada, pase lo que pase |
+| `SHAREPOINT_SITE_ID` | no | El sitio del destino. No lo usa el adaptador, que va directo a la biblioteca; lo usan el script de verificación y este documento |
+| `SHAREPOINT_DRIVE_ID` | sí, para archivar | La biblioteca donde se archivan los partes |
+| `SHAREPOINT_CARPETA_BASE` | no | Carpeta raíz; debajo, una por código de obra |
+| `GRAPH_TENANT_ID` | sí, para archivar | Tenant contra el que se pide el token |
+| `GRAPH_CLIENT_ID` | sí, para archivar | La aplicación con la que se archiva |
+| `GRAPH_CLIENT_SECRET` | sí, para archivar | **Secreto**. En Azure va por referencia a Key Vault; en local, solo en el `.env`, que no se versiona. Jamás en un log ni en un mensaje de error |
+| `GRAPH_TIMEOUT_S` | no | La Function corta a los 230 s: una llamada colgada no puede comérselos |
+| `GRAPH_REINTENTOS` | no | Intentos ante errores transitorios. Un `403` o un `404` **no** se reintentan |
+
+Ninguna de estas variables tiene valor en el repositorio: `.env.example` y
+`local.settings.json.example` llevan placeholders, y hay un test que lo
+comprueba.
 
 `POSTVENTA_PG_TEST_DSN` es aparte: solo la usa la suite de base de datos
 (`tests_bbdd/`) contra una base **efímera y local**, y su `conftest.py` aborta
 si apunta a un host que no sea local. La suite normal del proyecto no abre ni
 una conexión.
 
-## 4 · Qué le hacemos al servidor compartido, en números
+## 5 · Qué le hacemos al servidor compartido, en números
 
 Los tres límites que importan, y por qué nos importan:
 
@@ -111,14 +213,14 @@ crecerá es `partes` y el primer sitio donde mirar es esta sección.
 **Conexiones.** El servidor es pequeño y las conexiones las comparten cuatro
 proyectos. Una Function App que escale a N instancias podría comérselas, así
 que el techo de conexiones está bajo por defecto y las sesiones llevan los
-tres timeouts de §3. Nada nuestro debería quedar colgado en
+tres timeouts de §4. Nada nuestro debería quedar colgado en
 `pg_stat_activity`.
 
 **CPU y memoria.** No ejecutamos analítica ni `VACUUM FULL` ni cargas masivas:
 son inserciones y actualizaciones de una fila, con índices por número de
 incidencia, código de obra y remesa.
 
-## 5 · Qué se rompe si alguien toca algo
+## 6 · Qué se rompe si alguien toca algo
 
 | Si alguien... | Nos pasa esto | Aviso |
 |---|---|---|
@@ -132,7 +234,7 @@ Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
 las reglas de §2. La única superficie compartida real es el **disco** y el
 **cupo de conexiones**, y las dos están acotadas a propósito.
 
-## 6 · Datos personales
+## 7 · Datos personales
 
 La base guarda **datos personales de clientes**: DNI y observaciones
 manuscritas del parte, además de la promoción y la unidad, que localizan una
@@ -151,14 +253,14 @@ Consecuencias para quien administre el servidor:
 
 El detalle columna a columna está en `specs/F-005-persistencia/design.md` §6.
 
-## 7 · Qué exponemos nosotros
+## 8 · Qué exponemos nosotros
 
 Hoy, nada hacia otros proyectos: no publicamos API que consuman terceros ni
 escribimos en bases ajenas. Cuando el portal muestre la tarjeta de Posventa
 (F-010) y el backend exponga sus endpoints (F-007), esta sección se rellena
 en el mismo trabajo que lo haga.
 
-## 8 · Dónde está cada cosa
+## 9 · Dónde está cada cosa
 
 | Qué | Dónde |
 |---|---|
@@ -166,5 +268,9 @@ en el mismo trabajo que lo haga.
 | El validador que lo revisa antes de aplicarlo | `services/postventa-api/infrastructure/persistencia/ddl.py` |
 | Crear la base y el rol, una vez | `infra/crear_base_postventa.ps1` |
 | Suite contra base efímera en Docker | `infra/pruebas_bbdd_efimera.ps1` |
-| Diseño completo y decisiones | `specs/F-005-persistencia/` |
+| Diseño completo y decisiones de la persistencia | `specs/F-005-persistencia/` |
+| El adaptador de SharePoint y su fábrica | `services/postventa-api/infrastructure/sharepoint/` |
+| Comprobar el destino de dev, solo lecturas | `infra/verificar_destino_sharepoint.ps1` |
+| Comprobar el archivo end-to-end en dev | `infra/verificar_archivo_dev.ps1` |
+| Diseño completo y decisiones del archivo | `specs/F-006-sharepoint/` |
 | Documento gemelo del ecosistema | `azure-apps/postventa_incidencias.md` |

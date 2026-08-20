@@ -24,6 +24,11 @@ Endpoints:
         devuelve el veredicto. **Sin IA**: por eso se puede revalidar un parte
         corregido sin gastar otra llamada.
 
+    POST /api/archivar
+        Nombra **un** parte apto y lo archiva en SharePoint, sin duplicar.
+        Desde un puesto de trabajo responde **503** y no sube nada: la única
+        subida real permitida es desde el entorno desplegado.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
@@ -37,13 +42,20 @@ import logging
 import azure.functions as func
 from config.logging_config import configurar_logging
 from domain.models.errores import (
+    ArchivoDeshabilitado,
+    ArchivoFallido,
+    ConfiguracionSharePointIncompleta,
+    CuerpoDeArchivoInvalido,
     CuerpoDeValidacionInvalido,
     ExtraccionFallida,
     LimiteDeEntradaSuperado,
+    NombradoImposible,
     ParteDemasiadoGrande,
+    ParteNoApto,
     RemesaSinPdfUtilizable,
 )
 from domain.models.remesa import DocumentoEntrada
+from interface_adapters.api.archivar import archivar_parte
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
@@ -183,5 +195,59 @@ def validar(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["veredicto"],
         cuerpo["destino"],
         [motivo["codigo"] for motivo in cuerpo["motivos"]],
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="archivar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def archivar(req: func.HttpRequest) -> func.HttpResponse:
+    """Nombra un parte apto y lo archiva en SharePoint, sin duplicar.
+
+    Solo traduce: saca el fichero y los campos de la petición, llama al
+    handler y mapea sus errores de dominio a códigos HTTP. Los cuatro dicen
+    cosas distintas a propósito: **400** la petición está mal formada, **409**
+    el parte no se puede archivar tal y como está —no es apto, o no se puede
+    nombrar—, **503** este entorno no archiva y **502** el proveedor no
+    respondió. En los cuatro casos, **sin haber subido nada**.
+
+    El log lleva hash, nombre del fichero, carpeta y estado. **Nunca** el
+    contenido del parte, ni el DNI, ni las observaciones, ni el token, ni el
+    secreto (R26): el parte lleva datos personales y este log sobrevive al
+    parte.
+    """
+    fichero = next(iter(req.files.values()), None)
+    if fichero is None:
+        log.info("archivar rechazado: la petición no trae ningún fichero")
+        return _json({"error": "la petición no trae ningún fichero"}, 400)
+
+    try:
+        cuerpo = archivar_parte(
+            fichero.read(),
+            hash=req.form.get("hash", ""),
+            codigo_obra=req.form.get("codigo_obra", ""),
+            numero_incidencia=req.form.get("numero_incidencia", ""),
+            veredicto=req.form.get("veredicto", ""),
+            destino=req.form.get("destino", ""),
+        )
+    except CuerpoDeArchivoInvalido as error:
+        log.info("archivar rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except (ParteNoApto, NombradoImposible) as error:
+        log.info("archivar no procede: %s", error.motivo)
+        return _json({"error": error.motivo}, 409)
+    except (ArchivoDeshabilitado, ConfiguracionSharePointIncompleta) as error:
+        log.warning("archivar deshabilitado: %s", error.motivo)
+        return _json({"error": error.motivo}, 503)
+    except ArchivoFallido as error:
+        log.warning("archivar fallido: %s", error.motivo)
+        return _json({"error": error.motivo}, 502)
+
+    log.info(
+        "archivar: parte=%s fichero=%s carpeta=%s estado=%s avisos=%d",
+        cuerpo["hash_parte"],
+        cuerpo["nombre_fichero"],
+        cuerpo["carpeta"],
+        cuerpo["estado"],
+        len(cuerpo["avisos"]),
     )
     return _json(cuerpo, 200)

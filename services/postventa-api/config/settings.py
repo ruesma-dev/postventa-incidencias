@@ -211,6 +211,91 @@ class Ajustes(BaseSettings):
         ),
     )
 
+    # --- Archivo en SharePoint por Microsoft Graph (F-006) -------------
+    # Ninguna de estas variables tiene un valor por defecto que apunte a un
+    # sitio real, y **ninguna se escribe en el repositorio**: el sitio, la
+    # biblioteca, el tenant y la aplicación viajan por entorno. Es lo que hace
+    # que F-013 —mudar el archivo a la biblioteca de Posventa— sea cambiar
+    # tres variables y su documento, y no reescribir el adaptador.
+    #
+    # Los `str | None` son **opcionales en el modelo y obligatorios en la
+    # fábrica**, exactamente como `GEMINI_API_KEY` (F-003) y `PG_HOST`
+    # (F-005): si fueran obligatorios aquí, `/health` dejaría de arrancar sin
+    # configuración de SharePoint y la suite entera necesitaría valores falsos
+    # en el entorno. Quien los exige es `construir_archivador`, cuando de
+    # verdad hacen falta.
+
+    archivo_habilitado: bool = Field(
+        default=False,
+        validation_alias="ARCHIVO_HABILITADO",
+        description=(
+            "Interruptor maestro del archivo en SharePoint. **Falso por "
+            "defecto a propósito**: el comportamiento por omisión —el de un "
+            "`.env` recién copiado o el de un despliegue a medio configurar— "
+            "es NO subir nada. Encenderlo es un gesto explícito."
+        ),
+    )
+    sharepoint_site_id: str | None = Field(
+        default=None,
+        validation_alias="SHAREPOINT_SITE_ID",
+        description=(
+            "Sitio de SharePoint del destino. No lo usa el adaptador, que va "
+            "directo a la biblioteca por su identificador; lo usan el script "
+            "de verificación de infra y `docs/INTEGRACION.md`. Por eso no es "
+            "obligatoria en la fábrica: exigir configuración que nadie lee es "
+            "una vuelta más de despliegue a cambio de nada."
+        ),
+    )
+    sharepoint_drive_id: str | None = Field(
+        default=None,
+        validation_alias="SHAREPOINT_DRIVE_ID",
+        description=(
+            "La biblioteca de documentos donde se archivan los partes. "
+            "Obligatoria en la fábrica: es el destino."
+        ),
+    )
+    sharepoint_carpeta_base: str = Field(
+        default="Postventa",
+        validation_alias="SHAREPOINT_CARPETA_BASE",
+        description=(
+            "Carpeta raíz dentro de la biblioteca. Debajo de ella cuelga una "
+            "carpeta por código de obra."
+        ),
+    )
+    graph_tenant_id: str | None = Field(
+        default=None,
+        validation_alias="GRAPH_TENANT_ID",
+        description="Tenant de Entra ID contra el que se pide el token.",
+    )
+    graph_client_id: str | None = Field(
+        default=None,
+        validation_alias="GRAPH_CLIENT_ID",
+        description="Aplicación (app registration) con la que se archiva.",
+    )
+    graph_client_secret: str | None = Field(
+        default=None,
+        validation_alias="GRAPH_CLIENT_SECRET",
+        description=(
+            "Credencial de la aplicación. **Secreto**: en Azure va por "
+            "referencia a Key Vault; en local, solo en el `.env`, que no se "
+            "versiona. Jamás se escribe en un log ni en un mensaje de error."
+        ),
+    )
+    graph_timeout_s: int = Field(
+        default=60,
+        validation_alias="GRAPH_TIMEOUT_S",
+        description=(
+            "Segundos que se le conceden a una llamada a Graph. La Function "
+            "corta a los 230 s: una llamada colgada no puede comérselos."
+        ),
+    )
+    graph_reintentos: int = Field(
+        default=3,
+        validation_alias="GRAPH_REINTENTOS",
+        description="Intentos totales ante errores transitorios de Graph.",
+    )
+
+
 
 @lru_cache(maxsize=1)
 def obtener_ajustes() -> Ajustes:

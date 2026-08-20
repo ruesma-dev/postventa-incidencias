@@ -307,3 +307,43 @@ $ python -m pytest -q
 .................................                                        [100%]
 33 passed in 0.37s
 ```
+
+---
+
+## T5 · `js/traza.js`: el único registro permitido — HECHA
+
+R28. `traza({hash, paso, estado, http}, salida)` se queda con **cuatro claves**
+y tira el resto. Es un **filtro**, no una convención: aunque alguien le pase el
+parte entero por descuido, el DNI y las observaciones no salen.
+
+Dos decisiones que van más allá de la letra del requisito, y por qué:
+
+- **Solo primitivos.** Un filtro por claves no vería un dato personal escondido
+  dentro de un objeto anidado bajo una clave permitida
+  (`estado: {campo: "dni_cliente", valor: "..."}`). Se descarta cualquier valor
+  que no sea `string`, `number` o `boolean`.
+- **La salida es inyectable** (`console.info` por defecto). Así se prueba el
+  camino real sin ensuciar la salida de la suite, y `console` no se llama desde
+  ningún otro módulo del front: si el registro pasa por un solo sitio, basta con
+  vigilar ese sitio.
+
+`tests_js/traza.test.js`: 9 tests. Los valores personales de los tests están
+**inventados** (`00000000T`, «Inventado: el cliente no estaba en casa») y se
+usan justo para comprobar que el filtro los tira: se serializa la salida y se
+afirma que **no contiene** ninguno de los dos.
+
+```
+$ node --test "tests_js/*.test.js"
+✔ f007 R28: solo salen hash, paso, estado y http (1.8785ms)
+✔ f007 R28: las claves permitidas son exactamente cuatro (0.1787ms)
+✔ f007 R28: un DNI o unas observaciones que se cuelen se descartan (0.3377ms)
+✔ f007 R28: un objeto anidado bajo una clave permitida tampoco pasa (0.1986ms)
+✔ f007 R28: las claves ausentes no se inventan (0.2578ms)
+✔ f007 R28: un evento que no es un objeto no revienta ni escribe basura (0.1815ms)
+✔ f007 R28: traza devuelve lo saneado, para que se pueda afirmar (0.2794ms)
+✔ f007 R28: el objeto original no se modifica (0.185ms)
+✔ f007 R28: sin salida inyectada escribe por consola, y solo lo saneado (0.2643ms)
+ℹ tests 22
+ℹ pass 22
+ℹ fail 0
+```

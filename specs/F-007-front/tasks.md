@@ -81,7 +81,7 @@
       `Cannot find module '../js/cola.js'` (traza al informe); después,
       `python -m pytest -q` en verde ejecutando también los tests JS.
 
-- [ ] **T5**: `js/traza.js` y `tests_js/traza.test.js` (R28): solo pasan
+- [x] **T5**: `js/traza.js` y `tests_js/traza.test.js` (R28): solo pasan
       `hash`, `paso`, `estado` y `http`; cualquier otra clave se descarta,
       incluidas `observaciones` y `dni_cliente`.
       **Verificación**: `node --test tests_js` en verde; y un test que

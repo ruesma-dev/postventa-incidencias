@@ -746,6 +746,72 @@ def test_f010_t6_no_publica_la_suite_ni_el_servidor_de_desarrollo(front):
     assert "Remove-Item -Path $ruta -Recurse -Force" in front
 
 
+def test_f010_t6_cada_escritura_en_el_key_vault_comprueba_su_resultado(front):
+    """El secreto tiene que quedar en el vault, no solo en la Static Web App.
+
+    La cabecera promete «un solo sitio donde mirar». Si `secret set` falla
+    -vault inexistente, sin el rol Secrets Officer- y nadie mira el codigo de
+    salida, el `swa-client-secret` no se guarda, el script termina en VERDE y
+    la promesa queda rota justo cuando mas cuesta descubrirlo: el dia que haya
+    que recuperarlo.
+    """
+    cuerpo = sin_comentarios(front)
+    lineas = cuerpo.splitlines()
+    posiciones = [i for i, linea in enumerate(lineas) if "az keyvault secret set" in linea]
+
+    assert posiciones != []
+    for i in posiciones:
+        siguiente = "\n".join(lineas[i + 1 : i + 4])
+        assert "$LASTEXITCODE -ne 0" in siguiente, (
+            f"la escritura en el Key Vault de la linea {i + 1} no comprueba su resultado"
+        )
+
+
+def test_f010_t6_no_escribe_en_el_key_vault_sin_comprobar_que_existe(front):
+    """Mismo patron que `desplegar_backend.ps1`: guarda propia y codigo propio.
+
+    Un `secret set` contra un vault que no existe falla con un mensaje de `az`
+    que no dice que hacer. La guarda previa si lo dice.
+    """
+    cuerpo = sin_comentarios(front)
+    guarda = cuerpo.find("$SALIDA_SIN_KEYVAULT")
+    escritura = cuerpo.find("az keyvault secret set")
+
+    assert -1 < guarda < escritura
+    assert "cargar_secretos_postventa.ps1" in front
+
+
+def test_f010_r32_la_descripcion_no_afirma_lecturas_que_no_hace(front):
+    """R32 · una nota que miente es peor que no tener nota.
+
+    La cabecera decia que `-SoloFront` «lee del Key Vault los que ya hay». No
+    hay ni un `az keyvault secret show` en el fichero: `-SoloFront` se salta el
+    bloque entero y deja las App Settings como esten. Alguien leeria eso y
+    creeria que ese modo repara unas App Settings borradas a mano. Y este
+    script lo ejecuta un humano contra Azure leyendo su `.DESCRIPTION`.
+    """
+    afirma_que_lee = "se leen del Key Vault" in front
+    lee_de_verdad = "az keyvault secret show" in sin_comentarios(front)
+
+    assert afirma_que_lee == lee_de_verdad
+    assert "no se genera nada" in front
+
+
+def test_f010_t6_la_cabecera_declara_que_las_credenciales_se_acumulan(front):
+    """`--append` anade, no reemplaza: cada despliegue completo deja una mas.
+
+    Es lo contrario de lo que paso en el portal -alli el secreto SI se
+    invalido- y la cabecera solo contaba esa mitad. Sin decirlo, al cabo de
+    unos despliegues hay N secretos vivos para el registro de aplicacion del
+    inicio de sesion y nadie ha retirado ninguno.
+    """
+    assert "--append" in front
+    assert "no invalida" in front
+    assert "az ad app credential delete" in front
+    assert "credential list" in sin_comentarios(front)
+    assert "Credenciales 'swa'" in front
+
+
 # --- T7 · el verificador posterior al despliegue ----------------------------
 
 
@@ -807,8 +873,51 @@ def test_f010_t7_no_llama_a_archivar_si_la_ventana_esta_abierta(verificar):
     posicion_post = cuerpo.find('-Metodo "Post"')
 
     assert -1 < posicion_lectura < posicion_post
-    assert 'if ($ventana -eq "true")' in cuerpo
+    assert 'if ($ventana -ne "false")' in cuerpo
     assert "LA VENTANA DE ESCRITURA ESTA ABIERTA" in verificar
+
+
+def test_f010_t7_la_guarda_de_la_ventana_falla_cerrada(verificar):
+    """R27 · ante la duda, NO se llama. Una guarda que sigue no es una guarda.
+
+    `Get-Ventana-De-Escritura` devuelve TRES valores, no dos: `"true"`,
+    `"false"` y `"desconocida"` -este ultimo cuando `az` falla: sin sesion, sin
+    permiso de lectura sobre la Function App, con la suscripcion equivocada o
+    con un sufijo de nombres que no coincide con el del despliegue-.
+
+    Comparar contra `"true"` deja `"desconocida"` cayendo en la rama que SI
+    llama, y esa llamada, con la ventana realmente abierta, sube un PDF a
+    SharePoint. Que es literalmente lo que R27 prohibe. La unica comparacion
+    admisible es contra el unico valor que demuestra que la ventana esta
+    cerrada.
+    """
+    cuerpo = sin_comentarios(verificar)
+
+    # La guarda que DECIDE es la de nivel superior, sin sangrar. Que dentro se
+    # distinga 'true' de 'desconocida' para dar un mensaje u otro es correcto;
+    # lo que no puede es decidir la llamada.
+    guardas = re.findall(r"^if \(\$ventana ([^)]+)\)", cuerpo, re.MULTILINE)
+
+    assert guardas == ['-ne "false"'], (
+        "comparar contra 'true' deja pasar 'desconocida': la guarda falla abierta"
+    )
+    assert '"desconocida"' in cuerpo
+    assert "NO SE SABE" in verificar
+
+
+def test_f010_t7_el_veredicto_no_sale_en_verde_con_la_ventana_desconocida(verificar):
+    """R27 · si no se pudo comprobar la ventana, no hay despliegue verificado.
+
+    Un verificador que imprime 'DESPLIEGUE VERIFICADO' habiendose saltado una
+    de las tres comprobaciones es peor que no ejecutarlo: quien lo lanza se
+    lleva un si donde no hubo comprobacion.
+    """
+    cuerpo = sin_comentarios(verificar)
+    veredicto = re.search(r"if \(([^)]*)\) \{\s*\n\s*Write-Host \"DESPLIEGUE VERIFICADO", cuerpo)
+
+    assert veredicto is not None
+    assert "$ventanaOk" in veredicto.group(1)
+    assert '$ventanaOk = $ventana -eq "false"' in cuerpo
 
 
 def test_f010_t7_el_pdf_de_la_comprobacion_es_sintetico(verificar):
@@ -937,6 +1046,36 @@ def test_f010_r6_ninguna_variable_de_entorno_sobrevive_al_script(script):
         assert texto.count(f"$env:{nombre}") >= 3, (
             f"$env:{nombre} se asigna pero no se guarda el valor previo "
             "y se restaura"
+        )
+
+
+@pytest.mark.parametrize("script", scripts_que_escriben(), ids=lambda ruta: ruta.name)
+def test_f010_r6_el_valor_previo_se_lee_antes_del_try_que_lo_restaura(script):
+    """R6 · «como estaba» tambien cuando el script no llega a asignar nada.
+
+    Que exista la restauracion en un `finally` no basta: hay que restaurar el
+    valor CORRECTO. Si el previo se lee dentro del `try`, a mitad del script,
+    toda salida anterior -`-WhatIf`, la confirmacion denegada, cualquier
+    `Salir-Con`- ejecuta igualmente el `finally` con la variable de respaldo
+    todavia a `$null`. Y en PowerShell asignar `$null` a una variable de
+    entorno **la borra**: `-WhatIf`, que promete no tocar nada, se lleva por
+    delante un token que el operador ya tuviera puesto en su consola.
+
+    La lectura del valor previo va, por tanto, ANTES del `try`.
+    """
+    texto = script.read_text(encoding="ascii")
+    inicio_try = texto.find("\ntry {")
+    if inicio_try == -1:
+        pytest.skip("el script no usa try/finally")
+
+    for nombre in sorted(set(re.findall(r"\$env:([A-Z_][A-Z0-9_]*)\s*=", texto))):
+        lectura = re.search(rf"^\$\w+ = \$env:{nombre}\s*$", texto, re.MULTILINE)
+        assert lectura is not None, (
+            f"$env:{nombre} se asigna sin leer antes su valor previo"
+        )
+        assert lectura.start() < inicio_try, (
+            f"el valor previo de $env:{nombre} se lee DENTRO del try: una "
+            "salida temprana restaura $null y borra la variable del operador"
         )
 
 

@@ -22,9 +22,17 @@
     comprobacion es un `POST`, y es el unico que hay. Contra un servicio con
     la ventana CERRADA no sube nada: el 503 salta antes de tocar SharePoint.
     Pero si la ventana estuviera ABIERTA, ese mismo `POST` subiria un PDF de
-    verdad. Por eso el script MIRA PRIMERO la App Setting -una lectura- y, si
-    la encuentra encendida, NO hace la llamada: lo dice y lo cuenta como
-    hallazgo. Cerrar la ventana es responsabilidad de quien la abrio.
+    verdad. Por eso el script MIRA PRIMERO la App Setting -una lectura- y solo
+    llama si la lectura demuestra que esta CERRADA. Cerrar la ventana es
+    responsabilidad de quien la abrio.
+
+    LA GUARDA FALLA CERRADA, y eso es lo importante. La lectura devuelve tres
+    valores, no dos: 'true', 'false' y 'desconocida' -cuando `az` falla: sin
+    sesion, sin permiso sobre la Function App, con la suscripcion equivocada o
+    con un nombre de recurso que no es el del despliegue-. Con 'desconocida'
+    NO se llama, porque no se sabe si se estaria subiendo un PDF, y el
+    veredicto final NO puede salir en verde: una comprobacion que no se ha
+    hecho no es una comprobacion superada.
 
     El PDF que acompana a esa llamada es SINTETICO, generado aqui mismo, igual
     que en `verificar_archivo_dev.ps1`. Nunca un parte real: llevan DNI y
@@ -227,10 +235,24 @@ $ventana = Get-Ventana-De-Escritura -Funcion $PostventaFunction -Grupo $Postvent
 $archivarOk = $false
 $codigoArchivar = 0
 
-if ($ventana -eq "true") {
-    Write-Host "    LA VENTANA DE ESCRITURA ESTA ABIERTA." -ForegroundColor Red
-    Write-Host "    No se hace la llamada: con la ventana abierta subiria un PDF de" -ForegroundColor Red
-    Write-Host "    verdad a SharePoint. Cierrala y vuelve a verificar." -ForegroundColor Red
+# La guarda compara contra el UNICO valor que demuestra que la ventana esta
+# cerrada. Comparar contra "true" dejaria pasar "desconocida" -que es lo que
+# devuelve la lectura cuando `az` falla- y esa duda acabaria en un POST que,
+# con la ventana realmente abierta, sube un PDF a SharePoint. Ante la duda no
+# se llama: una guarda que continua no es una guarda.
+if ($ventana -ne "false") {
+    if ($ventana -eq "true") {
+        Write-Host "    LA VENTANA DE ESCRITURA ESTA ABIERTA." -ForegroundColor Red
+        Write-Host "    No se hace la llamada: con la ventana abierta subiria un PDF de" -ForegroundColor Red
+        Write-Host "    verdad a SharePoint. Cierrala y vuelve a verificar." -ForegroundColor Red
+    }
+    else {
+        Write-Host "    NO SE SABE si la ventana de escritura esta abierta." -ForegroundColor Red
+        Write-Host "    No se hace la llamada: si estuviera abierta subiria un PDF de" -ForegroundColor Red
+        Write-Host "    verdad a SharePoint, y esto es un verificador." -ForegroundColor Red
+        Write-Host "    Comprueba la sesion de az, la suscripcion y que el nombre de la" -ForegroundColor Red
+        Write-Host "    Function App de 00_vars_postventa.ps1 sea el del despliegue." -ForegroundColor Red
+    }
 }
 else {
     $peticion = Get-Cuerpo-De-Archivar -Pdf (New-Pdf-Sintetico)
@@ -257,13 +279,16 @@ Write-Host ("    codigo: {0}" -f $codigoFront)
 Write-Host ""
 Write-Host "RESULTADO"
 Write-Host "---------"
+# "desconocida" NO es un aprobado: es una comprobacion que no se ha hecho.
+$ventanaOk = $ventana -eq "false"
+
 Write-Host ("  health 200                    : {0}" -f $(if ($saludOk) { "si" } else { "NO" }))
 Write-Host ("  ventana de escritura          : {0}" -f $ventana)
 Write-Host ("  archivar cerrado devuelve 503 : {0}" -f $(if ($archivarOk) { "si" } else { "NO" }))
 Write-Host ("  el front pide iniciar sesion  : {0}" -f $(if ($frontOk) { "si" } else { "NO" }))
 Write-Host ""
 
-if ($saludOk -and $archivarOk -and $frontOk) {
+if ($saludOk -and $ventanaOk -and $archivarOk -and $frontOk) {
     Write-Host "DESPLIEGUE VERIFICADO. Copia estas cuatro lineas a progress/,"
     Write-Host "sin la URL y sin ningun identificador."
     Write-Host ""

@@ -405,6 +405,168 @@ def test_f010_r7_ningun_script_repite_un_nombre_de_recurso(script):
     assert culpables == []
 
 
+# --- T6 · el despliegue del front -------------------------------------------
+
+
+@pytest.fixture
+def front() -> str:
+    return SCRIPT_FRONT.read_text(encoding="ascii")
+
+
+def test_f010_t6_el_script_del_front_existe():
+    assert SCRIPT_FRONT.is_file()
+
+
+def test_f010_t6_exige_asignacion_previa_y_asigna_el_grupo(front):
+    """R16 · la casilla que decide quien entra, y el grupo asignado a ella.
+
+    Es el contraste deliberado con el portal: alli
+    `appRoleAssignmentRequired` va en falso porque es abierto a todo el
+    inquilino. Quien copie el `deploy.ps1` del portal sin leer esto abrira la
+    aplicacion a la empresa entera.
+    """
+    assert "appRoleAssignmentRequired=true" in front
+    assert "$PostventaGrupoSeguridad" in front
+    assert "appRoleAssignedTo" in front
+
+
+def test_f010_t6_si_no_existe_el_grupo_para_antes_de_publicar(front):
+    """R16 · sin grupo no hay a quien restringir, y publicar seria abrirlo."""
+    assert "$SALIDA_SIN_GRUPO" in front
+    assert "No existe el grupo de seguridad" in front
+
+
+def test_f010_t6_registra_todas_las_redirect_uri_en_una_sola_llamada(front):
+    """La lista REEMPLAZA a la anterior: pasar una sola borra las demas.
+
+    Es lo que rompio el inicio de sesion del portal, y por eso el script
+    compone el array entero —lo de la Static Web App mas lo que llegue por
+    `-RedirectExtra`— y hace UNA llamada.
+    """
+    llamadas = re.findall(
+        r"az ad app update .*--web-redirect-uris", sin_comentarios(front)
+    )
+
+    assert len(llamadas) == 1
+    assert "$redirecciones = @(" in front
+    assert "$RedirectExtra" in front
+
+
+def test_f010_t6_el_cuerpo_de_graph_va_por_fichero_y_no_inline(front):
+    """`az rest --body` inline se rompe en PowerShell por el entrecomillado.
+
+    El fichero temporal es la salida documentada (azure-apps/portal.md), y
+    lleva identificadores dentro: por eso se borra en el `finally`.
+    """
+    assert "$cuerpoGraph" in front
+    assert '--body "@$cuerpoGraph"' in front
+
+
+def test_f010_t6_el_marcador_del_inquilino_se_sustituye_en_una_copia(front):
+    """R12 · el fichero del repositorio conserva su marcador. Siempre.
+
+    Y si la copia NO trae el marcador, el script para: significa que alguien
+    lo sustituyo en el repositorio, que es justo lo que no puede pasar.
+    """
+    assert "$marcadorInquilino" in front
+    assert "$copiaDeTrabajo" in front
+    assert "$texto -notlike" in front
+    assert "no se versiona" in front
+
+
+def test_f010_t6_el_fichero_del_repositorio_conserva_su_marcador():
+    """R12 · comprobado sobre el fichero de verdad, no sobre el script.
+
+    Este es el test que se entera si alguien «resuelve» el marcador a mano en
+    una rama y lo commitea: el barrido de GUID del repositorio tambien lo
+    cazaria, pero este dice ademas por que estaba ahi.
+    """
+    configuracion = (
+        RAIZ / "services" / "postventa-front" / "staticwebapp.config.json"
+    ).read_text(encoding="utf-8")
+
+    assert "<TENANT_ID>" in configuracion
+
+
+def test_f010_t6_la_copia_de_trabajo_se_borra_en_un_finally(front):
+    """R13 · lleva el identificador de inquilino ya sustituido.
+
+    En un `finally`, no al final del camino feliz: si alguien corta el script
+    con Ctrl+C a media subida, la copia tiene que irse igual.
+    """
+    posicion_finally = front.find("\nfinally {")
+    posicion_borrado = front.find("Remove-Item -Path $copiaDeTrabajo")
+
+    assert -1 < posicion_finally < posicion_borrado
+    assert front.find("Remove-Item -Path $cuerpoGraph") > posicion_finally
+
+
+def test_f010_t6_solofront_no_toca_ni_entra_ni_el_secreto(front):
+    """El modo de todos los dias no regenera nada.
+
+    Todo lo que toca Entra vive dentro de `if (-not $SoloFront)`: el registro,
+    las redirect URI, la asignacion del grupo y el secreto de cliente.
+    """
+    cuerpo = sin_comentarios(front)
+    inicio = cuerpo.find("if (-not $SoloFront) {")
+
+    assert inicio > -1
+    llamadas_a_entra = (
+        '"ad", "app", "create"',
+        '"credential", "reset"',
+        "appRoleAssignmentRequired",
+        "appRoleAssignedTo",
+    )
+    for llamada in llamadas_a_entra:
+        assert cuerpo.find(llamada) > inicio, f"{llamada} queda fuera del modo completo"
+
+
+def test_f010_t6_no_imprime_ningun_identificador_ni_el_secreto(front):
+    """La salida de este script se pega en un chat o en un ticket.
+
+    Se revisa linea a linea: ninguna que imprima puede nombrar la aplicacion,
+    el inquilino, el grupo, el secreto ni el token de despliegue.
+    """
+    culpables = [
+        linea.strip()
+        for linea in front.splitlines()
+        if "Write-Host" in linea
+        and re.search(r"\$(appId|spId|grupoId|inquilino|secreto|token|hostFront)\b", linea)
+    ]
+
+    assert culpables == []
+
+
+def test_f010_t6_el_token_de_despliegue_no_va_por_la_linea_de_comandos(front):
+    """Un token en la linea de comandos queda en el historial y en `ps`.
+
+    Va por variable de entorno, y la variable se restaura en el `finally`: la
+    consola queda como estaba (R6).
+    """
+    assert "$env:SWA_CLI_DEPLOYMENT_TOKEN = $token" in front
+    assert "$env:SWA_CLI_DEPLOYMENT_TOKEN = $tokenPrevio" in front
+    assert "--deployment-token" not in front
+
+
+def test_f010_t6_crea_los_recursos_solo_si_no_existen(front):
+    """R2 · re-ejecutable: la segunda vez reutiliza y termina en 0."""
+    assert "Existe-StaticWebApp" in front
+    assert "if (-not $swaExiste)" in front
+    assert "if (-not $backendYaEnlazado)" in front
+    assert "if (-not $appId)" in front
+
+
+def test_f010_t6_no_publica_la_suite_ni_el_servidor_de_desarrollo(front):
+    """Lo que se sube es el front, no el repositorio.
+
+    `dev_server.py` existe para reproducir el proxy en local; publicado no
+    hace nada, pero es codigo de mas en un sitio expuesto a internet.
+    """
+    assert "dev_server.py" in front
+    assert "tests_js" in front
+    assert "Remove-Item -Path $ruta -Recurse -Force" in front
+
+
 # --- R3, R4, R5 y R6 · lo que se le exige a todo script que escriba ---------
 
 

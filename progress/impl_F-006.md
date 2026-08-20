@@ -1150,6 +1150,266 @@ repositorio que no toca a esta feature. Se deja anotado como deuda.
 
 ---
 
+## Post-review · El barrido de identificadores pasa a cubrir todo el árbol (H1)
+
+Cambio pedido por la review (`progress/review_F-006.md`, **cambio requerido 2**),
+hecho después del veredicto `CHANGES_REQUESTED`. **No toca ni una línea de
+código de producción**: es un guardián de tests nuevo,
+`services/postventa-api/tests/test_f006_repo_sin_identificadores.py`.
+
+### Por qué el barrido anterior no bastaba, que es la lección que hay que llevarse
+
+`test_f006_r26_ningun_fichero_del_servicio_incrusta_un_identificador` recorre
+`_ficheros_del_servicio()`, es decir, `services/postventa-api/` y nada más. Y
+mientras tanto el appId **real** del app registration estuvo escrito en
+`progress/current.md` desde el commit `f2e317b` —que ya había llegado a `dev`—
+hasta que **lo encontró una persona leyendo, no un test**.
+
+La conclusión fácil sería «faltaba un directorio». No es eso. Es que **el
+guardián vigilaba justo el sitio donde los identificadores no se escriben**.
+Nadie pega el GUID de un sitio de SharePoint dentro de un adaptador: el
+adaptador lee su configuración del entorno, y eso ya lo defendía R29. El valor
+real lo escribe **un agente en su informe**, al anotar lo que acaba de
+verificar en el portal de Azure — que es literalmente el epígrafe bajo el que
+apareció: «Lo verificado en Azure el 2026-08-20». `progress/` es el directorio
+del repositorio con **más** probabilidad de llevar un valor de verdad, y era
+exactamente el que nadie miraba.
+
+Dicho como regla para F-007 en adelante: **un barrido de secretos que se acota
+al código de producción está mirando el sitio equivocado.** El código se
+escribe con la cabeza puesta en que lo va a leer alguien; los informes se
+escriben con la cabeza puesta en no perder lo que uno acaba de averiguar.
+
+### Qué se ha hecho
+
+Un fichero hermano en vez de ampliar el existente, por el mismo criterio con el
+que F-005 separó `test_f005_repo_sin_datos_personales.py` de
+`test_f005_arquitectura.py`: el barrido del árbol entero no es una invariante
+de arquitectura del servicio, y cuando falle conviene que el nombre del fichero
+ya diga de qué se trata. El patrón `PATRON_GUID` **se importa** del fichero de
+arquitectura en vez de copiarse: dos regex separadas divergen, y el día que
+divergen solo una de las dos caza el caso que importa.
+
+**El alcance es todo el árbol, no una lista de directorios.** La review pedía
+`progress/`, `docs/`, `infra/` y la raíz; se barre además `specs/`, `harness/`,
+`scripts/`, `.claude/` y el propio `services/`. Motivo: una lista de cuatro
+directorios se queda vieja el día que alguien añade el quinto, y `specs/` —donde
+se documenta el diseño— es tan buen sitio para pegar un GUID «para que se
+entienda» como `progress/`. Medido: **225 ficheros** barridos (141 de
+`services/`, 27 de `progress/`, 16 de `harness/`, 16 de `specs/`, 6 de `docs/`,
+5 de `.claude/`, 4 de `infra/`, 4 de `tests/`, 2 de `scripts/` y 4 de la raíz).
+
+Tres decisiones de diseño, con su motivo:
+
+1. **El fallo dice la ruta y el recuento, nunca el valor.** Un guardián de
+   secretos cuya traza imprime el secreto lo copia al log de CI, al chat y al
+   informe de quien lo diagnostique. Se informa `{ruta: nº}`, que es lo que
+   hace falta para ir a arreglarlo. Esto también resuelve el problema que
+   creó **H2**: la traza de esta fase RED se puede pegar aquí entera **sin
+   enmascarar nada**, porque no contiene ningún valor.
+2. **Se tolera por ruta y por número, jamás por valor.** Escribir en el test
+   los GUID a excluir sería meter en el repositorio justo lo que prohíbe.
+   Acotar el número obliga a que ampliar la tolerancia sea un cambio visible.
+3. **Lo que no está versionado no se barre.** `.venv/`, `.idea/`, `muestras/`,
+   `originales/`, las cachés, los worktrees de los subagentes, y por nombre
+   `.env`, `local.settings.json` y `coverage.json`. En esos ficheros un
+   identificador real es **lo normal y lo correcto**: son la configuración de
+   la máquina de quien trabaja. Un barrido que fallara en cuanto alguien
+   rellena su `.env` estaría desactivado en tres semanas, y volveríamos al
+   punto de partida de H1.
+
+### Fase RED · Rigor `critico`, con las tres trazas reales
+
+Se inyectó a mano un fichero `progress/_caso_hostil_red.md` con un appId
+**inventado** con forma de GUID, reproduciendo el caso exacto de H1. El fichero
+es temporal, se borró al terminar y **nunca entró en ningún commit**
+(`git status` lo dio solo como `??`).
+
+**Paso 1 · El hueco, reproducido.** Con el GUID sentado en `progress/`, el
+guardián que había estaba verde:
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f006_arquitectura.py -k "r26" -v
+collected 17 items / 14 deselected / 3 selected
+
+tests/test_f006_arquitectura.py::test_f006_r26_ningun_fichero_del_servicio_incrusta_un_identificador PASSED [ 33%]
+tests/test_f006_arquitectura.py::test_f006_r26_la_excepcion_de_f005_no_crece_sin_que_se_vea PASSED [ 66%]
+tests/test_f006_arquitectura.py::test_f006_r26_el_barrido_de_guids_caza_uno_inyectado PASSED [100%]
+
+====================== 3 passed, 14 deselected in 0.53s =======================
+```
+
+Y no era solo ese bloque: **la suite entera** del servicio pasaba con el
+identificador dentro del árbol.
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest -q
+895 passed, 10 skipped in 13.13s
+```
+
+Ahí está el fallo, medido y no argumentado: 895 tests en verde y un appId con
+pinta de real en el repositorio.
+
+**Paso 2 · El guardián nuevo, en rojo.** Con el mismo fichero hostil en su
+sitio y el fichero nuevo ya escrito:
+
+```
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f006_repo_sin_identificadores.py -v
+
+================================== FAILURES ===================================
+___ test_f006_r26_ningun_fichero_del_repositorio_incrusta_un_identificador ____
+
+    def test_f006_r26_ningun_fichero_del_repositorio_incrusta_un_identificador():
+>       assert _hallazgos() == {}
+E       AssertionError: assert {'progress/_c...il_red.md': 1} == {}
+E
+E         Left contains 1 more item:
+E         {'progress/_caso_hostil_red.md': 1}
+E
+E         Full diff:
+E         - {}
+E         + {
+E         +     'progress/_caso_hostil_red.md': 1,
+E         + }
+
+tests\test_f006_repo_sin_identificadores.py:236: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f006_repo_sin_identificadores.py::test_f006_r26_ningun_fichero_del_repositorio_incrusta_un_identificador
+======================== 1 failed, 28 passed in 1.39s =========================
+```
+
+Nótese que la traza dice **la ruta y que hay uno**, y no dice cuál. Era el
+objetivo de la decisión de diseño 1, y aquí queda demostrado con la salida real.
+
+**Paso 3 · Verde al retirar el caso.** Borrado `progress/_caso_hostil_red.md`,
+sin tocar nada más:
+
+```
+$ rm progress/_caso_hostil_red.md
+$ cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f006_repo_sin_identificadores.py -q
+29 passed in 1.36s
+```
+
+### El control positivo, que es lo que mantiene vivo al guardián
+
+Un barrido que grita con texto legítimo no dura: alguien lo comenta un viernes
+y volvemos a no tener nada. Los 29 tests del fichero incluyen **18
+comprobaciones de que el barrido NO muerde**:
+
+- **13 frases** sacadas de `progress/`, de `docs/` y de la salida del arnés que
+  hablan de identificadores **sin serlo**: «su appId no se escribe aquí: se
+  consulta con `az ad app list`», los tres permisos `Sites.*`, los nombres de
+  las nueve variables de entorno, la frase «ni un identificador con forma de
+  GUID», el «(enmascarado por el líder)» del líder, la traza enmascarada
+  `b7e41c92-…` de H2, los placeholders de los `.example`, los SHA de commit
+  (`f2e317b`, `a2c2bae`), un hash de 32 hexadecimales, la línea de
+  `PUERTA COBERTURA`, los `item-0001` / `drive-de-mentira` /
+  `https://ejemplo.invalido/...` de los dobles, y la cabecera de versión del
+  arnés. Cuatro más fijan el **borde por abajo**: a cada grupo del patrón le
+  falta un carácter, o lleva una letra que no es hexadecimal.
+- **Un test de ficheros no versionados**: `.venv/`, `.idea/`, `muestras/`,
+  `__pycache__/`, `local.settings.json` y `coverage.json` con un GUID dentro, y
+  el barrido devuelve vacío. Es el que impide el falso positivo que de verdad
+  iba a pasar: `services/postventa-api/local.settings.json` está hoy vacío,
+  pero el día que alguien lo rellene con el site id de dev estará haciendo
+  exactamente lo que debe.
+- **Dos guardas del propio barrido**: uno exige que recorra ≥ 60 ficheros con
+  `.md`, `.py` y `.ps1` entre ellos (un barrido que no lee nada está verde por
+  no trabajar), y otro exige por nombre que `progress/current.md`,
+  `progress/impl_F-006.md`, `docs/INTEGRACION.md`,
+  `specs/F-006-sharepoint/design.md`, `CLAUDE.md` e `infra/` estén dentro. Ese
+  segundo es el que fija el punto ciego de H1 y no deja que vuelva a abrirse.
+
+Y siete controles negativos: el caso de H1 sobre un árbol de mentira en
+`tmp_path`, cinco rincones distintos del árbol (`docs/`, `infra/`, `specs/`, la
+raíz y `harness/`, con el GUID **en mayúsculas**, que es como se copia del
+portal de Azure), y uno que comprueba que tres GUID en un fichero se cuentan
+como tres y no como uno —importa, porque la tolerancia se expresa en número—.
+
+Todos los valores con forma de GUID de este fichero se **componen en memoria**
+con `guid_compuesto(...)` y viven solo en `tmp_path`: el repositorio no gana ni
+una cadena con forma de identificador. Es la misma técnica que F-005 usó con
+los DNI y la que evitó que este propio guardián se delatara a sí mismo.
+
+### Qué apareció al ampliar el barrido
+
+**Ningún identificador real.** El árbol ya estaba limpio: el líder había
+retirado el appId de `progress/current.md` en `a2c2bae` antes de que yo
+empezara. Aparecieron **tres** ficheros con un GUID cada uno, los tres
+justificados y declarados en `GUID_TOLERADO_POR_FICHERO`:
+
+| Fichero | Qué es | Por qué se tolera |
+|---|---|---|
+| `tests/test_f005_integracion_sin_secretos.py` | Control negativo de F-005 | Valor inventado; ya lo acotaba `test_f006_r26_la_excepcion_de_f005_no_crece_sin_que_se_vea` |
+| `tests/test_f005_repo_sin_datos_personales.py` | Control negativo de F-005 | Ídem |
+| `progress/review_F-006.md` | El reviewer cita el GUID todo a ceros al explicar cuáles son esos dos controles | Es un valor nulo por construcción, no identifica nada, y está en **un informe entregado**: enmascararlo a posteriori alteraría la evidencia de una review |
+
+Se toleran **por ruta y con recuento exacto**, nunca por valor, y
+`test_f006_r26_la_tolerancia_del_barrido_no_crece_sin_que_se_vea` fija que son
+tres y con uno cada uno. Ampliar la lista obliga a tocar el test y a explicarlo
+en la revisión, que es justo lo que se quiere que cueste.
+
+### Una observación que dejo abierta, no tapada
+
+El barrido **antiguo** —el del servicio— sí incluye
+`services/postventa-api/local.settings.json`, que `.gitignore` deja fuera de
+git y que legítimamente llevará identificadores reales en cuanto alguien
+configure su entorno local. Hoy está vacío y por eso nadie lo ha notado, pero
+es un falso positivo esperando. No lo he tocado porque la review dio los tests
+de F-006 por buenos y cambiar su alcance pide su propia justificación; el
+guardián nuevo sí lo excluye y tiene test que lo demuestra. **Lo dejo escrito
+aquí para que quien toque `test_f006_arquitectura.py` lo arregle de paso.**
+
+### Campaña de mutación, relanzada
+
+Se toca código de test en una feature `critico`, así que la campaña se repitió
+entera. Se lanzó con `--workers 1` a propósito: la campaña paralela crea sus
+worktrees desde `HEAD` y habría evaluado un árbol **sin** el fichero nuevo, que
+es precisamente lo que había que verificar —el propio arnés avisa de ello y se
+niega a lanzarse en paralelo con el árbol sucio—.
+
+```
+$ python -m harness.mutacion --feature F-006 --workers 1
+F-006: 11 fichero(s), 1619 línea(s) de producción (origen rama, f2e317b2af433fee592a08f2a3cf7e3a145d35f4..feature/F-006-sharepoint)
+...
+64 mutantes evaluados, 59 muertos, 5 supervivientes, 0 timeouts en 905.7 s
+Informe: progress/mutacion_F-006.md
+```
+
+**Mismo resultado y los mismos cinco supervivientes** (`settings.py:285` y
+`:293`, `graph.py:112`, `:362` y `:380`): ni uno nuevo que matar o analizar. Era
+lo esperable, porque el fichero nuevo no toca producción y `harness/alcance.py`
+excluye `tests/` del alcance por diseño — pero **esperable no es comprobado**, y
+el nivel `critico` no admite dar por buena una campaña anterior al cambio.
+
+Un efecto secundario que conviene saber: **al regenerarse,
+`progress/mutacion_F-006.md` perdió su sección final «Veredicto de la campaña»**.
+El arnés arrastra solo los análisis por mutante, no lo escrito a mano al final
+—cosa que el propio informe anterior ya avisaba—. Se ha restaurado a mano desde
+la copia durable, con la fila de esta quinta campaña añadida a la tabla.
+
+### El portero, en verde
+
+```
+$ bash harness/init.sh
+[OK] pytest en verde (con medición de cobertura)
+16 passed in 0.37s
+924 passed, 10 skipped in 21.85s
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] PUERTA COBERTURA: 98.2% de 342 líneas cambiadas cubiertas (336/342, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-006-sharepoint
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+EXIT=0
+```
+
+895 → **924 tests**. La cobertura de líneas cambiadas no se mueve (98,2 %):
+el cambio es todo código de test, y `harness/alcance.py` no lo cuenta. `ruff`
+sobre el fichero nuevo: `All checks passed!`, así que los avisos de deuda previa
+siguen en 56 y no en 59.
+
+---
+
 ## Ficheros tocados
 
 ### Nuevos
@@ -1167,6 +1427,7 @@ repositorio que no toca a esta feature. Se deja anotado como deuda.
 | `infra/verificar_archivo_dev.ps1` | T18, contra el servicio desplegado |
 | `services/postventa-api/tests/utiles_sharepoint.py` | `BibliotecaFalsa` y los demás dobles |
 | `tests/test_f006_nombrado.py` · `_paso_archivo.py` · `_fabrica.py` · `_adaptador_graph.py` · `_archivar_http.py` · `_arquitectura.py` · `_scripts_infra.py` | Las siete suites |
+| `tests/test_f006_repo_sin_identificadores.py` | **Post-review (H1)**: el barrido de GUID sobre todo el árbol |
 
 ### Modificados
 
@@ -1218,25 +1479,44 @@ Números **medidos**, no estimados, todos de las ejecuciones pegadas arriba.
 
 | Evidencia | Valor | De dónde sale |
 |---|---|---|
-| **Tests ejecutados y resultado** | **895 pasan, 10 se saltan, 0 fallan** | `pytest -q` del servicio, dentro de `bash harness/init.sh` |
-| **Tests añadidos por F-006** | **+213** (682 al empezar → 895) | Diferencia contra el estado inicial de la rama |
+| **Tests ejecutados y resultado** | **924 pasan, 10 se saltan, 0 fallan** | `pytest -q` del servicio, dentro de `bash harness/init.sh` |
+| **Tests añadidos por F-006** | **+242** (682 al empezar → 924) | Diferencia contra el estado inicial de la rama |
+| **De ellos, del arreglo post-review de H1** | **+29** (895 → 924) | El fichero `test_f006_repo_sin_identificadores.py` |
 | **Cobertura de las líneas cambiadas** | **98,2 % · 336 de 342 líneas** (umbral 80 %, nivel `critico`) | Línea `PUERTA COBERTURA` de `bash harness/init.sh` |
-| **Mutantes generados / evaluados** | **64 / 64** (campaña completa, sin muestreo) | `python -m harness.mutacion --feature F-006` |
+| **Mutantes generados / evaluados** | **64 / 64** (campaña completa, sin muestreo) | `python -m harness.mutacion --feature F-006 --workers 1` |
 | **Mutantes muertos** | **59** | Ídem |
-| **Mutantes supervivientes** | **5**, los cinco analizados y ninguno `PENDIENTE` | `progress/mutacion_F-006.md` |
+| **Mutantes supervivientes** | **5**, los cinco analizados y ninguno `PENDIENTE`. **Los mismos cinco** que antes del arreglo: ni uno nuevo | `progress/mutacion_F-006.md` |
 | **Timeouts de la campaña** | **0** | Ídem |
-| **Tiempo de la campaña** | **247,0 s** | Ídem |
-| **Tiempo de ejecución de la suite** | **33,20 s** (la del servicio, dentro de `init.sh`) | Salida de la propia suite |
+| **Tiempo de la campaña** | **905,7 s** (con un solo worker; la paralela tardaba 247,0 s) | Ídem |
+| **Tiempo de ejecución de la suite** | **23,34 s** (la del servicio, dentro de `init.sh`) | Salida de la propia suite |
+| **Ficheros barridos por el guardián de identificadores** | **225** de todo el árbol; **0** hallazgos, 3 tolerados y declarados | `test_f006_repo_sin_identificadores.py` |
 | **`bash harness/init.sh`** | **Exit code 0** | Ejecutado tal cual |
 
-**Las diez fases RED están documentadas con su traza real en rojo** en este
-informe: T2, T4, T6, T9, T11 (rojo por código inexistente) y T13 (rojo por
+**Las siete fases RED están documentadas con su traza real en rojo** en este
+informe: T2, T4, T6, T9, T11 (rojo por código inexistente), T13 (rojo por
 rotura deliberada en una copia aislada del árbol, con las tres roturas y sus
-cuatro fallos pegados).
+cuatro fallos pegados) y la del **post-review de H1** (rojo por caso hostil
+inyectado en `progress/`, con las tres trazas: hueco reproducido, guardián
+nuevo en rojo, verde al retirar el caso).
+
+*(La versión anterior de este informe decía «las diez fases RED» y enumeraba
+seis. Era un error de redacción, señalado por la review; corregido aquí, y
+ahora son siete de verdad.)*
 
 ---
 
 ## Lo que hay que saber antes de aprobar esto
+
+**Estado tras la review.** De los cuatro cambios requeridos, el **2** —tapar el
+hueco del barrido que dejó pasar H1— queda cerrado aquí, con su fase RED y la
+campaña relanzada. El **1** (quitar el appId de `progress/current.md`) y el
+**4** (limpiar la sesión anterior de `current.md`) los hizo el líder. El **3**
+son **dos firmas del humano** y sigue abierto: es lo que hay debajo.
+
+Y una consecuencia de H1 que **no** se arregla con un test: el appId real
+estuvo en `f2e317b`, que ya está en `dev`. Quitarlo del árbol no lo saca del
+historial de git. Esa decisión —rotar algo, reescribir historial, o aceptarlo—
+es del humano.
 
 Tres cosas, dichas sin adornos:
 

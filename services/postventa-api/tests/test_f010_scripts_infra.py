@@ -567,6 +567,100 @@ def test_f010_t6_no_publica_la_suite_ni_el_servidor_de_desarrollo(front):
     assert "Remove-Item -Path $ruta -Recurse -Force" in front
 
 
+# --- T7 · el verificador posterior al despliegue ----------------------------
+
+
+@pytest.fixture
+def verificar() -> str:
+    return SCRIPT_VERIFICAR.read_text(encoding="ascii")
+
+
+def test_f010_t7_el_verificador_existe():
+    assert SCRIPT_VERIFICAR.is_file()
+
+
+def test_f010_t7_el_verificador_exige_las_dos_urls_por_parametro(verificar):
+    """R27 · como `verificar_archivo_dev.ps1`: sin URL no se llama a nada.
+
+    Las URL no viven en el repositorio ni en el fichero de variables: se pasan
+    por parametro y no se imprimen.
+    """
+    assert "$BaseUrl" in verificar
+    assert "$UrlFront" in verificar
+    assert "Faltan -BaseUrl" in verificar
+
+
+def test_f010_t7_el_verificador_hace_las_tres_comprobaciones(verificar):
+    """R27 · las tres de la tarea, ni una menos."""
+    assert "/api/health" in verificar
+    assert "/api/archivar" in verificar
+    assert "/.auth/login" in verificar
+    assert "$saludOk" in verificar
+    assert "$archivarOk" in verificar
+    assert "$frontOk" in verificar
+
+
+def test_f010_t7_el_verificador_no_escribe_en_azure(verificar):
+    """R27 · solo lecturas, y esto es la regla dura escrita como test.
+
+    El unico verbo que no es de lectura es el `POST` de la comprobacion 2, que
+    con la ventana cerrada responde 503 sin tocar SharePoint. Cualquier otro
+    -crear un recurso «ya que estamos», fijar una App Setting «para
+    arreglarlo»- convertiria un verificador en un despliegue.
+    """
+    cuerpo = sin_comentarios(verificar)
+
+    assert PATRON_ESCRITURA_AZ.findall(cuerpo) == []
+    assert len(re.findall(r'-Metodo "Post"', cuerpo)) == 1
+    assert "az functionapp config appsettings list" in cuerpo
+
+
+def test_f010_t7_no_llama_a_archivar_si_la_ventana_esta_abierta(verificar):
+    """El unico POST del script solo es inofensivo con la ventana cerrada.
+
+    Con `ARCHIVO_HABILITADO` encendido, esa misma llamada subiria un PDF de
+    verdad a SharePoint. El script lo MIRA antes -una lectura- y, si esta
+    abierta, no llama: lo cuenta como hallazgo. Sin esta comprobacion, el
+    verificador seria justo lo que promete no ser.
+    """
+    cuerpo = sin_comentarios(verificar)
+    posicion_lectura = cuerpo.find("Get-Ventana-De-Escritura -Funcion")
+    posicion_post = cuerpo.find('-Metodo "Post"')
+
+    assert -1 < posicion_lectura < posicion_post
+    assert 'if ($ventana -eq "true")' in cuerpo
+    assert "LA VENTANA DE ESCRITURA ESTA ABIERTA" in verificar
+
+
+def test_f010_t7_el_pdf_de_la_comprobacion_es_sintetico(verificar):
+    """Nunca un parte real: llevan DNI y observaciones manuscritas."""
+    assert "New-Pdf-Sintetico" in verificar
+    assert "%PDF-1.4" in verificar
+    assert "muestras" not in verificar
+
+
+def test_f010_t7_un_200_en_archivar_es_una_parada_y_lo_dice(verificar):
+    """R33 · si archivar responde 200, la Function escribe para cualquiera.
+
+    No es un aviso de color: es la frase que tiene que leer quien ejecute el
+    script, con lo que hay que hacer a continuacion.
+    """
+    assert "PARA. Ha respondido 200" in verificar
+    assert "ARCHIVO_HABILITADO" in verificar
+
+
+def test_f010_t7_el_verificador_no_imprime_ninguna_url(verificar):
+    """Su salida se pega en `progress/`, y alli no entra ninguna URL."""
+    culpables = [
+        linea.strip()
+        for linea in verificar.splitlines()
+        if "Write-Host" in linea
+        and re.search(r"\$(BaseUrl|UrlFront|raizApi|raizFront)\b", linea)
+    ]
+
+    assert culpables == []
+
+
 # --- R3, R4, R5 y R6 · lo que se le exige a todo script que escriba ---------
 
 

@@ -151,7 +151,7 @@
       contiene un patrón de DNI ni un PDF con partes reales).
       **Verificación**: `python -m pytest -q` en verde.
 
-- [ ] **T13**: `services/postventa-front/dev_front.ps1`, para que el humano
+- [x] **T13**: `services/postventa-front/dev_front.ps1`, para que el humano
       arranque el front con **una línea**: parámetros `-Puerto` (5173) y
       `-Api` (`http://localhost:7073`), UTF-8 con BOM y CRLF
       (`docs/CONVENTIONS.md`).

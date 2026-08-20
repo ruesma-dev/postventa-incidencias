@@ -836,3 +836,85 @@ $ python -m pytest -q
 ..................................................................       [100%]
 66 passed in 1.21s
 ```
+
+---
+
+## T13 · `dev_front.ps1` — HECHA
+
+Envoltorio de una línea sobre `dev_server.py`, con `-Puerto` (5173), `-Api`
+(`http://localhost:7073`) y `-Ayuda`. **UTF-8 con BOM y CRLF**, como manda
+`docs/CONVENTIONS.md` para PowerShell.
+
+### Desviación respecto a `tasks.md`: `-Ayuda` en lugar de `-?`
+
+La verificación de la tarea era
+`powershell -File services\postventa-front\dev_front.ps1 -?` → «imprime la
+ayuda sin arrancar nada». **La segunda mitad se cumple; la primera no puede.**
+Comprobado en esta máquina (Windows PowerShell 5.1):
+
+```
+> & powershell -NoProfile -File ...\dev_front.ps1 -? | Out-String
+EXIT=0
+LEN=0
+```
+
+Con `-File`, PowerShell 5.1 se queda el `-?`: **no ejecuta el script** —que es
+la propiedad importante: no arranca nada— pero **tampoco imprime nada**. Y no es
+cosa de este script: se reprodujo con tres scripts mínimos en el directorio
+temporal, con y sin `[CmdletBinding()]`.
+
+La segunda vía, `Get-Help`, tampoco servía **por la propia convención del
+repositorio**: PowerShell solo indexa la ayuda basada en comentarios
+(`<# .SYNOPSIS #>`) si el bloque es **lo primero del fichero**, y
+`docs/CONVENTIONS.md` exige abrir cada fichero de código con un comentario con
+su ruta relativa. Aislado con cinco variantes en el temporal:
+
+```
+=== a (<# .SYNOPSIS #> el primero, SIN comentario de ruta) ===   ayuda completa
+=== b (# ruta/b.ps1 delante) ===                                 solo la sintaxis
+=== c (# ruta/c.ps1 + CmdletBinding) ===                         solo la sintaxis
+=== d (<# ruta/d.ps1 en la misma línea del <# ) ===              solo la sintaxis
+=== e (ruta dentro del bloque, antes de .SYNOPSIS) ===           solo la sintaxis
+```
+
+**Solución: un `-Ayuda` explícito**, que funciona con `-File` y respeta las dos
+cosas. Salida real:
+
+```
+> & powershell -NoProfile -File ...\dev_front.ps1 -Ayuda
+dev_front.ps1 - front de Posventa en local
+
+  USO
+    .\dev_front.ps1 [-Puerto <int>] [-Api <url>] [-Ayuda]
+
+  PARAMETROS
+    -Puerto   Puerto del front. Por defecto 5173.
+    -Api      Backend al que se proxian las rutas /api/*.
+              Por defecto http://localhost:7073.
+    -Ayuda    Imprime esta ayuda y NO arranca nada.
+
+  ANTES, en otra terminal:
+    cd ..\postventa-api
+    func start --port 7073
+
+  El 7073 no es el puerto por defecto de func: es el que espera el proxy.
+
+EXIT=0
+```
+
+El porqué queda escrito en el propio script y en el `README.md`, para que nadie
+«arregle» esto volviendo a `-?`.
+
+### `tests/test_f007_dev_front_ps1.py`, 4 tests
+
+Fichero **no previsto en `design.md` §2.1** y añadido a conciencia:
+`dev_front.ps1` es la única pieza de F-007 que ejecuta una persona a mano, y la
+que se usa en T14. Si estuviera roto, lo descubriría el humano en mitad de la
+demo. Comprueba:
+
+- **UTF-8 con BOM y solo CRLF** (sin BOM, PowerShell 5.1 lee mal las tildes);
+- los tres parámetros con sus valores por defecto;
+- que no lleva secretos, ni `TENANT`, ni la carpeta de nadie;
+- que **`-Ayuda` imprime el uso, sale con 0 y no anuncia ningún servidor
+  sirviendo**. Si `powershell` no está en el PATH, **falla diciéndolo**, igual
+  que con `node` (R32).

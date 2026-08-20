@@ -38,6 +38,19 @@ Y en `http://localhost:5173/`. El script es un envoltorio de una línea sobre:
 python dev_server.py --port 5173 --api http://localhost:7073
 ```
 
+Para ver la ayuda **sin arrancar nada**:
+
+```
+.\dev_front.ps1 -Ayuda
+```
+
+> **Por qué `-Ayuda` y no `-?`.** Con `powershell -File`, Windows PowerShell 5.1
+> se queda el `-?`: no ejecuta el script (bien) pero tampoco imprime nada. Y la
+> ayuda basada en comentarios (`<# .SYNOPSIS #>`) solo la indexa `Get-Help` si
+> el bloque es **lo primero** del fichero, lo que chocaría con la convención de
+> abrir cada fichero con un comentario con su ruta. `-Ayuda` funciona con
+> `-File` y respeta las dos cosas.
+
 ## Probarlo
 
 ```

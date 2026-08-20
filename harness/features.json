@@ -131,7 +131,7 @@
         "Decidido y documentado cómo se trata dev_server.py frente a la puerta de cobertura (el arnés no tiene exclusión configurable para scripts de desarrollo)",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "estandar",
       "priority": 7,
@@ -330,6 +330,25 @@
       "rigor": "documental",
       "priority": 18,
       "branch": "feature/F-018-minimo-privilegio-graph"
+    },
+    {
+      "id": "F-019",
+      "title": "Endpoints de persistencia: guardar la remesa y leer la cola",
+      "description": "F-005 dejó `RepositorioPartesPort` completo —`guardar_remesa`, `guardar_parte`, `guardar_validacion`, `cola_validacion_humana`— y sus seis tablas creadas en la base real, pero **el único endpoint que escribe hoy es `/api/archivar`**, y solo su traza. El puerto existe y nadie lo llama: la remesa, los partes extraídos y el resultado de la validación no se guardan en ningún sitio. Consecuencia visible, detectada al diseñar F-007 (decisión D4): recargar la pestaña del front pierde todo el trabajo de revisión, y la cola de validación humana que F-004 declara no puede sobrevivir entre sesiones porque nada la escribe ni la lee. EL HUMANO DECIDIÓ EL 2026-08-20 sacar F-007 sin persistencia de sesión y dar de alta esta feature aparte, en vez de bloquear el front: el piloto de Mirasierra no se retrasa y el front no carga con una responsabilidad que es de `postventa-api`. Alcance: los endpoints que faltan sobre los puertos que YA existen; no hay que diseñar esquema ni tocar el DDL.",
+      "acceptance": [
+        "Existe endpoint para guardar una remesa con sus partes y su resultado de validación",
+        "Existe endpoint para leer la cola de validación humana, que hoy se declara y nadie lee",
+        "Reprocesar la misma remesa actualiza y no duplica, como ya garantiza el repositorio por hash del parte",
+        "Los endpoints hablan por el puerto de F-005, no con el adaptador: ningún SQL fuera de infrastructure/persistencia",
+        "Ni el DNI ni las observaciones aparecen en logs ni en mensajes de error",
+        "El front de F-007 puede recuperar una remesa tras recargar la pestaña",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 19,
+      "branch": "feature/F-019-endpoints-persistencia"
     }
   ]
 }

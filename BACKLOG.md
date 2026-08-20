@@ -3,13 +3,15 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **18 features**, 12 abiertas, 6 terminadas.
+Resumen: **19 features**, 13 abiertas, 6 terminadas.
+
+En curso: **F-007**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
+| F-007 | Front de carga y revisión | 7 | en curso | estandar | `feature/F-007-front` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 8 | pendiente | documental | `feature/F-008-modelo-sigrid` |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 9 | pendiente | critico | `feature/F-009-cierre-sigrid` |
 | F-010 | Despliegue en Azure y tarjeta en el portal | 10 | pendiente | estandar | `feature/F-010-despliegue` |
@@ -21,6 +23,7 @@ Resumen: **18 features**, 12 abiertas, 6 terminadas.
 | F-016 | Interpretación automática de las observaciones manuscritas | 16 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
 | F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 17 | pendiente | documental | `feature/F-017-checkpoints-manual` |
 | F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 18 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
+| F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | pendiente | estandar | `feature/F-019-endpoints-persistencia` |
 
 ## Terminadas
 
@@ -37,7 +40,7 @@ Resumen: **18 features**, 12 abiertas, 6 terminadas.
 
 ### F-007 · Front de carga y revisión
 
-estado **pendiente** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
+estado **en curso** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
 
 Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar. PUNTO DE PARTIDA: el esqueleto del front ya está escrito y verificado en la rama feature/F-007-front (se sacó de F-001 porque su dev_server.py hundía la puerta de cobertura). Recuperarlo con: git checkout feature/F-007-front -- services/postventa-front. Ya resuelto ahí: los scripts propios van SIN defer al final del body (con defer, Alpine arranca antes de que exista la función del x-data), Alpine con versión fija 3.14.1, el proxy apunta al puerto 7073, y el staticwebapp.config.json lleva <TENANT_ID> como marcador porque el ID de tenant no se versiona.
 
@@ -106,6 +109,12 @@ Dos propuestas que dejó la review de F-003, aparcadas por el humano el 2026-08-
 estado **pendiente** · prioridad 18 · rigor `documental` · SDD no · rama `feature/F-018-minimo-privilegio-graph`
 
 El app registration `postventa-incidencias` (verificado el 2026-08-20) tiene consentimiento de administrador para TRES permisos de aplicación de Microsoft Graph: Sites.Selected, Sites.ReadWrite.All y Sites.FullControl.All. Los dos últimos alcanzan a TODOS los sitios de SharePoint del tenant, no solo a la biblioteca de Posventa, y vuelven irrelevante al primero: con Sites.FullControl.All la aplicación puede escribir en el sitio de RRHH o de dirección igual que en el suyo. Es más amplio incluso que Files.ReadWrite.All, que la spec de F-006 ya descartó por excesivo. No es un fallo: es lo que pasa al configurar Sites.Selected, que exige el paso extra de asignar la biblioteca concreta por Graph, mientras que los amplios funcionan a la primera. EL HUMANO DECIDIÓ EL 2026-08-20 arrancar F-006 con los permisos actuales y recortar después, en esta feature, para no mezclar un cambio de configuración del tenant con una implementación. Mientras tanto el riesgo queda documentado en la spec de F-006. El recorte lo ejecuta el humano en Azure: un agente no toca permisos del tenant.
+
+### F-019 · Endpoints de persistencia: guardar la remesa y leer la cola
+
+estado **pendiente** · prioridad 19 · rigor `estandar` · SDD sí · rama `feature/F-019-endpoints-persistencia`
+
+F-005 dejó `RepositorioPartesPort` completo —`guardar_remesa`, `guardar_parte`, `guardar_validacion`, `cola_validacion_humana`— y sus seis tablas creadas en la base real, pero **el único endpoint que escribe hoy es `/api/archivar`**, y solo su traza. El puerto existe y nadie lo llama: la remesa, los partes extraídos y el resultado de la validación no se guardan en ningún sitio. Consecuencia visible, detectada al diseñar F-007 (decisión D4): recargar la pestaña del front pierde todo el trabajo de revisión, y la cola de validación humana que F-004 declara no puede sobrevivir entre sesiones porque nada la escribe ni la lee. EL HUMANO DECIDIÓ EL 2026-08-20 sacar F-007 sin persistencia de sesión y dar de alta esta feature aparte, en vez de bloquear el front: el piloto de Mirasierra no se retrasa y el front no carga con una responsabilidad que es de `postventa-api`. Alcance: los endpoints que faltan sobre los puertos que YA existen; no hay que diseñar esquema ni tocar el DDL.
 
 ### F-001 · Esqueleto del monorepo y /health
 

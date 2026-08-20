@@ -43,6 +43,30 @@ INFRA = RAIZ / "infra"
 #: T3 · la fuente unica de nombres de recurso, region y tags.
 SCRIPT_VARS = INFRA / "00_vars_postventa.ps1"
 
+#: T4 · crea o reutiliza el Key Vault y sube los once secretos.
+SCRIPT_SECRETOS = INFRA / "cargar_secretos_postventa.ps1"
+
+#: T6 · el front: registro de aplicacion, Static Web App y enlace del backend.
+SCRIPT_FRONT = INFRA / "desplegar_front.ps1"
+
+#: T7 · las tres comprobaciones posteriores al despliegue. Solo lecturas.
+SCRIPT_VERIFICAR = INFRA / "verificar_despliegue.ps1"
+
+#: Los scripts que SI escriben en Azure. `00_vars_postventa.ps1` solo declara y
+#: `verificar_despliegue.ps1` solo lee: a esos dos no se les exige ni
+#: confirmacion ni codigos de salida por causa.
+NOMBRES_QUE_ESCRIBEN = (
+    "cargar_secretos_postventa.ps1",
+    "desplegar_backend.ps1",
+    "desplegar_front.ps1",
+)
+
+#: Una llamada de `az` que escribe. Sirve para situar la primera escritura y
+#: comprobar que `-WhatIf` y la confirmacion van ANTES.
+PATRON_ESCRITURA_AZ = re.compile(
+    r"az (?:[\w-]+ )*?(?:create|set|update|delete|add|assign|deploy|publish)\b"
+)
+
 #: Los diez nombres de recurso de `design.md` seccion 2. Los declara el fichero
 #: de variables y **solo** el.
 NOMBRES_DE_RECURSO = (
@@ -218,6 +242,102 @@ def test_f010_t3_el_fichero_local_esta_en_gitignore():
     assert "infra/*.local.ps1" in gitignore
 
 
+# --- T4 · la carga de secretos ----------------------------------------------
+
+
+@pytest.fixture
+def secretos() -> str:
+    return SCRIPT_SECRETOS.read_text(encoding="ascii")
+
+
+def test_f010_t4_el_script_de_secretos_existe():
+    """Sin el, las once credenciales viajan a mano y alguna acaba en un chat."""
+    assert SCRIPT_SECRETOS.is_file()
+
+
+def test_f010_t4_cada_credencial_se_pide_como_securestring(secretos):
+    """R9 · a ciegas y en memoria, nunca por parametro.
+
+    Tecleada en la linea de comandos acabaria en el historial de PowerShell,
+    que es un fichero de texto que sobrevive a la sesion.
+    """
+    assert "Read-Host" in secretos
+    assert "-AsSecureString" in secretos
+
+    pedidas = [
+        linea
+        for linea in secretos.splitlines()
+        if "Read-Host" in linea and "$nombre" in linea
+    ]
+    assert any("-AsSecureString" in linea for linea in pedidas)
+
+
+def test_f010_t4_el_script_de_secretos_no_escribe_ningun_fichero(secretos):
+    """R9 · ni temporales, ni de log, ni de salida.
+
+    Un fichero temporal con una credencial dentro es exactamente el fallo que
+    este script existe para no cometer, y el que menos se ve al revisarlo:
+    funciona igual, y la credencial se queda en disco.
+    """
+    escrituras = re.findall(
+        r"(?i)\b(?:Out-File|Set-Content|Add-Content|Export-Csv|Export-Clixml"
+        r"|New-TemporaryFile|\[IO\.File\]::Write)",
+        secretos,
+    )
+
+    assert escrituras == []
+
+
+def test_f010_t4_el_script_de_secretos_no_imprime_ningun_valor(secretos):
+    """R9 · ni entero, ni recortado, ni «los cuatro ultimos caracteres».
+
+    Se revisa linea a linea: ninguna que imprima puede nombrar la variable del
+    texto en claro ni la del `SecureString`. Es mas estricto que buscar la
+    palabra suelta, porque la palabra aparece legitimamente en los comentarios.
+    """
+    culpables = [
+        linea.strip()
+        for linea in secretos.splitlines()
+        if "Write-Host" in linea and re.search(r"\$(claro|segura|valor)\b", linea)
+    ]
+
+    assert culpables == []
+
+
+def test_f010_t4_el_texto_en_claro_se_borra_en_un_finally(secretos):
+    """R9 · el valor vive lo justo, y deja de vivir aunque `az` falle."""
+    assert "ZeroFreeBSTR" in secretos
+    assert "$claro = $null" in secretos
+
+
+def test_f010_t4_los_secretos_salen_del_fichero_de_variables(secretos):
+    """R7 · una sola lista, la que tambien referencia el despliegue.
+
+    Si este script subiera `gemini-key` y el despliegue referenciara
+    `gemini-api-key`, la Function App arrancaria sin poder resolver la
+    referencia y el fallo apareceria en tiempo de ejecucion, no aqui.
+    """
+    assert "$PostventaSecretos" in secretos
+    assert "$PostventaKeyVault" in secretos
+
+
+def test_f010_t4_crea_el_vault_solo_si_no_existe(secretos):
+    """R2 · re-ejecutable: la segunda vez reutiliza y no falla."""
+    assert "Existe-Vault" in secretos
+    assert "if (-not $vaultExiste)" in secretos
+    assert "Existe-Grupo" in secretos
+    assert "if (-not $grupoExiste)" in secretos
+
+
+def test_f010_t4_el_nombre_ocupado_tiene_su_propio_codigo_y_dice_que_hacer(secretos):
+    """R5 · un fallo de nombre global no se parece en nada a un fallo de permisos.
+
+    Y el mensaje dice donde se arregla: el fichero local, que no se versiona.
+    """
+    assert "$SALIDA_NOMBRE_OCUPADO" in secretos
+    assert "00_vars_postventa.local.ps1" in secretos
+
+
 # --- R8 · ni un valor en ninguno de los scripts -----------------------------
 
 
@@ -283,6 +403,106 @@ def test_f010_r7_ningun_script_repite_un_nombre_de_recurso(script):
     culpables = [nombre for nombre in NOMBRES_DE_RECURSO if nombre in texto]
 
     assert culpables == []
+
+
+# --- R3, R4, R5 y R6 · lo que se le exige a todo script que escriba ---------
+
+
+def scripts_que_escriben() -> tuple[Path, ...]:
+    """Los que ya existen de entre los que tocan Azure."""
+    return tuple(
+        INFRA / nombre for nombre in NOMBRES_QUE_ESCRIBEN if (INFRA / nombre).is_file()
+    )
+
+
+def sin_comentarios(texto: str) -> str:
+    """El mismo texto con los comentarios en blanco, CONSERVANDO las posiciones.
+
+    Hace falta para preguntar «que va antes de que» sin que la respuesta la
+    decida la ayuda: la cabecera de `cargar_secretos_postventa.ps1` nombra
+    `az keyvault secret set` para explicar por donde viaja el valor, y eso no
+    es una escritura. Se sustituye por espacios en vez de borrarse para que
+    los indices sigan siendo los del fichero.
+    """
+    fuera = re.sub(r"(?s)<#.*?#>", lambda hallado: " " * len(hallado.group()), texto)
+    lineas = [
+        " " * len(linea) if linea.lstrip().startswith("#") else linea
+        for linea in fuera.split("\n")
+    ]
+    return "\n".join(lineas)
+
+
+def primera_escritura(texto: str) -> int:
+    """Posicion de la primera llamada de `az` que escribe, o el final."""
+    hallado = PATRON_ESCRITURA_AZ.search(sin_comentarios(texto))
+    return hallado.start() if hallado else len(texto)
+
+
+@pytest.mark.parametrize("script", scripts_que_escriben(), ids=lambda ruta: ruta.name)
+def test_f010_r3_todos_admiten_whatif_y_salen_antes_de_escribir(script):
+    """R3 · `-WhatIf` dice que haria y NO hace ninguna llamada de escritura.
+
+    No basta con que el parametro exista: se comprueba que la salida por
+    `-WhatIf` esta ANTES de la primera escritura en el propio texto del
+    script. Un `-WhatIf` declarado y no respetado es peor que no tenerlo,
+    porque invita a ejecutarlo con confianza.
+    """
+    texto = script.read_text(encoding="ascii")
+
+    assert "[switch]$WhatIf" in texto
+    posicion_whatif = texto.find("-WhatIf: no se ha")
+
+    assert -1 < posicion_whatif < primera_escritura(texto)
+
+
+@pytest.mark.parametrize("script", scripts_que_escriben(), ids=lambda ruta: ruta.name)
+def test_f010_r4_todos_piden_confirmacion_escrita_antes_de_la_primera_escritura(script):
+    """R4 · mientras no se escriba la palabra, no se crea ni se modifica nada.
+
+    Una palabra tecleada, no una tecla cualquiera: es lo que ya hace
+    `crear_base_postventa.ps1` y lo que distingue «he leido lo que va a pasar»
+    de «he pulsado enter».
+    """
+    texto = script.read_text(encoding="ascii")
+    confirmacion = re.search(r"Read-Host \"Escribe [A-Z]+ para continuar", texto)
+
+    assert confirmacion is not None
+    assert confirmacion.start() < primera_escritura(texto)
+
+
+@pytest.mark.parametrize("script", scripts_que_escriben(), ids=lambda ruta: ruta.name)
+def test_f010_r5_cada_causa_de_fallo_tiene_su_codigo_y_ninguno_se_repite(script):
+    """R5 · cinco causas, cinco codigos, y el mensaje dice que hacer.
+
+    Un script que sale siempre con `1` obliga a leer la traza para saber si
+    falto la sesion de `az`, si el nombre estaba ocupado o si alguien dijo que
+    no. Con codigos distintos se sabe sin leer nada.
+    """
+    texto = script.read_text(encoding="ascii")
+    codigos = re.findall(r"^\$SALIDA_[A-Z_]+ = (\d+)$", texto, re.MULTILINE)
+
+    assert len(codigos) >= 5
+    assert len(set(codigos)) == len(codigos)
+    assert "Que hacer:" in texto
+
+
+@pytest.mark.parametrize("script", scripts_que_escriben(), ids=lambda ruta: ruta.name)
+def test_f010_r6_ninguna_variable_de_entorno_sobrevive_al_script(script):
+    """R6 · la sesion de PowerShell queda como estaba, salga bien o mal.
+
+    Una variable de entorno con una credencial dentro que sobrevive al script
+    se la lleva puesta el siguiente comando que se ejecute en esa consola. Si
+    un script necesita poner una, la restaura en un `finally`.
+    """
+    texto = script.read_text(encoding="ascii")
+    asignadas = re.findall(r"\$env:([A-Z_][A-Z0-9_]*)\s*=", texto)
+
+    for nombre in set(asignadas):
+        assert "finally" in texto, f"$env:{nombre} se asigna y no hay finally"
+        assert texto.count(f"$env:{nombre}") >= 3, (
+            f"$env:{nombre} se asigna pero no se guarda el valor previo "
+            "y se restaura"
+        )
 
 
 # --- Controles negativos ----------------------------------------------------

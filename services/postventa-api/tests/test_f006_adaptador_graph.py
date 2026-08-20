@@ -39,7 +39,6 @@ from infrastructure.sharepoint.graph import (
     CODIGOS_TRANSITORIOS,
     CONFLICT_BEHAVIOR,
     GRAPH,
-    TIMEOUT_DE_CONEXION_S,
     AdaptadorSharePointGraph,
     construir_cliente_http,
 )
@@ -642,7 +641,10 @@ def test_f006_el_cliente_http_respeta_el_entorno_y_acorta_la_conexion():
     cliente = construir_cliente_http(60)
     try:
         assert cliente.trust_env is True
-        assert cliente.timeout.connect == TIMEOUT_DE_CONEXION_S
+        # El 30 va **literal**, no comparado contra `TIMEOUT_DE_CONEXION_S`:
+        # un test que se compara con la constante que vigila sigue al mutante y
+        # da verde igual. Lo destapó la propia campaña de T20.
+        assert cliente.timeout.connect == 30
         assert cliente.timeout.read == 60
     finally:
         cliente.close()

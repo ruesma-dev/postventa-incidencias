@@ -83,6 +83,19 @@ def _scripts(html: str) -> list[dict]:
     return encontrados
 
 
+def _sin_comentarios(texto: str) -> str:
+    """El texto sin comentarios de línea (`//`), de bloque (`/* */`) ni HTML.
+
+    Solo se quitan los `//` que **empiezan** la línea, para no destrozar los
+    `https://` que viven dentro de una cadena.
+    """
+    sin_bloques = re.sub(r"/\*.*?\*/", " ", texto, flags=re.DOTALL)
+    sin_html = re.sub(r"<!--.*?-->", " ", sin_bloques, flags=re.DOTALL)
+    return "\n".join(
+        linea for linea in sin_html.splitlines() if not linea.strip().startswith("//")
+    )
+
+
 def _propios(html: str) -> list[dict]:
     """Los scripts del propio front (los que no vienen de un CDN)."""
     return [s for s in _scripts(html) if not s["src"].startswith("http")]
@@ -240,12 +253,82 @@ def test_f007_r36_la_guardia_caza_un_index_estropeado(roto, senal):
 
 
 def test_f007_r36_la_guardia_caza_los_scripts_desordenados():
-    """Cargar `app.js` antes que sus módulos también se caza."""
+    """Cargar `app.js` antes que sus módulos también se caza.
+
+    El destrozo se construye moviendo la etiqueta de `app.js` delante de la de
+    `config.js`, sin suponer que estén pegadas: así el test sigue valiendo
+    aunque cambie el número de scripts.
+    """
     html = INDEX.read_text(encoding="utf-8")
-    estropeado = html.replace(
-        '<script src="js/config.js"></script>\n  <script src="js/app.js"></script>',
-        '<script src="js/app.js"></script>\n  <script src="js/config.js"></script>',
+    etiqueta_app = '<script src="js/app.js"></script>'
+    etiqueta_config = '<script src="js/config.js"></script>'
+
+    assert etiqueta_app in html and etiqueta_config in html
+
+    estropeado = html.replace(etiqueta_app, "").replace(
+        etiqueta_config, f"{etiqueta_app}\n  {etiqueta_config}"
     )
 
     assert estropeado != html, "la sustitución no ha cambiado nada: revisa el index"
-    assert problemas_del_index(estropeado)
+
+    problemas = problemas_del_index(estropeado)
+
+    assert problemas, "la guardia no ha visto los scripts desordenados"
+    assert any("orden de dependencia" in p or "último script" in p for p in problemas)
+
+
+def test_f007_r36_estan_los_siete_scripts_propios():
+    """La pantalla carga los siete módulos, no solo los dos del esqueleto."""
+    propios = [s["src"] for s in _propios(INDEX.read_text(encoding="utf-8"))]
+
+    assert propios == list(ORDEN_CANONICO)
+
+
+def test_f007_r7_el_limite_de_concurrencia_es_una_constante_de_config():
+    """D2: **3 partes** en curso (= 6 peticiones vivas), y en `config.js`.
+
+    Que sea una constante declarada, y no un número escondido en el pipeline,
+    es lo que hace que cambiarla sea una línea.
+    """
+    contenido = CONFIG_JS.read_text(encoding="utf-8")
+
+    assert re.search(r"CONCURRENCIA_PARTES\s*:\s*3\b", contenido), (
+        "CONCURRENCIA_PARTES tiene que valer 3 y estar en js/config.js"
+    )
+
+
+@pytest.mark.parametrize(
+    "clave, patron",
+    [
+        ("TIMEOUT_PETICION_MS", r"TIMEOUT_PETICION_MS\s*:\s*180000\b"),
+        ("REINTENTOS", r"REINTENTOS\s*:\s*2\b"),
+        ("ESPERAS_MS", r"ESPERAS_MS\s*:\s*\[\s*1000\s*,\s*3000\s*\]"),
+        ("UMBRAL_CONFIANZA", r"UMBRAL_CONFIANZA\s*:\s*50\b"),
+    ],
+)
+def test_f007_r12_config_declara_los_valores_del_cliente_http(clave, patron):
+    """Timeout, reintentos, esperas y umbral viven en un solo sitio."""
+    contenido = CONFIG_JS.read_text(encoding="utf-8")
+
+    assert re.search(patron, contenido), f"falta {clave} en js/config.js"
+
+
+def test_f007_r30_el_front_no_guarda_nada_en_el_navegador():
+    """D4 · Ni `localStorage`, ni `sessionStorage`, ni `IndexedDB`, ni cookies.
+
+    Recargar la pestaña pierde el trabajo de revisión, y se acepta para el
+    piloto (decisión del humano del 2026-08-20). La vía fácil está PROHIBIDA:
+    los partes llevan DNI y observaciones de clientes (R28). La solución de
+    verdad es **F-019 · Endpoints de persistencia**, que es de `postventa-api`.
+    """
+    prohibidos = ("localStorage", "sessionStorage", "indexedDB", "document.cookie")
+
+    for fichero in sorted(RAIZ_FRONT.glob("js/*.js")) + [INDEX]:
+        # Se miran las líneas de CÓDIGO, no los comentarios: la prohibición se
+        # explica por escrito en varios sitios y nombrarla no es usarla.
+        contenido = _sin_comentarios(fichero.read_text(encoding="utf-8"))
+        for prohibido in prohibidos:
+            assert prohibido not in contenido, (
+                f"{fichero.name} usa {prohibido}: el trabajo de revisión lleva "
+                f"datos personales y no se guarda en el navegador (F-019)"
+            )

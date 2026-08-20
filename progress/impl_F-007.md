@@ -660,3 +660,70 @@ $ python -m pytest tests/test_f007_estaticos.py -q
 .........                                                                [100%]
 9 passed in 0.03s
 ```
+
+---
+
+## T10 · `index.html` y `js/config.js`: la pantalla — HECHA
+
+`index.html` pasa de «Estado del servicio» a la pantalla real:
+
+- **Zona de carga** con `drop`, selector de ficheros y selector de **carpeta**
+  (`webkitdirectory`, Edge/Chrome, **D5**), la lista de lo seleccionado con
+  nombre y tamaño y el aviso de descartes. **Nada se envía hasta confirmar.**
+- **Progreso «N de M partes terminados»** con barra, para las tres fases largas.
+- **Lista de partes** con semáforo (verde / ámbar / rojo), `hash` corto, origen,
+  páginas de origen, los motivos del veredicto y, si falló, su error con un
+  enlace para **reintentarlo él solo**.
+- **Panel de detalle**: los nueve campos editables con su confianza, con los
+  dudosos (< 50) destacados en ámbar y la marca **editado** en verde (**D3**),
+  la clasificación de la firma, el botón de **revalidar** y el **PDF del parte**
+  en un `<iframe>` sobre un blob.
+- **Archivo** con **confirmación explícita** en dos pasos, y **pantalla propia
+  para el 503** —en azul, no en rojo—: es la puerta de entorno de F-006 y
+  pintarla como fallo llevaría a alguien a «arreglarla».
+- El pie recuerda lo de **D4**: el trabajo de revisión vive en esta pestaña y
+  recargar lo pierde, hasta que llegue **F-019**.
+
+Los **siete scripts propios** van al final del `<body>`, **sin `defer`**, en
+orden de dependencia: `config`, `traza`, `cola`, `api`, `seleccion`,
+`pipeline`, `app`. Alpine sigue con `defer`, en el `<head>` y con `3.14.1`.
+
+`js/config.js` declara, con el porqué al lado de cada número:
+`CONCURRENCIA_PARTES: 3` (**D2**), `TIMEOUT_PETICION_MS: 180000`,
+`REINTENTOS: 2`, `ESPERAS_MS: [1000, 3000]` y `UMBRAL_CONFIANZA: 50`.
+`baseApi` no se toca.
+
+### Cuatro guardias nuevas en `tests/test_f007_estaticos.py`
+
+- **están los siete scripts propios**, exactamente en el orden canónico;
+- `CONCURRENCIA_PARTES` vale **3** y vive en `config.js` (R7/D2);
+- timeout, reintentos, esperas y umbral están declarados (R12);
+- **D4 vigilada por un test**: ni `localStorage`, ni `sessionStorage`, ni
+  `indexedDB`, ni `document.cookie` en ningún `js/*.js` ni en el `index.html`.
+  Es la vía fácil que **no** se puede tomar: los partes llevan DNI y
+  observaciones (R28). El test mira las líneas de **código**, no los
+  comentarios, porque la prohibición se explica por escrito en varios sitios.
+
+Un rojo intermedio que merece constar, porque lo cazó **la guardia de la
+guardia** de T9: al crecer el `index.html`, el test que comprueba que se detecta
+el desorden de scripts se apoyaba en que `config.js` y `app.js` estuvieran
+pegados, y dejó de destrozar nada:
+
+```
+✗ test_f007_r36_la_guardia_caza_los_scripts_desordenados
+E       AssertionError: la sustitución no ha cambiado nada: revisa el index
+```
+
+Se reescribió para mover la etiqueta de `app.js` delante de la de `config.js`
+sin suponer adyacencia. Es exactamente para lo que estaba puesta esa aserción.
+
+```
+$ bash harness/init.sh
+...
+49 passed in 0.73s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 98.3% de 116 líneas cambiadas cubiertas (114/116, umbral 80%, nivel estandar)
+[OK] Rama actual: feature/F-007-front
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```

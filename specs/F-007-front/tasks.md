@@ -124,7 +124,7 @@
       test se demuestra rompiendo a propósito una copia del `index.html`
       **fuera del árbol** (añadirle `defer`) y pegando el fallo.
 
-- [ ] **T10**: `index.html` con la pantalla real (zona de carga, progreso «N
+- [x] **T10**: `index.html` con la pantalla real (zona de carga, progreso «N
       de M», lista de partes con semáforo, panel de detalle con los nueve
       campos y el PDF en `<iframe>` sobre un blob) y `js/config.js` con
       `CONCURRENCIA_PARTES: 3`, `TIMEOUT_PETICION_MS`, `REINTENTOS`,

@@ -41,10 +41,27 @@
     genera aqui, se guarda en el Key Vault del proyecto con los nombres
     `swa-client-id` y `swa-client-secret` -para que quede un solo sitio donde
     mirar- y se fija en las App Settings de la Static Web App. Con
-    `-SoloFront` no se genera nada: se leen del Key Vault los que ya hay. Las
-    App Settings de una Static Web App NO admiten referencia a Key Vault (a
-    diferencia de las de la Function App), y eso se declara en vez de
-    esconderse: el valor acaba en el almacen de secretos del propio recurso.
+    `-SoloFront` no se genera nada Y TAMPOCO SE LEE NADA: el bloque entero se
+    salta y las App Settings se quedan como esten. Este script NO lee del Key
+    Vault en ningun modo -no hay un solo `az keyvault secret show` en el-, asi
+    que `-SoloFront` NO repara unas App Settings borradas a mano: para eso hay
+    que volver a lanzarlo en modo completo. Las App Settings de una Static Web
+    App NO admiten referencia a Key Vault (a diferencia de las de la Function
+    App), y eso se declara en vez de esconderse: el valor acaba en el almacen
+    de secretos del propio recurso.
+
+    EL SECRETO SE ACUMULA Y NADIE LO REVOCA. `az ad app credential reset` va
+    con `--append`, que ANADE una credencial y no invalida las anteriores. Es
+    deliberado -es lo que evita repetir el incidente del portal, donde el
+    despliegue completo invalido el secreto vivo y tumbo el inicio de sesion-,
+    pero tiene su reverso: cada ejecucion en modo completo deja una credencial
+    'swa' MAS, todas validas. El resumen final imprime cuantas hay. Cuando
+    sobren, se retiran a mano y de una en una, empezando por las mas antiguas:
+
+        az ad app credential list --id <id-de-la-aplicacion> -o table
+        az ad app credential delete --id <id-de-la-aplicacion> --key-id <key-id>
+
+    Nunca se borra la ultima creada: es la que esta en uso.
 
 .PARAMETER SoloFront
     No toca Entra, no regenera el secreto y no reescribe las redirect URI.
@@ -106,6 +123,7 @@ $marcadorInquilino = "<TENANT_ID>"
 # identificador ya sustituido y el fichero con el cuerpo de la llamada a Graph.
 $copiaDeTrabajo = $null
 $cuerpoGraph = $null
+$credencialesSwa = $null
 
 # El valor previo de la variable de entorno se lee AQUI, ANTES del `try`, y no
 # donde se asigna. Motivo: `exit` dentro del `try` ejecuta igualmente el
@@ -367,6 +385,12 @@ try {
                 "revisa la configuracion de la Static Web App."
         }
         $secreto = $null
+
+        # Cuantas credenciales 'swa' vivas quedan. `--append` no revoca
+        # ninguna, asi que este numero SUBE en cada despliegue completo y nadie
+        # lo baja solo. Es una lectura; se imprime en el resumen para que el
+        # crecimiento se vea en vez de descubrirse dentro de dos anos.
+        $credencialesSwa = Valor-De-Az @("ad", "app", "credential", "list", "--id", $appId, "--query", "length([?displayName=='swa'])", "-o", "tsv")
     }
 
     # --- El backend enlazado -------------------------------------------------
@@ -439,6 +463,14 @@ try {
     Write-Host ("  Static Web App     : {0}" -f $PostventaStaticWebApp)
     Write-Host ("  Backend enlazado   : {0}" -f $PostventaFunction)
     Write-Host ("  Asignacion previa  : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } else { "obligatoria, grupo asignado" }))
+    Write-Host ("  Credenciales 'swa' : {0}" -f $(if ($credencialesSwa) { $credencialesSwa } else { "sin tocar (-SoloFront)" }))
+    if ($credencialesSwa -and [int]$credencialesSwa -gt 1) {
+        Write-Host ""
+        Write-Host ("  Hay {0} credenciales 'swa' VIVAS: --append anade y no revoca." -f $credencialesSwa) -ForegroundColor Yellow
+        Write-Host "  Retira las que sobren a mano, empezando por las mas antiguas y" -ForegroundColor Yellow
+        Write-Host "  SIN tocar la ultima, que es la que esta en uso. El comando esta" -ForegroundColor Yellow
+        Write-Host "  en la cabecera de este script." -ForegroundColor Yellow
+    }
     Write-Host ""
     Write-Host "Ahora, a mano y con DOS cuentas (T16):"
     Write-Host "  1. sin sesion, la URL redirige al inicio de sesion;"

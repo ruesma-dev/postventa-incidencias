@@ -808,7 +808,7 @@ def test_f010_t6_la_cabecera_declara_que_las_credenciales_se_acumulan(front):
     assert "--append" in front
     assert "no invalida" in front
     assert "az ad app credential delete" in front
-    assert "credential list" in sin_comentarios(front)
+    assert '"credential", "list"' in sin_comentarios(front)
     assert "Credenciales 'swa'" in front
 
 

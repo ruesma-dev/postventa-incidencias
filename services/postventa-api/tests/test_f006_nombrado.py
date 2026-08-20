@@ -25,6 +25,7 @@ Las tres trampas que vigilan estos tests, y que son tres bugs distintos:
 from __future__ import annotations
 
 import inspect
+from dataclasses import FrozenInstanceError
 
 import pytest
 from domain.models.errores import NombradoImposible
@@ -545,7 +546,7 @@ def test_f006_el_destino_es_inmutable():
         numero_incidencia=INCIDENCIA,
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         destino.nombre_fichero = "otro.pdf"  # type: ignore[misc]
 
 
@@ -579,5 +580,5 @@ def test_f006_el_item_archivado_tambien_es_inmutable():
         carpeta="Postventa/0677",
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         item.item_id = "otro"  # type: ignore[misc]

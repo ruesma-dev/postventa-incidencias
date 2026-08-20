@@ -226,7 +226,9 @@ def test_f006_t16_el_barrido_de_identificadores_caza_uno_inyectado():
     El valor vive **solo aqui**, compuesto en memoria a partir de trozos, para
     que ni este control escriba un identificador entero en un fichero.
     """
-    inventado = "-".join(("f1e2d3c4", "b5a6", "4978", "8b1c", "2d3e4f5a6b7c"))
+    inventado = "-".join(("f1e2d3c4", "b5a6", "4978", "8b1c", "2d3e4f5a6b7c"))  # noqa: FLY002
+    # El `join` es deliberado: ruff propone escribir el literal, que es
+    # justo lo que este fichero existe para prohibir en el repositorio.
 
     assert PATRON_GUID.findall(f"SHAREPOINT_DRIVE_ID={inventado}") == [inventado]
 

@@ -44,7 +44,6 @@ from typing import Any
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EntradaCola,
-    PreferenciasUsuario,
     RegistroRemesa,
     ResultadoGuardado,
     TrazaArchivo,

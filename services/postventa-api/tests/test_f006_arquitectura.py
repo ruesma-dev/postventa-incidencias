@@ -337,7 +337,9 @@ def test_f006_r26_el_barrido_de_guids_caza_uno_inyectado():
     que ni siquiera este control escriba un GUID entero en un fichero del
     repositorio.
     """
-    inventado = "-".join(("a1b2c3d4", "e5f6", "4a7b", "8c9d", "e0f1a2b3c4d5"))
+    inventado = "-".join(("a1b2c3d4", "e5f6", "4a7b", "8c9d", "e0f1a2b3c4d5"))  # noqa: FLY002
+    # El `join` es deliberado: ruff propone escribir el literal, que es
+    # justo lo que este fichero existe para prohibir en el repositorio.
 
     assert PATRON_GUID.findall(f"SHAREPOINT_SITE_ID={inventado}") == [inventado]
 

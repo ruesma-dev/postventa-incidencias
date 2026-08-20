@@ -133,7 +133,7 @@
       **Verificación**: `python -m pytest -q` en verde (T9 vigila el orden y
       el `defer`) y `bash harness/init.sh` en verde.
 
-- [ ] **T11**: `js/app.js`: estado de Alpine y pegamento. Selección, arranque
+- [x] **T11**: `js/app.js`: estado de Alpine y pegamento. Selección, arranque
       de la cola, progreso, parte seleccionado, edición de campos,
       revalidación, confirmación y archivo, revocado del blob al cambiar de
       parte. **Sin lógica propia**: todo lo que decida algo llama a los

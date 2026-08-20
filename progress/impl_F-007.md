@@ -727,3 +727,58 @@ $ bash harness/init.sh
 ----------------------------------------
 ENTORNO LISTO. Puedes trabajar.
 ```
+
+---
+
+## T11 · `js/app.js`: el pegamento de Alpine — HECHA
+
+`app.js` pasa de comprobar `/health` a ser el estado de la pantalla: selección,
+arranque de la cola, progreso, parte abierto, edición, revalidación,
+confirmación y archivo, y revocado del blob al cambiar de parte.
+
+**Sin lógica propia.** Todo lo que decide algo llama a los módulos de T4–T8:
+`Seleccion.filtrarAdmitidos`, `Seleccion.formDataDeRemesa`,
+`Cola.ejecutarConLimite`, `Api.*`, `Pipeline.procesarParte`,
+`Pipeline.revalidar`, `Pipeline.semaforoDe`, `Pipeline.esArchivable`,
+`Pipeline.cuerpoDeArchivo`, `Pipeline.ficheroDeParte`.
+
+Detalles que se ven en el código y conviene no perder:
+
+- **La misma cola para procesar y para archivar** (`_porLaCola`): otra fase,
+  mismo límite. Es literalmente la misma función.
+- **Reintentar un parte** vuelve a pasar por `_porLaCola` con una sola tarea
+  (R11), no por un camino paralelo.
+- **El blob se revoca** al abrir otro parte y al cerrar (`_revocarPdf`): 22
+  blobs vivos es memoria que no vuelve.
+- **El 503 no ensucia el parte**: se guarda en `entornoNoArchiva` y se pinta en
+  su recuadro azul (R25).
+- **Un 400 de `/api/split` vuelve al estado inicial** sin dejar filas a medias
+  (R6).
+
+### La revisión de T11, convertida en dos tests en vez de en una promesa
+
+La verificación de la tarea pedía «revisar que `app.js` no contiene bucles de
+reintento, ni cálculo de veredicto, ni composición de cuerpos». Una revisión no
+se vuelve a ejecutar sola, así que se ha escrito como guardia:
+
+- `test_f007_r36_app_js_es_solo_pegamento`: `app.js` no puede contener
+  `new FormData`, `fetch(`, `setTimeout`, `archivo_y_cierre`, `console.` ni
+  `JSON.stringify`. Cada prohibición lleva escrito **de qué módulo es** esa
+  responsabilidad. `app.js` es la única habitación sin tests de la casa: esto
+  impide que la lógica se mude ahí.
+- `test_f007_r36_app_js_usa_los_modulos_probados`: y que efectivamente los use.
+
+Y como `app.js` no lo ejecuta ningún test, se añadió al puente
+`test_f007_r32_todos_los_modulos_del_front_compilan`: **`node --check` sobre
+cada `js/*.js`**. Un paréntesis mal cerrado en `app.js` no lo cazaría nada hasta
+abrir el navegador; ahora lo caza el portero.
+
+```
+$ bash harness/init.sh
+...
+52 passed in 1.07s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 98.3% de 116 líneas cambiadas cubiertas (114/116, umbral 80%, nivel estandar)
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```

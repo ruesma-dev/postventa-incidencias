@@ -332,3 +332,33 @@ def test_f007_r30_el_front_no_guarda_nada_en_el_navegador():
                 f"{fichero.name} usa {prohibido}: el trabajo de revisión lleva "
                 f"datos personales y no se guarda en el navegador (F-019)"
             )
+
+
+def test_f007_r36_app_js_es_solo_pegamento():
+    """Regla de oro de `design.md` §3: si algo merece un test, no vive en `app.js`.
+
+    `app.js` no se prueba —es estado de Alpine—, así que lo que se cuela ahí
+    dentro no lo comprueba nadie. Esta guardia impide que la lógica se mude a
+    la única habitación sin tests de la casa.
+    """
+    codigo = _sin_comentarios((RAIZ_FRONT / "js" / "app.js").read_text(encoding="utf-8"))
+
+    prohibidos = {
+        "new FormData": "componer cuerpos de petición es de js/pipeline.js y js/seleccion.js",
+        "fetch(": "hablar con el backend es de js/api.js",
+        "setTimeout": "los tiempos de espera y el timeout son de js/api.js",
+        "archivo_y_cierre": "decidir si un parte es archivable es de js/pipeline.js",
+        "console.": "el único registro permitido pasa por js/traza.js (R28)",
+        "JSON.stringify": "serializar el cuerpo de una petición es de js/api.js",
+    }
+
+    for prohibido, motivo in prohibidos.items():
+        assert prohibido not in codigo, f"app.js usa `{prohibido}`: {motivo}"
+
+
+def test_f007_r36_app_js_usa_los_modulos_probados():
+    """El pegamento pega: llama a los cinco módulos, no los reimplementa."""
+    codigo = (RAIZ_FRONT / "js" / "app.js").read_text(encoding="utf-8")
+
+    for modulo in ("window.Seleccion", "window.Cola", "window.Api", "window.Pipeline"):
+        assert modulo in codigo, f"app.js no usa {modulo}"

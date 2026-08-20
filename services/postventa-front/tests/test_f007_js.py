@@ -85,3 +85,32 @@ def test_f007_r32_hay_tests_de_javascript_que_ejecutar():
     ficheros = sorted(p.name for p in (RAIZ_FRONT / "tests_js").glob("*.test.js"))
 
     assert ficheros, "no hay ni un fichero *.test.js en tests_js/"
+
+
+def test_f007_r32_todos_los_modulos_del_front_compilan():
+    """`node --check` sobre cada `js/*.js`, incluido `app.js`.
+
+    `app.js` es el único módulo sin tests —es estado de Alpine, no lógica—, así
+    que un paréntesis mal cerrado ahí no lo cazaría nada hasta abrir el
+    navegador. Esto lo caza en el portero.
+    """
+    node = _ruta_de_node()
+    assert node is not None
+
+    modulos = sorted((RAIZ_FRONT / "js").glob("*.js"))
+    assert modulos, "no hay ningún módulo en js/"
+
+    for modulo in modulos:
+        proceso = subprocess.run(
+            [node, "--check", modulo.name],
+            cwd=RAIZ_FRONT / "js",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=TIEMPO_MAXIMO_S,
+            check=False,
+        )
+        assert proceso.returncode == 0, (
+            f"{modulo.name} no compila:\n{proceso.stdout}\n{proceso.stderr}"
+        )

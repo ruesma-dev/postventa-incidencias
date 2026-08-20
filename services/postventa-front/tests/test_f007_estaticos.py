@@ -75,7 +75,7 @@ def _scripts(html: str) -> list[dict]:
                 "atributos": atributos,
                 "defer": bool(re.search(r"\bdefer\b", atributos, re.IGNORECASE)),
                 "modulo": bool(
-                    re.search(r"""type\s*=\s*["']module["']""", atributos, re.I)
+                    re.search(r"""type\s*=\s*["']module["']""", atributos, re.IGNORECASE)
                 ),
                 "en_head": coincidencia.start() < fin_head if fin_head != -1 else False,
             }
@@ -222,7 +222,7 @@ def test_f007_r36_el_marcador_de_tenant_sigue_sin_resolver():
         "identificador de inquilino versionado, y CLAUDE.md lo prohíbe"
     )
     assert not re.search(
-        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", crudo, re.I
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", crudo, re.IGNORECASE
     ), "hay un GUID en staticwebapp.config.json"
 
 

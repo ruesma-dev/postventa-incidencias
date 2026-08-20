@@ -159,7 +159,7 @@
       imprime la ayuda sin arrancar nada, y `bash harness/init.sh` sigue en
       verde.
 
-- [x] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4:
+- [ ] **T14**: **MANUAL (humano)** — R36 y el criterio de aceptación 4:
       arrancar el front en local contra la Function.
 
       **Terminal A** (backend; una línea por línea, sin `&&`):

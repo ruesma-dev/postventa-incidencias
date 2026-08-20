@@ -28,9 +28,8 @@ import logging
 import sys
 from pathlib import Path
 
-import pytest
-
 import dev_server
+import pytest
 
 # Valores inventados: ni un dato de un parte real entra en esta suite (R30).
 API_DE_PRUEBA = "http://localhost:7073"
@@ -62,19 +61,19 @@ class HandlerDeTest(dev_server.DevHandler):
         self.cabeceras_cerradas = False
 
     # --- capturas de la respuesta (no hay socket al que escribir) ---
-    def send_response(self, code, message=None):  # noqa: D102
+    def send_response(self, code, message=None):
         self.respuesta = (code, message)
 
-    def send_header(self, keyword, value):  # noqa: D102
+    def send_header(self, keyword, value):
         self.cabeceras_enviadas.append((keyword, value))
 
-    def end_headers(self):  # noqa: D102
+    def end_headers(self):
         self.cabeceras_cerradas = True
 
-    def send_error(self, code, message=None, explain=None):  # noqa: D102
+    def send_error(self, code, message=None, explain=None):
         self.errores.append((code, message))
 
-    def address_string(self):  # noqa: D102
+    def address_string(self):
         return "cliente-de-prueba"
 
     # --- ayudas de aserción ---
@@ -115,7 +114,7 @@ class RespuestaFalsa:
 class ConexionFalsa:
     """Doble de `http.client.HTTPConnection`. No abre nada."""
 
-    ultima: "ConexionFalsa | None" = None
+    ultima: ConexionFalsa | None = None
 
     def __init__(self, host, port, timeout=None):
         self.host = host
@@ -448,7 +447,7 @@ def test_f007_r34_el_log_de_peticiones_no_revienta():
 class ServidorFalso:
     """Doble de `ThreadingServer`: ni escucha ni abre puertos."""
 
-    ultimo: "ServidorFalso | None" = None
+    ultimo: ServidorFalso | None = None
     interrumpir = False
 
     def __init__(self, direccion, handler):

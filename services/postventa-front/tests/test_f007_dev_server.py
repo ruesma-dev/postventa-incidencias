@@ -539,3 +539,57 @@ def test_f007_r34_sin_index_html_no_arranca_y_devuelve_1(monkeypatch, tmp_path):
 def test_f007_r34_el_prefijo_proxiado_es_solo_api():
     """El proxy no se lleva por delante rutas que no son del backend."""
     assert dev_server.PROXY_PREFIXES == ("/api/",)
+
+
+# --- Configuración del servidor y del proxy (R34) ---------------------------
+#
+# Estos tres tests salieron de la campaña de mutación: los tres mutantes
+# sobrevivían porque nadie miraba estas líneas, y las tres tienen consecuencias
+# de verdad en el desarrollo local. Se comprueban por atributo, sin abrir un
+# socket, que es lo que R33 permite.
+
+
+def test_f007_r34_el_proxy_concede_300_segundos_al_backend(monkeypatch):
+    """El timeout del proxy tiene que sobrevivir a una llamada de IA.
+
+    Una extracción puede tardar decenas de segundos y la Function corta a los
+    230. Un proxy con un timeout más corto que eso cortaría él la petición y el
+    front vería un 502 donde no lo hay.
+    """
+    _instalar_conexion(monkeypatch)
+
+    handler = HandlerDeTest("/api/extraer")
+    handler.api_target = API_DE_PRUEBA
+    handler.do_POST()
+
+    assert ConexionFalsa.ultima.timeout == 300
+
+
+def test_f007_r34_los_hilos_del_servidor_son_demonios():
+    """Sin `daemon_threads`, un Ctrl+C deja el proceso colgado.
+
+    Una petición de IA en vuelo mantendría vivo su hilo, y el humano tendría
+    que matar la terminal en vez de parar el servidor.
+    """
+    assert dev_server.ThreadingServer.daemon_threads is True
+
+
+def test_f007_r34_el_puerto_se_puede_reutilizar_al_reiniciar():
+    """Sin `allow_reuse_address`, reiniciar el front falla con «address in use».
+
+    En desarrollo se para y se arranca constantemente; el socket se queda en
+    TIME_WAIT y el siguiente arranque no encontraría el puerto libre.
+    """
+    assert dev_server.ThreadingServer.allow_reuse_address is True
+
+
+def test_f007_r34_el_proxy_reenvia_a_la_maquina_y_puerto_del_destino(monkeypatch):
+    """El destino sale de `--api`, no de un valor cableado."""
+    _instalar_conexion(monkeypatch)
+
+    handler = HandlerDeTest("/api/health")
+    handler.api_target = "http://backend-inventado.local:7099"
+    handler.do_GET()
+
+    assert ConexionFalsa.ultima.host == "backend-inventado.local"
+    assert ConexionFalsa.ultima.port == 7099

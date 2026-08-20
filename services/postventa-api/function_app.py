@@ -27,11 +27,65 @@ Endpoints:
     POST /api/archivar
         Nombra **un** parte apto y lo archiva en SharePoint, sin duplicar.
         Desde un puesto de trabajo responde **503** y no sube nada: la única
-        subida real permitida es desde el entorno desplegado.
+        subida real permitida es desde el entorno desplegado. Y allí el
+        entorno se despliega con la **ventana de escritura cerrada**
+        (`ARCHIVO_HABILITADO` apagado), que se abre solo cuando toca archivar
+        de verdad. Ver la nota del final de este módulo.
 
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
+
+---
+
+## Por qué los seis endpoints están en `ANONYMOUS`, y no es un descuido
+
+**No lo toques sin leer esto.** Un endpoint anónimo en un servicio publicado
+en internet parece un olvido, y el arreglo evidente —`auth_level=FUNCTION`—
+**rompe el front el mismo día que se aplica**, sin que ningún test de este
+repositorio lo note, porque ninguno atraviesa el proxy de la Static Web App.
+
+El servicio está desplegado como **backend enlazado** de una Static Web App
+(F-010, `design.md` §9 bis). En ese montaje el proxy de la Static Web App:
+
+- **autentica al usuario contra Entra** antes de dejar pasar la petición, y
+- reenvía al backend la cabecera **`x-ms-client-principal`**, que dice *quién*
+  es el usuario;
+- **no añade** ninguna clave de función ni ningún token *bearer*.
+
+De ahí las dos consecuencias que fijan este fichero:
+
+1. **`auth_level=FUNCTION` no vale**: la Static Web App no aporta la clave que
+   la Function exigiría, así que los seis endpoints empezarían a devolver
+   `401` a través del front.
+2. **La autenticación integrada de Entra en la Function App tampoco vale**:
+   espera un *bearer* que el proxy no envía.
+
+Y `x-ms-client-principal` **no sirve como control de acceso**: va en base64
+**sin firma**, y cualquiera que llame a la Function directamente puede
+fabricarla. Sirve para saber quién es el usuario, no para impedir el paso.
+
+### Dónde está entonces el control de acceso
+
+En capas, y ninguna de ellas está en este fichero:
+
+1. **La Static Web App** autentica contra Entra y exige pertenencia al
+   **grupo de Posventa** (asignación obligatoria en la aplicación
+   empresarial). Es la capa que de verdad decide quién usa la aplicación.
+2. **La ventana de escritura de `POST /api/archivar`** —el candado principal—:
+   `ARCHIVO_HABILITADO` se despliega **apagado**, y fuera de esa ventana el
+   endpoint responde `503` a todo el mundo, incluido un desconocido, **sin
+   tocar SharePoint**. Se abre y se cierra cambiando una App Setting, sin
+   redesplegar.
+3. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
+   proporcionada al riesgo de `/api/extraer` y `/api/firma`: gastar cuota.
+4. **La restricción de acceso público de la Function App**, si resulta
+   compatible con el backend enlazado. Es mejora, no cimiento: si al aplicarla
+   el front deja de alcanzar el backend, se revierte.
+
+`GET /api/health` seguiría siendo anónimo aunque lo demás no lo fuera: lo usan
+el propio despliegue y el front para saber si el backend vive, y no expone
+ningún dato.
 """
 
 from __future__ import annotations

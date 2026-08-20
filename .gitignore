@@ -37,3 +37,7 @@ services/*/coverage.json
 
 # Worktrees temporales de los subagentes del arnes
 .claude/worktrees/
+
+# Ficheros locales de infra: sufijo de unicidad global y suscripcion. No se
+# versionan: llevan lo que no puede entrar al repositorio.
+infra/*.local.ps1

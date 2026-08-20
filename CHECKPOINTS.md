@@ -155,17 +155,29 @@ recorre estos puntos **contra ese nivel**.
       recálculo puro, pero el informe de review **lo dice explícitamente**.
       Recalcular alcance y nº de mutantes no demuestra que los muertos lo
       estén: unos «N muertos» inventados pasarían ese control.
-- [ ] **La campaña tardó lo que tenía que tardar.** «Tiempo total» dividido
-      entre el número de mutantes da el coste medio de un mutante, que es una
-      ejecución completa de la suite del servicio. Si sale **por debajo de un
-      segundo**, la campaña es **sospechosa por construcción**: no da tiempo a
-      arrancar el intérprete, importar el proyecto y recorrer los tests. Lo
-      normal es que la suite ni siquiera se estuviera ejecutando de verdad —un
-      árbol con bytecode envenenado, una caché que devuelve el veredicto
-      anterior, un fallo de importación que mata a todos los mutantes por la
-      misma razón—. **Se relanza con la caché limpia** (`__pycache__` y
-      `.pytest_cache` borrados) y se comparan los totales; si cambian, el
-      informe válido es el segundo y el primero se descarta por escrito.
+- [ ] **La campaña tardó lo que tenía que tardar.** Evaluar un mutante es
+      **ejecutar entera la suite del servicio**, así que el coste por mutante
+      no puede bajar de lo que tarda esa suite. Se calcula:
+
+      > coste por mutante = «Tiempo total» × nº de workers ÷ nº de mutantes
+
+      El factor de workers **no es opcional**: la campaña es paralela por
+      defecto y su «Tiempo total» es tiempo de reloj, no de CPU. Sin corregir,
+      toda campaña paralela sana parece sospechosa. Por eso el implementer
+      declara en **«Evidencias»** con cuántos workers la lanzó; si fue en
+      serie (`--workers 1`), el factor es 1.
+
+      Si ese coste sale **por debajo de un segundo**, o muy por debajo del
+      tiempo de la suite que el propio informe declara, la campaña es
+      **sospechosa por construcción**: no da tiempo a arrancar el intérprete,
+      importar el proyecto y recorrer los tests. Lo normal es que la suite ni
+      siquiera se estuviera ejecutando de verdad —un árbol con bytecode
+      envenenado, una caché que devuelve el veredicto anterior, un fallo de
+      importación que mata a todos los mutantes por la misma razón—. **Se
+      relanza con la caché limpia** (`__pycache__` y `.pytest_cache` borrados)
+      y se comparan los totales; si cambian, el informe válido es el segundo y
+      el primero se descarta por escrito.
+
       Complementa la regla de los 5 minutos: aquella mira el total, esta mira
       el coste por mutante, y una campaña grande y rápida solo la caza la
       segunda.
@@ -175,6 +187,8 @@ recorre estos puntos **contra ese nivel**.
 - [ ] El informe del implementer trae la sección **«Evidencias»** con los
       cuatro números: tests ejecutados y resultado, cobertura de las líneas
       cambiadas, mutantes generados y supervivientes, y tiempo de la suite.
+      Con la campaña de mutación, además, **el nº de workers con que se lanzó**:
+      sin él no se puede calcular el coste por mutante del punto anterior.
 - [ ] Ningún punto de este bloque marcado N/A sin justificación escrita.
 
 ## C4 ter — Las verificaciones extra por rutas sensibles están hechas

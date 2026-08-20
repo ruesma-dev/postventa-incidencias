@@ -3,15 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **20 features**, 14 abiertas, 6 terminadas.
-
-En curso: **F-007**.
+Resumen: **20 features**, 13 abiertas, 7 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-007 | Front de carga y revisión | 7 | en curso | estandar | `feature/F-007-front` |
 | F-010 | Despliegue en Azure y tarjeta en el portal | 8 | pendiente | estandar | `feature/F-010-despliegue` |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | pendiente | documental | `feature/F-008-modelo-sigrid` |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | pendiente | critico | `feature/F-009-cierre-sigrid` |
@@ -36,14 +33,9 @@ En curso: **F-007**.
 | F-004 | Validación del parte y clasificación de la firma | 4 | critico |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | critico |
 | F-006 | Nombrado y archivo en SharePoint | 6 | critico |
+| F-007 | Front de carga y revisión | 7 | estandar |
 
 ## Detalle
-
-### F-007 · Front de carga y revisión
-
-estado **en curso** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
-
-Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar. PUNTO DE PARTIDA: el esqueleto del front ya está escrito y verificado en la rama feature/F-007-front (se sacó de F-001 porque su dev_server.py hundía la puerta de cobertura). Recuperarlo con: git checkout feature/F-007-front -- services/postventa-front. Ya resuelto ahí: los scripts propios van SIN defer al final del body (con defer, Alpine arranca antes de que exista la función del x-data), Alpine con versión fija 3.14.1, el proxy apunta al puerto 7073, y el staticwebapp.config.json lleva <TENANT_ID> como marcador porque el ID de tenant no se versiona.
 
 ### F-010 · Despliegue en Azure y tarjeta en el portal
 
@@ -158,3 +150,9 @@ Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado d
 estado **terminada** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
 
 Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.
+
+### F-007 · Front de carga y revisión
+
+estado **terminada** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
+
+Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar. PUNTO DE PARTIDA: el esqueleto del front ya está escrito y verificado en la rama feature/F-007-front (se sacó de F-001 porque su dev_server.py hundía la puerta de cobertura). Recuperarlo con: git checkout feature/F-007-front -- services/postventa-front. Ya resuelto ahí: los scripts propios van SIN defer al final del body (con defer, Alpine arranca antes de que exista la función del x-data), Alpine con versión fija 3.14.1, el proxy apunta al puerto 7073, y el staticwebapp.config.json lleva <TENANT_ID> como marcador porque el ID de tenant no se versiona.

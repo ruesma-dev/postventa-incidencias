@@ -1,50 +1,22 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-08-20 · **F-007 IMPLEMENTADA, a la espera de revisión**
+> ## Estado al 2026-08-20 · **F-007 CERRADA Y APROBADA**
 >
-> La implementación está terminada en `feature/F-007-front`. El informe
-> completo —las cinco fases RED con su traza real, las decisiones, las tres
-> desviaciones y la sección **Evidencias**— está en
-> **`progress/impl_F-007.md`**; la campaña de mutación, en
-> `progress/mutacion_F-007.md`.
+> **Siete features `done`** (F-001 a F-007) y **ninguna `in_progress`**. El
+> resumen de cada una está en `progress/history.md`; el detalle, en sus
+> `impl_*` y `review_*`.
 >
-> **Números medidos**: **158 tests nuevos** del front en verde (74 de `pytest`
-> + 84 de `node --test`), 1.014 en todo el repositorio; cobertura de líneas
-> cambiadas **98,3 %** (114/116, umbral 80 %, nivel `estandar`); **20 mutantes
-> / 17 muertos / 3 supervivientes**, 0 timeouts, los tres analizados y ninguno
-> en `PENDIENTE`; **0 avisos nuevos de `ruff`**; y `bash harness/init.sh` con
-> **exit code 0**.
+> **Lo siguiente es F-010 · Despliegue en Azure**, cuya spec se está
+> escribiendo. El humano subió su prioridad el 2026-08-20 por delante de las
+> dos features de Sigrid, con un objetivo concreto: **que negocio pruebe el
+> circuito completo desplegado sin tocar el ERP todavía**.
 >
-> **15 de 16 tareas `[x]`.** La única abierta es **T14**, `MANUAL (humano)`:
-> arrancar el front en local contra la Function y comprobar los ocho puntos
-> —entre ellos que en DevTools nunca hay más de 6 peticiones a `/api/` en
-> vuelo, y que en la consola no aparece ningún DNI—. Está lista para ejecutar,
-> con sus dos terminales en líneas cortas, en `specs/F-007-front/tasks.md` y
-> repetida en el informe.
->
-> ### Lo que el humano tiene que saber antes de cerrar
->
-> 1. **Autorizar el cierre con T14 pendiente** ante `CHECKPOINTS.md` **C5**,
->    que pide todas las tareas `[x]`; o ejecutarla antes. Mismo caso que T18 de
->    F-006: es lo que motiva **F-017**.
-> 2. **El front NO persiste nada** (decisión D4 del 2026-08-20). Recargar la
->    pestaña pierde el trabajo de revisión y hay que volver a subir la remesa.
->    Se aceptó para el piloto, y la solución está dada de alta como
->    **F-019 · Endpoints de persistencia**, que es de `postventa-api`. Hay un
->    test que impide tomar el atajo de `localStorage`: los partes llevan DNI y
->    observaciones de clientes.
-> 3. **Archivar desde un puesto de trabajo responde 503 y eso es lo correcto.**
->    El front lo pinta en azul, no en rojo, con el texto «este entorno no
->    archiva». **No se toca la puerta de entorno de F-006 para «arreglarlo».**
->
-> ### Dos hechos del entorno que cambiaron un comando de la spec
->
-> - **`node --test "tests_js/*.test.js"`**, no `node --test tests_js`: desde
->   Node 24 un directorio como argumento se carga como módulo y muere con
->   `MODULE_NOT_FOUND` sin descubrir ningún test.
-> - **`.\dev_front.ps1 -Ayuda`**, no `-?`: con `powershell -File`,
->   PowerShell 5.1 no imprime nada con `-?`.
+> **Lo que F-010 arrastra**: crear el grupo de seguridad de Posventa (del
+> humano o de IT), los secretos por referencia a Key Vault, la tarjeta del
+> portal —que se edita en `front-portal`, otro repositorio— y el desbloqueo de
+> **T18 de F-006**, la subida real a SharePoint, que exigirá autorización
+> expresa ante `CHECKPOINTS.md` C5.
 
 ## Cómo se mergeó F-005, y por qué importa para la próxima
 
@@ -86,10 +58,15 @@ el historial de git no suelta lo que entra, y el squash es la salida barata.
    `progress/review_F-004.md`. **El reviewer de F-005 añadió una tercera**,
    sin aplicar, en la sección «Propuesta de mejora del protocolo» de
    `progress/review_F-005.md`.
-4. **Campo `base` en `harness/features.json`** para que cobertura y mutación
+4. **P4 · la campaña de mutación deja bytecode envenenado** (reviewer de
+   F-007, 2026-08-20): con `--workers 1`, la mutación deja `__pycache__`
+   alterado que **`git status` no enseña**, así que un árbol aparentemente
+   limpio puede tener bytecode que no corresponde al fuente. Es genérica: si
+   se acepta el arreglo, viaja a `arnes-base`.
+5. **Campo `base` en `harness/features.json`** para que cobertura y mutación
    usen la base real de la rama. Aplazada; robustez para cuando se vuelvan a
    encadenar ramas.
-5. **Decisión suelta**: si la regla de `docs/CONVENTIONS.md` sobre ReportLab
+6. **Decisión suelta**: si la regla de `docs/CONVENTIONS.md` sobre ReportLab
    frente a PyMuPDF sube a `arnes-base`. Recomendación del líder: dejarla
    aquí, porque solo sirve a proyectos que manipulen PDF.
 

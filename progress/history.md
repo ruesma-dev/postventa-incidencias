@@ -377,3 +377,88 @@ de la campaña de mutación en este proyecto.**
 
 **T18** — la subida real a SharePoint, a ejecutar cuando F-010 despliegue el
 entorno. **F-018** — el recorte de permisos a `Sites.Selected`.
+
+## F-007 · Front de carga y revisión — CERRADA el 2026-08-20
+
+Rama `feature/F-007-front`. Rigor `estandar`. **Veredicto: APROBADO** en
+segunda pasada (`progress/review_F-007.md`); la primera fue CHANGES_REQUESTED.
+
+### Qué entrega
+
+La pantalla con la que Posventa trabaja: soltar un PDF, un ZIP o una carpeta,
+ver el progreso parte a parte, el semáforo de validación, y corregir a mano lo
+dudoso antes de archivar. Toda la lógica sale del DOM a módulos JS puros
+—`cola.js`, `pipeline.js`, `seleccion.js`, `confirmacion.js`, `traza.js`,
+`api.js`— para poder probarla.
+
+### El agujero que cierra
+
+**Hasta hoy nadie comprobaba el front.** El portero solo conocía un servicio.
+Ahora declara **dos, `api` y `front`**, y ejecuta sus tests: `node --test` para
+el JavaScript —sin `package.json`, sin `npm install`, sin `node_modules`— y
+pytest para `dev_server.py`, con un **puente que falla si Node no está**, nunca
+un `skip` silencioso. Un guardián que se salta a sí mismo no protege nada.
+
+| Puerta | Resultado |
+|---|---|
+| Cobertura de líneas cambiadas | **98,3 %** (114/116, umbral 80 %) |
+| Suite JS | de 84 a **97 tests**, relanzada por el reviewer |
+| Mutación (no exigida en `estandar`) | hecha igualmente; destapó **3 huecos reales** |
+| `bash harness/init.sh` | verde, exit 0, con las dos suites |
+
+### Las cinco decisiones del humano del 2026-08-20
+
+- **`dev_server.py` se prueba**, en vez de excluirlo de la puerta de cobertura.
+  Era el problema que expulsó al front de F-001. Se decidió probarlo porque es
+  lo único que reproduce en local el proxy de la Static Web App: código que
+  merece tests, no un script de usar y tirar.
+- **Concurrencia: 3 partes (6 peticiones vivas).** El argumento decisivo: 6 es
+  el tope de conexiones por origen de un navegador sobre HTTP/1.1, así que
+  pedir más solo encolaría **invisiblemente** mientras el usuario mira un
+  temporizador.
+- **Un campo corregido a mano vale confianza 100 y se marca como editado.** Si
+  no, corregir un campo no serviría de nada: el semáforo seguiría en rojo.
+- **La remesa no se persiste**: aceptado para el piloto y dado de alta como
+  **F-019**. Y expresamente **no** se guarda en `localStorage` ni `IndexedDB`:
+  los partes llevan DNI y observaciones.
+- **Navegador soportado**: Edge/Chrome.
+
+### T14, la verificación manual: «funciona a la perfección»
+
+Ejecutada por el humano con la remesa real. Los diez puntos en OK. Los tres
+que solo se ven en DevTools se comprobaron expresamente:
+
+- **La concurrencia**: la cascada de Red muestra tandas escalonadas de unas
+  seis barras solapadas, no las 44 llamadas a la vez. Se anotó con precisión
+  que es una **lectura visual, no un recuento instante a instante**; el
+  reviewer la dio por buena porque la cota exacta ya la clava `cola.test.js`
+  de forma determinista, y lo que faltaba era ver el cableado en un navegador
+  real.
+- **Revalidar no reprocesa**: un solo registro de traza, `paso: 'validar'`.
+  Corregir un campo a mano no gasta ni una llamada de IA.
+- **La consola no publica datos personales**: la traza enseña exactamente
+  cuatro claves —`hash`, `paso`, `estado`, `http`— porque `js/traza.js` acepta
+  esas cuatro y **tira el resto**. Filtro con test, no buena intención.
+
+### Los dos defectos que encontró la review
+
+1. **R19, la confirmación de archivar, no lo comprobaba nada.** Es lo único que
+   separa un clic accidental de **una tanda de subidas reales a SharePoint**, y
+   la tabla de trazabilidad afirmaba que estaba cubierta por tests que no
+   existían. Se sacó de `app.js` a `js/confirmacion.js` y ahora tiene 13 tests.
+   **Lección**: una tabla de trazabilidad que nadie verifica miente antes o
+   después.
+2. **`current.md` duplicaba a mano el estado del backlog** y se quedó rancio.
+   Arreglado de raíz: ahora **remite a `BACKLOG.md`**, que se genera solo desde
+   `features.json` y no envejece.
+
+### Lo que salió de probarlo, para después
+
+- **F-020 · Ajustes de diseño del front**: el campo de observaciones se queda
+  pequeño, el PDF se ve pequeño y la tira de previsualización le roba espacio a
+  la página. El criterio que las ordena: **en una pantalla de revisión, el
+  documento manda y todo lo demás le cede sitio.**
+- **T14 tenía un defecto propio**: su comando no activaba el `.venv` del
+  servicio, así que `func start` moría con `ModuleNotFoundError: pydantic`
+  para cualquiera que la siguiera al pie de la letra. Corregido en la spec.
+  Ningún test habría encontrado eso.

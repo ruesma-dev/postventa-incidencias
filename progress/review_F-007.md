@@ -8,7 +8,15 @@
 
 ## Veredicto
 
-# CHANGES_REQUESTED
+# APROBADO
+
+*(Segunda pasada, 2026-08-20. Los tres cambios requeridos en la primera están
+resueltos y **verificados por el reviewer**, no dados por buenos: ver la
+sección **17 · Cierre**. El veredicto original y su razonamiento se conservan
+abajo, tachados en su encabezado pero intactos en el cuerpo, porque explican
+qué se pidió y por qué.)*
+
+## ~~Veredicto de la primera pasada: CHANGES_REQUESTED~~ (resuelto)
 
 **El front funciona.** T14 se ejecutó durante esta review y el humano lo firmó
 con un «funciona a la perfección». La implementación es de las más sólidas del
@@ -943,5 +951,140 @@ evita siempre. **Merecen ir juntas a `arnes-base`.**
 
 ---
 
-*Informe cerrado el 2026-08-20. Ninguna línea de código del implementer fue
+# 17 · Cierre — segunda pasada (2026-08-20)
+
+Los tres cambios están hechos. **Los he verificado uno a uno**, no leído del
+resumen del líder.
+
+**Entorno:** `bash harness/init.sh` → **exit 0**, dos servicios, `PUERTA
+COBERTURA 98,3 % (114/116)`. Árbol limpio salvo este informe. Seis commits
+nuevos sobre `124e4b6`.
+
+## Cambio 1 · La tabla de T14 (C5) — `[x]` RESUELTO
+
+`d786b86`. **Ni un `PENDIENTE`**: los diez puntos con resultado real
+(`progress/impl_F-007.md:951-961`), incluidos los dos que yo pedí añadir (9 y
+10, R19 y R22). Los tres que solo se ven en DevTools tienen su sección de
+evidencia propia.
+
+**Punto 3 · ¿basta una lectura de la cascada para el criterio de aceptación 3?
+Sí, y lo digo porque se me preguntó expresamente.** Razones:
+
+1. **La cota exacta ya está demostrada**, y no por observación: `cola.test.js`
+   mide el **máximo simultáneo observado** sobre 22 tareas con límite 3, de
+   forma determinista y sin relojes. Eso es más fuerte que cualquier captura.
+2. **El cableado está verificado por lectura**: `app.js:151-155` alimenta la
+   cola con `CONCURRENCIA_PARTES` y una tarea por parte; `procesarParte` lanza
+   `extraer`+`firma` en paralelo y `validar` después. 3 × 2 = 6.
+3. **Lo que le faltaba al conjunto era justo lo que aporta la captura**: que en
+   un navegador real, con la remesa real, el cableado se comporte como dice el
+   código. «Tandas escalonadas de unas seis barras solapadas, con huecos entre
+   grupos» **falsa directamente** el modo de fallo que nombra el criterio —«una
+   remesa larga dispara N peticiones a la vez»—, y confirma el patrón
+   `extraer`+`firma` en paralelo, `validar` después.
+
+Un recuento instante a instante mediría otra vez, y peor, lo que el test
+unitario ya clava. **Las tres evidencias juntas cierran el criterio**; ninguna
+lo haría sola. Y que se anotara la limitación en vez de venderla como un
+recuento exacto **aumenta** mi confianza en el resto de la tabla: un informe que
+distingue lo que vio de lo que dedujo es un informe fiable.
+
+**Punto 6**: la traza `{hash: 'e2cd481b…', paso: 'validar', estado: 'ok',
+http: 200}`, **un solo registro y con paso `validar`**, es el argumento
+correcto: un reprocesado habría dejado registros de `extraer` y `firma` al
+lado. R17 verificado en el navegador.
+
+**Punto 8**: esa misma traza con **exactamente cuatro claves** demuestra el
+filtro de `traza.js` en ejecución, no solo en test. Y el apunte de que el
+`hash` es el SHA-256 del contenido —«identifica al parte sin nombrarlo»— es
+correcto: no es dato personal. R28 verificado.
+
+## Cambio 2 · Trazabilidad (C4) — `[x]` RESUELTO
+
+`788751a`, `9a6db89`, `bc3a435`. Se tomó la **salida mixta**, que era la
+correcta:
+
+- **R19 con test de verdad.** La confirmación sale de `app.js` a
+  `js/confirmacion.js`, y `app.js` la consume vía `window.Confirmacion`
+  (`armar`, `pendiente`, `resolver`, `cancelar`) sin lógica propia. **13 tests**
+  en `tests_js/confirmacion.test.js`, y no son de trámite: cubren el primer clic
+  que no dispara, el segundo que sí, el desarme posterior, la **caducidad** de
+  una confirmación olvidada, el **borde exacto** de la ventana, un **reloj que
+  va hacia atrás**, un **estado corrupto** y que `resolver` **no muta** lo que
+  recibe. Es más de lo que pedí.
+- **Fase RED de R19, y de la buena.** No se conformó con el
+  `MODULE_NOT_FOUND`: hay un **«Rojo 2 — de aserción, que es el que vale»** con
+  un **stub trampa** que devuelve siempre `true`, para comprobar que 8 de los 13
+  tests muerden de verdad. Es la misma disciplina de los meta-tests del barrido
+  de DNI, y es lo que separa un test de un adorno.
+- **R5, R6 y R22 → `MANUAL (humano), T14`** en la tabla de trazabilidad, con el
+  porqué escrito, igual que ya hacía R36. La tabla ahora **dice la verdad**,
+  que era el defecto de fondo.
+
+Verificado además que la guardia de estáticos **no se quedó atrás**:
+`ORDEN_CANONICO` incluye ya `js/confirmacion.js` en su sitio (séptimo, antes de
+`app.js`), y el `<script>` está en `index.html:297`. Una guardia de orden que
+dejara fuera el módulo nuevo habría sido una regresión silenciosa.
+
+**Suite JS: 97 tests, 97 pass, 0 fail, 0 skipped** (eran 84). Barrido propio
+sobre los dos ficheros nuevos: **cero** `localStorage`/`sessionStorage`/
+`indexedDB`/`document.cookie`, **cero** `console.`, **cero** DNI, cabecera con
+la ruta en la primera línea.
+
+## Cambio 3 · `progress/current.md` (C2) — `[x]` RESUELTO
+
+`dfb9029`. La sección ya **no duplica el backlog a mano**: remite a
+`BACKLOG.md`, que se genera desde `features.json` y lo regenera `init.sh`. Es
+la solución de raíz, no el parche —el defecto no era el número equivocado, era
+mantener a mano una copia de algo generado—, y el propio texto deja escrita la
+lección. La sección de F-006 se ha reducido a lo único vivo: el riesgo aceptado
+de los permisos de Graph, con **F-018** como dueña. Se conserva lo que debía
+conservarse.
+
+## Observación menor, que NO bloquea
+
+`progress/impl_F-007.md:924` conserva el encabezado
+`## T14 · Verificación MANUAL (humano) — PENDIENTE` y el párrafo «Queda
+pendiente del humano», justo encima de la tabla que ya está entera en **OK**, y
+con el `Terminal A` sin la línea de `Activate.ps1` que sí se corrigió en
+`tasks.md`. El documento no engaña —la evidencia de DevTools va debajo y la
+sección 1236 la da por ejecutada—, pero conviene ajustar esas tres líneas la
+próxima vez que se toque el fichero. **No es motivo de nada**: mi objeción era
+la checklist en blanco bajo una tarea firmada, y esa está resuelta.
+
+## Recorrido final de los checkboxes que estaban vacíos
+
+| Checkpoint | Primera pasada | Ahora |
+|---|---|---|
+| **C2** · `current.md` solo la sesión activa | `[ ]` | **`[x]`** |
+| **C4** · cada requisito con test trazable | `[ ]` | **`[x]`** — R19 con 13 tests; R5, R6, R22 y R36 declarados MANUAL/T14 con su motivo; R33 y R37 justificados |
+| **C5** · tareas `[x]` y checklist cerrada | `[ ]` | **`[x]`** — 16/16, tabla de T14 con diez resultados reales |
+
+**C1, C3, C3 bis, C4 bis y C4 ter ya estaban en verde** en la primera pasada y
+nada de esta tanda los toca: el portero sigue en exit 0, la cobertura en
+98,3 %, y la campaña de mutación que reejecuté (20/17/3/0) sigue siendo válida
+—los tres supervivientes son del rótulo de `dev_server.py`, que nadie ha
+tocado—.
+
+# VEREDICTO FINAL: **APROBADO**
+
+Con dos apuntes que no condicionan la aprobación pero que el humano debería
+tener delante al cerrar:
+
+1. **F-020 recoge las tres observaciones de diseño** de T14 (el PDF debe mandar
+   en la pantalla). El front es correcto; es trabajo de usabilidad, ya con
+   dueño.
+2. **Las cuatro propuestas de arnés (P1–P4) siguen sin aplicar** y esperan
+   decisión. **P4 es la urgente**: la campaña de mutación con `--workers 1`
+   deja bytecode envenenado en `__pycache__` que rompe la suite sin que
+   `git status` lo enseñe. Lo sufrí en esta review (sección 16) y volverá a
+   pasarle a quien reejecute una campaña con el árbol sucio, que es la
+   situación normal del reviewer.
+
+Y no lo hago yo, por regla: **ni `git push`, ni PR, ni merge a `dev`.** Eso lo
+decide el humano.
+
+---
+
+*Informe cerrado el 2026-08-20 tras dos pasadas. Ninguna línea de código del implementer fue
 modificada por el reviewer; la única escritura fue este fichero.*

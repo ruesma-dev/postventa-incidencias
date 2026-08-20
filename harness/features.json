@@ -131,7 +131,7 @@
         "Decidido y documentado cómo se trata dev_server.py frente a la puerta de cobertura (el arnés no tiene exclusión configurable para scripts de desarrollo)",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "estandar",
       "priority": 7,

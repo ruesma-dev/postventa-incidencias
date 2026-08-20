@@ -921,7 +921,7 @@ demo. Comprueba:
 
 ---
 
-## T14 · Verificación MANUAL (humano) — PENDIENTE
+## T14 · Verificación MANUAL (humano) — EJECUTADA POR EL HUMANO el 2026-08-20
 
 **No la puede firmar un agente**: hace falta abrir el navegador y soltar un
 parte de verdad. Queda **pendiente del humano** y es la única casilla de F-007

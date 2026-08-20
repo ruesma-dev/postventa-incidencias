@@ -3,9 +3,9 @@
 
 > Cada tarea es **un commit** (`F-010 Tn: ...`). Ordenadas por dependencia.
 >
-> **Nueve tareas son `MANUAL (humano)`**: T1, T2, T13, T14, T15, T16, T17,
-> T18 y T19. Un agente no crea grupos en el inquilino, no despliega en Azure,
-> no sube nada a SharePoint y no toca otro repositorio.
+> **Diez tareas son `MANUAL (humano)`**: T1, T2, T13, T14, T14 bis, T15, T16,
+> T17, T18 y T19. Un agente no crea grupos en el inquilino, no despliega en
+> Azure, no sube nada a SharePoint y no toca otro repositorio.
 >
 > **El humano trabaja en PowerShell**: cada tarea manual se entrega como
 > *script + una línea corta de invocación*. Sin `&&`, sin comandos largos
@@ -14,20 +14,26 @@
 > **Precondición de toda la fase 2 en adelante**: `feature/F-007-front`
 > cerrada y mergeada (riesgo 4 de `design.md` §10).
 >
-> **D1, D2 y D3 (`design.md` §9) BLOQUEAN.** T1 resuelve D1 y T2 alimenta D2;
-> sin ellas no se empieza la fase 2. D3 se confirma en T14.
+> **Estado de las bloqueantes al 2026-08-20**: **D1 resuelta** (el humano crea
+> el grupo, nombre `posventa-usuarios`) y **D3 resuelta** (`design.md` §9 bis:
+> defensa en capas; el `auth_level` **no** se toca). **Queda D2**, los 45 s del
+> proxy contra los tiempos de espera actuales: **T2 es su paso previo y sigue
+> bloqueando la fase 2**.
 
 ---
 
 ## Fase 0 · Lo que el humano tiene que resolver antes
 
-- [ ] **T1 · MANUAL (humano) · RESUELVE D1** — Crear el **grupo de seguridad
-      de Posventa** en Entra y decidir sus miembros iniciales. Sin él no hay a
-      quién restringir el acceso (R15, R16) ni qué poner en la tarjeta (R24).
+- [ ] **T1 · MANUAL (humano) · D1 RESUELTA el 2026-08-20** — Crear el **grupo
+      de seguridad de Posventa** en Entra con los miembros del piloto dentro.
+      El humano lo hace él mismo y **da por bueno el nombre
+      `posventa-usuarios`**. Sin el grupo no hay a quién restringir el acceso
+      (R15, R16) ni qué poner en la tarjeta (R24).
 
-      Antes hay que decidir tres cosas: **nombre** (se propone
-      `posventa-usuarios`), **propietario** y **quiénes de Posventa entran en
-      el piloto**.
+      **Confirmar el nombre antes de aplicarlo**: si al crearlo el humano
+      elige otro, ese nombre es el que va en la asignación de la aplicación
+      empresarial (T6, T16) y en `requiredGroupName` de la tarjeta (T10, T19).
+      Los tres sitios tienen que decir lo mismo.
 
       Crear el grupo y quedarse con su Object ID:
 
@@ -91,14 +97,19 @@
       escribe ficheros, no deja variables de sesión (R6), admite `-WhatIf`
       (R3) y trae confirmación escrita antes de la primera escritura (R4).
 
-- [ ] **T5**: `infra/desplegar_backend.ps1`.
+- [ ] **T5 · FASE RED en R33**: `infra/desplegar_backend.ps1`. Primero se
+      escribe el test que exige que el script deje `ARCHIVO_HABILITADO`
+      **apagado** y **se le ve fallar** (aún no hay script); después el
+      script. Es el candado principal de D3 (`design.md` §9 bis, capa 3) y por
+      eso es el requisito que lleva la fase RED de esta feature.
       **Verificación**: `test_f010_scripts_infra.py` — cada `create` va
       precedido de una comprobación de existencia (R2); el rol sobre el Key
       Vault se concede **antes** de fijar las App Settings y se verifica
       (R11); toda App Setting de la lista de secretos se fija por **referencia
       a Key Vault** y ninguna con valor (R10); `IA_TIMEOUT_S` y
       `GRAPH_TIMEOUT_S` quedan por debajo del presupuesto (R20); **ninguna
-      variable `SIGRID_*`** (R28); `-WhatIf` (R3); confirmación (R4); y al
+      variable `SIGRID_*`** (R28); **`ARCHIVO_HABILITADO` apagado** (R33);
+      `-WhatIf` (R3); confirmación (R4); y al
       menos cinco códigos de salida distintos, todos únicos (R5).
 
 - [ ] **T6**: `infra/desplegar_front.ps1`, con modo `-SoloFront`.
@@ -117,19 +128,26 @@
       verbo de escritura (`create`, `update`, `delete`, `set`, `PUT`, `POST`
       contra Azure), exige la URL por parámetro como hace
       `verificar_archivo_dev.ps1`, y comprueba las tres cosas: `200` en
-      `/api/health`, `401` en el host desnudo de la Function y redirección al
+      `/api/health`, `503` en `/api/archivar` con la ventana de escritura
+      cerrada (R33) y redirección al
       inicio de sesión en la Static Web App.
 
 ## Fase 2 · Los dos cambios de código
 
-- [ ] **T8 · FASE RED** — Cerrar la Function App (R17, R18). Primero se
-      escribe `test_f010_endpoints_protegidos.py` y **se le ve fallar**: hoy
-      los seis endpoints están en `ANONYMOUS`. Después, `auth_level=FUNCTION`
-      en `split`, `extraer`, `firma`, `validar` y `archivar`, dejando `health`
-      anónimo, y se actualiza la cabecera del módulo.
-      **Verificación**: `test_f010_r17_los_endpoints_exigen_clave` y
-      `test_f010_r18_health_sigue_anonimo` en verde, con la traza de la fase
-      RED anotada en `progress/impl_F-010.md`.
+- [ ] **T8** — Fijar por escrito que la anonimidad es **deliberada** (R32,
+      R18). **El `auth_level` NO se toca**: `design.md` §9 bis explica por qué
+      cambiarlo rompería el front, y esta tarea existe justamente para que
+      nadie lo cambie luego creyendo que corrige un descuido.
+
+      Se actualiza la cabecera de `function_app.py` —qué reenvía el backend
+      enlazado, por qué no cabe una credencial en la Function, y dónde está
+      entonces el control de acceso— y se escribe
+      `test_f010_endpoints_protegidos.py`.
+
+      **Verificación**: `test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada`
+      (los seis endpoints siguen anónimos **y** la cabecera lo explica: si
+      alguien cambia una cosa sin la otra, falla) y
+      `test_f010_r18_health_sigue_anonimo`.
 
 - [ ] **T9**: `TIMEOUT_PETICION_MS` de `services/postventa-front/js/config.js`
       al presupuesto del proxy (R21), con el comentario que explica de dónde
@@ -143,6 +161,8 @@
 - [ ] **T10**: `docs/DESPLIEGUE.md` — el runbook (qué crea cada script, en qué
       orden, qué hace falta antes) y **el bloque literal de la tarjeta del
       portal** con su procedimiento de cuatro pasos (R23, R25).
+      Incluye además las **dos líneas de `az`** que abren y cierran la ventana
+      de escritura (R34), y dice que se cierra siempre al terminar.
       **Verificación**: `test_f010_tarjeta_portal.py` — el bloque trae los
       **nueve** campos del esquema de `azure-apps/portal.md` §4.1; el
       `requiredGroupId` es un **marcador** y no un GUID (R24); el
@@ -192,25 +212,41 @@
       los once secretos cargados y ningún valor. Se anota en `progress/` solo
       «once secretos cargados: sí/no».
 
-- [ ] **T14 · MANUAL (humano) · CONFIRMA D3** — Desplegar el backend.
+- [ ] **T14 · MANUAL (humano) · APLICA D3** — Desplegar el backend.
 
       ```
       powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1
       ```
 
-      **Verificación**: `MANUAL (humano)`, tres cosas y en este orden:
+      **Verificación**: `MANUAL (humano)`, cuatro cosas y en este orden:
 
       1. `GET /api/health` responde `200` a través del nombre de host de la
          Function.
-      2. **`POST /api/extraer` contra el host desnudo, sin clave, responde
-         `401`** (R17). Si respondiera `200`, **PARAR**: la Function está
-         abierta a internet y sabe escribir en SharePoint.
-      3. Las App Settings resuelven sus referencias a Key Vault: ninguna
+      2. Las App Settings resuelven sus referencias a Key Vault: ninguna
          aparece con error en el portal de Azure.
+      3. **`POST /api/archivar` contra el host desnudo responde `503`** —la
+         ventana de escritura está cerrada (R33)—. Si respondiera `200`,
+         **PARAR**: el script no dejó `ARCHIVO_HABILITADO` apagado y la
+         Function está escribiendo en SharePoint a cualquiera que la llame.
+      4. **Capa 5 de `design.md` §9 bis, y es un intento, no un requisito**:
+         aplicar la restricción de acceso público a la Function App y
+         comprobar **después de T16** que la Static Web App sigue alcanzando
+         el backend. SI el front deja de funcionar, **revertir** y anotar que
+         la capa 5 no está disponible (R17): las capas 1, 3 y 4 se sostienen
+         solas.
 
       El resultado se anota en `progress/` **sin la URL y sin ningún
-      identificador**: «health 200: sí/no», «host desnudo 401: sí/no»,
-      «referencias resueltas: sí/no».
+      identificador**: «health 200: sí/no», «referencias resueltas: sí/no»,
+      «archivar cerrado devuelve 503: sí/no», «restricción de red aplicada:
+      sí / revertida».
+
+- [ ] **T14 bis · MANUAL (humano)** — Fijar **tope de gasto y alerta** en la
+      consola del proveedor de IA antes de que el front sea alcanzable (R35).
+      Es la defensa proporcionada al riesgo de que un desconocido llame a
+      `/api/extraer` (`design.md` §9 bis, capa 4), y no depende de Azure.
+      **Verificación**: `MANUAL (humano)` — queda anotado «tope fijado: sí/no»
+      y «alerta configurada: sí/no». **Sin la cifra**, que es información de
+      negocio.
 
 - [ ] **T15 · MANUAL (humano) · RESUELVE D4** — Comprobar que la Function App
       alcanza `psql-albaranes-rs9k2`. **Solo lectura primero**: mirar si el
@@ -268,6 +304,15 @@
       declarada, y quien la marque está cerrando una feature ajena. La
       autorización se pide **nombrando C5** y se anota con fecha.
 
+      **Esta tarea abre y cierra la ventana de escritura** (R33, R34,
+      `design.md` §9 bis capa 3). Los dos `az` van sueltos, uno por línea.
+
+      **Abrir la ventana**, justo antes de ejecutar:
+
+      ```
+      az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings ARCHIVO_HABILITADO=true
+      ```
+
       El script ya existe desde F-006; aquí solo se ejecuta:
 
       ```
@@ -277,6 +322,16 @@
       ```
       powershell -File $HOME\verificar_archivo_dev.ps1 -BaseUrl <url-de-dev>
       ```
+
+      **Cerrar la ventana en cuanto termine**, salga bien o mal:
+
+      ```
+      az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings ARCHIVO_HABILITADO=false
+      ```
+
+      Dejarla abierta «por si acaso» es exactamente lo que D3 evita: mientras
+      esté abierta, `/api/archivar` escribe en SharePoint para cualquiera que
+      llame a la Function.
 
       Para ver antes qué haría, sin llamar a nada:
 
@@ -333,11 +388,14 @@
 - [ ] **T20**: Campaña de mutación y análisis de supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-010`.
       **Alcance real, dicho por adelantado**: la herramienta solo muta Python,
-      y lo único Python que cambia F-010 son las líneas de `auth_level` de
-      `function_app.py` (T8). Los cinco scripts de PowerShell y el JS quedan
-      fuera de la medición; su disciplina la sostienen los tests de contrato
-      de la fase 1 y los tests JS. Los supervivientes, si los hay, se analizan
-      por escrito en `progress/impl_F-010.md`.
+      y tras resolverse D3 **F-010 no cambia ni una línea de comportamiento en
+      Python** — T8 quedó en cabecera y test. Lo que esta feature entrega son
+      cinco scripts de PowerShell, un cambio en JS y documentación, todo fuera
+      de lo que la campaña sabe mutar. Su disciplina la sostienen los tests de
+      contrato de la fase 1, los tests JS y la fase RED de T5. Si la campaña
+      sale sin nada que mutar, **se declara N/A con este motivo por escrito**
+      en `progress/impl_F-010.md`: `CHECKPOINTS.md` acepta el N/A justificado
+      y rechaza el N/A a secas.
 
 - [ ] **T21**: Ejecutar `bash harness/init.sh` en verde.
 
@@ -347,12 +405,13 @@
 
 | Tarea | Depende de | Estado |
 |---|---|---|
-| T1 | Decisión del humano sobre nombre y miembros (**D1**) | **BLOQUEA la fase 2** |
+| T1 | **D1 resuelta**: el humano crea el grupo `posventa-usuarios` | Pendiente de ejecutar; ya no bloquea |
 | T2 | Un parte real de `muestras/` y la Function en local (**D2**) | **BLOQUEA la fase 2** |
 | T13 | T1, y los secretos en poder del humano | Pendiente |
-| T14 | T13 · confirma **D3** | Pendiente |
+| T14 | T13 · aplica **D3** (capas 3 y 5) · la capa 5 se comprueba tras T16 | Pendiente |
+| T14 bis | Consola del proveedor de IA · capa 4 de **D3** | Pendiente, **antes de T16** |
 | T15 | T14 · resuelve **D4**; puede quedar abierta sin bloquear el piloto | Pendiente |
 | T16 | T1 y T14 | Pendiente |
 | T17 | T14 y T16 · **criterio de aceptación** | Pendiente |
-| T18 | T14 · **autorización expresa ante C5** · cierra T18 de **F-006** | Pendiente |
+| T18 | T14 · **autorización expresa ante C5** · abre y **cierra** la ventana de escritura · cierra T18 de **F-006** | Pendiente |
 | T19 | T1, T16 y **D7** · otro repositorio | Pendiente |

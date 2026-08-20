@@ -27,6 +27,8 @@ Tres cosas cambian de naturaleza el día del despliegue:
    subir desde local están abiertas por diseño. Un desconocido podría subir
    PDF arbitrarios a la biblioteca de Posventa y gastar la cuota de Gemini con
    `/api/extraer`. **Esto lo crea F-010, y F-010 tiene que cerrarlo** (R17).
+   **Cómo** se cierra es la decisión D3, y la respuesta no es la obvia: ver
+   §9 bis, donde se razona con lo que hace el ecosistema.
 2. **Los secretos dejan de estar en un `.env` de un portátil** y pasan a un
    Key Vault. Es una mejora, pero el camino entre los dos —el script que los
    carga— es el sitio con más probabilidad de acabar con una credencial en un
@@ -223,7 +225,7 @@ ve un error opaco que ni el front ni el backend han generado. Por eso:
 | `infra/verificar_despliegue.ps1` | Solo lecturas: `/api/health`, `401` en el host desnudo de la Function, redirección al inicio de sesión en la SWA. No sube nada |
 | `docs/DESPLIEGUE.md` | El runbook: qué crea cada script, en qué orden se ejecutan, qué hace falta antes, y **el bloque literal de la tarjeta del portal** con su procedimiento |
 | `services/postventa-api/tests/test_f010_scripts_infra.py` | Contrato de los cinco scripts, como ya se hizo en F-005 y F-006: se leen como texto, no se ejecutan |
-| `services/postventa-api/tests/test_f010_endpoints_protegidos.py` | R17 y R18 sobre `function_app.py` |
+| `services/postventa-api/tests/test_f010_endpoints_protegidos.py` | R17, R18 y R32 sobre `function_app.py`: fija que la anonimidad es **deliberada** y que está explicada |
 | `services/postventa-api/tests/test_f010_tarjeta_portal.py` | R23, R24 y R25 sobre `docs/DESPLIEGUE.md` |
 | `services/postventa-front/tests_js/test_config_timeout.test.js` | R21 sobre `config.js` |
 
@@ -231,7 +233,7 @@ ve un error opaco que ni el front ni el backend han generado. Por eso:
 
 | Ruta | Qué cambia |
 |---|---|
-| `services/postventa-api/function_app.py` | `auth_level` pasa de `ANONYMOUS` a `FUNCTION` en `split`, `extraer`, `firma`, `validar` y `archivar`. **`health` se queda anónimo** (R18). Se actualiza la cabecera del módulo, que hoy dice que `/api/health` no tiene autenticación —y seguirá siendo verdad— pero calla que las demás sí |
+| `services/postventa-api/function_app.py` | **Solo la cabecera del módulo**: el `auth_level` **no cambia** (§9 bis). Se explica por qué los seis endpoints siguen anónimos —lo exige el backend enlazado— y dónde está entonces el control de acceso, para que nadie lo «arregle» y rompa el front |
 | `services/postventa-front/js/config.js` | `TIMEOUT_PETICION_MS` al presupuesto del proxy, con el comentario que explica de dónde sale el número |
 | `docs/INTEGRACION.md` | §8 «Qué exponemos nosotros», hoy vacía y con una nota que dice «cuando el portal muestre la tarjeta (F-010)… esta sección se rellena en el mismo trabajo». Es este trabajo. Se añade además la fila del despliegue |
 | `docs/ARCHITECTURE.md` | §«Infra y despliegue»: los nombres de recurso reales, el presupuesto de 45 s y la restricción de región |
@@ -327,23 +329,144 @@ porque los dos ya rompieron una tarjeta:
 
 ## 9 · Decisiones abiertas que necesita validar el humano
 
+> **Estado al 2026-08-20.** Eran tres las bloqueantes; **D1 y D3 están
+> RESUELTAS** (D3 con el razonamiento completo en §9 bis). **Queda D2**, el
+> presupuesto de 45 s, cuyo paso previo es la medición de T2.
+
 | # | Decisión | ¿Bloquea? |
 |---|---|---|
-| **D1** | **El grupo de seguridad de Posventa no existe.** Hay que crearlo, y lo hace el humano o IT: un agente no crea grupos en el inquilino. Hace falta decidir **nombre** (se propone `posventa-usuarios`, siguiendo la convención de `bc3-usuarios`, `contratos-usuarios`; conviven en el portal otras formas como `albaranes-portal-users`), **propietario** y **miembros iniciales** —quién de Posventa entra en el piloto—. Su Object ID se necesita en dos sitios: para asignarlo a la aplicación empresarial (R16) y para la tarjeta del portal (R24). **No se escribe en este repositorio** | **SÍ** |
+| **D1** | ✅ **RESUELTA el 2026-08-20**: el humano **crea él mismo** el grupo en Entra, con los miembros del piloto dentro, y da por bueno el nombre propuesto **`posventa-usuarios`** salvo que decida otro al crearlo. F-010 **ya no se bloquea** por esto; T1 usa ese nombre y avisa de confirmarlo antes de aplicarlo en la asignación (R16) y en la tarjeta (R24). Su Object ID sigue **sin escribirse en este repositorio**. Enunciado original: el grupo no existe y hay que crearlo, decidiendo nombre, propietario y miembros iniciales | ~~SÍ~~ **ya no** |
 | **D2** | **El presupuesto de 45 s del proxy** (§5). Con `IA_TIMEOUT_S` en 120 el circuito no cabe. Opciones: **(a)** bajar los tiempos a ~35 s y desplegar el piloto así, asumiendo que un parte lento falla y se reintenta; **(b)** sacar la Function de detrás del proxy y que el front la llame directamente con su propio token, lo que rompe el mismo origen y obliga a cambiar el front que F-007 acaba de cerrar; **(c)** patrón asíncrono (encolar y consultar), que es una feature nueva. Este diseño propone **(a)**, y **la medición de T2 es la que dice si (a) es viable**. Si la extracción real pasa de 35 s, el humano tiene que elegir entre (b) y (c), y F-010 se replantea | **SÍ** |
-| **D3** | **Cómo se cierra la Function App** (R17, §0). Se propone `auth_level=FUNCTION` en los cinco endpoints de trabajo, dejando `health` anónimo: la Static Web App, al enlazar un backend propio, se encarga de la clave de host en sus llamadas. **Hay que verificarlo en el despliegue** (T14): si resultara que el backend enlazado no la aporta, la alternativa es autenticación integrada en la Function App restringida al app registration del front, y entonces cambia `desplegar_backend.ps1`. Lo que **no** es opción es desplegar los cinco endpoints anónimos | **SÍ** |
+| **D3** | ✅ **RESUELTA el 2026-08-20 · ver §9 bis**, con el razonamiento completo. En una línea: la propuesta anterior de esta spec (`auth_level=FUNCTION`) **era incorrecta y habría roto el front el día del despliegue**; la plataforma exige endpoints anónimos detrás de un backend enlazado. Se recomienda **defensa en capas** con la ventana de escritura como candado principal | ~~SÍ~~ **ya no** |
 | **D4** | **El cortafuegos de `psql-albaranes-rs9k2`.** El servidor es compartido y `CLAUDE.md` prohíbe tocar nada a nivel de servidor. Una Function App en Flex Consumption no tiene direcciones de salida fijas, así que o el servidor ya admite servicios de Azure —hay que **mirarlo, en solo lectura**— o hace falta una regla, y esa regla es un cambio de servidor que afecta a los otros tres proyectos y lo decide el humano coordinando con albaranes. Afecta solo a `/api/archivar`, que deja traza en la base; el resto del circuito funciona sin ella | No para el piloto; **sí** para el archivo |
 | **D5** | **Nombre de host del front.** Se propone el que asigna Azure, sin dominio propio: `ohana.ruesma.es` está en un proveedor de DNS externo y `portal.md` §6.3 avisa de que en esa zona vive también el correo de la empresa. Un dominio propio se puede añadir después sin rehacer nada, pero **cambiaría las redirect URI** y hay que registrarlas todas de una vez | No |
 | **D6** | **¿Esperar a F-018?** Ver §10, riesgo 3. Este diseño propone **no esperar**, y a cambio **subir la prioridad de F-018** para ejecutarlo justo después de T18 | No |
 | **D7** | **Quién aplica y despliega la tarjeta del portal** (§8). El entregable de F-010 es el bloque escrito; el alta en `front-portal` la hace el humano o quien lleve ese repositorio | No |
 
+## 9 bis · D3 · Cómo se protege la Function App
+
+> **Resuelta el 2026-08-20**, a petición del humano, que no quiso elegir en
+> abstracto. Se ha ido a mirar qué hace de verdad el ecosistema.
+
+### Lo que hace el ecosistema, servicio por servicio
+
+| Servicio | Forma | Cómo protege sus endpoints |
+|---|---|---|
+| `partes` sv4 — front de usuario, ingress externo | Container App | **Autenticación integrada de Entra**, con **asignación requerida** y un grupo de seguridad. Su script de infra lo deja escrito: crea el grupo, crea la aplicación empresarial y pone la asignación obligatoria |
+| `partes` sv5 — servicio interno | Container App | **Ingress interno**: solo se alcanza desde dentro del entorno de Container Apps. Red, no credencial |
+| `sigrid-api` — API de servicio a servicio | **Function App** | **Clave de función** (`x-functions-key`). Sin ella, `401`. La clave vive en el Key Vault de cada consumidor. Su documento lo llama «defensa en profundidad» |
+| `nominas-extras` — Function detrás de una Static Web App enlazada | **Function App + SWA** | **Nada en la Function**: sus dos endpoints están en `ANONYMOUS`. La autenticación entera la pone la Static Web App |
+
+**Nuestro caso es el cuarto**, y es el que menos se parece a lo que esta spec
+proponía en su primera versión.
+
+### El dato que tumba la propuesta anterior
+
+`front-nominas/js/config.js` documenta el modelo con una claridad que ahorra
+un despliegue roto:
+
+> *En producción con Static Web App enlazada a la Function (recomendado):
+> dejar la URL base vacía. El path `/api/run` lo proxea la SWA y reenvía el
+> `X-MS-CLIENT-PRINCIPAL` del usuario autenticado al backend. **No hace falta
+> clave de Function ni CORS.** — En producción con la Function expuesta
+> directa (no recomendado, requiere CORS y clave)…*
+
+Y su `function_app.py` lo confirma: los dos endpoints, `health` y `run`, en
+`ANONYMOUS`.
+
+Es decir: **el backend enlazado exige nivel anónimo**, y lo que la Static Web
+App reenvía es la cabecera `x-ms-client-principal` con la identidad del
+usuario, **no** un token ni una clave que la Function pueda exigir. Por tanto:
+
+- **`auth_level=FUNCTION` (lo que esta spec proponía) no vale.** La SWA no
+  añade la clave: el front habría empezado a recibir `401` en los cinco
+  endpoints el día del despliegue, y el fallo habría aparecido en T16, después
+  de haber montado todo. Punto 2 del encargo, y por eso se mira antes.
+- **La autenticación integrada de Entra en la Function App tampoco vale**, por
+  la misma razón: espera un token *bearer* que el proxy de la SWA no envía.
+  Funciona en `partes` sv4 porque allí el navegador va **directo** contra el
+  Container App; aquí hay un proxy en medio.
+
+### Los dos riesgos no son el mismo
+
+| Endpoint | Qué pasa si lo llama un desconocido | Gravedad |
+|---|---|---|
+| `POST /api/archivar` | **Escribe** un PDF en SharePoint | Alta: es un efecto sobre un sistema compartido, y persistente |
+| `POST /api/extraer`, `/api/firma` | **Gasta cuota de Gemini** | Media: es dinero, es acotable con un tope, y no ensucia nada |
+| `POST /api/split`, `/api/validar` | Consume CPU | Baja: sin efecto externo, y los límites de tamaño de entrada ya existen |
+| `GET /api/health` | Devuelve que el servicio vive | Ninguna: **y debe seguir anónimo**, porque es lo que permite monitorizarlo y lo que usa el propio despliegue |
+
+Tratarlos igual sería o quedarse corto con `archivar` o pasarse con `health`.
+
+### Recomendación · defensa en capas, de fuera adentro
+
+1. **La Static Web App autentica** (Entra) y **exige pertenencia al grupo**
+   `posventa-usuarios` vía asignación requerida en la aplicación empresarial
+   (R16). Es el mismo mecanismo que `partes` sv4 y es el que de verdad decide
+   quién usa la aplicación.
+2. **La Function App queda anónima**, porque la plataforma lo exige. **No es
+   una elección, y por eso hay que dejarlo escrito**: sin una nota en la
+   cabecera del módulo y un test que lo fije, el siguiente que lea
+   `auth_level=ANONYMOUS` lo «arreglará» y romperá el front.
+3. **Ventana de escritura para `archivar`** — *el candado principal, y el que
+   sí controlamos*. `ARCHIVO_HABILITADO` se despliega **apagado**. Se enciende
+   solo para T18 y para las sesiones con negocio, y se vuelve a apagar. Es un
+   App Setting: se cambia sin redesplegar y sin tocar código. El ecosistema ya
+   usa este patrón —`partes` sv4 enciende y apaga su pantalla de administración
+   con una variable, «sin redesplegar»— y aquí encaja mejor todavía, porque el
+   interruptor **ya existe**, es el de F-006, y está apagado por defecto por
+   diseño. Fuera de esa ventana, `/api/archivar` responde `503` a todo el
+   mundo, incluido un desconocido, y **no toca SharePoint**.
+4. **Tope de gasto y alerta en Gemini**: es la defensa proporcionada al riesgo
+   de `/api/extraer`, y no depende de Azure ni del proxy.
+5. **Restricción de acceso público en la Function App**, si resulta compatible
+   con el backend enlazado. Se intenta y **se verifica en T14**. Si la Static
+   Web App deja de alcanzar el backend, se revierte: las capas 1, 3 y 4 se
+   sostienen solas y la 5 es mejora, no cimiento. **No se da por hecha.**
+6. **El destino sigue siendo la biblioteca de dev** del sitio de IT, no el
+   archivo real de Posventa (eso es F-013). Un PDF colado aterriza en una
+   biblioteca de desarrollo.
+
+Lo que queda de riesgo residual —una ventana de horas en la que `archivar`
+está encendido y la Function es alcanzable— se anota como **riesgo aceptado**
+y se cierra del todo cuando la capa 5 se confirme.
+
+### Descartadas, y por qué
+
+| Alternativa | Por qué no |
+|---|---|
+| `auth_level=FUNCTION` en los cinco endpoints | **La plataforma lo impide** detrás de un backend enlazado, y la SWA no aporta la clave. Era la propuesta de la primera versión de esta spec: habría roto el front |
+| Autenticación integrada de Entra en la Function App | El proxy de la SWA reenvía una cabecera de identidad, no un token *bearer*. Se rompería el mismo origen |
+| Que el front llame a la Function directa con su propio token (MSAL + CORS) | `front-nominas` lo documenta como «no recomendado»; obliga a mantener CORS y a cambiar el front que F-007 acaba de cerrar. Coste alto para un piloto |
+| Exigir la cabecera `x-ms-client-principal` como control de acceso | Es base64 **sin firma**: cualquiera puede fabricarla. Sirve para saber *quién* es el usuario, no para impedir el paso |
+| Confiar en que nadie sepa el nombre de host | No es seguridad, y conviene decirlo en vez de apoyarse en ello sin nombrarlo |
+| Apagar `/api/archivar` durante todo el piloto | Archivar **es** el piloto, y T18 lo necesita. Por eso una ventana, no un apagado |
+
+### Coste
+
+Bajo, y ese es parte del argumento: no hay código nuevo. La capa 1 ya estaba
+en el diseño (R16). La 2 es una cabecera y un test. La 3 es una App Setting en
+`desplegar_backend.ps1` más dos líneas de `az` en el runbook. La 4 se
+configura en la consola de Gemini. La 5 es un intento con reversión. Lo que sí
+crece es la **verificación manual**: T14 gana la comprobación de la capa 5 y
+T18 gana el encendido y apagado explícitos de la ventana.
+
 ## 10 · Riesgos y decisiones (alternativas descartadas)
 
 **Riesgo 1 · Una Function App abierta que sabe escribir en SharePoint.** Es el
-riesgo mayor de la feature (§0) y por eso R17 tiene fase RED: el test que
-comprueba que los endpoints exigen credencial se escribe **antes** del cambio
-y se le ve fallar. La verificación real es manual (T14): llamar al host
-desnudo y recibir `401`.
+riesgo mayor de la feature (§0), y la plataforma **no deja** cerrarlo con una
+credencial en la propia Function (§9 bis). Se cierra con la ventana de
+escritura: `ARCHIVO_HABILITADO` se despliega apagado (R33) y solo se enciende
+para T18 y para las sesiones con negocio. La fase RED va sobre eso —el test
+que comprueba que el script de despliegue lo deja apagado se escribe antes que
+el script—, y la verificación real es manual en T14 y T18.
+
+**Riesgo 1 bis · Que alguien «arregle» el `auth_level`.** Un endpoint anónimo
+en un servicio desplegado parece un descuido, y el arreglo evidente
+—`FUNCTION`— rompe el front sin que ningún test del repositorio lo note,
+porque ninguno atraviesa el proxy de la Static Web App. De ahí R32: la
+cabecera del módulo lo explica y un test lo fija. Es la clase de fallo que
+reaparece a los seis meses, cuando ya nadie recuerda por qué estaba así.
 
 **Riesgo 2 · Regenerar el secreto de cliente en cada despliegue.** Es
 exactamente el fallo que el portal documenta: un despliegue completo pisó la

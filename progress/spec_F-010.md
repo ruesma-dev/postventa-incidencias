@@ -8,14 +8,15 @@
 
 ## Qué se ha escrito
 
-- `specs/F-010-despliegue/requirements.md` — **31 requisitos EARS** en siete
+- `specs/F-010-despliegue/requirements.md` — **35 requisitos EARS** en siete
   bloques (scripts re-ejecutables, secretos, acceso restringido, presupuesto
   del proxy, tarjeta del portal, alcance del piloto, y T18 de F-006), con
   tabla de trazabilidad requisito → verificación → tarea.
 - `specs/F-010-despliegue/design.md` — recursos, gestión de secretos, cómo se
-  enlazan front y backend, ficheros a crear/modificar/no tocar, **siete
-  decisiones abiertas D1–D7** y riesgos.
-- `specs/F-010-despliegue/tasks.md` — **21 tareas**, de las cuales **nueve son
+  enlazan front y backend, ficheros a crear/modificar/no tocar, las decisiones
+  **D1–D7** (D1 y D3 ya resueltas) y riesgos. **§9 bis** es el razonamiento de
+  D3.
+- `specs/F-010-despliegue/tasks.md` — **22 tareas**, de las cuales **diez son
   `MANUAL (humano)`**, cada una con su comando exacto de PowerShell.
 
 Ni un valor real en los tres ficheros: verificado aplicándoles los patrones
@@ -23,13 +24,15 @@ de `test_f006_repo_sin_identificadores.py` y de
 `test_f005_integracion_sin_secretos.py` (GUID, FQDN de Azure, IP, credencial
 con signo igual, cadena de conexión). **Los tres salen limpios.**
 
-## Lo que el humano tiene que decidir · **tres decisiones bloquean**
+## Estado de las decisiones · **queda una bloqueante**
+
+*Actualizado el 2026-08-20 tras la respuesta del humano.*
 
 | # | Decisión | ¿Bloquea? |
 |---|---|---|
-| **D1** | **El grupo de seguridad de Posventa no existe.** Falta decidir nombre (se propone `posventa-usuarios`), propietario y miembros del piloto. Lo crea el humano o IT: un agente no toca el inquilino | **SÍ** |
-| **D2** | **El proxy de la Static Web App corta a los 45 s** (documentado en `azure-apps/portal.md` §9, aprendido con la app de nóminas). Hoy `IA_TIMEOUT_S` vale 120 y el `TIMEOUT_PETICION_MS` del front vale 180000: **el circuito no cabe**. Se propone bajarlos, pero antes hay que **medir** (T2) cuánto tarda de verdad una extracción | **SÍ** |
-| **D3** | **Cómo se cierra la Function App.** Ver el hallazgo de abajo | **SÍ** |
+| **D1** | ✅ **RESUELTA**: el humano crea él mismo el grupo en Entra con los miembros del piloto, y da por bueno el nombre **`posventa-usuarios`**. T1 avisa de confirmarlo antes de aplicarlo, porque el nombre tiene que coincidir en tres sitios: la asignación de la aplicación empresarial, `requiredGroupName` de la tarjeta y el propio grupo | ~~Sí~~ **ya no** |
+| **D2** | **ABIERTA. El proxy de la Static Web App corta a los 45 s** (documentado en `azure-apps/portal.md` §9, aprendido con la app de nóminas). Hoy `IA_TIMEOUT_S` vale 120 y el `TIMEOUT_PETICION_MS` del front vale 180000: **el circuito no cabe**. Se propone bajarlos, pero antes hay que **medir** (T2) cuánto tarda de verdad una extracción | **SÍ** |
+| **D3** | ✅ **RESUELTA**: defensa en capas, no una credencial en la Function. Razonamiento completo abajo y en `design.md` §9 bis | ~~Sí~~ **ya no** |
 | D4 | El cortafuegos de `psql-albaranes-rs9k2`: si hiciera falta una regla nueva, es un cambio **a nivel de servidor compartido** y lo decide el humano con albaranes | Solo para la traza del archivo |
 | D5 | Nombre de host del front: se propone el que asigna Azure, sin dominio propio | No |
 | D6 | ¿Esperar a F-018? Se propone **no esperar** y subir F-018 justo detrás | No |
@@ -46,9 +49,90 @@ subir desde local están abiertas por diseño**, y `POST /api/archivar` quedarí
 al alcance de cualquiera que supiera el nombre de host — igual que
 `/api/extraer`, con la cuota de Gemini detrás.
 
-Lo crea F-010 y lo cierra F-010: es **R17**, la tarea **T8** con fase RED, y
-la verificación manual **T14**, que exige comprobar que una llamada al host
-desnudo devuelve `401` antes de seguir.
+Lo crea F-010 y lo cierra F-010. **Cómo** se cierra es D3, y la primera
+respuesta de esta spec era equivocada: ver la sección siguiente.
+
+## D3 · el razonamiento, no solo la conclusión
+
+*(Encargo del humano del 2026-08-20: recomendación con argumentos, después de
+mirar qué hace de verdad el ecosistema.)*
+
+### Lo que se fue a mirar, y qué se encontró
+
+| Servicio | Forma | Cómo protege sus endpoints |
+|---|---|---|
+| `partes` sv4 — front de usuario | Container App, ingress externo | Autenticación integrada de Entra + **asignación requerida** + grupo de seguridad. Su `setup_sv4_easyauth.ps1` lo hace paso a paso y deja «asignacion-requerida = ON» |
+| `partes` sv5 — servicio interno | Container App | **Ingress interno**: red, no credencial |
+| `sigrid-api` | **Function App** | **Clave de función** (`x-functions-key`); sin ella, `401`. La clave vive en el Key Vault del consumidor |
+| `nominas-extras` | **Function App detrás de una SWA enlazada** | **Nada en la Function**: sus dos endpoints, en `ANONYMOUS` |
+
+**Nuestro caso es el cuarto.** Y es el que menos se parecía a lo que esta spec
+proponía.
+
+### El dato que tumba la propuesta anterior
+
+`front-nominas/js/config.js` lo documenta sin ambigüedad: con la Static Web
+App enlazada, el path `/api/...` **lo proxea la SWA y reenvía el
+`X-MS-CLIENT-PRINCIPAL`** del usuario autenticado, y *«no hace falta clave de
+Function ni CORS»*; exponer la Function directa es *«no recomendado, requiere
+CORS y clave»*. Su `function_app.py` lo confirma: los dos endpoints anónimos.
+
+Es decir: **el backend enlazado exige nivel anónimo**, y lo que llega al
+backend es una **cabecera de identidad**, no un token ni una clave que la
+Function pueda exigir. Consecuencias:
+
+- **`auth_level=FUNCTION`, lo que esta spec proponía, no vale.** La SWA no
+  aporta la clave: el front habría empezado a devolver `401` en los cinco
+  endpoints el día del despliegue, y el fallo habría salido en T16, con todo
+  ya montado. Es exactamente el punto 2 del encargo —«si el token no viaja, la
+  opción no vale por bonita que sea»— y por eso se miró antes de escribir.
+- **La autenticación integrada de Entra en la Function tampoco vale**, por lo
+  mismo: espera un *bearer* que el proxy no envía. Funciona en `partes` sv4
+  porque allí el navegador va directo al servicio; aquí hay un proxy en medio.
+
+### Los dos riesgos no son iguales, y por eso no se tratan igual
+
+`/api/archivar` **escribe** en SharePoint: efecto persistente sobre un sistema
+compartido. `/api/extraer` y `/api/firma` **gastan cuota de Gemini**: es
+dinero, y el dinero se acota con un tope. `/api/split` y `/api/validar` solo
+consumen CPU. Y `/api/health` **debe seguir anónimo**, porque es lo que
+permite monitorizarlo y lo que usa el propio despliegue.
+
+### La recomendación · defensa en capas
+
+1. La **Static Web App autentica** y exige pertenencia al grupo, vía
+   asignación requerida. Mismo mecanismo que `partes` sv4.
+2. La **Function queda anónima porque la plataforma lo exige** — y por eso hay
+   que **dejarlo escrito**: sin nota en la cabecera y sin test, el siguiente
+   que lo lea lo «arregla» y rompe el front (R32, T8).
+3. **Ventana de escritura, el candado principal**: `ARCHIVO_HABILITADO` se
+   despliega **apagado** (R33); se enciende solo para T18 y las sesiones con
+   negocio y se vuelve a apagar, con una App Setting y sin redesplegar (R34).
+   El interruptor **ya existe** —es el de F-006, apagado por defecto— y el
+   patrón también: `partes` sv4 enciende y apaga su pantalla de administración
+   igual. Fuera de la ventana, `/api/archivar` responde `503` a todo el mundo.
+4. **Tope de gasto y alerta en el proveedor de IA** (R35, T14 bis).
+5. **Restricción de acceso público en la Function App**, *si* resulta
+   compatible con el backend enlazado: se intenta, se verifica en T14 **después
+   de T16**, y si el front deja de funcionar **se revierte**. Es mejora, no
+   cimiento, y por eso no se da por hecha (R17).
+6. El destino sigue siendo la **biblioteca de dev**, no el archivo real.
+
+**Descartadas**: `auth_level=FUNCTION` (la plataforma lo impide); Entra en la
+Function (rompe el proxy); front llamando directo con MSAL y CORS (el propio
+ecosistema lo desaconseja y obligaría a cambiar el front recién cerrado en
+F-007); fiarse de `x-ms-client-principal` como control (es base64 **sin
+firma**: cualquiera la fabrica); y fiarse de que nadie sepa el nombre de host,
+que no es seguridad.
+
+**Coste**: bajo, y es parte del argumento — no hay código nuevo. Lo que crece
+es la verificación manual: T14 gana la comprobación de la capa 5, T14 bis es
+nueva, y T18 gana el encendido y apagado explícitos de la ventana.
+
+**Riesgo residual, declarado**: mientras la capa 5 no se confirme, queda una
+ventana de horas en la que `archivar` está encendido y la Function es
+alcanzable. Se anota como riesgo aceptado, igual que se hizo con el riesgo 7
+de F-006.
 
 ## Sobre T18 de F-006, que es lo que esta feature desbloquea
 

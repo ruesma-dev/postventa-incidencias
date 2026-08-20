@@ -91,9 +91,13 @@ y se detallan en `tasks.md`.
 
 ## Bloque C · El acceso queda restringido al grupo de Posventa
 
-> Tercer criterio de aceptación. **El grupo de Posventa no existe todavía**:
-> crearlo es tarea del humano o de IT (D1 de `design.md` §9), y hasta que
-> exista no hay a quién restringir.
+> Tercer criterio de aceptación. **D1 resuelta el 2026-08-20**: el humano crea
+> él mismo el grupo `posventa-usuarios` con los miembros del piloto. **D3
+> resuelta el 2026-08-20**: la protección de la Function App no es una
+> credencial en la propia Function —la plataforma no la admite detrás de un
+> backend enlazado—, sino **defensa en capas**; el razonamiento completo está
+> en `design.md` §9 bis y es de lectura obligada antes de implementar R17 y
+> R32.
 >
 > Ojo al contraste con el portal: `swa-portal-ruesma` tiene
 > `appRoleAssignmentRequired` en falso **a propósito**, porque el portal es
@@ -111,14 +115,37 @@ y se detallan en `tasks.md`.
   aplicación empresarial de la Static Web App, y debe asignar a ella el grupo
   de Posventa y **solo** ese grupo.
 
-- **R17.** SI alguien llama a un endpoint de la Function App **por el nombre
-  de host de la propia Function**, sin credencial y sin pasar por la Static
-  Web App, ENTONCES el sistema debe responder `401` y **no debe ejecutar el
-  endpoint**.
+- **R17.** El sistema debe restringir el acceso público de la Function App a
+  lo que necesite la Static Web App enlazada, **siempre que resulte compatible
+  con el backend enlazado**; y SI al aplicarlo la Static Web App deja de
+  alcanzar el backend, ENTONCES el sistema debe revertir la restricción y
+  dejar constancia de que esa capa no está disponible.
+  *(Verificación **MANUAL (humano)**. Ver `design.md` §9 bis, capa 5: es
+  mejora, no cimiento.)*
 
 - **R18.** El sistema debe mantener `GET /api/health` accesible sin
   autenticación: lo usan el despliegue y el propio front para comprobar que el
   backend responde, y no expone ningún dato.
+
+- **R32.** El sistema debe dejar escrito en `function_app.py` **por qué** los
+  endpoints permanecen anónimos —lo exige el backend enlazado de la Static Web
+  App, que reenvía una cabecera de identidad y no una credencial— y dónde está
+  entonces el control de acceso. Un endpoint anónimo que parece un descuido
+  acaba «arreglado», y ese arreglo rompe el front sin que ningún test del
+  repositorio lo detecte.
+
+- **R33.** El sistema debe desplegar `ARCHIVO_HABILITADO` **apagado**, de
+  forma que fuera de la ventana de escritura `POST /api/archivar` responda
+  `503` a cualquiera —incluido un desconocido— y no toque SharePoint.
+
+- **R34.** CUANDO haga falta archivar de verdad (T18 o una sesión con
+  negocio), el sistema debe permitir abrir y cerrar esa ventana **cambiando
+  una App Setting, sin redesplegar y sin tocar código**.
+
+- **R35.** El sistema debe tener fijado un **tope de gasto con alerta** en el
+  proveedor de IA antes de exponer `/api/extraer` y `/api/firma`: es la
+  defensa proporcionada al riesgo de que un desconocido consuma cuota.
+  *(Verificación **MANUAL (humano)**.)*
 
 - **R19.** CUANDO el front llama a `/api/*` desde el mismo origen a través de
   la Static Web App, el sistema debe atender la llamada **sin que el front
@@ -178,14 +205,15 @@ y se detallan en `tasks.md`.
   la remesa y de la cola de revisión (F-019).
 
 - **R27.** CUANDO el despliegue termina, el sistema debe poder comprobarse con
-  un script de verificación que consulte `GET /api/health`, compruebe que el
-  nombre de host desnudo de la Function responde `401` y compruebe que la
-  Static Web App redirige al inicio de sesión, **sin subir nada a ningún
-  sitio**.
+  un script de verificación que, **sin subir nada a ningún sitio**, consulte
+  `GET /api/health`, compruebe que `POST /api/archivar` contra el nombre de
+  host de la Function responde `503` —la ventana de escritura está cerrada
+  (R33)— y compruebe que la Static Web App redirige al inicio de sesión.
 
-- **R28.** El sistema debe mantener apagado en el despliegue todo lo que no
-  forma parte del piloto: ninguna variable de Sigrid, y `ARCHIVO_HABILITADO`
-  encendido **solo** contra la biblioteca de dev del sitio de IT.
+- **R28.** El sistema debe mantener fuera del despliegue todo lo que no forma
+  parte del piloto: **ninguna** variable de Sigrid; y cuando la ventana de
+  escritura de R33 esté abierta, el destino debe ser **solo** la biblioteca de
+  dev del sitio de IT, nunca el archivo real de Posventa.
 
 ## Bloque G · T18 de F-006 se desbloquea aquí
 
@@ -231,8 +259,12 @@ y se detallan en `tasks.md`.
 | R14 | Ya lo fija `staticwebapp.config.json` (F-007); test de que el despliegue no lo pisa. **MANUAL**: abrir la URL sin sesión | T6, **T16** |
 | R15 | **MANUAL (humano)**: intento de acceso con cuenta no miembro | **T16** |
 | R16 | Test: el script pone `appRoleAssignmentRequired` en cierto y asigna el grupo | T6 |
-| R17 | **Fase RED** + `test_f010_r17_los_endpoints_exigen_clave` sobre `function_app.py`. **MANUAL**: llamada al host desnudo | T8, **T14** |
+| R17 | **MANUAL (humano)**: se aplica la restricción y se comprueba que la SWA sigue alcanzando el backend; si no, se revierte y se anota | **T14** |
 | R18 | `test_f010_r18_health_sigue_anonimo` | T8 |
+| R32 | `test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada` | T8 |
+| R33 | **Fase RED** + test sobre `desplegar_backend.ps1`: fija `ARCHIVO_HABILITADO` apagado | T5 |
+| R34 | Test: el runbook trae las dos líneas de `az` que abren y cierran la ventana | T10 |
+| R35 | **MANUAL (humano)**: tope y alerta configurados antes de T16 | **T14 bis** |
 | R19 | Test: el front no gana ni URL de backend ni CORS; `baseApi` sigue siendo `/api` | T9 |
 | R20 | Test: la plantilla de App Settings fija los dos tiempos por debajo del presupuesto | T5 |
 | R21 | Test JS: `TIMEOUT_PETICION_MS` por debajo del presupuesto | T9 |

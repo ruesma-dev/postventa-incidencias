@@ -39,8 +39,12 @@ services/
       pipelines/            # orquestación por pasos (abajo)
       services/
     infrastructure/
-      llm/                  # adaptador Gemini (y los que vengan)
-      sharepoint/           # adaptador Graph
+      documentos/           # adaptadores de los ficheros que entran: PDF y ZIP
+      llm/                  # adaptador Gemini (y los que vengan) + su fábrica
+      prompts/              # carga de config/prompts.yaml
+      sharepoint/           # adaptador Graph + su fábrica (F-006).
+                            # ÚNICO paquete del servicio que conoce Graph:
+                            # ni domain/ ni application/ importan httpx
       sigrid/               # cliente de sigrid-api
       persistencia/         # PostgreSQL
     interface_adapters/api/ # handlers HTTP de la Function
@@ -55,14 +59,83 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
 1. **Ingesta** — normaliza la entrada (PDF suelto, ZIP, varios ficheros,
    carpeta seleccionada en el navegador) a una lista de PDFs.
 2. **Troceado** — parte cada PDF de remesa en documentos de **un parte**,
-   detectando el comienzo por la plantilla impresa.
+   detectando el comienzo por la plantilla impresa. La señal es el pie que
+   imprime Sigrid: una página cuyo pie diga `Página N` con N ≥ 2 es la segunda
+   hoja del parte anterior. Esa señal **solo se puede leer si el PDF trae capa
+   de texto**; un escaneo sin OCR no la tiene, así que el troceado degrada a
+   «una página, un parte» y cada parte declara en `modo_deteccion` cómo se
+   troceó, para que nadie confunda «no había parte de dos hojas» con «no se ha
+   podido mirar». Recuperar el parte de dos hojas en remesas escaneadas es
+   F-014, apoyándose en la lectura multimodal del paso 3.
 3. **Extracción** — modelo multimodal sobre las páginas del parte: promoción,
-   chalet, nº de incidencia, fecha, descripción **y todo lo manuscrito**
-   (DNI, observaciones). Un escaneo no tiene capa de texto: esto es visión.
-4. **Validación** — firma presente y humana, campos obligatorios legibles,
-   coherencia con Sigrid (la incidencia existe y está abierta).
-5. **Nombrado** — `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`: código de obra, código de incidencia y sufijo.
-6. **Archivo** — subida a SharePoint.
+   código de obra, **unidad**, nº de incidencia, fecha de servicio,
+   descripción **y todo lo manuscrito** (DNI, observaciones). Un escaneo no
+   tiene capa de texto: esto es visión. Tres precisiones que decidió F-003:
+   - **Cada campo viaja con su confianza** (`confianza_pct`, entero 0–100),
+     también los manuscritos. Un dato leído a medias no vale lo mismo que uno
+     impreso, y quien valida (paso 4) necesita saberlo.
+   - **Lee el «Página N» del pie impreso y lo devuelve, pero no reagrupa
+     nada.** El modelo ve ese pie aunque el escaneo no tenga capa de texto,
+     que es justo lo que el troceado no pudo leer. Unir las dos hojas de un
+     parte con ese dato es **F-014**; la extracción no toca `paginas_origen`
+     ni el troceado.
+   - **No juzga la firma ni dice si el parte es válido**: eso es el paso 4.
+   El dato de la unidad se llama **`unidad`** en todo el proyecto: el papel lo
+   imprime con la etiqueta «Vivienda» y el backlog lo llamaba «chalet», pero
+   `unidad` es como lo nombra la estructura de archivo de Posventa
+   (`PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`). Son tres nombres del
+   mismo dato y en el código hay uno solo.
+4. **Validación** — qué se hace con el parte. Lo decidió F-004, y son reglas
+   de **dominio puro**: sin red, sin base de datos y sin IA, para poder
+   probarlas enteras sin un proveedor delante.
+   - **Los campos que deciden son dos**: código de obra y nº de incidencia. Un
+     campo cuenta como leído si trae valor —«solo espacios» es vacío— y su
+     confianza llega al umbral (**50**, constante del dominio y no
+     configuración: aflojar una regla de negocio no puede ser un cambio de
+     variable de entorno).
+   - **La firma se lee aparte**, con su propio prompt y su propia llamada
+     (`POST /api/firma`), y se clasifica en `humana`, `marca_simple`,
+     `casilla_vacia` o `ilegible`. Ante cualquier duda, `ilegible`: nunca se
+     da por firmado lo que no se entendió. Una `humana` con confianza por
+     debajo del umbral **se publica ya como `ilegible`**, para que la etiqueta
+     y el motivo no se contradigan delante de quien los lea.
+   - **Dos destinos, porque son dos trabajos para dos personas distintas**:
+     `cola_validacion_humana` es «hay algo que **decidir**» —el parte está
+     completo y firmado, pero el cliente escribió algo, y la transcripción
+     viaja con él—; `revision_manual` es «hay algo que **arreglar**»: falta un
+     campo decisivo o no hay firma humana, y toca volver al papel.
+   - **Lo que NO hace este paso**: comprobar contra Sigrid que la incidencia
+     exista y esté abierta —eso necesita red, es **F-008/F-009** y es una
+     segunda puerta, posterior y aparte—, e interpretar **qué dice** la
+     observación, que es **F-016**. Guardar la cola es F-005; pintarla,
+     F-007/F-011.
+5. **Nombrado** — `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`: código de obra,
+   código de incidencia y sufijo. **Dominio puro** (`domain/models/nombrado.py`):
+   sin reloj, sin red y sin configuración, para que volver a nombrar un parte
+   meses después dé exactamente el mismo fichero. Cuatro reglas que no se
+   negocian:
+   - **La barra del código de incidencia pasa a guion.** `RS26.08/0123` se
+     nombra `RS26.08 - 0123`: la barra es un separador de ruta y dejarla
+     partiría el fichero en dos carpetas.
+   - **Los ceros a la izquierda se conservan.** `0677` nunca es `677`:
+     `int("0677")` es un bug, no una normalización, y `677` es otra obra.
+   - **El sufijo va literal.** ` PARTE FIRMADO` en mayúsculas y `.pdf`: es lo
+     que ya usa Posventa y lo que distingue el parte conformado.
+   - **Un nombre imposible es un error, nunca un saneo silencioso.** Si falta
+     un código o el nombre lleva algo que SharePoint no admite, el parte va a
+     revisión manual. Sustituir el carácter raro por `_` archivaría en el
+     archivo de Posventa un fichero que nadie pidió, y nadie se enteraría.
+6. **Archivo** — subida a SharePoint, en `<carpeta base>/<código de obra>/`.
+   **Solo se archiva lo que el paso 4 declaró apto**; con cualquier otro
+   destino no se sube nada y ni siquiera se crea la carpeta. Reprocesar una
+   remesa no puede duplicar, y para eso hay **tres capas**:
+   - **traza** — si ya consta archivado ese `hash` de parte, no se llama a
+     nadie: ni token, ni red, ni bytes;
+   - **reemplazo** — la subida pide **siempre** reemplazar el homónimo, nunca
+     renombrar. Renombrar produce el `... (1).pdf` que el criterio de
+     aceptación prohíbe, y es el comportamiento por defecto de más de un
+     cliente de Graph;
+   - **carpeta** — crearla dos veces es un éxito, no un error.
 7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
    entonces `commit: true`.
 
@@ -94,12 +167,35 @@ igual que hoy, y por debajo se suben los PDFs.
    parte sin firma válida no se archiva ni se cierra: va a revisión manual.
    Solo firma el cliente: la columna del técnico viene vacía en toda la
    remesa de ejemplo, así que exigirla dejaría fuera todos los partes.
+   **Cómo convive esto con «las observaciones son el único motivo de
+   rechazo»** (3 bis), que parece lo contrario: son dos cosas distintas y las
+   dos se sostienen. El alcance de «único motivo» son **los datos
+   manuscritos** —DNI, fecha, horas, nombre—, no la firma, que no es un dato
+   transcrito sino la conformidad misma; y el criterio está redactado sobre
+   **la cola**: a la cola de validación humana no entra nadie más que quien
+   trae observaciones. Un parte sin firma humana no va a la cola: va a
+   revisión manual, que es otro destino y otro trabajo. Si se leyera «único
+   motivo» como «lo único que impide ser apto», chocaría con el criterio
+   —de la misma lista— de que un parte sin nº de incidencia nunca queda apto.
 3 bis. **Firmado no es conforme.** En la remesa de ejemplo hay un parte
    firmado cuya observación manuscrita dice "se aprecia que se han hecho
    parcheados, no se reparó la totalidad". **Un parte con observaciones
    manuscritas nunca se cierra solo**: va a revisión manual con el texto
    delante de quien decide. Cerrarlo por tener firma sería dar por resuelta
    una reparación que el cliente dice que no lo está.
+   Precisado el 2026-08-19, y manda sobre el diseño de F-004:
+   - **Las observaciones manuscritas son, de momento, el único motivo de
+     rechazo.** Ningún otro dato manuscrito descalifica el parte.
+   - **Rechazado no es descartado.** El parte va a una **cola de validación
+     humana** que presenta las observaciones transcritas para que una persona
+     decida. Ni se cierra solo ni se tira: espera a que alguien lo mire.
+   - El dimensionado esperable de esa cola sale del dato real: en la remesa
+     de Mirasierra son **2 partes de 22** (~9 %).
+   - **Interpretar automáticamente el contenido de la observación** —separar
+     la inocua de la que impide dar la reparación por buena, y así encoger la
+     cola humana— **no es F-004**: es **F-016**, dada de alta el
+     2026-08-19 en `harness/features.json` y bloqueada por F-004. F-004 detecta que hay
+     observaciones y las transcribe; no las juzga.
 4. **Lo manuscrito es dato de primera, no decoración.** DNI y observaciones
    se escriben a mano y hay que extraerlos. Descartarlos porque "no es texto
    impreso" es un bug, no una simplificación.
@@ -108,6 +204,11 @@ igual que hoy, y por debajo se suben los PDFs.
    validación que los exija manda a revisión manual el 100 % de los partes.
    Los únicos campos que deciden son: código de obra, nº de incidencia,
    firma y observaciones.
+   En particular, y aunque suene contraintuitivo: **un parte sin DNI del
+   cliente pasa como conforme**. La ausencia de DNI manuscrito no descalifica
+   nada. El dato real lo respalda: en la remesa de Mirasierra solo **7 de los
+   22 partes** traen DNI, así que exigirlo dejaría fuera a dos tercios de una
+   remesa normal.
 5. **El número de incidencia lo emite Sigrid** y se escribe `RS26.08/0123`
    (con barra) en el ERP y en el parte impreso, pero con guion en el nombre
    del fichero. Sin él no se puede nombrar ni
@@ -134,9 +235,9 @@ igual que hoy, y por debajo se suben los PDFs.
 | Sistema | Uso | Límites |
 |---|---|---|
 | `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la incidencia; cierre por escritura. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. La escritura está apagada por defecto y los endpoints de dominio son dry-run salvo `commit: true`. |
-| SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. | Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature F-013, no un detalle de despliegue. |
-| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones y preferencias de usuario. **Schema propio** del proyecto. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento. |
-| Gemini (`gemini-2.5-flash`) | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`: el proveedor se cambia por configuración, no editando el pipeline. |
+| SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
+| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
+| Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
 
 **Prohibido desde local**: escribir en Sigrid (ni siquiera con `commit:false`

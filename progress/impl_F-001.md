@@ -11,9 +11,9 @@ misma sesión, por lo que aún no estaban cargados.
 ### Declaración del monorepo
 
 - `harness/servicios.json` — declara `api` (`services/postventa-api`, python,
-  venv propio) y `front` (`services/postventa-front`, lenguaje `otro`). Sin
-  este fichero el portero trataría el repositorio como un solo proyecto y no
-  validaría los servicios por separado.
+  venv propio). Sin este fichero el portero trataría el repositorio como un
+  solo proyecto y no validaría los servicios por separado. El front **no** se
+  declara todavía: entra en F-007.
 
 ### `services/postventa-api` (Function App, Python v2)
 
@@ -33,18 +33,33 @@ misma sesión, por lo que aún no estaban cargados.
   desde el primer commit, para que nadie improvise otra después.
 - `requirements.txt`, `requirements-dev.txt`, `host.json`, `.funcignore`,
   `local.settings.json.example`, `.env.example`.
-- `tests/conftest.py` y `tests/test_health.py` — 4 tests.
+- `tests/conftest.py`, `tests/test_health.py` y
+  `tests/test_f001_adaptador_http.py` — 7 tests con nombre trazable
+  (`test_f001_rN_*`, donde N es el criterio de aceptación que cubren).
 
-### `services/postventa-front` (estático)
+### `services/postventa-front` — SACADO de F-001, va a F-007
 
-- `index.html` — Tailwind y Alpine por CDN. De momento solo pinta el estado
-  del backend.
-- `js/config.js`, `js/app.js`, `css/styles.css`.
-- `dev_server.py` — copiado de `front-nominas` y adaptado: puerto de API 7073
-  (el 7072 lo ocupa la Function de nóminas) y nombres del proyecto.
-- `staticwebapp.config.json` — auth de Entra y rutas. **El `openIdIssuer`
-  lleva `<TENANT_ID>` como marcador**: `front-nominas` tiene el ID de tenant
-  real en claro y `CLAUDE.md` lo prohíbe. Se sustituye al desplegar (F-010).
+Se llegó a escribir y a verificar entero (ver más abajo), pero **ya no forma
+parte de esta feature**: sus 114 líneas de `dev_server.py` —un servidor de
+desarrollo copiado de `front-nominas`, que no se despliega— hundían la puerta
+de cobertura al 26 % sin proteger nada que vaya a producción.
+
+Decisión del humano: sacar el front de F-001. El trabajo **no se ha perdido**:
+está íntegro en la rama `feature/F-007-front`, y F-007 lo recupera con
+`git checkout feature/F-007-front -- services/postventa-front`.
+
+Lo que ya se sabe y F-007 no tiene que volver a descubrir:
+
+- **Alpine y el orden de los scripts**: los scripts propios van sin `defer` al
+  final del `body`; con `defer`, cuando Alpine arranca el documento ya está en
+  `interactive` y no encuentra la función del `x-data`.
+- **Alpine con versión fija** (`3.14.1`), no `3.x.x`: un cambio del CDN no
+  debe poder romper el front.
+- **`staticwebapp.config.json` con `<TENANT_ID>` como marcador**:
+  `front-nominas` tiene el ID de tenant real en claro y `CLAUDE.md` lo
+  prohíbe.
+- El `dev_server.py` proxea `/api/*` al puerto **7073** (el 7072 lo ocupa la
+  Function de nóminas).
 
 ### Raíz
 
@@ -56,22 +71,49 @@ misma sesión, por lo que aún no estaban cargados.
 - `requirements-dev.txt` — pytest, ruff, coverage y pymupdf (esta última hará
   falta para el troceado de F-002; se instaló para poder leer las muestras).
 - `.gitignore` — añadidos `**/.venv/`, `local.settings.json`, `.pytest_cache/`,
-  `.ruff_cache/` y `.coverage`.
+  `.ruff_cache/`, `.coverage`, `coverage.json` y `services/*/coverage.json`.
+
+## Evidencias
+
+| Número | Valor |
+|---|---|
+| **Tests** | 10 en verde (3 en la raíz, 7 en el servicio `api`), 0 fallos |
+| **Tiempo de las suites** | 0,03 s la de la raíz y 0,21 s la del servicio (0,24 s en total). Tan bajo porque ningún test toca red, BBDD ni el runtime de Functions |
+| **Cobertura de las líneas de la feature** | **100 %** (40/40), umbral 80 % |
+| **Mutación** | 3 mutantes: **2 muertos, 1 superviviente** (equivalente, analizado en `progress/mutacion_F-001.md`) |
+| **Portero** | `bash harness/init.sh` → **ENTORNO LISTO**, exit 0 |
 
 ## Verificación (resultados reales, no «debería funcionar»)
 
 | Qué | Resultado |
 |---|---|
-| `bash harness/init.sh` | **ENTORNO LISTO**, con las dos suites en verde |
-| Suite de la raíz | 3 passed |
-| Suite de `api` | 4 passed |
-| `ruff check services/` | All checks passed |
+| `bash harness/init.sh` | **ENTORNO LISTO** |
+| Suite de la raíz / suite de `api` | 3 passed / 7 passed |
+| `ruff check services/ tests/` | All checks passed (tras corregir un `I001` que introdujo el test nuevo) |
+| Puerta de cobertura | 100.0 % de 40 líneas (40/40) |
+| Campaña de mutación | 2 muertos, 1 superviviente equivalente |
 | Import de `function_app` | OK, función `health` registrada |
 | `func start --port 7073` + `curl /api/health` | **HTTP 200** con `{"servicio":"postventa-api","version":"0.1.0","entorno":"local","estado":"ok"}` |
-| `dev_server.py` + `curl :5173/api/health` | **HTTP 200**, el proxy reenvía bien |
-| Página en Chrome | Semáforo verde, «Servicio disponible (entorno local)» y `postventa-api 0.1.0` |
+| `dev_server.py` + `curl :5173/api/health` (front, antes de sacarlo) | **HTTP 200**, el proxy reenvía bien |
+| Página en Chrome (front, antes de sacarlo) | Semáforo verde, «Servicio disponible (entorno local)» y `postventa-api 0.1.0` |
 
-## Dos cosas que se arreglaron durante la verificación
+## Fase RED: NO se hizo — excepción declarada
+
+El nivel `estandar` exige fase RED, y **esta feature no la tuvo**: el código
+se escribió antes que los tests. Al detectarlo el reviewer, se intentó cubrir
+el criterio que faltaba (`/api/health` devuelve 200) escribiendo primero el
+test, con la hipótesis de que fallaría por un efecto colateral al importar
+`function_app`; **pasó a la primera**, porque el código ya existía.
+
+No se ha fabricado una traza roja retroactiva. Falsificar la evidencia
+precisamente en el sitio donde el arnés existe para impedirlo sería peor que
+el incumplimiento. El humano aprobó cerrar F-001 con esta excepción anotada,
+por ser la feature de calentamiento y estar ya verificada de punta a punta.
+
+**Compromiso para F-002 en adelante: se empieza por los tests**, y la traza en
+rojo se pega en el informe de implementación.
+
+## Cosas que se arreglaron durante la verificación y la review
 
 1. **`func` cogía el Python global** en lugar del venv del servicio, y la
    Function no cargaba (`ModuleNotFoundError: pydantic`). Se arranca con
@@ -83,13 +125,32 @@ misma sesión, por lo que aún no estaban cargados.
    `body`**, y Alpine con `defer` y **versión fija** (`3.14.1` en vez de
    `3.x.x`, para que un cambio del CDN no pueda romper el front).
    Detectado con la consola del navegador, no adivinando.
+3. **Nada estaba commiteado.** Lo detectó el reviewer: sin commits, las tres
+   puertas del nivel `estandar` medían un diff vacío y se autodeclaraban N/A.
+   El portero imprimía «ENTORNO LISTO» sobre una feature que formalmente no
+   existía. Con la feature commiteada, la puerta de cobertura pasó de un `N/A`
+   falso a un KO real del 0 %.
+4. **El venv del servicio no tenía `coverage`**, así que el arnés nunca
+   escribía `services/postventa-api/coverage.json` y la cobertura del servicio
+   no contaba para nada. Añadido a su `requirements-dev.txt`.
+5. **Faltaba el test del criterio principal**: que `GET /api/health` devuelve
+   **200** solo se había comprobado con `curl` a mano. Ahora lo cubre
+   `test_f001_r1_health_devuelve_200`.
 
 ## Lo que queda fuera y hay que saber
 
-- **Nadie comprueba el front**: está declarado como lenguaje `otro` sin
-  `comando_tests`, y el portero lo avisa en cada arranque. Tiene sentido
-  resolverlo en F-007, cuando el front tenga lógica que merezca pruebas.
-- Los 11 avisos de `ruff` que quedan son de `harness/*.py`, código del arnés
+- **El front entero queda para F-007**, guardado en la rama
+  `feature/F-007-front`. Allí habrá que decidir cómo se cubre el
+  `dev_server.py`: hoy el arnés **no tiene mecanismo de exclusión**
+  configurable para scripts de desarrollo (`harness/alcance.py` excluye solo
+  `tests`, `specs`, `progress` y `docs`, por constante en el código). Si se
+  decide excluir `scripts/`, es un cambio del arnés y hay que portarlo a
+  `arnes-base`.
+- Los avisos de `ruff` que quedan son de `harness/*.py`, código del arnés
   genérico. Tocarlos aquí obligaría a propagarlos a `arnes-base` y no son de
   esta feature.
+- **Los originales `.docx` y `.pdf` siguen en `docs/referencia/`.** No están
+  en git ni lo han estado nunca (verificado con `git log --diff-filter=A`),
+  pero C3 bis pide que tampoco estén en el árbol de trabajo. Es deuda del
+  trabajo de definición, anterior a esta rama.
 - No se ha desplegado nada: eso es F-010.

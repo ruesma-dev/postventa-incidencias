@@ -1,5 +1,17 @@
 # Entorno local
+# Originales que llegan de fuera (partes escaneados, guias en Word...): entran
+# al arbol para poder trabajar con ellos, pero NUNCA a git. Al repositorio solo
+# entra el Markdown convertido. El bloque ARNES-BASE de mas abajo ya cubre las
+# extensiones en minusculas; aqui van las variantes que se le escapan.
 muestras/
+originales/
+*.PDF
+*.DOCX
+*.XLSX
+*.PPTX
+*.zip
+*.rar
+*.7z
 .idea/
 .venv/
 **/.venv/
@@ -8,6 +20,8 @@ local.settings.json
 .pytest_cache/
 .ruff_cache/
 .coverage
+coverage.json
+services/*/coverage.json
 
 # >>> ARNES-BASE: reglas anadidas por el instalador del arnes. >>>
 .env
@@ -20,3 +34,6 @@ local.settings.json
 *.xls
 *.ppt
 # <<< ARNES-BASE: fin del bloque. <<<
+
+# Worktrees temporales de los subagentes del arnes
+.claude/worktrees/

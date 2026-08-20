@@ -97,9 +97,14 @@ Si no toca ninguno, es N/A.
 
 - [ ] Cada documento nuevo lleva cabecera con **origen y fecha** del original,
       según la plantilla de `docs/referencia/README.md`.
-- [ ] Los originales en PDF u ofimática **no** están en el repositorio ni en
-      el árbol de trabajo (compruébalo también con `git log --diff-filter=A`:
-      no basta con que no estén ahora).
+- [ ] Los originales en PDF u ofimática **no están en git**: ni en el índice
+      ahora, ni en el historial de ninguna rama. Lo comprueba de forma
+      automática `tests/test_originales_no_versionados.py`, que mira también
+      `git log --all --diff-filter=A` porque borrar el fichero después no
+      arregla nada: el historial no suelta lo que entra.
+      **Sí pueden estar en el árbol de trabajo**, ignorados: hacen falta
+      delante para convertirlos y para diseñar contra ellos. Lo que no puede
+      pasar es que se versionen.
 - [ ] Se ha ejecutado un **barrido de datos sensibles** sobre los documentos
       nuevos —correos, IPs, GUID de suscripción o tenant, credenciales,
       tokens, cadenas tipo clave— y **su resultado consta en el informe de
@@ -140,6 +145,16 @@ recorre estos puntos **contra ese nivel**.
       totales reales, **verificados de forma independiente por el reviewer**
       (alcance y nº de mutantes recalculados con `harness.alcance` y
       `harness.mutacion`; cálculo puro, sin ejecutar la suite).
+- [ ] **Los muertos están comprobados, no solo contados.** Si el «Tiempo
+      total» que declara el informe de mutación es **inferior a 5 minutos**,
+      el reviewer **reejecuta la campaña** con
+      `python -m harness.mutacion --feature F-XXX --salida <ruta fuera de
+      progress/>` y compara los totales. La salida no puede escribirse en
+      `progress/` (pisaría el informe del implementer) y el árbol debe quedar
+      limpio después (`git status`). Si la campaña pasa de 5 minutos, vale el
+      recálculo puro, pero el informe de review **lo dice explícitamente**.
+      Recalcular alcance y nº de mutantes no demuestra que los muertos lo
+      estén: unos «N muertos» inventados pasarían ese control.
 - [ ] Cada superviviente de esa campaña tiene su sección de análisis
       **completada** (ninguna en `PENDIENTE`). En nivel `critico`, además,
       cero supervivientes salvo justificación escrita aceptada por el humano.

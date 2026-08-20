@@ -1,16 +1,11 @@
 {
-  "$doc": "Servicios de este monorepo. El portero valida cada uno por separado: su suite, su intérprete y su lenguaje. Ver harness/servicios.ejemplo.json para el formato completo.",
+  "$doc": "Servicios de este monorepo. El portero valida cada uno por separado: su suite, su intérprete y su lenguaje. El front (services/postventa-front) NO está declarado todavía: entra en F-007, que es cuando tendrá lógica propia y tests. Ver harness/servicios.ejemplo.json para el formato completo.",
   "servicios": [
     {
       "nombre": "api",
       "ruta": "services/postventa-api",
       "lenguaje": "python",
       "venv": "services/postventa-api/.venv"
-    },
-    {
-      "nombre": "front",
-      "ruta": "services/postventa-front",
-      "lenguaje": "otro"
     }
   ]
 }

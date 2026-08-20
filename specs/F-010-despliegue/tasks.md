@@ -58,7 +58,7 @@
       az ad group member list --group "posventa-usuarios" --query "[].userPrincipalName" -o tsv
       ```
 
-- [ ] **T2 · MANUAL (humano) · ALIMENTA D2** — Medir, **en local y sin
+- [x] **T2 · MANUAL (humano) · ALIMENTA D2** — Medir, **en local y sin
       desplegar nada**, cuánto tardan de verdad las tres llamadas caras del
       circuito con un parte real de `muestras/`. Es lo que dice si el piloto
       cabe en el presupuesto de 45 s del proxy (`design.md` §5).
@@ -83,14 +83,14 @@
 > los **lee como texto** y comprueba su contrato. Ninguno se ejecuta desde la
 > suite, ninguno abre una conexión.
 
-- [ ] **T3**: `infra/00_vars_postventa.ps1`, fuente única de nombres de
+- [x] **T3**: `infra/00_vars_postventa.ps1`, fuente única de nombres de
       recurso, región y tags (R7), más `infra/*.local.ps1` en `.gitignore`.
       **Verificación**: `test_f010_scripts_infra.py` — el fichero existe,
       empieza por su ruta relativa, declara los diez nombres de `design.md`
       §2, no lleva ningún GUID, FQDN ni IP (R8), y **ningún otro script del
       despliegue repite un nombre de recurso literal**.
 
-- [ ] **T4**: `infra/cargar_secretos_postventa.ps1` — crea o reutiliza
+- [x] **T4**: `infra/cargar_secretos_postventa.ps1` — crea o reutiliza
       `kv-postventa-dev` y sube los once secretos de `design.md` §3.
       **Verificación**: `test_f010_scripts_infra.py` — pide cada credencial
       con `Read-Host -AsSecureString` (R9), no imprime ningún valor, no
@@ -112,7 +112,7 @@
       `-WhatIf` (R3); confirmación (R4); y al
       menos cinco códigos de salida distintos, todos únicos (R5).
 
-- [ ] **T6**: `infra/desplegar_front.ps1`, con modo `-SoloFront`.
+- [x] **T6**: `infra/desplegar_front.ps1`, con modo `-SoloFront`.
       **Verificación**: `test_f010_scripts_infra.py` — pone
       `appRoleAssignmentRequired` en cierto y asigna el grupo (R16); registra
       **todas** las redirect URI en una sola llamada; el cuerpo de la llamada
@@ -122,7 +122,7 @@
       `finally` (R13); `-SoloFront` no toca ni Entra ni el secreto; `-WhatIf`
       y confirmación.
 
-- [ ] **T7**: `infra/verificar_despliegue.ps1` — las tres comprobaciones de
+- [x] **T7**: `infra/verificar_despliegue.ps1` — las tres comprobaciones de
       R27, **solo lecturas**.
       **Verificación**: `test_f010_scripts_infra.py` — no contiene ningún
       verbo de escritura (`create`, `update`, `delete`, `set`, `PUT`, `POST`
@@ -134,7 +134,7 @@
 
 ## Fase 2 · Los dos cambios de código
 
-- [ ] **T8** — Fijar por escrito que la anonimidad es **deliberada** (R32,
+- [x] **T8** — Fijar por escrito que la anonimidad es **deliberada** (R32,
       R18). **El `auth_level` NO se toca**: `design.md` §9 bis explica por qué
       cambiarlo rompería el front, y esta tarea existe justamente para que
       nadie lo cambie luego creyendo que corrige un descuido.
@@ -158,7 +158,7 @@
 
 ## Fase 3 · La documentación que es entregable
 
-- [ ] **T10**: `docs/DESPLIEGUE.md` — el runbook (qué crea cada script, en qué
+- [x] **T10**: `docs/DESPLIEGUE.md` — el runbook (qué crea cada script, en qué
       orden, qué hace falta antes) y **el bloque literal de la tarjeta del
       portal** con su procedimiento de cuatro pasos (R23, R25).
       Incluye además las **dos líneas de `az`** que abren y cierran la ventana
@@ -170,7 +170,7 @@
       el documento repite los dos avisos del portal (marcador sin rellenar =
       tarjeta velada, y logout/login + `Ctrl+F5` tras el alta).
 
-- [ ] **T11**: `docs/INTEGRACION.md` — rellenar §8 «Qué exponemos nosotros»,
+- [x] **T11**: `docs/INTEGRACION.md` — rellenar §8 «Qué exponemos nosotros»,
       que hoy está vacía y dice que se rellena en este trabajo, y añadir la
       fila del despliegue (R26).
       **Verificación**: `test_f005_integracion_sin_secretos.py` **en verde**
@@ -178,7 +178,7 @@
       tabla, nunca como asignación) y un test nuevo que comprueba que §8
       nombra F-008/F-009 y F-019 como **no desplegados**.
 
-- [ ] **T12**: `docs/ARCHITECTURE.md` §«Infra y despliegue» — los nombres de
+- [x] **T12**: `docs/ARCHITECTURE.md` §«Infra y despliegue» — los nombres de
       recurso, la restricción de región y el presupuesto de 45 s.
       **Verificación**: `bash harness/init.sh` en verde y el barrido de
       identificadores sin hallazgos.
@@ -385,7 +385,7 @@
 
 ## Fase 6 · Cierre
 
-- [ ] **T20**: Campaña de mutación y análisis de supervivientes.
+- [x] **T20**: Campaña de mutación y análisis de supervivientes.
       **Verificación**: `python -m harness.mutacion --feature F-010`.
       **Alcance real, dicho por adelantado**: la herramienta solo muta Python,
       y tras resolverse D3 **F-010 no cambia ni una línea de comportamiento en
@@ -397,7 +397,7 @@
       en `progress/impl_F-010.md`: `CHECKPOINTS.md` acepta el N/A justificado
       y rechaza el N/A a secas.
 
-- [ ] **T21**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T21**: Ejecutar `bash harness/init.sh` en verde.
 
 ---
 

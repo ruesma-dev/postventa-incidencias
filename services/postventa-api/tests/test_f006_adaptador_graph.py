@@ -28,6 +28,8 @@ inventados y no apuntan a nada; ninguno tiene forma de GUID.
 from __future__ import annotations
 
 import logging
+import re
+from contextlib import contextmanager
 
 import pytest
 from domain.models.errores import ArchivoFallido
@@ -37,7 +39,9 @@ from infrastructure.sharepoint.graph import (
     CODIGOS_TRANSITORIOS,
     CONFLICT_BEHAVIOR,
     GRAPH,
+    TIMEOUT_DE_CONEXION_S,
     AdaptadorSharePointGraph,
+    construir_cliente_http,
 )
 from tests.utiles_sharepoint import (
     DRIVE_FALSO,
@@ -62,7 +66,7 @@ NOMBRE = "0677 - RS26.08 - 0123 PARTE FIRMADO.pdf"
 CONTENIDO = b"%PDF-1.4 de mentira"
 
 
-def adaptador(*guion, reintentos: int = 3, **extra) -> tuple:
+def adaptador(*guion, reintentos: int = 3, timeout_s: int = 60, **extra) -> tuple:
     """El adaptador real con el cliente falso y **sin esperas** entre intentos.
 
     `espera_inicial_s=0` es lo que hace que los tests de reintentos tarden
@@ -77,12 +81,50 @@ def adaptador(*guion, reintentos: int = 3, **extra) -> tuple:
             tenant_id=TENANT,
             client_id=CLIENTE,
             client_secret=SECRETO,
+            timeout_s=timeout_s,
             reintentos=reintentos,
             espera_inicial_s=0,
             cliente=cliente,
         ),
         cliente,
     )
+
+
+@contextmanager
+def caplog_de_modulo():
+    """Captura lo que registra el adaptador, sin depender del `caplog` global."""
+    registros = _Registros()
+    manejador = logging.Handler()
+    manejador.emit = registros.anotar  # type: ignore[method-assign]
+    logger = logging.getLogger("infrastructure.sharepoint.graph")
+    logger.addHandler(manejador)
+    nivel = logger.level
+    logger.setLevel(logging.INFO)
+    try:
+        yield registros
+    finally:
+        logger.setLevel(nivel)
+        logger.removeHandler(manejador)
+
+
+class _Registros:
+    """Lo registrado, en texto, para poder afirmar sobre ello."""
+
+    def __init__(self) -> None:
+        self.lineas: list[str] = []
+
+    def anotar(self, registro: logging.LogRecord) -> None:
+        self.lineas.append(registro.getMessage())
+
+    @property
+    def text(self) -> str:
+        return "\n".join(self.lineas)
+
+
+def _segundos_registrados(texto: str) -> float | None:
+    """El valor de `segundos=` que dejó el adaptador en el log."""
+    encontrado = re.search(r"segundos=([0-9.]+)", texto)
+    return None if encontrado is None else float(encontrado.group(1))
 
 
 # --------------------------------------------------------------------------
@@ -521,3 +563,99 @@ def test_f006_r26_el_token_viaja_en_la_cabecera_y_no_en_la_url():
 
     assert cliente.cabeceras[0]["Authorization"] == f"Bearer {cliente.token}"
     assert cliente.token not in cliente.urls[0]
+
+
+def test_f006_r26_el_log_dice_la_duracion_y_no_la_hora():
+    """R26 · lo que se registra es **cuánto tardó**, no cuándo fue.
+
+    Lo destapó la campaña de mutación (T20): cambiar la resta por una suma en
+    `time.monotonic() - arranque` no rompía ningún test. Y la diferencia no es
+    cosmética: `time.monotonic()` cuenta desde que arrancó la máquina, así que
+    la suma produce un número de seis o siete cifras que nadie identificaría
+    como un error, solo como «esto va lentísimo».
+    """
+    adap, _ = adaptador(creado(item_de_graph(nombre=NOMBRE, ruta=CARPETA)))
+
+    with caplog_de_modulo() as registros:
+        adap.subir(
+            carpeta=CARPETA, nombre=NOMBRE, contenido=CONTENIDO, mime="application/pdf"
+        )
+
+    duracion = _segundos_registrados(registros.text)
+    assert duracion is not None, "el log no dice cuánto se ha tardado"
+    assert 0 <= duracion < 60
+
+
+def test_f006_r25_un_token_caducado_se_vuelve_a_pedir():
+    """R25 · la caché del token respeta su vencimiento, no solo su existencia.
+
+    Lo destapó la campaña de mutación (T20), por partida doble: ni cambiar el
+    `and` de la condición por un `or`, ni invertir el signo del margen de
+    renovación, rompían ningún test. Los dos fallos producen lo mismo —seguir
+    usando un token vencido— y lo mismo en producción: un `401` que **no se
+    reintenta**, así que el parte no se archiva y alguien tiene que mirarlo.
+
+    Aquí el doble entrega un token que nace caducado, y se comprueba que la
+    segunda operación pide uno nuevo en vez de reutilizarlo.
+    """
+    adap, cliente = adaptador(
+        no_encontrado(),
+        no_encontrado(),
+        expira_en=0,
+    )
+
+    adap.buscar(carpeta=CARPETA, nombre=NOMBRE)
+    adap.buscar(carpeta=CARPETA, nombre=NOMBRE)
+
+    assert cliente.peticiones_de_token == 2
+
+
+def test_f006_r25_un_token_vigente_no_se_vuelve_a_pedir():
+    """R25 · y el caso normal sigue cacheando, que es el motivo de existir.
+
+    Sin este test, el anterior se «arreglaría» pidiendo el token siempre.
+    """
+    adap, cliente = adaptador(no_encontrado(), no_encontrado(), expira_en=3600)
+
+    adap.buscar(carpeta=CARPETA, nombre=NOMBRE)
+    adap.buscar(carpeta=CARPETA, nombre=NOMBRE)
+
+    assert cliente.peticiones_de_token == 1
+
+
+def test_f006_el_cliente_http_respeta_el_entorno_y_acorta_la_conexion():
+    """El cliente de `httpx`, probado **sin construir el adaptador**.
+
+    Lo destapó la campaña de mutación (T20): `trust_env=True` y el timeout de
+    conexión no los tocaba ningún test, porque toda la suite inyecta un cliente
+    falso. Se sacaron a una función de módulo para poder probarlos aquí.
+
+    `trust_env=True` es lo que hace que el proxy corporativo y las variables
+    `HTTPS_PROXY` del entorno de Azure se respeten. Con `False`, el servicio
+    desplegado no saldría a internet y el fallo llegaría disfrazado de tiempo
+    agotado, que es de los que cuestan una tarde.
+
+    Construir un cliente **no abre ninguna conexión**: `httpx` conecta en la
+    primera petición, no al instanciarse. La guardia de red de F-003 sigue
+    puesta por debajo.
+    """
+    cliente = construir_cliente_http(60)
+    try:
+        assert cliente.trust_env is True
+        assert cliente.timeout.connect == TIMEOUT_DE_CONEXION_S
+        assert cliente.timeout.read == 60
+    finally:
+        cliente.close()
+
+
+def test_f006_el_timeout_de_conexion_nunca_supera_al_total():
+    """Un `connect` más largo que el total sería un techo que no lo es.
+
+    Con un timeout total corto —lo que pondría alguien para que la Function no
+    se coma sus 230 s— el de conexión tiene que bajar con él.
+    """
+    cliente = construir_cliente_http(5)
+    try:
+        assert cliente.timeout.connect == 5
+    finally:
+        cliente.close()

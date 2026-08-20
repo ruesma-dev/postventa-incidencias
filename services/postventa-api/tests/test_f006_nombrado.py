@@ -558,3 +558,26 @@ def test_f006_la_carpeta_base_se_recorta_por_los_extremos():
         carpeta_de_archivo(carpeta_base="  Postventa/  ", codigo_obra=OBRA)
         == "Postventa/0677"
     )
+
+
+def test_f006_el_item_archivado_tambien_es_inmutable():
+    """Lo que devuelve el puerto se copia a la traza: no puede cambiar por el camino.
+
+    Lo destapó la campaña de mutación (T20): `ItemArchivado` estaba declarado
+    `frozen=True` y ningún test lo comprobaba, así que quitarlo no rompía
+    nada. Entre que el adaptador lo devuelve y el paso lo escribe en la traza
+    hay código de por medio, y un `item_id` reescrito ahí dejaría la traza
+    apuntando a un fichero que no es.
+    """
+    from domain.ports.archivo import ItemArchivado
+
+    item = ItemArchivado(
+        drive_id="drive-de-mentira",
+        item_id="item-0001",
+        web_url="https://ejemplo.invalido/x.pdf",
+        nombre=NOMBRE_ESPERADO,
+        carpeta="Postventa/0677",
+    )
+
+    with pytest.raises(Exception):
+        item.item_id = "otro"  # type: ignore[misc]

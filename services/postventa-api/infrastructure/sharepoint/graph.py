@@ -63,7 +63,9 @@ __all__ = [
     "CONFLICT_BEHAVIOR",
     "ENTORNOS_CON_ARCHIVO",
     "GRAPH",
+    "TIMEOUT_DE_CONEXION_S",
     "AdaptadorSharePointGraph",
+    "construir_cliente_http",
     "es_transitorio",
     "exigir_entorno_con_archivo",
 ]
@@ -109,12 +111,41 @@ CORRECTOS = (200, 201)
 #: Margen con el que se renueva el token antes de que caduque, en segundos.
 MARGEN_DE_TOKEN_S = 60
 
+#: Techo de lo que se espera a que el servicio acepte la conexión.
+#:
+#: Más corto que el timeout total a propósito: si no saluda, no va a saludar.
+TIMEOUT_DE_CONEXION_S = 30
+
 #: Los entornos desde los que se archiva de verdad.
 #:
 #: `local` y `test` **no** están, y añadir cualquier otro es abrir la puerta a
 #: subir desde un sitio nuevo: que cueste un cambio visible en un test es
 #: justamente el punto.
 ENTORNOS_CON_ARCHIVO: tuple[str, ...] = ("dev", "pro")
+
+
+def construir_cliente_http(timeout_s: int) -> httpx.Client:
+    """El cliente HTTP con el que se habla con Graph.
+
+    Vive fuera del adaptador para poder probarlo **sin construir el
+    adaptador**, que es la clase que ningún test debe crear a la ligera.
+    Construir un cliente no abre ninguna conexión: `httpx` conecta al hacer la
+    primera petición, no al instanciarse.
+
+    Dos decisiones que no son obvias:
+
+    - **`connect` es más corto que el total.** Si el servicio no acepta la
+      conexión, esperar el minuto entero no aporta nada: lo que tarda es
+      transferir, no saludar.
+    - **`trust_env=True`**, igual que en `partes`. Es lo que hace que el
+      proxy corporativo y las variables `HTTPS_PROXY` del entorno de Azure se
+      respeten. Con `False`, el servicio desplegado no saldría a internet y el
+      fallo aparecería como un tiempo agotado que no dice nada.
+    """
+    return httpx.Client(
+        timeout=httpx.Timeout(timeout_s, connect=min(TIMEOUT_DE_CONEXION_S, timeout_s)),
+        trust_env=True,
+    )
 
 
 class ErrorDeGraph(Exception):
@@ -179,8 +210,8 @@ class AdaptadorSharePointGraph:
         tenant_id: str,
         client_id: str,
         client_secret: str,
-        timeout_s: int = 60,
-        reintentos: int = 3,
+        timeout_s: int,
+        reintentos: int,
         espera_inicial_s: float = 1.0,
         cliente: Any | None = None,
     ) -> None:
@@ -342,7 +373,6 @@ class AdaptadorSharePointGraph:
                     "scope": "https://graph.microsoft.com/.default",
                 },
             ),
-            con_token=False,
         )
         cuerpo = respuesta.json()
         self._token = str(cuerpo["access_token"])
@@ -359,12 +389,7 @@ class AdaptadorSharePointGraph:
         Gemini: el adaptador tiene que poder existir sin abrir nada.
         """
         if self._cliente is None:
-            self._cliente = httpx.Client(
-                timeout=httpx.Timeout(
-                    self._timeout_s, connect=min(30, self._timeout_s)
-                ),
-                trust_env=True,
-            )
+            self._cliente = construir_cliente_http(self._timeout_s)
         return self._cliente
 
     def _con_reintentos(
@@ -373,7 +398,6 @@ class AdaptadorSharePointGraph:
         llamada,
         *,
         tolerados: tuple[int, ...] = (),
-        con_token: bool = True,
     ) -> Any:
         """Un intento, reintentando **solo** lo que puede mejorar (R25).
 

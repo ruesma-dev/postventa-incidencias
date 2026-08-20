@@ -95,6 +95,8 @@ def test_f006_r19_el_constructor_del_adaptador_tambien_muerde():
             tenant_id="tenant-inventado",
             client_id="cliente-inventado",
             client_secret=SECRETO_INVENTADO,
+            timeout_s=60,
+            reintentos=3,
         )
 
     assert "ENTORNO" in fallo.value.motivo

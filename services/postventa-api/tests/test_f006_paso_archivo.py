@@ -17,6 +17,7 @@ salen del material de F-003; los bytes del «PDF» son `b"%PDF-1.4 de mentira"`.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -28,7 +29,7 @@ from application.pipelines.paso_archivo import (
 )
 from domain.models.errores import ArchivoFallido, NombradoImposible, ParteNoApto
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
-from domain.models.validacion import Destino
+from domain.models.validacion import Destino, Veredicto
 
 from tests.utiles_sharepoint import (
     CARPETA_BASE,
@@ -415,6 +416,50 @@ def test_f006_r17_un_parte_no_apto_tampoco_deja_traza_de_archivo():
         )
 
     assert repositorio.archivos == []
+
+
+def test_f006_r17_un_veredicto_apto_con_otro_destino_tampoco_se_archiva():
+    """R17 · las dos condiciones se exigen, y hace falta **cada una**.
+
+    Lo destapó la campaña de mutación (T20): cambiar el `or` de la puerta por
+    un `and` no rompía ningún test, porque todos los casos no aptos fallaban
+    **las dos** condiciones a la vez. Un parte marcado `apto` pero con destino
+    distinto de archivo y cierre habría pasado la puerta.
+
+    Y no es un caso de laboratorio: es exactamente lo que llegaría por
+    `POST /api/archivar` si alguien compusiera el cuerpo a mano con
+    `veredicto=apto` y el destino de la cola de validación humana.
+    """
+    archivador = ArchivoPortFalso()
+    ctx = contexto_apto()
+    ctx.validacion = replace(
+        ctx.validacion, destino=Destino.COLA_VALIDACION_HUMANA
+    )
+
+    assert ctx.validacion.veredicto == Veredicto.APTO
+
+    with pytest.raises(ParteNoApto):
+        archivar(ctx, archivador, RepositorioFalso())
+
+    assert archivador.llamadas == []
+
+
+def test_f006_r17_un_destino_de_archivo_con_veredicto_no_apto_tampoco():
+    """R17 · y al revés, que es la otra mitad del mismo `and`.
+
+    El destino correcto no rescata un veredicto negativo: los dos campos
+    tienen que decir que sí.
+    """
+    archivador = ArchivoPortFalso()
+    ctx = contexto_apto()
+    ctx.validacion = replace(ctx.validacion, veredicto=Veredicto.NO_APTO)
+
+    assert ctx.validacion.destino == Destino.ARCHIVO_Y_CIERRE
+
+    with pytest.raises(ParteNoApto):
+        archivar(ctx, archivador, RepositorioFalso())
+
+    assert archivador.llamadas == []
 
 
 def test_f006_r18_sin_validacion_no_se_archiva():

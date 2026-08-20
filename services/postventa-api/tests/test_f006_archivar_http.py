@@ -368,3 +368,68 @@ def test_f006_r31_ninguna_respuesta_de_error_lleva_el_contenido(monkeypatch):
     respuesta = function_app.archivar(_peticion([("parte.pdf", PDF_CON_DATOS)]))
 
     assert "00000000T" not in respuesta.get_body().decode()
+
+
+def test_f006_r30_el_endpoint_no_inventa_lecturas_de_los_campos_que_no_recibe():
+    """R30 · los siete campos que no llegan se reconstruyen **vacíos y a cero**.
+
+    Lo destapó la campaña de mutación (T20): las confianzas del contexto que
+    monta el handler no las miraba ningún test.
+
+    Y sí importan. El endpoint recibe **dos** campos —obra e incidencia— y no
+    los otros siete, a propósito: pedirlos obligaría al front a reenviar el DNI
+    y las observaciones manuscritas del cliente en cada archivo. Reconstruirlos
+    con confianza **cero** es decir la verdad —«de esto no se ha leído nada»—;
+    con cualquier valor mayor se estaría afirmando que el papel estaba en
+    blanco, y eso es un dato inventado que F-004 se creería si este contexto se
+    revalidara.
+
+    Y al revés: los dos que sí llegan van a confianza plena, porque vienen de
+    una validación ya hecha. Degradarlos aquí los volvería ilegibles y mandaría
+    a revisión manual un parte que ya estaba aprobado.
+    """
+    from application.pipelines.contexto_parte import ContextoParte
+    from domain.models.extraccion import CAMPOS_DEL_PARTE
+    from interface_adapters.api.archivar import _como_contexto
+
+    contexto = _como_contexto(
+        PDF_CON_DATOS,
+        hash_parte="9f2b0011aabb",
+        codigo_obra="0677",
+        numero_incidencia="RS26.08/0123",
+        veredicto="apto",
+        destino="archivo_y_cierre",
+    )
+
+    assert isinstance(contexto, ContextoParte)
+    for nombre in CAMPOS_DEL_PARTE:
+        campo = contexto.extraccion.campo(nombre)
+        if nombre in ("codigo_obra", "numero_incidencia"):
+            assert campo.confianza_pct == 100, nombre
+        else:
+            assert campo.valor is None, nombre
+            assert campo.confianza_pct == 0, nombre
+
+    assert contexto.validacion.observaciones is None
+    assert contexto.validacion.confianza_observaciones == 0
+
+
+def test_f006_r30_el_contexto_que_monta_el_endpoint_no_lleva_datos_personales():
+    """R30 · y por eso mismo: ni DNI ni observaciones viajan por este endpoint.
+
+    Es la otra cara del test anterior. Si algún día alguien «completa» el
+    contexto pidiendo los nueve campos, este test cae y obliga a explicarlo.
+    """
+    from interface_adapters.api.archivar import _como_contexto
+
+    contexto = _como_contexto(
+        PDF_CON_DATOS,
+        hash_parte="9f2b0011aabb",
+        codigo_obra="0677",
+        numero_incidencia="RS26.08/0123",
+        veredicto="apto",
+        destino="archivo_y_cierre",
+    )
+
+    assert contexto.extraccion.campo("dni_cliente").valor is None
+    assert contexto.extraccion.campo("observaciones").valor is None

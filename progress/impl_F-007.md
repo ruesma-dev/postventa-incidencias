@@ -149,3 +149,62 @@ como fichero nuevo frente a `dev`: `harness/alcance.py` mete en el alcance
 cualquier `.py` que no lleve un segmento `tests`, `specs`, `progress` o `docs`
 en su ruta, y no existe lista de exclusiones. **No hay opción «no tocarlo»**.
 Se cierra en T3 escribiéndole tests (decisión **D1**, opción O1).
+
+---
+
+## T3 · `dev_server.py` probado de verdad — HECHA (cierra la RED de T2)
+
+`services/postventa-front/tests/test_f007_dev_server.py`: **21 tests**, todos
+con dobles y **ni un socket** (la guardia de sesión de T2 lo garantiza).
+
+Qué se cubre, agrupado como pedía la tarea:
+
+| Zona | Tests |
+|---|---|
+| Routing | `/api/*` va al proxy y **no** se sirve de disco; lo demás lo sirve `SimpleHTTPRequestHandler`; `POST` sobre estático → **405**; `OPTIONS` → 204 con CORS; tabla de rutas donde `/api` a secas y `/apiario.html` **no** son API (el prefijo es `/api/`) |
+| Saneo de cabeceras | `host` y `connection` fuera; `DEV_FAKE_PRINCIPAL` dentro **solo si está declarado**; `Content-Length` no numérico no lee cuerpo |
+| Respuesta | `transfer-encoding`, `connection` y `content-encoding` suprimidas; 204 sin cuerpo no escribe nada; `https://` usa `HTTPSConnection` |
+| Errores | backend inalcanzable → **502 en JSON**; fallo al hablar → 502 en JSON y conexión cerrada; un `close()` roto se anota en debug y la respuesta se sirve igual |
+| CLI y arranque | valores por defecto (5173 / 7073); `--port`, `--api` y `--root`; `Ctrl+C` apaga ordenadamente y devuelve 0; **sin `index.html` → código 1** y ni se construye el servidor |
+
+Detalle que merece quedar escrito: el 502 se comprueba **en JSON**, no solo por
+el código. El front clasifica una respuesta no-JSON como `desconocido` (R26); si
+el proxy devolviera HTML aquí, el motivo real quedaría escondido detrás de un
+«respuesta inesperada del servicio».
+
+### La fase RED cerrada: antes y después
+
+```
+ANTES  (T2)  [KO] PUERTA COBERTURA: 0.0% de 114 líneas cambiadas cubiertas (0/114, umbral 80%, nivel estandar)
+DESPUÉS (T3) [OK] PUERTA COBERTURA: 98.3% de 116 líneas cambiadas cubiertas (114/116, umbral 80%, nivel estandar)
+```
+
+Salida real del portero tras T3:
+
+```
+$ bash harness/init.sh
+...
+16 passed in 0.55s
+[OK] pytest en verde (con medición de cobertura)
+    2 servicio(s): api (python), front (python)
+[OK] harness/servicios.json válido
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+..............................                                           [100%]
+30 passed in 0.20s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 98.3% de 116 líneas cambiadas cubiertas (114/116, umbral 80%, nivel estandar)
+[OK] Rama actual: feature/F-007-front
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```
+
+Las **2 líneas de 116 que quedan sin cubrir** son, a propósito, las dos que solo
+se ejecutan con un socket o con un proceso de verdad: `DevHandler.__init__`
+(llama al `__init__` del handler de la biblioteca estándar, que exige un socket
+aceptado) y el `sys.exit(main())` del `if __name__ == "__main__"`. Cubrirlas
+exigiría levantar un servidor real, que es exactamente lo que R33 prohíbe.
+
+**Criterio de aceptación 6 cerrado**: la decisión sobre `dev_server.py` frente a
+la puerta de cobertura es **D1/O1 — probarlo**, está razonada en `design.md` §9
+con las cinco opciones y sus motivos, y se resume en el `README.md` del front
+(T12).

@@ -58,7 +58,7 @@
       de R34** y se pega literal en el informe: es el problema que expulsó al
       front de F-001.
 
-- [ ] **T3**: Escribir `tests/test_f007_dev_server.py`: routing `/api/*` vs
+- [x] **T3**: Escribir `tests/test_f007_dev_server.py`: routing `/api/*` vs
       fichero estático, `do_POST` sobre ruta estática → 405, saneo de
       cabeceras (`host` y `connection` fuera, `DEV_FAKE_PRINCIPAL` dentro si
       está), backend caído → 502 **en JSON**, cabeceras de salto suprimidas

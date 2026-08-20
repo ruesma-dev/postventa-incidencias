@@ -1540,3 +1540,51 @@ Y tres desviaciones de la spec, todas anotadas en su tarea: `httpx` en vez de
 ficheros en vez de uno —endurecida con una comprobación que la spec no pedía—,
 y `CuerpoDeArchivoInvalido`, un error que `design.md` no enumeraba y que R31
 necesita.
+
+## Autorización del humano — 2026-08-20
+
+`CHECKPOINTS.md` y el nivel `critico` reservan dos decisiones al humano, y el
+reviewer de F-006 las pidió por escrito como cambio requerido 3. **Las dos
+están dadas el 2026-08-20**, con la evidencia delante y no en abstracto.
+
+### 1 · Los cinco supervivientes de mutación: ACEPTADOS
+
+El humano **acepta el análisis de los cinco**, que el reviewer había
+verificado uno a uno. Ninguno toca lo que la feature promete —el nombrado, la
+puerta de entorno, la idempotencia—, y se reparten en dos clases:
+
+| # | Fichero y línea | Mutación | Clase |
+|---|---|---|---|
+| 1 | `config/settings.py:285` | `default=60` → `61` | constante operativa |
+| 2 | `config/settings.py:293` | `default=3` → `4` | constante operativa |
+| 3 | `infrastructure/sharepoint/graph.py:112` | `MARGEN_DE_TOKEN_S = 60` → `61` | constante operativa |
+| 4 | `infrastructure/sharepoint/graph.py:362` | `<` → `<=` | **equivalente de manual** |
+| 5 | `infrastructure/sharepoint/graph.py:380` | `expires_in` 3599 → 3600 | constante operativa |
+
+**El 4 no es cazable**: no existe entrada que distinga los dos operadores. Es
+la definición de mutante equivalente.
+
+**Los otros cuatro son números sin requisito que los fije.** Se decidió **no**
+escribir tests para ellos, y el motivo importa: un `assert
+ajustes.graph_timeout_s == 60` no prueba comportamiento, solo repite la
+constante que dice vigilar. Es exactamente la trampa que ya mordió en F-003,
+donde un test parametrizado con la propia constante que vigilaba no vigilaba
+nada. Cobertura de mentira es peor que un superviviente declarado.
+
+### 2 · Cerrar con T18 pendiente ante C5: AUTORIZADO
+
+El humano **autoriza cerrar F-006 con T18 sin ejecutar**. Es coherente con lo
+que ya decidió el 2026-08-19 (D3, opción a): la verificación de subida real se
+hace **cuando F-010 despliegue el entorno**, porque subir a SharePoint desde
+local está prohibido y adelantar un despliegue solo para cerrar esta feature
+se descartó entonces.
+
+T18 queda `[ ]` con la etiqueta `MANUAL (humano) · DIFERIDA A F-010`, y **con
+su comando y su criterio ya escritos**, para que quien la ejecute no tenga que
+reconstruirlos. No está olvidada: está aplazada, con fecha y con dueño.
+
+**Este es el segundo caso real que motiva F-017**, la feature que propone que
+`CHECKPOINTS.md` C5 distinga la tarea de agente pendiente —trabajo incompleto—
+de la tarea `MANUAL (humano)` pendiente, que es un estado propio: aprobada
+pero no cerrable hasta que el humano la ejecute. Hoy esa distinción la sostiene
+una firma escrita a mano como esta.

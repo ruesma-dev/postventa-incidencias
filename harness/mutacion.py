@@ -307,6 +307,16 @@ class EjecutorPytest:
                 capture_output=True,
                 timeout=timeout_s,
                 check=False,
+                # SIN BYTECODE, y no es un detalle de rendimiento. La suite se
+                # lanza contra un fichero MUTADO: si el subproceso escribe
+                # `__pycache__`, en el disco queda un `.pyc` compilado desde el
+                # código mutado. Al restaurar el `.py` original, CPython valida
+                # la caché por (tamaño, mtime) del fuente, y la restauración
+                # deja los dos iguales —mismo texto, mismo segundo—, así que el
+                # `.pyc` mutado se sigue dando por bueno. El árbol queda
+                # envenenado y la campaña mide contra un código que ya no está.
+                # Pasó de verdad el 2026-08-19 (review de F-010).
+                env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
             )
         except subprocess.TimeoutExpired:
             return TIMEOUT

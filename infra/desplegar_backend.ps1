@@ -404,7 +404,11 @@ $ajustes = @(
 foreach ($appSetting in $PostventaAppSettingsSecretas.Keys) {
     $secreto = $PostventaAppSettingsSecretas[$appSetting]
     $referencia = "@Microsoft.KeyVault(SecretUri=" + $vaultUri + "secrets/" + $secreto + ")"
-    $ajustes += ("{0}={1}" -f $appSetting, $referencia)
+    # Las comillas NO son decoracion: en Windows `az` es un .cmd, y cmd.exe
+    # reprocesa la linea e interpreta los PARENTESIS de `@Microsoft.KeyVault(...)`
+    # como sintaxis suya. Sin ellas, el despliegue muere con un
+    # "X no se esperaba en este momento" que ni siquiera viene de Azure.
+    $ajustes += ('"{0}={1}"' -f $appSetting, $referencia)
 }
 
 Write-Host ("Fijando {0} App Settings ({1} por referencia a Key Vault)..." -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)

@@ -207,3 +207,23 @@ explica aquí.
   **asignación requerida** de la aplicación empresarial en Entra, con el grupo
   `posventa-usuarios` asignado. Sin eso, cualquiera de la empresa entraría
   aunque no vea la tarjeta en el portal.
+
+### La ruta que evita el bucle de inicio de sesión
+
+La **primera** ruta de `staticwebapp.config.json` es esta, y no se puede
+quitar:
+
+```json
+{ "route": "/.auth/login/aad", "allowedRoles": ["anonymous", "authenticated"] }
+```
+
+**El orden importa: manda la primera ruta que casa.** Sin ella, el `/*` de
+abajo —que exige `authenticated`— captura también **la propia página de inicio
+de sesión**: pides `/.auth/login/aad`, la plataforma exige sesión para poder
+iniciar sesión, responde 401, el `responseOverrides` te devuelve a
+`/.auth/login/aad`, y así indefinidamente. Entra corta el ciclo con
+**`AADSTS50196`**, cuyo mensaje —«No podemos iniciar su sesión»— no dice nada
+de bucles y manda a buscar en el sitio equivocado.
+
+Ocurrió de verdad al desplegar F-010 el 2026-08-21. El patrón correcto se copió
+de `front-portal`, que lleva meses en producción con él.

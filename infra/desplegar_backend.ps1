@@ -133,7 +133,14 @@ function Existe-Herramienta {
 function Valor-De-Az {
     # Ejecuta az y devuelve su salida limpia, o $null si fallo. NO imprime.
     param([string[]]$Argumentos)
-    $salida = az @Argumentos --only-show-errors 2>$null
+    $anteriorEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $salida = az @Argumentos --only-show-errors 2>$null
+    }
+    finally {
+        $ErrorActionPreference = $anteriorEAP
+    }
     if ($LASTEXITCODE -ne 0) { return $null }
     $texto = ("$salida").Trim()
     if ([string]::IsNullOrWhiteSpace($texto)) { return $null }
@@ -142,7 +149,14 @@ function Valor-De-Az {
 
 function Existe-Grupo {
     param([string]$Grupo)
-    $salida = az group exists --name $Grupo --only-show-errors 2>$null
+    $anteriorEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $salida = az group exists --name $Grupo --only-show-errors 2>$null
+    }
+    finally {
+        $ErrorActionPreference = $anteriorEAP
+    }
     return "$salida".Trim() -eq "true"
 }
 

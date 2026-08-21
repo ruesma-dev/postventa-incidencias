@@ -191,8 +191,15 @@ function Get-Cuerpo-De-Archivar {
 function Get-Ventana-De-Escritura {
     # LECTURA de la App Setting. Devuelve "true", "false" o "desconocida".
     param([string]$Funcion, [string]$Grupo)
-    $salida = az functionapp config appsettings list --name $Funcion --resource-group $Grupo `
-        --query "[?name=='ARCHIVO_HABILITADO'].value | [0]" -o tsv --only-show-errors 2>$null
+    $anteriorEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $salida = az functionapp config appsettings list --name $Funcion --resource-group $Grupo `
+            --query "[?name=='ARCHIVO_HABILITADO'].value | [0]" -o tsv --only-show-errors 2>$null
+    }
+    finally {
+        $ErrorActionPreference = $anteriorEAP
+    }
     if ($LASTEXITCODE -ne 0) { return "desconocida" }
     $valor = ("$salida").Trim().ToLower()
     if ([string]::IsNullOrWhiteSpace($valor)) { return "false" }

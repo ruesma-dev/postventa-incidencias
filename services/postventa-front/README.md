@@ -182,3 +182,28 @@ Los partes traen **DNI y observaciones manuscritas** de clientes reales.
 
 **Edge / Chrome** (decisión **D5**). El selector de carpeta usa
 `webkitdirectory`, que Firefox no implementa igual. Es el navegador corporativo.
+
+## Sobre `staticwebapp.config.json`
+
+**No lleva comentarios, y no es un olvido**: el esquema de Static Web Apps
+declara `additionalProperties: false`, así que cualquier clave de más —un
+`$comentario`, por ejemplo— hace que la CLI **rechace el fichero entero** con
+un `NoAdditionalPropertiesError`. Pasó de verdad al desplegar F-010 el
+2026-08-21: Azure lo aceptaba igualmente, pero fiarse de eso es frágil, porque
+el día que la CLI deje de subir la configuración la aplicación se queda **sin
+autenticación** y sin que nadie se entere. Por eso lo que había que explicar se
+explica aquí.
+
+- **`openIdIssuer` lleva el marcador `<TENANT_ID>` a propósito.** El
+  identificador de inquilino no se versiona (regla de `CLAUDE.md`). Lo
+  sustituye `infra/desplegar_front.ps1` **en una copia de trabajo temporal**,
+  que se borra al terminar: el fichero del repositorio no se toca nunca.
+- **`clientIdSettingName` y `clientSecretSettingName` no son valores, son
+  punteros**: nombran App Settings de la Static Web App (`AZURE_CLIENT_ID` y
+  `AZURE_CLIENT_SECRET`), que el despliegue rellena desde el Key Vault. Es la
+  misma convención que usan el portal y los demás fronts del ecosistema.
+- **`allowedRoles: ["authenticated"]` NO restringe por grupo**: solo exige
+  estar autenticado. Quien impide entrar a quien no es del piloto es la
+  **asignación requerida** de la aplicación empresarial en Entra, con el grupo
+  `posventa-usuarios` asignado. Sin eso, cualquiera de la empresa entraría
+  aunque no vea la tarjeta en el portal.

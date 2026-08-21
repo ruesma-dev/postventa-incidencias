@@ -1,5 +1,4 @@
 {
-  "$comentario": "Autenticación de Entra ID y rutas de la Static Web App. El openIdIssuer lleva un MARCADOR a propósito: el ID de tenant no se versiona (regla de CLAUDE.md). Se sustituye en el despliegue, en F-010.",
   "auth": {
     "identityProviders": {
       "azureActiveDirectory": {
@@ -12,15 +11,40 @@
     }
   },
   "routes": [
-    { "route": "/login", "rewrite": "/.auth/login/aad" },
-    { "route": "/logout", "rewrite": "/.auth/logout" },
-    { "route": "/.auth/login/github", "statusCode": 404 },
-    { "route": "/.auth/login/twitter", "statusCode": 404 },
-    { "route": "/api/*", "allowedRoles": ["authenticated"] },
-    { "route": "/*", "allowedRoles": ["authenticated"] }
+    {
+      "route": "/login",
+      "rewrite": "/.auth/login/aad"
+    },
+    {
+      "route": "/logout",
+      "rewrite": "/.auth/logout"
+    },
+    {
+      "route": "/.auth/login/github",
+      "statusCode": 404
+    },
+    {
+      "route": "/.auth/login/twitter",
+      "statusCode": 404
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": [
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/*",
+      "allowedRoles": [
+        "authenticated"
+      ]
+    }
   ],
   "responseOverrides": {
-    "401": { "statusCode": 302, "redirect": "/.auth/login/aad" }
+    "401": {
+      "statusCode": 302,
+      "redirect": "/.auth/login/aad"
+    }
   },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff",

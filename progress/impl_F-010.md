@@ -798,3 +798,68 @@ El argumento es medido y con fecha: en `arnes-base` hay un encargo del
 defecto del bytecode** y lo arregló allí como 1.6.0. **Hemos gastado una review
 entera redescubriendo un fallo ya resuelto río arriba.** Ese es el coste real
 del desfase.
+
+## Las tareas MANUALES, ejecutadas por el humano el 2026-08-21
+
+**Sin URL, sin identificadores y sin valores**, como exige cada tarea: solo el
+resultado.
+
+| Tarea | Resultado |
+|---|---|
+| **T1** · grupo de seguridad en Entra | **hecho**, con los miembros del piloto dentro |
+| **T13** · secretos en el Key Vault | **hecho**: 9 de 11 cargados (ver abajo) |
+| **T14** · desplegar el backend | **hecho**: `health` 200, 9 referencias resueltas, `archivar` **503** |
+
+### T14 · las cuatro comprobaciones
+
+1. **`GET /api/health` responde 200**: sí.
+2. **Las nueve App Settings secretas son referencias a Key Vault**: sí,
+   comprobado listando las que empiezan por `@Microsoft.KeyVault`. Ninguna
+   lleva un valor literal.
+3. **`POST /api/archivar` contra el host desnudo responde 503**: sí, y con el
+   mensaje correcto —«ARCHIVO_HABILITADO no está activado»—. `ARCHIVO_HABILITADO`
+   vale `false` en la Function App.
+   **Detalle que importa para la próxima vez**: con un cuerpo vacío la
+   respuesta es **400**, no 503, porque `_exigir_cuerpo` valida antes de que se
+   llegue a la puerta de entorno. Para que esta comprobación **signifique
+   algo** hay que mandar un cuerpo **bien formado** —fichero PDF y los cinco
+   campos, con `veredicto=apto` y `destino=archivo_y_cierre`, todos
+   inventados—. Un 400 no demuestra nada sobre la ventana.
+4. **Capa 5, la restricción de acceso público**: pendiente, va después de T16.
+
+### ⚠️ Seis defectos de las tareas manuales, encontrados AL EJECUTARLAS
+
+Ninguno lo habría encontrado un test, y ninguno es de la lógica del servicio:
+son de los scripts y de los enunciados, ejecutados por una persona en su
+máquina con PowerShell 5.1.
+
+1. **La ruta `$HOME\...` de T13 y T14 es falsa**: los scripts viven en
+   `infra/`. Afecta a las dos tareas.
+2. **T13 pedía once secretos, y dos no se pueden conocer todavía**:
+   `swa-client-id` y `swa-client-secret` **los crea el propio
+   `desplegar_front.ps1`**, que genera el registro de aplicación, saca el
+   secreto y lo guarda él mismo en el vault. Tecleárlos a mano habría metido
+   valores inventados que el despliegue sobrescribe. Se cargaron **nueve** con
+   `-Solo`.
+3. **`-Solo` con `powershell -File` no construye un array**: los argumentos
+   llegan como una sola cadena y el script responde «estos secretos no
+   existen». Hay que invocarlo desde la sesión (`.\infra\...`) o con
+   `-Command`.
+4. **Crear el Key Vault no da permiso sobre sus secretos**: el vault usa RBAC
+   y quien lo crea necesita además el rol **Key Vault Secrets Officer**. El
+   script falla en el primer secreto en vez de comprobarlo antes.
+5. **`az ... 2>$null` mata el script en PowerShell 5.1**: redirigir el stderr
+   de un ejecutable nativo convierte cada línea en un `ErrorRecord`, así que
+   «la cuenta de almacenamiento no existe» —lo normal en el primer
+   despliegue— reventaba en vez de devolver `$null`. Corregido en los cuatro
+   puntos afectados con el patrón que el propio script ya usaba en
+   `Existe-Comando` (commit `8d04889`).
+6. **`cmd.exe` rompe las referencias a Key Vault**: en Windows `az` es un
+   `.cmd`, y los **paréntesis** de `@Microsoft.KeyVault(SecretUri=...)` se
+   interpretan como sintaxis de `cmd`. El despliegue moría con un
+   «PG_USER no se esperaba en este momento» que ni siquiera venía de Azure.
+   Corregido entrecomillando cada ajuste (commit `57d4987`).
+
+**El sexto es el más instructivo**: ese despliegue habría funcionado sin un
+fallo en Linux o en PowerShell 7, y moría en el puesto real por cómo `cmd`
+interpreta un paréntesis. Ninguna revisión de código lo ve; solo ejecutarlo.

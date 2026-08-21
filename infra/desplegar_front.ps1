@@ -375,12 +375,12 @@ try {
         # Officer- dejaba el secreto solo en la Static Web App y el script
         # terminaba en verde, rompiendo en silencio el 'un solo sitio donde
         # mirar' de la cabecera.
-        az keyvault secret set --vault-name $PostventaKeyVault --name "swa-client-id" --value $appId --only-show-errors | Out-Null
+        az keyvault secret set --vault-name $PostventaKeyVault --name "swa-client-id" --value=$appId --only-show-errors | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Salir-Con "No se ha podido guardar swa-client-id en el Key Vault." $SALIDA_SIN_KEYVAULT `
                 "comprueba que tienes el rol 'Key Vault Secrets Officer' sobre el vault."
         }
-        az keyvault secret set --vault-name $PostventaKeyVault --name "swa-client-secret" --value $secreto --only-show-errors | Out-Null
+        az keyvault secret set --vault-name $PostventaKeyVault --name "swa-client-secret" --value=$secreto --only-show-errors | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Salir-Con "No se ha podido guardar swa-client-secret en el Key Vault." $SALIDA_SIN_KEYVAULT `
                 "comprueba que tienes el rol 'Key Vault Secrets Officer' sobre el vault. El secreto acaba de generarse y NO ha quedado guardado: vuelve a lanzarlo cuando tengas el permiso."

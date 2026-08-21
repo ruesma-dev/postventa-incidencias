@@ -233,7 +233,7 @@ foreach ($nombre in $aSubir) {
             continue
         }
         az keyvault secret set --vault-name $PostventaKeyVault --name $nombre `
-            --value $claro --only-show-errors | Out-Null
+            --value=$claro --only-show-errors | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Salir-Con ("No se ha podido subir el secreto {0}." -f $nombre) $SALIDA_FALLO `
                 ("comprueba que tienes el rol 'Key Vault Secrets Officer' sobre " +

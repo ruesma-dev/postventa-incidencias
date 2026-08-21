@@ -863,3 +863,83 @@ máquina con PowerShell 5.1.
 **El sexto es el más instructivo**: ese despliegue habría funcionado sin un
 fallo en Linux o en PowerShell 7, y moría en el puesto real por cómo `cmd`
 interpreta un paréntesis. Ninguna revisión de código lo ve; solo ejecutarlo.
+
+## T16 · el front desplegado — y los seis defectos que hicieron falta para entrar
+
+**Resultado: el circuito completo funciona en el entorno desplegado** (humano,
+2026-08-21): entra con cuenta del grupo, suelta la remesa, y trocea, extrae,
+clasifica la firma y valida. Sin URL ni identificadores, como pide la tarea.
+
+Para llegar ahí hubo que corregir **seis defectos más**, todos invisibles hasta
+que una persona intentó entrar de verdad. Van numerados desde el sexto de la
+sección anterior.
+
+### 7 · `--value` se rompe si el valor empieza por guion
+
+`az keyvault secret set --value $secreto` con un secreto que empieza por `-`:
+`az` lo toma por otra opción y responde `expected one argument`. La guarda
+`if (-not $secreto)` no salta, porque el secreto **sí** existe. Corregido con
+`--value=$secreto` —pegado a su opción— en los **tres** puntos, incluido
+`cargar_secretos_postventa.ps1`, donde habría mordido con cualquier
+contraseña que empezara por guion (commit `671276d`).
+
+### 8 · El resumen del script miente
+
+`desplegar_front.ps1` imprime «Credenciales 'swa': sin tocar (-SoloFront)»
+**después de haberlas regenerado**. Es el mismo pecado que la review hizo
+corregir en la cabecera del propio script: una nota que miente es peor que no
+tener nota. **Pendiente de arreglar.**
+
+### 9 · El registro de la aplicación no pedía ningún permiso
+
+`Postventa Incidencias` se creaba **sin permisos y sin consentimiento**, así
+que el inicio de sesión fallaba con un «No podemos iniciar su sesión» sin más
+detalle. Los scripts de `partes` y `dedicacion` sí conceden `User.Read` con
+consentimiento de administrador —y su propio comentario dice que es lo que da
+el SSO silencioso—, pero el nuestro se lo saltó **pese a haberse escrito
+mirándolos**. Resuelto a mano con `az ad app permission add` + `admin-consent`.
+**El script sigue sin hacerlo: pendiente.**
+
+### 10 · La página de inicio de sesión exigía haber iniciado sesión
+
+`AADSTS50196`, que significa **bucle de redirección**, aunque su mensaje no lo
+diga. Faltaba la primera ruta de `staticwebapp.config.json`:
+
+```json
+{ "route": "/.auth/login/aad", "allowedRoles": ["anonymous", "authenticated"] }
+```
+
+Sin ella, el `/*` que exige `authenticated` capturaba **la propia página de
+login**: 401 → redirige a login → 401 → … Copiado el patrón de `front-portal`,
+que lleva meses en producción, y explicado en el README del front
+(commit `e220791`).
+
+### 11 · El registro no emitía tokens de ID
+
+Static Web Apps pide `response_type=code+id_token`, y el registro tenía
+`enableIdTokenIssuance: false`. El del portal lo tiene en `true`. Sin eso, el
+flujo no puede completarse. **El script tampoco lo activa: pendiente.**
+
+### 12 · `PROMPT_KEY_FIRMA` apuntaba a un prompt que no existe
+
+El más grave de los doce, porque **no impedía desplegar ni entrar**: dejaba la
+aplicación **en pie y rota**. El usuario entraba, soltaba su remesa y **todas
+las lecturas fallaban con un 500** sin explicación. En los registros:
+`PromptNoEncontrado: el prompt 'firma_cliente_es' no está en ...`.
+
+El script fijaba `firma_cliente_es`; el prompt real es **`firma_parte_es`**,
+que además es el valor por defecto **correcto** de `config/settings.py`. Es
+decir: el script inventaba un valor y **pisaba el bueno** (commit `5270888`).
+
+**Arreglo permanente propuesto**: un test que compruebe que los valores
+`PROMPT_KEY*` de los scripts de `infra/` existen de verdad como claves en
+`config/prompts.yaml`. Barato, y del mismo tipo que el test que ya clava la
+huella del prompt de extracción.
+
+### El regalo inesperado: la capa 5 sale gratis
+
+`GET /api/health` contra el host desnudo de la Function devolvía 200 antes de
+enlazar el backend, y **401 después**. Al enlazarlo, la Static Web App lo
+reclama y solo acepta lo que venga por su proxy. Es decir: **la capa 5 de
+`design.md` §9 bis —la restricción de acceso público— ya está puesta por la
+propia plataforma**, sin tener que intentarla ni arriesgarse a revertirla.

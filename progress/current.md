@@ -1,6 +1,51 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-25 (noche) · **F-010 · DEFECTOS 13, 14 Y 15 CERRADOS**
+>
+> Tres defectos más, descubiertos **ejecutando T17 y T18 contra el entorno
+> real**. Informe completo en `progress/impl_defectos13-15_F-010.md`; un
+> commit por defecto.
+>
+> - **13 · el host desnudo de la Function ya no responde.** Como backend
+>   enlazado de la Static Web App, la plataforma le activa Easy Auth y
+>   contesta `400 azureStaticWebApps` a todo, `/api/health` incluido.
+>   `verificar_archivo_dev.ps1` reconoce **ese** 400 y explica la vía buena en
+>   vez de morir con un `WebException`; `verificar_despliegue.ps1` también.
+>   La vía que sí funciona —**consola del navegador en el front**, mismo
+>   origen— queda escrita con su fragmento en `docs/DESPLIEGUE.md` **§5 bis**.
+>   Rectificados los enunciados de **T14 (criterios 1 y 3)** y **T18**;
+>   el criterio 3 pasa a comprobarse **leyendo la App Setting**, que es lo que
+>   sigue siendo observable. **Ninguna casilla `[x]` tocada.**
+> - **14 · el 500 mudo de `/api/archivar`.** `PersistenciaNoDisponible` se
+>   escapaba del borde. Ahora: **500 con cuerpo** cuando el fichero **sí está**
+>   en SharePoint y falta la traza (`ArchivoSinTraza`, error nuevo que levanta
+>   el paso, que es quien conoce el orden), y **503 explicado** cuando la base
+>   no responde o falta su configuración y **no se ha subido nada**. Fase RED
+>   pegada en el informe. **Contrato tocado y declarado**: «en los cuatro
+>   casos, sin haber subido nada» ya no describe el endpoint entero; el 500 es
+>   la excepción, y está escrita en el docstring.
+> - **15 · el archivado no puede completar todavía.** `archivos` tiene clave
+>   ajena contra `partes` y **nada inserta el parte**: eso es **F-019**,
+>   `pending`. **No se arregla aquí.** Anotado en su ficha de
+>   `harness/features.json` con el `ForeignKeyViolation` como prueba,
+>   `BACKLOG.md` regenerado, y explicado en `docs/DESPLIEGUE.md` §5 ter y en la
+>   verificación de T18.
+>
+> **Cero llamadas a Azure, SharePoint y PostgreSQL.** `bash harness/init.sh`
+> en verde: 1092 tests del servicio, cobertura de líneas cambiadas 98.5%,
+> mutación 23/20 muertos con los 3 supervivientes analizados (los tres, el
+> separador decorativo de `dev_server.py`).
+>
+> **Residuo reportado y NO corregido**: `specs/F-010-despliegue/design.md:252`
+> y `requirements.md:227` siguen diciendo que T18 se ejecuta con
+> `-BaseUrl` y que el script «no se modifica». Es `spec-author`, no
+> `implementer`. Sigue vivo también el «once secretos» de
+> `cargar_secretos_postventa.ps1:269`.
+>
+> **Lo que falta para cerrar F-010, todo del humano**: **T15**, **T17** y
+> **T18** sin marcar, y el resultado real de **T14 bis** y **T19**.
+
 > ## Estado al 2026-08-25 (tarde) · **F-010 · CORREGIDA LA RE-REVIEW · SOLO DOCUMENTACIÓN**
 >
 > `progress/review2_F-010.md` salió **CHANGES_REQUESTED** sin pedir ni una

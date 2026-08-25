@@ -343,3 +343,16 @@ Los dos `az` nuevos del prerrequisito 3 van con marcadores `<tu-cuenta>` y
 implementer): los §10.5 y §10.6 de la review —resultado de T14 bis y de
 T19— y las tres manuales abiertas T15, T17 y T18, esta última con la
 autorización expresa que nombra `CHECKPOINTS.md` C5.
+
+---
+
+## 11 · Adenda · `progress/current.md` y estado final del árbol
+
+- **`progress/current.md` actualizado** con un bloque al frente («Estado al
+  2026-08-25 (tarde)»): las cinco correcciones, el residuo reportado sin
+  corregir y lo que falta del humano. Commit `2ac6e9b`… (ver `git log`).
+- **`bash harness/init.sh` en verde** después de todo, tal cual y sin pipes.
+  Salida idéntica a la del §0.
+- **`git status`**: limpio salvo `progress/review2_F-010.md`, que está **sin
+  seguir por git**. Es el informe del **reviewer**, no mío: **no lo commiteo**,
+  lo decide el líder.

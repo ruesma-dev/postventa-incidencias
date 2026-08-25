@@ -1,9 +1,9 @@
 # infra/cargar_secretos_postventa.ps1
 <#
 .SYNOPSIS
-    Crea o reutiliza el Key Vault del proyecto y sube sus once secretos,
-    pedidos uno a uno por consola. Re-ejecutable: si el vault ya existe, lo
-    reutiliza; si un secreto ya esta, se puede dejar como esta.
+    Crea o reutiliza el Key Vault del proyecto y sube los NUEVE secretos del
+    backend, pedidos uno a uno por consola. Re-ejecutable: si el vault ya
+    existe, lo reutiliza; si un secreto ya esta, se puede dejar como esta.
 
 .DESCRIPTION
     Este es el camino por el que las credenciales pasan del `.env` de un
@@ -27,10 +27,22 @@
     hay alternativa sin escribir el valor en un fichero, que seria peor. Lo
     que no ocurre es que quede en disco ni en el historial.
 
-    Los once secretos y sus nombres salen de `00_vars_postventa.ps1`, que es
+    Los nombres de los secretos salen de `00_vars_postventa.ps1`, que es
     tambien de donde `desplegar_backend.ps1` saca los nombres que referencia:
     si los dos ficheros discreparan, la Function App arrancaria sin poder
     resolver sus referencias.
+
+    SON NUEVE, NO ONCE. El Key Vault acaba con once secretos, pero a mano solo
+    se cargan los NUEVE del backend (`pg-*`, `gemini-api-key`, `graph-*`,
+    `sharepoint-*`). Los otros dos, `swa-client-id` y `swa-client-secret`, LOS
+    CREA Y LOS GUARDA `desplegar_front.ps1` cuando genera el registro de
+    aplicacion: cuando se ejecuta ESTE script todavia no existen, y cualquier
+    valor que se teclee aqui lo sobrescribe despues el despliegue del front.
+    Este script los sigue nombrando porque recorre la lista entera del vault:
+    DEJALOS VACIOS y saldran como "Sin tocar". La particion esta en
+    `00_vars_postventa.ps1` ($PostventaSecretosBackend / $PostventaSecretosFront)
+    y el porque, con la parada real que costo el 2026-08-21, en
+    `docs/DESPLIEGUE.md` seccion 2.
 
     Se ejecuta UNA VEZ, y se repite solo cuando rote una credencial. Para
     rotar una sola, `-Solo <nombre-del-secreto>`.
@@ -40,8 +52,8 @@
     subiria, y NO hace ninguna llamada de escritura.
 
 .PARAMETER Solo
-    Sube unicamente los secretos que se nombren. Para rotar una credencial sin
-    tener que volver a teclear las once.
+    Sube unicamente los secretos que se nombren. Para rotar una credencial del
+    backend sin tener que volver a teclear las otras ocho.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File $HOME\cargar_secretos_postventa.ps1 -WhatIf
@@ -266,7 +278,9 @@ if ($saltados.Count -gt 0) {
     }
 }
 Write-Host ""
-Write-Host "Anota en progress/ solo esto: 'once secretos cargados: si/no'."
+Write-Host "Anota en progress/ solo esto: 'nueve secretos cargados: si/no'."
+Write-Host "Son NUEVE (los del backend): swa-client-id y swa-client-secret los"
+Write-Host "crea y los guarda desplegar_front.ps1, y aqui se dejan vacios."
 Write-Host "Ningun valor, ningun nombre de host, ningun identificador."
 Write-Host ""
 exit 0

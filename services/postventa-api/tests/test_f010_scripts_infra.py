@@ -43,7 +43,7 @@ INFRA = RAIZ / "infra"
 #: T3 · la fuente unica de nombres de recurso, region y tags.
 SCRIPT_VARS = INFRA / "00_vars_postventa.ps1"
 
-#: T4 · crea o reutiliza el Key Vault y sube los once secretos.
+#: T4 · crea o reutiliza el Key Vault y sube los nueve secretos del backend.
 SCRIPT_SECRETOS = INFRA / "cargar_secretos_postventa.ps1"
 
 #: T5 · el backend: recursos, identidad, referencias a Key Vault y publicacion.
@@ -254,7 +254,7 @@ def secretos() -> str:
 
 
 def test_f010_t4_el_script_de_secretos_existe():
-    """Sin el, las once credenciales viajan a mano y alguna acaba en un chat."""
+    """Sin el, las nueve credenciales viajan a mano y alguna acaba en un chat."""
     assert SCRIPT_SECRETOS.is_file()
 
 

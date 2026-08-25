@@ -208,9 +208,28 @@
       powershell -ExecutionPolicy Bypass -File $HOME\cargar_secretos_postventa.ps1
       ```
 
-      **Verificación**: `MANUAL (humano)` — el script lista los **nombres** de
-      los once secretos cargados y ningún valor. Se anota en `progress/` solo
-      «once secretos cargados: sí/no».
+      **Verificación**: `MANUAL (humano)` — ~~el script lista los **nombres**
+      de los **once** secretos cargados y ningún valor. Se anota en
+      `progress/` solo «once secretos cargados: sí/no»~~ →
+      **RECTIFICADA EL 2026-08-25, tras ejecutarla**: el script lista los
+      **nombres** de los **nueve** secretos del backend cargados y ningún
+      valor. Se anota en `progress/` solo «**nueve** secretos cargados:
+      sí/no».
+
+      **El criterio anterior era imposible de cumplir.** Los dos secretos
+      que faltan hasta once, `swa-client-id` y `swa-client-secret`, **los
+      crea y los guarda `desplegar_front.ps1`** (T16) cuando genera el
+      registro de aplicación: aquí todavía no existen, y teclearlos a mano
+      es inventar dos valores que el despliegue del front sobrescribe. La
+      partición está en `infra/00_vars_postventa.ps1`
+      (`$PostventaSecretosBackend` / `$PostventaSecretosFront`) y el porqué,
+      en `docs/DESPLIEGUE.md` §2.
+
+      Es el **defecto 2** de los doce de la jornada del 2026-08-21
+      (`progress/impl_F-010.md`). **La casilla `[x]` no se toca**: la tarea
+      se ejecutó y su resultado real —«9 de 11 cargados»— es el correcto; lo
+      que estaba mal era el enunciado. Mismo precedente que T8 y T19 de
+      `specs/F-006-sharepoint/tasks.md`.
 
 - [x] **T14 · MANUAL (humano) · APLICA D3** — Desplegar el backend.
 

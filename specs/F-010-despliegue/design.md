@@ -239,6 +239,7 @@ ve un error opaco que ni el front ni el backend han generado. Por eso:
 | `docs/ARCHITECTURE.md` | §«Infra y despliegue»: los nombres de recurso reales, el presupuesto de 45 s y la restricción de región |
 | `.gitignore` | `infra/*.local.ps1` |
 | `harness/features.json` | Estado de F-010 y, si el humano lo autoriza, el de F-006 al ejecutarse T18 |
+| `infra/verificar_archivo_dev.ps1` | **Corrección de este diseño.** Estaba listado como «se ejecuta en T18, no se modifica»: **sí se modificó**, en el commit `7ff86d7`. Con el backend enlazado a la Static Web App, su `-BaseUrl` recibe `400 Login not supported for provider azureStaticWebApps` y T18 pasó a ejecutarse por la consola del front (R29). El script se conserva —vale el día que el backend vuelva a ser alcanzable por su host, y su listado en solo lectura no depende del proxy— y ahora reconoce ese `400`, explica la vía buena y sale con código propio |
 
 ### 6.3 Ficheros que NO se tocan (los que tientan)
 
@@ -249,7 +250,6 @@ ve un error opaco que ni el front ni el backend han generado. Por eso:
 | `services/postventa-front/dev_server.py` | El desarrollo local no cambia porque haya despliegue |
 | `services/postventa-api/.env.example`, `local.settings.json.example` | Son la configuración **local**. El despliegue no añade variables nuevas: usa las mismas con otro origen |
 | `infra/crear_base_postventa.ps1`, `pruebas_bbdd_efimera.ps1` | De F-005 y ya ejecutados |
-| `infra/verificar_archivo_dev.ps1` | **Se ejecuta** en T18, no se modifica: ya se entregó con `-BaseUrl` esperando esta feature |
 | `front-portal/**` | **Otro repositorio.** Ningún agente de este repo lo edita (§8) |
 | `azure-apps/postventa_incidencias.md` | Otro repositorio, y el humano no commitea ahí (decisión del 2026-08-20, T19 de F-006). La fuente de verdad es `docs/INTEGRACION.md` |
 

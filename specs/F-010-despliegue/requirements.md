@@ -222,11 +222,24 @@ y se detallan en `tasks.md`.
 > desde el 2026-08-19 por decisión del humano (D3 de F-006) porque no había
 > entorno desplegado.
 
-- **R29.** CUANDO exista la Function App desplegada y `GET /api/health`
-  responda, el sistema debe permitir ejecutar **T18 de F-006** con
-  `infra/verificar_archivo_dev.ps1 -BaseUrl <url del despliegue>`, que ya se
-  entregó dentro de F-006 y hasta ahora no tenía URL que recibir.
+- **R29.** CUANDO exista la Function App desplegada y enlazada como backend de
+  la Static Web App, el sistema debe permitir ejecutar **T18 de F-006** —la
+  única subida real a SharePoint— **solo desde el entorno desplegado y entrando
+  por el front**: con sesión iniciada, desde la consola del navegador y contra
+  la ruta relativa `/api/archivar`, de modo que la petición viaje por el proxy
+  que autentica y no haya ninguna URL que escribir. El procedimiento, con el
+  fragmento exacto que se ejecuta, vive en `docs/DESPLIEGUE.md` §5 bis.
   *(Verificación **MANUAL (humano)**.)*
+
+  > **Por qué no por el nombre de host de la Function.** Con el backend
+  > enlazado, la plataforma le activa Easy Auth y responde
+  > `400 Login not supported for provider azureStaticWebApps` a **toda** ruta,
+  > `GET /api/health` incluida: `infra/verificar_archivo_dev.ps1 -BaseUrl` no
+  > puede ejecutar T18 por esa vía. El script **no se retira**: sigue valiendo
+  > el día que el backend vuelva a ser alcanzable por su host, y su listado de
+  > la carpeta en solo lectura no depende del proxy. Lo que hace ahora es
+  > **reconocer ese `400`, explicar cuál es la vía buena y salir con un código
+  > propio**, en vez de morir con un error opaco.
 
 - **R30.** MIENTRAS T18 de F-006 no se haya ejecutado con su **resultado real
   anotado**, F-006 no debe darse por completa; y su ejecución dentro de F-010
@@ -275,6 +288,6 @@ y se detallan en `tasks.md`.
 | R26 | Test: `docs/INTEGRACION.md` §8 nombra F-008/F-009 y F-019 como no desplegados | T11 |
 | R27 | `test_f010_scripts_infra.py` sobre `verificar_despliegue.ps1`: tres comprobaciones y ninguna escritura | T7 |
 | R28 | Test: la plantilla de App Settings no incluye ninguna variable `SIGRID_*` | T5 |
-| R29 | **MANUAL (humano)** — T18 de F-006 | **T18** |
+| R29 | **MANUAL (humano)** — T18 de F-006 por la consola del front, `docs/DESPLIEGUE.md` §5 bis. **Y** test de contrato: `test_f010_scripts_infra.py` — `verificar_archivo_dev.ps1` reconoce el `400` de Easy Auth, dice cuál es la vía buena y no muere con un error opaco | **T18** |
 | R30 | **MANUAL (humano)** + anotación en `progress/` y autorización ante C5 | **T18** |
 | R31 | **MANUAL (humano)**: criterio de parada escrito en la tarea | **T18** |

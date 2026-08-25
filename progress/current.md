@@ -1,6 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-010 · §9.2 de la review 3, CORREGIDO**
+>
+> `spec-author`, encargo acotado a dos puntos de `specs/F-010-despliegue/`.
+> Informe: `progress/spec_postreview3_F-010.md`. Sin código, sin tests, sin
+> `infra/`, sin `tasks.md`; nada contra Azure, SharePoint ni PostgreSQL.
+>
+> - **R29 reescrito** contra la vía real: T18 de F-006 se ejecuta **solo desde
+>   el entorno desplegado y entrando por el front** —sesión iniciada, consola
+>   del navegador, ruta relativa `/api/archivar`, sin ninguna URL que
+>   escribir—, con el procedimiento en `docs/DESPLIEGUE.md` §5 bis. Formato
+>   EARS y verificación `MANUAL (humano)` conservados. Queda escrito por qué
+>   no por el host de la Function (`400 azureStaticWebApps`) y que el script
+>   sigue existiendo, ahora reconociendo y explicando ese `400`. La fila de
+>   trazabilidad añade los cuatro tests `defecto13` que ya existen.
+> - **`design.md`**: la fila de `infra/verificar_archivo_dev.ps1` sale de
+>   «ficheros que NO se tocan» y pasa a **§6.2 A modificar**, con el commit
+>   `7ff86d7` y el motivo. Decía que no se modificaba; se modificó.
+> - `bash harness/init.sh` **en verde** al terminar.
+> - **Decisiones abiertas: ninguna nueva.** Siguen pendientes §9.1 (test de
+>   contrato de `staticwebapp.config.json`) y §9.3 (los «once secretos» del
+>   script de `infra/`, que necesita permiso del humano), ambos del
+>   `implementer`; y el resultado de **T14 bis**, que es del humano.
+
 > ## Estado al 2026-08-25 (cierre) · **F-010 · LAS MANUALES, EJECUTADAS Y ANOTADAS**
 >
 > El humano ejecutó hoy contra el entorno real las verificaciones que

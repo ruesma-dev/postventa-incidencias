@@ -40,7 +40,7 @@ copy infra\*.ps1 $HOME\
 | Orden | Script | Qué hace | Cuándo se repite |
 |---|---|---|---|
 | 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | Nunca se ejecuta suelto |
-| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los once secretos pedidos a ciegas | Solo al rotar una credencial (`-Solo <nombre>`) |
+| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **nueve** secretos del backend, pedidos a ciegas | Solo al rotar una credencial (`-Solo <nombre>`) |
 | 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | Cada vez que cambie el backend |
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | Después de cada despliegue |
@@ -48,6 +48,22 @@ copy infra\*.ps1 $HOME\
 **Antes de nada**: `az login` y la suscripción correcta seleccionada.
 También hacen falta la CLI de Azure y la de Static Web Apps
 (`npm i -g @azure/static-web-apps-cli`).
+
+### Son nueve secretos, no once, y el porqué importa
+
+El Key Vault acaba con **once** secretos, pero **a mano solo se cargan
+nueve**: los del backend (`pg-*`, `gemini-api-key`, `graph-*`,
+`sharepoint-*`). Los dos que faltan —`swa-client-id` y `swa-client-secret`—
+**los genera y los guarda `desplegar_front.ps1`**, que crea el registro de
+aplicación, le saca el secreto y lo escribe él mismo en el vault.
+
+**No se inventan ni se teclean**: cuando `cargar_secretos_postventa.ps1` se
+ejecuta todavía no existen, y cualquier valor que se meta lo sobrescribe el
+despliegue del front. Esto costó una parada real el 2026-08-21, siguiendo lo
+que decía este mismo documento.
+
+La lista está en `infra/00_vars_postventa.ps1`, partida a propósito en
+`$PostventaSecretosBackend` (los nueve) y `$PostventaSecretosFront` (los dos).
 
 ### Si un nombre global está ocupado
 
@@ -90,7 +106,14 @@ recomponen solos.
    `infra/00_vars_postventa.ps1` y en la tarjeta del portal (§6). **Los tres
    sitios tienen que decir lo mismo.**
 
-2. **Las once credenciales a mano**, para teclearlas cuando el script las pida.
+2. **Las nueve credenciales del backend a mano**, para teclearlas cuando el
+   script las pida: `pg-host`, `pg-user`, `pg-password`, `gemini-api-key`,
+   `graph-tenant-id`, `graph-client-id`, `graph-client-secret`,
+   `sharepoint-site-id` y `sharepoint-drive-id`.
+
+   **`swa-client-id` y `swa-client-secret` NO se preparan**: los crea y los
+   guarda `desplegar_front.ps1` (§2). Teclearlos aquí es inventar dos valores
+   que el despliegue del front sobrescribe.
 
 3. **Un tope de gasto con alerta en el proveedor de IA.** No es opcional y no
    depende de Azure: `/api/extraer` y `/api/firma` quedan alcanzables, y el

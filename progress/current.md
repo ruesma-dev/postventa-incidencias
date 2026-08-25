@@ -1,6 +1,47 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-25 (tarde) · **F-010 · CORREGIDA LA RE-REVIEW · SOLO DOCUMENTACIÓN**
+>
+> `progress/review2_F-010.md` salió **CHANGES_REQUESTED** sin pedir ni una
+> línea de código: los defectos 8, 9, 11 y 12 quedaron **aprobados tal cual**.
+> Lo que bloqueaba era el otro lado: **la jornada del 2026-08-21 costó doce
+> defectos y los documentos que existen para que no vuelvan a costarse no los
+> recogieron**.
+>
+> **Cinco correcciones, un commit cada una, dos ficheros Markdown y nada más**
+> (`progress/impl_postreview2_F-010.md`):
+>
+> 1. `docs/DESPLIEGUE.md` decía «los **once** secretos» y «las **once**
+>    credenciales a mano». Son **nueve**: `swa-client-id` y `swa-client-secret`
+>    los genera y los guarda `desplegar_front.ps1`. Corregido el número **y el
+>    porqué**.
+> 2. Añadido a los prerrequisitos el rol **`Key Vault Secrets Officer`**, que
+>    es lo que **paró la primera ejecución real**: crear el vault no da permiso
+>    sobre sus secretos.
+> 3. Avisado el defecto 3: **`-Solo` no funciona con `powershell -File`**, y
+>    el script contesta «estos secretos no existen», que no es el error real.
+> 4. **Rectificada la verificación de T13** («nueve secretos», no once), con
+>    el precedente de T8 y T19 de F-006. **La casilla `[x]` no se toca.**
+> 5. **Las rutas `$HOME` que no funcionan** (defecto 1, aún vivo en los
+>    enunciados): `desplegar_backend.ps1` y `desplegar_front.ps1` deducen la
+>    raíz con `Split-Path -Parent $PSScriptRoot`, así que **se ejecutan desde
+>    `infra\`**. Comprobado script por script; los que sí valen en `$HOME`
+>    —`cargar_secretos`, `verificar_despliegue`, `verificar_archivo_dev`— no se
+>    han tocado.
+>
+> **Cero llamadas a Azure y a SharePoint. Ninguna casilla `[x]` movida.**
+> `bash harness/init.sh` en verde.
+>
+> **Residuo reportado y NO corregido** (toca `infra/`, hace falta permiso):
+> `cargar_secretos_postventa.ps1` **sigue pidiendo «once secretos» por
+> pantalla** (`:269`), justo la contradicción que se acaba de cerrar en los
+> documentos.
+>
+> **Lo que falta para cerrar F-010, todo del humano**: el resultado real de
+> **T14 bis** y el de **T19** (§10.5 y §10.6 de la re-review), y las manuales
+> **T15, T17 y T18**.
+
 > ## Estado al 2026-08-25 · **F-010 · DESPLEGADA Y CON LOS DOCE DEFECTOS CERRADOS**
 >
 > El despliegue real se hizo el **2026-08-21** y funciona: backend y front en

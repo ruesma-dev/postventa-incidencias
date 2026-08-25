@@ -350,7 +350,7 @@ autorización expresa que nombra `CHECKPOINTS.md` C5.
 
 - **`progress/current.md` actualizado** con un bloque al frente («Estado al
   2026-08-25 (tarde)»): las cinco correcciones, el residuo reportado sin
-  corregir y lo que falta del humano. Commit `2ac6e9b`… (ver `git log`).
+  corregir y lo que falta del humano. Commit `0e4dd54`.
 - **`bash harness/init.sh` en verde** después de todo, tal cual y sin pipes.
   Salida idéntica a la del §0.
 - **`git status`**: limpio salvo `progress/review2_F-010.md`, que está **sin

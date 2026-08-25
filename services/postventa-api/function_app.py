@@ -98,6 +98,8 @@ from config.logging_config import configurar_logging
 from domain.models.errores import (
     ArchivoDeshabilitado,
     ArchivoFallido,
+    ArchivoSinTraza,
+    ConfiguracionPgIncompleta,
     ConfiguracionSharePointIncompleta,
     CuerpoDeArchivoInvalido,
     CuerpoDeValidacionInvalido,
@@ -106,6 +108,7 @@ from domain.models.errores import (
     NombradoImposible,
     ParteDemasiadoGrande,
     ParteNoApto,
+    PersistenciaNoDisponible,
     RemesaSinPdfUtilizable,
 )
 from domain.models.remesa import DocumentoEntrada
@@ -258,11 +261,23 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
     """Nombra un parte apto y lo archiva en SharePoint, sin duplicar.
 
     Solo traduce: saca el fichero y los campos de la petición, llama al
-    handler y mapea sus errores de dominio a códigos HTTP. Los cuatro dicen
-    cosas distintas a propósito: **400** la petición está mal formada, **409**
-    el parte no se puede archivar tal y como está —no es apto, o no se puede
-    nombrar—, **503** este entorno no archiva y **502** el proveedor no
-    respondió. En los cuatro casos, **sin haber subido nada**.
+    handler y mapea sus errores de dominio a códigos HTTP. Cada código dice
+    una cosa distinta a propósito: **400** la petición está mal formada,
+    **409** el parte no se puede archivar tal y como está —no es apto, o no se
+    puede nombrar—, **503** aquí y ahora no se archiva —ventana cerrada, falta
+    configuración, o la base de datos no responde— y **502** el proveedor del
+    archivo no respondió. En todos ellos, **sin haber subido nada**, y el
+    mensaje lo dice.
+
+    **La excepción, y por eso es un código aparte: 500.** Es el único caso en
+    el que el PDF **sí está** en SharePoint y lo que falta es la traza
+    (`ArchivoSinTraza`). Hasta el defecto 14 de F-010 salía como un 500 con el
+    cuerpo vacío, y desde el otro lado eso es indistinguible de una caída:
+    costó media hora de Application Insights leer algo que el servicio ya
+    sabía. Se queda en 500 —y no se recicla el 502 ni el 503— porque los dos
+    prometen que no se ha subido nada, y aquí sí se subió; el 500 es además el
+    código que ya recibía el llamante, así que quien lo trate hoy sigue
+    tratándolo igual, solo que ahora con un cuerpo que se puede leer.
 
     El log lleva hash, nombre del fichero, carpeta y estado. **Nunca** el
     contenido del parte, ni el DNI, ni las observaciones, ni el token, ni el
@@ -292,6 +307,47 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
     except (ArchivoDeshabilitado, ConfiguracionSharePointIncompleta) as error:
         log.warning("archivar deshabilitado: %s", error.motivo)
         return _json({"error": error.motivo}, 503)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("archivar sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no archiva: no se ha subido nada a SharePoint. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("archivar sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"subido nada a SharePoint: se puede reintentar "
+                    f"cuando la base vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except ArchivoSinTraza as error:
+        log.error(
+            "archivar sin traza: el parte está subido y no consta: %s",
+            error.motivo,
+        )
+        return _json(
+            {
+                "error": (
+                    f"el parte SÍ se ha subido a SharePoint, pero no se ha "
+                    f"podido dejar constancia en la base de datos: el fichero "
+                    f"ya está en su carpeta y lo que falta es la traza, así "
+                    f"que volver a archivarlo no arregla nada. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            500,
+        )
     except ArchivoFallido as error:
         log.warning("archivar fallido: %s", error.motivo)
         return _json({"error": error.motivo}, 502)

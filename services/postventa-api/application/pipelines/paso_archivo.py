@@ -37,7 +37,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from domain.models.errores import ArchivoFallido, ParteNoApto
+from domain.models.errores import (
+    ArchivoFallido,
+    ArchivoSinTraza,
+    ErrorDePersistencia,
+    ParteNoApto,
+)
 from domain.models.nombrado import componer_destino
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
 from domain.models.validacion import Destino, Veredicto
@@ -96,8 +101,10 @@ def paso_archivo(
     6. `subir`, reemplazando (R15).
     7. **Traza** (R23, R24), que se persiste tanto si fue bien como si no.
 
-    Levanta `ParteNoApto`, `NombradoImposible` o `ArchivoFallido`. Los tres
-    los traduce a HTTP el borde; aquí no se sabe de códigos de estado.
+    Levanta `ParteNoApto`, `NombradoImposible`, `ArchivoFallido` y
+    —si la subida salió bien y la traza no se pudo escribir— `ArchivoSinTraza`.
+    Los cuatro los traduce a HTTP el borde; aquí no se sabe de códigos de
+    estado.
     """
     _exigir_apto(ctx)
 
@@ -120,8 +127,31 @@ def paso_archivo(
         raise
 
     ctx.archivo = _traza_de_exito(ctx, item, ahora=ahora)
-    repositorio.guardar_archivo(traza=ctx.archivo)
+    _dejar_constancia(repositorio, ctx)
     return ctx
+
+
+def _dejar_constancia(repositorio: RepositorioPartesPort, ctx: ContextoParte) -> None:
+    """Guarda la traza del parte **ya subido**, o dice que se quedó sin ella.
+
+    Aquí arriba la subida ya ocurrió, y eso es lo que hace falta contar. Dejar
+    salir el error de la persistencia tal cual —que es lo que pasaba hasta el
+    defecto 14 de F-010— produce el mismo `PersistenciaNoDisponible` que sale
+    cuando la base no responde y **no se ha subido nada**, y las dos lecturas
+    llevan a acciones opuestas: reintentar, o ir a mirar la carpeta.
+
+    Por eso se renombra a `ArchivoSinTraza`: no se traga el fallo —el llamante
+    se entera y el motivo viaja entero— pero sí dice **en qué punto** ocurrió,
+    que es lo único que el borde no puede deducir.
+
+    El bloque `except ArchivoFallido` de arriba NO hace esto a propósito: allí
+    la subida falló, así que su `PersistenciaNoDisponible` sí significa «no hay
+    nada arriba» y el borde lo traduce como tal.
+    """
+    try:
+        repositorio.guardar_archivo(traza=ctx.archivo)
+    except ErrorDePersistencia as sin_traza:
+        raise ArchivoSinTraza(sin_traza.motivo) from sin_traza
 
 
 def _exigir_apto(ctx: ContextoParte) -> None:

@@ -41,6 +41,25 @@
     NINGUN VALOR VIVE EN ESTE FICHERO, y no se imprime nunca el token ni el
     secreto.
 
+    AVISO DEL 2026-08-25 (defecto 13 de F-010): -BaseUrl CON EL HOST DESNUDO DE
+    LA FUNCTION YA NO FUNCIONA, y no es un fallo del despliegue. Desde que la
+    Function App es BACKEND ENLAZADO de la Static Web App, la plataforma le
+    activa Easy Auth con el proveedor `azureStaticWebApps` y solo acepta lo que
+    entra por el proxy del front: el host desnudo responde 400 a todo, incluido
+    `GET /api/health`, con el cuerpo
+
+        {"code":400,"message":"Login not supported for provider azureStaticWebApps"}
+
+    Este script reconoce ese 400 y lo explica en vez de morir con un
+    WebException. LA VIA QUE SI FUNCIONA es la consola del navegador en el
+    front, con sesion iniciada, contra `/api/archivar` del mismo origen: el
+    fragmento exacto esta en `docs/DESPLIEGUE.md`, seccion 5 bis.
+
+    El script se conserva porque sigue valiendo el dia que el backend vuelva a
+    ser alcanzable por su host -si se desenlaza, o si se prueba otro despliegue
+    sin Static Web App delante-, y porque su paso 4 -listar la carpeta en solo
+    lectura- no depende del proxy.
+
 .PARAMETER BaseUrl
     La URL del servicio DESPLEGADO, sin barra final. Sin ella no se llama a
     nada.
@@ -64,6 +83,12 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+#   0  verificacion hecha
+#   1  falta -BaseUrl
+#   2  el host desnudo no acepta la llamada (Easy Auth del backend enlazado)
+$SALIDA_FALTA_PARAMETRO = 1
+$SALIDA_HOST_NO_ALCANZABLE = 2
 
 # Un parte inventado. Los dos codigos por defecto son los de la spec y NO son
 # de nadie: no existe la obra 0677 ni la incidencia RS26.08/0001.
@@ -103,6 +128,11 @@ function Write-Ayuda {
         Write-Host ("  {0,-24} {1}" -f $nombre, $estado)
     }
     Write-Host ""
+    Write-Host "AVISO: contra el HOST DESNUDO de la Function esto ya no funciona."
+    Write-Host "La plataforma responde 400 (Easy Auth, proveedor azureStaticWebApps)"
+    Write-Host "porque el backend esta enlazado a la Static Web App. La via buena es"
+    Write-Host "la consola del navegador en el front: docs/DESPLIEGUE.md, seccion 5 bis."
+    Write-Host ""
     Write-Host "El PDF que se sube es sintetico. NUNCA uses un parte real: llevan"
     Write-Host "DNI y observaciones manuscritas de clientes."
     Write-Host ""
@@ -122,6 +152,44 @@ function New-Pdf-Sintetico {
         "%%EOF"
     )
     return [Text.Encoding]::ASCII.GetBytes(($lineas -join "`n"))
+}
+
+function Get-Cuerpo-Del-Error {
+    # El cuerpo de una respuesta de error, o cadena vacia si no se puede leer.
+    # Sin esto, el 400 de la plataforma llega como un WebException pelado y no
+    # hay forma de distinguirlo de cualquier otro 400.
+    param($Respuesta)
+    if ($null -eq $Respuesta) { return "" }
+    try {
+        $flujo = $Respuesta.GetResponseStream()
+        $lector = New-Object IO.StreamReader($flujo)
+        try { return $lector.ReadToEnd() } finally { $lector.Dispose() }
+    }
+    catch {
+        return ""
+    }
+}
+
+function Write-Explicacion-Easy-Auth {
+    # El error mas probable de este script hoy, explicado. Un verificador que
+    # no sabe leer el fallo mas probable manda a buscar al sitio equivocado.
+    Write-Host ""
+    Write-Host "EL HOST DESNUDO DE LA FUNCTION NO ACEPTA ESTA LLAMADA." -ForegroundColor Red
+    Write-Host "Ha respondido 400 'Login not supported for provider azureStaticWebApps'." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "NO ES UN FALLO DEL DESPLIEGUE ni de este script. La Function App es"
+    Write-Host "backend enlazado de la Static Web App: la plataforma le activa Easy"
+    Write-Host "Auth con ese proveedor y solo deja pasar lo que entra por el proxy"
+    Write-Host "del front. Por el host desnudo responde 400 a todo, /api/health"
+    Write-Host "incluido, y no hay -BaseUrl que valga."
+    Write-Host ""
+    Write-Host "LA VIA QUE SI FUNCIONA para T18: la consola del navegador (F12) en el"
+    Write-Host "front, con sesion iniciada, llamando a /api/archivar del MISMO origen."
+    Write-Host "El fragmento exacto esta en docs/DESPLIEGUE.md, seccion 5 bis."
+    Write-Host ""
+    Write-Host "Y antes de nada: la ventana de escritura tiene que estar ABIERTA, y se"
+    Write-Host "cierra en cuanto termine."
+    Write-Host ""
 }
 
 function Invoke-Archivar {
@@ -158,7 +226,25 @@ function Invoke-Archivar {
     $cuerpo.AddRange([Text.Encoding]::UTF8.GetBytes("$nl--$frontera--$nl"))
 
     $tipo = "multipart/form-data; boundary=$frontera"
-    return Invoke-RestMethod -Method Post -Uri $Url -ContentType $tipo -Body $cuerpo.ToArray()
+    try {
+        return Invoke-RestMethod -Method Post -Uri $Url -ContentType $tipo -Body $cuerpo.ToArray()
+    }
+    catch {
+        # Con $ErrorActionPreference = "Stop" un Invoke-RestMethod suelto
+        # revienta con la traza de PowerShell y ni el codigo ni el cuerpo se
+        # llegan a leer. Aqui si se leen, y el 400 de la plataforma se explica.
+        $respuesta = $_.Exception.Response
+        $codigo = 0
+        if ($null -ne $respuesta) { $codigo = [int]$respuesta.StatusCode }
+        $texto = Get-Cuerpo-Del-Error $respuesta
+        if ($codigo -eq 400 -and $texto -like "*azureStaticWebApps*") {
+            Write-Explicacion-Easy-Auth
+            exit $SALIDA_HOST_NO_ALCANZABLE
+        }
+        Write-Host ""
+        Write-Host ("La llamada ha fallado con codigo {0}." -f $codigo) -ForegroundColor Red
+        throw
+    }
 }
 
 function Get-Token-App-Only {
@@ -184,7 +270,7 @@ if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
     Write-Ayuda
     Write-Host "Falta -BaseUrl. Contra un servicio local NO funciona ni debe:" -ForegroundColor Red
     Write-Host "alli ENTORNO no es dev ni pro y el servicio responde 503." -ForegroundColor Red
-    exit 1
+    exit $SALIDA_FALTA_PARAMETRO
 }
 
 $url = $BaseUrl.TrimEnd("/") + "/api/archivar"

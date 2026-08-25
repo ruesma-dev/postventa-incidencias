@@ -1092,6 +1092,73 @@ def test_f010_t7_el_verificador_no_imprime_ninguna_url(verificar):
     assert culpables == []
 
 
+# --- Defecto 13 · el host desnudo de la Function ya no responde -------------
+#
+# Desde que la Function App es **backend enlazado** de la Static Web App, la
+# plataforma le activa Easy Auth con el proveedor `azureStaticWebApps` y solo
+# acepta lo que entra por el proxy del front. El host desnudo contesta a todo
+# —`/api/health` incluido— con:
+#
+#     {"code":400,"message":"Login not supported for provider azureStaticWebApps"}
+#
+# Los dos verificadores se escribieron antes de que existiera la Static Web
+# App. El de T18 moria con un `WebException` opaco; el del despliegue decia
+# «health 200: NO» sin explicar por que. Un verificador que no sabe leer el
+# error mas probable manda a quien lo ejecuta a buscar al sitio equivocado:
+# el 2026-08-25 costo la mitad de la sesion.
+
+
+@pytest.fixture
+def archivo_dev() -> str:
+    """El verificador de T18, leido como ASCII igual que los demas."""
+    return (INFRA / "verificar_archivo_dev.ps1").read_text(encoding="ascii")
+
+
+def test_f010_defecto13_el_verificador_de_t18_reconoce_el_400_de_easy_auth(archivo_dev):
+    """Reconocerlo por su nombre, no «un error de red».
+
+    El mensaje de la plataforma es literal y no cambia: nombrarlo es lo que
+    convierte un fallo indescifrable en una frase que se entiende.
+    """
+    assert "azureStaticWebApps" in archivo_dev
+    assert "400" in archivo_dev
+
+
+def test_f010_defecto13_el_verificador_de_t18_dice_cual_es_la_via_buena(archivo_dev):
+    """Explicar el fallo sin decir que hacer deja el trabajo a medias.
+
+    La via que si funciona es la consola del navegador en el front, con sesion
+    iniciada, contra `/api/archivar` del mismo origen. Y el fragmento exacto
+    esta escrito en `docs/DESPLIEGUE.md`, no en la cabeza de quien lo ejecuto.
+    """
+    minusculas = archivo_dev.lower()
+
+    assert "consola" in minusculas
+    assert "docs/despliegue.md" in minusculas
+
+
+def test_f010_defecto13_el_verificador_de_t18_no_muere_con_un_error_opaco(archivo_dev):
+    """La llamada va dentro de un `try`, o el 400 sale como `WebException`.
+
+    Con `$ErrorActionPreference = "Stop"`, un `Invoke-RestMethod` suelto
+    revienta con la traza de PowerShell y ni el codigo ni el cuerpo llegan a
+    leerse. Sin esto, los dos tests de arriba solo comprueban comentarios.
+    """
+    assert "catch" in archivo_dev
+    assert "StatusCode" in archivo_dev
+
+
+def test_f010_defecto13_el_verificador_del_despliegue_explica_el_400(verificar):
+    """T14, criterios 1 y 3: los dos llaman al host desnudo.
+
+    Este script no muere —`Get-Codigo-Http` devuelve el codigo—, pero un
+    `codigo: 400` sin explicacion se lee como «el despliegue esta roto», que
+    es justo lo que no pasa.
+    """
+    assert "azureStaticWebApps" in verificar
+    assert "backend enlazado" in verificar
+
+
 # --- R3, R4, R5 y R6 · lo que se le exige a todo script que escriba ---------
 
 

@@ -258,16 +258,38 @@
       powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1
       ```
 
+      > **ENUNCIADO RECTIFICADO EL 2026-08-25 (defecto 13), criterios 1 y 3.
+      > La casilla `[x]` NO se toca**: la puso el humano el 2026-08-21, cuando
+      > el backend todavía era alcanzable por su nombre de host y las dos
+      > comprobaciones medían lo que decían medir. Desde que la Function App es
+      > **backend enlazado** de la Static Web App, la plataforma le activa Easy
+      > Auth (proveedor `azureStaticWebApps`) y **el host desnudo responde
+      > `400` a todo**, `/api/health` incluido. Un `503` ya no se puede
+      > distinguir de un `400` de la capa de auth por esa vía: el criterio 3
+      > dejó de medir la ventana de escritura. Precedente: T8 y T19 de F-006.
+
       **Verificación**: `MANUAL (humano)`, cuatro cosas y en este orden:
 
-      1. `GET /api/health` responde `200` a través del nombre de host de la
-         Function.
+      1. `GET /api/health` responde `200` **a través del front**
+         (`<origen del front>/api/health`, con sesión iniciada), que es la
+         única vía que la plataforma acepta desde el enlace del backend. Por
+         el nombre de host de la Function responde `400` y **eso no es un
+         fallo del despliegue**: ver `docs/DESPLIEGUE.md` §5 bis.
       2. Las App Settings resuelven sus referencias a Key Vault: ninguna
          aparece con error en el portal de Azure.
-      3. **`POST /api/archivar` contra el host desnudo responde `503`** —la
-         ventana de escritura está cerrada (R33)—. Si respondiera `200`,
-         **PARAR**: el script no dejó `ARCHIVO_HABILITADO` apagado y la
-         Function está escribiendo en SharePoint a cualquiera que la llame.
+      3. **La ventana de escritura está cerrada (R33)**, y se comprueba
+         **leyendo la App Setting**, que es lo que sigue siendo observable:
+
+         ```
+         az functionapp config appsettings list -g rg-postventa-dev -n func-postventa-dev --query "[?name=='ARCHIVO_HABILITADO'].value | [0]" -o tsv
+         ```
+
+         Tiene que salir `false` (o vacío). Si saliera `true`, **PARAR**: el
+         script no la dejó apagada. La comprobación equivalente por HTTP
+         —`POST /api/archivar` contra el host desnudo devolviendo `503`— **ya
+         no vale**: hoy devuelve el `400` de Easy Auth diga lo que diga la
+         ventana. A través del front, con la ventana cerrada, sí responde
+         `503`.
       4. **Capa 5 de `design.md` §9 bis, y es un intento, no un requisito**:
          aplicar la restricción de acceso público a la Function App y
          comprobar **después de T16** que la Static Web App sigue alcanzando
@@ -276,9 +298,9 @@
          solas.
 
       El resultado se anota en `progress/` **sin la URL y sin ningún
-      identificador**: «health 200: sí/no», «referencias resueltas: sí/no»,
-      «archivar cerrado devuelve 503: sí/no», «restricción de red aplicada:
-      sí / revertida».
+      identificador**: «health 200 por el front: sí/no», «referencias
+      resueltas: sí/no», «ARCHIVO_HABILITADO en false: sí/no», «restricción de
+      red aplicada: sí / revertida».
 
 - [x] **T14 bis · MANUAL (humano)** — Fijar **tope de gasto y alerta** en la
       consola del proveedor de IA antes de que el front sea alcanzable (R35).
@@ -340,13 +362,21 @@
 - [ ] **T18 · MANUAL (humano) · ES T18 DE F-006 · REQUIERE AUTORIZACIÓN
       EXPRESA** — La **única subida real a SharePoint** de todo el proyecto,
       diferida desde el 2026-08-19 (D3 de F-006, opción (a)) esperando
-      justamente este entorno. Ahora ya hay `-BaseUrl` que pasarle.
+      justamente este entorno, que ya está en pie.
 
       **Antes de ejecutarla hay que pedir autorización al humano**, y no es
       una formalidad: `CHECKPOINTS.md` **C5** exige `tasks.md` con todas las
       tareas `[x]`, F-006 se cerró con esta casilla vacía por una dependencia
       declarada, y quien la marque está cerrando una feature ajena. La
       autorización se pide **nombrando C5** y se anota con fecha.
+
+      > **ENUNCIADO RECTIFICADO EL 2026-08-25 (defecto 13): el comando ha
+      > cambiado.** `verificar_archivo_dev.ps1 -BaseUrl <host de la Function>`
+      > **no puede funcionar** desde que el backend es enlazado de la Static
+      > Web App: la plataforma le activa Easy Auth y el host desnudo responde
+      > `400 Login not supported for provider azureStaticWebApps` a todo. El
+      > script reconoce ese 400 y lo explica, pero la vía es otra: **la consola
+      > del navegador en el front**. Es la que se ejecutó ese día.
 
       **Esta tarea abre y cierra la ventana de escritura** (R33, R34,
       `design.md` §9 bis capa 3). Los dos `az` van sueltos, uno por línea.
@@ -357,15 +387,10 @@
       az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings ARCHIVO_HABILITADO=true
       ```
 
-      El script ya existe desde F-006; aquí solo se ejecuta:
-
-      ```
-      copy infra\verificar_archivo_dev.ps1 $HOME\
-      ```
-
-      ```
-      powershell -File $HOME\verificar_archivo_dev.ps1 -BaseUrl <url-de-dev>
-      ```
+      **Ejecutar**: entrar al front **con sesión iniciada**, `F12` →
+      **Consola**, y pegar entero el fragmento de **`docs/DESPLIEGUE.md`
+      §5 bis**. Va al **mismo origen**, así que pasa por el proxy que
+      autentica; por eso no hay ninguna URL que escribir en ningún sitio.
 
       **Cerrar la ventana en cuanto termine**, salga bien o mal:
 
@@ -375,13 +400,7 @@
 
       Dejarla abierta «por si acaso» es exactamente lo que D3 evita: mientras
       esté abierta, `/api/archivar` escribe en SharePoint para cualquiera que
-      llame a la Function.
-
-      Para ver antes qué haría, sin llamar a nada:
-
-      ```
-      powershell -File $HOME\verificar_archivo_dev.ps1 -WhatIf
-      ```
+      entre al front.
 
       **Verificación**: `MANUAL (humano)`. Parte **sintético** (obra `0677`,
       incidencia `RS26.08/0001`, los dos inventados). Se da por verificada si
@@ -396,6 +415,22 @@
       **SI aparece un `(1)`, es una PARADA** (R31): se habla con el humano
       antes de seguir. Es el fallo que el `acceptance` de F-006 prohíbe y no
       se arregla con más tests.
+
+      > **Lo que pasó al ejecutarlo el 2026-08-25, y por qué el `200` no puede
+      > llegar todavía (defecto 15).** Las dos llamadas subieron el PDF —nombre
+      > y carpeta correctos, **un solo elemento**, sin `(1)`— y las dos
+      > respondieron **`500`**: la tabla `archivos` tiene una **clave ajena
+      > contra `partes`** y nada guarda el parte, porque eso es **F-019**, que
+      > sigue `pending`. **F-019 es prerequisito del archivado completo**, con
+      > parte sintético y con parte real.
+      >
+      > Desde el defecto 14, ese `500` **lo dice**: «el parte SÍ se ha subido a
+      > SharePoint, pero no se ha podido dejar constancia». Mientras F-019 no
+      > exista, lo observable es el **listado de la carpeta**, que es justo lo
+      > que pide el `acceptance` de F-006; el `200` de los dos primeros puntos
+      > **no** se puede exigir. Decidir si eso cierra la casilla T18 de F-006
+      > es del humano, y es la misma autorización ante **C5** que ya pide esta
+      > tarea.
 
       El resultado real se anota en `progress/` **el día que se ejecute**, sin
       la URL, sin el identificador del elemento y sin ningún GUID. Solo

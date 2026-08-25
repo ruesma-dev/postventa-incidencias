@@ -61,10 +61,20 @@ def runbook() -> str:
 
 @pytest.fixture
 def bloque(runbook: str) -> str:
-    """El bloque `js` del documento, aislado de la prosa que lo rodea."""
-    hallado = re.search(r"```js\n(.*?)```", runbook, re.DOTALL)
-    assert hallado is not None, "el runbook no trae el bloque de la tarjeta"
-    return hallado.group(1)
+    """El bloque `js` **de la tarjeta**, aislado de la prosa que lo rodea.
+
+    Se busca por su contenido y no por ser el primero: desde que el runbook
+    trae tambien el fragmento de consola de T18 (defecto 13, seccion 5 bis),
+    «el primer bloque js» ya no es la tarjeta, y estos tests estarian
+    afirmando sobre otra cosa sin enterarse.
+    """
+    candidatos = [
+        hallado
+        for hallado in re.findall(r"```js\n(.*?)```", runbook, re.DOTALL)
+        if "requiredGroupId" in hallado
+    ]
+    assert candidatos, "el runbook no trae el bloque de la tarjeta"
+    return candidatos[0]
 
 
 def test_f010_t10_el_runbook_existe():
@@ -162,6 +172,40 @@ def test_f010_t10_el_runbook_explica_por_que_los_endpoints_son_anonimos(runbook)
     """
     assert "la plataforma lo exige" in runbook
     assert "auth_level=FUNCTION" in runbook
+
+
+def test_f010_defecto13_el_runbook_trae_la_via_de_t18_por_la_consola(runbook):
+    """Defecto 13 · el host desnudo de la Function ya no acepta la llamada.
+
+    El comando de T18 —`verificar_archivo_dev.ps1 -BaseUrl <host>`— recibe el
+    400 de Easy Auth desde que el backend esta enlazado a la Static Web App.
+    La via que si funciona se ejecuto el 2026-08-25 desde la consola del
+    navegador, y el fragmento tiene que vivir aqui: en un fichero suelto del
+    escritorio de alguien no sobrevive a la siguiente sesion.
+    """
+    assert "5 bis" in runbook
+    assert "azureStaticWebApps" in runbook
+    assert "F12" in runbook
+    assert 'fetch("/api/archivar"' in runbook
+
+
+def test_f010_defecto13_el_fragmento_de_consola_llama_al_mismo_origen(runbook):
+    """R8 · y por eso el fragmento no lleva ni una URL: es del mismo origen.
+
+    Escribir ahi el host del front seria meter en el repositorio justo lo que
+    todos los scripts se cuidan de no traer, y ademas romperia la unica gracia
+    del metodo: que la peticion pase por el proxy que autentica.
+    """
+    fragmentos = [
+        bloque
+        for bloque in re.findall(r"```js\n(.*?)```", runbook, re.DOTALL)
+        if "fetch(" in bloque
+    ]
+
+    assert fragmentos, "el runbook no trae el fragmento de consola de T18"
+    for fragmento in fragmentos:
+        assert "http://" not in fragmento
+        assert "https://" not in fragmento
 
 
 def test_f010_t10_el_runbook_dice_que_no_esta_desplegado(runbook):

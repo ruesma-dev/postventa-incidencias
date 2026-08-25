@@ -143,13 +143,26 @@ def guid_compuesto(*trozos: str) -> str:
     return "-".join(trozos)
 
 
-def _es_barrido(fichero: Path) -> bool:
-    """Si un fichero forma parte de lo que este guardián vigila."""
+def _es_barrido(fichero: Path, raiz: Path = RAIZ) -> bool:
+    """Si un fichero forma parte de lo que este guardián vigila.
+
+    Los directorios excluidos se comparan contra la ruta **relativa a la
+    raíz**, nunca contra la absoluta. Con la absoluta el guardián se apagaba
+    entero al ejecutarse desde un worktree del arnés: su ruta es
+    `<repo>/.claude/worktrees/agent-XXX/`, así que *todos* sus ficheros
+    llevaban `worktrees` entre sus `parts` y el barrido salía vacío. Y un
+    barrido vacío es justo lo que
+    `test_f006_r26_el_barrido_del_repositorio_mira_ficheros_de_verdad`
+    existe para impedir: fue ese control el que lo cazó, no una revisión.
+    Relativizando, `.claude/worktrees/` se sigue excluyendo desde el árbol
+    principal —que es para lo que se puso— y deja de excluirse a sí mismo
+    cuando la raíz *es* el worktree.
+    """
     return (
         fichero.is_file()
         and fichero.suffix in EXTENSIONES
         and fichero.name not in FICHEROS_NO_VERSIONADOS
-        and not any(parte in DIRECTORIOS_NO_VERSIONADOS for parte in fichero.parts)
+        and not any(parte in DIRECTORIOS_NO_VERSIONADOS for parte in fichero.relative_to(raiz).parts)
     )
 
 
@@ -160,7 +173,7 @@ def _ficheros_barridos(raiz: Path = RAIZ) -> list[Path]:
     mentira en `tmp_path` y comprobar el barrido **entero** —recorrido,
     filtros y recuento— sin escribir un solo GUID en el repositorio de verdad.
     """
-    return sorted(fichero for fichero in raiz.rglob("*") if _es_barrido(fichero))
+    return sorted(fichero for fichero in raiz.rglob("*") if _es_barrido(fichero, raiz))
 
 
 def _hallazgos(raiz: Path = RAIZ) -> dict[str, int]:

@@ -40,7 +40,7 @@ copy infra\*.ps1 $HOME\
 | Orden | Script | Qué hace | Cuándo se repite |
 |---|---|---|---|
 | 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | Nunca se ejecuta suelto |
-| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **nueve** secretos del backend, pedidos a ciegas | Solo al rotar una credencial (`-Solo <nombre>`) |
+| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **nueve** secretos del backend, pedidos a ciegas | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
 | 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | Cada vez que cambie el backend |
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | Después de cada despliegue |
@@ -64,6 +64,35 @@ que decía este mismo documento.
 
 La lista está en `infra/00_vars_postventa.ps1`, partida a propósito en
 `$PostventaSecretosBackend` (los nueve) y `$PostventaSecretosFront` (los dos).
+
+### Rotar una credencial: `-Solo` **no funciona con `powershell -File`**
+
+Para subir un secreto suelto sin volver a teclear los otros ocho, el script 1
+admite `-Solo <nombre>`. Pero **con `powershell -File` el parámetro no
+funciona**: los argumentos llegan como una sola cadena, `-Solo` no construye
+el array `[string[]]` que declara, y el script responde
+
+```
+Estos secretos no existen: ...
+```
+
+que **no es el error real** y manda a buscar el problema donde no está.
+
+Hay que invocarlo **desde la propia sesión de PowerShell**, con el script al
+lado de `00_vars_postventa.ps1`:
+
+```
+.\infra\cargar_secretos_postventa.ps1 -Solo gemini-api-key
+```
+
+o, si hace falta lanzarlo desde fuera, con `-Command` en vez de `-File`:
+
+```
+powershell -ExecutionPolicy Bypass -Command ".\infra\cargar_secretos_postventa.ps1 -Solo gemini-api-key"
+```
+
+Sin `-Solo` —la ejecución completa— `-File` sí vale, porque no hay que
+construir ningún array. Descubierto ejecutando, el 2026-08-21.
 
 ### Si un nombre global está ocupado
 

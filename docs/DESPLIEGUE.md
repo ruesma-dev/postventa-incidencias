@@ -115,7 +115,31 @@ recomponen solos.
    guarda `desplegar_front.ps1` (§2). Teclearlos aquí es inventar dos valores
    que el despliegue del front sobrescribe.
 
-3. **Un tope de gasto con alerta en el proveedor de IA.** No es opcional y no
+3. **El rol `Key Vault Secrets Officer` sobre el Key Vault**, para la cuenta
+   que vaya a ejecutar el script 1.
+
+   **Crear el Key Vault NO da permiso sobre sus secretos.** El vault usa
+   RBAC, y ser Owner del grupo de recursos —o haberlo creado uno mismo— deja
+   gestionar el recurso pero **no** escribir dentro. Esto es lo que **paró la
+   primera ejecución real** el 2026-08-21: el script crea el vault sin
+   problemas y luego muere en el **primer** secreto con un `Forbidden`, en
+   vez de comprobarlo antes.
+
+   Se comprueba y se concede así, una vez, después de que exista el vault:
+
+   ```
+   az role assignment list --assignee <tu-cuenta> --scope <id-del-key-vault> --query "[].roleDefinitionName" -o tsv
+   ```
+
+   ```
+   az role assignment create --assignee <tu-cuenta> --role "Key Vault Secrets Officer" --scope <id-del-key-vault>
+   ```
+
+   La asignación **tarda un poco en propagarse**. Si el script sigue dando
+   `Forbidden` justo después de concederla, se espera un minuto y se
+   re-ejecuta: el script es re-ejecutable y no duplica nada.
+
+4. **Un tope de gasto con alerta en el proveedor de IA.** No es opcional y no
    depende de Azure: `/api/extraer` y `/api/firma` quedan alcanzables, y el
    tope es la defensa proporcionada a que un desconocido gaste cuota.
 

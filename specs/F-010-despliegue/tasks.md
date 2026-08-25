@@ -310,7 +310,22 @@
       y «alerta configurada: sí/no». **Sin la cifra**, que es información de
       negocio.
 
-- [ ] **T15 · MANUAL (humano) · RESUELVE D4** — Comprobar que la Function App
+      > **AL 2026-08-25 ESTA TAREA SIGUE SIN RESULTADO ANOTADO.** La casilla
+      > `[x]` viene de una ronda anterior, pero el «tope fijado: sí/no» y el
+      > «alerta configurada: sí/no» que la propia verificación exige **no
+      > constan en ningún sitio**: el humano no ha aportado el dato. Es lo que
+      > señala `progress/review2_F-010.md` §10.5, y **el implementer no puede
+      > inventarlo**.
+      >
+      > **Lo que está en juego, en una línea**: `/api/extraer` y `/api/firma`
+      > son **anónimos por diseño** (R32, T8) y **ya son alcanzables**, así que
+      > la capa 4 de `design.md` §9 bis —el tope de gasto— es hoy la única
+      > defensa contra que un desconocido consuma cuota de IA.
+      >
+      > **Queda como hueco abierto** en `progress/current.md`. No se marca ni
+      > se desmarca nada: la casilla se quedó como la dejó el humano.
+
+- [x] **T15 · MANUAL (humano) · RESUELVE D4** — Comprobar que la Function App
       alcanza `psql-albaranes-rs9k2`. **Solo lectura primero**: mirar si el
       servidor ya admite servicios de Azure. Si hiciera falta una regla nueva,
       **PARAR**: es un cambio a nivel de servidor compartido, lo decide el
@@ -318,6 +333,30 @@
       **Verificación**: `MANUAL (humano)` — una llamada a `/api/archivar` deja
       su traza en el esquema `postventa`, o queda anotado que D4 sigue abierta
       y que el archivo no persiste traza todavía.
+
+      > **EJECUTADA POR EL HUMANO EL 2026-08-25. D4 QUEDA CERRADA: la Function
+      > App SÍ alcanza `psql-albaranes-rs9k2`.**
+      >
+      > **No hizo falta ninguna regla de red nueva, ni tocar nada a nivel del
+      > servidor compartido.** La lectura previa bastó y la PARADA que preveía
+      > el enunciado no llegó a hacer falta.
+      >
+      > La evidencia es **doble**, y la segunda mitad vale la pena contarla
+      > porque es más fuerte que un «sí»:
+      >
+      > 1. **Primer intento**: el motor devolvió `ForeignKeyViolation` sobre
+      >    `archivos_hash_parte_fkey`. Ese error **solo lo puede devolver el
+      >    servidor**, así que hubo **conexión, autenticación y ejecución**:
+      >    demuestra la alcanzabilidad aunque la operación no completara. Es el
+      >    **defecto 15** (`progress/impl_defectos13-15_F-010.md`), que es de
+      >    **F-019**, no de la red.
+      > 2. **Con el parte sembrado**, el archivado **dejó su traza en el
+      >    esquema `postventa`** con `estado = archivado`, y con el **nombre y
+      >    la carpeta correctos**. Que es literalmente lo que pide esta
+      >    verificación.
+      >
+      > «Function App alcanza PostgreSQL: **sí**». «Regla de red nueva:
+      > **ninguna**». Sin cadena de conexión, sin FQDN y sin credenciales.
 
 - [x] **T16 · MANUAL (humano)** — Desplegar el front y probar el acceso.
 
@@ -338,7 +377,7 @@
       Se anota en `progress/` «miembro entra: sí/no», «no miembro entra:
       sí/no». **Sin la URL.**
 
-- [ ] **T17 · MANUAL (humano) · CRITERIO DE ACEPTACIÓN** — Re-ejecutabilidad.
+- [x] **T17 · MANUAL (humano) · CRITERIO DE ACEPTACIÓN** — Re-ejecutabilidad.
       Volver a lanzar los **dos** despliegues, seguidos, sin borrar nada y
       **desde `infra\`** (ver la nota de la fase):
 
@@ -357,9 +396,29 @@
       completo regeneró el secreto y pisó una redirect URI. Por eso el
       segundo va con `-SoloFront`.
 
+      > **EJECUTADA POR EL HUMANO EL 2026-08-25. LA RE-EJECUTABILIDAD QUEDA
+      > DEMOSTRADA.** Los dos despliegues, relanzados **seguidos** y **desde
+      > `infra\`** —el backend completo y el front con `-SoloFront`—, tal y
+      > como los escribe esta tarea.
+      >
+      > - **Los ocho recursos salieron como «ya existe, se reutiliza»**: nada
+      >   se recreó.
+      > - **El listado del grupo no tiene ni un duplicado.**
+      > - **El resumen del front dijo «sin tocar (-SoloFront)» en las cuatro
+      >   líneas que importan**: asignación, permiso de Graph, tokens de ID y
+      >   credenciales `swa`. Eso es el **defecto 8 corregido funcionando
+      >   contra Azure**, y no solo contra su test: era exactamente el resumen
+      >   que mentía cuando el modo lo decidía otra cosa.
+      > - **El inicio de sesión sigue funcionando después** (R2): en ventana de
+      >   incógnito pide sesión y entra, que es además el criterio de R14.
+      >
+      > Este es el punto que importaba: es lo que rompió el portal cuando un
+      > despliegue completo regeneró el secreto y pisó una redirect URI, y aquí
+      > **no ha vuelto a pasar**. Sin URL y sin ningún identificador.
+
 ## Fase 5 · Lo que F-010 desbloquea
 
-- [ ] **T18 · MANUAL (humano) · ES T18 DE F-006 · REQUIERE AUTORIZACIÓN
+- [x] **T18 · MANUAL (humano) · ES T18 DE F-006 · REQUIERE AUTORIZACIÓN
       EXPRESA** — La **única subida real a SharePoint** de todo el proyecto,
       diferida desde el 2026-08-19 (D3 de F-006, opción (a)) esperando
       justamente este entorno, que ya está en pie.
@@ -436,7 +495,51 @@
       la URL, sin el identificador del elemento y sin ningún GUID. Solo
       entonces se marca `[x]` la casilla T18 de `specs/F-006-sharepoint/tasks.md`.
 
-- [ ] **T19 · MANUAL (humano) · OTRO REPOSITORIO** — La tarjeta del portal.
+      > **EJECUTADA POR EL HUMANO EL 2026-08-25, CON AUTORIZACIÓN EXPRESA.**
+      >
+      > **La autorización, con su fecha y su fórmula literal**: el humano
+      > autorizó el **2026-08-25** diciendo «**autorizo T18 ante
+      > `CHECKPOINTS.md` C5**». Es la autorización que esta tarea exige pedir
+      > **nombrando C5**, y la que hacía falta para marcar una casilla de una
+      > feature ajena ya cerrada.
+      >
+      > **Hicieron falta tres intentos, y los tres enseñan algo**, así que
+      > quedan escritos los tres y no solo el que salió bien:
+      >
+      > 1. Contra el **host desnudo de la Function**: **`400`**, `Login not
+      >    supported for provider azureStaticWebApps`. Es el **defecto 13** en
+      >    vivo —Easy Auth del backend enlazado—, no un fallo del despliegue.
+      >    Es lo que rectificó el enunciado de arriba.
+      > 2. Desde **la consola del front con sesión**, ya por la vía buena:
+      >    **`500`**, con el PDF **ya subido y bien nombrado**, por el
+      >    `ForeignKeyViolation` del **defecto 15** (`archivos` tiene clave
+      >    ajena contra `partes` y nada inserta el parte: eso es **F-019**).
+      >    Nótese que el `500` **dice** que el fichero está arriba, que es
+      >    justo lo que arregló el defecto 14.
+      > 3. **Tras sembrar el parte sintético**: **dos llamadas `200`**, **mismo
+      >    destino en las dos**, `estado: archivado`, y el **aviso de
+      >    reemplazo** («ya había un fichero con este nombre y se ha
+      >    reemplazado»). Ese aviso **es R16 hablando**: la idempotencia del
+      >    nombrado funcionando contra una biblioteca real.
+      >
+      > **Los tres puntos de la verificación, comprobados**: nombre
+      > `0677 - RS26.08 - 0001 PARTE FIRMADO.pdf`, carpeta `Postventa/0677`,
+      > segunda llamada al **mismo destino**, y —verificado por el humano **en
+      > la biblioteca**— **un solo elemento en la carpeta y ninguno con sufijo
+      > `(1)`**. Ese último es **el criterio de aceptación de F-006**, y el que
+      > obligaba a PARAR si fallaba. **No hubo parada.**
+      >
+      > **La ventana de escritura se cerró al terminar**, como manda R33/R34.
+      >
+      > Sin URL, sin `item_id`, sin `web_url` y sin ningún GUID. El nombre del
+      > fichero sintético y su carpeta sí se escriben: ya estaban en la spec y
+      > son inventados.
+      >
+      > **Consecuencia**: con esto queda marcada `[x]` la casilla **T18 de
+      > `specs/F-006-sharepoint/tasks.md`**, que es la casilla ajena que esta
+      > tarea existía para desbloquear.
+
+- [x] **T19 · MANUAL (humano) · OTRO REPOSITORIO** — La tarjeta del portal.
       **Ningún agente de este repositorio la toca** (`design.md` §8, D7). El
       bloque exacto y el procedimiento están en `docs/DESPLIEGUE.md`, que es
       el entregable de F-010; esta tarea es aplicarlo, y admite **dos vías sin
@@ -462,6 +565,15 @@
       «Sin acceso». Si sale velada para todos, el marcador no se rellenó
       (`design.md` §8).
 
+      > **DECLARADA POR EL HUMANO EL 2026-08-25: la tarjeta está publicada y
+      > funcionando.** No salió velada para todos, así que el marcador de
+      > `requiredGroupId` se rellenó bien.
+      >
+      > **El GUID del grupo no se escribe aquí**, ni en `progress/`, ni en
+      > ningún commit de este repositorio: **vive solo en `front-portal`**, que
+      > es donde lo pone el paso 2. Es la regla que fija esta misma tarea y
+      > `design.md` §8 (D7).
+
 ## Fase 6 · Cierre
 
 - [x] **T20**: Campaña de mutación y análisis de supervivientes.
@@ -482,15 +594,19 @@
 
 ## Estado de las verificaciones manuales
 
+> **Tabla actualizada el 2026-08-25**, con las diez tareas ya ejecutadas por el
+> humano. La columna «Estado» decía «Pendiente» en casi todas desde que se
+> escribió la spec, y eso ya no es cierto.
+
 | Tarea | Depende de | Estado |
 |---|---|---|
-| T1 | **D1 resuelta**: el humano crea el grupo `posventa-usuarios` | Pendiente de ejecutar; ya no bloquea |
-| T2 | Un parte real de `muestras/` y la Function en local (**D2**) | **BLOQUEA la fase 2** |
-| T13 | T1, y los secretos en poder del humano | Pendiente |
-| T14 | T13 · aplica **D3** (capas 3 y 5) · la capa 5 se comprueba tras T16 | Pendiente |
-| T14 bis | Consola del proveedor de IA · capa 4 de **D3** | Pendiente, **antes de T16** |
-| T15 | T14 · resuelve **D4**; puede quedar abierta sin bloquear el piloto | Pendiente |
-| T16 | T1 y T14 | Pendiente |
-| T17 | T14 y T16 · **criterio de aceptación** | Pendiente |
-| T18 | T14 · **autorización expresa ante C5** · abre y **cierra** la ventana de escritura · cierra T18 de **F-006** | Pendiente |
-| T19 | T1, T16 y **D7** · otro repositorio | Pendiente |
+| T1 | **D1 resuelta**: el humano crea el grupo `posventa-usuarios` | **Ejecutada** (2026-08-20) |
+| T2 | Un parte real de `muestras/` y la Function en local (**D2**) | **Ejecutada**; D2 resuelta por (a) con la medición delante |
+| T13 | T1, y los secretos en poder del humano | **Ejecutada** (2026-08-21); criterio rectificado a **nueve** secretos |
+| T14 | T13 · aplica **D3** (capas 3 y 5) · la capa 5 se comprueba tras T16 | **Ejecutada** (2026-08-21); criterios 1 y 3 rectificados por el defecto 13 |
+| T14 bis | Consola del proveedor de IA · capa 4 de **D3** | Casilla `[x]`, **SIN RESULTADO ANOTADO**: hueco abierto, ver la nota de la tarea y `progress/current.md` |
+| T15 | T14 · resuelve **D4**; puede quedar abierta sin bloquear el piloto | **Ejecutada 2026-08-25 · D4 CERRADA**: alcanza PostgreSQL, sin regla de red nueva |
+| T16 | T1 y T14 | **Ejecutada** (2026-08-21) |
+| T17 | T14 y T16 · **criterio de aceptación** | **Ejecutada 2026-08-25**: re-ejecutabilidad demostrada, cero duplicados, sesión intacta |
+| T18 | T14 · **autorización expresa ante C5** · abre y **cierra** la ventana de escritura · cierra T18 de **F-006** | **Ejecutada 2026-08-25** con autorización expresa ante C5; tres intentos; un solo elemento, ningún `(1)`. **T18 de F-006 marcada** |
+| T19 | T1, T16 y **D7** · otro repositorio | **Ejecutada 2026-08-25**: tarjeta publicada y funcionando, sin el GUID aquí |

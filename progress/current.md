@@ -1,6 +1,60 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-25 (cierre) · **F-010 · LAS MANUALES, EJECUTADAS Y ANOTADAS**
+>
+> El humano ejecutó hoy contra el entorno real las verificaciones que
+> faltaban. Esta ronda es **solo rastro**: ni una línea de código, ningún
+> script de `infra/` tocado, ninguna llamada a Azure, SharePoint ni
+> PostgreSQL desde el arnés. Informe: `progress/impl_cierre_manual_F-010.md`.
+>
+> - **T15 · D4 CERRADA: la Function App SÍ alcanza `psql-albaranes-rs9k2`.**
+>   La evidencia es doble, y la primera mitad vale más que un «sí»: el primer
+>   intento devolvió `ForeignKeyViolation` sobre `archivos_hash_parte_fkey`, y
+>   **ese error solo lo puede devolver el servidor** —hubo conexión,
+>   autenticación y ejecución—. Después, con el parte sembrado, el archivado
+>   dejó su traza en el esquema `postventa` con `estado = archivado`, nombre y
+>   carpeta correctos. **No hizo falta ninguna regla de red nueva ni tocar
+>   nada a nivel del servidor compartido.**
+> - **T17 · re-ejecutabilidad demostrada** (criterio de aceptación). Los dos
+>   despliegues relanzados seguidos **desde `infra\`**, backend completo y
+>   front con `-SoloFront`: los **ocho recursos** salieron como «ya existe, se
+>   reutiliza», el listado del grupo **sin ni un duplicado**, y el resumen del
+>   front dijo «sin tocar (-SoloFront)» en las cuatro líneas que importan
+>   —asignación, permiso de Graph, tokens de ID y credenciales `swa`—, que es
+>   **el defecto 8 corregido funcionando contra Azure**. El inicio de sesión
+>   sigue funcionando después: en incógnito pide sesión y entra (R2, R14).
+> - **T18 · la subida real, ejecutada con autorización expresa.** El humano
+>   autorizó el **2026-08-25** con la fórmula literal «autorizo T18 ante
+>   `CHECKPOINTS.md` C5». **Tres intentos, y los tres enseñan algo**: (1) host
+>   desnudo de la Function → `400 azureStaticWebApps`, el defecto 13 en vivo;
+>   (2) desde la consola del front con sesión → `500`, con el PDF **ya subido
+>   y bien nombrado**, por el `ForeignKeyViolation` del defecto 15; (3) tras
+>   sembrar el parte sintético → **dos llamadas `200`**, mismo destino,
+>   `estado: archivado`, y el aviso de reemplazo, **que es R16 hablando**.
+>   Verificado por el humano en la biblioteca: **un solo elemento en la
+>   carpeta y ninguno con sufijo `(1)`**, el criterio de aceptación de F-006.
+>   **Marcada también la casilla T18 de `specs/F-006-sharepoint/tasks.md`**,
+>   citando la autorización y la fecha: era la casilla ajena que F-010 existía
+>   para desbloquear, y con ella **F-006 se queda sin manuales pendientes**.
+> - **T19 · la tarjeta del portal**: publicada y funcionando, declarado por el
+>   humano el 2026-08-25. **Sin el GUID del grupo**, que vive solo en
+>   `front-portal`.
+>
+> **HUECO ABIERTO · T14 bis sigue SIN RESULTADO**, y no se inventa. El tope de
+> gasto y la alerta en el proveedor de IA: la casilla está `[x]` desde antes,
+> pero el «tope fijado: sí/no» y el «alerta configurada: sí/no» **no constan**
+> —lo señala `progress/review2_F-010.md` §10.5— y el dato lo tiene que aportar
+> el humano. **Lo que está en juego**: `/api/extraer` y `/api/firma` son
+> **anónimos por diseño** y **ya son alcanzables**, así que el tope es hoy la
+> única defensa (capa 4 de `design.md` §9 bis) contra que un desconocido
+> consuma cuota de IA.
+>
+> **Ni una URL, ni un GUID, ni un identificador de suscripción, inquilino,
+> sitio o elemento, ni un importe.** `bash harness/init.sh` en verde.
+> **El estado de F-010 en `harness/features.json` no se ha tocado**: lo decide
+> el líder tras el veredicto del reviewer.
+
 > ## Estado al 2026-08-25 (noche) · **F-010 · DEFECTOS 13, 14 Y 15 CERRADOS**
 >
 > Tres defectos más, descubiertos **ejecutando T17 y T18 contra el entorno
@@ -347,8 +401,30 @@ parte los comandos largos al pegarlos:
   sin abrir conexión.
 - `f5_comprobar_base.py` — comprobación **de solo lectura** del catálogo de la
   base real: tablas, índices, nada en `public`, recuento de filas.
+- `t18_sembrar_parte.py` — F-010, T18: siembra el **parte sintético**,
+  comprueba su traza y **la borra** al terminar. Es lo que desatasca el
+  `ForeignKeyViolation` del defecto 15 mientras F-019 no exista.
+- `t18_consola.js` — el fragmento para la **consola del navegador en el
+  front**, que es la vía que sí funciona desde el defecto 13. Su copia
+  versionada está en `docs/DESPLIEGUE.md` §5 bis.
+- `t18_logs.ps1` y `t18_diagnostico.ps1` — lectura de Application Insights y
+  del **cuerpo** de los errores, que es lo que faltaba para leer el 500 mudo.
 
 Ninguno imprime ni escribe valores extraídos de un parte real.
+
+### ⚠️ Defecto 16 · el DSN se compone SIN contraseña, a propósito
+
+Para quien repita esta verificación: `dsn_desde_ajustes` **no** mete la
+contraseña en la cadena de conexión, y es **deliberado** —así no acaba en un
+log—. Hay que pasarla **aparte** en `psycopg.connect`, exactamente como hace
+`services/postventa-api/infrastructure/persistencia/fabrica.py`:
+
+```
+conexion = psycopg.connect(dsn, password=ajustes.pg_password)
+```
+
+Un script de verificación que use `dsn_desde_ajustes` y no lo sepa **muere con
+`fe_sendauth: no password supplied`**, y el mensaje no dice nada de esto.
 
 ## Contexto del arnés
 

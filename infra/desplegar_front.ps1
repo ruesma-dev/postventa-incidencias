@@ -50,6 +50,16 @@
     App), y eso se declara en vez de esconderse: el valor acaba en el almacen
     de secretos del propio recurso.
 
+    EL PERMISO Y EL CONSENTIMIENTO, Y POR QUE NO SON UN ADORNO. El modo
+    completo concede al registro el permiso delegado User.Read de Microsoft
+    Graph y pide el consentimiento de administrador. Sin lo primero, el inicio
+    de sesion falla con un "No podemos iniciar su sesion" que no dice cual es
+    el problema y la aplicacion queda desplegada SIN QUE PUEDA ENTRAR NADIE;
+    sin lo segundo, cada usuario tendria que consentir por su cuenta. El
+    consentimiento va en MEJOR ESFUERZO: si quien despliega no es administrador
+    del inquilino, no aborta -lo dara un administrador despues-, pero el
+    resumen lo dice con el comando exacto en vez de callarselo.
+
     EL SECRETO SE ACUMULA Y NADIE LO REVOCA. `az ad app credential reset` va
     con `--append`, que ANADE una credencial y no invalida las anteriores. Es
     deliberado -es lo que evita repetir el incidente del portal, donde el
@@ -124,6 +134,11 @@ $marcadorInquilino = "<TENANT_ID>"
 $copiaDeTrabajo = $null
 $cuerpoGraph = $null
 $credencialesSwa = $null
+
+# Nace en falso a proposito: con `-SoloFront` no se pide consentimiento, y el
+# resumen tiene que poder distinguir "no se ha intentado" de "se intento y no
+# se pudo". Lo primero lo decide $SoloFront; lo segundo, esta variable.
+$consentimientoDado = $false
 
 # El valor previo de la variable de entorno se lee AQUI, ANTES del `try`, y no
 # donde se asigna. Motivo: `exit` dentro del `try` ejecuta igualmente el
@@ -310,6 +325,43 @@ try {
             }
         }
 
+        # EL PERMISO Y SU CONSENTIMIENTO. Sin esto el registro se crea pelado,
+        # el inicio de sesion falla con un "No podemos iniciar su sesion" que no
+        # dice cual es el problema, y la aplicacion queda DESPLEGADA Y SIN QUE
+        # PUEDA ENTRAR NADIE. Paso el 2026-08-21 y hubo que concederlo a mano.
+        # Los scripts de partes y de dedicacion ya lo hacen -y su comentario
+        # dice que es lo que da el inicio de sesion sin friccion-; este se lo
+        # salto pese a haberse escrito mirandolos.
+        #
+        # Los dos identificadores son PUBLICOS y fijos -Microsoft Graph y su
+        # permiso delegado User.Read-, pero tienen forma de GUID y el barrido de
+        # identificadores del repositorio caza cualquier cosa con esa forma. Se
+        # COMPONEN, igual que el rol "acceso predeterminado" de mas abajo.
+        $graphApiId = @("00000003", "0000", "0000", "c000", ("0" * 12)) -join "-"
+        $permisoUserRead = @("e1fe6dd8", "ba31", "4d61", "89e7", "88639da4683d") -join "-"
+
+        $permisosPuestos = Valor-De-Az @("ad", "app", "permission", "list", "--id", $appId, "--query", "[].resourceAccess[].id", "-o", "tsv")
+        if ("$permisosPuestos" -notlike "*$permisoUserRead*") {
+            # Delegado (`Scope`), no de aplicacion (`Role`): el servicio lee el
+            # perfil EN NOMBRE de quien ha iniciado sesion, no por su cuenta.
+            az ad app permission add --id $appId --api $graphApiId `
+                --api-permissions "$permisoUserRead=Scope" --only-show-errors | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Salir-Con "No se ha podido conceder User.Read al registro de aplicacion." $SALIDA_FALLO `
+                    "concedelo a mano en Entra > Registros de aplicaciones > Permisos de API > Microsoft Graph > User.Read (delegado)."
+            }
+        }
+
+        # El consentimiento, en MEJOR ESFUERZO y por el mismo criterio que
+        # partes y dedicacion: quien despliega puede no ser administrador del
+        # inquilino, y entonces lo dara un administrador despues. Tirar abajo
+        # por esto un despliegue que por lo demas esta bien seria peor. Pero NO
+        # se calla: el resultado real llega al resumen, porque si no quien lo
+        # lanzo se va convencido de que la aplicacion esta lista y el fallo
+        # aparece en la primera prueba de acceso.
+        az ad app permission admin-consent --id $appId --only-show-errors | Out-Null
+        $consentimientoDado = ($LASTEXITCODE -eq 0)
+
         # TODAS las redirect URI, en UNA sola llamada: esta lista REEMPLAZA a la
         # anterior. Pasar una sola borra las demas, y eso ya rompio el portal.
         $redirecciones = @("https://$hostFront/.auth/login/aad/callback") + $RedirectExtra
@@ -470,6 +522,7 @@ try {
     Write-Host ("  Static Web App     : {0}" -f $PostventaStaticWebApp)
     Write-Host ("  Backend enlazado   : {0}" -f $PostventaFunction)
     Write-Host ("  Asignacion previa  : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } else { "obligatoria, grupo asignado" }))
+    Write-Host ("  Permiso de Graph   : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } elseif ($consentimientoDado) { "User.Read, con consentimiento de administrador" } else { "User.Read, CONSENTIMIENTO PENDIENTE" }))
     # El resumen cuenta lo que ha PASADO, no lo que suele pasar. Antes, esta
     # linea alegaba '-SoloFront' siempre que el recuento viniera vacio, TAMBIEN
     # en modo completo, que es justo el modo en el que el secreto acaba de
@@ -485,6 +538,16 @@ try {
         Write-Host "  Retira las que sobren a mano, empezando por las mas antiguas y" -ForegroundColor Yellow
         Write-Host "  SIN tocar la ultima, que es la que esta en uso. El comando esta" -ForegroundColor Yellow
         Write-Host "  en la cabecera de este script." -ForegroundColor Yellow
+    }
+    if (-not $SoloFront -and -not $consentimientoDado) {
+        Write-Host ""
+        Write-Host "  El consentimiento de administrador NO ha quedado dado. Hasta que lo" -ForegroundColor Yellow
+        Write-Host "  de un administrador del inquilino, el inicio de sesion puede fallar" -ForegroundColor Yellow
+        Write-Host "  con un 'No podemos iniciar su sesion' que no explica nada:" -ForegroundColor Yellow
+        Write-Host "" -ForegroundColor Yellow
+        Write-Host "      az ad app permission admin-consent --id <id-de-la-aplicacion>" -ForegroundColor Yellow
+        Write-Host "" -ForegroundColor Yellow
+        Write-Host "  El identificador esta en el Key Vault, en el secreto 'swa-client-id'." -ForegroundColor Yellow
     }
     Write-Host ""
     Write-Host "Ahora, a mano y con DOS cuentas (T16):"

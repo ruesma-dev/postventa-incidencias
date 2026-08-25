@@ -695,6 +695,8 @@ def test_f010_t6_solofront_no_toca_ni_entra_ni_el_secreto(front):
         '"credential", "reset"',
         "appRoleAssignmentRequired",
         "appRoleAssignedTo",
+        "az ad app permission add",
+        "az ad app permission admin-consent",
     )
     for llamada in llamadas_a_entra:
         assert cuerpo.find(llamada) > inicio, f"{llamada} queda fuera del modo completo"
@@ -795,6 +797,76 @@ def test_f010_r32_la_descripcion_no_afirma_lecturas_que_no_hace(front):
 
     assert afirma_que_lee == lee_de_verdad
     assert "no se genera nada" in front
+
+
+def test_f010_t6_el_registro_pide_user_read_y_su_consentimiento(front):
+    """Sin permisos, la aplicacion queda desplegada y NO PUEDE ENTRAR NADIE.
+
+    Es el defecto que costo mas caro el 2026-08-21, y el mas dificil de
+    diagnosticar: Entra responde «No podemos iniciar su sesion» y no dice que
+    falte un permiso. El registro se creaba pelado -ni `User.Read`, ni
+    consentimiento- y hubo que concederlo a mano.
+
+    Lo que hace este test util no es que exija los dos comandos, sino que
+    exija **el orden**: pedir consentimiento sobre un registro que no declara
+    ningun permiso no consiente nada y termina en 0, con lo que el script
+    quedaria verde y la aplicacion seguiria cerrada.
+
+    Los dos identificadores implicados -Microsoft Graph y su permiso delegado
+    `User.Read`- son publicos y fijos, pero tienen forma de GUID: el barrido de
+    R8 los caza igual, asi que el script los compone. Aqui se comprueba que el
+    permiso se pide como delegado (`Scope`) y no como de aplicacion (`Role`),
+    que es otra cosa y exige consentimiento de administrador siempre.
+    """
+    cuerpo = sin_comentarios(front)
+    inicio_completo = cuerpo.find("if (-not $SoloFront) {")
+    posicion_permiso = cuerpo.find("az ad app permission add")
+    posicion_consentimiento = cuerpo.find("az ad app permission admin-consent")
+
+    assert -1 < inicio_completo < posicion_permiso < posicion_consentimiento, (
+        "el permiso y su consentimiento tienen que ir, en ese orden, dentro "
+        "del modo completo"
+    )
+    assert "User.Read" in front
+    assert "=Scope" in cuerpo
+    assert "$permisoUserRead" in cuerpo
+
+
+def test_f010_t6_el_consentimiento_es_mejor_esfuerzo_pero_no_se_calla(front):
+    """Quien despliega puede no ser administrador del inquilino.
+
+    Mismo criterio que `partes` y `dedicacion`: si el consentimiento no se
+    puede dar, no se tira abajo un despliegue que por lo demas esta bien; lo
+    dara un administrador despues. Lo que NO puede pasar es que el script se
+    lo calle y termine en verde: quien lo lanzo se iria convencido de que la
+    aplicacion esta lista, y el fallo aparece en la primera prueba de acceso
+    con un mensaje de Entra que no menciona ningun consentimiento.
+
+    Por eso se comprueba lo uno y lo otro: que no aborta, y que el resultado
+    real llega al resumen.
+    """
+    cuerpo = sin_comentarios(front)
+    lineas = cuerpo.splitlines()
+    posiciones = [
+        i
+        for i, linea in enumerate(lineas)
+        if "az ad app permission admin-consent" in linea
+    ]
+
+    assert posiciones != [], "el script no pide el consentimiento de administrador"
+    siguientes = "\n".join(lineas[posiciones[0] + 1 : posiciones[0] + 5])
+
+    assert "$LASTEXITCODE -eq 0" in siguientes
+    assert "Salir-Con" not in siguientes, (
+        "el consentimiento es mejor esfuerzo: no puede tirar el despliegue"
+    )
+
+    en_el_resumen = [
+        linea
+        for linea in lineas
+        if "Write-Host" in linea and "$consentimientoDado" in linea
+    ]
+    assert en_el_resumen != [], "el resumen no dice si el consentimiento quedo dado"
 
 
 def test_f010_r32_el_resumen_solo_alega_solofront_cuando_lo_esta(front):

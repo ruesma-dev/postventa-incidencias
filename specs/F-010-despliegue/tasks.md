@@ -24,7 +24,7 @@
 
 ## Fase 0 · Lo que el humano tiene que resolver antes
 
-- [ ] **T1 · MANUAL (humano) · D1 RESUELTA el 2026-08-20** — Crear el **grupo
+- [x] **T1 · MANUAL (humano) · D1 RESUELTA el 2026-08-20** — Crear el **grupo
       de seguridad de Posventa** en Entra con los miembros del piloto dentro.
       El humano lo hace él mismo y **da por bueno el nombre
       `posventa-usuarios`**. Sin el grupo no hay a quién restringir el acceso
@@ -193,7 +193,7 @@
 > copy infra\*.ps1 $HOME\
 > ```
 
-- [ ] **T13 · MANUAL (humano)** — Cargar los secretos en el Key Vault. Se
+- [x] **T13 · MANUAL (humano)** — Cargar los secretos en el Key Vault. Se
       ejecuta **una vez**, y se repite solo cuando rote una credencial.
 
       Ver antes qué haría, **sin tocar nada**:
@@ -212,7 +212,7 @@
       los once secretos cargados y ningún valor. Se anota en `progress/` solo
       «once secretos cargados: sí/no».
 
-- [ ] **T14 · MANUAL (humano) · APLICA D3** — Desplegar el backend.
+- [x] **T14 · MANUAL (humano) · APLICA D3** — Desplegar el backend.
 
       ```
       powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1
@@ -240,7 +240,7 @@
       «archivar cerrado devuelve 503: sí/no», «restricción de red aplicada:
       sí / revertida».
 
-- [ ] **T14 bis · MANUAL (humano)** — Fijar **tope de gasto y alerta** en la
+- [x] **T14 bis · MANUAL (humano)** — Fijar **tope de gasto y alerta** en la
       consola del proveedor de IA antes de que el front sea alcanzable (R35).
       Es la defensa proporcionada al riesgo de que un desconocido llame a
       `/api/extraer` (`design.md` §9 bis, capa 4), y no depende de Azure.
@@ -257,7 +257,7 @@
       su traza en el esquema `postventa`, o queda anotado que D4 sigue abierta
       y que el archivo no persiste traza todavía.
 
-- [ ] **T16 · MANUAL (humano)** — Desplegar el front y probar el acceso.
+- [x] **T16 · MANUAL (humano)** — Desplegar el front y probar el acceso.
 
       ```
       powershell -ExecutionPolicy Bypass -File $HOME\desplegar_front.ps1

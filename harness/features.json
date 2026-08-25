@@ -185,7 +185,7 @@
         "Queda escrito qué hay que cambiar en front-portal/public/assets/js/catalog.js",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "estandar",
       "priority": 8,

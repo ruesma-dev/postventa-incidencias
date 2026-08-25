@@ -1,6 +1,49 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-010 CERRADA Y APROBADA · ocho features `done`**
+>
+> `progress/review4_F-010.md` salió **APPROVED** y F-010 pasa a `done`. Es la
+> primera feature que se cierra **con el sistema funcionando en Azure y probado
+> por el humano**, no solo con tests en verde.
+>
+> **Lo que quedó demostrado ejecutando** (2026-08-25, resultados en
+> `progress/impl_cierre_manual_F-010.md`):
+>
+> - **T17**, el criterio de aceptación: los dos despliegues relanzados seguidos
+>   desde `infra\`, ocho recursos reutilizados, **cero duplicados**, y la sesión
+>   intacta después.
+> - **T18**, la única subida real del proyecto, con autorización expresa ante
+>   `CHECKPOINTS.md` C5: dos llamadas `200`, mismo destino, **un solo elemento
+>   en la carpeta y ningún sufijo `(1)`**. Con ella se marca **T18 de F-006**,
+>   la casilla ajena que F-010 existía para desbloquear.
+> - **T15 resuelve D4**: la Function App alcanza `psql-albaranes-rs9k2` y el
+>   archivado deja su traza. **No hizo falta tocar el servidor compartido.**
+>
+> **Ejecutar destapó cuatro defectos más, del 13 al 16**, ya corregidos. El que
+> más enseña es el **13**: desde que la Function es backend enlazado de la
+> Static Web App, **el host desnudo devuelve `400` a todo el mundo**, `/api/health`
+> incluido. Ningún test lo habría encontrado, y la spec mandaba usar justo esa
+> vía: por eso se reescribió R29.
+>
+> ## Lo que queda vivo de F-010, con dueño
+>
+> 1. **F-019 es prerequisito del archivado real** (defecto 15). Hoy
+>    `/api/archivar` **no puede completar solo**: la clave ajena exige que el
+>    parte esté en `partes` y **nada lo inserta**. El 2026-08-25 se sembró a
+>    mano para poder verificar T18. Con la ventana de escritura cerrada, como
+>    está ahora, el endpoint responde 503 y no molesta a nadie.
+> 2. **T14 bis sigue sin resultado anotado**: el humano no ha dado el dato del
+>    tope y la alerta de gasto de IA. El reviewer dictaminó que **no bloquea**
+>    (§7 de `review3_F-010.md`), pero `/api/extraer` y `/api/firma` son
+>    anónimos por diseño y ya están publicados.
+> 3. **Dos hallazgos no bloqueantes de la última review**: un hueco en la
+>    guardia del comodín del test nuevo y **dos avisos de `ruff` de esta ronda**
+>    que el informe da por deuda previa. Los dos, una línea cada uno.
+>    Detalle en `progress/review4_F-010.md` §1.3 y §3.2.
+>
+> **La rama `feature/F-010-despliegue` sigue sin mergear**: lo decide el humano.
+
 > ## Estado al 2026-08-26 · **F-010 · §9.1 y §9.3 de la review 3, CORREGIDOS**
 >
 > `implementer`, encargo acotado a los dos puntos que quedaban de

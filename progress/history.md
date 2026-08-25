@@ -462,3 +462,76 @@ que solo se ven en DevTools se comprobaron expresamente:
   servicio, así que `func start` moría con `ModuleNotFoundError: pydantic`
   para cualquiera que la siguiera al pie de la letra. Corregido en la spec.
   Ningún test habría encontrado eso.
+
+## F-010 · Despliegue en Azure y tarjeta en el portal — CERRADA el 2026-08-26
+
+**La primera feature que se cierra con el sistema funcionando en Azure**, no
+solo con tests en verde. Cuatro rondas de review; la última, `APPROVED`.
+
+Lo entregado: cinco scripts de PowerShell re-ejecutables en `infra/`, la
+Function App y la Static Web App con autenticación de Entra restringida al
+grupo de Posventa, los nueve secretos del backend por referencia a Key Vault
+—ninguno en el repositorio—, el runbook `docs/DESPLIEGUE.md` y el bloque de la
+tarjeta para `front-portal`, que se aplicó en aquel repositorio.
+
+### Lo que costó de verdad: dieciséis defectos, y ninguno lo habría cazado un test
+
+El despliegue se implementó y se revisó en dos días. **Ejecutarlo destapó doce
+defectos**, y las verificaciones finales, cuatro más. Todos de la misma
+familia: scripts que un humano ejecuta en su máquina con PowerShell 5.1 contra
+Azure de verdad.
+
+Los cuatro que más enseñan:
+
+- **`cmd.exe` rompía las referencias a Key Vault.** En Windows `az` es un
+  `.cmd`, y los paréntesis de `@Microsoft.KeyVault(SecretUri=...)` se
+  interpretan como sintaxis de `cmd`. Ese despliegue habría funcionado sin un
+  fallo en Linux o en PowerShell 7.
+- **Sin emisión de tokens de ID había bucle de redirección** (`AADSTS50196`):
+  la aplicación quedó desplegada sin que pudiera entrar nadie.
+- **El host desnudo de la Function ya no responde a nadie.** Al enlazarla como
+  backend de la Static Web App, la plataforma le activa Easy Auth: todo lo que
+  no entre por el proxy del front recibe `400 Login not supported for provider
+  azureStaticWebApps`, `/api/health` incluido. **La spec mandaba usar justo esa
+  vía**, así que se reescribió R29 contra la que sí existe: la consola del
+  front, mismo origen y con sesión.
+- **Un `500` mudo donde había algo que decir.** `PersistenciaNoDisponible` no
+  estaba mapeada en el borde. Se partió en dos: `503` cuando no se ha subido
+  nada, y `ArchivoSinTraza` con `500` explícito cuando **el fichero sí está en
+  SharePoint y lo que falta es la constancia** —«volver a archivarlo no arregla
+  nada»—. Es el mejor trabajo de la feature, según el reviewer.
+
+### T18: la única subida real del proyecto
+
+Diferida desde el 2026-08-19 esperando este entorno, se ejecutó el 2026-08-25
+con autorización expresa del humano ante `CHECKPOINTS.md` C5. **Dos llamadas
+`200`, mismo destino, un solo elemento en la carpeta y ningún sufijo `(1)`**:
+el criterio de aceptación de F-006, demostrado. Con ella se marcó **T18 de
+F-006**, la casilla ajena que F-010 existía para desbloquear.
+
+Y **T15 resolvió D4**: la Function App alcanza `psql-albaranes-rs9k2` y el
+archivado deja su traza, sin tocar nada del servidor compartido. La prueba
+llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
+**solo lo puede devolver el motor**.
+
+### Lecciones
+
+1. **Un requisito EARS puede estar incumplido con su test en verde.** Pasó dos
+   veces (R27 y R6), y las dos se arregló también el test que los daba por
+   buenos. De ahí sale `CHECKPOINTS.md` C4 bis.
+2. **Una nota que miente es peor que no tener nota.** Se rechazó una ronda
+   entera por eso: doce defectos descubiertos ejecutando y el runbook seguía
+   afirmando un prerrequisito que ese mismo despliegue había desmentido.
+3. **Una tabla de trazabilidad que nadie verifica miente antes o después.** La
+   de R14 prometía un test sobre `staticwebapp.config.json` que no existía: se
+   podía borrar la regla que exige estar autenticado y la suite seguía verde.
+   Es la misma lección que dejó F-007, repetida.
+
+### Lo que queda vivo, con dueño
+
+- **F-019 es prerequisito del archivado real**: `/api/archivar` exige que el
+  parte esté en `partes` y hoy nada lo inserta. Para verificar T18 hubo que
+  sembrarlo a mano.
+- **T14 bis sin resultado**: el tope y la alerta de gasto de IA no constan. El
+  reviewer dictaminó que no bloqueaba el cierre; los dos endpoints de IA son
+  anónimos por diseño y ya están publicados.

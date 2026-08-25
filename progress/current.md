@@ -1,6 +1,40 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-010 · §9.1 y §9.3 de la review 3, CORREGIDOS**
+>
+> `implementer`, encargo acotado a los dos puntos que quedaban de
+> `progress/review3_F-010.md`. Informe:
+> `progress/impl_postreview3_F-010.md`. **§9.2 no se ha tocado**: ya lo cerró
+> el `spec-author`. Nada contra Azure, SharePoint ni PostgreSQL; ninguna
+> casilla `[x]` movida; el estado de F-010 en `features.json`, intacto.
+>
+> - **§9.1 · R14 ya tiene el test que su spec prometía.** Nuevo
+>   `services/postventa-front/tests/test_f010_config_swa.py` (commit
+>   `26ef146`): fija que `/.auth/login/aad` es la **primera** ruta y admite
+>   `anonymous`, que existe la regla `/*` con `authenticated`, que el
+>   `responseOverrides` del `401` existe **y redirige** al login con 302, y
+>   que no hay claves fuera del esquema **ni arriba ni dentro de cada ruta**.
+>   **Fase RED sobre el fichero real**: las cuatro condiciones rotas a mano
+>   una a una, con las trazas pegadas en el informe y el árbol restaurado con
+>   `git checkout --` tras cada caso. Antes de esto se podía borrar la regla
+>   `/*` —dejando la aplicación abierta a internet— con la suite en verde.
+> - **§9.3 · el script de secretos deja de dictar el criterio imposible.**
+>   `infra/cargar_secretos_postventa.ps1` (commit `0743c45`): «nueve secretos
+>   del backend» en los cuatro sitios, con el porqué al lado —`swa-client-id`
+>   y `swa-client-secret` los crea y los guarda `desplegar_front.ps1`—.
+>   **Texto y solo texto**; los 160 tests de contrato de `infra/`, en verde.
+>   Hecho con **permiso expreso del humano para tocar `infra/`**, dado hoy.
+> - `bash harness/init.sh` **en verde**. Mutación relanzada: **23/20/3**, los
+>   tres supervivientes de siempre y equivalentes (no cambió producción).
+> - **Pendiente para cerrar F-010: solo el resultado de T14 bis**, que es del
+>   humano, y el veredicto del reviewer.
+> - **Dos residuos señalados y no tocados**: `progress/review3_F-010.md` está
+>   **sin versionar** (es del reviewer; además obliga a lanzar la mutación con
+>   `--workers 1`), y `harness/mutacion.py` **acumula una nota por
+>   re-ejecución** bajo cada superviviente —van cuatro—, que es un defecto del
+>   arnés genérico y viajaría a `arnes-base`.
+
 > ## Estado al 2026-08-26 · **F-010 · §9.2 de la review 3, CORREGIDO**
 >
 > `spec-author`, encargo acotado a dos puntos de `specs/F-010-despliegue/`.

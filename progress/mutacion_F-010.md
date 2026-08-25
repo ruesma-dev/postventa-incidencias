@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-010.md -->
 # F-010 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-010` el 2026-08-25 16:43.
+Generado por `python -m harness.mutacion --feature F-010` el 2026-08-26 00:32.
 
 ## Alcance
 
@@ -26,7 +26,7 @@ Origen del diff: **rama** (`0705d881d4a1c329006db5fe970c45bcb93c2e75` .. `featur
 | Muertos | 20 |
 | Supervivientes | 3 |
 | Timeouts | 0 |
-| Tiempo total | 43.6 s |
+| Tiempo total | 118.2 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
@@ -52,6 +52,8 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 > log de arranque del servidor de desarrollo local, que además **no se
 > despliega** (`desplegar_front.ps1` lo excluye de la copia que sube). No se
 > añade test.
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
@@ -85,6 +87,8 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 3. `services/postventa-front/dev_server.py:175` [entero]
 
 - Original: `log.info("=" * 60)`
@@ -104,6 +108,8 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 > log de arranque del servidor de desarrollo local, que además **no se
 > despliega** (`desplegar_front.ps1` lo excluye de la copia que sube). No se
 > añade test.
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 

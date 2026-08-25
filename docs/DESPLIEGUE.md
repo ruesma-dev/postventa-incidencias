@@ -30,20 +30,44 @@ dev** del sitio de IT.
 ## 2 · Los cinco scripts, y en qué orden
 
 Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
-`-WhatIf`, que dice qué harían sin tocar nada. Se copian fuera del repositorio
-antes de ejecutarlos, para no ensuciar el árbol de trabajo:
+`-WhatIf`, que dice qué harían sin tocar nada.
+
+| Orden | Script | Qué hace | Desde dónde se ejecuta | Cuándo se repite |
+|---|---|---|---|---|
+| 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | — | Nunca se ejecuta suelto |
+| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **nueve** secretos del backend, pedidos a ciegas | `$HOME` o `infra\` | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
+| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | **`infra\` obligatorio** | Cada vez que cambie el backend |
+| 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
+| 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
+
+### Desde dónde se ejecuta cada uno, y por qué no da igual
+
+**Los dos despliegues se ejecutan desde `infra\`, dentro del repositorio.**
+No se copian a `$HOME`: `desplegar_backend.ps1` y `desplegar_front.ps1`
+deducen la raíz del repositorio con
+
+```powershell
+$raiz = Split-Path -Parent $PSScriptRoot
+```
+
+para encontrar `services\postventa-api` y `services\postventa-front`. Copiados
+a `$HOME`, esa cuenta da `C:\Users`, donde no hay ningún `services\`, y el
+script no encuentra qué publicar. Ejecutarlos desde `infra\` **no ensucia el
+árbol**: `desplegar_front.ps1` hace su copia de trabajo en el directorio
+temporal del sistema y la borra en un `finally`.
+
+**Los que sí se copian fuera** son los que no dependen de la raíz del
+repositorio —`cargar_secretos_postventa.ps1`, que solo necesita
+`00_vars_postventa.ps1` al lado, y `verificar_despliegue.ps1`, igual—:
 
 ```
-copy infra\*.ps1 $HOME\
+copy infra\00_vars_postventa.ps1 $HOME\
+copy infra\cargar_secretos_postventa.ps1 $HOME\
+copy infra\verificar_despliegue.ps1 $HOME\
 ```
 
-| Orden | Script | Qué hace | Cuándo se repite |
-|---|---|---|---|
-| 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | Nunca se ejecuta suelto |
-| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **nueve** secretos del backend, pedidos a ciegas | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
-| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | Cada vez que cambie el backend |
-| 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | Con `-SoloFront` para el día a día |
-| 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | Después de cada despliegue |
+Esto costó la primera parada del 2026-08-21, siguiendo el `copy infra\*.ps1
+$HOME\` que decía antes este documento.
 
 **Antes de nada**: `az login` y la suscripción correcta seleccionada.
 También hacen falta la CLI de Azure y la de Static Web Apps

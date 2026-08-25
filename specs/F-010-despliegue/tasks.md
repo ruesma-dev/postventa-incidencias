@@ -185,13 +185,31 @@
 
 ## Fase 4 · Ejecución del despliegue · MANUAL (humano)
 
-> Antes de nada: `az login` y la suscripción correcta seleccionada. Los cinco
-> scripts se copian fuera del repositorio antes de ejecutarlos, como se hizo
-> en F-006, para no ensuciar el árbol de trabajo.
+> Antes de nada: `az login` y la suscripción correcta seleccionada.
+>
+> ~~Los cinco scripts se copian fuera del repositorio antes de ejecutarlos,
+> como se hizo en F-006, para no ensuciar el árbol de trabajo:
+> `copy infra\*.ps1 $HOME\`~~ → **RECTIFICADO EL 2026-08-25, tras
+> ejecutarlo**: **solo se copian fuera los que funcionan fuera**.
+>
+> `desplegar_backend.ps1` y `desplegar_front.ps1` deducen la raíz del
+> repositorio con `$raiz = Split-Path -Parent $PSScriptRoot` para encontrar
+> `services\`; copiados a `$HOME` esa cuenta da `C:\Users` y no encuentran
+> nada que publicar. **Se ejecutan desde `infra\`**, y no ensucian el árbol:
+> el front hace su copia de trabajo en el directorio temporal del sistema.
+>
+> Los que sí se copian son los que no dependen de la raíz
+> —`cargar_secretos_postventa.ps1` y `verificar_despliegue.ps1`, que solo
+> necesitan `00_vars_postventa.ps1` al lado—:
 >
 > ```
-> copy infra\*.ps1 $HOME\
+> copy infra\00_vars_postventa.ps1 $HOME\
+> copy infra\cargar_secretos_postventa.ps1 $HOME\
+> copy infra\verificar_despliegue.ps1 $HOME\
 > ```
+>
+> Es el **defecto 1** de los doce de la jornada del 2026-08-21. El detalle,
+> en `docs/DESPLIEGUE.md` §2.
 
 - [x] **T13 · MANUAL (humano)** — Cargar los secretos en el Key Vault. Se
       ejecuta **una vez**, y se repite solo cuando rote una credencial.
@@ -233,8 +251,11 @@
 
 - [x] **T14 · MANUAL (humano) · APLICA D3** — Desplegar el backend.
 
+      **Desde `infra\`, no desde `$HOME`** (ver la nota de la fase): el
+      script busca `services\postventa-api` relativo a su propia ubicación.
+
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1
       ```
 
       **Verificación**: `MANUAL (humano)`, cuatro cosas y en este orden:
@@ -278,8 +299,11 @@
 
 - [x] **T16 · MANUAL (humano)** — Desplegar el front y probar el acceso.
 
+      **Desde `infra\`, no desde `$HOME`** (ver la nota de la fase): el
+      script busca `services\postventa-front` relativo a su propia ubicación.
+
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_front.ps1
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_front.ps1
       ```
 
       **Verificación**: `MANUAL (humano)`, con **dos cuentas**:
@@ -293,14 +317,15 @@
       sí/no». **Sin la URL.**
 
 - [ ] **T17 · MANUAL (humano) · CRITERIO DE ACEPTACIÓN** — Re-ejecutabilidad.
-      Volver a lanzar los **dos** despliegues, seguidos, sin borrar nada:
+      Volver a lanzar los **dos** despliegues, seguidos, sin borrar nada y
+      **desde `infra\`** (ver la nota de la fase):
 
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1
       ```
 
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_front.ps1 -SoloFront
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_front.ps1 -SoloFront
       ```
 
       **Verificación**: `MANUAL (humano)` — los dos terminan con código `0`,

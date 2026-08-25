@@ -1,6 +1,39 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-25 · **F-010 · DESPLEGADA Y CON LOS DOCE DEFECTOS CERRADOS**
+>
+> El despliegue real se hizo el **2026-08-21** y funciona: backend y front en
+> Azure, autenticación de Entra contra `posventa-usuarios`, circuito completo
+> operativo y tarjeta publicada en el portal. Ejecutarlo destapó **doce
+> defectos**, todos en `progress/impl_F-010.md`. Nueve se corrigieron entonces;
+> **los tres últimos —8, 9 y 11, los tres en `infra/desplegar_front.ps1`— se
+> cierran en esta ronda**, más el test que impide que vuelva el 12.
+>
+> - **8** · el resumen decía «sin tocar (-SoloFront)» después de regenerar el
+>   secreto. Ahora el modo lo decide `$SoloFront` y nada más.
+> - **9** · el registro se creaba sin `User.Read` ni consentimiento, y **la
+>   aplicación quedó desplegada sin que pudiera entrar nadie**. Copiado el
+>   patrón de `partes` y `dedicacion`, consentimiento en mejor esfuerzo pero
+>   declarado en el resumen.
+> - **11** · sin emisión de tokens de ID había bucle de redirección
+>   (`AADSTS50196`). Se activa con las banderas dedicadas, en la misma llamada
+>   que las redirect URI; la de tokens de acceso queda apagada explícitamente.
+> - **12** · `test_f010_prompt_keys_infra.py` ata cada `PROMPT_KEY*` de
+>   `infra/` a una clave real de `config/prompts.yaml`.
+>
+> **Cero llamadas a Azure en esta ronda**: todo por lectura, por tests y por el
+> parser de PowerShell. Los cuatro arreglos empezaron por su test en rojo, con
+> las trazas pegadas en el informe. `bash harness/init.sh` en verde con las dos
+> suites; mutación 20/17/3, los tres supervivientes ya cerrados como
+> equivalentes.
+>
+> **Lo que queda de F-010**: las tareas `MANUAL (humano)` **T15, T17 y T18**,
+> abiertas a propósito. `specs/F-010-despliegue/tasks.md` tiene en el árbol de
+> trabajo, **sin commitear**, las marcas de las cinco manuales ya ejecutadas: es
+> del humano y el implementer no lo ha tocado.
+>
+
 > ## Estado al 2026-08-20 (noche) · **F-010 · CORREGIDA LA REVIEW, LISTA PARA RE-REVIEW**
 >
 > La review salió **CHANGES_REQUESTED** con un rechazo estrecho: el propio

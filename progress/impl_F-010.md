@@ -943,3 +943,260 @@ enlazar el backend, y **401 después**. Al enlazarlo, la Static Web App lo
 reclama y solo acepta lo que venga por su proxy. Es decir: **la capa 5 de
 `design.md` §9 bis —la restricción de acceso público— ya está puesta por la
 propia plataforma**, sin tener que intentarla ni arriesgarse a revertirla.
+
+### T16 · las tres pruebas de acceso, ejecutadas por el humano el 2026-08-21
+
+| Prueba | Resultado |
+|---|---|
+| Sin sesión, la URL redirige al inicio de sesión | **sí** (302 a `/.auth/login/aad`) |
+| **Miembro** del grupo entra y el circuito funciona | **sí** |
+| **NO miembro** entra | **NO** — rebota, como debe |
+
+La tercera es la única que demuestra el candado: `appRoleAssignmentRequired`
+está en `true` con `posventa-usuarios` asignado, y **Entra no emite token a
+quien no esté en el grupo**. Que la tarjeta del portal esté oculta no protege
+nada —se resuelve en el navegador—; esto sí.
+
+Todo comprobado en **ventana de incógnito**, para no arrastrar sesión: con la
+sesión del propietario del inquilino, la tercera prueba no habría probado nada.
+
+---
+
+# Ronda de cierre (2026-08-25) · los tres defectos que quedaban y el test que ata el duodécimo
+
+Los otros nueve de los doce ya estaban corregidos. Esta ronda cierra **8, 9 y
+11** —los tres en `infra/desplegar_front.ps1`— y añade el test que impide que
+el **12** vuelva. **Ni una llamada a Azure**: los scripts se arreglan y se
+comprueban por lectura y por sus tests.
+
+## Qué cambió, por defecto
+
+### Defecto 8 · el resumen mentía (commit `457791f`)
+
+La línea del resumen imprimía «Credenciales 'swa': sin tocar (-SoloFront)»
+**siempre que el recuento viniera vacío**, y el recuento viene vacío en cuanto
+falla su lectura —sin permiso sobre el registro, con la suscripción
+equivocada—. En modo completo eso es una mentira con consecuencias: el secreto
+**acaba de regenerarse** y `--append` no revoca ninguno, así que quien lea
+«sin tocar» puede volver a lanzarlo y dejar otra credencial viva.
+
+Ahora **el modo lo decide `$SoloFront` y nada más**:
+
+| Modo | Lo que imprime |
+|---|---|
+| `-SoloFront` | `sin tocar (-SoloFront)` |
+| completo, con recuento | `REGENERADA; N viva(s)` |
+| completo, sin recuento | `REGENERADA; no se ha podido contar cuántas quedan vivas` |
+
+El test lo fija línea a línea: **la excusa «-SoloFront» solo puede imprimirse
+en una línea que mire `$SoloFront`**. Es el mismo pecado que la review ya
+corrigió en la cabecera (R32), y esta vez queda atado también en el resumen.
+
+### Defecto 9 · el registro se creaba sin permisos ni consentimiento (commit `885a061`)
+
+Consecuencia real del 2026-08-21: **la aplicación quedó desplegada y no podía
+entrar nadie**, con un «No podemos iniciar su sesión» que no menciona ningún
+permiso. Se resolvió a mano.
+
+Copiado el patrón de `partes/infra/setup_sv4_easyauth.ps1` y
+`porcentajes/infra/setup_front_easyauth.ps1`, incluido **cómo tratan el fallo
+cuando quien ejecuta no es administrador del inquilino**:
+
+- `User.Read` se concede como permiso **delegado** (`=Scope`), no de aplicación
+  (`Role`): el servicio lee el perfil **en nombre de** quien inicia sesión.
+- Se concede **solo si no estaba ya** (`az ad app permission list`), para que el
+  script siga siendo re-ejecutable (R2).
+- Si `permission add` falla, **aborta** con su mensaje y su «Qué hacer»: sin el
+  permiso no hay inicio de sesión que valga.
+- El **consentimiento** va en **mejor esfuerzo**, como en los dos hermanos: no
+  tira abajo un despliegue que por lo demás está bien. **Pero no se calla**: el
+  resumen distingue `con consentimiento de administrador` de `CONSENTIMIENTO
+  PENDIENTE`, y en el segundo caso imprime un aviso con **el comando exacto** y
+  dónde está el identificador (el secreto `swa-client-id` del Key Vault, que no
+  se imprime).
+
+Los dos identificadores implicados —Microsoft Graph y `User.Read`— son
+públicos y fijos, pero **tienen forma de GUID y el barrido de R8 los caza**:
+se **componen** a partir de trozos, exactamente como ya hacía el rol «acceso
+predeterminado». Sigue sin haber un solo GUID literal en `infra/`.
+
+**Límite conocido, dicho aquí y no descubierto luego**: el consentimiento se
+pide inmediatamente después de conceder el permiso, y Entra puede tardar en
+propagarlo. Si esa llamada falla por eso, el script **no** lo reintenta: lo
+cuenta como `CONSENTIMIENTO PENDIENTE` con el comando para darlo. Es el mismo
+comportamiento que en `partes` y en `dedicacion`, y es preferible a un bucle de
+reintentos contra Entra dentro de un script de despliegue.
+
+### Defecto 11 · no se habilitaba la emisión de tokens de ID (commit `c691658`)
+
+Static Web Apps pide `response_type=code+id_token` y un registro nace con
+`enableIdTokenIssuance` en falso: bucle de redirección que Entra corta con
+**AADSTS50196**, cuyo mensaje no habla de bucles.
+
+Se activa con las **banderas dedicadas** de `az`, y en la **misma llamada** que
+las redirect URI. Tres motivos, y el tercero es el que evita repetir el rodeo
+que hubo que dar a mano:
+
+1. esa llamada se hace **tanto si el registro se crea como si se reutiliza**,
+   así que corrige también un registro anterior;
+2. deja `--enable-access-token-issuance false` **explícito** —el flujo implícito
+   de tokens de acceso entrega el token por la barra de direcciones y aquí no se
+   usa—;
+3. `az ad app update --set web.implicitGrantSettings...` **falla cuando `web`
+   viene vacío**, que fue lo que obligó a arreglarlo con `az rest --method
+   PATCH` y un fichero sin BOM. Con `--web-redirect-uris` en la misma llamada,
+   `web` no viene vacío nunca, y no hace falta ni `az rest` ni fichero temporal.
+
+El código de error **está escrito en el script y exigido por el test**: es por
+donde va a buscar quien lo sufra.
+
+### El test que ata el defecto 12 (commit `9e61a30`)
+
+`services/postventa-api/tests/test_f010_prompt_keys_infra.py`. Barre **todos**
+los `.ps1` de `infra/`, extrae cada `PROMPT_KEY*=valor` y se lo pide al
+**repositorio de prompts de verdad** —el mismo `RepositorioPromptsYaml` que usa
+el servicio— contra `config/prompts.yaml`. No hay lista escrita a mano: si el
+YAML cambia, el test cambia con él.
+
+Tres decisiones que lo hacen valer algo:
+
+- **el fallo es el mismo que vería el usuario**: `PromptNoEncontrado`, con las
+  claves disponibles dentro del mensaje;
+- **no puede pasar en vacío**: un test aparte exige que el barrido encuentre al
+  menos una clave, para que renombrar la App Setting no lo deje mudo en verde;
+- **control negativo** con la línea exacta que se desplegó
+  (`"PROMPT_KEY_FIRMA=firma_cliente_es",`), y una guarda para que un valor
+  tomado de una variable de PowerShell **no** se juzgue.
+
+Cubre de oficio la clave que traiga F-015: el patrón es `PROMPT_KEY*`, no una
+lista de dos nombres.
+
+## Evidencias de la fase RED de esta ronda
+
+Los cuatro tests se escribieron **antes** que su arreglo y se les vio fallar.
+Comando, desde `services/postventa-api` y con el intérprete del servicio:
+
+```
+./.venv/Scripts/python.exe -m pytest tests/test_f010_prompt_keys_infra.py -q
+```
+
+**Defecto 12** — con `firma_cliente_es` reinyectado en el script (el valor real
+que se desplegó), la salida literal:
+
+```
+E           Failed: infra/desplegar_backend.ps1 fija PROMPT_KEY_FIRMA=firma_cliente_es, que no existe en config/prompts.yaml. El despliegue quedaría en pie y roto: toda lectura que use ese prompt responderá 500. Detalle: el prompt 'firma_cliente_es' no está en C:\...\services\postventa-api\config\prompts.yaml; disponibles: firma_parte_es, parte_posventa_es
+
+tests\test_f010_prompt_keys_infra.py:121: Failed
+=========================== short test summary info ===========================
+FAILED tests/test_f010_prompt_keys_infra.py::test_f010_cada_prompt_key_de_infra_existe_en_el_yaml[desplegar_backend.ps1-PROMPT_KEY_FIRMA-firma_cliente_es]
+1 failed, 4 passed in 0.36s
+```
+
+Reinyección revertida acto seguido: `git diff --stat -- infra/desplegar_backend.ps1`
+no devuelve nada, y el fichero queda byte a byte como estaba.
+
+**Defecto 8** — `pytest tests/test_f010_scripts_infra.py -q -k "resumen_solo_alega"`:
+
+```
+E       AssertionError: el resumen alega -SoloFront sin comprobar el modo: dira que no ha tocado nada despues de haber tocado Entra
+E       assert ['Write-Host ...oFront)" }))'] == []
+E         Left contains one more item: 'Write-Host ("  Credenciales \'swa\' : {0}" -f $(if ($credencialesSwa) { $credencialesSwa } else { "sin tocar (-SoloFront)" }))'
+1 failed, 113 deselected in 0.37s
+```
+
+**Defecto 9** — `-k "user_read or mejor_esfuerzo or solofront_no_toca"`, tres en
+rojo: el del orden, el que no encontraba el `admin-consent` y el de
+`-SoloFront`, al que se le amplió la lista de llamadas a Entra:
+
+```
+FAILED tests/test_f010_scripts_infra.py::test_f010_t6_solofront_no_toca_ni_entra_ni_el_secreto
+FAILED tests/test_f010_scripts_infra.py::test_f010_t6_el_registro_pide_user_read_y_su_consentimiento
+FAILED tests/test_f010_scripts_infra.py::test_f010_t6_el_consentimiento_es_mejor_esfuerzo_pero_no_se_calla
+3 failed, 113 deselected in 0.44s
+```
+
+El segundo falló con un `StopIteration` en vez de con un mensaje: el propio
+rojo enseñó que la búsqueda del `admin-consent` estaba escrita con un `next()`
+sin defecto. Se reescribió como una lista y un `assert` que dice qué falta,
+**antes** de escribir el arreglo.
+
+**Defecto 11** — `-k "tokens_de_id"`:
+
+```
+E       AssertionError: assert '--enable-id-token-issuance true' in '        az ad app update --id $appId --web-redirect-uris $redirecciones --only-show-errors | Out-Null'
+1 failed, 116 deselected in 0.50s
+```
+
+## Verificación
+
+- **`bash harness/init.sh` en verde**, con las **dos** suites de servicio.
+- **Sintaxis de PowerShell comprobada** con el parser de la propia plataforma
+  (`[System.Management.Automation.Language.Parser]::ParseFile`) después de cada
+  edición: `sintaxis OK`. Es lo más cerca de ejecutarlo que se puede llegar sin
+  tocar Azure.
+- **El script sigue siendo ASCII puro**, comprobado byte a byte. La primera
+  edición coló un par de comillas angulares y **el test lo cazó** al leer el
+  fichero como ASCII: por eso se lee así y no como UTF-8.
+- **Ni un identificador real** entra en el repositorio: los dos GUID públicos se
+  componen y el barrido de R8 sigue en verde sobre los cinco scripts.
+
+## Evidencias
+
+| Evidencia | Valor medido |
+|---|---|
+| **Tests ejecutados** (servicio `api`) | **1.079 pasados**, 13 saltados, 0 fallos |
+| **Tests ejecutados** (suite raíz del arnés) | **17 pasados** |
+| **Tests ejecutados** (servicio `front`) | 74 en Python + `node --test` (caché de árbol limpio: no se tocó) |
+| **Tests de F-010** (`-k f010`) | **155 pasados**, 3 saltados |
+| **Tests nuevos de esta ronda** | **9** — 5 en `test_f010_prompt_keys_infra.py` y 4 en `test_f010_scripts_infra.py` |
+| **Cobertura de las líneas cambiadas** | **98,3 %** — 114/116, umbral 80 %, nivel `estandar` (línea `PUERTA COBERTURA`) |
+| **Mutantes generados / supervivientes** | **20 / 3**, 17 muertos, 0 timeouts |
+| **Tiempo de la suite** | **40,7 s** (`api`), 0,8 s (raíz) |
+| **Tiempo de la campaña de mutación** | **28,8 s**, 16 workers |
+
+**Los tres supervivientes son los mismos de las dos campañas anteriores** y
+siguen analizados y cerrados en `progress/mutacion_F-010.md`: el ancho del
+separador decorativo del banner de arranque de `dev_server.py`
+(`"=" * 60` → `"=" * 61`), en sus tres apariciones. **Mutantes equivalentes**:
+no cambian ningún comportamiento observable, y un test que fijara el ancho de un
+adorno se rompería en cada retoque sin proteger nada. Ninguna sección queda en
+`PENDIENTE`.
+
+**Esta ronda no añade ni una línea de producción en Python**: lo que cambia son
+un script de PowerShell y tests. Por eso la campaña sale idéntica a la anterior
+—mismos 20 mutantes, mismos 3 supervivientes— y la cobertura de líneas
+cambiadas no se mueve. La disciplina de los `.ps1` **no la sostiene la
+mutación, que no sabe mutarlos**: la sostienen los **119 tests** de los dos
+ficheros de contrato que los leen como texto, y por eso cada defecto se arregló
+**empezando por su test**.
+
+## Ficheros tocados
+
+| Fichero | Qué |
+|---|---|
+| `infra/desplegar_front.ps1` | los tres defectos: permiso y consentimiento, tokens de ID, resumen honrado; y la cabecera declara los dos comportamientos nuevos |
+| `services/postventa-api/tests/test_f010_scripts_infra.py` | 4 tests nuevos y la lista de llamadas a Entra de `-SoloFront`, ampliada |
+| `services/postventa-api/tests/test_f010_prompt_keys_infra.py` | **nuevo**: el barrido de `PROMPT_KEY*` contra `prompts.yaml` |
+| `progress/mutacion_F-010.md` | regenerado por la campaña |
+
+## Un detalle del arnés, para el líder
+
+`python -m harness.mutacion` **vuelve a añadir** la nota «_Análisis traído de la
+campaña anterior…_» cada vez que se relanza, sin comprobar si ya estaba: en
+`progress/mutacion_F-010.md` hay ahora dos por superviviente, y habrá tres a la
+próxima. Es cosmético y **no invalida ningún análisis**, pero crece solo y es
+del arnés genérico, no de esta feature: si se corrige, se corrige en
+`arnes-base` y se propaga. No se ha tocado aquí.
+
+## Lo que esta ronda NO hizo
+
+- **Ni una llamada a Azure**: ni despliegues, ni permisos, ni recursos, ni
+  consentimientos. Todo por lectura y por tests.
+- **Ninguna tarea `MANUAL (humano)`**: **T15, T17 y T18 siguen abiertas a
+  propósito** y `specs/F-010-despliegue/tasks.md` no se ha tocado en ellas.
+- **No se reescribió nada del informe anterior**: esta ronda solo añade al
+  final, como se pidió.
+- **Ningún `git push` ni PR.** Solo commits locales, uno por arreglo.
+- **No se corrigió la duplicación de la nota de mutación**: es del arnés.
+- **No se tocó `desplegar_backend.ps1`** más allá de la reinyección temporal de
+  la fase RED, revertida y comprobada con `git diff`.

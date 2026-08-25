@@ -631,6 +631,49 @@ def test_f010_t6_registra_todas_las_redirect_uri_en_una_sola_llamada(front):
     assert "$RedirectExtra" in front
 
 
+def test_f010_t6_el_registro_emite_tokens_de_id_y_solamente_esos(front):
+    """Static Web Apps pide `response_type=code+id_token`. Sin eso, bucle.
+
+    Un registro nace con `enableIdTokenIssuance` en falso, y con ese valor la
+    Static Web App manda al usuario al inicio de sesion, Entra le devuelve algo
+    que la aplicacion no puede completar, y vuelta a empezar. Entra corta el
+    bucle con **AADSTS50196**, un codigo cuyo mensaje no menciona bucles por
+    ningun lado: se perdio una tarde el 2026-08-21 hasta comparar el registro
+    con el del portal, que lo tiene en `true`.
+
+    Y **solo** el de ID. `enableAccessTokenIssuance` es el flujo implicito de
+    tokens de acceso, desaconsejado: entrega el token por la barra de
+    direcciones, donde queda en el historial y en los registros de cualquier
+    intermediario. No hace falta aqui -el token de acceso, si algun dia se
+    necesita, se pide con el codigo de autorizacion- y activarlo "ya que
+    estamos" seria abrir un flujo que nadie va a usar.
+
+    Los dos valores van en la MISMA llamada que las redirect URI, y a
+    proposito: es la unica que se hace tanto si el registro se acaba de crear
+    como si se reutiliza, asi que un registro anterior tambien queda corregido.
+    Ademas, `az ad app update --set web.implicitGrantSettings...` falla cuando
+    `web` viene vacio; con `--web-redirect-uris` en la misma llamada, `web` no
+    viene vacio nunca.
+    """
+    cuerpo = sin_comentarios(front)
+    actualizaciones = [
+        linea
+        for linea in cuerpo.splitlines()
+        if "az ad app update" in linea and "--web-redirect-uris" in linea
+    ]
+
+    assert len(actualizaciones) == 1
+    assert "--enable-id-token-issuance true" in actualizaciones[0]
+    assert "--enable-access-token-issuance false" in actualizaciones[0]
+
+    # Y que nadie los invierta despues, en ninguna parte del script.
+    assert "--enable-id-token-issuance false" not in cuerpo
+    assert "--enable-access-token-issuance true" not in cuerpo
+
+    # El codigo de error, escrito: es por donde va a buscar quien lo sufra.
+    assert "AADSTS50196" in front
+
+
 def test_f010_t6_el_cuerpo_de_graph_va_por_fichero_y_no_inline(front):
     """`az rest --body` inline se rompe en PowerShell por el entrecomillado.
 

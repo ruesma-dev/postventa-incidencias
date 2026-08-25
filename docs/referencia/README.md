@@ -40,6 +40,7 @@ documento, no una tarea posterior.
 |---|---|
 | `01_cierre_incidencia_sigrid.md` | Cómo cierra Posventa una incidencia (guía de Alicia Echevarría, 2026-08-18): pasos, campos del gráfico, menú Procesos y la comprobación que hace «Cerrar parte». Redactado: nombre del propietario y servidor interno. |
 | `02_parte_de_trabajo.md` | Anatomía del parte escaneado (remesa de Mirasierra, 2026-08-17): campos impresos, campos manuscritos y por qué firma no equivale a conformidad. Redactado: sin nombres ni DNI. |
+| `03_modelo_posventa_sigrid.md` | Lo confirmado **contra el ERP** por lecturas (F-008, 2026-08-25): `con.tip = 708`, los estados de `conest`, qué escribe de verdad «Cerrar parte», en qué se diferencia «sin archivo (RPV)» y dónde vive el gráfico. Incluye qué **no** se pudo confirmar. Redactado: logins como `<usuario>`. |
 | — | El modelo de datos de Sigrid **no está aquí**: vive en `azure-apps/sigrid_tablas.md` y `azure-apps/sigrid_api.md`. |
 
 ## Formato

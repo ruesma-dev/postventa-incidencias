@@ -1,6 +1,52 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-25 · **F-008 IMPLEMENTADA, PENDIENTE DE REVISIÓN**
+>
+> Trabajada **en worktree aislado**, en paralelo a F-010, sobre la rama
+> `feature/F-008-modelo-sigrid` (creada desde `feature/F-010-despliegue`).
+> Informe completo en **`progress/impl_F-008.md`**; el entregable, en
+> **`docs/referencia/03_modelo_posventa_sigrid.md`**.
+>
+> **Ni una escritura contra Sigrid.** ~25 consultas, todas `SELECT` por
+> `sql/read` de `sigrid-api`. Ninguna cerca del tope de 1.000 filas.
+>
+> **Las cuatro preguntas de la ficha, respondidas**: `con.tip = 708`; estados
+> `1/SAT`, `3/PTE` (confirmado), `5/TER`, `7/NPR` y **`9/CER` CERRADA**;
+> «Cerrar parte» **solo cambia `con.est`**; y RPV **termina en el mismo
+> estado**, solo se salta el control del gráfico — y **está abandonado desde
+> 2025-03-11**.
+>
+> **Dos hallazgos que no estaban en la lista y cambian F-009.** Primero:
+> «Cerrar parte» escribe una **fila de auditoría en `dbo.log`** que un
+> `UPDATE` directo no escribiría. Segundo: **`con.tiemod` NO se actualiza al
+> cerrar** —verificado en los 138 cierres de 2026, cero excepciones—, así que
+> el log es el **único** rastro temporal de un cierre. Cerrar por SQL sin
+> escribir esa fila dejaría incidencias que, para quien audite, **nadie cerró
+> nunca**.
+>
+> **El gráfico como URL a SharePoint: NO hay precedente.** Cero coincidencias
+> en 282.599 filas de `gra`. La opción existe en el menú pero **nunca se ha
+> usado en esta instalación**, así que no hay de dónde deducir cómo se
+> guardaría. F-009 no puede apoyarse en ello; queda marcado como deducción.
+>
+> **Recomendación de alcance para F-009** (§6 del informe): mover el estado
+> **más** la fila de log, en la misma transacción; **negarse a cerrar sin
+> gráfico** replicando el control del ERP por nuestro lado; **no** subir el
+> gráfico (eso es F-012); y **no** usar RPV.
+>
+> **Cuatro decisiones esperan al humano**: el `tex` y el `usu` de la fila de
+> log, si la escritura de `sigrid-api` está habilitada, y si merece la pena
+> confirmar el gráfico-URL en un entorno de pruebas.
+>
+> **Un arreglo fuera del encargo** (commit `337701c`): el guardián de
+> identificadores de R26 filtraba por ruta **absoluta** y, ejecutado desde un
+> worktree, se apagaba entero sin decirlo. Lo cazó su propio control
+> (`assert 0 >= 60`). Arreglado filtrando por ruta relativa a la raíz.
+>
+> `F-008` sigue **`pending`** a propósito: F-010 está `in_progress` y el
+> portero solo admite una. Mover el estado es decisión del líder.
+
 > ## Estado al 2026-08-20 (noche) · **F-010 · CORREGIDA LA REVIEW, LISTA PARA RE-REVIEW**
 >
 > La review salió **CHANGES_REQUESTED** con un rechazo estrecho: el propio

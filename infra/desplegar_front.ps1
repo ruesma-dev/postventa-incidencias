@@ -470,7 +470,15 @@ try {
     Write-Host ("  Static Web App     : {0}" -f $PostventaStaticWebApp)
     Write-Host ("  Backend enlazado   : {0}" -f $PostventaFunction)
     Write-Host ("  Asignacion previa  : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } else { "obligatoria, grupo asignado" }))
-    Write-Host ("  Credenciales 'swa' : {0}" -f $(if ($credencialesSwa) { $credencialesSwa } else { "sin tocar (-SoloFront)" }))
+    # El resumen cuenta lo que ha PASADO, no lo que suele pasar. Antes, esta
+    # linea alegaba '-SoloFront' siempre que el recuento viniera vacio, TAMBIEN
+    # en modo completo, que es justo el modo en el que el secreto acaba de
+    # regenerarse: si la lectura del recuento fallaba, el script afirmaba no
+    # haber tocado Entra despues de haberlo tocado. Es el mismo pecado que la
+    # review corrigio en la cabecera (R32), y con la misma consecuencia: quien
+    # lee esto decide si vuelve a lanzarlo, y cada ejecucion completa deja otra
+    # credencial viva. El modo lo decide $SoloFront y nada mas.
+    Write-Host ("  Credenciales 'swa' : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } elseif ($credencialesSwa) { "REGENERADA; {0} viva(s)" -f $credencialesSwa } else { "REGENERADA; no se ha podido contar cuantas quedan vivas" }))
     if ($credencialesSwa -and [int]$credencialesSwa -gt 1) {
         Write-Host ""
         Write-Host ("  Hay {0} credenciales 'swa' VIVAS: --append anade y no revoca." -f $credencialesSwa) -ForegroundColor Yellow

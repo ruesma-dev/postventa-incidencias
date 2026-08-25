@@ -797,6 +797,34 @@ def test_f010_r32_la_descripcion_no_afirma_lecturas_que_no_hace(front):
     assert "no se genera nada" in front
 
 
+def test_f010_r32_el_resumen_solo_alega_solofront_cuando_lo_esta(front):
+    """R32 · una nota que miente es peor que no tener nota, y el resumen es una.
+
+    El resumen imprimia «Credenciales 'swa': sin tocar (-SoloFront)» siempre
+    que el recuento viniera vacio, **tambien en modo completo**, que es
+    justamente el modo en el que el secreto ACABA DE REGENERARSE. Basta con
+    que la lectura del recuento falle -sin permiso sobre el registro, con la
+    suscripcion equivocada- para que el script afirme no haber tocado Entra
+    despues de haber creado una credencial nueva.
+
+    Quien lee ese resumen decide si vuelve a lanzarlo, y con `--append` cada
+    ejecucion completa deja otra credencial viva. La regla es dura y se
+    comprueba linea a linea: la excusa «-SoloFront» solo puede imprimirse en
+    una linea que MIRE `$SoloFront`. Deducirla de que otra cosa este vacia es
+    exactamente como se cuela una mentira en una salida que nadie recomprueba.
+    """
+    culpables = [
+        linea.strip()
+        for linea in sin_comentarios(front).splitlines()
+        if "sin tocar (-SoloFront)" in linea and "$SoloFront" not in linea
+    ]
+
+    assert culpables == [], (
+        "el resumen alega -SoloFront sin comprobar el modo: dira que no ha "
+        "tocado nada despues de haber tocado Entra"
+    )
+
+
 def test_f010_t6_la_cabecera_declara_que_las_credenciales_se_acumulan(front):
     """`--append` anade, no reemplaza: cada despliegue completo deja una mas.
 

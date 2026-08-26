@@ -27,6 +27,15 @@ que las otras no:
 | **L2 · reemplazo** | El `fichero (1).pdf` | La subida reemplaza siempre el homónimo; el puerto no ofrece otra opción |
 | **L3 · carpeta** | Dos carpetas para la misma obra | `asegurar_carpeta` trata «ya existe» como éxito |
 
+## Y la garantía de orden de F-019, que no es idempotencia sino precedencia
+
+Antes de tocar el puerto de archivo se escribe la traza en estado
+`pendiente`. Como `postventa.archivos.hash_parte` referencia a
+`postventa.partes`, esa escritura **sólo puede hacerse si el parte ya consta
+guardado**: es la misma restricción que el 2026-08-25 hizo fallar el proceso
+*después* de subir el fichero, puesta a fallar *antes*. Ver
+`_dejar_constancia_previa`.
+
 «El mismo parte» es **el `hash` del parte troceado** que produce F-002 y que
 F-005 usa como clave primaria de la tabla `archivos`. F-006 no define ningún
 criterio propio: ni por nombre, ni por incidencia, ni por bytes. Dos criterios
@@ -96,15 +105,20 @@ def paso_archivo(
        puerto: un parte que no es apto no crea ni la carpeta.
     2. **Nombrado** (R1–R9). `NombradoImposible` sale sin haber tocado nada.
     3. **Idempotencia por traza** (R14). La capa barata.
-    4. `asegurar_carpeta` (R11, R12).
-    5. `buscar` el homónimo, para poder avisar del reemplazo (R16).
-    6. `subir`, reemplazando (R15).
-    7. **Traza** (R23, R24), que se persiste tanto si fue bien como si no.
+    4. **Traza previa en `pendiente`** (F-019, R19). La garantía de orden: si
+       el parte no consta guardado, la clave ajena la rechaza y el archivado
+       se aborta **sin haber llamado a nadie**.
+    5. `asegurar_carpeta` (R11, R12).
+    6. `buscar` el homónimo, para poder avisar del reemplazo (R16).
+    7. `subir`, reemplazando (R15).
+    8. **Traza final** (R23, R24), que se persiste tanto si fue bien como si
+       no.
 
-    Levanta `ParteNoApto`, `NombradoImposible`, `ArchivoFallido` y
-    —si la subida salió bien y la traza no se pudo escribir— `ArchivoSinTraza`.
-    Los cuatro los traduce a HTTP el borde; aquí no se sabe de códigos de
-    estado.
+    Levanta `ParteNoApto`, `NombradoImposible`, `ArchivoFallido`,
+    —desde F-019— `ReferenciaNoConsta` y `PersistenciaNoDisponible` de la
+    traza previa, y —si la subida salió bien y la traza final no se pudo
+    escribir— `ArchivoSinTraza`. Los traduce a HTTP el borde; aquí no se sabe
+    de códigos de estado.
     """
     _exigir_apto(ctx)
 
@@ -119,6 +133,8 @@ def paso_archivo(
         ctx.archivo = traza_previa
         return ctx
 
+    _dejar_constancia_previa(repositorio, ctx, destino)
+
     try:
         item = _subir(ctx, archivador, destino)
     except ArchivoFallido as fallo:
@@ -129,6 +145,44 @@ def paso_archivo(
     ctx.archivo = _traza_de_exito(ctx, item, ahora=ahora)
     _dejar_constancia(repositorio, ctx)
     return ctx
+
+
+def _dejar_constancia_previa(
+    repositorio: RepositorioPartesPort, ctx: ContextoParte, destino
+) -> None:
+    """Escribe la traza en `pendiente` **antes de tocar el puerto** (F-019, R19).
+
+    Es la garantía de orden de F-019, y **el orden es el requisito**: no se
+    sube un byte a SharePoint de un parte que no conste guardado.
+
+    Cómo funciona, y por qué así: `postventa.archivos.hash_parte` tiene una
+    clave ajena contra `postventa.partes`. Si el parte no consta, esta
+    escritura **no puede hacerse**, el error sube y el archivado se aborta sin
+    haber llamado a nadie —ni carpeta, ni búsqueda, ni subida—. Es decir: la
+    misma restricción que hasta el 2026-08-25 hacía fallar el proceso
+    **después** de subir el fichero pasa a hacerlo fallar **antes**.
+
+    No se añade una comprobación paralela (`consta_parte`) que pueda divergir
+    de la restricción real: se usa la restricción. Entre una consulta previa y
+    la escritura cabe todo —otro proceso borrando el parte por medio—, y
+    además habría que tocar `RepositorioPartesPort`, que es de F-005.
+
+    Va **después** de la idempotencia de F-006 a propósito: escribirla con el
+    parte ya archivado lo degradaría a `pendiente`, y `pendiente` no corta el
+    reintento (R14), así que el siguiente intento volvería a subir el fichero.
+
+    Los errores suben **sin traducir**: el borde distingue `ReferenciaNoConsta`
+    (→ 409 «guarda el parte primero») de `PersistenciaNoDisponible` (→ 503
+    «no se ha subido nada, se puede reintentar»), y esas dos respuestas llevan
+    a acciones opuestas. Aquí no se sabe de códigos de estado.
+    """
+    ctx.archivo = TrazaArchivo(
+        hash_parte=ctx.parte.hash,
+        estado=EstadoArchivo.PENDIENTE,
+        nombre_fichero=destino.nombre_fichero,
+        carpeta=destino.carpeta,
+    )
+    repositorio.guardar_archivo(traza=ctx.archivo)
 
 
 def _dejar_constancia(repositorio: RepositorioPartesPort, ctx: ContextoParte) -> None:

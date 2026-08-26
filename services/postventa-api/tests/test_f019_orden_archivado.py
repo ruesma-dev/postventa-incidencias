@@ -357,12 +357,12 @@ def _peticion(campos: Sequence[tuple[str, str]] = FORMULARIO_APTO):
         f'Content-Disposition: form-data; name="fichero"; '
         f'filename="parte.pdf"\r\n'
         f"Content-Type: application/pdf\r\n\r\n"
-    ).encode("utf-8") + PDF_DE_MENTIRA + b"\r\n"
+    ).encode() + PDF_DE_MENTIRA + b"\r\n"
     for nombre, valor in campos:
         cuerpo += (
             f"--{_FRONTERA}\r\n"
             f'Content-Disposition: form-data; name="{nombre}"\r\n\r\n{valor}\r\n'
-        ).encode("utf-8")
+        ).encode()
     cuerpo += f"--{_FRONTERA}--\r\n".encode()
     return func.HttpRequest(
         method="POST",

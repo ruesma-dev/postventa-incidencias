@@ -17,6 +17,28 @@ distinción que hace que el mensaje sea útil:
 | La base no responde y **no se subió nada** | **503** | no se ha tocado SharePoint; se puede reintentar |
 | Falta configuración de PostgreSQL | **503** | este entorno no archiva; se nombra la variable, nunca su valor |
 
+## Qué cambió con F-019, y por qué estos tests se precisaron
+
+F-019 metió una **traza previa en `pendiente` antes de subir nada** (R19), así
+que `guardar_archivo` se llama **dos** veces en el camino feliz. Consecuencia
+para este fichero: el escenario que le da nombre —fichero arriba y traza
+perdida— ya **no** se produce con la base caída de principio a fin; con la
+base caída ahora falla la traza previa y el borde responde **503 sin haber
+subido nada**, que es justo la mejora. El 500 queda reservado a una caída
+**entre** la traza previa y la final, y por eso el doble de aquí falla sólo en
+la segunda llamada.
+
+Los tests **no se han relajado**: siguen exigiendo `biblioteca.subidas == 1` y
+el 500 con cuerpo. Lo que se ha corregido es el montaje, para que reproduzca
+el escenario que el test dice reproducir en vez de otro que ahora da otro
+código. Y se ha **añadido** el caso nuevo, abajo del todo.
+
+Nota histórica: el `ForeignKeyViolation` del motivo real del 2026-08-25 hoy ni
+siquiera llegaría aquí. F-019 lo traduce a `ReferenciaNoConsta` y el borde lo
+convierte en un **409 antes de subir**. Se conserva el texto literal porque es
+el que se vio en producción y lo que este fichero fija es la traducción, no la
+causa.
+
 Los dobles son los de F-006 (`tests/utiles_sharepoint.py`): **SharePoint y
 PostgreSQL no aparecen por ninguna parte**. El montaje del `multipart` se
 reutiliza del fichero de F-006 en vez de copiarse, para que un cambio del
@@ -66,7 +88,21 @@ MOTIVO_REAL = (
 
 
 def _repositorio_caido() -> RepositorioFalso:
-    """Un repositorio que no puede guardar la traza, con el motivo de verdad."""
+    """Un repositorio que se cae **entre** la traza previa y la final (F-019).
+
+    La primera llamada —la traza `pendiente` de R19— pasa; la segunda no. Es
+    la única forma de reproducir el escenario del defecto 14 desde que existe
+    la garantía de orden: con la base caída de principio a fin, ahora falla la
+    previa y no se sube nada, que es el caso de
+    `test_f019_r21_...` y de `_caida_desde_el_principio` de aquí abajo.
+
+    El motivo es el **real** del 2026-08-25, tal y como lo compone F-005.
+    """
+    return RepositorioFalso(fallos={2: PersistenciaNoDisponible(MOTIVO_REAL)})
+
+
+def _caida_desde_el_principio() -> RepositorioFalso:
+    """Un repositorio que no responde a nada, ni a la traza previa."""
     return RepositorioFalso(fallo=PersistenciaNoDisponible(MOTIVO_REAL))
 
 
@@ -222,3 +258,35 @@ def test_f010_defecto14_si_la_subida_fallo_el_paso_no_lo_llama_asi():
         _archivar(contexto_apto(), archivador, _repositorio_caido())
 
     assert biblioteca.subidas == 0
+
+
+# --------------------------------------------------------------------------
+# Lo que F-019 añade: con la base caída, ya no se llega a subir
+# --------------------------------------------------------------------------
+
+
+def test_f010_defecto14_con_la_base_caida_desde_el_principio_ya_no_se_sube(
+    monkeypatch,
+):
+    """F-019 · el defecto 14 pasa de «casi imposible» a «no ocurre».
+
+    Con la base sin responder, la traza previa de R19 falla **antes** de tocar
+    SharePoint: el llamante recibe un 503 que promete que no se ha subido
+    nada, y la promesa es cierta. Antes de F-019 este mismo escenario subía el
+    fichero y devolvía el 500 de arriba.
+
+    Los dos casos siguen existiendo y siguen distinguiéndose; lo que cambia es
+    cuál de ellos se da con la base entera caída, que es la avería normal.
+    """
+    import function_app
+
+    biblioteca = BibliotecaFalsa()
+    repositorio = _caida_desde_el_principio()
+    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), repositorio)
+
+    respuesta = function_app.archivar(_peticion([("parte.pdf", PDF_CON_DATOS)]))
+
+    assert biblioteca.subidas == 0
+    assert respuesta.status_code == 503
+    assert "no se ha subido nada" in _cuerpo(respuesta)["error"]
+    assert repositorio.llamadas_guardar_archivo == 1

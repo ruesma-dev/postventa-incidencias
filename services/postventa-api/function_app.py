@@ -486,6 +486,20 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
     except (ParteNoApto, NombradoImposible) as error:
         log.info("archivar no procede: %s", error.motivo)
         return _json({"error": error.motivo}, 409)
+    except ReferenciaNoConsta as error:
+        log.info("archivar sin el parte guardado: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"este parte no consta guardado, así que **no se ha subido "
+                    f"nada** a SharePoint: hay que guardarlo antes con "
+                    f"POST /api/parte —y registrar su remesa con "
+                    f"POST /api/remesa si tampoco consta— y volver a archivar. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            409,
+        )
     except (ArchivoDeshabilitado, ConfiguracionSharePointIncompleta) as error:
         log.warning("archivar deshabilitado: %s", error.motivo)
         return _json({"error": error.motivo}, 503)

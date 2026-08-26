@@ -60,6 +60,29 @@ Los estados salen de `conest` con el join estándar
   `NPR`, `CER`) están marcados **no editables**: una vez cerrada, Sigrid bloquea
   la edición de la ficha en pantalla.
 
+### 1.1 · `con.cod`, el código que identifica la reclamación
+
+**`con.cod` identifica la reclamación de forma única.** Verificado por recuento:
+los **23.063** conceptos de `tip = 708` tienen **23.063** códigos distintos. Ni
+una repetición, tampoco entre obras ni entre años.
+
+- **Formato**: `RS{AA}.{MM}/{NNNN}` — `RS`, el año en dos dígitos, punto, el mes
+  en dos dígitos, barra y un secuencial de cuatro. Ejemplo: `RS26.08/0123`.
+- **NO codifica la obra.** Comprobado cruzando el código con la obra de cada
+  reclamación: el secuencial es global del mes, no por obra. Para saber a qué
+  obra pertenece una reclamación hay que ir a sus datos, nunca a su código.
+- **Es la clave de localización**: dado un código, la reclamación se encuentra
+  con un solo filtro por `con.cod`, sin conocer la obra ni la unidad de
+  postventa. Ese filtro **se acota siempre con `con.tip = 708`**: la unicidad
+  está medida dentro del tipo 708, y no se ha comprobado que un código no pueda
+  repetirse en otro tipo de concepto de `con`.
+
+> **Ojo con el formato al cruzar con el nombre del fichero escaneado**: en Sigrid
+> el código lleva **barra** (`RS26.08/0123`) y en el nombre del documento lleva
+> **guion** (`RS26.08 - 0123`). Está documentado en
+> `docs/referencia/01_cierre_incidencia_sigrid.md`, sección «La ficha de la
+> reclamación»; no se repite aquí.
+
 ## 2 · Qué escribe de verdad «Cerrar parte»
 
 La respuesta corta: **`con.est` y una fila en `dbo.log`. Nada más.**
@@ -151,9 +174,19 @@ irreversible ni que el estado que dejó sigue ahí.
 
 ### 2.5 · Desde qué estado se lanza
 
-No exige pasar por TERMINADA. De los **2.105** cierres con «Cerrar parte» desde
-2025, **29 se hicieron directamente desde PENDIENTE** sin que la reclamación
-hubiera pasado nunca por «Pasar a terminada».
+No exige pasar por TERMINADA. De las **2.105 reclamaciones creadas desde 2025
+que hoy están en `CER`** —exactamente la población de la tabla de §2.2, contada
+por **fecha de alta**—, **29 se cerraron directamente desde PENDIENTE** sin que
+la reclamación hubiera pasado nunca por «Pasar a terminada».
+
+> **Ese 2.105 no es el número de reclamaciones cerradas con «Cerrar parte» desde
+> 2025**, y conviene no confundirlos porque se parecen: son **dos poblaciones
+> distintas**. La tabla de §3 cuenta por **año de cierre y proceso**, y da
+> 1.968 + 138 = **2.106** reclamaciones hoy en `CER` cerradas con «Cerrar parte»
+> en 2025–2026, más 32 cerradas con RPV en 2025. Una reclamación creada en 2024 y
+> cerrada en 2025 entra en la de §3 y no en esta; una creada y cerrada en 2025,
+> en las dos. El hallazgo —hay cierres directos desde PENDIENTE y son minoría— no
+> depende de cuál se use; el **29** está medido sobre la primera, la de §2.2.
 
 La reclamación de ejemplo de la guía de Posventa es una de ellas: su log
 completo son tres filas —alta, `Pasar a pendiente`, `Cerrar parte`—, y la ficha
@@ -198,9 +231,15 @@ Cómo se lee:
 En el log el nombre completo es `Proceso ejecutado (Cerrar parte sin archivo
 (RPV))`, con la misma forma de fila que en §2.4.
 
-> Hay un tercer proceso de cierre, **«Cerrar Preventas»** (4.899 ejecuciones,
-> ninguna desde 2024-11-27): cierre masivo de preventa que también deja `est = 9`
-> y prácticamente nunca lleva gráfico (3 de 4.892). No es el camino de Posventa.
+> Hay un tercer proceso de cierre, **«Cerrar Preventas»**: cierre masivo de
+> preventa que también deja `est = 9`. No es el camino de Posventa. Sus dos
+> cifras miden **poblaciones distintas** y por eso no coinciden: **4.899
+> ejecuciones** registradas en `dbo.log` (ninguna desde 2024-11-27), frente a
+> **4.892 reclamaciones** que hoy están en `CER` cerradas por él, de las que solo
+> **3 llevan gráfico**. El desfase de 7 es de la misma clase que el de §2.4 —el
+> log cuenta ejecuciones y el estado cuenta reclamaciones—; no se ha investigado
+> cuál de las causas posibles (reejecuciones, cierres deshechos, cambios de
+> estado posteriores) lo produce.
 
 ## 4 · El gráfico: dónde vive y de qué está hecho
 

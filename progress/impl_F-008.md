@@ -68,18 +68,18 @@ Con el número que lo sostiene. El detalle completo, en el documento entregado.
 | 7 | **`con.tiemod` NO se actualiza al cerrar** | En los **138 cierres de 2026**, `tiemod` es *estrictamente anterior* al día del cierre. Cero excepciones |
 | 8 | **«Cerrar parte» escribe una fila en `dbo.log`** con `tab='con'`, `tip=708`, `ope=5`, `tex='Cerrar parte'`, `cod`, `res`, `usu`, `fec`, `hor` | 6.843 filas, todas con la misma forma |
 | 9 | **Un cierre se puede deshacer**: existe `ope=30` `DESHACER proceso (Cerrar parte)` | 81 ocurrencias, la última 2025-10-06 |
-| 10 | **No hace falta pasar por TERMINADA**: se cierra desde PENDIENTE | 29 de los 2.105 cierres desde 2025 no tienen ningún «Pasar a terminada» previo |
+| 10 | **No hace falta pasar por TERMINADA**: se cierra desde PENDIENTE | 29 de las **2.105 reclamaciones creadas desde 2025 que hoy están en `CER`** (la población de §2.2 del documento, contada por fecha de alta) no tienen ningún «Pasar a terminada» previo. **No confundir con las 2.106** reclamaciones hoy en `CER` cerradas con «Cerrar parte» en 2025–2026 de §3, que es otra población: se cuenta por año de cierre |
 | 11 | **RPV termina en el MISMO estado** (`9/CER`) que «Cerrar parte» | Agrupación de las cerradas por proceso |
 | 12 | **RPV sí deja cerradas sin gráfico; «Cerrar parte» no** | Desde 2023, «Cerrar parte»: 2.365 cierres, 2.365 con gráfico, **cero excepciones**. RPV: 487 sin gráfico en 2022, 276 en 2023, 109 en 2024, 8 en 2025 |
 | 13 | **RPV está abandonado**: última ejecución **2025-03-11** | Log |
-| 14 | Hay un tercer cierre, **«Cerrar Preventas»** (4.899, ninguno desde 2024-11-27), masivo y sin gráfico | Log |
+| 14 | Hay un tercer cierre, **«Cerrar Preventas»**, masivo y prácticamente sin gráfico | Dos poblaciones: **4.899 ejecuciones** en el log (ninguna desde 2024-11-27) y **4.892 reclamaciones** hoy en `CER` cerradas por él, de las que 3 llevan gráfico. El desfase de 7 no se ha investigado |
 | 15 | **`gra` vive en las DOS bases**, con esquema idéntico y **espacios de `ide` independientes** | El `ide` 296221 es documentos distintos en `ruesma` y en `ruesma_rep` |
 | 16 | **El binario vive en `ruesma_rep.gra.ima`**; en `ruesma` está siempre vacío para posventa | 13.450 gráficos de reclamación, **0** con binario en `ruesma` |
 | 17 | **La pareja entre las dos tablas se localiza por `gra.cod`**, no por `ide` | 13.399 de 13.450 (99,6 %) casan por `cod` con una fila con binario |
 | 18 | El gráfico del parte firmado confirma campo a campo lo que la guía dedujo de la pantalla: `res` = Descripción, `nom` = fichero, `gratipide` → `PV002` | Ficha real |
 | 19 | El tipo `PV002` admite asociarse a `RCP` (`auxgra.tipaso = 'UPV,RCP,TAR'`), sin límite de tamaño (`tammax = 0`) | Catálogo `auxgra` |
 | 20 | **El orden del procedimiento queda datado**: gráfico a las 11:40:39, cierre a las 11:46:33 del mismo día | Log + `gra.cod` |
-| 21 | **`con.cod` identifica la reclamación de forma única y global**: 23.063 conceptos `tip=708`, 23.063 códigos distintos. El formato es `RS{AA}.{MM}/{NNNN}` y **no codifica la obra** | Recuento + cruce con obra |
+| 21 | **`con.cod` identifica la reclamación de forma única dentro del tipo 708**: 23.063 conceptos `tip=708`, 23.063 códigos distintos. El formato es `RS{AA}.{MM}/{NNNN}` y **no codifica la obra**. Recogido en §1.1 del documento entregado | Recuento + cruce con obra. La unicidad frente a otros `con.tip` **no** se midió: el filtro por `cod` se acota siempre con `tip = 708` |
 
 ### Un caso que vale por sí solo
 
@@ -246,7 +246,8 @@ Se preguntaba si «puede que sea justo la que necesitamos». **No lo es**:
 4. **Reversibilidad**: los cierres se deshacen en el ERP (`ope=30`, 81 casos).
    Nuestro registro local no puede asumir que lo que cerramos sigue cerrado; el
    dry-run debe **releer el estado actual**, no fiarse de lo que guardamos.
-5. **Localización**: por `con.cod` (`RS{AA}.{MM}/{NNNN}`), único y global, con
+5. **Localización**: por `con.cod` (`RS{AA}.{MM}/{NNNN}`), único dentro del tipo
+   y sin repetirse entre obras ni años, siempre acotando con
    `tip = 708`. Ojo al formato: Sigrid usa barra (`RS26.08/0123`) y el nombre del
    fichero usa guion (`RS26.08 - 0123`). La conversión es nuestra.
 6. **El dry-run tiene todo lo que necesita**: código, descripción, estado origen

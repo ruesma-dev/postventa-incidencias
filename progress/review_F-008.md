@@ -5,7 +5,12 @@
 > (worktree `agent-a31450ce7b55c4c8d`, HEAD `e12cbce`)
 > Diff revisado: `git diff dev...HEAD` — 7 ficheros, 697 inserciones.
 
-## Veredicto
+> ⚠️ **ESTADO FINAL DE F-008: APROBADO en la segunda ronda** → ver
+> **«Re-review · segunda ronda»** al final de este fichero (commit `3bacf22`).
+> Lo que viene a continuación es el veredicto de la **primera** ronda y se
+> conserva sin tocar: es el rastro de qué se pidió y por qué.
+
+## Veredicto (primera ronda)
 
 **CAMBIOS SOLICITADOS (2)**
 
@@ -523,3 +528,199 @@ Ni una escritura contra Sigrid: **confirmado** por cuatro vías independientes.
 Sin secretos ni datos personales: **confirmado** con barrido propio. El arreglo
 del guardián: **cierra el hueco de verdad** (0 → 275 ficheros barridos) y **no
 baja ningún listón**. El resto del trabajo, aprobado sin reservas.
+
+---
+
+# Re-review · segunda ronda
+
+> `reviewer` · 2026-08-26 · commit revisado **`3bacf22`**, sobre `9300c98`
+> (mi primera ronda). Informe del implementer:
+> `progress/impl_postreview_F-008.md`.
+>
+> **Lo de arriba no se toca**: es el rastro de la primera ronda y se conserva
+> tal cual. Esta sección solo dictamina sobre las dos correcciones.
+
+## Veredicto de la re-review
+
+**APROBADO**
+
+Los dos cambios requeridos de §4 están **hechos y verificados por mí**, no
+leídos. Rehice todas las sumas por mi cuenta —que es el control que destapó el
+problema— y comprobé el enlace cruzado abriendo el fichero de destino. El
+encargo no se desbordó.
+
+## R1 · Las cifras: **CORREGIDO**
+
+### Las sumas, rehechas por mí
+
+Recalculé las siete, sin mirar el informe:
+
+| Comprobación | Cuadra |
+|---|---|
+| Estados de §1: 1.989+1.011+3.757+656+14.141 | **21.554** = total de `rcp` ✓ |
+| §2.2: 85+839+1.474+258+2.105 | **4.761** = creadas desde 2025 ✓ |
+| §3 «Cerrar parte» 2025+2026: 1.968+138 | **2.106** ✓ — y es justo la cifra que el documento declara ahora |
+| §3 «Cerrar parte» 2023–2026: 241+18+1.968+138 | **2.365**, y con gráfico los mismos 2.365 ✓ |
+| §4.1 reparto de `vin`: 282.405+154+38+1+1 | **282.599** = total de `ruesma.gra` ✓ |
+| §1: 23.063 − 21.554 | **1.509** conceptos sin fila en `rcp` ✓ |
+| §4.2: 13.399 / 13.450 | **99,62 %**, bien redondeado al 99,6 ✓ |
+
+### El «2.105» de §2.5 (líneas 177–187)
+
+Ya no dice «cierres con «Cerrar parte» desde 2025». Dice **«las 2.105
+reclamaciones creadas desde 2025 que hoy están en `CER`»**, con la población
+escrita explícita («contada por **fecha de alta**») y remitida a la tabla de
+§2.2 de la que sale.
+
+Y hace algo mejor que corregir la etiqueta: añade una nota que **enseña la
+trampa en la que yo caí**, con el ejemplo que la desambigua —«una reclamación
+creada en 2024 y cerrada en 2025 entra en la de §3 y no en esta; una creada y
+cerrada en 2025, en las dos»—, declara el **2.106** de la otra población y
+cierra diciendo que el hallazgo del 29 no depende de cuál se use. Un lector que
+repita mi suma ahora encuentra la respuesta antes de desconfiar del documento.
+Es la corrección correcta, no la mínima.
+
+### El «4.899 / 4.892» de «Cerrar Preventas» (líneas 234–241)
+
+Cuadrado por la vía honesta: **declarado como dos poblaciones**, 4.899
+*ejecuciones registradas en `dbo.log`* frente a 4.892 *reclamaciones hoy en
+`CER`*. Y remite el desfase de 7 a la misma explicación que ya justificaba la
+diferencia 6.843 / 6.590 de §2.4 —el log cuenta ejecuciones, el estado cuenta
+reclamaciones—, **sin inventarse la causa**: dice qué la produciría
+(reejecuciones, cierres deshechos, cambios de estado posteriores) y admite que
+no se ha investigado cuál. Exactamente el registro que el propio documento se
+exige a sí mismo en su §5.
+
+### `progress/impl_F-008.md` dice ya lo mismo que el documento
+
+- **#10**: reescrito a la población correcta, con el «no confundir con las
+  2.106» explícito.
+- **#14**: reescrito a las dos poblaciones, con el desfase de 7 declarado.
+- No pedido y bien traído: **§6.4.5** también se corrigió, para que la
+  recomendación de localización de F-009 no arrastre el «único y **global**»
+  que ya no se sostiene (ver R2).
+
+**Barrí el árbol entero** buscando restos del texto viejo
+(`grep -rn "2\.105 cierres"` sobre todos los `.md`): **ninguno** fuera de mi
+propio informe de primera ronda, donde debe seguir. Documento e informe cuentan
+ya la misma historia.
+
+## R2 · El `con.cod`: **CORREGIDO, y con más rigor del que pedí**
+
+Existe la subsección **§1.1 · `con.cod`, el código que identifica la
+reclamación** en `docs/referencia/03_modelo_posventa_sigrid.md`, con las cuatro
+piezas que exigí:
+
+- **Unicidad** ✓ y **el recuento que la sostiene** ✓: 23.063 conceptos de
+  `tip = 708`, 23.063 códigos distintos.
+- **Formato** ✓: `RS{AA}.{MM}/{NNNN}` desglosado pieza a pieza, con ejemplo.
+- **«No codifica la obra»** ✓, y además el porqué operativo: el secuencial es
+  global del mes, así que para saber la obra hay que ir a los datos.
+- **Su consecuencia para F-009** ✓: es la clave de localización, con un solo
+  filtro por `con.cod`.
+
+**Y aquí el implementer hizo algo que hay que anotar, porque va en la dirección
+contraria a la cómoda: acotó su propia afirmación en vez de defenderla.** El
+hallazgo #21 decía «única y **global**»; ahora dice «única **dentro del tipo
+708**», y añade que la unicidad frente a otros `con.tip` **no se midió**, por lo
+que el filtro por `cod` debe acotarse siempre con `tip = 708`. Es un cambio que
+**baja** la fuerza del hallazgo y **sube** la del documento, y lo propagó a los
+tres sitios (§1.1, hallazgo #21 y §6.4.5). Reducir una afirmación al alcance de
+lo que de verdad se midió es justo lo que necesita un documento que va a
+sostener una feature `critico`. No lo pedí; se corrigió solo.
+
+### El enlace cruzado, comprobado abriendo el destino
+
+§1.1 remite la trampa barra/guion a
+`docs/referencia/01_cierre_incidencia_sigrid.md`, **sección «La ficha de la
+reclamación»**, y dice «no se repite aquí». Lo verifiqué abriendo el fichero:
+esa sección existe (línea 51) y la trampa está dentro, en las líneas 57–58
+(«en Sigrid la incidencia se escribe `RS26.08/0123` (con barra); en el nombre
+del fichero, `RS26.08 - 0123`»). **El enlace lleva a donde dice que lleva**, y
+se cita por título de sección, que no se rompe si el fichero crece. Enlazar en
+vez de copiar es además lo que manda el `acceptance` nº 5.
+
+`docs/referencia/README.md` actualiza la fila del índice para que el contenido
+nuevo se encuentre desde el índice («el código `con.cod` como clave de
+localización»). Mantener el índice al día es parte de añadir contenido, y está
+hecho.
+
+## R3 · El encargo no se desbordó
+
+Comprobado con `git diff --stat 9300c98..3bacf22`, no con el informe:
+
+| Control | Resultado |
+|---|---|
+| Ficheros tocados | **4**, y solo los que tenían que tocarse: los dos de `docs/referencia/`, `progress/impl_F-008.md` y el informe nuevo `progress/impl_postreview_F-008.md` |
+| **Ni una consulta al ERP** | `git diff --stat` sobre `services/`, `tests/`, `harness/` e `infra/`: **vacío**. Ningún script, ninguna consulta, ningún artefacto ejecutable. El informe de la ronda no reclama ninguna lectura nueva: las correcciones se resolvieron **con lo ya medido**, que era la condición |
+| **Ningún test tocado** | `services/` sin un solo cambio. `test_f006_repo_sin_identificadores.py`, **byte a byte el que aprobé** en §3.3 |
+| **Ningún listón bajado** | Consecuencia del anterior: el umbral `>= 60`, las 3 entradas de `GUID_TOLERADO_POR_FICHERO` y `PATRON_GUID`, intactos |
+| **`harness/features.json` intacto** | Sin cambios. F-008 sigue `in_progress`, como la dejó el líder en `e12cbce` |
+| **`infra/` intacto** | Sin cambios |
+| Árbol limpio | `git status --porcelain` vacío |
+
+## R4 · Puertas y guardianes, ejecutados por mí
+
+- **`bash harness/init.sh`**: ejecutado tal cual en el worktree, sin pipes ni
+  decoración. **`EXIT=0`**, `ENTORNO LISTO`. `PUERTA COBERTURA: N/A (F-008 es
+  de nivel documental: no exige cobertura)`. Único aviso, los 58 de `ruff`,
+  deuda previa ajena a esta rama.
+- **Las suites de servicio las resolvió la caché** («árbol sin cambios»), que
+  es legítimo porque esta ronda no toca `services/`. Pero el guardián de R26
+  barre **todo el árbol**, incluidos los documentos que sí cambiaron, así que
+  **no me conformé con el verde cacheado** y lo relancé a mano junto al de
+  datos personales: **38 passed**. El contenido nuevo no dispara ninguno.
+- **Comprobé además que el guardián mira de verdad lo nuevo**: 277 ficheros
+  barridos, y cubre `docs/referencia/03_modelo_posventa_sigrid.md`,
+  `progress/impl_postreview_F-008.md` y este mismo informe.
+
+## R5 · Barrido de datos sensibles, repetido sobre lo que cambió
+
+Los mismos patrones de §3.2 (correos, IPs, GUID, URLs, hosts de Azure y
+SharePoint, DNI) sobre los cuatro ficheros tocados en esta ronda:
+
+| Fichero | Aciertos |
+|---|---|
+| `docs/referencia/03_modelo_posventa_sigrid.md` | **0** |
+| `docs/referencia/README.md` | **0** |
+| `progress/impl_F-008.md` | **0** |
+| `progress/impl_postreview_F-008.md` | **0** |
+
+La §1.1 nueva no introduce ningún dato personal: `RS26.08/0123` es un código
+interno de incidencia y **ya estaba** en `01_cierre_incidencia_sigrid.md` desde
+antes de esta rama. Sigue sin haber ni un nombre, ni un DNI, ni un login sin
+redactar.
+
+## R6 · Checkpoints que cambian respecto a la primera ronda
+
+Solo se mueve lo que tocó esta ronda; el resto queda como en §5, verificado y
+sin nada en el árbol que lo pudiera invalidar.
+
+- **C1** — **[x]** `init.sh` exit 0, reejecutado por mí tras las correcciones.
+- **C3 bis** — **[x]** Barrido de datos sensibles **repetido** por el reviewer
+  sobre el contenido nuevo, con patrones y resultado en R5.
+- **C5** — **[x]** Árbol limpio, `features.json` intacto y coherente. El commit
+  `3bacf22` cumple el formato mínimo de feature `sdd=false`: `F-008: cuadrar
+  las cifras del review y subir el hallazgo de con.cod a docs/referencia`.
+- **Los seis `acceptance`** — el nº 5, que en la primera ronda quedó en
+  **CUMPLE A MEDIAS**, pasa a **CUMPLE**: el hallazgo verificado que vivía solo
+  en `progress/` está ya en `docs/referencia/`, y lo que pertenece a
+  `azure-apps` y a `01_...md` se sigue enlazando sin copiarse. **Los seis
+  cumplen.**
+
+## R7 · Lo que sigue vivo, y no bloquea
+
+1. La observación §6.1 —el bloque de `current.md` que aún dice que F-008 sigue
+   `pending`— **es del líder y la resuelve él al cerrar**, según me indica. No
+   cuenta como pendiente del implementer y no entra en este veredicto.
+2. Las observaciones **§6.2 a §6.5** siguen abiertas tal cual: llevar los dos
+   hallazgos transversales (`dbo.log` y el emparejamiento de las dos `gra`) a
+   `azure-apps/sigrid_tablas.md`, el `ValueError` inalcanzable de
+   `_es_barrido`, la lección del worktree para `arnes-base` y el aviso sobre
+   `con.tiemod` que hereda F-009. Ninguna bloquea.
+3. Las dos propuestas de automejora de §7 siguen sobre la mesa del humano, y la
+   primera **sale reforzada de esta segunda ronda**: los tres controles que me
+   inventé para un entregable documental —rehacer las sumas, abrir los ficheros
+   citados, contrastar informe contra documento— encontraron algo en la primera
+   ronda y son los mismos que han cerrado esta. Si se aprueba el bloque **C4
+   quater**, este par de rondas es su justificación.

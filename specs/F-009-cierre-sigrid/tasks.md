@@ -10,7 +10,7 @@
 
 ## Bloque 1 · Dominio puro (sin red, sin BBDD, sin IA)
 
-- [ ] **T1**: Crear `domain/models/cierre.py` con `Reclamacion`, `PlanDeCierre`,
+- [x] **T1**: Crear `domain/models/cierre.py` con `Reclamacion`, `PlanDeCierre`,
       `CODIGO_ESTADO_CIERRE`, `CODIGOS_ESTADO_CERRABLE` y `TEXTO_LOG_CIERRE`, y
       la función pura `evaluar(reclamacion)`. | Verificación:
       `test_f009_dominio_cierre.py` cubre R18 (ya cerrada), R19 (estado no
@@ -19,12 +19,12 @@
       `Reclamacion` no tiene campo de gráficos y el dominio no menciona `rcg`
       ni `gra`.
 
-- [ ] **T2**: Crear los errores de `domain/models/errores.py` y los puertos
+- [x] **T2**: Crear los errores de `domain/models/errores.py` y los puertos
       `domain/ports/erp.py` y `domain/ports/usuarios_sigrid.py`. |
       Verificación: `test_f009_arquitectura.py` comprueba que `domain/` no
       importa `httpx`, `psycopg` ni nada de `infrastructure/`.
 
-- [ ] **T3**: Test de control negativo **R3**: ningún número de estado de Sigrid
+- [x] **T3**: Test de control negativo **R3**: ningún número de estado de Sigrid
       literal en el código de producción. | Verificación:
       `test_f009_estado_no_hardcodeado.py` recorre el árbol de producción y
       falla si aparece un `est` numérico cableado. Fase RED: enseñar la traza
@@ -32,7 +32,7 @@
 
 ## Bloque 2 · El SQL, comprobado carácter a carácter
 
-- [ ] **T4**: Crear `infrastructure/sigrid/consultas.py` con los constructores
+- [x] **T4**: Crear `infrastructure/sigrid/consultas.py` con los constructores
       puros de la consulta del dry-run (`design.md` §7.1) y de la verificación
       del login (§7.2). | Verificación: `test_f009_consultas.py` fija el SQL y
       los parámetros, y comprueba R1/R4/R5 —que el estado se resuelve contra
@@ -41,7 +41,7 @@
       casos de aborto sin escribir: R2 (`conest` no devuelve exactamente una
       fila) y R7 (la búsqueda no devuelve exactamente una reclamación).
 
-- [ ] **T5**: Crear `infrastructure/sigrid/escrituras.py` con el batch de §7.3.
+- [x] **T5**: Crear `infrastructure/sigrid/escrituras.py` con el batch de §7.3.
       | Verificación: `test_f009_escrituras.py` comprueba R22 (dos sentencias en
       un batch), R23 (`WHERE` con `ide`, `tip` y estado de origen; tope de 2
       filas), R24 (los campos de la fila de log, con `emp` **tomado de la
@@ -52,38 +52,38 @@
       propia sentencia y el `FROM` es `dbo.con` filtrado, **no** un
       `WHERE EXISTS`).
 
-- [ ] **T6**: Conversión del código de incidencia al formato de Sigrid. |
+- [x] **T6**: Conversión del código de incidencia al formato de Sigrid. |
       Verificación: `test_f009_consultas.py` comprueba R6 — ida y vuelta contra
       `domain/models/nombrado.py`, guion largo incluido.
 
 ## Bloque 3 · El adaptador y sus puertas
 
-- [ ] **T7**: Crear `infrastructure/sigrid/cliente.py`
+- [x] **T7**: Crear `infrastructure/sigrid/cliente.py`
       (`AdaptadorSigridApi`), con `httpx`, reintentos con `tenacity` y la puerta
       de entorno **en el constructor**. | Verificación:
       `test_f009_adaptador_sigrid.py` con transporte simulado: R11 (aborta si el
       estado cambió), R27 (un fallo no se reintenta solo como cierre), R50 (no
       filtra el cuerpo crudo del error) y R36 (construirlo en `local` levanta).
 
-- [ ] **T8**: Crear `infrastructure/sigrid/fabrica.py` con el orden
+- [x] **T8**: Crear `infrastructure/sigrid/fabrica.py` con el orden
       entorno → interruptor → configuración. | Verificación:
       `test_f009_fabrica.py` comprueba R37 (doble comprobación: fábrica **y**
       adaptador) y R38 (nombra todas las variables que faltan de una vez y
       **ningún** valor).
 
-- [ ] **T9**: Añadir a `config/settings.py` el bloque de F-009 y extender la
+- [x] **T9**: Añadir a `config/settings.py` el bloque de F-009 y extender la
       guardia de red de la suite a `sigrid-api`. | Verificación:
       `test_f009_fabrica.py` y la guardia existente: R39 — ningún test abre una
       conexión hacia `sigrid-api` y ninguno puede ejecutar una escritura.
 
 ## Bloque 4 · El mapeo de usuarios
 
-- [ ] **T10**: Crear `infrastructure/persistencia/sql/08_usuarios_sigrid.sql` y
+- [x] **T10**: Crear `infrastructure/persistencia/sql/08_usuarios_sigrid.sql` y
       registrarlo en `ddl.py` / `arranque.py`. | Verificación:
       `test_f009_ddl_orden.py` y los `test_f005_ddl_*` existentes: idempotente,
       dentro del schema propio y **nunca** en `public`.
 
-- [ ] **T11**: Añadir `select_login_sigrid` / `upsert_login_sigrid` a
+- [x] **T11**: Añadir `select_login_sigrid` / `upsert_login_sigrid` a
       `sentencias.py`, `repositorio_pg.py` y `mapeo.py`. | Verificación:
       `test_f009_usuarios_sigrid.py` con el doble de PG: R29 (si hay
       correspondencia confirmada se usa **sin derivar nada**), R30 (si no la
@@ -92,7 +92,7 @@
       verificar), R33 (lo verificado se guarda como confirmado) y R34 (el alta
       manual tiene **precedencia** sobre la derivación).
 
-- [ ] **T12**: Crear `infra/07_alta_usuario_sigrid.ps1` para el **alta manual**
+- [x] **T12**: Crear `infra/07_alta_usuario_sigrid.ps1` para el **alta manual**
       de una correspondencia (R34), re-ejecutable y sin credenciales dentro. |
       Verificación: `test_f009_scripts_infra.py`, al modo de
       `test_f005_scripts_infra.py` — el script existe, es idempotente y no trae
@@ -100,17 +100,17 @@
 
 ## Bloque 5 · El paso del pipeline
 
-- [ ] **T13**: Crear `application/pipelines/paso_cierre.py` con el orden de
+- [x] **T13**: Crear `application/pipelines/paso_cierre.py` con el orden de
       `design.md` §6. | Verificación: `test_f009_paso_cierre.py` con dobles:
       R8 y R10 (el dry-run va primero y sin él no se escribe), R16, R17, R20
       (**la precondición es propia: nada de `rcg` ni `gra`**), R40, R41 y R42
       (`cerrado` es terminal y no se pisa).
 
-- [ ] **T14**: Auto-cierre por preferencia. | Verificación:
+- [x] **T14**: Auto-cierre por preferencia. | Verificación:
       `test_f009_paso_cierre.py`: R12, R13 (encadena sin saltarse el dry-run ni
       ninguna validación) y R14 (por omisión, **falso**).
 
-- [ ] **T15**: Control negativo de datos personales en el log del paso. |
+- [x] **T15**: Control negativo de datos personales en el log del paso. |
       Verificación: `test_f009_logs_sin_datos_personales.py` — R41, R42, R43,
       al modo de `test_f005_logs_sin_datos_personales.py` y del de F-019: hacer
       pasar DNI, nombre, observaciones manuscritas, correo, login y una clave de
@@ -121,17 +121,17 @@
 
 ## Bloque 6 · El borde HTTP y el front
 
-- [ ] **T16**: Crear `interface_adapters/api/cerrar.py` y registrar la ruta en
+- [x] **T16**: Crear `interface_adapters/api/cerrar.py` y registrar la ruta en
       `function_app.py`, con la traducción de errores. | Verificación:
       `test_f009_cerrar_http.py`: R47 (400 diciendo qué falta), R48 (409,
       incluido el caso de login sin confirmar), R49 (503 sin tocar Sigrid), R50
       (502) y R51 (ni un campo manuscrito en la respuesta). Y que el mensaje de
       R31 nombra el correo **al usuario** sin que eso acabe en el log (R45).
 
-- [ ] **T17**: Añadir `cerrar()` a `services/postventa-front/js/api.js`. |
+- [x] **T17**: Añadir `cerrar()` a `services/postventa-front/js/api.js`. |
       Verificación: `services/postventa-front/tests_js/api.test.js`.
 
-- [ ] **T18**: Paso de cierre en el front: enseñar el dry-run —estados legibles,
+- [x] **T18**: Paso de cierre en el front: enseñar el dry-run —estados legibles,
       con qué login se firmaría y **el aviso de que la reclamación quedará
       cerrada sin el parte dentro de Sigrid**— y pedir confirmación reutilizando
       `js/confirmacion.js`. | Verificación: `tests_js/confirmacion.test.js` y
@@ -141,7 +141,7 @@
 
 ## Bloque 7 · Documentación que la feature deja al día
 
-- [ ] **T19**: Actualizar `docs/ARCHITECTURE.md` (paso 7 del pipeline, «Alcance
+- [x] **T19**: Actualizar `docs/ARCHITECTURE.md` (paso 7 del pipeline, «Alcance
       del cierre», tabla de sistemas externos) y `docs/DESPLIEGUE.md` (la App
       Setting del interruptor y cómo se abre). **`ARCHITECTURE.md` §«Alcance del
       cierre» dice hoy que el ERP comprueba el gráfico y que por eso el alcance
@@ -150,11 +150,11 @@
       suavizarlo. | Verificación: `test_f019_documentacion.py` extendido, o su
       equivalente de F-009.
 
-- [ ] **T20**: Actualizar `docs/INTEGRACION.md` con lo que ahora **escribimos**
+- [x] **T20**: Actualizar `docs/INTEGRACION.md` con lo que ahora **escribimos**
       en Sigrid. | Verificación: R52 — un test comprueba que las variables
       nuevas están nombradas y que **ningún valor** aparece.
 
-- [ ] **T21**: Actualizar `azure-apps/postventa_incidencias.md` (R53): este
+- [x] **T21**: Actualizar `azure-apps/postventa_incidencias.md` (R53): este
       servicio escribe en el ERP, qué escribe y qué se rompe si alguien cambia la
       configuración de escritura de la pasarela. **Añadir además el obstáculo de
       `design.md` §11**: el binario del parte vive en la base documental, que hoy

@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **20 features**, 10 abiertas, 10 terminadas.
+Resumen: **21 features**, 11 abiertas, 10 terminadas.
 
 ## Trabajo abierto
 
@@ -19,6 +19,7 @@ Resumen: **20 features**, 10 abiertas, 10 terminadas.
 | F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 17 | pendiente | documental | `feature/F-017-checkpoints-manual` |
 | F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 18 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
+| F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 
 ## Terminadas
 
@@ -96,6 +97,12 @@ El app registration `postventa-incidencias` (verificado el 2026-08-20) tiene con
 estado **pendiente** · prioridad 20 · rigor `documental` · SDD no · rama `feature/F-020-diseno-front`
 
 Tres observaciones del humano al probar el front por primera vez el 2026-08-20 (F-007, T14), con la remesa real delante. Ninguna es un fallo: el front funciona. Son de uso, y salen de mirar la pantalla de trabajo de quien va a revisar 22 partes seguidos. (1) **El campo de observaciones se queda pequeño**: es texto manuscrito transcrito, de longitud variable, y hay que poder leerlo y corregirlo entero sin pelearse con una caja de una línea. (2) **El PDF se ve pequeño**, que es el problema de fondo: el documento es lo que la persona está leyendo para decidir, y hoy es lo que menos sitio ocupa. (3) **La vista del PDF está partida en dos** —a la izquierda la previsualización de páginas, a la derecha la página— y el reparto está al revés: la tira de previsualización debe ser **muy estrecha**, lo justo para navegar, y cederle el espacio a la página. Criterio que ordena las tres: en una pantalla de revisión, el documento manda y todo lo demás le cede sitio.
+
+### F-021 · Rehidratar la sesión del front al recargar el navegador
+
+estado **pendiente** · prioridad 21 · rigor `estandar` · SDD sí · rama `feature/F-021-rehidratar-sesion`
+
+Decisión **D4 de F-019**, tomada por el humano el 2026-08-26 y aplazada a propósito hasta ver el piloto. F-019 dejó la persistencia escribiendo: la remesa, los partes y el resultado de la validación quedan guardados en `postventa`, y la cola de validación humana sobrevive entre sesiones. Lo que NO sobrevive es el trabajo en curso: si quien está revisando una remesa de 22 partes recarga la pestaña, la pantalla vuelve a cero y hay que subir el PDF y volver a extraerlo entero, gastando otra vez cuota de IA. La pieza que falta es de LECTURA: volver a pintar una remesa con sus partes y sus veredictos exige un método nuevo en `RepositorioPartesPort` —hoy solo existe `cola_validacion_humana`—, y el encargo de F-019 prohibía expresamente tocar el puerto, por eso se sacó aparte. Alcance: el método de lectura, el endpoint que lo expone y el cableado del front que lo consume al arrancar. Sin DDL: las seis tablas de F-005 ya guardan todo lo necesario. OJO al dato personal: la lectura devuelve observaciones manuscritas de clientes, así que hereda de F-019 el tope duro de límite y la prohibición de escribir dato personal en el log.
 
 ### F-001 · Esqueleto del monorepo y /health
 

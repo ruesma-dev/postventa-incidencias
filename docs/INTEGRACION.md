@@ -1,7 +1,8 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-08-19. **Feature**: F-005.
+> **Origen**: este repositorio. **Fecha**: 2026-08-26. **Última feature que
+> lo tocó**: F-019 (nació con F-005).
 >
 > Este documento es la **fuente de verdad** de lo que `postventa-incidencias`
 > consume del ecosistema de Ruesma y de lo que expone a los demás. Se copia a

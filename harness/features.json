@@ -367,6 +367,24 @@
       "rigor": "documental",
       "priority": 20,
       "branch": "feature/F-020-diseno-front"
+    },
+    {
+      "id": "F-021",
+      "title": "Rehidratar la sesión del front al recargar el navegador",
+      "description": "Decisión **D4 de F-019**, tomada por el humano el 2026-08-26 y aplazada a propósito hasta ver el piloto. F-019 dejó la persistencia escribiendo: la remesa, los partes y el resultado de la validación quedan guardados en `postventa`, y la cola de validación humana sobrevive entre sesiones. Lo que NO sobrevive es el trabajo en curso: si quien está revisando una remesa de 22 partes recarga la pestaña, la pantalla vuelve a cero y hay que subir el PDF y volver a extraerlo entero, gastando otra vez cuota de IA. La pieza que falta es de LECTURA: volver a pintar una remesa con sus partes y sus veredictos exige un método nuevo en `RepositorioPartesPort` —hoy solo existe `cola_validacion_humana`—, y el encargo de F-019 prohibía expresamente tocar el puerto, por eso se sacó aparte. Alcance: el método de lectura, el endpoint que lo expone y el cableado del front que lo consume al arrancar. Sin DDL: las seis tablas de F-005 ya guardan todo lo necesario. OJO al dato personal: la lectura devuelve observaciones manuscritas de clientes, así que hereda de F-019 el tope duro de límite y la prohibición de escribir dato personal en el log.",
+      "acceptance": [
+        "Recargar el navegador durante la revisión de una remesa recupera la remesa, sus partes y los veredictos de validación ya guardados",
+        "La recuperación NO vuelve a llamar al proveedor de IA: no se re-extrae nada que ya conste guardado",
+        "El endpoint de lectura acota el número de filas por llamada, como GET /api/cola",
+        "Ni las observaciones manuscritas ni el DNI del cliente aparecen en el log, con control negativo propio",
+        "No hay DDL nuevo: se lee de las tablas que F-005 ya creó",
+        "Queda claro y documentado qué NO se recupera (por ejemplo, las ediciones que el usuario aún no había guardado)"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 21,
+      "branch": "feature/F-021-rehidratar-sesion"
     }
   ]
 }

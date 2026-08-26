@@ -1,6 +1,46 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 (tarde) · **cabos de F-019 recogidos · F-021 de alta**
+>
+> Ninguna feature `in_progress`. `bash harness/init.sh` en verde, 21 features.
+>
+> **1 · El documento del ecosistema estaba mucho peor de lo que decía el
+> cierre de F-019.** No le faltaba solo §8: la copia de
+> `azure-apps/postventa_incidencias.md` era del **2026-08-19** (commit
+> `aeabbbd`, 172 líneas frente a 345), **no tenía la sección de SharePoint**
+> —con lo que toda la numeración iba corrida—, su «Qué exponemos nosotros»
+> seguía diciendo *«Hoy, nada hacia otros proyectos»* con el servicio ya
+> desplegado, y **nunca se había commiteado**: figuraba como fichero sin
+> trackear. Se ha **reemplazado entero** por el `docs/INTEGRACION.md` actual,
+> con la cabecera de copia adaptada, y commiteado en `azure-apps` (sin push).
+> Comprobado con un barrido de patrones que no entra ni un GUID, host,
+> dirección interna, cadena de conexión ni credencial. De paso, la cabecera
+> del origen decía **«Fecha: 2026-08-19 · Feature: F-005»** con el documento
+> ya en F-019: corregida.
+>
+> **Lección que deja**: «los agentes no commitean en `azure-apps`» acabó
+> significando que el documento se quedó **cinco features atrás sin que nadie
+> se enterara**. El punto de control debería ser el cierre de cada feature que
+> cambie lo que exponemos, no la buena memoria.
+>
+> **2 · F-021 dada de alta**: *Rehidratar la sesión del front al recargar el
+> navegador*, `pending`, SDD sí, rigor `estandar`, prioridad **21** (al final,
+> como decidió el humano: después de ver el piloto). Es la decisión **D4 de
+> F-019**. Lo que la hace una feature y no un arreglo: exige un **método de
+> lectura nuevo en `RepositorioPartesPort`** —hoy solo existe
+> `cola_validacion_humana`—, que el encargo de F-019 prohibía tocar. Hereda el
+> tope de límite y la prohibición de dato personal en el log.
+>
+> **Sigue vivo, sin dueño asignado**: el residuo `0677 - RS26.08 - 0000 PARTE
+> FIRMADO` en la biblioteca de dev, de origen no documentado.
+>
+> **Siguiente: F-009**, el cierre en Sigrid. Arranca con **cuatro decisiones
+> del humano** pendientes (el `tex` y el `usu` de la fila de log, si la
+> escritura de `sigrid-api` está habilitada y con qué prefijos, y si merece la
+> pena confirmar el gráfico-URL).
+
+
 > ## Estado al 2026-08-26 · **F-019: los tres cambios de la review, hechos**
 >
 > **23 de 24 tareas hechas** en `feature/F-019-endpoints-persistencia`.

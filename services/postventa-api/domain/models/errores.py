@@ -37,6 +37,12 @@ distintos a propósito: lo que está **mal pedido** (`CuerpoDeCierreInvalido` �
 es el único que habla del ERP (→ 502). **En todos ellos, sin haber escrito
 nada.**
 
+Y hay un duodécimo que se sale de las tres familias porque es el único en el
+que **sí se escribió**: `CierreSinTraza` (→ 500), la incidencia cerrada en el
+ERP cuya traza local no se pudo guardar. Es el hermano de `ArchivoSinTraza`, y
+está aquí por la misma lección: si no tuviera nombre propio saldría como el 503
+de «la base no responde», que promete que no se ha tocado nada.
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 502 / 503 es el
 borde.
 """
@@ -582,6 +588,37 @@ class CierreFallido(Exception):
     El `motivo` dice **qué** pasó y **nunca** el cuerpo crudo de la respuesta,
     ni la clave de función, ni ningún dato del parte (R46, R50): estos mensajes
     acaban en la base y en un log que sobrevive al parte.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CierreSinTraza(Exception):
+    """La incidencia **está cerrada en el ERP** y no ha quedado constancia.
+
+    Es el único estado del cierre en el que la operación salió a medias: el
+    cambio de estado y la fila de auditoría **ya están escritos en
+    producción** —y ahí se quedan: nadie los deshace «para dejarlo limpio»,
+    deshacer un cierre en Sigrid es otro proceso que ejecuta una persona— pero
+    la traza de F-005 no se ha podido guardar.
+
+    Es el hermano exacto de `ArchivoSinTraza`, y existe por lo mismo: **el
+    borde no puede deducirlo**. Cuando lo que sale del paso es un
+    `PersistenciaNoDisponible` a secas, el borde responde 503 diciendo «no se
+    ha cerrado nada en el ERP, se puede reintentar» — y eso sería **mentira**,
+    con la incidencia ya cerrada. Reintentar entonces no arregla nada: como
+    mucho da `ya_cerrada`, y como poco confunde a quien mire.
+
+    La lección no es nueva en este repositorio: es el **defecto 14 de F-010**,
+    que en el archivo costó media hora de Application Insights leer algo que el
+    servicio ya sabía. `design.md` no lo previó para el cierre; se aplica aquí
+    el mismo patrón, con el mismo motivo y con más razón, porque lo que queda a
+    medias es una escritura en el ERP y no un fichero.
+
+    El `motivo` reenvía el de la persistencia, que F-005 compone **sin DSN, sin
+    contraseña y sin nada del parte**.
     """
 
     def __init__(self, motivo: str) -> None:

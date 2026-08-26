@@ -101,13 +101,17 @@ def cerrar_incidencia(
     `EstadoNoCerrable`, `UsuarioSigridNoMapeado`, `UsuarioSigridInexistente` y
     `EstadoCambiadoDesdeElDryRun` (→ 409), `CierreDeshabilitado`,
     `ConfiguracionSigridIncompleta`, `ConfiguracionPgIncompleta` y
-    `PersistenciaNoDisponible` (→ 503) y `CierreFallido` (→ 502) **sin
-    traducirlas**: convertir eso en códigos HTTP es trabajo del borde.
+    `PersistenciaNoDisponible` (→ 503), `CierreFallido` (→ 502) y
+    `CierreSinTraza` (→ 500) **sin traducirlas**: convertir eso en códigos HTTP
+    es trabajo del borde.
 
-    **En todos esos casos, sin haber escrito nada en el ERP.** El único que no
-    lo garantiza es `CierreFallido`, y por eso su mensaje dice qué pasó: si la
-    escritura llegó a salir y no volvió la respuesta, el reintento lo decide
-    una persona (R27).
+    **En casi todos esos casos, sin haber escrito nada en el ERP**, y los dos
+    que no lo garantizan lo dicen en su mensaje:
+
+    - `CierreFallido`, si la escritura llegó a salir y no volvió la respuesta.
+      El reintento lo decide una persona (R27).
+    - `CierreSinTraza`, que es el único en el que la incidencia **sí está
+      cerrada** y lo que falta es la traza local.
     """
     datos = _exigir_cuerpo(cuerpo)
     ajustes = obtener_ajustes()

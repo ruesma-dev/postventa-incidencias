@@ -674,3 +674,59 @@ def test_f009_r41_la_traza_guarda_el_codigo_de_la_incidencia_en_formato_sigrid()
     _cerrar(repositorio=repositorio, commit=True, confirmado=True)
 
     assert repositorio.cierres[-1].numero_incidencia == "RS26.08/0123"
+
+
+# --------------------------------------------------------------------------
+# El caso que el borde NO puede deducir: cerrado en el ERP y sin traza
+# --------------------------------------------------------------------------
+
+
+def test_f009_un_cierre_escrito_sin_traza_no_se_confunde_con_no_haber_escrito():
+    """**El defecto 14 de F-010, aplicado donde más caro sale.**
+
+    Si el ERP ya está escrito y la traza no se puede guardar, dejar salir el
+    `PersistenciaNoDisponible` de la base produciría el mismo 503 que sale
+    cuando no se ha tocado nada — y ese 503 dice «no se ha cerrado nada,
+    reintenta». La incidencia estaría cerrada en producción.
+
+    Se comprueba que sale un error **distinto**, y que el motivo de la base
+    viaja entero: no se traga el fallo, se dice en qué punto ocurrió.
+    """
+    from domain.models.errores import CierreSinTraza, PersistenciaNoDisponible
+
+    erp = ErpEnMemoria(_reclamacion())
+    repositorio = RepositorioEnMemoria()
+
+    class SinTraza(RepositorioEnMemoria):
+        """Guarda el dry-run y falla al guardar el cierre, que es el orden real."""
+
+        def guardar_cierre(self, *, traza):
+            if traza.estado == EstadoCierre.CERRADO:
+                raise PersistenciaNoDisponible("la base no responde")
+            return super().guardar_cierre(traza=traza)
+
+    repositorio = SinTraza()
+
+    with pytest.raises(CierreSinTraza) as fallo:
+        _cerrar(erp=erp, repositorio=repositorio, commit=True, confirmado=True)
+
+    assert len(erp.cierres) == 1, "el ERP sí se escribió: eso es lo que hay que decir"
+    assert "la base no responde" in fallo.value.motivo
+
+
+def test_f009_un_fallo_de_la_base_ANTES_de_escribir_no_es_lo_mismo():
+    """Y el caso contrario sigue saliendo como lo que es: la base no responde.
+
+    Aquí falla la traza del dry-run, **antes** de tocar el ERP. Confundirlo con
+    el de arriba mandaría a alguien a mirar Sigrid cuando no hay nada que
+    mirar.
+    """
+    from domain.models.errores import PersistenciaNoDisponible
+
+    erp = ErpEnMemoria(_reclamacion())
+    repositorio = RepositorioEnMemoria(fallo=PersistenciaNoDisponible("la base no responde"))
+
+    with pytest.raises(PersistenciaNoDisponible):
+        _cerrar(erp=erp, repositorio=repositorio, commit=True, confirmado=True)
+
+    assert erp.cierres == []

@@ -189,6 +189,7 @@ from domain.models.errores import (
     ArchivoSinTraza,
     CierreDeshabilitado,
     CierreFallido,
+    CierreSinTraza,
     ConfiguracionPgIncompleta,
     ConfiguracionSharePointIncompleta,
     ConfiguracionSigridIncompleta,
@@ -679,10 +680,17 @@ def cerrar(req: func.HttpRequest) -> func.HttpResponse:
       falta configuración, o la base de datos no responde (R49).
     - **502** · la pasarela del ERP falló (R50).
 
-    **En todos ellos, sin haber escrito nada en el ERP**, con una sola
-    excepción que el propio mensaje declara: un `CierreFallido` por corte de
-    red **no garantiza** que la escritura no saliera. Por eso no se reintenta
-    solo (R27): el reintento lo pide una persona, después de mirar el ERP.
+    **En todos ellos, sin haber escrito nada en el ERP**, con dos excepciones
+    que el propio mensaje declara:
+
+    - un `CierreFallido` por corte de red **no garantiza** que la escritura no
+      saliera. Por eso no se reintenta solo (R27): el reintento lo pide una
+      persona, después de mirar el ERP;
+    - y el **500**, que es el único caso en el que la incidencia **sí está
+      cerrada** y lo que falta es la traza (`CierreSinTraza`). No se recicla el
+      502 ni el 503 porque los dos prometen que no se ha escrito nada, y aquí
+      sí se escribió. Es el defecto 14 de F-010 —el que en el archivo produjo
+      `ArchivoSinTraza`— aplicado donde más caro sale.
 
     El log lleva el `hash` del parte, el código de la incidencia y el estado.
     **Nunca** el correo, ni el login de Sigrid, ni el `oid`, ni nada del papel
@@ -738,6 +746,23 @@ def cerrar(req: func.HttpRequest) -> func.HttpResponse:
                 )
             },
             503,
+        )
+    except CierreSinTraza as error:
+        log.error(
+            "cerrar sin traza: la incidencia ESTÁ cerrada en el ERP y no consta: %s",
+            error.motivo,
+        )
+        return _json(
+            {
+                "error": (
+                    f"la incidencia SÍ se ha cerrado en Sigrid, pero no se ha "
+                    f"podido dejar constancia en la base de datos: el ERP ya "
+                    f"está escrito y lo que falta es la traza, así que volver a "
+                    f"cerrarla no arregla nada —como mucho responderá "
+                    f"'ya_cerrada'—. Motivo: {error.motivo}"
+                )
+            },
+            500,
         )
     except CierreFallido as error:
         log.warning("cerrar fallido: %s", error.motivo)

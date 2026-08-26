@@ -54,6 +54,8 @@ from domain.models.cierre import (
 )
 from domain.models.errores import (
     CierreFallido,
+    CierreSinTraza,
+    ErrorDePersistencia,
     CuerpoDeCierreInvalido,
     EstadoNoCerrable,
     ParteNoApto,
@@ -295,6 +297,14 @@ def _escribir(
     Un fallo deja la traza en `error` con su motivo y **sube sin reintentar**:
     reintentar contra un ERP de producción sin que nadie mire es cómo se
     cierran dos veces las cosas, y el reintento lo pide una persona.
+
+    Y hay un caso que el borde **no puede deducir**, así que se nombra aquí: si
+    la escritura en el ERP salió bien y la traza no se pudo guardar, sale
+    `CierreSinTraza` y no el `PersistenciaNoDisponible` de la base. La
+    diferencia no es cosmética: aquel dice «no se ha cerrado nada, reintenta», y
+    **la incidencia ya está cerrada en producción**. Es el defecto 14 de F-010
+    —el mismo que en el archivo produjo `ArchivoSinTraza`— aplicado donde más
+    caro sale.
     """
     try:
         filas = erp.cerrar(plan=plan, ahora=ahora)
@@ -329,18 +339,31 @@ def _escribir(
         filas_afectadas=filas,
         cerrado_at_utc=ahora,
     )
-    _dejar_constancia(
-        repositorio,
-        ctx,
-        _traza(
+    try:
+        _dejar_constancia(
+            repositorio,
             ctx,
-            plan,
-            estado=EstadoCierre.CERRADO,
-            usuario_oid=usuario_oid,
-            dry_run_at_utc=ahora,
-            cerrado_at_utc=ahora,
-        ),
-    )
+            _traza(
+                ctx,
+                plan,
+                estado=EstadoCierre.CERRADO,
+                usuario_oid=usuario_oid,
+                dry_run_at_utc=ahora,
+                cerrado_at_utc=ahora,
+            ),
+        )
+    except ErrorDePersistencia as sin_traza:
+        # Aquí arriba **el ERP ya está escrito**, y eso es lo que hace falta
+        # contar. Dejar salir el error de la base tal cual produciría el mismo
+        # 503 que sale cuando no se ha tocado nada, y las dos lecturas llevan a
+        # acciones opuestas: reintentar, o ir a mirar el ERP.
+        log.error(
+            "F-009 cierre sin traza: la incidencia %s ESTÁ cerrada en el ERP y "
+            "no consta en la base",
+            plan.reclamacion.codigo,
+        )
+        raise CierreSinTraza(sin_traza.motivo) from sin_traza
+
     log.info(
         "F-009 incidencia cerrada: parte=%s incidencia=%s origen=%s destino=%s filas=%d",
         ctx.parte.hash,

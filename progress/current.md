@@ -1,6 +1,41 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## PENDIENTE AL RETOMAR (2026-08-26, fin de sesión) · **el Word del cierre**
+>
+> **Antes de lanzar al implementer de F-009, hay que leer un documento que el
+> humano ha aportado y que todavía NO está en el repositorio**:
+> `PASOS CERRAR INCIDENCIA.docx`, en la carpeta de postventa de su OneDrive
+> (750 KB, con capturas de pantalla del proceso en Sigrid).
+>
+> Trae **el procedimiento manual del cierre paso a paso**, que es justo lo que
+> F-009 tiene que reproducir: «hay que escribir las mismas líneas que se hacen
+> hoy a mano». Puede cambiar **qué escribe** el cierre, así que se lee **antes**
+> de implementar, no después.
+>
+> **La sesión paró por la regla del `CLAUDE.md`**: la conversión de ofimática se
+> hace **siempre con la MCP `markitdown`**, y en esa sesión **no estaba
+> conectada** (había Chrome, Gmail, Microsoft 365 e IDE). El humano eligió
+> **conectarla y relanzar**, no autorizar otra vía. Así que al retomar:
+>
+> 1. Comprobar que `markitdown` responde. Si no, **PARAR otra vez**: la regla
+>    existe porque el Markdown queda versionado y no puede depender de quién lo
+>    convirtió.
+> 2. Convertir a `docs/referencia/`, con la convención de nombre y la cabecera
+>    de origen y fecha de su `README.md`. El `.docx` **no se versiona**.
+> 3. **Las capturas son media explicación y `markitdown` no se las lleva.** Hay
+>    que sacarlas aparte y decidir qué se hace con ellas. **Antes de versionar
+>    ninguna, mirarlas**: son pantallas de Sigrid sobre una incidencia real y es
+>    probable que muestren cliente, obra, unidad o DNI. Eso NO entra en git.
+> 4. Con el documento leído, revisar si el `design.md` de F-009 sigue en pie
+>    —sobre todo §7, el SQL sentencia a sentencia— y solo entonces pedir el
+>    «adelante» para `in_progress`.
+>
+> **Confirmado por el humano en esa misma sesión**: «de momento solo guardamos
+> el PDF en SharePoint y cerramos la incidencia». Es D5, y la spec ya está
+> escrita así.
+
+
 > ## Estado al 2026-08-26 (tarde) · **F-009: spec sin decisiones abiertas, esperando el «adelante»**
 >
 > `spec_ready` en `feature/F-009-cierre-sigrid`. **53 requisitos, 29 tareas,

@@ -18,6 +18,23 @@
 // afirmaciones sobre qué recibió cada endpoint, son afirmaciones sobre la
 // secuencia, y eso no se puede comprobar endpoint a endpoint.
 //
+// ## Lo que este fichero NO prueba, y dónde se prueba (corrección de la review)
+//
+// La primera versión de esta cabecera decía que aquí se cubría R25, y no era
+// cierto: el orden vivía en `app.js`, que no ejecuta ningún test. La review lo
+// demostró borrando la línea que registraba la remesa — los 122 tests siguieron
+// en verde. Ahora el orden vive en `js/pipeline.js::procesarRemesa` y sí se
+// prueba aquí, pero quedan dos mitades **fuera** de este fichero, porque aquí
+// el `api` es un doble:
+//
+//   · que `app.js` **delegue** el orden en `pipeline.js` en vez de rehacerlo, y
+//     que conserve y limpie el `remesa_id`
+//       → `services/postventa-front/tests/test_f007_estaticos.py`
+//   · que `api.js` llame a **esas rutas de verdad**, con su método y su
+//     `Content-Type` — un doble no puede decir nada de eso: la review cambió
+//     `/remesa` por una ruta inexistente y todo siguió verde
+//       → `services/postventa-front/tests_js/api.test.js`
+//
 // TODOS los valores están INVENTADOS: `0677`, `RS26.08/0123`, `00000000T`.
 // Los partes de verdad llevan DNI y observaciones manuscritas de clientes y no
 // entran en el repositorio.

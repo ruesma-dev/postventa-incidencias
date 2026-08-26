@@ -230,9 +230,20 @@ garantizado por el código, no por la costumbre de quien llama (**R19**,
 | R19–R24 | `services/postventa-api/tests/test_f019_orden_archivado.py` |
 | R11, R20 (mapeo del error de referencia) | `services/postventa-api/tests/test_f019_referencias_pg.py` |
 | R25–R28 | `services/postventa-front/tests_js/persistencia.test.js` |
+| R25 (que `app.js` **delegue** el orden y conserve el `remesa_id`) | `services/postventa-front/tests/test_f007_estaticos.py` |
+| R25, R26 (que se llame a **esas rutas**, con su método y su `Content-Type`) | `services/postventa-front/tests_js/api.test.js` |
 | R29, R30, R31 | `test_f010_endpoints_protegidos.py` (ampliado a nueve y con su cabecera corregida) |
 | R32, R33 | `test_f010_integracion_expuesto.py` (ampliado), `test_f019_documentacion.py` |
 | R34 | `test_f019_remesa_http.py`, `test_f019_parte_http.py`, `test_f019_cola_http.py` (los tres responden con la ventana cerrada) |
+
+> **Corrección de la review (2026-08-26).** Las tres filas del front eran una
+> sola, y era falsa a medias: `persistencia.test.js` prueba `pipeline.js`
+> contra un `api` **doble**, así que no cubría ni el orden de `app.js` —que
+> vivía fuera de todo test— ni a qué rutas llama `api.js` de verdad. Se
+> demostró borrando la llamada que registra la remesa y cambiando la ruta
+> `/remesa` por una inexistente: en los dos casos la suite entera siguió en
+> verde. El orden se mudó a `js/pipeline.js::procesarRemesa` y las otras dos
+> filas son los tests que faltaban.
 
 **Ninguno de estos tests toca red, base de datos ni IA**: el repositorio y el
 archivador entran por inyección, como ya hacen `test_f005_paso_persistencia.py`

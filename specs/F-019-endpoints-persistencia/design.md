@@ -49,7 +49,9 @@ dentro de un paso.
 | `services/postventa-api/tests/test_f019_orden_archivado.py` | tests | R19–R24: el corazón de la feature |
 | `services/postventa-api/tests/test_f019_referencias_pg.py` | tests | R11/R20: `ForeignKeyViolation` → `ReferenciaNoConsta`, con conexión doble |
 | `services/postventa-api/tests/test_f019_documentacion.py` | tests | R32, R33 |
-| `services/postventa-front/tests_js/persistencia.test.js` | tests (node) | R25–R28 |
+| `services/postventa-front/tests_js/persistencia.test.js` | tests (node) | R25–R28, contra el `api` doble: el **orden** de las llamadas |
+| `services/postventa-front/tests_js/api.test.js` (ampliado) | tests (node) | R25, R26: que las rutas, el método y el `Content-Type` sean **los de verdad**. El doble de `api` no puede decirlo |
+| `services/postventa-front/tests/test_f007_estaticos.py` (ampliado) | tests | R25: que `app.js` **delegue** el orden en `pipeline.js` y conserve —y limpie— el `remesa_id` |
 
 Los dobles de repositorio ya existen (`services/postventa-api/tests/utiles_pg.py`);
 se reutilizan y **no se escribe un tercer doble**.

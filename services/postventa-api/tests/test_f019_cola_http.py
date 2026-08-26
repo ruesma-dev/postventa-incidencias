@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Any
 
 import azure.functions as func
 import pytest
@@ -29,6 +28,7 @@ from config.settings import obtener_ajustes
 from domain.models.errores import ConfiguracionPgIncompleta, PersistenciaNoDisponible
 from domain.models.persistencia import EntradaCola
 
+from infrastructure.persistencia.sentencias import LIMITE_MAXIMO_COLA
 from tests.utiles_pg import RepositorioEnMemoria
 
 #: El contrato de la respuesta (R14): estas dos claves y **ninguna más**.
@@ -261,6 +261,66 @@ def test_f019_r17_un_limite_que_no_es_entero_positivo_es_400(
     assert respuesta.status_code == 400, caso
     assert _json(respuesta)["error"], caso
     assert repositorio.limites == [], caso
+
+
+# --------------------------------------------------------------------------
+# R16 · El tope duro (T10)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("pedido", ("501", "1000", "100000"))
+def test_f019_r16_ningun_limite_supera_el_tope_duro(monkeypatch, pedido):
+    """R16 · **el repositorio recibe exactamente 500**, venga lo que venga.
+
+    El handler acota **además** del techo que ya aplica
+    `sentencias._limite_seguro`. Son dos cinturones a propósito: el que falla
+    es el que no se ve, y el handler es el que decide qué se le pide a un
+    servidor compartido de 1 vCPU.
+    """
+    repositorio = RepositorioEnMemoria(cola=())
+
+    respuesta = _responder(monkeypatch, repositorio, {"limite": pedido})
+
+    assert respuesta.status_code == 200
+    assert repositorio.limites == [LIMITE_MAXIMO_COLA]
+    assert LIMITE_MAXIMO_COLA == 500
+
+
+def test_f019_r16_una_peticion_desmedida_se_acota_y_no_se_rechaza(monkeypatch):
+    """R16 · **se acota, no se rechaza**, y eso es una decisión.
+
+    Quien pide la cola es el front, y un número absurdo no debe tumbarle la
+    pantalla. Lo que no puede es que una sola llamada se lleve la cola entera.
+    """
+    repositorio = RepositorioEnMemoria(cola=(ANTIGUA, RECIENTE))
+
+    respuesta = _responder(monkeypatch, repositorio, {"limite": "100000"})
+
+    assert respuesta.status_code == 200
+    assert _json(respuesta)["total"] == 2
+
+
+def test_f019_r16_la_respuesta_nunca_trae_mas_del_tope(monkeypatch):
+    """R16 · el segundo cinturón: ni aunque el repositorio devuelva de más.
+
+    Un repositorio que ignorase el límite —o un `LIMIT` que alguien quitara
+    del SQL— dejaría al handler sirviendo la cola entera. Aquí se le dan más
+    entradas de las permitidas y la respuesta sigue acotada.
+    """
+    demasiadas = tuple(
+        _entrada(
+            f"hash-inventado-{indice:05d}",
+            OBSERVACION_ANTIGUA,
+            datetime(2026, 8, 24, 9, 0, tzinfo=UTC),
+        )
+        for indice in range(LIMITE_MAXIMO_COLA + 25)
+    )
+    repositorio = RepositorioEnMemoria(cola=demasiadas)
+
+    cuerpo = _json(_responder(monkeypatch, repositorio, {"limite": "100000"}))
+
+    assert cuerpo["total"] == LIMITE_MAXIMO_COLA
+    assert len(cuerpo["entradas"]) == LIMITE_MAXIMO_COLA
 
 
 # --------------------------------------------------------------------------

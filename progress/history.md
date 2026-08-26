@@ -535,3 +535,85 @@ llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
 - **T14 bis sin resultado**: el tope y la alerta de gasto de IA no constan. El
   reviewer dictaminó que no bloqueaba el cierre; los dos endpoints de IA son
   anónimos por diseño y ya están publicados.
+
+---
+
+## F-008 · Modelo de posventa en Sigrid: confirmar contra el ERP — CERRADA el 2026-08-26
+
+**Cerrada.** Rama `feature/F-008-modelo-sigrid`, trabajada en worktree aislado
+en paralelo a F-010. Rigor `documental`, sin spec: el contrato eran los seis
+`acceptance` de la ficha. **CAMBIOS SOLICITADOS (2)** en la primera review y
+**APROBADO** en la segunda (`progress/review_F-008.md`).
+
+Qué queda en el repositorio: `docs/referencia/03_modelo_posventa_sigrid.md`,
+con lo averiguado separando **lo verificado de lo deducido** y enlazando a
+`azure-apps/sigrid_tablas.md` y `sigrid_api.md` en vez de copiarlos.
+
+**Ni una escritura contra Sigrid**: ~25 consultas, todas `SELECT` por
+`sql/read` de `sigrid-api`, servidas con `ro_user`. Confirmado por el reviewer
+por cuatro vías independientes. Las consultas se diseñaron para no traer datos
+personales: de las columnas que apuntan a personas solo se consultó *si están
+rellenas*, nunca su valor.
+
+Lo que se sabe ahora y no se sabía:
+
+- **`con.tip = 708`** es la reclamación de posventa (21.554 filas, el 100 %), y
+  el cierre es **`9/CER`**, resuelto contra `conest` y nunca cableado.
+- **«Cerrar parte» solo cambia `con.est`**, comprobado columna a columna y
+  contra las 4.761 reclamaciones creadas desde 2025.
+- **Pero escribe una fila de auditoría en `dbo.log`** (`ope=5`,
+  `tex='Cerrar parte'`; 6.843 filas con la misma forma) que un `UPDATE` directo
+  no escribiría. **Y `con.tiemod` NO se toca al cerrar** —los 138 cierres de
+  2026, cero excepciones—, así que **el log es el único rastro temporal**.
+- **RPV «sin archivo» no sirve**: termina en el mismo `9/CER`, lo único que
+  aporta es saltarse el control del gráfico, y está **abandonado desde
+  2025-03-11**.
+- **El gráfico como URL a SharePoint no tiene precedente**: cero coincidencias
+  en 282.599 filas de `gra`. Respuesta negativa, pero útil: F-009 no puede
+  apoyarse en ella.
+- **`gra` vive en las dos bases con espacios de `ide` independientes**, y la
+  pareja se localiza por `gra.cod`. El binario está siempre en `ruesma_rep`.
+- **`con.cod` es único y global** (23.063 conceptos, 23.063 códigos), formato
+  `RS{AA}.{MM}/{NNNN}`, y **no codifica la obra**: es la clave de localización
+  de F-009. Ojo a la trampa barra/guion, ya documentada en `01_cierre_...`.
+
+Evidencias: `bash harness/init.sh` en verde. Cobertura y mutación **N/A por
+nivel** `documental`, declarado por el propio portero. El reviewer **rehizo las
+siete sumas del documento** por su cuenta: cuadran.
+
+**Un arreglo fuera del encargo que valía la feature entera** (commit
+`337701c`): el guardián de identificadores de R26 filtraba por ruta
+**absoluta** y, ejecutado desde un worktree, **se apagaba entero sin decirlo**.
+Lo cazó su propio control (`assert 0 >= 60`). Pasó de barrer **0 ficheros a
+275**.
+
+Lo que enseñó esta feature:
+
+1. **Un guardián que compara rutas absolutas se apaga solo dentro de un
+   worktree**, y el arnés trabaja en worktrees por diseño. Un `[OK]` que se
+   obtiene por no mirar nada es la peor clase de verde. Que se descubriera fue
+   casualidad.
+2. **Una cifra puede estar bien medida y mal etiquetada**, y el daño es el
+   mismo: en un documento cuyo valor entero es «esto se midió», un lector que
+   sume dos filas y le salga otra cosa deja de fiarse del resto. Lo destapó
+   rehacer las sumas, control que ahora conviene que sea protocolo.
+3. **Un hallazgo verificado que solo vive en `progress/` está perdido**:
+   `progress/` es memoria de sesión, no documentación de referencia.
+
+### Lo que queda vivo, con dueño
+
+- **Cuatro decisiones del humano antes de escribir una línea de F-009**: el
+  `tex` de la fila de log (recomendado texto propio rastreable, no el
+  indistinguible `'Cerrar parte'`), el `usu` con el que se firma, si la
+  escritura de `sigrid-api` **está habilitada** y con qué prefijos —no se
+  comprobó porque comprobarlo es escribir—, y si merece la pena confirmar el
+  gráfico-URL en un entorno de pruebas (F-009 no lo necesita; **F-013** sí).
+- **Dos propuestas de arnés del reviewer**, no aplicadas y para `arnes-base`
+  si se aprueban: un `CHECKPOINTS.md` **C4 quater** que diga qué evidencia se
+  le exige a un entregable **documental** (hoy no dice nada), y una línea en C1
+  para que, cuando la feature se haya desarrollado en un worktree, se compruebe
+  que los barridos **encuentran ficheros** ahí y no solo que los tests pasan.
+- **Dos hallazgos que son del sistema origen, no de este proyecto**: la forma
+  de la fila de `dbo.log` con sus códigos de `ope`, y el emparejamiento de
+  `gra` entre las dos bases por `cod`. Valdría proponerle al dueño de
+  `sigrid-api` llevárselos a `azure-apps/sigrid_tablas.md`.

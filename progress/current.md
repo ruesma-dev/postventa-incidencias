@@ -1,6 +1,55 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-008 CERRADA Y APROBADA · nueve features `done`**
+>
+> `progress/review_F-008.md` salió **CAMBIOS SOLICITADOS (2)** en la primera
+> ronda y **APROBADO** en la segunda. F-008 pasa a `done` y su rama se mergea
+> en `dev`. El entregable es `docs/referencia/03_modelo_posventa_sigrid.md`.
+>
+> **Ni una escritura contra Sigrid**, confirmado por el reviewer por cuatro
+> vías independientes. Sin secretos ni datos personales, con barrido propio.
+>
+> **Las dos correcciones de la primera ronda**, las dos en el entregable:
+>
+> - **Una cifra mal etiquetada, no mal medida.** El «2.105 cierres desde 2025»
+>   era en realidad la población de §2.2 —reclamaciones **creadas** desde 2025
+>   que hoy están en `CER`, contadas por fecha de alta—, mientras que los
+>   cierres de §3 se cuentan por año de cierre y proceso y suman **2.106**. Dos
+>   poblaciones que no se contienen. Arrastraba el «4.899 / 4.892» de «Cerrar
+>   Preventas», ahora declarado como dos poblaciones, y los hallazgos del
+>   informe. **El reviewer rehizo las siete sumas del documento**: cuadran.
+> - **Un hallazgo verificado que se quedó en `progress/`**: `con.cod` es único
+>   y global (23.063 conceptos `tip = 708`, 23.063 códigos), formato
+>   `RS{AA}.{MM}/{NNNN}`, y **no codifica la obra**. Es la clave de
+>   localización de F-009. `progress/` es memoria de sesión, no documentación:
+>   un dato de referencia que solo vive ahí está, en la práctica, perdido.
+>
+> **Lo que F-008 deja decidido para F-009** (rigor `critico`, escribe en
+> producción): mover `con.est` **más** la fila de `dbo.log`, en la misma
+> transacción, porque `con.tiemod` **no** se toca al cerrar y el log es el
+> único rastro temporal; **negarse a cerrar sin gráfico asociado**, replicando
+> por nuestro lado el control del ERP en vez de esquivarlo; **no** subir el
+> gráfico (eso es F-012); y **no** usar RPV, que solo aporta saltarse ese
+> control y está abandonado desde 2025-03-11.
+>
+> **Cuatro decisiones siguen esperando al humano** antes de escribir una línea
+> de F-009: el `tex` de la fila de log (texto propio rastreable frente a
+> `'Cerrar parte'` indistinguible — recomendado el propio), el `usu` con el
+> que se firma, si la **escritura de `sigrid-api` está habilitada** y con qué
+> prefijos, y si merece la pena confirmar el gráfico-URL en un entorno de
+> pruebas (hoy F-009 no lo necesita; **F-013** sí se apoyaría en ello).
+>
+> **Un arreglo de propina que valía la feature entera** (commit `337701c`): el
+> guardián de identificadores de R26 filtraba por ruta **absoluta** y,
+> ejecutado desde un worktree, **se apagaba entero sin decirlo**. Pasó de
+> barrer **0 ficheros a 275**. Llevaba apagado dentro de los worktrees quién
+> sabe cuánto, y lo cazó la casualidad de que esta feature se trabajara en uno.
+>
+> **Siguiente: F-019**, prioridad máxima por decisión del humano. Es el
+> prerequisito del archivado real: hoy `/api/archivar` sube el fichero a
+> SharePoint y **no puede escribir su traza nunca**.
+
 > ## Estado al 2026-08-26 · **F-010 CERRADA Y APROBADA · ocho features `done`**
 >
 > `progress/review4_F-010.md` salió **APPROVED** y F-010 pasa a `done`. Es la
@@ -144,8 +193,9 @@
 > worktree, se apagaba entero sin decirlo. Lo cazó su propio control
 > (`assert 0 >= 60`). Arreglado filtrando por ruta relativa a la raíz.
 >
-> `F-008` sigue **`pending`** a propósito: F-010 está `in_progress` y el
-> portero solo admite una. Mover el estado es decisión del líder.
+> `F-008` se quedó **`pending`** a propósito hasta que F-010 cerrase: el
+> portero solo admite una `in_progress`. **Cerrada el 2026-08-26**; ver el
+> bloque de cabecera.
 
 > ## Estado al 2026-08-25 (cierre) · **F-010 · LAS MANUALES, EJECUTADAS Y ANOTADAS**
 >

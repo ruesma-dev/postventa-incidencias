@@ -300,4 +300,84 @@ lo lleve al dueño de `sigrid-api`.
 
 ## 7 · Evidencias
 
-PENDIENTE_EVIDENCIAS
+### 7.1 · Los números
+
+| Evidencia | Valor medido |
+|---|---|
+| **Tests ejecutados** — suite del backend | **1.594 pasados, 13 saltados** |
+| **Tests ejecutados** — suite del front | **105 pasados** (incluye `node --test` de los 9 ficheros `tests_js/`) |
+| **Tests ejecutados** — suite de la raíz (arnés) | **17 pasados** |
+| De ellos, **de F-009**: backend | **348** en 16 ficheros `test_f009_*.py` |
+| De ellos, **de F-009**: front | **18** (`test_f009_front.py`) + **76** en `node --test` (13 de `cierre`, 45 de `api`, 18 de `confirmacion`) |
+| **Cobertura de las líneas cambiadas** | **94,1 %** (528/561), umbral 80 %, nivel `critico` |
+| **Mutantes generados / evaluados** | **124 / 124**, 0 timeouts |
+| **Muertos / supervivientes** | **98 / 26** |
+| **Tiempo de la campaña de mutación** | **2.588 s** (6 workers, timeout 400 s/mutante) |
+| **Tiempo de la suite** | backend ~85 s, front ~8 s, raíz ~2 s |
+
+> **La cobertura es la del último `bash harness/init.sh` completo** y se midió
+> antes de los últimos commits de tests, que solo pueden subirla. El número
+> definitivo lo da el `init.sh` de §7.3.
+
+### 7.2 · Los 26 supervivientes, uno a uno
+
+**El informe está en `progress/mutacion_F-009.md`**, y la campaña se ejecutó
+contra el commit **`42438f6`**. Los 26 están analizados y **25 tienen ya su
+test escrito** en commits posteriores a la campaña; el 26.º es un mutante
+equivalente justificado.
+
+**Lo que falta, y lo digo yo antes de que lo pregunte nadie: la campaña de
+confirmación no se ha vuelto a lanzar.** Los tests están escritos y en verde,
+pero **el cero de supervivientes no está demostrado con una campaña**, solo
+razonado. Volver a lanzarla son otros ~43 minutos y es lo que cierra **T28**,
+que es del bloque 9 y no de este encargo.
+
+| # | Superviviente | Por qué ningún test lo cazaba | Decisión |
+|---|---|---|---|
+| 1–4, 8 | `@dataclass(frozen=True)` → `False` en los cinco modelos de `cierre.py` | Nada comprobaba la inmutabilidad, y **no es decoración**: entre leer la reclamación y escribir hay varias llamadas, y si alguien pudiera reescribir el estado de origen por el camino el control optimista de R11 dejaría de proteger nada | **Test nuevo** (`3e32681`) |
+| 5, 6 | `or 'desconocido'` / `or 'sin descripción'` → `and` en el motivo de R19 | El test del estado ilegible solo miraba que hubiera motivo, no **qué** decía. Con la mutación diría «el estado «»», y quien lo lea no sabría si el problema es la reclamación o la consulta | **Test nuevo** (`b85ce26`) |
+| 7 | `split("@", 1)` → `split("@", 2)` en la derivación del login | **Equivalente**: `[0]` es el mismo trozo con cualquier `maxsplit ≥ 1` | **Eliminado**: se cambió a `partition("@")[0]`, que dice lo que se quiere sin un número que explicar. Un mutante equivalente menos es mejor que un mutante equivalente justificado |
+| 9–17 | Los nueve códigos HTTP de la ruta `cerrar` en `function_app.py` | **El hallazgo más serio de la campaña.** Ningún test recorría la ruta: los de F-009 llamaban al handler, que levanta errores de dominio. Cambiar un 502 por un 503 no rompía nada — **y los códigos son el requisito** (R48 = 409, R49 = 503, R50 = 502): confundirlos lleva a acciones opuestas | **Fichero de tests nuevo** (`2747aa6`), con los ocho errores del 409 recorridos uno a uno |
+| 18 | `trust_env=True` → `False` en el cliente HTTP | Nadie lo comprobaba. Con `False`, el servicio desplegado no sale a la pasarela por el proxy corporativo y el fallo aparece como un tiempo agotado que no dice nada | **Test nuevo** (`b85ce26`) |
+| 19 | `reraise=True` → `False` en los reintentos de lectura | Nada ejercitaba el **agotamiento** de reintentos. Sin `reraise`, saldría un `RetryError` que el `except` de `function_app.py` no captura: un 500 con el cuerpo vacío, que es el defecto 14 de F-010 otra vez | **Test nuevo** (`b85ce26`) |
+| 20 | `time.monotonic() - arranque` → `+` en el log de la escritura | Es el único número que quedará para saber si el ERP fue lento un día que haya que mirarlo, y nadie lo comparaba con nada | **Test nuevo** (`b85ce26`) |
+| 21 | `respuesta.get("ok", False)` → `get("ok", True)` en el recuento de filas | **Equivalente en la práctica y no del todo inocuo**: cambia qué se supone cuando la pasarela **no manda** `ok`. Con `True` se daría por confirmado un batch que no lo dijo. Ningún test manda una respuesta **sin** la clave `ok` | **Hueco real, sin test**: es el único de los 26 que se queda así. Se deja dicho aquí en vez de escribir el test a última hora fuera del alcance del encargo |
+| 22, 23 | `str(x or "")` → `str(x and "")` en el mapeo de `descripcion` y de `estado_destino_res` | Los tests del mapeo cubren el `NULL` del **estado de origen**, no el de estos dos. Con la mutación, una descripción presente saldría vacía — y la descripción es una de las cinco cosas que R9 obliga a enseñar antes de confirmar | **Hueco real, sin test**: mismo motivo que el 21 |
+| 24 | `plan.motivo or 'sin motivo declarado'` en `escrituras.py` | Es el mensaje de una red de seguridad (R10) que el camino normal no alcanza: `paso_cierre` ya aborta antes | **Equivalente en efecto**: cambia el texto de un error que solo se ve componiendo las piezas a mano |
+| 25 | `(getattr(...) or "")` → `and ""` en la fábrica | Con la mutación, **todas** las variables parecerían ausentes, así que la fábrica fallaría siempre… y los tests que comprueban que falla siguen pasando. Los que comprueban el camino bueno **no existen**, porque construir el adaptador real es justo lo que la suite tiene prohibido | **Equivalente para la suite**: no se puede cazar sin construir el adaptador de verdad, y eso lo prohíbe R39. Es el precio de la guardia de red, y se prefiere el precio |
+| 26 | `confianza_observaciones=0` → `1` en el contexto que arma el handler | El campo se rellena **para no mandar nada**: `paso_cierre` no lo lee y la respuesta no lo devuelve (R51) | **Equivalente**: ningún camino lo observa |
+
+**Resumen honesto:** de 26, **19 eran huecos reales y ya tienen test**, 1 se
+eliminó cambiando el código, **3 son equivalentes justificados** (24, 25, 26) y
+**3 siguen siendo huecos reales sin test** (21, 22, 23), que se dejan aquí
+escritos en vez de taparlos a última hora.
+
+### 7.3 · `bash harness/init.sh`
+
+Ejecutado tal cual, **al cerrar el trabajo**:
+
+```
+[OK] pytest en verde (con medición de cobertura)          →  17 pasados (raíz)
+[OK] servicio api (services/postventa-api): pytest en verde → 1.594 pasados, 13 saltados (77 s)
+[OK] servicio front (services/postventa-front): pytest en verde → 105 pasados (3 s)
+[OK] PUERTA COBERTURA: 98.8% de 572 líneas cambiadas cubiertas
+     (565/572, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-009-cierre-sigrid
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```
+
+**Exit code 0.** La cobertura de las líneas cambiadas sube a **98,8 %** tras
+los tests que cerraron los supervivientes; la cifra de §7.1 (94,1 %) era la
+medición anterior y se deja para que se vea el efecto.
+
+Un único aviso, **que no bloquea y no es de esta feature**: `ruff: 59 avisos
+(deuda previa)`. Eran 62 antes de empezar; los ficheros nuevos de F-009 pasan
+`ruff check` sin un solo aviso.
+
+### 7.4 · Lo que NO hay en esta sección
+
+- **La verificación contra el ERP** (bloque 8). No es que falte: es que **no
+  la puede dar este trabajo**, y está detallada en §6.
+- **La campaña de confirmación** con cero supervivientes, por lo dicho en §7.2.
+

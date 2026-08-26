@@ -212,6 +212,12 @@ class ArchivoPortFalso:
 
     `fallo` inyecta el error del proveedor sin tocar la biblioteca: es lo que
     permite probar R24 sin red.
+
+    `registro` es de F-019: una lista **compartida con `RepositorioFalso`** en
+    la que los dos puertos van apuntando lo que les piden. Es lo único con lo
+    que se puede afirmar el requisito que sostiene la feature —«la traza
+    previa se escribe ANTES de tocar el archivador»—, porque ese requisito no
+    es sobre qué recibió cada doble, sino sobre **el orden entre los dos**.
     """
 
     def __init__(
@@ -221,21 +227,25 @@ class ArchivoPortFalso:
         conflicto: str = REEMPLAZAR,
         fallo: Exception | None = None,
         fallo_al_asegurar: Exception | None = None,
+        registro: list[str] | None = None,
     ) -> None:
         self.biblioteca = biblioteca if biblioteca is not None else BibliotecaFalsa()
         self.conflicto = conflicto
         self.fallo = fallo
         self.fallo_al_asegurar = fallo_al_asegurar
         self.llamadas: list[tuple[str, dict[str, Any]]] = []
+        self.registro = registro if registro is not None else []
 
     def asegurar_carpeta(self, *, carpeta: str) -> None:
         self.llamadas.append(("asegurar_carpeta", {"carpeta": carpeta}))
+        self.registro.append("archivador.asegurar_carpeta")
         if self.fallo_al_asegurar is not None:
             raise self.fallo_al_asegurar
         self.biblioteca.asegurar_carpeta(carpeta)
 
     def buscar(self, *, carpeta: str, nombre: str) -> ItemArchivado | None:
         self.llamadas.append(("buscar", {"carpeta": carpeta, "nombre": nombre}))
+        self.registro.append("archivador.buscar")
         elemento = self.biblioteca.buscar(carpeta, nombre)
         return None if elemento is None else _a_item(elemento)
 
@@ -253,6 +263,7 @@ class ArchivoPortFalso:
                 },
             )
         )
+        self.registro.append("archivador.subir")
         if self.fallo is not None:
             raise self.fallo
         return _a_item(
@@ -289,14 +300,37 @@ class RepositorioFalso:
     del puerto están declaradas para que el doble siga cumpliendo el contrato
     entero, y levantan si alguien las usa por error en vez de devolver un
     valor de consolación que enmascare el fallo.
+
+    `registro` es de F-019, y se comparte con `ArchivoPortFalso`: los dos
+    puertos apuntan en la misma lista, y por eso se puede afirmar el orden
+    **entre** ellos. Cada apunte lleva el estado de la traza, porque lo que
+    R19 exige no es «se guardó algo antes», es «se guardó la traza en
+    `pendiente` antes».
+
+    `fallos` permite que sólo falle **una** de las llamadas: la garantía de
+    orden hace que `guardar_archivo` se llame dos veces en el camino feliz, y
+    los casos interesantes son justo los que fallan en una sola de las dos.
     """
 
     archivos: list[TrazaArchivo] = field(default_factory=list)
     fallo: Exception | None = None
+    registro: list[str] = field(default_factory=list)
+    #: Excepción a levantar en la n-ésima llamada a `guardar_archivo` (1 = la
+    #: primera). Lo que no esté aquí se guarda con normalidad.
+    fallos: dict[int, Exception] = field(default_factory=dict)
+    #: Cuántas veces se ha llamado a `guardar_archivo`, fallara o no. Se
+    #: cuenta aparte de `archivos` justo porque una llamada que falla no
+    #: guarda nada y desplazaría el índice de `fallos`.
+    llamadas_guardar_archivo: int = 0
 
     def guardar_archivo(self, *, traza: TrazaArchivo) -> ResultadoGuardado:
+        self.llamadas_guardar_archivo += 1
+        self.registro.append(f"repositorio.guardar_archivo({traza.estado.value})")
         if self.fallo is not None:
             raise self.fallo
+        fallo_de_esta = self.fallos.get(self.llamadas_guardar_archivo)
+        if fallo_de_esta is not None:
+            raise fallo_de_esta
         self.archivos.append(traza)
         return ResultadoGuardado.CREADO
 
@@ -305,6 +339,11 @@ class RepositorioFalso:
         """La última traza guardada. Falla claro si no se guardó ninguna."""
         assert self.archivos, "no se ha guardado ninguna traza de archivo"
         return self.archivos[-1]
+
+    @property
+    def estados(self) -> list[str]:
+        """Los estados de las trazas guardadas, en orden."""
+        return [traza.estado.value for traza in self.archivos]
 
     # --- el resto del contrato, que F-006 no usa ------------------------
     def guardar_remesa(self, *, remesa: RegistroRemesa) -> ResultadoGuardado:

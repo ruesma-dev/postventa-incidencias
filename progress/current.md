@@ -1,6 +1,37 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 (implementación) · **F-009: bloques 1-7 hechos, el ERP sin tocar**
+>
+> **Ejecutado T1–T21.** El servicio ya sabe cerrar una incidencia en Sigrid:
+> `POST /api/cerrar` hace el dry-run, y solo con `commit` **y** confirmación
+> mueve `con.est` y escribe la fila de `dbo.log`, las dos en un batch
+> transaccional con tope de dos filas. El informe completo, con la fase RED
+> pegada y las evidencias, está en **`progress/impl_F-009.md`**.
+>
+> **Nada se ha ejecutado contra el ERP.** El bloque 8 (T22–T27) queda entero
+> para el humano, desde el entorno desplegado y con autorización expresa para
+> la incidencia concreta. Ni una casilla suya marcada.
+>
+> ### Lo que el humano tiene que saber antes de T22
+>
+> 1. **Para el dry-run también hay que abrir la ventana.** `CIERRE_HABILITADO`
+>    apagado hace que la **fábrica se niegue antes de leer**, así que ni el
+>    dry-run funciona con ella cerrada. Es consecuencia de la doble puerta;
+>    conviene saberlo antes de estar delante del ERP.
+> 2. **Mirar la hora de la fila de `dbo.log` en T24, paso 7.** La spec no decía
+>    en qué huso se escriben `fec`/`hor`; se decidió **hora local**
+>    (`SIGRID_ZONA_HORARIA`, `Europe/Madrid`), porque escribir UTC dejaría
+>    nuestras filas con dos horas menos que todas las del ERP. Está razonado en
+>    el informe §3.3.a.
+> 3. **Hay una propuesta sin hacer**, y es de otro repositorio:
+>    `azure-apps/sigrid_api.md` §10 lista quién consume la pasarela y
+>    `postventa-incidencias` no está — y desde F-009 es su **primer escritor
+>    genérico**. No se ha tocado ese documento porque su dueño es `sigrid-api`.
+>
+> **T21 hecho en `azure-apps`**: commit local `3c1c588`, **sin push**.
+
+
 > ## Estado al 2026-08-26 (cierre de jornada) · **el Word leído; §7 en pie**
 >
 > **El pendiente del Word queda CERRADO, y con una sorpresa: ya estaba dentro.**

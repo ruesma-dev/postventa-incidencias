@@ -252,3 +252,45 @@ def test_f009_r39_con_el_entorno_de_la_suite_no_se_puede_construir_el_erp():
 
     with pytest.raises(CierreDeshabilitado):
         construir_erp(ajustes)
+
+
+# --------------------------------------------------------------------------
+# Los valores por defecto de la configuración, fijados uno a uno
+# --------------------------------------------------------------------------
+#
+# No es ceremonia: **cada uno de estos números es una decisión con motivo
+# escrito**, y un número que nadie comprueba se cambia un viernes sin que se
+# entere nadie. Es lo mismo que hace `test_f003_fabrica.py` con el timeout de
+# la IA, y por lo mismo.
+
+
+def test_f009_el_timeout_cabe_en_el_presupuesto_de_la_arquitectura():
+    """35 s, y el número sale de `docs/ARCHITECTURE.md`.
+
+    El proxy del front corta a los 45 s. Un timeout más largo aquí haría que la
+    petición muriera del otro lado sin que este servicio se enterara, y quien
+    mira el resultado no sabría si el ERP llegó a escribir.
+    """
+    assert _ajustes(ENTORNO="test").sigrid_timeout_s == 35
+
+
+def test_f009_r27_los_reintentos_son_de_la_lectura_y_son_tres():
+    """Tres intentos ante un fallo transitorio **de una lectura**.
+
+    La escritura no los usa: no se reintenta nunca, y eso no es configurable.
+    """
+    assert _ajustes(ENTORNO="test").sigrid_reintentos == 3
+
+
+def test_f009_r5_el_tipo_de_concepto_por_defecto_es_el_medido_contra_el_erp():
+    """708 es lo que F-008 midió: 21.554 filas de la extensión, todas de ese tipo.
+
+    Cambiarlo sin medir haría que la búsqueda acotara por otro tipo de concepto
+    y no encontrara nunca la reclamación — o, peor, encontrara otra cosa.
+    """
+    assert _ajustes(ENTORNO="test").sigrid_tip_reclamacion == 708
+
+
+def test_f009_r24_el_huso_por_defecto_es_el_de_la_casa():
+    """El ERP registra hora local, y la casa está en `Europe/Madrid`."""
+    assert _ajustes(ENTORNO="test").sigrid_zona_horaria == "Europe/Madrid"

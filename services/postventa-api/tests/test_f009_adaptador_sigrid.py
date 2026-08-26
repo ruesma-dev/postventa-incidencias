@@ -542,3 +542,56 @@ def test_f009_r24_la_hora_del_log_se_escribe_en_la_zona_configurada():
     parametros = adaptador._cliente.ultima().json["statements"][1]["parameters"]
 
     assert 114_633 in parametros
+
+
+# --------------------------------------------------------------------------
+# Los topes del adaptador, fijados uno a uno
+# --------------------------------------------------------------------------
+
+
+def test_f009_el_techo_de_filas_de_una_lectura_es_bajo_a_proposito():
+    """Las dos consultas de esta feature devuelven **una** fila.
+
+    Un techo alto no aportaría nada y dejaría la puerta abierta a que un
+    `WHERE` mal escrito se trajera media tabla del ERP a la memoria de la
+    Function, que corta a los 230 s y tiene la RAM que tiene.
+    """
+    from infrastructure.sigrid.cliente import MAX_FILAS_LECTURA
+
+    assert MAX_FILAS_LECTURA == 10
+
+
+def test_f009_el_timeout_de_conexion_es_mas_corto_que_el_total():
+    """Si la pasarela no saluda, no va a saludar.
+
+    Esperar el timeout entero a que acepte la conexión es tiempo que se le
+    quita a la ventana de la Function a cambio de nada.
+    """
+    from infrastructure.sigrid.cliente import TIMEOUT_DE_CONEXION_S
+
+    assert TIMEOUT_DE_CONEXION_S == 15
+    assert TIMEOUT_DE_CONEXION_S < 35
+
+
+def test_f009_los_codigos_correctos_son_los_dos_que_devuelve_la_pasarela():
+    """`200` y `201`, y ninguno más.
+
+    Tratar un `204` o un `3xx` como éxito daría por cerrada una incidencia
+    sobre una respuesta que no dice que se haya escrito nada.
+    """
+    from infrastructure.sigrid.cliente import CORRECTOS
+
+    assert CORRECTOS == (200, 201)
+
+
+def test_f009_una_respuesta_201_tambien_se_acepta():
+    """Y el que no se ejercita en ningún otro test, se ejercita aquí.
+
+    Un valor declarado como válido que ningún camino recorre es un valor del
+    que nadie sabe si funciona.
+    """
+    adaptador = _adaptador(
+        [RespuestaFalsa(201, {"ok": True, "total_affected_rows": 2})]
+    )
+
+    assert adaptador.cerrar(plan=_plan(), ahora=AHORA) == 2

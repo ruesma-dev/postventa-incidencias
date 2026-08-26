@@ -445,3 +445,38 @@ def test_f009_r3_el_numero_de_marcadores_cuadra_con_el_de_parametros(sql):
     escogida = next(uno for uno in sentencias if uno["sql"] == sql)
 
     assert escogida["sql"].count("?") == len(escogida["parameters"])
+
+
+# --------------------------------------------------------------------------
+# R24 · los tres valores fijos de la fila de log, uno a uno
+# --------------------------------------------------------------------------
+#
+# **Los tres están MEDIDOS contra el ERP**, homogéneos en las 6.843 filas de
+# «Cerrar parte». No son elecciones: son la forma de la fila que el ERP
+# escribe. Si alguien cambia uno, nuestra fila de auditoría deja de parecerse a
+# las demás y **miente sobre lo que pasó**, sin que nada falle.
+
+
+def test_f009_r24_el_origen_de_la_fila_de_log_es_el_medido():
+    """`log.ori`, homogéneo en las 6.843 filas de «Cerrar parte»."""
+    assert LOG_ORIGEN == 0
+
+
+def test_f009_r24_la_operacion_es_la_de_proceso_ejecutado():
+    """`log.ope`, «proceso ejecutado», que es lo que «Cerrar parte» es.
+
+    Los códigos observados para reclamaciones son alta, baja, modificación de
+    campo, proceso, acción y DESHACER proceso. Escribir otro dejaría el cierre
+    registrado como algo que no fue.
+    """
+    assert LOG_OPERACION_PROCESO == 5
+
+
+def test_f009_r24_la_marca_de_realizado_del_log_es_la_medida():
+    """`log.est`, la columna «Estado/Realizado» **del propio registro de log**.
+
+    No es el estado de ningún concepto y no tiene nada que ver con `conest`:
+    por eso este número sí puede estar aquí, y por eso el control negativo de
+    R3 no lo denuncia.
+    """
+    assert LOG_REALIZADO == 1

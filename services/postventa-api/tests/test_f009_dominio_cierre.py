@@ -306,3 +306,47 @@ def test_f009_r6_el_codigo_del_parte_vuelve_al_formato_con_barra():
 def test_f009_r6_un_codigo_que_ya_viene_con_barra_no_se_toca():
     """R6 · el parte puede traerlo ya como lo escribe Sigrid."""
     assert a_codigo_de_sigrid("RS26.08/0123") == "RS26.08/0123"
+
+
+# --------------------------------------------------------------------------
+# Los valores por omisión de los dos modelos que se construyen a mano
+# --------------------------------------------------------------------------
+
+
+def test_f009_r18_un_plan_construido_sin_decirlo_no_dice_que_ya_este_cerrada():
+    """R18 · el valor por omisión de `ya_cerrada` es **falso**.
+
+    `evaluar` siempre lo pasa explícitamente, así que este defecto solo se ve
+    cuando alguien construye un plan a mano — un test, un script—. Si valiera
+    `True`, ese plan afirmaría que la reclamación ya está cerrada sin que nadie
+    lo haya comprobado contra el ERP, y eso es exactamente lo que R18 distingue
+    de un error.
+    """
+    plan = PlanDeCierre(
+        reclamacion=_reclamacion(est=3, cod_origen="PTE"),
+        login_sigrid="unlogin",
+        cerrable=True,
+        motivo=None,
+        aviso_sin_grafico=AVISO_SIN_GRAFICO,
+    )
+
+    assert plan.ya_cerrada is False
+
+
+def test_f009_r22_un_resultado_sin_escritura_declara_cero_filas_afectadas():
+    """El valor por omisión de `filas_afectadas` es **cero**.
+
+    Es lo que devuelve un dry-run, que no ha tocado nada. Si valiera otra cosa,
+    la respuesta de un dry-run diría que se han afectado filas del ERP sin que
+    se haya escrito nada — y quien lo lea creerá que la incidencia se cerró.
+    """
+    from domain.models.cierre import ResultadoCierre
+    from domain.models.persistencia import EstadoCierre
+
+    resultado = ResultadoCierre(
+        plan=evaluar(_reclamacion(est=3, cod_origen="PTE"), login_sigrid="x"),
+        estado=EstadoCierre.DRY_RUN_OK,
+    )
+
+    assert resultado.filas_afectadas == 0
+    assert resultado.cerrado_at_utc is None

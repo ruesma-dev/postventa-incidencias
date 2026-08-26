@@ -260,7 +260,7 @@
     // tirarlo obligaría a repetirlas. Lo que se devuelve es por qué no se pudo
     // guardar, y con eso el parte queda marcado como no archivable (R27).
     const guardado = await guardarParte(
-      { ...parte, extraccion: extraccion, firma: firma },
+      Object.assign({}, parte, { extraccion: extraccion, firma: firma }),
       api,
       remesaId,
     );

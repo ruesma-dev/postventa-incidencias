@@ -131,6 +131,12 @@ contrato; ponerlo en `app.js` habría dejado R28 sin test, porque en `app.js`
    llamada— conservando todas las aserciones (`subidas == 1`, 500 con cuerpo)
    y se **añadió** el caso nuevo. Ni una aserción se debilitó.
 
+5. **Dos agujeros que destapó la campaña de mutación**, en el valor frontera
+   que los requisitos declaran válido: `limite=1` en `GET /api/cola` (R17) y
+   `num_partes=0` en `POST /api/remesa` (R4). Los dos habrían respondido 400 a
+   una petición legítima si alguien hubiera tocado la comparación. Cerrados
+   con tests; el detalle, en «Evidencias».
+
 ## 5 · Los cuatro riesgos del encargo
 
 | # | Riesgo | Qué se hizo |
@@ -378,4 +384,74 @@ secretos y sin datos personales**.
 
 ## Evidencias
 
-<!-- EVIDENCIAS -->
+Números **medidos**, no estimados. Máquina: 22 núcleos, Python 3.12.7.
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests del backend** | **1233 passed, 13 skipped** | `pytest` en `services/postventa-api`, vía `harness/init.sh` |
+| **Tests del front (Python)** | **85 passed** | `pytest` en `services/postventa-front` |
+| **Tests del front (JavaScript)** | **122 pass, 0 fail** | `node --test tests_js/*.test.js`, por el puente `test_f007_js.py` |
+| **Tests del arnés** | **17 passed** | `pytest` en la raíz |
+| **Resultado global** | **verde, exit 0** | `bash harness/init.sh` → `ENTORNO LISTO. Puedes trabajar.` |
+| **Tiempo de la suite** | **69,97 s** (backend) + **3,17 s** (front) | el que imprime la propia suite |
+| **Cobertura de las líneas cambiadas** | **100,0 %** (269/269, umbral 80 %) | línea `PUERTA COBERTURA` de `bash harness/init.sh` |
+| **Ficheros «no medidos»** | **ninguno** | los nueve del alcance salen medidos |
+| **Mutantes generados / evaluados** | **35 / 35** | `progress/mutacion_F-019.md` |
+| **Muertos** | **35** | ídem |
+| **Supervivientes** | **0** | ídem |
+| **Timeouts** | **0** | ídem |
+| **Tiempo total de la campaña** | **313,0 s** | ídem |
+| **Workers** | **8** (`--workers 8`) | ver la nota de abajo |
+| **Coste por mutante** | **71,5 s** | `313,0 × 8 ÷ 35`, la fórmula de `CHECKPOINTS.md` C4 bis |
+
+El coste por mutante (**71,5 s**) cuadra con lo que tarda la suite del backend
+(**69,97 s**), que es lo que tiene que pasar: evaluar un mutante **es**
+ejecutarla entera. No hay campaña sospechosa por rápida.
+
+### Las tres campañas, y por qué hubo tres
+
+Se declaran las tres porque los totales de las dos primeras no son los que
+valen, y ocultarlo sería peor que contarlo.
+
+| # | Workers | Mutantes | Muertos | Supervivientes | Timeouts | Tiempo | Estado |
+|---|---|---|---|---|---|---|---|
+| 1 | 16 | 35 | 31 | **4** | 0 | 282,3 s | descartada: los 4 supervivientes se cerraron con tests |
+| 2 | 16 | 35 | 25 | 0 | **10** | 305,7 s | **descartada por escrito**: 10 mutantes sin evaluar |
+| 3 | 8 | 35 | **35** | **0** | **0** | 313,0 s | **la válida**, y la que está en `progress/mutacion_F-019.md` |
+
+**Campaña 1 · los cuatro supervivientes eran el mismo agujero, y era real.**
+Los cuatro caían sobre el valor frontera que el requisito declara **válido** y
+que ningún test pedía:
+
+- `cola.py:109`, `if pedidas < 1:` → `<= 1` y `< 2`. Con esa mutación,
+  `limite=1` —que R17 admite explícitamente— habría respondido **400**. Ningún
+  test pedía exactamente una entrada. **No es equivalente**: cambia una
+  respuesta observable. Cerrado con
+  `test_f019_r17_el_limite_uno_es_valido_y_llega_tal_cual`.
+- `remesa.py:129`, `crudo < 0` → `<= 0` y `< 1`. Con esa mutación,
+  `num_partes=0` —que R4 admite— habría respondido **400**. Y es un caso real:
+  una remesa de la que el troceado no sacó ningún parte utilizable **se
+  registra igual, con sus avisos**, y es justo la que hay que poder mirar
+  después para saber qué llegó. Cerrado con
+  `test_f019_r4_una_remesa_de_cero_partes_es_valida`.
+
+Antes de relanzar se comprobó **a mano** que los cuatro mueren con los tests
+nuevos: cada mutación aplicada al fichero real, suite en rojo, fichero
+restaurado (`1 failed, 50 passed` en los cuatro).
+
+**Campaña 2 · los 10 timeouts son míos, no del código.** Estuve ejecutando la
+suite del backend y los tests del front **mientras** la campaña corría con 16
+workers en una máquina de 22 núcleos. Los mutantes de esa tanda no llegaron a
+los 120 s de presupuesto por contención de CPU, no por un bucle infinito: son
+todos cambios de código de estado (`400 → 401`, `503 → 504`) en
+`function_app.py`, y **los mismos mutantes salen muertos en la campaña 3**.
+Diez mutantes sin evaluar no es un informe válido, así que se relanzó.
+
+**Campaña 3 · limpia.** Con 8 workers en vez de 16 y sin ejecutar nada más en
+la máquina: **35 evaluados, 35 muertos, 0 supervivientes, 0 timeouts**. Es la
+que queda en `progress/mutacion_F-019.md` y la única cuyos números se
+declaran arriba.
+
+El nivel `estandar` no exige cero supervivientes —exige que estén
+analizados—, pero aquí no queda ninguno que analizar: los cuatro que hubo se
+convirtieron en dos tests.

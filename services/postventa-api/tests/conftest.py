@@ -8,6 +8,12 @@ mismo.
 
 Y desde F-003, la **guardia de red** (R19): mientras corre la suite, abrir una
 conexión es imposible, no improbable.
+
+Desde F-009 esa guardia protege además el **ERP de producción** (R39). No hizo
+falta cambiarla —parchea `socket.socket.connect`, así que ya cubría cualquier
+destino—, pero sí decir a qué destino se llegaría sin ella y qué doble hay que
+usar en su lugar: quien vea el error tiene que saber adónde ir, y la lista de
+dobles del proyecto ya son tres.
 """
 
 from __future__ import annotations
@@ -29,12 +35,17 @@ def entorno_de_test(monkeypatch):
 
 @pytest.fixture(autouse=True, scope="session")
 def sin_red():
-    """Ningún test puede abrir una conexión (R19).
+    """Ningún test puede abrir una conexión (F-003 R19, F-009 R39).
 
     Sustituye `socket.socket.connect` durante toda la sesión. Es el mecanismo
     que convierte «ni una llamada real a la IA en la suite» en algo
     **imposible** en vez de en una promesa: si alguien construye el cliente de
     Gemini de verdad dentro de un test, el test se cae solo y dice por qué.
+
+    Desde F-009 es también la **última red de seguridad del ERP de producción**
+    (R39): si algún día alguien saltara la puerta del entorno y la del
+    interruptor, la conexión hacia `sigrid-api` no llega a abrirse y **ninguna
+    prueba puede ejecutar una escritura contra Sigrid**.
 
     Se hace a mano y no con `monkeypatch` porque `monkeypatch` es de alcance
     función y esto tiene que estar puesto también durante la recogida de
@@ -45,7 +56,10 @@ def sin_red():
     def _conexion_prohibida(self, direccion):
         raise RuntimeError(
             "la suite no puede abrir conexiones de red: un test ha intentado "
-            f"conectar a {direccion}. Usa un doble de tests/utiles_ia.py."
+            f"conectar a {direccion}. Usa un doble: tests/utiles_ia.py para el "
+            "modelo, tests/utiles_pg.py para la base de datos, "
+            "tests/utiles_sharepoint.py para el archivo y "
+            "tests/utiles_sigrid.py para el ERP."
         )
 
     socket.socket.connect = _conexion_prohibida

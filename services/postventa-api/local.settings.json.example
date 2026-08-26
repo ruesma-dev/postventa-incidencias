@@ -24,6 +24,14 @@
     "GRAPH_CLIENT_ID": "",
     "GRAPH_CLIENT_SECRET": "",
     "GRAPH_TIMEOUT_S": "60",
-    "GRAPH_REINTENTOS": "3"
+    "GRAPH_REINTENTOS": "3",
+    "CIERRE_HABILITADO": "false",
+    "SIGRID_API_BASE_URL": "",
+    "SIGRID_API_KEY": "",
+    "SIGRID_BASE_DATOS": "",
+    "SIGRID_TIMEOUT_S": "35",
+    "SIGRID_REINTENTOS": "3",
+    "SIGRID_TIP_RECLAMACION": "708",
+    "SIGRID_ZONA_HORARIA": "Europe/Madrid"
   }
 }

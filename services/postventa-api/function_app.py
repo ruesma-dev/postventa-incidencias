@@ -54,13 +54,29 @@ Endpoints:
         está en `postventa.partes` la clave ajena la rechaza y responde
         **409 sin haber subido nada**.
 
+    POST /api/cerrar
+        Cierra **una** incidencia en Sigrid: mueve el estado de la reclamación
+        y escribe su fila de auditoría. **Es la única escritura de este
+        servicio en un ERP de producción**, y por eso es el endpoint con más
+        candados:
+
+        - **Por omisión no cierra nada**: sin `commit` es un dry-run, que lee
+          y devuelve qué pasaría.
+        - Con `commit` exige además `confirmado` o el auto-cierre guardado del
+          usuario: sin ninguna de las dos cosas responde **400**.
+        - Desde un puesto de trabajo responde **503 sin tocar el ERP**, y en
+          el entorno desplegado la ventana de escritura
+          (`CIERRE_HABILITADO`) se despliega **apagada**.
+        - No cierra un parte que no sea apto **ni que no conste archivado**:
+          primero el documento, después el cierre.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
 
 ---
 
-## Por qué los nueve endpoints están en `ANONYMOUS`, y no es un descuido
+## Por qué los diez endpoints están en `ANONYMOUS`, y no es un descuido
 
 **No lo toques sin leer esto.** Un endpoint anónimo parece un olvido, y el
 arreglo evidente —`auth_level=FUNCTION`— **rompe el front el mismo día que se
@@ -78,7 +94,7 @@ El servicio está desplegado como **backend enlazado** de una Static Web App
 De ahí las dos consecuencias que fijan este fichero:
 
 1. **`auth_level=FUNCTION` no vale**: la Static Web App no aporta la clave que
-   la Function exigiría, así que los nueve endpoints empezarían a devolver
+   la Function exigiría, así que los diez endpoints empezarían a devolver
    `401` a través del front.
 2. **La autenticación integrada de Entra en la Function App tampoco vale**:
    espera un *bearer* que el proxy no envía.
@@ -111,7 +127,7 @@ ninguna de las dos está en este fichero:
 internet**, porque nadie alcanza el código sin pasar por el proxy y el proxy
 exige sesión. Lo que decide quién usa la aplicación es la capa 2.
 
-### Y los otros dos candados, que son de otra cosa
+### Y los otros tres candados, que son de otra cosa
 
 1. **La ventana de escritura de `POST /api/archivar`**: `ARCHIVO_HABILITADO`
    se despliega **apagado**, y fuera de esa ventana el endpoint responde `503`
@@ -121,7 +137,16 @@ exige sesión. Lo que decide quién usa la aplicación es la capa 2.
    ella** a propósito (R34): escriben en el esquema propio del proyecto, y
    atarlos dejaría sin poder guardar el trabajo de revisión justo cuando el
    archivado está cerrado, que es como se despliega.
-2. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
+2. **La ventana de escritura de `POST /api/cerrar`** (F-009): `CIERRE_HABILITADO`
+   se despliega **apagado**, igual y por el mismo mecanismo, pero protegiendo
+   algo distinto y más caro: **el ERP de producción del que depende toda la
+   empresa**. Es una variable aparte y no la misma que la de SharePoint a
+   propósito — se abren en momentos distintos, y poder archivar no puede
+   implicar poder cerrar—. Encima de esa ventana hay dos puertas más que no
+   son configuración: el entorno tiene que ser `dev` o `pro`, y **por omisión
+   la llamada es un dry-run**, así que ni siquiera con todo abierto se escribe
+   sin que alguien lo pida y lo confirme.
+3. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
    proporcionada al riesgo de `/api/extraer` y `/api/firma`: gastar cuota.
 
 ### Qué añade `GET /api/cola` a este cuadro
@@ -162,22 +187,34 @@ from domain.models.errores import (
     ArchivoDeshabilitado,
     ArchivoFallido,
     ArchivoSinTraza,
+    CierreDeshabilitado,
+    CierreFallido,
     ConfiguracionPgIncompleta,
     ConfiguracionSharePointIncompleta,
+    ConfiguracionSigridIncompleta,
     CuerpoDeArchivoInvalido,
+    CuerpoDeCierreInvalido,
     CuerpoDeValidacionInvalido,
+    EstadoCambiadoDesdeElDryRun,
+    EstadoDeCierreNoResoluble,
+    EstadoNoCerrable,
     ExtraccionFallida,
     LimiteDeEntradaSuperado,
     NombradoImposible,
     ParteDemasiadoGrande,
     ParteNoApto,
+    ParteNoArchivado,
     PersistenciaNoDisponible,
     PeticionDePersistenciaInvalida,
+    ReclamacionNoLocalizada,
     ReferenciaNoConsta,
     RemesaSinPdfUtilizable,
+    UsuarioSigridInexistente,
+    UsuarioSigridNoMapeado,
 )
 from domain.models.remesa import DocumentoEntrada
 from interface_adapters.api.archivar import archivar_parte
+from interface_adapters.api.cerrar import cerrar_incidencia
 from interface_adapters.api.cola import leer_cola
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
@@ -618,5 +655,99 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["carpeta"],
         cuerpo["estado"],
         len(cuerpo["avisos"]),
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="cerrar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def cerrar(req: func.HttpRequest) -> func.HttpResponse:
+    """Cierra **una** incidencia en Sigrid, o dice qué pasaría si se cerrara.
+
+    Solo traduce: saca el JSON de la petición, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. Cada código dice una cosa distinta **a
+    propósito**, y confundirlos lleva a acciones opuestas:
+
+    - **400** · la petición está mal formada, y se dice **qué** falta. Aquí
+      entra también pedir `commit` sin `confirmado` y sin auto-cierre: no es
+      que la incidencia no se pueda cerrar, es que falta la confirmación que el
+      contrato exige (R12, R47).
+    - **409** · no se puede cerrar tal y como están las cosas: el parte no es
+      apto, no consta archivado, la reclamación no está o no admite cierre, el
+      estado de cierre no se resuelve, falta el mapeo del usuario, o la
+      reclamación se movió entre el dry-run y la escritura (R48).
+    - **503** · aquí y ahora no se cierra: entorno equivocado, ventana cerrada,
+      falta configuración, o la base de datos no responde (R49).
+    - **502** · la pasarela del ERP falló (R50).
+
+    **En todos ellos, sin haber escrito nada en el ERP**, con una sola
+    excepción que el propio mensaje declara: un `CierreFallido` por corte de
+    red **no garantiza** que la escritura no saliera. Por eso no se reintenta
+    solo (R27): el reintento lo pide una persona, después de mirar el ERP.
+
+    El log lleva el `hash` del parte, el código de la incidencia y el estado.
+    **Nunca** el correo, ni el login de Sigrid, ni el `oid`, ni nada del papel
+    (R44, R45): este log lo lee cualquiera que abra Application Insights, y
+    sobrevive al parte.
+    """
+    try:
+        cuerpo = cerrar_incidencia(req.get_json())
+    except ValueError:
+        log.info("cerrar rechazado: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    except CuerpoDeCierreInvalido as error:
+        log.info("cerrar rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except (
+        ParteNoApto,
+        ParteNoArchivado,
+        ReclamacionNoLocalizada,
+        EstadoDeCierreNoResoluble,
+        EstadoNoCerrable,
+        UsuarioSigridNoMapeado,
+        UsuarioSigridInexistente,
+        EstadoCambiadoDesdeElDryRun,
+    ) as error:
+        # El motivo puede nombrar el correo del usuario (R31), así que **no se
+        # registra tal cual**: va al usuario, que es su dueño y lo tiene
+        # delante, y al log va solo el tipo del error (R45).
+        log.info("cerrar no procede: %s", type(error).__name__)
+        return _json({"error": error.motivo}, 409)
+    except (CierreDeshabilitado, ConfiguracionSigridIncompleta) as error:
+        log.warning("cerrar deshabilitado: %s", error.motivo)
+        return _json({"error": error.motivo}, 503)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("cerrar sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no puede dejar traza del cierre y no se ha "
+                    f"tocado el ERP. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("cerrar sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"cerrado nada en el ERP: se puede reintentar cuando la "
+                    f"base vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except CierreFallido as error:
+        log.warning("cerrar fallido: %s", error.motivo)
+        return _json({"error": error.motivo}, 502)
+
+    log.info(
+        "cerrar: parte=%s incidencia=%s estado=%s filas=%s",
+        cuerpo["hash_parte"],
+        cuerpo["numero_incidencia"],
+        cuerpo["estado"],
+        cuerpo["filas_afectadas"],
     )
     return _json(cuerpo, 200)

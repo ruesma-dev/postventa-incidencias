@@ -52,6 +52,7 @@ from application.pipelines.paso_persistencia import paso_persistencia
 from config.settings import obtener_ajustes
 from domain.models.errores import PeticionDePersistenciaInvalida
 from domain.models.extraccion import ExtraccionParte
+from domain.models.firma import LecturaFirma
 from domain.models.persistencia import ResultadoGuardado
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import ResultadoValidacion, validar_parte
@@ -134,7 +135,7 @@ def guardar_parte_http(
 
 
 def _veredicto(
-    extraccion: ExtraccionParte, lectura: Any
+    extraccion: ExtraccionParte, lectura: LecturaFirma
 ) -> ResultadoValidacion:
     """El veredicto de F-004, recalculado sobre lo que se acaba de recibir (R8).
 

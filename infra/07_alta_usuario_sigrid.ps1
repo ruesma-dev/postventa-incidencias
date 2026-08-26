@@ -11,8 +11,8 @@
     El mecanismo normal es la siembra: la aplicacion deriva un login candidato
     de la parte local del correo, lo verifica contra `dbo.usu` por lectura y,
     si el ERP lo confirma, lo guarda. Pero ese supuesto no lo confirma la base
-    —de los 8 usuarios del ERP con correo registrado, solo 6 cumplen la
-    convencion—, y para los demas hace falta poder decirlo a mano.
+    -de los 8 usuarios del ERP con correo registrado, solo 6 cumplen la
+    convencion-, y para los demas hace falta poder decirlo a mano.
 
     Lo que este script hace, y nada mas:
       1. Comprueba que el login existe EXACTAMENTE UNA VEZ en `dbo.usu`,

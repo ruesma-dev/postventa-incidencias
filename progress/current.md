@@ -1,7 +1,35 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-08-26 · **F-019: spec cerrada, sin decisiones abiertas**
+> ## Estado al 2026-08-26 · **F-019 IMPLEMENTADA, esperando review**
+>
+> **23 de 24 tareas hechas** en `feature/F-019-endpoints-persistencia`.
+> Informe completo: **`progress/impl_F-019.md`**.
+>
+> Existen `POST /api/remesa`, `POST /api/parte` y `GET /api/cola`, y —lo que
+> de verdad importa— **`POST /api/archivar` ya no puede subir nada de un parte
+> que no conste guardado**: escribe la traza en `pendiente` antes de tocar
+> SharePoint, y la clave ajena `archivos_hash_parte_fkey` la rechaza si el
+> parte no está. El defecto 15 se muere ahí. `bash harness/init.sh` en verde,
+> cobertura de las líneas cambiadas al **100 %**.
+>
+> **Lo que falta para cerrar**:
+>
+> 1. **T24, verificación `MANUAL (humano)`**, sin marcar a propósito: el
+>    circuito completo contra el entorno desplegado, **con la ventana de
+>    escritura abierta a propósito para la prueba y cerrada al terminar**. El
+>    procedimiento exacto está en `progress/impl_F-019.md` §8. Ahí se mide
+>    también el coste de la llamada HTTP de más por parte (riesgo 4).
+> 2. **Copiar `docs/INTEGRACION.md` §8 a `azure-apps/`**: ha cambiado (nueve
+>    endpoints, la nota de anonimidad y la tabla de ausencias) y los agentes
+>    no commitean en ese repositorio.
+> 3. **Decir al cerrar (decisión D4)**: lo guardado queda guardado y la cola
+>    sobrevive entre sesiones, pero **recargar el navegador sigue perdiendo el
+>    trabajo en curso**. Rehidratarla es **feature nueva**.
+>
+> ---
+>
+> ## Estado anterior · **F-019: spec cerrada, sin decisiones abiertas**
 >
 > El humano resolvió las cinco decisiones y están incorporadas a
 > `specs/F-019-endpoints-persistencia/`. Detalle en `progress/spec_F-019.md`

@@ -15,7 +15,7 @@
 
 ## Fase 0 · Preparar el terreno
 
-- [ ] **T1**: Mover los parsers de cuerpo de `interface_adapters/api/validar.py`
+- [x] **T1**: Mover los parsers de cuerpo de `interface_adapters/api/validar.py`
       a `interface_adapters/api/cuerpos.py` (`bloque`, `a_extraccion`,
       `a_campo`, `a_traza`, `a_lectura_de_firma` y sus constantes de claves), y
       dejar `validar.py` importándolos. **Movimiento mecánico: ni una regla
@@ -26,14 +26,14 @@
 
 ## Fase 1 · El error de referencia (lo que hace posible la garantía de orden)
 
-- [ ] **T2 · RED**: Escribir `services/postventa-api/tests/test_f019_referencias_pg.py`:
+- [x] **T2 · RED**: Escribir `services/postventa-api/tests/test_f019_referencias_pg.py`:
       con una conexión doble que levanta `psycopg.errors.ForeignKeyViolation`,
       el repositorio debe levantar `ReferenciaNoConsta` (y seguir levantando
       `PersistenciaNoDisponible` con cualquier otro `psycopg.Error`).
       **Verificación**: los tests **fallan** (`ImportError`/`AssertionError`) y
       se deja constancia del rojo en `progress/impl_F-019.md`.
 
-- [ ] **T3**: Añadir `ReferenciaNoConsta(ErrorDePersistencia)` en
+- [x] **T3**: Añadir `ReferenciaNoConsta(ErrorDePersistencia)` en
       `domain/models/errores.py` y distinguir `ForeignKeyViolation` en
       `infrastructure/persistencia/repositorio_pg.py::_escribir`. El motivo
       nombra **la operación** y jamás los parámetros (llevan DNI y
@@ -44,14 +44,14 @@
 
 ## Fase 2 · `POST /api/remesa`
 
-- [ ] **T4 · RED**: `services/postventa-api/tests/test_f019_remesa_http.py`
+- [x] **T4 · RED**: `services/postventa-api/tests/test_f019_remesa_http.py`
       con R1–R6: alta con id generado, alta idempotente con `remesa_id` dado,
       400 por cuerpo inválido, 400 por uuid inválido **sin llegar al
       repositorio**, `usuario_oid` en `None`, y respuesta normal **con la
       ventana de escritura cerrada** (R34).
       **Verificación**: los tests **fallan**.
 
-- [ ] **T5**: Implementar `interface_adapters/api/remesa.py` y la ruta
+- [x] **T5**: Implementar `interface_adapters/api/remesa.py` y la ruta
       `POST /api/remesa` en `function_app.py` (`ANONYMOUS`), con el mapeo de
       errores a 400/503.
       **Verificación**: `pytest services/postventa-api/tests/test_f019_remesa_http.py`
@@ -59,7 +59,7 @@
 
 ## Fase 3 · `POST /api/parte`
 
-- [ ] **T6 · RED**: `services/postventa-api/tests/test_f019_parte_http.py`
+- [x] **T6 · RED**: `services/postventa-api/tests/test_f019_parte_http.py`
       con R7–R13 y R34. Los tres que no pueden faltar:
       1. el veredicto **se recalcula** y un veredicto metido en el cuerpo se
          ignora (R8);
@@ -69,7 +69,7 @@
          deja fila (R11).
       **Verificación**: los tests **fallan**.
 
-- [ ] **T7**: Implementar `interface_adapters/api/parte.py` —reconstrucción de
+- [x] **T7**: Implementar `interface_adapters/api/parte.py` —reconstrucción de
       `ParteTroceado`, `ExtraccionParte` y `LecturaFirma` con los parsers de
       T1, `validar_parte` y `paso_persistencia`— y la ruta `POST /api/parte`
       en `function_app.py` (`ANONYMOUS`), con el mapeo 400/409/503.
@@ -78,18 +78,18 @@
 
 ## Fase 4 · `GET /api/cola`
 
-- [ ] **T8 · RED**: `services/postventa-api/tests/test_f019_cola_http.py` con
+- [x] **T8 · RED**: `services/postventa-api/tests/test_f019_cola_http.py` con
       R14, R15, R17 y R34: serialización completa de `EntradaCola`, límite por
       defecto **50**, 400 con un `limite` no entero **sin consultar el
       repositorio**, y respuesta normal con la ventana de escritura cerrada.
       **Verificación**: los tests **fallan**.
 
-- [ ] **T9**: Implementar `interface_adapters/api/cola.py` y la ruta
+- [x] **T9**: Implementar `interface_adapters/api/cola.py` y la ruta
       `GET /api/cola` en `function_app.py` (`ANONYMOUS`).
       **Verificación**: `pytest services/postventa-api/tests/test_f019_cola_http.py`
       en verde.
 
-- [ ] **T10 · RED**: El **tope duro** (R16), en su propio test dentro de
+- [x] **T10 · RED**: El **tope duro** (R16), en su propio test dentro de
       `test_f019_cola_http.py`: con `limite=100000` —y con cualquier número
       mayor que el techo— el repositorio recibe **exactamente**
       `LIMITE_MAXIMO_COLA` (500) y la respuesta no puede traer más entradas que
@@ -97,14 +97,14 @@
       **Verificación**: el test **falla** (hoy el handler pasa el número tal
       cual).
 
-- [ ] **T11**: Acotar el límite **en el handler**, además del techo que ya
+- [x] **T11**: Acotar el límite **en el handler**, además del techo que ya
       aplica `sentencias._limite_seguro`. Son dos cinturones a propósito: el
       que falla es el que no se ve, y el handler es el que decide qué se le
       pide a un servidor compartido de 1 vCPU.
       **Verificación**: `pytest services/postventa-api/tests/test_f019_cola_http.py`
       en verde, incluido el test de T10.
 
-- [ ] **T12**: `services/postventa-api/tests/test_f019_logs_sin_datos_personales.py`
+- [x] **T12**: `services/postventa-api/tests/test_f019_logs_sin_datos_personales.py`
       (R18): con `caplog`, los tres endpoints nuevos registran identificadores,
       resultados y **cuántas** entradas trae la cola, y **nunca** el DNI, las
       observaciones, la descripción ni la promoción. Es un **test guardián**:
@@ -117,7 +117,7 @@
 
 ## Fase 5 · La garantía de orden (el corazón de la feature)
 
-- [ ] **T13 · RED**: `services/postventa-api/tests/test_f019_orden_archivado.py`
+- [x] **T13 · RED**: `services/postventa-api/tests/test_f019_orden_archivado.py`
       con R19–R24. Los cinco que fijan el requisito:
       1. en el camino feliz, `guardar_archivo` se llama **dos** veces y la
          primera es `estado='pendiente'`, **antes** de la primera llamada al
@@ -136,7 +136,7 @@
       **Verificación**: los tests nuevos **fallan** y los de F-006 quedan
       escritos contra el comportamiento nuevo.
 
-- [ ] **T14**: Implementar la traza previa `pendiente` en
+- [x] **T14**: Implementar la traza previa `pendiente` en
       `application/pipelines/paso_archivo.py` (después de la aptitud, del
       nombrado y de la idempotencia; antes de `_subir`) y el mapeo de
       `ReferenciaNoConsta` → **409** en la ruta `archivar` de `function_app.py`,
@@ -145,7 +145,7 @@
       services/postventa-api/tests/test_f006_paso_archivo.py
       services/postventa-api/tests/test_f006_archivar_http.py` en verde.
 
-- [ ] **T15**: Añadir a `services/postventa-api/tests/test_f005_ddl_idempotente_texto.py`
+- [x] **T15**: Añadir a `services/postventa-api/tests/test_f005_ddl_idempotente_texto.py`
       la aserción de que `05_archivos.sql` declara la clave ajena de
       `hash_parte` contra `postventa.partes` (riesgo 4 de `design.md` §14):
       es la restricción en la que se apoya toda la garantía de orden y hoy
@@ -155,7 +155,7 @@
 
 ## Fase 6 · Que la documentación no mienta
 
-- [ ] **T16**: Poner al día la cabecera de `function_app.py` (R30): los nueve
+- [x] **T16**: Poner al día la cabecera de `function_app.py` (R30): los nueve
       endpoints, **dónde está la protección de verdad** —backend enlazado con
       Easy Auth `azureStaticWebApps` + regla `/*` de la Static Web App + grupo
       de Posventa, según `docs/DESPLIEGUE.md` §5 bis— y qué añade `/api/cola`
@@ -167,7 +167,7 @@
       en verde, y sigue fallando si alguien pone `FUNCTION` en cualquiera de
       los nueve.
 
-- [ ] **T17**: **Corregir la cabecera de
+- [x] **T17**: **Corregir la cabecera de
       `services/postventa-api/tests/test_f010_endpoints_protegidos.py`** (R31),
       que hoy documenta un modelo de amenaza desactualizado: dice que «al
       desplegar, los seis endpoints quedan **en internet** con
@@ -181,7 +181,7 @@
       fallando (a) al cambiar un `auth_level` sin tocar la explicación y (b) al
       borrar la explicación sin tocar el `auth_level`.
 
-- [ ] **T18**: Actualizar `docs/INTEGRACION.md` §8 (tres filas nuevas en la
+- [x] **T18**: Actualizar `docs/INTEGRACION.md` §8 (tres filas nuevas en la
       tabla de endpoints, con su efecto; y la tabla de «qué NO está
       desplegado»: F-019 deja de ser la causa de perder el trabajo al
       recargar, que pasa a ser la rehidratación de sesión, todavía pendiente y
@@ -198,7 +198,7 @@
 
 ## Fase 7 · El front llama en orden (decisión D5: entra)
 
-- [ ] **T19 · RED**: `services/postventa-front/tests_js/persistencia.test.js`
+- [x] **T19 · RED**: `services/postventa-front/tests_js/persistencia.test.js`
       con R25–R28, contra un `api` doble que registra el **orden** de las
       llamadas: la remesa se registra antes de procesar partes; `guardar`
       ocurre después de `validar` y antes de cualquier `archivar`; un fallo al
@@ -207,7 +207,7 @@
       **Verificación**: `node --test services/postventa-front/tests_js/` con
       los tests nuevos **en rojo**.
 
-- [ ] **T20**: Implementar el cableado: `js/api.js` (`registrarRemesa`,
+- [x] **T20**: Implementar el cableado: `js/api.js` (`registrarRemesa`,
       `guardarParte`, `cola`), `js/pipeline.js` (cuerpo de `/api/parte` y
       guardado tras validar y tras revalidar) y `js/app.js` (registro de la
       remesa tras trocear, `remesaId` en el estado, parte no archivable si el
@@ -217,19 +217,19 @@
 
 ## Fase 8 · Puertas del rigor `estandar`
 
-- [ ] **T21**: Cobertura de las líneas cambiadas ≥ 80 %, con los ficheros
+- [x] **T21**: Cobertura de las líneas cambiadas ≥ 80 %, con los ficheros
       nuevos **medidos** (ninguno «no medido»: `CHECKPOINTS.md` C4 bis).
       **Verificación**: `bash harness/init.sh` con `PUERTA COBERTURA` en `[OK]`,
       y el porcentaje anotado en `progress/impl_F-019.md`.
 
-- [ ] **T22**: Campaña de mutación con **todos** los supervivientes
+- [x] **T22**: Campaña de mutación con **todos** los supervivientes
       analizados (ninguno en `PENDIENTE`). El nivel `estandar` no exige cero:
       exige que estén explicados.
       **Verificación**: `python -m harness.mutacion --feature F-019` genera
       `progress/mutacion_F-019.md` con sus totales y cada superviviente con su
       sección escrita.
 
-- [ ] **T23**: `bash harness/init.sh` **en verde** (exit 0, con la suite del
+- [x] **T23**: `bash harness/init.sh` **en verde** (exit 0, con la suite del
       backend y la del front) y escribir `progress/impl_F-019.md` con la
       sección **Evidencias**: tests ejecutados y resultado, cobertura de las
       líneas cambiadas, mutantes y supervivientes, y tiempo de la suite.

@@ -398,3 +398,105 @@ avisos`. Eran 62 antes de empezar.
   la puede dar este trabajo**, y está detallada en §6.
 - **La campaña de confirmación** con cero supervivientes, por lo dicho en §7.2.
 
+## 8 · Respuesta al rechazo del reviewer (2026-08-26)
+
+El encargo acotaba el trabajo a **los puntos 1, 3 y 5** de
+`progress/review_F-009.md` §7. Los tres están hechos, un commit por punto.
+**El 2 y el 4 no se han tocado, y no por olvido**: el 2 (escribir los tests de
+los supervivientes 21, 22 y 23) lo **salta el humano por decisión suya**,
+aceptando los tres huecos como riesgo, y la constancia escrita de esa decisión
+la pone el líder en `progress/current.md`, no este informe; el 4 (podar
+`current.md` hacia `history.md`) es tarea del líder y se hace **después**, para
+no pisar el mismo fichero.
+
+### Punto 1 · los 26 análisis, en el fichero donde la herramienta los relee
+
+`progress/mutacion_F-009.md` ya no tiene ni un `PENDIENTE`: los 26 bloques
+`#### Análisis (PENDIENTE del implementer)` llevan el texto que estaba escrito
+en §7.2 de este informe. Comprobado por conteo —26 `#### Análisis`, cero
+`PENDIENTE`— y, lo que de verdad importaba (§4.5 de la review), **comprobado
+contra la propia herramienta**: `harness.mutacion.analisis_escritos()` recupera
+los 26 al releer el informe, en 21 claves. Las claves repetidas son mutantes
+idénticos —los cinco `@dataclass(frozen=True)`, dos códigos HTTP iguales— con
+análisis idéntico, así que **ninguna se descarta por conflicto**. Cuando se
+lance T28, el razonamiento viajará con el informe en vez de perderse.
+
+### Punto 3 · el bloque 8, tecleable
+
+`progress/current.md` gana un bloque nuevo —**281 líneas añadidas, cero
+borradas**— con el runbook de T22–T27: apertura y cierre de la ventana con
+`az functionapp config appsettings set … CIERRE_HABILITADO=true|false` y su
+comprobación, `POST /api/cerrar` con el cuerpo completo en sus dos formas
+(dry-run y `commit`+`confirmado`), y las lecturas de comprobación con los `?`
+del SQL **resueltos en su lista de parámetros** (`tip = 708`, `cod = 'CER'`,
+`tab = 'con'`, `ori = 0`, `ope = 5`, `est = 1`, `tex = 'Cerrar parte
+(postventa-incidencias)'`). Los nueve pasos de T24 van uno a uno, con la tabla
+de valores esperados de la fila de `dbo.log` campo a campo, y el paso 1 anota
+además `tiemod` porque sin ese dato el paso 8 no se puede comprobar.
+
+**En cabecera va el aviso de §6.1**, que era la mitad del punto 3: con
+`CIERRE_HABILITADO` apagado **ni el dry-run de T22 funciona**, porque la
+fábrica se niega antes de leer y `/api/cerrar` responde `503` también sin
+`commit`.
+
+**Verificado, no supuesto**: los 18 bloques PowerShell pasan
+`[Parser]::ParseFile` sin un error, el Python incrustado de la lectura de
+PostgreSQL compila, y `Llamar-Cerrar` produce `commit`/`confirmado` como
+booleanos JSON de verdad —que es lo que exige `_bandera`, con su `is True`—.
+**Ni un secreto**: la clave de la pasarela y la de PostgreSQL se piden por
+consola, y la URL de la Function se deriva con `az functionapp show` en vez de
+escribirse. Barrido de patrones sobre el diff: cero hallazgos.
+
+### Punto 5 · el `I001` y el dato falso
+
+Arreglado el `I001` de `paso_cierre.py:41` con `ruff check --fix` sobre ese
+fichero, y corregida §7.3, que afirmaba algo que no era cierto. El detalle y
+los números están allí.
+
+### `bash harness/init.sh`, ejecutado tal cual al terminar
+
+```
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] features.json válido      21 features, 11 abiertas, en curso: ['F-009']
+[OK] BACKLOG.md al día
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 58 avisos (deuda previa, no bloquea)
+[OK] pytest en verde (con medición de cobertura)     17 passed (raíz)
+[OK] servicio api (services/postventa-api): pytest en verde
+     1594 passed, 13 skipped in 110.94s
+[OK] servicio front (services/postventa-front): pytest en verde (caché)
+[OK] PUERTA COBERTURA: 98.8% de 572 líneas cambiadas cubiertas
+     (565/572, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-009-cierre-sigrid
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```
+
+**Exit code 0.** La suite del backend se ejecutó **de verdad**, no de caché
+(110,94 s). Los avisos de `ruff` bajan de 59 a 58, que es exactamente el
+arreglo del punto 5.
+
+### Un efecto colateral que conviene saber
+
+El commit del punto 5 llevaba `git add -A` y arrastró
+**`progress/review_F-009.md`, que estaba sin versionar**. No se ha revertido:
+todos los informes de review del proyecto se versionan y este es el único que
+faltaba. Queda dicho porque el fichero no es del alcance de este encargo y
+aparece en un commit que no lo anuncia en su asunto.
+
+### Lo que sigue abierto, y no lo cierra este trabajo
+
+- **Los supervivientes 21, 22 y 23** siguen sin test. Es la decisión del humano
+  del punto 2, y el nivel `critico` exige que **esa aceptación conste por
+  escrito**: la escribe el líder en `progress/current.md`.
+- **T28**, la campaña de confirmación (~43 min): el cero de supervivientes
+  sigue **razonado, no demostrado**.
+- **T22–T27**, el bloque 8 contra el ERP: ni una casilla marcada, y así debe
+  seguir hasta que lo ejecute el humano desde el entorno desplegado.
+- **Los puntos 2 a 8 de §6.3 de la review** —la fila de R53 en
+  `requirements.md`, el tipado de `estado_destino_est`, los tres detalles del
+  documento de `azure-apps`, los asserts inertes del test del front, R13 sin
+  front, la duplicación heredada de `ARCHITECTURE.md` y la propuesta para
+  `sigrid_api.md` §10—, que la propia review declara **no requeridos para
+  aprobar** y el encargo deja fuera.
+

@@ -480,9 +480,16 @@ function appPostventa() {
         );
         this.dryRunCierre[parte.hash] = datos.dry_run;
         if (datos.estado === "ya_cerrada") {
-          // R18 · no es un error: la incidencia ya estaba cerrada.
+          // R18 · no es un error: la incidencia ya estaba cerrada antes de que
+          // llegáramos. Se saca de la lista de cerrables y **se dice**: si
+          // desapareciera en silencio, quien mira la pantalla creería que se
+          // ha perdido un parte.
           parte.cerrado = true;
           parte.estado = "ya_cerrada";
+          this.resultadosCierre.push({
+            hash: parte.hash,
+            mensaje: `${datos.numero_incidencia} ya estaba cerrada en Sigrid: no se ha tocado nada`,
+          });
         }
       } catch (error) {
         this._anotarFalloDeCierre(parte, error);

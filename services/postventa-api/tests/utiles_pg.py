@@ -183,9 +183,21 @@ class RepositorioEnMemoria:
 
     Guarda lo que le piden en listas, para poder preguntarle después qué
     recibió y en qué orden.
+
+    F-019 le añadió dos cosas, **sin escribir un doble nuevo**: `fallo`, para
+    poder ejercitar los caminos de error del borde —`ReferenciaNoConsta` es la
+    señal de toda la garantía de orden y tiene que llegar a HTTP—, y una cola
+    que de verdad devuelve entradas y **recuerda el límite que le pidieron**,
+    que es lo único con lo que se puede comprobar el tope duro de R16.
     """
 
-    def __init__(self, resultado: Any = None) -> None:
+    def __init__(
+        self,
+        resultado: Any = None,
+        *,
+        fallo: Exception | None = None,
+        cola: Sequence[Any] = (),
+    ) -> None:
         from domain.models.persistencia import ResultadoGuardado
 
         self.partes: list[dict] = []
@@ -193,15 +205,27 @@ class RepositorioEnMemoria:
         self.remesas: list[Any] = []
         self.archivos: list[Any] = []
         self.cierres: list[Any] = []
+        #: Los límites con los que se ha llamado a la cola, en orden.
+        self.limites: list[int] = []
+        self.cola = tuple(cola)
+        self.fallo = fallo
         self._resultado = resultado or ResultadoGuardado.CREADO
 
-    def guardar_remesa(self, *, remesa: Any) -> Any:
-        self.remesas.append(remesa)
+    def _o_fallar(self) -> Any:
+        """Levanta el fallo preparado, si lo hay; si no, el resultado."""
+        if self.fallo is not None:
+            raise self.fallo
         return self._resultado
+
+    def guardar_remesa(self, *, remesa: Any) -> Any:
+        resultado = self._o_fallar()
+        self.remesas.append(remesa)
+        return resultado
 
     def guardar_parte(
         self, *, parte: Any, extraccion: Any, remesa_id: str, ahora: Any
     ) -> Any:
+        resultado = self._o_fallar()
         self.partes.append(
             {
                 "parte": parte,
@@ -210,19 +234,25 @@ class RepositorioEnMemoria:
                 "ahora": ahora,
             }
         )
-        return self._resultado
+        return resultado
 
     def guardar_validacion(self, *, resultado: Any, ahora: Any) -> Any:
+        guardado = self._o_fallar()
         self.validaciones.append({"resultado": resultado, "ahora": ahora})
-        return self._resultado
+        return guardado
 
     def guardar_archivo(self, *, traza: Any) -> Any:
+        resultado = self._o_fallar()
         self.archivos.append(traza)
-        return self._resultado
+        return resultado
 
     def guardar_cierre(self, *, traza: Any) -> Any:
+        resultado = self._o_fallar()
         self.cierres.append(traza)
-        return self._resultado
+        return resultado
 
     def cola_validacion_humana(self, *, limite: int) -> tuple:
-        return ()
+        self.limites.append(limite)
+        if self.fallo is not None:
+            raise self.fallo
+        return self.cola

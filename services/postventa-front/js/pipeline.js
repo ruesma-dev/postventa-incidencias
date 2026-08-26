@@ -239,15 +239,6 @@
   }
 
   /**
-   * Procesa UN parte: extraer y firma **en paralelo**, y validar después (R8).
-   *
-   * Van en paralelo a propósito: componerlas sumaría dos timeouts de 120 s
-   * bajo el corte de 230 s de la Function.
-   *
-   * @returns {Promise<{extraccion, firma, validacion}>} Las tres respuestas
-   *          íntegras, que es lo que hace posible revalidar sin gastar IA.
-   */
-  /**
    * Procesa una remesa entera: **registra primero, procesa después** (R25).
    *
    * Esta función existe por un defecto concreto. En la primera versión de
@@ -302,6 +293,15 @@
     return { remesaId: remesaId, avisos: avisos };
   }
 
+  /**
+   * Procesa UN parte: extraer y firma **en paralelo**, y validar después (R8).
+   *
+   * Van en paralelo a propósito: componerlas sumaría dos timeouts de 120 s
+   * bajo el corte de 230 s de la Function.
+   *
+   * @returns {Promise<{extraccion, firma, validacion}>} Las tres respuestas
+   *          íntegras, que es lo que hace posible revalidar sin gastar IA.
+   */
   async function procesarParte(parte, api, remesaId) {
     const resultados = await Promise.all([
       api.extraer(parte.fichero, parte.hash),

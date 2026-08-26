@@ -212,3 +212,19 @@ Sin cambios respecto a `progress/impl_F-019.md`:
 2. **Copiar `docs/INTEGRACION.md` §8 a `azure-apps/`**.
 3. **Decir al cerrar (D4)**: lo guardado queda guardado y la cola sobrevive,
    pero **recargar el navegador sigue perdiendo el trabajo en curso**.
+
+## 9 · Arreglo previo al merge (re-review §7)
+
+**Movido, sin tocar código**: el docstring `/** Procesa UN parte: extraer y
+firma en paralelo… */` había quedado huérfano —al insertar `procesarRemesa`
+debajo, se apiló encima del docstring de `procesarRemesa` y dejó a
+`procesarParte` sin ninguno—. Sus 9 líneas están ahora justo encima de
+`async function procesarParte`, y `procesarRemesa` conserva el suyo, correcto y
+completo. El diff son **9 líneas de comentario movidas y ni una de código
+ejecutable**; 140 tests JS y `bash harness/init.sh` en verde.
+
+> **Observación, no arreglada a propósito** (el encargo pedía sólo mover el
+> bloque y avisar de lo demás): ese `@returns {Promise<{extraccion, firma,
+> validacion}>}` se quedó corto en T20, cuando `procesarParte` empezó a
+> devolver también `guardado`. No lo toco en este arreglo; queda dicho para que
+> lo decida quien cierre la feature.

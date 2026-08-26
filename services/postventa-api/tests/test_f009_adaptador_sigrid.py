@@ -595,3 +595,87 @@ def test_f009_una_respuesta_201_tambien_se_acepta():
     )
 
     assert adaptador.cerrar(plan=_plan(), ahora=AHORA) == 2
+
+
+# --------------------------------------------------------------------------
+# El cliente HTTP y el agotamiento de reintentos
+# --------------------------------------------------------------------------
+
+
+def test_f009_el_cliente_respeta_el_proxy_del_entorno():
+    """`trust_env=True`, y **no es un detalle**.
+
+    Es lo que hace que el proxy corporativo y las variables `HTTPS_PROXY` del
+    entorno de Azure se respeten. Con `False`, el servicio desplegado no
+    saldría a la pasarela y el fallo aparecería como un tiempo agotado que no
+    dice nada — y a las dos horas alguien estaría mirando el ERP.
+
+    Construir el cliente **no abre ninguna conexión**: `httpx` conecta al hacer
+    la primera petición, no al instanciarse. Por eso este test puede existir
+    con la guardia de red puesta.
+    """
+    from infrastructure.sigrid.cliente import construir_cliente_http
+
+    cliente = construir_cliente_http(35)
+
+    assert cliente.trust_env is True
+    assert cliente.timeout.connect == 15
+    assert cliente.timeout.read == 35
+
+
+def test_f009_el_cliente_no_espera_mas_por_conectar_que_por_todo_lo_demas():
+    """Con un timeout total muy corto, el de conexión no puede pasarse.
+
+    Es el caso que `min(...)` protege: un `SIGRID_TIMEOUT_S` de 5 s no puede
+    producir un cliente que espere 15 s solo por saludar.
+    """
+    from infrastructure.sigrid.cliente import construir_cliente_http
+
+    cliente = construir_cliente_http(5)
+
+    assert cliente.timeout.connect == 5
+
+
+def test_f009_cuando_se_agotan_los_reintentos_de_lectura_sale_el_error_de_dominio():
+    """Y **no** el error interno de la librería de reintentos.
+
+    Es el caso del ERP caído: tres respuestas transitorias seguidas. Lo que
+    tiene que llegar al borde es `CierreFallido` —que se traduce a 502 con el
+    código de estado dentro—, no un `RetryError` que nadie sabe leer y que el
+    `except` de `function_app.py` no captura: eso saldría como un 500 con el
+    cuerpo vacío, que es el defecto 14 de F-010 otra vez.
+    """
+    adaptador = _adaptador(
+        [
+            RespuestaFalsa(503, {"error": "vuelve luego"}),
+            RespuestaFalsa(503, {"error": "vuelve luego"}),
+            RespuestaFalsa(503, {"error": "vuelve luego"}),
+        ]
+    )
+
+    with pytest.raises(CierreFallido) as fallo:
+        adaptador.leer_reclamacion(codigo="RS26.08/0123", codigo_estado_cierre="CER")
+
+    assert "503" in fallo.value.motivo
+    assert len(adaptador._cliente.peticiones) == 3
+
+
+def test_f009_el_log_de_la_escritura_dice_un_tiempo_que_tiene_sentido(caplog):
+    """El tiempo que registra la escritura es lo que ha tardado, no un absurdo.
+
+    Es el único número que quedará para saber si el ERP va lento un día que
+    haya que mirarlo. Un signo cambiado ahí produce un valor enorme que nadie
+    cuestiona porque nadie lo compara con nada.
+    """
+    import re
+
+    adaptador = _adaptador(
+        [RespuestaFalsa(200, {"ok": True, "total_affected_rows": 2})]
+    )
+
+    with caplog.at_level("INFO"):
+        adaptador.cerrar(plan=_plan(), ahora=AHORA)
+
+    medido = re.search(r"resuelta en ([\d.]+) s", caplog.text)
+    assert medido is not None, "la escritura no registra cuánto tardó"
+    assert 0.0 <= float(medido.group(1)) < 60.0

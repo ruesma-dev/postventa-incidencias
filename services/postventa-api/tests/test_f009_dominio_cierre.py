@@ -39,6 +39,7 @@ from domain.models.cierre import (
     PlanDeCierre,
     Reclamacion,
     a_codigo_de_sigrid,
+    derivar_login_candidato,
     evaluar,
 )
 
@@ -406,3 +407,44 @@ def test_f009_los_modelos_del_cierre_no_se_pueden_reescribir(modelo, campo, valo
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         setattr(ejemplares[modelo], campo, valor)
+
+
+def test_f009_r19_el_motivo_de_un_estado_ilegible_dice_que_es_desconocido():
+    """R19 · el motivo **nombra el estado**, y si no lo hay, lo dice.
+
+    Con un `conest` que no devolvió el estado de origen, un motivo que dijera
+    «la reclamación está en el estado «»» no informa de nada: quien lo lea no
+    sabrá si el problema es la reclamación o la consulta.
+    """
+    sin_traducir = Reclamacion(
+        ide=111_222,
+        emp=1,
+        tip=708,
+        est=3,
+        codigo="RS26.08/0123",
+        descripcion="REPARACION DE INCIDENCIA",
+        estado_origen_cod="",
+        estado_origen_res="",
+        estado_destino_est=90,
+        estado_destino_cod=CODIGO_ESTADO_CIERRE,
+        estado_destino_res="CERRADA",
+    )
+
+    plan = evaluar(sin_traducir, login_sigrid="unlogin")
+
+    assert "desconocido" in (plan.motivo or "")
+    assert "sin descripción" in (plan.motivo or "")
+
+
+@pytest.mark.parametrize(
+    "correo",
+    ["fulanito@ejemplo.invalido", "fulanito@ejemplo@raro.invalido"],
+)
+def test_f009_r30_el_candidato_es_lo_de_ANTES_de_la_primera_arroba(correo):
+    """R30 · y con un correo raro de dos arrobas, también.
+
+    No debería llegar ninguno, pero lo que se deriva de aquí acaba firmando en
+    el log de un ERP de producción: la regla tiene que ser una y no depender de
+    la forma del correo.
+    """
+    assert derivar_login_candidato(correo) == "fulanito"

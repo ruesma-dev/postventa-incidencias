@@ -303,7 +303,10 @@ def derivar_login_candidato(correo: str | None) -> str:
     limpio = (correo or "").strip().lower()
     if "@" not in limpio:
         return ""
-    return limpio.split("@", 1)[0].strip()
+    # `partition` y no `split(..., 1)`: dice lo que se quiere —lo que hay antes
+    # de la primera arroba— sin un número que explicar, y da lo mismo con un
+    # correo raro de dos arrobas.
+    return limpio.partition("@")[0].strip()
 
 
 def _ya_cerrada(reclamacion: Reclamacion) -> bool:

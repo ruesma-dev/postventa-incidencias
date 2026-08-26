@@ -167,7 +167,7 @@
         "Un cierre fallido deja el parte marcado, y reintentar sobre una incidencia ya cerrada no la vuelve a tocar",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
       "priority": 10,

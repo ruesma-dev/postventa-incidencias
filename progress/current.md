@@ -1,6 +1,41 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 (tarde) · **F-009 con spec escrita, esperando aprobación**
+>
+> `spec_ready` en `feature/F-009-cierre-sigrid` (commit `8e74681`). Informe:
+> **`progress/spec_F-009.md`**. 50 requisitos EARS, T0–T29, el bloque 8 entero
+> `MANUAL (humano)` contra el ERP. Sin código y **sin una sola escritura en
+> Sigrid**: toda la investigación fue `SELECT` por `sql/read` más una lectura
+> de configuración de Azure. `bash harness/init.sh` en verde.
+>
+> **Las cuatro decisiones del humano quedaron resueltas y medidas.** D3 se
+> cerró leyendo la configuración de la Function de `sigrid-api`: `INSERT` y
+> `UPDATE` están permitidos, `ruesma` es la única base escribible,
+> `REQUIRE_WHERE_ON_UPDATE_DELETE` está en `true`. **F-009 no exige tocar el
+> repositorio `sigrid-api`**, y eso está demostrado, no supuesto.
+>
+> **Dos decisiones abiertas nuevas (`design.md` §10), las dos por datos que
+> F-008 no midió**:
+>
+> - **OD-1 · cerrar sin gráfico.** F-008 recomendó negarse a cerrar una
+>   reclamación sin gráfico. Medido ahora: **el 98,7 % de las reclamaciones
+>   abiertas no tiene gráfico**, porque subirlo y cerrar son el mismo gesto.
+>   La precondición dura es correcta para el ERP y deja a F-009 sin poder
+>   cerrar casi nada. Tres salidas con su coste; el diseño soporta las tres.
+> - **OD-2 · el login de Sigrid del usuario del front.** Sí hay tabla de
+>   usuarios (`dbo.usu`, 228 filas), pero **`usu.ele` está vacío en los 228** y
+>   `usuemp.ele` cubre 8; la convención «parte local del correo» acierta 6 de
+>   8. **Ninguna vía automática es fiable.** Propuesto: mapeo explícito en
+>   `postventa.usuarios_sigrid` con verificación obligatoria contra `dbo.usu`.
+>   Falta que el humano elija vía y **diga quién entra en el mapeo**.
+>
+> **Hallazgo de diseño**: `log.ide` **no es IDENTITY** y `sql/write` no protege
+> su reserva con applock, pero `log_indide` es clave primaria única, así que
+> una colisión **falla en seguro**: revierte el batch entero y el `UPDATE` de
+> `con.est` se va con ella. O las dos escrituras, o ninguna.
+
+
 > ## Estado al 2026-08-26 (noche) · **spec de F-009 escrita · 2 decisiones abiertas**
 >
 > Rama `feature/F-009-cierre-sigrid`. `bash harness/init.sh` en verde.

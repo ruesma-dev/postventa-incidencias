@@ -47,6 +47,43 @@
 >   Si el humano dice que no, el archivado real **sigue sin poder completar**
 >   en el circuito del piloto, y hay que decirlo al cerrar.
 
+> ## Estado al 2026-08-26 · **F-019 · SPEC ESCRITA, ESPERANDO APROBACIÓN**
+>
+> `spec-author` sobre la rama `feature/F-019-endpoints-persistencia` (árbol
+> principal, sin worktree). Spec en `specs/F-019-endpoints-persistencia/`,
+> informe en `progress/spec_F-019.md`. F-019 pasa a **`spec_ready`**: el
+> arnés **para aquí** hasta que el humano apruebe.
+>
+> **Lo que el diseño cambia respecto a la ficha.** F-019 parecía «tres
+> endpoints», y tres endpoints **no matan el defecto 15**: si el orden depende
+> de que el llamante haga las cosas bien, el fallo vuelve en cuanto alguien
+> llame a `/api/archivar` por su cuenta —que es justo lo que se hizo el
+> 2026-08-25 para verificar T18—. Por eso `/api/archivar` pasa a **escribir la
+> traza en estado `pendiente` ANTES de subir nada**: como `archivos.hash_parte`
+> tiene clave ajena contra `partes`, esa escritura solo puede hacerse si el
+> parte ya consta. **La misma restricción que hoy hace fallar el proceso
+> después de subir el fichero pasa a hacerlo fallar antes**, sin inventar una
+> comprobación paralela que pueda divergir de la real. El 500 de «el fichero
+> está arriba y falta la traza» se convierte en un **409 sin haber subido
+> nada**.
+>
+> **Alcance**: 4 ficheros de código nuevos y 7 de test, 13 modificados, **0
+> ficheros SQL y 0 DDL**, el puerto `RepositorioPartesPort` sin ganar ni un
+> método, 20 tareas y **una sola verificación MANUAL (humano)**.
+>
+> **Arregla una consecuencia y media de las dos que le atribuía la ficha**: el
+> archivado real puede completar (defecto 15, que es el bloqueo del piloto) y
+> la cola de validación sobrevive entre sesiones; pero **recargar la pestaña
+> sigue perdiendo el trabajo en curso**, porque repintar exige leer una remesa
+> entera y eso pide un método de lectura nuevo en el puerto, fuera de alcance.
+>
+> **Cinco decisiones abiertas esperan al humano** (§5 del informe): **D1** el
+> `GET /api/cola` anónimo devolviendo observaciones manuscritas de clientes
+> —el primer endpoint que sirve dato personal acumulado sin que el llamante
+> aporte el PDF—; **D2** `postventa.remesas` sin clave natural; **D3** si se
+> guarda `usuario_oid`; **D4** rehidratar la sesión, propuesta como feature
+> nueva; y **D5** si el cableado del front entra en esta feature.
+
 > ## Estado al 2026-08-26 · **F-008 CERRADA Y APROBADA · nueve features `done`**
 >
 > `progress/review_F-008.md` salió **CAMBIOS SOLICITADOS (2)** en la primera

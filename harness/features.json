@@ -344,7 +344,7 @@
         "El front de F-007 puede recuperar una remesa tras recargar la pestaña",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
       "priority": 19,

@@ -1,10 +1,19 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-08-26 · **F-019 IMPLEMENTADA, esperando review**
+> ## Estado al 2026-08-26 · **F-019: los tres cambios de la review, hechos**
 >
 > **23 de 24 tareas hechas** en `feature/F-019-endpoints-persistencia`.
-> Informe completo: **`progress/impl_F-019.md`**.
+> Informes: **`progress/impl_F-019.md`** (la feature) y
+> **`progress/impl_postreview_F-019.md`** (los tres cambios de la review).
+>
+> El backend se aprobó sin reservas y no se ha tocado. Lo que fallaba era el
+> otro extremo del cable: el cableado del front **podía desaparecer sin que
+> nada se enterara** —borrar la llamada que registra la remesa, o cambiar la
+> ruta `/remesa`, dejaba los 122 tests en verde—. Ahora el orden vive en
+> `js/pipeline.js::procesarRemesa`, con tests; `js/api.js` tiene un test por
+> ruta; y hay guardianes textuales que impiden que el orden vuelva a `app.js`.
+> **140 tests de JavaScript** (eran 122) y **87 del front en Python** (eran 85).
 >
 > Existen `POST /api/remesa`, `POST /api/parte` y `GET /api/cola`, y —lo que
 > de verdad importa— **`POST /api/archivar` ya no puede subir nada de un parte

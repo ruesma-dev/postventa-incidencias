@@ -1,6 +1,67 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 (noche) · **spec de F-009 escrita · 2 decisiones abiertas**
+>
+> Rama `feature/F-009-cierre-sigrid`. `bash harness/init.sh` en verde.
+> **NO se ha implementado código** y **no se ha tocado `harness/features.json`**:
+> el estado lo mueve el humano.
+>
+> Entregado: `specs/F-009-cierre-sigrid/` con `requirements.md` (R1–R50, EARS),
+> `design.md` y `tasks.md` (T0–T29). Informe completo de la investigación en
+> **`progress/spec_F-009.md`**.
+>
+> **Ni una escritura en Sigrid.** Toda la investigación fue `SELECT` por
+> `POST /api/sql/read` más una lectura de configuración de Azure.
+>
+> ### Las cuatro decisiones del humano, resueltas
+>
+> - **D1 · el `tex`**: `Cerrar parte (postventa-incidencias)`. Comprobado que
+>   `log.tex` es `text` (**sin tope**) y que el propio ERP ya escribe dos
+>   textos distintos para el mismo proceso, así que no hay uniformidad que
+>   romper. Empieza por `Cerrar parte` a propósito: el filtro por prefijo con
+>   el que F-008 midió la población **sigue encontrando nuestros cierres**.
+> - **D2 · el `usu`**: investigado a fondo. Sí hay tabla (`dbo.usu`, 228
+>   usuarios) pero **cero tienen correo y cero tienen SID**; `usuemp.ele` cubre
+>   8 de 228 y la convención acierta **6 de 8**. **No se puede resolver de
+>   forma fiable hoy** → mecanismo de mapeo explícito verificado contra el ERP,
+>   y **decisión abierta OD-2**.
+> - **D3 · la escritura de `sigrid-api`**: **RESUELTO**. `INSERT` y `UPDATE`
+>   están permitidos y la base de negocio está en la lista blanca. **F-009 NO
+>   exige tocar el repositorio `sigrid-api`.** (Ningún valor de configuración
+>   entra en la spec, solo el hecho.)
+> - **D4 · el gráfico-URL**: no se toca. Es F-013.
+>
+> ### DECISIONES ABIERTAS — hacen falta antes de implementar (tarea T0)
+>
+> **OD-1 · ¿Puede F-009 cerrar una reclamación sin gráfico en Sigrid?**
+> Hallazgo nuevo que F-008 no midió: **el 98,7 % de las reclamaciones abiertas
+> no tiene gráfico** (PTE: 11 de 839; TER: 19 de 1.474), porque subir el
+> gráfico y cerrar son **el mismo gesto**. La precondición dura que recomendó
+> F-008 §6.2 es correcta para la integridad del ERP, pero **dejaría a F-009 sin
+> poder cerrar casi nada**. Tres salidas con su coste en `design.md` §10; el
+> diseño soporta las tres sin cambiar. Recomendación: precondición dura por
+> defecto, puerta abierta a mano solo durante el piloto, y F-012 como destino.
+>
+> **OD-2 · ¿De dónde sale el login de Sigrid de quien confirma?**
+> Mapeo explícito (recomendado), poblar `usuemp.ele` con el administrador del
+> ERP, o convención verificada (descartada: 6 aciertos de 8). Falta además que
+> el humano **diga quién entra en el mapeo**: hoy son 3 los logins que cierran
+> partes, y uno no tiene correo registrado, así que la lista la da una persona.
+>
+> ### Verificaciones MANUAL (humano) que la spec deja programadas
+>
+> Bloque 8 de `tasks.md`, todas **desde el entorno desplegado** y con
+> autorización expresa: T22 (dry-run real sin escribir), T23 (login verificado
+> contra `dbo.usu`), **T24 (el primer cierre real, con procedimiento de 9
+> pasos)**, T25 (que el `tex` propio localiza lo nuestro y nada más), T26 (que
+> el guard de escritura acepta el batch tal cual) y T27 (reintento sobre lo ya
+> cerrado: `ya_cerrada` sin escribir nada).
+
+---
+
+## Sesión anterior (2026-08-26, tarde)
+
 > ## Estado al 2026-08-26 (tarde) · **cabos de F-019 recogidos · F-021 de alta**
 >
 > Ninguna feature `in_progress`. `bash harness/init.sh` en verde, 21 features.

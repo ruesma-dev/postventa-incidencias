@@ -382,7 +382,7 @@ class AdaptadorSigridApi:
             raise ErrorDeSigrid(respuesta.status_code, operacion)
         try:
             datos = respuesta.json()
-        except Exception as no_es_json:  # noqa: BLE001 - lo traduce el llamante
+        except Exception as no_es_json:
             raise self._fallo(
                 operacion,
                 "la respuesta no es JSON: puede ser la página de error de un "

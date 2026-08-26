@@ -110,9 +110,10 @@ def resolver_zona(nombre: str) -> tzinfo:
         return ZoneInfo(nombre)
     except (ZoneInfoNotFoundError, ValueError) as desconocida:
         raise ConfiguracionSigridIncompleta(
-            f"SIGRID_ZONA_HORARIA no nombra un huso conocido, así que no se "
-            f"sabría con qué hora registrar el cierre en el ERP: se espera algo "
-            f"como 'Europe/Madrid'"
+            "SIGRID_ZONA_HORARIA no nombra un huso conocido, así que no se "
+            "sabría con qué hora registrar el cierre en el ERP: se espera algo "
+            "como 'Europe/Madrid'. El valor no se dice: los valores no entran "
+            "en un mensaje de error"
         ) from desconocida
 
 

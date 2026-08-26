@@ -21,14 +21,19 @@
 | Recurso | Compartido con | Qué hacemos | Desde |
 |---|---|---|---|
 | PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo y cierres | **F-005** |
-| `sigrid-api` | todo el ecosistema | Lectura de la incidencia; cierre por escritura desde el entorno desplegado | F-008 / F-009 |
+| `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y ESCRITURA en el ERP de producción**: `con.est` al estado de cierre y su fila de auditoría en `dbo.log`. Solo desde el entorno desplegado y con el interruptor encendido | F-008 / **F-009** |
 | SharePoint (Graph) | IT | Archivo de los PDF validados | F-006 |
 | Gemini | — | Extracción multimodal y clasificación de firma | F-003 |
 | Entra ID | todo el ecosistema | Autenticación del front y de la tarjeta del portal | F-010 |
 
 **Lo nuevo de F-005 es la primera fila**, y es la única que mete a este
-proyecto como **cuarto inquilino** de un servidor que ya usaban otros tres. El
-resto de este documento va de eso.
+proyecto como **cuarto inquilino** de un servidor que ya usaban otros tres.
+
+**Lo nuevo de F-009 es la segunda**, y hay que decirlo con todas las letras:
+hasta ahora este proyecto **solo leía** de Sigrid. Desde F-009 **escribe en el
+ERP del que depende toda la empresa**. Qué escribe, con qué puertas y qué se
+rompe si alguien cambia la configuración de escritura de la pasarela está en
+**§3 bis**.
 
 ## 2 · La base de datos: qué pedimos y qué no tocamos
 
@@ -151,6 +156,99 @@ siendo los amplios de hoy, esta aplicación **podría** escribir en cualquier
 sitio del tenant. No lo hace, solo toca su biblioteca, pero la única garantía
 real es el recorte de **F-018**.
 
+## 3 bis · Sigrid: qué escribimos en el ERP de producción (F-009)
+
+**Hasta F-009 este proyecto solo leía de Sigrid.** Ahora escribe, y esta
+sección existe para que quien administre la pasarela o el ERP sepa exactamente
+qué y con qué límites. El acceso es, como para todo el ecosistema, **a través
+de `sigrid-api`**: nadie se conecta al SQL Server por su cuenta.
+
+### Qué escribimos, exactamente
+
+Dos sentencias, en **un solo batch transaccional** de `POST /api/sql/write`,
+con `max_affected_rows = 2`:
+
+1. **El estado de la reclamación** (`dbo.con.est`), al estado de cierre. Ese
+   estado se resuelve **en ejecución** consultando `dbo.conest` por su
+   **código**; el número no está escrito en ninguna parte de nuestro código y
+   un test lo comprueba barriendo el árbol. El `WHERE` lleva el identificador
+   de la reclamación, su tipo **y el estado de origen que se leyó en el
+   dry-run**: si alguien la movió entretanto, no se aplica nada.
+2. **Una fila de auditoría** en `dbo.log`, que es lo que el propio ERP escribe
+   al cerrar un parte y lo que un `UPDATE` a secas se dejaría por el camino.
+   Sus campos se copian de la reclamación dentro del propio SQL, y su
+   identificador se reserva dentro de la misma sentencia, con bloqueo: la
+   tabla no tiene IDENTITY y la pasarela no protege esa reserva.
+
+**Nada más.** Ni `con.tiemod`, ni la solución de la reclamación, ni ninguna
+fecha: F-008 midió que el proceso del ERP tampoco los toca.
+
+### Cómo se reconocen nuestros cierres, y cómo se revierten
+
+La fila de `dbo.log` lleva un texto propio, **`Cerrar parte
+(postventa-incidencias)`**. Eso hace dos cosas a la vez:
+
+- **sigue apareciendo en los informes de Posventa**, que filtran por el prefijo
+  `Cerrar parte`;
+- y **distingue nuestros cierres de los manuales con un solo `LIKE`**, que es
+  lo que hace reversible el piloto: los cierres se deshacen en el ERP, y si
+  esto se tuerce se sabe exactamente qué revertir.
+
+### Quién firma el cierre
+
+El login de Sigrid de **la persona que confirma**, nunca un usuario técnico ni
+un valor constante. Se resuelve contra la tabla propia
+`postventa.usuarios_sigrid`, y si no hay correspondencia se deriva un candidato
+del correo del usuario y **se verifica por lectura contra `dbo.usu`** antes de
+escribir nada. Si el ERP no lo confirma, **no se cierra**.
+
+### Las puertas, de fuera adentro
+
+1. **El entorno.** Escribir solo se permite con `ENTORNO` en `dev` o `pro`.
+2. **El interruptor.** `CIERRE_HABILITADO`, apagado por defecto. Se comprueba
+   en la fábrica **y en el constructor del adaptador**: componer las piezas a
+   mano tampoco deja escribir.
+3. **El dry-run.** `POST /api/cerrar` lee y no escribe salvo que se le pida
+   `commit` explícitamente.
+4. **La confirmación.** Con `commit` hace falta además la confirmación del
+   usuario o su preferencia de auto-cierre guardada.
+5. **La guardia de red de la suite**, que impide que un test abra la conexión.
+
+Y una que no es una puerta sino una decisión: **la escritura no se reintenta
+nunca**. Un tiempo agotado no dice que el ERP no haya escrito; dice que no nos
+hemos enterado. El reintento lo pide una persona.
+
+### Volumen esperado
+
+Dos sentencias por incidencia cerrada, y una lectura por dry-run. En el piloto
+de Mirasierra eso son decenas de escrituras, no miles: muy por debajo de
+cualquier límite de la pasarela.
+
+### Lo que F-009 NO exige, y lo que sí va a exigir F-012
+
+**F-009 no exige ningún cambio en el repositorio `sigrid-api`.** Las dos
+sentencias caben en `POST /api/sql/write` tal y como está desplegado: `UPDATE` e
+`INSERT` están permitidos y la base de negocio está en la lista blanca de
+escritura. Se comprobó leyendo la configuración de la Function App, sin ver
+ningún valor.
+
+**F-012 sí, y conviene decirlo ahora** —se descubrió al comprobar lo anterior, y
+quien coja esa feature debería saberlo el primer día en vez del último—:
+
+> Subir el parte a Sigrid como gráfico exige **escribir en dos bases**: los
+> metadatos y el enlace van en la base de negocio, pero **el binario vive en la
+> base documental**. Y la configuración desplegada de la pasarela tiene la base
+> de negocio como **única** escribible: la documental queda fuera de
+> `ALLOWED_WRITE_DATABASES` **a propósito** («escritura SOLO en negocio»).
+>
+> Consecuencia: F-012 **no se resuelve con un endpoint de dominio nuevo**. Hace
+> falta además habilitar la escritura en la base documental, y eso es una
+> decisión del **dueño de `sigrid-api`** que afecta a todo el ecosistema, no
+> solo a este proyecto. Con la configuración de hoy, subir el PDF a Sigrid **no
+> tiene por dónde hacerse**.
+>
+> Esto **no bloquea F-009**, que solo escribe en la base de negocio.
+
 ## 4 · Variables de entorno (nombres, nunca valores)
 
 Los nombres son deliberadamente los que ya usa el ecosistema, para que quien
@@ -184,6 +282,19 @@ despliegue no tenga que aprender dos vocabularios.
 | `GRAPH_CLIENT_SECRET` | sí, para archivar | **Secreto**. En Azure va por referencia a Key Vault; en local, solo en el `.env`, que no se versiona. Jamás en un log ni en un mensaje de error |
 | `GRAPH_TIMEOUT_S` | no | La Function corta a los 230 s: una llamada colgada no puede comérselos |
 | `GRAPH_REINTENTOS` | no | Intentos ante errores transitorios. Un `403` o un `404` **no** se reintentan |
+
+### Las de Sigrid (F-009)
+
+| Variable | Obligatoria | Notas |
+|---|---|---|
+| `CIERRE_HABILITADO` | no | **Interruptor maestro, apagado por defecto.** Sin encenderlo no se cierra nada, pase lo que pase. Es una variable **aparte** de `ARCHIVO_HABILITADO` a propósito: se abren en momentos distintos, y poder archivar no puede implicar poder escribir en el ERP |
+| `SIGRID_API_BASE_URL` | sí, para cerrar | La raíz de la pasarela, que es el **único** acceso al SQL Server de Sigrid en todo el ecosistema |
+| `SIGRID_API_KEY` | sí, para cerrar | **Secreto**. En Azure va por referencia a Key Vault; en local, solo en el `.env`, que no se versiona. Jamás en un log, en una URL ni en un mensaje de error |
+| `SIGRID_BASE_DATOS` | sí, para cerrar | La base de negocio del ERP, que es la única con escritura permitida en la pasarela |
+| `SIGRID_TIMEOUT_S` | no | Segundos por llamada. El balanceador de la pasarela corta a los 230 s de todas formas |
+| `SIGRID_REINTENTOS` | no | Intentos ante errores transitorios **de una lectura**. La escritura **no se reintenta nunca**, y eso no es configurable |
+| `SIGRID_TIP_RECLAMACION` | no | El tipo de concepto de la reclamación de posventa. Es configuración de la instalación, medida contra el ERP |
+| `SIGRID_ZONA_HORARIA` | no | El huso con el que se escribe la hora en la fila de auditoría. Sigrid registra **hora local**: escribir UTC dejaría nuestras filas desfasadas del resto |
 
 Ninguna de estas variables tiene valor en el repositorio: `.env.example` y
 `local.settings.json.example` llevan placeholders, y hay un test que lo
@@ -230,6 +341,10 @@ incidencia, código de obra y remesa.
 | Borra o renombra la base `postventa` o su esquema | El servicio no arranca la parte de persistencia | Nadie más debería tocarla: es nuestra |
 | Restaura el servidor a un punto anterior | Perdemos las filas posteriores a ese punto, sin manera de aislarlo | Coordinar antes: el PITR es del servidor entero |
 | Toca el esquema `public` | A nosotros, nada: no tenemos ni una tabla ahí, y un test contra base efímera lo comprueba | — |
+| Quita `UPDATE` o `INSERT` de `ALLOWED_WRITE_PREFIXES` en `sigrid-api` | **Dejamos de poder cerrar incidencias.** El endpoint responde 502 y la incidencia se queda abierta con el parte ya archivado | Es del dueño de `sigrid-api`; avisar antes |
+| Saca la base de negocio de `ALLOWED_WRITE_DATABASES` | Lo mismo, y además cortaría cualquier escritura del ecosistema | Es del dueño de `sigrid-api`; avisar antes |
+| Rota la clave de función de `sigrid-api` sin actualizar nuestro Key Vault | 502 en cada cierre, y en cada dry-run | Coordinar la rotación |
+| Cambia el catálogo de estados `conest` del tipo de posventa | Si el código `CER` deja de existir o se duplica, **abortamos sin escribir nada** y lo decimos. No cerramos con un estado supuesto | Es del ERP; se detecta solo |
 
 Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
 las reglas de §2. La única superficie compartida real es el **disco** y el
@@ -289,6 +404,7 @@ documento.
 | `POST /api/parte` | **Escribe** en `postventa.partes` y `postventa.validaciones`. Recalcula el veredicto con las reglas del dominio: nunca acepta el que venga en el cuerpo |
 | `GET /api/cola` | **Lee** la cola de validación humana. Único endpoint que devuelve **dato personal acumulado** sin que el llamante aporte el PDF: tope duro de 500 entradas por llamada |
 | `POST /api/archivar` | **Escribe** en la biblioteca de dev de SharePoint y deja traza en la base. Exige que el parte **ya conste guardado**: si no, responde 409 sin subir nada |
+| `POST /api/cerrar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: mueve `con.est` al estado de cierre y añade una fila a `dbo.log`, en un solo batch transaccional con tope de dos filas. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP |
 
 Los tres endpoints de F-019 **no dependen de `ARCHIVO_HABILITADO`**: escriben
 en el esquema propio del proyecto, no en un sistema ajeno. Con la ventana de
@@ -296,7 +412,7 @@ escritura cerrada —que es como se despliega— se sube la remesa, se trocea, s
 extrae, se valida, **se guarda** y se lee la cola; solo `POST /api/archivar`
 responde 503.
 
-Los nueve quedan en nivel **anónimo**, y **es deliberado**: con un backend
+Los diez quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie
 rompe el front. Y ese nivel es **irrelevante desde internet**: la plataforma
@@ -310,7 +426,8 @@ sí sostienen el acceso están en la cabecera de
 
 | Qué falta | Feature | Consecuencia visible |
 |---|---|---|
-| El cierre de la incidencia en el ERP | **F-008** y **F-009** | Sigrid no se toca: el parte se archiva, la incidencia sigue abierta |
+| El cierre real, verificado contra el ERP | **F-009** | El cierre **está implementado**, pero su ventana de escritura (`CIERRE_HABILITADO`) se despliega **apagada** y todavía no se ha ejecutado ni un cierre real. Mientras siga así, **Sigrid no se toca**: el parte se archiva y la incidencia sigue abierta en el ERP. El primer cierre se hará con el humano delante y con autorización expresa para esa incidencia concreta |
+| Subir el parte a Sigrid como gráfico | **F-012** | La incidencia se cierra y el PDF queda archivado y localizable, pero **no dentro del ERP**: quien mire la ficha en Sigrid no verá el parte. Es el riesgo aceptado de `docs/ARCHITECTURE.md`, y hoy **no tiene por dónde hacerse**: el binario vive en la base documental, que la pasarela tiene fuera de su lista blanca de escritura |
 | Rehidratar la sesión al recargar el navegador | **feature nueva**, decidida el 2026-08-26 (D4 de F-019) | Lo guardado **queda guardado** y la cola sobrevive, pero si el usuario recarga la página **pierde el trabajo en curso**: volver a pintarlo exige leer una remesa entera con sus partes, y eso es un método de lectura nuevo en el puerto de persistencia |
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |

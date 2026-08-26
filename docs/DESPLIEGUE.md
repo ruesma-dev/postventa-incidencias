@@ -233,6 +233,64 @@ Si has abierto la ventana, `verificar_despliegue.ps1` **no hace** su segunda
 comprobación y te lo dice: con la ventana abierta, esa llamada subiría un PDF
 de verdad.
 
+## 4 bis · La ventana de escritura de `/api/cerrar` (F-009)
+
+**Es el candado más serio de todo el despliegue**, porque lo que hay detrás no
+es una biblioteca de documentos: es el **ERP de producción del que depende toda
+la empresa**. Deshacer un cierre no es borrar un fichero; es otro proceso que
+alguien tiene que ejecutar a mano en Sigrid.
+
+`CIERRE_HABILITADO` **se despliega apagado**, igual que el de archivo y por el
+mismo mecanismo. Fuera de la ventana, `/api/cerrar` responde `503` a cualquiera
+—incluido un desconocido— y **no toca el ERP**.
+
+**Es una variable aparte, y eso es deliberado.** Se abren en momentos distintos
+y protegen cosas distintas: poder archivar no puede implicar poder cerrar. Si
+fueran la misma, abrir la ventana para subir unos partes abriría a la vez la
+escritura en Sigrid, y nadie se daría cuenta hasta que se cerrara algo.
+
+**Abrir la ventana**, justo antes de cerrar de verdad y con el humano delante:
+
+```
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=true
+```
+
+**Cerrarla en cuanto se termine**, salga bien o mal:
+
+```
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=false
+```
+
+### Lo que la ventana NO sustituye
+
+Abrirla **no basta para que se cierre nada**, y esa es la diferencia con la de
+archivo. Encima de ella hay dos puertas más que no son configuración:
+
+1. **El entorno** tiene que ser `dev` o `pro`. Desde un puesto de trabajo no se
+   cierra ni con la variable encendida: se comprueba en la fábrica **y** en el
+   constructor del adaptador.
+2. **`POST /api/cerrar` es dry-run por omisión.** Sin `commit` lee y devuelve
+   qué pasaría; con `commit` exige además la confirmación explícita del usuario
+   o su preferencia de auto-cierre guardada.
+
+Así que la secuencia de un cierre real es, en este orden: abrir la ventana →
+llamar **sin** `commit` y **leer el dry-run** → confirmar → llamar con `commit`
+→ **cerrar la ventana**.
+
+### Las variables de Sigrid, y cuál es el secreto
+
+| App Setting | Qué es |
+|---|---|
+| `CIERRE_HABILITADO` | El interruptor. Apagado por defecto |
+| `SIGRID_API_BASE_URL` | La raíz de la pasarela |
+| `SIGRID_API_KEY` | **Secreto**: va por referencia a Key Vault, como el de Graph y el de la base |
+| `SIGRID_BASE_DATOS` | La base de negocio del ERP, la única escribible en la pasarela |
+| `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS` | Tiempos. La escritura no se reintenta nunca, y eso no es configurable |
+| `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA` | Configuración de la instalación, con valor por defecto medido |
+
+Faltando cualquiera de las tres primeras, el endpoint responde `503` nombrando
+**todas** las que falten de una vez, y **nunca** sus valores.
+
 ## 5 · Después de desplegar
 
 ```

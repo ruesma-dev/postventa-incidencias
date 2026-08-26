@@ -156,8 +156,23 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
      aceptación prohíbe, y es el comportamiento por defecto de más de un
      cliente de Graph;
    - **carpeta** — crearla dos veces es un éxito, no un error.
-7. **Cierre** — dry-run contra `sigrid-api`, confirmación del usuario, y solo
-   entonces `commit: true`.
+7. **Cierre** (F-009) — dry-run contra `sigrid-api`, confirmación del usuario,
+   y solo entonces `commit: true`. Es la **única escritura de este proyecto en
+   un ERP de producción**, y por eso es el paso con más puertas:
+   - **precondiciones propias, y ninguna más**: el parte tiene que ser apto
+     (F-004) y **constar archivado** (F-006). El gráfico de Sigrid **no se
+     consulta** — ver «Alcance del cierre», más abajo;
+   - **quién firma**: el login de Sigrid de la persona que confirma, resuelto
+     contra `postventa.usuarios_sigrid` o derivado de su correo y
+     **verificado contra el ERP** antes de escribir nada. Sin confirmación del
+     ERP no se cierra;
+   - **qué se escribe**: `con.est` al estado de cierre —resuelto contra
+     `conest` por su **código**, nunca por su número— y **una fila en
+     `dbo.log`**, las dos en un solo batch transaccional con tope de dos filas
+     afectadas. El `UPDATE` lleva en su `WHERE` el estado de origen leído en el
+     dry-run: si alguien movió la reclamación entretanto, no se aplica nada;
+   - **qué no se reintenta**: nada. Un fallo de escritura lo reintenta una
+     persona, después de mirar el ERP.
 
 ### Por qué el proceso va parte a parte y no de una tacada
 
@@ -254,7 +269,7 @@ igual que hoy, y por debajo se suben los PDFs.
 
 | Sistema | Uso | Límites |
 |---|---|---|
-| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la incidencia; cierre por escritura. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. La escritura está apagada por defecto y los endpoints de dominio son dry-run salvo `commit: true`. |
+| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run) y **cierre por escritura** (F-009): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja cerrar desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. |
 | SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
 | PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
@@ -311,49 +326,96 @@ El "importar gráfico" son dos tablas:
 | `gra` | El documento: `ima` (binario), `nom` / `nomori` (nombre), `cod`, `res`, `fec`, `usu`, `gratipide` (clase, catálogo `auxgra`), `guid`. |
 | `rcg` | **Gráficos en conceptos**: la N:N que ata el gráfico (`gra`) al concepto (`con`) de la reclamación, con `pos` y `cla`. |
 
-Por tanto **cerrar una incidencia son tres escrituras**, y en este orden:
+**Cerrar una incidencia a mano son tres escrituras**, y en este orden:
 `INSERT` en `gra` con el PDF → `INSERT` en `rcg` vinculándolo a la
-reclamación → `UPDATE con.est` al estado de cierre. Las tres, o ninguna.
+reclamación → `UPDATE con.est` al estado de cierre.
 
-**Consecuencia dura para el diseño**: `sigrid-api` hoy sabe **leer**
-documentos (`POST /api/documents/read` contra `ruesma_rep`) pero **no sabe
-escribirlos**. No hay endpoint de dominio para esto, y `sql/write` no reserva
-`ide` con applock ni está pensado para BLOBs. Así que **F-009 depende de un
-endpoint nuevo en `sigrid-api`** —otro repositorio, otro proyecto—: se
-propone al humano, no se implementa aquí (regla de LÍMITE DE SERVICIO).
+**F-009 hace la tercera, y hace además la que no se ve**: la fila de
+`dbo.log`, que F-008 midió y que un `UPDATE` a secas se dejaría por el camino.
+Las dos van en un solo batch transaccional, así que son las dos o ninguna.
 
-### Alcance del cierre en la primera versión
+Las otras dos —el gráfico— son **F-012**, y ahí está el obstáculo que conviene
+saber el primer día: `sigrid-api` sabe **leer** documentos (`POST
+/api/documents/read`) pero **no sabe escribirlos**, `sql/write` no reserva
+`ide` con applock ni está pensado para BLOBs, y —lo que de verdad bloquea— el
+binario vive en la **base documental**, que la pasarela tiene **fuera de su
+lista blanca de escritura a propósito**. F-012 no necesita solo un endpoint
+nuevo: necesita una decisión del **dueño de `sigrid-api`** que afecta a todo el
+ecosistema. Se propone al humano, no se implementa aquí (regla de LÍMITE DE
+SERVICIO).
+
+**F-009, en cambio, NO exige tocar el repositorio `sigrid-api`**: sus dos
+sentencias caben en `POST /api/sql/write` tal y como está desplegado, con
+`UPDATE` e `INSERT` permitidos y la base de negocio en la lista blanca.
+
+### Alcance del cierre: validar → cerrar → subir el PDF
+
+**Decidido por el humano el 2026-08-26, con lo que F-008 midió delante.** Ya
+no está en el aire: el orden es **validar → cerrar → subir el PDF**, y el
+último paso es F-012.
 
 Posventa hace hoy dos cosas: sube el PDF a Sigrid como gráfico **y** cambia el
-estado. **En la primera versión solo se hace lo segundo**: el parte se archiva
-en SharePoint y en Sigrid únicamente se mueve `con.est` a CERRADA.
+estado. Este servicio hace **lo segundo**, y hace lo primero a su manera: el
+parte se archiva en SharePoint con su traza. En Sigrid se mueve `con.est` al
+estado de cierre y se escribe la fila de `dbo.log` que el ERP escribiría — las
+dos cosas, porque F-008 comprobó que el proceso «Cerrar parte» **no toca nada
+más** (ni `con.tiemod`, ni `rcp.solrcp`, ni ninguna fecha).
 
-Eso quita de en medio la dependencia de un endpoint nuevo en `sigrid-api`
-—escribir el BLOB de `gra` y su fila en `rcg`— que queda como feature futura
-(F-012). Un `UPDATE` de estado con `WHERE` no reserva `ide` ni maneja
-binarios, así que cabe en la escritura genérica de la pasarela.
+**La precondición del cierre es propia**: parte apto y archivado. **No se
+consulta el gráfico**, y esa es la decisión, no un olvido. El dato que la
+justifica: el **98,7 % de las reclamaciones abiertas no tiene gráfico**, porque
+subirlo y cerrar son el mismo gesto en el flujo manual. Exigirlo habría dejado
+esta feature sin poder cerrar prácticamente nada.
 
-**Aviso serio, descubierto en las capturas de la guía**: el proceso «Cerrar
-parte» de Sigrid **comprueba que la reclamación tenga algún gráfico o
-documento multimedia asociado** antes de cerrarla — por eso el menú ofrece
-además una opción 6, "Cerrar parte sin archivo (RPV)". Un `UPDATE con.est`
-directo se saltaría esa comprobación y dejaría la incidencia cerrada sin su
-parte, que es justo lo que el ERP impide hacer a mano. Y «Cerrar parte» es un
-**proceso**, no un campo: no consta qué más toca. Hasta que F-008 lo aclare
-en el ERP real, **el alcance del cierre en v1 está en el aire**.
+#### RIESGO ACEPTADO · nuestros cierres dejarán reclamaciones sin gráfico
 
-### Lo que queda por confirmar contra el ERP real (F-008, solo lecturas)
+Sin adornos y por escrito: **este servicio va a producir reclamaciones en
+estado `CER` sin ninguna fila en `rcg`, algo que no ha ocurrido ni una sola vez
+en los 2.365 cierres con «Cerrar parte» desde 2023.** Nuestros cierres serán,
+mirando los datos del ERP, anómalos respecto a todo el histórico reciente.
+Quien mire la base lo va a ver.
 
-- Qué `con.tip` corresponde a la reclamación y qué estados declara `conest`
-  para ese tipo, incluido el de cierre ("CERRADA").
-- **Qué es `RS26.08` y qué es `0123`** en `RS26.08 – 0123`: si es código de
-  obra + número de incidencia, o si `RS26.08 – 0123` es entero el `con.cod`
-  de la reclamación (serie `sercon` + correlativo). Decide el nombrado.
-- Qué campos se rellenan al importar el gráfico (la guía dice "añado los
-  datos que subrayo" y lo enseña en una captura): probablemente `res`, `cod`
-  y la clase `gratipide`.
-- Si la tabla `gra` vive en `ruesma` o en `ruesma_rep`, y si cerrar exige
-  además rellenar `solrcp` o alguna fecha.
+Lo que lo hace asumible son tres cosas, y las tres tienen que sostenerse:
+
+1. **El parte firmado existe.** Está archivado, con su traza en
+   `postventa.archivos` y su clave ajena contra `postventa.partes`. No se
+   cierra nada cuya prueba no esté guardada. Lo que falta no es el documento:
+   es el documento **dentro de Sigrid**.
+2. **El conjunto es localizable y reversible.** La fila de `dbo.log` lleva un
+   `tex` propio —`Cerrar parte (postventa-incidencias)`— que identifica
+   exactamente nuestros cierres con un solo `LIKE`, y que **sigue empezando por
+   `Cerrar parte`** para no desaparecer de los informes de Posventa. Y los
+   cierres se deshacen en el ERP: hay 81 precedentes.
+3. **Quien confirma lo sabe.** El dry-run advierte explícitamente de que la
+   reclamación quedará cerrada sin el parte dentro de Sigrid, y ese aviso se
+   pinta **siempre**, antes de que nadie confirme.
+
+**Y tiene fecha de caducidad**: la anomalía desaparece cuando **F-012** suba el
+PDF. Mientras tanto, el circuito no reproduce del todo lo que hace Posventa, y
+esta sección existe para que eso no se olvide.
+
+> Lo que le espera a F-012, y conviene saberlo el primer día: el binario del
+> gráfico vive en la **base documental** del ERP, y la configuración desplegada
+> de `sigrid-api` tiene la base de negocio como **única** escribible. Subir el
+> PDF a Sigrid, hoy, **no tiene por dónde hacerse**: hace falta una decisión
+> del dueño de `sigrid-api`, que afecta a todo el ecosistema.
+
+### Lo que F-008 confirmó contra el ERP real (solo lecturas)
+
+Las cuatro preguntas abiertas están **resueltas y medidas**, y el detalle vive
+en `docs/referencia/03_modelo_posventa_sigrid.md`. No se duplica aquí; el
+resumen es:
+
+- **El tipo de concepto de la reclamación y sus estados**, con el de cierre
+  identificado por su **código** `CER`. El número es configuración de la
+  instalación y se resuelve en ejecución.
+- **`con.cod` es entero el código de la reclamación** y es único dentro del
+  tipo: 23.063 códigos distintos en 23.063 conceptos. En Sigrid va con barra;
+  en el nombre del fichero, con guion.
+- **Qué escribe «Cerrar parte»**: `con.est` y una fila en `dbo.log`. Nada más.
+  Ni `con.tiemod`, que es lo más contraintuitivo de todo el hallazgo.
+- **Hay dos tablas de gráficos, en dos bases distintas**, y el binario está en
+  la documental. Es lo que condiciona a F-012.
 
 ## Infra y despliegue
 

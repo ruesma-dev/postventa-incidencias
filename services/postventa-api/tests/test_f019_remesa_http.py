@@ -12,7 +12,9 @@ repositorio entra por la costura de inyección del handler, de modo que **no
 hay base de datos por ninguna parte**.
 
 **Ni un dato real**: `Mirasierra-inventada.pdf` es un nombre de fichero de
-mentira y los UUID de este fichero están escritos a mano para el test.
+mentira y el UUID que usan los tests se **genera en ejecución**, porque
+`tests/test_f006_repo_sin_identificadores.py` prohíbe que en el repositorio
+entre una cadena con forma de GUID aunque sea inventada.
 """
 
 from __future__ import annotations
@@ -36,8 +38,13 @@ CLAVES_DE_LA_RESPUESTA = {"remesa_id", "resultado"}
 #: Un nombre de fichero **inventado**: las remesas reales no entran aquí.
 NOMBRE_ORIGEN = "Mirasierra-inventada.pdf"
 
-#: Un UUID escrito a mano para el test. No identifica ninguna remesa real.
-REMESA_ID = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+#: Un UUID **generado en ejecución**, y no escrito a mano.
+#:
+#: `tests/test_f006_repo_sin_identificadores.py` prohíbe que en el repositorio
+#: entre una cadena con forma de GUID, **aunque sea inventada**: quien la lea
+#: no puede distinguirla de una de verdad. Generarlo aquí da un UUID válido
+#: para el test sin dejar ninguno escrito en el fichero.
+REMESA_ID = str(uuid.uuid4())
 
 #: Los tres módulos de F-019, que **no** miran la ventana de escritura (R34).
 MODULOS_NUEVOS = ("remesa.py", "parte.py", "cola.py")
@@ -261,7 +268,7 @@ def test_f019_r4_un_cuerpo_que_no_es_json_es_400(monkeypatch):
 
 @pytest.mark.parametrize(
     "remesa_id",
-    ("no-soy-un-uuid", "", "3f2504e0-4f89-11d3-9a0c", 12345),
+    ("no-soy-un-uuid", "", REMESA_ID[:20], 12345),
 )
 def test_f019_r5_un_remesa_id_que_no_es_uuid_es_400_sin_llegar_a_la_base(
     monkeypatch, remesa_id

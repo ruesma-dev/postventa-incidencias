@@ -145,6 +145,38 @@ class CuerpoDeValidacionInvalido(Exception):
         self.motivo = motivo
 
 
+class PeticionDePersistenciaInvalida(Exception):
+    """La petición de un endpoint de F-019 no cumple su contrato (R4, R5, R10, R17).
+
+    Es el hermano de `CuerpoDeValidacionInvalido` y `CuerpoDeArchivoInvalido`,
+    y existe por lo mismo que ellos: el borde la traduce a **400** y nunca a
+    503. La distinción importa más aquí que en ningún otro sitio, porque las
+    tres cosas que se rechazan —un `num_partes` que no es un entero, un
+    `remesa_id` que no es un UUID, un `limite` que no es un número— acabarían,
+    si se dejaran pasar, en un error de PostgreSQL. Y un 503 «la base no
+    responde» manda a mirar el servidor a quien tenía que corregir su
+    petición.
+
+    Cubre las tres formas que toma una petición en esta feature: el cuerpo de
+    `POST /api/remesa`, las dos claves propias de `POST /api/parte` —el resto
+    de ese cuerpo lo comprueban los parsers de `interface_adapters/api/cuerpos.py`,
+    que levantan `CuerpoDeValidacionInvalido` porque es literalmente el cuerpo
+    de `/api/validar`— y la cadena de consulta de `GET /api/cola`.
+
+    **No cuelga de `ErrorDePersistencia`** a propósito: no es un fallo del
+    almacén, es una petición mal escrita, y colgarla de ahí haría que el
+    `except ErrorDePersistencia` de `paso_persistencia` se la tragara.
+
+    El motivo dice **qué** está mal y nunca lo que sí venía: el cuerpo lleva
+    los valores leídos del parte, con el DNI y las observaciones manuscritas
+    dentro, y este texto acaba en un log que sobrevive al parte (R18).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
 class PromptNoEncontrado(Exception):
     """El fichero de prompts no sirve, o no declara la clave pedida (R9).
 

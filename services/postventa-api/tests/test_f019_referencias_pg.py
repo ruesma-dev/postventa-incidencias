@@ -22,6 +22,7 @@ levanta la excepción que se le prepare. Ni un socket, ni un dato real.
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
 import psycopg
@@ -41,6 +42,14 @@ AHORA_INVENTADO = datetime(2026, 8, 26, 9, 0, tzinfo=UTC)
 
 #: Un `hash_parte` inventado, sin relación con ningún parte real.
 HASH_INVENTADO = "hash-inventado-f019"
+
+#: Un identificador de remesa **generado en ejecución**, y no escrito a mano.
+#:
+#: `tests/test_f006_repo_sin_identificadores.py` prohíbe que en el repositorio
+#: entre una cadena con forma de GUID, **aunque sea inventada**: quien la lea
+#: no puede distinguirla de una de verdad. Generarlo aquí da un UUID válido
+#: para el test sin dejar ninguno escrito en el fichero.
+REMESA_INVENTADA = str(uuid.uuid4())
 
 
 def _traza() -> TrazaArchivo:
@@ -132,7 +141,7 @@ def test_f019_r11_guardar_un_parte_de_una_remesa_que_no_consta_tambien():
         _repositorio(conexion).guardar_parte(
             parte=parte,
             extraccion=extraccion_de_ejemplo(hash_parte=HASH_INVENTADO),
-            remesa_id="00000000-0000-0000-0000-000000000000",
+            remesa_id=REMESA_INVENTADA,
             ahora=AHORA_INVENTADO,
         )
 
@@ -171,7 +180,7 @@ def test_f019_r20_el_motivo_nombra_la_operacion_y_nunca_los_parametros():
                 dni_cliente=dni_inventado,
                 observaciones=observaciones_inventadas,
             ),
-            remesa_id="00000000-0000-0000-0000-000000000000",
+            remesa_id=REMESA_INVENTADA,
             ahora=AHORA_INVENTADO,
         )
 

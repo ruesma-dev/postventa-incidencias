@@ -108,6 +108,7 @@ from domain.models.errores import (
     NombradoImposible,
     ParteDemasiadoGrande,
     ParteNoApto,
+    PeticionDePersistenciaInvalida,
     PersistenciaNoDisponible,
     RemesaSinPdfUtilizable,
 )
@@ -116,6 +117,7 @@ from interface_adapters.api.archivar import archivar_parte
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
+from interface_adapters.api.remesa import registrar_remesa
 from interface_adapters.api.split import trocear_remesa
 from interface_adapters.api.validar import validar as validar_parte_http
 
@@ -252,6 +254,62 @@ def validar(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["veredicto"],
         cuerpo["destino"],
         [motivo["codigo"] for motivo in cuerpo["motivos"]],
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="remesa", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def remesa(req: func.HttpRequest) -> func.HttpResponse:
+    """Deja constancia de una subida y devuelve su identificador (F-019, R1).
+
+    Solo traduce: saca el JSON de la petición, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. **400** la petición está mal formada
+    —falta `nombre_origen`, `num_partes` no es un entero, `remesa_id` no es un
+    UUID— y **503** aquí y ahora no hay base de datos. Ninguno de los dos
+    escribe nada.
+
+    **No depende de `ARCHIVO_HABILITADO`** (R34): esa ventana protege la
+    biblioteca de SharePoint, y esto escribe en el esquema propio del
+    proyecto.
+
+    El log lleva el `remesa_id`, cuántos partes trae y el resultado. **Nunca**
+    el nombre del fichero de origen: puede llevar el nombre de la promoción y
+    este log sobrevive a la remesa (R18).
+    """
+    try:
+        cuerpo = registrar_remesa(req.get_json())
+    except ValueError:
+        log.info("remesa rechazada: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    except PeticionDePersistenciaInvalida as error:
+        log.info("remesa rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("remesa sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no guarda nada: no se ha registrado la remesa. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("remesa sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"registrado la remesa: se puede reintentar cuando la base "
+                    f"vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info(
+        "remesa: id=%s resultado=%s", cuerpo["remesa_id"], cuerpo["resultado"]
     )
     return _json(cuerpo, 200)
 

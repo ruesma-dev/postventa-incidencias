@@ -1,20 +1,47 @@
 # services/postventa-api/tests/test_f010_endpoints_protegidos.py
-"""La anonimidad de los endpoints es DELIBERADA y esta explicada (R18, R32).
+"""La anonimidad de los endpoints es DELIBERADA y esta explicada (R18, R32, R31).
 
 Este fichero no comprueba que algo funcione: comprueba que algo **siga como
 esta y se sepa por que**. Es raro, y tiene motivo.
 
-Al desplegar, los seis endpoints de `function_app.py` quedan en internet con
-`auth_level=ANONYMOUS`. Leido en frio, eso parece un descuido, y el arreglo
-evidente -`auth_level=FUNCTION`- **rompe el front el mismo dia que se aplica**:
-el servicio esta detras del proxy de una Static Web App, que autentica al
-usuario, reenvia la cabecera `x-ms-client-principal` y **no anade** ninguna
-clave de funcion. La Function empezaria a devolver `401` a traves del front.
+## Correccion de F-019 (2026-08-26): esta cabecera decia algo que ya no es cierto
 
-Y el fallo no lo caza ningun test del repositorio, porque ninguno atraviesa
-ese proxy. Es la clase de error que reaparece a los seis meses, cuando ya
-nadie recuerda por que estaba asi. De ahi R32: la cabecera del modulo lo
-explica y este fichero lo fija, atado a la explicacion:
+Hasta hoy abria diciendo que «al desplegar, los seis endpoints de
+`function_app.py` quedan **en internet** con `auth_level=ANONYMOUS`». Era
+verdad cuando se escribio y **dejo de serlo el 2026-08-25**, al descubrir el
+defecto 13 de F-010 ejecutando contra Azure.
+
+Lo que hay de verdad, y esta en `docs/DESPLIEGUE.md` §5 bis:
+
+1. **El backend enlazado.** Desde que la Function App es backend enlazado de
+   la Static Web App, la plataforma le activa Easy Auth con el proveedor
+   `azureStaticWebApps` y el backend **solo acepta lo que entra por el proxy
+   del front**. Preguntarle por su nombre de host -cualquier ruta,
+   `GET /api/health` incluido- devuelve un `400` que **no es nuestro**: lo
+   escribe la plataforma antes de que el codigo se entere. No hay nada que
+   configurar.
+2. **La regla `/*` de la Static Web App**, que exige `authenticated` en `/*` y
+   en `/api/*`, mas la asignacion obligatoria al grupo de Posventa. Lo fija
+   `services/postventa-front/tests/test_f010_config_swa.py`.
+
+Asi que el `auth_level` de `function_app.py` es **irrelevante desde
+internet**: nadie alcanza el codigo sin pasar por el proxy, y el proxy exige
+sesion.
+
+Que una cabecera exagere un riesgo gasta el mismo credito que una que lo
+esconda: la proxima vez, quien la lea no sabra cual de las dos tiene delante.
+
+## Entonces, ¿por que sigue en `ANONYMOUS`?
+
+Porque `auth_level=FUNCTION` **rompe el front el mismo dia que se aplica**: el
+proxy autentica al usuario, reenvia la cabecera `x-ms-client-principal` y **no
+anade** ninguna clave de funcion, asi que la Function empezaria a devolver
+`401` a traves del front. Y el fallo no lo caza ningun test del repositorio,
+porque ninguno atraviesa ese proxy. Es la clase de error que reaparece a los
+seis meses, cuando ya nadie recuerda por que estaba asi.
+
+De ahi R32: la cabecera del modulo lo explica y este fichero lo fija, atado a
+la explicacion:
 
     si alguien cambia una cosa sin la otra, falla.
 
@@ -23,6 +50,10 @@ ser anonimos. Borrar la nota dejando el `auth_level` falla porque desaparece
 la explicacion. Las dos a la vez tambien fallan. Lo unico que pasa es un
 cambio consciente que ademas reescriba el porque, que es exactamente lo que se
 persigue.
+
+**Nada de esto relaja el test.** F-019 lo amplia de seis endpoints a nueve y
+le anade dos comprobaciones sobre la cabecera -donde esta la proteccion de
+verdad, y que anade `GET /api/cola` al cuadro-. No quita ninguna.
 """
 
 from __future__ import annotations

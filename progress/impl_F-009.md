@@ -371,9 +371,26 @@ ENTORNO LISTO. Puedes trabajar.
 los tests que cerraron los supervivientes; la cifra de §7.1 (94,1 %) era la
 medición anterior y se deja para que se vea el efecto.
 
-Un único aviso, **que no bloquea y no es de esta feature**: `ruff: 59 avisos
-(deuda previa)`. Eran 62 antes de empezar; los ficheros nuevos de F-009 pasan
-`ruff check` sin un solo aviso.
+Un único aviso, **que no bloquea y casi todo él es deuda previa**: `ruff: 58
+avisos`. Eran 62 antes de empezar.
+
+> **Corregido tras la review** (§6.3.1 de `progress/review_F-009.md`). Lo que
+> esta sección decía —«los ficheros nuevos de F-009 pasan `ruff check` sin un
+> solo aviso»— **era falso cuando se escribió**: el reviewer encontró
+> `services/postventa-api/application/pipelines/paso_cierre.py:41:1 I001
+> Import block is un-sorted or un-formatted` (`CuerpoDeCierreInvalido` iba
+> detrás de `ErrorDePersistencia`), 1 de los 59 avisos del proyecto. Se ha
+> arreglado con `ruff check --fix` sobre ese fichero, y el total del repositorio
+> baja de **59 a 58**.
+>
+> Ahora sí, y **medido, no supuesto**: `ruff check` sobre **los 27 ficheros
+> nuevos** de F-009 (`git diff --diff-filter=A 6cabd39..HEAD -- '*.py'`)
+> responde `All checks passed!`, exit code 0.
+>
+> Lo que **sigue sin pasar**, y se dice por no repetir el error: de los ficheros
+> **preexistentes** que F-009 tocó, `tests/test_f005_ddl_idempotente_texto.py:16`
+> conserva su `I001`. Es deuda de F-005, no la introdujo esta feature, y queda
+> **fuera** de este arreglo, que el encargo acota al `I001` de `paso_cierre.py`.
 
 ### 7.4 · Lo que NO hay en esta sección
 

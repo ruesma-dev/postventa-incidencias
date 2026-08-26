@@ -55,8 +55,8 @@ from domain.models.cierre import (
 from domain.models.errores import (
     CierreFallido,
     CierreSinTraza,
-    ErrorDePersistencia,
     CuerpoDeCierreInvalido,
+    ErrorDePersistencia,
     EstadoNoCerrable,
     ParteNoApto,
     ParteNoArchivado,

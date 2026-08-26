@@ -23,6 +23,7 @@ dobles en memoria, sin red, y por tanto cubrirla y mutarla.
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 import pytest
@@ -158,3 +159,82 @@ def test_f009_arquitectura_el_paso_del_cierre_no_importa_ningun_adaptador():
         pytest.skip("el paso de cierre todavía no existe (T13)")
 
     assert _modulos_importados(paso).intersection(PROHIBIDOS_ARRIBA_DEL_PUERTO) == set()
+
+
+# --------------------------------------------------------------------------
+# R38, R46 · los ejemplos de entorno: las variables, y ningún valor
+# --------------------------------------------------------------------------
+
+#: Los dos ficheros de ejemplo, que son los que más tientan: quien configura un
+#: despliegue está a un copiar y pegar de dejar ahí la clave «para no tener que
+#: buscarla la próxima vez». Y estos **sí** se versionan.
+EJEMPLOS = (
+    SERVICIO / ".env.example",
+    SERVICIO / "local.settings.json.example",
+)
+
+#: Las ocho variables que F-009 añade.
+VARIABLES_DE_F009 = (
+    "CIERRE_HABILITADO",
+    "SIGRID_API_BASE_URL",
+    "SIGRID_API_KEY",
+    "SIGRID_BASE_DATOS",
+    "SIGRID_TIMEOUT_S",
+    "SIGRID_REINTENTOS",
+    "SIGRID_TIP_RECLAMACION",
+    "SIGRID_ZONA_HORARIA",
+)
+
+
+@pytest.mark.parametrize("ejemplo", EJEMPLOS, ids=lambda ruta: ruta.name)
+def test_f009_r38_los_ejemplos_de_entorno_declaran_las_ocho_variables(ejemplo):
+    """R38 · quien copie el ejemplo tiene delante todo lo que hay que rellenar.
+
+    Una variable que solo existe en `settings.py` se descubre cuando el
+    endpoint responde 503 en el entorno desplegado, que es la peor hora.
+    """
+    texto = ejemplo.read_text(encoding="utf-8")
+
+    for variable in VARIABLES_DE_F009:
+        assert variable in texto, f"falta {variable} en {ejemplo.name}"
+
+
+@pytest.mark.parametrize("ejemplo", EJEMPLOS, ids=lambda ruta: ruta.name)
+def test_f009_r37_el_interruptor_viene_apagado_en_los_dos_ejemplos(ejemplo):
+    """R37 · el `.env` recién copiado **no cierra nada**.
+
+    Es el comportamiento que se hereda sin hacer nada, y detrás hay el ERP de
+    producción: solo puede ser «no».
+    """
+    texto = ejemplo.read_text(encoding="utf-8")
+
+    assert re.search(r'CIERRE_HABILITADO"?\s*[=:]\s*"?false', texto), (
+        f"{ejemplo.name} no deja CIERRE_HABILITADO apagado"
+    )
+
+
+@pytest.mark.parametrize("ejemplo", EJEMPLOS, ids=lambda ruta: ruta.name)
+def test_f009_r46_la_clave_de_los_ejemplos_es_un_placeholder(ejemplo):
+    """R46 · `SIGRID_API_KEY` no puede traer nada que parezca una credencial.
+
+    Vacío o un placeholder en castellano. Cualquier otra cosa es un secreto en
+    el repositorio, y el historial de git no lo suelta.
+    """
+    texto = ejemplo.read_text(encoding="utf-8")
+    encontrado = re.search(
+        r'(?:"SIGRID_API_KEY"\s*:\s*"([^"]*)"|^SIGRID_API_KEY=(.*)$)',
+        texto,
+        re.MULTILINE,
+    )
+
+    assert encontrado is not None, f"{ejemplo.name} no declara SIGRID_API_KEY"
+    valor = (encontrado.group(1) or encontrado.group(2) or "").strip()
+    assert valor in ("", "pon-aqui-la-clave")
+
+
+@pytest.mark.parametrize("ejemplo", EJEMPLOS, ids=lambda ruta: ruta.name)
+def test_f009_r46_los_ejemplos_no_traen_la_url_de_la_pasarela(ejemplo):
+    """R46 · ni la URL real: identifica el recurso y no pinta en un repositorio."""
+    texto = ejemplo.read_text(encoding="utf-8")
+
+    assert not re.search(r"[\w-]+\.azurewebsites\.net", texto, re.IGNORECASE)

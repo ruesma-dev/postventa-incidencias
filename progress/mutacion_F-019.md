@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-019.md -->
 # F-019 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-019` el 2026-08-26 12:33.
+Generado por `python -m harness.mutacion --feature F-019` el 2026-08-26 12:39.
 
 ## Alcance
 
@@ -26,53 +26,26 @@ Origen del diff: **rama** (`68a2ff793cef8e613fd971a7e107b53ffc9ee089` .. `featur
 |---|---|
 | Mutantes generados | 35 |
 | Mutantes evaluados | 35 |
-| Muertos | 31 |
-| Supervivientes | 4 |
-| Timeouts | 0 |
-| Tiempo total | 282.3 s |
+| Muertos | 25 |
+| Supervivientes | 0 |
+| Timeouts | 10 |
+| Tiempo total | 305.7 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
 
-Cada superviviente es una línea que ningún test comprueba de verdad, o una mutación equivalente. Distinguirlo es trabajo del implementer: ningún análisis puede quedarse sin completar al cerrar la feature.
+Ninguno: cada mutación aplicada la cazó al menos un test.
 
-### 1. `services/postventa-api/interface_adapters/api/cola.py:109` [comparacion]
+## Timeouts
 
-- Original: `if pedidas < 1:`
-- Mutado:   `if pedidas <= 1:`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
-
-### 2. `services/postventa-api/interface_adapters/api/cola.py:109` [entero]
-
-- Original: `if pedidas < 1:`
-- Mutado:   `if pedidas < 2:`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
-
-### 3. `services/postventa-api/interface_adapters/api/remesa.py:129` [comparacion]
-
-- Original: `if isinstance(crudo, bool) or not isinstance(crudo, int) or crudo < 0:`
-- Mutado:   `if isinstance(crudo, bool) or not isinstance(crudo, int) or crudo <= 0:`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
-
-### 4. `services/postventa-api/interface_adapters/api/remesa.py:129` [entero]
-
-- Original: `if isinstance(crudo, bool) or not isinstance(crudo, int) or crudo < 0:`
-- Mutado:   `if isinstance(crudo, bool) or not isinstance(crudo, int) or crudo < 1:`
-
-#### Análisis (PENDIENTE del implementer)
-
-> Por qué ningún test lo caza: PENDIENTE.
-> Decisión: ¿test nuevo o mutante equivalente justificado?
+- `services/postventa-api/function_app.py:352` services/postventa-api/function_app.py:352 [entero] return _json({"error": error.motivo}, 400) -> return _json({"error": error.motivo}, 401)
+- `services/postventa-api/function_app.py:375` services/postventa-api/function_app.py:375 [entero] 503, -> 504,
+- `services/postventa-api/function_app.py:407` services/postventa-api/function_app.py:407 [entero] return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400) -> return _json({"error": "el cuerpo de la petición no es JSON válido"}, 401)
+- `services/postventa-api/function_app.py:410` services/postventa-api/function_app.py:410 [entero] return _json({"error": error.motivo}, 400) -> return _json({"error": error.motivo}, 401)
+- `services/postventa-api/function_app.py:422` services/postventa-api/function_app.py:422 [entero] 409, -> 410,
+- `services/postventa-api/function_app.py:446` services/postventa-api/function_app.py:446 [entero] 503, -> 504,
+- `services/postventa-api/function_app.py:455` services/postventa-api/function_app.py:455 [entero] return _json(cuerpo, 200) -> return _json(cuerpo, 201)
+- `services/postventa-api/function_app.py:498` services/postventa-api/function_app.py:498 [entero] 503, -> 504,
+- `services/postventa-api/function_app.py:501` services/postventa-api/function_app.py:501 [entero] return _json(cuerpo, 200) -> return _json(cuerpo, 201)
+- `services/postventa-api/function_app.py:564` services/postventa-api/function_app.py:564 [entero] 409, -> 410,
 

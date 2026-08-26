@@ -90,6 +90,13 @@ function parteInventado(extra) {
       paginas_origen: [1],
       modo_deteccion: "pie_de_pagina",
       avisos: [],
+      // F-019 R27 · desde que `POST /api/archivar` exige que el parte conste
+      // guardado, «archivable» incluye «ya guardado». Se pone en el fixture
+      // común porque es el estado normal de un parte procesado, y los tests de
+      // F-007 que aquí importan son los del cuerpo de archivo, no los del
+      // guardado. Lo que ese requisito fija tiene su propio fichero:
+      // `tests_js/persistencia.test.js`.
+      guardado: true,
       fichero: new File([new Uint8Array([0x25, 0x50])], "parte-inventado.pdf"),
     },
     extra || {},

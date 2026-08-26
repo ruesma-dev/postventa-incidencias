@@ -284,21 +284,33 @@ documento.
 | `POST /api/extraer` | Llama al proveedor de IA. Gasta cuota |
 | `POST /api/firma` | Llama al proveedor de IA. Gasta cuota |
 | `POST /api/validar` | Solo reglas. Sin IA y sin efecto externo |
-| `POST /api/archivar` | **Escribe** en la biblioteca de dev de SharePoint y deja traza en la base |
+| `POST /api/remesa` | **Escribe** en `postventa.remesas` (esquema propio). Devuelve el `remesa_id` que hay que reenviar después |
+| `POST /api/parte` | **Escribe** en `postventa.partes` y `postventa.validaciones`. Recalcula el veredicto con las reglas del dominio: nunca acepta el que venga en el cuerpo |
+| `GET /api/cola` | **Lee** la cola de validación humana. Único endpoint que devuelve **dato personal acumulado** sin que el llamante aporte el PDF: tope duro de 500 entradas por llamada |
+| `POST /api/archivar` | **Escribe** en la biblioteca de dev de SharePoint y deja traza en la base. Exige que el parte **ya conste guardado**: si no, responde 409 sin subir nada |
 
-Los seis quedan en nivel **anónimo**, y **es deliberado**: con un backend
+Los tres endpoints de F-019 **no dependen de `ARCHIVO_HABILITADO`**: escriben
+en el esquema propio del proyecto, no en un sistema ajeno. Con la ventana de
+escritura cerrada —que es como se despliega— se sube la remesa, se trocea, se
+extrae, se valida, **se guarda** y se lee la cola; solo `POST /api/archivar`
+responde 503.
+
+Los nueve quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie
-rompe el front. El razonamiento y las capas de protección que sí sostienen el
-acceso están en la cabecera de `services/postventa-api/function_app.py` y en
-`docs/DESPLIEGUE.md` §4.
+rompe el front. Y ese nivel es **irrelevante desde internet**: la plataforma
+activa Easy Auth con el proveedor `azureStaticWebApps` en el backend enlazado,
+así que solo se acepta lo que entra por el proxy, y el proxy exige sesión y
+pertenencia al grupo. El razonamiento completo y las capas de protección que
+sí sostienen el acceso están en la cabecera de
+`services/postventa-api/function_app.py` y en `docs/DESPLIEGUE.md` §4 y §5 bis.
 
 ### Qué NO está desplegado, y hay que decirlo antes de enseñarlo
 
 | Qué falta | Feature | Consecuencia visible |
 |---|---|---|
 | El cierre de la incidencia en el ERP | **F-008** y **F-009** | Sigrid no se toca: el parte se archiva, la incidencia sigue abierta |
-| Guardar la remesa y leer la cola de revisión | **F-019** | Si el usuario recarga la página, **pierde el trabajo en curso** |
+| Rehidratar la sesión al recargar el navegador | **feature nueva**, decidida el 2026-08-26 (D4 de F-019) | Lo guardado **queda guardado** y la cola sobrevive, pero si el usuario recarga la página **pierde el trabajo en curso**: volver a pintarlo exige leer una remesa entera con sus partes, y eso es un método de lectura nuevo en el puerto de persistencia |
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
 

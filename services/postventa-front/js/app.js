@@ -39,6 +39,13 @@ function appPostventa() {
     partes: [],
     terminados: 0,
 
+    // --- persistencia (F-019 R25) ---
+    // El `remesa_id` que devolvió `POST /api/remesa`. Se conserva mientras
+    // dure la remesa en pantalla y se reenvía en cada guardado: la tabla de
+    // remesas no tiene clave natural (decisión D2), así que perderlo y
+    // resubir crearía una fila de remesa de más.
+    remesaId: "",
+
     // --- parte abierto (R14-R18) ---
     parteAbierto: null,
     urlPdf: "",
@@ -103,6 +110,7 @@ function appPostventa() {
       this.fase = "troceando";
       this.errorGlobal = "";
       this.avisosRemesa = [];
+      this.remesaId = "";
 
       try {
         const datos = await api.trocear(
@@ -111,7 +119,18 @@ function appPostventa() {
         this.avisosRemesa = datos.avisos || [];
         this.partes = (datos.partes || []).map(this._parteInicial);
         this.terminados = 0;
-        await this._procesarRemesa();
+        // F-019 R25: registrar la remesa ANTES de procesar ningún parte. El
+        // orden lo decide `js/pipeline.js`, que es quien tiene tests: aquí
+        // vivía antes, y borrar la línea dejaba la suite entera en verde.
+        const remesa = await window.Pipeline.procesarRemesa(datos, api, {
+          nombreOrigen: this._nombreDeLaRemesa(),
+          procesar: (remesaId) => {
+            this.remesaId = remesaId;
+            return this._procesarRemesa();
+          },
+        });
+        this.remesaId = remesa.remesaId;
+        this.avisosRemesa = remesa.avisos;
       } catch (error) {
         // R6: se vuelve al estado inicial sin dejar filas a medias.
         this.partes = [];
@@ -119,6 +138,15 @@ function appPostventa() {
         this.errorGlobal = (error && error.mensaje) || String(error);
         this.fase = "inactivo";
       }
+    },
+
+    _nombreDeLaRemesa() {
+      // De qué fichero salió, para el histórico de remesas. Con varios, la
+      // cuenta: el nombre es una traza, no una clave.
+      if (this.seleccion.length === 1) {
+        return this.seleccion[0].name;
+      }
+      return `${this.seleccion.length} ficheros`;
     },
 
     _parteInicial(crudo) {
@@ -138,6 +166,9 @@ function appPostventa() {
         validacion: null,
         ediciones: {},
         archivado: false,
+        // F-019 R27: hasta que conste guardado, el parte no es archivable.
+        guardado: false,
+        errorGuardado: "",
       };
     },
 
@@ -165,15 +196,29 @@ function appPostventa() {
       parte.estado = "leyendo";
       parte.error = "";
       try {
-        const resultado = await window.Pipeline.procesarParte(parte, api);
+        const resultado = await window.Pipeline.procesarParte(
+          parte,
+          api,
+          this.remesaId,
+        );
         parte.extraccion = resultado.extraccion;
         parte.firma = resultado.firma;
+        this._anotarGuardado(parte, resultado.guardado);
         this._anotarVeredicto(parte, resultado.validacion);
       } catch (error) {
         parte.estado = "error";
         parte.semaforo = "";
         parte.error = (error && error.mensaje) || String(error);
       }
+    },
+
+    _anotarGuardado(parte, guardado) {
+      // R27: un parte que no se pudo guardar NO es archivable, y el motivo se
+      // enseña. Archivarlo fallaría igualmente con un 409, y hacerlo sin
+      // decirlo devuelve al usuario al defecto 15: fichero arriba y sin
+      // constancia, o un error que nadie sabe leer.
+      parte.guardado = Boolean(guardado && guardado.ok);
+      parte.errorGuardado = (guardado && guardado.motivo) || "";
     },
 
     _anotarVeredicto(parte, validacion) {
@@ -265,8 +310,18 @@ function appPostventa() {
       this.mensajeRevalidacion = "Revalidando…";
       try {
         // R17: SOLO /api/validar. No gasta IA.
-        this._anotarVeredicto(parte, await window.Pipeline.revalidar(parte, api));
-        this.mensajeRevalidacion = "Veredicto actualizado.";
+        // F-019 R28: y se vuelve a guardar, para que lo guardado sea lo
+        // revisado y no lo que dijo la IA la primera vez.
+        const resultado = await window.Pipeline.revalidarYGuardar(
+          parte,
+          api,
+          this.remesaId,
+        );
+        this._anotarGuardado(parte, resultado.guardado);
+        this._anotarVeredicto(parte, resultado.validacion);
+        this.mensajeRevalidacion = parte.guardado
+          ? "Veredicto actualizado y guardado."
+          : `Veredicto actualizado, pero NO se ha guardado: ${parte.errorGuardado}`;
       } catch (error) {
         this.mensajeRevalidacion = (error && error.mensaje) || String(error);
       }
@@ -276,8 +331,26 @@ function appPostventa() {
     // Archivo (R19-R22, R25)
     // =====================================================================
     archivables() {
+      // F-019 R27: «archivable» incluye «ya guardado». Un parte que no consta
+      // en la base recibiría un 409 y no subiría nada; ofrecerlo sería
+      // prometer algo que el backend va a rechazar.
       return this.partes.filter(
-        (parte) => !parte.archivado && window.Pipeline.esArchivable(parte.validacion),
+        (parte) =>
+          !parte.archivado &&
+          parte.guardado &&
+          window.Pipeline.esArchivable(parte.validacion),
+      );
+    },
+
+    noArchivables() {
+      // Los que se leyeron bien y son aptos, pero no se pudieron guardar. Se
+      // enseñan aparte y con su motivo: quedarse callado es lo que devuelve al
+      // usuario al defecto 15.
+      return this.partes.filter(
+        (parte) =>
+          !parte.archivado &&
+          !parte.guardado &&
+          window.Pipeline.esArchivable(parte.validacion),
       );
     },
 
@@ -362,6 +435,7 @@ function appPostventa() {
       this.avisosRemesa = [];
       this.partes = [];
       this.terminados = 0;
+      this.remesaId = "";
       this.parteAbierto = null;
       this.confirmacionArchivo = window.Confirmacion.cancelar();
       this.avisoArchivo = "";

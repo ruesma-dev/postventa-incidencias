@@ -46,6 +46,11 @@
     "destino",
   ];
 
+  /** Lo que se le dice al usuario cuando la remesa no se pudo registrar. */
+  const AVISO_SIN_REMESA =
+    "no se ha podido registrar la remesa, así que los partes no se podrán " +
+    "archivar: ";
+
   const VEREDICTO_APTO = "apto";
   const DESTINO_ARCHIVO = "archivo_y_cierre";
   const DESTINO_COLA = "cola_validacion_humana";
@@ -172,6 +177,17 @@
     if (parte.archivado) {
       throw new Error("este parte ya está archivado");
     }
+    // F-019 R27 · el backend responde 409 a un parte que no consta guardado y
+    // no sube nada. Pararlo aquí evita la petición inútil y, sobre todo, evita
+    // que la pantalla ofrezca archivar algo que va a fallar: sin esto se
+    // vuelve al defecto 15 con el usuario delante.
+    if (!parte.guardado) {
+      throw new Error(
+        "este parte no se ha guardado todavía, así que no se puede archivar: " +
+          (parte.errorGuardado ||
+            "hay que guardarlo antes (POST /api/parte)"),
+      );
+    }
 
     const Fabrica =
       FabricaFormData || (typeof FormData !== "undefined" ? FormData : null);
@@ -223,6 +239,61 @@
   }
 
   /**
+   * Procesa una remesa entera: **registra primero, procesa después** (R25).
+   *
+   * Esta función existe por un defecto concreto. En la primera versión de
+   * F-019 el orden vivía en `app.js`, que no ejecuta ningún test, y la review
+   * lo demostró borrando la línea que registraba la remesa: los 122 tests
+   * siguieron en verde. Es el mismo defecto que F-019 viene a matar —«el
+   * endpoint existe y nadie lo llama»— un nivel más arriba, así que el orden
+   * se muda aquí, que es donde vive «qué se pide y en qué orden» y donde hay
+   * tests que lo miran.
+   *
+   * El registro va antes porque `postventa.partes.remesa_id` tiene clave
+   * ajena contra `postventa.remesas.id`: sin remesa registrada, cada guardado
+   * responde 409 y ningún parte se puede archivar.
+   *
+   * **Un registro fallido no tumba la carga.** Leer y revisar los partes
+   * sigue siendo útil aunque no se puedan archivar, y tumbarla castigaría al
+   * usuario por una avería de la base. Lo que sí ocurre es que se devuelve un
+   * `remesaId` vacío, y con él cada parte queda no archivable **con su
+   * motivo** (R27), en vez de descubrirse al pulsar el botón.
+   *
+   * @param {Object} datos Lo que devolvió `POST /api/split`.
+   * @param {Object} api El cliente de `js/api.js`.
+   * @param {Object} [opciones] `nombreOrigen` y `procesar(remesaId)`, que es
+   *        lo que la pantalla haga con cada parte —en `app.js`, pasarlos por
+   *        la cola de concurrencia—.
+   * @returns {Promise<{remesaId: string, avisos: string[]}>}
+   */
+  async function procesarRemesa(datos, api, opciones) {
+    const ajustes = opciones || {};
+    const partes = (datos && datos.partes) || [];
+    // Copia: la respuesta de `/api/split` no se muta, que es lo que permite
+    // volver sobre ella.
+    const avisos = ((datos && datos.avisos) || []).slice();
+
+    let remesaId = "";
+    try {
+      const registro = await api.registrarRemesa({
+        nombre_origen: ajustes.nombreOrigen || "",
+        num_partes: partes.length,
+        avisos: avisos,
+      });
+      remesaId = (registro && registro.remesa_id) || "";
+    } catch (error) {
+      avisos.push(
+        AVISO_SIN_REMESA + ((error && error.mensaje) || String(error)),
+      );
+    }
+
+    if (ajustes.procesar) {
+      await ajustes.procesar(remesaId);
+    }
+    return { remesaId: remesaId, avisos: avisos };
+  }
+
+  /**
    * Procesa UN parte: extraer y firma **en paralelo**, y validar después (R8).
    *
    * Van en paralelo a propósito: componerlas sumaría dos timeouts de 120 s
@@ -231,7 +302,7 @@
    * @returns {Promise<{extraccion, firma, validacion}>} Las tres respuestas
    *          íntegras, que es lo que hace posible revalidar sin gastar IA.
    */
-  async function procesarParte(parte, api) {
+  async function procesarParte(parte, api, remesaId) {
     const resultados = await Promise.all([
       api.extraer(parte.fichero, parte.hash),
       api.firma(parte.fichero, parte.hash),
@@ -244,7 +315,102 @@
       parte.hash,
     );
 
-    return { extraccion: extraccion, firma: firma, validacion: validacion };
+    // F-019 R26 · guardar va DESPUÉS de validar y ANTES de ofrecer archivar.
+    // No se lanza si falla: el veredicto ya está pagado —dos llamadas de IA— y
+    // tirarlo obligaría a repetirlas. Lo que se devuelve es por qué no se pudo
+    // guardar, y con eso el parte queda marcado como no archivable (R27).
+    const guardado = await guardarParte(
+      Object.assign({}, parte, { extraccion: extraccion, firma: firma }),
+      api,
+      remesaId,
+    );
+
+    return {
+      extraccion: extraccion,
+      firma: firma,
+      validacion: validacion,
+      guardado: guardado,
+    };
+  }
+
+  /**
+   * El cuerpo de `POST /api/parte` (F-019 R26).
+   *
+   * Es **el de `/api/validar` más dos claves**, y es deliberado: así no hay
+   * dos formas de describir el mismo parte, que es como divergen los
+   * contratos. El backend usa los mismos parsers para los dos.
+   *
+   * Ojo con el nombre: `js/api.js` tiene otro `cuerpoDeParte`, que compone el
+   * `multipart` de `/api/extraer` y `/api/firma`. Este compone JSON y **no
+   * lleva los bytes del PDF** (R12): el documento vive en SharePoint.
+   *
+   * La extracción va con las correcciones de la persona aplicadas, para que lo
+   * guardado sea **lo revisado** y no lo que dijo la IA la primera vez (R28).
+   */
+  function cuerpoDeParte(parte, remesaId) {
+    return {
+      remesa_id: remesaId,
+      parte: {
+        hash: parte.hash,
+        origen: parte.origen,
+        paginas_origen: parte.paginas_origen,
+        modo_deteccion: parte.modo_deteccion,
+      },
+      extraccion: aplicarEdiciones(parte.extraccion, parte.ediciones),
+      firma: parte.firma,
+    };
+  }
+
+  /**
+   * Guarda el parte y su veredicto. **Nunca lanza** (F-019 R27).
+   *
+   * Devuelve `{ok, motivo}`. Un guardado fallido no es un error del proceso:
+   * es un parte que **no se puede archivar**, y quien lo mire tiene que ver
+   * por qué. Dejarlo escapar como excepción marcaría el parte como «error de
+   * lectura», que es otra cosa y se arregla de otra manera.
+   *
+   * Sin `remesaId` ni se intenta: el backend respondería 409 y la petición
+   * sería ruido. El motivo lo dice, porque quien lo lea tiene que saber que
+   * hay que volver a subir la remesa.
+   */
+  async function guardarParte(parte, api, remesaId) {
+    if (!remesaId) {
+      return {
+        ok: false,
+        motivo:
+          "no hay ninguna remesa registrada para este parte: vuelve a subir " +
+          "la remesa para que quede constancia antes de guardar sus partes",
+      };
+    }
+    try {
+      await api.guardarParte(cuerpoDeParte(parte, remesaId), parte.hash);
+      return { ok: true, motivo: "" };
+    } catch (error) {
+      return {
+        ok: false,
+        motivo:
+          (error && error.mensaje) ||
+          (error && error.message) ||
+          String(error),
+      };
+    }
+  }
+
+  /**
+   * Revalida el parte corregido y **vuelve a guardarlo** (F-019 R28).
+   *
+   * Las dos cosas van juntas a propósito: si se revalidara sin guardar, lo
+   * que quedaría en la base sería el veredicto anterior —el que emitió la IA
+   * sobre el dato sin corregir— y la persona que revisó el parte no tendría
+   * forma de saberlo.
+   *
+   * `revalidar` se mantiene aparte y sin tocar: es el contrato de F-007 R17
+   * —una sola petición, sin IA— y hay quien solo quiere el veredicto.
+   */
+  async function revalidarYGuardar(parte, api, remesaId) {
+    const validacion = await revalidar(parte, api);
+    const guardado = await guardarParte(parte, api, remesaId);
+    return { validacion: validacion, guardado: guardado };
   }
 
   /**
@@ -273,6 +439,8 @@
     CAMPOS_DEL_PARTE: CAMPOS_DEL_PARTE,
     CAMPOS_DE_ARCHIVO: CAMPOS_DE_ARCHIVO,
     UMBRAL_CONFIANZA: UMBRAL_CONFIANZA,
+    AVISO_SIN_REMESA: AVISO_SIN_REMESA,
+    procesarRemesa: procesarRemesa,
     normalizarValor: normalizarValor,
     aplicarEdiciones: aplicarEdiciones,
     cuerpoDeValidacion: cuerpoDeValidacion,
@@ -281,9 +449,12 @@
     esArchivable: esArchivable,
     valorDeCampo: valorDeCampo,
     cuerpoDeArchivo: cuerpoDeArchivo,
+    cuerpoDeParte: cuerpoDeParte,
     ficheroDeParte: ficheroDeParte,
     procesarParte: procesarParte,
+    guardarParte: guardarParte,
     revalidar: revalidar,
+    revalidarYGuardar: revalidarYGuardar,
   };
 
   if (typeof window !== "undefined") {

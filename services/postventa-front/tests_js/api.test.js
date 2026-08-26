@@ -1,6 +1,11 @@
 // services/postventa-front/tests_js/api.test.js
 // R12, R23-R27 · El cliente HTTP: timeout, reintentos y clasificación del error.
 //
+// F-019 lo amplió a NUEVE endpoints y añadió aquí lo que un doble de `api`
+// no puede decir: a qué ruta se llama de verdad, con qué método y con qué
+// cabeceras. La review lo pidió tras cambiar `/remesa` por una ruta
+// inexistente y ver la suite entera en verde.
+//
 // NI UN TEST ABRE RED. El `fetch` es siempre un doble inyectado y el
 // temporizador también: así R23 se prueba en milisegundos, sin relojes falsos
 // y sin que el resultado dependa de la máquina.
@@ -96,14 +101,227 @@ test("f007 R27: la pantalla consulta GET /api/health al cargar", async () => {
   assert.equal(datos.estado, "ok");
 });
 
-test("f007 R27: los seis endpoints cuelgan de baseApi", async () => {
-  const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
-  await api.salud();
-  assert.ok(llamadas[0].url.startsWith("/api/"));
+// --- R27 / F-019 · los NUEVE endpoints, uno a uno --------------------------
+//
+// Eran seis hasta F-019, que anadio `registrarRemesa`, `guardarParte` y
+// `cola`. El titulo de este bloque decia «los seis» **y solo comprobaba dos**,
+// asi que prometia de mas incluso antes de quedarse corto.
+//
+// Que la lista se recorra entera no es cosmetico: la review de F-019 cambio la
+// ruta `/remesa` por una inexistente y los 122 tests de entonces siguieron en
+// verde, porque `persistencia.test.js` prueba `pipeline.js` contra un `api`
+// **doble** y nadie miraba lo que `api.js` hace de verdad. En el entorno real
+// eso es un 404 por remesa, ningun parte guardable y ningun parte archivable.
 
-  const otra = apiDePrueba([respuesta(200, {})], { baseApi: "/api" });
-  await otra.api.validar({ extraccion: {}, firma: {} });
-  assert.equal(otra.llamadas[0].url, "/api/validar");
+/** Un PDF de mentira: cuatro bytes que no son un parte de nadie. */
+function ficheroInventado() {
+  return new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "parte-inventado.pdf");
+}
+
+const HASH_INVENTADO = "a1b2c3d4e5f6";
+
+/** El cuerpo de `POST /api/remesa`, con todo inventado. */
+function cuerpoDeRemesa() {
+  return {
+    nombre_origen: "Mirasierra-inventada.pdf",
+    num_partes: 2,
+    avisos: [],
+  };
+}
+
+/** El cuerpo de `POST /api/parte`, con lo justo para que el cliente lo mande. */
+function cuerpoDeParteInventado() {
+  return {
+    remesa_id: "remesa-inventada-de-test",
+    parte: { hash: HASH_INVENTADO, origen: "Mirasierra-inventada.pdf" },
+    extraccion: { hash_parte: HASH_INVENTADO },
+    firma: { hash_parte: HASH_INVENTADO },
+  };
+}
+
+/** Los nueve, con su ruta y su metodo. La lista ES la asercion. */
+const LOS_NUEVE = [
+  { nombre: "salud", ruta: "/api/health", metodo: "GET", llamar: (api) => api.salud() },
+  { nombre: "trocear", ruta: "/api/split", metodo: "POST", llamar: (api) => api.trocear(new FormData()) },
+  { nombre: "extraer", ruta: "/api/extraer", metodo: "POST", llamar: (api) => api.extraer(ficheroInventado(), HASH_INVENTADO) },
+  { nombre: "firma", ruta: "/api/firma", metodo: "POST", llamar: (api) => api.firma(ficheroInventado(), HASH_INVENTADO) },
+  { nombre: "validar", ruta: "/api/validar", metodo: "POST", llamar: (api) => api.validar({ extraccion: {}, firma: {} }, HASH_INVENTADO) },
+  { nombre: "registrarRemesa", ruta: "/api/remesa", metodo: "POST", llamar: (api) => api.registrarRemesa(cuerpoDeRemesa()) },
+  { nombre: "guardarParte", ruta: "/api/parte", metodo: "POST", llamar: (api) => api.guardarParte(cuerpoDeParteInventado(), HASH_INVENTADO) },
+  { nombre: "cola", ruta: "/api/cola", metodo: "GET", llamar: (api) => api.cola() },
+  { nombre: "archivar", ruta: "/api/archivar", metodo: "POST", llamar: (api) => api.archivar(new FormData(), HASH_INVENTADO) },
+];
+
+test("f007 R27 / f019: los NUEVE endpoints llaman a su ruta, con su metodo", async () => {
+  for (const endpoint of LOS_NUEVE) {
+    const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
+
+    await endpoint.llamar(api);
+
+    assert.equal(llamadas.length, 1, `${endpoint.nombre}: una peticion, ni mas`);
+    assert.equal(llamadas[0].url, endpoint.ruta, `${endpoint.nombre}: ruta`);
+    assert.equal(
+      llamadas[0].opciones.method,
+      endpoint.metodo,
+      `${endpoint.nombre}: metodo`,
+    );
+  }
+});
+
+test("f007 R27: son nueve, y la lista se entera si aparece un decimo", () => {
+  // El cliente expone ademas `peticion` y `cuerpoDeParte`, que son la
+  // maquinaria, no endpoints. Si manana hay un decimo endpoint y nadie toca
+  // esta lista, la cuenta deja de cuadrar y este test lo dice.
+  const { api } = apiDePrueba([respuesta(200, {})]);
+  const auxiliares = ["peticion", "cuerpoDeParte"];
+  const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
+
+  assert.equal(endpoints.length, 9);
+  assert.deepEqual(endpoints.sort(), LOS_NUEVE.map((e) => e.nombre).sort());
+});
+
+test("f007 R27: todos cuelgan de baseApi, y baseApi es configurable", async () => {
+  for (const endpoint of LOS_NUEVE) {
+    const { api, llamadas } = apiDePrueba([respuesta(200, {})], {
+      baseApi: "/otro-prefijo",
+    });
+
+    await endpoint.llamar(api);
+
+    assert.ok(
+      llamadas[0].url.startsWith("/otro-prefijo/"),
+      `${endpoint.nombre} no cuelga de baseApi: ${llamadas[0].url}`,
+    );
+  }
+});
+
+// --- F-019 · los tres endpoints de persistencia, en detalle ----------------
+
+test("f019 R25: registrarRemesa manda POST /api/remesa con cuerpo JSON", async () => {
+  const { api, llamadas } = apiDePrueba([
+    respuesta(200, { remesa_id: "remesa-inventada", resultado: "creado" }),
+  ]);
+
+  const datos = await api.registrarRemesa(cuerpoDeRemesa());
+
+  assert.equal(llamadas[0].url, "/api/remesa");
+  assert.equal(llamadas[0].opciones.method, "POST");
+  assert.equal(
+    llamadas[0].opciones.headers["Content-Type"],
+    "application/json",
+    "sin esta cabecera el backend no parsea el cuerpo y responde 400",
+  );
+  assert.deepEqual(JSON.parse(llamadas[0].opciones.body), cuerpoDeRemesa());
+  assert.equal(datos.remesa_id, "remesa-inventada");
+});
+
+test("f019 R26: guardarParte manda POST /api/parte con cuerpo JSON", async () => {
+  const { api, llamadas } = apiDePrueba([
+    respuesta(200, {
+      hash_parte: HASH_INVENTADO,
+      resultado_parte: "creado",
+      resultado_validacion: "creado",
+      avisos: [],
+    }),
+  ]);
+
+  const datos = await api.guardarParte(cuerpoDeParteInventado(), HASH_INVENTADO);
+
+  assert.equal(llamadas[0].url, "/api/parte");
+  assert.equal(llamadas[0].opciones.method, "POST");
+  assert.equal(llamadas[0].opciones.headers["Content-Type"], "application/json");
+  assert.deepEqual(
+    JSON.parse(llamadas[0].opciones.body),
+    cuerpoDeParteInventado(),
+    "el cuerpo viaja verbatim: quien lo compone es js/pipeline.js",
+  );
+  assert.equal(datos.resultado_parte, "creado");
+});
+
+test("f019 R26: guardarParte deja el hash en la traza, para seguir el parte", async () => {
+  const { api, trazas } = apiDePrueba([respuesta(200, {})]);
+
+  await api.guardarParte(cuerpoDeParteInventado(), HASH_INVENTADO);
+
+  assert.equal(trazas[trazas.length - 1].hash, HASH_INVENTADO);
+  assert.equal(trazas[trazas.length - 1].paso, "parte");
+});
+
+test("f019 R26: el cuerpo de guardarParte NO lleva bytes de PDF", async () => {
+  // El cliente serializa lo que le den, asi que aqui se fija que lo que sale
+  // por el cable no lleva el documento: vive en SharePoint y este servidor
+  // tiene el disco compartido.
+  const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
+
+  await api.guardarParte(cuerpoDeParteInventado(), HASH_INVENTADO);
+
+  assert.ok(!llamadas[0].opciones.body.includes("JVBER"));
+  assert.ok(!llamadas[0].opciones.body.includes("contenido_b64"));
+});
+
+test("f019: cola sin limite pide GET /api/cola, sin cadena de consulta", async () => {
+  // Sin `limite`, el backend aplica 50. Mandar `?limite=undefined` seria un
+  // 400, y mandar `?limite=` tambien.
+  const { api, llamadas } = apiDePrueba([respuesta(200, { total: 0, entradas: [] })]);
+
+  await api.cola();
+
+  assert.equal(llamadas[0].url, "/api/cola");
+  assert.equal(llamadas[0].opciones.method, "GET");
+  assert.equal(llamadas[0].opciones.body, undefined, "un GET no lleva cuerpo");
+});
+
+test("f019: cola con limite lo pone en la cadena de consulta", async () => {
+  const { api, llamadas } = apiDePrueba([respuesta(200, { total: 0, entradas: [] })]);
+
+  await api.cola(25);
+
+  assert.equal(llamadas[0].url, "/api/cola?limite=25");
+});
+
+test("f019: cola escapa el limite, asi que no se cuela un parametro de mas", async () => {
+  // Es lo unico que ejercita el `encodeURIComponent`, y no es teorico: sin el,
+  // un valor con `&` dentro anadiria una segunda clave a la consulta y el
+  // backend leeria la ultima. Con el, el valor entero llega como UN parametro
+  // -malformado, que el backend rechaza con un 400- en vez de como dos.
+  const { api, llamadas } = apiDePrueba([respuesta(200, { total: 0, entradas: [] })]);
+
+  await api.cola("25&limite=100000");
+
+  assert.equal(llamadas[0].url, "/api/cola?limite=25%26limite%3D100000");
+  assert.ok(
+    !llamadas[0].url.includes("&limite="),
+    "sin escapar, la consulta llevaria DOS 'limite' y mandaria el segundo",
+  );
+});
+
+test("f019: los tres endpoints nuevos trazan su paso, y nada mas", async () => {
+  // R28 de F-007 sigue mandando: por la traza solo pasan hash, paso, estado y
+  // http. Los cuerpos de remesa y parte llevan datos del papel.
+  const nuevos = [
+    { llamar: (api) => api.registrarRemesa(cuerpoDeRemesa()), paso: "remesa" },
+    {
+      llamar: (api) => api.guardarParte(cuerpoDeParteInventado(), HASH_INVENTADO),
+      paso: "parte",
+    },
+    { llamar: (api) => api.cola(25), paso: "cola" },
+  ];
+
+  for (const nuevo of nuevos) {
+    const { api, trazas } = apiDePrueba([respuesta(200, {})]);
+
+    await nuevo.llamar(api);
+    const evento = trazas[trazas.length - 1];
+
+    assert.equal(evento.paso, nuevo.paso);
+    assert.deepEqual(
+      Object.keys(evento).filter(
+        (k) => ["hash", "paso", "estado", "http"].indexOf(k) === -1,
+      ),
+      [],
+      `la traza de ${nuevo.paso} lleva claves de mas`,
+    );
+  }
 });
 
 // --- R23 · transitorios: 502 y fallo de red --------------------------------

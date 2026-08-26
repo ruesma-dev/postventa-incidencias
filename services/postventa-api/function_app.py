@@ -24,6 +24,23 @@ Endpoints:
         devuelve el veredicto. **Sin IA**: por eso se puede revalidar un parte
         corregido sin gastar otra llamada.
 
+    POST /api/remesa
+        Deja constancia de una subida y devuelve su `remesa_id` (F-019). Es el
+        **primer eslabón del orden**: sin remesa registrada no se puede
+        guardar un parte.
+
+    POST /api/parte
+        Guarda **un** parte y su veredicto, **recalculado aquí** con las
+        reglas de F-004 (F-019). Nunca acepta un veredicto ya hecho en el
+        cuerpo: lo que se decide con él es si una incidencia del ERP se
+        archiva y se cierra. Sin esto, `POST /api/archivar` no puede
+        completar.
+
+    GET /api/cola
+        Los partes que esperan decisión humana, para que la cola **sobreviva
+        entre sesiones** (F-019). Ver más abajo qué añade al cuadro de
+        seguridad.
+
     POST /api/archivar
         Nombra **un** parte apto y lo archiva en SharePoint, sin duplicar.
         Desde un puesto de trabajo responde **503** y no sube nada: la única
@@ -32,18 +49,23 @@ Endpoints:
         (`ARCHIVO_HABILITADO` apagado), que se abre solo cuando toca archivar
         de verdad. Ver la nota del final de este módulo.
 
+        Desde F-019 **exige que el parte conste guardado**: escribe la traza
+        del archivo en `pendiente` antes de tocar SharePoint, y si el parte no
+        está en `postventa.partes` la clave ajena la rechaza y responde
+        **409 sin haber subido nada**.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
 
 ---
 
-## Por qué los seis endpoints están en `ANONYMOUS`, y no es un descuido
+## Por qué los nueve endpoints están en `ANONYMOUS`, y no es un descuido
 
-**No lo toques sin leer esto.** Un endpoint anónimo en un servicio publicado
-en internet parece un olvido, y el arreglo evidente —`auth_level=FUNCTION`—
-**rompe el front el mismo día que se aplica**, sin que ningún test de este
-repositorio lo note, porque ninguno atraviesa el proxy de la Static Web App.
+**No lo toques sin leer esto.** Un endpoint anónimo parece un olvido, y el
+arreglo evidente —`auth_level=FUNCTION`— **rompe el front el mismo día que se
+aplica**, sin que ningún test de este repositorio lo note, porque ninguno
+atraviesa el proxy de la Static Web App.
 
 El servicio está desplegado como **backend enlazado** de una Static Web App
 (F-010, `design.md` §9 bis). En ese montaje el proxy de la Static Web App:
@@ -56,7 +78,7 @@ El servicio está desplegado como **backend enlazado** de una Static Web App
 De ahí las dos consecuencias que fijan este fichero:
 
 1. **`auth_level=FUNCTION` no vale**: la Static Web App no aporta la clave que
-   la Function exigiría, así que los seis endpoints empezarían a devolver
+   la Function exigiría, así que los nueve endpoints empezarían a devolver
    `401` a través del front.
 2. **La autenticación integrada de Entra en la Function App tampoco vale**:
    espera un *bearer* que el proxy no envía.
@@ -65,23 +87,64 @@ Y `x-ms-client-principal` **no sirve como control de acceso**: va en base64
 **sin firma**, y cualquiera que llame a la Function directamente puede
 fabricarla. Sirve para saber quién es el usuario, no para impedir el paso.
 
-### Dónde está entonces el control de acceso
+### Dónde está de verdad la protección: la pone la plataforma
 
-En capas, y ninguna de ellas está en este fichero:
+Esto se descubrió ejecutando contra Azure el 2026-08-25 (**defecto 13 de
+F-010**) y está escrito en `docs/DESPLIEGUE.md` §5 bis. Son dos capas, y
+ninguna de las dos está en este fichero:
 
-1. **La Static Web App** autentica contra Entra y exige pertenencia al
-   **grupo de Posventa** (asignación obligatoria en la aplicación
-   empresarial). Es la capa que de verdad decide quién usa la aplicación.
-2. **La ventana de escritura de `POST /api/archivar`** —el candado principal—:
-   `ARCHIVO_HABILITADO` se despliega **apagado**, y fuera de esa ventana el
-   endpoint responde `503` a todo el mundo, incluido un desconocido, **sin
-   tocar SharePoint**. Se abre y se cierra cambiando una App Setting, sin
-   redesplegar.
-3. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
+1. **El backend enlazado.** Desde que la Function App es backend enlazado de
+   la Static Web App, la plataforma le activa **Easy Auth con el proveedor
+   `azureStaticWebApps`**, y el backend **sólo acepta lo que entra por el
+   proxy del front**. Preguntarle por su nombre de host —cualquier ruta,
+   `GET /api/health` incluido— devuelve
+   `{"code":400,"message":"Login not supported for provider azureStaticWebApps"}`,
+   y **ese cuerpo no es nuestro**: lo escribe la plataforma antes de que este
+   código se entere. **No hay nada que configurar**: ya está puesto.
+2. **La regla `/*` de la Static Web App.** `staticwebapp.config.json` exige
+   `authenticated` en `/*` y en `/api/*`, con el `401` redirigiendo al inicio
+   de sesión, y `services/postventa-front/tests/test_f010_config_swa.py` lo
+   fija con su guardia y su control negativo. Encima va la asignación
+   obligatoria al **grupo de Posventa** en la aplicación empresarial.
+
+**Consecuencia:** el `auth_level` de este fichero es **irrelevante desde
+internet**, porque nadie alcanza el código sin pasar por el proxy y el proxy
+exige sesión. Lo que decide quién usa la aplicación es la capa 2.
+
+### Y los otros dos candados, que son de otra cosa
+
+1. **La ventana de escritura de `POST /api/archivar`**: `ARCHIVO_HABILITADO`
+   se despliega **apagado**, y fuera de esa ventana el endpoint responde `503`
+   a todo el mundo **sin tocar SharePoint**. Se abre y se cierra cambiando una
+   App Setting, sin redesplegar. Protege la biblioteca de Posventa, que es un
+   sistema ajeno y compartido; **los tres endpoints de F-019 no dependen de
+   ella** a propósito (R34): escriben en el esquema propio del proyecto, y
+   atarlos dejaría sin poder guardar el trabajo de revisión justo cuando el
+   archivado está cerrado, que es como se despliega.
+2. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
    proporcionada al riesgo de `/api/extraer` y `/api/firma`: gastar cuota.
-4. **La restricción de acceso público de la Function App**, si resulta
-   compatible con el backend enlazado. Es mejora, no cimiento: si al aplicarla
-   el front deja de alcanzar el backend, se revierte.
+
+### Qué añade `GET /api/cola` a este cuadro
+
+Es el **primer endpoint del servicio que devuelve dato personal acumulado sin
+que el llamante aporte el PDF**. Los ocho restantes exigen que tú mandes el
+parte, o que sepas su `hash`: quien no lo tiene no obtiene nada de él. La cola
+devuelve transcripciones manuscritas de clientes, códigos de obra y números de
+incidencia sin aportar nada.
+
+Eso **no** lo expone a internet, por lo dicho arriba. Lo que cambia es **de
+quién** hay que protegerlo: la exposición que crea es **hacia un usuario ya
+autenticado del grupo de Posventa**, que es precisamente quien tiene que leer
+esa cola. Y, sobre todo, el riesgo real pasa a ser el **volumen**: una sola
+llamada no puede convertirse en un volcado de la cola entera contra un
+servidor de 1 vCPU compartido con la producción de otros proyectos. De ahí el
+tope duro de `interface_adapters/api/cola.py` y que de la cola sólo se
+registre **cuántas** entradas volvieron.
+
+**Descartado a propósito: exigir `x-ms-client-principal`.** Parece subir el
+listón y no lo sube —va sin firma, se fabrica— y encima de algo que ya protege
+la plataforma sólo consigue **confundir qué protege de verdad**: quien lo lea
+creerá que hay un control donde no lo hay.
 
 `GET /api/health` seguiría siendo anónimo aunque lo demás no lo fuera: lo usan
 el propio despliegue y el front para saber si el backend vive, y no expone
@@ -109,13 +172,18 @@ from domain.models.errores import (
     ParteDemasiadoGrande,
     ParteNoApto,
     PersistenciaNoDisponible,
+    PeticionDePersistenciaInvalida,
+    ReferenciaNoConsta,
     RemesaSinPdfUtilizable,
 )
 from domain.models.remesa import DocumentoEntrada
 from interface_adapters.api.archivar import archivar_parte
+from interface_adapters.api.cola import leer_cola
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
+from interface_adapters.api.parte import guardar_parte_http
+from interface_adapters.api.remesa import registrar_remesa
 from interface_adapters.api.split import trocear_remesa
 from interface_adapters.api.validar import validar as validar_parte_http
 
@@ -256,6 +324,183 @@ def validar(req: func.HttpRequest) -> func.HttpResponse:
     return _json(cuerpo, 200)
 
 
+@app.route(route="remesa", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def remesa(req: func.HttpRequest) -> func.HttpResponse:
+    """Deja constancia de una subida y devuelve su identificador (F-019, R1).
+
+    Solo traduce: saca el JSON de la petición, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. **400** la petición está mal formada
+    —falta `nombre_origen`, `num_partes` no es un entero, `remesa_id` no es un
+    UUID— y **503** aquí y ahora no hay base de datos. Ninguno de los dos
+    escribe nada.
+
+    **No depende de `ARCHIVO_HABILITADO`** (R34): esa ventana protege la
+    biblioteca de SharePoint, y esto escribe en el esquema propio del
+    proyecto.
+
+    El log lleva el `remesa_id`, cuántos partes trae y el resultado. **Nunca**
+    el nombre del fichero de origen: puede llevar el nombre de la promoción y
+    este log sobrevive a la remesa (R18).
+    """
+    try:
+        cuerpo = registrar_remesa(req.get_json())
+    except ValueError:
+        log.info("remesa rechazada: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    except PeticionDePersistenciaInvalida as error:
+        log.info("remesa rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("remesa sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no guarda nada: no se ha registrado la remesa. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("remesa sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"registrado la remesa: se puede reintentar cuando la base "
+                    f"vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info(
+        "remesa: id=%s resultado=%s", cuerpo["remesa_id"], cuerpo["resultado"]
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="parte", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def parte(req: func.HttpRequest) -> func.HttpResponse:
+    """Guarda **un** parte con su veredicto recalculado (F-019, R7).
+
+    Solo traduce: saca el JSON de la petición, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. Cada código dice una cosa distinta a
+    propósito: **400** la petición está mal formada, **409** la remesa que
+    dice el `remesa_id` **no consta registrada** —hay que llamar antes a
+    `POST /api/remesa`— y **503** aquí y ahora no hay base de datos. En los
+    tres, sin haber escrito nada.
+
+    El 409 y el 503 no se unifican «porque los dos son fallos de la base»:
+    llevan a acciones opuestas —registrar la remesa, o esperar y reintentar—, y
+    confundirlos es exactamente lo que costó media hora en el defecto 15 de
+    F-010.
+
+    El log lleva el `hash_parte`, el `remesa_id` y los dos resultados.
+    **Nunca** el DNI, ni las observaciones, ni la descripción, ni la promoción
+    (R18): el cuerpo los trae y este log sobrevive al parte.
+    """
+    try:
+        cuerpo = guardar_parte_http(req.get_json())
+    except ValueError:
+        log.info("parte rechazado: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    except (PeticionDePersistenciaInvalida, CuerpoDeValidacionInvalido) as error:
+        log.info("parte rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ReferenciaNoConsta as error:
+        log.info("parte sin remesa registrada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"la remesa de este parte no consta registrada, así que no "
+                    f"se ha guardado nada: hay que registrarla antes con "
+                    f"POST /api/remesa y reenviar el parte con el 'remesa_id' "
+                    f"que devuelva. Motivo: {error.motivo}"
+                )
+            },
+            409,
+        )
+    except ConfiguracionPgIncompleta as error:
+        log.warning("parte sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no guarda nada: no se ha guardado el parte. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("parte sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"guardado el parte: se puede reintentar cuando la base "
+                    f"vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info(
+        "parte: hash=%s parte=%s validacion=%s avisos=%d",
+        cuerpo["hash_parte"],
+        cuerpo["resultado_parte"],
+        cuerpo["resultado_validacion"],
+        len(cuerpo["avisos"]),
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="cola", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def cola(req: func.HttpRequest) -> func.HttpResponse:
+    """Los partes que esperan que una persona decida (F-019, R14).
+
+    Solo traduce: saca `limite` de la cadena de consulta, llama al handler y
+    mapea sus errores de dominio a códigos HTTP. **400** el `limite` no es un
+    entero ≥ 1 —y entonces no se consulta nada— y **503** aquí y ahora no hay
+    base de datos.
+
+    **Es el único endpoint del servicio que devuelve dato personal acumulado
+    sin que el llamante aporte el PDF**, así que el log lleva **sólo cuántas**
+    entradas volvieron: nunca las observaciones, ni los códigos de obra, ni
+    los números de incidencia (R18). El log sobrevive al parte.
+    """
+    try:
+        cuerpo = leer_cola(req.params.get("limite"))
+    except PeticionDePersistenciaInvalida as error:
+        log.info("cola rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("cola sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no puede leer la cola. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("cola sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"podido leer la cola: se puede reintentar cuando la base "
+                    f"vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info("cola: %d partes esperando decisión", cuerpo["total"])
+    return _json(cuerpo, 200)
+
+
 @app.route(route="archivar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def archivar(req: func.HttpRequest) -> func.HttpResponse:
     """Nombra un parte apto y lo archiva en SharePoint, sin duplicar.
@@ -304,6 +549,20 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
     except (ParteNoApto, NombradoImposible) as error:
         log.info("archivar no procede: %s", error.motivo)
         return _json({"error": error.motivo}, 409)
+    except ReferenciaNoConsta as error:
+        log.info("archivar sin el parte guardado: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"este parte no consta guardado, así que **no se ha subido "
+                    f"nada** a SharePoint: hay que guardarlo antes con "
+                    f"POST /api/parte —y registrar su remesa con "
+                    f"POST /api/remesa si tampoco consta— y volver a archivar. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            409,
+        )
     except (ArchivoDeshabilitado, ConfiguracionSharePointIncompleta) as error:
         log.warning("archivar deshabilitado: %s", error.motivo)
         return _json({"error": error.motivo}, 503)

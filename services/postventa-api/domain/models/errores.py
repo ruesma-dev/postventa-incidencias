@@ -145,6 +145,38 @@ class CuerpoDeValidacionInvalido(Exception):
         self.motivo = motivo
 
 
+class PeticionDePersistenciaInvalida(Exception):
+    """La petición de un endpoint de F-019 no cumple su contrato (R4, R5, R10, R17).
+
+    Es el hermano de `CuerpoDeValidacionInvalido` y `CuerpoDeArchivoInvalido`,
+    y existe por lo mismo que ellos: el borde la traduce a **400** y nunca a
+    503. La distinción importa más aquí que en ningún otro sitio, porque las
+    tres cosas que se rechazan —un `num_partes` que no es un entero, un
+    `remesa_id` que no es un UUID, un `limite` que no es un número— acabarían,
+    si se dejaran pasar, en un error de PostgreSQL. Y un 503 «la base no
+    responde» manda a mirar el servidor a quien tenía que corregir su
+    petición.
+
+    Cubre las tres formas que toma una petición en esta feature: el cuerpo de
+    `POST /api/remesa`, las dos claves propias de `POST /api/parte` —el resto
+    de ese cuerpo lo comprueban los parsers de `interface_adapters/api/cuerpos.py`,
+    que levantan `CuerpoDeValidacionInvalido` porque es literalmente el cuerpo
+    de `/api/validar`— y la cadena de consulta de `GET /api/cola`.
+
+    **No cuelga de `ErrorDePersistencia`** a propósito: no es un fallo del
+    almacén, es una petición mal escrita, y colgarla de ahí haría que el
+    `except ErrorDePersistencia` de `paso_persistencia` se la tragara.
+
+    El motivo dice **qué** está mal y nunca lo que sí venía: el cuerpo lleva
+    los valores leídos del parte, con el DNI y las observaciones manuscritas
+    dentro, y este texto acaba en un log que sobrevive al parte (R18).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
 class PromptNoEncontrado(Exception):
     """El fichero de prompts no sirve, o no declara la clave pedida (R9).
 
@@ -220,6 +252,37 @@ class PersistenciaNoDisponible(ErrorDePersistencia):
 
     El motivo dice **qué** falló y **jamás** el DSN ni la contraseña: estos
     mensajes acaban en un log.
+    """
+
+
+class ReferenciaNoConsta(ErrorDePersistencia):
+    """Se ha intentado escribir una fila que apunta a otra que no existe (F-019).
+
+    Es el error de una **clave ajena**, y tiene nombre propio porque el borde
+    lo traduce a **409** y no a 503. La diferencia no es cosmética: un 503 dice
+    «la base no responde, reintenta» y reintentar esto no lo arregla nunca; un
+    409 dice **qué hacer** —guardar el parte, o registrar la remesa— y quien lo
+    recibe puede hacerlo.
+
+    Los dos casos que se dan hoy, y los dos son el mismo defecto 15 de F-010
+    visto desde sitios distintos:
+
+    - `archivos.hash_parte → partes.hash_parte`: se archiva un parte que nadie
+      guardó. Esta es **la restricción en la que se apoya toda la garantía de
+      orden de F-019**: la traza previa en `pendiente` sólo se puede escribir
+      si el parte ya consta, así que la misma clave ajena que antes hacía
+      fallar el proceso *después* de subir el fichero pasa a hacerlo fallar
+      *antes*, sin haber tocado SharePoint.
+    - `partes.remesa_id → remesas.id`: se guarda un parte de una remesa que no
+      se registró.
+
+    **No hereda de `PersistenciaNoDisponible`** a propósito: el borde ya
+    captura esa otra y se lo tragaría, y volvería el 503 engañoso sin que
+    ningún test lo notase.
+
+    El motivo nombra **la operación** y jamás los parámetros: llevan el DNI y
+    la transcripción de las observaciones manuscritas, y estos mensajes acaban
+    en un log que sobrevive al parte (R18).
     """
 
 

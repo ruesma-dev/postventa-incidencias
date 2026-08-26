@@ -31,7 +31,7 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
-from domain.models.errores import PersistenciaNoDisponible
+from domain.models.errores import PersistenciaNoDisponible, ReferenciaNoConsta
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
@@ -221,6 +221,8 @@ class RepositorioPostgres:
                 cursor.execute(sql, parametros)
                 fila = cursor.fetchone()
             self._conexion.commit()
+        except psycopg.errors.ForeignKeyViolation as fallo:
+            raise self._referencia_no_consta(operacion) from fallo
         except psycopg.Error as fallo:
             raise self._no_disponible(operacion, fallo) from fallo
 
@@ -236,6 +238,24 @@ class RepositorioPostgres:
                 return cursor.fetchall()
         except psycopg.Error as fallo:
             raise self._no_disponible(operacion, fallo) from fallo
+
+    @staticmethod
+    def _referencia_no_consta(operacion: str) -> ReferenciaNoConsta:
+        """La fila referida no existe: es un 409, no un 503 (F-019, R11, R20).
+
+        Esta es la única pieza del servicio que sabe qué es una
+        `ForeignKeyViolation`, y por eso es la que tiene que traducirla: el
+        dominio no importa `psycopg` y el borde no puede deducirlo.
+
+        El mensaje del propio fallo **no se reenvía**: `DETAIL` de PostgreSQL
+        trae el valor de la clave que se intentó insertar, y en el `INSERT` de
+        un parte eso va acompañado de los parámetros que llevan el DNI y las
+        observaciones. Va la operación y nada más (R18, R29).
+        """
+        return ReferenciaNoConsta(
+            f"la operación '{operacion}' apunta a una fila que no consta "
+            f"guardada: hay que guardarla antes"
+        )
 
     @staticmethod
     def _no_disponible(operacion: str, fallo: Exception) -> PersistenciaNoDisponible:

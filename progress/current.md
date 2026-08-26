@@ -1,6 +1,213 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-019: los tres cambios de la review, hechos**
+>
+> **23 de 24 tareas hechas** en `feature/F-019-endpoints-persistencia`.
+> Informes: **`progress/impl_F-019.md`** (la feature) y
+> **`progress/impl_postreview_F-019.md`** (los tres cambios de la review).
+>
+> El backend se aprobó sin reservas y no se ha tocado. Lo que fallaba era el
+> otro extremo del cable: el cableado del front **podía desaparecer sin que
+> nada se enterara** —borrar la llamada que registra la remesa, o cambiar la
+> ruta `/remesa`, dejaba los 122 tests en verde—. Ahora el orden vive en
+> `js/pipeline.js::procesarRemesa`, con tests; `js/api.js` tiene un test por
+> ruta; y hay guardianes textuales que impiden que el orden vuelva a `app.js`.
+> **140 tests de JavaScript** (eran 122) y **87 del front en Python** (eran 85).
+>
+> Existen `POST /api/remesa`, `POST /api/parte` y `GET /api/cola`, y —lo que
+> de verdad importa— **`POST /api/archivar` ya no puede subir nada de un parte
+> que no conste guardado**: escribe la traza en `pendiente` antes de tocar
+> SharePoint, y la clave ajena `archivos_hash_parte_fkey` la rechaza si el
+> parte no está. El defecto 15 se muere ahí. `bash harness/init.sh` en verde,
+> cobertura de las líneas cambiadas al **100 %**.
+>
+> **Lo que falta para cerrar**:
+>
+> 1. **T24, verificación `MANUAL (humano)`**, sin marcar a propósito: el
+>    circuito completo contra el entorno desplegado, **con la ventana de
+>    escritura abierta a propósito para la prueba y cerrada al terminar**. El
+>    procedimiento exacto está en `progress/impl_F-019.md` §8. Ahí se mide
+>    también el coste de la llamada HTTP de más por parte (riesgo 4).
+> 2. **Copiar `docs/INTEGRACION.md` §8 a `azure-apps/`**: ha cambiado (nueve
+>    endpoints, la nota de anonimidad y la tabla de ausencias) y los agentes
+>    no commitean en ese repositorio.
+> 3. **Decir al cerrar (decisión D4)**: lo guardado queda guardado y la cola
+>    sobrevive entre sesiones, pero **recargar el navegador sigue perdiendo el
+>    trabajo en curso**. Rehidratarla es **feature nueva**.
+>
+> ---
+>
+> ## Estado anterior · **F-019: spec cerrada, sin decisiones abiertas**
+>
+> El humano resolvió las cinco decisiones y están incorporadas a
+> `specs/F-019-endpoints-persistencia/`. Detalle en `progress/spec_F-019.md`
+> §9. **La spec está lista para el implementer**: 34 requisitos, 24 tareas
+> (7 en fase RED), sin DDL, sin métodos nuevos en el puerto y sin conexiones
+> reales. `bash harness/init.sh` en verde.
+>
+> **D5 sí** (el cableado del front entra), **D2/D3/D4 según recomendación**
+> (remesa sin clave natural, `usuario_oid` en `NULL`, rehidratar la sesión es
+> feature nueva) y **D1 con el razonamiento reescrito**, que es lo que de
+> verdad cambió.
+>
+> ### El error de la primera ronda, que conviene no repetir
+>
+> Mi §5 daba `GET /api/cola` por «expuesto a internet» y proponía **valorar**
+> la restricción de acceso público de la Function App como «la única capa
+> real». Las dos mitades estaban mal, y lo dice `docs/DESPLIEGUE.md` §5 bis
+> desde el defecto 13 de F-010 (2026-08-25): al ser **backend enlazado**, la
+> plataforma activa Easy Auth `azureStaticWebApps` y el backend **sólo acepta
+> lo que entra por el proxy del front** —el `400` del host desnudo lo escribe
+> la plataforma, no nosotros—; y encima va la regla `/*` con `authenticated`
+> de la SWA, con test propio, más el grupo de Posventa. **No hay nada que
+> configurar.** `auth_level=ANONYMOUS` es irrelevante desde internet.
+>
+> El dato personal de la cola sigue siendo real: lo que cambia es que la
+> amenaza es **un usuario ya autenticado del grupo**, y el **volumen**. Una
+> spec que exagera un riesgo gasta el mismo crédito que una que lo esconde.
+>
+> ### Lo que eso mete en el alcance
+>
+> - **Tope duro al `limite` de `GET /api/cola`** (R16, T10-T11): ninguna
+>   llamada se lleva la cola entera. El repositorio ya acota; **el handler
+>   acota también**, que es lo que hoy no existe.
+> - **Ningún dato personal al log** en los tres endpoints nuevos (R18, T12),
+>   con control negativo como el de F-005.
+> - **Corregir la cabecera de `test_f010_endpoints_protegidos.py`** (R31,
+>   **T17, tarea propia**): hoy dice que los endpoints «quedan en internet»,
+>   y dejó de ser cierto. **Sin relajar el test.**
+> - **Descartado**: exigir `x-ms-client-principal`. Base64 sin firma, no es
+>   control de acceso, y encima de algo ya protegido sólo confunde qué
+>   protege de verdad.
+
+> ## Estado al 2026-08-26 · **F-019 con spec escrita, esperando aprobación**
+>
+> Escrita `specs/F-019-endpoints-persistencia/` (requirements EARS, design,
+> tasks) en la rama `feature/F-019-endpoints-persistencia`. Informe completo:
+> **`progress/spec_F-019.md`**. Sin código, sin tocar `harness/features.json`,
+> `bash harness/init.sh` en verde.
+>
+> **La feature no son sólo tres endpoints.** Tres endpoints sin más no matan
+> el defecto 15: si el orden depende de que el llamante se porte bien, vuelve
+> en cuanto alguien llame a `/api/archivar` a mano — que es literalmente lo
+> que se hizo el 2026-08-25 para verificar T18. El diseño añade la pieza que
+> falta: **`/api/archivar` escribe la traza en estado `pendiente` ANTES de
+> subir nada**, y la clave ajena `archivos_hash_parte_fkey` sólo lo admite si
+> el parte ya consta. La misma restricción que hoy falla **después** de subir
+> el fichero pasa a fallar **antes**: el 500 «está arriba y falta la traza» se
+> convierte en un **409 «guarda el parte primero»**, sin subir nada.
+>
+> Lo demás: `POST /api/remesa`, `POST /api/parte` (que **recalcula** el
+> veredicto, no se lo cree) y `GET /api/cola`, los tres llamando al
+> `paso_persistencia` que F-005 dejó escrito y **sin punto de entrada**. Cero
+> DDL, cero métodos nuevos en el puerto, cero conexiones reales.
+>
+> **Lo que la spec NO promete, y conviene leerlo antes de aprobar**: recargar
+> la pestaña **sigue perdiendo el trabajo en curso**. Lo guardado queda
+> guardado y la cola sobrevive, pero volver a pintar la remesa exige un método
+> de lectura nuevo en el puerto, que el encargo prohíbe. Es la decisión **D4**.
+>
+> ### Cinco decisiones abiertas para el humano (`design.md` §15)
+>
+> Con silencio se implementa la recomendación; sólo **D5** cambia `tasks.md`.
+>
+> - **D1** — `GET /api/cola` es anónimo **y devuelve observaciones manuscritas
+>   de clientes**: es el primer endpoint del servicio que publica dato personal
+>   acumulado sin que el llamante aporte el PDF. El `auth_level` no lo arregla
+>   (`ANONYMOUS` es obligado por el proxy de la SWA). Recomendado: sacarlo así,
+>   con tope de límite y nada al log, **y valorar la restricción de acceso
+>   público de la Function App**, que es la única capa real.
+> - **D2** — `postventa.remesas` no tiene clave natural → se acepta; dársela
+>   sería DDL. No duplica partes.
+> - **D3** — `usuario_oid` sigue en `NULL`: `x-ms-client-principal` va sin
+>   firma.
+> - **D4** — rehidratar la sesión al recargar → feature nueva.
+> - **D5** — **¿entra el cableado del front?** Recomendado **sí** (T15–T16).
+>   Si el humano dice que no, el archivado real **sigue sin poder completar**
+>   en el circuito del piloto, y hay que decirlo al cerrar.
+
+> ## Estado al 2026-08-26 · **F-019 CERRADA Y APROBADA · diez features `done`**
+>
+> `progress/review_F-019.md` salió **CAMBIOS SOLICITADOS (3)** y **APROBADO**
+> en la segunda ronda. **T24 la ejecutó el humano** contra el entorno
+> desplegado y pasa. F-019 va a `done` y se mergea en `dev`. Resumen completo
+> en `progress/history.md`.
+>
+> **El defecto 15 está muerto, y con la mejor evidencia posible**: el mismo
+> `POST /api/archivar` sin parte guardado, ejecutado hoy **antes** de desplegar
+> F-019, devolvió **500 y subió el fichero igualmente** a SharePoint;
+> **después** devuelve **409 sin subir nada**. Mismo endpoint, mismo entorno,
+> mismo día.
+>
+> **El circuito completo del piloto ya cierra de punta a punta**: remesa →
+> parte → archivado, los tres 200, con la traza escrita en PostgreSQL
+> (`estado: archivado`) y el reproceso reemplazando en vez de duplicar.
+> `POST /api/parte` tarda **237 ms**, muy por debajo del segundo que habría
+> obligado a replantear la llamada de más.
+>
+> **La lección que se lleva el arnés**: las tres puertas automáticas
+> —cobertura, mutación e `init.sh`— son **ciegas al JavaScript**. Daban verde
+> mientras el cableado del front podía borrarse entero sin que nada fallara.
+> Las 18 pruebas que faltaban sólo aparecieron **rompiendo el código a mano**.
+> Va a F-017, que ya acumula tres propuestas de arnés.
+>
+> ## Lo que queda vivo, con dueño
+>
+> 1. **D4 · recargar el navegador sigue perdiendo el trabajo en curso.**
+>    Feature nueva, por decisión del humano, después de ver el piloto.
+> 2. **`docs/INTEGRACION.md` §8 → `azure-apps/postventa-incidencias.md`**: del
+>    humano, porque los agentes no commitean ahí.
+> 3. **El tope de 500 de `GET /api/cola` no quedó demostrado por T24**: la cola
+>    tenía una sola entrada. Sus tests unitarios sí lo cubren.
+> 4. **Un residuo en la biblioteca de dev**: `0677 - RS26.08 - 0000 PARTE
+>    FIRMADO`, de origen no documentado (T18 de F-010 usó `0001`).
+> 5. **T14 bis** sigue sin dato, pero **reclasificado**: la Function es backend
+>    enlazado con Easy Auth, así que los endpoints de IA **no están expuestos a
+>    internet anónimo**. De urgente a conveniente.
+>
+> **Siguiente por backlog: F-009**, el cierre en Sigrid, con el camino ya
+> despejado por F-008 salvo **cuatro decisiones del humano**: el `tex` y el
+> `usu` de la fila de log, si la escritura de `sigrid-api` está habilitada y
+> con qué prefijos, y si merece la pena confirmar el gráfico-URL.
+
+> ## Estado al 2026-08-26 · **F-019 · SPEC ESCRITA, ESPERANDO APROBACIÓN**
+>
+> `spec-author` sobre la rama `feature/F-019-endpoints-persistencia` (árbol
+> principal, sin worktree). Spec en `specs/F-019-endpoints-persistencia/`,
+> informe en `progress/spec_F-019.md`. F-019 pasa a **`spec_ready`**: el
+> arnés **para aquí** hasta que el humano apruebe.
+>
+> **Lo que el diseño cambia respecto a la ficha.** F-019 parecía «tres
+> endpoints», y tres endpoints **no matan el defecto 15**: si el orden depende
+> de que el llamante haga las cosas bien, el fallo vuelve en cuanto alguien
+> llame a `/api/archivar` por su cuenta —que es justo lo que se hizo el
+> 2026-08-25 para verificar T18—. Por eso `/api/archivar` pasa a **escribir la
+> traza en estado `pendiente` ANTES de subir nada**: como `archivos.hash_parte`
+> tiene clave ajena contra `partes`, esa escritura solo puede hacerse si el
+> parte ya consta. **La misma restricción que hoy hace fallar el proceso
+> después de subir el fichero pasa a hacerlo fallar antes**, sin inventar una
+> comprobación paralela que pueda divergir de la real. El 500 de «el fichero
+> está arriba y falta la traza» se convierte en un **409 sin haber subido
+> nada**.
+>
+> **Alcance**: 4 ficheros de código nuevos y 7 de test, 13 modificados, **0
+> ficheros SQL y 0 DDL**, el puerto `RepositorioPartesPort` sin ganar ni un
+> método, 20 tareas y **una sola verificación MANUAL (humano)**.
+>
+> **Arregla una consecuencia y media de las dos que le atribuía la ficha**: el
+> archivado real puede completar (defecto 15, que es el bloqueo del piloto) y
+> la cola de validación sobrevive entre sesiones; pero **recargar la pestaña
+> sigue perdiendo el trabajo en curso**, porque repintar exige leer una remesa
+> entera y eso pide un método de lectura nuevo en el puerto, fuera de alcance.
+>
+> **Cinco decisiones abiertas esperan al humano** (§5 del informe): **D1** el
+> `GET /api/cola` anónimo devolviendo observaciones manuscritas de clientes
+> —el primer endpoint que sirve dato personal acumulado sin que el llamante
+> aporte el PDF—; **D2** `postventa.remesas` sin clave natural; **D3** si se
+> guarda `usuario_oid`; **D4** rehidratar la sesión, propuesta como feature
+> nueva; y **D5** si el cableado del front entra en esta feature.
+
 > ## Estado al 2026-08-26 · **F-008 CERRADA Y APROBADA · nueve features `done`**
 >
 > `progress/review_F-008.md` salió **CAMBIOS SOLICITADOS (2)** en la primera

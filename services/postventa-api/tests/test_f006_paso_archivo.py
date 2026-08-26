@@ -180,6 +180,10 @@ def test_f006_r14_con_traza_archivada_no_se_vuelve_a_subir():
 
     assert archivador.llamadas == []
     assert archivador.biblioteca.subidas == 0
+    # F-019 · tampoco se escribe la traza previa (R24): degradaría a
+    # `pendiente` un parte que ya consta archivado, y `pendiente` no corta el
+    # reintento, así que el siguiente intento volvería a subir el fichero.
+    assert repositorio.llamadas_guardar_archivo == 0
     assert ctx.archivo is ya_archivada
     assert AVISO_YA_ARCHIVADO in ctx.avisos
 
@@ -536,6 +540,12 @@ def test_f006_r23_la_traza_de_exito_lleva_todo_lo_declarado():
     ctx = archivar(contexto_apto(), archivador, repositorio)
     traza = repositorio.ultima_traza
 
+    # F-019 · La traza de éxito llega **después** de la previa en `pendiente`
+    # (R19). Se exigen **exactamente dos** llamadas y su orden, y no «al menos
+    # una»: relajar la cuenta para que este test siguiera pasando taparía
+    # justo lo que la garantía de orden viene a fijar.
+    assert repositorio.llamadas_guardar_archivo == 2
+    assert repositorio.estados == ["pendiente", "archivado"]
     assert traza is ctx.archivo
     assert traza.hash_parte == contexto_apto().parte.hash
     assert traza.estado == EstadoArchivo.ARCHIVADO
@@ -585,6 +595,11 @@ def test_f006_r24_un_fallo_deja_traza_de_error_y_permite_reintentar():
 
     with pytest.raises(ArchivoFallido):
         archivar(contexto_apto(), roto, repositorio)
+
+    # F-019 · también aquí son dos, y en este orden: la previa `pendiente` se
+    # escribió antes de intentar subir, y la de error la sustituye después.
+    assert repositorio.llamadas_guardar_archivo == 2
+    assert repositorio.estados == ["pendiente", "error"]
 
     fallida = repositorio.ultima_traza
     assert fallida.estado == EstadoArchivo.ERROR

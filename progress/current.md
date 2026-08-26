@@ -1,6 +1,55 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-008 CERRADA Y APROBADA · nueve features `done`**
+>
+> `progress/review_F-008.md` salió **CAMBIOS SOLICITADOS (2)** en la primera
+> ronda y **APROBADO** en la segunda. F-008 pasa a `done` y su rama se mergea
+> en `dev`. El entregable es `docs/referencia/03_modelo_posventa_sigrid.md`.
+>
+> **Ni una escritura contra Sigrid**, confirmado por el reviewer por cuatro
+> vías independientes. Sin secretos ni datos personales, con barrido propio.
+>
+> **Las dos correcciones de la primera ronda**, las dos en el entregable:
+>
+> - **Una cifra mal etiquetada, no mal medida.** El «2.105 cierres desde 2025»
+>   era en realidad la población de §2.2 —reclamaciones **creadas** desde 2025
+>   que hoy están en `CER`, contadas por fecha de alta—, mientras que los
+>   cierres de §3 se cuentan por año de cierre y proceso y suman **2.106**. Dos
+>   poblaciones que no se contienen. Arrastraba el «4.899 / 4.892» de «Cerrar
+>   Preventas», ahora declarado como dos poblaciones, y los hallazgos del
+>   informe. **El reviewer rehizo las siete sumas del documento**: cuadran.
+> - **Un hallazgo verificado que se quedó en `progress/`**: `con.cod` es único
+>   y global (23.063 conceptos `tip = 708`, 23.063 códigos), formato
+>   `RS{AA}.{MM}/{NNNN}`, y **no codifica la obra**. Es la clave de
+>   localización de F-009. `progress/` es memoria de sesión, no documentación:
+>   un dato de referencia que solo vive ahí está, en la práctica, perdido.
+>
+> **Lo que F-008 deja decidido para F-009** (rigor `critico`, escribe en
+> producción): mover `con.est` **más** la fila de `dbo.log`, en la misma
+> transacción, porque `con.tiemod` **no** se toca al cerrar y el log es el
+> único rastro temporal; **negarse a cerrar sin gráfico asociado**, replicando
+> por nuestro lado el control del ERP en vez de esquivarlo; **no** subir el
+> gráfico (eso es F-012); y **no** usar RPV, que solo aporta saltarse ese
+> control y está abandonado desde 2025-03-11.
+>
+> **Cuatro decisiones siguen esperando al humano** antes de escribir una línea
+> de F-009: el `tex` de la fila de log (texto propio rastreable frente a
+> `'Cerrar parte'` indistinguible — recomendado el propio), el `usu` con el
+> que se firma, si la **escritura de `sigrid-api` está habilitada** y con qué
+> prefijos, y si merece la pena confirmar el gráfico-URL en un entorno de
+> pruebas (hoy F-009 no lo necesita; **F-013** sí se apoyaría en ello).
+>
+> **Un arreglo de propina que valía la feature entera** (commit `337701c`): el
+> guardián de identificadores de R26 filtraba por ruta **absoluta** y,
+> ejecutado desde un worktree, **se apagaba entero sin decirlo**. Pasó de
+> barrer **0 ficheros a 275**. Llevaba apagado dentro de los worktrees quién
+> sabe cuánto, y lo cazó la casualidad de que esta feature se trabajara en uno.
+>
+> **Siguiente: F-019**, prioridad máxima por decisión del humano. Es el
+> prerequisito del archivado real: hoy `/api/archivar` sube el fichero a
+> SharePoint y **no puede escribir su traza nunca**.
+
 > ## Estado al 2026-08-26 · **F-010 CERRADA Y APROBADA · ocho features `done`**
 >
 > `progress/review4_F-010.md` salió **APPROVED** y F-010 pasa a `done`. Es la
@@ -100,6 +149,53 @@
 >   contrato de `staticwebapp.config.json`) y §9.3 (los «once secretos» del
 >   script de `infra/`, que necesita permiso del humano), ambos del
 >   `implementer`; y el resultado de **T14 bis**, que es del humano.
+
+> ## Estado al 2026-08-25 · **F-008 IMPLEMENTADA, PENDIENTE DE REVISIÓN**
+>
+> Trabajada **en worktree aislado**, en paralelo a F-010, sobre la rama
+> `feature/F-008-modelo-sigrid` (creada desde `feature/F-010-despliegue`).
+> Informe completo en **`progress/impl_F-008.md`**; el entregable, en
+> **`docs/referencia/03_modelo_posventa_sigrid.md`**.
+>
+> **Ni una escritura contra Sigrid.** ~25 consultas, todas `SELECT` por
+> `sql/read` de `sigrid-api`. Ninguna cerca del tope de 1.000 filas.
+>
+> **Las cuatro preguntas de la ficha, respondidas**: `con.tip = 708`; estados
+> `1/SAT`, `3/PTE` (confirmado), `5/TER`, `7/NPR` y **`9/CER` CERRADA**;
+> «Cerrar parte» **solo cambia `con.est`**; y RPV **termina en el mismo
+> estado**, solo se salta el control del gráfico — y **está abandonado desde
+> 2025-03-11**.
+>
+> **Dos hallazgos que no estaban en la lista y cambian F-009.** Primero:
+> «Cerrar parte» escribe una **fila de auditoría en `dbo.log`** que un
+> `UPDATE` directo no escribiría. Segundo: **`con.tiemod` NO se actualiza al
+> cerrar** —verificado en los 138 cierres de 2026, cero excepciones—, así que
+> el log es el **único** rastro temporal de un cierre. Cerrar por SQL sin
+> escribir esa fila dejaría incidencias que, para quien audite, **nadie cerró
+> nunca**.
+>
+> **El gráfico como URL a SharePoint: NO hay precedente.** Cero coincidencias
+> en 282.599 filas de `gra`. La opción existe en el menú pero **nunca se ha
+> usado en esta instalación**, así que no hay de dónde deducir cómo se
+> guardaría. F-009 no puede apoyarse en ello; queda marcado como deducción.
+>
+> **Recomendación de alcance para F-009** (§6 del informe): mover el estado
+> **más** la fila de log, en la misma transacción; **negarse a cerrar sin
+> gráfico** replicando el control del ERP por nuestro lado; **no** subir el
+> gráfico (eso es F-012); y **no** usar RPV.
+>
+> **Cuatro decisiones esperan al humano**: el `tex` y el `usu` de la fila de
+> log, si la escritura de `sigrid-api` está habilitada, y si merece la pena
+> confirmar el gráfico-URL en un entorno de pruebas.
+>
+> **Un arreglo fuera del encargo** (commit `337701c`): el guardián de
+> identificadores de R26 filtraba por ruta **absoluta** y, ejecutado desde un
+> worktree, se apagaba entero sin decirlo. Lo cazó su propio control
+> (`assert 0 >= 60`). Arreglado filtrando por ruta relativa a la raíz.
+>
+> `F-008` se quedó **`pending`** a propósito hasta que F-010 cerrase: el
+> portero solo admite una `in_progress`. **Cerrada el 2026-08-26**; ver el
+> bloque de cabecera.
 
 > ## Estado al 2026-08-25 (cierre) · **F-010 · LAS MANUALES, EJECUTADAS Y ANOTADAS**
 >

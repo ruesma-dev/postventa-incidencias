@@ -230,6 +230,26 @@ def test_f019_r15_el_limite_de_la_peticion_se_respeta(monkeypatch):
     assert repositorio.limites == [7]
 
 
+def test_f019_r17_el_limite_uno_es_valido_y_llega_tal_cual(monkeypatch):
+    """R17 · **el borde inferior es 1, y 1 vale**.
+
+    Lo destapó la campaña de mutación: cambiar `pedidas < 1` por `<= 1` —o por
+    `< 2`— no rompía ningún test, porque ninguno pedía exactamente una
+    entrada. Con esa mutación, `limite=1` habría respondido **400** a una
+    petición perfectamente legítima.
+
+    Y no es un caso de laboratorio: pedir una sola entrada es lo que hace
+    quien quiere ver el parte más antiguo de la cola sin traerse el resto.
+    """
+    repositorio = RepositorioEnMemoria(cola=(ANTIGUA,))
+
+    respuesta = _responder(monkeypatch, repositorio, {"limite": "1"})
+
+    assert respuesta.status_code == 200
+    assert repositorio.limites == [1]
+    assert _json(respuesta)["total"] == 1
+
+
 # --------------------------------------------------------------------------
 # R17 · Un límite que no es un límite
 # --------------------------------------------------------------------------

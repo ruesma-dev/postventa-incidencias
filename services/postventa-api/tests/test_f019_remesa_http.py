@@ -272,6 +272,31 @@ def test_f019_r4_unos_avisos_que_no_son_una_lista_son_400(
     assert repositorio.remesas == [], caso
 
 
+def test_f019_r4_una_remesa_de_cero_partes_es_valida(monkeypatch):
+    """R4 · **el borde inferior es 0, y 0 vale**.
+
+    Lo destapó la campaña de mutación: cambiar `crudo < 0` por `<= 0` —o por
+    `< 1`— no rompía ningún test, porque ninguno registraba una remesa vacía.
+    Con esa mutación, un `num_partes` de cero habría respondido **400**.
+
+    Y es un caso real: una remesa de la que el troceado no sacó ningún parte
+    utilizable —un PDF cifrado, un escaneo ilegible— **se registra igual**, con
+    sus avisos. Es justo la que hay que poder mirar después para saber qué
+    llegó y por qué no salió nada de ello. Rechazarla la borraría del
+    histórico.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    respuesta = _responder(
+        monkeypatch,
+        repositorio,
+        _cuerpo(num_partes=0, avisos=["el PDF venía cifrado (inventado)"]),
+    )
+
+    assert respuesta.status_code == 200
+    assert repositorio.remesas[-1].num_partes == 0
+
+
 def test_f019_r4_sin_avisos_la_remesa_se_registra_igual(monkeypatch):
     """R4 · y **son opcionales de verdad**: un troceado limpio no trae avisos.
 

@@ -1,5 +1,5 @@
 // services/postventa-front/js/api.js
-// R12, R23-R27 · El cliente de los nueve endpoints del backend.
+// R12, R23-R27 · El cliente de los diez endpoints del backend.
 //
 // Una sola forma de hablar con el backend y una sola forma de error hacia
 // arriba: `ErrorApi {tipo, http, mensaje, avisos}` con
@@ -11,7 +11,8 @@
 //
 // NINGUNO de estos endpoints se toca en F-007: el contrato es el que dejaron
 // F-002 … F-006. F-019 añade tres —`registrarRemesa`, `guardarParte` y
-// `cola`— y no cambia ninguno de los seis anteriores.
+// `cola`— y F-009 añade `cerrar`, el único que escribe en el ERP de
+// producción. Ninguno de los dos cambia los que ya estaban.
 
 (function () {
   "use strict";
@@ -351,6 +352,31 @@
           metodo: "POST",
           cuerpo: formData,
           paso: "archivar",
+          hash: hash,
+        });
+      },
+
+      /**
+       * F-009 · cierra la incidencia en Sigrid, o enseña qué pasaría.
+       *
+       * **Por omisión no cierra nada.** El cuerpo lo compone
+       * `js/pipeline.js::cuerpoDeCierre`, y sin `commit` el backend responde
+       * el dry-run: los dos estados legibles, con qué login se firmaría y el
+       * aviso de que la reclamación quedará cerrada sin el parte dentro del
+       * ERP. Ese aviso hay que enseñarlo **antes** de que nadie confirme.
+       *
+       * **No lleva los bytes del PDF**, y por eso va como JSON y no como
+       * `FormData`: este endpoint no sube nada, solo mueve un estado.
+       *
+       * Un 503 aquí es la **puerta de entorno del cierre**, igual que en
+       * `archivar`: no es un fallo y no se reintenta. Insistir no la ablanda.
+       */
+      cerrar: function (cuerpo, hash) {
+        return peticion("/cerrar", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "cerrar",
           hash: hash,
         });
       },

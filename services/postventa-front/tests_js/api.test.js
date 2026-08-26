@@ -101,11 +101,12 @@ test("f007 R27: la pantalla consulta GET /api/health al cargar", async () => {
   assert.equal(datos.estado, "ok");
 });
 
-// --- R27 / F-019 · los NUEVE endpoints, uno a uno --------------------------
+// --- R27 / F-019 / F-009 · los DIEZ endpoints, uno a uno -------------------
 //
 // Eran seis hasta F-019, que anadio `registrarRemesa`, `guardarParte` y
-// `cola`. El titulo de este bloque decia «los seis» **y solo comprobaba dos**,
-// asi que prometia de mas incluso antes de quedarse corto.
+// `cola`, y nueve hasta F-009, que anadio `cerrar`. El titulo de este bloque
+// decia «los seis» **y solo comprobaba dos**, asi que prometia de mas incluso
+// antes de quedarse corto.
 //
 // Que la lista se recorra entera no es cosmetico: la review de F-019 cambio la
 // ruta `/remesa` por una inexistente y los 122 tests de entonces siguieron en
@@ -139,8 +140,20 @@ function cuerpoDeParteInventado() {
   };
 }
 
-/** Los nueve, con su ruta y su metodo. La lista ES la asercion. */
-const LOS_NUEVE = [
+/** El cuerpo de `POST /api/cerrar`, con todo inventado y SIN commit. */
+function cuerpoDeCierreInventado() {
+  return {
+    hash: HASH_INVENTADO,
+    numero_incidencia: "RS26.08 - 0123",
+    veredicto: "apto",
+    destino: "archivo_y_cierre",
+    estado_archivo: "archivado",
+    usuario_oid: "oid-inventado-para-el-test",
+  };
+}
+
+/** Los diez, con su ruta y su metodo. La lista ES la asercion. */
+const LOS_DIEZ = [
   { nombre: "salud", ruta: "/api/health", metodo: "GET", llamar: (api) => api.salud() },
   { nombre: "trocear", ruta: "/api/split", metodo: "POST", llamar: (api) => api.trocear(new FormData()) },
   { nombre: "extraer", ruta: "/api/extraer", metodo: "POST", llamar: (api) => api.extraer(ficheroInventado(), HASH_INVENTADO) },
@@ -150,10 +163,11 @@ const LOS_NUEVE = [
   { nombre: "guardarParte", ruta: "/api/parte", metodo: "POST", llamar: (api) => api.guardarParte(cuerpoDeParteInventado(), HASH_INVENTADO) },
   { nombre: "cola", ruta: "/api/cola", metodo: "GET", llamar: (api) => api.cola() },
   { nombre: "archivar", ruta: "/api/archivar", metodo: "POST", llamar: (api) => api.archivar(new FormData(), HASH_INVENTADO) },
+  { nombre: "cerrar", ruta: "/api/cerrar", metodo: "POST", llamar: (api) => api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO) },
 ];
 
-test("f007 R27 / f019: los NUEVE endpoints llaman a su ruta, con su metodo", async () => {
-  for (const endpoint of LOS_NUEVE) {
+test("f007 R27 / f019 / f009: los DIEZ endpoints llaman a su ruta, con su metodo", async () => {
+  for (const endpoint of LOS_DIEZ) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
 
     await endpoint.llamar(api);
@@ -168,7 +182,7 @@ test("f007 R27 / f019: los NUEVE endpoints llaman a su ruta, con su metodo", asy
   }
 });
 
-test("f007 R27: son nueve, y la lista se entera si aparece un decimo", () => {
+test("f007 R27: son diez, y la lista se entera si aparece un undecimo", () => {
   // El cliente expone ademas `peticion` y `cuerpoDeParte`, que son la
   // maquinaria, no endpoints. Si manana hay un decimo endpoint y nadie toca
   // esta lista, la cuenta deja de cuadrar y este test lo dice.
@@ -176,12 +190,12 @@ test("f007 R27: son nueve, y la lista se entera si aparece un decimo", () => {
   const auxiliares = ["peticion", "cuerpoDeParte"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
 
-  assert.equal(endpoints.length, 9);
-  assert.deepEqual(endpoints.sort(), LOS_NUEVE.map((e) => e.nombre).sort());
+  assert.equal(endpoints.length, 10);
+  assert.deepEqual(endpoints.sort(), LOS_DIEZ.map((e) => e.nombre).sort());
 });
 
 test("f007 R27: todos cuelgan de baseApi, y baseApi es configurable", async () => {
-  for (const endpoint of LOS_NUEVE) {
+  for (const endpoint of LOS_DIEZ) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})], {
       baseApi: "/otro-prefijo",
     });
@@ -628,4 +642,97 @@ test("f007 R28: la traza de un error tampoco lleva el cuerpo de la respuesta", a
   await assert.rejects(() => api.salud());
 
   assert.ok(!JSON.stringify(trazas).includes(DNI_INVENTADO));
+});
+
+// --- F-009 · el cierre en Sigrid, en detalle -------------------------------
+//
+// Es el unico endpoint del cliente que escribe en el ERP de produccion, y por
+// eso se comprueba aparte lo que en los demas no hace falta: que por omision
+// NO cierre, que el cuerpo no lleve bytes de PDF y que el 503 sea la puerta de
+// entorno y no un fallo que se reintente.
+
+test("f009: cerrar manda POST /api/cerrar con cuerpo JSON", async () => {
+  const { api, llamadas } = apiDePrueba([
+    respuesta(200, { estado: "dry_run_ok", dry_run: {} }),
+  ]);
+
+  const datos = await api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO);
+
+  assert.equal(llamadas[0].url, "/api/cerrar");
+  assert.equal(llamadas[0].opciones.method, "POST");
+  assert.equal(
+    llamadas[0].opciones.headers["Content-Type"],
+    "application/json",
+  );
+  assert.equal(datos.estado, "dry_run_ok");
+});
+
+test("f009: por omision el cuerpo NO pide commit, asi que no cierra nada", async () => {
+  const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
+
+  await api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO);
+  const enviado = JSON.parse(llamadas[0].opciones.body);
+
+  // Lo que se comprueba es que la clave **no viene**: el backend la trata
+  // como falsa, y quien no la ponga a proposito no escribe en el ERP.
+  assert.equal(enviado.commit, undefined);
+  assert.equal(enviado.confirmado, undefined);
+});
+
+test("f009: el cuerpo de cerrar NO lleva bytes de PDF", async () => {
+  const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
+
+  await api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO);
+  const enviado = llamadas[0].opciones.body;
+
+  // Va como texto JSON y no como FormData: este endpoint no sube nada, solo
+  // mueve un estado. Si algun dia alguien le colase el fichero, esto lo ve.
+  assert.equal(typeof enviado, "string");
+  assert.equal(enviado.includes("%PDF"), false);
+});
+
+test("f009: cerrar deja el hash en la traza, para seguir el parte", async () => {
+  const { api, trazas } = apiDePrueba([respuesta(200, {})]);
+
+  await api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO);
+
+  assert.equal(trazas[0].hash, HASH_INVENTADO);
+  assert.equal(trazas[0].paso, "cerrar");
+});
+
+test("f009: un 503 en cerrar es la puerta de entorno y NO se reintenta", async () => {
+  // Misma regla que en archivar (R25): insistir no ablanda una puerta. Y aqui
+  // menos que en ningun otro sitio: lo que hay detras es el ERP.
+  const { api, llamadas } = apiDePrueba([
+    respuesta(503, { error: "CIERRE_HABILITADO no esta activado" }),
+  ]);
+
+  await assert.rejects(
+    () => api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO),
+    (error) => {
+      assert.ok(error instanceof ErrorApi);
+      assert.equal(error.tipo, "entorno");
+      return true;
+    },
+  );
+  assert.equal(llamadas.length, 1);
+});
+
+test("f009: un 409 en cerrar llega como 'no_apto' con su motivo", async () => {
+  // Es el codigo del parte que no consta archivado, del estado que no admite
+  // cierre y del login sin confirmar. Los tres se arreglan haciendo algo, no
+  // reintentando, y por eso no se reintentan.
+  const { api, llamadas } = apiDePrueba([
+    respuesta(409, { error: "el login «fulanito» no existe en el ERP" }),
+  ]);
+
+  await assert.rejects(
+    () => api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO),
+    (error) => {
+      assert.equal(error.tipo, "no_apto");
+      assert.match(error.mensaje, /login/);
+      return true;
+    },
+  );
+  assert.equal(llamadas.length, 1);
 });

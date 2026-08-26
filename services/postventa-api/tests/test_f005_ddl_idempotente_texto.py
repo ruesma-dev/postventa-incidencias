@@ -191,6 +191,52 @@ def test_f005_r23_el_check_de_archivos_cubre_su_enum():
     assert f"estado IN ({valores_check(e.value for e in EstadoArchivo)})" in archivos
 
 
+def test_f019_r19_archivos_referencia_a_partes_y_es_un_requisito():
+    """F-019 · **la clave ajena que sostiene la garantía de orden**.
+
+    Desde F-019, `paso_archivo` escribe la traza en `pendiente` **antes** de
+    subir nada precisamente porque esta restricción la rechaza si el parte no
+    consta guardado. No hay comprobación paralela en Python: la garantía **es**
+    esta línea del `.sql`.
+
+    Y hasta hoy no la fijaba nadie. Si alguien quitara el `REFERENCES` —para
+    poder cargar trazas sueltas, para desbloquear una migración— la garantía
+    desaparecería **en silencio**: los tests de F-019 seguirían en verde,
+    porque prueban el paso con dobles, y volvería el defecto 15 en producción
+    con el fichero subido y sin constancia.
+
+    Se lee del texto del DDL, que es lo que de verdad se aplica contra el
+    servidor compartido. `harness/alcance.py` sólo mide y muta `.py`: el
+    `.sql` no se muta, así que **no puede cambiar sin que este fichero lo
+    mire**.
+    """
+    archivos = _sentencia_de_tabla("archivos")
+
+    assert f"REFERENCES {ESQUEMA}.partes (hash_parte)" in archivos
+    assert "hash_parte       text PRIMARY KEY" in archivos
+
+
+def test_f019_r19_el_barrido_de_la_clave_ajena_ve_lo_que_hay():
+    """Control negativo: el test de arriba caza que la línea desaparezca.
+
+    Sin esto, un cambio en `_sentencia_de_tabla` —o un esquema distinto— podría
+    dejar la aserción mirando una cadena que ya no es el `CREATE TABLE` de
+    `archivos`, y daría verde sin comprobar nada. Aquí se le quita la línea a
+    propósito **sobre una copia en memoria** y se comprueba que la aserción
+    falla.
+
+    No se toca el `.sql` del repositorio: eso es DDL de un servidor
+    compartido, y `CLAUDE.md` no admite matices al respecto.
+    """
+    archivos = _sentencia_de_tabla("archivos")
+    sin_clave_ajena = archivos.replace(
+        f"REFERENCES {ESQUEMA}.partes (hash_parte) ON DELETE CASCADE,", ""
+    )
+
+    assert f"REFERENCES {ESQUEMA}.partes (hash_parte)" not in sin_clave_ajena
+    assert sin_clave_ajena != archivos
+
+
 def test_f005_r24_el_check_de_cierres_cubre_su_enum():
     """Los estados de cierre del `.sql` son los de `EstadoCierre`."""
     cierres = _sentencia_de_tabla("cierres")

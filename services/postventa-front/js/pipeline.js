@@ -172,6 +172,17 @@
     if (parte.archivado) {
       throw new Error("este parte ya está archivado");
     }
+    // F-019 R27 · el backend responde 409 a un parte que no consta guardado y
+    // no sube nada. Pararlo aquí evita la petición inútil y, sobre todo, evita
+    // que la pantalla ofrezca archivar algo que va a fallar: sin esto se
+    // vuelve al defecto 15 con el usuario delante.
+    if (!parte.guardado) {
+      throw new Error(
+        "este parte no se ha guardado todavía, así que no se puede archivar: " +
+          (parte.errorGuardado ||
+            "hay que guardarlo antes (POST /api/parte)"),
+      );
+    }
 
     const Fabrica =
       FabricaFormData || (typeof FormData !== "undefined" ? FormData : null);
@@ -231,7 +242,7 @@
    * @returns {Promise<{extraccion, firma, validacion}>} Las tres respuestas
    *          íntegras, que es lo que hace posible revalidar sin gastar IA.
    */
-  async function procesarParte(parte, api) {
+  async function procesarParte(parte, api, remesaId) {
     const resultados = await Promise.all([
       api.extraer(parte.fichero, parte.hash),
       api.firma(parte.fichero, parte.hash),
@@ -244,7 +255,102 @@
       parte.hash,
     );
 
-    return { extraccion: extraccion, firma: firma, validacion: validacion };
+    // F-019 R26 · guardar va DESPUÉS de validar y ANTES de ofrecer archivar.
+    // No se lanza si falla: el veredicto ya está pagado —dos llamadas de IA— y
+    // tirarlo obligaría a repetirlas. Lo que se devuelve es por qué no se pudo
+    // guardar, y con eso el parte queda marcado como no archivable (R27).
+    const guardado = await guardarParte(
+      { ...parte, extraccion: extraccion, firma: firma },
+      api,
+      remesaId,
+    );
+
+    return {
+      extraccion: extraccion,
+      firma: firma,
+      validacion: validacion,
+      guardado: guardado,
+    };
+  }
+
+  /**
+   * El cuerpo de `POST /api/parte` (F-019 R26).
+   *
+   * Es **el de `/api/validar` más dos claves**, y es deliberado: así no hay
+   * dos formas de describir el mismo parte, que es como divergen los
+   * contratos. El backend usa los mismos parsers para los dos.
+   *
+   * Ojo con el nombre: `js/api.js` tiene otro `cuerpoDeParte`, que compone el
+   * `multipart` de `/api/extraer` y `/api/firma`. Este compone JSON y **no
+   * lleva los bytes del PDF** (R12): el documento vive en SharePoint.
+   *
+   * La extracción va con las correcciones de la persona aplicadas, para que lo
+   * guardado sea **lo revisado** y no lo que dijo la IA la primera vez (R28).
+   */
+  function cuerpoDeParte(parte, remesaId) {
+    return {
+      remesa_id: remesaId,
+      parte: {
+        hash: parte.hash,
+        origen: parte.origen,
+        paginas_origen: parte.paginas_origen,
+        modo_deteccion: parte.modo_deteccion,
+      },
+      extraccion: aplicarEdiciones(parte.extraccion, parte.ediciones),
+      firma: parte.firma,
+    };
+  }
+
+  /**
+   * Guarda el parte y su veredicto. **Nunca lanza** (F-019 R27).
+   *
+   * Devuelve `{ok, motivo}`. Un guardado fallido no es un error del proceso:
+   * es un parte que **no se puede archivar**, y quien lo mire tiene que ver
+   * por qué. Dejarlo escapar como excepción marcaría el parte como «error de
+   * lectura», que es otra cosa y se arregla de otra manera.
+   *
+   * Sin `remesaId` ni se intenta: el backend respondería 409 y la petición
+   * sería ruido. El motivo lo dice, porque quien lo lea tiene que saber que
+   * hay que volver a subir la remesa.
+   */
+  async function guardarParte(parte, api, remesaId) {
+    if (!remesaId) {
+      return {
+        ok: false,
+        motivo:
+          "no hay ninguna remesa registrada para este parte: vuelve a subir " +
+          "la remesa para que quede constancia antes de guardar sus partes",
+      };
+    }
+    try {
+      await api.guardarParte(cuerpoDeParte(parte, remesaId), parte.hash);
+      return { ok: true, motivo: "" };
+    } catch (error) {
+      return {
+        ok: false,
+        motivo:
+          (error && error.mensaje) ||
+          (error && error.message) ||
+          String(error),
+      };
+    }
+  }
+
+  /**
+   * Revalida el parte corregido y **vuelve a guardarlo** (F-019 R28).
+   *
+   * Las dos cosas van juntas a propósito: si se revalidara sin guardar, lo
+   * que quedaría en la base sería el veredicto anterior —el que emitió la IA
+   * sobre el dato sin corregir— y la persona que revisó el parte no tendría
+   * forma de saberlo.
+   *
+   * `revalidar` se mantiene aparte y sin tocar: es el contrato de F-007 R17
+   * —una sola petición, sin IA— y hay quien solo quiere el veredicto.
+   */
+  async function revalidarYGuardar(parte, api, remesaId) {
+    const validacion = await revalidar(parte, api);
+    const guardado = await guardarParte(parte, api, remesaId);
+    return { validacion: validacion, guardado: guardado };
   }
 
   /**
@@ -281,9 +387,12 @@
     esArchivable: esArchivable,
     valorDeCampo: valorDeCampo,
     cuerpoDeArchivo: cuerpoDeArchivo,
+    cuerpoDeParte: cuerpoDeParte,
     ficheroDeParte: ficheroDeParte,
     procesarParte: procesarParte,
+    guardarParte: guardarParte,
     revalidar: revalidar,
+    revalidarYGuardar: revalidarYGuardar,
   };
 
   if (typeof window !== "undefined") {

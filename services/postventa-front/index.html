@@ -162,6 +162,14 @@
                     <span @click.stop="reintentarParte(parte)"
                           class="ml-2 cursor-pointer underline">reintentar</span>
                   </p>
+                  <!-- F-019 R27 · el parte se leyó bien pero NO se guardó, así
+                       que no se puede archivar. Se dice aquí y con su motivo:
+                       callarlo devuelve al usuario al defecto 15. -->
+                  <p x-show="!parte.error && parte.errorGuardado"
+                     class="mt-1 text-xs text-amber-700">
+                    No archivable: no se ha podido guardar.
+                    <span x-text="parte.errorGuardado"></span>
+                  </p>
                 </button>
               </li>
             </template>
@@ -232,6 +240,14 @@
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar</h2>
         <p class="mt-2 text-sm text-slate-600">
           <span x-text="archivables().length"></span> parte(s) en verde sin archivar.
+        </p>
+        <!-- F-019 R27 · los aptos que NO se pudieron guardar no entran en el
+             botón, y hay que decir cuántos son: si desaparecieran de la cuenta
+             sin explicación, alguien daría la remesa por archivada entera. -->
+        <p x-show="noArchivables().length" class="mt-1 text-sm text-amber-700">
+          <span x-text="noArchivables().length"></span> parte(s) apto(s) que
+          <strong>no se han podido guardar</strong> y por eso no se archivan.
+          El motivo está en cada parte de la lista.
         </p>
 
         <div class="mt-4 flex flex-wrap items-center gap-3">

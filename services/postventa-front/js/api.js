@@ -1,5 +1,5 @@
 // services/postventa-front/js/api.js
-// R12, R23-R27 · El cliente de los seis endpoints del backend.
+// R12, R23-R27 · El cliente de los nueve endpoints del backend.
 //
 // Una sola forma de hablar con el backend y una sola forma de error hacia
 // arriba: `ErrorApi {tipo, http, mensaje, avisos}` con
@@ -10,7 +10,8 @@
 // abrir una sola conexión en la suite.
 //
 // NINGUNO de estos endpoints se toca en F-007: el contrato es el que dejaron
-// F-002 … F-006.
+// F-002 … F-006. F-019 añade tres —`registrarRemesa`, `guardarParte` y
+// `cola`— y no cambia ninguno de los seis anteriores.
 
 (function () {
   "use strict";
@@ -285,6 +286,63 @@
           paso: "validar",
           hash: hash,
         });
+      },
+
+      /**
+       * F-019 R25 · deja constancia de la remesa y devuelve su `remesa_id`.
+       *
+       * Va **antes** de procesar ningún parte: `postventa.partes.remesa_id`
+       * tiene clave ajena contra `postventa.remesas.id`, así que sin esto el
+       * guardado de cada parte responde 409.
+       *
+       * El `remesa_id` que devuelve se conserva mientras dure la remesa en
+       * pantalla y se reenvía en cada guardado: `postventa.remesas` no tiene
+       * clave natural (decisión D2), así que resubir sin él crearía una fila
+       * de remesa de más.
+       */
+      registrarRemesa: function (cuerpo) {
+        return peticion("/remesa", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "remesa",
+        });
+      },
+
+      /**
+       * F-019 R26 · guarda el parte y su veredicto.
+       *
+       * El cuerpo lo compone `js/pipeline.js::cuerpoDeParte` (es el de
+       * `/api/validar` más `remesa_id` y el bloque `parte`). **No lleva los
+       * bytes del PDF**: el documento vive en SharePoint y el disco del
+       * servidor es compartido.
+       *
+       * El veredicto que viaja dentro es informativo: el backend lo
+       * **recalcula** con las reglas del dominio y no acepta el del cuerpo.
+       */
+      guardarParte: function (cuerpo, hash) {
+        return peticion("/parte", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "parte",
+          hash: hash,
+        });
+      },
+
+      /**
+       * F-019 · la cola de validación humana, que sobrevive entre sesiones.
+       *
+       * El `limite` es opcional; el backend aplica 50 por omisión y **acota
+       * duro a 500** venga lo que venga, así que aquí no hace falta repetir
+       * el techo: repetirlo daría dos números que divergirían.
+       */
+      cola: function (limite) {
+        const ruta =
+          limite === undefined || limite === null
+            ? "/cola"
+            : "/cola?limite=" + encodeURIComponent(limite);
+        return peticion(ruta, { metodo: "GET", paso: "cola" });
       },
 
       /** R20 · archivo. El `FormData` lo compone `js/pipeline.js` (R29). */

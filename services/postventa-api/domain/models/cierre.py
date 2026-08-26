@@ -199,9 +199,13 @@ class PlanDeCierre:
 class ResultadoCierre:
     """Qué pasó al ejecutar el cierre: el estado y cuántas filas se tocaron.
 
-    `filas_afectadas` tiene que ser **2** en un cierre real —el `UPDATE` de
-    `con.est` y el `INSERT` de `dbo.log`—; cualquier otra cosa es un error con
-    su motivo y nunca un cierre dado por bueno (`design.md` §7.3).
+    `filas_afectadas` tiene que ser **2** en un cierre real —la fila del
+    estado de la reclamación y la fila de auditoría—; cualquier otra cosa es
+    un error con su motivo y nunca un cierre dado por bueno (`design.md`
+    §7.3).
+
+    El dominio habla de **filas** y no de sentencias a propósito: quien sabe
+    qué SQL las produce es `infrastructure/sigrid/`, y aquí no se nombra.
     """
 
     plan: PlanDeCierre

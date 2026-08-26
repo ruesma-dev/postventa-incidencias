@@ -550,10 +550,10 @@ class UsuarioSigridInexistente(Exception):
 class EstadoCambiadoDesdeElDryRun(Exception):
     """La reclamación se movió entre el dry-run y la escritura (F-009, R11).
 
-    **No se ha aplicado nada.** El `UPDATE` lleva en su `WHERE` el estado de
-    origen que se leyó en el dry-run, así que si alguien movió la reclamación
-    entretanto la sentencia no encuentra la fila, el `INSERT` del log tampoco
-    —su `FROM` está filtrado por el estado destino— y el batch entero se va sin
+    **No se ha aplicado nada.** El cambio de estado lleva en su condición el
+    estado de origen que se leyó en el dry-run, así que si alguien movió la
+    reclamación entretanto no encuentra la fila; la de auditoría tampoco, que
+    depende de que el cambio se hubiera aplicado, y el batch entero se va sin
     tocar el ERP.
 
     Existe porque **no se puede asumir que lo leído siga ahí**: F-008 §2.4

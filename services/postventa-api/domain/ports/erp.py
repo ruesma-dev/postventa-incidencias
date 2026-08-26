@@ -71,8 +71,8 @@ class ErpPort(Protocol):
     def cerrar(self, *, plan: PlanDeCierre, ahora: datetime) -> int:
         """Ejecuta el cierre y devuelve **cuántas filas** se han tocado.
 
-        Las dos sentencias —el `UPDATE` de `con.est` y el `INSERT` de
-        `dbo.log`— van en **un solo batch transaccional** (R22) con un tope de
+        Las dos escrituras —el estado de la reclamación y su fila de
+        auditoría— van en **un solo batch transaccional** (R22) con un tope de
         filas afectadas que no puede pasar de las dos esperadas (R23). Un
         cierre real devuelve `2`; cualquier otra cosa es un error con su
         motivo, nunca un cierre dado por bueno.

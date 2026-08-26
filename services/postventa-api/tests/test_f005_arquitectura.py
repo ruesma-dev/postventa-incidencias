@@ -52,8 +52,20 @@ VERBOS_SQL = (
     "ON CONFLICT",
 )
 
-#: El único directorio del servicio que puede contener SQL.
-DIRECTORIO_DEL_SQL = "infrastructure/persistencia"
+#: Los directorios del servicio que pueden contener SQL.
+#:
+#: Son **dos**, y son dos bases de datos distintas: `persistencia` escribe en el
+#: PostgreSQL propio del proyecto y `sigrid` lee y escribe en el SQL Server del
+#: ERP a través de la pasarela. El segundo lo añadió F-009, y lo importante no
+#: es que la lista crezca sino **cómo** crece: cada uno es un paquete de
+#: infraestructura entero y aislado, con su SQL en módulos puros
+#: (`sentencias.py`, `consultas.py`, `escrituras.py`) que se comprueban carácter
+#: a carácter. Lo que este invariante sigue prohibiendo —y es lo que importa—
+#: es un `INSERT` suelto en un paso del pipeline o en un handler.
+DIRECTORIOS_CON_SQL = ("infrastructure/persistencia", "infrastructure/sigrid")
+
+#: El directorio histórico, conservado para los tests que lo nombran uno a uno.
+DIRECTORIO_DEL_SQL = DIRECTORIOS_CON_SQL[0]
 
 #: Las suites, que sí escriben SQL a propósito: es lo que comprueban.
 DIRECTORIOS_DE_SUITES = ("tests/", "tests_bbdd/")
@@ -127,7 +139,7 @@ def test_f005_r31_solo_el_adaptador_de_persistencia_escribe_sql():
     culpables = {}
     for fichero in _modulos_python():
         relativa = fichero.relative_to(SERVICIO).as_posix()
-        if relativa.startswith(DIRECTORIO_DEL_SQL) or relativa.startswith(
+        if relativa.startswith(DIRECTORIOS_CON_SQL) or relativa.startswith(
             DIRECTORIOS_DE_SUITES
         ):
             continue

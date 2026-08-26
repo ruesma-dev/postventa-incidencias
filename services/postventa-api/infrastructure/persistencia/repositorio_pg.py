@@ -1,5 +1,5 @@
 # services/postventa-api/infrastructure/persistencia/repositorio_pg.py
-"""El adaptador de PostgreSQL: implementa los dos puertos de persistencia.
+"""El adaptador de PostgreSQL: implementa los tres puertos de persistencia.
 
 **Es delgado a propósito.** Todo lo que se puede decidir sin base de datos
 —qué SQL, con qué parámetros, cómo vuelve una fila al dominio— vive en
@@ -31,6 +31,7 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
+from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.errores import PersistenciaNoDisponible, ReferenciaNoConsta
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
@@ -47,6 +48,7 @@ from domain.models.validacion import ResultadoValidacion
 
 from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import (
+    fila_a_correspondencia,
     fila_a_entrada_cola,
     fila_a_preferencias,
 )
@@ -57,7 +59,8 @@ log = logging.getLogger(__name__)
 
 
 class RepositorioPostgres:
-    """Implementa `RepositorioPartesPort` y `RepositorioPreferenciasPort`.
+    """Implementa `RepositorioPartesPort`, `RepositorioPreferenciasPort` y
+    `RepositorioUsuariosSigridPort`.
 
     Recibe la conexión ya abierta y con su sesión configurada: quién la abre y
     quién aplica el DDL es `fabrica.py`, y así este objeto se puede construir
@@ -202,6 +205,45 @@ class RepositorioPostgres:
         log.info(
             "F-005 preferencias guardadas: auto_cierre=%s resultado=%s",
             preferencias.auto_cierre,
+            resultado.value,
+        )
+        return resultado
+
+    # --- correspondencias con el ERP (F-009) ------------------------------
+
+    def resolver_login(self, *, usuario_oid: str) -> CorrespondenciaSigrid | None:
+        """La correspondencia `oid` → login de ese usuario, o `None` (R29).
+
+        `None` **no es un error**: es la primera vez de esa persona, y lo que
+        toca entonces es derivar un candidato y verificarlo contra el ERP.
+
+        Del resultado **no se registra nada** (R45): el login de Sigrid es la
+        identidad de una persona, y este log lo lee cualquiera que abra
+        Application Insights.
+        """
+        sql, parametros = sentencias.select_login_sigrid(
+            esquema=self._esquema, usuario_oid=usuario_oid
+        )
+        filas = self._leer(sql, parametros, operacion="resolver_login")
+        if not filas:
+            return None
+        return fila_a_correspondencia(filas[0])
+
+    def guardar_login(
+        self, *, correspondencia: CorrespondenciaSigrid
+    ) -> ResultadoGuardado:
+        """Deja **una sola** fila por usuario, con su verificación (R33).
+
+        El log dice si la correspondencia quedó confirmada y **nunca** cuál es:
+        saber que la siembra funcionó no exige saber quién es quién.
+        """
+        sql, parametros = sentencias.upsert_login_sigrid(
+            esquema=self._esquema, correspondencia=correspondencia
+        )
+        resultado = self._escribir(sql, parametros, operacion="guardar_login")
+        log.info(
+            "F-009 correspondencia con Sigrid guardada: confirmada=%s resultado=%s",
+            correspondencia.confirmada,
             resultado.value,
         )
         return resultado

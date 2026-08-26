@@ -28,6 +28,7 @@ from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Any
 
+from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.extraccion import CAMPOS_DEL_PARTE, ExtraccionParte
 from domain.models.persistencia import EntradaCola, PreferenciasUsuario
 from domain.models.validacion import Motivo, ResultadoValidacion
@@ -35,6 +36,7 @@ from domain.models.validacion import Motivo, ResultadoValidacion
 __all__ = [
     "COLUMNAS_DE_CAMPOS",
     "columnas_de_campos",
+    "fila_a_correspondencia",
     "fila_a_entrada_cola",
     "fila_a_preferencias",
     "json_de_avisos",
@@ -209,6 +211,23 @@ def fila_a_preferencias(fila: Sequence[Any]) -> PreferenciasUsuario:
         usuario_oid=usuario_oid,
         auto_cierre=bool(auto_cierre),
         actualizado_at_utc=actualizado_at_utc,
+    )
+
+
+def fila_a_correspondencia(fila: Sequence[Any]) -> CorrespondenciaSigrid:
+    """Una fila de `usuarios_sigrid`, de vuelta al dominio (F-009).
+
+    El orden de las columnas es el de `sentencias.select_login_sigrid`.
+    `verificado_at_utc` puede llegar a `None`, y eso **significa algo**: es un
+    alta manual que todavía no se ha comprobado contra el ERP, y por tanto no
+    exime de comprobarla antes de firmar (R32).
+    """
+    usuario_oid, login_sigrid, alta_at_utc, verificado_at_utc = fila
+    return CorrespondenciaSigrid(
+        usuario_oid=usuario_oid,
+        login_sigrid=login_sigrid,
+        alta_at_utc=alta_at_utc,
+        verificado_at_utc=verificado_at_utc,
     )
 
 

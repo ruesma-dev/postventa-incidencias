@@ -76,8 +76,14 @@ def test_f005_r5_el_ddl_real_pasa_la_guarda():
     assert len(sentencias) >= 14
 
 
-def test_f005_r1_se_aplican_los_siete_ficheros_en_orden():
-    """Los siete `.sql` del diseño, y en el orden que dice su numeración."""
+def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
+    """Los `.sql` del proyecto, y en el orden que dice su numeración.
+
+    La lista se escribe entera y a mano **a propósito**: es la forma de que
+    añadir o quitar un fichero de DDL no pueda pasar desapercibido. Eran los
+    siete del diseño de F-005; F-009 añadió el octavo, y tuvo que venir aquí a
+    declararlo, que es exactamente lo que se quería.
+    """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
     assert nombres == [
@@ -88,6 +94,7 @@ def test_f005_r1_se_aplican_los_siete_ficheros_en_orden():
         "05_archivos.sql",
         "06_cierres.sql",
         "07_preferencias.sql",
+        "08_usuarios_sigrid.sql",
     ]
 
 

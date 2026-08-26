@@ -53,6 +53,7 @@ __all__ = [
     "Reclamacion",
     "ResultadoCierre",
     "a_codigo_de_sigrid",
+    "derivar_login_candidato",
     "evaluar",
 ]
 
@@ -279,6 +280,30 @@ def a_codigo_de_sigrid(bruto: str | None) -> str:
     if not codigo:
         return ""
     return " ".join(codigo.replace(SEPARADOR, "/").split())
+
+
+def derivar_login_candidato(correo: str | None) -> str:
+    """El login que **se propondrá** al ERP, a partir del correo (R30).
+
+    Son las palabras del humano —«en principio es el mismo el de login en la
+    app y el de Sigrid»— convertidas en código, y **tratadas como el supuesto
+    que son**: esto no devuelve un login, devuelve un **candidato**. Quien
+    decide si vale es el ERP, por lectura, antes de cualquier escritura.
+
+    Que el supuesto necesite comprobación no es desconfianza: está medido. De
+    los 8 usuarios del ERP con correo registrado, **6** cumplen la convención.
+    Un 75 % no vale cuando el error consiste en firmar en el log de un ERP de
+    producción el cierre de una persona que no lo hizo.
+
+    Se normaliza a minúsculas porque un login no son dos logins según cómo lo
+    escriba el proveedor de identidad. Un correo que no lo sea —vacío, sin
+    arroba, sin parte local— devuelve cadena vacía: aquí no se inventa nada, y
+    quien decide qué hacer con «no hay candidato» es quien lo pidió.
+    """
+    limpio = (correo or "").strip().lower()
+    if "@" not in limpio:
+        return ""
+    return limpio.split("@", 1)[0].strip()
 
 
 def _ya_cerrada(reclamacion: Reclamacion) -> bool:

@@ -28,6 +28,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
+from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     PreferenciasUsuario,
@@ -50,9 +51,11 @@ from infrastructure.persistencia.mapeo import (
 __all__ = [
     "LIMITE_MAXIMO_COLA",
     "select_cola",
+    "select_login_sigrid",
     "select_preferencias",
     "upsert_archivo",
     "upsert_cierre",
+    "upsert_login_sigrid",
     "upsert_parte",
     "upsert_preferencias",
     "upsert_remesa",
@@ -332,6 +335,54 @@ def select_preferencias(*, esquema: str, usuario_oid: str) -> tuple[str, tuple]:
         "WHERE usuario_oid = %s"
     )
     return sql, (usuario_oid,)
+
+
+def select_login_sigrid(*, esquema: str, usuario_oid: str) -> tuple[str, tuple]:
+    """La correspondencia de un usuario, por su `oid` opaco de Entra (F-009).
+
+    La clave es el `oid` y no el correo: el correo **no se guarda en ninguna
+    parte** de este proyecto. Lo que hay aquí es el par que hace falta para
+    firmar el cierre en el ERP, y ni un dato más de la persona.
+    """
+    tabla = _tabla(esquema, "usuarios_sigrid")
+    sql = (
+        "SELECT usuario_oid, login_sigrid, alta_at_utc, verificado_at_utc\n"
+        f"FROM {tabla}\n"
+        "WHERE usuario_oid = %s"
+    )
+    return sql, (usuario_oid,)
+
+
+def upsert_login_sigrid(
+    *, esquema: str, correspondencia: CorrespondenciaSigrid
+) -> tuple[str, tuple]:
+    """Deja **una sola** fila por usuario, con su marca de verificación (R33).
+
+    `alta_at_utc` **no se refresca** al reconfirmar, por la misma regla que
+    `primera_vez_at_utc` en la tabla de partes: se conserva lo que cuenta la
+    historia —desde cuándo existe este mapeo— y se refresca lo que cuenta el
+    ahora —cuándo se comprobó por última vez contra el ERP—.
+
+    Dos filas para la misma persona serían dos identidades para firmar el mismo
+    cierre, y quién firma lo decidiría el azar de un `ORDER BY`. Lo impide la
+    clave primaria, no una comprobación previa en Python.
+    """
+    tabla = _tabla(esquema, "usuarios_sigrid")
+    columnas = ("usuario_oid", "login_sigrid", "alta_at_utc", "verificado_at_utc")
+    sql = (
+        f"INSERT INTO {tabla} ({', '.join(columnas)})\n"
+        f"VALUES (%s, %s, %s, %s)\n"
+        f"ON CONFLICT (usuario_oid) DO UPDATE SET\n"
+        f"{_asignaciones(columnas, excluidas={'usuario_oid', 'alta_at_utc'})}\n"
+        f"RETURNING (xmax = 0) AS creado"
+    )
+    parametros = (
+        correspondencia.usuario_oid,
+        correspondencia.login_sigrid,
+        correspondencia.alta_at_utc,
+        correspondencia.verificado_at_utc,
+    )
+    return sql, parametros
 
 
 #: El estado de cierre que no se pisa (R25). Va como **parámetro**, no pegado

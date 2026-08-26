@@ -26,6 +26,11 @@ que enseñan las pantallas.
 La incidencia también se puede localizar por la pestaña **Post-Venta →
 Reclamaciones** de la obra, sin entrar en la unidad.
 
+**De dónde sale el fichero.** La guía cita la ruta real desde la que Posventa
+importa el parte, y muestra la estructura de carpetas en la que hoy vive:
+`…677 MIRASIERRA\PARTES INCIDENCIAS\VILLA 05\PARTES FIRMADOS`, es decir
+**obra → «PARTES INCIDENCIAS» → unidad (villa) → «PARTES FIRMADOS»**.
+
 ## Lo que se rellena al importar el gráfico
 
 Ventana *"Ventana de Gráficos / Documentos asociados al concepto"*. De todos
@@ -108,3 +113,21 @@ Consecuencias para nosotros:
 - «Cerrar parte» es un **proceso** del ERP, no un simple cambio de campo. No
   consta qué más hace (seguimiento, avisos, fechas). Antes de replicarlo por
   SQL hay que verificar en una incidencia real qué filas toca.
+
+> **Esa última duda ya está resuelta**, y no por deducción: F-008 la midió
+> contra el ERP. «Cerrar parte» escribe **`con.est` y una fila en `dbo.log`,
+> nada más** — ni seguimiento, ni actuaciones, ni fechas. El detalle, con la
+> forma exacta de la fila de log, está en `03_modelo_posventa_sigrid.md` §2.
+
+## Anexo de la guía: cómo nombrar y dónde guardar el parte
+
+La autora deja una **cuestión abierta**, con sus palabras: le resulta más fácil
+buscar la incidencia entrando en la vivienda, pero también se puede llegar por
+la pestaña de reclamaciones; y por eso duda entre **renombrar el fichero con el
+nombre de la vivienda más el de la incidencia** o seguir como hasta ahora —solo
+el nombre de la incidencia, y cada parte en la carpeta de su vivienda—.
+
+No afecta al cierre en Sigrid, que localiza la reclamación por su código. Afecta
+a **cómo se nombra y archiva el PDF**, así que es materia de la feature de
+archivo en SharePoint, no de F-009. Queda anotada aquí para que quien la aborde
+no la reinvente: es una pregunta del negocio, todavía sin responder.

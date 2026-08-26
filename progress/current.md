@@ -1,39 +1,40 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## PENDIENTE AL RETOMAR (2026-08-26, fin de sesión) · **el Word del cierre**
+> ## Estado al 2026-08-26 (cierre de jornada) · **el Word leído; §7 en pie**
 >
-> **Antes de lanzar al implementer de F-009, hay que leer un documento que el
-> humano ha aportado y que todavía NO está en el repositorio**:
-> `PASOS CERRAR INCIDENCIA.docx`, en la carpeta de postventa de su OneDrive
-> (750 KB, con capturas de pantalla del proceso en Sigrid).
+> **El pendiente del Word queda CERRADO, y con una sorpresa: ya estaba dentro.**
+> `markitdown` respondió, se convirtió `PASOS CERRAR INCIDENCIA.docx` y su texto
+> coincide **1:1** con `docs/referencia/01_cierre_incidencia_sigrid.md`, que se
+> incorporó en el commit `8cb6c66` —convertido con `markitdown`, con las
+> capturas leídas una a una y volcadas, y el propietario y el servidor
+> redactados—. La sesión anterior lo anotó como pendiente sin ver que el
+> documento que pedía leer era justo ese. El `.docx` sigue **fuera de git**
+> (`.gitignore`, comprobado con `git status --ignored`); **no se ha extraído ni
+> versionado ninguna captura**, y no hace falta: su contenido ya está en texto.
 >
-> Trae **el procedimiento manual del cierre paso a paso**, que es justo lo que
-> F-009 tiene que reproducir: «hay que escribir las mismas líneas que se hacen
-> hoy a mano». Puede cambiar **qué escribe** el cierre, así que se lee **antes**
-> de implementar, no después.
+> **Del Word solo faltaban dos detalles, ninguno de F-009**, y se han añadido al
+> `01`: la ruta de origen de los partes (`677 MIRASIERRA\PARTES
+> INCIDENCIAS\VILLA 05\PARTES FIRMADOS`, o sea obra → unidad → firmados) y el
+> **anexo** en el que la autora duda de cómo nombrar el fichero —solo incidencia
+> con carpeta por vivienda, o vivienda + incidencia—. Eso es **pregunta abierta
+> del negocio para la feature de archivo en SharePoint**, no para el cierre.
+> De paso, el `01` ya remite al `03` para la duda que dejaba abierta sobre qué
+> filas toca el proceso.
 >
-> **La sesión paró por la regla del `CLAUDE.md`**: la conversión de ofimática se
-> hace **siempre con la MCP `markitdown`**, y en esa sesión **no estaba
-> conectada** (había Chrome, Gmail, Microsoft 365 e IDE). El humano eligió
-> **conectarla y relanzar**, no autorizar otra vía. Así que al retomar:
+> ### El veredicto que pedía el punto 4: `design.md` §7 NO cambia
 >
-> 1. Comprobar que `markitdown` responde. Si no, **PARAR otra vez**: la regla
->    existe porque el Markdown queda versionado y no puede depender de quién lo
->    convirtió.
-> 2. Convertir a `docs/referencia/`, con la convención de nombre y la cabecera
->    de origen y fecha de su `README.md`. El `.docx` **no se versiona**.
-> 3. **Las capturas son media explicación y `markitdown` no se las lleva.** Hay
->    que sacarlas aparte y decidir qué se hace con ellas. **Antes de versionar
->    ninguna, mirarlas**: son pantallas de Sigrid sobre una incidencia real y es
->    probable que muestren cliente, obra, unidad o DNI. Eso NO entra en git.
-> 4. Con el documento leído, revisar si el `design.md` de F-009 sigue en pie
->    —sobre todo §7, el SQL sentencia a sentencia— y solo entonces pedir el
->    «adelante» para `in_progress`.
+> El Word describe **el proceso** (renombrar, subir el gráfico, Procesos → 3);
+> lo que F-009 replica es **el registro**, y el registro son dos cosas medidas
+> por F-008 sobre 6.843 filas: `con.est = 9` y **una fila en `dbo.log`** con
+> `tab='con'`, `tip=708`, `cod`/`res` copiados de la reclamación, `ope=5`,
+> `est=1`, `ori=0`, `emp` de `con.emp`, `usu` el login y `fec`/`hor`. El §7.3
+> escribe exactamente eso, en una transacción, con **una sola desviación
+> deliberada**: el `tex` de D1. Ni una sentencia que tocar.
 >
-> **Confirmado por el humano en esa misma sesión**: «de momento solo guardamos
-> el PDF en SharePoint y cerramos la incidencia». Es D5, y la spec ya está
-> escrita así.
+> **Siguiente paso**: pasar F-009 a `in_progress` (lo mueve el humano) y lanzar
+> al `implementer` contra `specs/F-009-cierre-sigrid/tasks.md`.
+
 
 
 > ## Estado al 2026-08-26 (tarde) · **F-009: spec sin decisiones abiertas, esperando el «adelante»**

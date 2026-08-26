@@ -518,3 +518,194 @@ una copia aislada y comprueba que algo se pone rojo.** Un requisito de orden que
 sobrevive a que le quiten el orden no está probado.
 
 No lo aplico: lo decide el humano. Si lo aprueba, va también a `arnes-base`.
+
+---
+---
+
+# Re-review · segunda ronda (2026-08-26)
+
+> **Lo de arriba no se toca**: es el rastro de la primera ronda y explica por
+> qué esta feature tuvo que volver. Esto se añade debajo.
+
+**Encargo**: verificar las tres correcciones de
+`progress/impl_postreview_F-019.md`, commits `886ff31` … `0156b64`. Se eligió mi
+**opción (a)** del cambio 1: el orden sale de `app.js` a
+`js/pipeline.js::procesarRemesa`.
+
+## Veredicto de la segunda ronda
+
+> ## APROBADO
+
+Los tres cambios están cerrados, y lo he comprobado **con el método que destapó
+el problema**: romper lo que cada test dice proteger sobre una copia aislada y
+mirar si la suite se pone roja. **Nueve roturas, nueve rojos.** En la primera
+ronda, dos de esas mismas roturas dejaban los 122 tests en verde.
+
+`bash harness/init.sh` ejecutado por mí: **verde, exit 0**, `PUERTA COBERTURA`
+en `[OK]` con 100,0 % de 269 líneas.
+
+---
+
+## 1 · Las nueve roturas, y lo que pasó con cada una
+
+Método: copia del servicio `postventa-front` en mi scratchpad —**nunca sobre el
+árbol real**—, una rotura por copia, y en cada una `node --test tests_js/*.test.js`
+más `pytest tests/test_f007_estaticos.py`. Copias borradas al terminar; el árbol
+del repositorio quedó limpio (`git status` vacío).
+
+**Línea base sobre copia limpia**: `140 pass, 0 fail` en JavaScript (eran 122) y
+`20 passed` en `test_f007_estaticos.py` (eran 18). Las dos en exit 0, que es lo
+que hace que un rojo signifique algo.
+
+| # | Qué rompí | JS | estáticos | ¿Rojo? |
+|---|---|---|---|---|
+| A | `app.js` deja de delegar en `Pipeline.procesarRemesa` y monta el orden a mano | 0 | **1 failed** | **sí** |
+| B | Dentro de `procesarRemesa`, procesar **antes** de registrar | **exit 1**, 4 failed | 0 | **sí** |
+| C | `procesarRemesa` no llega a llamar a `api.registrarRemesa` | **exit 1** | 0 | **sí** |
+| D | `reiniciar()` deja de limpiar `this.remesaId` | 0 | **1 failed** | **sí** |
+| E | `api.js`: `/remesa` → `/remesas-typo` | **exit 1**, 2 failed | 0 | **sí** |
+| F | `api.js`: `registrarRemesa` pasa de `POST` a `GET` | **exit 1**, 2 failed | 0 | **sí** |
+| G | `api.js`: `registrarRemesa` pierde el `Content-Type: application/json` | **exit 1** | 0 | **sí** |
+| H | `api.js`: `/parte` → `/partes-typo` | **exit 1** | 0 | **sí** |
+| I | `api.js`: `/cola` → `/colas-typo` | **exit 1** | 0 | **sí** |
+
+**E y A son exactamente las dos roturas de la primera ronda**, las que entonces
+dejaban los 122 tests en verde. Hoy caen. El agujero está cerrado, y lo está por
+construcción y no por promesa.
+
+Qué cae en cada caso, con nombre y apellidos:
+
+- **B (orden invertido)** → `f019 R25: la remesa se registra ANTES de procesar
+  ningún parte`, `…: si el registro tarda, NO se adelanta el procesado`,
+  `…: el remesa_id se devuelve y llega al procesado`, `…: si el registro falla,
+  los partes se procesan IGUAL`.
+- **E, F (ruta y método)** → `f007 R27 / f019: los NUEVE endpoints llaman a su
+  ruta, con su metodo` **y** `f019 R25: registrarRemesa manda POST /api/remesa
+  con cuerpo JSON`. Dos tests independientes, que es lo correcto: si mañana se
+  reescribe uno, el otro sigue.
+- **I (`/cola`)** → el de los nueve **y** `f019: cola sin limite pide GET
+  /api/cola, sin cadena de consulta`.
+- **A y D** → los dos guardianes textuales nuevos de `test_f007_estaticos.py`.
+
+### El test que más me convenció
+
+`f019 R25: si el registro tarda, NO se adelanta el procesado`. Deja el registro
+**pendiente** en una promesa sin resolver, cede el turno al bucle de eventos y
+afirma que el procesado **todavía no ha empezado**. Sin él, una implementación
+que lanzara las dos cosas a la vez pasaría el test de orden por puro azar en el
+orden de resolución. Es la diferencia entre probar el orden y probar el
+resultado, y está bien vista.
+
+## 2 · Que ningún listón bajó
+
+Repasé **todos** los borrados de la ronda:
+
+- `js/app.js`: pierde `_registrarRemesa` porque se **mudó**, no porque se
+  quitara. `_nombreDeLaRemesa` sigue y se usa como `nombreOrigen`. El
+  comportamiento ante un registro fallido se conserva entero —los partes se
+  procesan igual y quedan no archivables con su motivo (R27)— y ahora **tiene
+  test** (`f019 R25: si el registro falla, los partes se procesan IGUAL` y
+  `…: y el motivo se cuenta, no se traga`), que antes no lo tenía.
+- `tests_js/api.test.js`: las **seis** líneas borradas son el cuerpo del viejo
+  «los seis endpoints cuelgan de baseApi», que comprobaba dos endpoints. Lo
+  sustituyen tres tests **estrictamente más fuertes**: ruta y método exactos de
+  los nueve, `baseApi` configurable en los nueve, y una cuenta que se entera si
+  aparece un décimo (`Object.keys(api)` menos la maquinaria, `=== 9`, y además
+  comparada con la lista).
+- `tests_js/persistencia.test.js` y `tests/test_f007_estaticos.py`: **cero
+  borrados**, solo añadidos.
+- El backend: **ni una línea**. `git diff 99f6f47...HEAD` no toca
+  `services/postventa-api/`.
+
+## 3 · Las cabeceras y las tablas ya dicen la verdad
+
+- **`persistencia.test.js`** ya no afirma cubrir R25 a secas: dice qué prueba
+  aquí (el orden, ahora en `pipeline.js`) y **nombra las dos mitades que no
+  están en este fichero y dónde están** —el guardián de `app.js` y las rutas de
+  `api.test.js`—, con el motivo: aquí el `api` es un doble y un doble no puede
+  decir a qué ruta se llama.
+- **`requirements.md:232`** y **`design.md:52`**: la fila única pasa a tres, con
+  la nota que explica por qué la que había era falsa a medias. Leí las tres
+  filas contra los ficheros que citan: **coinciden**.
+
+Es el mismo arreglo que T17 hizo en `test_f010_endpoints_protegidos.py`, ahora
+aplicado a sí mismos. Es lo que había que hacer.
+
+## 4 · Que el encargo no se desbordó
+
+| Límite | Estado |
+|---|---|
+| Backend intacto | **cumplido**: el diff de la ronda solo toca `services/postventa-front/`, `specs/` y `progress/` |
+| `infra/` intacto | **cumplido** |
+| `harness/features.json` intacto | **cumplido** |
+| Ninguna conexión real | **cumplido**: `fetch` y `api` son dobles inyectados; ni un socket |
+| **T24 sin marcar** | **cumplido**: `tasks.md:241` sigue en `- [ ] **T24**` |
+| Sin secretos ni datos personales | **cumplido**: barrido del diff de la ronda — 0 GUID, 0 DNI, 0 credenciales, 0 IP, 0 host de Azure, 0 `console.log`, 0 `print` |
+| `ruff` | `All checks passed!` sobre lo tocado |
+
+Suites completas, ejecutadas por mí: backend **1233 passed, 13 skipped**
+(idéntico, no se tocó), front **87 passed** (eran 85), JavaScript **140 pass, 0
+fail** (eran 122).
+
+## 5 · Las puertas del rigor, revisadas
+
+- **Fase RED**: `886ff31` («post-review 1 RED») **solo añade tests** —200 líneas
+  entre `persistencia.test.js` y `test_f007_estaticos.py`, cero código de
+  producción—, y el código llega en `28451df`. Verificado con `git show --stat`,
+  no leído del informe. Para los cambios 2 y 3, que nacían verdes porque el
+  código ya existía, el implementer hace lo que corresponde: demostrar que saben
+  fallar rompiendo `api.js` de cinco formas. **Lo he reproducido yo** (casos E–I
+  de §1) en vez de creérmelo.
+- **Cobertura**: `[OK]`, 100,0 % de 269 líneas. El número no se mueve porque las
+  puertas **no miran JavaScript**, que es justo la observación de mi §7 de la
+  primera ronda; por eso esta verificación tenía que ser a mano.
+- **Mutación**: el informe dice que no se relanza porque no cambió ni un `.py`
+  de producción. **Lo he comprobado**, no aceptado: recalculé el alcance con
+  `harness.alcance` y los mutantes con `harness.mutacion.generar_mutantes`, y
+  sale **exactamente lo mismo que antes de esta ronda**: 9 ficheros, 1159
+  líneas, **35 mutantes**. `progress/mutacion_F-019.md` sigue siendo válido, y
+  yo ya reejecuté esa campaña entera en la primera ronda (35/35 muertos).
+
+## 6 · Estado de los tres cambios pedidos
+
+| # | Cambio pedido | Estado |
+|---|---|---|
+| 1 | R25 sin ningún test | **cerrado**. Orden mudado a `pipeline.js::procesarRemesa` (opción a), 8 tests nuevos en `persistencia.test.js` y 2 guardianes textuales en `test_f007_estaticos.py`. Cabeceras y tablas corregidas |
+| 2 | Los tres métodos de `js/api.js` sin probar | **cerrado**. Ruta, método, `Content-Type`, cuerpo verbatim, `?limite=` y el escape que impide colar un segundo parámetro. Y un test de que la traza no publica nada del papel |
+| 3 | «los seis endpoints» | **cerrado**. Pasa a nueve, recorre la lista de verdad y añade la cuenta que caza un décimo |
+
+## 7 · Una cosa menor que dejo dicha, y que no bloquea
+
+**`services/postventa-front/js/pipeline.js:241-249`: el docstring de
+`procesarParte` quedó huérfano.** Al insertar `procesarRemesa` justo debajo, el
+bloque `/** Procesa UN parte: extraer y firma en paralelo… */` (línea 242) quedó
+**encima del docstring de `procesarRemesa`** (línea 251), así que hoy no
+documenta nada, y `procesarParte` —que está en la línea 305— se quedó **sin
+docstring**.
+
+No bloquea: no afecta a ningún requisito, ni a ningún test, ni al
+comportamiento. Pero en una feature que ha dedicado T16, T17, T18 y media
+segunda ronda a que las cabeceras dejen de decir lo que no es, un comentario que
+describe la función equivocada es de la misma familia, en pequeño. **Se arregla
+moviendo esas ocho líneas justo encima de `async function procesarParte`**, y
+conviene hacerlo antes del merge.
+
+## 8 · Lo que sigue pendiente para cerrar (no es del implementer)
+
+Sin cambios respecto a la primera ronda, y sigue siendo trabajo del líder y del
+humano:
+
+1. **T24**, la verificación `MANUAL (humano)` contra el entorno desplegado, con
+   la ventana de escritura abierta a propósito **y cerrada al terminar**.
+   Procedimiento en `tasks.md` Fase 9 y `progress/impl_F-019.md` §8.
+2. **Copiar `docs/INTEGRACION.md` §8 a `azure-apps/postventa-incidencias.md`**.
+3. **Decir lo de D4** al cerrar: recargar el navegador sigue perdiendo el
+   trabajo en curso; rehidratar la sesión es feature nueva.
+4. La propuesta de automejora de `CHECKPOINTS.md` de mi §7 de la primera ronda
+   sigue sobre la mesa, y esta ronda la respalda: las tres puertas automáticas
+   son ciegas al JavaScript, y las 18 pruebas que faltaban solo aparecieron
+   rompiendo el código a mano.
+
+---
+
+**Veredicto final de F-019: APROBADO.**

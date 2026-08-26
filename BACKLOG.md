@@ -5,11 +5,13 @@
 
 Resumen: **21 features**, 11 abiertas, 10 terminadas.
 
+En curso: **F-009**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | spec lista | critico | `feature/F-009-cierre-sigrid` |
+| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | en curso | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
@@ -40,7 +42,7 @@ Resumen: **21 features**, 11 abiertas, 10 terminadas.
 
 ### F-009 · Cierre de la incidencia en Sigrid (solo estado)
 
-estado **spec lista** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
+estado **en curso** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
 
 Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.
 

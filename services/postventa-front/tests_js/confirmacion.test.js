@@ -133,3 +133,56 @@ test("f007 R19: la ventana por defecto es un tiempo humano", () => {
   assert.ok(Confirmacion.VENTANA_MS >= 5_000);
   assert.ok(Confirmacion.VENTANA_MS <= 300_000);
 });
+
+// --- F-009 R15 · la misma confirmacion, ahora tambien para el cierre --------
+//
+// F-009 reutiliza este modulo TAL CUAL y no escribe uno paralelo: la
+// caducidad, el doble clic y el reloj hacia atras son el mismo problema, y dos
+// implementaciones del mismo control divergen siempre. Lo unico que cambia es
+// el texto, porque tiene que nombrar el boton que el usuario va a volver a
+// pulsar.
+//
+// Lo que hay detras del cierre no es una tanda de subidas: es una ESCRITURA EN
+// EL ERP DE PRODUCCION. Por eso los tres casos se repiten aqui explicitamente
+// en vez de darlos por probados.
+
+test("f009 R15: un solo clic no cierra ninguna incidencia", () => {
+  const decision = Confirmacion.resolver(null, 1000);
+
+  assert.equal(decision.dispara, false);
+  assert.equal(decision.motivo, Confirmacion.SIN_ARMAR);
+});
+
+test("f009 R15: un segundo clic fuera de la ventana NO dispara el cierre", () => {
+  const armada = Confirmacion.armar(1000);
+
+  const decision = Confirmacion.resolver(armada, 1000 + Confirmacion.VENTANA_MS + 1);
+
+  assert.equal(decision.dispara, false);
+  assert.equal(decision.motivo, Confirmacion.CADUCADA);
+  assert.equal(decision.estado, null);
+});
+
+test("f009 R15: y el armado queda consumido, asi que el doble clic no cierra dos veces", () => {
+  const armada = Confirmacion.armar(1000);
+
+  const primera = Confirmacion.resolver(armada, 1500);
+  const segunda = Confirmacion.resolver(primera.estado, 1600);
+
+  assert.equal(primera.dispara, true);
+  assert.equal(segunda.dispara, false);
+});
+
+test("f009 R15: el aviso de caducidad nombra el boton del cierre", () => {
+  const aviso = Confirmacion.avisoCaducada("cierre");
+
+  assert.match(aviso, /Cerrar/);
+  assert.notEqual(aviso, Confirmacion.AVISO_CADUCADA);
+});
+
+test("f009 R15: y para cualquier otra accion sigue siendo el de archivar", () => {
+  // Sin esto, el dia que alguien pase una accion nueva sin querer, el usuario
+  // leeria un boton que no existe en su pantalla.
+  assert.equal(Confirmacion.avisoCaducada("archivo"), Confirmacion.AVISO_CADUCADA);
+  assert.equal(Confirmacion.avisoCaducada(undefined), Confirmacion.AVISO_CADUCADA);
+});

@@ -53,6 +53,12 @@
 
   const VEREDICTO_APTO = "apto";
   const DESTINO_ARCHIVO = "archivo_y_cierre";
+
+  // F-009 · el estado del archivo que el backend exige para poder cerrar.
+  // Es el mismo valor que declara `EstadoArchivo` en el dominio: si algun
+  // dia cambia alli, el backend responde 400 diciendo cual es el admitido,
+  // en vez de aceptar algo que no entiende.
+  const ESTADO_ARCHIVADO = "archivado";
   const DESTINO_COLA = "cola_validacion_humana";
   const DESTINO_REVISION = "revision_manual";
 
@@ -202,6 +208,82 @@
     cuerpo.append("numero_incidencia", valorDeCampo(parte, "numero_incidencia") || "");
     cuerpo.append("veredicto", parte.validacion.veredicto);
     cuerpo.append("destino", parte.validacion.destino);
+    return cuerpo;
+  }
+
+  /**
+   * F-009 · ¿se puede pedir el cierre de este parte?
+   *
+   * Las **dos precondiciones propias** del cierre, y ninguna más: el parte es
+   * apto y **consta archivado**. El backend las vuelve a comprobar —aquí no se
+   * decide nada, se decide allí—, pero pararlo antes evita ofrecer un botón
+   * que va a responder 409.
+   *
+   * Lo que **no** se comprueba, y es deliberado: si la incidencia tiene el
+   * parte subido a Sigrid. El orden que decidió el humano es validar → cerrar
+   * → subir el PDF, y ese último paso todavía no existe.
+   */
+  function esCerrable(parte) {
+    return Boolean(
+      parte &&
+        parte.archivado &&
+        esArchivable(parte.validacion) &&
+        valorDeCampo(parte, "numero_incidencia"),
+    );
+  }
+
+  /**
+   * F-009 · el cuerpo de `POST /api/cerrar`.
+   *
+   * **Por omisión es un dry-run**: `commit` y `confirmado` solo se ponen si
+   * quien llama los pide, y el backend solo acepta el `true` de JSON. Quien
+   * componga este cuerpo sin pensar no cierra nada en el ERP de producción.
+   *
+   * **No lleva los bytes del PDF ni ningún campo manuscrito** (R51): este
+   * endpoint no sube nada, y el DNI y las observaciones del cliente no tienen
+   * por qué viajar otra vez. Solo el `hash`, el número de incidencia, el
+   * veredicto, el estado del archivo y quién lo pide.
+   *
+   * Se niega a componer nada que no cumpla las precondiciones: no basta con no
+   * pintar el botón, porque aunque se pulse dos veces, aquí se para.
+   */
+  function cuerpoDeCierre(parte, opciones) {
+    if (!esCerrable(parte)) {
+      throw new Error(
+        "este parte no se puede cerrar todavía: hace falta veredicto 'apto', " +
+          "destino 'archivo_y_cierre', que conste archivado y que tenga " +
+          "número de incidencia",
+      );
+    }
+
+    const ajustes = opciones || {};
+    if (!ajustes.usuarioOid) {
+      throw new Error(
+        "no se sabe quién pide el cierre: sin el identificador del usuario no " +
+          "se puede firmar la incidencia en el ERP",
+      );
+    }
+
+    const cuerpo = {
+      hash: parte.hash,
+      numero_incidencia: valorDeCampo(parte, "numero_incidencia"),
+      veredicto: parte.validacion.veredicto,
+      destino: parte.validacion.destino,
+      estado_archivo: ESTADO_ARCHIVADO,
+      usuario_oid: ajustes.usuarioOid,
+    };
+    if (ajustes.correo) {
+      // Solo hace falta la primera vez de cada persona, para derivar el login
+      // candidato que el ERP tendrá que confirmar. Quien ya tiene su
+      // correspondencia guardada no lo necesita.
+      cuerpo.correo = ajustes.correo;
+    }
+    if (ajustes.commit === true) {
+      cuerpo.commit = true;
+    }
+    if (ajustes.confirmado === true) {
+      cuerpo.confirmado = true;
+    }
     return cuerpo;
   }
 
@@ -447,8 +529,10 @@
     camposDudosos: camposDudosos,
     semaforoDe: semaforoDe,
     esArchivable: esArchivable,
+    esCerrable: esCerrable,
     valorDeCampo: valorDeCampo,
     cuerpoDeArchivo: cuerpoDeArchivo,
+    cuerpoDeCierre: cuerpoDeCierre,
     cuerpoDeParte: cuerpoDeParte,
     ficheroDeParte: ficheroDeParte,
     procesarParte: procesarParte,

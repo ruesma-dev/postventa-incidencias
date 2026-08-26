@@ -184,10 +184,12 @@ test("f007 R27 / f019 / f009: los DIEZ endpoints llaman a su ruta, con su metodo
 
 test("f007 R27: son diez, y la lista se entera si aparece un undecimo", () => {
   // El cliente expone ademas `peticion` y `cuerpoDeParte`, que son la
-  // maquinaria, no endpoints. Si manana hay un decimo endpoint y nadie toca
-  // esta lista, la cuenta deja de cuadrar y este test lo dice.
+  // maquinaria, y desde F-009 `identidad`, que NO es un endpoint de este
+  // backend: lo sirve el proxy de la Static Web App y por eso no cuelga de
+  // `/api`. Si manana hay un undecimo endpoint del backend y nadie toca esta
+  // lista, la cuenta deja de cuadrar y este test lo dice.
   const { api } = apiDePrueba([respuesta(200, {})]);
-  const auxiliares = ["peticion", "cuerpoDeParte"];
+  const auxiliares = ["peticion", "cuerpoDeParte", "identidad"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
 
   assert.equal(endpoints.length, 10);
@@ -735,4 +737,91 @@ test("f009: un 409 en cerrar llega como 'no_apto' con su motivo", async () => {
     },
   );
   assert.equal(llamadas.length, 1);
+});
+
+// --- F-009 · quien es el usuario, para poder firmar el cierre --------------
+
+const { identidadDe } = require("../js/api.js");
+
+test("f009: el oid de Entra sale de los claims, no del userId de la SWA", () => {
+  // `userId` es el identificador que la Static Web App inventa para la sesion.
+  // El backend guarda el `oid` del directorio, y confundirlos haria que la
+  // persona perdiera su login mapeado el dia que la SWA cambiara el suyo.
+  const identidad = identidadDe({
+    clientPrincipal: {
+      userId: "id-inventado-de-la-swa",
+      userDetails: "fulanito@ejemplo.invalido",
+      claims: [
+        {
+          typ: "http://schemas.microsoft.com/identity/claims/objectidentifier",
+          val: "oid-inventado-de-entra",
+        },
+      ],
+    },
+  });
+
+  assert.equal(identidad.usuarioOid, "oid-inventado-de-entra");
+  assert.equal(identidad.correo, "fulanito@ejemplo.invalido");
+});
+
+test("f009: sin claim de oid se cae al userId, que es mejor que nada", () => {
+  const identidad = identidadDe({
+    clientPrincipal: { userId: "id-inventado-de-la-swa", userDetails: "x@ejemplo.invalido" },
+  });
+
+  assert.equal(identidad.usuarioOid, "id-inventado-de-la-swa");
+});
+
+test("f009: el correo preferido de los claims gana a userDetails", () => {
+  const identidad = identidadDe({
+    clientPrincipal: {
+      userId: "u",
+      userDetails: "algo-que-no-es-un-correo",
+      claims: [{ typ: "preferred_username", val: "fulanito@ejemplo.invalido" }],
+    },
+  });
+
+  assert.equal(identidad.correo, "fulanito@ejemplo.invalido");
+});
+
+test("f009: sin sesion, la identidad sale vacia y no revienta", () => {
+  // Es el caso de local, donde /.auth/me no existe. Con la identidad vacia el
+  // boton de cerrar se queda deshabilitado, que es lo correcto, y el resto de
+  // la pantalla sigue sirviendo.
+  for (const datos of [null, undefined, {}, { clientPrincipal: null }]) {
+    assert.deepEqual(identidadDe(datos), { usuarioOid: "", correo: "" });
+  }
+});
+
+test("f009: identidad() pide /.auth/me, que NO va bajo el prefijo de la API", () => {
+  // Lo sirve el proxy de la Static Web App, no este backend. Anteponerle
+  // `/api` daria un 404 en produccion y nadie podria cerrar nada.
+  const llamadas = [];
+  const api = crearApi({
+    config: CONFIG,
+    fetch: async (url) => {
+      llamadas.push(url);
+      return respuesta(200, { clientPrincipal: { userId: "u", userDetails: "x@y.z" } });
+    },
+    traza: () => {},
+  });
+
+  return api.identidad().then((identidad) => {
+    assert.deepEqual(llamadas, ["/.auth/me"]);
+    assert.equal(identidad.usuarioOid, "u");
+  });
+});
+
+test("f009: si el proxy no responde, identidad() devuelve vacio y no rompe la pantalla", () => {
+  const api = crearApi({
+    config: CONFIG,
+    fetch: async () => {
+      throw new Error("aqui no hay proxy");
+    },
+    traza: () => {},
+  });
+
+  return api.identidad().then((identidad) => {
+    assert.deepEqual(identidad, { usuarioOid: "", correo: "" });
+  });
 });

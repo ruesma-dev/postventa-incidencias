@@ -7,7 +7,8 @@
 //   js/cola.js       el límite de concurrencia               (R7-R12)
 //   js/api.js        timeout, reintentos, clasificación      (R23-R27)
 //   js/pipeline.js   qué se pide, en qué orden y qué viaja   (R8, R13-R22)
-//   js/confirmacion.js  el doble clic antes de archivar      (R19)
+//   js/confirmacion.js  el doble clic antes de archivar y de
+//                       cerrar                                (R19, F-009 R15)
 //   js/traza.js      el único registro permitido             (R28)
 //
 // Aquí no hay ni un bucle de reintento, ni un cálculo de veredicto, ni una
@@ -59,6 +60,22 @@ function appPostventa() {
     avisoArchivo: "",
     entornoNoArchiva: "",
     resultadosArchivo: [],
+
+    // --- cierre en Sigrid (F-009) ---
+    // Quién dice ser el usuario, para poder firmar el cierre en el ERP. Lo
+    // sirve el proxy de la Static Web App y NO está firmado: es una traza de
+    // quién lo pidió, no un control de acceso. Con quién se firma de verdad lo
+    // decide el ERP, que tiene que confirmar el login antes de escribir nada.
+    usuario: { usuarioOid: "", correo: "" },
+    // El dry-run de cada parte, por `hash`. Es lo que hay que enseñar ANTES de
+    // que nadie confirme: los dos estados legibles, con qué login se firmaría
+    // y el aviso de que la reclamación quedará cerrada sin el parte dentro de
+    // Sigrid. Confirmar sin haberlo leído es lo que esto viene a evitar.
+    dryRunCierre: {},
+    confirmacionCierre: null,
+    avisoCierre: "",
+    entornoNoCierra: "",
+    resultadosCierre: [],
 
     // =====================================================================
     // Estado del servicio
@@ -423,6 +440,138 @@ function appPostventa() {
     },
 
     // =====================================================================
+    // Cierre en Sigrid (F-009)
+    // =====================================================================
+    async cargarUsuario() {
+      // Nunca falla hacia arriba: sin identidad el botón de cerrar se queda
+      // deshabilitado —que es lo correcto, no se firma a nombre de nadie— y
+      // el resto de la pantalla sigue sirviendo.
+      this.usuario = await api.identidad();
+    },
+
+    cerrables() {
+      // La decisión es de `js/pipeline.js`, que sí tiene tests: apto,
+      // archivado y con número de incidencia. Aquí solo se filtra.
+      return this.partes.filter(
+        (parte) => !parte.cerrado && window.Pipeline.esCerrable(parte),
+      );
+    },
+
+    puedeCerrar() {
+      return Boolean(this.usuario.usuarioOid) && this.cerrables().length > 0;
+    },
+
+    async pedirDryRunCierre() {
+      // R8 · el dry-run va PRIMERO y por su cuenta: se pide sin `commit`, así
+      // que esta tanda no escribe nada en el ERP pase lo que pase.
+      this.avisoCierre = "";
+      this.entornoNoCierra = "";
+      this.confirmacionCierre = window.Confirmacion.cancelar();
+      this.fase = "dry_run";
+      await this._porLaCola(this.cerrables(), (parte) => this._dryRunUno(parte));
+      this.fase = "resumen";
+    },
+
+    async _dryRunUno(parte) {
+      try {
+        const datos = await api.cerrar(
+          window.Pipeline.cuerpoDeCierre(parte, this.usuario),
+          parte.hash,
+        );
+        this.dryRunCierre[parte.hash] = datos.dry_run;
+        if (datos.estado === "ya_cerrada") {
+          // R18 · no es un error: la incidencia ya estaba cerrada.
+          parte.cerrado = true;
+          parte.estado = "ya_cerrada";
+        }
+      } catch (error) {
+        this._anotarFalloDeCierre(parte, error);
+      }
+    },
+
+    hayDryRun() {
+      return Object.keys(this.dryRunCierre).length > 0;
+    },
+
+    dryRunDe(parte) {
+      return this.dryRunCierre[parte.hash] || null;
+    },
+
+    pedirConfirmacionCierre() {
+      // R15 · la confirmación explícita, con su ventana, ANTES de la primera
+      // escritura. La compone `js/confirmacion.js`, que sí tiene tests.
+      this.confirmacionCierre = window.Confirmacion.armar(Date.now());
+      this.avisoCierre = "";
+    },
+
+    confirmacionCierrePendiente() {
+      return window.Confirmacion.pendiente(this.confirmacionCierre);
+    },
+
+    cancelarCierre() {
+      this.confirmacionCierre = window.Confirmacion.cancelar();
+      this.avisoCierre = "";
+    },
+
+    async confirmarCierre() {
+      const decision = window.Confirmacion.resolver(
+        this.confirmacionCierre,
+        Date.now(),
+      );
+      this.confirmacionCierre = decision.estado;
+      if (!decision.dispara) {
+        this.avisoCierre =
+          decision.motivo === window.Confirmacion.CADUCADA
+            ? window.Confirmacion.avisoCaducada("cierre")
+            : "";
+        return;
+      }
+      this.avisoCierre = "";
+
+      const pendientes = this.cerrables().filter((parte) => this.dryRunDe(parte));
+      if (!pendientes.length) {
+        return;
+      }
+
+      this.entornoNoCierra = "";
+      this.fase = "cerrando";
+      this.terminados = 0;
+      await this._porLaCola(pendientes, (parte) => this._cerrarUno(parte));
+      this.fase = "resumen";
+    },
+
+    async _cerrarUno(parte) {
+      try {
+        const datos = await api.cerrar(
+          window.Pipeline.cuerpoDeCierre(
+            parte,
+            Object.assign({ commit: true, confirmado: true }, this.usuario),
+          ),
+          parte.hash,
+        );
+        parte.cerrado = true;
+        parte.estado = datos.estado;
+        this.resultadosCierre.push({
+          hash: parte.hash,
+          mensaje: `${datos.numero_incidencia} → ${datos.estado}`,
+        });
+      } catch (error) {
+        this._anotarFalloDeCierre(parte, error);
+      }
+    },
+
+    _anotarFalloDeCierre(parte, error) {
+      if (error && error.tipo === "entorno") {
+        // Pantalla propia: es la puerta de entorno del cierre, no un fallo, y
+        // no se toca para «arreglarlo». Lo que hay detrás es el ERP.
+        this.entornoNoCierra = error.mensaje;
+        return;
+      }
+      parte.estado = "error_cierre";
+      parte.error = (error && error.mensaje) || String(error);
+    },
+
+    // =====================================================================
     // Volver a empezar
     // =====================================================================
     reiniciar() {
@@ -441,6 +590,11 @@ function appPostventa() {
       this.avisoArchivo = "";
       this.entornoNoArchiva = "";
       this.resultadosArchivo = [];
+      this.confirmacionCierre = window.Confirmacion.cancelar();
+      this.avisoCierre = "";
+      this.entornoNoCierra = "";
+      this.resultadosCierre = [];
+      this.dryRunCierre = {};
     },
   };
 }

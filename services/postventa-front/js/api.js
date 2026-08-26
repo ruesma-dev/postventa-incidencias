@@ -85,6 +85,50 @@
     return new ErrorApi("desconocido", status, mensaje, avisos);
   }
 
+  /**
+   * F-009 · Quién es el usuario, según lo que devuelve el proxy de la SWA.
+   *
+   * Función **pura**, y por eso comprobable: entra el JSON de `/.auth/me` y
+   * sale `{usuarioOid, correo}`. La petición es aparte.
+   *
+   * Dos cosas que no son obvias y que deciden qué se guarda:
+   *
+   * - **El `oid` de Entra está en los `claims`, no en `userId`.** `userId` es
+   *   el identificador que la Static Web App inventa para la sesión, y no es
+   *   el mismo que el `oid` del directorio. Se prefiere el `oid` porque es lo
+   *   que el backend guarda en la traza del cierre y en la correspondencia
+   *   con el ERP: si mañana cambiara, la persona perdería su login mapeado.
+   * - **Esto NO es una identidad verificada.** La cabecera del proxy va sin
+   *   firmar. Sirve para saber quién dice ser el usuario; quién puede cerrar
+   *   lo decide el grupo de Posventa en la plataforma, y con qué login se
+   *   firma lo decide el ERP.
+   */
+  function identidadDe(datos) {
+    const principal = (datos && datos.clientPrincipal) || null;
+    if (!principal) {
+      return { usuarioOid: "", correo: "" };
+    }
+
+    const claims = principal.claims || [];
+    const valorDe = function (sufijos) {
+      const encontrado = claims.find(function (claim) {
+        const tipo = String((claim && claim.typ) || "");
+        return sufijos.some(function (sufijo) {
+          return tipo === sufijo || tipo.endsWith("/" + sufijo);
+        });
+      });
+      return (encontrado && encontrado.val) || "";
+    };
+
+    return {
+      usuarioOid: valorDe(["objectidentifier", "oid"]) || principal.userId || "",
+      correo:
+        valorDe(["preferred_username", "emailaddress", "email", "upn"]) ||
+        principal.userDetails ||
+        "",
+    };
+  }
+
   /** Traduce el fallo de `fetch` (red caída, aborto por timeout) a `ErrorApi`. */
   function errorDeTransporte(error) {
     if (error && error.name === "AbortError") {
@@ -116,6 +160,10 @@
   function crearApi(opciones) {
     const ajustes = opciones || {};
     const baseApi = ajustes.baseApi || "/api";
+    // F-009 · lo sirve el proxy de la Static Web App, NO este backend, y
+    // por eso va aparte del prefijo de la API. Inyectable para que la
+    // suite no dependa de una ruta que en local no existe.
+    const rutaIdentidad = ajustes.rutaIdentidad || "/.auth/me";
     const config = Object.assign({}, CONFIG_POR_DEFECTO, ajustes.config || {});
     const hacerFetch =
       ajustes.fetch || (typeof fetch !== "undefined" ? fetch.bind(null) : null);
@@ -380,6 +428,31 @@
           hash: hash,
         });
       },
+
+      /**
+       * F-009 · quién es el usuario de la sesión, para poder firmar el cierre.
+       *
+       * **No va contra `/api`**: `/.auth/me` lo sirve el proxy de la Static Web
+       * App, no este backend. Por eso no pasa por `peticion()` —que antepone el
+       * prefijo y aplica los reintentos del contrato del backend— y usa el
+       * `fetch` inyectado directamente.
+       *
+       * **Nunca falla hacia arriba.** Si el proxy no responde, o responde algo
+       * que no es JSON, se devuelve la identidad vacía: sin ella el botón de
+       * cerrar se queda deshabilitado, que es lo correcto —no se firma un
+       * cierre a nombre de nadie—, pero la pantalla sigue sirviendo para
+       * validar y archivar. Reventar aquí dejaría inservible todo lo demás por
+       * un endpoint que en local ni siquiera existe.
+       */
+      identidad: async function () {
+        try {
+          const respuesta = await hacerFetch(rutaIdentidad, { method: "GET" });
+          const texto = await respuesta.text();
+          return identidadDe(JSON.parse(texto));
+        } catch (error) {
+          return { usuarioOid: "", correo: "" };
+        }
+      },
     };
   }
 
@@ -387,6 +460,7 @@
     crearApi: crearApi,
     ErrorApi: ErrorApi,
     clasificar: clasificar,
+    identidadDe: identidadDe,
     CONFIG_POR_DEFECTO: CONFIG_POR_DEFECTO,
     TEXTO_ENTORNO_NO_ARCHIVA: TEXTO_ENTORNO_NO_ARCHIVA,
   };

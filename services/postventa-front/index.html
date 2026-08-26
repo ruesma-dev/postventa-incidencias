@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-slate-50 text-slate-800">
-  <div x-data="appPostventa()" x-init="comprobarBackend()" class="min-h-screen flex flex-col">
+  <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
 
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
@@ -284,6 +284,97 @@
               <span class="ml-2" x-text="resultado.mensaje"></span>
               <a x-show="resultado.web_url" :href="resultado.web_url" target="_blank" rel="noopener"
                  class="ml-2 text-sky-700 underline">abrir en SharePoint</a>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+      <!-- ── 6 · Cierre en Sigrid (F-009) ───────────────────────────────── -->
+      <!-- Es la UNICA parte de la aplicacion que escribe en el ERP de
+           produccion, y por eso son DOS gestos y no uno: primero se pide el
+           dry-run, que solo lee, y hasta que no se ha leido no aparece el
+           boton de cerrar. -->
+      <section x-show="partes.length && fase !== 'procesando' && fase !== 'troceando'"
+               class="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Cerrar en Sigrid</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          <span x-text="cerrables().length"></span> incidencia(s) con el parte
+          archivado y listas para cerrar.
+        </p>
+
+        <!-- Sin identidad no se firma: se dice, en vez de dejar un boton
+             deshabilitado sin explicacion. -->
+        <p x-show="!usuario.usuarioOid" class="mt-1 text-sm text-amber-700">
+          No se ha podido saber quién eres, así que no se puede firmar ningún
+          cierre en el ERP. Vuelve a entrar desde el enlace de la aplicación.
+        </p>
+
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <button type="button" @click="pedirDryRunCierre()"
+                  :disabled="!puedeCerrar() || fase === 'dry_run' || fase === 'cerrando'"
+                  class="rounded border border-slate-300 px-4 py-2 text-sm font-medium disabled:text-slate-400">
+            Ver qué pasaría (no cierra nada)
+          </button>
+        </div>
+
+        <!-- R9 y R21 · el dry-run, con las CINCO cosas que hay que leer antes
+             de confirmar: la incidencia, su descripcion, de que estado a cual
+             pasaria, con que login se firmaria, y el aviso. -->
+        <div x-show="hayDryRun()" class="mt-4 space-y-3">
+          <template x-for="parte in cerrables()" :key="parte.hash">
+            <div x-show="dryRunDe(parte)"
+                 class="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+              <p class="font-medium" x-text="dryRunDe(parte) && dryRunDe(parte).incidencia"></p>
+              <p class="text-slate-600" x-text="dryRunDe(parte) && dryRunDe(parte).descripcion"></p>
+              <p class="mt-1">
+                <span x-text="dryRunDe(parte) && dryRunDe(parte).estado_origen.codigo"></span>
+                (<span x-text="dryRunDe(parte) && dryRunDe(parte).estado_origen.descripcion"></span>)
+                →
+                <span class="font-medium"
+                      x-text="dryRunDe(parte) && dryRunDe(parte).estado_destino.codigo"></span>
+                (<span x-text="dryRunDe(parte) && dryRunDe(parte).estado_destino.descripcion"></span>)
+              </p>
+              <p class="mt-1 text-slate-600">
+                Se firmaría con el login
+                <span class="font-mono" x-text="dryRunDe(parte) && dryRunDe(parte).login_sigrid"></span>
+              </p>
+              <p class="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-800"
+                 x-text="dryRunDe(parte) && dryRunDe(parte).aviso_sin_grafico"></p>
+            </div>
+          </template>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" @click="pedirConfirmacionCierre()"
+                    :disabled="fase === 'cerrando'"
+                    class="rounded bg-rose-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300">
+              Cerrar las incidencias
+            </button>
+            <template x-if="confirmacionCierrePendiente()">
+              <span class="flex items-center gap-2 text-sm">
+                <span class="text-slate-600">¿Seguro? Esto escribe en Sigrid y lo ve Posventa.</span>
+                <button type="button" @click="confirmarCierre()"
+                        class="rounded bg-rose-700 px-3 py-1 text-xs text-white">Sí, cerrar</button>
+                <button type="button" @click="cancelarCierre()"
+                        class="rounded border border-slate-300 px-3 py-1 text-xs">Cancelar</button>
+              </span>
+            </template>
+          </div>
+        </div>
+
+        <!-- R15: la confirmacion caduca, y el aviso nombra ESTE boton. -->
+        <p x-show="avisoCierre" x-text="avisoCierre"
+           class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+
+        <!-- El 503 tiene pantalla propia: es la puerta de entorno del cierre,
+             no un fallo. Pintarlo en rojo llevaria a alguien a «arreglarlo». -->
+        <p x-show="entornoNoCierra" x-text="entornoNoCierra"
+           class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
+
+        <ul x-show="resultadosCierre.length" class="mt-4 divide-y divide-slate-100 text-sm">
+          <template x-for="resultado in resultadosCierre" :key="resultado.hash">
+            <li class="py-2">
+              <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
+              <span class="ml-2" x-text="resultado.mensaje"></span>
             </li>
           </template>
         </ul>

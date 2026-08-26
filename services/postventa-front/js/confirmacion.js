@@ -37,6 +37,25 @@
   const AVISO_CADUCADA =
     "La confirmación caducó. Vuelve a pulsar «Archivar los partes aptos».";
 
+  /** El mismo aviso para el cierre en Sigrid (F-009 R15). */
+  const AVISO_CADUCADA_CIERRE =
+    "La confirmación caducó. Vuelve a pulsar «Cerrar las incidencias».";
+
+  /**
+   * El aviso de caducidad de una acción concreta.
+   *
+   * Existe porque F-009 reutiliza este módulo **tal cual** —la caducidad, el
+   * doble clic y el reloj hacia atrás son el mismo problema— pero el texto que
+   * ve el usuario tiene que nombrar el botón que va a volver a pulsar. Un
+   * aviso que le mande a otro sitio es peor que no ponerlo.
+   *
+   * Los dos textos viven aquí y no en `app.js` por lo mismo que el resto del
+   * módulo: `app.js` es la única habitación de la casa sin tests.
+   */
+  function avisoCaducada(accion) {
+    return accion === "cierre" ? AVISO_CADUCADA_CIERRE : AVISO_CADUCADA;
+  }
+
   function esInstante(valor) {
     return typeof valor === "number" && Number.isFinite(valor);
   }
@@ -110,6 +129,8 @@
     SIN_ARMAR: SIN_ARMAR,
     CADUCADA: CADUCADA,
     AVISO_CADUCADA: AVISO_CADUCADA,
+    AVISO_CADUCADA_CIERRE: AVISO_CADUCADA_CIERRE,
+    avisoCaducada: avisoCaducada,
     armar: armar,
     pendiente: pendiente,
     resolver: resolver,

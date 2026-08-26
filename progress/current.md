@@ -203,6 +203,287 @@
 > el guard de escritura acepta el batch tal cual) y T27 (reintento sobre lo ya
 > cerrado: `ya_cerrada` sin escribir nada).
 
+## F-009 · Verificaciones `MANUAL (humano)` de T22–T27, con el comando exacto
+
+Checkpoint C4: aquí están **tecleables**, no en prosa. El procedimiento
+razonado sigue en `specs/F-009-cierre-sigrid/tasks.md` (bloque 8); lo de aquí
+es lo que se copia y se pega, con los `?` del SQL resueltos en su lista de
+parámetros. **Ninguna de estas casillas está marcada: nada se ha ejecutado
+todavía contra el ERP.**
+
+> **AVISO, y hay que saberlo antes de estar delante del ERP: con
+> `CIERRE_HABILITADO` apagado ni siquiera el dry-run de T22 funciona.** La
+> fábrica **se niega antes de leer** —la puerta se comprueba al construir el
+> adaptador, no al escribir—, así que `/api/cerrar` responde `503` también sin
+> `commit`. Hay que **abrir la ventana también para el dry-run** y **cerrarla al
+> terminar, salga bien o mal**. Está en `progress/impl_F-009.md` §6.1.
+
+> **REGLA DURA**: todo el bloque se ejecuta **desde el entorno desplegado**, con
+> el humano delante y con autorización expresa para esa incidencia concreta.
+> Nunca desde local, y nunca «de paso».
+
+### Paso 0 · preparar la consola (una vez; el resto reutiliza estas variables)
+
+```powershell
+$grupo   = "rg-postventa-dev"
+$funcion = "func-postventa-dev"
+$base    = "https://" + (az functionapp show -g $grupo -n $funcion --query defaultHostName -o tsv)
+
+# Los datos de ESTA ejecución. El código sale del parte; el hash, del front.
+$incidencia = "PON-AQUI-EL-CODIGO-DE-LA-RECLAMACION"
+$hash       = "PON-AQUI-EL-HASH-DEL-PARTE"
+$oid        = az ad signed-in-user show --query id -o tsv
+$correo     = az ad signed-in-user show --query mail -o tsv
+
+# La pasarela, para las lecturas de comprobación (T22, T24, T25, T27).
+$sigridUrl  = az functionapp config appsettings list -g $grupo -n $funcion --query "[?name=='SIGRID_API_BASE_URL'].value" -o tsv
+$sigridBase = az functionapp config appsettings list -g $grupo -n $funcion --query "[?name=='SIGRID_BASE_DATOS'].value" -o tsv
+$sigridKey  = Read-Host "Clave de funcion de sigrid-api"   # NO se escribe en ningun fichero
+$cabSigrid  = @{ "x-functions-key" = $sigridKey }
+
+function Leer-Sigrid($sql, $parametros) {
+    $cuerpo = @{ database = $sigridBase; sql = $sql; parameters = $parametros; max_rows = 50 } |
+        ConvertTo-Json -Depth 5 -Compress
+    (Invoke-RestMethod -Method Post -Uri "$sigridUrl/api/sql/read" -Headers $cabSigrid `
+        -ContentType "application/json" -Body ([Text.Encoding]::UTF8.GetBytes($cuerpo))).rows
+}
+
+function Llamar-Cerrar($extra) {
+    $cuerpo = @{
+        hash              = $hash
+        numero_incidencia = $incidencia
+        veredicto         = "apto"
+        destino           = "archivo_y_cierre"
+        estado_archivo    = "archivado"
+        usuario_oid       = $oid
+        correo            = $correo
+    }
+    foreach ($k in $extra.Keys) { $cuerpo[$k] = $extra[$k] }
+    $json = $cuerpo | ConvertTo-Json -Depth 5 -Compress
+    try {
+        Invoke-RestMethod -Method Post -Uri "$base/api/cerrar" -ContentType "application/json" `
+            -Body ([Text.Encoding]::UTF8.GetBytes($json))
+    } catch {
+        # Sin esto, un 409 o un 503 salen como una excepcion muda (defecto 14 de F-010).
+        $r = $_.Exception.Response
+        $texto = (New-Object IO.StreamReader($r.GetResponseStream())).ReadToEnd()
+        Write-Host ("HTTP {0} -> {1}" -f [int]$r.StatusCode, $texto) -ForegroundColor Yellow
+    }
+}
+```
+
+### Abrir la ventana · **también para el dry-run**
+
+```powershell
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=true
+```
+
+Reinicia la Function: esperar ~30 s antes de la primera llamada.
+
+### Cerrar la ventana · **SIEMPRE al terminar, salga bien o mal**
+
+```powershell
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=false
+az functionapp config appsettings list -g rg-postventa-dev -n func-postventa-dev --query "[?name=='CIERRE_HABILITADO'].value" -o tsv
+```
+
+La segunda línea es la comprobación: tiene que imprimir `false`.
+
+### T22 · dry-run real contra Mirasierra, sin escribir
+
+```powershell
+Llamar-Cerrar @{} | ConvertTo-Json -Depth 6
+```
+
+Se espera, en el `dry_run`: `incidencia`, `descripcion`, el estado de origen
+**legible** (código y descripción), el destino con código `CER`, el
+`login_sigrid` con el que se firmaría, y en `avisos` **el de que la incidencia
+quedará cerrada sin el parte dentro de Sigrid** (R21). `estado` debe ser
+`dry_run_ok` y `filas_afectadas` **0**.
+
+Y que **nada ha cambiado en el ERP** — el `est` tiene que seguir siendo el de
+antes:
+
+```powershell
+Leer-Sigrid "SELECT c.ide, c.est, c.tiemod, e.cod FROM dbo.con c LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est WHERE c.tip = ? AND c.cod = ?" @(708, $incidencia)
+```
+
+### T23 · la siembra del login contra `dbo.usu` (R30–R33), en tres pasos
+
+**Paso 1** — **con la correspondencia vacía**, el dry-run de T22 deriva el
+candidato del correo y lo verifica. Comprobar que ese login existe
+**exactamente una vez** (tiene que devolver `1`, ni `0` ni `2`):
+
+```powershell
+$login = ($correo -split "@")[0]
+Leer-Sigrid "SELECT COUNT(*) FROM dbo.usu WHERE cod = ?" @($login)
+```
+
+**Paso 2** — que quedó **guardada y confirmada** en
+`postventa.usuarios_sigrid` (R33), y que un segundo dry-run ya no deriva nada.
+La lectura de PostgreSQL, con el intérprete del servicio (no hay `psql` en el
+PATH) y la contraseña **aparte del DSN**, como avisa el defecto 16. El `'@` de
+cierre va **pegado al margen izquierdo**, o PowerShell no parsea el bloque:
+
+```powershell
+$env:PG_HOST     = az functionapp config appsettings list -g $grupo -n $funcion --query "[?name=='PG_HOST'].value" -o tsv
+$env:PG_DB       = "postventa"
+$env:PG_USER     = "postventa_app"
+$env:PG_PASSWORD = Read-Host "Contrasena de postventa_app"
+$env:SQL_TEMP    = "SELECT usuario_oid, login_sigrid, alta_at_utc, verificado_at_utc FROM postventa.usuarios_sigrid WHERE usuario_oid = %s"
+$env:CLAVE_TEMP  = $oid
+$leerPg = @'
+import os, psycopg
+from config.settings import obtener_ajustes
+from infrastructure.persistencia.conexion import dsn_desde_ajustes
+ajustes = obtener_ajustes()
+with psycopg.connect(dsn_desde_ajustes(ajustes), password=ajustes.pg_password) as cn:
+    with cn.cursor() as cur:
+        cur.execute(os.environ["SQL_TEMP"], (os.environ["CLAVE_TEMP"],))
+        for fila in cur.fetchall():
+            print(fila)
+'@
+Push-Location services\postventa-api
+& .\.venv\Scripts\python.exe -c $leerPg
+Pop-Location
+Remove-Item Env:\PG_PASSWORD, Env:\SQL_TEMP, Env:\CLAVE_TEMP -ErrorAction SilentlyContinue
+```
+
+`verificado_at_utc` **no** puede quedarse a `NULL`: eso es lo que R33 exige.
+
+**Paso 3** — con un usuario cuyo candidato **no exista** en `dbo.usu` (uno de
+los 2 de 8 que no siguen la convención), la misma llamada de T22 tiene que
+responder **409** nombrando el correo y el login intentado, **sin tocar
+Sigrid** (R31). `Llamar-Cerrar` ya imprime el código y el cuerpo. Se resuelve
+con el alta manual de T12 (R34):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File infra\07_alta_usuario_sigrid.ps1 -UsuarioOid $oid -LoginSigrid "EL-LOGIN-REAL-DEL-ERP" -VerificarAhora -SigridBaseUrl $sigridUrl -SigridBaseDatos $sigridBase
+```
+
+### T24 · el primer cierre real · los nueve pasos, en este orden
+
+**Paso 1** — anotar el estado de partida (y `tiemod`, que hace falta en el
+paso 8):
+
+```powershell
+$antes = Leer-Sigrid "SELECT ide, est, tiemod FROM dbo.con WHERE tip = ? AND cod = ?" @(708, $incidencia)
+$antes
+```
+
+**Paso 2** — anotar el último `ide` del log:
+
+```powershell
+$logAntes = (Leer-Sigrid "SELECT MAX(ide) FROM dbo.log" @())[0][0]
+$logAntes
+```
+
+**Paso 3** — ejecutar el dry-run **y leerlo** (es el comando de T22):
+
+```powershell
+Llamar-Cerrar @{} | ConvertTo-Json -Depth 6
+```
+
+**Paso 4** — confirmar en el front y ejecutar con `commit`. **Esto escribe en
+el ERP de producción**:
+
+```powershell
+Llamar-Cerrar @{ commit = $true; confirmado = $true } | ConvertTo-Json -Depth 6
+```
+
+**Paso 5** — la respuesta tiene que declarar **`"filas_afectadas": 2`** y
+`"estado": "cerrado"` (R22). Ni 1 ni 3: 2.
+
+**Paso 6** — releer `con.est`: tiene que ser el `est` que `conest` da para
+`cod = 'CER'`, y las dos lecturas tienen que coincidir:
+
+```powershell
+Leer-Sigrid "SELECT c.est, e.cod, e.res FROM dbo.con c LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est WHERE c.tip = ? AND c.cod = ?" @(708, $incidencia)
+Leer-Sigrid "SELECT est, cod, res FROM dbo.conest WHERE tip = ? AND cod = ?" @(708, "CER")
+```
+
+**Paso 7** — la fila nueva de `dbo.log`, **campo a campo** contra `design.md`
+§7.3 (R24, R25):
+
+```powershell
+Leer-Sigrid "SELECT ide, emp, ori, ope, fec, hor, usu, tab, tip, cod, res, tex, est FROM dbo.log WHERE ide > ? AND tab = ? AND tip = ? AND cod = ?" @($logAntes, "con", 708, $incidencia)
+```
+
+Valores esperados, **todos con su número real y ninguno con `?`**:
+
+| Campo | Valor que tiene que salir |
+|---|---|
+| `ide` | `$logAntes + 1` |
+| `emp` | el `emp` **de la reclamación**, no una constante |
+| `ori` | `0` |
+| `ope` | `5` (proceso ejecutado) |
+| `fec` | `AAAAMMDD` como **entero**, hoy, en hora **local** `Europe/Madrid` |
+| `hor` | `HHMMSS` como **entero** — **mirar la hora**: es la decisión §3.3.a del informe, la única que no se pudo tomar con un dato. Si sale con dos horas de menos, es que se escribió UTC y hay que arreglarlo |
+| `usu` | el login del ERP, sin truncar (máx. 48) |
+| `tab` | `con` |
+| `tip` | `708` |
+| `cod` | el código de la reclamación |
+| `res` | el `res` de la reclamación |
+| `tex` | exactamente `Cerrar parte (postventa-incidencias)` |
+| `est` | `1` |
+
+**Paso 8** — que **`con.tiemod` no se ha movido** (F-008 §2.3): comparar con el
+`tiemod` anotado en el paso 1.
+
+```powershell
+Leer-Sigrid "SELECT ide, est, tiemod FROM dbo.con WHERE tip = ? AND cod = ?" @(708, $incidencia)
+```
+
+**Paso 9** — la traza local: `estado = 'cerrado'`, con sus dos códigos de
+estado y su `confirmado_por`, y **sin el login** (R41, R43). Mismo bloque de
+PostgreSQL del T23.2, cambiando la consulta:
+
+```powershell
+$env:SQL_TEMP   = "SELECT hash_parte, numero_incidencia, estado, estado_origen_sigrid, estado_destino_sigrid, dry_run_at_utc, cerrado_at_utc, confirmado_por, motivo, intentos FROM postventa.cierres WHERE hash_parte = %s"
+$env:CLAVE_TEMP = $hash
+```
+
+La tabla **no tiene columna de login** a propósito; si apareciera un login en
+`motivo`, es un defecto de R43.
+
+### T25 · que el `tex` propio hace lo que se diseñó (R25)
+
+Dos lecturas. La primera tiene que **encontrar** el cierre nuevo (seguimos
+apareciendo en los informes de Posventa, que filtran por `Cerrar parte%`); la
+segunda tiene que devolver **exactamente los cierres de este servicio** y
+ninguno manual:
+
+```powershell
+Leer-Sigrid "SELECT COUNT(*) FROM dbo.log WHERE tab = ? AND cod = ? AND tex LIKE ?" @("con", $incidencia, "Cerrar parte%")
+Leer-Sigrid "SELECT ide, cod, usu, fec, tex FROM dbo.log WHERE tab = ? AND tex = ? ORDER BY ide DESC" @("con", "Cerrar parte (postventa-incidencias)")
+```
+
+### T26 · que el guard de escritura acepta el batch tal cual
+
+**Se comprueba dentro de T24, en el paso 4**: si `SqlWriteGuard` rechazara la
+sugerencia de tabla `WITH (UPDLOCK, HOLDLOCK)`, el `commit` devolverá un `502`
+con el motivo, y `Llamar-Cerrar` lo imprime. **No se improvisa otra vía**: se
+anota el motivo, se marca la feature `blocked` y se para.
+
+### T27 · reintento sobre lo ya cerrado (R18, R42)
+
+Repetir T24 sobre **la misma** incidencia. Tiene que salir `ya_cerrada`, **sin
+escribir nada** y sin pisar la traza local:
+
+```powershell
+Llamar-Cerrar @{ commit = $true; confirmado = $true } | ConvertTo-Json -Depth 6
+(Leer-Sigrid "SELECT MAX(ide) FROM dbo.log" @())[0][0]
+```
+
+El segundo comando tiene que devolver **el mismo `ide`** que dejó T24: si ha
+subido, se ha escrito una fila que no debía escribirse.
+
+### Al terminar
+
+Cerrar la ventana (comando de arriba), comprobar que imprime `false`, y marcar
+T22–T27 en `specs/F-009-cierre-sigrid/tasks.md` **solo lo que se haya
+ejecutado de verdad**.
+
 ---
 
 ## Sesión anterior (2026-08-26, tarde)

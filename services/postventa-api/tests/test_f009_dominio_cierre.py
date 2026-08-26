@@ -350,3 +350,59 @@ def test_f009_r22_un_resultado_sin_escritura_declara_cero_filas_afectadas():
 
     assert resultado.filas_afectadas == 0
     assert resultado.cerrado_at_utc is None
+
+
+# --------------------------------------------------------------------------
+# La inmutabilidad de los modelos, que no es decorativa
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("modelo", "campo", "valor"),
+    [
+        ("EstadoSigrid", "cod", "OTRO"),
+        ("Reclamacion", "est", 999),
+        ("PlanDeCierre", "cerrable", True),
+        ("ResultadoCierre", "filas_afectadas", 99),
+        ("CorrespondenciaSigrid", "login_sigrid", "otro"),
+    ],
+)
+def test_f009_los_modelos_del_cierre_no_se_pueden_reescribir(modelo, campo, valor):
+    """**Entre leer la reclamación y escribir hay varias llamadas.**
+
+    Si alguien pudiera reescribir el estado de origen por el camino, el control
+    optimista de R11 dejaría de proteger nada: el `WHERE` viajaría con un
+    estado que no es el que se leyó, y la escritura pisaría una reclamación que
+    alguien acababa de mover.
+
+    Lo mismo vale para el resto: un plan al que se le pudiera poner
+    `cerrable = True` a mano saltaría la decisión del dominio, y un login
+    reescrito firmaría el cierre a nombre de otro.
+
+    `frozen=True` no es decoración, y sin este test nada lo comprueba: quitarlo
+    no rompe ninguna otra cosa.
+    """
+    import dataclasses
+    from datetime import UTC, datetime
+
+    import domain.models.cierre as dominio
+    from domain.models.persistencia import EstadoCierre
+
+    reclamacion = _reclamacion(est=3, cod_origen="PTE")
+    ejemplares = {
+        "EstadoSigrid": reclamacion.estado_origen,
+        "Reclamacion": reclamacion,
+        "PlanDeCierre": evaluar(reclamacion, login_sigrid="unlogin"),
+        "ResultadoCierre": dominio.ResultadoCierre(
+            plan=evaluar(reclamacion, login_sigrid="unlogin"),
+            estado=EstadoCierre.DRY_RUN_OK,
+        ),
+        "CorrespondenciaSigrid": dominio.CorrespondenciaSigrid(
+            usuario_oid="oid-inventado",
+            login_sigrid="unlogin",
+            alta_at_utc=datetime(2026, 8, 26, tzinfo=UTC),
+        ),
+    }
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        setattr(ejemplares[modelo], campo, valor)

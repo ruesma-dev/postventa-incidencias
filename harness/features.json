@@ -385,6 +385,24 @@
       "rigor": "estandar",
       "priority": 21,
       "branch": "feature/F-021-rehidratar-sesion"
+    },
+    {
+      "id": "F-022",
+      "title": "Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página",
+      "description": "ORIGEN: un aviso de consumo que recibió el humano el 2026-08-26 estimando hasta un 67 % de ahorro cacheando contenido repetido. OJO, ese aviso es sobre la API de Anthropic y ESTE PROYECTO NO LA USA: `postventa-api` llama a Gemini (`google.genai`), así que el ahorro estimado no sale de aquí. Si el gasto directo de API de la organización viene de otro repositorio, la feature de caché va allí, no en este (límite de servicio). Lo que sí aplica aquí es la misma idea con el proveedor que sí usamos: hoy el `system_instruction` viaja ENTERO en cada llamada, y una remesa como la real de Mirasierra son 22 páginas por dos llamadas —extracción y clasificación de firma— es decir 44 envíos del mismo prompt. El SDK ya instalado trae soporte de caché de contexto. EL MATIZ QUE ORDENA LA FEATURE: `config/prompts.yaml` entero son 7.501 bytes, así que cada prompt suelto ronda el mínimo de tokens que Gemini exige para cachear y PUEDE QUE NO COMPENSE. Por eso la feature empieza midiendo y su primer entregable es un número, no un cambio de código: hoy nadie sabe lo que cuesta procesar una remesa. Cerrarla documentando que no compensa es un resultado válido. NO SE TOCA EL TEXTO DE LOS PROMPTS: eso es F-015, y cambiarlos sin su evaluador es justo lo que esa feature previene.",
+      "acceptance": [
+        "Está medido el coste real de procesar una remesa: número de llamadas, tokens de entrada y qué proporción de esos tokens es prompt repetido",
+        "Está comprobado contra la documentación del modelo en uso si el prompt alcanza el mínimo de tokens cacheable, con el dato citado y fechado",
+        "Si compensa: la caché está implementada tras el puerto del extractor, sin que el dominio se entere, y se compara el coste antes/después con la misma remesa",
+        "Si no compensa: la feature se cierra documentando los números que lo demuestran, sin cambiar código",
+        "El texto de config/prompts.yaml no cambia: esta feature no toca la redacción de los prompts",
+        "Los tests siguen sin tocar red ni IA: la caché se prueba con el proveedor simulado"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 22,
+      "branch": "feature/F-022-cache-prompts-gemini"
     }
   ]
 }

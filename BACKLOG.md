@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **21 features**, 11 abiertas, 10 terminadas.
+Resumen: **22 features**, 12 abiertas, 10 terminadas.
 
 ## Trabajo abierto
 
@@ -20,6 +20,7 @@ Resumen: **21 features**, 11 abiertas, 10 terminadas.
 | F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 18 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
+| F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 
 ## Terminadas
 
@@ -103,6 +104,12 @@ Tres observaciones del humano al probar el front por primera vez el 2026-08-20 (
 estado **pendiente** · prioridad 21 · rigor `estandar` · SDD sí · rama `feature/F-021-rehidratar-sesion`
 
 Decisión **D4 de F-019**, tomada por el humano el 2026-08-26 y aplazada a propósito hasta ver el piloto. F-019 dejó la persistencia escribiendo: la remesa, los partes y el resultado de la validación quedan guardados en `postventa`, y la cola de validación humana sobrevive entre sesiones. Lo que NO sobrevive es el trabajo en curso: si quien está revisando una remesa de 22 partes recarga la pestaña, la pantalla vuelve a cero y hay que subir el PDF y volver a extraerlo entero, gastando otra vez cuota de IA. La pieza que falta es de LECTURA: volver a pintar una remesa con sus partes y sus veredictos exige un método nuevo en `RepositorioPartesPort` —hoy solo existe `cola_validacion_humana`—, y el encargo de F-019 prohibía expresamente tocar el puerto, por eso se sacó aparte. Alcance: el método de lectura, el endpoint que lo expone y el cableado del front que lo consume al arrancar. Sin DDL: las seis tablas de F-005 ya guardan todo lo necesario. OJO al dato personal: la lectura devuelve observaciones manuscritas de clientes, así que hereda de F-019 el tope duro de límite y la prohibición de escribir dato personal en el log.
+
+### F-022 · Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página
+
+estado **pendiente** · prioridad 22 · rigor `estandar` · SDD sí · rama `feature/F-022-cache-prompts-gemini`
+
+ORIGEN: un aviso de consumo que recibió el humano el 2026-08-26 estimando hasta un 67 % de ahorro cacheando contenido repetido. OJO, ese aviso es sobre la API de Anthropic y ESTE PROYECTO NO LA USA: `postventa-api` llama a Gemini (`google.genai`), así que el ahorro estimado no sale de aquí. Si el gasto directo de API de la organización viene de otro repositorio, la feature de caché va allí, no en este (límite de servicio). Lo que sí aplica aquí es la misma idea con el proveedor que sí usamos: hoy el `system_instruction` viaja ENTERO en cada llamada, y una remesa como la real de Mirasierra son 22 páginas por dos llamadas —extracción y clasificación de firma— es decir 44 envíos del mismo prompt. El SDK ya instalado trae soporte de caché de contexto. EL MATIZ QUE ORDENA LA FEATURE: `config/prompts.yaml` entero son 7.501 bytes, así que cada prompt suelto ronda el mínimo de tokens que Gemini exige para cachear y PUEDE QUE NO COMPENSE. Por eso la feature empieza midiendo y su primer entregable es un número, no un cambio de código: hoy nadie sabe lo que cuesta procesar una remesa. Cerrarla documentando que no compensa es un resultado válido. NO SE TOCA EL TEXTO DE LOS PROMPTS: eso es F-015, y cambiarlos sin su evaluador es justo lo que esa feature previene.
 
 ### F-001 · Esqueleto del monorepo y /health
 

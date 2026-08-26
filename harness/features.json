@@ -149,7 +149,7 @@
         "docs/referencia/ recoge lo nuevo; lo que ya está en azure-apps se enlaza, no se copia",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "sdd": false,
       "rigor": "documental",
       "priority": 9,

@@ -5,11 +5,13 @@
 
 Resumen: **20 features**, 12 abiertas, 8 terminadas.
 
+En curso: **F-008**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | pendiente | documental | `feature/F-008-modelo-sigrid` |
+| F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | en curso | documental | `feature/F-008-modelo-sigrid` |
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | pendiente | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
@@ -39,7 +41,7 @@ Resumen: **20 features**, 12 abiertas, 8 terminadas.
 
 ### F-008 · Modelo de posventa en Sigrid: confirmar contra el ERP
 
-estado **pendiente** · prioridad 9 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
+estado **en curso** · prioridad 9 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
 
 Confirmar contra el ERP lo que ya está documentado en azure-apps/sigrid_tablas.md, sigrid_api.md §9 y docs/referencia/01_cierre_incidencia_sigrid.md. Lo crítico: el proceso 'Cerrar parte' de Sigrid comprueba que la reclamación tenga un gráfico asociado, y existe una opción 6 'Cerrar parte sin archivo (RPV)'. Hay que averiguar qué escribe realmente cada uno de esos dos procesos antes de decidir el alcance del cierre. Además: el con.tip de la reclamación y el estado CERRADA en conest (el estado PENDIENTE es 3/PTE), en qué base vive gra, y si 'Asociar URL de Internet' permite referenciar el PDF de SharePoint en vez de incrustar el binario. Solo lecturas.
 

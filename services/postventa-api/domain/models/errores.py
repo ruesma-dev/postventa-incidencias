@@ -1,6 +1,7 @@
 # services/postventa-api/domain/models/errores.py
 """Errores de dominio: de la ingesta de remesas (F-002), de la extracción
-(F-003), de la validación (F-004) y de la persistencia (F-005).
+(F-003), de la validación (F-004), de la persistencia (F-005), del archivo
+(F-006) y del cierre en Sigrid (F-009).
 
 Los de la ingesta son los casos en los que algo de la entrada **no se puede
 trocear**. Los dos que dejan la remesa entera sin resultado tienen su código
@@ -25,7 +26,19 @@ capturarlos juntos, y dos de ellos son **guardarraíles de un servidor
 compartido**: `DdlInseguro` y `DdlNoPermitidoAqui` se levantan antes de abrir
 ninguna conexión, así que lo que prohíbe `CLAUDE.md` no llega ni a intentarse.
 
-El dominio no sabe de HTTP: quien traduce a 400 / 413 / 502 es el borde.
+Los del cierre son los más caros de confundir, porque detrás hay el **ERP de
+producción**, y se reparten en tres familias que el borde traduce a códigos
+distintos a propósito: lo que está **mal pedido** (`CuerpoDeCierreInvalido` →
+400), lo que **no se puede cerrar tal y como está** (`ParteNoApto`,
+`ParteNoArchivado`, `ReclamacionNoLocalizada`, `EstadoDeCierreNoResoluble`,
+`EstadoNoCerrable`, `UsuarioSigridNoMapeado`, `UsuarioSigridInexistente`,
+`EstadoCambiadoDesdeElDryRun` → 409) y lo que dice que **aquí no se cierra**
+(`CierreDeshabilitado`, `ConfiguracionSigridIncompleta` → 503). `CierreFallido`
+es el único que habla del ERP (→ 502). **En todos ellos, sin haber escrito
+nada.**
+
+El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 502 / 503 es el
+borde.
 """
 
 from __future__ import annotations
@@ -415,6 +428,226 @@ class ConfiguracionSharePointIncompleta(Exception):
     `GEMINI_API_KEY` y `PG_PASSWORD`: `/health` tiene que arrancar sin
     configuración de SharePoint y la suite entera tiene que correr sin
     credenciales en el entorno.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ParteNoArchivado(Exception):
+    """Se ha pedido cerrar un parte que no consta archivado (F-009, R17).
+
+    Es el hermano de `ParteNoApto` y existe porque son **dos precondiciones
+    distintas del cierre**, y se arreglan de forma distinta: aquella se arregla
+    revalidando o decidiendo a mano; esta, archivando el parte.
+
+    R17 es el orden del procedimiento de Posventa, datado en F-008 §4.2:
+    primero el documento, después el cierre. Si el PDF no está guardado en
+    ninguna parte, cerrar la incidencia la da por resuelta sin dejar la prueba
+    en ningún sitio — y eso es exactamente lo que sostiene el riesgo aceptado
+    de `design.md` §2, que solo es asumible **porque el parte firmado existe**.
+
+    El borde lo traduce a **409**: no es un fallo del ERP ni de la petición, es
+    que este parte todavía no se puede cerrar.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ReclamacionNoLocalizada(Exception):
+    """La búsqueda por código no devolvió **exactamente una** reclamación (R7).
+
+    Cero o varias, y las dos acaban igual: **no se escribe nada**. El motivo
+    dice cuántas se encontraron, porque cero («ese código no existe en el ERP»)
+    y dos («el código no es único en ese tipo, algo va mal») se arreglan de
+    formas opuestas.
+
+    Que el código sea único está medido —23.063 de 23.063 dentro del tipo 708—,
+    así que esto es una **red de seguridad**, no el camino normal. La búsqueda
+    se acota siempre por el `tip` de la reclamación (R5): la unicidad se midió
+    dentro del tipo, no en toda la tabla.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class EstadoDeCierreNoResoluble(Exception):
+    """`conest` no resuelve el estado de cierre a una sola fila (F-009, R2).
+
+    Es el error que protege `CHECKPOINTS.md` C3 por el otro lado: el número del
+    estado no está en el código **a propósito**, así que si el ERP no lo dice —o
+    lo dice dos veces— la respuesta no puede ser suponerlo. Se aborta sin
+    escribir nada y se registra el motivo.
+
+    El borde lo traduce a **409**: no se puede cerrar tal y como está el ERP.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class EstadoNoCerrable(Exception):
+    """La reclamación está en un estado que no admite cierre automático (R19).
+
+    El motivo **nombra el estado**, y no por cortesía: sin él, quien recibe el
+    error no puede saber si lo que toca es esperar, revisar la reclamación o
+    cerrarla a mano en el ERP.
+
+    El caso que más importa es `NPR` (NO PROCEDE): alguien decidió que esa
+    reclamación no procede, y cerrarla la daría por resuelta.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class UsuarioSigridNoMapeado(Exception):
+    """No hay de dónde sacar el login de quien confirma el cierre (F-009, R30).
+
+    No hay correspondencia guardada **y** tampoco hay un correo del que derivar
+    un candidato. Sin login no se firma: `dbo.log.usu` lleva el login de la
+    persona que ejecuta el proceso, nunca un usuario técnico ni un valor
+    constante (R28, decisión D2 del humano).
+
+    El borde lo traduce a **409**, y lo que hay que hacer es dar de alta la
+    correspondencia con `infra/07_alta_usuario_sigrid.ps1` (R34).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class UsuarioSigridInexistente(Exception):
+    """El login candidato no existe **exactamente una vez** en el ERP (R31).
+
+    Es la puerta que hace seguro apoyarse en un supuesto que la base no
+    confirma: el correo **propone**, el ERP **dispone**. Aquí el ERP ha dicho
+    que no, así que no se cierra y **no se escribe nada en Sigrid** (R32).
+
+    El motivo nombra el correo del usuario y el login que se intentó, y eso
+    **no choca con R45**: son dos destinos distintos. El mensaje va al usuario
+    autenticado y le nombra **su propio** correo, que ya es suyo y lo tiene
+    delante; el log lo lee cualquiera que abra Application Insights, y por eso
+    este texto **no se registra tal cual** (R45).
+
+    El borde lo traduce a **409**: hay que dar de alta la correspondencia a
+    mano. Es el caso de los 2 de 8 usuarios medidos que no siguen la convención.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class EstadoCambiadoDesdeElDryRun(Exception):
+    """La reclamación se movió entre el dry-run y la escritura (F-009, R11).
+
+    **No se ha aplicado nada.** El `UPDATE` lleva en su `WHERE` el estado de
+    origen que se leyó en el dry-run, así que si alguien movió la reclamación
+    entretanto la sentencia no encuentra la fila, el `INSERT` del log tampoco
+    —su `FROM` está filtrado por el estado destino— y el batch entero se va sin
+    tocar el ERP.
+
+    Existe porque **no se puede asumir que lo leído siga ahí**: F-008 §2.4
+    encontró 81 filas `DESHACER proceso`, así que los cierres se deshacen y las
+    reclamaciones se mueven.
+
+    El borde lo traduce a **409**: hay que volver a mirar el dry-run.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CierreFallido(Exception):
+    """El ERP no ha respondido de forma utilizable al cerrar (F-009, R27, R50).
+
+    Reintentos agotados, error no transitorio, o una respuesta que no trae lo
+    que el contrato promete —el caso que más importa: un
+    `total_affected_rows` que no es 2—.
+
+    **El cierre no se reintenta solo** (R27). Reintentar una escritura contra un
+    ERP de producción sin que nadie mire es cómo se cierran dos veces las cosas;
+    el reintento lo pide una persona.
+
+    El `motivo` dice **qué** pasó y **nunca** el cuerpo crudo de la respuesta,
+    ni la clave de función, ni ningún dato del parte (R46, R50): estos mensajes
+    acaban en la base y en un log que sobrevive al parte.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CierreDeshabilitado(Exception):
+    """Aquí no se escribe en Sigrid (F-009, R36, R37).
+
+    Dos motivos, y los dos son **puertas a propósito**, no fallos:
+
+    - el entorno no es `dev` ni `pro` —típicamente, es un puesto de trabajo—, y
+      `CLAUDE.md` prohíbe sin matices escribir en Sigrid desde local;
+    - `CIERRE_HABILITADO` no está encendido, que es el estado por defecto de un
+      `.env` recién copiado y de un despliegue a medio configurar.
+
+    Se levanta en la fábrica **y en el constructor del adaptador** (R37). No es
+    redundancia decorativa: componer las piezas de otra manera —un script
+    suelto, un `python -c`, un test «solo para probar»— tiene que toparse igual
+    con la puerta, porque un cierre en el ERP lo ve Posventa y deshacerlo es
+    otro proceso que alguien tiene que ejecutar a mano.
+
+    El borde lo traduce a **503**: no es culpa de quien manda la petición ni
+    del ERP; es que aquí no se cierra.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ConfiguracionSigridIncompleta(Exception):
+    """Falta configuración para hablar con `sigrid-api` (F-009, R38).
+
+    El motivo nombra **todas** las variables que faltan de una vez
+    —descubrirlas de una en una son tres vueltas de despliegue— y **jamás sus
+    valores**, ni enteros ni en fragmentos: `SIGRID_API_KEY` es una credencial y
+    estos mensajes acaban en un log.
+
+    Se exige en la fábrica y no al leer los ajustes, por lo mismo que
+    `GEMINI_API_KEY`, `PG_PASSWORD` y `GRAPH_CLIENT_SECRET`: `/health` tiene que
+    arrancar sin configuración de Sigrid y la suite entera tiene que correr sin
+    credenciales en el entorno.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CuerpoDeCierreInvalido(Exception):
+    """El cuerpo de `/api/cerrar` no trae lo que dice el contrato (F-009, R47).
+
+    Falta un campo, o el veredicto o el destino traen un valor que el dominio
+    no reconoce. El borde lo traduce a **400**, y no a 409: la petición está
+    mal formada, no es que la incidencia no se pueda cerrar.
+
+    Esa distinción no es cosmética, y aquí menos que en ningún otro sitio: un
+    veredicto desconocido tratado «como si fuera no apto» daría un 409
+    engañoso; tratado al revés —«como si fuera apto»— **cerraría en el ERP de
+    producción una incidencia que nadie ha validado**. Se rechaza y punto.
+
+    El motivo dice **qué falta** y nunca lo que sí venía: el cuerpo lleva los
+    códigos del parte y el correo de quien confirma, y este texto acaba en un
+    log (R45).
     """
 
     def __init__(self, motivo: str) -> None:

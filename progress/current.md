@@ -1,6 +1,52 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-019 con spec escrita, esperando aprobación**
+>
+> Escrita `specs/F-019-endpoints-persistencia/` (requirements EARS, design,
+> tasks) en la rama `feature/F-019-endpoints-persistencia`. Informe completo:
+> **`progress/spec_F-019.md`**. Sin código, sin tocar `harness/features.json`,
+> `bash harness/init.sh` en verde.
+>
+> **La feature no son sólo tres endpoints.** Tres endpoints sin más no matan
+> el defecto 15: si el orden depende de que el llamante se porte bien, vuelve
+> en cuanto alguien llame a `/api/archivar` a mano — que es literalmente lo
+> que se hizo el 2026-08-25 para verificar T18. El diseño añade la pieza que
+> falta: **`/api/archivar` escribe la traza en estado `pendiente` ANTES de
+> subir nada**, y la clave ajena `archivos_hash_parte_fkey` sólo lo admite si
+> el parte ya consta. La misma restricción que hoy falla **después** de subir
+> el fichero pasa a fallar **antes**: el 500 «está arriba y falta la traza» se
+> convierte en un **409 «guarda el parte primero»**, sin subir nada.
+>
+> Lo demás: `POST /api/remesa`, `POST /api/parte` (que **recalcula** el
+> veredicto, no se lo cree) y `GET /api/cola`, los tres llamando al
+> `paso_persistencia` que F-005 dejó escrito y **sin punto de entrada**. Cero
+> DDL, cero métodos nuevos en el puerto, cero conexiones reales.
+>
+> **Lo que la spec NO promete, y conviene leerlo antes de aprobar**: recargar
+> la pestaña **sigue perdiendo el trabajo en curso**. Lo guardado queda
+> guardado y la cola sobrevive, pero volver a pintar la remesa exige un método
+> de lectura nuevo en el puerto, que el encargo prohíbe. Es la decisión **D4**.
+>
+> ### Cinco decisiones abiertas para el humano (`design.md` §15)
+>
+> Con silencio se implementa la recomendación; sólo **D5** cambia `tasks.md`.
+>
+> - **D1** — `GET /api/cola` es anónimo **y devuelve observaciones manuscritas
+>   de clientes**: es el primer endpoint del servicio que publica dato personal
+>   acumulado sin que el llamante aporte el PDF. El `auth_level` no lo arregla
+>   (`ANONYMOUS` es obligado por el proxy de la SWA). Recomendado: sacarlo así,
+>   con tope de límite y nada al log, **y valorar la restricción de acceso
+>   público de la Function App**, que es la única capa real.
+> - **D2** — `postventa.remesas` no tiene clave natural → se acepta; dársela
+>   sería DDL. No duplica partes.
+> - **D3** — `usuario_oid` sigue en `NULL`: `x-ms-client-principal` va sin
+>   firma.
+> - **D4** — rehidratar la sesión al recargar → feature nueva.
+> - **D5** — **¿entra el cableado del front?** Recomendado **sí** (T15–T16).
+>   Si el humano dice que no, el archivado real **sigue sin poder completar**
+>   en el circuito del piloto, y hay que decirlo al cerrar.
+
 > ## Estado al 2026-08-26 · **F-008 CERRADA Y APROBADA · nueve features `done`**
 >
 > `progress/review_F-008.md` salió **CAMBIOS SOLICITADOS (2)** en la primera

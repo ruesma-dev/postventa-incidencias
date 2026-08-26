@@ -115,6 +115,7 @@ from domain.models.errores import (
 )
 from domain.models.remesa import DocumentoEntrada
 from interface_adapters.api.archivar import archivar_parte
+from interface_adapters.api.cola import leer_cola
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
@@ -388,6 +389,52 @@ def parte(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["resultado_validacion"],
         len(cuerpo["avisos"]),
     )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="cola", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def cola(req: func.HttpRequest) -> func.HttpResponse:
+    """Los partes que esperan que una persona decida (F-019, R14).
+
+    Solo traduce: saca `limite` de la cadena de consulta, llama al handler y
+    mapea sus errores de dominio a códigos HTTP. **400** el `limite` no es un
+    entero ≥ 1 —y entonces no se consulta nada— y **503** aquí y ahora no hay
+    base de datos.
+
+    **Es el único endpoint del servicio que devuelve dato personal acumulado
+    sin que el llamante aporte el PDF**, así que el log lleva **sólo cuántas**
+    entradas volvieron: nunca las observaciones, ni los códigos de obra, ni
+    los números de incidencia (R18). El log sobrevive al parte.
+    """
+    try:
+        cuerpo = leer_cola(req.params.get("limite"))
+    except PeticionDePersistenciaInvalida as error:
+        log.info("cola rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("cola sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no puede leer la cola. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("cola sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"podido leer la cola: se puede reintentar cuando la base "
+                    f"vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info("cola: %d partes esperando decisión", cuerpo["total"])
     return _json(cuerpo, 200)
 
 

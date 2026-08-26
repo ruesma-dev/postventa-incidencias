@@ -258,3 +258,111 @@ local ni desde ningún sitio**, y no se ha tocado código de producción.
 Ningún login, correo ni nombre concreto entra en la spec ni en este informe:
 todas las medidas de D2 son recuentos agregados. Ningún valor de configuración
 de `sigrid-api` entra tampoco — solo el hecho de si el prefijo está permitido.
+
+---
+
+# 5 · Segunda pasada (2026-08-26): las dos decisiones abiertas, resueltas
+
+> El humano resolvió OD-1 y OD-2. La spec se ha actualizado en los tres
+> ficheros y **§10 del `design.md` ya no es «decisiones abiertas»**: es
+> **«Decisiones cerradas (2026-08-26)»**, con las seis —D1 a D6— fechadas. No
+> queda ninguna abierta. Sigue sin implementarse código y sin tocarse
+> `harness/features.json`.
+
+## 5.1 · OD-1 → **D5 · el orden es validar → cerrar → subir el PDF**
+
+**F-009 ya no comprueba la tabla `gra` de Sigrid.** La precondición pasa a ser
+**nuestra** —parte apto (F-004) y archivado (F-006)—, que es lo que el usuario
+sube y el circuito ya garantiza. El PDF entra en Sigrid después, en F-012.
+
+Qué ha cambiado, fichero a fichero:
+
+- **`requirements.md`**: R20 y R21 **reescritos**. R20 pasa de «no cerrar sin
+  gráfico» a **«no consultar `rcg` ni `gra` para decidir»**, con control
+  negativo. R21 pasa de «puerta cerrada por defecto» a **«el dry-run advierte
+  siempre de que la reclamación quedará cerrada sin el parte dentro de
+  Sigrid»**. R9 ya no devuelve si hay gráfico: devuelve ese aviso.
+- **`design.md` §2**: reescrita entera. Ya no es «el hallazgo que obliga a
+  preguntar» sino **el orden decidido más una sección
+  `RIESGO ACEPTADO`**, escrita sin adornos: este servicio va a producir
+  reclamaciones `CER` sin fila en `rcg`, algo que **no ha pasado ni una vez en
+  los 2.365 cierres desde 2023**, y quien mire la base lo va a ver. Con sus
+  tres mitigaciones —el parte existe archivado; el conjunto es localizable por
+  el `tex` propio y reversible (`ope = 30`, 81 precedentes); quien confirma lo
+  sabe porque el dry-run lo advierte— y su fecha de caducidad: F-012.
+- **`design.md` §6 y §7.1**: `Reclamacion` **ya no tiene campo de gráficos** y
+  `evaluar` ya no recibe `permitir_sin_grafico`. La consulta del dry-run pierde
+  el `COUNT` sobre `rcg`. Que el dato no exista en el dominio es la forma más
+  barata de que R20 no se pueda incumplir por descuido.
+- **`config/settings.py`**: desaparece `CIERRE_SIN_GRAFICO_PERMITIDO`. La
+  puerta que se había diseñado ya no hace falta.
+- **`tasks.md`**: T1, T4 y T13 pasan a verificar el control negativo; T18 exige
+  que el aviso se pinte **siempre**; T19 obliga a corregir
+  `docs/ARCHITECTURE.md` §«Alcance del cierre», que hoy dice que el alcance
+  «está en el aire» a la espera de F-008.
+
+## 5.2 · OD-2 → **D6 · el correo manda, el login se confirma una vez**
+
+El supuesto del humano —«el correo de la app y el de Sigrid son el mismo»— **la
+base no lo confirma** (`usu.ele` vacío en los 228). El diseño lo trata como
+supuesto: el supuesto **propone**, el ERP **dispone**, y solo lo que el ERP
+confirma se guarda y se escribe.
+
+El bloque 7 de `requirements.md` está **reescrito**: R29 (si hay correspondencia
+confirmada, se usa sin derivar nada), R30 (si no, se deriva del correo y **se
+verifica** contra `dbo.usu`), R31 (candidato inexistente o ambiguo → no se
+cierra, con error que nombra correo y login intentado), **R32 (jamás se escribe
+en el log del ERP un login sin verificar)**, R33 (lo verificado se guarda como
+confirmado) y R34 (alta manual con **precedencia** sobre la derivación, para los
+**2 de 8** casos medidos que no siguen la convención).
+
+`08_usuarios_sigrid.sql` sigue siendo **el único DDL nuevo**, como se pidió.
+
+**Dos contradicciones aparentes, resueltas por escrito** en vez de dejarlas
+para que las descubra el reviewer:
+
+1. **R43 dice que la traza no guarda el login; R33 dice que se guarda.** Son
+   tres sitios distintos: el **log de Sigrid** lleva el login (lo necesita el
+   ERP), la **traza del cierre** solo el `oid` (para reconstruir qué hicimos no
+   hace falta saber quién es), y la **tabla de correspondencias** el par
+   `oid` → login, que es su razón de existir. R43 prohíbe el login **en la
+   traza del cierre**.
+2. **R31 nombra el correo en el error; R45 prohíbe el correo en los logs.** Dos
+   destinos: el **mensaje** va al usuario autenticado y le nombra **su propio**
+   correo, que ya tiene delante; el **log** lo lee cualquiera que abra
+   Application Insights. Lo que no puede pasar es que el mensaje se registre tal
+   cual.
+
+## 5.3 · El hallazgo que se deja escrito para F-012 (no cambia F-009)
+
+**Nueva `design.md` §11 · «Lo que queda fuera, y una trampa que le espera a
+F-012».** El humano tiene razón: el PDF va a la **base documental**. No hizo
+falta volver al ERP — **está medido en
+`docs/referencia/03_modelo_posventa_sigrid.md` §4.1** y se cita en vez de
+repetir la consulta: son **dos tablas `gra` en dos bases**, los metadatos y el
+enlace `rcg` en la base de negocio, y **el binario en `ima` de la documental**,
+siempre (357.901 filas, ninguna vacía; para posventa `ruesma.gra.ima` está
+vacío, con `vin = 3`).
+
+Y ahí está la trampa: la configuración desplegada que se leyó para D3 tiene **la
+base de negocio como única escribible**, y `sigrid_api.md` dice que la
+documental queda fuera **a propósito**. Es decir: **subir el PDF a Sigrid hoy no
+tiene por dónde hacerse**. No basta un endpoint de dominio nuevo en
+`sigrid-api` — hay que **habilitar la escritura en esa base**, y eso lo decide
+el dueño de `sigrid-api`, no este proyecto.
+
+**No afecta a F-009**, que solo escribe en la base de negocio, donde sí está
+permitido. Por eso no bloquea. Queda escrito en el `design.md` y T21 obliga a
+llevarlo también a `azure-apps/postventa_incidencias.md`, para que quien coja
+F-012 lo sepa el primer día.
+
+## 5.4 · Estado de la spec tras la segunda pasada
+
+- **53 requisitos** (R1–R53), sin huecos, y **los 53 citados en `tasks.md`**:
+  comprobado con un recuento automático, no a ojo.
+- **29 tareas** (T1–T29), sin huecos. **El antiguo bloque 0 ha desaparecido**:
+  existía solo para obtener estas dos respuestas, y ya están.
+- **Ninguna decisión abierta.**
+- **Ni una escritura en Sigrid**, tampoco en esta pasada: no hizo falta ninguna
+  consulta nueva. Ningún correo, login ni valor de configuración entra en la
+  spec ni en este informe.

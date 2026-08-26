@@ -67,22 +67,37 @@
 >   entra en la spec, solo el hecho.)
 > - **D4 · el gráfico-URL**: no se toca. Es F-013.
 >
-> ### DECISIONES ABIERTAS — hacen falta antes de implementar (tarea T0)
+> ### D5 y D6 · las dos que estaban abiertas, RESUELTAS por el humano
 >
-> **OD-1 · ¿Puede F-009 cerrar una reclamación sin gráfico en Sigrid?**
-> Hallazgo nuevo que F-008 no midió: **el 98,7 % de las reclamaciones abiertas
-> no tiene gráfico** (PTE: 11 de 839; TER: 19 de 1.474), porque subir el
-> gráfico y cerrar son **el mismo gesto**. La precondición dura que recomendó
-> F-008 §6.2 es correcta para la integridad del ERP, pero **dejaría a F-009 sin
-> poder cerrar casi nada**. Tres salidas con su coste en `design.md` §10; el
-> diseño soporta las tres sin cambiar. Recomendación: precondición dura por
-> defecto, puerta abierta a mano solo durante el piloto, y F-012 como destino.
+> **D5 · el orden es validar → cerrar → subir el PDF.** F-009 **no consulta
+> `gra` ni `rcg`**: la precondición es **nuestra** —parte apto y archivado— y
+> el PDF entra en Sigrid en F-012. Consecuencia escrita sin adornos en
+> `design.md` §2 como **RIESGO ACEPTADO**: este servicio producirá
+> reclamaciones `CER` **sin gráfico**, algo que no ha pasado ni una vez en los
+> 2.365 cierres desde 2023. Mitigado por tres cosas: el parte existe archivado
+> en SharePoint, el `tex` propio hace el conjunto localizable y reversible, y
+> el dry-run lo advierte siempre antes de que nadie confirme.
 >
-> **OD-2 · ¿De dónde sale el login de Sigrid de quien confirma?**
-> Mapeo explícito (recomendado), poblar `usuemp.ele` con el administrador del
-> ERP, o convención verificada (descartada: 6 aciertos de 8). Falta además que
-> el humano **diga quién entra en el mapeo**: hoy son 3 los logins que cierran
-> partes, y uno no tiene correo registrado, así que la lista la da una persona.
+> **D6 · el correo manda, el login se confirma una vez.** El supuesto «el
+> correo de la app y el de Sigrid son el mismo» **la base no lo confirma**
+> (`usu.ele` vacío en los 228), así que se trata como supuesto: se deriva el
+> candidato del correo, **se verifica contra `dbo.usu`**, y solo lo confirmado
+> se guarda en `postventa.usuarios_sigrid` y se escribe. Sin confirmación **no
+> se cierra**. Alta manual con precedencia para los 2 de 8 casos que no siguen
+> la convención.
+>
+> **§10 del `design.md` ya no es «decisiones abiertas»**: es **«Decisiones
+> cerradas (2026-08-26)»**, con las seis (D1–D6) fechadas.
+>
+> ### Hallazgo dejado por escrito para F-012 (no afecta a F-009)
+>
+> El PDF va a la **base documental** —está medido en F-008 §4.1, no hizo falta
+> volver al ERP—, y esa base **no es escribible** por `sigrid-api`: la
+> configuración desplegada tiene la de negocio como única, y su documentación
+> dice que es a propósito. **Subir el PDF a Sigrid hoy no tiene por dónde
+> hacerse**: no basta un endpoint nuevo, hay que habilitar la escritura en esa
+> base, y eso lo decide el dueño de `sigrid-api`. Escrito en `design.md` §11,
+> y T21 obliga a llevarlo a `azure-apps/postventa_incidencias.md`.
 >
 > ### Verificaciones MANUAL (humano) que la spec deja programadas
 >

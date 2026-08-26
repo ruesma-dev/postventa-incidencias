@@ -40,17 +40,412 @@ guarda y se escribe.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
-from domain.models.cierre import CorrespondenciaSigrid, derivar_login_candidato
+from domain.models.cierre import (
+    CODIGO_ESTADO_CIERRE,
+    CorrespondenciaSigrid,
+    PlanDeCierre,
+    ResultadoCierre,
+    a_codigo_de_sigrid,
+    derivar_login_candidato,
+    evaluar,
+)
 from domain.models.errores import (
+    CierreFallido,
+    CuerpoDeCierreInvalido,
+    EstadoNoCerrable,
+    ParteNoApto,
+    ParteNoArchivado,
+    ReclamacionNoLocalizada,
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
 )
+from domain.models.persistencia import EstadoArchivo, EstadoCierre, TrazaCierre
+from domain.models.validacion import Destino, Veredicto
 from domain.ports.erp import ErpPort
+from domain.ports.persistencia import (
+    RepositorioPartesPort,
+    RepositorioPreferenciasPort,
+)
 from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
 
-__all__ = ["resolver_login_de_sigrid"]
+from application.pipelines.contexto_parte import ContextoParte
+
+__all__ = [
+    "FILAS_ESPERADAS",
+    "paso_cierre",
+    "resolver_login_de_sigrid",
+]
+
+log = logging.getLogger(__name__)
+
+#: Lo que afecta un cierre correcto: la fila del estado y la de auditoría.
+#:
+#: El adaptador ya lo comprueba, y aquí se vuelve a comprobar. No es
+#: redundancia decorativa: dar por cerrado lo que no lo está es el fallo más
+#: caro de esta feature, y este paso es el que escribe la traza que dirá para
+#: siempre que la incidencia se cerró.
+FILAS_ESPERADAS = 2
+
+
+def paso_cierre(
+    ctx: ContextoParte,
+    erp: ErpPort,
+    repositorio: RepositorioPartesPort,
+    usuarios: RepositorioUsuariosSigridPort,
+    preferencias: RepositorioPreferenciasPort,
+    *,
+    commit: bool,
+    confirmado: bool,
+    usuario_oid: str,
+    correo: str,
+    numero_incidencia: str,
+    ahora: datetime,
+) -> ContextoParte:
+    """Cierra la incidencia en Sigrid y deja constancia de lo que pasó.
+
+    Los pasos, **en este orden**, y el orden es la mitad del requisito:
+
+    1. **Puerta de aptitud** (R16). Antes de nada: un parte que nadie ha
+       validado no cierra una incidencia del ERP.
+    2. **Puerta de archivo** (R17). El orden del procedimiento de Posventa:
+       primero el documento, después el cierre. Es lo que sostiene el riesgo
+       aceptado de `design.md` §2.
+    3. **El login**, resuelto y **verificado contra el ERP** (R29–R32). Va
+       antes del dry-run para que un usuario sin correspondencia se entere
+       enseguida y no después de leer media reclamación.
+    4. **El dry-run** (R8), que es una lectura y no escribe nada.
+    5. **`evaluar`** (R18, R19), que es dominio puro.
+    6. **La traza `dry_run_ok`** (R40).
+    7. Y **solo si `commit`** y hay confirmación o auto-cierre (R12, R13): la
+       escritura y la traza `cerrado` (R41).
+
+    Levanta `ParteNoApto`, `ParteNoArchivado`, `CuerpoDeCierreInvalido`,
+    `UsuarioSigridNoMapeado`, `UsuarioSigridInexistente`,
+    `ReclamacionNoLocalizada`, `EstadoDeCierreNoResoluble`, `EstadoNoCerrable`,
+    `EstadoCambiadoDesdeElDryRun` y `CierreFallido` **sin traducir**:
+    convertir eso en códigos HTTP es trabajo del borde.
+
+    El log lleva el `hash` del parte, el código de la incidencia y los códigos
+    de estado. **Nunca** el correo, ni el login, ni el `oid`, ni nada del papel
+    (R44, R45): lo lee cualquiera que abra Application Insights.
+    """
+    _exigir_apto(ctx)
+    _exigir_archivado(ctx)
+
+    codigo = _codigo_de_incidencia(numero_incidencia)
+    login = resolver_login_de_sigrid(
+        usuarios, erp, usuario_oid=usuario_oid, correo=correo, ahora=ahora
+    )
+
+    plan = _dry_run(erp, codigo=codigo, login=login)
+
+    if plan.ya_cerrada:
+        return _resolver_ya_cerrada(ctx, repositorio, plan, ahora=ahora)
+
+    if not plan.cerrable:
+        _dejar_constancia(
+            repositorio,
+            ctx,
+            _traza(
+                ctx,
+                plan,
+                estado=EstadoCierre.ERROR,
+                usuario_oid=None,
+                motivo=plan.motivo,
+                dry_run_at_utc=ahora,
+            ),
+        )
+        raise EstadoNoCerrable(plan.motivo or "la reclamación no admite cierre")
+
+    _dejar_constancia(repositorio, ctx, _traza_de_dry_run(ctx, plan, ahora=ahora))
+
+    ctx.cierre = ResultadoCierre(plan=plan, estado=EstadoCierre.DRY_RUN_OK)
+    if not commit:
+        log.info(
+            "F-009 dry-run correcto: parte=%s incidencia=%s origen=%s destino=%s",
+            ctx.parte.hash,
+            plan.reclamacion.codigo,
+            plan.reclamacion.estado_origen_cod,
+            plan.reclamacion.estado_destino_cod,
+        )
+        return ctx
+
+    _exigir_autorizacion_para_escribir(
+        preferencias, confirmado=confirmado, usuario_oid=usuario_oid
+    )
+    return _escribir(
+        ctx, erp, repositorio, plan, usuario_oid=usuario_oid, ahora=ahora
+    )
+
+
+def _exigir_apto(ctx: ContextoParte) -> None:
+    """Solo se cierra lo que F-004 declaró apto (R16).
+
+    Dos motivos distintos a propósito, porque se arreglan de forma distinta:
+    «no hay veredicto» se arregla revalidando el parte; «el veredicto dice que
+    no» se arregla volviendo al papel o decidiendo a mano.
+
+    Cerrar «por si acaso» una incidencia cuyo parte fue a la cola de validación
+    humana la daría por resuelta en el ERP de producción sin que nadie haya
+    mirado el papel.
+    """
+    if ctx.validacion is None:
+        raise ParteNoApto(
+            "no consta que este parte haya pasado la validación: no se cierra "
+            "una incidencia con un parte del que nadie ha emitido veredicto"
+        )
+    if (
+        ctx.validacion.veredicto != Veredicto.APTO
+        or ctx.validacion.destino != Destino.ARCHIVO_Y_CIERRE
+    ):
+        raise ParteNoApto(
+            f"el parte no es apto para archivo y cierre: la validación lo manda "
+            f"a «{ctx.validacion.destino.value}»"
+        )
+
+
+def _exigir_archivado(ctx: ContextoParte) -> None:
+    """El parte tiene que constar **archivado** (R17).
+
+    `pendiente` y `error` no valen, y son justo los dos estados en los que el
+    fichero puede no estar arriba. Si el PDF no está guardado en ninguna parte,
+    cerrar la incidencia la da por resuelta sin dejar la prueba en ningún
+    sitio — y el riesgo aceptado de `design.md` §2 solo es asumible **porque el
+    parte firmado existe**.
+    """
+    if ctx.archivo is None or ctx.archivo.estado != EstadoArchivo.ARCHIVADO:
+        estado = "ninguno" if ctx.archivo is None else ctx.archivo.estado.value
+        raise ParteNoArchivado(
+            f"este parte no consta archivado (estado del archivo: {estado}), "
+            f"así que no se cierra la incidencia: primero el documento, después "
+            f"el cierre"
+        )
+
+
+def _codigo_de_incidencia(numero_incidencia: str) -> str:
+    """El código con el que se busca en el ERP, en su formato (R6).
+
+    Sin código no hay a quién preguntar, y preguntar por una cadena vacía
+    devolvería lo que devolviera. El borde lo traduce a **400**.
+    """
+    codigo = a_codigo_de_sigrid(numero_incidencia)
+    if not codigo:
+        raise CuerpoDeCierreInvalido(
+            "la petición no trae el número de incidencia, que es lo que "
+            "identifica la reclamación en el ERP"
+        )
+    return codigo
+
+
+def _dry_run(erp: ErpPort, *, codigo: str, login: str) -> PlanDeCierre:
+    """La lectura del ERP y la decisión del dominio, en ese orden (R8, R18, R19)."""
+    reclamacion = erp.leer_reclamacion(
+        codigo=codigo, codigo_estado_cierre=CODIGO_ESTADO_CIERRE
+    )
+    if reclamacion is None:
+        raise ReclamacionNoLocalizada(
+            f"no hay ninguna reclamación con el código {codigo} en el tipo de "
+            f"posventa del ERP: no se cierra nada"
+        )
+    return evaluar(reclamacion, login_sigrid=login)
+
+
+def _exigir_autorizacion_para_escribir(
+    preferencias: RepositorioPreferenciasPort, *, confirmado: bool, usuario_oid: str
+) -> None:
+    """Sin confirmación explícita o auto-cierre activo, no se escribe (R12–R14).
+
+    **Es el requisito que impide cerrar por un error de flujo.** El auto-cierre
+    ahorra un clic, no una comprobación: cuando está activo se llega aquí
+    igual, con el dry-run ya hecho y las precondiciones ya pasadas (R13).
+
+    La preferencia se consulta **solo si no hay confirmación**: quien acaba de
+    confirmar en el front no necesita que le preguntemos a la base si además
+    tenía auto-cierre, y es un viaje menos a un servidor compartido.
+
+    Sale como `CuerpoDeCierreInvalido` (→ 400) y no como un 409 porque eso es
+    lo que es: se pidió `commit` sin traer la confirmación que el contrato
+    exige, y el 400 dice **qué** falta (R47).
+    """
+    if confirmado:
+        return
+    if preferencias.obtener_preferencias(usuario_oid=usuario_oid).auto_cierre:
+        return
+    raise CuerpoDeCierreInvalido(
+        "se ha pedido cerrar con 'commit' sin 'confirmado' y este usuario no "
+        "tiene el auto-cierre activo: no se escribe en el ERP sin que alguien "
+        "lo confirme"
+    )
+
+
+def _escribir(
+    ctx: ContextoParte,
+    erp: ErpPort,
+    repositorio: RepositorioPartesPort,
+    plan: PlanDeCierre,
+    *,
+    usuario_oid: str,
+    ahora: datetime,
+) -> ContextoParte:
+    """La escritura y su traza, pase lo que pase (R27, R41).
+
+    Un fallo deja la traza en `error` con su motivo y **sube sin reintentar**:
+    reintentar contra un ERP de producción sin que nadie mire es cómo se
+    cierran dos veces las cosas, y el reintento lo pide una persona.
+    """
+    try:
+        filas = erp.cerrar(plan=plan, ahora=ahora)
+        if filas != FILAS_ESPERADAS:
+            raise CierreFallido(
+                f"el cierre de {plan.reclamacion.codigo} ha afectado a {filas} "
+                f"filas y se esperaban {FILAS_ESPERADAS}: no se da por cerrado"
+            )
+    except Exception as fallo:
+        ctx.cierre = ResultadoCierre(
+            plan=plan,
+            estado=EstadoCierre.ERROR,
+            motivo=getattr(fallo, "motivo", str(fallo)),
+        )
+        _dejar_constancia(
+            repositorio,
+            ctx,
+            _traza(
+                ctx,
+                plan,
+                estado=EstadoCierre.ERROR,
+                usuario_oid=usuario_oid,
+                motivo=ctx.cierre.motivo,
+                dry_run_at_utc=ahora,
+            ),
+        )
+        raise
+
+    ctx.cierre = ResultadoCierre(
+        plan=plan,
+        estado=EstadoCierre.CERRADO,
+        filas_afectadas=filas,
+        cerrado_at_utc=ahora,
+    )
+    _dejar_constancia(
+        repositorio,
+        ctx,
+        _traza(
+            ctx,
+            plan,
+            estado=EstadoCierre.CERRADO,
+            usuario_oid=usuario_oid,
+            dry_run_at_utc=ahora,
+            cerrado_at_utc=ahora,
+        ),
+    )
+    log.info(
+        "F-009 incidencia cerrada: parte=%s incidencia=%s origen=%s destino=%s filas=%d",
+        ctx.parte.hash,
+        plan.reclamacion.codigo,
+        plan.reclamacion.estado_origen_cod,
+        plan.reclamacion.estado_destino_cod,
+        filas,
+    )
+    return ctx
+
+
+def _resolver_ya_cerrada(
+    ctx: ContextoParte,
+    repositorio: RepositorioPartesPort,
+    plan: PlanDeCierre,
+    *,
+    ahora: datetime,
+) -> ContextoParte:
+    """La reclamación ya estaba cerrada, y **eso no es un error** (R18).
+
+    Se registra y se devuelve en verde, sin escribir nada en Sigrid. Tratarlo
+    como un fallo haría que un reintento legítimo —volver a lanzar una remesa
+    que ya se procesó— pareciera un problema y mandara a alguien a mirar el
+    ERP.
+    """
+    ctx.cierre = ResultadoCierre(plan=plan, estado=EstadoCierre.YA_CERRADA)
+    _dejar_constancia(
+        repositorio,
+        ctx,
+        _traza(
+            ctx,
+            plan,
+            estado=EstadoCierre.YA_CERRADA,
+            usuario_oid=None,
+            motivo=plan.motivo,
+            dry_run_at_utc=ahora,
+        ),
+    )
+    log.info(
+        "F-009 incidencia ya cerrada: parte=%s incidencia=%s",
+        ctx.parte.hash,
+        plan.reclamacion.codigo,
+    )
+    return ctx
+
+
+def _traza_de_dry_run(
+    ctx: ContextoParte, plan: PlanDeCierre, *, ahora: datetime
+) -> TrazaCierre:
+    """La traza de R40: qué se leyó y cuándo, antes de escribir nada."""
+    return _traza(
+        ctx,
+        plan,
+        estado=EstadoCierre.DRY_RUN_OK,
+        usuario_oid=None,
+        dry_run_at_utc=ahora,
+    )
+
+
+def _traza(
+    ctx: ContextoParte,
+    plan: PlanDeCierre,
+    *,
+    estado: EstadoCierre,
+    usuario_oid: str | None,
+    motivo: str | None = None,
+    dry_run_at_utc: datetime | None = None,
+    cerrado_at_utc: datetime | None = None,
+) -> TrazaCierre:
+    """La traza local del cierre (R41, R43).
+
+    Guarda el `oid` **opaco** de quien confirmó y **nunca** su correo, su
+    nombre ni su login de Sigrid. No es una duplicación de R28 ni choca con
+    R33: son tres sitios distintos. En el log del ERP va el login, porque es el
+    ERP quien necesita saber quién ejecutó el proceso; aquí va solo el `oid`,
+    porque para reconstruir qué hicimos no hace falta saber quién es.
+
+    Los dos códigos de estado se guardan **como traza de lo que se hizo**, no
+    como configuración: nadie los lee para decidir nada, y registrarlos a
+    posteriori no incumple C3.
+    """
+    return TrazaCierre(
+        hash_parte=ctx.parte.hash,
+        numero_incidencia=plan.reclamacion.codigo,
+        estado=estado,
+        estado_origen_sigrid=plan.reclamacion.estado_origen_cod,
+        estado_destino_sigrid=plan.reclamacion.estado_destino_cod,
+        confirmado_por=usuario_oid,
+        motivo=motivo,
+        dry_run_at_utc=dry_run_at_utc,
+        cerrado_at_utc=cerrado_at_utc,
+    )
+
+
+def _dejar_constancia(
+    repositorio: RepositorioPartesPort, ctx: ContextoParte, traza: TrazaCierre
+) -> None:
+    """Guarda la traza, tolerando que la fila ya sea terminal (R42).
+
+    `guardar_cierre` devuelve `SIN_CAMBIOS` cuando la fila ya estaba en
+    `cerrado`: no había nada que hacer, que no es lo mismo que no haber podido.
+    Aquí no se distingue porque no cambia nada de lo que este paso hace; lo que
+    importa es que **no se pisa** la traza de una escritura real.
+    """
+    repositorio.guardar_cierre(traza=traza)
 
 
 def resolver_login_de_sigrid(

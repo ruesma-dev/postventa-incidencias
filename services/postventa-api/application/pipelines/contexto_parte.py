@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from domain.models.cierre import ResultadoCierre
 from domain.models.extraccion import ExtraccionParte
 from domain.models.firma import LecturaFirma
 from domain.models.persistencia import TrazaArchivo
@@ -36,6 +37,13 @@ class ContextoParte:
     `archivo` es la traza de F-005 que deja el paso de archivo (F-006). Va
     aquí y no en un contexto nuevo por lo mismo que `validacion`: enganchar un
     paso detrás no puede obligar a cambiar la firma de los que ya existían.
+
+    `cierre` es lo que deja el paso de cierre (F-009), y lleva **el plan
+    entero** y no solo el estado: quien recibe la respuesta necesita ver el
+    dry-run —los dos estados legibles, con qué login se firmaría y el aviso de
+    que la reclamación quedará cerrada sin el parte dentro de Sigrid— antes de
+    confirmar (R9, R21). La traza que se guarda en la base es otra cosa y va
+    aparte, porque guarda menos: el `oid` y nunca el login (R43).
     """
 
     parte: ParteTroceado
@@ -43,4 +51,5 @@ class ContextoParte:
     lectura_firma: LecturaFirma | None = None
     validacion: ResultadoValidacion | None = None
     archivo: TrazaArchivo | None = None
+    cierre: ResultadoCierre | None = None
     avisos: list[str] = field(default_factory=list)

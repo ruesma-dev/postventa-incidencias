@@ -1,6 +1,34 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 (tarde) · **F-009: spec sin decisiones abiertas, esperando el «adelante»**
+>
+> `spec_ready` en `feature/F-009-cierre-sigrid`. **53 requisitos, 29 tareas,
+> cero decisiones abiertas.** Informe: `progress/spec_F-009.md` §5. El humano
+> resolvió OD-1 y OD-2 el 2026-08-26 y están incorporadas como **D5** y **D6**.
+>
+> - **D5 · el orden es validar → cerrar → subir el PDF.** F-009 **no mira la
+>   tabla `gra`**: la precondición es nuestra (parte validado y archivado).
+>   Riesgo aceptado y escrito: nuestros cierres **dejarán reclamaciones
+>   cerradas sin gráfico**, que no había pasado ni una vez en 2.365 cierres
+>   desde 2023. Mitiga el `tex` propio de D1, que permite localizar ese
+>   conjunto exacto y revertirlo.
+> - **D6 · el correo manda, el login se confirma una vez.** El login candidato
+>   se deriva de la parte local del correo, **se verifica contra `dbo.usu`** y
+>   se guarda confirmado en `postventa.usuarios_sigrid`; en los cierres
+>   siguientes se lee, no se deriva. **Sin confirmar no se cierra**: nunca se
+>   firma en el log del ERP con un login supuesto. La derivación es siembra, no
+>   mecanismo.
+>
+> **Trampa que se lleva F-012, escrita en `design.md` §11**: el binario del
+> gráfico vive en la `gra` de la **base documental**, y la configuración
+> desplegada de `sigrid-api` tiene la de negocio como **única escribible** —la
+> documental está fuera a propósito—. **Subir el PDF a Sigrid hoy no tiene por
+> dónde hacerse**: no basta un endpoint de dominio, hay que habilitar esa base,
+> y lo decide el dueño de `sigrid-api`. No afecta a F-009, que solo escribe en
+> negocio. Anotado también en la ficha de F-012.
+
+
 > ## Estado al 2026-08-26 (tarde) · **F-009 con spec escrita, esperando aprobación**
 >
 > `spec_ready` en `feature/F-009-cierre-sigrid` (commit `8e74681`). Informe:

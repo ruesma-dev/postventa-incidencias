@@ -377,3 +377,161 @@ de la campaña de mutación en este proyecto.**
 
 **T18** — la subida real a SharePoint, a ejecutar cuando F-010 despliegue el
 entorno. **F-018** — el recorte de permisos a `Sites.Selected`.
+
+## F-007 · Front de carga y revisión — CERRADA el 2026-08-20
+
+Rama `feature/F-007-front`. Rigor `estandar`. **Veredicto: APROBADO** en
+segunda pasada (`progress/review_F-007.md`); la primera fue CHANGES_REQUESTED.
+
+### Qué entrega
+
+La pantalla con la que Posventa trabaja: soltar un PDF, un ZIP o una carpeta,
+ver el progreso parte a parte, el semáforo de validación, y corregir a mano lo
+dudoso antes de archivar. Toda la lógica sale del DOM a módulos JS puros
+—`cola.js`, `pipeline.js`, `seleccion.js`, `confirmacion.js`, `traza.js`,
+`api.js`— para poder probarla.
+
+### El agujero que cierra
+
+**Hasta hoy nadie comprobaba el front.** El portero solo conocía un servicio.
+Ahora declara **dos, `api` y `front`**, y ejecuta sus tests: `node --test` para
+el JavaScript —sin `package.json`, sin `npm install`, sin `node_modules`— y
+pytest para `dev_server.py`, con un **puente que falla si Node no está**, nunca
+un `skip` silencioso. Un guardián que se salta a sí mismo no protege nada.
+
+| Puerta | Resultado |
+|---|---|
+| Cobertura de líneas cambiadas | **98,3 %** (114/116, umbral 80 %) |
+| Suite JS | de 84 a **97 tests**, relanzada por el reviewer |
+| Mutación (no exigida en `estandar`) | hecha igualmente; destapó **3 huecos reales** |
+| `bash harness/init.sh` | verde, exit 0, con las dos suites |
+
+### Las cinco decisiones del humano del 2026-08-20
+
+- **`dev_server.py` se prueba**, en vez de excluirlo de la puerta de cobertura.
+  Era el problema que expulsó al front de F-001. Se decidió probarlo porque es
+  lo único que reproduce en local el proxy de la Static Web App: código que
+  merece tests, no un script de usar y tirar.
+- **Concurrencia: 3 partes (6 peticiones vivas).** El argumento decisivo: 6 es
+  el tope de conexiones por origen de un navegador sobre HTTP/1.1, así que
+  pedir más solo encolaría **invisiblemente** mientras el usuario mira un
+  temporizador.
+- **Un campo corregido a mano vale confianza 100 y se marca como editado.** Si
+  no, corregir un campo no serviría de nada: el semáforo seguiría en rojo.
+- **La remesa no se persiste**: aceptado para el piloto y dado de alta como
+  **F-019**. Y expresamente **no** se guarda en `localStorage` ni `IndexedDB`:
+  los partes llevan DNI y observaciones.
+- **Navegador soportado**: Edge/Chrome.
+
+### T14, la verificación manual: «funciona a la perfección»
+
+Ejecutada por el humano con la remesa real. Los diez puntos en OK. Los tres
+que solo se ven en DevTools se comprobaron expresamente:
+
+- **La concurrencia**: la cascada de Red muestra tandas escalonadas de unas
+  seis barras solapadas, no las 44 llamadas a la vez. Se anotó con precisión
+  que es una **lectura visual, no un recuento instante a instante**; el
+  reviewer la dio por buena porque la cota exacta ya la clava `cola.test.js`
+  de forma determinista, y lo que faltaba era ver el cableado en un navegador
+  real.
+- **Revalidar no reprocesa**: un solo registro de traza, `paso: 'validar'`.
+  Corregir un campo a mano no gasta ni una llamada de IA.
+- **La consola no publica datos personales**: la traza enseña exactamente
+  cuatro claves —`hash`, `paso`, `estado`, `http`— porque `js/traza.js` acepta
+  esas cuatro y **tira el resto**. Filtro con test, no buena intención.
+
+### Los dos defectos que encontró la review
+
+1. **R19, la confirmación de archivar, no lo comprobaba nada.** Es lo único que
+   separa un clic accidental de **una tanda de subidas reales a SharePoint**, y
+   la tabla de trazabilidad afirmaba que estaba cubierta por tests que no
+   existían. Se sacó de `app.js` a `js/confirmacion.js` y ahora tiene 13 tests.
+   **Lección**: una tabla de trazabilidad que nadie verifica miente antes o
+   después.
+2. **`current.md` duplicaba a mano el estado del backlog** y se quedó rancio.
+   Arreglado de raíz: ahora **remite a `BACKLOG.md`**, que se genera solo desde
+   `features.json` y no envejece.
+
+### Lo que salió de probarlo, para después
+
+- **F-020 · Ajustes de diseño del front**: el campo de observaciones se queda
+  pequeño, el PDF se ve pequeño y la tira de previsualización le roba espacio a
+  la página. El criterio que las ordena: **en una pantalla de revisión, el
+  documento manda y todo lo demás le cede sitio.**
+- **T14 tenía un defecto propio**: su comando no activaba el `.venv` del
+  servicio, así que `func start` moría con `ModuleNotFoundError: pydantic`
+  para cualquiera que la siguiera al pie de la letra. Corregido en la spec.
+  Ningún test habría encontrado eso.
+
+## F-010 · Despliegue en Azure y tarjeta en el portal — CERRADA el 2026-08-26
+
+**La primera feature que se cierra con el sistema funcionando en Azure**, no
+solo con tests en verde. Cuatro rondas de review; la última, `APPROVED`.
+
+Lo entregado: cinco scripts de PowerShell re-ejecutables en `infra/`, la
+Function App y la Static Web App con autenticación de Entra restringida al
+grupo de Posventa, los nueve secretos del backend por referencia a Key Vault
+—ninguno en el repositorio—, el runbook `docs/DESPLIEGUE.md` y el bloque de la
+tarjeta para `front-portal`, que se aplicó en aquel repositorio.
+
+### Lo que costó de verdad: dieciséis defectos, y ninguno lo habría cazado un test
+
+El despliegue se implementó y se revisó en dos días. **Ejecutarlo destapó doce
+defectos**, y las verificaciones finales, cuatro más. Todos de la misma
+familia: scripts que un humano ejecuta en su máquina con PowerShell 5.1 contra
+Azure de verdad.
+
+Los cuatro que más enseñan:
+
+- **`cmd.exe` rompía las referencias a Key Vault.** En Windows `az` es un
+  `.cmd`, y los paréntesis de `@Microsoft.KeyVault(SecretUri=...)` se
+  interpretan como sintaxis de `cmd`. Ese despliegue habría funcionado sin un
+  fallo en Linux o en PowerShell 7.
+- **Sin emisión de tokens de ID había bucle de redirección** (`AADSTS50196`):
+  la aplicación quedó desplegada sin que pudiera entrar nadie.
+- **El host desnudo de la Function ya no responde a nadie.** Al enlazarla como
+  backend de la Static Web App, la plataforma le activa Easy Auth: todo lo que
+  no entre por el proxy del front recibe `400 Login not supported for provider
+  azureStaticWebApps`, `/api/health` incluido. **La spec mandaba usar justo esa
+  vía**, así que se reescribió R29 contra la que sí existe: la consola del
+  front, mismo origen y con sesión.
+- **Un `500` mudo donde había algo que decir.** `PersistenciaNoDisponible` no
+  estaba mapeada en el borde. Se partió en dos: `503` cuando no se ha subido
+  nada, y `ArchivoSinTraza` con `500` explícito cuando **el fichero sí está en
+  SharePoint y lo que falta es la constancia** —«volver a archivarlo no arregla
+  nada»—. Es el mejor trabajo de la feature, según el reviewer.
+
+### T18: la única subida real del proyecto
+
+Diferida desde el 2026-08-19 esperando este entorno, se ejecutó el 2026-08-25
+con autorización expresa del humano ante `CHECKPOINTS.md` C5. **Dos llamadas
+`200`, mismo destino, un solo elemento en la carpeta y ningún sufijo `(1)`**:
+el criterio de aceptación de F-006, demostrado. Con ella se marcó **T18 de
+F-006**, la casilla ajena que F-010 existía para desbloquear.
+
+Y **T15 resolvió D4**: la Function App alcanza `psql-albaranes-rs9k2` y el
+archivado deja su traza, sin tocar nada del servidor compartido. La prueba
+llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
+**solo lo puede devolver el motor**.
+
+### Lecciones
+
+1. **Un requisito EARS puede estar incumplido con su test en verde.** Pasó dos
+   veces (R27 y R6), y las dos se arregló también el test que los daba por
+   buenos. De ahí sale `CHECKPOINTS.md` C4 bis.
+2. **Una nota que miente es peor que no tener nota.** Se rechazó una ronda
+   entera por eso: doce defectos descubiertos ejecutando y el runbook seguía
+   afirmando un prerrequisito que ese mismo despliegue había desmentido.
+3. **Una tabla de trazabilidad que nadie verifica miente antes o después.** La
+   de R14 prometía un test sobre `staticwebapp.config.json` que no existía: se
+   podía borrar la regla que exige estar autenticado y la suite seguía verde.
+   Es la misma lección que dejó F-007, repetida.
+
+### Lo que queda vivo, con dueño
+
+- **F-019 es prerequisito del archivado real**: `/api/archivar` exige que el
+  parte esté en `partes` y hoy nada lo inserta. Para verificar T18 hubo que
+  sembrarlo a mano.
+- **T14 bis sin resultado**: el tope y la alerta de gasto de IA no constan. El
+  reviewer dictaminó que no bloqueaba el cierre; los dos endpoints de IA son
+  anónimos por diseño y ya están publicados.

@@ -347,3 +347,64 @@ en el ERP real, **el alcance del cierre en v1 está en el aire**.
   local y **nunca** viaja al despliegue ni a git.
 - **Desarrollo local**: `func start` para el backend y el `dev_server.py` del
   front con proxy a `/api/*`, igual que en nóminas.
+
+### Los recursos, y dónde vive cada uno (F-010)
+
+Grupo de recursos **propio**, como `partes`. Los nombres se declaran en **un
+solo sitio**, `infra/00_vars_postventa.ps1`: cambiar uno es cambiar una línea.
+
+| Recurso | Nombre | Región |
+|---|---|---|
+| Grupo de recursos | `rg-postventa-dev` | `spaincentral` |
+| Function App (Flex Consumption, Python) | `func-postventa-dev` | `spaincentral` |
+| Cuenta de almacenamiento | `stpostventadev` | `spaincentral` |
+| Key Vault **propio** | `kv-postventa-dev` | `spaincentral` |
+| Identidad gestionada | `id-postventa-dev` | `spaincentral` |
+| Log Analytics | `log-postventa-dev` | `spaincentral` |
+| Application Insights | `appi-postventa-dev` | `spaincentral` |
+| Static Web App (SKU Standard) | `swa-postventa-ruesma` | `westeurope` |
+
+Se **reutiliza** y no se crea: `psql-albaranes-rs9k2`, que vive en el grupo de
+recursos de albaranes y no es nuestro.
+
+### Por qué el front está en otra región que el backend
+
+**No es una elección**: la Static Web App **no existe en `spaincentral`**. El
+backend se queda en `spaincentral` porque ahí está el PostgreSQL. El salto
+entre regiones se paga en latencia y se descuenta del presupuesto de abajo.
+
+### El presupuesto de 45 segundos
+
+El proxy de la Static Web App **corta cualquier petición a los 45 s**. Es un
+límite de la plataforma —`azure-apps/portal.md` §9, aprendido con la app de
+nóminas—, y manda sobre los tiempos de espera del proyecto:
+
+```
+IA_TIMEOUT_S / GRAPH_TIMEOUT_S = 35 s  →  TIMEOUT_PETICION_MS = 40 s  →  proxy = 45 s
+```
+
+**Cada capa cede antes que la de fuera**, y ese es el criterio, no los números.
+Así quien aborta es el front —que sabe reintentar y liberar la plaza de la
+cola— y no el proxy, que devuelve un error opaco que nadie ha generado y deja
+la llamada a la IA viva por detrás gastando cuota.
+
+El peor caso medido del circuito (F-010, T2, con una remesa real de 22 partes)
+es **6,5 s** en `/api/extraer` con seis peticiones vivas. Los 35 s son colchón
+para lo que no se puede medir en local: el salto de región, el arranque en frío
+y un mal día del proveedor de IA.
+
+El `functionTimeout` de cinco minutos de `host.json` **no es** el límite que
+aprieta: es el techo de la Function, no el del proxy.
+
+### Los endpoints están en `ANONYMOUS`, y es deliberado
+
+Con un backend enlazado, la Static Web App autentica al usuario y reenvía la
+cabecera `x-ms-client-principal`; **no** una clave ni un token que la Function
+pueda exigir. `auth_level=FUNCTION` rompería el front. El control de acceso
+está en capas y ninguna vive en el `auth_level`: grupo de Entra con asignación
+obligatoria, **ventana de escritura** de `/api/archivar` (`ARCHIVO_HABILITADO`,
+que se despliega apagado), tope de gasto en el proveedor de IA y, si resulta
+compatible, restricción de acceso público. Está explicado en la cabecera de
+`services/postventa-api/function_app.py` y en `docs/DESPLIEGUE.md` §4.
+
+El runbook completo del despliegue está en **`docs/DESPLIEGUE.md`**.

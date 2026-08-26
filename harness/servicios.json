@@ -1,11 +1,16 @@
 {
-  "$doc": "Servicios de este monorepo. El portero valida cada uno por separado: su suite, su intérprete y su lenguaje. El front (services/postventa-front) NO está declarado todavía: entra en F-007, que es cuando tendrá lógica propia y tests. Ver harness/servicios.ejemplo.json para el formato completo.",
+  "$doc": "Servicios de este monorepo. El portero valida cada uno por separado: su suite, su interprete y su lenguaje. Ver harness/servicios.ejemplo.json para el formato completo. Sobre el servicio 'front' (F-007): va con lenguaje 'python' y NO con 'otro' aunque sea un front estatico, porque tiene un .py de verdad (dev_server.py) y el arnes solo mide cobertura y muta ficheros Python; con 'otro' la suite se ejecutaria por comando_tests pero dev_server.py seguiria contando como NO MEDIDO en la puerta de cobertura, que es exactamente el problema que expulso al front de F-001. Va SIN venv porque no tiene dependencias (dev_server.py es solo biblioteca estandar): sin venv el arnes usa el interprete que corre init.sh, que ya trae pytest y coverage; declarar un venv que no existe haria fallar al portero. Y va SIN comando_tests porque con lenguaje 'python' el arnes ejecuta pytest en la carpeta del servicio, y ahi dentro esta el puente a 'node --test tests_js' (tests/test_f007_js.py).",
   "servicios": [
     {
       "nombre": "api",
       "ruta": "services/postventa-api",
       "lenguaje": "python",
       "venv": "services/postventa-api/.venv"
+    },
+    {
+      "nombre": "front",
+      "ruta": "services/postventa-front",
+      "lenguaje": "python"
     }
   ]
 }

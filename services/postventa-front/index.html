@@ -1,0 +1,300 @@
+<!-- services/postventa-front/index.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Incidencias de Posventa · Ruesma</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine va con defer y con versión fija: se ejecuta después de nuestros
+       scripts (al final del body), que es lo que necesita para encontrar
+       appPostventa. Con 3.x.x, un cambio del CDN podría romper el front. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div x-data="appPostventa()" x-init="comprobarBackend()" class="min-h-screen flex flex-col">
+
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight">Incidencias de Posventa</h1>
+          <p class="text-sm text-slate-500">Partes firmados: validar, archivar y cerrar</p>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="inline-block h-2.5 w-2.5 rounded-full"
+                :class="{
+                  'bg-emerald-500': estadoServicio === 'ok',
+                  'bg-red-500': estadoServicio === 'error',
+                  'bg-slate-300 animate-pulse': estadoServicio === 'comprobando'
+                }"></span>
+          <span class="text-slate-500" x-text="mensajeServicio"></span>
+          <span class="text-slate-400" x-text="version"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-6">
+
+      <!-- ── 1 · Carga de la remesa (R1-R6) ─────────────────────────────── -->
+      <section x-show="fase === 'inactivo' || fase === 'seleccionado'"
+               class="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Cargar una remesa</h2>
+
+        <div class="mt-4 rounded-lg border-2 border-dashed p-8 text-center transition"
+             :class="arrastrando ? 'border-sky-400 bg-sky-50' : 'border-slate-300'"
+             @dragover.prevent="arrastrando = true"
+             @dragleave.prevent="arrastrando = false"
+             @drop.prevent="alSoltar($event)">
+          <p class="text-sm text-slate-600">
+            Suelta aquí uno o varios ficheros <strong>.pdf</strong> o <strong>.zip</strong>
+          </p>
+          <p class="mt-1 text-xs text-slate-400">Nada se envía hasta que lo confirmes</p>
+
+          <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+              Elegir ficheros
+              <input type="file" class="hidden" multiple accept=".pdf,.zip"
+                     @change="alElegirFicheros($event)">
+            </label>
+            <!-- webkitdirectory: Edge/Chrome (D5). Firefox no lo implementa igual. -->
+            <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+              Elegir una carpeta
+              <input type="file" class="hidden" webkitdirectory directory
+                     @change="alElegirFicheros($event)">
+            </label>
+          </div>
+        </div>
+
+        <p x-show="errorSeleccion" x-text="errorSeleccion"
+           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+        <p x-show="mensajeDescartes" x-text="mensajeDescartes"
+           class="mt-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+
+        <template x-if="seleccion.length">
+          <div class="mt-5">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <span x-text="seleccion.length"></span> fichero(s) listos para enviar
+            </h3>
+            <ul class="mt-2 divide-y divide-slate-100 text-sm">
+              <template x-for="fichero in seleccion" :key="fichero.name + fichero.size">
+                <li class="flex justify-between py-1.5">
+                  <span x-text="fichero.name" class="truncate"></span>
+                  <span class="ml-4 shrink-0 text-slate-400" x-text="tamanoDe(fichero)"></span>
+                </li>
+              </template>
+            </ul>
+            <button type="button" @click="confirmarCarga()"
+                    class="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
+              Trocear la remesa
+            </button>
+          </div>
+        </template>
+      </section>
+
+      <!-- ── 2 · Progreso (R9) ──────────────────────────────────────────── -->
+      <section x-show="fase === 'troceando' || fase === 'procesando' || fase === 'archivando'"
+               class="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500" x-text="tituloDeFase()"></h2>
+        <p class="mt-3 text-sm text-slate-600">
+          <span x-text="terminados"></span> de <span x-text="partes.length"></span> partes terminados
+        </p>
+        <div class="mt-2 h-2 w-full overflow-hidden rounded bg-slate-100">
+          <div class="h-full bg-sky-500 transition-all"
+               :style="`width: ${porcentaje()}%`"></div>
+        </div>
+      </section>
+
+      <!-- ── 3 · Avisos de la remesa ────────────────────────────────────── -->
+      <section x-show="avisosRemesa.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700">Avisos de la remesa</h2>
+        <ul class="mt-2 list-disc pl-5 text-sm text-amber-800">
+          <template x-for="aviso in avisosRemesa" :key="aviso">
+            <li x-text="aviso"></li>
+          </template>
+        </ul>
+      </section>
+
+      <p x-show="errorGlobal" x-text="errorGlobal"
+         class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+
+      <!-- ── 4 · Lista de partes y detalle (R13-R18) ────────────────────── -->
+      <section x-show="partes.length" class="grid gap-6 lg:grid-cols-5">
+
+        <div class="lg:col-span-2 rounded-lg border border-slate-200 bg-white">
+          <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Partes</h2>
+            <button type="button" @click="reiniciar()" class="text-xs text-slate-400 hover:text-slate-600">
+              Empezar otra remesa
+            </button>
+          </div>
+          <ul class="divide-y divide-slate-100">
+            <template x-for="parte in partes" :key="parte.hash">
+              <li>
+                <button type="button" @click="abrirParte(parte)"
+                        class="w-full px-4 py-3 text-left hover:bg-slate-50"
+                        :class="parteAbierto && parteAbierto.hash === parte.hash ? 'bg-slate-50' : ''">
+                  <div class="flex items-center gap-2">
+                    <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                          :class="{
+                            'bg-emerald-500': parte.semaforo === 'verde',
+                            'bg-amber-400': parte.semaforo === 'ambar',
+                            'bg-red-500': parte.semaforo === 'rojo',
+                            'bg-slate-300 animate-pulse': parte.estado === 'leyendo' || parte.estado === 'validando',
+                            'bg-slate-300': parte.estado === 'pendiente',
+                            'bg-red-700': parte.estado === 'error'
+                          }"></span>
+                    <span class="font-mono text-xs text-slate-500" x-text="parte.hash.slice(0, 8)"></span>
+                    <span class="ml-auto text-xs text-slate-400" x-text="parte.estado"></span>
+                  </div>
+                  <p class="mt-1 truncate text-xs text-slate-400">
+                    <span x-text="parte.origen"></span>
+                    · pág. <span x-text="(parte.paginas_origen || []).join(', ')"></span>
+                  </p>
+                  <ul x-show="parte.validacion && parte.validacion.motivos.length"
+                      class="mt-1 list-disc pl-4 text-xs text-slate-500">
+                    <template x-for="motivo in (parte.validacion ? parte.validacion.motivos : [])" :key="motivo.codigo">
+                      <li x-text="motivo.texto"></li>
+                    </template>
+                  </ul>
+                  <p x-show="parte.error" class="mt-1 text-xs text-red-600">
+                    <span x-text="parte.error"></span>
+                    <span @click.stop="reintentarParte(parte)"
+                          class="ml-2 cursor-pointer underline">reintentar</span>
+                  </p>
+                </button>
+              </li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- Detalle del parte: nueve campos + firma + PDF (R14, R15) -->
+        <div class="lg:col-span-3 rounded-lg border border-slate-200 bg-white p-5"
+             x-show="parteAbierto">
+          <template x-if="parteAbierto">
+            <div>
+              <div class="flex items-baseline justify-between">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                  Parte <span class="font-mono" x-text="parteAbierto.hash.slice(0, 8)"></span>
+                </h2>
+                <button type="button" @click="cerrarParte()" class="text-xs text-slate-400 hover:text-slate-600">
+                  Cerrar
+                </button>
+              </div>
+
+              <p class="mt-2 text-xs text-slate-500">
+                Firma:
+                <span x-text="parteAbierto.firma ? parteAbierto.firma.firma.clasificacion : '—'"></span>
+                (<span x-text="parteAbierto.firma ? parteAbierto.firma.firma.confianza_pct : '—'"></span>%)
+              </p>
+
+              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <template x-for="nombre in CAMPOS" :key="nombre">
+                  <label class="block text-xs">
+                    <span class="flex items-center gap-2 text-slate-500">
+                      <span x-text="nombre"></span>
+                      <span class="rounded px-1"
+                            :class="esDudoso(nombre) ? 'bg-amber-100 text-amber-800' : 'text-slate-400'"
+                            x-text="confianzaDe(nombre) + '%'"></span>
+                      <span x-show="estaEditado(nombre)"
+                            class="rounded bg-emerald-100 px-1 text-emerald-800">editado</span>
+                    </span>
+                    <input type="text" class="mt-1 w-full rounded border px-2 py-1 text-sm"
+                           :class="esDudoso(nombre) ? 'border-amber-300 bg-amber-50' : 'border-slate-200'"
+                           :value="valorDe(nombre)"
+                           @input="editarCampo(nombre, $event.target.value)">
+                  </label>
+                </template>
+              </div>
+
+              <div class="mt-4 flex flex-wrap items-center gap-3">
+                <button type="button" @click="revalidarParte()"
+                        :disabled="!hayEdiciones()"
+                        class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                  Revalidar (no gasta IA)
+                </button>
+                <span class="text-xs text-slate-400" x-text="mensajeRevalidacion"></span>
+              </div>
+
+              <div class="mt-5">
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">PDF del parte</h3>
+                <iframe x-show="urlPdf" :src="urlPdf" title="PDF del parte"
+                        class="mt-2 h-[28rem] w-full rounded border border-slate-200"></iframe>
+              </div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <!-- ── 5 · Archivo (R19-R22, R25) ─────────────────────────────────── -->
+      <section x-show="partes.length && fase !== 'procesando' && fase !== 'troceando'"
+               class="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          <span x-text="archivables().length"></span> parte(s) en verde sin archivar.
+        </p>
+
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <button type="button" @click="pedirConfirmacionArchivo()"
+                  :disabled="!archivables().length || fase === 'archivando'"
+                  class="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300">
+            Archivar los partes aptos
+          </button>
+          <template x-if="confirmacionPendiente()">
+            <span class="flex items-center gap-2 text-sm">
+              <span class="text-slate-600">¿Seguro? Se subirán a SharePoint.</span>
+              <button type="button" @click="confirmarArchivo()"
+                      class="rounded bg-emerald-700 px-3 py-1 text-xs text-white">Sí, archivar</button>
+              <button type="button" @click="cancelarArchivo()"
+                      class="rounded border border-slate-300 px-3 py-1 text-xs">Cancelar</button>
+            </span>
+          </template>
+        </div>
+
+        <!-- R19: la confirmación caduca. Si el segundo clic llega tarde, no
+             se sube nada y se dice por qué. -->
+        <p x-show="avisoArchivo" x-text="avisoArchivo"
+           class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+
+        <!-- El 503 tiene pantalla propia: es la puerta de entorno de F-006,
+             no un fallo. Pintarlo en rojo llevaría a alguien a «arreglarlo». -->
+        <p x-show="entornoNoArchiva" x-text="entornoNoArchiva"
+           class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
+
+        <ul x-show="resultadosArchivo.length" class="mt-4 divide-y divide-slate-100 text-sm">
+          <template x-for="resultado in resultadosArchivo" :key="resultado.hash">
+            <li class="py-2">
+              <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
+              <span class="ml-2" x-text="resultado.mensaje"></span>
+              <a x-show="resultado.web_url" :href="resultado.web_url" target="_blank" rel="noopener"
+                 class="ml-2 text-sky-700 underline">abrir en SharePoint</a>
+            </li>
+          </template>
+        </ul>
+      </section>
+
+    </main>
+
+    <footer class="border-t border-slate-200 bg-white">
+      <div class="mx-auto max-w-6xl px-6 py-4 text-xs text-slate-400">
+        Construcciones Ruesma · el trabajo de revisión vive en esta pestaña y no se guarda:
+        si la recargas, hay que volver a subir la remesa (F-019).
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Los scripts PROPIOS van aquí, al final del body y SIN defer, en orden de
+       dependencia. Con defer (o con type="module", que difiere de forma
+       implícita) Alpine arrancaría antes de que exista appPostventa y la
+       pantalla quedaría muerta. Lo vigila tests/test_f007_estaticos.py. -->
+  <script src="js/config.js"></script>
+  <script src="js/traza.js"></script>
+  <script src="js/cola.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/seleccion.js"></script>
+  <script src="js/pipeline.js"></script>
+  <script src="js/confirmacion.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

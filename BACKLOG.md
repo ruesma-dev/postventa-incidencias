@@ -3,16 +3,14 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **18 features**, 12 abiertas, 6 terminadas.
+Resumen: **20 features**, 12 abiertas, 8 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-007 | Front de carga y revisión | 7 | pendiente | estandar | `feature/F-007-front` |
-| F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 8 | pendiente | documental | `feature/F-008-modelo-sigrid` |
-| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 9 | pendiente | critico | `feature/F-009-cierre-sigrid` |
-| F-010 | Despliegue en Azure y tarjeta en el portal | 10 | pendiente | estandar | `feature/F-010-despliegue` |
+| F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | pendiente | documental | `feature/F-008-modelo-sigrid` |
+| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | pendiente | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
@@ -21,6 +19,8 @@ Resumen: **18 features**, 12 abiertas, 6 terminadas.
 | F-016 | Interpretación automática de las observaciones manuscritas | 16 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
 | F-017 | Mejoras de CHECKPOINTS: verificaciones manuales y cobertura no medida | 17 | pendiente | documental | `feature/F-017-checkpoints-manual` |
 | F-018 | Mínimo privilegio en Graph: la app solo Sites.Selected | 18 | pendiente | documental | `feature/F-018-minimo-privilegio-graph` |
+| F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | pendiente | estandar | `feature/F-019-endpoints-persistencia` |
+| F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 
 ## Terminadas
 
@@ -32,32 +32,22 @@ Resumen: **18 features**, 12 abiertas, 6 terminadas.
 | F-004 | Validación del parte y clasificación de la firma | 4 | critico |
 | F-005 | Persistencia en el PostgreSQL compartido | 5 | critico |
 | F-006 | Nombrado y archivo en SharePoint | 6 | critico |
+| F-007 | Front de carga y revisión | 7 | estandar |
+| F-010 | Despliegue en Azure y tarjeta en el portal | 8 | estandar |
 
 ## Detalle
 
-### F-007 · Front de carga y revisión
-
-estado **pendiente** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
-
-Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar. PUNTO DE PARTIDA: el esqueleto del front ya está escrito y verificado en la rama feature/F-007-front (se sacó de F-001 porque su dev_server.py hundía la puerta de cobertura). Recuperarlo con: git checkout feature/F-007-front -- services/postventa-front. Ya resuelto ahí: los scripts propios van SIN defer al final del body (con defer, Alpine arranca antes de que exista la función del x-data), Alpine con versión fija 3.14.1, el proxy apunta al puerto 7073, y el staticwebapp.config.json lleva <TENANT_ID> como marcador porque el ID de tenant no se versiona.
-
 ### F-008 · Modelo de posventa en Sigrid: confirmar contra el ERP
 
-estado **pendiente** · prioridad 8 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
+estado **pendiente** · prioridad 9 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
 
 Confirmar contra el ERP lo que ya está documentado en azure-apps/sigrid_tablas.md, sigrid_api.md §9 y docs/referencia/01_cierre_incidencia_sigrid.md. Lo crítico: el proceso 'Cerrar parte' de Sigrid comprueba que la reclamación tenga un gráfico asociado, y existe una opción 6 'Cerrar parte sin archivo (RPV)'. Hay que averiguar qué escribe realmente cada uno de esos dos procesos antes de decidir el alcance del cierre. Además: el con.tip de la reclamación y el estado CERRADA en conest (el estado PENDIENTE es 3/PTE), en qué base vive gra, y si 'Asociar URL de Internet' permite referenciar el PDF de SharePoint en vez de incrustar el binario. Solo lecturas.
 
 ### F-009 · Cierre de la incidencia en Sigrid (solo estado)
 
-estado **pendiente** · prioridad 9 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
+estado **pendiente** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
 
 Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.
-
-### F-010 · Despliegue en Azure y tarjeta en el portal
-
-estado **pendiente** · prioridad 10 · rigor `estandar` · SDD sí · rama `feature/F-010-despliegue`
-
-Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este.
 
 ### F-011 · Fase 2: ingesta desde buzón de correo
 
@@ -107,6 +97,18 @@ estado **pendiente** · prioridad 18 · rigor `documental` · SDD no · rama `fe
 
 El app registration `postventa-incidencias` (verificado el 2026-08-20) tiene consentimiento de administrador para TRES permisos de aplicación de Microsoft Graph: Sites.Selected, Sites.ReadWrite.All y Sites.FullControl.All. Los dos últimos alcanzan a TODOS los sitios de SharePoint del tenant, no solo a la biblioteca de Posventa, y vuelven irrelevante al primero: con Sites.FullControl.All la aplicación puede escribir en el sitio de RRHH o de dirección igual que en el suyo. Es más amplio incluso que Files.ReadWrite.All, que la spec de F-006 ya descartó por excesivo. No es un fallo: es lo que pasa al configurar Sites.Selected, que exige el paso extra de asignar la biblioteca concreta por Graph, mientras que los amplios funcionan a la primera. EL HUMANO DECIDIÓ EL 2026-08-20 arrancar F-006 con los permisos actuales y recortar después, en esta feature, para no mezclar un cambio de configuración del tenant con una implementación. Mientras tanto el riesgo queda documentado en la spec de F-006. El recorte lo ejecuta el humano en Azure: un agente no toca permisos del tenant.
 
+### F-019 · Endpoints de persistencia: guardar la remesa y leer la cola
+
+estado **pendiente** · prioridad 19 · rigor `estandar` · SDD sí · rama `feature/F-019-endpoints-persistencia`
+
+F-005 dejó `RepositorioPartesPort` completo —`guardar_remesa`, `guardar_parte`, `guardar_validacion`, `cola_validacion_humana`— y sus seis tablas creadas en la base real, pero **el único endpoint que escribe hoy es `/api/archivar`**, y solo su traza. El puerto existe y nadie lo llama: la remesa, los partes extraídos y el resultado de la validación no se guardan en ningún sitio. Consecuencia visible, detectada al diseñar F-007 (decisión D4): recargar la pestaña del front pierde todo el trabajo de revisión, y la cola de validación humana que F-004 declara no puede sobrevivir entre sesiones porque nada la escribe ni la lee. EL HUMANO DECIDIÓ EL 2026-08-20 sacar F-007 sin persistencia de sesión y dar de alta esta feature aparte, en vez de bloquear el front: el piloto de Mirasierra no se retrasa y el front no carga con una responsabilidad que es de `postventa-api`. Alcance: los endpoints que faltan sobre los puertos que YA existen; no hay que diseñar esquema ni tocar el DDL. **PREREQUISITO DEL ARCHIVADO REAL, DEMOSTRADO CONTRA EL ENTORNO DESPLEGADO EL 2026-08-25** (defecto 15 de F-010, T18): la tabla `archivos` tiene una clave ajena contra `partes` —`archivos_hash_parte_fkey`— y hoy NADA inserta el parte, así que `POST /api/archivar` sube el fichero a SharePoint y después NO puede escribir su traza: `ForeignKeyViolation`, «Key (hash_parte)=(...) is not present in table "partes"». Pasa con parte sintético y con parte real. Consecuencia: **tal y como está desplegado, el archivado no puede completar nunca**, y el circuito completo del piloto no se puede dar por bueno hasta que exista esta feature. Mientras tanto el borde responde 500 diciendo que el fichero SÍ está subido y que lo que falta es la traza (defecto 14). Al implementar esta feature hay que comprobar el orden: el parte se guarda ANTES de archivarlo.
+
+### F-020 · Ajustes de diseño del front: el PDF manda en la pantalla
+
+estado **pendiente** · prioridad 20 · rigor `documental` · SDD no · rama `feature/F-020-diseno-front`
+
+Tres observaciones del humano al probar el front por primera vez el 2026-08-20 (F-007, T14), con la remesa real delante. Ninguna es un fallo: el front funciona. Son de uso, y salen de mirar la pantalla de trabajo de quien va a revisar 22 partes seguidos. (1) **El campo de observaciones se queda pequeño**: es texto manuscrito transcrito, de longitud variable, y hay que poder leerlo y corregirlo entero sin pelearse con una caja de una línea. (2) **El PDF se ve pequeño**, que es el problema de fondo: el documento es lo que la persona está leyendo para decidir, y hoy es lo que menos sitio ocupa. (3) **La vista del PDF está partida en dos** —a la izquierda la previsualización de páginas, a la derecha la página— y el reparto está al revés: la tira de previsualización debe ser **muy estrecha**, lo justo para navegar, y cederle el espacio a la página. Criterio que ordena las tres: en una pantalla de revisión, el documento manda y todo lo demás le cede sitio.
+
 ### F-001 · Esqueleto del monorepo y /health
 
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
@@ -142,3 +144,15 @@ Schema propio del proyecto en psql-albaranes-rs9k2: remesas, partes, resultado d
 estado **terminada** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-006-sharepoint`
 
 Nombrar cada parte apto y archivarlo en SharePoint, en biblioteca propia dentro del sitio de IT mientras estemos en dev. El código de la incidencia (RS26.08 - 0123) y el de obra (0677) van impresos en el parte y son cosas distintas. El nombre conserva el sufijo ' PARTE FIRMADO' que usa Posventa.
+
+### F-007 · Front de carga y revisión
+
+estado **terminada** · prioridad 7 · rigor `estandar` · SDD sí · rama `feature/F-007-front`
+
+Front estático (HTML + Tailwind CDN + Alpine.js + dev_server.py) siguiendo el patrón de front-nominas: arrastrar PDF/ZIP o elegir carpeta, progreso parte a parte, semáforo de validación, y revisión manual de lo dudoso antes de archivar. PUNTO DE PARTIDA: el esqueleto del front ya está escrito y verificado en la rama feature/F-007-front (se sacó de F-001 porque su dev_server.py hundía la puerta de cobertura). Recuperarlo con: git checkout feature/F-007-front -- services/postventa-front. Ya resuelto ahí: los scripts propios van SIN defer al final del body (con defer, Alpine arranca antes de que exista la función del x-data), Alpine con versión fija 3.14.1, el proxy apunta al puerto 7073, y el staticwebapp.config.json lleva <TENANT_ID> como marcador porque el ID de tenant no se versiona.
+
+### F-010 · Despliegue en Azure y tarjeta en el portal
+
+estado **terminada** · prioridad 8 · rigor `estandar` · SDD sí · rama `feature/F-010-despliegue`
+
+Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de Entra, grupo de seguridad de Posventa (hay que crearlo) y alta de la tarjeta en front-portal. La tarjeta se edita en ese repositorio, no en este. PRIORIDAD SUBIDA EL 2026-08-20 por el humano, por delante de F-008 y F-009 (las dos de Sigrid): quiere que **negocio pruebe el circuito completo desplegado sin tocar Sigrid todavía**. Encaja con lo que ya hay: F-002 a F-007 cubren entrada, extracción, validación, archivo y front, y el cierre en el ERP es justamente lo que queda fuera. Efecto lateral que importa: F-010 es quien **desbloquea T18 de F-006**, la verificación de subida real a SharePoint, que está diferida esperando un entorno desplegado.

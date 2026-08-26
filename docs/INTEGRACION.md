@@ -255,10 +255,63 @@ El detalle columna a columna está en `specs/F-005-persistencia/design.md` §6.
 
 ## 8 · Qué exponemos nosotros
 
-Hoy, nada hacia otros proyectos: no publicamos API que consuman terceros ni
-escribimos en bases ajenas. Cuando el portal muestre la tarjeta de Posventa
-(F-010) y el backend exponga sus endpoints (F-007), esta sección se rellena
-en el mismo trabajo que lo haga.
+**Rellenada por F-010**, que es la feature que despliega el servicio. Hasta
+entonces esta sección decía «hoy, nada»: el servicio solo corría en el puesto
+de quien lo desarrollaba.
+
+### Una aplicación de usuario, no una API para terceros
+
+Lo que se expone es una **aplicación web para personas del grupo de Posventa**,
+no un servicio que otro proyecto deba llamar. Ningún proyecto del ecosistema
+consume esto, y nadie debería empezar a hacerlo sin hablarlo antes: el
+contrato de los endpoints es interno y cambia con las features.
+
+| Qué | Nombre del recurso | Quién entra |
+|---|---|---|
+| Front del piloto | `swa-postventa-ruesma` | Miembros del grupo `posventa-usuarios`, autenticados en Entra |
+| Backend | `func-postventa-dev` | Solo a través del front: es el **backend enlazado** de la Static Web App |
+| Tarjeta de acceso | `front-portal` (otro repositorio) | La misma restricción de grupo |
+
+Los nombres de host **no se escriben aquí**, como ninguno del resto del
+documento.
+
+### Los endpoints, y qué hace cada uno
+
+| Endpoint | Efecto |
+|---|---|
+| `GET /api/health` | Dice si el servicio vive. Sin datos y sin autenticación: lo usan el despliegue y el propio front |
+| `POST /api/split` | Trocea una remesa. Sin efecto externo |
+| `POST /api/extraer` | Llama al proveedor de IA. Gasta cuota |
+| `POST /api/firma` | Llama al proveedor de IA. Gasta cuota |
+| `POST /api/validar` | Solo reglas. Sin IA y sin efecto externo |
+| `POST /api/archivar` | **Escribe** en la biblioteca de dev de SharePoint y deja traza en la base |
+
+Los seis quedan en nivel **anónimo**, y **es deliberado**: con un backend
+enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
+identidad, no una credencial que la Function pueda exigir. Quien lo cambie
+rompe el front. El razonamiento y las capas de protección que sí sostienen el
+acceso están en la cabecera de `services/postventa-api/function_app.py` y en
+`docs/DESPLIEGUE.md` §4.
+
+### Qué NO está desplegado, y hay que decirlo antes de enseñarlo
+
+| Qué falta | Feature | Consecuencia visible |
+|---|---|---|
+| El cierre de la incidencia en el ERP | **F-008** y **F-009** | Sigrid no se toca: el parte se archiva, la incidencia sigue abierta |
+| Guardar la remesa y leer la cola de revisión | **F-019** | Si el usuario recarga la página, **pierde el trabajo en curso** |
+| Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
+| Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
+
+### Lo que este proyecto añade al ecosistema
+
+- Un **grupo de recursos propio** y un **Key Vault propio**, como `partes`.
+  Nada se mete en los de otros proyectos.
+- Un **registro de aplicación nuevo** para el inicio de sesión, separado del
+  de Graph: la credencial de mayor privilegio y la aplicación con la que se
+  loguean los usuarios no comparten identidad.
+- Una **tarjeta en el portal**, que es el único punto donde este proyecto
+  cruza la frontera de otro repositorio. El bloque y el procedimiento están en
+  `docs/DESPLIEGUE.md` §6.
 
 ## 9 · Dónde está cada cosa
 
@@ -273,4 +326,8 @@ en el mismo trabajo que lo haga.
 | Comprobar el destino de dev, solo lecturas | `infra/verificar_destino_sharepoint.ps1` |
 | Comprobar el archivo end-to-end en dev | `infra/verificar_archivo_dev.ps1` |
 | Diseño completo y decisiones del archivo | `specs/F-006-sharepoint/` |
+| Nombres de recurso, regiones y tags del despliegue | `infra/00_vars_postventa.ps1` |
+| Runbook del despliegue y tarjeta del portal | `docs/DESPLIEGUE.md` |
+| Comprobar el despliegue, solo lecturas | `infra/verificar_despliegue.ps1` |
+| Diseño completo y decisiones del despliegue | `specs/F-010-despliegue/` |
 | Documento gemelo del ecosistema | `azure-apps/postventa_incidencias.md` |

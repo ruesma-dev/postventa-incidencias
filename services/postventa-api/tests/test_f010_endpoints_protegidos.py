@@ -1,0 +1,149 @@
+# services/postventa-api/tests/test_f010_endpoints_protegidos.py
+"""La anonimidad de los endpoints es DELIBERADA y esta explicada (R18, R32).
+
+Este fichero no comprueba que algo funcione: comprueba que algo **siga como
+esta y se sepa por que**. Es raro, y tiene motivo.
+
+Al desplegar, los seis endpoints de `function_app.py` quedan en internet con
+`auth_level=ANONYMOUS`. Leido en frio, eso parece un descuido, y el arreglo
+evidente -`auth_level=FUNCTION`- **rompe el front el mismo dia que se aplica**:
+el servicio esta detras del proxy de una Static Web App, que autentica al
+usuario, reenvia la cabecera `x-ms-client-principal` y **no anade** ninguna
+clave de funcion. La Function empezaria a devolver `401` a traves del front.
+
+Y el fallo no lo caza ningun test del repositorio, porque ninguno atraviesa
+ese proxy. Es la clase de error que reaparece a los seis meses, cuando ya
+nadie recuerda por que estaba asi. De ahi R32: la cabecera del modulo lo
+explica y este fichero lo fija, atado a la explicacion:
+
+    si alguien cambia una cosa sin la otra, falla.
+
+Cambiar el `auth_level` sin borrar la nota falla porque los endpoints dejan de
+ser anonimos. Borrar la nota dejando el `auth_level` falla porque desaparece
+la explicacion. Las dos a la vez tambien fallan. Lo unico que pasa es un
+cambio consciente que ademas reescriba el porque, que es exactamente lo que se
+persigue.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+#: El punto de entrada HTTP, leido como TEXTO.
+#:
+#: Se lee en vez de importarse a proposito: lo que se fija es lo que dice el
+#: decorador en el fichero, no lo que un objeto tenga en memoria despues de
+#: que el runtime de Functions lo haya construido.
+FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
+
+#: Los seis endpoints del servicio. Si manana hay un septimo, este test se
+#: entera: la cuenta tiene que cuadrar con las rutas declaradas.
+ENDPOINTS = ("health", "split", "extraer", "firma", "validar", "archivar")
+
+#: Un decorador de ruta con su nivel de autenticacion.
+PATRON_RUTA = re.compile(
+    r"@app\.route\(\s*route=\"(?P<ruta>\w+)\".*?auth_level=func\.AuthLevel\.(?P<nivel>\w+)\s*\)",
+    re.DOTALL,
+)
+
+
+@pytest.fixture
+def codigo() -> str:
+    return FUNCTION_APP.read_text(encoding="utf-8")
+
+
+def niveles(codigo: str) -> dict[str, str]:
+    """Que nivel de autenticacion declara cada ruta."""
+    return {
+        hallado.group("ruta"): hallado.group("nivel")
+        for hallado in PATRON_RUTA.finditer(codigo)
+    }
+
+
+def test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada(codigo):
+    """R32 · los seis siguen anonimos **y** la cabecera dice por que.
+
+    Las dos mitades en un solo test, y no en dos, porque lo que hay que
+    impedir es que se separen: un `auth_level` cambiado con la nota intacta
+    deja una mentira en la cabecera, y una nota borrada con el `auth_level`
+    intacto deja un endpoint anonimo sin explicacion, que es como estaba antes
+    de F-010.
+    """
+    declarados = niveles(codigo)
+
+    assert sorted(declarados) == sorted(ENDPOINTS)
+    assert set(declarados.values()) == {"ANONYMOUS"}
+
+    cabecera = codigo[: codigo.index("from __future__")]
+    assert "no es un descuido" in cabecera
+    assert "backend enlazado" in cabecera
+    assert "x-ms-client-principal" in cabecera
+    assert "auth_level=FUNCTION` no vale" in cabecera
+
+
+def test_f010_r32_la_cabecera_dice_donde_esta_el_control_de_acceso(codigo):
+    """R32 · «esta anonimo» sin decir «y entonces quien decide» no vale.
+
+    Quien lea esto tiene que salir sabiendo las cuatro capas, y sobre todo la
+    segunda: la ventana de escritura es el candado que si controlamos.
+    """
+    cabecera = codigo[: codigo.index("from __future__")]
+
+    assert "control de acceso" in cabecera
+    assert "grupo de Posventa" in cabecera
+    assert "ARCHIVO_HABILITADO" in cabecera
+    assert "apagado" in cabecera
+    assert "tope de gasto" in cabecera.lower()
+
+
+def test_f010_r32_la_cabecera_avisa_de_que_la_cabecera_de_identidad_no_protege(codigo):
+    """R32 · `x-ms-client-principal` es base64 SIN firma.
+
+    Es la trampa fina de este montaje: la cabecera esta ahi, se lee, parece
+    una prueba de identidad y cualquiera que llame a la Function directamente
+    puede fabricarla. Quien no lo sepa la usara como control de acceso.
+    """
+    cabecera = codigo[: codigo.index("from __future__")]
+
+    assert "sin firma" in cabecera
+    assert "fabricarla" in cabecera
+
+
+def test_f010_r18_health_sigue_anonimo(codigo):
+    """R18 · y seguiria anonimo aunque lo demas no lo fuera.
+
+    Lo usan el propio despliegue y el front para saber si el backend responde,
+    y no expone ningun dato. Protegerlo seria quedarse sin la unica senal que
+    se puede mirar desde fuera cuando algo va mal.
+    """
+    assert niveles(codigo)["health"] == "ANONYMOUS"
+
+    cabecera = codigo[: codigo.index("from __future__")]
+    assert "seguiría siendo anónimo" in cabecera
+
+
+def test_f010_r33_la_cabecera_apunta_a_la_ventana_de_escritura_en_archivar(codigo):
+    """R33 · quien lea el endpoint que escribe tiene que dar con la nota.
+
+    La explicacion larga vive al final del modulo; la entrada de `archivar` en
+    la lista de arriba manda alli. Sin ese puente, la nota se lee solo si
+    alguien baja hasta el final por casualidad.
+    """
+    assert "ventana de escritura cerrada" in codigo
+    assert "nota del final de este" in codigo
+
+
+def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
+    """Control negativo: un patron que no encuentra nada no fija nada.
+
+    Si manana el decorador se escribe de otra forma y el patron deja de
+    casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
+    pasarian sin comprobar nada. Este los sostiene.
+    """
+    assert len(niveles(codigo)) == 6
+    assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
+        ("x", "FUNCTION")
+    ]

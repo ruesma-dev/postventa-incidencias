@@ -77,9 +77,17 @@ def archivar_parte(
     """Archiva **un** parte apto y devuelve el cuerpo de la respuesta.
 
     Levanta `CuerpoDeArchivoInvalido` (→ 400), `ParteNoApto` y
-    `NombradoImposible` (→ 409), `ArchivoDeshabilitado` y
-    `ConfiguracionSharePointIncompleta` (→ 503) y `ArchivoFallido` (→ 502)
-    **sin traducirlas**: convertir eso en códigos HTTP es trabajo del borde.
+    `NombradoImposible` (→ 409), `ArchivoDeshabilitado`,
+    `ConfiguracionSharePointIncompleta`, `ConfiguracionPgIncompleta` y
+    `PersistenciaNoDisponible` (→ 503), `ArchivoFallido` (→ 502) y
+    `ArchivoSinTraza` (→ 500) **sin traducirlas**: convertir eso en códigos
+    HTTP es trabajo del borde.
+
+    Las tres últimas vienen de la persistencia y no de SharePoint, y la
+    diferencia entre ellas es **si el fichero llegó a subirse**: solo
+    `ArchivoSinTraza` significa que sí. Lo demás —incluido lo que levanta
+    `construir_repositorio` aquí abajo, que corre **antes** de que se suba
+    nada— deja la biblioteca de Posventa intacta.
     """
     _exigir_cuerpo(
         hash=hash,

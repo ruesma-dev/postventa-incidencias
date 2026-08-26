@@ -127,10 +127,30 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
      archivo de Posventa un fichero que nadie pidió, y nadie se enteraría.
 6. **Archivo** — subida a SharePoint, en `<carpeta base>/<código de obra>/`.
    **Solo se archiva lo que el paso 4 declaró apto**; con cualquier otro
-   destino no se sube nada y ni siquiera se crea la carpeta. Reprocesar una
-   remesa no puede duplicar, y para eso hay **tres capas**:
+   destino no se sube nada y ni siquiera se crea la carpeta.
+
+   Y **solo se archiva lo que ya consta guardado** (F-019). El mecanismo no es
+   una comprobación en Python: antes de tocar SharePoint se escribe la traza
+   del archivo en estado `pendiente`, y `postventa.archivos.hash_parte` tiene
+   una **clave ajena** contra `postventa.partes`, así que esa escritura solo
+   puede hacerse si el parte ya está guardado. Si no lo está, la restricción
+   la rechaza, el archivado se aborta **sin llamar a nadie** y el endpoint
+   responde **409** diciendo que hay que guardar el parte primero
+   (`POST /api/parte`, y `POST /api/remesa` antes si tampoco consta).
+
+   Se usa **la restricción** y no una consulta previa a propósito: entre una
+   consulta y la escritura cabe otro proceso, y una comprobación paralela
+   puede divergir de la restricción real. Es además la misma restricción que
+   el 2026-08-25 hacía fallar el proceso **después** de subir el fichero
+   —dejando un PDF en la biblioteca de Posventa del que el sistema no sabía
+   nada—, puesta a fallar antes.
+
+   Reprocesar una remesa no puede duplicar, y para eso hay **tres capas**:
    - **traza** — si ya consta archivado ese `hash` de parte, no se llama a
-     nadie: ni token, ni red, ni bytes;
+     nadie: ni token, ni red, ni bytes. Esta capa va **antes** que la escritura
+     previa en `pendiente`: al revés, un parte ya archivado quedaría degradado
+     a `pendiente`, y `pendiente` no corta el reintento, así que el intento
+     siguiente volvería a subir el fichero;
    - **reemplazo** — la subida pide **siempre** reemplazar el homónimo, nunca
      renombrar. Renombrar produce el `... (1).pdf` que el criterio de
      aceptación prohíbe, y es el comportamiento por defecto de más de un

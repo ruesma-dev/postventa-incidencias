@@ -223,6 +223,37 @@ class PersistenciaNoDisponible(ErrorDePersistencia):
     """
 
 
+class ReferenciaNoConsta(ErrorDePersistencia):
+    """Se ha intentado escribir una fila que apunta a otra que no existe (F-019).
+
+    Es el error de una **clave ajena**, y tiene nombre propio porque el borde
+    lo traduce a **409** y no a 503. La diferencia no es cosmética: un 503 dice
+    «la base no responde, reintenta» y reintentar esto no lo arregla nunca; un
+    409 dice **qué hacer** —guardar el parte, o registrar la remesa— y quien lo
+    recibe puede hacerlo.
+
+    Los dos casos que se dan hoy, y los dos son el mismo defecto 15 de F-010
+    visto desde sitios distintos:
+
+    - `archivos.hash_parte → partes.hash_parte`: se archiva un parte que nadie
+      guardó. Esta es **la restricción en la que se apoya toda la garantía de
+      orden de F-019**: la traza previa en `pendiente` sólo se puede escribir
+      si el parte ya consta, así que la misma clave ajena que antes hacía
+      fallar el proceso *después* de subir el fichero pasa a hacerlo fallar
+      *antes*, sin haber tocado SharePoint.
+    - `partes.remesa_id → remesas.id`: se guarda un parte de una remesa que no
+      se registró.
+
+    **No hereda de `PersistenciaNoDisponible`** a propósito: el borde ya
+    captura esa otra y se lo tragaría, y volvería el 503 engañoso sin que
+    ningún test lo notase.
+
+    El motivo nombra **la operación** y jamás los parámetros: llevan el DNI y
+    la transcripción de las observaciones manuscritas, y estos mensajes acaban
+    en un log que sobrevive al parte (R18).
+    """
+
+
 class ConfiguracionPgIncompleta(ErrorDePersistencia):
     """Falta configuración para construir el repositorio (R30).
 

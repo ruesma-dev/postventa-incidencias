@@ -377,3 +377,49 @@ def test_f007_r36_app_js_usa_los_modulos_probados():
         "window.Confirmacion",
     ):
         assert modulo in codigo, f"app.js no usa {modulo}"
+
+
+def test_f019_r25_app_js_delega_el_orden_de_la_remesa_en_pipeline():
+    """R25 · el orden de la remesa **no puede vivir en `app.js`**.
+
+    En la primera versión de F-019 vivía ahí: `confirmarCarga` registraba la
+    remesa y luego procesaba los partes. La review lo rompió sobre una copia
+    —borró la línea que registraba— y **los 122 tests siguieron en verde**. Es
+    el mismo defecto que F-019 viene a matar (el endpoint existe y nadie lo
+    llama), reproducido un nivel más arriba.
+
+    Ahora el orden vive en `js/pipeline.js::procesarRemesa`, que sí se prueba
+    (`tests_js/persistencia.test.js`), y `app.js` solo lo llama. Esta guardia
+    impide que vuelva: borrar la llamada, o volver a montar el orden aquí a
+    mano, cae por este test.
+    """
+    codigo = _sin_comentarios((RAIZ_FRONT / "js" / "app.js").read_text(encoding="utf-8"))
+
+    assert "window.Pipeline.procesarRemesa(" in codigo, (
+        "app.js tiene que delegar el orden de la remesa en "
+        "js/pipeline.js::procesarRemesa, que es el que tiene tests"
+    )
+    assert "api.registrarRemesa(" not in codigo, (
+        "registrar la remesa es de js/pipeline.js::procesarRemesa: hacerlo "
+        "aquí devuelve el orden a la única habitación sin tests de la casa"
+    )
+
+
+def test_f019_r25_app_js_conserva_y_limpia_el_remesa_id():
+    """R25 · el `remesa_id` dura **toda la sesión de esa remesa**, y solo esa.
+
+    Conservarlo es la mitad del requisito: sin él, cada parte se guardaría
+    contra una remesa que no consta y el backend respondería 409. Y limpiarlo
+    al reiniciar es la otra: arrastrar el de la remesa anterior colgaría los
+    partes nuevos de la remesa vieja, que es peor que no guardarlos —quedarían
+    guardados, pero mal—.
+    """
+    codigo = _sin_comentarios((RAIZ_FRONT / "js" / "app.js").read_text(encoding="utf-8"))
+    reiniciar = codigo[codigo.index("reiniciar()") :]
+
+    assert "remesaId:" in codigo, "app.js no guarda el remesa_id en su estado"
+    assert "this.remesaId = " in codigo
+    assert 'this.remesaId = ""' in reiniciar, (
+        "reiniciar() tiene que limpiar el remesaId: arrastrar el de la remesa "
+        "anterior colgaría los partes nuevos de la remesa vieja"
+    )

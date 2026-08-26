@@ -26,11 +26,13 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  procesarRemesa,
   procesarParte,
   revalidarYGuardar,
   guardarParte,
   cuerpoDeParte,
   cuerpoDeArchivo,
+  AVISO_SIN_REMESA,
 } = require("../js/pipeline.js");
 
 const HASH = "a1b2c3d4e5f6";
@@ -159,12 +161,164 @@ function apiFalsa(opciones) {
   return { api, llamadas, cuerpos };
 }
 
+/** Lo que devuelve `POST /api/split`: dos partes y un aviso. Inventado. */
+function datosDeSplit() {
+  return {
+    partes: [{ hash: HASH }, { hash: "b2c3d4e5f6a1" }],
+    avisos: ["un aviso inventado del troceado"],
+  };
+}
+
+/** Cede el turno al bucle de eventos, sin esperar de verdad. */
+function respirar() {
+  return new Promise((res) => setImmediate(res));
+}
+
 /** El cuerpo con el que se llamó a esa operación. */
 function cuerpoDe(cuerpos, nombre) {
   const hallado = cuerpos.find((c) => c.nombre === nombre);
   assert.ok(hallado, `no se llamó a ${nombre}`);
   return hallado.cuerpo;
 }
+
+// --- R25 · la remesa se registra ANTES de procesar ningún parte ------------
+//
+// El orden vive en `procesarRemesa` y no en `app.js` **a propósito**: en la
+// primera versión de F-019 vivía allí, y la review lo demostró borrando la
+// línea que registraba la remesa — los 122 tests siguieron en verde. La regla
+// de oro de `app.js` («si algo merece un test, no vive aquí») estaba escrita
+// precisamente para eso.
+
+test("f019 R25: la remesa se registra ANTES de procesar ningún parte", async () => {
+  const { api, llamadas } = apiFalsa();
+
+  await procesarRemesa(datosDeSplit(), api, {
+    nombreOrigen: "Mirasierra-inventada.pdf",
+    procesar: async () => {
+      llamadas.push("procesar");
+    },
+  });
+
+  assert.deepEqual(llamadas, ["registrarRemesa", "procesar"]);
+});
+
+test("f019 R25: si el registro tarda, NO se adelanta el procesado", async () => {
+  // Con el registro pendiente, el procesado no puede haber empezado. Un
+  // `procesarRemesa` que lanzara las dos cosas a la vez pasaría el test de
+  // arriba por puro orden de resolución y fallaría aquí.
+  const llamadas = [];
+  let soltarRegistro;
+  const registroPendiente = new Promise((res) => {
+    soltarRegistro = res;
+  });
+  const api = {
+    registrarRemesa: () => {
+      llamadas.push("registrarRemesa");
+      return registroPendiente;
+    },
+  };
+
+  const enCurso = procesarRemesa(datosDeSplit(), api, {
+    procesar: async () => {
+      llamadas.push("procesar");
+    },
+  });
+  await respirar();
+
+  assert.deepEqual(llamadas, ["registrarRemesa"], "todavía no se procesa nada");
+
+  soltarRegistro({ remesa_id: REMESA_ID, resultado: "creado" });
+  await enCurso;
+
+  assert.deepEqual(llamadas, ["registrarRemesa", "procesar"]);
+});
+
+test("f019 R25: el cuerpo del registro describe la remesa que se troceó", async () => {
+  const { api, cuerpos } = apiFalsa();
+
+  await procesarRemesa(datosDeSplit(), api, {
+    nombreOrigen: "Mirasierra-inventada.pdf",
+    procesar: async () => {},
+  });
+  const cuerpo = cuerpoDe(cuerpos, "registrarRemesa");
+
+  assert.equal(cuerpo.nombre_origen, "Mirasierra-inventada.pdf");
+  assert.equal(cuerpo.num_partes, 2, "los que devolvió /api/split");
+  assert.deepEqual(cuerpo.avisos, ["un aviso inventado del troceado"]);
+});
+
+test("f019 R25: el remesa_id se devuelve y llega al procesado", async () => {
+  // Es la otra mitad de R25: conservarlo. Sin él, cada parte se guarda contra
+  // una remesa que no consta y el backend responde 409.
+  const { api } = apiFalsa();
+  const recibidos = [];
+
+  const resultado = await procesarRemesa(datosDeSplit(), api, {
+    procesar: async (remesaId) => {
+      recibidos.push(remesaId);
+    },
+  });
+
+  assert.equal(resultado.remesaId, REMESA_ID);
+  assert.deepEqual(recibidos, [REMESA_ID]);
+});
+
+test("f019 R25: si el registro falla, los partes se procesan IGUAL", async () => {
+  // Leer y revisar los partes sigue siendo útil aunque no se puedan archivar.
+  // Tumbar la carga entera castigaría al usuario por una avería de la base.
+  const { api, llamadas } = apiFalsa({
+    fallos: { registrarRemesa: { mensaje: "503 la base no responde" } },
+  });
+
+  const resultado = await procesarRemesa(datosDeSplit(), api, {
+    procesar: async () => {
+      llamadas.push("procesar");
+    },
+  });
+
+  assert.deepEqual(llamadas, ["registrarRemesa", "procesar"]);
+  assert.equal(resultado.remesaId, "", "sin id, ningún parte será archivable");
+});
+
+test("f019 R25: y el motivo se cuenta, no se traga", async () => {
+  const { api } = apiFalsa({
+    fallos: { registrarRemesa: { mensaje: "503 la base no responde" } },
+  });
+
+  const resultado = await procesarRemesa(datosDeSplit(), api, {
+    procesar: async () => {},
+  });
+
+  assert.equal(resultado.avisos.length, 2, "el del troceado más el del fallo");
+  assert.ok(resultado.avisos.some((a) => a.includes(AVISO_SIN_REMESA)));
+  assert.ok(resultado.avisos.some((a) => a.includes("503 la base no responde")));
+});
+
+test("f019 R25: los avisos del troceado no se pierden ni se mutan", async () => {
+  const { api } = apiFalsa();
+  const datos = datosDeSplit();
+
+  const resultado = await procesarRemesa(datos, api, { procesar: async () => {} });
+
+  assert.deepEqual(resultado.avisos, ["un aviso inventado del troceado"]);
+  assert.deepEqual(
+    datos.avisos,
+    ["un aviso inventado del troceado"],
+    "la respuesta de /api/split no se toca",
+  );
+});
+
+test("f019 R25: una remesa sin partes se registra igual, con num_partes 0", async () => {
+  // El backend lo admite (R4) y es el caso de un PDF del que no salió nada
+  // utilizable: hay que poder mirar después qué llegó.
+  const { api, cuerpos } = apiFalsa();
+
+  await procesarRemesa({ partes: [], avisos: [] }, api, {
+    procesar: async () => {},
+  });
+
+  assert.equal(cuerpoDe(cuerpos, "registrarRemesa").num_partes, 0);
+});
 
 // --- R26 · guardar va después de validar y antes de archivar ---------------
 

@@ -8,6 +8,10 @@
 > Rigor declarado: **`estandar`** (`harness/rigor.json`) → fase RED,
 > cobertura ≥ 80 % de las líneas cambiadas y campaña de mutación con
 > supervivientes **analizados** (no se exige cero).
+>
+> **Las cinco decisiones abiertas de la primera ronda están resueltas por el
+> humano** (2026-08-26). Sus consecuencias están incorporadas aquí; el
+> razonamiento, en `design.md` §15.
 
 ## El problema, y por qué el orden es el requisito
 
@@ -25,8 +29,8 @@ F-005 dejó `RepositorioPartesPort` completo y sus seis tablas creadas, y
 
 De ahí que el corazón de esta feature no sean tres endpoints sino **un
 orden**: el parte se guarda **ANTES** de archivarlo, y eso tiene que estar
-garantizado por el código, no por la costumbre de quien llama (**R16**,
-**R17**).
+garantizado por el código, no por la costumbre de quien llama (**R19**,
+**R20**).
 
 ---
 
@@ -54,10 +58,10 @@ garantizado por el código, no por la costumbre de quien llama (**R16**,
   dejar que reviente PostgreSQL convierte un error del llamante en un error de
   infraestructura.
 
-- **R6.** El sistema debe guardar `usuario_oid` en `NULL`. La identidad de
-  quien sube la remesa llega en `x-ms-client-principal`, que es base64 **sin
-  firma**, y darle valor de traza es una decisión que esta feature no toma
-  (§13 de `design.md`, decisión abierta **D3**).
+- **R6.** El sistema debe guardar `usuario_oid` en `NULL`. **Decisión del
+  humano (D3, 2026-08-26)**: la identidad de quien sube la remesa llega en
+  `x-ms-client-principal`, que es base64 **sin firma**, y guardarla invitaría a
+  confundir una traza con una identidad verificada.
 
 ## B · `POST /api/parte` — guardar el parte y su veredicto
 
@@ -101,87 +105,114 @@ garantizado por el código, no por la costumbre de quien llama (**R16**,
   y `validado_at_utc`.
 
 - **R15.** DONDE la petición traiga `limite`, el sistema debe respetarlo; si
-  no lo trae, debe aplicar **50**; y en ningún caso debe superar el máximo del
-  dominio (`LIMITE_MAXIMO_COLA`, 500).
+  no lo trae, debe aplicar **50**.
 
-- **R16.** SI `limite` no es un entero ≥ 1, ENTONCES el sistema debe responder
-  **400** sin consultar la base de datos.
+- **R16.** **TOPE DURO.** El sistema **nunca** debe pedir al repositorio —ni
+  devolver— más de `LIMITE_MAXIMO_COLA` (500) entradas, **venga lo que venga
+  en la petición**. Una petición con un límite mayor se sirve **acotada**, no
+  se rechaza: quien pide la cola es el front y un número absurdo no debe
+  tumbarle la pantalla; lo que no puede es que **ninguna** llamada se lleve la
+  cola entera de un tirón contra un servidor compartido de 1 vCPU.
 
-- **R17.** El log de `GET /api/cola` debe registrar **cuántas** entradas
-  devolvió y nada más: cada entrada lleva la transcripción manuscrita del
-  cliente (dato personal directo).
+- **R17.** SI `limite` viene y no es un entero ≥ 1, ENTONCES el sistema debe
+  responder **400** sin consultar la base de datos.
+
+- **R18.** Los tres endpoints nuevos deben registrar en el log **sólo**
+  identificadores y resultados: `hash_parte`, `remesa_id`, `resultado` y
+  **cuántas** entradas devolvió la cola. **Nunca** el DNI, las observaciones,
+  la descripción ni la promoción. Es la regla que F-005 ya fija con
+  `test_f005_logs_sin_datos_personales.py`, y estos endpoints **no la
+  rompen**: el log sobrevive al parte.
 
 ## D · El orden: guardar antes de archivar
 
-- **R18.** El sistema debe registrar la traza del archivo en estado
+- **R19.** El sistema debe registrar la traza del archivo en estado
   `pendiente` **ANTES** de llamar al puerto de archivo. Esa escritura previa
   es la garantía de orden: la clave ajena
   `archivos.hash_parte → partes.hash_parte` sólo la admite si el parte ya
   consta guardado.
 
-- **R19.** SI al registrar esa traza previa resulta que el parte no consta
+- **R20.** SI al registrar esa traza previa resulta que el parte no consta
   guardado, ENTONCES el sistema debe abortar el archivado **sin llamar al
   puerto de archivo** —ni carpeta, ni búsqueda, ni subida— y responder **409**
   diciendo que hay que guardar el parte antes (`POST /api/parte`).
 
-- **R20.** SI la base de datos no responde al registrar la traza previa,
+- **R21.** SI la base de datos no responde al registrar la traza previa,
   ENTONCES el sistema debe responder **503** diciendo que **no se ha subido
   nada** y que se puede reintentar.
 
-- **R21.** CUANDO la subida termina bien, el sistema debe dejar la traza en
+- **R22.** CUANDO la subida termina bien, el sistema debe dejar la traza en
   `archivado` con su `web_url` y su fecha; CUANDO falla, en `error` con su
   motivo. (Comportamiento de F-006 que **no cambia**: la traza previa no lo
   sustituye, lo precede.)
 
-- **R22.** MIENTRAS la ventana de escritura esté cerrada
+- **R23.** MIENTRAS la ventana de escritura esté cerrada
   (`ARCHIVO_HABILITADO` apagado), `POST /api/archivar` debe responder **503**
   **sin escribir la traza previa**: la puerta de entorno se comprueba antes de
   tocar la base de datos.
 
-- **R23.** MIENTRAS el parte ya conste archivado, el sistema no debe escribir
+- **R24.** MIENTRAS el parte ya conste archivado, el sistema no debe escribir
   la traza previa ni volver a subir nada: la idempotencia de F-006 va **antes**
   que la traza previa, para no degradar a `pendiente` un parte ya archivado.
 
 ## E · El front llama a los endpoints en ese orden
 
-- **R24.** CUANDO el front trocea una remesa, debe registrar la remesa
+> **Decisión del humano (D5, 2026-08-26): el cableado del front entra en
+> F-019.** Sin él los endpoints existirían y nadie los llamaría, que es el
+> mismo estado que esta feature viene a arreglar, un nivel más arriba.
+
+- **R25.** CUANDO el front trocea una remesa, debe registrar la remesa
   (`POST /api/remesa`) antes de procesar ningún parte, y conservar el
   `remesa_id` para toda la sesión de esa remesa.
 
-- **R25.** CUANDO el front obtiene el veredicto de un parte
+- **R26.** CUANDO el front obtiene el veredicto de un parte
   (`POST /api/validar`), debe guardarlo (`POST /api/parte`) **antes** de
   ofrecerlo para archivar.
 
-- **R26.** SI el guardado de un parte falla, ENTONCES el front debe marcar ese
+- **R27.** SI el guardado de un parte falla, ENTONCES el front debe marcar ese
   parte como **no archivable** y enseñar el motivo: archivarlo fallaría
   igualmente, y hacerlo sin decirlo devuelve al usuario al defecto 15.
 
-- **R27.** CUANDO una persona corrige un campo y se revalida el parte, el
+- **R28.** CUANDO una persona corrige un campo y se revalida el parte, el
   front debe volver a guardarlo, para que lo guardado sea lo revisado y no lo
   que dijo la IA la primera vez.
 
 ## F · Lo que hay que dejar dicho (o miente la documentación)
 
-- **R28.** Los tres endpoints nuevos deben quedar en `ANONYMOUS`, como los
+- **R29.** Los tres endpoints nuevos deben quedar en `ANONYMOUS`, como los
   seis actuales y por el mismo motivo estructural (el proxy de la Static Web
   App no aporta clave), y el test que fija esa anonimidad debe cubrir **los
   nueve**.
 
-- **R29.** La cabecera de `function_app.py` debe explicar el riesgo **nuevo**
-  que trae `GET /api/cola` y que los seis anteriores no tenían: es el primer
-  endpoint que **devuelve datos personales acumulados** sin que el llamante
-  aporte el PDF. Debe decir qué lo mitiga y qué no.
+- **R30.** La cabecera de `function_app.py` debe explicar **dónde está de
+  verdad la protección** desde que el servicio es backend enlazado: la
+  plataforma activa Easy Auth con el proveedor `azureStaticWebApps` y el
+  backend **sólo acepta lo que entra por el proxy del front**, que a su vez
+  exige `authenticated` en `/*` y pertenencia al grupo de Posventa
+  (`docs/DESPLIEGUE.md` §5 bis). Y debe decir qué añade `GET /api/cola` a ese
+  cuadro: es el primer endpoint que devuelve **dato personal acumulado** sin
+  que el llamante aporte el PDF, así que la exposición que crea es **hacia un
+  usuario ya autenticado del grupo**, no hacia internet.
 
-- **R30.** `docs/INTEGRACION.md` §8 debe listar los tres endpoints nuevos con
+- **R31.** La cabecera de `services/postventa-api/tests/test_f010_endpoints_protegidos.py`
+  debe dejar de afirmar que «al desplegar, los endpoints quedan **en
+  internet** con `auth_level=ANONYMOUS`»: desde el enlace del backend (defecto
+  13 de F-010, 2026-08-25) eso **ya no es cierto**. Debe decir el modelo
+  vigente —backend enlazado + regla `/*` de la Static Web App— y **por qué el
+  `auth_level` sigue en `ANONYMOUS`**: porque `FUNCTION` rompería el front.
+  **El test no se relaja**: sigue teniendo que fallar si alguien cambia el
+  `auth_level` sin reescribir la explicación, o al revés.
+
+- **R32.** `docs/INTEGRACION.md` §8 debe listar los tres endpoints nuevos con
   su efecto, y su tabla de «qué NO está desplegado» debe dejar de atribuir a
   F-019 lo que ya esté hecho, sin borrar lo que siga faltando (rehidratar la
   sesión al recargar).
 
-- **R31.** `docs/ARCHITECTURE.md` debe recoger, en el paso de **Archivo**, que
+- **R33.** `docs/ARCHITECTURE.md` debe recoger, en el paso de **Archivo**, que
   sólo se archiva lo que **ya consta guardado**, y con qué mecanismo se
   garantiza.
 
-- **R32.** Los endpoints nuevos **no** deben depender de `ARCHIVO_HABILITADO`:
+- **R34.** Los endpoints nuevos **no** deben depender de `ARCHIVO_HABILITADO`:
   escriben en el esquema propio de este proyecto, no en un sistema ajeno, y
   atarlos a esa ventana dejaría sin poder guardar el trabajo de revisión justo
   cuando el archivado está cerrado, que es lo normal.
@@ -195,10 +226,13 @@ garantizado por el código, no por la costumbre de quien llama (**R16**,
 | R1–R6 | `services/postventa-api/tests/test_f019_remesa_http.py` |
 | R7–R13 | `services/postventa-api/tests/test_f019_parte_http.py` |
 | R14–R17 | `services/postventa-api/tests/test_f019_cola_http.py` |
-| R18–R23 | `services/postventa-api/tests/test_f019_orden_archivado.py` |
-| R11, R19 (mapeo del error de referencia) | `services/postventa-api/tests/test_f019_referencias_pg.py` |
-| R24–R27 | `services/postventa-front/tests_js/persistencia.test.js` |
-| R28–R32 | `test_f010_endpoints_protegidos.py` (ampliado), `test_f010_integracion_expuesto.py` (ampliado), `test_f019_documentacion.py` |
+| R18 | `services/postventa-api/tests/test_f019_logs_sin_datos_personales.py` |
+| R19–R24 | `services/postventa-api/tests/test_f019_orden_archivado.py` |
+| R11, R20 (mapeo del error de referencia) | `services/postventa-api/tests/test_f019_referencias_pg.py` |
+| R25–R28 | `services/postventa-front/tests_js/persistencia.test.js` |
+| R29, R30, R31 | `test_f010_endpoints_protegidos.py` (ampliado a nueve y con su cabecera corregida) |
+| R32, R33 | `test_f010_integracion_expuesto.py` (ampliado), `test_f019_documentacion.py` |
+| R34 | `test_f019_remesa_http.py`, `test_f019_parte_http.py`, `test_f019_cola_http.py` (los tres responden con la ventana cerrada) |
 
 **Ninguno de estos tests toca red, base de datos ni IA**: el repositorio y el
 archivador entran por inyección, como ya hacen `test_f005_paso_persistencia.py`

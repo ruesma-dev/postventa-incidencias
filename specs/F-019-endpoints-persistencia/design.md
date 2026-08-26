@@ -4,6 +4,10 @@
 > Se diseña contra `docs/ARCHITECTURE.md` (normativo) y
 > `docs/CONVENTIONS.md`. Lo que aquí se decide **no cambia el esquema**: no
 > hay DDL nuevo, ni columnas nuevas, ni tablas nuevas. F-005 ya las creó.
+>
+> **Segunda ronda (2026-08-26)**: el humano ha resuelto las cinco decisiones
+> que la primera ronda dejó abiertas. §15 ya no es una lista de preguntas: es
+> lo decidido, con su razón. El cambio de fondo está en §8.
 
 ## 1 · Qué se construye, en una frase
 
@@ -38,13 +42,14 @@ dentro de un paso.
 | `services/postventa-api/interface_adapters/api/remesa.py` | interface_adapters | `registrar_remesa(cuerpo, *, repositorio=None, ahora=None) -> dict`. Compone el repositorio y llama a `guardar_remesa` |
 | `services/postventa-api/interface_adapters/api/parte.py` | interface_adapters | `guardar_parte_http(cuerpo, *, repositorio=None, ahora=None) -> dict`. Reconstruye `ParteTroceado` + `ExtraccionParte` + `LecturaFirma`, **recalcula** el veredicto con `validar_parte` y llama a `paso_persistencia` |
 | `services/postventa-api/interface_adapters/api/cola.py` | interface_adapters | `leer_cola(limite=None, *, repositorio=None) -> dict`. Llama a `cola_validacion_humana` y serializa |
-| `services/postventa-api/tests/test_f019_remesa_http.py` | tests | R1–R6 |
-| `services/postventa-api/tests/test_f019_parte_http.py` | tests | R7–R13 |
-| `services/postventa-api/tests/test_f019_cola_http.py` | tests | R14–R17 |
-| `services/postventa-api/tests/test_f019_orden_archivado.py` | tests | R18–R23: el corazón de la feature |
-| `services/postventa-api/tests/test_f019_referencias_pg.py` | tests | R11/R19: `ForeignKeyViolation` → `ReferenciaNoConsta`, con conexión doble |
-| `services/postventa-api/tests/test_f019_documentacion.py` | tests | R29–R31 |
-| `services/postventa-front/tests_js/persistencia.test.js` | tests (node) | R24–R27 |
+| `services/postventa-api/tests/test_f019_remesa_http.py` | tests | R1–R6, R34 |
+| `services/postventa-api/tests/test_f019_parte_http.py` | tests | R7–R13, R34 |
+| `services/postventa-api/tests/test_f019_cola_http.py` | tests | R14–R17, R34 |
+| `services/postventa-api/tests/test_f019_logs_sin_datos_personales.py` | tests | R18: los tres endpoints nuevos, con `caplog`, a imagen de `test_f005_logs_sin_datos_personales.py` |
+| `services/postventa-api/tests/test_f019_orden_archivado.py` | tests | R19–R24: el corazón de la feature |
+| `services/postventa-api/tests/test_f019_referencias_pg.py` | tests | R11/R20: `ForeignKeyViolation` → `ReferenciaNoConsta`, con conexión doble |
+| `services/postventa-api/tests/test_f019_documentacion.py` | tests | R32, R33 |
+| `services/postventa-front/tests_js/persistencia.test.js` | tests (node) | R25–R28 |
 
 Los dobles de repositorio ya existen (`services/postventa-api/tests/utiles_pg.py`);
 se reutilizan y **no se escribe un tercer doble**.
@@ -53,19 +58,19 @@ se reutilizan y **no se escribe un tercer doble**.
 
 | Ruta | Qué cambia |
 |---|---|
-| `services/postventa-api/function_app.py` | Tres rutas nuevas (`remesa`, `parte`, `cola`) en `ANONYMOUS`; mapeo de `ReferenciaNoConsta` → **409** en `parte` y en `archivar`; ampliación de la cabecera con el riesgo nuevo de `/api/cola` (R29) y con las tres entradas en la lista de endpoints |
+| `services/postventa-api/function_app.py` | Tres rutas nuevas (`remesa`, `parte`, `cola`) en `ANONYMOUS`; mapeo de `ReferenciaNoConsta` → **409** en `parte` y en `archivar`; cabecera puesta al día con el modelo de amenaza vigente y con lo que añade `/api/cola` (R30), y las tres entradas nuevas en la lista de endpoints |
 | `services/postventa-api/interface_adapters/api/validar.py` | **Sólo** deja de definir los parsers y los importa de `cuerpos.py`. Su comportamiento público no cambia: `test_f004_validar_http.py` es la red que lo demuestra |
 | `services/postventa-api/application/pipelines/paso_archivo.py` | Traza previa `pendiente` antes de `_subir` (§5) |
 | `services/postventa-api/domain/models/errores.py` | `ReferenciaNoConsta(ErrorDePersistencia)`: la fila referida no existe |
 | `services/postventa-api/infrastructure/persistencia/repositorio_pg.py` | `_escribir` distingue `psycopg.errors.ForeignKeyViolation` y levanta `ReferenciaNoConsta` en vez de `PersistenciaNoDisponible` |
 | `services/postventa-api/tests/test_f006_paso_archivo.py` | Se ajusta a la escritura previa: los dobles pasan a esperar **dos** llamadas a `guardar_archivo` en el camino feliz. **No se debilita ninguna aserción existente** |
-| `services/postventa-api/tests/test_f010_endpoints_protegidos.py` | `ENDPOINTS` pasa de seis a **nueve** y la cuenta del control negativo también (R28) |
-| `services/postventa-api/tests/test_f010_integracion_expuesto.py` | La lista de endpoints de §8 y `NO_DESPLEGADAS` (R30) |
+| `services/postventa-api/tests/test_f010_endpoints_protegidos.py` | Dos cosas, y **no se mezclan en la misma tarea**: (a) `ENDPOINTS` pasa de seis a **nueve** y la cuenta del control negativo también (R29); (b) su **cabecera** deja de decir que los endpoints quedan «en internet» y pasa a contar el modelo vigente (R31) |
+| `services/postventa-api/tests/test_f010_integracion_expuesto.py` | La lista de endpoints de §8 y `NO_DESPLEGADAS` (R32) |
 | `services/postventa-front/js/api.js` | `registrarRemesa()`, `guardarParte()`, `cola()` |
-| `services/postventa-front/js/pipeline.js` | `procesarParte` guarda tras validar; `cuerpoDeParte` compone el cuerpo de `/api/parte`; `revalidarParte` vuelve a guardar (R25, R27) |
-| `services/postventa-front/js/app.js` | Registra la remesa tras `trocear` y conserva `remesaId`; marca no archivable el parte que no se pudo guardar (R24, R26) |
-| `docs/INTEGRACION.md` | §8: tres filas nuevas en la tabla de endpoints y corrección de la tabla de «qué NO está desplegado» (R30) |
-| `docs/ARCHITECTURE.md` | Paso 6 (**Archivo**): sólo se archiva lo que ya consta guardado, y cómo se garantiza (R31) |
+| `services/postventa-front/js/pipeline.js` | `procesarParte` guarda tras validar; `cuerpoDeParte` compone el cuerpo de `/api/parte`; `revalidarParte` vuelve a guardar (R26, R28) |
+| `services/postventa-front/js/app.js` | Registra la remesa tras `trocear` y conserva `remesaId`; marca no archivable el parte que no se pudo guardar (R25, R27) |
+| `docs/INTEGRACION.md` | §8: tres filas nuevas en la tabla de endpoints y corrección de la tabla de «qué NO está desplegado» (R32) |
+| `docs/ARCHITECTURE.md` | Paso 6 (**Archivo**): sólo se archiva lo que ya consta guardado, y cómo se garantiza (R33) |
 
 ## 5 · La garantía de orden, que es el corazón
 
@@ -77,10 +82,10 @@ idempotencia por traza, y **antes** de tocar el puerto de archivo:
 ```
 1. _exigir_apto(ctx)                       # F-006, sin cambios
 2. componer_destino(...)                   # F-006, sin cambios
-3. si _ya_archivado(...): return           # F-006, sin cambios  (R23)
-4. repositorio.guardar_archivo(traza=<pendiente>)   # NUEVO      (R18)
+3. si _ya_archivado(...): return           # F-006, sin cambios  (R24)
+4. repositorio.guardar_archivo(traza=<pendiente>)   # NUEVO      (R19)
 5. _subir(...)                             # carpeta, homónimo, subida
-6. traza de éxito / de error               # F-006, sin cambios  (R21)
+6. traza de éxito / de error               # F-006, sin cambios  (R22)
 ```
 
 El paso 4 escribe una fila en `postventa.archivos` con
@@ -205,38 +210,92 @@ DDL, y va como decisión abierta **D2**.
 
 ## 8 · Autenticación de los endpoints nuevos
 
+> Reescrito en la segunda ronda. **La primera ronda se equivocó en el tamaño
+> del riesgo**: daba por «expuesto a internet» un backend que ya no lo está, y
+> proponía «valorar» una capa que lleva puesta desde el 2026-08-25.
+
 `services/postventa-api/tests/test_f010_endpoints_protegidos.py` fija el
 criterio y **se respeta**: los tres nuevos van en `ANONYMOUS`, y el test se
-amplía a nueve endpoints. El motivo no ha cambiado: el proxy de la Static Web
-App autentica al usuario, reenvía `x-ms-client-principal` y **no aporta**
-ninguna clave que la Function pueda exigir. `auth_level=FUNCTION` rompería el
-front el mismo día, y ningún test de este repositorio lo notaría.
+amplía a nueve endpoints. `auth_level=FUNCTION` rompería el front el mismo día
+—el proxy de la Static Web App autentica al usuario y reenvía
+`x-ms-client-principal`, no una clave que la Function pueda exigir— y ningún
+test de este repositorio lo notaría.
 
-**Pero hay que discutir una cosa, y no es el `auth_level`.** `GET /api/cola`
-es cualitativamente distinto de los seis actuales:
+### Dónde está la protección de verdad: dos capas, y una la pone la plataforma
 
-- Los seis actuales exigen que **tú** aportes el PDF: quien no tiene el parte,
-  no obtiene nada de él. Su riesgo es gastar cuota de IA, y por eso el tope de
-  gasto es la defensa proporcionada.
-- `GET /api/cola` **devuelve dato personal acumulado sin que el llamante
-  aporte nada**: transcripciones manuscritas de clientes, códigos de obra y
-  números de incidencia de partes reales. Es el primer endpoint de este
-  servicio que lee de la base y publica lo que hay dentro.
+`docs/DESPLIEGUE.md` §5 bis, escrito al descubrir el **defecto 13 de F-010**
+ejecutando contra Azure el 2026-08-25:
 
-Eso cambia el modelo de amenaza y **no lo resuelve el `auth_level`**. Va como
-decisión abierta **D1** con recomendación. Lo que sí hace esta feature en
-cualquier caso:
+1. **El backend enlazado.** Desde que la Function App es backend enlazado de
+   la Static Web App, la plataforma le activa **Easy Auth con el proveedor
+   `azureStaticWebApps`** y el backend **sólo acepta lo que entra por el proxy
+   del front**. Preguntarle por su nombre de host —cualquier ruta,
+   `GET /api/health` incluido— devuelve
+   `{"code":400,"message":"Login not supported for provider azureStaticWebApps"}`,
+   y **ese cuerpo no es nuestro**: lo escribe la plataforma antes de que la
+   Function se entere. **No hay que configurar nada**: ya está.
+2. **La regla `/*` de la Static Web App.** `staticwebapp.config.json` exige
+   `authenticated` en `/*` y en `/api/*`, con el `401` redirigiendo al inicio
+   de sesión, y `services/postventa-front/tests/test_f010_config_swa.py` lo
+   fija con su guardia y su control negativo. Encima va la asignación
+   obligatoria al **grupo de Posventa** en la aplicación empresarial.
 
-1. **Ampliar la cabecera de `function_app.py`** para que quien la lea se
-   entere del riesgo nuevo (R29) — hoy la cabecera argumenta sobre seis
-   endpoints que no devuelven nada de nadie.
-2. **Tope de `limite`** (R15): un curioso no se lleva la cola entera de un
-   tirón, y `LIMITE_MAXIMO_COLA` ya existe.
-3. **Nada de datos personales al log** (R17).
+**Consecuencia para el diseño**: `auth_level=ANONYMOUS` es **irrelevante desde
+internet**, porque nadie alcanza el código sin pasar por el proxy, y el proxy
+exige sesión. `GET /api/cola` **no queda expuesto a internet**.
+
+### Lo que sí cambia con `GET /api/cola`, dicho en su tamaño
+
+El dato personal acumulado es real y no desaparece por estar detrás de un
+proxy. Lo que cambia es **de quién** hay que protegerlo:
+
+- Los seis endpoints actuales exigen que **tú** aportes el PDF: quien no tiene
+  el parte no obtiene nada de él.
+- `GET /api/cola` devuelve transcripciones manuscritas de clientes, códigos de
+  obra y números de incidencia **sin que el llamante aporte nada**.
+
+Es decir: la amenaza no es «internet anónimo», es **un usuario ya autenticado
+del grupo de Posventa** —que es precisamente quien tiene que leer esa cola—
+y, sobre todo, **el volumen**: una sola llamada no puede convertirse en un
+volcado de la cola entera. De ahí las tres cautelas que sí entran en el
+alcance:
+
+1. **Tope duro al `limite`** (**R16**): ninguna llamada puede llevarse más de
+   `LIMITE_MAXIMO_COLA` (500) entradas, venga lo que venga en la petición. Es
+   lo único de las tres que hoy **no existe a nivel de endpoint** —el
+   repositorio ya acota con `sentencias._limite_seguro`, y el handler acota
+   también: dos cinturones, porque el que falla es el que no se ve.
+2. **Ningún dato personal al log** (**R18**), en los tres endpoints nuevos. Ya
+   es regla del proyecto desde F-005 y tiene test propio; lo que aquí se fija
+   es que los nuevos **no la rompen**.
+3. **La cabecera de `function_app.py` puesta al día** (**R30**): que quien la
+   lea salga sabiendo que la protección real es el backend enlazado más la
+   regla `/*`, y qué añade la cola a ese cuadro.
+
+### Descartado: exigir `x-ms-client-principal`
+
+La primera ronda lo proponía como «listón más alto». **Se descarta**, y por su
+propio argumento: va en base64 **sin firma** y cualquiera que alcanzara la
+Function podría fabricarla, así que no es control de acceso. Añadirlo encima
+de algo que ya está protegido por la plataforma sólo consigue una cosa mala:
+**confundir qué protege de verdad**. El día que alguien tenga que razonar
+sobre este servicio, una comprobación decorativa le hará creer que hay un
+control donde no lo hay.
+
+### Y la cabecera del test, que hoy miente
+
+`test_f010_endpoints_protegidos.py` documenta un modelo de amenaza
+**desactualizado**: abre diciendo que «al desplegar, los seis endpoints de
+`function_app.py` quedan en internet con `auth_level=ANONYMOUS`». Eso era
+verdad cuando se escribió y dejó de serlo con el enlace del backend. F-019 es
+quien toca ese fichero para ampliarlo a nueve, así que es el momento de que
+diga la verdad completa (**R31**), en **tarea propia** para que no se pierda
+entre la ampliación. **El test no se relaja**: sigue fallando si alguien
+cambia el `auth_level` sin reescribir la explicación, o al revés.
 
 ## 9 · La ventana de escritura (`ARCHIVO_HABILITADO`)
 
-Los endpoints nuevos **no la miran** (R32), y es una decisión, no un olvido:
+Los endpoints nuevos **no la miran** (R34), y es una decisión, no un olvido:
 
 - Esa ventana protege **la biblioteca de SharePoint**, que es un sistema
   ajeno y compartido. Guardar en `postventa.partes` es escribir en el esquema
@@ -251,7 +310,7 @@ remesa, se trocea, se extrae, se valida, **se guarda** y se lee la cola; sólo
 
 Y en `archivar.py` **se conserva el orden de composición actual**: el
 archivador se construye antes que el repositorio, así que la ventana cerrada
-corta antes de que la base de datos se entere (R22). Hoy pasa por el orden de
+corta antes de que la base de datos se entere (R23). Hoy pasa por el orden de
 evaluación de los argumentos; con F-019 pasa a estar **fijado por un test**,
 porque ahora hay una escritura previa que sí importa que no ocurra.
 
@@ -313,14 +372,15 @@ clave ajena que sostiene toda esta feature ya existen desde F-005.
   partes exige un método de lectura nuevo en `RepositorioPartesPort`, y el
   encargo prohíbe tocar el puerto. Lo que F-019 sí arregla es que **el trabajo
   quede guardado** y que la cola sobreviva entre sesiones; pintarlo de vuelta
-  al recargar es otra feature (decisión abierta **D4**).
+  al recargar es **feature nueva**, decidido por el humano el 2026-08-26
+  (**D4**).
 - **F-012** (subir el gráfico a Sigrid), **F-013** (mudar el archivo a la
   biblioteca de Posventa), **F-020** (ajustes de diseño del front: tamaño del
   PDF, caja de observaciones, reparto de la pantalla).
 - **Una pantalla de cola en el front.** `GET /api/cola` queda expuesto y
   probado; quién lo pinta y cómo es diseño de front, y F-020 es la feature que
   toca esa pantalla.
-- **`usuario_oid`.** Se sigue guardando `NULL` (R6, decisión abierta **D3**).
+- **`usuario_oid`.** Se sigue guardando `NULL` (R6, decidido: **D3**).
 
 ## 14 · Riesgos
 
@@ -328,7 +388,7 @@ clave ajena que sostiene toda esta feature ya existen desde F-005.
    pasa a llamar `guardar_archivo` dos veces en el camino feliz. La tentación
    es relajar los dobles («que cuente lo que quiera»). Se hace al revés: los
    dobles pasan a exigir **exactamente dos** llamadas, en orden
-   `pendiente → archivado`, y eso es un test nuevo de R18, no un ajuste.
+   `pendiente → archivado`, y eso es un test nuevo de R19, no un ajuste.
 2. **Mover los parsers de `validar.py` a `cuerpos.py`.** Es mecánico y
    `test_f004_validar_http.py` lo cubre entero, pero es un movimiento de
    código en el camino crítico. Va en su propia tarea y su propio commit, sin
@@ -344,47 +404,38 @@ clave ajena que sostiene toda esta feature ya existen desde F-005.
    aserción nueva ahí: la clave ajena de `archivos` contra `partes` es un
    requisito, no un detalle.
 
-## 15 · Decisiones abiertas (del humano, no del spec-author)
+## 15 · Decisiones resueltas por el humano (2026-08-26)
 
-- **D1 · `GET /api/cola` es anónimo y devuelve datos personales de clientes.**
-  ¿Se acepta mientras la restricción de acceso público de la Function App no
-  esté aplicada?
-  - **O1 (recomendada)**: sacarlo **ANONYMOUS como los demás**, con el tope de
-    `limite`, sin datos personales al log y con el riesgo escrito en la
-    cabecera; y **pedir al humano** que valore aplicar la restricción de
-    acceso público de la Function App, que es la única capa que de verdad
-    impide llamar al backend por fuera del proxy. Es lo coherente con el
-    montaje: cualquier otra cosa rompe el front.
-  - **O2**: exigir que la petición traiga `x-ms-client-principal` con un `oid`
-    legible. **No es control de acceso** —es base64 sin firma y cualquiera la
-    fabrica—, pero sube el listón del curioso y deja traza. Cuesta poco.
-  - **O3**: no exponer la cola hasta que haya autenticación real. Deja F-004
-    sin su cola otra vez y no arregla el defecto 15, que es lo urgente.
-  - **Mi recomendación: O1, y O2 encima si el humano quiere el listón más
-    alto.** Lo que no recomiendo es esperar: el defecto 15 bloquea el piloto.
+**Ninguna queda abierta.** El implementer no tiene que esperar a nadie.
 
-- **D2 · `postventa.remesas` no tiene clave natural** (§7). ¿Se le añade una
-  —hash del fichero de origen, con su índice único— en una feature futura, o
-  se acepta que resubir la misma remesa deje una fila de remesa de más?
-  - **Recomendación: aceptarlo ahora** (no duplica partes, que es lo que
-    importa) y tratarlo, si molesta, cuando toque volver a tocar el DDL. Aquí
-    sería salirse del alcance y del schema.
+- **D1 · `GET /api/cola` se queda `ANONYMOUS`**, con el razonamiento
+  **corregido** en §8. El `auth_level` es irrelevante desde internet: el
+  backend enlazado sólo acepta lo que entra por el proxy —y eso lo pone la
+  plataforma, no hay nada que configurar—, y el proxy exige `authenticated`
+  en `/*` más pertenencia al grupo de Posventa. La amenaza real no es internet
+  anónimo, es un usuario ya autenticado del grupo y, sobre todo, el volumen.
+  Entran en alcance las tres cautelas de §8: **tope duro al `limite`** (R16,
+  lo único que hoy no existe a nivel de endpoint), **nada de dato personal al
+  log** (R18) y **la cabecera de `function_app.py` al día** (R30). **Se
+  descarta exigir `x-ms-client-principal`**: seguridad decorativa sobre algo ya
+  protegido, que sólo confunde qué protege de verdad.
 
-- **D3 · `usuario_oid`.** ¿Se empieza a guardar el `oid` de quien sube la
-  remesa, leído de `x-ms-client-principal`?
-  - **Recomendación: no en F-019.** Es dato personal seudónimo, la cabecera no
-    está firmada, y guardarla invita a confundir traza con identidad
-    verificada. Cuando haya autenticación real (o D1/O2), se decide entera.
+- **D2 · `postventa.remesas` se queda sin clave natural** (§7). No duplica
+  partes, que es lo que prohíbe `docs/ARCHITECTURE.md` §9; puede dejar una
+  fila de remesa de más si alguien resube sin conservar el `remesa_id`.
+  Dársela sería DDL, y el DDL está fuera de alcance.
 
-- **D4 · Rehidratar la sesión al recargar** (§13). Exige método de lectura
-  nuevo en `RepositorioPartesPort`, prohibido aquí.
-  - **Recomendación: feature nueva en el backlog**, después de ver el piloto:
-    puede que con el trabajo ya guardado y la cola legible, recargar duela
-    mucho menos de lo que parecía cuando se anotó D4 en F-007.
+- **D3 · `usuario_oid` sigue en `NULL`** (R6). La cabecera de identidad no
+  está firmada y guardarla invitaría a confundir traza con identidad
+  verificada.
 
-- **D5 · ¿Entra el cableado del front en F-019?** (§4, R24–R27, tareas T12–T14).
-  - **Recomendación: sí.** Sin él, los endpoints existen y nadie los llama:
-    exactamente el estado que esta feature viene a arreglar, sólo que un nivel
-    más arriba. Si el humano prefiere backend puro, se caen T12–T14 y R24–R27
-    sin tocar nada más — pero entonces **el archivado real sigue sin poder
-    completar**, y hay que decirlo al cerrar.
+- **D4 · Rehidratar la sesión al recargar es feature nueva**, no F-019. Exige
+  un método de lectura nuevo en `RepositorioPartesPort`, prohibido aquí.
+  Queda dicho en §13 y hay que decirlo también al cerrar la feature: **lo
+  guardado queda guardado y la cola sobrevive, pero recargar sigue perdiendo
+  el trabajo en curso**.
+
+- **D5 · El cableado del front ENTRA en F-019** (R25–R28, tareas T19–T20). Sin
+  él los endpoints existirían y nadie los llamaría: el mismo estado que esta
+  feature viene a arreglar, un nivel más arriba, y el archivado real seguiría
+  sin poder completar en el circuito del piloto.

@@ -134,3 +134,97 @@ La ficha atribuye a F-019 dos consecuencias. **Arregla una y media**:
 - `azure-apps/`: §8 de `INTEGRACION.md` cambia, así que hay que copiarla allí,
   **pero el humano decidió el 2026-08-20 que los agentes no commitean en ese
   repositorio**. Queda anotado como aviso, no como tarea de agente.
+
+---
+
+# 9 · Segunda ronda (2026-08-26): las cinco decisiones, resueltas
+
+> Esta sección **añade**, no reescribe: lo de arriba es el rastro de la
+> primera ronda, incluido el error que la segunda corrige.
+
+## 9.1 · Lo que el humano decidió
+
+| # | Decisión | Efecto en la spec |
+|---|---|---|
+| **D5** | **SÍ**, el cableado del front entra | R25–R28 y T19–T20 se quedan. Sección E de `requirements.md` con la decisión escrita en cabecera |
+| **D2** | Se acepta `remesas` sin clave natural | Sin cambios: ya era la recomendación (§7) |
+| **D3** | **No** se guarda `usuario_oid` | R6 deja de citar una decisión abierta y cita la decisión tomada |
+| **D4** | Rehidratar la sesión al recargar es **feature nueva** | §13 y §15 lo dan por decidido; T18 y T23 obligan a decirlo al cerrar |
+| **D1** | `GET /api/cola` se queda **`ANONYMOUS`**, con el razonamiento **reescrito** | §8 entera, R16, R18, R30, R31 y las tareas T10–T12, T16, T17 |
+
+## 9.2 · En qué se equivocó mi D1, y por qué importa
+
+Escribí que la restricción de acceso público de la Function App «es la única
+capa real» y la propuse como **algo a valorar**. Las dos mitades estaban mal:
+
+- **Esa capa ya existe y no hay nada que configurar.** Desde que la Function
+  App es **backend enlazado** de la Static Web App, la plataforma le activa
+  Easy Auth con el proveedor `azureStaticWebApps` y el backend **sólo acepta lo
+  que entra por el proxy del front**. Lo documenta `docs/DESPLIEGUE.md` §5 bis,
+  escrito al descubrir el **defecto 13 de F-010** ejecutando contra Azure el
+  2026-08-25. El `400` que devuelve el host desnudo —`Login not supported for
+  provider azureStaticWebApps`— **no es nuestro**: lo escribe la plataforma
+  antes de que la Function se entere.
+- **Y no es «la única»**: encima va la regla `/*` con `authenticated` del
+  `staticwebapp.config.json`, fijada por
+  `services/postventa-front/tests/test_f010_config_swa.py` con guardia y
+  control negativo, más la asignación obligatoria al grupo de Posventa.
+
+**Consecuencia**: `auth_level=ANONYMOUS` es **irrelevante desde internet**,
+porque nadie alcanza el código sin pasar por el proxy y el proxy exige sesión.
+`GET /api/cola` **no queda expuesto a internet**.
+
+Esto no es una corrección cosmética. Mi §8 original habría llevado al humano a
+plantearse una configuración de Azure que ya está puesta, y —peor— habría
+dejado escrito en una spec que el servicio está más desprotegido de lo que
+está. Una spec que exagera un riesgo gasta el mismo crédito que una que lo
+esconde: la próxima vez nadie sabe cuál de las dos está leyendo.
+
+**Lo que NO cambia**: el dato personal acumulado sigue siendo real. Lo que
+cambia es de quién hay que protegerlo — **un usuario ya autenticado del grupo
+de Posventa**, que es justo quien tiene que leer esa cola — y, sobre todo, el
+**volumen**: que ninguna llamada se lleve la cola entera.
+
+## 9.3 · Las tres condiciones, incorporadas
+
+1. **Tope duro al `limite`** → **R16** (requisito propio), **T10** (RED) y
+   **T11** (implementación). Es lo único de las tres que hoy **no existe a
+   nivel de endpoint**: `sentencias._limite_seguro` ya acota entre 1 y
+   `LIMITE_MAXIMO_COLA` (500), pero eso es el repositorio. El handler acota
+   **también**: dos cinturones, porque el que falla es el que no se ve. Y se
+   **acota, no se rechaza**: quien pide la cola es el front, y un número
+   absurdo no debe tumbarle la pantalla.
+2. **Ningún dato personal al log** → **R18** y **T12**, a imagen de
+   `test_f005_logs_sin_datos_personales.py`. Es un test guardián, así que si
+   nace verde hay que demostrar que sabría fallar, con el mismo control
+   negativo que ya usa F-005.
+3. **Cabecera de `test_f010_endpoints_protegidos.py` corregida** → **R31** y
+   **T17, en tarea propia** para que no se pierda entre la ampliación a nueve
+   endpoints de T16. Hoy abre diciendo que los endpoints «quedan en internet
+   con `auth_level=ANONYMOUS`», y eso dejó de ser verdad con el enlace del
+   backend. **El test no se relaja**: T17 exige comprobar a mano que sigue
+   fallando por las dos vías —cambiar el `auth_level` sin tocar la
+   explicación, y borrar la explicación sin tocar el `auth_level`—.
+
+## 9.4 · Descartado, y dicho en la spec
+
+**Exigir `x-ms-client-principal`.** Lo proponía yo mismo como «listón más
+alto» y cae por mi propio argumento: va en base64 **sin firma**, así que no es
+control de acceso. Puesto encima de algo que ya protege la plataforma, lo
+único que consigue es **confundir qué protege de verdad**: el día que alguien
+razone sobre este servicio, una comprobación decorativa le hará creer que hay
+un control donde no lo hay. Queda escrito como descartado en `design.md` §8.
+
+## 9.5 · Qué queda de la spec después de esta ronda
+
+- **34 requisitos** (antes 32): entran el tope duro (R16), el log limpio (R18)
+  y la cabecera del test (R31); la numeración de las secciones C a F se
+  desplaza y la tabla de trazabilidad está rehecha.
+- **24 tareas** (antes 20), con **7 en fase RED**.
+- **8 ficheros de test nuevos** (7 Python + 1 JS) y **13 modificados**.
+- Sigue sin haber **DDL**, **métodos nuevos en el puerto** ni **conexiones
+  reales**, y `harness/features.json` sigue sin tocarse.
+- `bash harness/init.sh`: **verde**.
+
+**La spec queda lista para el implementer.** No hay ninguna decisión esperando
+a nadie.

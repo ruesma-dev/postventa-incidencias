@@ -1,6 +1,49 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-26 · **F-019: spec cerrada, sin decisiones abiertas**
+>
+> El humano resolvió las cinco decisiones y están incorporadas a
+> `specs/F-019-endpoints-persistencia/`. Detalle en `progress/spec_F-019.md`
+> §9. **La spec está lista para el implementer**: 34 requisitos, 24 tareas
+> (7 en fase RED), sin DDL, sin métodos nuevos en el puerto y sin conexiones
+> reales. `bash harness/init.sh` en verde.
+>
+> **D5 sí** (el cableado del front entra), **D2/D3/D4 según recomendación**
+> (remesa sin clave natural, `usuario_oid` en `NULL`, rehidratar la sesión es
+> feature nueva) y **D1 con el razonamiento reescrito**, que es lo que de
+> verdad cambió.
+>
+> ### El error de la primera ronda, que conviene no repetir
+>
+> Mi §5 daba `GET /api/cola` por «expuesto a internet» y proponía **valorar**
+> la restricción de acceso público de la Function App como «la única capa
+> real». Las dos mitades estaban mal, y lo dice `docs/DESPLIEGUE.md` §5 bis
+> desde el defecto 13 de F-010 (2026-08-25): al ser **backend enlazado**, la
+> plataforma activa Easy Auth `azureStaticWebApps` y el backend **sólo acepta
+> lo que entra por el proxy del front** —el `400` del host desnudo lo escribe
+> la plataforma, no nosotros—; y encima va la regla `/*` con `authenticated`
+> de la SWA, con test propio, más el grupo de Posventa. **No hay nada que
+> configurar.** `auth_level=ANONYMOUS` es irrelevante desde internet.
+>
+> El dato personal de la cola sigue siendo real: lo que cambia es que la
+> amenaza es **un usuario ya autenticado del grupo**, y el **volumen**. Una
+> spec que exagera un riesgo gasta el mismo crédito que una que lo esconde.
+>
+> ### Lo que eso mete en el alcance
+>
+> - **Tope duro al `limite` de `GET /api/cola`** (R16, T10-T11): ninguna
+>   llamada se lleva la cola entera. El repositorio ya acota; **el handler
+>   acota también**, que es lo que hoy no existe.
+> - **Ningún dato personal al log** en los tres endpoints nuevos (R18, T12),
+>   con control negativo como el de F-005.
+> - **Corregir la cabecera de `test_f010_endpoints_protegidos.py`** (R31,
+>   **T17, tarea propia**): hoy dice que los endpoints «quedan en internet»,
+>   y dejó de ser cierto. **Sin relajar el test.**
+> - **Descartado**: exigir `x-ms-client-principal`. Base64 sin firma, no es
+>   control de acceso, y encima de algo ya protegido sólo confunde qué
+>   protege de verdad.
+
 > ## Estado al 2026-08-26 · **F-019 con spec escrita, esperando aprobación**
 >
 > Escrita `specs/F-019-endpoints-persistencia/` (requirements EARS, design,

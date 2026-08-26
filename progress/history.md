@@ -617,3 +617,78 @@ Lo que enseñó esta feature:
   de la fila de `dbo.log` con sus códigos de `ope`, y el emparejamiento de
   `gra` entre las dos bases por `cod`. Valdría proponerle al dueño de
   `sigrid-api` llevárselos a `azure-apps/sigrid_tablas.md`.
+
+---
+
+## F-019 · Endpoints de persistencia: guardar la remesa y leer la cola — CERRADA el 2026-08-26
+
+**Cerrada.** Rama `feature/F-019-endpoints-persistencia`, 45 commits, rigor
+`estandar` con spec aprobada por el humano. **CAMBIOS SOLICITADOS (3)** en la
+primera review y **APROBADO** en la segunda (`progress/review_F-019.md`).
+Prioridad máxima por decisión del humano, por delante de F-009.
+
+El problema: F-005 dejó el puerto de persistencia completo y sus seis tablas
+creadas en la base real, **y nadie lo llamaba**. Consecuencia demostrada contra
+el entorno desplegado (defecto 15 de F-010): `POST /api/archivar` subía el
+fichero a SharePoint y **después** no podía escribir su traza, porque
+`archivos.hash_parte` tiene clave ajena contra `partes` y nada insertaba el
+parte.
+
+Qué queda en el repositorio: `POST /api/remesa`, `POST /api/parte` y
+`GET /api/cola` —tres handlers nuevos sobre los puertos que ya existían, más
+`cuerpos.py` con los parsers compartidos—, la traza previa en `/api/archivar`,
+y el cableado del front que los llama en orden. **Cero ficheros SQL, cero
+DDL**, y `RepositorioPartesPort` sin ganar ni un método.
+
+**La pieza que no estaba en la ficha, y es la que resuelve la feature.** La
+ficha pedía «tres endpoints», y tres endpoints no matan el defecto 15: si el
+orden depende de que el llamante se porte bien, el fallo vuelve en cuanto
+alguien llame a `/api/archivar` por su cuenta. Por eso `/api/archivar` escribe
+la traza en estado `pendiente` **antes de subir nada**: como la clave ajena
+existe, esa escritura sólo funciona si el parte ya consta. **La misma
+restricción que fallaba después de subir el fichero pasa a fallar antes**, sin
+inventar un control paralelo que pueda divergir del real.
+
+Evidencias: `bash harness/init.sh` en verde. Cobertura de líneas cambiadas
+**100 %** (269/269, umbral 80 %). Mutación **35/35 muertos, 0 supervivientes**,
+313 s con 8 workers — **reejecutada entera por el reviewer**, no aceptada de
+palabra. Fase RED en las tareas centrales, con traza roja real.
+
+**T24, la verificación manual, la ejecutó el humano el 2026-08-26** y dejó la
+mejor evidencia posible: el mismo paso 1, ejecutado ese día **antes** de
+desplegar F-019, devolvió **500 y subió el fichero igualmente**; después del
+despliegue devuelve **409 sin subir nada**. Mismo endpoint, mismo entorno,
+mismo día. El circuito completo salió 200 en cada eslabón, con la traza escrita
+en PostgreSQL y el reproceso reemplazando en vez de duplicar.
+
+Lo que enseñó esta feature:
+
+1. **Las tres puertas automáticas son ciegas al JavaScript.** Cobertura,
+   mutación e `init.sh` daban verde mientras el cableado del front podía
+   borrarse entero sin que nada fallara: el reviewer lo demostró quitando la
+   llamada que registra la remesa y cambiando la ruta `/remesa` por una
+   inexistente —**122 tests en verde las dos veces**—. Las 18 pruebas que
+   faltaban sólo aparecieron **rompiendo el código a mano**. En la segunda
+   ronda: **nueve roturas, nueve rojos**.
+2. **La lógica que merece un test no puede vivir en `app.js`.** La regla de oro
+   de F-007 estaba escrita para esto y el primer intento la incumplió: el orden
+   de la remesa acabó en el único fichero sin tests. Se sacó a
+   `pipeline.js::procesarRemesa`.
+3. **Un endpoint puede estar bien y su verificación manual no demostrar lo que
+   parece.** El tope de 500 de `GET /api/cola` se «comprobó» con una cola de
+   una entrada: eso prueba que no revienta, no que recorte. Queda dicho en el
+   informe en vez de contarse como verificado.
+
+### Lo que queda vivo, con dueño
+
+- **D4 · recargar el navegador sigue perdiendo el trabajo en curso.** Lo
+  guardado queda guardado, pero repintarlo exige leer una remesa entera con sus
+  partes, y eso pide un método de lectura nuevo en el puerto. El humano lo dejó
+  para **feature nueva**, después de ver el piloto.
+- **`docs/INTEGRACION.md` §8 cambia y hay que copiarlo a
+  `azure-apps/postventa-incidencias.md`**: es del humano, porque los agentes no
+  commitean en ese repositorio.
+- **Un residuo en la biblioteca de dev**: `0677 - RS26.08 - 0000 PARTE FIRMADO`,
+  de origen no documentado. T18 de F-010 usó `0001`, no `0000`.
+- Un `@returns` de `js/pipeline.js` que se quedó corto en T20 (no menciona
+  `guardado`). Una línea, sin dueño asignado.

@@ -238,7 +238,7 @@
 
 ## Fase 9 · Lo que sólo se puede verificar contra el entorno desplegado
 
-- [ ] **T24**: **Verificación: MANUAL (humano)** — el circuito completo del
+- [x] **T24**: **Verificación: MANUAL (humano)** — el circuito completo del
       defecto 15, contra el despliegue y **con la ventana de escritura abierta
       a propósito para la prueba**, con un parte sintético (nunca con un parte
       real de `muestras/`, que lleva datos personales).

@@ -365,6 +365,53 @@ personales, DNI incluido.
 resultado real —no «debería funcionar»— con el fragmento de consola, **sin
 secretos y sin datos personales**.
 
+### Resultado real, ejecutado el 2026-08-26 por el humano
+
+**T24: PASA.** Ejecutada desde la consola del front con sesión iniciada, contra
+`func-postventa-dev`, con parte sintético (obra `0677`, incidencia
+`RS26.08/9999`, DNI `00000000T` no emitido). Ventana de escritura abierta para
+la prueba y **cerrada al terminar**.
+
+| Paso | Esperado | Obtenido |
+|---|---|---|
+| 1 · archivar sin guardar | 409, sin subir nada | **409** ✅, con el motivo explicado en el cuerpo |
+| 2a · `POST /api/remesa` | 200 | **200**, `resultado: creado` ✅ |
+| 2b · `POST /api/parte` | 200 | **200**, `creado` / `creado`, en **237 ms** ✅ |
+| 2c · `POST /api/archivar` | 200 y traza escrita | **200**, `estado: archivado`, carpeta `Postventa/0677` ✅ |
+| 3 · `GET /api/cola` | devuelve el parte con observaciones | **200**, 1 entrada ✅ |
+| 3 bis · `limite=100000` | como mucho 500 | **200**, 1 entrada — ver la salvedad ✅ |
+| 4 · reproceso | sin duplicados, `actualizado` | **200**, `actualizado` / `actualizado`, mismo nombre de fichero ✅ |
+
+**La comparación que vale más que la tabla.** El mismo paso 1, ejecutado ese
+mismo día **antes de desplegar F-019**, devolvió **500 y subió el fichero
+igualmente** a SharePoint —comprobado en la biblioteca—. Después del
+despliegue devuelve **409** y el cuerpo dice que no se ha subido nada. No es
+un test afirmando el arreglo: es el mismo endpoint, el mismo entorno y el
+mismo día, antes y después. **El defecto 15 está muerto.**
+
+Que 2c devolviera `estado: archivado` prueba además que **la traza se escribió
+en PostgreSQL**: si no, habría salido el 500 de `ArchivoSinTraza`.
+
+El `remesa_id` devuelto no se transcribe aquí: es un GUID, y
+`test_f006_repo_sin_identificadores.py` prohíbe que una cadena con esa forma
+entre en el repositorio, aunque sea inventada.
+
+#### Dos salvedades, dichas y no adornadas
+
+1. **El paso 2 no corrió en condiciones limpias.** Quedaba en la carpeta el
+   fichero que subió el intento fallido previo al despliegue, así que 2c avisó
+   de que «ya había un fichero con este nombre y se ha reemplazado». No
+   invalida el resultado —y el paso 4 demuestra lo que de verdad importaba,
+   que reprocesar **reemplaza en vez de crear un `(1)`**, confirmado a ojo por
+   el humano—, pero la comprobación «una sola vez» del paso 2 se apoyó en un
+   estado sucio.
+2. **El tope de 500 (R16) NO quedó demostrado por esta vía.** `limite=100000`
+   devolvió 1 entrada porque la cola solo tenía una: eso prueba que el
+   endpoint no revienta con un número absurdo, **no** que recorte. La
+   protección existe con doble cinturón —handler y repositorio— y sus tests
+   unitarios la cubren; la verificación manual no puede afirmarlo, y no se
+   afirma.
+
 ## 9 · Avisos para el líder
 
 1. **`docs/INTEGRACION.md` §8 ha cambiado y hay que copiarla a

@@ -127,6 +127,50 @@
 >   Si el humano dice que no, el archivado real **sigue sin poder completar**
 >   en el circuito del piloto, y hay que decirlo al cerrar.
 
+> ## Estado al 2026-08-26 · **F-019 CERRADA Y APROBADA · diez features `done`**
+>
+> `progress/review_F-019.md` salió **CAMBIOS SOLICITADOS (3)** y **APROBADO**
+> en la segunda ronda. **T24 la ejecutó el humano** contra el entorno
+> desplegado y pasa. F-019 va a `done` y se mergea en `dev`. Resumen completo
+> en `progress/history.md`.
+>
+> **El defecto 15 está muerto, y con la mejor evidencia posible**: el mismo
+> `POST /api/archivar` sin parte guardado, ejecutado hoy **antes** de desplegar
+> F-019, devolvió **500 y subió el fichero igualmente** a SharePoint;
+> **después** devuelve **409 sin subir nada**. Mismo endpoint, mismo entorno,
+> mismo día.
+>
+> **El circuito completo del piloto ya cierra de punta a punta**: remesa →
+> parte → archivado, los tres 200, con la traza escrita en PostgreSQL
+> (`estado: archivado`) y el reproceso reemplazando en vez de duplicar.
+> `POST /api/parte` tarda **237 ms**, muy por debajo del segundo que habría
+> obligado a replantear la llamada de más.
+>
+> **La lección que se lleva el arnés**: las tres puertas automáticas
+> —cobertura, mutación e `init.sh`— son **ciegas al JavaScript**. Daban verde
+> mientras el cableado del front podía borrarse entero sin que nada fallara.
+> Las 18 pruebas que faltaban sólo aparecieron **rompiendo el código a mano**.
+> Va a F-017, que ya acumula tres propuestas de arnés.
+>
+> ## Lo que queda vivo, con dueño
+>
+> 1. **D4 · recargar el navegador sigue perdiendo el trabajo en curso.**
+>    Feature nueva, por decisión del humano, después de ver el piloto.
+> 2. **`docs/INTEGRACION.md` §8 → `azure-apps/postventa-incidencias.md`**: del
+>    humano, porque los agentes no commitean ahí.
+> 3. **El tope de 500 de `GET /api/cola` no quedó demostrado por T24**: la cola
+>    tenía una sola entrada. Sus tests unitarios sí lo cubren.
+> 4. **Un residuo en la biblioteca de dev**: `0677 - RS26.08 - 0000 PARTE
+>    FIRMADO`, de origen no documentado (T18 de F-010 usó `0001`).
+> 5. **T14 bis** sigue sin dato, pero **reclasificado**: la Function es backend
+>    enlazado con Easy Auth, así que los endpoints de IA **no están expuestos a
+>    internet anónimo**. De urgente a conveniente.
+>
+> **Siguiente por backlog: F-009**, el cierre en Sigrid, con el camino ya
+> despejado por F-008 salvo **cuatro decisiones del humano**: el `tex` y el
+> `usu` de la fila de log, si la escritura de `sigrid-api` está habilitada y
+> con qué prefijos, y si merece la pena confirmar el gráfico-URL.
+
 > ## Estado al 2026-08-26 · **F-019 · SPEC ESCRITA, ESPERANDO APROBACIÓN**
 >
 > `spec-author` sobre la rama `feature/F-019-endpoints-persistencia` (árbol

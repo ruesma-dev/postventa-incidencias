@@ -46,6 +46,11 @@
     "destino",
   ];
 
+  /** Lo que se le dice al usuario cuando la remesa no se pudo registrar. */
+  const AVISO_SIN_REMESA =
+    "no se ha podido registrar la remesa, así que los partes no se podrán " +
+    "archivar: ";
+
   const VEREDICTO_APTO = "apto";
   const DESTINO_ARCHIVO = "archivo_y_cierre";
   const DESTINO_COLA = "cola_validacion_humana";
@@ -242,6 +247,61 @@
    * @returns {Promise<{extraccion, firma, validacion}>} Las tres respuestas
    *          íntegras, que es lo que hace posible revalidar sin gastar IA.
    */
+  /**
+   * Procesa una remesa entera: **registra primero, procesa después** (R25).
+   *
+   * Esta función existe por un defecto concreto. En la primera versión de
+   * F-019 el orden vivía en `app.js`, que no ejecuta ningún test, y la review
+   * lo demostró borrando la línea que registraba la remesa: los 122 tests
+   * siguieron en verde. Es el mismo defecto que F-019 viene a matar —«el
+   * endpoint existe y nadie lo llama»— un nivel más arriba, así que el orden
+   * se muda aquí, que es donde vive «qué se pide y en qué orden» y donde hay
+   * tests que lo miran.
+   *
+   * El registro va antes porque `postventa.partes.remesa_id` tiene clave
+   * ajena contra `postventa.remesas.id`: sin remesa registrada, cada guardado
+   * responde 409 y ningún parte se puede archivar.
+   *
+   * **Un registro fallido no tumba la carga.** Leer y revisar los partes
+   * sigue siendo útil aunque no se puedan archivar, y tumbarla castigaría al
+   * usuario por una avería de la base. Lo que sí ocurre es que se devuelve un
+   * `remesaId` vacío, y con él cada parte queda no archivable **con su
+   * motivo** (R27), en vez de descubrirse al pulsar el botón.
+   *
+   * @param {Object} datos Lo que devolvió `POST /api/split`.
+   * @param {Object} api El cliente de `js/api.js`.
+   * @param {Object} [opciones] `nombreOrigen` y `procesar(remesaId)`, que es
+   *        lo que la pantalla haga con cada parte —en `app.js`, pasarlos por
+   *        la cola de concurrencia—.
+   * @returns {Promise<{remesaId: string, avisos: string[]}>}
+   */
+  async function procesarRemesa(datos, api, opciones) {
+    const ajustes = opciones || {};
+    const partes = (datos && datos.partes) || [];
+    // Copia: la respuesta de `/api/split` no se muta, que es lo que permite
+    // volver sobre ella.
+    const avisos = ((datos && datos.avisos) || []).slice();
+
+    let remesaId = "";
+    try {
+      const registro = await api.registrarRemesa({
+        nombre_origen: ajustes.nombreOrigen || "",
+        num_partes: partes.length,
+        avisos: avisos,
+      });
+      remesaId = (registro && registro.remesa_id) || "";
+    } catch (error) {
+      avisos.push(
+        AVISO_SIN_REMESA + ((error && error.mensaje) || String(error)),
+      );
+    }
+
+    if (ajustes.procesar) {
+      await ajustes.procesar(remesaId);
+    }
+    return { remesaId: remesaId, avisos: avisos };
+  }
+
   async function procesarParte(parte, api, remesaId) {
     const resultados = await Promise.all([
       api.extraer(parte.fichero, parte.hash),
@@ -379,6 +439,8 @@
     CAMPOS_DEL_PARTE: CAMPOS_DEL_PARTE,
     CAMPOS_DE_ARCHIVO: CAMPOS_DE_ARCHIVO,
     UMBRAL_CONFIANZA: UMBRAL_CONFIANZA,
+    AVISO_SIN_REMESA: AVISO_SIN_REMESA,
+    procesarRemesa: procesarRemesa,
     normalizarValor: normalizarValor,
     aplicarEdiciones: aplicarEdiciones,
     cuerpoDeValidacion: cuerpoDeValidacion,

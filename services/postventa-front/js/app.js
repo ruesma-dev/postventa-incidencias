@@ -119,38 +119,24 @@ function appPostventa() {
         this.avisosRemesa = datos.avisos || [];
         this.partes = (datos.partes || []).map(this._parteInicial);
         this.terminados = 0;
-        // F-019 R25: la remesa se registra ANTES de procesar ningún parte.
-        // `partes.remesa_id` tiene clave ajena contra `remesas.id`: sin esto,
-        // cada guardado responde 409 y ningún parte se puede archivar.
-        await this._registrarRemesa(datos);
-        await this._procesarRemesa();
+        // F-019 R25: registrar la remesa ANTES de procesar ningún parte. El
+        // orden lo decide `js/pipeline.js`, que es quien tiene tests: aquí
+        // vivía antes, y borrar la línea dejaba la suite entera en verde.
+        const remesa = await window.Pipeline.procesarRemesa(datos, api, {
+          nombreOrigen: this._nombreDeLaRemesa(),
+          procesar: (remesaId) => {
+            this.remesaId = remesaId;
+            return this._procesarRemesa();
+          },
+        });
+        this.remesaId = remesa.remesaId;
+        this.avisosRemesa = remesa.avisos;
       } catch (error) {
         // R6: se vuelve al estado inicial sin dejar filas a medias.
         this.partes = [];
         this.avisosRemesa = (error && error.avisos) || [];
         this.errorGlobal = (error && error.mensaje) || String(error);
         this.fase = "inactivo";
-      }
-    },
-
-    async _registrarRemesa(datos) {
-      // No tumba la carga si falla: los partes se procesan igual y se pueden
-      // revisar. Lo que no se podrá es archivarlos, y eso lo dice cada parte
-      // con su motivo (R27), en vez de descubrirse al pulsar el botón.
-      try {
-        const registro = await api.registrarRemesa({
-          nombre_origen: this._nombreDeLaRemesa(),
-          num_partes: (datos.partes || []).length,
-          avisos: this.avisosRemesa,
-        });
-        this.remesaId = registro.remesa_id;
-      } catch (error) {
-        this.remesaId = "";
-        this.avisosRemesa = this.avisosRemesa.concat([
-          "no se ha podido registrar la remesa, así que los partes no se " +
-            "podrán archivar: " +
-            ((error && error.mensaje) || String(error)),
-        ]);
       }
     },
 

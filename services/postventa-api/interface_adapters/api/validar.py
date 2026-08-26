@@ -12,6 +12,11 @@ veredicto sin gastar otra llamada multimodal.
 **Solo se admite el cuerpo tal y como lo emiten los otros dos endpoints.** Un
 cuerpo montado a mano es una puerta para que el front invente datos por el
 camino, y lo que se decide aquí es si una incidencia del ERP se cierra.
+
+Los parsers del cuerpo viven en `cuerpos.py` desde F-019, porque
+`POST /api/parte` recibe **el mismo cuerpo** más dos claves y las dos
+comprobaciones tienen que ser literalmente la misma. Aquí no cambió ni una
+regla ni un mensaje al mudarlos.
 """
 
 from __future__ import annotations
@@ -19,30 +24,16 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from application.pipelines.confianza import sanear_confianza
 from domain.models.errores import CuerpoDeValidacionInvalido
-from domain.models.extraccion import (
-    CAMPOS_DEL_PARTE,
-    CampoExtraido,
-    ExtraccionParte,
-    TrazaExtraccion,
-)
-from domain.models.firma import LecturaFirma, clasificacion_desde_texto
+from domain.models.firma import LecturaFirma
 from domain.models.validacion import ResultadoValidacion, validar_parte
 
-#: Lo que tiene que traer el bloque `extraccion` del cuerpo.
-CLAVES_DE_LA_EXTRACCION = ("hash_parte", "campos", "traza")
-
-#: Lo que tiene que traer el bloque `firma` del cuerpo.
-CLAVES_DE_LA_FIRMA = ("hash_parte", "firma", "traza")
-
-#: Las claves de la traza, que se copian tal cual llegan.
-CLAVES_DE_LA_TRAZA = (
-    "proveedor",
-    "modelo",
-    "prompt_key",
-    "version_prompt",
-    "huella_prompt",
+from interface_adapters.api.cuerpos import (
+    CLAVES_DE_LA_EXTRACCION,
+    CLAVES_DE_LA_FIRMA,
+    a_extraccion,
+    a_lectura_de_firma,
+    bloque,
 )
 
 
@@ -58,95 +49,14 @@ def validar(cuerpo: Mapping[str, Any]) -> dict[str, Any]:
             "el cuerpo tiene que ser un objeto JSON con 'extraccion' y 'firma'"
         )
 
-    extraccion = _bloque(cuerpo, "extraccion", CLAVES_DE_LA_EXTRACCION)
-    firma = _bloque(cuerpo, "firma", CLAVES_DE_LA_FIRMA)
+    extraccion = bloque(cuerpo, "extraccion", CLAVES_DE_LA_EXTRACCION)
+    firma = bloque(cuerpo, "firma", CLAVES_DE_LA_FIRMA)
 
-    lectura = _a_lectura_de_firma(firma)
+    lectura = a_lectura_de_firma(firma)
     return _serializar(
-        validar_parte(_a_extraccion(extraccion), lectura),
+        validar_parte(a_extraccion(extraccion), lectura),
         lectura,
         _avisos(extraccion, firma),
-    )
-
-
-def _bloque(
-    cuerpo: Mapping[str, Any], nombre: str, obligatorias: tuple[str, ...]
-) -> Mapping[str, Any]:
-    """Un bloque del cuerpo, comprobado; o el error diciendo qué le falta."""
-    bloque = cuerpo.get(nombre)
-    if not isinstance(bloque, Mapping):
-        raise CuerpoDeValidacionInvalido(
-            f"el cuerpo no trae '{nombre}', que es lo que devuelve el endpoint "
-            f"correspondiente"
-        )
-    faltan = [clave for clave in obligatorias if clave not in bloque]
-    if faltan:
-        raise CuerpoDeValidacionInvalido(
-            f"el bloque '{nombre}' del cuerpo no trae: {', '.join(faltan)}"
-        )
-    return bloque
-
-
-def _a_extraccion(bloque: Mapping[str, Any]) -> ExtraccionParte:
-    """Reconstruye lo que devolvió `/api/extraer`.
-
-    Los nueve campos son contrato: si falta uno, no se valida. Rellenarlo con
-    un vacío de consolación sería inventarse que el papel estaba en blanco, y
-    de ahí saldría un veredicto sobre un dato que nadie leyó.
-    """
-    campos = bloque["campos"]
-    if not isinstance(campos, Mapping):
-        raise CuerpoDeValidacionInvalido(
-            "el bloque 'extraccion' trae unos 'campos' que no son un objeto"
-        )
-    faltan = [nombre for nombre in CAMPOS_DEL_PARTE if nombre not in campos]
-    if faltan:
-        raise CuerpoDeValidacionInvalido(
-            f"al bloque 'extraccion' le faltan campos: {', '.join(faltan)}"
-        )
-    return ExtraccionParte(
-        hash_parte=str(bloque["hash_parte"]),
-        campos={
-            nombre: _a_campo(campos[nombre]) for nombre in CAMPOS_DEL_PARTE
-        },
-        traza=_a_traza(bloque["traza"]),
-        avisos=(),
-    )
-
-
-def _a_campo(crudo: Any) -> CampoExtraido:
-    """Un campo del cuerpo, con la confianza saneada por la regla de siempre."""
-    valores = crudo if isinstance(crudo, Mapping) else {}
-    confianza, _ = sanear_confianza(valores.get("confianza_pct"))
-    valor = valores.get("valor")
-    return CampoExtraido(
-        valor=None if valor is None else str(valor), confianza_pct=confianza
-    )
-
-
-def _a_lectura_de_firma(bloque: Mapping[str, Any]) -> LecturaFirma:
-    """Reconstruye lo que devolvió `/api/firma`.
-
-    La etiqueta se traduce con la **misma** función que el dominio: el cuerpo
-    llega de fuera, y aquí tampoco se da por firmado lo que no diga
-    literalmente `humana`.
-    """
-    firma = bloque["firma"] if isinstance(bloque["firma"], Mapping) else {}
-    confianza, _ = sanear_confianza(firma.get("confianza_pct"))
-    return LecturaFirma(
-        hash_parte=str(bloque["hash_parte"]),
-        clasificacion=clasificacion_desde_texto(firma.get("clasificacion")),
-        confianza_pct=confianza,
-        traza=_a_traza(bloque["traza"]),
-        avisos=(),
-    )
-
-
-def _a_traza(crudo: Any) -> TrazaExtraccion:
-    """La traza que llega, copiada tal cual. No decide nada del veredicto."""
-    valores = crudo if isinstance(crudo, Mapping) else {}
-    return TrazaExtraccion(
-        **{clave: str(valores.get(clave, "")) for clave in CLAVES_DE_LA_TRAZA}
     )
 
 
@@ -162,8 +72,8 @@ def _avisos(
     """
     return [
         str(aviso)
-        for bloque in (extraccion, firma)
-        for aviso in bloque.get("avisos", [])
+        for bloque_leido in (extraccion, firma)
+        for aviso in bloque_leido.get("avisos", [])
     ]
 
 

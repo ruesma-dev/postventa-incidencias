@@ -24,6 +24,23 @@ Endpoints:
         devuelve el veredicto. **Sin IA**: por eso se puede revalidar un parte
         corregido sin gastar otra llamada.
 
+    POST /api/remesa
+        Deja constancia de una subida y devuelve su `remesa_id` (F-019). Es el
+        **primer eslabón del orden**: sin remesa registrada no se puede
+        guardar un parte.
+
+    POST /api/parte
+        Guarda **un** parte y su veredicto, **recalculado aquí** con las
+        reglas de F-004 (F-019). Nunca acepta un veredicto ya hecho en el
+        cuerpo: lo que se decide con él es si una incidencia del ERP se
+        archiva y se cierra. Sin esto, `POST /api/archivar` no puede
+        completar.
+
+    GET /api/cola
+        Los partes que esperan decisión humana, para que la cola **sobreviva
+        entre sesiones** (F-019). Ver más abajo qué añade al cuadro de
+        seguridad.
+
     POST /api/archivar
         Nombra **un** parte apto y lo archiva en SharePoint, sin duplicar.
         Desde un puesto de trabajo responde **503** y no sube nada: la única
@@ -32,18 +49,23 @@ Endpoints:
         (`ARCHIVO_HABILITADO` apagado), que se abre solo cuando toca archivar
         de verdad. Ver la nota del final de este módulo.
 
+        Desde F-019 **exige que el parte conste guardado**: escribe la traza
+        del archivo en `pendiente` antes de tocar SharePoint, y si el parte no
+        está en `postventa.partes` la clave ajena la rechaza y responde
+        **409 sin haber subido nada**.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
 
 ---
 
-## Por qué los seis endpoints están en `ANONYMOUS`, y no es un descuido
+## Por qué los nueve endpoints están en `ANONYMOUS`, y no es un descuido
 
-**No lo toques sin leer esto.** Un endpoint anónimo en un servicio publicado
-en internet parece un olvido, y el arreglo evidente —`auth_level=FUNCTION`—
-**rompe el front el mismo día que se aplica**, sin que ningún test de este
-repositorio lo note, porque ninguno atraviesa el proxy de la Static Web App.
+**No lo toques sin leer esto.** Un endpoint anónimo parece un olvido, y el
+arreglo evidente —`auth_level=FUNCTION`— **rompe el front el mismo día que se
+aplica**, sin que ningún test de este repositorio lo note, porque ninguno
+atraviesa el proxy de la Static Web App.
 
 El servicio está desplegado como **backend enlazado** de una Static Web App
 (F-010, `design.md` §9 bis). En ese montaje el proxy de la Static Web App:
@@ -56,7 +78,7 @@ El servicio está desplegado como **backend enlazado** de una Static Web App
 De ahí las dos consecuencias que fijan este fichero:
 
 1. **`auth_level=FUNCTION` no vale**: la Static Web App no aporta la clave que
-   la Function exigiría, así que los seis endpoints empezarían a devolver
+   la Function exigiría, así que los nueve endpoints empezarían a devolver
    `401` a través del front.
 2. **La autenticación integrada de Entra en la Function App tampoco vale**:
    espera un *bearer* que el proxy no envía.
@@ -65,23 +87,64 @@ Y `x-ms-client-principal` **no sirve como control de acceso**: va en base64
 **sin firma**, y cualquiera que llame a la Function directamente puede
 fabricarla. Sirve para saber quién es el usuario, no para impedir el paso.
 
-### Dónde está entonces el control de acceso
+### Dónde está de verdad la protección: la pone la plataforma
 
-En capas, y ninguna de ellas está en este fichero:
+Esto se descubrió ejecutando contra Azure el 2026-08-25 (**defecto 13 de
+F-010**) y está escrito en `docs/DESPLIEGUE.md` §5 bis. Son dos capas, y
+ninguna de las dos está en este fichero:
 
-1. **La Static Web App** autentica contra Entra y exige pertenencia al
-   **grupo de Posventa** (asignación obligatoria en la aplicación
-   empresarial). Es la capa que de verdad decide quién usa la aplicación.
-2. **La ventana de escritura de `POST /api/archivar`** —el candado principal—:
-   `ARCHIVO_HABILITADO` se despliega **apagado**, y fuera de esa ventana el
-   endpoint responde `503` a todo el mundo, incluido un desconocido, **sin
-   tocar SharePoint**. Se abre y se cierra cambiando una App Setting, sin
-   redesplegar.
-3. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
+1. **El backend enlazado.** Desde que la Function App es backend enlazado de
+   la Static Web App, la plataforma le activa **Easy Auth con el proveedor
+   `azureStaticWebApps`**, y el backend **sólo acepta lo que entra por el
+   proxy del front**. Preguntarle por su nombre de host —cualquier ruta,
+   `GET /api/health` incluido— devuelve
+   `{"code":400,"message":"Login not supported for provider azureStaticWebApps"}`,
+   y **ese cuerpo no es nuestro**: lo escribe la plataforma antes de que este
+   código se entere. **No hay nada que configurar**: ya está puesto.
+2. **La regla `/*` de la Static Web App.** `staticwebapp.config.json` exige
+   `authenticated` en `/*` y en `/api/*`, con el `401` redirigiendo al inicio
+   de sesión, y `services/postventa-front/tests/test_f010_config_swa.py` lo
+   fija con su guardia y su control negativo. Encima va la asignación
+   obligatoria al **grupo de Posventa** en la aplicación empresarial.
+
+**Consecuencia:** el `auth_level` de este fichero es **irrelevante desde
+internet**, porque nadie alcanza el código sin pasar por el proxy y el proxy
+exige sesión. Lo que decide quién usa la aplicación es la capa 2.
+
+### Y los otros dos candados, que son de otra cosa
+
+1. **La ventana de escritura de `POST /api/archivar`**: `ARCHIVO_HABILITADO`
+   se despliega **apagado**, y fuera de esa ventana el endpoint responde `503`
+   a todo el mundo **sin tocar SharePoint**. Se abre y se cierra cambiando una
+   App Setting, sin redesplegar. Protege la biblioteca de Posventa, que es un
+   sistema ajeno y compartido; **los tres endpoints de F-019 no dependen de
+   ella** a propósito (R34): escriben en el esquema propio del proyecto, y
+   atarlos dejaría sin poder guardar el trabajo de revisión justo cuando el
+   archivado está cerrado, que es como se despliega.
+2. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
    proporcionada al riesgo de `/api/extraer` y `/api/firma`: gastar cuota.
-4. **La restricción de acceso público de la Function App**, si resulta
-   compatible con el backend enlazado. Es mejora, no cimiento: si al aplicarla
-   el front deja de alcanzar el backend, se revierte.
+
+### Qué añade `GET /api/cola` a este cuadro
+
+Es el **primer endpoint del servicio que devuelve dato personal acumulado sin
+que el llamante aporte el PDF**. Los ocho restantes exigen que tú mandes el
+parte, o que sepas su `hash`: quien no lo tiene no obtiene nada de él. La cola
+devuelve transcripciones manuscritas de clientes, códigos de obra y números de
+incidencia sin aportar nada.
+
+Eso **no** lo expone a internet, por lo dicho arriba. Lo que cambia es **de
+quién** hay que protegerlo: la exposición que crea es **hacia un usuario ya
+autenticado del grupo de Posventa**, que es precisamente quien tiene que leer
+esa cola. Y, sobre todo, el riesgo real pasa a ser el **volumen**: una sola
+llamada no puede convertirse en un volcado de la cola entera contra un
+servidor de 1 vCPU compartido con la producción de otros proyectos. De ahí el
+tope duro de `interface_adapters/api/cola.py` y que de la cola sólo se
+registre **cuántas** entradas volvieron.
+
+**Descartado a propósito: exigir `x-ms-client-principal`.** Parece subir el
+listón y no lo sube —va sin firma, se fabrica— y encima de algo que ya protege
+la plataforma sólo consigue **confundir qué protege de verdad**: quien lo lea
+creerá que hay un control donde no lo hay.
 
 `GET /api/health` seguiría siendo anónimo aunque lo demás no lo fuera: lo usan
 el propio despliegue y el front para saber si el backend vive, y no expone

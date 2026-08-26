@@ -39,9 +39,21 @@ import pytest
 #: que el runtime de Functions lo haya construido.
 FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 
-#: Los seis endpoints del servicio. Si manana hay un septimo, este test se
+#: Los nueve endpoints del servicio. Si manana hay un decimo, este test se
 #: entera: la cuenta tiene que cuadrar con las rutas declaradas.
-ENDPOINTS = ("health", "split", "extraer", "firma", "validar", "archivar")
+#:
+#: Eran seis hasta F-019, que anadio `remesa`, `parte` y `cola`.
+ENDPOINTS = (
+    "health",
+    "split",
+    "extraer",
+    "firma",
+    "validar",
+    "remesa",
+    "parte",
+    "cola",
+    "archivar",
+)
 
 #: Un decorador de ruta con su nivel de autenticacion.
 PATRON_RUTA = re.compile(
@@ -63,8 +75,42 @@ def niveles(codigo: str) -> dict[str, str]:
     }
 
 
+def test_f019_r30_la_cabecera_dice_donde_esta_la_proteccion_de_verdad(codigo):
+    """R30 · el backend enlazado, la regla `/*` y el grupo.
+
+    No basta con decir «esta anonimo y no pasa nada»: quien lea esto tiene que
+    salir sabiendo **quien impide el paso**, y que no hay nada que configurar
+    porque lo pone la plataforma. Sin eso, alguien se pone a apretar tuercas
+    en Azure que ya estan apretadas -que es lo que casi pasa en la primera
+    ronda de la spec de F-019- o, peor, deja escrito que el servicio esta mas
+    desprotegido de lo que esta.
+    """
+    cabecera = codigo[: codigo.index("from __future__")]
+
+    assert "azureStaticWebApps" in cabecera
+    assert "Easy Auth" in cabecera
+    assert "staticwebapp.config.json" in cabecera
+    assert "irrelevante desde" in cabecera
+
+
+def test_f019_r30_la_cabecera_dice_que_anade_la_cola_al_cuadro(codigo):
+    """R30 · `GET /api/cola` cambia el modelo de amenaza, y hay que decirlo.
+
+    Es el primer endpoint que devuelve dato personal acumulado sin que el
+    llamante aporte el PDF. La exposicion que crea no es hacia internet: es
+    hacia un usuario ya autenticado del grupo, y el riesgo real es el volumen.
+    Quien lo lea al reves protegera de lo que no toca.
+    """
+    cabecera = codigo[: codigo.index("from __future__")]
+
+    assert "/api/cola" in cabecera
+    assert "dato personal acumulado" in cabecera
+    assert "volumen" in cabecera
+    assert "tope duro" in cabecera
+
+
 def test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada(codigo):
-    """R32 · los seis siguen anonimos **y** la cabecera dice por que.
+    """R32 · los nueve siguen anonimos **y** la cabecera dice por que.
 
     Las dos mitades en un solo test, y no en dos, porque lo que hay que
     impedir es que se separen: un `auth_level` cambiado con la nota intacta
@@ -143,7 +189,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == 6
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 9
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

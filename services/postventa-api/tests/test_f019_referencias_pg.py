@@ -33,9 +33,11 @@ from domain.models.errores import (
     ReferenciaNoConsta,
 )
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
-
+from domain.models.remesa import ModoDeteccion, ParteTroceado
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
+
 from tests.utiles_pg import ConexionDoble
+from tests.utiles_validacion import extraccion_de_ejemplo
 
 ESQUEMA = "postventa"
 AHORA_INVENTADO = datetime(2026, 8, 26, 9, 0, tzinfo=UTC)
@@ -50,6 +52,17 @@ HASH_INVENTADO = "hash-inventado-f019"
 #: no puede distinguirla de una de verdad. Generarlo aquí da un UUID válido
 #: para el test sin dejar ninguno escrito en el fichero.
 REMESA_INVENTADA = str(uuid.uuid4())
+
+
+def _parte() -> ParteTroceado:
+    """Un parte troceado inventado, sin nada que salga de un papel real."""
+    return ParteTroceado(
+        hash=HASH_INVENTADO,
+        origen="remesa-inventada.pdf",
+        paginas_origen=(1,),
+        modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
+        contenido=b"%PDF-inventado",
+    )
 
 
 def _traza() -> TrazaArchivo:
@@ -122,24 +135,13 @@ def test_f019_r11_guardar_un_parte_de_una_remesa_que_no_consta_tambien():
     tiene que responder **409 «registra la remesa primero»**, y para eso el
     adaptador tiene que distinguir el error aquí abajo.
     """
-    from tests.utiles_validacion import extraccion_de_ejemplo
-    from domain.models.remesa import ModoDeteccion, ParteTroceado
-
     conexion = ConexionDoble().fallar(
         "INSERT INTO postventa.partes",
         psycopg.errors.ForeignKeyViolation("violacion inventada de clave ajena"),
     )
-    parte = ParteTroceado(
-        hash=HASH_INVENTADO,
-        origen="remesa-inventada.pdf",
-        paginas_origen=(1,),
-        modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
-        contenido=b"%PDF-inventado",
-    )
-
     with pytest.raises(ReferenciaNoConsta):
         _repositorio(conexion).guardar_parte(
-            parte=parte,
+            parte=_parte(),
             extraccion=extraccion_de_ejemplo(hash_parte=HASH_INVENTADO),
             remesa_id=REMESA_INVENTADA,
             ahora=AHORA_INVENTADO,
@@ -161,20 +163,9 @@ def test_f019_r20_el_motivo_nombra_la_operacion_y_nunca_los_parametros():
             f"detalle con {dni_inventado} y {observaciones_inventadas} dentro"
         ),
     )
-    from tests.utiles_validacion import extraccion_de_ejemplo
-    from domain.models.remesa import ModoDeteccion, ParteTroceado
-
-    parte = ParteTroceado(
-        hash=HASH_INVENTADO,
-        origen="remesa-inventada.pdf",
-        paginas_origen=(1,),
-        modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
-        contenido=b"%PDF-inventado",
-    )
-
     with pytest.raises(ReferenciaNoConsta) as fallo:
         _repositorio(conexion).guardar_parte(
-            parte=parte,
+            parte=_parte(),
             extraccion=extraccion_de_ejemplo(
                 hash_parte=HASH_INVENTADO,
                 dni_cliente=dni_inventado,

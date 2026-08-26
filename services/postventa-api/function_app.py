@@ -108,8 +108,9 @@ from domain.models.errores import (
     NombradoImposible,
     ParteDemasiadoGrande,
     ParteNoApto,
-    PeticionDePersistenciaInvalida,
     PersistenciaNoDisponible,
+    PeticionDePersistenciaInvalida,
+    ReferenciaNoConsta,
     RemesaSinPdfUtilizable,
 )
 from domain.models.remesa import DocumentoEntrada
@@ -117,6 +118,7 @@ from interface_adapters.api.archivar import archivar_parte
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
+from interface_adapters.api.parte import guardar_parte_http
 from interface_adapters.api.remesa import registrar_remesa
 from interface_adapters.api.split import trocear_remesa
 from interface_adapters.api.validar import validar as validar_parte_http
@@ -310,6 +312,81 @@ def remesa(req: func.HttpRequest) -> func.HttpResponse:
         )
     log.info(
         "remesa: id=%s resultado=%s", cuerpo["remesa_id"], cuerpo["resultado"]
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="parte", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def parte(req: func.HttpRequest) -> func.HttpResponse:
+    """Guarda **un** parte con su veredicto recalculado (F-019, R7).
+
+    Solo traduce: saca el JSON de la petición, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. Cada código dice una cosa distinta a
+    propósito: **400** la petición está mal formada, **409** la remesa que
+    dice el `remesa_id` **no consta registrada** —hay que llamar antes a
+    `POST /api/remesa`— y **503** aquí y ahora no hay base de datos. En los
+    tres, sin haber escrito nada.
+
+    El 409 y el 503 no se unifican «porque los dos son fallos de la base»:
+    llevan a acciones opuestas —registrar la remesa, o esperar y reintentar—, y
+    confundirlos es exactamente lo que costó media hora en el defecto 15 de
+    F-010.
+
+    El log lleva el `hash_parte`, el `remesa_id` y los dos resultados.
+    **Nunca** el DNI, ni las observaciones, ni la descripción, ni la promoción
+    (R18): el cuerpo los trae y este log sobrevive al parte.
+    """
+    try:
+        cuerpo = guardar_parte_http(req.get_json())
+    except ValueError:
+        log.info("parte rechazado: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    except (PeticionDePersistenciaInvalida, CuerpoDeValidacionInvalido) as error:
+        log.info("parte rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ReferenciaNoConsta as error:
+        log.info("parte sin remesa registrada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"la remesa de este parte no consta registrada, así que no "
+                    f"se ha guardado nada: hay que registrarla antes con "
+                    f"POST /api/remesa y reenviar el parte con el 'remesa_id' "
+                    f"que devuelva. Motivo: {error.motivo}"
+                )
+            },
+            409,
+        )
+    except ConfiguracionPgIncompleta as error:
+        log.warning("parte sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no guarda nada: no se ha guardado el parte. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("parte sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"guardado el parte: se puede reintentar cuando la base "
+                    f"vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info(
+        "parte: hash=%s parte=%s validacion=%s avisos=%d",
+        cuerpo["hash_parte"],
+        cuerpo["resultado_parte"],
+        cuerpo["resultado_validacion"],
+        len(cuerpo["avisos"]),
     )
     return _json(cuerpo, 200)
 

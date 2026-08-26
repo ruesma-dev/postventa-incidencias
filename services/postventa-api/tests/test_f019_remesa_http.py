@@ -247,6 +247,45 @@ def test_f019_r4_un_cuerpo_que_no_cumple_el_contrato_es_400(
     assert repositorio.remesas == [], caso
 
 
+@pytest.mark.parametrize(
+    ("caso", "avisos"),
+    (
+        ("un texto suelto", "no soy una lista"),
+        ("un objeto", {"aviso": "tampoco"}),
+        ("un número", 3),
+    ),
+)
+def test_f019_r4_unos_avisos_que_no_son_una_lista_son_400(
+    monkeypatch, caso, avisos
+):
+    """R4 · `avisos` es opcional, pero si viene tiene que ser una lista.
+
+    Dejar pasar un texto suelto guardaría en la columna `avisos` sus
+    caracteres uno a uno, que es un dato que nadie escribió y que nadie
+    reconocería al leerlo meses después.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo(avisos=avisos))
+
+    assert respuesta.status_code == 400, caso
+    assert repositorio.remesas == [], caso
+
+
+def test_f019_r4_sin_avisos_la_remesa_se_registra_igual(monkeypatch):
+    """R4 · y **son opcionales de verdad**: un troceado limpio no trae avisos.
+
+    Control positivo del test de arriba: sin él, una implementación que
+    exigiera `avisos` siempre pasaría los cinco casos negativos.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo())
+
+    assert respuesta.status_code == 200
+    assert repositorio.remesas[-1].avisos == ()
+
+
 def test_f019_r4_un_cuerpo_que_no_es_json_es_400(monkeypatch):
     """R4 · ni siquiera llega a ser un objeto: **400**, no 500."""
     repositorio = RepositorioEnMemoria()

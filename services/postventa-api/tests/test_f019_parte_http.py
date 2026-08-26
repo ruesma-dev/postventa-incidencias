@@ -381,6 +381,113 @@ def test_f019_r10_a_la_extraccion_le_falta_un_campo_y_es_400(monkeypatch):
     assert repositorio.partes == []
 
 
+@pytest.mark.parametrize(
+    ("caso", "cuerpo"),
+    (
+        ("una lista", ["esto", "no", "es", "un", "objeto"]),
+        ("un número", 42),
+        ("una cadena", "el cuerpo entero como texto"),
+    ),
+)
+def test_f019_r10_un_cuerpo_que_no_es_un_objeto_es_400(monkeypatch, caso, cuerpo):
+    """R10 · JSON válido pero que no es un objeto: **400**, no 500.
+
+    Es JSON legal, así que `req.get_json()` no protesta: quien tiene que
+    protestar es el handler. Sin esto, un `[]` acabaría en un `AttributeError`
+    y el llamante recibiría un 500 mudo por una petición suya mal formada.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    respuesta = _responder(monkeypatch, repositorio, cuerpo)
+
+    assert respuesta.status_code == 400, caso
+    assert repositorio.partes == [], caso
+
+
+@pytest.mark.parametrize(
+    ("caso", "parte"),
+    (
+        ("hash vacío", {"hash": ""}),
+        ("hash de solo espacios", {"hash": "   "}),
+        ("hash que no es texto", {"hash": 12345}),
+        ("origen vacío", {"origen": ""}),
+        ("origen que no es texto", {"origen": ["Mirasierra.pdf"]}),
+    ),
+)
+def test_f019_r10_un_hash_o_un_origen_vacios_son_400(monkeypatch, caso, parte):
+    """R10 · la clave está, pero no trae nada. Y eso también es un cuerpo malo.
+
+    Es distinto de que falte —eso lo caza el comprobador de bloques— y hay que
+    cazarlo aparte: un `hash` vacío pasaría el `in bloque` y acabaría siendo la
+    clave primaria de una fila que nadie puede volver a encontrar.
+    """
+    repositorio = RepositorioEnMemoria()
+    bloque = _bloque_parte(**parte)
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo(parte=bloque))
+
+    assert respuesta.status_code == 400, caso
+    assert repositorio.partes == [], caso
+
+
+@pytest.mark.parametrize(
+    ("caso", "paginas"),
+    (
+        ("un número suelto", 3),
+        ("una cadena", "3"),
+        ("una cadena con varias", "3,4"),
+        ("nada", None),
+    ),
+)
+def test_f019_r10_unas_paginas_que_no_son_una_lista_son_400(
+    monkeypatch, caso, paginas
+):
+    """R10 · `paginas_origen` es una lista de números, no un texto.
+
+    La cadena va aparte y no es rebuscada: `"3"` **es** una secuencia en
+    Python, así que un `isinstance(crudo, Sequence)` a secas la dejaría pasar y
+    guardaría la página `"3"` como los caracteres de su nombre.
+    """
+    repositorio = RepositorioEnMemoria()
+    bloque = _bloque_parte(paginas_origen=paginas)
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo(parte=bloque))
+
+    assert respuesta.status_code == 400, caso
+    assert repositorio.partes == [], caso
+
+
+def test_f019_r7_el_envoltorio_delega_el_resto_del_puerto():
+    """R7 · el envoltorio que anota los resultados **no se interpone**.
+
+    Sólo le interesan `guardar_parte` y `guardar_validacion`, que son las dos
+    que `paso_persistencia` llama hoy. Las otras cuatro operaciones del puerto
+    se declaran delegando, para que el día que el paso llame a otra no se tope
+    con un `AttributeError` en producción.
+
+    Se prueba de verdad y no se da por bueno: una delegación escrita y nunca
+    ejecutada es exactamente donde se esconde un nombre de argumento mal
+    tecleado.
+    """
+    from domain.models.persistencia import EstadoArchivo, TrazaArchivo
+    from interface_adapters.api.parte import _AnotaLosResultados
+
+    interno = RepositorioEnMemoria(cola=())
+    envoltorio = _AnotaLosResultados(interno)
+    traza = TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.PENDIENTE)
+
+    envoltorio.guardar_remesa(remesa="una remesa inventada")
+    envoltorio.guardar_archivo(traza=traza)
+    envoltorio.guardar_cierre(traza="un cierre inventado")
+    entradas = envoltorio.cola_validacion_humana(limite=7)
+
+    assert interno.remesas == ["una remesa inventada"]
+    assert interno.archivos == [traza]
+    assert interno.cierres == ["un cierre inventado"]
+    assert interno.limites == [7]
+    assert entradas == ()
+
+
 def test_f019_r10_un_cuerpo_que_no_es_json_es_400(monkeypatch):
     """R10 · ni siquiera llega a ser un objeto: **400**, no 500."""
     import function_app

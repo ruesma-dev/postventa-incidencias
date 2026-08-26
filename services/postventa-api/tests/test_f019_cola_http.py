@@ -27,8 +27,8 @@ import pytest
 from config.settings import obtener_ajustes
 from domain.models.errores import ConfiguracionPgIncompleta, PersistenciaNoDisponible
 from domain.models.persistencia import EntradaCola
-
 from infrastructure.persistencia.sentencias import LIMITE_MAXIMO_COLA
+
 from tests.utiles_pg import RepositorioEnMemoria
 
 #: El contrato de la respuesta (R14): estas dos claves y **ninguna más**.

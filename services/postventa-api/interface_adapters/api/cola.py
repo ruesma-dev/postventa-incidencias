@@ -21,9 +21,18 @@ su vez exige `authenticated` en `/*` y pertenencia al grupo de Posventa
 sola llamada no puede convertirse en un volcado de la cola entera contra un
 servidor compartido de 1 vCPU.
 
-De ahí la cautela que vive en este fichero: **nada al log** (R18). De aquí
-sólo se registra **cuántas** entradas volvieron; cada una lleva texto
-manuscrito de un cliente y el log sobrevive al parte.
+De ahí las dos cautelas que viven en este fichero:
+
+1. **El tope duro** (R16): ninguna llamada se lleva más de
+   `LIMITE_MAXIMO_COLA` entradas, venga lo que venga en la petición. Se
+   **acota, no se rechaza**: quien pide la cola es el front y un número
+   absurdo no debe tumbarle la pantalla. Y se acota **además** del techo que
+   ya aplica `sentencias._limite_seguro`, que es el repositorio: dos
+   cinturones a propósito, porque el que falla es el que no se ve, y el
+   handler es el que decide qué se le pide a la base.
+2. **Nada al log** (R18): de aquí sólo se registra **cuántas** entradas
+   volvieron. Cada una lleva texto manuscrito de un cliente y el log
+   sobrevive al parte.
 
 ## No mira `ARCHIVO_HABILITADO` (R34)
 
@@ -41,6 +50,7 @@ from domain.models.errores import PeticionDePersistenciaInvalida
 from domain.models.persistencia import EntradaCola
 from domain.ports.persistencia import RepositorioPartesPort
 from infrastructure.persistencia.fabrica import construir_repositorio
+from infrastructure.persistencia.sentencias import LIMITE_MAXIMO_COLA
 
 __all__ = ["LIMITE_POR_DEFECTO", "leer_cola"]
 
@@ -70,9 +80,13 @@ def leer_cola(
         else construir_repositorio(obtener_ajustes())
     )
     entradas = almacen.cola_validacion_humana(limite=pedidas)
+    # El segundo cinturón (R16): ni aunque el repositorio devolviera de más
+    # —un `LIMIT` que alguien quitara del SQL, otra implementación del
+    # puerto—, esta respuesta sirve la cola entera de un tirón.
+    servidas = entradas[:LIMITE_MAXIMO_COLA]
     return {
-        "total": len(entradas),
-        "entradas": [_serializar(entrada) for entrada in entradas],
+        "total": len(servidas),
+        "entradas": [_serializar(entrada) for entrada in servidas],
     }
 
 
@@ -96,7 +110,11 @@ def _limite(crudo: Any) -> int:
         raise PeticionDePersistenciaInvalida(
             "'limite' tiene que ser un número entero mayor o igual que uno"
         )
-    return pedidas
+    # R16, el tope duro: se **acota**, no se rechaza. Un número absurdo no
+    # debe tumbar la pantalla de quien pide la cola; lo que no puede es que
+    # una sola llamada se lleve la cola entera contra un servidor de 1 vCPU
+    # compartido con la producción de otros proyectos.
+    return min(pedidas, LIMITE_MAXIMO_COLA)
 
 
 def _serializar(entrada: EntradaCola) -> dict[str, Any]:

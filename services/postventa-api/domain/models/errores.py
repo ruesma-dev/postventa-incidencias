@@ -289,6 +289,32 @@ class ArchivoFallido(Exception):
         self.motivo = motivo
 
 
+class ArchivoSinTraza(Exception):
+    """El parte **está subido** y no ha quedado constancia (defecto 14, F-010).
+
+    Es el único estado del archivo en el que la operación salió a medias: el
+    PDF ya está en la biblioteca de Posventa —y ahí se queda: nadie lo borra
+    para «dejarlo limpio»— pero la traza de F-005 no se ha podido escribir.
+
+    Existe porque **el borde no puede deducirlo**. Cuando lo que sale del paso
+    es un `PersistenciaNoDisponible` a secas, quien recibe la respuesta no
+    tiene forma de saber si el fichero llegó a subirse, y las dos lecturas
+    llevan a acciones opuestas: reintentar, o ir a mirar la carpeta. El único
+    que conoce el orden es el paso, y por eso es él quien lo nombra.
+
+    Lo levantó a la luz T18 el 2026-08-25: la clave ajena `archivos_hash_parte`
+    rechazó la traza porque el parte no estaba en `partes` —eso es F-019—, y el
+    llamante recibió un **500 con el cuerpo vacío**.
+
+    El `motivo` reenvía el de la persistencia, que F-005 compone **sin DSN, sin
+    contraseña y sin nada del parte** (R26, R29).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
 class ArchivoDeshabilitado(Exception):
     """Este sitio no puede archivar en SharePoint (F-006, R19, R20).
 

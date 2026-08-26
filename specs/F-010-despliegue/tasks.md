@@ -24,7 +24,7 @@
 
 ## Fase 0 · Lo que el humano tiene que resolver antes
 
-- [ ] **T1 · MANUAL (humano) · D1 RESUELTA el 2026-08-20** — Crear el **grupo
+- [x] **T1 · MANUAL (humano) · D1 RESUELTA el 2026-08-20** — Crear el **grupo
       de seguridad de Posventa** en Entra con los miembros del piloto dentro.
       El humano lo hace él mismo y **da por bueno el nombre
       `posventa-usuarios`**. Sin el grupo no hay a quién restringir el acceso
@@ -185,15 +185,33 @@
 
 ## Fase 4 · Ejecución del despliegue · MANUAL (humano)
 
-> Antes de nada: `az login` y la suscripción correcta seleccionada. Los cinco
-> scripts se copian fuera del repositorio antes de ejecutarlos, como se hizo
-> en F-006, para no ensuciar el árbol de trabajo.
+> Antes de nada: `az login` y la suscripción correcta seleccionada.
+>
+> ~~Los cinco scripts se copian fuera del repositorio antes de ejecutarlos,
+> como se hizo en F-006, para no ensuciar el árbol de trabajo:
+> `copy infra\*.ps1 $HOME\`~~ → **RECTIFICADO EL 2026-08-25, tras
+> ejecutarlo**: **solo se copian fuera los que funcionan fuera**.
+>
+> `desplegar_backend.ps1` y `desplegar_front.ps1` deducen la raíz del
+> repositorio con `$raiz = Split-Path -Parent $PSScriptRoot` para encontrar
+> `services\`; copiados a `$HOME` esa cuenta da `C:\Users` y no encuentran
+> nada que publicar. **Se ejecutan desde `infra\`**, y no ensucian el árbol:
+> el front hace su copia de trabajo en el directorio temporal del sistema.
+>
+> Los que sí se copian son los que no dependen de la raíz
+> —`cargar_secretos_postventa.ps1` y `verificar_despliegue.ps1`, que solo
+> necesitan `00_vars_postventa.ps1` al lado—:
 >
 > ```
-> copy infra\*.ps1 $HOME\
+> copy infra\00_vars_postventa.ps1 $HOME\
+> copy infra\cargar_secretos_postventa.ps1 $HOME\
+> copy infra\verificar_despliegue.ps1 $HOME\
 > ```
+>
+> Es el **defecto 1** de los doce de la jornada del 2026-08-21. El detalle,
+> en `docs/DESPLIEGUE.md` §2.
 
-- [ ] **T13 · MANUAL (humano)** — Cargar los secretos en el Key Vault. Se
+- [x] **T13 · MANUAL (humano)** — Cargar los secretos en el Key Vault. Se
       ejecuta **una vez**, y se repite solo cuando rote una credencial.
 
       Ver antes qué haría, **sin tocar nada**:
@@ -208,26 +226,70 @@
       powershell -ExecutionPolicy Bypass -File $HOME\cargar_secretos_postventa.ps1
       ```
 
-      **Verificación**: `MANUAL (humano)` — el script lista los **nombres** de
-      los once secretos cargados y ningún valor. Se anota en `progress/` solo
-      «once secretos cargados: sí/no».
+      **Verificación**: `MANUAL (humano)` — ~~el script lista los **nombres**
+      de los **once** secretos cargados y ningún valor. Se anota en
+      `progress/` solo «once secretos cargados: sí/no»~~ →
+      **RECTIFICADA EL 2026-08-25, tras ejecutarla**: el script lista los
+      **nombres** de los **nueve** secretos del backend cargados y ningún
+      valor. Se anota en `progress/` solo «**nueve** secretos cargados:
+      sí/no».
 
-- [ ] **T14 · MANUAL (humano) · APLICA D3** — Desplegar el backend.
+      **El criterio anterior era imposible de cumplir.** Los dos secretos
+      que faltan hasta once, `swa-client-id` y `swa-client-secret`, **los
+      crea y los guarda `desplegar_front.ps1`** (T16) cuando genera el
+      registro de aplicación: aquí todavía no existen, y teclearlos a mano
+      es inventar dos valores que el despliegue del front sobrescribe. La
+      partición está en `infra/00_vars_postventa.ps1`
+      (`$PostventaSecretosBackend` / `$PostventaSecretosFront`) y el porqué,
+      en `docs/DESPLIEGUE.md` §2.
+
+      Es el **defecto 2** de los doce de la jornada del 2026-08-21
+      (`progress/impl_F-010.md`). **La casilla `[x]` no se toca**: la tarea
+      se ejecutó y su resultado real —«9 de 11 cargados»— es el correcto; lo
+      que estaba mal era el enunciado. Mismo precedente que T8 y T19 de
+      `specs/F-006-sharepoint/tasks.md`.
+
+- [x] **T14 · MANUAL (humano) · APLICA D3** — Desplegar el backend.
+
+      **Desde `infra\`, no desde `$HOME`** (ver la nota de la fase): el
+      script busca `services\postventa-api` relativo a su propia ubicación.
 
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1
       ```
+
+      > **ENUNCIADO RECTIFICADO EL 2026-08-25 (defecto 13), criterios 1 y 3.
+      > La casilla `[x]` NO se toca**: la puso el humano el 2026-08-21, cuando
+      > el backend todavía era alcanzable por su nombre de host y las dos
+      > comprobaciones medían lo que decían medir. Desde que la Function App es
+      > **backend enlazado** de la Static Web App, la plataforma le activa Easy
+      > Auth (proveedor `azureStaticWebApps`) y **el host desnudo responde
+      > `400` a todo**, `/api/health` incluido. Un `503` ya no se puede
+      > distinguir de un `400` de la capa de auth por esa vía: el criterio 3
+      > dejó de medir la ventana de escritura. Precedente: T8 y T19 de F-006.
 
       **Verificación**: `MANUAL (humano)`, cuatro cosas y en este orden:
 
-      1. `GET /api/health` responde `200` a través del nombre de host de la
-         Function.
+      1. `GET /api/health` responde `200` **a través del front**
+         (`<origen del front>/api/health`, con sesión iniciada), que es la
+         única vía que la plataforma acepta desde el enlace del backend. Por
+         el nombre de host de la Function responde `400` y **eso no es un
+         fallo del despliegue**: ver `docs/DESPLIEGUE.md` §5 bis.
       2. Las App Settings resuelven sus referencias a Key Vault: ninguna
          aparece con error en el portal de Azure.
-      3. **`POST /api/archivar` contra el host desnudo responde `503`** —la
-         ventana de escritura está cerrada (R33)—. Si respondiera `200`,
-         **PARAR**: el script no dejó `ARCHIVO_HABILITADO` apagado y la
-         Function está escribiendo en SharePoint a cualquiera que la llame.
+      3. **La ventana de escritura está cerrada (R33)**, y se comprueba
+         **leyendo la App Setting**, que es lo que sigue siendo observable:
+
+         ```
+         az functionapp config appsettings list -g rg-postventa-dev -n func-postventa-dev --query "[?name=='ARCHIVO_HABILITADO'].value | [0]" -o tsv
+         ```
+
+         Tiene que salir `false` (o vacío). Si saliera `true`, **PARAR**: el
+         script no la dejó apagada. La comprobación equivalente por HTTP
+         —`POST /api/archivar` contra el host desnudo devolviendo `503`— **ya
+         no vale**: hoy devuelve el `400` de Easy Auth diga lo que diga la
+         ventana. A través del front, con la ventana cerrada, sí responde
+         `503`.
       4. **Capa 5 de `design.md` §9 bis, y es un intento, no un requisito**:
          aplicar la restricción de acceso público a la Function App y
          comprobar **después de T16** que la Static Web App sigue alcanzando
@@ -236,11 +298,11 @@
          solas.
 
       El resultado se anota en `progress/` **sin la URL y sin ningún
-      identificador**: «health 200: sí/no», «referencias resueltas: sí/no»,
-      «archivar cerrado devuelve 503: sí/no», «restricción de red aplicada:
-      sí / revertida».
+      identificador**: «health 200 por el front: sí/no», «referencias
+      resueltas: sí/no», «ARCHIVO_HABILITADO en false: sí/no», «restricción de
+      red aplicada: sí / revertida».
 
-- [ ] **T14 bis · MANUAL (humano)** — Fijar **tope de gasto y alerta** en la
+- [x] **T14 bis · MANUAL (humano)** — Fijar **tope de gasto y alerta** en la
       consola del proveedor de IA antes de que el front sea alcanzable (R35).
       Es la defensa proporcionada al riesgo de que un desconocido llame a
       `/api/extraer` (`design.md` §9 bis, capa 4), y no depende de Azure.
@@ -248,7 +310,22 @@
       y «alerta configurada: sí/no». **Sin la cifra**, que es información de
       negocio.
 
-- [ ] **T15 · MANUAL (humano) · RESUELVE D4** — Comprobar que la Function App
+      > **AL 2026-08-25 ESTA TAREA SIGUE SIN RESULTADO ANOTADO.** La casilla
+      > `[x]` viene de una ronda anterior, pero el «tope fijado: sí/no» y el
+      > «alerta configurada: sí/no» que la propia verificación exige **no
+      > constan en ningún sitio**: el humano no ha aportado el dato. Es lo que
+      > señala `progress/review2_F-010.md` §10.5, y **el implementer no puede
+      > inventarlo**.
+      >
+      > **Lo que está en juego, en una línea**: `/api/extraer` y `/api/firma`
+      > son **anónimos por diseño** (R32, T8) y **ya son alcanzables**, así que
+      > la capa 4 de `design.md` §9 bis —el tope de gasto— es hoy la única
+      > defensa contra que un desconocido consuma cuota de IA.
+      >
+      > **Queda como hueco abierto** en `progress/current.md`. No se marca ni
+      > se desmarca nada: la casilla se quedó como la dejó el humano.
+
+- [x] **T15 · MANUAL (humano) · RESUELVE D4** — Comprobar que la Function App
       alcanza `psql-albaranes-rs9k2`. **Solo lectura primero**: mirar si el
       servidor ya admite servicios de Azure. Si hiciera falta una regla nueva,
       **PARAR**: es un cambio a nivel de servidor compartido, lo decide el
@@ -257,10 +334,37 @@
       su traza en el esquema `postventa`, o queda anotado que D4 sigue abierta
       y que el archivo no persiste traza todavía.
 
-- [ ] **T16 · MANUAL (humano)** — Desplegar el front y probar el acceso.
+      > **EJECUTADA POR EL HUMANO EL 2026-08-25. D4 QUEDA CERRADA: la Function
+      > App SÍ alcanza `psql-albaranes-rs9k2`.**
+      >
+      > **No hizo falta ninguna regla de red nueva, ni tocar nada a nivel del
+      > servidor compartido.** La lectura previa bastó y la PARADA que preveía
+      > el enunciado no llegó a hacer falta.
+      >
+      > La evidencia es **doble**, y la segunda mitad vale la pena contarla
+      > porque es más fuerte que un «sí»:
+      >
+      > 1. **Primer intento**: el motor devolvió `ForeignKeyViolation` sobre
+      >    `archivos_hash_parte_fkey`. Ese error **solo lo puede devolver el
+      >    servidor**, así que hubo **conexión, autenticación y ejecución**:
+      >    demuestra la alcanzabilidad aunque la operación no completara. Es el
+      >    **defecto 15** (`progress/impl_defectos13-15_F-010.md`), que es de
+      >    **F-019**, no de la red.
+      > 2. **Con el parte sembrado**, el archivado **dejó su traza en el
+      >    esquema `postventa`** con `estado = archivado`, y con el **nombre y
+      >    la carpeta correctos**. Que es literalmente lo que pide esta
+      >    verificación.
+      >
+      > «Function App alcanza PostgreSQL: **sí**». «Regla de red nueva:
+      > **ninguna**». Sin cadena de conexión, sin FQDN y sin credenciales.
+
+- [x] **T16 · MANUAL (humano)** — Desplegar el front y probar el acceso.
+
+      **Desde `infra\`, no desde `$HOME`** (ver la nota de la fase): el
+      script busca `services\postventa-front` relativo a su propia ubicación.
 
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_front.ps1
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_front.ps1
       ```
 
       **Verificación**: `MANUAL (humano)`, con **dos cuentas**:
@@ -273,15 +377,16 @@
       Se anota en `progress/` «miembro entra: sí/no», «no miembro entra:
       sí/no». **Sin la URL.**
 
-- [ ] **T17 · MANUAL (humano) · CRITERIO DE ACEPTACIÓN** — Re-ejecutabilidad.
-      Volver a lanzar los **dos** despliegues, seguidos, sin borrar nada:
+- [x] **T17 · MANUAL (humano) · CRITERIO DE ACEPTACIÓN** — Re-ejecutabilidad.
+      Volver a lanzar los **dos** despliegues, seguidos, sin borrar nada y
+      **desde `infra\`** (ver la nota de la fase):
 
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1
       ```
 
       ```
-      powershell -ExecutionPolicy Bypass -File $HOME\desplegar_front.ps1 -SoloFront
+      powershell -ExecutionPolicy Bypass -File .\infra\desplegar_front.ps1 -SoloFront
       ```
 
       **Verificación**: `MANUAL (humano)` — los dos terminan con código `0`,
@@ -291,18 +396,46 @@
       completo regeneró el secreto y pisó una redirect URI. Por eso el
       segundo va con `-SoloFront`.
 
+      > **EJECUTADA POR EL HUMANO EL 2026-08-25. LA RE-EJECUTABILIDAD QUEDA
+      > DEMOSTRADA.** Los dos despliegues, relanzados **seguidos** y **desde
+      > `infra\`** —el backend completo y el front con `-SoloFront`—, tal y
+      > como los escribe esta tarea.
+      >
+      > - **Los ocho recursos salieron como «ya existe, se reutiliza»**: nada
+      >   se recreó.
+      > - **El listado del grupo no tiene ni un duplicado.**
+      > - **El resumen del front dijo «sin tocar (-SoloFront)» en las cuatro
+      >   líneas que importan**: asignación, permiso de Graph, tokens de ID y
+      >   credenciales `swa`. Eso es el **defecto 8 corregido funcionando
+      >   contra Azure**, y no solo contra su test: era exactamente el resumen
+      >   que mentía cuando el modo lo decidía otra cosa.
+      > - **El inicio de sesión sigue funcionando después** (R2): en ventana de
+      >   incógnito pide sesión y entra, que es además el criterio de R14.
+      >
+      > Este es el punto que importaba: es lo que rompió el portal cuando un
+      > despliegue completo regeneró el secreto y pisó una redirect URI, y aquí
+      > **no ha vuelto a pasar**. Sin URL y sin ningún identificador.
+
 ## Fase 5 · Lo que F-010 desbloquea
 
-- [ ] **T18 · MANUAL (humano) · ES T18 DE F-006 · REQUIERE AUTORIZACIÓN
+- [x] **T18 · MANUAL (humano) · ES T18 DE F-006 · REQUIERE AUTORIZACIÓN
       EXPRESA** — La **única subida real a SharePoint** de todo el proyecto,
       diferida desde el 2026-08-19 (D3 de F-006, opción (a)) esperando
-      justamente este entorno. Ahora ya hay `-BaseUrl` que pasarle.
+      justamente este entorno, que ya está en pie.
 
       **Antes de ejecutarla hay que pedir autorización al humano**, y no es
       una formalidad: `CHECKPOINTS.md` **C5** exige `tasks.md` con todas las
       tareas `[x]`, F-006 se cerró con esta casilla vacía por una dependencia
       declarada, y quien la marque está cerrando una feature ajena. La
       autorización se pide **nombrando C5** y se anota con fecha.
+
+      > **ENUNCIADO RECTIFICADO EL 2026-08-25 (defecto 13): el comando ha
+      > cambiado.** `verificar_archivo_dev.ps1 -BaseUrl <host de la Function>`
+      > **no puede funcionar** desde que el backend es enlazado de la Static
+      > Web App: la plataforma le activa Easy Auth y el host desnudo responde
+      > `400 Login not supported for provider azureStaticWebApps` a todo. El
+      > script reconoce ese 400 y lo explica, pero la vía es otra: **la consola
+      > del navegador en el front**. Es la que se ejecutó ese día.
 
       **Esta tarea abre y cierra la ventana de escritura** (R33, R34,
       `design.md` §9 bis capa 3). Los dos `az` van sueltos, uno por línea.
@@ -313,15 +446,10 @@
       az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings ARCHIVO_HABILITADO=true
       ```
 
-      El script ya existe desde F-006; aquí solo se ejecuta:
-
-      ```
-      copy infra\verificar_archivo_dev.ps1 $HOME\
-      ```
-
-      ```
-      powershell -File $HOME\verificar_archivo_dev.ps1 -BaseUrl <url-de-dev>
-      ```
+      **Ejecutar**: entrar al front **con sesión iniciada**, `F12` →
+      **Consola**, y pegar entero el fragmento de **`docs/DESPLIEGUE.md`
+      §5 bis**. Va al **mismo origen**, así que pasa por el proxy que
+      autentica; por eso no hay ninguna URL que escribir en ningún sitio.
 
       **Cerrar la ventana en cuanto termine**, salga bien o mal:
 
@@ -331,13 +459,7 @@
 
       Dejarla abierta «por si acaso» es exactamente lo que D3 evita: mientras
       esté abierta, `/api/archivar` escribe en SharePoint para cualquiera que
-      llame a la Function.
-
-      Para ver antes qué haría, sin llamar a nada:
-
-      ```
-      powershell -File $HOME\verificar_archivo_dev.ps1 -WhatIf
-      ```
+      entre al front.
 
       **Verificación**: `MANUAL (humano)`. Parte **sintético** (obra `0677`,
       incidencia `RS26.08/0001`, los dos inventados). Se da por verificada si
@@ -353,11 +475,71 @@
       antes de seguir. Es el fallo que el `acceptance` de F-006 prohíbe y no
       se arregla con más tests.
 
+      > **Lo que pasó al ejecutarlo el 2026-08-25, y por qué el `200` no puede
+      > llegar todavía (defecto 15).** Las dos llamadas subieron el PDF —nombre
+      > y carpeta correctos, **un solo elemento**, sin `(1)`— y las dos
+      > respondieron **`500`**: la tabla `archivos` tiene una **clave ajena
+      > contra `partes`** y nada guarda el parte, porque eso es **F-019**, que
+      > sigue `pending`. **F-019 es prerequisito del archivado completo**, con
+      > parte sintético y con parte real.
+      >
+      > Desde el defecto 14, ese `500` **lo dice**: «el parte SÍ se ha subido a
+      > SharePoint, pero no se ha podido dejar constancia». Mientras F-019 no
+      > exista, lo observable es el **listado de la carpeta**, que es justo lo
+      > que pide el `acceptance` de F-006; el `200` de los dos primeros puntos
+      > **no** se puede exigir. Decidir si eso cierra la casilla T18 de F-006
+      > es del humano, y es la misma autorización ante **C5** que ya pide esta
+      > tarea.
+
       El resultado real se anota en `progress/` **el día que se ejecute**, sin
       la URL, sin el identificador del elemento y sin ningún GUID. Solo
       entonces se marca `[x]` la casilla T18 de `specs/F-006-sharepoint/tasks.md`.
 
-- [ ] **T19 · MANUAL (humano) · OTRO REPOSITORIO** — La tarjeta del portal.
+      > **EJECUTADA POR EL HUMANO EL 2026-08-25, CON AUTORIZACIÓN EXPRESA.**
+      >
+      > **La autorización, con su fecha y su fórmula literal**: el humano
+      > autorizó el **2026-08-25** diciendo «**autorizo T18 ante
+      > `CHECKPOINTS.md` C5**». Es la autorización que esta tarea exige pedir
+      > **nombrando C5**, y la que hacía falta para marcar una casilla de una
+      > feature ajena ya cerrada.
+      >
+      > **Hicieron falta tres intentos, y los tres enseñan algo**, así que
+      > quedan escritos los tres y no solo el que salió bien:
+      >
+      > 1. Contra el **host desnudo de la Function**: **`400`**, `Login not
+      >    supported for provider azureStaticWebApps`. Es el **defecto 13** en
+      >    vivo —Easy Auth del backend enlazado—, no un fallo del despliegue.
+      >    Es lo que rectificó el enunciado de arriba.
+      > 2. Desde **la consola del front con sesión**, ya por la vía buena:
+      >    **`500`**, con el PDF **ya subido y bien nombrado**, por el
+      >    `ForeignKeyViolation` del **defecto 15** (`archivos` tiene clave
+      >    ajena contra `partes` y nada inserta el parte: eso es **F-019**).
+      >    Nótese que el `500` **dice** que el fichero está arriba, que es
+      >    justo lo que arregló el defecto 14.
+      > 3. **Tras sembrar el parte sintético**: **dos llamadas `200`**, **mismo
+      >    destino en las dos**, `estado: archivado`, y el **aviso de
+      >    reemplazo** («ya había un fichero con este nombre y se ha
+      >    reemplazado»). Ese aviso **es R16 hablando**: la idempotencia del
+      >    nombrado funcionando contra una biblioteca real.
+      >
+      > **Los tres puntos de la verificación, comprobados**: nombre
+      > `0677 - RS26.08 - 0001 PARTE FIRMADO.pdf`, carpeta `Postventa/0677`,
+      > segunda llamada al **mismo destino**, y —verificado por el humano **en
+      > la biblioteca**— **un solo elemento en la carpeta y ninguno con sufijo
+      > `(1)`**. Ese último es **el criterio de aceptación de F-006**, y el que
+      > obligaba a PARAR si fallaba. **No hubo parada.**
+      >
+      > **La ventana de escritura se cerró al terminar**, como manda R33/R34.
+      >
+      > Sin URL, sin `item_id`, sin `web_url` y sin ningún GUID. El nombre del
+      > fichero sintético y su carpeta sí se escriben: ya estaban en la spec y
+      > son inventados.
+      >
+      > **Consecuencia**: con esto queda marcada `[x]` la casilla **T18 de
+      > `specs/F-006-sharepoint/tasks.md`**, que es la casilla ajena que esta
+      > tarea existía para desbloquear.
+
+- [x] **T19 · MANUAL (humano) · OTRO REPOSITORIO** — La tarjeta del portal.
       **Ningún agente de este repositorio la toca** (`design.md` §8, D7). El
       bloque exacto y el procedimiento están en `docs/DESPLIEGUE.md`, que es
       el entregable de F-010; esta tarea es aplicarlo, y admite **dos vías sin
@@ -383,6 +565,15 @@
       «Sin acceso». Si sale velada para todos, el marcador no se rellenó
       (`design.md` §8).
 
+      > **DECLARADA POR EL HUMANO EL 2026-08-25: la tarjeta está publicada y
+      > funcionando.** No salió velada para todos, así que el marcador de
+      > `requiredGroupId` se rellenó bien.
+      >
+      > **El GUID del grupo no se escribe aquí**, ni en `progress/`, ni en
+      > ningún commit de este repositorio: **vive solo en `front-portal`**, que
+      > es donde lo pone el paso 2. Es la regla que fija esta misma tarea y
+      > `design.md` §8 (D7).
+
 ## Fase 6 · Cierre
 
 - [x] **T20**: Campaña de mutación y análisis de supervivientes.
@@ -403,15 +594,19 @@
 
 ## Estado de las verificaciones manuales
 
+> **Tabla actualizada el 2026-08-25**, con las diez tareas ya ejecutadas por el
+> humano. La columna «Estado» decía «Pendiente» en casi todas desde que se
+> escribió la spec, y eso ya no es cierto.
+
 | Tarea | Depende de | Estado |
 |---|---|---|
-| T1 | **D1 resuelta**: el humano crea el grupo `posventa-usuarios` | Pendiente de ejecutar; ya no bloquea |
-| T2 | Un parte real de `muestras/` y la Function en local (**D2**) | **BLOQUEA la fase 2** |
-| T13 | T1, y los secretos en poder del humano | Pendiente |
-| T14 | T13 · aplica **D3** (capas 3 y 5) · la capa 5 se comprueba tras T16 | Pendiente |
-| T14 bis | Consola del proveedor de IA · capa 4 de **D3** | Pendiente, **antes de T16** |
-| T15 | T14 · resuelve **D4**; puede quedar abierta sin bloquear el piloto | Pendiente |
-| T16 | T1 y T14 | Pendiente |
-| T17 | T14 y T16 · **criterio de aceptación** | Pendiente |
-| T18 | T14 · **autorización expresa ante C5** · abre y **cierra** la ventana de escritura · cierra T18 de **F-006** | Pendiente |
-| T19 | T1, T16 y **D7** · otro repositorio | Pendiente |
+| T1 | **D1 resuelta**: el humano crea el grupo `posventa-usuarios` | **Ejecutada** (2026-08-20) |
+| T2 | Un parte real de `muestras/` y la Function en local (**D2**) | **Ejecutada**; D2 resuelta por (a) con la medición delante |
+| T13 | T1, y los secretos en poder del humano | **Ejecutada** (2026-08-21); criterio rectificado a **nueve** secretos |
+| T14 | T13 · aplica **D3** (capas 3 y 5) · la capa 5 se comprueba tras T16 | **Ejecutada** (2026-08-21); criterios 1 y 3 rectificados por el defecto 13 |
+| T14 bis | Consola del proveedor de IA · capa 4 de **D3** | Casilla `[x]`, **SIN RESULTADO ANOTADO**: hueco abierto, ver la nota de la tarea y `progress/current.md` |
+| T15 | T14 · resuelve **D4**; puede quedar abierta sin bloquear el piloto | **Ejecutada 2026-08-25 · D4 CERRADA**: alcanza PostgreSQL, sin regla de red nueva |
+| T16 | T1 y T14 | **Ejecutada** (2026-08-21) |
+| T17 | T14 y T16 · **criterio de aceptación** | **Ejecutada 2026-08-25**: re-ejecutabilidad demostrada, cero duplicados, sesión intacta |
+| T18 | T14 · **autorización expresa ante C5** · abre y **cierra** la ventana de escritura · cierra T18 de **F-006** | **Ejecutada 2026-08-25** con autorización expresa ante C5; tres intentos; un solo elemento, ningún `(1)`. **T18 de F-006 marcada** |
+| T19 | T1, T16 y **D7** · otro repositorio | **Ejecutada 2026-08-25**: tarjeta publicada y funcionando, sin el GUID aquí |

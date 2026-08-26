@@ -30,24 +30,93 @@ dev** del sitio de IT.
 ## 2 · Los cinco scripts, y en qué orden
 
 Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
-`-WhatIf`, que dice qué harían sin tocar nada. Se copian fuera del repositorio
-antes de ejecutarlos, para no ensuciar el árbol de trabajo:
+`-WhatIf`, que dice qué harían sin tocar nada.
+
+| Orden | Script | Qué hace | Desde dónde se ejecuta | Cuándo se repite |
+|---|---|---|---|---|
+| 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | — | Nunca se ejecuta suelto |
+| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **nueve** secretos del backend, pedidos a ciegas | `$HOME` o `infra\` | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
+| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | **`infra\` obligatorio** | Cada vez que cambie el backend |
+| 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
+| 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
+
+### Desde dónde se ejecuta cada uno, y por qué no da igual
+
+**Los dos despliegues se ejecutan desde `infra\`, dentro del repositorio.**
+No se copian a `$HOME`: `desplegar_backend.ps1` y `desplegar_front.ps1`
+deducen la raíz del repositorio con
+
+```powershell
+$raiz = Split-Path -Parent $PSScriptRoot
+```
+
+para encontrar `services\postventa-api` y `services\postventa-front`. Copiados
+a `$HOME`, esa cuenta da `C:\Users`, donde no hay ningún `services\`, y el
+script no encuentra qué publicar. Ejecutarlos desde `infra\` **no ensucia el
+árbol**: `desplegar_front.ps1` hace su copia de trabajo en el directorio
+temporal del sistema y la borra en un `finally`.
+
+**Los que sí se copian fuera** son los que no dependen de la raíz del
+repositorio —`cargar_secretos_postventa.ps1`, que solo necesita
+`00_vars_postventa.ps1` al lado, y `verificar_despliegue.ps1`, igual—:
 
 ```
-copy infra\*.ps1 $HOME\
+copy infra\00_vars_postventa.ps1 $HOME\
+copy infra\cargar_secretos_postventa.ps1 $HOME\
+copy infra\verificar_despliegue.ps1 $HOME\
 ```
 
-| Orden | Script | Qué hace | Cuándo se repite |
-|---|---|---|---|
-| 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | Nunca se ejecuta suelto |
-| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los once secretos pedidos a ciegas | Solo al rotar una credencial (`-Solo <nombre>`) |
-| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | Cada vez que cambie el backend |
-| 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | Con `-SoloFront` para el día a día |
-| 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | Después de cada despliegue |
+Esto costó la primera parada del 2026-08-21, siguiendo el `copy infra\*.ps1
+$HOME\` que decía antes este documento.
 
 **Antes de nada**: `az login` y la suscripción correcta seleccionada.
 También hacen falta la CLI de Azure y la de Static Web Apps
 (`npm i -g @azure/static-web-apps-cli`).
+
+### Son nueve secretos, no once, y el porqué importa
+
+El Key Vault acaba con **once** secretos, pero **a mano solo se cargan
+nueve**: los del backend (`pg-*`, `gemini-api-key`, `graph-*`,
+`sharepoint-*`). Los dos que faltan —`swa-client-id` y `swa-client-secret`—
+**los genera y los guarda `desplegar_front.ps1`**, que crea el registro de
+aplicación, le saca el secreto y lo escribe él mismo en el vault.
+
+**No se inventan ni se teclean**: cuando `cargar_secretos_postventa.ps1` se
+ejecuta todavía no existen, y cualquier valor que se meta lo sobrescribe el
+despliegue del front. Esto costó una parada real el 2026-08-21, siguiendo lo
+que decía este mismo documento.
+
+La lista está en `infra/00_vars_postventa.ps1`, partida a propósito en
+`$PostventaSecretosBackend` (los nueve) y `$PostventaSecretosFront` (los dos).
+
+### Rotar una credencial: `-Solo` **no funciona con `powershell -File`**
+
+Para subir un secreto suelto sin volver a teclear los otros ocho, el script 1
+admite `-Solo <nombre>`. Pero **con `powershell -File` el parámetro no
+funciona**: los argumentos llegan como una sola cadena, `-Solo` no construye
+el array `[string[]]` que declara, y el script responde
+
+```
+Estos secretos no existen: ...
+```
+
+que **no es el error real** y manda a buscar el problema donde no está.
+
+Hay que invocarlo **desde la propia sesión de PowerShell**, con el script al
+lado de `00_vars_postventa.ps1`:
+
+```
+.\infra\cargar_secretos_postventa.ps1 -Solo gemini-api-key
+```
+
+o, si hace falta lanzarlo desde fuera, con `-Command` en vez de `-File`:
+
+```
+powershell -ExecutionPolicy Bypass -Command ".\infra\cargar_secretos_postventa.ps1 -Solo gemini-api-key"
+```
+
+Sin `-Solo` —la ejecución completa— `-File` sí vale, porque no hay que
+construir ningún array. Descubierto ejecutando, el 2026-08-21.
 
 ### Si un nombre global está ocupado
 
@@ -90,9 +159,40 @@ recomponen solos.
    `infra/00_vars_postventa.ps1` y en la tarjeta del portal (§6). **Los tres
    sitios tienen que decir lo mismo.**
 
-2. **Las once credenciales a mano**, para teclearlas cuando el script las pida.
+2. **Las nueve credenciales del backend a mano**, para teclearlas cuando el
+   script las pida: `pg-host`, `pg-user`, `pg-password`, `gemini-api-key`,
+   `graph-tenant-id`, `graph-client-id`, `graph-client-secret`,
+   `sharepoint-site-id` y `sharepoint-drive-id`.
 
-3. **Un tope de gasto con alerta en el proveedor de IA.** No es opcional y no
+   **`swa-client-id` y `swa-client-secret` NO se preparan**: los crea y los
+   guarda `desplegar_front.ps1` (§2). Teclearlos aquí es inventar dos valores
+   que el despliegue del front sobrescribe.
+
+3. **El rol `Key Vault Secrets Officer` sobre el Key Vault**, para la cuenta
+   que vaya a ejecutar el script 1.
+
+   **Crear el Key Vault NO da permiso sobre sus secretos.** El vault usa
+   RBAC, y ser Owner del grupo de recursos —o haberlo creado uno mismo— deja
+   gestionar el recurso pero **no** escribir dentro. Esto es lo que **paró la
+   primera ejecución real** el 2026-08-21: el script crea el vault sin
+   problemas y luego muere en el **primer** secreto con un `Forbidden`, en
+   vez de comprobarlo antes.
+
+   Se comprueba y se concede así, una vez, después de que exista el vault:
+
+   ```
+   az role assignment list --assignee <tu-cuenta> --scope <id-del-key-vault> --query "[].roleDefinitionName" -o tsv
+   ```
+
+   ```
+   az role assignment create --assignee <tu-cuenta> --role "Key Vault Secrets Officer" --scope <id-del-key-vault>
+   ```
+
+   La asignación **tarda un poco en propagarse**. Si el script sigue dando
+   `Forbidden` justo después de concederla, se espera un minuto y se
+   re-ejecuta: el script es re-ejecutable y no duplica nada.
+
+4. **Un tope de gasto con alerta en el proveedor de IA.** No es opcional y no
    depende de Azure: `/api/extraer` y `/api/firma` quedan alcanzables, y el
    tope es la defensa proporcionada a que un desconocido gaste cuota.
 
@@ -148,6 +248,98 @@ y sin ningún identificador**.
 
 Y a mano, con **dos cuentas**: una miembro del grupo entra; una **no miembro
 no entra**. Si entra, la asignación obligatoria no está aplicada: **se para**.
+
+> **Al día 2026-08-25, las dos primeras comprobaciones ya no se pueden hacer
+> por esa vía**, y no porque el despliegue esté roto: ver §5 bis. El script lo
+> dice cuando pasa, en vez de dejar dos `NO` sin explicación.
+
+## 5 bis · El host desnudo de la Function ya no responde
+
+**Lo que se descubrió ejecutando T17 y T18 el 2026-08-25** (defecto 13 de
+F-010). Desde que la Function App es **backend enlazado** de la Static Web App,
+la plataforma le activa Easy Auth con el proveedor `azureStaticWebApps` y el
+backend **solo acepta lo que entra por el proxy del front**. Preguntarle por su
+nombre de host —cualquier ruta, `GET /api/health` incluido— devuelve:
+
+```json
+{"code":400,"message":"Login not supported for provider azureStaticWebApps"}
+```
+
+Ese cuerpo **no es nuestro**: lo escribe la plataforma antes de que la Function
+se entere. Consecuencias prácticas:
+
+- `verificar_archivo_dev.ps1 -BaseUrl <host de la Function>` **no puede
+  funcionar**. El script reconoce ese 400 y lo explica en vez de morir con un
+  `WebException`, pero no hay `-BaseUrl` que lo arregle.
+- Las comprobaciones 1 y 2 de `verificar_despliegue.ps1` reciben lo mismo. Lo
+  que sigue valiendo por esa vía es la 3, la del front.
+- El backend **sí** está sano: se comprueba entrando al front y usando el
+  circuito, que es como lo usa negocio.
+
+### La vía que sí funciona: la consola del navegador, en el front
+
+Con **sesión iniciada** en el front y la pestaña abierta, `F12` → **Consola**, y
+se pega el fragmento entero. Va al **mismo origen**, así que pasa por el proxy
+que autentica; por eso aquí no hay ninguna URL que escribir.
+
+Antes de pegarlo: **la ventana de escritura tiene que estar abierta** (§4), y
+**se cierra en cuanto termine**, salga bien o mal.
+
+```js
+// T18 - verificacion de la subida a SharePoint, desde la consola del FRONT.
+// El PDF es sintetico y la obra 0677 / incidencia RS26.08-0001 no son de nadie.
+(async () => {
+  const pdf = new TextEncoder().encode([
+    "%PDF-1.4",
+    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
+    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
+    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >> endobj",
+    "trailer << /Root 1 0 R >>",
+    "%%EOF",
+  ].join("\n"));
+
+  // El MISMO hash en las dos llamadas: archivar dos veces el mismo parte es
+  // justo lo que no debe producir un duplicado.
+  const hash = "verificacion-t18-" + new Date().toISOString().replace(/\D/g, "").slice(0, 14);
+
+  const llamar = async (etiqueta) => {
+    const fd = new FormData();
+    fd.append("hash", hash);
+    fd.append("codigo_obra", "0677");
+    fd.append("numero_incidencia", "RS26.08/0001");
+    fd.append("veredicto", "apto");
+    fd.append("destino", "archivo_y_cierre");
+    fd.append("fichero", new Blob([pdf], { type: "application/pdf" }), "parte-sintetico.pdf");
+    const r = await fetch("/api/archivar", { method: "POST", body: fd });
+    const texto = await r.text();
+    console.log(etiqueta + " -> HTTP " + r.status);
+    console.log(texto);
+    return texto;
+  };
+
+  const primera = await llamar("1/2 primera llamada");
+  const segunda = await llamar("2/2 segunda llamada");
+  console.log("LAS DOS RESPUESTAS SON IGUALES:", primera === segunda);
+})();
+```
+
+Lo que se anota en `progress/` es el **código HTTP de cada llamada** y el
+**nombre del fichero**, sin la URL, sin el `item_id` y sin ningún GUID.
+
+**Un `500` con cuerpo hablado** —«el parte SÍ se ha subido a SharePoint, pero
+no se ha podido dejar constancia»— significa que el PDF está arriba y que lo
+que falló fue la traza: mirar §5 ter antes de repetir nada.
+
+## 5 ter · Por qué el archivado no puede completar todavía
+
+La tabla `archivos` tiene una **clave ajena contra `partes`**: la traza de un
+parte que no está guardado no se puede escribir. Y hoy **no hay ningún endpoint
+que guarde el parte**: eso es **F-019**, que sigue `pending`.
+
+Así que, tal y como está desplegado, `/api/archivar` **sube el fichero y
+después falla al dejar la traza**, con parte sintético y con parte real. La
+subida a SharePoint —el criterio de F-006— sí se puede dar por verificada; el
+circuito completo, no, hasta que exista F-019.
 
 ## 6 · La tarjeta del portal
 

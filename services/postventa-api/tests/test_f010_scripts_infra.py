@@ -43,7 +43,7 @@ INFRA = RAIZ / "infra"
 #: T3 · la fuente unica de nombres de recurso, region y tags.
 SCRIPT_VARS = INFRA / "00_vars_postventa.ps1"
 
-#: T4 · crea o reutiliza el Key Vault y sube los once secretos.
+#: T4 · crea o reutiliza el Key Vault y sube los nueve secretos del backend.
 SCRIPT_SECRETOS = INFRA / "cargar_secretos_postventa.ps1"
 
 #: T5 · el backend: recursos, identidad, referencias a Key Vault y publicacion.
@@ -254,7 +254,7 @@ def secretos() -> str:
 
 
 def test_f010_t4_el_script_de_secretos_existe():
-    """Sin el, las once credenciales viajan a mano y alguna acaba en un chat."""
+    """Sin el, las nueve credenciales viajan a mano y alguna acaba en un chat."""
     assert SCRIPT_SECRETOS.is_file()
 
 
@@ -629,6 +629,49 @@ def test_f010_t6_registra_todas_las_redirect_uri_en_una_sola_llamada(front):
     assert len(llamadas) == 1
     assert "$redirecciones = @(" in front
     assert "$RedirectExtra" in front
+
+
+def test_f010_t6_el_registro_emite_tokens_de_id_y_solamente_esos(front):
+    """Static Web Apps pide `response_type=code+id_token`. Sin eso, bucle.
+
+    Un registro nace con `enableIdTokenIssuance` en falso, y con ese valor la
+    Static Web App manda al usuario al inicio de sesion, Entra le devuelve algo
+    que la aplicacion no puede completar, y vuelta a empezar. Entra corta el
+    bucle con **AADSTS50196**, un codigo cuyo mensaje no menciona bucles por
+    ningun lado: se perdio una tarde el 2026-08-21 hasta comparar el registro
+    con el del portal, que lo tiene en `true`.
+
+    Y **solo** el de ID. `enableAccessTokenIssuance` es el flujo implicito de
+    tokens de acceso, desaconsejado: entrega el token por la barra de
+    direcciones, donde queda en el historial y en los registros de cualquier
+    intermediario. No hace falta aqui -el token de acceso, si algun dia se
+    necesita, se pide con el codigo de autorizacion- y activarlo "ya que
+    estamos" seria abrir un flujo que nadie va a usar.
+
+    Los dos valores van en la MISMA llamada que las redirect URI, y a
+    proposito: es la unica que se hace tanto si el registro se acaba de crear
+    como si se reutiliza, asi que un registro anterior tambien queda corregido.
+    Ademas, `az ad app update --set web.implicitGrantSettings...` falla cuando
+    `web` viene vacio; con `--web-redirect-uris` en la misma llamada, `web` no
+    viene vacio nunca.
+    """
+    cuerpo = sin_comentarios(front)
+    actualizaciones = [
+        linea
+        for linea in cuerpo.splitlines()
+        if "az ad app update" in linea and "--web-redirect-uris" in linea
+    ]
+
+    assert len(actualizaciones) == 1
+    assert "--enable-id-token-issuance true" in actualizaciones[0]
+    assert "--enable-access-token-issuance false" in actualizaciones[0]
+
+    # Y que nadie los invierta despues, en ninguna parte del script.
+    assert "--enable-id-token-issuance false" not in cuerpo
+    assert "--enable-access-token-issuance true" not in cuerpo
+
+    # El codigo de error, escrito: es por donde va a buscar quien lo sufra.
+    assert "AADSTS50196" in front
 
 
 def test_f010_t6_el_cuerpo_de_graph_va_por_fichero_y_no_inline(front):
@@ -1047,6 +1090,73 @@ def test_f010_t7_el_verificador_no_imprime_ninguna_url(verificar):
     ]
 
     assert culpables == []
+
+
+# --- Defecto 13 · el host desnudo de la Function ya no responde -------------
+#
+# Desde que la Function App es **backend enlazado** de la Static Web App, la
+# plataforma le activa Easy Auth con el proveedor `azureStaticWebApps` y solo
+# acepta lo que entra por el proxy del front. El host desnudo contesta a todo
+# —`/api/health` incluido— con:
+#
+#     {"code":400,"message":"Login not supported for provider azureStaticWebApps"}
+#
+# Los dos verificadores se escribieron antes de que existiera la Static Web
+# App. El de T18 moria con un `WebException` opaco; el del despliegue decia
+# «health 200: NO» sin explicar por que. Un verificador que no sabe leer el
+# error mas probable manda a quien lo ejecuta a buscar al sitio equivocado:
+# el 2026-08-25 costo la mitad de la sesion.
+
+
+@pytest.fixture
+def archivo_dev() -> str:
+    """El verificador de T18, leido como ASCII igual que los demas."""
+    return (INFRA / "verificar_archivo_dev.ps1").read_text(encoding="ascii")
+
+
+def test_f010_defecto13_el_verificador_de_t18_reconoce_el_400_de_easy_auth(archivo_dev):
+    """Reconocerlo por su nombre, no «un error de red».
+
+    El mensaje de la plataforma es literal y no cambia: nombrarlo es lo que
+    convierte un fallo indescifrable en una frase que se entiende.
+    """
+    assert "azureStaticWebApps" in archivo_dev
+    assert "400" in archivo_dev
+
+
+def test_f010_defecto13_el_verificador_de_t18_dice_cual_es_la_via_buena(archivo_dev):
+    """Explicar el fallo sin decir que hacer deja el trabajo a medias.
+
+    La via que si funciona es la consola del navegador en el front, con sesion
+    iniciada, contra `/api/archivar` del mismo origen. Y el fragmento exacto
+    esta escrito en `docs/DESPLIEGUE.md`, no en la cabeza de quien lo ejecuto.
+    """
+    minusculas = archivo_dev.lower()
+
+    assert "consola" in minusculas
+    assert "docs/despliegue.md" in minusculas
+
+
+def test_f010_defecto13_el_verificador_de_t18_no_muere_con_un_error_opaco(archivo_dev):
+    """La llamada va dentro de un `try`, o el 400 sale como `WebException`.
+
+    Con `$ErrorActionPreference = "Stop"`, un `Invoke-RestMethod` suelto
+    revienta con la traza de PowerShell y ni el codigo ni el cuerpo llegan a
+    leerse. Sin esto, los dos tests de arriba solo comprueban comentarios.
+    """
+    assert "catch" in archivo_dev
+    assert "StatusCode" in archivo_dev
+
+
+def test_f010_defecto13_el_verificador_del_despliegue_explica_el_400(verificar):
+    """T14, criterios 1 y 3: los dos llaman al host desnudo.
+
+    Este script no muere —`Get-Codigo-Http` devuelve el codigo—, pero un
+    `codigo: 400` sin explicacion se lee como «el despliegue esta roto», que
+    es justo lo que no pasa.
+    """
+    assert "azureStaticWebApps" in verificar
+    assert "backend enlazado" in verificar
 
 
 # --- R3, R4, R5 y R6 · lo que se le exige a todo script que escriba ---------

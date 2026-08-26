@@ -295,6 +295,10 @@
 > Si no está resuelta, queda **PENDIENTE DEL HUMANO** y se anota así en
 > `progress/current.md`: no se sustituye por una prueba local.
 >
+> **T18 · EJECUTADA EL 2026-08-25** dentro del trabajo de F-010 y con
+> autorización expresa ante C5. Lo que sigue describe por qué estuvo diferida
+> hasta ese día; el resultado real está en la propia tarea, abajo.
+>
 > **T18 ya no depende de una decisión abierta: está DIFERIDA.** El humano
 > resolvió **D3** el **2026-08-19** por la opción **(a)** (`design.md` §10):
 > F-006 se implementa y se cierra con **T18 declarada y PENDIENTE**, y esa
@@ -356,7 +360,7 @@
       existe/no existe», «permiso de escritura: sí/no» y «permisos amplios
       presentes: sí/no».
 
-- [ ] **T18 · MANUAL (humano) · DIFERIDA A F-010** — *(D3 resuelta el
+- [x] **T18 · MANUAL (humano) · DIFERIDA A F-010 · EJECUTADA EL 2026-08-25** — *(D3 resuelta el
       **2026-08-19**, opción **(a)**)*. **La única subida real de toda la
       feature**, y **la única tarea de F-006 que queda sin ejecutar al
       cerrarla**. Se ejecuta **contra el servicio desplegado** y **sobre el
@@ -407,6 +411,44 @@
       casilla. **No se pega la URL del despliegue, ni el `item_id`, ni ningún
       identificador.**
 
+      > **EJECUTADA POR EL HUMANO EL 2026-08-25, DENTRO DEL TRABAJO DE F-010, Y
+      > CON AUTORIZACIÓN EXPRESA.** Esta casilla llevaba `[ ]` desde el cierre
+      > de F-006 el 2026-08-19 por la opción (a) de D3, esperando el entorno
+      > desplegado. Ya no espera a nada.
+      >
+      > **La autorización que exigía el cierre**: el humano autorizó el
+      > **2026-08-25** con la fórmula literal «**autorizo T18 ante
+      > `CHECKPOINTS.md` C5**». Es la autorización expresa, nombrando C5 y
+      > dejada por escrito, que pide la sección «El cierre de F-006 necesita
+      > autorización expresa del humano (C5)» de este mismo documento.
+      >
+      > **Cómo se ejecutó**: **no** con `verificar_archivo_dev.ps1 -BaseUrl`,
+      > que es lo que preveía el «comando previsto» de arriba y que **ya no
+      > puede funcionar**. Desde que la Function App es backend enlazado de la
+      > Static Web App, la plataforma le activa Easy Auth y su host desnudo
+      > responde `400 Login not supported for provider azureStaticWebApps` a
+      > todo (es el **defecto 13** de F-010). La vía real fue **la consola del
+      > navegador en el front, con sesión iniciada**, que va al mismo origen y
+      > pasa por el proxy que autentica. El fragmento está en
+      > `docs/DESPLIEGUE.md` §5 bis y el detalle en
+      > `specs/F-010-despliegue/tasks.md`, T18.
+      >
+      > **Los tres puntos del «Resultado esperado», contra el resultado real**:
+      >
+      > | Lo que pedía | Lo que pasó |
+      > |---|---|
+      > | 1.ª llamada `200`, `0677 - RS26.08 - 0001 PARTE FIRMADO.pdf`, `Postventa/0677`, `estado = archivado` | **Cumplido** al tercer intento. Los dos primeros no llegaron: `400` por el host desnudo (defecto 13) y `500` por el `ForeignKeyViolation` del defecto 15, este último **con el PDF ya subido y bien nombrado** |
+      > | 2.ª llamada `200`, **el mismo destino**, aviso de que ya estaba | **Cumplido**: `200`, mismo destino, y el aviso «ya había un fichero con este nombre y se ha reemplazado». Eso es **R16** |
+      > | Listado de la carpeta: **un solo elemento**, ninguno con `(1)` | **Cumplido**, y verificado por el humano **en la biblioteca**. **No hubo parada** |
+      >
+      > El tercer punto es el `acceptance` de esta feature, y es el que
+      > obligaba a hablar con el humano antes de seguir si aparecía un `(1)`.
+      > **No apareció.**
+      >
+      > Sin URL, sin `item_id` y sin ningún identificador, como manda el
+      > párrafo de arriba. El nombre del fichero y la carpeta sí: son
+      > sintéticos y ya estaban escritos en esta misma tarea.
+
 - [x] **T19 · N/A · DECISIÓN DEL HUMANO DEL 2026-08-20** — ~~Copiar la
       sección nueva de `docs/INTEGRACION.md` a
       `azure-apps/postventa_incidencias.md`~~.
@@ -447,6 +489,14 @@
 
 ### El cierre de F-006 necesita autorización expresa del humano (C5)
 
+> **CERRADO EL 2026-08-25.** Esta sección describe una situación que **ya no
+> existe**: T18 se ejecutó ese día con la autorización expresa que aquí se
+> exigía —«autorizo T18 ante `CHECKPOINTS.md` C5», del humano, con fecha— y su
+> casilla está `[x]` con el resultado real anotado. **F-006 ya no tiene ninguna
+> verificación manual pendiente.** Lo que sigue se conserva porque es el
+> razonamiento que sostuvo el cierre del 2026-08-19 y el que motiva **F-017**;
+> no es una condición viva.
+
 Dicho sin rodeos, porque es justo donde esto se pierde: con la opción (a) de
 **D3**, F-006 llega al `reviewer` con **una verificación manual sin resultado
 real** —**T18**—, y el rigor `critico` de esta feature **la exige**.
@@ -474,5 +524,5 @@ completo, el identificador es **F-017**.
 | T1 | F-004 y F-005 mergeadas en `dev` | fuera de esta rama |
 | T8 | **D1** (qué librería de Graph reutilizar) | **RESUELTA 2026-08-20**: `httpx` |
 | T17 | **D6** (biblioteca de dev y app registration creados) | **RESUELTA 2026-08-20**: ya existen. T17 lista para que la ejecute el humano |
-| T18 | **F-010** (entorno desplegado) + D6 | **D3 resuelta 2026-08-19 (a)**: tarea **DIFERIDA a F-010**, no bloquea el cierre pero lo condiciona (ver «El cierre de F-006 necesita autorización expresa del humano») |
+| T18 | **F-010** (entorno desplegado) + D6 | **EJECUTADA el 2026-08-25**, dentro de F-010 y con autorización expresa ante C5. Estuvo **DIFERIDA** desde el 2026-08-19 por D3 (a); la dependencia ya no existe |
 | T19 | ~~T15 hecha~~ | **N/A 2026-08-20**: el humano no commitea en `azure-apps` |

@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-010.md -->
 # F-010 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-010` el 2026-08-20 16:05.
+Generado por `python -m harness.mutacion --feature F-010` el 2026-08-26 00:32.
 
 ## Alcance
 
@@ -10,20 +10,23 @@ Origen del diff: **rama** (`0705d881d4a1c329006db5fe970c45bcb93c2e75` .. `featur
 | Fichero | Líneas en alcance |
 |---|---|
 | `harness/mutacion.py` | 10 |
-| `services/postventa-api/function_app.py` | 55 |
+| `services/postventa-api/application/pipelines/paso_archivo.py` | 34 |
+| `services/postventa-api/domain/models/errores.py` | 26 |
+| `services/postventa-api/function_app.py` | 116 |
+| `services/postventa-api/interface_adapters/api/archivar.py` | 11 |
 | `services/postventa-front/dev_server.py` | 188 |
-| **Total** | **253** |
+| **Total** | **385** |
 
 ## Totales
 
 | Métrica | Valor |
 |---|---|
-| Mutantes generados | 20 |
-| Mutantes evaluados | 20 |
-| Muertos | 17 |
+| Mutantes generados | 23 |
+| Mutantes evaluados | 23 |
+| Muertos | 20 |
 | Supervivientes | 3 |
 | Timeouts | 0 |
-| Tiempo total | 14.1 s |
+| Tiempo total | 118.2 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
@@ -52,6 +55,12 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 2. `services/postventa-front/dev_server.py:171` [entero]
 
 - Original: `log.info("=" * 60)`
@@ -74,6 +83,12 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 3. `services/postventa-front/dev_server.py:175` [entero]
 
 - Original: `log.info("=" * 60)`
@@ -93,6 +108,12 @@ Cada superviviente es una línea que ningún test comprueba de verdad, o una mut
 > log de arranque del servidor de desarrollo local, que además **no se
 > despliega** (`desplegar_front.ps1` lo excluye de la copia que sube). No se
 > añade test.
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 

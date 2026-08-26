@@ -60,6 +60,13 @@
     del inquilino, no aborta -lo dara un administrador despues-, pero el
     resumen lo dice con el comando exacto en vez de callarselo.
 
+    LOS TOKENS DE ID. El modo completo activa la emision de tokens de ID en el
+    registro, porque una Static Web App pide `response_type=code+id_token` y un
+    registro nace con esa casilla apagada. Sin ella hay bucle de redireccion, y
+    Entra lo corta con AADSTS50196, un codigo cuyo mensaje no habla de bucles.
+    La emision de tokens de ACCESO se deja apagada a proposito: es el flujo
+    implicito, y aqui no se usa.
+
     EL SECRETO SE ACUMULA Y NADIE LO REVOCA. `az ad app credential reset` va
     con `--append`, que ANADE una credencial y no invalida las anteriores. Es
     deliberado -es lo que evita repetir el incidente del portal, donde el
@@ -364,10 +371,26 @@ try {
 
         # TODAS las redirect URI, en UNA sola llamada: esta lista REEMPLAZA a la
         # anterior. Pasar una sola borra las demas, y eso ya rompio el portal.
+        #
+        # Y en la MISMA llamada, la emision de tokens de ID. Una Static Web App
+        # pide `response_type=code+id_token`, y un registro nace con
+        # `enableIdTokenIssuance` en falso: sin activarlo, el usuario va al
+        # inicio de sesion, vuelve, no puede completar el flujo y otra vez, hasta
+        # que Entra corta el bucle con AADSTS50196, un codigo cuyo mensaje no
+        # menciona bucles por ningun lado. Costo una tarde el 2026-08-21.
+        #
+        # SOLO el de ID: `--enable-access-token-issuance` es el flujo implicito
+        # de tokens de acceso, desaconsejado porque entrega el token por la barra
+        # de direcciones. Aqui no hace falta y se deja apagado explicitamente.
+        #
+        # Van aqui y no en el `az ad app create` por dos motivos: esta llamada se
+        # hace tambien cuando el registro se reutiliza -asi que corrige uno
+        # anterior- y `az ad app update --set web.implicitGrantSettings...` falla
+        # cuando `web` viene vacio, cosa que con las redirect URI delante no pasa.
         $redirecciones = @("https://$hostFront/.auth/login/aad/callback") + $RedirectExtra
-        az ad app update --id $appId --web-redirect-uris $redirecciones --only-show-errors | Out-Null
+        az ad app update --id $appId --web-redirect-uris $redirecciones --enable-id-token-issuance true --enable-access-token-issuance false --only-show-errors | Out-Null
         if ($LASTEXITCODE -ne 0) {
-            Salir-Con "No se han podido registrar las redirect URI." $SALIDA_FALLO `
+            Salir-Con "No se han podido registrar las redirect URI ni la emision de tokens de ID." $SALIDA_FALLO `
                 "comprueba el registro de aplicacion en Entra."
         }
 
@@ -523,6 +546,7 @@ try {
     Write-Host ("  Backend enlazado   : {0}" -f $PostventaFunction)
     Write-Host ("  Asignacion previa  : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } else { "obligatoria, grupo asignado" }))
     Write-Host ("  Permiso de Graph   : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } elseif ($consentimientoDado) { "User.Read, con consentimiento de administrador" } else { "User.Read, CONSENTIMIENTO PENDIENTE" }))
+    Write-Host ("  Tokens de ID       : {0}" -f $(if ($SoloFront) { "sin tocar (-SoloFront)" } else { "emision activada; la de acceso, apagada" }))
     # El resumen cuenta lo que ha PASADO, no lo que suele pasar. Antes, esta
     # linea alegaba '-SoloFront' siempre que el recuento viniera vacio, TAMBIEN
     # en modo completo, que es justo el modo en el que el secreto acaba de

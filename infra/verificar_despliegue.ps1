@@ -41,6 +41,19 @@
     NO IMPRIME NINGUNA URL NI NINGUN IDENTIFICADOR. Lo que imprime es
     'si/no' por comprobacion, que es lo que se anota en `progress/`.
 
+    AVISO DEL 2026-08-25 (defecto 13 de F-010): LAS COMPROBACIONES 1 Y 2 VAN
+    CONTRA EL HOST DESNUDO, y hoy ese host responde 400 a todo. Desde que la
+    Function App es BACKEND ENLAZADO de la Static Web App, la plataforma le
+    activa Easy Auth con el proveedor `azureStaticWebApps` y solo acepta lo que
+    entra por el proxy del front:
+
+        {"code":400,"message":"Login not supported for provider azureStaticWebApps"}
+
+    Un 400 ahi NO significa que el despliegue este roto; significa que ya no se
+    le puede preguntar al backend por su nombre de host. El script lo dice
+    cuando pasa, en vez de dejar dos 'NO' sin explicacion. Lo que sigue
+    sirviendo es la comprobacion 3 y, para el resto, el circuito por el front.
+
 .PARAMETER BaseUrl
     Nombre de host de la Function App desplegada, sin barra final. Sin el no
     se llama a nada.
@@ -92,6 +105,19 @@ function Write-Ayuda {
     Write-Host "que con la ventana cerrada responde 503 sin tocar SharePoint. Si la"
     Write-Host "ventana estuviera abierta, la comprobacion 2 NO se hace."
     Write-Host ""
+}
+
+function Write-Nota-Easy-Auth {
+    # El 400 mas probable de este script, explicado. Sin esto, quien lo ejecute
+    # lee dos 'NO' y concluye que el despliegue esta roto, que no es el caso.
+    Write-Host ""
+    Write-Host "    NOTA: un 400 aqui es Easy Auth, no un despliegue roto." -ForegroundColor Yellow
+    Write-Host "    La Function App es backend enlazado de la Static Web App y la"
+    Write-Host "    plataforma le activa el proveedor azureStaticWebApps: por el host"
+    Write-Host "    desnudo responde 400 a todo, /api/health incluido. Solo acepta lo"
+    Write-Host "    que entra por el proxy del front."
+    Write-Host "    Lo que se puede comprobar por esta via es la 3; el resto, entrando"
+    Write-Host "    al front. Ver docs/DESPLIEGUE.md, secciones 5 y 5 bis."
 }
 
 function New-Pdf-Sintetico {
@@ -234,6 +260,7 @@ Write-Host "1/3 GET /api/health..."
 $codigoSalud = Get-Codigo-Http -Url "$raizApi/api/health"
 $saludOk = $codigoSalud -eq 200
 Write-Host ("    codigo: {0}" -f $codigoSalud)
+if ($codigoSalud -eq 400) { Write-Nota-Easy-Auth }
 
 # --- 2. La ventana de escritura esta cerrada --------------------------------
 
@@ -271,6 +298,9 @@ else {
         Write-Host "    PARA. Ha respondido 200: la Function esta escribiendo en" -ForegroundColor Red
         Write-Host "    SharePoint a cualquiera que la llame. Apaga ARCHIVO_HABILITADO." -ForegroundColor Red
     }
+    # El 400 de Easy Auth solo se explica una vez: si la comprobacion 1 ya lo
+    # ha dicho, repetirlo aqui es ruido.
+    if ($codigoArchivar -eq 400 -and $codigoSalud -ne 400) { Write-Nota-Easy-Auth }
 }
 
 # --- 3. El front pide iniciar sesion ---------------------------------------

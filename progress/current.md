@@ -1,6 +1,37 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-27 · **F-009 APROBADA en segunda review · el ERP sigue sin tocarse**
+>
+> `progress/review2_F-009.md`: **APROBADO**, con tres condiciones para el humano
+> (§7). Los cinco cambios de la primera review están atendidos; el único cambio
+> de código de esa tanda fue un reorden de imports, y `ruff` baja de 59 a 58
+> avisos, exactamente el efecto esperado. El reviewer añadió una comprobación
+> que la primera pasada no hizo: **muestrear que los tests nuevos matan de
+> verdad a sus mutantes**, 4 de 4.
+>
+> `bash harness/init.sh` en verde: cobertura **98,8 %** (565/572), umbral 80 %.
+>
+> **Las tres condiciones, que no las cierra ningún agente:**
+>
+> 1. **T28 sin ejecutar**: el cero de supervivientes de `critico` está razonado
+>    y muestreado, **no demostrado**. Son ~43 min: `python -m harness.mutacion
+>    --feature F-009`.
+> 2. **El bloque 8 entero sin ejecutar, y F-009 no está terminada hasta que se
+>    ejecute.** Lo aprobado es que el código está listo **para** ese día, no que
+>    ese día haya llegado. En T24 el paso 7 incluye mirar la hora de la fila de
+>    `dbo.log` (el huso `Europe/Madrid` es la única decisión sin dato). En T26,
+>    si `SqlWriteGuard` rechaza el `WITH (UPDLOCK, HOLDLOCK)`: **`blocked` y
+>    parar**, no improvisar.
+> 3. **Marcar T22–T28 solo según se ejecuten de verdad.**
+>
+> **El estado de la feature no lo he tocado**: F-009 sigue `in_progress` y a
+> `done` la mueve el humano. Sigue anotado, sin hacer y sin bloquear, todo lo
+> de la primera review §6.3, incluido llevar al dueño de `sigrid-api` que
+> **este servicio es ya el primer escritor genérico por `sql/write`** del
+> ecosistema y no figura en su tabla de consumidores.
+
+
 > ## Estado al 2026-08-26 (review) · **F-009 rechazada y corregida; decisión del humano sobre los tres huecos**
 >
 > `progress/review_F-009.md` devolvió **CHANGES_REQUESTED** con cinco cambios

@@ -1,6 +1,45 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-08-27 · **T28 ejecutada: cero supervivientes nuevos, 15 timeouts sin veredicto**
+>
+> `python -m harness.mutacion --feature F-009`, campaña completa, **3.623 s**.
+> Informe regenerado en `progress/mutacion_F-009.md`, con los análisis de los
+> seis conservados (cero `PENDIENTE`). Salida del comando: **123 evaluados,
+> 102 muertos, 6 supervivientes, 15 timeouts**; exit code 1.
+>
+> **Los 6 supervivientes son exactamente los previstos, ni uno más:**
+>
+> - Los **tres aceptados como riesgo por el humano** el 2026-08-26:
+>   `cliente.py:347` (respuesta sin clave `ok`), `consultas.py:202` y `:207`
+>   (los `NULL` de `descripcion` y `estado_destino_res`).
+> - Los **tres equivalentes ya justificados**: `escrituras.py:217` (texto de un
+>   error inalcanzable), `fabrica.py:130` (no se caza sin construir el adaptador
+>   real, y eso lo prohíbe la guardia de red R39) y `cerrar.py:219`
+>   (`confianza_observaciones`, que se rellena para no mandar nada).
+>
+> **Los ~19 supervivientes que destapó la primera campaña están muertos**: los
+> tests que se escribieron después funcionan.
+>
+> ### PENDIENTE · los 15 timeouts, que no los había antes
+>
+> Quince mutantes quedaron **sin veredicto** —ni muertos ni vivos—, y no al
+> azar: **7 en `domain/models/cierre.py` y 8 en `function_app.py`**. Los ocho de
+> `function_app.py` son **los códigos HTTP** que la primera campaña destapó como
+> supervivientes y para los que se escribió el fichero de tests de la ruta.
+> La campaña anterior tuvo **0 timeouts** con el mismo límite.
+>
+> **Hipótesis sin comprobar**: al mutar un código de estado, la ejecución se
+> desvía a un camino con reintentos de `tenacity` y el test agota el límite.
+>
+> **Cómo se cierra cuando se retome**: relanzar acotado a esos dos ficheros con
+> `--timeout` más alto (son 15 mutantes, no 123). **T28 no se marca**: la
+> campaña se ejecutó, pero el «cero supervivientes con veredicto» que pide
+> `critico` no está demostrado mientras haya quince sin evaluar.
+>
+> **El humano decidió seguir con el bloque 8 y dejar esto anotado.**
+
+
 > ## Estado al 2026-08-27 · **F-009 APROBADA en segunda review · el ERP sigue sin tocarse**
 >
 > `progress/review2_F-009.md`: **APROBADO**, con tres condiciones para el humano

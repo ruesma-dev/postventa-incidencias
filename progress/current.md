@@ -1,6 +1,92 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-02 · **F-012 bloqueada, nace F-023, y falta UNA medida**
+>
+> ### F-012 pasa a `blocked`, con dos bloqueos y ninguno se resuelve aquí
+>
+> Subir el PDF del parte a Sigrid como gráfico —incrustar el binario— **no
+> tiene hoy por dónde hacerse**:
+>
+> 1. **`sigrid-api` no sabe escribir documentos.** Haría falta un endpoint de
+>    dominio nuevo **en ese repositorio**, porque `sql/write` ni reserva `ide`
+>    con applock ni está pensado para BLOBs.
+> 2. **El binario vive en la base DOCUMENTAL**, y la configuración desplegada
+>    tiene la de negocio como **única escribible** (`ALLOWED_WRITE_DATABASES`).
+>    La documental queda fuera **a propósito**: abrirla es decisión del dueño de
+>    `sigrid-api` y afecta al ecosistema entero.
+>
+> El humano lo confirmó el 2026-09-02: **el binario se queda en F-012** hasta
+> que su dueño abra esa base.
+>
+> ### Nace F-023 · el gráfico por URL, la vía que no depende de nadie
+>
+> Asociar el parte a la reclamación **como referencia** al PDF que ya
+> archivamos en SharePoint, en vez de incrustarlo: escribe **solo en la base de
+> negocio** (metadatos en `gra` + el enlace `rcg`), así que **el bloqueo de
+> F-012 no le aplica**.
+>
+> **Por qué importa, y no es cosmético.** F-009 cierra con un `UPDATE con.est`
+> directo y **sin ningún `COUNT` sobre `rcg`** (R20, deliberado): el proceso
+> nativo «Cerrar parte» no nos frena. Pero deja **reclamaciones en `CER` sin
+> ninguna fila en `rcg`**, anomalía firmada como **RIESGO ACEPTADO** en
+> `design.md` §2 y que **no ha ocurrido ni una vez en los 2.365 cierres desde
+> 2023**. F-023 la hace desaparecer.
+>
+> La investigación que la fundamenta es `progress/explore_grafico_url.md`, y
+> trae un **resultado negativo que vale**: los 13.450 gráficos de posventa **NO
+> son de tipo URL**. `vin = 3` con `ima` vacío significa «el binario está en la
+> otra base», no «esto es un enlace». **No hay ni un precedente en 282.599
+> filas**, y en el diccionario de Sigrid la tabla `gra` ni siquiera tiene
+> columna `url`.
+>
+> ### Lo que mide el script nuevo
+>
+> `infra/13_caracterizacion_grafico_url.ps1` empaqueta **Q1, Q3, Q4, Q5, Q8 y
+> Q9** del §5 del informe, en el orden de su §6. **Todas son `SELECT`** por
+> `POST /api/sql/read`; **no se ha ejecutado ninguna**.
+>
+> | | Qué mide | Por qué |
+> |---|---|---|
+> | **Q1** | Las columnas que tiene **de verdad** la `gra` desplegada, y si ya hay una `url` | El diccionario es de v.20240618 y **ya se sabe que le faltan columnas** de `rcg`. Si `gra` tuviera `url`, cambia el diseño entero |
+> | **Q3** | Las **dos** filas huérfanas `vin = 1` y `vin = 4` | Dos filas en 282.599 que nadie ha mirado. La pista más barata que existe |
+> | **Q4** | El perfil de cada modo de `vin` | Nadie ha caracterizado `vin = 2` (154) ni `vin = 0` (38) |
+> | **Q5** | En qué estado están las reclamaciones cuyos gráficos **no tienen fichero detrás** (los 51) | **El proxy empírico**: si alguno cuelga de una reclamación cerrada, «Cerrar parte» mira **el enlace**, no el contenido |
+> | **Q8** | Si `gra.cod` es **único** | El `INSERT` en `rcg` deriva el `ide` por `cod`; con `cod` repetidos crearía enlaces de más |
+> | **Q9** | Si esta instalación usa `dog`/`condog`, que **sí** tiene `url` nativa | Es el segundo camino, y el mensaje del ERP dice «gráfico **o Doc. multimedia**» |
+>
+> Reutiliza `infra/08_lectura_sigrid_comun.ps1`, al que se le añadió el switch
+> **`-Tolerante`** (apagado por defecto: los `09`–`12` no cambian de
+> comportamiento).
+>
+> ### Qué falta EXACTAMENTE para desbloquear F-023
+>
+> **Una sola medida, y ningún documento puede darla**: qué escribe Sigrid al
+> usar *Importa → Asociar URL de Internet…*. Es la **Q10** del informe, y no
+> hay consulta que la responda **porque esa opción no se ha usado nunca aquí**.
+>
+> La resuelve **Posventa (Alicia Echevarría) en cinco minutos**, haciéndolo una
+> vez a mano sobre una reclamación de prueba y ejecutando después
+> *Procesos → 3. Cerrar parte*. Nosotros **solo leemos** la fila resultante.
+> La petición, **redactada para reenviarla tal cual**, está en
+> **`progress/peticion_posventa_prueba_url_F-023.md`**.
+>
+> **Hasta entonces F-023 no se diseña ni se escribe su spec**: F-008 ya advirtió
+> que la combinación de `vin`/`tex`/`nom` **no se debe diseñar sobre
+> suposiciones**.
+>
+> ### Y F-009 sigue igual: `in_progress`, con el bloque 8 SIN EJECUTAR
+>
+> Nada de lo anterior lo mueve. **T22–T27 y T29 siguen sin marcar**, el guion
+> de `progress/guion_bloque8_F-009.md` sigue escrito y sin ejecutar, y siguen en
+> pie sus dos hallazgos: el entorno desplegado **no tiene configuración de
+> Sigrid** (H1) y **`CIERRE_HABILITADO` no se rearma solo** (H2).
+>
+> Se corrigió además una **referencia rota** en su spec: `design.md` §1 (D4),
+> §10 y §11, y `requirements.md`, mandaban el gráfico-URL a **F-013**, que es
+> «mudar el archivo a la biblioteca de Posventa». Ahora apuntan a **F-023**.
+> Solo se cambió el identificador.
+
 > ## Estado al 2026-09-02 · **guion del bloque 8 escrito, sin ejecutar nada**
 >
 > `progress/guion_bloque8_F-009.md` + cinco scripts en `infra/`

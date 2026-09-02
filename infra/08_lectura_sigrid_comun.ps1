@@ -1,11 +1,12 @@
 # infra/08_lectura_sigrid_comun.ps1
 <#
 .SYNOPSIS
-    Fuente UNICA de la lectura contra `sigrid-api` para el bloque 8 de F-009.
-    No ejecuta nada, no llama a nada: solo declara funciones.
+    Fuente UNICA de la lectura contra `sigrid-api`: el bloque 8 de F-009 y la
+    caracterizacion de F-023. No ejecuta nada, no llama a nada: solo declara
+    funciones.
 
 .DESCRIPTION
-    Los scripts 09, 10, 11 y 12 lo cargan POR PUNTO y no repiten ni una linea
+    Los scripts 09, 10, 11, 12 y 13 lo cargan POR PUNTO y no repiten ni una linea
     de HTTP, ni el manejo de la clave, ni el formato del veredicto -el 12 lee
     PostgreSQL y no la pasarela, pero su veredicto se imprime igual: cuatro
     formatos distintos para el mismo bloque serian cuatro cosas que comparar a
@@ -167,6 +168,15 @@ function Invoke-SigridLectura {
         Del fallo se cuenta el TIPO y el codigo HTTP, nunca el cuerpo crudo ni
         la clave: este texto acaba en la consola de alguien y de ahi a una
         captura de pantalla hay un paso.
+
+        -Tolerante cambia UNA cosa y solo una: en vez de parar el script, un
+        fallo de esta consulta se avisa en pantalla y se devuelve `$null`, que
+        el llamador comprueba. Existe para los bloques de CARACTERIZACION, donde
+        se lanzan varias consultas independientes y una que la pasarela rechace
+        -por ejemplo un nombre de base a tres partes, o una tabla que esta
+        instalacion no tenga- no puede llevarse por delante las demas ni impedir
+        que se imprima el veredicto de las que si salieron. Apagado por defecto:
+        los scripts 09-12 se comportan exactamente igual que antes.
     #>
     param(
         [Parameter(Mandatory = $true)][string]$BaseUrl,
@@ -175,7 +185,8 @@ function Invoke-SigridLectura {
         [Parameter(Mandatory = $true)][string]$Sql,
         [object[]]$Parametros = @(),
         [int]$MaxFilas = 50,
-        [int]$TimeoutS = 35
+        [int]$TimeoutS = 35,
+        [switch]$Tolerante
     )
 
     $cuerpo = "{""database"":" + ($BaseDatos | ConvertTo-Json) +
@@ -196,18 +207,24 @@ function Invoke-SigridLectura {
         if ($_.Exception.Response) {
             $codigo = " (HTTP " + [int]$_.Exception.Response.StatusCode + ")"
         }
-        Salir-Con ("No se ha podido consultar el ERP" + $codigo + ": " +
+        $texto = "No se ha podido consultar el ERP" + $codigo + ": " +
             $_.Exception.GetType().Name + ". Comprueba la raiz, la clave y que " +
-            "la base este en la lista blanca de lectura.") $SALIDA_ERP
+            "la base este en la lista blanca de lectura."
+        if ($Tolerante) { Write-Host "  AVISO: $texto" -ForegroundColor Yellow; return $null }
+        Salir-Con $texto $SALIDA_ERP
     }
 
     if (-not $respuesta.ok) {
-        Salir-Con "La pasarela no ha dado por buena la consulta." $SALIDA_ERP
+        $texto = "La pasarela no ha dado por buena la consulta."
+        if ($Tolerante) { Write-Host "  AVISO: $texto" -ForegroundColor Yellow; return $null }
+        Salir-Con $texto $SALIDA_ERP
     }
     if ($respuesta.truncated) {
-        Salir-Con ("La respuesta viene TRUNCADA: se ha alcanzado max_rows y " +
+        $texto = "La respuesta viene TRUNCADA: se ha alcanzado max_rows y " +
             "faltan filas. No se saca ningun veredicto de una lectura " +
-            "incompleta (sigrid_api.md, seccion 6.3).") $SALIDA_ERP
+            "incompleta (sigrid_api.md, seccion 6.3)."
+        if ($Tolerante) { Write-Host "  AVISO: $texto" -ForegroundColor Yellow; return $null }
+        Salir-Con $texto $SALIDA_ERP
     }
 
     return $respuesta

@@ -126,7 +126,7 @@ sí lo exigiría es F-012 (escribir el BLOB del gráfico), y sigue en su feature
 ### D4 · El gráfico-URL no se confirma aquí
 
 No se toca. F-008 demostró que no hay ni un precedente en 282.599 filas; quien
-lo necesita es F-013.
+lo necesita es F-023.
 
 ### D5 y D6 · Las dos que resolvió el humano después
 
@@ -473,14 +473,14 @@ resolvió el humano después de ver lo medido en esta spec.
 | **D1** | El `tex` de la fila de `dbo.log` es **texto propio rastreable** | `Cerrar parte (postventa-incidencias)`. Empieza por `Cerrar parte` para no desaparecer de los informes que filtran por prefijo, y nombra el servicio para distinguirse de un cierre manual (§1) |
 | **D2** | El `usu` es el login de Sigrid de quien confirma, **nunca un usuario técnico** | Correspondencia confirmada si la hay; si no, candidato derivado del correo y **verificado contra `dbo.usu`** antes de escribir. Sin confirmación, no se cierra (§1) |
 | **D3** | La escritura de `sigrid-api` **está habilitada**, y con los prefijos que hacen falta | `INSERT` y `UPDATE` permitidos, base de negocio en la lista blanca. **F-009 no exige tocar el repositorio `sigrid-api`** (§1) |
-| **D4** | El **gráfico-URL no se confirma** en esta feature | Fuera de alcance. Es F-013 |
+| **D4** | El **gráfico-URL no se confirma** en esta feature | Fuera de alcance. Es F-023 |
 | **D5** | El orden es **validar → cerrar → subir el PDF** | F-009 **no consulta `gra` ni `rcg`**: la precondición es propia (parte apto y archivado). El PDF entra en Sigrid en F-012. Con el **riesgo aceptado** de §2, escrito y mitigado |
 | **D6** | El **correo manda y el login se confirma una vez** | La derivación es la **siembra**, no el mecanismo de cada cierre; lo verificado se guarda en `postventa.usuarios_sigrid`, con alta manual y precedencia para los casos que no siguen la convención |
 
 ## 11 · Lo que queda fuera, y una trampa que le espera a F-012
 
 Fuera de F-009: **subir el parte a Sigrid como gráfico** (F-012) y **el
-gráfico-URL** (F-013). Nada de eso se diseña aquí.
+gráfico-URL** (F-023). Nada de eso se diseña aquí.
 
 Pero hay un obstáculo en F-012 que **no se ve hasta que se tropieza con él**, y
 se deja escrito aquí porque se descubrió al comprobar D3:

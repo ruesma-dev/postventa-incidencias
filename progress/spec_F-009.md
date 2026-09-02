@@ -213,6 +213,9 @@ verificada), con su coste en el `design.md`.
 - **No sube el gráfico**: es F-012 (y es la única parte que exigiría tocar el
   repositorio `sigrid-api`).
 - **No confirma el gráfico-URL**: es F-013 (D4 del humano).
+  > Corregido el 2026-09-02: el gráfico-URL es **F-023**, dada de alta ese
+  > día. F-013 es «mudar el archivo a la biblioteca de Posventa», otra cosa.
+  > La frase de arriba se deja como se escribió; lo que manda es esta nota.
 - **No toca `harness/features.json`**: el estado lo mueve el humano.
 - **No exige ningún cambio en `sigrid-api`**, y eso está demostrado, no supuesto
   (D3).

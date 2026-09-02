@@ -16,7 +16,7 @@ F-009 mueve `con.est` de la reclamación al estado de cierre y **escribe la fila
 de auditoría en `dbo.log` que el ERP escribiría**. Nada más.
 
 **Fuera de alcance, y por decisión del humano del 2026-08-26**: subir el parte a
-Sigrid como gráfico (es **F-012**) y confirmar el gráfico-URL (es **F-013**;
+Sigrid como gráfico (es **F-012**) y confirmar el gráfico-URL (es **F-023**;
 F-008 demostró que no hay ni un precedente en 282.599 filas).
 
 ## Vocabulario

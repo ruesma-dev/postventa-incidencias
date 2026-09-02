@@ -111,12 +111,14 @@ def fusionar(
     muestreado: bool = False,
     max_mutantes: int | None = None,
     semilla: int | None = None,
+    workers: int | None = None,
 ) -> InformeMutacion:
     """Funde los informes de los workers en el informe único de la campaña.
 
     Los totales se suman y las listas se reordenan por la clave estable, de
     forma que el resultado no delata en qué worker cayó cada mutante. Los
-    metadatos de muestreo son los del coordinador, que es quien muestreó.
+    metadatos de muestreo y el número de workers son los del coordinador, que es
+    quien muestreó y quien repartió.
     """
     informe = InformeMutacion(
         feature=alcance.feature,
@@ -127,6 +129,7 @@ def fusionar(
         muestreado=muestreado,
         max_mutantes=max_mutantes,
         semilla=semilla,
+        workers=workers,
     )
     for atributo in ("supervivientes", "timeouts", "mutantes_evaluados"):
         juntos: list[Mutante] = []
@@ -172,6 +175,7 @@ def reemplazar_timeouts(
         max_mutantes=informe.max_mutantes,
         semilla=informe.semilla,
         timeouts_repasados=len(informe.timeouts),
+        workers=informe.workers,
     )
     return corregido
 
@@ -493,6 +497,9 @@ def ejecutar_campania_paralela(
             muestreado=muestreado,
             max_mutantes=max_mutantes,
             semilla=semilla,
+            # Los EFECTIVOS, no los pedidos: pedir 16 con 4 mutantes arranca 4,
+            # y el informe tiene que decir con qué contención se midió de verdad.
+            workers=efectivo,
         )
 
     # R8: con menos de dos mutantes que evaluar, paralelizar solo cuesta. Se

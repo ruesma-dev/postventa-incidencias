@@ -374,6 +374,10 @@ class InformeMutacion:
     #: Cuántos mutantes que quedaron en `timeout` se repasaron después en serie.
     #: Cero significa «no hizo falta», no «no se hace».
     timeouts_repasados: int = 0
+    #: Workers con los que se midió DE VERDAD (no los que se pidieron). Sin este
+    #: dato el «Tiempo total» no se puede interpretar: la misma campaña tarda lo
+    #: mismo mal repartida entre muchos que bien repartida entre pocos.
+    workers: int | None = None
 
     @property
     def evaluados(self) -> int:
@@ -565,6 +569,40 @@ def analisis_escritos(texto: str) -> dict[tuple, str]:
     }
 
 
+def comando_de(informe: InformeMutacion) -> str:
+    """El comando que reproduce esta campaña, workers incluidos.
+
+    Sin `--workers` el comando de la cabecera no reproduce nada: la misma
+    feature medida con 1 worker y con 16 da tiempos que se diferencian en un
+    factor 4 y, hasta que la campaña repasa sus timeouts, veredictos distintos.
+    """
+    comando = f"python -m harness.mutacion --feature {informe.feature}"
+    if informe.workers is not None:
+        comando += f" --workers {informe.workers}"
+    return comando
+
+
+def fila_del_repaso(informe: InformeMutacion) -> str:
+    """Fila de totales que cuenta qué pasó con los mutantes en `timeout`.
+
+    Se imprime SIEMPRE, también cuando no hubo ninguno: una fila ausente se lee
+    como descuido, y un `0` a secas no distingue «no hizo falta repasar» de «este
+    arnés no repasa». Las tres redacciones son los tres casos reales.
+    """
+    if informe.timeouts_repasados:
+        return (
+            f"| Timeouts repasados en serie | {informe.timeouts_repasados} — "
+            f"{informe.timeouts_resueltos} con veredicto tras el repaso, "
+            f"{len(informe.timeouts)} en timeout todavía |"
+        )
+    if informe.timeouts:
+        return (
+            "| Timeouts repasados en serie | 0: campaña en serie, el reloj ya "
+            "midió a cada mutante a solas |"
+        )
+    return "| Timeouts repasados en serie | 0: ningún mutante agotó el reloj |"
+
+
 def escribir_informe(informe: InformeMutacion, ruta: Path) -> None:
     """Escribe el informe de la campaña en Markdown.
 
@@ -580,7 +618,7 @@ def escribir_informe(informe: InformeMutacion, ruta: Path) -> None:
         f"<!-- {ruta.as_posix()} -->",
         f"# {informe.feature} · Campaña de mutación",
         "",
-        f"Generado por `python -m harness.mutacion --feature {informe.feature}` "
+        f"Generado por `{comando_de(informe)}` "
         f"el {datetime.now().strftime('%Y-%m-%d %H:%M')}.",
         "",
         "## Alcance",
@@ -605,7 +643,14 @@ def escribir_informe(informe: InformeMutacion, ruta: Path) -> None:
         f"| Muertos | {informe.muertos} |",
         f"| Supervivientes | {len(informe.supervivientes)} |",
         f"| Timeouts | {len(informe.timeouts)} |",
+        fila_del_repaso(informe),
         f"| Tiempo total | {informe.segundos:.1f} s |",
+        # El «Tiempo total» sin los workers no se puede interpretar: es la
+        # medición que faltó para reconstruir la campaña de F-009 del
+        # 2026-08-27. Se imprime siempre, con `n/d` cuando nadie lo dijo.
+        f"| Workers | {informe.workers} |"
+        if informe.workers is not None
+        else "| Workers | n/d |",
     ]
     if informe.muestreado:
         lineas.append(
@@ -652,6 +697,25 @@ def escribir_informe(informe: InformeMutacion, ruta: Path) -> None:
 
     if informe.timeouts:
         lineas += ["## Timeouts", ""]
+        if informe.timeouts_repasados:
+            lineas += [
+                (
+                    "Estos agotaron el reloj **también al repasarlos en serie**, "
+                    "uno a uno y sin nadie compitiendo por la máquina: la "
+                    "contención ya no los explica. Míralos como un cuelgue de "
+                    "verdad, no como ruido."
+                ),
+                "",
+            ]
+        else:
+            lineas += [
+                (
+                    "Campaña sin repaso en serie: con un solo evaluador el reloj "
+                    "ya midió a cada mutante a solas, así que estos timeouts son "
+                    "suyos."
+                ),
+                "",
+            ]
         for mutante in informe.timeouts:
             lineas.append(f"- `{mutante.fichero}:{mutante.linea}` {mutante.descripcion()}")
         lineas.append("")
@@ -794,6 +858,10 @@ def main(argv: list[str] | None = None, ejecutor: object | None = None) -> int:
             eco=lambda linea: print(linea, flush=True),
             ejecutor_de=factoria if servicios and ejecutor is None else None,
         )
+        # Una campaña en serie es una campaña de un worker, y el informe lo dice
+        # igual que lo dice la paralela: sin el dato, sus tiempos no se pueden
+        # comparar con los de ninguna otra.
+        informe.workers = 1
 
     destino = Path(opciones.salida or f"progress/mutacion_{opciones.feature}.md")
     escribir_informe(informe, destino)

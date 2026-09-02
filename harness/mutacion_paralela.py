@@ -54,6 +54,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable, Iterator
+from dataclasses import replace
 from pathlib import Path
 from types import TracebackType
 
@@ -160,10 +161,10 @@ def reemplazar_timeouts(
     if not informe.timeouts:
         return informe
 
-    corregido = InformeMutacion(
-        feature=informe.feature,
-        alcance=informe.alcance,
-        generados=informe.generados,
+    # `replace` y no un constructor con los campos a mano: así, el día que
+    # `InformeMutacion` gane un campo, el repaso no lo pierde en silencio.
+    corregido = replace(
+        informe,
         muertos=informe.muertos + reintento.muertos,
         supervivientes=sorted(
             [*informe.supervivientes, *reintento.supervivientes], key=clave_estable
@@ -171,11 +172,7 @@ def reemplazar_timeouts(
         timeouts=sorted(reintento.timeouts, key=clave_estable),
         mutantes_evaluados=list(informe.mutantes_evaluados),
         segundos=informe.segundos + reintento.segundos,
-        muestreado=informe.muestreado,
-        max_mutantes=informe.max_mutantes,
-        semilla=informe.semilla,
         timeouts_repasados=len(informe.timeouts),
-        workers=informe.workers,
     )
     return corregido
 

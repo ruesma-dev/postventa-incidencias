@@ -1,6 +1,35 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-02 · **guion del bloque 8 escrito, sin ejecutar nada**
+>
+> `progress/guion_bloque8_F-009.md` + cinco scripts en `infra/`
+> (`08_lectura_sigrid_comun.ps1`, `09_estado_reclamacion_sigrid.ps1`,
+> `10_log_cierre_sigrid.ps1`, `11_trazabilidad_tex_sigrid.ps1`,
+> `12_traza_cierre_local.ps1`). **Los cinco son de LECTURA**; la única
+> escritura del bloque la hace el servicio desplegado.
+>
+> **No se ha ejecutado ni una llamada** a Sigrid, `sigrid-api`, la Function
+> desplegada, el PostgreSQL compartido ni SharePoint. T22–T27 y T29 siguen sin
+> marcar y F-009 sigue `in_progress`: las marca el humano.
+>
+> **El bloque 8 NO puede arrancar tal cual (hallazgo H1).** El entorno
+> desplegado **no tiene ninguna configuración de Sigrid**: `infra/00_vars_postventa.ps1`
+> no lista `sigrid-api-key` entre los secretos ni `SIGRID_API_KEY` entre las
+> referencias, y `infra/desplegar_backend.ps1` no fija ninguna `SIGRID_*`.
+> T22 respondería `503 ConfiguracionSigridIncompleta`. El «Paso 0» del §1 del
+> guion lo aprovisiona a mano; arreglarlo en los scripts está **propuesto y no
+> hecho**.
+>
+> **Y `CIERRE_HABILITADO` no se rearma solo (hallazgo H2)**, al contrario que
+> `ARCHIVO_HABILITADO=false`: no está en `$ajustes`, así que se apoya en el
+> valor por defecto del código, que solo aplica **mientras la App Setting no
+> exista**. Encendida una vez, un redespliegue **no** la apaga —y
+> `docs/DESPLIEGUE.md` §4 bis dice que sí—. Cerrar la ventana a mano al
+> terminar, y comprobarlo.
+>
+> Los seis hallazgos, con su propuesta, en §8 del guion.
+
 > ## Estado al 2026-09-02 · **T28 CERRADA: 117 muertos, 6 supervivientes, 0 timeouts**
 >
 > ```

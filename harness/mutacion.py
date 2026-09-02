@@ -371,10 +371,22 @@ class InformeMutacion:
     muestreado: bool = False
     max_mutantes: int | None = None
     semilla: int | None = None
+    #: Cuántos mutantes que quedaron en `timeout` se repasaron después en serie.
+    #: Cero significa «no hizo falta», no «no se hace».
+    timeouts_repasados: int = 0
 
     @property
     def evaluados(self) -> int:
         return len(self.mutantes_evaluados)
+
+    @property
+    def timeouts_resueltos(self) -> int:
+        """Repasados a los que el repaso SÍ les sacó un veredicto de verdad.
+
+        Lo que sigue en `timeouts` tras el repaso ya no tiene la contención como
+        excusa: se midió a solas y aun así agotó el reloj.
+        """
+        return max(0, self.timeouts_repasados - len(self.timeouts))
 
 
 def ejecutar_campania(

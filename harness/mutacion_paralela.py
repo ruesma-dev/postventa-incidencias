@@ -14,7 +14,17 @@ el paralelismo se monta por fuera.
    va en subprocesos, así que el GIL no pinta nada.
 4. Fusiona los parciales en un informe idéntico al de la campaña en serie
    salvo la fecha y la fila «Tiempo total».
-5. `finally`: retira los worktrees pase lo que pase.
+5. Repasa EN SERIE, sobre uno solo de los worktrees, los mutantes que quedaron
+   en `timeout`, y sustituye ese no-veredicto por el de verdad.
+6. `finally`: retira los worktrees pase lo que pase.
+
+Sobre el paso 5, que es contraintuitivo hasta que se mide: con N suites
+compitiendo, el reloj de un mutante mide la carga de la máquina, no al mutante.
+Medido el 2026-09-02 sobre una suite de 38,7 s, con 16 workers cada pase subía a
+131,6 s contra un tope de 120 s; tres campañas de la misma feature y el mismo
+commit dieron 15, 27 y 0 timeouts, sobre mutantes distintos cada vez, y algún
+mutante «muerto» en una salía `timeout` en la siguiente. Un `timeout` de una
+campaña concurrente no es un veredicto: es un reintento pendiente.
 
 El árbol principal no se muta NUNCA en modo paralelo, y por eso se exige que
 esté limpio: los worktrees se crean desde `HEAD` y con cambios sin commitear
@@ -124,6 +134,46 @@ def fusionar(
             juntos.extend(getattr(parcial, atributo))
         setattr(informe, atributo, sorted(juntos, key=clave_estable))
     return informe
+
+
+def reemplazar_timeouts(
+    informe: InformeMutacion, reintento: InformeMutacion
+) -> InformeMutacion:
+    """Reparte los mutantes repasados en serie según su veredicto de verdad.
+
+    `informe` es el de la campaña paralela; `reintento`, el que devuelve volver a
+    evaluar SIN concurrencia los mutantes que quedaron en `timeout`. Se cambia
+    únicamente **cómo se reparten**: `generados` y `mutantes_evaluados` no se
+    tocan —nadie se ha evaluado dos veces ni ha desaparecido nadie— y las listas
+    se reordenan con `clave_estable`, igual que hace `fusionar`, para que el
+    informe no delate en qué orden se repasó.
+
+    Los segundos se suman: el repaso cuesta minutos reales y esconderlos falsea
+    la media por mutante, que es justo la señal con la que `CHECKPOINTS.md`
+    detecta una campaña que no midió lo que dice.
+
+    Función pura: no toca disco, ni git, ni el reloj.
+    """
+    if not informe.timeouts:
+        return informe
+
+    corregido = InformeMutacion(
+        feature=informe.feature,
+        alcance=informe.alcance,
+        generados=informe.generados,
+        muertos=informe.muertos + reintento.muertos,
+        supervivientes=sorted(
+            [*informe.supervivientes, *reintento.supervivientes], key=clave_estable
+        ),
+        timeouts=sorted(reintento.timeouts, key=clave_estable),
+        mutantes_evaluados=list(informe.mutantes_evaluados),
+        segundos=informe.segundos + reintento.segundos,
+        muestreado=informe.muestreado,
+        max_mutantes=informe.max_mutantes,
+        semilla=informe.semilla,
+        timeouts_repasados=len(informe.timeouts),
+    )
+    return corregido
 
 
 # --- Worktrees desechables ---------------------------------------------------
@@ -306,6 +356,27 @@ def renumerar(linea: str, indice: int, total: int) -> str:
     return f"[{indice}/{total}] {resto}"
 
 
+def eco_del_repaso(
+    eco: Callable[[str], None] | None, total: int
+) -> Callable[[str], None] | None:
+    """Eco del repaso en serie: numeración propia y marca `repaso` delante.
+
+    La numeración de la campaña ya se cerró cuando el repaso empieza, así que
+    seguir contando sobre ella daría un `[i/n]` fuera de rango. El repaso cuenta
+    lo suyo, y la marca deja ver por pantalla que eso ya no es la campaña.
+    """
+    if eco is None:
+        return None
+    hechos = 0
+
+    def _eco(linea: str) -> None:
+        nonlocal hechos
+        hechos += 1
+        eco(f"repaso {renumerar(linea, hechos, total)}")
+
+    return _eco
+
+
 class _ParticionCancelable:
     """Partición que deja de rendir mutantes en cuanto se pide cancelar.
 
@@ -374,16 +445,44 @@ def ejecutar_campania_paralela(
             indice = hechos
         eco(renumerar(linea, indice, total))
 
-    def correr(raiz_worker: str, particion: object) -> InformeMutacion:
+    def correr(
+        raiz_worker: str,
+        particion: object,
+        eco_propio: Callable[[str], None] | None = None,
+    ) -> InformeMutacion:
         return ejecutar_campania(
             alcance,
             EjecutorPytest(raiz=raiz_worker),
             timeout_s=timeout_s,
             raiz=raiz_worker,
             mutantes=particion,  # type: ignore[arg-type]
-            eco=eco_compartido if eco is not None else None,
+            eco=eco_propio or (eco_compartido if eco is not None else None),
             ejecutor_de=lambda fichero: fabrica(fichero, raiz_worker),
         )
+
+    def repasar(informe: InformeMutacion, raiz_repaso: str) -> InformeMutacion:
+        """Vuelve a juzgar EN SERIE los mutantes que quedaron en `timeout`.
+
+        Con N suites peleándose por la máquina, el reloj mide la contención y no
+        al mutante: medido en este arnés el 2026-09-02, una suite de 38,7 s pasa
+        a 131,6 s con 16 workers, contra un tope de 120 s. Aquí se juzga uno
+        detrás de otro, sobre UN solo worktree —el árbol principal no se muta
+        nunca en modo paralelo, y esa garantía no se rompe ni para esto—, así
+        que lo que siga en `timeout` después ya sí señala un cuelgue de verdad.
+        """
+        if not informe.timeouts:
+            return informe
+
+        pendientes = list(informe.timeouts)
+        if eco is not None:
+            eco(
+                f"Repaso en serie de {len(pendientes)} mutante(s) en timeout: "
+                "sin concurrencia, el reloj mide al mutante y no a la máquina."
+            )
+        reintento = correr(
+            raiz_repaso, pendientes, eco_propio=eco_del_repaso(eco, len(pendientes))
+        )
+        return reemplazar_timeouts(informe, reintento)
 
     def informe_final(parciales: list[InformeMutacion]) -> InformeMutacion:
         return fusionar(
@@ -398,6 +497,12 @@ def ejecutar_campania_paralela(
 
     # R8: con menos de dos mutantes que evaluar, paralelizar solo cuesta. Se
     # muta in situ, como toda la vida, y no se crea ni un worktree.
+    #
+    # Aquí NO se repasan los timeouts, y es a propósito: sin concurrencia, el
+    # repaso repetiría exactamente la misma medición que acaba de hacerse. Un
+    # timeout de una campaña in situ ya es el veredicto que el repaso buscaba, y
+    # repetirlo solo duplicaría el coste del único caso en que de verdad hay un
+    # cuelgue. Por eso `timeouts_repasados` se queda en cero: nadie repasó nada.
     if efectivo < 2:
         parciales = [correr(raiz, mutantes)] if mutantes else []
         return informe_final(parciales)
@@ -447,7 +552,13 @@ def ejecutar_campania_paralela(
                 hilo.join()
             raise
 
-    if fallos:
-        raise fallos[0]
+        if fallos:
+            raise fallos[0]
 
-    return informe_final([parcial for parcial in resultados if parcial is not None])
+        # El repaso va DENTRO del `with`: necesita un worktree vivo, y el árbol
+        # principal no se muta nunca en modo paralelo. Salir por aquí retira los
+        # worktrees igual que salir por cualquier otro sitio.
+        informe = informe_final(
+            [parcial for parcial in resultados if parcial is not None]
+        )
+        return repasar(informe, rutas[0])

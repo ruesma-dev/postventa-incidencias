@@ -7,13 +7,15 @@ Resumen: **22 features**, 12 abiertas, 10 terminadas.
 
 En curso: **F-009**.
 
+Bloqueadas: **F-012**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | en curso | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
+| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | bloqueada | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
@@ -55,7 +57,7 @@ Recoger automáticamente las remesas que lleguen a un buzón corporativo, reapro
 
 ### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
 
-estado **pendiente** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
+estado **bloqueada** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
 
 Replicar el 'importar desde archivo' que hace Posventa a mano: INSERT del PDF en gra (binario en ima) e INSERT en rcg para vincularlo al concepto de la reclamación, atómico con el cambio de estado. REQUIERE un endpoint de dominio nuevo en sigrid-api: hoy la pasarela lee documentos pero no los escribe, y sql/write ni reserva ide con applock ni está pensado para BLOBs. Ese endpoint se implementa en el repositorio sigrid-api, no aquí. HALLAZGO DEL 2026-08-26, desde la spec de F-009: no basta con el endpoint de dominio nuevo. El binario del grafico vive en la tabla `gra` de la base DOCUMENTAL (medido en docs/referencia/03_modelo_posventa_sigrid.md §4.1: los metadatos y el enlace `rcg` estan en la base de negocio, el binario en `ima` de la documental, 357.901 filas sin ninguna vacia), y la configuracion desplegada de sigrid-api tiene la base de negocio como UNICA escribible: la documental queda fuera de ALLOWED_WRITE_DATABASES a proposito. Asi que subir el PDF a Sigrid hoy NO TIENE POR DONDE HACERSE, y habilitar la escritura en esa base es decision del dueño de sigrid-api, no de este proyecto. Es lo primero que hay que resolver al arrancar F-012, antes de diseñar nada.
 

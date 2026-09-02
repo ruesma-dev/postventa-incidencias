@@ -216,12 +216,12 @@
         "Subir dos veces el mismo parte no duplica el gráfico",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "blocked",
       "sdd": true,
       "rigor": "critico",
       "priority": 12,
       "branch": "feature/F-012-grafico-sigrid",
-      "blocked_by": "Endpoint de escritura de documentos en sigrid-api (otro repositorio). Se propone al humano antes de empezar."
+      "blocked_by": "DOS bloqueos, y el segundo es de otro proyecto. 1) sigrid-api no sabe escribir documentos: hace falta un endpoint de dominio nuevo en ese repositorio, porque sql/write ni reserva ide con applock ni esta pensado para BLOBs. 2) El binario vive en la tabla gra de la base DOCUMENTAL, y la configuracion desplegada tiene la de negocio como UNICA escribible (ALLOWED_WRITE_DATABASES): la documental queda fuera A PROPOSITO, y abrirla es decision del dueño de sigrid-api y afecta a todo el ecosistema. Con la configuracion de hoy, subir el PDF a Sigrid NO TIENE POR DONDE HACERSE. El humano lo confirmo el 2026-09-02: el binario se hace en esta feature, cuando se desbloquee; mientras tanto se persigue la via del grafico por URL, que solo escribe en la base de negocio."
     },
     {
       "id": "F-013",

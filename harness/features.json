@@ -385,6 +385,23 @@
       "rigor": "estandar",
       "priority": 21,
       "branch": "feature/F-021-rehidratar-sesion"
+    },
+    {
+      "id": "F-022",
+      "title": "Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura",
+      "description": "El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco ficheros que recorren el árbol del repositorio fichero a fichero, y repiten el mismo barrido en cada test: test_f003_arquitectura.py cuesta 12,7 s él solo, un tercio de la suite entera. Leer el árbol UNA vez en una fixture de sesión y que cada test consulte el resultado dejaría la suite en torno a 20 s. Medido en progress/explore_F-009_timeouts.md (medición 10) el 2026-09-02, a propósito de los timeouts de la campaña de mutación de F-009: con la suite a 20 s la campaña paralela volvería a caber de sobra en el tope de 120 s por mutante. Beneficia además a cada init.sh de cada sesión. OJO: toca tests de F-003, F-005, F-006 y F-009, features ya cerradas, con el riesgo de aflojar sin querer una comprobación de arquitectura; por eso lleva spec propia y review, y no se mete dentro de otra feature.",
+      "acceptance": [
+        "La suite del servicio api baja de forma medible y el informe recoge el antes y el después, medidos con el mismo comando",
+        "Ninguna comprobación de arquitectura pierde alcance: los mismos ficheros recorridos y las mismas condiciones fijadas que antes",
+        "Cada test de arquitectura sigue fallando cuando debe: se verifica introduciendo a propósito la violación que cada uno vigila",
+        "La fixture no cachea entre ejecuciones ni deja estado en disco: solo vive en la sesión de pytest",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 22,
+      "branch": "feature/F-022-suite-barrido-cacheado"
     }
   ]
 }

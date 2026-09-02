@@ -233,10 +233,23 @@
 
 ## Bloque 9 · Cierre
 
-- [ ] **T28**: Campaña de mutación (`python -m harness.mutacion --feature
+- [x] **T28**: Campaña de mutación (`python -m harness.mutacion --feature
       F-009`) y análisis de los supervivientes. | Verificación: rigor `critico`
       → **cero supervivientes** sin justificación escrita aceptada por el
       humano; informe en `progress/mutacion_F-009.md` con el nº de workers.
+      **HECHO (2026-09-02)**: `python -m harness.mutacion --feature F-009
+      --workers 1` — **nº de workers: 1, campaña en serie**, porque con 8 y con
+      16 la máquina satura y el veredicto `timeout` sale por carga, no por el
+      mutante (`progress/explore_F-009_timeouts.md`). Resultado real: **123
+      mutantes evaluados, 117 muertos, 6 supervivientes, 0 timeouts, 6.124,7 s**
+      (102 min). Los 6 supervivientes son **exactamente los seis previstos**:
+      los tres aceptados por escrito como riesgo por el humano el 2026-08-26
+      (`cliente.py:347`, `consultas.py:202` y `:207`) y los tres equivalentes ya
+      justificados (`escrituras.py:217`, `fabrica.py:130`, `cerrar.py:219`).
+      Informe en `progress/mutacion_F-009.md`, con los 26 análisis y **cero
+      `PENDIENTE`**. El nº de workers **queda escrito aquí y en
+      `progress/current.md` porque el informe que genera el arnés no lo
+      registra** (carencia del arnés, anotada para arreglarse aparte).
 
 - [ ] **T29**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
       `bash harness/init.sh` termina con exit code 0, tests incluidos y con la

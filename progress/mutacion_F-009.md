@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-009.md -->
 # F-009 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-009` el 2026-08-27 13:41.
+Generado por `python -m harness.mutacion --feature F-009` el 2026-09-02 14:05.
 
 ## Alcance
 
@@ -34,10 +34,10 @@ Origen del diff: **rama** (`6cabd39bef601ad3d9e39f0e44307a73088055f0` .. `featur
 |---|---|
 | Mutantes generados | 123 |
 | Mutantes evaluados | 123 |
-| Muertos | 102 |
+| Muertos | 117 |
 | Supervivientes | 6 |
-| Timeouts | 15 |
-| Tiempo total | 3623.4 s |
+| Timeouts | 0 |
+| Tiempo total | 6124.7 s |
 | Muestreo | no: campaña completa |
 
 ## Supervivientes
@@ -64,6 +64,8 @@ impida que mañana alguien lo cambie.
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 2. `services/postventa-api/infrastructure/sigrid/consultas.py:202` [logico]
 
 - Original: `descripcion=str(descripcion or ""),`
@@ -79,6 +81,8 @@ las cinco cosas que R9 obliga a enseñar antes de confirmar.
 
 **Decisión: hueco real, sin test**, mismo motivo que el 21. Analizado en
 bloque con el superviviente 23, su gemelo en `estado_destino_res`.
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
@@ -100,6 +104,8 @@ bloque con el superviviente 22, su gemelo en `descripcion`.
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 4. `services/postventa-api/infrastructure/sigrid/escrituras.py:217` [logico]
 
 - Original: `f"{plan.motivo or 'sin motivo declarado'}"`
@@ -113,6 +119,8 @@ mensaje de una red de seguridad (R10) que el camino normal no alcanza:
 
 **Decisión: equivalente en efecto.** Cambia el texto de un error que solo se
 ve componiendo las piezas a mano.
+
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
@@ -135,6 +143,8 @@ y se prefiere el precio.
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
+
 ### 6. `services/postventa-api/interface_adapters/api/cerrar.py:219` [entero]
 
 - Original: `confianza_observaciones=0,`
@@ -149,21 +159,5 @@ no mandar nada**: `paso_cierre` no lo lee y la respuesta no lo devuelve (R51).
 
 > _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 
-## Timeouts
-
-- `services/postventa-api/domain/models/cierre.py:260` services/postventa-api/domain/models/cierre.py:260 [booleano] reclamacion, login_sigrid, cerrable=True, ya_cerrada=False, motivo=None -> reclamacion, login_sigrid, cerrable=True, ya_cerrada=True, motivo=None
-- `services/postventa-api/domain/models/cierre.py:280` services/postventa-api/domain/models/cierre.py:280 [not] if not codigo: -> if codigo:
-- `services/postventa-api/domain/models/cierre.py:309` services/postventa-api/domain/models/cierre.py:309 [entero] return limpio.partition("@")[0].strip() -> return limpio.partition("@")[1].strip()
-- `services/postventa-api/domain/models/cierre.py:320` services/postventa-api/domain/models/cierre.py:320 [comparacion] reclamacion.est == reclamacion.estado_destino_est -> reclamacion.est != reclamacion.estado_destino_est
-- `services/postventa-api/domain/models/cierre.py:321` services/postventa-api/domain/models/cierre.py:321 [logico] or reclamacion.estado_origen_cod == CODIGO_ESTADO_CIERRE -> and reclamacion.estado_origen_cod == CODIGO_ESTADO_CIERRE
-- `services/postventa-api/domain/models/cierre.py:321` services/postventa-api/domain/models/cierre.py:321 [comparacion] or reclamacion.estado_origen_cod == CODIGO_ESTADO_CIERRE -> or reclamacion.estado_origen_cod != CODIGO_ESTADO_CIERRE
-- `services/postventa-api/domain/models/cierre.py:349` services/postventa-api/domain/models/cierre.py:349 [booleano] @dataclass(frozen=True) -> @dataclass(frozen=False)
-- `services/postventa-api/function_app.py:704` services/postventa-api/function_app.py:704 [entero] return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400) -> return _json({"error": "el cuerpo de la petición no es JSON válido"}, 401)
-- `services/postventa-api/function_app.py:707` services/postventa-api/function_app.py:707 [entero] return _json({"error": error.motivo}, 400) -> return _json({"error": error.motivo}, 401)
-- `services/postventa-api/function_app.py:722` services/postventa-api/function_app.py:722 [entero] return _json({"error": error.motivo}, 409) -> return _json({"error": error.motivo}, 410)
-- `services/postventa-api/function_app.py:725` services/postventa-api/function_app.py:725 [entero] return _json({"error": error.motivo}, 503) -> return _json({"error": error.motivo}, 504)
-- `services/postventa-api/function_app.py:736` services/postventa-api/function_app.py:736 [entero] 503, -> 504,
-- `services/postventa-api/function_app.py:748` services/postventa-api/function_app.py:748 [entero] 503, -> 504,
-- `services/postventa-api/function_app.py:765` services/postventa-api/function_app.py:765 [entero] 500, -> 501,
-- `services/postventa-api/function_app.py:769` services/postventa-api/function_app.py:769 [entero] return _json({"error": error.motivo}, 502) -> return _json({"error": error.motivo}, 503)
+> _Análisis traído de la campaña anterior de esta feature: el mutante volvió a sobrevivir con el mismo operador y el mismo texto. Reléelo si el código de alrededor ha cambiado._
 

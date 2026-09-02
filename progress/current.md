@@ -1,7 +1,83 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-08-27 · **T28 ejecutada: cero supervivientes nuevos, 15 timeouts sin veredicto**
+> ## Estado al 2026-09-02 · **T28 CERRADA: 117 muertos, 6 supervivientes, 0 timeouts**
+>
+> ```
+> python -m harness.mutacion --feature F-009 --workers 1
+> ```
+>
+> **123 mutantes evaluados, 117 muertos, 6 supervivientes, 0 timeouts, en
+> 6.124,7 s** (102 min). Informe regenerado en `progress/mutacion_F-009.md`,
+> con los 26 análisis y **cero `PENDIENTE`**. Con esto el «cero supervivientes
+> con veredicto» que exige el rigor `critico` **queda demostrado**, no razonado:
+> T28 se marca `[x]` en `specs/F-009-cierre-sigrid/tasks.md`.
+>
+> **Los 6 supervivientes son exactamente los seis previstos, ni uno más:**
+>
+> - Los **tres aceptados por escrito como riesgo por el humano** el 2026-08-26:
+>   `infrastructure/sigrid/cliente.py:347` (respuesta de escritura sin la clave
+>   `ok`), `infrastructure/sigrid/consultas.py:202` y `:207` (los `NULL` de
+>   `descripcion` y `estado_destino_res`).
+> - Los **tres equivalentes ya justificados**:
+>   `infrastructure/sigrid/escrituras.py:217` (texto de un error inalcanzable),
+>   `infrastructure/sigrid/fabrica.py:130` (no se caza sin construir el
+>   adaptador real, y eso lo prohíbe la guardia de red R39) e
+>   `interface_adapters/api/cerrar.py:219` (`confianza_observaciones`, que se
+>   rellena para no mandar nada).
+>
+> ### Por qué en serie: la hipótesis de los reintentos de `tenacity` era FALSA
+>
+> Lo anotado el 2026-08-27 («al mutar un código de estado la ejecución se desvía
+> a un camino con reintentos de `tenacity`») **no se sostiene**. El diagnóstico
+> completo está en `progress/explore_F-009_timeouts.md`: los dos mutantes
+> sospechosos, reproducidos a mano y en solitario, **mueren limpiamente** en
+> 37,0 s y 22,6 s, en el `assert` del código de estado. No hay cuelgue, ni
+> reintento, ni espera.
+>
+> **La causa real es saturación de la máquina.** La suite del servicio `api`
+> tarda **38,7 s** ella sola y **131,6 s** ejecutada con los 16 workers que
+> usaba la campaña, es decir **por encima del tope de 120 s por mutante**. El
+> veredicto `timeout` dependía de la carga del momento, no del mutante: mutantes
+> que una campaña daba por muertos salían `timeout` en la siguiente, y al revés.
+>
+> Se confirmó tres veces. **Con `--workers 8`** (hoy): 123 evaluados, 95
+> muertos, 1 superviviente, **27 timeouts**, 1.553,6 s — peor que con 16, y
+> sobre **mutantes distintos**. Por eso la campaña buena se lanzó **en serie**
+> (`--workers 1`): tarda 102 min, pero **cada veredicto es del mutante y no de
+> la máquina**. Su informe no se conserva en `progress/` (quedó en el scratchpad
+> de la sesión); `progress/mutacion_F-009.md` se restauró desde git para no
+> dejar la feature peor documentada, y luego lo regeneró la campaña en serie.
+>
+> ### El informe generado NO registra el nº de workers
+>
+> Carencia del arnés: `progress/mutacion_F-009.md` dice «Generado por `python -m
+> harness.mutacion --feature F-009`» **sin el `--workers`**, y sin ese dato el
+> tiempo total de una campaña no se puede interpretar (fue justo lo que impidió
+> reconstruir a posteriori cómo se lanzó la del 2026-08-27). Por eso **el número
+> queda escrito aquí y en la línea de verificación de T28**: la campaña que
+> cierra T28 se ejecutó con **1 worker, en serie**.
+>
+> Hay un arreglo del arnés ya aprobado que va en **un trabajo aparte**, no en
+> este: excluir `harness/` del alcance de la mutación y **reevaluar en serie los
+> mutantes en `timeout` al final de una campaña paralela**, para que un
+> `timeout` deje de ser un veredicto y pase a ser un reintento. Ahí es donde
+> toca añadir también la línea de workers al informe. Regla de propagación: va a
+> `arnes-base`.
+>
+> ### Lo que esto NO cierra
+>
+> - **F-009 sigue `in_progress`.** A `done` la mueve el humano, no un agente.
+> - **El bloque 8 (T22–T27) sigue entero sin ejecutar**: es el que toca el ERP
+>   de producción, se hace desde el entorno desplegado con dry-run previo y
+>   confirmación explícita, y ninguna de sus tareas se ha ejecutado. **T29
+>   tampoco se marca.**
+> - Lo único que cambia con T28 es que la puerta de mutación del rigor
+>   `critico` está satisfecha.
+
+
+> ## Estado al 2026-08-27 · **T28 ejecutada: cero supervivientes nuevos, 15 timeouts sin veredicto** — SUPERADO por el bloque del 2026-09-02
+
 >
 > `python -m harness.mutacion --feature F-009`, campaña completa, **3.623 s**.
 > Informe regenerado en `progress/mutacion_F-009.md`, con los análisis de los

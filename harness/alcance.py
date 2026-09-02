@@ -23,7 +23,19 @@ from pathlib import Path
 #: comparan como SEGMENTO de ruta a cualquier profundidad, no como prefijo de
 #: la raíz: en un repositorio con servicios en subcarpetas, los tests de un
 #: servicio son tests igual que los de la raíz.
-DIRECTORIOS_EXCLUIDOS: tuple[str, ...] = ("tests", "specs", "progress", "docs")
+#:
+#: `harness` está aquí por la misma razón que `tests`: es utillaje, no producto.
+#: Sin excluirlo, tocar el arnés desde la rama de una feature mete sus propias
+#: líneas en el alcance, y entonces la campaña **se muta a sí misma** y la
+#: puerta de cobertura mide la herramienta en vez de lo que la herramienta
+#: vigila.
+DIRECTORIOS_EXCLUIDOS: tuple[str, ...] = (
+    "tests",
+    "specs",
+    "progress",
+    "docs",
+    "harness",
+)
 
 #: Ruta por defecto del inventario de features del arnés.
 RUTA_FEATURES = "harness/features.json"
@@ -113,9 +125,10 @@ def es_produccion(ruta: str) -> bool:
     """¿Es `ruta` código de producción susceptible de mutarse o medirse?
 
     Solo Python, y con ningún directorio excluido en su camino: basta con que
-    `tests`, `specs`, `progress` o `docs` aparezca como un segmento completo,
-    esté en la raíz o dentro de un servicio del monorepo. El nombre del propio
-    fichero no cuenta: `app/docs.py` es código.
+    uno de `DIRECTORIOS_EXCLUIDOS` aparezca como un segmento completo, esté en
+    la raíz o dentro de un servicio del monorepo. El nombre del propio fichero
+    no cuenta (`app/docs.py` es código), ni vale como prefijo
+    (`harnesses/util.py` también lo es).
     """
     normalizada = ruta.replace("\\", "/")
     if not normalizada.endswith(".py"):

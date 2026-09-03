@@ -535,3 +535,19 @@ añadir al commit**.
   despliegue, `verificar_despliegue.ps1` sin mirar `CIERRE_HABILITADO`, y H3–H6
   del guion abiertos.
 - `progress/review_F-010.md` conserva a propósito la redacción vieja de R28 (§12).
+
+> **Observación fuera de encargo, detectada de paso y NO corregida.** El
+> fragmento de consola de `progress/current.md` que prepara las lecturas de
+> comprobación del bloque 8 hace
+> `az functionapp config appsettings list ... [?name=='SIGRID_API_BASE_URL'].value`.
+> Ese comando devuelve el valor **crudo** de la App Setting, y para una
+> referencia a Key Vault eso es la cadena `@Microsoft.KeyVault(SecretUri=…)`,
+> no la URL resuelta: Azure solo la resuelve al arrancar la Function, no en la
+> API de gestión. Así que esa línea **no va a dar la raíz de la pasarela**, y
+> quien siga el guion se encontrará un `Invoke-RestMethod` contra una URI
+> imposible.
+>
+> No es consecuencia de estas correcciones —viene del diseño de H1, y antes de
+> H1 la línea devolvía vacío— y no estaba en el encargo, así que **no se ha
+> tocado**. La salida natural es teclear la raíz a mano, como ya se hace con la
+> clave (`Read-Host`), o leer el secreto del vault. Queda para el humano.

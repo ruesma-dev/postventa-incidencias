@@ -75,10 +75,13 @@ exactamente lo que verifica T26, y por eso se hace dentro de T24.
 > desplegado no tenía **ninguna** configuración de Sigrid, así que
 > `POST /api/cerrar` habría respondido `503 ConfiguracionSigridIncompleta`
 > nombrando `SIGRID_API_BASE_URL`, `SIGRID_API_KEY` y `SIGRID_BASE_DATOS` de
-> una vez. **Resuelto el 2026-09-03 en el commit `82fbfb8`**, con H2. Lo que
-> sigue es lo que queda, que no es cero: los **valores** de los tres secretos
-> no puede ponerlos un script, porque no están —ni pueden estar— en el
-> repositorio.
+> una vez. **Resuelto el 2026-09-03 en el commit `82fbfb8`**, con H2, y
+> **corregido el mismo día en `bed95ea`**: `SIGRID_BASE_DATOS` bajó de secreto
+> de Key Vault a App Setting plana, porque el nombre de la base del ERP ya está
+> escrito en documentos versionados y el secreto no protegía nada que no
+> estuviera ya. Lo que sigue es lo que queda, que no es cero: los **valores** de
+> los **dos** secretos que quedan no puede ponerlos un script, porque no
+> están —ni pueden estar— en el repositorio.
 
 ### Qué hace ya el despliegue, sin que nadie teclee nada
 
@@ -87,8 +90,8 @@ ejecución:
 
 | Cómo | Cuáles |
 |---|---|
-| Referencia a Key Vault, resuelta por la identidad gestionada | `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS` |
-| En claro en `$ajustes` | `CIERRE_HABILITADO=false`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA` |
+| Referencia a Key Vault, resuelta por la identidad gestionada | `SIGRID_API_BASE_URL`, `SIGRID_API_KEY` |
+| En claro en `$ajustes` | `CIERRE_HABILITADO=false`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA` |
 
 Dos consecuencias que importan para este guion:
 
@@ -102,23 +105,26 @@ Dos consecuencias que importan para este guion:
    el huso de `fec`/`hor` de la fila de `dbo.log` que se mira en el paso 7 de
    T24 (§0.2). Ya no depende del valor por defecto del código.
 
-### Paso 0 · Los tres secretos del vault (una sola vez, antes de T22)
+### Paso 0 · Los dos secretos del vault (una sola vez, antes de T22)
 
-**Es lo único que queda a mano, y es a mano a propósito**: los tres valores los
+**Es lo único que queda a mano, y es a mano a propósito**: los dos valores los
 da el dueño de `sigrid-api` (`azure-apps/sigrid_api.md` §3.1 y §3.3), no se
 deducen y no pueden entrar al repositorio. Se piden a ciegas por consola
 (`Read-Host -AsSecureString`), no se escriben en ningún fichero y no quedan en
 el historial de la consola:
 
 ```
-powershell -ExecutionPolicy Bypass -Command ".\infra\cargar_secretos_postventa.ps1 -Solo sigrid-api-base-url,sigrid-api-key,sigrid-base-datos"
+powershell -ExecutionPolicy Bypass -Command ".\infra\cargar_secretos_postventa.ps1 -Solo sigrid-api-base-url,sigrid-api-key"
 ```
 
 > **`-Solo` no funciona con `powershell -File`**: el parámetro no llega y el
-> script pediría los doce secretos del backend. Se lanza con `-Command`, como
-> explica `docs/DESPLIEGUE.md` §2. `sigrid-base-datos` es la base **de
-> negocio**, la única con escritura permitida en la pasarela (`sigrid_api.md`
-> §4.1).
+> script pediría los once secretos del backend. Se lanza con `-Command`, como
+> explica `docs/DESPLIEGUE.md` §2.
+>
+> **`sigrid-base-datos` ya no se teclea aquí** (corrección del 2026-09-03,
+> `bed95ea`): la base **de negocio** —la única con escritura permitida en la
+> pasarela, `sigrid_api.md` §4.1— la fija el despliegue como App Setting plana,
+> porque su nombre ya está escrito en documentos versionados del repositorio.
 
 Y después, **un despliegue del backend**, que es lo que fija las App Settings:
 
@@ -126,7 +132,7 @@ Y después, **un despliegue del backend**, que es lo que fija las App Settings:
 powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1 -SinPublicar
 ```
 
-**Qué se espera ver**: el script imprime `App Settings : N, de las que 12 son
+**Qué se espera ver**: el script imprime `App Settings : N, de las que 11 son
 referencias` y `Ventana de escritura : CERRADA (archivo Y cierre en el ERP)`.
 
 **Comprobación**: en el portal, ninguna App Setting sale con error. Una
@@ -144,17 +150,18 @@ Hace falta el URI del vault:
 az keyvault show -g rg-postventa-dev -n <el kv del proyecto> --query properties.vaultUri -o tsv
 ```
 
-Las tres sensibles, **por referencia** (las comillas no son decoración: sin
+Las **dos** sensibles, **por referencia** (las comillas no son decoración: sin
 ellas `cmd.exe` interpreta los paréntesis, ver `infra/desplegar_backend.ps1`):
 
 ```
-az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings "SIGRID_API_BASE_URL=@Microsoft.KeyVault(SecretUri=<vaultUri>secrets/sigrid-api-base-url)" "SIGRID_API_KEY=@Microsoft.KeyVault(SecretUri=<vaultUri>secrets/sigrid-api-key)" "SIGRID_BASE_DATOS=@Microsoft.KeyVault(SecretUri=<vaultUri>secrets/sigrid-base-datos)"
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings "SIGRID_API_BASE_URL=@Microsoft.KeyVault(SecretUri=<vaultUri>secrets/sigrid-api-base-url)" "SIGRID_API_KEY=@Microsoft.KeyVault(SecretUri=<vaultUri>secrets/sigrid-api-key)"
 ```
 
-Y las cinco planas, incluido el interruptor **explícitamente apagado**:
+Y las **seis** planas, incluido el interruptor **explícitamente apagado** y la
+base del ERP, que desde el 2026-09-03 ya no es un secreto de vault:
 
 ```
-az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=false SIGRID_TIMEOUT_S=35 SIGRID_REINTENTOS=3 SIGRID_TIP_RECLAMACION=708 SIGRID_ZONA_HORARIA=Europe/Madrid
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=false SIGRID_BASE_DATOS=ruesma SIGRID_TIMEOUT_S=35 SIGRID_REINTENTOS=3 SIGRID_TIP_RECLAMACION=708 SIGRID_ZONA_HORARIA=Europe/Madrid
 ```
 
 **Qué se espera ver**: `az` devuelve el JSON de las App Settings sin error, y
@@ -177,8 +184,8 @@ variable que falte.
 - [ ] **P2** · El backend desplegado lleva el código de F-009
       (`infra\desplegar_backend.ps1`). Sin esto, `/api/cerrar` no existe y la
       respuesta es un 404, no un 503.
-- [ ] **P3** · Paso 0 de §1 hecho: los **tres secretos** de Sigrid en el Key
-      Vault y el backend desplegado **después** del commit `82fbfb8` (o, si no
+- [ ] **P3** · Paso 0 de §1 hecho: los **dos secretos** de Sigrid en el Key
+      Vault y el backend desplegado **después** del commit `bed95ea` (o, si no
       se redespliega, las ocho App Settings puestas a mano según §1). Se
       comprueba en el portal: ninguna referencia a Key Vault con error.
 - [ ] **P4** · La clave de función de `sigrid-api` y la raíz de la pasarela, a
@@ -360,8 +367,11 @@ funciona ni el dry-run** (R37, R49).
    *Se espera*: **`HTTP 503`** y un motivo que diga que el cierre está
    deshabilitado. **Esto es lo correcto y hay que verlo**: confirma la doble
    puerta de §0.1 y que apagado no se toca el ERP ni para leer.
-   *Si sale 503 nombrando `SIGRID_API_BASE_URL` / `SIGRID_API_KEY` /
-   `SIGRID_BASE_DATOS`*: falta el Paso 0 de §1. Vuelve ahí.
+   *Si sale 503 nombrando `SIGRID_API_BASE_URL` o `SIGRID_API_KEY`*: falta el
+   Paso 0 de §1 —los dos secretos del vault—. Vuelve ahí.
+   *Si sale 503 nombrando `SIGRID_BASE_DATOS`*: eso ya no es un secreto, es una
+   App Setting plana; lo que falta es el redespliegue (o la línea `az` de las
+   seis planas de §1).
    *Si sale 200*: **para**. El interruptor no está apagado, y eso hay que
    entenderlo antes de seguir.
 
@@ -858,7 +868,7 @@ resultado, que es un código de expediente y no un dato personal.
 
 | # | Hallazgo | Dónde | Qué se propone |
 |---|---|---|---|
-| **H1** | **RESUELTO** (`82fbfb8`, 2026-09-03). El entorno desplegado no tenía ninguna configuración de Sigrid: ni secretos en el Key Vault, ni las App Settings `SIGRID_*`. T22 habría respondido `503 ConfiguracionSigridIncompleta` | `infra/00_vars_postventa.ps1` (`$PostventaSecretosBackend`, `$PostventaAppSettingsSecretas`), `infra/desplegar_backend.ps1` (`$ajustes`) | Hecho: **tres** secretos nuevos (`sigrid-api-base-url`, `sigrid-api-key`, `sigrid-base-datos`) con sus referencias, y **cinco** planas a `$ajustes`. El cotejo destapó dos más de las tres previstas: `SIGRID_ZONA_HORARIA` —la que decide el huso de `dbo.log`— y `SIGRID_TIP_RECLAMACION`. Queda a mano solo subir los tres valores al vault: ver §1 |
+| **H1** | **RESUELTO** (`82fbfb8`, 2026-09-03) **y corregido el mismo día** (`bed95ea`). El entorno desplegado no tenía ninguna configuración de Sigrid: ni secretos en el Key Vault, ni las App Settings `SIGRID_*`. T22 habría respondido `503 ConfiguracionSigridIncompleta` | `infra/00_vars_postventa.ps1` (`$PostventaSecretosBackend`, `$PostventaAppSettingsSecretas`), `infra/desplegar_backend.ps1` (`$ajustes`) | Hecho: **dos** secretos nuevos (`sigrid-api-base-url`, `sigrid-api-key`) con sus referencias, y **seis** planas a `$ajustes`. El primer arreglo puso **tres** secretos: `sigrid-base-datos` bajó a App Setting plana en `bed95ea`, porque el nombre de la base del ERP ya está escrito en documentos versionados y el secreto no protegía nada que no estuviera ya, a cambio de un aprovisionamiento manual más. El cotejo destapó dos variables más de las tres previstas: `SIGRID_ZONA_HORARIA` —la que decide el huso de `dbo.log`— y `SIGRID_TIP_RECLAMACION`. Queda a mano solo subir los dos valores al vault: ver §1 |
 | **H2** | **RESUELTO** (`82fbfb8`, 2026-09-03). `CIERRE_HABILITADO` no se reescribía en cada despliegue, al contrario de `ARCHIVO_HABILITADO=false`, y `docs/DESPLIEGUE.md` §4 bis afirmaba que sí, «por el mismo mecanismo». Se apoyaba en el valor por defecto del código, que solo aplica mientras la App Setting no exista | `infra/desplegar_backend.ps1`, `docs/DESPLIEGUE.md` §4 bis | Hecho: `CIERRE_HABILITADO=false` en `$ajustes`, junto a `ARCHIVO_HABILITADO`, y §4 bis reescrito para describir el mecanismo real y dejar escrito que antes no lo era. Un test nuevo vigila que no vuelva a desaparecer |
 | **H3** | **`POST /api/cerrar` no se puede llamar desde un puesto de trabajo con `curl` ni con `Invoke-RestMethod`**: el backend es enlazado y solo acepta lo que entra por el proxy del front. `tasks.md` T22 dice «llamar a `POST /api/cerrar`» sin decir por dónde | `docs/DESPLIEGUE.md` §5 bis, `azure-apps/postventa_incidencias.md` | Resuelto en §4 de este guion con el fragmento de consola. No es un defecto: es una consecuencia del despliegue que la tarea no menciona |
 | **H4** | **El dry-run ya escribe la traza local** (R40), que tiene **clave ajena contra `postventa.partes`**. Un `hash` que no esté guardado hace fallar hasta el dry-run. `tasks.md` T22 no lo declara como precondición | `application/pipelines/paso_cierre.py`, `infrastructure/persistencia/sql/06_cierres.sql` | Recogido como precondición P5 de §2. Es la misma trampa del defecto 15 de F-010 |

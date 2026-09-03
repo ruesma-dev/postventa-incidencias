@@ -35,7 +35,7 @@ Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
 | Orden | Script | Qué hace | Desde dónde se ejecuta | Cuándo se repite |
 |---|---|---|---|---|
 | 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | — | Nunca se ejecuta suelto |
-| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **doce** secretos del backend, pedidos a ciegas | `$HOME` o `infra\` | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
+| 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **once** secretos del backend, pedidos a ciegas | `$HOME` o `infra\` | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
 | 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | **`infra\` obligatorio** | Cada vez que cambie el backend |
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
@@ -73,11 +73,12 @@ $HOME\` que decía antes este documento.
 También hacen falta la CLI de Azure y la de Static Web Apps
 (`npm i -g @azure/static-web-apps-cli`).
 
-### Son doce secretos, no catorce, y el porqué importa
+### Son once secretos, no trece, y el porqué importa
 
-El Key Vault acaba con **catorce** secretos, pero **a mano solo se cargan
-doce**: los del backend (`pg-*`, `gemini-api-key`, `graph-*`,
-`sharepoint-*`, `sigrid-*`). Los dos que faltan —`swa-client-id` y `swa-client-secret`—
+El Key Vault acaba con **trece** secretos, pero **a mano solo se cargan
+once**: los del backend (`pg-*`, `gemini-api-key`, `graph-*`,
+`sharepoint-*`, `sigrid-api-base-url` y `sigrid-api-key`). Los dos que
+faltan —`swa-client-id` y `swa-client-secret`—
 **los genera y los guarda `desplegar_front.ps1`**, que crea el registro de
 aplicación, le saca el secreto y lo escribe él mismo en el vault.
 
@@ -87,18 +88,26 @@ despliegue del front. Esto costó una parada real el 2026-08-21, siguiendo lo
 que decía este mismo documento.
 
 La lista está en `infra/00_vars_postventa.ps1`, partida a propósito en
-`$PostventaSecretosBackend` (los doce) y `$PostventaSecretosFront` (los dos).
+`$PostventaSecretosBackend` (los once) y `$PostventaSecretosFront` (los dos).
 
-**Tres de los doce son de Sigrid y solo uno es una credencial.**
-`sigrid-api-key` lo es; `sigrid-api-base-url` y `sigrid-base-datos` están en el
-vault por el mismo motivo por el que ya lo estaba `pg-host`, que tampoco
-autentica nada: son un **host interno** y el **nombre de la base de producción
-del ERP**, y ninguno de los dos puede quedar escrito en el repositorio. Los
-tres valores los da el dueño de `sigrid-api` (`azure-apps/sigrid_api.md` §3).
+**Dos de los once son de Sigrid, y cada uno por un motivo distinto.**
+`sigrid-api-key` es una **credencial**: la clave de función de la pasarela.
+`sigrid-api-base-url` no autentica nada, pero es un **host interno**, y esos no
+entran al repositorio: el mismo motivo por el que ya estaba ahí `pg-host`. Los
+dos valores los da el dueño de `sigrid-api` (`azure-apps/sigrid_api.md` §3).
+
+> **`SIGRID_BASE_DATOS` no está aquí, y estuvo unas horas el 2026-09-03.** Se
+> subió al vault con el argumento de que el nombre de la base de producción del
+> ERP no puede quedar escrito en el repositorio, y **ya lo estaba**: en
+> `docs/referencia/03_modelo_posventa_sigrid.md` y en
+> `specs/F-009-cierre-sigrid/design.md`, entre otros. Un secreto de vault no lo
+> protegía de nada y en cambio había que subirlo a mano en cada entorno, que es
+> una oportunidad más de que un despliegue quede a medias. Bajó a **App Setting
+> plana** de `desplegar_backend.ps1` el mismo día (§4 bis).
 
 ### Rotar una credencial: `-Solo` **no funciona con `powershell -File`**
 
-Para subir un secreto suelto sin volver a teclear los otros once, el script 1
+Para subir un secreto suelto sin volver a teclear los otros diez, el script 1
 admite `-Solo <nombre>`. Pero **con `powershell -File` el parámetro no
 funciona**: los argumentos llegan como una sola cadena, `-Solo` no construye
 el array `[string[]]` que declara, y el script responde
@@ -166,16 +175,19 @@ recomponen solos.
    `infra/00_vars_postventa.ps1` y en la tarjeta del portal (§6). **Los tres
    sitios tienen que decir lo mismo.**
 
-2. **Las doce credenciales del backend a mano**, para teclearlas cuando el
+2. **Las once credenciales del backend a mano**, para teclearlas cuando el
    script las pida: `pg-host`, `pg-user`, `pg-password`, `gemini-api-key`,
    `graph-tenant-id`, `graph-client-id`, `graph-client-secret`,
-   `sharepoint-site-id`, `sharepoint-drive-id`, `sigrid-api-base-url`,
-   `sigrid-api-key` y `sigrid-base-datos`.
+   `sharepoint-site-id`, `sharepoint-drive-id`, `sigrid-api-base-url` y
+   `sigrid-api-key`.
 
-   Las tres últimas las da el dueño de `sigrid-api`, no se deducen. Si todavía
+   Las dos últimas las da el dueño de `sigrid-api`, no se deducen. Si todavía
    no las tienes, **déjalas vacías y saldrán como «Sin tocar»**: el resto del
    despliegue funciona, y lo único que no arranca hasta cargarlas es
    `POST /api/cerrar`, que responde `503` nombrándolas.
+
+   **`sigrid-base-datos` ya no se pide**: el nombre de la base del ERP es una
+   App Setting plana desde el 2026-09-03 (§2, recuadro).
 
    **`swa-client-id` y `swa-client-secret` NO se preparan**: los crea y los
    guarda `desplegar_front.ps1` (§2). Teclearlos aquí es inventar dos valores
@@ -304,29 +316,37 @@ llamar **sin** `commit` y **leer el dry-run** → confirmar → llamar con `comm
 ### Las variables de Sigrid, y cuál es el secreto
 
 **Las ocho las pone el despliegue**, y desde el 2026-09-03 no hay que
-aprovisionar ninguna a mano (hallazgo **H1** del guion del bloque 8): las tres
-sensibles por referencia a Key Vault, las otras cinco en claro en `$ajustes`.
+aprovisionar ninguna a mano (hallazgo **H1** del guion del bloque 8): las **dos**
+sensibles por referencia a Key Vault, las otras **seis** en claro en `$ajustes`.
 
 | App Setting | Qué es | Cómo se despliega |
 |---|---|---|
 | `CIERRE_HABILITADO` | El interruptor. Apagado por defecto | `$ajustes`, `false` en cada despliegue |
 | `SIGRID_API_BASE_URL` | La raíz de la pasarela: un **host interno** | Referencia a Key Vault (`sigrid-api-base-url`) |
 | `SIGRID_API_KEY` | **Secreto**: la clave de función de la pasarela | Referencia a Key Vault (`sigrid-api-key`) |
-| `SIGRID_BASE_DATOS` | La base de negocio del ERP, la única escribible en la pasarela | Referencia a Key Vault (`sigrid-base-datos`) |
+| `SIGRID_BASE_DATOS` | La base de negocio del ERP, la única escribible en la pasarela | `$ajustes`, en claro |
 | `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS` | Tiempos. La escritura no se reintenta nunca, y eso no es configurable | `$ajustes`, 35 s y 3 |
 | `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA` | Configuración de la instalación, con valor por defecto medido | `$ajustes`, `708` y `Europe/Madrid` |
 
-**Por qué la raíz y el nombre de la base también son secretos de vault**, si no
-autentican nada: por lo mismo que `pg-host`. Son un host interno y el nombre de
-la base de producción del ERP, y ninguno de los dos puede quedar escrito en el
-repositorio. Lo único que se ve en las App Settings de la Function App es el
+**Por qué la raíz también es un secreto de vault**, si no autentica nada: por lo
+mismo que `pg-host`. Es un **host interno**, y esos no pueden quedar escritos en
+el repositorio. Lo único que se ve en las App Settings de la Function App es el
 **nombre** del secreto dentro de una URI.
 
+**Y por qué el nombre de la base NO lo es**, aunque el 2026-09-03 lo fuera
+durante unas horas: porque **ya está escrito en documentos versionados de este
+repositorio** —`docs/referencia/03_modelo_posventa_sigrid.md`,
+`specs/F-009-cierre-sigrid/design.md`— y nadie va a redactarlos. Meterlo en el
+vault no añadía seguridad real y sí un secreto más que subir a mano en cada
+entorno: una oportunidad más de que un despliegue quede a medias. Es la
+**Corrección 1** del mismo día.
+
 Faltando cualquiera de las tres, el endpoint responde `503` nombrando **todas**
-las que falten de una vez, y **nunca** sus valores. Si el vault no las tiene, la
-Function App arranca igual pero las referencias salen con error en el portal:
-se cargan una vez con `cargar_secretos_postventa.ps1 -Solo sigrid-api-base-url
-sigrid-api-key sigrid-base-datos`, ejecutado **sin `-File`** (§2).
+las que falten de una vez, y **nunca** sus valores. `SIGRID_BASE_DATOS` la pone
+el despliegue siempre. Las otras dos, si el vault no las tiene, dejan que la
+Function App arranque igual pero con las referencias en error en el portal: se
+cargan una vez con `cargar_secretos_postventa.ps1 -Solo sigrid-api-base-url
+sigrid-api-key`, ejecutado **sin `-File`** (§2).
 
 ## 5 · Después de desplegar
 

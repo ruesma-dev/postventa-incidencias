@@ -1,6 +1,46 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-03 · **H1 y H2 arreglados: el despliegue ya aprovisiona Sigrid y rearma el candado del cierre**
+>
+> Los dos hallazgos de despliegue del §8 de `progress/guion_bloque8_F-009.md`,
+> aprobados por el humano hoy. Informe completo, con el cotejo variable a
+> variable: **`progress/impl_H1_H2_despliegue.md`**. Commit `82fbfb8` aquí y
+> `9bc0518` en `azure-apps`. **Sin `push` en ninguno de los dos.**
+>
+> - **H1** · El despliegue no traía **ninguna** de las ocho variables de F-009.
+>   Ya las trae: tres por referencia a Key Vault (`sigrid-api-base-url`,
+>   `sigrid-api-key`, `sigrid-base-datos`) y cinco en `$ajustes`. Son **tres**
+>   secretos y no uno porque la raíz de la pasarela es un host interno y
+>   `SIGRID_BASE_DATOS` es el nombre de la base de producción del ERP: ninguno
+>   de los dos puede quedar escrito en el repositorio, igual que `pg-host`.
+> - **H2** · `CIERRE_HABILITADO=false` está en `$ajustes`, junto a
+>   `ARCHIVO_HABILITADO`. Era el único candado del despliegue que no se rearmaba
+>   solo. `docs/DESPLIEGUE.md` §4 bis decía que sí; ahora describe el mecanismo
+>   real y deja escrito que antes no lo era.
+> - **El cotejo destapó dos variables más** de las tres previstas:
+>   `SIGRID_ZONA_HORARIA` —la que decide el huso de `fec`/`hor` en `dbo.log`, y
+>   la única que **no da error al faltar**— y `SIGRID_TIP_RECLAMACION`.
+>
+> ### Dos cosas que el humano tiene que decidir o hacer
+>
+> 1. **Queda a mano subir los tres valores al Key Vault**: los da el dueño de
+>    `sigrid-api` y no pueden entrar al repositorio. El **Paso 0** del §1 del
+>    guion sigue ahí, con los dos caminos (redesplegar, o poner las App Settings
+>    sueltas si no se quiere redesplegar el entorno actual).
+> 2. **Se tocó un test de F-010**, contra la instrucción de no tocar
+>    `services/`, porque era imposible no hacerlo: `test_f010_r28` exigía
+>    literalmente que **no** hubiera ninguna variable `SIGRID_*` en el
+>    despliegue. Su premisa —«el ERP está fuera del piloto»— cae con la
+>    aprobación de hoy; lo que protegía, no, y es lo que comprueba ahora.
+>    **R28 sigue escrito en `specs/F-010-despliegue/requirements.md` con su
+>    texto original y ya no describe el sistema**: enmendarlo o no es decisión
+>    del humano. Detalle en el §5 del informe.
+>
+> **No se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint —ni lecturas—, no se ha marcado ninguna tarea del
+> bloque 8 ni T29, y no se ha cambiado el estado de ninguna feature.
+
 > ## Estado al 2026-09-03 · **Cae la premisa que bloqueaba F-012: la base documental SÍ es escribible**
 >
 > **El dato lo dio el humano hoy**, y lo respalda el spike **F-002 de

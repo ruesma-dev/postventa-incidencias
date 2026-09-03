@@ -14,7 +14,7 @@
     un error que no menciona ningun rol: media hora de investigacion para algo
     que aqui se detecta en dos segundos.
 
-    LOS SECRETOS NO ENTRAN EN NINGUNA APP SETTING. Los doce que identifican o
+    LOS SECRETOS NO ENTRAN EN NINGUNA APP SETTING. Los once que identifican o
     autentican se fijan como REFERENCIA al Key Vault del proyecto, resuelta por la
     identidad gestionada en tiempo de arranque. Lo que queda escrito en la
     configuracion de la Function App es una URI; quien tenga acceso de lectura
@@ -25,14 +25,27 @@
 
     LA CONFIGURACION DE SIGRID SI ENTRA, DESDE EL 2026-09-03. Hasta F-009 no
     entraba ninguna variable `SIGRID_*`, porque el cierre en el ERP estaba
-    fuera del piloto (R28 de F-010). F-009 esta implementada y aprobada, y sin
-    su configuracion `POST /api/cerrar` responde 503 y el bloque de
-    verificacion contra el ERP no puede ni arrancar (hallazgo H1 de
-    `progress/guion_bloque8_F-009.md`). Lo que NO cambia es que aqui no se
-    escribe ni un valor: las tres sensibles -la raiz de la pasarela, la clave
-    de funcion y el nombre de la base del ERP- van por REFERENCIA a Key Vault
-    como las otras nueve, y las que se fijan en claro son tiempos y
-    configuracion de la instalacion que ya viven en el repositorio.
+    fuera del piloto (R28 de F-010, enmendado ese mismo dia). F-009 esta
+    implementada y aprobada, y sin su configuracion `POST /api/cerrar` responde
+    503 y el bloque de verificacion contra el ERP no puede ni arrancar
+    (hallazgo H1 de `progress/guion_bloque8_F-009.md`).
+
+    Que entra por donde, y es una raya que conviene no borrar:
+
+      - POR REFERENCIA a Key Vault, DOS: la raiz de la pasarela -un host
+        interno- y la clave de funcion. NI SUS NOMBRES SE ESCRIBEN AQUI: se
+        declaran en `00_vars_postventa.ps1` y llegan por el bucle de mas
+        abajo. Un test lo vigila, y por eso esta cabecera tampoco las nombra.
+      - EN CLARO en `$ajustes`, CINCO: `SIGRID_BASE_DATOS` y las cuatro de
+        tiempos y configuracion de la instalacion. Todas tienen su valor ya
+        escrito en documentos versionados de este repositorio, asi que
+        ponerlas aqui no revela nada que no estuviera.
+
+    `SIGRID_BASE_DATOS` estuvo unas horas del 2026-09-03 en el vault, por
+    exceso de celo, y BAJO a App Setting plana el mismo dia: el nombre de la
+    base del ERP ya esta escrito en `docs/referencia/` y en las specs, de modo
+    que subirlo al vault no daba seguridad y si un secreto mas que aprovisionar
+    a mano en cada entorno. El porque completo, en `00_vars_postventa.ps1`.
 
     LAS DOS VENTANAS DE ESCRITURA NACEN CERRADAS, Y SON LOS CANDADOS
     PRINCIPALES DEL DESPLIEGUE. `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` se
@@ -426,11 +439,21 @@ $ajustes = @(
     # encendida: es una variable APARTE de ARCHIVO_HABILITADO, porque poder
     # archivar no puede implicar poder escribir en el ERP.
     "CIERRE_HABILITADO=false",
-    # El resto de la configuracion de Sigrid que NO identifica ni autentica:
-    # tiempos y configuracion de la instalacion. Los mismos valores que el
-    # codigo trae por defecto, fijados aqui a proposito -como PG_PORT o
-    # GRAPH_REINTENTOS- para que la configuracion desplegada se pueda leer
-    # entera en el portal sin tener que abrir `config/settings.py`.
+    # El resto de la configuracion de Sigrid que NO identifica ni autentica.
+    # Los mismos valores que el codigo trae por defecto, fijados aqui a
+    # proposito -como PG_PORT o GRAPH_REINTENTOS- para que la configuracion
+    # desplegada se pueda leer entera en el portal sin tener que abrir
+    # `config/settings.py`.
+    #
+    # La base del ERP: la de NEGOCIO, que es la unica con escritura permitida
+    # en la pasarela (la documental esta fuera de su lista blanca). Va aqui en
+    # claro, y no por referencia a Key Vault, porque su nombre ya esta escrito
+    # en documentos versionados de este repositorio -entre otros
+    # `docs/referencia/03_modelo_posventa_sigrid.md`-, asi que un secreto de
+    # vault no lo protegia de nada y en cambio habia que subirlo a mano en cada
+    # entorno. Correccion del 2026-09-03; el porque largo, en
+    # `00_vars_postventa.ps1`.
+    "SIGRID_BASE_DATOS=ruesma",
     "SIGRID_TIMEOUT_S=$TIEMPO_SIGRID_S",
     "SIGRID_REINTENTOS=3",
     "SIGRID_TIP_RECLAMACION=708",
@@ -443,10 +466,10 @@ $ajustes = @(
     "AZURE_CLIENT_ID=$identidadCliente"
 )
 
-# Y ahora las doce que si: REFERENCIA a Key Vault, nunca el valor. Tres son de
-# Sigrid, y solo una de las tres es una credencial: las otras dos estan en el
-# vault porque son un host interno y el nombre de la base de produccion del
-# ERP, y ninguno de los dos puede quedar escrito en el repositorio.
+# Y ahora las once que si: REFERENCIA a Key Vault, nunca el valor. Dos son de
+# Sigrid, y solo una de las dos es una credencial (`sigrid-api-key`): la otra
+# esta en el vault porque es un host interno, igual que `pg-host`, y esos no
+# pueden quedar escritos en el repositorio.
 foreach ($appSetting in $PostventaAppSettingsSecretas.Keys) {
     $secreto = $PostventaAppSettingsSecretas[$appSetting]
     $referencia = "@Microsoft.KeyVault(SecretUri=" + $vaultUri + "secrets/" + $secreto + ")"
@@ -495,7 +518,7 @@ Write-Host ""
 Write-Host "Ahora, a mano (T14), en este orden:"
 Write-Host "  1. GET /api/health responde 200."
 Write-Host "  2. Ninguna App Setting aparece con error en el portal: las"
-Write-Host "     referencias a Key Vault se resuelven. Si las tres de Sigrid"
+Write-Host "     referencias a Key Vault se resuelven. Si las dos de Sigrid"
 Write-Host "     salen con error, es que faltan sus secretos en el vault:"
 Write-Host "     cargalos con cargar_secretos_postventa.ps1 -Solo."
 Write-Host "  3. POST /api/archivar contra el host desnudo responde 503. Si"

@@ -43,7 +43,7 @@ INFRA = RAIZ / "infra"
 #: T3 · la fuente unica de nombres de recurso, region y tags.
 SCRIPT_VARS = INFRA / "00_vars_postventa.ps1"
 
-#: T4 · crea o reutiliza el Key Vault y sube los doce secretos del backend.
+#: T4 · crea o reutiliza el Key Vault y sube los once secretos del backend.
 SCRIPT_SECRETOS = INFRA / "cargar_secretos_postventa.ps1"
 
 #: T5 · el backend: recursos, identidad, referencias a Key Vault y publicacion.
@@ -194,7 +194,7 @@ def test_f010_t3_el_sufijo_de_unicidad_global_nace_vacio(variables):
 
 
 def test_f010_t3_declara_todos_los_secretos_del_key_vault(variables):
-    """R10 · los once nombres de `design.md` seccion 3 mas los tres de F-009.
+    """R10 · los once nombres de `design.md` seccion 3 mas los dos de F-009.
 
     Los nombres de secreto viven aqui para que `cargar_secretos_postventa.ps1`
     y `desplegar_backend.ps1` no puedan discrepar: uno los sube y el otro los
@@ -213,18 +213,27 @@ def test_f010_t3_declara_todos_los_secretos_del_key_vault(variables):
         "sharepoint-drive-id",
         "swa-client-id",
         "swa-client-secret",
-        # F-009, anadidos el 2026-09-03 (hallazgo H1). Solo el segundo es una
-        # credencial: los otros dos estan en el vault porque son un host
-        # interno y el nombre de la base de produccion del ERP, y ninguno de
-        # los dos puede quedar escrito en el repositorio. Mismo motivo que
-        # `pg-host`, que tampoco autentica nada.
+        # F-009, anadidos el 2026-09-03 (hallazgo H1). Son DOS, y cada uno
+        # esta aqui por un motivo distinto: `sigrid-api-key` es una
+        # credencial, y `sigrid-api-base-url` es un host interno, que es el
+        # mismo motivo por el que ya estaba `pg-host` -tampoco autentica nada,
+        # pero no puede quedar escrito en el repositorio-.
         "sigrid-api-base-url",
         "sigrid-api-key",
-        "sigrid-base-datos",
     )
 
     for secreto in esperados:
         assert f'"{secreto}"' in variables
+
+    # Y `sigrid-base-datos` NO, desde la correccion del 2026-09-03: el nombre
+    # de la base del ERP es una App Setting plana, porque ya esta escrito en
+    # documentos versionados de este repositorio (`docs/referencia/
+    # 03_modelo_posventa_sigrid.md`, `specs/F-009-cierre-sigrid/design.md`).
+    # Tenerlo tambien en el vault era un secreto mas que aprovisionar a mano
+    # sin ganancia de seguridad, y cada uno de esos es una oportunidad de que
+    # un despliegue quede a medias. Esta asercion impide que vuelva por
+    # inercia y acabe fijado por partida doble, plano y por referencia.
+    assert '"sigrid-base-datos"' not in variables
 
 
 def test_f010_t3_el_presupuesto_del_proxy_esta_declarado_como_dato(variables):
@@ -262,7 +271,7 @@ def secretos() -> str:
 
 
 def test_f010_t4_el_script_de_secretos_existe():
-    """Sin el, las doce credenciales viajan a mano y alguna acaba en un chat."""
+    """Sin el, las once credenciales viajan a mano y alguna acaba en un chat."""
     assert SCRIPT_SECRETOS.is_file()
 
 
@@ -544,21 +553,28 @@ def test_f010_r28_la_configuracion_sensible_de_sigrid_no_se_escribe_aqui(backend
     aprovisionar su configuracion en el despliegue: sin ella `POST /api/cerrar`
     responde 503 y el bloque 8 de verificacion contra el ERP no arranca. Asi
     que la premisa cae, pero lo que R28 protegia de verdad NO cae, y es lo que
-    se comprueba ahora: **las tres variables sensibles no se escriben en este
-    script**. La raiz de la pasarela es un host interno, la clave es una
-    credencial y `SIGRID_BASE_DATOS` es el nombre de la base de produccion del
-    ERP; las tres viajan por REFERENCIA a Key Vault, declaradas en
-    `00_vars_postventa.ps1`, y aqui solo quedan tiempos y configuracion de la
-    instalacion que ya vive en el repositorio.
+    se comprueba ahora: **las DOS variables sensibles no se escriben en este
+    script**. La raiz de la pasarela es un host interno y la clave es una
+    credencial; las dos viajan por REFERENCIA a Key Vault, declaradas en
+    `00_vars_postventa.ps1`.
+
+    `SIGRID_BASE_DATOS` no esta entre ellas desde la correccion del mismo
+    2026-09-03: el nombre de la base del ERP ya esta escrito en documentos
+    versionados de este repositorio, asi que tenerlo ademas en el vault era un
+    secreto mas que aprovisionar a mano sin ganancia de seguridad real. Es una
+    App Setting plana, como los tiempos y la configuracion de la instalacion.
+    Lo que este test sigue vigilando sin una coma de rebaja es lo otro: la
+    raiz y la clave NO pueden aparecer escritas aqui.
     """
-    sensibles = ("SIGRID_API_BASE_URL", "SIGRID_API_KEY", "SIGRID_BASE_DATOS")
+    sensibles = ("SIGRID_API_BASE_URL", "SIGRID_API_KEY")
 
     for variable in sensibles:
         assert variable not in backend, f"{variable} no puede escribirse aqui"
 
     # Y las que si estan, estan sin ningun valor que no pueda versionarse: son
-    # las cuatro de tiempos y configuracion de la instalacion, ni una mas.
+    # las cinco de configuracion de la instalacion, ni una mas.
     assert set(re.findall(r"\bSIGRID_[A-Z_]+", backend)) == {
+        "SIGRID_BASE_DATOS",
         "SIGRID_TIMEOUT_S",
         "SIGRID_REINTENTOS",
         "SIGRID_TIP_RECLAMACION",

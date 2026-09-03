@@ -96,10 +96,18 @@ $PostventaTags = @{
 }
 
 # --- Los secretos del Key Vault (design.md, seccion 3) ----------------------
-# NOMBRES de secreto, nunca valores. Los nueve primeros alimentan App Settings
+# NOMBRES de secreto, nunca valores. Los doce primeros alimentan App Settings
 # de la Function App POR REFERENCIA; los dos ultimos son del inicio de sesion
 # del front y van al almacen de la propia Static Web App, que no admite
 # referencias.
+#
+# POR QUE LOS TRES DE SIGRID SON SECRETOS DE VAULT, Y NO APP SETTINGS PLANAS
+# (F-009). Solo uno de los tres es una credencial: `sigrid-api-key`. Los otros
+# dos van al vault por la misma razon por la que ya esta ahi `pg-host`, que
+# tampoco autentica nada: son la RAIZ de la pasarela -un host interno- y el
+# NOMBRE DE LA BASE DE PRODUCCION del ERP, y ninguno de los dos puede quedar
+# escrito en el repositorio. Al vault se suben una vez, a ciegas, con
+# `cargar_secretos_postventa.ps1`.
 $PostventaSecretosBackend = @(
     "pg-host",
     "pg-user",
@@ -109,7 +117,10 @@ $PostventaSecretosBackend = @(
     "graph-client-id",
     "graph-client-secret",
     "sharepoint-site-id",
-    "sharepoint-drive-id"
+    "sharepoint-drive-id",
+    "sigrid-api-base-url",
+    "sigrid-api-key",
+    "sigrid-base-datos"
 )
 $PostventaSecretosFront = @(
     "swa-client-id",
@@ -130,6 +141,14 @@ $PostventaAppSettingsSecretas = [ordered]@{
     "GRAPH_CLIENT_SECRET"  = "graph-client-secret"
     "SHAREPOINT_SITE_ID"   = "sharepoint-site-id"
     "SHAREPOINT_DRIVE_ID"  = "sharepoint-drive-id"
+    # Las tres de Sigrid (F-009). Sin ellas `POST /api/cerrar` responde 503
+    # nombrandolas de una vez, y el interruptor `CIERRE_HABILITADO` no llega ni
+    # a mirarse. Van AQUI, y no como App Setting plana en
+    # `desplegar_backend.ps1`, para que ni el host de la pasarela ni el nombre
+    # de la base del ERP entren al repositorio.
+    "SIGRID_API_BASE_URL"  = "sigrid-api-base-url"
+    "SIGRID_API_KEY"       = "sigrid-api-key"
+    "SIGRID_BASE_DATOS"    = "sigrid-base-datos"
 }
 
 # --- El fichero local, si existe --------------------------------------------

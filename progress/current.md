@@ -1,6 +1,66 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-03 · **Cae la premisa que bloqueaba F-012: la base documental SÍ es escribible**
+>
+> **El dato lo dio el humano hoy**, y lo respalda el spike **F-002 de
+> `sigrid-api`, ya cerrado**: **el usuario de escritura tiene permiso sobre la
+> base documental**. Con eso cae el bloqueo que arrastrábamos desde el
+> 2026-08-26.
+>
+> Lo que creíamos —«la documental está cerrada y abrirla es decisión del dueño
+> de `sigrid-api`, que afecta a todo el ecosistema»— era **media verdad**. La
+> otra media: la base **no es una réplica de solo lectura** (el sufijo es
+> «repositorio», no «réplica»), está en la **misma instancia** que la de
+> negocio, y **el propio ERP le escribe** cada vez que alguien importa un
+> documento desde la UI de Sigrid. Que esté fuera de
+> `ALLOWED_WRITE_DATABASES` es una **política de la pasarela**, no un
+> impedimento del motor.
+>
+> Consecuencia técnica, y es la que importa para el diseño: **una transacción
+> puede abarcar las dos bases sin MSDTC**, porque entre bases de la misma
+> instancia es local. Eso es lo que hace viable adjuntar el parte de forma
+> atómica: metadatos y enlace en la de negocio, binario en la documental, las
+> tres escrituras o ninguna.
+>
+> ### Quién hace qué
+>
+> **El endpoint lo está implementando el humano**, en `sigrid-api` (su backlog:
+> **F-004**, «Endpoint de dominio para adjuntar un documento a un concepto de
+> Sigrid»). La **especificación de referencia** se escribió ayer y vive en
+> `sigrid-api/docs/propuestas/2026-09-03_endpoint_adjuntar_documento.md`, rama
+> `docs/propuesta-escritura-documental`.
+>
+> **Esa spec tiene una sección desmentida y NO se ha corregido, a propósito**:
+> su §3 dice que el usuario de escritura «casi con seguridad no tiene ningún
+> permiso» sobre la documental y describe una acción de administrador de base de
+> datos como pieza que falta. Ya no falta. **La corrige el humano al implementar
+> F-004**: lo decidió así porque tiene ese repositorio en otra rama
+> (`chore/instalar-arnes`, donde acaba de instalar el arnés v1.7.8) y no tiene
+> sentido que un agente le cambie de rama un repositorio en el que está
+> trabajando. Queda anotado aquí para que nadie lea esa §3 como vigente.
+>
+> ### La orden operativa, que es corta
+>
+> **No se escribe NI SE LEE nada contra el ERP desde este proyecto hasta que el
+> humano nos pase el endpoint.** Lo pidió expresamente el 2026-09-03. Eso
+> incluye las lecturas de caracterización que había preparadas
+> (`infra/13_caracterizacion_grafico_url.ps1`): están listas y **no se lanzan**.
+>
+> ### Lo que esto NO cambia
+>
+> - **F-012 sigue `blocked`**, porque el endpoint todavía no existe. Lo que
+>   cambia es el motivo: ya no es una decisión pendiente de un tercero, es
+>   trabajo en curso del propio humano.
+> - **F-023 (el gráfico por URL) sigue `blocked`**, esperando la prueba manual
+>   de Posventa. **Con el endpoint del binario en camino, conviene que el humano
+>   decida si esa vía sigue interesándole**: evitaría duplicar el PDF dentro del
+>   ERP, pero deja de ser la única salida. **Esa decisión no la toma un agente.**
+> - **F-009 sigue `in_progress`** y su **bloque 8 sigue entero sin ejecutar**.
+>   Antes de T22 hace falta su Paso 0: el entorno desplegado no tiene
+>   aprovisionada ninguna configuración de Sigrid.
+
+
 > ## Estado al 2026-09-02 · **F-012 bloqueada, nace F-023, y falta UNA medida**
 >
 > ### F-012 pasa a `blocked`, con dos bloqueos y ninguno se resuelve aquí

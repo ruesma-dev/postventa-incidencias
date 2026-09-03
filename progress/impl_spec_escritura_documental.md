@@ -1,6 +1,30 @@
 <!-- progress/impl_spec_escritura_documental.md -->
 # Spec del endpoint de escritura documental en `sigrid-api` (para desbloquear F-012)
 
+> ## ⚠ CORRECCIÓN · 2026-09-03 · la §3 de la spec quedó DESMENTIDA
+>
+> Este informe entregó una especificación cuya **§3 (permisos)** afirma que el
+> usuario de escritura «casi con seguridad no tiene ningún permiso» sobre la
+> base documental, y presenta una acción de administrador de base de datos como
+> la pieza que falta para poder implementar.
+>
+> **Es falso.** El humano lo confirmó el 2026-09-03 y lo respalda el spike
+> **F-002 de `sigrid-api`, ya cerrado**: el usuario de escritura **ya tiene
+> permiso** sobre esa base. Con ello la **§2** deja de ser una inferencia y pasa
+> a estar cerrada, la consulta de `DATABASEPROPERTYEX` de §2.5 deja de ser
+> necesaria para sostener la premisa, y el escenario de §2.6 («y si la premisa
+> fuera falsa») deja de ser un riesgo abierto.
+>
+> **La spec NO se ha corregido, y es deliberado.** La corrige **el humano al
+> implementar su F-004**, que es el endpoint que esto especifica: lo decidió así
+> porque tiene `sigrid-api` en otra rama (`chore/instalar-arnes`, donde acaba de
+> instalar el arnés v1.7.8) y no tiene sentido que un agente le cambie de rama
+> un repositorio en el que está trabajando.
+>
+> Todo lo demás de la spec —contrato, transaccionalidad, reserva de `ide`,
+> correspondencia por `cod`, idempotencia, límites y seguridad— **sigue en pie**.
+
+
 > Trabajo **documental y de solo lectura**, 2026-09-03, rama
 > `feature/F-009-cierre-sigrid`.
 > **No se ha ejecutado ni una llamada ni una consulta** contra Sigrid,

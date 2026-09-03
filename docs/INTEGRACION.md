@@ -249,6 +249,21 @@ quien coja esa feature debería saberlo el primer día en vez del último—:
 >
 > Esto **no bloquea F-009**, que solo escribe en la base de negocio.
 
+**Actualización del 2026-09-03: el endpoint ya está especificado, y la premisa
+del párrafo anterior era peor de lo que parecía y mejor de lo que se creía.**
+La base documental **no es una réplica de solo lectura**: es una base normal en
+la **misma instancia** de SQL Server —una sola pareja host/puerto en la
+configuración de la pasarela, solo cambia el nombre de la base— y **el propio
+ERP le escribe** cada vez que Posventa importa un documento. Lo que hay es una
+**política** de la pasarela, más un permiso que probablemente falte en el motor.
+
+> La especificación del endpoint vive **en el repositorio que la implementará**,
+> como manda la regla de propiedad del ecosistema:
+> `sigrid-api/docs/propuestas/2026-09-03_endpoint_adjuntar_documento.md`
+> (rama `docs/propuesta-escritura-documental`, sin desplegar).
+> Aquí no se duplica. El resumen de qué resuelve y qué deja abierto está en
+> `progress/impl_spec_escritura_documental.md`.
+
 ## 4 · Variables de entorno (nombres, nunca valores)
 
 Los nombres son deliberadamente los que ya usa el ecosistema, para que quien

@@ -1,6 +1,48 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-03 · **Dos correcciones sobre el trabajo de H1/H2, aprobadas por el humano**
+>
+> Detalle completo: **sección «Correcciones del 2026-09-03» de
+> `progress/impl_H1_H2_despliegue.md`** (§11 a §15). Commits `bed95ea`
+> (scripts y test), `a6669c3` (documentación) y `2855955` (spec de F-010);
+> en `azure-apps`, `0b31237`. **Sin `push` en ninguno de los dos.**
+>
+> 1. **`SIGRID_BASE_DATOS` baja de secreto de Key Vault a App Setting plana.**
+>    Los tres secretos de `82fbfb8` eran exceso de celo en uno: el nombre de la
+>    base de producción del ERP **ya está escrito en el repositorio**
+>    (`docs/referencia/03_modelo_posventa_sigrid.md` y
+>    `specs/F-009-cierre-sigrid/design.md`), así que el vault no lo protegía de
+>    nada y a cambio obligaba a un aprovisionamiento manual más por entorno.
+>    **Quedan dos secretos** —`sigrid-api-key`, que es una credencial, y
+>    `sigrid-api-base-url`, que es un host interno— y el vault pasa de 12+2 a
+>    **11+2**. El test de R28 **no se ha relajado**: que esas dos no aparezcan
+>    escritas en `desplegar_backend.ps1` sigue siendo la comprobación, y hay
+>    una aserción **nueva** que impide que `sigrid-base-datos` vuelva al vault
+>    por inercia y acabe fijado por partida doble.
+> 2. **R28 de F-010 ya no miente.** Decía que **ninguna** variable de Sigrid
+>    entra en el despliegue, premisa que cayó con la aprobación de hoy. Se
+>    corrige el texto en `requirements.md` (requisito y tabla de trazabilidad)
+>    y en `tasks.md` (verificación de T5), con un **recuadro fechado** debajo
+>    del requisito que cita la premisa original literal, dice qué la invalidó y
+>    apunta al hallazgo H1 del §8 del guion. **F-010 sigue `done`**: no se
+>    reabre ni se reinterpreta. No aparecía en su `design.md` ni en
+>    `CHECKPOINTS.md`; se buscó.
+>
+> **Una precisión honesta**: el encargo daba seis documentos donde el nombre de
+> la base ya estaba escrito, y son **dos**. En los otros cuatro la palabra
+> aparece como parte de `swa-postventa-ruesma`, que es la Static Web App. La
+> decisión no cambia —dos documentos versionados bastan, y uno es la
+> documentación de referencia del sistema origen—, pero el número sí.
+>
+> **A mano antes de T22 quedan dos valores, no tres.** Lo demás del §6 del
+> informe sigue abierto y sin tocar.
+>
+> **No se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint —ni lecturas—; no se ha tocado el repositorio
+> `sigrid-api`; no se ha marcado ninguna tarea del bloque 8 ni T29, y no se ha
+> cambiado el estado de ninguna feature.
+
 > ## Estado al 2026-09-03 · **H1 y H2 arreglados: el despliegue ya aprovisiona Sigrid y rearma el candado del cierre**
 >
 > Los dos hallazgos de despliegue del §8 de `progress/guion_bloque8_F-009.md`,
@@ -9,11 +51,10 @@
 > `9bc0518` en `azure-apps`. **Sin `push` en ninguno de los dos.**
 >
 > - **H1** · El despliegue no traía **ninguna** de las ocho variables de F-009.
->   Ya las trae: tres por referencia a Key Vault (`sigrid-api-base-url`,
->   `sigrid-api-key`, `sigrid-base-datos`) y cinco en `$ajustes`. Son **tres**
->   secretos y no uno porque la raíz de la pasarela es un host interno y
->   `SIGRID_BASE_DATOS` es el nombre de la base de producción del ERP: ninguno
->   de los dos puede quedar escrito en el repositorio, igual que `pg-host`.
+>   Ya las trae. **Corregido después** (ver el bloque de arriba): son **dos**
+>   por referencia a Key Vault (`sigrid-api-base-url`, `sigrid-api-key`) y
+>   **seis** en `$ajustes`. Son dos secretos y no uno porque la raíz de la
+>   pasarela es un host interno, igual que `pg-host`.
 > - **H2** · `CIERRE_HABILITADO=false` está en `$ajustes`, junto a
 >   `ARCHIVO_HABILITADO`. Era el único candado del despliegue que no se rearmaba
 >   solo. `docs/DESPLIEGUE.md` §4 bis decía que sí; ahora describe el mecanismo
@@ -24,7 +65,8 @@
 >
 > ### Dos cosas que el humano tiene que decidir o hacer
 >
-> 1. **Queda a mano subir los tres valores al Key Vault**: los da el dueño de
+> 1. **Queda a mano subir los valores al Key Vault** —**dos**, no tres, tras la
+>    corrección de arriba—: los da el dueño de
 >    `sigrid-api` y no pueden entrar al repositorio. El **Paso 0** del §1 del
 >    guion sigue ahí, con los dos caminos (redesplegar, o poner las App Settings
 >    sueltas si no se quiere redesplegar el entorno actual).
@@ -33,9 +75,8 @@
 >    literalmente que **no** hubiera ninguna variable `SIGRID_*` en el
 >    despliegue. Su premisa —«el ERP está fuera del piloto»— cae con la
 >    aprobación de hoy; lo que protegía, no, y es lo que comprueba ahora.
->    **R28 sigue escrito en `specs/F-010-despliegue/requirements.md` con su
->    texto original y ya no describe el sistema**: enmendarlo o no es decisión
->    del humano. Detalle en el §5 del informe.
+>    **RESUELTO** en `2855955`: R28 está enmendado en la spec, con constancia
+>    fechada. Detalle en el §5 y el §12 del informe.
 >
 > **No se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
 > compartido ni SharePoint —ni lecturas—, no se ha marcado ninguna tarea del

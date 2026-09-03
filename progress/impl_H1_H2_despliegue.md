@@ -325,3 +325,213 @@ impide que vuelva.
 **`azure-apps`** (commit `9bc0518`, sin `push`):
 
 - `postventa_incidencias.md` — §3 bis y la tabla de variables de Sigrid.
+
+---
+
+# Correcciones del 2026-09-03 (sección añadida; el informe de arriba no se ha reescrito)
+
+> **Qué es esto.** Dos correcciones aprobadas por el humano el mismo día, sobre
+> el trabajo de H1/H2 que acababa de aterrizar. **Quirúrgicas**: no reescriben
+> nada de lo anterior, corrigen dos cosas concretas que quedaron mal.
+>
+> **Commits**: `bed95ea` (scripts y test), `a6669c3` (documentación),
+> `2855955` (spec de F-010) y el de esta sección. En `azure-apps`, `0b31237`.
+> **Sin `push` en ninguno de los dos.**
+>
+> **Nada se ha ejecutado contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint. Ni una lectura.**
+
+## 11 · Corrección 1 · `SIGRID_BASE_DATOS` baja de secreto de vault a App Setting plana
+
+### El error que se corrige, dicho sin adornos
+
+El §2 de arriba defendió **tres** secretos de vault. Dos estaban bien
+—`sigrid-api-key` es una credencial, y `sigrid-api-base-url` es un host interno,
+que es el caso de `pg-host`—. El tercero fue **exceso de celo**: el argumento
+era que el nombre de la base de producción del ERP no puede quedar escrito en el
+repositorio, y **ya lo estaba**.
+
+Lo que costaba, y por eso importa: un secreto de vault hay que **subirlo a mano
+en cada entorno**, a ciegas, y cada aprovisionamiento manual es una oportunidad
+de que un despliegue quede a medias. Se pagaba ese precio a cambio de nada.
+
+### Una precisión sobre el encargo, porque el número no salía
+
+El encargo daba **seis** documentos donde el nombre ya está escrito. Al
+comprobarlo uno a uno, el literal aparece como **nombre de base de datos** en
+**dos**:
+
+| Documento | Dónde |
+|---|---|
+| `docs/referencia/03_modelo_posventa_sigrid.md` | la cabecera («bases `ruesma` y `ruesma_rep`») y luego como prefijo de tabla en media docena de sitios (`ruesma.gra`, `ruesma.gra.ima`…) |
+| `specs/F-009-cierre-sigrid/design.md` | «**Base**: la de negocio (`ruesma`), la única con escritura permitida», y el bloque de las dos tablas `gra` |
+
+En `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md` y las dos specs de F-010 la
+palabra sí aparece, pero **como parte de `swa-postventa-ruesma`**, que es el
+nombre de la Static Web App y no el de la base; esos cuatro documentos hablan de
+«la base de negocio» **sin nombrarla**.
+
+**Esto no cambia la decisión, y por eso se ha ejecutado igual**: dos documentos
+versionados en git bastan —uno de ellos es la documentación de referencia del
+sistema origen, que es justo donde alguien iría a buscarlo—, y el historial de
+git no suelta lo que entra. Se anota porque un informe que repite un número que
+no sale es exactamente el tipo de cosa que luego nadie vuelve a comprobar.
+
+### Qué se tocó
+
+| Fichero | Qué |
+|---|---|
+| `infra/00_vars_postventa.ps1` | `sigrid-base-datos` fuera de `$PostventaSecretosBackend` (12 → **11**) y fuera de `$PostventaAppSettingsSecretas`. Los dos comentarios reescritos: el de cabecera ya no dice «LOS TRES DE SIGRID» sino **«LOS DOS»**, y da **el motivo de cada uno por separado** (una es una credencial, la otra un host interno); debajo, por qué el tercero **no** está |
+| `infra/desplegar_backend.ps1` | `"SIGRID_BASE_DATOS=ruesma"` en `$ajustes`, con su comentario. Cabecera reescrita: «los **once** que identifican o autentican», y la enumeración de qué entra por referencia (dos) y qué en claro (cinco). También el comentario del bucle de referencias y la línea del resumen que decía «las tres de Sigrid» |
+| `infra/cargar_secretos_postventa.ps1` | «SON DOCE, NO CATORCE» → **«SON ONCE, NO TRECE»**; el `.SYNOPSIS`, la ayuda de `-Solo` («las otras **diez**») y las dos líneas que imprime al final |
+| `services/postventa-api/tests/test_f010_scripts_infra.py` | ver abajo |
+| `docs/DESPLIEGUE.md` | §2: el recuento en la tabla de scripts, el epígrafe «Son **once** secretos, no **trece**», la partición de la lista, el párrafo de los de Sigrid y la preparación a mano (punto 2). §4 bis: «las **dos** sensibles / las otras **seis**», la fila de la tabla, el porqué reescrito y el comando `-Solo` final |
+| `progress/guion_bloque8_F-009.md` | §1 entero (intro, tabla, Paso 0, la línea `-Solo`, las dos líneas `az` del entorno ya desplegado), P3, el diagnóstico del 503 del paso 2 de T22 y la fila **H1** del §8 |
+| `azure-apps/postventa_incidencias.md` | §3 bis: la tabla de secretos pierde su tercera fila y gana un párrafo diciendo que `SIGRID_BASE_DATOS` es plana y por qué; y la fila de la tabla de variables |
+
+### El test sigue siendo igual de estricto, y en un punto lo es más
+
+En `test_f010_r28_la_configuracion_sensible_de_sigrid_no_se_escribe_aqui`:
+
+- `sensibles` pasa de tres a **dos**. La comprobación que importa —que
+  `SIGRID_API_BASE_URL` y `SIGRID_API_KEY` **no aparezcan escritas** en
+  `desplegar_backend.ps1`— **no se ha tocado ni una coma**.
+- `SIGRID_BASE_DATOS` se mueve al conjunto de las que **sí** pueden versionarse,
+  que pasa de cuatro a cinco y sigue siendo una **igualdad de conjuntos**: ni
+  una `SIGRID_*` de más en el script pasa desapercibida.
+
+Y una aserción **nueva**, en `test_f010_t3_declara_todos_los_secretos_del_key_vault`:
+
+```python
+assert '"sigrid-base-datos"' not in variables
+```
+
+No es celo simétrico. Sin ella, alguien puede volver a declararlo como secreto
+por inercia y dejarlo fijado **por partida doble** —plano en `$ajustes` y por
+referencia en el bucle—, que es un estado que el despliegue no rechaza y que
+nadie mira.
+
+> **Un detalle que el test enseñó y conviene saber**: la aserción
+> `SIGRID_API_BASE_URL not in backend` corre sobre el fichero **entero,
+> comentarios incluidos**. El primer intento de reescribir la cabecera de
+> `desplegar_backend.ps1` las nombraba para explicar qué va por referencia, y el
+> test se puso rojo con razón. La cabecera se reescribió sin nombrarlas, y lo
+> deja dicho: «NI SUS NOMBRES SE ESCRIBEN AQUI … y por eso esta cabecera tampoco
+> las nombra».
+
+## 12 · Corrección 2 · R28 de F-010 ya no describe un sistema que no existe
+
+### Dónde estaba el texto
+
+El §5 de arriba lo dejó señalado y sin decidir. Buscado en todo el árbol, el
+texto de R28 con la premisa caída vivía en **tres sitios**, los tres en
+`specs/F-010-despliegue/`:
+
+| Sitio | Qué decía |
+|---|---|
+| `requirements.md`, el requisito | «mantener fuera del despliegue todo lo que no forma parte del piloto: **ninguna** variable de Sigrid; y cuando la ventana de escritura de R33 esté abierta…» |
+| `requirements.md`, la tabla de trazabilidad | «Test: la plantilla de App Settings no incluye ninguna variable `SIGRID_*`» — apuntaba a un test que desde `82fbfb8` comprueba otra cosa |
+| `tasks.md`, la verificación de **T5** | «**ninguna variable `SIGRID_*`** (R28)» |
+
+**No está en el `design.md` de F-010**: R28 no aparece ahí, solo una mención de
+pasada al cierre en Sigrid como fuera de alcance de F-010, que sigue siendo
+cierta. **Tampoco en `CHECKPOINTS.md`**, que no nombra R28 ni ninguna variable
+`SIGRID_*`.
+
+### Qué se hizo, y qué deliberadamente no
+
+- **Se corrige el requisito, no se reinterpreta.** R28 dice ahora que lo que se
+  mantiene fuera de la plantilla es **la configuración sensible** —la raíz de la
+  pasarela y su clave de función—, que viaja por referencia a Key Vault. **La
+  segunda mitad de R28 no se toca**: el destino de la ventana de escritura sigue
+  siendo solo la biblioteca de dev, y eso sigue vigente tal cual.
+- **Constancia fechada debajo**, en un recuadro: la premisa original **citada
+  literal**, cuándo se escribió y por qué era cierta entonces, qué la invalidó
+  (la aprobación del humano del 2026-09-03) y el puntero al **hallazgo H1** de
+  `progress/guion_bloque8_F-009.md` §8 y a este informe. Cierra diciendo que
+  **F-010 sigue `done`** y que esto no reabre la feature.
+- **No se ha reescrito la spec** ni ampliado su alcance: las tres correcciones
+  necesarias y el recuadro, nada más.
+- **No se ha tocado `progress/review_F-010.md`**, que en su tabla final sigue
+  diciendo «R28 — ninguna variable `SIGRID_*` ✔». Es un **informe de revisión
+  fechado**: describe lo que se verificó el día que se verificó, y corregirlo
+  sería falsificar el registro. Queda anotado aquí para quien lo lea después.
+
+## 13 · Cómo se verificó, otra vez sin ejecutar nada
+
+1. **Fase RED, con la traza real.** El test se cambió **antes** que los scripts,
+   y los puso en rojo por los dos motivos correctos:
+
+   ```
+   $ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f010_scripts_infra.py -q
+
+   ____________ test_f010_t3_declara_todos_los_secretos_del_key_vault ____________
+   >       assert '"sigrid-base-datos"' not in variables
+   E       assert '"sigrid-base-datos"' not in '# infra/00_...'
+   E         '"sigrid-base-datos"' is contained here:
+   E           key",
+   E               "sigrid-base-datos"
+   E           )
+
+   _ test_f010_r28_la_configuracion_sensible_de_sigrid_no_se_escribe_aqui _
+   >       assert set(re.findall(r"\bSIGRID_[A-Z_]+", backend)) == {
+   E       AssertionError: assert {'SIGRID_REIN...ZONA_HORARIA'} == {'SIGRID_BASE...ZONA_HORARIA'}
+   E         Extra items in the right set:
+   E         'SIGRID_BASE_DATOS'
+
+   2 failed, 117 passed, 3 skipped in 0.54s
+   ```
+
+   El primer rojo dice que el secreto seguía declarado en
+   `00_vars_postventa.ps1`; el segundo, que la App Setting plana todavía no
+   estaba en `desplegar_backend.ps1`. **Son exactamente los dos cambios que había
+   que hacer, ni uno más.**
+
+   Después de tocar los tres scripts: `141 passed, 3 skipped in 0.38s`
+   (`test_f010_scripts_infra.py` + `test_f009_documentacion.py`).
+
+2. **Sintaxis de PowerShell, parseando y no ejecutando.** Los tres `.ps1`, con el
+   parser del propio PowerShell
+   (`[System.Management.Automation.Language.Parser]::ParseFile`). Salida real:
+
+   ```
+   OK sintaxis: infra\00_vars_postventa.ps1 (408 tokens)
+   OK sintaxis: infra\desplegar_backend.ps1 (2094 tokens)
+   OK sintaxis: infra\cargar_secretos_postventa.ps1 (981 tokens)
+   ```
+
+   Construye el AST entero sin ejecutar una sola instrucción. Los dos primeros
+   ganan tokens respecto a la medición del §7 (383 y 2073) porque ganan
+   comentarios y una entrada de `$ajustes`.
+
+3. **El portero del arnés**, `bash harness/init.sh`, en verde.
+
+**No se ejecutó**: ningún script de `infra/`, ningún `az`, ninguna llamada a
+Sigrid, a `sigrid-api`, al PostgreSQL compartido ni a SharePoint. Ni lecturas.
+Ningún `git push`. **No se tocó el repositorio `sigrid-api`**; y en `azure-apps`,
+`sigrid_api.md` estaba modificado por el humano y se ha dejado **sin tocar y sin
+añadir al commit**.
+
+## 14 · Evidencias
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados · servicio `api` | **1595 pasados, 13 saltados**, 0 fallos |
+| Tests ejecutados · suite del arnés (raíz) | **56 pasados**, 0 fallos |
+| Tests ejecutados · servicio `front` | en verde por caché del portero (no se tocó `services/postventa-front`) |
+| Tiempo de ejecución · servicio `api` | **32,00 s** |
+| Tiempo de ejecución · suite del arnés | **2,95 s** |
+| Cobertura de las líneas cambiadas | **98,8 % de 572 líneas** (565/572, umbral 80 %, nivel `critico`). **Idéntica a la del §9, y por el mismo motivo**: lo cambiado aquí es PowerShell, Markdown y un test, y la puerta solo mide Python de producción |
+| Mutantes generados y supervivientes | **No aplica.** No se ha modificado ni una línea de código de producción. La campaña de F-009 sigue cerrada en `progress/mutacion_F-009.md`, intacta |
+| Validación de los scripts | 3 de 3 `.ps1` parseados sin errores; **0 ejecuciones** |
+| Estados de feature cambiados | **Ninguno.** Ni tareas del bloque 8, ni T29, ni `harness/features.json` |
+
+## 15 · Lo que sigue pendiente tras estas correcciones
+
+- **A mano, antes de T22**: subir al Key Vault **dos** valores, no tres
+  (`sigrid-api-base-url` y `sigrid-api-key`). Los da el dueño de `sigrid-api`. El
+  Paso 0 del §1 del guion está actualizado, con sus dos caminos.
+- Lo del §6 sigue igual y sin tocar: las cuatro variables de PostgreSQL fuera del
+  despliegue, `verificar_despliegue.ps1` sin mirar `CIERRE_HABILITADO`, y H3–H6
+  del guion abiertos.
+- `progress/review_F-010.md` conserva a propósito la redacción vieja de R28 (§12).

@@ -127,7 +127,7 @@
       Verificación: los tests de T9 y T12 los usan; `test_f002_*` y
       `test_f006_*` siguen en verde (no cambia ninguna firma existente).
 
-- [ ] **T11**: Control negativo de datos personales y secretos en el paso y
+- [x] **T11**: Control negativo de datos personales y secretos en el paso y
       el adaptador. | Verificación: `test_f012_logs_sin_datos_personales.py`,
       al modo de `test_f009_logs_sin_datos_personales.py`: hacer pasar por el
       camino real un PDF con un DNI y unas observaciones inventadas en el

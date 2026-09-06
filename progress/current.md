@@ -1,6 +1,26 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 (noche, 6) · **F-024 con spec: `spec_ready`, a la espera de la aprobación del humano**
+>
+> `specs/F-024-datos-parte-sigrid/` (commit `2ce37d6`, escrita por el
+> spec-author sobre la rama de F-012 porque depende de `postventa.graficos`).
+> Tres piezas: cinco campos nuevos de extracción con prompt `version: "2"` y
+> sin reextraer lo antiguo; `reclamacion_ide` en `cierres`; y la vista
+> `postventa.v_partes_sigrid` como contrato de lectura para el datamart, con
+> la petición a `datamart-seg-anual` redactada en design §12.
+>
+> **Seis preguntas para el humano** (design §13), con recomendación: P1
+> `observaciones` en la vista (no; `tiene_observaciones`); P2 `obra_ide`/
+> `upv_ide` (no); P3 campos nuevos editables en la tarjeta (sí); P4 el
+> encuadre del líder decía «sin mutación» pero `harness/rigor.json` la exige
+> en `estandar` sin tope de supervivientes: manda `rigor.json`; P5 no
+> reextraer partes antiguos; P6 el rol de lectura del datamart como feature
+> aparte, porque `CREATE ROLE`/`GRANT` son del humano y fuera del schema.
+>
+> **F-012 sigue `in_progress`** con el bloque 9 pendiente del humano; F-024 no
+> se implementa hasta que F-012 cierre. Nada ejecutado contra Azure ni el ERP.
+
 > ## Estado al 2026-09-06 (noche, 5) · **los 5 supervivientes de mutación de F-012, aceptados por el humano**
 >
 > «Acepto los 5 supervivientes de mutación». Consta en la cabecera de

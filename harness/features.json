@@ -415,7 +415,7 @@
         "azure-apps/postventa_incidencias.md documenta la vista como contrato de lectura para el datamart",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
       "priority": 12,

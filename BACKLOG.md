@@ -15,7 +15,7 @@ Bloqueadas: **F-009**.
 |---|---|---|---|---|---|
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | bloqueada | critico | `feature/F-009-cierre-sigrid` |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | en curso | critico | `feature/F-012-grafico-sigrid` |
-| F-024 | Datos del parte enlazados a Sigrid, para el datamart | 12 | pendiente | estandar | `feature/F-024-datos-parte-sigrid` |
+| F-024 | Datos del parte enlazados a Sigrid, para el datamart | 12 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 13 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
@@ -58,7 +58,7 @@ Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF d
 
 ### F-024 · Datos del parte enlazados a Sigrid, para el datamart
 
-estado **pendiente** · prioridad 12 · rigor `estandar` · SDD sí · rama `feature/F-024-datos-parte-sigrid`
+estado **spec lista** · prioridad 12 · rigor `estandar` · SDD sí · rama `feature/F-024-datos-parte-sigrid`
 
 Conservar en nuestra base (schema postventa de psql-albaranes-rs9k2) la informacion del parte que hoy no llega a Sigrid, siempre enlazada con las claves del ERP para que el datamart (sigrid_dm, mismo servidor, otra base) pueda enriquecer con ella los partes de posventa cuando los incorpore. Decidido por el humano el 2026-09-06 tras revisar la guia de cierre de Posventa: el cierre en Sigrid solo registra el grafico y el estado, y todo lo demas del parte se perderia. TRES PIEZAS. (1) Extraccion: anadir al prompt y al schema los campos impresos que hoy no se extraen -oficio, empresa (el industrial que reparo), estancia- y los manuscritos hora_inicio y hora_fin, con su confianza y sin exigirlos (regla de F-003: no se exige lo que la realidad deja vacio); columnas nuevas en postventa.partes con ADD COLUMN IF NOT EXISTS, idempotente como el resto del DDL. (2) Claves del ERP: columna reclamacion_ide (con.ide de la reclamacion, que el dry-run de F-009 ya lee) en postventa.cierres; en postventa.graficos nace ya con ella desde F-012. (3) Una vista de lectura postventa.v_partes_sigrid en nuestro schema que junta parte, validacion, archivo, cierre y grafico por hash_parte y expone las claves de Sigrid (obra, numero de incidencia, reclamacion_ide, gra_cod), los campos extraidos con sus confianzas, la clasificacion de la firma, la URL de SharePoint y las fechas; SIN dni_cliente. PREGUNTA ABIERTA (la decide el humano al aprobar la spec): si la vista expone las observaciones manuscritas, el dato mas valioso para el datamart pero que puede llevar nombres; por defecto NO. FUERA DE ALCANCE: el acceso desde el datamart (su ETL tendria que conectarse a nuestra base con un rol de solo lectura propio, como hace con mcp_sigrid_dm_ro); se deja como peticion escrita al proyecto datamart-seg-anual y el contrato de la vista se documenta en azure-apps/postventa_incidencias.md §8. Va despues de F-012 y antes de F-011.
 

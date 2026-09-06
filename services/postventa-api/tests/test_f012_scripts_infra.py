@@ -253,6 +253,47 @@ def test_f012_la_descarga_exige_algo_con_que_comparar():
     assert "Descargar sin nada con que comparar" in ejecutable
 
 
+def test_f012_la_casilla_de_bytes_mide_el_contenido_y_no_la_huella():
+    """«bytes descargados» tiene que decir cuánto pesa el PDF, no siempre 64.
+
+    `$huella` es la **cadena hexadecimal** del sha256: su `.Length` vale 64
+    mida lo que mida el binario, así que anotarla ahí es un número que parece
+    un tamaño y no lo es. No era un falso verde —lo que sostiene el bloque es
+    la comprobación del sha256 de la línea siguiente— pero sí ruido que
+    confunde a quien lee la salida delante del ERP de producción.
+
+    Y el tamaño hay que capturarlo **antes** de soltar `$respuesta`: el script
+    lo pone a `$null` en cuanto ha calculado el hash, a propósito, para que
+    nada del PDF sobreviva. Leerlo después anotaría un vacío.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_GRAFICO))
+
+    casilla = re.search(
+        r'Anotar -Que "bytes descargados" -Valor (\$[\w.]+)', ejecutable
+    )
+    assert casilla, "no está la casilla «bytes descargados» del bloque de descarga"
+
+    medida = casilla.group(1)
+    assert medida != "$huella.Length", (
+        "«bytes descargados» está imprimiendo la longitud de la cadena del "
+        "sha256, que es siempre 64, en vez del tamaño del binario descargado"
+    )
+
+    asignacion = re.search(
+        re.escape(medida) + r"\s*=\s*\$respuesta\.Content\.Length", ejecutable
+    )
+    assert asignacion, (
+        f"{medida} no se calcula desde $respuesta.Content.Length, que es lo "
+        "único que mide de verdad lo descargado"
+    )
+
+    soltar = ejecutable.index("$respuesta = $null")
+    assert asignacion.start() < soltar, (
+        "el tamaño se lee después de soltar $respuesta, así que la casilla "
+        "saldría vacía"
+    )
+
+
 def test_f012_r36_el_script_mira_el_max_ide_de_dbo_log():
     """R36 · el gráfico **no escribe ninguna fila de auditoría**.
 

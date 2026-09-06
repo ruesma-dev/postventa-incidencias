@@ -261,6 +261,12 @@ if ($DescargarYComparar) {
             $_.Exception.GetType().Name) $SALIDA_ERP
     }
 
+    # El tamano se mide AQUI, antes de soltar la respuesta: es lo unico que
+    # sobrevive del PDF, y es un numero. Ojo con anotar $huella.Length en su
+    # lugar: $huella es la cadena hexadecimal del sha256 y mide siempre 64,
+    # pese el binario lo que pese.
+    $bytesDescargados = $respuesta.Content.Length
+
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try {
         $huella = ($sha.ComputeHash($respuesta.Content) |
@@ -273,7 +279,7 @@ if ($DescargarYComparar) {
     # este script.
     $respuesta = $null
 
-    Anotar -Que "bytes descargados" -Valor $huella.Length
+    Anotar -Que "bytes descargados" -Valor $bytesDescargados
     Comprobar -Que "sha256 del binario DENTRO del ERP" `
         -Esperado $Sha256Esperado.Trim().ToLower() -Obtenido $huella
 }

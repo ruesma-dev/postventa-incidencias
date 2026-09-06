@@ -1,6 +1,34 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 · **Dos correcciones más, fuera de feature, aprobadas por el humano**
+>
+> Detalle completo: **`progress/impl_paso0_sigrid.md`**. Commits `32d40f5`
+> (corrección 1), `1223bde` (corrección 2) y este mismo (el rastro). **Sin
+> `push`.** **Ningún estado de feature cambia**: F-009 sigue `in_progress`,
+> F-023 sigue `blocked`.
+>
+> **NO se ha ejecutado nada contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint. Ni lecturas.** Ninguna casilla del bloque 8 se ha
+> marcado.
+>
+> 1. **La raíz de la pasarela y `PG_HOST` se teclean, no se leen con `az`.** Era
+>    la observación que `c3fa55d` dejó anotada y sin corregir, y eran **dos**
+>    líneas del Paso 0 de aquí abajo, no una: `SIGRID_API_BASE_URL` y `PG_HOST`
+>    son **referencias a Key Vault**, así que `appsettings list` devolvía la
+>    cadena `@Microsoft.KeyVault(SecretUri=...)` sin resolver. Las dos pasan a
+>    `Read-Host`. `SIGRID_BASE_DATOS` se queda: desde `bed95ea` es plana. El
+>    porqué queda escrito en el §3 del guion del bloque 8.
+> 2. **`infra/14_paso0_sigrid.ps1`**: el Paso 0 del bloque 8 —dos secretos, ocho
+>    App Settings con `-SinPublicar`, y la comprobación de que las **once**
+>    referencias a Key Vault se resuelven— en un solo script, con tabla,
+>    veredicto (`Paso 0 COMPLETO: 11/11`) y código de salida. Con `-WhatIf` solo
+>    lee, y así se comprueba la precondición **P3** sin tocar nada. 18 tests. La
+>    vía manual del guion **se conserva** como camino alternativo.
+>
+> **Lo primero que hace falta del humano** es ejecutarlo, empezando por
+> `powershell -ExecutionPolicy Bypass -File .\infra\14_paso0_sigrid.ps1 -WhatIf`.
+
 > ## Estado al 2026-09-03 · **Dos correcciones sobre el trabajo de H1/H2, aprobadas por el humano**
 >
 > Detalle completo: **sección «Correcciones del 2026-09-03» de

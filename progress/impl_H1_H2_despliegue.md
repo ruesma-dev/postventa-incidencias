@@ -551,3 +551,12 @@ añadir al commit**.
 > H1 la línea devolvía vacío— y no estaba en el encargo, así que **no se ha
 > tocado**. La salida natural es teclear la raíz a mano, como ya se hace con la
 > clave (`Read-Host`), o leer el secreto del vault. Queda para el humano.
+>
+> **CORREGIDA el 2026-09-06, commit `32d40f5`.** Eran **dos** líneas, no una:
+> también `$env:PG_HOST` en el bloque de T23, porque `pg-host` es igualmente un
+> secreto del vault referenciado. Las dos pasan a `Read-Host`; `$sigridBase` se
+> queda como está, que desde `bed95ea` es App Setting plana. El porqué queda
+> escrito en el §3 del guion del bloque 8 para que nadie lo reintroduzca, y la
+> comprobación que sí se puede hacer —el **estado** de la referencia, no su
+> valor— la hace ahora `infra/14_paso0_sigrid.ps1`. Detalle en
+> `progress/impl_paso0_sigrid.md`.

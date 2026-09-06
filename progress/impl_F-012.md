@@ -842,3 +842,111 @@ Medidas, no estimadas. Salida de `bash harness/init.sh` al terminar:
   SharePoint.** El script 16 se validó **leyéndolo** con el analizador de
   sintaxis de PowerShell y con el test de texto: no se ejecutó.
 - **No hubo `push`** ni en este repositorio ni en `arnes-base`.
+
+---
+
+## 12 · Guion del bloque 9 (2026-09-06) · escrito, y el del bloque 8 de F-009 corregido
+
+`tasks.md` bloque 9 pedía que su guion detallado se escribiera en
+`progress/guion_bloque9_F-012.md` **al llegar ahí**, como se hizo con el del
+bloque 8 de F-009. §8.2 lo declaraba pendiente y decía que escribirlo era «lo
+primero del bloque». Ya está escrito. **No se ha ejecutado nada del bloque 9**:
+sigue siendo entero `MANUAL (humano)` y contra el ERP de producción.
+
+### 12.1 · Qué lleva el guion nuevo
+
+`progress/guion_bloque9_F-012.md`, calcado en estructura del de F-009:
+
+- **Cabecera** con qué es, quién lo ejecuta —una persona; ningún agente puede,
+  ni el dry-run—, **sobre qué**: reclamaciones de la **obra de prueba 404**, y
+  el estado de la feature.
+- **§0, seis cosas que sorprenden**: que sin `CIERRE_HABILITADO` no funciona ni
+  el dry-run del gráfico; que la ventana es **una sola** para gráfico y cierre;
+  que el caso idempotente responde `committed: false` y **eso es un éxito**; que
+  un tiempo agotado en el commit deja el ERP en estado desconocido y **el
+  reintento es seguro** por idempotencia; que el gráfico **no** escribe en
+  `dbo.log` (R36); y que a `/api/adjuntar` no se le llama a mano.
+- **§1, la configuración**, separada por **dueños**: lo que pone nuestro
+  despliegue —incluidas `SIGRID_GRATIPIDE_PARTE=35` y
+  `GRAFICO_MAX_BYTES=10485760`— y lo que es **de la pasarela** y aquí solo se
+  lee. Con el **Paso 0** en tres partes: `14_paso0_sigrid.ps1 -WhatIf` primero,
+  el despliegue del backend con el código de F-012 (con la tabla de qué
+  significa un 404, un 503 y un 200), y la lectura filtrada de las seis App
+  Settings de `sigrid-api`.
+- **§2, precondiciones con casillas**: P0–P7 técnicas, y **D1** y **D2**
+  documentales —la aceptación de los 5 supervivientes de mutación y la
+  confirmación de `PV002` con Posventa—, marcadas como **no bloqueantes
+  técnicamente**.
+- **§3, el utillaje**: los nueve scripts con qué hace cada uno y qué escribe
+  (ninguno en el ERP), y cómo se les pasa destino y clave.
+- **§4, cómo se llama a los endpoints** y por qué no con `curl`: las dos vías
+  desde el front, con el fragmento de consola de `adjuntar` —que reutiliza
+  `Pipeline.cuerpoDeGrafico` y el estado de Alpine— y el de `cerrar`.
+- **§5, T25–T32**, cada una con qué se verifica, precondiciones, pasos
+  numerados con la línea exacta, qué se espera, qué hacer si no sale eso y
+  casilla de resultado. **Termina en T32**: cerrar la ventana y dejar
+  constancia.
+- **§6** al terminar salga bien o mal, **§7** qué se anota y qué no, **§8** los
+  diez hallazgos.
+
+**Ni un valor sensible.** Marcadores `<...>` para la raíz, la clave, la base, el
+`oid`, el login, los códigos de reclamación y los nombres de recurso de
+`sigrid-api`. La lectura de P0 va con `--query` para no volcar las credenciales
+de escritura de la pasarela a la consola de nadie.
+
+### 12.2 · Los diez hallazgos de la preparación
+
+Los cinco que no estaban escritos en ninguna parte:
+
+| # | Hallazgo | Qué se hizo |
+|---|---|---|
+| **H1/H2** | `/api/adjuntar` es `multipart` con el PDF dentro: no se llama a mano, y **poner `Content-Type` la rompe en silencio** (el backend recibe un formulario vacío y responde 400 enumerando campos que sí se mandaron) | Fragmento de consola en §4, aviso en §0.6 y dentro del propio código |
+| **H4** | **`filas_afectadas: 0` significa cosas opuestas** según el endpoint: éxito en `adjuntar` idempotente, «no se aplicó nada» en `cerrar` | §0.3, y separado en las casillas de T28 y T30 |
+| **H5** | **El reintento tras un `502` es seguro en `adjuntar` y prohibido en `cerrar`**, y los dos salen del mismo botón | §0.4, repetido en T27 paso 3 y T29 paso 4 |
+| **H6** | T28 capa 2 exige **borrar una fila de `postventa.graficos`** y `tasks.md` no daba la forma; `12_` y `17_` son de solo lectura | Bloque de PowerShell con confirmación tecleada y `rowcount`. **No se creó script en `infra/`**: un script re-ejecutable que borra trazas no conviene dejarlo por ahí |
+| **H7** | **T31 no puede usar la reclamación de T27**: la capa 1 de idempotencia respondería desde la traza y el rechazo no se produciría | Aviso al principio de T31: otra candidata de la obra 404, con su propia autorización |
+
+Y H8 (la lectura de P0 sin `--query` vuelca las credenciales de la pasarela),
+H9 (las dos precondiciones documentales no estaban en `tasks.md`), H3 (la
+ventana única, ya avisada en §8.2) y H10 (el guion del bloque 8, abajo).
+
+### 12.3 · El guion del bloque 8 de F-009, corregido (H10)
+
+`design.md` §13 (b) decía que, con F-012 primero, aquel guion había que
+corregirlo antes de recorrerlo. Contradecía a F-012 en tres puntos, y ahora no:
+
+- **Nota fechada arriba**: el bloque 9 de F-012 ejecuta de hecho un cierre
+  completo sobre la obra 404, y al reanudar F-009 aquel guion **se recorre con
+  lo que quede** —lo que el bloque 9 no haya cubierto—.
+- **P5**: de «una incidencia del piloto de Mirasierra» a **una reclamación de la
+  obra 404 que ya tenga el gráfico adjuntado**, nombrando las **dos** claves
+  ajenas contra `postventa.partes` (R40 de F-009 y R46 de F-012).
+- **T22 paso 4 y su casilla**: ya no se espera `aviso_sin_grafico` —R48 lo
+  derogó— sino el bloque `grafico` de R49, y se dice qué hacer si el aviso viejo
+  aparece (el despliegue no lleva F-012).
+- **T24**: precondición nueva —el parte tiene que constar `adjuntado` (R2)—, con
+  la línea de `17_traza_grafico_local.ps1` que lo comprueba y la salida si no lo
+  está: pasar antes por `/api/adjuntar`. Los pasos 3 y 4 añaden el caso del 409
+  por no adjuntado, y la casilla lo recoge.
+- Dos menciones sueltas a R21 en §4 y en el «qué se verifica» de T22.
+
+**Cambios quirúrgicos**, cada uno marcado con la fecha. El guion no se reescribió.
+
+### 12.4 · Lo que NO se hizo
+
+- **Nada contra Azure, Sigrid, `sigrid-api`, el PostgreSQL compartido ni
+  SharePoint**, ni siquiera lecturas. Todo lo que el guion afirma sale del
+  **código y de los scripts leídos**, no de una ejecución.
+- **No se marcó ninguna tarea** de `tasks.md` ni se tocó `harness/features.json`.
+- **No se creó ningún script nuevo en `infra/`** (ver H6).
+- **No hubo `push`.**
+
+### 12.5 · Evidencias de este encargo
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh` en verde: **62** del arnés, más los de `api` y `front` por servicio (caché: árbol sin cambios) |
+| Cobertura de las líneas cambiadas | **99,0 % de 1.079** (1.068/1.079, umbral 80 %, nivel `critico`) — idéntica: no cambió ni una línea de producción |
+| Mutantes generados y supervivientes | **No se relanza.** Este encargo solo escribe Markdown en `progress/`; `harness/alcance.py` mide `.py`, y el alcance de F-012 no se movió. Los números válidos siguen siendo los de `progress/mutacion_F-012.md` |
+| Tiempo de ejecución de la suite | **4,69 s** los 62 del arnés |
+| Fase RED | **No aplica**: no hay código nuevo. Son dos documentos de `progress/` |

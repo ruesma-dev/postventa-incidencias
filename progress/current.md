@@ -1,6 +1,43 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 (noche, 4) · **guion del bloque 9 de F-012 escrito, y el del bloque 8 de F-009 corregido**
+>
+> - **`progress/guion_bloque9_F-012.md`** (nuevo): el procedimiento que sigue el
+>   humano para T25–T32, calcado del de F-009. Toda escritura sobre
+>   **reclamaciones de la obra de prueba 404**, dry-run antes de cada commit y
+>   **autorización expresa por incidencia**. Ni un valor sensible: marcadores
+>   `<...>`, y la lectura de las App Settings de `sigrid-api` va filtrada con
+>   `--query` para no volcar sus credenciales a ninguna consola.
+> - **`progress/guion_bloque8_F-009.md`** (corregido, cambios quirúrgicos con
+>   fecha): nota arriba explicando que el bloque 9 de F-012 ejecuta de hecho un
+>   cierre completo sobre la 404; **P5** pasa de Mirasierra a la obra 404 con el
+>   gráfico ya adjuntado; **T22** espera el bloque `grafico` (R49) y no
+>   `aviso_sin_grafico` (R48 lo derogó); **T24** exige que el parte conste
+>   `adjuntado` (R2) o pasa antes por `/api/adjuntar`.
+> - **Diez hallazgos** en §8 del guion nuevo. Los que no estaban escritos:
+>   `/api/adjuntar` es `multipart` y **poner `Content-Type` la rompe en
+>   silencio**; `filas_afectadas: 0` significa **cosas opuestas** en `adjuntar`
+>   y en `cerrar`; el reintento tras un `502` es **seguro en uno y prohibido en
+>   el otro**; T28 capa 2 necesita borrar una fila de `postventa.graficos` y no
+>   había forma escrita; y **T31 no puede usar la reclamación de T27** porque la
+>   idempotencia de capa 1 cortaría antes de llegar a la pasarela.
+>
+> `bash harness/init.sh` **en verde**, con la puerta de cobertura en las mismas
+> **1.079 líneas cambiadas al 99,0 %**: este encargo solo escribe Markdown en
+> `progress/`, así que **no se relanzó la mutación** ni cambió el alcance.
+>
+> **No se ejecutó nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint —ni lecturas—: lo que el guion afirma sale del código
+> y de los scripts leídos. **No se marcó ninguna tarea** de `tasks.md` ni se
+> tocó `harness/features.json`. Detalle en `progress/impl_F-012.md` §12.
+>
+> **Pendiente para el humano**: **D1** de §2 del guion nuevo, aceptar los 5
+> supervivientes de mutación declarados equivalentes; y **D2**, confirmar con
+> Posventa que `PV002` (`gratipide` 35) es la clase correcta para un parte
+> firmado. Ninguna bloquea T25; las dos se cierran antes de dar el bloque 9 por
+> bueno.
+
 > ## Estado al 2026-09-06 (noche, 3) · **post-review de F-012: D1, D2 y S9 hechas**
 >
 > Las **dos correcciones «debe corregirse»** de `progress/review_F-012.md` §6 y

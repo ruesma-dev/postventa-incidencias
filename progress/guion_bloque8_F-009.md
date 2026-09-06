@@ -16,6 +16,33 @@
 > cerrada. Falta este bloque y T29. Las tareas de `specs/F-009-cierre-sigrid/tasks.md`
 > **las marca el humano**, no el agente.
 
+> ## Nota del 2026-09-06 · lee esto antes de recorrer el guion
+>
+> El humano eligió el **orden (b)** de `specs/F-012-grafico-sigrid/design.md`
+> §13: **F-012 primero**. Eso cambia lo que este guion espera ver, y por eso
+> tiene correcciones fechadas dentro (P5, T22 y T24).
+>
+> **El bloque 9 de F-012 ejecuta de hecho un cierre completo** —adjuntar y
+> cerrar— **sobre una reclamación de la obra de prueba 404**, con su guion
+> propio en `progress/guion_bloque9_F-012.md`. Cuando ese bloque pase, este
+> guion ya no se recorre entero: sus T22, T24, T25 y T27 habrán quedado
+> ejercitados sobre la 404 por T25, T27, T29 y T30 de aquel, con evidencias en
+> sus casillas.
+>
+> **Al reanudar F-009, este guion se recorre con lo que quede**: lo que el
+> bloque 9 no haya cubierto —el caso de T23 sobre la siembra del login, T26 si
+> el guard rechazara algo, y el cierre sobre el piloto de Mirasierra cuando el
+> humano lo autorice—. Antes de nada, se mira qué casillas de
+> `guion_bloque9_F-012.md` están rellenas.
+>
+> Dos consecuencias que ya están escritas en este fichero, con su fecha:
+>
+> - **R21 de F-009 está derogado** por R48 de F-012: el dry-run del cierre ya
+>   **no** trae `aviso_sin_grafico`, y en su lugar trae el bloque `grafico`.
+> - **El `commit` del cierre exige el gráfico adjuntado** (R2 de F-012): un
+>   `/api/cerrar` con `commit` sobre un parte que no consta `adjuntado`
+>   responde **409**, sin tocar el ERP.
+
 ---
 
 ## 0 · Tres cosas que sorprenden, y conviene saber antes de estar delante del ERP
@@ -244,13 +271,21 @@ resuelve, el endpoint responde `503` nombrando la variable que falte.
       Vault con error.
 - [ ] **P4** · La clave de función de `sigrid-api` y la raíz de la pasarela, a
       mano para los scripts de lectura (§3). No se escriben en ningún fichero.
-- [ ] **P5** · **Una incidencia del piloto de Mirasierra elegida**, y su parte
-      ya recorrido en el front: subido, validado `apto` / `archivo_y_cierre`,
-      **guardado** (`POST /api/parte`, F-019) y **archivado** (`POST /api/archivar`).
-      No es una formalidad: `postventa.cierres` tiene **clave ajena contra
-      `postventa.partes`**, así que un `hash` que no esté guardado hace fallar
-      **hasta el dry-run** al escribir su traza (R40). Es la misma trampa del
-      defecto 15 de F-010.
+- [ ] **P5** · *(corregido el 2026-09-06, orden (b) de `F-012/design.md` §13)*
+      **Una reclamación de la obra de prueba 404** —no Mirasierra— **que ya
+      tenga su gráfico adjuntado por el bloque 9 de F-012**, y su parte ya
+      recorrido en el front: subido, validado `apto` / `archivo_y_cierre`,
+      **guardado** (`POST /api/parte`, F-019), **archivado**
+      (`POST /api/archivar`) y **adjuntado** (`POST /api/adjuntar`).
+      No es una formalidad, y ahora son **dos** las claves ajenas contra
+      `postventa.partes`: la de `postventa.cierres` (R40) y la de
+      `postventa.graficos` (R46 de F-012). Un `hash` que no esté guardado hace
+      fallar **hasta el dry-run**. Es la misma trampa del defecto 15 de F-010.
+      > **Por qué la 404 y no Mirasierra.** La decisión del humano del
+      > 2026-09-06 es que **toda escritura de prueba** contra el ERP cae en la
+      > obra de prueba. La candidata se localiza con
+      > `infra/15_reclamaciones_obra_prueba.ps1`. Cerrar una incidencia real del
+      > piloto es otra decisión, y otra autorización.
 - [ ] **P6** · **Autorización expresa del humano para cerrar esa incidencia
       concreta**, no «para probar el cierre». Es lo que exige `CLAUDE.md`.
 - [ ] **P7** · Sesión iniciada en el front (grupo `posventa-usuarios`), porque
@@ -352,8 +387,9 @@ sin `commit`), lo pinta, y solo después de la confirmación explícita
 
 **(b) La consola del navegador**, `F12` → **Consola**, en la pestaña del front.
 Va al **mismo origen**, así que pasa por el proxy que autentica. Se usa cuando
-hace falta **el JSON crudo de la respuesta** (los cinco campos de R9 y el aviso
-de R21, tal y como viajan) o acotar la llamada a **una sola** incidencia.
+hace falta **el JSON crudo de la respuesta** (los cinco campos de R9 y —desde
+el 2026-09-06— el bloque `grafico` de R49 de F-012, tal y como viajan) o acotar
+la llamada a **una sola** incidencia.
 
 El fragmento base, que se reutiliza en T22, T23 y T27 cambiando dos constantes
 y —solo en T24— añadiendo `commit`:
@@ -408,9 +444,11 @@ y —solo en T24— añadiendo `commit`:
 ### T22 · Dry-run real, con el interruptor apagado y luego encendido
 
 **Qué se verifica y por qué.** Que el dry-run lee el ERP de verdad y devuelve
-**las cinco cosas** que R9 exige más el aviso de R21, y que **no cambia nada**
-en Sigrid (R8, R10). Es el único paso que se puede repetir sin coste, y el que
-sostiene todo lo demás: sin un dry-run correcto no se escribe (R10).
+**las cinco cosas** que R9 exige más —*corregido el 2026-09-06*— el bloque
+`grafico` de R49 de F-012, en lugar del aviso de R21 que R48 derogó; y que **no
+cambia nada** en Sigrid (R8, R10). Es el único paso que se puede repetir sin
+coste, y el que sostiene todo lo demás: sin un dry-run correcto no se escribe
+(R10).
 
 De paso se comprueba §0.1 en el propio ERP: **con el interruptor apagado no
 funciona ni el dry-run** (R37, R49).
@@ -465,8 +503,18 @@ funciona ni el dry-run** (R37, R49).
    `filas_afectadas: 0` y un objeto `dry_run` con **las seis cosas**:
    `incidencia`, `descripcion`, `estado_origen` {`codigo`, `descripcion`},
    `estado_destino` {`codigo: "CER"`, `descripcion`}, `login_sigrid`, y
-   `aviso_sin_grafico` **no vacío** (R21: la reclamación quedará cerrada **sin
-   el parte dentro de Sigrid**).
+   —*corregido el 2026-09-06*— un bloque **`grafico`** con
+   `estado: "adjuntado"`, `nombre_fichero`, `sha256` y `adjuntado_at_utc`
+   relleno (R49 de F-012).
+   > **`aviso_sin_grafico` ya NO tiene que aparecer.** R48 de F-012 derogó R21
+   > de F-009: con el parte adjuntándose antes del cambio de estado, aquel aviso
+   > sería falso. **Si aparece**, el despliegue no lleva el código de F-012, y
+   > entonces el `commit` de T24 tampoco lo exigirá: se para y se redespliega.
+   >
+   > Si el bloque 9 de F-012 no se ha ejecutado sobre esta reclamación, lo que
+   > sale aquí es `grafico.estado: "no_consta"`, y **eso no es un error del
+   > dry-run** (R50): el que fallará es el `commit` de T24, con un 409.
+
    *Si sale `409`*: el motivo lo dice — parte no apto (R16), no archivado
    (R17), estado no cerrable (R19), o login sin correspondencia (R31, y eso es
    T23). *Si sale `502`*: la pasarela ha fallado; **no se reintenta como
@@ -503,7 +551,9 @@ funciona ni el dry-run** (R37, R49).
 | Foto de partida (`ide` / `emp` / `est` / estado legible / `tiemod` / `MAX(ide)`) | |
 | Paso 2 · HTTP con el interruptor apagado | |
 | Paso 4 · HTTP y `estado` del dry-run | |
-| Paso 4 · las seis cosas de R9/R21, ¿estaban todas? | |
+| Paso 4 · las seis cosas de R9, ¿estaban todas? | |
+| Paso 4 · bloque `grafico` (R49 de F-012): `estado` · `nombre_fichero` · `sha256` | |
+| Paso 4 · ¿aparecía `aviso_sin_grafico`? (2026-09-06: tiene que ser **no**) | |
 | `login_sigrid` que devolvió el dry-run | |
 | Paso 5 · ¿el ERP intacto? | |
 | Paso 6 · traza local | |
@@ -613,6 +663,21 @@ batch es **de verdad** transaccional y afecta a **2 filas** (R22, R23), que
 
 **Precondiciones.** T22 y T23 marcadas. Ventana abierta. P6 y P8.
 
+> **Precondición añadida el 2026-09-06 (R2 de F-012).** El parte tiene que
+> constar **`adjuntado`** en `postventa.graficos`, o el `commit` del paso 4
+> responde **409** sin tocar el ERP, diciendo que primero se adjunta con
+> `POST /api/adjuntar`. Se comprueba antes de empezar:
+>
+> ```
+> powershell -ExecutionPolicy Bypass -File infra\17_traza_grafico_local.ps1 -NumeroIncidencia "<RSaa.mm/nnnn>" -EstadoEsperado adjuntado
+> ```
+>
+> *Se espera*: `TRAZA LOCAL DEL GRAFICO : PASA`, con `estado = adjuntado`.
+> *Si no está adjuntado*: se pasa **antes** por `POST /api/adjuntar` con
+> `commit` —el paso 3 de T27 de `progress/guion_bloque9_F-012.md`, con su
+> autorización— y solo después se vuelve aquí. **No se salta**: es lo que
+> impide que esta reclamación quede cerrada sin su parte dentro.
+
 **Pasos** —en este orden y sin saltarse ninguno—.
 
 1. **Anotar el estado de partida.**
@@ -632,8 +697,13 @@ batch es **de verdad** transaccional y afecta a **2 filas** (R22, R23), que
    o el botón de dry-run del front.
 
    *Se espera*: `200`, `estado: "dry_run_ok"`, y el `dry_run` con el estado de
-   origen legible, el destino `CER`, el `login_sigrid` y `aviso_sin_grafico`.
+   origen legible, el destino `CER`, el `login_sigrid` y —*corregido el
+   2026-09-06*— el bloque **`grafico` con `estado: "adjuntado"`**, no
+   `aviso_sin_grafico`.
    **Leerlo no es una formalidad**: lo que se confirma en el paso 4 es esto.
+   *Si `grafico.estado` no es `adjuntado`*: **para aquí**. El `commit` del paso
+   4 va a responder 409 (R2 de F-012). Vuelve a la precondición añadida de esta
+   tarea.
    *Si el estado de origen no es el del paso 1*: alguien ha movido la
    reclamación. Vuelve al paso 1.
 
@@ -643,6 +713,9 @@ batch es **de verdad** transaccional y afecta a **2 filas** (R22, R23), que
    fragmento con `COMMIT = true` (que pone `commit` y `confirmado`).
 
    *Se espera*: `HTTP 200` con `estado: "cerrado"` y **`filas_afectadas: 2`**.
+   *Si sale `409` diciendo que el parte no consta adjuntado* (2026-09-06, R2 de
+   F-012): **no se ha tocado el ERP**. Falta el `POST /api/adjuntar`: ver la
+   precondición añadida de esta tarea.
    *Si sale `409` diciendo que el estado cambió desde el dry-run*: el control
    optimista de R11 ha saltado y **no se ha aplicado nada**. Vuelve al paso 1.
    *Si sale `502`*: la escritura pudo salir y no volvió la respuesta. **NO se
@@ -709,8 +782,9 @@ batch es **de verdad** transaccional y afecta a **2 filas** (R22, R23), que
 | Fecha y hora | |
 | Incidencia cerrada (código) | |
 | Autorización expresa del humano | sí / no |
+| **¿el parte constaba `adjuntado`?** (2026-09-06, R2 de F-012) | sí / no |
 | 1–2 · `ide` / `emp` / `est` / `res` / `tiemod` / `MAX(ide)` de partida | |
-| 3 · dry-run leído (estado origen → destino, login) | |
+| 3 · dry-run leído (estado origen → destino, login, `grafico.estado`) | |
 | 4–5 · HTTP, `estado` y `filas_afectadas` | |
 | 6 · `con.est` = `CER` · `tiemod` sin mover · nuevo `MAX(ide)` | |
 | 7 · veredicto campo a campo | |

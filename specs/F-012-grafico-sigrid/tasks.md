@@ -220,7 +220,7 @@
       como precondición, y **ningún valor** de secreto ni host
       (`test_f009_r52_integracion_no_trae_el_valor_de_ningun_secreto` extendido).
 
-- [ ] **T21**: Refrescar `azure-apps/postventa_incidencias.md` (R70). |
+- [x] **T21**: Refrescar `azure-apps/postventa_incidencias.md` (R70). |
       Verificación: **MANUAL (humano)** — es **otro repositorio**; commit
       local allí, sin push, en este mismo trabajo. Enlazar, nunca duplicar.
       **No se toca `azure-apps/sigrid_api.md`**: §10 ya nos lista como

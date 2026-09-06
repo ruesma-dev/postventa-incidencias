@@ -547,7 +547,13 @@ $oid        = az ad signed-in-user show --query id -o tsv
 $correo     = az ad signed-in-user show --query mail -o tsv
 
 # La pasarela, para las lecturas de comprobación (T22, T24, T25, T27).
-$sigridUrl  = az functionapp config appsettings list -g $grupo -n $funcion --query "[?name=='SIGRID_API_BASE_URL'].value" -o tsv
+# La raíz se TECLEA. NO se lee con `az functionapp config appsettings list`:
+# SIGRID_API_BASE_URL es una referencia a Key Vault y ese comando devuelve el
+# valor crudo, es decir la cadena @Microsoft.KeyVault(SecretUri=...) sin
+# resolver. Azure solo la resuelve al arrancar la Function, no en la API de
+# gestión. Es un host interno: se teclea, no se escribe en ningún fichero.
+$sigridUrl  = Read-Host "Raiz de la pasarela sigrid-api (sin barra final)"
+# Esta SÍ se lee: desde `bed95ea` SIGRID_BASE_DATOS es App Setting plana.
 $sigridBase = az functionapp config appsettings list -g $grupo -n $funcion --query "[?name=='SIGRID_BASE_DATOS'].value" -o tsv
 $sigridKey  = Read-Host "Clave de funcion de sigrid-api"   # NO se escribe en ningun fichero
 $cabSigrid  = @{ "x-functions-key" = $sigridKey }
@@ -637,7 +643,10 @@ PATH) y la contraseña **aparte del DSN**, como avisa el defecto 16. El `'@` de
 cierre va **pegado al margen izquierdo**, o PowerShell no parsea el bloque:
 
 ```powershell
-$env:PG_HOST     = az functionapp config appsettings list -g $grupo -n $funcion --query "[?name=='PG_HOST'].value" -o tsv
+# PG_HOST también se teclea, y por el mismo motivo que la raíz de la pasarela:
+# `pg-host` es un secreto del vault y la App Setting es una referencia, así que
+# `appsettings list` devolvería @Microsoft.KeyVault(SecretUri=...) sin resolver.
+$env:PG_HOST     = Read-Host "Host de PostgreSQL"
 $env:PG_DB       = "postventa"
 $env:PG_USER     = "postventa_app"
 $env:PG_PASSWORD = Read-Host "Contrasena de postventa_app"

@@ -252,6 +252,19 @@ prefiere no repetirla en cada llamada, se deja en la sesión con
 $env:SIGRID_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR((Read-Host "Clave de sigrid-api" -AsSecureString)))
 ```
 
+> **La raíz y `PG_HOST` NO se leen con `az functionapp config appsettings list`,
+> y no es una preferencia: ese comando no funciona para ellas.** Devuelve el
+> valor **crudo** de la App Setting, y `SIGRID_API_BASE_URL` y `PG_HOST` son
+> **referencias a Key Vault**, así que lo que sale es la cadena literal
+> `@Microsoft.KeyVault(SecretUri=...)`, no la URL ni el host. Azure resuelve la
+> referencia **al arrancar la Function**, no en la API de gestión: por ahí no
+> hay forma de leer el valor resuelto. Se teclean, como la clave. Quien quiera
+> comprobar que la referencia está bien puesta, que mire su **estado**
+> (`Resolved`), no su valor: eso lo hace `infra/14_paso0_sigrid.ps1` (§1).
+> `SIGRID_BASE_DATOS` sí se puede leer así, porque desde `bed95ea` es una App
+> Setting plana. Corregido el 2026-09-06; el fragmento de consola de
+> `progress/current.md` ya no lo intenta.
+
 > De dónde sale cada valor: la raíz y la clave, del dueño de `sigrid-api`
 > (`azure-apps/sigrid_api.md` §3.1 y §3.3). La base, la de negocio: es la única
 > con escritura permitida en la pasarela (`sigrid_api.md` §4.1). El host de

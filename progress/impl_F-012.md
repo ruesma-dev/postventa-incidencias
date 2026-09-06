@@ -627,3 +627,218 @@ transitorio (502, red, tiempo agotado) en **todos** los pasos, incluido
 `adjuntar` con `commit`. **Aquí es seguro por construcción** —el endpoint es
 idempotente por tamaño y `sha256`—, y se deja escrito para que nadie lo lea
 como un reintento de escritura no controlado.
+
+---
+
+## 11 · Post-review (2026-09-06) · las dos correcciones «debe corregirse» y S9
+
+Encargo posterior al **APROBADO** de `progress/review_F-012.md` §6: los dos
+puntos de «debe corregirse» (D1, D2) y una sugerencia (S9) que además es una
+mejora genérica del arnés y se propaga a `arnes-base`.
+
+### 11.1 · D1 · «bytes descargados» medía la cadena del sha256, no el PDF
+
+`infra/16_grafico_sigrid.ps1` imprimía `$huella.Length` en esa casilla.
+`$huella` es la **cadena hexadecimal** del sha256: mide **siempre 64**, pese el
+binario lo que pese. No era un falso verde —lo que sostiene el bloque es la
+comprobación de la línea siguiente, `sha256 del binario DENTRO del ERP`, que
+estaba correcta— pero es un número que parece un tamaño y no lo es, delante del
+ERP de producción.
+
+El tamaño se captura ahora de `$respuesta.Content.Length` **antes** del
+`$respuesta = $null` que va justo después del hash. Ese `$null` es deliberado
+(nada del PDF sobrevive al script) y por eso el orden importa: leerlo después
+anotaría un vacío. El comentario del script lo deja escrito, con la trampa
+nombrada, para que nadie lo vuelva a poner donde estaba.
+
+| Antes | Ahora |
+|---|---|
+| `Anotar -Que "bytes descargados" -Valor $huella.Length` | `$bytesDescargados = $respuesta.Content.Length` (antes del `$null`) y `Anotar ... -Valor $bytesDescargados` |
+
+**Test nuevo** en `services/postventa-api/tests/test_f012_scripts_infra.py`:
+`test_f012_la_casilla_de_bytes_mide_el_contenido_y_no_la_huella`. No es una
+comprobación de texto de fachada: extrae con una expresión regular **qué
+variable** alimenta la casilla, exige que no sea `$huella.Length`, exige que esa
+misma variable se calcule de `$respuesta.Content.Length`, y **compara los
+índices** para fijar que la asignación va antes de `$respuesta = $null`.
+
+**Fase RED**, con el comando exacto:
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f012_scripts_infra.py -k bytes_mide -q
+>       assert medida != "$huella.Length", (
+            "«bytes descargados» está imprimiendo la longitud de la cadena del "
+            "sha256, que es siempre 64, en vez del tamaño del binario descargado"
+        )
+E       AssertionError: «bytes descargados» está imprimiendo la longitud de la cadena del sha256, que es siempre 64, en vez del tamaño del binario descargado
+E       assert '$huella.Length' != '$huella.Length'
+
+tests\test_f012_scripts_infra.py:277: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f012_scripts_infra.py::test_f012_la_casilla_de_bytes_mide_el_contenido_y_no_la_huella
+1 failed, 53 deselected in 0.24s
+```
+
+**Analizador de PowerShell** sobre el script ya corregido (salida real, con
+`[System.Management.Automation.Language.Parser]::ParseFile` sobre
+`infra\16_grafico_sigrid.ps1`):
+
+```
+SIN ERRORES DE SINTAXIS - tokens: 1147
+```
+
+**Verde** después: `54 passed in 0.18s` en `test_f012_scripts_infra.py` (53
+antes, más el nuevo).
+
+Commit: `2403aab`.
+
+### 11.2 · D2 · dos comentarios del front describían el aviso que R48 derogó
+
+`js/api.js` (docstring de `cerrar`) y `js/app.js` (el campo `dryRunCierre`)
+seguían contando el dry-run como si trajera «la reclamación quedará cerrada sin
+el parte». Ese aviso **ya no llega**: R48 lo derogó y en su sitio va el bloque
+`grafico` con el estado real del parte (R49), porque desde F-012 el cierre con
+`commit` **exige** el gráfico adjuntado (R2). El backend lo tenía impecable
+—hasta con controles negativos—; el front se había quedado a medias, y el
+siguiente que leyera `api.js` habría buscado en la respuesta un campo que ya no
+existe.
+
+Los dos comentarios describen ahora el sistema real: los dos estados legibles,
+con qué login se firmaría, y el bloque `grafico` con sus tres valores
+(`adjuntado`, `dry_run_ok`, `no_consta`). Y los dos **nombran expresamente** que
+`aviso_sin_grafico` ya no llega, con el porqué: sin esa frase, el próximo que
+lea código de F-009 en otra rama volverá a esperarlo.
+
+**Sin cambios funcionales**: solo comentarios. Verificado con la suite del
+front, `130 passed in 2.36s`, la misma que antes del cambio.
+
+Commit: `48b69a8`.
+
+### 11.3 · S9 · el comando del informe de mutación omitía `--base`
+
+La línea «Generado por» de `progress/mutacion_F-012.md` decía
+`python -m harness.mutacion --feature F-012 --workers 8`. Copiado tal cual, ese
+comando **no reproduce la campaña**: la rama de F-012 nace de
+`feature/F-009-cierre-sigrid` y la campaña se lanzó con
+`--base feature/F-009-cierre-sigrid`. Sin ese flag, el alcance se calcula contra
+`dev` y arrastra las líneas de la feature madre, así que ni el número de
+mutantes ni la lista de supervivientes son comparables. Y como el comando parece
+completo, quien lo copie no tiene forma de enterarse.
+
+Es el mismo agujero que el arnés ya había tapado con `--workers`: la cabecera
+del informe es la única memoria de cómo se midió, porque la línea de comando se
+la lleva el scrollback.
+
+Cambios en `harness/mutacion.py`:
+
+| Pieza | Qué |
+|---|---|
+| `BASE_POR_DEFECTO` | Constante nueva (`"dev"`), compartida con el `argparse`, para que el valor por defecto y el que `comando_de` compara no puedan separarse |
+| `InformeMutacion.base` | Campo nuevo, `str` o `None` |
+| `main` | Lo rellena desde `opciones.base`, y lo hace después de las dos ramas (paralela y en serie), así que vale para las dos |
+| `comando_de` | Emite `--base <rama>` **solo** cuando difiere del valor por defecto: repetir `--base dev` en todos los informes es ruido que acaba haciendo que nadie lea la línea |
+
+**Tests nuevos**: `tests/test_mutacion_informe_base.py`, seis. Cuatro sobre
+`comando_de` (base heredada, base por defecto que no se escribe, informe sin
+base que no se inventa ninguna, y convivencia con `--workers`), uno sobre la
+cabecera escrita, y uno que **cierra el circuito por `main`** —el campo no sirve
+de nada si el CLI no lo rellena—.
+
+**Fase RED.** Primero el fallo de importación, que es el que fija que la
+constante forma parte del contrato:
+
+```
+$ python -m pytest tests/test_mutacion_informe_base.py -q
+E   ImportError: cannot import name 'BASE_POR_DEFECTO' from 'harness.mutacion'
+1 error in 0.21s
+```
+
+Y después, ya con la constante, el campo y el cableado de `main` puestos pero
+`comando_de` sin tocar, el fallo **de comportamiento**:
+
+```
+>       assert f"--base {BASE_HEREDADA}" in destino.read_text(encoding="utf-8")
+E       AssertionError: assert '--base feature/F-009-cierre-sigrid' in '<!-- .../mutacion_F-000.md ...'
+
+tests\test_mutacion_informe_base.py:132: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_mutacion_informe_base.py::test_el_comando_cita_la_base_cuando_no_es_la_de_siempre
+FAILED tests/test_mutacion_informe_base.py::test_la_cabecera_del_informe_lleva_esa_base
+FAILED tests/test_mutacion_informe_base.py::test_la_base_convive_con_los_workers
+FAILED tests/test_mutacion_informe_base.py::test_main_registra_en_el_informe_la_base_con_la_que_se_lanzo
+4 failed, 2 passed in 0.19s
+```
+
+**Verde** después: `62 passed in 3.83s` en `tests/` (56 antes, más los 6).
+
+Y las **dos** líneas «Generado por» de `progress/mutacion_F-012.md` —una por
+pasada— quedan corregidas a
+`python -m harness.mutacion --feature F-012 --base feature/F-009-cierre-sigrid --workers 8`,
+que es el comando que de verdad se lanzó. **No se relanzó la campaña**: el
+cambio es de la línea de texto, no de los números, que siguen siendo los
+medidos.
+
+Commit: `749d9b7`.
+
+### 11.4 · Propagación obligatoria a `arnes-base`
+
+S9 es una mejora **genérica** del arnés, así que se porta en el mismo trabajo.
+`C:/Users/pgris/PycharmProjects/arnes-base` estaba en `main` y con el árbol
+**limpio**, así que no hubo que respetar ningún trabajo a medias ni cambiar de
+rama.
+
+Portado **pieza a pieza y no fichero a fichero**: allí el arnés va por la
+**1.7.9** y este repositorio por la **1.5.2**, de modo que
+`arnes-base/harness/mutacion.py` (2.344 líneas) tiene otra estructura —línea
+base, centinela, repaso de timeouts, `--ficheros`— frente a las 903 de aquí.
+Las dos diferencias que obligó esa distancia:
+
+- allí `main` escribe `informe.base = None if opciones.ficheros else opciones.base`,
+  porque el alcance por `--ficheros` **no tiene base** contra la que medir;
+- el test de `main` monta el alcance con `monkeypatch` sobre
+  `alcance_de_feature` y `ejecutar_campania`, siguiendo el patrón que ya usa
+  allí `test_mutacion_muestreo_por_nivel.py`.
+
+También se siguió el convenio de versionado de ese repositorio, que es lo que
+hacen sus commits anteriores: **`VERSION` a 1.7.10 (2026-09-06)** y entrada
+nueva en `GUIA_INSTALACION.md` con el caso, el cambio y los ficheros. No hizo
+falta tocar `politica_ficheros.json`: cubre `tests/**` por glob.
+
+**Fase RED allí también**, escondiendo el fichero de producción con
+`git stash push -- arnes-base/harness/mutacion.py` y devolviéndolo con
+`git stash pop`:
+
+```
+E   ImportError: cannot import name 'BASE_POR_DEFECTO' from 'harness.mutacion'
+1 error in 0.32s
+```
+
+**Suite de `arnes-base` en verde** después: `347 passed, 1 skipped in 38.77s`.
+
+Commit local en `arnes-base`: `6aa4335`. **Sin `push`**, como manda la regla.
+
+### 11.5 · Evidencias del post-review
+
+Medidas, no estimadas. Salida de `bash harness/init.sh` al terminar:
+
+| Evidencia | Resultado |
+|---|---|
+| Tests del arnés (`tests/`) | **62 passed in 4.55s** (56 antes: +6 de `test_mutacion_informe_base.py`) |
+| Tests del servicio `api` | **2.055 passed, 13 skipped in 55.32s** (2.054 antes: +1, el de la casilla de bytes) |
+| Tests del servicio `front` | **130 passed in 2.45s** (sin cambio: D2 no toca comportamiento) |
+| Cobertura de líneas cambiadas | **99,0 % de 1.079 líneas** (1.068/1.079, umbral 80 %, nivel `critico`) — idéntica a antes del post-review |
+| `ruff` | **58 avisos**, la deuda previa exacta. **Ni uno nuevo**: los ficheros tocados pasan `ruff check` limpios |
+| Analizador de PowerShell (`16_grafico_sigrid.ps1`) | **sin errores de sintaxis**, 1.147 tokens |
+| Suite de `arnes-base` | **347 passed, 1 skipped in 38.77s** |
+| Campaña de mutación | **No se relanza.** Ninguna línea de producción del alcance de F-012 cambió: D1 es un script `.ps1` (fuera del alcance, porque `harness/alcance.py` solo mide `.py`), D2 son comentarios de `.js`, y S9 toca `harness/`, que tampoco entra en el alcance de la feature. La puerta de cobertura lo confirma: sigue midiendo exactamente las mismas 1.079 líneas. Los números de `progress/mutacion_F-012.md` siguen siendo los medidos |
+
+### 11.6 · Lo que NO se hizo, y por qué
+
+- **Las otras ocho sugerencias de la review** (S1–S8) quedan sin tocar: el
+  encargo pedía D1, D2 y S9. Siguen escritas en `progress/review_F-012.md` §7.
+- **No se cambió ningún estado en `harness/features.json`.** F-012 sigue como la
+  dejó el líder; marcarla es suyo, no del implementer.
+- **Nada contra Azure, Sigrid, `sigrid-api`, el PostgreSQL compartido ni
+  SharePoint.** El script 16 se validó **leyéndolo** con el analizador de
+  sintaxis de PowerShell y con el test de texto: no se ejecutó.
+- **No hubo `push`** ni en este repositorio ni en `arnes-base`.

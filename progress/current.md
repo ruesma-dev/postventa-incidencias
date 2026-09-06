@@ -1,6 +1,41 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 (noche, 3) · **post-review de F-012: D1, D2 y S9 hechas**
+>
+> Las **dos correcciones «debe corregirse»** de `progress/review_F-012.md` §6 y
+> la sugerencia **S9**, que además era una mejora genérica del arnés.
+>
+> - **D1** · `infra/16_grafico_sigrid.ps1`: la casilla «bytes descargados»
+>   imprimía `$huella.Length` —la cadena hexadecimal del sha256, siempre 64—.
+>   Ahora mide `$respuesta.Content.Length`, **capturado antes** de que el script
+>   suelte la respuesta a `$null`. Con test de texto que fija además ese orden.
+> - **D2** · los comentarios de `js/api.js` y `js/app.js` dejaban de describir
+>   el sistema real: contaban el aviso «quedará cerrada sin el parte» que **R48
+>   derogó**. Reescritos con el bloque `grafico` (R49) y con la derogación
+>   nombrada. **Sin cambios funcionales.**
+> - **S9** · `comando_de()` de `harness/mutacion.py` no emitía `--base`, así que
+>   la línea «Generado por» de un informe de mutación no reproducía nada cuando
+>   la rama nace de otra feature —el caso de F-012—. Corregido, con seis tests
+>   nuevos, y corregidas las dos líneas de `progress/mutacion_F-012.md`.
+> - **Propagado a `arnes-base`** por la regla obligatoria: estaba en `main` y
+>   limpio, así que se portó pieza a pieza (allí va por la 1.7.9 y aquí por la
+>   1.5.2), con **`VERSION` a 1.7.10** y entrada en `GUIA_INSTALACION.md`.
+>   Commit local `6aa4335`, sin `push`. Su suite: **347 passed, 1 skipped**.
+>
+> `bash harness/init.sh` **en verde**: 62 tests del arnés, **2.055** en `api`
+> (13 saltados), 130 en `front`, puerta de cobertura **99,0 % de 1.079 líneas
+> cambiadas** (idéntica) y `ruff` en **58 avisos, la deuda previa exacta**. El
+> analizador de PowerShell da el script 16 **sin errores de sintaxis**.
+>
+> **No se relanzó la campaña de mutación**: ninguna línea de producción del
+> alcance de F-012 cambió (un `.ps1`, comentarios de `.js` y `harness/`, que no
+> entra en el alcance). **No se tocó `features.json`**: el estado de F-012 lo
+> decide el líder. Detalle en `progress/impl_F-012.md` §11.
+>
+> **Pendiente**: las ocho sugerencias restantes de la review (S1–S8), que el
+> encargo no pedía.
+
 > ## Estado al 2026-09-06 (noche, 2) · **T33 hecha: los 35 supervivientes de la mutación, cazados o justificados**
 >
 > Se han analizado **uno a uno** los 35 supervivientes de la primera pasada de

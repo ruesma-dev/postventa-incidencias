@@ -1,6 +1,59 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 (noche) · **F-012 implementada: T1–T24 hechas, `init.sh` en verde, bloque 9 y mutación sin ejecutar**
+>
+> El implementer ha ejecutado **T1 a T24** de `specs/F-012-grafico-sigrid/tasks.md`
+> en `feature/F-012-grafico-sigrid`, 22 commits locales, sin push.
+> **Informe completo: `progress/impl_F-012.md`.**
+>
+> Lo que hace el código ahora: el PDF del parte se adjunta a la reclamación
+> como **gráfico** de Sigrid (`POST /api/sigrid/concepto-grafico`) **antes** del
+> cambio de estado, y **el cierre se niega a ejecutarse si el gráfico no consta
+> adjuntado** en `postventa.graficos`. Con eso el **riesgo aceptado de
+> `docs/ARCHITECTURE.md` queda cerrado por diseño y sin haberse producido ni
+> una vez**, porque F-012 se implementa antes del primer cierre real (orden (b)
+> que eligió el humano).
+>
+> **Números medidos, no estimados:** 2.032 tests en verde en `api` (32,9 s) y
+> 130 en `front` (con 187 de JavaScript dentro); **464 de ellos son propios de
+> F-012**. Puerta de cobertura: **98,7 % de 1.079 líneas cambiadas** (umbral 80,
+> nivel `critico`). `ruff` se queda en **58 avisos, exactamente la deuda
+> previa**: la feature no añade ni uno.
+>
+> **NO se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint. Ni una lectura. Los tres scripts nuevos de `infra/`
+> están escritos y validados sintácticamente, pero **sin lanzar**.
+>
+> **Lo que queda, y es del líder o del humano** (el encargo lo reservó
+> explícitamente, por eso no está marcado en `tasks.md`):
+>
+> - **T33 · la campaña de mutación.** Sin ejecutar. El informe trae ya el
+>   **alcance calculado**: 24 ficheros y **224 mutantes**, de los que ~102 son
+>   de F-009 —esta rama nace de la suya y el alcance se mide contra `dev`—.
+>   Comando y coste estimado (~15 min con 8 workers, ~8 min acotando la base) en
+>   `progress/impl_F-012.md` §7.1.
+> - **T34 · `bash harness/init.sh`.** Se ha ejecutado y está **en verde**, pero
+>   la tarea no se marca.
+> - **Bloque 9 (T25–T32) · la verificación contra el ERP**, sobre la **obra de
+>   prueba 404**, con dry-run y autorización expresa por incidencia. Su guion
+>   (`progress/guion_bloque9_F-012.md`) **todavía no existe**: escribirlo es lo
+>   primero.
+>
+> **AVISO para cuando se abra la ventana**: `CIERRE_HABILITADO` es **una sola**
+> para el gráfico y el cierre (decisión D-B). Abrirla para probar el gráfico
+> **abre también el cierre**. Y la P0 del bloque 9 —las cinco App Settings
+> `SIGRID_DOCUMENT_*` de `sigrid-api`— es **del dueño de la pasarela**: se
+> releen antes de abrir nada, no se dan por buenas.
+>
+> **Fuera de este repositorio**: `azure-apps/postventa_incidencias.md`
+> refrescado, commit local `72b8fa3`, **sin push**.
+>
+> **Sigue abierta la P1** de `design.md` §14: confirmar con Posventa que
+> `PV002` (`gratipide` 35) es la clase correcta para un parte firmado. Cambiarla
+> exige tocar además la lista blanca de la pasarela: es una decisión de dos
+> dueños.
+
 > ## Estado al 2026-09-06 (tarde) · **«Ok a todo»: F-012 va primero, F-023 cancelada, F-009 espera**
 >
 > El humano aprobó las cuatro recomendaciones de la spec de F-012 (§14):

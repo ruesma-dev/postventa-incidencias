@@ -30,8 +30,8 @@ import inspect
 from datetime import UTC, datetime
 
 import pytest
-from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines import paso_cierre as modulo
+from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import (
     exigir_autorizacion_para_escribir,
     paso_cierre,

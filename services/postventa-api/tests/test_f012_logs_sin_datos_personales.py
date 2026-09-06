@@ -54,7 +54,12 @@ from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 from infrastructure.sigrid.graficos import AdaptadorGraficoSigridApi
 
 from tests.utiles_pg import RepositorioEnMemoria
-from tests.utiles_sigrid import ClienteFalso, ErpEnMemoria, GraficoEnMemoria, RespuestaFalsa
+from tests.utiles_sigrid import (
+    ClienteFalso,
+    ErpEnMemoria,
+    GraficoEnMemoria,
+    RespuestaFalsa,
+)
 
 AHORA = datetime(2026, 9, 6, 12, 0, 0, tzinfo=UTC)
 HASH = "hash-inventado-del-parte-0001"

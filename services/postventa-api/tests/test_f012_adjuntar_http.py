@@ -445,8 +445,8 @@ def _peticion_multipart() -> func.HttpRequest:
         f"--{frontera}\r\n"
         f'Content-Disposition: form-data; name="fichero"; filename="parte.pdf"\r\n'
         f"Content-Type: application/pdf\r\n\r\n"
-    ).encode("utf-8")
-    cuerpo += PDF + f"\r\n--{frontera}--\r\n".encode("utf-8")
+    ).encode()
+    cuerpo += PDF + f"\r\n--{frontera}--\r\n".encode()
 
     return func.HttpRequest(
         method="POST",

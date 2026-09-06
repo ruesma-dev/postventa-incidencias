@@ -45,12 +45,12 @@ from domain.models.grafico import (
     PeticionGrafico,
 )
 from domain.ports.grafico import GraficoPort
-
 from infrastructure.sigrid import graficos
 from infrastructure.sigrid.graficos import (
     RUTA_CONCEPTO_GRAFICO,
     AdaptadorGraficoSigridApi,
 )
+
 from tests.utiles_sigrid import ClienteFalso, RespuestaFalsa
 
 #: Todo inventado: ni la raíz, ni la clave, ni la base son reales.

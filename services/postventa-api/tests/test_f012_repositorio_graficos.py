@@ -33,10 +33,10 @@ from domain.models.persistencia import (
     TrazaGrafico,
 )
 from domain.ports.persistencia import RepositorioPartesPort
-
 from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import fila_a_traza_grafico
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
+
 from tests.utiles_pg import ConexionDoble
 
 ESQUEMA = "postventa"

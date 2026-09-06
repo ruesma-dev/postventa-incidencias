@@ -215,7 +215,12 @@ class AdaptadorGraficoSigridApi:
         """
         try:
             datos = respuesta.json()
-        except Exception:
+        except (ValueError, TypeError):
+            # Acotado y no un `except Exception`: lo que puede pasar aquí es
+            # que el cuerpo no sea JSON —`json.JSONDecodeError` es un
+            # `ValueError`—. Tragarse cualquier excepción escondería un fallo
+            # de programación nuestro justo en el camino de error, que es donde
+            # menos se mira.
             return None
         if not isinstance(datos, dict):
             return None

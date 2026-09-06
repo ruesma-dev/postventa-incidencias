@@ -35,14 +35,14 @@ from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_grafico import paso_grafico
 from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
 from domain.models.errores import (
+    CuerpoDeCierreInvalido,
+    EscrituraDocumentalDeshabilitada,
     EstadoNoCerrable,
     GraficoDemasiadoGrande,
     GraficoFallido,
     GraficoNoEsPdf,
     GraficoRechazadoPorLaPasarela,
     GraficoSinTraza,
-    CuerpoDeCierreInvalido,
-    EscrituraDocumentalDeshabilitada,
     ParteNoApto,
     ParteNoArchivado,
     PersistenciaNoDisponible,

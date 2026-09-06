@@ -28,8 +28,8 @@ from infrastructure.persistencia.ddl import (
     cargar_ddl,
     ficheros_ddl,
     sentencias,
-    valores_check,
     validar,
+    valores_check,
 )
 
 #: El fichero que añade F-012.

@@ -35,6 +35,7 @@ from domain.models.persistencia import (
     RegistroRemesa,
     TrazaArchivo,
     TrazaCierre,
+    TrazaGrafico,
 )
 from domain.models.remesa import ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion
@@ -51,10 +52,12 @@ from infrastructure.persistencia.mapeo import (
 __all__ = [
     "LIMITE_MAXIMO_COLA",
     "select_cola",
+    "select_grafico",
     "select_login_sigrid",
     "select_preferencias",
     "upsert_archivo",
     "upsert_cierre",
+    "upsert_grafico",
     "upsert_login_sigrid",
     "upsert_parte",
     "upsert_preferencias",
@@ -283,6 +286,99 @@ def upsert_cierre(*, esquema: str, traza: TrazaCierre) -> tuple[str, tuple]:
     return sql, parametros
 
 
+#: Las columnas de `graficos`, en el orden en que se escriben y se leen.
+#:
+#: Una sola lista para el `INSERT` y para el `SELECT` **a propósito**: dos
+#: listas del mismo orden divergen, y el día que divergieran `fila_a_traza_grafico`
+#: leería el `sha256` donde está el nombre del fichero sin que nadie lo notara.
+_COLUMNAS_GRAFICO: tuple[str, ...] = (
+    "hash_parte",
+    "numero_incidencia",
+    "reclamacion_ide",
+    "estado",
+    "sha256",
+    "bytes",
+    "nombre_fichero",
+    "gratipide",
+    "gra_cod",
+    "gra_ide_negocio",
+    "gra_ide_documental",
+    "rcg_ide",
+    "idempotente",
+    "confirmado_por",
+    "motivo",
+    "dry_run_at_utc",
+    "adjuntado_at_utc",
+)
+
+
+def upsert_grafico(*, esquema: str, traza: TrazaGrafico) -> tuple[str, tuple]:
+    """Registra el gráfico, **sin pisar uno ya adjuntado** (F-012, R30).
+
+    Mismo patrón que `upsert_cierre`, y la pieza clave es la misma: el `WHERE`
+    del `DO UPDATE`. Si la fila ya está en `adjuntado`, no se actualiza y la
+    sentencia **no devuelve ninguna fila**; el repositorio lee esa ausencia
+    como `SIN_CAMBIOS`.
+
+    Sin ese `WHERE`, un reintento reescribiría la traza de una escritura real
+    en el ERP — y con ella el `gra_cod`, que es la **única** forma de localizar
+    después el gráfico dentro de Sigrid.
+
+    El estado terminal viaja como **parámetro** y no pegado al SQL, por la
+    misma regla que todo lo demás de este módulo.
+    """
+    tabla = _tabla(esquema, "graficos")
+    sql = (
+        f"INSERT INTO {tabla} ({', '.join(_COLUMNAS_GRAFICO)}, intentos)\n"
+        f"VALUES ({', '.join(['%s'] * len(_COLUMNAS_GRAFICO))}, 0)\n"
+        f"ON CONFLICT (hash_parte) DO UPDATE SET\n"
+        f"{_asignaciones(_COLUMNAS_GRAFICO, excluidas={'hash_parte'})},\n"
+        f"    intentos = {tabla}.intentos + 1\n"
+        f"WHERE {tabla}.estado <> %s\n"
+        f"RETURNING (xmax = 0) AS creado"
+    )
+    parametros = (
+        traza.hash_parte,
+        traza.numero_incidencia,
+        traza.reclamacion_ide,
+        traza.estado.value,
+        traza.sha256,
+        traza.bytes,
+        traza.nombre_fichero,
+        traza.gratipide,
+        traza.gra_cod,
+        traza.gra_ide_negocio,
+        traza.gra_ide_documental,
+        traza.rcg_ide,
+        traza.idempotente,
+        traza.confirmado_por,
+        traza.motivo,
+        traza.dry_run_at_utc,
+        traza.adjuntado_at_utc,
+        _ESTADO_GRAFICO_TERMINAL,
+    )
+    return sql, parametros
+
+
+def select_grafico(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
+    """La traza del gráfico de un parte, por su `hash` (F-012, R2, R24, R49).
+
+    La leen dos sitios por dos motivos distintos: `paso_grafico`, como primera
+    capa de idempotencia —si dice `adjuntado`, no se llama a la pasarela ni se
+    mandan los bytes—, y `paso_cierre`, como precondición del `commit`.
+
+    Devuelve **las mismas columnas y en el mismo orden** que escribe
+    `upsert_grafico`: las dos se apoyan en `_COLUMNAS_GRAFICO`.
+    """
+    tabla = _tabla(esquema, "graficos")
+    sql = (
+        f"SELECT {', '.join(_COLUMNAS_GRAFICO)}\n"
+        f"FROM {tabla}\n"
+        "WHERE hash_parte = %s"
+    )
+    return sql, (hash_parte,)
+
+
 def select_cola(*, esquema: str, limite: int) -> tuple[str, tuple]:
     """Los partes que esperan que una persona decida (R22).
 
@@ -388,6 +484,13 @@ def upsert_login_sigrid(
 #: El estado de cierre que no se pisa (R25). Va como **parámetro**, no pegado
 #: al SQL, por la misma regla que todo lo demás.
 _ESTADO_TERMINAL = "cerrado"
+
+#: El estado del gráfico que no se pisa (R30). También como **parámetro**.
+#:
+#: Es otra constante y no la misma que la del cierre porque son dos escrituras
+#: externas distintas: «adjuntado pero no cerrado» es un estado real, y
+#: compartir la constante haría que cambiar una cambiara la otra.
+_ESTADO_GRAFICO_TERMINAL = "adjuntado"
 
 
 def _tabla(esquema: str, nombre: str) -> str:

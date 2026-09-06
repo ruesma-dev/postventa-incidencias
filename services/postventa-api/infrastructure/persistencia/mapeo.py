@@ -30,7 +30,12 @@ from typing import Any
 
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.extraccion import CAMPOS_DEL_PARTE, ExtraccionParte
-from domain.models.persistencia import EntradaCola, PreferenciasUsuario
+from domain.models.persistencia import (
+    EntradaCola,
+    EstadoGrafico,
+    PreferenciasUsuario,
+    TrazaGrafico,
+)
 from domain.models.validacion import Motivo, ResultadoValidacion
 
 __all__ = [
@@ -39,6 +44,7 @@ __all__ = [
     "fila_a_correspondencia",
     "fila_a_entrada_cola",
     "fila_a_preferencias",
+    "fila_a_traza_grafico",
     "json_de_avisos",
     "json_de_motivos",
     "valores_de_campos",
@@ -228,6 +234,65 @@ def fila_a_correspondencia(fila: Sequence[Any]) -> CorrespondenciaSigrid:
         login_sigrid=login_sigrid,
         alta_at_utc=alta_at_utc,
         verificado_at_utc=verificado_at_utc,
+    )
+
+
+def fila_a_traza_grafico(fila: Sequence[Any]) -> TrazaGrafico:
+    """Una fila de `graficos`, de vuelta al dominio (F-012).
+
+    El orden de las columnas es el de `sentencias.select_grafico`, y por eso
+    las dos cosas viven juntas: una fila leída por posición se rompe en
+    silencio el día que alguien añade una columna al `SELECT`.
+
+    `EstadoGrafico(estado)` **revienta** si la base trae un estado que el
+    dominio no conoce, y eso es lo correcto: pasaría si alguien ampliara el
+    `CHECK` del `.sql` sin ampliar el `Enum`, y traducirlo «como si fuera»
+    otro haría que `paso_cierre` leyera «no adjuntado» de una fila que sí lo
+    está — y con eso se cierra una reclamación sin su parte, que es justo lo
+    que esta feature viene a impedir.
+
+    Los tres `ide` y el `gra_cod` pueden llegar a `None`: son las trazas de
+    dry-run y de error. `gra_ide_documental` puede ser `None` **incluso en una
+    traza adjuntada**, porque la respuesta idempotente de la pasarela no lo
+    trae **[MEDIDO]**.
+    """
+    (
+        hash_parte,
+        numero_incidencia,
+        reclamacion_ide,
+        estado,
+        sha256,
+        bytes_,
+        nombre_fichero,
+        gratipide,
+        gra_cod,
+        gra_ide_negocio,
+        gra_ide_documental,
+        rcg_ide,
+        idempotente,
+        confirmado_por,
+        motivo,
+        dry_run_at_utc,
+        adjuntado_at_utc,
+    ) = fila
+    return TrazaGrafico(
+        hash_parte=hash_parte,
+        numero_incidencia=numero_incidencia,
+        estado=EstadoGrafico(estado),
+        reclamacion_ide=reclamacion_ide,
+        sha256=sha256,
+        bytes=bytes_,
+        nombre_fichero=nombre_fichero,
+        gratipide=gratipide,
+        gra_cod=gra_cod,
+        gra_ide_negocio=gra_ide_negocio,
+        gra_ide_documental=gra_ide_documental,
+        rcg_ide=rcg_ide,
+        idempotente=bool(idempotente),
+        confirmado_por=confirmado_por,
+        motivo=motivo,
+        dry_run_at_utc=dry_run_at_utc,
+        adjuntado_at_utc=adjuntado_at_utc,
     )
 
 

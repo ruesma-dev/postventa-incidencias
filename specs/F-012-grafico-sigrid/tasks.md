@@ -60,7 +60,7 @@
       con la clave ajena contra `partes` (R46), los cinco estados del `CHECK`
       iguales a `EstadoGrafico`, y **ninguna columna binaria** (R45).
 
-- [ ] **T5**: `upsert_grafico` / `select_grafico` en `sentencias.py`,
+- [x] **T5**: `upsert_grafico` / `select_grafico` en `sentencias.py`,
       `guardar_grafico` / `consultar_grafico` en `repositorio_pg.py`, y
       `fila_a_traza_grafico` en `mapeo.py`. | Verificación:
       `test_f012_repositorio_graficos.py` con el doble de PG: R30

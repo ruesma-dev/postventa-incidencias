@@ -42,6 +42,7 @@ from domain.models.persistencia import (
     ResultadoGuardado,
     TrazaArchivo,
     TrazaCierre,
+    TrazaGrafico,
 )
 from domain.models.remesa import ParteTroceado
 from domain.models.validacion import ResultadoValidacion
@@ -51,6 +52,7 @@ from infrastructure.persistencia.mapeo import (
     fila_a_correspondencia,
     fila_a_entrada_cola,
     fila_a_preferencias,
+    fila_a_traza_grafico,
 )
 
 __all__ = ["RepositorioPostgres"]
@@ -161,6 +163,54 @@ class RepositorioPostgres:
             resultado.value,
         )
         return resultado
+
+    def guardar_grafico(self, *, traza: TrazaGrafico) -> ResultadoGuardado:
+        """Registra el gráfico **sin pisar uno ya adjuntado** (F-012, R30).
+
+        Cuando la fila ya estaba en `adjuntado`, el `DO UPDATE` no se aplica,
+        la sentencia no devuelve fila y esto responde `SIN_CAMBIOS`: no había
+        nada que hacer, que no es lo mismo que no haber podido.
+
+        El log lleva el `hash`, el estado y el resultado. **Nunca** el
+        `gra_cod` —que lleva el login del ERP dentro (R44)—, ni el `sha256`, ni
+        nada del papel.
+        """
+        sql, parametros = sentencias.upsert_grafico(
+            esquema=self._esquema, traza=traza
+        )
+        resultado = self._escribir(sql, parametros, operacion="guardar_grafico")
+        log.info(
+            "F-012 gráfico registrado: hash=%s estado=%s resultado=%s",
+            traza.hash_parte,
+            traza.estado.value,
+            resultado.value,
+        )
+        return resultado
+
+    def consultar_grafico(self, *, hash_parte: str) -> TrazaGrafico | None:
+        """La traza del gráfico de ese parte, o `None` si no consta (F-012).
+
+        `None` **no es un error**: es la primera vez de ese parte. Quien lo
+        pide decide qué hacer con ello —`paso_grafico` sigue adelante,
+        `paso_cierre` con `commit` aborta (R2)—.
+
+        Del resultado se registra el **estado** y nada más: `gra_cod` lleva el
+        login del ERP dentro y este log lo lee cualquiera que abra Application
+        Insights (R44, R54).
+        """
+        sql, parametros = sentencias.select_grafico(
+            esquema=self._esquema, hash_parte=hash_parte
+        )
+        filas = self._leer(sql, parametros, operacion="consultar_grafico")
+        if not filas:
+            return None
+        traza = fila_a_traza_grafico(filas[0])
+        log.info(
+            "F-012 traza del gráfico leída: hash=%s estado=%s",
+            hash_parte,
+            traza.estado.value,
+        )
+        return traza
 
     def cola_validacion_humana(self, *, limite: int) -> tuple[EntradaCola, ...]:
         """Los partes que esperan que una persona decida (R22).

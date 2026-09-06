@@ -55,7 +55,7 @@ from config.settings import obtener_ajustes
 from domain.models.cierre import PlanDeCierre
 from domain.models.errores import CuerpoDeCierreInvalido
 from domain.models.firma import ClasificacionFirma
-from domain.models.persistencia import EstadoArchivo, TrazaArchivo
+from domain.models.persistencia import EstadoArchivo, TrazaArchivo, TrazaGrafico
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 from domain.ports.erp import ErpPort
@@ -242,20 +242,28 @@ def _serializar(contexto: ContextoParte) -> dict[str, Any]:
         "numero_incidencia": resultado.plan.reclamacion.codigo,
         "estado": resultado.estado.value,
         "filas_afectadas": resultado.filas_afectadas,
-        "dry_run": _dry_run(resultado.plan),
+        "dry_run": _dry_run(resultado.plan, contexto.traza_grafico),
         "avisos": list(contexto.avisos),
     }
 
 
-def _dry_run(plan: PlanDeCierre) -> dict[str, Any]:
-    """Las cinco cosas que R9 exige enseñar antes de confirmar.
+def _dry_run(
+    plan: PlanDeCierre, traza_grafico: TrazaGrafico | None
+) -> dict[str, Any]:
+    """Lo que R9 exige enseñar antes de confirmar, más el estado del gráfico.
 
     Los estados van **legibles** —código y descripción— y no como números: el
     número no le dice nada a quien confirma, y además es configuración del ERP
     que este servicio no escribe en ninguna parte (C3).
+
+    El bloque `grafico` es lo que F-012 añade (R49) y lo que **sustituye** al
+    `aviso_sin_grafico` que R48 derogó. La diferencia es la que importa: aquel
+    era una advertencia fija que decía siempre lo mismo; esto es **el estado
+    real** de este parte, leído de la traza propia.
     """
     reclamacion = plan.reclamacion
     return {
+        "grafico": _grafico(traza_grafico),
         "incidencia": reclamacion.codigo,
         "descripcion": reclamacion.descripcion,
         "estado_origen": {
@@ -269,4 +277,38 @@ def _dry_run(plan: PlanDeCierre) -> dict[str, Any]:
         "login_sigrid": plan.login_sigrid,
         "cerrable": plan.cerrable,
         "ya_cerrada": plan.ya_cerrada,
+    }
+
+
+def _grafico(traza: TrazaGrafico | None) -> dict[str, Any]:
+    """El estado del gráfico de este parte, para el dry-run del cierre (R49).
+
+    Tres estados que quien confirma tiene que poder distinguir: **adjuntado**
+    —con el nombre del fichero y el `sha256`, para poder cotejarlo con lo que
+    hay en SharePoint—, **dry_run_ok** —se miró, no se subió— y **no consta**.
+
+    `no_consta` es un valor y no una ausencia a propósito: una clave que unas
+    veces está y otras no obliga al front a distinguir `undefined` de un
+    estado, y ahí es donde se pierde un aviso.
+
+    Lo que **no** sale: el `gra_cod` —lleva el login del ERP dentro (R44)— ni
+    los `ide` de las tres filas. Esta respuesta la recibe un navegador, y de
+    ahí a una captura de pantalla hay un paso.
+    """
+    if traza is None:
+        return {
+            "estado": "no_consta",
+            "nombre_fichero": None,
+            "sha256": None,
+            "adjuntado_at_utc": None,
+        }
+    return {
+        "estado": traza.estado.value,
+        "nombre_fichero": traza.nombre_fichero,
+        "sha256": traza.sha256,
+        "adjuntado_at_utc": (
+            traza.adjuntado_at_utc.isoformat()
+            if traza.adjuntado_at_utc is not None
+            else None
+        ),
     }

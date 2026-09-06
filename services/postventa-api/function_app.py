@@ -203,6 +203,7 @@ from domain.models.errores import (
     LimiteDeEntradaSuperado,
     NombradoImposible,
     ParteDemasiadoGrande,
+    ParteNoAdjuntado,
     ParteNoApto,
     ParteNoArchivado,
     PersistenciaNoDisponible,
@@ -708,6 +709,10 @@ def cerrar(req: func.HttpRequest) -> func.HttpResponse:
     except (
         ParteNoApto,
         ParteNoArchivado,
+        # R62 (F-012) · el parte no consta adjuntado a la reclamación. Es un
+        # 409 y **sin haber tocado el ERP**: la precondición se comprueba
+        # contra la traza propia, antes de la escritura.
+        ParteNoAdjuntado,
         ReclamacionNoLocalizada,
         EstadoDeCierreNoResoluble,
         EstadoNoCerrable,

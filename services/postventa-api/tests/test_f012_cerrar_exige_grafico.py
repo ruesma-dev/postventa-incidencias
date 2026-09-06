@@ -424,3 +424,116 @@ def test_f012_la_autorizacion_sigue_negandose_sin_confirmar_ni_auto_cierre():
     exigir_autorizacion_para_escribir(
         Preferencias(), confirmado=True, usuario_oid=OID
     )
+
+
+# --------------------------------------------------------------------------
+# T13 · el borde del cierre: qué sale en el dry-run, y el 409 de R62
+# --------------------------------------------------------------------------
+#
+# Vive aquí y no en `test_f012_adjuntar_http.py` —donde `tasks.md` lo colocaba—
+# porque es la otra mitad de lo mismo: qué hace `/api/cerrar` con la traza del
+# gráfico. Tenerlo junto a los tests del paso que la lee es lo que hace que un
+# cambio en la precondición se vea entero de una pasada.
+
+
+def _respuesta_del_borde(traza: TrazaGrafico | None) -> dict:
+    from interface_adapters.api.cerrar import cerrar_incidencia
+
+    return cerrar_incidencia(
+        {
+            "hash": HASH,
+            "numero_incidencia": INCIDENCIA,
+            "veredicto": "apto",
+            "destino": "archivo_y_cierre",
+            "estado_archivo": "archivado",
+            "usuario_oid": OID,
+        },
+        erp=ErpEnMemoria(_reclamacion()),
+        repositorio=RepositorioEnMemoria(traza_grafico=traza),
+        usuarios=Usuarios(),
+        preferencias=Preferencias(),
+        ahora=AHORA,
+    )
+
+
+def test_f012_r49_la_respuesta_del_dry_run_trae_el_estado_del_grafico():
+    """R49 · con el nombre del fichero y el `sha256`, para poder cotejarlo.
+
+    Son los dos datos con los que quien mira puede comprobar que lo que hay en
+    Sigrid es lo que hay en SharePoint: el mismo nombre y los mismos bytes.
+    """
+    dry_run = _respuesta_del_borde(_traza())["dry_run"]
+
+    assert dry_run["grafico"]["estado"] == "adjuntado"
+    assert dry_run["grafico"]["nombre_fichero"].endswith("PARTE FIRMADO.pdf")
+    assert dry_run["grafico"]["sha256"] == "a" * 64
+    assert dry_run["grafico"]["adjuntado_at_utc"] is not None
+
+
+def test_f012_r49_el_dry_run_ok_del_grafico_se_distingue_del_adjuntado():
+    """«Se miró qué pasaría» y «está dentro de Sigrid» no son lo mismo, y quien
+    confirma tiene que poder distinguirlos."""
+    dry_run = _respuesta_del_borde(_traza(EstadoGrafico.DRY_RUN_OK))["dry_run"]
+
+    assert dry_run["grafico"]["estado"] == "dry_run_ok"
+    assert dry_run["grafico"]["adjuntado_at_utc"] is None
+
+
+def test_f012_r49_cuando_no_consta_sale_un_valor_y_no_una_ausencia():
+    """Una clave que unas veces está y otras no obliga al front a distinguir
+    `undefined` de un estado, y ahí es donde se pierde un aviso."""
+    grafico = _respuesta_del_borde(None)["dry_run"]["grafico"]
+
+    assert grafico["estado"] == "no_consta"
+    assert grafico["nombre_fichero"] is None
+
+
+def test_f012_r48_la_respuesta_ya_no_trae_el_aviso_derogado():
+    """R48 · y en su sitio va el estado real del gráfico."""
+    dry_run = _respuesta_del_borde(_traza())["dry_run"]
+
+    assert "aviso_sin_grafico" not in dry_run
+    assert "grafico" in dry_run
+
+
+def test_f012_r56_la_respuesta_no_saca_el_cod_ni_los_ide_del_erp():
+    """R44, R56 · el `gra_cod` lleva el login del ERP dentro.
+
+    Esta respuesta la recibe un navegador, y de ahí a una captura de pantalla
+    en un correo hay un paso.
+    """
+    grafico = _respuesta_del_borde(_traza())["dry_run"]["grafico"]
+
+    assert "gra_cod" not in grafico
+    assert LOGIN not in str(grafico)
+    assert "gra_ide_negocio" not in grafico
+
+
+def test_f012_r62_la_ruta_traduce_parte_no_adjuntado_a_409(monkeypatch):
+    """R62 · **409 y sin haber tocado el ERP**, no 400 ni 503.
+
+    No es una petición mal formada —el cuerpo está bien— ni una puerta de
+    entorno: es que las cosas, tal y como están, no permiten cerrar. Los tres
+    códigos llevan a acciones distintas, y confundirlos manda a quien lo reciba
+    a arreglar lo que no es.
+    """
+    import json
+
+    import azure.functions as func
+    import function_app
+
+    def envoltura(_cuerpo):
+        raise ParteNoAdjuntado("hay que adjuntar el parte antes de cerrar")
+
+    monkeypatch.setattr(function_app, "cerrar_incidencia", envoltura)
+    respuesta = function_app.cerrar(
+        func.HttpRequest(
+            method="POST",
+            url="/api/cerrar",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps({"hash": HASH}).encode("utf-8"),
+        )
+    )
+
+    assert respuesta.status_code == 409
+    assert "adjuntar" in json.loads(respuesta.get_body())["error"]

@@ -150,7 +150,7 @@
       módulo no nombra `rcg` ni `gra`). `test_f009_paso_cierre.py` entero en
       verde, con la traza `adjuntado` inyectada en los casos de `commit`.
 
-- [ ] **T13**: `_dry_run()` de `interface_adapters/api/cerrar.py` pierde
+- [x] **T13**: `_dry_run()` de `interface_adapters/api/cerrar.py` pierde
       `aviso_sin_grafico` y gana `grafico` (R48, R49); en `function_app.py`,
       `ParteNoAdjuntado` → 409 (R62). | Verificación: `test_f012_adjuntar_http.py`
       (parte de cierre) y `test_f009_cerrar_http.py` adaptado en T3: la

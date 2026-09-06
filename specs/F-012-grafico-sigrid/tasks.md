@@ -79,7 +79,7 @@
       Verificación: los tests de T7 y T9 lo usan; no abre red (la guardia de
       `conftest.py` lo garantiza, R41).
 
-- [ ] **T7**: Crear `infrastructure/sigrid/graficos.py`
+- [x] **T7**: Crear `infrastructure/sigrid/graficos.py`
       (`AdaptadorGraficoSigridApi`) importando de `cliente.py` la fontanería
       (`construir_cliente_http`, `ErrorDeSigrid`, las dos puertas, la
       cabecera). | Verificación: `test_f012_adaptador_grafico.py` con

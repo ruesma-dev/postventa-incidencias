@@ -227,7 +227,7 @@
 
 ## Bloque 8 · El utillaje de verificación (solo lectura, lo lanza el humano)
 
-- [ ] **T22**: `infra/14_reclamaciones_obra_prueba.ps1`: Q0, Q1 y Q2 de
+- [ ] **T22**: `infra/15_reclamaciones_obra_prueba.ps1`: Q0, Q1 y Q2 de
       `design.md` §15 sobre `Invoke-SigridLectura`; imprime la obra localizada,
       sus reclamaciones con estado legible y nº de gráficos, y las candidatas
       (cerrables y sin gráfico). Parámetro `-CodigoObra` con `404` por defecto
@@ -236,7 +236,7 @@
       llama a `sql/read`, parámetros con `?`, y **ningún valor** (ni raíz, ni
       clave, ni código de reclamación real).
 
-- [ ] **T23**: `infra/15_grafico_sigrid.ps1`: dado el `cod` del gráfico (o la
+- [ ] **T23**: `infra/16_grafico_sigrid.ps1`: dado el `cod` del gráfico (o la
       incidencia), lee la fila de negocio, la documental con `DATALENGTH(ima)`
       (**nunca `ima`**), el enlace `rcg`, y `MAX(ide)` de `dbo.log`; con
       `-DescargarYComparar`, llama a `documents/read` (`database` documental,
@@ -245,7 +245,7 @@
       `test_f012_scripts_infra.py`: solo lectura, sin valores, y el `SELECT`
       de la documental no selecciona `ima` directamente.
 
-- [ ] **T24**: `infra/16_traza_grafico_local.ps1`: la fila de
+- [ ] **T24**: `infra/17_traza_grafico_local.ps1`: la fila de
       `postventa.graficos` por incidencia, al modo de `12_traza_cierre_local.ps1`
       (psycopg desde el `.venv`, contraseña por `SecureString`, solo del
       esquema propio); comprueba estado esperado, `idempotente`, que hay `oid`
@@ -283,7 +283,7 @@
 - [ ] **P4** · Raíz y clave de la pasarela a mano para los scripts de lectura;
       no se escriben en ningún fichero.
 - [ ] **P5** · **Una reclamación de la obra 404** localizada con
-      `infra/14_reclamaciones_obra_prueba.ps1` (cerrable y sin gráfico), y **su
+      `infra/15_reclamaciones_obra_prueba.ps1` (cerrable y sin gráfico), y **su
       parte** recorrido en el front: subido, validado `apto` /
       `archivo_y_cierre`, **guardado** (`POST /api/parte`) y **archivado**
       (`POST /api/archivar`). `postventa.graficos` tiene clave ajena contra
@@ -298,7 +298,7 @@
 
 - [ ] **T25**: **Dry-run del gráfico, con la ventana cerrada y luego
       abierta.** | Verificación: **MANUAL (humano)**. (1) Foto de partida con
-      `infra/15_grafico_sigrid.ps1 -Incidencia <RSaa.mm/nnnn>`: cero gráficos
+      `infra/16_grafico_sigrid.ps1 -Incidencia <RSaa.mm/nnnn>`: cero gráficos
       y el `MAX(ide)` de `dbo.log`. (2) `/api/adjuntar` sin `commit` con
       `CIERRE_HABILITADO=false` → **503** (R39, R60). (3) Abrir la ventana
       (`az functionapp config appsettings set ... CIERRE_HABILITADO=true`).
@@ -307,7 +307,7 @@
       legible, login, `nombre_fichero` = el de SharePoint, `res`, clase 35,
       bytes, `sha256`, `cod_previsto`, avisos. (5) Repetir la foto: **nada ha
       cambiado** en el ERP (ni gráficos ni `MAX(ide)`). (6)
-      `infra/16_traza_grafico_local.ps1 -EstadoEsperado dry_run_ok`. **Anotar
+      `infra/17_traza_grafico_local.ps1 -EstadoEsperado dry_run_ok`. **Anotar
       la duración** de la llamada (R37).
 
 - [ ] **T26**: **Dry-run del cierre con el gráfico sin adjuntar** (R50, R49).
@@ -323,13 +323,13 @@
       `/api/adjuntar` con `commit` y `confirmado` desde la consola. Se espera
       **200**, `estado: adjuntado`, `idempotente: false`, `filas_afectadas: 3`
       (R27), `gra_cod` con el formato sello + 4 dígitos + `.login`, y los tres
-      `ide`. (4) `infra/15_grafico_sigrid.ps1 -Cod <gra_cod> -DescargarYComparar
+      `ide`. (4) `infra/16_grafico_sigrid.ps1 -Cod <gra_cod> -DescargarYComparar
       -Sha256Esperado <el del dry-run>`: fila de negocio (`res PARTE FIRMADO`,
       `nom` = el nombre de SharePoint, `gratipide 35`, `vin 3`, `ima NULL`,
       `usu` = login), fila documental (`DATALENGTH(ima)` = bytes, `gratipide 0`,
       `res ''`), enlace `rcg` (`con` = la reclamación, `pos` múltiplo de 64,
       `cla 0`), **`sha256` del binario descargado idéntico**, y **`MAX(ide)`
-      de `dbo.log` sin subir** (R36). (5) `infra/16_traza_grafico_local.ps1
+      de `dbo.log` sin subir** (R36). (5) `infra/17_traza_grafico_local.ps1
       -EstadoEsperado adjuntado -UsuarioOid <oid> -LoginQueNoDebeAparecer
       <login>`: `adjuntado`, `idempotente = false`, `oid` sí, login **no**
       fuera de `gra_cod` (R43, R44). (6) **El humano abre la ficha de la
@@ -358,7 +358,7 @@
       `filas_afectadas: 2`** (F-009 R22). (3) `infra/09_estado_reclamacion_sigrid.ps1
       ... -EstadoEsperadoCod CER` y `infra/10_log_cierre_sigrid.ps1` como en
       T24 de F-009: `con.est` en `CER`, la fila de `dbo.log` con el `tex`
-      propio, `tiemod` sin mover. (4) `infra/15_grafico_sigrid.ps1`: **sigue
+      propio, `tiemod` sin mover. (4) `infra/16_grafico_sigrid.ps1`: **sigue
       habiendo un gráfico y un enlace**. Es la primera reclamación cerrada por
       este servicio **con su parte dentro**: la anomalía de F-009 no se produce.
 

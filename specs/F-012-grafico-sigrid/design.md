@@ -41,7 +41,7 @@ servicio.
 | **H2** | Dry-run obligatorio y mostrado antes de cada commit; el usuario confirma **una vez** y entonces commit del gráfico y después el cierre. Decidir si el interruptor es el mismo | Dry-run en la misma llamada que el commit (R20), como F-009. **El interruptor es el mismo `CIERRE_HABILITADO`** (§2, D-B) |
 | **H3** | `database` la de negocio, `contip` 708, `gratipide` 35 configurable (pregunta a Posventa), `usu` el login de F-009, `res`/`nom` a decidir, `sha256` del PDF | §2 D-E y D-F: `nom` = el nombre de F-006, `res` = `PARTE FIRMADO`, `contip` **de la reclamación leída** y no de la configuración, `gratipide` = `SIGRID_GRATIPIDE_PARTE` |
 | **H4** | La configuración de `sigrid-api` en `dev` es del dueño y es **precondición** | No se toca desde aquí. Va como precondición P0 del bloque de verificación de `tasks.md` y como §6 de `docs/INTEGRACION.md` («qué se rompe si el dueño la cambia»). El código responde `503` con el código de la pasarela si falta (R32) |
-| **H5** | Toda verificación contra el ERP, sobre la **obra 404**, con dry-run y autorización por incidencia | Bloque 9 de `tasks.md`; consulta de localización preparada en §15 y empaquetada en `infra/14_reclamaciones_obra_prueba.ps1` (solo lectura) |
+| **H5** | Toda verificación contra el ERP, sobre la **obra 404**, con dry-run y autorización por incidencia | Bloque 9 de `tasks.md`; consulta de localización preparada en §15 y empaquetada en `infra/15_reclamaciones_obra_prueba.ps1` (solo lectura) |
 | **H6** | Fuera: borrar/sustituir, versionar, reparar huérfanos, el gráfico por URL (F-023), el catálogo del portal | Nada de eso se diseña. Los huérfanos que la pasarela avise **se enseñan** en el dry-run (R21) y no se tocan. F-023: §13 |
 
 ## 2 · Las decisiones de este diseño
@@ -317,9 +317,9 @@ Todos bajo `services/postventa-api/`, salvo donde se indique.
 | `infrastructure/sigrid/graficos.py` | infra | `AdaptadorGraficoSigridApi(GraficoPort)`: `httpx` contra `POST /api/sigrid/concepto-grafico`, base64, puerta de entorno **y** de interruptor en el constructor, lectura de `details.codigo` y nada más del cuerpo de error |
 | `infrastructure/persistencia/sql/09_graficos.sql` | infra/SQL | La traza del gráfico (§8.1) |
 | `interface_adapters/api/adjuntar.py` | interface | Handler de `POST /api/adjuntar`: `multipart`, compone los cinco puertos, serializa |
-| `infra/14_reclamaciones_obra_prueba.ps1` | infra | **Solo lectura**: localiza las reclamaciones de la obra 404 cerrables y sin gráfico (§15). Lo lanza el humano |
-| `infra/15_grafico_sigrid.ps1` | infra | **Solo lectura**: las tres filas del gráfico por `cod` (negocio, documental con `DATALENGTH`, enlace), `MAX(ide)` de `dbo.log` antes/después, y `documents/read` para comparar el `sha256` |
-| `infra/16_traza_grafico_local.ps1` | infra | **Solo lectura** del esquema propio: la traza de `postventa.graficos`, al modo de `12_traza_cierre_local.ps1` |
+| `infra/15_reclamaciones_obra_prueba.ps1` | infra | **Solo lectura**: localiza las reclamaciones de la obra 404 cerrables y sin gráfico (§15). Lo lanza el humano |
+| `infra/16_grafico_sigrid.ps1` | infra | **Solo lectura**: las tres filas del gráfico por `cod` (negocio, documental con `DATALENGTH`, enlace), `MAX(ide)` de `dbo.log` antes/después, y `documents/read` para comparar el `sha256` |
+| `infra/17_traza_grafico_local.ps1` | infra | **Solo lectura** del esquema propio: la traza de `postventa.graficos`, al modo de `12_traza_cierre_local.ps1` |
 
 ### Tests a crear (`services/postventa-api/tests/`)
 
@@ -811,7 +811,7 @@ son calendario; P5 es preparación.
 
 **Solo lectura. No se ha ejecutado.** Para `POST /api/sql/read` con marcadores
 `?` (`sigrid_api.md` §5.2), o empaquetada en
-`infra/14_reclamaciones_obra_prueba.ps1` sobre `Invoke-SigridLectura` de
+`infra/15_reclamaciones_obra_prueba.ps1` sobre `Invoke-SigridLectura` de
 `infra/08_lectura_sigrid_comun.ps1`. Base: la de negocio.
 
 La cadena reclamación → unidad → obra sale del diccionario: `rcp.upvide` es

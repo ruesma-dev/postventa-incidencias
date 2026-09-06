@@ -15,7 +15,7 @@ Bloqueadas: **F-023**.
 |---|---|---|---|---|---|
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | en curso | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
+| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | spec lista | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
@@ -58,7 +58,7 @@ Recoger automáticamente las remesas que lleguen a un buzón corporativo, reapro
 
 ### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
 
-estado **pendiente** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
+estado **spec lista** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
 
 Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.
 

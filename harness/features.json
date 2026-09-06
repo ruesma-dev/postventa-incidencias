@@ -217,7 +217,7 @@
         "Ninguna escritura contra el ERP sin dry-run previo mostrado al usuario y confirmación explícita",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
       "priority": 12,

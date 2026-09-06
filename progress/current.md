@@ -1,6 +1,39 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 · **F-012 desbloqueada y con spec: `spec_ready`, a la espera de la aprobación del humano**
+>
+> El endpoint `POST /api/sigrid/concepto-grafico` existe (`sigrid-api` F-004,
+> mergeada en `dev` el 2026-09-06; contrato en `azure-apps/sigrid_api.md`
+> §8.8), así que el bloqueo de F-012 cae. El humano lo confirmó hoy y fijó el
+> encuadre: **el gráfico se adjunta antes del cambio de estado**, orden más
+> idempotencia en vez de atomicidad entre dos llamadas, y **toda escritura de
+> prueba contra el ERP va a reclamaciones de la obra de prueba 404**.
+>
+> - Commit `33fd684`: F-012 `blocked` → `pending`, ficha reescrita.
+> - Commit `fe76639`: **`specs/F-012-grafico-sigrid/`** (requirements 70
+>   requisitos, design con 12 decisiones D-A…D-L, tasks en 10 bloques). Lo
+>   escribió el spec-author sin ejecutar nada contra el ERP; la consulta que
+>   localiza las reclamaciones de la obra 404 queda **preparada y sin lanzar**
+>   (design §15).
+> - Este commit: F-012 → **`spec_ready`**, y los scripts de utillaje de la
+>   spec pasan de `14/15/16` a **`15/16/17`** porque `infra/14_paso0_sigrid.ps1`
+>   ya existe desde `1223bde`.
+>
+> **Decisiones que la spec deja al humano** (design §14): P1 la clase
+> `gratipide 35` para un parte firmado (recomendación: sí, confirmar con
+> Posventa); P3 el **orden** entre el bloque 8 de F-009 y F-012 —el humano
+> eligió F-009 primero; la spec recomienda F-012 primero para que el primer
+> cierre real lleve ya el gráfico—; P4 si se cancela F-023; P5 preparar un
+> parte de la obra 404 que haya pasado el circuito antes de abrir la ventana.
+> En cualquier orden, la P5 del guion del bloque 8 debe pasar de Mirasierra a
+> la **obra 404**: pendiente de corregir cuando se decida el orden.
+>
+> **F-009 sigue `in_progress`** con el bloque 8 sin ejecutar; solo cabe una
+> `in_progress`, así que F-012 no se implementa hasta que F-009 cierre o el
+> humano decida lo contrario. **No se ha ejecutado nada** contra Azure, Sigrid,
+> `sigrid-api`, el PostgreSQL compartido ni SharePoint.
+
 > ## Estado al 2026-09-06 · **Dos correcciones más, fuera de feature, aprobadas por el humano**
 >
 > Detalle completo: **`progress/impl_paso0_sigrid.md`**. Commits `32d40f5`

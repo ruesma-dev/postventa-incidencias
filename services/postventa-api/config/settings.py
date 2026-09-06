@@ -391,6 +391,46 @@ class Ajustes(BaseSettings):
         ),
     )
 
+    # --- El parte como gráfico de la incidencia (F-012) -------------------
+    #
+    # **No hay interruptor nuevo**: el gráfico y el cierre son la MISMA ventana
+    # de escritura, `CIERRE_HABILITADO`, porque son el mismo sistema, el mismo
+    # dueño, la misma ventana y la misma decisión del humano (`design.md` D-B).
+    # El gráfico es la primera mitad del cierre; un segundo interruptor solo
+    # podría crear estados que no sirven para nada bueno.
+    #
+    # Estas dos **no son secretos** y por eso llevan valor por defecto: son
+    # parámetros medidos, como `SIGRID_TIP_RECLAMACION`.
+
+    sigrid_gratipide_parte: int = Field(
+        default=35,
+        validation_alias="SIGRID_GRATIPIDE_PARTE",
+        description=(
+            "La clase de gráfico con la que se adjunta el parte (`auxgra.ide`; "
+            "35 = `PV002`, «POSTVENTA:Fotos Reparaciones»). Es configuración de "
+            "la instalación, igual que el tipo de concepto y el número del "
+            "estado, y por eso viaja como variable y no como literal en el "
+            "código (R11). Tiene valor por defecto porque está medido: es la "
+            "clase bajo la que Posventa tiene 3.197 gráficos llamados «PARTE "
+            "FIRMADO». La pasarela mantiene además su propia lista blanca, así "
+            "que cambiarlo aquí a secas no basta: es una decisión de dos "
+            "dueños."
+        ),
+    )
+    grafico_max_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        validation_alias="GRAFICO_MAX_BYTES",
+        description=(
+            "Tope propio del PDF que se adjunta, comprobado **antes** de llamar "
+            "a la pasarela (R18): mandar 13 MB por el proxy para que los "
+            "rechacen al otro lado gasta el presupuesto de 45 s en un rechazo "
+            "que ya se sabía. **No debe superar el de la pasarela** "
+            "(`SIGRID_DOCUMENT_MAX_BYTES`, 10 MB): subirlo aquí solo compra un "
+            "rechazo más tardío. Un parte firmado real ocupa 242.534 bytes, así "
+            "que el margen es de unas 40 veces."
+        ),
+    )
+
 
 @lru_cache(maxsize=1)
 def obtener_ajustes() -> Ajustes:

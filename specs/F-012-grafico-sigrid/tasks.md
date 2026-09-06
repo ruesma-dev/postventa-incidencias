@@ -95,7 +95,7 @@
       apagado levanta), R55 (ni la clave ni la raíz aparecen en ningún
       mensaje), y que **no hay `Retrying`** en el módulo.
 
-- [ ] **T8**: `construir_graficos(ajustes)` en `infrastructure/sigrid/fabrica.py`
+- [x] **T8**: `construir_graficos(ajustes)` en `infrastructure/sigrid/fabrica.py`
       y las dos variables nuevas en `config/settings.py`
       (`SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`). | Verificación:
       `test_f012_fabrica_grafico.py`: R39 (doble comprobación, fábrica **y**

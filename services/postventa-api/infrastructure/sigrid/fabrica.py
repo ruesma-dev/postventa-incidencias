@@ -1,5 +1,5 @@
 # services/postventa-api/infrastructure/sigrid/fabrica.py
-"""La fábrica del ERP: **el único sitio que construye el adaptador real**.
+"""La fábrica de Sigrid: **el único sitio que construye los adaptadores reales**.
 
 Mismo patrón que `infrastructure/sharepoint/fabrica.py`, y por el mismo motivo:
 aquí es donde se exige la configuración, y no al leer los ajustes. `/health`
@@ -25,6 +25,12 @@ El **orden** de lo que hace importa, y es el que protege:
 
 Si algo falla en los cuatro primeros pasos, el ERP no se ha enterado de que
 existimos.
+
+Desde F-012 hay **dos** fábricas aquí, `construir_erp` y `construir_graficos`,
+con **las mismas tres puertas y el mismo interruptor** (D-B): el gráfico es la
+primera mitad del cierre, así que una sola ventana de escritura en el ERP. La
+única diferencia es el paso 4: el gráfico **no resuelve el huso**, porque el
+sello de `gra.cod` lo pone la pasarela y aquí no hay ninguna hora que escribir.
 """
 
 from __future__ import annotations
@@ -36,6 +42,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from config.settings import Ajustes
 from domain.models.errores import ConfiguracionSigridIncompleta
 from domain.ports.erp import ErpPort
+from domain.ports.grafico import GraficoPort
 
 from infrastructure.sigrid.cliente import (
     ENTORNOS_CON_CIERRE,
@@ -43,11 +50,13 @@ from infrastructure.sigrid.cliente import (
     exigir_entorno_con_cierre,
     exigir_interruptor_de_cierre,
 )
+from infrastructure.sigrid.graficos import AdaptadorGraficoSigridApi
 
 __all__ = [
     "ENTORNOS_CON_CIERRE",
     "VARIABLES_OBLIGATORIAS",
     "construir_erp",
+    "construir_graficos",
     "resolver_zona",
 ]
 
@@ -92,6 +101,42 @@ def construir_erp(ajustes: Ajustes) -> ErpPort:
         zona=zona,
         timeout_s=ajustes.sigrid_timeout_s,
         reintentos=ajustes.sigrid_reintentos,
+    )
+
+
+def construir_graficos(ajustes: Ajustes) -> GraficoPort:
+    """El adaptador del gráfico, o el motivo por el que aquí no se adjunta.
+
+    **El mismo orden y las mismas tres puertas** que `construir_erp`: entorno →
+    interruptor → configuración. Y **el mismo interruptor**, `CIERRE_HABILITADO`
+    (R39, D-B): el gráfico es la primera mitad del cierre, así que una sola
+    ventana de escritura en el ERP, no dos.
+
+    Lo único que **no** hace, y por eso son dos funciones y no una: **no
+    resuelve el huso horario**. El sello de `gra.cod` lo pone la pasarela, en
+    hora de Madrid, y aquí no hay ninguna hora que escribir. Exigir una
+    variable que nadie lee es una vuelta más de despliegue a cambio de nada —la
+    lección de `SHAREPOINT_SITE_ID` en F-006—, y además haría que un huso mal
+    escrito impidiera adjuntar el parte, que no tiene nada que ver.
+
+    Levanta `CierreDeshabilitado` (→ 503) si este entorno no escribe en el ERP
+    o si el interruptor está apagado, y `ConfiguracionSigridIncompleta` (→ 503)
+    si falta configuración, **nombrando las variables y jamás sus valores**.
+    """
+    exigir_entorno_con_cierre(ajustes.entorno)
+    exigir_interruptor_de_cierre(ajustes.cierre_habilitado)
+    _exigir_configuracion(ajustes)
+
+    log.info(
+        "F-012 adaptador del gráfico construido en el entorno %s", ajustes.entorno
+    )
+    return AdaptadorGraficoSigridApi(
+        entorno=ajustes.entorno,
+        cierre_habilitado=ajustes.cierre_habilitado,
+        base_url=str(ajustes.sigrid_api_base_url),
+        api_key=str(ajustes.sigrid_api_key),
+        base_datos=str(ajustes.sigrid_base_datos),
+        timeout_s=ajustes.sigrid_timeout_s,
     )
 
 

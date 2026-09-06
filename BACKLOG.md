@@ -7,7 +7,7 @@ Resumen: **23 features**, 13 abiertas, 10 terminadas.
 
 En curso: **F-009**.
 
-Bloqueadas: **F-012, F-023**.
+Bloqueadas: **F-023**.
 
 ## Trabajo abierto
 
@@ -15,7 +15,7 @@ Bloqueadas: **F-012, F-023**.
 |---|---|---|---|---|---|
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | en curso | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | bloqueada | critico | `feature/F-012-grafico-sigrid` |
+| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
@@ -58,9 +58,9 @@ Recoger automáticamente las remesas que lleguen a un buzón corporativo, reapro
 
 ### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
 
-estado **bloqueada** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
+estado **pendiente** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
 
-Replicar el 'importar desde archivo' que hace Posventa a mano: INSERT del PDF en gra (binario en ima) e INSERT en rcg para vincularlo al concepto de la reclamación, atómico con el cambio de estado. REQUIERE un endpoint de dominio nuevo en sigrid-api: hoy la pasarela lee documentos pero no los escribe, y sql/write ni reserva ide con applock ni está pensado para BLOBs. Ese endpoint se implementa en el repositorio sigrid-api, no aquí. HALLAZGO DEL 2026-08-26, desde la spec de F-009: no basta con el endpoint de dominio nuevo. El binario del grafico vive en la tabla `gra` de la base DOCUMENTAL (medido en docs/referencia/03_modelo_posventa_sigrid.md §4.1: los metadatos y el enlace `rcg` estan en la base de negocio, el binario en `ima` de la documental, 357.901 filas sin ninguna vacia), y la configuracion desplegada de sigrid-api tiene la base de negocio como UNICA escribible: la documental queda fuera de ALLOWED_WRITE_DATABASES a proposito. Asi que subir el PDF a Sigrid hoy NO TIENE POR DONDE HACERSE, y habilitar la escritura en esa base es decision del dueño de sigrid-api, no de este proyecto. Es lo primero que hay que resolver al arrancar F-012, antes de diseñar nada.
+Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 

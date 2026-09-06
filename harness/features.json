@@ -209,19 +209,19 @@
     {
       "id": "F-012",
       "title": "Futuro: subir el parte a Sigrid como gráfico de la incidencia",
-      "description": "Replicar el 'importar desde archivo' que hace Posventa a mano: INSERT del PDF en gra (binario en ima) e INSERT en rcg para vincularlo al concepto de la reclamación, atómico con el cambio de estado. REQUIERE un endpoint de dominio nuevo en sigrid-api: hoy la pasarela lee documentos pero no los escribe, y sql/write ni reserva ide con applock ni está pensado para BLOBs. Ese endpoint se implementa en el repositorio sigrid-api, no aquí. HALLAZGO DEL 2026-08-26, desde la spec de F-009: no basta con el endpoint de dominio nuevo. El binario del grafico vive en la tabla `gra` de la base DOCUMENTAL (medido en docs/referencia/03_modelo_posventa_sigrid.md §4.1: los metadatos y el enlace `rcg` estan en la base de negocio, el binario en `ima` de la documental, 357.901 filas sin ninguna vacia), y la configuracion desplegada de sigrid-api tiene la base de negocio como UNICA escribible: la documental queda fuera de ALLOWED_WRITE_DATABASES a proposito. Asi que subir el PDF a Sigrid hoy NO TIENE POR DONDE HACERSE, y habilitar la escritura en esa base es decision del dueño de sigrid-api, no de este proyecto. Es lo primero que hay que resolver al arrancar F-012, antes de diseñar nada.",
+      "description": "Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.",
       "acceptance": [
         "El gráfico queda vinculado a la reclamación y visible desde la UI de Sigrid",
-        "Las escrituras son atómicas: ni gráficos huérfanos ni incidencias cerradas sin su parte",
-        "Subir dos veces el mismo parte no duplica el gráfico",
+        "Se adjunta antes de cambiar el estado: ninguna reclamación queda cerrada sin su parte, y un fallo al adjuntar no cierra nada",
+        "Subir dos veces el mismo parte no duplica el gráfico (idempotencia del endpoint, comprobada de extremo a extremo)",
+        "Ninguna escritura contra el ERP sin dry-run previo mostrado al usuario y confirmación explícita",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
+      "status": "pending",
       "sdd": true,
       "rigor": "critico",
       "priority": 12,
-      "branch": "feature/F-012-grafico-sigrid",
-      "blocked_by": "UN solo bloqueo, y ya no es una decision: es trabajo en curso. Falta el ENDPOINT DE DOMINIO en sigrid-api, que el humano esta implementando (su backlog: F-004 'Endpoint de dominio para adjuntar un documento a un concepto de Sigrid'). Especificacion de referencia en sigrid-api/docs/propuestas/2026-09-03_endpoint_adjuntar_documento.md (rama docs/propuesta-escritura-documental). CAE el segundo bloqueo que figuraba aqui: la base documental NO es una replica de solo lectura, esta en la MISMA instancia que la de negocio, el propio ERP le escribe, y el usuario de escritura YA TIENE PERMISO sobre ella; lo midio el spike F-002 de sigrid-api, ya cerrado, y el humano lo confirmo el 2026-09-03. Que la documental este fuera de ALLOWED_WRITE_DATABASES es una POLITICA de la pasarela, no un impedimento del motor. Hasta que el endpoint exista no se escribe ni se lee nada contra el ERP desde aqui: el humano lo pidio expresamente y nos pasara el endpoint cuando lo tenga."
+      "branch": "feature/F-012-grafico-sigrid"
     },
     {
       "id": "F-013",

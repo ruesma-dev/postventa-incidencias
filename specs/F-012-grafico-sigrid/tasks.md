@@ -172,13 +172,13 @@
       manuscritos ni configuración), y que los `commit`/`confirmado` del
       formulario solo cuentan si son **exactamente** la cadena `true`.
 
-- [ ] **T15**: `adjuntar()` en `services/postventa-front/js/api.js` y
+- [x] **T15**: `adjuntar()` en `services/postventa-front/js/api.js` y
       `cuerpoDeGrafico` / `estaAdjuntado` en `js/pipeline.js`. |
       Verificación: `tests_js/grafico.test.js`: el `FormData` lleva el fichero
       y los campos, nada manuscrito, `commit` solo cuando se pide; un parte no
       apto, no archivado o sin incidencia no compone nada.
 
-- [ ] **T16**: `app.js`: los dos dry-run juntos (R63), `confirmarCierre` →
+- [x] **T16**: `app.js`: los dos dry-run juntos (R63), `confirmarCierre` →
       adjuntar y **solo si `adjuntado`** cerrar (R64), estados `adjuntado` /
       `error_grafico` / `cerrado` / `ya_cerrada` (R65), una sola confirmación
       que caduca (R66). | Verificación: `tests_js/grafico.test.js` para la
@@ -186,7 +186,7 @@
       (extraída a `pipeline.js` para que tenga test), y
       `tests_js/confirmacion.test.js` existente para R66.
 
-- [ ] **T17**: `index.html` y `css/styles.css`: el bloque del gráfico en la
+- [x] **T17**: `index.html` y `css/styles.css`: el bloque del gráfico en la
       tarjeta del dry-run (nombre, tamaño, clase, login, avisos de la pasarela,
       «ya está dentro de Sigrid» si idempotente) y la retirada del bloque
       ámbar de R21; el botón «reintentar el cierre» del estado `adjuntado`. |

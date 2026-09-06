@@ -317,13 +317,51 @@
           </button>
         </div>
 
-        <!-- R9 y R21 · el dry-run, con las CINCO cosas que hay que leer antes
-             de confirmar: la incidencia, su descripcion, de que estado a cual
-             pasaria, con que login se firmaria, y el aviso. -->
+        <!-- R9 · el dry-run del CIERRE, con lo que hay que leer antes de
+             confirmar: la incidencia, su descripcion, de que estado a cual
+             pasaria y con que login se firmaria. El aviso de R21 se retiro:
+             R48 de F-012 lo derogo, porque con el grafico adjuntandose antes
+             del cambio de estado seria falso.
+
+             F-012 R63 · encima va el dry-run del GRAFICO, que es lo que va a
+             ocurrir primero. Los dos juntos y antes de la confirmacion. -->
         <div x-show="hayDryRun()" class="mt-4 space-y-3">
           <template x-for="parte in cerrables()" :key="parte.hash">
-            <div x-show="dryRunDe(parte)"
+            <div x-show="dryRunDe(parte) || dryRunGraficoDe(parte)"
                  class="rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+              <!-- F-012 R21, R67 · el grafico. Todos los textos vienen del
+                   backend y NO se reescriben aqui: dos versiones del mismo
+                   texto divergen, y la que leeria el usuario seria la que
+                   nadie revisa. -->
+              <div x-show="dryRunGraficoDe(parte)"
+                   class="mb-2 rounded border border-sky-200 bg-sky-50 px-2 py-1 text-sky-900">
+                <p x-show="dryRunGraficoDe(parte) && !dryRunGraficoDe(parte).idempotente_previsto">
+                  Se adjuntará
+                  <span class="font-mono" x-text="dryRunGraficoDe(parte) && dryRunGraficoDe(parte).nombre_fichero"></span>
+                  (<span x-text="dryRunGraficoDe(parte) && dryRunGraficoDe(parte).bytes"></span> bytes,
+                  clase <span x-text="dryRunGraficoDe(parte) && dryRunGraficoDe(parte).gratipide"></span>)
+                  como
+                  «<span x-text="dryRunGraficoDe(parte) && dryRunGraficoDe(parte).descripcion_grafico"></span>»,
+                  firmado por
+                  <span class="font-mono" x-text="dryRunGraficoDe(parte) && dryRunGraficoDe(parte).login_sigrid"></span>
+                </p>
+                <!-- F-012 R22 · ya esta dentro: el commit no escribira nada.
+                     Quien confirma tiene que saberlo ANTES, o creera que ha
+                     subido algo que ya estaba. -->
+                <p x-show="dryRunGraficoDe(parte) && dryRunGraficoDe(parte).idempotente_previsto"
+                   class="font-medium">
+                  El parte <strong>ya está dentro de Sigrid</strong> (mismo contenido):
+                  no se escribirá nada.
+                </p>
+                <p class="mt-1 font-mono text-xs text-sky-700"
+                   x-text="dryRunGraficoDe(parte) && dryRunGraficoDe(parte).sha256"></p>
+                <!-- Los avisos de la pasarela, tal cual. Entre ellos, los
+                     graficos huerfanos del concepto, que NO se tocan. -->
+                <template x-for="aviso in (dryRunGraficoDe(parte) && dryRunGraficoDe(parte).avisos_pasarela) || []"
+                          :key="aviso">
+                  <p class="mt-1 text-xs" x-text="aviso"></p>
+                </template>
+              </div>
               <p class="font-medium" x-text="dryRunDe(parte) && dryRunDe(parte).incidencia"></p>
               <p class="text-slate-600" x-text="dryRunDe(parte) && dryRunDe(parte).descripcion"></p>
               <p class="mt-1">
@@ -367,6 +405,41 @@
              no un fallo. Pintarlo en rojo llevaria a alguien a «arreglarlo». -->
         <p x-show="entornoNoCierra" x-text="entornoNoCierra"
            class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
+
+        <!-- F-012 R65 · «adjuntado pero no cerrado» es un estado real y hay
+             que poder verlo y salir de el. El grafico ya esta dentro de
+             Sigrid, asi que el reintento NO vuelve a pedirlo: solo cierra, y
+             sin volver a confirmar. -->
+        <div x-show="cerrables().some((parte) => parte.estado === 'adjuntado')"
+             class="mt-4 space-y-2">
+          <template x-for="parte in cerrables().filter((p) => p.estado === 'adjuntado')"
+                    :key="parte.hash">
+            <p class="flex items-center gap-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
+              <span>El parte está <strong>adjunto en Sigrid</strong> y la incidencia sigue abierta.</span>
+              <button type="button" @click="reintentarCierre(parte)"
+                      :disabled="fase === 'cerrando'"
+                      class="rounded border border-amber-400 px-3 py-1 text-xs disabled:text-slate-400">
+                Reintentar el cierre
+              </button>
+            </p>
+          </template>
+        </div>
+
+        <!-- F-012 R65 · y el error del grafico, que es otra cosa: no se ha
+             adjuntado nada, o no se sabe. En los dos casos el reintento es
+             seguro, porque el endpoint es idempotente por contenido. -->
+        <div x-show="partes.some((parte) => parte.estado === 'error_grafico')"
+             class="mt-4 space-y-2">
+          <template x-for="parte in partes.filter((p) => p.estado === 'error_grafico')"
+                    :key="parte.hash">
+            <p class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
+              <span class="ml-2">No se ha podido adjuntar el parte:</span>
+              <span x-text="parte.error"></span>
+            </p>
+          </template>
+        </div>
 
         <ul x-show="resultadosCierre.length" class="mt-4 divide-y divide-slate-100 text-sm">
           <template x-for="resultado in resultadosCierre" :key="resultado.hash">

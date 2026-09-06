@@ -405,6 +405,37 @@
       },
 
       /**
+       * F-012 · adjunta el parte a la reclamación como gráfico de Sigrid.
+       *
+       * **Va delante de `cerrar`**, y ese orden es la mitad de la feature:
+       * ninguna reclamación se cierra sin su parte dentro del ERP.
+       *
+       * Va como `FormData` y no como JSON —al revés que `cerrar`— porque lo
+       * que se adjunta **son los bytes del PDF**, los mismos que se mandaron a
+       * `archivar`. El cuerpo lo compone `js/pipeline.js::cuerpoDeGrafico`.
+       *
+       * **Por omisión no escribe nada**: sin `commit` el backend responde el
+       * dry-run —nombre, clase, tamaño, `sha256` y los avisos de la pasarela—,
+       * y eso hay que enseñarlo antes de que nadie confirme.
+       *
+       * Un 503 aquí es la **puerta de entorno**, igual que en `archivar` y en
+       * `cerrar`: no es un fallo y no se reintenta. Insistir no la ablanda.
+       *
+       * Lo transitorio —502, red, tiempo agotado— sí se reintenta, como en
+       * todos los pasos, y aquí es **seguro por construcción**: el endpoint de
+       * la pasarela es idempotente por tamaño y `sha256`, así que un reintento
+       * no cuelga un segundo gráfico.
+       */
+      adjuntar: function (formData, hash) {
+        return peticion("/adjuntar", {
+          metodo: "POST",
+          cuerpo: formData,
+          paso: "adjuntar",
+          hash: hash,
+        });
+      },
+
+      /**
        * F-009 · cierra la incidencia en Sigrid, o enseña qué pasaría.
        *
        * **Por omisión no cierra nada.** El cuerpo lo compone

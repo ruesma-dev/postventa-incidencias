@@ -288,6 +288,95 @@
   }
 
   /**
+   * F-012 · ¿este parte ya consta adjuntado al ERP?
+   *
+   * Lo dice **el backend**, no el front: `parte.grafico` es el estado que
+   * devolvió `/api/adjuntar`, y el backend lo saca de su traza. Aquí no se
+   * deduce nada — deducirlo sería afirmar que un parte está dentro de Sigrid
+   * mirando una variable de un navegador.
+   *
+   * Es lo que decide **si se pide el cierre** (R64): un gráfico que no llegó a
+   * adjuntarse no puede ir seguido de un cierre, o volveríamos a producir la
+   * anomalía que esta feature elimina.
+   */
+  function estaAdjuntado(parte) {
+    return Boolean(parte && parte.grafico === "adjuntado");
+  }
+
+  /**
+   * F-012 · el `multipart` de `POST /api/adjuntar`: el fichero y ocho campos.
+   *
+   * Se niega a componer nada que no sea cerrable —las mismas dos
+   * precondiciones que el cierre, más el número de incidencia—: no basta con
+   * no pintar el botón, porque aunque se pulse dos veces, aquí se para.
+   *
+   * **Por omisión es un dry-run**: `commit` y `confirmado` solo se ponen si
+   * quien llama los pide, y viajan como la cadena `"true"` porque el backend
+   * solo acepta exactamente eso.
+   *
+   * Lo que **sí** lleva y `cuerpoDeCierre` no: **los bytes del PDF**. Son los
+   * mismos que se mandaron a `archivar` —el mismo objeto `File`—, que es lo
+   * que hace que en Sigrid acabe el mismo documento que hay en SharePoint.
+   *
+   * Lo que **no** lleva: ningún campo manuscrito. El DNI y las observaciones
+   * del cliente no viajan otra vez; van dentro del PDF, que es donde tienen
+   * que estar.
+   */
+  function cuerpoDeGrafico(parte, opciones, FabricaFormData) {
+    if (!esCerrable(parte)) {
+      throw new Error(
+        "este parte no se puede adjuntar todavía: hace falta veredicto " +
+          "'apto', destino 'archivo_y_cierre', que conste archivado y que " +
+          "tenga número de incidencia",
+      );
+    }
+    if (!parte.fichero) {
+      throw new Error(
+        "este parte no trae su PDF, así que no hay nada que adjuntar al ERP",
+      );
+    }
+
+    const ajustes = opciones || {};
+    if (!ajustes.usuarioOid) {
+      throw new Error(
+        "no se sabe quién pide el gráfico: sin el identificador del usuario " +
+          "no se puede firmar el documento en el ERP",
+      );
+    }
+
+    const Fabrica =
+      FabricaFormData || (typeof FormData !== "undefined" ? FormData : null);
+    if (!Fabrica) {
+      throw new Error("este entorno no tiene FormData");
+    }
+
+    const cuerpo = new Fabrica();
+    cuerpo.append("fichero", parte.fichero, parte.fichero && parte.fichero.name);
+    cuerpo.append("hash", parte.hash);
+    cuerpo.append("codigo_obra", valorDeCampo(parte, "codigo_obra") || "");
+    cuerpo.append(
+      "numero_incidencia",
+      valorDeCampo(parte, "numero_incidencia") || "",
+    );
+    cuerpo.append("veredicto", parte.validacion.veredicto);
+    cuerpo.append("destino", parte.validacion.destino);
+    cuerpo.append("estado_archivo", ESTADO_ARCHIVADO);
+    cuerpo.append("usuario_oid", ajustes.usuarioOid);
+    if (ajustes.correo) {
+      // Solo hace falta la primera vez de cada persona, para derivar el login
+      // candidato que el ERP tendrá que confirmar.
+      cuerpo.append("correo", ajustes.correo);
+    }
+    if (ajustes.commit === true) {
+      cuerpo.append("commit", "true");
+    }
+    if (ajustes.confirmado === true) {
+      cuerpo.append("confirmado", "true");
+    }
+    return cuerpo;
+  }
+
+  /**
    * Reconstruye el PDF de un parte desde el base64 de `/api/split` (R14).
    *
    * Se devuelve un `File` en memoria: el PDF nunca viaja en una URL con el
@@ -533,6 +622,8 @@
     valorDeCampo: valorDeCampo,
     cuerpoDeArchivo: cuerpoDeArchivo,
     cuerpoDeCierre: cuerpoDeCierre,
+    cuerpoDeGrafico: cuerpoDeGrafico,
+    estaAdjuntado: estaAdjuntado,
     cuerpoDeParte: cuerpoDeParte,
     ficheroDeParte: ficheroDeParte,
     procesarParte: procesarParte,

@@ -72,6 +72,11 @@ function appPostventa() {
     // y el aviso de que la reclamación quedará cerrada sin el parte dentro de
     // Sigrid. Confirmar sin haberlo leído es lo que esto viene a evitar.
     dryRunCierre: {},
+    // F-012 · el dry-run del gráfico, por parte. Va aparte del del cierre
+    // porque son dos llamadas a dos endpoints distintos y cada una puede
+    // salir bien o mal por su cuenta: «adjuntado pero no cerrado» es un
+    // estado real y hay que poder pintarlo.
+    dryRunGrafico: {},
     confirmacionCierre: null,
     avisoCierre: "",
     entornoNoCierra: "",
@@ -473,6 +478,22 @@ function appPostventa() {
     },
 
     async _dryRunUno(parte) {
+      // R63 (F-012) · LOS DOS dry-run, y en este orden: primero el del
+      // gráfico, que es lo que va a ocurrir primero. Si el del gráfico falla
+      // no se pide el del cierre: el parte ya está en `error_grafico` y un
+      // segundo error no añade nada que se pueda arreglar desde la pantalla.
+      try {
+        const grafico = await api.adjuntar(
+          window.Pipeline.cuerpoDeGrafico(parte, this.usuario),
+          parte.hash,
+        );
+        this.dryRunGrafico[parte.hash] = grafico.dry_run;
+        parte.grafico = grafico.estado;
+      } catch (error) {
+        this._anotarFalloDeGrafico(parte, error);
+        return;
+      }
+
       try {
         const datos = await api.cerrar(
           window.Pipeline.cuerpoDeCierre(parte, this.usuario),
@@ -497,11 +518,26 @@ function appPostventa() {
     },
 
     hayDryRun() {
-      return Object.keys(this.dryRunCierre).length > 0;
+      return (
+        Object.keys(this.dryRunCierre).length > 0 ||
+        Object.keys(this.dryRunGrafico).length > 0
+      );
     },
 
     dryRunDe(parte) {
       return this.dryRunCierre[parte.hash] || null;
+    },
+
+    dryRunGraficoDe(parte) {
+      return this.dryRunGrafico[parte.hash] || null;
+    },
+
+    estaAdjuntado(parte) {
+      // La decisión es de `js/pipeline.js`, que sí tiene tests. Aquí solo se
+      // pregunta, y lo que se pregunta es **lo que dijo el backend**: si se
+      // dedujera aquí, la pantalla estaría afirmando que un parte está dentro
+      // de Sigrid mirando una variable de un navegador.
+      return window.Pipeline.estaAdjuntado(parte);
     },
 
     pedirConfirmacionCierre() {
@@ -543,7 +579,54 @@ function appPostventa() {
       this.entornoNoCierra = "";
       this.fase = "cerrando";
       this.terminados = 0;
-      await this._porLaCola(pendientes, (parte) => this._cerrarUno(parte));
+      await this._porLaCola(pendientes, (parte) =>
+        this._adjuntarYCerrarUno(parte),
+      );
+      this.fase = "resumen";
+    },
+
+    async _adjuntarYCerrarUno(parte) {
+      // R64 (F-012) · **primero el gráfico, y el cierre SOLO si respondió
+      // `adjuntado`.** Es lo que garantiza que ninguna reclamación quede
+      // cerrada sin su parte dentro del ERP. El backend lo vuelve a exigir
+      // (su R2), pero pedir un cierre que va a responder 409 sería ruido con
+      // el usuario delante.
+      try {
+        const datos = await api.adjuntar(
+          window.Pipeline.cuerpoDeGrafico(
+            parte,
+            Object.assign({ commit: true, confirmado: true }, this.usuario),
+          ),
+          parte.hash,
+        );
+        parte.grafico = datos.estado;
+      } catch (error) {
+        this._anotarFalloDeGrafico(parte, error);
+        return;
+      }
+
+      if (!window.Pipeline.estaAdjuntado(parte)) {
+        // Puede ser `ya_cerrada`: la reclamación estaba cerrada antes de que
+        // llegáramos y no se le cuelga un gráfico. No es un error, y por eso
+        // no pasa por `_anotarFalloDeGrafico`.
+        parte.cerrado = true;
+        parte.estado = parte.grafico;
+        this.resultadosCierre.push({
+          hash: parte.hash,
+          mensaje: `no se ha adjuntado el parte (${parte.grafico}): no se cierra nada`,
+        });
+        return;
+      }
+
+      await this._cerrarUno(parte);
+    },
+
+    async reintentarCierre(parte) {
+      // R65 · el estado «adjuntado pero no cerrado». El gráfico ya está dentro
+      // de Sigrid, así que **no se vuelve a pedir**: se reintenta solo el
+      // cierre. La confirmación ya se dio y sigue valiendo para este parte.
+      this.fase = "cerrando";
+      await this._cerrarUno(parte);
       this.fase = "resumen";
     },
 
@@ -565,6 +648,17 @@ function appPostventa() {
       } catch (error) {
         this._anotarFalloDeCierre(parte, error);
       }
+    },
+
+    _anotarFalloDeGrafico(parte, error) {
+      if (error && error.tipo === "entorno") {
+        // Pantalla propia: es la puerta de entorno del ERP, la misma que la
+        // del cierre, y no se toca para «arreglarlo».
+        this.entornoNoCierra = error.mensaje;
+        return;
+      }
+      parte.estado = "error_grafico";
+      parte.error = (error && error.mensaje) || String(error);
     },
 
     _anotarFalloDeCierre(parte, error) {
@@ -602,6 +696,7 @@ function appPostventa() {
       this.entornoNoCierra = "";
       this.resultadosCierre = [];
       this.dryRunCierre = {};
+      this.dryRunGrafico = {};
     },
   };
 }

@@ -164,9 +164,10 @@ const LOS_DIEZ = [
   { nombre: "cola", ruta: "/api/cola", metodo: "GET", llamar: (api) => api.cola() },
   { nombre: "archivar", ruta: "/api/archivar", metodo: "POST", llamar: (api) => api.archivar(new FormData(), HASH_INVENTADO) },
   { nombre: "cerrar", ruta: "/api/cerrar", metodo: "POST", llamar: (api) => api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO) },
+  { nombre: "adjuntar", ruta: "/api/adjuntar", metodo: "POST", llamar: (api) => api.adjuntar(new FormData(), HASH_INVENTADO) },
 ];
 
-test("f007 R27 / f019 / f009: los DIEZ endpoints llaman a su ruta, con su metodo", async () => {
+test("f007 R27 / f019 / f009 / f012: los ONCE endpoints llaman a su ruta, con su metodo", async () => {
   for (const endpoint of LOS_DIEZ) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
 
@@ -182,17 +183,17 @@ test("f007 R27 / f019 / f009: los DIEZ endpoints llaman a su ruta, con su metodo
   }
 });
 
-test("f007 R27: son diez, y la lista se entera si aparece un undecimo", () => {
+test("f007 R27: son once, y la lista se entera si aparece un duodecimo", () => {
   // El cliente expone ademas `peticion` y `cuerpoDeParte`, que son la
   // maquinaria, y desde F-009 `identidad`, que NO es un endpoint de este
   // backend: lo sirve el proxy de la Static Web App y por eso no cuelga de
-  // `/api`. Si manana hay un undecimo endpoint del backend y nadie toca esta
-  // lista, la cuenta deja de cuadrar y este test lo dice.
+  // `/api`. Eran diez hasta F-012, que anade `adjuntar`; la cuenta tuvo que
+  // cuadrar aqui antes de que el metodo existiera, que es para lo que esta.
   const { api } = apiDePrueba([respuesta(200, {})]);
   const auxiliares = ["peticion", "cuerpoDeParte", "identidad"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
 
-  assert.equal(endpoints.length, 10);
+  assert.equal(endpoints.length, 11);
   assert.deepEqual(endpoints.sort(), LOS_DIEZ.map((e) => e.nombre).sort());
 });
 

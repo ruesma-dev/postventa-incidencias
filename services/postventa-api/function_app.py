@@ -54,11 +54,28 @@ Endpoints:
         está en `postventa.partes` la clave ajena la rechaza y responde
         **409 sin haber subido nada**.
 
+    POST /api/adjuntar
+        Adjunta **un** parte a su reclamación en Sigrid como gráfico (F-012):
+        el binario en la base documental, sus metadatos en la de negocio y el
+        enlace, **tres filas en dos bases**, escritas por el endpoint de
+        dominio de la pasarela en una transacción.
+
+        Es la **primera mitad del cierre** y va delante de `POST /api/cerrar`:
+        con esto, ninguna reclamación cerrada por este servicio queda sin su
+        parte dentro del ERP. Lleva los mismos candados que el cierre —dry-run
+        por omisión, confirmación explícita, la ventana `CIERRE_HABILITADO`
+        (**la misma**, no otra) y la puerta de entorno—, y uno propio: el PDF
+        se comprueba aquí —tope y firma— antes de mandarlo por el proxy.
+
+        Su reintento es **seguro**, y esa es la diferencia con el cierre: el
+        endpoint de la pasarela es idempotente por tamaño y `sha256`.
+
     POST /api/cerrar
         Cierra **una** incidencia en Sigrid: mueve el estado de la reclamación
-        y escribe su fila de auditoría. **Es la única escritura de este
-        servicio en un ERP de producción**, y por eso es el endpoint con más
-        candados:
+        y escribe su fila de auditoría. Desde F-012 **exige que el parte conste
+        adjuntado**: con `commit` y sin gráfico responde 409 sin tocar el ERP.
+        Es, con `/api/adjuntar`, una de las dos escrituras de este servicio en
+        un ERP de producción, y por eso es el endpoint con más candados:
 
         - **Por omisión no cierra nada**: sin `commit` es un dry-run, que lee
           y devuelve qué pasaría.
@@ -76,7 +93,7 @@ por debajo, para poder probarla sin el runtime de Functions.
 
 ---
 
-## Por qué los diez endpoints están en `ANONYMOUS`, y no es un descuido
+## Por qué los once endpoints están en `ANONYMOUS`, y no es un descuido
 
 **No lo toques sin leer esto.** Un endpoint anónimo parece un olvido, y el
 arreglo evidente —`auth_level=FUNCTION`— **rompe el front el mismo día que se
@@ -94,7 +111,7 @@ El servicio está desplegado como **backend enlazado** de una Static Web App
 De ahí las dos consecuencias que fijan este fichero:
 
 1. **`auth_level=FUNCTION` no vale**: la Static Web App no aporta la clave que
-   la Function exigiría, así que los diez endpoints empezarían a devolver
+   la Function exigiría, así que los once endpoints empezarían a devolver
    `401` a través del front.
 2. **La autenticación integrada de Entra en la Function App tampoco vale**:
    espera un *bearer* que el proxy no envía.
@@ -137,22 +154,25 @@ exige sesión. Lo que decide quién usa la aplicación es la capa 2.
    ella** a propósito (R34): escriben en el esquema propio del proyecto, y
    atarlos dejaría sin poder guardar el trabajo de revisión justo cuando el
    archivado está cerrado, que es como se despliega.
-2. **La ventana de escritura de `POST /api/cerrar`** (F-009): `CIERRE_HABILITADO`
-   se despliega **apagado**, igual y por el mismo mecanismo, pero protegiendo
-   algo distinto y más caro: **el ERP de producción del que depende toda la
-   empresa**. Es una variable aparte y no la misma que la de SharePoint a
-   propósito — se abren en momentos distintos, y poder archivar no puede
-   implicar poder cerrar—. Encima de esa ventana hay dos puertas más que no
-   son configuración: el entorno tiene que ser `dev` o `pro`, y **por omisión
-   la llamada es un dry-run**, así que ni siquiera con todo abierto se escribe
-   sin que alguien lo pida y lo confirme.
+2. **La ventana de escritura del ERP**, `CIERRE_HABILITADO`, que cubre
+   `POST /api/cerrar` **y `POST /api/adjuntar`** (F-009 y F-012): se despliega
+   **apagada**, igual y por el mismo mecanismo que la de SharePoint, pero
+   protegiendo algo distinto y más caro: **el ERP de producción del que depende
+   toda la empresa**. Es una variable aparte de la de SharePoint a propósito
+   —se abren en momentos distintos, y poder archivar no puede implicar poder
+   cerrar—, pero **es una sola para el gráfico y el cierre**, porque el gráfico
+   es la primera mitad del cierre: el mismo sistema, el mismo dueño y la misma
+   decisión. Encima de esa ventana hay dos puertas más que no son
+   configuración: el entorno tiene que ser `dev` o `pro`, y **por omisión la
+   llamada es un dry-run**, así que ni siquiera con todo abierto se escribe sin
+   que alguien lo pida y lo confirme.
 3. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
    proporcionada al riesgo de `/api/extraer` y `/api/firma`: gastar cuota.
 
 ### Qué añade `GET /api/cola` a este cuadro
 
 Es el **primer endpoint del servicio que devuelve dato personal acumulado sin
-que el llamante aporte el PDF**. Los ocho restantes exigen que tú mandes el
+que el llamante aporte el PDF**. Los diez restantes exigen que tú mandes el
 parte, o que sepas su `hash`: quien no lo tiene no obtiene nada de él. La cola
 devuelve transcripciones manuscritas de clientes, códigos de obra y números de
 incidencia sin aportar nada.
@@ -195,11 +215,18 @@ from domain.models.errores import (
     ConfiguracionSigridIncompleta,
     CuerpoDeArchivoInvalido,
     CuerpoDeCierreInvalido,
+    CuerpoDeGraficoInvalido,
     CuerpoDeValidacionInvalido,
+    EscrituraDocumentalDeshabilitada,
     EstadoCambiadoDesdeElDryRun,
     EstadoDeCierreNoResoluble,
     EstadoNoCerrable,
     ExtraccionFallida,
+    GraficoDemasiadoGrande,
+    GraficoFallido,
+    GraficoNoEsPdf,
+    GraficoRechazadoPorLaPasarela,
+    GraficoSinTraza,
     LimiteDeEntradaSuperado,
     NombradoImposible,
     ParteDemasiadoGrande,
@@ -215,6 +242,7 @@ from domain.models.errores import (
     UsuarioSigridNoMapeado,
 )
 from domain.models.remesa import DocumentoEntrada
+from interface_adapters.api.adjuntar import adjuntar_grafico
 from interface_adapters.api.archivar import archivar_parte
 from interface_adapters.api.cerrar import cerrar_incidencia
 from interface_adapters.api.cola import leer_cola
@@ -657,6 +685,164 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["carpeta"],
         cuerpo["estado"],
         len(cuerpo["avisos"]),
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="adjuntar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def adjuntar(req: func.HttpRequest) -> func.HttpResponse:
+    """Adjunta **un** parte a su reclamación en Sigrid como gráfico (F-012).
+
+    Es la **primera mitad del cierre** y va delante de `POST /api/cerrar`: con
+    esto, ninguna reclamación cerrada por este servicio queda sin su parte
+    dentro del ERP.
+
+    Solo traduce: saca el fichero y los campos del `multipart`, llama al
+    handler y mapea sus errores de dominio a códigos HTTP. Cada código dice una
+    cosa distinta **a propósito**, y confundirlos lleva a acciones opuestas:
+
+    - **400** · la petición está mal formada, y se dice **qué** falta —el
+      fichero incluido— (R58).
+    - **409** · no se puede adjuntar tal y como están las cosas: el parte no es
+      apto, no consta archivado o no consta guardado, la reclamación no está o
+      no admite cierre, falta el mapeo del usuario, el PDF pasa del tope o no
+      es un PDF, o la pasarela rechaza la petición con uno de los códigos de
+      R33 (R59).
+    - **503** · aquí y ahora no se adjunta: entorno equivocado, ventana
+      cerrada, falta configuración, la base no responde, o **la pasarela dice
+      que le falta una precondición de su dueño** (R32, R60). Este último no es
+      culpa de quien llama ni de este servicio: es una App Setting de otro
+      proyecto, y el mensaje lo nombra.
+    - **502** · la pasarela falló, no respondió o devolvió algo que no se
+      entiende (R61).
+
+    **En todos ellos, sin haber escrito nada en el ERP**, con dos excepciones
+    que el propio mensaje declara:
+
+    - un `GraficoFallido` por corte de red **no garantiza** que la escritura no
+      saliera. Pero, al revés que en el cierre, **el reintento es seguro**: el
+      endpoint es idempotente por tamaño y `sha256`, así que volver a pedirlo
+      no duplica el gráfico;
+    - y el **500**, que es el único caso en el que el gráfico **sí está** en
+      Sigrid y lo que falta es la traza (`GraficoSinTraza`). No se recicla el
+      502 ni el 503 porque los dos prometen que no se ha escrito nada, y aquí
+      sí se escribió. Es el defecto 14 de F-010 aplicado por tercera vez.
+
+    El log lleva el `hash` del parte, la incidencia y el estado. **Nunca** el
+    contenido del PDF ni su texto codificado, ni el correo, ni el login, ni el
+    `oid`, ni el `cod` del gráfico —que lleva el login del ERP dentro— (R53,
+    R54, R55): este log lo lee cualquiera que abra Application Insights, y
+    sobrevive al parte.
+    """
+    fichero = next(iter(req.files.values()), None)
+
+    try:
+        cuerpo = adjuntar_grafico(
+            fichero.read() if fichero is not None else b"",
+            hash=req.form.get("hash", ""),
+            codigo_obra=req.form.get("codigo_obra", ""),
+            numero_incidencia=req.form.get("numero_incidencia", ""),
+            veredicto=req.form.get("veredicto", ""),
+            destino=req.form.get("destino", ""),
+            estado_archivo=req.form.get("estado_archivo", ""),
+            usuario_oid=req.form.get("usuario_oid", ""),
+            correo=req.form.get("correo", ""),
+            commit=req.form.get("commit", ""),
+            confirmado=req.form.get("confirmado", ""),
+        )
+    except (CuerpoDeGraficoInvalido, CuerpoDeCierreInvalido) as error:
+        log.info("adjuntar rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ReferenciaNoConsta as error:
+        log.info("adjuntar sin el parte guardado: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"este parte no consta guardado, así que **no se ha "
+                    f"adjuntado nada** al ERP: hay que guardarlo antes con "
+                    f"POST /api/parte —y registrar su remesa con "
+                    f"POST /api/remesa si tampoco consta— y volver a "
+                    f"intentarlo. Motivo: {error.motivo}"
+                )
+            },
+            409,
+        )
+    except (
+        ParteNoApto,
+        ParteNoArchivado,
+        NombradoImposible,
+        GraficoDemasiadoGrande,
+        GraficoNoEsPdf,
+        ReclamacionNoLocalizada,
+        EstadoDeCierreNoResoluble,
+        EstadoNoCerrable,
+        UsuarioSigridNoMapeado,
+        UsuarioSigridInexistente,
+        GraficoRechazadoPorLaPasarela,
+    ) as error:
+        # El motivo puede nombrar el correo del usuario, así que **no se
+        # registra tal cual**: va al usuario, que es su dueño y lo tiene
+        # delante, y al log va solo el tipo del error (R54).
+        log.info("adjuntar no procede: %s", type(error).__name__)
+        return _json({"error": error.motivo}, 409)
+    except EscrituraDocumentalDeshabilitada as error:
+        log.warning("adjuntar sin la precondición de la pasarela: %s", error.codigo)
+        return _json(
+            {
+                "error": (
+                    f"la pasarela sigrid-api no tiene habilitada la escritura "
+                    f"que hace falta para adjuntar el parte, así que **no se ha "
+                    f"escrito nada** en el ERP. Es configuración de su dueño y "
+                    f"no se corrige desde aquí: hay que pedírsela. Motivo: "
+                    f"{error.motivo}"
+                )
+            },
+            503,
+        )
+    except (CierreDeshabilitado, ConfiguracionSigridIncompleta) as error:
+        log.warning("adjuntar deshabilitado: %s", error.motivo)
+        return _json({"error": error.motivo}, 503)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("adjuntar sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no puede dejar traza del gráfico y no se ha "
+                    f"tocado el ERP. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("adjuntar sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"adjuntado nada al ERP: se puede reintentar cuando la "
+                    f"base vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except GraficoSinTraza as error:
+        log.error(
+            "adjuntar sin traza: el parte ESTÁ adjunto en el ERP y no consta: %s",
+            error.motivo,
+        )
+        return _json({"error": error.motivo}, 500)
+    except GraficoFallido as error:
+        log.warning("adjuntar fallido: %s", error.motivo)
+        return _json({"error": error.motivo}, 502)
+
+    log.info(
+        "adjuntar: parte=%s incidencia=%s estado=%s idempotente=%s filas=%s",
+        cuerpo["hash_parte"],
+        cuerpo["numero_incidencia"],
+        cuerpo["estado"],
+        cuerpo["idempotente"],
+        cuerpo["filas_afectadas"],
     )
     return _json(cuerpo, 200)
 

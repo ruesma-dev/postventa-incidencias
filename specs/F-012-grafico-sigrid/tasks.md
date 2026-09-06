@@ -160,7 +160,7 @@
 
 ## Bloque 6 · El borde HTTP y el front
 
-- [ ] **T14**: Crear `interface_adapters/api/adjuntar.py` y la ruta
+- [x] **T14**: Crear `interface_adapters/api/adjuntar.py` y la ruta
       `adjuntar` en `function_app.py`, `multipart` como `archivar`, con la
       traducción de errores. | Verificación: `test_f012_adjuntar_http.py`: R57
       (sin `commit` es dry-run: el doble de la pasarela recibe

@@ -228,7 +228,7 @@
 
 ## Bloque 8 · El utillaje de verificación (solo lectura, lo lanza el humano)
 
-- [ ] **T22**: `infra/15_reclamaciones_obra_prueba.ps1`: Q0, Q1 y Q2 de
+- [x] **T22**: `infra/15_reclamaciones_obra_prueba.ps1`: Q0, Q1 y Q2 de
       `design.md` §15 sobre `Invoke-SigridLectura`; imprime la obra localizada,
       sus reclamaciones con estado legible y nº de gráficos, y las candidatas
       (cerrables y sin gráfico). Parámetro `-CodigoObra` con `404` por defecto
@@ -237,7 +237,7 @@
       llama a `sql/read`, parámetros con `?`, y **ningún valor** (ni raíz, ni
       clave, ni código de reclamación real).
 
-- [ ] **T23**: `infra/16_grafico_sigrid.ps1`: dado el `cod` del gráfico (o la
+- [x] **T23**: `infra/16_grafico_sigrid.ps1`: dado el `cod` del gráfico (o la
       incidencia), lee la fila de negocio, la documental con `DATALENGTH(ima)`
       (**nunca `ima`**), el enlace `rcg`, y `MAX(ide)` de `dbo.log`; con
       `-DescargarYComparar`, llama a `documents/read` (`database` documental,
@@ -246,7 +246,7 @@
       `test_f012_scripts_infra.py`: solo lectura, sin valores, y el `SELECT`
       de la documental no selecciona `ima` directamente.
 
-- [ ] **T24**: `infra/17_traza_grafico_local.ps1`: la fila de
+- [x] **T24**: `infra/17_traza_grafico_local.ps1`: la fila de
       `postventa.graficos` por incidencia, al modo de `12_traza_cierre_local.ps1`
       (psycopg desde el `.venv`, contraseña por `SecureString`, solo del
       esquema propio); comprueba estado esperado, `idempotente`, que hay `oid`

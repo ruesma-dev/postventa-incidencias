@@ -21,7 +21,7 @@
 | Recurso | Compartido con | Qué hacemos | Desde |
 |---|---|---|---|
 | PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo y cierres | **F-005** |
-| `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y ESCRITURA en el ERP de producción**: `con.est` al estado de cierre y su fila de auditoría en `dbo.log`. Solo desde el entorno desplegado y con el interruptor encendido | F-008 / **F-009** |
+| `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y DOS ESCRITURAS en el ERP de producción**: el **parte adjunto como gráfico** —`POST /api/sigrid/concepto-grafico`, tres filas en dos bases— y el **cierre** —`con.est` al estado de cierre y su fila de auditoría en `dbo.log`—. Solo desde el entorno desplegado y con el interruptor encendido | F-008 / **F-009** / **F-012** |
 | SharePoint (Graph) | IT | Archivo de los PDF validados | F-006 |
 | Gemini | — | Extracción multimodal y clasificación de firma | F-003 |
 | Entra ID | todo el ecosistema | Autenticación del front y de la tarjeta del portal | F-010 |
@@ -34,6 +34,13 @@ hasta ahora este proyecto **solo leía** de Sigrid. Desde F-009 **escribe en el
 ERP del que depende toda la empresa**. Qué escribe, con qué puertas y qué se
 rompe si alguien cambia la configuración de escritura de la pasarela está en
 **§3 bis**.
+
+**Y lo nuevo de F-012 es la segunda escritura**, que además es la primera que
+toca **dos bases** —la de negocio y la documental— y la primera que
+**transporta el PDF del parte**, con el DNI manuscrito del cliente dentro,
+hasta Sigrid. Va por el endpoint de dominio de la pasarela y **exige
+precondiciones de configuración que son de su dueño**, no nuestras: §3 bis y
+§6.
 
 ## 2 · La base de datos: qué pedimos y qué no tocamos
 
@@ -224,7 +231,52 @@ Dos sentencias por incidencia cerrada, y una lectura por dry-run. En el piloto
 de Mirasierra eso son decenas de escrituras, no miles: muy por debajo de
 cualquier límite de la pasarela.
 
-### Lo que F-009 NO exige, y lo que sí va a exigir F-012
+### Qué escribimos como GRÁFICO, exactamente (F-012)
+
+**Desde F-012 hay una segunda escritura, y va ANTES que el cierre.** El PDF del
+parte firmado se adjunta a la reclamación como **gráfico** de Sigrid, con
+`POST /api/sigrid/concepto-grafico` — el endpoint de dominio de la pasarela, que
+es la **única** vía por la que se escribe en la base documental.
+
+Son **tres filas en dos bases**, y las escribe la pasarela en **una
+transacción**: el binario en la base documental, sus metadatos en la de negocio
+—con el mismo `cod` y el mismo `emp`— y el enlace con la reclamación. Este
+servicio **no compone ni una sentencia**: manda el fichero y ocho campos.
+
+Lo que mandamos, y lo que no:
+
+- `database`: la de **negocio**. **Nunca nombramos la documental**: la elige la
+  pasarela desde su propia configuración.
+- `conide` y `contip`: salen de **la reclamación leída** en el dry-run, no de
+  una constante ni de la configuración.
+- `gratipide`: `SIGRID_GRATIPIDE_PARTE` (35 = `PV002`, «POSTVENTA:Fotos
+  Reparaciones»), que es la clase bajo la que Posventa tiene sus partes
+  firmados.
+- `nom`: **el mismo nombre con el que el parte está en SharePoint**. Un
+  documento, un nombre, dos sitios.
+- `res`: `PARTE FIRMADO`, que es lo que Posventa teclea.
+- `usu`: el login de quien confirma, el mismo que firma el cierre.
+- `contenido` y su `sha256`, que la pasarela **coteja** antes de escribir.
+- **No mandamos** `cod`, `ide`, `vin`, `pos`, `emp` ni la base documental: todo
+  eso lo decide la pasarela con constantes medidas contra el ERP.
+
+**No escribimos ninguna fila en `dbo.log` por el gráfico**, y es deliberado: el
+propio ERP tampoco lo hace al importar uno (0 filas con `tab='gra'` en 8,4
+millones). Escribir una nos haría anómalos respecto a los 13.450 gráficos de
+Posventa — el argumento inverso al del cierre, donde el ERP **sí** escribe.
+
+**El orden es la garantía.** No hay atomicidad entre dos llamadas HTTP, así que
+se sustituye por **orden más idempotencia**: primero el gráfico, después el
+cierre, y el cierre **exige** que el gráfico conste adjuntado en nuestra traza.
+Un fallo entre los dos deja la reclamación **abierta con su parte dentro**, que
+es un estado inocuo y del que se sale reintentando.
+
+**El reintento del gráfico es seguro**, al revés que el del cierre: el endpoint
+es idempotente por tamaño y `sha256`, comprobado dos veces por la pasarela —al
+leer y otra vez dentro de la transacción—. Por eso nuestros mensajes de error
+lo dicen: quien los lea puede volver a intentarlo sin abrir Sigrid.
+
+### Lo que F-009 NO exige, y lo que F-012 SÍ exige (RESUELTO)
 
 **F-009 no exige ningún cambio en el repositorio `sigrid-api`.** Las dos
 sentencias caben en `POST /api/sql/write` tal y como está desplegado: `UPDATE` e
@@ -232,8 +284,13 @@ sentencias caben en `POST /api/sql/write` tal y como está desplegado: `UPDATE` 
 escritura. Se comprobó leyendo la configuración de la Function App, sin ver
 ningún valor.
 
-**F-012 sí, y conviene decirlo ahora** —se descubrió al comprobar lo anterior, y
-quien coja esa feature debería saberlo el primer día en vez del último—:
+**F-012 sí exigía algo de otro dueño, y el 2026-09-06 quedó RESUELTO.** Lo que
+sigue se conserva porque explica de dónde viene la precondición que hoy
+declaramos en §6; lo que hay que leer primero es la resolución, al final del
+bloque.
+
+Lo que se descubrió al comprobar lo anterior, y que quien cogiera esa feature
+debía saber el primer día:
 
 > Subir el parte a Sigrid como gráfico exige **escribir en dos bases**: los
 > metadatos y el enlace van en la base de negocio, pero **el binario vive en la
@@ -263,6 +320,18 @@ ERP le escribe** cada vez que Posventa importa un documento. Lo que hay es una
 > (rama `docs/propuesta-escritura-documental`, sin desplegar).
 > Aquí no se duplica. El resumen de qué resuelve y qué deja abierto está en
 > `progress/impl_spec_escritura_documental.md`.
+
+**RESUELTO el 2026-09-06.** El dueño de `sigrid-api` implementó y desplegó el
+endpoint (su F-004, mergeado en `dev`): `POST /api/sigrid/concepto-grafico`,
+contrato en `azure-apps/sigrid_api.md` §8.8. Así que **F-012 no cruza ninguna
+frontera**: consume un endpoint de dominio, exactamente como `remesas` o
+`partes` consumen `sql/read`, y no pide ningún cambio en aquel repositorio.
+
+Lo que sigue siendo suyo, y por eso es una **precondición** y no una
+dependencia de código, son sus App Settings —`SIGRID_DOCUMENT_WRITE_ENABLED`,
+`SIGRID_DOCUMENT_WRITE_DATABASE`, `SIGRID_DOCUMENT_ALLOWED_CONTIP`,
+`SIGRID_DOCUMENT_ALLOWED_GRATIPIDE` y `SIGRID_DOCUMENT_MAX_BYTES`—. Qué se
+rompe si las cambia está en **§6**, y **no se tocan desde aquí**: se piden.
 
 ## 4 · Variables de entorno (nombres, nunca valores)
 
@@ -298,11 +367,11 @@ despliegue no tenga que aprender dos vocabularios.
 | `GRAPH_TIMEOUT_S` | no | La Function corta a los 230 s: una llamada colgada no puede comérselos |
 | `GRAPH_REINTENTOS` | no | Intentos ante errores transitorios. Un `403` o un `404` **no** se reintentan |
 
-### Las de Sigrid (F-009)
+### Las de Sigrid (F-009 y F-012)
 
 | Variable | Obligatoria | Notas |
 |---|---|---|
-| `CIERRE_HABILITADO` | no | **Interruptor maestro, apagado por defecto.** Sin encenderlo no se cierra nada, pase lo que pase. Es una variable **aparte** de `ARCHIVO_HABILITADO` a propósito: se abren en momentos distintos, y poder archivar no puede implicar poder escribir en el ERP |
+| `CIERRE_HABILITADO` | no | **Interruptor maestro, apagado por defecto.** Sin encenderlo no se escribe nada en el ERP, pase lo que pase. Cubre **las dos escrituras**, el gráfico y el cierre: el gráfico es la primera mitad del cierre y no hay `GRAFICO_HABILITADO`. Es una variable **aparte** de `ARCHIVO_HABILITADO` a propósito: se abren en momentos distintos, y poder archivar no puede implicar poder escribir en el ERP |
 | `SIGRID_API_BASE_URL` | sí, para cerrar | La raíz de la pasarela, que es el **único** acceso al SQL Server de Sigrid en todo el ecosistema |
 | `SIGRID_API_KEY` | sí, para cerrar | **Secreto**. En Azure va por referencia a Key Vault; en local, solo en el `.env`, que no se versiona. Jamás en un log, en una URL ni en un mensaje de error |
 | `SIGRID_BASE_DATOS` | sí, para cerrar | La base de negocio del ERP, que es la única con escritura permitida en la pasarela |
@@ -310,6 +379,8 @@ despliegue no tenga que aprender dos vocabularios.
 | `SIGRID_REINTENTOS` | no | Intentos ante errores transitorios **de una lectura**. La escritura **no se reintenta nunca**, y eso no es configurable |
 | `SIGRID_TIP_RECLAMACION` | no | El tipo de concepto de la reclamación de posventa. Es configuración de la instalación, medida contra el ERP |
 | `SIGRID_ZONA_HORARIA` | no | El huso con el que se escribe la hora en la fila de auditoría. Sigrid registra **hora local**: escribir UTC dejaría nuestras filas desfasadas del resto |
+| `SIGRID_GRATIPIDE_PARTE` | no | **F-012** · la clase de gráfico con la que se adjunta el parte (`auxgra.ide`). Configuración de la instalación, con valor por defecto medido. **Cambiarla aquí a secas no basta**: la pasarela mantiene su propia lista blanca de clases, así que es una decisión de dos dueños |
+| `GRAFICO_MAX_BYTES` | no | **F-012** · el tope propio del PDF, comprobado **antes** de llamar a la pasarela. **No debe superar el suyo**: subirlo aquí solo compra un rechazo más tardío, con el fichero ya mandado por el proxy |
 
 Ninguna de estas variables tiene valor en el repositorio: `.env.example` y
 `local.settings.json.example` llevan placeholders, y hay un test que lo
@@ -358,7 +429,10 @@ incidencia, código de obra y remesa.
 | Toca el esquema `public` | A nosotros, nada: no tenemos ni una tabla ahí, y un test contra base efímera lo comprueba | — |
 | Quita `UPDATE` o `INSERT` de `ALLOWED_WRITE_PREFIXES` en `sigrid-api` | **Dejamos de poder cerrar incidencias.** El endpoint responde 502 y la incidencia se queda abierta con el parte ya archivado | Es del dueño de `sigrid-api`; avisar antes |
 | Saca la base de negocio de `ALLOWED_WRITE_DATABASES` | Lo mismo, y además cortaría cualquier escritura del ecosistema | Es del dueño de `sigrid-api`; avisar antes |
-| Rota la clave de función de `sigrid-api` sin actualizar nuestro Key Vault | 502 en cada cierre, y en cada dry-run | Coordinar la rotación |
+| Apaga `SIGRID_DOCUMENT_WRITE_ENABLED` en `sigrid-api`, o deja vacía `SIGRID_DOCUMENT_WRITE_DATABASE` | **Dejamos de poder adjuntar el parte**, y por tanto de poder cerrar: `/api/adjuntar` responde **503** nombrando la precondición, y `/api/cerrar` responde 409 porque el gráfico no consta. **El ERP queda intacto** | Es del dueño de `sigrid-api`; avisar antes |
+| Quita `708` de `SIGRID_DOCUMENT_ALLOWED_CONTIP` o `35` de `SIGRID_DOCUMENT_ALLOWED_GRATIPIDE` | Lo mismo, con **409** en vez de 503: la pasarela rechaza la petición y no escribe nada | Es del dueño de `sigrid-api`; avisar antes |
+| Baja `SIGRID_DOCUMENT_MAX_BYTES` por debajo del tamaño de un parte | Los partes grandes dejan de poder adjuntarse, con **409** y sin escribir nada. Nuestro `GRAFICO_MAX_BYTES` no protege de esto: es un tope propio y más bajo, no el suyo | Es del dueño de `sigrid-api`; avisar antes |
+| Rota la clave de función de `sigrid-api` sin actualizar nuestro Key Vault | 502 en cada cierre, en cada gráfico y en cada dry-run | Coordinar la rotación |
 | Cambia el catálogo de estados `conest` del tipo de posventa | Si el código `CER` deja de existir o se duplica, **abortamos sin escribir nada** y lo decimos. No cerramos con un estado supuesto | Es del ERP; se detecta solo |
 
 Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
@@ -419,7 +493,8 @@ documento.
 | `POST /api/parte` | **Escribe** en `postventa.partes` y `postventa.validaciones`. Recalcula el veredicto con las reglas del dominio: nunca acepta el que venga en el cuerpo |
 | `GET /api/cola` | **Lee** la cola de validación humana. Único endpoint que devuelve **dato personal acumulado** sin que el llamante aporte el PDF: tope duro de 500 entradas por llamada |
 | `POST /api/archivar` | **Escribe** en la biblioteca de dev de SharePoint y deja traza en la base. Exige que el parte **ya conste guardado**: si no, responde 409 sin subir nada |
-| `POST /api/cerrar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: mueve `con.est` al estado de cierre y añade una fila a `dbo.log`, en un solo batch transaccional con tope de dos filas. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP |
+| `POST /api/adjuntar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: adjunta el PDF del parte a la reclamación como gráfico, **tres filas en dos bases**, por el endpoint de dominio de la pasarela. Va **antes** del cierre. `multipart/form-data`, con el fichero. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP. **Su reintento es seguro**: el endpoint de la pasarela es idempotente por contenido |
+| `POST /api/cerrar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: mueve `con.est` al estado de cierre y añade una fila a `dbo.log`, en un solo batch transaccional con tope de dos filas. **Exige que el parte conste adjuntado** (F-012): con `commit` y sin gráfico responde 409 sin tocar el ERP. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP |
 
 Los tres endpoints de F-019 **no dependen de `ARCHIVO_HABILITADO`**: escriben
 en el esquema propio del proyecto, no en un sistema ajeno. Con la ventana de
@@ -427,7 +502,7 @@ escritura cerrada —que es como se despliega— se sube la remesa, se trocea, s
 extrae, se valida, **se guarda** y se lee la cola; solo `POST /api/archivar`
 responde 503.
 
-Los diez quedan en nivel **anónimo**, y **es deliberado**: con un backend
+Los once quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie
 rompe el front. Y ese nivel es **irrelevante desde internet**: la plataforma
@@ -442,7 +517,7 @@ sí sostienen el acceso están en la cabecera de
 | Qué falta | Feature | Consecuencia visible |
 |---|---|---|
 | El cierre real, verificado contra el ERP | **F-009** | El cierre **está implementado**, pero su ventana de escritura (`CIERRE_HABILITADO`) se despliega **apagada** y todavía no se ha ejecutado ni un cierre real. Mientras siga así, **Sigrid no se toca**: el parte se archiva y la incidencia sigue abierta en el ERP. El primer cierre se hará con el humano delante y con autorización expresa para esa incidencia concreta |
-| Subir el parte a Sigrid como gráfico | **F-012** | La incidencia se cierra y el PDF queda archivado y localizable, pero **no dentro del ERP**: quien mire la ficha en Sigrid no verá el parte. Es el riesgo aceptado de `docs/ARCHITECTURE.md`, y hoy **no tiene por dónde hacerse**: el binario vive en la base documental, que la pasarela tiene fuera de su lista blanca de escritura |
+| La verificación del gráfico contra el ERP | **F-012** | El gráfico **está implementado** y comparte ventana con el cierre, así que tampoco se ha ejecutado ni uno real. El riesgo aceptado de `docs/ARCHITECTURE.md` —cerrar sin el parte dentro— queda **cerrado por diseño**: el cierre exige el gráfico. La verificación se hará sobre reclamaciones de la **obra de prueba 404**, con dry-run y autorización expresa por incidencia |
 | Rehidratar la sesión al recargar el navegador | **feature nueva**, decidida el 2026-08-26 (D4 de F-019) | Lo guardado **queda guardado** y la cola sobrevive, pero si el usuario recarga la página **pierde el trabajo en curso**: volver a pintarlo exige leer una remesa entera con sus partes, y eso es un método de lectura nuevo en el puerto de persistencia |
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |

@@ -204,7 +204,7 @@
       extendido: las dos aparecen en `$ajustes`, y `CIERRE_HABILITADO=false`
       sigue ahí (no se añade ningún interruptor nuevo, D-B).
 
-- [ ] **T19**: `docs/ARCHITECTURE.md` (paso 7 → 7a gráfico + 7b cierre; el
+- [x] **T19**: `docs/ARCHITECTURE.md` (paso 7 → 7a gráfico + 7b cierre; el
       «RIESGO ACEPTADO» pasa a **cerrado** con fecha y feature conservando su
       texto; tabla de sistemas externos con el endpoint y las variables) y
       `docs/DESPLIEGUE.md` §4 bis (la ventana cubre `/api/adjuntar` y
@@ -213,7 +213,7 @@
       como cerrado por F-012, y **`test_f009_documentacion.py` sigue en
       verde** (sus literales se conservan) o se adapta explicitando por qué.
 
-- [ ] **T20**: `docs/INTEGRACION.md` §1, §3 bis, §4, §6 y §8 (R68), con la
+- [x] **T20**: `docs/INTEGRACION.md` §1, §3 bis, §4, §6 y §8 (R68), con la
       nota «lo que sí va a exigir F-012» pasada a resuelta. | Verificación:
       `test_f012_documentacion.py`: nombra `sigrid/concepto-grafico`, las dos
       variables nuevas, las App Settings `SIGRID_DOCUMENT_*` de la pasarela

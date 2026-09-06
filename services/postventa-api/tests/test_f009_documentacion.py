@@ -112,7 +112,10 @@ def test_f009_r52_integracion_dice_que_ahora_ESCRIBIMOS_en_el_erp():
     """
     texto = INTEGRACION.read_text(encoding="utf-8")
 
-    assert "ESCRITURA en el ERP de producción" in texto
+    # F-012 lo amplió a **DOS ESCRITURAS**: el gráfico y el cierre. Lo que
+    # este test protege sigue igual —que el documento diga en mayúsculas que
+    # aquí se escribe en producción— y se comprueba sobre la forma nueva.
+    assert "ESCRITURAS en el ERP de producción" in texto
     assert "dbo.log" in texto
 
 

@@ -263,18 +263,34 @@ Si has abierto la ventana, `verificar_despliegue.ps1` **no hace** su segunda
 comprobación y te lo dice: con la ventana abierta, esa llamada subiría un PDF
 de verdad.
 
-## 4 bis · La ventana de escritura de `/api/cerrar` (F-009)
+## 4 bis · La ventana de escritura del ERP: `/api/adjuntar` y `/api/cerrar`
 
 **Es el candado más serio de todo el despliegue**, porque lo que hay detrás no
 es una biblioteca de documentos: es el **ERP de producción del que depende toda
 la empresa**. Deshacer un cierre no es borrar un fichero; es otro proceso que
 alguien tiene que ejecutar a mano en Sigrid.
 
+**Una sola variable para las dos escrituras, desde F-012.** `CIERRE_HABILITADO`
+cubre `POST /api/cerrar` **y** `POST /api/adjuntar`, que es el que sube el PDF
+del parte a la reclamación como gráfico. No hay `GRAFICO_HABILITADO`, y no
+puede haberlo: el gráfico es **la primera mitad del cierre** —el mismo sistema,
+el mismo dueño, la misma ventana y la misma decisión—, y un segundo interruptor
+solo podría crear dos estados, los dos malos. Con el gráfico apagado y el
+cierre encendido se volvería a cerrar sin el parte dentro, que es exactamente
+la anomalía que F-012 eliminó; al revés, todos los cierres responderían `409`
+por una configuración a medias.
+
+**Consecuencia que hay que saber antes de abrirla**: abrir la ventana para
+probar el gráfico abre también el cierre. Es aceptable por lo mismo de siempre
+—dry-run por omisión, confirmación explícita, el humano delante, y la ventana
+se cierra al terminar—, y de hecho la verificación de F-012 sobre la obra de
+prueba **quiere** cerrar la reclamación después de adjuntar.
+
 `CIERRE_HABILITADO` **se despliega apagado, y por el mismo mecanismo que el de
 archivo**: `desplegar_backend.ps1` lo fija en `false` en `$ajustes`, línea a
 línea al lado de `ARCHIVO_HABILITADO`, así que **cada despliegue lo devuelve a
-su sitio**. Fuera de la ventana, `/api/cerrar` responde `503` a cualquiera
-—incluido un desconocido— y **no toca el ERP**, ni siquiera para leer.
+su sitio**. Fuera de la ventana, los dos endpoints responden `503` a cualquiera
+—incluido un desconocido— y **no tocan el ERP**, ni siquiera para leer.
 
 > **Ahora sí es el mismo mecanismo; hasta el 2026-09-03 no lo era, y este
 > documento decía que sí.** `CIERRE_HABILITADO` no estaba en `$ajustes`: se
@@ -308,21 +324,27 @@ Abrirla **no basta para que se cierre nada**, y esa es la diferencia con la de
 archivo. Encima de ella hay dos puertas más que no son configuración:
 
 1. **El entorno** tiene que ser `dev` o `pro`. Desde un puesto de trabajo no se
-   cierra ni con la variable encendida: se comprueba en la fábrica **y** en el
-   constructor del adaptador.
-2. **`POST /api/cerrar` es dry-run por omisión.** Sin `commit` lee y devuelve
-   qué pasaría; con `commit` exige además la confirmación explícita del usuario
-   o su preferencia de auto-cierre guardada.
+   escribe ni con la variable encendida: se comprueba en la fábrica **y** en el
+   constructor de **los dos** adaptadores.
+2. **Los dos endpoints son dry-run por omisión.** Sin `commit` leen y devuelven
+   qué pasaría; con `commit` exigen además la confirmación explícita del
+   usuario o su preferencia de auto-cierre guardada. **Una sola confirmación
+   cubre el gráfico y el cierre.**
+3. **El cierre exige que el parte conste adjuntado** (F-012). Con `commit` y
+   sin gráfico responde `409` **sin tocar el ERP**: la ventana abierta no basta
+   para cerrar una reclamación sin su parte dentro.
 
 Así que la secuencia de un cierre real es, en este orden: abrir la ventana →
-llamar **sin** `commit` y **leer el dry-run** → confirmar → llamar con `commit`
-→ **cerrar la ventana**.
+`/api/adjuntar` **sin** `commit` y `/api/cerrar` **sin** `commit`, y **leer los
+dos dry-run** → confirmar → `/api/adjuntar` con `commit` → **solo si responde
+`adjuntado`**, `/api/cerrar` con `commit` → **cerrar la ventana**.
 
 ### Las variables de Sigrid, y cuál es el secreto
 
-**Las ocho las pone el despliegue**, y desde el 2026-09-03 no hay que
+**Las diez las pone el despliegue**, y desde el 2026-09-03 no hay que
 aprovisionar ninguna a mano (hallazgo **H1** del guion del bloque 8): las **dos**
-sensibles por referencia a Key Vault, las otras **seis** en claro en `$ajustes`.
+sensibles por referencia a Key Vault, las otras **ocho** en claro en `$ajustes`.
+Eran ocho hasta F-012, que añade las dos del gráfico.
 
 | App Setting | Qué es | Cómo se despliega |
 |---|---|---|
@@ -332,6 +354,15 @@ sensibles por referencia a Key Vault, las otras **seis** en claro en `$ajustes`.
 | `SIGRID_BASE_DATOS` | La base de negocio del ERP, la única escribible en la pasarela | `$ajustes`, en claro |
 | `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS` | Tiempos. La escritura no se reintenta nunca, y eso no es configurable | `$ajustes`, 35 s y 3 |
 | `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA` | Configuración de la instalación, con valor por defecto medido | `$ajustes`, `708` y `Europe/Madrid` |
+| `SIGRID_GRATIPIDE_PARTE` | **F-012** · la clase de gráfico con la que se adjunta el parte (`auxgra.ide` 35 = `PV002`, «POSTVENTA:Fotos Reparaciones»). Configuración de la instalación, como el tipo de concepto. **Cambiarla aquí a secas no basta**: la pasarela mantiene su propia lista blanca, así que es una decisión de dos dueños | `$ajustes`, `35` |
+| `GRAFICO_MAX_BYTES` | **F-012** · el tope propio del PDF, comprobado **antes** de llamar a la pasarela. **No debe superar el suyo** (10 MB): subirlo aquí solo compra un rechazo más tardío, con el fichero ya mandado por el proxy | `$ajustes`, `10485760` |
+
+**Y dos que NO son nuestras y sin las cuales `/api/adjuntar` responde 503**: la
+escritura documental de `sigrid-api` (`SIGRID_DOCUMENT_WRITE_ENABLED`,
+`SIGRID_DOCUMENT_WRITE_DATABASE` y sus listas blancas de `contip` y
+`gratipide`) es configuración **de su dueño** y es una **precondición** de esta
+feature. No se toca desde aquí: se pide. Qué se rompe si alguien la cambia está
+en `docs/INTEGRACION.md` §6.
 
 **Por qué la raíz también es un secreto de vault**, si no autentica nada: por lo
 mismo que `pg-host`. Es un **host interno**, y esos no pueden quedar escritos en

@@ -163,4 +163,8 @@ def test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints(seccion_ocho):
     """
     assert "Los seis quedan en nivel" not in seccion_ocho
     assert "Los nueve quedan en nivel" not in seccion_ocho
-    assert "Los diez quedan en nivel" in seccion_ocho
+    assert "Los diez quedan en nivel" not in seccion_ocho
+    # Eran nueve hasta F-009, diez hasta F-012 y once desde `/api/adjuntar`.
+    # La cuenta se escribe a mano a propósito: un endpoint nuevo tiene que
+    # pasar por aquí, que es lo que este test viene a exigir.
+    assert "Los once quedan en nivel" in seccion_ocho

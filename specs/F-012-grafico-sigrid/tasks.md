@@ -198,7 +198,7 @@
 
 ## Bloque 7 · Infra, despliegue y documentación
 
-- [ ] **T18**: `infra/desplegar_backend.ps1`: `SIGRID_GRATIPIDE_PARTE=35` y
+- [x] **T18**: `infra/desplegar_backend.ps1`: `SIGRID_GRATIPIDE_PARTE=35` y
       `GRAFICO_MAX_BYTES=10485760` en `$ajustes`; el mensaje de «Ventana de
       escritura» nombra el gráfico. | Verificación: `test_f010_scripts_infra.py`
       extendido: las dos aparecen en `$ajustes`, y `CIERRE_HABILITADO=false`

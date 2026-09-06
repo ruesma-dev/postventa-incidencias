@@ -576,13 +576,22 @@ def test_f010_r28_la_configuracion_sensible_de_sigrid_no_se_escribe_aqui(backend
         assert variable not in backend, f"{variable} no puede escribirse aqui"
 
     # Y las que si estan, estan sin ningun valor que no pueda versionarse: son
-    # las cinco de configuracion de la instalacion, ni una mas.
+    # las de configuracion de la instalacion, ni una mas. Eran cinco hasta
+    # F-012, que anade SIGRID_GRATIPIDE_PARTE -la clase de grafico de Posventa,
+    # `auxgra.ide` 35-. No es sensible por lo mismo que SIGRID_TIP_RECLAMACION:
+    # es un numero de configuracion del ERP, ya escrito en documentos
+    # versionados de este repositorio, que no identifica ni autentica nada.
+    #
+    # La cuenta se escribe entera a mano A PROPOSITO: una variable SIGRID_*
+    # nueva tiene que pasar por aqui, y la que un dia sea sensible se topara
+    # con este test antes de llegar al script.
     assert set(re.findall(r"\bSIGRID_[A-Z_]+", backend)) == {
         "SIGRID_BASE_DATOS",
         "SIGRID_TIMEOUT_S",
         "SIGRID_REINTENTOS",
         "SIGRID_TIP_RECLAMACION",
         "SIGRID_ZONA_HORARIA",
+        "SIGRID_GRATIPIDE_PARTE",
     }
 
 
@@ -1583,3 +1592,61 @@ def test_f009_paso0_no_escribe_en_azure_por_su_cuenta(paso0):
     una palabra.
     """
     assert PATRON_ESCRITURA_AZ.findall(sin_comentarios(paso0)) == []
+
+
+# --------------------------------------------------------------------------
+# F-012 · las dos App Settings del gráfico, y NINGÚN interruptor nuevo (T18)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("variable", "valor"),
+    [("SIGRID_GRATIPIDE_PARTE", "35"), ("GRAFICO_MAX_BYTES", "10485760")],
+)
+def test_f012_t18_el_despliegue_fija_las_dos_variables_del_grafico(
+    backend, variable, valor
+):
+    """T18 · fijadas aquí y no solo en `settings.py`.
+
+    Es la misma razón por la que `PG_PORT` o `GRAPH_REINTENTOS` están: la
+    configuración desplegada tiene que poder leerse entera en el portal sin
+    abrir el código. Y una de las dos —la clase de gráfico— es la que habría
+    que cambiar si Posventa dice que `PV002` no es la correcta, con la ventana
+    de escritura abierta y el humano delante: la peor hora para descubrir que
+    la variable no existe.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert f"{variable}={valor}" in cuerpo
+
+
+def test_f012_t18_el_despliegue_no_anade_ningun_interruptor_nuevo(backend):
+    """D-B · **una sola ventana de escritura en el ERP**.
+
+    No hay `GRAFICO_HABILITADO`, y no puede haberlo: un segundo interruptor
+    solo podría crear dos estados, y los dos son malos —o se vuelve a cerrar
+    sin gráfico, que es la anomalía que F-012 elimina, o todos los cierres
+    responden 409 por una configuración a medias—.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert "GRAFICO_HABILITADO" not in cuerpo
+    assert "CIERRE_HABILITADO=false" in cuerpo
+    assert "CIERRE_HABILITADO=true" not in cuerpo
+
+
+def test_f012_t18_el_resumen_del_despliegue_nombra_tambien_el_grafico(backend):
+    """La línea que lee quien acaba de desplegar tiene que decir qué está
+    cerrado.
+
+    Decir «archivo y cierre» cuando además está cerrado el gráfico dejaría a
+    quien la lea creyendo que `/api/adjuntar` sí escribe.
+    """
+    resumen = next(
+        linea
+        for linea in backend.splitlines()
+        if "Ventana de escritura" in linea
+    )
+
+    assert "GRAFICO" in resumen.upper()
+    assert "CERRADA" in resumen.upper()

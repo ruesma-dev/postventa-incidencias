@@ -463,6 +463,23 @@ $ajustes = @(
     # y nadie lo notaria hasta el dia en que hiciera falta reconstruir cuando se
     # cerro algo.
     "SIGRID_ZONA_HORARIA=Europe/Madrid",
+    # F-012 - el parte como GRAFICO de la incidencia. Estas dos NO son un
+    # candado ni un secreto: son parametros, y no hay un interruptor nuevo. La
+    # ventana de escritura del ERP es UNA, `CIERRE_HABILITADO`, y cubre el
+    # grafico Y el cierre, porque el grafico es la primera mitad del cierre:
+    # el mismo sistema, el mismo dueno, la misma decision. Un segundo
+    # interruptor solo podria crear dos estados, y los dos son malos.
+    #
+    # La clase de grafico de Posventa (`auxgra.ide` 35 = PV002,
+    # "POSTVENTA:Fotos Reparaciones"). Es configuracion de la instalacion,
+    # como SIGRID_TIP_RECLAMACION, y la pasarela mantiene ademas su propia
+    # lista blanca: cambiarlo aqui a secas no basta.
+    "SIGRID_GRATIPIDE_PARTE=35",
+    # El tope propio del PDF, comprobado ANTES de llamar a la pasarela. NO
+    # debe superar el suyo (SIGRID_DOCUMENT_MAX_BYTES, 10 MB): subirlo aqui
+    # solo compra un rechazo mas tardio, con 13 MB ya mandados por el proxy.
+    # Un parte firmado real ocupa 242.534 bytes, asi que sobra margen.
+    "GRAFICO_MAX_BYTES=10485760",
     "AZURE_CLIENT_ID=$identidadCliente"
 )
 
@@ -513,7 +530,7 @@ Write-Host "---------"
 Write-Host ("  Function App          : {0}" -f $PostventaFunction)
 Write-Host ("  Identidad             : {0} (con '{1}' sobre el vault)" -f $PostventaIdentidad, $ROL_KEYVAULT)
 Write-Host ("  App Settings          : {0}, de las que {1} son referencias" -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)
-Write-Host ("  Ventana de escritura  : CERRADA (archivo Y cierre en el ERP)")
+Write-Host ("  Ventana de escritura  : CERRADA (archivo, y GRAFICO Y cierre en el ERP)")
 Write-Host ""
 Write-Host "Ahora, a mano (T14), en este orden:"
 Write-Host "  1. GET /api/health responde 200."

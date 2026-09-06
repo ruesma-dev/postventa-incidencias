@@ -106,7 +106,7 @@
 
 ## Bloque 4 · El paso del pipeline
 
-- [ ] **T9**: Crear `application/pipelines/paso_grafico.py` con el orden de
+- [x] **T9**: Crear `application/pipelines/paso_grafico.py` con el orden de
       `design.md` §6, reutilizando `resolver_login_de_sigrid` y
       `exigir_autorizacion_para_escribir` de `paso_cierre` (esta segunda pasa
       a pública en T12; hasta entonces, importar la privada y dejarlo anotado
@@ -123,7 +123,7 @@
       seguro», y **no** hay segunda llamada), R42, R43, R47 (`GraficoSinTraza`
       si el ERP escribió y la traza no).
 
-- [ ] **T10**: Añadir `grafico` y `traza_grafico` a `ContextoParte`. |
+- [x] **T10**: Añadir `grafico` y `traza_grafico` a `ContextoParte`. |
       Verificación: los tests de T9 y T12 los usan; `test_f002_*` y
       `test_f006_*` siguen en verde (no cambia ninguna firma existente).
 

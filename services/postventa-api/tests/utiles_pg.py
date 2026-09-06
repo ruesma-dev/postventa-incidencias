@@ -206,6 +206,7 @@ class RepositorioEnMemoria:
         cola: Sequence[Any] = (),
         traza_grafico: Any = None,
         fallo_al_guardar_grafico: Exception | None = None,
+        estado_que_falla: Any = None,
     ) -> None:
         from domain.models.persistencia import ResultadoGuardado
 
@@ -222,6 +223,13 @@ class RepositorioEnMemoria:
         self.traza_grafico = traza_grafico
         #: F-012 · un fallo **solo** al guardar la traza del gráfico (R47).
         self.fallo_al_guardar_grafico = fallo_al_guardar_grafico
+        #: F-012 · acota ese fallo a un estado concreto. `None` = a todos.
+        #:
+        #: Hace falta para separar dos casos que el borde trata de forma
+        #: opuesta: la base caída **antes** de escribir en el ERP (un 503
+        #: honesto) y la base caída **después** (`GraficoSinTraza`, un 500, con
+        #: las tres filas ya dentro de Sigrid).
+        self.estado_que_falla = estado_que_falla
         #: Los límites con los que se ha llamado a la cola, en orden.
         self.limites: list[int] = []
         self.cola = tuple(cola)
@@ -277,7 +285,9 @@ class RepositorioEnMemoria:
         que falla es la base. Con el `fallo` general no se podría llegar ahí:
         reventaría en la traza del dry-run, mucho antes.
         """
-        if self.fallo_al_guardar_grafico is not None:
+        if self.fallo_al_guardar_grafico is not None and (
+            self.estado_que_falla is None or traza.estado == self.estado_que_falla
+        ):
             raise self.fallo_al_guardar_grafico
         resultado = self._o_fallar()
         self.graficos.append(traza)

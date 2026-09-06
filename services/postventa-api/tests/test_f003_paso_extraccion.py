@@ -218,6 +218,13 @@ def test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas():
     # número de estado de Sigrid**, que es justo lo que la línea de abajo
     # existe para impedir.
     #
+    # F-012 le añade otros dos, y los dos son entidades de dominio ya
+    # existentes: `grafico` (el `ResultadoGrafico` que deja el paso 7a) y
+    # `traza_grafico` (la `TrazaGrafico` que `paso_cierre` **lee del
+    # repositorio** para su precondición, R2 y R49). Ni un byte del PDF, ni un
+    # `cod` del ERP suelto, ni el login de nadie: eso es lo que esta línea
+    # existe para impedir.
+    #
     # Lo que este test sigue impidiendo es exactamente lo de antes: que
     # aparezcan aquí una ruta de SharePoint en crudo, un identificador de base
     # de datos (F-005) o el estado de Sigrid (F-008/F-009). Quien añada uno
@@ -228,6 +235,8 @@ def test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas():
         "lectura_firma",
         "validacion",
         "archivo",
+        "grafico",
+        "traza_grafico",
         "cierre",
         "avisos",
     }

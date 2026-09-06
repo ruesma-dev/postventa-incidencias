@@ -48,7 +48,7 @@ from domain.models.errores import (
     GraficoNoEsPdf,
 )
 from domain.models.nombrado import nombre_de_archivo
-from domain.models.persistencia import EstadoGrafico
+from domain.models.persistencia import EstadoGrafico, TrazaGrafico
 
 __all__ = [
     "CODIGOS_PASARELA_PRECONDICION",
@@ -221,16 +221,25 @@ class RespuestaGrafico:
 
 @dataclass(frozen=True)
 class ResultadoGrafico:
-    """Qué pasó al adjuntar: el plan, el estado y la respuesta de la pasarela.
+    """Qué pasó al adjuntar: el estado, el plan y la respuesta de la pasarela.
 
     Lleva **el plan entero** y no solo el estado porque quien recibe la
     respuesta necesita ver el dry-run —nombre, clase, tamaño, `sha256`, avisos—
     antes de confirmar (R21). La traza que se guarda en la base es otra cosa y
     guarda menos: el `oid` y nunca el login (R44).
+
+    `plan` es **anulable**, y eso no es laxitud: es R24. Cuando la traza local
+    ya dice `adjuntado`, el paso responde **sin llamar a nadie** —ni dry-run, ni
+    commit, ni bytes—, así que no hay reclamación leída con la que construir un
+    plan. En ese caso lo que se devuelve es `traza`, que es de dónde salió la
+    respuesta. Inventar un plan a partir de la traza sería fabricar un dry-run
+    que nadie ha ejecutado.
     """
 
-    plan: PlanDeGrafico
     estado: EstadoGrafico
+    plan: PlanDeGrafico | None = None
+    #: La traza local con la que se resolvió, cuando se resolvió con ella (R24).
+    traza: TrazaGrafico | None = None
     respuesta: RespuestaGrafico | None = None
     motivo: str | None = None
     adjuntado_at_utc: datetime | None = None

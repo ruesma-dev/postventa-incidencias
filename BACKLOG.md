@@ -3,17 +3,15 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **23 features**, 13 abiertas, 10 terminadas.
+Resumen: **22 features**, 12 abiertas, 10 terminadas.
 
-En curso: **F-009**.
-
-Bloqueadas: **F-023**.
+Bloqueadas: **F-009**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | en curso | critico | `feature/F-009-cierre-sigrid` |
+| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | bloqueada | critico | `feature/F-009-cierre-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | spec lista | critico | `feature/F-012-grafico-sigrid` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
@@ -25,7 +23,6 @@ Bloqueadas: **F-023**.
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 | F-022 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 22 | pendiente | estandar | `feature/F-022-suite-barrido-cacheado` |
-| F-023 | Asociar el parte a la reclamación como gráfico por URL, sin tocar la base documental | 23 | bloqueada | critico | `feature/F-023-grafico-url` |
 
 ## Terminadas
 
@@ -46,7 +43,7 @@ Bloqueadas: **F-023**.
 
 ### F-009 · Cierre de la incidencia en Sigrid (solo estado)
 
-estado **en curso** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
+estado **bloqueada** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
 
 Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.
 
@@ -115,12 +112,6 @@ Decisión **D4 de F-019**, tomada por el humano el 2026-08-26 y aplazada a prop�
 estado **pendiente** · prioridad 22 · rigor `estandar` · SDD sí · rama `feature/F-022-suite-barrido-cacheado`
 
 El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco ficheros que recorren el árbol del repositorio fichero a fichero, y repiten el mismo barrido en cada test: test_f003_arquitectura.py cuesta 12,7 s él solo, un tercio de la suite entera. Leer el árbol UNA vez en una fixture de sesión y que cada test consulte el resultado dejaría la suite en torno a 20 s. Medido en progress/explore_F-009_timeouts.md (medición 10) el 2026-09-02, a propósito de los timeouts de la campaña de mutación de F-009: con la suite a 20 s la campaña paralela volvería a caber de sobra en el tope de 120 s por mutante. Beneficia además a cada init.sh de cada sesión. OJO: toca tests de F-003, F-005, F-006 y F-009, features ya cerradas, con el riesgo de aflojar sin querer una comprobación de arquitectura; por eso lleva spec propia y review, y no se mete dentro de otra feature.
-
-### F-023 · Asociar el parte a la reclamación como gráfico por URL, sin tocar la base documental
-
-estado **bloqueada** · prioridad 23 · rigor `critico` · SDD sí · rama `feature/F-023-grafico-url`
-
-Al cerrar una incidencia, dejar la reclamación con su parte firmado asociado en Sigrid, registrando el gráfico como REFERENCIA al PDF que este servicio ya archiva en SharePoint en vez de incrustar el binario. Es la vía que NO depende del dueño de sigrid-api: escribe solo en la base de negocio (metadatos en gra + el enlace rcg), y la documental —única escribible para el binario y bloqueada a propósito— no se toca. El binario sigue siendo F-012, que queda blocked hasta que su dueño abra esa base; el humano lo decidió así el 2026-09-02. POR QUÉ IMPORTA: F-009 cierra con UPDATE con.est directo y sin ningún COUNT sobre rcg (R20, deliberado), así que el proceso nativo 'Cerrar parte' no nos frena; pero deja reclamaciones en CER sin ninguna fila en rcg, anomalía firmada como RIESGO ACEPTADO en design.md §2 de F-009 y que no ha ocurrido ni una vez en los 2.365 cierres desde 2023. Esta feature la hace desaparecer. LO QUE YA ESTÁ MEDIDO (progress/explore_grafico_url.md, 2026-09-02): el enlace rcg es idéntico venga el binario de donde venga; sigrid-api permitiría los dos INSERT sobre la base de negocio con la misma técnica de reserva de ide que ya usa F-009 para dbo.log; y OJO, los 13.450 gráficos de posventa NO son de tipo URL —vin = 3 con ima vacío significa 'el binario está en la otra base'—, así que no hay ni un precedente del que copiar el formato y en el diccionario de Sigrid la tabla gra ni siquiera tiene columna url. SEGUNDO CAMINO SIN EXPLORAR: el módulo documental dog/condog, que sí tiene columna url nativa y 'código repositorio externo'; el precio es que en Sigrid un documento es a su vez un concepto y habría que crear también su fila en con.
 
 ### F-001 · Esqueleto del monorepo y /health
 

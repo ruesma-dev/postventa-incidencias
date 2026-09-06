@@ -1,6 +1,32 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 (tarde) · **«Ok a todo»: F-012 va primero, F-023 cancelada, F-009 espera**
+>
+> El humano aprobó las cuatro recomendaciones de la spec de F-012 (§14):
+> **P1** `gratipide` 35 se mantiene (confirmar con Posventa); **P3** orden
+> **(b)**, F-012 antes que el bloque 8 de F-009; **P4** F-023 **cancelada**
+> (ficha retirada de `features.json`, conservada en `progress/history.md`);
+> **P5** hay que preparar un parte de la obra 404 antes de abrir la ventana.
+>
+> - **F-009 pasa a `blocked`** con motivo explícito en su ficha: no le falta
+>   código, le falta ejecutar el bloque 8, y eso va después de desplegar
+>   F-012. Al reanudarla: Paso 0 y corregir el guion según design §13(b).
+> - **F-012 sigue `spec_ready`**. Se pone `in_progress` al lanzar el
+>   implementer, en la rama `feature/F-012-grafico-sigrid` creada **desde
+>   `feature/F-009-cierre-sigrid`** (necesita el código del cierre, que no
+>   está en `dev`).
+> - **Pendiente de aclarar con el humano antes de implementar**: pidió revisar
+>   el correo de Alicia del 2026-08-18 con la guía de cierre por si el
+>   cierre debe registrar «toda la información pertinente» y no solo el
+>   gráfico. Revisado el correo, la guía reconvertida con `markitdown` y sus
+>   seis capturas: la guía solo prescribe renombrar, importar el gráfico
+>   (Descripción `PARTE FIRMADO`, Tipo `PV002`) y `Procesos → 3. Cerrar
+>   parte`; no rellena ningún otro campo de la reclamación. No hay otro
+>   correo ni mensaje de Teams con instrucciones. `docs/referencia/01_cierre_incidencia_sigrid.md`
+>   es fiel al original. Si hay más información que registrar, no está
+>   escrita en ningún sitio: hay que preguntársela al humano.
+
 > ## Estado al 2026-09-06 · **F-012 desbloqueada y con spec: `spec_ready`, a la espera de la aprobación del humano**
 >
 > El endpoint `POST /api/sigrid/concepto-grafico` existe (`sigrid-api` F-004,

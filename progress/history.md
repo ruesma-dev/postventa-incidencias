@@ -538,6 +538,47 @@ llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
 
 ---
 
+## F-023 · Asociar el parte como gráfico por URL — CANCELADA el 2026-09-06
+
+Decisión del humano el 2026-09-06, a propuesta de la spec de F-012 (§13 y §14
+P4). F-023 nació el 2026-09-02 como «la vía que no depende del dueño de
+`sigrid-api`», cuando la base documental estaba cerrada a la escritura. Ese
+motivo desapareció: `sigrid-api` expone desde el 2026-09-06
+`POST /api/sigrid/concepto-grafico` y F-012 incrusta el binario por esa vía.
+Se retira de `harness/features.json` para que el arnés no la arrastre como
+`blocked` sin nadie esperando nada; su ficha completa queda aquí.
+
+**Lo que se conserva como conocimiento**: `progress/explore_grafico_url.md`
+(la investigación, con su resultado negativo: los 13.450 gráficos de posventa
+no son de tipo URL y `gra` no tiene columna `url`),
+`infra/13_caracterizacion_grafico_url.ps1` (Q1, Q3, Q4, Q5, Q8 y Q9, solo
+lectura, nunca ejecutado) y `progress/peticion_posventa_prueba_url_F-023.md`
+(la petición de la prueba manual Q10, que ya no hace falta enviar).
+
+Ficha retirada, tal como estaba:
+
+```json
+{
+  "id": "F-023",
+  "title": "Asociar el parte a la reclamación como gráfico por URL, sin tocar la base documental",
+  "description": "Al cerrar una incidencia, dejar la reclamación con su parte firmado asociado en Sigrid, registrando el gráfico como REFERENCIA al PDF que este servicio ya archiva en SharePoint en vez de incrustar el binario. Es la vía que NO depende del dueño de sigrid-api: escribe solo en la base de negocio (metadatos en gra + el enlace rcg), y la documental —única escribible para el binario y bloqueada a propósito— no se toca. El binario sigue siendo F-012, que queda blocked hasta que su dueño abra esa base; el humano lo decidió así el 2026-09-02. POR QUÉ IMPORTA: F-009 cierra con UPDATE con.est directo y sin ningún COUNT sobre rcg (R20, deliberado), así que el proceso nativo 'Cerrar parte' no nos frena; pero deja reclamaciones en CER sin ninguna fila en rcg, anomalía firmada como RIESGO ACEPTADO en design.md §2 de F-009 y que no ha ocurrido ni una vez en los 2.365 cierres desde 2023. Esta feature la hace desaparecer. LO QUE YA ESTÁ MEDIDO (progress/explore_grafico_url.md, 2026-09-02): el enlace rcg es idéntico venga el binario de donde venga; sigrid-api permitiría los dos INSERT sobre la base de negocio con la misma técnica de reserva de ide que ya usa F-009 para dbo.log; y OJO, los 13.450 gráficos de posventa NO son de tipo URL —vin = 3 con ima vacío significa 'el binario está en la otra base'—, así que no hay ni un precedente del que copiar el formato y en el diccionario de Sigrid la tabla gra ni siquiera tiene columna url. SEGUNDO CAMINO SIN EXPLORAR: el módulo documental dog/condog, que sí tiene columna url nativa y 'código repositorio externo'; el precio es que en Sigrid un documento es a su vez un concepto y habría que crear también su fila en con.",
+  "acceptance": [
+    "El gráfico queda vinculado a la reclamación y el parte se abre desde la UI de Sigrid",
+    "No se escribe ni una fila en la base documental: todas las escrituras van a la de negocio",
+    "El formato del registro (vin y campo destino) es el que Sigrid escribe de verdad, medido contra el ERP y nunca inferido",
+    "Cerrar dos veces la misma incidencia no duplica el gráfico ni su enlace",
+    "Un fallo al asociar el gráfico no deja la incidencia cerrada a medias, ni al revés",
+    "bash harness/init.sh en verde"
+  ],
+  "status": "blocked",
+  "sdd": true,
+  "rigor": "critico",
+  "priority": 23,
+  "branch": "feature/F-023-grafico-url",
+  "blocked_by": "Falta UNA medida que ningún documento puede dar: qué escribe Sigrid al usar 'Importa -> Asociar URL de Internet'. La resuelve Posventa (Alicia Echevarría) en cinco minutos haciéndolo una vez a mano sobre una reclamación de prueba y cerrándola después con 'Procesos -> 3. Cerrar parte'; nosotros solo leemos la fila resultante, sin escribir nada. Hasta entonces no se diseña: F-008 ya advirtió que la combinación de vin/tex/nom no se debe diseñar sobre suposiciones. Consultas y guion de la prueba preparados en infra/."
+}
+```
+
 ## F-008 · Modelo de posventa en Sigrid: confirmar contra el ERP — CERRADA el 2026-08-26
 
 **Cerrada.** Rama `feature/F-008-modelo-sigrid`, trabajada en worktree aislado

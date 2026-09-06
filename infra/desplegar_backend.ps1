@@ -476,7 +476,7 @@ $ajustes = @(
     # lista blanca: cambiarlo aqui a secas no basta.
     "SIGRID_GRATIPIDE_PARTE=35",
     # El tope propio del PDF, comprobado ANTES de llamar a la pasarela. NO
-    # debe superar el suyo (SIGRID_DOCUMENT_MAX_BYTES, 10 MB): subirlo aqui
+    # debe superar el de la pasarela (10 MB, su tope documental): subirlo aqui
     # solo compra un rechazo mas tardio, con 13 MB ya mandados por el proxy.
     # Un parte firmado real ocupa 242.534 bytes, asi que sobra margen.
     "GRAFICO_MAX_BYTES=10485760",

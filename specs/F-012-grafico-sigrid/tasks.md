@@ -391,7 +391,7 @@
 
 ## Bloque 10 · Cierre
 
-- [ ] **T33**: Campaña de mutación (`python -m harness.mutacion --feature
+- [x] **T33**: Campaña de mutación (`python -m harness.mutacion --feature
       F-012`, con los 8 workers de `harness/rigor.json` o `--workers 1` si la
       máquina satura, **anotando el nº de workers** en el informe y en
       `progress/current.md`) y análisis de los supervivientes. | Verificación:

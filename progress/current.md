@@ -1,6 +1,40 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 (noche, 2) · **T33 hecha: los 35 supervivientes de la mutación, cazados o justificados**
+>
+> Se han analizado **uno a uno** los 35 supervivientes de la primera pasada de
+> la campaña de mutación de F-012: **30 eran huecos reales de test** y **5 son
+> equivalentes** (cuatro valores por omisión que ningún sitio de producción
+> llega a usar y un campo que nadie lee aguas abajo), con la justificación
+> escrita y comprobable con un `grep`. **Aceptarlas es del humano**: es lo
+> que pide, literalmente, la verificación de T33.
+>
+> **22 tests nuevos y dos ampliados**, sin tocar ni una línea de producción:
+> los 30 eran huecos de test, no defectos. Antes de relanzar la campaña se
+> comprobó cada mutante por separado, a mano: **los 30 mueren**.
+>
+> **Segunda pasada**: **101 mutantes, 96 muertos, 5 supervivientes, 0 timeouts** en 922,8 s con 8 workers, y los cinco son exactamente los cinco equivalentes. Informe con las dos pasadas y el análisis
+> completo en `progress/mutacion_F-012.md` —**sin ningún `PENDIENTE`**— y la
+> tabla resumen en `progress/impl_F-012.md` §7.2.
+>
+> Los dos hallazgos que valía la pena tener: el `or` de la puerta de R14 en
+> `paso_grafico.py:273` (con `and`, un parte **no apto** pasaba si el destino
+> decía `archivo_y_cierre`, y el destino llega del formulario) y los cuatro
+> `bool(datos.get(..., False))` de `graficos.py` (con `True` por omisión, un
+> `200` con un cuerpo que no es el del contrato se leía como gráfico
+> adjuntado).
+>
+> `bash harness/init.sh` **en verde**: 2.054 tests en `api` (13 saltados),
+> puerta de cobertura **99,0 % de 1.079 líneas cambiadas**, `ruff` en **58
+> avisos, la deuda previa exacta**. **T33 marcada** en `tasks.md`.
+>
+> **NO se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint.
+>
+> Sigue pendiente lo mismo de antes: **T34** (`init.sh`, que el encargo reserva
+> al líder) y el **bloque 9** contra el ERP, con su guion sin escribir.
+
 > ## Estado al 2026-09-06 (noche) · **F-012 implementada: T1–T24 hechas, `init.sh` en verde, bloque 9 y mutación sin ejecutar**
 >
 > El implementer ha ejecutado **T1 a T24** de `specs/F-012-grafico-sigrid/tasks.md`

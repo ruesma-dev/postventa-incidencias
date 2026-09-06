@@ -345,15 +345,19 @@ analizador de PowerShell, pero **no se han lanzado**.
 
 | Evidencia | Valor medido |
 |---|---|
-| **Tests ejecutados** | **2.032 pasan, 13 se saltan** en el servicio `api`; **130 pasan** en `front` (que incluye el puente a `node --test`: **187** tests de JavaScript). Ni uno rojo |
-| **De ellos, propios de F-012** | **464**: 421 en `api`, 26 en `tests/test_f012_front.py` y 17 en `tests_js/grafico.test.js` |
-| **Cobertura de las líneas cambiadas** | **`[OK] PUERTA COBERTURA: 98.7% de 1079 líneas cambiadas cubiertas (1065/1079, umbral 80%, nivel critico)`** |
-| **Tiempo de ejecución de la suite** | `api` **32,9 s**; `front` **1,9 s** (con los 187 de JS en 0,52 s dentro) |
-| **Mutantes generados y supervivientes** | **NO EJECUTADA. Es T33, y el encargo la reserva al humano o al líder.** Ver 7.1 |
-| **Nº de workers de la campaña** | N/A por lo mismo. `harness/rigor.json` declara **8** |
+| **Tests ejecutados** | **2.054 pasan, 13 se saltan** en el servicio `api`; **130 pasan** en `front` (que incluye el puente a `node --test`: **187** tests de JavaScript). Ni uno rojo. *(Eran 2.032 antes de T33: los 22 nuevos son los que matan a los supervivientes de la mutación.)* |
+| **De ellos, propios de F-012** | **486**: 443 en `api`, 26 en `tests/test_f012_front.py` y 17 en `tests_js/grafico.test.js` |
+| **Cobertura de las líneas cambiadas** | **`[OK] PUERTA COBERTURA: 99.0% de 1079 líneas cambiadas cubiertas (1068/1079, umbral 80%, nivel critico)`** *(era 98,7 %: los tests de T33 alcanzaron tres líneas que nadie ejercitaba, entre ellas la primera rama de `_exigir_colgado`)* |
+| **Tiempo de ejecución de la suite** | `api` **39,65 s** lanzando `pytest` a mano y **74,75 s** dentro de `bash harness/init.sh`, que además mide cobertura; `front` **1,9 s** (con los 187 de JS en 0,52 s dentro) |
+| **Mutantes generados y supervivientes** | **101 mutantes, 96 muertos, 5 supervivientes, 0 timeouts** en 922,8 s (segunda pasada, con los tests de T33 dentro). La primera dejó **35 supervivientes**: 30 eran huecos reales de test —cazados uno a uno— y los **5 que quedan son equivalentes, justificados uno a uno** en `progress/mutacion_F-012.md`. Alcance acotado con `--base feature/F-009-cierre-sigrid` para no volver a mutar código de F-009, que ya pasó su campaña. Detalle en §7.2 |
+| **Nº de workers de la campaña** | **8**, los que declara `harness/rigor.json`, en las dos pasadas |
 | **ruff** | **58 avisos, exactamente la deuda previa**: F-012 no añade ni uno |
 
 ### 7.1 · La campaña de mutación: qué falta y qué se sabe ya
+
+> **Escrito antes de T33 y conservado tal cual**, porque su cálculo de alcance
+> sigue siendo cierto y explica por qué la campaña se acotó con `--base`. Lo
+> que pasó al ejecutarla está en **§7.2**, justo debajo.
 
 `CHECKPOINTS.md` C4 bis exige la campaña en nivel `critico`, y **no está
 hecha**. El motivo es explícito y no es una omisión: el encargo del líder dice
@@ -414,6 +418,117 @@ exacto (`test_f012_r18_justo_en_el_tope_pasa`,
 `test_f012_r18_un_byte_de_mas_aborta`). No se dan por buenos: se analizan
 cuando la campaña corra.
 
+### 7.2 · T33 · la campaña de mutación, ejecutada y con los supervivientes cazados
+
+`§7.1` se escribió **antes** de que la campaña existiera y se conserva como
+estaba, porque su cálculo de alcance sigue siendo cierto. Esto es lo que pasó al
+ejecutarla.
+
+**Primera pasada** (la lanzó el líder, acotando la base a la rama de F-009 para
+no volver a mutar código que ya pasó su propia campaña):
+
+```bash
+python -m harness.mutacion --feature F-012 --base feature/F-009-cierre-sigrid
+```
+
+| Métrica | Primera pasada | Segunda pasada |
+|---|---:|---:|
+| Mutantes generados y evaluados | 101 | 101 |
+| Muertos | 66 | 96 |
+| **Supervivientes** | **35** | **5** |
+| Timeouts | 0 | 0 |
+| Workers | 8 | 8 |
+| Tiempo de reloj | 853,8 s | 922,8 s |
+
+Los 35 se analizaron **uno a uno**: **30 eran huecos reales de test** y **5 son
+equivalentes**. Antes de relanzar la campaña se comprobó cada uno por separado
+—aplicando la mutación a mano y corriendo la suite del servicio— para no
+depender de un único recuento final: **los 30 mueren, ninguno sobrevive**.
+
+#### Los 5 equivalentes, y por qué
+
+Cuatro son **valores por omisión que ningún sitio de producción llega a usar**,
+porque todos los constructores pasan el argumento; el quinto es un campo que
+nadie lee aguas abajo. Las tres comprobaciones son de una línea:
+
+```bash
+grep -rn "GraficoFallido(" --include=*.py services/postventa-api | grep -v tests
+# -> 3 sitios, los tres con reintento_seguro=True explícito   (superviviente 11)
+grep -rn "PlanDeGrafico(" --include=*.py services/postventa-api | grep -v tests
+# -> 1 sitio, `_plan`, que pasa siempre los dos campos     (supervivientes 15, 16)
+grep -rn "TrazaGrafico(" --include=*.py services/postventa-api | grep -v tests
+# -> 2 sitios, los dos con idempotente explícito              (superviviente 22)
+```
+
+Y el 32 (`confianza_observaciones=0` en `adjuntar.py`): va en una
+`ResultadoValidacion` **reconstruida** de la que `paso_grafico` solo lee
+`veredicto` y `destino`; no se persiste, y `_serializar` devuelve ocho claves
+fijas que no la incluyen. Ningún camino la lee.
+
+> **La distinción con el superviviente 30** —`confirmado: str | bool = False`,
+> que sí lleva test— no es caprichosa: ese valor por omisión **sí se ejecuta**
+> cuando alguien llama a `adjuntar_grafico` sin ese argumento, y su contrato
+> —escrito en el docstring del módulo— dice que quien llame sin haber leído el
+> contrato no escribe nada en el ERP de producción.
+
+#### Los 30 reales, uno a uno
+
+| # | Dónde | Mutación | Test que lo mata |
+|---:|---|---|---|
+| 1 | `paso_grafico.py:212` | `cerrable=True` → `False` | `test_f012_r21_el_plan_del_dry_run_correcto_dice_cerrable_y_no_cerrada` |
+| 2 | `paso_grafico.py:273` | `or` → `and` en la puerta de R14 | `test_f012_r14_un_veredicto_que_no_es_apto_no_pasa_aunque_el_destino_lo_sea` + `..._un_destino_que_no_es_archivo_y_cierre_no_pasa_aunque_sea_apto` |
+| 3 | `paso_grafico.py:368` | `cerrable=True` → `False` (plan del rechazo del dry-run) | `test_f012_r33_un_rechazo_del_dry_run_no_dice_que_la_reclamacion_no_valga` |
+| 4 | `paso_grafico.py:402` | `cerrable=False` → `True` (ya cerrada) | `test_f012_r16_el_plan_de_una_reclamacion_ya_cerrada_lo_dice_entero` |
+| 5 | `paso_grafico.py:402` | `ya_cerrada=True` → `False` | el mismo, y `test_f012_r16_una_reclamacion_ya_cerrada_se_devuelve_en_verde_y_lo_dice` |
+| 6 | `paso_grafico.py:542` | `reintento_seguro=True` → `False` (R26) | `test_f012_r26_r29_una_respuesta_que_no_cuelga_nada_no_se_da_por_adjuntada` |
+| 7 | `paso_grafico.py:551` | `reintento_seguro=True` → `False` (R27) | `test_f012_r27_un_commit_con_filas_distintas_de_tres_es_un_error` (ampliado) |
+| 8 | `paso_grafico.py:567` | `_plan(ya_cerrada=False)` → `True` | `test_f012_r21_el_plan_del_dry_run_correcto_dice_cerrable_y_no_cerrada` |
+| 9 | `paso_grafico.py:568` | `_plan(idempotente_previsto=False)` → `True` | `test_f012_r16_el_plan_de_una_reclamacion_ya_cerrada_lo_dice_entero` |
+| 10 | `paso_grafico.py:632` | traza `idempotente ... else False` → `True` | `test_f012_r42_la_traza_del_dry_run_no_afirma_que_el_grafico_ya_estuviera` |
+| 12 | `grafico.py:92` | `LONGITUD_MAXIMA_NOM = 255` → `256` | `test_f012_r9_un_nombre_de_256_caracteres_ya_no_cabe` |
+| 13 | `grafico.py:138` | `PeticionGrafico` deja de ser `frozen` | `test_f012_r20_r21_las_piezas_del_grafico_no_se_pueden_modificar[peticion]` |
+| 14 | `grafico.py:166` | `PlanDeGrafico` deja de ser `frozen` | el mismo, `[plan]` |
+| 17 | `grafico.py:193` | `RespuestaGrafico` deja de ser `frozen` | el mismo, `[respuesta]` |
+| 18 | `grafico.py:222` | `ResultadoGrafico` deja de ser `frozen` | el mismo, `[resultado]` |
+| 19 | `grafico.py:310` | `len(usu) >` → `>=` | `test_f012_r12_un_login_de_exactamente_24_caracteres_si_cabe` |
+| 20 | `grafico.py:320` | `len(nom) >` → `>=` | `test_f012_r9_un_nombre_de_exactamente_255_caracteres_si_cabe` |
+| 21 | `persistencia.py:185` | `TrazaGrafico` deja de ser `frozen` | `test_f012_r20_r21_las_piezas_del_grafico_no_se_pueden_modificar[traza]` |
+| 23 | `graficos.py:129` | `monotonic() - arranque` → `+` | `test_f012_el_log_registra_la_duracion_real_de_la_llamada` |
+| 24 | `graficos.py:255` | `familia == "reintentable"` → `!=` | `test_f012_r31_r34_un_codigo_reintentable_y_uno_desconocido_no_dicen_lo_mismo` |
+| 25 | `graficos.py:325` | `datos.get("ok", False)` → `True` | `test_f012_r26_una_respuesta_sin_los_campos_del_contrato_no_es_un_exito` |
+| 26 | `graficos.py:326` | `committed` por omisión → `True` | el mismo |
+| 27 | `graficos.py:327` | `idempotente` por omisión → `True` | el mismo |
+| 28 | `graficos.py:328` | `dry_run` por omisión → `True` | el mismo |
+| 29 | `graficos.py:330` | `bytes ... or 0` → `or 1` | el mismo |
+| 30 | `adjuntar.py:96` | `confirmado = False` → `True` | `test_f012_r23_sin_el_campo_confirmado_no_se_escribe_nada` |
+| 31 | `adjuntar.py:213` | `_bandera`: `return True` → `False` | `test_f012_r57_r23_las_banderas_admiten_tambien_el_booleano_de_python` |
+| 33 | `adjuntar.py:280` | `filas_afectadas ... else 0` → `1` | `test_f012_r16_una_reclamacion_ya_cerrada_se_devuelve_en_verde_y_lo_dice` |
+| 34 | `adjuntar.py:313` | `_idempotente`: `return False` → `True` | el mismo |
+| 35 | `adjuntar.py:347` | `"ya_estaba": False` → `True` | `test_f012_r21_el_dry_run_normal_no_dice_que_el_parte_ya_estuviera_dentro` |
+
+El análisis completo, con el porqué de cada uno y no solo el nombre del test,
+está en **`progress/mutacion_F-012.md`**, que ya no tiene ni un `PENDIENTE`.
+
+#### Los dos hallazgos que valía la pena tener
+
+1. **`paso_grafico.py:273`, el `or` de la puerta de R14.** Con `and`, un parte
+   cuyo veredicto **no** fuera `apto` pasaba la puerta con solo que el destino
+   dijera `archivo_y_cierre` — y el destino llega en el formulario, desde
+   fuera. Los dos tests que había cambiaban las dos condiciones a la vez, así
+   que ninguno veía la diferencia. Es exactamente el fallo que R14 existe para
+   impedir: subir al ERP de producción el parte de una incidencia que nadie ha
+   validado.
+2. **`graficos.py:325–328`, los cuatro `bool(datos.get(..., False))`.** Ningún
+   test omitía esas claves: todos los cuerpos de la suite venían completos. Con
+   `True` por omisión, un `200` con un cuerpo que no es el del contrato —la
+   página de un proxy, una versión de la pasarela que ya no responde igual—
+   pasaba por `esta_colgado` como un gráfico adjuntado, y el paso cerraba la
+   traza en `adjuntado` con el parte fuera del ERP.
+
+**No se ha tocado ni una línea de producción.** Los 30 supervivientes eran
+huecos de test, no defectos: cada uno se resolvió escribiendo el test que
+faltaba.
+
 ---
 
 ## 8 · Verificaciones `MANUAL (humano)` pendientes
@@ -464,7 +579,8 @@ reclamación de prueba después de adjuntar, pero no puede ser una sorpresa.
 
 ### 8.3 · T33 y T34
 
-- **T33** · la campaña de mutación: §7.1, con el comando y el coste estimado.
+- **T33** · la campaña de mutación: **hecha y marcada**. Dos pasadas, los 35
+  supervivientes de la primera analizados uno a uno y 22 tests nuevos. §7.2.
 - **T34** · `bash harness/init.sh`: **se ha ejecutado y está en verde** (es
   precondición del implementer), pero la tarea **no se marca**, porque el
   encargo la reserva.

@@ -244,8 +244,9 @@ nombre de fichero y la clase.
 
 **R43.** CUANDO el gráfico queda colgado (R26), el sistema debe registrar la
 traza con estado `adjuntado`, el `cod` del gráfico, los `ide` de negocio, de la
-documental y del enlace que devuelva la pasarela, la marca de tiempo, si fue
-idempotente, y el `oid` de quien confirmó.
+documental y del enlace que devuelva la pasarela, el `con.ide` de la
+reclamación (`reclamacion_ide`, guardado ya desde el dry-run), la marca de
+tiempo, si fue idempotente, y el `oid` de quien confirmó.
 
 **R44.** La traza debe guardar el **`oid` opaco de Entra** de quien confirma y
 **nunca** su correo, su nombre ni su login de Sigrid (misma regla que R43 de

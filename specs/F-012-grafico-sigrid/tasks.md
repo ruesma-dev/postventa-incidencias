@@ -66,7 +66,8 @@
       `test_f012_repositorio_graficos.py` con el doble de PG: R30
       (`adjuntado` es terminal: un `upsert` posterior devuelve `SIN_CAMBIOS` y
       no cambia la fila), R43 (la traza `adjuntado` lleva `gra_cod`, los tres
-      `ide`, `idempotente` y la marca), R44 (`confirmado_por` es el `oid` y
+      `ide`, `reclamacion_ide`, `idempotente` y la marca; `reclamacion_ide`
+      ya viene relleno en `dry_run_ok`), R44 (`confirmado_por` es el `oid` y
       **ningún** campo lleva el login salvo dentro de `gra_cod`, que se
       documenta), y que el estado terminal viaja como **parámetro**.
 

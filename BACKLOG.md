@@ -3,7 +3,9 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **22 features**, 12 abiertas, 10 terminadas.
+Resumen: **23 features**, 13 abiertas, 10 terminadas.
+
+En curso: **F-012**.
 
 Bloqueadas: **F-009**.
 
@@ -12,8 +14,9 @@ Bloqueadas: **F-009**.
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | bloqueada | critico | `feature/F-009-cierre-sigrid` |
-| F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | spec lista | critico | `feature/F-012-grafico-sigrid` |
+| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | en curso | critico | `feature/F-012-grafico-sigrid` |
+| F-024 | Datos del parte enlazados a Sigrid, para el datamart | 12 | pendiente | estandar | `feature/F-024-datos-parte-sigrid` |
+| F-011 | Fase 2: ingesta desde buzón de correo | 13 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
@@ -47,17 +50,23 @@ estado **bloqueada** · prioridad 10 · rigor `critico` · SDD sí · rama `feat
 
 Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.
 
-### F-011 · Fase 2: ingesta desde buzón de correo
-
-estado **pendiente** · prioridad 11 · rigor `estandar` · SDD sí · rama `feature/F-011-buzon-correo`
-
-Recoger automáticamente las remesas que lleguen a un buzón corporativo, reaprovechando el pipeline existente. Patrón de albaranes-email y partes-email.
-
 ### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
 
-estado **spec lista** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
+estado **en curso** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
 
 Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.
+
+### F-024 · Datos del parte enlazados a Sigrid, para el datamart
+
+estado **pendiente** · prioridad 12 · rigor `estandar` · SDD sí · rama `feature/F-024-datos-parte-sigrid`
+
+Conservar en nuestra base (schema postventa de psql-albaranes-rs9k2) la informacion del parte que hoy no llega a Sigrid, siempre enlazada con las claves del ERP para que el datamart (sigrid_dm, mismo servidor, otra base) pueda enriquecer con ella los partes de posventa cuando los incorpore. Decidido por el humano el 2026-09-06 tras revisar la guia de cierre de Posventa: el cierre en Sigrid solo registra el grafico y el estado, y todo lo demas del parte se perderia. TRES PIEZAS. (1) Extraccion: anadir al prompt y al schema los campos impresos que hoy no se extraen -oficio, empresa (el industrial que reparo), estancia- y los manuscritos hora_inicio y hora_fin, con su confianza y sin exigirlos (regla de F-003: no se exige lo que la realidad deja vacio); columnas nuevas en postventa.partes con ADD COLUMN IF NOT EXISTS, idempotente como el resto del DDL. (2) Claves del ERP: columna reclamacion_ide (con.ide de la reclamacion, que el dry-run de F-009 ya lee) en postventa.cierres; en postventa.graficos nace ya con ella desde F-012. (3) Una vista de lectura postventa.v_partes_sigrid en nuestro schema que junta parte, validacion, archivo, cierre y grafico por hash_parte y expone las claves de Sigrid (obra, numero de incidencia, reclamacion_ide, gra_cod), los campos extraidos con sus confianzas, la clasificacion de la firma, la URL de SharePoint y las fechas; SIN dni_cliente. PREGUNTA ABIERTA (la decide el humano al aprobar la spec): si la vista expone las observaciones manuscritas, el dato mas valioso para el datamart pero que puede llevar nombres; por defecto NO. FUERA DE ALCANCE: el acceso desde el datamart (su ETL tendria que conectarse a nuestra base con un rol de solo lectura propio, como hace con mcp_sigrid_dm_ro); se deja como peticion escrita al proyecto datamart-seg-anual y el contrato de la vista se documenta en azure-apps/postventa_incidencias.md §8. Va despues de F-012 y antes de F-011.
+
+### F-011 · Fase 2: ingesta desde buzón de correo
+
+estado **pendiente** · prioridad 13 · rigor `estandar` · SDD sí · rama `feature/F-011-buzon-correo`
+
+Recoger automáticamente las remesas que lleguen a un buzón corporativo, reaprovechando el pipeline existente. Patrón de albaranes-email y partes-email.
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 

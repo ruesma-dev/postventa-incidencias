@@ -569,6 +569,7 @@ CREATE TABLE IF NOT EXISTS postventa.graficos (
     hash_parte           text PRIMARY KEY
                          REFERENCES postventa.partes (hash_parte) ON DELETE CASCADE,
     numero_incidencia    text NOT NULL,
+    reclamacion_ide      integer,
     estado               text NOT NULL
                          CHECK (estado IN ('pendiente', 'dry_run_ok', 'adjuntado', 'error', 'ya_cerrada')),
     sha256               text,
@@ -598,6 +599,12 @@ CREATE INDEX IF NOT EXISTS ix_graficos_estado ON postventa.graficos (estado);
   que hace falta para localizarlo; se anota en la cabecera del `.sql` y en
   `mapeo.py`, y el script 16 no lo imprime con el login separado.
 - Ni una columna binaria (R45): el PDF vive en SharePoint y en Sigrid.
+- `reclamacion_ide` es el **`con.ide` de la reclamación** que el dry-run ya lee
+  para componer `conide` (D-F). Se guarda desde el primer dry-run porque es la
+  **clave estable del ERP** con la que el datamart cruzará nuestras filas
+  (`numero_incidencia` es `con.cod`, legible pero no clave). Lo pidió el humano
+  el 2026-09-06 (ver F-024 en `harness/features.json`); nace aquí para no
+  hacer un `ALTER` mañana.
 - `gra_ide_documental` puede quedar `NULL` en el caso idempotente **[MEDIDO:
   la respuesta no lo trae]**; no se inventa.
 

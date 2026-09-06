@@ -29,7 +29,6 @@ from pathlib import Path
 
 import pytest
 from domain.models.cierre import (
-    AVISO_SIN_GRAFICO,
     CODIGO_ESTADO_CIERRE,
     CODIGOS_ESTADO_CERRABLE,
     LONGITUD_MAXIMA_LOGIN,
@@ -167,35 +166,30 @@ def test_f009_r19_sin_estado_de_origen_legible_no_se_cierra():
 
 
 # --------------------------------------------------------------------------
-# R21 · el aviso va siempre
+# R21, DEROGADO por R48 de F-012 (2026-09-06)
 # --------------------------------------------------------------------------
+#
+# Aquí vivían los dos tests del aviso `aviso_sin_grafico`: que el plan lo
+# llevaba siempre y que decía las dos cosas incómodas. **Se retiran, y solo
+# ellos**: con F-012 el gráfico se adjunta ANTES del cambio de estado, así que
+# ese aviso pasaría a ser falso — y un aviso falso enseñado en cada
+# confirmación es peor que ninguno.
+#
+# Lo que ocupa su sitio no está en este fichero, porque ya no es una decisión
+# del dominio: el estado real del gráfico lo lee `paso_cierre` de la traza
+# propia y lo enseña el borde (R49 de F-012). Sus tests viven en
+# `test_f012_cerrar_exige_grafico.py`.
 
 
-@pytest.mark.parametrize(
-    "cod_origen", [*CODIGOS_ESTADO_CERRABLE, "NPR", CODIGO_ESTADO_CIERRE, ""]
-)
-def test_f009_r21_el_plan_siempre_trae_el_aviso_de_que_quedara_sin_grafico(cod_origen):
-    """R21 · salga cerrable o no, el aviso está.
+def test_f009_r21_el_plan_ya_no_declara_ningun_aviso_de_grafico():
+    """R48 de F-012 · el campo **no existe**, y esto lo fija.
 
-    Es el riesgo aceptado de `design.md` §2 puesto delante de quien confirma:
-    este servicio va a producir reclamaciones `CER` sin ninguna fila en `rcg`,
-    algo que no ha ocurrido en los 2.365 cierres de «Cerrar parte» desde 2023.
+    Sin este test, alguien podría reponer el campo por costumbre y volver a
+    enseñar a quien confirma una advertencia que dejó de ser verdad.
     """
-    plan = evaluar(_reclamacion(est=3, cod_origen=cod_origen), login_sigrid="unlogin")
+    plan = evaluar(_reclamacion(est=3, cod_origen="PTE"), login_sigrid="unlogin")
 
-    assert plan.aviso_sin_grafico == AVISO_SIN_GRAFICO
-    assert plan.aviso_sin_grafico.strip() != ""
-
-
-def test_f009_r21_el_aviso_dice_las_dos_cosas_que_hay_que_saber():
-    """R21 · que quedará **cerrada** y que será **sin el parte dentro de Sigrid**.
-
-    Un aviso genérico («revisa antes de confirmar») no informa de nada.
-    """
-    minusculas = AVISO_SIN_GRAFICO.lower()
-
-    assert "sigrid" in minusculas
-    assert "gráfico" in minusculas or "grafico" in minusculas
+    assert not hasattr(plan, "aviso_sin_grafico")
 
 
 # --------------------------------------------------------------------------
@@ -328,7 +322,6 @@ def test_f009_r18_un_plan_construido_sin_decirlo_no_dice_que_ya_este_cerrada():
         login_sigrid="unlogin",
         cerrable=True,
         motivo=None,
-        aviso_sin_grafico=AVISO_SIN_GRAFICO,
     )
 
     assert plan.ya_cerrada is False

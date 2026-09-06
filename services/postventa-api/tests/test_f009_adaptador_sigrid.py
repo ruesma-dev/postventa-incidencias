@@ -25,7 +25,7 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import httpx
 import pytest
-from domain.models.cierre import AVISO_SIN_GRAFICO, PlanDeCierre, Reclamacion
+from domain.models.cierre import PlanDeCierre, Reclamacion
 from domain.models.errores import (
     CierreDeshabilitado,
     CierreFallido,
@@ -89,7 +89,6 @@ def _plan(*, cerrable: bool = True) -> PlanDeCierre:
         login_sigrid="fulanito",
         cerrable=cerrable,
         motivo=None,
-        aviso_sin_grafico=AVISO_SIN_GRAFICO,
     )
 
 

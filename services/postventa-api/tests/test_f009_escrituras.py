@@ -30,7 +30,6 @@ from datetime import UTC, datetime
 
 import pytest
 from domain.models.cierre import (
-    AVISO_SIN_GRAFICO,
     LONGITUD_MAXIMA_LOGIN,
     TEXTO_LOG_CIERRE,
     TEXTO_PROCESO_ERP,
@@ -73,7 +72,6 @@ def _plan(*, login: str = "fulanito", cerrable: bool = True) -> PlanDeCierre:
         login_sigrid=login,
         cerrable=cerrable,
         motivo=None,
-        aviso_sin_grafico=AVISO_SIN_GRAFICO,
     )
 
 

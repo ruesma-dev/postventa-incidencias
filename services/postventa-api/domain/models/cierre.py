@@ -18,10 +18,13 @@ producción.
    Es la decisión del humano del 2026-08-26 —validar → cerrar → subir el PDF—
    convertida en algo que no se puede incumplir por descuido: no se puede
    consultar lo que no existe.
-3. **El aviso de R21 va siempre.** El plan lo lleva salga cerrable o no, porque
-   quien confirma tiene que saber **antes** de confirmar que la reclamación
-   quedará cerrada sin el parte dentro de Sigrid (`design.md` §2, riesgo
-   aceptado).
+3. **Aquí ya no hay ningún aviso de «quedará sin gráfico».** Lo hubo: R21 de
+   F-009 obligaba a advertir, en cada plan, de que la reclamación quedaría
+   cerrada sin el parte dentro de Sigrid. **F-012 lo deroga** (su R48), porque
+   con el gráfico adjuntándose antes del cambio de estado ese aviso sería
+   falso — y un aviso falso enseñado en cada confirmación es peor que ninguno.
+   Lo que sí se enseña ahora es **el estado real del gráfico**, y no lo compone
+   este módulo: lo lee `paso_cierre` de la traza propia (R49).
 
 ## Lo que decide `evaluar`, y lo que no
 
@@ -41,7 +44,6 @@ from domain.models.nombrado import SEPARADOR, normalizar_codigo
 from domain.models.persistencia import EstadoCierre
 
 __all__ = [
-    "AVISO_SIN_GRAFICO",
     "CODIGOS_ESTADO_CERRABLE",
     "CODIGO_ESTADO_CIERRE",
     "LONGITUD_MAXIMA_LOGIN",
@@ -98,19 +100,6 @@ TEXTO_LOG_CIERRE = f"{TEXTO_PROCESO_ERP} (postventa-incidencias)"
 #: única fuente. `usu.cod` es más corto (24), así que cualquier login real
 #: cabe; el tope existe para que un candidato absurdo no llegue a intentarse.
 LONGITUD_MAXIMA_LOGIN = 48
-
-#: El aviso que acompaña **siempre** al plan (R21).
-#:
-#: Es el riesgo aceptado de `design.md` §2, dicho delante de quien confirma:
-#: este servicio va a dejar reclamaciones en `CER` sin el parte dentro del ERP,
-#: algo que no ha ocurrido ni una vez en los 2.365 cierres de «Cerrar parte»
-#: desde 2023. El parte firmado **existe** —archivado, con su traza—, pero
-#: todavía no está dentro de Sigrid. Lo estará cuando F-012 pueda subirlo.
-AVISO_SIN_GRAFICO = (
-    "la reclamación quedará CERRADA en Sigrid sin el parte firmado adjunto "
-    "como gráfico: el documento está archivado y localizable, pero todavía no "
-    "dentro del ERP. Quien mire la ficha en Sigrid no verá el parte"
-)
 
 #: Lo que se comprueba al construir el texto del log: que el prefijo se
 #: conserva. Un despiste aquí nos borra de los informes de Posventa.
@@ -185,14 +174,17 @@ class PlanDeCierre:
     se registra y se responde en verde. Confundirlo con un fallo haría que un
     reintento legítimo pareciera un problema.
 
-    `aviso_sin_grafico` está **siempre**, cerrable o no (R21).
+    **Ya no lleva `aviso_sin_grafico`**: R21 de F-009 quedó derogado por R48 de
+    F-012 el 2026-09-06. Con el gráfico adjuntándose antes del cambio de
+    estado, aquel aviso sería falso. El estado del gráfico lo enseña el borde a
+    partir de la traza propia (R49), y no este dataclass: es un dato leído de
+    la base y no una decisión del dominio.
     """
 
     reclamacion: Reclamacion
     login_sigrid: str
     cerrable: bool
     motivo: str | None
-    aviso_sin_grafico: str
     ya_cerrada: bool = False
 
 
@@ -217,7 +209,7 @@ class ResultadoCierre:
 
 
 def evaluar(reclamacion: Reclamacion, *, login_sigrid: str) -> PlanDeCierre:
-    """Decide si esta reclamación se cierra, sin tocar nada (R18, R19, R21).
+    """Decide si esta reclamación se cierra, sin tocar nada (R18, R19).
 
     El orden de las dos comprobaciones importa: **ya cerrada va primero**,
     porque `CER` tampoco está en `CODIGOS_ESTADO_CERRABLE` y sin este orden una
@@ -330,18 +322,18 @@ def _plan(
     ya_cerrada: bool,
     motivo: str | None,
 ) -> PlanDeCierre:
-    """El plan, con el aviso de R21 puesto **siempre** en el mismo sitio.
+    """El plan, compuesto en un solo sitio para las tres salidas de `evaluar`.
 
-    Existe para que el aviso no dependa de acordarse de pasarlo en cada una de
-    las tres salidas de `evaluar`: la que se olvidara sería la que dejara a
-    alguien confirmar sin saber lo que acepta.
+    Nació para que el aviso de R21 no dependiera de acordarse de pasarlo en
+    cada salida. Ese aviso lo derogó R48 de F-012, y la función se queda: sigue
+    siendo el único sitio donde se construye un `PlanDeCierre`, que es lo que
+    hace que añadir un campo mañana no tenga tres sitios donde olvidarse.
     """
     return PlanDeCierre(
         reclamacion=reclamacion,
         login_sigrid=login_sigrid,
         cerrable=cerrable,
         motivo=motivo,
-        aviso_sin_grafico=AVISO_SIN_GRAFICO,
         ya_cerrada=ya_cerrada,
     )
 

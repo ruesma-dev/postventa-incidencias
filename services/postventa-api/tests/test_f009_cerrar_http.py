@@ -266,11 +266,17 @@ def test_f009_r50_un_fallo_de_la_pasarela_sube_como_cierre_fallido():
 
 
 def test_f009_r9_el_dry_run_devuelve_las_cinco_cosas_que_pide_el_requisito():
-    """R9 · código, descripción, estado de origen y de destino **legibles**,
-    el login con el que se firmaría y el aviso.
+    """R9 · código, descripción, estado de origen y de destino **legibles** y
+    el login con el que se firmaría.
 
-    Son las cinco cosas que quien confirma necesita tener delante. Un dry-run
-    que devolviera dos números no informa de nada.
+    Son las cosas que quien confirma necesita tener delante. Un dry-run que
+    devolviera dos números no informa de nada.
+
+    Aquí se comprobaba además `aviso_sin_grafico`. **Esa aserción se retira, y
+    solo ella**: R21 quedó derogado por R48 de F-012 el 2026-09-06, porque con
+    el gráfico adjuntándose antes del cambio de estado el aviso sería falso. Lo
+    que ocupa su sitio —el estado real del gráfico, R49— tiene sus tests en
+    `test_f012_cerrar_exige_grafico.py`.
     """
     respuesta = _cerrar()
     dry_run = respuesta["dry_run"]
@@ -280,17 +286,17 @@ def test_f009_r9_el_dry_run_devuelve_las_cinco_cosas_que_pide_el_requisito():
     assert dry_run["estado_origen"] == {"codigo": "PTE", "descripcion": "ESTADO PTE"}
     assert dry_run["estado_destino"] == {"codigo": "CER", "descripcion": "CERRADA"}
     assert dry_run["login_sigrid"] == "fulanito"
-    assert dry_run["aviso_sin_grafico"]
 
 
-def test_f009_r21_el_aviso_viene_siempre_en_la_respuesta():
-    """R21 · quien confirma tiene que leerlo **antes** de confirmar.
+def test_f009_r21_derogado_la_respuesta_ya_no_trae_el_aviso_de_grafico():
+    """R48 de F-012 · la clave **no está**, y esto lo fija.
 
-    Es el riesgo aceptado de `design.md` §2 puesto donde se ve.
+    El front la pintaba en un bloque ámbar en cada confirmación. Reponerla por
+    costumbre volvería a advertir de algo que ya no ocurre.
     """
     respuesta = _cerrar()
 
-    assert "sigrid" in respuesta["dry_run"]["aviso_sin_grafico"].lower()
+    assert "aviso_sin_grafico" not in respuesta["dry_run"]
 
 
 def test_f009_r8_por_omision_la_llamada_es_un_dry_run():

@@ -42,7 +42,7 @@
       `application/` contiene la palabra `base64`** (el transporte es del
       adaptador).
 
-- [ ] **T3**: Retirar `AVISO_SIN_GRAFICO` y `PlanDeCierre.aviso_sin_grafico`
+- [x] **T3**: Retirar `AVISO_SIN_GRAFICO` y `PlanDeCierre.aviso_sin_grafico`
       de `domain/models/cierre.py` (R48) y adaptar las aserciones de F-009
       que lo usan —`test_f009_dominio_cierre.py`, `test_f009_adaptador_sigrid.py`,
       `test_f009_escrituras.py`, `test_f009_cerrar_http.py`—, **retirando

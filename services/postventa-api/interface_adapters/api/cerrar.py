@@ -267,7 +267,6 @@ def _dry_run(plan: PlanDeCierre) -> dict[str, Any]:
             "descripcion": reclamacion.estado_destino.res,
         },
         "login_sigrid": plan.login_sigrid,
-        "aviso_sin_grafico": plan.aviso_sin_grafico,
         "cerrable": plan.cerrable,
         "ya_cerrada": plan.ya_cerrada,
     }

@@ -95,38 +95,29 @@ def test_f009_r9_la_pantalla_no_pinta_ningun_numero_de_estado():
 
 
 # --------------------------------------------------------------------------
-# R21 · el aviso se pinta siempre
+# R21, DEROGADO por R48 de F-012 (2026-09-06)
 # --------------------------------------------------------------------------
+#
+# Aquí vivían los dos tests del bloque ámbar: que el aviso se pintaba siempre y
+# que su texto venía del backend. **Se retiran, y solo ellos.** Con F-012 el
+# gráfico se adjunta antes del cambio de estado, así que ese aviso pasaría a
+# ser falso — y un aviso falso pintado en cada confirmación es peor que
+# ninguno.
+#
+# Lo que ocupa su sitio es el bloque del gráfico, con sus propios tests en
+# `tests/test_f012_front.py`.
 
 
-def test_f009_r21_el_aviso_de_que_quedara_sin_grafico_se_pinta_siempre():
-    """R21 · **siempre que hay dry-run**, no bajo ninguna condición extra.
+def test_f009_r21_derogado_la_pantalla_ya_no_pinta_el_aviso_de_grafico():
+    """R48 de F-012 · el binding **no está**, y esto lo fija.
 
-    Es el riesgo aceptado de `design.md` §2 puesto delante de quien confirma.
-    Un aviso que sale a veces es un aviso que nadie lee.
-    """
-    html = _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
-    lineas = [linea for linea in html.splitlines() if "aviso_sin_grafico" in linea]
-
-    assert lineas, "la pantalla no pinta el aviso de R21"
-    for linea in lineas:
-        assert "x-show" not in linea, (
-            "el aviso de R21 está detrás de una condición propia: tiene que "
-            "salir siempre que haya dry-run"
-        )
-
-
-def test_f009_r21_el_texto_del_aviso_viene_del_backend_y_no_se_reescribe_aqui():
-    """R21 · un segundo texto en el front divergiría del que decide el dominio.
-
-    El aviso lo compone `domain/models/cierre.py::AVISO_SIN_GRAFICO`, que es
-    donde vive el riesgo aceptado. Reescribirlo aquí dejaría dos versiones, y
-    la que leería el usuario sería la que nadie revisa.
+    El backend ha dejado de mandar esa clave, así que el bloque pintaría una
+    caja ámbar vacía en cada dry-run. Reponerlo por costumbre sería peor:
+    volvería a advertir de algo que ya no ocurre.
     """
     html = _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
 
-    assert "x-text=\"dryRunDe(parte) && dryRunDe(parte).aviso_sin_grafico\"" in html
-    assert "sin gráfico" not in html.lower() or "aviso_sin_grafico" in html
+    assert "aviso_sin_grafico" not in html
 
 
 # --------------------------------------------------------------------------

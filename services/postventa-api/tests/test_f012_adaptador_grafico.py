@@ -635,3 +635,87 @@ def test_f012_un_fallo_no_produce_una_segunda_llamada():
 
     assert len(cliente.peticiones) == 1
     assert cliente.quedan_respuestas() == 1
+
+
+# --------------------------------------------------------------------------
+# Una respuesta a medias no es un éxito, y la duración del log es la real
+# --------------------------------------------------------------------------
+
+
+def test_f012_r26_una_respuesta_sin_los_campos_del_contrato_no_es_un_exito():
+    """R26 · lo que no viene se lee como **no**, nunca como sí.
+
+    El caso no es teórico: un `200` con un cuerpo que no es el del contrato es
+    lo que devuelve un proxy o una versión de la pasarela que ya no responde lo
+    mismo. Si los ausentes se leyeran como `True`, `esta_colgado` daría por
+    adjuntado un parte que no está en ninguna parte del ERP, y el paso cerraría
+    la traza en `adjuntado`.
+
+    Lo mismo con `bytes`: un tamaño inventado se guardaría en la traza y sería
+    lo que alguien compare, meses después, con el fichero de SharePoint.
+    """
+    cliente = ClienteFalso([RespuestaFalsa(200, {"database": BASE})])
+
+    respuesta = _adaptador(cliente).adjuntar(peticion=_peticion(), commit=True)
+
+    assert respuesta.ok is False
+    assert respuesta.committed is False
+    assert respuesta.idempotente is False
+    assert respuesta.dry_run is False
+    assert respuesta.filas_afectadas == 0
+    assert respuesta.bytes == 0
+    assert respuesta.sha256 == ""
+
+
+def test_f012_r31_r34_un_codigo_reintentable_y_uno_desconocido_no_dicen_lo_mismo():
+    """R31 vs R34 · los dos salen como 502, y **no cuentan lo mismo del ERP**.
+
+    Con un código declarado reintentable, la pasarela garantiza que revirtió y
+    el motivo puede decirlo —y nombrar el código, que es lo que permite
+    buscarlo—. Con uno que nadie ha declarado no se sabe, y el motivo tiene que
+    decir justamente eso: que no se da por hecho que el ERP esté intacto.
+
+    Confundir las dos ramas deja los dos mensajes cruzados: uno prometería un
+    ERP intacto sin saberlo, y el otro mandaría a mirar Sigrid sin motivo.
+    """
+    reintentable = ClienteFalso(
+        [RespuestaFalsa(400, _cuerpo_de_error("colision_de_clave"))]
+    )
+    desconocido = ClienteFalso([RespuestaFalsa(400, _cuerpo_de_error_desconocido())])
+
+    with pytest.raises(GraficoFallido) as declarado:
+        _adaptador(reintentable).adjuntar(peticion=_peticion(), commit=True)
+    with pytest.raises(GraficoFallido) as sin_declarar:
+        _adaptador(desconocido).adjuntar(peticion=_peticion(), commit=True)
+
+    assert "colision_de_clave" in declarado.value.motivo
+    assert "quedado sin cambios" in declarado.value.motivo
+    assert "no se da por hecho" in sin_declarar.value.motivo
+    assert "quedado sin cambios" not in sin_declarar.value.motivo
+
+
+class _RelojFalso:
+    """Un reloj monótono con lecturas fijadas, para medir la duración medida."""
+
+    def __init__(self, lecturas: list[float]) -> None:
+        self._lecturas = list(lecturas)
+
+    def monotonic(self) -> float:
+        return self._lecturas.pop(0)
+
+
+def test_f012_el_log_registra_la_duracion_real_de_la_llamada(monkeypatch, caplog):
+    """La duración es lo único con lo que se ve, desde fuera, que la pasarela
+    va lenta antes de que empiece a agotar el presupuesto de 45 s.
+
+    Se fija el reloj en vez de mirar el número a ojo: una duración compuesta al
+    revés saldría en el log como un número enorme y perfectamente plausible
+    para quien no sepa que la máquina lleva semanas encendida.
+    """
+    cliente = ClienteFalso([RespuestaFalsa(200, _cuerpo_ok())])
+    monkeypatch.setattr(graficos, "time", _RelojFalso([1000.0, 1002.5]))
+
+    with caplog.at_level("INFO"):
+        _adaptador(cliente).adjuntar(peticion=_peticion(), commit=True)
+
+    assert "en 2.50 s" in caplog.text

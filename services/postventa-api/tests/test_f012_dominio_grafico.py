@@ -22,6 +22,7 @@ sigue con relleno; los códigos de obra e incidencia son inventados.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import FrozenInstanceError
 
 import pytest
 from domain.models.cierre import Reclamacion
@@ -41,13 +42,16 @@ from domain.models.grafico import (
     LONGITUD_MAXIMA_USU,
     RES_GRAFICO_PARTE,
     PeticionGrafico,
+    PlanDeGrafico,
     RespuestaGrafico,
+    ResultadoGrafico,
     clasificar_codigo,
     componer_peticion,
     esta_colgado,
     validar_fichero,
 )
 from domain.models.nombrado import nombre_de_archivo
+from domain.models.persistencia import EstadoGrafico, TrazaGrafico
 
 #: Un PDF sintético: la firma real y relleno detrás. **No es un parte.**
 #: Los partes de `muestras/` llevan el DNI manuscrito de un cliente y no se
@@ -197,6 +201,42 @@ def test_f012_r9_el_nombre_del_caso_normal_cabe_de_sobra():
     assert len(_peticion().nom) <= LONGITUD_MAXIMA_NOM
 
 
+def _obra_para_un_nombre_de(longitud: int) -> str:
+    """El código de obra con el que el nombre compuesto mide exactamente eso.
+
+    Se calcula desde el nombre real y no con un número escrito a mano: el
+    nombre lo compone `nombrado.py`, y cualquier cambio suyo —otro separador,
+    otro sufijo— movería la frontera sin que estos dos tests se enteraran.
+    """
+    minimo = nombre_de_archivo(codigo_obra="0", numero_incidencia=INCIDENCIA)
+    return "0" * (longitud - len(minimo) + 1)
+
+
+def test_f012_r9_un_nombre_de_exactamente_255_caracteres_si_cabe():
+    """R9 · la frontera, por el lado bueno: `gra.nom` es `varchar(255)`.
+
+    Se prueba por los dos lados a propósito. Con `>=` en vez de `>`, este
+    nombre se rechazaría y el parte de esa obra no se adjuntaría nunca —y
+    ningún otro test lo diría, porque todos los demás nombres caben de sobra.
+    """
+    peticion = _peticion(codigo_obra=_obra_para_un_nombre_de(255))
+
+    assert len(peticion.nom) == 255
+
+
+def test_f012_r9_un_nombre_de_256_caracteres_ya_no_cabe():
+    """R9 · y por el lado malo: el primero que no cabe es el 256.
+
+    El 255 es el ancho **medido** de la columna del ERP (`sigrid_tablas.md`),
+    no un número redondo elegido aquí: si el tope se moviera un carácter, en
+    Sigrid entraría un nombre truncado que dejaría de cruzar con SharePoint.
+    """
+    with pytest.raises(CuerpoDeGraficoInvalido) as fallo:
+        _peticion(codigo_obra=_obra_para_un_nombre_de(256))
+
+    assert "256" in fallo.value.motivo
+
+
 # --------------------------------------------------------------------------
 # R10 · `res` es la descripción que teclea Posventa
 # --------------------------------------------------------------------------
@@ -223,6 +263,18 @@ def test_f012_r12_el_login_viaja_tal_cual_y_cabe():
 
     assert peticion.usu == LOGIN
     assert len(peticion.usu) <= LONGITUD_MAXIMA_USU == 24
+
+
+def test_f012_r12_un_login_de_exactamente_24_caracteres_si_cabe():
+    """R12 · la frontera del login, por el lado bueno.
+
+    Con `>=` en vez de `>`, quien tuviera un login de 24 caracteres —los hay:
+    es el ancho justo de `usu.cod`— no podría adjuntar nada, y el mensaje le
+    diría que su login no cabe en un sitio donde sí cabe.
+    """
+    login = "l" * LONGITUD_MAXIMA_USU
+
+    assert _peticion(login=login).usu == login
 
 
 def test_f012_r12_un_login_que_no_cabe_en_usu_cod_se_rechaza():
@@ -506,3 +558,56 @@ def test_f012_r53_el_contenido_sigue_estando_para_quien_lo_necesita():
     gráfico viajaría vacío.
     """
     assert _peticion().contenido == PDF
+
+
+# --------------------------------------------------------------------------
+# Las cinco piezas son inmutables, y no es decoración
+# --------------------------------------------------------------------------
+
+
+def _plan_de_grafico() -> PlanDeGrafico:
+    return PlanDeGrafico(
+        reclamacion=_reclamacion(),
+        login_sigrid=LOGIN,
+        peticion=_peticion(),
+        cerrable=True,
+    )
+
+
+def _traza_de_grafico() -> TrazaGrafico:
+    return TrazaGrafico(
+        hash_parte="hash-inventado-del-parte-0001",
+        numero_incidencia=INCIDENCIA,
+        estado=EstadoGrafico.DRY_RUN_OK,
+    )
+
+
+#: Cada pieza, con un campo cuyo cambio a mitad de camino sería grave.
+PIEZAS_INMUTABLES = {
+    "peticion": (_peticion, "usu", "otrologininventado"),
+    "plan": (_plan_de_grafico, "cerrable", False),
+    "respuesta": (_respuesta, "committed", False),
+    "resultado": (
+        lambda: ResultadoGrafico(estado=EstadoGrafico.DRY_RUN_OK),
+        "estado",
+        EstadoGrafico.ADJUNTADO,
+    ),
+    "traza": (_traza_de_grafico, "idempotente", True),
+}
+
+
+@pytest.mark.parametrize("pieza", sorted(PIEZAS_INMUTABLES))
+def test_f012_r20_r21_las_piezas_del_grafico_no_se_pueden_modificar(pieza):
+    """R20, R21 · entre el dry-run y el commit media la confirmación de alguien.
+
+    Lo que se enseña y lo que se escribe tienen que ser **la misma petición**,
+    y R20 se comprueba contando llamadas, no comparando objetos: si el plan, la
+    petición o la respuesta se pudieran retocar por el camino, ese recuento
+    seguiría en verde con otro contenido dentro. La traza va con ellas por lo
+    mismo: es lo que se guarda de una escritura en el ERP de producción.
+    """
+    fabricar, campo, otro_valor = PIEZAS_INMUTABLES[pieza]
+    objeto = fabricar()
+
+    with pytest.raises(FrozenInstanceError):
+        setattr(objeto, campo, otro_valor)

@@ -346,6 +346,92 @@ def test_f012_r24_cuando_se_resuelve_desde_la_traza_no_se_inventa_un_dry_run():
     assert respuesta["dry_run"]["sha256"] == SHA256
 
 
+def test_f012_r23_sin_el_campo_confirmado_no_se_escribe_nada():
+    """R23 · **el valor por omisión de la confirmación**, como el del `commit`.
+
+    Quien componga una llamada a mano y se deje `confirmado` no escribe en el
+    ERP de producción: el que falta es el campo que sostiene toda la
+    autorización, y su omisión tiene que leerse como un no.
+    """
+    from domain.models.errores import CuerpoDeCierreInvalido
+
+    graficos = GraficoEnMemoria()
+
+    with pytest.raises(CuerpoDeCierreInvalido):
+        _adjuntar(graficos=graficos, commit="true")
+
+    assert graficos.orden == [False]
+
+
+def test_f012_r57_r23_las_banderas_admiten_tambien_el_booleano_de_python():
+    """Las dos banderas llegan como texto desde el `multipart`, y `True` de
+    Python vale igual: es lo que permite llamar al handler desde un test sin
+    fabricar cadenas.
+
+    Si dejara de valer, media suite dejaría de escribir sin que nada fallara
+    —un dry-run también responde en verde—, y esa es exactamente la clase de
+    avería que no se ve.
+    """
+    graficos = GraficoEnMemoria()
+
+    respuesta = _adjuntar(graficos=graficos, commit=True, confirmado=True)
+
+    assert graficos.orden == [False, True]
+    assert respuesta["estado"] == "adjuntado"
+
+
+def test_f012_r16_una_reclamacion_ya_cerrada_se_devuelve_en_verde_y_lo_dice():
+    """R16 · no es un error, y la respuesta tiene que dejar claro qué pasó.
+
+    Las cuatro cosas que quien mira la pantalla necesita: que el expediente ya
+    estaba cerrado, que por eso no se le cuelga nada, que **no** se ha escrito
+    ninguna fila, y que nadie ha dicho que el documento ya estuviera dentro
+    —no se ha preguntado a la pasarela—.
+    """
+    graficos = GraficoEnMemoria()
+    erp = ErpEnMemoria(
+        Reclamacion(
+            ide=111_222,
+            emp=1,
+            tip=708,
+            est=90,
+            codigo="XX00.00/0000",
+            descripcion="REPARACION INVENTADA",
+            estado_origen_cod="CER",
+            estado_origen_res="CERRADA",
+            estado_destino_est=90,
+            estado_destino_cod="CER",
+            estado_destino_res="CERRADA",
+        )
+    )
+
+    respuesta = _adjuntar(erp=erp, graficos=graficos, commit="true", confirmado="true")
+
+    assert respuesta["estado"] == "ya_cerrada"
+    assert respuesta["filas_afectadas"] == 0
+    assert respuesta["idempotente"] is False
+    assert respuesta["dry_run"]["ya_cerrada"] is True
+    assert respuesta["dry_run"]["cerrable"] is False
+    assert respuesta["dry_run"]["idempotente_previsto"] is False
+    assert graficos.llamadas == []
+
+
+def test_f012_r21_el_dry_run_normal_no_dice_que_el_parte_ya_estuviera_dentro():
+    """R21, R24 · `ya_estaba` distingue las dos respuestas que existen.
+
+    En el camino normal se ha leído la reclamación y se ha hecho el dry-run:
+    hay algo que enseñar y nada que dar por hecho. Solo la salida de R24
+    —resuelta desde la traza local, sin llamar a nadie— dice que el documento
+    ya estaba, y confundirlas haría que el front escondiera el dry-run que
+    alguien tiene que leer antes de confirmar.
+    """
+    respuesta = _adjuntar()
+
+    assert respuesta["dry_run"]["ya_estaba"] is False
+    assert respuesta["dry_run"]["cerrable"] is True
+    assert respuesta["dry_run"]["ya_cerrada"] is False
+
+
 # --------------------------------------------------------------------------
 # R56 · lo que la respuesta NO lleva
 # --------------------------------------------------------------------------

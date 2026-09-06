@@ -50,7 +50,11 @@ from domain.models.errores import (
     UsuarioSigridInexistente,
 )
 from domain.models.firma import ClasificacionFirma
-from domain.models.grafico import FIRMA_PDF, RES_GRAFICO_PARTE
+from domain.models.grafico import (
+    FIRMA_PDF,
+    RES_GRAFICO_PARTE,
+    RespuestaGrafico,
+)
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
     EstadoArchivo,
@@ -761,7 +765,13 @@ def test_f012_r25_el_ide_documental_ausente_del_caso_idempotente_no_se_inventa()
 @pytest.mark.parametrize("filas", [0, 1, 2, 4])
 def test_f012_r27_un_commit_con_filas_distintas_de_tres_es_un_error(filas):
     """R27 · tres filas, dos bases. Cualquier otro número es un gráfico a
-    medias, y **nunca** un gráfico dado por adjuntado."""
+    medias, y **nunca** un gráfico dado por adjuntado.
+
+    R29 · y el motivo dice que el reintento es seguro: con un recuento raro no
+    se sabe qué quedó dentro, pero sí que volver a pedirlo no duplica nada
+    —el endpoint es idempotente por contenido—, y eso es lo que permite actuar
+    sin abrir el ERP.
+    """
     repositorio = RepositorioEnMemoria()
     graficos = GraficoEnMemoria(filas_afectadas=filas)
 
@@ -771,6 +781,7 @@ def test_f012_r27_un_commit_con_filas_distintas_de_tres_es_un_error(filas):
         )
 
     assert str(filas) in fallo.value.motivo
+    assert fallo.value.reintento_seguro is True
     assert repositorio.graficos[-1].estado == EstadoGrafico.ERROR
 
 
@@ -922,3 +933,176 @@ def test_f012_r5_el_paso_del_grafico_no_cierra_nada():
     _adjuntar(erp=erp, commit=True, confirmado=True)
 
     assert erp.cierres == []
+
+
+# --------------------------------------------------------------------------
+# R14 · las dos mitades de la puerta, una a una
+# --------------------------------------------------------------------------
+
+
+def test_f012_r14_un_veredicto_que_no_es_apto_no_pasa_aunque_el_destino_lo_sea():
+    """R14 · las dos condiciones se comprueban **por separado**.
+
+    Un parte no apto cuyo destino diga `archivo_y_cierre` es una incoherencia
+    que puede llegar por el formulario —el borde reconstruye los dos campos de
+    lo que manda el front—, y la puerta tiene que morder igual: lo que decide
+    que un parte se sube al ERP es el veredicto, no el destino que lo acompañe.
+    """
+    erp, graficos = ErpEnMemoria(_reclamacion()), GraficoEnMemoria()
+
+    with pytest.raises(ParteNoApto):
+        _adjuntar(
+            ctx=_contexto(
+                veredicto=Veredicto.NO_APTO, destino=Destino.ARCHIVO_Y_CIERRE
+            ),
+            erp=erp,
+            graficos=graficos,
+        )
+
+    assert graficos.llamadas == []
+
+
+def test_f012_r14_un_destino_que_no_es_archivo_y_cierre_no_pasa_aunque_sea_apto():
+    """R14 · y la mitad simétrica: apto, pero mandado a revisión manual.
+
+    Es el caso de un parte que F-004 declaró legible y aun así apartó. Subirlo
+    a la reclamación sería adelantarse a la revisión que alguien pidió.
+    """
+    erp, graficos = ErpEnMemoria(_reclamacion()), GraficoEnMemoria()
+
+    with pytest.raises(ParteNoApto):
+        _adjuntar(
+            ctx=_contexto(
+                veredicto=Veredicto.APTO, destino=Destino.REVISION_MANUAL
+            ),
+            erp=erp,
+            graficos=graficos,
+        )
+
+    assert graficos.llamadas == []
+
+
+# --------------------------------------------------------------------------
+# Lo que dice el plan de cada salida, que es lo que se enseña para confirmar
+# --------------------------------------------------------------------------
+
+
+def test_f012_r21_el_plan_del_dry_run_correcto_dice_cerrable_y_no_cerrada():
+    """R21 · los tres booleanos con los que quien confirma decide.
+
+    En este camino la reclamación **admite cierre** y **no está cerrada**: si
+    el plan dijera lo contrario, el front enseñaría un aviso que no toca y
+    alguien dejaría de confirmar un parte perfectamente adjuntable.
+    """
+    ctx = _adjuntar()
+    plan = ctx.grafico.plan
+
+    assert plan.cerrable is True
+    assert plan.ya_cerrada is False
+    assert plan.motivo is None
+
+
+def test_f012_r16_el_plan_de_una_reclamacion_ya_cerrada_lo_dice_entero():
+    """R16 · «ya estaba cerrada» **no es un error**, y se distingue de «no se
+    puede cerrar».
+
+    Los dos booleanos van juntos a propósito: `ya_cerrada` es lo que explica
+    que no se adjunte nada, y `cerrable` en falso es lo que impide que el front
+    ofrezca un botón de cerrar sobre un expediente cerrado. Y nada se ha
+    preguntado a la pasarela, así que `idempotente_previsto` no puede afirmar
+    que el documento ya estuviera dentro.
+    """
+    erp = ErpEnMemoria(_reclamacion(estado_cod="CER", est=90))
+
+    ctx = _adjuntar(erp=erp)
+    plan = ctx.grafico.plan
+
+    assert plan.ya_cerrada is True
+    assert plan.cerrable is False
+    assert plan.idempotente_previsto is False
+
+
+def test_f012_r33_un_rechazo_del_dry_run_no_dice_que_la_reclamacion_no_valga():
+    """R33 · el rechazo es de la pasarela, no del estado de la reclamación.
+
+    El plan que queda en el contexto conserva `cerrable=True` porque la
+    reclamación **sí** admitía cierre: lo que falló fue el gráfico. Marcarla
+    como no cerrable mandaría a Posventa a mirar un expediente que no tiene
+    nada de malo.
+    """
+    ctx = _contexto()
+    graficos = GraficoEnMemoria(codigo_de_error="clase_de_grafico_no_permitida")
+
+    with pytest.raises(GraficoRechazadoPorLaPasarela):
+        _adjuntar(ctx=ctx, graficos=graficos)
+
+    assert ctx.grafico.estado == EstadoGrafico.ERROR
+    assert ctx.grafico.plan.cerrable is True
+    assert ctx.grafico.plan.ya_cerrada is False
+
+
+def test_f012_r42_la_traza_del_dry_run_no_afirma_que_el_grafico_ya_estuviera():
+    """R42 · `idempotente` en la traza significa «la pasarela dijo que ya
+    estaba», y en un dry-run correcto **nadie lo ha dicho**.
+
+    Esa columna es la que después responde por R24 sin llamar a nadie: si una
+    traza de dry-run la trajera en verdadero, el endpoint contestaría que el
+    parte ya está dentro de Sigrid sin que nadie lo haya subido.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    _adjuntar(repositorio=repositorio)
+    traza = repositorio.graficos[-1]
+
+    assert traza.estado == EstadoGrafico.DRY_RUN_OK
+    assert traza.idempotente is False
+
+
+# --------------------------------------------------------------------------
+# R26, R29 · lo que no queda colgado, y el reintento que sí es seguro
+# --------------------------------------------------------------------------
+
+
+class GraficoQueNoCuelgaNada:
+    """Un `GraficoPort` que responde en verde y **no cuelga el documento**.
+
+    `ok=True` con `committed=False` e `idempotente=False`: la respuesta que
+    `esta_colgado` tiene que rechazar. `GraficoEnMemoria` no la sabe fabricar
+    porque no es ninguna de las cuatro formas del contrato — y precisamente por
+    eso hace falta aquí: es la respuesta que nadie espera.
+    """
+
+    def __init__(self) -> None:
+        self.llamadas: list[tuple[object, bool]] = []
+
+    def adjuntar(self, *, peticion, commit: bool) -> RespuestaGrafico:
+        self.llamadas.append((peticion, commit))
+        return RespuestaGrafico(
+            ok=True,
+            committed=False,
+            idempotente=False,
+            dry_run=not commit,
+            filas_afectadas=0,
+            bytes=peticion.bytes,
+            sha256=peticion.sha256,
+        )
+
+
+def test_f012_r26_r29_una_respuesta_que_no_cuelga_nada_no_se_da_por_adjuntada():
+    """R26, R29 · ni `committed` ni `idempotente`: el parte no está dentro.
+
+    Y el motivo dice que **el reintento es seguro**, que es la diferencia con
+    F-009: quien lo lee tiene que poder volver a intentarlo sin abrir Sigrid
+    para comprobar antes si el documento se coló.
+    """
+    repositorio = RepositorioEnMemoria()
+    graficos = GraficoQueNoCuelgaNada()
+
+    with pytest.raises(GraficoFallido) as fallo:
+        _adjuntar(
+            repositorio=repositorio, graficos=graficos, commit=True, confirmado=True
+        )
+
+    assert fallo.value.reintento_seguro is True
+    assert CODIGO_EN_SIGRID in fallo.value.motivo
+    assert repositorio.graficos[-1].estado == EstadoGrafico.ERROR

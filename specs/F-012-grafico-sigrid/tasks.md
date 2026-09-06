@@ -16,7 +16,7 @@
 
 ## Bloque 1 · Dominio puro (sin red, sin BBDD, sin IA)
 
-- [ ] **T1**: Crear `domain/models/grafico.py` con las constantes, las tres
+- [x] **T1**: Crear `domain/models/grafico.py` con las constantes, las tres
       listas cerradas de códigos de la pasarela, `PeticionGrafico`
       (`contenido` con `repr=False`), `PlanDeGrafico`, `RespuestaGrafico`,
       `ResultadoGrafico`, y las funciones puras `validar_fichero`,

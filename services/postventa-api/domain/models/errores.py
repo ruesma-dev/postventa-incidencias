@@ -43,8 +43,19 @@ ERP cuya traza local no se pudo guardar. Es el hermano de `ArchivoSinTraza`, y
 está aquí por la misma lección: si no tuviera nombre propio saldría como el 503
 de «la base no responde», que promete que no se ha tocado nada.
 
-El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 502 / 503 es el
-borde.
+Los del **gráfico** (F-012) repiten ese reparto sobre una escritura distinta
+—el PDF del parte adjunto a la reclamación, tres filas en dos bases— y añaden
+lo único que allí es nuevo: `CuerpoDeGraficoInvalido` (→ 400),
+`GraficoDemasiadoGrande`, `GraficoNoEsPdf`, `ParteNoAdjuntado` y
+`GraficoRechazadoPorLaPasarela` (→ 409), `EscrituraDocumentalDeshabilitada`
+(→ 503, y es **configuración de otro proyecto**), `GraficoFallido` (→ 502, con
+`reintento_seguro` dentro porque el endpoint es idempotente por contenido) y
+`GraficoSinTraza` (→ 500, el único en el que el ERP **sí** está escrito). Las
+puertas —`CierreDeshabilitado`, `ConfiguracionSigridIncompleta`— y los 409 de
+F-009 se **reutilizan**: son la misma ventana y el mismo interruptor.
+
+El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
+es el borde.
 """
 
 from __future__ import annotations
@@ -705,6 +716,171 @@ class CuerpoDeArchivoInvalido(Exception):
 
     El motivo dice **qué falta** y nunca lo que sí venía: el cuerpo lleva los
     códigos del parte y este texto acaba en un log.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CuerpoDeGraficoInvalido(Exception):
+    """La petición de `/api/adjuntar` no trae lo que dice el contrato (F-012, R58).
+
+    Falta un campo, el veredicto o el destino traen un valor que el dominio no
+    reconoce, o lo que se compondría **no cabe en el ERP**: el nombre pasa de
+    255, la descripción de 48 o el login de 24. El borde lo traduce a **400**,
+    y no a 409: la petición está mal formada, no es que el gráfico no se pueda
+    adjuntar.
+
+    Lo que no cabe **no se trunca**, y por eso es un error y no un saneo: un
+    nombre truncado deja de cruzar con el fichero de SharePoint, y un login
+    truncado es otro login — firmaría el gráfico a nombre de nadie.
+
+    El motivo dice **qué** está mal y nunca lo que sí venía: por esta petición
+    pasa el PDF del parte con el DNI manuscrito dentro, y este texto acaba en
+    un log (R53).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class GraficoDemasiadoGrande(Exception):
+    """El PDF pasa de `GRAFICO_MAX_BYTES` (F-012, R18).
+
+    Se levanta **antes de llamar a la pasarela**: mandar 13 MB de base64 por el
+    proxy para que los rechacen al otro lado gasta el presupuesto de 45 s en un
+    409 que ya se sabía. El borde lo traduce a **409**.
+
+    El motivo dice **cuánto ocupa y cuál es el tope**, que son los dos números
+    sin los cuales quien lo recibe no sabe qué corregir. El tope propio no debe
+    superar el de la pasarela: subirlo aquí solo compra un rechazo más tardío.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class GraficoNoEsPdf(Exception):
+    """Los bytes no empiezan por `%PDF-` (F-012, R19).
+
+    Igual que el anterior, **antes** de llamar a la pasarela, que solo admite
+    lo que esté en su `SIGRID_DOCUMENT_ALLOWED_MAGIC`. El borde lo traduce a
+    **409**.
+
+    El motivo **no lleva ni un byte del fichero**: si no es un PDF puede ser
+    cualquier cosa, y volcar su principio en un log es volcar contenido
+    desconocido de un cliente (R53).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ParteNoAdjuntado(Exception):
+    """Se pide cerrar una incidencia cuyo parte no consta adjuntado (F-012, R2).
+
+    Es la **precondición nueva del cierre**, simétrica a la de archivo
+    (`ParteNoArchivado`): con F-012 el gráfico va **antes** del cambio de
+    estado, así que ninguna reclamación puede quedar cerrada sin su parte
+    dentro de Sigrid.
+
+    Se comprueba contra **nuestra** traza (`postventa.graficos`) y nunca
+    consultando `rcg` ni `gra` del ERP: R20 de F-009 sigue vigente y el cierre
+    sigue sin saber qué es un gráfico. El borde lo traduce a **409**, y **sin
+    haber tocado el ERP** (R62).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class GraficoRechazadoPorLaPasarela(Exception):
+    """La pasarela rechaza la petición del gráfico, sin escribir nada (F-012, R33).
+
+    Lleva el `codigo` de `details.codigo`, que es una **lista cerrada** de doce
+    valores (`azure-apps/sigrid_api.md` §8.8): el concepto no existe, el tipo
+    no coincide, la clase no está permitida, el login no vale, el fichero está
+    vacío, no es del tipo permitido o pasa del tope de la pasarela.
+
+    Del cuerpo de la respuesta **solo se toma ese código** y se descarta el
+    resto (R35): detrás hay un SQL Server de producción con datos de clientes,
+    y lo que la pasarela cuente de un error no puede acabar en un log.
+
+    El borde lo traduce a **409**. En todos estos casos el ERP quedó intacto:
+    la pasarela los levanta antes del `COMMIT` o dentro de la transacción, que
+    revierte.
+    """
+
+    def __init__(self, motivo: str, *, codigo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.codigo = codigo
+
+
+class EscrituraDocumentalDeshabilitada(Exception):
+    """Falta una precondición del dueño de `sigrid-api` (F-012, R32).
+
+    Dos códigos: `escritura_documental_deshabilitada` (la pasarela tiene
+    cerrada su base documental, o no la tiene configurada) y
+    `base_de_datos_no_permitida` (nuestra `SIGRID_BASE_DATOS` no está en su
+    lista blanca).
+
+    **No es un fallo de esta feature ni de quien llama**: es configuración de
+    **otro proyecto**, declarada como precondición (H4 de `design.md`) y
+    documentada en `docs/INTEGRACION.md` §6 como «qué se rompe si el dueño la
+    cambia». Por eso el borde lo traduce a **503** y no a 409: no hay nada que
+    corregir en la petición, y aquí y ahora no se adjunta.
+
+    Lleva el `codigo` para poder nombrarlo en el mensaje: sin él, quien lo
+    reciba no sabe **cuál** de las dos precondiciones pedirle a su dueño.
+    """
+
+    def __init__(self, motivo: str, *, codigo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.codigo = codigo
+
+
+class GraficoFallido(Exception):
+    """No se ha podido adjuntar el gráfico (F-012, R28, R29, R31, R34).
+
+    Es el hermano de `CierreFallido`, con **una diferencia que importa y que
+    va en el propio objeto**: `reintento_seguro`. El endpoint de la pasarela es
+    **idempotente por tamaño y `sha256`**, así que volver a pedirlo no duplica
+    el gráfico — ni siquiera cuando el fallo fue un tiempo agotado y no se sabe
+    si el ERP llegó a escribir.
+
+    Eso lo distingue de F-009, donde el reintento lo decide una persona después
+    de mirar el ERP. Aquí el motivo **dice** que el reintento es seguro, porque
+    quien lo lee tiene que poder actuar sin abrir Sigrid.
+
+    El borde lo traduce a **502**. El motivo va **acotado**: nunca el cuerpo
+    crudo de la respuesta, ni la URL de la pasarela, ni la clave de función
+    (R35, R55).
+    """
+
+    def __init__(self, motivo: str, *, reintento_seguro: bool = True) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.reintento_seguro = reintento_seguro
+
+
+class GraficoSinTraza(Exception):
+    """El gráfico **está en el ERP** y no ha quedado constancia (F-012, R47).
+
+    Es el hermano exacto de `CierreSinTraza` y de `ArchivoSinTraza`, y existe
+    por lo mismo: **el borde no puede deducirlo**. Un `PersistenciaNoDisponible`
+    a secas saldría como 503 diciendo «no se ha escrito nada, reintenta», y eso
+    sería mentira con las tres filas ya dentro de Sigrid.
+
+    La diferencia con sus hermanos es cómo se arregla: aquí el reintento **sí**
+    es inofensivo —la pasarela responderá `idempotente: true` y no escribirá
+    nada—, lo que falta es la traza local. El borde lo traduce a **500**.
     """
 
     def __init__(self, motivo: str) -> None:

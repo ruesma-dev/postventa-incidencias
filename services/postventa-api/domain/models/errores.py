@@ -749,9 +749,9 @@ class CuerpoDeGraficoInvalido(Exception):
 class GraficoDemasiadoGrande(Exception):
     """El PDF pasa de `GRAFICO_MAX_BYTES` (F-012, R18).
 
-    Se levanta **antes de llamar a la pasarela**: mandar 13 MB de base64 por el
-    proxy para que los rechacen al otro lado gasta el presupuesto de 45 s en un
-    409 que ya se sabía. El borde lo traduce a **409**.
+    Se levanta **antes de llamar a la pasarela**: mandar 13 MB codificados por
+    el proxy para que los rechacen al otro lado gasta el presupuesto de 45 s en
+    un 409 que ya se sabía. El borde lo traduce a **409**.
 
     El motivo dice **cuánto ocupa y cuál es el tope**, que son los dos números
     sin los cuales quien lo recibe no sabe qué corregir. El tope propio no debe

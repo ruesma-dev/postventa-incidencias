@@ -31,6 +31,7 @@ from domain.models.persistencia import (
     ResultadoGuardado,
     TrazaArchivo,
     TrazaCierre,
+    TrazaGrafico,
 )
 from domain.models.remesa import ParteTroceado
 from domain.models.validacion import ResultadoValidacion
@@ -93,6 +94,27 @@ class RepositorioPartesPort(Protocol):
         Un parte ya marcado como cerrado **no se pisa**: devuelve
         `SIN_CAMBIOS` y deja la fila intacta (R25). Es la diferencia entre
         registrar un cierre y volver a cerrarlo.
+        """
+        ...
+
+    def guardar_grafico(self, *, traza: TrazaGrafico) -> ResultadoGuardado:
+        """Registra qué pasó al adjuntar el parte como gráfico (F-012, R42, R43).
+
+        Un parte ya marcado como `adjuntado` **no se pisa**: devuelve
+        `SIN_CAMBIOS` y deja la fila intacta (R30). Es la diferencia entre
+        registrar un gráfico y colgar un segundo.
+        """
+        ...
+
+    def consultar_grafico(self, *, hash_parte: str) -> TrazaGrafico | None:
+        """La traza del gráfico de ese parte, o `None` si no consta (F-012).
+
+        `None` **no es un error**: es que a ese parte todavía no se le ha
+        adjuntado nada. La leen dos sitios y por dos motivos distintos:
+        `paso_grafico`, como **primera capa de idempotencia** —si dice
+        `adjuntado`, no se llama a la pasarela ni se mandan los bytes (R24)—, y
+        `paso_cierre`, como **precondición del `commit`**: ninguna reclamación
+        se cierra sin que su parte conste dentro de Sigrid (R2, R49).
         """
         ...
 

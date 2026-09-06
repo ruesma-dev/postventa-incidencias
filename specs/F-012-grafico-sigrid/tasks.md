@@ -33,7 +33,7 @@
       más uno desconocido. **Control negativo**: `repr(PeticionGrafico)` y
       `str(...)` no contienen ni un byte del contenido (R53).
 
-- [ ] **T2**: `EstadoGrafico` y `TrazaGrafico` en `domain/models/persistencia.py`;
+- [x] **T2**: `EstadoGrafico` y `TrazaGrafico` en `domain/models/persistencia.py`;
       los errores nuevos en `domain/models/errores.py`; el puerto
       `domain/ports/grafico.py`; y los dos métodos nuevos de
       `RepositorioPartesPort`. | Verificación: `test_f012_arquitectura.py`

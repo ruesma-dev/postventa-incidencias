@@ -7,9 +7,11 @@ viajará a la pasarela. Igual que `domain/models/cierre.py`, se puede probar
 entero sin abrir una conexión contra el ERP de producción — que es lo que
 permite cubrirlo y mutarlo.
 
-Y una cosa que este módulo **no** hace, a propósito: no sabe qué es `base64`.
-El transporte es cosa del adaptador (`test_f012_arquitectura.py` lo fija con un
-control negativo). Aquí el contenido son bytes.
+Y una cosa que este módulo **no** hace, a propósito: no sabe **cómo se
+codifica** el contenido para viajar por HTTP. El transporte es cosa del
+adaptador, y `test_f012_arquitectura.py` lo fija con un control negativo que
+busca esa palabra en todo `domain/` y `application/`. Aquí el contenido son
+bytes.
 
 ## Las tres reglas que este módulo no negocia
 
@@ -238,8 +240,8 @@ def validar_fichero(contenido: bytes, *, tope_bytes: int) -> tuple[int, str]:
     """El tamaño y el `sha256` de los bytes, o el motivo por el que no valen.
 
     Es la puerta que hace que R18 y R19 se comprueben **antes de llamar a
-    nadie**: mandar 13 MB de base64 por el proxy para que los rechacen al otro
-    lado gasta el presupuesto de 45 s en un rechazo que ya se sabía.
+    nadie**: mandar 13 MB codificados por el proxy para que los rechacen al
+    otro lado gasta el presupuesto de 45 s en un rechazo que ya se sabía.
 
     El **tope va primero** y la firma después, y el orden está decidido a
     propósito: lo que no puede pasar es tener que mirar dentro de un fichero

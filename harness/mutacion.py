@@ -39,6 +39,11 @@ TIMEOUT = "timeout"
 #: Segundos máximos por mutante si nadie configura otra cosa.
 TIMEOUT_POR_DEFECTO = 120
 
+#: Rama de integración contra la que se calcula el alcance si nadie dice otra.
+#: Vive aquí, y no suelta dentro del `argparse`, porque `comando_de` necesita
+#: saber cuál es el valor de siempre para no repetirlo en el comando.
+BASE_POR_DEFECTO = "dev"
+
 #: Tope del número de workers CALCULADO por defecto. Más allá, la máquina se
 #: pasa el rato cambiando de contexto y cada suite roza su timeout. No limita
 #: lo que se pida a mano con `--workers` ni lo declarado en `rigor.json`.
@@ -378,6 +383,10 @@ class InformeMutacion:
     #: dato el «Tiempo total» no se puede interpretar: la misma campaña tarda lo
     #: mismo mal repartida entre muchos que bien repartida entre pocos.
     workers: int | None = None
+    #: Rama de integración contra la que se calculó el alcance. Sin ella, el
+    #: comando de la cabecera mide otro alcance cuando la rama nace de otra
+    #: feature: el diff contra `dev` arrastra las líneas de la feature madre.
+    base: str | None = None
 
     @property
     def evaluados(self) -> int:
@@ -570,13 +579,23 @@ def analisis_escritos(texto: str) -> dict[tuple, str]:
 
 
 def comando_de(informe: InformeMutacion) -> str:
-    """El comando que reproduce esta campaña, workers incluidos.
+    """El comando que reproduce esta campaña: base y workers incluidos.
 
     Sin `--workers` el comando de la cabecera no reproduce nada: la misma
     feature medida con 1 worker y con 16 da tiempos que se diferencian en un
     factor 4 y, hasta que la campaña repasa sus timeouts, veredictos distintos.
+
+    Y sin `--base` reproduce **otro alcance**, que es peor: cuando la rama nace
+    de otra feature —F-012 nació de `feature/F-009-cierre-sigrid`— el diff
+    contra `dev` arrastra las líneas de la feature madre, así que el número de
+    mutantes y la lista de supervivientes dejan de ser comparables.
+
+    Solo se escribe lo que no es el valor de siempre: repetir `--base dev` en
+    todos los informes es ruido que acaba haciendo que nadie lea la línea.
     """
     comando = f"python -m harness.mutacion --feature {informe.feature}"
+    if informe.base is not None and informe.base != BASE_POR_DEFECTO:
+        comando += f" --base {informe.base}"
     if informe.workers is not None:
         comando += f" --workers {informe.workers}"
     return comando
@@ -738,7 +757,9 @@ def _analizar_argumentos(argv: list[str] | None) -> argparse.Namespace:
     analizador.add_argument(
         "--feature", required=True, help="Identificador de la feature, p. ej. F-XXX"
     )
-    analizador.add_argument("--base", default="dev", help="Rama de integración")
+    analizador.add_argument(
+        "--base", default=BASE_POR_DEFECTO, help="Rama de integración"
+    )
     analizador.add_argument("--rama", default=None, help="Rama de la feature")
     analizador.add_argument("--raiz", default=".", help="Raíz del repositorio a mutar")
     analizador.add_argument("--timeout", type=int, default=None, help="Segundos por mutante")
@@ -862,6 +883,10 @@ def main(argv: list[str] | None = None, ejecutor: object | None = None) -> int:
         # igual que lo dice la paralela: sin el dato, sus tiempos no se pueden
         # comparar con los de ninguna otra.
         informe.workers = 1
+
+    # La base se registra en las dos ramas, paralela y en serie: es el alcance,
+    # y sin ella el comando de la cabecera mide otra cosa.
+    informe.base = opciones.base
 
     destino = Path(opciones.salida or f"progress/mutacion_{opciones.feature}.md")
     escribir_informe(informe, destino)

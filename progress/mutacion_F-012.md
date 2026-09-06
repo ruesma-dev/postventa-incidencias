@@ -20,7 +20,7 @@
 
 # Segunda pasada · la que cuenta
 
-Generado por `python -m harness.mutacion --feature F-012 --workers 8` el 2026-09-06 14:51.
+Generado por `python -m harness.mutacion --feature F-012 --base feature/F-009-cierre-sigrid --workers 8` el 2026-09-06 14:51.
 
 ## Alcance
 
@@ -161,7 +161,7 @@ Es el mismo relleno que `archivar.py:197` y `cerrar.py:219`, y va con
 
 # Primera pasada · el punto de partida y el análisis de los 35
 
-Generado por `python -m harness.mutacion --feature F-012 --workers 8` el 2026-09-06 14:05.
+Generado por `python -m harness.mutacion --feature F-012 --base feature/F-009-cierre-sigrid --workers 8` el 2026-09-06 14:05.
 
 ## Alcance
 

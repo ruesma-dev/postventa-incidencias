@@ -58,13 +58,19 @@ from domain.models.errores import (
     CuerpoDeCierreInvalido,
     ErrorDePersistencia,
     EstadoNoCerrable,
+    ParteNoAdjuntado,
     ParteNoApto,
     ParteNoArchivado,
     ReclamacionNoLocalizada,
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
 )
-from domain.models.persistencia import EstadoArchivo, EstadoCierre, TrazaCierre
+from domain.models.persistencia import (
+    EstadoArchivo,
+    EstadoCierre,
+    EstadoGrafico,
+    TrazaCierre,
+)
 from domain.models.validacion import Destino, Veredicto
 from domain.ports.erp import ErpPort
 from domain.ports.persistencia import (
@@ -77,6 +83,7 @@ from application.pipelines.contexto_parte import ContextoParte
 
 __all__ = [
     "FILAS_ESPERADAS",
+    "exigir_autorizacion_para_escribir",
     "paso_cierre",
     "resolver_login_de_sigrid",
 ]
@@ -164,6 +171,12 @@ def paso_cierre(
 
     _dejar_constancia(repositorio, ctx, _traza_de_dry_run(ctx, plan, ahora=ahora))
 
+    # R49 (F-012) · el estado del gráfico se lee **del repositorio**, nunca del
+    # cuerpo de la petición: si viniera del cuerpo, quien llama podría afirmar
+    # que adjuntó algo que no adjuntó. Se lee también en el dry-run, porque es
+    # lo que hay que enseñar antes de confirmar (R50: aquí no se exige nada).
+    ctx.traza_grafico = repositorio.consultar_grafico(hash_parte=ctx.parte.hash)
+
     ctx.cierre = ResultadoCierre(plan=plan, estado=EstadoCierre.DRY_RUN_OK)
     if not commit:
         log.info(
@@ -175,7 +188,8 @@ def paso_cierre(
         )
         return ctx
 
-    _exigir_autorizacion_para_escribir(
+    _exigir_adjuntado(ctx)
+    exigir_autorizacion_para_escribir(
         preferencias, confirmado=confirmado, usuario_oid=usuario_oid
     )
     return _escribir(
@@ -227,6 +241,43 @@ def _exigir_archivado(ctx: ContextoParte) -> None:
         )
 
 
+def _exigir_adjuntado(ctx: ContextoParte) -> None:
+    """El parte tiene que constar **adjuntado** al ERP (F-012, R2).
+
+    Es la precondición nueva del cierre, simétrica a la de archivo, y es lo que
+    **elimina la anomalía** que `docs/ARCHITECTURE.md` describía como riesgo
+    aceptado: reclamaciones en `CER` sin ninguna fila de gráfico, algo que no
+    había ocurrido ni una vez en los 2.365 cierres de «Cerrar parte» desde
+    2023.
+
+    Tres cosas que no son casualidad:
+
+    - **Solo `adjuntado` vale.** Un `dry_run_ok` dice que se miró qué pasaría,
+      no que el parte esté dentro de Sigrid.
+    - **Solo con `commit`.** El dry-run del cierre no lo exige (R50), para que
+      los dos dry-run se puedan enseñar juntos antes de confirmar.
+    - **Se lee de la traza propia y no del ERP** (R52). R20 de F-009 sigue
+      vigente: este módulo no sabe qué es un gráfico del ERP y no nombra
+      ninguna de sus tablas.
+
+    Va **antes** de la autorización a propósito: con `commit`, sin confirmar y
+    sin gráfico, lo que falta de verdad es el gráfico. Al revés, quien lo
+    recibiera creería que basta con confirmar, confirmaría, y se encontraría el
+    mismo 409 una pantalla después.
+    """
+    traza = ctx.traza_grafico
+    if traza is not None and traza.estado == EstadoGrafico.ADJUNTADO:
+        return
+
+    estado = "ninguno" if traza is None else traza.estado.value
+    raise ParteNoAdjuntado(
+        f"este parte no consta adjuntado a la reclamación en Sigrid (estado "
+        f"del gráfico: {estado}), así que no se cierra: primero se adjunta el "
+        f"parte con POST /api/adjuntar y después se cierra, para que ninguna "
+        f"reclamación quede cerrada sin su parte dentro del ERP"
+    )
+
+
 def _codigo_de_incidencia(numero_incidencia: str) -> str:
     """El código con el que se busca en el ERP, en su formato (R6).
 
@@ -255,7 +306,7 @@ def _dry_run(erp: ErpPort, *, codigo: str, login: str) -> PlanDeCierre:
     return evaluar(reclamacion, login_sigrid=login)
 
 
-def _exigir_autorizacion_para_escribir(
+def exigir_autorizacion_para_escribir(
     preferencias: RepositorioPreferenciasPort, *, confirmado: bool, usuario_oid: str
 ) -> None:
     """Sin confirmación explícita o auto-cierre activo, no se escribe (R12–R14).

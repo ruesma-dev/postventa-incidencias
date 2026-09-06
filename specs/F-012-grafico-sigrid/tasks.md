@@ -138,7 +138,7 @@
 
 ## Bloque 5 · El cierre exige el gráfico
 
-- [ ] **T12**: En `paso_cierre.py`: `_exigir_adjuntado(ctx, repositorio)`
+- [x] **T12**: En `paso_cierre.py`: `_exigir_adjuntado(ctx, repositorio)`
       solo con `commit`, antes de la escritura; `ctx.traza_grafico` en el
       dry-run; `exigir_autorizacion_para_escribir` pública. | Verificación:
       `test_f012_cerrar_exige_grafico.py`: R2 (con `commit` y sin traza

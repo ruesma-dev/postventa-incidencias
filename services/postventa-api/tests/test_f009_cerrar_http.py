@@ -37,12 +37,25 @@ from domain.models.errores import (
 )
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
+    EstadoGrafico,
     PreferenciasUsuario,
     ResultadoGuardado,
+    TrazaGrafico,
 )
 from interface_adapters.api.cerrar import CAMPOS_OBLIGATORIOS, cerrar_incidencia
 
 from tests.utiles_pg import RepositorioEnMemoria
+
+#: La traza del gráfico **adjuntado**, que F-012 convirtió en precondición del
+#: `commit` (su R2). No es material de F-009: es el estado del mundo en el que
+#: el cierre ocurre desde el 2026-09-06, porque el gráfico se adjunta **antes**
+#: del cambio de estado. Los tests de qué pasa **sin** ella están en
+#: `test_f012_adjuntar_http.py`, que es donde les toca.
+_GRAFICO_ADJUNTADO = TrazaGrafico(
+    hash_parte="hash-inventado-del-parte",
+    numero_incidencia="RS26.08/0123",
+    estado=EstadoGrafico.ADJUNTADO,
+)
 from tests.utiles_sigrid import ErpEnMemoria
 
 AHORA = datetime(2026, 8, 26, 9, 46, 33, tzinfo=UTC)
@@ -128,7 +141,9 @@ def _cerrar(
     return cerrar_incidencia(
         _cuerpo() if cuerpo is _SIN_CUERPO else cuerpo,
         erp=erp if erp is not None else ErpEnMemoria(_reclamacion()),
-        repositorio=repositorio if repositorio is not None else RepositorioEnMemoria(),
+        repositorio=repositorio
+        if repositorio is not None
+        else RepositorioEnMemoria(traza_grafico=_GRAFICO_ADJUNTADO),
         usuarios=usuarios if usuarios is not None else UsuariosEnMemoria(),
         preferencias=(
             preferencias if preferencias is not None else PreferenciasEnMemoria()

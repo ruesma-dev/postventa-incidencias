@@ -89,13 +89,11 @@ from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
 
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import (
-    # NOTA (T9 → T12) · se importa la **privada** a propósito y por poco
-    # tiempo: `tasks.md` la hace pública en T12, cuando `paso_cierre` se toque
-    # para exigir el gráfico. Reutilizarla es lo correcto —la autorización para
-    # escribir en el ERP tiene que ser **una** regla, no dos copias que un día
-    # divergen— y duplicarla aquí sería peor que importar un guion bajo durante
-    # tres tareas.
-    _exigir_autorizacion_para_escribir,
+    # **Una** regla de autorización para escribir en el ERP, no dos copias que
+    # un día divergen: la que se quedara corta sería la que dejara escribir sin
+    # que nadie lo confirmara. Es pública desde T12, cuando `paso_cierre` se
+    # tocó para exigir el gráfico.
+    exigir_autorizacion_para_escribir,
     resolver_login_de_sigrid,
 )
 
@@ -243,7 +241,7 @@ def paso_grafico(
         )
         return ctx
 
-    _exigir_autorizacion_para_escribir(
+    exigir_autorizacion_para_escribir(
         preferencias, confirmado=confirmado, usuario_oid=usuario_oid
     )
     return _escribir(

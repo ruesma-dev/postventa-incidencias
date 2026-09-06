@@ -45,9 +45,11 @@ from domain.models.firma import ClasificacionFirma
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
     EstadoArchivo,
+    EstadoGrafico,
     PreferenciasUsuario,
     ResultadoGuardado,
     TrazaArchivo,
+    TrazaGrafico,
 )
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
@@ -58,6 +60,22 @@ from tests.utiles_sigrid import ErpEnMemoria
 AHORA = datetime(2026, 8, 26, 9, 46, 33, tzinfo=UTC)
 HASH = "hash-inventado-del-parte"
 OID = "oid-inventado-para-el-test"
+
+#: La traza del gráfico **adjuntado**, que F-012 convirtió en precondición del
+#: `commit` (su R2). No es material de F-009: es el estado del mundo en el que
+#: el cierre de F-009 ocurre desde el 2026-09-06, porque el gráfico se adjunta
+#: **antes** del cambio de estado.
+#:
+#: Se inyecta donde el test escribe de verdad, y en ninguno más: el dry-run no
+#: la exige (R50 de F-012), y los tests que comprueban qué pasa **sin** ella
+#: viven en `test_f012_cerrar_exige_grafico.py`, que es donde les toca.
+GRAFICO_ADJUNTADO = TrazaGrafico(
+    hash_parte=HASH,
+    numero_incidencia="RS26.08/0123",
+    estado=EstadoGrafico.ADJUNTADO,
+    adjuntado_at_utc=AHORA,
+)
+
 
 # --- Los datos personales inventados que se hacen pasar por el camino real ---
 # **Ninguno es real.** El DNI es el marcador no emitido que ya declara F-005,
@@ -199,7 +217,7 @@ def _cerrar(*, erp, usuarios, commit: bool = True, confirmado: bool = True):
     return paso_cierre(
         _contexto_con_datos_personales(),
         erp,
-        RepositorioEnMemoria(),
+        RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
         usuarios,
         PreferenciasEnMemoria(),
         commit=commit,

@@ -39,9 +39,11 @@ from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
     EstadoArchivo,
     EstadoCierre,
+    EstadoGrafico,
     PreferenciasUsuario,
     ResultadoGuardado,
     TrazaArchivo,
+    TrazaGrafico,
 )
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
@@ -54,6 +56,22 @@ HASH = "hash-inventado-del-parte"
 OID = "oid-inventado-para-el-test"
 CORREO = "fulanito@ejemplo.invalido"
 INCIDENCIA = "RS26.08 - 0123"
+
+#: La traza del gráfico **adjuntado**, que F-012 convirtió en precondición del
+#: `commit` (su R2). No es material de F-009: es el estado del mundo en el que
+#: el cierre de F-009 ocurre desde el 2026-09-06, porque el gráfico se adjunta
+#: **antes** del cambio de estado.
+#:
+#: Se inyecta donde el test escribe de verdad, y en ninguno más: el dry-run no
+#: la exige (R50 de F-012), y los tests que comprueban qué pasa **sin** ella
+#: viven en `test_f012_cerrar_exige_grafico.py`, que es donde les toca.
+GRAFICO_ADJUNTADO = TrazaGrafico(
+    hash_parte=HASH,
+    numero_incidencia="RS26.08/0123",
+    estado=EstadoGrafico.ADJUNTADO,
+    adjuntado_at_utc=AHORA,
+)
+
 
 
 class UsuariosEnMemoria:
@@ -166,7 +184,7 @@ def _cerrar(
     return paso_cierre(
         ctx if ctx is not None else _contexto(),
         erp if erp is not None else ErpEnMemoria(_reclamacion()),
-        repositorio if repositorio is not None else RepositorioEnMemoria(),
+        repositorio if repositorio is not None else RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
         usuarios if usuarios is not None else UsuariosEnMemoria(),
         preferencias if preferencias is not None else PreferenciasEnMemoria(),
         commit=commit,
@@ -306,7 +324,7 @@ def test_f009_r47_sin_numero_de_incidencia_no_se_pregunta_al_erp():
         paso_cierre(
             _contexto(),
             erp,
-            RepositorioEnMemoria(),
+            RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
             UsuariosEnMemoria(),
             PreferenciasEnMemoria(),
             commit=False,
@@ -364,7 +382,7 @@ def test_f009_r20_el_modulo_del_paso_no_menciona_las_tablas_de_graficos():
 def test_f009_r18_una_reclamacion_ya_cerrada_no_es_un_error():
     """R18 · se registra `ya_cerrada` y **no se escribe nada en Sigrid**."""
     erp = ErpEnMemoria(_reclamacion(est=90, cod_origen="CER"))
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     ctx = _cerrar(erp=erp, repositorio=repositorio, commit=True, confirmado=True)
 
@@ -517,7 +535,7 @@ def test_f009_r32_sin_login_confirmado_no_se_escribe_en_el_erp():
         paso_cierre(
             _contexto(),
             erp,
-            RepositorioEnMemoria(),
+            RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
             SinCorrespondencia(),
             PreferenciasEnMemoria(),
             commit=True,
@@ -547,7 +565,7 @@ def test_f009_r28_el_plan_lleva_el_login_con_el_que_se_firma():
 
 def test_f009_r40_un_dry_run_correcto_deja_su_traza():
     """R40 · con estado `dry_run_ok` y su marca de tiempo."""
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     _cerrar(repositorio=repositorio, commit=False)
 
@@ -559,7 +577,7 @@ def test_f009_r40_un_dry_run_correcto_deja_su_traza():
 
 def test_f009_r41_un_cierre_con_exito_deja_su_traza_completa():
     """R41 · el `oid` de quien confirmó, los dos códigos de estado y la hora."""
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     _cerrar(repositorio=repositorio, commit=True, confirmado=True)
 
@@ -579,7 +597,7 @@ def test_f009_r43_la_traza_del_cierre_guarda_el_oid_y_nunca_el_login():
     reconstruir qué hicimos no hace falta saber quién es. Y el par vive en la
     tabla de correspondencias, que es su razón de existir.
     """
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     _cerrar(
         repositorio=repositorio,
@@ -602,7 +620,9 @@ def test_f009_r42_una_traza_ya_cerrada_no_se_pisa():
     `cerrado`, y el paso lo trata como lo que es: no había nada que hacer, que
     no es lo mismo que no haber podido.
     """
-    repositorio = RepositorioEnMemoria(ResultadoGuardado.SIN_CAMBIOS)
+    repositorio = RepositorioEnMemoria(
+        ResultadoGuardado.SIN_CAMBIOS, traza_grafico=GRAFICO_ADJUNTADO
+    )
 
     ctx = _cerrar(repositorio=repositorio, commit=True, confirmado=True)
 
@@ -636,7 +656,7 @@ def test_f009_r27_un_cierre_fallido_deja_traza_de_error_y_no_se_reintenta():
     erp = ErpEnMemoria(
         _reclamacion(), fallo_al_cerrar=CierreFallido("la pasarela respondió 500")
     )
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     with pytest.raises(CierreFallido):
         _cerrar(erp=erp, repositorio=repositorio, commit=True, confirmado=True)
@@ -655,7 +675,7 @@ def test_f009_r22_un_cierre_que_no_afecta_a_dos_filas_no_se_da_por_bueno():
     caro de esta feature.
     """
     erp = ErpEnMemoria(_reclamacion(), filas_afectadas=1)
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     with pytest.raises(CierreFallido):
         _cerrar(erp=erp, repositorio=repositorio, commit=True, confirmado=True)
@@ -669,7 +689,7 @@ def test_f009_r41_la_traza_guarda_el_codigo_de_la_incidencia_en_formato_sigrid()
     Guardar el del nombre del fichero obligaría a convertir cada vez que
     alguien quisiera cruzar las dos cosas.
     """
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     _cerrar(repositorio=repositorio, commit=True, confirmado=True)
 
@@ -695,7 +715,7 @@ def test_f009_un_cierre_escrito_sin_traza_no_se_confunde_con_no_haber_escrito():
     from domain.models.errores import CierreSinTraza, PersistenciaNoDisponible
 
     erp = ErpEnMemoria(_reclamacion())
-    repositorio = RepositorioEnMemoria()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
 
     class SinTraza(RepositorioEnMemoria):
         """Guarda el dry-run y falla al guardar el cierre, que es el orden real."""
@@ -705,7 +725,7 @@ def test_f009_un_cierre_escrito_sin_traza_no_se_confunde_con_no_haber_escrito():
                 raise PersistenciaNoDisponible("la base no responde")
             return super().guardar_cierre(traza=traza)
 
-    repositorio = SinTraza()
+    repositorio = SinTraza(traza_grafico=GRAFICO_ADJUNTADO)
 
     with pytest.raises(CierreSinTraza) as fallo:
         _cerrar(erp=erp, repositorio=repositorio, commit=True, confirmado=True)
@@ -724,7 +744,10 @@ def test_f009_un_fallo_de_la_base_ANTES_de_escribir_no_es_lo_mismo():
     from domain.models.errores import PersistenciaNoDisponible
 
     erp = ErpEnMemoria(_reclamacion())
-    repositorio = RepositorioEnMemoria(fallo=PersistenciaNoDisponible("la base no responde"))
+    repositorio = RepositorioEnMemoria(
+        fallo=PersistenciaNoDisponible("la base no responde"),
+        traza_grafico=GRAFICO_ADJUNTADO,
+    )
 
     with pytest.raises(PersistenciaNoDisponible):
         _cerrar(erp=erp, repositorio=repositorio, commit=True, confirmado=True)

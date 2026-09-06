@@ -45,12 +45,17 @@ def test_f009_el_ddl_de_f009_se_recoge_con_los_demas():
     assert FICHERO in nombres
 
 
-def test_f009_el_ddl_de_f009_va_el_ultimo_y_despues_del_esquema():
-    """El orden **es** una dependencia: el esquema antes que la tabla."""
+def test_f009_el_ddl_de_f009_va_despues_del_esquema():
+    """El orden **es** una dependencia: el esquema antes que la tabla.
+
+    Hasta F-012 este fichero era además **el último**, y el test lo fijaba.
+    Ya no lo es —`09_graficos.sql` va detrás— y esa aserción se retira: era
+    una propiedad del catálogo en aquel momento, no del DDL de F-009. Lo que
+    sigue vigente, y es lo que de verdad protegía, es la dependencia.
+    """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
     assert nombres.index("01_esquema.sql") < nombres.index(FICHERO)
-    assert nombres[-1] == FICHERO
 
 
 def test_f009_la_guarda_acepta_el_ddl_de_f009_tal_y_como_esta():

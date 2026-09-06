@@ -53,7 +53,7 @@
 
 ## Bloque 2 · La traza local
 
-- [ ] **T4**: Crear `infrastructure/persistencia/sql/09_graficos.sql`
+- [x] **T4**: Crear `infrastructure/persistencia/sql/09_graficos.sql`
       (`design.md` §8.1) y registrarlo en `ddl.py` / `arranque.py`. |
       Verificación: `test_f012_ddl_orden.py` y los `test_f005_ddl_*`
       existentes: idempotente, en el schema propio y **nunca** en `public`,

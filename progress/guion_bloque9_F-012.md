@@ -327,11 +327,13 @@ parámetro; no se edita el script.
 
 ### Documentales — no bloquean técnicamente, pero se cierran antes de dar el bloque por bueno
 
-- [ ] **D1** · **Aceptación de los 5 supervivientes de mutación** declarados
+- [x] **D1** · **Aceptación de los 5 supervivientes de mutación** declarados
       equivalentes en `progress/mutacion_F-012.md` y verificados uno a uno por
       el reviewer (`progress/review_F-012.md` §5.4). El nivel `critico` exige
       esa aceptación **por escrito y del humano**. Sin ella, T33 está hecha
       pero no aceptada, y eso se anota; no impide ejecutar T25.
+      **HECHA el 2026-09-06**: el humano los aceptó por escrito; consta en la
+      cabecera de `progress/mutacion_F-012.md`.
 - [ ] **D2** · **Confirmación con Posventa (Ana Bello / Alicia Echevarría) de
       que `PV002`** —`gratipide` 35, «POSTVENTA:Fotos Reparaciones»— **es la
       clase correcta para un parte firmado** (P1 de `design.md` §14). Los datos

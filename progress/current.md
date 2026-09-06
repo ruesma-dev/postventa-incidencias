@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-06 (noche, 5) · **los 5 supervivientes de mutación de F-012, aceptados por el humano**
+>
+> «Acepto los 5 supervivientes de mutación». Consta en la cabecera de
+> `progress/mutacion_F-012.md` y la precondición documental **D1** del guion
+> del bloque 9 queda marcada. Con ello **C4 bis está cerrado para F-012**.
+> Queda abierta **D2** (confirmar `PV002` con Posventa) y todo lo técnico del
+> bloque 9, que es del humano. F-012 sigue `in_progress`.
+
 > ## Estado al 2026-09-06 (noche, 4) · **guion del bloque 9 de F-012 escrito, y el del bloque 8 de F-009 corregido**
 >
 > - **`progress/guion_bloque9_F-012.md`** (nuevo): el procedimiento que sigue el

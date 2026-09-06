@@ -17,6 +17,12 @@
 >
 > **Ni un `PENDIENTE`**: los 35 de la primera pasada llevan su análisis, y los 5
 > de la segunda llevan el mismo, porque son los mismos.
+>
+> **ACEPTADOS por el humano el 2026-09-06.** Los cinco supervivientes de la
+> segunda pasada, declarados equivalentes y verificados uno a uno por el
+> reviewer (`progress/review_F-012.md` §5.4), quedan aceptados por escrito con
+> estas palabras: «acepto los 5 supervivientes de mutación». Con esto la puerta
+> de mutación del nivel `critico` (C4 bis) está cerrada para F-012.
 
 # Segunda pasada · la que cuenta
 

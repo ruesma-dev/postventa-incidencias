@@ -69,8 +69,11 @@ function appPostventa() {
     usuario: { usuarioOid: "", correo: "" },
     // El dry-run de cada parte, por `hash`. Es lo que hay que enseñar ANTES de
     // que nadie confirme: los dos estados legibles, con qué login se firmaría
-    // y el aviso de que la reclamación quedará cerrada sin el parte dentro de
-    // Sigrid. Confirmar sin haberlo leído es lo que esto viene a evitar.
+    // y el bloque `grafico` con el estado real de este parte (R49).
+    // Confirmar sin haberlo leído es lo que esto viene a evitar.
+    // Ya NO trae `aviso_sin_grafico`: R48 de F-012 lo derogó, porque desde
+    // F-012 el cierre exige el gráfico adjuntado (R2) y aquel aviso —«quedará
+    // cerrada sin el parte»— describía un sistema que ya no existe.
     dryRunCierre: {},
     // F-012 · el dry-run del gráfico, por parte. Va aparte del del cierre
     // porque son dos llamadas a dos endpoints distintos y cada una puede

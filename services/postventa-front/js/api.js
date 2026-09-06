@@ -441,8 +441,15 @@
        * **Por omisión no cierra nada.** El cuerpo lo compone
        * `js/pipeline.js::cuerpoDeCierre`, y sin `commit` el backend responde
        * el dry-run: los dos estados legibles, con qué login se firmaría y el
-       * aviso de que la reclamación quedará cerrada sin el parte dentro del
-       * ERP. Ese aviso hay que enseñarlo **antes** de que nadie confirme.
+       * bloque `grafico` con el estado real de este parte —`adjuntado`,
+       * `dry_run_ok` o `no_consta`— (R49). Eso hay que enseñarlo **antes** de
+       * que nadie confirme.
+       *
+       * Lo que ese bloque **sustituye** es el `aviso_sin_grafico` de F-009,
+       * derogado por R48 de F-012: ya no llega en la respuesta y no hay que
+       * buscarlo. Desde F-012 el cierre con `commit` **exige** el gráfico
+       * adjuntado (R2), así que aquel aviso —«quedará cerrada sin el parte»—
+       * sería falso; en su sitio va el estado real, leído de la traza propia.
        *
        * **No lleva los bytes del PDF**, y por eso va como JSON y no como
        * `FormData`: este endpoint no sube nada, solo mueve un estado.

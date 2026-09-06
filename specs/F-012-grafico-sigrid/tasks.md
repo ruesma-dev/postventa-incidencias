@@ -73,7 +73,7 @@
 
 ## Bloque 3 · El adaptador y sus puertas
 
-- [ ] **T6**: Extender `tests/utiles_sigrid.py` con `GraficoEnMemoria`
+- [x] **T6**: Extender `tests/utiles_sigrid.py` con `GraficoEnMemoria`
       (programable: dry-run, commit, idempotente en dry-run y en commit, y
       cada uno de los doce códigos de error, más `500`, no-JSON y timeout). |
       Verificación: los tests de T7 y T9 lo usan; no abre red (la guardia de

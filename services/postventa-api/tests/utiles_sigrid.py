@@ -34,9 +34,11 @@ from typing import Any
 __all__ = [
     "ClienteFalso",
     "ErpEnMemoria",
+    "GraficoEnMemoria",
     "PeticionFalsa",
     "RespuestaFalsa",
     "cuerpo_de_lectura",
+    "error_de_la_pasarela",
 ]
 
 
@@ -181,3 +183,221 @@ class ErpEnMemoria:
         if self.fallo_al_cerrar is not None:
             raise self.fallo_al_cerrar
         return self.filas_afectadas
+
+
+class GraficoEnMemoria:
+    """Un `GraficoPort` de mentira, sin HTTP de por medio (F-012, T6).
+
+    Hermano de `ErpEnMemoria`, y existe por lo mismo: `paso_grafico` no debe
+    saber que debajo hay una pasarela. Si el paso importara el adaptador en vez
+    del puerto, este doble no encajaría y el test lo diría.
+
+    **Programable en las cuatro dimensiones que importan**, que son las cuatro
+    formas que toma la respuesta del endpoint real:
+
+    1. **dry-run correcto** y **commit correcto** — lo de por defecto.
+    2. **idempotente**: la pasarela dice que ese documento ya cuelga de ese
+       concepto. Se puede pedir desde el dry-run (`idempotente=True`) o solo a
+       partir del commit (`idempotente_en_commit=True`), que es el caso real de
+       una carrera entre los dos.
+    3. **un código de error** de los doce de la lista cerrada
+       (`codigo_de_error`, o `codigo_de_error_en_commit` para que el dry-run
+       salga bien y falle la escritura). El doble levanta **la misma excepción
+       que levantaría el adaptador**, resuelta con `clasificar_codigo`: si el
+       dominio reclasificara un código, este doble cambia con él.
+    4. **un fallo sin código**: `500`, un cuerpo que no es JSON, un corte de
+       red o un tiempo agotado. Todos son, para el paso, un `GraficoFallido`
+       con `reintento_seguro=True`, y se inyectan con `fallo` /
+       `fallo_en_commit`.
+
+    Y **graba todas las llamadas en orden**, que es lo único con lo que se
+    puede comprobar R20 (el commit va **siempre** precedido de su dry-run) y
+    R24 (con la traza en `adjuntado` no se llama a nadie: cero llamadas).
+
+    Ni un dato real: el `cod` y los `ide` son inventados.
+    """
+
+    #: Un `gra.cod` con la forma que genera la pasarela —sello + 4 dígitos +
+    #: `.login`— pero con un login que no es de nadie.
+    COD_INVENTADO = "202609061200000123.loginraroinventado"
+
+    def __init__(
+        self,
+        *,
+        idempotente: bool = False,
+        idempotente_en_commit: bool = False,
+        filas_afectadas: int | None = None,
+        cod: str | None = None,
+        ide_negocio: int | None = 5,
+        ide_documental: int | None = 6,
+        ide_enlace: int | None = 7,
+        pos: int | None = 64,
+        avisos: Sequence[str] = (),
+        codigo_de_error: str | None = None,
+        codigo_de_error_en_commit: str | None = None,
+        fallo: Exception | None = None,
+        fallo_en_commit: Exception | None = None,
+    ) -> None:
+        self.idempotente = idempotente
+        self.idempotente_en_commit = idempotente_en_commit
+        self.filas_afectadas = filas_afectadas
+        self.cod = cod if cod is not None else self.COD_INVENTADO
+        self.ide_negocio = ide_negocio
+        self.ide_documental = ide_documental
+        self.ide_enlace = ide_enlace
+        self.pos = pos
+        self.avisos = tuple(avisos)
+        self.codigo_de_error = codigo_de_error
+        self.codigo_de_error_en_commit = codigo_de_error_en_commit
+        self.fallo = fallo
+        self.fallo_en_commit = fallo_en_commit
+        #: Cada llamada, como `(peticion, commit)`, **en orden**.
+        self.llamadas: list[tuple[Any, bool]] = []
+
+    # --- el contrato del puerto -------------------------------------------
+
+    def adjuntar(self, *, peticion: Any, commit: bool) -> Any:
+        from domain.models.grafico import (
+            FILAS_ESPERADAS_GRAFICO,
+            RespuestaGrafico,
+        )
+
+        self.llamadas.append((peticion, commit))
+
+        fallo = self.fallo
+        if fallo is None and commit:
+            fallo = self.fallo_en_commit
+        if fallo is not None:
+            raise fallo
+
+        codigo = self.codigo_de_error
+        if codigo is None and commit:
+            codigo = self.codigo_de_error_en_commit
+        if codigo is not None:
+            raise error_de_la_pasarela(codigo)
+
+        idempotente = self.idempotente or (self.idempotente_en_commit and commit)
+
+        if idempotente:
+            # Los tres campos que la respuesta idempotente real trae distintos
+            # **[MEDIDO en T21 de F-004]**: no se escribió nada, así que no hay
+            # `ide` documental nuevo ni posición del enlace, y `committed` vale
+            # `false` **en un éxito**.
+            return RespuestaGrafico(
+                ok=True,
+                committed=False,
+                idempotente=True,
+                dry_run=not commit,
+                filas_afectadas=0,
+                bytes=peticion.bytes,
+                sha256=peticion.sha256,
+                cod=self.cod,
+                ide_negocio=self.ide_negocio,
+                ide_documental=None,
+                ide_enlace=self.ide_enlace,
+                pos=None,
+                avisos=self.avisos,
+            )
+
+        if not commit:
+            return RespuestaGrafico(
+                ok=True,
+                committed=False,
+                idempotente=False,
+                dry_run=True,
+                filas_afectadas=0,
+                bytes=peticion.bytes,
+                sha256=peticion.sha256,
+                cod=self.cod,
+                ide_negocio=self.ide_negocio,
+                ide_documental=self.ide_documental,
+                ide_enlace=self.ide_enlace,
+                pos=self.pos,
+                avisos=self.avisos,
+            )
+
+        filas = (
+            self.filas_afectadas
+            if self.filas_afectadas is not None
+            else FILAS_ESPERADAS_GRAFICO
+        )
+        return RespuestaGrafico(
+            ok=True,
+            committed=True,
+            idempotente=False,
+            dry_run=False,
+            filas_afectadas=filas,
+            bytes=peticion.bytes,
+            sha256=peticion.sha256,
+            cod=self.cod,
+            ide_negocio=self.ide_negocio,
+            ide_documental=self.ide_documental,
+            ide_enlace=self.ide_enlace,
+            pos=self.pos,
+            avisos=self.avisos,
+        )
+
+    # --- lo que preguntan los tests ---------------------------------------
+
+    @property
+    def commits(self) -> int:
+        """Cuántas veces se pidió escribir de verdad."""
+        return sum(1 for _, commit in self.llamadas if commit)
+
+    @property
+    def dry_runs(self) -> int:
+        """Cuántas veces se pidió solo mirar."""
+        return sum(1 for _, commit in self.llamadas if not commit)
+
+    @property
+    def orden(self) -> list[bool]:
+        """El valor de `commit` de cada llamada, en orden.
+
+        Es con lo que se comprueba R20: la lista de un commit correcto es
+        `[False, True]` y **nunca** `[True]`.
+        """
+        return [commit for _, commit in self.llamadas]
+
+    def ultima(self):
+        """La última petición compuesta, que es la que casi siempre interesa."""
+        if not self.llamadas:
+            raise AssertionError("no se ha pedido adjuntar nada")
+        return self.llamadas[-1][0]
+
+
+def error_de_la_pasarela(codigo: str) -> Exception:
+    """La excepción que un `details.codigo` produce, según el dominio.
+
+    Se resuelve con `clasificar_codigo` y **no con un diccionario propio**: si
+    mañana el dominio reclasificara un código —de rechazo a reintentable, por
+    ejemplo—, un mapa escrito aquí seguiría diciendo lo de antes y los tests
+    del paso seguirían en verde sobre un comportamiento que ya no existe.
+
+    Un código que no esté en ninguna de las tres familias sale como
+    `GraficoFallido`, que es lo que hace el adaptador de verdad (R34).
+    """
+    from domain.models.errores import (
+        EscrituraDocumentalDeshabilitada,
+        GraficoFallido,
+        GraficoRechazadoPorLaPasarela,
+    )
+    from domain.models.grafico import clasificar_codigo
+
+    familia = clasificar_codigo(codigo)
+    if familia == "rechazo":
+        return GraficoRechazadoPorLaPasarela(
+            f"la pasarela ha rechazado el gráfico ({codigo}) y el ERP ha "
+            f"quedado sin cambios",
+            codigo=codigo,
+        )
+    if familia == "precondicion":
+        return EscrituraDocumentalDeshabilitada(
+            f"la pasarela no tiene habilitada la escritura que hace falta "
+            f"({codigo}): es configuración de su dueño",
+            codigo=codigo,
+        )
+    return GraficoFallido(
+        f"no se ha podido adjuntar el gráfico ({codigo}); el reintento es "
+        f"seguro porque el endpoint es idempotente",
+        reintento_seguro=True,
+    )

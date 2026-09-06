@@ -375,6 +375,10 @@ def scripts_entregados() -> tuple[Path, ...]:
         "desplegar_backend.ps1",
         "desplegar_front.ps1",
         "verificar_despliegue.ps1",
+        # No es de F-010: es el Paso 0 del bloque 8 de F-009. Entra en el
+        # barrido porque se le exige lo mismo (R1, R7, R8) y el barrido esta
+        # aqui. Ver el bloque del final de este fichero.
+        "14_paso0_sigrid.ps1",
     )
     return tuple(INFRA / nombre for nombre in de_f010 if (INFRA / nombre).is_file())
 
@@ -1399,3 +1403,183 @@ def test_f010_r8_el_barrido_no_salta_con_lo_que_si_deben_decir():
         assert PATRON_HOST.findall(linea) == []
         assert PATRON_IP.findall(linea) == []
         assert PATRON_CREDENCIAL.findall(linea) == []
+
+
+# --- Paso 0 del bloque 8 de F-009 · `14_paso0_sigrid.ps1` -------------------
+#
+# Este script NO es de F-010: aprovisiona la configuracion de Sigrid que el
+# bloque 8 de F-009 necesita antes de poder hacer nada contra el ERP. Sus
+# comprobaciones viven aqui, y no en `test_f009_scripts_infra.py`, porque lo
+# que hay que vigilar es exactamente lo mismo que en los cinco de F-010 —ni un
+# nombre de recurso repetido (R7), ni un valor dentro (R8), la ruta relativa en
+# la primera linea (R1)— y ese barrido ya esta escrito aqui. Por eso entra
+# tambien en `scripts_entregados()`.
+#
+# Lo que hace: precondiciones, los dos secretos de Sigrid en el vault, las ocho
+# App Settings sin publicar codigo, y la comprobacion —que hasta hoy solo se
+# podia hacer mirando el portal— de que las once referencias a Key Vault se
+# resuelven. El motivo de que exista: el Paso 0 eran cuatro pasos manuales en
+# `progress/guion_bloque8_F-009.md`, y el ultimo no se podia automatizar
+# porque nadie sabia que la API de gestion publica el ESTADO de una referencia
+# aunque no publique su valor.
+
+
+@pytest.fixture
+def paso0() -> str:
+    """El script del Paso 0, leido como ASCII igual que los demas."""
+    return (INFRA / "14_paso0_sigrid.ps1").read_text(encoding="ascii")
+
+
+def test_f009_paso0_el_script_existe():
+    """Sin el, el Paso 0 son cuatro comandos copiados a mano de un guion."""
+    assert (INFRA / "14_paso0_sigrid.ps1").is_file()
+
+
+def test_f009_paso0_carga_las_variables_por_punto(paso0):
+    """R7 · los nombres salen del fichero de variables, no de aqui."""
+    assert r'. "$PSScriptRoot\00_vars_postventa.ps1"' in paso0
+
+
+def test_f009_paso0_los_secretos_de_sigrid_se_derivan_y_no_se_escriben(paso0):
+    """Los NOMBRES de los dos secretos tampoco se escriben a mano.
+
+    Salen de `$PostventaAppSettingsSecretas` filtrando por `SIGRID_*`. Si
+    manana hubiera un tercero, entraria solo; escritos a mano, se quedaria
+    fuera en silencio, que es como el Paso 0 vuelve a quedarse a medias.
+    """
+    assert "$PostventaAppSettingsSecretas" in paso0
+    assert "SIGRID_*" in paso0
+    assert "sigrid-api-key" not in paso0
+    assert "sigrid-api-base-url" not in paso0
+
+
+def test_f009_paso0_llama_a_los_dos_scripts_y_no_duplica_lo_que_hacen(paso0):
+    """Delega: ni sube secretos por su cuenta ni fija App Settings.
+
+    Un tercer sitio donde se escriban las App Settings de Sigrid es un tercer
+    sitio que se queda desactualizado. `-SinPublicar` es lo que separa
+    «configurar» de «desplegar codigo»: el Paso 0 no publica nada.
+    """
+    assert r'& "$PSScriptRoot\cargar_secretos_postventa.ps1" -Solo' in paso0
+    assert r'& "$PSScriptRoot\desplegar_backend.ps1" -SinPublicar' in paso0
+    assert "az keyvault secret set" not in paso0
+    assert "appsettings set" not in paso0
+
+
+def test_f009_paso0_las_dos_escrituras_quedan_bajo_el_whatif(paso0):
+    """R3 · con `-WhatIf` no se llama a ninguno de los dos que escriben.
+
+    No basta con declarar el parametro: la guarda tiene que estar ANTES de la
+    primera invocacion en el propio texto del script.
+    """
+    assert "[switch]$WhatIf" in paso0
+    guarda = paso0.find("if (-not $WhatIf) {")
+    primera = paso0.find(r'& "$PSScriptRoot\cargar_secretos_postventa.ps1"')
+
+    assert -1 < guarda < primera
+
+
+def test_f009_paso0_con_whatif_se_comprueba_igualmente_el_estado(paso0):
+    """`-WhatIf` sirve ademas para mirar el entorno sin tocarlo.
+
+    La comprobacion de las referencias es una lectura, asi que se hace tambien
+    en seco: es la unica forma de saber que falta sin abrir el portal.
+    """
+    aviso = paso0.find("-WhatIf: no se ha")
+    comprobacion = paso0.find("$referencias = Leer-Referencias")
+
+    # La llamada va DESPUES de la rama que anuncia el `-WhatIf`, es decir
+    # fuera del `if/else` que decide si se escribe: se ejecuta por los dos
+    # caminos. Dentro de la rama que escribe, solo se veria tras tocar Azure.
+    assert -1 < aviso < comprobacion
+    assert "configreferences/appsettings" in paso0
+
+
+def test_f009_paso0_propaga_el_codigo_de_salida_de_lo_que_invoca(paso0):
+    """Si el despliegue falla, este script no puede salir con 0.
+
+    Un orquestador que se traga el fallo de lo que invoca es peor que no
+    tenerlo: deja creer que el Paso 0 esta hecho.
+    """
+    assert paso0.count("$LASTEXITCODE") >= 2
+    assert "exit $LASTEXITCODE" in paso0
+
+
+def test_f009_paso0_cada_causa_de_fallo_tiene_su_codigo_y_ninguno_se_repite(paso0):
+    """R5 · un codigo por causa, y el mensaje dice que hacer."""
+    codigos = re.findall(r"^\$SALIDA_[A-Z_]+ = (\d+)$", paso0, re.MULTILINE)
+
+    assert len(codigos) >= 5
+    assert len(set(codigos)) == len(codigos)
+    assert "Que hacer:" in paso0
+
+
+def test_f009_paso0_la_suscripcion_se_lee_en_ejecucion_y_no_se_imprime(paso0):
+    """R8 · el identificador de suscripcion no entra al repositorio NI SALE.
+
+    Hace falta para componer la URL de la API de gestion, asi que se lee con
+    `az account show` en tiempo de ejecucion. Lo que no puede pasar es que
+    acabe en la consola, en un fichero o en lo que alguien copie a `progress/`.
+    """
+    assert '"account", "show", "--query", "id"' in paso0
+
+    lineas_que_imprimen = [
+        linea
+        for linea in paso0.split("\n")
+        if "Write-Host" in linea and "$suscripcion" in linea
+    ]
+
+    assert lineas_que_imprimen == []
+
+
+def test_f009_paso0_la_tabla_de_referencias_imprime_estados_y_no_valores(paso0):
+    """Lo que se publica es el ESTADO, nunca el valor del secreto.
+
+    Es la razon de ser del punto 4: la API de gestion dice si una referencia
+    esta `Resolved` sin devolver lo que hay detras. Imprimir el valor seria
+    justo lo que el Key Vault existe para evitar.
+    """
+    assert "Resolved" in paso0
+    assert "properties.status" in paso0 or ".properties.status" in paso0
+    assert "details" in paso0
+
+    prohibidas = [
+        linea
+        for linea in paso0.split("\n")
+        if "Write-Host" in linea and re.search(r"\.value\b", linea)
+    ]
+
+    assert prohibidas == []
+
+
+def test_f009_paso0_el_veredicto_cuenta_las_referencias_esperadas(paso0):
+    """«11/11» no se escribe: se cuenta desde el fichero de variables.
+
+    Un numero escrito a mano miente el dia que se anada o se quite un secreto,
+    y miente diciendo que todo esta bien.
+    """
+    assert "Paso 0 COMPLETO" in paso0
+    assert "$PostventaAppSettingsSecretas.Count" in paso0
+    assert "11/11" not in paso0
+
+
+def test_f009_paso0_si_la_comprobacion_no_se_puede_hacer_no_sale_en_verde(paso0):
+    """Una comprobacion que no se ha hecho no es una comprobacion superada.
+
+    Misma regla que la guarda de `verificar_despliegue.ps1`: si `az rest`
+    falla —permisos, version de API—, se dice y se remite al portal, pero el
+    codigo de salida NO es 0.
+    """
+    assert "portal" in paso0.lower()
+    assert "$SALIDA_SIN_COMPROBACION" in paso0
+
+
+def test_f009_paso0_no_escribe_en_azure_por_su_cuenta(paso0):
+    """Las unicas llamadas directas de `az` son lecturas.
+
+    Lo que escribe lo escriben los dos scripts que invoca, cada uno con su
+    propia confirmacion escrita. Este no anade una tercera puerta: anade una
+    tercera oportunidad de equivocarse contando cuantas veces hay que teclear
+    una palabra.
+    """
+    assert PATRON_ESCRITURA_AZ.findall(sin_comentarios(paso0)) == []

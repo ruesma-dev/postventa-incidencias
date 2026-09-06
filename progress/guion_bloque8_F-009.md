@@ -105,7 +105,53 @@ Dos consecuencias que importan para este guion:
    el huso de `fec`/`hor` de la fila de `dbo.log` que se mira en el paso 7 de
    T24 (§0.2). Ya no depende del valor por defecto del código.
 
-### Paso 0 · Los dos secretos del vault (una sola vez, antes de T22)
+### Paso 0 · en un solo script (recomendado)
+
+Desde el 2026-09-06 el Paso 0 entero —los dos secretos, las ocho App Settings y
+la comprobación de que las referencias se resuelven— lo hace un script:
+
+```
+powershell -ExecutionPolicy Bypass -File .\infra\14_paso0_sigrid.ps1
+```
+
+**Qué se espera ver**, en este orden: el plan (grupo, Function App, Key Vault,
+los **dos** secretos que va a pedir por su nombre); la carga de secretos, que los
+pide **a ciegas** —deja vacío el que ya esté cargado y no quieras tocar—; el
+despliegue de la configuración con `-SinPublicar`, con su `Ventana de escritura
+: CERRADA`; y al final la tabla de las **once** referencias a Key Vault, una por
+línea, con su estado:
+
+```
+  SIGRID_API_BASE_URL    -> Resolved
+  SIGRID_API_KEY         -> Resolved
+
+Paso 0 COMPLETO: 11/11 referencias resueltas.
+```
+
+Ese veredicto es lo que sustituye al «mira en el portal que ninguna App Setting
+salga con error»: el plano de gestión publica el **estado** de cada referencia
+—y su motivo de fallo— sin publicar nunca el valor que hay detrás, así que la
+tabla se puede pegar en `progress/` tal cual.
+
+**Si no sale eso**: el script imprime qué referencia no se resuelve y por qué, y
+sale con código distinto de cero (`12` alguna en error, `11` no se ha podido
+preguntar, y el del despliegue si es el despliegue el que falla). Una referencia
+en error es casi siempre un secreto que falta en el vault o el rol de lectura de
+la identidad gestionada sin propagar todavía.
+
+**`-WhatIf` solo lee**: no invoca a ninguno de los dos scripts que escriben, y
+aun así imprime la tabla de estados. Es la forma de preguntarle al entorno qué le
+falta sin tocarlo, y sirve para comprobar la precondición **P3** antes de nada.
+
+> **`CIERRE_HABILITADO` queda apagado**, porque quien fija las App Settings es
+> `desplegar_backend.ps1` y ahí nace `false` en cada ejecución. La ventana se
+> abre después, a mano, con la línea del paso 3 de T22.
+
+Lo que sigue es la **vía manual**, paso a paso. No hace falta si se usa el
+script; se conserva porque explica qué hace cada cosa y porque es el camino si
+el script no se quiere usar.
+
+### Paso 0, a mano (1) · Los dos secretos del vault (una sola vez, antes de T22)
 
 **Es lo único que queda a mano, y es a mano a propósito**: los dos valores los
 da el dueño de `sigrid-api` (`azure-apps/sigrid_api.md` §3.1 y §3.3), no se
@@ -126,6 +172,8 @@ powershell -ExecutionPolicy Bypass -Command ".\infra\cargar_secretos_postventa.p
 > pasarela, `sigrid_api.md` §4.1— la fija el despliegue como App Setting plana,
 > porque su nombre ya está escrito en documentos versionados del repositorio.
 
+### Paso 0, a mano (2) · El despliegue de la configuración
+
 Y después, **un despliegue del backend**, que es lo que fija las App Settings:
 
 ```
@@ -135,9 +183,10 @@ powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1 -SinPubli
 **Qué se espera ver**: el script imprime `App Settings : N, de las que 11 son
 referencias` y `Ventana de escritura : CERRADA (archivo Y cierre en el ERP)`.
 
-**Comprobación**: en el portal, ninguna App Setting sale con error. Una
-referencia que no se resuelve es un secreto que no está en el vault, o el rol
-`Key Vault Secrets User` sin propagar.
+**Comprobación**: `.\infra\14_paso0_sigrid.ps1 -WhatIf`, que solo lee e imprime
+la tabla de estados; o, si se prefiere a ojo, en el portal, que ninguna App
+Setting salga con error. Una referencia que no se resuelve es un secreto que no
+está en el vault, o el rol `Key Vault Secrets User` sin propagar.
 
 ### Si el entorno ya está desplegado y no se quiere redesplegar
 
@@ -172,9 +221,10 @@ que la sesión de `az` no tiene rol sobre el vault; si el `appsettings set`
 responde «X no se esperaba en este momento», faltan las comillas de la
 referencia.
 
-**Comprobación**: la referencia se ha resuelto cuando la Function arranca; se
-verá en T22, porque si no se resuelve el endpoint responde `503` nombrando la
-variable que falte.
+**Comprobación**: `.\infra\14_paso0_sigrid.ps1 -WhatIf` imprime el estado de las
+once referencias sin tocar nada, y ese es el sitio donde se ve. Si no, la
+referencia se ha resuelto cuando la Function arranca, y se verá en T22: si no se
+resuelve, el endpoint responde `503` nombrando la variable que falte.
 
 ---
 
@@ -186,8 +236,12 @@ variable que falte.
       respuesta es un 404, no un 503.
 - [ ] **P3** · Paso 0 de §1 hecho: los **dos secretos** de Sigrid en el Key
       Vault y el backend desplegado **después** del commit `bed95ea` (o, si no
-      se redespliega, las ocho App Settings puestas a mano según §1). Se
-      comprueba en el portal: ninguna referencia a Key Vault con error.
+      se redespliega, las ocho App Settings puestas a mano según §1). Lo hace
+      entero `.\infra\14_paso0_sigrid.ps1`, y **se comprueba con él mismo**:
+      `.\infra\14_paso0_sigrid.ps1 -WhatIf` solo lee y tiene que terminar en
+      `Paso 0 COMPLETO: 11/11 referencias resueltas`. Si no se quiere ejecutar
+      nada, la comprobación equivalente es el portal: ninguna referencia a Key
+      Vault con error.
 - [ ] **P4** · La clave de función de `sigrid-api` y la raíz de la pasarela, a
       mano para los scripts de lectura (§3). No se escriben en ningún fichero.
 - [ ] **P5** · **Una incidencia del piloto de Mirasierra elegida**, y su parte
@@ -223,6 +277,12 @@ veredicto** en forma de tabla `QUE / ESPERADO / OBTENIDO` con `PASA` o
 | `infra/10_log_cierre_sigrid.ps1` | La fila nueva de `dbo.log`, **campo a campo** contra `design.md` §7.3, y **el huso** de `fec`/`hor` | **nada · solo lee** |
 | `infra/11_trazabilidad_tex_sigrid.ps1` | Las dos lecturas del `tex` propio (R25) | **nada · solo lee** |
 | `infra/12_traza_cierre_local.ps1` | La traza de `postventa.cierres` y la correspondencia de `postventa.usuarios_sigrid` | **nada · solo lee**, y solo del esquema propio |
+
+Hay un **sexto** script del bloque, `infra/14_paso0_sigrid.ps1`, que no está en
+esta tabla porque no es de esta familia: no lee del ERP, **aprovisiona** —hace el
+Paso 0 de §1— y por eso se ejecuta una vez, antes de todo lo demás, y no durante
+las tareas. Él tampoco escribe en Sigrid; lo que escribe es el Key Vault y las
+App Settings, y lo escriben los dos scripts del despliegue que invoca.
 
 **Los cinco son de lectura.** Leer producción está permitido; escribir en
 Sigrid desde un puesto de trabajo, no. La **única** escritura de todo el bloque

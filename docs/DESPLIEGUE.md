@@ -40,6 +40,11 @@ Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
 
+Hay un sexto que **no** forma parte del despliegue y por eso no está en la
+tabla: `14_paso0_sigrid.ps1` orquesta el **Paso 0** del bloque 8 de F-009
+llamando al 1 y al 2, y comprueba que las referencias a Key Vault se resuelven.
+Está en el §4 bis.
+
 ### Desde dónde se ejecuta cada uno, y por qué no da igual
 
 **Los dos despliegues se ejecutan desde `infra\`, dentro del repositorio.**
@@ -340,6 +345,18 @@ repositorio** —`docs/referencia/03_modelo_posventa_sigrid.md`,
 vault no añadía seguridad real y sí un secreto más que subir a mano en cada
 entorno: una oportunidad más de que un despliegue quede a medias. Es la
 **Corrección 1** del mismo día.
+
+**Los tres pasos, en uno**: `infra\14_paso0_sigrid.ps1` hace el aprovisionamiento
+entero de esta tabla —los dos secretos del vault, las ocho App Settings con
+`desplegar_backend.ps1 -SinPublicar`— y añade la comprobación que hasta ahora
+solo se podía hacer mirando el portal: imprime el **estado** de las once
+referencias a Key Vault (`Resolved` o el motivo del fallo) y termina en
+`Paso 0 COMPLETO: 11/11 referencias resueltas` o en un código de salida distinto
+de cero. Con `-WhatIf` **solo lee**: no invoca a ninguno de los dos scripts que
+escriben, e imprime igualmente la tabla, así que sirve para preguntarle al
+entorno qué le falta sin tocarlo. Es el Paso 0 del bloque 8 de F-009
+(`progress/guion_bloque8_F-009.md` §1), y no sustituye a nada de lo de arriba:
+lo invoca.
 
 Faltando cualquiera de las tres, el endpoint responde `503` nombrando **todas**
 las que falten de una vez, y **nunca** sus valores. `SIGRID_BASE_DATOS` la pone

@@ -1,6 +1,37 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-07 · **petición a Posventa para probar el circuito completo (F-012), escrita**
+>
+> **`progress/peticion_posventa_prueba_F-012.md`** (nuevo): la petición a Ana
+> Bello y Alicia Echevarría, redactada para **reenviarse tal cual** por correo,
+> calcada de `progress/peticion_posventa_prueba_url_F-023.md`. Sin jerga
+> técnica: solo términos del ERP («gráficos», «Importa», «Procesos → 3. Cerrar
+> parte», «reclamación», «unidad»).
+>
+> Lleva lo que hay que preparar **antes** (dos o tres reclamaciones en la obra
+> **404**, sus partes impresos, firmados a mano y escaneados, **uno con una
+> observación manuscrita** para ver que la aplicación lo aparta en vez de
+> cerrarlo), los pasos del front tal y como están hoy en `index.html` y
+> `js/app.js` —trocear, revisar, «Archivar los partes aptos», «Ver qué pasaría
+> (no cierra nada)», «Cerrar las incidencias»—, los dos avisos que no pueden
+> ser sorpresa (el botón cierra **todos** los partes en pantalla; lo confirmado
+> se escribe de verdad), las preguntas de vuelta, la **P1/D2** sobre `PV002`
+> marcada aparte, lo que no deben hacer y a quién avisar.
+>
+> **No se envía todavía**: la nota para el humano de la cabecera exige el
+> bloque 9 en verde, el alta de los logins de Sigrid de las dos con
+> `infra/07_alta_usuario_sigrid.ps1` —el de Alicia es **`aechevarria`**, que no
+> coincide con el prefijo de su correo— y las dos dentro de
+> `posventa-usuarios`. La dirección del portal va como marcador
+> `<la dirección del portal>`: no está en ningún documento versionado.
+>
+> `bash harness/init.sh` **en verde**. Este encargo solo escribe Markdown en
+> `progress/`: no se relanzó la mutación, no se tocó `features.json` ni se marcó
+> ninguna tarea de `tasks.md`. **Nada ejecutado** contra Azure, Sigrid,
+> `sigrid-api`, el PostgreSQL compartido ni SharePoint —ni lecturas—, y **no se
+> ha enviado ningún correo**.
+
 > ## Estado al 2026-09-06 (noche, 6) · **F-024 con spec: `spec_ready`, a la espera de la aprobación del humano**
 >
 > `specs/F-024-datos-parte-sigrid/` (commit `2ce37d6`, escrita por el

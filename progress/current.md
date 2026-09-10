@@ -1,6 +1,51 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-11 · **utillaje de puesta en marcha del bloque 9 (F-012): entregado; `init.sh` en ROJO por un defecto ajeno**
+>
+> **`infra/19_ventana_escritura.ps1`** y **`infra/20_login_sigrid.ps1`**
+> (nuevos): las dos operaciones que hasta hoy vivían como fragmentos sueltos
+> dentro de `progress/guion_bloque9_F-012.md`. El 19 consulta, abre y cierra
+> `CIERRE_HABILITADO` —por omisión **solo lee**; `-Abrir` avisa de que la
+> ventana es **una sola** para el gráfico y para el cierre (D-B, §0.2) y exige
+> teclear `ABRIR`; `-Cerrar` no pregunta, porque cerrar siempre es seguro; y
+> tras escribir **relee** y dice el estado real—. El 20 deriva el login
+> candidato como `derivar_login_candidato` y lo comprueba contra `dbo.usu` con
+> la consulta del servicio (`SQL_USUARIO`, importada por el test), con veredicto
+> de tres casos. **Ninguno de los dos se ha ejecutado**: nada contra Azure,
+> Sigrid, el PostgreSQL compartido ni SharePoint, ni lecturas.
+>
+> **31 tests nuevos** en `test_f012_scripts_infra.py`, escritos **antes** que
+> los scripts (traza RED pegada en el informe), y los dos entran en el censo
+> `scripts_entregados()` de `test_f010_scripts_infra.py`. `ParseFile`: 0 errores
+> de sintaxis en ambos. `ruff`: 58 avisos, la deuda previa exacta.
+>
+> **BLOQUEO, y no es de este trabajo.** `bash harness/init.sh` termina en rojo
+> por **un** test, `test_f012_fabrica_grafico.py::test_f012_r40_la_tercera_puerta_nombra_todas_las_variables_que_faltan`.
+> Su ayudante `_ajustes()` promete «sin tocar el `.env` de nadie» y no lo
+> cumple: `Ajustes(**entorno)` es `pydantic-settings` y lee del `.env` todo lo
+> que no se le pase. El `.env` de este puesto ya define `SIGRID_API_BASE_URL` y
+> `SIGRID_API_KEY` (nombres; los valores no se han mirado), así que la fábrica
+> solo echa en falta `SIGRID_BASE_DATOS` y el test, que exige las tres, falla.
+> Con ese test deseleccionado, **2 095 pasan, 13 saltados, en 88 s**. Falla
+> también ejecutando **solo su fichero**, que no importa nada de lo tocado aquí.
+>
+> Dos remedios, y los dos son decisión del humano: **(a)** una línea,
+> `return Ajustes(_env_file=None, **entorno)` —comprobado que restituye los tres
+> nombres—, que es lo que ya declara el propio `conftest.py`; o **(b)** quitar
+> esas variables del `.env`, que este agente tiene **prohibido** tocar. No se ha
+> aplicado ninguno: es la suite de una feature ya revisada, con la mutación
+> cerrada y sus 5 supervivientes aceptados.
+>
+> **Hallazgo que conviene no perder:** el primer `init.sh` de la sesión salió en
+> verde porque sirvió la suite del api **de la caché** («árbol sin cambios desde
+> el último verde»). La caché puede tapar un rojo que depende del entorno, y
+> este llevaba tapado desde que cambió el `.env`.
+>
+> Detalle completo: **`progress/impl_utillaje_puesta_en_marcha.md`**.
+> No se tocó `features.json`, ni `tasks.md`, ni se relanzó la mutación (lo
+> entregado es PowerShell y tests: `harness/alcance.py` solo mide `.py`).
+
 > ## Estado al 2026-09-07 · **petición a Posventa para probar el circuito completo (F-012), escrita**
 >
 > **`progress/peticion_posventa_prueba_F-012.md`** (nuevo): la petición a Ana

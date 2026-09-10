@@ -379,6 +379,14 @@ def scripts_entregados() -> tuple[Path, ...]:
         # barrido porque se le exige lo mismo (R1, R7, R8) y el barrido esta
         # aqui. Ver el bloque del final de este fichero.
         "14_paso0_sigrid.ps1",
+        # Tampoco son de F-010: son el utillaje de puesta en marcha del bloque
+        # 9 de F-012 —abrir y cerrar la ventana de escritura contra el ERP, y
+        # comprobar el login que la siembra derivaria de un correo—. Entran
+        # aqui por lo mismo que el anterior: se les exige R1, R7 y R8, y el
+        # barrido esta escrito aqui. Su contrato propio se comprueba en
+        # `test_f012_scripts_infra.py`.
+        "19_ventana_escritura.ps1",
+        "20_login_sigrid.ps1",
     )
     return tuple(INFRA / nombre for nombre in de_f010 if (INFRA / nombre).is_file())
 

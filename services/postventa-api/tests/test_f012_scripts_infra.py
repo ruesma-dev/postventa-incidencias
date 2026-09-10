@@ -535,3 +535,374 @@ def test_f012_la_obra_de_prueba_es_el_unico_valor_por_defecto_del_script():
     ejecutable = _sin_ayuda(_texto(SCRIPT_OBRA))
 
     assert '[string]$CodigoObra = "404"' in ejecutable
+
+
+# --------------------------------------------------------------------------
+# El utillaje de puesta en marcha del bloque 9: `19_ventana_escritura.ps1` y
+# `20_login_sigrid.ps1`
+# --------------------------------------------------------------------------
+#
+# No son de T22–T24: son las dos operaciones que hasta hoy vivían como
+# **fragmentos sueltos dentro de un documento** —una línea de `az` copiada a
+# mano en el paso 3 de T25 y en T32, y la comprobación del login que no estaba
+# escrita en ninguna parte—. Un comando que se copia de un Markdown no tiene
+# precondiciones, ni veredicto, ni código de salida, y el del paso 3 de T25 es
+# **el más delicado del bloque**: abre la ventana de escritura contra el ERP de
+# producción.
+#
+# Sus comprobaciones viven aquí, con las de los otros tres de F-012, y además
+# entran en el censo `scripts_entregados()` de `test_f010_scripts_infra.py`,
+# que es donde está el barrido de «ni un nombre de recurso, ni un valor».
+
+#: Abre, cierra y consulta la ventana de escritura contra el ERP.
+SCRIPT_VENTANA = INFRA / "19_ventana_escritura.ps1"
+
+#: Comprueba el login del ERP que se derivaría de un correo. Solo lee.
+SCRIPT_LOGIN = INFRA / "20_login_sigrid.ps1"
+
+LOS_DOS_DEL_UTILLAJE = (SCRIPT_VENTANA, SCRIPT_LOGIN)
+
+
+@pytest.mark.parametrize("script", LOS_DOS_DEL_UTILLAJE, ids=lambda ruta: ruta.name)
+def test_f012_utillaje_los_dos_scripts_existen(script):
+    """Sin ellos, las dos operaciones se hacen copiando de un Markdown."""
+    assert script.is_file()
+
+
+@pytest.mark.parametrize("script", LOS_DOS_DEL_UTILLAJE, ids=lambda ruta: ruta.name)
+def test_f012_utillaje_cada_script_empieza_por_su_ruta_relativa(script):
+    """`docs/CONVENTIONS.md`: primera línea, la ruta del fichero."""
+    assert _texto(script).splitlines()[0] == f"# infra/{script.name}"
+
+
+@pytest.mark.parametrize("script", LOS_DOS_DEL_UTILLAJE, ids=lambda ruta: ruta.name)
+def test_f012_utillaje_cada_script_es_ascii_puro_y_sin_bom(script):
+    """Igual que los otros cinco de `infra/`, y por lo mismo.
+
+    Un acento en una consola con la página de códigos por defecto sale como dos
+    caracteres raros, y el BOM lo escupiría PowerShell 5.1 en la primera línea.
+    """
+    crudo = script.read_bytes()
+
+    assert all(byte < 128 for byte in crudo)
+    assert not crudo.startswith(b"\xef\xbb\xbf")
+
+
+@pytest.mark.parametrize("script", LOS_DOS_DEL_UTILLAJE, ids=lambda ruta: ruta.name)
+def test_f012_utillaje_cada_script_va_en_crlf(script):
+    """`docs/CONVENTIONS.md` · PowerShell del entorno de Ruesma: CRLF."""
+    crudo = script.read_bytes()
+
+    assert crudo.count(b"\n") > 0
+    assert crudo.count(b"\r\n") == crudo.count(b"\n")
+
+
+@pytest.mark.parametrize("script", LOS_DOS_DEL_UTILLAJE, ids=lambda ruta: ruta.name)
+def test_f012_utillaje_cada_script_tiene_ayuda_con_parametros_y_ejemplos(script):
+    """Se ejecutan con el ERP de producción delante y meses de por medio."""
+    texto = _texto(script)
+
+    assert ".SYNOPSIS" in texto
+    assert ".DESCRIPTION" in texto
+    assert ".PARAMETER" in texto
+    assert texto.count(".EXAMPLE") >= 2
+
+
+@pytest.mark.parametrize("script", LOS_DOS_DEL_UTILLAJE, ids=lambda ruta: ruta.name)
+def test_f012_utillaje_cada_causa_de_fallo_tiene_su_codigo_y_ninguno_se_repite(script):
+    """R5 de F-010 · un script que sale siempre con `1` obliga a leer la traza.
+
+    `20_login_sigrid.ps1` los hereda de `08_lectura_sigrid_comun.ps1`, que es
+    donde se declaran para que cuatro scripts no inventen cuatro numeraciones;
+    `19_ventana_escritura.ps1` no carga ese común —no habla con la pasarela— y
+    declara los suyos.
+    """
+    texto = _texto(script)
+    propios = re.findall(r"^\$SALIDA_[A-Z_]+ = (\d+)$", texto, re.MULTILINE)
+
+    if not propios:
+        assert '. "$PSScriptRoot\\08_lectura_sigrid_comun.ps1"' in texto
+        return
+
+    assert len(propios) >= 4
+    assert len(set(propios)) == len(propios)
+
+
+@pytest.mark.parametrize("script", LOS_DOS_DEL_UTILLAJE, ids=lambda ruta: ruta.name)
+def test_f012_utillaje_ningun_script_trae_un_valor(script):
+    """Estos ficheros **sí** se versionan y el historial de git no suelta nada.
+
+    Ni una credencial, ni un host, ni un `oid`, ni un código de reclamación
+    real, ni un `sha256`. Y tampoco el login de una persona: el del ERP que no
+    cumple la convención se describe, no se escribe.
+    """
+    texto = _texto(script)
+
+    assert PATRON_CREDENCIAL_LITERAL.search(texto) is None
+    assert PATRON_HOST_AZURE.findall(texto) == []
+    assert PATRON_GUID.findall(texto) == []
+    assert PATRON_INCIDENCIA_REAL.findall(texto) == []
+    assert PATRON_SHA256.findall(texto) == []
+
+
+def test_f012_utillaje_los_dos_entran_en_el_censo_de_los_scripts_de_infra():
+    """El barrido de «ni un nombre de recurso (R7), ni un valor (R8)» vive en
+    `test_f010_scripts_infra.py` y va por censo.
+
+    Un script nuevo que no entre en el censo queda **fuera del barrido sin que
+    se note**, que es exactamente como se cuela un nombre literal.
+    """
+    from tests.test_f010_scripts_infra import scripts_entregados
+
+    censados = {ruta.name for ruta in scripts_entregados()}
+
+    assert SCRIPT_VENTANA.name in censados
+    assert SCRIPT_LOGIN.name in censados
+
+
+# --------------------------------------------------------------------------
+# `19_ventana_escritura.ps1` · la operación más delicada del bloque 9
+# --------------------------------------------------------------------------
+
+
+def test_f012_ventana_el_nombre_de_la_app_setting_va_en_una_constante():
+    """Se escribe **una vez**, arriba y con nombre, no repartida por el script.
+
+    Es el interruptor único de D-B: quien lea el script tiene que ver de un
+    vistazo cuál es la App Setting que se está tocando.
+    """
+    texto = _texto(SCRIPT_VENTANA)
+
+    assert '$APP_SETTING_VENTANA = "CIERRE_HABILITADO"' in texto
+    assert texto.count('"CIERRE_HABILITADO"') == 1
+
+
+def test_f012_ventana_los_nombres_de_recurso_salen_del_fichero_de_variables():
+    """R7 · el grupo y la Function App **no se escriben aquí**.
+
+    El paso 3 de T25 y el paso 1 de T32 los llevaban tecleados dentro del
+    guion. Cambiar el nombre del recurso dejaría dos líneas de un Markdown
+    apuntando a algo que ya no existe.
+    """
+    from tests.test_f010_scripts_infra import NOMBRES_DE_RECURSO
+
+    texto = _texto(SCRIPT_VENTANA)
+
+    assert '. "$PSScriptRoot\\00_vars_postventa.ps1"' in texto
+    assert "$PostventaGrupo" in texto
+    assert "$PostventaFunction" in texto
+    assert [nombre for nombre in NOMBRES_DE_RECURSO if nombre in texto] == []
+
+
+def test_f012_ventana_por_omision_solo_lee():
+    """`-Estado` es el modo por defecto, y sale **antes** de tocar nada.
+
+    Un script que abre la ventana de escritura contra el ERP si se lanza sin
+    parámetros es una trampa. Lo que hace sin parámetros es mirar.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_VENTANA))
+
+    assert "[switch]$Estado" in ejecutable
+    salida_estado = ejecutable.index('if ($modo -eq "estado")')
+    primera_escritura = ejecutable.index("Fijar-Ventana -Valor")
+
+    assert salida_estado < primera_escritura
+
+
+def test_f012_ventana_el_estado_se_dice_en_palabras():
+    """«abierta» / «cerrada», no `true` / `false`.
+
+    Quien lo lanza está decidiendo si el ERP de producción admite escrituras;
+    tener que traducir un booleano en ese momento es una forma de equivocarse.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_VENTANA))
+
+    assert "function En-Palabras" in ejecutable
+    for palabra in ("abierta", "cerrada", "desconocida"):
+        assert f'"{palabra}"' in ejecutable
+
+
+def test_f012_ventana_abrir_avisa_y_exige_confirmacion_tecleada():
+    """**El test central de este script.**
+
+    La ventana es **una sola** para el gráfico y para el cierre (D-B de
+    `design.md`, §0.2 del guion del bloque 9): abrirla habilita las **dos**
+    escrituras contra el ERP. Eso no puede ser una sorpresa, así que se avisa
+    **antes** de pedir la palabra, y la palabra se teclea, como en
+    `cargar_secretos_postventa.ps1` y `desplegar_backend.ps1`.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_VENTANA))
+
+    aviso = ejecutable.index("habilita las DOS escrituras contra el ERP")
+    confirmacion = ejecutable.index(
+        'Read-Host "Escribe ABRIR para continuar (cualquier otra cosa aborta)"'
+    )
+    escritura = ejecutable.index("Fijar-Ventana -Valor $VALOR_ABIERTA")
+
+    assert aviso < confirmacion < escritura
+    assert 'if ($confirmacion -ne "ABRIR")' in ejecutable
+
+
+def test_f012_ventana_cerrar_no_pide_confirmacion():
+    """Cerrar siempre es seguro, y T32 se ejecuta **salga bien o mal**.
+
+    Una palabra que teclear en el camino de cerrar solo puede conseguir que
+    alguien deje la ventana abierta por prisa.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_VENTANA))
+    tras_abrir = ejecutable.split("Fijar-Ventana -Valor $VALOR_ABIERTA", 1)[1]
+
+    assert ejecutable.count("Read-Host") == 1
+    assert "Read-Host" not in tras_abrir
+    assert "Fijar-Ventana -Valor $VALOR_CERRADA" in tras_abrir
+
+
+def test_f012_ventana_despues_de_escribir_se_relee_el_valor():
+    """Lo que se imprime es el estado **real**, no el que se pidió.
+
+    La Function tarda unos segundos en reiniciarse, y una escritura que se da
+    por buena sin releer es como se sigue el bloque 9 creyendo que la ventana
+    está cerrada cuando no lo está.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_VENTANA))
+    cuerpo = re.search(
+        r"function Fijar-Ventana \{.*?\n\}\n", ejecutable, flags=re.DOTALL
+    )
+    assert cuerpo, "no está la función que escribe y relee"
+
+    dentro = cuerpo.group()
+
+    assert '"appsettings", "set"' in dentro
+    assert dentro.index('"appsettings", "set"') < dentro.index("Leer-Ventana")
+
+
+def test_f012_ventana_no_toca_ninguna_otra_app_setting():
+    """`--settings` nombra **la** variable y ninguna más.
+
+    `az functionapp config appsettings set` con una lista corta no borra las
+    demás, pero un `--settings` con dos cosas dentro sería otra decisión
+    tomada de paso, y aquí no se toma ninguna.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_VENTANA))
+    escrituras = re.findall(r'"--settings",\s*"([^"]+)"', ejecutable)
+
+    assert len(escrituras) == 1
+    assert escrituras[0] == "$APP_SETTING_VENTANA=$Valor"
+
+
+def test_f012_ventana_los_tres_modos_son_excluyentes():
+    """`-Abrir -Cerrar` a la vez no es una petición: es una errata."""
+    ejecutable = _sin_ayuda(_texto(SCRIPT_VENTANA))
+
+    assert "[switch]$Abrir" in ejecutable
+    assert "[switch]$Cerrar" in ejecutable
+    assert "$SALIDA_MODO_AMBIGUO" in ejecutable
+
+
+# --------------------------------------------------------------------------
+# `20_login_sigrid.ps1` · solo lectura, y sin inventar SQL
+# --------------------------------------------------------------------------
+
+
+def test_f012_login_la_consulta_es_exactamente_la_del_servicio():
+    """**El test central de este script.**
+
+    Si el script preguntara con **otro** SQL que el que usa el servicio, su
+    veredicto no diría nada sobre lo que va a pasar en el cierre: diría lo que
+    pasa con otra consulta. Se importa la del servicio y se exige literal.
+    """
+    from infrastructure.sigrid.consultas import SQL_USUARIO
+
+    ejecutable = _sin_ayuda(_texto(SCRIPT_LOGIN))
+
+    assert SQL_USUARIO in ejecutable
+    # Y ninguna otra sentencia contra el ERP: una sola consulta, la suya.
+    assert len(re.findall(r"(?i)\bSELECT\b", ejecutable)) == 1
+
+
+def test_f012_login_el_candidato_se_deriva_igual_que_en_el_dominio():
+    """La parte anterior a la arroba, en minúsculas: `derivar_login_candidato`.
+
+    Derivarlo «parecido» aquí produciría un veredicto sobre un login que el
+    servicio nunca va a proponer, que es peor que no comprobar nada.
+    """
+    texto = _texto(SCRIPT_LOGIN)
+    ejecutable = _sin_ayuda(texto)
+
+    assert "derivar_login_candidato" in texto
+    assert "domain/models/cierre.py" in texto
+    assert ".ToLower()" in ejecutable
+    assert 'IndexOf("@")' in ejecutable
+
+
+def test_f012_login_acepta_tambien_un_login_directo():
+    """Para los que **no** siguen la convención, que los hay.
+
+    Sin `-Login` no habría forma de comprobar el caso que motiva el script.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_LOGIN))
+
+    assert "[string]$Login" in ejecutable
+    assert "[string]$Correo" in ejecutable
+
+
+def test_f012_login_la_cabecera_dice_que_la_convencion_no_siempre_se_cumple():
+    """Está **medido**, y el número es la razón de ser del script.
+
+    De 8 usuarios del ERP con correo registrado, 6 cumplen la convención. Sin
+    ese dato, alguien da por hecho que la siembra automática va a funcionar
+    para todo el mundo.
+    """
+    # La cabecera va justificada a 79 columnas, así que la frase se parte en
+    # varias líneas: se normalizan los espacios antes de buscarla.
+    seguido = " ".join(_texto(SCRIPT_LOGIN).split())
+
+    assert "8 usuarios del ERP con correo registrado" in seguido
+    assert "6 cumplen" in seguido
+    assert "mas corto que el prefijo de su correo" in seguido
+
+
+def test_f012_login_el_veredicto_distingue_los_tres_casos():
+    """Una vez, ninguna, o más de una: tres desenlaces y tres cosas que hacer.
+
+    Y el de «ninguna» **nombra el script del alta manual**: quien recibe ese
+    veredicto tiene que saber que lo que toca no es reintentar.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_LOGIN))
+
+    assert "-eq 1" in ejecutable
+    assert "-eq 0" in ejecutable
+    assert "-gt 1" in ejecutable
+    assert "07_alta_usuario_sigrid.ps1" in ejecutable
+    assert "Escribir-Veredicto" in ejecutable
+
+
+def test_f012_login_no_escribe_absolutamente_nada():
+    """Ni en el ERP, ni en PostgreSQL, ni en Azure, ni en disco.
+
+    Comprobar un login es una pregunta. La correspondencia la escribe
+    `07_alta_usuario_sigrid.ps1`, que es otro script y pide lo suyo.
+    """
+    ejecutable = _sin_ayuda(_texto(SCRIPT_LOGIN)).upper()
+
+    for verbo in VERBOS_DE_ESCRITURA_EN_SIGRID + VERBOS_DE_ESCRITURA_EN_PG:
+        assert verbo.upper() not in ejecutable
+    for prohibido in ("PSYCOPG", "APPSETTINGS SET", "OUT-FILE", "SET-CONTENT"):
+        assert prohibido not in ejecutable
+
+
+def test_f012_login_la_consulta_va_parametrizada_y_por_el_comun():
+    """`sigrid_api.md` §5.2 · marcador `?`, nunca concatenacion.
+
+    Un correo concatenado en la cadena seria una inyeccion contra el ERP de
+    produccion lanzada desde un puesto de trabajo. Y la llamada la hace el
+    comun de lectura, no una copia del manejo de la clave.
+    """
+    texto = _texto(SCRIPT_LOGIN)
+    ejecutable = _sin_ayuda(texto)
+
+    assert '. "$PSScriptRoot\\08_lectura_sigrid_comun.ps1"' in texto
+    assert "Invoke-SigridLectura" in ejecutable
+    assert "-Parametros" in ejecutable
+    assert "= ?" in ejecutable
+    assert "/api/sql/write" not in ejecutable

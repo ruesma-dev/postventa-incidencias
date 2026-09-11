@@ -144,7 +144,7 @@
       comprueba que bajo R63 aparece «DEROGADO», la fecha `2026-09-11` y la
       cita literal de la premisa (R38, R39, R40, R41).
 
-- [ ] **T15**: Escribir en `specs/F-009-cierre-sigrid/requirements.md` la nota
+- [x] **T15**: Escribir en `specs/F-009-cierre-sigrid/requirements.md` la nota
       de `design.md` §11.5. | Verificación: mismo control de cero supresiones;
       el texto dice que R8/R10 **siguen vigentes** y que R21 **no se vuelve a
       derogar** porque ya lo estaba (R42, R43).

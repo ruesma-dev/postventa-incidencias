@@ -77,6 +77,27 @@ del estado de destino, el login de Sigrid con el que se firmaría el cierre, y e
 **R10.** MIENTRAS no exista un dry-run correcto y reciente para esa incidencia,
 el sistema **no debe** ejecutar ninguna escritura contra Sigrid.
 
+> **Nota del 2026-09-11 (F-025) · R8 y R10 siguen vigentes, y se cumplen
+> mejor.** Con la confirmación única, el dry-run y la escritura ocurren en la
+> **misma llamada**: el estado que se lee y el que va en el `WHERE` del
+> `UPDATE` (R11, R23) ya no están separados por el tiempo que tardaba una
+> persona en leer una pantalla. **R12–R15 siguen igual**: sigue haciendo falta
+> confirmación explícita, y sigue caducando. Lo que hay es **una sola**
+> confirmación para los tres pasos —archivar, adjuntar y cerrar—, no ninguna.
+>
+> Lo decidió el responsable del proyecto el 2026-09-11: *«quiero que al darle
+> a archivar los partes aptos me pida confirmación como ahora, y al confirmar
+> ya haga el proceso de cierre»*, y al plantearle que la pantalla previa es lo
+> que protege de cerrar la incidencia equivocada, *«no hace falta enseñar
+> nada»*. Lo que cae es la **pantalla intermedia**, no el cálculo previo: lo
+> vigila `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`, que
+> comprueba que un `commit` sin ninguna llamada anterior hace su comprobación
+> previa dentro de la misma invocación.
+>
+> **R21 de F-009 no se enmienda aquí**: ya quedó derogado por R48 de F-012 el
+> 2026-09-06. F-025 lo comprueba y lo dice, no lo vuelve a derogar (F-025
+> R42).
+
 **R11.** SI el estado de origen leído en el dry-run difiere del estado que la
 reclamación tiene en el momento de escribir, ENTONCES el sistema debe abortar la
 escritura sin aplicarla.

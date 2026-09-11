@@ -3,9 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **25 features**, 15 abiertas, 10 terminadas.
-
-En curso: **F-012**.
+Resumen: **25 features**, 14 abiertas, 11 terminadas.
 
 Bloqueadas: **F-009**.
 
@@ -14,7 +12,6 @@ Bloqueadas: **F-009**.
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
 | F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | bloqueada | critico | `feature/F-009-cierre-sigrid` |
-| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | en curso | critico | `feature/F-012-grafico-sigrid` |
 | F-024 | Datos del parte enlazados a Sigrid, para el datamart | 12 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 13 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
@@ -42,6 +39,7 @@ Bloqueadas: **F-009**.
 | F-007 | Front de carga y revisión | 7 | estandar |
 | F-010 | Despliegue en Azure y tarjeta en el portal | 8 | estandar |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | documental |
+| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | critico |
 | F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | estandar |
 
 ## Detalle
@@ -51,12 +49,6 @@ Bloqueadas: **F-009**.
 estado **bloqueada** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
 
 Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.
-
-### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
-
-estado **en curso** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
-
-Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. DECISION DEL RESPONSABLE DEL 2026-09-10, y cambia una premisa: la verificación contra el ERP se hace sobre la incidencia RS26.09/0150 (tipo 708) de la OBRA 0626, y sobre ninguna otra. La 0626 NO es una obra de pruebas: es una obra EN USO; se le planteó de forma explícita y lo reafirmó. Cae así la premisa anterior, que decía literalmente 'Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia' (decisión del 2026-09-06). Implica que la incidencia de la comprobación y su cierre quedan en el histórico de una obra en uso, con el documento adjunto colgado de ella. La incidencia la da de alta el responsable en el ERP: este servicio no crea incidencias, y si no existe, la comprobación previa responde que no la localiza. Lo que NO cambia: comprobación previa (dry-run) antes de cada escritura, autorización expresa del responsable por incidencia concreta -que aquí gana peso, no lo pierde-, CIERRE_HABILITADO como interruptor único para el documento adjunto y para el cambio de estado, y ninguna escritura desde un puesto de trabajo. Constancia fechada en specs/F-012-grafico-sigrid/ (glosario de requirements.md, §15 de design.md, bloque 9 de tasks.md) y en progress/guion_bloque9_F-012.md. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.
 
 ### F-024 · Datos del parte enlazados a Sigrid, para el datamart
 
@@ -189,6 +181,12 @@ Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de 
 estado **terminada** · prioridad 9 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
 
 Confirmar contra el ERP lo que ya está documentado en azure-apps/sigrid_tablas.md, sigrid_api.md §9 y docs/referencia/01_cierre_incidencia_sigrid.md. Lo crítico: el proceso 'Cerrar parte' de Sigrid comprueba que la reclamación tenga un gráfico asociado, y existe una opción 6 'Cerrar parte sin archivo (RPV)'. Hay que averiguar qué escribe realmente cada uno de esos dos procesos antes de decidir el alcance del cierre. Además: el con.tip de la reclamación y el estado CERRADA en conest (el estado PENDIENTE es 3/PTE), en qué base vive gra, y si 'Asociar URL de Internet' permite referenciar el PDF de SharePoint en vez de incrustar el binario. Solo lecturas.
+
+### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
+
+estado **terminada** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
+
+Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. DECISION DEL RESPONSABLE DEL 2026-09-10, y cambia una premisa: la verificación contra el ERP se hace sobre la incidencia RS26.09/0150 (tipo 708) de la OBRA 0626, y sobre ninguna otra. La 0626 NO es una obra de pruebas: es una obra EN USO; se le planteó de forma explícita y lo reafirmó. Cae así la premisa anterior, que decía literalmente 'Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia' (decisión del 2026-09-06). Implica que la incidencia de la comprobación y su cierre quedan en el histórico de una obra en uso, con el documento adjunto colgado de ella. La incidencia la da de alta el responsable en el ERP: este servicio no crea incidencias, y si no existe, la comprobación previa responde que no la localiza. Lo que NO cambia: comprobación previa (dry-run) antes de cada escritura, autorización expresa del responsable por incidencia concreta -que aquí gana peso, no lo pierde-, CIERRE_HABILITADO como interruptor único para el documento adjunto y para el cambio de estado, y ninguna escritura desde un puesto de trabajo. Constancia fechada en specs/F-012-grafico-sigrid/ (glosario de requirements.md, §15 de design.md, bloque 9 de tasks.md) y en progress/guion_bloque9_F-012.md. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.
 
 ### F-019 · Endpoints de persistencia: guardar la remesa y leer la cola
 

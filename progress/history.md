@@ -538,6 +538,55 @@ llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
 
 ---
 
+## F-012 · Subir el parte a Sigrid como gráfico de la incidencia — CERRADA el 2026-09-11
+
+**Lo que hace**: el PDF del parte firmado se adjunta a la reclamación como
+gráfico de Sigrid, por el endpoint de dominio de la pasarela, **antes** del
+cambio de estado; y el cierre se niega a ejecutarse si ese gráfico no consta
+adjuntado. Con eso desaparece el riesgo aceptado de `docs/ARCHITECTURE.md`
+—reclamaciones cerradas sin ninguna fila de gráfico— **sin que llegara a
+producirse ni una vez**, porque F-012 se implementó antes del primer cierre
+real del servicio.
+
+**Verificado contra el ERP de producción el 2026-09-11**, y esto es lo
+importante del acta: se ejecutó **el camino principal** sobre una reclamación
+de la **obra 0626, que es una obra en uso** (el responsable levantó el 2026-09-10
+la premisa de no tocar obras reales, y consta fechado en el guion). Un parte
+subido por la web quedó archivado, adjunto a su reclamación y la reclamación
+cerrada. Medido en los registros de la aplicación: `archivar` 1,8 s,
+`adjuntar` 13,1 s, `cerrar` 4,4 s, y el segundo par de escritura 8,5 s y
+0,5 s. Todas las respuestas correctas.
+
+**Cinco escenarios del bloque 9 quedaron SIN ejecutar**, y sus casillas están
+vacías a propósito, no por olvido: la comprobación previa del cierre sin
+gráfico adjuntado, la idempotencia de extremo a extremo, «adjuntado pero no
+cerrado», el reintento sobre lo ya cerrado y el rechazo de la pasarela sin
+escritura. **El responsable decidió cerrar la feature igualmente el
+2026-09-11.** Lo que se pierde está escrito en el guion, tarea por tarea.
+
+**El hallazgo de procedimiento que costó la primera pasada**: el guion daba
+por hecho que basta con desplegar el backend. No basta. El front desplegado no
+llevaba el código de la feature, así que el circuito paró después de archivar
+sin llamar a adjuntar ni a cerrar. Se diagnosticó con los registros (ni una
+llamada a esas dos rutas) y descargando el JavaScript servido, que no contenía
+el paso de adjuntar. Se resolvió desplegando el front en el modo que no toca
+la identidad. El guion quedó corregido.
+
+**Las puertas del arnés**: revisión **APROBADA** el 2026-09-06 sobre el código
+(`progress/review_F-012.md`), con dos correcciones menores aplicadas después;
+campaña de mutación en dos pasadas, **96 muertos de 101** y cinco
+supervivientes equivalentes **aceptados por escrito** por el responsable;
+cobertura del **99,0 %** de las líneas cambiadas.
+
+**Lo que deja vivo, con dueño**: F-025 (una sola confirmación para archivar y
+cerrar) y F-026 (aprobar los partes que van a revisión) nacieron de esta
+verificación. Y **F-009 hay que revisarla**: seguía `blocked` esperando a
+F-012, pero el cierre real que ejecutó este bloque 9 cubre de hecho buena
+parte de lo que verificaba su bloque 8.
+
+Detalle completo: `progress/impl_F-012.md`, `progress/review_F-012.md`,
+`progress/mutacion_F-012.md` y `progress/guion_bloque9_F-012.md`.
+
 ## F-023 · Asociar el parte como gráfico por URL — CANCELADA el 2026-09-06
 
 Decisión del humano el 2026-09-06, a propuesta de la spec de F-012 (§13 y §14

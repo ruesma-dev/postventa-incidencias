@@ -460,14 +460,61 @@ test("R37 · el número de incidencia sobrevive a un cierre fallido", async () =
   assert.equal(resultado.numeroIncidencia, CODIGO_EN_SIGRID);
 });
 
-test("R37 · si el backend no lo devolvió, no se inventa", async () => {
-  // El número que se enseña es el de la reclamación sobre la que se escribió,
-  // y eso lo dice el ERP. Rellenarlo con el que se leyó del papel enseñaría
-  // justo el número que podría estar mal leído.
+test("R37 · con los tres pasos en verde y sin número en la respuesta, no se inventa ninguno", async () => {
+  // ESTE es el control negativo de R37, y es el que faltaba hasta la review.
+  //
+  // Es el único guion del fichero que ejecuta `numeroDeIncidenciaDe` con la
+  // clave AUSENTE: el circuito entero en verde —los tres pasos ejecutados— y
+  // un backend que responde con éxito pero sin `numero_incidencia`. Los demás
+  // tests de R37 o traen la clave, o fallan antes de llegar a la función.
+  //
+  // Sin él, `numeroDeIncidenciaDe` se puede cambiar para rellenar el hueco con
+  // el número LEÍDO DEL PAPEL y ningún test cae. Y ese es justo el número que
+  // §0 de `requirements.md` acepta que pueda estar mal leído: enseñarlo como
+  // si lo hubiera dicho el ERP no compensa ese riesgo, lo disfraza. El resumen
+  // es la única ocasión de detectar que se escribió sobre otra reclamación.
+  const api = apiDoble({
+    adjuntar: { estado: "adjuntado" },
+    cerrar: { estado: "cerrado" },
+  });
+
+  const resultado = await correr(parteDeLaTanda(), api);
+
+  assert.deepEqual(api.pasos(), ["archivar", "adjuntar", "cerrar"]);
+  assert.equal(resultado.cerrado, true, "el circuito tiene que haber llegado al final");
+  assert.equal(resultado.numeroIncidencia, "");
+  assert.notEqual(
+    resultado.numeroIncidencia,
+    INCIDENCIA,
+    "el número del papel no puede colarse como si lo hubiera dicho el ERP",
+  );
+  assert.ok(
+    !resultado.mensaje.includes(INCIDENCIA) &&
+      !resultado.mensaje.includes(CODIGO_EN_SIGRID),
+    "tampoco por la puerta de atrás del mensaje del resumen",
+  );
+});
+
+test("R37 · si solo lo devuelve el cierre, ese es el que se enseña", async () => {
+  // La misma función, con la clave ausente en un paso y presente en el otro:
+  // el hueco del paso 2 no se rellena con nada inventado y el paso 3 lo pone.
+  const api = apiDoble({ adjuntar: { estado: "adjuntado" } });
+
+  const resultado = await correr(parteDeLaTanda(), api);
+
+  assert.equal(resultado.numeroIncidencia, CODIGO_EN_SIGRID);
+});
+
+test("R37 · un parte que no llega al ERP se queda sin número", async () => {
+  // Ojo con lo que prueba este test, que no es lo que parece: al fallar el
+  // paso 1 el circuito se corta y `numeroDeIncidenciaDe` **no se ejecuta**.
+  // Lo que fija es que el campo nace vacío y nadie lo rellena por el camino
+  // del error. El control negativo de la función es el test de arriba.
   const api = apiDoble({ archivar: { fallo: errorDelParte("no cabe") } });
 
   const resultado = await correr(parteDeLaTanda(), api);
 
+  assert.equal(resultado.estado, "error_archivo");
   assert.equal(resultado.numeroIncidencia, "");
 });
 

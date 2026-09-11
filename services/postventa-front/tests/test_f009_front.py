@@ -73,6 +73,12 @@ def _sin_comentarios_js(texto: str) -> str:
 @pytest.mark.parametrize(
     "campo",
     [
+        # Seis de los **siete** campos que pintaba la tarjeta. `descripcion`
+        # había salido de esta lista al fundir las dos tandas (T7–T13) y
+        # **vuelve en T16**: no aparece en el HTML, así que el control negativo
+        # lo cubre sin coste. El séptimo, `incidencia`, tiene su propio test
+        # aquí debajo, porque el resumen **sí** lo pinta por R37 de F-025.
+        "descripcion",
         "estado_origen.codigo",
         "estado_origen.descripcion",
         "estado_destino.codigo",
@@ -99,6 +105,30 @@ def test_f009_r9_derogado_la_pantalla_previa_del_dry_run_no_deja_rastro(campo):
         f"la pantalla vuelve a pintar {campo}: la tarjeta del cálculo previo "
         f"se retiró con F-025 y ya nadie la rellena"
     )
+
+
+def test_f009_r9_derogado_el_numero_de_incidencia_solo_sale_en_el_resumen():
+    """R9 · el séptimo campo de la tarjeta, que **no** puede ser un `not in`.
+
+    `incidencia` es el único de los siete que sobrevive en la pantalla, y
+    sobrevive **a propósito**: R37 de F-025 exige que el resumen enseñe el
+    número de la incidencia sobre la que se escribió, porque con la
+    confirmación única esa es la primera y única ocasión en que alguien puede
+    darse cuenta de que se cerró la equivocada. Es el contrapeso escrito del
+    riesgo que §0 de `specs/F-025-confirmacion-unica/requirements.md` acepta.
+
+    Lo que este test fija son las dos mitades: que el número **está** donde
+    tiene que estar —el resumen— y que **no vuelve** donde ya no debe: la
+    tarjeta del cálculo previo, que nadie rellena.
+    """
+    html = _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
+
+    assert "resultado.incidencia" in html, (
+        "el resumen ha dejado de enseñar el número de incidencia: es el único "
+        "momento en que alguien puede ver que se escribió sobre la equivocada"
+    )
+    assert "dryRunDe(parte).incidencia" not in html
+    assert "dryRunGraficoDe(parte).incidencia" not in html
 
 
 def test_f009_r9_la_pantalla_no_pinta_ningun_numero_de_estado():

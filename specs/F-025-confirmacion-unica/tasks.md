@@ -149,7 +149,7 @@
       el texto dice que R8/R10 **siguen vigentes** y que R21 **no se vuelve a
       derogar** porque ya lo estaba (R42, R43).
 
-- [ ] **T16**: Retirar de `tests/test_f009_front.py` y `test_f012_front.py`
+- [x] **T16**: Retirar de `tests/test_f009_front.py` y `test_f012_front.py`
       **solo** las aserciones de R63 y de «antes de confirmar», citando R38 y
       R39 en cada retirada. | Verificación: `git diff --stat` de esos dos
       ficheros toca **únicamente** líneas que nombran el dry-run previo o «ver

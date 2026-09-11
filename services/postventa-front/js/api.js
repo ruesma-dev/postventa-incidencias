@@ -442,8 +442,15 @@
        * `js/pipeline.js::cuerpoDeCierre`, y sin `commit` el backend responde
        * el dry-run: los dos estados legibles, con qué login se firmaría y el
        * bloque `grafico` con el estado real de este parte —`adjuntado`,
-       * `dry_run_ok` o `no_consta`— (R49). Eso hay que enseñarlo **antes** de
-       * que nadie confirme.
+       * `dry_run_ok` o `no_consta`— (R49).
+       *
+       * **Ese dry-run ya no se le enseña a nadie** (R40 de F-025, que deroga
+       * R63 de F-012): hay **una** confirmación para las tres escrituras y el
+       * front llama siempre con `commit`. La comprobación previa no ha
+       * desaparecido —se ejecuta dentro de la misma llamada que escribe, ver
+       * `design.md` §2 de F-025—; lo que desapareció es la pantalla. Quien
+       * lea esto dentro de seis meses: reponerla no es arreglar nada, es
+       * deshacer una decisión fechada del responsable.
        *
        * Lo que ese bloque **sustituye** es el `aviso_sin_grafico` de F-009,
        * derogado por R48 de F-012: ya no llega en la respuesta y no hay que

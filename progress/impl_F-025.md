@@ -1174,3 +1174,57 @@ Siguen los cuatro de §19, sin cambios, y se les añade uno que es de esta tanda
    de F-025, y lo que la compensa es la regla de `CLAUDE.md`: el dueño del
    documento es el proyecto que describe, y se actualiza **en el mismo
    trabajo**, no después.
+
+---
+
+## 30 · Tanda 4 · los tres reparos de la review, y la frase que se escapó
+
+> **Quién escribe esto y por qué así.** La tanda la ejecutó un implementer que
+> **se interrumpió al llegar al informe**, con los cuatro commits ya hechos. El
+> líder la cerró después: retiró el comentario gemelo que la segunda pasada de
+> la review destapó y escribió esta sección. Se dice porque cambia lo que se
+> puede afirmar: **la fase RED de esta tanda no quedó registrada**, y no se
+> reconstruye a posteriori, que sería inventarla.
+>
+> Lo que la sustituye es **más fuerte que una fase RED**: el reviewer rehízo la
+> campaña manual sobre una copia aislada del front y mutó
+> `numeroDeIncidenciaDe` de **cuatro** maneras distintas. Las cuatro mueren
+> ahora; la primera de ellas **sobrevivía** antes de esta tanda. Está medido en
+> la §S1 de `progress/review_F-025.md`, con la línea base (231 tests) y el
+> número de fallos de cada mutante.
+
+### Los cinco commits
+
+| Commit | Reparo | Qué hace |
+|---|---|---|
+| `fe2f7d3` | **1**, el serio | El control negativo de R37 ejecuta de verdad `numeroDeIncidenciaDe`. El test que llevaba ese nombre hacía fallar el paso de archivar, así que el circuito se cortaba antes y la función no llegaba a ejecutarse nunca |
+| `2e4e14a` | **2** | Cierra la trazabilidad de los siete requisitos que no tenían test nominal, con la evidencia concreta de cada uno |
+| `90ee2a9` | **3** | Retira el comentario derogado del dry-run en `js/api.js` |
+| `1d1e3c6` | leve 6 | Clave única por fila en los dos resúmenes |
+| *(este)* | **3 bis** | **El gemelo que se escapó.** El reparo era sobre la afirmación, no sobre la línea: 26 líneas más arriba, en el mismo fichero, el comentario de `adjuntar` seguía diciendo que el dry-run «hay que enseñarlo antes de que nadie confirme». Ahora dice lo que dice el de `cerrar`, con la referencia a R40 y el aviso a quien lo lea dentro de seis meses |
+
+### Por qué el reparo 1 era el que importaba
+
+R37 —enseñar el número de incidencia sobre el que se escribió— es, **por
+escrito en §0 de `requirements.md`**, la única compensación del riesgo que la
+feature acepta a propósito: que la extracción lea mal el número, que la
+reclamación equivocada exista y esté abierta, y que se cierre sin que nadie lo
+haya visto. El resumen final es la única ocasión de detectarlo. Un número
+inventado ahí no compensa nada: **engaña**, y es peor que no enseñarlo.
+
+### Evidencias, medidas después de esta tanda
+
+| Evidencia | Valor |
+|---|---|
+| Suite del servicio `api` | **2.144 pasan, 13 saltados** |
+| Suite del front | **188 pasan** |
+| Cobertura de líneas cambiadas | **99,0 %** (umbral 80 %, nivel `critico`) |
+| `ruff` | 58 avisos, la deuda previa exacta |
+| Comentarios derogados vivos en el front | **0** (barrido sobre `js/` e `index.html`) |
+| Ejecutado contra Azure, Sigrid, PostgreSQL o SharePoint | **nada** |
+
+### Lo que sigue pendiente
+
+El **bloque 5** de `tasks.md`: la verificación contra el ERP, que es del
+responsable y escribe en una obra en uso. Y el **bloque 6**, el cierre, que
+lleva el líder. Nada de esta tanda lo cambia.

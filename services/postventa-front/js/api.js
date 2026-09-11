@@ -415,8 +415,14 @@
        * `archivar`. El cuerpo lo compone `js/pipeline.js::cuerpoDeGrafico`.
        *
        * **Por omisión no escribe nada**: sin `commit` el backend responde el
-       * dry-run —nombre, clase, tamaño, `sha256` y los avisos de la pasarela—,
-       * y eso hay que enseñarlo antes de que nadie confirme.
+       * dry-run —nombre, clase, tamaño, `sha256` y los avisos de la pasarela—.
+       *
+       * **Ese dry-run ya no se le enseña a nadie** (R40 de F-025, que deroga
+       * R63 de F-012): hay **una** confirmación para las tres escrituras y el
+       * front llama siempre con `commit`. La comprobación previa no ha
+       * desaparecido —se ejecuta dentro de la misma llamada que escribe, ver
+       * `design.md` §2 de F-025—; lo que desapareció es la pantalla. Quien
+       * lea esto dentro de seis meses: reponerla no es arreglar nada.
        *
        * Un 503 aquí es la **puerta de entorno**, igual que en `archivar` y en
        * `cerrar`: no es un fallo y no se reintenta. Insistir no la ablanda.

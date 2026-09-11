@@ -41,7 +41,7 @@ servicio.
 | **H2** | Dry-run obligatorio y mostrado antes de cada commit; el usuario confirma **una vez** y entonces commit del gráfico y después el cierre. Decidir si el interruptor es el mismo | Dry-run en la misma llamada que el commit (R20), como F-009. **El interruptor es el mismo `CIERRE_HABILITADO`** (§2, D-B) |
 | **H3** | `database` la de negocio, `contip` 708, `gratipide` 35 configurable (pregunta a Posventa), `usu` el login de F-009, `res`/`nom` a decidir, `sha256` del PDF | §2 D-E y D-F: `nom` = el nombre de F-006, `res` = `PARTE FIRMADO`, `contip` **de la reclamación leída** y no de la configuración, `gratipide` = `SIGRID_GRATIPIDE_PARTE` |
 | **H4** | La configuración de `sigrid-api` en `dev` es del dueño y es **precondición** | No se toca desde aquí. Va como precondición P0 del bloque de verificación de `tasks.md` y como §6 de `docs/INTEGRACION.md` («qué se rompe si el dueño la cambia»). El código responde `503` con el código de la pasarela si falta (R32) |
-| **H5** | Toda verificación contra el ERP, sobre la **obra 404**, con dry-run y autorización por incidencia | Bloque 9 de `tasks.md`; consulta de localización preparada en §15 y empaquetada en `infra/15_reclamaciones_obra_prueba.ps1` (solo lectura) |
+| **H5** | Toda verificación contra el ERP, sobre la incidencia **`RS26.09/0150`** de la **obra `0626`** —una obra **en uso**, decisión del responsable del **2026-09-10**, ver §15— con comprobación previa (dry-run) y **autorización expresa por incidencia** | Bloque 9 de `tasks.md`; consulta de localización preparada en §15 y empaquetada en `infra/15_reclamaciones_obra_prueba.ps1` (solo lectura, **se lanza con `-CodigoObra 0626`**) |
 | **H6** | Fuera: borrar/sustituir, versionar, reparar huérfanos, el gráfico por URL (F-023), el catálogo del portal | Nada de eso se diseña. Los huérfanos que la pasarela avise **se enseñan** en el dry-run (R21) y no se tocan. F-023: §13 |
 
 ## 2 · Las decisiones de este diseño
@@ -94,10 +94,14 @@ apagado) no tiene uso: un gráfico sin cierre es exactamente lo que R16/R17
 evitan.
 
 Consecuencia para el bloque de verificación: abrir la ventana para probar el
-gráfico en la obra 404 abre también el cierre. Es aceptable por lo mismo que
-en F-009: dry-run por omisión, confirmación explícita, el humano delante, y la
+gráfico en la obra `0626` abre también el cierre. **El interruptor sigue siendo
+uno solo** —para el documento adjunto y para el cambio de estado— y eso no lo
+cambia la decisión del 2026-09-10 (§15). Es aceptable por lo mismo que en
+F-009: dry-run por omisión, confirmación explícita, el humano delante, y la
 ventana se cierra al terminar. Y de hecho la prueba de punta a punta **quiere**
-cerrar la reclamación de prueba después de adjuntar.
+cerrar la incidencia `RS26.09/0150` después de adjuntar; como la `0626` es una
+obra **en uso**, ese cierre queda en su histórico, y por eso la autorización
+expresa por incidencia es aquí más exigible que nunca.
 
 ### D-C · Dónde vive la traza: tabla nueva `postventa.graficos`
 
@@ -317,7 +321,7 @@ Todos bajo `services/postventa-api/`, salvo donde se indique.
 | `infrastructure/sigrid/graficos.py` | infra | `AdaptadorGraficoSigridApi(GraficoPort)`: `httpx` contra `POST /api/sigrid/concepto-grafico`, base64, puerta de entorno **y** de interruptor en el constructor, lectura de `details.codigo` y nada más del cuerpo de error |
 | `infrastructure/persistencia/sql/09_graficos.sql` | infra/SQL | La traza del gráfico (§8.1) |
 | `interface_adapters/api/adjuntar.py` | interface | Handler de `POST /api/adjuntar`: `multipart`, compone los cinco puertos, serializa |
-| `infra/15_reclamaciones_obra_prueba.ps1` | infra | **Solo lectura**: localiza las reclamaciones de la obra 404 cerrables y sin gráfico (§15). Lo lanza el humano |
+| `infra/15_reclamaciones_obra_prueba.ps1` | infra | **Solo lectura**: localiza las reclamaciones cerrables y sin gráfico de la obra que se le pase (§15); desde el 2026-09-10 se lanza con **`-CodigoObra 0626`**, que **no** es su valor por omisión. Lo lanza el humano |
 | `infra/16_grafico_sigrid.ps1` | infra | **Solo lectura**: las tres filas del gráfico por `cod` (negocio, documental con `DATALENGTH`, enlace), `MAX(ide)` de `dbo.log` antes/después, y `documents/read` para comparar el `sha256` |
 | `infra/17_traza_grafico_local.ps1` | infra | **Solo lectura** del esquema propio: la traza de `postventa.graficos`, al modo de `12_traza_cierre_local.ps1` |
 
@@ -788,8 +792,9 @@ posibles, y **lo decide el humano**:
   primera reclamación real que cierre este servicio tendrá su parte dentro.
 
 Recomendación: **(b)**, porque la anomalía documentada deja de producirse ni
-una sola vez, y porque la verificación de F-012 en la obra 404 ya es un cierre
-completo de punta a punta que ensaya el bloque 8 sin tocar Mirasierra. Pero
+una sola vez, y porque la verificación de F-012 —desde el 2026-09-10, sobre
+`RS26.09/0150` de la obra `0626` (§15)— ya es un cierre completo de punta a
+punta que ensaya el bloque 8 sin tocar Mirasierra. Pero
 es una decisión de calendario del humano, no del diseño.
 
 ### F-023, el gráfico por URL
@@ -809,33 +814,65 @@ humano—, pero lo deja escrito para que la decisión no se olvide.
 | **P2** | ¿`res` = `PARTE FIRMADO` a secas, o con sufijo del servicio? | (a) idéntico a Posventa; (b) «PARTE FIRMADO (postventa-incidencias)» | **(a)** (D-E). Cambiarlo es una constante |
 | **P3** | ¿Orden entre el bloque 8 de F-009 y F-012? | (a) / (b) de §13 | **(b)** |
 | **P4** | ¿Se cancela F-023? | (a) cancelar; (b) mantener `blocked` | **(a)**, salvo que el humano quiera conservar la vía URL como plan B. No es decisión de esta spec |
-| **P5** | Un parte de prueba de la **obra 404** que haya pasado el circuito (guardado y archivado) es precondición del bloque 9. ¿Existe? Si no, hay que imprimir un parte de una reclamación de esa obra, firmarlo y escanearlo, o llamar a `/api/adjuntar` desde la consola con un PDF cualquiera sobre un parte guardado a mano | — | Preparar uno **antes** de abrir la ventana; el bloque 9 lo lista como P5 |
+| **P5** | Un parte que haya pasado el circuito (guardado y archivado) es precondición del bloque 9. ¿Existe? | — | **Resuelta el 2026-09-10** (§15): es el parte de la incidencia **`RS26.09/0150`** de la obra **`0626`**, preparado en `muestras/parte_prueba_RS26.09-0150.pdf` —no versionado; datos inventados salvo los dos códigos—, pendiente de imprimir, **firmar a mano** y escanear. La incidencia la da de alta el **responsable** en el ERP. Se prepara **antes** de abrir la ventana; el bloque 9 lo lista como P5 |
 
 Ninguna cambia el diseño: P1 y P2 son una constante o una variable; P3 y P4
 son calendario; P5 es preparación.
 
-## 15 · La consulta preparada: reclamaciones de la obra de prueba 404
+## 15 · La consulta preparada: las incidencias de la obra `0626`
+
+> **Enmienda del 2026-09-10 · cambia la obra de la verificación, y con ella una
+> premisa de esta sección.**
+>
+> Esta sección se tituló *«La consulta preparada: reclamaciones de la obra de
+> prueba 404»*, y decía que *«la reclamación de prueba la crea **Posventa** en
+> la obra 404»*. Detrás estaba la regla dura del 2026-09-06: *«Toda
+> verificación contra el ERP se hace sobre reclamaciones de la obra de prueba
+> 404, nunca sobre Mirasierra ni sobre obras reales»*.
+>
+> **Esa premisa la levantó el responsable del proyecto el 2026-09-10.** Se le
+> planteó de forma explícita que la **`0626` no es una obra de pruebas, sino
+> una obra en uso**, y lo reafirmó. El caso de verificación es la incidencia
+> **`RS26.09/0150`** (tipo 708) de esa obra, que **da de alta él mismo en el
+> ERP**: este servicio no crea incidencias, y si no existe, la comprobación
+> previa responde que no la localiza (Q1/Q2 devuelven cero filas). Su parte
+> está preparado en `muestras/parte_prueba_RS26.09-0150.pdf` —no versionado;
+> datos inventados salvo el código de obra y el de incidencia—, pendiente de
+> imprimir, firmar a mano y escanear.
+>
+> **Qué implica**: la incidencia de la comprobación y su cierre quedan en el
+> **histórico de una obra en uso**, y el documento adjunto queda colgado de
+> ella.
+>
+> **Lo que no cambia**: comprobación previa antes de cada escritura;
+> autorización expresa del responsable **por incidencia concreta**, que aquí
+> **gana peso**; `CIERRE_HABILITADO` como interruptor único del adjunto y del
+> cierre (D-B); y ninguna escritura desde un puesto de trabajo. **El SQL
+> tampoco cambia**: las tres consultas siguen sirviendo tal cual y solo se
+> ajusta el parámetro de Q0.
 
 **Solo lectura. No se ha ejecutado.** Para `POST /api/sql/read` con marcadores
 `?` (`sigrid_api.md` §5.2), o empaquetada en
 `infra/15_reclamaciones_obra_prueba.ps1` sobre `Invoke-SigridLectura` de
-`infra/08_lectura_sigrid_comun.ps1`. Base: la de negocio.
+`infra/08_lectura_sigrid_comun.ps1` —que se lanza con **`-CodigoObra 0626`**,
+porque su valor por omisión sigue siendo el de la obra genérica. Base: la de
+negocio.
 
 La cadena reclamación → unidad → obra sale del diccionario: `rcp.upvide` es
 «Índice (ide) a `upv`», `upv.obride` es «Índice (ide) a `obr`», y `obr` son
 «Propiedades de `con`» (una obra es un concepto: su código legible es
 `con.cod`) **[MEDIDO en `sigrid_tablas.md`]**. Cómo se escribe el código de la
-obra 404 en `con.cod` —`404`, `0404`, otro— **[INFERIDO]**: por eso la
-consulta 0 lo localiza primero y el script prueba las dos formas.
+obra en `con.cod` —con el cero de delante o sin él— **[INFERIDO]**: por eso la
+consulta 0 la localiza primero y el script prueba las dos formas.
 
 ```sql
--- Q0 · localizar la obra de prueba (una fila esperada)
+-- Q0 · localizar la obra de la verificación (una fila esperada)
 SELECT o.ide, c.tip, c.cod, c.res
 FROM dbo.obr o
 JOIN dbo.con c ON c.ide = o.ide
 WHERE c.cod IN (?, ?)
 ```
-Parámetros: `['404', '0404']`.
+Parámetros: `['0626', '626']` **(2026-09-10: eran `['404', '0404']`)**.
 
 ```sql
 -- Q1 · sus reclamaciones, con estado legible y cuántos gráficos tiene cada una
@@ -863,6 +900,14 @@ ORDER BY c.ide DESC
 ```
 Parámetros: `[<ide de la obra>, 708, 'SAT', 'PTE', 'TER']`.
 
-Si Q2 no devuelve ninguna fila, la reclamación de prueba la crea **Posventa**
-en la obra 404 desde la UI de Sigrid; este servicio no da de alta
-reclamaciones (fuera de su dominio).
+**Q1 y Q2 no se tocan**, y siguen siendo lo que responde las dos preguntas del
+caso concreto: **en qué estado está `RS26.09/0150`** (Q1, columnas `estado_cod`
+/ `estado_res`) y **cuántos gráficos tiene colgados** (Q1, columna `graficos`;
+Q2 solo la deja pasar si no tiene ninguno). Con la obra localizada por Q0, la
+incidencia se reconoce por su `c.cod`.
+
+Si Q1 no la encuentra, o Q2 no devuelve ninguna fila, **no hay nada que
+arreglar aquí**: es que la incidencia todavía no está dada de alta en el ERP, y
+la da de alta el **responsable** desde la UI de Sigrid. Este servicio no da de
+alta incidencias (fuera de su dominio), así que la comprobación previa se
+limita a decir que no la localiza.

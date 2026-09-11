@@ -232,7 +232,9 @@
       `design.md` §15 sobre `Invoke-SigridLectura`; imprime la obra localizada,
       sus reclamaciones con estado legible y nº de gráficos, y las candidatas
       (cerrables y sin gráfico). Parámetro `-CodigoObra` con `404` por defecto
-      y prueba de las dos formas. | Verificación: `test_f012_scripts_infra.py`,
+      y prueba de las dos formas. **Desde el 2026-09-10 la verificación va a la
+      obra `0626`, así que se lanza con `-CodigoObra 0626`**: el valor por
+      omisión del script **no** se ha cambiado. | Verificación: `test_f012_scripts_infra.py`,
       al modo de `test_f009_scripts_infra.py`: existe, carga el común 08, solo
       llama a `sql/read`, parámetros con `?`, y **ningún valor** (ni raíz, ni
       clave, ni código de reclamación real).
@@ -254,16 +256,34 @@
       `test_f012_scripts_infra.py`: solo `SELECT`, solo el esquema propio, sin
       secretos.
 
-## Bloque 9 · Verificación contra el ERP de producción, sobre la OBRA 404
+## Bloque 9 · Verificación contra el ERP de producción, sobre la incidencia `RS26.09/0150` de la obra `0626`
+
+> **Enmienda del 2026-09-10 · cambia la obra, y cae una premisa de este
+> bloque.** Este encabezado decía *«sobre la OBRA 404»* y su regla dura decía,
+> literal: *«sobre reclamaciones de la **obra de prueba 404** —nunca sobre
+> Mirasierra ni sobre una obra real—»*. **El responsable del proyecto levantó
+> esa premisa el 2026-09-10**: se le planteó de forma explícita que la `0626`
+> **no es una obra de pruebas, sino una obra en uso**, y lo reafirmó. La
+> incidencia de la verificación es **`RS26.09/0150`** (tipo 708), que **da de
+> alta él mismo en el ERP** —este servicio no crea incidencias: si no existe,
+> la comprobación previa responde que no la localiza—, y su parte está
+> preparado en `muestras/parte_prueba_RS26.09-0150.pdf` (no versionado; datos
+> inventados salvo los dos códigos), pendiente de imprimir, firmar a mano y
+> escanear. **Implica** que la incidencia de la comprobación y su cierre quedan
+> en el **histórico de una obra en uso**, con el documento adjunto colgado de
+> ella.
 
 > **REGLA DURA**: prohibido escribir en Sigrid desde local o desde tests. Todo
 > este bloque se ejecuta **desde el entorno desplegado**, con el humano
-> delante, **sobre reclamaciones de la obra de prueba 404** —nunca sobre
-> Mirasierra ni sobre una obra real—, con dry-run antes de cada commit y
-> **autorización expresa del humano para cada incidencia**. Es el equivalente
-> del bloque 8 de F-009, y su guion detallado (líneas exactas, casillas de
-> resultado) se escribe en `progress/guion_bloque9_F-012.md` al llegar aquí,
-> como se hizo con `progress/guion_bloque8_F-009.md`.
+> delante, **sobre la incidencia `RS26.09/0150` de la obra `0626`** y ninguna
+> otra, con **comprobación previa (dry-run) antes de cada commit** y
+> **autorización expresa del responsable para cada incidencia concreta** —una
+> precondición que, al ser la `0626` una obra **en uso**, **gana peso, no lo
+> pierde**—. `CIERRE_HABILITADO` sigue siendo **un solo** interruptor para el
+> documento adjunto y para el cambio de estado. Es el equivalente del bloque 8
+> de F-009, y su guion detallado (líneas exactas, casillas de resultado) está
+> en `progress/guion_bloque9_F-012.md`, con la nota fechada del cambio de
+> premisa arriba del todo.
 
 **Precondiciones (se comprueban antes de abrir la ventana):**
 
@@ -283,14 +303,18 @@
       de F-009 y F-012 puestas por el despliegue (`docs/DESPLIEGUE.md` §4 bis).
 - [ ] **P4** · Raíz y clave de la pasarela a mano para los scripts de lectura;
       no se escriben en ningún fichero.
-- [ ] **P5** · **Una reclamación de la obra 404** localizada con
-      `infra/15_reclamaciones_obra_prueba.ps1` (cerrable y sin gráfico), y **su
-      parte** recorrido en el front: subido, validado `apto` /
+- [ ] **P5** · **La incidencia `RS26.09/0150` de la obra `0626`** —dada de alta
+      en el ERP por el **responsable**— localizada con
+      `infra/15_reclamaciones_obra_prueba.ps1 -CodigoObra 0626` (cerrable y sin
+      gráfico), y **su parte** recorrido en el front: subido, validado `apto` /
       `archivo_y_cierre`, **guardado** (`POST /api/parte`) y **archivado**
       (`POST /api/archivar`). `postventa.graficos` tiene clave ajena contra
       `partes`: un `hash` no guardado hace fallar **hasta el dry-run** (R46).
-      Si no existe un parte escaneado de esa obra, ver P5 de `design.md` §14.
-- [ ] **P6** · Autorización expresa del humano para **esa** reclamación.
+      Si el script **no la localiza**, es que aún no está dada de alta: se pide
+      al responsable. Ver P5 de `design.md` §14.
+- [ ] **P6** · **Autorización expresa del responsable para esa incidencia
+      concreta**. Sobre una obra **en uso** esta precondición **gana peso**: lo
+      que se escriba queda en el histórico de la `0626`.
 - [ ] **P7** · Sesión iniciada en el front (el backend solo responde por el
       proxy, `docs/DESPLIEGUE.md` §5 bis); una sola sesión con **un solo
       parte** en curso.
@@ -373,11 +397,12 @@
 - [ ] **T31**: **Un rechazo de la pasarela, sin escritura** (R33, R59). |
       Verificación: **MANUAL (humano)**. Con una App Setting **de este
       servicio** (nunca de la pasarela) puesta a una clase no permitida
-      —`SIGRID_GRATIPIDE_PARTE=34`— y otra reclamación candidata de la obra
-      404: dry-run → **409** con `clase_de_grafico_no_permitida`, foto del
-      ERP idéntica, traza `error`. Restaurar `SIGRID_GRATIPIDE_PARTE=35`. Si
-      el humano no quiere tocar App Settings para esto, se anota como no
-      ejecutado y vale el test unitario.
+      —`SIGRID_GRATIPIDE_PARTE=34`— y **otra incidencia candidata de la obra
+      `0626`, con su propia autorización expresa**: dry-run → **409** con
+      `clase_de_grafico_no_permitida`, foto del ERP idéntica, traza `error`.
+      Restaurar `SIGRID_GRATIPIDE_PARTE=35`. Si el humano no quiere tocar App
+      Settings para esto, **o no quiere una segunda incidencia en una obra en
+      uso**, se anota como no ejecutado y vale el test unitario.
 
 - [ ] **T32**: **Cerrar la ventana y dejar constancia.** | Verificación:
       **MANUAL (humano)**. `CIERRE_HABILITADO=false` **siempre, y lo

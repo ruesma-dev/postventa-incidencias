@@ -37,7 +37,37 @@ humano) y cualquier cosa del catálogo del portal.
 | **`sha256`** | El hash de **los bytes exactos** del PDF que se envían. Es lo que la pasarela comprueba y lo que decide su idempotencia. |
 | **Clase de gráfico** | `gra.gratipide` → `dbo.auxgra`. La de Posventa es `35` (`PV002`, «POSTVENTA:Fotos Reparaciones»). |
 | **Login de Sigrid** | `dbo.usu.cod`, el que F-009 ya resuelve y verifica por usuario (R28–R34 de F-009). Va en `gra.usu` y dentro de `gra.cod`. |
-| **Obra de prueba** | La obra **404** de Sigrid. Toda verificación contra el ERP se hace sobre sus reclamaciones, nunca sobre Mirasierra ni sobre obras reales. |
+| **El caso de verificación** | La incidencia **`RS26.09/0150`** (tipo 708) de la obra **`0626`** de Sigrid. Toda verificación contra el ERP se hace sobre ella. **La `0626` no es una obra de pruebas: es una obra en uso** — ver el recuadro de abajo. |
+
+> **Enmienda del 2026-09-10 · cae la premisa de la «obra de prueba», y este
+> glosario se corrige para que no mienta.**
+>
+> Hasta hoy esa fila decía, literal: *«**Obra de prueba** · La obra **404** de
+> Sigrid. Toda verificación contra el ERP se hace sobre sus reclamaciones,
+> nunca sobre Mirasierra ni sobre obras reales.»* Era la decisión del humano
+> del 2026-09-06 y se repetía como regla dura en `design.md` §15, en el bloque
+> 9 de `tasks.md` y en el guion de ejecución.
+>
+> **La levantó el responsable del proyecto el 2026-09-10.** Se le planteó de
+> forma explícita que la `0626` **no** es una obra de pruebas sino una obra
+> **en uso**, y lo reafirmó. La incidencia `RS26.09/0150` la da de alta él
+> mismo en el ERP: este servicio **no crea incidencias**, así que si no existe,
+> la comprobación previa responde que no la localiza. Su parte de trabajo está
+> preparado en `muestras/parte_prueba_RS26.09-0150.pdf` —no versionado; datos
+> inventados salvo el código de obra y el de incidencia—, pendiente de
+> imprimir, firmar a mano y escanear.
+>
+> **Qué implica**: la incidencia de la comprobación y su cierre quedan en el
+> **histórico de una obra en uso**, y el documento adjunto queda colgado de
+> ella. No hay deshacer.
+>
+> **Lo que la premisa protegía de verdad no ha caído**, y es lo que sigue
+> escrito en R33, R39, R60 y en el bloque 9 de `tasks.md`: **comprobación
+> previa (dry-run) antes de cada escritura**; **autorización expresa del
+> responsable para cada incidencia concreta** —que sobre una obra en uso
+> **gana peso, no lo pierde**—; **`CIERRE_HABILITADO` como interruptor único**
+> del documento adjunto y del cambio de estado; y **ninguna escritura desde un
+> puesto de trabajo**.
 
 ---
 
@@ -373,8 +403,12 @@ nuevo que consumimos y la dependencia de las App Settings
 ## Trazabilidad de los requisitos que no llevan test unitario
 
 Los siguientes **solo** se pueden verificar contra el ERP de producción —sobre
-reclamaciones de la **obra de prueba 404**— y son `MANUAL (humano)`, con su
-procedimiento en `tasks.md`:
+la incidencia **`RS26.09/0150`** de la obra **`0626`**, que es una obra **en
+uso** (decisión del responsable del 2026-09-10; ver el recuadro del glosario)—
+y son `MANUAL (humano)`, con su procedimiento en `tasks.md` y su guion en
+`progress/guion_bloque9_F-012.md`. Cada uno de ellos escribe, o comprueba una
+escritura, en el histórico de una obra viva: **comprobación previa antes de
+cada escritura y autorización expresa para esa incidencia**, sin excepción:
 
 | Requisito | Por qué no hay test unitario |
 |---|---|

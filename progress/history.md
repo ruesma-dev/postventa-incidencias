@@ -538,6 +538,54 @@ llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
 
 ---
 
+## F-025 · Archivar y cerrar en una sola confirmación — CERRADA el 2026-09-11
+
+**Lo que hace**: el front pedía **dos** confirmaciones para la misma decisión,
+una para archivar y otra tras enseñar en pantalla lo que iba a pasar. Ahora
+pide **una**: al confirmar se ejecutan archivar, adjuntar y cerrar seguidos,
+llamando **directamente con escritura**.
+
+**Por qué es seguro, y se verificó en el código, no de palabra**: con
+escritura, tanto el paso del gráfico como el del cierre hacen **dentro de la
+misma llamada** su lectura de la reclamación y su comprobación previa, y solo
+entonces escriben. Las dos llamadas que desaparecen no protegían nada que la
+que queda no haga sola: lo único que aportaban era la pantalla. Y **reduce un
+riesgo**: la distancia entre leer el estado de la reclamación y escribirlo
+pasa de los ~29 s que tardaba una persona en confirmar a milisegundos, con lo
+que se encoge la ventana en que alguien podía mover la incidencia entretanto.
+
+**Lo que se pierde, y está escrito en §0 de su `requirements.md`**: si la
+extracción lee mal el número de incidencia, la reclamación equivocada existe y
+está abierta, se cerrará sin que nadie lo haya visto antes. El responsable lo
+decidió así el 2026-09-11 —«no hace falta enseñar nada»— después de que se le
+planteara. La única compensación que queda es **R37**, el número de incidencia
+en el resumen final.
+
+**La review costó tres pasadas**, y la primera encontró justo eso: el control
+negativo de R37 **no ejecutaba la función que decía vigilar**, porque hacía
+fallar el primer paso y el circuito se cortaba antes. El reviewer lo destapó
+mutando el JavaScript a mano, y en la tercera pasada lo verificó mutando esa
+función de cuatro maneras: las cuatro mueren ahora, y antes una sobrevivía.
+
+**Las puertas del arnés**: la campaña de mutación dio **cero mutantes**, y ese
+cero **no es una puerta superada** sino una campaña que no midió nada: F-025 no
+cambia ni una línea de Python de producción. Lo sustituye lo que el reviewer sí
+midió, mutando el JavaScript. Cobertura del **99,0 %**; suites en **2.144** y
+**188**.
+
+**Verificada contra el entorno desplegado el 2026-09-11**, con una salvedad que
+consta en `tasks.md`: los registros de esa prueba muestran `archivar` y
+`adjuntar` correctas y **ninguna llamada a `cerrar`**, y no se llegó a aclarar
+si fue porque la reclamación ya estaba cerrada (idempotencia funcionando) o
+porque el circuito se detuvo. **El paso de cierre del circuito fusionado no
+tiene evidencia propia.** El responsable aprobó el cierre igualmente.
+
+**Lo que sí quedó medido**: `adjuntar` fusionada tardó **3,8 s** frente a los
+13,1 s de la primera llamada de F-012, tal como predijo el diseño.
+
+Detalle: `progress/impl_F-025.md`, `progress/review_F-025.md` (tres pasadas) y
+`progress/mutacion_F-025.md`.
+
 ## F-012 · Subir el parte a Sigrid como gráfico de la incidencia — CERRADA el 2026-09-11
 
 **Lo que hace**: el PDF del parte firmado se adjunta a la reclamación como

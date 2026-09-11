@@ -3,9 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **25 features**, 14 abiertas, 11 terminadas.
-
-En curso: **F-025**.
+Resumen: **25 features**, 13 abiertas, 12 terminadas.
 
 Bloqueadas: **F-009**.
 
@@ -25,7 +23,6 @@ Bloqueadas: **F-009**.
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 | F-022 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 22 | pendiente | estandar | `feature/F-022-suite-barrido-cacheado` |
-| F-025 | Archivar y cerrar en una sola confirmacion | 25 | en curso | critico | `feature/F-025-confirmacion-unica` |
 | F-026 | Aprobacion humana de los partes que van a revision | 26 | spec lista | estandar | `feature/F-026-aprobacion-humana` |
 
 ## Terminadas
@@ -43,6 +40,7 @@ Bloqueadas: **F-009**.
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | documental |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | critico |
 | F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | estandar |
+| F-025 | Archivar y cerrar en una sola confirmacion | 25 | critico |
 
 ## Detalle
 
@@ -118,12 +116,6 @@ estado **pendiente** · prioridad 22 · rigor `estandar` · SDD sí · rama `fea
 
 El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco ficheros que recorren el árbol del repositorio fichero a fichero, y repiten el mismo barrido en cada test: test_f003_arquitectura.py cuesta 12,7 s él solo, un tercio de la suite entera. Leer el árbol UNA vez en una fixture de sesión y que cada test consulte el resultado dejaría la suite en torno a 20 s. Medido en progress/explore_F-009_timeouts.md (medición 10) el 2026-09-02, a propósito de los timeouts de la campaña de mutación de F-009: con la suite a 20 s la campaña paralela volvería a caber de sobra en el tope de 120 s por mutante. Beneficia además a cada init.sh de cada sesión. OJO: toca tests de F-003, F-005, F-006 y F-009, features ya cerradas, con el riesgo de aflojar sin querer una comprobación de arquitectura; por eso lleva spec propia y review, y no se mete dentro de otra feature.
 
-### F-025 · Archivar y cerrar en una sola confirmacion
-
-estado **en curso** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
-
-Quitar el paso de vista previa del circuito. Hoy el front pide DOS confirmaciones para la misma decision: una para archivar y otra, tras ensenar el dry-run del grafico y del cierre, para escribir en el ERP. Al pulsar archivar sobre los partes aptos habra UNA sola confirmacion -la que ya existe- y al confirmarla se ejecutan los tres pasos seguidos: archivar en SharePoint, adjuntar el parte a la reclamacion y cerrarla. DECISION DEL HUMANO DEL 2026-09-11, tomada despues de verificar el circuito completo contra el ERP real: NO hace falta ensenar ningun resumen antes de confirmar; se le planteo que eso es lo que protege de cerrar la incidencia equivocada si la IA leyo mal el numero del papel, y lo reafirmo. OJO: esto DEROGA requisitos aprobados de F-009 y de F-012 que exigen dry-run mostrado al usuario antes de cada commit; se enmiendan con constancia fechada, citando la premisa original literal, NO se borran (mismo patron que R28 de F-010 el 2026-09-03). Las comprobaciones que el backend hace antes de escribir -que la reclamacion existe, en que estado esta, si el documento ya cuelga de ella- NO se tocan: lo que desaparece es la pantalla, no la verificacion. Los partes no aptos siguen sin archivarse.
-
 ### F-026 · Aprobacion humana de los partes que van a revision
 
 estado **spec lista** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
@@ -195,3 +187,9 @@ Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF d
 estado **terminada** · prioridad 19 · rigor `estandar` · SDD sí · rama `feature/F-019-endpoints-persistencia`
 
 F-005 dejó `RepositorioPartesPort` completo —`guardar_remesa`, `guardar_parte`, `guardar_validacion`, `cola_validacion_humana`— y sus seis tablas creadas en la base real, pero **el único endpoint que escribe hoy es `/api/archivar`**, y solo su traza. El puerto existe y nadie lo llama: la remesa, los partes extraídos y el resultado de la validación no se guardan en ningún sitio. Consecuencia visible, detectada al diseñar F-007 (decisión D4): recargar la pestaña del front pierde todo el trabajo de revisión, y la cola de validación humana que F-004 declara no puede sobrevivir entre sesiones porque nada la escribe ni la lee. EL HUMANO DECIDIÓ EL 2026-08-20 sacar F-007 sin persistencia de sesión y dar de alta esta feature aparte, en vez de bloquear el front: el piloto de Mirasierra no se retrasa y el front no carga con una responsabilidad que es de `postventa-api`. Alcance: los endpoints que faltan sobre los puertos que YA existen; no hay que diseñar esquema ni tocar el DDL. **PREREQUISITO DEL ARCHIVADO REAL, DEMOSTRADO CONTRA EL ENTORNO DESPLEGADO EL 2026-08-25** (defecto 15 de F-010, T18): la tabla `archivos` tiene una clave ajena contra `partes` —`archivos_hash_parte_fkey`— y hoy NADA inserta el parte, así que `POST /api/archivar` sube el fichero a SharePoint y después NO puede escribir su traza: `ForeignKeyViolation`, «Key (hash_parte)=(...) is not present in table "partes"». Pasa con parte sintético y con parte real. Consecuencia: **tal y como está desplegado, el archivado no puede completar nunca**, y el circuito completo del piloto no se puede dar por bueno hasta que exista esta feature. Mientras tanto el borde responde 500 diciendo que el fichero SÍ está subido y que lo que falta es la traza (defecto 14). Al implementar esta feature hay que comprobar el orden: el parte se guarda ANTES de archivarlo.
+
+### F-025 · Archivar y cerrar en una sola confirmacion
+
+estado **terminada** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
+
+Quitar el paso de vista previa del circuito. Hoy el front pide DOS confirmaciones para la misma decision: una para archivar y otra, tras ensenar el dry-run del grafico y del cierre, para escribir en el ERP. Al pulsar archivar sobre los partes aptos habra UNA sola confirmacion -la que ya existe- y al confirmarla se ejecutan los tres pasos seguidos: archivar en SharePoint, adjuntar el parte a la reclamacion y cerrarla. DECISION DEL HUMANO DEL 2026-09-11, tomada despues de verificar el circuito completo contra el ERP real: NO hace falta ensenar ningun resumen antes de confirmar; se le planteo que eso es lo que protege de cerrar la incidencia equivocada si la IA leyo mal el numero del papel, y lo reafirmo. OJO: esto DEROGA requisitos aprobados de F-009 y de F-012 que exigen dry-run mostrado al usuario antes de cada commit; se enmiendan con constancia fechada, citando la premisa original literal, NO se borran (mismo patron que R28 de F-010 el 2026-09-03). Las comprobaciones que el backend hace antes de escribir -que la reclamacion existe, en que estado esta, si el documento ya cuelga de ella- NO se tocan: lo que desaparece es la pantalla, no la verificacion. Los partes no aptos siguen sin archivarse.

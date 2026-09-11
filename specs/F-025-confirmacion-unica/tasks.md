@@ -181,7 +181,7 @@
 - [ ] **T19**: Escribir `progress/guion_bloque5_F-025.md` con sus casillas. |
       Verificación: revisión del humano antes de abrir la ventana.
 
-- [ ] **T20**: **Una incidencia, el circuito entero con una sola
+- [x] **T20**: **Una incidencia, el circuito entero con una sola
       confirmación.** | Verificación: **MANUAL (humano)**. Se anota: que hubo
       **una** confirmación y no dos (R1, R2); que en el registro de la
       aplicación hay **exactamente tres** peticiones para ese parte —
@@ -189,7 +189,7 @@
       la **duración de cada una**; y **el tamaño en bytes del parte**, que es
       el número que F-012 se dejó sin medir (**P4**).
 
-- [ ] **T21**: **La duración de `adjuntar` fusionada, frente al escalonado.** |
+- [x] **T21**: **La duración de `adjuntar` fusionada, frente al escalonado.** |
       Verificación: **MANUAL (humano)**. Se compara con los **35 s** de
       `SIGRID_TIMEOUT_S` y los **40 s** de `TIMEOUT_PETICION_MS`, y se anota
       el porcentaje del presupuesto consumido (`design.md` §12.2). Si pasa del
@@ -210,7 +210,32 @@
 
 ## Bloque 6 · Cierre
 
-- [ ] **T24**: Campaña de mutación (`python -m harness.mutacion --feature
+> **Cierre del bloque 5 · 2026-09-11.** El responsable ejecutó el circuito
+> nuevo contra el entorno desplegado y dio la feature por buena: «ha
+> funcionado, cierra F-025, apruebo».
+>
+> **T19 no se escribió** (el guion con casillas): la verificación se hizo sin
+> él, sobre la marcha. **T22 y T23 no constan ejecutadas** y sus casillas
+> quedan vacías a propósito.
+>
+> **Y hay un dato que no se aclaró, y se deja escrito en vez de redondearlo.**
+> Los registros de la aplicación de esa prueba muestran **dos** llamadas
+> —`archivar` (2,0 s) y `adjuntar` (3,8 s), las dos correctas— y **ninguna a
+> `cerrar`**. Las dos registradas ocurrieron con dos segundos de diferencia,
+> así que no parece un retraso de indexación. Caben dos lecturas: que la
+> reclamación ya estuviera cerrada de la prueba de F-012 y el circuito se
+> saltara el paso a propósito (que sería la idempotencia funcionando), o que
+> el circuito se detuviera tras adjuntar. **Se preguntó al responsable y
+> aprobó el cierre sin responder a esa pregunta.** Queda aquí para que quien
+> lo retome sepa que el paso de cierre del circuito fusionado **no tiene
+> evidencia propia** de esta verificación.
+>
+> **Lo que sí quedó medido**, y era T21: `adjuntar` fusionada tardó **3,8 s**,
+> frente a los 13,1 s de la primera llamada de F-012. Encaja con lo que
+> predijo `design.md` §3: la verificación del login contra el ERP se paga una
+> sola vez por persona.
+
+- [x] **T24**: Campaña de mutación (`python -m harness.mutacion --feature
       F-025`, con los workers de `harness/rigor.json`, **anotando el nº de
       workers**). | Verificación: rigor `critico` → **cero supervivientes**
       sin justificación escrita aceptada por el humano; informe en
@@ -220,7 +245,7 @@
       bloque 0; **si el alcance sale vacío, se declara N/A con el motivo
       impreso**, nunca a secas (C4 bis).
 
-- [ ] **T25**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
+- [x] **T25**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
       `bash harness/init.sh` termina con exit code 0, tests incluidos —los de
       `api` y los de `front`, con el puente a `node --test`— y con la puerta de
       cobertura de las líneas cambiadas en `[OK]` o en `N/A` **con el motivo

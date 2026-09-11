@@ -23,7 +23,7 @@ Bloqueadas: **F-009**.
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 | F-022 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 22 | pendiente | estandar | `feature/F-022-suite-barrido-cacheado` |
-| F-025 | Archivar y cerrar en una sola confirmacion | 25 | pendiente | critico | `feature/F-025-confirmacion-unica` |
+| F-025 | Archivar y cerrar en una sola confirmacion | 25 | spec lista | critico | `feature/F-025-confirmacion-unica` |
 | F-026 | Aprobacion humana de los partes que van a revision | 26 | pendiente | estandar | `feature/F-026-aprobacion-humana` |
 
 ## Terminadas
@@ -118,7 +118,7 @@ El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco 
 
 ### F-025 · Archivar y cerrar en una sola confirmacion
 
-estado **pendiente** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
+estado **spec lista** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
 
 Quitar el paso de vista previa del circuito. Hoy el front pide DOS confirmaciones para la misma decision: una para archivar y otra, tras ensenar el dry-run del grafico y del cierre, para escribir en el ERP. Al pulsar archivar sobre los partes aptos habra UNA sola confirmacion -la que ya existe- y al confirmarla se ejecutan los tres pasos seguidos: archivar en SharePoint, adjuntar el parte a la reclamacion y cerrarla. DECISION DEL HUMANO DEL 2026-09-11, tomada despues de verificar el circuito completo contra el ERP real: NO hace falta ensenar ningun resumen antes de confirmar; se le planteo que eso es lo que protege de cerrar la incidencia equivocada si la IA leyo mal el numero del papel, y lo reafirmo. OJO: esto DEROGA requisitos aprobados de F-009 y de F-012 que exigen dry-run mostrado al usuario antes de cada commit; se enmiendan con constancia fechada, citando la premisa original literal, NO se borran (mismo patron que R28 de F-010 el 2026-09-03). Las comprobaciones que el backend hace antes de escribir -que la reclamacion existe, en que estado esta, si el documento ya cuelga de ella- NO se tocan: lo que desaparece es la pantalla, no la verificacion. Los partes no aptos siguen sin archivarse.
 

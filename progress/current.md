@@ -1,7 +1,70 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-09-11 · **F-025: hechos los bloques 0 y 1; el front todavia pide DOS confirmaciones**
+> ## Estado al 2026-09-11 · **F-025: hechos los bloques 2 y 3; la pantalla YA pide UNA sola confirmacion**
+>
+> Entrega **parcial y pedida asi**: el encargo acotaba el trabajo a los
+> **bloques 2 y 3** de `specs/F-025-confirmacion-unica/tasks.md` (T7-T13) y
+> mandaba parar ahi. **T14 en adelante no se ha empezado.** Informe completo,
+> con la fase RED y las evidencias: **`progress/impl_F-025.md`**, de la §11 en
+> adelante.
+>
+> ### Lo que hay hecho
+>
+> - **Bloque 2 (T7-T9)** - `js/app.js`: `confirmarArchivo` recorre
+>   `pendientesDeCircuito` llamando a `ejecutarCircuito` por la MISMA cola,
+>   envuelto en `conGuardaDeTanda`. Desaparecen `_archivarUno`,
+>   `_adjuntarYCerrarUno`, `_cerrarUno`, `_dryRunUno`, `pedirDryRunCierre`,
+>   `hayDryRun`, `dryRunDe` y `dryRunGraficoDe`. Entran `totalTanda`,
+>   `parte.paso`, la fase `archivando_y_cerrando` y las dos banderas de las
+>   puertas de entorno.
+> - **Bloque 3 (T10-T13)** - `index.html`: las secciones «Archivar» y «Cerrar
+>   en Sigrid» fundidas en UNA, con **un** boton, **una** confirmacion con el
+>   texto aprobado en P3, el paso por parte y el **numero de incidencia** en el
+>   resumen (R37). Sin identidad el boton se deshabilita (P2). Los dos
+>   recuadros de F-012 R65 **siguen intactos**.
+> - **`tests/test_f025_front.py`** nuevo: **57 tests**, casi todos control
+>   negativo. Fase RED con 44 rojos sobre codigo real, pegada en el informe.
+>
+> ### Lo que cambia para quien lo pruebe
+>
+> El front pasa de **cinco** llamadas por parte a **tres**, y de **dos**
+> confirmaciones a **una**. El backend **no cambia ni una linea**: lo que
+> desaparece es la pantalla, no la verificacion — la comprobacion previa se
+> sigue haciendo dentro de la misma llamada que escribe.
+>
+> ### Tres avisos que hay que tener a la vista
+>
+> 1. **La pantalla no se ejecuta en ninguna suite.** Los 57 tests son
+>    aserciones sobre el TEXTO de `index.html` y `app.js`. Se ha cotejado a
+>    mano que los 35 identificadores que invoca el HTML existen en `app.js`, y
+>    `node --check` pasa, pero **nadie ha abierto la pantalla**. Es lo primero
+>    que hay que hacer en el bloque 5.
+> 2. **La bandera de «el ERP esta cerrado»** la ven los partes que aun no han
+>    arrancado, no los que ya estan en vuelo en la cola: como mucho dos `503`
+>    de mas. Aceptado, y **escrito en el codigo**, no descubierto en la review.
+> 3. **T16 (bloque 4) esta medio consumida**: 28 tests de F-009 y F-012
+>    apuntaban a la pantalla retirada y habia que adaptarlos para no dejar la
+>    suite en rojo. Cada retirada deja su control negativo y cita R38/R39; la
+>    tabla con las quince entradas esta en la §16 del informe. **El bloque 4
+>    tiene que revisarla, no repetirla.**
+>
+> ### Por donde sigue
+>
+> **Bloque 4 (T14-T18)**: los cinco recuadros de enmienda en
+> `specs/F-012-grafico-sigrid/requirements.md`, la nota en
+> `specs/F-009-cierre-sigrid/requirements.md`, el repaso de T16,
+> `docs/ARCHITECTURE.md` (R47) y la constancia de R48. Despues, el **bloque 5**
+> contra el ERP, que ahora **si tiene algo que probar**.
+>
+> ### Estado del entorno
+>
+> `bash harness/init.sh` en **verde**: 62 + 2.123 (13 skipped) + 183 tests,
+> cobertura de lineas cambiadas **99,0 %** (umbral 80, nivel critico). **Tres**
+> commits locales en `feature/F-025-confirmacion-unica`, sin `push`.
+> `features.json` **sin tocar**.
+
+> ## Estado al 2026-09-11 (tanda 1) · **F-025: hechos los bloques 0 y 1; el front todavia pedia DOS confirmaciones** _(superado por el bloque de arriba)_
 >
 > Entrega **parcial y pedida asi**: el encargo acotaba el trabajo a los **dos
 > primeros bloques** de `specs/F-025-confirmacion-unica/tasks.md` (T1-T6).

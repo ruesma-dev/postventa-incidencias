@@ -1,15 +1,27 @@
 <!-- progress/impl_F-025.md -->
 # F-025 · Archivar y cerrar en una sola confirmación — informe del implementer
 
-> **Entrega PARCIAL y así se pidió**: el encargo acota el trabajo a los **dos
-> primeros bloques** de `specs/F-025-confirmacion-unica/tasks.md` (T1–T6) y
-> manda parar antes de tocar `js/app.js`. Los bloques 2, 3 y 4 **no se han
-> empezado**; los bloques 5 y 6 son del humano y del líder.
+> **Entrega PARCIAL y así se pidió**, en dos tandas de trabajo:
 >
-> Rama: `feature/F-025-confirmacion-unica`. Dos commits locales, sin `push`.
-> Estado de la feature en `harness/features.json`: **sin tocar**.
+> - **Tanda 1 (implementer anterior)** — bloques **0 y 1** (T1–T6): el control
+>   negativo del backend y el circuito en `js/pipeline.js`. Está en las
+>   secciones §1 a §6 de este informe.
+> - **Tanda 2 (esta)** — bloques **2 y 3** (T7–T13): la tanda única en
+>   `js/app.js` y la pantalla fundida en `index.html`. Está en la **§11 en
+>   adelante**, y es lo que actualiza las evidencias de §9.
+>
+> **Los bloques 4, 5 y 6 siguen sin empezar.** El encargo de esta tanda manda
+> parar al terminar el 3.
+>
+> Rama: `feature/F-025-confirmacion-unica`. **Tres** commits locales, sin
+> `push`. Estado de la feature en `harness/features.json`: **sin tocar**.
 >
 > `bash harness/init.sh` al terminar: **verde**.
+>
+> ⚠️ **Aviso de lectura**: las secciones §1–§10 son de la tanda 1 y describen
+> el estado *de entonces*. Donde digan «`app.js` e `index.html` siguen
+> intactos» o «`ejecutarCircuito` no lo llama nadie», **ya no es cierto**: lo
+> corrige §11.
 
 ---
 
@@ -354,3 +366,338 @@ concreta.
 3. **`ejecutarCircuito` está escrito y no lo llama nadie.** Código muerto
    hasta el bloque 2. Si esta feature se parara aquí, habría que borrarlo o
    dejar constancia de por qué se queda.
+
+---
+---
+
+# Tanda 2 · los bloques 2 y 3 · la confirmación única, ya en pantalla
+
+> Escrito por el implementer de la segunda tanda, el 2026-09-11. El encargo:
+> **los bloques 2 y 3 de `tasks.md` (T7–T13), y parar ahí**. Un commit local:
+> `753a6dd F-025 T7-T13: una sola confirmacion archiva, adjunta y cierra`.
+
+## 11 · Qué cambió, en una frase
+
+**La pantalla ya no pide dos confirmaciones ni enseña el cálculo previo**: un
+solo botón, una sola confirmación, y al confirmarla cada parte de la tanda
+recorre archivar → adjuntar → cerrar por el circuito que la tanda 1 dejó en
+`js/pipeline.js`. Del front desaparecen **dos de las cinco llamadas por parte**
+y la pantalla intermedia entera.
+
+El backend **no cambia ni una línea**: lo que desaparece es la pantalla, no la
+verificación.
+
+## 12 · Ficheros tocados en esta tanda
+
+| Fichero | Qué se hizo | Líneas |
+|---|---|---|
+| `services/postventa-front/js/app.js` | La tanda única: `pendientes`, `_lanzarTanda`, `_circuitoDeUno`, `_aplicarResultado`, `_anotarPuertaDeEntorno`, `totalTanda`, `parte.paso`, la fase nueva. Se van ocho funciones | +186 / −268 |
+| `services/postventa-front/index.html` | Las secciones «Archivar» y «Cerrar en Sigrid» fundidas en una; retirada la tarjeta del cálculo previo y el botón «Ver qué pasaría» | +82 / −146 |
+| `services/postventa-front/js/confirmacion.js` | **Solo el texto** de `AVISO_CADUCADA`, que nombra el botón nuevo | +5 / −1 |
+| `services/postventa-front/tests/test_f025_front.py` | **Nuevo**. 57 tests, casi todos control negativo | +539 |
+| `services/postventa-front/tests/test_f009_front.py` | Retiradas las aserciones de la pantalla previa, con su control negativo en el sitio | +73 / −38 |
+| `services/postventa-front/tests/test_f012_front.py` | Íd., más las de R64/R65/R66 **mudadas** a `js/pipeline.js` | +151 / −105 |
+| `specs/F-025-confirmacion-unica/tasks.md` | T7–T13 marcadas `[x]` | +7 / −7 |
+
+**Ni una línea** de `application/pipelines/paso_grafico.py` ni de
+`paso_cierre.py` —la regla dura de la feature—, ni de `js/pipeline.js` (el
+circuito de la tanda 1 se usa **tal cual**, sin retoques), ni de
+`js/api.js`, `cola.js`, `seleccion.js` o `traza.js`, ni de ninguna spec de
+F-009 o F-012. `azure-apps/` **no se ha abierto**.
+
+### Por qué los dos bloques van en un solo commit
+
+A propósito, y lo avisaba §7.3 de la tanda 1: `index.html` pintaba
+`dryRunDe(parte)` y `dryRunGraficoDe(parte)`. Retirarlos de `app.js` sin tocar
+el HTML en el mismo commit dejaría la pantalla apuntando a algo que ya no
+rellena nadie —cajas vacías en cada tanda—, y al revés dejaría el HTML llamando
+a funciones que no existen. Se rompe la regla «una tarea, un commit» con
+motivo, y queda dicho aquí.
+
+## 13 · Las tres decisiones que el encargo señalaba
+
+### 13.1 · La bandera del ERP cerrado no la ven los que están en vuelo (R21)
+
+Es el aviso número 1 del encargo, y se ha resuelto **escribiéndolo**, no
+silenciándolo. En `js/app.js::_circuitoDeUno`, junto al parámetro:
+
+```js
+// R21 · lo que sepamos AHORA de la ventana del ERP.
+//
+// Ojo con el alcance de esta bandera: la cola lanza hasta tres partes
+// a la vez, así que la ven los que aún no han arrancado, no los que ya
+// están en vuelo. Son como mucho dos respuestas de «servicio no
+// disponible» de más, y se acepta: cerrar la ventana a mitad de tanda
+// es el caso raro, y pararlo del todo exigiría cancelar peticiones ya
+// emitidas.
+erpCerrado: this.erpCerrado,
+```
+
+**Lo que R21 sí garantiza y está probado**: que los partes que aún no han
+arrancado **siguen archivando** y no le piden nada al ERP, y que el aviso se
+dice **una sola vez** —es un campo de texto, `entornoNoCierra`, no una lista,
+así que por muchos partes que lo levanten en pantalla sale uno—.
+
+**Lo que no garantiza**: que las dos peticiones ya emitidas no lleguen a la
+puerta y vuelvan con su `503`. Para eso haría falta cancelar peticiones en
+vuelo, que ni `js/cola.js` ni `js/api.js` saben hacer hoy y que F-025 no pide.
+
+### 13.2 · El reintento del cierre pasa por el circuito nuevo (aviso 2)
+
+`reintentarCierre(parte)` llamaba a `_cerrarUno`, que esta tanda retira. Se ha
+comprobado lo que proponía §7.3 y **es la salida limpia**: `ejecutarCircuito`
+se salta archivar si `parte.archivado` y adjuntar si el gráfico consta
+`adjuntado` (R25, R26), así que sobre un parte «adjuntado pero no cerrado» lo
+único que vuelve a viajar es el cierre. **El PDF no se manda otra vez.**
+
+No hace falta código aparte: `reintentarCierre` es hoy una tanda de un solo
+parte por `_lanzarTanda([parte])`, con la misma guarda de reentrada.
+
+Que el circuito se salte de verdad esos dos pasos lo fija
+`tests_js/circuito.test.js`, que **sí se ejecuta** (37 tests, `node --test`);
+que desde `reintentarCierre` no salga una llamada a `adjuntar` lo sigue fijando
+`test_f012_r65_el_reintento_no_vuelve_a_pedir_el_grafico`, adaptado a los
+marcadores nuevos.
+
+### 13.3 · Las dos puertas de entorno, al revés la una de la otra (aviso 3)
+
+`_anotarPuertaDeEntorno` reparte según el `ambito` que devuelve el circuito:
+
+| Puerta | Qué hace | Requisito |
+|---|---|---|
+| `ambito === "archivo"` (`ARCHIVO_HABILITADO`) | `entornoNoArchiva` + **`tandaDetenida = true`**: la tanda se para | R22 |
+| `ambito === "erp"` (`CIERRE_HABILITADO`) | `entornoNoCierra` + `erpCerrado = true`: se sigue archivando, y se dice **una vez** | R21 |
+
+El corte de R22 se mira **al empezar cada parte** (`if (this.tandaDetenida)
+return;`), porque cuando se levanta la bandera la cola ya tiene a los demás
+encolados: sin ese `if`, «parar la tanda» solo pararía al que falló.
+
+## 14 · Decisiones de diseño de esta tanda
+
+### 14.1 · La clave del resumen se llama `incidencia`, no `numero_incidencia`
+
+T11 pide que el resumen pinte el número de incidencia. La clave del objeto que
+`app.js` empuja a `resultadosCierre` **no puede** llamarse
+`numero_incidencia:`: `test_f009_app_js_no_compone_a_mano_el_cuerpo_del_cierre`
+prohíbe ese literal en `app.js`, y con motivo —es una de las claves del cuerpo
+de `POST /api/cerrar`, y componer el cuerpo ahí sería poder mandar
+`commit: true` sin que ningún test lo mire—.
+
+Se ha elegido **conservar esa guardia intacta** y llamar a la clave
+`incidencia`, que es además el nombre que ya usaba el bloque `dry_run` de
+F-009. Es una desviación de la letra de T11, no de su fondo: el número se pinta
+y hay test que lo exige.
+
+**Detalle cosmético que queda abierto**: en el caso de éxito, el mensaje que
+compone el circuito ya empieza por el número (`RS26.09/0150 → cerrado`), así
+que la fila del resumen lo enseña dos veces —una como etiqueta y otra dentro de
+la frase—. No es un fallo y no se ha tocado `js/pipeline.js` por ello (el
+bloque 1 está cerrado), pero es de las cosas que Posventa dirá cuando lo vea;
+P3 ya avisa de que los textos son una constante.
+
+### 14.2 · `dryRunCierre` y `dryRunGrafico` se retiran del todo
+
+`design.md` §9.2 decía que «dejan de alimentar una pantalla previa y pasan a
+alimentar el resumen». No se ha podido hacer literalmente: `ejecutarCircuito`
+—bloque 1, ya cerrado— **no devuelve** los bloques `dry_run` de las respuestas,
+y devolverlos exigiría rehacer una pieza cerrada y sus 37 tests.
+
+Lo que el resumen enseña es lo que R37 exige —**el número de incidencia**— más
+el estado y el mensaje. El contrato del backend no cambia: sigue devolviendo el
+bloque completo (R40), simplemente el front ya no lo guarda. **Es una
+desviación menor y se declara como tal**; si el humano quiere el detalle del
+cálculo en el resumen, es una ampliación, no una corrección.
+
+### 14.3 · Un solo `totalTanda` para las dos fases
+
+`porcentaje()` lo usan la fase de proceso y la de la tanda. En vez de dos
+denominadores —dos formas de equivocarse—, `_procesarRemesa` fija
+`totalTanda = this.partes.length` y `_lanzarTanda` lo fija al tamaño de la
+tanda. `porcentaje()` delega entero en `Pipeline.porcentajeDeTanda`, que tiene
+test.
+
+### 14.4 · La puerta de entorno no pinta el parte en rojo
+
+Cuando el fallo es de entorno, `_aplicarResultado` **no** escribe
+`parte.estado = "error_grafico"` ni `parte.error`: deja el parte como está (y
+lo marca `archivado` si llegó a estarlo) y manda el mensaje a su pantalla
+propia. Es el comportamiento que ya tenía `_anotarFalloDeGrafico`, y el motivo
+está en F-012: pintarlo en rojo llevaría a alguien a «arreglar» una App Setting
+que está apagada a propósito.
+
+### 14.5 · El texto de `AVISO_CADUCADA`
+
+Único cambio en `js/confirmacion.js`, y el que `design.md` §9.3 ya preveía: el
+aviso manda a pulsar **«Archivar y cerrar los partes aptos»**, que es el botón
+que existe. `AVISO_CADUCADA_CIERRE` y `avisoCaducada()` se quedan en el módulo
+—con sus tests— aunque `app.js` ya no los llame: son API del módulo y el diseño
+dice explícitamente que el módulo no se toca más allá del texto. Retirarlos, si
+se quiere, es tarea del bloque 4.
+
+## 15 · Fase RED de esta tanda, con su comando
+
+Rigor `critico`, así que va pegada. `tests/test_f025_front.py` se escribió
+**entero antes** de tocar `js/app.js` y `index.html`:
+
+```
+$ cd services/postventa-front
+$ python -m pytest tests/test_f025_front.py -q --tb=line
+
+FFF.FFFFFFFFFFF.FFFFFFFFFFFFFF.F.FFFFFFFFF.FFFFF..F......                [100%]
+================================== FAILURES ===================================
+tests/test_f025_front.py:114: AssertionError: app.js llama a `api.archivar(`: el circuito de escritura es de js/pipeline.js::ejecutarCircuito, que es el que tiene tests
+tests/test_f025_front.py:114: AssertionError: app.js llama a `api.adjuntar(`: el circuito de escritura es de js/pipeline.js::ejecutarCircuito, que es el que tiene tests
+tests/test_f025_front.py:114: AssertionError: app.js llama a `api.cerrar(`: el circuito de escritura es de js/pipeline.js::ejecutarCircuito, que es el que tiene tests
+tests/test_f025_front.py:148: AssertionError: app.js conserva `_archivarUno`: el circuito es del pipeline
+tests/test_f025_front.py:148: AssertionError: app.js conserva `_adjuntarYCerrarUno`: el circuito es del pipeline
+tests/test_f025_front.py:148: AssertionError: app.js conserva `_cerrarUno`: el circuito es del pipeline
+tests/test_f025_front.py:148: AssertionError: app.js conserva `_dryRunUno`: el circuito es del pipeline
+tests/test_f025_front.py:250: AssertionError: assert 'window.Pipeline.porcentajeDeTanda(' in 'porcentaje() {\n      return this.partes.length\n        ? Math.round((this.terminados / this.partes.length) * 100)\n        : 0;\n    },\n\n    '
+tests/test_f025_front.py:319: AssertionError: app.js conserva `pedirDryRunCierre` de la pantalla previa
+tests/test_f025_front.py:319: AssertionError: app.js conserva `hayDryRun` de la pantalla previa
+tests/test_f025_front.py:319: AssertionError: app.js conserva `dryRunDe` de la pantalla previa
+tests/test_f025_front.py:319: AssertionError: app.js conserva `dryRunGraficoDe` de la pantalla previa
+tests/test_f025_front.py:332: AssertionError: assert 'cuerpoDeGrafico(' not in '...'
+tests/test_f025_front.py:332: AssertionError: assert 'cuerpoDeCierre(' not in '...'
+tests/test_f025_front.py:380: AssertionError: assert 'pedirConfirmacionCierre' not in '...'
+=========================== short test summary info ===========================
+44 failed, 13 passed in 0.97s
+```
+
+**Qué demuestra este rojo, y qué no.** Los 44 fallos son sobre **código real
+que existía**: `app.js` llamaba a los tres endpoints, tenía las cuatro
+funciones encadenadas, calculaba el porcentaje sobre `partes.length` y
+conservaba la pantalla previa entera. No es el rojo de «la función no existe
+todavía» que la tanda 1 declaró honestamente en su §4.2: aquí el rojo describe
+la implementación que había y que la feature viene a sustituir.
+
+Los **13 que ya pasaban en rojo** son los que fijan lo que la tanda 1 dejó
+hecho (el orden y el `commit` dentro de `ejecutarCircuito`, que nunca lanza) y
+los dos recuadros de F-012 que T13 manda **no tocar**. Que estuvieran en verde
+desde el principio es la prueba de que T13 se cumple sin haber cambiado nada.
+
+Después de implementar:
+
+```
+$ python -m pytest tests/test_f025_front.py -q
+57 passed in 0.16s
+```
+
+## 16 · Las retiradas en los tests de F-009 y F-012
+
+Esto **es materia de T16**, que es del bloque 4 y **no se ha dado por hecha**:
+se ha hecho lo **imprescindible para que la suite no quede en rojo**, porque
+veintiocho tests apuntaban a la pantalla que esta tanda retira. Queda escrito
+aquí para que el bloque 4 lo revise en vez de repetirlo.
+
+**Procedimiento seguido** (el de T3 de F-012 con R48): ni un test borrado sin
+sustituto. Cada aserción retirada deja **un control negativo** en su sitio, con
+el requisito citado en el docstring —R38 para R63, R39 para «antes de
+confirmar», R40 para R21/R49— y la premisa original citada literal.
+
+| Test | Qué se hizo | Cita |
+|---|---|---|
+| `test_f009_r9_la_pantalla_pinta_todo_lo_que_devuelve_el_dry_run` | **Retirado** → `..._derogado_la_pantalla_previa_del_dry_run_no_deja_rastro`: los cinco bindings **no están** | R38 |
+| `test_f009_r8_el_boton_de_cerrar_no_aparece_hasta_que_hay_dry_run` + `..._dice_que_no_cierra_nada` | **Retirados y fundidos** → `..._derogado_el_gesto_de_mirar_antes_ya_no_existe` | R38 |
+| `test_f009_la_confirmacion_del_cierre_advierte_de_lo_que_hace` | **Adaptado**: la confirmación única sigue nombrando Sigrid | R6 |
+| `test_f009_r15_...el_modulo_probado` | **Endurecido**: de `>= 2` resoluciones a **exactamente 1** | R2 |
+| `test_f009_app_js_delega_la_decision_de_cerrar_en_el_pipeline` | **Mudado**: `cuerpoDeCierre` lo llama el circuito, no `app.js` | R8 |
+| `test_f012_r63_*` (tres tests del orden de los dos dry-run) | **Retirados y fundidos** → un parametrizado que exige que no quede rastro de los cuatro restos | R38 |
+| `test_f012_r21_la_tarjeta_pinta_los_campos_del_dry_run_del_grafico` | **Retirado** → `..._ya_no_se_pinta`: ninguno de los campos queda en el HTML | R40 |
+| `test_f012_r22_el_aviso_de_idempotente_...` | **Retirado** → `..._ya_no_se_pinta_antes_de_confirmar` | R39 |
+| `test_f012_r63_la_tarjeta_ensena_el_grafico_y_el_cierre_juntos` | **Retirado** → control negativo de la tarjeta y del botón | R38 |
+| `test_f012_r64_*` (dos tests) | **NO retirados: mudados** a `js/pipeline.js::ejecutarCircuito` | R43 |
+| `test_f012_el_commit_del_grafico_lleva_commit_y_confirmado` | **Mudado** al circuito | R43 |
+| `test_f012_r65_el_reintento_no_vuelve_a_pedir_el_grafico` | **Mudado** de marcadores; sigue exigiendo cero `api.adjuntar` | R43 |
+| `test_f012_r65_los_tres_estados_se_distinguen_en_app` | **Mudado** al circuito: `error_archivo`, `error_grafico` y `adjuntado` | R43 |
+| `test_f012_el_503_del_grafico_va_a_la_pantalla_...` | **Mudado** a `_anotarPuertaDeEntorno`, y ahora exige **las dos** ventanas | R21, R22 |
+| `test_f012_r66_*` (dos tests) | **Endurecidos**: de 2 armados de confirmación a **1** | R2 |
+
+**Lo que NO se ha tocado** de esos dos ficheros: los tests de R65 sobre el HTML
+—el recuadro ámbar y el de `error_grafico`—, `test_f012_r67`,
+`test_f012_r64_la_decision_vive_en_pipeline_y_no_en_app`,
+`test_f009_r21_derogado...`, `test_f009_sin_identidad...`,
+`test_f009_app_js_no_compone_a_mano_el_cuerpo_del_cierre` y
+`test_f009_la_pantalla_carga_la_identidad_al_arrancar`. **Todos siguen en verde
+sin una sola edición**, y eso es la verificación de T13.
+
+**Lo que el bloque 4 tiene que hacer todavía con T16**: revisar estas quince
+entradas contra `git diff --stat` de los dos ficheros —el encargo de T16 pide
+comprobar que solo se tocan líneas del dry-run previo—, y decidir si quiere
+además retirar `AVISO_CADUCADA_CIERRE` de `js/confirmacion.js`, que se ha
+quedado sin quien lo llame.
+
+## 17 · Lo que esta tanda NO ha hecho, y por dónde sigue
+
+| Bloque | Tareas | Qué falta |
+|---|---|---|
+| **4 · Enmiendas y documentación** | T14–T18 | Los cinco recuadros en `specs/F-012-grafico-sigrid/requirements.md` (§11.1–§11.4 de `design.md`), la nota en `specs/F-009-cierre-sigrid/requirements.md` (§11.5), el repaso formal de T16 —ver §16—, `docs/ARCHITECTURE.md` (R47) y la constancia de R48 |
+| **5 · Contra el ERP** | T19–T23 | `MANUAL (humano)`. Escribe en una obra en uso. Sigue entero, y ahora **sí hay algo que probar**: el circuito de una sola confirmación existe |
+| **6 · Cierre** | T24, T25 | Campaña de mutación e `init.sh` final |
+
+### Lo que ha cambiado para el bloque 5
+
+La tanda 1 avisaba de que el circuito estaba escrito y no lo llamaba nadie. **Ya
+lo llama la pantalla.** Eso significa que el guion de T19 se puede escribir
+contra lo que el usuario va a ver de verdad, y que T20 —«una incidencia, el
+circuito entero con **una** confirmación»— es ejecutable.
+
+Sigue en pie, sin tocar, todo lo de §8 de este informe: T20 tiene que anotar
+**el tamaño en bytes del parte** (P4, el número que F-012 se dejó sin medir) y
+comprobar que en el registro hay **exactamente tres** peticiones por parte y
+ninguna sin `commit`.
+
+## 18 · Evidencias de la tanda 2
+
+Sustituyen a las de §9, que eran del estado anterior.
+
+| Evidencia | Valor medido |
+|---|---|
+| **Tests ejecutados** | **2.368 en verde** + 13 skipped: 62 (raíz) + 2.123 (api, 13 skipped) + 183 (front, con el puente a `node --test`). De ellos, **57 nuevos** en `tests/test_f025_front.py` |
+| **Solo los tests de F-025** | 27 (backend, tanda 1) + 37 (`node --test tests_js/circuito.test.js`, tanda 1) + **57** (front, esta tanda) = **121** |
+| **Cobertura de las líneas cambiadas** | **99,0 %** — 1.068 de 1.079 líneas, umbral 80 %, nivel `critico`. Línea `PUERTA COBERTURA` de `bash harness/init.sh` |
+| **Tiempo de ejecución de la suite** | api **54,38 s** (ejecución real, sin caché), front **6,23 s**, raíz **5,20 s** |
+| **Mutantes generados y supervivientes** | **No ejecutada**, y no por olvido: la campaña es **T24, del bloque 6**, y el encargo manda parar al terminar el 3. Sigue valiendo el aviso de la tanda 1: el alcance Python de F-025 son **ficheros de tests**, que la herramienta no muta, y el grueso del cambio es **JavaScript**, que `harness.mutacion` tampoco muta. Lo más probable es que T24 salga **vacío** y haya que declararlo **N/A con el motivo impreso**, nunca a secas (C4 bis) |
+
+### Lo que estas evidencias demuestran, y lo que no
+
+**Sí demuestran**:
+
+- Que en el front **no queda ni un camino** que llame a `/api/adjuntar` o
+  `/api/cerrar` sin `commit`, ni que pida una segunda confirmación: son
+  control negativo sobre el fichero, y caen si alguien los repone.
+- Que el orden de las tres escrituras **no vive en `app.js`**. Es la guardia
+  que F-019 echó de menos y la que más importa aquí: lo que se mudaría son tres
+  escrituras, dos en un ERP de producción.
+- Que el circuito **se salta** lo que ya consta hecho y **no lanza nunca**
+  (37 tests de `node --test`, ejecutados, no leídos).
+- Que las comprobaciones del backend **siguen donde estaban**: los 27 tests del
+  bloque 0 no se han tocado y siguen en verde.
+
+**No demuestran**:
+
+- **Que la pantalla funcione en un navegador.** `index.html` no se ejecuta en
+  la suite: lo que hay son aserciones sobre el texto del fichero. Un error de
+  Alpine —un `x-show` mal escrito, un binding a un campo que no existe— no lo
+  caza nada de esto. Se ha comprobado a mano que **todos** los identificadores
+  que `index.html` invoca existen en `app.js` (cotejo completo de los 35), y
+  `node --check` pasa sobre los ocho módulos, pero **eso no es abrir la
+  pantalla**. Hacerlo es del bloque 5.
+- **Que el circuito real sea seguro contra el ERP**: bloque 5, sin empezar.
+- **Que el tiempo de espera de `adjuntar` fusionada quepa** en los 40 s del
+  front: sigue sin medir, y sigue siendo P4.
+
+## 19 · Riesgos abiertos al cerrar esta tanda
+
+1. **El riesgo aceptado de §0 de `requirements.md`** —cerrar la incidencia
+   equivocada si la IA leyó mal el número— ya no está sin compensar: **R37 está
+   implementado**, y el resumen enseña el número de incidencia sobre el que se
+   escribió. Sigue siendo, como dice la spec, «la primera y única ocasión» en
+   que alguien puede darse cuenta.
+2. **El tiempo de espera de la llamada fusionada** (§12.2 de `design.md`):
+   cota superior estimada 21,6 s frente a los 40 s de `TIMEOUT_PETICION_MS`.
+   **Sin medir**, y ahora el front ya lo provoca de verdad.
+3. **Los `503` de los partes en vuelo** (§13.1): aceptado y escrito.
+4. **La pantalla no se ejecuta en ninguna suite.** Es deuda vieja del front
+   (F-007 §3), no de F-025, pero esta feature la deja más expuesta: la única
+   pantalla que escribe en el ERP se acaba de reescribir entera.

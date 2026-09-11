@@ -11,15 +11,28 @@ sobrevive a la siguiente edición no es una revisión, es un test.
 
 Lo que fija:
 
-- **R63** · se piden **los dos** dry-run, y en ese orden: el del gráfico antes
-  que el del cierre, porque es lo que va a ocurrir primero.
-- **R64** · el cierre se pide **solo si** el gráfico respondió `adjuntado`, y
-  esa decisión vive en `js/pipeline.js::estaAdjuntado`, que sí tiene tests.
-- **R21, R22** · la tarjeta pinta lo que el backend manda del gráfico, incluido
-  el aviso de «ya está dentro de Sigrid».
+- **R63** · se piden **los dos** dry-run antes de confirmar. **DEROGADO por
+  F-025 R38 el 2026-09-11**: ya no hay un gesto «ver qué pasaría». Queda su
+  **control negativo**.
+- **R64** · el cierre se pide **solo si** el gráfico respondió `adjuntado`.
+  **Sigue vigente** (F-025 R43); lo que cambia es dónde vive: el orden se mudó
+  de `js/app.js` a `js/pipeline.js::ejecutarCircuito`, que sí tiene tests.
+- **R21, R22** · lo que el backend manda del gráfico. El contrato de respuesta
+  **no cambia** (F-025 R40); lo que cambia es **cuándo se lee**: ya no en una
+  pantalla anterior a la confirmación, sino en el resumen de lo que se hizo.
 - **R65** · los tres estados nuevos tienen pantalla, y «adjuntado pero no
-  cerrado» tiene salida.
+  cerrado» tiene salida. **Sigue vigente e intacto.**
 - **R67** · ningún texto del gráfico se reescribe en el HTML.
+
+> **Retiradas y mudanzas del 2026-09-11 (F-025 R38, R39)**. De este fichero se
+> retiran **solo** las aserciones sobre la pantalla previa —los dos dry-run, la
+> tarjeta del cálculo y el «antes de confirmar»—, y **cada una deja en su sitio
+> un control negativo**. Las de R64, R65 y R66 no se retiran: **se mudan** al
+> sitio donde ahora vive lo que comprueban, que es `js/pipeline.js`. Lo que
+> R63 protegía de verdad —no escribir sin haber leído antes el estado real—
+> **no ha caído**: ocurre dentro de la misma llamada que escribe (R20 de esta
+> misma spec, vigente), y lo vigila
+> `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`.
 """
 
 from __future__ import annotations
@@ -66,46 +79,46 @@ def app() -> str:
     return _sin_comentarios_js(APP.read_text(encoding="utf-8"))
 
 
+@pytest.fixture
+def pipeline() -> str:
+    return _sin_comentarios_js(PIPELINE.read_text(encoding="utf-8"))
+
+
+def _circuito(pipeline: str) -> str:
+    """El cuerpo de `ejecutarCircuito`, donde F-025 mudó el orden."""
+    desde = pipeline.index("async function ejecutarCircuito")
+    return pipeline[desde : pipeline.index("function hayTandaEnCurso")]
+
+
 # --------------------------------------------------------------------------
-# R63 · los dos dry-run, y en ese orden
+# R63 · los dos dry-run antes de confirmar · DEROGADO (F-025 R38, 2026-09-11)
 # --------------------------------------------------------------------------
 
 
-def test_f012_r63_el_dry_run_pide_primero_el_grafico_y_luego_el_cierre(app):
-    """R63 · **el orden es el requisito**, no una preferencia.
+@pytest.mark.parametrize(
+    "resto", ["_dryRunUno", "hayDryRun", "dryRunGraficoDe", "dryRunDe"]
+)
+def test_f012_r63_derogado_no_queda_ningun_camino_de_pantalla_previa(app, resto):
+    """R63 · **DEROGADO por F-025 R38 (2026-09-11).**
 
-    Se comprueba por posición en el fichero y no solo por presencia: las dos
-    llamadas podrían estar y hacerse al revés, y entonces la pantalla enseñaría
-    un cierre que no va a poder ocurrir todavía.
+    R63 decía, literal: *«CUANDO el usuario pide «ver qué pasaría», el front
+    debe pedir para cada parte cerrable **los dos dry-run** —gráfico y cierre,
+    en ese orden— y enseñarlos juntos antes de ofrecer la confirmación.»*
+
+    Describía un circuito con **dos confirmaciones**. El 2026-09-11, tras
+    verificar el circuito completo contra el ERP real, el responsable del
+    proyecto decidió que al confirmar el archivado se ejecute ya el cierre. Se
+    le planteó explícitamente que esa pantalla es lo que protege de cerrar la
+    incidencia equivocada, y respondió **«no hace falta enseñar nada»**.
+
+    Aquí vivían los tres tests del orden de los dos dry-run. Lo que ocupa su
+    sitio es el **control negativo**: ninguno de los cuatro restos del camino
+    viejo sigue en `app.js`. Dejar uno sería dejar un segundo camino hacia el
+    ERP, y solo uno tiene tests.
     """
-    dry_run = app[app.index("async _dryRunUno") : app.index("hayDryRun()")]
-
-    assert "api.adjuntar(" in dry_run
-    assert "api.cerrar(" in dry_run
-    assert dry_run.index("api.adjuntar(") < dry_run.index("api.cerrar(")
-
-
-def test_f012_r63_el_dry_run_del_grafico_no_pide_commit(app):
-    """R63 · «ver qué pasaría» no puede escribir nada en el ERP.
-
-    El cuerpo se compone con `this.usuario` y nada más: ni `commit`, ni
-    `confirmado`. Quien pulse el botón de mirar no adjunta un parte.
-    """
-    dry_run = app[app.index("async _dryRunUno") : app.index("hayDryRun()")]
-    llamada = dry_run[dry_run.index("cuerpoDeGrafico(") :]
-    llamada = llamada[: llamada.index(")")]
-
-    assert "commit" not in llamada
-    assert "confirmado" not in llamada
-
-
-def test_f012_r63_si_el_grafico_falla_no_se_pide_el_dry_run_del_cierre(app):
-    """El parte ya está en `error_grafico`, y un segundo error no añade nada
-    que se pueda arreglar desde la pantalla."""
-    dry_run = app[app.index("async _dryRunUno") : app.index("hayDryRun()")]
-
-    assert "_anotarFalloDeGrafico" in dry_run
-    assert "return;" in dry_run[: dry_run.index("api.cerrar(")]
+    assert resto not in app, (
+        f"app.js conserva `{resto}` de la pantalla previa, que F-025 retiró"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -113,30 +126,37 @@ def test_f012_r63_si_el_grafico_falla_no_se_pide_el_dry_run_del_cierre(app):
 # --------------------------------------------------------------------------
 
 
-def test_f012_r64_el_commit_pide_el_grafico_antes_que_el_cierre(app):
-    """R64 · el orden, otra vez, y aquí escribiendo de verdad."""
-    bloque = app[
-        app.index("async _adjuntarYCerrarUno") : app.index("async reintentarCierre")
-    ]
+def test_f012_r64_el_commit_pide_el_grafico_antes_que_el_cierre(pipeline):
+    """R64 · el orden, otra vez, y aquí escribiendo de verdad. **Sigue vigente.**
+
+    F-025 lo **mudó** de `js/app.js::_adjuntarYCerrarUno` a
+    `js/pipeline.js::ejecutarCircuito`, que es donde vive «qué se pide y en qué
+    orden» y donde hay tests que lo ejecutan de verdad
+    (`tests_js/circuito.test.js`). Aquí se comprueba por posición, igual que
+    antes: las dos llamadas podrían estar y hacerse al revés, y entonces se
+    cerraría una reclamación sin su parte dentro.
+    """
+    bloque = _circuito(pipeline)
 
     assert "api.adjuntar(" in bloque
-    assert "_cerrarUno(parte)" in bloque
-    assert bloque.index("api.adjuntar(") < bloque.index("_cerrarUno(parte)")
+    assert "api.cerrar(" in bloque
+    assert bloque.index("api.adjuntar(") < bloque.index("api.cerrar(")
 
 
-def test_f012_r64_el_cierre_no_se_pide_si_el_grafico_no_quedo_adjuntado(app):
+def test_f012_r64_el_cierre_no_se_pide_si_el_grafico_no_quedo_adjuntado(pipeline):
     """R64 · **la decisión que impide reproducir la anomalía de F-009.**
 
-    Y se toma con `Pipeline.estaAdjuntado`, que sí tiene tests: si viviera aquí
-    dentro como una comparación suelta, nadie la comprobaría — que es
-    exactamente el defecto que F-019 encontró con el registro de la remesa.
+    El cierre solo se pide si el gráfico quedó `adjuntado`, y la comparación se
+    hace contra la constante que comparte con `estaAdjuntado` —una sola copia
+    del literal—, no contra una cadena suelta. Si esta decisión volviera a
+    `app.js`, no la comprobaría nadie: es exactamente el defecto que F-019
+    encontró con el registro de la remesa.
     """
-    bloque = app[
-        app.index("async _adjuntarYCerrarUno") : app.index("async reintentarCierre")
-    ]
+    bloque = _circuito(pipeline)
+    antes_del_cierre = bloque[: bloque.index("api.cerrar(")]
 
-    assert "window.Pipeline.estaAdjuntado(parte)" in bloque
-    assert bloque.index("estaAdjuntado") < bloque.index("_cerrarUno(parte)")
+    assert "resultado.grafico !== ESTADO_ADJUNTADO" in antes_del_cierre
+    assert "return resultado;" in antes_del_cierre
 
 
 def test_f012_r64_la_decision_vive_en_pipeline_y_no_en_app():
@@ -147,15 +167,14 @@ def test_f012_r64_la_decision_vive_en_pipeline_y_no_en_app():
     assert "estaAdjuntado: estaAdjuntado" in pipeline
 
 
-def test_f012_el_commit_del_grafico_lleva_commit_y_confirmado(app):
+def test_f012_el_commit_del_grafico_lleva_commit_y_confirmado(pipeline):
     """La otra mitad: cuando toca escribir, se escribe.
 
     Sin esto, borrar los dos flags dejaría todos los tests de arriba en verde y
-    la pantalla no adjuntaría nunca nada.
+    la pantalla no adjuntaría nunca nada. Desde F-025 los dos pasos del ERP van
+    **siempre** con `commit`: ya no hay ninguna llamada que solo mire (R8).
     """
-    bloque = app[
-        app.index("async _adjuntarYCerrarUno") : app.index("async reintentarCierre")
-    ]
+    bloque = _circuito(pipeline)
 
     assert "commit: true" in bloque
     assert "confirmado: true" in bloque
@@ -169,8 +188,6 @@ def test_f012_el_commit_del_grafico_lleva_commit_y_confirmado(app):
 @pytest.mark.parametrize(
     "campo",
     [
-        "nombre_fichero",
-        "bytes",
         "gratipide",
         "descripcion_grafico",
         "login_sigrid",
@@ -178,24 +195,38 @@ def test_f012_el_commit_del_grafico_lleva_commit_y_confirmado(app):
         "avisos_pasarela",
     ],
 )
-def test_f012_r21_la_tarjeta_pinta_los_campos_del_dry_run_del_grafico(html, campo):
-    """R21 · sin esto, quien confirma estaría confirmando a ciegas.
+def test_f012_r21_la_tarjeta_del_calculo_previo_ya_no_se_pinta(html, campo):
+    """R21 · **enmendado en su momento por F-025 R40 (2026-09-11).**
 
-    Son los datos con los que se puede comprobar **antes** de escribir que lo
-    que va a Sigrid es el fichero correcto: el mismo nombre que en SharePoint y
-    los mismos bytes.
+    El endpoint **sigue devolviendo el bloque completo del cálculo previo**: el
+    contrato de respuesta no cambia ni una clave, y eso lo fijan los tests del
+    backend. Lo que cambia es **cuándo se lee**: ya no en una pantalla anterior
+    a la confirmación —que no existe—, sino en el resumen de lo que se hizo.
+
+    Aquí vivía la lista de campos que la tarjeta pintaba. Su control negativo:
+    ninguno queda en el HTML. Si volvieran sin nada que los rellene, pintarían
+    una caja vacía en cada tanda.
     """
-    assert f"dryRunGraficoDe(parte).{campo}" in html
+    assert campo not in html, (
+        f"el HTML vuelve a pintar {campo} del cálculo previo: esa tarjeta se "
+        f"retiró con F-025 y ya nadie la rellena"
+    )
 
 
-def test_f012_r22_el_aviso_de_idempotente_esta_y_viene_del_backend(html):
-    """R22 · «ya está dentro de Sigrid» tiene que salir **antes** de confirmar.
+def test_f012_r22_el_aviso_de_idempotente_ya_no_se_pinta_antes_de_confirmar(html):
+    """R22 · **enmendado en su momento por F-025 R39 (2026-09-11).**
 
-    Quien no lo lea creerá que ha subido algo que ya estaba, y contará como
-    escritura en el ERP algo que no lo fue.
+    R22 decía, literal: *«SI el dry-run responde `idempotente: true`, ENTONCES
+    el sistema debe decirlo al usuario **antes** de confirmar»*. Con la
+    confirmación única no hay momento entre el cálculo y la escritura.
+
+    **El caso idempotente se sigue detectando y se sigue diciendo**, y sigue
+    siendo un **éxito** (R25, intacto): la pasarela lo resuelve por tamaño y
+    `sha256`, y en pantalla sale como el estado del parte en el resumen. Lo que
+    desaparece es el aviso previo, y esto lo fija.
     """
-    assert "idempotente_previsto" in html
-    assert "ya está dentro de Sigrid" in html
+    assert "idempotente_previsto" not in html
+    assert "ya está dentro de Sigrid" not in html
 
 
 def test_f012_r67_los_textos_del_grafico_no_se_reescriben_en_el_html(html):
@@ -214,13 +245,12 @@ def test_f012_r67_los_textos_del_grafico_no_se_reescriben_en_el_html(html):
     assert "POSTVENTA:Fotos Reparaciones" not in html
 
 
-def test_f012_r63_la_tarjeta_ensena_el_grafico_y_el_cierre_juntos(html):
-    """R63 · los dos en la misma tarjeta, no en dos pantallas."""
-    tarjeta = html[html.index("dryRunGraficoDe(parte)") :]
-    tarjeta = tarjeta[: tarjeta.index("Cerrar las incidencias")]
-
-    assert "dryRunDe(parte).estado_origen" in tarjeta
-    assert "dryRunDe(parte).login_sigrid" in tarjeta
+def test_f012_r63_derogado_la_tarjeta_del_calculo_previo_no_existe(html):
+    """R63 · **DEROGADO por F-025 R38.** Aquí se exigía que los dos cálculos se
+    enseñaran **juntos** y antes de confirmar. No hay tarjeta que enseñar, y
+    tampoco el botón que la abría."""
+    assert "dryRunGraficoDe(parte)" not in html
+    assert "Cerrar las incidencias" not in html
 
 
 # --------------------------------------------------------------------------
@@ -244,15 +274,16 @@ def test_f012_r65_el_estado_adjuntado_ofrece_reintentar_el_cierre(html):
 
 def test_f012_r65_el_reintento_no_vuelve_a_pedir_el_grafico(app):
     """R65 · el gráfico ya está en el ERP. Volver a pedirlo respondería desde
-    la traza, pero mandaría el PDF entero por el proxy para nada."""
-    bloque = app[
-        app.index("async reintentarCierre") : app.index(
-            "_anotarFalloDeGrafico(parte, error) {"
-        )
-    ]
+    la traza, pero mandaría el PDF entero por el proxy para nada.
+
+    F-025 · el reintento pasa ahora por el mismo circuito, que **se salta
+    archivar y adjuntar** porque ya constan hechos (R25, R26). Lo que este test
+    sigue fijando es lo mismo: desde aquí no sale ni una llamada a `adjuntar`.
+    """
+    bloque = app[app.index("async reintentarCierre") : app.index("reiniciar()")]
 
     assert "api.adjuntar" not in bloque
-    assert "_cerrarUno(parte)" in bloque
+    assert "this._lanzarTanda(" in bloque
 
 
 def test_f012_r65_el_error_del_grafico_tiene_su_propio_bloque(html):
@@ -262,11 +293,20 @@ def test_f012_r65_el_error_del_grafico_tiene_su_propio_bloque(html):
     assert "No se ha podido adjuntar el parte" in html
 
 
-def test_f012_r65_los_tres_estados_se_distinguen_en_app(app):
-    """R65 · `adjuntado`, `error_grafico` y lo que ya había."""
-    assert '"error_grafico"' in app
-    assert "_anotarFalloDeGrafico(parte, error)" in app
-    assert "_anotarFalloDeCierre(parte, error)" in app
+def test_f012_r65_los_tres_estados_se_distinguen_en_el_circuito(pipeline):
+    """R65 · `adjuntado`, `error_grafico` y `error_archivo`, cada uno el suyo.
+
+    F-025 los mudó a `js/pipeline.js` con el resto del circuito: el estado del
+    parte es ahora lo que devuelve `ejecutarCircuito`, y `app.js` se limita a
+    moverlo a la pantalla. **Que un cierre fallido deje `adjuntado` y no
+    `error_cierre` sigue siendo el requisito**: el gráfico ya está dentro de
+    Sigrid y decir «error» lo escondería.
+    """
+    bloque = _circuito(pipeline)
+
+    assert '"error_archivo"' in bloque
+    assert '"error_grafico"' in bloque
+    assert "anotarFallo(resultado, ESTADO_ADJUNTADO" in bloque
 
 
 def test_f012_el_503_del_grafico_va_a_la_pantalla_de_la_puerta_de_entorno(app):
@@ -274,16 +314,16 @@ def test_f012_el_503_del_grafico_va_a_la_pantalla_de_la_puerta_de_entorno(app):
     cierre (D-B), así que su pantalla también.
 
     Pintarlo en rojo llevaría a alguien a «arreglarlo», y lo que hay detrás es
-    una App Setting que se abre a propósito.
+    una App Setting que se abre a propósito. F-025 · el circuito clasifica el
+    fallo (`tipoError` y `ambito`) y `app.js` lo reparte entre las **dos**
+    ventanas, que son distintas: la del archivo detiene la tanda (R22) y la del
+    ERP no (R21).
     """
-    bloque = app[
-        app.index("_anotarFalloDeGrafico(parte, error) {") : app.index(
-            "_anotarFalloDeCierre(parte, error) {"
-        )
-    ]
+    bloque = app[app.index("_anotarPuertaDeEntorno(resultado) {") : app.index("reiniciar()")]
 
-    assert 'error.tipo === "entorno"' in bloque
-    assert "this.entornoNoCierra = error.mensaje" in bloque
+    assert 'resultado.ambito === "archivo"' in bloque
+    assert "this.entornoNoCierra = resultado.error" in bloque
+    assert "this.erpCerrado = true" in bloque
 
 
 # --------------------------------------------------------------------------
@@ -300,14 +340,20 @@ def test_f012_r66_la_confirmacion_sigue_siendo_la_de_confirmacion_js(app):
     """
     assert "window.Confirmacion.armar(Date.now())" in app
     assert "window.Confirmacion.resolver(" in app
-    assert "avisoCaducada" in app
+    assert "window.Confirmacion.AVISO_CADUCADA" in app
 
 
 def test_f012_r66_no_hay_una_segunda_confirmacion_para_el_grafico(app):
     """R66 · una sola. Dos confirmaciones seguidas se convierten en dos clics
-    automáticos, que es justo lo contrario de lo que una confirmación es."""
+    automáticos, que es justo lo contrario de lo que una confirmación es.
+
+    F-025 R2 · y ahora es **una en todo el circuito**, no una por tanda: aquí
+    se contaban dos armados —el del archivo y el del cierre— porque eran dos
+    gestos. El control negativo se endurece, no se afloja.
+    """
     assert "confirmacionGrafico" not in app
-    assert app.count("window.Confirmacion.armar(") == 2  # archivo y cierre
+    assert "confirmacionCierre" not in app
+    assert app.count("window.Confirmacion.armar(") == 1  # archivar y cerrar, uno
 
 
 # --------------------------------------------------------------------------

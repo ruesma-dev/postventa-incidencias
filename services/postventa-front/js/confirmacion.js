@@ -34,8 +34,12 @@
   const CADUCADA = "caducada";
 
   /** Texto para el usuario cuando la confirmación se le pasó de tiempo. */
+  // F-025 · el aviso nombra el botón que hay que volver a pulsar, y desde la
+  // confirmación única ese botón se llama otra cosa: archivar y cerrar son un
+  // solo gesto. Un aviso que manda a un botón que ya no existe es peor que no
+  // ponerlo.
   const AVISO_CADUCADA =
-    "La confirmación caducó. Vuelve a pulsar «Archivar los partes aptos».";
+    "La confirmación caducó. Vuelve a pulsar «Archivar y cerrar los partes aptos».";
 
   /** El mismo aviso para el cierre en Sigrid (F-009 R15). */
   const AVISO_CADUCADA_CIERRE =

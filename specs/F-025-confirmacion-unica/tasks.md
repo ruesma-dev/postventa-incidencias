@@ -81,7 +81,7 @@
 
 ## Bloque 2 · La tanda (`js/app.js`)
 
-- [ ] **T7**: Fundir las dos tandas en una: `confirmarArchivo` pasa a recorrer
+- [x] **T7**: Fundir las dos tandas en una: `confirmarArchivo` pasa a recorrer
       `pendientesDeCircuito` por **la misma cola** (R11) llamando a
       `ejecutarCircuito`; `_archivarUno`, `_adjuntarYCerrarUno`, `_cerrarUno`
       y `_dryRunUno` desaparecen de `app.js`. | Verificación:
@@ -91,14 +91,14 @@
       (R14). Es el control que F-019 echó de menos: si el orden vuelve a
       `app.js`, este test se pone rojo.
 
-- [ ] **T8**: Estado nuevo de pantalla: `totalTanda`, `parte.paso`, fase
+- [x] **T8**: Estado nuevo de pantalla: `totalTanda`, `parte.paso`, fase
       `archivando_y_cerrando`, `tituloDeFase()` y `reiniciar()` al día. |
       Verificación: `tests/test_f025_front.py` — la fase nueva está en el
       `x-show` de la sección de progreso y en `tituloDeFase`; `reiniciar()`
       limpia `totalTanda` y `parte.paso`; el denominador de `porcentaje()` es
       `totalTanda` y no `partes.length` (R12).
 
-- [ ] **T9**: Retirar `pedirDryRunCierre`, `hayDryRun`, `dryRunDe` y
+- [x] **T9**: Retirar `pedirDryRunCierre`, `hayDryRun`, `dryRunDe` y
       `dryRunGraficoDe` de su papel de pantalla previa (**P1**, opción
       recomendada: retirarlos) y pasar `numeroIncidencia` al resumen. |
       Verificación: `tests/test_f025_front.py` — `app.js` no expone ningún
@@ -108,7 +108,7 @@
 
 ## Bloque 3 · La pantalla (`index.html`)
 
-- [ ] **T10**: Fundir las secciones «Archivar» y «Cerrar en Sigrid» en una
+- [x] **T10**: Fundir las secciones «Archivar» y «Cerrar en Sigrid» en una
       sola, con **un** botón y **una** confirmación cuyo texto nombre las tres
       cosas y el número de partes (R1, R2, R6; **P3** decide la redacción). |
       Verificación: `tests/test_f025_front.py` sobre el HTML **sin
@@ -118,17 +118,17 @@
       literal «Ver qué pasaría»; el texto de la confirmación nombra SharePoint,
       la reclamación y el cierre.
 
-- [ ] **T11**: El progreso: barra sobre `totalTanda`, `parte.paso` visible por
+- [x] **T11**: El progreso: barra sobre `totalTanda`, `parte.paso` visible por
       parte y resumen con el número de incidencia (R12, R13, R16, R17, R37). |
       Verificación: `tests/test_f025_front.py` — la sección de progreso se
       pinta en la fase nueva, cada fila de parte pinta `paso`, y el resumen
       pinta `numero_incidencia`.
 
-- [ ] **T12**: Sin identidad, el botón único se deshabilita y se dice por qué
+- [x] **T12**: Sin identidad, el botón único se deshabilita y se dice por qué
       (**P2**, opción recomendada). | Verificación: el `:disabled` del botón
       incluye `!usuario.usuarioOid` y el mensaje existente se conserva.
 
-- [ ] **T13**: Conservar el recuadro ámbar «adjunto en Sigrid y la incidencia
+- [x] **T13**: Conservar el recuadro ámbar «adjunto en Sigrid y la incidencia
       sigue abierta» con «Reintentar el cierre», y el recuadro de
       `error_grafico` (R19; R65 de F-012 sigue vigente). | Verificación: los
       tests de F-012 que los fijan **siguen en verde sin tocarlos**.

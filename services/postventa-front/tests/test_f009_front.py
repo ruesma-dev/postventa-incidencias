@@ -11,14 +11,26 @@ lo que sobrevive a la siguiente edición no es una revisión, es un test.
 
 Lo que fija:
 
-- **R9** · el dry-run enseña las cinco cosas: la incidencia, su descripción, el
-  estado de origen y el de destino **legibles**, y con qué login se firmaría.
+- **R9** · lo que quedaba de la pantalla previa del dry-run. **DEROGADO por
+  F-025 R38 el 2026-09-11**: ya no hay un gesto «ver qué pasaría», así que no
+  hay pantalla donde enseñarlo. Lo que queda es su **control negativo**.
 - **R21** · el aviso de que la reclamación quedará cerrada sin el parte dentro
-  de Sigrid se pinta **siempre** que hay dry-run, no solo a veces.
-- **El orden**: primero el dry-run, y el botón de cerrar no aparece hasta que
-  hay algo que leer.
+  de Sigrid. Derogado por R48 de F-012 el 2026-09-06; queda su control
+  negativo.
 - **R15** · la confirmación la compone `js/confirmacion.js`, que sí tiene
-  tests, y no un booleano suelto en `app.js`.
+  tests, y no un booleano suelto en `app.js`. **Sigue vigente** (F-025 R43),
+  con una precisión: desde F-025 la confirmación es **una sola** y cubre los
+  tres pasos.
+
+> **Retiradas del 2026-09-11 (F-025 R38, R39)**. Se retiran de este fichero
+> **solo** las aserciones sobre la pantalla previa —los siete campos del
+> dry-run pintados, el botón «Ver qué pasaría» y el orden «primero mirar,
+> después cerrar»— y **cada una deja en su sitio un control negativo** que
+> comprueba que ese camino ya no existe. Lo que protegían de verdad —que no se
+> escriba sin haber leído antes el estado real de la reclamación— **no ha
+> caído**: se sigue haciendo dentro de la misma llamada que escribe, y lo
+> vigila `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`.
+> **R8 y R10 de F-009 siguen vigentes.**
 """
 
 from __future__ import annotations
@@ -61,8 +73,6 @@ def _sin_comentarios_js(texto: str) -> str:
 @pytest.mark.parametrize(
     "campo",
     [
-        "incidencia",
-        "descripcion",
         "estado_origen.codigo",
         "estado_origen.descripcion",
         "estado_destino.codigo",
@@ -70,16 +80,25 @@ def _sin_comentarios_js(texto: str) -> str:
         "login_sigrid",
     ],
 )
-def test_f009_r9_la_pantalla_pinta_todo_lo_que_devuelve_el_dry_run(campo):
-    """R9 · quien confirma tiene que tener las cinco cosas delante.
+def test_f009_r9_derogado_la_pantalla_previa_del_dry_run_no_deja_rastro(campo):
+    """R9 · **DEROGADO por F-025 R38 (2026-09-11).**
 
-    Los estados van **legibles** —código y descripción—, no como números: el
-    número no le dice nada a nadie, y además es configuración del ERP que este
-    proyecto no escribe en ninguna parte.
+    Aquí vivía la lista de campos que la tarjeta del dry-run tenía que pintar
+    *antes* de confirmar. Con la confirmación única no hay pantalla previa: el
+    responsable del proyecto decidió que al confirmar el archivado se ejecute
+    ya el cierre, y dijo, literal, **«no hace falta enseñar nada»**.
+
+    Lo que ocupa su sitio es el **control negativo**: los bindings no están, y
+    si volvieran sin la pantalla que los alimenta pintarían cajas vacías en
+    cada tanda. Lo que R9 protegía de verdad —leer el estado real antes de
+    escribir— se sigue haciendo dentro de la llamada que escribe (F-025 R10).
     """
     html = _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
 
-    assert campo in html, f"la pantalla no pinta {campo} del dry-run"
+    assert campo not in html, (
+        f"la pantalla vuelve a pintar {campo}: la tarjeta del cálculo previo "
+        f"se retiró con F-025 y ya nadie la rellena"
+    )
 
 
 def test_f009_r9_la_pantalla_no_pinta_ningun_numero_de_estado():
@@ -125,38 +144,39 @@ def test_f009_r21_derogado_la_pantalla_ya_no_pinta_el_aviso_de_grafico():
 # --------------------------------------------------------------------------
 
 
-def test_f009_r8_el_boton_de_cerrar_no_aparece_hasta_que_hay_dry_run():
-    """R8, R10 · **dos gestos y no uno.**
+def test_f009_r8_derogado_el_gesto_de_mirar_antes_ya_no_existe():
+    """R8 en su parte de pantalla · **DEROGADO por F-025 R38 (2026-09-11).**
 
-    Hasta que no se ha pedido el dry-run —que solo lee— no hay nada que
-    confirmar. Si el botón de cerrar estuviera siempre, se podría escribir en
-    el ERP sin haber mirado.
-    """
-    html = _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
-    bloque = html.split("Ver qué pasaría")[1]
+    Aquí se fijaba que el botón de cerrar no apareciera hasta haber pedido el
+    dry-run: **dos gestos y no uno**. F-025 los funde en uno solo por decisión
+    del responsable del proyecto.
 
-    assert 'x-show="hayDryRun()"' in bloque
-    assert bloque.index('x-show="hayDryRun()"') < bloque.index("Cerrar las incidencias")
+    Su control negativo: no queda ni el botón, ni su texto, ni el `hayDryRun()`
+    que lo gobernaba. Dejar uno de los tres sería dejar un segundo camino hacia
+    el ERP, y solo uno tiene tests.
 
-
-def test_f009_el_boton_del_dry_run_dice_que_no_cierra_nada():
-    """El texto del botón importa: es lo que decide si alguien lo pulsa.
-
-    «Ver qué pasaría» sin más deja la duda; con «no cierra nada» no la deja.
+    **R8 y R10 de F-009 siguen vigentes** en lo que de verdad exigen —no
+    escribir sin haber leído antes el estado real— y se cumplen mejor: el
+    cálculo y la escritura ya no están separados por los ~29 s que tardaba una
+    persona en leer la pantalla.
     """
     html = _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
 
-    assert "no cierra nada" in html
+    assert "Ver qué pasaría" not in html
+    assert "no cierra nada" not in html
+    assert "hayDryRun()" not in html
 
 
-def test_f009_la_confirmacion_del_cierre_advierte_de_lo_que_hace():
-    """Quien pulsa «Sí, cerrar» tiene que saber que escribe en el ERP.
+def test_f009_la_confirmacion_advierte_de_que_escribe_en_sigrid():
+    """Quien confirma tiene que saber que escribe en el ERP.
 
-    «¿Seguro?» a secas no informa de nada.
+    «¿Seguro?» a secas no informa de nada. Desde F-025 la confirmación es
+    **una** y cubre los tres pasos, así que su texto tiene que nombrar Sigrid
+    igual que lo nombraba la del cierre (F-025 R6).
     """
     html = _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
 
-    assert "Sigrid" in html.split("Cerrar las incidencias")[1]
+    assert "Sigrid" in html.split("confirmacionPendiente()")[1]
 
 
 def test_f009_sin_identidad_la_pantalla_lo_dice_en_vez_de_callarse():
@@ -184,8 +204,15 @@ def test_f009_r15_la_confirmacion_del_cierre_la_compone_el_modulo_probado():
     codigo = _sin_comentarios_js(APP.read_text(encoding="utf-8"))
 
     assert "window.Confirmacion.armar(Date.now())" in codigo
-    assert codigo.count("window.Confirmacion.resolver(") >= 2
-    assert 'window.Confirmacion.avisoCaducada("cierre")' in codigo
+    assert "window.Confirmacion.resolver(" in codigo
+    assert "window.Confirmacion.AVISO_CADUCADA" in codigo
+    # F-025 R2 · **una sola** confirmación en todo el circuito. Aquí se exigían
+    # dos (`>= 2` resoluciones y el aviso propio del cierre) porque había dos
+    # gestos. Ahora son un control negativo: una segunda confirmación seguida
+    # se convierte en dos clics automáticos, que es justo lo contrario de lo
+    # que una confirmación es.
+    assert codigo.count("window.Confirmacion.resolver(") == 1
+    assert 'avisoCaducada("cierre")' not in codigo
 
 
 def test_f009_app_js_delega_la_decision_de_cerrar_en_el_pipeline():
@@ -197,9 +224,17 @@ def test_f009_app_js_delega_la_decision_de_cerrar_en_el_pipeline():
     comprobaría nadie — y lo que hay detrás es el ERP de producción.
     """
     codigo = _sin_comentarios_js(APP.read_text(encoding="utf-8"))
+    pipeline = _sin_comentarios_js(
+        (RAIZ_FRONT / "js" / "pipeline.js").read_text(encoding="utf-8")
+    )
 
     assert "window.Pipeline.esCerrable(" in codigo
-    assert "window.Pipeline.cuerpoDeCierre(" in codigo
+    # F-025 · el cuerpo del cierre ya no se compone desde `app.js`: lo compone
+    # el circuito, dentro de `js/pipeline.js`, y **siempre con `commit`**. Que
+    # `app.js` no pueda componerlo es ahora un control negativo más fuerte que
+    # el de antes, y el test de abajo lo remata.
+    assert "window.Pipeline.ejecutarCircuito(" in codigo
+    assert "cuerpoDeCierre(" in pipeline
 
 
 def test_f009_app_js_no_compone_a_mano_el_cuerpo_del_cierre():

@@ -7,8 +7,11 @@
 //   js/cola.js       el límite de concurrencia               (R7-R12)
 //   js/api.js        timeout, reintentos, clasificación      (R23-R27)
 //   js/pipeline.js   qué se pide, en qué orden y qué viaja   (R8, R13-R22)
-//   js/confirmacion.js  el doble clic antes de archivar y de
-//                       cerrar                                (R19, F-009 R15)
+//                    y, desde F-025, el CIRCUITO de un parte:
+//                    archivar → adjuntar → cerrar            (F-025 R7)
+//   js/confirmacion.js  el doble clic antes de escribir. Desde
+//                       F-025 es UNA sola confirmación para
+//                       los tres pasos           (R19, F-009 R15, F-025 R2)
 //   js/traza.js      el único registro permitido             (R28)
 //
 // Aquí no hay ni un bucle de reintento, ni un cálculo de veredicto, ni una
@@ -53,13 +56,32 @@ function appPostventa() {
     mensajeRevalidacion: "",
     CAMPOS: window.Pipeline.CAMPOS_DEL_PARTE,
 
-    // --- archivo (R19-R22, R25) ---
+    // --- archivar y cerrar, en un solo gesto (F-025 R1, R2) ---
     // El estado de la confirmación lo compone `js/confirmacion.js`: aquí solo
-    // se guarda lo que devuelve, sin interpretarlo.
+    // se guarda lo que devuelve, sin interpretarlo. Desde F-025 es **la
+    // única** confirmación del circuito, y cubre los tres pasos: el archivo en
+    // SharePoint, el gráfico adjunto a la reclamación y el cierre.
     confirmacionArchivo: null,
     avisoArchivo: "",
     entornoNoArchiva: "",
     resultadosArchivo: [],
+
+    // F-025 R12 · el denominador de la barra es el tamaño de **la tanda**, no
+    // el de la remesa. Con el viejo, archivar 4 partes de 22 enseñaba un 18 %
+    // al terminar, y una barra que no llega al final parece un proceso
+    // colgado.
+    totalTanda: 0,
+
+    // F-025 R21 · la ventana de escritura del ERP se ha encontrado cerrada.
+    // Los partes que queden **siguen archivando** y no le piden nada al ERP:
+    // veinte partes por dos llamadas de 503 garantizado es ruido, y el archivo
+    // sí sirve —deja el documento guardado y el parte listo para la tanda
+    // siguiente—.
+    erpCerrado: false,
+
+    // F-025 R22 · la ventana del **archivo** se ha encontrado cerrada, y eso
+    // sí para la tanda: sin archivo no hay nada que adjuntar ni que cerrar.
+    tandaDetenida: false,
 
     // --- cierre en Sigrid (F-009) ---
     // Quién dice ser el usuario, para poder firmar el cierre en el ERP. Lo
@@ -67,21 +89,11 @@ function appPostventa() {
     // quién lo pidió, no un control de acceso. Con quién se firma de verdad lo
     // decide el ERP, que tiene que confirmar el login antes de escribir nada.
     usuario: { usuarioOid: "", correo: "" },
-    // El dry-run de cada parte, por `hash`. Es lo que hay que enseñar ANTES de
-    // que nadie confirme: los dos estados legibles, con qué login se firmaría
-    // y el bloque `grafico` con el estado real de este parte (R49).
-    // Confirmar sin haberlo leído es lo que esto viene a evitar.
-    // Ya NO trae `aviso_sin_grafico`: R48 de F-012 lo derogó, porque desde
-    // F-012 el cierre exige el gráfico adjuntado (R2) y aquel aviso —«quedará
-    // cerrada sin el parte»— describía un sistema que ya no existe.
-    dryRunCierre: {},
-    // F-012 · el dry-run del gráfico, por parte. Va aparte del del cierre
-    // porque son dos llamadas a dos endpoints distintos y cada una puede
-    // salir bien o mal por su cuenta: «adjuntado pero no cerrado» es un
-    // estado real y hay que poder pintarlo.
-    dryRunGrafico: {},
-    confirmacionCierre: null,
-    avisoCierre: "",
+    // F-025 R5 · aquí vivían `dryRunCierre` y `dryRunGrafico`, el cálculo
+    // previo que se enseñaba **antes** de confirmar. La pantalla previa se
+    // retiró entera (P1, opción a): lo que desaparece es la pantalla, no la
+    // verificación — el backend sigue haciendo su comprobación contra el ERP
+    // dentro de la misma llamada que escribe (`design.md` §2).
     entornoNoCierra: "",
     resultadosCierre: [],
 
@@ -186,6 +198,12 @@ function appPostventa() {
         estado: "pendiente",
         semaforo: "",
         error: "",
+        // F-025 R13 · en cuál de los tres pasos está ahora mismo: archivando,
+        // adjuntando o cerrando. Nace declarado para que Alpine lo haga
+        // reactivo; añadirlo a mitad de tanda no repintaría la fila.
+        paso: "",
+        grafico: "",
+        cerrado: false,
         extraccion: null,
         firma: null,
         validacion: null,
@@ -202,6 +220,10 @@ function appPostventa() {
     // =====================================================================
     async _procesarRemesa() {
       this.fase = "procesando";
+      // F-025 R12 · el denominador de la barra es **el tamaño de la tanda**, y
+      // esta tanda es la remesa entera. Un solo `totalTanda` para las dos
+      // fases: dos denominadores serían dos formas de equivocarse.
+      this.totalTanda = this.partes.length;
       await this._porLaCola(this.partes, (parte) => this._procesarUno(parte));
       this.fase = "revision";
     },
@@ -259,14 +281,15 @@ function appPostventa() {
     },
 
     porcentaje() {
-      return this.partes.length
-        ? Math.round((this.terminados / this.partes.length) * 100)
-        : 0;
+      // F-025 R12 · el cálculo vive en `js/pipeline.js`, que sí tiene tests, y
+      // el denominador es `totalTanda`: el de la tanda en curso, no el de la
+      // remesa entera.
+      return window.Pipeline.porcentajeDeTanda(this.terminados, this.totalTanda);
     },
 
     tituloDeFase() {
       if (this.fase === "troceando") return "Troceando la remesa";
-      if (this.fase === "archivando") return "Archivando";
+      if (this.fase === "archivando_y_cerrando") return "Archivando y cerrando";
       return "Procesando los partes";
     },
 
@@ -353,18 +376,18 @@ function appPostventa() {
     },
 
     // =====================================================================
-    // Archivo (R19-R22, R25)
+    // Archivar y cerrar, en una sola tanda (F-025; R19-R22, R25 de F-007)
     // =====================================================================
-    archivables() {
-      // F-019 R27: «archivable» incluye «ya guardado». Un parte que no consta
-      // en la base recibiría un 409 y no subiría nada; ofrecerlo sería
-      // prometer algo que el backend va a rechazar.
-      return this.partes.filter(
-        (parte) =>
-          !parte.archivado &&
-          parte.guardado &&
-          window.Pipeline.esArchivable(parte.validacion),
-      );
+    pendientes() {
+      // F-025 R24 · **un solo selector**, y vive en `js/pipeline.js`, que sí
+      // tiene tests. Es más ancho que el `archivables()` que sustituye: trae
+      // también los partes a medias —archivado sin adjuntar, adjuntado sin
+      // cerrar—, que con los dos botones fundidos en uno se quedarían sin
+      // ninguna forma de volver a entrar.
+      //
+      // F-019 R27 sigue dentro: «pendiente» incluye «ya guardado». Un parte
+      // que no consta en la base recibiría un 409 y no subiría nada.
+      return window.Pipeline.pendientesDeCircuito(this.partes);
     },
 
     noArchivables() {
@@ -409,42 +432,125 @@ function appPostventa() {
       }
       this.avisoArchivo = "";
 
-      const pendientes = this.archivables();
-      if (!pendientes.length) {
+      const tanda = this.pendientes();
+      if (!tanda.length) {
         return;
       }
 
-      this.entornoNoArchiva = "";
-      this.fase = "archivando";
-      this.terminados = 0;
-      await this._porLaCola(pendientes, (parte) => this._archivarUno(parte));
-      this.fase = "resumen";
+      // F-025 R14 · la guarda de reentrada, y **envuelve la tanda entera**.
+      // Si ya hay una corriendo, no se toca ni el estado de la pantalla: lo
+      // que estuviera en curso sigue como estaba.
+      const arranque = await window.Pipeline.conGuardaDeTanda(() =>
+        this._lanzarTanda(tanda),
+      );
+      if (arranque.arrancada) {
+        this.fase = "resumen";
+      }
     },
 
-    async _archivarUno(parte) {
-      try {
-        // cuerpoDeArchivo se niega a componer nada que no sea apto (R21).
-        const datos = await api.archivar(
-          window.Pipeline.cuerpoDeArchivo(parte),
-          parte.hash,
-        );
-        parte.archivado = true;
-        parte.estado = "archivado";
+    async _lanzarTanda(tanda) {
+      // F-025 R7 · los tres pasos de cada parte, por la MISMA cola y con el
+      // mismo límite de siempre (R11): fundir dos tandas en una no puede
+      // multiplicar las peticiones simultáneas contra el ERP.
+      this.entornoNoArchiva = "";
+      this.entornoNoCierra = "";
+      this.erpCerrado = false;
+      this.tandaDetenida = false;
+      this.fase = "archivando_y_cerrando";
+      this.terminados = 0;
+      this.totalTanda = tanda.length;
+      await this._porLaCola(tanda, (parte) => this._circuitoDeUno(parte));
+    },
+
+    async _circuitoDeUno(parte) {
+      // R22 · la puerta de entorno del archivo cerró la tanda. El corte se
+      // mira **al empezar cada parte** porque cuando se levanta la bandera la
+      // cola ya tiene los demás encolados.
+      if (this.tandaDetenida) {
+        return;
+      }
+      // Aquí no se decide nada: el orden de las tres escrituras, qué se salta
+      // y qué se pide con `commit` es de `js/pipeline.js::ejecutarCircuito`,
+      // que sí tiene tests (`tests_js/circuito.test.js`). Esto mueve estado de
+      // Alpine y nada más, que es lo único que le toca a este fichero.
+      const resultado = await window.Pipeline.ejecutarCircuito(parte, api, {
+        usuarioOid: this.usuario.usuarioOid,
+        correo: this.usuario.correo,
+        // R21 · lo que sepamos AHORA de la ventana del ERP.
+        //
+        // Ojo con el alcance de esta bandera: la cola lanza hasta tres partes
+        // a la vez, así que la ven los que aún no han arrancado, no los que ya
+        // están en vuelo. Son como mucho dos respuestas de «servicio no
+        // disponible» de más, y se acepta: cerrar la ventana a mitad de tanda
+        // es el caso raro, y pararlo del todo exigiría cancelar peticiones ya
+        // emitidas.
+        erpCerrado: this.erpCerrado,
+        alPaso: (paso) => {
+          parte.paso = paso;
+        },
+      });
+      // El paso se limpia pase lo que pase: uno congelado en «cerrando» diría
+      // que sigue en marcha algo que ya terminó.
+      parte.paso = "";
+      this._aplicarResultado(parte, resultado);
+    },
+
+    _aplicarResultado(parte, resultado) {
+      // `ejecutarCircuito` nunca lanza (R20): devuelve hasta dónde llegó, y
+      // esto lo pinta. Un parte roto no tumba la tanda.
+      parte.archivado = resultado.archivado;
+      parte.grafico = resultado.grafico;
+
+      if (resultado.archivo) {
         this.resultadosArchivo.push({
           hash: parte.hash,
-          mensaje: `${datos.nombre_fichero} → ${datos.carpeta} (${datos.estado})`,
-          web_url: datos.web_url || "",
+          mensaje: `${resultado.archivo.nombre_fichero} → ${resultado.archivo.carpeta} (${resultado.archivo.estado})`,
+          web_url: resultado.archivo.web_url || "",
         });
-      } catch (error) {
-        if (error && error.tipo === "entorno") {
-          // R25: pantalla propia. NO es un fallo y no se toca la puerta de
-          // entorno del backend para «arreglarlo».
-          this.entornoNoArchiva = error.mensaje;
-          return;
-        }
-        parte.estado = "error_archivo";
-        parte.error = (error && error.mensaje) || String(error);
       }
+
+      if (resultado.tipoError === "entorno") {
+        // La puerta de entorno NO es un fallo del parte: tiene pantalla propia
+        // y el parte se queda como esté. Pintarlo en rojo llevaría a alguien a
+        // «arreglar» una App Setting que está apagada a propósito.
+        if (resultado.archivado) {
+          parte.estado = "archivado";
+        }
+        this._anotarPuertaDeEntorno(resultado);
+        return;
+      }
+
+      parte.cerrado = resultado.cerrado;
+      parte.estado = resultado.estado;
+      parte.error = resultado.error;
+
+      if (resultado.mensaje) {
+        this.resultadosCierre.push({
+          hash: parte.hash,
+          // R37 · el número de incidencia sobre el que se escribió. Se guarda
+          // aparte del mensaje porque el resumen es **la primera y única
+          // ocasión** en que quien pulsó puede ver que se escribió sobre la
+          // incidencia equivocada: enterrarlo dentro de una frase lo esconde.
+          incidencia: resultado.numeroIncidencia,
+          mensaje: resultado.mensaje,
+        });
+      }
+    },
+
+    _anotarPuertaDeEntorno(resultado) {
+      if (resultado.ambito === "archivo") {
+        // R22 · sin archivo no hay nada que adjuntar ni que cerrar: los pasos
+        // 2 y 3 responderían 409 por la puerta de archivo. La tanda se para.
+        this.entornoNoArchiva = resultado.error;
+        this.tandaDetenida = true;
+        return;
+      }
+      // R21 · la ventana del ERP está cerrada. Los que queden siguen
+      // archivando y no le piden nada al ERP, y el aviso se dice **una sola
+      // vez**: es un campo de texto, no una lista, así que por muchos partes
+      // que lo levanten en pantalla sale uno.
+      this.erpCerrado = true;
+      this.entornoNoCierra = resultado.error;
     },
 
     // =====================================================================
@@ -465,214 +571,23 @@ function appPostventa() {
       );
     },
 
-    puedeCerrar() {
-      return Boolean(this.usuario.usuarioOid) && this.cerrables().length > 0;
-    },
-
-    async pedirDryRunCierre() {
-      // R8 · el dry-run va PRIMERO y por su cuenta: se pide sin `commit`, así
-      // que esta tanda no escribe nada en el ERP pase lo que pase.
-      this.avisoCierre = "";
-      this.entornoNoCierra = "";
-      this.confirmacionCierre = window.Confirmacion.cancelar();
-      this.fase = "dry_run";
-      await this._porLaCola(this.cerrables(), (parte) => this._dryRunUno(parte));
-      this.fase = "resumen";
-    },
-
-    async _dryRunUno(parte) {
-      // R63 (F-012) · LOS DOS dry-run, y en este orden: primero el del
-      // gráfico, que es lo que va a ocurrir primero. Si el del gráfico falla
-      // no se pide el del cierre: el parte ya está en `error_grafico` y un
-      // segundo error no añade nada que se pueda arreglar desde la pantalla.
-      try {
-        const grafico = await api.adjuntar(
-          window.Pipeline.cuerpoDeGrafico(parte, this.usuario),
-          parte.hash,
-        );
-        this.dryRunGrafico[parte.hash] = grafico.dry_run;
-        parte.grafico = grafico.estado;
-      } catch (error) {
-        this._anotarFalloDeGrafico(parte, error);
-        return;
-      }
-
-      try {
-        const datos = await api.cerrar(
-          window.Pipeline.cuerpoDeCierre(parte, this.usuario),
-          parte.hash,
-        );
-        this.dryRunCierre[parte.hash] = datos.dry_run;
-        if (datos.estado === "ya_cerrada") {
-          // R18 · no es un error: la incidencia ya estaba cerrada antes de que
-          // llegáramos. Se saca de la lista de cerrables y **se dice**: si
-          // desapareciera en silencio, quien mira la pantalla creería que se
-          // ha perdido un parte.
-          parte.cerrado = true;
-          parte.estado = "ya_cerrada";
-          this.resultadosCierre.push({
-            hash: parte.hash,
-            mensaje: `${datos.numero_incidencia} ya estaba cerrada en Sigrid: no se ha tocado nada`,
-          });
-        }
-      } catch (error) {
-        this._anotarFalloDeCierre(parte, error);
-      }
-    },
-
-    hayDryRun() {
-      return (
-        Object.keys(this.dryRunCierre).length > 0 ||
-        Object.keys(this.dryRunGrafico).length > 0
-      );
-    },
-
-    dryRunDe(parte) {
-      return this.dryRunCierre[parte.hash] || null;
-    },
-
-    dryRunGraficoDe(parte) {
-      return this.dryRunGrafico[parte.hash] || null;
-    },
-
-    estaAdjuntado(parte) {
-      // La decisión es de `js/pipeline.js`, que sí tiene tests. Aquí solo se
-      // pregunta, y lo que se pregunta es **lo que dijo el backend**: si se
-      // dedujera aquí, la pantalla estaría afirmando que un parte está dentro
-      // de Sigrid mirando una variable de un navegador.
-      return window.Pipeline.estaAdjuntado(parte);
-    },
-
-    pedirConfirmacionCierre() {
-      // R15 · la confirmación explícita, con su ventana, ANTES de la primera
-      // escritura. La compone `js/confirmacion.js`, que sí tiene tests.
-      this.confirmacionCierre = window.Confirmacion.armar(Date.now());
-      this.avisoCierre = "";
-    },
-
-    confirmacionCierrePendiente() {
-      return window.Confirmacion.pendiente(this.confirmacionCierre);
-    },
-
-    cancelarCierre() {
-      this.confirmacionCierre = window.Confirmacion.cancelar();
-      this.avisoCierre = "";
-    },
-
-    async confirmarCierre() {
-      const decision = window.Confirmacion.resolver(
-        this.confirmacionCierre,
-        Date.now(),
-      );
-      this.confirmacionCierre = decision.estado;
-      if (!decision.dispara) {
-        this.avisoCierre =
-          decision.motivo === window.Confirmacion.CADUCADA
-            ? window.Confirmacion.avisoCaducada("cierre")
-            : "";
-        return;
-      }
-      this.avisoCierre = "";
-
-      const pendientes = this.cerrables().filter((parte) => this.dryRunDe(parte));
-      if (!pendientes.length) {
-        return;
-      }
-
-      this.entornoNoCierra = "";
-      this.fase = "cerrando";
-      this.terminados = 0;
-      await this._porLaCola(pendientes, (parte) =>
-        this._adjuntarYCerrarUno(parte),
-      );
-      this.fase = "resumen";
-    },
-
-    async _adjuntarYCerrarUno(parte) {
-      // R64 (F-012) · **primero el gráfico, y el cierre SOLO si respondió
-      // `adjuntado`.** Es lo que garantiza que ninguna reclamación quede
-      // cerrada sin su parte dentro del ERP. El backend lo vuelve a exigir
-      // (su R2), pero pedir un cierre que va a responder 409 sería ruido con
-      // el usuario delante.
-      try {
-        const datos = await api.adjuntar(
-          window.Pipeline.cuerpoDeGrafico(
-            parte,
-            Object.assign({ commit: true, confirmado: true }, this.usuario),
-          ),
-          parte.hash,
-        );
-        parte.grafico = datos.estado;
-      } catch (error) {
-        this._anotarFalloDeGrafico(parte, error);
-        return;
-      }
-
-      if (!window.Pipeline.estaAdjuntado(parte)) {
-        // Puede ser `ya_cerrada`: la reclamación estaba cerrada antes de que
-        // llegáramos y no se le cuelga un gráfico. No es un error, y por eso
-        // no pasa por `_anotarFalloDeGrafico`.
-        parte.cerrado = true;
-        parte.estado = parte.grafico;
-        this.resultadosCierre.push({
-          hash: parte.hash,
-          mensaje: `no se ha adjuntado el parte (${parte.grafico}): no se cierra nada`,
-        });
-        return;
-      }
-
-      await this._cerrarUno(parte);
-    },
-
     async reintentarCierre(parte) {
-      // R65 · el estado «adjuntado pero no cerrado». El gráfico ya está dentro
-      // de Sigrid, así que **no se vuelve a pedir**: se reintenta solo el
-      // cierre. La confirmación ya se dio y sigue valiendo para este parte.
-      this.fase = "cerrando";
-      await this._cerrarUno(parte);
-      this.fase = "resumen";
-    },
-
-    async _cerrarUno(parte) {
-      try {
-        const datos = await api.cerrar(
-          window.Pipeline.cuerpoDeCierre(
-            parte,
-            Object.assign({ commit: true, confirmado: true }, this.usuario),
-          ),
-          parte.hash,
-        );
-        parte.cerrado = true;
-        parte.estado = datos.estado;
-        this.resultadosCierre.push({
-          hash: parte.hash,
-          mensaje: `${datos.numero_incidencia} → ${datos.estado}`,
-        });
-      } catch (error) {
-        this._anotarFalloDeCierre(parte, error);
+      // R65 de F-012 · el estado «adjuntado pero no cerrado». El gráfico ya
+      // está dentro de Sigrid, así que **no se vuelve a pedir**.
+      //
+      // F-025 · y no hace falta código aparte para conseguirlo: el reintento
+      // pasa por el mismo circuito, que se salta archivar y adjuntar porque ya
+      // constan hechos (R25, R26). Lo único que vuelve a viajar es el cierre;
+      // el PDF no. Que se los salte lo fija `tests_js/circuito.test.js`.
+      //
+      // La confirmación ya se dio y sigue valiendo para este parte: es un
+      // reintento de lo que se acaba de autorizar, no una tanda nueva.
+      const arranque = await window.Pipeline.conGuardaDeTanda(() =>
+        this._lanzarTanda([parte]),
+      );
+      if (arranque.arrancada) {
+        this.fase = "resumen";
       }
-    },
-
-    _anotarFalloDeGrafico(parte, error) {
-      if (error && error.tipo === "entorno") {
-        // Pantalla propia: es la puerta de entorno del ERP, la misma que la
-        // del cierre, y no se toca para «arreglarlo».
-        this.entornoNoCierra = error.mensaje;
-        return;
-      }
-      parte.estado = "error_grafico";
-      parte.error = (error && error.mensaje) || String(error);
-    },
-
-    _anotarFalloDeCierre(parte, error) {
-      if (error && error.tipo === "entorno") {
-        // Pantalla propia: es la puerta de entorno del cierre, no un fallo, y
-        // no se toca para «arreglarlo». Lo que hay detrás es el ERP.
-        this.entornoNoCierra = error.mensaje;
-        return;
-      }
-      parte.estado = "error_cierre";
-      parte.error = (error && error.mensaje) || String(error);
     },
 
     // =====================================================================
@@ -694,12 +609,15 @@ function appPostventa() {
       this.avisoArchivo = "";
       this.entornoNoArchiva = "";
       this.resultadosArchivo = [];
-      this.confirmacionCierre = window.Confirmacion.cancelar();
-      this.avisoCierre = "";
       this.entornoNoCierra = "";
       this.resultadosCierre = [];
-      this.dryRunCierre = {};
-      this.dryRunGrafico = {};
+      // F-025 · el estado de la tanda. Arrastrar el total de la remesa
+      // anterior dejaría la barra mintiendo, y arrastrar cualquiera de las dos
+      // banderas dejaría la tanda nueva sin pedirle nada al ERP —o sin
+      // arrancar siquiera— por una ventana que se cerró hace dos remesas.
+      this.totalTanda = 0;
+      this.erpCerrado = false;
+      this.tandaDetenida = false;
     },
   };
 }

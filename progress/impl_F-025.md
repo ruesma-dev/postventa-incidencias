@@ -1,27 +1,32 @@
 <!-- progress/impl_F-025.md -->
 # F-025 · Archivar y cerrar en una sola confirmación — informe del implementer
 
-> **Entrega PARCIAL y así se pidió**, en dos tandas de trabajo:
+> **Entrega PARCIAL y así se pidió**, en tres tandas de trabajo:
 >
-> - **Tanda 1 (implementer anterior)** — bloques **0 y 1** (T1–T6): el control
->   negativo del backend y el circuito en `js/pipeline.js`. Está en las
->   secciones §1 a §6 de este informe.
-> - **Tanda 2 (esta)** — bloques **2 y 3** (T7–T13): la tanda única en
->   `js/app.js` y la pantalla fundida en `index.html`. Está en la **§11 en
->   adelante**, y es lo que actualiza las evidencias de §9.
+> - **Tanda 1** — bloques **0 y 1** (T1–T6): el control negativo del backend y
+>   el circuito en `js/pipeline.js`. Está en las secciones §1 a §10.
+> - **Tanda 2** — bloques **2 y 3** (T7–T13): la tanda única en `js/app.js` y
+>   la pantalla fundida en `index.html`. Está en la **§11 a la §19**.
+> - **Tanda 3 (esta)** — bloque **4** (T14–T18): las enmiendas fechadas en
+>   F-012 y F-009, el repaso formal de T16, `docs/ARCHITECTURE.md` y la
+>   constancia de R48. Está en la **§20 en adelante**, y es lo que actualiza
+>   las evidencias.
 >
-> **Los bloques 4, 5 y 6 siguen sin empezar.** El encargo de esta tanda manda
-> parar al terminar el 3.
+> **Los bloques 5 y 6 siguen sin empezar.** El encargo de esta tanda manda
+> parar al terminar el 4. El 5 es `MANUAL (humano)` contra el ERP; el 6 —la
+> campaña de mutación y el cierre— lo lleva el líder.
 >
-> Rama: `feature/F-025-confirmacion-unica`. **Tres** commits locales, sin
+> Rama: `feature/F-025-confirmacion-unica`. **Ocho** commits locales, sin
 > `push`. Estado de la feature en `harness/features.json`: **sin tocar**.
 >
 > `bash harness/init.sh` al terminar: **verde**.
 >
-> ⚠️ **Aviso de lectura**: las secciones §1–§10 son de la tanda 1 y describen
-> el estado *de entonces*. Donde digan «`app.js` e `index.html` siguen
-> intactos» o «`ejecutarCircuito` no lo llama nadie», **ya no es cierto**: lo
-> corrige §11.
+> ⚠️ **Aviso de lectura**: cada tanda describe el estado *de entonces*.
+> §1–§10: donde digan «`app.js` e `index.html` siguen intactos» o
+> «`ejecutarCircuito` no lo llama nadie», **ya no es cierto** — lo corrige
+> §11. §11–§19: donde digan que el bloque 4 está sin empezar y que T16 «está
+> medio consumida», **ya no es cierto** — lo cierra §24. **Las evidencias
+> válidas son las de §28**; las de §9 y §18 quedan superadas.
 
 ---
 
@@ -701,3 +706,471 @@ Sustituyen a las de §9, que eran del estado anterior.
 4. **La pantalla no se ejecuta en ninguna suite.** Es deuda vieja del front
    (F-007 §3), no de F-025, pero esta feature la deja más expuesta: la única
    pantalla que escribe en el ERP se acaba de reescribir entera.
+
+---
+
+# Tanda 3 · el bloque 4 · las enmiendas y la documentación
+
+> **Tanda 3 (esta)** — bloque **4** (T14–T18): los cinco recuadros de enmienda
+> en F-012, la nota en F-009, el repaso formal de T16, `docs/ARCHITECTURE.md`
+> y la constancia de R48. Es la §20 en adelante.
+>
+> **Los bloques 5 y 6 siguen sin empezar**, y el encargo manda parar al
+> terminar el 4. El 5 es `MANUAL (humano)` contra el ERP; el 6 lo lleva el
+> líder.
+>
+> **Cinco** commits locales nuevos, sin `push`. `harness/features.json`:
+> **sin tocar**. `bash harness/init.sh` al terminar: **verde**.
+
+---
+
+## 20 · Qué cambió, en una frase
+
+Los requisitos que F-025 tumbó **ya no mienten**: R63, R22, R21, R49 y R50 de
+F-012 llevan debajo su recuadro fechado del 2026-09-11 con la premisa original
+citada literal y las palabras con las que el responsable la invalidó; R8 y R10
+de F-009 llevan la nota que dice que **siguen vigentes y se cumplen mejor**; y
+`docs/ARCHITECTURE.md` dice, con esas palabras, que la confirmación es **una
+sola** y que el cálculo previo ocurre **en la misma llamada** que escribe. Nada
+de eso se ha borrado: **cero supresiones** en los dos ficheros de requisitos.
+
+---
+
+## 21 · Ficheros tocados en esta tanda
+
+| Fichero | Qué se hizo | Líneas |
+|---|---|---|
+| `specs/F-012-grafico-sigrid/requirements.md` | T14: los cinco recuadros de enmienda | **+77 / −0** |
+| `specs/F-009-cierre-sigrid/requirements.md` | T15: la nota bajo R8/R10 | **+21 / −0** |
+| `services/postventa-api/tests/test_f025_documentacion.py` | **Nuevo**. 21 tests que vigilan los recuadros, la nota y las dos precisiones de arquitectura | +396 |
+| `docs/ARCHITECTURE.md` | T17: paso 7b y punto 6 de «Semántica de dominio» | +27 / −1 |
+| `services/postventa-front/tests/test_f009_front.py` | T16: el hueco del control negativo de R9, tapado | +33 / −9 |
+| `specs/F-025-confirmacion-unica/tasks.md` | T14–T18 marcadas `[x]` | +5 / −5 |
+
+Los cinco commits, en orden: `cf3580c` (T14), `b42933d` (T15), `ddf61bb`
+(T16), `f2687e4` (T17) y el de este informe (T18).
+
+**Lo que NO se ha tocado**, y es lo que más importa de esta tanda: ni una línea
+de `services/postventa-api/` fuera de un fichero de tests. El diff completo de
+la rama contra `e250775` (cierre de F-012) no incluye `paso_grafico.py`, ni
+`paso_cierre.py`, ni ningún `interface_adapters/`, ni `function_app.py`, ni el
+DDL, ni `config/`. La regla dura de `tasks.md` se cumple por construcción.
+
+---
+
+## 22 · T14 y T15 · las enmiendas, y por qué el patrón importa
+
+### 22.1 · Los cinco recuadros de F-012
+
+`design.md` §11 trae cuatro apartados para **cinco** requisitos, porque §11.3
+agrupa R21 y R49. Se ha escrito **un recuadro bajo cada requisito**, no uno
+compartido: un recuadro traspapelado no lo lee quien lee el requisito, que es
+justo a quien va dirigido. Los cinco:
+
+| Requisito | Qué dice su recuadro |
+|---|---|
+| **R63** | **DEROGADO.** Ya no hay gesto «ver qué pasaría», así que no hay momento en que enseñar los dos dry-run |
+| **R22** | Enmendado **en su momento, no en su contenido**: el caso idempotente se sigue detectando y se sigue diciendo, en el resumen. R25 intacto |
+| **R21** | Enmendada su justificación: el contrato de respuesta **no cambia ni una clave**; cambia cuándo se lee |
+| **R49** | Íd. de R21, con su propia cita literal |
+| **R50** | **La regla se queda**, su motivo era otro: el contrato del endpoint tiene que poder consultarse sin escribir |
+
+Cada uno lleva las cuatro cosas que el patrón de R28 de F-010 exige: la
+**fecha** (`2026-09-11`), la **premisa original citada literal**, **qué la
+invalidó** y **quién lo decidió, con sus palabras**. Las palabras son estas
+dos, y están enteras en el recuadro de R63 y repartidas por los demás:
+
+> «quiero que al darle a archivar los partes aptos me pida confirmación como
+> ahora, y al confirmar ya haga el proceso de cierre»
+
+> «no hace falta enseñar nada»
+
+La segunda es la respuesta a que se le planteara que la pantalla previa es lo
+que protege de cerrar la incidencia equivocada. **Que conste la objeción y que
+conste la respuesta** es lo que convierte el riesgo en *aceptado* en vez de en
+*inadvertido*, y es la mitad del recuadro que no se puede resumir.
+
+El recuadro de R63 lleva además dos frases que no son decorativas:
+
+- **«dentro de la misma llamada que escribe» (R20 de F-012)**. Sin ella, el
+  recuadro se lee como permiso para quitar también el dry-run del backend, que
+  es justo lo que `requirements.md` §6 de F-025 prohíbe.
+- **«F-012 sigue `done`»**. Enmendar no es reabrir; sin esta línea el reviewer
+  siguiente no sabe si la feature vuelve a estar en juego.
+
+### 22.2 · La nota de F-009
+
+Va **bajo R10**, que es donde la lee quien va a preguntarse si el dry-run sigue
+siendo obligatorio. Dice tres cosas:
+
+1. **R8 y R10 siguen vigentes, y se cumplen mejor**: el estado que se lee y el
+   que va en el `WHERE` del `UPDATE` ya no están separados por el rato que
+   tardaba una persona en leer una pantalla.
+2. **R12–R15 siguen igual**, y hay **una sola** confirmación, **no ninguna**.
+   Es la confusión que más daño haría de todas las de esta feature, y por eso
+   tiene un test propio.
+3. **R21 de F-009 no se enmienda aquí**: ya quedó derogado por R48 de F-012 el
+   **2026-09-06** (R42). Derogar dos veces lo mismo con dos fechas distintas
+   deja la buena en el sitio equivocado.
+
+### 22.3 · Cero supresiones, medido
+
+```
+$ git diff --numstat -- specs/F-009-cierre-sigrid/requirements.md specs/F-012-grafico-sigrid/requirements.md
+21      0       specs/F-009-cierre-sigrid/requirements.md
+77      0       specs/F-012-grafico-sigrid/requirements.md
+```
+
+Es la verificación literal de T14 y T15.
+
+---
+
+## 23 · Fase RED de esta tanda, con su comando
+
+Las tareas son documentales, pero el rigor es `critico` y la fase RED aplica
+igual: **un test de documentación escrito después del documento no demuestra
+nada**. Se escribió `test_f025_documentacion.py` entero, se apartaron con
+`git stash push` las dos enmiendas ya redactadas, y se ejecutó contra el árbol
+**sin ninguna enmienda y sin la precisión de arquitectura**.
+
+Comando exacto:
+
+```
+$ git stash push -- specs/F-009-cierre-sigrid/requirements.md specs/F-012-grafico-sigrid/requirements.md
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f025_documentacion.py -q
+```
+
+Salida real:
+
+```
+FFFFF.F.FFFFFFFF.FF.F                                                    [100%]
+================================== FAILURES ===================================
+______ test_f025_r38_bajo_r63_de_f012_hay_un_recuadro_que_dice_derogado _______
+
+    def test_f025_r38_bajo_r63_de_f012_hay_un_recuadro_que_dice_derogado():
+        bloque = _bloque(REQ_F012.read_text(encoding="utf-8"), "**R63.**", "**R64.**")
+
+>       assert "DEROGADO" in bloque
+E       AssertionError: assert 'DEROGADO' in '**R63.** CUANDO el usuario pide «ver qué pasaría», el front debe pedir para\ncada parte cerrable **los dos dry-run** —gráfico y cierre, en ese orden— y\nenseñarlos juntos antes de ofrecer la confirmación.\n\n'
+
+tests\test_f025_documentacion.py:91: AssertionError
+__________ test_f025_r38_el_recuadro_de_r63_cita_la_premisa_literal ___________
+
+    def test_f025_r38_el_recuadro_de_r63_cita_la_premisa_literal():
+        bloque = _bloque(REQ_F012.read_text(encoding="utf-8"), "**R63.**", "**R64.**")
+>       recuadro = bloque[bloque.index("DEROGADO") :]
+                          ^^^^^^^^^^^^^^^^^^^^^^^^
+E       ValueError: substring not found
+
+tests\test_f025_documentacion.py:103: ValueError
+__ test_f025_r38_el_recuadro_de_r63_dice_quien_lo_decidio_y_con_que_palabras __
+
+    def test_f025_r38_el_recuadro_de_r63_dice_quien_lo_decidio_y_con_que_palabras():
+        bloque = _bloque(REQ_F012.read_text(encoding="utf-8"), "**R63.**", "**R64.**")
+
+>       assert "responsable" in bloque
+E       AssertionError: assert 'responsable' in '**R63.** CUANDO el usuario pide «ver qué pasaría», el front debe pedir para\ncada parte cerrable **los dos dry-run** —gráfico y cierre, en ese orden— y\nenseñarlos juntos antes de ofrecer la confirmación.\n\n'
+
+[... catorce fallos más, con la misma forma ...]
+
+=========================== short test summary info ===========================
+FAILED tests/test_f025_documentacion.py::test_f025_r38_bajo_r63_de_f012_hay_un_recuadro_que_dice_derogado
+FAILED tests/test_f025_documentacion.py::test_f025_r38_el_recuadro_de_r63_cita_la_premisa_literal
+FAILED tests/test_f025_documentacion.py::test_f025_r38_el_recuadro_de_r63_dice_quien_lo_decidio_y_con_que_palabras
+FAILED tests/test_f025_documentacion.py::test_f025_r38_el_recuadro_de_r63_dice_que_la_comprobacion_previa_no_cae
+FAILED tests/test_f025_documentacion.py::test_f025_r38_el_recuadro_de_r63_dice_que_f012_sigue_done
+FAILED tests/test_f025_documentacion.py::test_f025_r39_bajo_r22_de_f012_el_recuadro_retira_el_antes_de_confirmar
+FAILED tests/test_f025_documentacion.py::test_f025_r40_los_recuadros_dicen_que_el_contrato_no_cambia[**R21.**-**R22.**]
+FAILED tests/test_f025_documentacion.py::test_f025_r40_los_recuadros_dicen_que_el_contrato_no_cambia[**R49.**-**R50.**]
+FAILED tests/test_f025_documentacion.py::test_f025_r40_los_recuadros_citan_la_premisa_literal[**R21.**-**R22.**-El dry-run debe devolver al usuario]
+FAILED tests/test_f025_documentacion.py::test_f025_r40_los_recuadros_citan_la_premisa_literal[**R49.**-**R50.**-debe informar del]
+FAILED tests/test_f025_documentacion.py::test_f025_r41_el_recuadro_de_r50_dice_que_la_regla_se_mantiene
+FAILED tests/test_f025_documentacion.py::test_f025_r43_la_nota_de_f009_dice_que_r8_y_r10_siguen_vigentes
+FAILED tests/test_f025_documentacion.py::test_f025_r43_la_nota_de_f009_dice_que_la_confirmacion_sigue_haciendo_falta
+FAILED tests/test_f025_documentacion.py::test_f025_r42_la_nota_de_f009_no_vuelve_a_derogar_r21
+FAILED tests/test_f025_documentacion.py::test_f025_r47_arquitectura_dice_que_la_confirmacion_es_una_sola
+FAILED tests/test_f025_documentacion.py::test_f025_r47_arquitectura_dice_que_el_calculo_previo_va_en_la_misma_llamada
+FAILED tests/test_f025_documentacion.py::test_f025_r47_el_punto_6_de_semantica_sigue_diciendo_que_es_produccion
+17 failed, 4 passed in 0.37s
+```
+
+**Los cuatro que pasan en rojo son los control-negativo**, y que pasaran era lo
+correcto: «el texto original de R63 no se ha borrado», «el de R22 tampoco»,
+«R21 de F-009 no gana un recuadro nuevo con fecha del 2026-09-11» y
+«`ARCHITECTURE.md` no ha borrado la exigencia de dry-run». Un control negativo
+que empieza en rojo está mal escrito: mide el estado que hay que **conservar**,
+no el que hay que producir.
+
+Tras restaurar las enmiendas (`git stash pop`) y escribir la precisión de
+arquitectura, el mismo comando:
+
+```
+.....................                                                    [100%]
+21 passed in 0.07s
+```
+
+### Un ajuste del test, y por qué no es hacerle sitio al documento
+
+Tres tests se quedaron rojos con las enmiendas ya puestas, y **no por lo que
+decían los recuadros**: comparaban contra texto **envuelto a 79 columnas**, y
+las citas que buscaban cruzaban un salto de línea y el `> ` de la cita de
+Markdown. Se añadió `_llano()`, que quita el prefijo de cita y aplana los
+espacios, y las comparaciones pasaron a hacerse sobre el texto plano.
+
+Es un ajuste de **la forma de medir**, no de lo que se mide: las cadenas
+buscadas son exactamente las mismas. El motivo está escrito dentro de
+`_llano()`: un test que se pone rojo porque alguien reajustó un margen se rompe
+por un motivo falso, y un test que se rompe por motivos falsos acaba borrado.
+
+---
+
+## 24 · T16 · el repaso, que no es repetir el trabajo
+
+La §16 de este informe dejó quince entradas con lo que la tanda 2 tuvo que
+adaptar en `test_f009_front.py` y `test_f012_front.py` para no dejar la suite
+en rojo. T16 **las revisa contra el diff**. Esto es lo comprobado.
+
+### 24.1 · El tamaño del cambio, medido
+
+```
+$ git diff --stat e250775..HEAD -- services/postventa-front/tests/test_f009_front.py services/postventa-front/tests/test_f012_front.py
+ services/postventa-front/tests/test_f009_front.py | 111 ++++++----
+ services/postventa-front/tests/test_f012_front.py | 256 +++++++++++++---------
+ 2 files changed, 224 insertions(+), 143 deletions(-)
+```
+
+### 24.2 · Ningún test desaparecido sin sustituto
+
+Cotejo de los nombres de función antes (`e250775`, cierre de F-012) y después:
+
+| Fichero | Funciones antes | Después | Casos antes | Casos después |
+|---|---|---|---|---|
+| `test_f009_front.py` | 11 | 10 (**11** tras T16) | 17 | 14 (**15** tras T16) |
+| `test_f012_front.py` | 20 | 18 | 26 | 25 |
+
+Los desaparecidos, uno a uno, con su destino:
+
+| Retirado | Dónde fue a parar |
+|---|---|
+| `test_f009_r9_la_pantalla_pinta_todo_lo_que_devuelve_el_dry_run` | Renombrado a `..._r9_derogado_la_pantalla_previa_del_dry_run_no_deja_rastro`, con el sentido invertido |
+| `test_f009_r8_el_boton_de_cerrar_no_aparece_hasta_que_hay_dry_run` | Fundido con el siguiente en `..._r8_derogado_el_gesto_de_mirar_antes_ya_no_existe` |
+| `test_f009_el_boton_del_dry_run_dice_que_no_cierra_nada` | Íd. — es el **único** test que de verdad se funde en `test_f009_front.py` |
+| `test_f009_la_confirmacion_del_cierre_advierte_de_lo_que_hace` | Renombrado a `..._la_confirmacion_advierte_de_que_escribe_en_sigrid` |
+| `test_f012_r63_el_dry_run_pide_primero_el_grafico_y_luego_el_cierre` | Los tres se funden en `..._r63_derogado_no_queda_ningun_camino_de_pantalla_previa`, parametrizado sobre los cuatro restos (`_dryRunUno`, `hayDryRun`, `dryRunGraficoDe`, `dryRunDe`) |
+| `test_f012_r63_el_dry_run_del_grafico_no_pide_commit` | Íd. |
+| `test_f012_r63_si_el_grafico_falla_no_se_pide_el_dry_run_del_cierre` | Íd. |
+| `test_f012_r21_la_tarjeta_pinta_los_campos_del_dry_run_del_grafico` | Renombrado a `..._la_tarjeta_del_calculo_previo_ya_no_se_pinta` |
+| `test_f012_r22_el_aviso_de_idempotente_esta_y_viene_del_backend` | Renombrado a `..._ya_no_se_pinta_antes_de_confirmar` |
+| `test_f012_r63_la_tarjeta_ensena_el_grafico_y_el_cierre_juntos` | Renombrado a `..._r63_derogado_la_tarjeta_del_calculo_previo_no_existe` |
+| `test_f012_r65_los_tres_estados_se_distinguen_en_app` | **Mudado**, no retirado: `..._en_el_circuito`, contra `js/pipeline.js` |
+
+**No hay ningún nombre retirado sin destino.** Las bajas netas de casos
+recogidos son **fusiones**: tres tests de R63 que comprobaban tres tramos del
+mismo camino inexistente pasan a ser un parametrizado, y dos tests de F-009
+sobre el botón «Ver qué pasaría» pasan a ser uno que comprueba que no queda ni
+el botón, ni su texto, ni el `hayDryRun()` que lo gobernaba.
+
+### 24.3 · Lo tocado nombra el dry-run previo, y solo eso
+
+La verificación de T16 pide que el diff toque **únicamente** líneas que nombren
+el dry-run previo o «ver qué pasaría». Revisadas **todas** las líneas
+suprimidas de los dos ficheros, caen en cuatro grupos y ninguno se sale:
+
+1. **Los bindings de la tarjeta del cálculo previo** (`dryRunDe(parte).*`,
+   `dryRunGraficoDe(parte).*`, `idempotente_previsto`, «ya está dentro de
+   Sigrid»).
+2. **El gesto de mirar antes** («Ver qué pasaría», «no cierra nada»,
+   `hayDryRun()`, el orden «primero el dry-run, después el botón»).
+3. **Los helpers de `app.js` que la tanda 2 mudó a `pipeline.js`**
+   (`_dryRunUno`, `_cerrarUno`, `_adjuntarYCerrarUno`, `_anotarFalloDeGrafico`,
+   `_anotarFalloDeCierre`). Sus aserciones **no se pierden**: se ejecutan ahora
+   contra `js/pipeline.js`, que es donde vive el orden.
+4. **Las dos confirmaciones**, que pasan a ser una: `count("...resolver(") >= 2`
+   → `== 1`, `count("...armar(") == 2` → `== 1`, y `avisoCaducada("cierre")` →
+   control negativo.
+
+Ninguna aserción sobre el **backend**, sobre los **cuerpos** de las peticiones,
+sobre las **puertas de entorno** o sobre los **recuadros de R65** ha cambiado.
+Los quince casos de la tabla de §16 cuadran con el diff.
+
+### 24.4 · Un hueco encontrado, y tapado
+
+El repaso sí encontró algo. El control negativo de R9 en `test_f009_front.py`
+vigilaba **cinco** de los **siete** campos que pintaba la tarjeta retirada:
+`incidencia` y `descripcion` habían salido de la lista al invertir el test.
+
+- **`descripcion`** salió **sin necesidad**: no aparece ni una vez en
+  `index.html`. Vuelve a la lista.
+- **`incidencia`** no podía volver como estaba: el resumen pinta
+  `resultado.incidencia` porque **R37 de F-025 lo exige**. Se le ha dado un
+  test propio,
+  `test_f009_r9_derogado_el_numero_de_incidencia_solo_sale_en_el_resumen`, que
+  fija **las dos mitades**: que el número **está** en el resumen —es la primera
+  y única ocasión en que alguien puede ver que se escribió sobre la incidencia
+  equivocada, y el contrapeso escrito del riesgo de §0— y que **no vuelve** a
+  `dryRunDe(parte).incidencia` ni a `dryRunGraficoDe(parte).incidencia`.
+
+Es la única edición de código de esta tanda: +1 caso parametrizado y +1 test.
+La suite del front pasa de 183 a **185**.
+
+### 24.5 · `AVISO_CADUCADA_CIERRE` **no** se retira, y por qué
+
+La §16 dejaba abierta la decisión: `js/confirmacion.js` exporta
+`AVISO_CADUCADA_CIERRE` y `avisoCaducada()`, y desde la tanda 2 **no los llama
+nadie en producción**. No se retiran, por tres motivos y en este orden:
+
+1. **`design.md` §9.3 pone ese fichero fuera del alcance**, por su nombre:
+   *«el mecanismo es exactamente el que hace falta y ya tiene tests. Solo
+   cambia el **texto** del aviso de caducidad»*. Retirar un export es más que
+   cambiar un texto.
+2. **T16 acota su propio alcance** a dos ficheros de tests, y su verificación
+   es que el diff no toque otra cosa. Meter `confirmacion.js` en ese commit
+   rompería la verificación de la propia tarea.
+3. Es **quitar una comprobación** de un módulo con tests verdes, y la regla
+   dura de esta feature dice que cuando una tarea parece pedir eso, hay que
+   parar.
+
+Queda como **deuda menor declarada**: dos constantes exportadas sin llamante en
+producción, con sus cuatro aserciones en `tests_js/confirmacion.test.js`. No
+cuesta nada tenerlas, y el día que vuelva a haber dos confirmaciones —F-023,
+por ejemplo— se usan. **No es un hallazgo que el reviewer tenga que descubrir:
+está aquí.**
+
+---
+
+## 25 · T17 · lo que ahora dice `docs/ARCHITECTURE.md`
+
+Dos sitios, los que pide R47.
+
+**Paso 7b del pipeline.** Se conserva entero lo que había —«dry-run contra
+`sigrid-api`, confirmación del usuario, y solo entonces `commit: true`»— y
+debajo entra un párrafo que dice, en este orden: que desde F-025 la
+confirmación explícita es **una sola** y cubre los tres pasos; que lo que
+desapareció es la **pantalla intermedia**, no el dry-run; que **el cálculo
+previo se sigue ejecutando, en la misma llamada que escribe**, dentro de
+`paso_grafico.py` y `paso_cierre.py`; y dónde está el test que lo vigila
+(`test_f025_sin_dry_run_previo.py`) y dónde está el precio aceptado (§0 de
+`requirements.md` de F-025).
+
+**Punto 6 de «Semántica de dominio».** El encabezado no se toca —«Cerrar en
+Sigrid es escritura en producción. Siempre dry-run primero…»— y se le añaden
+dos viñetas: que la confirmación explícita es **una sola** para todo el
+circuito y que **una sola no es ninguna** (sin ella no se escribe nada, y sigue
+caducando por R12–R15 de F-009); y que el «siempre dry-run primero» sigue
+entero, ocurre **en la misma llamada**, y que **no se le enseñe a nadie no
+autoriza a quitarlo** de los dos pasos del pipeline.
+
+Esa última frase es el objeto entero de la tarea. El malentendido peligroso de
+F-025 no es «se quitó una confirmación»: es «se quitó el dry-run».
+
+**Supresiones del fichero**: **una** línea, `   con más puertas:`, que se
+reescribe como `con más puertas.` + el párrafo nuevo + `Las puertas del paso:`.
+No se ha perdido ni una palabra de contenido, y el control negativo
+`test_f025_r47_arquitectura_no_ha_borrado_la_exigencia_de_dry_run` lo fija:
+siguen ahí «Siempre dry-run primero» y «dry-run contra `sigrid-api`».
+
+---
+
+## 26 · T18 · `azure-apps/postventa_incidencias.md` no se toca, y este es el repaso
+
+R48 dice que el documento del ecosistema **no debe** tocarse por esta feature.
+El repaso, hecho el 2026-09-11 contra `azure-apps/postventa_incidencias.md`
+(HEAD `02025db`), punto por punto:
+
+| Qué describe el documento | Estado tras F-025 |
+|---|---|
+| **Endpoints** (§8, la tabla de los once) | **Iguales.** F-025 no añade ninguna ruta ni ningún código HTTP. Las fichas de `POST /api/adjuntar` y `POST /api/cerrar` siguen siendo ciertas palabra por palabra, incluido su «por omisión es un dry-run que solo lee» |
+| **Cuerpos de las peticiones** | **Iguales.** `cuerpoDeArchivo`, `cuerpoDeGrafico` y `cuerpoDeCierre` de `js/pipeline.js` **no cambian ni una clave**: el diff de `pipeline.js` contra `e250775` tiene **una sola** línea suprimida, y es una reescritura de `estaAdjuntado`. Lo que cambia es **quién los llama y cuántas veces**, que es interno (R45) |
+| **Variables de entorno** (§4) | **Iguales.** Ninguna nueva, ninguna retirada, ninguna con otro significado. `CIERRE_HABILITADO` sigue cubriendo las dos escrituras |
+| **Tablas** (§2 y §3 bis) | **Iguales.** F-025 no toca el DDL, ni `postventa.graficos`, ni `dbo.log`, ni `con.est` |
+| **Puerta 1 · el entorno** | Intacta. No se ha tocado `services/postventa-api/` fuera de tests |
+| **Puerta 2 · `CIERRE_HABILITADO`** | Intacta, con su doble comprobación en fábrica y constructor |
+| **Puerta 3 · el dry-run** | **Sigue siendo cierta**, y es la que había que mirar con lupa: «`POST /api/cerrar` lee y no escribe salvo que se le pida `commit` explícitamente». F-025 no cambia el valor por omisión del endpoint; cambia que el front pida `commit` desde la primera llamada en vez de hacer dos viajes |
+| **Puerta 4 · la confirmación** | **Sigue siendo cierta**: «con `commit` hace falta además la confirmación del usuario o su preferencia de auto-cierre guardada». El documento nunca dijo «una confirmación por escritura», así que la confirmación única no lo deja mintiendo |
+| **Puerta 5 · la guardia de red de la suite** | Intacta |
+
+**Comprobación material**: el diff completo de la rama contra `e250775` no
+incluye **ningún** fichero de `services/postventa-api/` que no sea un test.
+
+```
+$ cd C:\Users\pgris\PycharmProjects\azure-apps && git status --porcelain
+(sin salida)
+```
+
+El repositorio `azure-apps` queda **limpio**, como exige T18.
+
+**Lo que sigue pendiente allí es deuda de F-012** —su T32, paso 8—, **no de
+F-025**, y esta tanda no la ha tocado: corregirla aquí sería colarse en el
+alcance de otra feature y dejar su cierre sin la constancia que le toca.
+
+---
+
+## 27 · Lo que esta tanda NO ha hecho, y por dónde sigue
+
+| Bloque | Tareas | Qué falta |
+|---|---|---|
+| **5 · Contra el ERP** | T19–T23 | `MANUAL (humano)`. Escribe en el histórico de una **obra en uso**. Sigue entero, y **empieza por escribir `progress/guion_bloque5_F-025.md`** (T19), que todavía no existe |
+| **6 · Cierre** | T24, T25 | Campaña de mutación e `init.sh` final. Los lleva el líder |
+
+Sigue en pie, sin tocar, todo lo de §8 y §17 de este informe: T20 tiene que
+anotar **el tamaño en bytes del parte** (P4, el número que F-012 se dejó sin
+medir), comprobar que en el registro hay **exactamente tres** peticiones por
+parte y **ninguna sin `commit`**, y T22 tiene que probar que **el reintento no
+duplica**, que es la comprobación que F-012 no llegó a hacer.
+
+---
+
+## 28 · Evidencias de la tanda 3
+
+Sustituyen a las de §18, que eran del estado anterior.
+
+| Evidencia | Valor medido |
+|---|---|
+| **Tests ejecutados** | **2.391 en verde** + 13 skipped: 62 (raíz) + 2.144 (api, 13 skipped) + 185 (front, con el puente a `node --test`). De ellos, **23 nuevos en esta tanda**: 21 en `test_f025_documentacion.py` y 2 en `test_f009_front.py` |
+| **Solo los tests de F-025** | 27 (backend, tanda 1) + 37 (`node --test tests_js/circuito.test.js`, tanda 1) + 57 (front, tanda 2) + **21** (documentación, esta tanda) = **142** |
+| **Cobertura de las líneas cambiadas** | **99,0 %** — 1.068 de 1.079 líneas, umbral 80 %, nivel `critico`. Línea `PUERTA COBERTURA` de `bash harness/init.sh` |
+| **Tiempo de ejecución de la suite** | api **74,26 s** (ejecución real, sin caché), front **6,48 s**, raíz **7,01 s** |
+| **Supresiones en los dos ficheros de requisitos** | **0** de 98 líneas escritas (`git diff --numstat`) |
+| **Supresiones en `docs/ARCHITECTURE.md`** | **1** de 28, y es un reflujo de párrafo sin pérdida de contenido |
+| **Mutantes generados y supervivientes** | **No ejecutada**, y no por olvido: la campaña es **T24, del bloque 6**, y el encargo manda parar al terminar el 4. El aviso de las tandas 1 y 2 sigue en pie y esta tanda lo refuerza: todo lo que F-025 añade en Python son **ficheros de tests**, que la herramienta no muta, y el grueso del cambio es **JavaScript y Markdown**, que tampoco. Lo más probable es que T24 salga **vacío** y haya que declararlo **N/A con el motivo impreso**, nunca a secas (C4 bis) |
+
+### Lo que estas evidencias demuestran, y lo que no
+
+**Sí demuestran**:
+
+- Que **ningún requisito derogado se ha borrado**: 98 líneas escritas, cero
+  suprimidas, medido con `git diff --numstat`, que es la verificación literal
+  de T14 y T15.
+- Que los cinco recuadros y la nota **dicen las cuatro cosas** que el patrón
+  exige —fecha, premisa literal, qué la invalidó y quién lo decidió— y que lo
+  seguirán diciendo: 21 tests caen si alguien los resume, los mueve de sitio o
+  les quita la cita.
+- Que `ARCHITECTURE.md` **no ha perdido** la exigencia de dry-run al ganar la
+  precisión de la confirmación única: es un control negativo, no una lectura.
+- Que las retiradas de la tanda 2 **no dejaron ningún test sin sustituto**:
+  cotejo nombre a nombre contra `e250775`, en §24.2.
+
+**No demuestran**:
+
+- **Que la decisión sea buena.** Un recuadro no es una salvaguarda: deja
+  constancia para que dentro de seis meses se pueda juzgar con la premisa
+  original delante. Lo que se pierde sigue escrito en §0 de `requirements.md`.
+- **Que la pantalla funcione en un navegador.** Sigue sin ejecutarse en
+  ninguna suite (§18). Nada de esta tanda lo cambia.
+- **Que el circuito real sea seguro contra el ERP**: bloque 5, sin empezar.
+
+---
+
+## 29 · Riesgos abiertos al cerrar esta tanda
+
+Siguen los cuatro de §19, sin cambios, y se les añade uno que es de esta tanda:
+
+5. **La constancia de T18 es un repaso, no un test.** Que
+   `azure-apps/postventa_incidencias.md` siga siendo cierto después de F-025
+   está comprobado a mano, punto por punto, en §26 — pero **nada lo vigila**:
+   ese documento vive en otro repositorio y ninguna suite lo lee. Si una
+   feature futura cambia un cuerpo o una variable, el documento se quedará
+   desactualizado sin que nada se ponga rojo. Es deuda vieja del ecosistema, no
+   de F-025, y lo que la compensa es la regla de `CLAUDE.md`: el dueño del
+   documento es el proyecto que describe, y se actualiza **en el mismo
+   trabajo**, no después.

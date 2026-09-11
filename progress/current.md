@@ -1,7 +1,85 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-09-11 · **F-025: hechos los bloques 2 y 3; la pantalla YA pide UNA sola confirmacion**
+> ## Estado al 2026-09-11 · **F-025: hecho el bloque 4; los requisitos derogados ya llevan su constancia fechada**
+>
+> Entrega **parcial y pedida asi**: el encargo acotaba el trabajo al **bloque
+> 4** de `specs/F-025-confirmacion-unica/tasks.md` (T14-T18) y mandaba parar
+> ahi. **Los bloques 5 y 6 no se han empezado.** Informe completo, con la fase
+> RED y las evidencias: **`progress/impl_F-025.md`**, de la §20 en adelante.
+>
+> ### Lo que hay hecho
+>
+> - **T14** - `specs/F-012-grafico-sigrid/requirements.md`: los **cinco**
+>   recuadros de enmienda, uno bajo cada requisito (R63 **DEROGADO**, R22, R21,
+>   R49, R50). Cada uno con fecha `2026-09-11`, la premisa original **citada
+>   literal**, que la invalido y **quien lo decidio, con sus palabras**:
+>   *«quiero que al darle a archivar los partes aptos me pida confirmacion como
+>   ahora, y al confirmar ya haga el proceso de cierre»* y, ante la objecion de
+>   que esa pantalla protege de cerrar la incidencia equivocada, *«no hace
+>   falta ensenar nada»*. **+77 lineas, CERO suprimidas.**
+> - **T15** - `specs/F-009-cierre-sigrid/requirements.md`: la nota bajo
+>   R8/R10. Siguen vigentes y **se cumplen mejor**; R12-R15 igual; hay **UNA
+>   sola** confirmacion, **no ninguna**; y R21 **no se vuelve a derogar**, que
+>   ya lo estaba desde el 2026-09-06. **+21 lineas, CERO suprimidas.**
+> - **T16** - el repaso formal de las retiradas en `test_f009_front.py` y
+>   `test_f012_front.py`: cotejo nombre a nombre contra `e250775`. **Ningun
+>   test desaparecido sin sustituto**; las bajas netas son fusiones. Tapado un
+>   hueco: el control negativo de R9 vigilaba cinco de los siete campos de la
+>   tarjeta retirada.
+> - **T17** - `docs/ARCHITECTURE.md`, paso 7b y punto 6 de «Semantica de
+>   dominio»: la confirmacion es **una sola** y el calculo previo ocurre **en
+>   la misma llamada** que escribe.
+> - **T18** - la constancia de que `azure-apps/postventa_incidencias.md` **no
+>   se toca**, con el repaso hecho punto por punto (endpoints, cuerpos,
+>   variables, tablas y las cinco puertas) en la §26 del informe. Ese
+>   repositorio queda **limpio**.
+> - **`services/postventa-api/tests/test_f025_documentacion.py`** nuevo:
+>   **21 tests** que vigilan los recuadros, la nota y las dos precisiones de
+>   arquitectura. Fase RED con **17 rojos de 21**, pegada en la §23 del
+>   informe.
+>
+> ### Lo que cambia para quien lo lea dentro de seis meses
+>
+> Antes, quien abriera R63 de F-012 leia que el front tiene que ensenar dos
+> dry-run antes de confirmar, y «arreglaria» el front para cumplir un requisito
+> que ya no rige. Ahora lee el requisito **entero, sin una palabra borrada**, y
+> debajo por que cayo y quien lo decidio. **Ningun fichero de produccion se ha
+> tocado en esta tanda**: lo unico que cambia en codigo son dos aserciones de
+> test.
+>
+> ### Tres avisos que siguen en pie
+>
+> 1. **La pantalla no se ejecuta en ninguna suite.** Sigue igual que tras el
+>    bloque 3: son aserciones sobre el TEXTO de `index.html` y `app.js`. Nadie
+>    ha abierto la pantalla. Es lo primero del bloque 5.
+> 2. **`AVISO_CADUCADA_CIERRE` de `js/confirmacion.js` se queda sin llamante**
+>    en produccion, y **no se retira a proposito**: `design.md` §9.3 deja ese
+>    fichero fuera del alcance. Deuda menor declarada, con su motivo, en la
+>    §24.5 del informe.
+> 3. **La constancia de T18 es un repaso, no un test**: `azure-apps/` vive en
+>    otro repositorio y ninguna suite lo lee. Si una feature futura cambia un
+>    cuerpo o una variable, ese documento se quedara desactualizado sin que
+>    nada se ponga rojo.
+>
+> ### Por donde sigue
+>
+> **Bloque 5 (T19-T23)**, `MANUAL (humano)`: escribe en el historico de una
+> **obra en uso**. Empieza por **T19**, el guion
+> `progress/guion_bloque5_F-025.md`, que todavia **no existe**. Reglas que no
+> se negocian y que vienen de F-012: autorizacion expresa del responsable para
+> la incidencia concreta, `CIERRE_HABILITADO` abierto **solo** durante la
+> prueba y releido al cerrarlo, y **ninguna escritura desde un puesto de
+> trabajo**. Despues, el **bloque 6** (mutacion y cierre), que lleva el lider.
+>
+> ### Estado del entorno
+>
+> `bash harness/init.sh` en **verde**: 62 + 2.144 (13 skipped) + 185 tests,
+> cobertura de lineas cambiadas **99,0 %** (umbral 80, nivel critico). **Ocho**
+> commits locales en `feature/F-025-confirmacion-unica`, sin `push`.
+> `features.json` **sin tocar**.
+
+> ## Estado al 2026-09-11 (tanda 2) · **F-025: hechos los bloques 2 y 3; la pantalla YA pide UNA sola confirmacion** _(superado por el bloque de arriba)_
 >
 > Entrega **parcial y pedida asi**: el encargo acotaba el trabajo a los
 > **bloques 2 y 3** de `specs/F-025-confirmacion-unica/tasks.md` (T7-T13) y

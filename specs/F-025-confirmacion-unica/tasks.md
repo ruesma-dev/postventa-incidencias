@@ -161,7 +161,7 @@
       documentación comprueba que el texto dice «una sola confirmación» y «en
       la misma llamada»; y que **no** se ha borrado la exigencia de dry-run.
 
-- [ ] **T18**: Dejar constancia de que `azure-apps/postventa_incidencias.md`
+- [x] **T18**: Dejar constancia de que `azure-apps/postventa_incidencias.md`
       **no se toca**, y por qué (R48). | Verificación: el informe del
       implementer lo dice con el repaso hecho (endpoints, cuerpos, variables,
       tablas y las cinco puertas), y `git status` de ese repositorio queda

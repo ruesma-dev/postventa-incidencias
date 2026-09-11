@@ -16,8 +16,8 @@
 > parar al terminar el 4. El 5 es `MANUAL (humano)` contra el ERP; el 6 —la
 > campaña de mutación y el cierre— lo lleva el líder.
 >
-> Rama: `feature/F-025-confirmacion-unica`. **Ocho** commits locales, sin
-> `push`. Estado de la feature en `harness/features.json`: **sin tocar**.
+> Rama: `feature/F-025-confirmacion-unica`. **13** commits locales desde el
+> cierre de F-012 (`e250775`), **cinco** de esta tanda, sin `push`. Estado de la feature en `harness/features.json`: **sin tocar**.
 >
 > `bash harness/init.sh` al terminar: **verde**.
 >

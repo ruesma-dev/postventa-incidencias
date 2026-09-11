@@ -75,8 +75,9 @@
 > ### Estado del entorno
 >
 > `bash harness/init.sh` en **verde**: 62 + 2.144 (13 skipped) + 185 tests,
-> cobertura de lineas cambiadas **99,0 %** (umbral 80, nivel critico). **Ocho**
-> commits locales en `feature/F-025-confirmacion-unica`, sin `push`.
+> cobertura de lineas cambiadas **99,0 %** (umbral 80, nivel critico). **13**
+> commits locales en `feature/F-025-confirmacion-unica` desde el cierre de F-012
+> (`e250775`), **cinco** de esta tanda, sin `push`.
 > `features.json` **sin tocar**.
 
 > ## Estado al 2026-09-11 (tanda 2) · **F-025: hechos los bloques 2 y 3; la pantalla YA pide UNA sola confirmacion** _(superado por el bloque de arriba)_

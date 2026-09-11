@@ -950,3 +950,118 @@ corregirlo antes de recorrerlo. Contradecía a F-012 en tres puntos, y ahora no:
 | Mutantes generados y supervivientes | **No se relanza.** Este encargo solo escribe Markdown en `progress/`; `harness/alcance.py` mide `.py`, y el alcance de F-012 no se movió. Los números válidos siguen siendo los de `progress/mutacion_F-012.md` |
 | Tiempo de ejecución de la suite | **4,69 s** los 62 del arnés |
 | Fase RED | **No aplica**: no hay código nuevo. Son dos documentos de `progress/` |
+
+
+---
+
+## 13 · Acta del bloque 9 (2026-09-11) · **se ejecutó contra el ERP, y funcionó**
+
+> Esta sección se escribe **después** del review APROBADO y no lo revisa: es el
+> acta de la verificación manual que faltaba, levantada a partir de lo que
+> ejecutó el **responsable del proyecto** y de lo medido en los registros de la
+> aplicación. El detalle casilla a casilla está en
+> `progress/guion_bloque9_F-012.md` §9 y en sus casillas de resultado.
+
+### 13.1 · Qué se ejecutó
+
+El responsable recorrió el **circuito completo** contra el ERP de producción
+sobre la incidencia **`RS26.09/0150`** de la obra **`0626`** —obra **en uso**,
+con la autorización expresa de P6—. Un parte subido por la web quedó
+**archivado**, **adjunto a su reclamación** y la **reclamación cerrada**. Sus
+palabras: ***«ha funcionado perfectamente»*** y ***«cerró una y lo hizo bien»***.
+
+Eso cubre las dos *acceptance* que ningún test puede dar por buenas:
+
+| *Acceptance* | Estado |
+|---|---|
+| **1** · el parte se ve en la ficha de la reclamación en Sigrid | **verificada** por el responsable, en la ficha |
+| **2** · la reclamación se cierra **con su parte dentro** | **verificada**: es el **primer cierre real** de este servicio, y fue con el gráfico ya adjunto |
+| **3** · idempotencia de extremo a extremo | **NO verificada** (T28, ver §13.4) |
+
+### 13.2 · Las mediciones, que es lo que este informe tenía pendiente
+
+Medidas con `az monitor app-insights query` sobre **`appi-postventa-dev`**.
+**Las cinco respuestas fueron `200`**:
+
+| Hora (UTC) | Ruta | Código | Duración | Qué es |
+|---|---|---|---|---|
+| `08:27:15` | `archivar` | 200 | 1.756 ms | archivo en SharePoint |
+| `08:27:29` | `adjuntar` | 200 | **13.134 ms** | comprobación previa del gráfico |
+| `08:27:42` | `cerrar` | 200 | 4.424 ms | comprobación previa del cierre |
+| `08:28:03` | `adjuntar` | 200 | **8.471 ms** | **escritura del gráfico** |
+| `08:28:12` | `cerrar` | 200 | 472 ms | **el cierre real** |
+
+**R37, medido**: la llamada más lenta de todo el circuito es
+**`adjuntar` con 13,1 s**, frente al tope de **35 s** de `SIGRID_TIMEOUT_S`.
+Quedan **21,9 s** de margen —el **37,5 %** del tope consumido—, pero la
+distancia con el resto es enorme: **28 veces** el cierre y **7,5 veces** el
+archivo. Es el número que decide si el tope aguanta el parte real, y conviene
+repetirlo con el parte más pesado que maneje Posventa: pasarse de 35 s no da un
+error claro, da un `502` con el ERP en **estado desconocido** (§8 de este
+informe y §0.4 del guion).
+
+**Lo que NO se midió**, y hacía falta: el **tamaño en bytes** del parte usado.
+Sin él, los 13,1 s no se pueden extrapolar a un parte mayor, ni contrastar con
+`GRAFICO_MAX_BYTES` (10 MB) ni con el tope de la pasarela.
+
+### 13.3 · El fallo de procedimiento: el front desplegado no llevaba F-012
+
+El circuito **se paró después de archivar**, sin llamar a `adjuntar` ni a
+`cerrar` y **sin error visible**. Diagnóstico: los registros no tenían **ni una**
+llamada a esas dos rutas —así que el backend no era el problema— y el
+**JavaScript servido**, descargado, **no contenía el paso de adjuntar**. Se
+resolvió con `infra/desplegar_front.ps1 -SoloFront`.
+
+**No es un defecto del servicio: es del procedimiento.** El guion daba por hecho
+que basta con desplegar el backend, y **no basta**: el código de F-012 vive en
+las dos partes. Queda como hallazgo **H11** del guion, con el **Paso 0 (2) y la
+P2 corregidos** para desplegar las dos y comprobar el JS servido. La lección
+general, que vale para cualquier feature de este repositorio con front y
+backend: **un front al que le falta un paso no falla, no hace nada**, y «no hace
+nada» es el síntoma más caro de diagnosticar.
+
+### 13.4 · Lo que **no** se verificó, y sigue sin verificarse
+
+Se ejecutó el **camino feliz y poco más**. De las ocho tareas del bloque quedan
+marcadas **T25, T27 y T32** —y aun esas, con pasos sin recorrer— y **sin marcar
+cinco**:
+
+| Tarea | Qué queda sin probar contra el ERP |
+|---|---|
+| **T26** | que el `commit` del cierre **rechaza** un parte no adjuntado (**R2**, la razón de ser de la feature). Su dry-run sí se ejecutó |
+| **T28** | que repetir **no cuelga un segundo documento** (R25, R26). Ninguna llamada se repitió |
+| **T29** | el estado **«adjuntado pero no cerrado»** y el botón que saca de él (R3, R65): adjuntar y cerrar fueron seguidos, con 9 s entre medias |
+| **T30** | que un reintento sobre lo **ya cerrado** no escribe ni pisa las trazas terminales (R16, R30) |
+| **T31** | que un **rechazo de la pasarela** deja el ERP intacto y traza de `error` (R33, R59) |
+
+Y, transversal a todas: **no se ejecutó ni uno de los scripts de lectura de
+`infra/`**. Por tanto **no** está comprobado el `filas_afectadas: 3` de R27, **ni**
+que el binario dentro del ERP coincida byte a byte con el enviado, **ni** que
+`dbo.log` no haya crecido por el gráfico (R36), **ni** el huso de la fila de
+auditoría del cierre, **ni** ninguna de las dos trazas locales. Todo eso es
+**solo lectura** y sigue disponible: la incidencia, el gráfico y la fila están en
+el ERP.
+
+### 13.5 · La decisión, con su fecha
+
+**El 2026-09-11 el responsable del proyecto decidió cerrar F-012** con los cinco
+escenarios anteriores sin ejecutar: la feature se da por buena **con el camino
+principal verificado en producción**. Queda escrito para que las casillas vacías
+del guion se lean como lo que son —una decisión— y no como un olvido.
+
+**Pendiente, y no depende de esa decisión**: actualizar
+`azure-apps/postventa_incidencias.md` (ya no es verdad que «no se ha ejecutado
+ni un cierre real»), el paso 3 de T32 (comprobar en el borde el `503` con la
+ventana cerrada) y `progress/guion_bloque8_F-009.md`, que sigue nombrando la
+obra genérica.
+
+### 13.6 · Evidencias de este encargo
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh` **en verde**: **62** del arnés, más los de `api` y `front` por servicio (de caché: no se tocó ni un `.py`) |
+| Cobertura de las líneas cambiadas | **99,0 % de 1.079** (1.068/1.079, umbral 80 %, nivel `critico`) — sin cambios: este encargo solo escribe Markdown |
+| Mutantes generados y supervivientes | **No se relanza la campaña.** `harness/alcance.py` mide `.py` y el alcance de F-012 no se movió; los números válidos siguen siendo los de `progress/mutacion_F-012.md` |
+| Tiempo de ejecución de la suite | **14,97 s** los 62 del arnés |
+| Fase RED | **No aplica**: no hay código nuevo. Es documentación de `progress/` y `specs/` |
+| **Medición de campo (nueva)** | **5 llamadas al entorno desplegado, 5 × `200`**; `adjuntar` en **13.134 ms** (dry-run) y **8.471 ms** (commit), `cerrar` en **4.424 ms** y **472 ms**, `archivar` en **1.756 ms**. Fuente: `appi-postventa-dev`, 2026-09-11 |

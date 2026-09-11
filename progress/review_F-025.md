@@ -642,3 +642,499 @@ casilla y commitear el informe) y T25 (`init.sh` en verde, que ya lo está).
    producción**. La prueba de control ya está descrita; lo que falta es la
    frase que obliga a **declarar en el informe qué sustituye a la mutación**.
    Sin ella, un N/A correcto se convierte en un hueco silencioso.
+
+---
+---
+
+# Segunda pasada · 2026-09-11
+
+**Veredicto de esta pasada: RECHAZADO** (CHANGES_REQUESTED)
+
+> **Léase esto antes que nada, porque el titular no es el veredicto.** El
+> reparo serio —el 1, el de R37— **está resuelto de verdad**, y no me lo he
+> creído del informe: he vuelto a montar la copia aislada y he mutado
+> `numeroDeIncidenciaDe` de cuatro maneras distintas. **Las cuatro mueren
+> ahora**, y antes de esta tanda la primera de ellas sobrevivía. El reparo 2,
+> el de trazabilidad, también está cerrado, y lo he comprobado barriendo los
+> 48 requisitos de la spec uno a uno, no leyendo la tabla.
+>
+> Lo que rechaza es **el reparo 3, que está resuelto a medias**: se retiró el
+> comentario derogado que cité por número de línea, y **su gemelo literal
+> sigue vivo 26 líneas más arriba, en el mismo fichero**, diciendo exactamente
+> lo mismo que R40 deroga. Mi reparo era sobre la afirmación, no sobre la
+> línea. Y, al ir a comprobarlo, aparece lo segundo: **esta tanda no ha dejado
+> rastro en `progress/impl_F-025.md`**. No hay sección de la tanda, no hay
+> fase RED del control negativo nuevo —que es el entregable central de la
+> corrección— y las «Evidencias» siguen siendo las de la tanda 3, con números
+> que los cuatro commits han dejado desfasados.
+>
+> Es **una frase de comentario y una sección de informe**. El trabajo técnico
+> está hecho y verificado.
+
+Alcance acotado, como pedía el encargo: solo los tres reparos, que no se haya
+roto nada al corregirlos, y las puertas del arnés. Lo aprobado en la primera
+pasada sigue aprobado. Commits revisados: `fe2f7d3`, `2e4e14a`, `90ee2a9`,
+`1d1e3c6` y el de rastro `e276f0e`.
+
+---
+
+## S1 · Reparo 1 · R37 — **RESUELTO, verificado con la prueba que lo destapó**
+
+Es el que importaba: R37 es, por escrito, la única compensación del riesgo que
+§0 de la spec acepta a propósito. Lo he verificado **rehaciendo la campaña
+manual**, no leyendo el diff.
+
+Copia aislada en el scratchpad (`js/` y `tests_js/` enteros, fuera del árbol
+real). Línea base: **231 tests, 231 pass, 0 fail**.
+
+| # | Mutación sobre `js/pipeline.js` | Antes (1ª pasada) | **Ahora** |
+|---|---|---|---|
+| M14a | `numeroDeIncidenciaDe` rellena el hueco con un número fijo: `: (actual \|\| "XX00.00/0000")` | **SUPERVIVIENTE** | **MUERTO** — 1 fail |
+| M14b | el paso 3 pasa como respaldo el número **leído del papel** (`parte.extraccion.campos.numero_incidencia.valor`) | no probada | **MUERTO** — 1 fail |
+| M14c | condición invertida: `numero ? actual : String(numero)` | — | **MUERTO** — 4 fails |
+| M14d | la función ignora al ERP: `return actual;` | — | **MUERTO** — 3 fails |
+
+El test que mata M14a y M14b es el que faltaba, y solo él:
+
+`services/postventa-front/tests_js/circuito.test.js` ·
+`test("R37 · con los tres pasos en verde y sin número en la respuesta, no se inventa ninguno")`
+
+Es el único guion del fichero que ejecuta `numeroDeIncidenciaDe` **con la
+clave ausente y el circuito entero en verde** (`apiDoble({adjuntar: {estado:
+"adjuntado"}, cerrar: {estado: "cerrado"}})`), que era exactamente el hueco.
+Afirma tres cosas y las tres hacen falta: que los tres pasos se ejecutaron,
+que `numeroIncidencia === ""`, y —esto es lo que mata M14b— que el número del
+papel **no se ha colado**, ni como valor ni por la puerta de atrás del
+`mensaje` del resumen.
+
+Dos aciertos más de esta corrección, que no pedí y suman:
+
+- El viejo test de la línea 463 **no se ha borrado**: se ha renombrado a
+  «un parte que no llega al ERP se queda sin número» y lleva escrito en el
+  cuerpo que ahí la función **no se ejecuta**. Se le añadió
+  `assert.equal(resultado.estado, "error_archivo")`, que es lo que de verdad
+  prueba. Un test mal nombrado convertido en un test honesto, en vez de
+  suprimido.
+- El tercer guion nuevo («si solo lo devuelve el cierre, ese es el que se
+  enseña») no es relleno: es el único que mata M14d por sí solo.
+
+**Casilla cerrada.** Con esto, el módulo que concentra las decisiones de las
+tres escrituras queda en **14 de 14** de mi campaña manual.
+
+## S2 · Reparo 2 · trazabilidad — **RESUELTO, barrido independiente**
+
+No me he fiado de la tabla. He extraído los **48 requisitos** de
+`requirements.md` y he cruzado cada uno contra el corpus entero de tests de
+F-025 (`test_f025_*.py` y `tests_js/*.test.js`), buscando su test nominal o su
+entrada en la tabla de exenciones.
+
+**Resultado: ningún requisito queda fuera.** Los únicos tres sin test nominal
+—R44, R45 y R48— están ahora en la tabla, y con evidencia concreta, que era la
+condición del encargo. (R49, R50, R51, R53, R54, R63, R65–R67 aparecen en el
+texto de la spec pero son requisitos **de F-012 y de F-009** citados, no de
+F-025: no cuentan.)
+
+Los cuatro que recibieron test nominal:
+
+| Requisito | Test nuevo | ¿Prueba lo que dice? |
+|---|---|---|
+| **R3** | `f025 R3` en `tests_js/confirmacion.test.js` + `test_f025_r3_sin_confirmacion_que_dispare_no_arranca_ninguna_escritura` | Sí. El de JS ejecuta `Confirmacion.resolver` de verdad en los **tres** estados que no disparan (sin armar, caducada, consumida). El de Python fija el **orden** dentro de `confirmarArchivo`: la salida por `return` antes de `pendientes()`, de `conGuardaDeTanda(` y de `_lanzarTanda(` |
+| **R15** | `f025 R15` en `confirmacion.test.js` + `test_f025_r15_la_confirmacion_se_consume_antes_de_lanzar_la_tanda` | Sí, y con el matiz correcto: el segundo clic llega **dentro** de la ventana —lo afirma— así que no lo salva la caducidad; lo para el consumo del armado |
+| **R23** | dos tests en `circuito.test.js` | Sí: cuentan que `adjuntar` se llamó **una** vez tras fallar, y que un cierre fallido por entorno tampoco se repite |
+| **R28** | `R28 · relanzar la tanda sobre un parte a medias…` | Sí, y es el mejor de los cuatro: corre la tanda entera, la deja a medias con el cierre caído, **relanza** con el parte tal y como lo deja `app.js`, y afirma que el paso que produce el gráfico —y con él la fila de `dbo.log`— **no se vuelve a pedir** |
+
+Las tres exenciones, comprobadas por mí y no leídas:
+
+- **R45** — «los compositores intactos en el diff». **Cierto.** El diff de
+  `js/pipeline.js` contra `941a673` tiene cuatro hunks y **ninguno cae dentro
+  de `cuerpoDeArchivo`, `cuerpoDeGrafico` ni `cuerpoDeCierre`**. El único
+  cambio en esa zona es `estaAdjuntado`, que pasa de `"adjuntado"` literal a
+  la constante `ESTADO_ADJUNTADO`, definida en la línea 69 como `"adjuntado"`:
+  refactor de valor idéntico.
+- **R48** — `git -C azure-apps status` **limpio**, ejecutado por mí ahora
+  (`02025db` como último commit, ajeno a este trabajo). Solo lectura.
+- **R44** — los dos tests que cita existen y pasan; la suite de F-007 sigue
+  entera.
+
+**Casilla C4 cerrada.**
+
+## S3 · Reparo 3 · el comentario derogado — **RESUELTO A MEDIAS**
+
+Lo que pedí está hecho, y bien: `js/api.js`, en el docstring de `cerrar`, ya
+no dice «hay que enseñarlo **antes** de que nadie confirme». Lo que hay en su
+sitio es mejor que lo que pedí —dice que la comprobación **no** desapareció,
+solo la pantalla, y avisa a quien lea dentro de seis meses de que reponerla es
+deshacer una decisión fechada—.
+
+**Pero el encargo pedía además comprobar que no quedan otros iguales en el
+front, y queda uno.** Es literal, es el mismo fichero y está **26 líneas más
+arriba**, en el docstring de `adjuntar`:
+
+```
+services/postventa-front/js/api.js:417-419
+
+ * **Por omisión no escribe nada**: sin `commit` el backend responde el
+ * dry-run —nombre, clase, tamaño, `sha256` y los avisos de la pasarela—,
+ * y eso hay que enseñarlo antes de que nadie confirme.
+```
+
+Tres razones por las que no lo dejo pasar:
+
+1. **Es la misma afirmación, no una parecida.** Mi reparo era sobre lo que el
+   comentario **afirma** —que el dry-run hay que enseñarlo antes de
+   confirmar—, no sobre la línea 445. Corregir la línea citada y dejar viva la
+   frase gemela deja el reparo sin resolver en lo que lo motivaba.
+2. **Este es, si acaso, el peor de los dos.** El de `cerrar` hablaba del
+   bloque `grafico` dentro de la respuesta del cierre. Este está en
+   `adjuntar`, que es **el endpoint cuya pantalla previa se ha retirado**
+   (R40 deroga R21 y R49 de F-012). Es el sitio exacto donde alguien iría a
+   «arreglarlo».
+3. **El fichero ha quedado contradiciéndose a sí mismo.** En la línea 419 dice
+   que hay que enseñarlo; en la 447, que ya no se le enseña a nadie. Quien lea
+   solo la primera —que es la que está en el endpoint del gráfico— concluirá
+   que falta una pantalla.
+
+Procede: `git blame` confirma que viene de `cf5f028c` (F-012, 2026-09-06) y
+que F-025 no lo ha tocado. Igual que el de la 445, que también era anterior.
+
+**Lo que sí he comprobado y está limpio**: el resto del front no tiene ningún
+otro caso. `js/app.js:93` e `index.html:250-255` hablan del cálculo previo en
+**pasado** y con su constancia de derogación —«aquí vivían `dryRunCierre` y
+`dryRunGrafico`», «el responsable decidió… y respondió *no hace falta enseñar
+nada*»—, que es justo como tiene que estar escrito. Barrido hecho sobre `js/`
+e `index.html` con los patrones `enseñ`, `antes de confirmar`, `antes de que
+nadie`, `pantalla previa` y `Ver qué pasaría`: **un solo acierto**, el de
+arriba.
+
+## S4 · Hallazgo nuevo de esta pasada · la tanda no ha dejado rastro
+
+No estaba en el encargo, pero aparece al comprobar el reparo 3 y toca una
+casilla que ya estaba vacía en la primera pasada, así que no lo puedo callar.
+
+El encargo dice que el informe de esta tanda está al final de
+`progress/impl_F-025.md`. **No está.** El fichero termina en **§29** y lo único
+que los cinco commits le han cambiado es **una línea** (la fila de mutación de
+las Evidencias, `e276f0e`). Consecuencias concretas:
+
+1. **No hay fase RED del control negativo de R37**, que es el entregable
+   central de esta corrección. C4 bis es explícito para este caso: cuando el
+   entregable **es el propio test**, la fase RED se demuestra rompiendo en una
+   copia aislada lo que el test vigila y **pegando la traza**. Esa traza no
+   existe en ningún informe. *La sustancia está probada* —la he producido yo
+   en §S1, y es más fuerte que la que se pedía—, pero el arnés pide que la
+   traiga el implementer y este es justo el requisito donde no conviene
+   relajarlo.
+2. **Las «Evidencias» vigentes son las de la tanda 3** y sus números ya no son
+   los de lo entregado. Medidos por mí ahora: **front 188** tests (decía 185),
+   **`node --test` 231** (decía 224), **api 2.144** (13 skipped), **raíz 62**.
+   El total de la tabla, 2.391, es del estado anterior a los cuatro commits.
+3. **Referencia colgada**: la fila corregida remite a «**§30.3**, las
+   mutaciones a mano sobre `js/pipeline.js`». No hay §30 en el fichero, y esas
+   mutaciones son de **§2.4 de esta review**, no del informe del implementer.
+
+Nada de esto pone en riesgo el ERP. Es el papeleo que C4 bis pide por su
+nombre, y es lo mismo que dejó vacía esa casilla la primera vez.
+
+## S5 · Que corregir no ha roto nada — **COMPROBADO**
+
+| Comprobación | Resultado |
+|---|---|
+| `bash harness/init.sh` | **exit 0**, `ENTORNO LISTO` |
+| **Cobertura** | `PUERTA COBERTURA: 99,0 % de 1.079 líneas cambiadas (1.068/1.079, umbral 80 %, nivel critico)` — **[OK]**, sigue muy por encima |
+| Suite del front, sin caché (`pytest tests -q`) | **188 passed** en 2,88 s (eran 185: +3) |
+| Suite JS del árbol real (`node --test "tests_js/*.test.js"`) | **231 pass, 0 fail** (eran 224: +7) |
+| `git status` | **limpio**, antes y después de mi campaña en el scratchpad |
+| `progress/mutacion_F-025.md` | **trackeado** (`git ls-files` lo confirma): el punto 5 de §7 está hecho |
+| Fila «Mutantes generados y supervivientes» de §28 | **corregida**: ya dice «Ejecutada» con los totales y `--workers 1`. El punto 3 de §7 está hecho salvo la referencia colgada de §S4.3 |
+| Hallazgo leve 6 (clave del `x-for`) | **arreglado bien**: `clave: "${hash}:${longitud}"` al empujar la fila, en los **dos** resúmenes, con su test. Único cambio de esta tanda en código de producción, y el comentario explica por qué la fila descartada sería la del reintento —la que trae el número de R37—. `index.html` pasa a `:key="resultado.clave"` en las dos listas |
+
+El backend sigue sin tocarse: los cuatro commits solo alcanzan
+`tests_js/`, `tests/`, `js/api.js`, `js/app.js`, `index.html` y
+`requirements.md`.
+
+## S6 · Checkpoints que cambian respecto a la primera pasada
+
+Solo los que estos commits mueven. El resto queda como en §6.
+
+| Checkpoint | 1ª pasada | **2ª pasada** |
+|---|---|---|
+| C4 · cada requisito con test trazable | `[ ]` | **`[x]`** — barrido de los 48, §S2 |
+| C4 bis · fase RED | `[x]` | **`[ ]`** — falta la del control negativo nuevo de R37, §S4.1. La sustancia la aporta §S1, pero no la aporta el informe |
+| C4 bis · Evidencias con los cuatro números | `[ ]` | **`[ ]`** — la fila de mutación está corregida, pero la tabla es de la tanda 3 y sus números están desfasados, §S4.2 |
+| C3 · sin textos que contradigan lo vigente | `[x]` con reparo | **`[x]` con el reparo abierto** — `api.js:419`, §S3. No lo cuento como casilla vacía, igual que la primera vez, pero es el reparo que no se ha cerrado |
+| C1, C2, C3 bis, C4 ter | `[x]` / N/A justificado | **sin cambios** |
+| C5 · `tasks.md`, sin artefactos sin trackear | `[ ]` | **parcial**: el artefacto ya está trackeado y el árbol limpio; **T19–T25 siguen `[ ]`**, que es pendiente de los bloques 5 y 6, no reparo |
+
+---
+
+## S7 · Cambios requeridos de esta pasada
+
+Dos, y ninguno toca `js/pipeline.js`, `js/app.js`, `index.html` ni el backend.
+
+1. **`services/postventa-front/js/api.js:417-419`** — retirar el «y eso hay
+   que enseñarlo antes de que nadie confirme» del docstring de **`adjuntar`**,
+   que es el gemelo literal del que se corrigió en `cerrar`. Sirve la misma
+   redacción que ya se escribió en las líneas 447-453: que la comprobación
+   previa **se sigue ejecutando dentro de la llamada que escribe**, que lo que
+   desapareció es la pantalla (R40 de F-025, que deroga R21 y R49 de F-012), y
+   que reponerla no es arreglar nada. Con el fichero contradiciéndose entre la
+   419 y la 447, es más fácil que alguien concluya lo contrario.
+2. **`progress/impl_F-025.md`** — añadir la sección de esta tanda (§30), con:
+   - la **fase RED del control negativo de R37**: romper en copia aislada lo
+     que el test vigila —vale mutar `numeroDeIncidenciaDe` como M14a de §S1— y
+     **pegar la traza real** del test cayendo. C4 bis lo pide literalmente
+     para el caso en que el entregable es el propio test;
+   - las **Evidencias actualizadas** con los cuatro números de lo entregado:
+     tests (front 188, `node --test` 231, api 2.144 con 13 skipped, raíz 62),
+     cobertura 99,0 %, mutación (los totales que ya están, con `--workers 1`) y
+     tiempo de la suite;
+   - y de paso, **arreglar la referencia colgada a «§30.3»** de la fila de
+     mutación: hoy apunta a una sección que no existe, y las mutaciones
+     manuales viven en §2.4 y §S1 **de esta review**, no en el informe.
+
+Nada más. Con esas dos cosas, F-025 queda aprobada por lo que a esta review
+respecta —siguen pendientes, por el encargo y no por reparo, los bloques 5
+(`MANUAL (humano)`, T19–T23) y 6 (T24–T25), y hasta cerrarlos la casilla de C5
+no se puede marcar ni la feature pasar a `done`.
+
+## S8 · Automejora que esta pasada añade
+
+*(No la aplico: la propongo, como manda el protocolo.)*
+
+4. **`.claude/agents/reviewer.md` y `CHECKPOINTS.md` · un reparo se cierra por
+   la afirmación, no por la línea citada.** Esta pasada ha encontrado el
+   gemelo literal de un comentario derogado 26 líneas más arriba del que cité.
+   Un reviewer que cita `fichero:línea` induce a corregir esa línea; el
+   implementer hizo exactamente lo que decía el papel. Propuesta de frase para
+   el protocolo del reviewer, en «Informe»: *«Cuando un cambio requerido sea
+   sobre un texto o una afirmación, el reviewer da el **patrón de búsqueda**
+   además de la línea, y en la revisión siguiente **repite el barrido**, no
+   solo la línea.»* Y la contrapartida para el implementer: *«Ante un reparo
+   sobre un texto, barrer el fichero y sus vecinos antes de darlo por
+   cerrado.»* Vale para cualquier proyecto: va a `arnes-base`.
+5. **`CHECKPOINTS.md`, C4 bis · la fase RED de una tanda de correcciones.**
+   C4 bis ya contempla que el entregable sea el propio test, pero se lee como
+   algo de la tanda de implementación. Aquí el entregable de la tanda entera
+   **eran tres tests**, y no hubo traza de ninguno. Propuesta: decir
+   explícitamente que **una tanda post-review también trae su fase RED y sus
+   Evidencias**, porque lo que entrega es exactamente la clase de artefacto
+   para el que la puerta existe. También genérico: `arnes-base`.
+
+---
+---
+
+# Tercera pasada · 2026-09-11
+
+**Veredicto de esta pasada: APROBADO**
+
+> Los dos reparos de la segunda pasada están cerrados. El **gemelo** del
+> comentario derogado ya no está, y el barrido —`js/` entero e `index.html`,
+> por término y por afirmación, no por línea— no encuentra **ningún otro**
+> texto en el front que diga que el dry-run se enseña antes de confirmar. La
+> **§30 del informe** existe, es veraz en todo lo que afirma y dice sin
+> adornos lo que no puede afirmar.
+>
+> Sobre la fase RED que la §30 declara no registrada: **no la exijo**, y no
+> por indulgencia. De los cinco commits de la tanda, cuatro no tocan código de
+> producción —dos son solo tests, dos solo comentarios—, y para el único que
+> sí lo toca **he reconstruido el rojo yo mismo** y lo tengo medido abajo. Lo
+> que la fase RED demuestra ya está demostrado, y por una vía más fuerte:
+> medida por el reviewer, no declarada por el implementer.
+
+Alcance: exactamente el del encargo. Lo aprobado en la primera y la segunda
+pasada sigue aprobado y no se reabre. Commit revisado: `f1d7453`.
+
+---
+
+## T1 · El gemelo, y el barrido completo del front
+
+`git show f1d7453` retira la afirmación de `js/api.js:418` (bloque de
+`adjuntar`) y la sustituye por el mismo texto que ya llevaba `cerrar`: la
+derogación explícita de R63 por R40, dónde sigue viva la comprobación previa
+(`design.md` §2) y el aviso a quien lo lea dentro de seis meses. **Cerrado.**
+
+No me quedo en la línea del reparo —que es justo el error de la pasada
+anterior—. Tres barridos sobre `services/postventa-front/js/` (los ocho
+ficheros) e `index.html`:
+
+| Barrido | Patrón | Resultado |
+|---|---|---|
+| Por término | `dry.run`, `dryrun` | 9 aciertos, todos revisados uno a uno |
+| Por afirmación | `antes de que nadie`, `antes de confirmar`, `antes de que se confirme`, `enseñarlo`, `se le enseña`, `hay que enseñar`, `revisar antes`, `previsualiz`, `pantalla previa`, `vista previa`, `comprobar antes`, `ver antes` | 3 aciertos, los 3 correctos |
+| Por vecindad | `pantalla`, `enseñ`, `previo`, `previa` | 44 aciertos, revisados |
+
+**Ninguno afirma que el dry-run se enseñe antes de confirmar.** Los 9 del
+primer barrido, en detalle:
+
+- `js/api.js:418,420` y `js/api.js:451,453` — las dos negaciones expresas, una
+  en `adjuntar` y otra en `cerrar`. Son el texto correcto.
+- `js/api.js:449` — describe lo que el **backend** responde sin `commit`. Es
+  cierto: el endpoint sigue teniendo ese modo, y decirlo no es afirmar que
+  alguien lo vea. Cuatro líneas más abajo está la negación.
+- `js/app.js:92-96` — la nota de dónde vivían `dryRunCierre` y `dryRunGrafico`.
+  Está **en pasado** y explícita: «la pantalla previa se retiró entera». Es
+  historia bien fechada, no una afirmación vigente.
+- `js/pipeline.js:257` y `js/pipeline.js:332` — «por omisión es un dry-run»
+  sobre `cuerpoDeCierre` y `cuerpoDeGrafico`. Describen el **valor por defecto
+  de la función que compone el cuerpo**, que sigue siendo ese, y es la
+  propiedad que hace segura la composición. No dicen nada de enseñar.
+- `js/pipeline.js:715` — remata al revés: «lo que desaparece con F-025 es la
+  pantalla, no la verificación», con el test que lo vigila citado por ruta.
+
+Y en `index.html`, el comentario de la sección 5 (líneas 249-262) cuenta la
+decisión del responsable con su fecha, lo que se pierde y lo que no. Es el
+registro que R40 merece.
+
+**Una sola observación cosmética, que NO es reparo y no bloquea:** el titular
+de `js/api.js:445` sigue siendo «cierra la incidencia en Sigrid, o enseña qué
+pasaría». Es verdad del *endpoint* y queda desmentido como pantalla ocho
+líneas más abajo, en el mismo bloque, así que no engaña a nadie. Lo dejo
+anotado por si alguien pasa por ahí, no como condición.
+
+---
+
+## T2 · La §30 del informe · existe, y dice la verdad
+
+Verificado punto por punto, sin creerme la tabla:
+
+| Lo que afirma la §30 | Comprobación | Resultado |
+|---|---|---|
+| Los cinco commits de la tanda | `git log -1` sobre `fe2f7d3`, `2e4e14a`, `90ee2a9`, `1d1e3c6`, `f1d7453` | Los cinco existen, con el asunto que la tabla les atribuye |
+| Cuál cierra cada reparo | `git show --stat` de cada uno | Coincide: `fe2f7d3` solo `circuito.test.js`; `2e4e14a` tests + `requirements.md`; `90ee2a9` solo `js/api.js`; `1d1e3c6` `index.html` + `app.js` + su test |
+| La fase RED **no quedó registrada** y **no se reconstruye** | Lectura de la §30 y del historial | Cierto, y dicho en la cabecera de la sección, no enterrado |
+| Lo que la sustituye está en la §S1 de esta review | Releída la §S1 | Exacto: línea base 231 tests, M14a superviviente antes y muerto ahora, M14b/c/d muertos |
+| «Comentarios derogados vivos en el front: 0» | El barrido de T1 | Confirmado |
+| «Ejecutado contra Azure, Sigrid, PostgreSQL o SharePoint: nada» | Diff de la tanda | Confirmado; tampoco yo he tocado ninguno |
+
+Sobre la estructura del informe: cada tanda lleva sus propias Evidencias
+—§9, §18, §28 y ahora §30—, y la §30 las titula «medidas después de esta
+tanda». El desfase que rechazó la segunda pasada queda resuelto: las de la §28
+no se presentan como vigentes, se presentan como las de la tanda 3.
+
+---
+
+## T3 · Las evidencias que cita, verificadas en mi máquina
+
+No las tomo del informe ni de la caché del arnés:
+
+| Evidencia | Declarado en la §30 | Medido por mí | Cómo |
+|---|---|---|---|
+| Suite del servicio `api` | 2.144 pasan, 13 saltados | **2144 passed, 13 skipped** en 72,42 s | El intérprete del venv del servicio con `-m pytest -q -p no:cacheprovider`, ejecución completa y **sin caché** (el `init.sh` la daba por buena por árbol sin cambios) |
+| Suite del front | 188 pasan | **188 passed** en 6,31 s | `harness/init.sh` |
+| Cobertura de lo cambiado | 99,0 % | **99.0 %**, 1068/1079 líneas, umbral 80 %, nivel `critico` | `PUERTA COBERTURA` de `harness/init.sh` |
+| `ruff` | 58 avisos, la deuda previa | **58 avisos** | `harness/init.sh` |
+
+Las cuatro cifras son ciertas.
+
+---
+
+## T4 · La fase RED: por qué no la exijo, y el rojo que he medido yo
+
+El encargo pide un juicio explícito, y este es, con su razonamiento a la
+vista.
+
+**Qué entregó realmente la tanda.** De los cinco commits, `fe2f7d3` y
+`2e4e14a` tocan **solo ficheros de test**; `90ee2a9` y `f1d7453`, **solo
+comentarios**. El único que cambia código que se ejecuta es `1d1e3c6`, el
+hallazgo leve 6.
+
+**Por qué en los de test la fase RED clásica no aplica, y qué la sustituye.**
+El entregable de `fe2f7d3` es un control negativo sobre `numeroDeIncidenciaDe`,
+una función que **ya existía y ya era correcta**. Un test así pasa en verde
+desde el primer minuto contra el código bueno: no hay rojo que enseñar. Lo que
+demuestra que el test vale es que **mate al mutante**, y eso está medido en la
+§S1 de esta review por mí, no por el implementer: cuatro mutaciones de la
+función, las cuatro muertas ahora, y la primera **sobrevivía antes de la
+tanda**. Exigir aquí una fase RED sería exigir un artefacto más débil que el
+que ya hay, y encima reconstruido a posteriori, que es justo lo que la §30 se
+niega —bien— a hacer.
+
+**El único cambio de producción sí tenía un rojo que enseñar, y lo enseño
+yo.** No me conformo con darlo por bueno: he montado una copia del front en el
+scratchpad, he repuesto `index.html` y `js/app.js` **en su versión anterior a
+`1d1e3c6`** (`git show 1d1e3c6^:...`) dejando el test nuevo en su sitio, y lo
+he ejecutado:
+
+```
+$ python -m pytest tests/test_f025_front.py::test_f025_r16_cada_fila_del_resumen_lleva_una_clave_unica -q
+>       assert html.count(':key="resultado.hash"') == 0, (
+E       AssertionError: el hash se repite entre la fila original y la del reintento
+E       assert 2 == 0
+1 failed in 0.22s
+```
+
+**El rojo existe y es reproducible.** Falla por lo que tiene que fallar —las
+dos `:key` duplicadas que hacían que Alpine descartara la fila del reintento,
+con el número de incidencia de R37 dentro— y pasa con el cambio puesto. La
+casilla de C4 bis queda cubierta **con evidencia real**; la única diferencia
+es quién la produjo.
+
+**Veredicto sobre este punto: NO exijo la fase RED de la tanda 4.** La
+declaración de la §30 es aceptable, y lo es precisamente porque declara en vez
+de inventar. Un informe que hubiera reconstruido un rojo plausible sin haberlo
+ejecutado habría sido peor y más difícil de detectar.
+
+Lo que sí dejo dicho, para que no se lea como un precedente: esto se sostiene
+porque la tanda era **casi toda tests y comentarios** y porque la evidencia
+sustitutiva la produjo el reviewer de forma independiente. Una tanda que
+cambie comportamiento sin fase RED y sin sustituto medido no pasa.
+
+---
+
+## T5 · El arnés, en verde
+
+`bash harness/init.sh`, ejecutado limpio al abrir la pasada:
+
+- Arnés v1.5.2, `features.json` y `rigor.json` válidos, `BACKLOG.md` al día.
+- 62 tests del arnés en verde; servicio `api` en verde; servicio `front`, 188
+  en verde.
+- `PUERTA COBERTURA`: `[OK]` 99.0 %, nivel `critico`.
+- Rama `feature/F-025-confirmacion-unica`, la correcta. No la he cambiado.
+- Único aviso: F-009 en `blocked`, que es anterior a F-025 y consta en
+  `progress/current.md`. Y los 58 de `ruff`, la deuda previa exacta.
+
+`git status` en el árbol: limpio salvo este mismo informe. La copia de la
+verificación RED vive entera en el scratchpad, **fuera del repositorio**, y no
+ha dejado nada detrás.
+
+---
+
+## T6 · Estado de los checkpoints tras esta pasada
+
+Solo los que se movían. El resto se queda como lo dejó la segunda pasada.
+
+| Checkpoint | Antes | Ahora | Motivo |
+|---|---|---|---|
+| **C3** — código y convenciones | `[ ]` por el comentario derogado | **`[x]`** | El gemelo retirado y el barrido completo del front sin un solo acierto falso |
+| **C4 bis** — el rigor declarado se cumple | `[ ]` por la tanda sin rastro | **`[x]`** | §30 escrita y veraz; fase RED del único cambio de producción **medida por el reviewer**; Evidencias al día y verificadas una a una |
+| **C4** — la verificación es real | `[x]` | **`[x]`** | 2.144 + 13, 188, 99,0 %, comprobados sin caché |
+| **C1** — arnés completo y en verde | `[x]` | **`[x]`** | `init.sh` en verde |
+
+Ningún checkpoint queda en `[ ]`. Ninguno queda en `N/A` sin justificación:
+los `N/A` vigentes son los de la primera pasada —la puerta de mutación sobre
+un diff cuyo alcance Python es nulo—, justificados allí y reverificados en la
+§2 con su prueba de control.
+
+---
+
+## T7 · Lo que queda, y no es de esta review
+
+1. **El bloque 5 de `tasks.md`**: la verificación contra el ERP real, que es
+   del responsable y escribe en una obra en uso. Nada de esta pasada la
+   sustituye.
+2. **El bloque 6**, el cierre, que lleva el líder.
+3. **Aviso de proceso, no reparo:** las pasadas segunda y tercera de este
+   informe están **sin commitear** en el árbol (`git status` marca
+   `progress/review_F-025.md` como modificado). El rastro del arnés no existe
+   hasta que se commitea; que el líder lo recoja al cerrar.
+
+---
+
+## T8 · Automejora: ninguna nueva
+
+Las cinco propuestas de las pasadas anteriores siguen en pie y no las repito.
+Esta pasada confirma que **la número 4** —cerrar un reparo por la afirmación y
+no por la línea, repitiendo el barrido— habría evitado la segunda pasada
+entera, y que **la número 5** —una tanda post-review también trae su fase RED
+y sus Evidencias— es la que hoy se ha resuelto por la vía del reviewer. Las
+dos son genéricas: van a `arnes-base`.

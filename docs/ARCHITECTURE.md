@@ -184,7 +184,23 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
 7b. **Cierre** (F-009) — dry-run contra `sigrid-api`, confirmación del usuario,
    y solo entonces `commit: true`. Es, con el paso 7a, una de las **dos
    escrituras de este proyecto en un ERP de producción**, y por eso es el paso
-   con más puertas:
+   con más puertas.
+
+   **Desde F-025 (2026-09-11) la confirmación explícita es una sola** y cubre
+   los tres pasos —archivar en SharePoint (paso 6), adjuntar el gráfico (7a) y
+   cerrar (7b)—: el usuario confirma una vez, sobre la tanda de partes aptos, y
+   el circuito los ejecuta seguidos, parte a parte y en ese orden. Lo que
+   desapareció es la **pantalla intermedia** que enseñaba los dos dry-run antes
+   de confirmar, no el dry-run: **el cálculo previo se sigue ejecutando, en la
+   misma llamada que escribe** y antes de cualquier `commit`, dentro de
+   `paso_grafico.py` y `paso_cierre.py`. Un `commit` que llega sin ninguna
+   llamada anterior hace su comprobación previa él mismo; eso es lo que sostiene
+   que R8 y R10 de F-009 y R20 de F-012 sigan cumpliéndose, y lo vigila
+   `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`. El precio
+   aceptado de la decisión está escrito en
+   `specs/F-025-confirmacion-unica/requirements.md` §0.
+
+   Las puertas del paso:
    - **precondiciones propias**: el parte tiene que ser apto (F-004),
      **constar archivado** (F-006) y, desde F-012, **constar adjuntado** —su
      gráfico dentro de Sigrid—. Esa última se lee de **nuestra traza**
@@ -279,6 +295,16 @@ igual que hoy, y por debajo se suben los PDFs.
 6. **Cerrar en Sigrid es escritura en producción.** Siempre dry-run primero;
    `commit: true` solo después de confirmación explícita (del usuario en el
    front, o de su preferencia de auto-cierre guardada).
+   Precisado por **F-025 el 2026-09-11**, y las dos mitades importan por igual:
+   - esa confirmación explícita es **una sola confirmación** para todo el
+     circuito —archivar, adjuntar el gráfico y cerrar—, no una por escritura.
+     Una sola no es **ninguna**: sin ella no se escribe nada, y sigue
+     caducando (R12–R15 de F-009);
+   - «siempre dry-run primero» sigue entero, y ocurre **en la misma llamada**
+     que escribe, no en una pantalla anterior. Que ya no se le enseñe a nadie
+     **no autoriza a quitarlo** de `paso_grafico.py` ni de `paso_cierre.py`:
+     ahí es donde se comprueba que la reclamación existe, en qué estado está y
+     si el documento ya cuelga de ella.
 7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.**
    Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en
    Sigrid da por resuelta una incidencia que sigue viva.

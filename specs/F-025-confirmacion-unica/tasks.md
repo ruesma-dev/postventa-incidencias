@@ -156,7 +156,7 @@
       qué pasaría»; el resto de la suite de F-009 y F-012 sigue en verde.
       Mismo procedimiento que T3 de F-012 con R48.
 
-- [ ] **T17**: Precisar `docs/ARCHITECTURE.md`: paso 7b del pipeline y punto 6
+- [x] **T17**: Precisar `docs/ARCHITECTURE.md`: paso 7b del pipeline y punto 6
       de «Semántica de dominio» (R47). | Verificación: un test de
       documentación comprueba que el texto dice «una sola confirmación» y «en
       la misma llamada»; y que **no** se ha borrado la exigencia de dry-run.

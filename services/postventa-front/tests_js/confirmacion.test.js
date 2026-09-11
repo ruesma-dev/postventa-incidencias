@@ -186,3 +186,43 @@ test("f009 R15: y para cualquier otra accion sigue siendo el de archivar", () =>
   assert.equal(Confirmacion.avisoCaducada("archivo"), Confirmacion.AVISO_CADUCADA);
   assert.equal(Confirmacion.avisoCaducada(undefined), Confirmacion.AVISO_CADUCADA);
 });
+
+// ==========================================================================
+// F-025 · La confirmación es UNA, y es la que autoriza las TRES escrituras
+// ==========================================================================
+
+test("f025 R3: sin una confirmación que dispare no se autoriza ninguna escritura", () => {
+  // Hasta F-025 esta decisión autorizaba una subida a SharePoint. Ahora
+  // autoriza además el gráfico y el cierre en un ERP de producción, y no hay
+  // ninguna pantalla intermedia detrás: si `dispara` sale `false`, las TRES
+  // se quedan sin hacer. Los tres estados en que eso pasa, juntos.
+  const sinArmar = Confirmacion.resolver(null, T0);
+  const caducada = Confirmacion.resolver(
+    Confirmacion.armar(T0),
+    T0 + Confirmacion.VENTANA_MS + 1,
+  );
+  const consumida = Confirmacion.resolver(
+    Confirmacion.resolver(Confirmacion.armar(T0), T0 + 1_000).estado,
+    T0 + 1_100,
+  );
+
+  assert.equal(sinArmar.dispara, false);
+  assert.equal(caducada.dispara, false);
+  assert.equal(consumida.dispara, false);
+});
+
+test("f025 R15: el segundo clic dentro de la ventana no dispara una segunda tanda", () => {
+  // El matiz de R15 frente a R4: aquí el clic llega **a tiempo**, así que no
+  // lo salva la caducidad. Lo que lo para es que el armado se consume al
+  // primero. Con la confirmación única, una segunda tanda serían tres
+  // escrituras más por parte, dos de ellas en el ERP.
+  const armada = Confirmacion.armar(T0);
+
+  const primera = Confirmacion.resolver(armada, T0 + 1_000);
+  const segunda = Confirmacion.resolver(primera.estado, T0 + 1_100);
+
+  assert.ok(T0 + 1_100 < T0 + Confirmacion.VENTANA_MS, "el segundo clic llega DENTRO de la ventana");
+  assert.equal(primera.dispara, true);
+  assert.equal(segunda.dispara, false);
+  assert.equal(segunda.motivo, "sin_armar");
+});

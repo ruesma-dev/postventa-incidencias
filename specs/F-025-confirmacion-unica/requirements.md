@@ -383,6 +383,15 @@ cuántas veces**, que es interno.
 |---|---|---|
 | R7 (extremo a extremo), R29–R34 en su ejecución real | Exigen el ERP de producción con la ventana abierta | `MANUAL (humano)`, bloque 5 de `tasks.md`, sobre una incidencia **autorizada expresamente** por el responsable, con el procedimiento de F-012 |
 | R21, R22 | La puerta de entorno real solo la produce el entorno desplegado | `MANUAL (humano)`; el **camino** sí tiene test unitario con un doble que levanta el error de entorno |
-| R37 en su valor real | El número que se enseña sale del ERP | `MANUAL (humano)`; el test unitario fija que la clave viaja y se pinta |
+| R37 en su valor real | El número que se enseña sale del ERP | `MANUAL (humano)`; el test unitario fija que la clave viaja y se pinta, y que **sin clave no se inventa ninguno** (`tests_js/circuito.test.js`, «con los tres pasos en verde y sin número en la respuesta») |
+| R44 | Es una **declaración de vigencia** de requisitos ajenos (R19–R22 de F-007), no un comportamiento nuevo: lo que se puede probar es que siguen en pie | La suite de F-007 entera en verde, sin ninguna baja; `test_f025_r2_solo_se_arma_una_confirmacion_en_todo_el_front` cuenta que la confirmación de R19 es **una** y `test_f025_r6_el_texto_de_la_confirmacion_nombra_las_tres_cosas` fija la ampliación que R6 le manda |
+| R45 | Es una **prohibición de cambio** sobre cuerpos que define otra spec: el control no es un test nuevo, es que los compositores no se hayan tocado | `cuerpoDeArchivo`, `cuerpoDeGrafico` y `cuerpoDeCierre` intactos en el diff, con sus tests de F-007, F-009 y F-012 en verde; `test_f025_r46_los_textos_de_pantalla_no_llevan_datos_personales` para lo que sí es nuevo |
+| R48 | Es sobre **otro repositorio**, y ningún test de este puede mirarlo | Repaso declarado en T18 de `tasks.md`: `git -C azure-apps status` limpio, comprobado el 2026-09-11 y anotado bajo el propio R48 |
 
-Todo lo demás tiene test unitario **sin red, sin BBDD y sin IA**.
+Todo lo demás tiene test unitario **sin red, sin BBDD y sin IA**. R3, R15, R23
+y R28 lo tienen desde la review: `f025 R3` y `f025 R15` en
+`tests_js/confirmacion.test.js`,
+`test_f025_r3_sin_confirmacion_que_dispare_no_arranca_ninguna_escritura` y
+`test_f025_r15_la_confirmacion_se_consume_antes_de_lanzar_la_tanda` en
+`tests/test_f025_front.py`, y los dos de R23 y el de R28 en
+`tests_js/circuito.test.js`.

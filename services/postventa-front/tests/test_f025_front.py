@@ -387,6 +387,43 @@ def test_f025_r2_solo_se_arma_una_confirmacion_en_todo_el_front(app):
     assert app.count("window.Confirmacion.armar(") == 1
 
 
+def test_f025_r3_sin_confirmacion_que_dispare_no_arranca_ninguna_escritura(app):
+    """R3 · si la confirmación no dispara, **ninguna** de las tres se ejecuta.
+
+    Antes de F-025 esta guarda protegía una subida a SharePoint. Ahora protege
+    además el gráfico y el cierre en un ERP de producción, y no hay ninguna
+    pantalla intermedia detrás. Lo que se fija es el **orden**: la salida por
+    `return` va antes de mirar la tanda y antes de lanzarla, no después.
+    """
+    confirmar = _bloque(app, "async confirmarArchivo(", "async _lanzarTanda(")
+
+    assert "if (!decision.dispara)" in confirmar
+    corte = confirmar.index("if (!decision.dispara)")
+    assert "return;" in confirmar[corte:], "la guarda tiene que salir, no solo avisar"
+    for escritura in ("this.pendientes()", "conGuardaDeTanda(", "this._lanzarTanda("):
+        assert escritura in confirmar, f"se esperaba {escritura!r} en confirmarArchivo"
+        assert corte < confirmar.index(escritura), (
+            f"{escritura!r} está antes de la guarda de la confirmación: R3 exige "
+            "que sin confirmación no se ejecute ninguna escritura"
+        )
+
+
+def test_f025_r15_la_confirmacion_se_consume_antes_de_lanzar_la_tanda(app):
+    """R15 · el segundo clic, **aunque llegue a tiempo**, no dispara otra tanda.
+
+    No lo para la caducidad (eso es R4): lo para que el armado se consuma en el
+    primer clic. Por eso el estado que devuelve `resolver` se guarda **antes**
+    de la guarda y mucho antes de lanzar nada; guardarlo después dejaría el
+    armado vivo durante toda la tanda.
+    """
+    confirmar = _bloque(app, "async confirmarArchivo(", "async _lanzarTanda(")
+
+    assert "this.confirmacionArchivo = decision.estado;" in confirmar
+    consumo = confirmar.index("this.confirmacionArchivo = decision.estado;")
+    assert consumo < confirmar.index("if (!decision.dispara)")
+    assert consumo < confirmar.index("this._lanzarTanda(")
+
+
 def test_f025_r5_el_boton_de_ver_que_pasaria_ya_no_existe(html):
     """R5, y es la derogación de R63 de F-012 hecha pantalla."""
     assert "Ver qué pasaría" not in html

@@ -353,6 +353,39 @@ test("R25, R26 · un parte archivado y adjuntado solo pide el cierre", async () 
   assert.deepEqual(api.pasos(), ["cerrar"]);
 });
 
+test("R28 · relanzar la tanda sobre un parte a medias no manda ni un gráfico más", async () => {
+  // El reintento legítimo, entero: la primera tanda dejó el parte adjuntado y
+  // el cierre se cayó. Al relanzarla, el paso que produce el gráfico dentro
+  // del ERP —y con él la fila de `dbo.log`— NO se vuelve a pedir.
+  //
+  // F-025 no añade ninguna capa de idempotencia: las tres de F-012 siguen
+  // siendo la defensa de verdad. Lo que este test fija es que el front no se
+  // salta ninguna por el camino del reintento.
+  const primera = apiDoble({ cerrar: { fallo: errorDelParte("se cayó la red") } });
+
+  const aMedias = await correr(parteDeLaTanda(), primera);
+
+  assert.deepEqual(primera.pasos(), ["archivar", "adjuntar", "cerrar"]);
+  assert.equal(aMedias.grafico, "adjuntado");
+  assert.equal(aMedias.cerrado, false);
+
+  // El parte tal y como lo deja `app.js` en la pantalla tras esa tanda.
+  const segunda = apiDoble();
+
+  const resultado = await correr(
+    parteDeLaTanda({ archivado: aMedias.archivado, grafico: aMedias.grafico }),
+    segunda,
+  );
+
+  assert.deepEqual(segunda.pasos(), ["cerrar"]);
+  assert.equal(
+    segunda.llamadas.filter((llamada) => llamada.paso === "adjuntar").length,
+    0,
+    "un segundo gráfico en el ERP es justo lo que R28 prohíbe",
+  );
+  assert.equal(resultado.estado, "cerrado");
+});
+
 // ==========================================================================
 // T5 · R17-R19, R27, R37 · Qué pasa si falla a mitad
 // ==========================================================================
@@ -413,6 +446,32 @@ test("R19 · si falla el cierre con el gráfico dentro, el estado es adjuntado",
   assert.equal(resultado.cerrado, false);
   assert.equal(resultado.tipoError, "parte");
   assert.ok(resultado.error.includes("el ERP ha dicho que no"));
+});
+
+test("R23 · una escritura fallida contra el ERP no se reintenta sola", async () => {
+  // El reintento lo pide una persona (R27 de F-009, R28 de F-012). Un
+  // reintento automático contra un ERP de producción es exactamente lo que
+  // nadie ha pedido: se pide una vez, se falla una vez, y se dice.
+  const api = apiDoble({ adjuntar: { fallo: errorDelParte("no se pudo") } });
+
+  await correr(parteDeLaTanda(), api);
+
+  assert.deepEqual(api.pasos(), ["archivar", "adjuntar"]);
+  assert.equal(
+    api.llamadas.filter((llamada) => llamada.paso === "adjuntar").length,
+    1,
+  );
+});
+
+test("R23 · un cierre fallido tampoco se reintenta solo", async () => {
+  const api = apiDoble({ cerrar: { fallo: errorDeEntorno() } });
+
+  await correr(parteDeLaTanda(), api);
+
+  assert.equal(
+    api.llamadas.filter((llamada) => llamada.paso === "cerrar").length,
+    1,
+  );
 });
 
 test("R20 · el circuito NUNCA lanza: un parte roto no tumba la tanda", async () => {

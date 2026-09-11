@@ -1,6 +1,50 @@
 <!-- progress/guion_bloque9_F-012.md -->
 # F-012 · Guion de ejecución del bloque 9 (T25–T32)
 
+> ## Nota del 2026-09-10 · **cambia la obra sobre la que se verifica, y con ella una premisa de este guion**
+>
+> **La premisa original, literal, tal y como estaba escrita aquí hasta hoy**:
+> *«**Sobre qué se ejecuta.** **Reclamaciones de la obra de prueba 404**, y de
+> ninguna otra. Ni Mirasierra, ni una obra real. Es la decisión del humano del
+> 2026-09-06 y es la regla dura de todo el bloque»*.
+>
+> **Esa premisa la levantó el responsable del proyecto el 2026-09-10.** No fue
+> un descuido ni una interpretación: se le planteó de forma explícita que la
+> **0626 no es una obra de pruebas, sino una obra en uso**, y lo reafirmó. La
+> verificación del bloque 9 deja de ir contra una obra genérica y pasa a un
+> caso concreto:
+>
+> | Qué | Cuál |
+> |---|---|
+> | Obra | **0626**. **No es una obra de pruebas: es una obra en uso** |
+> | Incidencia | **`RS26.09/0150`**, de tipo **708** |
+> | Quién la da de alta | **el responsable, a mano en el ERP**. Este servicio **no crea incidencias**: si no existe, la comprobación previa responde que **no la localiza** (§3, `infra/15_reclamaciones_obra_prueba.ps1`) |
+> | Su parte de trabajo | `muestras/parte_prueba_RS26.09-0150.pdf` — **no versionado**; datos inventados salvo el **código de obra** y el **de incidencia**—, pendiente de imprimir, **firmar a mano** y escanear |
+>
+> **Qué implica en la práctica, y hay que decirlo entero**: la incidencia de la
+> comprobación y su cierre quedan **en el histórico de una obra en uso**, a la
+> vista de cualquiera que la consulte en Sigrid, y el documento adjunto queda
+> **colgado de ella**. No hay deshacer: lo que se escriba se queda ahí, con su
+> fecha y con el login de quien opere.
+>
+> **Lo que NO cambia —y sobre una obra en uso pesa más que antes, no menos**:
+>
+> - **Comprobación previa (dry-run) antes de cada escritura**, sin excepción
+>   (T25 antes de T27; T28 antes de T29).
+> - **Autorización expresa del responsable para cada incidencia concreta**, no
+>   «para probar el gráfico»: es la **P6** de §2, y es justo la precondición
+>   que **gana peso** al dejar de haber una obra de pruebas detrás.
+> - **`CIERRE_HABILITADO` es un solo interruptor** para el documento adjunto y
+>   para el cambio de estado (§0.2): abrirlo para el gráfico abre también el
+>   cierre.
+> - **Nada de esto se ejecuta desde un puesto de trabajo**: las dos únicas
+>   escrituras las hace el entorno desplegado (§3).
+>
+> Esta nota **no borra** la premisa anterior ni la reescribe como si nunca
+> hubiera existido: queda arriba, fechada, para que se sepa cuál era y quién la
+> levantó. Mismo criterio que la enmienda del 2026-09-03 bajo el R28 de
+> `specs/F-010-despliegue/requirements.md`.
+
 > **Qué es esto.** El procedimiento que sigue **el humano**, delante del ERP de
 > producción y con el entorno desplegado, para verificar que el parte firmado
 > entra en Sigrid como **gráfico** de la reclamación y que la reclamación se
@@ -14,11 +58,16 @@
 > está prohibido por `CLAUDE.md`, y contra producción solo se hacen lecturas
 > salvo autorización expresa para una acción concreta.
 >
-> **Sobre qué se ejecuta.** **Reclamaciones de la obra de prueba 404**, y de
-> ninguna otra. Ni Mirasierra, ni una obra real. Es la decisión del humano del
-> 2026-09-06 y es la regla dura de todo el bloque: cada escritura de este guion
-> —el gráfico y el cierre— cae sobre una reclamación de esa obra, localizada
-> con `infra/15_reclamaciones_obra_prueba.ps1` y **autorizada una a una**.
+> **Sobre qué se ejecuta.** **La incidencia `RS26.09/0150` de la obra `0626`**,
+> y ninguna otra. La obra **no es de pruebas: está en uso**, y la decisión de
+> verificar ahí es del responsable del proyecto, del **2026-09-10** (ver la
+> nota fechada de arriba, que recoge la premisa anterior y quién la levantó).
+> La regla dura del bloque no se relaja, se endurece: cada escritura —el
+> gráfico y el cierre— cae sobre **esa** incidencia, localizada con
+> `infra/15_reclamaciones_obra_prueba.ps1 -CodigoObra 0626` y **autorizada una
+> a una** (P6 de §2). La incidencia la da de alta **el responsable en el ERP**:
+> este servicio no crea incidencias, y si no existe, la comprobación previa
+> responde que no la localiza.
 >
 > **Estado**: `progress/impl_F-012.md` está aprobado en review
 > (`progress/review_F-012.md`, veredicto APROBADO), T33 (mutación) cerrada y
@@ -26,7 +75,8 @@
 > `specs/F-012-grafico-sigrid/tasks.md` **las marca el humano**, no el agente.
 >
 > **Este bloque ejecuta de hecho un cierre completo.** T27 adjunta y T29
-> cierra: la reclamación de la obra 404 acaba en `CER` con su parte dentro. Es
+> cierra: la incidencia `RS26.09/0150` de la obra `0626` —una obra **en uso**—
+> acaba en `CER` con su parte dentro, y así queda en su histórico. Es
 > el orden **(b)** de `design.md` §13, y por eso el bloque 8 de F-009 ya no se
 > recorre como estaba escrito: ver la nota fechada de
 > `progress/guion_bloque8_F-009.md`.
@@ -304,19 +354,31 @@ parámetro; no se edita el script.
       `Paso 0 COMPLETO: 11/11 referencias resueltas`.
 - [ ] **P4** · Raíz y clave de la pasarela a mano para los scripts de lectura
       (§3). **No se escriben en ningún fichero.**
-- [ ] **P5** · **Una reclamación de la obra 404** localizada con
-      `infra/15_reclamaciones_obra_prueba.ps1` —cerrable y **sin gráfico**— y
-      **su parte** recorrido entero en el front: subido, validado `apto` /
-      `archivo_y_cierre`, **guardado** (`POST /api/parte`) y **archivado**
-      (`POST /api/archivar`). No es una formalidad: `postventa.graficos` tiene
-      **clave ajena contra `postventa.partes`**, así que un `hash` que no esté
-      guardado hace fallar **hasta el dry-run** (R46). Es la misma trampa del
-      defecto 15 de F-010 y de la P5 del bloque 8 de F-009.
-      Si no existe un parte escaneado de esa obra, ver P5 de `design.md` §14: lo
-      prepara Posventa, o se recorre el circuito con un PDF de prueba sobre una
-      reclamación de la 404.
-- [ ] **P6** · **Autorización expresa del humano para esa reclamación
-      concreta**, no «para probar el gráfico». Es lo que exige `CLAUDE.md`.
+- [ ] **P5** · **La incidencia `RS26.09/0150` de la obra `0626`** —dada de alta
+      en el ERP **por el responsable**, porque este servicio no crea
+      incidencias— localizada con
+      `infra/15_reclamaciones_obra_prueba.ps1 -CodigoObra 0626` —cerrable y
+      **sin gráfico**— y **su parte** recorrido entero en el front: subido,
+      validado `apto` / `archivo_y_cierre`, **guardado** (`POST /api/parte`) y
+      **archivado** (`POST /api/archivar`). No es una formalidad:
+      `postventa.graficos` tiene **clave ajena contra `postventa.partes`**, así
+      que un `hash` que no esté guardado hace fallar **hasta el dry-run** (R46).
+      Es la misma trampa del defecto 15 de F-010 y de la P5 del bloque 8 de
+      F-009.
+      **Ojo con dos cosas.** (1) El valor por omisión de `-CodigoObra` en el
+      script sigue siendo el de la obra genérica: **hay que pasar `0626`
+      explícitamente**. (2) Si el script dice que **no localiza** la incidencia,
+      no hay nada que arreglar aquí: es que todavía no está dada de alta en el
+      ERP → se pide al responsable. Su parte de trabajo está preparado en
+      `muestras/parte_prueba_RS26.09-0150.pdf` (no versionado; datos inventados
+      salvo el código de obra y el de incidencia) y falta imprimirlo, firmarlo
+      a mano y escanearlo.
+- [ ] **P6** · **Autorización expresa del responsable para esa incidencia
+      concreta**, no «para probar el gráfico». Es lo que exige `CLAUDE.md`, y
+      **desde el 2026-09-10 pesa más que nunca**: la 0626 es una obra **en
+      uso**, así que lo que se escriba queda en el histórico de una obra viva y
+      ya no hay una obra de pruebas amortiguando el error. Esta precondición
+      **gana peso con el cambio de premisa, no lo pierde**.
       T31 usa **otra** reclamación candidata, y necesita **su propia**
       autorización aunque no llegue a escribir.
 - [ ] **P7** · Sesión iniciada en el front (grupo `posventa-usuarios`), porque
@@ -354,7 +416,7 @@ veredicto** en forma de tabla `QUE / ESPERADO / OBTENIDO` con `PASA` o
 | Script | Qué hace | Escribe |
 |---|---|---|
 | `infra/08_lectura_sigrid_comun.ps1` | Solo **declara**: la llamada a `POST /api/sql/read`, el manejo de la clave y el formato del veredicto. Lo cargan los demás | nada |
-| `infra/15_reclamaciones_obra_prueba.ps1` | **P5**: localiza la obra 404, lista sus reclamaciones con estado legible y nº de gráficos, y separa las **candidatas** (cerrables y sin gráfico) | **nada · solo lee** |
+| `infra/15_reclamaciones_obra_prueba.ps1` | **P5**: localiza la obra —**se lanza con `-CodigoObra 0626`**, porque su valor por omisión es el de la obra genérica—, lista sus reclamaciones con estado legible y nº de gráficos, y separa las **candidatas** (cerrables y sin gráfico). Si `RS26.09/0150` no aparece, es que aún no está dada de alta en el ERP | **nada · solo lee** |
 | `infra/16_grafico_sigrid.ps1` | Las **tres filas** del gráfico —negocio, documental y enlace `rcg`— y el `MAX(ide)` de `dbo.log`. Con `-DescargarYComparar`, además el `sha256` del binario que hay dentro del ERP | **nada · solo lee** |
 | `infra/17_traza_grafico_local.ps1` | La traza de `postventa.graficos`: estado, `sha256`, bytes, clase, los tres `ide`, `idempotente`, y **que el login no está fuera de `gra_cod`** (R44) | **nada · solo lee**, y solo del esquema propio |
 | `infra/09_estado_reclamacion_sigrid.ps1` | (F-009) La reclamación en el ERP: `ide`, `emp`, `est`, estado legible, destino resuelto contra `conest`, `tiemod` y `MAX(ide)` de `dbo.log` | **nada · solo lee** |
@@ -556,7 +618,10 @@ el propio ERP: **con la ventana cerrada no funciona ni el dry-run**.
    está mal o le falta la **barra** (en el ERP es `RS26.08/0123`; el guion es
    del nombre del fichero). Si `graficos` no es 0, esa reclamación **no
    sirve**: no se podría distinguir nuestro gráfico del que ya estaba. Vuelve a
-   `15_reclamaciones_obra_prueba.ps1` y elige otra candidata.
+   `15_reclamaciones_obra_prueba.ps1 -CodigoObra 0626` y, como la incidencia de
+   la verificación está decidida (`RS26.09/0150`, nota del 2026-09-10), **para y
+   pide al responsable** otra incidencia dada de alta para esto: no se elige por
+   cuenta propia una incidencia de una obra en uso.
 
 2. **El dry-run con la ventana cerrada.** En la consola del front, el fragmento
    de `adjuntar` de §4 con `COMMIT = false`.
@@ -641,7 +706,7 @@ el propio ERP: **con la ventana cerrada no funciona ni el dry-run**.
 | Campo | Valor |
 |---|---|
 | Fecha y hora | |
-| Reclamación de la obra 404 (código) | |
+| Incidencia de la obra `0626` (código; se espera `RS26.09/0150`) | |
 | Paso 1 · gráficos de partida (¿0?) · `MAX(ide)` de `dbo.log` | |
 | Paso 2 · HTTP con la ventana cerrada | |
 | Paso 4 · HTTP, `estado`, `idempotente`, `filas_afectadas` | |
@@ -1176,18 +1241,22 @@ como **409** con su código, deja el ERP **intacto** y deja traza de `error`. Se
 provoca con una App Setting **de este servicio** —nunca de la pasarela— puesta a
 una clase que su lista blanca no admite.
 
-> **Se hace sobre OTRA reclamación candidata de la obra 404**, no sobre la de
+> **Se hace sobre OTRA incidencia candidata de la obra `0626`**, no sobre la de
 > T27: la de T27 ya tiene su gráfico, y la capa 1 de idempotencia respondería
 > desde la traza sin llegar a la pasarela, así que el rechazo no se produciría.
-> Esa otra reclamación necesita **su propia autorización** (P6), aunque el
-> resultado esperado sea que no se escriba nada.
+> Esa otra incidencia necesita **su propia autorización** (P6), aunque el
+> resultado esperado sea que no se escriba nada; y como la `0626` es una obra
+> **en uso**, esa autorización hay que pedirla igual aunque «no vaya a escribir
+> nada»: lo que se está probando es precisamente que no escriba.
 >
-> **Si el humano no quiere tocar App Settings para esto**, se anota como **no
-> ejecutado** y vale el test unitario que ya cubre R33. Es lo que dice
-> `tasks.md`, y no bloquea T32.
+> **Si el humano no quiere tocar App Settings para esto, o no quiere una
+> segunda incidencia en una obra en uso**, se anota como **no ejecutado** y
+> vale el test unitario que ya cubre R33. Es lo que dice `tasks.md`, y no
+> bloquea T32.
 
-**Precondiciones.** T30 marcada. Ventana abierta. Otra reclamación de la obra
-404 con su parte recorrido (mismas condiciones que P5) y su autorización.
+**Precondiciones.** T30 marcada. Ventana abierta. Otra incidencia candidata de
+la obra `0626` con su parte recorrido (mismas condiciones que P5) y su
+autorización expresa.
 
 **Pasos.**
 
@@ -1328,7 +1397,9 @@ o mal**, incluso si se paró en mitad de T27.
    sin push.
 
 9. **Dejar constancia del estado del bloque 8 de F-009.** T29 ya ha ejercitado
-   de hecho sus T22, T24, T25 y T27 sobre la obra 404: al reanudar F-009, su
+   de hecho sus T22, T24, T25 y T27 sobre la incidencia `RS26.09/0150` de la
+   obra `0626` —no sobre la obra genérica que aquel guion nombra, ver la nota
+   del 2026-09-10 de arriba—: al reanudar F-009, su
    guion se recorre **con lo que quede** (ver la nota fechada de
    `progress/guion_bloque8_F-009.md`).
 
@@ -1393,8 +1464,13 @@ este fichero **sí** vale —el login no es secreto—, pero no se pega en un co
 ni en un ticket junto al nombre de la persona.
 
 Los códigos de incidencia de los **ejemplos** de este guion son marcadores
-(`RSaa.mm/nnnn`) a propósito; el real solo va en la casilla de resultado, y es un
-código de expediente de la **obra de prueba**, no un dato personal.
+(`RSaa.mm/nnnn`) a propósito; el de la verificación —`RS26.09/0150`, obra
+`0626`— es un **código de expediente**, no un dato personal, y por eso puede
+escribirse aquí. Que ahora sea el de una **obra en uso** (nota del 2026-09-10)
+no lo cambia: lo que sigue sin poder salir de aquí es el **contenido** del
+parte —DNI, observaciones manuscritas, nombre del propietario, los bytes del
+PDF—, y de eso el fichero `muestras/parte_prueba_RS26.09-0150.pdf` lleva datos
+**inventados** salvo los dos códigos.
 
 ---
 
@@ -1408,7 +1484,7 @@ código de expediente de la **obra de prueba**, no un dato personal.
 | **H4** | **`filas_afectadas: 0` significa cosas opuestas según el endpoint.** En `adjuntar` con `idempotente: true` es un **éxito** (el documento ya está); en `cerrar` es que no se aplicó nada (F-009 R11). El mismo número, en la misma pantalla, en la misma tanda | `azure-apps/sigrid_api.md` §8.8, `design.md` §7.2 | Recogido en §0.3, y separado en las casillas de T28 y T30. **No se propone cambiar nada**: el campo que decide es `ok` / `estado`, no `filas_afectadas` |
 | **H5** | **El reintento tras un `502` es seguro en `adjuntar` y prohibido en `cerrar`**, y los dos `502` salen del mismo botón. Es la regla más fácil de invertir bajo presión | `design.md` §9.4, F-009 R27 | Recogido en §0.4 y repetido en el paso 3 de T27 y en el paso 4 de T29 |
 | **H6** | **T28 capa 2 exige borrar una fila de `postventa.graficos`**, y `tasks.md` dice «el humano, a mano» sin dar la forma. Los scripts `12_` y `17_` son de solo lectura y no sirven | `tasks.md` T28 | Escrito el bloque de PowerShell del paso 2 de T28, con confirmación tecleada y `rowcount` impreso. **No se ha creado un script en `infra/`**: es una escritura de un solo uso, y un script re-ejecutable que borra trazas es justo lo que no conviene dejar por ahí |
-| **H7** | **T31 no puede usar la reclamación de T27.** Con la traza en `adjuntado`, la capa 1 respondería desde la traza y no llegaría a la pasarela, así que el rechazo que se quiere provocar no se produciría | `design.md` §9.3, `tasks.md` T31 | Recogido como aviso al principio de T31: se usa **otra** candidata de la obra 404, con su propia autorización. `tasks.md` ya decía «otra reclamación candidata», pero no el porqué |
+| **H7** | **T31 no puede usar la reclamación de T27.** Con la traza en `adjuntado`, la capa 1 respondería desde la traza y no llegaría a la pasarela, así que el rechazo que se quiere provocar no se produciría | `design.md` §9.3, `tasks.md` T31 | Recogido como aviso al principio de T31: se usa **otra** candidata de la obra (`0626` desde el 2026-09-10), con su propia autorización. `tasks.md` ya decía «otra reclamación candidata», pero no el porqué |
 | **H8** | **La lectura de P0 sin `--query` vuelca todas las App Settings de la pasarela**, credenciales de escritura del ERP incluidas, a la consola de alguien. `tasks.md` P0 dice «leída sin ver ningún secreto» sin decir cómo | §1, Paso 0 (3) | Escrito el filtro `--query` que devuelve solo las seis que no son secretos. Y anotado que, aunque volcara las demás, las referencias a Key Vault salen **sin resolver**: es la misma limitación que impide leer así nuestra `SIGRID_API_BASE_URL` |
 | **H9** | **Dos precondiciones documentales no estaban en la lista del bloque 9**: la aceptación de los 5 supervivientes de mutación —que el nivel `critico` exige por escrito— y la confirmación de `PV002` con Posventa. Las dos están en `review_F-012.md` §8, pero no en `tasks.md` | `tasks.md` bloque 9, `review_F-012.md` §8 | Añadidas como **D1** y **D2** en §2, marcadas como documentales: **no bloquean técnicamente** —T25 se puede ejecutar sin ellas— pero el bloque no se da por cerrado con alguna abierta. D2 conviene tenerla antes de T27, que es la primera escritura bajo esa clase |
-| **H10** | **El guion del bloque 8 de F-009 contradecía a F-012** en tres puntos: su P5 mandaba a Mirasierra, su T22 esperaba `aviso_sin_grafico` —que R48 derogó— y su T24 no pasaba por `/api/adjuntar`, así que su commit habría respondido 409 | `progress/guion_bloque8_F-009.md` | **Corregido el 2026-09-06**, con cambios quirúrgicos marcados con fecha y una nota arriba del guion: el bloque 9 de F-012 ejecuta de hecho un cierre completo sobre la obra 404, y al reanudar F-009 aquel guion se recorre con lo que quede. Es el orden (b) de `design.md` §13 |
+| **H10** | **El guion del bloque 8 de F-009 contradecía a F-012** en tres puntos: su P5 mandaba a Mirasierra, su T22 esperaba `aviso_sin_grafico` —que R48 derogó— y su T24 no pasaba por `/api/adjuntar`, así que su commit habría respondido 409 | `progress/guion_bloque8_F-009.md` | **Corregido el 2026-09-06**, con cambios quirúrgicos marcados con fecha y una nota arriba del guion: el bloque 9 de F-012 ejecuta de hecho un cierre completo sobre la obra 404, y al reanudar F-009 aquel guion se recorre con lo que quede. Es el orden (b) de `design.md` §13. **Al 2026-09-10 ese cierre completo ya no va sobre la 404, sino sobre `RS26.09/0150` de la obra `0626`** (nota de arriba); `progress/guion_bloque8_F-009.md` sigue nombrando la obra genérica y **queda por corregir** |

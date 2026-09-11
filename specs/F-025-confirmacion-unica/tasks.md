@@ -21,7 +21,7 @@
 
 ## Bloque 0 · Fijar el hallazgo antes de tocar el front
 
-- [ ] **T1**: Crear `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`:
+- [x] **T1**: Crear `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`:
       un `commit` **sin ninguna llamada previa** hace su comprobación previa
       dentro de la misma invocación y escribe. Con dobles en memoria, sin red.
       | Verificación: para `adjuntar`, el doble de `GraficoPort` registra la
@@ -31,7 +31,7 @@
       llamada (R10, y R8 de F-009). **Fase RED**: se demuestra rompiendo en
       copia aislada el `_dry_run` interno y pegando la traza del fallo.
 
-- [ ] **T2**: En el mismo fichero, los **siete control-negativo** de
+- [x] **T2**: En el mismo fichero, los **siete control-negativo** de
       `requirements.md` §6: reclamación inexistente (R29), estado no cerrable
       y ya cerrada (R30), documento ya colgado (R31), puertas de aptitud y
       archivo (R32), login verificado contra el ERP (R33), cierre sin gráfico

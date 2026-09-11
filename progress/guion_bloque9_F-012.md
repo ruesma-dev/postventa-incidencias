@@ -1,6 +1,26 @@
 <!-- progress/guion_bloque9_F-012.md -->
 # F-012 · Guion de ejecución del bloque 9 (T25–T32)
 
+> ## Acta del 2026-09-11 · **el bloque se ejecutó, el circuito completo funcionó contra el ERP, y el bloque se cierra con cinco escenarios SIN verificar**
+>
+> **Qué pasó**: el responsable del proyecto recorrió el circuito entero contra
+> el ERP de producción sobre la incidencia **`RS26.09/0150`** de la obra
+> **`0626`**. Un parte subido por la web quedó **archivado**, **adjunto a su
+> reclamación** y la **reclamación cerrada**. Sus palabras: *«ha funcionado
+> perfectamente»* y *«cerró una y lo hizo bien»*. Es la ***acceptance* 1 y 2**
+> de la feature, y es la primera reclamación que este servicio cierra **con su
+> parte dentro**.
+>
+> **Las casillas vacías de abajo NO son un olvido.** Se ejecutó **el camino
+> feliz y poco más**: quedan marcadas **T25, T27 y T32**, y **sin marcar T26,
+> T28, T29, T30 y T31**, cada una con el motivo y con qué se pierde escrito en
+> su casilla. **El responsable decidió el 2026-09-11 cerrar F-012 así**, con
+> esos cinco escenarios sin ejecutar: la feature se da por buena con el camino
+> principal verificado en producción.
+>
+> El detalle —lo medido, lo no medido, el fallo de procedimiento del front y la
+> decisión con su fecha— está en **§9**, al final de este fichero.
+
 > ## Nota del 2026-09-10 · **cambia la obra sobre la que se verifica, y con ella una premisa de este guion**
 >
 > **La premisa original, literal, tal y como estaba escrita aquí hasta hoy**:
@@ -69,10 +89,19 @@
 > este servicio no crea incidencias, y si no existe, la comprobación previa
 > responde que no la localiza.
 >
-> **Estado**: `progress/impl_F-012.md` está aprobado en review
+> **Estado (al 2026-09-11)**: `progress/impl_F-012.md` está aprobado en review
 > (`progress/review_F-012.md`, veredicto APROBADO), T33 (mutación) cerrada y
-> T34 (`init.sh`) en verde. Falta este bloque entero. Las tareas de
-> `specs/F-012-grafico-sigrid/tasks.md` **las marca el humano**, no el agente.
+> T34 (`init.sh`) en verde. **Este bloque SE EJECUTÓ el 2026-09-11** y el
+> circuito completo funcionó contra el ERP: quedan marcadas **T25, T27 y T32**,
+> y **sin marcar T26, T28, T29, T30 y T31** —los cinco escenarios que no se
+> recorrieron, con su motivo en cada casilla y el resumen en §9.4—. El acta
+> entera está en **§9**.
+>
+> ~~Las tareas de `specs/F-012-grafico-sigrid/tasks.md` **las marca el
+> humano**, no el agente.~~ **2026-09-11**: las marcó el arnés **levantando
+> acta de lo que el responsable ejecutó**, y solo las que constan ejecutadas;
+> la decisión de cerrar la feature con el resto sin verificar es suya y está
+> fechada en §9.5.
 >
 > **Este bloque ejecuta de hecho un cierre completo.** T27 adjunta y T29
 > cierra: la incidencia `RS26.09/0150` de la obra `0626` —una obra **en uso**—
@@ -258,22 +287,45 @@ powershell -ExecutionPolicy Bypass -File .\infra\14_paso0_sigrid.ps1
 > fallo, nunca el valor que hay detrás: por eso esa tabla se puede pegar tal
 > cual en la casilla de resultado.
 
-### Paso 0 (2) · El backend desplegado **con el código de F-012**
+### Paso 0 (2) · **Las DOS partes** desplegadas con el código de F-012: backend **y front**
 
-Es la precondición P2 y no es opcional: sin ella `/api/adjuntar` no existe y lo
-que responde es un **404**, que no se parece en nada al `503` de la ventana
-cerrada.
+> **Corregido el 2026-09-11, y por un fallo real.** Hasta hoy este paso solo
+> mandaba desplegar el **backend**, y la ejecución del bloque se paró por eso:
+> el backend llevaba F-012 pero **el front desplegado no**, así que el circuito
+> archivó el parte y **se detuvo ahí, sin llamar a `adjuntar` ni a `cerrar`**.
+> No dio ningún error visible: simplemente no ocurrió el paso. Ver el hallazgo
+> **H11** de §8 y el acta de §9.
+
+Es la precondición P2 y no es opcional. Y son **dos** despliegues, porque el
+código de F-012 vive en los dos sitios: el endpoint `/api/adjuntar` en el
+backend, y la llamada que lo invoca —`Pipeline.cuerpoDeGrafico` y el paso de
+adjuntar dentro del botón— en el front. **Con solo uno de los dos, el circuito
+no se recorre entero**, y los síntomas de cada mitad no se parecen en nada:
+
+| Qué falta | Síntoma |
+|---|---|
+| El **backend** sin F-012 | `/api/adjuntar` responde **404**, que no se parece al `503` de la ventana cerrada |
+| El **front** sin F-012 | **no hay síntoma**: el parte se archiva y ahí se acaba. Ni una llamada a `adjuntar` ni a `cerrar`, ni un error en pantalla |
 
 ```
 powershell -ExecutionPolicy Bypass -File .\infra\desplegar_backend.ps1
 ```
 
-**Qué se espera ver**: `App Settings : N, de las que 11 son referencias` y
-`Ventana de escritura : CERRADA (archivo, y GRAFICO Y cierre en el ERP)`.
+```
+powershell -ExecutionPolicy Bypass -File .\infra\desplegar_front.ps1 -SoloFront
+```
 
-**Comprobación, y es la que distingue los cuatro casos**: con la ventana
-todavía cerrada, llamar al endpoint desde la consola del front (§4) y mirar el
-código:
+**`-SoloFront` es el modo que hay que usar aquí**: copia los estáticos y **no
+toca Entra ni regenera el secreto** de la Static Web App. El modo completo se
+reserva para la primera vez.
+
+**Qué se espera ver**: del backend, `App Settings : N, de las que 11 son
+referencias` y `Ventana de escritura : CERRADA (archivo, y GRAFICO Y cierre en
+el ERP)`; del front, `Modo : -SoloFront (no toca Entra ni el secreto)`.
+
+**Comprobación (a) del backend, y es la que distingue los cuatro casos**: con la
+ventana todavía cerrada, llamar al endpoint desde la consola del front (§4) y
+mirar el código:
 
 | Lo que responde | Qué significa |
 |---|---|
@@ -281,6 +333,29 @@ código:
 | **503** diciendo que el cierre está deshabilitado | **es lo correcto**: hay código y la ventana está cerrada |
 | **503** nombrando `SIGRID_API_BASE_URL` o `SIGRID_API_KEY` | falta el Paso 0 (1) |
 | **200** | la ventana está abierta y no debería. Ciérrala (T32) y entiende por qué |
+
+**Comprobación (b) del front, que es la que faltaba**: el JavaScript **servido**
+tiene que contener el paso de adjuntar. En la pestaña del front, con `F12` →
+**Consola**:
+
+```js
+// Comprueba que el front SERVIDO lleva el codigo de F-012.
+// Se miran SIMBOLOS, no la ruta: `/adjuntar` se compone con su prefijo en
+// `api.js` y no aparece literal como "/api/adjuntar" en ningun fichero.
+(async () => {
+  for (const [fichero, simbolo] of [
+    ["/js/pipeline.js", "cuerpoDeGrafico"],
+    ["/js/app.js", "_adjuntarYCerrarUno"],
+  ]) {
+    const js = await (await fetch(fichero)).text();
+    console.log(fichero + "  ·  " + simbolo + ": " + js.includes(simbolo));
+  }
+})();
+```
+
+*Se espera*: **`true` en los dos**. Si alguno sale `false`, el front desplegado
+es anterior a F-012 → vuelve a lanzar `desplegar_front.ps1 -SoloFront`. Hacerlo
+**antes** de abrir la ventana ahorra la tarde que costó el 2026-09-11.
 
 ### Paso 0 (3) · La configuración **de la pasarela** (P0), que solo se lee
 
@@ -346,8 +421,12 @@ parámetro; no se edita el script.
       buenas** porque el dueño las dejara bien el 2026-09-06: se releen.
 - [ ] **P1** · `bash harness/init.sh` en verde en la rama
       `feature/F-012-grafico-sigrid`.
-- [ ] **P2** · El backend desplegado lleva el código de F-012: con la ventana
-      cerrada, `/api/adjuntar` responde **503**, no 404 (Paso 0 (2)).
+- [ ] **P2** · **Las dos partes desplegadas con el código de F-012**, backend
+      **y front** (Paso 0 (2), corregido el 2026-09-11): con la ventana cerrada,
+      `/api/adjuntar` responde **503** y no 404 **y**, además, el
+      `js/pipeline.js` **servido** contiene `cuerpoDeGrafico` y `/api/adjuntar`.
+      Comprobar solo lo primero es lo que hizo que el 2026-09-11 el circuito se
+      parase después de archivar, sin error visible (H11 de §8).
 - [ ] **P3** · Paso 0 (1) hecho: los dos secretos de Sigrid en el Key Vault y
       las App Settings puestas. Se comprueba con
       `.\infra\14_paso0_sigrid.ps1 -WhatIf`, que tiene que terminar en
@@ -705,19 +784,19 @@ el propio ERP: **con la ventana cerrada no funciona ni el dry-run**.
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| Incidencia de la obra `0626` (código; se espera `RS26.09/0150`) | |
-| Paso 1 · gráficos de partida (¿0?) · `MAX(ide)` de `dbo.log` | |
-| Paso 2 · HTTP con la ventana cerrada | |
-| Paso 4 · HTTP, `estado`, `idempotente`, `filas_afectadas` | |
-| Paso 4 · ¿estaban **todas** las cosas de R21? | |
-| Paso 4 · `nombre_fichero` · `bytes` · `sha256` · `cod_previsto` | |
-| Paso 4 · `login_sigrid` | |
-| Paso 4 · avisos de la pasarela (¿huérfanos?) | |
-| Paso 4 · **duración en ms** (R37, frente a 35 s) | |
-| Paso 5 · ¿el ERP intacto? (`MAX(ide)` y 0 gráficos) | |
-| Paso 6 · traza local (`dry_run_ok`, `reclamacion_ide`) | |
-| **T25 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **2026-09-11**, `08:27:29` UTC (las horas salen de los registros de la aplicación, §9.2) |
+| Incidencia de la obra `0626` (código; se espera `RS26.09/0150`) | **`RS26.09/0150`**, la prevista |
+| Paso 1 · gráficos de partida (¿0?) · `MAX(ide)` de `dbo.log` | **no recorrido**: no se lanzó `16_grafico_sigrid.ps1`. Que la reclamación estaba sin gráfico se sabe **indirectamente**, porque el adjuntado posterior funcionó y el responsable vio **un** parte en la ficha |
+| Paso 2 · HTTP con la ventana cerrada | **no recorrido**. La ventana ya estaba abierta cuando se ejecutó el circuito, así que el `503` de §0.1 **no se observó contra el entorno desplegado** |
+| Paso 4 · HTTP, `estado`, `idempotente`, `filas_afectadas` | **HTTP 200** [MEDIDO en `appi-postventa-dev`]. `estado`, `idempotente` y `filas_afectadas` **no se anotaron**: el JSON de la respuesta no se guardó |
+| Paso 4 · ¿estaban **todas** las cosas de R21? | **sin anotar**. La tarjeta del front pintó su bloque y el responsable siguió adelante, pero el objeto `dry_run` campo a campo no quedó registrado |
+| Paso 4 · `nombre_fichero` · `bytes` · `sha256` · `cod_previsto` | **sin anotar** (mismo motivo). Se pierde la referencia con la que T27.4 cotejaba el binario de dentro del ERP |
+| Paso 4 · `login_sigrid` | **sin anotar** |
+| Paso 4 · avisos de la pasarela (¿huérfanos?) | **sin anotar** |
+| Paso 4 · **duración en ms** (R37, frente a 35 s) | **13.134 ms — 13,1 s** [MEDIDO]. Es el **paso más lento de todo el circuito**: consume el **37,5 %** del tope de 35 s de `SIGRID_TIMEOUT_S` y deja **21,9 s** de margen. Con un parte más pesado se acerca |
+| Paso 5 · ¿el ERP intacto? (`MAX(ide)` y 0 gráficos) | **no recorrido**: no hay foto de antes ni de después, así que **no está comprobado contra el ERP** que el dry-run no escriba (R20, R36) |
+| Paso 6 · traza local (`dry_run_ok`, `reclamacion_ide`) | **no recorrido** |
+| **T25 queda marcada** | **sí**, y solo por su paso 4: el cálculo previo se ejecutó de verdad contra el ERP, con la ventana abierta, y respondió `200` en 13,1 s. **Los pasos 1, 2, 5 y 6 no se recorrieron** y quedan sin verificar: de esta tarea consta que el dry-run **funciona**, no que **no escriba** |
 
 ---
 
@@ -775,12 +854,12 @@ no está (R48) y que en su lugar viaja el bloque `grafico` (R49).
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| 1 · HTTP y `dry_run.grafico.estado` | |
-| 1 · ¿aparecía `aviso_sin_grafico`? (tiene que ser **no**) | |
-| 2 · HTTP del commit y motivo literal | |
-| 3 · ¿el ERP intacto? (estado y `MAX(ide)`) | |
-| **T26 queda marcada** | sí / no · motivo: |
+| Fecha y hora | paso 1: **2026-09-11**, `08:27:42` UTC. Pasos 2 y 3: **NO EJECUTADOS** |
+| 1 · HTTP y `dry_run.grafico.estado` | **HTTP 200** [MEDIDO], en 4.424 ms, con el gráfico **todavía sin adjuntar** —fue antes del commit de T27—. Es de hecho el paso 1 de esta tarea, y **confirma R50**: el dry-run del cierre **no** exige el gráfico. El `dry_run.grafico.estado` no se anotó |
+| 1 · ¿aparecía `aviso_sin_grafico`? (tiene que ser **no**) | **sin anotar** |
+| 2 · HTTP del commit y motivo literal | **NO EJECUTADO.** Nunca se pidió un cierre con `commit` sobre un parte sin adjuntar: las cinco llamadas de §9.2 respondieron `200` y no hay ni un `409` |
+| 3 · ¿el ERP intacto? (estado y `MAX(ide)`) | **NO EJECUTADO** |
+| **T26 queda marcada** | **no.** El paso 1 quedó ejercitado de hecho, pero el paso 2 —**el 409 que impide cerrar sin el parte dentro**— no. **Qué se pierde si nunca se verifica**: R2 es la razón de ser de esta feature, y de ella no queda más prueba que el test unitario. Nadie ha visto contra el ERP que un cierre sin gráfico sea rechazado; si esa puerta estuviera rota, el síntoma sería justo la anomalía que F-012 existe para impedir —una reclamación en `CER` sin su parte— y aparecería en una obra en uso, no en una prueba |
 
 ---
 
@@ -906,20 +985,20 @@ tener cerrada **D2** (§2).
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| Reclamación (código) · **autorización expresa del humano** | sí / no |
-| 1 · gráficos de partida · `MAX(ide)` de `dbo.log` | |
-| 2 · dry-run leído (`sha256`, `bytes`, `cod_previsto`) | |
-| 3 · HTTP, `estado`, `idempotente`, `filas_afectadas` | |
-| 3 · **duración en ms** del commit (R37) | |
-| 4 · fila de negocio (`res`, `gratipide`, `vin`, `ima NULL`, `nom`) | |
-| 4 · fila documental (`bytes`, `gratipide 0`, `res` vacía, `emp` igual) | |
-| 4 · enlace `rcg` (`con`, `pos`, `cla 0`) | |
-| 4 · **`sha256` del binario dentro del ERP** | coincide / NO coincide |
-| 4 · **`MAX(ide)` de `dbo.log`** | sin subir / ha subido a … |
-| 5 · traza local (`adjuntado`, `idempotente no`, `oid` sí, login fuera de `gra_cod` no) | |
-| 6 · **¿se ve el parte en la ficha de Sigrid?** | sí / no |
-| **T27 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **2026-09-11**, `08:28:03` UTC |
+| Reclamación (código) · **autorización expresa del humano** | **`RS26.09/0150`** (obra `0626`) · **sí**: lo ejecutó el propio responsable del proyecto, delante del ERP |
+| 1 · gráficos de partida · `MAX(ide)` de `dbo.log` | **no recorrido** (igual que T25.1) |
+| 2 · dry-run leído (`sha256`, `bytes`, `cod_previsto`) | el dry-run **se ejecutó** (T25, `08:27:29`, `200`), pero **sus campos no se anotaron**, así que no hay `sha256` de referencia con el que cotejar el paso 4 |
+| 3 · HTTP, `estado`, `idempotente`, `filas_afectadas` | **HTTP 200** [MEDIDO]. `estado`, `idempotente` y `filas_afectadas` **sin anotar**: en particular, **no está comprobado el `filas_afectadas: 3` de R27** (las tres filas en dos bases) |
+| 3 · **duración en ms** del commit (R37) | **8.471 ms — 8,5 s** [MEDIDO], frente a los 35 s. Menos que el dry-run (13,1 s) |
+| 4 · fila de negocio (`res`, `gratipide`, `vin`, `ima NULL`, `nom`) | **no recorrido**: no se lanzó `16_grafico_sigrid.ps1` |
+| 4 · fila documental (`bytes`, `gratipide 0`, `res` vacía, `emp` igual) | **no recorrido** |
+| 4 · enlace `rcg` (`con`, `pos`, `cla 0`) | **no recorrido** |
+| 4 · **`sha256` del binario dentro del ERP** | **no comprobado.** Que el documento se abre y es el parte lo vio el responsable (paso 6); que sea **byte a byte** el que se mandó, **no está medido** |
+| 4 · **`MAX(ide)` de `dbo.log`** | **no comprobado**, así que R36 —el gráfico no escribe en `dbo.log`— sigue apoyándose en la medición previa de `sigrid_api.md`, no en esta ejecución |
+| 5 · traza local (`adjuntado`, `idempotente no`, `oid` sí, login fuera de `gra_cod` no) | **no recorrido** |
+| 6 · **¿se ve el parte en la ficha de Sigrid?** | **SÍ.** El responsable abrió la reclamación en Sigrid y vio el parte adjunto. Es la ***acceptance* 1** de la feature y es lo único de este bloque que ningún script puede dar por bueno |
+| **T27 queda marcada** | **sí**, por su paso 6: el primer gráfico real entró en el ERP y se ve donde tiene que verse. **Los pasos 1, 4 y 5 no se recorrieron**: del gráfico consta que **está y se abre**, no que sus tres filas sean las de R27 ni que el binario coincida byte a byte |
 
 ---
 
@@ -1033,13 +1112,13 @@ de red del que habla §0.4.
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| 1 · HTTP, `estado`, `filas_afectadas` · ¿`intentos` sin subir? | |
-| 2 · ¿se borró la fila de `postventa.graficos`? (o «no ejecutado») | |
-| 3 · HTTP, `estado`, **`idempotente`**, `filas_afectadas` | |
-| 4 · ¿**un** gráfico y **un** enlace? · `MAX(ide)` | |
-| 5 · traza (`adjuntado`, `idempotente si`, mismo `gra_cod`) | |
-| **T28 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **NO EJECUTADA.** No hay ninguna segunda llamada a `/api/adjuntar` sobre el mismo parte en los registros del 2026-09-11 (§9.2) |
+| 1 · HTTP, `estado`, `filas_afectadas` · ¿`intentos` sin subir? | **no ejecutado** (capa 1, la traza local) |
+| 2 · ¿se borró la fila de `postventa.graficos`? (o «no ejecutado») | **no ejecutado**: no se borró ninguna fila |
+| 3 · HTTP, `estado`, **`idempotente`**, `filas_afectadas` | **no ejecutado** (capa 2, la de la pasarela) |
+| 4 · ¿**un** gráfico y **un** enlace? · `MAX(ide)` | **no ejecutado** |
+| 5 · traza (`adjuntado`, `idempotente si`, mismo `gra_cod`) | **no ejecutado** |
+| **T28 queda marcada** | **no.** Se recorrió el camino feliz —adjuntar una vez y cerrar— y no se repitió ninguna llamada. **Qué se pierde si nunca se verifica**: es la única prueba de punta a punta de que **pedir dos veces lo mismo no cuelga un segundo documento**. La capa 1 (la traza) tiene test unitario; la **capa 2 —la idempotencia por tamaño y `sha256` de la pasarela— es de otro proyecto**, y aquí solo está apoyada en lo que mide `azure-apps/sigrid_api.md` §8.8, no en una ejecución nuestra. El escenario que la necesita es real y está descrito en §0.4: un `502` por tiempo agotado deja el ERP en estado desconocido y el guion manda **repetir**. Si la capa 2 fallara, ese reintento colgaría un **segundo** parte en el histórico de una obra en uso, y quitarlo es un trabajo manual desde la UI de Sigrid |
 
 ---
 
@@ -1142,17 +1221,17 @@ autorización—.
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| **Autorización expresa del humano para cerrar** | sí / no |
-| 1 · ¿se veía el recuadro ámbar «adjunto y abierta»? | |
-| 2 · `dry_run.grafico.estado` (tiene que ser `adjuntado`) | |
-| 3 · `est` / `res` / `tiemod` / `MAX(ide)` de partida | |
-| 4 · HTTP, `estado`, `filas_afectadas` | |
-| 5 · `con.est` = `CER` · `tiemod` sin mover · nuevo `MAX(ide)` (= anterior + 1) | |
-| 5 · fila de `dbo.log` campo a campo · **huso** | LOCAL / UTC / no coincide |
-| 6 · ¿sigue habiendo un gráfico y un enlace? | |
-| 7 · traza local del cierre (`cerrado`, `oid` sí, login no) | |
-| **T29 queda marcada** | sí / no · motivo: |
+| Fecha y hora | el **cierre real** sí ocurrió: **2026-09-11**, `08:28:12` UTC. **El escenario de esta tarea, no** |
+| **Autorización expresa del humano para cerrar** | **sí**: lo ejecutó el responsable |
+| 1 · ¿se veía el recuadro ámbar «adjunto y abierta»? | **NO EJECUTADO.** El circuito fue seguido —adjuntar y cerrar en la misma tanda, con 9 s entre medias—, así que **el estado intermedio no llegó a existir** y nadie vio el recuadro ámbar ni pulsó «Reintentar el cierre» |
+| 2 · `dry_run.grafico.estado` (tiene que ser `adjuntado`) | **no observado.** El único dry-run del cierre fue el de `08:27:42`, y entonces el gráfico **todavía no estaba** adjunto (casilla de T26): es el caso contrario al que esta tarea verifica |
+| 3 · `est` / `res` / `tiemod` / `MAX(ide)` de partida | **no recorrido**: no se lanzó `09_estado_reclamacion_sigrid.ps1` |
+| 4 · HTTP, `estado`, `filas_afectadas` | **HTTP 200** [MEDIDO], en **472 ms** —el paso más rápido del circuito—. `estado` y `filas_afectadas` **sin anotar**: **el `filas_afectadas: 2` de F-009 R22 no está comprobado** |
+| 5 · `con.est` = `CER` · `tiemod` sin mover · nuevo `MAX(ide)` (= anterior + 1) | **no recorrido con el script.** Que la reclamación quedó cerrada lo comprobó el responsable en Sigrid («cerró una y lo hizo bien»); el `tiemod` y el `MAX(ide)`, **no** |
+| 5 · fila de `dbo.log` campo a campo · **huso** | **NO COMPROBADO**, y es el hueco más concreto de todo el bloque: el **huso de `fec`/`hor`** es un defecto que el guion del bloque 8 de F-009 daba por probable (§0.2 de aquel guion). La fila de auditoría del primer cierre real **está escrita en producción y nadie la ha mirado** |
+| 6 · ¿sigue habiendo un gráfico y un enlace? | **no comprobado con el script.** El responsable vio el parte en la ficha; que el enlace `rcg` siga siendo **uno** después del cierre, no |
+| 7 · traza local del cierre (`cerrado`, `oid` sí, login no) | **no recorrido** |
+| **T29 queda marcada** | **no.** El cierre real ocurrió y salió bien —es la ***acceptance* 2**, y está recogido en §9.1—, pero **esta tarea no verifica el cierre: verifica el escenario «adjuntado pero no cerrado» y la salida de él**, y ese escenario no se dio. **Qué se pierde si nunca se verifica**: (1) que del estado intermedio —legítimo, no un error— se puede salir con el botón «Reintentar el cierre» (R65, R3); es exactamente lo que se verá el día que una llamada se caiga entre `adjuntar` y `cerrar`, y entonces será en caliente; (2) las comprobaciones del paso 5 sobre el cierre que **sí** se hizo: `tiemod` sin mover, la fila nueva de `dbo.log` y su **huso**. Lo segundo se puede recuperar cuando se quiera, porque **es solo lectura** y la fila sigue ahí |
 
 ---
 
@@ -1224,13 +1303,13 @@ alguien vuelve a pasar el mismo parte.
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| 1 · `MAX(ide)` antes del reintento | |
-| 2 · HTTP y `estado` de `/api/adjuntar` (`adjuntado` o `ya_cerrada`) | |
-| 3 · HTTP, `estado` y `filas_afectadas` de `/api/cerrar` | |
-| 4 · ¿un gráfico, un enlace, `MAX(ide)` sin subir? | |
-| 5 · ¿las dos trazas con las marcas de tiempo originales? | |
-| **T30 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **NO EJECUTADA.** El circuito se recorrió **una sola vez**: cinco llamadas y ninguna repetición (§9.2) |
+| 1 · `MAX(ide)` antes del reintento | **no ejecutado** |
+| 2 · HTTP y `estado` de `/api/adjuntar` (`adjuntado` o `ya_cerrada`) | **no ejecutado** |
+| 3 · HTTP, `estado` y `filas_afectadas` de `/api/cerrar` | **no ejecutado** |
+| 4 · ¿un gráfico, un enlace, `MAX(ide)` sin subir? | **no ejecutado** |
+| 5 · ¿las dos trazas con las marcas de tiempo originales? | **no ejecutado** |
+| **T30 queda marcada** | **no. Qué se pierde si nunca se verifica**: es el escenario **más probable de todos en uso normal** —alguien vuelve a pasar el mismo parte de una incidencia ya cerrada—, y de él no hay prueba contra el ERP de que no se escriba una segunda vez ni se pisen las dos trazas terminales (R16, R30; F-009 R18, R42). A diferencia de T28, este reintento **no necesita provocar ningún fallo**: basta con repetir el circuito sobre `RS26.09/0150`, que ya está cerrada. Es el hueco más barato de cerrar de los cinco |
 
 ---
 
@@ -1325,13 +1404,13 @@ autorización expresa.
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | ejecutado / **no ejecutado** (motivo): |
-| Otra reclamación usada (código) · autorización | |
-| 3 · HTTP y código de la pasarela en el motivo | |
-| 4 · ¿el ERP intacto? (0 gráficos, `MAX(ide)`) | |
-| 5 · traza local en `error` con su motivo | |
-| 6 · **`SIGRID_GRATIPIDE_PARTE` restaurada a 35** | sí / no |
-| **T31 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **NO EJECUTADA.** Motivo: exigía **una segunda incidencia en una obra en uso** con su propia autorización, y **tocar una App Setting** del entorno desplegado para provocar el rechazo. Ninguna de las dos cosas se hizo |
+| Otra reclamación usada (código) · autorización | ninguna |
+| 3 · HTTP y código de la pasarela en el motivo | **no ejecutado** |
+| 4 · ¿el ERP intacto? (0 gráficos, `MAX(ide)`) | **no ejecutado** |
+| 5 · traza local en `error` con su motivo | **no ejecutado** |
+| 6 · **`SIGRID_GRATIPIDE_PARTE` restaurada a 35** | **no procede**: nunca se cambió, así que sigue en **35**. Conviene que conste, porque dejarla en 34 era el riesgo de esta tarea |
+| **T31 queda marcada** | **no**, y es la única de las cinco que el propio guion ya declaraba prescindible («se anota como no ejecutado y vale el test unitario», §5 T31 y `tasks.md`). **Qué se pierde si nunca se verifica**: que un rechazo de negocio de la pasarela —un `409` con su código— deja el ERP **intacto** y la traza local en `error` (R33, R59). Cubierto por test unitario con la pasarela simulada; lo que no se ha visto es que el `409` real llegue **antes** de que la pasarela escriba nada. El coste de verificarlo es alto —una segunda incidencia en una obra en uso— y el riesgo que cubre es bajo, porque el rechazo lo levanta la pasarela antes de su `COMMIT` |
 
 ---
 
@@ -1407,14 +1486,14 @@ o mal**, incluso si se paró en mitad de T27.
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| 1–2 · `CIERRE_HABILITADO` = `false` | sí / no |
-| 3 · `/api/adjuntar` responde 503 | sí / no |
-| 4 · sesión limpiada | sí / no |
-| 6 · duración T25 · duración T27 · tamaño del parte | |
-| 6 · ¿alguna pasó de 35 s? | |
-| 8 · `azure-apps/postventa_incidencias.md` actualizado | sí / no |
-| **T32 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **2026-09-11**, al terminar la sesión (después de las `08:28` UTC) |
+| 1–2 · `CIERRE_HABILITADO` = `false` | **sí.** Se leyó **antes** —seguía en `true`, es decir, la ventana llevaba abierta desde la prueba—, se puso a `false` y se **releyó** para confirmarlo. No se dio por hecho |
+| 3 · `/api/adjuntar` responde 503 | **no comprobado en el borde.** Es la comprobación que distingue «la App Setting está puesta» de «la Function ya reinició y de verdad no escribe», y exige una sesión en el front. Queda como el único resto abierto de esta tarea |
+| 4 · sesión limpiada | **no procede**: los scripts de lectura de §3 no se llegaron a usar, así que en ninguna consola quedaron la raíz ni la clave de la pasarela |
+| 6 · duración T25 · duración T27 · tamaño del parte | **13.134 ms** (dry-run) · **8.471 ms** (commit) · **tamaño del parte: sin anotar** —no se registró, y era el otro número que este paso pedía, frente a `GRAFICO_MAX_BYTES` (10 MB) y al tope de la pasarela— |
+| 6 · ¿alguna pasó de 35 s? | **no.** La más lenta fue el dry-run de `adjuntar` con **13,1 s**: el **37,5 %** del tope |
+| 8 · `azure-apps/postventa_incidencias.md` actualizado | **no, pendiente.** Desde hoy ya no es verdad que «no se ha ejecutado ni un cierre real»: el primero fue el de `08:28:12` UTC y fue **con su gráfico dentro**. Queda fuera de este encargo y hay que hacerlo |
+| **T32 queda marcada** | **sí**, por lo que importa: **la ventana de escritura quedó cerrada y comprobada**. Quedan su paso 3 (el `503` en el borde) y su paso 8 (`azure-apps`) |
 
 ---
 
@@ -1474,7 +1553,7 @@ PDF—, y de eso el fichero `muestras/parte_prueba_RS26.09-0150.pdf` lleva datos
 
 ---
 
-## 8 · Hallazgos de la preparación de este guion
+## 8 · Hallazgos de la preparación de este guion, y de su ejecución
 
 | # | Hallazgo | Dónde | Qué se propone |
 |---|---|---|---|
@@ -1487,4 +1566,123 @@ PDF—, y de eso el fichero `muestras/parte_prueba_RS26.09-0150.pdf` lleva datos
 | **H7** | **T31 no puede usar la reclamación de T27.** Con la traza en `adjuntado`, la capa 1 respondería desde la traza y no llegaría a la pasarela, así que el rechazo que se quiere provocar no se produciría | `design.md` §9.3, `tasks.md` T31 | Recogido como aviso al principio de T31: se usa **otra** candidata de la obra (`0626` desde el 2026-09-10), con su propia autorización. `tasks.md` ya decía «otra reclamación candidata», pero no el porqué |
 | **H8** | **La lectura de P0 sin `--query` vuelca todas las App Settings de la pasarela**, credenciales de escritura del ERP incluidas, a la consola de alguien. `tasks.md` P0 dice «leída sin ver ningún secreto» sin decir cómo | §1, Paso 0 (3) | Escrito el filtro `--query` que devuelve solo las seis que no son secretos. Y anotado que, aunque volcara las demás, las referencias a Key Vault salen **sin resolver**: es la misma limitación que impide leer así nuestra `SIGRID_API_BASE_URL` |
 | **H9** | **Dos precondiciones documentales no estaban en la lista del bloque 9**: la aceptación de los 5 supervivientes de mutación —que el nivel `critico` exige por escrito— y la confirmación de `PV002` con Posventa. Las dos están en `review_F-012.md` §8, pero no en `tasks.md` | `tasks.md` bloque 9, `review_F-012.md` §8 | Añadidas como **D1** y **D2** en §2, marcadas como documentales: **no bloquean técnicamente** —T25 se puede ejecutar sin ellas— pero el bloque no se da por cerrado con alguna abierta. D2 conviene tenerla antes de T27, que es la primera escritura bajo esa clase |
+| **H11** | **Desplegar el backend no basta: el front también lleva código de F-012, y sin él el circuito se para después de archivar, sin error visible.** Es un **fallo real del 2026-09-11**, no un riesgo teórico: el parte se archivó y ahí acabó. Se diagnosticó en dos lecturas —los registros de `appi-postventa-dev` no tenían **ni una** llamada a `adjuntar` ni a `cerrar`, así que el fallo no estaba en el backend; y el `js/pipeline.js` **servido**, descargado, **no contenía el paso de adjuntar**—. Se resolvió con `infra/desplegar_front.ps1 -SoloFront`, el modo que no toca Entra ni regenera el secreto | Paso 0 (2) y P2 de §2 de este guion; `infra/desplegar_front.ps1` | **Corregido el 2026-09-11**: el Paso 0 (2) manda ahora desplegar **las dos partes** y añade la comprobación (b), que descarga el JS servido y verifica que lleva `cuerpoDeGrafico` y `/api/adjuntar`. P2 dice lo mismo. **La lección general**: un front que le falta un paso **no falla, no hace nada**, y «no hace nada» es el síntoma más caro de diagnosticar de todos |
 | **H10** | **El guion del bloque 8 de F-009 contradecía a F-012** en tres puntos: su P5 mandaba a Mirasierra, su T22 esperaba `aviso_sin_grafico` —que R48 derogó— y su T24 no pasaba por `/api/adjuntar`, así que su commit habría respondido 409 | `progress/guion_bloque8_F-009.md` | **Corregido el 2026-09-06**, con cambios quirúrgicos marcados con fecha y una nota arriba del guion: el bloque 9 de F-012 ejecuta de hecho un cierre completo sobre la obra 404, y al reanudar F-009 aquel guion se recorre con lo que quede. Es el orden (b) de `design.md` §13. **Al 2026-09-10 ese cierre completo ya no va sobre la 404, sino sobre `RS26.09/0150` de la obra `0626`** (nota de arriba); `progress/guion_bloque8_F-009.md` sigue nombrando la obra genérica y **queda por corregir** |
+
+
+---
+
+## 9 · Acta de la ejecución del 2026-09-11
+
+### 9.1 · Qué se ejecutó, y qué salió
+
+El **responsable del proyecto** recorrió el circuito completo contra el ERP de
+producción, sobre la incidencia **`RS26.09/0150`** de la obra **`0626`** —una
+obra **en uso**, con la autorización expresa que exige P6—. Un parte subido por
+la web quedó:
+
+1. **archivado** (SharePoint),
+2. **adjunto a su reclamación** en Sigrid, visible y abrible en la ficha,
+3. y la **reclamación cerrada**.
+
+Palabras del responsable: ***«ha funcionado perfectamente»*** y ***«cerró una y
+lo hizo bien»***. Eso cubre la ***acceptance* 1** (el parte se ve en la ficha) y
+la ***acceptance* 2** (la reclamación se cierra con su parte dentro). **Es la
+primera reclamación que este servicio cierra con el parte adjunto**, y la
+anomalía que F-009 aceptaba como riesgo —cerrar sin el parte— no llegó a
+producirse ni una vez.
+
+### 9.2 · La evidencia objetiva, medida en los registros de la aplicación
+
+Consultado con `az monitor app-insights query` sobre **`appi-postventa-dev`**.
+**Las cinco respuestas fueron correctas (`200`)**:
+
+| Hora (UTC) | Ruta | Código | Duración | Qué es |
+|---|---|---|---|---|
+| `08:27:15` | `archivar` | **200** | 1.756 ms | el archivo en SharePoint (P5) |
+| `08:27:29` | `adjuntar` | **200** | **13.134 ms** | **comprobación previa** del gráfico (T25.4) |
+| `08:27:42` | `cerrar` | **200** | 4.424 ms | comprobación previa del cierre, con el gráfico aún sin adjuntar (T26.1) |
+| `08:28:03` | `adjuntar` | **200** | **8.471 ms** | **la escritura del gráfico** (T27.3) |
+| `08:28:12` | `cerrar` | **200** | 472 ms | **el cierre real** (2 escrituras en el ERP en total) |
+
+Los dos pares son **la comprobación previa y la escritura**: exactamente el
+orden que manda el guion, dry-run antes de cada `commit`, sin excepción.
+
+**El dato que este guion pedía anotar (R37), medido**: la duración de
+`adjuntar`. **13,1 s en la primera llamada**, frente al tope de **35 s** de
+`SIGRID_TIMEOUT_S`. Hay margen —21,9 s—, pero es **con diferencia el paso más
+lento del circuito**: consume el **37,5 %** del tope, **28 veces** lo que tardó
+el cierre (472 ms) y **7,5 veces** lo que tardó el archivo. Con un parte más
+pesado se acerca al tope, y el síntoma de pasarlo no es un error claro sino un
+`502` con el ERP en estado desconocido (§0.4). **No es una anécdota: es la
+medición que decide si `SIGRID_TIMEOUT_S` aguanta el parte real**, y conviene
+repetirla con el parte más grande que Posventa maneje.
+
+**Lo que NO se midió**: el **tamaño en bytes** del parte usado. Era el otro
+número del paso 6 de T32 —frente a `GRAFICO_MAX_BYTES` (10 MB) y al tope de la
+pasarela—, y sin él los 13,1 s no se pueden extrapolar a un parte mayor.
+
+### 9.3 · El fallo de procedimiento: **el front desplegado no llevaba F-012**
+
+Durante la prueba, el circuito **se paró después de archivar**: ni una llamada a
+`adjuntar` ni a `cerrar`. **No hubo error visible**; simplemente el paso no
+ocurrió.
+
+**Cómo se diagnosticó**, en dos lecturas:
+
+1. Los registros de `appi-postventa-dev` **no tenían ni una** llamada a esas dos
+   rutas → el fallo no estaba en el backend, que sí llevaba F-012.
+2. Se descargó el **JavaScript servido** por el front, y **no contenía el paso
+   de adjuntar**.
+
+**Cómo se resolvió**: desplegando el front con
+`infra/desplegar_front.ps1 -SoloFront`, el modo que **no toca Entra ni regenera
+el secreto** de la Static Web App.
+
+**Es un hallazgo de procedimiento, no un defecto del servicio**: el guion daba
+por hecho que basta con desplegar el backend, **y no basta**. Queda recogido
+como **H11** en §8, y el **Paso 0 (2) y la P2 de §2 están corregidos**: mandan
+desplegar **las dos partes** y añaden una comprobación del JS servido.
+
+### 9.4 · Qué queda sin verificar, y qué se pierde
+
+| Tarea | Escenario | Por qué no se ejecutó | Qué se pierde |
+|---|---|---|---|
+| **T26** | comprobación previa del cierre con el gráfico **sin adjuntar**, y el **`commit` rechazado** | su paso 1 sí se ejercitó (`08:27:42`); el paso 2 —pedir un cierre con `commit` sin haber adjuntado— **nunca se pidió** | **la razón de ser de la feature (R2)**: que el ERP rechace cerrar una reclamación sin su parte dentro. Solo queda el test unitario |
+| **T28** | **idempotencia** de extremo a extremo, las dos capas | el circuito se recorrió **una vez**; la capa 2 exigía además borrar a mano una fila de `postventa.graficos` | que **repetir no cuelga un segundo documento**. Importa porque §0.4 manda **repetir** ante un `502` de `adjuntar`: si la capa 2 fallara, el reintento duplicaría el parte en una obra en uso, y quitarlo es manual desde la UI de Sigrid |
+| **T29** | **«adjuntado pero no cerrado»** y el botón que saca de ahí | adjuntar y cerrar fueron **seguidos**, con 9 s entre medias: el estado intermedio no llegó a existir | (1) que del estado intermedio se sale con «Reintentar el cierre» (R3, R65) —se verá en caliente el día que una llamada se caiga—; (2) las comprobaciones del cierre que **sí** se hizo: `tiemod` sin mover y la **fila de `dbo.log` con su huso**, defecto que F-009 daba por probable. Esto segundo **es solo lectura y se puede recuperar cuando se quiera** |
+| **T30** | **reintento sobre lo ya cerrado** | no se repitió el circuito | el escenario **más probable en uso normal** —alguien vuelve a pasar el mismo parte—: que no se escriba dos veces ni se pisen las trazas terminales (R16, R30). **Es el hueco más barato de cerrar**: no hace falta provocar ningún fallo, basta repetir el circuito sobre una incidencia ya cerrada |
+| **T31** | **rechazo de la pasarela sin escritura** | exigía una **segunda incidencia en una obra en uso** y tocar una App Setting. El propio guion ya lo declaraba prescindible | que un `409` de negocio deja el ERP intacto y traza de `error` (R33, R59). Cubierto por test unitario; el riesgo real es bajo porque el rechazo se levanta antes del `COMMIT` de la pasarela |
+
+Además, de las tareas **marcadas** quedan pasos sin recorrer, y están dichos uno
+a uno en sus casillas: **ninguna de las comprobaciones con los scripts de
+`infra/` se ejecutó**. Es decir, del gráfico consta que **está y se abre**, pero
+**no** que sus tres filas sean las de R27, **no** que el binario de dentro del
+ERP coincida byte a byte con el que se mandó, y **no** que `dbo.log` no haya
+crecido por el gráfico (R36). Todas esas comprobaciones son **de solo lectura**
+y siguen disponibles: la incidencia, el gráfico y la fila de auditoría siguen en
+el ERP.
+
+### 9.5 · La decisión: **F-012 se cierra así**, y con fecha
+
+**El 2026-09-11 el responsable del proyecto decidió cerrar F-012 con los cinco
+escenarios de §9.4 sin ejecutar.** La feature se da por buena **con el camino
+principal verificado en producción**: parte archivado, adjunto y reclamación
+cerrada, comprobado por él en la ficha de Sigrid.
+
+Queda escrito aquí para que quien lea este guion mañana **no interprete las
+casillas vacías como un olvido**. Son una decisión, tomada con la lista de §9.4
+delante. Si alguno de esos escenarios aparece en producción —un reintento que
+duplica, un parte que se queda adjunto sin cerrar—, este acta dice que **nadie
+lo había probado antes contra el ERP**, y dónde está el guion para hacerlo.
+
+**Lo que queda pendiente y no depende de esa decisión**:
+
+- **`azure-apps/postventa_incidencias.md`** (paso 8 de T32): desde hoy ya no es
+  verdad que «no se ha ejecutado ni un cierre real».
+- **Paso 3 de T32**: comprobar en el borde, con una llamada, que la ventana
+  cerrada responde `503`. La App Setting está a `false` y releída; falta la
+  prueba de que la Function ya reinició.
+- **`progress/guion_bloque8_F-009.md`**: T29 de este bloque ha ejercitado de
+  hecho un cierre real de F-009 sobre `RS26.09/0150`, y aquel guion sigue
+  nombrando la obra genérica (H10).

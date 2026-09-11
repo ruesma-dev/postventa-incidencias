@@ -1,13 +1,38 @@
 <!-- progress/peticion_posventa_prueba_F-012.md -->
 # Petición a Posventa: la prueba del circuito completo (F-012)
 
+> ## Nota del 2026-09-10 · **cambia la obra de la prueba, y con ella una premisa de esta petición**
+>
+> **Lo que esta petición decía hasta hoy, literal**: *«prueben la aplicación de
+> punta a punta […] sobre **la obra de pruebas 404** y ninguna otra»*, y al
+> cuerpo del correo: *«Por eso la prueba entera se hace **sobre la obra 404, la
+> de pruebas**. Ni Mirasierra, ni ninguna obra con clientes de verdad»*.
+>
+> **Esa premisa la levantó el responsable del proyecto el 2026-09-10.** Se le
+> planteó de forma explícita que la **`0626` no es una obra de pruebas, sino
+> una obra en uso**, y lo reafirmó. La verificación de F-012 se hace sobre la
+> incidencia **`RS26.09/0150`** (tipo 708) de esa obra, que **da de alta él
+> mismo en el ERP**: este servicio no crea incidencias, y si no existe, la
+> comprobación previa responde que no la localiza.
+>
+> **Qué implica para Ana y Alicia, y por eso se lo decimos en el correo**: lo
+> que confirmen queda en el **histórico de una obra en uso** —la incidencia, su
+> cierre y el documento colgado de ella—, no en una obra que no es de nadie.
+> Tienen que saber dónde queda lo que confirmen **antes** de confirmarlo.
+>
+> **Lo que no cambia**: comprobación previa antes de cada escritura;
+> **autorización expresa del responsable para cada incidencia concreta**, que
+> aquí **gana peso**; `CIERRE_HABILITADO` como interruptor único del documento
+> adjunto y del cambio de estado; y ninguna escritura desde un puesto de
+> trabajo.
+
 > **Para el humano, antes de reenviar nada.**
 >
 > **Qué es esto.** La petición a **Ana Bello** y **Alicia Echevarría** para que
 > prueben la aplicación de punta a punta: subir partes firmados, revisarlos y
-> confirmar el cierre, sobre **la obra de pruebas 404** y ninguna otra. El
-> bloque de abajo, de la línea de guiones en adelante, está escrito para
-> **reenviarse tal cual** por correo.
+> confirmar el cierre, sobre **la obra `0626`** —que está **en uso**— y ninguna
+> otra. El bloque de abajo, de la línea de guiones en adelante, está escrito
+> para **reenviarse tal cual** por correo.
 >
 > **NO se envía todavía.** Antes tienen que cumplirse tres cosas:
 >
@@ -37,7 +62,7 @@
 
 ---
 
-**Asunto: ¿Nos ayudáis a probar la aplicación de partes, sobre la obra de pruebas?**
+**Asunto: ¿Nos ayudáis a probar la aplicación de partes? (sobre la obra 0626, y con un aviso importante)**
 
 Hola Ana, hola Alicia:
 
@@ -57,24 +82,37 @@ de la guía que escribió Alicia. La diferencia es que ahora lo hace la
 aplicación sola, y por eso quien mejor puede decir si está bien hecho sois
 vosotras: nadie más sabe cómo tiene que quedar.
 
-## Sobre qué obra se prueba: **la 404, la de pruebas. Solo la 404**
+## Sobre qué obra se prueba: **la 0626, y no es una obra de pruebas**
 
-Esto es importante y no es una formalidad: **cuando confirmáis el cierre, la
-aplicación escribe de verdad en Sigrid**, igual que si lo hubierais hecho a
-mano. No hay un Sigrid de mentira donde ensayar.
+Esto es lo más importante del correo y preferimos decíroslo de frente:
+**cuando confirmáis el cierre, la aplicación escribe de verdad en Sigrid**,
+igual que si lo hubierais hecho a mano. No hay un Sigrid de mentira donde
+ensayar.
 
-Por eso la prueba entera se hace **sobre la obra 404, la de pruebas**. Ni
-Mirasierra, ni ninguna obra con clientes de verdad. Si en algún momento os
-aparece en pantalla una incidencia que no sea de la 404, no confirméis nada y
-avisadnos.
+La prueba se hace **sobre la obra `0626`**, y **la 0626 es una obra en uso, no
+una obra de pruebas**. Lo decimos claro porque tenéis que saber dónde queda lo
+que confirméis: **la incidencia, su cierre y el parte que se cuelgue de ella se
+quedan en el histórico de esa obra**, a la vista de cualquiera que la consulte
+después. No hay deshacer. Es una decisión tomada a conciencia por el
+responsable del proyecto, que la ha confirmado sabiendo esto.
+
+De ahí que os pidamos dos cosas:
+
+- **Solo la 0626, y solo las incidencias que hayamos acordado** para la prueba.
+  Si en algún momento os aparece en pantalla una incidencia que no sea una de
+  esas, **no confirméis nada y avisadnos**.
+- **Antes de cerrar la primera, decidnos cuál es.** Cada incidencia de la
+  prueba se autoriza una a una, con nombre y apellidos; ninguna «por si acaso».
 
 ## Lo que necesitamos que preparéis antes (esto es lo que más tiempo lleva)
 
-Necesitamos partes firmados **de verdad**, de la obra 404. Es decir:
+Necesitamos partes firmados **de verdad**, de la obra `0626`. Es decir:
 
-1. **Crear en la obra 404 dos o tres reclamaciones de prueba**, como creáis
-   cualquier otra: su unidad, su oficio, su descripción del problema. Con dos
-   o tres nos vale de sobra.
+1. **Dar de alta en la obra `0626` dos o tres incidencias para la prueba**,
+   como daríais cualquier otra: su unidad, su oficio, su descripción del
+   problema. Con dos o tres nos vale de sobra. **Decidnos cuáles son en cuanto
+   las tengáis**: las autorizamos una a una antes de tocarlas, y así sabemos
+   exactamente qué se va a escribir en el histórico de esa obra.
 2. **Imprimir sus partes de trabajo**, los mismos que se le dan al industrial.
 3. **Firmarlos a mano**, tal y como los firma un cliente: en la casilla de
    conformidad, con bolígrafo. Vale que os los firméis vosotras; lo que
@@ -90,10 +128,11 @@ Necesitamos partes firmados **de verdad**, de la obra 404. Es decir:
    salen todos en un mismo PDF o cada uno en el suyo: la aplicación los
    separa.
 
-Una cosa que **no** nos sirve: reaprovechar un parte real ya firmado de otra
-obra. Aunque el papel esté perfecto, el **número de incidencia** impreso en
-él es de una obra real, y la aplicación iría a cerrar esa incidencia de
-verdad. Los partes tienen que ser de reclamaciones de la 404.
+Una cosa que **no** nos sirve: reaprovechar un parte ya firmado de otra obra.
+Aunque el papel esté perfecto, el **número de incidencia** impreso en él es el
+de esa otra obra, y la aplicación iría a cerrar **esa** incidencia de verdad.
+Los partes tienen que ser de las incidencias de la `0626` que hayamos
+acordado.
 
 ## Los pasos, ya con los PDF escaneados delante
 
@@ -144,7 +183,8 @@ botón**.
   miráis en Sigrid, y luego el siguiente. Así, si algo no os gusta, no se ha
   ido de las manos.
 - **Lo que confirméis se escribe de verdad en Sigrid.** No hay ensayo ni
-  deshacer. De ahí que sea solo sobre la obra 404.
+  deshacer, y **queda en el histórico de la 0626**, que es una obra en uso. Por
+  eso es solo sobre esa obra y solo sobre las incidencias acordadas.
 
 Y un detalle menor: los botones que escriben piden **dos clics**, y el
 segundo **caduca** si tardáis un rato. Si os dice que volváis a empezar el
@@ -152,7 +192,7 @@ gesto, no es un fallo: es a propósito.
 
 ## Lo que nos tenéis que contar después
 
-Cuando hayáis cerrado alguna, entrad en Sigrid a la reclamación de prueba y
+Cuando hayáis cerrado alguna, entrad en Sigrid a esa incidencia de la `0626` y
 miradla como miraríais cualquier otra. Nos vale con contestar a estas
 preguntas, aunque sea en una línea cada una:
 
@@ -190,8 +230,9 @@ podamos ir a mirar lo mismo que vosotras.
 
 ## Lo que os pedimos que NO hagáis
 
-- **No probéis sobre obras reales.** Solo la 404, aunque tengáis a mano un
-  parte firmado de otra obra que «vendría de perlas».
+- **No probéis sobre ninguna otra obra.** Solo la `0626`, y dentro de ella solo
+  las incidencias acordadas, aunque tengáis a mano un parte firmado de otra
+  obra que «vendría de perlas».
 - **No cerréis a mano una reclamación que ya hayáis pasado por la
   aplicación**, mientras dure la prueba. Si algo no ha quedado bien,
   contádnoslo y lo miramos: si lo arregláis por vuestra cuenta, nos quedamos
@@ -204,8 +245,10 @@ podamos ir a mirar lo mismo que vosotras.
 ## Si algo falla
 
 Escribidnos y ya está, con la foto de la pantalla si podéis. **Que falle es un
-resultado tan bueno como que funcione**: para eso es una prueba, y para eso la
-hacemos sobre una obra que no es de nadie. Lo que no queremos es que perdáis
-media mañana peleándoos con algo que arreglamos nosotros en cinco minutos.
+resultado tan bueno como que funcione**: para eso es una prueba. Y como es
+sobre una obra en uso, **avisar cuanto antes vale más que intentar
+arreglarlo**: nosotros vemos qué ha quedado escrito y lo enderezamos. Lo que no
+queremos es que perdáis media mañana peleándoos con algo que arreglamos
+nosotros en cinco minutos.
 
 Muchas gracias a las dos.

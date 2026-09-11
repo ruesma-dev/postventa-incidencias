@@ -54,6 +54,10 @@ lo único que allí es nuevo: `CuerpoDeGraficoInvalido` (→ 400),
 puertas —`CierreDeshabilitado`, `ConfiguracionSigridIncompleta`— y los 409 de
 F-009 se **reutilizan**: son la misma ventana y el mismo interruptor.
 
+El de la **aprobación humana** (F-026) es uno solo, `ParteNoAprobable` (→ 409),
+y cae del lado de «no se puede tal y como está»: la petición está bien formada
+y lo que no admite la decisión es el estado del parte.
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
@@ -881,6 +885,33 @@ class GraficoSinTraza(Exception):
     La diferencia con sus hermanos es cómo se arregla: aquí el reintento **sí**
     es inofensivo —la pasarela responderá `idempotente: true` y no escribirá
     nada—, lo que falta es la traza local. El borde lo traduce a **500**.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ParteNoAprobable(Exception):
+    """Se ha pedido aprobar un parte que no se puede aprobar (F-026, R9, R10).
+
+    Dos casos, y el motivo los distingue porque se arreglan de forma distinta:
+
+    - **le falta un dato decisivo** —el código de obra o el nº de incidencia—:
+      ahí no hay nada que decidir, hay algo que teclear, y teclearlo devuelve
+      el parte a verde por las reglas de F-004 sin aprobar nada (R7);
+    - **ya es apto**: no hay nada que aprobar (R10).
+
+    El borde lo traduce a **409 y nunca a 400**, y la distinción no es
+    cosmética: la petición está perfectamente formada —trae su `usuario_oid`,
+    su confirmación y su parte—, lo que pasa es que **el estado del parte no
+    admite esa decisión**. Un 400 mandaría a revisar el cuerpo a quien tiene
+    que ir a corregir un campo del papel. Es el mismo reparto que ya hacen
+    `ParteNoApto` y `ParteNoArchivado`.
+
+    El motivo dice **cuál** lo impide y qué hay que corregir (R9), y **nunca**
+    lleva el texto de las observaciones ni ningún otro dato del papel: esto
+    acaba en un log (R43).
     """
 
     def __init__(self, motivo: str) -> None:

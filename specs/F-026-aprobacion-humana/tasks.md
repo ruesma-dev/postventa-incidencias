@@ -63,7 +63,7 @@
       con aprobación revocada (R31); **no** admite si el `destino_aprobado` no
       coincide con el destino actual; **no** admite con `validacion=None`.
 
-- [ ] **T5**: Añadir `ParteNoAprobable` a `domain/models/errores.py`, con su
+- [x] **T5**: Añadir `ParteNoAprobable` a `domain/models/errores.py`, con su
       docstring diciendo que se traduce a **409** y por qué no es un 400. |
       Verificación: `tests/test_f026_aprobar_http.py` lo importa en T9; aquí
       basta con que la suite siga en verde.

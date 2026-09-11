@@ -1,6 +1,99 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-11 · **el bloque 9 de F-012 se ejecutó contra el ERP y FUNCIONÓ; se cierra con cinco escenarios sin verificar**
+>
+> **Lo primero, porque es el hito que esta feature perseguía**: el
+> responsable del proyecto recorrió el **circuito completo** contra el ERP de
+> producción sobre la incidencia **`RS26.09/0150`** de la obra **`0626`**. Un
+> parte subido por la web quedó **archivado**, **adjunto a su reclamación** y
+> la **reclamación cerrada**. Sus palabras: ***«ha funcionado perfectamente»***
+> y ***«cerró una y lo hizo bien»***. Es el **primer cierre real** de este
+> servicio, y fue **con su parte dentro**: la anomalía que F-009 aceptaba como
+> riesgo no llegó a producirse ni una vez.
+>
+> ### La evidencia objetiva, medida en `appi-postventa-dev`
+>
+> `az monitor app-insights query`, 2026-09-11. **Las cinco respuestas, `200`**:
+>
+> | Hora (UTC) | Ruta | Código | Duración |
+> |---|---|---|---|
+> | `08:27:15` | `archivar` | 200 | 1.756 ms |
+> | `08:27:29` | `adjuntar` | 200 | **13.134 ms** |
+> | `08:27:42` | `cerrar` | 200 | 4.424 ms |
+> | `08:28:03` | `adjuntar` | 200 | **8.471 ms** |
+> | `08:28:12` | `cerrar` | 200 | 472 ms |
+>
+> Los dos pares son **la comprobación previa y la escritura**: dry-run antes de
+> cada `commit`, como manda el guion.
+>
+> **El número que R37 pedía anotar**: `adjuntar` tarda **13,1 s** en la primera
+> llamada, frente a los **35 s** de `SIGRID_TIMEOUT_S`. Hay margen —21,9 s—,
+> pero es **con diferencia el paso más lento**: el **37,5 %** del tope, **28
+> veces** lo que tarda el cierre. **Con un parte más pesado se acerca**, y
+> pasarse no da un error claro: da un `502` con el ERP en estado desconocido.
+> **Lo que no se midió y hacía falta**: el **tamaño en bytes** del parte usado,
+> así que los 13,1 s no se pueden extrapolar.
+>
+> ### El hallazgo de procedimiento: **el front desplegado no llevaba F-012**
+>
+> Durante la prueba el circuito **se paró después de archivar**, sin llamar a
+> `adjuntar` ni a `cerrar` y **sin error visible**. Se diagnosticó con los
+> registros —ni una llamada a esas dos rutas, luego no era el backend— y
+> descargando el **JavaScript servido**, que no contenía el paso de adjuntar.
+> Se resolvió con `infra/desplegar_front.ps1 -SoloFront`. **El guion daba por
+> hecho que basta con desplegar el backend, y no basta**: queda como **H11** y
+> el **Paso 0 (2) y la P2 están corregidos** para desplegar **las dos partes**
+> y comprobar el JS servido. La lección vale para cualquier feature con front y
+> backend: **un front al que le falta un paso no falla, no hace nada**.
+>
+> ### Qué se marcó, y qué queda SIN verificar
+>
+> Se ejecutó **el camino feliz y poco más**. Marcadas **T25, T27 y T32** —y aun
+> esas, con pasos sin recorrer, anotados uno a uno en sus casillas— más **T34**.
+> **Sin marcar, con el motivo y qué se pierde en cada casilla**:
+>
+> | Tarea | Escenario sin verificar |
+> |---|---|
+> | **T26** | el `commit` del cierre **rechazado** por no constar adjuntado (**R2**, la razón de ser de la feature). Su dry-run sí se ejecutó |
+> | **T28** | **idempotencia** de extremo a extremo: nada se repitió |
+> | **T29** | **«adjuntado pero no cerrado»** y el botón que saca de ahí: adjuntar y cerrar fueron seguidos (9 s) y ese estado no llegó a existir |
+> | **T30** | **reintento sobre lo ya cerrado** — el más probable en uso normal y **el más barato de cerrar**: basta repetir el circuito |
+> | **T31** | **rechazo de la pasarela** sin escritura; ya el guion lo daba por prescindible |
+>
+> Y transversal: **no se ejecutó ni uno de los scripts de lectura de `infra/`**.
+> No está comprobado el `filas_afectadas: 3` de R27, ni que el binario dentro
+> del ERP coincida **byte a byte**, ni que `dbo.log` no haya crecido por el
+> gráfico (R36), ni el **huso** de la fila de auditoría del cierre, ni las dos
+> trazas locales. **Todo eso es solo lectura y sigue disponible**: la
+> incidencia, el gráfico y la fila están en el ERP.
+>
+> ### La decisión del responsable, fechada
+>
+> **El 2026-09-11 decidió cerrar F-012 así**, con esos cinco escenarios sin
+> ejecutar: la feature se da por buena **con el camino principal verificado en
+> producción**. Está escrito en `progress/guion_bloque9_F-012.md` §9.5 y en
+> `progress/impl_F-012.md` §13.5 para que **las casillas vacías no se lean como
+> un olvido**.
+>
+> ### Estado del entorno y qué queda pendiente
+>
+> - **`CIERRE_HABILITADO` = `false`**: la ventana se leyó (seguía `true`), se
+>   cerró y **se releyó** para confirmarlo. **Falta** el paso 3 de T32:
+>   comprobar en el borde que responde `503`.
+> - **`SIGRID_GRATIPIDE_PARTE` sigue en 35** (nunca se cambió: T31 no se hizo).
+> - **Pendiente**: `azure-apps/postventa_incidencias.md` —ya no es verdad que
+>   «no se ha ejecutado ni un cierre real»— y `progress/guion_bloque8_F-009.md`,
+>   que sigue nombrando la obra genérica.
+> - **El `status` de F-012 no lo toca este encargo**: lo lleva el líder.
+>
+> **Encargo documental**: ningún código, ningún test, ninguna llamada a Azure,
+> Sigrid, SharePoint ni PostgreSQL —toda la evidencia venía medida—.
+> `bash harness/init.sh` **en verde**: 62 tests del arnés en 14,97 s y la
+> puerta de cobertura en **99,0 % de 1.079 líneas**. Ficheros tocados:
+> `progress/guion_bloque9_F-012.md`, `specs/F-012-grafico-sigrid/tasks.md`,
+> `progress/impl_F-012.md` y este.
+
 > ## Estado al 2026-09-11 · **la documentación de la verificación de F-012 ya nombra el caso concreto, con constancia fechada de quién cambió la premisa**
 >
 > Encargo **documental**: ningún código, ningún test, ninguna llamada a Azure,

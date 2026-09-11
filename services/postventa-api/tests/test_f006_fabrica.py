@@ -56,7 +56,11 @@ def _ajustes(**cambios) -> Ajustes:
         "graph_client_secret": SECRETO_INVENTADO,
     }
     base.update(cambios)
-    return Ajustes(**base)
+    # `_env_file=None` no es decoracion: `Ajustes` es pydantic-settings y
+    # sin esto lee del `.env` de quien ejecuta la suite todo lo que no se le
+    # pase por argumento. Un test que depende de ese fichero pasa o falla
+    # segun el puesto, que es justo lo que `conftest.py` prohibe.
+    return Ajustes(_env_file=None, **base)
 
 
 # --------------------------------------------------------------------------

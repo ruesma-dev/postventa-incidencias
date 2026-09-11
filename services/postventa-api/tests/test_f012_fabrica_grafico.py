@@ -40,7 +40,11 @@ CONFIGURACION_INVENTADA = {
 
 def _ajustes(**entorno: str) -> Ajustes:
     """Unos ajustes construidos a mano, sin tocar el `.env` de nadie."""
-    return Ajustes(**entorno)
+    # `_env_file=None` no es decoracion: `Ajustes` es pydantic-settings y
+    # sin esto lee del `.env` de quien ejecuta la suite todo lo que no se le
+    # pase por argumento. Un test que depende de ese fichero pasa o falla
+    # segun el puesto, que es justo lo que `conftest.py` prohibe.
+    return Ajustes(_env_file=None, **entorno)
 
 
 def _completos(**cambios: str) -> Ajustes:

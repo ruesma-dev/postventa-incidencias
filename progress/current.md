@@ -1,6 +1,52 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-11 · **El entorno desplegado ya puede escribir: Paso 0 hecho, F-012 desplegada y la ventana de archivo abierta**
+>
+> **Decisión del humano, y cambia una premisa**: la verificación de F-012 se
+> hace sobre la **obra 0626, que es una obra REAL**, y no sobre una obra de
+> pruebas. Se le planteó explícitamente y lo reafirmó. La incidencia del caso
+> es **`RS26.09/0150`**, que el humano crea en Sigrid; su parte de trabajo
+> está preparado en `muestras/parte_prueba_RS26.09-0150.pdf` (no versionado,
+> datos inventados salvo el código de obra y el de incidencia), **pendiente
+> del nombre de la promoción**, de imprimir, firmar a mano y escanear.
+>
+> ### Lo que ya está hecho contra el entorno desplegado
+>
+> | Paso | Estado |
+> |---|---|
+> | Secretos de Sigrid en el Key Vault | hecho, desde el `.env` del puesto |
+> | Referencias a Key Vault | **11 de 11 resueltas** |
+> | Backend desplegado **con el código de F-012** | hecho: `adjuntar` está en el aire |
+> | Configuración de la pasarela (tipo 708, clase 35, escritura documental) | ya estaba desde el 2026-09-06 |
+> | Ventana de **archivo** | **abierta** |
+> | Ventana del **ERP** (`CIERRE_HABILITADO`) | **cerrada**, y así sigue |
+>
+> Para subir los dos secretos desde el `.env` se escribió un script **fuera del
+> repositorio**, en el home del humano: lee los dos nombres del mapa de
+> `00_vars_postventa.ps1`, no imprime ningún valor y no toca el `.env`.
+>
+> ### Dos correcciones de la sesión
+>
+> 1. **Seis ayudantes de la suite leían el `.env` del puesto** pese a prometer
+>    lo contrario, y el `.env` de hoy los puso en rojo. Arreglados con
+>    `_env_file=None`. La suite del api: **2.096 pasan, 13 saltados**.
+> 2. **La caché de `init.sh` tapó ese rojo** durante toda una sesión, porque
+>    mira al árbol commiteado y no a los ficheros ignorados. Es del arnés y se
+>    llevó a `arnes-base` como **encargo 1.7.12** (commit `9ff2224` allí).
+>
+> ### Lo que queda pendiente y no se ha hecho
+>
+> - **Cambiar la obra 404 por la 0626** en `progress/guion_bloque9_F-012.md`,
+>   en la spec de F-012 y en `progress/peticion_posventa_prueba_F-012.md`, con
+>   constancia fechada de que la premisa «nunca una obra real» la levantó el
+>   humano el 2026-09-10. **Sin hacer**: el subagente que iba a hacerlo lo
+>   bloqueó el clasificador de permisos de la sesión.
+> - Comprobar el login del ERP de quien vaya a operar (`infra/20_login_sigrid.ps1`).
+> - El bloque 9 entero: T25–T32 siguen sin ejecutar y sin marcar.
+>
+> **F-012 sigue `in_progress`**, F-009 `blocked` y F-024 `spec_ready`.
+
 > ## Estado al 2026-09-11 · **utillaje de puesta en marcha del bloque 9 (F-012): entregado; `init.sh` en ROJO por un defecto ajeno**
 >
 > **`infra/19_ventana_escritura.ps1`** y **`infra/20_login_sigrid.ps1`**

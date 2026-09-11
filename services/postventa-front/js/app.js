@@ -504,6 +504,11 @@ function appPostventa() {
       if (resultado.archivo) {
         this.resultadosArchivo.push({
           hash: parte.hash,
+          // La clave del `x-for`, y no vale el hash: un reintento empuja una
+          // SEGUNDA fila del mismo parte, y dos filas con la misma clave hacen
+          // que Alpine descarte una. La descartada sería la del reintento, que
+          // es justo la que trae el resultado nuevo.
+          clave: `${parte.hash}:${this.resultadosArchivo.length}`,
           mensaje: `${resultado.archivo.nombre_fichero} → ${resultado.archivo.carpeta} (${resultado.archivo.estado})`,
           web_url: resultado.archivo.web_url || "",
         });
@@ -527,6 +532,10 @@ function appPostventa() {
       if (resultado.mensaje) {
         this.resultadosCierre.push({
           hash: parte.hash,
+          // Clave única por fila, no el hash (ver el resumen del archivo).
+          // Aquí importa más: la fila que Alpine descartaría es la del
+          // reintento, y con ella el número de incidencia de R37.
+          clave: `${parte.hash}:${this.resultadosCierre.length}`,
           // R37 · el número de incidencia sobre el que se escribió. Se guarda
           // aparte del mensaje porque el resumen es **la primera y única
           // ocasión** en que quien pulsó puede ver que se escribió sobre la

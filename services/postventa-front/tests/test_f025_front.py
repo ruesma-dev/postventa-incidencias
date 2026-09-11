@@ -541,6 +541,24 @@ def test_f025_r19_el_recuadro_ambar_de_adjuntado_sigue_en_pie(html):
     assert "Reintentar el cierre" in html
 
 
+def test_f025_r16_cada_fila_del_resumen_lleva_una_clave_unica(app, html):
+    """R16 · el reintento añade una fila, no pisa la anterior.
+
+    Hallazgo 6 de la review de F-025. Los dos resúmenes se pintan con `x-for`,
+    y F-025 hace el reintento mucho más probable: dos filas del mismo parte con
+    la misma `:key` hacen que Alpine descarte una, y la descartada es la del
+    reintento —la que trae el resultado nuevo y, en el del ERP, el número de
+    incidencia de R37—.
+    """
+    assert html.count(':key="resultado.hash"') == 0, (
+        "el hash se repite entre la fila original y la del reintento"
+    )
+    assert html.count(':key="resultado.clave"') == 2
+
+    aplicar = _bloque(app, "_aplicarResultado(parte, resultado) {", "async cargarUsuario(")
+    assert aplicar.count("clave: `${parte.hash}:${this.resultados") == 2
+
+
 def test_f025_r19_el_reintento_del_cierre_pasa_por_el_circuito(app):
     """R19 · y **no vuelve a mandar el PDF**.
 

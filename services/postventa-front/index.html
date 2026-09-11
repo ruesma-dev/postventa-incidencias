@@ -360,7 +360,7 @@
 
         <!-- El resumen del archivo: qué fichero acabó en qué carpeta. -->
         <ul x-show="resultadosArchivo.length" class="mt-4 divide-y divide-slate-100 text-sm">
-          <template x-for="resultado in resultadosArchivo" :key="resultado.hash">
+          <template x-for="resultado in resultadosArchivo" :key="resultado.clave">
             <li class="py-2">
               <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
               <span class="ml-2" x-text="resultado.mensaje"></span>
@@ -376,7 +376,7 @@
              darse cuenta de que se escribió sobre la incidencia equivocada.
              Ver el recuadro «Lo que se pierde» de requirements.md §0. -->
         <ul x-show="resultadosCierre.length" class="mt-4 divide-y divide-slate-100 text-sm">
-          <template x-for="resultado in resultadosCierre" :key="resultado.hash">
+          <template x-for="resultado in resultadosCierre" :key="resultado.clave">
             <li class="py-2">
               <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
               <span x-show="resultado.incidencia" class="ml-2 rounded bg-slate-100 px-1 font-mono text-xs"

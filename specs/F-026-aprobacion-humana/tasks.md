@@ -26,7 +26,7 @@
 
 ## Bloque 0 · Fijar lo que hoy es imposible, antes de hacerlo posible
 
-- [ ] **T1**: Crear `services/postventa-api/tests/test_f026_puertas.py` con los
+- [x] **T1**: Crear `services/postventa-api/tests/test_f026_puertas.py` con los
       **control-negativo** que tienen que seguir en verde al final: un parte de
       `revision_manual` **sin aprobación** no llega a archivar, ni a adjuntar,
       ni a cerrar; uno de `cola_validacion_humana` tampoco; y ninguno de los

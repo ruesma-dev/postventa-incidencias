@@ -571,6 +571,72 @@ fallo es **pedir una aprobación de más**, no colar una de menos.
 
 ---
 
+## 15 · D-H · El autoguardado de las correcciones (2026-09-11)
+
+Lo añade el responsable después de leer la spec: «escribir en un campo debe
+guardar lo que escribes, según escribe guarda, sin botón». Requisitos R50 a
+R55.
+
+### 15.1 · Se revalida y se guarda **juntos**, con retardo
+
+**Decidido: reutilizar `revalidarYGuardar`, con un retardo de 1.500 ms desde
+la última pulsación**, y solo si el valor cambió respecto a lo último
+guardado.
+
+Por qué juntos: el acoplamiento existe por una razón escrita en el propio
+código —guardar sin revalidar deja en la base el veredicto que la IA emitió
+sobre el dato sin corregir— y **revalidar no gasta IA** (contrato de F-007
+R17, una sola petición). Mantener la invariante «el veredicto corresponde al
+dato» sale más barato que gestionarla rota.
+
+Por qué 1.500 ms y no menos: son dos peticiones por pausa contra un
+PostgreSQL **compartido con otros dos proyectos en producción**. A 1.500 ms,
+escribir una observación de dos frases produce del orden de dos o tres
+guardados, no treinta. Es un número que se puede subir o bajar sin cambiar
+nada más: vive en `config.js` como constante, no repartido por el código.
+
+**Descartado: guardar solo el campo y marcar el veredicto como obsoleto.**
+Obliga a inventar un estado que **las tres puertas** tendrían que mirar (D-D),
+y a que alguien recuerde revalidar después. Se cambia un problema conocido por
+uno nuevo y más caro.
+
+**Descartado: guardar al salir del campo.** No cubre el caso que el
+responsable quiere resolver: escribir y cerrar la pestaña sin salir del campo.
+
+### 15.2 · Las correcciones no pisan lo que leyó la máquina
+
+El valor y la confianza de la IA se conservan tal cual. Es lo que ya hace
+`aplicarCorrecciones` en el front —devuelve la extracción con las correcciones
+aplicadas **sin destruir el original**— y lo que **F-015 va a necesitar** para
+evaluar el prompt: un prompt no se puede evaluar contra un dato que una
+persona corrigió encima.
+
+### 15.3 · Qué se le enseña a quien escribe
+
+Tres estados, y el del medio es el que hoy no existe:
+
+| Estado | Cuándo | Qué se ve |
+|---|---|---|
+| Guardando | mientras la petición está en vuelo | un indicador discreto, sin bloquear el campo |
+| Guardado | respuesta correcta | la marca de tiempo del último guardado |
+| **No se ha podido guardar** | la petición falló | **un aviso que no se va solo**, y lo escrito **se conserva en pantalla** |
+
+El tercero es R52 y es el que importa: quien escribe y no ve nada supone que
+se guardó.
+
+### 15.4 · La revocación no ocurre a mitad de palabra
+
+La revocación de una aprobación se evalúa **sobre lo guardado**, con la huella
+de D-B, y el guardado ocurre como mucho una vez por pausa. Así que revocar es,
+como mucho, una vez cada 1.500 ms de silencio, no una por tecla.
+
+### 15.5 · Aplica a todos los partes
+
+No solo a los que van a revisión: perder lo escrito es igual de malo en un
+parte verde, y la revalidación mantiene el veredicto al día en los dos casos.
+
+---
+
 ## 13 · Encaje en la arquitectura y límite de microservicio
 
 **Encaje.** F-026 no añade ningún paso al pipeline: añade una **puerta** a los

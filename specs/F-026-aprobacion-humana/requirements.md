@@ -431,18 +431,97 @@ que ese documento describe. La regla de `CLAUDE.md` no admite hacerlo después.
 
 ---
 
-## Preguntas abiertas · las decide el humano al aprobar la spec
+## Preguntas abiertas · RESUELTAS el 2026-09-11
 
-| # | Pregunta | Opciones | Recomendación |
-|---|---|---|---|
-| **P1** | «Cuando se modifiquen los campos o se revise»: ¿**corregir un campo aprueba por sí solo**, o hace falta un **acto explícito**? | (a) acto explícito, con su botón y su registro; (b) que cualquier corrección de campo seguida de revalidación cuente como aprobación | **(a), el acto explícito.** Tres razones. Primera: corregir el código de obra no dice **nada** sobre si la firma vale o sobre si «se aprecia que se han hecho parcheados» permite cerrar; son juicios distintos sobre cosas distintas. Segunda: la mitad útil de (b) **ya funciona** (§0.6) y la hace el dominio —corregir un campo decisivo ilegible ya devuelve el parte a verde—, así que (b) solo añadiría lo peligroso: dar por aprobada una firma dudosa porque alguien tocó la promoción. Tercera: (b) no deja registrar **quién decidió qué**, que es justo lo que el responsable pidió guardar. (b) queda descrita en `design.md` §12.3 por si se prefiere |
-| **P2** | ¿Qué destinos se pueden aprobar: solo la **cola ámbar**, o también **revisión manual**? | (a) por **motivo**: aprobables `observaciones_manuscritas` y `firma_no_humana`, vengan del destino que vengan; (b) solo `cola_validacion_humana`; (c) los dos destinos enteros, sin mirar el motivo | **(a), por motivo.** (b) deja fuera el caso más real de los rojos: un parte completo cuya firma la IA clasificó `ilegible` y que una persona, con el PDF delante, ve que es humana. Eso es **corregir a la máquina**, que es exactamente lo que esta feature viene a permitir, y F-004 ya avisa de que ante la duda clasifica `ilegible` a propósito. (c) permitiría aprobar un parte **sin nº de incidencia**, que no se puede ni nombrar ni cerrar: no es una decisión, es un dato que falta. (a) traza la línea donde de verdad está |
-| **P3** | El agujero de §0.7: hoy **vaciar la observación y revalidar** convierte un ámbar en verde sin traza y pisa la transcripción original | (a) fuera de alcance de F-026, declarado como riesgo con su fecha; (b) impedir que se vacíe un campo que traía texto; (c) registrar toda edición de campo manuscrito | **(a) fuera de alcance, pero declarado por escrito.** (b) rompe un caso legítimo y medible: una mancha del escaneo leída como observación tiene que poder borrarse. (c) es una feature entera —auditoría de ediciones— y no es esta. Lo que F-026 sí aporta es que ese camino **ya no consigue nada extra**: revocará cualquier aprobación previa (R30) y el parte aprobado de verdad se distingue en pantalla (R36). Si el humano quiere cerrarlo del todo, sale como feature nueva |
-| **P4** | ¿Qué entra en «el veredicto que se aprobó» a efectos de revocación (R30)? | (a) destino + códigos de motivo + clasificación de firma + **texto de las observaciones normalizado**; (b) lo mismo **sin** el texto de las observaciones | **(a), con el texto.** En el caso ámbar, lo que la persona aprueba **es esa observación**: F-004 no la interpreta —cualquier texto no vacío produce el mismo código de motivo (F-016 es otra feature)—, así que sin el texto dos observaciones opuestas darían la misma huella y una aprobación seguiría valiendo para algo que nadie leyó. El coste de (a) es que una transcripción que varíe entre dos lecturas de la IA revoque sin falta real: **un clic**, y falla hacia el lado seguro. El texto **no se guarda**: se guarda su huella (R15) |
-| **P5** | ¿Cómo se decide que una aprobación dejó de valer? | (a) por **huella del veredicto**, como en P4; (b) por **marca de tiempo**: cualquier validación posterior a la aprobación la invalida | **(a).** (b) es más simple y no necesita huella, pero **incumple el criterio de aceptación**: al recargar la página hay que volver a subir la remesa, eso reprocesa y vuelve a guardar la validación, y con (b) toda aprobación quedaría invalidada por el mero hecho de volver a abrir el trabajo. (a) revoca cuando **cambia lo aprobado**, que es lo que importa |
-| **P6** | ¿Debe constar **dentro de Sigrid** que el cierre vino de una aprobación humana? | (a) no: el `tex` de `dbo.log` se queda constante y la traza vive en el esquema propio (R41); (b) añadir un sufijo al `tex` cuando el parte venía aprobado; (c) feature aparte | **(a) en F-026, y (c) si el humano lo quiere.** (b) convierte en variable un texto que hoy es homogéneo en las 6.843 filas medidas por F-008 y que es lo que hace el conjunto localizable y reversible con un `LIKE`; y es una **escritura distinta en el ERP de producción**, que decide el dueño del proceso. La pregunta que hay que hacerle a Posventa es si quieren distinguir esos cierres en **sus** informes |
-| **P7** | ¿Aprobar pide confirmación explícita, como archivar? | (a) no: el botón en el detalle **es** el acto explícito; (b) sí, con `js/confirmacion.js` | **(a).** Aprobar no escribe en SharePoint ni en el ERP: escribe en el esquema propio y se deshace revalidando. Y (b) obligaría a enmendar R2 de F-025 —«en todo el circuito hay **exactamente una** confirmación»—, que tiene un test que lo cuenta. La escritura externa sigue teniendo su confirmación, una, donde estaba |
-| **P8** | ¿La aprobación admite un **comentario** del revisor? | (a) no en F-026; (b) texto libre opcional; (c) una lista cerrada de motivos | **(a) no, de momento.** Lo que el responsable pidió guardar es **quién y cuándo**; y R14 ya guarda además de qué destino se rescató y qué motivos se aprobaron, que es el «por qué» sin texto libre. Un campo libre escrito por un empleado acaba conteniendo datos del cliente («la señora X dice que…») y abre una superficie de dato personal nueva que nadie ha pedido. Se puede añadir después sin migrar nada; quitarlo, no |
+> **Las siete quedan cerradas.** El responsable respondió con estas palabras:
+> *«EN F26. ESCRIBIR EN UN CAMPO, DEBE GUARDAR LO QUE ESCRIBES (SEGÚN ESCRIBE
+> GUARDA, SIN BOTÓN). OK A 2.3, NO HACE FALTA QUE CONSTE EN SIGRID SI EN
+> NUESTRA BBDD.»*
+>
+> | # | Cómo queda | Quién lo decidió |
+> |---|---|---|
+> | **P1** | **Acto explícito**, con su botón y su registro. **Y ADEMÁS** entra el autoguardado como requisito nuevo (§11) | **Interpretación del líder, no pronunciamiento del responsable.** Ver abajo |
+> | **P2** | Por **motivo**, no por destino | Responsable |
+> | **P3** | **Fuera de alcance**, declarado como riesgo con su fecha | Responsable |
+> | **P4** | Con el texto de las observaciones en la huella | Recomendación, **por omisión** |
+> | **P5** | Por huella del veredicto | Recomendación, **por omisión** |
+> | **P6** | **No consta en Sigrid.** Sí en el esquema propio | Responsable, explícito |
+> | **P7** | Aprobar **no** pide confirmación aparte | Recomendación, **por omisión** |
+>
+> **Por qué P1 es una interpretación y no una respuesta.** Lo que el
+> responsable describe —«escribir en un campo debe guardar lo que escribes»—
+> **no responde a lo que P1 preguntaba**, que era si corregir un campo
+> *aprueba* por sí solo. Pide **autoguardado**, que es otra cosa. El líder
+> decidió mantener el acto explícito y añadir el autoguardado, con este
+> argumento: guardar lo que alguien escribe y declarar que una firma dudosa
+> vale son juicios distintos, y **solo el segundo necesita saber quién lo
+> hizo**. Se le dijo al responsable que si quería decir que tampoco hubiera
+> botón de aprobar, lo dijera; mientras no lo diga, manda esta interpretación.
+>
+> **Lo que sigue vivo de P6**: preguntar a Posventa si quieren **distinguir en
+> sus informes** los cierres que vinieron de una aprobación humana. No es una
+> decisión técnica y no la toma este proyecto.
+
+---
+
+## 11 · El autoguardado de las correcciones · requisito nuevo del 2026-09-11
+
+### 11.0 · Lo que hay hoy [MEDIDO]
+
+- `js/app.js::editarCampo(nombre, valor)` guarda la corrección **solo en
+  memoria** (`this.parteAbierto.ediciones[nombre] = valor`) y pone el mensaje
+  «Hay correcciones sin revalidar». **Si la persona escribe y se va, se
+  pierde.**
+- Persistir existe, pero **solo por acción explícita**:
+  `js/pipeline.js::revalidarYGuardar(parte, api, remesaId)`.
+- **Y las dos van juntas a propósito.** El comentario de esa función lo
+  explica: si se revalidara sin guardar, en la base quedaría el veredicto que
+  la IA emitió **sobre el dato sin corregir**.
+- `revalidar` por separado **no guarda**, y **no gasta IA**: es el contrato de
+  F-007 R17, una sola petición.
+
+### 11.1 · El choque, y cómo se resuelve
+
+Guardar «según se escribe» rompe ese acoplamiento: la base quedaría con el
+dato nuevo y el veredicto viejo, que es justo lo que `revalidarYGuardar`
+evita.
+
+**R50.** CUANDO una persona corrige un campo y deja de escribir, el sistema
+debe **revalidar y guardar juntos**, reutilizando `revalidarYGuardar`, de modo
+que el veredicto guardado corresponda **siempre** al dato guardado.
+
+> **Por qué juntos y no solo el campo.** Revalidar **no gasta IA** y es una
+> sola petición, así que el coste de mantener el acoplamiento es bajo. La
+> alternativa —guardar solo el campo y marcar el veredicto como obsoleto—
+> obliga a inventar un estado nuevo que todas las puertas tendrían que mirar,
+> y a que alguien recuerde revalidar después. **Mantener invariante «el
+> veredicto corresponde al dato» sale más barato que gestionarla rota.**
+>
+> **Efecto secundario que se acepta y se declara**: el color del parte puede
+> cambiar mientras se escribe, porque cada revalidación lo recalcula. Se
+> considera **deseable**: quien corrige ve al momento el efecto de su
+> corrección.
+
+**R51.** El guardado debe dispararse **tras una pausa al escribir**, no en
+cada pulsación, y **solo si el valor cambió** respecto a lo último guardado.
+El retardo se fija en el diseño; la razón del retardo es que el PostgreSQL es
+**compartido con otros dos proyectos en producción**.
+
+**R52.** CUANDO el guardado automático falle, el sistema debe **decírselo a la
+persona** y conservar lo escrito en pantalla. Quien escribe y no ve nada
+supone que se guardó, y esa suposición no puede quedar sin desmentir.
+
+**R53.** Las correcciones **no pisan** el valor ni la confianza que extrajo la
+IA: esos dos son la evidencia de cómo se comportó el modelo y **F-015 los va a
+necesitar** para evaluar el prompt. Dónde vive cada uno lo fija el diseño.
+
+**R54.** El autoguardado **no debe revocar una aprobación a mitad de una
+palabra**: la revocación se evalúa sobre lo guardado, con la huella de R15, y
+por tanto ocurre como mucho una vez por pausa.
+
+**R55.** El autoguardado aplica a **todos** los partes, no solo a los que van
+a revisión. Perder lo escrito es igual de malo en un parte verde, y la
+revalidación mantiene su veredicto al día en los dos casos.
 
 ---
 

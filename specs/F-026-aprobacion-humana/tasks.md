@@ -181,6 +181,38 @@
 
 ---
 
+## Bloque 4 bis · El autoguardado de las correcciones (R50–R55)
+
+- [ ] **TA1**: La constante del retardo en `services/postventa-front/js/config.js`
+      y el disparador en `js/app.js::editarCampo`: una pausa desde la última
+      pulsación, y **solo si el valor cambió** respecto a lo último guardado
+      (R51). | Verificación: `test_f026_autoguardado.py` y
+      `tests_js/autoguardado.test.js`: que teclear cinco veces seguidas
+      produce **un** guardado y no cinco, y que reescribir el mismo valor no
+      produce ninguno.
+
+- [ ] **TA2**: El guardado reutiliza `revalidarYGuardar` (R50), de modo que el
+      veredicto guardado corresponda siempre al dato guardado. | Verificación:
+      un test que compruebe que **nunca** se llama a `guardarParte` sin
+      `revalidar` en el mismo ciclo, y el control negativo de que no se ha
+      inventado un estado de «veredicto obsoleto».
+
+- [ ] **TA3**: Los tres estados de la pantalla (guardando, guardado, no se ha
+      podido guardar) en `index.html`, con el aviso de fallo **que no se va
+      solo** y lo escrito conservado (R52). | Verificación:
+      `tests_js/autoguardado.test.js` con la petición fallando.
+
+- [ ] **TA4**: Que las correcciones **no pisan** el valor ni la confianza de la
+      IA (R53). | Verificación: un test que guarde una corrección y compruebe
+      que lo que extrajo el modelo sigue accesible, **citando a F-015** en el
+      motivo.
+
+- [ ] **TA5**: Que la revocación de una aprobación se evalúa sobre lo guardado
+      y como mucho una vez por pausa (R54), y que el autoguardado aplica a
+      todos los partes (R55). | Verificación: tests de los dos.
+
+---
+
 ## Bloque 5 · Las enmiendas y la documentación
 
 - [ ] **T17**: Escribir el recuadro de enmienda fechado bajo **R36** de

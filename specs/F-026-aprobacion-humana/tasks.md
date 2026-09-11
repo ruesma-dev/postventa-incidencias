@@ -40,7 +40,7 @@
 
 ## Bloque 1 · El dominio, que es donde se decide
 
-- [ ] **T2**: Crear `services/postventa-api/domain/models/aprobacion.py` con
+- [x] **T2**: Crear `services/postventa-api/domain/models/aprobacion.py` con
       `MOTIVOS_APROBABLES`, `MotivoRevocacion`, `Aprobacion` y `es_aprobable`.
       **Dominio puro**: sin red, sin SQL, sin `psycopg`. | Verificación:
       `tests/test_f026_aprobacion_dominio.py` cubre R6–R10 — aprobable con
@@ -49,7 +49,7 @@
       `numero_incidencia_no_legible`, **no aprobable** si ya es apto—.
       **Fase RED**: traza del fallo antes de que exista el módulo.
 
-- [ ] **T3**: Añadir `huella_de_veredicto(validacion)` al mismo módulo, con la
+- [x] **T3**: Añadir `huella_de_veredicto(validacion)` al mismo módulo, con la
       canónica de `design.md` §3 y `hashlib.sha256`. | Verificación: mismo
       fichero de test — dos veredictos iguales dan la misma huella; cambiar el
       destino, un motivo, la clasificación de firma o **el texto de la
@@ -57,7 +57,7 @@
       del texto **no** la cambia; y la huella **no contiene** ninguna subcadena
       del texto manuscrito (R15).
 
-- [ ] **T4**: Añadir `esta_vigente(aprobacion)` y `admite_circuito(validacion,
+- [x] **T4**: Añadir `esta_vigente(aprobacion)` y `admite_circuito(validacion,
       aprobacion)`. | Verificación: mismo fichero — admite el apto de siempre;
       admite el no apto con aprobación viva **del mismo destino**; **no** admite
       con aprobación revocada (R31); **no** admite si el `destino_aprobado` no

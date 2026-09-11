@@ -321,7 +321,18 @@
 
 **Las tareas:**
 
-- [ ] **T25**: **Dry-run del gráfico, con la ventana cerrada y luego
+> **Ejecutado el 2026-09-11, y marcado con lo que consta.** El responsable
+> recorrió el circuito completo contra el ERP sobre `RS26.09/0150`: el parte
+> quedó **archivado, adjunto a su reclamación y la reclamación cerrada**
+> («ha funcionado perfectamente», «cerró una y lo hizo bien»). Se ejecutó **el
+> camino feliz y poco más**: quedan marcadas **T25, T27 y T32** —cada una con
+> los pasos que NO se recorrieron anotados en su casilla del guion— y **sin
+> marcar T26, T28, T29, T30 y T31**. **Las casillas vacías no son un olvido**:
+> el responsable decidió el **2026-09-11** cerrar F-012 con esos cinco
+> escenarios sin verificar. El acta, lo medido y qué se pierde en cada caso:
+> `progress/guion_bloque9_F-012.md` §9.
+
+- [x] **T25**: **Dry-run del gráfico, con la ventana cerrada y luego
       abierta.** | Verificación: **MANUAL (humano)**. (1) Foto de partida con
       `infra/16_grafico_sigrid.ps1 -Incidencia <RSaa.mm/nnnn>`: cero gráficos
       y el `MAX(ide)` de `dbo.log`. (2) `/api/adjuntar` sin `commit` con
@@ -334,6 +345,11 @@
       cambiado** en el ERP (ni gráficos ni `MAX(ide)`). (6)
       `infra/17_traza_grafico_local.ps1 -EstadoEsperado dry_run_ok`. **Anotar
       la duración** de la llamada (R37).
+      **EJECUTADA el 2026-09-11 (parcial)**: el paso 4 sí —`/api/adjuntar` sin
+      `commit` respondió **200** en **13.134 ms**, el 37,5 % del tope de 35 s—.
+      **Sin recorrer los pasos 1, 2, 5 y 6**: no se lanzó ningún script de
+      `infra/`, así que consta que el dry-run **funciona**, no que **no
+      escriba**.
 
 - [ ] **T26**: **Dry-run del cierre con el gráfico sin adjuntar** (R50, R49).
       | Verificación: **MANUAL (humano)**. `/api/cerrar` sin `commit` → 200 con
@@ -341,8 +357,13 @@
       (R48). Después, `/api/cerrar` **con** `commit` y `confirmado` → **409**
       diciendo que primero hay que adjuntar (R2, R62), y la foto del ERP
       idéntica: **no se ha cerrado nada sin gráfico**.
+      **SIN MARCAR · NO VERIFICADA.** Su paso 1 quedó ejercitado de hecho
+      (`/api/cerrar` sin `commit` respondió 200 con el gráfico aún sin
+      adjuntar), pero **el `commit` que debe ser rechazado nunca se pidió**. Se
+      pierde la prueba contra el ERP de **R2, la razón de ser de la feature**:
+      solo queda el test unitario.
 
-- [ ] **T27**: **El primer gráfico real**, con autorización expresa (P6). |
+- [x] **T27**: **El primer gráfico real**, con autorización expresa (P6). |
       Verificación: **MANUAL (humano)**, en este orden: (1) foto de partida
       (T25.1). (2) Dry-run y **leerlo**. (3) Confirmar en el front, o
       `/api/adjuntar` con `commit` y `confirmado` desde la consola. Se espera
@@ -360,6 +381,12 @@
       fuera de `gra_cod` (R43, R44). (6) **El humano abre la ficha de la
       reclamación en Sigrid y ve el parte** (acceptance 1). **Anotar la
       duración del commit.**
+      **EJECUTADA el 2026-09-11 (parcial)**: el commit respondió **200** en
+      **8.471 ms** y el responsable **vio el parte en la ficha de la
+      reclamación** (*acceptance* 1). **Sin recorrer los pasos 1, 4 y 5**: no
+      está comprobado el `filas_afectadas: 3` de R27, ni que el binario de
+      dentro del ERP coincida byte a byte, ni que `dbo.log` no haya crecido
+      (R36), ni la traza local.
 
 - [ ] **T28**: **Idempotencia de extremo a extremo** (acceptance 3, R25,
       R26). | Verificación: **MANUAL (humano)**. Con la traza local en
@@ -371,6 +398,11 @@
       → 200 `adjuntado`, **`idempotente: true`**, `filas_afectadas: 0`, mismo
       `gra_cod`; la foto del ERP idéntica: **un** gráfico, **un** enlace. La
       traza vuelve a `adjuntado` con `idempotente = true`.
+      **SIN MARCAR · NO VERIFICADA.** El circuito se recorrió **una sola vez**.
+      Se pierde la única prueba de punta a punta de que repetir **no cuelga un
+      segundo documento**; importa porque ante un `502` de `adjuntar` el guion
+      manda **repetir** (§0.4 del guion), y la capa 2 —la idempotencia de la
+      pasarela— es de otro proyecto.
 
 - [ ] **T29**: **«Adjuntado pero no cerrado», y el reintento que cierra**
       (R3, acceptance 2). | Verificación: **MANUAL (humano)**. Estado de
@@ -386,6 +418,14 @@
       propio, `tiemod` sin mover. (4) `infra/16_grafico_sigrid.ps1`: **sigue
       habiendo un gráfico y un enlace**. Es la primera reclamación cerrada por
       este servicio **con su parte dentro**: la anomalía de F-009 no se produce.
+      **SIN MARCAR · NO VERIFICADA, aunque el cierre real SÍ se hizo.** El
+      2026-09-11 `adjuntar` y `cerrar` fueron **seguidos** (9 s), así que el
+      estado intermedio «adjuntado pero no cerrado» **no llegó a existir** y
+      nadie usó «Reintentar el cierre» (R3, R65). Tampoco se recorrieron sus
+      comprobaciones del ERP sobre el cierre que sí ocurrió: `tiemod` sin mover
+      y la **fila de `dbo.log` con su huso** —el defecto que F-009 daba por
+      probable—. Eso último es **solo lectura** y se puede recuperar cuando se
+      quiera: la fila sigue ahí.
 
 - [ ] **T30**: **Reintento sobre lo ya cerrado** (R16, R30; F-009 R18/R42). |
       Verificación: **MANUAL (humano)**. Repetir el flujo entero sobre la misma
@@ -393,6 +433,10 @@
       en T28, `ya_cerrada` sin adjuntar); `/api/cerrar` → `ya_cerrada`,
       `filas_afectadas: 0`; `MAX(ide)` de `dbo.log` sin subir; las dos trazas
       locales sin pisar (`adjuntado`, `cerrado`).
+      **SIN MARCAR · NO VERIFICADA.** Es el escenario **más probable en uso
+      normal** —alguien vuelve a pasar el mismo parte— y **el más barato de
+      cerrar**: no hace falta provocar ningún fallo, basta repetir el circuito
+      sobre `RS26.09/0150`, que ya está cerrada.
 
 - [ ] **T31**: **Un rechazo de la pasarela, sin escritura** (R33, R59). |
       Verificación: **MANUAL (humano)**. Con una App Setting **de este
@@ -403,8 +447,12 @@
       Restaurar `SIGRID_GRATIPIDE_PARTE=35`. Si el humano no quiere tocar App
       Settings para esto, **o no quiere una segunda incidencia en una obra en
       uso**, se anota como no ejecutado y vale el test unitario.
+      **SIN MARCAR · NO EJECUTADA**, por el motivo que la propia tarea ya
+      preveía: exigía una **segunda incidencia en una obra en uso** y tocar una
+      App Setting. `SIGRID_GRATIPIDE_PARTE` **sigue en 35**, porque nunca se
+      cambió. Se pierde la prueba real de R33/R59; queda el test unitario.
 
-- [ ] **T32**: **Cerrar la ventana y dejar constancia.** | Verificación:
+- [x] **T32**: **Cerrar la ventana y dejar constancia.** | Verificación:
       **MANUAL (humano)**. `CIERRE_HABILITADO=false` **siempre, y lo
       primero**; limpiar las variables de la consola; rellenar las casillas del
       guion; anotar en `progress/current.md` las duraciones medidas de T25 y
@@ -413,6 +461,14 @@
       ejecutado ni un cierre real» (T21). Si el humano eligió el orden (b) de
       `design.md` §13, corregir `progress/guion_bloque8_F-009.md` (T22 y T24
       de aquel guion) antes de ejecutarlo.
+      **EJECUTADA el 2026-09-11 en lo que importa**: `CIERRE_HABILITADO` se
+      leyó (seguía `true`), se puso a **`false`** y **se releyó** para
+      confirmarlo; las duraciones medidas quedan anotadas en el guion y en
+      `progress/current.md`. **Quedan dos restos**: el paso 3 —comprobar en el
+      borde que la ventana cerrada responde `503`— y el paso 8
+      —`azure-apps/postventa_incidencias.md`, donde ya no es verdad que «no se
+      ha ejecutado ni un cierre real»—. El **tamaño en bytes del parte** no se
+      anotó.
 
 ## Bloque 10 · Cierre
 
@@ -427,7 +483,9 @@
       (mismo caso que `cliente.py:347` de F-009) y las comparaciones de
       longitud en los topes; se analizan, no se dan por buenos.
 
-- [ ] **T34**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
+- [x] **T34**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
       `bash harness/init.sh` termina con exit code 0, tests incluidos —los de
       `api` y los de `front`, con el puente a `node --test`— y con la puerta de
       cobertura de las líneas cambiadas en `[OK]`.
+      **EJECUTADA el 2026-09-11**: en verde, 62 tests del arnés y la puerta de
+      cobertura en **99,0 % de 1.079 líneas** (umbral 80 %, nivel `critico`).

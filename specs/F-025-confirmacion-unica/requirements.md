@@ -364,6 +364,17 @@ cuántas veces**, que es interno.
 | **P3** | Texto del botón y de la confirmación | «Archivar y cerrar los partes aptos» / «¿Seguro? Se subirán a SharePoint, se adjuntarán a su reclamación y se cerrarán en Sigrid. N parte(s).» | El de la izquierda. Lo decide quien lo va a leer (Posventa) |
 | **P4** | El riesgo del **tiempo de espera** en la llamada fusionada de `adjuntar` (ver `design.md` §12) | (a) aceptarlo y medirlo en la verificación manual; (b) bajar `GRAFICO_MAX_BYTES`; (c) subir `SIGRID_TIMEOUT_S` | **(a)**, y anotar el **tamaño en bytes** del parte, que es el número que F-012 se dejó sin medir. (c) no cabe: el escalonado de tiempos lo fija el proxy de 45 s |
 
+> **RESUELTAS el 2026-09-11 por el responsable del proyecto**, con estas
+> palabras: «ok a todo». Las cuatro se cierran con **la opción recomendada**:
+>
+> - **P1**: el botón de vista previa **se retira del todo**, y con él la fase
+>   de consulta y su requisito. El backend conserva su modo de solo lectura.
+> - **P2**: sin identidad, **el botón se deshabilita** y se dice por qué.
+> - **P3**: los textos propuestos se implementan tal cual. Siguen sujetos a lo
+>   que diga Posventa cuando los vea: cambiarlos es una constante.
+> - **P4**: el riesgo del tiempo de espera **se acepta y se mide** en la
+>   verificación manual, anotando el tamaño en bytes del parte.
+
 ---
 
 ## Trazabilidad de los requisitos que no llevan test unitario

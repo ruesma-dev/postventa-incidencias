@@ -432,7 +432,7 @@
         "Los requisitos derogados de F-009 y F-012 quedan enmendados con constancia fechada, no borrados",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 25,

@@ -62,6 +62,25 @@
   const DESTINO_COLA = "cola_validacion_humana";
   const DESTINO_REVISION = "revision_manual";
 
+  // F-025 · el estado del gráfico que significa «el parte ESTÁ dentro de
+  // Sigrid». El literal vive aquí y en un solo sitio: lo leen `estaAdjuntado`
+  // —lo que decide si se pide el cierre— y el circuito de la tanda, y dos
+  // copias de la misma cadena divergen el día que el backend la cambie.
+  const ESTADO_ADJUNTADO = "adjuntado";
+
+  // F-025 R13 · los tres pasos, tal y como se publican por `alPaso`. Son lo
+  // que la pantalla enseña por parte mientras la tanda corre: con la
+  // confirmación única, entre pulsar y terminar hay ~20 s por parte y un botón
+  // quieto invita a pulsarlo otra vez.
+  const PASO_ARCHIVANDO = "archivando";
+  const PASO_ADJUNTANDO = "adjuntando";
+  const PASO_CERRANDO = "cerrando";
+
+  /** F-025 R21 · lo que se dice cuando la ventana del ERP está cerrada. */
+  const MENSAJE_ERP_CERRADO =
+    "archivado; no se ha pedido nada al ERP porque su ventana de escritura " +
+    "está cerrada";
+
   /** Un valor vacío es `null`: el backend distingue «vacío» de «no leído». */
   function normalizarValor(valor) {
     if (valor === undefined || valor === null) {
@@ -300,7 +319,7 @@
    * anomalía que esta feature elimina.
    */
   function estaAdjuntado(parte) {
-    return Boolean(parte && parte.grafico === "adjuntado");
+    return Boolean(parte && parte.grafico === ESTADO_ADJUNTADO);
   }
 
   /**
@@ -606,6 +625,277 @@
     );
   }
 
+  // =======================================================================
+  // F-025 · El circuito de UN parte: archivar, adjuntar y cerrar del tirón
+  // =======================================================================
+  //
+  // Todo esto vivía en `js/app.js` repartido entre `_archivarUno`,
+  // `_adjuntarYCerrarUno` y `_cerrarUno`, que es **la única habitación de la
+  // casa sin tests**. F-019 ya demostró una vez lo que eso cuesta: el orden
+  // «registrar la remesa antes de procesar» vivía allí, se borró la línea y
+  // los 122 tests siguieron en verde. Lo que F-025 dejaría allí sería el orden
+  // de **tres escrituras, dos de ellas en un ERP de producción**, así que se
+  // muda aquí, que es donde vive «qué se pide y en qué orden» y donde hay
+  // tests que lo miran.
+
+  /**
+   * F-025 R24 · los partes que la tanda tiene que llevar hasta cerrado.
+   *
+   * **Un solo selector**, y por eso es más ancho que el `archivables()` que
+   * sustituye: apto, guardado y **no cerrado**. Los dos casos que el viejo
+   * dejaba fuera son justo los que hay que recuperar —archivado sin adjuntar,
+   * y adjuntado sin cerrar—, y al fundirse los dos botones en uno se quedarían
+   * sin ninguna forma de volver a entrar.
+   *
+   * Lo que **no** entra: los partes que la validación mandó a revisión o a la
+   * cola humana (R36). Aprobarlos es F-026, otra feature.
+   */
+  function pendientesDeCircuito(partes) {
+    return (partes || []).filter(function (parte) {
+      return Boolean(
+        parte && !parte.cerrado && parte.guardado && esArchivable(parte.validacion),
+      );
+    });
+  }
+
+  /**
+   * F-025 R12 · el porcentaje sobre el tamaño de **la tanda**, no de la remesa.
+   *
+   * El denominador viejo era el total de la remesa, así que archivar 4 partes
+   * de 22 enseñaba un 18 % al terminar: una barra que nunca llega al final
+   * parece un proceso colgado, y detrás de este hay escrituras en un ERP.
+   */
+  function porcentajeDeTanda(hechos, total) {
+    return total ? Math.round((hechos / total) * 100) : 0;
+  }
+
+  /** El texto de un fallo, venga de `js/api.js` o de un reventón cualquiera. */
+  function mensajeDeError(error) {
+    return (
+      (error && error.mensaje) || (error && error.message) || String(error)
+    );
+  }
+
+  /** El número de incidencia que devolvió el backend, si lo devolvió (R37). */
+  function numeroDeIncidenciaDe(datos, actual) {
+    const numero = datos && datos.numero_incidencia;
+    return numero ? String(numero) : actual;
+  }
+
+  /**
+   * Anota un fallo en el resultado y lo devuelve. **No lanza** (R20).
+   *
+   * `ambito` solo se rellena cuando el fallo es **de entorno**, porque es lo
+   * único que dice: qué ventana de escritura está cerrada. Son dos distintas
+   * —`ARCHIVO_HABILITADO` y `CIERRE_HABILITADO`— y la tanda las trata al revés
+   * (R21, R22): con el ERP cerrado se sigue archivando; sin archivo no hay
+   * nada que adjuntar ni que cerrar.
+   */
+  function anotarFallo(resultado, estado, ambito, error) {
+    const deEntorno = Boolean(error && error.tipo === "entorno");
+    resultado.estado = estado;
+    resultado.error = mensajeDeError(error);
+    resultado.tipoError = deEntorno ? "entorno" : "parte";
+    resultado.ambito = deEntorno ? ambito : "";
+    return resultado;
+  }
+
+  /**
+   * F-025 · el circuito de UN parte: archivar → adjuntar → cerrar.
+   *
+   * **Nunca lanza** (R20): devuelve hasta dónde llegó, porque un parte roto no
+   * puede tumbar la tanda. Castigar a diecinueve partes buenos por uno cuyo
+   * número de incidencia se leyó mal sería exactamente lo que R10 de F-007
+   * prohíbe.
+   *
+   * **Los dos pasos del ERP van siempre con `commit` y `confirmado`** (R8), y
+   * eso es seguro porque la llamada con `commit` **lleva dentro su propia
+   * comprobación previa** contra el ERP y contra la pasarela: está recorrido
+   * en `design.md` §2 y vigilado por
+   * `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`. Lo que
+   * desaparece con F-025 es la pantalla, no la verificación.
+   *
+   * **No muta el parte.** Lo que hay que mover al estado de Alpine lo dice el
+   * resultado (`archivado`, `grafico`, `cerrado`), y de eso se encarga
+   * `app.js`: aquí se decide, allí se pinta.
+   *
+   * Cada paso **se salta si ya consta hecho** (R25, R26). Saltarlo aquí ahorra
+   * una petición; la defensa de verdad está en el backend —la traza de F-006,
+   * la traza del gráfico y la pasarela por `sha256`— y sigue donde estaba.
+   *
+   * @param {Object} parte El parte de la pantalla.
+   * @param {Object} api El cliente de `js/api.js`.
+   * @param {Object} [opciones] `{usuarioOid, correo, alPaso(paso), erpCerrado,
+   *        FabricaFormData}`. `erpCerrado` es la bandera de R21: entra y sale
+   *        por parámetro para que la decisión sea pura y tenga test, en vez de
+   *        un `if` dentro de un `catch` de Alpine.
+   * @returns {Promise<{paso: string, estado: string, archivado: boolean,
+   *          grafico: string, cerrado: boolean, numeroIncidencia: string,
+   *          mensaje: string, error: string, tipoError: string,
+   *          ambito: string, archivo: Object|null}>}
+   */
+  async function ejecutarCircuito(parte, api, opciones) {
+    const ajustes = opciones || {};
+    const anunciar =
+      typeof ajustes.alPaso === "function" ? ajustes.alPaso : function () {};
+    // Las credenciales y el `commit` van juntos en un solo objeto: que no haya
+    // ninguna forma de componer el cuerpo del ERP **sin** `commit` es R8.
+    const credenciales = {
+      usuarioOid: ajustes.usuarioOid,
+      correo: ajustes.correo,
+      commit: true,
+      confirmado: true,
+    };
+    const resultado = {
+      paso: "",
+      estado: "",
+      archivado: Boolean(parte && parte.archivado),
+      grafico: (parte && parte.grafico) || "",
+      cerrado: false,
+      numeroIncidencia: "",
+      mensaje: "",
+      error: "",
+      tipoError: "",
+      ambito: "",
+      archivo: null,
+    };
+
+    // --- paso 1 · el documento a SharePoint -------------------------------
+    if (!resultado.archivado) {
+      resultado.paso = "archivar";
+      anunciar(PASO_ARCHIVANDO);
+      try {
+        // `cuerpoDeArchivo` se niega a componer nada que no sea apto, que no
+        // esté guardado o que ya esté archivado (R36): aunque se pulse dos
+        // veces, aquí se para. Su negativa sale como resultado y no como
+        // excepción, para no tumbar la tanda.
+        resultado.archivo = await api.archivar(
+          cuerpoDeArchivo(parte, ajustes.FabricaFormData),
+          parte.hash,
+        );
+        resultado.archivado = true;
+      } catch (error) {
+        return anotarFallo(resultado, "error_archivo", "archivo", error);
+      }
+    }
+    resultado.estado = ESTADO_ARCHIVADO;
+
+    // R21 · la ventana del ERP ya se sabe cerrada por un parte anterior de
+    // esta misma tanda. No se vuelve a preguntar: no se va a abrir a mitad de
+    // tanda, y veinte partes por dos llamadas de 503 garantizado es ruido.
+    // Pero el archivo SÍ sirve, y por eso este corte va **después** del paso 1.
+    if (ajustes.erpCerrado) {
+      resultado.mensaje = MENSAJE_ERP_CERRADO;
+      return resultado;
+    }
+
+    // El parte tal y como lo ven los dos pasos del ERP: con su archivo hecho.
+    // `cuerpoDeGrafico` y `cuerpoDeCierre` exigen `archivado` (es R15 de F-012
+    // y R17 de F-009, y el backend las vuelve a comprobar), y aquí acabamos de
+    // archivarlo. Se compone una copia en vez de mutar la entrada.
+    const conArchivo = resultado.archivado
+      ? Object.assign({}, parte, { archivado: true })
+      : parte;
+
+    // --- paso 2 · el parte a su reclamación, con commit -------------------
+    if (resultado.grafico !== ESTADO_ADJUNTADO) {
+      resultado.paso = "adjuntar";
+      anunciar(PASO_ADJUNTANDO);
+      try {
+        const datos = await api.adjuntar(
+          cuerpoDeGrafico(conArchivo, credenciales, ajustes.FabricaFormData),
+          parte.hash,
+        );
+        resultado.grafico = (datos && datos.estado) || "";
+        resultado.numeroIncidencia = numeroDeIncidenciaDe(
+          datos,
+          resultado.numeroIncidencia,
+        );
+      } catch (error) {
+        return anotarFallo(resultado, "error_grafico", "erp", error);
+      }
+    }
+
+    if (resultado.grafico !== ESTADO_ADJUNTADO) {
+      // R27 · lo normal aquí es `ya_cerrada`: la reclamación estaba cerrada
+      // antes de que llegáramos y no se le cuelga un gráfico. **No es un
+      // error** —es el reintento legítimo de una tanda— y el parte sale de la
+      // lista para que no vuelva a entrar.
+      resultado.estado = resultado.grafico;
+      resultado.cerrado = true;
+      resultado.mensaje =
+        "no se ha adjuntado el parte (" +
+        resultado.grafico +
+        "): no se cierra nada";
+      return resultado;
+    }
+    resultado.estado = ESTADO_ADJUNTADO;
+
+    // --- paso 3 · el cierre, con commit -----------------------------------
+    resultado.paso = "cerrar";
+    anunciar(PASO_CERRANDO);
+    try {
+      const datos = await api.cerrar(
+        cuerpoDeCierre(conArchivo, credenciales),
+        parte.hash,
+      );
+      resultado.numeroIncidencia = numeroDeIncidenciaDe(
+        datos,
+        resultado.numeroIncidencia,
+      );
+      resultado.estado = (datos && datos.estado) || "cerrado";
+      resultado.cerrado = true;
+      resultado.mensaje =
+        resultado.numeroIncidencia + " → " + resultado.estado;
+    } catch (error) {
+      // R19 · el gráfico YA está dentro de Sigrid y la incidencia sigue
+      // abierta. El estado es `adjuntado`, no `error_cierre`: tiene salida
+      // propia en pantalla —el recuadro ámbar con «Reintentar el cierre»
+      // (R65 de F-012)— y decir «error» escondería que el parte ya está en el
+      // ERP.
+      return anotarFallo(resultado, ESTADO_ADJUNTADO, "erp", error);
+    }
+
+    return resultado;
+  }
+
+  // F-025 R14 · la guarda de reentrada de la tanda.
+  //
+  // Hay tres capas contra la doble pulsación y ninguna sobra: la confirmación
+  // se consume al primer clic (`js/confirmacion.js`), esta guarda, y los pasos
+  // saltables de `ejecutarCircuito`. Hasta ahora la única defensa era el
+  // `:disabled` del HTML, que **ningún test ejecuta**.
+  //
+  // Vive aquí, y no en `app.js`, exactamente por eso.
+  let tandaEnCurso = false;
+
+  /** ¿Hay una tanda corriendo ahora mismo? */
+  function hayTandaEnCurso() {
+    return tandaEnCurso;
+  }
+
+  /**
+   * Ejecuta `ejecutar` solo si no hay otra tanda en curso (R14).
+   *
+   * @returns {Promise<{arrancada: boolean, valor: *}>} `arrancada: false`
+   *          cuando ya había una corriendo, y entonces no se ha llamado a
+   *          nada.
+   *
+   * La guarda se suelta en un `finally`: una tanda que reviente por lo que sea
+   * no puede dejar la pantalla bloqueada hasta que alguien recargue.
+   */
+  async function conGuardaDeTanda(ejecutar) {
+    if (tandaEnCurso) {
+      return { arrancada: false, valor: undefined };
+    }
+    tandaEnCurso = true;
+    try {
+      return { arrancada: true, valor: await ejecutar() };
+    } finally {
+      tandaEnCurso = false;
+    }
+  }
+
   const Pipeline = {
     CAMPOS_DEL_PARTE: CAMPOS_DEL_PARTE,
     CAMPOS_DE_ARCHIVO: CAMPOS_DE_ARCHIVO,
@@ -630,6 +920,14 @@
     guardarParte: guardarParte,
     revalidar: revalidar,
     revalidarYGuardar: revalidarYGuardar,
+    // F-025 · el circuito de la confirmación única.
+    ESTADO_ADJUNTADO: ESTADO_ADJUNTADO,
+    MENSAJE_ERP_CERRADO: MENSAJE_ERP_CERRADO,
+    pendientesDeCircuito: pendientesDeCircuito,
+    porcentajeDeTanda: porcentajeDeTanda,
+    ejecutarCircuito: ejecutarCircuito,
+    conGuardaDeTanda: conGuardaDeTanda,
+    hayTandaEnCurso: hayTandaEnCurso,
   };
 
   if (typeof window !== "undefined") {

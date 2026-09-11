@@ -43,7 +43,7 @@
 
 ## Bloque 1 · El circuito, donde sí hay tests (`js/pipeline.js`)
 
-- [ ] **T3**: Añadir `pendientesDeCircuito(partes)` y
+- [x] **T3**: Añadir `pendientesDeCircuito(partes)` y
       `porcentajeDeTanda(hechos, total)` a `js/pipeline.js`, exportados. |
       Verificación: `tests_js/circuito.test.js` cubre R24 —entran los partes
       **archivados sin adjuntar** y los **adjuntados sin cerrar**, no solo los
@@ -51,7 +51,7 @@
       ya cerrados; y `porcentajeDeTanda` sobre el tamaño de la tanda (R12),
       con el caso `total = 0`.
 
-- [ ] **T4**: Añadir `ejecutarCircuito(parte, api, opciones)` con los tres
+- [x] **T4**: Añadir `ejecutarCircuito(parte, api, opciones)` con los tres
       pasos **saltables** y sin lanzar nunca. | Verificación:
       `tests_js/circuito.test.js` con un `api` doble comprueba el **orden**
       archivar → adjuntar → cerrar (R7); que `adjuntar` y `cerrar` se llaman
@@ -61,7 +61,7 @@
       llama a `adjuntar` (R26); y que `alPaso` publica `archivando`,
       `adjuntando`, `cerrando` en ese orden (R13).
 
-- [ ] **T5**: Los fallos dentro de `ejecutarCircuito`. | Verificación: mismo
+- [x] **T5**: Los fallos dentro de `ejecutarCircuito`. | Verificación: mismo
       fichero — fallo de `archivar` ⇒ **cero** llamadas a `adjuntar` y a
       `cerrar` (R17); fallo de `adjuntar` ⇒ **cero** llamadas a `cerrar`
       (R18); respuesta de `adjuntar` distinta de `adjuntado` (p. ej.
@@ -70,7 +70,7 @@
       resultado trae siempre `numeroIncidencia` cuando el backend lo devolvió
       (R37).
 
-- [ ] **T6**: La bandera `erpCerrado` y la guarda de reentrada. |
+- [x] **T6**: La bandera `erpCerrado` y la guarda de reentrada. |
       Verificación: con `erpCerrado: true`, `ejecutarCircuito` **archiva y no
       llama al ERP** (R21); un `503` de entorno en `adjuntar`/`cerrar`
       devuelve `tipoError: 'entorno'` con `ambito: 'erp'`, y en `archivar` con

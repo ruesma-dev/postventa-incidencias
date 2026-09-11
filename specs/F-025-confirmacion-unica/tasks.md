@@ -137,7 +137,7 @@
 
 ## Bloque 4 · Las enmiendas y la documentación
 
-- [ ] **T14**: Escribir en `specs/F-012-grafico-sigrid/requirements.md` los
+- [x] **T14**: Escribir en `specs/F-012-grafico-sigrid/requirements.md` los
       cinco recuadros de `design.md` §11.1–§11.4 (R63, R22, R21, R49, R50). |
       Verificación: `git diff` de ese fichero **no borra ni una línea**
       (`git diff --numstat` con 0 supresiones), y un test de documentación

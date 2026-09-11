@@ -175,9 +175,39 @@ gráfico, el tamaño en bytes y el `sha256` del PDF, el `cod` previsto, y los
 **avisos** que devuelva la pasarela (entre ellos, los gráficos huérfanos del
 concepto).
 
+> **Enmienda del 2026-09-11 · el contenido se mantiene, el momento cambia.**
+>
+> El endpoint sigue devolviendo el bloque completo del cálculo previo (R21) y
+> el estado del gráfico (R49): **el contrato de respuesta no cambia ni una
+> clave**. Lo que cambia es cuándo se lee: ya no en una pantalla anterior a la
+> confirmación, sino en el resumen de lo que se hizo (F-025 R40).
+>
+> R21 dice, literal: *«El dry-run debe devolver al usuario: el código y la
+> descripción de la reclamación, su estado actual legible, el login con el que
+> se firmaría, el nombre de fichero y la descripción con que quedará el
+> gráfico, la clase de gráfico, el tamaño en bytes y el `sha256` del PDF, el
+> `cod` previsto, y los **avisos** que devuelva la pasarela (entre ellos, los
+> gráficos huérfanos del concepto).»* Sigue siendo cierto palabra por palabra:
+> lo que cayó el 2026-09-11, por decisión del responsable del proyecto —*«no
+> hace falta enseñar nada»*—, es la pantalla que lo enseñaba antes de
+> confirmar, no lo que el endpoint devuelve.
+
 **R22.** SI el dry-run responde `idempotente: true`, ENTONCES el sistema debe
 decirlo al usuario **antes** de confirmar: ese parte ya está dentro de Sigrid y
 el commit no escribirá nada.
+
+> **Enmienda del 2026-09-11 · el «antes de confirmar» de R22 ya no existe.**
+>
+> R22 dice, literal: *«SI el dry-run responde `idempotente: true`, ENTONCES el
+> sistema debe decirlo al usuario **antes** de confirmar: ese parte ya está
+> dentro de Sigrid y el commit no escribirá nada.»* Con la confirmación única
+> (F-025), no hay momento entre el cálculo y la escritura. **El caso
+> idempotente se sigue detectando y se sigue diciendo**, en el resumen. Lo que
+> no cambia en absoluto es R25: una respuesta idempotente es un **éxito**.
+>
+> Lo decidió el responsable del proyecto el 2026-09-11: *«quiero que al darle
+> a archivar los partes aptos me pida confirmación como ahora, y al confirmar
+> ya haga el proceso de cierre»*. Ver F-025 R39.
 
 **R23.** El sistema **no debe** ejecutar el `commit` del gráfico sin la
 confirmación explícita del usuario en el front o su preferencia de auto-cierre
@@ -309,9 +339,31 @@ falso.
 **estado del gráfico** según la traza local: `adjuntado` (con nombre de
 fichero y `sha256`), `dry_run_ok`, o que no consta.
 
+> **Enmienda del 2026-09-11 · el contenido se mantiene, el momento cambia.**
+>
+> R49 dice, literal: *«CUANDO se presenta el dry-run del cierre, el sistema
+> debe informar del **estado del gráfico** según la traza local: `adjuntado`
+> (con nombre de fichero y `sha256`), `dry_run_ok`, o que no consta.»* El
+> endpoint lo sigue devolviendo entero: **el contrato de respuesta no cambia
+> ni una clave**. Lo que cambia es cuándo se lee: ya no en una pantalla
+> anterior a la confirmación —que el responsable del proyecto retiró el
+> 2026-09-11 con un *«no hace falta enseñar nada»*— sino en el resumen de lo
+> que se hizo (F-025 R40).
+
 **R50.** El dry-run del cierre (`commit: false`) **no debe** exigir que el
 gráfico conste adjuntado: la exigencia de R2 aplica al `commit`. Así los dos
 dry-run —gráfico y cierre— se pueden enseñar juntos antes de confirmar.
+
+> **Enmienda del 2026-09-11 · la regla se mantiene, su motivo era otro.**
+>
+> R50 justificaba que el dry-run del cierre no exija el gráfico *«así los dos
+> dry-run —gráfico y cierre— se pueden enseñar juntos antes de confirmar»*.
+> Ese motivo cayó con F-025: el 2026-09-11 el responsable del proyecto decidió
+> que *«al confirmar ya haga el proceso de cierre»*, y que **«no hace falta
+> enseñar nada»**, así que no hay pantalla donde enseñarlos juntos. **La regla
+> se queda**, ahora por otro motivo: el contrato del endpoint tiene que poder
+> consultarse sin escribir, y ese es el comportamiento por omisión que protege
+> a quien llame sin haber leído el contrato. Ver F-025 R41.
 
 **R51.** CUANDO el cierre se ejecuta con `commit` y el gráfico consta
 `adjuntado`, el cierre debe proceder exactamente como en F-009 (R22–R27 de
@@ -367,6 +419,31 @@ que adjuntar (R2), sin haber tocado el ERP.
 **R63.** CUANDO el usuario pide «ver qué pasaría», el front debe pedir para
 cada parte cerrable **los dos dry-run** —gráfico y cierre, en ese orden— y
 enseñarlos juntos antes de ofrecer la confirmación.
+
+> **Enmienda del 2026-09-11 · R63 queda DEROGADO: la premisa sobre la que se
+> escribió cayó por decisión del responsable del proyecto.**
+>
+> R63 dice, literal: *«CUANDO el usuario pide «ver qué pasaría», el front debe
+> pedir para cada parte cerrable **los dos dry-run** —gráfico y cierre, en ese
+> orden— y enseñarlos juntos antes de ofrecer la confirmación.»*
+>
+> Eso describía un circuito con **dos confirmaciones**: una para archivar y
+> otra, después de leer el cálculo, para escribir en el ERP. El 2026-09-11,
+> tras verificar el circuito completo contra el ERP real, el responsable
+> decidió que **al confirmar el archivado se ejecute ya el cierre**: *«quiero
+> que al darle a archivar los partes aptos me pida confirmación como ahora, y
+> al confirmar ya haga el proceso de cierre»*. Se le planteó explícitamente
+> que esa pantalla es lo que protege de cerrar la incidencia equivocada si la
+> extracción leyó mal el número del papel, y respondió: **«no hace falta
+> enseñar nada»**.
+>
+> **Lo que R63 protegía de verdad, y NO ha caído**: que no se escriba sin
+> haber leído antes el estado real de la reclamación. Eso se sigue haciendo,
+> **dentro de la misma llamada que escribe** (R20 de esta misma spec, que
+> sigue vigente). Lo que cae es enseñárselo a una persona.
+>
+> **Lo que sí se pierde está escrito** en `specs/F-025-confirmacion-unica/requirements.md`
+> §0. **F-012 sigue `done`**: esto no reabre la feature.
 
 **R64.** CUANDO el usuario confirma, el front debe, para cada parte, pedir el
 `commit` del gráfico y **solo si** responde `adjuntado` pedir el `commit` del

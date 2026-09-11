@@ -1,6 +1,56 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-11 · **la documentación de la verificación de F-012 ya nombra el caso concreto, con constancia fechada de quién cambió la premisa**
+>
+> Encargo **documental**: ningún código, ningún test, ninguna llamada a Azure,
+> Sigrid, SharePoint ni PostgreSQL. `bash harness/init.sh` **en verde**
+> (62 tests del arnés en 5,51 s; puerta de cobertura 99,0 % de 1.079 líneas; las
+> suites de `api` y `front` **de caché**, legítimo porque no se tocó un solo
+> `.py`).
+>
+> **Qué cambió.** Donde se decía «obra de prueba **404**, nunca una obra real»
+> ahora se dice **incidencia `RS26.09/0150` (tipo 708) de la obra `0626`**, que
+> **no es una obra de pruebas: está en uso**. La advertencia anterior **no se
+> ha borrado**: en cada documento queda un recuadro fechado —calcado del de la
+> enmienda del 2026-09-03 bajo el R28 de `specs/F-010-despliegue/requirements.md`—
+> con la premisa original **literal**, quién la levantó (**el responsable del
+> proyecto, el 2026-09-10**, tras planteárselo de forma explícita) y qué implica:
+> la incidencia de la comprobación y su cierre quedan **en el histórico de una
+> obra en uso**, con el documento adjunto colgado de ella.
+>
+> | Fichero | Qué se tocó |
+> |---|---|
+> | `progress/guion_bloque9_F-012.md` | Nota fechada arriba; regla del encabezado; P5 y **P6**; §3; casilla de T25; T25, T31 y T32; §7 (datos); H7 y H10 |
+> | `specs/F-012-grafico-sigrid/requirements.md` | Término del glosario + recuadro de enmienda; trazabilidad de los `MANUAL` |
+> | `specs/F-012-grafico-sigrid/design.md` | H5, D-B, mapa de ficheros, orden (b), P5 del §14 y **§15 con su propia enmienda** |
+> | `specs/F-012-grafico-sigrid/tasks.md` | T22, encabezado y regla dura del bloque 9, P5, P6, T31 |
+> | `harness/features.json` | **Solo** la descripción de F-012 (`status` intacto: `in_progress`); `BACKLOG.md` regenerado |
+> | `progress/peticion_posventa_prueba_F-012.md` | Nota interna fechada, y el correo reenviable dice **a Ana y Alicia** que la 0626 está en uso y dónde queda lo que confirmen |
+>
+> **La consulta del §15 no se ha reinventado**: Q1 y Q2 se quedan como estaban
+> —siguen dando estado y nº de gráficos de la incidencia— y solo se ajusta el
+> parámetro de Q0 a `['0626', '626']`.
+>
+> **Lo que NO cambia, y se comprobó que sigue escrito en los seis ficheros**:
+> comprobación previa (dry-run) antes de cada escritura; **autorización expresa
+> del responsable por incidencia concreta —que aquí se dice explícitamente que
+> gana peso, no lo pierde—**; `CIERRE_HABILITADO` como **interruptor único**
+> del documento adjunto y del cambio de estado; y ninguna escritura desde un
+> puesto de trabajo.
+>
+> **Queda fuera de este encargo y sigue nombrando la obra genérica** (no se
+> tocó): `infra/15_reclamaciones_obra_prueba.ps1` —su `-CodigoObra` sigue con
+> `404` por defecto, así que **hay que pasarle `0626` a mano**, y así está
+> avisado en el guion y en la spec—, `progress/guion_bloque8_F-009.md`,
+> el `blocked_by` de **F-009** en `features.json`, `docs/INTEGRACION.md` §520 y
+> `specs/F-024-datos-parte-sigrid/tasks.md`. Los informes ya cerrados
+> (`impl_F-012.md`, `review_F-012.md`) no se tocan: son histórico.
+>
+> **Qué falta para el bloque 9**: que el responsable dé de alta `RS26.09/0150`
+> en el ERP, y que el parte `muestras/parte_prueba_RS26.09-0150.pdf` se
+> imprima, se firme a mano y se escanee. T25–T32 siguen sin ejecutar.
+
 > ## Estado al 2026-09-11 · **El entorno desplegado ya puede escribir: Paso 0 hecho, F-012 desplegada y la ventana de archivo abierta**
 >
 > **Decisión del humano, y cambia una premisa**: la verificación de F-012 se

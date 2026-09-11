@@ -1,6 +1,55 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-11 · **F-025: hechos los bloques 0 y 1; el front todavia pide DOS confirmaciones**
+>
+> Entrega **parcial y pedida asi**: el encargo acotaba el trabajo a los **dos
+> primeros bloques** de `specs/F-025-confirmacion-unica/tasks.md` (T1-T6).
+> **T7 en adelante no se ha empezado.** Informe completo, con la fase RED y las
+> evidencias: **`progress/impl_F-025.md`**.
+>
+> ### Lo que hay hecho
+>
+> - **Bloque 0 (T1, T2)** - `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`,
+>   27 tests. Fija con una **bitacora ordenada compartida por los dos dobles**
+>   el hallazgo del que depende la feature entera: un `commit` **sin ninguna
+>   llamada previa** hace su comprobacion contra el ERP y la pasarela **dentro
+>   de la misma invocacion** y solo entonces escribe. Mas los **siete
+>   control-negativo** de `requirements.md` 6 (R29-R35).
+> - **Bloque 1 (T3-T6)** - `js/pipeline.js` gana `pendientesDeCircuito`,
+>   `porcentajeDeTanda`, `ejecutarCircuito`, `conGuardaDeTanda` y
+>   `hayTandaEnCurso`; `tests_js/circuito.test.js` los cubre con **37 tests**.
+>   El orden de las tres escrituras deja de vivir en `app.js`, que no tiene
+>   tests.
+>
+> ### Lo que NO hay, y conviene no confundirlo
+>
+> **El comportamiento de la pantalla no ha cambiado ni un poco.** `js/app.js` e
+> `index.html` estan intactos: el front sigue pidiendo **dos** confirmaciones y
+> **cinco** llamadas por parte. `ejecutarCircuito` esta escrito y **no lo llama
+> nadie** todavia.
+>
+> Tampoco se ha tocado: ni `paso_grafico.py` ni `paso_cierre.py` (regla dura de
+> la feature), ni las enmiendas a F-009 y F-012 (bloque 4), ni la verificacion
+> contra el ERP (bloque 5, MANUAL), ni la campana de mutacion (T24).
+>
+> ### Por donde sigue
+>
+> **Bloque 2 (T7-T9)**, en `js/app.js`, con `tests/test_f025_front.py` nuevo.
+> El informe trae en su 7.2 el esqueleto de `confirmarArchivo` y **dos avisos
+> que conviene leer antes de escribir codigo**: que la bandera `erpCerrado` no
+> la veran los partes que ya esten en vuelo en la cola, y que
+> `reintentarCierre` se queda sin funcion si T7 borra `_cerrarUno` (la salida
+> limpia es reintentar por `ejecutarCircuito`, que ya se salta lo que consta
+> hecho).
+>
+> ### Estado del entorno
+>
+> `bash harness/init.sh` en **verde**: 62 + 2.123 + 130 tests, cobertura de
+> lineas cambiadas **99,0 %** (umbral 80, nivel critico). Dos commits locales
+> en `feature/F-025-confirmacion-unica`, sin `push`. `features.json` **sin
+> tocar**.
+
 > ## Estado al 2026-09-11 · **el bloque 9 de F-012 se ejecutó contra el ERP y FUNCIONÓ; se cierra con cinco escenarios sin verificar**
 >
 > **Lo primero, porque es el hito que esta feature perseguía**: el

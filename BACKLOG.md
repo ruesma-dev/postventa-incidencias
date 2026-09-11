@@ -5,6 +5,8 @@
 
 Resumen: **25 features**, 13 abiertas, 12 terminadas.
 
+En curso: **F-026**.
+
 Bloqueadas: **F-009**.
 
 ## Trabajo abierto
@@ -23,7 +25,7 @@ Bloqueadas: **F-009**.
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 | F-022 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 22 | pendiente | estandar | `feature/F-022-suite-barrido-cacheado` |
-| F-026 | Aprobacion humana de los partes que van a revision | 26 | spec lista | estandar | `feature/F-026-aprobacion-humana` |
+| F-026 | Aprobacion humana de los partes que van a revision | 26 | en curso | estandar | `feature/F-026-aprobacion-humana` |
 
 ## Terminadas
 
@@ -118,7 +120,7 @@ El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco 
 
 ### F-026 · Aprobacion humana de los partes que van a revision
 
-estado **spec lista** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
+estado **en curso** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
 
 Hoy un parte que la validacion manda a revision humana se queda bloqueado para siempre: el front lo pinta en ambar, deja corregir sus campos y consultar la cola, pero NO existe ninguna forma de aprobarlo -ni boton, ni endpoint- y `esArchivable` solo mira el veredicto y el destino que puso la IA. Esta feature cierra ese circuito: cuando el humano corrige los campos o revisa el parte, este pasa a APROBADO y entra en el flujo normal de archivo y cierre. NO TOCA SIGRID: la puerta del ERP sigue siendo la misma y el cierre sigue exigiendo lo que exige. EL APROBADO SE GUARDA, no vive solo en el navegador (decision del humano del 2026-09-11): quien aprobo y cuando, en el esquema propio. El motivo no es completismo: un parte llega a revision porque la firma no parecia humana o porque trae observaciones manuscritas del cliente diciendo que la reparacion no esta bien, asi que aprobarlo es la decision de una persona que sobrescribe al sistema en una incidencia que acabara cerrada en el ERP, y esa decision tiene que quedar registrada.
 

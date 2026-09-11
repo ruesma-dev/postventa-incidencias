@@ -420,6 +420,40 @@
       "rigor": "estandar",
       "priority": 12,
       "branch": "feature/F-024-datos-parte-sigrid"
+    },
+    {
+      "id": "F-025",
+      "title": "Archivar y cerrar en una sola confirmacion",
+      "description": "Quitar el paso de vista previa del circuito. Hoy el front pide DOS confirmaciones para la misma decision: una para archivar y otra, tras ensenar el dry-run del grafico y del cierre, para escribir en el ERP. Al pulsar archivar sobre los partes aptos habra UNA sola confirmacion -la que ya existe- y al confirmarla se ejecutan los tres pasos seguidos: archivar en SharePoint, adjuntar el parte a la reclamacion y cerrarla. DECISION DEL HUMANO DEL 2026-09-11, tomada despues de verificar el circuito completo contra el ERP real: NO hace falta ensenar ningun resumen antes de confirmar; se le planteo que eso es lo que protege de cerrar la incidencia equivocada si la IA leyo mal el numero del papel, y lo reafirmo. OJO: esto DEROGA requisitos aprobados de F-009 y de F-012 que exigen dry-run mostrado al usuario antes de cada commit; se enmiendan con constancia fechada, citando la premisa original literal, NO se borran (mismo patron que R28 de F-010 el 2026-09-03). Las comprobaciones que el backend hace antes de escribir -que la reclamacion existe, en que estado esta, si el documento ya cuelga de ella- NO se tocan: lo que desaparece es la pantalla, no la verificacion. Los partes no aptos siguen sin archivarse.",
+      "acceptance": [
+        "Al confirmar el archivado de los partes aptos se archiva, se adjunta el parte a la reclamacion y se cierra, en ese orden",
+        "Una sola confirmacion en todo el circuito, y sin ella no se escribe nada",
+        "Un fallo al adjuntar no cierra la incidencia, y el reintento no duplica el grafico",
+        "Los requisitos derogados de F-009 y F-012 quedan enmendados con constancia fechada, no borrados",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 25,
+      "branch": "feature/F-025-confirmacion-unica"
+    },
+    {
+      "id": "F-026",
+      "title": "Aprobacion humana de los partes que van a revision",
+      "description": "Hoy un parte que la validacion manda a revision humana se queda bloqueado para siempre: el front lo pinta en ambar, deja corregir sus campos y consultar la cola, pero NO existe ninguna forma de aprobarlo -ni boton, ni endpoint- y `esArchivable` solo mira el veredicto y el destino que puso la IA. Esta feature cierra ese circuito: cuando el humano corrige los campos o revisa el parte, este pasa a APROBADO y entra en el flujo normal de archivo y cierre. NO TOCA SIGRID: la puerta del ERP sigue siendo la misma y el cierre sigue exigiendo lo que exige. EL APROBADO SE GUARDA, no vive solo en el navegador (decision del humano del 2026-09-11): quien aprobo y cuando, en el esquema propio. El motivo no es completismo: un parte llega a revision porque la firma no parecia humana o porque trae observaciones manuscritas del cliente diciendo que la reparacion no esta bien, asi que aprobarlo es la decision de una persona que sobrescribe al sistema en una incidencia que acabara cerrada en el ERP, y esa decision tiene que quedar registrada.",
+      "acceptance": [
+        "Un parte en revision se puede aprobar, y al aprobarlo queda archivable como cualquier apto",
+        "La aprobacion se guarda con quien la hizo y cuando, y sobrevive a recargar la pagina",
+        "Sin aprobacion, un parte en revision no se archiva ni se cierra",
+        "El oid de quien aprueba se guarda como identificador opaco, nunca su correo ni su nombre",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 26,
+      "branch": "feature/F-026-aprobacion-humana"
     }
   ]
 }

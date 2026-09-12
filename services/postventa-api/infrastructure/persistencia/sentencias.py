@@ -28,6 +28,11 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
+from domain.models.aprobacion import (
+    Aprobacion,
+    MotivoRevocacion,
+    huella_de_veredicto,
+)
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
@@ -44,6 +49,7 @@ from infrastructure.persistencia.ddl import validar_nombre_de_esquema
 from infrastructure.persistencia.mapeo import (
     columnas_de_campos,
     json_de_avisos,
+    json_de_codigos_de_motivo,
     valores_de_campos,
     valores_de_traza_ia,
     valores_de_validacion,
@@ -51,10 +57,13 @@ from infrastructure.persistencia.mapeo import (
 
 __all__ = [
     "LIMITE_MAXIMO_COLA",
+    "revocar_aprobacion_si_cambio",
+    "select_aprobacion",
     "select_cola",
     "select_grafico",
     "select_login_sigrid",
     "select_preferencias",
+    "upsert_aprobacion",
     "upsert_archivo",
     "upsert_cierre",
     "upsert_grafico",
@@ -377,6 +386,161 @@ def select_grafico(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
         "WHERE hash_parte = %s"
     )
     return sql, (hash_parte,)
+
+
+#: Las columnas de `aprobaciones` que se escriben al aprobar, en el orden en
+#: que viajan sus parámetros.
+#:
+#: Las dos de la revocación **no están aquí a propósito**: no se escriben nunca
+#: desde el `upsert`. Aprobar produce siempre una aprobación viva, y eso lo
+#: garantiza la sentencia poniéndolas a `NULL` literal, no que quien la llame
+#: se acuerde de construir la dataclass sin revocar (R17).
+_COLUMNAS_APROBACION_VIVA: tuple[str, ...] = (
+    "hash_parte",
+    "aprobado_por",
+    "aprobado_at_utc",
+    "destino_aprobado",
+    "motivos_aprobados",
+    "huella_aprobada",
+    "validado_at_utc",
+)
+
+#: Las dos columnas de la revocación. Se escriben **solo** desde
+#: `revocar_aprobacion_si_cambio`, y revocar no borra (R33).
+_COLUMNAS_REVOCACION: tuple[str, ...] = ("revocada_at_utc", "revocada_motivo")
+
+#: Lo que lee `select_aprobacion`: lo escrito más el estado de la revocación.
+#:
+#: Una sola lista para el `SELECT` **a propósito**, como `_COLUMNAS_GRAFICO`:
+#: `fila_a_aprobacion` desempaqueta por posición, y dos listas del mismo orden
+#: divergen — el día que divergieran, la aprobación volvería con la huella en
+#: el sitio del `oid` y nadie lo notaría.
+_COLUMNAS_APROBACION: tuple[str, ...] = (
+    *_COLUMNAS_APROBACION_VIVA,
+    *_COLUMNAS_REVOCACION,
+)
+
+#: La única columna `jsonb` de la tabla, y por tanto la única que lleva
+#: `::jsonb` en el `VALUES`.
+_COLUMNA_JSONB_APROBACION = "motivos_aprobados"
+
+
+def upsert_aprobacion(*, esquema: str, aprobacion: Aprobacion) -> tuple[str, tuple]:
+    """Registra que **una persona** aprobó este parte (F-026, R14, R17).
+
+    Una sola fila por parte: la clave primaria es el `hash_parte`, así que
+    volver a aprobar el mismo parte —lo que pasa en cuanto alguien corrige un
+    campo, revalida y vuelve a mirarlo— **sustituye** la aprobación en vez de
+    acumular una segunda.
+
+    Y el `DO UPDATE` deja la fila **viva**, poniendo las dos columnas de la
+    revocación a `NULL` literal. Es el camino normal después de una revocación,
+    y escribirlo aquí en vez de confiarlo al objeto que llega es lo que impide
+    que una segunda aprobación nazca muerta.
+
+    De quien aprueba viaja el `oid` **opaco** de Entra ID y nada más (R13), y
+    de los motivos viajan sus **códigos** (R14). Ni una letra de la
+    transcripción manuscrita entra en esta tabla (R15): sobre qué veredicto se
+    decidió va como huella.
+    """
+    tabla = _tabla(esquema, "aprobaciones")
+    marcadores = ", ".join(
+        "%s::jsonb" if columna == _COLUMNA_JSONB_APROBACION else "%s"
+        for columna in _COLUMNAS_APROBACION_VIVA
+    )
+    limpieza = ",\n".join(f"    {columna} = NULL" for columna in _COLUMNAS_REVOCACION)
+    sql = (
+        f"INSERT INTO {tabla} ({', '.join(_COLUMNAS_APROBACION_VIVA)})\n"
+        f"VALUES ({marcadores})\n"
+        f"ON CONFLICT (hash_parte) DO UPDATE SET\n"
+        f"{_asignaciones(_COLUMNAS_APROBACION_VIVA, excluidas={'hash_parte'})},\n"
+        f"{limpieza}\n"
+        f"RETURNING (xmax = 0) AS creado"
+    )
+    parametros = (
+        aprobacion.hash_parte,
+        aprobacion.aprobado_por,
+        aprobacion.aprobado_at_utc,
+        aprobacion.destino_aprobado.value,
+        json_de_codigos_de_motivo(aprobacion.motivos_aprobados),
+        aprobacion.huella_aprobada,
+        aprobacion.validado_at_utc,
+    )
+    return sql, parametros
+
+
+def select_aprobacion(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
+    """La aprobación de un parte, por su `hash`, o ninguna fila (F-026).
+
+    La leen los tres pasos del circuito —para saber si el parte entra— y
+    `POST /api/parte`, para que la pantalla pueda decirlo sin una petición más
+    por parte (R22).
+
+    Devuelve **las mismas columnas y en el mismo orden** que escribe
+    `upsert_aprobacion`, más las dos de la revocación: las dos se apoyan en
+    `_COLUMNAS_APROBACION`.
+
+    No filtra por `revocada_at_utc IS NULL`: quien lee necesita distinguir «a
+    este parte no lo ha aprobado nadie» de «lo aprobaron y dejó de valer», y lo
+    segundo es lo que la pantalla tiene que contar para que alguien vuelva a
+    mirarlo (R31).
+    """
+    tabla = _tabla(esquema, "aprobaciones")
+    sql = (
+        f"SELECT {', '.join(_COLUMNAS_APROBACION)}\n"
+        f"FROM {tabla}\n"
+        "WHERE hash_parte = %s"
+    )
+    return sql, (hash_parte,)
+
+
+def revocar_aprobacion_si_cambio(
+    *, esquema: str, resultado: ResultadoValidacion, ahora: datetime
+) -> tuple[str, tuple]:
+    """Revoca la aprobación si el veredicto ya no es el que se aprobó (R30).
+
+    Es la pieza de D-F (`design.md` §7): **la vigencia no se comprueba al leer,
+    se resuelve al escribir**. Esta sentencia viaja pegada al guardado de la
+    validación, en la misma operación, de modo que quien lea la fila después ve
+    la verdad sin tener que calcularla — y los tres pasos del circuito, que no
+    pueden recomputar la huella porque su cuerpo no trae ni los motivos ni las
+    observaciones, no tienen que hacerlo.
+
+    Las dos condiciones del `WHERE` hacen falta, y cada una impide una cosa:
+
+    - `revocada_at_utc IS NULL` evita reescribir la fecha de una revocación ya
+      hecha. La primera es la que cuenta; machacarla sería perder cuándo dejó de
+      valer.
+    - `huella_aprobada <> %s` es lo que separa «el veredicto cambió» de «se ha
+      vuelto a subir la misma remesa». Sin él, el único gesto con el que se
+      recupera el trabajo tras recargar la pantalla revocaría todas las
+      aprobaciones (R32).
+
+    **No borra** (R33): la decisión se tomó, y quién la tomó y cuándo sigue
+    siendo información. Y el motivo es una **etiqueta corta y cerrada** (R34),
+    nunca el texto del cliente que la provocó — que sería copiar la
+    transcripción manuscrita a una segunda tabla, justo lo que R15 prohíbe.
+
+    Se ejecuta siempre, haya aprobación o no: si no la hay, el `UPDATE` no toca
+    ninguna fila y no ha pasado nada. Consultar antes para decidir si merece la
+    pena sería una consulta de más en el camino más transitado del servicio, y
+    una condición de carrera con quien apruebe a la vez.
+    """
+    tabla = _tabla(esquema, "aprobaciones")
+    sql = (
+        f"UPDATE {tabla}\n"
+        "SET revocada_at_utc = %s, revocada_motivo = %s\n"
+        "WHERE hash_parte = %s\n"
+        "  AND revocada_at_utc IS NULL\n"
+        "  AND huella_aprobada <> %s"
+    )
+    parametros = (
+        ahora,
+        MotivoRevocacion.VEREDICTO_CAMBIADO.value,
+        resultado.hash_parte,
+        huella_de_veredicto(resultado),
+    )
+    return sql, parametros
 
 
 def select_cola(*, esquema: str, limite: int) -> tuple[str, tuple]:

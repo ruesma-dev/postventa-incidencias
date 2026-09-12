@@ -84,7 +84,7 @@
       de `destino_aprobado` coinciden con los dos `Destino` no aptos del dominio
       (R16, R12).
 
-- [ ] **T7**: Añadir a `sentencias.py` el `upsert_aprobacion`, el
+- [x] **T7**: Añadir a `sentencias.py` el `upsert_aprobacion`, el
       `select_aprobacion` y el `revocar_aprobacion_si_cambio`, y a `mapeo.py` el
       `fila_a_aprobacion` y el `json_de_codigos_de_motivo`. | Verificación:
       `tests/test_f026_persistencia.py` — el `upsert` va `ON CONFLICT

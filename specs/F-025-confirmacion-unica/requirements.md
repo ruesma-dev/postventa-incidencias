@@ -254,6 +254,53 @@ sea `apto` con destino `archivo_y_cierre`, ni siquiera dentro de la tanda y ni
 siquiera si el usuario pulsa dos veces. Los partes en revisión y los de la
 cola humana **siguen fuera** (aprobarlos es **F-026**).
 
+> **Enmienda del 2026-09-12 · la última frase de R36 cae con F-026; el resto
+> del requisito sigue entero.**
+>
+> R36 dice, literal: *«El sistema no debe archivar, adjuntar ni cerrar un parte
+> que no sea `apto` con destino `archivo_y_cierre`, ni siquiera dentro de la
+> tanda y ni siquiera si el usuario pulsa dos veces. Los partes en revisión y
+> los de la cola humana siguen fuera (aprobarlos es F-026).»*
+>
+> Lo que cambia es **solo su última frase**, y el propio requisito lo anunciaba
+> al escribirla: aprobarlos era F-026, y F-026 ya está aquí. Desde F-026 un
+> parte no apto entra en la tanda **si y solo si consta aprobado y vigente** en
+> `postventa.aprobaciones`: una persona identificada, un parte concreto, un
+> motivo aprobable y un registro con quién y cuándo. No hay ninguna otra vía, y
+> la aprobación se revoca sola en cuanto cambia el veredicto sobre el que se
+> decidió (R30 de F-026).
+>
+> **La prohibición sigue entera** para todo lo demás, y su comprobación sigue
+> estando en **los tres pasos del backend** —archivar, adjuntar y cerrar—, que
+> es donde estaba: lo único que cambia es que `_exigir_apto` pasa a llamarse
+> `_exigir_admitido` y lee la aprobación **del repositorio, nunca del cuerpo de
+> la petición**. Un parte no apto **sin** aprobación sigue sin archivarse, sin
+> adjuntarse y sin cerrarse, y eso lo vigila un control negativo escrito
+> **antes** que la feature
+> (`services/postventa-api/tests/test_f026_puertas.py`).
+>
+> **Quién lo decidió**: el **responsable** del proyecto, el **2026-09-11**, con
+> estas palabras: *«Los partes no aptos no se archivan hasta que no se aprueban
+> por revisor humano. En ese momento pasan a aprobados y entrarían en el
+> proceso normal.»* Sobre dónde vive esa aprobación —frente a tenerla solo en
+> el navegador— dijo *«hay que guardarlo»*, y sobre si el ERP debe enterarse,
+> *«no hace falta que conste en Sigrid, sí en nuestra base»*.
+>
+> **Que aprobar sea un acto explícito, con su botón, es interpretación del
+> líder y no un pronunciamiento del responsable**, y así debe leerse. Lo que el
+> responsable pidió en esa misma respuesta fue lo contrario, pero para otra
+> cosa: *«escribir en un campo debe guardar lo que escribes, según escribe
+> guarda, sin botón»*. Las dos conviven porque son juicios distintos: guardar
+> lo que alguien teclea es registrar un dato, y declarar que una firma dudosa
+> vale es una decisión que necesita saber **quién** la tomó. Solo la segunda
+> lleva botón y `oid`. Quien mañana quiera quitar ese botón discute con una
+> interpretación, no con el responsable.
+>
+> **F-025 sigue `done`**: esto no reabre la feature ni cambia su alcance. Y no
+> toca lo que F-025 vino a hacer, porque **R29 de F-026 le prohíbe armar
+> ninguna confirmación nueva**: aprobar no pregunta «¿seguro?», así que la
+> confirmación del circuito sigue siendo **una sola**.
+
 **R37.** CUANDO termina el circuito de un parte, el sistema debe enseñar el
 **número de incidencia** de la reclamación sobre la que escribió.
 

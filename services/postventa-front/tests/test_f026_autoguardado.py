@@ -241,6 +241,81 @@ def test_f026_r51_el_modulo_se_carga_antes_que_app_js(html):
     )
 
 
+# ===========================================================================
+# R52 · los tres estados, en la pantalla
+# ===========================================================================
+
+
+def _detalle(html: str) -> str:
+    """El bloque del **detalle**: el parte abierto, con sus campos editables."""
+    return _bloque(html, 'x-show="parteAbierto"', "</section>")
+
+
+def test_f026_r52_los_tres_estados_estan_en_la_pantalla(html):
+    """Guardando, guardado y **no se ha podido guardar**.
+
+    Los tres, y en el detalle: es donde están los campos que se escriben. Un
+    indicador en otra parte de la pantalla no lo ve quien está tecleando.
+    """
+    detalle = _detalle(html)
+
+    for estado in ("guardando", "guardado", "fallo"):
+        assert f"'{estado}'" in detalle or f'"{estado}"' in detalle, (
+            f"el detalle no pinta el estado `{estado}` del autoguardado"
+        )
+    assert "estadoAutoguardado" in detalle
+    assert "mensajeAutoguardado" in detalle
+
+
+def test_f026_r52_el_aviso_de_fallo_se_ve_y_no_se_confunde_con_los_otros_dos(html):
+    """El fallo no puede pintarse como el «Guardado.» de al lado.
+
+    Guardando y guardado son información de fondo; el fallo es lo único que
+    exige hacer algo. Si los tres se pintan igual de gris y pequeño, el que
+    importa pasa desapercibido, y quien escribe se va creyendo que está.
+    """
+    detalle = _detalle(html)
+    bloque_fallo = _bloque(detalle, "estadoAutoguardado === 'fallo'", "</p>")
+
+    assert re.search(r"text-(red|rose|amber)-\d00", bloque_fallo), (
+        "el aviso de fallo se pinta como el resto: hay que poder distinguirlo "
+        "de un «Guardado.»"
+    )
+
+
+def test_f026_r52_nada_borra_el_aviso_por_su_cuenta(html):
+    """R52 · el aviso **no se va solo**.
+
+    Ni un `setTimeout` en el HTML, ni una transición que lo esconda: el estado
+    lo cambia el siguiente guardado, y solo él.
+    """
+    detalle = _detalle(html)
+
+    assert "setTimeout" not in detalle, (
+        "hay un temporizador en el detalle: el aviso de fallo se borraría solo"
+    )
+    assert "x-transition" not in _bloque(
+        detalle, "estadoAutoguardado === 'fallo'", "</p>"
+    ), "el aviso de fallo se esconde con una transición"
+
+
+def test_f026_r52_lo_escrito_se_conserva_en_pantalla(html):
+    """El campo sigue enseñando lo que la persona escribió, falle lo que falle.
+
+    `valorDe(nombre)` lee la corrección antes que la extracción, así que
+    mientras el `input` siga atado a él, un guardado fallido no borra nada de
+    la pantalla. Un `value` atado a la extracción devolvería el campo al valor
+    de la IA, que es perder lo escrito sin decirlo.
+    """
+    campos = _bloque(html, 'x-for="nombre in CAMPOS"', "</template>")
+
+    assert ':value="valorDe(nombre)"' in campos, (
+        "el campo ha dejado de leer `valorDe(nombre)`: un guardado fallido "
+        "borraría de la pantalla lo que se escribió"
+    )
+    assert "ediciones = {}" not in html
+
+
 def test_f026_r51_al_reiniciar_no_queda_ningun_guardado_en_vuelo(app):
     """Un temporizador vivo después de reiniciar guardaría un parte que ya no está.
 

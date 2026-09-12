@@ -363,6 +363,109 @@ test("f026 R50: y cuando la revalidación se cae, el autoguardado lo cuenta como
 });
 
 // =========================================================================
+// R52 · los tres estados, y el que importa es el tercero
+// =========================================================================
+
+test("f026 R52: el camino feliz publica guardando y luego guardado", async () => {
+  const montaje = montar();
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  assert.deepEqual(
+    montaje.estados.map((uno) => uno.estado),
+    [GUARDANDO, GUARDADO],
+  );
+});
+
+test("f026 R52: si la petición falla, se dice que NO se ha guardado", async () => {
+  // Quien escribe y no ve nada supone que se guardó, y esa suposición no
+  // puede quedar sin desmentir: es media feature.
+  const montaje = montar({
+    guardar: function () {
+      return Promise.reject(new Error("la base no responde, inventado"));
+    },
+  });
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  assert.equal(montaje.auto.estado(), FALLO);
+  assert.match(montaje.auto.mensaje(), /no se ha podido guardar/i);
+});
+
+test("f026 R52: el aviso de fallo NO se va solo", async () => {
+  // Un aviso que se borra a los tres segundos es un aviso que nadie llega a
+  // leer, y el defecto que deja detrás —creer que está guardado lo que no lo
+  // está— es peor que no avisar.
+  const montaje = montar({
+    guardar: function () {
+      return Promise.reject(new Error("la base no responde, inventado"));
+    },
+  });
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  // Solo se programó el rebote del guardado. Ningún temporizador más, que es
+  // la única forma de que el aviso se borrara solo.
+  assert.equal(montaje.reloj.programados.length, 1);
+  assert.equal(montaje.auto.estado(), FALLO);
+});
+
+test("f026 R52: tras el fallo, lo escrito se conserva y sigue pendiente de guardar", async () => {
+  const montaje = montar({
+    guardar: function () {
+      return Promise.reject(new Error("la base no responde, inventado"));
+    },
+  });
+  const parte = parteInventado();
+  parte.ediciones.unidad = "4C";
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  // Lo que la persona escribió sigue donde estaba: el módulo no lo toca ni
+  // para reintentar ni para rendirse.
+  assert.deepEqual(parte.ediciones, { unidad: "4C" });
+  // Y sigue constando como no guardado, así que la siguiente pausa lo
+  // reintenta en vez de darlo por escrito.
+  assert.equal(montaje.auto.hayPendiente(parte), true);
+});
+
+test("f026 R52: un guardado correcto después del fallo quita el aviso", async () => {
+  let falla = true;
+  const montaje = montar({
+    guardar: function () {
+      if (falla) {
+        return Promise.reject(new Error("la base no responde, inventado"));
+      }
+      return Promise.resolve({});
+    },
+  });
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+  assert.equal(montaje.auto.estado(), FALLO);
+
+  falla = false;
+  montaje.auto.alEscribir(parte, "unidad", "5D");
+  await montaje.reloj.correr();
+
+  assert.equal(montaje.auto.estado(), GUARDADO);
+  assert.equal(montaje.auto.hayPendiente(parte), false);
+});
+
+// =========================================================================
 // R55 · aplica a TODOS los partes
 // =========================================================================
 

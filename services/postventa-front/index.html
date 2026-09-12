@@ -249,6 +249,32 @@
                 <span class="text-xs text-slate-400" x-text="mensajeRevalidacion"></span>
               </div>
 
+              <!-- ── F-026 R52 · los tres estados del autoguardado ───────────
+                   Lo que se escribe se guarda solo tras una pausa, así que
+                   hace falta decir en qué punto está. Los dos primeros
+                   estados son información de fondo —gris pequeño, sin
+                   interrumpir a nadie—; el tercero NO.
+
+                   El aviso de fallo se pinta aparte, en rojo y con recuadro, y
+                   **no se va solo**: no hay temporizador que lo borre ni
+                   transición que lo esconda. Lo quita el siguiente guardado
+                   que salga bien, y solo él. Quien escribe y no ve nada supone
+                   que se guardó, y esa suposición no puede quedar sin
+                   desmentir.
+
+                   Y lo escrito sigue en pantalla pase lo que pase: el campo
+                   lee `valorDe(nombre)`, que devuelve la corrección de la
+                   persona antes que lo que dijo la IA. -->
+              <div class="mt-2" x-show="estadoAutoguardado">
+                <span class="text-xs"
+                      x-show="estadoAutoguardado === 'guardando' || estadoAutoguardado === 'guardado'"
+                      :class="estadoAutoguardado === 'guardado' ? 'text-emerald-700' : 'text-slate-400'"
+                      x-text="mensajeAutoguardado"></span>
+                <p x-show="estadoAutoguardado === 'fallo'"
+                   class="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800"
+                   x-text="mensajeAutoguardado"></p>
+              </div>
+
               <!-- ── F-026 · la aprobación humana (R35-R39) ──────────────────
                    El gesto va AQUÍ, en el detalle y con el PDF delante, que es
                    donde se mira una firma. Nunca en la lista: aprobar es de UN

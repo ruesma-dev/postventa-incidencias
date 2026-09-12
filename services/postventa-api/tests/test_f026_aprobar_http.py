@@ -36,7 +36,11 @@ from typing import Any
 
 import azure.functions as func
 import pytest
-from domain.models.aprobacion import huella_de_veredicto
+from domain.models.aprobacion import (
+    Aprobacion,
+    MotivoRevocacion,
+    huella_de_veredicto,
+)
 from domain.models.errores import (
     ConfiguracionPgIncompleta,
     CuerpoDeValidacionInvalido,
@@ -45,7 +49,7 @@ from domain.models.errores import (
     PeticionDePersistenciaInvalida,
     ReferenciaNoConsta,
 )
-from domain.models.validacion import Destino, validar_parte
+from domain.models.validacion import CodigoMotivo, Destino, validar_parte
 from interface_adapters.api.aprobar import aprobar_parte_http
 
 from tests.utiles_ia import CAMPOS_DE_EJEMPLO
@@ -123,6 +127,10 @@ class RepositorioQueAnotaElOrden(RepositorioEnMemoria):
     def guardar_aprobacion(self, **datos: Any) -> Any:
         self.orden.append("aprobacion")
         return super().guardar_aprobacion(**datos)
+
+    def consultar_aprobacion(self, **datos: Any) -> Any:
+        self.orden.append("consulta_aprobacion")
+        return super().consultar_aprobacion(**datos)
 
 
 def _extraccion(**cambios: Any) -> dict[str, Any]:
@@ -827,3 +835,127 @@ def test_f026_r21_la_ruta_no_mira_las_ventanas_de_escritura():
 
     assert "HABILITADO" not in fuente
     assert "habilitado" not in fuente
+
+
+# --------------------------------------------------------------------------
+# T12 · R22 · `POST /api/parte` cuenta si el parte consta aprobado
+# --------------------------------------------------------------------------
+
+
+def _guardar(monkeypatch, repositorio, cuerpo: Any = _POR_OMISION):
+    """`POST /api/parte` por el borde, con el repositorio inyectado."""
+    import function_app
+    from interface_adapters.api.parte import guardar_parte_http
+
+    def envoltura(crudo, **datos):
+        return guardar_parte_http(crudo, repositorio=repositorio, **datos)
+
+    monkeypatch.setattr(function_app, "guardar_parte_http", envoltura)
+    peticion = _peticion(_cuerpo() if cuerpo is _POR_OMISION else cuerpo)
+    return function_app.parte(
+        func.HttpRequest(
+            method="POST",
+            url="/api/parte",
+            headers={"Content-Type": "application/json"},
+            body=peticion.get_body(),
+        )
+    )
+
+
+def _aprobacion_guardada(*, revocada: bool = False) -> Aprobacion:
+    """Lo que el repositorio devolvería de un parte ya aprobado."""
+    return Aprobacion(
+        hash_parte=HASH,
+        aprobado_por=OID_INVENTADO,
+        aprobado_at_utc=AHORA,
+        destino_aprobado=Destino.COLA_VALIDACION_HUMANA,
+        motivos_aprobados=(CodigoMotivo.OBSERVACIONES_MANUSCRITAS,),
+        huella_aprobada="huella-inventada-del-veredicto",
+        validado_at_utc=AHORA,
+        revocada_at_utc=AHORA if revocada else None,
+        revocada_motivo=(
+            MotivoRevocacion.VEREDICTO_CAMBIADO.value if revocada else None
+        ),
+    )
+
+
+def test_f026_r22_guardar_un_parte_aprobado_lo_dice_en_la_respuesta(monkeypatch):
+    """R22 · para que la pantalla lo sepa **sin una petición por parte**.
+
+    Al recargar hay que volver a subir la remesa, y eso guarda los 22 partes.
+    Si la respuesta no dijera quién consta aprobado, la pantalla tendría que
+    preguntarlo parte a parte: 22 llamadas de más para pintar una marca.
+    """
+    repositorio = RepositorioQueAnotaElOrden(aprobacion=_aprobacion_guardada())
+
+    respuesta = _guardar(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 200
+    cuerpo = _json_de(respuesta)
+    assert cuerpo["aprobacion"] == {
+        "estado": "aprobado",
+        "destino_aprobado": "cola_validacion_humana",
+        "motivos_aprobados": ["observaciones_manuscritas"],
+        "aprobado_at_utc": AHORA.isoformat(),
+    }
+    assert repositorio.aprobaciones_consultadas == [HASH]
+
+
+def test_f026_r22_un_parte_que_no_ha_aprobado_nadie_devuelve_null(monkeypatch):
+    """R22 · `null` y no la clave ausente: son dos cosas distintas.
+
+    La clave está siempre, y su valor dice qué pasa. Omitirla obligaría a la
+    pantalla a distinguir «no consta aprobado» de «esta respuesta la emitió una
+    versión del backend que no sabía de aprobaciones», que es una distinción
+    que nadie quiere tener que hacer en JavaScript.
+    """
+    repositorio = RepositorioQueAnotaElOrden(aprobacion=None)
+
+    respuesta = _guardar(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 200
+    assert _json_de(respuesta)["aprobacion"] is None
+
+
+def test_f026_r22_una_aprobacion_revocada_se_devuelve_como_revocada(monkeypatch):
+    """R22, R31 · «se decidió y dejó de valer» **no** es «nadie decidió».
+
+    Es la diferencia que hace que alguien vuelva a mirar el parte en vez de
+    darlo por olvidado, y por eso viaja distinta del `null`.
+    """
+    repositorio = RepositorioQueAnotaElOrden(
+        aprobacion=_aprobacion_guardada(revocada=True)
+    )
+
+    respuesta = _guardar(monkeypatch, repositorio)
+
+    assert _json_de(respuesta)["aprobacion"]["estado"] == "revocado"
+
+
+def test_f026_r38_la_respuesta_de_guardar_tampoco_publica_el_oid(monkeypatch):
+    """R38, R43 · el bloque es el mismo en los dos endpoints, y no lleva `oid`.
+
+    Aquí importa más que en `/api/aprobar`: esta respuesta la recibe **quien
+    sube la remesa**, que no tiene por qué ser quien aprobó ninguno de sus
+    partes.
+    """
+    repositorio = RepositorioQueAnotaElOrden(aprobacion=_aprobacion_guardada())
+
+    respuesta = _guardar(monkeypatch, repositorio)
+
+    _sin_datos_personales(respuesta.get_body().decode("utf-8"))
+
+
+def test_f026_r22_la_aprobacion_se_lee_despues_de_guardar(monkeypatch):
+    """R22, R30 · después, y no antes: entre medias está la revocación.
+
+    `guardar_validacion` revoca la aprobación cuyo veredicto ya no coincide
+    (R30). Leerla antes devolvería como viva una aprobación que esa misma
+    llamada acaba de tumbar, y la pantalla pintaría la marca de un parte que
+    ya no circula.
+    """
+    repositorio = RepositorioQueAnotaElOrden(aprobacion=_aprobacion_guardada())
+
+    _guardar(monkeypatch, repositorio)
+
+    assert repositorio.orden == ["parte", "validacion", "consulta_aprobacion"]

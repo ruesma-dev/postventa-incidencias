@@ -64,7 +64,6 @@ from domain.models.aprobacion import (
     MOTIVOS_APROBABLES,
     Aprobacion,
     es_aprobable,
-    esta_vigente,
     huella_de_veredicto,
 )
 from domain.models.errores import (
@@ -75,6 +74,7 @@ from domain.models.validacion import ResultadoValidacion, Veredicto, validar_par
 from domain.ports.persistencia import RepositorioPartesPort
 from infrastructure.persistencia.fabrica import construir_repositorio
 
+from interface_adapters.api.aprobacion_serializada import bloque_de_aprobacion
 from interface_adapters.api.cuerpos import (
     CLAVES_DE_LA_EXTRACCION,
     CLAVES_DE_LA_FIRMA,
@@ -87,17 +87,7 @@ from interface_adapters.api.cuerpos import (
 )
 from interface_adapters.api.parte import AnotaLosResultados
 
-__all__ = ["aprobar_parte_http", "bloque_de_aprobacion"]
-
-#: Cómo se llama, en la respuesta, una aprobación que sigue en pie.
-ESTADO_APROBADO = "aprobado"
-
-#: Y una que dejó de valer porque el veredicto cambió (R31).
-#:
-#: Se devuelve **distinta de «no hay aprobación»** a propósito: la pantalla
-#: tiene que poder contar «se decidió y dejó de valer», que es lo que hace que
-#: alguien vuelva a mirar el parte en vez de darlo por olvidado.
-ESTADO_REVOCADO = "revocado"
+__all__ = ["aprobar_parte_http"]
 
 
 def aprobar_parte_http(
@@ -169,28 +159,6 @@ def aprobar_parte_http(
         "resultado_validacion": almacen.resultado_validacion,
         "aprobacion": bloque_de_aprobacion(aprobacion),
         "avisos": list(contexto.avisos),
-    }
-
-
-def bloque_de_aprobacion(aprobacion: Aprobacion | None) -> dict[str, Any] | None:
-    """El bloque `aprobacion` de la respuesta, o `None` si no la aprobó nadie.
-
-    Lo comparten `/api/aprobar` y `/api/parte` (R22) **a propósito**: la
-    pantalla pinta la misma marca venga de donde venga, y dos serializaciones
-    del mismo hecho divergirían en la primera corrección.
-
-    Cuatro claves y ninguna más. **Ni el `oid`, ni el correo, ni el nombre de
-    quien aprobó** (R38, R43); tampoco el texto del papel, que no está ni en
-    la fila. Lo que la pantalla necesita es de dónde se rescató el parte y
-    cuándo se decidió (R37), y eso es lo que va.
-    """
-    if aprobacion is None:
-        return None
-    return {
-        "estado": ESTADO_APROBADO if esta_vigente(aprobacion) else ESTADO_REVOCADO,
-        "destino_aprobado": aprobacion.destino_aprobado.value,
-        "motivos_aprobados": [codigo.value for codigo in aprobacion.motivos_aprobados],
-        "aprobado_at_utc": aprobacion.aprobado_at_utc.isoformat(),
     }
 
 

@@ -57,6 +57,7 @@ from domain.models.validacion import ResultadoValidacion, validar_parte
 from domain.ports.persistencia import RepositorioPartesPort
 from infrastructure.persistencia.fabrica import construir_repositorio
 
+from interface_adapters.api.aprobacion_serializada import bloque_de_aprobacion
 from interface_adapters.api.cuerpos import (
     CLAVES_DE_LA_EXTRACCION,
     CLAVES_DE_LA_FIRMA,
@@ -122,6 +123,13 @@ def guardar_parte_http(
         "hash_parte": parte.hash,
         "resultado_parte": almacen.resultado_parte,
         "resultado_validacion": almacen.resultado_validacion,
+        # R22 (F-026) · **después** de guardar, y el orden es el requisito:
+        # `guardar_validacion` revoca la aprobación cuyo veredicto ya no
+        # coincide (R30), así que leerla antes devolvería como viva una
+        # aprobación que esta misma llamada acaba de tumbar.
+        "aprobacion": bloque_de_aprobacion(
+            almacen.consultar_aprobacion(hash_parte=parte.hash)
+        ),
         "avisos": list(contexto.avisos),
     }
 

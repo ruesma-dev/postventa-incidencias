@@ -134,7 +134,7 @@
       archiva, adjunta y cierra (R23); con aprobación revocada, **no** (R31);
       y el cuerpo de las tres peticiones **no cambia ni una clave**.
 
-- [ ] **T12**: Añadir el bloque `aprobacion` a la respuesta de
+- [x] **T12**: Añadir el bloque `aprobacion` a la respuesta de
       `POST /api/parte`. | Verificación: `tests/test_f019_parte_http.py` sigue
       en verde y un test nuevo comprueba que tras guardar un parte aprobado la
       respuesta lo dice, y que tras guardar uno sin aprobación devuelve `null`

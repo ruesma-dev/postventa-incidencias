@@ -1,6 +1,68 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 4, la pantalla**
+>
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 4** de `specs/F-026-aprobacion-humana/tasks.md` (T13–T16) y mandaba parar
+> ahí. **El bloque 4 bis (el autoguardado), el 5 y el 7 no se han empezado.**
+> Informe completo, con las cuatro trazas de la fase RED y las evidencias, en
+> la **parte III** de `progress/impl_F-026.md` (§18 en adelante).
+>
+> ### Lo que hay hecho hoy
+>
+> - **T13** (`3fbfbd2`) — `js/pipeline.js` gana `MOTIVOS_APROBABLES`,
+>   `esAprobable`, `esCirculable`, `cuerpoDeAprobacion` y un `semaforoDe` que
+>   acepta la aprobación y devuelve un **cuarto estado**, `"aprobado"` (R36).
+> - **T14** (`bf2fdc0`) — `pendientesDeCircuito`, `cuerpoDeArchivo`,
+>   `esCerrable` y, por su puerta, `cuerpoDeGrafico` y `cuerpoDeCierre` pasan
+>   por `esCirculable` (R23). `esArchivable` **conserva su significado**: lo que
+>   dio por bueno la máquina.
+> - **T15** (`48e2799`) — `api.aprobar()`, `app.aprobarParte()`, `esAprobable()`
+>   y `aprobacion` declarada en `_parteInicial` para que Alpine la repinte.
+> - **T16** (`5270f8d`) — `index.html`: el botón en el **detalle**, la marca del
+>   semáforo con anillo, el texto de R36/R37 y la frase de R39.
+>
+> ### Lo que cambia de verdad en la pantalla
+>
+> Hasta hoy el backend admitía en el circuito un parte aprobado y **no había
+> forma de aprobarlo** desde la interfaz. Ahora quien revisa aprueba con el PDF
+> delante, **sin una segunda confirmación** (R29, P7: sigue armándose **una**
+> en todo el front), y **un parte aprobado no se lee igual que uno que siempre
+> fue verde**: mismo punto verde **con anillo**, más el texto de quién lo
+> aprobó —una persona, sin `oid`, sin correo y sin nombre—, de qué destino se
+> rescató y cuándo.
+>
+> ### Dos decisiones que el reviewer tiene que mirar
+>
+> 1. **El cuerpo de `/api/aprobar` es el de `/api/parte` más `usuario_oid` y
+>    `confirmado`**, tal y como manda `design.md` §6, y **no** una versión
+>    recortada como podría leerse en la letra de T13. El motivo está en §23.1
+>    del informe y es de fondo: el backend **recalcula** el veredicto sobre esa
+>    extracción, así que sin el texto de las observaciones el parte dejaría de
+>    ser aprobable y aprobar contestaría 409 a toda la cola ámbar. Lo que sí se
+>    fija por test es que F-026 **no añade** ninguna clave personal propia.
+>    Punto a confirmar por el líder.
+> 2. **`guardarParte` propaga la `aprobacion` que devuelve el backend**, y eso
+>    no estaba en la letra de las cuatro tareas (§23.2). Sin ello, una
+>    revalidación que **revoca** la aprobación (R31) dejaría la pantalla
+>    diciendo «aprobado» hasta la siguiente recarga, y al resubir la remesa los
+>    partes aprobados volverían a parecer rechazados (R22).
+>
+> ### Tres avisos para quien siga
+>
+> 1. **Nada de esto se ha visto en un navegador.** Los tests de pantalla son de
+>    texto, que es lo que esta suite sabe hacer. Que la marca con anillo se
+>    distinga del verde liso **de un vistazo** es literalmente R36 y solo lo
+>    puede decir una persona: va al bloque 6, con T20–T23.
+> 2. **`esCirculable` es la puerta de la tanda en el front.** Un selector nuevo
+>    que vuelva a preguntar por `esArchivable` para decidir si algo se archiva,
+>    se adjunta o se cierra deshace F-026 **sin romper ningún test de F-007**.
+> 3. **El bloque 4 no está mutado, y no puede estarlo con este utillaje**:
+>    `harness/mutacion` muta Python, y aquí todo lo escrito es JavaScript y
+>    HTML. T24 sigue siendo obligatoria sobre el Python de la feature, y para el
+>    front lo que sostiene la calidad son los control-negativo.
+
 > ## Estado al 2026-09-12 · **F-026: hecho el bloque 3, las puertas y el borde HTTP**
 >
 > Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque

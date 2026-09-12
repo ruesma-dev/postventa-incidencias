@@ -847,3 +847,358 @@ intacta delante de toda escritura externa (R27).
 | **Avisos de `ruff`** | **60**, uno más que los 59 de partida. El nuevo es un `I001` en `aprobar.py`, del **mismo tipo** que los otros 20 del servicio: el repositorio separa con línea en blanco el grupo `interface_adapters`/`application` y ruff, sin configuración de `known-first-party`, lo considera desordenado. Se ha seguido la convención del propio servicio en vez de dejar el fichero nuevo como la excepción; corregirlo de verdad es una línea de configuración que afectaría a los 21 a la vez y es decisión del líder, no de esta tanda |
 | **`bash harness/init.sh`** | **ENTORNO LISTO** (exit 0) |
 | **Mutantes generados y supervivientes** | **esta tanda no lanzó ninguna campaña**, por instrucción explícita del encargo. Sí la lanzó en paralelo el implementer del bloque 2 —242 mutantes, 228 muertos, **14 supervivientes**, 0 timeouts; §9 y `progress/mutacion_F-026.md`—, pero **sobre un árbol en el que el bloque 3 no existía**: ni `aprobar.py`, ni `aprobacion_serializada.py`, ni las tres puertas nuevas entraron en su alcance. Así que **nada de lo escrito en esta parte II está mutado**, y **T24 sigue siendo obligatoria** antes de cerrar F-026 (C4 bis), sobre la feature entera |
+
+---
+---
+
+# Parte III · Bloque 4 · La pantalla (T13–T16)
+
+> Tanda del **2026-09-12**. Encargo acotado: **solo el bloque 4**, y parar ahí.
+> **No** se ha tocado el bloque 4 bis (el autoguardado), ni el 5, ni el 6, ni
+> el 7. **No** se ha lanzado ninguna campaña de mutación: va en el cierre y la
+> lleva el líder.
+>
+> Cuatro commits, uno por tarea: `3fbfbd2` (T13), `bf2fdc0` (T14), `48e2799`
+> (T15) y `5270f8d` (T16).
+
+## 18 · Qué cambia de verdad con esta tanda
+
+Hasta hoy el backend admitía en el circuito un parte aprobado y **no había
+forma de aprobarlo**: el endpoint solo se podía llamar a mano. A partir de
+estos cuatro commits:
+
+1. **quien revisa puede aprobar**, con el PDF delante, desde el detalle del
+   parte y con un botón que no pide una segunda confirmación (R29, P7);
+2. **un parte aprobado no se lee igual que uno que siempre fue verde** (R36):
+   el semáforo tiene un cuarto estado, con marca propia —el mismo punto verde
+   **con anillo**— y un texto que dice que lo aprobó una persona, de qué
+   destino se rescató y cuándo (R37);
+3. **el aprobado entra en la tanda** de archivo, gráfico y cierre (R23), y el
+   revocado vuelve a salir de ella (R31).
+
+Lo que **no** cambia, y hay control negativo de cada cosa: un no apto sin
+aprobación sigue fuera de la tanda (R25), `esArchivable` conserva su
+significado —«lo que dio por bueno **la máquina**»—, y en todo el front se
+sigue armando **una sola** confirmación (R29, y R2 de F-025).
+
+## 19 · T13 · `js/pipeline.js` · las reglas, donde hay tests
+
+`MOTIVOS_APROBABLES`, `esAprobable`, `esCirculable`, `cuerpoDeAprobacion` y
+`semaforoDe(validacion, aprobacion)`, todos exportados. Son la copia en
+pantalla de `domain/models/aprobacion.py`: **la decisión de verdad la toma el
+backend**, que vuelve a evaluarla con el veredicto que él mismo recalcula (R5).
+Lo de aquí evita ofrecer un gesto que va a responder 409 y se niega a componer
+cuerpos que el backend rechazaría.
+
+El cuarto estado **no sustituye** a los tres de F-007: `semaforoDe` sigue
+devolviendo `verde`, `ambar`, `rojo` y `""` exactamente igual cuando no hay
+aprobación, y `aprobado` solo cuando la hay, está vigente y su
+`destino_aprobado` coincide con el destino del veredicto de ahora. Un apto
+sigue siendo verde aunque alguien lo hubiera aprobado.
+
+## 20 · T14 · el circuito entero pasa por `esCirculable`
+
+Cuatro sitios, y los cuatro importan: `pendientesDeCircuito` (quién entra en la
+tanda), `cuerpoDeArchivo`, `esCerrable` —y por su puerta `cuerpoDeGrafico` y
+`cuerpoDeCierre`—. Si uno solo se hubiera quedado mirando `esArchivable`, la
+feature entera se habría quedado en una marca de color y encima el botón
+parecería funcionar.
+
+`esArchivable` **se conserva intacta** con su significado de siempre, porque la
+usa `noArchivables()` y porque la distinción entre «lo dio por bueno la
+máquina» y «lo dio por bueno una persona» es el requisito, no un detalle.
+
+Los mensajes de rechazo de los tres compositores se han precisado —ahora dicen
+que hace falta el apto **o** una aprobación vigente— conservando las subcadenas
+que los tests de F-007, F-009 y F-012 afirman (`no es apto`, `no se puede
+adjuntar`, `no se puede cerrar`). `tests_js/circuito.test.js` y
+`tests_js/pipeline.test.js` siguen **enteros en verde y sin tocarlos**, como
+pedía la tarea: los casos nuevos viven en `tests_js/aprobacion.test.js`.
+
+## 21 · T15 · el gesto: `js/api.js` y `js/app.js`
+
+- `api.aprobar(cuerpo, hash)` → `POST /api/aprobar`, JSON, con **paso propio**
+  en la traza (`aprobar`): el registro tiene que poder distinguir «alguien
+  guardó el parte» de «alguien decidió aprobarlo». Por la traza siguen pasando
+  solo `hash`, `paso`, `estado` y `http` (R28 de F-007, R43).
+- `app.aprobarParte()` compone el cuerpo con `js/pipeline.js`, llama, y guarda
+  **lo que devuelve el backend**: quién decide si la aprobación sigue vigente
+  es quien la escribió (D-F). La pantalla no se lo inventa.
+- `_parteInicial` declara `aprobacion: null`. Sin declararla, Alpine no la hace
+  reactiva y **la marca no repintaría** al aprobar: es el defecto que F-025
+  documentó con `paso`, repetido.
+- `esAprobable()`, `estaAprobado()`, `destinoDeOrigen()` y
+  `fechaDeAprobacion()` son lecturas y formateo; ninguna decide nada.
+
+## 22 · T16 · `index.html`
+
+El botón «Aprobar este parte» va **en el detalle** y no en la lista (R35, y
+R28: aprobar es de **un** parte, con ese parte delante; un botón por fila
+invita a ir bajando y pulsando). La marca del semáforo del aprobado es
+`bg-emerald-500 ring-2 ring-offset-1 ring-sky-600` —el mismo verde **con
+anillo**, nunca el verde liso (R36)—, con su texto al lado en la fila y en el
+detalle. Cuando el parte no es aprobable, en vez del botón va la frase que dice
+**qué corregir** (R39). Y sin identidad el botón queda deshabilitado **con su
+explicación** (R4), no mudo.
+
+El contador de la sección de archivo decía «parte(s) **en verde** por archivar
+y cerrar» y ya no era cierto: desde F-026 la tanda incluye los aprobados, que
+no son verdes. Se ha corregido el texto, y hay un test que lo vigila.
+
+## 23 · Decisiones que conviene mirar al revisar
+
+### 23.1 · El cuerpo de aprobar es el de guardar **más dos claves** — y por qué
+
+`tasks.md` T13 pide que `cuerpoDeAprobacion` «**no** lleve DNI, observaciones
+ni bytes (R19)». **Se ha implementado lo que dice `design.md` §6** —«el mismo
+cuerpo que `POST /api/parte` más `usuario_oid` y `confirmado`»—, y la
+divergencia con la literalidad de la tarea es deliberada y se declara aquí:
+
+- el backend **recalcula el veredicto** con `validar_parte` (R5) y lo hace
+  sobre la extracción del cuerpo. **Sin el texto de las observaciones, el parte
+  no traería `observaciones_manuscritas` y dejaría de ser aprobable**: aprobar
+  contestaría 409 a todos los partes de la cola ámbar, que son la mitad del
+  motivo de la feature;
+- `cuerpos.py` exige las **nueve** claves de la extracción y responde 400 si
+  falta una, y `/api/aprobar` **guarda el parte** en la misma llamada
+  (`paso_persistencia`): mandar el DNI vacío no lo protegería de nada y
+  **borraría de la base** lo que ya estaba guardado;
+- el DNI y las observaciones **ya viajan** en cada `POST /api/parte` y en cada
+  revalidación, así que no hay ninguna exposición nueva.
+
+Lo que sí fija el test (`f026 R19: el cuerpo de aprobar es el de guardar MÁS
+dos claves, y ni una más`) es que F-026 **no añade nada personal por su
+cuenta**: las únicas claves nuevas son `usuario_oid` y `confirmado`, la
+extracción es **idéntica** a la de guardar, y no viajan ni los bytes del PDF ni
+un veredicto ya hecho. **Es un punto a confirmar por el líder**: si se prefiere
+la lectura literal de T13, hay que cambiar antes el diseño y el backend, no el
+front.
+
+### 23.2 · `guardarParte` propaga la `aprobacion` de la respuesta · añadido
+
+No está en la letra de T13–T16, y se ha hecho igualmente porque **sin ello la
+pantalla miente**. `guardarParte` devuelve ahora `{ok, motivo, aprobacion}` y
+`_anotarGuardado` la aplica cuando el guardado salió bien. Dos consecuencias,
+las dos son requisito:
+
+- **R31** · la revocación ocurre **en la escritura** (D-F): revalidar un parte
+  corregido revoca su aprobación en la misma operación. Sin propagarla, la
+  pantalla seguiría pintándolo «aprobado» y dejándolo entrar en la tanda hasta
+  que alguien recargase, y el backend lo rechazaría con un error que nadie
+  sabría leer.
+- **R22** · al volver a subir la remesa —que es como se recupera el trabajo
+  tras recargar— los partes aprobados se reconocen **sin una petición por
+  parte** (22 llamadas de más en una remesa real), que es exactamente para lo
+  que T12 puso el bloque en la respuesta de `/api/parte`.
+
+Un guardado **fallido** no toca la aprobación: no se inventa ninguna y no borra
+la que hubiera.
+
+### 23.3 · Ni un dato personal nuevo en la pantalla
+
+El identificador de quien aprueba **no se pinta** (R38, R43). El bloque que
+llega del backend trae cuatro claves y ninguna es personal, y hay un test que
+comprueba que la pantalla **solo** usa esas cuatro: leer una que no existe no
+rompería nada —pintaría vacío— y por eso hay que mirarlo en el texto.
+
+El guardián de F-025
+—`test_f025_r46_los_textos_de_pantalla_no_llevan_datos_personales`— **cazó de
+verdad** un texto de esta tanda: la frase de R39 decía «por las observaciones
+manuscritas», y ese guardián prohíbe la palabra `observaciones` en todo el
+HTML. Se reescribió la frase («por lo que el cliente escribió a mano») en vez
+de tocar el test de otra feature.
+
+### 23.4 · Nada de lo tocado es de otra feature
+
+Ni una línea en `domain/models/validacion.py`, `sql/04_validaciones.sql`,
+`domain/models/cierre.py`, `infrastructure/sigrid/escrituras.py` ni
+`js/confirmacion.js` — las dos reglas duras de `tasks.md` y R29. Ningún fichero
+del backend se ha tocado en esta tanda: el bloque 4 es **solo** front.
+
+## 24 · Fase RED · las trazas reales
+
+### 24.1 · T13 — `tests_js/aprobacion.test.js` antes de que existiera el código
+
+```
+$ cd services/postventa-front && node --test tests_js/aprobacion.test.js
+✖ f026 R6: la lista de motivos aprobables es la del dominio, y solo esos dos (1.31ms)
+✖ f026 R8: un parte con observaciones manuscritas es aprobable (0.25ms)
+✖ f026 R9: con un motivo fuera de la lista NO es aprobable, aunque haya otro que sí
+✖ f026 R10: un parte que la máquina dio por bueno no tiene nada que aprobar
+✖ f026 R36: un parte aprobado y vigente se pinta 'aprobado', nunca 'verde' (1.26ms)
+✖ f026 R23: un no apto con aprobación viva del mismo destino entra en el circuito
+✖ f026 R4: sin saber quién aprueba no se compone ninguna petición (1.43ms)
+ℹ tests 24
+ℹ pass 3
+ℹ fail 21
+
+✖ failing tests:
+  TypeError: Cannot read properties of undefined (reading 'slice')
+      at TestContext.<anonymous> (...\tests_js\aprobacion.test.js:124:39)
+  TypeError: esAprobable is not a function
+      at TestContext.<anonymous> (...\tests_js\aprobacion.test.js:131:16)
+
+✖ f026 R36: un parte aprobado y vigente se pinta 'aprobado', nunca 'verde'
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'ambar'
+  - 'aprobado'
+```
+
+**Los tres que pasaban en rojo dicen algo**, y por eso se dejan documentados:
+«la revocada vuelve a ámbar», «la aprobación no cambia el verde» y el control
+negativo de los tres semáforos de F-007 pasaban ya, porque `semaforoDe`
+ignoraba su segundo argumento. Son precisamente los casos en los que la
+respuesta correcta y la respuesta vieja coinciden; el que sostiene R36 es el
+positivo, y ese salía `'ambar'` donde tenía que salir `'aprobado'`.
+
+### 24.2 · T14 — el circuito, antes de pasar por `esCirculable`
+
+```
+$ cd services/postventa-front && node --test tests_js/aprobacion.test.js
+✖ f026 R23: un aprobado vigente entra en la tanda de la confirmación única
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  0 !== 1
+
+      at TestContext.<anonymous> (...\tests_js\aprobacion.test.js:410:10)
+
+✖ f026 R23: el cuerpo de archivo se compone para un parte aprobado
+  Error: este parte no es apto para archivo (hace falta veredicto 'apto' y destino 'archivo_y_cierre')
+      at cuerpoDeArchivo (...\js\pipeline.js:309:13)
+      at TestContext.<anonymous> (...\tests_js\aprobacion.test.js:434:18)
+ℹ tests 34
+ℹ pass 30
+ℹ fail 4
+```
+
+### 24.3 · T15 — el endpoint del front y el estado del parte
+
+```
+$ cd services/postventa-front && node --test tests_js/api.test.js
+✖ f007 R27 / f019 / f009 / f012 / f026: los DOCE endpoints llaman a su ruta, con su metodo
+✖ f007 R27: son doce, y la lista se entera si aparece un decimotercero
+✖ f026: aprobar manda POST /api/aprobar, con cuerpo JSON y su paso propio
+ℹ tests 47
+ℹ pass 42
+ℹ fail 5
+
+  TypeError: api.aprobar is not a function
+```
+
+```
+$ cd services/postventa-front && python -m pytest tests/test_f026_front.py -q --tb=line
+FF.FFFF                                                                  [100%]
+tests\test_f026_front.py:105: AssertionError: `_parteInicial` no declara `aprobacion`:
+    la marca del parte aprobado no repintaría al aprobarlo
+tests\test_f026_front.py:115: AssertionError: la aprobación tiene que nacer vacía
+tests\test_f026_front.py:159: AssertionError: assert 'window.Pipeline.esAprobable(' in '...'
+tests\test_f026_front.py:169: assert '"/aprobar"' in '...'
+6 failed, 1 passed in 0.07s
+```
+
+Y la propagación de la aprobación (§23.2), antes de que `guardarParte` la
+devolviera:
+
+```
+$ cd services/postventa-front && node --test tests_js/aprobacion.test.js
+✖ f026 R22: al guardar, la aprobación que devuelve el backend llega al parte
+✖ f026 R31: si el backend dice que la revocó, eso es lo que llega
+✖ f026 R22: sin aprobación en la respuesta, lo que llega es null y no un hueco
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + undefined
+  - null
+ℹ tests 38
+ℹ pass 34
+ℹ fail 4
+```
+
+### 24.4 · T16 — la pantalla, antes de tener el botón y la marca
+
+```
+$ cd services/postventa-front && python -m pytest tests/test_f026_front.py -q --tb=line
+tests\test_f026_front.py:203: assert 'Aprobar este parte' in 'x-show="parteAbierto">...'
+tests\test_f026_front.py:221: assert ('x-show="esAprobable()"' in '...' or 'esAprobable()' in '...')
+tests\test_f026_front.py:232: assert 'código de obra' in '...'
+tests\test_f026_front.py:245: AssertionError: la fila no mira el cuarto estado del semáforo
+tests\test_f026_front.py:260: assert ('revisión humana' in '...' or 'una persona' in '...')
+tests\test_f026_front.py:267: assert 'destinoDeOrigen(' in '...'
+tests\test_f026_front.py:318: AssertionError: el texto sigue diciendo que la tanda son
+    los verdes, y ya no lo es
+7 failed, 10 passed in 0.08s
+```
+
+## 25 · Ficheros tocados en el bloque 4
+
+**Creados**
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-front/tests_js/aprobacion.test.js` | 38 tests: aprobable, circulable, el cuarto semáforo, el cuerpo de aprobar y la propagación |
+| `services/postventa-front/tests/test_f026_front.py` | 17 tests de texto sobre `index.html`, `js/app.js` y `js/api.js` |
+
+**Modificados**
+
+| Ruta | Qué cambia |
+|---|---|
+| `services/postventa-front/js/pipeline.js` | `MOTIVOS_APROBABLES`, `esAprobable`, `esCirculable`, `cuerpoDeAprobacion`, `semaforoDe` con aprobación; los cuatro puntos del circuito pasan por `esCirculable`; `guardarParte` devuelve la `aprobacion` |
+| `services/postventa-front/js/api.js` | `aprobar(cuerpo, hash)` |
+| `services/postventa-front/js/app.js` | `aprobarParte()`, `esAprobable()`, `estaAprobado()`, `destinoDeOrigen()`, `fechaDeAprobacion()`, `mensajeAprobacion`, `aprobacion` en `_parteInicial`, el semáforo con aprobación |
+| `services/postventa-front/index.html` | El botón en el detalle, la marca con anillo, el texto de R36/R37, la frase de R39 y el contador de la tanda |
+| `services/postventa-front/tests_js/api.test.js` | La lista de endpoints pasa de once a doce, y dos tests propios de `aprobar` |
+| `specs/F-026-aprobacion-humana/tasks.md` | T13–T16 marcadas `[x]` |
+
+**Ni un fichero del backend.** Ninguna conexión a base de datos, ninguna
+llamada a Azure, a Sigrid ni a SharePoint: la guardia `sin_red` de
+`tests/conftest.py` sigue puesta durante toda la suite del front, y los tests
+de JavaScript solo hablan con dobles inyectados.
+
+## 26 · Lo que queda fuera y lo que falta
+
+### Fuera del alcance de esta tanda (por encargo explícito)
+
+- **Bloque 4 bis (TA1–TA5)** · el autoguardado de las correcciones (R50–R55).
+  Hoy sigue haciendo falta pulsar «Revalidar» para que una corrección se
+  guarde, y por tanto para que una aprobación se revoque.
+- **Bloque 5 (T17–T19)** · la enmienda a R36 de F-025, los tres puntos de
+  `docs/ARCHITECTURE.md` y `azure-apps/postventa_incidencias.md`. **El endpoint
+  nuevo y la tabla nueva siguen sin documentar fuera de la spec.**
+- **Bloque 7 (T24)** · la campaña de mutación, que el encargo reserva al líder.
+
+### Pendiente y **MANUAL (humano)** · bloque 6
+
+Nada de lo de esta tanda se ha visto en un navegador: los tests de pantalla son
+**de texto**, que es lo que esta suite puede hacer. Quedan en pie T20–T23, y a
+ellos se añade lo propio del bloque 4, que solo puede comprobar una persona:
+
+- que el botón aparece donde se espera y **solo** en los partes aprobables;
+- que la marca con anillo se distingue del verde liso **de un vistazo**, que es
+  literalmente lo que pide R36;
+- que tras aprobar, el parte aparece en la cuenta de la tanda;
+- y que tras corregir un campo y revalidar, la marca **desaparece** (R31).
+
+### Un aviso para quien siga
+
+`esCirculable` es ahora la puerta de la tanda en el front. Cualquier cosa que
+vuelva a preguntar por `esArchivable` para decidir **si algo se archiva, se
+adjunta o se cierra** deshace F-026 sin romper ningún test de F-007: la
+distinción está probada en `tests_js/aprobacion.test.js`, pero quien escriba un
+selector nuevo tiene que saber cuál de las dos preguntas está haciendo.
+
+## 27 · Evidencias del bloque 4
+
+| Evidencia | Medida |
+|---|---|
+| **Tests ejecutados** (servicio `front`) | **205 pasan**, 0 fallan, en **3,74 s** (eran 188 antes de esta tanda: +17 del fichero nuevo) |
+| **Tests ejecutados** (JavaScript, `node --test tests_js/*.test.js`) | **271 pasan**, 0 fallan, en **0,63 s** (eran 231: +38 de `aprobacion.test.js` y +2 en `api.test.js`) |
+| **Tests ejecutados** (servicio `api`) | **2 317 pasan, 13 se saltan**, 0 fallan · sin cambios: esta tanda no tocó el backend (el arnés los sirvió de su caché, árbol sin cambios) |
+| **Tests ejecutados** (raíz) | **62 pasan** en 5,89 s |
+| **Tests nuevos de esta tanda** | **57** — 38 en `tests_js/aprobacion.test.js`, 17 en `tests/test_f026_front.py` y 2 en `tests_js/api.test.js` |
+| **Cobertura de las líneas cambiadas** | **99,0 %** — 1 325 de 1 338 líneas, umbral 80 %, nivel `estandar` → `[OK]`. **El número no se mueve respecto al bloque 3, y es correcto que no se mueva**: `coverage` mide Python y esta tanda solo ha cambiado JavaScript y HTML. Lo que cubre al front es su propia suite, que no entra en esa puerta |
+| **Tiempo de la suite** (`front`, dentro de `init.sh`) | **3,74 s** |
+| **Avisos de `ruff`** | **60**, los mismos de la tanda anterior. Esta tanda no ha tocado Python de producción |
+| **`bash harness/init.sh`** | **ENTORNO LISTO** (exit 0) |
+| **Mutantes generados y supervivientes** | **ninguna campaña en esta tanda**, por instrucción explícita del encargo: T24 la lleva el líder al cerrar. Y hay que anotar una limitación del arnés que afecta a este bloque entero: **`harness/mutacion` muta Python**, así que `js/` e `index.html` **no son mutables** con el utillaje de este repositorio. Lo que sostiene la calidad de esta tanda son los **control-negativo**: que `esArchivable` conserve su significado, que el no apto sin aprobación siga fuera de la tanda, que solo se arme una confirmación y que la pantalla no pinte el `oid` |

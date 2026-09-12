@@ -1,6 +1,73 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 4 bis, el autoguardado**
+>
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 4 bis** de `specs/F-026-aprobacion-humana/tasks.md` (TA1–TA5) y mandaba parar
+> ahí. **El bloque 5 y el 7 (la campaña de mutación) no se han empezado.**
+> Informe completo, con las trazas de la fase RED y las evidencias, en la
+> **parte IV** de `progress/impl_F-026.md` (§28 en adelante).
+>
+> ### Lo que hay hecho en esta tanda
+>
+> - **TA1** (`428842c`) — `RETARDO_AUTOGUARDADO_MS: 1500` en `js/config.js`,
+>   con la razón del número escrita al lado; `js/autoguardado.js` (el rebote y
+>   la comparación con lo último guardado, lógica pura y con el temporizador
+>   inyectado); `valoresDeCampos` en `js/pipeline.js`; y el disparador en
+>   `app.js::editarCampo`.
+> - **TA2** (`7beaa0b`) — lo que se dispara es `revalidarYGuardar`, la misma
+>   función que el botón, con su control negativo.
+> - **TA3** (`ebfb2ae`) — los tres estados en `index.html`.
+> - **TA4 + TA5** (`1259c39`) — la corrección no pisa lo que leyó la IA (R53,
+>   por F-015), una revocación como mucho por pausa (R54) y todos los partes
+>   (R55).
+>
+> ### Lo que cambia de verdad en la pantalla
+>
+> Escribir en un campo **guarda lo que escribes**, tras una pausa de 1,5 s y
+> **sin botón**. Hasta hoy la corrección vivía **solo en memoria** y quien
+> escribía y se iba la perdía. Y hay un efecto de segundo orden que importa:
+> como la **revocación de una aprobación ocurre en la escritura**, corregir un
+> campo de un parte aprobado ahora lo revoca **solo**, sin que nadie tenga que
+> acordarse de pulsar «Revalidar».
+>
+> Y si el guardado falla, se dice: **recuadro rojo que no se va solo**, con lo
+> escrito intacto en el campo. Quien escribe y no ve nada supone que se guardó.
+>
+> ### Tres cosas que el reviewer tiene que mirar
+>
+> 1. **TA2, TA4 y TA5 no tuvieron fase RED, y está escrito por qué** (§31 del
+>    informe): TA2 fija un acoplamiento que TA1 ya dejó cableado —y que existe
+>    desde F-019 R28—, y TA4/TA5 son **control-negativo**, que por definición
+>    no pueden fallar antes de existir el código. El rojo real de este bloque
+>    está en TA1 y TA3, con la traza pegada.
+> 2. **`guardarParte` no lanza cuando el backend rechaza** —devuelve
+>    `{ok: false, motivo}`—, así que `_guardarCorreccion` convierte ese caso en
+>    error a propósito. Sin eso, la pantalla diría «Guardado.» con la base sin
+>    tocar.
+> 3. **Un test que pasaba sin comprobar nada** (§31, último apartado): un `\b`
+>    mal escapado acabó siendo un carácter de retroceso literal dentro del
+>    patrón. Se detectó porque pasaba cuando tenía que fallar. Corregido en
+>    `428842c`, pero conviene saber que el fichero se ve idéntico a uno bueno.
+>
+> ### Lo que falta para cerrar F-026
+>
+> - **Bloque 5 (T17–T19)** · la enmienda a R36 de F-025, los tres puntos de
+>   `docs/ARCHITECTURE.md` y `azure-apps/postventa_incidencias.md`. El endpoint
+>   nuevo y la tabla nueva **siguen sin documentar fuera de la spec**.
+> - **Bloque 6 (T20–T23)** · **MANUAL (humano)**, contra la base de desarrollo.
+>   A esa lista se le añaden las cuatro comprobaciones de pantalla del
+>   autoguardado que enumera §33 del informe: nada de esto se ha visto en un
+>   navegador.
+> - **Bloque 7 (T24)** · la campaña de mutación.
+>
+> `bash harness/init.sh` en **verde** al cerrar: 62 tests en la raíz, 224 en el
+> servicio `front` (que incluyen los 292 de JavaScript por el puente de
+> `node --test`), `api` servido de caché, y la puerta de cobertura en
+> **99,0 %** de 1 338 líneas cambiadas.
+
+
 > ## Estado al 2026-09-12 · **F-026: hecho el bloque 4, la pantalla**
 >
 > Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque

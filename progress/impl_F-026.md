@@ -24,7 +24,7 @@
 | 2 · La persistencia | T6–T8 | **hecho en esta tanda** (`f1e5718`, `1ece459`, `4d80aaa`, `fc5a37a`) |
 | 3 · Las puertas y el borde HTTP | T9–T12 | **hecho** (`6b51d60`, `9760019`, `851f0d2`, `44c306c`) · ver parte II |
 | 4 · La pantalla | T13–T16 | **sin empezar** |
-| 4 bis · Autoguardado | TA1–TA5 | **sin empezar** |
+| 4 bis · Autoguardado | TA1–TA5 | **hecho** (`428842c`, `7beaa0b`, `ebfb2ae`, `1259c39`) · ver parte IV |
 | 5 · Enmiendas y documentación | T17–T19 | **sin empezar** |
 | 6 · Verificación contra la base real | T20–T23 | **MANUAL (humano)**, pendiente |
 | 7 · Cierre | T24–T25 | T25 en verde hoy; T24 se repite al cerrar |
@@ -1202,3 +1202,299 @@ selector nuevo tiene que saber cuál de las dos preguntas está haciendo.
 | **Avisos de `ruff`** | **60**, los mismos de la tanda anterior. Esta tanda no ha tocado Python de producción |
 | **`bash harness/init.sh`** | **ENTORNO LISTO** (exit 0) |
 | **Mutantes generados y supervivientes** | **ninguna campaña en esta tanda**, por instrucción explícita del encargo: T24 la lleva el líder al cerrar. Y hay que anotar una limitación del arnés que afecta a este bloque entero: **`harness/mutacion` muta Python**, así que `js/` e `index.html` **no son mutables** con el utillaje de este repositorio. Lo que sostiene la calidad de esta tanda son los **control-negativo**: que `esArchivable` conserve su significado, que el no apto sin aprobación siga fuera de la tanda, que solo se arme una confirmación y que la pantalla no pinte el `oid` |
+
+---
+
+# Parte IV · Bloque 4 bis · el autoguardado de las correcciones (TA1–TA5)
+
+> La escribe el implementer del **bloque 4 bis** (2026-09-12), el mismo día que
+> las partes I a III. Encargo corto y explícito: **solo** TA1–TA5, sin tocar el
+> bloque 5 ni lanzar la campaña de mutación.
+
+## 28 · Qué se ha hecho, y qué problema cierra
+
+Lo que pidió el responsable, en sus palabras: «escribir en un campo debe
+guardar lo que escribes, según escribe guarda, sin botón». Hasta hoy
+`editarCampo` dejaba la corrección **solo en memoria** (`parte.ediciones`) y
+quien escribía y se iba la perdía; persistir existía, pero solo si alguien
+pulsaba «Revalidar».
+
+Y hay una consecuencia que va más allá de perder una línea de texto: **la
+revocación de una aprobación ocurre en la escritura** (F-026 D-F). Mientras
+corregir un campo no escribiera en la base, un parte podía quedarse con una
+aprobación viva sobre un veredicto que ya no era el suyo hasta que alguien
+pulsara el botón.
+
+| Tarea | Commit | Qué entra |
+|---|---|---|
+| TA1 | `428842c` | `RETARDO_AUTOGUARDADO_MS` en `config.js`, `js/autoguardado.js`, `valoresDeCampos` en `pipeline.js` y el disparador en `app.js::editarCampo` |
+| TA2 | `7beaa0b` | El guardado pasa por `revalidarYGuardar`, con su control negativo |
+| TA3 | `ebfb2ae` | Los tres estados de R52 en `index.html` |
+| TA4 + TA5 | `1259c39` | La corrección no pisa lo de la IA (R53); una revocación por pausa (R54); todos los partes (R55) |
+
+## 29 · Las cinco decisiones que fijaba el encargo, y dónde están
+
+### 29.1 · El retardo vive en la configuración (R51)
+
+`js/config.js` gana `RETARDO_AUTOGUARDADO_MS: 1500`, con la razón del número
+escrita **encima del valor**, como ya la lleva `TIMEOUT_PETICION_MS`: lo que se
+dispara son **dos** peticiones y la segunda escribe en un PostgreSQL
+**compartido con otros dos proyectos en producción**.
+
+Que esté en un solo sitio no es una intención, es un test:
+`test_f026_r51_el_numero_del_retardo_no_esta_repartido_por_el_codigo` busca el
+literal en `app.js` y en `autoguardado.js` y falla si aparece. Y
+`test_f026_r51_app_js_no_monta_su_propio_temporizador` prohíbe un `setTimeout`
+en `app.js`, que es donde habría acabado el rebote si nadie mirara.
+
+**Y solo se guarda si el valor cambió.** El módulo guarda una foto de lo último
+guardado por parte y compara **normalizado** —mismo criterio que
+`pipeline.js::normalizarValor`—, así que un espacio de sobra al final no es un
+cambio, y escribir una letra y borrarla tampoco. Sin esa comparación, abrir un
+parte y tocar un campo para volver a dejarlo igual escribiría en la base.
+
+### 29.2 · Los tres estados, y el que importa es el tercero (R52)
+
+`index.html`, dentro del detalle y justo debajo de «Revalidar»:
+
+| Estado | Cómo se pinta |
+|---|---|
+| Guardando | gris pequeño, sin interrumpir a nadie |
+| Guardado | verde pequeño, misma línea |
+| **No se ha podido guardar** | **recuadro rojo, aparte**, con el texto entero |
+
+El de fallo **no se va solo**: no hay temporizador que lo borre ni
+`x-transition` que lo esconda, y lo quita el **siguiente guardado que salga
+bien**. Hay un test para cada mitad de esa frase —uno sobre el HTML y otro
+sobre el módulo, que comprueba que tras el fallo **no se programó ningún
+temporizador más allá del rebote**—.
+
+Y lo escrito se conserva: el `input` sigue atado a `valorDe(nombre)`, que
+devuelve la corrección antes que la extracción, y **nada** borra
+`parte.ediciones`. El módulo tampoco lo toca al fallar: lo pendiente **sigue
+pendiente**, así que la siguiente pausa lo reintenta sola.
+
+Detalle que sin querer se pasa por alto: `pipeline.js::guardarParte` **no
+lanza** cuando el backend rechaza —devuelve `{ok: false, motivo}` para no tirar
+un veredicto ya pagado—. Si `_guardarCorreccion` se hubiera quedado ahí, la
+pantalla habría dicho «Guardado.» con la base sin tocar. Por eso convierte ese
+`ok: false` en un error, que es lo que enciende el estado de fallo.
+
+### 29.3 · Las correcciones no pisan lo que leyó la máquina (R53)
+
+No hacía falta cambiar nada para conseguirlo —`aplicarEdiciones` ya devuelve la
+extracción corregida **sin destruir el original**—, y justamente por eso hacía
+falta **fijarlo**: lo que hoy es cierto por construcción deja de serlo el día
+que alguien «simplifique» escribiendo la corrección dentro de
+`extraccion.campos`.
+
+Dos tests, y los dos citan el motivo con nombre: **F-015**. Evaluar el prompt
+exige comparar lo que dijo el modelo con lo que resultó ser verdad, y un prompt
+no se puede evaluar contra un dato que una persona corrigió encima.
+
+### 29.4 · La revocación no ocurre a mitad de palabra (R54)
+
+La revocación se ejecuta en la escritura, así que **contar escrituras es contar
+revocaciones posibles**. El test lo dice en esos términos: cinco pulsaciones →
+una sola llamada a `/api/parte`. Y otro comprueba que lo que se revalida es lo
+escrito **hasta la pausa** («cliente») y no un trozo intermedio («clie»), que
+produciría la huella de un veredicto que nadie quiso.
+
+La otra mitad es que la revocación **se vea**: `_guardarCorreccion` anota la
+respuesta con el mismo `_anotarGuardado` que el botón, y esa respuesta trae la
+aprobación al día (R22, R31). Sin eso, la pantalla seguiría diciendo «Aprobado»
+sobre una aprobación ya revocada en la base.
+
+### 29.5 · Aplica a todos los partes (R55)
+
+El módulo **no recibe** la validación: no tiene forma de discriminar. Y hay
+tres control-negativo que lo sostienen: `editarCampo` no nombra
+`validacion`/`semaforo`/`veredicto`/`destino`; el indicador del HTML tampoco; y
+un test guarda un parte **verde** y comprueba que se guarda igual.
+
+## 30 · Decisiones de diseño que conviene mirar al revisar
+
+### 30.1 · El rebote vive en un módulo propio, no en `app.js`
+
+`js/app.js` es **la única habitación de la casa sin tests** (`design.md` §3), y
+la regla del proyecto es que si algo merece un test no vive ahí. El rebote lo
+merece: la diferencia entre «cinco teclas, un guardado» y «cinco teclas, cinco
+guardados» solo se ve mirando la carga de una base compartida.
+
+Así que `js/autoguardado.js` sigue el patrón de `js/confirmacion.js`: lógica
+pura, sin DOM, sin Alpine y **sin reloj propio** —el temporizador entra por
+parámetro—. Sin eso, probar «una pausa» costaría 1,5 s de espera real por test
+y nadie los escribiría.
+
+### 30.2 · El módulo se monta en el cierre, no en el estado de Alpine
+
+`let autoguardado = null` vive en el cierre de `appPostventa()` y se monta la
+primera vez que alguien escribe (`_autoguardado()`). Dos motivos: sus dos
+funciones —guardar y pintar— son **métodos del objeto**, así que montarlo antes
+del `return` obligaría a atarlas a mano; y no es un dato que se pinte, así que
+meterlo en el estado solo añadiría un proxy reactivo alrededor de un objeto con
+closures.
+
+Lo que **sí** está declarado en el estado, y nace declarado a propósito, es
+`estadoAutoguardado` y `mensajeAutoguardado`: añadirlos a mitad de sesión no
+los haría reactivos y el aviso no repintaría, que es el defecto que F-025
+documentó con `paso` y F-026 repitió con `aprobacion`.
+
+### 30.3 · Cambiar de parte con una corrección a medias **la guarda**
+
+Si la pausa del parte A se cancelara al abrir el B, lo escrito en A se perdería
+en silencio: exactamente el defecto que esta feature viene a cerrar, pero por
+otra puerta. El módulo dispara el guardado pendiente del parte anterior antes
+de programar el nuevo, y hay un test.
+
+### 30.4 · Dos guardados no se pisan
+
+Si la pausa se cumple con un guardado todavía en el aire, el módulo **vuelve a
+esperar** en vez de lanzar otro encima. Dos escrituras en carrera dejarían en
+la base el veredicto de la que ganara, que puede no ser la última.
+
+### 30.5 · La foto de «lo guardado» tiene dos fuentes que dicen lo mismo
+
+El módulo mueve lo pendiente a lo guardado cuando la promesa sale bien, y
+`app.js::_anotarGuardado` la vuelve a fijar con `valoresDeCampos(parte)`. Es
+deliberado: la primera lo hace autónomo y testeable; la segunda es la
+autoritativa y cubre **los tres** sitios donde un parte se guarda —al
+procesarlo, al revalidarlo a mano y al autoguardarlo—. Sin la segunda, la
+primera pulsación de cada parte guardaría aunque no cambiara nada.
+
+## 31 · Fase RED · la traza real
+
+### TA1 · el módulo no existía
+
+```
+$ node --test tests_js/autoguardado.test.js
+Error: Cannot find module '../js/autoguardado.js'
+Require stack:
+- C:\...\services\postventa-front\tests_js\autoguardado.test.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1456:15)
+  code: 'MODULE_NOT_FOUND',
+✖ tests_js\autoguardado.test.js (155.6424ms)
+ℹ tests 1
+ℹ pass 0
+ℹ fail 1
+```
+
+```
+$ python -m pytest tests/test_f026_autoguardado.py -q -p no:cacheprovider
+FAILED tests/test_f026_autoguardado.py::test_f026_r51_el_retardo_se_declara_en_config_js
+FAILED tests/test_f026_autoguardado.py::test_f026_r51_el_porque_del_retardo_esta_escrito_al_lado
+FAILED tests/test_f026_autoguardado.py::test_f026_r51_app_js_lee_el_retardo_de_la_configuracion
+FAILED tests/test_f026_autoguardado.py::test_f026_r51_editar_un_campo_dispara_el_autoguardado
+FAILED tests/test_f026_autoguardado.py::test_f026_r51_el_modulo_se_carga_antes_que_app_js
+FAILED tests/test_f026_autoguardado.py::test_f026_r51_al_reiniciar_no_queda_ningun_guardado_en_vuelo
+ERROR tests/test_f026_autoguardado.py::test_f026_r51_el_numero_del_retardo_no_esta_repartido_por_el_codigo
+6 failed, 2 passed, 1 error in 0.25s
+```
+
+El `ERROR` es el mismo motivo que los seis fallos: ese test lee
+`js/autoguardado.js`, que todavía no existía.
+
+### TA3 · los tres estados no estaban en la pantalla
+
+```
+$ python -m pytest tests/test_f026_autoguardado.py -q
+E       ValueError: substring not found
+FAILED tests/test_f026_autoguardado.py::test_f026_r52_los_tres_estados_estan_en_la_pantalla
+FAILED tests/test_f026_autoguardado.py::test_f026_r52_el_aviso_de_fallo_se_ve_y_no_se_confunde_con_los_otros_dos
+FAILED tests/test_f026_autoguardado.py::test_f026_r52_nada_borra_el_aviso_por_su_cuenta
+3 failed, 13 passed in 0.19s
+```
+
+### TA2, TA4 y TA5 · **no hubo fase RED, y se dice**
+
+Sus tests nacieron **en verde**, y es lo que tenía que pasar:
+
+- **TA2** fija el acoplamiento «revalidar y guardar juntos», que TA1 ya dejó
+  cableado al montar el disparador —y que existe desde F-019 R28—. Lo que
+  aportan sus tests es la **red que impide deshacerlo**: que nunca se llame a
+  `guardarParte` sin `revalidar`, y que no aparezca un estado de «veredicto
+  obsoleto», que es la alternativa que `design.md` §15.1 descartó.
+- **TA4** y **TA5** son **control-negativo**: fijan lo que **no** puede
+  aparecer. Un control negativo no puede fallar antes de existir el código
+  porque lo que vigila es que algo siga sin estar.
+
+No se ha inventado un rojo artificial para rellenar el hueco. Lo que sostiene
+la fase RED de este bloque son TA1 y TA3, que es donde había código nuevo que
+escribir.
+
+### Un test que pasaba sin comprobar nada · se cuenta porque casi cuela
+
+Al escribir el control negativo de R55 se coló un `\b` mal escapado que acabó
+siendo un **carácter de retroceso literal** (`0x08`) dentro del patrón, en vez
+del límite de palabra. El regex quedó en `\x08validacion\x08`, que no puede
+casar nunca: el test **pasaba sin comprobar nada**, y en el fichero se veía
+idéntico a uno correcto. Se detectó porque el test pasó cuando tenía que estar
+fallando, se miró con `cat -A` y ahí salió el `^H`. Corregido en el mismo
+commit (`428842c`), y el test hoy falla si `editarCampo` mira el veredicto.
+
+## 32 · Ficheros tocados
+
+| Ruta | Qué cambia |
+|---|---|
+| `services/postventa-front/js/autoguardado.js` | **Nuevo.** El rebote, la comparación con lo guardado y los tres estados |
+| `services/postventa-front/js/config.js` | `RETARDO_AUTOGUARDADO_MS: 1500` con su porqué |
+| `services/postventa-front/js/pipeline.js` | `valoresDeCampos(parte)`, exportada |
+| `services/postventa-front/js/app.js` | El cierre `autoguardado`, `_autoguardado()`, `_guardarCorreccion()`, `_pintarAutoguardado()`, el disparo en `editarCampo`, la foto en `_anotarGuardado`, la cancelación en `reiniciar` y los dos campos reactivos |
+| `services/postventa-front/index.html` | El `<script>` del módulo y el bloque de los tres estados |
+| `services/postventa-front/tests_js/autoguardado.test.js` | **Nuevo.** 21 tests |
+| `services/postventa-front/tests/test_f026_autoguardado.py` | **Nuevo.** 19 tests |
+| `services/postventa-front/tests/test_f007_estaticos.py` | `js/autoguardado.js` en el orden canónico de carga |
+| `specs/F-026-aprobacion-humana/tasks.md` | TA1–TA5 marcadas `[x]` |
+
+**Ni un fichero del backend, ni una dependencia nueva.** Ninguna conexión a
+base de datos, a Azure, a Sigrid ni a SharePoint: la guardia `sin_red` de
+`tests/conftest.py` sigue puesta durante toda la suite y los tests de
+JavaScript solo hablan con dobles inyectados.
+
+## 33 · Lo que queda fuera y lo que falta
+
+### Fuera del alcance de esta tanda (por encargo explícito)
+
+- **Bloque 5 (T17–T19)** · la enmienda a R36 de F-025, los tres puntos de
+  `docs/ARCHITECTURE.md` y `azure-apps/postventa_incidencias.md`. Sigue sin
+  hacer, y el endpoint y la tabla nuevos siguen sin documentar fuera de la spec.
+- **Bloque 7 (T24)** · la campaña de mutación.
+
+### Pendiente y **MANUAL (humano)**
+
+Nada de esto se ha visto en un navegador; los tests de pantalla son **de
+texto**, que es lo que esta suite puede hacer. Lo que solo puede comprobar una
+persona, y conviene añadir al bloque 6:
+
+- que al escribir en un campo y **parar**, aparece «Guardando…» y luego
+  «Guardado.» **sin pulsar nada**;
+- que al escribir con el backend caído sale el **recuadro rojo**, que **no se
+  va solo**, y que lo escrito **sigue en el campo**;
+- que al volver el backend, escribir una letra más lo guarda y el recuadro
+  desaparece;
+- y que corregir un campo de un parte **aprobado** revoca la aprobación sola,
+  sin pulsar «Revalidar» (es T23 del bloque 6, que ahora se puede hacer sin
+  botón).
+
+### Un aviso para quien siga
+
+El autoguardado dispara **dos** peticiones por pausa contra un PostgreSQL
+compartido. Si alguien añade campos a la pantalla, o baja
+`RETARDO_AUTOGUARDADO_MS`, lo que cambia es la carga sobre una base que no es
+solo nuestra. El número tiene su razón escrita al lado; conviene leerla antes
+de tocarlo.
+
+## 34 · Evidencias del bloque 4 bis
+
+| Evidencia | Medida |
+|---|---|
+| **Tests ejecutados** (servicio `front`, dentro de `init.sh`) | **224 pasan**, 0 fallan, en **4,76 s** (eran 205 al cerrar el bloque 4: **+19**) |
+| **Tests ejecutados** (JavaScript, `node --test tests_js/*.test.js`) | **292 pasan**, 0 fallan, en **1,28 s** (eran 271: **+21**, todos en `tests_js/autoguardado.test.js`) |
+| **Tests ejecutados** (raíz) | **62 pasan** en **7,73 s** |
+| **Tests ejecutados** (servicio `api`) | sin cambios; el arnés los sirvió de su caché (árbol del backend sin tocar) |
+| **Tests nuevos de esta tanda** | **40** — 21 en `tests_js/autoguardado.test.js` y 19 en `tests/test_f026_autoguardado.py` |
+| **Cobertura de las líneas cambiadas** | **99,0 %** — 1 325 de 1 338, umbral 80 %, nivel `estandar` → `[OK]`. **No se mueve respecto al bloque 4, y es correcto que no se mueva**: `coverage` mide Python y esta tanda solo ha cambiado JavaScript y HTML. Al front lo cubre su propia suite, que no entra en esa puerta |
+| **Tiempo de la suite** | `front` **4,76 s** · raíz **7,73 s** · JavaScript **1,28 s** |
+| **Avisos de `ruff`** | **60**, los mismos. Esta tanda no ha tocado Python de producción |
+| **`bash harness/init.sh`** | **ENTORNO LISTO** (exit 0) |
+| **Mutantes generados y supervivientes** | **campaña no lanzada**, por instrucción explícita del encargo (T24 es del bloque 7). Y, como en el bloque 4, hay que anotar la limitación: **`harness/mutacion` muta Python**, así que `js/autoguardado.js`, `js/app.js` e `index.html` **no son mutables** con el utillaje de este repositorio. Lo que sostiene la calidad de esta tanda son los tests de comportamiento del módulo —con reloj inyectado, que es lo que permite probar el rebote— y los control-negativo sobre `app.js` y el HTML |

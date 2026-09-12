@@ -1,6 +1,77 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 5, las enmiendas y la documentación**
+>
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 5** de `specs/F-026-aprobacion-humana/tasks.md` (T17–T19) y mandaba parar
+> ahí. **El bloque 6 (verificación contra la base real, del responsable), el 7
+> (cierre, del líder) y la campaña de mutación no se han tocado.** Informe
+> completo, con la traza de la fase RED y las evidencias, en la **parte V** de
+> `progress/impl_F-026.md` (§35 en adelante).
+>
+> ### Lo que hay hecho en esta tanda
+>
+> - **T17** (`b7ac982`) — el recuadro de enmienda bajo **R36 de F-025**, sin
+>   borrar su texto, y `tests/test_f026_documentacion.py` (21 tests) escrito
+>   **antes** que los documentos.
+> - **T18** (`c9258f0`) — los **tres** puntos de `docs/ARCHITECTURE.md` que
+>   decían que solo se archiva lo apto: paso 6, semántica 3 y semántica 7.
+>   **Precisados, no borrados.**
+> - **T19** (`02cb101` aquí, `0d7c843` en `azure-apps`) — `docs/INTEGRACION.md`
+>   y su copia del ecosistema: la tabla `postventa.aprobaciones`, el endpoint
+>   `POST /api/aprobar`, las ventanas de escritura y el `oid` de quien aprueba.
+> - **Ajuste** (`212ba40`) — la cuenta de endpoints, de once a doce, en los dos
+>   tests ajenos que la vigilan.
+>
+> ### Lo que cambia de verdad
+>
+> Hasta hoy el código abría una puerta que **tres documentos aprobados
+> declaraban cerrada**. Quien leyera `ARCHITECTURE.md` encontraría
+> `_exigir_admitido` y lo tomaría por un agujero; quien leyera R36 de F-025
+> «arreglaría» el backend para volver a dejar fuera los partes aprobados. Eso
+> ya no puede pasar, y **no porque alguien se acuerde: porque hay un test**.
+>
+> Y el documento del ecosistema ya dice lo único que el resto de proyectos
+> necesita saber de F-026: que **no empezamos a consumir nada nuevo**, y que
+> desde ahora una reclamación puede acabar cerrada aunque su parte no fuera
+> apto —si una persona lo aprobó—, **sin que en el ERP quede constancia** de esa
+> aprobación (decisión expresa del responsable).
+>
+> ### Tres cosas que el reviewer tiene que mirar
+>
+> 1. **El botón de aprobar consta como interpretación del líder**, no como
+>    pronunciamiento del responsable, y así está escrito en el recuadro con su
+>    test (§36.1 del informe). Lo que el responsable pidió fue lo contrario
+>    —«según escribe guarda, sin botón»— pero para las correcciones, que es
+>    otro juicio.
+> 2. **Se tocaron dos documentos y no uno** (§38): `azure-apps/` declara ser
+>    una copia de `docs/INTEGRACION.md`, así que tocar solo la copia habría
+>    creado justo la divergencia que la regla quiere evitar. Dos repositorios,
+>    dos commits, **sin `push`** en ninguno, `git -C ../azure-apps status`
+>    limpio.
+> 3. **Dos tests ajenos saltaron en rojo y ninguno se aflojó** (§39). El de
+>    F-019 mantiene su cuenta a mano —es lo que ese test declara querer— y el de
+>    F-012 pasa a **contar** las filas de la tabla en vez de fijar un literal,
+>    porque así comprueba lo que afirma en lugar de avisar de una cifra vieja.
+>    De paso, el árbol de tablas de §2 listaba seis de las nueve que crea el
+>    DDL: se añaden `usuarios_sigrid` (F-009) y `graficos` (F-012), y queda
+>    declarado como deuda ajena corregida al pasar (§38.1).
+>
+> ### Lo que falta para cerrar F-026
+>
+> - **Bloque 6 (T20–T23)** · **MANUAL (humano)**, contra la base de desarrollo:
+>   el DDL aplicado dos veces, el circuito completo de un parte aprobado, la
+>   traza reconstruible hasta el ERP y la revocación sobre datos reales. A esa
+>   lista siguen sumadas las comprobaciones de pantalla de §26 y §33, que nadie
+>   ha visto todavía en un navegador.
+> - **Bloque 7 (T24)** · la campaña de mutación.
+>
+> `bash harness/init.sh` en **verde** al cerrar (exit 0): 62 tests en la raíz,
+> **2 338** en el servicio `api` —**21 nuevos**—, `front` servido de caché, y
+> la puerta de cobertura en **99,0 %** de 1 338 líneas cambiadas.
+
+
 > ## Estado al 2026-09-12 · **F-026: hecho el bloque 4 bis, el autoguardado**
 >
 > Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque

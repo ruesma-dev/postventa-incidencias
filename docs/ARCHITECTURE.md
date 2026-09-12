@@ -256,6 +256,9 @@ igual que hoy, y por debajo se suben los PDFs.
 3. **La firma debe ser humana.** Una casilla vacía, una aspa, o un trazo
    geométrico sin estructura de firma **no** son conformidad del cliente. Un
    parte sin firma válida no se archiva ni se cierra: va a revisión manual.
+   Solo firma el cliente: la columna del técnico viene vacía en toda la
+   remesa de ejemplo, así que exigirla dejaría fuera todos los partes.
+
    **Precisado por F-026 el 2026-09-12**: de revisión manual ya se sale, pero
    **salvo aprobación humana registrada** no se sale de ninguna otra forma. Una
    firma que el modelo no dio por humana la puede dar por buena **una persona**
@@ -267,8 +270,7 @@ igual que hoy, y por debajo se suben los PDFs.
    criterio: una casilla vacía, una aspa o un trazo geométrico **siguen sin
    ser** conformidad del cliente, y lo que decide que valen no es el modelo, es
    quien firma la aprobación.
-   Solo firma el cliente: la columna del técnico viene vacía en toda la
-   remesa de ejemplo, así que exigirla dejaría fuera todos los partes.
+
    **Cómo convive esto con «las observaciones son el único motivo de
    rechazo»** (3 bis), que parece lo contrario: son dos cosas distintas y las
    dos se sostienen. El alcance de «único motivo» son **los datos

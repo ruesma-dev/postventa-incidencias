@@ -23,9 +23,9 @@
 | 1 · El dominio | T2–T5 | **hecho** (`1b30a7c`, `6ccf09a`) |
 | 2 · La persistencia | T6–T8 | **hecho en esta tanda** (`f1e5718`, `1ece459`, `4d80aaa`, `fc5a37a`) |
 | 3 · Las puertas y el borde HTTP | T9–T12 | **hecho** (`6b51d60`, `9760019`, `851f0d2`, `44c306c`) · ver parte II |
-| 4 · La pantalla | T13–T16 | **sin empezar** |
+| 4 · La pantalla | T13–T16 | **hecho** (`3fbfbd2`, `bf2fdc0`, `48e2799`, `5270f8d`) · ver parte III |
 | 4 bis · Autoguardado | TA1–TA5 | **hecho** (`428842c`, `7beaa0b`, `ebfb2ae`, `1259c39`) · ver parte IV |
-| 5 · Enmiendas y documentación | T17–T19 | **sin empezar** |
+| 5 · Enmiendas y documentación | T17–T19 | **hecho en esta tanda** (`b7ac982`, `c9258f0`, `02cb101`, `212ba40`, y `0d7c843` en `azure-apps`) · ver parte V |
 | 6 · Verificación contra la base real | T20–T23 | **MANUAL (humano)**, pendiente |
 | 7 · Cierre | T24–T25 | T25 en verde hoy; T24 se repite al cerrar |
 
@@ -1498,3 +1498,296 @@ de tocarlo.
 | **Avisos de `ruff`** | **60**, los mismos. Esta tanda no ha tocado Python de producción |
 | **`bash harness/init.sh`** | **ENTORNO LISTO** (exit 0) |
 | **Mutantes generados y supervivientes** | **campaña no lanzada**, por instrucción explícita del encargo (T24 es del bloque 7). Y, como en el bloque 4, hay que anotar la limitación: **`harness/mutacion` muta Python**, así que `js/autoguardado.js`, `js/app.js` e `index.html` **no son mutables** con el utillaje de este repositorio. Lo que sostiene la calidad de esta tanda son los tests de comportamiento del módulo —con reloj inyectado, que es lo que permite probar el rebote— y los control-negativo sobre `app.js` y el HTML |
+
+---
+
+# Parte V · Bloque 5 · las enmiendas y la documentación (T17–T19)
+
+> La escribe el implementer del **bloque 5**, el **2026-09-12**, con el encargo
+> acotado a ese bloque y con instrucción explícita de **no** hacer el bloque 6
+> (verificación contra la base real, que es del responsable), **ni** el 7
+> (cierre, que lleva el líder), **ni** la campaña de mutación.
+
+## 35 · Qué se ha hecho, y qué problema cierra
+
+Tres documentos aprobados decían —y hasta hoy seguían diciendo— lo contrario de
+lo que hace F-026: que un parte que la validación no declara `apto` **no se
+archiva, no se adjunta y no se cierra, y punto**. Es verdad que la feature
+existe precisamente para abrir esa puerta; lo que no puede pasar es que la abra
+**en el código y no en los documentos**, porque entonces el próximo que lea
+`ARCHITECTURE.md` encontrará `_exigir_admitido` y creerá que es un agujero que
+alguien coló.
+
+La regla del proyecto para esto está fijada desde R28 de F-010 (2026-09-03) y
+la volvió a aplicar F-025 el 2026-09-11: **lo que se deroga no se borra**. Se
+enmienda con un recuadro fechado que cita la premisa original **literal**, dice
+qué la invalidó, quién lo decidió y cuándo.
+
+| Tarea | Qué documento | Commit |
+|---|---|---|
+| **T17** | el recuadro bajo **R36 de F-025**, con su test de documentación | `b7ac982` |
+| **T18** | los **tres** puntos de `docs/ARCHITECTURE.md` | `c9258f0` |
+| **T19** | `docs/INTEGRACION.md` (fuente de verdad) | `02cb101` |
+| **T19** | `azure-apps/postventa_incidencias.md` (**otro repositorio**) | `0d7c843` en `azure-apps` |
+| — | la cuenta de endpoints en los dos tests ajenos que la vigilan | `212ba40` |
+
+Ni una línea de código de producción. Lo único ejecutable que se ha escrito es
+`services/postventa-api/tests/test_f026_documentacion.py`, que es lo que hace
+que estas enmiendas **sobrevivan a la siguiente edición**: una revisión se
+olvida, un test no.
+
+## 36 · T17 · el recuadro bajo R36 de F-025
+
+R36 decía, y sigue diciendo palabra por palabra:
+
+> «El sistema **no debe** archivar, adjuntar ni cerrar un parte que no sea
+> `apto` con destino `archivo_y_cierre`, ni siquiera dentro de la tanda y ni
+> siquiera si el usuario pulsa dos veces. Los partes en revisión y los de la
+> cola humana **siguen fuera** (aprobarlos es **F-026**).»
+
+Debajo, sin tocar una coma de ese texto, hay ahora un recuadro fechado el
+**2026-09-12** que dice seis cosas, y las seis tienen su test:
+
+1. **Cae solo la última frase**, y el propio requisito la anunciaba. Lo demás
+   sigue rigiendo. Es la confusión que más daño haría —«R36 está enmendado»
+   leído como «R36 ya no rige»— y por eso está escrita la primera.
+2. **Un no apto entra si y solo si consta aprobado y vigente** en
+   `postventa.aprobaciones`, con revocación automática cuando cambia el
+   veredicto (R30).
+3. **La comprobación sigue donde estaba**: en los tres pasos del backend.
+   `_exigir_apto` pasa a `_exigir_admitido`, nada más.
+4. **La aprobación se lee del repositorio, nunca del cuerpo de la petición.**
+   Sin esa frase, alguien puede «simplificar» el handler aceptando un
+   `aprobado: true` de fuera, y entonces la puerta la abre cualquiera que sepa
+   escribir JSON.
+5. **Quién lo decidió, cuándo y con qué palabras**: el responsable, el
+   2026-09-11, con las tres citas literales (los no aptos no se archivan hasta
+   que los apruebe un revisor humano; «hay que guardarlo»; «no hace falta que
+   conste en Sigrid, sí en nuestra base»).
+6. **F-025 sigue `done`**, y su confirmación única sigue siendo una, porque R29
+   de F-026 prohíbe armar ninguna confirmación nueva.
+
+### 36.1 · Lo que se ha tenido cuidado de **no** atribuir al responsable
+
+El recuadro separa, con su propio párrafo, que **el botón de aprobar es
+interpretación del líder y no un pronunciamiento del responsable**. Importa
+porque en la misma respuesta el responsable pidió justo lo contrario, pero para
+otra cosa: *«escribir en un campo debe guardar lo que escribes, según escribe
+guarda, sin botón»* —que es el bloque 4 bis—. Las dos conviven porque son
+juicios distintos: guardar lo que alguien teclea es registrar un dato;
+declarar que una firma dudosa vale es una decisión que necesita saber **quién**
+la tomó. Solo la segunda lleva botón y `oid`.
+
+Dicho de otra forma: quien mañana quiera quitar ese botón tiene derecho a saber
+que discute con una interpretación y no con el responsable. Eso lo fija
+`test_f026_r46_el_recuadro_de_r36_separa_la_interpretacion_del_lider`.
+
+## 37 · T18 · los tres puntos de `docs/ARCHITECTURE.md`
+
+Los tres que nombra R47, con la fórmula que pide el requisito —**precisión, no
+borrado**— y los tres con la misma remisión:
+
+| Punto | Decía | Ahora dice, además |
+|---|---|---|
+| **paso 6** del pipeline | «Solo se archiva lo que el paso 4 declaró apto» | … **salvo aprobación humana registrada**, con el caso de los dos destinos no aptos y la advertencia de que un código de obra o un número de incidencia ilegibles **no se aprueban, se teclean** |
+| **semántica 3** | «Un parte sin firma válida no se archiva ni se cierra: va a revisión manual» | … de revisión manual **ya se sale**, pero solo por ahí; el criterio de qué es una firma no cambia, cambia **quién** puede darla por buena |
+| **semántica 7** | «Nada se archiva ni se cierra si no ha pasado todas las validaciones» | … la aprobación es lo único que sustituye a una validación en verde, y **no se escribe en Sigrid**: quien audite cruza `aprobaciones` con `cierres` por `hash_parte` |
+
+Los tres repiten, porque los tres se leen por separado, la frase que impide
+leer la enmienda como una barra libre: es una puerta **más estrecha** que la
+que abría el veredicto —una persona identificada, un parte concreto, un motivo
+aprobable y un registro con quién y cuándo—, **nunca automática**, y revocada
+en cuanto cambia el veredicto.
+
+Y hay **dos controles negativos** sobre esto, que es lo que la verificación de
+T18 pedía con todas las letras («los tres puntos siguen diciendo lo que decían
+para todo lo demás»):
+
+- el **literal original** de cada uno sigue en su sitio
+  (`test_f026_r47_los_tres_puntos_conservan_su_texto`);
+- y el **motivo** de cada uno también —que con otro destino no se sube nada,
+  que solo firma el cliente, que archivar basura ensucia el archivo de
+  Posventa—
+  (`test_f026_r47_la_precision_no_se_ha_llevado_por_delante_el_resto`). Un punto
+  al que se le añade la excepción y se le quita el razonamiento queda
+  convertido en una regla arbitraria, y las reglas arbitrarias se borran en la
+  siguiente limpieza.
+
+## 38 · T19 · los dos documentos de integración, en dos repositorios
+
+**Aquí hubo una decisión que conviene mirar.** La tarea dice «actualizar
+`azure-apps/postventa_incidencias.md`», y ese fichero declara en su propia
+cabecera que es una **copia** de `docs/INTEGRACION.md`, que es la fuente de
+verdad, y que **no se edita allí: se edita aquí y se refresca la copia**. Tocar
+solo la copia habría dejado el documento del ecosistema diciendo algo que en
+este repositorio no está escrito, que es exactamente la divergencia que la
+regla existe para evitar. Así que se han tocado **los dos**, con el mismo
+contenido, y en **dos commits**, uno por repositorio:
+
+| Dónde | Qué se escribió |
+|---|---|
+| §2, el árbol del esquema | `aprobaciones`, con un párrafo propio: qué registra, qué guarda (`oid`, destino, **códigos** de motivo, huella `sha256`), qué **no** guarda (ni texto manuscrito, ni binarios) y que revocar **no borra** |
+| §8, la tabla de endpoints | `POST /api/aprobar`, con lo que escribe, que **no toca ningún sistema ajeno** y que en Sigrid no consta |
+| §8, la cuenta | «los once» pasan a **«los doce»** |
+| §8, las ventanas | que aprobar **no mira** `ARCHIVO_HABILITADO` ni `CIERRE_HABILITADO`, y que para que un no apto llegue al ERP hacen falta **las dos cosas**: la aprobación y la ventana abierta |
+| §7, datos personales | el `oid` de quien aprueba, y por qué se guarda: **no es traza de un proceso, es la firma de una decisión** que contradice a la máquina |
+| cabecera de la copia | qué cambia para el ecosistema —**nada de lo que consumimos**— y el único aviso que sí le importa a quien audite Sigrid |
+
+`git -C ../azure-apps status` queda **limpio** y **sin `push`**, como manda el
+encargo. El commit allí es `0d7c843`.
+
+### 38.1 · Deuda ajena corregida al pasar, y se declara
+
+El árbol de tablas de §2 listaba **seis** de las **nueve** que crea el DDL:
+faltaban `usuarios_sigrid` (F-009) y `graficos` (F-012). Se han añadido junto
+con `aprobaciones`, porque el bloque que había que editar era ese y un
+inventario de tablas al que le faltan dos es peor que no tenerlo. Queda
+declarado aquí y en la nota bajo R49 de la spec para que el reviewer no tenga
+que averiguar de dónde salen esas dos líneas.
+
+### 38.2 · Lo que **no** se ha tocado, y por qué
+
+F-026 **no cambia nada de lo que consumimos**: ni un recurso nuevo, ni una
+variable de entorno (R45 lo prohíbe explícitamente), ni una llamada nueva a
+`sigrid-api`, a Graph o al servidor compartido. La única frontera que cruza
+este bloque es documental. Por eso §1 («Qué consumimos hoy»), §3, §3 bis, §4 y
+§5 de los dos documentos quedan **intactos**.
+
+## 39 · Dos tests ajenos que se pusieron en rojo, y qué se hizo con cada uno
+
+El endpoint nuevo rompió dos tests de documentación de otras features, y los
+dos hicieron **exactamente** lo que venían a hacer: avisar de que el documento
+que viaja a `azure-apps/` se había quedado atrás. Vale la pena contarlo porque
+la reacción por defecto ante un test ajeno en rojo es aflojarlo.
+
+- **`test_f019_documentacion.py`** · su docstring declara que la cuenta se
+  escribe **a mano a propósito**, para que un endpoint nuevo tenga que pasar
+  por ahí. Se ha respetado: pasa de «once» a «doce», y «once» se suma a la
+  lista de cifras prohibidas junto a seis, nueve y diez.
+- **`test_f012_documentacion.py`** · ese fijaba el literal «Los once quedan en
+  nivel» sin comprobar nada más, así que la única forma de arreglarlo era
+  teclear otro número —**que podía volver a ser falso**—. Ahora **cuenta** las
+  filas de la tabla de endpoints de §8 y exige que el párrafo diga ese número.
+  Sigue siendo un test de F-012 y sigue exigiendo lo que exigía; lo que gana es
+  que el siguiente endpoint tampoco podrá colarse con una cifra inventada.
+
+Los dos se quedan, y no se pisan: **uno obliga a pasar por el test, el otro
+comprueba que lo que se escribió es cierto.**
+
+## 40 · Fase RED · la traza real
+
+El test se escribió **antes** que los tres documentos, y esta es la salida del
+comando exacto que se lanzó, con el árbol todavía sin ninguna enmienda:
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f026_documentacion.py -q
+
+FFFFFFF....FFFFFFF...                                                    [100%]
+================================== FAILURES ===================================
+_____ test_f026_r46_bajo_r36_de_f025_hay_un_recuadro_de_enmienda_fechado ______
+>       assert "Enmienda" in bloque
+E       AssertionError: assert 'Enmienda' in '**R36.** El sistema **no debe** archivar, adjuntar ni cerrar un parte que no sea `apto` con destino `archivo_y_cierre...el usuario pulsa dos veces. Los partes en revisión y los de la cola humana **siguen fuera** (aprobarlos es **F-026**).'
+__________ test_f026_r46_el_recuadro_de_r36_cita_la_premisa_literal ___________
+>       recuadro = bloque[bloque.index("Enmienda") :]
+E       ValueError: substring not found
+...
+_ test_f026_r47_los_tres_puntos_dicen_que_la_puerta_es_mas_estrecha[semantica-7] _
+>       assert "más estrecha" in bloque
+E       AssertionError: assert 'más estrecha' in '7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.** Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en Sigrid da por resuelta una incidencia que sigue viva.'
+_____ test_f026_r47_la_semantica_7_dice_que_la_aprobacion_no_va_a_sigrid ______
+>       assert "no se escribe en Sigrid" in bloque
+E       AssertionError: assert 'no se escribe en Sigrid' in '7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.** Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en Sigrid da por resuelta una incidencia que sigue viva.'
+=========================== short test summary info ===========================
+FAILED tests/test_f026_documentacion.py::test_f026_r46_bajo_r36_de_f025_hay_un_recuadro_de_enmienda_fechado
+FAILED tests/test_f026_documentacion.py::test_f026_r46_el_recuadro_de_r36_cita_la_premisa_literal
+FAILED tests/test_f026_documentacion.py::test_f026_r46_el_recuadro_de_r36_dice_que_solo_cae_la_ultima_frase
+FAILED tests/test_f026_documentacion.py::test_f026_r46_el_recuadro_de_r36_dice_que_la_aprobacion_no_viene_del_cuerpo
+FAILED tests/test_f026_documentacion.py::test_f026_r46_el_recuadro_de_r36_dice_quien_lo_decidio_y_con_que_palabras
+FAILED tests/test_f026_documentacion.py::test_f026_r46_el_recuadro_de_r36_separa_la_interpretacion_del_lider
+FAILED tests/test_f026_documentacion.py::test_f026_r46_el_recuadro_de_r36_dice_que_f025_sigue_done
+FAILED tests/test_f026_documentacion.py::test_f026_r47_los_tres_puntos_nombran_la_aprobacion_humana[paso-6-del-pipeline]
+FAILED tests/test_f026_documentacion.py::test_f026_r47_los_tres_puntos_nombran_la_aprobacion_humana[semantica-3]
+FAILED tests/test_f026_documentacion.py::test_f026_r47_los_tres_puntos_nombran_la_aprobacion_humana[semantica-7]
+FAILED tests/test_f026_documentacion.py::test_f026_r47_los_tres_puntos_dicen_que_la_puerta_es_mas_estrecha[paso-6-del-pipeline]
+FAILED tests/test_f026_documentacion.py::test_f026_r47_los_tres_puntos_dicen_que_la_puerta_es_mas_estrecha[semantica-3]
+FAILED tests/test_f026_documentacion.py::test_f026_r47_los_tres_puntos_dicen_que_la_puerta_es_mas_estrecha[semantica-7]
+FAILED tests/test_f026_documentacion.py::test_f026_r47_la_semantica_7_dice_que_la_aprobacion_no_va_a_sigrid
+14 failed, 7 passed in 0.51s
+```
+
+**Los 7 verdes de ese rojo importan tanto como los 14 rojos**, y son
+deliberados: son los **control-negativo** —que el texto original de R36 sigue
+ahí, que los tres literales de `ARCHITECTURE.md` siguen ahí y que su
+razonamiento sigue ahí—. Tenían que estar en verde **antes** y seguir en verde
+**después**; si alguno hubiera salido rojo en esta foto, el test estaría
+buscando un texto que no existe y no probaría nada.
+
+Después de escribir los tres documentos, el mismo comando da **21 verdes**.
+
+### 40.1 · Un rojo intermedio que conviene contar
+
+Al precisar la semántica 7, la frase quedó como «…, **nunca es automática**, y
+caduca sola…» y el test —que busca `Nunca es automática`— siguió en rojo por la
+mayúscula. Se arregló **en el documento, no en el test**: la afirmación se
+partió en su propia frase. Es la decisión correcta de las dos posibles, pero
+merece constar, porque la otra —relajar el test a comparar sin mayúsculas—
+habría dejado pasar también un «nunca es automática» escondido en mitad de una
+subordinada, que es justo lo que no se quiere.
+
+## 41 · Ficheros tocados en el bloque 5
+
+| Fichero | Qué | Repositorio |
+|---|---|---|
+| `services/postventa-api/tests/test_f026_documentacion.py` | **nuevo** · 21 tests: 8 de R46 y 13 de R47 | este |
+| `specs/F-025-confirmacion-unica/requirements.md` | +47 · el recuadro bajo R36, sin tocar su texto | este |
+| `docs/ARCHITECTURE.md` | +37 · los tres puntos precisados | este |
+| `docs/INTEGRACION.md` | +48/−7 · árbol, endpoint, cuenta, ventanas, datos personales, cabecera | este |
+| `specs/F-026-aprobacion-humana/requirements.md` | +21 · la nota bajo R49 con lo hecho y dónde | este |
+| `specs/F-026-aprobacion-humana/tasks.md` | T17–T19 marcadas | este |
+| `services/postventa-api/tests/test_f012_documentacion.py` | la cuenta pasa a calcularse | este |
+| `services/postventa-api/tests/test_f019_documentacion.py` | la cuenta a mano pasa a doce | este |
+| `postventa_incidencias.md` | +63/−6 · el mismo contenido, más su cabecera propia | **`azure-apps`** |
+
+**Ningún fichero de producción.** El diff de `services/postventa-api` fuera de
+`tests/` está vacío, y es comprobable:
+`git diff b7ac982~1 HEAD -- services/postventa-api --stat` solo lista ficheros
+de `tests/`.
+
+## 42 · Lo que queda fuera y lo que falta
+
+### Fuera del alcance de esta tanda (por encargo explícito)
+
+- **Bloque 6 (T20–T23)** · la verificación contra la base real. Es **MANUAL
+  (humano)** y del responsable.
+- **Bloque 7 (T24)** · la **campaña de mutación**. El encargo decía
+  explícitamente que no se lanzara.
+- **Bloque 7 (T25)** · el cierre lo lleva el líder.
+
+### Lo que este bloque **no** demuestra
+
+Que la documentación esté al día **no prueba que el circuito funcione**. Lo que
+sigue sin haberse visto nunca contra la base real ni contra un navegador es
+todo lo que enumeran §26, §33 y el bloque 6 de `tasks.md`: el DDL aplicado, un
+parte aprobado recorriendo el circuito entero, la traza reconstruible hasta el
+ERP y la revocación sobre datos reales.
+
+### Un aviso para quien siga
+
+El `oid` **no se copia a `progress/`** cuando se haga el bloque 6: se anota que
+existe, no su valor. Está escrito en T22 y se repite aquí porque es el error
+fácil de cometer con una consulta delante.
+
+## 43 · Evidencias del bloque 5
+
+| Evidencia | Medida |
+|---|---|
+| **Tests ejecutados** (servicio `api`) | **2 338 pasan**, 0 fallan, 13 saltados, en **51,8 s** (eran 2 317: **+21**, todos en `tests/test_f026_documentacion.py`) |
+| **Tests ejecutados** (raíz) | **62 pasan** en **4,70 s** |
+| **Tests ejecutados** (servicio `front`) | sin cambios; el arnés los sirvió de su caché (el árbol del front no se ha tocado) |
+| **Tests nuevos de esta tanda** | **21** — 8 de R46 y 13 de R47, once de ellos parametrizados sobre los tres puntos |
+| **Tests ajenos tocados** | **2**, los dos de la cuenta de endpoints; **ninguno aflojado**, uno de ellos reforzado (§39) |
+| **Cobertura de las líneas cambiadas** | **99,0 %** — 1 325 de 1 338, umbral 80 %, nivel `estandar` → `[OK]`. **No se mueve respecto al bloque 4 bis, y es correcto que no se mueva**: esta tanda no ha cambiado ni una línea de Python de producción, que es lo que mide esa puerta |
+| **Tiempo de ejecución de la suite** | `api` **51,8 s** en ejecución directa (**98,8 s** dentro de `init.sh`, que la corre con medición de cobertura) · raíz **4,70 s** |
+| **Avisos de `ruff`** | **60**, los mismos de siempre. Esta tanda no ha tocado Python de producción |
+| **`bash harness/init.sh`** | **ENTORNO LISTO** (exit 0) |
+| **Mutantes generados y supervivientes** | **campaña no lanzada**, por instrucción explícita del encargo (T24 es del bloque 7). Y conviene decir qué aportaría si se lanzara **sobre este bloque**: nada. Lo único ejecutable que ha escrito esta tanda son tests, y `harness/mutacion` muta **código de producción**, no tests. Lo que sostiene la calidad de un bloque documental es otra cosa: que el test se escribiera **antes** (§40), que sus control-negativo pasaran antes y después, y que los dos tests ajenos que saltaron se arreglaran **sin aflojarlos** (§39) |

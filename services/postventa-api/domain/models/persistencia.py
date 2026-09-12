@@ -21,6 +21,12 @@ Tres campos de este módulo llevan dato personal y van marcados uno a uno:
 directo**), y `RegistroRemesa.usuario_oid` y `TrazaCierre.confirmado_por` son
 el identificador opaco de Entra ID de un empleado (**seudónimo**). De un
 empleado se guarda el `oid` y **nunca** su correo ni su nombre.
+
+La misma regla rige `Aprobacion.aprobado_por` (F-026), que vive en
+`domain/models/aprobacion.py` y no aquí: la aprobación humana es un hecho con
+ciclo de vida propio, como el cierre o el gráfico, y por eso tiene su módulo.
+Lo que se guarda de quien aprueba es el `oid` opaco y nada más — nunca su
+correo, nunca su nombre y nunca su login del ERP (R13 de F-026).
 """
 
 from __future__ import annotations

@@ -23,6 +23,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
+from domain.models.aprobacion import Aprobacion
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EntradaCola,
@@ -81,6 +82,18 @@ class RepositorioPartesPort(Protocol):
         No guarda la transcripción de las observaciones aunque el resultado la
         transporte: ya está en la fila del parte y una segunda copia de texto
         manuscrito de un cliente dobla la exposición y diverge (R21, R39).
+
+        **Y revoca la aprobación humana cuyo veredicto ya no es este** (F-026,
+        R30), en la misma operación. Forma parte del contrato y no es un
+        detalle del adaptador: quien implemente el puerto tiene que saberlo,
+        porque es lo que hace que quien lea la aprobación después vea la verdad
+        sin tener que calcularla.
+
+        La alternativa —comprobar la vigencia al leer— obligaría a tener
+        delante el veredicto y la aprobación en todos los sitios que miran,
+        incluidos los tres pasos del circuito, cuyo cuerpo de petición no trae
+        ni los motivos ni las observaciones y por tanto **no puede** recomputar
+        la huella. Ver `design.md` §7.
         """
         ...
 
@@ -115,6 +128,33 @@ class RepositorioPartesPort(Protocol):
         `adjuntado`, no se llama a la pasarela ni se mandan los bytes (R24)—, y
         `paso_cierre`, como **precondición del `commit`**: ninguna reclamación
         se cierra sin que su parte conste dentro de Sigrid (R2, R49).
+        """
+        ...
+
+    def guardar_aprobacion(self, *, aprobacion: Aprobacion) -> ResultadoGuardado:
+        """Registra que **una persona** aprobó este parte (F-026, R14, R17).
+
+        Una sola fila por parte: volver a aprobar el mismo parte sustituye su
+        aprobación y la deja **viva**, en vez de acumular una segunda.
+
+        De quien aprueba se guarda el `oid` opaco de Entra ID y nada más (R13):
+        nunca su correo, nunca su nombre, nunca su login del ERP. Para saber
+        que alguien decidió no hace falta saber quién es.
+        """
+        ...
+
+    def consultar_aprobacion(self, *, hash_parte: str) -> Aprobacion | None:
+        """La aprobación de ese parte, o `None` si no consta (F-026).
+
+        `None` **no es un error**: es que a ese parte no lo ha aprobado nadie.
+        Una aprobación **revocada** sí vuelve, y vuelve diciendo que lo está:
+        quien lee necesita distinguir «nadie decidió» de «se decidió y dejó de
+        valer», que es lo que la pantalla tiene que contar para que alguien
+        vuelva a mirarlo (R31).
+
+        La leen los tres pasos del circuito, y la leen **de aquí y nunca del
+        cuerpo de la petición** (R24): si viniera del cuerpo, quien llama
+        podría afirmar que aprobó algo que no aprobó.
         """
         ...
 

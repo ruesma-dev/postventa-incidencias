@@ -31,6 +31,7 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
+from domain.models.aprobacion import Aprobacion
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.errores import PersistenciaNoDisponible, ReferenciaNoConsta
 from domain.models.extraccion import ExtraccionParte
@@ -49,6 +50,7 @@ from domain.models.validacion import ResultadoValidacion
 
 from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import (
+    fila_a_aprobacion,
     fila_a_correspondencia,
     fila_a_entrada_cola,
     fila_a_preferencias,
@@ -120,11 +122,29 @@ class RepositorioPostgres:
     def guardar_validacion(
         self, *, resultado: ResultadoValidacion, ahora: datetime
     ) -> ResultadoGuardado:
-        """Guarda el veredicto, sustituyendo el anterior (R17)."""
+        """Guarda el veredicto, sustituyendo el anterior (R17), **y revoca la
+        aprobación humana que ya no le corresponde** (F-026, R30).
+
+        Las dos cosas van en la **misma transacción**, y eso es el requisito:
+        con dos habría una ventana —corta, pero real— en la que el veredicto
+        nuevo ya está guardado y la aprobación del viejo sigue viva, y un paso
+        que leyera justo ahí admitiría en el circuito un parte que nadie ha
+        aprobado.
+
+        La revocación se ejecuta **siempre**, haya aprobación o no: si no la
+        hay, el `UPDATE` no toca ninguna fila. Consultar antes para decidir si
+        merece la pena sería una consulta de más en el camino más transitado
+        del servicio, y una condición de carrera con quien apruebe a la vez.
+        """
         sql, parametros = sentencias.upsert_validacion(
             esquema=self._esquema, resultado=resultado, ahora=ahora
         )
-        guardado = self._escribir(sql, parametros, operacion="guardar_validacion")
+        revocacion = sentencias.revocar_aprobacion_si_cambio(
+            esquema=self._esquema, resultado=resultado, ahora=ahora
+        )
+        guardado = self._escribir(
+            sql, parametros, operacion="guardar_validacion", ademas=(revocacion,)
+        )
         log.info(
             "F-005 validación guardada: hash=%s destino=%s resultado=%s",
             resultado.hash_parte,
@@ -211,6 +231,50 @@ class RepositorioPostgres:
             traza.estado.value,
         )
         return traza
+
+    def guardar_aprobacion(self, *, aprobacion: Aprobacion) -> ResultadoGuardado:
+        """Registra que una persona aprobó este parte (F-026, R14, R17).
+
+        El log dice **qué** se aprobó y cómo fue, y nunca **quién**: el `oid`
+        es un dato personal seudónimo y la huella identifica un veredicto
+        concreto. Ninguno de los dos hace falta para saber que la operación fue
+        bien, y este log lo lee cualquiera que abra Application Insights (R13).
+        """
+        sql, parametros = sentencias.upsert_aprobacion(
+            esquema=self._esquema, aprobacion=aprobacion
+        )
+        resultado = self._escribir(sql, parametros, operacion="guardar_aprobacion")
+        log.info(
+            "F-026 aprobación registrada: hash=%s destino=%s resultado=%s",
+            aprobacion.hash_parte,
+            aprobacion.destino_aprobado.value,
+            resultado.value,
+        )
+        return resultado
+
+    def consultar_aprobacion(self, *, hash_parte: str) -> Aprobacion | None:
+        """La aprobación de ese parte, o `None` si no consta (F-026).
+
+        `None` **no es un error**: es que a ese parte no lo ha aprobado nadie.
+        Quien lo pide decide qué hacer con ello — los tres pasos del circuito,
+        no admitirlo si además no es apto.
+
+        Del resultado se registra si sigue vigente y nada más, por el mismo
+        motivo que en el guardado.
+        """
+        sql, parametros = sentencias.select_aprobacion(
+            esquema=self._esquema, hash_parte=hash_parte
+        )
+        filas = self._leer(sql, parametros, operacion="consultar_aprobacion")
+        if not filas:
+            return None
+        aprobacion = fila_a_aprobacion(filas[0])
+        log.info(
+            "F-026 aprobación leída: hash=%s vigente=%s",
+            hash_parte,
+            aprobacion.vigente,
+        )
+        return aprobacion
 
     def cola_validacion_humana(self, *, limite: int) -> tuple[EntradaCola, ...]:
         """Los partes que esperan que una persona decida (R22).
@@ -301,17 +365,31 @@ class RepositorioPostgres:
     # --- lo mecánico ------------------------------------------------------
 
     def _escribir(
-        self, sql: str, parametros: tuple, *, operacion: str
+        self,
+        sql: str,
+        parametros: tuple,
+        *,
+        operacion: str,
+        ademas: tuple[tuple[str, tuple], ...] = (),
     ) -> ResultadoGuardado:
         """Ejecuta una escritura y traduce su `RETURNING` a un resultado.
 
         Sin fila de vuelta significa que el `DO UPDATE` no se aplicó, y eso
         hoy solo pasa en un caso: el cierre terminal de R25.
+
+        `ademas` son sentencias que se ejecutan **dentro de la misma
+        transacción**, después de la principal y sin mirar lo que devuelvan.
+        Hoy lo usa uno solo: la revocación de la aprobación que acompaña al
+        guardado de la validación (F-026, R30). Va aquí y no en un método
+        aparte precisamente porque «en la misma operación» es el requisito: un
+        `commit` para las dos, o ninguno.
         """
         try:
             with self._conexion.cursor() as cursor:
                 cursor.execute(sql, parametros)
                 fila = cursor.fetchone()
+                for sql_extra, parametros_extra in ademas:
+                    cursor.execute(sql_extra, parametros_extra)
             self._conexion.commit()
         except psycopg.errors.ForeignKeyViolation as fallo:
             raise self._referencia_no_consta(operacion) from fallo

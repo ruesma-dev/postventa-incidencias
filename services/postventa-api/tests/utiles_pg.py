@@ -207,6 +207,7 @@ class RepositorioEnMemoria:
         traza_grafico: Any = None,
         fallo_al_guardar_grafico: Exception | None = None,
         estado_que_falla: Any = None,
+        aprobacion: Any = None,
     ) -> None:
         from domain.models.persistencia import ResultadoGuardado
 
@@ -230,6 +231,13 @@ class RepositorioEnMemoria:
         #: honesto) y la base caída **después** (`GraficoSinTraza`, un 500, con
         #: las tres filas ya dentro de Sigrid).
         self.estado_que_falla = estado_que_falla
+        #: F-026 · las aprobaciones que se han pedido guardar, en orden.
+        self.aprobaciones: list[Any] = []
+        #: F-026 · los `hash` con los que se ha consultado la aprobación.
+        self.aprobaciones_consultadas: list[str] = []
+        #: F-026 · lo que devuelve `consultar_aprobacion`. `None` es «no la ha
+        #: aprobado nadie», que **no es un error**.
+        self.aprobacion = aprobacion
         #: Los límites con los que se ha llamado a la cola, en orden.
         self.limites: list[int] = []
         self.cola = tuple(cola)
@@ -304,6 +312,30 @@ class RepositorioEnMemoria:
         if self.fallo is not None:
             raise self.fallo
         return self.traza_grafico
+
+    def guardar_aprobacion(self, *, aprobacion: Any) -> Any:
+        """F-026 · registra la aprobación humana, o levanta el fallo preparado.
+
+        Guardarla aquí y no en un doble nuevo es deliberado: los pasos del
+        circuito reciben **este** objeto, y si el puerto creciera sin que él
+        creciera, el doble dejaría de poder sustituir al adaptador justo en la
+        pieza que decide si un parte rechazado llega al ERP.
+        """
+        resultado = self._o_fallar()
+        self.aprobaciones.append(aprobacion)
+        return resultado
+
+    def consultar_aprobacion(self, *, hash_parte: str) -> Any:
+        """F-026 · la aprobación que el test haya preparado, o `None`.
+
+        Se guarda el `hash` pedido para poder comprobar **que se preguntó**:
+        R24 es un requisito sobre una lectura que, si no se hiciera, dejaría
+        que quien llama afirmara por su cuenta que el parte estaba aprobado.
+        """
+        self.aprobaciones_consultadas.append(hash_parte)
+        if self.fallo is not None:
+            raise self.fallo
+        return self.aprobacion
 
     def cola_validacion_humana(self, *, limite: int) -> tuple:
         self.limites.append(limite)

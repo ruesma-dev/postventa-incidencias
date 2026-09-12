@@ -94,7 +94,7 @@
       `motivos_aprobados` que se escribe lleva **códigos** y no textos (R14); y
       `fila_a_aprobacion` reconstruye la dataclass con sus `Enum`.
 
-- [ ] **T8**: Ampliar `domain/ports/persistencia.py` con `guardar_aprobacion` y
+- [x] **T8**: Ampliar `domain/ports/persistencia.py` con `guardar_aprobacion` y
       `consultar_aprobacion`, y `repositorio_pg.py` con su implementación;
       `guardar_validacion` ejecuta además la revocación **en la misma
       operación**. | Verificación: `tests/test_f026_persistencia.py` con un

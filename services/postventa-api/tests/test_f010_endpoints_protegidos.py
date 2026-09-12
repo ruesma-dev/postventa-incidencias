@@ -54,10 +54,12 @@ persigue.
 **Nada de esto relaja el test.** F-019 lo amplia de seis endpoints a nueve y
 le anade dos comprobaciones sobre la cabecera -donde esta la proteccion de
 verdad, y que anade `GET /api/cola` al cuadro-. F-009 lo amplia a diez con
-`POST /api/cerrar`, que es el que escribe en el ERP de produccion, y F-012 a
-once con `POST /api/adjuntar`, que escribe en el ERP el PDF del parte. Y por
-eso el test se entero las dos veces: la cuenta tuvo que cuadrar aqui antes de
-que la ruta existiera. Ninguna de las tres quita una sola comprobacion.
+`POST /api/cerrar`, que es el que escribe en el ERP de produccion, F-012 a
+once con `POST /api/adjuntar`, que escribe en el ERP el PDF del parte, y F-026
+a doce con `POST /api/aprobar`, que registra la decision humana que mete en
+ese circuito un parte que la validacion habia rechazado. Y por eso el test se
+entero las cuatro veces: la cuenta tuvo que cuadrar aqui antes de que la ruta
+existiera. Ninguna de las cuatro quita una sola comprobacion.
 """
 
 from __future__ import annotations
@@ -74,11 +76,12 @@ import pytest
 #: que el runtime de Functions lo haya construido.
 FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 
-#: Los once endpoints del servicio. Si manana hay un duodecimo, este test se
-#: entera: la cuenta tiene que cuadrar con las rutas declaradas.
+#: Los doce endpoints del servicio. Si manana hay un decimotercero, este test
+#: se entera: la cuenta tiene que cuadrar con las rutas declaradas.
 #:
 #: Eran seis hasta F-019, que anadio `remesa`, `parte` y `cola`; nueve hasta
-#: F-009, que anadio `cerrar`; y diez hasta F-012, que anade `adjuntar`.
+#: F-009, que anadio `cerrar`; diez hasta F-012, que anadio `adjuntar`; y once
+#: hasta F-026, que anade `aprobar`.
 ENDPOINTS = (
     "health",
     "split",
@@ -87,6 +90,7 @@ ENDPOINTS = (
     "validar",
     "remesa",
     "parte",
+    "aprobar",
     "cola",
     "archivar",
     "adjuntar",
@@ -227,7 +231,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 11
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 12
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

@@ -31,6 +31,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any
 
 import azure.functions as func
@@ -585,3 +586,244 @@ def test_f026_r21_aprobar_no_toca_sharepoint_ni_el_erp():
     assert "sharepoint" not in codigo.lower()
     assert "infrastructure.sigrid" not in codigo
     assert "escrituras" not in codigo
+
+
+# --------------------------------------------------------------------------
+# T10 · la ruta: los códigos (R20), el log (R44) y lo que no mira (R21)
+# --------------------------------------------------------------------------
+
+
+def _peticion(cuerpo: Any) -> func.HttpRequest:
+    return func.HttpRequest(
+        method="POST",
+        url="/api/aprobar",
+        headers={"Content-Type": "application/json"},
+        body=json.dumps(cuerpo, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def _con_doble(monkeypatch, repositorio) -> None:
+    """Inyecta el repositorio por la costura del handler. Sin base de datos."""
+    import function_app
+
+    def envoltura(cuerpo, **datos):
+        return aprobar_parte_http(cuerpo, repositorio=repositorio, **datos)
+
+    monkeypatch.setattr(function_app, "aprobar_parte_http", envoltura)
+
+
+def _responder(monkeypatch, repositorio, cuerpo: Any):
+    import function_app
+
+    _con_doble(monkeypatch, repositorio)
+    return function_app.aprobar(_peticion(cuerpo))
+
+
+def _json_de(respuesta) -> dict[str, Any]:
+    return json.loads(respuesta.get_body().decode("utf-8"))
+
+
+def test_f026_r20_aprobar_devuelve_200_con_su_contrato(monkeypatch):
+    """R20 · el camino feliz por el borde de verdad, con su JSON."""
+    repositorio = RepositorioQueAnotaElOrden()
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo())
+
+    assert respuesta.status_code == 200
+    assert respuesta.mimetype == "application/json"
+    cuerpo = _json_de(respuesta)
+    assert set(cuerpo) == {
+        "hash_parte",
+        "resultado_parte",
+        "resultado_validacion",
+        "aprobacion",
+        "avisos",
+    }
+    assert cuerpo["aprobacion"]["estado"] == "aprobado"
+
+
+def test_f026_r20_un_cuerpo_que_no_es_json_es_400(monkeypatch):
+    """R20 · ni siquiera llega a ser un objeto: **400**, no 500."""
+    import function_app
+
+    repositorio = RepositorioQueAnotaElOrden()
+    _con_doble(monkeypatch, repositorio)
+
+    respuesta = function_app.aprobar(
+        func.HttpRequest(
+            method="POST",
+            url="/api/aprobar",
+            headers={"Content-Type": "application/json"},
+            body=b"{esto no es json",
+        )
+    )
+
+    assert respuesta.status_code == 400
+    assert repositorio.orden == []
+
+
+def test_f026_r20_r4_sin_usuario_oid_el_borde_responde_400(monkeypatch):
+    """R4, R20 · y el mensaje explica que hace falta saber quién decide."""
+    repositorio = RepositorioQueAnotaElOrden()
+    cuerpo = _cuerpo()
+    del cuerpo["usuario_oid"]
+
+    respuesta = _responder(monkeypatch, repositorio, cuerpo)
+
+    assert respuesta.status_code == 400
+    assert "usuario_oid" in _json_de(respuesta)["error"]
+    assert repositorio.aprobaciones == []
+
+
+@pytest.mark.parametrize(
+    ("cambio", "fragmento"),
+    [
+        pytest.param(
+            {"extraccion": _extraccion(codigo_obra=None)},
+            "codigo_obra_no_legible",
+            id="le-falta-el-codigo-de-obra",
+        ),
+        pytest.param(
+            {"extraccion": _extraccion(observaciones=None)},
+            "apto",
+            id="ya-es-apto",
+        ),
+    ],
+)
+def test_f026_r20_un_parte_no_aprobable_es_409(monkeypatch, cambio, fragmento):
+    """R9, R10, R20 · **409 y no 400**: la petición está bien, el parte no.
+
+    Un 400 mandaría a revisar el cuerpo a quien tiene que ir a corregir un
+    campo del papel.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo(**cambio))
+
+    assert respuesta.status_code == 409
+    assert fragmento in _json_de(respuesta)["error"]
+    assert repositorio.orden == []
+
+
+def test_f026_r20_sin_remesa_registrada_es_409(monkeypatch):
+    """R20 · el mismo 409 que `/api/parte`, y por el mismo motivo."""
+    repositorio = RepositorioQueAnotaElOrden(
+        fallo=ReferenciaNoConsta("la remesa no consta registrada")
+    )
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo())
+
+    assert respuesta.status_code == 409
+    assert repositorio.aprobaciones == []
+
+
+@pytest.mark.parametrize(
+    "fallo",
+    [
+        ConfiguracionPgIncompleta("sin DSN"),
+        PersistenciaNoDisponible("la base no responde"),
+    ],
+)
+def test_f026_r20_sin_base_de_datos_es_503(monkeypatch, fallo):
+    """R20 · 503, que lleva a reintentar; el 409 lleva a registrar la remesa.
+
+    No se unifican «porque los dos son fallos de la base»: llevan a acciones
+    opuestas, y confundirlos es lo que costó media hora en el defecto 15 de
+    F-010.
+    """
+    repositorio = RepositorioQueAnotaElOrden(fallo=fallo)
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo())
+
+    assert respuesta.status_code == 503
+    assert repositorio.aprobaciones == []
+
+
+def test_f026_r44_el_log_lleva_hash_destino_y_resultado_y_nada_mas(
+    caplog, monkeypatch
+):
+    """R44, R43 · el log sobrevive al parte y viaja a Application Insights.
+
+    Es el endpoint donde más fácil sería filtrarlo: el cuerpo trae los nueve
+    campos del papel **y** el `oid` de quien decide, así que un
+    `log.debug("cuerpo=%s", cuerpo)` puesto depurando publicaría las dos
+    cosas a la vez.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    with caplog.at_level(logging.DEBUG):
+        respuesta = _responder(monkeypatch, repositorio, _cuerpo())
+
+    assert respuesta.status_code == 200
+    _sin_datos_personales(caplog.text)
+    assert HASH in caplog.text
+    assert "cola_validacion_humana" in caplog.text
+    assert "aprobado" in caplog.text
+
+
+def test_f026_r44_un_rechazo_tampoco_publica_lo_que_venia(caplog, monkeypatch):
+    """R43 · el camino de error es el que más tienta: tiene el cuerpo delante."""
+    repositorio = RepositorioQueAnotaElOrden()
+
+    with caplog.at_level(logging.DEBUG):
+        respuesta = _responder(
+            monkeypatch, repositorio, _cuerpo(extraccion=_extraccion(codigo_obra=None))
+        )
+
+    assert respuesta.status_code == 409
+    _sin_datos_personales(caplog.text)
+    _sin_datos_personales(respuesta.get_body().decode("utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _rutas_registradas() -> dict[str, Any]:
+    """Lo que el host publica, construido **una sola vez**.
+
+    El decorador deja en el módulo un `FunctionBuilder`; lo que se despliega es
+    lo que devuelve `app.get_functions()`, y es ahí donde viven la ruta, los
+    métodos y el nivel de autenticación de verdad.
+
+    Se cachea porque `get_functions()` no es idempotente: a la segunda llamada
+    revienta diciendo que los nombres están repetidos. Sin la caché, dos tests
+    que miren rutas se rompen entre ellos y el fallo no habla de ninguno de
+    los dos.
+    """
+    import function_app
+
+    return {
+        funcion.get_function_name(): funcion
+        for funcion in function_app.app.get_functions()
+    }
+
+
+def _ruta_registrada(nombre: str):
+    """La ruta que publica el host, o un fallo que dice que no existe."""
+    registradas = _rutas_registradas()
+    assert nombre in registradas, f"el host no publica ninguna ruta «{nombre}»"
+    return registradas[nombre]
+
+
+def test_f026_r18_la_ruta_es_post_anonima_y_se_llama_aprobar():
+    """R18 · un endpoint propio, declarado como los demás del servicio.
+
+    `ANONYMOUS` no es un descuido y es lo mismo que hacen las otras once: quien
+    protege este servicio es Easy Auth por delante, no la clave de función.
+    """
+    ajustes = _ruta_registrada("aprobar").get_trigger().get_dict_repr()
+
+    assert ajustes["route"] == "aprobar"
+    assert [str(metodo.value).lower() for metodo in ajustes["methods"]] == ["post"]
+    assert str(ajustes["authLevel"].value).lower() == "anonymous"
+
+
+def test_f026_r21_la_ruta_no_mira_las_ventanas_de_escritura():
+    """R21 · tampoco el borde: ni `ARCHIVO_HABILITADO` ni `CIERRE_HABILITADO`.
+
+    El handler ya lo tiene probado; esto vigila el otro sitio donde se podría
+    colar, que es la traducción HTTP — y donde además viven los dos nombres,
+    porque `/api/archivar` y `/api/cerrar` sí dependen de ellos.
+    """
+    fuente = inspect.getsource(_ruta_registrada("aprobar").get_user_function())
+
+    assert "HABILITADO" not in fuente
+    assert "habilitado" not in fuente

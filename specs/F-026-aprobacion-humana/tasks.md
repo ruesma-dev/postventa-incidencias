@@ -119,7 +119,7 @@
       lleva** el `oid`, ni correo, ni nombre, ni el texto de la observación
       (R19, R38, R43).
 
-- [ ] **T10**: Cablear la ruta en `function_app.py` (`POST`, `ANONYMOUS`, como
+- [x] **T10**: Cablear la ruta en `function_app.py` (`POST`, `ANONYMOUS`, como
       las demás) con su traducción de errores y su log. | Verificación: mismo
       fichero de test — cada excepción sale con su código (R20); el log lleva
       `hash_parte`, destino y resultado y **nada más** (R44); y el endpoint

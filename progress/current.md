@@ -1,6 +1,68 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 2, la persistencia de la aprobación**
+>
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 2** de `specs/F-026-aprobacion-humana/tasks.md` (T6–T8) y mandaba parar ahí.
+> **Los bloques 3, 4, 4 bis y 5 no se han empezado.** Informe completo, con la
+> fase RED y las evidencias: **`progress/impl_F-026.md`**, que además recoge lo
+> que hicieron los bloques 0 y 1 leyendo sus commits — los agentes que los
+> escribieron se interrumpieron antes de redactarlo.
+>
+> ### Lo que hay hecho hoy
+>
+> - **T6** (`1ece459`) — el DDL `10_aprobaciones.sql` existía desde `f1e5718`
+>   pero **no estaba declarado**. Y el sitio donde se declara no es `ddl.py`
+>   —que descubre los `.sql` por `glob`— sino la lista escrita **a mano y a
+>   propósito** de `tests/test_f005_ddl_idempotente_texto.py`. El arnés estaba
+>   en rojo por eso.
+> - **T7** (`4d80aaa`) — `sentencias.py` gana `upsert_aprobacion`,
+>   `select_aprobacion` y `revocar_aprobacion_si_cambio`; `mapeo.py` gana
+>   `json_de_codigos_de_motivo` y `fila_a_aprobacion`.
+> - **T8** (`fc5a37a`) — el puerto gana `guardar_aprobacion` y
+>   `consultar_aprobacion`, y `guardar_validacion` ejecuta además la
+>   **revocación**. `RepositorioEnMemoria` crece para seguir cumpliendo el
+>   puerto.
+> - **`tests/test_f026_persistencia.py`** nuevo: **34 tests**, sin BBDD y sin
+>   red, con el doble de `tests/utiles_pg.py`.
+>
+> ### El punto de diseño que no se puede perder (D-F)
+>
+> **La revocación ocurre en la escritura, no en la lectura**, y «en la misma
+> operación» es literal: `guardar_validacion` ejecuta el `upsert` de la
+> validación y el `UPDATE` de la revocación **en el mismo cursor y con un solo
+> `commit`**. Con dos transacciones habría una ventana en la que el veredicto
+> nuevo ya está guardado y la aprobación del viejo sigue viva, y un paso que
+> leyera justo ahí admitiría en el circuito un parte que nadie ha aprobado. Un
+> test lo fija: `len(ejecutadas) == 2` y `commits == 1`.
+>
+> ### Tres avisos para quien siga
+>
+> 1. **Nada de esto cambia todavía el comportamiento del servicio.** La tabla
+>    existe y el repositorio sabe escribirla y leerla, pero **nadie llama a
+>    esas operaciones**: el endpoint `POST /api/aprobar` (T9) y las tres
+>    puertas que leen la aprobación (T11) son el bloque 3. Un parte no apto
+>    sigue sin archivarse, sin adjuntarse y sin cerrarse, y eso lo vigilan los
+>    trece casos de control negativo de T1.
+> 2. **La traza de la fase RED de los bloques 0 y 1 se perdió** con el agente
+>    que se interrumpió. No se ha reconstruido: una traza de hoy no es la de
+>    entonces. La del bloque 2 está pegada entera en el informe. El reviewer
+>    tiene que saberlo antes de mirar C4 bis.
+> 3. **El `.sql` solo está verificado en su texto.** Que sea PostgreSQL válido
+>    y que aplicarlo dos veces no falle es **T20, MANUAL (humano)**, y la
+>    revocación sobre datos reales es **T23**. Un doble de conexión no puede
+>    demostrar ninguna de las dos.
+>
+> ### Estado del arnés al cerrar
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. Cobertura de líneas cambiadas
+> **98,7 %** (1 171/1 186, umbral 80 %), frente al **47,6 %** en `[KO]` con el
+> que empezó la sesión. 2 253 tests del servicio `api` en verde; **59** avisos
+> de `ruff`, los mismos que antes de esta tanda.
+
+---
+
 > ## Estado al 2026-09-11 · **F-025: hecho el bloque 4; los requisitos derogados ya llevan su constancia fechada**
 >
 > Entrega **parcial y pedida asi**: el encargo acotaba el trabajo al **bloque

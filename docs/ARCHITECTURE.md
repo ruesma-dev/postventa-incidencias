@@ -129,6 +129,18 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    **Solo se archiva lo que el paso 4 declaró apto**; con cualquier otro
    destino no se sube nada y ni siquiera se crea la carpeta.
 
+   **Precisado por F-026 el 2026-09-12**: eso sigue siendo cierto **salvo
+   aprobación humana registrada**. Un parte que el paso 4 mandó a
+   `revision_manual` o a `cola_validacion_humana` se archiva si —y solo si— una
+   persona lo aprobó y esa aprobación consta **viva** en
+   `postventa.aprobaciones`. Es una puerta **más estrecha** que la que abría el
+   veredicto automático, no más ancha: exige una persona identificada, un parte
+   concreto, un motivo aprobable —no todo motivo lo es: un código de obra o un
+   número de incidencia ilegibles **no se aprueban**, se teclean— y un registro
+   con quién y cuándo. **Nunca es automática**, y se revoca sola en cuanto
+   cambia el veredicto sobre el que se decidió. El detalle está en
+   `specs/F-026-aprobacion-humana/`.
+
    Y **solo se archiva lo que ya consta guardado** (F-019). El mecanismo no es
    una comprobación en Python: antes de tocar SharePoint se escribe la traza
    del archivo en estado `pendiente`, y `postventa.archivos.hash_parte` tiene
@@ -244,6 +256,17 @@ igual que hoy, y por debajo se suben los PDFs.
 3. **La firma debe ser humana.** Una casilla vacía, una aspa, o un trazo
    geométrico sin estructura de firma **no** son conformidad del cliente. Un
    parte sin firma válida no se archiva ni se cierra: va a revisión manual.
+   **Precisado por F-026 el 2026-09-12**: de revisión manual ya se sale, pero
+   **salvo aprobación humana registrada** no se sale de ninguna otra forma. Una
+   firma que el modelo no dio por humana la puede dar por buena **una persona**
+   que mira el papel, y entonces el parte entra en el circuito normal; la
+   máquina sigue sin poder hacerlo sola. Es una puerta **más estrecha** que la
+   que abría el veredicto: una persona identificada, un parte concreto, un
+   motivo aprobable y un registro con quién y cuándo en
+   `postventa.aprobaciones`. **Nunca es automática.** Lo que no cambia es el
+   criterio: una casilla vacía, una aspa o un trazo geométrico **siguen sin
+   ser** conformidad del cliente, y lo que decide que valen no es el modelo, es
+   quien firma la aprobación.
    Solo firma el cliente: la columna del técnico viene vacía en toda la
    remesa de ejemplo, así que exigirla dejaría fuera todos los partes.
    **Cómo convive esto con «las observaciones son el único motivo de
@@ -308,6 +331,20 @@ igual que hoy, y por debajo se suben los PDFs.
 7. **Nada se archiva ni se cierra si no ha pasado todas las validaciones.**
    Archivar un parte inválido ensucia el archivo de Posventa; cerrarlo en
    Sigrid da por resuelta una incidencia que sigue viva.
+   **Precisado por F-026 el 2026-09-12**: sigue entero **salvo aprobación
+   humana registrada**, que es lo único que sustituye a una validación en
+   verde, y solo porque pone en su lugar algo que la validación no tiene: una
+   persona que ha mirado el papel y responde de ello. Es una puerta **más
+   estrecha** que la que abría el veredicto —una persona identificada, un parte
+   concreto, un motivo aprobable y un registro con quién y cuándo en
+   `postventa.aprobaciones`—. **Nunca es automática**, y caduca sola cuando
+   cambia el veredicto sobre el que se decidió. La aprobación **no se escribe
+   en Sigrid**: consta en nuestra base y en ninguna otra, por decisión expresa
+   del responsable del 2026-09-11 (*«no hace falta que conste en Sigrid, sí en
+   nuestra base»*). Quien audite un cierre cruza `postventa.aprobaciones` con
+   `postventa.cierres` por `hash_parte` y ve si lo cerró el veredicto o lo
+   cerró una persona **a pesar** del veredicto; el ERP, por sí solo, no
+   distingue esos dos cierres.
 8. **El nombre del fichero es `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`**
    —por ejemplo `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`— y la carpeta va por
    código de obra. El sufijo se conserva porque distingue el parte conformado

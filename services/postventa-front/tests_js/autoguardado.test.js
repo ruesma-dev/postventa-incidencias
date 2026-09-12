@@ -270,6 +270,99 @@ test("f026 R51: cambiar de parte con una corrección a medias la guarda, no la t
 });
 
 // =========================================================================
+// R50 · se revalida y se guarda JUNTOS, nunca lo segundo sin lo primero
+// =========================================================================
+
+/** Un doble de `js/api.js` que anota, en orden, qué se le pidió. */
+function apiDoble(ajustes) {
+  const opciones = ajustes || {};
+  const llamadas = [];
+  return {
+    llamadas: llamadas,
+    validar(cuerpo) {
+      llamadas.push("validar");
+      if (opciones.validarFalla) {
+        return Promise.reject(new Error("validar falló, inventado"));
+      }
+      opciones.cuerposValidados && opciones.cuerposValidados.push(cuerpo);
+      return Promise.resolve({
+        hash_parte: HASH,
+        veredicto: "no_apto",
+        destino: "revision_manual",
+        motivos: [{ codigo: "observaciones_manuscritas", texto: "hay texto a mano" }],
+      });
+    },
+    guardarParte(cuerpo) {
+      llamadas.push("parte");
+      if (opciones.guardarFalla) {
+        return Promise.reject(new Error("guardar falló, inventado"));
+      }
+      opciones.cuerposGuardados && opciones.cuerposGuardados.push(cuerpo);
+      return Promise.resolve({ guardado: true, aprobacion: null });
+    },
+  };
+}
+
+test("f026 R50: el autoguardado revalida y guarda, en ese orden y en el mismo ciclo", async () => {
+  // El acoplamiento no es un descuido: guardar sin revalidar dejaría en la
+  // base el veredicto que la IA emitió sobre el dato SIN corregir, y las tres
+  // puertas de F-026 leen ese veredicto para decidir si el parte circula.
+  const api = apiDoble();
+  const parte = parteInventado();
+  const montaje = montar({
+    guardar: function (uno) {
+      return Pipeline.revalidarYGuardar(uno, api, REMESA);
+    },
+  });
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  assert.deepEqual(api.llamadas, ["validar", "parte"]);
+});
+
+test("f026 R50: nunca se guarda sin haber revalidado antes", async () => {
+  // El control que importa: si la revalidación se cae, NO se guarda. Guardar
+  // ahí dejaría el dato nuevo con el veredicto viejo, que es exactamente la
+  // invariante que R50 mantiene.
+  const api = apiDoble({ validarFalla: true });
+  const parte = parteInventado();
+  const montaje = montar({
+    guardar: function (uno) {
+      return Pipeline.revalidarYGuardar(uno, api, REMESA);
+    },
+  });
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  assert.deepEqual(api.llamadas, ["validar"]);
+  assert.ok(
+    !api.llamadas.includes("parte"),
+    "se guardó el parte sin veredicto nuevo: en la base quedaría el dato " +
+      "corregido con el veredicto del dato sin corregir",
+  );
+});
+
+test("f026 R50: y cuando la revalidación se cae, el autoguardado lo cuenta como fallo", async () => {
+  const api = apiDoble({ validarFalla: true });
+  const parte = parteInventado();
+  const montaje = montar({
+    guardar: function (uno) {
+      return Pipeline.revalidarYGuardar(uno, api, REMESA);
+    },
+  });
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  assert.equal(montaje.auto.estado(), FALLO);
+});
+
+// =========================================================================
 // R55 · aplica a TODOS los partes
 // =========================================================================
 

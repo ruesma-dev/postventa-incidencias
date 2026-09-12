@@ -178,6 +178,56 @@ def test_f026_r55_editar_un_campo_no_pregunta_por_el_veredicto(app):
         )
 
 
+# ===========================================================================
+# R50 · revalidar y guardar van juntos, y no se ha inventado un tercer estado
+# ===========================================================================
+
+
+def test_f026_r50_el_autoguardado_pasa_por_revalidar_y_guardar(app):
+    """R50 · la misma función que usa el botón, no una ruta paralela.
+
+    `revalidarYGuardar` existe desde F-019 R28 y lleva su motivo escrito
+    encima: revalidar sin guardar deja en la base el veredicto que la IA
+    emitió sobre el dato **sin corregir**. El autoguardado no inventa otra
+    forma de guardar; reutiliza esa.
+    """
+    guardar = _bloque(app, "async _guardarCorreccion(parte) {", "_pintarAutoguardado(")
+
+    assert "window.Pipeline.revalidarYGuardar" in guardar, (
+        "el autoguardado no pasa por `revalidarYGuardar`"
+    )
+
+
+def test_f026_r50_el_autoguardado_no_llama_a_guardar_por_su_cuenta(app):
+    """Control negativo: `app.js` no llama nunca a `guardarParte` a secas.
+
+    Si lo hiciera, en la base quedaría el dato corregido con el veredicto del
+    dato sin corregir, y las tres puertas de F-026 leen ese veredicto para
+    decidir si el parte circula hasta el ERP.
+    """
+    assert "Pipeline.guardarParte" not in app, (
+        "`js/app.js` guarda sin revalidar: eso rompe la invariante «el "
+        "veredicto corresponde al dato» que R50 mantiene"
+    )
+
+
+def test_f026_r50_no_se_ha_inventado_ningun_estado_de_veredicto_obsoleto(app, html):
+    """Control negativo de la alternativa **descartada** en D-H.
+
+    La otra forma de hacer esto era guardar solo el campo y marcar el veredicto
+    como obsoleto. Se descartó porque obliga a inventar un estado que **las
+    tres puertas** tendrían que mirar, y a que alguien se acuerde de revalidar
+    después. Si ese estado aparece en el front, es que se ha implementado la
+    alternativa que el diseño rechazó.
+    """
+    for texto in (app, html):
+        assert not re.search(r"obsolet", texto, re.IGNORECASE), (
+            "ha aparecido un estado de «veredicto obsoleto»: es la alternativa "
+            "descartada en `design.md` §15.1, y obliga a mirarla en las tres "
+            "puertas"
+        )
+
+
 def test_f026_r51_el_modulo_se_carga_antes_que_app_js(html):
     """Sin el `<script>`, `window.Autoguardado` no existe y la pantalla muere."""
     scripts = re.findall(r"""<script\s+src=["']([^"']+)["']""", html)

@@ -140,9 +140,15 @@
                         class="w-full px-4 py-3 text-left hover:bg-slate-50"
                         :class="parteAbierto && parteAbierto.hash === parte.hash ? 'bg-slate-50' : ''">
                   <div class="flex items-center gap-2">
+                    <!-- F-026 R36 · el aprobado lleva el MISMO verde con
+                         anillo, no el verde liso. Uno lo dio por bueno la
+                         máquina y el otro lo dio por bueno una persona a pesar
+                         de la máquina: pintarlos igual borra exactamente el
+                         dato que esta feature existe para registrar. -->
                     <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                           :class="{
                             'bg-emerald-500': parte.semaforo === 'verde',
+                            'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parte.semaforo === 'aprobado',
                             'bg-amber-400': parte.semaforo === 'ambar',
                             'bg-red-500': parte.semaforo === 'rojo',
                             'bg-slate-300 animate-pulse': parte.estado === 'leyendo' || parte.estado === 'validando',
@@ -161,6 +167,14 @@
                   <p class="mt-1 truncate text-xs text-slate-400">
                     <span x-text="parte.origen"></span>
                     · pág. <span x-text="(parte.paginas_origen || []).join(', ')"></span>
+                  </p>
+                  <!-- R36 · el color solo no basta: hay que poder leer que
+                       esto lo aprobó una persona. Sin el `oid`, sin correo y
+                       sin nombre (R38): quien audite lo lee en la base. -->
+                  <p x-show="estaAprobado(parte)" class="mt-1 text-xs text-sky-700">
+                    Aprobado por revisión humana · venía de
+                    <span x-text="destinoDeOrigen(parte)"></span>
+                    · <span x-text="fechaDeAprobacion(parte)"></span>
                   </p>
                   <ul x-show="parte.validacion && parte.validacion.motivos.length"
                       class="mt-1 list-disc pl-4 text-xs text-slate-500">
@@ -235,6 +249,67 @@
                 <span class="text-xs text-slate-400" x-text="mensajeRevalidacion"></span>
               </div>
 
+              <!-- ── F-026 · la aprobación humana (R35-R39) ──────────────────
+                   El gesto va AQUÍ, en el detalle y con el PDF delante, que es
+                   donde se mira una firma. Nunca en la lista: aprobar es de UN
+                   parte, con ese parte delante (R28, R35).
+
+                   Y no pide una segunda confirmación (R29). Aprobar no escribe
+                   en ningún sistema ajeno —escribe en el esquema propio y se
+                   deshace revalidando—; la confirmación única de F-025 sigue
+                   siendo la única que precede a una escritura externa. -->
+              <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+                <!-- R36, R37 · lo que ya está aprobado: de dónde se rescató y
+                     cuándo. Ni el identificador de quien aprobó, ni su correo,
+                     ni su nombre (R38): eso se audita en la base. -->
+                <template x-if="estaAprobado(parteAbierto)">
+                  <p class="text-sm text-sky-800">
+                    <span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-offset-1 ring-sky-600"></span>
+                    <strong>Aprobado por revisión humana.</strong>
+                    Venía de <span x-text="destinoDeOrigen(parteAbierto)"></span>
+                    · aprobado el <span x-text="fechaDeAprobacion(parteAbierto)"></span>.
+                    Entra en la tanda de archivo y cierre como si fuera apto.
+                  </p>
+                </template>
+
+                <div x-show="esAprobable()" class="flex flex-wrap items-center gap-3">
+                  <button type="button" @click="aprobarParte()"
+                          :disabled="!usuario.usuarioOid || !remesaId"
+                          class="rounded bg-sky-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                    Aprobar este parte
+                  </button>
+                  <span class="text-xs text-slate-500">
+                    La validación lo rechazó, pero el papel está bien: queda
+                    registrado quién lo aprueba y cuándo.
+                  </span>
+                </div>
+
+                <!-- R4 · sin saber quién decide no se puede registrar la
+                     decisión. Se dice, en vez de dejar un botón deshabilitado
+                     sin explicación. -->
+                <p x-show="esAprobable() && !usuario.usuarioOid"
+                   class="mt-2 text-xs text-amber-700">
+                  No se ha podido saber quién eres, así que no se puede
+                  registrar quién aprueba. Vuelve a entrar desde el enlace de la
+                  aplicación.
+                </p>
+
+                <!-- R39 · cuando no es aprobable, en vez del botón, qué hay que
+                     corregir. Aquí no hay nada que decidir: hay algo que
+                     teclear, y teclearlo ya funciona sin aprobar nada. -->
+                <p x-show="!esAprobable() && !estaAprobado(parteAbierto)"
+                   class="text-xs text-slate-500">
+                  Este parte no se puede aprobar. Solo se aprueban los que la
+                  validación rechazó por lo que el cliente escribió a mano o
+                  por la firma: si le falta el <strong>código de obra</strong> o el
+                  <strong>número de incidencia</strong>, corrígelo arriba y
+                  revalida.
+                </p>
+
+                <p x-show="mensajeAprobacion" x-text="mensajeAprobacion"
+                   class="mt-2 text-xs text-slate-600"></p>
+              </div>
+
               <div class="mt-5">
                 <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">PDF del parte</h3>
                 <iframe x-show="urlPdf" :src="urlPdf" title="PDF del parte"
@@ -264,7 +339,11 @@
                class="rounded-lg border border-slate-200 bg-white p-6">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar y cerrar</h2>
         <p class="mt-2 text-sm text-slate-600">
-          <span x-text="pendientes().length"></span> parte(s) en verde por archivar y cerrar.
+          <!-- F-026 R23 · en la tanda entran los aptos **y** los aprobados por
+               una persona. Decir «en verde» dejaría la cuenta sin explicar:
+               los aprobados están dentro de `pendientes()` y no son verdes. -->
+          <span x-text="pendientes().length"></span> parte(s) por archivar y
+          cerrar: los aptos y los que ha aprobado una persona.
         </p>
         <!-- F-019 R27 · los aptos que NO se pudieron guardar no entran en el
              botón, y hay que decir cuántos son: si desaparecieran de la cuenta

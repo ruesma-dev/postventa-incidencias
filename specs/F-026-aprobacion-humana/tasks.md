@@ -170,7 +170,7 @@
       `test_f025_r2_solo_se_arma_una_confirmacion_en_todo_el_front` sigue en
       verde.
 
-- [ ] **T16**: Añadir a `index.html` el botón «Aprobar este parte» en el
+- [x] **T16**: Añadir a `index.html` el botón «Aprobar este parte» en el
       detalle, la marca del semáforo con anillo y el texto de R36/R37, y la
       frase de R39 cuando no es aprobable. | Verificación:
       `tests/test_f026_front.py` — el botón está dentro del bloque del detalle

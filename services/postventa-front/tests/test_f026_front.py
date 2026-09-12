@@ -181,3 +181,141 @@ def test_f026_r22_la_respuesta_de_aprobar_se_guarda_en_el_parte(app):
 
     assert "parte.aprobacion" in aprobar
     assert "datos.aprobacion" in aprobar or "respuesta.aprobacion" in aprobar
+
+
+# ===========================================================================
+# R35, R36, R37, R39 · lo que se ve en pantalla
+# ===========================================================================
+
+
+def _lista(html: str) -> str:
+    """El bloque de la **lista** de partes: la columna izquierda."""
+    return _bloque(html, '<template x-for="parte in partes"', "</ul>")
+
+
+def _detalle(html: str) -> str:
+    """El bloque del **detalle**: el parte abierto, con su PDF delante."""
+    return _bloque(html, 'x-show="parteAbierto"', "</section>")
+
+
+def test_f026_r35_el_boton_de_aprobar_esta_en_el_detalle(html):
+    """R35 · con el PDF delante, que es donde se mira una firma."""
+    assert "Aprobar este parte" in _detalle(html)
+    assert "aprobarParte()" in _detalle(html)
+
+
+def test_f026_r35_el_boton_de_aprobar_no_esta_en_la_lista(html):
+    """R35, R28 · no se aprueba por lotes ni desde una lista.
+
+    Aprobar es de **un** parte, con ese parte delante. Un botón en la fila
+    invita a ir bajando y pulsando, que es justo lo que R28 prohíbe.
+    """
+    assert "aprobarParte(" not in _lista(html)
+    assert "Aprobar este parte" not in _lista(html)
+
+
+def test_f026_r39_sin_ser_aprobable_no_se_ofrece_el_gesto(html):
+    """R39 · el botón solo aparece cuando hay algo que decidir."""
+    detalle = _detalle(html)
+
+    assert 'x-show="esAprobable()"' in detalle or "esAprobable()" in detalle
+    assert detalle.count("esAprobable()") >= 2, (
+        "hace falta la condición del botón y la del texto que dice qué "
+        "corregir cuando no es aprobable"
+    )
+
+
+def test_f026_r39_cuando_no_es_aprobable_se_dice_que_hay_que_corregir(html):
+    """R39 · y se dice **qué** hay que corregir, no solo que no se puede."""
+    detalle = _detalle(html)
+
+    assert "código de obra" in detalle
+    assert "número de incidencia" in detalle
+
+
+def test_f026_r36_el_aprobado_no_se_pinta_como_el_verde_liso(html):
+    """R36 · marca propia: el mismo punto, pero con anillo.
+
+    Uno lo dio por bueno la máquina y el otro lo dio por bueno una persona **a
+    pesar** de la máquina. Si el marcador fuera el mismo, la pantalla borraría
+    el dato que esta feature existe para registrar.
+    """
+    lista = _lista(html)
+
+    assert "'aprobado'" in lista, "la fila no mira el cuarto estado del semáforo"
+    marca = [
+        linea
+        for linea in lista.splitlines()
+        if "semaforo === 'aprobado'" in linea
+    ]
+    assert marca, "no hay ninguna clase atada al semáforo 'aprobado'"
+    assert any("ring" in linea for linea in marca), (
+        "el marcador del aprobado es el verde liso: R36 pide una marca propia"
+    )
+
+
+def test_f026_r36_hay_un_texto_que_dice_que_lo_aprobo_una_persona(html):
+    """R36 · el color solo no basta: hay que poder leerlo."""
+    for bloque in (_lista(html), _detalle(html)):
+        assert "revisión humana" in bloque or "una persona" in bloque
+
+
+def test_f026_r37_el_texto_dice_de_donde_venia_y_cuando(html):
+    """R37 · de qué destino se rescató el parte y cuándo se aprobó."""
+    detalle = _detalle(html)
+
+    assert "destinoDeOrigen(" in detalle
+    assert "fechaDeAprobacion(" in detalle
+
+
+def test_f026_r38_la_pantalla_no_pinta_quien_aprobo(html):
+    """R38, R43 · ni el `oid`, ni el correo, ni el nombre.
+
+    Que la decisión quede registrada no exige publicarla en la pantalla de
+    todo el que mire la remesa. Quien necesite auditarla la lee en la base, con
+    el `JOIN` de la spec.
+    """
+    detalle = _detalle(html)
+    aprobacion = [
+        linea for linea in detalle.splitlines() if "aprobacion" in linea
+    ]
+
+    for linea in aprobacion:
+        for prohibido in ("usuarioOid", "aprobado_por", "correo", "userDetails"):
+            assert prohibido not in linea, (
+                f"la sección de la aprobación pinta {prohibido!r}: R38 dice que "
+                "el identificador de quien aprobó no sale en pantalla"
+            )
+
+
+def test_f026_r38_el_bloque_de_aprobacion_solo_usa_las_cuatro_claves_publicadas(html):
+    """Control negativo: lo que se lee del bloque es lo que el backend publica.
+
+    Son cuatro claves y ninguna más (`aprobacion_serializada.py`). Leer una que
+    no existe no rompería la pantalla —pintaría vacío— y por eso hay que
+    mirarlo aquí.
+    """
+    permitidas = {
+        "estado",
+        "destino_aprobado",
+        "motivos_aprobados",
+        "aprobado_at_utc",
+    }
+    usadas = set(re.findall(r"aprobacion\.(\w+)", _detalle(html) + _lista(html)))
+
+    assert usadas <= permitidas, f"claves que el backend no publica: {usadas - permitidas}"
+
+
+def test_f026_r23_el_boton_de_la_tanda_ya_no_habla_solo_de_verdes(html):
+    """R23 · en la tanda entran los aptos **y** los aprobados.
+
+    Dejar el texto viejo —«parte(s) en verde»— haría que quien mire la pantalla
+    cuente mal: los aprobados están dentro de `pendientes()` desde F-026, y el
+    número que se enseña es el de esa lista.
+    """
+    tanda = _bloque(html, "Archivar y cerrar</h2>", "</section>")
+
+    assert "en verde por archivar" not in tanda, (
+        "el texto sigue diciendo que la tanda son los verdes, y ya no lo es"
+    )
+    assert "aprobado" in tanda

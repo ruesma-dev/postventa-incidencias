@@ -1,8 +1,8 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-08-26. **Última feature que
-> lo tocó**: F-019 (nació con F-005).
+> **Origen**: este repositorio. **Fecha**: 2026-09-12. **Última feature que
+> lo tocó**: F-026 (nació con F-005).
 >
 > Este documento es la **fuente de verdad** de lo que `postventa-incidencias`
 > consume del ecosistema de Ruesma y de lo que expone a los demás. Se copia a
@@ -53,8 +53,27 @@ Servidor  psql-albaranes-rs9k2      COMPARTIDO — no tocamos nada suyo
                ├── validaciones            la cola de revisión humana
                ├── archivos                traza de lo subido a SharePoint
                ├── cierres                 traza del cierre en Sigrid
-               └── preferencias_usuario    auto-cierre por usuario
+               ├── preferencias_usuario    auto-cierre por usuario
+               ├── usuarios_sigrid         el login del ERP de quien confirma
+               ├── graficos                traza del parte adjunto en Sigrid
+               └── aprobaciones            quién aprobó un parte NO apto, y cuándo
 ```
+
+Las nueve van en el orden en que las crea el DDL (`01_esquema.sql` …
+`10_aprobaciones.sql`). Las tres últimas se listan **desde F-026**
+(2026-09-12): `aprobaciones` es suya, y `usuarios_sigrid` (F-009) y `graficos`
+(F-012) llevaban existiendo desde sus features sin figurar en este árbol —un
+inventario incompleto es peor que no tenerlo, así que se corrigen al pasar.
+
+**`aprobaciones` es la tabla nueva de F-026** y merece una línea aparte, porque
+es la única del esquema que registra **una decisión humana que contradice a la
+máquina**: que una persona dio por bueno un parte que la validación mandó a
+revisión. Guarda el `oid` opaco de quien aprobó, el destino del que se rescató
+el parte, los **códigos** de los motivos aprobados y una **huella** (`sha256`)
+del veredicto sobre el que se decidió; **ni una copia del texto manuscrito** y
+ningún binario. Cuando el veredicto cambia, la aprobación se **revoca** en la
+misma operación que guarda la validación nueva: la fila no se borra nunca, se
+marca. El detalle está en `specs/F-026-aprobacion-humana/design.md` §10.
 
 **Base propia y esquema nominado, las dos cosas.** La base propia es cómo
 aísla el ecosistema (`albaranes`, `partes`, `sigrid_dm`: un servidor, varias
@@ -444,7 +463,16 @@ las reglas de §2. La única superficie compartida real es el **disco** y el
 La base guarda **datos personales de clientes**: DNI y observaciones
 manuscritas del parte, además de la promoción y la unidad, que localizan una
 vivienda. También el identificador opaco de Entra (`oid`) del empleado que
-sube la remesa o confirma un cierre; nunca su correo ni su nombre.
+sube la remesa, confirma un cierre o **aprueba un parte que la validación había
+rechazado** (F-026); nunca su correo ni su nombre.
+
+Ese último `oid` se guarda por una razón distinta de las otras dos y conviene
+que se sepa: no es traza de un proceso, es **la firma de una decisión** que
+contradice a la validación automática. Quien audite un archivo o un cierre
+tiene derecho a saber si lo abrió el veredicto o lo abrió una persona, y
+cuándo. Para eso basta un identificador opaco: **para saber que alguien
+decidió no hace falta saber quién es**, y por eso ahí no entra ni el correo, ni
+el nombre, ni el login del ERP.
 
 Consecuencias para quien administre el servidor:
 
@@ -491,6 +519,7 @@ documento.
 | `POST /api/validar` | Solo reglas. Sin IA y sin efecto externo |
 | `POST /api/remesa` | **Escribe** en `postventa.remesas` (esquema propio). Devuelve el `remesa_id` que hay que reenviar después |
 | `POST /api/parte` | **Escribe** en `postventa.partes` y `postventa.validaciones`. Recalcula el veredicto con las reglas del dominio: nunca acepta el que venga en el cuerpo |
+| `POST /api/aprobar` | **Escribe** en `postventa.aprobaciones` (esquema propio): registra que **una persona** dio por bueno un parte que la validación automática había mandado a revisión, con su `oid`, los códigos del motivo y una huella del veredicto aprobado. **No toca ningún sistema ajeno, y en Sigrid no consta**. Recalcula el veredicto y nunca acepta el que venga en el cuerpo. Es lo que permite que un parte **no apto** entre después en el circuito de archivo y cierre; sin esa fila se queda fuera, y las tres puertas del backend lo comprueban una a una (F-026) |
 | `GET /api/cola` | **Lee** la cola de validación humana. Único endpoint que devuelve **dato personal acumulado** sin que el llamante aporte el PDF: tope duro de 500 entradas por llamada |
 | `POST /api/archivar` | **Escribe** en la biblioteca de dev de SharePoint y deja traza en la base. Exige que el parte **ya conste guardado**: si no, responde 409 sin subir nada |
 | `POST /api/adjuntar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: adjunta el PDF del parte a la reclamación como gráfico, **tres filas en dos bases**, por el endpoint de dominio de la pasarela. Va **antes** del cierre. `multipart/form-data`, con el fichero. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP. **Su reintento es seguro**: el endpoint de la pasarela es idempotente por contenido |
@@ -502,7 +531,16 @@ escritura cerrada —que es como se despliega— se sube la remesa, se trocea, s
 extrae, se valida, **se guarda** y se lee la cola; solo `POST /api/archivar`
 responde 503.
 
-Los once quedan en nivel **anónimo**, y **es deliberado**: con un backend
+**`POST /api/aprobar` tampoco mira ninguna de las dos ventanas**, y es
+deliberado: aprobar es registrar una decisión en nuestra base, no escribir
+fuera. Con `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` apagados se puede aprobar
+un parte y no pasa nada más; lo que la aprobación abre son las puertas de
+`POST /api/archivar`, `POST /api/adjuntar` y `POST /api/cerrar`, que **siguen
+teniendo las suyas intactas**. Dicho al revés, para que un parte no apto acabe
+dentro del ERP hacen falta las dos cosas: que una persona lo aprobara y que la
+ventana de escritura esté abierta.
+
+Los doce quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie
 rompe el front. Y ese nivel es **irrelevante desde internet**: la plataforma

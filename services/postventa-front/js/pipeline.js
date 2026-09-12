@@ -37,6 +37,35 @@
   /** El umbral del dominio (`domain/models/firma.py::UMBRAL_CONFIANZA`). */
   const UMBRAL_CONFIANZA = 50;
 
+  /**
+   * F-026 R6 · los DOS motivos sobre los que una persona puede decidir.
+   *
+   * Copia de `domain/models/aprobacion.py::MOTIVOS_APROBABLES`, igual que
+   * `UMBRAL_CONFIANZA` y `CAMPOS_DEL_PARTE` son copias de sus constantes del
+   * dominio. **La decisión de verdad la toma el backend**, que vuelve a
+   * evaluarla en cada petición: esto solo evita ofrecer un botón que va a
+   * responder 409.
+   *
+   * Los otros dos motivos de F-004 —`codigo_obra_no_legible` y
+   * `numero_incidencia_no_legible`— no están, y no es política: ahí no hay
+   * nada que decidir, hay algo que teclear, y teclearlo ya funciona sin
+   * aprobar nada.
+   */
+  const MOTIVOS_APROBABLES = ["observaciones_manuscritas", "firma_no_humana"];
+
+  /**
+   * F-026 · cómo llama el backend a una aprobación que sigue en pie, y a una
+   * que dejó de valer (`interface_adapters/api/aprobacion_serializada.py`).
+   *
+   * «Revocada» se distingue de «no hay aprobación» a propósito: la pantalla
+   * tiene que poder contar «se decidió y dejó de valer», que es lo que hace
+   * que alguien vuelva a mirar el parte en vez de darlo por olvidado.
+   */
+  const APROBACION_VIGENTE = "aprobado";
+
+  /** F-026 R36 · el cuarto estado del semáforo. NO es un verde más. */
+  const SEMAFORO_APROBADO = "aprobado";
+
   /** Lo que `/api/archivar` acepta, además del fichero. NADA personal (R29). */
   const CAMPOS_DE_ARCHIVO = [
     "hash",
@@ -147,8 +176,23 @@
     });
   }
 
-  /** Verde / ámbar / rojo, a partir de `veredicto` y `destino` (R13). */
-  function semaforoDe(validacion) {
+  /**
+   * Verde / ámbar / rojo, a partir de `veredicto` y `destino` (R13), y desde
+   * F-026 también **aprobado** (R36).
+   *
+   * El cuarto estado no es un verde más, y esa es la razón de que exista: uno
+   * lo dio por bueno la máquina y el otro lo dio por bueno una persona **a
+   * pesar** de la máquina. Pintarlos igual borra exactamente el dato que
+   * F-026 existe para registrar.
+   *
+   * Una aprobación **revocada** no pinta nada: el parte vuelve a su color de
+   * origen —ámbar o rojo— porque el veredicto cambió y nadie ha opinado sobre
+   * lo nuevo (R31).
+   *
+   * @param {object} aprobacion El bloque `aprobacion` que devuelven
+   *        `POST /api/parte` y `POST /api/aprobar`, o `null`.
+   */
+  function semaforoDe(validacion, aprobacion) {
     if (!validacion || !validacion.destino) {
       return "";
     }
@@ -157,6 +201,9 @@
       validacion.destino === DESTINO_ARCHIVO
     ) {
       return "verde";
+    }
+    if (aprobacionVale(aprobacion, validacion)) {
+      return SEMAFORO_APROBADO;
     }
     if (validacion.destino === DESTINO_COLA) {
       return "ambar";
@@ -173,6 +220,71 @@
       validacion &&
         validacion.veredicto === VEREDICTO_APTO &&
         validacion.destino === DESTINO_ARCHIVO,
+    );
+  }
+
+  /**
+   * F-026 R6-R10 · ¿puede una persona aprobar este parte?
+   *
+   * Tres condiciones, y las tres hacen falta: hay veredicto, **no es apto**
+   * —lo que la máquina dio por bueno no tiene nada que aprobar— y **todos**
+   * sus motivos están en la lista. Basta uno fuera para que no se pueda: el
+   * parte que trae observaciones y además ha perdido el código de obra
+   * archivaría en una carpeta inventada.
+   *
+   * Es la copia en pantalla de `domain/models/aprobacion.py::es_aprobable`, y
+   * sirve para no ofrecer un gesto que el backend va a rechazar (R39). Quien
+   * decide sigue siendo el backend, que lo vuelve a evaluar con el veredicto
+   * que él mismo recalcula (R5).
+   */
+  function esAprobable(validacion) {
+    if (!validacion || validacion.veredicto === VEREDICTO_APTO) {
+      return false;
+    }
+    const motivos = validacion.motivos || [];
+    if (!motivos.length) {
+      return false;
+    }
+    return motivos.every(function (motivo) {
+      return MOTIVOS_APROBABLES.indexOf(motivo && motivo.codigo) !== -1;
+    });
+  }
+
+  /**
+   * ¿Hay una decisión de una persona que siga en pie **para este veredicto**?
+   *
+   * Que el destino tenga que coincidir es lo que hace que la aprobación sirva
+   * sin poder recomputar la huella en pantalla: si el parte pasó de la cola
+   * ámbar a revisión manual, la aprobación de la cola no dice nada de lo
+   * nuevo. El backend lo comprueba igual, y con la huella entera.
+   */
+  function aprobacionVale(aprobacion, validacion) {
+    return Boolean(
+      aprobacion &&
+        aprobacion.estado === APROBACION_VIGENTE &&
+        validacion &&
+        aprobacion.destino_aprobado === validacion.destino,
+    );
+  }
+
+  /**
+   * F-026 R23 · ¿entra este parte en el circuito de archivo, gráfico y cierre?
+   *
+   * Dos caminos, y solo dos: **el de siempre** —apto con destino de archivo,
+   * sin que nadie apruebe nada— y **el que abre F-026**: una aprobación viva
+   * del destino que declara la validación de ahora. Es la copia en pantalla de
+   * `domain/models/aprobacion.py::admite_circuito`, y el backend lo vuelve a
+   * comprobar en las tres puertas.
+   *
+   * `esArchivable` **se conserva con su significado de siempre** —«lo que la
+   * máquina dio por bueno»— porque lo usa `noArchivables()` y porque la
+   * distinción entre las dos cosas es el requisito (R36).
+   */
+  function esCirculable(parte) {
+    const validacion = parte && parte.validacion;
+    return (
+      esArchivable(validacion) ||
+      aprobacionVale(parte && parte.aprobacion, validacion)
     );
   }
 
@@ -552,6 +664,61 @@
   }
 
   /**
+   * F-026 · el cuerpo de `POST /api/aprobar`: el de guardar **más dos claves**.
+   *
+   * El backend hace las dos cosas en una sola llamada —guarda el parte con su
+   * veredicto y escribe la aprobación con la huella de *ese mismo* veredicto—,
+   * así que necesita exactamente lo que necesita `/api/parte`: los nueve
+   * campos y la lectura de la firma. Recortar la extracción no protegería
+   * nada y sí cambiaría el veredicto que se aprueba: sin las observaciones, el
+   * parte dejaría de traer `observaciones_manuscritas` y ni siquiera sería
+   * aprobable. Lo que F-026 añade, y es todo lo que añade, son `usuario_oid` y
+   * `confirmado`.
+   *
+   * Lo que **no** lleva, igual que `cuerpoDeParte`: ni los bytes del PDF —el
+   * documento vive en SharePoint (R12)— ni ningún veredicto ya hecho, que el
+   * backend recalcula (R5, R19). Si llegara hecho, quien llama se declararía
+   * aprobable y aprobaría un parte al que le falta el código de obra.
+   *
+   * `confirmado` es el **booleano** de JSON, que es lo único que el backend
+   * acepta. Y no es una segunda confirmación de pantalla (R29): el botón es el
+   * acto explícito, y la confirmación única de F-025 sigue siendo la única que
+   * precede a una escritura externa.
+   *
+   * Se niega a componer nada que no sea aprobable o que no tenga remesa: no
+   * basta con no pintar el botón, porque aunque se pulse dos veces, aquí se
+   * para.
+   */
+  function cuerpoDeAprobacion(parte, opciones) {
+    const ajustes = opciones || {};
+    if (!esAprobable(parte && parte.validacion)) {
+      throw new Error(
+        "este parte no se puede aprobar: solo se aprueban los que la " +
+          "validación rechazó por observaciones manuscritas o por la firma. " +
+          "Si le falta el código de obra o el número de incidencia, hay que " +
+          "corregirlo y revalidar",
+      );
+    }
+    if (!ajustes.usuarioOid) {
+      throw new Error(
+        "no se sabe quién aprueba este parte: sin el identificador del " +
+          "usuario no se puede registrar quién tomó la decisión",
+      );
+    }
+    if (!ajustes.remesaId) {
+      throw new Error(
+        "no hay ninguna remesa registrada para este parte: vuelve a subir la " +
+          "remesa para que quede constancia antes de aprobarlo",
+      );
+    }
+
+    const cuerpo = cuerpoDeParte(parte, ajustes.remesaId);
+    cuerpo.usuario_oid = ajustes.usuarioOid;
+    cuerpo.confirmado = true;
+    return cuerpo;
+  }
+
+  /**
    * Guarda el parte y su veredicto. **Nunca lanza** (F-019 R27).
    *
    * Devuelve `{ok, motivo}`. Un guardado fallido no es un error del proceso:
@@ -911,6 +1078,13 @@
     esCerrable: esCerrable,
     valorDeCampo: valorDeCampo,
     cuerpoDeArchivo: cuerpoDeArchivo,
+    // F-026 · la aprobación humana: qué se puede aprobar, qué circula y qué
+    // viaja en la petición.
+    MOTIVOS_APROBABLES: MOTIVOS_APROBABLES,
+    SEMAFORO_APROBADO: SEMAFORO_APROBADO,
+    esAprobable: esAprobable,
+    esCirculable: esCirculable,
+    cuerpoDeAprobacion: cuerpoDeAprobacion,
     cuerpoDeCierre: cuerpoDeCierre,
     cuerpoDeGrafico: cuerpoDeGrafico,
     estaAdjuntado: estaAdjuntado,

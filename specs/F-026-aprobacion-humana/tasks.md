@@ -144,7 +144,7 @@
 
 ## Bloque 4 · La pantalla
 
-- [ ] **T13**: Añadir a `js/pipeline.js` `esAprobable`, `esCirculable`,
+- [x] **T13**: Añadir a `js/pipeline.js` `esAprobable`, `esCirculable`,
       `cuerpoDeAprobacion` y el `semaforoDe` con aprobación, exportados. |
       Verificación: `tests_js/aprobacion.test.js` — `semaforoDe` devuelve
       `"aprobado"` para el aprobado vigente y **nunca** `"verde"` (R36);

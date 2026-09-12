@@ -22,6 +22,13 @@ function appPostventa() {
   const config = window.CONFIG_POSTVENTA;
   const api = window.Api.crearApi({ baseApi: config.baseApi, config: config });
 
+  // F-026 R51 · el autoguardado de las correcciones. Vive en el cierre y no en
+  // el estado de Alpine a propósito: no es un dato que se pinte —lo que se
+  // pinta son `estadoAutoguardado` y `mensajeAutoguardado`, que sí están
+  // declarados abajo— y meterlo en el estado lo envolvería en el proxy
+  // reactivo sin ninguna ganancia. Se monta en `_autoguardado()`.
+  let autoguardado = null;
+
   return {
     // --- estado del servicio (R27) ---
     estadoServicio: "comprobando",
@@ -54,6 +61,14 @@ function appPostventa() {
     parteAbierto: null,
     urlPdf: "",
     mensajeRevalidacion: "",
+    // F-026 R52 · los tres estados del autoguardado —guardando, guardado y no
+    // se ha podido guardar— y su texto. **Nacen declarados** para que Alpine
+    // los haga reactivos: añadirlos a mitad de sesión no repintaría nada, que
+    // es el defecto que F-025 documentó con `paso`. Y lo que se pinta cuando
+    // el guardado falla es lo único que separa «no se guardó» de que la
+    // persona suponga que sí.
+    estadoAutoguardado: "",
+    mensajeAutoguardado: "",
     // F-026 · qué pasó con la última aprobación que se pidió. Nace declarado
     // para que Alpine lo haga reactivo, como todo lo demás de esta pantalla.
     mensajeAprobacion: "",
@@ -290,6 +305,13 @@ function appPostventa() {
       // escritura, y esta es la respuesta de esa misma escritura.
       if (guardado && guardado.ok) {
         parte.aprobacion = guardado.aprobacion;
+        // F-026 R51 · y lo que acaba de quedar guardado es contra lo que se
+        // compara la siguiente pulsación. Sin esta foto, escribir el mismo
+        // valor que ya está en la base dispararía un guardado de más.
+        this._autoguardado().anotarGuardado(
+          parte,
+          window.Pipeline.valoresDeCampos(parte),
+        );
       }
     },
 
@@ -376,12 +398,70 @@ function appPostventa() {
     editarCampo(nombre, valor) {
       this.parteAbierto.ediciones[nombre] = valor;
       this.mensajeRevalidacion = "Hay correcciones sin revalidar.";
+      // F-026 R50, R55 · y se guarda solo, tras la pausa, sin botón y sea cual
+      // sea el veredicto del parte. Cuánto se espera y si hay algo que guardar
+      // lo decide `js/autoguardado.js`, que sí tiene tests.
+      this._autoguardado().alEscribir(this.parteAbierto, nombre, valor);
     },
 
     hayEdiciones() {
       return (
         this.parteAbierto && Object.keys(this.parteAbierto.ediciones).length > 0
       );
+    },
+
+    // =====================================================================
+    // F-026 R50-R55 · el autoguardado de las correcciones
+    // =====================================================================
+    //
+    // Aquí no se decide nada, como siempre: cuándo se guarda y si hay algo que
+    // guardar está en `js/autoguardado.js`, y QUÉ se pide está en
+    // `js/pipeline.js`. Esto ata las dos cosas al estado de Alpine.
+
+    _autoguardado() {
+      // Se monta la primera vez que alguien escribe, y no al crear el objeto,
+      // porque las dos funciones que necesita —guardar y pintar— son métodos
+      // de este objeto: montarlo antes obligaría a atarlas a mano.
+      if (autoguardado === null) {
+        autoguardado = window.Autoguardado.crearAutoguardado({
+          // R51 · el retardo es el de la configuración. Ni uno inventado aquí,
+          // ni uno por pantalla.
+          retardoMs: config.RETARDO_AUTOGUARDADO_MS,
+          guardar: (parte) => this._guardarCorreccion(parte),
+          alCambiarEstado: (cambio) => this._pintarAutoguardado(cambio),
+        });
+      }
+      return autoguardado;
+    },
+
+    async _guardarCorreccion(parte) {
+      // R50 · **revalidar y guardar juntos**, con la misma función que usa el
+      // botón. Guardar el campo sin revalidar dejaría en la base el veredicto
+      // que la IA emitió sobre el dato SIN corregir, y las tres puertas de
+      // F-026 leen ese veredicto.
+      const resultado = await window.Pipeline.revalidarYGuardar(
+        parte,
+        api,
+        this.remesaId,
+      );
+      this._anotarGuardado(parte, resultado.guardado);
+      this._anotarVeredicto(parte, resultado.validacion);
+
+      if (!parte.guardado) {
+        // `guardarParte` no lanza cuando el backend rechaza: devuelve
+        // `{ok: false, motivo}` para no tirar un veredicto ya pagado. Aquí eso
+        // es un fallo de guardado y tiene que llegar a la pantalla (R52): sin
+        // esto, la respuesta sería «Guardado» con la base sin tocar.
+        throw new Error(parte.errorGuardado || "no se ha podido guardar");
+      }
+      return resultado;
+    },
+
+    _pintarAutoguardado(cambio) {
+      // R52 · los tres estados. El de fallo se queda puesto hasta que un
+      // guardado salga bien: no hay temporizador que lo borre.
+      this.estadoAutoguardado = cambio.estado;
+      this.mensajeAutoguardado = cambio.mensaje;
     },
 
     async revalidarParte() {
@@ -712,6 +792,12 @@ function appPostventa() {
     // Volver a empezar
     // =====================================================================
     reiniciar() {
+      // F-026 R51 · lo primero, cortar el autoguardado en espera. Un
+      // temporizador vivo después de reiniciar guardaría un parte que ya no
+      // está en pantalla, contra una remesa que ya no existe.
+      this._autoguardado().cancelarPendiente();
+      this.estadoAutoguardado = "";
+      this.mensajeAutoguardado = "";
       this._revocarPdf();
       this.fase = "inactivo";
       this.seleccion = [];

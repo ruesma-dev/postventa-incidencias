@@ -1,0 +1,288 @@
+// services/postventa-front/tests_js/autoguardado.test.js
+// F-026 · El autoguardado de las correcciones (R50-R55).
+//
+// Lo que esta feature viene a arreglar es concreto: hoy `editarCampo` guarda
+// la corrección **solo en memoria**, y quien escribe y se va la pierde. Lo que
+// se prueba aquí es el mecanismo que lo evita, y las tres cosas que lo hacen
+// aceptable:
+//
+//   1. Una pausa, no una pulsación (R51). Cinco teclas son UN guardado, no
+//      cinco, porque al otro lado hay un PostgreSQL **compartido con otros dos
+//      proyectos en producción**.
+//   2. Si falla, se dice (R52). El aviso **no se va solo** y lo escrito se
+//      conserva: quien escribe y no ve nada supone que se guardó.
+//   3. Se revalida y se guarda **juntos** (R50), porque guardar sin revalidar
+//      deja en la base el veredicto que la IA emitió sobre el dato **sin
+//      corregir**.
+//
+// El módulo no mira el reloj ni conoce el DOM: el temporizador entra por
+// parámetro, igual que el instante entra por parámetro en `confirmacion.js`.
+// Sin eso, probar «una pausa» costaría segundos de espera real por test.
+//
+// TODOS los valores están INVENTADOS. Los partes de verdad llevan DNI y
+// observaciones manuscritas de clientes y no entran en el repositorio.
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+
+const { crearAutoguardado, GUARDANDO, GUARDADO, FALLO } = require("../js/autoguardado.js");
+const Pipeline = require("../js/pipeline.js");
+
+const HASH = "a1b2c3d4e5f6";
+const OTRO_HASH = "f6e5d4c3b2a1";
+const REMESA = "remesa-inventada-de-test";
+
+const RUTA_CONFIG = path.join(__dirname, "..", "js", "config.js");
+
+/** Evalúa `config.js` igual que lo haría el navegador y devuelve su objeto. */
+function cargarConfig() {
+  const fuente = fs.readFileSync(RUTA_CONFIG, "utf8");
+  const contexto = { window: {} };
+  vm.createContext(contexto);
+  vm.runInContext(fuente, contexto, { filename: "config.js" });
+  return contexto.window.CONFIG_POSTVENTA;
+}
+
+/**
+ * Un temporizador de mentira: registra lo que se programa y lo que se cancela,
+ * y solo dispara cuando el test lo dice.
+ *
+ * Registrar las cancelaciones no es adorno: la diferencia entre «cinco teclas,
+ * un guardado» y «cinco teclas, cinco guardados» es exactamente que cada
+ * pulsación **cancele** la anterior, y eso no se ve mirando solo cuántas veces
+ * se guardó al final.
+ */
+function relojFalso() {
+  const reloj = {
+    programados: [],
+    cancelados: [],
+    _siguienteId: 1,
+    programar(fn, ms) {
+      const id = reloj._siguienteId++;
+      reloj.programados.push({ id: id, fn: fn, ms: ms, vivo: true, disparado: false });
+      return id;
+    },
+    cancelar(id) {
+      const encontrado = reloj.programados.find((uno) => uno.id === id);
+      if (encontrado) {
+        encontrado.vivo = false;
+        reloj.cancelados.push(id);
+      }
+    },
+    /**
+     * Dispara los temporizadores vivos, en orden, y espera a que terminen.
+     *
+     * Da un respiro entre uno y otro —unos cuantos microtareas— porque en el
+     * navegador entre dos pausas de 1.500 ms cabe de sobra una petición
+     * entera, y sin ese respiro el segundo guardado se encontraría al primero
+     * todavía en el aire, que es una carrera del test y no del código.
+     *
+     * Vuelve a mirar si han aparecido temporizadores nuevos, porque el módulo
+     * reprograma cuando se le pide guardar con otro guardado en vuelo. Con un
+     * tope, para que un módulo que reprogramara sin fin no colgase la suite.
+     */
+    async correr() {
+      for (let vuelta = 0; vuelta < 10; vuelta += 1) {
+        const vivos = reloj.vivos();
+        if (vivos.length === 0) {
+          return;
+        }
+        for (const uno of vivos) {
+          for (let tic = 0; tic < 10; tic += 1) {
+            await Promise.resolve();
+          }
+          uno.disparado = true;
+          await uno.fn();
+        }
+      }
+      throw new Error(
+        "el autoguardado sigue programando guardados después de diez vueltas",
+      );
+    },
+    /** Los que llegarían a dispararse: los vivos y sin disparar. */
+    vivos() {
+      return reloj.programados.filter((uno) => uno.vivo && !uno.disparado);
+    },
+  };
+  return reloj;
+}
+
+/** Un parte con sus nueve campos leídos por la IA, todos inventados. */
+function parteInventado(hash) {
+  return {
+    hash: hash || HASH,
+    ediciones: {},
+    firma: { firma: { clasificacion: "ilegible", confianza_pct: 40 } },
+    extraccion: {
+      campos: {
+        promocion: { valor: "PROMO-INVENTADA", confianza_pct: 90 },
+        codigo_obra: { valor: "OBRA-0001", confianza_pct: 88 },
+        unidad: { valor: "3B", confianza_pct: 70 },
+        numero_incidencia: { valor: "12345", confianza_pct: 95 },
+        fecha_servicio: { valor: "2026-09-01", confianza_pct: 80 },
+        descripcion: { valor: "texto inventado", confianza_pct: 60 },
+        dni_cliente: { valor: "00000000T", confianza_pct: 55 },
+        observaciones: { valor: "manuscrito inventado", confianza_pct: 30 },
+        numero_pagina: { valor: "1", confianza_pct: 99 },
+      },
+    },
+  };
+}
+
+/** Los valores del parte tal y como quedaron guardados la última vez. */
+function valoresDe(parte) {
+  const valores = {};
+  Object.keys(parte.extraccion.campos).forEach(function (nombre) {
+    valores[nombre] = parte.extraccion.campos[nombre].valor;
+  });
+  return valores;
+}
+
+/** Un autoguardado montado con reloj de mentira y un contador de guardados. */
+function montar(ajustes) {
+  const opciones = ajustes || {};
+  const reloj = relojFalso();
+  const guardados = [];
+  const estados = [];
+  const auto = crearAutoguardado({
+    retardoMs: opciones.retardoMs === undefined ? 1500 : opciones.retardoMs,
+    guardar: function (parte) {
+      guardados.push(parte.hash);
+      return opciones.guardar ? opciones.guardar(parte) : Promise.resolve({});
+    },
+    alCambiarEstado: function (cambio) {
+      estados.push(cambio);
+    },
+    programar: reloj.programar,
+    cancelar: reloj.cancelar,
+  });
+  return { auto: auto, reloj: reloj, guardados: guardados, estados: estados };
+}
+
+// =========================================================================
+// R51 · una pausa, no una pulsación
+// =========================================================================
+
+test("f026 R51: teclear cinco veces seguidas produce UN guardado, no cinco", async () => {
+  const montaje = montar();
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  "12345".split("").forEach(function (_, indice) {
+    montaje.auto.alEscribir(parte, "unidad", "3B" + "x".repeat(indice + 1));
+  });
+  await montaje.reloj.correr();
+
+  assert.deepEqual(montaje.guardados, [HASH]);
+  // Y las cuatro primeras se cancelaron: eso es lo que hace que sea una pausa
+  // y no cinco escrituras contra una base compartida.
+  assert.equal(montaje.reloj.cancelados.length, 4);
+});
+
+test("f026 R51: reescribir el mismo valor no produce ningún guardado", async () => {
+  const montaje = montar();
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  const resultado = montaje.auto.alEscribir(parte, "unidad", "3B");
+  await montaje.reloj.correr();
+
+  assert.equal(resultado.programado, false);
+  assert.deepEqual(montaje.guardados, []);
+});
+
+test("f026 R51: escribir y deshacer deja la pantalla sin nada que guardar", async () => {
+  // El caso real: alguien teclea una letra de más y la borra. Lo que queda es
+  // el valor guardado, así que no hay motivo para escribir en la base.
+  const montaje = montar();
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "3BB");
+  montaje.auto.alEscribir(parte, "unidad", "3B");
+  await montaje.reloj.correr();
+
+  assert.deepEqual(montaje.guardados, []);
+  assert.deepEqual(montaje.reloj.vivos(), []);
+});
+
+test("f026 R51: los espacios de sobra no son un cambio", () => {
+  // `js/pipeline.js::normalizarValor` recorta antes de enviar, así que «3B » y
+  // «3B» llegan iguales al backend. Guardar por ese espacio sería una
+  // escritura contra la base compartida que no cambia ni un byte.
+  const montaje = montar();
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  assert.equal(montaje.auto.alEscribir(parte, "unidad", " 3B ").programado, false);
+});
+
+test("f026 R51: un campo que la IA dejó vacío y sigue vacío tampoco es un cambio", () => {
+  const montaje = montar();
+  const parte = parteInventado();
+  parte.extraccion.campos.unidad = { valor: null, confianza_pct: 0 };
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  assert.equal(montaje.auto.alEscribir(parte, "unidad", "").programado, false);
+});
+
+test("f026 R51: el retardo es el de config.js y el módulo lo exige", () => {
+  const config = cargarConfig();
+
+  assert.equal(typeof config.RETARDO_AUTOGUARDADO_MS, "number");
+  assert.ok(config.RETARDO_AUTOGUARDADO_MS > 0);
+
+  // Sin retardo no hay pausa que valga: el módulo se niega a montarse antes
+  // que a escribir por tecla contra una base compartida.
+  assert.throws(function () {
+    crearAutoguardado({ guardar: function () {}, retardoMs: 0 });
+  }, /retardo/i);
+});
+
+test("f026 R51: el guardado se programa con el retardo que le pasan, sin inventarse otro", () => {
+  const montaje = montar({ retardoMs: cargarConfig().RETARDO_AUTOGUARDADO_MS });
+  const parte = parteInventado();
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+
+  assert.equal(montaje.reloj.vivos().length, 1);
+  assert.equal(montaje.reloj.vivos()[0].ms, cargarConfig().RETARDO_AUTOGUARDADO_MS);
+});
+
+test("f026 R51: cambiar de parte con una corrección a medias la guarda, no la tira", async () => {
+  // Si la pausa del parte A se cancelara al abrir el parte B, lo escrito en A
+  // se perdería en silencio, que es justo el defecto que R50 viene a cerrar.
+  const montaje = montar();
+  const parteA = parteInventado(HASH);
+  const parteB = parteInventado(OTRO_HASH);
+  montaje.auto.anotarGuardado(parteA, valoresDe(parteA));
+  montaje.auto.anotarGuardado(parteB, valoresDe(parteB));
+
+  montaje.auto.alEscribir(parteA, "unidad", "4C");
+  montaje.auto.alEscribir(parteB, "unidad", "5D");
+  await montaje.reloj.correr();
+
+  assert.deepEqual(montaje.guardados, [HASH, OTRO_HASH]);
+});
+
+// =========================================================================
+// R55 · aplica a TODOS los partes
+// =========================================================================
+
+test("f026 R55: el autoguardado no pregunta por el veredicto: guarda el parte verde igual", async () => {
+  // Perder lo escrito es igual de malo en un parte verde. El módulo ni
+  // siquiera recibe la validación: no tiene forma de discriminar.
+  const montaje = montar();
+  const verde = parteInventado();
+  verde.validacion = { veredicto: "apto", destino: "archivo_automatico", motivos: [] };
+  montaje.auto.anotarGuardado(verde, valoresDe(verde));
+
+  montaje.auto.alEscribir(verde, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  assert.deepEqual(montaje.guardados, [HASH]);
+});

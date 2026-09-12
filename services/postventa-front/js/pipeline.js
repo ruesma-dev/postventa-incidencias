@@ -299,6 +299,25 @@
   }
 
   /**
+   * F-026 R51 · los valores efectivos de los NUEVE campos, en un objeto plano.
+   *
+   * Es lo que el autoguardado compara para saber si hay algo que guardar: sin
+   * una foto de lo que quedó guardado, la primera pulsación de cada parte
+   * escribiría en la base aunque no hubiera cambiado nada.
+   *
+   * Vive aquí y no en `js/autoguardado.js` porque «cuál es el valor efectivo
+   * de un campo» ya lo responde `valorDeCampo`, y dos formas de responder a la
+   * misma pregunta son dos formas de divergir.
+   */
+  function valoresDeCampos(parte) {
+    const valores = {};
+    CAMPOS_DEL_PARTE.forEach(function (nombre) {
+      valores[nombre] = valorDeCampo(parte || {}, nombre);
+    });
+    return valores;
+  }
+
+  /**
    * El `multipart` de `POST /api/archivar`: el fichero y **cinco** campos (R20).
    *
    * Se niega a componer nada que no sea apto (R21) **ni conste aprobado por
@@ -1106,6 +1125,7 @@
     esArchivable: esArchivable,
     esCerrable: esCerrable,
     valorDeCampo: valorDeCampo,
+    valoresDeCampos: valoresDeCampos,
     cuerpoDeArchivo: cuerpoDeArchivo,
     // F-026 · la aprobación humana: qué se puede aprobar, qué circula y qué
     // viaja en la petición.

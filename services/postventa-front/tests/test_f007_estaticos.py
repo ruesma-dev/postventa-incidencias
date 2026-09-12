@@ -48,6 +48,10 @@ ORDEN_CANONICO = (
     "js/seleccion.js",
     "js/pipeline.js",
     "js/confirmacion.js",
+    # F-026 · el autoguardado de las correcciones. Va antes de `app.js`, que
+    # es quien lo monta, y despues de `pipeline.js`, de quien lee los valores
+    # efectivos de los campos.
+    "js/autoguardado.js",
     "js/app.js",
 )
 

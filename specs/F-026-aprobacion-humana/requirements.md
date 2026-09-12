@@ -429,6 +429,27 @@ otras comprobaciones.
 esta misma feature: F-026 añade un endpoint y una tabla, que es exactamente lo
 que ese documento describe. La regla de `CLAUDE.md` no admite hacerlo después.
 
+> Hecho el **2026-09-12**, en T19 y en dos commits, porque son dos
+> repositorios: `docs/INTEGRACION.md` —que es la **fuente de verdad**, y sin
+> tocarla la copia habría quedado diciendo algo que aquí no está escrito— y
+> `azure-apps/postventa_incidencias.md`, refrescado desde ella. **Sin `push`**
+> en ninguno de los dos, y `git -C ../azure-apps status` limpio al terminar.
+>
+> Lo que se escribió allí: la tabla `postventa.aprobaciones` en el árbol del
+> esquema propio, la fila de `POST /api/aprobar` en la tabla de endpoints —los
+> once pasan a doce—, que aprobar **no mira ninguna de las dos ventanas de
+> escritura**, y el `oid` de quien aprueba en el apartado de datos personales,
+> con el motivo por el que se guarda. En la cabecera de la copia consta lo
+> único que el ecosistema necesita saber: que **no empezamos a consumir nada
+> nuevo**, y que desde F-026 una reclamación puede acabar cerrada aunque su
+> parte no fuera apto —si una persona lo aprobó—, **sin que en el ERP quede
+> constancia de la aprobación** (P6, decisión del responsable).
+>
+> De paso se corrigió **deuda ajena** en ese mismo árbol: faltaban
+> `usuarios_sigrid` (F-009) y `graficos` (F-012), que existen desde sus
+> features. Se añaden porque el bloque que había que tocar era ese, y un
+> inventario de tablas al que le faltan dos es peor que no tenerlo.
+
 ---
 
 ## Preguntas abiertas · RESUELTAS el 2026-09-11

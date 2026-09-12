@@ -164,12 +164,48 @@ def test_f012_r68_la_nota_de_que_f012_no_tiene_por_donde_hacerse_esta_resuelta()
     assert "F-012 no cruza ninguna frontera" in plano
 
 
+#: Cómo se dicen en castellano los tamaños que puede tener hoy la tabla de
+#: endpoints de §8. Si algún día se pasa de quince, lo que hay que ampliar es
+#: esta lista, no la afirmación del documento.
+NUMERALES = {
+    10: "diez",
+    11: "once",
+    12: "doce",
+    13: "trece",
+    14: "catorce",
+    15: "quince",
+}
+
+
+def _endpoints_declarados(texto: str) -> list[str]:
+    """Las rutas que declara la tabla de §8, en el orden en que están escritas."""
+    return re.findall(r"^\| `((?:GET|POST) /api/[^`]+)`", texto, flags=re.MULTILINE)
+
+
 def test_f012_r68_integracion_declara_el_endpoint_nuevo_que_exponemos():
-    """R68 · `/api/adjuntar` en la tabla de §8, con lo que escribe."""
+    """R68 · `/api/adjuntar` en la tabla de §8, y la cuenta que la acompaña.
+
+    **La cuenta se calcula, no se escribe a mano.** Hasta el 2026-09-12 este
+    test fijaba el literal «Los once quedan en nivel», y funcionó: saltó en
+    rojo en cuanto F-026 añadió `POST /api/aprobar` y dejó el documento
+    diciendo once donde ya había doce. Pero avisaba de la cifra vieja sin
+    comprobar la nueva, así que la forma de «arreglarlo» era teclear otro
+    número —que podía volver a ser falso—.
+
+    Contando las filas de la tabla y exigiendo que el párrafo diga **ese**
+    número, lo que se vigila pasa a ser lo que el documento afirma: que
+    **todos** los endpoints que declara están en nivel anónimo, y que no hay
+    ninguno declarado que la frase se deje fuera. Sigue siendo un test de
+    F-012 y sigue exigiendo lo que exigía; lo que gana es que el siguiente
+    endpoint tampoco podrá colarse.
+    """
     texto = INTEGRACION.read_text(encoding="utf-8")
+    endpoints = _endpoints_declarados(texto)
 
     assert "`POST /api/adjuntar`" in texto
-    assert "Los once quedan en nivel" in texto
+    assert len(endpoints) == len(set(endpoints)), f"rutas repetidas: {endpoints}"
+    assert len(endpoints) in NUMERALES, f"amplía NUMERALES: hay {len(endpoints)}"
+    assert f"Los {NUMERALES[len(endpoints)]} quedan en nivel" in texto
 
 
 # --------------------------------------------------------------------------

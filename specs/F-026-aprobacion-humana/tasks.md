@@ -215,19 +215,19 @@
 
 ## Bloque 5 · Las enmiendas y la documentación
 
-- [ ] **T17**: Escribir el recuadro de enmienda fechado bajo **R36** de
+- [x] **T17**: Escribir el recuadro de enmienda fechado bajo **R36** de
       `specs/F-025-confirmacion-unica/requirements.md`, citando su texto
       literal y **sin borrarlo** (R46). | Verificación: un test de
       documentación con el patrón de `tests/test_f025_documentacion.py`: el
       texto original sigue ahí y el recuadro nombra F-026 y la fecha.
 
-- [ ] **T18**: Precisar los **tres** puntos de `docs/ARCHITECTURE.md` que hoy
+- [x] **T18**: Precisar los **tres** puntos de `docs/ARCHITECTURE.md` que hoy
       dicen que solo se archiva lo apto —paso 6, semántica 3 y semántica 7—,
       añadiendo «salvo aprobación humana registrada» con su remisión a esta
       spec (R47). | Verificación: mismo test de documentación; y los tres
       puntos siguen diciendo lo que decían para todo lo demás.
 
-- [ ] **T19**: Actualizar `azure-apps/postventa_incidencias.md` con el endpoint
+- [x] **T19**: Actualizar `azure-apps/postventa_incidencias.md` con el endpoint
       nuevo y la tabla nueva (R49). | Verificación: **otro repositorio, commit
       aparte y sin `push`**; `git -C ../azure-apps status` limpio al terminar, y
       la ruta y la tabla nombradas tal y como quedaron implementadas.

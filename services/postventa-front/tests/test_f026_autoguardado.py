@@ -316,6 +316,67 @@ def test_f026_r52_lo_escrito_se_conserva_en_pantalla(html):
     assert "ediciones = {}" not in html
 
 
+# ===========================================================================
+# R53 · la corrección no pisa lo que leyó la máquina
+# ===========================================================================
+
+
+def test_f026_r53_el_front_no_escribe_nunca_sobre_la_extraccion(app):
+    """Control negativo, y el motivo tiene nombre: **F-015**.
+
+    El valor y la confianza que extrajo la IA son la evidencia de cómo se
+    comportó el modelo, y F-015 —evaluar el prompt— los va a necesitar. Un
+    prompt no se puede evaluar contra un dato que una persona corrigió encima.
+
+    La corrección vive aparte, en `parte.ediciones`, y se aplica **al
+    componer** la petición (`aplicarEdiciones`, que no muta la entrada). Si
+    alguien empezara a escribir en `extraccion.campos`, la evidencia se
+    perdería sin que nadie se enterase hasta que hiciera falta.
+    """
+    assert not re.search(r"extraccion\.campos\s*\[[^\]]+\]\s*=", app), (
+        "`js/app.js` escribe en `extraccion.campos`: eso pisa lo que leyó el "
+        "modelo, que es lo que F-015 necesita para evaluar el prompt"
+    )
+    assert not re.search(r"\.confianza_pct\s*=", app), (
+        "`js/app.js` sobrescribe una confianza de la IA"
+    )
+
+
+# ===========================================================================
+# R54, R55 · la revocación, y que esto es para todos los partes
+# ===========================================================================
+
+
+def test_f026_r54_la_revocacion_llega_a_la_pantalla_por_la_respuesta_del_guardado(app):
+    """R54, R31 · se evalúa sobre lo guardado, y se ve en el acto.
+
+    La revocación ocurre **en la escritura**: el `UPDATE` va en la misma
+    operación que `guardar_validacion`. Así que la respuesta de ese guardado es
+    la que trae la aprobación al día, y el autoguardado la anota con el mismo
+    `_anotarGuardado` que el botón. Sin eso, la pantalla seguiría enseñando
+    «Aprobado» sobre una aprobación ya revocada en la base.
+    """
+    guardar = _bloque(app, "async _guardarCorreccion(parte) {", "_pintarAutoguardado(")
+
+    assert "this._anotarGuardado(parte, resultado.guardado)" in guardar
+    assert "this._anotarVeredicto(parte, resultado.validacion)" in guardar
+
+
+def test_f026_r55_el_indicador_no_depende_del_veredicto_del_parte(html):
+    """R55 · también en los partes verdes.
+
+    Perder lo escrito es igual de malo en un parte que la máquina dio por
+    bueno, y quien corrige uno verde necesita ver lo mismo: que se guardó.
+    """
+    bloque = _bloque(html, 'x-show="estadoAutoguardado"', "</div>")
+
+    for palabra in ("semaforo", "validacion", "esAprobable", "veredicto"):
+        assert palabra not in bloque, (
+            f"el indicador del autoguardado mira `{palabra}`: dejaría sin "
+            "señal a partes que también se están corrigiendo"
+        )
+
+
 def test_f026_r51_al_reiniciar_no_queda_ningun_guardado_en_vuelo(app):
     """Un temporizador vivo después de reiniciar guardaría un parte que ya no está.
 

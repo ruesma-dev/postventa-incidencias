@@ -466,6 +466,109 @@ test("f026 R52: un guardado correcto después del fallo quita el aviso", async (
 });
 
 // =========================================================================
+// R53 · la corrección NO pisa lo que leyó la máquina
+// =========================================================================
+
+test("f026 R53: guardar una corrección deja intacto lo que extrajo la IA", async () => {
+  // Esto no es higiene: **F-015 lo va a necesitar**. Evaluar el prompt exige
+  // comparar lo que dijo el modelo con lo que resultó ser verdad, y un prompt
+  // no se puede evaluar contra un dato que una persona corrigió encima. Si el
+  // autoguardado pisara `extraccion`, F-015 se quedaría sin evidencia y nadie
+  // se enteraría hasta que hiciera falta.
+  const cuerposGuardados = [];
+  const api = apiDoble({ cuerposGuardados: cuerposGuardados });
+  const parte = parteInventado();
+  const montaje = montar({
+    guardar: function (uno) {
+      return Pipeline.revalidarYGuardar(uno, api, REMESA);
+    },
+  });
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  parte.ediciones.unidad = "4C";
+  montaje.auto.alEscribir(parte, "unidad", "4C");
+  await montaje.reloj.correr();
+
+  // Lo que leyó el modelo, tal cual: su valor y su confianza.
+  assert.deepEqual(parte.extraccion.campos.unidad, {
+    valor: "3B",
+    confianza_pct: 70,
+  });
+  // Y lo que se guardó lleva la corrección, marcada como escrita por una
+  // persona. Las dos cosas conviven; ninguna tapa a la otra.
+  assert.equal(cuerposGuardados.length, 1);
+  assert.deepEqual(cuerposGuardados[0].extraccion.campos.unidad, {
+    valor: "4C",
+    confianza_pct: 100,
+    editado: true,
+  });
+});
+
+test("f026 R53: componer la foto de los valores tampoco toca la extracción", () => {
+  const parte = parteInventado();
+  parte.ediciones.unidad = "4C";
+
+  const valores = Pipeline.valoresDeCampos(parte);
+
+  assert.equal(valores.unidad, "4C");
+  assert.equal(parte.extraccion.campos.unidad.valor, "3B");
+  assert.equal(parte.extraccion.campos.unidad.confianza_pct, 70);
+});
+
+// =========================================================================
+// R54 · la revocación no ocurre a mitad de palabra
+// =========================================================================
+
+test("f026 R54: cinco pulsaciones son UNA escritura, así que como mucho una revocación", async () => {
+  // La revocación de una aprobación ocurre **en la escritura**: cada
+  // `POST /api/parte` ejecuta el `UPDATE` que revoca si la huella del
+  // veredicto cambió. Por tanto, contar las escrituras es contar las
+  // revocaciones posibles, y por eso una pausa no puede valer cinco.
+  const api = apiDoble();
+  const parte = parteInventado();
+  const montaje = montar({
+    guardar: function (uno) {
+      return Pipeline.revalidarYGuardar(uno, api, REMESA);
+    },
+  });
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  "12345".split("").forEach(function (_, indice) {
+    montaje.auto.alEscribir(parte, "observaciones", "corrigiendo" + "x".repeat(indice + 1));
+  });
+  await montaje.reloj.correr();
+
+  const escrituras = api.llamadas.filter(function (una) {
+    return una === "parte";
+  });
+  assert.equal(escrituras.length, 1);
+});
+
+test("f026 R54: lo que se revalida es lo escrito hasta la pausa, no una letra suelta", async () => {
+  // La huella del veredicto se calcula sobre el dato que se guarda. Si se
+  // guardara a mitad de palabra, se revocaría por un veredicto intermedio que
+  // nadie quiso: el de media observación.
+  const cuerposValidados = [];
+  const api = apiDoble({ cuerposValidados: cuerposValidados });
+  const parte = parteInventado();
+  const montaje = montar({
+    guardar: function (uno) {
+      return Pipeline.revalidarYGuardar(uno, api, REMESA);
+    },
+  });
+  montaje.auto.anotarGuardado(parte, valoresDe(parte));
+
+  ["c", "cl", "cli", "clie", "client", "cliente"].forEach(function (trozo) {
+    parte.ediciones.unidad = trozo;
+    montaje.auto.alEscribir(parte, "unidad", trozo);
+  });
+  await montaje.reloj.correr();
+
+  assert.equal(cuerposValidados.length, 1);
+  assert.equal(cuerposValidados[0].extraccion.campos.unidad.valor, "cliente");
+});
+
+// =========================================================================
 // R55 · aplica a TODOS los partes
 // =========================================================================
 

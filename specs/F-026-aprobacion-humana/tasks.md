@@ -72,7 +72,7 @@
 
 ## Bloque 2 · La persistencia
 
-- [ ] **T6**: Crear
+- [x] **T6**: Crear
       `services/postventa-api/infrastructure/persistencia/sql/10_aprobaciones.sql`
       con la tabla y el índice parcial de `design.md` §10, y su cabecera
       explicando qué construye, de qué lee y qué columna es dato personal. |

@@ -81,9 +81,10 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
 
     La lista se escribe entera y a mano **a propósito**: es la forma de que
     añadir o quitar un fichero de DDL no pueda pasar desapercibido. Eran los
-    siete del diseño de F-005; F-009 añadió el octavo y F-012 el noveno, y los
-    dos tuvieron que venir aquí a declararlo, que es exactamente lo que se
-    quería.
+    siete del diseño de F-005; F-009 añadió el octavo, F-012 el noveno y F-026
+    el décimo, y los tres tuvieron que venir aquí a declararlo, que es
+    exactamente lo que se quería —el décimo llegó a existir como fichero un
+    commit antes de estar declarado aquí, y esta aserción fue lo que lo dijo—.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
@@ -97,6 +98,7 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
         "07_preferencias.sql",
         "08_usuarios_sigrid.sql",
         "09_graficos.sql",
+        "10_aprobaciones.sql",
     ]
 
 

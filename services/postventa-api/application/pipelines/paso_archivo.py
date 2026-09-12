@@ -46,6 +46,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from domain.models.aprobacion import admite_circuito
 from domain.models.errores import (
     ArchivoFallido,
     ArchivoSinTraza,
@@ -54,7 +55,6 @@ from domain.models.errores import (
 )
 from domain.models.nombrado import componer_destino
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
-from domain.models.validacion import Destino, Veredicto
 from domain.ports.archivo import ArchivoPort, ItemArchivado
 from domain.ports.persistencia import RepositorioPartesPort
 
@@ -101,8 +101,9 @@ def paso_archivo(
 
     Los pasos, **en este orden**, y el orden es la mitad del requisito:
 
-    1. **Puerta de aptitud** (R17, R18). Antes de nombrar y antes de tocar el
-       puerto: un parte que no es apto no crea ni la carpeta.
+    1. **Puerta de aptitud** (R17, R18; F-026 R23). Antes de nombrar y antes
+       de tocar el puerto: un parte que no es apto **ni consta aprobado** no
+       crea ni la carpeta.
     2. **Nombrado** (R1–R9). `NombradoImposible` sale sin haber tocado nada.
     3. **Idempotencia por traza** (R14). La capa barata.
     4. **Traza previa en `pendiente`** (F-019, R19). La garantía de orden: si
@@ -120,7 +121,7 @@ def paso_archivo(
     escribir— `ArchivoSinTraza`. Los traduce a HTTP el borde; aquí no se sabe
     de códigos de estado.
     """
-    _exigir_apto(ctx)
+    _exigir_admitido(ctx, repositorio)
 
     destino = componer_destino(
         carpeta_base=carpeta_base,
@@ -208,31 +209,44 @@ def _dejar_constancia(repositorio: RepositorioPartesPort, ctx: ContextoParte) ->
         raise ArchivoSinTraza(sin_traza.motivo) from sin_traza
 
 
-def _exigir_apto(ctx: ContextoParte) -> None:
-    """Solo se archiva lo que F-004 declaró apto (R17, R18).
+def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> None:
+    """Solo se archiva lo que F-004 declaró apto **o alguien aprobó** (R17, R23).
 
-    Dos motivos distintos a propósito: «no hay veredicto» se arregla
-    revalidando el parte; «el veredicto dice que no» se arregla volviendo al
-    papel o decidiendo a mano. Un motivo genérico obligaría a mirar las dos
-    cosas.
+    Hasta F-026 esta puerta miraba una sola cosa. Ahora mira dos, y la segunda
+    es la decisión de una persona: `admite_circuito` (dominio puro) dice que sí
+    al apto de siempre y al no apto con aprobación viva **del mismo destino**.
 
-    El destino manda además del veredicto: un parte apto que F-004 mandara a
-    otro sitio no se archiva aquí, porque el destino es lo que de verdad dice
-    qué hacer con él.
+    «No hay veredicto» sigue siendo un motivo propio y va primero a propósito:
+    se arregla revalidando el parte, no aprobándolo, y una aprobación no puede
+    rescatar un parte del que nadie ha emitido veredicto.
+
+    La aprobación **se lee aquí, del repositorio, y nunca del cuerpo** (R24).
+    Es el mismo argumento que ya escribió F-012 para `traza_grafico`: si
+    viniera del cuerpo, quien llama podría afirmar que alguien aprobó lo que
+    nadie aprobó.
+
+    Y se lee **solo si hace falta**: el parte apto no paga una consulta que no
+    puede cambiar la decisión, que en una remesa real de 22 partes son 22
+    consultas por paso. Lo que sí se hace siempre es dejar en el contexto lo
+    que se leyó, para que quien mire después vea de dónde salió.
     """
     if ctx.validacion is None:
         raise ParteNoApto(
             "no consta que este parte haya pasado la validación: no se "
             "archiva un parte del que nadie ha emitido veredicto"
         )
-    if (
-        ctx.validacion.veredicto != Veredicto.APTO
-        or ctx.validacion.destino != Destino.ARCHIVO_Y_CIERRE
-    ):
-        raise ParteNoApto(
-            f"el parte no es apto para archivo y cierre: la validación lo "
-            f"manda a «{ctx.validacion.destino.value}»"
-        )
+    if admite_circuito(ctx.validacion, None):
+        return
+
+    ctx.aprobacion = repositorio.consultar_aprobacion(hash_parte=ctx.parte.hash)
+    if admite_circuito(ctx.validacion, ctx.aprobacion):
+        return
+
+    raise ParteNoApto(
+        f"el parte no es apto para archivo y cierre: la validación lo "
+        f"manda a «{ctx.validacion.destino.value}» y no consta que nadie lo "
+        f"haya aprobado para ese destino"
+    )
 
 
 def _campo(ctx: ContextoParte, nombre: str) -> str | None:

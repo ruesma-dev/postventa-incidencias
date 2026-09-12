@@ -43,6 +43,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+from domain.models.aprobacion import admite_circuito
 from domain.models.cierre import (
     CODIGO_ESTADO_CIERRE,
     CorrespondenciaSigrid,
@@ -71,7 +72,6 @@ from domain.models.persistencia import (
     EstadoGrafico,
     TrazaCierre,
 )
-from domain.models.validacion import Destino, Veredicto
 from domain.ports.erp import ErpPort
 from domain.ports.persistencia import (
     RepositorioPartesPort,
@@ -141,7 +141,7 @@ def paso_cierre(
     de estado. **Nunca** el correo, ni el login, ni el `oid`, ni nada del papel
     (R44, R45): lo lee cualquiera que abra Application Insights.
     """
-    _exigir_apto(ctx)
+    _exigir_admitido(ctx, repositorio)
     _exigir_archivado(ctx)
 
     codigo = _codigo_de_incidencia(numero_incidencia)
@@ -197,30 +197,36 @@ def paso_cierre(
     )
 
 
-def _exigir_apto(ctx: ContextoParte) -> None:
-    """Solo se cierra lo que F-004 declaró apto (R16).
-
-    Dos motivos distintos a propósito, porque se arreglan de forma distinta:
-    «no hay veredicto» se arregla revalidando el parte; «el veredicto dice que
-    no» se arregla volviendo al papel o decidiendo a mano.
+def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> None:
+    """Solo se cierra lo apto **o lo que alguien aprobó** (R16; F-026 R23).
 
     Cerrar «por si acaso» una incidencia cuyo parte fue a la cola de validación
     humana la daría por resuelta en el ERP de producción sin que nadie haya
-    mirado el papel.
+    mirado el papel. Lo que F-026 cambia es **quién** puede haberlo mirado: la
+    máquina, o una persona que se hizo responsable y quedó registrada.
+
+    «No hay veredicto» sigue siendo un motivo aparte, y va primero: se arregla
+    revalidando el parte, no aprobándolo. La aprobación se lee del repositorio
+    y nunca del cuerpo (R24) —igual que `traza_grafico` más abajo, y por el
+    mismo argumento—, y solo cuando el veredicto no basta.
     """
     if ctx.validacion is None:
         raise ParteNoApto(
             "no consta que este parte haya pasado la validación: no se cierra "
             "una incidencia con un parte del que nadie ha emitido veredicto"
         )
-    if (
-        ctx.validacion.veredicto != Veredicto.APTO
-        or ctx.validacion.destino != Destino.ARCHIVO_Y_CIERRE
-    ):
-        raise ParteNoApto(
-            f"el parte no es apto para archivo y cierre: la validación lo manda "
-            f"a «{ctx.validacion.destino.value}»"
-        )
+    if admite_circuito(ctx.validacion, None):
+        return
+
+    ctx.aprobacion = repositorio.consultar_aprobacion(hash_parte=ctx.parte.hash)
+    if admite_circuito(ctx.validacion, ctx.aprobacion):
+        return
+
+    raise ParteNoApto(
+        f"el parte no es apto para archivo y cierre: la validación lo manda "
+        f"a «{ctx.validacion.destino.value}» y no consta que nadie lo haya "
+        f"aprobado para ese destino"
+    )
 
 
 def _exigir_archivado(ctx: ContextoParte) -> None:

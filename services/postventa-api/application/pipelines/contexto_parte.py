@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from domain.models.aprobacion import Aprobacion
 from domain.models.cierre import ResultadoCierre
 from domain.models.extraccion import ExtraccionParte
 from domain.models.firma import LecturaFirma
@@ -57,6 +58,19 @@ class ContextoParte:
     del gráfico— antes de confirmar (R9, R49). La traza que se guarda en la
     base es otra cosa y va aparte, porque guarda menos: el `oid` y nunca el
     login (R43).
+
+    `aprobacion` es la decisión de una persona sobre un parte que F-004
+    rechazó (F-026). Es el segundo caso de lo mismo que `traza_grafico`, y por
+    la misma razón: **viene del repositorio y nunca del cuerpo de la
+    petición** (R24). La leen los tres pasos del circuito dentro de su puerta
+    de aptitud; si viniera del cuerpo, quien llama podría afirmar que alguien
+    aprobó lo que nadie aprobó, y con eso se cierra en el ERP de producción
+    una reclamación que la validación había rechazado.
+
+    Que sea `None` significa exactamente «no consta que nadie lo haya
+    aprobado», y una aprobación **revocada** llega hasta aquí diciendo que lo
+    está: el paso necesita distinguir las dos cosas tan poco como la pantalla
+    necesita distinguirlas mucho (R31).
     """
 
     parte: ParteTroceado
@@ -67,4 +81,5 @@ class ContextoParte:
     grafico: ResultadoGrafico | None = None
     traza_grafico: TrazaGrafico | None = None
     cierre: ResultadoCierre | None = None
+    aprobacion: Aprobacion | None = None
     avisos: list[str] = field(default_factory=list)

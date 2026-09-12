@@ -125,7 +125,7 @@
       `hash_parte`, destino y resultado y **nada más** (R44); y el endpoint
       **no mira** `ARCHIVO_HABILITADO` ni `CIERRE_HABILITADO` (R21).
 
-- [ ] **T11**: Añadir `aprobacion` a `ContextoParte` —con la docstring que diga
+- [x] **T11**: Añadir `aprobacion` a `ContextoParte` —con la docstring que diga
       que **viene del repositorio y nunca del cuerpo**— y cambiar los tres
       `_exigir_apto` por `_exigir_admitido`, que lee la aprobación y llama a
       `admite_circuito`. | Verificación: `tests/test_f026_puertas.py` (T1)

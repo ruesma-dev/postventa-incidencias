@@ -108,7 +108,7 @@
 
 ## Bloque 3 · Las puertas y el borde HTTP
 
-- [ ] **T9**: Crear `interface_adapters/api/aprobar.py` con
+- [x] **T9**: Crear `interface_adapters/api/aprobar.py` con
       `aprobar_parte_http`, reutilizando `cuerpos.py` y `paso_persistencia`, y
       recalculando el veredicto con `validar_parte`. | Verificación:
       `tests/test_f026_aprobar_http.py`, **sin BBDD**, con el repositorio

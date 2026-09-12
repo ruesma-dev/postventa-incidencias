@@ -470,10 +470,10 @@ def test_f019_r7_el_envoltorio_delega_el_resto_del_puerto():
     tecleado.
     """
     from domain.models.persistencia import EstadoArchivo, TrazaArchivo
-    from interface_adapters.api.parte import _AnotaLosResultados
+    from interface_adapters.api.parte import AnotaLosResultados
 
     interno = RepositorioEnMemoria(cola=())
-    envoltorio = _AnotaLosResultados(interno)
+    envoltorio = AnotaLosResultados(interno)
     traza = TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.PENDIENTE)
 
     envoltorio.guardar_remesa(remesa="una remesa inventada")

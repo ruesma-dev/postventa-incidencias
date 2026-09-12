@@ -25,6 +25,12 @@ const {
   esCirculable,
   cuerpoDeAprobacion,
   cuerpoDeParte,
+  cuerpoDeArchivo,
+  cuerpoDeCierre,
+  cuerpoDeGrafico,
+  esArchivable,
+  esCerrable,
+  pendientesDeCircuito,
   semaforoDe,
 } = require("../js/pipeline.js");
 
@@ -367,4 +373,118 @@ test("f026: sin remesa registrada no se compone nada, porque el backend responde
     () => cuerpoDeAprobacion(parteInventado(), { usuarioOid: OID }),
     /remesa/,
   );
+});
+
+// ===========================================================================
+// R23, R25 · el circuito entero pasa por `esCirculable`
+// ===========================================================================
+//
+// No basta con que `esCirculable` diga la verdad: lo que decide si un parte
+// aprobado llega a SharePoint y al ERP son los cuatro sitios que lo usan. Si
+// uno solo se quedara mirando `esArchivable`, la feature entera se quedaría en
+// una marca de color, y encima el botón parecería funcionar.
+
+/** Un `FormData` de mentira que recuerda lo que le metieron. */
+class FormDataFalso {
+  constructor() {
+    this.campos = [];
+  }
+  append(nombre, valor, nombreFichero) {
+    this.campos.push({ nombre, valor, nombreFichero });
+  }
+  get(nombre) {
+    const encontrado = this.campos.find((campo) => campo.nombre === nombre);
+    return encontrado ? encontrado.valor : null;
+  }
+}
+
+/** El parte aprobado, guardado y listo para entrar en la tanda. */
+function parteAprobado(extra) {
+  return parteInventado(
+    Object.assign({ aprobacion: aprobacionInventada() }, extra || {}),
+  );
+}
+
+test("f026 R23: un aprobado vigente entra en la tanda de la confirmación única", () => {
+  const tanda = pendientesDeCircuito([parteAprobado()]);
+
+  assert.equal(tanda.length, 1);
+});
+
+test("f026 R25: un no apto sin aprobación sigue fuera de la tanda", () => {
+  // Es el control negativo de F-025 R36, y tiene que seguir en pie: lo que
+  // F-026 abre es la puerta de los aprobados, no la de los rechazados.
+  assert.deepEqual(pendientesDeCircuito([parteInventado()]), []);
+});
+
+test("f026 R31: un aprobado revocado vuelve a quedarse fuera de la tanda", () => {
+  const revocado = parteAprobado({
+    aprobacion: aprobacionInventada({ estado: "revocado" }),
+  });
+
+  assert.deepEqual(pendientesDeCircuito([revocado]), []);
+});
+
+test("f019 R27: un aprobado que no consta guardado tampoco entra en la tanda", () => {
+  // La aprobación no relaja ninguna otra puerta (R26): sin fila en la base,
+  // `/api/archivar` responde 409 y no sube nada.
+  assert.deepEqual(pendientesDeCircuito([parteAprobado({ guardado: false })]), []);
+});
+
+test("f026 R23: el cuerpo de archivo se compone para un parte aprobado", () => {
+  const cuerpo = cuerpoDeArchivo(parteAprobado(), FormDataFalso);
+
+  assert.equal(cuerpo.get("hash"), HASH);
+  assert.equal(cuerpo.get("codigo_obra"), "0677");
+  assert.equal(
+    cuerpo.get("veredicto"),
+    "no_apto",
+    "lo que se declara es el veredicto REAL: la aprobación va al lado, nunca encima",
+  );
+  assert.equal(cuerpo.get("destino"), "cola_validacion_humana");
+});
+
+test("f026 R31: el cuerpo de archivo se niega a componer para un revocado", () => {
+  const revocado = parteAprobado({
+    aprobacion: aprobacionInventada({ estado: "revocado" }),
+  });
+
+  assert.throws(() => cuerpoDeArchivo(revocado, FormDataFalso), /no es apto/i);
+});
+
+test("f026 R25: el cuerpo de archivo se sigue negando sin aprobación ninguna", () => {
+  assert.throws(() => cuerpoDeArchivo(parteInventado(), FormDataFalso), /no es apto/i);
+});
+
+test("f026 R23: un aprobado archivado es cerrable, y adjuntable", () => {
+  const parte = parteAprobado({ archivado: true });
+
+  assert.equal(esCerrable(parte), true);
+  assert.doesNotThrow(() =>
+    cuerpoDeGrafico(parte, { usuarioOid: OID }, FormDataFalso),
+  );
+});
+
+test("f026 R31: un revocado ni se cierra ni se adjunta, aunque conste archivado", () => {
+  const revocado = parteAprobado({
+    archivado: true,
+    aprobacion: aprobacionInventada({ estado: "revocado" }),
+  });
+
+  assert.equal(esCerrable(revocado), false);
+  assert.throws(
+    () => cuerpoDeGrafico(revocado, { usuarioOid: OID }, FormDataFalso),
+    /no se puede adjuntar/,
+  );
+  assert.throws(() => cuerpoDeCierre(revocado, { usuarioOid: OID }), /no se puede cerrar/);
+});
+
+test("f026 R36: `esArchivable` conserva su significado: lo que dio por bueno LA MÁQUINA", () => {
+  // Es la distinción que la feature existe para registrar, y `noArchivables()`
+  // depende de ella: si `esArchivable` empezara a decir «o lo aprobó alguien»,
+  // no quedaría ninguna forma de contar las dos cosas por separado.
+  const parte = parteAprobado();
+
+  assert.equal(esArchivable(parte.validacion), false);
+  assert.equal(esCirculable(parte), true);
 });

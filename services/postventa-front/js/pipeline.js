@@ -301,14 +301,20 @@
   /**
    * El `multipart` de `POST /api/archivar`: el fichero y **cinco** campos (R20).
    *
-   * Se niega a componer nada que no sea apto (R21) o que ya esté archivado.
-   * No basta con no pintar el botón: aunque se pulse dos veces, aquí se para.
+   * Se niega a componer nada que no sea apto (R21) **ni conste aprobado por
+   * una persona** (F-026 R23), o que ya esté archivado. No basta con no pintar
+   * el botón: aunque se pulse dos veces, aquí se para.
+   *
+   * Lo que se declara en el cuerpo es el **veredicto real**, el que emitió
+   * F-004: la aprobación se registra al lado, nunca encima (F-026 R11). El
+   * backend la lee del almacén y nunca del cuerpo (R24).
    */
   function cuerpoDeArchivo(parte, FabricaFormData) {
-    if (!esArchivable(parte && parte.validacion)) {
+    if (!esCirculable(parte)) {
       throw new Error(
-        "este parte no es apto para archivo (hace falta veredicto 'apto' y " +
-          "destino 'archivo_y_cierre')",
+        "este parte no es apto para archivo y no consta aprobado por una " +
+          "persona (hace falta veredicto 'apto' con destino " +
+          "'archivo_y_cierre', o una aprobación vigente del destino actual)",
       );
     }
     if (parte.archivado) {
@@ -345,10 +351,11 @@
   /**
    * F-009 · ¿se puede pedir el cierre de este parte?
    *
-   * Las **dos precondiciones propias** del cierre, y ninguna más: el parte es
-   * apto y **consta archivado**. El backend las vuelve a comprobar —aquí no se
-   * decide nada, se decide allí—, pero pararlo antes evita ofrecer un botón
-   * que va a responder 409.
+   * Las **dos precondiciones propias** del cierre, y ninguna más: el parte
+   * entra en el circuito —apto, **o** aprobado y vigente (F-026 R23)— y
+   * **consta archivado**. El backend las vuelve a comprobar —aquí no se decide
+   * nada, se decide allí—, pero pararlo antes evita ofrecer un botón que va a
+   * responder 409.
    *
    * Lo que **no** se comprueba, y es deliberado: si la incidencia tiene el
    * parte subido a Sigrid. El orden que decidió el humano es validar → cerrar
@@ -358,7 +365,7 @@
     return Boolean(
       parte &&
         parte.archivado &&
-        esArchivable(parte.validacion) &&
+        esCirculable(parte) &&
         valorDeCampo(parte, "numero_incidencia"),
     );
   }
@@ -381,9 +388,10 @@
   function cuerpoDeCierre(parte, opciones) {
     if (!esCerrable(parte)) {
       throw new Error(
-        "este parte no se puede cerrar todavía: hace falta veredicto 'apto', " +
-          "destino 'archivo_y_cierre', que conste archivado y que tenga " +
-          "número de incidencia",
+        "este parte no se puede cerrar todavía: hace falta que entre en el " +
+          "circuito —veredicto 'apto' con destino 'archivo_y_cierre', o una " +
+          "aprobación vigente—, que conste archivado y que tenga número de " +
+          "incidencia",
       );
     }
 
@@ -456,9 +464,10 @@
   function cuerpoDeGrafico(parte, opciones, FabricaFormData) {
     if (!esCerrable(parte)) {
       throw new Error(
-        "este parte no se puede adjuntar todavía: hace falta veredicto " +
-          "'apto', destino 'archivo_y_cierre', que conste archivado y que " +
-          "tenga número de incidencia",
+        "este parte no se puede adjuntar todavía: hace falta que entre en el " +
+          "circuito —veredicto 'apto' con destino 'archivo_y_cierre', o una " +
+          "aprobación vigente—, que conste archivado y que tenga número de " +
+          "incidencia",
       );
     }
     if (!parte.fichero) {
@@ -815,12 +824,15 @@
    * sin ninguna forma de volver a entrar.
    *
    * Lo que **no** entra: los partes que la validación mandó a revisión o a la
-   * cola humana (R36). Aprobarlos es F-026, otra feature.
+   * cola humana **y que no consta que haya aprobado nadie** (R36 de F-025, y
+   * R25 de F-026). Desde F-026 el selector pregunta por `esCirculable` —apto
+   * **o** aprobado vigente—, y esa es la única puerta que la aprobación abre:
+   * el parte sigue teniendo que constar guardado y no estar cerrado.
    */
   function pendientesDeCircuito(partes) {
     return (partes || []).filter(function (parte) {
       return Boolean(
-        parte && !parte.cerrado && parte.guardado && esArchivable(parte.validacion),
+        parte && !parte.cerrado && parte.guardado && esCirculable(parte),
       );
     });
   }

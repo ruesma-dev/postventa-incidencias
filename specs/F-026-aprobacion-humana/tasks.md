@@ -152,7 +152,7 @@
       falso para el revocado; `cuerpoDeAprobacion` **no** lleva DNI,
       observaciones ni bytes (R19) y exige `usuario_oid` (R4).
 
-- [ ] **T14**: Hacer que `pendientesDeCircuito`, `cuerpoDeArchivo`,
+- [x] **T14**: Hacer que `pendientesDeCircuito`, `cuerpoDeArchivo`,
       `esCerrable` y `cuerpoDeGrafico` pasen por `esCirculable`, conservando
       `esArchivable` con su significado actual. | Verificación:
       `tests_js/circuito.test.js` y `tests_js/pipeline.test.js` **enteros en

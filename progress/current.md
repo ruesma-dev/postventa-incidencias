@@ -1,6 +1,98 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 3, las puertas y el borde HTTP**
+>
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 3** de `specs/F-026-aprobacion-humana/tasks.md` (T9–T12) y mandaba parar ahí.
+> **Los bloques 4, 4 bis, 5 y 7 no se han empezado.** Informe completo, con las
+> cuatro trazas de la fase RED y las evidencias, en la **parte II** de
+> `progress/impl_F-026.md` (§10 en adelante).
+>
+> ### Lo que hay hecho hoy
+>
+> - **T9** (`6b51d60`) — `interface_adapters/api/aprobar.py`. Aprobar guarda el
+>   parte, su veredicto **recalculado** y la aprobación **en una sola llamada**,
+>   en ese orden. Dos puertas antes de tocar el puerto: `usuario_oid` (R4) y
+>   `confirmado: true` como booleano de JSON, y `es_aprobable` sobre el
+>   veredicto recalculado (R5, R9, R10).
+> - **T10** (`9760019`) — la ruta en `function_app.py`, su traducción de
+>   errores (400 / 409 / 503) y un log con `hash_parte`, destino y resultado y
+>   **nada más** (R44).
+> - **T11** (`851f0d2`) — los tres `_exigir_apto` pasan a `_exigir_admitido`:
+>   el apto de siempre **o** una aprobación viva del mismo destino (R23).
+> - **T12** (`44c306c`) — `POST /api/parte` devuelve el bloque `aprobacion`
+>   (R22), leído **después** de guardar.
+>
+> ### Lo que cambia de verdad en el servicio
+>
+> Hasta hoy, F-026 no cambiaba ningún comportamiento: la tabla existía y nadie
+> la llamaba. **A partir de este commit, un parte que la validación mandó a
+> revisión puede archivar, adjuntar y cerrar si consta aprobado y vigente.** Lo
+> que sigue siendo imposible, y lo vigilan los trece casos de control negativo
+> de T1: hacerlo **sin** aprobación, o con una **revocada**, o con una de otro
+> destino. Y ninguno de los tres endpoints del circuito gana una clave en su
+> cuerpo: la aprobación se lee del repositorio y nunca de la petición (R24).
+>
+> ### Tres puntos de diseño que no se pueden perder
+>
+> 1. **El orden de las tres escrituras de `/api/aprobar`** —parte, validación,
+>    aprobación— es requisito: guardar la validación **revoca** la aprobación
+>    cuyo veredicto ya no coincide (R30, bloque 2), así que escribir la
+>    aprobación antes la dejaría revocada en el acto de nacer. Lo mismo, al
+>    revés, en `/api/parte`: la aprobación se **lee después** de guardar, o se
+>    devolvería como viva una que esa misma llamada acaba de tumbar.
+> 2. **Las puertas solo consultan cuando el veredicto no basta.** El parte apto
+>    circula sin pagar una lectura por paso —66 consultas inútiles en una remesa
+>    de 22—, y hay un test que lo fija para que no se pierda en la primera
+>    refactorización.
+> 3. **Los parsers del cuerpo bajaron a `cuerpos.py`** (`CLAVES_DEL_PARTE`,
+>    `a_remesa_id`, `a_parte_troceado`), sin cambiar ni una regla ni un mensaje.
+>    El motivo no es estético: si aprobar y guardar describieran el parte de dos
+>    formas distintas, **se aprobaría un veredicto y se guardaría otro**.
+>
+> ### Tres avisos para quien siga
+>
+> 1. **No hay forma de aprobar desde la pantalla.** El bloque 4 (T13–T16) no se
+>    ha tocado: el endpoint existe y funciona, pero hoy solo se puede llamar a
+>    mano. Es lo siguiente.
+> 2. **El endpoint estará vivo en cuanto se despliegue**, y **no depende** de
+>    `ARCHIVO_HABILITADO` ni de `CIERRE_HABILITADO` (R21, deliberado). Escribe
+>    solo en el esquema propio; lo que habilita es que un parte no apto entre en
+>    el circuito cuando alguien lo apruebe. La confirmación única de F-025 sigue
+>    intacta delante de toda escritura externa (R27).
+> 3. **El bloque 3 no está mutado.** Esta tanda no lanzó ninguna campaña, por
+>    encargo. La que sí corrió —en paralelo, del implementer del bloque 2:
+>    `3e1b63e`, 242 mutantes y 14 supervivientes analizados en
+>    `progress/mutacion_F-026.md`— se generó sobre un árbol **sin** `aprobar.py`,
+>    sin `aprobacion_serializada.py` y sin las tres puertas nuevas. **T24 sigue
+>    siendo obligatoria** al cerrar (C4 bis), sobre la feature entera.
+>
+>    Dos agentes escribieron en esta rama a la vez, y conviene saberlo al leer el
+>    historial: el commit `3e1b63e` arrastró la parte II de
+>    `progress/impl_F-026.md` —escrita por esta tanda y todavía sin commitear—
+>    porque no se podía separar del mismo fichero. El código del bloque 3 va
+>    entero en `6b51d60`, `9760019`, `851f0d2` y `44c306c`.
+>
+>    Sigue en pie, además, lo que anotó la tanda anterior: **la traza de la fase
+>    RED de los bloques 0 y 1 se perdió** con el agente que se interrumpió, y
+>    **el `.sql` solo está verificado en su texto** — T20 y T23 son `MANUAL
+>    (humano)` y ningún doble de conexión puede sustituirlos.
+>
+> ### Estado del arnés al cerrar
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. Cobertura de líneas cambiadas
+> **99,0 %** (1 325/1 338, umbral 80 %). **2 317** tests del servicio `api` en
+> verde —61 nuevos en esta tanda—, 62 en la raíz, el front en verde. **60**
+> avisos de `ruff`: uno más que los 59 de partida, un `I001` en `aprobar.py`
+> del mismo tipo que los otros 20 del servicio (el repositorio no configura
+> `known-first-party` y separa con línea en blanco el grupo
+> `interface_adapters`). Se ha seguido la convención del servicio en vez de
+> dejar el fichero nuevo como excepción; arreglarlo de verdad es una línea de
+> configuración que toca a los 21 a la vez, y esa decisión es del líder.
+
+---
+
 > ## Estado al 2026-09-12 · **F-026: hecho el bloque 2, la persistencia de la aprobación**
 >
 > Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque

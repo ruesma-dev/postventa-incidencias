@@ -468,8 +468,13 @@ el front. Lo que esta demuestra es el estado del dominio y de la persistencia
 # Parte II · Bloque 3 · Las puertas y el borde HTTP (2026-09-12)
 
 > Segunda tanda del mismo día, por encargo acotado: **solo el bloque 3**
-> (T9–T12). Los bloques 4, 4 bis, 5 y 7 **no se han tocado**, y la campaña de
-> mutación tampoco: va en el bloque de cierre y la lanza el líder.
+> (T9–T12). Los bloques 4, 4 bis y 5 **no se han tocado**, y esta tanda **no
+> lanzó ninguna campaña de mutación**: lo prohibía el encargo.
+>
+> **Nota de concurrencia**, porque cambia cómo hay que leer la §9: mientras se
+> escribía este bloque 3, el implementer del bloque 2 corría su campaña en la
+> misma rama. Sus 242 mutantes se generaron sobre un árbol **sin el bloque 3**,
+> así que **nada de lo que hay aquí está mutado**. T24 sigue en pie.
 >
 > El arnés estaba **en verde** al empezar (`ENTORNO LISTO`, cobertura 98,7 %),
 > al contrario que en la tanda del bloque 2.
@@ -841,4 +846,4 @@ intacta delante de toda escritura externa (R27).
 | **Tiempo de la suite** (`api`, dentro de `init.sh`) | **94,61 s** en la ejecución final (154,11 s en una anterior, con la máquina más cargada) |
 | **Avisos de `ruff`** | **60**, uno más que los 59 de partida. El nuevo es un `I001` en `aprobar.py`, del **mismo tipo** que los otros 20 del servicio: el repositorio separa con línea en blanco el grupo `interface_adapters`/`application` y ruff, sin configuración de `known-first-party`, lo considera desordenado. Se ha seguido la convención del propio servicio en vez de dejar el fichero nuevo como la excepción; corregirlo de verdad es una línea de configuración que afectaría a los 21 a la vez y es decisión del líder, no de esta tanda |
 | **`bash harness/init.sh`** | **ENTORNO LISTO** (exit 0) |
-| **Mutantes generados y supervivientes** | **no se ha lanzado la campaña**, por instrucción explícita del encargo: es T24 y la lleva el líder en el bloque de cierre, sobre la feature entera. No es un `PENDIENTE` sin dueño: es trabajo asignado a otro paso del plan, y `CHECKPOINTS.md` C4 bis sigue exigiéndolo **antes de cerrar F-026** |
+| **Mutantes generados y supervivientes** | **esta tanda no lanzó ninguna campaña**, por instrucción explícita del encargo. Sí la lanzó en paralelo el implementer del bloque 2 —242 mutantes, 228 muertos, **14 supervivientes**, 0 timeouts; §9 y `progress/mutacion_F-026.md`—, pero **sobre un árbol en el que el bloque 3 no existía**: ni `aprobar.py`, ni `aprobacion_serializada.py`, ni las tres puertas nuevas entraron en su alcance. Así que **nada de lo escrito en esta parte II está mutado**, y **T24 sigue siendo obligatoria** antes de cerrar F-026 (C4 bis), sobre la feature entera |

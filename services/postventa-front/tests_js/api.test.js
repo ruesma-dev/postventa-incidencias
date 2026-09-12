@@ -152,8 +152,16 @@ function cuerpoDeCierreInventado() {
   };
 }
 
-/** Los diez, con su ruta y su metodo. La lista ES la asercion. */
-const LOS_DIEZ = [
+/** El cuerpo de `POST /api/aprobar`: el de guardar mas las dos claves de F-026. */
+function cuerpoDeAprobacionInventado() {
+  return Object.assign(cuerpoDeParteInventado(), {
+    usuario_oid: "oid-inventado-para-el-test",
+    confirmado: true,
+  });
+}
+
+/** Todos, con su ruta y su metodo. La lista ES la asercion. */
+const LOS_ENDPOINTS = [
   { nombre: "salud", ruta: "/api/health", metodo: "GET", llamar: (api) => api.salud() },
   { nombre: "trocear", ruta: "/api/split", metodo: "POST", llamar: (api) => api.trocear(new FormData()) },
   { nombre: "extraer", ruta: "/api/extraer", metodo: "POST", llamar: (api) => api.extraer(ficheroInventado(), HASH_INVENTADO) },
@@ -165,10 +173,11 @@ const LOS_DIEZ = [
   { nombre: "archivar", ruta: "/api/archivar", metodo: "POST", llamar: (api) => api.archivar(new FormData(), HASH_INVENTADO) },
   { nombre: "cerrar", ruta: "/api/cerrar", metodo: "POST", llamar: (api) => api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO) },
   { nombre: "adjuntar", ruta: "/api/adjuntar", metodo: "POST", llamar: (api) => api.adjuntar(new FormData(), HASH_INVENTADO) },
+  { nombre: "aprobar", ruta: "/api/aprobar", metodo: "POST", llamar: (api) => api.aprobar(cuerpoDeAprobacionInventado(), HASH_INVENTADO) },
 ];
 
-test("f007 R27 / f019 / f009 / f012: los ONCE endpoints llaman a su ruta, con su metodo", async () => {
-  for (const endpoint of LOS_DIEZ) {
+test("f007 R27 / f019 / f009 / f012 / f026: los DOCE endpoints llaman a su ruta, con su metodo", async () => {
+  for (const endpoint of LOS_ENDPOINTS) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
 
     await endpoint.llamar(api);
@@ -183,22 +192,23 @@ test("f007 R27 / f019 / f009 / f012: los ONCE endpoints llaman a su ruta, con su
   }
 });
 
-test("f007 R27: son once, y la lista se entera si aparece un duodecimo", () => {
+test("f007 R27: son doce, y la lista se entera si aparece un decimotercero", () => {
   // El cliente expone ademas `peticion` y `cuerpoDeParte`, que son la
   // maquinaria, y desde F-009 `identidad`, que NO es un endpoint de este
   // backend: lo sirve el proxy de la Static Web App y por eso no cuelga de
-  // `/api`. Eran diez hasta F-012, que anade `adjuntar`; la cuenta tuvo que
-  // cuadrar aqui antes de que el metodo existiera, que es para lo que esta.
+  // `/api`. Eran diez hasta F-012, que anade `adjuntar`, y once hasta F-026,
+  // que anade `aprobar`; la cuenta tuvo que cuadrar aqui antes de que el
+  // metodo existiera, que es para lo que esta.
   const { api } = apiDePrueba([respuesta(200, {})]);
   const auxiliares = ["peticion", "cuerpoDeParte", "identidad"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
 
-  assert.equal(endpoints.length, 11);
-  assert.deepEqual(endpoints.sort(), LOS_DIEZ.map((e) => e.nombre).sort());
+  assert.equal(endpoints.length, 12);
+  assert.deepEqual(endpoints.sort(), LOS_ENDPOINTS.map((e) => e.nombre).sort());
 });
 
 test("f007 R27: todos cuelgan de baseApi, y baseApi es configurable", async () => {
-  for (const endpoint of LOS_DIEZ) {
+  for (const endpoint of LOS_ENDPOINTS) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})], {
       baseApi: "/otro-prefijo",
     });
@@ -339,6 +349,44 @@ test("f019: los tres endpoints nuevos trazan su paso, y nada mas", async () => {
       `la traza de ${nuevo.paso} lleva claves de mas`,
     );
   }
+});
+
+test("f026: aprobar manda POST /api/aprobar, con cuerpo JSON y su paso propio", async () => {
+  // Un paso propio y no «parte»: el registro tiene que poder distinguir
+  // «alguien guardo el parte» de «alguien decidio aprobarlo», que es la unica
+  // puerta por la que un parte rechazado entra en el circuito del ERP.
+  const { api, llamadas, trazas } = apiDePrueba([
+    respuesta(200, { hash_parte: HASH_INVENTADO, aprobacion: { estado: "aprobado" } }),
+  ]);
+
+  const datos = await api.aprobar(cuerpoDeAprobacionInventado(), HASH_INVENTADO);
+
+  assert.equal(llamadas[0].url, "/api/aprobar");
+  assert.equal(llamadas[0].opciones.method, "POST");
+  assert.equal(
+    llamadas[0].opciones.headers["Content-Type"],
+    "application/json",
+    "sin esta cabecera el backend no parsea el cuerpo y responde 400",
+  );
+  assert.equal(trazas[trazas.length - 1].paso, "aprobar");
+  assert.equal(trazas[trazas.length - 1].hash, HASH_INVENTADO);
+  assert.equal(datos.aprobacion.estado, "aprobado");
+});
+
+test("f026 R43: por la traza de aprobar no pasa el oid de quien aprueba", async () => {
+  // R28 de F-007 sigue mandando: hash, paso, estado y http, y nada mas. El
+  // cuerpo de esta peticion lleva el identificador de una persona.
+  const { api, trazas } = apiDePrueba([respuesta(200, {})]);
+
+  await api.aprobar(cuerpoDeAprobacionInventado(), HASH_INVENTADO);
+  const evento = trazas[trazas.length - 1];
+
+  assert.deepEqual(
+    Object.keys(evento).filter(
+      (k) => ["hash", "paso", "estado", "http"].indexOf(k) === -1,
+    ),
+    [],
+  );
 });
 
 // --- R23 · transitorios: 502 y fallo de red --------------------------------

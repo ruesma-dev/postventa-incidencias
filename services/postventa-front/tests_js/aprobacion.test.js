@@ -30,6 +30,7 @@ const {
   cuerpoDeGrafico,
   esArchivable,
   esCerrable,
+  guardarParte,
   pendientesDeCircuito,
   semaforoDe,
 } = require("../js/pipeline.js");
@@ -487,4 +488,68 @@ test("f026 R36: `esArchivable` conserva su significado: lo que dio por bueno LA 
 
   assert.equal(esArchivable(parte.validacion), false);
   assert.equal(esCirculable(parte), true);
+});
+
+// ===========================================================================
+// R22, R31 · la aprobación llega del backend en cada guardado
+// ===========================================================================
+//
+// Sin esto la pantalla solo sabría de aprobaciones las que se hayan hecho en
+// esta pestaña: al volver a subir la remesa —que es como se recupera el
+// trabajo tras recargar— los partes aprobados volverían a parecer rechazados.
+// Y, peor, una aprobación **revocada** por la revalidación seguiría pintada
+// como viva hasta que alguien recargase.
+
+/** Un `api` de mentira que devuelve lo que se le diga al guardar. */
+function apiQueGuarda(respuesta) {
+  return {
+    guardarParte: async () => respuesta,
+    validar: async () => validacionDeLaCola(),
+  };
+}
+
+test("f026 R22: al guardar, la aprobación que devuelve el backend llega al parte", async () => {
+  const api = apiQueGuarda({ hash_parte: HASH, aprobacion: aprobacionInventada() });
+
+  const guardado = await guardarParte(parteInventado(), api, REMESA);
+
+  assert.equal(guardado.ok, true);
+  assert.equal(guardado.aprobacion.estado, "aprobado");
+  assert.equal(guardado.aprobacion.destino_aprobado, "cola_validacion_humana");
+});
+
+test("f026 R31: si el backend dice que la revocó, eso es lo que llega", async () => {
+  // La revocación ocurre en la escritura (D-F): guardar una validación cuyo
+  // veredicto cambió revoca la aprobación en la misma operación. La pantalla
+  // se entera por la respuesta de ese mismo guardado, no en la recarga
+  // siguiente.
+  const api = apiQueGuarda({
+    hash_parte: HASH,
+    aprobacion: aprobacionInventada({ estado: "revocado" }),
+  });
+
+  const guardado = await guardarParte(parteInventado(), api, REMESA);
+
+  assert.equal(guardado.aprobacion.estado, "revocado");
+});
+
+test("f026 R22: sin aprobación en la respuesta, lo que llega es null y no un hueco", async () => {
+  const api = apiQueGuarda({ hash_parte: HASH, aprobacion: null });
+
+  const guardado = await guardarParte(parteInventado(), api, REMESA);
+
+  assert.equal(guardado.aprobacion, null);
+});
+
+test("f026: un guardado fallido no inventa ninguna aprobación", async () => {
+  const api = {
+    guardarParte: async () => {
+      throw new Error("inventado: el backend no responde");
+    },
+  };
+
+  const guardado = await guardarParte(parteInventado(), api, REMESA);
+
+  assert.equal(guardado.ok, false);
+  assert.equal(guardado.aprobacion, null);
 });

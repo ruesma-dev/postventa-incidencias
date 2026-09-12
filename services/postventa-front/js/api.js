@@ -380,6 +380,32 @@
       },
 
       /**
+       * F-026 · registra que una persona aprueba este parte.
+       *
+       * **Endpoint propio** y no una clave más en `/api/parte` (R18): guardar
+       * ocurre en cada revalidación, y aprobar es una decisión de una persona.
+       * Una petición, una decisión, una fila de auditoría.
+       *
+       * El cuerpo lo compone `js/pipeline.js::cuerpoDeAprobacion`: el de
+       * `/api/parte` más `usuario_oid` y `confirmado`. **No lleva los bytes
+       * del PDF** ni ningún veredicto ya hecho — el backend lo recalcula con
+       * las reglas del dominio y no acepta el del cuerpo (R5).
+       *
+       * Devuelve el bloque `aprobacion` que hay que pintar (R22). Un **409**
+       * es «este parte no es aprobable», y no se reintenta: insistir no lo
+       * vuelve aprobable.
+       */
+      aprobar: function (cuerpo, hash) {
+        return peticion("/aprobar", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "aprobar",
+          hash: hash,
+        });
+      },
+
+      /**
        * F-019 · la cola de validación humana, que sobrevive entre sesiones.
        *
        * El `limite` es opcional; el backend aplica 50 por omisión y **acota

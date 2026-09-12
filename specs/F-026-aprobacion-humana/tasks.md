@@ -160,7 +160,7 @@
       la tanda (R23), un no apto sin aprobación sigue fuera (R25), y
       `cuerpoDeArchivo` se niega a componer para el revocado.
 
-- [ ] **T15**: Añadir `aprobar(cuerpo, hash)` a `js/api.js` y `aprobarParte()` /
+- [x] **T15**: Añadir `aprobar(cuerpo, hash)` a `js/api.js` y `aprobarParte()` /
       `esAprobable()` a `js/app.js`, con `aprobacion` declarada en
       `_parteInicial` para que Alpine la haga reactiva. | Verificación:
       `tests_js/api.test.js` comprueba la ruta, el método y el `paso`;

@@ -54,6 +54,9 @@ function appPostventa() {
     parteAbierto: null,
     urlPdf: "",
     mensajeRevalidacion: "",
+    // F-026 · qué pasó con la última aprobación que se pidió. Nace declarado
+    // para que Alpine lo haga reactivo, como todo lo demás de esta pantalla.
+    mensajeAprobacion: "",
     CAMPOS: window.Pipeline.CAMPOS_DEL_PARTE,
 
     // --- archivar y cerrar, en un solo gesto (F-025 R1, R2) ---
@@ -212,6 +215,17 @@ function appPostventa() {
         // F-019 R27: hasta que conste guardado, el parte no es archivable.
         guardado: false,
         errorGuardado: "",
+        // F-026 R22 · lo que el backend dice de la aprobación de este parte:
+        // `{estado, destino_aprobado, motivos_aprobados, aprobado_at_utc}`, o
+        // `null` si no lo ha aprobado nadie. **Nace declarada** aunque nazca
+        // vacía: añadirla a mitad de sesión no la haría reactiva y la marca
+        // del parte aprobado no repintaría, que es el defecto que F-025
+        // documentó con `paso`.
+        //
+        // Viene SIEMPRE del backend —de `/api/parte` o de `/api/aprobar`—,
+        // nunca se compone aquí: quien decide si sigue vigente es quien la
+        // escribió.
+        aprobacion: null,
       };
     },
 
@@ -266,11 +280,25 @@ function appPostventa() {
       // constancia, o un error que nadie sabe leer.
       parte.guardado = Boolean(guardado && guardado.ok);
       parte.errorGuardado = (guardado && guardado.motivo) || "";
+      // F-026 R22, R31 · lo que el backend dice de la aprobación, después de
+      // guardar. Solo se pisa cuando el guardado salió bien: un guardado
+      // fallido no sabe nada de la aprobación, y ponerla a `null` borraría de
+      // la pantalla una decisión que sigue escrita en la base.
+      //
+      // Cuando sí salió bien, esto es lo que hace que una revalidación que
+      // **revocó** la aprobación se vea en el acto: la revocación ocurre en la
+      // escritura, y esta es la respuesta de esa misma escritura.
+      if (guardado && guardado.ok) {
+        parte.aprobacion = guardado.aprobacion;
+      }
     },
 
     _anotarVeredicto(parte, validacion) {
       parte.validacion = validacion;
-      parte.semaforo = window.Pipeline.semaforoDe(validacion);
+      // F-026 R36 · el semáforo mira las dos cosas: lo que dijo la máquina y
+      // lo que decidió una persona. Un parte aprobado no se pinta como uno que
+      // siempre fue verde.
+      parte.semaforo = window.Pipeline.semaforoDe(validacion, parte.aprobacion);
       parte.estado = "listo";
     },
 
@@ -300,6 +328,9 @@ function appPostventa() {
       this._revocarPdf();
       this.parteAbierto = parte;
       this.mensajeRevalidacion = "";
+      // El mensaje de la aprobación anterior no es de este parte: dejarlo
+      // diría «aprobado» encima de uno que nadie ha aprobado.
+      this.mensajeAprobacion = "";
       // El PDF va desde un blob en memoria, nunca desde una URL con el
       // contenido dentro.
       this.urlPdf = URL.createObjectURL(parte.fichero);
@@ -372,6 +403,84 @@ function appPostventa() {
           : `Veredicto actualizado, pero NO se ha guardado: ${parte.errorGuardado}`;
       } catch (error) {
         this.mensajeRevalidacion = (error && error.mensaje) || String(error);
+      }
+    },
+
+    // =====================================================================
+    // Aprobación humana del parte (F-026)
+    // =====================================================================
+    //
+    // Aquí no se decide nada, como siempre: qué es aprobable y qué viaja en la
+    // petición está en `js/pipeline.js`, que sí tiene tests, y lo vuelve a
+    // decidir el backend con el veredicto que él mismo recalcula (R5). Esto
+    // mueve estado de Alpine y pide la petición.
+
+    esAprobable(parte) {
+      // R35, R39 · el gesto solo se ofrece cuando hay algo que decidir. Si al
+      // parte le falta el código de obra o el número de incidencia, no hay
+      // nada que aprobar: hay algo que teclear.
+      const elegido = parte || this.parteAbierto;
+      return window.Pipeline.esAprobable(elegido && elegido.validacion);
+    },
+
+    estaAprobado(parte) {
+      // R36 · el cuarto estado del semáforo. Lo calcula `js/pipeline.js` al
+      // anotar el veredicto; aquí solo se lee, para no tener dos formas de
+      // responder a la misma pregunta.
+      return Boolean(parte) && parte.semaforo === window.Pipeline.SEMAFORO_APROBADO;
+    },
+
+    destinoDeOrigen(parte) {
+      // R37 · de dónde se rescató el parte, en castellano llano. Es la mitad
+      // del texto que distingue esta marca del verde de siempre.
+      const destino = (parte && parte.aprobacion && parte.aprobacion.destino_aprobado) || "";
+      if (destino === "cola_validacion_humana") return "la cola de validación humana";
+      if (destino === "revision_manual") return "revisión manual";
+      return destino;
+    },
+
+    fechaDeAprobacion(parte) {
+      // R37 · cuándo se aprobó. El backend la emite en UTC e ISO-8601; aquí se
+      // enseña en la hora de quien mira, que es la que le sirve para saber si
+      // fue hoy o el mes pasado.
+      const momento = parte && parte.aprobacion && parte.aprobacion.aprobado_at_utc;
+      if (!momento) {
+        return "";
+      }
+      const fecha = new Date(momento);
+      return isNaN(fecha.getTime()) ? String(momento) : fecha.toLocaleString("es-ES");
+    },
+
+    async aprobarParte() {
+      // R29 · **sin segunda confirmación**: el botón es el acto explícito.
+      // Aprobar no escribe en ningún sistema ajeno —escribe en el esquema
+      // propio y se deshace revalidando—, y la confirmación única de F-025
+      // sigue siendo la única que precede a una escritura externa.
+      const parte = this.parteAbierto;
+      this.mensajeAprobacion = "Registrando la aprobación…";
+      try {
+        const cuerpo = window.Pipeline.cuerpoDeAprobacion(parte, {
+          remesaId: this.remesaId,
+          usuarioOid: this.usuario.usuarioOid,
+        });
+        const datos = await api.aprobar(cuerpo, parte.hash);
+        // Lo que se pinta es lo que dice el backend, no lo que suponga la
+        // pantalla: quién decide si la aprobación sigue vigente es quien la
+        // escribió (D-F).
+        parte.aprobacion = datos.aprobacion;
+        // `/api/aprobar` guarda el parte y su veredicto en la misma llamada
+        // (`design.md` §6), así que a la vuelta consta guardado: dejarlo en
+        // rojo lo mantendría fuera de la tanda por un fallo ya resuelto.
+        parte.guardado = true;
+        parte.errorGuardado = "";
+        parte.semaforo = window.Pipeline.semaforoDe(
+          parte.validacion,
+          parte.aprobacion,
+        );
+        this.mensajeAprobacion =
+          "Aprobado. Este parte entra en la tanda de archivo y cierre.";
+      } catch (error) {
+        this.mensajeAprobacion = (error && error.mensaje) || String(error);
       }
     },
 

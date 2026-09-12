@@ -730,7 +730,8 @@
   /**
    * Guarda el parte y su veredicto. **Nunca lanza** (F-019 R27).
    *
-   * Devuelve `{ok, motivo}`. Un guardado fallido no es un error del proceso:
+   * Devuelve `{ok, motivo, aprobacion}`. Un guardado fallido no es un error
+   * del proceso:
    * es un parte que **no se puede archivar**, y quien lo mire tiene que ver
    * por qué. Dejarlo escapar como excepción marcaría el parte como «error de
    * lectura», que es otra cosa y se arregla de otra manera.
@@ -749,8 +750,21 @@
       };
     }
     try {
-      await api.guardarParte(cuerpoDeParte(parte, remesaId), parte.hash);
-      return { ok: true, motivo: "" };
+      const datos = await api.guardarParte(
+        cuerpoDeParte(parte, remesaId),
+        parte.hash,
+      );
+      return {
+        ok: true,
+        motivo: "",
+        // F-026 R22 · qué dice el backend de la aprobación de este parte,
+        // después de guardar. Viene de aquí y no de una petición aparte
+        // —serían 22 llamadas de más en una remesa real—, y es lo que permite
+        // dos cosas: que al volver a subir la remesa los partes aprobados se
+        // reconozcan, y que una revalidación que **revoca** la aprobación lo
+        // diga en el acto en vez de en la recarga siguiente (R31).
+        aprobacion: (datos && datos.aprobacion) || null,
+      };
     } catch (error) {
       return {
         ok: false,
@@ -758,6 +772,9 @@
           (error && error.mensaje) ||
           (error && error.message) ||
           String(error),
+        // Un guardado fallido no dice nada de la aprobación: no se inventa
+        // ninguna, y quien la tuviera se queda con la que ya tenía.
+        aprobacion: null,
       };
     }
   }

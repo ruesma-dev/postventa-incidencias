@@ -749,3 +749,31 @@ def test_f026_el_log_de_la_aprobacion_no_lleva_ni_el_oid_ni_la_huella(
     assert OID not in registrado
     assert aprobacion.huella_aprobada not in registrado
     assert OBSERVACION not in registrado
+
+
+def test_f026_solo_la_columna_de_motivos_se_declara_como_jsonb():
+    """El `::jsonb` va donde tiene que ir, y en ninguna otra columna.
+
+    Lo destapó la campaña de mutación: cambiar el `==` por `!=` en el
+    generador de marcadores sobrevivía a la suite entera, porque el único test
+    que miraba el `VALUES` contaba los `%s` — y siguen siendo siete.
+
+    Y no es cosmético en ninguna de las dos direcciones. Sin el `::jsonb`,
+    PostgreSQL rechaza el `INSERT` porque no convierte `text` a `jsonb` por su
+    cuenta; con el `::jsonb` en las demás, el `oid` de quien aprueba y la
+    huella se intentarían convertir a JSON y reventarían. Las dos cosas fallan
+    en la primera aprobación real, no en los tests.
+    """
+    sql, _ = sentencias.upsert_aprobacion(
+        esquema=ESQUEMA, aprobacion=_aprobacion(_validacion())
+    )
+    columnas = sql.split("(", 1)[1].split(")", 1)[0].split(", ")
+    marcadores = sql.split("VALUES (", 1)[1].split(")\n", 1)[0].split(", ")
+
+    con_jsonb = {
+        columna
+        for columna, marcador in zip(columnas, marcadores, strict=True)
+        if "::jsonb" in marcador
+    }
+
+    assert con_jsonb == {"motivos_aprobados"}

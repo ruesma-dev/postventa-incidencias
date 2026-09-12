@@ -20,7 +20,7 @@ de cabo a rabo.
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -455,3 +455,54 @@ def test_f026_r7_una_aprobacion_de_lo_inaprobable_tampoco_abriria_la_puerta(codi
 
     assert not es_aprobable(validacion)
     assert not admite_circuito(validacion, aprobacion_de_la_cola)
+
+
+# ==========================================================================
+# Huecos que destapó la campaña de mutación (2026-09-12)
+# ==========================================================================
+
+
+def test_f026_una_aprobacion_no_se_puede_modificar_despues_de_creada():
+    """La aprobación es un **registro de auditoría**, y no se retoca.
+
+    Lo destapó la campaña de mutación: `@dataclass(frozen=True)` sobrevivía a
+    la suite entera, o sea que nada comprobaba la inmutabilidad.
+
+    Y aquí importa más que en otras dataclasses del dominio. La aprobación
+    viaja desde el repositorio hasta la puerta que decide si un parte que la
+    máquina rechazó entra en el circuito, y lo que esa puerta compara es su
+    `destino_aprobado`. Si la instancia fuera mutable, cualquier paso
+    intermedio podría cambiarlo entre leerla y comprobarla — y el registro que
+    queda en la base diría otra cosa que la decisión que se tomó.
+    """
+    aprobacion = _aprobacion(_validacion())
+
+    with pytest.raises(FrozenInstanceError):
+        aprobacion.destino_aprobado = Destino.ARCHIVO_Y_CIERRE
+
+
+def test_f026_r8_un_no_apto_sin_motivos_no_es_aprobable():
+    """R8 · sin motivos no hay nada que aprobar, aunque el parte sea no apto.
+
+    F-004 no emite hoy esa combinación —sin motivos, el veredicto es apto—, y
+    por eso ningún test que use `validar_parte` de verdad la alcanza: la
+    campaña de mutación lo señaló, `if not validacion.motivos: return False`
+    sobrevivía entera.
+
+    La guarda no sobra por eso. Es lo que impide que `all(...)` sobre una
+    tupla vacía —que en Python es **verdadero**— convierta «un no apto del que
+    no se sabe por qué» en aprobable. Si mañana una regla nueva de F-004
+    produjera esa combinación, aprobarla sería dar por bueno un rechazo cuyo
+    motivo nadie conoce.
+    """
+    sin_motivos = ResultadoValidacion(
+        hash_parte=HASH_DE_PRUEBA,
+        veredicto=Veredicto.NO_APTO,
+        destino=Destino.REVISION_MANUAL,
+        motivos=(),
+        clasificacion_firma=ClasificacionFirma.HUMANA,
+        observaciones=None,
+        confianza_observaciones=0,
+    )
+
+    assert not es_aprobable(sin_motivos)

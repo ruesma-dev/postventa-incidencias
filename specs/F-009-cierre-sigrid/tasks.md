@@ -171,6 +171,40 @@
 > delante, y tras autorización expresa para esa acción concreta. Es el
 > equivalente de la T24 de F-019.
 
+> ### Acta del 2026-09-14 · de dónde sale cada marca de este bloque
+>
+> **Este bloque no se recorrió nunca como tal**, pero **buena parte se ejecutó
+> de hecho** el 2026-09-11, dentro de la verificación de **F-012**: el
+> responsable cerró de verdad la reclamación **`RS26.09/0150` de la obra
+> `0626`** en el ERP de producción, con su parte adjunto, con autorización
+> expresa y comprobándolo él en la ficha de Sigrid. **Ese cierre es el de
+> T24.**
+>
+> **De las seis tareas, solo se marca T26**, y la marca sale de la respuesta
+> del paso 4 de T24 —que es donde su propio contrato dice que se observa—. Las
+> otras cinco **no se marcan**: el cierre ocurrió, pero **casi ninguna de sus
+> comprobaciones**. Ni uno solo de los cinco scripts de lectura de `infra/` se
+> ha ejecutado jamás, así que **la fila de auditoría del primer cierre real
+> está escrita en producción y nadie la ha mirado**, su **huso** incluido.
+>
+> **El acta completa —evidencia medida, tarea por tarea, los huecos con su
+> coste y el veredicto— está en `progress/guion_bloque8_F-009.md` §9**, con las
+> casillas rellenas. La fuente es `progress/guion_bloque9_F-012.md` §9. Nadie
+> ejecutó nada contra el ERP para levantarla.
+>
+> **Dos cosas que el texto de abajo dice mal, y se enmiendan sin borrarlas**:
+>
+> 1. **T22 dice «una reclamación de Mirasierra»**, y T24 hereda esa premisa. No
+>    fue Mirasierra ni la obra de prueba 404: el responsable decidió el
+>    **2026-09-10** verificar sobre la **0626**, que es **una obra en uso**
+>    (nota fechada en `progress/guion_bloque9_F-012.md`). **Mirasierra sigue
+>    fuera**: nadie ha autorizado cerrar una incidencia del piloto.
+> 2. **T22 espera «el aviso de que quedará cerrada sin el parte dentro de
+>    Sigrid (R21)»**. **R21 está derogado** por R48 de F-012 desde el
+>    2026-09-06: el dry-run trae en su lugar el bloque `grafico` (R49), y el
+>    `commit` **exige** el parte adjuntado (R2 de F-012). Un dry-run que aún
+>    trajera aquel aviso significaría que el despliegue no lleva F-012.
+
 - [ ] **T22**: **Dry-run real** contra una reclamación de Mirasierra, desde el
       entorno desplegado y con el interruptor **apagado**. | Verificación:
       **MANUAL (humano)**. Elegir una incidencia del piloto y llamar a
@@ -218,13 +252,27 @@
       informes de Posventa) y que el filtro por el texto propio devuelve
       **exactamente los cierres de este servicio** y ninguno manual.
 
-- [ ] **T26**: **Comprobar que el guard de escritura acepta el batch tal cual**.
+- [x] **T26**: **Comprobar que el guard de escritura acepta el batch tal cual**.
       | Verificación: **MANUAL (humano)**, y se hace **dentro de T24**: si
       `SqlWriteGuard` rechazara la sugerencia de tabla `WITH (UPDLOCK,
       HOLDLOCK)`, anotarlo y caer a la variante sin sugerencias — que **sigue
       fallando en seguro** por la clave única de `log.ide` (`design.md` §7.3).
       No improvisar otra vía: si el guard rechaza algo no previsto, la feature
       se marca `blocked` y se para.
+      **HECHO (2026-09-11), acreditado el 2026-09-14.** **De dónde sale la
+      marca**: el `POST /api/cerrar` con `commit` de `08:28:12` UTC respondió
+      **`200`** —medido en `appi-postventa-dev`, `progress/guion_bloque9_F-012.md`
+      §9.2— y **la reclamación `RS26.09/0150` quedó en `CER`**, comprobado por
+      el responsable en la ficha de Sigrid (§9.1 de aquel guion). El guard
+      valida **cada** sentencia del batch y la pasarela revierte el batch
+      entero ante un rechazo (`azure-apps/sigrid_api.md` §5 y §7.3): si hubiera
+      rechazado algo, el `UPDATE` se habría ido con él y **el ERP habría
+      quedado sin cambios**. Cambió, luego **el guard dejó pasar las dos
+      sentencias tal cual**, `WITH (UPDLOCK, HOLDLOCK)` incluida, y no hizo
+      falta la variante de reserva. **Salvedad**: `filas_afectadas` no se
+      anotó, así que del `INSERT` en `dbo.log` no hay observación directa (es
+      el hueco 8 de `progress/guion_bloque8_F-009.md` §9.4). Casilla rellena en
+      §5, T26, de ese guion.
 
 - [ ] **T27**: **Reintento sobre lo ya cerrado** (R18, R42). | Verificación:
       **MANUAL (humano)**. Repetir T24 sobre la misma incidencia: debe salir
@@ -251,6 +299,17 @@
       `progress/current.md` porque el informe que genera el arnés no lo
       registra** (carencia del arnés, anotada para arreglarse aparte).
 
-- [ ] **T29**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
+- [x] **T29**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
       `bash harness/init.sh` termina con exit code 0, tests incluidos y con la
       puerta de cobertura de las líneas cambiadas en `[OK]`.
+      **HECHO (2026-09-14).** **De dónde sale la marca**: ejecutado por el
+      implementer al levantar el acta del bloque 8, con salida
+      `ENTORNO LISTO. Puedes trabajar.` y **exit code 0**: `62 passed in
+      6.70s`, las dos suites de servicio (`api`, `front`) en verde y
+      `PUERTA COBERTURA: 99.0% de 1340 líneas cambiadas cubiertas (1327/1340,
+      umbral 80%)`. **Salvedad honesta**: se ejecutó desde la rama
+      `feature/F-026-aprobacion-humana`, no desde `feature/F-009-cierre-sigrid`
+      como pedía la P1 del guion. El código de F-009 **está en el historial de
+      esa rama** (`git merge-base --is-ancestor feature/F-009-cierre-sigrid
+      HEAD` devuelve cierto), así que el verde cubre F-009 **y todo lo que vino
+      después**, que es más exigente, no menos.

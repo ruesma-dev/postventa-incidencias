@@ -3,9 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **25 features**, 13 abiertas, 12 terminadas.
-
-En curso: **F-026**.
+Resumen: **25 features**, 12 abiertas, 13 terminadas.
 
 Bloqueadas: **F-009**.
 
@@ -25,7 +23,6 @@ Bloqueadas: **F-009**.
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 | F-022 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 22 | pendiente | estandar | `feature/F-022-suite-barrido-cacheado` |
-| F-026 | Aprobacion humana de los partes que van a revision | 26 | en curso | estandar | `feature/F-026-aprobacion-humana` |
 
 ## Terminadas
 
@@ -43,6 +40,7 @@ Bloqueadas: **F-009**.
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | critico |
 | F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | estandar |
 | F-025 | Archivar y cerrar en una sola confirmacion | 25 | critico |
+| F-026 | Aprobacion humana de los partes que van a revision | 26 | estandar |
 
 ## Detalle
 
@@ -118,12 +116,6 @@ estado **pendiente** · prioridad 22 · rigor `estandar` · SDD sí · rama `fea
 
 El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco ficheros que recorren el árbol del repositorio fichero a fichero, y repiten el mismo barrido en cada test: test_f003_arquitectura.py cuesta 12,7 s él solo, un tercio de la suite entera. Leer el árbol UNA vez en una fixture de sesión y que cada test consulte el resultado dejaría la suite en torno a 20 s. Medido en progress/explore_F-009_timeouts.md (medición 10) el 2026-09-02, a propósito de los timeouts de la campaña de mutación de F-009: con la suite a 20 s la campaña paralela volvería a caber de sobra en el tope de 120 s por mutante. Beneficia además a cada init.sh de cada sesión. OJO: toca tests de F-003, F-005, F-006 y F-009, features ya cerradas, con el riesgo de aflojar sin querer una comprobación de arquitectura; por eso lleva spec propia y review, y no se mete dentro de otra feature.
 
-### F-026 · Aprobacion humana de los partes que van a revision
-
-estado **en curso** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
-
-Hoy un parte que la validacion manda a revision humana se queda bloqueado para siempre: el front lo pinta en ambar, deja corregir sus campos y consultar la cola, pero NO existe ninguna forma de aprobarlo -ni boton, ni endpoint- y `esArchivable` solo mira el veredicto y el destino que puso la IA. Esta feature cierra ese circuito: cuando el humano corrige los campos o revisa el parte, este pasa a APROBADO y entra en el flujo normal de archivo y cierre. NO TOCA SIGRID: la puerta del ERP sigue siendo la misma y el cierre sigue exigiendo lo que exige. EL APROBADO SE GUARDA, no vive solo en el navegador (decision del humano del 2026-09-11): quien aprobo y cuando, en el esquema propio. El motivo no es completismo: un parte llega a revision porque la firma no parecia humana o porque trae observaciones manuscritas del cliente diciendo que la reparacion no esta bien, asi que aprobarlo es la decision de una persona que sobrescribe al sistema en una incidencia que acabara cerrada en el ERP, y esa decision tiene que quedar registrada.
-
 ### F-001 · Esqueleto del monorepo y /health
 
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
@@ -195,3 +187,9 @@ F-005 dejó `RepositorioPartesPort` completo —`guardar_remesa`, `guardar_parte
 estado **terminada** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
 
 Quitar el paso de vista previa del circuito. Hoy el front pide DOS confirmaciones para la misma decision: una para archivar y otra, tras ensenar el dry-run del grafico y del cierre, para escribir en el ERP. Al pulsar archivar sobre los partes aptos habra UNA sola confirmacion -la que ya existe- y al confirmarla se ejecutan los tres pasos seguidos: archivar en SharePoint, adjuntar el parte a la reclamacion y cerrarla. DECISION DEL HUMANO DEL 2026-09-11, tomada despues de verificar el circuito completo contra el ERP real: NO hace falta ensenar ningun resumen antes de confirmar; se le planteo que eso es lo que protege de cerrar la incidencia equivocada si la IA leyo mal el numero del papel, y lo reafirmo. OJO: esto DEROGA requisitos aprobados de F-009 y de F-012 que exigen dry-run mostrado al usuario antes de cada commit; se enmiendan con constancia fechada, citando la premisa original literal, NO se borran (mismo patron que R28 de F-010 el 2026-09-03). Las comprobaciones que el backend hace antes de escribir -que la reclamacion existe, en que estado esta, si el documento ya cuelga de ella- NO se tocan: lo que desaparece es la pantalla, no la verificacion. Los partes no aptos siguen sin archivarse.
+
+### F-026 · Aprobacion humana de los partes que van a revision
+
+estado **terminada** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
+
+Hoy un parte que la validacion manda a revision humana se queda bloqueado para siempre: el front lo pinta en ambar, deja corregir sus campos y consultar la cola, pero NO existe ninguna forma de aprobarlo -ni boton, ni endpoint- y `esArchivable` solo mira el veredicto y el destino que puso la IA. Esta feature cierra ese circuito: cuando el humano corrige los campos o revisa el parte, este pasa a APROBADO y entra en el flujo normal de archivo y cierre. NO TOCA SIGRID: la puerta del ERP sigue siendo la misma y el cierre sigue exigiendo lo que exige. EL APROBADO SE GUARDA, no vive solo en el navegador (decision del humano del 2026-09-11): quien aprobo y cuando, en el esquema propio. El motivo no es completismo: un parte llega a revision porque la firma no parecia humana o porque trae observaciones manuscritas del cliente diciendo que la reparacion no esta bien, asi que aprobarlo es la decision de una persona que sobrescribe al sistema en una incidencia que acabara cerrada en el ERP, y esa decision tiene que quedar registrada.

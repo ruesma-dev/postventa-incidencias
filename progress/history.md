@@ -538,6 +538,49 @@ llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
 
 ---
 
+## F-026 · Aprobación humana de los partes que van a revisión — CERRADA el 2026-09-14
+
+**El agujero que cierra**: un parte que la validación mandaba a revisión se
+quedaba bloqueado **para siempre**. Se podía ver y corregir, pero no existía
+ninguna forma de aprobarlo: ni botón, ni endpoint, ni columna. Ahora se
+aprueba con un **acto explícito**, registrado con quién y cuándo.
+
+**Dos decisiones de diseño que importan:**
+
+1. **La aprobación se registra al lado del veredicto, nunca encima**, y en
+   **tabla propia**. El motivo está medido: al guardar un parte, la validación
+   se reescribe entera, así que una columna de aprobación ahí **duraría hasta
+   que alguien corrigiera una coma**. Y escribir «apto» donde la máquina dijo
+   «no apto» borraría el motivo por el que alguien tuvo que decidir, haciendo
+   indistinguible el parte que siempre fue verde del que una persona dio por
+   bueno **a pesar** de la máquina.
+2. **El autoguardado mantiene el acoplamiento entre guardar y revalidar**, que
+   existía desde antes por una razón escrita en el código: guardar sin
+   revalidar deja en la base el veredicto que la máquina emitió sobre el dato
+   **sin corregir**. Se pudo mantener porque revalidar no gasta IA.
+
+**El hallazgo de la review, que el responsable mandó arreglar**: la huella que
+decide si una aprobación sigue valiendo **no incluía el número de incidencia**,
+que es el que decide sobre qué reclamación del ERP se escribe el cierre. Se
+podía aprobar un parte para una incidencia y acabar cerrando otra. Entró
+también el código de obra, porque decide en qué carpeta acaba un PDF con el
+DNI manuscrito de un cliente. La premisa original no se borró: quedó enmendada
+con recuadro fechado en el código, en el diseño y en los requisitos.
+
+**Las puertas del arnés**: review **APROBADA** sin hallazgos de severidad alta;
+campaña de mutación con **34 muertos de 35** y el superviviente analizado como
+equivalente y comprobado; cobertura del **99,0 %**; 2.343 tests.
+
+**Lo que NO tiene respaldo, y consta en `tasks.md`**: no hay evidencia en los
+registros de ninguna petición al entorno desplegado en los tres días previos
+al cierre, así que las cuatro comprobaciones contra la base real **no se
+pueden acreditar**; y el cambio de la huella, que tocó código de producción,
+es **posterior a la review** y nadie lo revisó. El responsable cerró la
+feature con eso sabido.
+
+Detalle: `progress/impl_F-026.md`, `progress/review_F-026.md` y
+`progress/mutacion_F-026.md`.
+
 ## F-025 · Archivar y cerrar en una sola confirmación — CERRADA el 2026-09-11
 
 **Lo que hace**: el front pedía **dos** confirmaciones para la misma decisión,

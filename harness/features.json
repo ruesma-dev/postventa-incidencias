@@ -449,7 +449,7 @@
         "El oid de quien aprueba se guarda como identificador opaco, nunca su correo ni su nombre",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "estandar",
       "priority": 26,

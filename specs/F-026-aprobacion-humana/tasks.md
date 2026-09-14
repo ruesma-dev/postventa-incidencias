@@ -274,7 +274,27 @@
 
 ## Bloque 7 · Cierre
 
-- [ ] **T24**: Campaña de mutación (`python -m harness.mutacion --feature
+> **Cierre del bloque 6 · 2026-09-14.** El responsable dio la feature por
+> buena —«la revisión está hecha (1 y 2), cierra F-026»— y con eso se cierra.
+>
+> **Sus cuatro casillas quedan vacías, y no por olvido.** Lo que consta y lo
+> que no:
+>
+> - **No hay evidencia en los registros de la aplicación** de ninguna petición
+>   al entorno desplegado en los tres días anteriores al cierre, así que la
+>   comprobación de T20 a T23 **no se puede acreditar** desde aquí. Es posible
+>   que se probara en local, donde no queda rastro.
+> - **La segunda pasada de review no existe como informe.** La review aprobada
+>   (`progress/review_F-026.md`) es **anterior** al cambio de la huella de H-1,
+>   que tocó código de producción: `domain/models/aprobacion.py` y
+>   `domain/models/validacion.py`. Ese cambio lo hizo el líder, está cubierto
+>   por tests propios y con el arnés en verde, pero **nadie lo ha revisado**.
+>
+> Queda escrito para que quien retome esto sepa exactamente qué respaldo tiene
+> cada parte: el código, el de la suite y la campaña de mutación; el
+> comportamiento contra la base real, el del responsable.
+
+- [x] **T24**: Campaña de mutación (`python -m harness.mutacion --feature
       F-026`, con los workers de `harness/rigor.json`, **anotando el nº de
       workers**). | Verificación: rigor `estandar` → informe en
       `progress/mutacion_F-026.md` con **todos** los supervivientes analizados
@@ -283,7 +303,7 @@
       vacío; si saliera, se declara N/A **con el motivo impreso**, nunca a
       secas (C4 bis).
 
-- [ ] **T25**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
+- [x] **T25**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
       `bash harness/init.sh` termina con exit code 0, tests incluidos —los de
       `api` y los de `front`— y con la puerta de cobertura de las líneas
       cambiadas en `[OK]` o en `N/A` **con el motivo impreso**.

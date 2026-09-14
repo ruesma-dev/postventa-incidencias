@@ -291,6 +291,34 @@ cola»: la aprobación es de **un** parte, con ese parte delante.
 > «vale **esta** firma»; si el sistema vuelve a leer el papel y sale otra cosa,
 > esa persona no ha opinado sobre lo nuevo.
 
+> **ENMIENDA DEL 2026-09-12 · hallazgo H-1 de `progress/review_F-026.md`.**
+> La huella pasa a incluir también el **código de obra** y el **número de
+> incidencia**, los dos normalizados.
+>
+> **La premisa original decía**, literal: *«Por qué no entran los valores de
+> los campos: el nombrado cambia si cambia el código de obra, pero eso no es
+> lo que se aprobó; y los campos decisivos ilegibles no son aprobables, así
+> que su cambio ya sale reflejado en los motivos.»*
+>
+> **Qué la invalidó**: ese razonamiento examinaba el código de obra y **no
+> llegó a examinar el número de incidencia**, que decide **sobre qué
+> reclamación del ERP de producción se escribe el cierre**. El camino que
+> dejaba abierto: un parte va a la cola por observaciones, alguien lo aprueba
+> mirando el papel, otra persona corrige el número a uno distinto —también
+> legible, así que ningún motivo cambia—, revalida, y la aprobación sobrevive
+> y acaba cerrando **otra** reclamación. El código de obra entra por su propio
+> motivo: decide en qué carpeta acaba un PDF con el DNI manuscrito de un
+> cliente.
+>
+> **Quién y cuándo**: lo decidió el responsable del proyecto el **2026-09-12**,
+> tras leer el hallazgo. Se hizo entonces porque tocar la huella invalida las
+> aprobaciones existentes, y no había ninguna: la feature no se había
+> desplegado.
+>
+> **Lo que no cambia**: que un campo decisivo ilegible sigue sin ser
+> aprobable. Lo que estos dos añaden no es la legibilidad, que ya sale en los
+> motivos, sino **la identidad de lo que se aprobó**.
+
 **R30.** CUANDO se guarda una validación cuyo veredicto **difiere** del que se
 aprobó, el sistema debe **revocar** la aprobación de ese parte, en la misma
 operación y sin que nadie tenga que acordarse de pedirlo.

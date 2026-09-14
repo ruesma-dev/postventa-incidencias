@@ -316,6 +316,72 @@ def test_f026_r30_la_huella_del_apto_tambien_se_calcula():
     assert len(huella_de_veredicto(_validacion(observaciones=None))) == 64
 
 
+def test_f026_r30_cambiar_el_numero_de_incidencia_cambia_la_huella():
+    """**H-1 de la review del 2026-09-12** · el nº de incidencia entra en la
+    huella, y esta es la razón.
+
+    Es el campo que decide **sobre qué reclamación del ERP de producción se
+    escribe el cierre**. Sin él dentro, este camino existía: un parte va a la
+    cola por observaciones, una persona lo aprueba mirando el papel, alguien
+    corrige el nº de incidencia a otro —también legible—, revalida, y como el
+    destino, los motivos, la firma y las observaciones no han cambiado, la
+    aprobación sobrevive y acaba cerrando **otra** reclamación.
+
+    Los dos números son inventados y los dos son legibles: no cambia ningún
+    motivo, solo el dato. Si la huella no los distinguiera, este test pasaría
+    por casualidad y el agujero seguiría abierto.
+    """
+    uno = _validacion(numero_incidencia="RS26.08/0123")
+    otro = _validacion(numero_incidencia="RS26.08/0999")
+
+    assert uno.motivos == otro.motivos
+    assert uno.destino == otro.destino
+    assert huella_de_veredicto(uno) != huella_de_veredicto(otro)
+
+
+def test_f026_r30_cambiar_el_codigo_de_obra_cambia_la_huella():
+    """**H-1** · el código de obra entra por el mismo motivo que el número.
+
+    Decide la carpeta de archivo y el nombre del fichero, y lo que se archiva
+    es un PDF con el DNI manuscrito de un cliente. Una aprobación que
+    sobreviviera a cambiarlo estaría avalando que ese documento se guarde en la
+    carpeta de otra obra.
+
+    Los dos códigos son legibles, así que los motivos no cambian: lo único
+    distinto es dónde acaba el papel.
+    """
+    uno = _validacion(codigo_obra="0677")
+    otro = _validacion(codigo_obra="0688")
+
+    assert uno.motivos == otro.motivos
+    assert huella_de_veredicto(uno) != huella_de_veredicto(otro)
+
+
+def test_f026_r32_los_espacios_y_las_mayusculas_de_los_decisivos_no_cambian_la_huella():
+    """R32 · los campos decisivos entran **normalizados**, como el texto.
+
+    La lectura del modelo no es determinista en el espaciado ni en las
+    mayúsculas, y una relectura del mismo papel que transcriba `rs26.08/0123`
+    en vez de `RS26.08/0123` no es un número distinto: es el mismo. Revocar por
+    eso sería revocar por nada, y revocar por nada rompe el único gesto con el
+    que se recupera el trabajo tras recargar la pantalla.
+    """
+    uno = _validacion(codigo_obra="0677", numero_incidencia="RS26.08/0123")
+    otro = _validacion(codigo_obra=" 0677 ", numero_incidencia="  rs26.08/0123 ")
+
+    assert huella_de_veredicto(uno) == huella_de_veredicto(otro)
+
+
+def test_f026_r15_la_huella_con_los_campos_decisivos_sigue_sin_llevar_texto():
+    """R15 · añadir campos a la cadena canónica no cambia lo que sale: 64
+    hexadecimales, y ni una letra de nada de lo que hay dentro."""
+    huella = huella_de_veredicto(_validacion(numero_incidencia="RS26.08/0123"))
+
+    assert len(huella) == 64
+    assert set(huella) <= set("0123456789abcdef")
+    assert "rs26" not in huella
+
+
 # ==========================================================================
 # T4 · R23, R31 · vigencia y admisión en el circuito
 # ==========================================================================

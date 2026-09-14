@@ -675,6 +675,30 @@ def test_f026_r30_un_veredicto_distinto_manda_otra_huella(conexion, repositorio)
     assert huellas[0] != huellas[1]
 
 
+def test_f026_r30_corregir_el_numero_de_incidencia_manda_otra_huella(
+    conexion, repositorio
+):
+    """H-1 de la review del 2026-09-12 - corregir el numero **revoca**.
+
+    Es el camino que el hallazgo describio y que aqui se cierra de extremo a
+    extremo: los dos numeros son legibles, asi que el destino, los motivos, la
+    firma y las observaciones son identicos y nada mas que el dato ha cambiado.
+    Si las dos huellas fueran iguales, el `WHERE huella_aprobada <> %s` no
+    casaria, la aprobacion seguiria viva y cerraria **otra** reclamacion del
+    ERP de produccion.
+    """
+    repositorio.guardar_validacion(
+        resultado=_validacion(numero_incidencia="RS26.08/0123"), ahora=AHORA
+    )
+    repositorio.guardar_validacion(
+        resultado=_validacion(numero_incidencia="RS26.08/0999"), ahora=AHORA
+    )
+
+    huellas = _huellas_revocadas(conexion)
+
+    assert huellas[0] != huellas[1]
+
+
 def _huellas_revocadas(conexion: ConexionDoble) -> list[str]:
     """Las huellas con las que se ha comparado, en orden."""
     return [

@@ -188,14 +188,20 @@ def huella_de_veredicto(validacion: ResultadoValidacion) -> str:
     Por eso se puede calcular en cualquier punto donde exista un veredicto, que
     es lo que permite resolver la revocación en la escritura.
 
-    La cadena canónica lleva cuatro cosas, en este orden fijo:
+    La cadena canónica lleva seis cosas, en este orden fijo:
 
     1. el destino;
     2. los códigos de los motivos, **ordenados** —el orden en que F-004 los
        emite es un detalle suyo, y revocar por eso sería revocar por nada—;
     3. la clasificación efectiva de la firma, porque aprobar «esta firma
        dudosa» no es aprobar «no hay firma»;
-    4. las observaciones **normalizadas**, o la cadena vacía.
+    4. las observaciones **normalizadas**, o la cadena vacía;
+    5. el **código de obra**, normalizado;
+    6. el **número de incidencia**, normalizado.
+
+    Los dos van por el mismo `_normalizar` que las observaciones: un número
+    con un espacio de más o en otra caja es **el mismo número**, y revocar por
+    eso sería revocar por nada, igual que pasaría con el orden de los motivos.
 
     Por qué entra el texto de las observaciones: F-004 no lo interpreta
     —cualquier texto no vacío produce el mismo `observaciones_manuscritas`, y
@@ -203,10 +209,35 @@ def huella_de_veredicto(validacion: ResultadoValidacion) -> str:
     darían la misma huella y una aprobación sobre la primera valdría para la
     segunda (P4).
 
-    Por qué **no** entran los valores de los campos: el nombrado cambia si
-    cambia el código de obra, pero eso no es lo que se aprobó; y los campos
-    decisivos ilegibles no son aprobables, así que su cambio ya sale reflejado
-    en los motivos.
+    **Los dos campos decisivos SÍ entran** (5 y 6), y esto es una enmienda:
+
+    > **Enmienda del 2026-09-12 · H-1 de `progress/review_F-026.md`.** Hasta
+    > hoy esta función decía, literal: *«Por qué **no** entran los valores de
+    > los campos: el nombrado cambia si cambia el código de obra, pero eso no
+    > es lo que se aprobó; y los campos decisivos ilegibles no son aprobables,
+    > así que su cambio ya sale reflejado en los motivos.»*
+    >
+    > Ese razonamiento examinaba el **código de obra** y **no llegó a examinar
+    > el número de incidencia**, que es el que decide **sobre qué reclamación
+    > del ERP de producción se escribe el cierre**. El camino que dejaba
+    > abierto: un parte va a la cola por observaciones, alguien lo aprueba
+    > mirando el papel, otra persona corrige el número a uno distinto —también
+    > legible, así que ningún motivo cambia—, revalida, y la aprobación
+    > sobrevive y acaba cerrando **otra** reclamación.
+    >
+    > Entra también el **código de obra**, por su propio motivo: decide la
+    > carpeta y el nombre del fichero, y lo que se archiva es un PDF con el DNI
+    > manuscrito de un cliente. Una aprobación que sobreviviera a cambiarlo
+    > estaría avalando que ese documento se guarde en la carpeta de otra obra.
+    >
+    > Lo decidió el responsable del proyecto el **2026-09-12**, tras leer el
+    > hallazgo. **Este era el momento**: tocar la huella invalida las
+    > aprobaciones existentes, y no había ninguna porque la feature todavía no
+    > se había desplegado.
+
+    Sigue siendo cierto que **un campo decisivo ilegible no es aprobable**, así
+    que lo que estos dos añaden no es la legibilidad —que ya sale en los
+    motivos— sino **la identidad de lo que se aprobó**.
 
     Lo que sale es un `sha256` en hexadecimal, así que **no lleva dentro ni
     una letra del texto manuscrito** (R15).
@@ -218,6 +249,8 @@ def huella_de_veredicto(validacion: ResultadoValidacion) -> str:
             _SEPARADOR_MOTIVOS.join(codigos),
             validacion.clasificacion_firma.value,
             _normalizar(validacion.observaciones),
+            _normalizar(validacion.codigo_obra),
+            _normalizar(validacion.numero_incidencia),
         )
     )
     return hashlib.sha256(canonica.encode("utf-8")).hexdigest()

@@ -1,6 +1,68 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## Estado al 2026-09-14 · **F-009: levantada el acta de su bloque 8; solo T26 queda acreditada**
+>
+> Encargo **documental** y acotado: F-009 sigue `blocked` desde el 2026-09-06
+> esperando a F-012, pero **el cierre real ya se ejecutó** —dentro de la
+> verificación de F-012, el 2026-09-11— así que buena parte del bloque 8 de
+> F-009 **ya ocurrió**. Había que averiguar **qué exactamente**, y dejarlo
+> escrito. **No se ejecutó nada** contra Azure, Sigrid, `sigrid-api`, el
+> PostgreSQL compartido ni SharePoint: toda la evidencia estaba escrita.
+> Informe: `progress/impl_cierre_F-009.md`.
+>
+> ### Lo hecho, en dos commits
+>
+> - **`092bf8d`** — `progress/guion_bloque8_F-009.md`: casillas de **T22–T27**
+>   rellenas citando dónde consta cada cosa; **enmienda fechada de la obra**
+>   (nombraba la obra de prueba **404**; fue **`RS26.09/0150` de la `0626`**,
+>   una obra **en uso**, por decisión del responsable del 2026-09-10) **sin
+>   borrar la premisa original**; y un **§9** nuevo con la evidencia medida, los
+>   **ocho huecos con su coste** y el **veredicto**. Era el resto abierto de
+>   **H10** de `guion_bloque9_F-012.md`.
+> - **`ff5fb6a`** — `specs/F-009-cierre-sigrid/tasks.md`: **solo T26** del
+>   bloque 8 marcada, más **T29**, cada una diciendo de dónde sale. Nota
+>   fechada bajo el bloque 8 que enmienda además dos cosas que el texto de T22
+>   dice mal: **Mirasierra** y el **aviso de R21**, derogado por R48 de F-012.
+>
+> ### El veredicto, para la decisión del líder
+>
+> **El cierre real está acreditado; sus comprobaciones, casi ninguna.** Una
+> reclamación pasó a `CER` en producción, con autorización y **con su parte
+> dentro**, y el responsable lo vio en la ficha de Sigrid. Pero **ninguno de
+> los cinco scripts de lectura de `infra/` se ha ejecutado jamás**: de los nueve
+> pasos de T24 constan **uno y medio**, y **la fila de auditoría del primer
+> cierre real está escrita en producción y nadie la ha mirado** —su **huso**
+> incluido, que §0.2 del guion daba por defecto probable—.
+>
+> **Marcar el bloque 8 como superado sería falso.** De los ocho huecos de §9.4,
+> **siete no exigen escribir en el ERP y tres no exigen ni abrir la ventana**
+> (la fila de `dbo.log` y su huso, T25 entera, la traza local). **El único que
+> exige ventana de escritura es T27**, el reintento sobre lo ya cerrado — el
+> escenario más probable en uso normal, y el que **las tres features dejaron
+> sin marcar** (T27 de F-009, T30 de F-012, T22 de F-025).
+>
+> ### Tres cosas que el reviewer tiene que mirar
+>
+> 1. **La única marca del bloque 8 es T26, y se apoya en una inferencia**: `200`
+>    + la reclamación en `CER` ⇒ el guard aceptó el batch, porque un rechazo lo
+>    habría revertido entero. La cadena está escrita entera en su casilla y en
+>    `tasks.md` **para que se pueda romper**; `filas_afectadas` no se anotó y
+>    eso consta como salvedad, no se esconde.
+> 2. **La prueba de F-025 se descartó a propósito como evidencia de T27** (§9.6
+>    del guion): sus registros no muestran **ninguna** llamada a `cerrar`, y una
+>    llamada que no consta no verifica un reintento.
+> 3. **`T29` se marcó desde la rama `feature/F-026-aprobacion-humana`**, no
+>    desde la de F-009, y la salvedad va escrita: el código de F-009 está en el
+>    historial de HEAD, así que el verde cubre más, no menos.
+>
+> ### Lo que NO se tocó
+>
+> **El `status` de ninguna feature** —F-009 sigue `blocked`, lo lleva el líder—,
+> ni código, ni tests, ni `azure-apps/`. Ese último es el pendiente con dueño:
+> `azure-apps/postventa_incidencias.md` **sigue diciendo que «todavía no se ha
+> ejecutado ni un cierre real»**, y desde el 2026-09-11 es falso.
+
 > ## Estado al 2026-09-12 · **F-026: hecho el bloque 5, las enmiendas y la documentación**
 >
 > Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque

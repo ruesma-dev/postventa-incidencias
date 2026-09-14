@@ -449,11 +449,12 @@
         "El oid de quien aprueba se guarda como identificador opaco, nunca su correo ni su nombre",
         "bash harness/init.sh en verde"
       ],
-      "status": "done",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "estandar",
       "priority": 26,
-      "branch": "feature/F-026-aprobacion-humana"
+      "branch": "feature/F-026-aprobacion-humana",
+      "blocked_by": "VERIFICACION REAL PENDIENTE (2026-09-14). El codigo esta completo, revisado y con el arnes en verde, pero el bloque 6 -las cuatro comprobaciones contra la base real- NO se ha acreditado: no hay ni una peticion al entorno desplegado en los registros. Y el cambio de la huella de H-1, que toco codigo de produccion, es POSTERIOR a la review y nadie lo ha revisado. El responsable decidio dejar esta parte abierta y verificarla el mismo tras desplegar y mergear."
     }
   ]
 }

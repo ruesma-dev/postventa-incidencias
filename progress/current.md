@@ -1,6 +1,59 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## PARA RETOMAR · corte de sesión del 2026-09-15
+>
+> **Dónde está todo:** rama `feature/F-026-aprobacion-humana`, árbol limpio,
+> arnés en verde. **185 commits sin mergear a `dev`** y **nada con `push`** en
+> ninguno de los tres repositorios (este, `azure-apps` y `arnes-base`).
+>
+> ### El estado, en una tabla
+>
+> | Feature | Estado | Qué falta |
+> |---|---|---|
+> | **F-012** parte adjunto a la incidencia | `done` | nada |
+> | **F-025** una sola confirmación | `done` | nada |
+> | **F-026** aprobación humana y autoguardado | **`in_progress`** | **solo la verificación real**, que la hace el humano |
+> | **F-009** cierre en Sigrid | `blocked` | decisión del humano: ver abajo |
+> | **F-024** datos del parte para el datamart | `spec_ready` | cuatro decisiones del humano |
+>
+> ### Lo que estábamos haciendo cuando se cortó
+>
+> El plan acordado, por orden: **(1)** cerrar F-009, **(2)** merge de la cadena
+> a `dev`, **(3)** desplegar backend y front, **(4)** el humano revisa F-026 en
+> real y se cierra.
+>
+> **El paso 1 está a medias y con una decisión encima de la mesa.** El acta de
+> F-009 ya está levantada (`progress/impl_cierre_F-009.md`, commits `092bf8d`,
+> `ff5fb6a`, `b17a93b`) y su veredicto es: **lo sustantivo está hecho** —una
+> reclamación real pasó a cerrada en producción, con su parte dentro— **pero
+> sus comprobaciones casi ninguna**: de las siete tareas del bloque 8 solo
+> **T26** está acreditada, y ninguno de los cinco scripts de lectura de
+> `infra/` se ha ejecutado jamás.
+>
+> **Lo que se le propuso al humano y no llegó a contestar**: hacer antes del
+> merge una **sesión de solo lectura** —tres scripts, sin abrir ninguna ventana
+> de escritura— que cierra tres de los ocho huecos. El que más importa: **la
+> fila de auditoría del primer cierre real está escrita en producción y nadie
+> la ha mirado, su huso horario incluido**, que es el defecto que el propio
+> guion daba por probable. Los ocho huecos, ordenados por coste, están en el
+> §9.4 de `progress/guion_bloque8_F-009.md`.
+>
+> **Y uno que sale gratis**: el único hueco que exigiría abrir la ventana es el
+> reintento sobre una incidencia ya cerrada —el escenario más probable en uso
+> normal, y que **las tres features dejaron sin marcar**—. Se puede comprobar
+> de paso cuando el humano revise F-026: basta con volver a subir un parte que
+> ya se cerró.
+>
+> ### Otros cabos, menores
+>
+> - `progress/peticion_posventa_prueba_F-012.md` está **escrita y sin enviar**.
+>   Su nota interna dice qué hacía falta antes; ya se cumple.
+> - Dos avisos nuevos de `ruff` (58 → 60) que **no son de ninguna feature**:
+>   salen de `harness/`.
+> - `arnes-base` tiene el **encargo 1.7.12** sin implementar (la caché de
+>   `init.sh` puede tapar un rojo) y el 1.7.11 sin confirmar siquiera.
+
 > ## Estado al 2026-09-14 · **F-009: levantada el acta de su bloque 8; solo T26 queda acreditada**
 >
 > Encargo **documental** y acotado: F-009 sigue `blocked` desde el 2026-09-06

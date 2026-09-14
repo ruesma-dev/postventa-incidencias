@@ -1,6 +1,68 @@
 <!-- progress/guion_bloque8_F-009.md -->
 # F-009 · Guion de ejecución del bloque 8 (T22–T27)
 
+> ## Acta del 2026-09-14 · **buena parte de este bloque se ejecutó de hecho dentro de F-012, y queda levantada aquí**
+>
+> **Qué pasó**: F-009 lleva `blocked` desde el 2026-09-06 esperando a que F-012
+> se implementara primero. Esa espera terminó. **F-012 y F-025 están cerradas**,
+> y el 2026-09-11 el responsable del proyecto **cerró de verdad una reclamación
+> en el ERP de producción** —`RS26.09/0150` de la obra **`0626`**— con su parte
+> dentro. **Ese cierre es el de T24 de este guion**, ejecutado dentro de la
+> verificación de otra feature.
+>
+> **Qué queda acreditado y qué no.** De las seis tareas del bloque, **solo T26
+> queda marcada**. Las otras cinco tienen sus casillas rellenas **parcialmente**,
+> con lo que consta y **citando dónde consta cada cosa**; lo que no consta se
+> queda vacío con su motivo. Nada se ha dado por bueno por parecerse a algo que
+> sí se hizo, y en particular **la prueba de F-025 no acredita el reintento de
+> T27** (ver §9.6).
+>
+> **La fuente**: `progress/guion_bloque9_F-012.md` §9 —el acta del 2026-09-11,
+> con sus mediciones— y las entradas de F-012 y F-025 de `progress/history.md`.
+> Ningún agente ha ejecutado nada contra el ERP para levantar esta acta: **todo
+> sale de lo que ya estaba escrito**.
+>
+> El acta entera —tarea por tarea, lo que queda abierto con su coste, y el
+> **veredicto** para el líder— está en **§9**, al final de este fichero.
+
+> ## Nota del 2026-09-14 · **cambia la obra sobre la que se verificó, y con ella una premisa de este guion** (resto abierto de H10)
+>
+> **La premisa original, literal, tal y como estaba escrita aquí hasta hoy**, en
+> la nota del 2026-09-06 y en la **P5** de §2: *«El bloque 9 de F-012 ejecuta de
+> hecho un cierre completo —adjuntar y cerrar— **sobre una reclamación de la
+> obra de prueba 404**»*, y *«**Por qué la 404 y no Mirasierra.** La decisión
+> del humano del 2026-09-06 es que **toda escritura de prueba** contra el ERP
+> cae en la obra de prueba. Cerrar una incidencia real del piloto es otra
+> decisión, y otra autorización»*.
+>
+> **Esa premisa la levantó el responsable del proyecto el 2026-09-10**, y consta
+> fechada en la nota del 2026-09-10 de `progress/guion_bloque9_F-012.md`: se le
+> planteó de forma explícita que la **0626 no es una obra de pruebas, sino una
+> obra en uso**, y lo reafirmó. La verificación —la que de hecho se ejecutó el
+> 2026-09-11— fue sobre:
+>
+> | Qué | Cuál |
+> |---|---|
+> | Obra | **0626**. **No es una obra de pruebas: es una obra en uso** |
+> | Incidencia | **`RS26.09/0150`**, de tipo **708**, dada de alta a mano en el ERP por el responsable |
+>
+> **Qué implica, y hay que decirlo entero**: el cierre y el documento adjunto
+> quedan **en el histórico de una obra en uso**, a la vista de cualquiera que la
+> consulte en Sigrid. No hay deshacer.
+>
+> Este guion seguía nombrando la obra genérica: era el **resto abierto de H10**
+> (`progress/guion_bloque9_F-012.md` §8, que lo deja escrito como «queda por
+> corregir»). **Corregido hoy**, con marcas fechadas dentro —la nota del
+> 2026-09-06 y la P5 de §2— y **sin borrar la premisa anterior**, que queda
+> arriba para que se sepa cuál era y quién la levantó. Mismo criterio que la
+> nota del 2026-09-10 del bloque 9 y que la enmienda del 2026-09-03 bajo el R28
+> de `specs/F-010-despliegue/requirements.md`.
+>
+> **Lo que NO cambia —y sobre una obra en uso pesa más, no menos**: comprobación
+> previa antes de cada escritura; **autorización expresa del responsable para
+> cada incidencia concreta** (P6), no «para probar el cierre»; y ninguna
+> escritura desde un puesto de trabajo.
+
 > **Qué es esto.** El procedimiento que sigue **el humano**, delante del ERP de
 > producción y con el entorno desplegado, para verificar el cierre real de una
 > incidencia. Cada tarea trae qué se verifica, sus precondiciones, los pasos
@@ -28,12 +90,20 @@
 > guion ya no se recorre entero: sus T22, T24, T25 y T27 habrán quedado
 > ejercitados sobre la 404 por T25, T27, T29 y T30 de aquel, con evidencias en
 > sus casillas.
+> > *(**Corregido el 2026-09-14**: no fue la obra de prueba **404**. El
+> > responsable levantó esa premisa el 2026-09-10 y el bloque 9 se ejecutó el
+> > 2026-09-11 sobre **`RS26.09/0150` de la obra `0626`, una obra en uso**. Ver
+> > la nota del 2026-09-14, arriba. Y **lo que quedó ejercitado no fueron las
+> > cuatro tareas enteras**: solo T26 queda marcada; el detalle, tarea por
+> > tarea, en §9.)*
 >
 > **Al reanudar F-009, este guion se recorre con lo que quede**: lo que el
 > bloque 9 no haya cubierto —el caso de T23 sobre la siembra del login, T26 si
 > el guard rechazara algo, y el cierre sobre el piloto de Mirasierra cuando el
 > humano lo autorice—. Antes de nada, se mira qué casillas de
 > `guion_bloque9_F-012.md` están rellenas.
+> > *(**2026-09-14**: ya se ha mirado, y está volcado en §9 de este fichero. Lo
+> > que queda es bastante más que «el caso de T23»: ver §9.4.)*
 >
 > Dos consecuencias que ya están escritas en este fichero, con su fecha:
 >
@@ -271,7 +341,13 @@ resuelve, el endpoint responde `503` nombrando la variable que falte.
       Vault con error.
 - [ ] **P4** · La clave de función de `sigrid-api` y la raíz de la pasarela, a
       mano para los scripts de lectura (§3). No se escriben en ningún fichero.
-- [ ] **P5** · *(corregido el 2026-09-06, orden (b) de `F-012/design.md` §13)*
+- [ ] **P5** · *(corregido el 2026-09-06, orden (b) de `F-012/design.md` §13;
+      **y corregido otra vez el 2026-09-14**: donde dice «la obra de prueba
+      404» hay que leer **`RS26.09/0150` de la obra `0626`, una obra en uso**
+      —el responsable levantó aquella premisa el 2026-09-10, ver la nota del
+      2026-09-14 arriba—. Para el cierre que **ya se ejecutó**, esta
+      precondición **se cumplió**: el parte estaba archivado, guardado y
+      adjuntado antes del `commit`, §9.3)*
       **Una reclamación de la obra de prueba 404** —no Mirasierra— **que ya
       tenga su gráfico adjuntado por el bloque 9 de F-012**, y su parte ya
       recorrido en el front: subido, validado `apto` / `archivo_y_cierre`,
@@ -286,6 +362,15 @@ resuelve, el endpoint responde `503` nombrando la variable que falte.
       > obra de prueba. La candidata se localiza con
       > `infra/15_reclamaciones_obra_prueba.ps1`. Cerrar una incidencia real del
       > piloto es otra decisión, y otra autorización.
+      >
+      > > *(**Enmendado el 2026-09-14**, sin borrar lo de arriba: esa decisión
+      > > **la levantó el propio responsable el 2026-09-10**, planteándosele de
+      > > forma explícita que la **0626 es una obra en uso**. La candidata se
+      > > localiza igual, con `infra/15_reclamaciones_obra_prueba.ps1
+      > > -CodigoObra 0626`, y **la autorización por incidencia concreta sigue
+      > > siendo obligatoria**: al no haber ya una obra de pruebas detrás, P6
+      > > gana peso en vez de perderlo. Mirasierra sigue **fuera**: nadie ha
+      > > autorizado cerrar una incidencia del piloto.)*
 - [ ] **P6** · **Autorización expresa del humano para cerrar esa incidencia
       concreta**, no «para probar el cierre». Es lo que exige `CLAUDE.md`.
 - [ ] **P7** · Sesión iniciada en el front (grupo `posventa-usuarios`), porque
@@ -543,21 +628,23 @@ funciona ni el dry-run** (R37, R49).
    marca de tiempo del dry-run.
    *Si sale «trazas 0»*: el parte no está en `postventa.partes` (P5).
 
-**Casilla de resultado · T22**
+**Casilla de resultado · T22** — *rellenada el 2026-09-14 levantando acta de lo
+que se ejecutó el 2026-09-11 dentro del bloque 9 de F-012. Nadie recorrió esta
+tarea como tal.*
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| Foto de partida (`ide` / `emp` / `est` / estado legible / `tiemod` / `MAX(ide)`) | |
-| Paso 2 · HTTP con el interruptor apagado | |
-| Paso 4 · HTTP y `estado` del dry-run | |
-| Paso 4 · las seis cosas de R9, ¿estaban todas? | |
-| Paso 4 · bloque `grafico` (R49 de F-012): `estado` · `nombre_fichero` · `sha256` | |
-| Paso 4 · ¿aparecía `aviso_sin_grafico`? (2026-09-06: tiene que ser **no**) | |
-| `login_sigrid` que devolvió el dry-run | |
-| Paso 5 · ¿el ERP intacto? | |
-| Paso 6 · traza local | |
-| **T22 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **2026-09-11**, `08:27:42` UTC — el **dry-run del cierre** que ejecutó el responsable dentro del bloque 9 de F-012. Fuente: `guion_bloque9_F-012.md` §9.2 (tabla de los registros de `appi-postventa-dev`) y su casilla de T26 |
+| Foto de partida (`ide` / `emp` / `est` / estado legible / `tiemod` / `MAX(ide)`) | **no recorrida.** No se lanzó `09_estado_reclamacion_sigrid.ps1` en ningún momento del circuito (casillas de T25, T26 y T29 de F-012: «no recorrido»). **Sin foto de partida, el `MAX(ide)` de antes ya no es recuperable** |
+| Paso 2 · HTTP con el interruptor apagado | **NO EJECUTADO.** La ventana ya estaba abierta cuando se ejecutó el circuito (casilla de T25 de F-012, paso 2: «el `503` de §0.1 **no se observó** contra el entorno desplegado»). Y sigue sin observarse: el paso 3 de T32 de F-012 —el `503` en el borde con la ventana ya cerrada— quedó como «el único resto abierto» de aquella tarea |
+| Paso 4 · HTTP y `estado` del dry-run | **HTTP 200** [MEDIDO en `appi-postventa-dev`], en **4.424 ms**. El campo `estado` **no se anotó** |
+| Paso 4 · las seis cosas de R9, ¿estaban todas? | **sin anotar.** El JSON de la respuesta no se guardó (casilla de T26 de F-012: «El `dry_run.grafico.estado` no se anotó»; casilla de T25: «el objeto `dry_run` campo a campo no quedó registrado»). **De R9 no consta ni un campo** |
+| Paso 4 · bloque `grafico` (R49 de F-012): `estado` · `nombre_fichero` · `sha256` | **sin anotar**, y además **el caso que esta casilla pide no llegó a darse**: ese dry-run fue a las `08:27:42` y el gráfico se adjuntó a las `08:28:03`, así que el bloque que viajó —de haberse mirado— habría sido `dry_run_ok`, **no `adjuntado`**. El dry-run del cierre **con el gráfico ya dentro** nunca se observó (casilla de T29 de F-012, paso 2) |
+| Paso 4 · ¿aparecía `aviso_sin_grafico`? (2026-09-06: tiene que ser **no**) | **sin anotar** (casilla de T26 de F-012). Que R48 derogó R21 **no está comprobado contra el entorno desplegado**; lo que sí consta, indirecto, es que el despliegue llevaba el código de F-012, porque `adjuntar` respondió y escribió |
+| `login_sigrid` que devolvió el dry-run | **sin anotar** (casilla de T25 de F-012). Indirecto, y solo eso: el `commit` posterior salió `200` y escribió, y R31 aborta con `409` **sin tocar Sigrid** si el ERP no confirma el login — luego **hubo un login confirmado**. Cuál era, no consta |
+| Paso 5 · ¿el ERP intacto? | **NO COMPROBADO.** El paso 3 de T26 de F-012 quedó «NO EJECUTADO» y el paso 5 de su T25 «no recorrido». **Que el dry-run no escribe sigue sin una sola prueba contra el ERP**: es lo que sostiene R8, R10 y R20 |
+| Paso 6 · traza local | **no recorrido.** No se lanzó `12_traza_cierre_local.ps1` (casilla de T25 de F-012, paso 6) |
+| **T22 queda marcada** | **no.** Consta que el dry-run del cierre **funciona contra el ERP real** —`200` en 4,4 s desde el entorno desplegado—, y de paso confirma **R50 de F-012** (el dry-run **no** exige el gráfico: se pidió sin él y respondió `200`). **No consta nada de su contenido** —ninguna de las seis cosas de R9— **ni que no escriba**, que es la mitad de lo que esta tarea existe para probar. *Acta del 2026-09-14* |
 
 ---
 
@@ -634,16 +721,18 @@ convención**. Por eso R31 aborta sin escribir y R34 da la salida manual.
    > `-VerificarAhora` (R34), que tiene precedencia sobre la derivación y deja
    > la fila sin marcar hasta que el ERP la confirme.
 
-**Casilla de resultado · T23**
+**Casilla de resultado · T23** — *rellenada el 2026-09-14. **Esta tarea no se
+tocó**: ni el bloque 9 de F-012 ni la prueba de F-025 recorrieron ninguno de
+sus cuatro puntos.*
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| 1 · ¿la tabla estaba vacía para ese usuario? | |
-| 2 · ¿el candidato existe **exactamente una vez**? | |
-| 3 · ¿quedó `verificada`? ¿el segundo dry-run devolvió el mismo login? | |
-| 4 · ¿el login inexistente fue rechazado **sin escribir**? | |
-| **T23 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **NO EJECUTADA.** Ni en el circuito del 2026-09-11 ni después |
+| 1 · ¿la tabla estaba vacía para ese usuario? | **no observado.** No se lanzó `12_traza_cierre_local.ps1` (casilla de T25 de F-012, paso 6). Y es el caso que **H5** de §8 anticipaba: para cuando alguien mire, la siembra ya habrá ocurrido en algún dry-run anterior |
+| 2 · ¿el candidato existe **exactamente una vez**? | **no observado.** No se lanzó `07_alta_usuario_sigrid.ps1 -VerificarAhora`. Es **solo lectura** (un `COUNT(*)`) y **se puede recuperar hoy** |
+| 3 · ¿quedó `verificada`? ¿el segundo dry-run devolvió el mismo login? | **no observado.** La primera mitad es una lectura de `postventa.usuarios_sigrid` y **se puede recuperar hoy**; la segunda exige otro dry-run, que necesita la ventana abierta (§0.1) |
+| 4 · ¿el login inexistente fue rechazado **sin escribir**? | **NO EJECUTADO**, y es el punto que sostiene R31 y R32. Se hace con `07_alta_usuario_sigrid.ps1 -VerificarAhora` sobre un login inventado: **también es solo lectura** |
+| **T23 queda marcada** | **no.** Lo único acreditable es **indirecto**: el `commit` del cierre de `08:28:12` respondió `200` y escribió en el ERP, y R31 manda abortar con `409` **sin tocar Sigrid** si el ERP no confirma el login — luego para ese usuario la correspondencia se resolvió y el ERP la confirmó **al menos una vez**. **Eso no verifica ninguno de los cuatro puntos**: ni que el candidato exista exactamente una vez, ni que la fila quedara `verificada`, ni que un segundo dry-run no vuelva a derivar, ni —sobre todo— que un login que no existe se rechace **sin escribir**. *Acta del 2026-09-14* |
 
 ---
 
@@ -775,22 +864,24 @@ batch es **de verdad** transaccional y afecta a **2 filas** (R22, R23), que
    **`el login del ERP NO esta en la traza (R43) = no`**.
    *Si el login aparece en la traza*: es un defecto de R43 y se anota.
 
-**Casilla de resultado · T24**
+**Casilla de resultado · T24** — *rellenada el 2026-09-14. **El cierre real
+ocurrió**, dentro del bloque 9 de F-012; lo que no ocurrió fueron casi todas
+sus comprobaciones.*
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| Incidencia cerrada (código) | |
-| Autorización expresa del humano | sí / no |
-| **¿el parte constaba `adjuntado`?** (2026-09-06, R2 de F-012) | sí / no |
-| 1–2 · `ide` / `emp` / `est` / `res` / `tiemod` / `MAX(ide)` de partida | |
-| 3 · dry-run leído (estado origen → destino, login, `grafico.estado`) | |
-| 4–5 · HTTP, `estado` y `filas_afectadas` | |
-| 6 · `con.est` = `CER` · `tiemod` sin mover · nuevo `MAX(ide)` | |
-| 7 · veredicto campo a campo | |
-| 7 · **huso de `fec`/`hor`** | LOCAL / UTC / no coincide |
-| 9 · traza local (`cerrado`, `oid` sí, login no) | |
-| **T24 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **2026-09-11**, `08:28:12` UTC (`guion_bloque9_F-012.md` §9.2 y casilla de su T29) |
+| Incidencia cerrada (código) | **`RS26.09/0150`**, obra **`0626`** — una obra **en uso**, no la de prueba: ver la nota del 2026-09-14 arriba |
+| Autorización expresa del humano | **sí.** Lo ejecutó **el propio responsable del proyecto**, delante del ERP, con la autorización que exige P6 (`guion_bloque9_F-012.md` §9.1 y casilla de su T29: «sí: lo ejecutó el responsable») |
+| **¿el parte constaba `adjuntado`?** (2026-09-06, R2 de F-012) | **sí.** El gráfico entró a las `08:28:03` (`200`, 8.471 ms) y el cierre fue **9 s después**. Es la precondición que F-012 existía para garantizar, y es **la única de esta tarea que consta cumplida**. Consecuencia: **la anomalía que F-009 aceptaba como riesgo —cerrar sin el parte dentro— no llegó a producirse ni una vez** (`history.md`, entrada de F-012) |
+| 1–2 · `ide` / `emp` / `est` / `res` / `tiemod` / `MAX(ide)` de partida | **no recorrido.** No se lanzó `09_estado_reclamacion_sigrid.ps1` (casilla de T29 de F-012, paso 3). **Sin esta foto, el paso 6 ya no es recuperable entero** |
+| 3 · dry-run leído (estado origen → destino, login, `grafico.estado`) | **ejecutado, pero no es el que esta tarea pide.** El único dry-run del cierre fue el de `08:27:42`, **antes de adjuntar**: `grafico.estado` no podía ser `adjuntado`, y ningún campo se anotó (casilla de T29 de F-012, paso 2). Leer el dry-run **con el gráfico dentro** —que es lo que se confirma en el paso 4— **no ocurrió** |
+| 4–5 · HTTP, `estado` y `filas_afectadas` | **HTTP 200** [MEDIDO], en **472 ms** —el paso más rápido del circuito—. `estado` y `filas_afectadas` **sin anotar**: **el `filas_afectadas: 2` de R22 NO está comprobado** (casilla de T29 de F-012, paso 4) |
+| 6 · `con.est` = `CER` · `tiemod` sin mover · nuevo `MAX(ide)` | **`CER`: sí**, comprobado por el responsable en la ficha de Sigrid —«cerró una y lo hizo bien»—, **no con el script**. **`tiemod`: NO comprobado.** **`MAX(ide)` = anterior + 1: NO comprobado**, y **ya no es recuperable** porque nadie anotó el de partida |
+| 7 · veredicto campo a campo | **NO COMPROBADO.** No se lanzó `10_log_cierre_sigrid.ps1`. De R24 y R25 —`tab`, `tip`, `cod`, `res`, `ope`, `est`, `ori`, `emp`, `usu`, `tex`— **no consta ni un campo** |
+| 7 · **huso de `fec`/`hor`** | **NO COMPROBADO.** Es **el hueco más concreto de todo el bloque**: §0.2 de este guion daba el defecto por probable —era la única decisión de la feature que no se pudo tomar con un dato—, y **la fila de auditoría del primer cierre real está escrita en producción y nadie la ha mirado** (casilla de T29 de F-012, paso 5). **Se puede recuperar hoy: es solo lectura y la fila sigue ahí** |
+| 9 · traza local (`cerrado`, `oid` sí, login no) | **no recorrido** (casilla de T29 de F-012, paso 7). R41 y R43 siguen apoyados solo en tests. **Recuperable hoy sin coste**: `12_traza_cierre_local.ps1` solo lee, y del esquema propio |
+| **T24 queda marcada** | **no**, y no por poco. **Lo sustantivo de F-009 está acreditado**: una reclamación real se cerró en el ERP de producción desde el servicio desplegado, con autorización, con su parte dentro, y el responsable lo vio en Sigrid. Pero de los **nueve pasos** del contrato de esta tarea solo constan el **4** (parcial: el HTTP, no el `estado` ni las filas) y **la mitad del 6** (el `CER`, no `tiemod` ni `MAX(ide)`). Los pasos **5, 7 y 9** —las 2 filas, la fila de `dbo.log` campo a campo **con su huso**, y la traza local— **no los ha mirado nadie**. *Acta del 2026-09-14* |
 
 ---
 
@@ -828,15 +919,16 @@ que es lo que permitiría revertir solo lo nuestro si el piloto se tuerce.
 2. `-CierresEsperados` sube con cada cierre real: si el piloto cierra tres
    incidencias, la siguiente ejecución lleva `3`.
 
-**Casilla de resultado · T25**
+**Casilla de resultado · T25** — *rellenada el 2026-09-14. **No se ejecutó**, y
+es la más barata de recuperar de todo el bloque.*
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| ¿el filtro por prefijo encuentra nuestro cierre? | |
-| nº de filas con el texto propio en todo el ERP | |
-| ¿alguna de esas filas no es nuestra? | |
-| **T25 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **NO EJECUTADA.** No se lanzó `11_trazabilidad_tex_sigrid.ps1` en ningún momento: de las comprobaciones con los scripts de `infra/`, **ninguna se ejecutó** (`guion_bloque9_F-012.md` §9.4, párrafo final) |
+| ¿el filtro por prefijo encuentra nuestro cierre? | **no comprobado.** Que seguimos saliendo en los informes de Posventa —la mitad de D1 de `design.md`— sigue sin verificarse contra el ERP |
+| nº de filas con el texto propio en todo el ERP | **no comprobado.** Tendría que valer **1**: consta **un** cierre real de este servicio, el de `08:28:12` del 2026-09-11 |
+| ¿alguna de esas filas no es nuestra? | **no comprobado** |
+| **T25 queda marcada** | **no.** Su precondición —«T24 marcada, con al menos un cierre real hecho»— **sí se cumple**: el cierre existe y su fila de `dbo.log` está escrita en producción. La tarea es **una lectura de dos consultas, sin ventana de escritura y sin riesgo**, y además **localiza la fila de log del cierre** —el script la lista una a una—, que es justo lo que le falta al paso 7 de T24. *Acta del 2026-09-14* |
 
 ---
 
@@ -887,16 +979,18 @@ paso 4.
    Anótalo: es un hallazgo del dueño de `sigrid-api`, no algo que se arregle
    aquí.
 
-**Casilla de resultado · T26**
+**Casilla de resultado · T26** — *rellenada el 2026-09-14. **Es la única tarea
+del bloque que queda marcada**, y se marca porque su contrato dice que se
+observa en la respuesta del paso 4 de T24 — que existe.*
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| ¿el guard aceptó el batch tal cual? | sí / no |
-| Si no: ¿qué rechazó, literalmente? | |
-| ¿se cayó a la variante sin sugerencias, o se marcó `blocked`? | |
-| ¿el ERP quedó intacto tras el rechazo? | |
-| **T26 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **2026-09-11**, `08:28:12` UTC. Esta tarea no tiene ejecución propia por diseño: «se hace **DENTRO de T24**, no después: lo que se observa es la respuesta del paso 4» |
+| ¿el guard aceptó el batch tal cual? | **SÍ.** La cadena, entera: (1) la llamada respondió **`200`** [MEDIDO en `appi-postventa-dev`, `guion_bloque9_F-012.md` §9.2]; (2) **la reclamación quedó en `CER`**, comprobado por el responsable en la ficha de Sigrid (§9.1: «cerró una y lo hizo bien»). Si `SqlWriteGuard` hubiera rechazado **cualquiera** de las dos sentencias —la sugerencia `WITH (UPDLOCK, HOLDLOCK)` incluida—, el guard valida **cada** sentencia del batch y la pasarela revierte **todo el batch** (`azure-apps/sigrid_api.md` §5 y §7.3): el `UPDATE` se habría ido con él y **el ERP habría quedado sin ningún cambio**. Cambió, luego el guard dejó pasar el batch **como está** |
+| Si no: ¿qué rechazó, literalmente? | **no procede**: no hubo rechazo. De las cinco llamadas del circuito, las cinco respondieron `200` y **no hay ni un `502`** |
+| ¿se cayó a la variante sin sugerencias, o se marcó `blocked`? | **no**: no hizo falta. La variante de reserva de §0.3 sigue **sin usarse nunca** |
+| ¿el ERP quedó intacto tras el rechazo? | **no procede** |
+| **T26 queda marcada** | **SÍ**, y es la única del bloque. **Con la salvedad escrita, que no se esconde**: `filas_afectadas` no se anotó, así que del `INSERT` en `dbo.log` **no hay observación directa** —se deduce de que el `UPDATE` sí se aplicó y de que un rechazo habría revertido el batch entero—, y **la fila de log nadie la ha mirado** (paso 7 de T24). Lo que esta tarea pregunta —si el guard deja pasar el batch tal cual, que era lo que «nadie había probado» (§0.3)— **queda respondido que sí**. *Acta del 2026-09-14* |
 
 ---
 
@@ -952,16 +1046,17 @@ mismo parte, o el auto-cierre repite.
    *Si el estado ha pasado a `ya_cerrada`*: se ha pisado una traza terminal, que
    es justo lo que R42 prohíbe.
 
-**Casilla de resultado · T27**
+**Casilla de resultado · T27** — *rellenada el 2026-09-14. **No se ejecutó**, y
+hay una evidencia parecida que **no vale** — ver la última fila y §9.6.*
 
 | Campo | Valor |
 |---|---|
-| Fecha y hora | |
-| 1 · `MAX(ide)` antes del reintento | |
-| 2 · HTTP, `estado` y `filas_afectadas` | |
-| 3 · `MAX(ide)` después — ¿ha subido? | |
-| 4 · traza local — ¿sigue en `cerrado` con la fecha de T24? | |
-| **T27 queda marcada** | sí / no · motivo: |
+| Fecha y hora | **NO EJECUTADA.** El circuito se recorrió **una sola vez** y no se repitió sobre la misma incidencia |
+| 1 · `MAX(ide)` antes del reintento | **no anotado** |
+| 2 · HTTP, `estado` y `filas_afectadas` | **NO EJECUTADO.** No consta ninguna llamada a `/api/cerrar` con `commit` sobre una reclamación ya cerrada |
+| 3 · `MAX(ide)` después — ¿ha subido? | **no comprobado** |
+| 4 · traza local — ¿sigue en `cerrado` con la fecha de T24? | **no comprobado** |
+| **T27 queda marcada** | **no.** Es **el mismo hueco** que dejaron abierto las otras dos features: T30 del bloque 9 de F-012 —sin marcar, y descrito allí como «el escenario **más probable de todos en uso normal**» y «el hueco **más barato** de cerrar de los cinco»— y T22 de F-025, también sin marcar. **Y hay un dato que NO se puede usar como evidencia aquí**: en la prueba de F-025 del 2026-09-11 los registros muestran `archivar` y `adjuntar` y **ninguna llamada a `cerrar`**, sin que se aclarara si fue la idempotencia funcionando o si el circuito se detuvo (`specs/F-025-confirmacion-unica/tasks.md`, «Cierre del bloque 5»; el responsable aprobó sin responder a esa pregunta). **Una llamada que no consta no verifica un reintento**: aunque hubiera sido la reclamación ya cerrada y el front se saltara el paso, eso probaría una guarda del **front**, no el `ya_cerrada` del **backend** que R18 y R42 exigen. *Acta del 2026-09-14* |
 
 ---
 
@@ -988,13 +1083,23 @@ mismo parte, o el auto-cierre repite.
 
 3. **Rellenar las casillas de resultado de este fichero** y commitearlo.
 
-4. **Marcar en `specs/F-009-cierre-sigrid/tasks.md`** las tareas que hayan
-   pasado. Lo hace el humano.
+4. ~~**Marcar en `specs/F-009-cierre-sigrid/tasks.md`** las tareas que hayan
+   pasado. Lo hace el humano.~~
+   > *(**2026-09-14**: las marcó el arnés **levantando acta de lo que el
+   > responsable ejecutó** el 2026-09-11 dentro de F-012, y **solo la que
+   > consta ejecutada** —T26—. Mismo criterio que se siguió en
+   > `guion_bloque9_F-012.md`. Lo que no consta sigue sin marcar, y el
+   > veredicto está en §9.5.)*
 
 5. **Actualizar `azure-apps/postventa_incidencias.md`**: hoy dice que «todavía
    no se ha ejecutado ni un cierre real». Si T24 pasa, deja de ser verdad, y la
    regla de propiedad de `CLAUDE.md` obliga a actualizarlo **en este mismo
    trabajo**. Commit local allí, sin push.
+   > *(**2026-09-14**: **ya dejó de ser verdad** el 2026-09-11 —el cierre de
+   > `08:28:12` UTC, y además **con su gráfico dentro**—, y el documento **sigue
+   > sin actualizar**. Lo anotó ya el paso 8 de T32 de `guion_bloque9_F-012.md`
+   > como pendiente. Queda **fuera del alcance** del acta de §9, que no toca
+   > otros repositorios, y recogido en su §9.5 punto 5.)*
 
 ## 7 · Qué se anota y qué NO
 
@@ -1029,3 +1134,131 @@ resultado, que es un código de expediente y no un dato personal.
 > recogidas en §4 y en la precondición P5; H5 está recogido en el paso 1 de
 > T23; y **H6 sigue en manos del humano**, que es quien lo lleva al dueño de
 > `sigrid-api`.
+
+---
+
+## 9 · Acta del 2026-09-14 · lo que este bloque tiene de hecho ejecutado
+
+> **Quién levanta esta acta y con qué.** La levanta el arnés **sin ejecutar
+> nada**: ni contra Sigrid, ni contra `sigrid-api`, ni contra Azure, ni contra
+> el PostgreSQL compartido, ni contra SharePoint. Toda la evidencia estaba ya
+> escrita. Las fuentes, por orden de peso: `progress/guion_bloque9_F-012.md`
+> §9 (el acta del 2026-09-11, con las mediciones de `appi-postventa-dev`) y sus
+> casillas de T25–T32; las entradas de **F-012** y **F-025** de
+> `progress/history.md`; y el cierre del bloque 5 de
+> `specs/F-025-confirmacion-unica/tasks.md`.
+
+### 9.1 · Qué se ejecutó de hecho, y dónde consta
+
+El **2026-09-11**, verificando **F-012**, el responsable del proyecto recorrió
+el circuito completo contra el ERP de producción sobre la incidencia
+**`RS26.09/0150`** de la obra **`0626`** —una obra **en uso**, con autorización
+expresa—. Un parte subido por la web quedó **archivado**, **adjunto a su
+reclamación** y **la reclamación cerrada**.
+
+**Eso es el cierre real de T24 de este guion.** Ocurrió dentro de la
+verificación de otra feature, y por eso este bloque nunca se «abrió»: no hubo
+foto de partida, no se lanzó ninguno de los cinco scripts de lectura de §3 y no
+se rellenó ninguna casilla — hasta hoy.
+
+### 9.2 · La evidencia objetiva
+
+Medida en `appi-postventa-dev` y volcada en `guion_bloque9_F-012.md` §9.2.
+**Las cinco respuestas fueron `200`**:
+
+| Hora (UTC) | Ruta | Código | Duración | Qué es **para F-009** |
+|---|---|---|---|---|
+| `08:27:15` | `archivar` | 200 | 1.756 ms | la precondición **P5** (parte archivado) |
+| `08:27:29` | `adjuntar` | 200 | 13.134 ms | precondición de F-012, no de este bloque |
+| `08:27:42` | `cerrar` | **200** | 4.424 ms | **el dry-run de T22**, con el gráfico aún sin adjuntar |
+| `08:28:03` | `adjuntar` | 200 | 8.471 ms | la precondición añadida de **T24** (R2 de F-012) |
+| `08:28:12` | `cerrar` | **200** | 472 ms | **el cierre real de T24**, y con él **T26** |
+
+Y una comprobación que ningún registro da: **el responsable abrió la ficha en
+Sigrid y vio la reclamación cerrada con su parte dentro** («ha funcionado
+perfectamente», «cerró una y lo hizo bien»). Es lo que acredita el `CER` del
+paso 6 de T24 y, con él, que el guard aceptó el batch (T26).
+
+### 9.3 · Tarea por tarea
+
+| Tarea | ¿Marcada? | Qué consta | De dónde sale |
+|---|---|---|---|
+| **T22** · dry-run real | **no** | el dry-run del cierre **funciona** contra el ERP (`200`, 4,4 s) y **no exige el gráfico** (R50 de F-012). **Nada de su contenido** (R9) y **nada de que no escriba** | §9.2; casillas de T25 y T26 de `guion_bloque9_F-012.md` |
+| **T23** · siembra del login | **no** | solo lo **indirecto**: el `commit` escribió, y R31 aborta sin tocar Sigrid si el ERP no confirma el login | inferencia sobre §9.2; ninguna casilla del bloque 9 la cubre |
+| **T24** · primer cierre real | **no** | **el cierre ocurrió y salió bien**, con autorización y con el parte adjuntado 9 s antes. **Faltan los pasos 5, 7 y 9** y media parte del 6 | §9.1 y §9.2; casilla de T29 de `guion_bloque9_F-012.md` |
+| **T25** · el `tex` propio | **no** | nada: no se lanzó el script | §9.4 del bloque 9 («ninguna de las comprobaciones con los scripts de `infra/` se ejecutó») |
+| **T26** · el guard acepta el batch | **SÍ** | `200` + la reclamación **en `CER`** ⇒ el guard dejó pasar las dos sentencias tal cual, `WITH (UPDLOCK, HOLDLOCK)` incluida | §9.2 + §9.1 del bloque 9, y `sigrid_api.md` §5 y §7.3 para la reversión del batch |
+| **T27** · reintento sobre lo ya cerrado | **no** | nada. Y lo de F-025 **no sirve** (§9.6) | casilla de T30 del bloque 9; `specs/F-025-confirmacion-unica/tasks.md` |
+
+### 9.4 · Qué queda sin verificar, y qué cuesta cada hueco
+
+Ordenado por lo que cuesta cerrarlo, que es lo que el líder necesita para
+decidir:
+
+| # | Hueco | Qué se pierde | Coste de cerrarlo |
+|---|---|---|---|
+| 1 | **La fila de `dbo.log` del primer cierre real, campo a campo, y su HUSO** (T24.7) | R24 y R25 enteros, y **el defecto que §0.2 daba por probable**: si `fec`/`hor` se escribió en UTC, nuestras filas quedan con una o dos horas menos que todas las demás del ERP y nadie lo nota hasta que haga falta reconstruir cuándo se cerró algo. **La fila está escrita en producción y nadie la ha mirado** | **Solo lectura, sin ventana de escritura.** `11_trazabilidad_tex_sigrid.ps1` localiza la fila por el `tex` propio y `10_log_cierre_sigrid.ps1` la verifica campo a campo y dice el huso. **Es el hueco más valioso y de los más baratos** |
+| 2 | **T25 entera** · el `tex` propio en los informes de Posventa | la mitad de D1 de `design.md`: que seguimos apareciendo en el filtro por prefijo, y que el filtro exacto devuelve **solo** lo nuestro | **Solo lectura.** Dos consultas, un script. Se hace en la misma sesión que el hueco 1 |
+| 3 | **La traza local del cierre** (T24.9) · R41, R43 | que la traza quedó en `cerrado`, con el `oid` y **sin el login** del ERP | **Solo lectura, y del esquema propio** (`12_traza_cierre_local.ps1`). Ni toca Sigrid |
+| 4 | **T23** · la siembra del login | R30–R34: que el candidato existe exactamente una vez, que la fila quedó `verificada`, y que **un login inexistente se rechaza sin escribir** | **Casi todo es solo lectura** (`07_alta_usuario_sigrid.ps1 -VerificarAhora` hace un `COUNT(*)`; `12_` lee el esquema propio). Solo el «segundo dry-run devuelve el mismo login» exige la ventana abierta |
+| 5 | **T22 pasos 2 y 5** · el `503` con el interruptor apagado, y que el dry-run **no escribe** | la doble puerta de §0.1 observada en el borde —que es además el paso 3 de T32 de F-012, su «único resto abierto»— y la prueba de que un dry-run no mueve nada | el `503` **no escribe nada**: una llamada desde el front con la ventana cerrada, que es como está ahora. Lo de «no escribe» exige foto antes/después con la ventana abierta |
+| 6 | **T22 paso 4** · las seis cosas de R9 y el bloque `grafico` con `estado: adjuntado` | el contenido del dry-run, que es lo que la persona lee antes de confirmar; y que R48 derogó de verdad el aviso de R21 | exige la **ventana abierta** y una sesión en el front, pero **no escribe**: es un dry-run |
+| 7 | **T27** · el reintento sobre lo ya cerrado | R18 y R42: que repetir sale `ya_cerrada`, **sin escribir** y **sin pisar** la traza terminal. Es **el escenario más probable en uso normal** —alguien vuelve a pasar el mismo parte— y el único hueco de los ocho que **exige abrir la ventana de escritura** | ventana abierta + un `commit` sobre `RS26.09/0150`, que ya está cerrada. No hay que provocar ningún fallo. Es el mismo hueco que T30 de F-012 y T22 de F-025 |
+| 8 | **`filas_afectadas: 2`** (R22, T24.5) | la única prueba directa de que el batch afectó a **dos** filas y no a una | **no es recuperable hacia atrás**: solo lo dará el siguiente cierre real. Igual que el `MAX(ide)` de partida, que nadie anotó |
+
+### 9.5 · **Veredicto** (lo que el líder necesita para decidir)
+
+**Sí queda algo sustantivo sin verificar de F-009.** En una línea: *el cierre
+real está acreditado; sus comprobaciones, casi ninguna*.
+
+1. **Lo que F-009 existe para hacer, está hecho y visto**: una reclamación real
+   pasó a `CER` en el ERP de producción, escrita por el servicio desplegado,
+   con autorización expresa y con su parte dentro. Lo comprobó una persona en
+   la ficha de Sigrid. **Y con F-012 delante, el riesgo aceptado de
+   `design.md` §2 —cerrar sin gráfico— no llegó a materializarse ni una vez.**
+2. **Lo que no está**: de los nueve pasos de T24 solo constan uno y medio.
+   Ninguno de los **cinco scripts de lectura de §3 se ha ejecutado jamás**, y
+   por eso **la fila de auditoría del primer cierre de este servicio en el ERP
+   nadie la ha mirado** — incluido su **huso**, que este mismo guion daba por
+   defecto probable. **Ese es el hueco que no debería sobrevivir al cierre de
+   la feature**, y cuesta una sesión de **solo lectura**.
+3. **Marcar el bloque 8 como superado sería falso.** Solo **T26** está
+   acreditada. T22, T23, T24, T25 y T27 **no**.
+4. **Recomendación al líder, con las opciones separadas**:
+   - **(a) Cerrar F-009 como se cerró F-012** —con los huecos escritos y
+     fechados, decisión del responsable—: es coherente con el precedente del
+     2026-09-11, pero entonces conviene **hacer antes los huecos 1, 2 y 3 de
+     §9.4**, porque son **solo lectura, sin ventana de escritura, sin riesgo**,
+     y uno de ellos persigue un defecto que el diseño consideraba probable.
+   - **(b) Cerrar F-009 tal cual**: entonces queda escrito aquí que **nadie ha
+     mirado la fila de auditoría**, y que T27 —el reintento, el escenario más
+     probable en uso normal— **no lo ha probado nadie en ninguna de las tres
+     features** que pasaron por delante (F-009, F-012 y F-025 lo dejaron sin
+     marcar, cada una por su lado).
+   - **La decisión es del responsable**, no del arnés. Lo que el arnés puede
+     decir está en §9.4: **siete de los ocho huecos no exigen escribir en el
+     ERP, y tres no exigen ni abrir la ventana**.
+5. **Pendiente documental que no depende de esa decisión**:
+   `azure-apps/postventa_incidencias.md` **sigue diciendo que «todavía no se ha
+   ejecutado ni un cierre real»**, y desde el 2026-09-11 eso es falso. Lo
+   arrastran el paso 5 de §6 de este guion y el paso 8 de T32 de F-012, que lo
+   dejó anotado como pendiente. La regla de propiedad de `CLAUDE.md` obliga a
+   actualizarlo.
+
+### 9.6 · Lo que **no** se ha usado como evidencia, y por qué
+
+- **La prueba de F-025 del 2026-09-11 no acredita T27.** Sus registros muestran
+  `archivar` (2,0 s) y `adjuntar` (3,8 s) y **ninguna llamada a `cerrar`**.
+  Caben dos lecturas —la reclamación ya estaba cerrada y el circuito se saltó
+  el paso, o el circuito se detuvo— y **se preguntó al responsable, que aprobó
+  el cierre sin responder**. Una llamada que no consta no prueba un reintento;
+  y de la primera lectura, la buena, lo que se seguiría es que el **front** se
+  saltó el paso, no que el **backend** respondiera `ya_cerrada`, que es lo que
+  R18 y R42 exigen. Queda **sin usar**, a propósito.
+- **Los tests unitarios no cuentan aquí.** Todo el bloque 8 existe porque hay
+  cosas que un mock no puede probar (§T24). Que R2, R18, R22, R31 o el huso
+  tengan test no los convierte en verificados contra el ERP.
+- **Las inferencias van marcadas como tales.** En T22 (el login) y en T23 se
+  dice «indirecto» y se deja sin marcar. La **única** inferencia que sí sostiene
+  una marca es la de T26, y su cadena está escrita entera en su casilla para que
+  el reviewer pueda romperla si no la comparte.

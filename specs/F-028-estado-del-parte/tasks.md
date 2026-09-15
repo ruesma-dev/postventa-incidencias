@@ -78,7 +78,7 @@
       dominio, la semilla con `NOT EXISTS`, ninguna columna binaria, y
       `sql/10_aprobaciones.sql` **sin cambios** (regla dura 3).
 
-- [ ] **T6**: `sentencias.py`: `insert_decision_estado`,
+- [x] **T6**: `sentencias.py`: `insert_decision_estado`,
       `select_situacion_estado` (el `UNION ALL` de las dos últimas filas) y
       `select_estado_cierre`; `mapeo.fila_a_decision_estado`. | Verificación:
       `tests/test_f028_persistencia.py` con dobles — el `INSERT` no lleva

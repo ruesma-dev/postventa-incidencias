@@ -30,6 +30,7 @@ from typing import Any
 
 from domain.models.aprobacion import Aprobacion
 from domain.models.cierre import CorrespondenciaSigrid
+from domain.models.estado import DecisionEstado, EstadoParte
 from domain.models.extraccion import CAMPOS_DEL_PARTE, ExtraccionParte
 from domain.models.persistencia import (
     EntradaCola,
@@ -49,6 +50,7 @@ __all__ = [
     "columnas_de_campos",
     "fila_a_aprobacion",
     "fila_a_correspondencia",
+    "fila_a_decision_estado",
     "fila_a_entrada_cola",
     "fila_a_preferencias",
     "fila_a_traza_grafico",
@@ -361,6 +363,53 @@ def fila_a_aprobacion(fila: Sequence[Any]) -> Aprobacion:
         validado_at_utc=validado_at_utc,
         revocada_at_utc=revocada_at_utc,
         revocada_motivo=revocada_motivo,
+    )
+
+
+def fila_a_decision_estado(fila: Sequence[Any]) -> DecisionEstado:
+    """Una fila de `historico_estado`, de vuelta al dominio (F-028, R22).
+
+    El orden de las columnas es el de `sentencias._COLUMNAS_HISTORICO`, y por
+    eso las dos cosas viven pegadas: una fila leída por posición se rompe **en
+    silencio** el día que alguien añade una columna al `SELECT`, y aquí eso
+    sería reconstruir la decisión de una persona con la huella en el sitio del
+    `oid`.
+
+    La fila que llega **no trae el marcador de origen** del `UNION ALL`: lo
+    quita quien lee, porque es de la consulta y no de la decisión. Tampoco trae
+    `cambio_id`: lo pone la base y nadie lo lee, solo desempata el orden.
+
+    `EstadoParte(...)` **revienta** si la base trae un estado que el dominio no
+    conoce, y eso es lo correcto: pasaría si alguien ampliara el `CHECK` del
+    `.sql` sin ampliar el `Enum`, y traducirlo «como si fuera» otro haría que
+    un estado desconocido se leyera como `aprobado` y abriera la puerta del
+    circuito que escribe en el ERP de producción.
+
+    `estado_anterior` a `None` es «no había estado registrado antes» y se
+    conserva como `None`: es la primera fila de ese parte. `decidido_por` a
+    `None` es **lo decidió la máquina** (R24), y aquí no se traduce a nada:
+    inventar un autor al leer sería tan falso como inventarlo al escribir.
+    """
+    (
+        hash_parte,
+        estado,
+        decidido_at_utc,
+        estado_anterior,
+        decidido_por,
+        motivo,
+        huella_veredicto,
+    ) = fila
+
+    return DecisionEstado(
+        hash_parte=hash_parte,
+        estado=EstadoParte(estado),
+        decidido_at_utc=decidido_at_utc,
+        estado_anterior=(
+            None if estado_anterior is None else EstadoParte(estado_anterior)
+        ),
+        decidido_por=decidido_por,
+        motivo=motivo,
+        huella_veredicto=huella_veredicto,
     )
 
 

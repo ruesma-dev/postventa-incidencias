@@ -34,6 +34,7 @@ from domain.models.aprobacion import (
     huella_de_veredicto,
 )
 from domain.models.cierre import CorrespondenciaSigrid
+from domain.models.estado import DecisionEstado, EstadoParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     PreferenciasUsuario,
@@ -57,12 +58,17 @@ from infrastructure.persistencia.mapeo import (
 
 __all__ = [
     "LIMITE_MAXIMO_COLA",
+    "ORIGEN_DECISION_HUMANA",
+    "ORIGEN_ULTIMO_CAMBIO",
+    "insert_decision_estado",
     "revocar_aprobacion_si_cambio",
     "select_aprobacion",
     "select_cola",
+    "select_estado_cierre",
     "select_grafico",
     "select_login_sigrid",
     "select_preferencias",
+    "select_situacion_estado",
     "upsert_aprobacion",
     "upsert_archivo",
     "upsert_cierre",
@@ -541,6 +547,169 @@ def revocar_aprobacion_si_cambio(
         huella_de_veredicto(resultado),
     )
     return sql, parametros
+
+
+#: Las columnas de `historico_estado` que viajan en cada fila, en el orden en
+#: que se escriben y en el que se leen.
+#:
+#: Una sola lista para el `INSERT` y para el `SELECT` **a propósito**, como
+#: `_COLUMNAS_GRAFICO`: `fila_a_decision_estado` desempaqueta por posición, y
+#: dos listas del mismo orden divergen — el día que divergieran, una decisión
+#: volvería con la huella en el sitio del `oid` y nadie lo notaría.
+#:
+#: `cambio_id` no está: lo pone la base (`bigserial`) y nadie lo lee. Es lo que
+#: desempata dos cambios del mismo parte en el mismo instante, y para eso basta
+#: con que esté en el `ORDER BY`.
+_COLUMNAS_HISTORICO: tuple[str, ...] = (
+    "hash_parte",
+    "estado",
+    "decidido_at_utc",
+    "estado_anterior",
+    "decidido_por",
+    "motivo",
+    "huella_veredicto",
+)
+
+#: El orden del histórico: lo más reciente primero, y el contador desempata.
+#:
+#: Las dos cosas hacen falta. Sin `cambio_id DESC`, dos cambios del mismo parte
+#: en el mismo instante —una decisión humana y la constancia que la sigue caen
+#: seguidas— volverían en el orden que decidiera PostgreSQL, y la «última
+#: decisión humana» sería la que tocara ese día. Es el mismo orden que declara
+#: el índice `ix_historico_estado_parte`, y por eso se escribe una vez.
+_ORDEN_HISTORICO = "ORDER BY decidido_at_utc DESC, cambio_id DESC"
+
+#: Marcador de la rama que trae la última decisión **de una persona**.
+#:
+#: No es un valor que venga de fuera: es parte de la forma de la consulta, como
+#: el nombre de la tabla, y por eso se pega al texto en vez de viajar como
+#: parámetro. Las dos ramas del `UNION ALL` pueden devolver **la misma fila**
+#: —cuando el último cambio lo decidió una persona—, y sin el marcador quien
+#: lea no podría distinguir eso de «hay una decisión humana antigua y una
+#: constancia reciente», que son situaciones opuestas.
+ORIGEN_DECISION_HUMANA = "decision_humana"
+
+#: Marcador de la rama que trae el último cambio, lo decidiera quien lo
+#: decidiera. De esa fila **solo** se mira el estado, y solo para la regla de
+#: constancia (R26): el histórico es constancia, nunca criterio.
+ORIGEN_ULTIMO_CAMBIO = "ultimo_cambio"
+
+
+def insert_decision_estado(
+    *, esquema: str, decision: DecisionEstado
+) -> tuple[str, tuple]:
+    """Añade una fila al histórico de estado. **Append-only** (F-028, R21).
+
+    **No lleva `ON CONFLICT`, y es el punto entero de la feature.** Las otras
+    diez tablas del esquema se escriben con `ON CONFLICT (hash_parte) DO
+    UPDATE` porque de cada una solo interesa el último estado; aquí interesan
+    todos, en orden. `postventa.aprobaciones` es lo que pasa cuando no: un
+    ciclo aprobar → rechazar → aprobar deja **una** fila y borra el rechazo por
+    el camino, así que nadie puede responder después a «quién lo rechazó y por
+    qué» (R25, `design.md` §0.4).
+
+    De quien decide viaja el `oid` **opaco** de Entra ID y nada más (R15), y de
+    la máquina no viaja ningún autor: `decidido_por` a `NULL` **es** «lo decidió
+    la máquina» (R24). Inventarse ahí un `"sistema"` convertiría una anotación
+    en una acusación, y borraría lo único que distingue las dos clases de fila.
+
+    Ni una letra del papel entra aquí: sobre qué veredicto se decidió va como
+    **huella**, y el `motivo` es texto de **quien revisa**. Los dos viajan como
+    parámetros del driver, nunca interpolados en el texto.
+
+    El `RETURNING (xmax = 0)` devuelve siempre `creado` —un `INSERT` sin
+    conflicto no actualiza nada— y está para que el adaptador pueda usar el
+    mismo camino de escritura que las demás operaciones.
+    """
+    tabla = _tabla(esquema, "historico_estado")
+    sql = (
+        f"INSERT INTO {tabla} ({', '.join(_COLUMNAS_HISTORICO)})\n"
+        f"VALUES ({', '.join(['%s'] * len(_COLUMNAS_HISTORICO))})\n"
+        f"RETURNING (xmax = 0) AS creado"
+    )
+    parametros = (
+        decision.hash_parte,
+        decision.estado.value,
+        decision.decidido_at_utc,
+        _valor_de_estado(decision.estado_anterior),
+        decision.decidido_por,
+        decision.motivo,
+        decision.huella_veredicto,
+    )
+    return sql, parametros
+
+
+def select_situacion_estado(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
+    """Las **dos** últimas filas que hacen falta de un parte (`design.md` §8.5).
+
+    Un `UNION ALL` de dos `SELECT … LIMIT 1` sobre el mismo índice:
+
+    - la última fila **humana** (`decidido_por IS NOT NULL`), que es la decisión
+      vigente y la única que manda sobre la máquina (R9);
+    - la última fila **de cualquiera**, de la que solo se mira el estado y solo
+      para la regla de constancia —si el estado derivado no es este, se añade
+      una fila— (R26).
+
+    Que la rama humana filtre por `decidido_por IS NOT NULL` y no por otra cosa
+    no es un detalle: **quién decidió es el tipo de fila**. No hay columna
+    «tipo», porque inventarse un autor para la máquina era justo lo que R24
+    prohíbe. Si el filtro fuera otro, una fila de constancia podría colarse como
+    decisión de una persona, y con eso se abre la puerta del circuito que
+    escribe en el ERP de producción.
+
+    Las dos ramas pueden devolver **la misma fila**; por eso cada una se marca
+    con su origen.
+
+    **Alternativa descartada** (`design.md` §8.5): un `LEFT JOIN LATERAL` que lo
+    resolviera todo en una sentencia. Ahorra un viaje a la misma conexión ya
+    abierta y cuesta un SQL que nadie de este repositorio sabe leer de un
+    vistazo.
+    """
+    tabla = _tabla(esquema, "historico_estado")
+    columnas = ", ".join(_COLUMNAS_HISTORICO)
+    sql = (
+        f"(SELECT '{ORIGEN_DECISION_HUMANA}' AS origen, {columnas}\n"
+        f" FROM {tabla}\n"
+        f" WHERE hash_parte = %s AND decidido_por IS NOT NULL\n"
+        f" {_ORDEN_HISTORICO}\n"
+        f" LIMIT 1)\n"
+        f"UNION ALL\n"
+        f"(SELECT '{ORIGEN_ULTIMO_CAMBIO}' AS origen, {columnas}\n"
+        f" FROM {tabla}\n"
+        f" WHERE hash_parte = %s\n"
+        f" {_ORDEN_HISTORICO}\n"
+        f" LIMIT 1)"
+    )
+    return sql, (hash_parte, hash_parte)
+
+
+def select_estado_cierre(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
+    """El estado de la traza de cierre de un parte, o ninguna fila (F-028, R18).
+
+    Es el tercer hecho de la situación, y **es de otro sistema**: `cerrado` no
+    es una opinión nuestra, es lo que dice el ERP y lo que F-009 dejó apuntado
+    al escribirlo. Por eso se lee cada vez en vez de guardar una copia nuestra:
+    una copia acabaría diciendo que un parte está cerrado cuando no lo está, o
+    al revés (`design.md` §3).
+
+    Se trae **solo** la columna `estado`. El resto de la traza —el número de
+    incidencia, quién confirmó, el motivo— no hace falta para derivar el estado,
+    y `confirmado_por` es dato personal seudónimo: lo que no se lee no se puede
+    filtrar.
+    """
+    tabla = _tabla(esquema, "cierres")
+    sql = f"SELECT estado\nFROM {tabla}\nWHERE hash_parte = %s"
+    return sql, (hash_parte,)
+
+
+def _valor_de_estado(estado: EstadoParte | None) -> str | None:
+    """El literal que va a la columna, o `None` si no hay estado.
+
+    `estado_anterior` a `None` significa «no había estado registrado antes»: es
+    la primera fila de ese parte. Escribir ahí `'pendiente'` sería afirmar un
+    tramo de la película que nadie presenció.
+    """
+    return None if estado is None else estado.value
 
 
 def select_cola(*, esquema: str, limite: int) -> tuple[str, tuple]:

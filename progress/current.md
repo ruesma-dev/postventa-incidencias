@@ -1,11 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## PARA RETOMAR · corte de sesión del 2026-09-15
+> ## PARA RETOMAR · al 2026-09-15, tras la sesión de solo lectura de F-009
 >
 > **Dónde está todo:** rama `feature/F-026-aprobacion-humana`, árbol limpio,
-> arnés en verde. **185 commits sin mergear a `dev`** y **nada con `push`** en
-> ninguno de los tres repositorios (este, `azure-apps` y `arnes-base`).
+> arnés en verde (`62 passed in 4.22s`, cobertura de líneas cambiadas 99,0 %).
+> **195 commits sin mergear a `dev`** (medido con `git rev-list --count
+> dev..HEAD`; el «185» del bloque anterior estaba corto) y **nada con `push`**
+> en ninguno de los
+> tres repositorios (este, `azure-apps` y `arnes-base`).
 >
 > ### El estado, en una tabla
 >
@@ -17,42 +20,72 @@
 > | **F-009** cierre en Sigrid | `blocked` | decisión del humano: ver abajo |
 > | **F-024** datos del parte para el datamart | `spec_ready` | cuatro decisiones del humano |
 >
-> ### Lo que estábamos haciendo cuando se cortó
+> ### El plan acordado, y por dónde va
 >
-> El plan acordado, por orden: **(1)** cerrar F-009, **(2)** merge de la cadena
-> a `dev`, **(3)** desplegar backend y front, **(4)** el humano revisa F-026 en
-> real y se cierra.
+> Por orden: **(1)** cerrar F-009, **(2)** merge de la cadena a `dev`, **(3)**
+> desplegar backend y front, **(4)** el humano revisa F-026 en real y se cierra.
+> **Los pasos 2, 3 y 4 siguen intactos.**
 >
-> **El paso 1 está a medias y con una decisión encima de la mesa.** El acta de
-> F-009 ya está levantada (`progress/impl_cierre_F-009.md`, commits `092bf8d`,
-> `ff5fb6a`, `b17a93b`) y su veredicto es: **lo sustantivo está hecho** —una
-> reclamación real pasó a cerrada en producción, con su parte dentro— **pero
-> sus comprobaciones casi ninguna**: de las siete tareas del bloque 8 solo
-> **T26** está acreditada, y ninguno de los cinco scripts de lectura de
-> `infra/` se ha ejecutado jamás.
+> ### Paso 1 · F-009: ya casi está, y la decisión sigue siendo del humano
 >
-> **Lo que se le propuso al humano y no llegó a contestar**: hacer antes del
-> merge una **sesión de solo lectura** —tres scripts, sin abrir ninguna ventana
-> de escritura— que cierra tres de los ocho huecos. El que más importa: **la
-> fila de auditoría del primer cierre real está escrita en producción y nadie
-> la ha mirado, su huso horario incluido**, que es el defecto que el propio
-> guion daba por probable. Los ocho huecos, ordenados por coste, están en el
-> §9.4 de `progress/guion_bloque8_F-009.md`.
+> El **2026-09-15** se hizo la **sesión de solo lectura** que se había propuesto:
+> cuatro scripts de `infra/` contra el ERP de producción, **sin abrir la ventana
+> de escritura** —solo `POST /api/sql/read`, `CIERRE_HABILITADO` cerrado todo el
+> tiempo— y solo lectura del esquema propio en PostgreSQL. **Los cuatro dan
+> `PASA`.** Acta en `progress/guion_bloque8_F-009.md` **§10**; informe del
+> encargo en `progress/impl_lectura_F-009.md`.
 >
-> **Y uno que sale gratis**: el único hueco que exigiría abrir la ventana es el
-> reintento sobre una incidencia ya cerrada —el escenario más probable en uso
-> normal, y que **las tres features dejaron sin marcar**—. Se puede comprobar
-> de paso cuando el humano revise F-026: basta con volver a subir un parte que
-> ya se cerró.
+> **Lo que se ha ganado:**
 >
-> ### Otros cabos, menores
+> - **El huso de la fila de auditoría es HORA LOCAL**, con **0,0 min** de
+>   diferencia. **El defecto que el diseño daba por probable no existía**: no
+>   escribimos en UTC. Era *la única decisión de la feature que no se pudo tomar
+>   con un dato*; ahora lo tiene.
+> - **T25 queda marcada entera** (las dos condiciones de D1: seguimos saliendo en
+>   los informes de Posventa, y el filtro exacto devuelve **solo lo nuestro**,
+>   ninguno de los 6.843 cierres manuales).
+> - **De T24 quedan acreditados los pasos 6, 7 y 9**, y con ellos **R24, R25, R41
+>   y R43**. El paso 6 ya no depende de lo que viera una persona en la ficha.
 >
+> **Lo que NO se ha ganado, y por qué T24 sigue sin marcar**: su contrato son
+> nueve pasos y faltan cinco —el 2, el 3, el 4 (el `estado` de la respuesta), el
+> 5 y el 8—, y el **`filas_afectadas: 2` (R22) no es recuperable hacia atrás**:
+> solo lo dará el siguiente cierre real. **T22, T23 y T27 tampoco se marcan.**
+>
+> **De ocho huecos quedan cinco** (`guion_bloque8_F-009.md` §9.4, actualización):
+>
+> | # | Hueco | Coste |
+> |---|---|---|
+> | 4 | **T23** · siembra del login, **reducido** a R33, R31 y la unicidad del candidato. Hoy se vio que el `usu` del ERP es `pgris`, luego el login se derivó, se resolvió y se usó para firmar — pero eso no prueba R33 | casi todo solo lectura |
+> | 5 | **T22 pasos 2 y 5** · el `503` con el interruptor apagado, y que el dry-run no escribe | el `503` sale gratis; lo otro exige ventana |
+> | 6 | **T22 paso 4** · las seis cosas de R9 y el bloque `grafico` | ventana abierta, pero **no escribe** |
+> | 7 | **T27** · reintento sobre lo ya cerrado | **el único que exige abrir la ventana de escritura**, y **sale gratis cuando el humano revise F-026**: basta volver a subir un parte ya cerrado |
+> | 8 | **`filas_afectadas: 2`** y el `tiemod` de partida | **no recuperable**: solo el siguiente cierre real |
+>
+> **La decisión que sigue encima de la mesa es la misma, con menos peso encima**:
+> cerrar F-009 con los cinco huecos escritos y fechados —como se cerró F-012—, o
+> recorrer antes alguno más. Lo que ya no puede decirse es que *nadie ha mirado
+> la fila de auditoría*: está mirada, campo a campo, y pasa.
+>
+> ### Cabos abiertos, con dueño
+>
+> - **`azure-apps/postventa_incidencias.md` sigue diciendo que «todavía no se ha
+>   ejecutado ni un cierre real»**, y desde el 2026-09-11 es falso. La regla de
+>   propiedad de `CLAUDE.md` obliga a corregirlo, y ahora hay con qué hacerlo
+>   bien: fecha, incidencia, `ide` de la fila de log y veredicto del huso.
+> - **`infra/07_alta_usuario_sigrid.ps1`** (líneas 161 y 248) y
+>   **`infra/17_traza_grafico_local.ps1`** (línea 196) arrastran el defecto de
+>   comillas de PowerShell 5.1 que el 2026-09-15 tumbó al `12`, y **nunca se han
+>   ejecutado**: se estrellarán en la primera línea de quien recorra T23 o la
+>   precondición de T24. El arreglo ya está escrito
+>   (`Invoke-PythonDelServicio`, en `infra/08_lectura_sigrid_comun.ps1`).
 > - `progress/peticion_posventa_prueba_F-012.md` está **escrita y sin enviar**.
 >   Su nota interna dice qué hacía falta antes; ya se cumple.
 > - Dos avisos nuevos de `ruff` (58 → 60) que **no son de ninguna feature**:
 >   salen de `harness/`.
 > - `arnes-base` tiene el **encargo 1.7.12** sin implementar (la caché de
->   `init.sh` puede tapar un rojo) y el 1.7.11 sin confirmar siquiera.
+>   `init.sh` puede tapar un rojo — y en esta sesión las suites de `api` y
+>   `front` volvieron a salir de caché) y el 1.7.11 sin confirmar siquiera.
 
 > ## Estado al 2026-09-14 · **F-009: levantada el acta de su bloque 8; solo T26 queda acreditada**
 >

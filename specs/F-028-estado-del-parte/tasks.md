@@ -86,7 +86,7 @@
       `decidido_at_utc DESC, cambio_id DESC`, y la fila humana se distingue de
       la de máquina por `decidido_por IS NOT NULL`.
 
-- [ ] **T7**: `domain/ports/persistencia.py` y `repositorio_pg.py`:
+- [x] **T7**: `domain/ports/persistencia.py` y `repositorio_pg.py`:
       `consultar_situacion`, `registrar_decision` y `consultar_estado_cierre`.
       **Todavía no se retira nada de F-026.** | Verificación: mismo fichero de
       test — una situación sin ninguna fila devuelve los tres huecos vacíos, y

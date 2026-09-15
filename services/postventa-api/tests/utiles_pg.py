@@ -208,6 +208,8 @@ class RepositorioEnMemoria:
         fallo_al_guardar_grafico: Exception | None = None,
         estado_que_falla: Any = None,
         aprobacion: Any = None,
+        situacion: Any = None,
+        estado_cierre: str | None = None,
     ) -> None:
         from domain.models.persistencia import ResultadoGuardado
 
@@ -238,6 +240,25 @@ class RepositorioEnMemoria:
         #: F-026 · lo que devuelve `consultar_aprobacion`. `None` es «no la ha
         #: aprobado nadie», que **no es un error**.
         self.aprobacion = aprobacion
+        #: F-028 · las decisiones de estado que se han registrado, **en orden**.
+        #:
+        #: Una lista y no un diccionario por `hash`: el histórico es
+        #: append-only, y un doble que guardara la última por parte no podría
+        #: hacer fallar a un código que pisara filas — que es exactamente lo
+        #: que F-028 viene a impedir (R21, R25).
+        self.decisiones: list[Any] = []
+        #: F-028 · los `hash` con los que se ha consultado la situación.
+        #:
+        #: Comprobar **que se preguntó** es la mitad de R33: una puerta que no
+        #: consultara el almacén estaría decidiendo con lo que le cuente quien
+        #: llama.
+        self.situaciones_consultadas: list[str] = []
+        #: F-028 · lo que devuelve `consultar_situacion`. `None` significa «este
+        #: parte no tiene ni decisión, ni fila, ni traza de cierre», que es el
+        #: caso normal del primer día y **no es un error**.
+        self.situacion = situacion
+        #: F-028 · lo que devuelve `consultar_estado_cierre`, en crudo.
+        self.estado_cierre = estado_cierre
         #: Los límites con los que se ha llamado a la cola, en orden.
         self.limites: list[int] = []
         self.cola = tuple(cola)
@@ -336,6 +357,38 @@ class RepositorioEnMemoria:
         if self.fallo is not None:
             raise self.fallo
         return self.aprobacion
+
+    def consultar_situacion(self, *, hash_parte: str) -> Any:
+        """F-028 · la situación que el test haya preparado, o una vacía.
+
+        Devolver `SituacionParte()` y no `None` cuando no se ha preparado nada
+        es lo que hace el adaptador de verdad: los tres huecos vacíos son el
+        caso normal del primer día, y quien lo consulta tiene que poder derivar
+        un estado igualmente sin comprobar antes si hay algo.
+        """
+        from domain.models.estado import SituacionParte
+
+        self.situaciones_consultadas.append(hash_parte)
+        if self.fallo is not None:
+            raise self.fallo
+        return self.situacion if self.situacion is not None else SituacionParte()
+
+    def registrar_decision(self, *, decision: Any) -> Any:
+        """F-028 · apunta la decisión **sin pisar ninguna anterior** (R21).
+
+        Acumula, igual que la tabla. Un doble que guardara solo la última por
+        parte dejaría pasar un código que pisara filas, que es el defecto de
+        `postventa.aprobaciones` del que nace esta feature.
+        """
+        resultado = self._o_fallar()
+        self.decisiones.append(decision)
+        return resultado
+
+    def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:
+        """F-028 · lo que diga la traza de cierre, o `None` si no consta."""
+        if self.fallo is not None:
+            raise self.fallo
+        return self.estado_cierre
 
     def cola_validacion_humana(self, *, limite: int) -> tuple:
         self.limites.append(limite)

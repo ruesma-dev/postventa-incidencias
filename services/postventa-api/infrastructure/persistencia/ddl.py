@@ -360,12 +360,7 @@ def _validar_insert_semilla(limpia: str, en_mayusculas: str, esquema: str) -> No
             f"aplicarse dos veces sin duplicar filas (R3): {_recortar(limpia)}"
         )
 
-    referidos = _PATRON_OBJETOS_REFERIDOS.findall(limpia)
-    if not referidos:
-        raise DdlInseguro(
-            f"la semilla no nombra ninguna tabla cualificada: {_recortar(limpia)}"
-        )
-    for objeto in referidos:
+    for objeto in _PATRON_OBJETOS_REFERIDOS.findall(limpia):
         _exigir_cualificado(objeto, esquema, limpia)
 
 

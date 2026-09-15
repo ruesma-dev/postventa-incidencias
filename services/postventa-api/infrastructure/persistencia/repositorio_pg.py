@@ -34,6 +34,7 @@ import psycopg
 from domain.models.aprobacion import Aprobacion
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.errores import PersistenciaNoDisponible, ReferenciaNoConsta
+from domain.models.estado import DecisionEstado, EstadoParte, SituacionParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
@@ -52,6 +53,7 @@ from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import (
     fila_a_aprobacion,
     fila_a_correspondencia,
+    fila_a_decision_estado,
     fila_a_entrada_cola,
     fila_a_preferencias,
     fila_a_traza_grafico,
@@ -275,6 +277,117 @@ class RepositorioPostgres:
             aprobacion.vigente,
         )
         return aprobacion
+
+    # --- el estado del parte (F-028) --------------------------------------
+
+    def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
+        """Lo que hace falta para derivar el estado de un parte (F-028, R2).
+
+        **Dos consultas y una sola llamada** (`design.md` §8.5): el `UNION ALL`
+        del histórico, que trae la última fila humana y la última de
+        cualquiera, y la traza de cierre. Se descartó resolverlo todo en una
+        sentencia con `LEFT JOIN LATERAL`: ahorra un viaje a la misma conexión
+        ya abierta y cuesta un SQL que nadie de este repositorio sabe leer de un
+        vistazo.
+
+        De la rama humana vuelve la **decisión entera**, porque es la que manda
+        sobre la máquina y hay que poder contrastar su huella. De la otra vuelve
+        **solo el estado**: las filas de máquina son constancia, nunca criterio
+        (R26), y lo único que se hace con ellas es no repetir fila.
+
+        Los tres huecos vacíos **no son un error**: es el caso normal del primer
+        día, y de ahí sale `pendiente` sin que nadie tenga que fallar.
+
+        El log dice qué se leyó y nunca **quién** ni **por qué**: el `oid` es
+        dato personal seudónimo y el motivo lo escribe una persona que puede
+        nombrar a otra (R52). Y este es el camino más transitado del servicio
+        desde que las tres puertas consultan el estado: si filtrara, filtraría
+        en bucle.
+        """
+        sql, parametros = sentencias.select_situacion_estado(
+            esquema=self._esquema, hash_parte=hash_parte
+        )
+        filas = self._leer(sql, parametros, operacion="consultar_situacion")
+
+        decision_humana: DecisionEstado | None = None
+        ultimo_estado: EstadoParte | None = None
+        for fila in filas:
+            origen, *resto = fila
+            decision = fila_a_decision_estado(resto)
+            if origen == sentencias.ORIGEN_DECISION_HUMANA:
+                decision_humana = decision
+            else:
+                ultimo_estado = decision.estado
+
+        estado_cierre = self.consultar_estado_cierre(hash_parte=hash_parte)
+        log.info(
+            "F-028 situación del parte leída: hash=%s decidida_por_persona=%s "
+            "ultimo_estado=%s cierre=%s",
+            hash_parte,
+            decision_humana is not None,
+            None if ultimo_estado is None else ultimo_estado.value,
+            estado_cierre,
+        )
+        return SituacionParte(
+            decision_humana=decision_humana,
+            ultimo_estado_registrado=ultimo_estado,
+            estado_cierre=estado_cierre,
+        )
+
+    def registrar_decision(self, *, decision: DecisionEstado) -> ResultadoGuardado:
+        """Añade una fila al histórico. **Nunca pisa ninguna** (F-028, R21).
+
+        Es la única escritura de este adaptador sin `ON CONFLICT`, y es el punto
+        de la feature: el histórico acumula. Quien evita las filas repetidas es
+        la regla de constancia —solo se escribe si el estado derivado cambió—,
+        no la base.
+
+        El log dice **de qué estado a cuál** fue el parte, si lo decidió una
+        persona y cómo acabó la escritura. Nunca el `oid` ni el motivo (R52):
+        ninguno de los dos hace falta para saber que la operación fue bien, y
+        este log lo lee cualquiera que abra Application Insights.
+        """
+        sql, parametros = sentencias.insert_decision_estado(
+            esquema=self._esquema, decision=decision
+        )
+        resultado = self._escribir(sql, parametros, operacion="registrar_decision")
+        log.info(
+            "F-028 cambio de estado registrado: hash=%s de=%s a=%s "
+            "por_persona=%s resultado=%s",
+            decision.hash_parte,
+            None
+            if decision.estado_anterior is None
+            else decision.estado_anterior.value,
+            decision.estado.value,
+            decision.por_persona,
+            resultado.value,
+        )
+        return resultado
+
+    def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:
+        """El estado de la traza de cierre de ese parte, o `None` (F-028, R18).
+
+        `None` **no es un error**: es que a ese parte no se le ha intentado
+        cerrar nada todavía, que es el caso de todos hasta que alguien pulsa el
+        botón.
+
+        Vuelve **en crudo**, como cadena, y no como `EstadoCierre`: el dueño de
+        lo que puede haber en esa columna es el `CHECK` de `sql/06_cierres.sql`,
+        y la derivación lo compara por valor. Convertirlo aquí obligaría a
+        decidir qué hacer con un estado que el `Enum` no conozca, y eso ya lo
+        decide quien lee la traza entera (`consultar_grafico` y F-009).
+
+        **No se registra nada**: lo llama `consultar_situacion`, que ya escribe
+        una línea con el resultado, y duplicarla sería escribir dos veces por
+        parte y por paso.
+        """
+        sql, parametros = sentencias.select_estado_cierre(
+            esquema=self._esquema, hash_parte=hash_parte
+        )
+        filas = self._leer(sql, parametros, operacion="consultar_estado_cierre")
+        if not filas:
+            return None
+        return filas[0][0]
 
     def cola_validacion_humana(self, *, limite: int) -> tuple[EntradaCola, ...]:
         """Los partes que esperan que una persona decida (R22).

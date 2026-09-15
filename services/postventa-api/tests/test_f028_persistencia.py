@@ -77,13 +77,14 @@ def _decision(**cambios) -> DecisionEstado:
 
 def _constancia(**cambios) -> DecisionEstado:
     """La fila que deja la **máquina**: sin autor y sin motivo (R24)."""
-    return _decision(
-        estado=EstadoParte.APROBADO,
-        estado_anterior=None,
-        decidido_por=None,
-        motivo=None,
-        **cambios,
-    )
+    argumentos = {
+        "estado": EstadoParte.APROBADO,
+        "estado_anterior": None,
+        "decidido_por": None,
+        "motivo": None,
+    }
+    argumentos.update(cambios)
+    return _decision(**argumentos)
 
 
 def _fila(decision: DecisionEstado, origen: str) -> tuple:

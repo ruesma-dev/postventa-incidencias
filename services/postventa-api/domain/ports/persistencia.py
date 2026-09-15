@@ -24,6 +24,7 @@ from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from domain.models.aprobacion import Aprobacion
+from domain.models.estado import DecisionEstado, SituacionParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EntradaCola,
@@ -155,6 +156,59 @@ class RepositorioPartesPort(Protocol):
         La leen los tres pasos del circuito, y la leen **de aquí y nunca del
         cuerpo de la petición** (R24): si viniera del cuerpo, quien llama
         podría afirmar que aprobó algo que no aprobó.
+        """
+        ...
+
+    def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
+        """Lo que hace falta saber de un parte para derivar su estado (F-028).
+
+        **Una sola llamada** y tres cosas de vuelta (R2): la última decisión
+        **humana**, el último estado registrado —solo para la regla de
+        constancia— y el estado de la traza de cierre. Quien pregunta no tiene
+        que cruzar cuatro tablas ni saber que el histórico existe.
+
+        Que los tres huecos vengan vacíos **no es un error**: es el caso normal
+        del primer día. Todo parte nace sin decisión, sin fila y sin traza de
+        cierre, y de ahí tiene que salir un estado igualmente
+        (`estado_del_parte` lo resuelve).
+
+        La leen las tres puertas del circuito, y la leen **de aquí y nunca del
+        cuerpo de la petición** (R33): si viniera del cuerpo, quien llama podría
+        afirmar que alguien aprobó lo que nadie aprobó, y con eso se cierra en
+        el ERP de producción una reclamación que la validación había rechazado.
+
+        La decisión que vuelve es la **humana**, no la última fila: las de
+        máquina son constancia, nunca criterio (R26).
+        """
+        ...
+
+    def registrar_decision(self, *, decision: DecisionEstado) -> ResultadoGuardado:
+        """Añade una fila al histórico de estado. **Append-only** (F-028, R21).
+
+        Es la única operación de este puerto que **no** es idempotente por
+        clave, y es a propósito: el histórico acumula. Ninguna fila se pisa y
+        ninguna se borra, porque un ciclo aprobar → rechazar → aprobar tiene
+        que dejar las tres y ninguna puede quedar tapada por la siguiente
+        (R25). Quien evita las filas repetidas es la **regla de constancia**
+        —solo se escribe si el estado derivado cambió—, no la base.
+
+        De quien decide se guarda el `oid` opaco de Entra ID y nada más (R15);
+        de la máquina, ningún autor: `decidido_por` a `None` **es** «lo decidió
+        la máquina» (R24).
+        """
+        ...
+
+    def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:
+        """El estado de la traza de cierre de ese parte, o `None` (F-028, R18).
+
+        `None` **no es un error**: es que a ese parte no se le ha intentado
+        cerrar nada todavía. Vuelve **en crudo**, como cadena: el dueño de lo
+        que puede haber ahí es el `CHECK` de `sql/06_cierres.sql`, y la
+        derivación lo compara por valor contra `ESTADOS_DE_CIERRE_EN_FIRME`.
+
+        Se lee cada vez en vez de guardar una copia nuestra porque `cerrado`
+        **pertenece a otro sistema**: una copia acabaría diciendo que un parte
+        está cerrado cuando no lo está, o al revés (`design.md` §3).
         """
         ...
 

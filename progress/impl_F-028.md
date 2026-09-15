@@ -714,3 +714,435 @@ Dos apuntes para quien lo coja:
   todos locales. **Sin `push`.**
 - `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
   `done` no es cosa del implementer.
+
+---
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 3
+
+> Encargo: **T8 y T9** de `specs/F-028-estado-del-parte/tasks.md`, la
+> constancia en los pipelines. Parada obligada al terminar el bloque 3. **No se
+> ha entrado en el bloque 4.**
+>
+> Rama `feature/F-028-estado-del-parte`, desde `7cab1cb`. Rigor **`estandar`**:
+> fase RED, puerta de cobertura, campaña de mutación. Sin `push`, sin tocar
+> `dev` ni `main`, sin tocar el `status` de ninguna feature.
+
+---
+
+## 19 · Qué se ha hecho, en una frase por tarea
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T8** | `4c0934a` | `paso_persistencia` apunta el estado del parte tras guardar el veredicto, **solo si cambió**; la regla vive en `application/pipelines/constancia.py` |
+| **T9** | `117421e` | `paso_cierre` apunta `→ cerrado` **después** de que el cierre conste; un cierre fallido no la escribe, y un fallo al apuntarla **no se lleva por delante el cierre** |
+
+**Las tres puertas no se han tocado.** `_exigir_admitido` sigue exactamente
+como lo dejó F-026 en los tres pasos, el atajo del apto sigue ahí y
+`consultar_aprobacion` se sigue leyendo igual: eso es el bloque 4.
+`tests/test_f028_puertas.py` sigue en verde **sin editarlo** — 16 pasados—, que
+es lo que este bloque tenía que demostrar además de lo suyo.
+
+Tampoco se ha tocado el front, ni `infrastructure/sigrid/`, ni
+`infrastructure/sharepoint/`, ni `azure-apps/`, ni `harness/features.json`.
+
+---
+
+## 20 · Ficheros tocados
+
+### Creados
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-api/application/pipelines/constancia.py` | La **regla de constancia** de `design.md` §4, una sola vez: `anotar_estado` |
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `application/pipelines/paso_persistencia.py` | `_dejar_constancia_del_estado` detrás de `guardar_validacion`, y el párrafo de la cabecera que dice por qué |
+| `application/pipelines/paso_cierre.py` | `_anotar_que_el_parte_queda_cerrado`, llamado desde `_escribir` y desde `_resolver_ya_cerrada`; paso 8 en la lista de la docstring |
+| `interface_adapters/api/parte.py` | `AnotaLosResultados` delega `consultar_situacion` y `registrar_decision`. Ver §22.2 — **sin esto, `POST /api/parte` revienta** |
+| `tests/test_f028_persistencia.py` | 18 casos nuevos: 10 de T8 y 8 de T9, con dos dobles locales |
+| `specs/F-028-estado-del-parte/tasks.md` | T8 y T9 marcadas `[x]` |
+| `progress/mutacion_F-028.md` | Lo genera la campaña |
+
+### Lo que la spec prohíbe tocar, y que sigue intacto
+
+Comprobado con `git diff --stat 7cab1cb..HEAD`: en el diff **no aparece**
+`domain/models/validacion.py`, ni `sql/04_validaciones.sql` (regla dura 1), ni
+`domain/models/aprobacion.py` —o sea, ni `huella_de_veredicto` ni
+`_normalizar`— (regla dura 2 y D9), ni `sql/10_aprobaciones.sql` ni
+`sql/11_historico_estado.sql` (regla dura 3), ni `infrastructure/sigrid/`, ni
+`infrastructure/sharepoint/`, ni `tests/test_f028_puertas.py`, ni
+`azure-apps/`, ni `harness/features.json`. Y **no se ha retirado nada de
+F-026**: `Aprobacion`, `admite_circuito`, `guardar_aprobacion`,
+`consultar_aprobacion` y `/api/aprobar` siguen vivos y en uso.
+
+---
+
+## 21 · Fase RED · las trazas, pegadas
+
+El intérprete es el del servicio (`services/postventa-api/.venv`): el del
+repositorio no tiene `pydantic` y falla al cargar `conftest.py`.
+
+### T8 · antes de que `paso_persistencia` apuntara nada
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f028_persistencia.py -q
+
+...........................FFF.F..FFFFF...F.F                            [100%]
+================================== FAILURES ===================================
+__ test_f028_r23_un_parte_apto_nace_aprobado_y_consta_que_lo_dijo_la_maquina __
+
+    def test_f028_r23_un_parte_apto_nace_aprobado_y_consta_que_lo_dijo_la_maquina():
+        repositorio = RepositorioEnMemoria()
+
+        _guardar(repositorio, _veredicto(apto=True))
+
+>       assert len(repositorio.decisiones) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+E        +    where [] = <tests.utiles_pg.RepositorioEnMemoria object at 0x...>.decisiones
+
+tests\test_f028_persistencia.py:714: AssertionError
+...
+11 failed, 34 passed in 1.66s
+```
+
+Después de escribir `constancia.py`, el paso y la delegación del envoltorio:
+los 11 en verde, y la suite entera del servicio también.
+
+### T9 · antes de que `paso_cierre` apuntara nada
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f028_persistencia.py -q
+
+.....................................FF...F.F                            [100%]
+================================== FAILURES ===================================
+______________ test_f028_el_cierre_deja_su_fila_en_el_historico _______________
+
+    def test_f028_el_cierre_deja_su_fila_en_el_historico():
+        repositorio = RepositorioEnMemoria(
+            traza_grafico=GRAFICO_ADJUNTADO,
+            situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+        )
+
+        _cerrar(repositorio)
+
+>       assert len(repositorio.decisiones) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+E        +    where [] = <tests.utiles_pg.RepositorioEnMemoria object at 0x...>.decisiones
+
+tests\test_f028_persistencia.py:990: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f028_persistencia.py::test_f028_el_cierre_deja_su_fila_en_el_historico
+FAILED tests/test_f028_persistencia.py::test_f028_la_fila_cerrado_se_escribe_despues_de_que_el_cierre_conste
+FAILED tests/test_f028_persistencia.py::test_f028_r18_una_reclamacion_ya_cerrada_tambien_deja_su_fila
+FAILED tests/test_f028_persistencia.py::test_f028_si_la_constancia_falla_el_cierre_sigue_siendo_un_cierre
+4 failed, 41 passed in 1.57s
+```
+
+Después de `_anotar_que_el_parte_queda_cerrado` y sus dos llamadas:
+`45 passed in 1.07s`.
+
+### Los siete casos que ya pasaban en rojo, y por qué es lo correcto
+
+De los 18 casos nuevos, siete estaban verdes desde el principio, y son **todos
+los control negativo**: «un reproceso que no cambia nada no escribe fila», «sin
+veredicto no se estrena histórico», «el dry-run no escribe», «un cierre fallido
+no escribe», «un cierre que no cuadra tampoco», «no se repite la fila si ya
+constaba cerrado» y «reprocesar un parte aprobado a mano no lo degrada». Antes
+de T8 **nadie escribía ninguna fila**, así que afirmar que no se escribe fila
+salía gratis. Su valor no está en la fase RED sino en la de después: son los
+que se ponen rojos si mañana la condición desaparece, y de eso hay prueba en
+§23.
+
+**T8 y T9 sí llevan fase RED de verdad** en los once y cuatro casos positivos,
+que son los que dicen lo que el código tiene que hacer.
+
+---
+
+## 22 · Decisiones de diseño, y las dos que hay que juzgar
+
+### 22.1 · La regla vive en un módulo propio, y §8.2 no lo lista
+
+**Es la única desviación del bloque.** `design.md` §8.2 lista
+`paso_persistencia.py` y `paso_cierre.py` como los ficheros a modificar, y no
+anuncia un fichero nuevo. Se ha creado
+`application/pipelines/constancia.py` con `anotar_estado`, que es la regla de
+§4 escrita una vez: *si el estado derivado no es el de la última fila, se añade
+una fila*.
+
+**Por qué, y no es una preferencia de estilo.** La aplican los **dos** pasos.
+Escribirla dos veces es lo que `confianza.py` (F-004) ya razonó en su cabecera
+y que aquí vale igual de literalmente: dos copias divergen el día que alguien
+corrija una sola, y **en una campaña de mutación cada copia se cuenta aparte**,
+con lo que la segunda se queda sin tests que la maten. Hay además un precedente
+exacto en este mismo repositorio —`confianza.py` nació dentro de
+`paso_extraccion.py` y se sacó cuando la lectura de la firma necesitó la misma
+regla—, así que no se está inventando una capa nueva: se está usando la que ya
+existe para esto.
+
+**Lo que el módulo NO decide**, y es la mitad del diseño: la política de
+errores. `anotar_estado` deja subir lo que levante el repositorio, y cada paso
+hace con ese fallo lo contrario que el otro (§22.3). Meter la política dentro
+habría obligado a un parámetro booleano que es justo donde se esconden los
+fallos de este tipo.
+
+### 22.2 · `AnotaLosResultados` tenía un agujero que T8 destapó
+
+`interface_adapters/api/parte.py` envuelve el repositorio para anotar qué
+devolvió cada guardado, y su docstring promete: «implementa
+`RepositorioPartesPort` entero delegando: si mañana el paso llamara a otra
+operación, este envoltorio no se interpone». **No era verdad.** En cuanto
+`paso_persistencia` llamó a `consultar_situacion`, la suite dio:
+
+```
+E       AttributeError: 'AnotaLosResultados' object has no attribute
+E       'consultar_situacion'. Did you mean: 'consultar_aprobacion'?
+```
+
+Lo caza `tests/test_f019_logs_sin_datos_personales.py`, que no es de esta
+feature. Se han añadido las **dos** operaciones que el paso usa de verdad
+—`consultar_situacion` y `registrar_decision`—, y solo esas dos: una
+delegación que nadie ejercita es una línea sin test y la puerta de cobertura la
+cantaría.
+
+> Apunte para el reviewer, porque es deuda previa y no mía: al envoltorio le
+> siguen faltando `guardar_grafico`, `consultar_grafico` y
+> `consultar_estado_cierre`. Hoy es inocuo —`/api/parte` y `/api/aprobar` no
+> llegan al paso del gráfico— pero la docstring sigue prometiendo algo que el
+> código no cumple. No se arregla aquí porque no es de este bloque.
+
+### 22.3 · Un fallo al apuntar la constancia **no puede llevarse por delante un cierre que sí ocurrió**
+
+Es el punto que el encargo pedía explicar, y los dos pasos hacen lo contrario a
+propósito:
+
+| | `paso_persistencia` | `paso_cierre` |
+|---|---|---|
+| Qué se ha escrito fuera cuando falla | **nada** | la incidencia **está cerrada en el ERP de producción** y su `TrazaCierre` guardada |
+| Qué hace | deja subir el error | lo **traga**, lo registra y devuelve el cierre |
+| Qué ve quien llama | el 503 honesto de siempre | 200: el cierre, que es lo que ocurrió |
+
+**Por qué tragarlo es lo correcto en el cierre.** El estado del parte **no se
+lee del histórico**: se deriva de la traza de cierre, que ya está guardada
+(R18, R26). Lo que se pierde es una línea del relato, no el hecho. Dejar salir
+ese error convertiría un cierre que ocurrió en el 503 «vuelve a intentarlo» de
+la base, y quien lo reintentara le pediría otra vez al ERP de producción que
+cerrara lo ya cerrado. Es el mismo argumento de `CierreSinTraza` (defecto 14 de
+F-010) aplicado un escalón más abajo — y la diferencia con él está escrita en
+la docstring: allí lo que falta es **el hecho**, y por eso sube; aquí falta
+**su eco**, y por eso no.
+
+**Y la fila no se pierde para siempre**: el siguiente reproceso de ese parte
+pasa por `paso_persistencia`, que aplica la misma regla con la traza ya en
+`cerrado` y escribe el `→ cerrado` que faltaba. La recuperación no es una
+esperanza, es una consecuencia de que la regla sea una sola.
+
+El log de ese caso lleva el `hash` del parte y nada más: **ni `oid`, ni
+motivo**, ni nada del papel (R52, R44, R45). Hay test.
+
+### 22.4 · La reclamación **ya cerrada** también deja su fila
+
+`design.md` §4 dice «se cierra la incidencia en el ERP → `paso_cierre`, tras la
+escritura», y T9 verifica dos casos: la fila tras el cierre y ninguna fila si
+el cierre falla. `_resolver_ya_cerrada` no está en ninguno de los dos, así que
+había que decidir. **Se anota también**, por tres motivos:
+
+1. `ya_cerrada` está en `ESTADOS_DE_CIERRE_EN_FIRME`, así que el parte queda
+   `cerrado` igualmente (R18). No anotarlo dejaría la última fila del histórico
+   diciendo `aprobado` mientras el parte está `cerrado`: el relato
+   contradiciendo al estado, que es lo que §4 existe para impedir.
+2. No es un cierre fallido. El cierre **consta** —hay `TrazaCierre` en
+   `ya_cerrada`— y el paso devuelve en verde.
+3. Y si no se anotara aquí, lo anotaría igual el siguiente reproceso por
+   `paso_persistencia`, porque la derivación mira la traza. O sea: la fila
+   aparece de todas formas, y anotarla donde ocurre el hecho es lo que hace que
+   su `decidido_at_utc` signifique algo.
+
+Ese camino es además el que **más se repite** —cada relanzamiento de una remesa
+ya procesada pasa por él una vez por parte—, así que la regla de constancia ahí
+no es decoración: sin ella, cada pasada añadiría un `cerrado → cerrado`. Hay
+test de las dos cosas.
+
+### 22.5 · Se apunta el **estado del parte**, no lo que dijo la máquina
+
+`estado_del_parte(validacion, decision_humana, estado_cierre)` y no
+`estado_de_la_maquina(validacion)`. Es lo que dice §4 —«el derivado»— y lo que
+salva el caso más común de todos: un parte no apto que **alguien aprobó** está
+`aprobado` (R9); con el veredicto suelto, cada reproceso escribiría un
+`aprobado → pendiente` que nunca ocurrió y el histórico contaría una
+degradación falsa cada vez que alguien recarga la pantalla. El caso tiene test
+propio y mata el mutante correspondiente (§23).
+
+### 22.6 · La constancia **solo si hay veredicto**
+
+El disparador de §4 es «se guarda un veredicto». Un parte extraído al que
+todavía no se le ha mirado la firma —F-003 y F-004 son independientes— no
+estrena histórico: abrirle uno con un `→ pendiente` diría que algo ya se
+pronunció sobre él, y no es verdad. De paso se ahorra la consulta en el único
+camino donde no puede aportar nada.
+
+### 22.7 · La fila de constancia va sin `huella_veredicto`
+
+La huella dice **sobre qué veredicto exacto decidió una persona**, y es lo que
+hace que una aprobación deje de contar cuando el veredicto cambia (R19). Una
+constancia no concede nada, así que apuntarle una huella sería darle la forma
+de algo que sí. Va a `NULL`, como el autor y el motivo.
+
+---
+
+## 23 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (servicio `api`) | **2494 passed, 13 skipped** | `bash harness/init.sh`, servicio `api` |
+| Tests del front | en verde por caché (árbol del front sin cambios) | `bash harness/init.sh` |
+| De ellos, **nuevos de este bloque** | **18** (10 de T8 + 8 de T9) | `pytest tests/test_f028_persistencia.py` |
+| **Cobertura de las líneas cambiadas** | **100,0 %** (158/158, umbral 80 %) | línea `PUERTA COBERTURA` de `init.sh` |
+| **Mutantes generados** | **18** | `python -m harness.mutacion --feature F-028` |
+| **Supervivientes** | **0** | ídem |
+| **Timeouts** | **0** | ídem |
+| **Mutantes generados del código de ESTE bloque** | **0** · ver abajo | ídem |
+| **Mutantes a mano sobre este bloque** | **9 generados, 9 muertos** | §23.1 |
+| **Tiempo de la suite** | **103,3 s** (`api`) | la propia suite |
+| **Tiempo de la campaña** | **253,0 s** con 8 workers | `progress/mutacion_F-028.md` |
+
+### Los supervivientes de la campaña
+
+**Ninguno.** 18 mutantes, 18 muertos, 0 timeouts.
+
+### 23.1 · Lo que hay que mirar de las evidencias: la campaña **no generó ni un mutante de este bloque**
+
+Los tres ficheros nuevos y modificados entraron en el alcance —`constancia.py`
+(91 líneas), `paso_cierre.py` (65) y `paso_persistencia.py` (58), 214 líneas
+entre los tres, así lo lista `progress/mutacion_F-028.md`— y **no salió ni un
+mutante de ellos**. Los 18 son de los bloques 1 y 2 (`estado.py`, `ddl.py`,
+`repositorio_pg.py`, `sentencias.py`), y siguen muertos.
+
+**Por qué, medido.** Los operadores de `harness.mutacion` son comparación,
+lógico, `not`, booleano, entero y aritmético. El código de este bloque no les
+ofrece nada:
+
+- la única condición de `constancia.py` es `if estado is
+  situacion.ultimo_estado_registrado:` — una comparación de **identidad**, que
+  esta herramienta no muta (en `estado.py` tampoco mutó los `is`: mutó los
+  `and` que los rodeaban);
+- `paso_persistencia` añade un `if ctx.validacion is not None` sobre una línea
+  que ya existía, y llamadas;
+- `paso_cierre` añade un `try/except` y dos llamadas. Ni una comparación, ni un
+  literal, ni un operador.
+
+Así que **el 100 % de mutantes muertos de la campaña no dice nada sobre este
+bloque**, y presentarlo como si lo dijera sería exactamente el número que
+tranquiliza sin medir nada. Lo que **no** se ha hecho es retorcer el código para
+darle material a la herramienta —cambiar el `is` por un `==` para que salga un
+mutante es escribir para el medidor, no para el problema—.
+
+Lo que se ha hecho en su lugar: **mutar los nueve puntos a mano**, uno a uno,
+ejecutando la suite con cada mutación aplicada y restaurando el fichero después.
+Es reproducible con el script de la sesión y estos son los resultados reales:
+
+| # | Mutante aplicado a mano | Resultado | Quién lo caza |
+|---|---|---|---|
+| 1 | `constancia.py` · la regla se desactiva (`if False`): **siempre escribe** | **muerto** (3 fallos) | `un_reproceso_que_no_cambia_nada_no_escribe_ninguna_fila`, `no_se_repite_la_fila_si_el_parte_ya_constaba_cerrado`, `r26_la_constancia_mira_el_estado_derivado…` |
+| 2 | `constancia.py` · la regla se invierte: **nunca escribe** | **muerto** (13 fallos) | los once positivos de T8 y T9 |
+| 3 | `constancia.py` · `decidido_por="sistema"` (R24) | **muerto** (2 fallos) | `r24_la_fila_de_la_maquina_va_sin_autor_y_sin_motivo`, `r23_un_parte_apto_nace_aprobado…` |
+| 4 | `constancia.py` · `estado_anterior=None` siempre (R22) | **muerto** (3 fallos) | `teclear_el_codigo_que_faltaba_deja_pendiente_aprobado`, `r18_si_la_traza_de_cierre_manda…`, `el_cierre_deja_su_fila_en_el_historico` |
+| 5 | `paso_persistencia` · apunta `estado_de_la_maquina` y no el estado derivado | **muerto** (2 fallos) | `r26_la_constancia_mira_el_estado_derivado_y_no_solo_el_veredicto` (§22.5) |
+| 6 | `paso_persistencia` · la constancia **antes** de guardar la validación | **muerto** (1 fallo) | `la_constancia_se_apunta_despues_de_guardar_la_validacion` |
+| 7 | `paso_cierre` · la fila **antes** de escribir en el ERP | **muerto** (3 fallos) | `la_fila_cerrado_se_escribe_despues_de_que_el_cierre_conste`, y los **dos de cierre fallido** |
+| 8 | `paso_cierre` · el fallo de la constancia **se deja subir** | **muerto** (1 fallo) | `si_la_constancia_falla_el_cierre_sigue_siendo_un_cierre` (§22.3) |
+| 9 | `paso_cierre` · la reclamación ya cerrada **no** deja fila | **muerto** (1 fallo) | `r18_una_reclamacion_ya_cerrada_tambien_deja_su_fila` (§22.4) |
+
+**9 de 9 muertos.** Los dos mutantes que un reviewer miraría primero —el 7 y el
+8, que son los que tocan el camino del ERP de producción— mueren cada uno por
+su test propio, y el 7 muere además por los dos control negativo del cierre
+fallido, que es lo que tenían que hacer.
+
+> **Propagación pendiente a `arnes-base`, y no la hago yo.** Que la campaña
+> genere cero mutantes de un fichero en alcance **sin decirlo en ninguna parte**
+> es un hueco del arnés genérico, no de esta feature: el informe sale con un
+> 100 % que parece cobertura de mutación del trabajo y no lo es. Lo suyo sería
+> que `harness/mutacion.py` avisara de los ficheros en alcance que no
+> produjeron ningún mutante. Queda anotado para que lo decida el líder: el
+> implementer no toca el arnés por su cuenta.
+
+### Ruff
+
+`python -m ruff check` sobre los cuatro ficheros de producción tocados y el de
+test: **All checks passed**. Los avisos que reporta `init.sh` son deuda previa
+del repositorio y **no crecen** con este trabajo.
+
+---
+
+## 24 · Verificaciones MANUAL pendientes
+
+**Ninguna nueva.** Las de este bloque son las que ya estaban escritas en T27
+(bloque 10), y este trabajo añade material a dos de ellas:
+
+- **T27.3** (aprobar → rechazar → aprobar deja tres filas): a las filas humanas
+  se les suman ahora las de constancia. Con la base real hay que comprobar que
+  el histórico de un parte que se sube dos veces **no crece**, que es lo que
+  aquí solo se puede probar contra un doble.
+- **T27.5** (un parte cerrado responde 409): la fila `→ cerrado` tiene que
+  aparecer con `decidido_por` a `NULL` y con su `estado_anterior` correcto en
+  la consulta de solo lectura de T27.
+
+**La base real y el ERP no se han tocado**, y no se ha escrito ni una línea que
+pueda escribir en Sigrid: todo lo de este bloque corre con
+`RepositorioEnMemoria` y `ErpEnMemoria`, sin red, sin BBDD y sin IA.
+
+---
+
+## 25 · Por dónde sigue · el encargo del bloque 4
+
+**Todo el bloque 3 está cerrado.** El siguiente es el **bloque 4 · Las tres
+puertas**, T10 y T11 — y es el primero que **afloja** algo que hoy funciona, así
+que es donde `tests/test_f028_puertas.py` deja de ser decorado:
+
+- **T10** · `contexto_parte.py`: `aprobacion` → `situacion: SituacionParte |
+  None`, con la docstring que diga que viene del repositorio y **nunca del
+  cuerpo**.
+- **T11** · `paso_archivo`, `paso_grafico` y `paso_cierre`: `_exigir_admitido`
+  pasa a exigir `EstadoParte.APROBADO` y **se retira el atajo del apto**
+  (`design.md` §6). Con los cuatro estados contra los tres pasos, incluido
+  **`rechazado` con veredicto apto**, que es el caso que hoy es imposible.
+
+Lo que el bloque 4 se encuentra ya hecho y puede usar tal cual:
+
+- `repositorio.consultar_situacion(hash_parte=…)` y `estado_del_parte(...)` son
+  las dos piezas de la puerta nueva, y ya están probadas;
+- **`paso_cierre` ya consulta la situación** una vez, dentro de
+  `_anotar_que_el_parte_queda_cerrado`. Cuando T11 la lea también en
+  `_exigir_admitido`, lo suyo es **guardarla en `ctx.situacion`** y que la
+  anotación reutilice esa, para no hacer dos viajes por parte a un servidor
+  compartido. Hoy no se hace porque `ContextoParte` todavía no tiene el hueco:
+  eso es T10.
+- `anotar_estado(repositorio, situacion, hash_parte=…, estado=…, ahora=…)` ya
+  acepta una situación que le llegue de fuera, justo para eso.
+
+Tres apuntes para quien lo coja:
+
+- **Si `test_f028_puertas.py` se pone rojo, no se toca.** Significa que se ha
+  aflojado una puerta que impide que un parte no apto escriba en Sigrid. Hoy
+  está verde, 16 pasados, sin una sola edición desde el bloque 0.
+- **El bloque 4 sigue sin retirar nada de F-026.** `Aprobacion`,
+  `admite_circuito` y `consultar_aprobacion` se retiran en T15, bloque 5.
+- **Ojo con el orden dentro de `_exigir_admitido`**: «no hay veredicto» tiene
+  que seguir levantando su error propio y **antes** que el resto (R34), y hay
+  tres casos del bloque 0 vigilándolo.
+
+---
+
+## 26 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de
+  cobertura al **100,0 %** de las 158 líneas cambiadas.
+- Árbol limpio, **2 commits** sobre `7cab1cb` (`4c0934a`, `117421e`), todos
+  locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
+  `done` no es cosa del implementer.

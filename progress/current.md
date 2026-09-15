@@ -2397,3 +2397,40 @@ supervivientes (los 2 de la primera campaña eran huecos reales y se cerraron
 con un test cada uno). **Sin desviaciones respecto a la spec.**
 
 Detalle completo, trazas de la fase RED y evidencias: `progress/impl_F-028.md`.
+
+---
+
+## F-028 · bloque 3 hecho (2026-09-15, implementer)
+
+Rama `feature/F-028-estado-del-parte`, **2 commits locales** sobre `7cab1cb`
+(`4c0934a` T8, `117421e` T9), arnés en verde. **T8 y T9 cerradas**; el bloque 4
+—las tres puertas, T10 y T11— es el siguiente encargo, y es el primero que
+**afloja** algo que hoy funciona.
+
+Lo entregado es la **regla de constancia** de `design.md` §4: si el estado
+derivado no es el de la última fila, se añade una fila. `paso_persistencia` la
+aplica tras guardar el veredicto y `paso_cierre` tras el cierre. La regla vive
+en `application/pipelines/constancia.py` —fichero nuevo, y la **única
+desviación** de la spec, que no lo listaba— por lo mismo que `confianza.py` en
+F-004: dos copias divergen, y en una campaña de mutación cada copia se cuenta
+aparte.
+
+**Las tres puertas no se han tocado** y `tests/test_f028_puertas.py` sigue en
+verde sin editarlo (16 pasados). Tampoco se ha retirado nada de F-026: eso es
+T15.
+
+**El caso que hay que conocer**: si la base falla al apuntar la fila
+`→ cerrado`, el error **se traga**. La incidencia ya está cerrada en el ERP de
+producción y su traza —de donde se deriva el estado— ya está guardada; dejarlo
+salir convertiría un cierre que ocurrió en un 503 «vuelve a intentarlo». La
+fila la recupera el siguiente reproceso.
+
+Cobertura de líneas cambiadas 100,0 % (158/158). Mutación: 18/18 muertos, 0
+supervivientes, **pero ni un mutante del código de este bloque** —la
+herramienta no muta comparaciones de identidad y aquí no hay otra cosa—, así
+que se mutaron **a mano los nueve puntos** del bloque: **9 de 9 muertos**.
+Queda anotado para el líder que `harness/mutacion.py` debería avisar de los
+ficheros en alcance que no producen ningún mutante (propagable a `arnes-base`).
+
+Detalle completo, trazas de la fase RED, los nueve mutantes a mano y las
+decisiones: `progress/impl_F-028.md` §19 a §26.

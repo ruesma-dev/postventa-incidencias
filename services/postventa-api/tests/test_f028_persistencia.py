@@ -1,5 +1,5 @@
 # services/postventa-api/tests/test_f028_persistencia.py
-"""El histórico de estado contra la base: SQL, mapeo y adaptador (F-028, T6 y T7).
+"""El histórico de estado: SQL, mapeo, adaptador y constancia (F-028, T6 a T8).
 
 **Sin base de datos y sin un socket abierto.** La guarda `sin_red` de
 `tests/conftest.py` sigue puesta durante toda la suite, y quien hace de
@@ -26,6 +26,11 @@ demostrar:
   igualmente.
 - **Ni el motivo ni el `oid` salen en ningún log** (R52). El motivo lo escribe
   una persona y puede llevar nombres; el `oid` es dato personal seudónimo.
+- **La regla de constancia** (T8, `design.md` §4): solo se añade fila si el
+  estado derivado **difiere** del último registrado. De ahí sale que un
+  reproceso que no cambia nada no escriba nada —y sin eso, el autoguardado de
+  F-026 llenaría la tabla de renglones idénticos— y que la fila de máquina vaya
+  **sin autor** (R24).
 
 Ni un dato real: los `oid`, los `hash` y los motivos son inventados.
 """
@@ -36,14 +41,20 @@ import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from application.pipelines.contexto_parte import ContextoParte
+from application.pipelines.paso_persistencia import paso_persistencia
+from domain.models.aprobacion import huella_de_veredicto
 from domain.models.estado import DecisionEstado, EstadoParte, SituacionParte
 from domain.models.persistencia import EstadoCierre, ResultadoGuardado
+from domain.models.remesa import ModoDeteccion, ParteTroceado
+from domain.models.validacion import Destino, ResultadoValidacion, validar_parte
 from domain.ports.persistencia import RepositorioPartesPort
 from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import fila_a_decision_estado
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
 
 from tests.utiles_pg import ConexionDoble, RepositorioEnMemoria
+from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
 ESQUEMA = "postventa"
 TABLA = f"{ESQUEMA}.historico_estado"
@@ -570,3 +581,277 @@ def test_f028_el_log_si_registra_lo_que_hace_falta_para_operar(repositorio, capl
     assert "aprobado" in caplog.text
     assert "rechazado" in caplog.text
     assert "creado" in caplog.text
+
+
+# ==========================================================================
+# T8 · La constancia en `paso_persistencia`
+# ==========================================================================
+#
+# A partir de aquí no hay SQL: lo que se prueba es la **regla de constancia**
+# de `design.md` §4 —«si el estado derivado no es el de la última fila, se
+# añade una fila»— sobre los dos pasos que la aplican, y con el doble en
+# memoria del puerto. Que el paso hable con el puerto y no con el adaptador es
+# parte de lo que se comprueba: si importara `RepositorioPostgres`, el doble no
+# encajaría.
+
+
+REMESA = "remesa-inventada-para-el-test"
+
+
+class RepositorioQueGrabaElOrden(RepositorioEnMemoria):
+    """El doble de siempre, anotando además **en qué orden** se le llamó.
+
+    Hace falta porque los dos requisitos de este bloque son sobre el **orden**:
+    la constancia va detrás de la validación (T8) y detrás de que el cierre
+    conste (T9). Con las listas sueltas del doble base se puede comprobar
+    *qué* se guardó, nunca *cuándo*.
+    """
+
+    def __init__(self, **argumentos) -> None:
+        super().__init__(**argumentos)
+        self.llamadas: list[str] = []
+
+    def guardar_validacion(self, *, resultado, ahora):
+        self.llamadas.append("guardar_validacion")
+        return super().guardar_validacion(resultado=resultado, ahora=ahora)
+
+    def guardar_cierre(self, *, traza):
+        self.llamadas.append(f"guardar_cierre:{traza.estado.value}")
+        return super().guardar_cierre(traza=traza)
+
+    def registrar_decision(self, *, decision):
+        self.llamadas.append(f"registrar_decision:{decision.estado.value}")
+        return super().registrar_decision(decision=decision)
+
+
+
+def _parte_troceado() -> ParteTroceado:
+    """El parte de F-002 que comparten todos los casos de T8 y T9."""
+    return ParteTroceado(
+        hash=HASH,
+        origen="remesa-de-mentira.pdf",
+        paginas_origen=(1,),
+        modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
+        contenido=b"%PDF-inventado",
+    )
+
+
+def _veredicto(*, apto: bool) -> ResultadoValidacion:
+    """Un veredicto que **emite F-004 de verdad**, no el test.
+
+    Sale de `validar_parte` y no de un `ResultadoValidacion` montado a mano por
+    lo mismo que en `test_f028_puertas.py`: si mañana F-004 cambiara sus
+    reglas, estos casos se enterarían en vez de seguir vigilando un destino que
+    ya no existe. El apto se escribe `observaciones=None` a propósito — el
+    ejemplo de F-003 trae observaciones manuscritas, como el parte real del que
+    salió.
+    """
+    extraccion = extraccion_de_ejemplo(
+        hash_parte=HASH, **({"observaciones": None} if apto else {})
+    )
+    validacion = validar_parte(extraccion, lectura_de_firma("humana", hash_parte=HASH))
+    esperado = Destino.ARCHIVO_Y_CIERRE if apto else Destino.COLA_VALIDACION_HUMANA
+    assert validacion.destino is esperado, "el material del test ya no da ese destino"
+    return validacion
+
+
+def _contexto_de_parte(validacion: ResultadoValidacion | None) -> ContextoParte:
+    """Un parte extraído, con o sin veredicto."""
+    return ContextoParte(
+        parte=_parte_troceado(),
+        extraccion=extraccion_de_ejemplo(hash_parte=HASH),
+        validacion=validacion,
+    )
+
+
+def _guardar(
+    repositorio: RepositorioEnMemoria, validacion: ResultadoValidacion | None
+) -> ContextoParte:
+    """Ejecuta `paso_persistencia` con el doble, que es todo lo que necesita."""
+    return paso_persistencia(
+        _contexto_de_parte(validacion), repositorio, remesa_id=REMESA, ahora=AHORA
+    )
+
+
+def test_f028_r23_un_parte_apto_nace_aprobado_y_consta_que_lo_dijo_la_maquina():
+    """R23, R24 · el verde nace `aprobado` y **el histórico lo recoge**.
+
+    Es la fila que hace que el histórico cuente la película entera y no solo
+    los cambios que alguien tecleó: sin ella, el primer renglón de un parte
+    verde sería el día que alguien lo rechazó, y no se sabría desde cuándo
+    estaba aprobado ni quién lo aprobó.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    _guardar(repositorio, _veredicto(apto=True))
+
+    assert len(repositorio.decisiones) == 1
+    fila = repositorio.decisiones[0]
+    assert fila.hash_parte == HASH
+    assert fila.estado is EstadoParte.APROBADO
+    assert fila.estado_anterior is None
+    assert fila.decidido_at_utc == AHORA
+
+
+def test_f028_r24_la_fila_de_la_maquina_va_sin_autor_y_sin_motivo():
+    """R24 · **es toda la diferencia** entre una fila humana y una de máquina.
+
+    Sin esto, «la última fila humana manda» no tendría sobre qué apoyarse: la
+    derivación pregunta `por_persona`, que es `decidido_por is not None` y nada
+    más. Escribir ahí `"sistema"` convertiría una anotación en una acusación, y
+    de paso haría que una constancia decidiera el estado del parte.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    _guardar(repositorio, _veredicto(apto=True))
+
+    fila = repositorio.decisiones[0]
+    assert fila.decidido_por is None
+    assert fila.por_persona is False
+    assert fila.motivo is None
+
+
+def test_f028_r4_un_parte_no_apto_nace_pendiente():
+    """R4 · lo que no es verde nace `pendiente`, y también queda escrito."""
+    repositorio = RepositorioEnMemoria()
+
+    _guardar(repositorio, _veredicto(apto=False))
+
+    assert [fila.estado for fila in repositorio.decisiones] == [EstadoParte.PENDIENTE]
+
+
+def test_f028_un_reproceso_que_no_cambia_nada_no_escribe_ninguna_fila():
+    """**El requisito central de T8**, y lo que impide que la tabla se llene.
+
+    Al recargar la pantalla hay que volver a subir la remesa, y eso reprocesa
+    los 22 partes (F-026 R50). Si cada pasada escribiera su fila, el histórico
+    tendría cientos de renglones idénticos y dejaría de contar la película para
+    contar el ruido — que es justo lo que `design.md` §4 dice que no puede
+    pasar.
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO)
+    )
+
+    _guardar(repositorio, _veredicto(apto=True))
+
+    assert repositorio.decisiones == []
+
+
+def test_f028_teclear_el_codigo_que_faltaba_deja_pendiente_aprobado():
+    """El caso de después: el veredicto mejora y el histórico lo cuenta.
+
+    Alguien teclea el código de obra que faltaba, F-004 vuelve a validar y el
+    parte pasa a apto. La fila dice **de dónde a dónde**, que es R22.
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.PENDIENTE)
+    )
+
+    _guardar(repositorio, _veredicto(apto=True))
+
+    assert len(repositorio.decisiones) == 1
+    fila = repositorio.decisiones[0]
+    assert fila.estado_anterior is EstadoParte.PENDIENTE
+    assert fila.estado is EstadoParte.APROBADO
+
+
+def test_f028_un_parte_sin_veredicto_no_estrena_ningun_historico():
+    """Sin veredicto guardado no hay nada que dejar constando.
+
+    F-003 y F-004 son independientes: puede haber un parte extraído al que
+    todavía no se le ha mirado la firma. Abrirle el histórico con un
+    `→ pendiente` diría que alguien —o algo— ya se pronunció sobre él, y no es
+    verdad. Y de paso se ahorra la consulta: el disparador es **guardar un
+    veredicto** (`design.md` §4).
+    """
+    repositorio = RepositorioEnMemoria()
+
+    _guardar(repositorio, None)
+
+    assert repositorio.decisiones == []
+    assert repositorio.situaciones_consultadas == []
+
+
+def test_f028_r26_la_constancia_mira_el_estado_derivado_y_no_solo_el_veredicto():
+    """El parte lo aprobó una persona: reprocesarlo **no lo degrada**.
+
+    Es el caso que separa «apuntar lo que dice la máquina» de «apuntar el
+    estado del parte», y es el que importa: un parte no apto que alguien
+    aprobó está `aprobado` (R9). Si la constancia se calculara solo con el
+    veredicto, cada reproceso escribiría un `aprobado → pendiente` falso, el
+    histórico contaría una degradación que no ocurrió y la última fila dejaría
+    de coincidir con el estado real del parte.
+    """
+    validacion = _veredicto(apto=False)
+    repositorio = RepositorioEnMemoria(
+        situacion=SituacionParte(
+            decision_humana=_decision(
+                estado=EstadoParte.APROBADO,
+                estado_anterior=EstadoParte.PENDIENTE,
+                motivo=None,
+                huella_veredicto=huella_de_veredicto(validacion),
+            ),
+            ultimo_estado_registrado=EstadoParte.APROBADO,
+        )
+    )
+
+    _guardar(repositorio, validacion)
+
+    assert repositorio.decisiones == []
+
+
+def test_f028_r18_si_la_traza_de_cierre_manda_la_constancia_la_recoge():
+    """R18 · el cierre gana a todo, también al apuntarlo.
+
+    Una reclamación que ya estaba cerrada en el ERP deja el parte `cerrado`
+    aunque su veredicto sea verde. La fila de constancia recoge ese salto y no
+    el `aprobado` del veredicto: si no, la última fila del histórico
+    contradiría al estado del parte, que es la contradicción que R16 evita.
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=SituacionParte(
+            ultimo_estado_registrado=EstadoParte.APROBADO,
+            estado_cierre=EstadoCierre.YA_CERRADA.value,
+        )
+    )
+
+    _guardar(repositorio, _veredicto(apto=True))
+
+    assert len(repositorio.decisiones) == 1
+    assert repositorio.decisiones[0].estado is EstadoParte.CERRADO
+    assert repositorio.decisiones[0].estado_anterior is EstadoParte.APROBADO
+
+
+def test_f028_r33_la_situacion_se_lee_del_almacen_y_una_sola_vez():
+    """R33 · de dónde sale lo que se compara, y cuántas veces se pregunta.
+
+    Del repositorio, **nunca del cuerpo**: quien llama no puede afirmar en qué
+    estado estaba el parte. Y una sola consulta por parte: en una remesa real
+    son 22 partes, y este paso se recorre entero cada vez que alguien sube la
+    remesa.
+    """
+    repositorio = RepositorioEnMemoria()
+
+    _guardar(repositorio, _veredicto(apto=True))
+
+    assert repositorio.situaciones_consultadas == [HASH]
+
+
+def test_f028_la_constancia_se_apunta_despues_de_guardar_la_validacion():
+    """El orden es el requisito: primero el hecho, después su constancia.
+
+    Al revés, un fallo al guardar el veredicto dejaría escrito en el histórico
+    un estado derivado de un veredicto que **no está en la base**, y el parte
+    tendría un renglón que no se corresponde con nada.
+    """
+    repositorio = RepositorioQueGrabaElOrden()
+
+    _guardar(repositorio, _veredicto(apto=True))
+
+    assert repositorio.llamadas == [
+        "guardar_validacion",
+        "registrar_decision:aprobado",
+    ]
+
+

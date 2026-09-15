@@ -204,5 +204,19 @@ class AnotaLosResultados:
         """F-026 · la lee `/api/parte` para poder contarla en su respuesta (R22)."""
         return self._interno.consultar_aprobacion(**datos)
 
+    def consultar_situacion(self, **datos: Any) -> Any:
+        """F-028 · la lee `paso_persistencia` para la regla de constancia.
+
+        Delega y no anota nada: aquí se anotan los dos resultados que el
+        contrato de la respuesta promete, y el estado del parte no es uno de
+        ellos —lo sirve `estado_serializado.py` a partir de lo que hay en el
+        almacén, no de lo que este envoltorio viera pasar—.
+        """
+        return self._interno.consultar_situacion(**datos)
+
+    def registrar_decision(self, **datos: Any) -> Any:
+        """F-028 · la fila de constancia del histórico, si el estado cambió."""
+        return self._interno.registrar_decision(**datos)
+
     def cola_validacion_humana(self, **datos: Any) -> tuple:
         return self._interno.cola_validacion_humana(**datos)

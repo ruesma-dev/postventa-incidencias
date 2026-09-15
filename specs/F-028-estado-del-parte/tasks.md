@@ -96,7 +96,7 @@
 
 ## Bloque 3 · La constancia: que el histórico cuente la película
 
-- [ ] **T8**: `paso_persistencia`: tras guardar la validación, calcular el
+- [x] **T8**: `paso_persistencia`: tras guardar la validación, calcular el
       estado derivado y **añadir la fila de constancia solo si difiere del
       último estado registrado** (`design.md` §4). | Verificación:
       `tests/test_f028_persistencia.py` — el primer guardado de un parte apto

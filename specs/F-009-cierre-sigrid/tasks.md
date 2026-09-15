@@ -205,6 +205,70 @@
 >    `commit` **exige** el parte adjuntado (R2 de F-012). Un dry-run que aún
 >    trajera aquel aviso significaría que el despliegue no lleva F-012.
 
+> ### Nota del 2026-09-15 · la sesión de solo lectura: qué acredita y qué no
+>
+> El acta de arriba se deja **entera y con su fecha**. Esta nota la enmienda con
+> lo ocurrido un día después.
+>
+> El **2026-09-15** se ejecutó la **sesión de solo lectura** que el §9.5 del
+> guion recomendaba: cuatro de los cinco scripts de lectura de `infra/` —`09`,
+> `10`, `11` y `12`— contra el ERP de producción y contra el esquema propio.
+> **Los cuatro dan `PASA`.** **No se escribió nada**: la única ruta del ERP que
+> se tocó fue `POST /api/sql/read` y la ventana de escritura
+> (`CIERRE_HABILITADO`) **siguió cerrada todo el tiempo**. El acta está en
+> `progress/guion_bloque8_F-009.md` **§10**, y las casillas de **T24** y **T25**
+> llevan su enmienda fechada.
+>
+> **Lo que se marca**: **T25**, entera. Ver su casilla.
+>
+> **Lo que queda acreditado de T24 y sin embargo NO la marca** —los pasos 6, 7
+> y 9 de su procedimiento—:
+>
+> - **Paso 6** · `con.est` es `CER`, leído con `09_estado_reclamacion_sigrid.ps1`
+>   y con el destino resuelto contra `conest` (R1). Hasta hoy constaba **solo
+>   por lo que vio una persona en la ficha de Sigrid**.
+> - **Paso 7** · la fila nueva de `dbo.log` (`ide` 8457839), **campo a campo**
+>   contra `design.md` §7.3: `tab` con, `tip` 708, `cod` `RS26.09/0150`, `ope` 5,
+>   `est` 1, `ori` 0, `emp` 1, `usu` `pgris`, `tex` «Cerrar parte
+>   (postventa-incidencias)», `res` «fuga en caldera», **una sola fila nueva**.
+>   **R24 y R25 acreditados.** Y el **huso**: `HORA LOCAL (correcto)`, **0,0 min
+>   de diferencia** — el defecto que §0.2 del guion daba por probable **no
+>   existía**.
+> - **Paso 9** · la traza local en `cerrado`, con `oid` y **sin el login** del
+>   ERP. **R41 y R43 acreditados.**
+>
+> **Por qué T24 SIGUE SIN MARCAR.** Su contrato son **nueve pasos** y hay que
+> recorrerlos todos. Faltan cinco:
+>
+> - **2** · el `MAX(ide)` de `dbo.log` de partida. Nadie lo anotó.
+> - **3** · el dry-run leído **con el gráfico dentro**. El único que hubo fue el
+>   de `08:27:42`, **antes** de adjuntar.
+> - **4** · el `estado: "cerrado"` de la respuesta (del paso 4 solo consta el
+>   **HTTP 200**).
+> - **5** · **`filas_afectadas: 2`** (R22). **No es recuperable hacia atrás**:
+>   solo lo dará el siguiente cierre real. Es el hueco 8 del §9.4 del guion.
+> - **8** · que `con.tiemod` **no se movió**. Hoy vale `46275.647118`, pero sin
+>   el valor de partida ese número **no compara con nada**.
+>
+> **T22, T23 y T27 tampoco se marcan**, y no se han tocado hoy. De **T23** sí se
+> vio algo de refilón: el `usu` escrito en el ERP es `pgris`, lo que prueba que
+> el login se derivó, se resolvió contra el ERP y **se usó para firmar**. **No
+> prueba R33** (la correspondencia guardada como confirmada, con
+> `verificado_at_utc`) ni **R31** (que un login inexistente se rechace sin tocar
+> Sigrid). El hueco queda **reducido**, no cerrado.
+>
+> **Salvedad honesta, la misma que en T29**: esta nota y la marca de T25 se
+> escriben desde la rama **`feature/F-026-aprobacion-humana`**, no desde
+> `feature/F-009-cierre-sigrid`. El código de F-009 está en el historial de esa
+> rama, y lo que se acredita aquí **no depende del código sino del ERP**: son
+> lecturas de una fila escrita en producción el 2026-09-11.
+>
+> **Aviso para quien siga**: `infra/07_alta_usuario_sigrid.ps1` (líneas 161 y
+> 248) y `infra/17_traza_grafico_local.ps1` (línea 196) arrastran el mismo
+> defecto de comillas de PowerShell 5.1 que hoy tumbó al `12`, y **nunca se han
+> ejecutado**. El arreglo ya está escrito (`Invoke-PythonDelServicio`, en
+> `infra/08_lectura_sigrid_comun.ps1`); ver §10.6 del guion.
+
 - [ ] **T22**: **Dry-run real** contra una reclamación de Mirasierra, desde el
       entorno desplegado y con el interruptor **apagado**. | Verificación:
       **MANUAL (humano)**. Elegir una incidencia del piloto y llamar a
@@ -246,11 +310,29 @@
       9. Comprobar que la traza local quedó en `cerrado` con su `oid` y sus
          códigos de estado (R41), y que **no guarda el login** (R43).
 
-- [ ] **T25**: **Comprobar que el `tex` propio hace lo que se diseñó** (R25). |
+- [x] **T25**: **Comprobar que el `tex` propio hace lo que se diseñó** (R25). |
       Verificación: **MANUAL (humano)**. Dos lecturas: que
       `tex LIKE 'Cerrar parte%'` **encuentra** el cierre nuevo (seguimos en los
       informes de Posventa) y que el filtro por el texto propio devuelve
       **exactamente los cierres de este servicio** y ninguno manual.
+      **HECHO (2026-09-15).** **De dónde sale la marca**:
+      `infra\11_trazabilidad_tex_sigrid.ps1` ejecutado contra el ERP de
+      producción en la sesión de solo lectura —sin abrir la ventana de
+      escritura, solo `POST /api/sql/read`—, con veredicto
+      `TRAZABILIDAD DEL TEXTO PROPIO : PASA`. **Las dos lecturas, las dos en
+      verde**: (1) «el prefijo del ERP encuentra nuestro cierre» = **True**, y
+      devuelve **una sola** fila, `8457839 | 20260911 | 102812 | pgris | Cerrar
+      parte (postventa-incidencias)` — **seguimos saliendo en los informes de
+      Posventa**; (2) «cierres de este servicio en todo el ERP» esperado **1**,
+      obtenido **1** sobre `dbo.log` entera, y «el filtro exacto no devuelve más
+      de lo listado» **1/1** — el filtro exacto devuelve **solo lo nuestro** y
+      **ninguno** de los 6.843 cierres manuales. Son las **dos** condiciones de
+      D1 de `design.md`. **Salvedad de procedimiento**: hubo que arreglar antes
+      el script, que preguntaba `tex = ?` sobre una columna `text` y devolvía
+      `500` (commit `a356875`). Casilla y acta en
+      `progress/guion_bloque8_F-009.md` §10 y en la enmienda de la casilla de
+      T25. Marcada desde la rama `feature/F-026-aprobacion-humana`, no desde la
+      de F-009: ver la nota del 2026-09-15 al principio de este bloque.
 
 - [x] **T26**: **Comprobar que el guard de escritura acepta el batch tal cual**.
       | Verificación: **MANUAL (humano)**, y se hace **dentro de T24**: si

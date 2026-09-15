@@ -31,7 +31,6 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
-from functools import lru_cache
 from typing import Any
 
 import azure.functions as func
@@ -54,6 +53,7 @@ from interface_adapters.api.aprobar import aprobar_parte_http
 
 from tests.utiles_ia import CAMPOS_DE_EJEMPLO
 from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_rutas import ruta_registrada
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
 AHORA = datetime(2026, 9, 12, 9, 30, tzinfo=UTC)
@@ -783,32 +783,17 @@ def test_f026_r44_un_rechazo_tampoco_publica_lo_que_venia(caplog, monkeypatch):
     _sin_datos_personales(respuesta.get_body().decode("utf-8"))
 
 
-@lru_cache(maxsize=1)
-def _rutas_registradas() -> dict[str, Any]:
-    """Lo que el host publica, construido **una sola vez**.
-
-    El decorador deja en el módulo un `FunctionBuilder`; lo que se despliega es
-    lo que devuelve `app.get_functions()`, y es ahí donde viven la ruta, los
-    métodos y el nivel de autenticación de verdad.
-
-    Se cachea porque `get_functions()` no es idempotente: a la segunda llamada
-    revienta diciendo que los nombres están repetidos. Sin la caché, dos tests
-    que miren rutas se rompen entre ellos y el fallo no habla de ninguno de
-    los dos.
-    """
-    import function_app
-
-    return {
-        funcion.get_function_name(): funcion
-        for funcion in function_app.app.get_functions()
-    }
-
-
 def _ruta_registrada(nombre: str):
-    """La ruta que publica el host, o un fallo que dice que no existe."""
-    registradas = _rutas_registradas()
-    assert nombre in registradas, f"el host no publica ninguna ruta «{nombre}»"
-    return registradas[nombre]
+    """La ruta que publica el host, o un fallo que dice que no existe.
+
+    La caché **se mudó** a `tests/utiles_rutas.py` cuando F-028 añadió su propio
+    test de ruta (`/api/estado`): `app.get_functions()` no es idempotente, y una
+    caché por fichero deja de servir en cuanto son dos los ficheros que miran
+    rutas — el segundo revienta diciendo que `health` está repetida, que no
+    habla de ninguno de los dos. El problema es del proceso, así que la caché
+    también.
+    """
+    return ruta_registrada(nombre)
 
 
 def test_f026_r18_la_ruta_es_post_anonima_y_se_llama_aprobar():

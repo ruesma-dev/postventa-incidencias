@@ -91,6 +91,7 @@ ENDPOINTS = (
     "remesa",
     "parte",
     "aprobar",
+    "estado",
     "cola",
     "archivar",
     "adjuntar",
@@ -152,7 +153,7 @@ def test_f019_r30_la_cabecera_dice_que_anade_la_cola_al_cuadro(codigo):
 
 
 def test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada(codigo):
-    """R32 · los once siguen anonimos **y** la cabecera dice por que.
+    """R32 · los doce siguen anonimos **y** la cabecera dice por que.
 
     Las dos mitades en un solo test, y no en dos, porque lo que hay que
     impedir es que se separen: un `auth_level` cambiado con la nota intacta
@@ -231,7 +232,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 12
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 13
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

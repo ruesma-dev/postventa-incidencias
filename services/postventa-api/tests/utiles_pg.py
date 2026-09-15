@@ -379,9 +379,33 @@ class RepositorioEnMemoria:
         Acumula, igual que la tabla. Un doble que guardara solo la última por
         parte dejaría pasar un código que pisara filas, que es el defecto de
         `postventa.aprobaciones` del que nace esta feature.
+
+        Y la situación que devuelve a partir de ahora **cuenta con esta fila**,
+        porque es lo que hace la tabla: `select_situacion_estado` lee las dos
+        últimas filas del histórico, así que una consulta posterior a esta
+        escritura ve el estado que se acaba de apuntar. Un doble que siguiera
+        contestando lo que se preparó en el constructor dejaría en verde a quien
+        leyera la situación **antes** de escribir, y con eso el `estado_anterior`
+        de una decisión humana se quedaría sin encadenar con la constancia que
+        `paso_persistencia` acaba de dejar (R22, R23): `POST /api/estado` hace
+        las dos cosas en una sola llamada.
+
+        Solo se mueve `decision_humana` si la fila la firmó una persona (R24,
+        R26): una constancia de máquina no es una decisión, y darle ese hueco
+        convertiría una anotación en criterio.
         """
+        from dataclasses import replace
+
+        from domain.models.estado import SituacionParte
+
         resultado = self._o_fallar()
         self.decisiones.append(decision)
+
+        situacion = self.situacion if self.situacion is not None else SituacionParte()
+        cambios: dict[str, Any] = {"ultimo_estado_registrado": decision.estado}
+        if decision.por_persona:
+            cambios["decision_humana"] = decision
+        self.situacion = replace(situacion, **cambios)
         return resultado
 
     def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:

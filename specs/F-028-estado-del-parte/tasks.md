@@ -133,7 +133,7 @@
       `estado`, `decidido_por_persona`, `decidido_at_utc` y `estado_anterior`,
       y **ni el `oid`, ni el correo, ni el nombre, ni el motivo** (R42, R52).
 
-- [ ] **T13**: Crear `interface_adapters/api/estado.py` (`POST /api/estado`) y
+- [x] **T13**: Crear `interface_adapters/api/estado.py` (`POST /api/estado`) y
       su ruta en `function_app.py`. | Verificación:
       `tests/test_f028_estado_http.py` — 200 al cambiar; 200 `sin_cambios` al
       repetir la misma decisión; 400 sin `usuario_oid`, sin `confirmado: true`,

@@ -30,10 +30,12 @@ from __future__ import annotations
 import ast
 import inspect
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+import azure.functions as func
 import pytest
 from domain.models.aprobacion import huella_de_veredicto
 from domain.models.errores import (
@@ -67,6 +69,7 @@ from interface_adapters.api.estado_serializado import (
 
 from tests.utiles_ia import CAMPOS_DE_EJEMPLO
 from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_rutas import ruta_registrada
 
 AHORA = datetime(2026, 9, 15, 10, 12, tzinfo=UTC)
 
@@ -476,6 +479,38 @@ def _cambiar(repositorio: Any, cuerpo: Any = _POR_OMISION) -> dict[str, Any]:
     )
 
 
+def _fila_humana(repositorio: Any) -> DecisionEstado:
+    """La fila que escribió **la persona**, y no la constancia de la máquina.
+
+    Una sola llamada a `/api/estado` puede dejar **dos** filas en el histórico,
+    y las dos son correctas. `paso_persistencia` anota la constancia del estado
+    derivado si cambió (R23, R24, T8): un parte no apto que se guarda por
+    primera vez nace `pendiente`, así que la llamada deja
+    `→ pendiente` (máquina) y después `pendiente → rechazado` (persona). Eso es
+    exactamente la película que el histórico tiene que contar, y por eso los
+    tests de aquí **no** cuentan filas: buscan la de la persona.
+
+    Se separa por el único rasgo que las distingue —`decidido_por`, que a `None`
+    significa «lo decidió la máquina» (R24)— y no por su posición en la lista:
+    con el índice, el día que la constancia dejara de escribirse el test seguiría
+    en verde afirmando sobre la fila equivocada.
+
+    Falla si hay más de una: dos filas humanas de una sola pulsación serían el
+    doble registro que R21 prohíbe.
+    """
+    humanas = [fila for fila in repositorio.decisiones if fila.por_persona]
+    assert len(humanas) == 1, (
+        f"se esperaba **una** fila humana y hay {len(humanas)}; "
+        f"el histórico quedó así: {repositorio.decisiones}"
+    )
+    return humanas[0]
+
+
+def _filas_de_maquina(repositorio: Any) -> list[DecisionEstado]:
+    """Las filas de constancia: las que no firmó nadie (R24)."""
+    return [fila for fila in repositorio.decisiones if not fila.por_persona]
+
+
 # --------------------------------------------------------------------------
 # R9, R22 · lo que un cambio de estado registra
 # --------------------------------------------------------------------------
@@ -487,15 +522,28 @@ def test_f028_r9_rechazar_un_parte_deja_su_fila_con_quien_cuando_y_por_que():
     El `oid` y el motivo **se guardan** —es la mitad de R22— y **no se
     devuelven** (R42): son dos exigencias distintas y el test afirma las dos a
     la vez, porque cumplir una rompiendo la otra es el error fácil.
+
+    La llamada deja **dos** filas y las dos se afirman aquí, porque juntas son
+    el relato completo de lo que pasó: este parte no apto **nunca se había
+    guardado**, así que `paso_persistencia` anota primero su nacimiento
+    `→ pendiente` sin autor (R4, R23, R24) y después esta persona lo mueve a
+    `pendiente → rechazado`. De ahí sale el `estado_anterior` de la respuesta:
+    del histórico ya actualizado, y no del cuerpo (R33).
     """
     repositorio = RepositorioQueAnotaElOrden()
 
     respuesta = _cambiar(repositorio)
 
-    assert len(repositorio.decisiones) == 1
-    fila = repositorio.decisiones[0]
+    assert [fila.por_persona for fila in repositorio.decisiones] == [False, True]
+    constancia = _filas_de_maquina(repositorio)[0]
+    assert constancia.estado is EstadoParte.PENDIENTE
+    assert constancia.estado_anterior is None
+    assert constancia.motivo is None
+
+    fila = _fila_humana(repositorio)
     assert fila.hash_parte == HASH
     assert fila.estado is EstadoParte.RECHAZADO
+    assert fila.estado_anterior is EstadoParte.PENDIENTE
     assert fila.decidido_por == OID_INVENTADO
     assert fila.decidido_at_utc == AHORA
     assert fila.motivo == MOTIVO_INVENTADO
@@ -506,7 +554,7 @@ def test_f028_r9_rechazar_un_parte_deja_su_fila_con_quien_cuando_y_por_que():
         "estado": "rechazado",
         "decidido_por_persona": True,
         "decidido_at_utc": AHORA.isoformat(),
-        "estado_anterior": None,
+        "estado_anterior": "pendiente",
     }
     assert respuesta["hash_parte"] == HASH
     assert respuesta["resultado_parte"] == "creado"
@@ -519,6 +567,10 @@ def test_f028_r5_un_parte_apto_se_puede_rechazar_y_esa_es_la_feature():
     `POST /api/aprobar` no podía: respondía 409 a cualquier parte apto porque
     «no hay nada que aprobar». Aquí el veredicto es apto y la decisión se
     registra igual, que es lo que hace que ese parte deje de archivarse.
+
+    El histórico cuenta justo eso: la máquina lo dio por bueno —`→ aprobado`
+    sin autor (R3, R23)— y una persona lo movió a `aprobado → rechazado`. Esa
+    segunda flecha es la que F-028 viene a hacer posible.
     """
     repositorio = RepositorioQueAnotaElOrden()
 
@@ -527,10 +579,12 @@ def test_f028_r5_un_parte_apto_se_puede_rechazar_y_esa_es_la_feature():
     )
 
     assert respuesta["estado"]["estado"] == "rechazado"
-    assert repositorio.decisiones[0].estado is EstadoParte.RECHAZADO
-    assert repositorio.decisiones[0].huella_veredicto == huella_de_veredicto(
-        _validacion_apta()
-    )
+    assert _filas_de_maquina(repositorio)[0].estado is EstadoParte.APROBADO
+
+    fila = _fila_humana(repositorio)
+    assert fila.estado is EstadoParte.RECHAZADO
+    assert fila.estado_anterior is EstadoParte.APROBADO
+    assert fila.huella_veredicto == huella_de_veredicto(_validacion_apta())
 
 
 def test_f028_r22_el_parte_y_su_veredicto_se_guardan_antes_que_la_decision():
@@ -539,9 +593,12 @@ def test_f028_r22_el_parte_y_su_veredicto_se_guardan_antes_que_la_decision():
     Si la decisión se escribiera antes, tendría una clave ajena contra una fila
     que no existe y la huella sería la de un veredicto que nadie escribió.
 
-    Las dos consultas de situación seguidas no son un descuido: la primera la
-    hace `paso_persistencia` para su fila de constancia, y la segunda la hace
-    este handler **después**, para decidir sobre el histórico ya actualizado.
+    Las dos parejas `consulta_situacion` + `decision` no son un descuido ni una
+    escritura repetida: la primera es de `paso_persistencia`, que apunta la
+    constancia del estado derivado si cambió (R23) —aquí el nacimiento
+    `→ pendiente` de un parte no apto—, y la segunda es de este handler, que
+    lee **después** para que su `estado_anterior` salga del histórico ya
+    actualizado y escribe la decisión de la persona.
     """
     repositorio = RepositorioQueAnotaElOrden()
 
@@ -551,6 +608,7 @@ def test_f028_r22_el_parte_y_su_veredicto_se_guardan_antes_que_la_decision():
         "parte",
         "validacion",
         "consulta_situacion",
+        "decision",
         "consulta_situacion",
         "decision",
     ]
@@ -598,7 +656,9 @@ def test_f028_r28_un_veredicto_metido_en_el_cuerpo_se_ignora():
 
     guardada = repositorio.validaciones[0]["resultado"]
     assert guardada.destino is Destino.COLA_VALIDACION_HUMANA
-    assert repositorio.decisiones[0].huella_veredicto == huella_de_veredicto(guardada)
+    assert _fila_humana(repositorio).huella_veredicto == huella_de_veredicto(
+        guardada
+    )
 
 
 def test_f028_r30_el_cuerpo_no_mete_ningun_byte_del_pdf():
@@ -630,7 +690,7 @@ def test_f028_r12_al_aprobar_el_motivo_es_opcional():
     respuesta = _cambiar(repositorio, cuerpo)
 
     assert respuesta["estado"]["estado"] == "aprobado"
-    assert repositorio.decisiones[0].motivo is None
+    assert _fila_humana(repositorio).motivo is None
 
 
 def test_f028_r13_el_motivo_se_recorta_por_los_extremos():
@@ -639,7 +699,7 @@ def test_f028_r13_el_motivo_se_recorta_por_los_extremos():
 
     _cambiar(repositorio, _cuerpo(motivo=f"   {MOTIVO_INVENTADO}  \n"))
 
-    assert repositorio.decisiones[0].motivo == MOTIVO_INVENTADO
+    assert _fila_humana(repositorio).motivo == MOTIVO_INVENTADO
 
 
 def test_f028_r13_el_limite_del_motivo_lo_pone_el_dominio():
@@ -652,7 +712,7 @@ def test_f028_r13_el_limite_del_motivo_lo_pone_el_dominio():
 
     _cambiar(repositorio, _cuerpo(motivo="x" * LIMITE_MOTIVO))
 
-    assert len(repositorio.decisiones[0].motivo) == LIMITE_MOTIVO
+    assert len(_fila_humana(repositorio).motivo) == LIMITE_MOTIVO
 
 
 # --------------------------------------------------------------------------
@@ -897,7 +957,7 @@ def test_f028_r18_un_cierre_a_medias_no_cierra_la_puerta(traza):
     respuesta = _cambiar(repositorio)
 
     assert respuesta["estado"]["estado"] == "rechazado"
-    assert len(repositorio.decisiones) == 1
+    assert _fila_humana(repositorio).estado is EstadoParte.RECHAZADO
 
 
 def test_f028_r31_sin_remesa_registrada_sube_referencia_no_consta():
@@ -973,8 +1033,9 @@ def test_f028_r9_deshacer_la_propia_decision_si_escribe_fila():
     respuesta = _cambiar(repositorio, _cuerpo(estado="aprobado"))
 
     assert respuesta["resultado_estado"] == "cambiado"
-    assert repositorio.decisiones[0].estado is EstadoParte.APROBADO
-    assert repositorio.decisiones[0].estado_anterior is EstadoParte.RECHAZADO
+    fila = _fila_humana(repositorio)
+    assert fila.estado is EstadoParte.APROBADO
+    assert fila.estado_anterior is EstadoParte.RECHAZADO
 
 
 def test_f028_r19_aprobar_lo_que_aprobo_otro_veredicto_si_escribe_fila():
@@ -1000,7 +1061,7 @@ def test_f028_r19_aprobar_lo_que_aprobo_otro_veredicto_si_escribe_fila():
     respuesta = _cambiar(repositorio, _cuerpo(estado="aprobado"))
 
     assert respuesta["resultado_estado"] == "cambiado"
-    assert repositorio.decisiones[0].huella_veredicto == huella_de_veredicto(
+    assert _fila_humana(repositorio).huella_veredicto == huella_de_veredicto(
         _validacion_no_apta()
     )
 
@@ -1032,7 +1093,7 @@ def test_f028_r26_una_constancia_de_maquina_no_cuenta_como_la_misma_decision():
 
     assert respuesta["resultado_estado"] == "cambiado"
     assert respuesta["estado"]["decidido_por_persona"] is True
-    assert repositorio.decisiones[0].decidido_por == OID_INVENTADO
+    assert _fila_humana(repositorio).decidido_por == OID_INVENTADO
 
 
 # --------------------------------------------------------------------------
@@ -1064,7 +1125,7 @@ def test_f028_r15_lo_que_se_guarda_de_la_persona_es_el_oid_y_nada_mas():
 
     _cambiar(repositorio, _cuerpo(correo=CORREO_INVENTADO, nombre="Nombre Inventado"))
 
-    fila = repositorio.decisiones[0]
+    fila = _fila_humana(repositorio)
     assert fila.decidido_por == OID_INVENTADO
     for valor in vars(fila).values():
         assert CORREO_INVENTADO != valor
@@ -1076,27 +1137,81 @@ def test_f028_r15_lo_que_se_guarda_de_la_persona_es_el_oid_y_nada_mas():
 # --------------------------------------------------------------------------
 
 
-def _codigo_del_handler() -> str:
-    """El fuente del módulo **sin sus docstrings**.
+def _vocabulario_del_codigo(fuente: str) -> set[str]:
+    """Lo que el código **hace**: sus imports, sus nombres y sus literales.
 
-    Se quitan a propósito: la cabecera dice, con esas palabras, que el endpoint
-    *no* depende de `ARCHIVO_HABILITADO` ni de `CIERRE_HABILITADO` y que *no*
-    escribe en SharePoint. Buscar el nombre en la prosa haría fallar al módulo
-    por documentarse bien; lo que convierte una mención en dependencia es
-    **leer el ajuste**, y eso solo se ve en el código.
+    Se mira el árbol y **no el texto crudo**, que es la lección que el bloque 3
+    ya se llevó y dejó escrita en `progress/impl_F-028.md` §5: su primer intento
+    comparaba cadenas contra el fuente y se puso rojo en `adjuntar.py` y
+    `cerrar.py` por dos **docstrings**. Aquí pasó lo mismo: este módulo explica
+    en la docstring de `_exigir_que_no_este_cerrado` por qué un parte cerrado no
+    se puede rechazar —«lo escrito en Sigrid y en SharePoint no se deshace desde
+    aquí»— y un control sobre el texto lo hacía fallar **por documentarse
+    bien**. Lo que convierte una mención en dependencia es importar el
+    adaptador, leer el ajuste o llamar a la función, y las tres cosas son nodos
+    del árbol.
+
+    Se recoge lo mismo que `_vocabulario_del_codigo` de `test_f028_puertas.py`
+    —nombres, atributos, argumentos, definiciones, alias y literales que no sean
+    docstrings— **más el módulo de cada `from ... import ...`**, que allí no
+    hacía falta y aquí es justo donde se escondería lo que se vigila: un
+    `from infrastructure.sharepoint.biblioteca import subir` deja «sharepoint»
+    únicamente en `ImportFrom.module`, y sin esa línea este control estaría
+    mirando a otro lado mientras se pone verde.
     """
-    fuente = inspect.getsource(inspect.getmodule(cambiar_estado_http))
     arbol = ast.parse(fuente)
-    arbol.body = [
-        nodo
-        for nodo in arbol.body
-        if not (
-            isinstance(nodo, ast.Expr)
-            and isinstance(nodo.value, ast.Constant)
-            and isinstance(nodo.value.value, str)
-        )
-    ]
-    return ast.unparse(arbol)
+
+    docstrings = set()
+    for nodo in ast.walk(arbol):
+        if isinstance(
+            nodo, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+        ):
+            primera = nodo.body[0] if nodo.body else None
+            if (
+                isinstance(primera, ast.Expr)
+                and isinstance(primera.value, ast.Constant)
+                and isinstance(primera.value.value, str)
+            ):
+                docstrings.add(id(primera.value))
+
+    vocabulario: set[str] = set()
+    for nodo in ast.walk(arbol):
+        match nodo:
+            case ast.Name():
+                vocabulario.add(nodo.id)
+            case ast.Attribute():
+                vocabulario.add(nodo.attr)
+            case ast.arg():
+                vocabulario.add(nodo.arg)
+            case ast.keyword() if nodo.arg is not None:
+                vocabulario.add(nodo.arg)
+            case ast.FunctionDef() | ast.AsyncFunctionDef() | ast.ClassDef():
+                vocabulario.add(nodo.name)
+            case ast.alias():
+                vocabulario.add(nodo.name)
+            case ast.ImportFrom() if nodo.module is not None:
+                vocabulario.add(nodo.module)
+            case ast.Constant() if (
+                isinstance(nodo.value, str) and id(nodo) not in docstrings
+            ):
+                vocabulario.add(nodo.value)
+    return {palabra.lower() for palabra in vocabulario}
+
+
+def _vocabulario_del_handler() -> set[str]:
+    """El vocabulario del módulo que sirve `POST /api/estado`."""
+    return _vocabulario_del_codigo(
+        inspect.getsource(inspect.getmodule(cambiar_estado_http))
+    )
+
+
+def _menciones(palabra: str, vocabulario: set[str] | None = None) -> list[str]:
+    """Las palabras del código que contienen esa: falla diciendo cuál."""
+    return sorted(
+        termino
+        for termino in (_vocabulario_del_handler() if vocabulario is None else vocabulario)
+        if palabra in termino
+    )
 
 
 def test_f028_r32_el_endpoint_no_mira_las_ventanas_de_escritura():
@@ -1105,10 +1220,8 @@ def test_f028_r32_el_endpoint_no_mira_las_ventanas_de_escritura():
     Atarlo a esas ventanas dejaría sin poder registrar el trabajo de revisión
     justo cuando están cerradas, que es como se despliega el entorno.
     """
-    codigo = _codigo_del_handler()
-
-    assert "archivo_habilitado" not in codigo.lower()
-    assert "cierre_habilitado" not in codigo.lower()
+    assert _menciones("archivo_habilitado") == []
+    assert _menciones("cierre_habilitado") == []
 
 
 def test_f028_r37_cambiar_de_estado_no_toca_sharepoint_ni_el_erp():
@@ -1119,8 +1232,314 @@ def test_f028_r37_cambiar_de_estado_no_toca_sharepoint_ni_el_erp():
     decidir dejaría de ser una decisión registrada y pasaría a ser una
     escritura en producción sin la confirmación única de F-025.
     """
-    codigo = _codigo_del_handler()
+    assert _menciones("sharepoint") == []
+    assert _menciones("infrastructure.sigrid") == []
+    assert _menciones("escrituras") == []
 
-    assert "sharepoint" not in codigo.lower()
-    assert "infrastructure.sigrid" not in codigo
-    assert "escrituras" not in codigo
+
+def test_f028_r37_el_control_del_vocabulario_ve_los_imports_de_verdad():
+    """Control del control: que lo de arriba pueda ponerse rojo alguna vez.
+
+    Un control negativo que no sabe fallar es peor que no tenerlo, porque da
+    tranquilidad. Se le da al lector el árbol de un módulo de mentira que
+    importa los dos adaptadores prohibidos de las dos formas en que se
+    importan de verdad —`import a.b.c` y `from a.b import c`— y se comprueba
+    que las dos caen. La segunda es la que el vocabulario de
+    `test_f028_puertas.py` no habría visto.
+    """
+    ficticio = (
+        '"""Un módulo de mentira que sí haría lo que R37 prohíbe."""\n'
+        "import infrastructure.sigrid.escrituras\n"
+        "from infrastructure.sharepoint.biblioteca import subir\n"
+    )
+
+    vocabulario = _vocabulario_del_codigo(ficticio)
+
+    assert _menciones("sharepoint", vocabulario) != []
+    assert _menciones("infrastructure.sigrid", vocabulario) != []
+    assert _menciones("escrituras", vocabulario) != []
+
+
+# --------------------------------------------------------------------------
+# T13 · la ruta: los códigos (R31), el log (R53) y lo que no mira (R32)
+# --------------------------------------------------------------------------
+#
+# Lo de arriba prueba el **handler**, que levanta errores de dominio. Esto
+# prueba **la traducción a HTTP**, que es otra cosa y vive en `function_app.py`.
+#
+# Y hace falta que sean tests aparte, por lo que dejó ver la campaña de mutación
+# de F-009: cambiar un `409` por un `503` en esa traducción no rompía nada
+# porque ningún test recorría la ruta. Y **los códigos son el requisito**
+# (`design.md` §5): el 400 manda a revisar el cuerpo, el 409 manda a mirar el
+# parte y el 503 manda a reintentar más tarde. Son tres acciones distintas y
+# tres personas distintas.
+
+
+def _peticion(cuerpo: Any) -> func.HttpRequest:
+    return func.HttpRequest(
+        method="POST",
+        url="/api/estado",
+        headers={"Content-Type": "application/json"},
+        body=json.dumps(cuerpo, ensure_ascii=False).encode("utf-8"),
+    )
+
+
+def _con_doble(monkeypatch, repositorio) -> None:
+    """Inyecta el repositorio por la costura del handler. Sin base de datos."""
+    import function_app
+
+    def envoltura(cuerpo, **datos):
+        return cambiar_estado_http(cuerpo, repositorio=repositorio, ahora=AHORA, **datos)
+
+    monkeypatch.setattr(function_app, "cambiar_estado_http", envoltura)
+
+
+def _responder(monkeypatch, repositorio, cuerpo: Any = _POR_OMISION):
+    import function_app
+
+    _con_doble(monkeypatch, repositorio)
+    return function_app.estado(
+        _peticion(_cuerpo() if cuerpo is _POR_OMISION else cuerpo)
+    )
+
+
+def _json_de(respuesta) -> dict[str, Any]:
+    return json.loads(respuesta.get_body().decode("utf-8"))
+
+
+def test_f028_r31_la_ruta_devuelve_200_con_las_seis_claves_del_contrato(monkeypatch):
+    """R31 · el camino feliz por el borde de verdad, con su JSON.
+
+    Las seis claves son las de `design.md` §5 y se afirman **exactamente**: una
+    séptima que se colara —el `oid`, el motivo— sería justo lo que R42 prohíbe,
+    y una que faltara rompería a la pantalla sin que ningún test lo dijera.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    respuesta = _responder(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 200
+    assert respuesta.mimetype == "application/json"
+    cuerpo = _json_de(respuesta)
+    assert set(cuerpo) == {
+        "hash_parte",
+        "resultado_parte",
+        "resultado_validacion",
+        "resultado_estado",
+        "estado",
+        "avisos",
+    }
+    assert cuerpo["resultado_estado"] == "cambiado"
+    assert cuerpo["estado"]["estado"] == "rechazado"
+
+
+def test_f028_r31_repetir_la_misma_decision_tambien_es_200(monkeypatch):
+    """R31 · `sin_cambios` es **200**, y no 409.
+
+    Dos pulsaciones seguidas son un dedo, no un error, y el estado final es el
+    que se pedía. Un 409 mandaría a corregir algo a quien no tiene nada que
+    corregir. Es la distinción con el parte `cerrado`, que sí es 409 porque
+    ahí el estado final **no** es el que se pidió.
+    """
+    validacion = _validacion_no_apta()
+    repositorio = RepositorioQueAnotaElOrden(
+        situacion=SituacionParte(
+            decision_humana=_decision_guardada(EstadoParte.RECHAZADO, validacion),
+            ultimo_estado_registrado=EstadoParte.RECHAZADO,
+        )
+    )
+
+    respuesta = _responder(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 200
+    assert _json_de(respuesta)["resultado_estado"] == "sin_cambios"
+    assert repositorio.decisiones == []
+
+
+def test_f028_r31_un_cuerpo_que_no_es_json_es_400(monkeypatch):
+    """R31 · ni siquiera llega a ser un objeto: **400**, no 500."""
+    import function_app
+
+    repositorio = RepositorioQueAnotaElOrden()
+    _con_doble(monkeypatch, repositorio)
+
+    respuesta = function_app.estado(
+        func.HttpRequest(
+            method="POST",
+            url="/api/estado",
+            headers={"Content-Type": "application/json"},
+            body=b"{esto no es json",
+        )
+    )
+
+    assert respuesta.status_code == 400
+    assert repositorio.orden == []
+
+
+@pytest.mark.parametrize(
+    ("cambio", "fragmento"),
+    [
+        pytest.param({"usuario_oid": ""}, "usuario_oid", id="sin-usuario-oid"),
+        pytest.param({"confirmado": None}, "confirmado", id="sin-confirmado"),
+        pytest.param(
+            {"confirmado": "true"},
+            "confirmado",
+            id="confirmado-es-la-cadena-y-no-el-booleano",
+        ),
+        pytest.param({"estado": "inventado"}, "estado", id="un-estado-que-no-existe"),
+        pytest.param({"estado": "pendiente"}, "estado", id="a-pendiente-no-se-vuelve"),
+        pytest.param({"motivo": ""}, "motivo", id="rechazo-sin-motivo"),
+        pytest.param(
+            {"motivo": "x" * (LIMITE_MOTIVO + 1)},
+            str(LIMITE_MOTIVO),
+            id="motivo-demasiado-largo",
+        ),
+    ],
+)
+def test_f028_r31_el_borde_responde_400_sin_escribir_nada(
+    monkeypatch, cambio, fragmento
+):
+    """R31 · los siete 400 de `design.md` §5, **y ni una escritura en ninguno**.
+
+    `repositorio.orden == []` es más fuerte que mirar si hay filas: dice que no
+    se ha tocado el puerto. Un cuerpo mal formado que dejara media fila en el
+    histórico convertiría un fallo de programación en una decisión registrada a
+    nombre de una persona.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    respuesta = _responder(monkeypatch, repositorio, _cuerpo(**cambio))
+
+    assert respuesta.status_code == 400
+    assert fragmento in _json_de(respuesta)["error"]
+    assert repositorio.orden == []
+    assert repositorio.decisiones == []
+
+
+@pytest.mark.parametrize("traza", ["cerrado", "ya_cerrada"])
+def test_f028_r7_un_parte_cerrado_es_409_por_el_borde(monkeypatch, traza):
+    """R7, R31 · `ParteCerrado` → **409**, y sin haber escrito nada.
+
+    Es el código que faltaba: hasta T13, `ParteCerrado` existía desde T4 y
+    `function_app.py` no sabía traducirlo, así que habría salido como un **500**
+    —un error del servidor para algo que no lo es—. Y **409 y no 400**: la
+    petición está perfectamente formada, trae su `usuario_oid`, su confirmación
+    y su motivo; lo que no admite la decisión es el estado del parte.
+    """
+    repositorio = RepositorioQueAnotaElOrden(estado_cierre=traza)
+
+    respuesta = _responder(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 409
+    assert "cerrad" in _json_de(respuesta)["error"]
+    assert repositorio.orden == []
+    assert repositorio.decisiones == []
+
+
+def test_f028_r31_sin_remesa_registrada_es_409(monkeypatch):
+    """R31 · el mismo 409 que `/api/parte`, y por el mismo motivo.
+
+    El mensaje dice **qué hacer**: registrar la remesa y reenviar el parte. Un
+    409 mudo mandaría a mirar el papel, que es donde no está el problema.
+    """
+    repositorio = RepositorioSinRemesa()
+
+    respuesta = _responder(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 409
+    assert "remesa" in _json_de(respuesta)["error"]
+    assert repositorio.decisiones == []
+
+
+@pytest.mark.parametrize(
+    "fallo",
+    [
+        ConfiguracionPgIncompleta("sin DSN"),
+        PersistenciaNoDisponible("la base no responde"),
+    ],
+)
+def test_f028_r31_sin_base_de_datos_es_503(monkeypatch, fallo):
+    """R31 · 503, que lleva a reintentar; el 409 lleva a registrar la remesa.
+
+    No se unifican «porque los dos son fallos de la base»: llevan a acciones
+    opuestas, y confundirlos es lo que costó media hora en el defecto 15 de
+    F-010.
+    """
+    repositorio = RepositorioQueAnotaElOrden(fallo=fallo)
+
+    respuesta = _responder(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 503
+    assert repositorio.decisiones == []
+
+
+def test_f028_r53_el_log_lleva_hash_origen_destino_y_resultado_y_nada_mas(
+    caplog, monkeypatch
+):
+    """R53, R52 · el log viaja a Application Insights y sobrevive al parte.
+
+    Es el endpoint donde más fácil sería filtrar algo: el cuerpo trae los nueve
+    campos del papel, el `oid` de quien decide **y el motivo que escribió a
+    mano**, que es el que más peligro tiene porque puede llevar dentro el
+    nombre de un cliente. Un `log.debug("cuerpo=%s", cuerpo)` puesto depurando
+    publicaría las tres cosas a la vez.
+
+    Lo que sí lleva son las cuatro de `design.md` §5: el `hash`, de qué estado
+    venía, a cuál va y qué pasó. Con eso se audita una decisión sin publicar a
+    nadie.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    with caplog.at_level(logging.DEBUG):
+        respuesta = _responder(monkeypatch, repositorio)
+
+    assert respuesta.status_code == 200
+    _sin_datos_personales(caplog.text)
+    assert HASH in caplog.text
+    assert "pendiente" in caplog.text
+    assert "rechazado" in caplog.text
+    assert "cambiado" in caplog.text
+
+
+def test_f028_r53_un_rechazo_del_borde_tampoco_publica_lo_que_venia(
+    caplog, monkeypatch
+):
+    """R52, R53 · el camino de error es el que más tienta: tiene el cuerpo delante.
+
+    Se comprueban **el log y la respuesta**, porque el error que se escribe
+    pensando en quien depura suele acabar en los dos sitios.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    with caplog.at_level(logging.DEBUG):
+        respuesta = _responder(monkeypatch, repositorio, _cuerpo(estado="inventado"))
+
+    assert respuesta.status_code == 400
+    _sin_datos_personales(caplog.text)
+    _sin_datos_personales(respuesta.get_body().decode("utf-8"))
+
+
+def test_f028_r31_la_ruta_es_post_anonima_y_se_llama_estado():
+    """R31 · un endpoint propio, declarado como los demás del servicio.
+
+    `ANONYMOUS` no es un descuido y es lo mismo que hacen las otras doce: quien
+    protege este servicio es Easy Auth por delante, no la clave de función.
+    """
+    ajustes = ruta_registrada("estado").get_trigger().get_dict_repr()
+
+    assert ajustes["route"] == "estado"
+    assert [str(metodo.value).lower() for metodo in ajustes["methods"]] == ["post"]
+    assert str(ajustes["authLevel"].value).lower() == "anonymous"
+
+
+def test_f028_r32_la_ruta_no_mira_las_ventanas_de_escritura():
+    """R32 · tampoco el borde: ni `ARCHIVO_HABILITADO` ni `CIERRE_HABILITADO`.
+
+    El handler ya lo tiene probado; esto vigila el otro sitio donde se podría
+    colar, que es la traducción HTTP — y donde además viven los dos nombres,
+    porque `/api/archivar` y `/api/cerrar` sí dependen de ellos.
+    """
+    fuente = inspect.getsource(ruta_registrada("estado").get_user_function())
+
+    assert "HABILITADO" not in fuente
+    assert "habilitado" not in fuente

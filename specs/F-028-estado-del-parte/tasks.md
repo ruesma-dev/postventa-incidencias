@@ -62,7 +62,7 @@
       distinta **no** cuenta y se cae a la máquina (R19); con la misma huella
       **sí** (R20); y el `rechazado` **no caduca** nunca.
 
-- [ ] **T4**: Añadir `ParteCerrado` y `CambioDeEstadoInvalido` a
+- [x] **T4**: Añadir `ParteCerrado` y `CambioDeEstadoInvalido` a
       `domain/models/errores.py`. | Verificación: test de que heredan de donde
       heredan sus hermanos; la traducción a 409 y 400 se cierra en T13.
 

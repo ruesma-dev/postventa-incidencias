@@ -20,12 +20,20 @@ derivando un estado que la traza ya no puede tener.
 
 from __future__ import annotations
 
+import inspect
 import re
 from dataclasses import fields, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 from domain.models.aprobacion import huella_de_veredicto
+from domain.models.errores import (
+    CambioDeEstadoInvalido,
+    CuerpoDeArchivoInvalido,
+    ErrorDePersistencia,
+    ParteCerrado,
+    ParteNoApto,
+)
 from domain.models.estado import (
     ESTADOS_DE_CIERRE_EN_FIRME,
     LIMITE_MOTIVO,
@@ -710,3 +718,77 @@ def test_f028_r17_nadie_mas_deriva_el_estado_del_parte():
         "alguien vuelve a derivar el estado a partir del veredicto fuera del "
         "dominio: el criterio se escribe una sola vez (R17)"
     )
+
+
+# ==========================================================================
+# T4 · los dos errores nuevos, colocados en la familia que les toca
+# ==========================================================================
+#
+# El dominio no sabe de HTTP: quien traduce a 400 y a 409 es el borde, y eso
+# se cierra en T13. Lo que se fija aquí es **de dónde cuelgan**, que es lo que
+# decide en qué `except` caen y, con él, el código que sale:
+#
+#   - `ParteCerrado` es hermano de `ParteNoApto` y `ParteNoAprobable` —la
+#     familia de «la petición está bien y lo que no admite la operación es el
+#     estado del parte»— y va al **409**;
+#   - `CambioDeEstadoInvalido` es hermano de `CuerpoDeArchivoInvalido` y
+#     `CuerpoDeGraficoInvalido` —«el cuerpo no trae lo que dice el
+#     contrato»— y va al **400**.
+#
+# Colgar cualquiera de los dos de `ErrorDePersistencia` los convertiría en un
+# 503 «vuelve a intentarlo», que es justo lo que ninguno de los dos es.
+
+
+def test_f028_r7_parte_cerrado_es_hermano_de_los_otros_409():
+    """R7 · `cerrado` es terminal, y pedir cambiarlo no es un error del cuerpo.
+
+    La petición puede estar impecable —trae su `usuario_oid`, su confirmación
+    y su motivo— y aun así no se puede hacer: la incidencia ya está cerrada en
+    el ERP. Es exactamente el reparto que ya hacen `ParteNoApto` y
+    `ParteNoAprobable`, y por eso comparte su forma: un 400 mandaría a revisar
+    el cuerpo a quien no tiene nada que revisar.
+    """
+    assert issubclass(ParteCerrado, Exception)
+    assert ParteCerrado.__mro__[1:] == ParteNoApto.__mro__[1:]
+    assert not issubclass(ParteCerrado, ErrorDePersistencia)
+
+
+def test_f028_r31_cambio_de_estado_invalido_es_hermano_de_los_otros_400():
+    """R31 · el cuerpo mal formado se rechaza y punto.
+
+    Falta el `usuario_oid`, falta la confirmación, el estado pedido no es uno
+    de los dos manuales o el rechazo viene sin motivo: la petición no se puede
+    interpretar, y tratarla «como si fuera» algo daría un resultado inventado.
+    Misma familia que `CuerpoDeArchivoInvalido`.
+    """
+    assert issubclass(CambioDeEstadoInvalido, Exception)
+    assert CambioDeEstadoInvalido.__mro__[1:] == CuerpoDeArchivoInvalido.__mro__[1:]
+    assert not issubclass(CambioDeEstadoInvalido, ErrorDePersistencia)
+
+
+def test_f028_r53_los_dos_errores_llevan_su_motivo_como_sus_hermanos():
+    """El `motivo` viaja aparte del mensaje, como en los once anteriores.
+
+    No es decoración: el borde compone el cuerpo del error con `.motivo`, y un
+    error que no lo tuviera saldría a HTTP como una cadena vacía o reventaría
+    con un `AttributeError` dentro del handler.
+    """
+    cerrado = ParteCerrado("la incidencia de este parte ya está cerrada en el ERP")
+    invalido = CambioDeEstadoInvalido("falta decir quién decide")
+
+    assert cerrado.motivo == "la incidencia de este parte ya está cerrada en el ERP"
+    assert invalido.motivo == "falta decir quién decide"
+    assert str(invalido) == "falta decir quién decide"
+
+
+def test_f028_r52_ninguno_de_los_dos_tiene_hueco_para_datos_del_papel():
+    """R52 · lo que se construye con un texto es lo que puede llevar un texto.
+
+    Los dos errores acaban en un log (R53), así que lo único que aceptan es el
+    `motivo` —que lo escribe el código, no el papel— y ningún campo más donde
+    alguien pueda colar el DNI, las observaciones o el `oid` de quien decide.
+    """
+    for clase in (ParteCerrado, CambioDeEstadoInvalido):
+        parametros = list(inspect.signature(clase.__init__).parameters)
+
+        assert parametros == ["self", "motivo"], clase.__name__

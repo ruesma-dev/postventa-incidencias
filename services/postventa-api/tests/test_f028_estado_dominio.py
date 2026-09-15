@@ -22,10 +22,11 @@ from __future__ import annotations
 
 import inspect
 import re
-from dataclasses import fields, is_dataclass
+from dataclasses import FrozenInstanceError, fields, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 from domain.models.aprobacion import huella_de_veredicto
 from domain.models.errores import (
     CambioDeEstadoInvalido,
@@ -792,3 +793,35 @@ def test_f028_r52_ninguno_de_los_dos_tiene_hueco_para_datos_del_papel():
         parametros = list(inspect.signature(clase.__init__).parameters)
 
         assert parametros == ["self", "motivo"], clase.__name__
+
+
+def test_f028_r19_una_aprobacion_sin_veredicto_guardado_no_cuenta():
+    """Hay decisión y hay huella, pero **no hay veredicto** con el que comparar.
+
+    Es el hueco que destapó la campaña de mutación, y no es teórico: la
+    situación se lee del repositorio y el veredicto viene del contexto, así que
+    las dos mitades pueden llegar desparejadas —un parte guardado cuya
+    validación aún no se ha reprocesado—. Sin veredicto no hay nada que
+    contrastar, así que la aprobación **no cuenta** y el parte queda
+    `pendiente`, que es el mismo lado seguro de siempre.
+    """
+    aprobado = _decision(EstadoParte.APROBADO, huella="huella-de-un-veredicto-que-no-esta")
+
+    assert estado_del_parte(None, aprobado, None) is EstadoParte.PENDIENTE
+
+
+def test_f028_r33_la_situacion_leida_del_almacen_es_inmutable():
+    """Lo que se leyó del repositorio no lo puede reescribir quien lo lee.
+
+    `SituacionParte` viaja del repositorio a `ContextoParte` y de ahí a las
+    tres puertas. Si un paso pudiera cambiarle un campo por el camino, el
+    siguiente decidiría sobre algo que la base nunca dijo, y eso es
+    exactamente lo que R33 impide al exigir que la decisión salga del almacén
+    y nunca del cuerpo: daría igual leerla si luego se puede sobrescribir.
+    """
+    situacion = SituacionParte(estado_cierre="cerrado")
+
+    assert is_dataclass(SituacionParte)
+    assert SituacionParte.__dataclass_params__.frozen is True
+    with pytest.raises(FrozenInstanceError):
+        situacion.estado_cierre = "pendiente"

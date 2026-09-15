@@ -554,11 +554,38 @@ sí sostienen el acceso están en la cabecera de
 
 | Qué falta | Feature | Consecuencia visible |
 |---|---|---|
-| El cierre real, verificado contra el ERP | **F-009** | El cierre **está implementado**, pero su ventana de escritura (`CIERRE_HABILITADO`) se despliega **apagada** y todavía no se ha ejecutado ni un cierre real. Mientras siga así, **Sigrid no se toca**: el parte se archiva y la incidencia sigue abierta en el ERP. El primer cierre se hará con el humano delante y con autorización expresa para esa incidencia concreta |
-| La verificación del gráfico contra el ERP | **F-012** | El gráfico **está implementado** y comparte ventana con el cierre, así que tampoco se ha ejecutado ni uno real. El riesgo aceptado de `docs/ARCHITECTURE.md` —cerrar sin el parte dentro— queda **cerrado por diseño**: el cierre exige el gráfico. La verificación se hará sobre reclamaciones de la **obra de prueba 404**, con dry-run y autorización expresa por incidencia |
+| Que Posventa lo use de verdad | — | El circuito completo está probado, pero **solo lo ha recorrido el responsable del proyecto**. Posventa todavía no ha cerrado ninguna incidencia con esto |
 | Rehidratar la sesión al recargar el navegador | **feature nueva**, decidida el 2026-08-26 (D4 de F-019) | Lo guardado **queda guardado** y la cola sobrevive, pero si el usuario recarga la página **pierde el trabajo en curso**: volver a pintarlo exige leer una remesa entera con sus partes, y eso es un método de lectura nuevo en el puerto de persistencia |
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
+
+### Lo que YA se ha ejecutado contra el ERP, y con qué evidencia
+
+> **Corrige lo que este documento dijo hasta el 2026-09-15.** Sus dos primeras
+> filas decían que el cierre y el gráfico estaban implementados pero que
+> «todavía no se ha ejecutado ni un cierre real», y que la verificación se haría
+> «sobre reclamaciones de la obra de prueba 404». **Las dos cosas dejaron de ser
+> verdad el 2026-09-11**: el responsable decidió el 2026-09-10 probar sobre una
+> **obra en uso**, la `0626`, con autorización expresa e incidencia por
+> incidencia.
+
+**Dos cierres reales**, los dos auditados por lectura y no de palabra:
+
+| Cuándo | Incidencia | Qué se probó | Fila de `dbo.log` |
+|---|---|---|---|
+| 2026-09-11 | `RS26.09/0150` | F-012 y F-009: parte archivado, **adjunto** a la reclamación y reclamación **cerrada** | `ide` 8457839, `10:28:12` |
+| 2026-09-15 | `RS26.09/0149` | F-026: un parte **no apto** aprobado a mano, y de ahí al archivado y al cierre | `ide` 8467000, `14:30:05` |
+
+Las dos filas pasan las **once comprobaciones campo a campo** del §7.3 del
+diseño de F-009, y en las dos el par `fec`/`hor` está en **hora local**, que es
+como escribe el ERP —se comprobó a propósito: escribir en UTC habría dejado
+nuestras filas una o dos horas por detrás de los 6.843 cierres manuales que las
+rodean, sin que nadie lo notara—.
+
+**Las ventanas de escritura siguen siendo la puerta.** `ARCHIVO_HABILITADO` y
+`CIERRE_HABILITADO` se despliegan **apagadas**, se abren para la prueba y se
+vuelven a cerrar: al terminar la del 2026-09-15 quedaron las dos en `false`. Con
+ellas cerradas, las rutas responden `503` y **no tocan el ERP ni para leer**.
 
 ### Lo que este proyecto añade al ecosistema
 

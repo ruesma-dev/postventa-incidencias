@@ -59,6 +59,7 @@ __all__ = [
     "DecisionEstado",
     "EstadoParte",
     "SituacionParte",
+    "decision_en_firme",
     "estado_de_la_maquina",
     "estado_del_parte",
 ]
@@ -354,3 +355,58 @@ def _aprueba_lo_que_hay(
     if validacion is None or decision.huella_veredicto is None:
         return False
     return decision.huella_veredicto == huella_de_veredicto(validacion)
+
+
+def decision_en_firme(
+    validacion: ResultadoValidacion | None,
+    decision_humana: DecisionEstado | None,
+    estado_cierre: str | None,
+) -> DecisionEstado | None:
+    """**Quién** sostiene el estado de ahora: la persona, o nadie (R39, R43).
+
+    `estado_del_parte` responde en qué estado está el parte. La pantalla
+    necesita además saber si ahí lo puso una persona —para el anillo de R39 y
+    para el «aprobado por una persona · <fecha>» de R43— o si el parte está
+    donde está porque lo dijo la máquina o porque el ERP cerró la incidencia.
+
+    Devuelve la decisión humana que **está en vigor**, o `None` si el estado
+    actual no lo sostiene ninguna persona. Tres formas de que sea `None`, y las
+    tres importan:
+
+    - **no hay decisión humana**, o la única fila del histórico es de máquina
+      (R26): una constancia no firma nada, y devolverla pondría la marca de
+      «lo aprobó alguien» a los 22 partes verdes de una remesa que nadie ha
+      mirado;
+    - **el parte está `cerrado`**: ahí lo puso el ERP y gana a todo (R18),
+      incluso a un rechazo humano registrado antes;
+    - **la decisión ya no cuenta**: o pedía un estado que no manda —`pendiente`
+      o `cerrado`, que R10 no ofrece pero una semilla podría dejar—, o es una
+      aprobación tomada sobre **otro** veredicto (R19).
+
+    Ese último caso es el que obliga a que esto viva en el dominio y no en el
+    borde. Un parte **apto** con una aprobación humana caducada está
+    `aprobado`, pero lo dice la máquina: quien se limitara a comparar «el
+    estado derivado» con «el estado de la fila» los vería coincidir y la
+    pantalla anunciaría «aprobado por una persona» con la fecha de una decisión
+    que R19 ya había tumbado — que es justo la distinción que R43 pide
+    enseñar.
+
+    **No hay aquí una segunda copia del criterio** (R17): el estado se pide a
+    `estado_del_parte` y la vigencia de una aprobación a `_aprueba_lo_que_hay`,
+    que son los dos únicos sitios donde están escritas. Si mañana cambiara el
+    orden de precedencia, cambia allí y esta respuesta se mueve con él.
+
+    Función **pura**, como sus dos vecinas: los tres datos los trae quien llama
+    del repositorio (`SituacionParte`), y nunca del cuerpo de la petición (R33).
+    """
+    if decision_humana is None or not decision_humana.por_persona:
+        return None
+
+    estado = estado_del_parte(validacion, decision_humana, estado_cierre)
+    if estado is EstadoParte.CERRADO or decision_humana.estado is not estado:
+        return None
+    if estado is EstadoParte.APROBADO and not _aprueba_lo_que_hay(
+        decision_humana, validacion
+    ):
+        return None
+    return decision_humana

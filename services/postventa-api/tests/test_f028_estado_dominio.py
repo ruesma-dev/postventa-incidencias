@@ -825,3 +825,115 @@ def test_f028_r33_la_situacion_leida_del_almacen_es_inmutable():
     assert SituacionParte.__dataclass_params__.frozen is True
     with pytest.raises(FrozenInstanceError):
         situacion.estado_cierre = "pendiente"
+
+
+# ==========================================================================
+# T12 · quién sostiene el estado de ahora: la marca de R39
+# ==========================================================================
+#
+# `estado_del_parte` dice **en qué** estado está el parte. La pantalla necesita
+# además saber **quién** lo puso ahí, porque R39 distingue el parte que aprobó
+# una persona del que dio por bueno la máquina, y R43 le pone fecha.
+#
+# Es la misma pregunta con otro recorte, así que **no** se responde con una
+# segunda copia del criterio: `decision_en_firme` llama a `estado_del_parte` y
+# reutiliza `_aprueba_lo_que_hay`. Si el orden de precedencia cambiara, cambia
+# en un sitio y las dos respuestas se mueven juntas.
+
+
+def test_f028_r39_una_aprobacion_humana_vigente_es_la_decision_en_firme():
+    """R39 · el parte no apto que alguien aprobó lleva su marca y su fecha."""
+    from domain.models.estado import decision_en_firme
+
+    validacion = _validacion_no_apta()
+    aprobado = _decision(EstadoParte.APROBADO, validacion=validacion)
+
+    assert decision_en_firme(validacion, aprobado, None) is aprobado
+
+
+def test_f028_r39_un_rechazo_humano_es_la_decision_en_firme():
+    """R39 · y también cuando el veredicto era apto: lo decidió una persona."""
+    from domain.models.estado import decision_en_firme
+
+    validacion = _validacion_apta()
+    rechazado = _decision(EstadoParte.RECHAZADO, validacion=validacion)
+
+    assert decision_en_firme(validacion, rechazado, None) is rechazado
+
+
+def test_f028_r39_un_parte_apto_sin_decision_lo_sostiene_la_maquina():
+    """R39 · verde por el veredicto: `None`, que es «no lo decidió nadie».
+
+    Es la mitad que hace útil la marca. Si aquí se devolviera cualquier cosa
+    distinta de `None`, la pantalla pondría el anillo de «lo aprobó una
+    persona» a los 22 partes verdes de una remesa que nadie ha mirado.
+    """
+    from domain.models.estado import decision_en_firme
+
+    assert decision_en_firme(_validacion_apta(), None, None) is None
+
+
+def test_f028_r26_una_fila_de_maquina_no_es_decision_en_firme():
+    """R26 · el histórico es constancia, nunca criterio, tampoco para la marca.
+
+    Una fila de constancia dice que el parte pasó a `aprobado`, y es cierto:
+    lo que no dice es que lo decidiera alguien. Devolverla aquí convertiría la
+    anotación automática en una firma.
+    """
+    from domain.models.estado import decision_en_firme
+
+    validacion = _validacion_apta()
+    constancia = _decision(EstadoParte.APROBADO, validacion=validacion, por_persona=False)
+
+    assert decision_en_firme(validacion, constancia, None) is None
+
+
+def test_f028_r19_una_aprobacion_caducada_deja_de_estar_en_firme():
+    """R19 · el caso que obliga a que esto viva en el dominio.
+
+    El parte es **apto**, así que su estado es `aprobado` de todas formas — lo
+    dice la máquina. Y hay una aprobación humana de **otro** veredicto, que ya
+    no cuenta (R19). Comparar «el estado derivado con el estado de la fila»
+    daría `aprobado == aprobado` y la pantalla diría «aprobado por una persona
+    · <la fecha de una decisión caducada>», que es justo lo que R43 separa.
+    """
+    from domain.models.estado import decision_en_firme
+
+    apta = _validacion_apta()
+    vieja = _decision(EstadoParte.APROBADO, huella="huella-de-otro-veredicto")
+
+    assert estado_del_parte(apta, vieja, None) is EstadoParte.APROBADO
+    assert decision_en_firme(apta, vieja, None) is None
+
+
+def test_f028_r18_un_parte_cerrado_no_lo_sostiene_ninguna_persona():
+    """R18 · `cerrado` es un hecho del ERP, no la decisión de nadie.
+
+    Ni siquiera cuando hay una decisión humana debajo: el cierre gana (R18) y
+    quien puso el parte donde está es Sigrid. Devolver la decisión humana aquí
+    le pondría a la pantalla la marca de una persona sobre un estado que esa
+    persona no pidió.
+    """
+    from domain.models.estado import decision_en_firme
+
+    validacion = _validacion_apta()
+    rechazado = _decision(EstadoParte.RECHAZADO, validacion=validacion)
+
+    assert estado_del_parte(validacion, rechazado, "cerrado") is EstadoParte.CERRADO
+    assert decision_en_firme(validacion, rechazado, "cerrado") is None
+
+
+def test_f028_r10_una_decision_a_un_estado_que_no_manda_no_esta_en_firme():
+    """R10 · una fila `→ pendiente` no mueve el estado, y tampoco lo firma.
+
+    No se puede pedir por el borde, pero una semilla o una migración podría
+    dejarla. Lo que tiene que pasar es que decida la máquina, y que la marca
+    diga exactamente eso.
+    """
+    from domain.models.estado import decision_en_firme
+
+    validacion = _validacion_apta()
+    pendiente = _decision(EstadoParte.PENDIENTE, validacion=validacion)
+
+    assert estado_del_parte(validacion, pendiente, None) is EstadoParte.APROBADO
+    assert decision_en_firme(validacion, pendiente, None) is None

@@ -142,7 +142,7 @@
       demasiado largo; 409 si el parte está `cerrado` (R7) y si la remesa no
       consta; 503 sin base. **Y en los rechazos, ni una escritura.**
 
-- [ ] **T14**: `parte.py`: la respuesta cambia el bloque `aprobacion` por
+- [x] **T14**: `parte.py`: la respuesta cambia el bloque `aprobacion` por
       `estado` (`design.md` §5). | Verificación: test de que subir la remesa
       otra vez devuelve el estado de cada parte **sin una petición más por
       parte**.

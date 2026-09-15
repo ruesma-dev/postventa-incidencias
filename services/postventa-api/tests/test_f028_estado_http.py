@@ -1543,3 +1543,272 @@ def test_f028_r32_la_ruta_no_mira_las_ventanas_de_escritura():
 
     assert "HABILITADO" not in fuente
     assert "habilitado" not in fuente
+
+
+# ==========================================================================
+# T14 · el estado viaja también en `POST /api/parte` (`design.md` §5)
+# ==========================================================================
+#
+# `guardar_parte_http` sustituye su bloque `aprobacion` —F-026 R22— por el
+# bloque `estado`. No es un cambio de nombre: lo que se publicaba era **una
+# aprobación**, un permiso suelto, y lo que se publica ahora es **el estado del
+# parte**, que sale de los tres hechos a la vez (R2, R16).
+#
+# Y es lo que permite que, al volver a subir la remesa, la pantalla sepa el
+# estado de cada parte **sin una petición más por parte** —22 llamadas en una
+# remesa real—. Por eso hay aquí un test que cuenta las consultas: el estado
+# tiene que salir de la situación que `paso_persistencia` ya leyó para la
+# constancia (R23), y no de un viaje nuevo a un PostgreSQL **compartido**.
+
+
+def _cuerpo_de_parte(**cambios: Any) -> dict[str, Any]:
+    """El cuerpo de `POST /api/parte`: el de arriba **sin** las cuatro claves.
+
+    Se construye quitándolas en vez de escribiendo otro cuerpo a mano: los dos
+    endpoints reciben el mismo parte, y dos montajes distintos del mismo parte
+    acabarían probando veredictos distintos sin que nadie se enterara.
+    """
+    cuerpo = _cuerpo(**cambios)
+    for propia in ("estado", "usuario_oid", "confirmado", "motivo"):
+        cuerpo.pop(propia, None)
+    return cuerpo
+
+
+def _guardar_parte(repositorio: Any, cuerpo: Any = _POR_OMISION) -> dict[str, Any]:
+    """`POST /api/parte` por el handler, con el repositorio inyectado."""
+    from interface_adapters.api.parte import guardar_parte_http
+
+    return guardar_parte_http(
+        _cuerpo_de_parte() if cuerpo is _POR_OMISION else cuerpo,
+        repositorio=repositorio,
+        ahora=AHORA,
+    )
+
+
+def _aprobacion_de_una_persona(validacion: ResultadoValidacion) -> SituacionParte:
+    """Un parte que **una persona aprobó**, sobre ese veredicto exacto (R19)."""
+    return SituacionParte(
+        decision_humana=_decision_humana(
+            huella_veredicto=huella_de_veredicto(validacion)
+        ),
+        ultimo_estado_registrado=EstadoParte.APROBADO,
+    )
+
+
+def test_f028_r38_guardar_un_parte_devuelve_el_estado_y_no_la_aprobacion():
+    """`design.md` §5 · el contrato cambia `aprobacion` por `estado`.
+
+    Se afirman las cinco claves **exactamente**: dejar las dos convivir sería
+    publicar el mismo hecho de dos formas, que es lo que §4 evita en la base y
+    no tiene menos peligro en el borde — la pantalla acabaría mirando la que no
+    toca.
+    """
+    respuesta = _guardar_parte(RepositorioEnMemoria())
+
+    assert set(respuesta) == {
+        "hash_parte",
+        "resultado_parte",
+        "resultado_validacion",
+        "estado",
+        "avisos",
+    }
+    assert "aprobacion" not in respuesta
+    assert set(respuesta["estado"]) == {
+        "estado",
+        "decidido_por_persona",
+        "decidido_at_utc",
+        "estado_anterior",
+    }
+
+
+def test_f028_r4_un_parte_que_nadie_ha_mirado_sale_pendiente_y_sin_firma():
+    """R4, R39 · el caso normal del primer día: `pendiente` y de nadie.
+
+    El cuerpo por omisión trae observaciones manuscritas, así que la validación
+    lo manda a la cola. Nadie lo ha decidido todavía, y las tres claves que
+    acompañan al estado lo dicen con sus huecos.
+    """
+    respuesta = _guardar_parte(RepositorioEnMemoria())
+
+    assert respuesta["estado"] == {
+        "estado": "pendiente",
+        "decidido_por_persona": False,
+        "decidido_at_utc": None,
+        "estado_anterior": None,
+    }
+
+
+def test_f028_r23_un_parte_apto_sale_aprobado_y_dice_que_lo_dijo_la_maquina():
+    """R23, R39 · el parte verde nace `aprobado`, y sin el anillo de persona.
+
+    Es la distinción que sostiene R39: si la respuesta dijera
+    `decidido_por_persona: true` de los 22 partes verdes de una remesa que
+    nadie ha mirado, la marca dejaría de significar nada.
+    """
+    respuesta = _guardar_parte(
+        RepositorioEnMemoria(),
+        _cuerpo_de_parte(extraccion=_extraccion(observaciones=None)),
+    )
+
+    assert respuesta["estado"]["estado"] == "aprobado"
+    assert respuesta["estado"]["decidido_por_persona"] is False
+
+
+def test_f028_r39_un_parte_que_aprobo_una_persona_lo_dice_en_la_respuesta():
+    """R22, R39, R43 · para que la pantalla lo sepa **sin una petición por parte**.
+
+    Al recargar hay que volver a subir la remesa, y eso guarda los 22 partes.
+    Si la respuesta no dijera cuáles sostiene una persona, la pantalla tendría
+    que preguntarlo parte a parte: 22 llamadas de más para pintar una marca.
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=_aprobacion_de_una_persona(_validacion_no_apta())
+    )
+
+    respuesta = _guardar_parte(repositorio)
+
+    assert respuesta["estado"] == {
+        "estado": "aprobado",
+        "decidido_por_persona": True,
+        "decidido_at_utc": AHORA.isoformat(),
+        "estado_anterior": "pendiente",
+    }
+
+
+def test_f028_r5_un_parte_apto_rechazado_a_mano_sale_rechazado():
+    """R5 · la asimetría, contada en la respuesta de `/api/parte`.
+
+    El veredicto es **apto** y una persona dijo que no. Lo automático puede
+    retirar un permiso, nunca concederlo, así que el parte sale `rechazado` y
+    la pantalla lo saca de la tanda sin preguntar nada más.
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=SituacionParte(
+            decision_humana=_decision_humana(estado=EstadoParte.RECHAZADO)
+        )
+    )
+
+    respuesta = _guardar_parte(
+        repositorio, _cuerpo_de_parte(extraccion=_extraccion(observaciones=None))
+    )
+
+    assert respuesta["estado"]["estado"] == "rechazado"
+    assert respuesta["estado"]["decidido_por_persona"] is True
+
+
+def test_f028_r18_un_parte_con_su_incidencia_cerrada_sale_cerrado():
+    """R18 · el cierre gana a todo, y la respuesta lo dice sin firma humana.
+
+    Ahí lo puso el ERP, no una persona: `decidido_por_persona` es `false`
+    aunque haya una decisión humana registrada antes (R41).
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=SituacionParte(
+            decision_humana=_decision_humana(estado=EstadoParte.RECHAZADO),
+            estado_cierre="cerrado",
+        )
+    )
+
+    respuesta = _guardar_parte(repositorio)
+
+    assert respuesta["estado"]["estado"] == "cerrado"
+    assert respuesta["estado"]["decidido_por_persona"] is False
+
+
+def test_f028_r19_una_aprobacion_sobre_otro_veredicto_no_firma_el_estado():
+    """R19, R43 · «la aprobación dejó de contar porque el veredicto cambió».
+
+    El parte es **apto**, así que está `aprobado` — pero lo dice la máquina, no
+    la persona cuya aprobación se tomó sobre otro veredicto. Quien comparara el
+    estado derivado con el de la fila los vería coincidir y anunciaría
+    «aprobado por una persona» con una fecha que R19 ya había tumbado.
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=SituacionParte(
+            decision_humana=_decision_humana(huella_veredicto="otra-huella-inventada")
+        )
+    )
+
+    respuesta = _guardar_parte(
+        repositorio, _cuerpo_de_parte(extraccion=_extraccion(observaciones=None))
+    )
+
+    assert respuesta["estado"]["estado"] == "aprobado"
+    assert respuesta["estado"]["decidido_por_persona"] is False
+
+
+def test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte():
+    """**La verificación de T14**: volver a subir la remesa no multiplica nada.
+
+    `paso_persistencia` ya lee la situación para la regla de constancia (R23).
+    El bloque `estado` sale de **esa** lectura, así que la respuesta cuesta
+    exactamente **una** consulta por parte, la que ya costaba. Una segunda
+    serían 22 viajes más por remesa a `psql-albaranes-rs9k2`, que es un
+    servidor **compartido** con otros proyectos —y el bloque 4 ya pagó ahí 66
+    consultas por tanda al retirar el atajo del apto (`design.md` §6 y §11.1)—.
+
+    Y la tabla de F-026 **ya no se consulta**: `parte.py` era el último sitio
+    de producción que llamaba a `consultar_aprobacion`.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    _guardar_parte(repositorio)
+
+    assert repositorio.situaciones_consultadas == [HASH]
+    assert repositorio.aprobaciones_consultadas == []
+
+
+def test_f028_r22_el_estado_se_lee_despues_de_guardar_el_veredicto():
+    """R22 · después, y no antes: el estado se deriva del veredicto de ahora.
+
+    Leer la situación antes de `guardar_validacion` daría el estado de un
+    veredicto que esta misma llamada acaba de sustituir — y es justo el caso de
+    R19: alguien teclea el código de obra que faltaba, el veredicto pasa a
+    apto, y la aprobación de antes deja de contar.
+    """
+    repositorio = RepositorioQueAnotaElOrden()
+
+    _guardar_parte(repositorio)
+
+    assert repositorio.orden == [
+        "parte",
+        "validacion",
+        "consulta_situacion",
+        "decision",
+    ]
+
+
+def test_f028_r33_el_estado_de_la_respuesta_no_sale_del_cuerpo():
+    """R33 · viene del repositorio, y lo que llegue hecho **se ignora**.
+
+    Si el estado viniera del cuerpo, quien compone la petición podría afirmar
+    que un parte lo aprobó alguien que no lo aprobó — y de ahí sale el
+    archivado de un PDF con el DNI de un cliente y el cierre de una reclamación
+    en el ERP de producción.
+    """
+    respuesta = _guardar_parte(
+        RepositorioEnMemoria(),
+        _cuerpo_de_parte(
+            estado={"estado": "aprobado", "decidido_por_persona": True},
+            aprobacion={"estado": "aprobado"},
+        ),
+    )
+
+    assert respuesta["estado"]["estado"] == "pendiente"
+    assert respuesta["estado"]["decidido_por_persona"] is False
+
+
+def test_f028_r42_la_respuesta_de_guardar_tampoco_publica_el_oid_ni_el_motivo():
+    """R42, R52 · y aquí importa más que en `/api/estado`.
+
+    Esta respuesta la recibe **quien sube la remesa**, que no tiene por qué ser
+    quien decidió sobre ninguno de sus partes. Se serializa entera a JSON y se
+    busca dentro, que es lo que de verdad viaja.
+    """
+    repositorio = RepositorioEnMemoria(
+        situacion=_aprobacion_de_una_persona(_validacion_no_apta())
+    )
+
+    respuesta = _guardar_parte(repositorio)
+
+    _sin_datos_personales(json.dumps(respuesta, ensure_ascii=False))

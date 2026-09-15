@@ -102,19 +102,35 @@ def _dejar_constancia_del_estado(
     nunca del cuerpo de la petición (R33): si el estado anterior viniera de
     fuera, quien llama podría afirmar que un parte estaba aprobado.
 
+    Y lo leído **se deja en `ctx.situacion`**, igual que hace la puerta de los
+    tres pasos del circuito, para que nadie vuelva a preguntarlo en la misma
+    pasada. De ahí lo saca `POST /api/parte` para componer el bloque `estado`
+    de su respuesta (`design.md` §5): sin ese hueco, contar el estado de los 22
+    partes de una remesa costaría 22 viajes más a un PostgreSQL **compartido**,
+    y el bloque 4 ya pagó ahí la retirada del atajo del apto (§11.1).
+
+    Lo que se deja es la situación **anterior** a la fila de constancia, y es
+    lo correcto: la derivación solo mira el veredicto, la última decisión
+    **humana** y la traza de cierre, y una constancia no es ninguna de las tres
+    (R26). Quien necesite el `ultimo_estado_registrado` de después —`POST
+    /api/estado`, para encadenar el `estado_anterior` de su fila— vuelve a
+    preguntar a propósito, y lo dice donde lo hace.
+
     Si la base falla aquí, el error **sube**: no se ha escrito nada en ningún
     sistema externo, el borde lo traduce a su 503 honesto y el reintento es
     inocuo — guardar el parte y el veredicto son idempotentes y la propia regla
     de constancia impide que el reintento duplique la fila. Es justo lo
     contrario de lo que hace `paso_cierre`, y por el motivo contrario.
     """
-    situacion = repositorio.consultar_situacion(hash_parte=ctx.parte.hash)
+    ctx.situacion = repositorio.consultar_situacion(hash_parte=ctx.parte.hash)
     anotar_estado(
         repositorio,
-        situacion,
+        ctx.situacion,
         hash_parte=ctx.parte.hash,
         estado=estado_del_parte(
-            ctx.validacion, situacion.decision_humana, situacion.estado_cierre
+            ctx.validacion,
+            ctx.situacion.decision_humana,
+            ctx.situacion.estado_cierre,
         ),
         ahora=ahora,
     )

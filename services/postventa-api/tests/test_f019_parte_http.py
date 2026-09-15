@@ -42,17 +42,22 @@ from tests.utiles_pg import RepositorioEnMemoria
 
 #: El contrato de la respuesta (R7): estas claves y **ninguna más**.
 #:
-#: Eran cuatro hasta F-026, que añade `aprobacion` (R22): si el parte consta
-#: aprobado por una persona, la respuesta lo dice —y dice si esa aprobación
-#: sigue vigente—, para que la pantalla lo sepa sin una petición por parte.
+#: Eran cuatro hasta F-026, que añadió `aprobacion` (R22). **F-028 T14 la
+#: sustituye por `estado`** (`design.md` §5), y no es un cambio de nombre: lo
+#: que se publicaba era una aprobación —un permiso suelto— y lo que se publica
+#: ahora es el **estado del parte**, que sale del veredicto, de la última
+#: decisión humana y de la traza de cierre a la vez. Sigue sirviendo para lo
+#: mismo: que la pantalla lo sepa sin una petición por parte.
+#:
 #: Ampliar esta lista es ampliar el contrato, y por eso se toca aquí y se ve en
 #: la revisión. Lo que hay dentro del bloque lo fija
-#: `tests/test_f026_aprobar_http.py`, y **nunca** lleva el `oid` de nadie.
+#: `tests/test_f028_estado_http.py`, y **nunca** lleva el `oid` de nadie ni el
+#: motivo que escribió quien revisó (R42, R52).
 CLAVES_DE_LA_RESPUESTA = {
     "hash_parte",
     "resultado_parte",
     "resultado_validacion",
-    "aprobacion",
+    "estado",
     "avisos",
 }
 
@@ -165,9 +170,9 @@ def _json(respuesta: func.HttpResponse) -> dict:
 def test_f019_r7_guardar_un_parte_devuelve_200_con_su_contrato(monkeypatch):
     """R7 · 200 con las claves de `design.md` §6 y **ninguna más**.
 
-    Cinco desde F-026, que añadió `aprobacion` (R22). Que este test se enterara
-    es su trabajo: el contrato de la respuesta no crece sin que alguien lo
-    escriba aquí.
+    Cinco desde F-026, y desde F-028 la quinta es `estado` y no `aprobacion`
+    (T14). Que este test se enterara es su trabajo: el contrato de la respuesta
+    no cambia sin que alguien lo escriba aquí.
     """
     repositorio = RepositorioEnMemoria()
 

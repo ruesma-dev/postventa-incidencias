@@ -49,7 +49,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 
+from domain.models.aprobacion import huella_de_veredicto
 from domain.models.persistencia import EstadoCierre
+from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
 __all__ = [
     "ESTADOS_DE_CIERRE_EN_FIRME",
@@ -57,6 +59,8 @@ __all__ = [
     "DecisionEstado",
     "EstadoParte",
     "SituacionParte",
+    "estado_de_la_maquina",
+    "estado_del_parte",
 ]
 
 
@@ -216,3 +220,137 @@ class SituacionParte:
     decision_humana: DecisionEstado | None = None
     ultimo_estado_registrado: EstadoParte | None = None
     estado_cierre: str | None = None
+
+
+def estado_de_la_maquina(validacion: ResultadoValidacion | None) -> EstadoParte:
+    """En qué estado deja la **máquina** un parte, sin que nadie decida nada.
+
+    Dos casos y solo dos (R3, R4):
+
+    - **apto con destino `archivo_y_cierre`** → `aprobado`. El verde nace
+      aprobado, y eso es lo que hace que el trabajo diario de Posventa no
+      cambie: los verdes se siguen archivando en bloque, sin que nadie tenga
+      que aprobar 22 partes a mano. Lo que F-028 añade no es un permiso más:
+      es poder **rechazar** uno antes de que se archive.
+    - **cualquier otra cosa** → `pendiente`, incluido no tener veredicto.
+
+    Las **dos** condiciones hacen falta, y no es redundante: hoy F-004 no
+    produce un apto con otro destino, pero el día que alguien añada un destino
+    nuevo, lo que decide si un parte entra en el circuito que escribe en el ERP
+    de producción no puede ser solo el color del veredicto. Es exactamente la
+    pareja que ya exigía `admite_circuito` en F-026.
+
+    No confundir `pendiente` con «no hay veredicto»: son lo mismo **aquí** y
+    cosas distintas en las tres puertas, que siguen teniendo su error propio
+    para el segundo caso porque se arregla revalidando, no decidiendo.
+    """
+    if validacion is None:
+        return EstadoParte.PENDIENTE
+    if (
+        validacion.veredicto == Veredicto.APTO
+        and validacion.destino == Destino.ARCHIVO_Y_CIERRE
+    ):
+        return EstadoParte.APROBADO
+    return EstadoParte.PENDIENTE
+
+
+def estado_del_parte(
+    validacion: ResultadoValidacion | None,
+    decision_humana: DecisionEstado | None,
+    estado_cierre: str | None,
+) -> EstadoParte:
+    """En qué estado está un parte. **Esta es la única respuesta** (R2, R17).
+
+    Tres hechos entran —lo que dijo la máquina, la última decisión de una
+    persona y lo que dice la traza de cierre— y sale uno de los cuatro
+    estados. Ni el borde, ni la aplicación, ni el front, ni una vista SQL
+    tienen su propia copia de este criterio: se descartó a propósito una vista
+    `postventa.v_estado_parte` que lo calculara en SQL, porque sería un segundo
+    criterio escrito en otro lenguaje y divergiría a la primera corrección
+    (`design.md` §3).
+
+    **El orden en que resuelve es todo el criterio**, y va de lo que menos se
+    puede discutir a lo que más:
+
+    1. **el cierre gana a todo** (R18). Si la traza dice `cerrado` o
+       `ya_cerrada`, el parte está `cerrado` y no hay más que hablar: eso no es
+       una opinión nuestra, es un hecho del ERP que nosotros **leemos**.
+       `cerrado` es además **terminal** (R7), así que de aquí no sale ninguna
+       flecha: lo escrito en Sigrid y en SharePoint no se deshace desde aquí, y
+       cambiar el estado solo conseguiría que nuestra base dijera algo distinto
+       del ERP. La web lo explica en vez de fallar (R41).
+    2. **la última decisión humana manda** sobre la máquina (R9), y las dos
+       direcciones **no son simétricas**:
+       - **`rechazado` → `rechazado`, sin caducidad.** Ni aunque el veredicto
+         cambie, ni aunque pase a apto, ni aunque no haya huella con la que
+         contrastar. Lo automático puede **retirar** un permiso; no puede
+         concederlo. Si el rechazo caducara al cambiar el veredicto, bastaría
+         con reprocesar la remesa para que un parte que alguien miró y rechazó
+         volviera a entrar en la tanda.
+       - **`aprobado` → `aprobado` solo si su huella es la del veredicto
+         guardado ahora** (R19, que es F-026 R30 conservada). Si no lo es, se
+         cae al punto 3 y **decide la máquina**: que una aprobación deje de
+         contar no es que alguien haya rechazado el parte, y la pantalla los
+         distingue (R43).
+    3. **la máquina**: `estado_de_la_maquina` (R3, R4).
+
+    Y solo cuentan las decisiones **de una persona** (R26): una fila de máquina
+    del histórico es constancia, nunca criterio. Si contara, un parte que fue
+    verde y dejó de serlo seguiría aprobado por una anotación, y el histórico
+    se habría convertido en la segunda fuente de verdad que R16 evita.
+
+    Una decisión humana a `pendiente` o a `cerrado` **no mueve nada**: no se
+    puede pedir por el borde (R10), pero si una fila así llegara —de una
+    migración, de una semilla mal hecha— lo que tiene que pasar es que decida
+    la máquina, no que el parte quede colgado en un estado que nadie pidió.
+
+    > **Consecuencia que se declara porque se ve rara y es correcta**: si el
+    > veredicto cambia bajo una aprobación humana y **luego vuelve a ser el de
+    > antes** —alguien corrige un campo y deshace la corrección—, la aprobación
+    > **vuelve a contar**. Es lo que dice F-026: se aprobó *ese* veredicto, y
+    > este es exactamente *ese* veredicto (su R32). Con el estado derivado sale
+    > gratis; con el estado guardado habría que decidir a mano qué hacer.
+
+    Función **pura**: mismas entradas, misma salida, sin consultas y sin
+    reloj. Quien la llama trae los tres datos del repositorio de una sola vez
+    (`SituacionParte`), y nunca del cuerpo de la petición (R33).
+    """
+    if estado_cierre in ESTADOS_DE_CIERRE_EN_FIRME:
+        return EstadoParte.CERRADO
+
+    if decision_humana is not None and decision_humana.por_persona:
+        if decision_humana.estado is EstadoParte.RECHAZADO:
+            return EstadoParte.RECHAZADO
+        if decision_humana.estado is EstadoParte.APROBADO and _aprueba_lo_que_hay(
+            decision_humana, validacion
+        ):
+            return EstadoParte.APROBADO
+
+    return estado_de_la_maquina(validacion)
+
+
+def _aprueba_lo_que_hay(
+    decision: DecisionEstado, validacion: ResultadoValidacion | None
+) -> bool:
+    """¿La aprobación se tomó sobre **este** veredicto? (R19, R20).
+
+    Se compara la huella que quedó apuntada con la del veredicto que hay
+    guardado ahora. Volver a guardar el mismo veredicto da la misma huella y
+    **no invalida nada** (R20, F-026 R32 conservada), que no es un detalle
+    teórico: al recargar la pantalla hay que volver a subir la remesa, y eso
+    reprocesa cada parte. Si eso caducara la aprobación, el trabajo de
+    revisión se perdería cada vez que alguien pulsa F5.
+
+    Los dos huecos van hacia el lado seguro: sin veredicto guardado no hay con
+    qué comparar, y sin huella apuntada no se sabe sobre qué se decidió. En
+    los dos casos la aprobación **no cuenta**, porque el precio de equivocarse
+    hacia el otro lado es una incidencia cerrada en el ERP de producción que
+    no tocaba.
+
+    `huella_de_veredicto` es de F-026 y **no se toca** (D9): ni su criterio de
+    normalización ni su valor cambian en esta feature, y hay tres controles
+    negativos que lo vigilan (`design.md` §10).
+    """
+    if validacion is None or decision.huella_veredicto is None:
+        return False
+    return decision.huella_veredicto == huella_de_veredicto(validacion)

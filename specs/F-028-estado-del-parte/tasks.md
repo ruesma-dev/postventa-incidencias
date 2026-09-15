@@ -53,7 +53,7 @@
       `sql/06_cierres.sql`. **Fase RED**: traza del fallo antes de que exista el
       módulo.
 
-- [ ] **T3**: Añadir `estado_de_la_maquina(validacion)` y
+- [x] **T3**: Añadir `estado_de_la_maquina(validacion)` y
       `estado_del_parte(validacion, decision_humana, estado_cierre)` con el
       orden de `design.md` §3. | Verificación: mismo fichero — apto nace
       `aprobado` (R3); no apto nace `pendiente` (R4); sin veredicto,

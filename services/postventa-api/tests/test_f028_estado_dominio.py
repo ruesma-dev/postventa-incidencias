@@ -25,14 +25,30 @@ from dataclasses import fields, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from domain.models.aprobacion import huella_de_veredicto
 from domain.models.estado import (
     ESTADOS_DE_CIERRE_EN_FIRME,
     LIMITE_MOTIVO,
     DecisionEstado,
     EstadoParte,
     SituacionParte,
+    estado_de_la_maquina,
+    estado_del_parte,
 )
+from domain.models.firma import ClasificacionFirma
 from domain.models.persistencia import EstadoCierre
+from domain.models.validacion import (
+    Destino,
+    ResultadoValidacion,
+    Veredicto,
+    validar_parte,
+)
+
+from tests.utiles_validacion import (
+    CONFIANZA_DE_EJEMPLO,
+    extraccion_de_ejemplo,
+    lectura_de_firma,
+)
 
 #: El servicio, para leer el texto del DDL de F-009.
 SERVICIO = Path(__file__).resolve().parent.parent
@@ -285,3 +301,412 @@ def test_f028_r13_el_limite_del_motivo_lo_declara_el_dominio():
     fila. 500 caracteres es lo que dice `design.md` §8.4.
     """
     assert LIMITE_MOTIVO == 500
+
+
+# ==========================================================================
+# T3 · la derivación: el criterio, escrito una vez (R16, R17)
+# ==========================================================================
+#
+# El orden en que resuelve `estado_del_parte` **es** todo el criterio
+# (`design.md` §3), y estos son los casos que lo fijan:
+#
+#   1. el cierre gana a todo (R18);
+#   2. la última decisión humana manda sobre la máquina — `rechazado` sin
+#      caducidad, `aprobado` solo mientras su huella sea la del veredicto
+#      guardado ahora (R19, R20);
+#   3. la máquina: apto con destino `archivo_y_cierre` → `aprobado` (R3),
+#      cualquier otro veredicto → `pendiente` (R4);
+#   4. sin veredicto → `pendiente`.
+
+
+def _validacion_apta():
+    """Un veredicto **apto** emitido por F-004 de verdad, no montado a mano.
+
+    Sale de `validar_parte` a propósito: si mañana F-004 cambiara sus reglas,
+    estos tests se enterarían en vez de seguir derivando `aprobado` de un
+    veredicto que ya no existe.
+    """
+    extraccion = extraccion_de_ejemplo(hash_parte=HASH, observaciones=None)
+    firma = lectura_de_firma("humana", hash_parte=HASH)
+    validacion = validar_parte(extraccion, firma)
+    assert validacion.veredicto is Veredicto.APTO
+    assert validacion.destino is Destino.ARCHIVO_Y_CIERRE
+    return validacion
+
+
+def _validacion_no_apta(destino=Destino.COLA_VALIDACION_HUMANA):
+    """Un veredicto **no apto**, también emitido por F-004."""
+    if destino is Destino.COLA_VALIDACION_HUMANA:
+        extraccion = extraccion_de_ejemplo(hash_parte=HASH)
+        firma = lectura_de_firma("humana", hash_parte=HASH)
+    else:
+        extraccion = extraccion_de_ejemplo(hash_parte=HASH, observaciones=None)
+        firma = lectura_de_firma("marca_simple", hash_parte=HASH)
+    validacion = validar_parte(extraccion, firma)
+    assert validacion.destino is destino
+    return validacion
+
+
+def _decision(estado, *, validacion=None, huella=None, por_persona=True):
+    """La decisión de una persona sobre un veredicto concreto.
+
+    La huella se calcula con `huella_de_veredicto` del veredicto que se le
+    pasa, que es lo que hará `POST /api/estado`: se decide sobre **ese**
+    veredicto y se apunta cuál era.
+    """
+    if huella is None and validacion is not None:
+        huella = huella_de_veredicto(validacion)
+    return DecisionEstado(
+        hash_parte=HASH,
+        estado=estado,
+        decidido_at_utc=AHORA,
+        decidido_por=OID if por_persona else None,
+        huella_veredicto=huella,
+    )
+
+
+# --------------------------------------------------------------------------
+# R3, R4 · lo que dice la máquina, que es de dónde nace todo
+# --------------------------------------------------------------------------
+
+
+def test_f028_r3_un_parte_apto_nace_aprobado():
+    """R3 · el verde **nace aprobado**, y por eso el trabajo diario no cambia.
+
+    Es deliberado y es la decisión D2: los verdes se siguen archivando en
+    bloque, sin que nadie tenga que aprobar 22 partes a mano. Lo que F-028
+    añade no es un permiso más, es poder **rechazar** uno antes de que se
+    archive.
+    """
+    assert estado_de_la_maquina(_validacion_apta()) is EstadoParte.APROBADO
+
+
+def test_f028_r4_un_parte_no_apto_nace_pendiente():
+    """R4 · lo que la máquina no da por bueno espera a que alguien lo mire."""
+    for destino in (Destino.COLA_VALIDACION_HUMANA, Destino.REVISION_MANUAL):
+        validacion = _validacion_no_apta(destino)
+
+        assert estado_de_la_maquina(validacion) is EstadoParte.PENDIENTE, destino
+
+
+def test_f028_r3_un_apto_con_otro_destino_no_nace_aprobado():
+    """Las **dos** condiciones hacen falta: apto **y** `archivo_y_cierre`.
+
+    Hoy F-004 no produce esa combinación, y justo por eso hay que fijarla: el
+    día que alguien añada un destino nuevo, lo que decide si un parte entra en
+    el circuito que escribe en el ERP de producción no puede ser solo el color
+    del veredicto.
+    """
+    apto_pero_a_revision = ResultadoValidacion(
+        hash_parte=HASH,
+        veredicto=Veredicto.APTO,
+        destino=Destino.REVISION_MANUAL,
+        motivos=(),
+        clasificacion_firma=ClasificacionFirma.HUMANA,
+        observaciones=None,
+        confianza_observaciones=CONFIANZA_DE_EJEMPLO,
+    )
+
+    assert estado_de_la_maquina(apto_pero_a_revision) is EstadoParte.PENDIENTE
+
+
+def test_f028_r4_sin_veredicto_el_parte_esta_pendiente():
+    """Sin veredicto, `pendiente`: no hay nada que la máquina haya dicho.
+
+    Y no es lo mismo que «la máquina dijo que no»: las tres puertas siguen
+    teniendo su error propio para este caso, porque se arregla revalidando y
+    no decidiendo (`design.md` §3, punto 4).
+    """
+    assert estado_de_la_maquina(None) is EstadoParte.PENDIENTE
+    assert estado_del_parte(None, None, None) is EstadoParte.PENDIENTE
+
+
+def test_f028_r2_sin_nada_registrado_el_estado_sale_del_veredicto():
+    """R2 · la derivación es **total** desde el primer día.
+
+    Ningún parte de los que ya están en la base tiene fila en el histórico ni
+    traza de cierre, y todos tienen que dar un estado sin rellenar nada hacia
+    atrás. Es la ventaja de derivar que `design.md` §3 pone en la tabla.
+    """
+    assert estado_del_parte(_validacion_apta(), None, None) is EstadoParte.APROBADO
+    assert estado_del_parte(_validacion_no_apta(), None, None) is EstadoParte.PENDIENTE
+
+
+# --------------------------------------------------------------------------
+# R18, R7 · el cierre gana a todo
+# --------------------------------------------------------------------------
+
+
+def test_f028_r18_el_cierre_gana_a_la_decision_de_una_persona():
+    """R18 · si la traza dice que está cerrada, el parte está `cerrado`.
+
+    Gana a la decisión humana **y** al veredicto, y es lo que hace que nuestra
+    base no pueda contradecir al ERP: `cerrado` no es una opinión nuestra, es
+    un hecho de otro sistema que nosotros **leemos**.
+    """
+    validacion = _validacion_apta()
+    rechazado = _decision(EstadoParte.RECHAZADO, validacion=validacion)
+
+    for en_firme in ESTADOS_DE_CIERRE_EN_FIRME:
+        assert (
+            estado_del_parte(validacion, rechazado, en_firme) is EstadoParte.CERRADO
+        ), en_firme
+
+
+def test_f028_r18_el_cierre_gana_aunque_no_haya_veredicto():
+    """Y gana incluso sin veredicto: la incidencia está cerrada igual."""
+    assert estado_del_parte(None, None, "cerrado") is EstadoParte.CERRADO
+
+
+def test_f028_r18_un_cierre_a_medias_no_deja_el_parte_cerrado():
+    """Un ensayo no es un cierre, y un error es una incidencia abierta.
+
+    Es la mitad que importa de R18: si `dry_run_ok` o `error` cerraran el
+    parte, quedaría en un estado **terminal** (R7) sin que nadie hubiera
+    escrito en Sigrid, y no habría forma de volver a intentarlo.
+    """
+    validacion = _validacion_apta()
+
+    for a_medias in ("pendiente", "dry_run_ok", "error"):
+        assert (
+            estado_del_parte(validacion, None, a_medias) is EstadoParte.APROBADO
+        ), a_medias
+
+
+# --------------------------------------------------------------------------
+# R5, R9 · la decisión humana manda sobre la máquina
+# --------------------------------------------------------------------------
+
+
+def test_f028_r5_un_rechazo_humano_manda_sobre_un_veredicto_apto():
+    """R5 · **el caso que hoy es imposible**, y es medio encargo.
+
+    Hasta F-028 un parte verde pasaba las tres puertas sin consultar nada, así
+    que rechazarlo era un botón que no hacía nada (§0.5). Aquí queda escrito
+    que el rechazo gana: lo automático puede retirar un permiso, nunca
+    concederlo.
+    """
+    validacion = _validacion_apta()
+    rechazado = _decision(EstadoParte.RECHAZADO, validacion=validacion)
+
+    assert estado_del_parte(validacion, rechazado, None) is EstadoParte.RECHAZADO
+
+
+def test_f028_r9_una_aprobacion_humana_rescata_un_parte_no_apto():
+    """R9 · una persona mueve a `aprobado` lo que la máquina dejó pendiente.
+
+    Es la puerta que abría F-026 y que F-028 conserva, ahora sin tabla de
+    aprobaciones: la decisión vive en el histórico y la última humana manda.
+    """
+    validacion = _validacion_no_apta()
+    aprobado = _decision(EstadoParte.APROBADO, validacion=validacion)
+
+    assert estado_del_parte(validacion, aprobado, None) is EstadoParte.APROBADO
+
+
+# --------------------------------------------------------------------------
+# R19, R20 · la huella: la aprobación vale para el veredicto que se aprobó
+# --------------------------------------------------------------------------
+
+
+def test_f028_r20_la_misma_huella_conserva_la_aprobacion():
+    """R20 · volver a guardar **el mismo** veredicto no invalida nada.
+
+    Es F-026 R32 conservada, y no es teórica: al recargar la pantalla hay que
+    volver a subir la remesa, y eso reprocesa cada parte y vuelve a guardar su
+    veredicto. Si eso caducara la aprobación, el trabajo de revisión se
+    perdería cada vez que alguien pulsa F5.
+    """
+    validacion = _validacion_no_apta()
+    aprobado = _decision(EstadoParte.APROBADO, validacion=validacion)
+
+    assert estado_del_parte(validacion, aprobado, None) is EstadoParte.APROBADO
+
+
+def test_f028_r19_una_aprobacion_de_otro_veredicto_no_cuenta():
+    """R19 · se aprobó *ese* veredicto, y este ya no es *ese*.
+
+    Es F-026 R30 conservada, resuelta ahora **al derivar** y no con una
+    escritura que marca la fila (R57): con el estado derivado no hay dato
+    guardado que pueda quedarse viejo, y resolverlo al leer elimina la ventana
+    entre las dos escrituras.
+
+    Y cae a la máquina, no a `rechazado`: que una aprobación deje de contar no
+    es que alguien haya rechazado el parte (R43).
+    """
+    validacion = _validacion_no_apta()
+    de_otro = _decision(EstadoParte.APROBADO, huella="huella-de-un-veredicto-anterior")
+
+    assert estado_del_parte(validacion, de_otro, None) is EstadoParte.PENDIENTE
+
+
+def test_f028_r19_una_aprobacion_sin_huella_no_cuenta():
+    """Sin huella no se puede comprobar sobre qué se decidió, y no cuenta.
+
+    El fallo va hacia el lado seguro a propósito: dar por buena una aprobación
+    que no se puede contrastar con el veredicto de ahora es exactamente lo que
+    R19 impide, y el precio de equivocarse es una incidencia cerrada en el ERP
+    de producción que no tocaba.
+    """
+    validacion = _validacion_no_apta()
+    sin_huella = _decision(EstadoParte.APROBADO, huella=None)
+
+    assert estado_del_parte(validacion, sin_huella, None) is EstadoParte.PENDIENTE
+
+
+def test_f028_r19_una_aprobacion_de_otro_veredicto_no_estorba_a_la_maquina():
+    """Si el veredicto cambió **a apto**, el parte está aprobado por la máquina.
+
+    Cae al punto 3 de la derivación y decide la máquina, que es lo correcto:
+    alguien tecleó el código de obra que faltaba y el parte es verde. La
+    aprobación vieja no cuenta, pero tampoco estorba.
+    """
+    apta = _validacion_apta()
+    de_otro = _decision(EstadoParte.APROBADO, huella="huella-de-cuando-no-era-apto")
+
+    assert estado_del_parte(apta, de_otro, None) is EstadoParte.APROBADO
+
+
+def test_f028_r20_la_aprobacion_revive_si_el_veredicto_vuelve_a_ser_el_de_antes():
+    """La consecuencia que `design.md` §3 declara porque se ve rara y es correcta.
+
+    Alguien corrige un campo, la aprobación deja de contar; deshace la
+    corrección y **vuelve a contar**. Es lo que dice F-026: se aprobó *ese*
+    veredicto, y este es exactamente *ese* veredicto (su R32). Con el estado
+    derivado sale gratis; con el estado guardado habría que decidir a mano qué
+    hacer.
+    """
+    antes = _validacion_no_apta()
+    aprobado = _decision(EstadoParte.APROBADO, validacion=antes)
+    otro = _validacion_no_apta(Destino.REVISION_MANUAL)
+
+    assert estado_del_parte(otro, aprobado, None) is EstadoParte.PENDIENTE
+    assert estado_del_parte(antes, aprobado, None) is EstadoParte.APROBADO
+
+
+# --------------------------------------------------------------------------
+# La asimetría: el rechazo **no caduca** nunca
+# --------------------------------------------------------------------------
+
+
+def test_f028_r5_un_rechazo_no_caduca_aunque_cambie_el_veredicto():
+    """Lo automático puede **retirar** un permiso; no puede concederlo.
+
+    Es la simétrica de R19 y es lo que hace segura la asimetría: si el rechazo
+    caducara al cambiar el veredicto, bastaría con reprocesar la remesa para
+    que un parte que alguien miró y rechazó volviera a entrar en la tanda.
+    """
+    rechazado_sobre_otro = _decision(
+        EstadoParte.RECHAZADO, huella="huella-de-un-veredicto-anterior"
+    )
+
+    assert (
+        estado_del_parte(_validacion_apta(), rechazado_sobre_otro, None)
+        is EstadoParte.RECHAZADO
+    )
+    assert (
+        estado_del_parte(_validacion_no_apta(), rechazado_sobre_otro, None)
+        is EstadoParte.RECHAZADO
+    )
+
+
+def test_f028_r5_un_rechazo_sin_huella_sigue_valiendo():
+    """Y tampoco depende de la huella: el rechazo no se contrasta con nada."""
+    rechazado = _decision(EstadoParte.RECHAZADO, huella=None)
+
+    assert (
+        estado_del_parte(_validacion_apta(), rechazado, None) is EstadoParte.RECHAZADO
+    )
+
+
+def test_f028_r7_ni_siquiera_un_rechazo_gana_al_cierre():
+    """R7 · `cerrado` es terminal y de ahí no sale ninguna flecha.
+
+    El rechazo no caduca, pero tampoco reabre nada: lo escrito en el ERP no se
+    deshace desde aquí, y decir `rechazado` de una incidencia cerrada sería
+    que nuestra base dijera algo distinto de Sigrid. La web lo **explica** en
+    vez de fallar (R41).
+    """
+    rechazado = _decision(EstadoParte.RECHAZADO, huella=None)
+
+    assert (
+        estado_del_parte(_validacion_apta(), rechazado, "cerrado")
+        is EstadoParte.CERRADO
+    )
+
+
+# --------------------------------------------------------------------------
+# R26 · el histórico es constancia, nunca criterio
+# --------------------------------------------------------------------------
+
+
+def test_f028_r26_una_fila_de_maquina_no_decide_nada():
+    """R26 · ninguna puerta decide leyendo una fila que no firmó una persona.
+
+    Es lo que impide que el histórico se convierta en la segunda fuente de
+    verdad que R16 evita. Aquí se comprueba con el caso que lo demostraría: si
+    una fila de máquina `aprobado` —escrita cuando el parte era verde—
+    contara, un parte que después dejó de ser apto seguiría aprobado por una
+    anotación. Se apunta lo que pasó; lo que vale se deriva.
+
+    `estado_del_parte` recibe la **decisión humana**, así que una fila de
+    máquina no debería llegar hasta aquí; el caso se prueba pasándola a
+    propósito, que es la única forma de comprobar que tampoco así decide.
+    """
+    de_la_maquina = _decision(EstadoParte.APROBADO, huella=None, por_persona=False)
+
+    assert (
+        estado_del_parte(_validacion_no_apta(), de_la_maquina, None)
+        is EstadoParte.PENDIENTE
+    )
+
+
+def test_f028_r10_una_decision_a_pendiente_o_a_cerrado_no_mueve_nada():
+    """R10 · a `pendiente` no se vuelve a mano, y a `cerrado` tampoco se llega.
+
+    El borde ya rechazará con 400 cualquier destino que no sea uno de los dos
+    manuales, pero la derivación no se apoya en eso: si una fila con un estado
+    imposible llegara —de una migración, de una semilla mal hecha—, lo que
+    tiene que pasar es que decida la máquina, no que el parte quede colgado en
+    un estado que nadie pidió.
+    """
+    a_pendiente = _decision(EstadoParte.PENDIENTE, huella=None)
+    a_cerrado = _decision(EstadoParte.CERRADO, huella=None)
+    apta = _validacion_apta()
+
+    assert estado_del_parte(apta, a_pendiente, None) is EstadoParte.APROBADO
+    assert estado_del_parte(apta, a_cerrado, None) is EstadoParte.APROBADO
+
+
+# --------------------------------------------------------------------------
+# R17 · el criterio está escrito **una vez**
+# --------------------------------------------------------------------------
+
+
+def test_f028_r17_nadie_mas_deriva_el_estado_del_parte():
+    """R17 · ni el borde, ni la aplicación, ni el front tienen su propia copia.
+
+    La forma de romper R17 no es escribir otra función con el mismo nombre: es
+    que alguien, en un `if` suelto, vuelva a decidir que «apto con destino
+    `archivo_y_cierre` quiere decir aprobado». Eso es lo que se busca aquí:
+    módulos de producción que hablen a la vez del veredicto de F-004 y de los
+    estados de F-028.
+
+    `domain/models/estado.py` queda fuera por lo evidente: es el dueño del
+    criterio, y meterlo haría que el guardia se denunciara a sí mismo. Es el
+    mismo apaño que ya usa el test de arquitectura de F-004.
+    """
+    sospechosos = []
+    for ruta in sorted(SERVICIO.rglob("*.py")):
+        if ".venv" in ruta.parts or "tests" in ruta.parts:
+            continue
+        if ruta.name == "estado.py" and ruta.parent.name == "models":
+            continue
+        texto = ruta.read_text(encoding="utf-8")
+        if "Veredicto.APTO" in texto and "EstadoParte" in texto:
+            sospechosos.append(str(ruta.relative_to(SERVICIO)))
+
+    assert sospechosos == [], (
+        "alguien vuelve a derivar el estado a partir del veredicto fuera del "
+        "dominio: el criterio se escribe una sola vez (R17)"
+    )

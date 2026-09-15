@@ -31,7 +31,7 @@
 
 ## Bloque 0 · La red de seguridad, antes de tocar nada
 
-- [ ] **T1**: Crear `services/postventa-api/tests/test_f028_puertas.py` con los
+- [x] **T1**: Crear `services/postventa-api/tests/test_f028_puertas.py` con los
       **control-negativo** que tienen que seguir en verde al final del trabajo:
       un parte no apto **sin decisión humana** no llega a archivar, ni a
       adjuntar, ni a cerrar; ninguno de los tres pasos lee la decisión del

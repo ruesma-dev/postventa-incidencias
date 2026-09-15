@@ -45,7 +45,7 @@
 
 ## Bloque 1 · El dominio del estado
 
-- [ ] **T2**: Crear `domain/models/estado.py` con `EstadoParte` (los cuatro),
+- [x] **T2**: Crear `domain/models/estado.py` con `EstadoParte` (los cuatro),
       `DecisionEstado`, `SituacionParte`, `ESTADOS_DE_CIERRE_EN_FIRME` y
       `LIMITE_MOTIVO`. **Dominio puro.** | Verificación:
       `tests/test_f028_estado_dominio.py` — el enumerado tiene cuatro valores y

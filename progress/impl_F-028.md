@@ -1461,7 +1461,7 @@ situación leída del repositorio.
 | **Tests ejecutados** (servicio `api`) | **2.517 pasados, 13 saltados, 0 fallos** |
 | **Tests del servicio `front`** | en verde (caché del portero: árbol sin cambios) |
 | **Casos en `test_f028_puertas.py`** | **48** (16 de T1 intactos + 2 de T10 + 30 de T11) |
-| **Cobertura de las líneas cambiadas** | **100,0 %** — 158/158, umbral 80 %, nivel `estandar` |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 183/183, umbral 80 %, nivel `estandar` |
 | **Mutantes generados / supervivientes** | automáticos **19 / 0** (0 timeouts, 274,2 s) · **a mano 13 / 0** |
 | **Tiempo de la suite** | **103,19 s** bajo medición de cobertura (64,9 s sin ella) |
 | **Ruff** | Sin avisos nuevos: los dos que quedan en `tests/utiles_sharepoint.py` (`I001`, `RET501`) **ya estaban en `HEAD`** antes de tocarlo |
@@ -1594,9 +1594,9 @@ Cuatro apuntes para quien lo coja:
 ## 35 · Estado al cerrar el encargo
 
 - `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de
-  cobertura al **100,0 %** de las 158 líneas cambiadas.
-- Árbol limpio, **2 commits** sobre `2393fa2` (`4130495`, `51fbe77`), todos
-  locales. **Sin `push`.**
+  cobertura al **100,0 %** de las 183 líneas cambiadas.
+- Árbol limpio, **3 commits** sobre `2393fa2` (`4130495` T10, `51fbe77` T11 y
+  el de este informe), todos locales. **Sin `push`.**
 - `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
   `done` no es cosa del implementer.
 - **La base real y el ERP no se han tocado**: todo corre con

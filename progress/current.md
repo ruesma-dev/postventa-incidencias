@@ -2475,7 +2475,7 @@ ahora falla antes y mejor, y el control de campos del contexto de F-003.
 lo que T14 sustituye. Y quedan **dos casos inertes** en
 `tests/test_f026_puertas.py` que T15 debería retirar con `Aprobacion`.
 
-Cobertura de líneas cambiadas 100,0 % (158/158). Mutación: 19/19 muertos en la
+Cobertura de líneas cambiadas 100,0 % (183/183). Mutación: 19/19 muertos en la
 campaña automática —que **solo genera un mutante de este bloque**, porque la
 herramienta no muta comparaciones de identidad— más **13 mutados a mano, 13
 muertos**, entre ellos los tres que reabren la puerta al `rechazado`, al

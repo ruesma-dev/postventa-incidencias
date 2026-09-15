@@ -113,11 +113,11 @@
 
 ## Bloque 4 · Las tres puertas
 
-- [ ] **T10**: `contexto_parte.py`: `aprobacion` → `situacion`, con la
+- [x] **T10**: `contexto_parte.py`: `aprobacion` → `situacion`, con la
       docstring que diga que viene del repositorio y **nunca del cuerpo**. |
       Verificación: la suite existente sigue en verde salvo lo que T11 sustituye.
 
-- [ ] **T11**: `paso_archivo`, `paso_grafico` y `paso_cierre`: `_exigir_admitido`
+- [x] **T11**: `paso_archivo`, `paso_grafico` y `paso_cierre`: `_exigir_admitido`
       pasa a exigir `EstadoParte.APROBADO` y **se retira el atajo del apto**
       (`design.md` §6). | Verificación: `tests/test_f028_puertas.py` ampliado —
       los cuatro estados contra los tres pasos: `aprobado` pasa, `pendiente` no,

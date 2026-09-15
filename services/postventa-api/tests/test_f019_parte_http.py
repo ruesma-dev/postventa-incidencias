@@ -40,11 +40,19 @@ from domain.models.persistencia import ResultadoGuardado
 from tests.utiles_ia import CAMPOS_DE_EJEMPLO
 from tests.utiles_pg import RepositorioEnMemoria
 
-#: El contrato de la respuesta (R7): estas cuatro claves y **ninguna más**.
+#: El contrato de la respuesta (R7): estas claves y **ninguna más**.
+#:
+#: Eran cuatro hasta F-026, que añade `aprobacion` (R22): si el parte consta
+#: aprobado por una persona, la respuesta lo dice —y dice si esa aprobación
+#: sigue vigente—, para que la pantalla lo sepa sin una petición por parte.
+#: Ampliar esta lista es ampliar el contrato, y por eso se toca aquí y se ve en
+#: la revisión. Lo que hay dentro del bloque lo fija
+#: `tests/test_f026_aprobar_http.py`, y **nunca** lleva el `oid` de nadie.
 CLAVES_DE_LA_RESPUESTA = {
     "hash_parte",
     "resultado_parte",
     "resultado_validacion",
+    "aprobacion",
     "avisos",
 }
 
@@ -155,7 +163,12 @@ def _json(respuesta: func.HttpResponse) -> dict:
 
 
 def test_f019_r7_guardar_un_parte_devuelve_200_con_su_contrato(monkeypatch):
-    """R7 · 200 con las cuatro claves de `design.md` §6 y **ninguna más**."""
+    """R7 · 200 con las claves de `design.md` §6 y **ninguna más**.
+
+    Cinco desde F-026, que añadió `aprobacion` (R22). Que este test se enterara
+    es su trabajo: el contrato de la respuesta no crece sin que alguien lo
+    escriba aquí.
+    """
     repositorio = RepositorioEnMemoria()
 
     respuesta = _responder(monkeypatch, repositorio, _cuerpo())
@@ -470,10 +483,10 @@ def test_f019_r7_el_envoltorio_delega_el_resto_del_puerto():
     tecleado.
     """
     from domain.models.persistencia import EstadoArchivo, TrazaArchivo
-    from interface_adapters.api.parte import _AnotaLosResultados
+    from interface_adapters.api.parte import AnotaLosResultados
 
     interno = RepositorioEnMemoria(cola=())
-    envoltorio = _AnotaLosResultados(interno)
+    envoltorio = AnotaLosResultados(interno)
     traza = TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.PENDIENTE)
 
     envoltorio.guardar_remesa(remesa="una remesa inventada")

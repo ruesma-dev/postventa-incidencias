@@ -21,6 +21,12 @@ Tres campos de este módulo llevan dato personal y van marcados uno a uno:
 directo**), y `RegistroRemesa.usuario_oid` y `TrazaCierre.confirmado_por` son
 el identificador opaco de Entra ID de un empleado (**seudónimo**). De un
 empleado se guarda el `oid` y **nunca** su correo ni su nombre.
+
+La misma regla rige `Aprobacion.aprobado_por` (F-026), que vive en
+`domain/models/aprobacion.py` y no aquí: la aprobación humana es un hecho con
+ciclo de vida propio, como el cierre o el gráfico, y por eso tiene su módulo.
+Lo que se guarda de quien aprueba es el `oid` opaco y nada más — nunca su
+correo, nunca su nombre y nunca su login del ERP (R13 de F-026).
 """
 
 from __future__ import annotations
@@ -35,11 +41,13 @@ __all__ = [
     "EntradaCola",
     "EstadoArchivo",
     "EstadoCierre",
+    "EstadoGrafico",
     "PreferenciasUsuario",
     "RegistroRemesa",
     "ResultadoGuardado",
     "TrazaArchivo",
     "TrazaCierre",
+    "TrazaGrafico",
     "nuevo_id",
 ]
 
@@ -85,6 +93,27 @@ class EstadoCierre(str, Enum):
     PENDIENTE = "pendiente"
     DRY_RUN_OK = "dry_run_ok"
     CERRADO = "cerrado"
+    ERROR = "error"
+    YA_CERRADA = "ya_cerrada"
+
+
+class EstadoGrafico(str, Enum):
+    """En qué punto está el parte como gráfico de la reclamación (F-012).
+
+    `ADJUNTADO` es **terminal**: una vez escrito, no se pisa (R30). Es la
+    **primera capa de idempotencia** de la feature: un reintento del mismo
+    parte se responde desde aquí, sin llamar a la pasarela ni mandar los bytes
+    otra vez (R24).
+
+    `YA_CERRADA` no es un error y no es del gráfico: es la reclamación que ya
+    estaba cerrada antes de llegar nosotros, a la que **no se le adjunta nada**
+    (R16). El gráfico es la primera mitad del cierre y no se deja en el ERP sin
+    la segunda que lo justifica.
+    """
+
+    PENDIENTE = "pendiente"
+    DRY_RUN_OK = "dry_run_ok"
+    ADJUNTADO = "adjuntado"
     ERROR = "error"
     YA_CERRADA = "ya_cerrada"
 
@@ -157,6 +186,57 @@ class TrazaCierre:
     motivo: str | None = None
     dry_run_at_utc: datetime | None = None
     cerrado_at_utc: datetime | None = None
+
+
+@dataclass(frozen=True)
+class TrazaGrafico:
+    """Qué pasó al adjuntar el parte a la reclamación como gráfico (F-012).
+
+    Una sola por parte: la clave es el `hash_parte`, así que subir dos veces el
+    mismo parte no genera dos trazas.
+
+    Guarda **identificadores y el `sha256`**, y ni un byte del PDF ni un campo
+    manuscrito (R45): el documento vive en SharePoint y en Sigrid, y el disco
+    del servidor es compartido.
+
+    `sha256` y `hash_parte` son **dos cosas distintas** y aquí conviven a
+    propósito (D-L): el segundo identifica el parte y es la clave de todas las
+    trazas; el primero identifica **los bytes exactos** que se enviaron y es lo
+    que la pasarela cotejó. Guardarlo es lo que permite explicar, meses
+    después, qué fichero hay dentro del ERP.
+
+    `reclamacion_ide` es el `con.ide` de la reclamación, guardado **desde el
+    primer dry-run**: es la clave estable del ERP con la que se cruzan nuestras
+    filas, mientras que `numero_incidencia` (`con.cod`) es legible pero no es
+    clave.
+    """
+
+    hash_parte: str
+    numero_incidencia: str
+    estado: EstadoGrafico
+    #: El `con.ide` de la reclamación en el ERP. Se rellena ya en el dry-run.
+    reclamacion_ide: int | None = None
+    #: El hash de **los bytes enviados**, no la huella de páginas del parte.
+    sha256: str | None = None
+    bytes: int | None = None
+    nombre_fichero: str | None = None
+    gratipide: int | None = None
+    #: El `cod` que genera la pasarela. **Lleva el login del ERP dentro**
+    #: (sello + 4 dígitos + `.login`) porque es el identificador del gráfico
+    #: tal y como Sigrid lo produce, y es lo que hace falta para localizarlo.
+    gra_cod: str | None = None
+    gra_ide_negocio: int | None = None
+    #: Puede quedar `None` en el caso idempotente: la respuesta no lo trae
+    #: [MEDIDO]. No se inventa.
+    gra_ide_documental: int | None = None
+    rcg_ide: int | None = None
+    idempotente: bool = False
+    #: **DATO PERSONAL seudónimo**: el `oid` de Entra de quien confirmó. Nunca
+    #: su correo, su nombre ni su login de Sigrid (R44).
+    confirmado_por: str | None = None
+    motivo: str | None = None
+    dry_run_at_utc: datetime | None = None
+    adjuntado_at_utc: datetime | None = None
 
 
 @dataclass(frozen=True)

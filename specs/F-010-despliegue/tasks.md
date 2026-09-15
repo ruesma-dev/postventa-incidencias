@@ -107,8 +107,10 @@
       Vault se concede **antes** de fijar las App Settings y se verifica
       (R11); toda App Setting de la lista de secretos se fija por **referencia
       a Key Vault** y ninguna con valor (R10); `IA_TIMEOUT_S` y
-      `GRAPH_TIMEOUT_S` quedan por debajo del presupuesto (R20); **ninguna
-      variable `SIGRID_*`** (R28); **`ARCHIVO_HABILITADO` apagado** (R33);
+      `GRAPH_TIMEOUT_S` quedan por debajo del presupuesto (R20); **la
+      configuración sensible de Sigrid no se escribe aquí** (R28, con su
+      premisa enmendada el 2026-09-03: ver el recuadro bajo R28 en
+      `requirements.md`); **`ARCHIVO_HABILITADO` apagado** (R33);
       `-WhatIf` (R3); confirmación (R4); y al
       menos cinco códigos de salida distintos, todos únicos (R5).
 

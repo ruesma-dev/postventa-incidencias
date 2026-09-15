@@ -7,7 +7,11 @@
 //   js/cola.js       el límite de concurrencia               (R7-R12)
 //   js/api.js        timeout, reintentos, clasificación      (R23-R27)
 //   js/pipeline.js   qué se pide, en qué orden y qué viaja   (R8, R13-R22)
-//   js/confirmacion.js  el doble clic antes de archivar      (R19)
+//                    y, desde F-025, el CIRCUITO de un parte:
+//                    archivar → adjuntar → cerrar            (F-025 R7)
+//   js/confirmacion.js  el doble clic antes de escribir. Desde
+//                       F-025 es UNA sola confirmación para
+//                       los tres pasos           (R19, F-009 R15, F-025 R2)
 //   js/traza.js      el único registro permitido             (R28)
 //
 // Aquí no hay ni un bucle de reintento, ni un cálculo de veredicto, ni una
@@ -17,6 +21,13 @@
 function appPostventa() {
   const config = window.CONFIG_POSTVENTA;
   const api = window.Api.crearApi({ baseApi: config.baseApi, config: config });
+
+  // F-026 R51 · el autoguardado de las correcciones. Vive en el cierre y no en
+  // el estado de Alpine a propósito: no es un dato que se pinte —lo que se
+  // pinta son `estadoAutoguardado` y `mensajeAutoguardado`, que sí están
+  // declarados abajo— y meterlo en el estado lo envolvería en el proxy
+  // reactivo sin ninguna ganancia. Se monta en `_autoguardado()`.
+  let autoguardado = null;
 
   return {
     // --- estado del servicio (R27) ---
@@ -50,15 +61,59 @@ function appPostventa() {
     parteAbierto: null,
     urlPdf: "",
     mensajeRevalidacion: "",
+    // F-026 R52 · los tres estados del autoguardado —guardando, guardado y no
+    // se ha podido guardar— y su texto. **Nacen declarados** para que Alpine
+    // los haga reactivos: añadirlos a mitad de sesión no repintaría nada, que
+    // es el defecto que F-025 documentó con `paso`. Y lo que se pinta cuando
+    // el guardado falla es lo único que separa «no se guardó» de que la
+    // persona suponga que sí.
+    estadoAutoguardado: "",
+    mensajeAutoguardado: "",
+    // F-026 · qué pasó con la última aprobación que se pidió. Nace declarado
+    // para que Alpine lo haga reactivo, como todo lo demás de esta pantalla.
+    mensajeAprobacion: "",
     CAMPOS: window.Pipeline.CAMPOS_DEL_PARTE,
 
-    // --- archivo (R19-R22, R25) ---
+    // --- archivar y cerrar, en un solo gesto (F-025 R1, R2) ---
     // El estado de la confirmación lo compone `js/confirmacion.js`: aquí solo
-    // se guarda lo que devuelve, sin interpretarlo.
+    // se guarda lo que devuelve, sin interpretarlo. Desde F-025 es **la
+    // única** confirmación del circuito, y cubre los tres pasos: el archivo en
+    // SharePoint, el gráfico adjunto a la reclamación y el cierre.
     confirmacionArchivo: null,
     avisoArchivo: "",
     entornoNoArchiva: "",
     resultadosArchivo: [],
+
+    // F-025 R12 · el denominador de la barra es el tamaño de **la tanda**, no
+    // el de la remesa. Con el viejo, archivar 4 partes de 22 enseñaba un 18 %
+    // al terminar, y una barra que no llega al final parece un proceso
+    // colgado.
+    totalTanda: 0,
+
+    // F-025 R21 · la ventana de escritura del ERP se ha encontrado cerrada.
+    // Los partes que queden **siguen archivando** y no le piden nada al ERP:
+    // veinte partes por dos llamadas de 503 garantizado es ruido, y el archivo
+    // sí sirve —deja el documento guardado y el parte listo para la tanda
+    // siguiente—.
+    erpCerrado: false,
+
+    // F-025 R22 · la ventana del **archivo** se ha encontrado cerrada, y eso
+    // sí para la tanda: sin archivo no hay nada que adjuntar ni que cerrar.
+    tandaDetenida: false,
+
+    // --- cierre en Sigrid (F-009) ---
+    // Quién dice ser el usuario, para poder firmar el cierre en el ERP. Lo
+    // sirve el proxy de la Static Web App y NO está firmado: es una traza de
+    // quién lo pidió, no un control de acceso. Con quién se firma de verdad lo
+    // decide el ERP, que tiene que confirmar el login antes de escribir nada.
+    usuario: { usuarioOid: "", correo: "" },
+    // F-025 R5 · aquí vivían `dryRunCierre` y `dryRunGrafico`, el cálculo
+    // previo que se enseñaba **antes** de confirmar. La pantalla previa se
+    // retiró entera (P1, opción a): lo que desaparece es la pantalla, no la
+    // verificación — el backend sigue haciendo su comprobación contra el ERP
+    // dentro de la misma llamada que escribe (`design.md` §2).
+    entornoNoCierra: "",
+    resultadosCierre: [],
 
     // =====================================================================
     // Estado del servicio
@@ -161,6 +216,12 @@ function appPostventa() {
         estado: "pendiente",
         semaforo: "",
         error: "",
+        // F-025 R13 · en cuál de los tres pasos está ahora mismo: archivando,
+        // adjuntando o cerrando. Nace declarado para que Alpine lo haga
+        // reactivo; añadirlo a mitad de tanda no repintaría la fila.
+        paso: "",
+        grafico: "",
+        cerrado: false,
         extraccion: null,
         firma: null,
         validacion: null,
@@ -169,6 +230,17 @@ function appPostventa() {
         // F-019 R27: hasta que conste guardado, el parte no es archivable.
         guardado: false,
         errorGuardado: "",
+        // F-026 R22 · lo que el backend dice de la aprobación de este parte:
+        // `{estado, destino_aprobado, motivos_aprobados, aprobado_at_utc}`, o
+        // `null` si no lo ha aprobado nadie. **Nace declarada** aunque nazca
+        // vacía: añadirla a mitad de sesión no la haría reactiva y la marca
+        // del parte aprobado no repintaría, que es el defecto que F-025
+        // documentó con `paso`.
+        //
+        // Viene SIEMPRE del backend —de `/api/parte` o de `/api/aprobar`—,
+        // nunca se compone aquí: quien decide si sigue vigente es quien la
+        // escribió.
+        aprobacion: null,
       };
     },
 
@@ -177,6 +249,10 @@ function appPostventa() {
     // =====================================================================
     async _procesarRemesa() {
       this.fase = "procesando";
+      // F-025 R12 · el denominador de la barra es **el tamaño de la tanda**, y
+      // esta tanda es la remesa entera. Un solo `totalTanda` para las dos
+      // fases: dos denominadores serían dos formas de equivocarse.
+      this.totalTanda = this.partes.length;
       await this._porLaCola(this.partes, (parte) => this._procesarUno(parte));
       this.fase = "revision";
     },
@@ -219,11 +295,32 @@ function appPostventa() {
       // constancia, o un error que nadie sabe leer.
       parte.guardado = Boolean(guardado && guardado.ok);
       parte.errorGuardado = (guardado && guardado.motivo) || "";
+      // F-026 R22, R31 · lo que el backend dice de la aprobación, después de
+      // guardar. Solo se pisa cuando el guardado salió bien: un guardado
+      // fallido no sabe nada de la aprobación, y ponerla a `null` borraría de
+      // la pantalla una decisión que sigue escrita en la base.
+      //
+      // Cuando sí salió bien, esto es lo que hace que una revalidación que
+      // **revocó** la aprobación se vea en el acto: la revocación ocurre en la
+      // escritura, y esta es la respuesta de esa misma escritura.
+      if (guardado && guardado.ok) {
+        parte.aprobacion = guardado.aprobacion;
+        // F-026 R51 · y lo que acaba de quedar guardado es contra lo que se
+        // compara la siguiente pulsación. Sin esta foto, escribir el mismo
+        // valor que ya está en la base dispararía un guardado de más.
+        this._autoguardado().anotarGuardado(
+          parte,
+          window.Pipeline.valoresDeCampos(parte),
+        );
+      }
     },
 
     _anotarVeredicto(parte, validacion) {
       parte.validacion = validacion;
-      parte.semaforo = window.Pipeline.semaforoDe(validacion);
+      // F-026 R36 · el semáforo mira las dos cosas: lo que dijo la máquina y
+      // lo que decidió una persona. Un parte aprobado no se pinta como uno que
+      // siempre fue verde.
+      parte.semaforo = window.Pipeline.semaforoDe(validacion, parte.aprobacion);
       parte.estado = "listo";
     },
 
@@ -234,14 +331,15 @@ function appPostventa() {
     },
 
     porcentaje() {
-      return this.partes.length
-        ? Math.round((this.terminados / this.partes.length) * 100)
-        : 0;
+      // F-025 R12 · el cálculo vive en `js/pipeline.js`, que sí tiene tests, y
+      // el denominador es `totalTanda`: el de la tanda en curso, no el de la
+      // remesa entera.
+      return window.Pipeline.porcentajeDeTanda(this.terminados, this.totalTanda);
     },
 
     tituloDeFase() {
       if (this.fase === "troceando") return "Troceando la remesa";
-      if (this.fase === "archivando") return "Archivando";
+      if (this.fase === "archivando_y_cerrando") return "Archivando y cerrando";
       return "Procesando los partes";
     },
 
@@ -252,6 +350,9 @@ function appPostventa() {
       this._revocarPdf();
       this.parteAbierto = parte;
       this.mensajeRevalidacion = "";
+      // El mensaje de la aprobación anterior no es de este parte: dejarlo
+      // diría «aprobado» encima de uno que nadie ha aprobado.
+      this.mensajeAprobacion = "";
       // El PDF va desde un blob en memoria, nunca desde una URL con el
       // contenido dentro.
       this.urlPdf = URL.createObjectURL(parte.fichero);
@@ -297,12 +398,70 @@ function appPostventa() {
     editarCampo(nombre, valor) {
       this.parteAbierto.ediciones[nombre] = valor;
       this.mensajeRevalidacion = "Hay correcciones sin revalidar.";
+      // F-026 R50, R55 · y se guarda solo, tras la pausa, sin botón y sea cual
+      // sea el veredicto del parte. Cuánto se espera y si hay algo que guardar
+      // lo decide `js/autoguardado.js`, que sí tiene tests.
+      this._autoguardado().alEscribir(this.parteAbierto, nombre, valor);
     },
 
     hayEdiciones() {
       return (
         this.parteAbierto && Object.keys(this.parteAbierto.ediciones).length > 0
       );
+    },
+
+    // =====================================================================
+    // F-026 R50-R55 · el autoguardado de las correcciones
+    // =====================================================================
+    //
+    // Aquí no se decide nada, como siempre: cuándo se guarda y si hay algo que
+    // guardar está en `js/autoguardado.js`, y QUÉ se pide está en
+    // `js/pipeline.js`. Esto ata las dos cosas al estado de Alpine.
+
+    _autoguardado() {
+      // Se monta la primera vez que alguien escribe, y no al crear el objeto,
+      // porque las dos funciones que necesita —guardar y pintar— son métodos
+      // de este objeto: montarlo antes obligaría a atarlas a mano.
+      if (autoguardado === null) {
+        autoguardado = window.Autoguardado.crearAutoguardado({
+          // R51 · el retardo es el de la configuración. Ni uno inventado aquí,
+          // ni uno por pantalla.
+          retardoMs: config.RETARDO_AUTOGUARDADO_MS,
+          guardar: (parte) => this._guardarCorreccion(parte),
+          alCambiarEstado: (cambio) => this._pintarAutoguardado(cambio),
+        });
+      }
+      return autoguardado;
+    },
+
+    async _guardarCorreccion(parte) {
+      // R50 · **revalidar y guardar juntos**, con la misma función que usa el
+      // botón. Guardar el campo sin revalidar dejaría en la base el veredicto
+      // que la IA emitió sobre el dato SIN corregir, y las tres puertas de
+      // F-026 leen ese veredicto.
+      const resultado = await window.Pipeline.revalidarYGuardar(
+        parte,
+        api,
+        this.remesaId,
+      );
+      this._anotarGuardado(parte, resultado.guardado);
+      this._anotarVeredicto(parte, resultado.validacion);
+
+      if (!parte.guardado) {
+        // `guardarParte` no lanza cuando el backend rechaza: devuelve
+        // `{ok: false, motivo}` para no tirar un veredicto ya pagado. Aquí eso
+        // es un fallo de guardado y tiene que llegar a la pantalla (R52): sin
+        // esto, la respuesta sería «Guardado» con la base sin tocar.
+        throw new Error(parte.errorGuardado || "no se ha podido guardar");
+      }
+      return resultado;
+    },
+
+    _pintarAutoguardado(cambio) {
+      // R52 · los tres estados. El de fallo se queda puesto hasta que un
+      // guardado salga bien: no hay temporizador que lo borre.
+      this.estadoAutoguardado = cambio.estado;
+      this.mensajeAutoguardado = cambio.mensaje;
     },
 
     async revalidarParte() {
@@ -328,18 +487,96 @@ function appPostventa() {
     },
 
     // =====================================================================
-    // Archivo (R19-R22, R25)
+    // Aprobación humana del parte (F-026)
     // =====================================================================
-    archivables() {
-      // F-019 R27: «archivable» incluye «ya guardado». Un parte que no consta
-      // en la base recibiría un 409 y no subiría nada; ofrecerlo sería
-      // prometer algo que el backend va a rechazar.
-      return this.partes.filter(
-        (parte) =>
-          !parte.archivado &&
-          parte.guardado &&
-          window.Pipeline.esArchivable(parte.validacion),
-      );
+    //
+    // Aquí no se decide nada, como siempre: qué es aprobable y qué viaja en la
+    // petición está en `js/pipeline.js`, que sí tiene tests, y lo vuelve a
+    // decidir el backend con el veredicto que él mismo recalcula (R5). Esto
+    // mueve estado de Alpine y pide la petición.
+
+    esAprobable(parte) {
+      // R35, R39 · el gesto solo se ofrece cuando hay algo que decidir. Si al
+      // parte le falta el código de obra o el número de incidencia, no hay
+      // nada que aprobar: hay algo que teclear.
+      const elegido = parte || this.parteAbierto;
+      return window.Pipeline.esAprobable(elegido && elegido.validacion);
+    },
+
+    estaAprobado(parte) {
+      // R36 · el cuarto estado del semáforo. Lo calcula `js/pipeline.js` al
+      // anotar el veredicto; aquí solo se lee, para no tener dos formas de
+      // responder a la misma pregunta.
+      return Boolean(parte) && parte.semaforo === window.Pipeline.SEMAFORO_APROBADO;
+    },
+
+    destinoDeOrigen(parte) {
+      // R37 · de dónde se rescató el parte, en castellano llano. Es la mitad
+      // del texto que distingue esta marca del verde de siempre.
+      const destino = (parte && parte.aprobacion && parte.aprobacion.destino_aprobado) || "";
+      if (destino === "cola_validacion_humana") return "la cola de validación humana";
+      if (destino === "revision_manual") return "revisión manual";
+      return destino;
+    },
+
+    fechaDeAprobacion(parte) {
+      // R37 · cuándo se aprobó. El backend la emite en UTC e ISO-8601; aquí se
+      // enseña en la hora de quien mira, que es la que le sirve para saber si
+      // fue hoy o el mes pasado.
+      const momento = parte && parte.aprobacion && parte.aprobacion.aprobado_at_utc;
+      if (!momento) {
+        return "";
+      }
+      const fecha = new Date(momento);
+      return isNaN(fecha.getTime()) ? String(momento) : fecha.toLocaleString("es-ES");
+    },
+
+    async aprobarParte() {
+      // R29 · **sin segunda confirmación**: el botón es el acto explícito.
+      // Aprobar no escribe en ningún sistema ajeno —escribe en el esquema
+      // propio y se deshace revalidando—, y la confirmación única de F-025
+      // sigue siendo la única que precede a una escritura externa.
+      const parte = this.parteAbierto;
+      this.mensajeAprobacion = "Registrando la aprobación…";
+      try {
+        const cuerpo = window.Pipeline.cuerpoDeAprobacion(parte, {
+          remesaId: this.remesaId,
+          usuarioOid: this.usuario.usuarioOid,
+        });
+        const datos = await api.aprobar(cuerpo, parte.hash);
+        // Lo que se pinta es lo que dice el backend, no lo que suponga la
+        // pantalla: quién decide si la aprobación sigue vigente es quien la
+        // escribió (D-F).
+        parte.aprobacion = datos.aprobacion;
+        // `/api/aprobar` guarda el parte y su veredicto en la misma llamada
+        // (`design.md` §6), así que a la vuelta consta guardado: dejarlo en
+        // rojo lo mantendría fuera de la tanda por un fallo ya resuelto.
+        parte.guardado = true;
+        parte.errorGuardado = "";
+        parte.semaforo = window.Pipeline.semaforoDe(
+          parte.validacion,
+          parte.aprobacion,
+        );
+        this.mensajeAprobacion =
+          "Aprobado. Este parte entra en la tanda de archivo y cierre.";
+      } catch (error) {
+        this.mensajeAprobacion = (error && error.mensaje) || String(error);
+      }
+    },
+
+    // =====================================================================
+    // Archivar y cerrar, en una sola tanda (F-025; R19-R22, R25 de F-007)
+    // =====================================================================
+    pendientes() {
+      // F-025 R24 · **un solo selector**, y vive en `js/pipeline.js`, que sí
+      // tiene tests. Es más ancho que el `archivables()` que sustituye: trae
+      // también los partes a medias —archivado sin adjuntar, adjuntado sin
+      // cerrar—, que con los dos botones fundidos en uno se quedarían sin
+      // ninguna forma de volver a entrar.
+      //
+      // F-019 R27 sigue dentro: «pendiente» incluye «ya guardado». Un parte
+      // que no consta en la base recibiría un 409 y no subiría nada.
+      return window.Pipeline.pendientesDeCircuito(this.partes);
     },
 
     noArchivables() {
@@ -384,41 +621,170 @@ function appPostventa() {
       }
       this.avisoArchivo = "";
 
-      const pendientes = this.archivables();
-      if (!pendientes.length) {
+      const tanda = this.pendientes();
+      if (!tanda.length) {
         return;
       }
 
-      this.entornoNoArchiva = "";
-      this.fase = "archivando";
-      this.terminados = 0;
-      await this._porLaCola(pendientes, (parte) => this._archivarUno(parte));
-      this.fase = "resumen";
+      // F-025 R14 · la guarda de reentrada, y **envuelve la tanda entera**.
+      // Si ya hay una corriendo, no se toca ni el estado de la pantalla: lo
+      // que estuviera en curso sigue como estaba.
+      const arranque = await window.Pipeline.conGuardaDeTanda(() =>
+        this._lanzarTanda(tanda),
+      );
+      if (arranque.arrancada) {
+        this.fase = "resumen";
+      }
     },
 
-    async _archivarUno(parte) {
-      try {
-        // cuerpoDeArchivo se niega a componer nada que no sea apto (R21).
-        const datos = await api.archivar(
-          window.Pipeline.cuerpoDeArchivo(parte),
-          parte.hash,
-        );
-        parte.archivado = true;
-        parte.estado = "archivado";
+    async _lanzarTanda(tanda) {
+      // F-025 R7 · los tres pasos de cada parte, por la MISMA cola y con el
+      // mismo límite de siempre (R11): fundir dos tandas en una no puede
+      // multiplicar las peticiones simultáneas contra el ERP.
+      this.entornoNoArchiva = "";
+      this.entornoNoCierra = "";
+      this.erpCerrado = false;
+      this.tandaDetenida = false;
+      this.fase = "archivando_y_cerrando";
+      this.terminados = 0;
+      this.totalTanda = tanda.length;
+      await this._porLaCola(tanda, (parte) => this._circuitoDeUno(parte));
+    },
+
+    async _circuitoDeUno(parte) {
+      // R22 · la puerta de entorno del archivo cerró la tanda. El corte se
+      // mira **al empezar cada parte** porque cuando se levanta la bandera la
+      // cola ya tiene los demás encolados.
+      if (this.tandaDetenida) {
+        return;
+      }
+      // Aquí no se decide nada: el orden de las tres escrituras, qué se salta
+      // y qué se pide con `commit` es de `js/pipeline.js::ejecutarCircuito`,
+      // que sí tiene tests (`tests_js/circuito.test.js`). Esto mueve estado de
+      // Alpine y nada más, que es lo único que le toca a este fichero.
+      const resultado = await window.Pipeline.ejecutarCircuito(parte, api, {
+        usuarioOid: this.usuario.usuarioOid,
+        correo: this.usuario.correo,
+        // R21 · lo que sepamos AHORA de la ventana del ERP.
+        //
+        // Ojo con el alcance de esta bandera: la cola lanza hasta tres partes
+        // a la vez, así que la ven los que aún no han arrancado, no los que ya
+        // están en vuelo. Son como mucho dos respuestas de «servicio no
+        // disponible» de más, y se acepta: cerrar la ventana a mitad de tanda
+        // es el caso raro, y pararlo del todo exigiría cancelar peticiones ya
+        // emitidas.
+        erpCerrado: this.erpCerrado,
+        alPaso: (paso) => {
+          parte.paso = paso;
+        },
+      });
+      // El paso se limpia pase lo que pase: uno congelado en «cerrando» diría
+      // que sigue en marcha algo que ya terminó.
+      parte.paso = "";
+      this._aplicarResultado(parte, resultado);
+    },
+
+    _aplicarResultado(parte, resultado) {
+      // `ejecutarCircuito` nunca lanza (R20): devuelve hasta dónde llegó, y
+      // esto lo pinta. Un parte roto no tumba la tanda.
+      parte.archivado = resultado.archivado;
+      parte.grafico = resultado.grafico;
+
+      if (resultado.archivo) {
         this.resultadosArchivo.push({
           hash: parte.hash,
-          mensaje: `${datos.nombre_fichero} → ${datos.carpeta} (${datos.estado})`,
-          web_url: datos.web_url || "",
+          // La clave del `x-for`, y no vale el hash: un reintento empuja una
+          // SEGUNDA fila del mismo parte, y dos filas con la misma clave hacen
+          // que Alpine descarte una. La descartada sería la del reintento, que
+          // es justo la que trae el resultado nuevo.
+          clave: `${parte.hash}:${this.resultadosArchivo.length}`,
+          mensaje: `${resultado.archivo.nombre_fichero} → ${resultado.archivo.carpeta} (${resultado.archivo.estado})`,
+          web_url: resultado.archivo.web_url || "",
         });
-      } catch (error) {
-        if (error && error.tipo === "entorno") {
-          // R25: pantalla propia. NO es un fallo y no se toca la puerta de
-          // entorno del backend para «arreglarlo».
-          this.entornoNoArchiva = error.mensaje;
-          return;
+      }
+
+      if (resultado.tipoError === "entorno") {
+        // La puerta de entorno NO es un fallo del parte: tiene pantalla propia
+        // y el parte se queda como esté. Pintarlo en rojo llevaría a alguien a
+        // «arreglar» una App Setting que está apagada a propósito.
+        if (resultado.archivado) {
+          parte.estado = "archivado";
         }
-        parte.estado = "error_archivo";
-        parte.error = (error && error.mensaje) || String(error);
+        this._anotarPuertaDeEntorno(resultado);
+        return;
+      }
+
+      parte.cerrado = resultado.cerrado;
+      parte.estado = resultado.estado;
+      parte.error = resultado.error;
+
+      if (resultado.mensaje) {
+        this.resultadosCierre.push({
+          hash: parte.hash,
+          // Clave única por fila, no el hash (ver el resumen del archivo).
+          // Aquí importa más: la fila que Alpine descartaría es la del
+          // reintento, y con ella el número de incidencia de R37.
+          clave: `${parte.hash}:${this.resultadosCierre.length}`,
+          // R37 · el número de incidencia sobre el que se escribió. Se guarda
+          // aparte del mensaje porque el resumen es **la primera y única
+          // ocasión** en que quien pulsó puede ver que se escribió sobre la
+          // incidencia equivocada: enterrarlo dentro de una frase lo esconde.
+          incidencia: resultado.numeroIncidencia,
+          mensaje: resultado.mensaje,
+        });
+      }
+    },
+
+    _anotarPuertaDeEntorno(resultado) {
+      if (resultado.ambito === "archivo") {
+        // R22 · sin archivo no hay nada que adjuntar ni que cerrar: los pasos
+        // 2 y 3 responderían 409 por la puerta de archivo. La tanda se para.
+        this.entornoNoArchiva = resultado.error;
+        this.tandaDetenida = true;
+        return;
+      }
+      // R21 · la ventana del ERP está cerrada. Los que queden siguen
+      // archivando y no le piden nada al ERP, y el aviso se dice **una sola
+      // vez**: es un campo de texto, no una lista, así que por muchos partes
+      // que lo levanten en pantalla sale uno.
+      this.erpCerrado = true;
+      this.entornoNoCierra = resultado.error;
+    },
+
+    // =====================================================================
+    // Cierre en Sigrid (F-009)
+    // =====================================================================
+    async cargarUsuario() {
+      // Nunca falla hacia arriba: sin identidad el botón de cerrar se queda
+      // deshabilitado —que es lo correcto, no se firma a nombre de nadie— y
+      // el resto de la pantalla sigue sirviendo.
+      this.usuario = await api.identidad();
+    },
+
+    cerrables() {
+      // La decisión es de `js/pipeline.js`, que sí tiene tests: apto,
+      // archivado y con número de incidencia. Aquí solo se filtra.
+      return this.partes.filter(
+        (parte) => !parte.cerrado && window.Pipeline.esCerrable(parte),
+      );
+    },
+
+    async reintentarCierre(parte) {
+      // R65 de F-012 · el estado «adjuntado pero no cerrado». El gráfico ya
+      // está dentro de Sigrid, así que **no se vuelve a pedir**.
+      //
+      // F-025 · y no hace falta código aparte para conseguirlo: el reintento
+      // pasa por el mismo circuito, que se salta archivar y adjuntar porque ya
+      // constan hechos (R25, R26). Lo único que vuelve a viajar es el cierre;
+      // el PDF no. Que se los salte lo fija `tests_js/circuito.test.js`.
+      //
+      // La confirmación ya se dio y sigue valiendo para este parte: es un
+      // reintento de lo que se acaba de autorizar, no una tanda nueva.
+      const arranque = await window.Pipeline.conGuardaDeTanda(() =>
+        this._lanzarTanda([parte]),
+      );
+      if (arranque.arrancada) {
+        this.fase = "resumen";
       }
     },
 
@@ -426,6 +792,12 @@ function appPostventa() {
     // Volver a empezar
     // =====================================================================
     reiniciar() {
+      // F-026 R51 · lo primero, cortar el autoguardado en espera. Un
+      // temporizador vivo después de reiniciar guardaría un parte que ya no
+      // está en pantalla, contra una remesa que ya no existe.
+      this._autoguardado().cancelarPendiente();
+      this.estadoAutoguardado = "";
+      this.mensajeAutoguardado = "";
       this._revocarPdf();
       this.fase = "inactivo";
       this.seleccion = [];
@@ -441,6 +813,15 @@ function appPostventa() {
       this.avisoArchivo = "";
       this.entornoNoArchiva = "";
       this.resultadosArchivo = [];
+      this.entornoNoCierra = "";
+      this.resultadosCierre = [];
+      // F-025 · el estado de la tanda. Arrastrar el total de la remesa
+      // anterior dejaría la barra mintiendo, y arrastrar cualquiera de las dos
+      // banderas dejaría la tanda nueva sin pedirle nada al ERP —o sin
+      // arrancar siquiera— por una ventana que se cerró hace dos remesas.
+      this.totalTanda = 0;
+      this.erpCerrado = false;
+      this.tandaDetenida = false;
     },
   };
 }

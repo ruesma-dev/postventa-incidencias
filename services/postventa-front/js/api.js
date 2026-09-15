@@ -1,5 +1,5 @@
 // services/postventa-front/js/api.js
-// R12, R23-R27 · El cliente de los nueve endpoints del backend.
+// R12, R23-R27 · El cliente de los diez endpoints del backend.
 //
 // Una sola forma de hablar con el backend y una sola forma de error hacia
 // arriba: `ErrorApi {tipo, http, mensaje, avisos}` con
@@ -11,7 +11,8 @@
 //
 // NINGUNO de estos endpoints se toca en F-007: el contrato es el que dejaron
 // F-002 … F-006. F-019 añade tres —`registrarRemesa`, `guardarParte` y
-// `cola`— y no cambia ninguno de los seis anteriores.
+// `cola`— y F-009 añade `cerrar`, el único que escribe en el ERP de
+// producción. Ninguno de los dos cambia los que ya estaban.
 
 (function () {
   "use strict";
@@ -84,6 +85,50 @@
     return new ErrorApi("desconocido", status, mensaje, avisos);
   }
 
+  /**
+   * F-009 · Quién es el usuario, según lo que devuelve el proxy de la SWA.
+   *
+   * Función **pura**, y por eso comprobable: entra el JSON de `/.auth/me` y
+   * sale `{usuarioOid, correo}`. La petición es aparte.
+   *
+   * Dos cosas que no son obvias y que deciden qué se guarda:
+   *
+   * - **El `oid` de Entra está en los `claims`, no en `userId`.** `userId` es
+   *   el identificador que la Static Web App inventa para la sesión, y no es
+   *   el mismo que el `oid` del directorio. Se prefiere el `oid` porque es lo
+   *   que el backend guarda en la traza del cierre y en la correspondencia
+   *   con el ERP: si mañana cambiara, la persona perdería su login mapeado.
+   * - **Esto NO es una identidad verificada.** La cabecera del proxy va sin
+   *   firmar. Sirve para saber quién dice ser el usuario; quién puede cerrar
+   *   lo decide el grupo de Posventa en la plataforma, y con qué login se
+   *   firma lo decide el ERP.
+   */
+  function identidadDe(datos) {
+    const principal = (datos && datos.clientPrincipal) || null;
+    if (!principal) {
+      return { usuarioOid: "", correo: "" };
+    }
+
+    const claims = principal.claims || [];
+    const valorDe = function (sufijos) {
+      const encontrado = claims.find(function (claim) {
+        const tipo = String((claim && claim.typ) || "");
+        return sufijos.some(function (sufijo) {
+          return tipo === sufijo || tipo.endsWith("/" + sufijo);
+        });
+      });
+      return (encontrado && encontrado.val) || "";
+    };
+
+    return {
+      usuarioOid: valorDe(["objectidentifier", "oid"]) || principal.userId || "",
+      correo:
+        valorDe(["preferred_username", "emailaddress", "email", "upn"]) ||
+        principal.userDetails ||
+        "",
+    };
+  }
+
   /** Traduce el fallo de `fetch` (red caída, aborto por timeout) a `ErrorApi`. */
   function errorDeTransporte(error) {
     if (error && error.name === "AbortError") {
@@ -115,6 +160,10 @@
   function crearApi(opciones) {
     const ajustes = opciones || {};
     const baseApi = ajustes.baseApi || "/api";
+    // F-009 · lo sirve el proxy de la Static Web App, NO este backend, y
+    // por eso va aparte del prefijo de la API. Inyectable para que la
+    // suite no dependa de una ruta que en local no existe.
+    const rutaIdentidad = ajustes.rutaIdentidad || "/.auth/me";
     const config = Object.assign({}, CONFIG_POR_DEFECTO, ajustes.config || {});
     const hacerFetch =
       ajustes.fetch || (typeof fetch !== "undefined" ? fetch.bind(null) : null);
@@ -331,6 +380,32 @@
       },
 
       /**
+       * F-026 · registra que una persona aprueba este parte.
+       *
+       * **Endpoint propio** y no una clave más en `/api/parte` (R18): guardar
+       * ocurre en cada revalidación, y aprobar es una decisión de una persona.
+       * Una petición, una decisión, una fila de auditoría.
+       *
+       * El cuerpo lo compone `js/pipeline.js::cuerpoDeAprobacion`: el de
+       * `/api/parte` más `usuario_oid` y `confirmado`. **No lleva los bytes
+       * del PDF** ni ningún veredicto ya hecho — el backend lo recalcula con
+       * las reglas del dominio y no acepta el del cuerpo (R5).
+       *
+       * Devuelve el bloque `aprobacion` que hay que pintar (R22). Un **409**
+       * es «este parte no es aprobable», y no se reintenta: insistir no lo
+       * vuelve aprobable.
+       */
+      aprobar: function (cuerpo, hash) {
+        return peticion("/aprobar", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "aprobar",
+          hash: hash,
+        });
+      },
+
+      /**
        * F-019 · la cola de validación humana, que sobrevive entre sesiones.
        *
        * El `limite` es opcional; el backend aplica 50 por omisión y **acota
@@ -354,6 +429,107 @@
           hash: hash,
         });
       },
+
+      /**
+       * F-012 · adjunta el parte a la reclamación como gráfico de Sigrid.
+       *
+       * **Va delante de `cerrar`**, y ese orden es la mitad de la feature:
+       * ninguna reclamación se cierra sin su parte dentro del ERP.
+       *
+       * Va como `FormData` y no como JSON —al revés que `cerrar`— porque lo
+       * que se adjunta **son los bytes del PDF**, los mismos que se mandaron a
+       * `archivar`. El cuerpo lo compone `js/pipeline.js::cuerpoDeGrafico`.
+       *
+       * **Por omisión no escribe nada**: sin `commit` el backend responde el
+       * dry-run —nombre, clase, tamaño, `sha256` y los avisos de la pasarela—.
+       *
+       * **Ese dry-run ya no se le enseña a nadie** (R40 de F-025, que deroga
+       * R63 de F-012): hay **una** confirmación para las tres escrituras y el
+       * front llama siempre con `commit`. La comprobación previa no ha
+       * desaparecido —se ejecuta dentro de la misma llamada que escribe, ver
+       * `design.md` §2 de F-025—; lo que desapareció es la pantalla. Quien
+       * lea esto dentro de seis meses: reponerla no es arreglar nada.
+       *
+       * Un 503 aquí es la **puerta de entorno**, igual que en `archivar` y en
+       * `cerrar`: no es un fallo y no se reintenta. Insistir no la ablanda.
+       *
+       * Lo transitorio —502, red, tiempo agotado— sí se reintenta, como en
+       * todos los pasos, y aquí es **seguro por construcción**: el endpoint de
+       * la pasarela es idempotente por tamaño y `sha256`, así que un reintento
+       * no cuelga un segundo gráfico.
+       */
+      adjuntar: function (formData, hash) {
+        return peticion("/adjuntar", {
+          metodo: "POST",
+          cuerpo: formData,
+          paso: "adjuntar",
+          hash: hash,
+        });
+      },
+
+      /**
+       * F-009 · cierra la incidencia en Sigrid, o enseña qué pasaría.
+       *
+       * **Por omisión no cierra nada.** El cuerpo lo compone
+       * `js/pipeline.js::cuerpoDeCierre`, y sin `commit` el backend responde
+       * el dry-run: los dos estados legibles, con qué login se firmaría y el
+       * bloque `grafico` con el estado real de este parte —`adjuntado`,
+       * `dry_run_ok` o `no_consta`— (R49).
+       *
+       * **Ese dry-run ya no se le enseña a nadie** (R40 de F-025, que deroga
+       * R63 de F-012): hay **una** confirmación para las tres escrituras y el
+       * front llama siempre con `commit`. La comprobación previa no ha
+       * desaparecido —se ejecuta dentro de la misma llamada que escribe, ver
+       * `design.md` §2 de F-025—; lo que desapareció es la pantalla. Quien
+       * lea esto dentro de seis meses: reponerla no es arreglar nada, es
+       * deshacer una decisión fechada del responsable.
+       *
+       * Lo que ese bloque **sustituye** es el `aviso_sin_grafico` de F-009,
+       * derogado por R48 de F-012: ya no llega en la respuesta y no hay que
+       * buscarlo. Desde F-012 el cierre con `commit` **exige** el gráfico
+       * adjuntado (R2), así que aquel aviso —«quedará cerrada sin el parte»—
+       * sería falso; en su sitio va el estado real, leído de la traza propia.
+       *
+       * **No lleva los bytes del PDF**, y por eso va como JSON y no como
+       * `FormData`: este endpoint no sube nada, solo mueve un estado.
+       *
+       * Un 503 aquí es la **puerta de entorno del cierre**, igual que en
+       * `archivar`: no es un fallo y no se reintenta. Insistir no la ablanda.
+       */
+      cerrar: function (cuerpo, hash) {
+        return peticion("/cerrar", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "cerrar",
+          hash: hash,
+        });
+      },
+
+      /**
+       * F-009 · quién es el usuario de la sesión, para poder firmar el cierre.
+       *
+       * **No va contra `/api`**: `/.auth/me` lo sirve el proxy de la Static Web
+       * App, no este backend. Por eso no pasa por `peticion()` —que antepone el
+       * prefijo y aplica los reintentos del contrato del backend— y usa el
+       * `fetch` inyectado directamente.
+       *
+       * **Nunca falla hacia arriba.** Si el proxy no responde, o responde algo
+       * que no es JSON, se devuelve la identidad vacía: sin ella el botón de
+       * cerrar se queda deshabilitado, que es lo correcto —no se firma un
+       * cierre a nombre de nadie—, pero la pantalla sigue sirviendo para
+       * validar y archivar. Reventar aquí dejaría inservible todo lo demás por
+       * un endpoint que en local ni siquiera existe.
+       */
+      identidad: async function () {
+        try {
+          const respuesta = await hacerFetch(rutaIdentidad, { method: "GET" });
+          const texto = await respuesta.text();
+          return identidadDe(JSON.parse(texto));
+        } catch (error) {
+          return { usuarioOid: "", correo: "" };
+        }
+      },
     };
   }
 
@@ -361,6 +537,7 @@
     crearApi: crearApi,
     ErrorApi: ErrorApi,
     clasificar: clasificar,
+    identidadDe: identidadDe,
     CONFIG_POR_DEFECTO: CONFIG_POR_DEFECTO,
     TEXTO_ENTORNO_NO_ARCHIVA: TEXTO_ENTORNO_NO_ARCHIVA,
   };

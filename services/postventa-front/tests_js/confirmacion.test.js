@@ -133,3 +133,96 @@ test("f007 R19: la ventana por defecto es un tiempo humano", () => {
   assert.ok(Confirmacion.VENTANA_MS >= 5_000);
   assert.ok(Confirmacion.VENTANA_MS <= 300_000);
 });
+
+// --- F-009 R15 · la misma confirmacion, ahora tambien para el cierre --------
+//
+// F-009 reutiliza este modulo TAL CUAL y no escribe uno paralelo: la
+// caducidad, el doble clic y el reloj hacia atras son el mismo problema, y dos
+// implementaciones del mismo control divergen siempre. Lo unico que cambia es
+// el texto, porque tiene que nombrar el boton que el usuario va a volver a
+// pulsar.
+//
+// Lo que hay detras del cierre no es una tanda de subidas: es una ESCRITURA EN
+// EL ERP DE PRODUCCION. Por eso los tres casos se repiten aqui explicitamente
+// en vez de darlos por probados.
+
+test("f009 R15: un solo clic no cierra ninguna incidencia", () => {
+  const decision = Confirmacion.resolver(null, 1000);
+
+  assert.equal(decision.dispara, false);
+  assert.equal(decision.motivo, Confirmacion.SIN_ARMAR);
+});
+
+test("f009 R15: un segundo clic fuera de la ventana NO dispara el cierre", () => {
+  const armada = Confirmacion.armar(1000);
+
+  const decision = Confirmacion.resolver(armada, 1000 + Confirmacion.VENTANA_MS + 1);
+
+  assert.equal(decision.dispara, false);
+  assert.equal(decision.motivo, Confirmacion.CADUCADA);
+  assert.equal(decision.estado, null);
+});
+
+test("f009 R15: y el armado queda consumido, asi que el doble clic no cierra dos veces", () => {
+  const armada = Confirmacion.armar(1000);
+
+  const primera = Confirmacion.resolver(armada, 1500);
+  const segunda = Confirmacion.resolver(primera.estado, 1600);
+
+  assert.equal(primera.dispara, true);
+  assert.equal(segunda.dispara, false);
+});
+
+test("f009 R15: el aviso de caducidad nombra el boton del cierre", () => {
+  const aviso = Confirmacion.avisoCaducada("cierre");
+
+  assert.match(aviso, /Cerrar/);
+  assert.notEqual(aviso, Confirmacion.AVISO_CADUCADA);
+});
+
+test("f009 R15: y para cualquier otra accion sigue siendo el de archivar", () => {
+  // Sin esto, el dia que alguien pase una accion nueva sin querer, el usuario
+  // leeria un boton que no existe en su pantalla.
+  assert.equal(Confirmacion.avisoCaducada("archivo"), Confirmacion.AVISO_CADUCADA);
+  assert.equal(Confirmacion.avisoCaducada(undefined), Confirmacion.AVISO_CADUCADA);
+});
+
+// ==========================================================================
+// F-025 · La confirmación es UNA, y es la que autoriza las TRES escrituras
+// ==========================================================================
+
+test("f025 R3: sin una confirmación que dispare no se autoriza ninguna escritura", () => {
+  // Hasta F-025 esta decisión autorizaba una subida a SharePoint. Ahora
+  // autoriza además el gráfico y el cierre en un ERP de producción, y no hay
+  // ninguna pantalla intermedia detrás: si `dispara` sale `false`, las TRES
+  // se quedan sin hacer. Los tres estados en que eso pasa, juntos.
+  const sinArmar = Confirmacion.resolver(null, T0);
+  const caducada = Confirmacion.resolver(
+    Confirmacion.armar(T0),
+    T0 + Confirmacion.VENTANA_MS + 1,
+  );
+  const consumida = Confirmacion.resolver(
+    Confirmacion.resolver(Confirmacion.armar(T0), T0 + 1_000).estado,
+    T0 + 1_100,
+  );
+
+  assert.equal(sinArmar.dispara, false);
+  assert.equal(caducada.dispara, false);
+  assert.equal(consumida.dispara, false);
+});
+
+test("f025 R15: el segundo clic dentro de la ventana no dispara una segunda tanda", () => {
+  // El matiz de R15 frente a R4: aquí el clic llega **a tiempo**, así que no
+  // lo salva la caducidad. Lo que lo para es que el armado se consume al
+  // primero. Con la confirmación única, una segunda tanda serían tres
+  // escrituras más por parte, dos de ellas en el ERP.
+  const armada = Confirmacion.armar(T0);
+
+  const primera = Confirmacion.resolver(armada, T0 + 1_000);
+  const segunda = Confirmacion.resolver(primera.estado, T0 + 1_100);
+
+  assert.ok(T0 + 1_100 < T0 + Confirmacion.VENTANA_MS, "el segundo clic llega DENTRO de la ventana");
+  assert.equal(primera.dispara, true);
+  assert.equal(segunda.dispara, false);
+  assert.equal(segunda.motivo, "sin_armar");
+});

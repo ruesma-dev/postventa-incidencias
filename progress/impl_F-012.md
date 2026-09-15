@@ -1,0 +1,1067 @@
+<!-- progress/impl_F-012.md -->
+# F-012 · Subir el parte a Sigrid como gráfico — informe del implementer
+
+> Rama `feature/F-012-grafico-sigrid` (creada desde `feature/F-009-cierre-sigrid`).
+> Rigor `critico`. 21 commits, T1–T24 hechos y marcados.
+> **Bloque 9 (T25–T32), T33 y T34 NO se han ejecutado ni marcado**: el encargo
+> del líder los reserva para el humano o para él. Qué exigen y con qué comandos
+> está al final, en «Lo que queda».
+> `bash harness/init.sh` en verde el 2026-09-06.
+
+---
+
+## 1 · Qué cambió, en una frase
+
+El PDF del parte firmado se adjunta ahora a la reclamación **como gráfico de
+Sigrid**, por `POST /api/sigrid/concepto-grafico` de la pasarela, **antes** del
+cambio de estado; y el cierre **se niega a ejecutarse** si ese gráfico no
+consta adjuntado. Con eso, el riesgo aceptado de `docs/ARCHITECTURE.md`
+—reclamaciones en `CER` sin ninguna fila en `rcg`— queda **cerrado por diseño y
+sin haberse producido ni una vez**, porque F-012 se implementa antes del primer
+cierre real.
+
+---
+
+## 2 · Ficheros tocados
+
+### Creados
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-api/domain/models/grafico.py` | Dominio puro: constantes medidas, las tres listas cerradas de códigos de la pasarela, `PeticionGrafico` / `PlanDeGrafico` / `RespuestaGrafico` / `ResultadoGrafico`, y `validar_fichero`, `componer_peticion`, `esta_colgado`, `clasificar_codigo` |
+| `services/postventa-api/domain/ports/grafico.py` | `GraficoPort`, **un método** |
+| `services/postventa-api/application/pipelines/paso_grafico.py` | El paso 7a, con el orden de `design.md` §6 |
+| `services/postventa-api/infrastructure/sigrid/graficos.py` | `AdaptadorGraficoSigridApi`, con la doble puerta y sin `Retrying` |
+| `services/postventa-api/infrastructure/persistencia/sql/09_graficos.sql` | La traza local, en el esquema propio |
+| `services/postventa-api/interface_adapters/api/adjuntar.py` | Handler de `POST /api/adjuntar` (`multipart`) |
+| `infra/15_reclamaciones_obra_prueba.ps1` | Localiza las candidatas de la obra de prueba. Solo lectura |
+| `infra/16_grafico_sigrid.ps1` | Las tres filas del gráfico + `MAX(ide)` de `dbo.log`. Solo lectura |
+| `infra/17_traza_grafico_local.ps1` | La traza propia. Solo lectura del esquema propio |
+| 12 ficheros de test en `services/postventa-api/tests/` | `test_f012_*` |
+| `services/postventa-front/tests_js/grafico.test.js`, `services/postventa-front/tests/test_f012_front.py` | El front |
+
+### Modificados (lo esencial)
+
+| Ruta | Qué cambia |
+|---|---|
+| `domain/models/cierre.py` | **Se retiran** `AVISO_SIN_GRAFICO` y `PlanDeCierre.aviso_sin_grafico` (R48) |
+| `domain/models/persistencia.py` | `EstadoGrafico` y `TrazaGrafico` |
+| `domain/models/errores.py` | Los ocho errores nuevos |
+| `domain/ports/persistencia.py` | `guardar_grafico` y `consultar_grafico` |
+| `application/pipelines/contexto_parte.py` | `grafico` y `traza_grafico` |
+| `application/pipelines/paso_cierre.py` | `_exigir_adjuntado` (R2), `ctx.traza_grafico` (R49) y `exigir_autorizacion_para_escribir` **pública** |
+| `infrastructure/persistencia/{sentencias,repositorio_pg,mapeo}.py` | `upsert_grafico`, `select_grafico`, `fila_a_traza_grafico` |
+| `infrastructure/sigrid/fabrica.py` | `construir_graficos` |
+| `config/settings.py`, `.env.example`, `local.settings.json.example` | `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES` |
+| `function_app.py`, `interface_adapters/api/cerrar.py` | Ruta `adjuntar`; `ParteNoAdjuntado` → 409; el bloque `grafico` del dry-run |
+| `services/postventa-front/js/{api,pipeline,app}.js`, `index.html` | `adjuntar()`, `cuerpoDeGrafico`, `estaAdjuntado`, los dos dry-run, los estados nuevos |
+| `infra/desplegar_backend.ps1` | Las dos App Settings |
+| `docs/{ARCHITECTURE,INTEGRACION,DESPLIEGUE}.md` | T19 y T20 |
+| `azure-apps/postventa_incidencias.md` | **Otro repositorio**, commit local `72b8fa3`, sin push |
+| Tests de F-009 y F-019 adaptados | §4 |
+
+**`infrastructure/sigrid/{cliente,consultas,escrituras}.py` no se han tocado**:
+el gráfico **importa** de `cliente.py` la fontanería (`construir_cliente_http`,
+`CORRECTOS`, las dos puertas, la cabecera) y no copia ni una línea. El cierre
+no cambia ni una sentencia (R51).
+
+---
+
+## 3 · Las decisiones que la implementación obligó a tomar
+
+Cuatro cosas que la spec no fijaba y que había que decidir. Las tres primeras
+son desviaciones respecto a la letra del diseño; la cuarta es un orden que la
+spec dejaba abierto.
+
+### 3.1 · `ResultadoGrafico.plan` pasa a ser **anulable** (desviación de §6)
+
+`design.md` §6 lo declara obligatorio. No puede serlo: **R24 prohíbe llamar a
+nadie** cuando la traza local ya dice `adjuntado`, así que en ese camino no hay
+reclamación leída con la que construir un `PlanDeGrafico`. Fabricar uno a
+partir de la traza sería enseñar un dry-run que nadie ha ejecutado.
+
+Lo que se devuelve entonces es un campo nuevo, `traza`, que es de donde salió
+la respuesta; el borde lo serializa como `dry_run.ya_estaba = true`. Tests:
+`test_f012_r24_la_respuesta_desde_la_traza_lleva_la_traza_y_no_un_plan` y
+`test_f012_r24_cuando_se_resuelve_desde_la_traza_no_se_inventa_un_dry_run`.
+
+### 3.2 · El **dry-run también deja traza de `error`** (precisión de §7.3)
+
+La tabla de `design.md` §7.3 asigna traza `error` a los códigos de rechazo sin
+decir en qué fase. Un rechazo en el dry-run —clase no permitida, concepto
+inexistente— **es información sobre este parte** y tiene que quedar
+registrada: es literalmente lo que T31 del bloque 9 verifica.
+
+La excepción sigue siendo `EscrituraDocumentalDeshabilitada` (R32): **ninguna
+traza**. No ha pasado nada con este parte; lo que falta es una App Setting de
+otro proyecto, y una traza de `error` diría que el problema es del parte.
+Test: `test_f012_r32_una_precondicion_de_la_pasarela_no_deja_traza`.
+
+### 3.3 · Los cimientos de T2 se adelantaron a T1
+
+`domain/models/grafico.py` no compila sin `EstadoGrafico`, `TrazaGrafico` y los
+ocho errores nuevos, que `tasks.md` coloca en T2. Se adelantan al commit de T1
+para que **cada commit deje el árbol compilando**; T2 se queda con el puerto,
+los dos métodos del repositorio y `test_f012_arquitectura.py`.
+
+### 3.4 · `_exigir_adjuntado` va **antes** de la autorización
+
+`tasks.md` no fija el orden entre las dos. Va antes porque con `commit`, sin
+`confirmado` y sin gráfico, **lo que falta de verdad es el gráfico**: al revés,
+quien reciba el 400 creerá que basta con confirmar, confirmará, y se encontrará
+el mismo 409 una pantalla después. Test:
+`test_f012_r2_la_precondicion_se_comprueba_antes_de_la_autorizacion`.
+
+---
+
+## 4 · Los tests ajenos que se adaptaron, y por qué cada uno
+
+**Ninguna adaptación quita una comprobación sin sustituirla.** En los cuatro
+sitios donde se retiró un test de R21 se dejó un **control negativo** en su
+lugar: sin él, alguien podría reponer el aviso por costumbre y volver a
+advertir de algo que ya no ocurre.
+
+| Fichero | Qué se cambió | Por qué |
+|---|---|---|
+| `test_f009_dominio_cierre.py` | Los dos tests de R21 y la construcción de `PlanDeCierre` | **R48 deroga R21.** En su sitio, `test_f009_r21_el_plan_ya_no_declara_ningun_aviso_de_grafico` |
+| `test_f009_adaptador_sigrid.py`, `test_f009_escrituras.py` | El campo en la construcción del plan | Íd. Ninguna aserción propia se toca |
+| `test_f009_cerrar_http.py` | La aserción de R9 sobre `aviso_sin_grafico` y el test del aviso | Íd. En su sitio, `test_f009_r21_derogado_la_respuesta_ya_no_trae_el_aviso_de_grafico`. Además, el doble por omisión trae la traza `adjuntado`: es el estado del mundo en el que el cierre ocurre desde hoy |
+| `test_f009_front.py` | Los dos `r21_*` | Íd. En su sitio, un control negativo sobre el HTML |
+| `test_f009_paso_cierre.py`, `test_f009_logs_sin_datos_personales.py` | Se inyecta la traza `adjuntado` en los dobles de los casos que **escriben** | R2. El dry-run no la exige (R50), y los tests de qué pasa **sin** ella viven en `test_f012_cerrar_exige_grafico.py` |
+| `test_f009_ddl_orden.py` | `nombres[-1] == FICHERO` se retira | Era una propiedad **del catálogo en aquel momento**, no del DDL de F-009. La dependencia con `01_esquema.sql` se conserva |
+| `test_f005_ddl_idempotente_texto.py` | La lista de `.sql` gana el noveno | La lista se escribe a mano **a propósito**: añadir un fichero tiene que pasar por ahí. Funcionó |
+| `test_f003_paso_extraccion.py` | El censo de campos de `ContextoParte` | Es el guardián que obliga a pasar por él a quien añada un campo. Funcionó |
+| `test_f010_endpoints_protegidos.py` | El censo de endpoints, de diez a once | Íd. La cuenta tuvo que cuadrar **antes** de que la ruta existiera |
+| `test_f010_scripts_infra.py` | El censo de variables `SIGRID_*`, de cinco a seis | Íd. `SIGRID_GRATIPIDE_PARTE` no es sensible, por lo mismo que `SIGRID_TIP_RECLAMACION` |
+| `test_f009_documentacion.py` | «ESCRITURA» → «ESCRITURAS» | Lo que protegía —que el documento lo diga en mayúsculas— sigue igual |
+| `test_f019_documentacion.py` | «Los diez» → «Los once» | Íd. |
+| `tests_js/api.test.js` | El censo de métodos del cliente, de diez a once | Íd. |
+
+---
+
+## 5 · Fase RED
+
+Rigor `critico`: obligatoria para los requisitos centrales. Se pega **la salida
+real**, con el comando exacto. Todos se lanzaron desde
+`services/postventa-api/`.
+
+### 5.1 · T1 · el dominio del gráfico (R7, R9, R10, R12, R18, R19, R26, R53)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_dominio_grafico.py -x -q
+=================================== ERRORS ====================================
+_____________ ERROR collecting tests/test_f012_dominio_grafico.py _____________
+ImportError while importing test module '...\tests\test_f012_dominio_grafico.py'.
+Traceback:
+tests\test_f012_dominio_grafico.py:28: in <module>
+    from domain.models.errores import (
+E   ImportError: cannot import name 'CuerpoDeGraficoInvalido' from 'domain.models.errores'
+=========================== short test summary info ===========================
+ERROR tests/test_f012_dominio_grafico.py
+1 error in 0.45s
+```
+
+Después de escribir el código: `47 passed in 0.24s`.
+
+### 5.2 · T2 · la hexagonal, y el control negativo de `base64`
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_arquitectura.py -q
+FAILED tests/test_f012_arquitectura.py::test_f012_el_puerto_del_grafico_existe
+FAILED tests/test_f012_arquitectura.py::test_f012_arquitectura_el_puerto_del_grafico_es_dominio_puro
+FAILED tests/test_f012_arquitectura.py::test_f012_arquitectura_ni_domain_ni_application_nombran_base64
+FAILED tests/test_f012_arquitectura.py::test_f012_los_ejemplos_de_entorno_declaran_las_dos_variables_nuevas[SIGRID_GRATIPIDE_PARTE-.env.example]
+FAILED tests/test_f012_arquitectura.py::test_f012_los_ejemplos_de_entorno_declaran_las_dos_variables_nuevas[SIGRID_GRATIPIDE_PARTE-local.settings.json.example]
+FAILED tests/test_f012_arquitectura.py::test_f012_los_ejemplos_de_entorno_declaran_las_dos_variables_nuevas[GRAFICO_MAX_BYTES-.env.example]
+FAILED tests/test_f012_arquitectura.py::test_f012_los_ejemplos_de_entorno_declaran_las_dos_variables_nuevas[GRAFICO_MAX_BYTES-local.settings.json.example]
+7 failed, 2 passed, 2 skipped in 2.08s
+```
+
+**El tercer fallo es el que vale contarlo**: el control negativo saltó contra
+**mi propio código de T1**, porque tres docstrings míos nombraban `base64`. Se
+reescribieron para decir lo mismo sin la palabra, que es de lo que va el
+control. Después: `9 passed, 2 skipped`.
+
+### 5.3 · T4 · el DDL de la traza
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_ddl_orden.py -q
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF                                     [100%]
+______________ test_f012_el_ddl_de_f012_se_recoge_con_los_demas _______________
+>       assert FICHERO in nombres
+E       AssertionError: assert '09_graficos.sql' in ['01_esquema.sql', '02_remesas.sql',
+E         '03_partes.sql', '04_validaciones.sql', '05_archivos.sql', '06_cierres.sql', ...]
+36 failed in 2.68s
+```
+
+Después: `36 passed`.
+
+### 5.4 · T5 · la traza local en el repositorio (R30, R43, R44)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_repositorio_graficos.py -q
+tests\test_f012_repositorio_graficos.py:38: in <module>
+    from infrastructure.persistencia.mapeo import fila_a_traza_grafico
+E   ImportError: cannot import name 'fila_a_traza_grafico' from 'infrastructure.persistencia.mapeo'
+1 error in 0.64s
+```
+
+Después: `18 passed in 0.43s`.
+
+### 5.5 · T7 · el adaptador (R6, R7, R13, R20, R25, R26, R31–R35, R38, R39, R55)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_adaptador_grafico.py -q
+tests\test_f012_adaptador_grafico.py:48: in <module>
+    from infrastructure.sigrid import graficos
+E   ImportError: cannot import name 'graficos' from 'infrastructure.sigrid'
+1 error in 1.27s
+```
+
+Y una **segunda vuelta en rojo**, ya con el adaptador escrito, que también
+cuenta:
+
+```
+>       assert "Retrying" not in fuente
+E       AssertionError: assert 'Retrying' not in '# services/...'
+E         'Retrying' is contained here:  y **sin `Retrying`**
+1 failed, 62 passed in 1.08s
+```
+
+El control saltó contra el docstring que explica **por qué** no hay reintentos.
+Se reescribió con `ast` —imports y nombres— en vez de buscar la palabra en el
+texto, que es la misma solución que `test_f009_scripts_infra.py` usa con su
+bloque de ayuda; y no se quedó ahí: hay además un test que hace fallar una
+llamada y comprueba que `ClienteFalso` grabó **una** petición. Después:
+`63 passed in 0.55s`.
+
+### 5.6 · T8 · la fábrica (R39, R40)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_fabrica_grafico.py -q
+tests\test_f012_fabrica_grafico.py:26: in <module>
+    from infrastructure.sigrid.fabrica import (
+E   ImportError: cannot import name 'construir_graficos' from 'infrastructure.sigrid.fabrica'
+1 error in 0.57s
+```
+
+Después: `16 passed in 0.44s`.
+
+### 5.7 · T9 · el paso del pipeline (R14–R29, R42, R43, R47)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_paso_grafico.py -q
+tests\test_f012_paso_grafico.py:35: in <module>
+    from application.pipelines.paso_grafico import paso_grafico
+E   ModuleNotFoundError: No module named 'application.pipelines.paso_grafico'
+1 error in 0.70s
+```
+
+Y una segunda vuelta en rojo con el paso ya escrito, que descubrió la
+precisión de §3.2:
+
+```
+FAILED tests/test_f012_paso_grafico.py::test_f012_r33_un_rechazo_de_la_pasarela_deja_traza_de_error
+FAILED tests/test_f012_paso_grafico.py::test_f012_r47_si_el_erp_escribe_y_la_traza_no_sale_un_error_propio
+2 failed, 51 passed in 0.53s
+```
+
+Después: `53 passed in 0.42s`.
+
+### 5.8 · T12 · el cierre exige el gráfico (R2, R49, R50, R51, R52)
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f012_cerrar_exige_grafico.py -q
+tests\test_f012_cerrar_exige_grafico.py:35: in <module>
+    from application.pipelines.paso_cierre import (
+E   ImportError: cannot import name 'exigir_autorizacion_para_escribir' from 'application.pipelines.paso_cierre'
+1 error in 0.73s
+```
+
+Y, ya con `paso_cierre` cambiado, **22 tests de F-009 en rojo**, que es
+exactamente la señal de que la precondición muerde:
+
+```
+$ .venv/Scripts/python.exe -m pytest -q
+FAILED tests/test_f009_paso_cierre.py::test_f009_r12_con_confirmacion_explicita_si_se_escribe
+FAILED tests/test_f009_paso_cierre.py::test_f009_r22_un_cierre_que_no_afecta_a_dos_filas_no_se_da_por_bueno
+FAILED tests/test_f009_cerrar_http.py::test_f009_r13_con_auto_cierre_activo_si_cierra_sin_confirmar
+... (22 en total, en tres ficheros)
+22 failed, 1858 passed, 13 skipped in 45.28s
+```
+
+Después de inyectar la traza `adjuntado` en los dobles: `24 passed` en el
+fichero propio y la suite entera en verde.
+
+### 5.9 · T11 · el control negativo de datos personales (R53, R54, R55)
+
+**Los 11 tests pasaron a la primera**, porque T7 y T9 ya se escribieron para no
+filtrar nada. Un control que nunca se ha visto saltar no demuestra nada, así
+que su fase RED se hizo **rompiendo deliberadamente una copia aislada** del
+paso —fuera del repositorio, en el scratchpad, según `CHECKPOINTS.md` C4 bis—
+con un `log.info` del contenido del PDF inyectado:
+
+```
+$ .venv/Scripts/python.exe <scratchpad>/red_t11.py
+registros capturados: 2
+EL CONTROL SALTA. Datos filtrados por la copia rota:
+  - 00000000T
+  - Nombreinventadoquenoexiste Apellidoinventado
+  - Textomanuscritoinventadodelcliente sobre la reparacion
+```
+
+El árbol real no se tocó en ningún momento; la copia rota vive en el
+scratchpad de la sesión.
+
+---
+
+## 6 · Cómo se verificó cada cosa, con el resultado real
+
+Todo **sin red, sin base de datos y sin IA**: la guardia de `tests/conftest.py`
+sigue parcheando `socket.socket.connect` durante toda la sesión, y con
+`ENTORNO=test` **ninguno de los dos adaptadores de Sigrid se puede construir**
+(`test_f012_r41_con_el_entorno_de_la_suite_no_se_puede_construir_nada`).
+
+| Qué | Cómo | Resultado |
+|---|---|---|
+| El orden gráfico → cierre (R20, R64) | Contando las llamadas del doble: `GraficoEnMemoria.orden` tiene que ser `[False, True]` | Verde |
+| La primera capa de idempotencia (R24) | **Cero** llamadas al ERP y a la pasarela con la traza en `adjuntado` | Verde |
+| `esta_colgado` (R26) | Los **cuatro cuadrantes**, incluido `ok:true committed:false idempotente:true` → colgado | Verde |
+| Los doce códigos de la pasarela (R31–R34) | Uno a uno, en el adaptador **y** en la ruta HTTP | Verde |
+| El cuerpo crudo del error (R35) | Un `400` de prueba que lleva la clave de función y un DNI dentro; se comprueba que no salen | Verde |
+| La doble puerta (R38, R39) | Construir el adaptador con `ENTORNO=local` y con el interruptor apagado, sin una sola llamada | Verde |
+| El PDF en los logs (R53) | Un PDF con el DNI **escrito dentro del fichero**, y la lista de prohibidos incluye 32 caracteres del texto codificado | Verde |
+| La precondición del cierre (R2) | **Cero** llamadas a `erp.cerrar` con `commit` y sin traza `adjuntado`, ni siquiera con auto-cierre | Verde |
+| Los scripts de infra | 53 tests: ninguno escribe, ninguna llamada a `sql/write`, `DATALENGTH` y nunca `ima`, y ni un host, GUID, `sha256` o incidencia real | Verde |
+
+**Lo que no se ha ejecutado, y hay que decirlo**: **nada** contra Azure, Sigrid,
+`sigrid-api`, el PostgreSQL compartido ni SharePoint. Ni una lectura. Los tres
+scripts de `infra/` se han **escrito y validado sintácticamente** con el
+analizador de PowerShell, pero **no se han lanzado**.
+
+---
+
+## 7 · Evidencias
+
+| Evidencia | Valor medido |
+|---|---|
+| **Tests ejecutados** | **2.054 pasan, 13 se saltan** en el servicio `api`; **130 pasan** en `front` (que incluye el puente a `node --test`: **187** tests de JavaScript). Ni uno rojo. *(Eran 2.032 antes de T33: los 22 nuevos son los que matan a los supervivientes de la mutación.)* |
+| **De ellos, propios de F-012** | **486**: 443 en `api`, 26 en `tests/test_f012_front.py` y 17 en `tests_js/grafico.test.js` |
+| **Cobertura de las líneas cambiadas** | **`[OK] PUERTA COBERTURA: 99.0% de 1079 líneas cambiadas cubiertas (1068/1079, umbral 80%, nivel critico)`** *(era 98,7 %: los tests de T33 alcanzaron tres líneas que nadie ejercitaba, entre ellas la primera rama de `_exigir_colgado`)* |
+| **Tiempo de ejecución de la suite** | `api` **39,65 s** lanzando `pytest` a mano y **74,75 s** dentro de `bash harness/init.sh`, que además mide cobertura; `front` **1,9 s** (con los 187 de JS en 0,52 s dentro) |
+| **Mutantes generados y supervivientes** | **101 mutantes, 96 muertos, 5 supervivientes, 0 timeouts** en 922,8 s (segunda pasada, con los tests de T33 dentro). La primera dejó **35 supervivientes**: 30 eran huecos reales de test —cazados uno a uno— y los **5 que quedan son equivalentes, justificados uno a uno** en `progress/mutacion_F-012.md`. Alcance acotado con `--base feature/F-009-cierre-sigrid` para no volver a mutar código de F-009, que ya pasó su campaña. Detalle en §7.2 |
+| **Nº de workers de la campaña** | **8**, los que declara `harness/rigor.json`, en las dos pasadas |
+| **ruff** | **58 avisos, exactamente la deuda previa**: F-012 no añade ni uno |
+
+### 7.1 · La campaña de mutación: qué falta y qué se sabe ya
+
+> **Escrito antes de T33 y conservado tal cual**, porque su cálculo de alcance
+> sigue siendo cierto y explica por qué la campaña se acotó con `--base`. Lo
+> que pasó al ejecutarla está en **§7.2**, justo debajo.
+
+`CHECKPOINTS.md` C4 bis exige la campaña en nivel `critico`, y **no está
+hecha**. El motivo es explícito y no es una omisión: el encargo del líder dice
+que T33 y T34 «los ejecuta el humano o el líder: NO los ejecutes ni los
+marques». Queda por tanto **PENDIENTE de ejecución por el líder**, y este
+informe no puede cerrarla.
+
+Lo que sí se puede dar sin ejecutarla, porque es **cálculo puro** y le ahorra
+al líder la mitad del trabajo:
+
+```
+$ python -c "... harness.mutacion.alcance_de_feature('F-012') + generar_mutantes ..."
+FICHEROS: 24   TOTAL mutantes: 224
+```
+
+| Mutantes | Fichero |
+|---:|---|
+| 29 | `infrastructure/sigrid/cliente.py` |
+| 25 | `application/pipelines/paso_grafico.py` |
+| 23 | `domain/models/cierre.py` |
+| 21 | `infrastructure/sigrid/escrituras.py` |
+| 19 | `domain/models/grafico.py` |
+| 19 | `function_app.py` |
+| 19 | `infrastructure/sigrid/graficos.py` |
+| 15 | `application/pipelines/paso_cierre.py` |
+| 14 | `interface_adapters/api/adjuntar.py` |
+| 14 | `infrastructure/sigrid/consultas.py` |
+| 10 | `config/settings.py` |
+| 6 | `interface_adapters/api/cerrar.py` |
+| 4+2+2+1+1 | `repositorio_pg.py`, `fabrica.py`, `persistencia.py`, `errores.py`, `sentencias.py` |
+| 0 | los 7 restantes (puertos, `mapeo.py`, `contexto_parte.py`, `__init__.py`) |
+
+**Dos cosas que el líder debe saber antes de lanzarla:**
+
+1. **~102 de esos 224 mutantes no son de F-012.** El alcance sale del diff
+   contra `dev`, y esta rama nace de `feature/F-009-cierre-sigrid`, que tampoco
+   está en `dev`: `cliente.py` (29), `escrituras.py` (21), `consultas.py` (14),
+   `cierre.py` (23) y parte de `paso_cierre.py` (15) son código de F-009, que
+   **ya pasó su propia campaña con 123 mutantes y cero supervivientes sin
+   justificar**. Si se quiere medir solo F-012, la campaña se puede lanzar con
+   `--base feature/F-009-cierre-sigrid`.
+2. **Coste estimado**: 224 mutantes × 32,9 s de suite ÷ 8 workers ≈ **15
+   minutos** de reloj. Con `--base feature/F-009-cierre-sigrid` bajarían a
+   ~122 mutantes y ~8 minutos. El comando literal:
+
+```bash
+python -m harness.mutacion --feature F-012                       # los 224
+python -m harness.mutacion --feature F-012 --base feature/F-009-cierre-sigrid
+```
+
+**Candidatos a superviviente que se ven venir**, y que `tasks.md` T33 ya
+anticipaba: el **orden de las dos puertas** en el constructor de
+`AdaptadorGraficoSigridApi` —mismo caso que `cliente.py:347` en F-009: cualquier
+orden levanta `CierreDeshabilitado`, y por eso hay un test que comprueba que
+**ninguna de las dos hace una sola llamada**— y las **comparaciones de longitud**
+de `componer_peticion` y `validar_fichero`, para las que hay tests de límite
+exacto (`test_f012_r18_justo_en_el_tope_pasa`,
+`test_f012_r18_un_byte_de_mas_aborta`). No se dan por buenos: se analizan
+cuando la campaña corra.
+
+### 7.2 · T33 · la campaña de mutación, ejecutada y con los supervivientes cazados
+
+`§7.1` se escribió **antes** de que la campaña existiera y se conserva como
+estaba, porque su cálculo de alcance sigue siendo cierto. Esto es lo que pasó al
+ejecutarla.
+
+**Primera pasada** (la lanzó el líder, acotando la base a la rama de F-009 para
+no volver a mutar código que ya pasó su propia campaña):
+
+```bash
+python -m harness.mutacion --feature F-012 --base feature/F-009-cierre-sigrid
+```
+
+| Métrica | Primera pasada | Segunda pasada |
+|---|---:|---:|
+| Mutantes generados y evaluados | 101 | 101 |
+| Muertos | 66 | 96 |
+| **Supervivientes** | **35** | **5** |
+| Timeouts | 0 | 0 |
+| Workers | 8 | 8 |
+| Tiempo de reloj | 853,8 s | 922,8 s |
+
+Los 35 se analizaron **uno a uno**: **30 eran huecos reales de test** y **5 son
+equivalentes**. Antes de relanzar la campaña se comprobó cada uno por separado
+—aplicando la mutación a mano y corriendo la suite del servicio— para no
+depender de un único recuento final: **los 30 mueren, ninguno sobrevive**.
+
+#### Los 5 equivalentes, y por qué
+
+Cuatro son **valores por omisión que ningún sitio de producción llega a usar**,
+porque todos los constructores pasan el argumento; el quinto es un campo que
+nadie lee aguas abajo. Las tres comprobaciones son de una línea:
+
+```bash
+grep -rn "GraficoFallido(" --include=*.py services/postventa-api | grep -v tests
+# -> 3 sitios, los tres con reintento_seguro=True explícito   (superviviente 11)
+grep -rn "PlanDeGrafico(" --include=*.py services/postventa-api | grep -v tests
+# -> 1 sitio, `_plan`, que pasa siempre los dos campos     (supervivientes 15, 16)
+grep -rn "TrazaGrafico(" --include=*.py services/postventa-api | grep -v tests
+# -> 2 sitios, los dos con idempotente explícito              (superviviente 22)
+```
+
+Y el 32 (`confianza_observaciones=0` en `adjuntar.py`): va en una
+`ResultadoValidacion` **reconstruida** de la que `paso_grafico` solo lee
+`veredicto` y `destino`; no se persiste, y `_serializar` devuelve ocho claves
+fijas que no la incluyen. Ningún camino la lee.
+
+> **La distinción con el superviviente 30** —`confirmado: str | bool = False`,
+> que sí lleva test— no es caprichosa: ese valor por omisión **sí se ejecuta**
+> cuando alguien llama a `adjuntar_grafico` sin ese argumento, y su contrato
+> —escrito en el docstring del módulo— dice que quien llame sin haber leído el
+> contrato no escribe nada en el ERP de producción.
+
+#### Los 30 reales, uno a uno
+
+| # | Dónde | Mutación | Test que lo mata |
+|---:|---|---|---|
+| 1 | `paso_grafico.py:212` | `cerrable=True` → `False` | `test_f012_r21_el_plan_del_dry_run_correcto_dice_cerrable_y_no_cerrada` |
+| 2 | `paso_grafico.py:273` | `or` → `and` en la puerta de R14 | `test_f012_r14_un_veredicto_que_no_es_apto_no_pasa_aunque_el_destino_lo_sea` + `..._un_destino_que_no_es_archivo_y_cierre_no_pasa_aunque_sea_apto` |
+| 3 | `paso_grafico.py:368` | `cerrable=True` → `False` (plan del rechazo del dry-run) | `test_f012_r33_un_rechazo_del_dry_run_no_dice_que_la_reclamacion_no_valga` |
+| 4 | `paso_grafico.py:402` | `cerrable=False` → `True` (ya cerrada) | `test_f012_r16_el_plan_de_una_reclamacion_ya_cerrada_lo_dice_entero` |
+| 5 | `paso_grafico.py:402` | `ya_cerrada=True` → `False` | el mismo, y `test_f012_r16_una_reclamacion_ya_cerrada_se_devuelve_en_verde_y_lo_dice` |
+| 6 | `paso_grafico.py:542` | `reintento_seguro=True` → `False` (R26) | `test_f012_r26_r29_una_respuesta_que_no_cuelga_nada_no_se_da_por_adjuntada` |
+| 7 | `paso_grafico.py:551` | `reintento_seguro=True` → `False` (R27) | `test_f012_r27_un_commit_con_filas_distintas_de_tres_es_un_error` (ampliado) |
+| 8 | `paso_grafico.py:567` | `_plan(ya_cerrada=False)` → `True` | `test_f012_r21_el_plan_del_dry_run_correcto_dice_cerrable_y_no_cerrada` |
+| 9 | `paso_grafico.py:568` | `_plan(idempotente_previsto=False)` → `True` | `test_f012_r16_el_plan_de_una_reclamacion_ya_cerrada_lo_dice_entero` |
+| 10 | `paso_grafico.py:632` | traza `idempotente ... else False` → `True` | `test_f012_r42_la_traza_del_dry_run_no_afirma_que_el_grafico_ya_estuviera` |
+| 12 | `grafico.py:92` | `LONGITUD_MAXIMA_NOM = 255` → `256` | `test_f012_r9_un_nombre_de_256_caracteres_ya_no_cabe` |
+| 13 | `grafico.py:138` | `PeticionGrafico` deja de ser `frozen` | `test_f012_r20_r21_las_piezas_del_grafico_no_se_pueden_modificar[peticion]` |
+| 14 | `grafico.py:166` | `PlanDeGrafico` deja de ser `frozen` | el mismo, `[plan]` |
+| 17 | `grafico.py:193` | `RespuestaGrafico` deja de ser `frozen` | el mismo, `[respuesta]` |
+| 18 | `grafico.py:222` | `ResultadoGrafico` deja de ser `frozen` | el mismo, `[resultado]` |
+| 19 | `grafico.py:310` | `len(usu) >` → `>=` | `test_f012_r12_un_login_de_exactamente_24_caracteres_si_cabe` |
+| 20 | `grafico.py:320` | `len(nom) >` → `>=` | `test_f012_r9_un_nombre_de_exactamente_255_caracteres_si_cabe` |
+| 21 | `persistencia.py:185` | `TrazaGrafico` deja de ser `frozen` | `test_f012_r20_r21_las_piezas_del_grafico_no_se_pueden_modificar[traza]` |
+| 23 | `graficos.py:129` | `monotonic() - arranque` → `+` | `test_f012_el_log_registra_la_duracion_real_de_la_llamada` |
+| 24 | `graficos.py:255` | `familia == "reintentable"` → `!=` | `test_f012_r31_r34_un_codigo_reintentable_y_uno_desconocido_no_dicen_lo_mismo` |
+| 25 | `graficos.py:325` | `datos.get("ok", False)` → `True` | `test_f012_r26_una_respuesta_sin_los_campos_del_contrato_no_es_un_exito` |
+| 26 | `graficos.py:326` | `committed` por omisión → `True` | el mismo |
+| 27 | `graficos.py:327` | `idempotente` por omisión → `True` | el mismo |
+| 28 | `graficos.py:328` | `dry_run` por omisión → `True` | el mismo |
+| 29 | `graficos.py:330` | `bytes ... or 0` → `or 1` | el mismo |
+| 30 | `adjuntar.py:96` | `confirmado = False` → `True` | `test_f012_r23_sin_el_campo_confirmado_no_se_escribe_nada` |
+| 31 | `adjuntar.py:213` | `_bandera`: `return True` → `False` | `test_f012_r57_r23_las_banderas_admiten_tambien_el_booleano_de_python` |
+| 33 | `adjuntar.py:280` | `filas_afectadas ... else 0` → `1` | `test_f012_r16_una_reclamacion_ya_cerrada_se_devuelve_en_verde_y_lo_dice` |
+| 34 | `adjuntar.py:313` | `_idempotente`: `return False` → `True` | el mismo |
+| 35 | `adjuntar.py:347` | `"ya_estaba": False` → `True` | `test_f012_r21_el_dry_run_normal_no_dice_que_el_parte_ya_estuviera_dentro` |
+
+El análisis completo, con el porqué de cada uno y no solo el nombre del test,
+está en **`progress/mutacion_F-012.md`**, que ya no tiene ni un `PENDIENTE`.
+
+#### Los dos hallazgos que valía la pena tener
+
+1. **`paso_grafico.py:273`, el `or` de la puerta de R14.** Con `and`, un parte
+   cuyo veredicto **no** fuera `apto` pasaba la puerta con solo que el destino
+   dijera `archivo_y_cierre` — y el destino llega en el formulario, desde
+   fuera. Los dos tests que había cambiaban las dos condiciones a la vez, así
+   que ninguno veía la diferencia. Es exactamente el fallo que R14 existe para
+   impedir: subir al ERP de producción el parte de una incidencia que nadie ha
+   validado.
+2. **`graficos.py:325–328`, los cuatro `bool(datos.get(..., False))`.** Ningún
+   test omitía esas claves: todos los cuerpos de la suite venían completos. Con
+   `True` por omisión, un `200` con un cuerpo que no es el del contrato —la
+   página de un proxy, una versión de la pasarela que ya no responde igual—
+   pasaba por `esta_colgado` como un gráfico adjuntado, y el paso cerraba la
+   traza en `adjuntado` con el parte fuera del ERP.
+
+**No se ha tocado ni una línea de producción.** Los 30 supervivientes eran
+huecos de test, no defectos: cada uno se resolvió escribiendo el test que
+faltaba.
+
+---
+
+## 8 · Verificaciones `MANUAL (humano)` pendientes
+
+### 8.1 · T21 — hecha, pero en otro repositorio
+
+`azure-apps/postventa_incidencias.md` está refrescado y **commiteado en local**
+(`72b8fa3`), **sin push**, como manda `CLAUDE.md`. `azure-apps/sigrid_api.md`
+**no se ha tocado**: es del dueño de la pasarela.
+
+### 8.2 · Bloque 9 (T25–T32) — sin ejecutar, y su guion sin escribir
+
+Todo el bloque es `MANUAL (humano)`, contra el ERP de producción y **sobre
+reclamaciones de la obra de prueba 404**. `tasks.md` pide que su guion
+detallado se escriba en `progress/guion_bloque9_F-012.md` al llegar ahí; **ese
+fichero no existe todavía**, y escribirlo es lo primero del bloque.
+
+**Precondiciones que exige de la configuración de `sigrid-api` en `dev`** (P0,
+y son **del dueño de la pasarela**, no nuestras). Se leen sin ver ningún valor
+con `az functionapp config appsettings list` sobre **su** Function App:
+
+| App Setting de `sigrid-api` | Qué tiene que valer | Qué pasa aquí si no |
+|---|---|---|
+| `SIGRID_DOMAIN_WRITE_ENABLED` | `true` | Sin ella no hay endpoint de dominio que valga |
+| `SIGRID_DOCUMENT_WRITE_ENABLED` | `true` | `/api/adjuntar` → **503** con `escritura_documental_deshabilitada`, **sin escribir nada** |
+| `SIGRID_DOCUMENT_WRITE_DATABASE` | `ruesma_rep` | Vacía → el mismo 503, **también en el dry-run** |
+| `SIGRID_DOCUMENT_ALLOWED_CONTIP` | contiene `708` | **409** con `tipo_de_concepto_no_coincide` |
+| `SIGRID_DOCUMENT_ALLOWED_GRATIPIDE` | contiene `35` | **409** con `clase_de_grafico_no_permitida` |
+| `SIGRID_DOCUMENT_MAX_BYTES` | ≥ el tamaño del parte de prueba | **409** con `tamano_excedido`. Nuestro `GRAFICO_MAX_BYTES` (10 MB) no protege de esto: es un tope propio y no el suyo |
+
+Según `design.md` §0, el dueño las dejó en esos valores el **2026-09-06**. Hay
+que **releerlas antes de abrir la ventana**, no darlas por buenas.
+
+Las otras precondiciones, resumidas: `init.sh` en verde en esta rama (**hecho**),
+el backend desplegado con el código de F-012 (**pendiente**), los secretos de
+Sigrid en el Key Vault y las App Settings puestas (`infra/14_paso0_sigrid.ps1`),
+raíz y clave de la pasarela a mano, **un parte de la obra 404 recorrido entero
+por el front** —subido, validado `apto`/`archivo_y_cierre`, **guardado** y
+**archivado**, porque `postventa.graficos` tiene clave ajena contra `partes` y
+sin eso falla **hasta el dry-run**—, autorización expresa del humano para esa
+reclamación, y sesión iniciada en el front con **un solo parte** en curso.
+
+**Aviso que hay que leer antes de abrir la ventana**: `CIERRE_HABILITADO` es
+**una sola** para el gráfico y el cierre (D-B). Abrirla para probar el gráfico
+**abre también el cierre**. Es aceptable —dry-run por omisión, confirmación
+explícita, el humano delante— y de hecho la verificación quiere cerrar la
+reclamación de prueba después de adjuntar, pero no puede ser una sorpresa.
+
+### 8.3 · T33 y T34
+
+- **T33** · la campaña de mutación: **hecha y marcada**. Dos pasadas, los 35
+  supervivientes de la primera analizados uno a uno y 22 tests nuevos. §7.2.
+- **T34** · `bash harness/init.sh`: **se ha ejecutado y está en verde** (es
+  precondición del implementer), pero la tarea **no se marca**, porque el
+  encargo la reserva.
+
+---
+
+## 9 · Lo que quedó fuera del alcance, a propósito
+
+Nada de esto se ha implementado, y `requirements.md` lo declara fuera:
+
+- **borrar o sustituir** adjuntos, y **versionar** (`graant`);
+- **reparar gráficos huérfanos**: los que la pasarela avise se **enseñan** en el
+  dry-run (R21) y no se tocan;
+- **el gráfico por URL** (F-023), que el humano canceló el 2026-09-06;
+- **cualquier cosa del catálogo del portal**.
+
+Y dos decisiones que se dejaron como estaban:
+
+- **`ErpPort` no cambia.** «Tres métodos y ni uno más»: el gráfico tiene su
+  puerto propio.
+- **No se recalcula la huella de páginas** del PDF recibido para compararla con
+  `hash` (D-H). F-002 avisa de que esa igualdad no está garantizada por
+  construcción, y una comprobación que fallara sola mandaría partes buenos a un
+  409. Lo que sí se comprueba es la integridad **del transporte**: `sha256`
+  calculado aquí y cotejado por la pasarela.
+
+---
+
+## 10 · Preguntas abiertas que siguen abiertas
+
+De `design.md` §14, dos siguen siendo del humano y **ninguna bloquea**:
+
+- **P1** · ¿es `PV002` (`gratipide` 35) la clase correcta para un parte
+  firmado? El nombre —«POSTVENTA:Fotos Reparaciones»— no lo dice; los datos sí
+  (3.197 «PARTE FIRMADO» en esa clase). **Confirmar con Ana Bello / Alicia
+  Echevarría.** Cambiarlo es una App Setting… **más un cambio en la lista
+  blanca de la pasarela**: es una decisión de dos dueños.
+- **P2** · ¿`res` = `PARTE FIRMADO` a secas? Implementado así. Cambiarlo es una
+  constante del dominio.
+
+Y una **observación fuera de encargo**, que ya venía de la sesión anterior y
+esta feature hereda sin cambiarla: `peticion()` de `js/api.js` reintenta lo
+transitorio (502, red, tiempo agotado) en **todos** los pasos, incluido
+`adjuntar` con `commit`. **Aquí es seguro por construcción** —el endpoint es
+idempotente por tamaño y `sha256`—, y se deja escrito para que nadie lo lea
+como un reintento de escritura no controlado.
+
+---
+
+## 11 · Post-review (2026-09-06) · las dos correcciones «debe corregirse» y S9
+
+Encargo posterior al **APROBADO** de `progress/review_F-012.md` §6: los dos
+puntos de «debe corregirse» (D1, D2) y una sugerencia (S9) que además es una
+mejora genérica del arnés y se propaga a `arnes-base`.
+
+### 11.1 · D1 · «bytes descargados» medía la cadena del sha256, no el PDF
+
+`infra/16_grafico_sigrid.ps1` imprimía `$huella.Length` en esa casilla.
+`$huella` es la **cadena hexadecimal** del sha256: mide **siempre 64**, pese el
+binario lo que pese. No era un falso verde —lo que sostiene el bloque es la
+comprobación de la línea siguiente, `sha256 del binario DENTRO del ERP`, que
+estaba correcta— pero es un número que parece un tamaño y no lo es, delante del
+ERP de producción.
+
+El tamaño se captura ahora de `$respuesta.Content.Length` **antes** del
+`$respuesta = $null` que va justo después del hash. Ese `$null` es deliberado
+(nada del PDF sobrevive al script) y por eso el orden importa: leerlo después
+anotaría un vacío. El comentario del script lo deja escrito, con la trampa
+nombrada, para que nadie lo vuelva a poner donde estaba.
+
+| Antes | Ahora |
+|---|---|
+| `Anotar -Que "bytes descargados" -Valor $huella.Length` | `$bytesDescargados = $respuesta.Content.Length` (antes del `$null`) y `Anotar ... -Valor $bytesDescargados` |
+
+**Test nuevo** en `services/postventa-api/tests/test_f012_scripts_infra.py`:
+`test_f012_la_casilla_de_bytes_mide_el_contenido_y_no_la_huella`. No es una
+comprobación de texto de fachada: extrae con una expresión regular **qué
+variable** alimenta la casilla, exige que no sea `$huella.Length`, exige que esa
+misma variable se calcule de `$respuesta.Content.Length`, y **compara los
+índices** para fijar que la asignación va antes de `$respuesta = $null`.
+
+**Fase RED**, con el comando exacto:
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f012_scripts_infra.py -k bytes_mide -q
+>       assert medida != "$huella.Length", (
+            "«bytes descargados» está imprimiendo la longitud de la cadena del "
+            "sha256, que es siempre 64, en vez del tamaño del binario descargado"
+        )
+E       AssertionError: «bytes descargados» está imprimiendo la longitud de la cadena del sha256, que es siempre 64, en vez del tamaño del binario descargado
+E       assert '$huella.Length' != '$huella.Length'
+
+tests\test_f012_scripts_infra.py:277: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f012_scripts_infra.py::test_f012_la_casilla_de_bytes_mide_el_contenido_y_no_la_huella
+1 failed, 53 deselected in 0.24s
+```
+
+**Analizador de PowerShell** sobre el script ya corregido (salida real, con
+`[System.Management.Automation.Language.Parser]::ParseFile` sobre
+`infra\16_grafico_sigrid.ps1`):
+
+```
+SIN ERRORES DE SINTAXIS - tokens: 1147
+```
+
+**Verde** después: `54 passed in 0.18s` en `test_f012_scripts_infra.py` (53
+antes, más el nuevo).
+
+Commit: `2403aab`.
+
+### 11.2 · D2 · dos comentarios del front describían el aviso que R48 derogó
+
+`js/api.js` (docstring de `cerrar`) y `js/app.js` (el campo `dryRunCierre`)
+seguían contando el dry-run como si trajera «la reclamación quedará cerrada sin
+el parte». Ese aviso **ya no llega**: R48 lo derogó y en su sitio va el bloque
+`grafico` con el estado real del parte (R49), porque desde F-012 el cierre con
+`commit` **exige** el gráfico adjuntado (R2). El backend lo tenía impecable
+—hasta con controles negativos—; el front se había quedado a medias, y el
+siguiente que leyera `api.js` habría buscado en la respuesta un campo que ya no
+existe.
+
+Los dos comentarios describen ahora el sistema real: los dos estados legibles,
+con qué login se firmaría, y el bloque `grafico` con sus tres valores
+(`adjuntado`, `dry_run_ok`, `no_consta`). Y los dos **nombran expresamente** que
+`aviso_sin_grafico` ya no llega, con el porqué: sin esa frase, el próximo que
+lea código de F-009 en otra rama volverá a esperarlo.
+
+**Sin cambios funcionales**: solo comentarios. Verificado con la suite del
+front, `130 passed in 2.36s`, la misma que antes del cambio.
+
+Commit: `48b69a8`.
+
+### 11.3 · S9 · el comando del informe de mutación omitía `--base`
+
+La línea «Generado por» de `progress/mutacion_F-012.md` decía
+`python -m harness.mutacion --feature F-012 --workers 8`. Copiado tal cual, ese
+comando **no reproduce la campaña**: la rama de F-012 nace de
+`feature/F-009-cierre-sigrid` y la campaña se lanzó con
+`--base feature/F-009-cierre-sigrid`. Sin ese flag, el alcance se calcula contra
+`dev` y arrastra las líneas de la feature madre, así que ni el número de
+mutantes ni la lista de supervivientes son comparables. Y como el comando parece
+completo, quien lo copie no tiene forma de enterarse.
+
+Es el mismo agujero que el arnés ya había tapado con `--workers`: la cabecera
+del informe es la única memoria de cómo se midió, porque la línea de comando se
+la lleva el scrollback.
+
+Cambios en `harness/mutacion.py`:
+
+| Pieza | Qué |
+|---|---|
+| `BASE_POR_DEFECTO` | Constante nueva (`"dev"`), compartida con el `argparse`, para que el valor por defecto y el que `comando_de` compara no puedan separarse |
+| `InformeMutacion.base` | Campo nuevo, `str` o `None` |
+| `main` | Lo rellena desde `opciones.base`, y lo hace después de las dos ramas (paralela y en serie), así que vale para las dos |
+| `comando_de` | Emite `--base <rama>` **solo** cuando difiere del valor por defecto: repetir `--base dev` en todos los informes es ruido que acaba haciendo que nadie lea la línea |
+
+**Tests nuevos**: `tests/test_mutacion_informe_base.py`, seis. Cuatro sobre
+`comando_de` (base heredada, base por defecto que no se escribe, informe sin
+base que no se inventa ninguna, y convivencia con `--workers`), uno sobre la
+cabecera escrita, y uno que **cierra el circuito por `main`** —el campo no sirve
+de nada si el CLI no lo rellena—.
+
+**Fase RED.** Primero el fallo de importación, que es el que fija que la
+constante forma parte del contrato:
+
+```
+$ python -m pytest tests/test_mutacion_informe_base.py -q
+E   ImportError: cannot import name 'BASE_POR_DEFECTO' from 'harness.mutacion'
+1 error in 0.21s
+```
+
+Y después, ya con la constante, el campo y el cableado de `main` puestos pero
+`comando_de` sin tocar, el fallo **de comportamiento**:
+
+```
+>       assert f"--base {BASE_HEREDADA}" in destino.read_text(encoding="utf-8")
+E       AssertionError: assert '--base feature/F-009-cierre-sigrid' in '<!-- .../mutacion_F-000.md ...'
+
+tests\test_mutacion_informe_base.py:132: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_mutacion_informe_base.py::test_el_comando_cita_la_base_cuando_no_es_la_de_siempre
+FAILED tests/test_mutacion_informe_base.py::test_la_cabecera_del_informe_lleva_esa_base
+FAILED tests/test_mutacion_informe_base.py::test_la_base_convive_con_los_workers
+FAILED tests/test_mutacion_informe_base.py::test_main_registra_en_el_informe_la_base_con_la_que_se_lanzo
+4 failed, 2 passed in 0.19s
+```
+
+**Verde** después: `62 passed in 3.83s` en `tests/` (56 antes, más los 6).
+
+Y las **dos** líneas «Generado por» de `progress/mutacion_F-012.md` —una por
+pasada— quedan corregidas a
+`python -m harness.mutacion --feature F-012 --base feature/F-009-cierre-sigrid --workers 8`,
+que es el comando que de verdad se lanzó. **No se relanzó la campaña**: el
+cambio es de la línea de texto, no de los números, que siguen siendo los
+medidos.
+
+Commit: `749d9b7`.
+
+### 11.4 · Propagación obligatoria a `arnes-base`
+
+S9 es una mejora **genérica** del arnés, así que se porta en el mismo trabajo.
+`C:/Users/pgris/PycharmProjects/arnes-base` estaba en `main` y con el árbol
+**limpio**, así que no hubo que respetar ningún trabajo a medias ni cambiar de
+rama.
+
+Portado **pieza a pieza y no fichero a fichero**: allí el arnés va por la
+**1.7.9** y este repositorio por la **1.5.2**, de modo que
+`arnes-base/harness/mutacion.py` (2.344 líneas) tiene otra estructura —línea
+base, centinela, repaso de timeouts, `--ficheros`— frente a las 903 de aquí.
+Las dos diferencias que obligó esa distancia:
+
+- allí `main` escribe `informe.base = None if opciones.ficheros else opciones.base`,
+  porque el alcance por `--ficheros` **no tiene base** contra la que medir;
+- el test de `main` monta el alcance con `monkeypatch` sobre
+  `alcance_de_feature` y `ejecutar_campania`, siguiendo el patrón que ya usa
+  allí `test_mutacion_muestreo_por_nivel.py`.
+
+También se siguió el convenio de versionado de ese repositorio, que es lo que
+hacen sus commits anteriores: **`VERSION` a 1.7.10 (2026-09-06)** y entrada
+nueva en `GUIA_INSTALACION.md` con el caso, el cambio y los ficheros. No hizo
+falta tocar `politica_ficheros.json`: cubre `tests/**` por glob.
+
+**Fase RED allí también**, escondiendo el fichero de producción con
+`git stash push -- arnes-base/harness/mutacion.py` y devolviéndolo con
+`git stash pop`:
+
+```
+E   ImportError: cannot import name 'BASE_POR_DEFECTO' from 'harness.mutacion'
+1 error in 0.32s
+```
+
+**Suite de `arnes-base` en verde** después: `347 passed, 1 skipped in 38.77s`.
+
+Commit local en `arnes-base`: `6aa4335`. **Sin `push`**, como manda la regla.
+
+### 11.5 · Evidencias del post-review
+
+Medidas, no estimadas. Salida de `bash harness/init.sh` al terminar:
+
+| Evidencia | Resultado |
+|---|---|
+| Tests del arnés (`tests/`) | **62 passed in 4.55s** (56 antes: +6 de `test_mutacion_informe_base.py`) |
+| Tests del servicio `api` | **2.055 passed, 13 skipped in 55.32s** (2.054 antes: +1, el de la casilla de bytes) |
+| Tests del servicio `front` | **130 passed in 2.45s** (sin cambio: D2 no toca comportamiento) |
+| Cobertura de líneas cambiadas | **99,0 % de 1.079 líneas** (1.068/1.079, umbral 80 %, nivel `critico`) — idéntica a antes del post-review |
+| `ruff` | **58 avisos**, la deuda previa exacta. **Ni uno nuevo**: los ficheros tocados pasan `ruff check` limpios |
+| Analizador de PowerShell (`16_grafico_sigrid.ps1`) | **sin errores de sintaxis**, 1.147 tokens |
+| Suite de `arnes-base` | **347 passed, 1 skipped in 38.77s** |
+| Campaña de mutación | **No se relanza.** Ninguna línea de producción del alcance de F-012 cambió: D1 es un script `.ps1` (fuera del alcance, porque `harness/alcance.py` solo mide `.py`), D2 son comentarios de `.js`, y S9 toca `harness/`, que tampoco entra en el alcance de la feature. La puerta de cobertura lo confirma: sigue midiendo exactamente las mismas 1.079 líneas. Los números de `progress/mutacion_F-012.md` siguen siendo los medidos |
+
+### 11.6 · Lo que NO se hizo, y por qué
+
+- **Las otras ocho sugerencias de la review** (S1–S8) quedan sin tocar: el
+  encargo pedía D1, D2 y S9. Siguen escritas en `progress/review_F-012.md` §7.
+- **No se cambió ningún estado en `harness/features.json`.** F-012 sigue como la
+  dejó el líder; marcarla es suyo, no del implementer.
+- **Nada contra Azure, Sigrid, `sigrid-api`, el PostgreSQL compartido ni
+  SharePoint.** El script 16 se validó **leyéndolo** con el analizador de
+  sintaxis de PowerShell y con el test de texto: no se ejecutó.
+- **No hubo `push`** ni en este repositorio ni en `arnes-base`.
+
+---
+
+## 12 · Guion del bloque 9 (2026-09-06) · escrito, y el del bloque 8 de F-009 corregido
+
+`tasks.md` bloque 9 pedía que su guion detallado se escribiera en
+`progress/guion_bloque9_F-012.md` **al llegar ahí**, como se hizo con el del
+bloque 8 de F-009. §8.2 lo declaraba pendiente y decía que escribirlo era «lo
+primero del bloque». Ya está escrito. **No se ha ejecutado nada del bloque 9**:
+sigue siendo entero `MANUAL (humano)` y contra el ERP de producción.
+
+### 12.1 · Qué lleva el guion nuevo
+
+`progress/guion_bloque9_F-012.md`, calcado en estructura del de F-009:
+
+- **Cabecera** con qué es, quién lo ejecuta —una persona; ningún agente puede,
+  ni el dry-run—, **sobre qué**: reclamaciones de la **obra de prueba 404**, y
+  el estado de la feature.
+- **§0, seis cosas que sorprenden**: que sin `CIERRE_HABILITADO` no funciona ni
+  el dry-run del gráfico; que la ventana es **una sola** para gráfico y cierre;
+  que el caso idempotente responde `committed: false` y **eso es un éxito**; que
+  un tiempo agotado en el commit deja el ERP en estado desconocido y **el
+  reintento es seguro** por idempotencia; que el gráfico **no** escribe en
+  `dbo.log` (R36); y que a `/api/adjuntar` no se le llama a mano.
+- **§1, la configuración**, separada por **dueños**: lo que pone nuestro
+  despliegue —incluidas `SIGRID_GRATIPIDE_PARTE=35` y
+  `GRAFICO_MAX_BYTES=10485760`— y lo que es **de la pasarela** y aquí solo se
+  lee. Con el **Paso 0** en tres partes: `14_paso0_sigrid.ps1 -WhatIf` primero,
+  el despliegue del backend con el código de F-012 (con la tabla de qué
+  significa un 404, un 503 y un 200), y la lectura filtrada de las seis App
+  Settings de `sigrid-api`.
+- **§2, precondiciones con casillas**: P0–P7 técnicas, y **D1** y **D2**
+  documentales —la aceptación de los 5 supervivientes de mutación y la
+  confirmación de `PV002` con Posventa—, marcadas como **no bloqueantes
+  técnicamente**.
+- **§3, el utillaje**: los nueve scripts con qué hace cada uno y qué escribe
+  (ninguno en el ERP), y cómo se les pasa destino y clave.
+- **§4, cómo se llama a los endpoints** y por qué no con `curl`: las dos vías
+  desde el front, con el fragmento de consola de `adjuntar` —que reutiliza
+  `Pipeline.cuerpoDeGrafico` y el estado de Alpine— y el de `cerrar`.
+- **§5, T25–T32**, cada una con qué se verifica, precondiciones, pasos
+  numerados con la línea exacta, qué se espera, qué hacer si no sale eso y
+  casilla de resultado. **Termina en T32**: cerrar la ventana y dejar
+  constancia.
+- **§6** al terminar salga bien o mal, **§7** qué se anota y qué no, **§8** los
+  diez hallazgos.
+
+**Ni un valor sensible.** Marcadores `<...>` para la raíz, la clave, la base, el
+`oid`, el login, los códigos de reclamación y los nombres de recurso de
+`sigrid-api`. La lectura de P0 va con `--query` para no volcar las credenciales
+de escritura de la pasarela a la consola de nadie.
+
+### 12.2 · Los diez hallazgos de la preparación
+
+Los cinco que no estaban escritos en ninguna parte:
+
+| # | Hallazgo | Qué se hizo |
+|---|---|---|
+| **H1/H2** | `/api/adjuntar` es `multipart` con el PDF dentro: no se llama a mano, y **poner `Content-Type` la rompe en silencio** (el backend recibe un formulario vacío y responde 400 enumerando campos que sí se mandaron) | Fragmento de consola en §4, aviso en §0.6 y dentro del propio código |
+| **H4** | **`filas_afectadas: 0` significa cosas opuestas** según el endpoint: éxito en `adjuntar` idempotente, «no se aplicó nada» en `cerrar` | §0.3, y separado en las casillas de T28 y T30 |
+| **H5** | **El reintento tras un `502` es seguro en `adjuntar` y prohibido en `cerrar`**, y los dos salen del mismo botón | §0.4, repetido en T27 paso 3 y T29 paso 4 |
+| **H6** | T28 capa 2 exige **borrar una fila de `postventa.graficos`** y `tasks.md` no daba la forma; `12_` y `17_` son de solo lectura | Bloque de PowerShell con confirmación tecleada y `rowcount`. **No se creó script en `infra/`**: un script re-ejecutable que borra trazas no conviene dejarlo por ahí |
+| **H7** | **T31 no puede usar la reclamación de T27**: la capa 1 de idempotencia respondería desde la traza y el rechazo no se produciría | Aviso al principio de T31: otra candidata de la obra 404, con su propia autorización |
+
+Y H8 (la lectura de P0 sin `--query` vuelca las credenciales de la pasarela),
+H9 (las dos precondiciones documentales no estaban en `tasks.md`), H3 (la
+ventana única, ya avisada en §8.2) y H10 (el guion del bloque 8, abajo).
+
+### 12.3 · El guion del bloque 8 de F-009, corregido (H10)
+
+`design.md` §13 (b) decía que, con F-012 primero, aquel guion había que
+corregirlo antes de recorrerlo. Contradecía a F-012 en tres puntos, y ahora no:
+
+- **Nota fechada arriba**: el bloque 9 de F-012 ejecuta de hecho un cierre
+  completo sobre la obra 404, y al reanudar F-009 aquel guion **se recorre con
+  lo que quede** —lo que el bloque 9 no haya cubierto—.
+- **P5**: de «una incidencia del piloto de Mirasierra» a **una reclamación de la
+  obra 404 que ya tenga el gráfico adjuntado**, nombrando las **dos** claves
+  ajenas contra `postventa.partes` (R40 de F-009 y R46 de F-012).
+- **T22 paso 4 y su casilla**: ya no se espera `aviso_sin_grafico` —R48 lo
+  derogó— sino el bloque `grafico` de R49, y se dice qué hacer si el aviso viejo
+  aparece (el despliegue no lleva F-012).
+- **T24**: precondición nueva —el parte tiene que constar `adjuntado` (R2)—, con
+  la línea de `17_traza_grafico_local.ps1` que lo comprueba y la salida si no lo
+  está: pasar antes por `/api/adjuntar`. Los pasos 3 y 4 añaden el caso del 409
+  por no adjuntado, y la casilla lo recoge.
+- Dos menciones sueltas a R21 en §4 y en el «qué se verifica» de T22.
+
+**Cambios quirúrgicos**, cada uno marcado con la fecha. El guion no se reescribió.
+
+### 12.4 · Lo que NO se hizo
+
+- **Nada contra Azure, Sigrid, `sigrid-api`, el PostgreSQL compartido ni
+  SharePoint**, ni siquiera lecturas. Todo lo que el guion afirma sale del
+  **código y de los scripts leídos**, no de una ejecución.
+- **No se marcó ninguna tarea** de `tasks.md` ni se tocó `harness/features.json`.
+- **No se creó ningún script nuevo en `infra/`** (ver H6).
+- **No hubo `push`.**
+
+### 12.5 · Evidencias de este encargo
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh` en verde: **62** del arnés, más los de `api` y `front` por servicio (caché: árbol sin cambios) |
+| Cobertura de las líneas cambiadas | **99,0 % de 1.079** (1.068/1.079, umbral 80 %, nivel `critico`) — idéntica: no cambió ni una línea de producción |
+| Mutantes generados y supervivientes | **No se relanza.** Este encargo solo escribe Markdown en `progress/`; `harness/alcance.py` mide `.py`, y el alcance de F-012 no se movió. Los números válidos siguen siendo los de `progress/mutacion_F-012.md` |
+| Tiempo de ejecución de la suite | **4,69 s** los 62 del arnés |
+| Fase RED | **No aplica**: no hay código nuevo. Son dos documentos de `progress/` |
+
+
+---
+
+## 13 · Acta del bloque 9 (2026-09-11) · **se ejecutó contra el ERP, y funcionó**
+
+> Esta sección se escribe **después** del review APROBADO y no lo revisa: es el
+> acta de la verificación manual que faltaba, levantada a partir de lo que
+> ejecutó el **responsable del proyecto** y de lo medido en los registros de la
+> aplicación. El detalle casilla a casilla está en
+> `progress/guion_bloque9_F-012.md` §9 y en sus casillas de resultado.
+
+### 13.1 · Qué se ejecutó
+
+El responsable recorrió el **circuito completo** contra el ERP de producción
+sobre la incidencia **`RS26.09/0150`** de la obra **`0626`** —obra **en uso**,
+con la autorización expresa de P6—. Un parte subido por la web quedó
+**archivado**, **adjunto a su reclamación** y la **reclamación cerrada**. Sus
+palabras: ***«ha funcionado perfectamente»*** y ***«cerró una y lo hizo bien»***.
+
+Eso cubre las dos *acceptance* que ningún test puede dar por buenas:
+
+| *Acceptance* | Estado |
+|---|---|
+| **1** · el parte se ve en la ficha de la reclamación en Sigrid | **verificada** por el responsable, en la ficha |
+| **2** · la reclamación se cierra **con su parte dentro** | **verificada**: es el **primer cierre real** de este servicio, y fue con el gráfico ya adjunto |
+| **3** · idempotencia de extremo a extremo | **NO verificada** (T28, ver §13.4) |
+
+### 13.2 · Las mediciones, que es lo que este informe tenía pendiente
+
+Medidas con `az monitor app-insights query` sobre **`appi-postventa-dev`**.
+**Las cinco respuestas fueron `200`**:
+
+| Hora (UTC) | Ruta | Código | Duración | Qué es |
+|---|---|---|---|---|
+| `08:27:15` | `archivar` | 200 | 1.756 ms | archivo en SharePoint |
+| `08:27:29` | `adjuntar` | 200 | **13.134 ms** | comprobación previa del gráfico |
+| `08:27:42` | `cerrar` | 200 | 4.424 ms | comprobación previa del cierre |
+| `08:28:03` | `adjuntar` | 200 | **8.471 ms** | **escritura del gráfico** |
+| `08:28:12` | `cerrar` | 200 | 472 ms | **el cierre real** |
+
+**R37, medido**: la llamada más lenta de todo el circuito es
+**`adjuntar` con 13,1 s**, frente al tope de **35 s** de `SIGRID_TIMEOUT_S`.
+Quedan **21,9 s** de margen —el **37,5 %** del tope consumido—, pero la
+distancia con el resto es enorme: **28 veces** el cierre y **7,5 veces** el
+archivo. Es el número que decide si el tope aguanta el parte real, y conviene
+repetirlo con el parte más pesado que maneje Posventa: pasarse de 35 s no da un
+error claro, da un `502` con el ERP en **estado desconocido** (§8 de este
+informe y §0.4 del guion).
+
+**Lo que NO se midió**, y hacía falta: el **tamaño en bytes** del parte usado.
+Sin él, los 13,1 s no se pueden extrapolar a un parte mayor, ni contrastar con
+`GRAFICO_MAX_BYTES` (10 MB) ni con el tope de la pasarela.
+
+### 13.3 · El fallo de procedimiento: el front desplegado no llevaba F-012
+
+El circuito **se paró después de archivar**, sin llamar a `adjuntar` ni a
+`cerrar` y **sin error visible**. Diagnóstico: los registros no tenían **ni una**
+llamada a esas dos rutas —así que el backend no era el problema— y el
+**JavaScript servido**, descargado, **no contenía el paso de adjuntar**. Se
+resolvió con `infra/desplegar_front.ps1 -SoloFront`.
+
+**No es un defecto del servicio: es del procedimiento.** El guion daba por hecho
+que basta con desplegar el backend, y **no basta**: el código de F-012 vive en
+las dos partes. Queda como hallazgo **H11** del guion, con el **Paso 0 (2) y la
+P2 corregidos** para desplegar las dos y comprobar el JS servido. La lección
+general, que vale para cualquier feature de este repositorio con front y
+backend: **un front al que le falta un paso no falla, no hace nada**, y «no hace
+nada» es el síntoma más caro de diagnosticar.
+
+### 13.4 · Lo que **no** se verificó, y sigue sin verificarse
+
+Se ejecutó el **camino feliz y poco más**. De las ocho tareas del bloque quedan
+marcadas **T25, T27 y T32** —y aun esas, con pasos sin recorrer— y **sin marcar
+cinco**:
+
+| Tarea | Qué queda sin probar contra el ERP |
+|---|---|
+| **T26** | que el `commit` del cierre **rechaza** un parte no adjuntado (**R2**, la razón de ser de la feature). Su dry-run sí se ejecutó |
+| **T28** | que repetir **no cuelga un segundo documento** (R25, R26). Ninguna llamada se repitió |
+| **T29** | el estado **«adjuntado pero no cerrado»** y el botón que saca de él (R3, R65): adjuntar y cerrar fueron seguidos, con 9 s entre medias |
+| **T30** | que un reintento sobre lo **ya cerrado** no escribe ni pisa las trazas terminales (R16, R30) |
+| **T31** | que un **rechazo de la pasarela** deja el ERP intacto y traza de `error` (R33, R59) |
+
+Y, transversal a todas: **no se ejecutó ni uno de los scripts de lectura de
+`infra/`**. Por tanto **no** está comprobado el `filas_afectadas: 3` de R27, **ni**
+que el binario dentro del ERP coincida byte a byte con el enviado, **ni** que
+`dbo.log` no haya crecido por el gráfico (R36), **ni** el huso de la fila de
+auditoría del cierre, **ni** ninguna de las dos trazas locales. Todo eso es
+**solo lectura** y sigue disponible: la incidencia, el gráfico y la fila están en
+el ERP.
+
+### 13.5 · La decisión, con su fecha
+
+**El 2026-09-11 el responsable del proyecto decidió cerrar F-012** con los cinco
+escenarios anteriores sin ejecutar: la feature se da por buena **con el camino
+principal verificado en producción**. Queda escrito para que las casillas vacías
+del guion se lean como lo que son —una decisión— y no como un olvido.
+
+**Pendiente, y no depende de esa decisión**: actualizar
+`azure-apps/postventa_incidencias.md` (ya no es verdad que «no se ha ejecutado
+ni un cierre real»), el paso 3 de T32 (comprobar en el borde el `503` con la
+ventana cerrada) y `progress/guion_bloque8_F-009.md`, que sigue nombrando la
+obra genérica.
+
+### 13.6 · Evidencias de este encargo
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh` **en verde**: **62** del arnés, más los de `api` y `front` por servicio (de caché: no se tocó ni un `.py`) |
+| Cobertura de las líneas cambiadas | **99,0 % de 1.079** (1.068/1.079, umbral 80 %, nivel `critico`) — sin cambios: este encargo solo escribe Markdown |
+| Mutantes generados y supervivientes | **No se relanza la campaña.** `harness/alcance.py` mide `.py` y el alcance de F-012 no se movió; los números válidos siguen siendo los de `progress/mutacion_F-012.md` |
+| Tiempo de ejecución de la suite | **14,97 s** los 62 del arnés |
+| Fase RED | **No aplica**: no hay código nuevo. Es documentación de `progress/` y `specs/` |
+| **Medición de campo (nueva)** | **5 llamadas al entorno desplegado, 5 × `200`**; `adjuntar` en **13.134 ms** (dry-run) y **8.471 ms** (commit), `cerrar` en **4.424 ms** y **472 ms**, `archivar` en **1.756 ms**. Fuente: `appi-postventa-dev`, 2026-09-11 |

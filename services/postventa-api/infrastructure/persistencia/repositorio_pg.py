@@ -1,5 +1,5 @@
 # services/postventa-api/infrastructure/persistencia/repositorio_pg.py
-"""El adaptador de PostgreSQL: implementa los dos puertos de persistencia.
+"""El adaptador de PostgreSQL: implementa los tres puertos de persistencia.
 
 **Es delgado a propósito.** Todo lo que se puede decidir sin base de datos
 —qué SQL, con qué parámetros, cómo vuelve una fila al dominio— vive en
@@ -31,6 +31,8 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
+from domain.models.aprobacion import Aprobacion
+from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.errores import PersistenciaNoDisponible, ReferenciaNoConsta
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
@@ -41,14 +43,18 @@ from domain.models.persistencia import (
     ResultadoGuardado,
     TrazaArchivo,
     TrazaCierre,
+    TrazaGrafico,
 )
 from domain.models.remesa import ParteTroceado
 from domain.models.validacion import ResultadoValidacion
 
 from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import (
+    fila_a_aprobacion,
+    fila_a_correspondencia,
     fila_a_entrada_cola,
     fila_a_preferencias,
+    fila_a_traza_grafico,
 )
 
 __all__ = ["RepositorioPostgres"]
@@ -57,7 +63,8 @@ log = logging.getLogger(__name__)
 
 
 class RepositorioPostgres:
-    """Implementa `RepositorioPartesPort` y `RepositorioPreferenciasPort`.
+    """Implementa `RepositorioPartesPort`, `RepositorioPreferenciasPort` y
+    `RepositorioUsuariosSigridPort`.
 
     Recibe la conexión ya abierta y con su sesión configurada: quién la abre y
     quién aplica el DDL es `fabrica.py`, y así este objeto se puede construir
@@ -115,11 +122,29 @@ class RepositorioPostgres:
     def guardar_validacion(
         self, *, resultado: ResultadoValidacion, ahora: datetime
     ) -> ResultadoGuardado:
-        """Guarda el veredicto, sustituyendo el anterior (R17)."""
+        """Guarda el veredicto, sustituyendo el anterior (R17), **y revoca la
+        aprobación humana que ya no le corresponde** (F-026, R30).
+
+        Las dos cosas van en la **misma transacción**, y eso es el requisito:
+        con dos habría una ventana —corta, pero real— en la que el veredicto
+        nuevo ya está guardado y la aprobación del viejo sigue viva, y un paso
+        que leyera justo ahí admitiría en el circuito un parte que nadie ha
+        aprobado.
+
+        La revocación se ejecuta **siempre**, haya aprobación o no: si no la
+        hay, el `UPDATE` no toca ninguna fila. Consultar antes para decidir si
+        merece la pena sería una consulta de más en el camino más transitado
+        del servicio, y una condición de carrera con quien apruebe a la vez.
+        """
         sql, parametros = sentencias.upsert_validacion(
             esquema=self._esquema, resultado=resultado, ahora=ahora
         )
-        guardado = self._escribir(sql, parametros, operacion="guardar_validacion")
+        revocacion = sentencias.revocar_aprobacion_si_cambio(
+            esquema=self._esquema, resultado=resultado, ahora=ahora
+        )
+        guardado = self._escribir(
+            sql, parametros, operacion="guardar_validacion", ademas=(revocacion,)
+        )
         log.info(
             "F-005 validación guardada: hash=%s destino=%s resultado=%s",
             resultado.hash_parte,
@@ -158,6 +183,98 @@ class RepositorioPostgres:
             resultado.value,
         )
         return resultado
+
+    def guardar_grafico(self, *, traza: TrazaGrafico) -> ResultadoGuardado:
+        """Registra el gráfico **sin pisar uno ya adjuntado** (F-012, R30).
+
+        Cuando la fila ya estaba en `adjuntado`, el `DO UPDATE` no se aplica,
+        la sentencia no devuelve fila y esto responde `SIN_CAMBIOS`: no había
+        nada que hacer, que no es lo mismo que no haber podido.
+
+        El log lleva el `hash`, el estado y el resultado. **Nunca** el
+        `gra_cod` —que lleva el login del ERP dentro (R44)—, ni el `sha256`, ni
+        nada del papel.
+        """
+        sql, parametros = sentencias.upsert_grafico(
+            esquema=self._esquema, traza=traza
+        )
+        resultado = self._escribir(sql, parametros, operacion="guardar_grafico")
+        log.info(
+            "F-012 gráfico registrado: hash=%s estado=%s resultado=%s",
+            traza.hash_parte,
+            traza.estado.value,
+            resultado.value,
+        )
+        return resultado
+
+    def consultar_grafico(self, *, hash_parte: str) -> TrazaGrafico | None:
+        """La traza del gráfico de ese parte, o `None` si no consta (F-012).
+
+        `None` **no es un error**: es la primera vez de ese parte. Quien lo
+        pide decide qué hacer con ello —`paso_grafico` sigue adelante,
+        `paso_cierre` con `commit` aborta (R2)—.
+
+        Del resultado se registra el **estado** y nada más: `gra_cod` lleva el
+        login del ERP dentro y este log lo lee cualquiera que abra Application
+        Insights (R44, R54).
+        """
+        sql, parametros = sentencias.select_grafico(
+            esquema=self._esquema, hash_parte=hash_parte
+        )
+        filas = self._leer(sql, parametros, operacion="consultar_grafico")
+        if not filas:
+            return None
+        traza = fila_a_traza_grafico(filas[0])
+        log.info(
+            "F-012 traza del gráfico leída: hash=%s estado=%s",
+            hash_parte,
+            traza.estado.value,
+        )
+        return traza
+
+    def guardar_aprobacion(self, *, aprobacion: Aprobacion) -> ResultadoGuardado:
+        """Registra que una persona aprobó este parte (F-026, R14, R17).
+
+        El log dice **qué** se aprobó y cómo fue, y nunca **quién**: el `oid`
+        es un dato personal seudónimo y la huella identifica un veredicto
+        concreto. Ninguno de los dos hace falta para saber que la operación fue
+        bien, y este log lo lee cualquiera que abra Application Insights (R13).
+        """
+        sql, parametros = sentencias.upsert_aprobacion(
+            esquema=self._esquema, aprobacion=aprobacion
+        )
+        resultado = self._escribir(sql, parametros, operacion="guardar_aprobacion")
+        log.info(
+            "F-026 aprobación registrada: hash=%s destino=%s resultado=%s",
+            aprobacion.hash_parte,
+            aprobacion.destino_aprobado.value,
+            resultado.value,
+        )
+        return resultado
+
+    def consultar_aprobacion(self, *, hash_parte: str) -> Aprobacion | None:
+        """La aprobación de ese parte, o `None` si no consta (F-026).
+
+        `None` **no es un error**: es que a ese parte no lo ha aprobado nadie.
+        Quien lo pide decide qué hacer con ello — los tres pasos del circuito,
+        no admitirlo si además no es apto.
+
+        Del resultado se registra si sigue vigente y nada más, por el mismo
+        motivo que en el guardado.
+        """
+        sql, parametros = sentencias.select_aprobacion(
+            esquema=self._esquema, hash_parte=hash_parte
+        )
+        filas = self._leer(sql, parametros, operacion="consultar_aprobacion")
+        if not filas:
+            return None
+        aprobacion = fila_a_aprobacion(filas[0])
+        log.info(
+            "F-026 aprobación leída: hash=%s vigente=%s",
+            hash_parte,
+            aprobacion.vigente,
+        )
+        return aprobacion
 
     def cola_validacion_humana(self, *, limite: int) -> tuple[EntradaCola, ...]:
         """Los partes que esperan que una persona decida (R22).
@@ -206,20 +323,73 @@ class RepositorioPostgres:
         )
         return resultado
 
+    # --- correspondencias con el ERP (F-009) ------------------------------
+
+    def resolver_login(self, *, usuario_oid: str) -> CorrespondenciaSigrid | None:
+        """La correspondencia `oid` → login de ese usuario, o `None` (R29).
+
+        `None` **no es un error**: es la primera vez de esa persona, y lo que
+        toca entonces es derivar un candidato y verificarlo contra el ERP.
+
+        Del resultado **no se registra nada** (R45): el login de Sigrid es la
+        identidad de una persona, y este log lo lee cualquiera que abra
+        Application Insights.
+        """
+        sql, parametros = sentencias.select_login_sigrid(
+            esquema=self._esquema, usuario_oid=usuario_oid
+        )
+        filas = self._leer(sql, parametros, operacion="resolver_login")
+        if not filas:
+            return None
+        return fila_a_correspondencia(filas[0])
+
+    def guardar_login(
+        self, *, correspondencia: CorrespondenciaSigrid
+    ) -> ResultadoGuardado:
+        """Deja **una sola** fila por usuario, con su verificación (R33).
+
+        El log dice si la correspondencia quedó confirmada y **nunca** cuál es:
+        saber que la siembra funcionó no exige saber quién es quién.
+        """
+        sql, parametros = sentencias.upsert_login_sigrid(
+            esquema=self._esquema, correspondencia=correspondencia
+        )
+        resultado = self._escribir(sql, parametros, operacion="guardar_login")
+        log.info(
+            "F-009 correspondencia con Sigrid guardada: confirmada=%s resultado=%s",
+            correspondencia.confirmada,
+            resultado.value,
+        )
+        return resultado
+
     # --- lo mecánico ------------------------------------------------------
 
     def _escribir(
-        self, sql: str, parametros: tuple, *, operacion: str
+        self,
+        sql: str,
+        parametros: tuple,
+        *,
+        operacion: str,
+        ademas: tuple[tuple[str, tuple], ...] = (),
     ) -> ResultadoGuardado:
         """Ejecuta una escritura y traduce su `RETURNING` a un resultado.
 
         Sin fila de vuelta significa que el `DO UPDATE` no se aplicó, y eso
         hoy solo pasa en un caso: el cierre terminal de R25.
+
+        `ademas` son sentencias que se ejecutan **dentro de la misma
+        transacción**, después de la principal y sin mirar lo que devuelvan.
+        Hoy lo usa uno solo: la revocación de la aprobación que acompaña al
+        guardado de la validación (F-026, R30). Va aquí y no en un método
+        aparte precisamente porque «en la misma operación» es el requisito: un
+        `commit` para las dos, o ninguno.
         """
         try:
             with self._conexion.cursor() as cursor:
                 cursor.execute(sql, parametros)
                 fila = cursor.fetchone()
+                for sql_extra, parametros_extra in ademas:
+                    cursor.execute(sql_extra, parametros_extra)
             self._conexion.commit()
         except psycopg.errors.ForeignKeyViolation as fallo:
             raise self._referencia_no_consta(operacion) from fallo

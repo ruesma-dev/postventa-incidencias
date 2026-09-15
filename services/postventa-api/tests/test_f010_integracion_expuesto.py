@@ -9,8 +9,10 @@ todavia no hace.
 El motivo no es documental. El entorno desplegado se le va a ensenar a
 negocio, y hay dos ausencias que se notan en la primera sesion:
 
-- **el cierre de la incidencia en Sigrid** (F-008, F-009), que es justo lo que
-  el humano dejo fuera a proposito;
+- **el cierre de la incidencia en Sigrid** (F-009) y, dentro de el, el parte
+  subido al ERP como grafico (F-012). Desde F-009 el cierre existe, pero su
+  ventana de escritura se despliega APAGADA y no se ha ejecutado ni un cierre
+  real: mientras siga asi, Sigrid no se toca, y eso hay que decirlo igual;
 - **la sesion que no se rehidrata**: si el usuario recarga la pagina, pierde el
   trabajo en curso.
 
@@ -53,7 +55,13 @@ INTEGRACION = RAIZ / "docs" / "INTEGRACION.md"
 #: demostracion se preparara para explicar algo que ya funciona. Lo que sigue
 #: faltando -rehidratar la sesion al recargar- no tiene numero de feature
 #: todavia y se comprueba aparte, por su consecuencia.
-NO_DESPLEGADAS = ("F-008", "F-009")
+#:
+#: F-008 **sale tambien**: era una investigacion de solo lectura y termino;
+#: lo que dejo escrito vive en docs/referencia/. Y F-012 **entra**: es lo que
+#: falta para que el parte llegue a estar dentro del ERP, y es la ausencia que
+#: mas se va a notar en una demostracion, porque la ficha de Sigrid quedara
+#: cerrada sin el documento adjunto.
+NO_DESPLEGADAS = ("F-009", "F-012")
 
 
 @pytest.fixture

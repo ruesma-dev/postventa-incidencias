@@ -44,6 +44,15 @@ PROHIBIDOS_ARRIBA_DEL_PUERTO = ("httpx", "msal", "requests", "infrastructure")
 #: El único paquete del servicio que puede conocer el cliente de Graph (R22).
 PAQUETE_DE_GRAPH = "infrastructure/sharepoint"
 
+#: Los paquetes de infraestructura que pueden hablar HTTP con un sistema ajeno.
+#:
+#: Eran uno hasta F-009, que añadió `infrastructure/sigrid/` para el ERP. La
+#: lista crece con cada sistema externo nuevo, y crecer así **es** el
+#: invariante: cada uno vive aislado en su paquete, y ninguna otra parte del
+#: servicio —ni un handler, ni un paso del pipeline— puede abrir una conexión.
+#: `test_f009_arquitectura.py` fija lo mismo desde el lado del ERP.
+PAQUETES_CON_CLIENTE_HTTP = ("infrastructure/sharepoint", "infrastructure/sigrid")
+
 #: Los ficheros de la suite autorizados a nombrar el adaptador real (R21).
 #:
 #: Son **dos**, y cada uno por un motivo distinto:
@@ -268,7 +277,7 @@ def test_f006_r22_solo_infrastructure_sharepoint_importa_graph():
         _relativa(fichero)
         for fichero in _modulos_python()
         if "httpx" in _modulos_importados(fichero)
-        and not _relativa(fichero).startswith(PAQUETE_DE_GRAPH)
+        and not _relativa(fichero).startswith(PAQUETES_CON_CLIENTE_HTTP)
         and not _relativa(fichero).startswith("tests/")
     ]
 

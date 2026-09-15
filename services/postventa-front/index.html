@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-slate-50 text-slate-800">
-  <div x-data="appPostventa()" x-init="comprobarBackend()" class="min-h-screen flex flex-col">
+  <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
 
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
@@ -92,12 +92,17 @@
         </template>
       </section>
 
-      <!-- ── 2 · Progreso (R9) ──────────────────────────────────────────── -->
-      <section x-show="fase === 'troceando' || fase === 'procesando' || fase === 'archivando'"
+      <!-- ── 2 · Progreso (R9; F-025 R12) ───────────────────────────────── -->
+      <!-- F-025 · el denominador es el tamaño de LA TANDA, no el de la remesa.
+           Con el viejo, archivar 4 partes de 22 enseñaba un 18 % al terminar, y
+           una barra que no llega al final parece un proceso colgado. Detrás de
+           esta hay escrituras en un ERP de producción y ~20 s por parte: un
+           botón quieto invita a pulsarlo otra vez. -->
+      <section x-show="fase === 'troceando' || fase === 'procesando' || fase === 'archivando_y_cerrando'"
                class="rounded-lg border border-slate-200 bg-white p-6">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500" x-text="tituloDeFase()"></h2>
         <p class="mt-3 text-sm text-slate-600">
-          <span x-text="terminados"></span> de <span x-text="partes.length"></span> partes terminados
+          <span x-text="terminados"></span> de <span x-text="totalTanda"></span> partes terminados
         </p>
         <div class="mt-2 h-2 w-full overflow-hidden rounded bg-slate-100">
           <div class="h-full bg-sky-500 transition-all"
@@ -135,9 +140,15 @@
                         class="w-full px-4 py-3 text-left hover:bg-slate-50"
                         :class="parteAbierto && parteAbierto.hash === parte.hash ? 'bg-slate-50' : ''">
                   <div class="flex items-center gap-2">
+                    <!-- F-026 R36 · el aprobado lleva el MISMO verde con
+                         anillo, no el verde liso. Uno lo dio por bueno la
+                         máquina y el otro lo dio por bueno una persona a pesar
+                         de la máquina: pintarlos igual borra exactamente el
+                         dato que esta feature existe para registrar. -->
                     <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                           :class="{
                             'bg-emerald-500': parte.semaforo === 'verde',
+                            'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parte.semaforo === 'aprobado',
                             'bg-amber-400': parte.semaforo === 'ambar',
                             'bg-red-500': parte.semaforo === 'rojo',
                             'bg-slate-300 animate-pulse': parte.estado === 'leyendo' || parte.estado === 'validando',
@@ -145,11 +156,25 @@
                             'bg-red-700': parte.estado === 'error'
                           }"></span>
                     <span class="font-mono text-xs text-slate-500" x-text="parte.hash.slice(0, 8)"></span>
+                    <!-- F-025 R13 · en cuál de los tres pasos está este parte
+                         ahora mismo. Con la cola a tres hay siempre tres líneas
+                         moviéndose: eso es lo que distingue «está trabajando»
+                         de «se ha colgado» durante los ~20 s que tarda. -->
+                    <span x-show="parte.paso" class="ml-auto animate-pulse text-xs text-sky-600"
+                          x-text="parte.paso"></span>
                     <span class="ml-auto text-xs text-slate-400" x-text="parte.estado"></span>
                   </div>
                   <p class="mt-1 truncate text-xs text-slate-400">
                     <span x-text="parte.origen"></span>
                     · pág. <span x-text="(parte.paginas_origen || []).join(', ')"></span>
+                  </p>
+                  <!-- R36 · el color solo no basta: hay que poder leer que
+                       esto lo aprobó una persona. Sin el `oid`, sin correo y
+                       sin nombre (R38): quien audite lo lee en la base. -->
+                  <p x-show="estaAprobado(parte)" class="mt-1 text-xs text-sky-700">
+                    Aprobado por revisión humana · venía de
+                    <span x-text="destinoDeOrigen(parte)"></span>
+                    · <span x-text="fechaDeAprobacion(parte)"></span>
                   </p>
                   <ul x-show="parte.validacion && parte.validacion.motivos.length"
                       class="mt-1 list-disc pl-4 text-xs text-slate-500">
@@ -224,6 +249,93 @@
                 <span class="text-xs text-slate-400" x-text="mensajeRevalidacion"></span>
               </div>
 
+              <!-- ── F-026 R52 · los tres estados del autoguardado ───────────
+                   Lo que se escribe se guarda solo tras una pausa, así que
+                   hace falta decir en qué punto está. Los dos primeros
+                   estados son información de fondo —gris pequeño, sin
+                   interrumpir a nadie—; el tercero NO.
+
+                   El aviso de fallo se pinta aparte, en rojo y con recuadro, y
+                   **no se va solo**: no hay temporizador que lo borre ni
+                   transición que lo esconda. Lo quita el siguiente guardado
+                   que salga bien, y solo él. Quien escribe y no ve nada supone
+                   que se guardó, y esa suposición no puede quedar sin
+                   desmentir.
+
+                   Y lo escrito sigue en pantalla pase lo que pase: el campo
+                   lee `valorDe(nombre)`, que devuelve la corrección de la
+                   persona antes que lo que dijo la IA. -->
+              <div class="mt-2" x-show="estadoAutoguardado">
+                <span class="text-xs"
+                      x-show="estadoAutoguardado === 'guardando' || estadoAutoguardado === 'guardado'"
+                      :class="estadoAutoguardado === 'guardado' ? 'text-emerald-700' : 'text-slate-400'"
+                      x-text="mensajeAutoguardado"></span>
+                <p x-show="estadoAutoguardado === 'fallo'"
+                   class="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800"
+                   x-text="mensajeAutoguardado"></p>
+              </div>
+
+              <!-- ── F-026 · la aprobación humana (R35-R39) ──────────────────
+                   El gesto va AQUÍ, en el detalle y con el PDF delante, que es
+                   donde se mira una firma. Nunca en la lista: aprobar es de UN
+                   parte, con ese parte delante (R28, R35).
+
+                   Y no pide una segunda confirmación (R29). Aprobar no escribe
+                   en ningún sistema ajeno —escribe en el esquema propio y se
+                   deshace revalidando—; la confirmación única de F-025 sigue
+                   siendo la única que precede a una escritura externa. -->
+              <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+                <!-- R36, R37 · lo que ya está aprobado: de dónde se rescató y
+                     cuándo. Ni el identificador de quien aprobó, ni su correo,
+                     ni su nombre (R38): eso se audita en la base. -->
+                <template x-if="estaAprobado(parteAbierto)">
+                  <p class="text-sm text-sky-800">
+                    <span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-offset-1 ring-sky-600"></span>
+                    <strong>Aprobado por revisión humana.</strong>
+                    Venía de <span x-text="destinoDeOrigen(parteAbierto)"></span>
+                    · aprobado el <span x-text="fechaDeAprobacion(parteAbierto)"></span>.
+                    Entra en la tanda de archivo y cierre como si fuera apto.
+                  </p>
+                </template>
+
+                <div x-show="esAprobable()" class="flex flex-wrap items-center gap-3">
+                  <button type="button" @click="aprobarParte()"
+                          :disabled="!usuario.usuarioOid || !remesaId"
+                          class="rounded bg-sky-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                    Aprobar este parte
+                  </button>
+                  <span class="text-xs text-slate-500">
+                    La validación lo rechazó, pero el papel está bien: queda
+                    registrado quién lo aprueba y cuándo.
+                  </span>
+                </div>
+
+                <!-- R4 · sin saber quién decide no se puede registrar la
+                     decisión. Se dice, en vez de dejar un botón deshabilitado
+                     sin explicación. -->
+                <p x-show="esAprobable() && !usuario.usuarioOid"
+                   class="mt-2 text-xs text-amber-700">
+                  No se ha podido saber quién eres, así que no se puede
+                  registrar quién aprueba. Vuelve a entrar desde el enlace de la
+                  aplicación.
+                </p>
+
+                <!-- R39 · cuando no es aprobable, en vez del botón, qué hay que
+                     corregir. Aquí no hay nada que decidir: hay algo que
+                     teclear, y teclearlo ya funciona sin aprobar nada. -->
+                <p x-show="!esAprobable() && !estaAprobado(parteAbierto)"
+                   class="text-xs text-slate-500">
+                  Este parte no se puede aprobar. Solo se aprueban los que la
+                  validación rechazó por lo que el cliente escribió a mano o
+                  por la firma: si le falta el <strong>código de obra</strong> o el
+                  <strong>número de incidencia</strong>, corrígelo arriba y
+                  revalida.
+                </p>
+
+                <p x-show="mensajeAprobacion" x-text="mensajeAprobacion"
+                   class="mt-2 text-xs text-slate-600"></p>
+              </div>
+
               <div class="mt-5">
                 <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">PDF del parte</h3>
                 <iframe x-show="urlPdf" :src="urlPdf" title="PDF del parte"
@@ -234,12 +346,30 @@
         </div>
       </section>
 
-      <!-- ── 5 · Archivo (R19-R22, R25) ─────────────────────────────────── -->
+      <!-- ── 5 · Archivar y cerrar, en un solo gesto (F-025) ─────────────── -->
+      <!-- Hasta F-025 esto eran DOS secciones, DOS confirmaciones y una
+           pantalla de cálculo previo en medio. El 2026-09-11, tras verificar el
+           circuito completo contra el ERP real, el responsable del proyecto
+           decidió que al confirmar el archivado se ejecute ya el cierre. Se le
+           planteó explícitamente que esa pantalla es lo que protege de cerrar
+           la incidencia equivocada si la extracción leyó mal el número del
+           papel, y respondió «no hace falta enseñar nada».
+
+           Lo que se pierde está escrito, entero, en
+           specs/F-025-confirmacion-unica/requirements.md §0.
+
+           Lo que NO se pierde: el backend sigue leyendo el estado real de la
+           reclamación antes de escribir, dentro de la misma llamada que
+           escribe. Lo que desaparece es la pantalla, no la verificación. -->
       <section x-show="partes.length && fase !== 'procesando' && fase !== 'troceando'"
                class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar y cerrar</h2>
         <p class="mt-2 text-sm text-slate-600">
-          <span x-text="archivables().length"></span> parte(s) en verde sin archivar.
+          <!-- F-026 R23 · en la tanda entran los aptos **y** los aprobados por
+               una persona. Decir «en verde» dejaría la cuenta sin explicar:
+               los aprobados están dentro de `pendientes()` y no son verdes. -->
+          <span x-text="pendientes().length"></span> parte(s) por archivar y
+          cerrar: los aptos y los que ha aprobado una persona.
         </p>
         <!-- F-019 R27 · los aptos que NO se pudieron guardar no entran en el
              botón, y hay que decir cuántos son: si desaparecieran de la cuenta
@@ -250,40 +380,113 @@
           El motivo está en cada parte de la lista.
         </p>
 
+        <!-- F-025 P2 · sin identidad no se firma, y ahora tampoco se archiva:
+             archivar sin poder cerrar deja justo el estado a medias que esta
+             feature quiere evitar. Se dice, en vez de dejar un botón
+             deshabilitado sin explicación. -->
+        <p x-show="!usuario.usuarioOid" class="mt-1 text-sm text-amber-700">
+          No se ha podido saber quién eres, así que no se puede firmar ningún
+          cierre en el ERP. Vuelve a entrar desde el enlace de la aplicación.
+        </p>
+
         <div class="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" @click="pedirConfirmacionArchivo()"
-                  :disabled="!archivables().length || fase === 'archivando'"
+                  :disabled="!pendientes().length || !usuario.usuarioOid || fase === 'archivando_y_cerrando'"
                   class="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300">
-            Archivar los partes aptos
+            Archivar y cerrar los partes aptos
           </button>
+          <!-- R6 · el texto nombra LAS TRES COSAS que van a pasar y cuántos
+               partes son: quien confirma ya no ve el detalle de ninguna, así
+               que el aviso tiene que ser exacto sobre el alcance. -->
           <template x-if="confirmacionPendiente()">
             <span class="flex items-center gap-2 text-sm">
-              <span class="text-slate-600">¿Seguro? Se subirán a SharePoint.</span>
+              <span class="text-slate-600">
+                ¿Seguro? Se subirán a SharePoint, se adjuntarán a su reclamación
+                y se cerrarán en Sigrid.
+                <span x-text="pendientes().length"></span> parte(s).
+              </span>
               <button type="button" @click="confirmarArchivo()"
-                      class="rounded bg-emerald-700 px-3 py-1 text-xs text-white">Sí, archivar</button>
+                      class="rounded bg-rose-700 px-3 py-1 text-xs text-white">Sí, archivar y cerrar</button>
               <button type="button" @click="cancelarArchivo()"
                       class="rounded border border-slate-300 px-3 py-1 text-xs">Cancelar</button>
             </span>
           </template>
         </div>
 
-        <!-- R19: la confirmación caduca. Si el segundo clic llega tarde, no
-             se sube nada y se dice por qué. -->
+        <!-- R4: la confirmación caduca. Si el segundo clic llega tarde, no se
+             sube ni se escribe nada, y se dice por qué. -->
         <p x-show="avisoArchivo" x-text="avisoArchivo"
            class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
 
-        <!-- El 503 tiene pantalla propia: es la puerta de entorno de F-006,
-             no un fallo. Pintarlo en rojo llevaría a alguien a «arreglarlo». -->
+        <!-- Las DOS puertas de entorno, cada una con su pantalla propia. No son
+             fallos y no se pintan en rojo: pintarlas así llevaría a alguien a
+             «arreglar» una App Setting que está apagada a propósito.
+             R22: la del archivo detiene la tanda. R21: la del ERP no, y por eso
+             se dicen por separado. -->
         <p x-show="entornoNoArchiva" x-text="entornoNoArchiva"
            class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
+        <p x-show="entornoNoCierra" x-text="entornoNoCierra"
+           class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
 
+        <!-- F-012 R65 · «adjuntado pero no cerrado» es un estado real y hay
+             que poder verlo y salir de él. El gráfico ya está dentro de
+             Sigrid, así que el reintento NO vuelve a mandarlo: el circuito se
+             salta lo que consta hecho y solo vuelve a pedir el cierre. -->
+        <div x-show="cerrables().some((parte) => parte.estado === 'adjuntado')"
+             class="mt-4 space-y-2">
+          <template x-for="parte in cerrables().filter((p) => p.estado === 'adjuntado')"
+                    :key="parte.hash">
+            <p class="flex items-center gap-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
+              <span>El parte está <strong>adjunto en Sigrid</strong> y la incidencia sigue abierta.</span>
+              <button type="button" @click="reintentarCierre(parte)"
+                      :disabled="fase === 'archivando_y_cerrando'"
+                      class="rounded border border-amber-400 px-3 py-1 text-xs disabled:text-slate-400">
+                Reintentar el cierre
+              </button>
+            </p>
+          </template>
+        </div>
+
+        <!-- F-012 R65 · y el error del gráfico, que es otra cosa: no se ha
+             adjuntado nada, o no se sabe. En los dos casos el reintento es
+             seguro, porque el endpoint es idempotente por contenido. -->
+        <div x-show="partes.some((parte) => parte.estado === 'error_grafico')"
+             class="mt-4 space-y-2">
+          <template x-for="parte in partes.filter((p) => p.estado === 'error_grafico')"
+                    :key="parte.hash">
+            <p class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
+              <span class="ml-2">No se ha podido adjuntar el parte:</span>
+              <span x-text="parte.error"></span>
+            </p>
+          </template>
+        </div>
+
+        <!-- El resumen del archivo: qué fichero acabó en qué carpeta. -->
         <ul x-show="resultadosArchivo.length" class="mt-4 divide-y divide-slate-100 text-sm">
-          <template x-for="resultado in resultadosArchivo" :key="resultado.hash">
+          <template x-for="resultado in resultadosArchivo" :key="resultado.clave">
             <li class="py-2">
               <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
               <span class="ml-2" x-text="resultado.mensaje"></span>
               <a x-show="resultado.web_url" :href="resultado.web_url" target="_blank" rel="noopener"
                  class="ml-2 text-sky-700 underline">abrir en SharePoint</a>
+            </li>
+          </template>
+        </ul>
+
+        <!-- El resumen del ERP. F-025 R37 · lleva el NÚMERO DE INCIDENCIA
+             sobre el que se escribió, y no es cosmético: al no haber pantalla
+             previa, este es el primer y único momento en que quien pulsó puede
+             darse cuenta de que se escribió sobre la incidencia equivocada.
+             Ver el recuadro «Lo que se pierde» de requirements.md §0. -->
+        <ul x-show="resultadosCierre.length" class="mt-4 divide-y divide-slate-100 text-sm">
+          <template x-for="resultado in resultadosCierre" :key="resultado.clave">
+            <li class="py-2">
+              <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
+              <span x-show="resultado.incidencia" class="ml-2 rounded bg-slate-100 px-1 font-mono text-xs"
+                    x-text="resultado.incidencia"></span>
+              <span class="ml-2" x-text="resultado.mensaje"></span>
             </li>
           </template>
         </ul>
@@ -311,6 +514,7 @@
   <script src="js/seleccion.js"></script>
   <script src="js/pipeline.js"></script>
   <script src="js/confirmacion.js"></script>
+  <script src="js/autoguardado.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

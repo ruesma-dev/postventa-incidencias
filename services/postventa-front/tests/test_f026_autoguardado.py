@@ -1,0 +1,390 @@
+# services/postventa-front/tests/test_f026_autoguardado.py
+"""El autoguardado de las correcciones en la pantalla (F-026, bloque 4 bis).
+
+La lógica del autoguardado vive en `js/autoguardado.js` y se prueba con
+`node --test` (`tests_js/autoguardado.test.js`). Lo que se fija **aquí** es lo
+que `node` no puede ver, porque está en el HTML o en el pegamento de Alpine:
+
+- **R51** · el retardo vive en `js/config.js` como una constante con su razón
+  escrita al lado, y **no repartido por el código**. Un número suelto en
+  `app.js` es el que alguien baja «porque tardaba» sin saber que al otro lado
+  hay un PostgreSQL compartido con otros dos proyectos en producción.
+- **R50** · el disparador llama a `revalidarYGuardar`, **nunca** a
+  `guardarParte` a secas. Guardar sin revalidar deja en la base el veredicto
+  que la IA emitió sobre el dato **sin corregir**.
+- **R52** · los tres estados están en la pantalla, y el de fallo **no se va
+  solo**.
+- **R53** · lo que extrajo la IA no se pisa: la corrección viaja aparte.
+- **R55** · el disparador no pregunta por el veredicto.
+
+Mismo planteamiento que `test_f026_front.py`, `test_f025_front.py` y
+`test_f009_front.py`: lo que sobrevive a la siguiente edición no es una
+revisión, es un test.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+RAIZ_FRONT = Path(__file__).resolve().parents[1]
+INDEX = RAIZ_FRONT / "index.html"
+APP = RAIZ_FRONT / "js" / "app.js"
+CONFIG = RAIZ_FRONT / "js" / "config.js"
+AUTOGUARDADO = RAIZ_FRONT / "js" / "autoguardado.js"
+
+
+def _sin_comentarios_html(texto: str) -> str:
+    return re.sub(r"<!--.*?-->", "", texto, flags=re.DOTALL)
+
+
+def _sin_comentarios_js(texto: str) -> str:
+    """El JS sin sus comentarios de línea ni de bloque.
+
+    Nombrar una cosa en un comentario no es hacerla: buscar en el texto crudo
+    daría por cumplido lo que el comentario solo está explicando.
+    """
+    sin_bloque = re.sub(r"/\*.*?\*/", "", texto, flags=re.DOTALL)
+    return "\n".join(
+        linea
+        for linea in sin_bloque.splitlines()
+        if not linea.lstrip().startswith("//")
+    )
+
+
+@pytest.fixture
+def html() -> str:
+    return _sin_comentarios_html(INDEX.read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def app() -> str:
+    return _sin_comentarios_js(APP.read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def config() -> str:
+    return CONFIG.read_text(encoding="utf-8")
+
+
+@pytest.fixture
+def autoguardado() -> str:
+    return _sin_comentarios_js(AUTOGUARDADO.read_text(encoding="utf-8"))
+
+
+def _bloque(texto: str, desde: str, hasta: str) -> str:
+    """El trozo de fichero entre dos marcas, para no buscar en todo el árbol."""
+    inicio = texto.index(desde)
+    fin = texto.index(hasta, inicio)
+    return texto[inicio:fin]
+
+
+# ===========================================================================
+# R51 · el retardo, en un solo sitio y con su razón al lado
+# ===========================================================================
+
+
+def test_f026_r51_el_retardo_se_declara_en_config_js(config):
+    """Una constante de configuración, no un número dentro de una llamada."""
+    assert re.search(r"RETARDO_AUTOGUARDADO_MS:\s*\d+", config), (
+        "`js/config.js` no declara `RETARDO_AUTOGUARDADO_MS`: el retardo del "
+        "autoguardado tiene que vivir en la configuración, no repartido"
+    )
+
+
+def test_f026_r51_el_porque_del_retardo_esta_escrito_al_lado(config):
+    """Un número sin su razón es un número que alguien baja a 100 ms.
+
+    Y bajarlo a 100 ms es escribir por tecla contra un PostgreSQL que
+    comparten otros dos proyectos en producción. La razón va pegada al valor,
+    como ya va la de `TIMEOUT_PETICION_MS`.
+    """
+    comentario = config[: config.index("RETARDO_AUTOGUARDADO_MS:")]
+
+    assert re.search(r"compartid", comentario, re.IGNORECASE), (
+        "falta decir, al lado del número, que la base es compartida"
+    )
+    assert re.search(r"postgres", comentario, re.IGNORECASE)
+
+
+def test_f026_r51_el_numero_del_retardo_no_esta_repartido_por_el_codigo(app, autoguardado, config):
+    """El valor aparece UNA vez, y es en `config.js`.
+
+    Si además estuviera escrito en `app.js` o dentro del módulo, cambiarlo en
+    la configuración no cambiaría nada y nadie se enteraría hasta ver la carga
+    de la base.
+    """
+    valor = re.search(r"RETARDO_AUTOGUARDADO_MS:\s*(\d+)", config).group(1)
+
+    assert valor not in app, (
+        f"el retardo ({valor}) está escrito a mano en `js/app.js`: tiene que "
+        "leerse de la configuración"
+    )
+    assert valor not in autoguardado, (
+        f"el retardo ({valor}) está escrito a mano en `js/autoguardado.js`: "
+        "el módulo lo recibe, no lo decide"
+    )
+
+
+def test_f026_r51_app_js_lee_el_retardo_de_la_configuracion(app):
+    assert "config.RETARDO_AUTOGUARDADO_MS" in app, (
+        "`js/app.js` no lee el retardo de la configuración"
+    )
+
+
+def test_f026_r51_app_js_no_monta_su_propio_temporizador(app):
+    """El rebote lo hace el módulo, que sí tiene tests.
+
+    `app.js` es la única habitación de la casa sin tests (`design.md` §3). Un
+    `setTimeout` suelto ahí es un rebote que nadie comprueba, y el defecto que
+    produce —cinco escrituras por palabra— solo se ve en la base.
+    """
+    assert "setTimeout" not in app, (
+        "`js/app.js` ha ganado un `setTimeout`: el rebote del autoguardado va "
+        "en `js/autoguardado.js`, que sí se prueba"
+    )
+
+
+# ===========================================================================
+# R51 · el disparador está en `editarCampo` y el módulo se carga
+# ===========================================================================
+
+
+def test_f026_r51_editar_un_campo_dispara_el_autoguardado(app):
+    """R50 · escribir en un campo guarda lo que escribes, sin botón."""
+    editar = _bloque(app, "editarCampo(nombre, valor) {", "hayEdiciones()")
+
+    assert "alEscribir" in editar, (
+        "`editarCampo` no avisa al autoguardado: lo escrito seguiría "
+        "viviendo solo en memoria, que es el defecto que F-026 viene a cerrar"
+    )
+
+
+def test_f026_r55_editar_un_campo_no_pregunta_por_el_veredicto(app):
+    """R55 · aplica a TODOS los partes, no solo a los que van a revisión.
+
+    Perder lo escrito es igual de malo en un parte verde.
+    """
+    editar = _bloque(app, "editarCampo(nombre, valor) {", "hayEdiciones()")
+
+    for palabra in ("validacion", "semaforo", "veredicto", "destino"):
+        # Con límite de palabra: `mensajeRevalidacion` contiene la subcadena
+        # «validacion» y no es mirar el veredicto de nada.
+        assert not re.search(rf"\b{palabra}\b", editar), (
+            f"`editarCampo` mira `{palabra}`: el autoguardado dejaría fuera "
+            "partes que también pierden lo escrito"
+        )
+
+
+# ===========================================================================
+# R50 · revalidar y guardar van juntos, y no se ha inventado un tercer estado
+# ===========================================================================
+
+
+def test_f026_r50_el_autoguardado_pasa_por_revalidar_y_guardar(app):
+    """R50 · la misma función que usa el botón, no una ruta paralela.
+
+    `revalidarYGuardar` existe desde F-019 R28 y lleva su motivo escrito
+    encima: revalidar sin guardar deja en la base el veredicto que la IA
+    emitió sobre el dato **sin corregir**. El autoguardado no inventa otra
+    forma de guardar; reutiliza esa.
+    """
+    guardar = _bloque(app, "async _guardarCorreccion(parte) {", "_pintarAutoguardado(")
+
+    assert "window.Pipeline.revalidarYGuardar" in guardar, (
+        "el autoguardado no pasa por `revalidarYGuardar`"
+    )
+
+
+def test_f026_r50_el_autoguardado_no_llama_a_guardar_por_su_cuenta(app):
+    """Control negativo: `app.js` no llama nunca a `guardarParte` a secas.
+
+    Si lo hiciera, en la base quedaría el dato corregido con el veredicto del
+    dato sin corregir, y las tres puertas de F-026 leen ese veredicto para
+    decidir si el parte circula hasta el ERP.
+    """
+    assert "Pipeline.guardarParte" not in app, (
+        "`js/app.js` guarda sin revalidar: eso rompe la invariante «el "
+        "veredicto corresponde al dato» que R50 mantiene"
+    )
+
+
+def test_f026_r50_no_se_ha_inventado_ningun_estado_de_veredicto_obsoleto(app, html):
+    """Control negativo de la alternativa **descartada** en D-H.
+
+    La otra forma de hacer esto era guardar solo el campo y marcar el veredicto
+    como obsoleto. Se descartó porque obliga a inventar un estado que **las
+    tres puertas** tendrían que mirar, y a que alguien se acuerde de revalidar
+    después. Si ese estado aparece en el front, es que se ha implementado la
+    alternativa que el diseño rechazó.
+    """
+    for texto in (app, html):
+        assert not re.search(r"obsolet", texto, re.IGNORECASE), (
+            "ha aparecido un estado de «veredicto obsoleto»: es la alternativa "
+            "descartada en `design.md` §15.1, y obliga a mirarla en las tres "
+            "puertas"
+        )
+
+
+def test_f026_r51_el_modulo_se_carga_antes_que_app_js(html):
+    """Sin el `<script>`, `window.Autoguardado` no existe y la pantalla muere."""
+    scripts = re.findall(r"""<script\s+src=["']([^"']+)["']""", html)
+
+    assert "js/autoguardado.js" in scripts, (
+        "`index.html` no carga `js/autoguardado.js`"
+    )
+    assert scripts.index("js/autoguardado.js") < scripts.index("js/app.js"), (
+        "`js/autoguardado.js` tiene que cargarse antes que `js/app.js`, que es "
+        "quien lo usa"
+    )
+
+
+# ===========================================================================
+# R52 · los tres estados, en la pantalla
+# ===========================================================================
+
+
+def _detalle(html: str) -> str:
+    """El bloque del **detalle**: el parte abierto, con sus campos editables."""
+    return _bloque(html, 'x-show="parteAbierto"', "</section>")
+
+
+def test_f026_r52_los_tres_estados_estan_en_la_pantalla(html):
+    """Guardando, guardado y **no se ha podido guardar**.
+
+    Los tres, y en el detalle: es donde están los campos que se escriben. Un
+    indicador en otra parte de la pantalla no lo ve quien está tecleando.
+    """
+    detalle = _detalle(html)
+
+    for estado in ("guardando", "guardado", "fallo"):
+        assert f"'{estado}'" in detalle or f'"{estado}"' in detalle, (
+            f"el detalle no pinta el estado `{estado}` del autoguardado"
+        )
+    assert "estadoAutoguardado" in detalle
+    assert "mensajeAutoguardado" in detalle
+
+
+def test_f026_r52_el_aviso_de_fallo_se_ve_y_no_se_confunde_con_los_otros_dos(html):
+    """El fallo no puede pintarse como el «Guardado.» de al lado.
+
+    Guardando y guardado son información de fondo; el fallo es lo único que
+    exige hacer algo. Si los tres se pintan igual de gris y pequeño, el que
+    importa pasa desapercibido, y quien escribe se va creyendo que está.
+    """
+    detalle = _detalle(html)
+    bloque_fallo = _bloque(detalle, "estadoAutoguardado === 'fallo'", "</p>")
+
+    assert re.search(r"text-(red|rose|amber)-\d00", bloque_fallo), (
+        "el aviso de fallo se pinta como el resto: hay que poder distinguirlo "
+        "de un «Guardado.»"
+    )
+
+
+def test_f026_r52_nada_borra_el_aviso_por_su_cuenta(html):
+    """R52 · el aviso **no se va solo**.
+
+    Ni un `setTimeout` en el HTML, ni una transición que lo esconda: el estado
+    lo cambia el siguiente guardado, y solo él.
+    """
+    detalle = _detalle(html)
+
+    assert "setTimeout" not in detalle, (
+        "hay un temporizador en el detalle: el aviso de fallo se borraría solo"
+    )
+    assert "x-transition" not in _bloque(
+        detalle, "estadoAutoguardado === 'fallo'", "</p>"
+    ), "el aviso de fallo se esconde con una transición"
+
+
+def test_f026_r52_lo_escrito_se_conserva_en_pantalla(html):
+    """El campo sigue enseñando lo que la persona escribió, falle lo que falle.
+
+    `valorDe(nombre)` lee la corrección antes que la extracción, así que
+    mientras el `input` siga atado a él, un guardado fallido no borra nada de
+    la pantalla. Un `value` atado a la extracción devolvería el campo al valor
+    de la IA, que es perder lo escrito sin decirlo.
+    """
+    campos = _bloque(html, 'x-for="nombre in CAMPOS"', "</template>")
+
+    assert ':value="valorDe(nombre)"' in campos, (
+        "el campo ha dejado de leer `valorDe(nombre)`: un guardado fallido "
+        "borraría de la pantalla lo que se escribió"
+    )
+    assert "ediciones = {}" not in html
+
+
+# ===========================================================================
+# R53 · la corrección no pisa lo que leyó la máquina
+# ===========================================================================
+
+
+def test_f026_r53_el_front_no_escribe_nunca_sobre_la_extraccion(app):
+    """Control negativo, y el motivo tiene nombre: **F-015**.
+
+    El valor y la confianza que extrajo la IA son la evidencia de cómo se
+    comportó el modelo, y F-015 —evaluar el prompt— los va a necesitar. Un
+    prompt no se puede evaluar contra un dato que una persona corrigió encima.
+
+    La corrección vive aparte, en `parte.ediciones`, y se aplica **al
+    componer** la petición (`aplicarEdiciones`, que no muta la entrada). Si
+    alguien empezara a escribir en `extraccion.campos`, la evidencia se
+    perdería sin que nadie se enterase hasta que hiciera falta.
+    """
+    assert not re.search(r"extraccion\.campos\s*\[[^\]]+\]\s*=", app), (
+        "`js/app.js` escribe en `extraccion.campos`: eso pisa lo que leyó el "
+        "modelo, que es lo que F-015 necesita para evaluar el prompt"
+    )
+    assert not re.search(r"\.confianza_pct\s*=", app), (
+        "`js/app.js` sobrescribe una confianza de la IA"
+    )
+
+
+# ===========================================================================
+# R54, R55 · la revocación, y que esto es para todos los partes
+# ===========================================================================
+
+
+def test_f026_r54_la_revocacion_llega_a_la_pantalla_por_la_respuesta_del_guardado(app):
+    """R54, R31 · se evalúa sobre lo guardado, y se ve en el acto.
+
+    La revocación ocurre **en la escritura**: el `UPDATE` va en la misma
+    operación que `guardar_validacion`. Así que la respuesta de ese guardado es
+    la que trae la aprobación al día, y el autoguardado la anota con el mismo
+    `_anotarGuardado` que el botón. Sin eso, la pantalla seguiría enseñando
+    «Aprobado» sobre una aprobación ya revocada en la base.
+    """
+    guardar = _bloque(app, "async _guardarCorreccion(parte) {", "_pintarAutoguardado(")
+
+    assert "this._anotarGuardado(parte, resultado.guardado)" in guardar
+    assert "this._anotarVeredicto(parte, resultado.validacion)" in guardar
+
+
+def test_f026_r55_el_indicador_no_depende_del_veredicto_del_parte(html):
+    """R55 · también en los partes verdes.
+
+    Perder lo escrito es igual de malo en un parte que la máquina dio por
+    bueno, y quien corrige uno verde necesita ver lo mismo: que se guardó.
+    """
+    bloque = _bloque(html, 'x-show="estadoAutoguardado"', "</div>")
+
+    for palabra in ("semaforo", "validacion", "esAprobable", "veredicto"):
+        assert palabra not in bloque, (
+            f"el indicador del autoguardado mira `{palabra}`: dejaría sin "
+            "señal a partes que también se están corrigiendo"
+        )
+
+
+def test_f026_r51_al_reiniciar_no_queda_ningun_guardado_en_vuelo(app):
+    """Un temporizador vivo después de reiniciar guardaría un parte que ya no está.
+
+    La remesa anterior se ha ido de la pantalla; lo que quedaría en vuelo es
+    una escritura sobre un parte que nadie tiene delante.
+    """
+    reiniciar = _bloque(app, "reiniciar() {", "};")
+
+    assert "cancelarPendiente" in reiniciar, (
+        "`reiniciar()` no cancela el autoguardado pendiente"
+    )

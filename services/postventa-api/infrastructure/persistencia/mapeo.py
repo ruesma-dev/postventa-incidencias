@@ -28,16 +28,32 @@ from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Any
 
+from domain.models.aprobacion import Aprobacion
+from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.extraccion import CAMPOS_DEL_PARTE, ExtraccionParte
-from domain.models.persistencia import EntradaCola, PreferenciasUsuario
-from domain.models.validacion import Motivo, ResultadoValidacion
+from domain.models.persistencia import (
+    EntradaCola,
+    EstadoGrafico,
+    PreferenciasUsuario,
+    TrazaGrafico,
+)
+from domain.models.validacion import (
+    CodigoMotivo,
+    Destino,
+    Motivo,
+    ResultadoValidacion,
+)
 
 __all__ = [
     "COLUMNAS_DE_CAMPOS",
     "columnas_de_campos",
+    "fila_a_aprobacion",
+    "fila_a_correspondencia",
     "fila_a_entrada_cola",
     "fila_a_preferencias",
+    "fila_a_traza_grafico",
     "json_de_avisos",
+    "json_de_codigos_de_motivo",
     "json_de_motivos",
     "valores_de_campos",
     "valores_de_traza_ia",
@@ -150,6 +166,22 @@ def json_de_motivos(motivos: Iterable[Motivo]) -> str:
     )
 
 
+def json_de_codigos_de_motivo(codigos: Iterable[CodigoMotivo]) -> str:
+    """Los motivos que se aprobaron, como **códigos** y nunca como textos (R14).
+
+    La diferencia con `json_de_motivos` es el requisito entero: la fila de la
+    validación guarda el par `(codigo, texto)` porque la cola humana enseña ese
+    texto a quien revisa, y la fila de la aprobación guarda **solo el código**
+    porque el texto es redacción para Posventa y puede reescribirse sin que
+    cambie nada de lo que una persona dio por bueno.
+
+    Guardar el texto tendría además un segundo efecto, peor: haría que dos
+    aprobaciones idénticas parecieran distintas después de una corrección de
+    estilo, justo en la tabla que existe para saber qué se aprobó.
+    """
+    return json.dumps([codigo.value for codigo in codigos], ensure_ascii=False)
+
+
 def json_de_avisos(avisos: Iterable[str]) -> str:
     """Los avisos como JSON, **cada uno acotado a `_RECORTE_AVISO`** (R20).
 
@@ -210,6 +242,142 @@ def fila_a_preferencias(fila: Sequence[Any]) -> PreferenciasUsuario:
         auto_cierre=bool(auto_cierre),
         actualizado_at_utc=actualizado_at_utc,
     )
+
+
+def fila_a_correspondencia(fila: Sequence[Any]) -> CorrespondenciaSigrid:
+    """Una fila de `usuarios_sigrid`, de vuelta al dominio (F-009).
+
+    El orden de las columnas es el de `sentencias.select_login_sigrid`.
+    `verificado_at_utc` puede llegar a `None`, y eso **significa algo**: es un
+    alta manual que todavía no se ha comprobado contra el ERP, y por tanto no
+    exime de comprobarla antes de firmar (R32).
+    """
+    usuario_oid, login_sigrid, alta_at_utc, verificado_at_utc = fila
+    return CorrespondenciaSigrid(
+        usuario_oid=usuario_oid,
+        login_sigrid=login_sigrid,
+        alta_at_utc=alta_at_utc,
+        verificado_at_utc=verificado_at_utc,
+    )
+
+
+def fila_a_traza_grafico(fila: Sequence[Any]) -> TrazaGrafico:
+    """Una fila de `graficos`, de vuelta al dominio (F-012).
+
+    El orden de las columnas es el de `sentencias.select_grafico`, y por eso
+    las dos cosas viven juntas: una fila leída por posición se rompe en
+    silencio el día que alguien añade una columna al `SELECT`.
+
+    `EstadoGrafico(estado)` **revienta** si la base trae un estado que el
+    dominio no conoce, y eso es lo correcto: pasaría si alguien ampliara el
+    `CHECK` del `.sql` sin ampliar el `Enum`, y traducirlo «como si fuera»
+    otro haría que `paso_cierre` leyera «no adjuntado» de una fila que sí lo
+    está — y con eso se cierra una reclamación sin su parte, que es justo lo
+    que esta feature viene a impedir.
+
+    Los tres `ide` y el `gra_cod` pueden llegar a `None`: son las trazas de
+    dry-run y de error. `gra_ide_documental` puede ser `None` **incluso en una
+    traza adjuntada**, porque la respuesta idempotente de la pasarela no lo
+    trae **[MEDIDO]**.
+    """
+    (
+        hash_parte,
+        numero_incidencia,
+        reclamacion_ide,
+        estado,
+        sha256,
+        bytes_,
+        nombre_fichero,
+        gratipide,
+        gra_cod,
+        gra_ide_negocio,
+        gra_ide_documental,
+        rcg_ide,
+        idempotente,
+        confirmado_por,
+        motivo,
+        dry_run_at_utc,
+        adjuntado_at_utc,
+    ) = fila
+    return TrazaGrafico(
+        hash_parte=hash_parte,
+        numero_incidencia=numero_incidencia,
+        estado=EstadoGrafico(estado),
+        reclamacion_ide=reclamacion_ide,
+        sha256=sha256,
+        bytes=bytes_,
+        nombre_fichero=nombre_fichero,
+        gratipide=gratipide,
+        gra_cod=gra_cod,
+        gra_ide_negocio=gra_ide_negocio,
+        gra_ide_documental=gra_ide_documental,
+        rcg_ide=rcg_ide,
+        idempotente=bool(idempotente),
+        confirmado_por=confirmado_por,
+        motivo=motivo,
+        dry_run_at_utc=dry_run_at_utc,
+        adjuntado_at_utc=adjuntado_at_utc,
+    )
+
+
+def fila_a_aprobacion(fila: Sequence[Any]) -> Aprobacion:
+    """Una fila de `aprobaciones`, de vuelta al dominio (F-026, R14).
+
+    El orden de las columnas es el de `sentencias.select_aprobacion`, y por eso
+    las dos cosas viven pegadas: una fila leída por posición se rompe **en
+    silencio** el día que alguien añade una columna al `SELECT`, y aquí eso
+    sería reconstruir la decisión de una persona con la huella en el sitio del
+    `oid`.
+
+    `Destino(...)` y `CodigoMotivo(...)` **revientan** si la base trae una
+    etiqueta que el dominio no conoce, y eso es lo correcto: pasaría si alguien
+    ampliara el `CHECK` del `.sql` sin ampliar el `Enum`, y traducirlo «como si
+    fuera» otro destino haría que la puerta del paso admitiera en el circuito
+    un parte aprobado para otra cosa.
+
+    `revocada_at_utc` a `None` es lo que significa **vigente**. Aquí no se
+    decide nada sobre la vigencia: eso ya se resolvió al escribir (R30), y esta
+    función solo cuenta lo que la fila dice.
+    """
+    (
+        hash_parte,
+        aprobado_por,
+        aprobado_at_utc,
+        destino_aprobado,
+        motivos_aprobados,
+        huella_aprobada,
+        validado_at_utc,
+        revocada_at_utc,
+        revocada_motivo,
+    ) = fila
+
+    return Aprobacion(
+        hash_parte=hash_parte,
+        aprobado_por=aprobado_por,
+        aprobado_at_utc=aprobado_at_utc,
+        destino_aprobado=Destino(destino_aprobado),
+        motivos_aprobados=_codigos_desde_json(motivos_aprobados),
+        huella_aprobada=huella_aprobada,
+        validado_at_utc=validado_at_utc,
+        revocada_at_utc=revocada_at_utc,
+        revocada_motivo=revocada_motivo,
+    )
+
+
+def _codigos_desde_json(codigos: Any) -> tuple[CodigoMotivo, ...]:
+    """Los códigos guardados, de vuelta al `Enum` de F-004.
+
+    Como en `_motivos_desde_json`, el driver puede devolver el `jsonb` ya
+    deserializado o como texto según cómo se haya declarado la columna en la
+    consulta, y se admiten los dos: que una aprobación volviera sin motivos por
+    un detalle de adaptación sería un fallo caro y silencioso —la fila seguiría
+    ahí, pero diría que no se aprobó nada—.
+    """
+    if codigos is None:
+        return ()
+    if isinstance(codigos, str):
+        codigos = json.loads(codigos)
+    return tuple(CodigoMotivo(codigo) for codigo in codigos)
 
 
 def _motivos_desde_json(motivos: Any) -> tuple[tuple[str, str], ...]:

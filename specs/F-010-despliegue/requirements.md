@@ -210,10 +210,42 @@ y se detallan en `tasks.md`.
   host de la Function responde `503` —la ventana de escritura está cerrada
   (R33)— y compruebe que la Static Web App redirige al inicio de sesión.
 
-- **R28.** El sistema debe mantener fuera del despliegue todo lo que no forma
-  parte del piloto: **ninguna** variable de Sigrid; y cuando la ventana de
-  escritura de R33 esté abierta, el destino debe ser **solo** la biblioteca de
-  dev del sitio de IT, nunca el archivo real de Posventa.
+- **R28.** El sistema debe mantener fuera de la plantilla de App Settings de
+  `desplegar_backend.ps1` **la configuración sensible de Sigrid** —la raíz de
+  la pasarela, que es un host interno, y su clave de función—, que viaja
+  **por referencia a Key Vault**; y cuando la ventana de escritura de R33 esté
+  abierta, el destino debe ser **solo** la biblioteca de dev del sitio de IT,
+  nunca el archivo real de Posventa.
+
+> **Enmienda del 2026-09-03 · la premisa original de la primera mitad de R28
+> cayó, y este requisito se corrige para que no mienta.**
+>
+> R28 se escribió: *«El sistema debe mantener fuera del despliegue todo lo que
+> no forma parte del piloto: **ninguna** variable de Sigrid; y cuando la
+> ventana de escritura de R33 esté abierta, …»*. Eso describía el sistema el
+> 2026-08-20, cuando **F-008 y F-009 estaban fuera del piloto** y cualquier
+> variable `SIGRID_*` en el despliegue habría sido la primera pieza de un
+> cierre en producción que nadie había aprobado.
+>
+> Hoy no lo describe: **F-009 está implementada y aprobada**, y el humano
+> aprobó el 2026-09-03 aprovisionar su configuración en el despliegue. Sin
+> ella, `POST /api/cerrar` responde `503` y el bloque 8 de verificación contra
+> el ERP no arranca. Es el **hallazgo H1** de
+> `progress/guion_bloque8_F-009.md` §8; el detalle, en
+> `progress/impl_H1_H2_despliegue.md`.
+>
+> **Lo que R28 protegía de verdad no ha caído**, y es lo que dice ahora: que la
+> configuración sensible no se escriba en un fichero versionado. De las ocho
+> variables de F-009, **dos** son sensibles y viajan por referencia a Key
+> Vault; las otras seis se fijan en claro en `$ajustes` y sus valores ya
+> estaban en el repositorio. `SIGRID_BASE_DATOS` es una de esas seis desde la
+> corrección del mismo día: estuvo unas horas como secreto de vault y bajó a
+> App Setting plana porque el nombre de la base del ERP ya está escrito en
+> `docs/referencia/03_modelo_posventa_sigrid.md` y en
+> `specs/F-009-cierre-sigrid/design.md`.
+>
+> **F-010 sigue `done`**: esto no reabre la feature ni cambia su alcance. Se
+> corrige el texto y se deja la constancia, nada más.
 
 ## Bloque G · T18 de F-006 se desbloquea aquí
 
@@ -287,7 +319,7 @@ y se detallan en `tasks.md`.
 | R25 | Mismo test: el procedimiento nombra los cuatro pasos y no fija ejecutor | T10 |
 | R26 | Test: `docs/INTEGRACION.md` §8 nombra F-008/F-009 y F-019 como no desplegados | T11 |
 | R27 | `test_f010_scripts_infra.py` sobre `verificar_despliegue.ps1`: tres comprobaciones y ninguna escritura | T7 |
-| R28 | Test: la plantilla de App Settings no incluye ninguna variable `SIGRID_*` | T5 |
+| R28 | Test: la plantilla de App Settings no escribe las **dos** variables sensibles de Sigrid, y las `SIGRID_*` que sí fija son exactamente las cinco que pueden versionarse (`test_f010_r28_la_configuracion_sensible_de_sigrid_no_se_escribe_aqui`). **Premisa enmendada el 2026-09-03**: ver el recuadro bajo R28 | T5 |
 | R29 | **MANUAL (humano)** — T18 de F-006 por la consola del front, `docs/DESPLIEGUE.md` §5 bis. **Y** test de contrato: `test_f010_scripts_infra.py` — `verificar_archivo_dev.ps1` reconoce el `400` de Easy Auth, dice cuál es la vía buena y no muere con un error opaco | **T18** |
 | R30 | **MANUAL (humano)** + anotación en `progress/` y autorización ante C5 | **T18** |
 | R31 | **MANUAL (humano)**: criterio de parada escrito en la tarea | **T18** |

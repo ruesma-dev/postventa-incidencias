@@ -168,6 +168,15 @@ class ResultadoValidacion:
     observaciones: str | None
     confianza_observaciones: int
     avisos: tuple[str, ...] = ()
+    #: Los dos campos decisivos, tal y como se leyeron. **No son decoración**:
+    #: entran en la huella del veredicto (F-026 H-1, 2026-09-12), porque el
+    #: número de incidencia decide sobre qué reclamación del ERP se escribe el
+    #: cierre y el código de obra decide en qué carpeta acaba un PDF con el DNI
+    #: manuscrito de un cliente. Van con valor por defecto para no romper a
+    #: quien construya un veredicto a mano en un test, pero `validar_parte` los
+    #: rellena siempre.
+    codigo_obra: str = ""
+    numero_incidencia: str = ""
 
     @property
     def es_apto(self) -> bool:
@@ -214,6 +223,8 @@ def validar_parte(
         clasificacion_firma=firma.clasificacion_efectiva,
         observaciones=None if observaciones.esta_vacio else observaciones.valor,
         confianza_observaciones=observaciones.confianza_pct,
+        codigo_obra=extraccion.campo("codigo_obra").valor or "",
+        numero_incidencia=extraccion.campo("numero_incidencia").valor or "",
     )
 
 

@@ -96,10 +96,33 @@ $PostventaTags = @{
 }
 
 # --- Los secretos del Key Vault (design.md, seccion 3) ----------------------
-# NOMBRES de secreto, nunca valores. Los nueve primeros alimentan App Settings
+# NOMBRES de secreto, nunca valores. Los once primeros alimentan App Settings
 # de la Function App POR REFERENCIA; los dos ultimos son del inicio de sesion
 # del front y van al almacen de la propia Static Web App, que no admite
 # referencias.
+#
+# POR QUE LOS DOS DE SIGRID SON SECRETOS DE VAULT, Y NO APP SETTINGS PLANAS
+# (F-009). Son DOS, y cada uno por un motivo distinto:
+#
+#   - `sigrid-api-key` es una CREDENCIAL: la clave de funcion con la que se
+#     llama a la pasarela. Es el caso evidente.
+#   - `sigrid-api-base-url` no autentica nada, pero es la RAIZ de la pasarela,
+#     es decir un HOST INTERNO, y esos no entran al repositorio. Mismo motivo
+#     por el que ya estaba aqui `pg-host`, y lo que prohibe la cabecera de
+#     este fichero ("ni FQDN").
+#
+# Y POR QUE `sigrid-base-datos` NO ESTA (correccion del 2026-09-03). Estuvo
+# unas horas, por exceso de celo: el argumento era que el nombre de la base de
+# produccion del ERP no puede quedar escrito en el repositorio. Pero YA LO
+# ESTA, y en documentos que nadie va a redactar -entre otros
+# `docs/referencia/03_modelo_posventa_sigrid.md` y
+# `specs/F-009-cierre-sigrid/design.md`-. Tenerlo ademas en el vault no
+# anadia seguridad real y si un secreto mas que aprovisionar A MANO en cada
+# entorno, que es una oportunidad mas de que un despliegue quede a medias.
+# `SIGRID_BASE_DATOS` es hoy una App Setting plana de `desplegar_backend.ps1`.
+#
+# Los que si estan aqui se suben una vez, a ciegas, con
+# `cargar_secretos_postventa.ps1`.
 $PostventaSecretosBackend = @(
     "pg-host",
     "pg-user",
@@ -109,7 +132,9 @@ $PostventaSecretosBackend = @(
     "graph-client-id",
     "graph-client-secret",
     "sharepoint-site-id",
-    "sharepoint-drive-id"
+    "sharepoint-drive-id",
+    "sigrid-api-base-url",
+    "sigrid-api-key"
 )
 $PostventaSecretosFront = @(
     "swa-client-id",
@@ -130,6 +155,14 @@ $PostventaAppSettingsSecretas = [ordered]@{
     "GRAPH_CLIENT_SECRET"  = "graph-client-secret"
     "SHAREPOINT_SITE_ID"   = "sharepoint-site-id"
     "SHAREPOINT_DRIVE_ID"  = "sharepoint-drive-id"
+    # Las dos sensibles de Sigrid (F-009). Sin ellas -o sin la tercera,
+    # `SIGRID_BASE_DATOS`, que va plana- `POST /api/cerrar` responde 503
+    # nombrando de una vez todas las que falten, y el interruptor
+    # `CIERRE_HABILITADO` no llega ni a mirarse. Estas dos van AQUI, y no como
+    # App Setting plana en `desplegar_backend.ps1`, porque una es la clave de
+    # funcion de la pasarela y la otra su host interno.
+    "SIGRID_API_BASE_URL"  = "sigrid-api-base-url"
+    "SIGRID_API_KEY"       = "sigrid-api-key"
 }
 
 # --- El fichero local, si existe --------------------------------------------

@@ -1,699 +1,2042 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## Estado al 2026-08-26 (tarde) · **cabos de F-019 recogidos · F-021 de alta**
+> ## PARA RETOMAR · al 2026-09-15, tras la sesión de solo lectura de F-009
 >
-> Ninguna feature `in_progress`. `bash harness/init.sh` en verde, 21 features.
+> **Dónde está todo:** rama `feature/F-026-aprobacion-humana`, árbol limpio,
+> arnés en verde (`62 passed in 4.22s`, cobertura de líneas cambiadas 99,0 %).
+> **195 commits sin mergear a `dev`** (medido con `git rev-list --count
+> dev..HEAD`; el «185» del bloque anterior estaba corto) y **nada con `push`**
+> en ninguno de los
+> tres repositorios (este, `azure-apps` y `arnes-base`).
 >
-> **1 · El documento del ecosistema estaba mucho peor de lo que decía el
-> cierre de F-019.** No le faltaba solo §8: la copia de
-> `azure-apps/postventa_incidencias.md` era del **2026-08-19** (commit
-> `aeabbbd`, 172 líneas frente a 345), **no tenía la sección de SharePoint**
-> —con lo que toda la numeración iba corrida—, su «Qué exponemos nosotros»
-> seguía diciendo *«Hoy, nada hacia otros proyectos»* con el servicio ya
-> desplegado, y **nunca se había commiteado**: figuraba como fichero sin
-> trackear. Se ha **reemplazado entero** por el `docs/INTEGRACION.md` actual,
-> con la cabecera de copia adaptada, y commiteado en `azure-apps` (sin push).
-> Comprobado con un barrido de patrones que no entra ni un GUID, host,
-> dirección interna, cadena de conexión ni credencial. De paso, la cabecera
-> del origen decía **«Fecha: 2026-08-19 · Feature: F-005»** con el documento
-> ya en F-019: corregida.
+> ### El estado, en una tabla
 >
-> **Lección que deja**: «los agentes no commitean en `azure-apps`» acabó
-> significando que el documento se quedó **cinco features atrás sin que nadie
-> se enterara**. El punto de control debería ser el cierre de cada feature que
-> cambie lo que exponemos, no la buena memoria.
+> | Feature | Estado | Qué falta |
+> |---|---|---|
+> | **F-012** parte adjunto a la incidencia | `done` | nada |
+> | **F-025** una sola confirmación | `done` | nada |
+> | **F-026** aprobación humana y autoguardado | **`in_progress`** | **solo la verificación real**, que la hace el humano |
+> | **F-009** cierre en Sigrid | `blocked` | decisión del humano: ver abajo |
+> | **F-024** datos del parte para el datamart | `spec_ready` | cuatro decisiones del humano |
 >
-> **2 · F-021 dada de alta**: *Rehidratar la sesión del front al recargar el
-> navegador*, `pending`, SDD sí, rigor `estandar`, prioridad **21** (al final,
-> como decidió el humano: después de ver el piloto). Es la decisión **D4 de
-> F-019**. Lo que la hace una feature y no un arreglo: exige un **método de
-> lectura nuevo en `RepositorioPartesPort`** —hoy solo existe
-> `cola_validacion_humana`—, que el encargo de F-019 prohibía tocar. Hereda el
-> tope de límite y la prohibición de dato personal en el log.
+> ### El plan acordado, y por dónde va
 >
-> **Sigue vivo, sin dueño asignado**: el residuo `0677 - RS26.08 - 0000 PARTE
-> FIRMADO` en la biblioteca de dev, de origen no documentado.
+> Por orden: **(1)** cerrar F-009, **(2)** merge de la cadena a `dev`, **(3)**
+> desplegar backend y front, **(4)** el humano revisa F-026 en real y se cierra.
+> **Los pasos 2, 3 y 4 siguen intactos.**
 >
-> **Siguiente: F-009**, el cierre en Sigrid. Arranca con **cuatro decisiones
-> del humano** pendientes (el `tex` y el `usu` de la fila de log, si la
-> escritura de `sigrid-api` está habilitada y con qué prefijos, y si merece la
-> pena confirmar el gráfico-URL).
+> ### Paso 1 · F-009: ya casi está, y la decisión sigue siendo del humano
+>
+> El **2026-09-15** se hizo la **sesión de solo lectura** que se había propuesto:
+> cuatro scripts de `infra/` contra el ERP de producción, **sin abrir la ventana
+> de escritura** —solo `POST /api/sql/read`, `CIERRE_HABILITADO` cerrado todo el
+> tiempo— y solo lectura del esquema propio en PostgreSQL. **Los cuatro dan
+> `PASA`.** Acta en `progress/guion_bloque8_F-009.md` **§10**; informe del
+> encargo en `progress/impl_lectura_F-009.md`.
+>
+> **Lo que se ha ganado:**
+>
+> - **El huso de la fila de auditoría es HORA LOCAL**, con **0,0 min** de
+>   diferencia. **El defecto que el diseño daba por probable no existía**: no
+>   escribimos en UTC. Era *la única decisión de la feature que no se pudo tomar
+>   con un dato*; ahora lo tiene.
+> - **T25 queda marcada entera** (las dos condiciones de D1: seguimos saliendo en
+>   los informes de Posventa, y el filtro exacto devuelve **solo lo nuestro**,
+>   ninguno de los 6.843 cierres manuales).
+> - **De T24 quedan acreditados los pasos 6, 7 y 9**, y con ellos **R24, R25, R41
+>   y R43**. El paso 6 ya no depende de lo que viera una persona en la ficha.
+>
+> **Lo que NO se ha ganado, y por qué T24 sigue sin marcar**: su contrato son
+> nueve pasos y faltan cinco —el 2, el 3, el 4 (el `estado` de la respuesta), el
+> 5 y el 8—, y el **`filas_afectadas: 2` (R22) no es recuperable hacia atrás**:
+> solo lo dará el siguiente cierre real. **T22, T23 y T27 tampoco se marcan.**
+>
+> **De ocho huecos quedan cinco** (`guion_bloque8_F-009.md` §9.4, actualización):
+>
+> | # | Hueco | Coste |
+> |---|---|---|
+> | 4 | **T23** · siembra del login, **reducido** a R33, R31 y la unicidad del candidato. Hoy se vio que el `usu` del ERP es `pgris`, luego el login se derivó, se resolvió y se usó para firmar — pero eso no prueba R33 | casi todo solo lectura |
+> | 5 | **T22 pasos 2 y 5** · el `503` con el interruptor apagado, y que el dry-run no escribe | el `503` sale gratis; lo otro exige ventana |
+> | 6 | **T22 paso 4** · las seis cosas de R9 y el bloque `grafico` | ventana abierta, pero **no escribe** |
+> | 7 | **T27** · reintento sobre lo ya cerrado | **el único que exige abrir la ventana de escritura**, y **sale gratis cuando el humano revise F-026**: basta volver a subir un parte ya cerrado |
+> | 8 | **`filas_afectadas: 2`** y el `tiemod` de partida | **no recuperable**: solo el siguiente cierre real |
+>
+> **La decisión que sigue encima de la mesa es la misma, con menos peso encima**:
+> cerrar F-009 con los cinco huecos escritos y fechados —como se cerró F-012—, o
+> recorrer antes alguno más. Lo que ya no puede decirse es que *nadie ha mirado
+> la fila de auditoría*: está mirada, campo a campo, y pasa.
+>
+> ### Cabos abiertos, con dueño
+>
+> - **`azure-apps/postventa_incidencias.md` sigue diciendo que «todavía no se ha
+>   ejecutado ni un cierre real»**, y desde el 2026-09-11 es falso. La regla de
+>   propiedad de `CLAUDE.md` obliga a corregirlo, y ahora hay con qué hacerlo
+>   bien: fecha, incidencia, `ide` de la fila de log y veredicto del huso.
+> - **`infra/07_alta_usuario_sigrid.ps1`** (líneas 161 y 248) y
+>   **`infra/17_traza_grafico_local.ps1`** (línea 196) arrastran el defecto de
+>   comillas de PowerShell 5.1 que el 2026-09-15 tumbó al `12`, y **nunca se han
+>   ejecutado**: se estrellarán en la primera línea de quien recorra T23 o la
+>   precondición de T24. El arreglo ya está escrito
+>   (`Invoke-PythonDelServicio`, en `infra/08_lectura_sigrid_comun.ps1`).
+> - `progress/peticion_posventa_prueba_F-012.md` está **escrita y sin enviar**.
+>   Su nota interna dice qué hacía falta antes; ya se cumple.
+> - Dos avisos nuevos de `ruff` (58 → 60) que **no son de ninguna feature**:
+>   salen de `harness/`.
+> - `arnes-base` tiene el **encargo 1.7.12** sin implementar (la caché de
+>   `init.sh` puede tapar un rojo — y en esta sesión las suites de `api` y
+>   `front` volvieron a salir de caché) y el 1.7.11 sin confirmar siquiera.
+
+> ## Estado al 2026-09-14 · **F-009: levantada el acta de su bloque 8; solo T26 queda acreditada**
+>
+> Encargo **documental** y acotado: F-009 sigue `blocked` desde el 2026-09-06
+> esperando a F-012, pero **el cierre real ya se ejecutó** —dentro de la
+> verificación de F-012, el 2026-09-11— así que buena parte del bloque 8 de
+> F-009 **ya ocurrió**. Había que averiguar **qué exactamente**, y dejarlo
+> escrito. **No se ejecutó nada** contra Azure, Sigrid, `sigrid-api`, el
+> PostgreSQL compartido ni SharePoint: toda la evidencia estaba escrita.
+> Informe: `progress/impl_cierre_F-009.md`.
+>
+> ### Lo hecho, en dos commits
+>
+> - **`092bf8d`** — `progress/guion_bloque8_F-009.md`: casillas de **T22–T27**
+>   rellenas citando dónde consta cada cosa; **enmienda fechada de la obra**
+>   (nombraba la obra de prueba **404**; fue **`RS26.09/0150` de la `0626`**,
+>   una obra **en uso**, por decisión del responsable del 2026-09-10) **sin
+>   borrar la premisa original**; y un **§9** nuevo con la evidencia medida, los
+>   **ocho huecos con su coste** y el **veredicto**. Era el resto abierto de
+>   **H10** de `guion_bloque9_F-012.md`.
+> - **`ff5fb6a`** — `specs/F-009-cierre-sigrid/tasks.md`: **solo T26** del
+>   bloque 8 marcada, más **T29**, cada una diciendo de dónde sale. Nota
+>   fechada bajo el bloque 8 que enmienda además dos cosas que el texto de T22
+>   dice mal: **Mirasierra** y el **aviso de R21**, derogado por R48 de F-012.
+>
+> ### El veredicto, para la decisión del líder
+>
+> **El cierre real está acreditado; sus comprobaciones, casi ninguna.** Una
+> reclamación pasó a `CER` en producción, con autorización y **con su parte
+> dentro**, y el responsable lo vio en la ficha de Sigrid. Pero **ninguno de
+> los cinco scripts de lectura de `infra/` se ha ejecutado jamás**: de los nueve
+> pasos de T24 constan **uno y medio**, y **la fila de auditoría del primer
+> cierre real está escrita en producción y nadie la ha mirado** —su **huso**
+> incluido, que §0.2 del guion daba por defecto probable—.
+>
+> **Marcar el bloque 8 como superado sería falso.** De los ocho huecos de §9.4,
+> **siete no exigen escribir en el ERP y tres no exigen ni abrir la ventana**
+> (la fila de `dbo.log` y su huso, T25 entera, la traza local). **El único que
+> exige ventana de escritura es T27**, el reintento sobre lo ya cerrado — el
+> escenario más probable en uso normal, y el que **las tres features dejaron
+> sin marcar** (T27 de F-009, T30 de F-012, T22 de F-025).
+>
+> ### Tres cosas que el reviewer tiene que mirar
+>
+> 1. **La única marca del bloque 8 es T26, y se apoya en una inferencia**: `200`
+>    + la reclamación en `CER` ⇒ el guard aceptó el batch, porque un rechazo lo
+>    habría revertido entero. La cadena está escrita entera en su casilla y en
+>    `tasks.md` **para que se pueda romper**; `filas_afectadas` no se anotó y
+>    eso consta como salvedad, no se esconde.
+> 2. **La prueba de F-025 se descartó a propósito como evidencia de T27** (§9.6
+>    del guion): sus registros no muestran **ninguna** llamada a `cerrar`, y una
+>    llamada que no consta no verifica un reintento.
+> 3. **`T29` se marcó desde la rama `feature/F-026-aprobacion-humana`**, no
+>    desde la de F-009, y la salvedad va escrita: el código de F-009 está en el
+>    historial de HEAD, así que el verde cubre más, no menos.
+>
+> ### Lo que NO se tocó
+>
+> **El `status` de ninguna feature** —F-009 sigue `blocked`, lo lleva el líder—,
+> ni código, ni tests, ni `azure-apps/`. Ese último es el pendiente con dueño:
+> `azure-apps/postventa_incidencias.md` **sigue diciendo que «todavía no se ha
+> ejecutado ni un cierre real»**, y desde el 2026-09-11 es falso.
+
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 5, las enmiendas y la documentación**
+>
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 5** de `specs/F-026-aprobacion-humana/tasks.md` (T17–T19) y mandaba parar
+> ahí. **El bloque 6 (verificación contra la base real, del responsable), el 7
+> (cierre, del líder) y la campaña de mutación no se han tocado.** Informe
+> completo, con la traza de la fase RED y las evidencias, en la **parte V** de
+> `progress/impl_F-026.md` (§35 en adelante).
+>
+> ### Lo que hay hecho en esta tanda
+>
+> - **T17** (`b7ac982`) — el recuadro de enmienda bajo **R36 de F-025**, sin
+>   borrar su texto, y `tests/test_f026_documentacion.py` (21 tests) escrito
+>   **antes** que los documentos.
+> - **T18** (`c9258f0`) — los **tres** puntos de `docs/ARCHITECTURE.md` que
+>   decían que solo se archiva lo apto: paso 6, semántica 3 y semántica 7.
+>   **Precisados, no borrados.**
+> - **T19** (`02cb101` aquí, `0d7c843` en `azure-apps`) — `docs/INTEGRACION.md`
+>   y su copia del ecosistema: la tabla `postventa.aprobaciones`, el endpoint
+>   `POST /api/aprobar`, las ventanas de escritura y el `oid` de quien aprueba.
+> - **Ajuste** (`212ba40`) — la cuenta de endpoints, de once a doce, en los dos
+>   tests ajenos que la vigilan.
+>
+> ### Lo que cambia de verdad
+>
+> Hasta hoy el código abría una puerta que **tres documentos aprobados
+> declaraban cerrada**. Quien leyera `ARCHITECTURE.md` encontraría
+> `_exigir_admitido` y lo tomaría por un agujero; quien leyera R36 de F-025
+> «arreglaría» el backend para volver a dejar fuera los partes aprobados. Eso
+> ya no puede pasar, y **no porque alguien se acuerde: porque hay un test**.
+>
+> Y el documento del ecosistema ya dice lo único que el resto de proyectos
+> necesita saber de F-026: que **no empezamos a consumir nada nuevo**, y que
+> desde ahora una reclamación puede acabar cerrada aunque su parte no fuera
+> apto —si una persona lo aprobó—, **sin que en el ERP quede constancia** de esa
+> aprobación (decisión expresa del responsable).
+>
+> ### Tres cosas que el reviewer tiene que mirar
+>
+> 1. **El botón de aprobar consta como interpretación del líder**, no como
+>    pronunciamiento del responsable, y así está escrito en el recuadro con su
+>    test (§36.1 del informe). Lo que el responsable pidió fue lo contrario
+>    —«según escribe guarda, sin botón»— pero para las correcciones, que es
+>    otro juicio.
+> 2. **Se tocaron dos documentos y no uno** (§38): `azure-apps/` declara ser
+>    una copia de `docs/INTEGRACION.md`, así que tocar solo la copia habría
+>    creado justo la divergencia que la regla quiere evitar. Dos repositorios,
+>    dos commits, **sin `push`** en ninguno, `git -C ../azure-apps status`
+>    limpio.
+> 3. **Dos tests ajenos saltaron en rojo y ninguno se aflojó** (§39). El de
+>    F-019 mantiene su cuenta a mano —es lo que ese test declara querer— y el de
+>    F-012 pasa a **contar** las filas de la tabla en vez de fijar un literal,
+>    porque así comprueba lo que afirma en lugar de avisar de una cifra vieja.
+>    De paso, el árbol de tablas de §2 listaba seis de las nueve que crea el
+>    DDL: se añaden `usuarios_sigrid` (F-009) y `graficos` (F-012), y queda
+>    declarado como deuda ajena corregida al pasar (§38.1).
+>
+> ### Lo que falta para cerrar F-026
+>
+> - **Bloque 6 (T20–T23)** · **MANUAL (humano)**, contra la base de desarrollo:
+>   el DDL aplicado dos veces, el circuito completo de un parte aprobado, la
+>   traza reconstruible hasta el ERP y la revocación sobre datos reales. A esa
+>   lista siguen sumadas las comprobaciones de pantalla de §26 y §33, que nadie
+>   ha visto todavía en un navegador.
+> - **Bloque 7 (T24)** · la campaña de mutación.
+>
+> `bash harness/init.sh` en **verde** al cerrar (exit 0): 62 tests en la raíz,
+> **2 338** en el servicio `api` —**21 nuevos**—, `front` servido de caché, y
+> la puerta de cobertura en **99,0 %** de 1 338 líneas cambiadas.
 
 
-> ## Estado al 2026-08-26 · **F-019: los tres cambios de la review, hechos**
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 4 bis, el autoguardado**
 >
-> **23 de 24 tareas hechas** en `feature/F-019-endpoints-persistencia`.
-> Informes: **`progress/impl_F-019.md`** (la feature) y
-> **`progress/impl_postreview_F-019.md`** (los tres cambios de la review).
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 4 bis** de `specs/F-026-aprobacion-humana/tasks.md` (TA1–TA5) y mandaba parar
+> ahí. **El bloque 5 y el 7 (la campaña de mutación) no se han empezado.**
+> Informe completo, con las trazas de la fase RED y las evidencias, en la
+> **parte IV** de `progress/impl_F-026.md` (§28 en adelante).
 >
-> El backend se aprobó sin reservas y no se ha tocado. Lo que fallaba era el
-> otro extremo del cable: el cableado del front **podía desaparecer sin que
-> nada se enterara** —borrar la llamada que registra la remesa, o cambiar la
-> ruta `/remesa`, dejaba los 122 tests en verde—. Ahora el orden vive en
-> `js/pipeline.js::procesarRemesa`, con tests; `js/api.js` tiene un test por
-> ruta; y hay guardianes textuales que impiden que el orden vuelva a `app.js`.
-> **140 tests de JavaScript** (eran 122) y **87 del front en Python** (eran 85).
+> ### Lo que hay hecho en esta tanda
 >
-> Existen `POST /api/remesa`, `POST /api/parte` y `GET /api/cola`, y —lo que
-> de verdad importa— **`POST /api/archivar` ya no puede subir nada de un parte
-> que no conste guardado**: escribe la traza en `pendiente` antes de tocar
-> SharePoint, y la clave ajena `archivos_hash_parte_fkey` la rechaza si el
-> parte no está. El defecto 15 se muere ahí. `bash harness/init.sh` en verde,
-> cobertura de las líneas cambiadas al **100 %**.
+> - **TA1** (`428842c`) — `RETARDO_AUTOGUARDADO_MS: 1500` en `js/config.js`,
+>   con la razón del número escrita al lado; `js/autoguardado.js` (el rebote y
+>   la comparación con lo último guardado, lógica pura y con el temporizador
+>   inyectado); `valoresDeCampos` en `js/pipeline.js`; y el disparador en
+>   `app.js::editarCampo`.
+> - **TA2** (`7beaa0b`) — lo que se dispara es `revalidarYGuardar`, la misma
+>   función que el botón, con su control negativo.
+> - **TA3** (`ebfb2ae`) — los tres estados en `index.html`.
+> - **TA4 + TA5** (`1259c39`) — la corrección no pisa lo que leyó la IA (R53,
+>   por F-015), una revocación como mucho por pausa (R54) y todos los partes
+>   (R55).
 >
-> **Lo que falta para cerrar**:
+> ### Lo que cambia de verdad en la pantalla
 >
-> 1. **T24, verificación `MANUAL (humano)`**, sin marcar a propósito: el
->    circuito completo contra el entorno desplegado, **con la ventana de
->    escritura abierta a propósito para la prueba y cerrada al terminar**. El
->    procedimiento exacto está en `progress/impl_F-019.md` §8. Ahí se mide
->    también el coste de la llamada HTTP de más por parte (riesgo 4).
-> 2. **Copiar `docs/INTEGRACION.md` §8 a `azure-apps/`**: ha cambiado (nueve
->    endpoints, la nota de anonimidad y la tabla de ausencias) y los agentes
->    no commitean en ese repositorio.
-> 3. **Decir al cerrar (decisión D4)**: lo guardado queda guardado y la cola
->    sobrevive entre sesiones, pero **recargar el navegador sigue perdiendo el
->    trabajo en curso**. Rehidratarla es **feature nueva**.
+> Escribir en un campo **guarda lo que escribes**, tras una pausa de 1,5 s y
+> **sin botón**. Hasta hoy la corrección vivía **solo en memoria** y quien
+> escribía y se iba la perdía. Y hay un efecto de segundo orden que importa:
+> como la **revocación de una aprobación ocurre en la escritura**, corregir un
+> campo de un parte aprobado ahora lo revoca **solo**, sin que nadie tenga que
+> acordarse de pulsar «Revalidar».
 >
-> ---
+> Y si el guardado falla, se dice: **recuadro rojo que no se va solo**, con lo
+> escrito intacto en el campo. Quien escribe y no ve nada supone que se guardó.
 >
-> ## Estado anterior · **F-019: spec cerrada, sin decisiones abiertas**
+> ### Tres cosas que el reviewer tiene que mirar
 >
-> El humano resolvió las cinco decisiones y están incorporadas a
-> `specs/F-019-endpoints-persistencia/`. Detalle en `progress/spec_F-019.md`
-> §9. **La spec está lista para el implementer**: 34 requisitos, 24 tareas
-> (7 en fase RED), sin DDL, sin métodos nuevos en el puerto y sin conexiones
-> reales. `bash harness/init.sh` en verde.
+> 1. **TA2, TA4 y TA5 no tuvieron fase RED, y está escrito por qué** (§31 del
+>    informe): TA2 fija un acoplamiento que TA1 ya dejó cableado —y que existe
+>    desde F-019 R28—, y TA4/TA5 son **control-negativo**, que por definición
+>    no pueden fallar antes de existir el código. El rojo real de este bloque
+>    está en TA1 y TA3, con la traza pegada.
+> 2. **`guardarParte` no lanza cuando el backend rechaza** —devuelve
+>    `{ok: false, motivo}`—, así que `_guardarCorreccion` convierte ese caso en
+>    error a propósito. Sin eso, la pantalla diría «Guardado.» con la base sin
+>    tocar.
+> 3. **Un test que pasaba sin comprobar nada** (§31, último apartado): un `\b`
+>    mal escapado acabó siendo un carácter de retroceso literal dentro del
+>    patrón. Se detectó porque pasaba cuando tenía que fallar. Corregido en
+>    `428842c`, pero conviene saber que el fichero se ve idéntico a uno bueno.
 >
-> **D5 sí** (el cableado del front entra), **D2/D3/D4 según recomendación**
-> (remesa sin clave natural, `usuario_oid` en `NULL`, rehidratar la sesión es
-> feature nueva) y **D1 con el razonamiento reescrito**, que es lo que de
-> verdad cambió.
+> ### Lo que falta para cerrar F-026
 >
-> ### El error de la primera ronda, que conviene no repetir
+> - **Bloque 5 (T17–T19)** · la enmienda a R36 de F-025, los tres puntos de
+>   `docs/ARCHITECTURE.md` y `azure-apps/postventa_incidencias.md`. El endpoint
+>   nuevo y la tabla nueva **siguen sin documentar fuera de la spec**.
+> - **Bloque 6 (T20–T23)** · **MANUAL (humano)**, contra la base de desarrollo.
+>   A esa lista se le añaden las cuatro comprobaciones de pantalla del
+>   autoguardado que enumera §33 del informe: nada de esto se ha visto en un
+>   navegador.
+> - **Bloque 7 (T24)** · la campaña de mutación.
 >
-> Mi §5 daba `GET /api/cola` por «expuesto a internet» y proponía **valorar**
-> la restricción de acceso público de la Function App como «la única capa
-> real». Las dos mitades estaban mal, y lo dice `docs/DESPLIEGUE.md` §5 bis
-> desde el defecto 13 de F-010 (2026-08-25): al ser **backend enlazado**, la
-> plataforma activa Easy Auth `azureStaticWebApps` y el backend **sólo acepta
-> lo que entra por el proxy del front** —el `400` del host desnudo lo escribe
-> la plataforma, no nosotros—; y encima va la regla `/*` con `authenticated`
-> de la SWA, con test propio, más el grupo de Posventa. **No hay nada que
-> configurar.** `auth_level=ANONYMOUS` es irrelevante desde internet.
->
-> El dato personal de la cola sigue siendo real: lo que cambia es que la
-> amenaza es **un usuario ya autenticado del grupo**, y el **volumen**. Una
-> spec que exagera un riesgo gasta el mismo crédito que una que lo esconde.
->
-> ### Lo que eso mete en el alcance
->
-> - **Tope duro al `limite` de `GET /api/cola`** (R16, T10-T11): ninguna
->   llamada se lleva la cola entera. El repositorio ya acota; **el handler
->   acota también**, que es lo que hoy no existe.
-> - **Ningún dato personal al log** en los tres endpoints nuevos (R18, T12),
->   con control negativo como el de F-005.
-> - **Corregir la cabecera de `test_f010_endpoints_protegidos.py`** (R31,
->   **T17, tarea propia**): hoy dice que los endpoints «quedan en internet»,
->   y dejó de ser cierto. **Sin relajar el test.**
-> - **Descartado**: exigir `x-ms-client-principal`. Base64 sin firma, no es
->   control de acceso, y encima de algo ya protegido sólo confunde qué
->   protege de verdad.
+> `bash harness/init.sh` en **verde** al cerrar: 62 tests en la raíz, 224 en el
+> servicio `front` (que incluyen los 292 de JavaScript por el puente de
+> `node --test`), `api` servido de caché, y la puerta de cobertura en
+> **99,0 %** de 1 338 líneas cambiadas.
 
-> ## Estado al 2026-08-26 · **F-019 con spec escrita, esperando aprobación**
->
-> Escrita `specs/F-019-endpoints-persistencia/` (requirements EARS, design,
-> tasks) en la rama `feature/F-019-endpoints-persistencia`. Informe completo:
-> **`progress/spec_F-019.md`**. Sin código, sin tocar `harness/features.json`,
-> `bash harness/init.sh` en verde.
->
-> **La feature no son sólo tres endpoints.** Tres endpoints sin más no matan
-> el defecto 15: si el orden depende de que el llamante se porte bien, vuelve
-> en cuanto alguien llame a `/api/archivar` a mano — que es literalmente lo
-> que se hizo el 2026-08-25 para verificar T18. El diseño añade la pieza que
-> falta: **`/api/archivar` escribe la traza en estado `pendiente` ANTES de
-> subir nada**, y la clave ajena `archivos_hash_parte_fkey` sólo lo admite si
-> el parte ya consta. La misma restricción que hoy falla **después** de subir
-> el fichero pasa a fallar **antes**: el 500 «está arriba y falta la traza» se
-> convierte en un **409 «guarda el parte primero»**, sin subir nada.
->
-> Lo demás: `POST /api/remesa`, `POST /api/parte` (que **recalcula** el
-> veredicto, no se lo cree) y `GET /api/cola`, los tres llamando al
-> `paso_persistencia` que F-005 dejó escrito y **sin punto de entrada**. Cero
-> DDL, cero métodos nuevos en el puerto, cero conexiones reales.
->
-> **Lo que la spec NO promete, y conviene leerlo antes de aprobar**: recargar
-> la pestaña **sigue perdiendo el trabajo en curso**. Lo guardado queda
-> guardado y la cola sobrevive, pero volver a pintar la remesa exige un método
-> de lectura nuevo en el puerto, que el encargo prohíbe. Es la decisión **D4**.
->
-> ### Cinco decisiones abiertas para el humano (`design.md` §15)
->
-> Con silencio se implementa la recomendación; sólo **D5** cambia `tasks.md`.
->
-> - **D1** — `GET /api/cola` es anónimo **y devuelve observaciones manuscritas
->   de clientes**: es el primer endpoint del servicio que publica dato personal
->   acumulado sin que el llamante aporte el PDF. El `auth_level` no lo arregla
->   (`ANONYMOUS` es obligado por el proxy de la SWA). Recomendado: sacarlo así,
->   con tope de límite y nada al log, **y valorar la restricción de acceso
->   público de la Function App**, que es la única capa real.
-> - **D2** — `postventa.remesas` no tiene clave natural → se acepta; dársela
->   sería DDL. No duplica partes.
-> - **D3** — `usuario_oid` sigue en `NULL`: `x-ms-client-principal` va sin
->   firma.
-> - **D4** — rehidratar la sesión al recargar → feature nueva.
-> - **D5** — **¿entra el cableado del front?** Recomendado **sí** (T15–T16).
->   Si el humano dice que no, el archivado real **sigue sin poder completar**
->   en el circuito del piloto, y hay que decirlo al cerrar.
 
-> ## Estado al 2026-08-26 · **F-019 CERRADA Y APROBADA · diez features `done`**
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 4, la pantalla**
 >
-> `progress/review_F-019.md` salió **CAMBIOS SOLICITADOS (3)** y **APROBADO**
-> en la segunda ronda. **T24 la ejecutó el humano** contra el entorno
-> desplegado y pasa. F-019 va a `done` y se mergea en `dev`. Resumen completo
-> en `progress/history.md`.
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 4** de `specs/F-026-aprobacion-humana/tasks.md` (T13–T16) y mandaba parar
+> ahí. **El bloque 4 bis (el autoguardado), el 5 y el 7 no se han empezado.**
+> Informe completo, con las cuatro trazas de la fase RED y las evidencias, en
+> la **parte III** de `progress/impl_F-026.md` (§18 en adelante).
 >
-> **El defecto 15 está muerto, y con la mejor evidencia posible**: el mismo
-> `POST /api/archivar` sin parte guardado, ejecutado hoy **antes** de desplegar
-> F-019, devolvió **500 y subió el fichero igualmente** a SharePoint;
-> **después** devuelve **409 sin subir nada**. Mismo endpoint, mismo entorno,
-> mismo día.
+> ### Lo que hay hecho hoy
 >
-> **El circuito completo del piloto ya cierra de punta a punta**: remesa →
-> parte → archivado, los tres 200, con la traza escrita en PostgreSQL
-> (`estado: archivado`) y el reproceso reemplazando en vez de duplicar.
-> `POST /api/parte` tarda **237 ms**, muy por debajo del segundo que habría
-> obligado a replantear la llamada de más.
+> - **T13** (`3fbfbd2`) — `js/pipeline.js` gana `MOTIVOS_APROBABLES`,
+>   `esAprobable`, `esCirculable`, `cuerpoDeAprobacion` y un `semaforoDe` que
+>   acepta la aprobación y devuelve un **cuarto estado**, `"aprobado"` (R36).
+> - **T14** (`bf2fdc0`) — `pendientesDeCircuito`, `cuerpoDeArchivo`,
+>   `esCerrable` y, por su puerta, `cuerpoDeGrafico` y `cuerpoDeCierre` pasan
+>   por `esCirculable` (R23). `esArchivable` **conserva su significado**: lo que
+>   dio por bueno la máquina.
+> - **T15** (`48e2799`) — `api.aprobar()`, `app.aprobarParte()`, `esAprobable()`
+>   y `aprobacion` declarada en `_parteInicial` para que Alpine la repinte.
+> - **T16** (`5270f8d`) — `index.html`: el botón en el **detalle**, la marca del
+>   semáforo con anillo, el texto de R36/R37 y la frase de R39.
 >
-> **La lección que se lleva el arnés**: las tres puertas automáticas
-> —cobertura, mutación e `init.sh`— son **ciegas al JavaScript**. Daban verde
-> mientras el cableado del front podía borrarse entero sin que nada fallara.
-> Las 18 pruebas que faltaban sólo aparecieron **rompiendo el código a mano**.
-> Va a F-017, que ya acumula tres propuestas de arnés.
+> ### Lo que cambia de verdad en la pantalla
 >
-> ## Lo que queda vivo, con dueño
+> Hasta hoy el backend admitía en el circuito un parte aprobado y **no había
+> forma de aprobarlo** desde la interfaz. Ahora quien revisa aprueba con el PDF
+> delante, **sin una segunda confirmación** (R29, P7: sigue armándose **una**
+> en todo el front), y **un parte aprobado no se lee igual que uno que siempre
+> fue verde**: mismo punto verde **con anillo**, más el texto de quién lo
+> aprobó —una persona, sin `oid`, sin correo y sin nombre—, de qué destino se
+> rescató y cuándo.
 >
-> 1. **D4 · recargar el navegador sigue perdiendo el trabajo en curso.**
->    Feature nueva, por decisión del humano, después de ver el piloto.
-> 2. **`docs/INTEGRACION.md` §8 → `azure-apps/postventa-incidencias.md`**: del
->    humano, porque los agentes no commitean ahí.
-> 3. **El tope de 500 de `GET /api/cola` no quedó demostrado por T24**: la cola
->    tenía una sola entrada. Sus tests unitarios sí lo cubren.
-> 4. **Un residuo en la biblioteca de dev**: `0677 - RS26.08 - 0000 PARTE
->    FIRMADO`, de origen no documentado (T18 de F-010 usó `0001`).
-> 5. **T14 bis** sigue sin dato, pero **reclasificado**: la Function es backend
->    enlazado con Easy Auth, así que los endpoints de IA **no están expuestos a
->    internet anónimo**. De urgente a conveniente.
+> ### Dos decisiones que el reviewer tiene que mirar
 >
-> **Siguiente por backlog: F-009**, el cierre en Sigrid, con el camino ya
-> despejado por F-008 salvo **cuatro decisiones del humano**: el `tex` y el
-> `usu` de la fila de log, si la escritura de `sigrid-api` está habilitada y
-> con qué prefijos, y si merece la pena confirmar el gráfico-URL.
+> 1. **El cuerpo de `/api/aprobar` es el de `/api/parte` más `usuario_oid` y
+>    `confirmado`**, tal y como manda `design.md` §6, y **no** una versión
+>    recortada como podría leerse en la letra de T13. El motivo está en §23.1
+>    del informe y es de fondo: el backend **recalcula** el veredicto sobre esa
+>    extracción, así que sin el texto de las observaciones el parte dejaría de
+>    ser aprobable y aprobar contestaría 409 a toda la cola ámbar. Lo que sí se
+>    fija por test es que F-026 **no añade** ninguna clave personal propia.
+>    Punto a confirmar por el líder.
+> 2. **`guardarParte` propaga la `aprobacion` que devuelve el backend**, y eso
+>    no estaba en la letra de las cuatro tareas (§23.2). Sin ello, una
+>    revalidación que **revoca** la aprobación (R31) dejaría la pantalla
+>    diciendo «aprobado» hasta la siguiente recarga, y al resubir la remesa los
+>    partes aprobados volverían a parecer rechazados (R22).
+>
+> ### Tres avisos para quien siga
+>
+> 1. **Nada de esto se ha visto en un navegador.** Los tests de pantalla son de
+>    texto, que es lo que esta suite sabe hacer. Que la marca con anillo se
+>    distinga del verde liso **de un vistazo** es literalmente R36 y solo lo
+>    puede decir una persona: va al bloque 6, con T20–T23.
+> 2. **`esCirculable` es la puerta de la tanda en el front.** Un selector nuevo
+>    que vuelva a preguntar por `esArchivable` para decidir si algo se archiva,
+>    se adjunta o se cierra deshace F-026 **sin romper ningún test de F-007**.
+> 3. **El bloque 4 no está mutado, y no puede estarlo con este utillaje**:
+>    `harness/mutacion` muta Python, y aquí todo lo escrito es JavaScript y
+>    HTML. T24 sigue siendo obligatoria sobre el Python de la feature, y para el
+>    front lo que sostiene la calidad son los control-negativo.
 
-> ## Estado al 2026-08-26 · **F-019 · SPEC ESCRITA, ESPERANDO APROBACIÓN**
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 3, las puertas y el borde HTTP**
 >
-> `spec-author` sobre la rama `feature/F-019-endpoints-persistencia` (árbol
-> principal, sin worktree). Spec en `specs/F-019-endpoints-persistencia/`,
-> informe en `progress/spec_F-019.md`. F-019 pasa a **`spec_ready`**: el
-> arnés **para aquí** hasta que el humano apruebe.
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 3** de `specs/F-026-aprobacion-humana/tasks.md` (T9–T12) y mandaba parar ahí.
+> **Los bloques 4, 4 bis, 5 y 7 no se han empezado.** Informe completo, con las
+> cuatro trazas de la fase RED y las evidencias, en la **parte II** de
+> `progress/impl_F-026.md` (§10 en adelante).
 >
-> **Lo que el diseño cambia respecto a la ficha.** F-019 parecía «tres
-> endpoints», y tres endpoints **no matan el defecto 15**: si el orden depende
-> de que el llamante haga las cosas bien, el fallo vuelve en cuanto alguien
-> llame a `/api/archivar` por su cuenta —que es justo lo que se hizo el
-> 2026-08-25 para verificar T18—. Por eso `/api/archivar` pasa a **escribir la
-> traza en estado `pendiente` ANTES de subir nada**: como `archivos.hash_parte`
-> tiene clave ajena contra `partes`, esa escritura solo puede hacerse si el
-> parte ya consta. **La misma restricción que hoy hace fallar el proceso
-> después de subir el fichero pasa a hacerlo fallar antes**, sin inventar una
-> comprobación paralela que pueda divergir de la real. El 500 de «el fichero
-> está arriba y falta la traza» se convierte en un **409 sin haber subido
-> nada**.
+> ### Lo que hay hecho hoy
 >
-> **Alcance**: 4 ficheros de código nuevos y 7 de test, 13 modificados, **0
-> ficheros SQL y 0 DDL**, el puerto `RepositorioPartesPort` sin ganar ni un
-> método, 20 tareas y **una sola verificación MANUAL (humano)**.
+> - **T9** (`6b51d60`) — `interface_adapters/api/aprobar.py`. Aprobar guarda el
+>   parte, su veredicto **recalculado** y la aprobación **en una sola llamada**,
+>   en ese orden. Dos puertas antes de tocar el puerto: `usuario_oid` (R4) y
+>   `confirmado: true` como booleano de JSON, y `es_aprobable` sobre el
+>   veredicto recalculado (R5, R9, R10).
+> - **T10** (`9760019`) — la ruta en `function_app.py`, su traducción de
+>   errores (400 / 409 / 503) y un log con `hash_parte`, destino y resultado y
+>   **nada más** (R44).
+> - **T11** (`851f0d2`) — los tres `_exigir_apto` pasan a `_exigir_admitido`:
+>   el apto de siempre **o** una aprobación viva del mismo destino (R23).
+> - **T12** (`44c306c`) — `POST /api/parte` devuelve el bloque `aprobacion`
+>   (R22), leído **después** de guardar.
 >
-> **Arregla una consecuencia y media de las dos que le atribuía la ficha**: el
-> archivado real puede completar (defecto 15, que es el bloqueo del piloto) y
-> la cola de validación sobrevive entre sesiones; pero **recargar la pestaña
-> sigue perdiendo el trabajo en curso**, porque repintar exige leer una remesa
-> entera y eso pide un método de lectura nuevo en el puerto, fuera de alcance.
+> ### Lo que cambia de verdad en el servicio
 >
-> **Cinco decisiones abiertas esperan al humano** (§5 del informe): **D1** el
-> `GET /api/cola` anónimo devolviendo observaciones manuscritas de clientes
-> —el primer endpoint que sirve dato personal acumulado sin que el llamante
-> aporte el PDF—; **D2** `postventa.remesas` sin clave natural; **D3** si se
-> guarda `usuario_oid`; **D4** rehidratar la sesión, propuesta como feature
-> nueva; y **D5** si el cableado del front entra en esta feature.
+> Hasta hoy, F-026 no cambiaba ningún comportamiento: la tabla existía y nadie
+> la llamaba. **A partir de este commit, un parte que la validación mandó a
+> revisión puede archivar, adjuntar y cerrar si consta aprobado y vigente.** Lo
+> que sigue siendo imposible, y lo vigilan los trece casos de control negativo
+> de T1: hacerlo **sin** aprobación, o con una **revocada**, o con una de otro
+> destino. Y ninguno de los tres endpoints del circuito gana una clave en su
+> cuerpo: la aprobación se lee del repositorio y nunca de la petición (R24).
+>
+> ### Tres puntos de diseño que no se pueden perder
+>
+> 1. **El orden de las tres escrituras de `/api/aprobar`** —parte, validación,
+>    aprobación— es requisito: guardar la validación **revoca** la aprobación
+>    cuyo veredicto ya no coincide (R30, bloque 2), así que escribir la
+>    aprobación antes la dejaría revocada en el acto de nacer. Lo mismo, al
+>    revés, en `/api/parte`: la aprobación se **lee después** de guardar, o se
+>    devolvería como viva una que esa misma llamada acaba de tumbar.
+> 2. **Las puertas solo consultan cuando el veredicto no basta.** El parte apto
+>    circula sin pagar una lectura por paso —66 consultas inútiles en una remesa
+>    de 22—, y hay un test que lo fija para que no se pierda en la primera
+>    refactorización.
+> 3. **Los parsers del cuerpo bajaron a `cuerpos.py`** (`CLAVES_DEL_PARTE`,
+>    `a_remesa_id`, `a_parte_troceado`), sin cambiar ni una regla ni un mensaje.
+>    El motivo no es estético: si aprobar y guardar describieran el parte de dos
+>    formas distintas, **se aprobaría un veredicto y se guardaría otro**.
+>
+> ### Tres avisos para quien siga
+>
+> 1. **No hay forma de aprobar desde la pantalla.** El bloque 4 (T13–T16) no se
+>    ha tocado: el endpoint existe y funciona, pero hoy solo se puede llamar a
+>    mano. Es lo siguiente.
+> 2. **El endpoint estará vivo en cuanto se despliegue**, y **no depende** de
+>    `ARCHIVO_HABILITADO` ni de `CIERRE_HABILITADO` (R21, deliberado). Escribe
+>    solo en el esquema propio; lo que habilita es que un parte no apto entre en
+>    el circuito cuando alguien lo apruebe. La confirmación única de F-025 sigue
+>    intacta delante de toda escritura externa (R27).
+> 3. **El bloque 3 no está mutado.** Esta tanda no lanzó ninguna campaña, por
+>    encargo. La que sí corrió —en paralelo, del implementer del bloque 2:
+>    `3e1b63e`, 242 mutantes y 14 supervivientes analizados en
+>    `progress/mutacion_F-026.md`— se generó sobre un árbol **sin** `aprobar.py`,
+>    sin `aprobacion_serializada.py` y sin las tres puertas nuevas. **T24 sigue
+>    siendo obligatoria** al cerrar (C4 bis), sobre la feature entera.
+>
+>    Dos agentes escribieron en esta rama a la vez, y conviene saberlo al leer el
+>    historial: el commit `3e1b63e` arrastró la parte II de
+>    `progress/impl_F-026.md` —escrita por esta tanda y todavía sin commitear—
+>    porque no se podía separar del mismo fichero. El código del bloque 3 va
+>    entero en `6b51d60`, `9760019`, `851f0d2` y `44c306c`.
+>
+>    Sigue en pie, además, lo que anotó la tanda anterior: **la traza de la fase
+>    RED de los bloques 0 y 1 se perdió** con el agente que se interrumpió, y
+>    **el `.sql` solo está verificado en su texto** — T20 y T23 son `MANUAL
+>    (humano)` y ningún doble de conexión puede sustituirlos.
+>
+> ### Estado del arnés al cerrar
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. Cobertura de líneas cambiadas
+> **99,0 %** (1 325/1 338, umbral 80 %). **2 317** tests del servicio `api` en
+> verde —61 nuevos en esta tanda—, 62 en la raíz, el front en verde. **60**
+> avisos de `ruff`: uno más que los 59 de partida, un `I001` en `aprobar.py`
+> del mismo tipo que los otros 20 del servicio (el repositorio no configura
+> `known-first-party` y separa con línea en blanco el grupo
+> `interface_adapters`). Se ha seguido la convención del servicio en vez de
+> dejar el fichero nuevo como excepción; arreglarlo de verdad es una línea de
+> configuración que toca a los 21 a la vez, y esa decisión es del líder.
 
-> ## Estado al 2026-08-26 · **F-008 CERRADA Y APROBADA · nueve features `done`**
->
-> `progress/review_F-008.md` salió **CAMBIOS SOLICITADOS (2)** en la primera
-> ronda y **APROBADO** en la segunda. F-008 pasa a `done` y su rama se mergea
-> en `dev`. El entregable es `docs/referencia/03_modelo_posventa_sigrid.md`.
->
-> **Ni una escritura contra Sigrid**, confirmado por el reviewer por cuatro
-> vías independientes. Sin secretos ni datos personales, con barrido propio.
->
-> **Las dos correcciones de la primera ronda**, las dos en el entregable:
->
-> - **Una cifra mal etiquetada, no mal medida.** El «2.105 cierres desde 2025»
->   era en realidad la población de §2.2 —reclamaciones **creadas** desde 2025
->   que hoy están en `CER`, contadas por fecha de alta—, mientras que los
->   cierres de §3 se cuentan por año de cierre y proceso y suman **2.106**. Dos
->   poblaciones que no se contienen. Arrastraba el «4.899 / 4.892» de «Cerrar
->   Preventas», ahora declarado como dos poblaciones, y los hallazgos del
->   informe. **El reviewer rehizo las siete sumas del documento**: cuadran.
-> - **Un hallazgo verificado que se quedó en `progress/`**: `con.cod` es único
->   y global (23.063 conceptos `tip = 708`, 23.063 códigos), formato
->   `RS{AA}.{MM}/{NNNN}`, y **no codifica la obra**. Es la clave de
->   localización de F-009. `progress/` es memoria de sesión, no documentación:
->   un dato de referencia que solo vive ahí está, en la práctica, perdido.
->
-> **Lo que F-008 deja decidido para F-009** (rigor `critico`, escribe en
-> producción): mover `con.est` **más** la fila de `dbo.log`, en la misma
-> transacción, porque `con.tiemod` **no** se toca al cerrar y el log es el
-> único rastro temporal; **negarse a cerrar sin gráfico asociado**, replicando
-> por nuestro lado el control del ERP en vez de esquivarlo; **no** subir el
-> gráfico (eso es F-012); y **no** usar RPV, que solo aporta saltarse ese
-> control y está abandonado desde 2025-03-11.
->
-> **Cuatro decisiones siguen esperando al humano** antes de escribir una línea
-> de F-009: el `tex` de la fila de log (texto propio rastreable frente a
-> `'Cerrar parte'` indistinguible — recomendado el propio), el `usu` con el
-> que se firma, si la **escritura de `sigrid-api` está habilitada** y con qué
-> prefijos, y si merece la pena confirmar el gráfico-URL en un entorno de
-> pruebas (hoy F-009 no lo necesita; **F-013** sí se apoyaría en ello).
->
-> **Un arreglo de propina que valía la feature entera** (commit `337701c`): el
-> guardián de identificadores de R26 filtraba por ruta **absoluta** y,
-> ejecutado desde un worktree, **se apagaba entero sin decirlo**. Pasó de
-> barrer **0 ficheros a 275**. Llevaba apagado dentro de los worktrees quién
-> sabe cuánto, y lo cazó la casualidad de que esta feature se trabajara en uno.
->
-> **Siguiente: F-019**, prioridad máxima por decisión del humano. Es el
-> prerequisito del archivado real: hoy `/api/archivar` sube el fichero a
-> SharePoint y **no puede escribir su traza nunca**.
+---
 
-> ## Estado al 2026-08-26 · **F-010 CERRADA Y APROBADA · ocho features `done`**
+> ## Estado al 2026-09-12 · **F-026: hecho el bloque 2, la persistencia de la aprobación**
 >
-> `progress/review4_F-010.md` salió **APPROVED** y F-010 pasa a `done`. Es la
-> primera feature que se cierra **con el sistema funcionando en Azure y probado
-> por el humano**, no solo con tests en verde.
+> Entrega **parcial y pedida así**: el encargo acotaba el trabajo al **bloque
+> 2** de `specs/F-026-aprobacion-humana/tasks.md` (T6–T8) y mandaba parar ahí.
+> **Los bloques 3, 4, 4 bis y 5 no se han empezado.** Informe completo, con la
+> fase RED y las evidencias: **`progress/impl_F-026.md`**, que además recoge lo
+> que hicieron los bloques 0 y 1 leyendo sus commits — los agentes que los
+> escribieron se interrumpieron antes de redactarlo.
 >
-> **Lo que quedó demostrado ejecutando** (2026-08-25, resultados en
-> `progress/impl_cierre_manual_F-010.md`):
+> ### Lo que hay hecho hoy
 >
-> - **T17**, el criterio de aceptación: los dos despliegues relanzados seguidos
->   desde `infra\`, ocho recursos reutilizados, **cero duplicados**, y la sesión
->   intacta después.
-> - **T18**, la única subida real del proyecto, con autorización expresa ante
->   `CHECKPOINTS.md` C5: dos llamadas `200`, mismo destino, **un solo elemento
->   en la carpeta y ningún sufijo `(1)`**. Con ella se marca **T18 de F-006**,
->   la casilla ajena que F-010 existía para desbloquear.
-> - **T15 resuelve D4**: la Function App alcanza `psql-albaranes-rs9k2` y el
->   archivado deja su traza. **No hizo falta tocar el servidor compartido.**
+> - **T6** (`1ece459`) — el DDL `10_aprobaciones.sql` existía desde `f1e5718`
+>   pero **no estaba declarado**. Y el sitio donde se declara no es `ddl.py`
+>   —que descubre los `.sql` por `glob`— sino la lista escrita **a mano y a
+>   propósito** de `tests/test_f005_ddl_idempotente_texto.py`. El arnés estaba
+>   en rojo por eso.
+> - **T7** (`4d80aaa`) — `sentencias.py` gana `upsert_aprobacion`,
+>   `select_aprobacion` y `revocar_aprobacion_si_cambio`; `mapeo.py` gana
+>   `json_de_codigos_de_motivo` y `fila_a_aprobacion`.
+> - **T8** (`fc5a37a`) — el puerto gana `guardar_aprobacion` y
+>   `consultar_aprobacion`, y `guardar_validacion` ejecuta además la
+>   **revocación**. `RepositorioEnMemoria` crece para seguir cumpliendo el
+>   puerto.
+> - **`tests/test_f026_persistencia.py`** nuevo: **34 tests**, sin BBDD y sin
+>   red, con el doble de `tests/utiles_pg.py`.
 >
-> **Ejecutar destapó cuatro defectos más, del 13 al 16**, ya corregidos. El que
-> más enseña es el **13**: desde que la Function es backend enlazado de la
-> Static Web App, **el host desnudo devuelve `400` a todo el mundo**, `/api/health`
-> incluido. Ningún test lo habría encontrado, y la spec mandaba usar justo esa
-> vía: por eso se reescribió R29.
+> ### El punto de diseño que no se puede perder (D-F)
 >
-> ## Lo que queda vivo de F-010, con dueño
+> **La revocación ocurre en la escritura, no en la lectura**, y «en la misma
+> operación» es literal: `guardar_validacion` ejecuta el `upsert` de la
+> validación y el `UPDATE` de la revocación **en el mismo cursor y con un solo
+> `commit`**. Con dos transacciones habría una ventana en la que el veredicto
+> nuevo ya está guardado y la aprobación del viejo sigue viva, y un paso que
+> leyera justo ahí admitiría en el circuito un parte que nadie ha aprobado. Un
+> test lo fija: `len(ejecutadas) == 2` y `commits == 1`.
 >
-> 1. **F-019 es prerequisito del archivado real** (defecto 15). Hoy
->    `/api/archivar` **no puede completar solo**: la clave ajena exige que el
->    parte esté en `partes` y **nada lo inserta**. El 2026-08-25 se sembró a
->    mano para poder verificar T18. Con la ventana de escritura cerrada, como
->    está ahora, el endpoint responde 503 y no molesta a nadie.
-> 2. **T14 bis sigue sin resultado anotado**: el humano no ha dado el dato del
->    tope y la alerta de gasto de IA. El reviewer dictaminó que **no bloquea**
->    (§7 de `review3_F-010.md`), pero `/api/extraer` y `/api/firma` son
->    anónimos por diseño y ya están publicados.
-> 3. **Dos hallazgos no bloqueantes de la última review**: un hueco en la
->    guardia del comodín del test nuevo y **dos avisos de `ruff` de esta ronda**
->    que el informe da por deuda previa. Los dos, una línea cada uno.
->    Detalle en `progress/review4_F-010.md` §1.3 y §3.2.
+> ### Tres avisos para quien siga
 >
-> **La rama `feature/F-010-despliegue` sigue sin mergear**: lo decide el humano.
+> 1. **Nada de esto cambia todavía el comportamiento del servicio.** La tabla
+>    existe y el repositorio sabe escribirla y leerla, pero **nadie llama a
+>    esas operaciones**: el endpoint `POST /api/aprobar` (T9) y las tres
+>    puertas que leen la aprobación (T11) son el bloque 3. Un parte no apto
+>    sigue sin archivarse, sin adjuntarse y sin cerrarse, y eso lo vigilan los
+>    trece casos de control negativo de T1.
+> 2. **La traza de la fase RED de los bloques 0 y 1 se perdió** con el agente
+>    que se interrumpió. No se ha reconstruido: una traza de hoy no es la de
+>    entonces. La del bloque 2 está pegada entera en el informe. El reviewer
+>    tiene que saberlo antes de mirar C4 bis.
+> 3. **El `.sql` solo está verificado en su texto.** Que sea PostgreSQL válido
+>    y que aplicarlo dos veces no falle es **T20, MANUAL (humano)**, y la
+>    revocación sobre datos reales es **T23**. Un doble de conexión no puede
+>    demostrar ninguna de las dos.
+>
+> ### Estado del arnés al cerrar
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. Cobertura de líneas cambiadas
+> **98,7 %** (1 171/1 186, umbral 80 %), frente al **47,6 %** en `[KO]` con el
+> que empezó la sesión. 2 253 tests del servicio `api` en verde; **59** avisos
+> de `ruff`, los mismos que antes de esta tanda.
 
-> ## Estado al 2026-08-26 · **F-010 · §9.1 y §9.3 de la review 3, CORREGIDOS**
->
-> `implementer`, encargo acotado a los dos puntos que quedaban de
-> `progress/review3_F-010.md`. Informe:
-> `progress/impl_postreview3_F-010.md`. **§9.2 no se ha tocado**: ya lo cerró
-> el `spec-author`. Nada contra Azure, SharePoint ni PostgreSQL; ninguna
-> casilla `[x]` movida; el estado de F-010 en `features.json`, intacto.
->
-> - **§9.1 · R14 ya tiene el test que su spec prometía.** Nuevo
->   `services/postventa-front/tests/test_f010_config_swa.py` (commit
->   `26ef146`): fija que `/.auth/login/aad` es la **primera** ruta y admite
->   `anonymous`, que existe la regla `/*` con `authenticated`, que el
->   `responseOverrides` del `401` existe **y redirige** al login con 302, y
->   que no hay claves fuera del esquema **ni arriba ni dentro de cada ruta**.
->   **Fase RED sobre el fichero real**: las cuatro condiciones rotas a mano
->   una a una, con las trazas pegadas en el informe y el árbol restaurado con
->   `git checkout --` tras cada caso. Antes de esto se podía borrar la regla
->   `/*` —dejando la aplicación abierta a internet— con la suite en verde.
-> - **§9.3 · el script de secretos deja de dictar el criterio imposible.**
->   `infra/cargar_secretos_postventa.ps1` (commit `0743c45`): «nueve secretos
->   del backend» en los cuatro sitios, con el porqué al lado —`swa-client-id`
->   y `swa-client-secret` los crea y los guarda `desplegar_front.ps1`—.
->   **Texto y solo texto**; los 160 tests de contrato de `infra/`, en verde.
->   Hecho con **permiso expreso del humano para tocar `infra/`**, dado hoy.
-> - `bash harness/init.sh` **en verde**. Mutación relanzada: **23/20/3**, los
->   tres supervivientes de siempre y equivalentes (no cambió producción).
-> - **Pendiente para cerrar F-010: solo el resultado de T14 bis**, que es del
->   humano, y el veredicto del reviewer.
-> - **Dos residuos señalados y no tocados**: `progress/review3_F-010.md` está
->   **sin versionar** (es del reviewer; además obliga a lanzar la mutación con
->   `--workers 1`), y `harness/mutacion.py` **acumula una nota por
->   re-ejecución** bajo cada superviviente —van cuatro—, que es un defecto del
->   arnés genérico y viajaría a `arnes-base`.
+---
 
-> ## Estado al 2026-08-26 · **F-010 · §9.2 de la review 3, CORREGIDO**
+> ## Estado al 2026-09-11 · **F-025: hecho el bloque 4; los requisitos derogados ya llevan su constancia fechada**
 >
-> `spec-author`, encargo acotado a dos puntos de `specs/F-010-despliegue/`.
-> Informe: `progress/spec_postreview3_F-010.md`. Sin código, sin tests, sin
-> `infra/`, sin `tasks.md`; nada contra Azure, SharePoint ni PostgreSQL.
+> Entrega **parcial y pedida asi**: el encargo acotaba el trabajo al **bloque
+> 4** de `specs/F-025-confirmacion-unica/tasks.md` (T14-T18) y mandaba parar
+> ahi. **Los bloques 5 y 6 no se han empezado.** Informe completo, con la fase
+> RED y las evidencias: **`progress/impl_F-025.md`**, de la §20 en adelante.
 >
-> - **R29 reescrito** contra la vía real: T18 de F-006 se ejecuta **solo desde
->   el entorno desplegado y entrando por el front** —sesión iniciada, consola
->   del navegador, ruta relativa `/api/archivar`, sin ninguna URL que
->   escribir—, con el procedimiento en `docs/DESPLIEGUE.md` §5 bis. Formato
->   EARS y verificación `MANUAL (humano)` conservados. Queda escrito por qué
->   no por el host de la Function (`400 azureStaticWebApps`) y que el script
->   sigue existiendo, ahora reconociendo y explicando ese `400`. La fila de
->   trazabilidad añade los cuatro tests `defecto13` que ya existen.
-> - **`design.md`**: la fila de `infra/verificar_archivo_dev.ps1` sale de
->   «ficheros que NO se tocan» y pasa a **§6.2 A modificar**, con el commit
->   `7ff86d7` y el motivo. Decía que no se modificaba; se modificó.
-> - `bash harness/init.sh` **en verde** al terminar.
-> - **Decisiones abiertas: ninguna nueva.** Siguen pendientes §9.1 (test de
->   contrato de `staticwebapp.config.json`) y §9.3 (los «once secretos» del
->   script de `infra/`, que necesita permiso del humano), ambos del
->   `implementer`; y el resultado de **T14 bis**, que es del humano.
+> ### Lo que hay hecho
+>
+> - **T14** - `specs/F-012-grafico-sigrid/requirements.md`: los **cinco**
+>   recuadros de enmienda, uno bajo cada requisito (R63 **DEROGADO**, R22, R21,
+>   R49, R50). Cada uno con fecha `2026-09-11`, la premisa original **citada
+>   literal**, que la invalido y **quien lo decidio, con sus palabras**:
+>   *«quiero que al darle a archivar los partes aptos me pida confirmacion como
+>   ahora, y al confirmar ya haga el proceso de cierre»* y, ante la objecion de
+>   que esa pantalla protege de cerrar la incidencia equivocada, *«no hace
+>   falta ensenar nada»*. **+77 lineas, CERO suprimidas.**
+> - **T15** - `specs/F-009-cierre-sigrid/requirements.md`: la nota bajo
+>   R8/R10. Siguen vigentes y **se cumplen mejor**; R12-R15 igual; hay **UNA
+>   sola** confirmacion, **no ninguna**; y R21 **no se vuelve a derogar**, que
+>   ya lo estaba desde el 2026-09-06. **+21 lineas, CERO suprimidas.**
+> - **T16** - el repaso formal de las retiradas en `test_f009_front.py` y
+>   `test_f012_front.py`: cotejo nombre a nombre contra `e250775`. **Ningun
+>   test desaparecido sin sustituto**; las bajas netas son fusiones. Tapado un
+>   hueco: el control negativo de R9 vigilaba cinco de los siete campos de la
+>   tarjeta retirada.
+> - **T17** - `docs/ARCHITECTURE.md`, paso 7b y punto 6 de «Semantica de
+>   dominio»: la confirmacion es **una sola** y el calculo previo ocurre **en
+>   la misma llamada** que escribe.
+> - **T18** - la constancia de que `azure-apps/postventa_incidencias.md` **no
+>   se toca**, con el repaso hecho punto por punto (endpoints, cuerpos,
+>   variables, tablas y las cinco puertas) en la §26 del informe. Ese
+>   repositorio queda **limpio**.
+> - **`services/postventa-api/tests/test_f025_documentacion.py`** nuevo:
+>   **21 tests** que vigilan los recuadros, la nota y las dos precisiones de
+>   arquitectura. Fase RED con **17 rojos de 21**, pegada en la §23 del
+>   informe.
+>
+> ### Lo que cambia para quien lo lea dentro de seis meses
+>
+> Antes, quien abriera R63 de F-012 leia que el front tiene que ensenar dos
+> dry-run antes de confirmar, y «arreglaria» el front para cumplir un requisito
+> que ya no rige. Ahora lee el requisito **entero, sin una palabra borrada**, y
+> debajo por que cayo y quien lo decidio. **Ningun fichero de produccion se ha
+> tocado en esta tanda**: lo unico que cambia en codigo son dos aserciones de
+> test.
+>
+> ### Tres avisos que siguen en pie
+>
+> 1. **La pantalla no se ejecuta en ninguna suite.** Sigue igual que tras el
+>    bloque 3: son aserciones sobre el TEXTO de `index.html` y `app.js`. Nadie
+>    ha abierto la pantalla. Es lo primero del bloque 5.
+> 2. **`AVISO_CADUCADA_CIERRE` de `js/confirmacion.js` se queda sin llamante**
+>    en produccion, y **no se retira a proposito**: `design.md` §9.3 deja ese
+>    fichero fuera del alcance. Deuda menor declarada, con su motivo, en la
+>    §24.5 del informe.
+> 3. **La constancia de T18 es un repaso, no un test**: `azure-apps/` vive en
+>    otro repositorio y ninguna suite lo lee. Si una feature futura cambia un
+>    cuerpo o una variable, ese documento se quedara desactualizado sin que
+>    nada se ponga rojo.
+>
+> ### Por donde sigue
+>
+> **Bloque 5 (T19-T23)**, `MANUAL (humano)`: escribe en el historico de una
+> **obra en uso**. Empieza por **T19**, el guion
+> `progress/guion_bloque5_F-025.md`, que todavia **no existe**. Reglas que no
+> se negocian y que vienen de F-012: autorizacion expresa del responsable para
+> la incidencia concreta, `CIERRE_HABILITADO` abierto **solo** durante la
+> prueba y releido al cerrarlo, y **ninguna escritura desde un puesto de
+> trabajo**. Despues, el **bloque 6** (mutacion y cierre), que lleva el lider.
+>
+> ### Estado del entorno
+>
+> `bash harness/init.sh` en **verde**: 62 + 2.144 (13 skipped) + 185 tests,
+> cobertura de lineas cambiadas **99,0 %** (umbral 80, nivel critico). **13**
+> commits locales en `feature/F-025-confirmacion-unica` desde el cierre de F-012
+> (`e250775`), **cinco** de esta tanda, sin `push`.
+> `features.json` **sin tocar**.
 
-> ## Estado al 2026-08-25 · **F-008 IMPLEMENTADA, PENDIENTE DE REVISIÓN**
+> ## Estado al 2026-09-11 (tanda 2) · **F-025: hechos los bloques 2 y 3; la pantalla YA pide UNA sola confirmacion** _(superado por el bloque de arriba)_
 >
-> Trabajada **en worktree aislado**, en paralelo a F-010, sobre la rama
-> `feature/F-008-modelo-sigrid` (creada desde `feature/F-010-despliegue`).
-> Informe completo en **`progress/impl_F-008.md`**; el entregable, en
-> **`docs/referencia/03_modelo_posventa_sigrid.md`**.
+> Entrega **parcial y pedida asi**: el encargo acotaba el trabajo a los
+> **bloques 2 y 3** de `specs/F-025-confirmacion-unica/tasks.md` (T7-T13) y
+> mandaba parar ahi. **T14 en adelante no se ha empezado.** Informe completo,
+> con la fase RED y las evidencias: **`progress/impl_F-025.md`**, de la §11 en
+> adelante.
 >
-> **Ni una escritura contra Sigrid.** ~25 consultas, todas `SELECT` por
-> `sql/read` de `sigrid-api`. Ninguna cerca del tope de 1.000 filas.
+> ### Lo que hay hecho
 >
-> **Las cuatro preguntas de la ficha, respondidas**: `con.tip = 708`; estados
-> `1/SAT`, `3/PTE` (confirmado), `5/TER`, `7/NPR` y **`9/CER` CERRADA**;
-> «Cerrar parte» **solo cambia `con.est`**; y RPV **termina en el mismo
-> estado**, solo se salta el control del gráfico — y **está abandonado desde
-> 2025-03-11**.
+> - **Bloque 2 (T7-T9)** - `js/app.js`: `confirmarArchivo` recorre
+>   `pendientesDeCircuito` llamando a `ejecutarCircuito` por la MISMA cola,
+>   envuelto en `conGuardaDeTanda`. Desaparecen `_archivarUno`,
+>   `_adjuntarYCerrarUno`, `_cerrarUno`, `_dryRunUno`, `pedirDryRunCierre`,
+>   `hayDryRun`, `dryRunDe` y `dryRunGraficoDe`. Entran `totalTanda`,
+>   `parte.paso`, la fase `archivando_y_cerrando` y las dos banderas de las
+>   puertas de entorno.
+> - **Bloque 3 (T10-T13)** - `index.html`: las secciones «Archivar» y «Cerrar
+>   en Sigrid» fundidas en UNA, con **un** boton, **una** confirmacion con el
+>   texto aprobado en P3, el paso por parte y el **numero de incidencia** en el
+>   resumen (R37). Sin identidad el boton se deshabilita (P2). Los dos
+>   recuadros de F-012 R65 **siguen intactos**.
+> - **`tests/test_f025_front.py`** nuevo: **57 tests**, casi todos control
+>   negativo. Fase RED con 44 rojos sobre codigo real, pegada en el informe.
 >
-> **Dos hallazgos que no estaban en la lista y cambian F-009.** Primero:
-> «Cerrar parte» escribe una **fila de auditoría en `dbo.log`** que un
-> `UPDATE` directo no escribiría. Segundo: **`con.tiemod` NO se actualiza al
-> cerrar** —verificado en los 138 cierres de 2026, cero excepciones—, así que
-> el log es el **único** rastro temporal de un cierre. Cerrar por SQL sin
-> escribir esa fila dejaría incidencias que, para quien audite, **nadie cerró
-> nunca**.
+> ### Lo que cambia para quien lo pruebe
 >
-> **El gráfico como URL a SharePoint: NO hay precedente.** Cero coincidencias
-> en 282.599 filas de `gra`. La opción existe en el menú pero **nunca se ha
-> usado en esta instalación**, así que no hay de dónde deducir cómo se
-> guardaría. F-009 no puede apoyarse en ello; queda marcado como deducción.
+> El front pasa de **cinco** llamadas por parte a **tres**, y de **dos**
+> confirmaciones a **una**. El backend **no cambia ni una linea**: lo que
+> desaparece es la pantalla, no la verificacion — la comprobacion previa se
+> sigue haciendo dentro de la misma llamada que escribe.
 >
-> **Recomendación de alcance para F-009** (§6 del informe): mover el estado
-> **más** la fila de log, en la misma transacción; **negarse a cerrar sin
-> gráfico** replicando el control del ERP por nuestro lado; **no** subir el
-> gráfico (eso es F-012); y **no** usar RPV.
+> ### Tres avisos que hay que tener a la vista
 >
-> **Cuatro decisiones esperan al humano**: el `tex` y el `usu` de la fila de
-> log, si la escritura de `sigrid-api` está habilitada, y si merece la pena
-> confirmar el gráfico-URL en un entorno de pruebas.
+> 1. **La pantalla no se ejecuta en ninguna suite.** Los 57 tests son
+>    aserciones sobre el TEXTO de `index.html` y `app.js`. Se ha cotejado a
+>    mano que los 35 identificadores que invoca el HTML existen en `app.js`, y
+>    `node --check` pasa, pero **nadie ha abierto la pantalla**. Es lo primero
+>    que hay que hacer en el bloque 5.
+> 2. **La bandera de «el ERP esta cerrado»** la ven los partes que aun no han
+>    arrancado, no los que ya estan en vuelo en la cola: como mucho dos `503`
+>    de mas. Aceptado, y **escrito en el codigo**, no descubierto en la review.
+> 3. **T16 (bloque 4) esta medio consumida**: 28 tests de F-009 y F-012
+>    apuntaban a la pantalla retirada y habia que adaptarlos para no dejar la
+>    suite en rojo. Cada retirada deja su control negativo y cita R38/R39; la
+>    tabla con las quince entradas esta en la §16 del informe. **El bloque 4
+>    tiene que revisarla, no repetirla.**
 >
-> **Un arreglo fuera del encargo** (commit `337701c`): el guardián de
-> identificadores de R26 filtraba por ruta **absoluta** y, ejecutado desde un
-> worktree, se apagaba entero sin decirlo. Lo cazó su propio control
-> (`assert 0 >= 60`). Arreglado filtrando por ruta relativa a la raíz.
+> ### Por donde sigue
 >
-> `F-008` se quedó **`pending`** a propósito hasta que F-010 cerrase: el
-> portero solo admite una `in_progress`. **Cerrada el 2026-08-26**; ver el
-> bloque de cabecera.
+> **Bloque 4 (T14-T18)**: los cinco recuadros de enmienda en
+> `specs/F-012-grafico-sigrid/requirements.md`, la nota en
+> `specs/F-009-cierre-sigrid/requirements.md`, el repaso de T16,
+> `docs/ARCHITECTURE.md` (R47) y la constancia de R48. Despues, el **bloque 5**
+> contra el ERP, que ahora **si tiene algo que probar**.
+>
+> ### Estado del entorno
+>
+> `bash harness/init.sh` en **verde**: 62 + 2.123 (13 skipped) + 183 tests,
+> cobertura de lineas cambiadas **99,0 %** (umbral 80, nivel critico). **Tres**
+> commits locales en `feature/F-025-confirmacion-unica`, sin `push`.
+> `features.json` **sin tocar**.
 
-> ## Estado al 2026-08-25 (cierre) · **F-010 · LAS MANUALES, EJECUTADAS Y ANOTADAS**
+> ## Estado al 2026-09-11 (tanda 1) · **F-025: hechos los bloques 0 y 1; el front todavia pedia DOS confirmaciones** _(superado por el bloque de arriba)_
 >
-> El humano ejecutó hoy contra el entorno real las verificaciones que
-> faltaban. Esta ronda es **solo rastro**: ni una línea de código, ningún
-> script de `infra/` tocado, ninguna llamada a Azure, SharePoint ni
-> PostgreSQL desde el arnés. Informe: `progress/impl_cierre_manual_F-010.md`.
+> Entrega **parcial y pedida asi**: el encargo acotaba el trabajo a los **dos
+> primeros bloques** de `specs/F-025-confirmacion-unica/tasks.md` (T1-T6).
+> **T7 en adelante no se ha empezado.** Informe completo, con la fase RED y las
+> evidencias: **`progress/impl_F-025.md`**.
 >
-> - **T15 · D4 CERRADA: la Function App SÍ alcanza `psql-albaranes-rs9k2`.**
->   La evidencia es doble, y la primera mitad vale más que un «sí»: el primer
->   intento devolvió `ForeignKeyViolation` sobre `archivos_hash_parte_fkey`, y
->   **ese error solo lo puede devolver el servidor** —hubo conexión,
->   autenticación y ejecución—. Después, con el parte sembrado, el archivado
->   dejó su traza en el esquema `postventa` con `estado = archivado`, nombre y
->   carpeta correctos. **No hizo falta ninguna regla de red nueva ni tocar
->   nada a nivel del servidor compartido.**
-> - **T17 · re-ejecutabilidad demostrada** (criterio de aceptación). Los dos
->   despliegues relanzados seguidos **desde `infra\`**, backend completo y
->   front con `-SoloFront`: los **ocho recursos** salieron como «ya existe, se
->   reutiliza», el listado del grupo **sin ni un duplicado**, y el resumen del
->   front dijo «sin tocar (-SoloFront)» en las cuatro líneas que importan
->   —asignación, permiso de Graph, tokens de ID y credenciales `swa`—, que es
->   **el defecto 8 corregido funcionando contra Azure**. El inicio de sesión
->   sigue funcionando después: en incógnito pide sesión y entra (R2, R14).
-> - **T18 · la subida real, ejecutada con autorización expresa.** El humano
->   autorizó el **2026-08-25** con la fórmula literal «autorizo T18 ante
->   `CHECKPOINTS.md` C5». **Tres intentos, y los tres enseñan algo**: (1) host
->   desnudo de la Function → `400 azureStaticWebApps`, el defecto 13 en vivo;
->   (2) desde la consola del front con sesión → `500`, con el PDF **ya subido
->   y bien nombrado**, por el `ForeignKeyViolation` del defecto 15; (3) tras
->   sembrar el parte sintético → **dos llamadas `200`**, mismo destino,
->   `estado: archivado`, y el aviso de reemplazo, **que es R16 hablando**.
->   Verificado por el humano en la biblioteca: **un solo elemento en la
->   carpeta y ninguno con sufijo `(1)`**, el criterio de aceptación de F-006.
->   **Marcada también la casilla T18 de `specs/F-006-sharepoint/tasks.md`**,
->   citando la autorización y la fecha: era la casilla ajena que F-010 existía
->   para desbloquear, y con ella **F-006 se queda sin manuales pendientes**.
-> - **T19 · la tarjeta del portal**: publicada y funcionando, declarado por el
->   humano el 2026-08-25. **Sin el GUID del grupo**, que vive solo en
->   `front-portal`.
+> ### Lo que hay hecho
 >
-> **HUECO ABIERTO · T14 bis sigue SIN RESULTADO**, y no se inventa. El tope de
-> gasto y la alerta en el proveedor de IA: la casilla está `[x]` desde antes,
-> pero el «tope fijado: sí/no» y el «alerta configurada: sí/no» **no constan**
-> —lo señala `progress/review2_F-010.md` §10.5— y el dato lo tiene que aportar
-> el humano. **Lo que está en juego**: `/api/extraer` y `/api/firma` son
-> **anónimos por diseño** y **ya son alcanzables**, así que el tope es hoy la
-> única defensa (capa 4 de `design.md` §9 bis) contra que un desconocido
-> consuma cuota de IA.
+> - **Bloque 0 (T1, T2)** - `services/postventa-api/tests/test_f025_sin_dry_run_previo.py`,
+>   27 tests. Fija con una **bitacora ordenada compartida por los dos dobles**
+>   el hallazgo del que depende la feature entera: un `commit` **sin ninguna
+>   llamada previa** hace su comprobacion contra el ERP y la pasarela **dentro
+>   de la misma invocacion** y solo entonces escribe. Mas los **siete
+>   control-negativo** de `requirements.md` 6 (R29-R35).
+> - **Bloque 1 (T3-T6)** - `js/pipeline.js` gana `pendientesDeCircuito`,
+>   `porcentajeDeTanda`, `ejecutarCircuito`, `conGuardaDeTanda` y
+>   `hayTandaEnCurso`; `tests_js/circuito.test.js` los cubre con **37 tests**.
+>   El orden de las tres escrituras deja de vivir en `app.js`, que no tiene
+>   tests.
 >
-> **Ni una URL, ni un GUID, ni un identificador de suscripción, inquilino,
-> sitio o elemento, ni un importe.** `bash harness/init.sh` en verde.
-> **El estado de F-010 en `harness/features.json` no se ha tocado**: lo decide
-> el líder tras el veredicto del reviewer.
+> ### Lo que NO hay, y conviene no confundirlo
+>
+> **El comportamiento de la pantalla no ha cambiado ni un poco.** `js/app.js` e
+> `index.html` estan intactos: el front sigue pidiendo **dos** confirmaciones y
+> **cinco** llamadas por parte. `ejecutarCircuito` esta escrito y **no lo llama
+> nadie** todavia.
+>
+> Tampoco se ha tocado: ni `paso_grafico.py` ni `paso_cierre.py` (regla dura de
+> la feature), ni las enmiendas a F-009 y F-012 (bloque 4), ni la verificacion
+> contra el ERP (bloque 5, MANUAL), ni la campana de mutacion (T24).
+>
+> ### Por donde sigue
+>
+> **Bloque 2 (T7-T9)**, en `js/app.js`, con `tests/test_f025_front.py` nuevo.
+> El informe trae en su 7.2 el esqueleto de `confirmarArchivo` y **dos avisos
+> que conviene leer antes de escribir codigo**: que la bandera `erpCerrado` no
+> la veran los partes que ya esten en vuelo en la cola, y que
+> `reintentarCierre` se queda sin funcion si T7 borra `_cerrarUno` (la salida
+> limpia es reintentar por `ejecutarCircuito`, que ya se salta lo que consta
+> hecho).
+>
+> ### Estado del entorno
+>
+> `bash harness/init.sh` en **verde**: 62 + 2.123 + 130 tests, cobertura de
+> lineas cambiadas **99,0 %** (umbral 80, nivel critico). Dos commits locales
+> en `feature/F-025-confirmacion-unica`, sin `push`. `features.json` **sin
+> tocar**.
 
-> ## Estado al 2026-08-25 (noche) · **F-010 · DEFECTOS 13, 14 Y 15 CERRADOS**
+> ## Estado al 2026-09-11 · **el bloque 9 de F-012 se ejecutó contra el ERP y FUNCIONÓ; se cierra con cinco escenarios sin verificar**
 >
-> Tres defectos más, descubiertos **ejecutando T17 y T18 contra el entorno
-> real**. Informe completo en `progress/impl_defectos13-15_F-010.md`; un
-> commit por defecto.
+> **Lo primero, porque es el hito que esta feature perseguía**: el
+> responsable del proyecto recorrió el **circuito completo** contra el ERP de
+> producción sobre la incidencia **`RS26.09/0150`** de la obra **`0626`**. Un
+> parte subido por la web quedó **archivado**, **adjunto a su reclamación** y
+> la **reclamación cerrada**. Sus palabras: ***«ha funcionado perfectamente»***
+> y ***«cerró una y lo hizo bien»***. Es el **primer cierre real** de este
+> servicio, y fue **con su parte dentro**: la anomalía que F-009 aceptaba como
+> riesgo no llegó a producirse ni una vez.
 >
-> - **13 · el host desnudo de la Function ya no responde.** Como backend
->   enlazado de la Static Web App, la plataforma le activa Easy Auth y
->   contesta `400 azureStaticWebApps` a todo, `/api/health` incluido.
->   `verificar_archivo_dev.ps1` reconoce **ese** 400 y explica la vía buena en
->   vez de morir con un `WebException`; `verificar_despliegue.ps1` también.
->   La vía que sí funciona —**consola del navegador en el front**, mismo
->   origen— queda escrita con su fragmento en `docs/DESPLIEGUE.md` **§5 bis**.
->   Rectificados los enunciados de **T14 (criterios 1 y 3)** y **T18**;
->   el criterio 3 pasa a comprobarse **leyendo la App Setting**, que es lo que
->   sigue siendo observable. **Ninguna casilla `[x]` tocada.**
-> - **14 · el 500 mudo de `/api/archivar`.** `PersistenciaNoDisponible` se
->   escapaba del borde. Ahora: **500 con cuerpo** cuando el fichero **sí está**
->   en SharePoint y falta la traza (`ArchivoSinTraza`, error nuevo que levanta
->   el paso, que es quien conoce el orden), y **503 explicado** cuando la base
->   no responde o falta su configuración y **no se ha subido nada**. Fase RED
->   pegada en el informe. **Contrato tocado y declarado**: «en los cuatro
->   casos, sin haber subido nada» ya no describe el endpoint entero; el 500 es
->   la excepción, y está escrita en el docstring.
-> - **15 · el archivado no puede completar todavía.** `archivos` tiene clave
->   ajena contra `partes` y **nada inserta el parte**: eso es **F-019**,
->   `pending`. **No se arregla aquí.** Anotado en su ficha de
->   `harness/features.json` con el `ForeignKeyViolation` como prueba,
->   `BACKLOG.md` regenerado, y explicado en `docs/DESPLIEGUE.md` §5 ter y en la
->   verificación de T18.
+> ### La evidencia objetiva, medida en `appi-postventa-dev`
 >
-> **Cero llamadas a Azure, SharePoint y PostgreSQL.** `bash harness/init.sh`
-> en verde: 1092 tests del servicio, cobertura de líneas cambiadas 98.5%,
-> mutación 23/20 muertos con los 3 supervivientes analizados (los tres, el
-> separador decorativo de `dev_server.py`).
+> `az monitor app-insights query`, 2026-09-11. **Las cinco respuestas, `200`**:
 >
-> **Residuo reportado y NO corregido**: `specs/F-010-despliegue/design.md:252`
-> y `requirements.md:227` siguen diciendo que T18 se ejecuta con
-> `-BaseUrl` y que el script «no se modifica». Es `spec-author`, no
-> `implementer`. Sigue vivo también el «once secretos» de
-> `cargar_secretos_postventa.ps1:269`.
+> | Hora (UTC) | Ruta | Código | Duración |
+> |---|---|---|---|
+> | `08:27:15` | `archivar` | 200 | 1.756 ms |
+> | `08:27:29` | `adjuntar` | 200 | **13.134 ms** |
+> | `08:27:42` | `cerrar` | 200 | 4.424 ms |
+> | `08:28:03` | `adjuntar` | 200 | **8.471 ms** |
+> | `08:28:12` | `cerrar` | 200 | 472 ms |
 >
-> **Lo que falta para cerrar F-010, todo del humano**: **T15**, **T17** y
-> **T18** sin marcar, y el resultado real de **T14 bis** y **T19**.
+> Los dos pares son **la comprobación previa y la escritura**: dry-run antes de
+> cada `commit`, como manda el guion.
+>
+> **El número que R37 pedía anotar**: `adjuntar` tarda **13,1 s** en la primera
+> llamada, frente a los **35 s** de `SIGRID_TIMEOUT_S`. Hay margen —21,9 s—,
+> pero es **con diferencia el paso más lento**: el **37,5 %** del tope, **28
+> veces** lo que tarda el cierre. **Con un parte más pesado se acerca**, y
+> pasarse no da un error claro: da un `502` con el ERP en estado desconocido.
+> **Lo que no se midió y hacía falta**: el **tamaño en bytes** del parte usado,
+> así que los 13,1 s no se pueden extrapolar.
+>
+> ### El hallazgo de procedimiento: **el front desplegado no llevaba F-012**
+>
+> Durante la prueba el circuito **se paró después de archivar**, sin llamar a
+> `adjuntar` ni a `cerrar` y **sin error visible**. Se diagnosticó con los
+> registros —ni una llamada a esas dos rutas, luego no era el backend— y
+> descargando el **JavaScript servido**, que no contenía el paso de adjuntar.
+> Se resolvió con `infra/desplegar_front.ps1 -SoloFront`. **El guion daba por
+> hecho que basta con desplegar el backend, y no basta**: queda como **H11** y
+> el **Paso 0 (2) y la P2 están corregidos** para desplegar **las dos partes**
+> y comprobar el JS servido. La lección vale para cualquier feature con front y
+> backend: **un front al que le falta un paso no falla, no hace nada**.
+>
+> ### Qué se marcó, y qué queda SIN verificar
+>
+> Se ejecutó **el camino feliz y poco más**. Marcadas **T25, T27 y T32** —y aun
+> esas, con pasos sin recorrer, anotados uno a uno en sus casillas— más **T34**.
+> **Sin marcar, con el motivo y qué se pierde en cada casilla**:
+>
+> | Tarea | Escenario sin verificar |
+> |---|---|
+> | **T26** | el `commit` del cierre **rechazado** por no constar adjuntado (**R2**, la razón de ser de la feature). Su dry-run sí se ejecutó |
+> | **T28** | **idempotencia** de extremo a extremo: nada se repitió |
+> | **T29** | **«adjuntado pero no cerrado»** y el botón que saca de ahí: adjuntar y cerrar fueron seguidos (9 s) y ese estado no llegó a existir |
+> | **T30** | **reintento sobre lo ya cerrado** — el más probable en uso normal y **el más barato de cerrar**: basta repetir el circuito |
+> | **T31** | **rechazo de la pasarela** sin escritura; ya el guion lo daba por prescindible |
+>
+> Y transversal: **no se ejecutó ni uno de los scripts de lectura de `infra/`**.
+> No está comprobado el `filas_afectadas: 3` de R27, ni que el binario dentro
+> del ERP coincida **byte a byte**, ni que `dbo.log` no haya crecido por el
+> gráfico (R36), ni el **huso** de la fila de auditoría del cierre, ni las dos
+> trazas locales. **Todo eso es solo lectura y sigue disponible**: la
+> incidencia, el gráfico y la fila están en el ERP.
+>
+> ### La decisión del responsable, fechada
+>
+> **El 2026-09-11 decidió cerrar F-012 así**, con esos cinco escenarios sin
+> ejecutar: la feature se da por buena **con el camino principal verificado en
+> producción**. Está escrito en `progress/guion_bloque9_F-012.md` §9.5 y en
+> `progress/impl_F-012.md` §13.5 para que **las casillas vacías no se lean como
+> un olvido**.
+>
+> ### Estado del entorno y qué queda pendiente
+>
+> - **`CIERRE_HABILITADO` = `false`**: la ventana se leyó (seguía `true`), se
+>   cerró y **se releyó** para confirmarlo. **Falta** el paso 3 de T32:
+>   comprobar en el borde que responde `503`.
+> - **`SIGRID_GRATIPIDE_PARTE` sigue en 35** (nunca se cambió: T31 no se hizo).
+> - **Pendiente**: `azure-apps/postventa_incidencias.md` —ya no es verdad que
+>   «no se ha ejecutado ni un cierre real»— y `progress/guion_bloque8_F-009.md`,
+>   que sigue nombrando la obra genérica.
+> - **El `status` de F-012 no lo toca este encargo**: lo lleva el líder.
+>
+> **Encargo documental**: ningún código, ningún test, ninguna llamada a Azure,
+> Sigrid, SharePoint ni PostgreSQL —toda la evidencia venía medida—.
+> `bash harness/init.sh` **en verde**: 62 tests del arnés en 14,97 s y la
+> puerta de cobertura en **99,0 % de 1.079 líneas**. Ficheros tocados:
+> `progress/guion_bloque9_F-012.md`, `specs/F-012-grafico-sigrid/tasks.md`,
+> `progress/impl_F-012.md` y este.
 
-> ## Estado al 2026-08-25 (tarde) · **F-010 · CORREGIDA LA RE-REVIEW · SOLO DOCUMENTACIÓN**
+> ## Estado al 2026-09-11 · **la documentación de la verificación de F-012 ya nombra el caso concreto, con constancia fechada de quién cambió la premisa**
 >
-> `progress/review2_F-010.md` salió **CHANGES_REQUESTED** sin pedir ni una
-> línea de código: los defectos 8, 9, 11 y 12 quedaron **aprobados tal cual**.
-> Lo que bloqueaba era el otro lado: **la jornada del 2026-08-21 costó doce
-> defectos y los documentos que existen para que no vuelvan a costarse no los
-> recogieron**.
+> Encargo **documental**: ningún código, ningún test, ninguna llamada a Azure,
+> Sigrid, SharePoint ni PostgreSQL. `bash harness/init.sh` **en verde**
+> (62 tests del arnés en 5,51 s; puerta de cobertura 99,0 % de 1.079 líneas; las
+> suites de `api` y `front` **de caché**, legítimo porque no se tocó un solo
+> `.py`).
 >
-> **Cinco correcciones, un commit cada una, dos ficheros Markdown y nada más**
-> (`progress/impl_postreview2_F-010.md`):
+> **Qué cambió.** Donde se decía «obra de prueba **404**, nunca una obra real»
+> ahora se dice **incidencia `RS26.09/0150` (tipo 708) de la obra `0626`**, que
+> **no es una obra de pruebas: está en uso**. La advertencia anterior **no se
+> ha borrado**: en cada documento queda un recuadro fechado —calcado del de la
+> enmienda del 2026-09-03 bajo el R28 de `specs/F-010-despliegue/requirements.md`—
+> con la premisa original **literal**, quién la levantó (**el responsable del
+> proyecto, el 2026-09-10**, tras planteárselo de forma explícita) y qué implica:
+> la incidencia de la comprobación y su cierre quedan **en el histórico de una
+> obra en uso**, con el documento adjunto colgado de ella.
 >
-> 1. `docs/DESPLIEGUE.md` decía «los **once** secretos» y «las **once**
->    credenciales a mano». Son **nueve**: `swa-client-id` y `swa-client-secret`
->    los genera y los guarda `desplegar_front.ps1`. Corregido el número **y el
->    porqué**.
-> 2. Añadido a los prerrequisitos el rol **`Key Vault Secrets Officer`**, que
->    es lo que **paró la primera ejecución real**: crear el vault no da permiso
->    sobre sus secretos.
-> 3. Avisado el defecto 3: **`-Solo` no funciona con `powershell -File`**, y
->    el script contesta «estos secretos no existen», que no es el error real.
-> 4. **Rectificada la verificación de T13** («nueve secretos», no once), con
->    el precedente de T8 y T19 de F-006. **La casilla `[x]` no se toca.**
-> 5. **Las rutas `$HOME` que no funcionan** (defecto 1, aún vivo en los
->    enunciados): `desplegar_backend.ps1` y `desplegar_front.ps1` deducen la
->    raíz con `Split-Path -Parent $PSScriptRoot`, así que **se ejecutan desde
->    `infra\`**. Comprobado script por script; los que sí valen en `$HOME`
->    —`cargar_secretos`, `verificar_despliegue`, `verificar_archivo_dev`— no se
->    han tocado.
+> | Fichero | Qué se tocó |
+> |---|---|
+> | `progress/guion_bloque9_F-012.md` | Nota fechada arriba; regla del encabezado; P5 y **P6**; §3; casilla de T25; T25, T31 y T32; §7 (datos); H7 y H10 |
+> | `specs/F-012-grafico-sigrid/requirements.md` | Término del glosario + recuadro de enmienda; trazabilidad de los `MANUAL` |
+> | `specs/F-012-grafico-sigrid/design.md` | H5, D-B, mapa de ficheros, orden (b), P5 del §14 y **§15 con su propia enmienda** |
+> | `specs/F-012-grafico-sigrid/tasks.md` | T22, encabezado y regla dura del bloque 9, P5, P6, T31 |
+> | `harness/features.json` | **Solo** la descripción de F-012 (`status` intacto: `in_progress`); `BACKLOG.md` regenerado |
+> | `progress/peticion_posventa_prueba_F-012.md` | Nota interna fechada, y el correo reenviable dice **a Ana y Alicia** que la 0626 está en uso y dónde queda lo que confirmen |
 >
-> **Cero llamadas a Azure y a SharePoint. Ninguna casilla `[x]` movida.**
-> `bash harness/init.sh` en verde.
+> **La consulta del §15 no se ha reinventado**: Q1 y Q2 se quedan como estaban
+> —siguen dando estado y nº de gráficos de la incidencia— y solo se ajusta el
+> parámetro de Q0 a `['0626', '626']`.
 >
-> **Residuo reportado y NO corregido** (toca `infra/`, hace falta permiso):
-> `cargar_secretos_postventa.ps1` **sigue pidiendo «once secretos» por
-> pantalla** (`:269`), justo la contradicción que se acaba de cerrar en los
-> documentos.
+> **Lo que NO cambia, y se comprobó que sigue escrito en los seis ficheros**:
+> comprobación previa (dry-run) antes de cada escritura; **autorización expresa
+> del responsable por incidencia concreta —que aquí se dice explícitamente que
+> gana peso, no lo pierde—**; `CIERRE_HABILITADO` como **interruptor único**
+> del documento adjunto y del cambio de estado; y ninguna escritura desde un
+> puesto de trabajo.
 >
-> **Lo que falta para cerrar F-010, todo del humano**: el resultado real de
-> **T14 bis** y el de **T19** (§10.5 y §10.6 de la re-review), y las manuales
-> **T15, T17 y T18**.
+> **Queda fuera de este encargo y sigue nombrando la obra genérica** (no se
+> tocó): `infra/15_reclamaciones_obra_prueba.ps1` —su `-CodigoObra` sigue con
+> `404` por defecto, así que **hay que pasarle `0626` a mano**, y así está
+> avisado en el guion y en la spec—, `progress/guion_bloque8_F-009.md`,
+> el `blocked_by` de **F-009** en `features.json`, `docs/INTEGRACION.md` §520 y
+> `specs/F-024-datos-parte-sigrid/tasks.md`. Los informes ya cerrados
+> (`impl_F-012.md`, `review_F-012.md`) no se tocan: son histórico.
+>
+> **Qué falta para el bloque 9**: que el responsable dé de alta `RS26.09/0150`
+> en el ERP, y que el parte `muestras/parte_prueba_RS26.09-0150.pdf` se
+> imprima, se firme a mano y se escanee. T25–T32 siguen sin ejecutar.
 
-> ## Estado al 2026-08-25 · **F-010 · DESPLEGADA Y CON LOS DOCE DEFECTOS CERRADOS**
+> ## Estado al 2026-09-11 · **El entorno desplegado ya puede escribir: Paso 0 hecho, F-012 desplegada y la ventana de archivo abierta**
 >
-> El despliegue real se hizo el **2026-08-21** y funciona: backend y front en
-> Azure, autenticación de Entra contra `posventa-usuarios`, circuito completo
-> operativo y tarjeta publicada en el portal. Ejecutarlo destapó **doce
-> defectos**, todos en `progress/impl_F-010.md`. Nueve se corrigieron entonces;
-> **los tres últimos —8, 9 y 11, los tres en `infra/desplegar_front.ps1`— se
-> cierran en esta ronda**, más el test que impide que vuelva el 12.
+> **Decisión del humano, y cambia una premisa**: la verificación de F-012 se
+> hace sobre la **obra 0626, que es una obra REAL**, y no sobre una obra de
+> pruebas. Se le planteó explícitamente y lo reafirmó. La incidencia del caso
+> es **`RS26.09/0150`**, que el humano crea en Sigrid; su parte de trabajo
+> está preparado en `muestras/parte_prueba_RS26.09-0150.pdf` (no versionado,
+> datos inventados salvo el código de obra y el de incidencia), **pendiente
+> del nombre de la promoción**, de imprimir, firmar a mano y escanear.
 >
-> - **8** · el resumen decía «sin tocar (-SoloFront)» después de regenerar el
->   secreto. Ahora el modo lo decide `$SoloFront` y nada más.
-> - **9** · el registro se creaba sin `User.Read` ni consentimiento, y **la
->   aplicación quedó desplegada sin que pudiera entrar nadie**. Copiado el
->   patrón de `partes` y `dedicacion`, consentimiento en mejor esfuerzo pero
->   declarado en el resumen.
-> - **11** · sin emisión de tokens de ID había bucle de redirección
->   (`AADSTS50196`). Se activa con las banderas dedicadas, en la misma llamada
->   que las redirect URI; la de tokens de acceso queda apagada explícitamente.
-> - **12** · `test_f010_prompt_keys_infra.py` ata cada `PROMPT_KEY*` de
->   `infra/` a una clave real de `config/prompts.yaml`.
+> ### Lo que ya está hecho contra el entorno desplegado
 >
-> **Cero llamadas a Azure en esta ronda**: todo por lectura, por tests y por el
-> parser de PowerShell. Los cuatro arreglos empezaron por su test en rojo, con
-> las trazas pegadas en el informe. `bash harness/init.sh` en verde con las dos
-> suites; mutación 20/17/3, los tres supervivientes ya cerrados como
-> equivalentes.
+> | Paso | Estado |
+> |---|---|
+> | Secretos de Sigrid en el Key Vault | hecho, desde el `.env` del puesto |
+> | Referencias a Key Vault | **11 de 11 resueltas** |
+> | Backend desplegado **con el código de F-012** | hecho: `adjuntar` está en el aire |
+> | Configuración de la pasarela (tipo 708, clase 35, escritura documental) | ya estaba desde el 2026-09-06 |
+> | Ventana de **archivo** | **abierta** |
+> | Ventana del **ERP** (`CIERRE_HABILITADO`) | **cerrada**, y así sigue |
 >
-> **Lo que queda de F-010**: las tareas `MANUAL (humano)` **T15, T17 y T18**,
-> abiertas a propósito. `specs/F-010-despliegue/tasks.md` tiene en el árbol de
-> trabajo, **sin commitear**, las marcas de las cinco manuales ya ejecutadas: es
-> del humano y el implementer no lo ha tocado.
+> Para subir los dos secretos desde el `.env` se escribió un script **fuera del
+> repositorio**, en el home del humano: lee los dos nombres del mapa de
+> `00_vars_postventa.ps1`, no imprime ningún valor y no toca el `.env`.
 >
+> ### Dos correcciones de la sesión
+>
+> 1. **Seis ayudantes de la suite leían el `.env` del puesto** pese a prometer
+>    lo contrario, y el `.env` de hoy los puso en rojo. Arreglados con
+>    `_env_file=None`. La suite del api: **2.096 pasan, 13 saltados**.
+> 2. **La caché de `init.sh` tapó ese rojo** durante toda una sesión, porque
+>    mira al árbol commiteado y no a los ficheros ignorados. Es del arnés y se
+>    llevó a `arnes-base` como **encargo 1.7.12** (commit `9ff2224` allí).
+>
+> ### Lo que queda pendiente y no se ha hecho
+>
+> - **Cambiar la obra 404 por la 0626** en `progress/guion_bloque9_F-012.md`,
+>   en la spec de F-012 y en `progress/peticion_posventa_prueba_F-012.md`, con
+>   constancia fechada de que la premisa «nunca una obra real» la levantó el
+>   humano el 2026-09-10. **Sin hacer**: el subagente que iba a hacerlo lo
+>   bloqueó el clasificador de permisos de la sesión.
+> - Comprobar el login del ERP de quien vaya a operar (`infra/20_login_sigrid.ps1`).
+> - El bloque 9 entero: T25–T32 siguen sin ejecutar y sin marcar.
+>
+> **F-012 sigue `in_progress`**, F-009 `blocked` y F-024 `spec_ready`.
 
-> ## Estado al 2026-08-20 (noche) · **F-010 · CORREGIDA LA REVIEW, LISTA PARA RE-REVIEW**
+> ## Estado al 2026-09-11 · **utillaje de puesta en marcha del bloque 9 (F-012): entregado; `init.sh` en ROJO por un defecto ajeno**
 >
-> La review salió **CHANGES_REQUESTED** con un rechazo estrecho: el propio
-> reviewer la llamó «aprobable y de calidad alta». **Los cinco defectos de
-> `infra/` (§10 bis) están corregidos**, cada uno con su commit, y los tres
-> encargos aceptados por el humano, hechos. Detalle completo al final de
-> `progress/impl_F-010.md`, sección «Ronda de correcciones tras la review».
+> **`infra/19_ventana_escritura.ps1`** y **`infra/20_login_sigrid.ps1`**
+> (nuevos): las dos operaciones que hasta hoy vivían como fragmentos sueltos
+> dentro de `progress/guion_bloque9_F-012.md`. El 19 consulta, abre y cierra
+> `CIERRE_HABILITADO` —por omisión **solo lee**; `-Abrir` avisa de que la
+> ventana es **una sola** para el gráfico y para el cierre (D-B, §0.2) y exige
+> teclear `ABRIR`; `-Cerrar` no pregunta, porque cerrar siempre es seguro; y
+> tras escribir **relee** y dice el estado real—. El 20 deriva el login
+> candidato como `derivar_login_candidato` y lo comprueba contra `dbo.usu` con
+> la consulta del servicio (`SQL_USUARIO`, importada por el test), con veredicto
+> de tres casos. **Ninguno de los dos se ha ejecutado**: nada contra Azure,
+> Sigrid, el PostgreSQL compartido ni SharePoint, ni lecturas.
 >
-> **Dos de los cinco eran requisitos EARS incumplidos con su test en verde**
-> (R27, la guarda de la ventana que fallaba abierta; R6, `-WhatIf` borrando el
-> token de la consola). En los dos casos se arregló **también el test** que los
-> daba por buenos, empezando por él: fase RED con ocho tests en rojo.
+> **31 tests nuevos** en `test_f012_scripts_infra.py`, escritos **antes** que
+> los scripts (traza RED pegada en el informe), y los dos entran en el censo
+> `scripts_entregados()` de `test_f010_scripts_infra.py`. `ParseFile`: 0 errores
+> de sintaxis en ambos. `ruff`: 58 avisos, la deuda previa exacta.
 >
-> **El fallo del arnés está arreglado y portado**: `PYTHONDONTWRITEBYTECODE` en
-> el subproceso de `harness/mutacion.py`, con su test, y en `arnes-base` sellado
-> como **1.6.3** (commits `c73b040` y `f1b250e` de aquel repositorio).
-> **Este repositorio sigue en 1.5.2 a propósito**: se ha traído el parche, no la
-> rama 1.6 entera; la 1.6.0 rehace `mutacion.py` completo y sus números no son
-> comparables. Actualizar es decisión del humano; el motivo está en
-> `harness/ARNES_VERSION.md`.
+> **BLOQUEO, y no es de este trabajo.** `bash harness/init.sh` termina en rojo
+> por **un** test, `test_f012_fabrica_grafico.py::test_f012_r40_la_tercera_puerta_nombra_todas_las_variables_que_faltan`.
+> Su ayudante `_ajustes()` promete «sin tocar el `.env` de nadie» y no lo
+> cumple: `Ajustes(**entorno)` es `pydantic-settings` y lee del `.env` todo lo
+> que no se le pase. El `.env` de este puesto ya define `SIGRID_API_BASE_URL` y
+> `SIGRID_API_KEY` (nombres; los valores no se han mirado), así que la fábrica
+> solo echa en falta `SIGRID_BASE_DATOS` y el test, que exige las tres, falla.
+> Con ese test deseleccionado, **2 095 pasan, 13 saltados, en 88 s**. Falla
+> también ejecutando **solo su fichero**, que no importa nada de lo tocado aquí.
 >
-> **Regla nueva en `CHECKPOINTS.md` C4 bis**: el coste por mutante. Ojo, porque
-> la primera redacción estaba mal y se corrigió con la campaña real delante: la
-> campaña es **paralela**, su «Tiempo total» es de reloj, y la cuenta lleva el
-> factor de workers («Tiempo total» × workers ÷ mutantes). Sin él marcaba como
-> sospechosa una campaña sana.
+> Dos remedios, y los dos son decisión del humano: **(a)** una línea,
+> `return Ajustes(_env_file=None, **entorno)` —comprobado que restituye los tres
+> nombres—, que es lo que ya declara el propio `conftest.py`; o **(b)** quitar
+> esas variables del `.env`, que este agente tiene **prohibido** tocar. No se ha
+> aplicado ninguno: es la suite de una feature ya revisada, con la mutación
+> cerrada y sus 5 supervivientes aceptados.
 >
-> **Los 16 worktrees huérfanos de `mutacion_F-005_zllkg8wf` están retirados**,
-> comprobado antes uno a uno que no llevaban trabajo sin guardar: cuatro tenían
-> modificaciones y las cuatro eran mutantes abandonados.
+> **Hallazgo que conviene no perder:** el primer `init.sh` de la sesión salió en
+> verde porque sirvió la suite del api **de la caché** («árbol sin cambios desde
+> el último verde»). La caché puede tapar un rojo que depende del entorno, y
+> este llevaba tapado desde que cambió el `.env`.
 >
-> **Sigue sin ejecutarse nada contra Azure ni SharePoint.** Las **nueve tareas
-> `MANUAL (humano)`** siguen preparadas y pendientes, con el orden que fijó el
-> reviewer: T14 bis (tope de gasto de IA) **antes** de T16; T18 con autorización
-> expresa nombrando C5; cerrar la ventana de escritura después de T18; T19 en
-> `front-portal`.
+> Detalle completo: **`progress/impl_utillaje_puesta_en_marcha.md`**.
+> No se tocó `features.json`, ni `tasks.md`, ni se relanzó la mutación (lo
+> entregado es PowerShell y tests: `harness/alcance.py` solo mide `.py`).
 
-> ## Estado al 2026-08-20 (tarde) · **F-010 IMPLEMENTADA, PENDIENTE DE REVISIÓN**
+> ## Estado al 2026-09-07 · **petición a Posventa para probar el circuito completo (F-012), escrita**
 >
-> **D2 resuelta por el humano** (opción (a), con la medición delante) y con
-> ella desbloqueadas T5 y T9. **Las doce tareas de agente están hechas**, cada
-> una con su commit; el detalle, en `progress/impl_F-010.md`.
+> **`progress/peticion_posventa_prueba_F-012.md`** (nuevo): la petición a Ana
+> Bello y Alicia Echevarría, redactada para **reenviarse tal cual** por correo,
+> calcada de `progress/peticion_posventa_prueba_url_F-023.md`. Sin jerga
+> técnica: solo términos del ERP («gráficos», «Importa», «Procesos → 3. Cerrar
+> parte», «reclamación», «unidad»).
 >
-> **El escalonado de tiempos, que es el criterio y no los números**: la IA
-> abandona a los 35 s, el front a los 40, el proxy corta a los 45. Cada capa
-> cede antes que la de fuera, para que el usuario reciba **nuestro** error
-> explicado y no un corte opaco de la plataforma con una llamada zombi
-> gastando cuota. Medido antes de fijarlo: el peor `/api/extraer` real fue
-> **6,5 s**.
+> Lleva lo que hay que preparar **antes** (dos o tres reclamaciones en la obra
+> **404**, sus partes impresos, firmados a mano y escaneados, **uno con una
+> observación manuscrita** para ver que la aplicación lo aparta en vez de
+> cerrarlo), los pasos del front tal y como están hoy en `index.html` y
+> `js/app.js` —trocear, revisar, «Archivar los partes aptos», «Ver qué pasaría
+> (no cierra nada)», «Cerrar las incidencias»—, los dos avisos que no pueden
+> ser sorpresa (el botón cierra **todos** los partes en pantalla; lo confirmado
+> se escribe de verdad), las preguntas de vuelta, la **P1/D2** sobre `PV002`
+> marcada aparte, lo que no deben hacer y a quién avisar.
 >
-> **Nada se ha ejecutado contra Azure**: ni un recurso, ni un secreto, ni una
-> subida a SharePoint. Quedan **las nueve verificaciones `MANUAL (humano)`**,
-> preparadas con su comando exacto, incluida T18 —la subida real, que cierra
-> una casilla de F-006 y **exige autorización expresa ante C5**—.
+> **No se envía todavía**: la nota para el humano de la cabecera exige el
+> bloque 9 en verde, el alta de los logins de Sigrid de las dos con
+> `infra/07_alta_usuario_sigrid.ps1` —el de Alicia es **`aechevarria`**, que no
+> coincide con el prefijo de su correo— y las dos dentro de
+> `posventa-usuarios`. La dirección del portal va como marcador
+> `<la dirección del portal>`: no está en ningún documento versionado.
 >
-> **Un hallazgo para el humano, que no es de esta feature**: la campaña de
-> mutación deja bytecode mutado en `__pycache__` y eso puede poner el portero
-> en rojo con el árbol limpio **y**, peor, dar un falso «0 supervivientes».
-> Está documentado en `progress/impl_F-010.md` y en
-> `progress/mutacion_F-010.md`, con el arreglo propuesto para `arnes-base`.
+> `bash harness/init.sh` **en verde**. Este encargo solo escribe Markdown en
+> `progress/`: no se relanzó la mutación, no se tocó `features.json` ni se marcó
+> ninguna tarea de `tasks.md`. **Nada ejecutado** contra Azure, Sigrid,
+> `sigrid-api`, el PostgreSQL compartido ni SharePoint —ni lecturas—, y **no se
+> ha enviado ningún correo**.
 
-> ## Estado al 2026-08-20 · **F-007 CERRADA Y APROBADA**
+> ## Estado al 2026-09-06 (noche, 6) · **F-024 con spec: `spec_ready`, a la espera de la aprobación del humano**
 >
-> **Siete features `done`** (F-001 a F-007) y **ninguna `in_progress`**. El
-> resumen de cada una está en `progress/history.md`; el detalle, en sus
-> `impl_*` y `review_*`.
+> `specs/F-024-datos-parte-sigrid/` (commit `2ce37d6`, escrita por el
+> spec-author sobre la rama de F-012 porque depende de `postventa.graficos`).
+> Tres piezas: cinco campos nuevos de extracción con prompt `version: "2"` y
+> sin reextraer lo antiguo; `reclamacion_ide` en `cierres`; y la vista
+> `postventa.v_partes_sigrid` como contrato de lectura para el datamart, con
+> la petición a `datamart-seg-anual` redactada en design §12.
 >
-> **Lo siguiente es F-010 · Despliegue en Azure**, cuya spec se está
-> escribiendo. El humano subió su prioridad el 2026-08-20 por delante de las
-> dos features de Sigrid, con un objetivo concreto: **que negocio pruebe el
-> circuito completo desplegado sin tocar el ERP todavía**.
+> **Seis preguntas para el humano** (design §13), con recomendación: P1
+> `observaciones` en la vista (no; `tiene_observaciones`); P2 `obra_ide`/
+> `upv_ide` (no); P3 campos nuevos editables en la tarjeta (sí); P4 el
+> encuadre del líder decía «sin mutación» pero `harness/rigor.json` la exige
+> en `estandar` sin tope de supervivientes: manda `rigor.json`; P5 no
+> reextraer partes antiguos; P6 el rol de lectura del datamart como feature
+> aparte, porque `CREATE ROLE`/`GRANT` son del humano y fuera del schema.
 >
-> **Lo que F-010 arrastra**: crear el grupo de seguridad de Posventa (del
-> humano o de IT), los secretos por referencia a Key Vault, la tarjeta del
-> portal —que se edita en `front-portal`, otro repositorio— y el desbloqueo de
-> **T18 de F-006**, la subida real a SharePoint, que exigirá autorización
-> expresa ante `CHECKPOINTS.md` C5.
+> **F-012 sigue `in_progress`** con el bloque 9 pendiente del humano; F-024 no
+> se implementa hasta que F-012 cierre. Nada ejecutado contra Azure ni el ERP.
+
+> ## Estado al 2026-09-06 (noche, 5) · **los 5 supervivientes de mutación de F-012, aceptados por el humano**
+>
+> «Acepto los 5 supervivientes de mutación». Consta en la cabecera de
+> `progress/mutacion_F-012.md` y la precondición documental **D1** del guion
+> del bloque 9 queda marcada. Con ello **C4 bis está cerrado para F-012**.
+> Queda abierta **D2** (confirmar `PV002` con Posventa) y todo lo técnico del
+> bloque 9, que es del humano. F-012 sigue `in_progress`.
+
+> ## Estado al 2026-09-06 (noche, 4) · **guion del bloque 9 de F-012 escrito, y el del bloque 8 de F-009 corregido**
+>
+> - **`progress/guion_bloque9_F-012.md`** (nuevo): el procedimiento que sigue el
+>   humano para T25–T32, calcado del de F-009. Toda escritura sobre
+>   **reclamaciones de la obra de prueba 404**, dry-run antes de cada commit y
+>   **autorización expresa por incidencia**. Ni un valor sensible: marcadores
+>   `<...>`, y la lectura de las App Settings de `sigrid-api` va filtrada con
+>   `--query` para no volcar sus credenciales a ninguna consola.
+> - **`progress/guion_bloque8_F-009.md`** (corregido, cambios quirúrgicos con
+>   fecha): nota arriba explicando que el bloque 9 de F-012 ejecuta de hecho un
+>   cierre completo sobre la 404; **P5** pasa de Mirasierra a la obra 404 con el
+>   gráfico ya adjuntado; **T22** espera el bloque `grafico` (R49) y no
+>   `aviso_sin_grafico` (R48 lo derogó); **T24** exige que el parte conste
+>   `adjuntado` (R2) o pasa antes por `/api/adjuntar`.
+> - **Diez hallazgos** en §8 del guion nuevo. Los que no estaban escritos:
+>   `/api/adjuntar` es `multipart` y **poner `Content-Type` la rompe en
+>   silencio**; `filas_afectadas: 0` significa **cosas opuestas** en `adjuntar`
+>   y en `cerrar`; el reintento tras un `502` es **seguro en uno y prohibido en
+>   el otro**; T28 capa 2 necesita borrar una fila de `postventa.graficos` y no
+>   había forma escrita; y **T31 no puede usar la reclamación de T27** porque la
+>   idempotencia de capa 1 cortaría antes de llegar a la pasarela.
+>
+> `bash harness/init.sh` **en verde**, con la puerta de cobertura en las mismas
+> **1.079 líneas cambiadas al 99,0 %**: este encargo solo escribe Markdown en
+> `progress/`, así que **no se relanzó la mutación** ni cambió el alcance.
+>
+> **No se ejecutó nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint —ni lecturas—: lo que el guion afirma sale del código
+> y de los scripts leídos. **No se marcó ninguna tarea** de `tasks.md` ni se
+> tocó `harness/features.json`. Detalle en `progress/impl_F-012.md` §12.
+>
+> **Pendiente para el humano**: **D1** de §2 del guion nuevo, aceptar los 5
+> supervivientes de mutación declarados equivalentes; y **D2**, confirmar con
+> Posventa que `PV002` (`gratipide` 35) es la clase correcta para un parte
+> firmado. Ninguna bloquea T25; las dos se cierran antes de dar el bloque 9 por
+> bueno.
+
+> ## Estado al 2026-09-06 (noche, 3) · **post-review de F-012: D1, D2 y S9 hechas**
+>
+> Las **dos correcciones «debe corregirse»** de `progress/review_F-012.md` §6 y
+> la sugerencia **S9**, que además era una mejora genérica del arnés.
+>
+> - **D1** · `infra/16_grafico_sigrid.ps1`: la casilla «bytes descargados»
+>   imprimía `$huella.Length` —la cadena hexadecimal del sha256, siempre 64—.
+>   Ahora mide `$respuesta.Content.Length`, **capturado antes** de que el script
+>   suelte la respuesta a `$null`. Con test de texto que fija además ese orden.
+> - **D2** · los comentarios de `js/api.js` y `js/app.js` dejaban de describir
+>   el sistema real: contaban el aviso «quedará cerrada sin el parte» que **R48
+>   derogó**. Reescritos con el bloque `grafico` (R49) y con la derogación
+>   nombrada. **Sin cambios funcionales.**
+> - **S9** · `comando_de()` de `harness/mutacion.py` no emitía `--base`, así que
+>   la línea «Generado por» de un informe de mutación no reproducía nada cuando
+>   la rama nace de otra feature —el caso de F-012—. Corregido, con seis tests
+>   nuevos, y corregidas las dos líneas de `progress/mutacion_F-012.md`.
+> - **Propagado a `arnes-base`** por la regla obligatoria: estaba en `main` y
+>   limpio, así que se portó pieza a pieza (allí va por la 1.7.9 y aquí por la
+>   1.5.2), con **`VERSION` a 1.7.10** y entrada en `GUIA_INSTALACION.md`.
+>   Commit local `6aa4335`, sin `push`. Su suite: **347 passed, 1 skipped**.
+>
+> `bash harness/init.sh` **en verde**: 62 tests del arnés, **2.055** en `api`
+> (13 saltados), 130 en `front`, puerta de cobertura **99,0 % de 1.079 líneas
+> cambiadas** (idéntica) y `ruff` en **58 avisos, la deuda previa exacta**. El
+> analizador de PowerShell da el script 16 **sin errores de sintaxis**.
+>
+> **No se relanzó la campaña de mutación**: ninguna línea de producción del
+> alcance de F-012 cambió (un `.ps1`, comentarios de `.js` y `harness/`, que no
+> entra en el alcance). **No se tocó `features.json`**: el estado de F-012 lo
+> decide el líder. Detalle en `progress/impl_F-012.md` §11.
+>
+> **Pendiente**: las ocho sugerencias restantes de la review (S1–S8), que el
+> encargo no pedía.
+
+> ## Estado al 2026-09-06 (noche, 2) · **T33 hecha: los 35 supervivientes de la mutación, cazados o justificados**
+>
+> Se han analizado **uno a uno** los 35 supervivientes de la primera pasada de
+> la campaña de mutación de F-012: **30 eran huecos reales de test** y **5 son
+> equivalentes** (cuatro valores por omisión que ningún sitio de producción
+> llega a usar y un campo que nadie lee aguas abajo), con la justificación
+> escrita y comprobable con un `grep`. **Aceptarlas es del humano**: es lo
+> que pide, literalmente, la verificación de T33.
+>
+> **22 tests nuevos y dos ampliados**, sin tocar ni una línea de producción:
+> los 30 eran huecos de test, no defectos. Antes de relanzar la campaña se
+> comprobó cada mutante por separado, a mano: **los 30 mueren**.
+>
+> **Segunda pasada**: **101 mutantes, 96 muertos, 5 supervivientes, 0 timeouts** en 922,8 s con 8 workers, y los cinco son exactamente los cinco equivalentes. Informe con las dos pasadas y el análisis
+> completo en `progress/mutacion_F-012.md` —**sin ningún `PENDIENTE`**— y la
+> tabla resumen en `progress/impl_F-012.md` §7.2.
+>
+> Los dos hallazgos que valía la pena tener: el `or` de la puerta de R14 en
+> `paso_grafico.py:273` (con `and`, un parte **no apto** pasaba si el destino
+> decía `archivo_y_cierre`, y el destino llega del formulario) y los cuatro
+> `bool(datos.get(..., False))` de `graficos.py` (con `True` por omisión, un
+> `200` con un cuerpo que no es el del contrato se leía como gráfico
+> adjuntado).
+>
+> `bash harness/init.sh` **en verde**: 2.054 tests en `api` (13 saltados),
+> puerta de cobertura **99,0 % de 1.079 líneas cambiadas**, `ruff` en **58
+> avisos, la deuda previa exacta**. **T33 marcada** en `tasks.md`.
+>
+> **NO se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint.
+>
+> Sigue pendiente lo mismo de antes: **T34** (`init.sh`, que el encargo reserva
+> al líder) y el **bloque 9** contra el ERP, con su guion sin escribir.
+
+> ## Estado al 2026-09-06 (noche) · **F-012 implementada: T1–T24 hechas, `init.sh` en verde, bloque 9 y mutación sin ejecutar**
+>
+> El implementer ha ejecutado **T1 a T24** de `specs/F-012-grafico-sigrid/tasks.md`
+> en `feature/F-012-grafico-sigrid`, 22 commits locales, sin push.
+> **Informe completo: `progress/impl_F-012.md`.**
+>
+> Lo que hace el código ahora: el PDF del parte se adjunta a la reclamación
+> como **gráfico** de Sigrid (`POST /api/sigrid/concepto-grafico`) **antes** del
+> cambio de estado, y **el cierre se niega a ejecutarse si el gráfico no consta
+> adjuntado** en `postventa.graficos`. Con eso el **riesgo aceptado de
+> `docs/ARCHITECTURE.md` queda cerrado por diseño y sin haberse producido ni
+> una vez**, porque F-012 se implementa antes del primer cierre real (orden (b)
+> que eligió el humano).
+>
+> **Números medidos, no estimados:** 2.032 tests en verde en `api` (32,9 s) y
+> 130 en `front` (con 187 de JavaScript dentro); **464 de ellos son propios de
+> F-012**. Puerta de cobertura: **98,7 % de 1.079 líneas cambiadas** (umbral 80,
+> nivel `critico`). `ruff` se queda en **58 avisos, exactamente la deuda
+> previa**: la feature no añade ni uno.
+>
+> **NO se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint. Ni una lectura. Los tres scripts nuevos de `infra/`
+> están escritos y validados sintácticamente, pero **sin lanzar**.
+>
+> **Lo que queda, y es del líder o del humano** (el encargo lo reservó
+> explícitamente, por eso no está marcado en `tasks.md`):
+>
+> - **T33 · la campaña de mutación.** Sin ejecutar. El informe trae ya el
+>   **alcance calculado**: 24 ficheros y **224 mutantes**, de los que ~102 son
+>   de F-009 —esta rama nace de la suya y el alcance se mide contra `dev`—.
+>   Comando y coste estimado (~15 min con 8 workers, ~8 min acotando la base) en
+>   `progress/impl_F-012.md` §7.1.
+> - **T34 · `bash harness/init.sh`.** Se ha ejecutado y está **en verde**, pero
+>   la tarea no se marca.
+> - **Bloque 9 (T25–T32) · la verificación contra el ERP**, sobre la **obra de
+>   prueba 404**, con dry-run y autorización expresa por incidencia. Su guion
+>   (`progress/guion_bloque9_F-012.md`) **todavía no existe**: escribirlo es lo
+>   primero.
+>
+> **AVISO para cuando se abra la ventana**: `CIERRE_HABILITADO` es **una sola**
+> para el gráfico y el cierre (decisión D-B). Abrirla para probar el gráfico
+> **abre también el cierre**. Y la P0 del bloque 9 —las cinco App Settings
+> `SIGRID_DOCUMENT_*` de `sigrid-api`— es **del dueño de la pasarela**: se
+> releen antes de abrir nada, no se dan por buenas.
+>
+> **Fuera de este repositorio**: `azure-apps/postventa_incidencias.md`
+> refrescado, commit local `72b8fa3`, **sin push**.
+>
+> **Sigue abierta la P1** de `design.md` §14: confirmar con Posventa que
+> `PV002` (`gratipide` 35) es la clase correcta para un parte firmado. Cambiarla
+> exige tocar además la lista blanca de la pasarela: es una decisión de dos
+> dueños.
+
+> ## Estado al 2026-09-06 (tarde) · **«Ok a todo»: F-012 va primero, F-023 cancelada, F-009 espera**
+>
+> El humano aprobó las cuatro recomendaciones de la spec de F-012 (§14):
+> **P1** `gratipide` 35 se mantiene (confirmar con Posventa); **P3** orden
+> **(b)**, F-012 antes que el bloque 8 de F-009; **P4** F-023 **cancelada**
+> (ficha retirada de `features.json`, conservada en `progress/history.md`);
+> **P5** hay que preparar un parte de la obra 404 antes de abrir la ventana.
+>
+> - **F-009 pasa a `blocked`** con motivo explícito en su ficha: no le falta
+>   código, le falta ejecutar el bloque 8, y eso va después de desplegar
+>   F-012. Al reanudarla: Paso 0 y corregir el guion según design §13(b).
+> - **F-012 sigue `spec_ready`**. Se pone `in_progress` al lanzar el
+>   implementer, en la rama `feature/F-012-grafico-sigrid` creada **desde
+>   `feature/F-009-cierre-sigrid`** (necesita el código del cierre, que no
+>   está en `dev`).
+> - **Pendiente de aclarar con el humano antes de implementar**: pidió revisar
+>   el correo de Alicia del 2026-08-18 con la guía de cierre por si el
+>   cierre debe registrar «toda la información pertinente» y no solo el
+>   gráfico. Revisado el correo, la guía reconvertida con `markitdown` y sus
+>   seis capturas: la guía solo prescribe renombrar, importar el gráfico
+>   (Descripción `PARTE FIRMADO`, Tipo `PV002`) y `Procesos → 3. Cerrar
+>   parte`; no rellena ningún otro campo de la reclamación. No hay otro
+>   correo ni mensaje de Teams con instrucciones. `docs/referencia/01_cierre_incidencia_sigrid.md`
+>   es fiel al original. Si hay más información que registrar, no está
+>   escrita en ningún sitio: hay que preguntársela al humano.
+
+> ## Estado al 2026-09-06 · **F-012 desbloqueada y con spec: `spec_ready`, a la espera de la aprobación del humano**
+>
+> El endpoint `POST /api/sigrid/concepto-grafico` existe (`sigrid-api` F-004,
+> mergeada en `dev` el 2026-09-06; contrato en `azure-apps/sigrid_api.md`
+> §8.8), así que el bloqueo de F-012 cae. El humano lo confirmó hoy y fijó el
+> encuadre: **el gráfico se adjunta antes del cambio de estado**, orden más
+> idempotencia en vez de atomicidad entre dos llamadas, y **toda escritura de
+> prueba contra el ERP va a reclamaciones de la obra de prueba 404**.
+>
+> - Commit `33fd684`: F-012 `blocked` → `pending`, ficha reescrita.
+> - Commit `fe76639`: **`specs/F-012-grafico-sigrid/`** (requirements 70
+>   requisitos, design con 12 decisiones D-A…D-L, tasks en 10 bloques). Lo
+>   escribió el spec-author sin ejecutar nada contra el ERP; la consulta que
+>   localiza las reclamaciones de la obra 404 queda **preparada y sin lanzar**
+>   (design §15).
+> - Este commit: F-012 → **`spec_ready`**, y los scripts de utillaje de la
+>   spec pasan de `14/15/16` a **`15/16/17`** porque `infra/14_paso0_sigrid.ps1`
+>   ya existe desde `1223bde`.
+>
+> **Decisiones que la spec deja al humano** (design §14): P1 la clase
+> `gratipide 35` para un parte firmado (recomendación: sí, confirmar con
+> Posventa); P3 el **orden** entre el bloque 8 de F-009 y F-012 —el humano
+> eligió F-009 primero; la spec recomienda F-012 primero para que el primer
+> cierre real lleve ya el gráfico—; P4 si se cancela F-023; P5 preparar un
+> parte de la obra 404 que haya pasado el circuito antes de abrir la ventana.
+> En cualquier orden, la P5 del guion del bloque 8 debe pasar de Mirasierra a
+> la **obra 404**: pendiente de corregir cuando se decida el orden.
+>
+> **F-009 sigue `in_progress`** con el bloque 8 sin ejecutar; solo cabe una
+> `in_progress`, así que F-012 no se implementa hasta que F-009 cierre o el
+> humano decida lo contrario. **No se ha ejecutado nada** contra Azure, Sigrid,
+> `sigrid-api`, el PostgreSQL compartido ni SharePoint.
+
+> ## Estado al 2026-09-06 · **Dos correcciones más, fuera de feature, aprobadas por el humano**
+>
+> Detalle completo: **`progress/impl_paso0_sigrid.md`**. Commits `32d40f5`
+> (corrección 1), `1223bde` (corrección 2) y este mismo (el rastro). **Sin
+> `push`.** **Ningún estado de feature cambia**: F-009 sigue `in_progress`,
+> F-023 sigue `blocked`.
+>
+> **NO se ha ejecutado nada contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint. Ni lecturas.** Ninguna casilla del bloque 8 se ha
+> marcado.
+>
+> 1. **La raíz de la pasarela y `PG_HOST` se teclean, no se leen con `az`.** Era
+>    la observación que `c3fa55d` dejó anotada y sin corregir, y eran **dos**
+>    líneas del Paso 0 de aquí abajo, no una: `SIGRID_API_BASE_URL` y `PG_HOST`
+>    son **referencias a Key Vault**, así que `appsettings list` devolvía la
+>    cadena `@Microsoft.KeyVault(SecretUri=...)` sin resolver. Las dos pasan a
+>    `Read-Host`. `SIGRID_BASE_DATOS` se queda: desde `bed95ea` es plana. El
+>    porqué queda escrito en el §3 del guion del bloque 8.
+> 2. **`infra/14_paso0_sigrid.ps1`**: el Paso 0 del bloque 8 —dos secretos, ocho
+>    App Settings con `-SinPublicar`, y la comprobación de que las **once**
+>    referencias a Key Vault se resuelven— en un solo script, con tabla,
+>    veredicto (`Paso 0 COMPLETO: 11/11`) y código de salida. Con `-WhatIf` solo
+>    lee, y así se comprueba la precondición **P3** sin tocar nada. 18 tests. La
+>    vía manual del guion **se conserva** como camino alternativo.
+>
+> **Lo primero que hace falta del humano** es ejecutarlo, empezando por
+> `powershell -ExecutionPolicy Bypass -File .\infra\14_paso0_sigrid.ps1 -WhatIf`.
+
+> ## Estado al 2026-09-03 · **Dos correcciones sobre el trabajo de H1/H2, aprobadas por el humano**
+>
+> Detalle completo: **sección «Correcciones del 2026-09-03» de
+> `progress/impl_H1_H2_despliegue.md`** (§11 a §15). Commits `bed95ea`
+> (scripts y test), `a6669c3` (documentación) y `2855955` (spec de F-010);
+> en `azure-apps`, `0b31237`. **Sin `push` en ninguno de los dos.**
+>
+> 1. **`SIGRID_BASE_DATOS` baja de secreto de Key Vault a App Setting plana.**
+>    Los tres secretos de `82fbfb8` eran exceso de celo en uno: el nombre de la
+>    base de producción del ERP **ya está escrito en el repositorio**
+>    (`docs/referencia/03_modelo_posventa_sigrid.md` y
+>    `specs/F-009-cierre-sigrid/design.md`), así que el vault no lo protegía de
+>    nada y a cambio obligaba a un aprovisionamiento manual más por entorno.
+>    **Quedan dos secretos** —`sigrid-api-key`, que es una credencial, y
+>    `sigrid-api-base-url`, que es un host interno— y el vault pasa de 12+2 a
+>    **11+2**. El test de R28 **no se ha relajado**: que esas dos no aparezcan
+>    escritas en `desplegar_backend.ps1` sigue siendo la comprobación, y hay
+>    una aserción **nueva** que impide que `sigrid-base-datos` vuelva al vault
+>    por inercia y acabe fijado por partida doble.
+> 2. **R28 de F-010 ya no miente.** Decía que **ninguna** variable de Sigrid
+>    entra en el despliegue, premisa que cayó con la aprobación de hoy. Se
+>    corrige el texto en `requirements.md` (requisito y tabla de trazabilidad)
+>    y en `tasks.md` (verificación de T5), con un **recuadro fechado** debajo
+>    del requisito que cita la premisa original literal, dice qué la invalidó y
+>    apunta al hallazgo H1 del §8 del guion. **F-010 sigue `done`**: no se
+>    reabre ni se reinterpreta. No aparecía en su `design.md` ni en
+>    `CHECKPOINTS.md`; se buscó.
+>
+> **Una precisión honesta**: el encargo daba seis documentos donde el nombre de
+> la base ya estaba escrito, y son **dos**. En los otros cuatro la palabra
+> aparece como parte de `swa-postventa-ruesma`, que es la Static Web App. La
+> decisión no cambia —dos documentos versionados bastan, y uno es la
+> documentación de referencia del sistema origen—, pero el número sí.
+>
+> **A mano antes de T22 quedan dos valores, no tres.** Lo demás del §6 del
+> informe sigue abierto y sin tocar.
+>
+> **No se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint —ni lecturas—; no se ha tocado el repositorio
+> `sigrid-api`; no se ha marcado ninguna tarea del bloque 8 ni T29, y no se ha
+> cambiado el estado de ninguna feature.
+
+> ## Estado al 2026-09-03 · **H1 y H2 arreglados: el despliegue ya aprovisiona Sigrid y rearma el candado del cierre**
+>
+> Los dos hallazgos de despliegue del §8 de `progress/guion_bloque8_F-009.md`,
+> aprobados por el humano hoy. Informe completo, con el cotejo variable a
+> variable: **`progress/impl_H1_H2_despliegue.md`**. Commit `82fbfb8` aquí y
+> `9bc0518` en `azure-apps`. **Sin `push` en ninguno de los dos.**
+>
+> - **H1** · El despliegue no traía **ninguna** de las ocho variables de F-009.
+>   Ya las trae. **Corregido después** (ver el bloque de arriba): son **dos**
+>   por referencia a Key Vault (`sigrid-api-base-url`, `sigrid-api-key`) y
+>   **seis** en `$ajustes`. Son dos secretos y no uno porque la raíz de la
+>   pasarela es un host interno, igual que `pg-host`.
+> - **H2** · `CIERRE_HABILITADO=false` está en `$ajustes`, junto a
+>   `ARCHIVO_HABILITADO`. Era el único candado del despliegue que no se rearmaba
+>   solo. `docs/DESPLIEGUE.md` §4 bis decía que sí; ahora describe el mecanismo
+>   real y deja escrito que antes no lo era.
+> - **El cotejo destapó dos variables más** de las tres previstas:
+>   `SIGRID_ZONA_HORARIA` —la que decide el huso de `fec`/`hor` en `dbo.log`, y
+>   la única que **no da error al faltar**— y `SIGRID_TIP_RECLAMACION`.
+>
+> ### Dos cosas que el humano tiene que decidir o hacer
+>
+> 1. **Queda a mano subir los valores al Key Vault** —**dos**, no tres, tras la
+>    corrección de arriba—: los da el dueño de
+>    `sigrid-api` y no pueden entrar al repositorio. El **Paso 0** del §1 del
+>    guion sigue ahí, con los dos caminos (redesplegar, o poner las App Settings
+>    sueltas si no se quiere redesplegar el entorno actual).
+> 2. **Se tocó un test de F-010**, contra la instrucción de no tocar
+>    `services/`, porque era imposible no hacerlo: `test_f010_r28` exigía
+>    literalmente que **no** hubiera ninguna variable `SIGRID_*` en el
+>    despliegue. Su premisa —«el ERP está fuera del piloto»— cae con la
+>    aprobación de hoy; lo que protegía, no, y es lo que comprueba ahora.
+>    **RESUELTO** en `2855955`: R28 está enmendado en la spec, con constancia
+>    fechada. Detalle en el §5 y el §12 del informe.
+>
+> **No se ha ejecutado nada** contra Azure, Sigrid, `sigrid-api`, el PostgreSQL
+> compartido ni SharePoint —ni lecturas—, no se ha marcado ninguna tarea del
+> bloque 8 ni T29, y no se ha cambiado el estado de ninguna feature.
+
+> ## Estado al 2026-09-03 · **Cae la premisa que bloqueaba F-012: la base documental SÍ es escribible**
+>
+> **El dato lo dio el humano hoy**, y lo respalda el spike **F-002 de
+> `sigrid-api`, ya cerrado**: **el usuario de escritura tiene permiso sobre la
+> base documental**. Con eso cae el bloqueo que arrastrábamos desde el
+> 2026-08-26.
+>
+> Lo que creíamos —«la documental está cerrada y abrirla es decisión del dueño
+> de `sigrid-api`, que afecta a todo el ecosistema»— era **media verdad**. La
+> otra media: la base **no es una réplica de solo lectura** (el sufijo es
+> «repositorio», no «réplica»), está en la **misma instancia** que la de
+> negocio, y **el propio ERP le escribe** cada vez que alguien importa un
+> documento desde la UI de Sigrid. Que esté fuera de
+> `ALLOWED_WRITE_DATABASES` es una **política de la pasarela**, no un
+> impedimento del motor.
+>
+> Consecuencia técnica, y es la que importa para el diseño: **una transacción
+> puede abarcar las dos bases sin MSDTC**, porque entre bases de la misma
+> instancia es local. Eso es lo que hace viable adjuntar el parte de forma
+> atómica: metadatos y enlace en la de negocio, binario en la documental, las
+> tres escrituras o ninguna.
+>
+> ### Quién hace qué
+>
+> **El endpoint lo está implementando el humano**, en `sigrid-api` (su backlog:
+> **F-004**, «Endpoint de dominio para adjuntar un documento a un concepto de
+> Sigrid»). La **especificación de referencia** se escribió ayer y vive en
+> `sigrid-api/docs/propuestas/2026-09-03_endpoint_adjuntar_documento.md`, rama
+> `docs/propuesta-escritura-documental`.
+>
+> **Esa spec tiene una sección desmentida y NO se ha corregido, a propósito**:
+> su §3 dice que el usuario de escritura «casi con seguridad no tiene ningún
+> permiso» sobre la documental y describe una acción de administrador de base de
+> datos como pieza que falta. Ya no falta. **La corrige el humano al implementar
+> F-004**: lo decidió así porque tiene ese repositorio en otra rama
+> (`chore/instalar-arnes`, donde acaba de instalar el arnés v1.7.8) y no tiene
+> sentido que un agente le cambie de rama un repositorio en el que está
+> trabajando. Queda anotado aquí para que nadie lea esa §3 como vigente.
+>
+> ### La orden operativa, que es corta
+>
+> **No se escribe NI SE LEE nada contra el ERP desde este proyecto hasta que el
+> humano nos pase el endpoint.** Lo pidió expresamente el 2026-09-03. Eso
+> incluye las lecturas de caracterización que había preparadas
+> (`infra/13_caracterizacion_grafico_url.ps1`): están listas y **no se lanzan**.
+>
+> ### Lo que esto NO cambia
+>
+> - **F-012 sigue `blocked`**, porque el endpoint todavía no existe. Lo que
+>   cambia es el motivo: ya no es una decisión pendiente de un tercero, es
+>   trabajo en curso del propio humano.
+> - **F-023 (el gráfico por URL) sigue `blocked`**, esperando la prueba manual
+>   de Posventa. **Con el endpoint del binario en camino, conviene que el humano
+>   decida si esa vía sigue interesándole**: evitaría duplicar el PDF dentro del
+>   ERP, pero deja de ser la única salida. **Esa decisión no la toma un agente.**
+> - **F-009 sigue `in_progress`** y su **bloque 8 sigue entero sin ejecutar**.
+>   Antes de T22 hace falta su Paso 0: el entorno desplegado no tiene
+>   aprovisionada ninguna configuración de Sigrid.
+
+
+> ## Estado al 2026-09-02 · **F-012 bloqueada, nace F-023, y falta UNA medida**
+>
+> ### F-012 pasa a `blocked`, con dos bloqueos y ninguno se resuelve aquí
+>
+> Subir el PDF del parte a Sigrid como gráfico —incrustar el binario— **no
+> tiene hoy por dónde hacerse**:
+>
+> 1. **`sigrid-api` no sabe escribir documentos.** Haría falta un endpoint de
+>    dominio nuevo **en ese repositorio**, porque `sql/write` ni reserva `ide`
+>    con applock ni está pensado para BLOBs.
+> 2. **El binario vive en la base DOCUMENTAL**, y la configuración desplegada
+>    tiene la de negocio como **única escribible** (`ALLOWED_WRITE_DATABASES`).
+>    La documental queda fuera **a propósito**: abrirla es decisión del dueño de
+>    `sigrid-api` y afecta al ecosistema entero.
+>
+> El humano lo confirmó el 2026-09-02: **el binario se queda en F-012** hasta
+> que su dueño abra esa base.
+>
+> ### Nace F-023 · el gráfico por URL, la vía que no depende de nadie
+>
+> Asociar el parte a la reclamación **como referencia** al PDF que ya
+> archivamos en SharePoint, en vez de incrustarlo: escribe **solo en la base de
+> negocio** (metadatos en `gra` + el enlace `rcg`), así que **el bloqueo de
+> F-012 no le aplica**.
+>
+> **Por qué importa, y no es cosmético.** F-009 cierra con un `UPDATE con.est`
+> directo y **sin ningún `COUNT` sobre `rcg`** (R20, deliberado): el proceso
+> nativo «Cerrar parte» no nos frena. Pero deja **reclamaciones en `CER` sin
+> ninguna fila en `rcg`**, anomalía firmada como **RIESGO ACEPTADO** en
+> `design.md` §2 y que **no ha ocurrido ni una vez en los 2.365 cierres desde
+> 2023**. F-023 la hace desaparecer.
+>
+> La investigación que la fundamenta es `progress/explore_grafico_url.md`, y
+> trae un **resultado negativo que vale**: los 13.450 gráficos de posventa **NO
+> son de tipo URL**. `vin = 3` con `ima` vacío significa «el binario está en la
+> otra base», no «esto es un enlace». **No hay ni un precedente en 282.599
+> filas**, y en el diccionario de Sigrid la tabla `gra` ni siquiera tiene
+> columna `url`.
+>
+> ### Lo que mide el script nuevo
+>
+> `infra/13_caracterizacion_grafico_url.ps1` empaqueta **Q1, Q3, Q4, Q5, Q8 y
+> Q9** del §5 del informe, en el orden de su §6. **Todas son `SELECT`** por
+> `POST /api/sql/read`; **no se ha ejecutado ninguna**.
+>
+> | | Qué mide | Por qué |
+> |---|---|---|
+> | **Q1** | Las columnas que tiene **de verdad** la `gra` desplegada, y si ya hay una `url` | El diccionario es de v.20240618 y **ya se sabe que le faltan columnas** de `rcg`. Si `gra` tuviera `url`, cambia el diseño entero |
+> | **Q3** | Las **dos** filas huérfanas `vin = 1` y `vin = 4` | Dos filas en 282.599 que nadie ha mirado. La pista más barata que existe |
+> | **Q4** | El perfil de cada modo de `vin` | Nadie ha caracterizado `vin = 2` (154) ni `vin = 0` (38) |
+> | **Q5** | En qué estado están las reclamaciones cuyos gráficos **no tienen fichero detrás** (los 51) | **El proxy empírico**: si alguno cuelga de una reclamación cerrada, «Cerrar parte» mira **el enlace**, no el contenido |
+> | **Q8** | Si `gra.cod` es **único** | El `INSERT` en `rcg` deriva el `ide` por `cod`; con `cod` repetidos crearía enlaces de más |
+> | **Q9** | Si esta instalación usa `dog`/`condog`, que **sí** tiene `url` nativa | Es el segundo camino, y el mensaje del ERP dice «gráfico **o Doc. multimedia**» |
+>
+> Reutiliza `infra/08_lectura_sigrid_comun.ps1`, al que se le añadió el switch
+> **`-Tolerante`** (apagado por defecto: los `09`–`12` no cambian de
+> comportamiento).
+>
+> ### Qué falta EXACTAMENTE para desbloquear F-023
+>
+> **Una sola medida, y ningún documento puede darla**: qué escribe Sigrid al
+> usar *Importa → Asociar URL de Internet…*. Es la **Q10** del informe, y no
+> hay consulta que la responda **porque esa opción no se ha usado nunca aquí**.
+>
+> La resuelve **Posventa (Alicia Echevarría) en cinco minutos**, haciéndolo una
+> vez a mano sobre una reclamación de prueba y ejecutando después
+> *Procesos → 3. Cerrar parte*. Nosotros **solo leemos** la fila resultante.
+> La petición, **redactada para reenviarla tal cual**, está en
+> **`progress/peticion_posventa_prueba_url_F-023.md`**.
+>
+> **Hasta entonces F-023 no se diseña ni se escribe su spec**: F-008 ya advirtió
+> que la combinación de `vin`/`tex`/`nom` **no se debe diseñar sobre
+> suposiciones**.
+>
+> ### Y F-009 sigue igual: `in_progress`, con el bloque 8 SIN EJECUTAR
+>
+> Nada de lo anterior lo mueve. **T22–T27 y T29 siguen sin marcar**, el guion
+> de `progress/guion_bloque8_F-009.md` sigue escrito y sin ejecutar, y siguen en
+> pie sus dos hallazgos: el entorno desplegado **no tiene configuración de
+> Sigrid** (H1) y **`CIERRE_HABILITADO` no se rearma solo** (H2).
+>
+> Se corrigió además una **referencia rota** en su spec: `design.md` §1 (D4),
+> §10 y §11, y `requirements.md`, mandaban el gráfico-URL a **F-013**, que es
+> «mudar el archivo a la biblioteca de Posventa». Ahora apuntan a **F-023**.
+> Solo se cambió el identificador.
+
+> ## Estado al 2026-09-02 · **guion del bloque 8 escrito, sin ejecutar nada**
+>
+> `progress/guion_bloque8_F-009.md` + cinco scripts en `infra/`
+> (`08_lectura_sigrid_comun.ps1`, `09_estado_reclamacion_sigrid.ps1`,
+> `10_log_cierre_sigrid.ps1`, `11_trazabilidad_tex_sigrid.ps1`,
+> `12_traza_cierre_local.ps1`). **Los cinco son de LECTURA**; la única
+> escritura del bloque la hace el servicio desplegado.
+>
+> **No se ha ejecutado ni una llamada** a Sigrid, `sigrid-api`, la Function
+> desplegada, el PostgreSQL compartido ni SharePoint. T22–T27 y T29 siguen sin
+> marcar y F-009 sigue `in_progress`: las marca el humano.
+>
+> **El bloque 8 NO puede arrancar tal cual (hallazgo H1).** El entorno
+> desplegado **no tiene ninguna configuración de Sigrid**: `infra/00_vars_postventa.ps1`
+> no lista `sigrid-api-key` entre los secretos ni `SIGRID_API_KEY` entre las
+> referencias, y `infra/desplegar_backend.ps1` no fija ninguna `SIGRID_*`.
+> T22 respondería `503 ConfiguracionSigridIncompleta`. El «Paso 0» del §1 del
+> guion lo aprovisiona a mano; arreglarlo en los scripts está **propuesto y no
+> hecho**.
+>
+> **Y `CIERRE_HABILITADO` no se rearma solo (hallazgo H2)**, al contrario que
+> `ARCHIVO_HABILITADO=false`: no está en `$ajustes`, así que se apoya en el
+> valor por defecto del código, que solo aplica **mientras la App Setting no
+> exista**. Encendida una vez, un redespliegue **no** la apaga —y
+> `docs/DESPLIEGUE.md` §4 bis dice que sí—. Cerrar la ventana a mano al
+> terminar, y comprobarlo.
+>
+> Los seis hallazgos, con su propuesta, en §8 del guion.
+
+> ## Estado al 2026-09-02 · **T28 CERRADA: 117 muertos, 6 supervivientes, 0 timeouts**
+>
+> ```
+> python -m harness.mutacion --feature F-009 --workers 1
+> ```
+>
+> **123 mutantes evaluados, 117 muertos, 6 supervivientes, 0 timeouts, en
+> 6.124,7 s** (102 min). Informe regenerado en `progress/mutacion_F-009.md`,
+> con los 26 análisis y **cero `PENDIENTE`**. Con esto el «cero supervivientes
+> con veredicto» que exige el rigor `critico` **queda demostrado**, no razonado:
+> T28 se marca `[x]` en `specs/F-009-cierre-sigrid/tasks.md`.
+>
+> **Los 6 supervivientes son exactamente los seis previstos, ni uno más:**
+>
+> - Los **tres aceptados por escrito como riesgo por el humano** el 2026-08-26:
+>   `infrastructure/sigrid/cliente.py:347` (respuesta de escritura sin la clave
+>   `ok`), `infrastructure/sigrid/consultas.py:202` y `:207` (los `NULL` de
+>   `descripcion` y `estado_destino_res`).
+> - Los **tres equivalentes ya justificados**:
+>   `infrastructure/sigrid/escrituras.py:217` (texto de un error inalcanzable),
+>   `infrastructure/sigrid/fabrica.py:130` (no se caza sin construir el
+>   adaptador real, y eso lo prohíbe la guardia de red R39) e
+>   `interface_adapters/api/cerrar.py:219` (`confianza_observaciones`, que se
+>   rellena para no mandar nada).
+>
+> ### Por qué en serie: la hipótesis de los reintentos de `tenacity` era FALSA
+>
+> Lo anotado el 2026-08-27 («al mutar un código de estado la ejecución se desvía
+> a un camino con reintentos de `tenacity`») **no se sostiene**. El diagnóstico
+> completo está en `progress/explore_F-009_timeouts.md`: los dos mutantes
+> sospechosos, reproducidos a mano y en solitario, **mueren limpiamente** en
+> 37,0 s y 22,6 s, en el `assert` del código de estado. No hay cuelgue, ni
+> reintento, ni espera.
+>
+> **La causa real es saturación de la máquina.** La suite del servicio `api`
+> tarda **38,7 s** ella sola y **131,6 s** ejecutada con los 16 workers que
+> usaba la campaña, es decir **por encima del tope de 120 s por mutante**. El
+> veredicto `timeout` dependía de la carga del momento, no del mutante: mutantes
+> que una campaña daba por muertos salían `timeout` en la siguiente, y al revés.
+>
+> Se confirmó tres veces. **Con `--workers 8`** (hoy): 123 evaluados, 95
+> muertos, 1 superviviente, **27 timeouts**, 1.553,6 s — peor que con 16, y
+> sobre **mutantes distintos**. Por eso la campaña buena se lanzó **en serie**
+> (`--workers 1`): tarda 102 min, pero **cada veredicto es del mutante y no de
+> la máquina**. Su informe no se conserva en `progress/` (quedó en el scratchpad
+> de la sesión); `progress/mutacion_F-009.md` se restauró desde git para no
+> dejar la feature peor documentada, y luego lo regeneró la campaña en serie.
+>
+> ### El informe generado NO registra el nº de workers
+>
+> Carencia del arnés: `progress/mutacion_F-009.md` dice «Generado por `python -m
+> harness.mutacion --feature F-009`» **sin el `--workers`**, y sin ese dato el
+> tiempo total de una campaña no se puede interpretar (fue justo lo que impidió
+> reconstruir a posteriori cómo se lanzó la del 2026-08-27). Por eso **el número
+> queda escrito aquí y en la línea de verificación de T28**: la campaña que
+> cierra T28 se ejecutó con **1 worker, en serie**.
+>
+> Hay un arreglo del arnés ya aprobado que va en **un trabajo aparte**, no en
+> este: excluir `harness/` del alcance de la mutación y **reevaluar en serie los
+> mutantes en `timeout` al final de una campaña paralela**, para que un
+> `timeout` deje de ser un veredicto y pase a ser un reintento. Ahí es donde
+> toca añadir también la línea de workers al informe. Regla de propagación: va a
+> `arnes-base`.
+>
+> ### Lo que esto NO cierra
+>
+> - **F-009 sigue `in_progress`.** A `done` la mueve el humano, no un agente.
+> - **El bloque 8 (T22–T27) sigue entero sin ejecutar**: es el que toca el ERP
+>   de producción, se hace desde el entorno desplegado con dry-run previo y
+>   confirmación explícita, y ninguna de sus tareas se ha ejecutado. **T29
+>   tampoco se marca.**
+> - Lo único que cambia con T28 es que la puerta de mutación del rigor
+>   `critico` está satisfecha.
+
+
+> ## Estado al 2026-08-27 · **T28 ejecutada: cero supervivientes nuevos, 15 timeouts sin veredicto** — SUPERADO por el bloque del 2026-09-02
+
+>
+> `python -m harness.mutacion --feature F-009`, campaña completa, **3.623 s**.
+> Informe regenerado en `progress/mutacion_F-009.md`, con los análisis de los
+> seis conservados (cero `PENDIENTE`). Salida del comando: **123 evaluados,
+> 102 muertos, 6 supervivientes, 15 timeouts**; exit code 1.
+>
+> **Los 6 supervivientes son exactamente los previstos, ni uno más:**
+>
+> - Los **tres aceptados como riesgo por el humano** el 2026-08-26:
+>   `cliente.py:347` (respuesta sin clave `ok`), `consultas.py:202` y `:207`
+>   (los `NULL` de `descripcion` y `estado_destino_res`).
+> - Los **tres equivalentes ya justificados**: `escrituras.py:217` (texto de un
+>   error inalcanzable), `fabrica.py:130` (no se caza sin construir el adaptador
+>   real, y eso lo prohíbe la guardia de red R39) y `cerrar.py:219`
+>   (`confianza_observaciones`, que se rellena para no mandar nada).
+>
+> **Los ~19 supervivientes que destapó la primera campaña están muertos**: los
+> tests que se escribieron después funcionan.
+>
+> ### PENDIENTE · los 15 timeouts, que no los había antes
+>
+> Quince mutantes quedaron **sin veredicto** —ni muertos ni vivos—, y no al
+> azar: **7 en `domain/models/cierre.py` y 8 en `function_app.py`**. Los ocho de
+> `function_app.py` son **los códigos HTTP** que la primera campaña destapó como
+> supervivientes y para los que se escribió el fichero de tests de la ruta.
+> La campaña anterior tuvo **0 timeouts** con el mismo límite.
+>
+> **Hipótesis sin comprobar**: al mutar un código de estado, la ejecución se
+> desvía a un camino con reintentos de `tenacity` y el test agota el límite.
+>
+> **Cómo se cierra cuando se retome**: relanzar acotado a esos dos ficheros con
+> `--timeout` más alto (son 15 mutantes, no 123). **T28 no se marca**: la
+> campaña se ejecutó, pero el «cero supervivientes con veredicto» que pide
+> `critico` no está demostrado mientras haya quince sin evaluar.
+>
+> **El humano decidió seguir con el bloque 8 y dejar esto anotado.**
+
+
+> ## Estado al 2026-08-27 · **F-009 APROBADA en segunda review · el ERP sigue sin tocarse**
+>
+> `progress/review2_F-009.md`: **APROBADO**, con tres condiciones para el humano
+> (§7). Los cinco cambios de la primera review están atendidos; el único cambio
+> de código de esa tanda fue un reorden de imports, y `ruff` baja de 59 a 58
+> avisos, exactamente el efecto esperado. El reviewer añadió una comprobación
+> que la primera pasada no hizo: **muestrear que los tests nuevos matan de
+> verdad a sus mutantes**, 4 de 4.
+>
+> `bash harness/init.sh` en verde: cobertura **98,8 %** (565/572), umbral 80 %.
+>
+> **Las tres condiciones, que no las cierra ningún agente:**
+>
+> 1. **T28 sin ejecutar**: el cero de supervivientes de `critico` está razonado
+>    y muestreado, **no demostrado**. Son ~43 min: `python -m harness.mutacion
+>    --feature F-009`.
+> 2. **El bloque 8 entero sin ejecutar, y F-009 no está terminada hasta que se
+>    ejecute.** Lo aprobado es que el código está listo **para** ese día, no que
+>    ese día haya llegado. En T24 el paso 7 incluye mirar la hora de la fila de
+>    `dbo.log` (el huso `Europe/Madrid` es la única decisión sin dato). En T26,
+>    si `SqlWriteGuard` rechaza el `WITH (UPDLOCK, HOLDLOCK)`: **`blocked` y
+>    parar**, no improvisar.
+> 3. **Marcar T22–T28 solo según se ejecuten de verdad.**
+>
+> **El estado de la feature no lo he tocado**: F-009 sigue `in_progress` y a
+> `done` la mueve el humano. Sigue anotado, sin hacer y sin bloquear, todo lo
+> de la primera review §6.3, incluido llevar al dueño de `sigrid-api` que
+> **este servicio es ya el primer escritor genérico por `sql/write`** del
+> ecosistema y no figura en su tabla de consumidores.
+
+
+> ## Estado al 2026-08-26 (review) · **F-009 rechazada y corregida; decisión del humano sobre los tres huecos**
+>
+> `progress/review_F-009.md` devolvió **CHANGES_REQUESTED** con cinco cambios
+> (§7). No discutía la ingeniería —verificó la campaña de mutación por su
+> cuenta y le salieron los mismos 3.021 líneas y 124 mutantes en el commit de
+> la campaña—: rechazó por **cuatro casillas vacías de `CHECKPOINTS.md`**, y en
+> rigor `critico` una casilla vacía es rechazo.
+>
+> **Hechos por el implementer** (commits `a335706`, `43c822c`, `dee5495`,
+> `b831da1`): §7.1 los 26 análisis de supervivientes trasladados a
+> `progress/mutacion_F-009.md` —**cero `PENDIENTE` ya**—, §7.3 las
+> verificaciones `MANUAL (humano)` de T22–T27 escritas aquí abajo **con el
+> comando exacto**, y §7.5 el `I001` de `paso_cierre.py` arreglado y el dato de
+> `ruff` corregido.
+>
+> **Hecho por el líder**: §7.4, la poda de este fichero (lo movido está en
+> `progress/history.md`, bloque del 2026-08-26).
+>
+> ### DECISIÓN DEL HUMANO (2026-08-26) · los tres huecos se aceptan como riesgo
+>
+> El §7.2 del review pedía un test para cada uno de los tres supervivientes que
+> el implementer declaró sin cubrir, **o** que el humano los aceptara por
+> escrito. **El humano eligió lo segundo, explícitamente: «salta el 2».** Queda
+> escrito aquí porque en rigor `critico` esa decisión no la puede tomar ni el
+> implementer ni el reviewer, y es la que cierra esa casilla:
+>
+> 1. **Superviviente 21** · `infrastructure/sigrid/cliente.py:347` —
+>    `respuesta.get("ok", False)`. Ningún test manda una respuesta de la
+>    pasarela **sin la clave `ok`**. Riesgo: si `sigrid-api` dejara de mandarla,
+>    nada fija por test qué se supone entonces.
+> 2. **Supervivientes 22 y 23** · `infrastructure/sigrid/consultas.py:202` y
+>    `:207` — el `NULL` de `descripcion` y de `estado_destino_res` en el mapeo
+>    del dry-run. La descripción es una de las cinco cosas que **R9** obliga a
+>    enseñar antes de confirmar, y su caso `NULL` no está fijado.
+>
+> **Ninguno de los tres afecta a la escritura en el ERP**: el batch de §7.3 del
+> diseño está cubierto y verificado. Si el reviewer quiere reabrirlo en la
+> segunda pasada, tiene esta decisión fechada y con nombre.
+>
+> **Siguiente paso**: segunda review contra `CHECKPOINTS.md`. F-009 sigue
+> `in_progress`; a `done` solo la mueve el humano, y el **bloque 8 (T22–T27),
+> el que toca el ERP de producción, está entero sin ejecutar**.
+
+
+> ## Estado al 2026-08-26 (implementación) · **F-009: bloques 1-7 hechos, el ERP sin tocar**
+>
+> **Ejecutado T1–T21.** El servicio ya sabe cerrar una incidencia en Sigrid:
+> `POST /api/cerrar` hace el dry-run, y solo con `commit` **y** confirmación
+> mueve `con.est` y escribe la fila de `dbo.log`, las dos en un batch
+> transaccional con tope de dos filas. El informe completo, con la fase RED
+> pegada y las evidencias, está en **`progress/impl_F-009.md`**.
+>
+> **Nada se ha ejecutado contra el ERP.** El bloque 8 (T22–T27) queda entero
+> para el humano, desde el entorno desplegado y con autorización expresa para
+> la incidencia concreta. Ni una casilla suya marcada.
+>
+> ### Lo que el humano tiene que saber antes de T22
+>
+> 1. **Para el dry-run también hay que abrir la ventana.** `CIERRE_HABILITADO`
+>    apagado hace que la **fábrica se niegue antes de leer**, así que ni el
+>    dry-run funciona con ella cerrada. Es consecuencia de la doble puerta;
+>    conviene saberlo antes de estar delante del ERP.
+> 2. **Mirar la hora de la fila de `dbo.log` en T24, paso 7.** La spec no decía
+>    en qué huso se escriben `fec`/`hor`; se decidió **hora local**
+>    (`SIGRID_ZONA_HORARIA`, `Europe/Madrid`), porque escribir UTC dejaría
+>    nuestras filas con dos horas menos que todas las del ERP. Está razonado en
+>    el informe §3.3.a.
+> 3. **Hay una propuesta sin hacer**, y es de otro repositorio:
+>    `azure-apps/sigrid_api.md` §10 lista quién consume la pasarela y
+>    `postventa-incidencias` no está — y desde F-009 es su **primer escritor
+>    genérico**. No se ha tocado ese documento porque su dueño es `sigrid-api`.
+>
+> **T21 hecho en `azure-apps`**: commit local `3c1c588`, **sin push**.
+
+
+> ## Estado al 2026-08-26 (cierre de jornada) · **el Word leído; §7 en pie**
+>
+> **El pendiente del Word queda CERRADO, y con una sorpresa: ya estaba dentro.**
+> `markitdown` respondió, se convirtió `PASOS CERRAR INCIDENCIA.docx` y su texto
+> coincide **1:1** con `docs/referencia/01_cierre_incidencia_sigrid.md`, que se
+> incorporó en el commit `8cb6c66` —convertido con `markitdown`, con las
+> capturas leídas una a una y volcadas, y el propietario y el servidor
+> redactados—. La sesión anterior lo anotó como pendiente sin ver que el
+> documento que pedía leer era justo ese. El `.docx` sigue **fuera de git**
+> (`.gitignore`, comprobado con `git status --ignored`); **no se ha extraído ni
+> versionado ninguna captura**, y no hace falta: su contenido ya está en texto.
+>
+> **Del Word solo faltaban dos detalles, ninguno de F-009**, y se han añadido al
+> `01`: la ruta de origen de los partes (`677 MIRASIERRA\PARTES
+> INCIDENCIAS\VILLA 05\PARTES FIRMADOS`, o sea obra → unidad → firmados) y el
+> **anexo** en el que la autora duda de cómo nombrar el fichero —solo incidencia
+> con carpeta por vivienda, o vivienda + incidencia—. Eso es **pregunta abierta
+> del negocio para la feature de archivo en SharePoint**, no para el cierre.
+> De paso, el `01` ya remite al `03` para la duda que dejaba abierta sobre qué
+> filas toca el proceso.
+>
+> ### El veredicto que pedía el punto 4: `design.md` §7 NO cambia
+>
+> El Word describe **el proceso** (renombrar, subir el gráfico, Procesos → 3);
+> lo que F-009 replica es **el registro**, y el registro son dos cosas medidas
+> por F-008 sobre 6.843 filas: `con.est = 9` y **una fila en `dbo.log`** con
+> `tab='con'`, `tip=708`, `cod`/`res` copiados de la reclamación, `ope=5`,
+> `est=1`, `ori=0`, `emp` de `con.emp`, `usu` el login y `fec`/`hor`. El §7.3
+> escribe exactamente eso, en una transacción, con **una sola desviación
+> deliberada**: el `tex` de D1. Ni una sentencia que tocar.
+>
+> **Siguiente paso**: pasar F-009 a `in_progress` (lo mueve el humano) y lanzar
+> al `implementer` contra `specs/F-009-cierre-sigrid/tasks.md`.
+
+
+
+## F-009 · Verificaciones `MANUAL (humano)` de T22–T27, con el comando exacto
+
+Checkpoint C4: aquí están **tecleables**, no en prosa. El procedimiento
+razonado sigue en `specs/F-009-cierre-sigrid/tasks.md` (bloque 8); lo de aquí
+es lo que se copia y se pega, con los `?` del SQL resueltos en su lista de
+parámetros. **Ninguna de estas casillas está marcada: nada se ha ejecutado
+todavía contra el ERP.**
+
+> **AVISO, y hay que saberlo antes de estar delante del ERP: con
+> `CIERRE_HABILITADO` apagado ni siquiera el dry-run de T22 funciona.** La
+> fábrica **se niega antes de leer** —la puerta se comprueba al construir el
+> adaptador, no al escribir—, así que `/api/cerrar` responde `503` también sin
+> `commit`. Hay que **abrir la ventana también para el dry-run** y **cerrarla al
+> terminar, salga bien o mal**. Está en `progress/impl_F-009.md` §6.1.
+
+> **REGLA DURA**: todo el bloque se ejecuta **desde el entorno desplegado**, con
+> el humano delante y con autorización expresa para esa incidencia concreta.
+> Nunca desde local, y nunca «de paso».
+
+### Paso 0 · preparar la consola (una vez; el resto reutiliza estas variables)
+
+```powershell
+$grupo   = "rg-postventa-dev"
+$funcion = "func-postventa-dev"
+$base    = "https://" + (az functionapp show -g $grupo -n $funcion --query defaultHostName -o tsv)
+
+# Los datos de ESTA ejecución. El código sale del parte; el hash, del front.
+$incidencia = "PON-AQUI-EL-CODIGO-DE-LA-RECLAMACION"
+$hash       = "PON-AQUI-EL-HASH-DEL-PARTE"
+$oid        = az ad signed-in-user show --query id -o tsv
+$correo     = az ad signed-in-user show --query mail -o tsv
+
+# La pasarela, para las lecturas de comprobación (T22, T24, T25, T27).
+# La raíz se TECLEA. NO se lee con `az functionapp config appsettings list`:
+# SIGRID_API_BASE_URL es una referencia a Key Vault y ese comando devuelve el
+# valor crudo, es decir la cadena @Microsoft.KeyVault(SecretUri=...) sin
+# resolver. Azure solo la resuelve al arrancar la Function, no en la API de
+# gestión. Es un host interno: se teclea, no se escribe en ningún fichero.
+$sigridUrl  = Read-Host "Raiz de la pasarela sigrid-api (sin barra final)"
+# Esta SÍ se lee: desde `bed95ea` SIGRID_BASE_DATOS es App Setting plana.
+$sigridBase = az functionapp config appsettings list -g $grupo -n $funcion --query "[?name=='SIGRID_BASE_DATOS'].value" -o tsv
+$sigridKey  = Read-Host "Clave de funcion de sigrid-api"   # NO se escribe en ningun fichero
+$cabSigrid  = @{ "x-functions-key" = $sigridKey }
+
+function Leer-Sigrid($sql, $parametros) {
+    $cuerpo = @{ database = $sigridBase; sql = $sql; parameters = $parametros; max_rows = 50 } |
+        ConvertTo-Json -Depth 5 -Compress
+    (Invoke-RestMethod -Method Post -Uri "$sigridUrl/api/sql/read" -Headers $cabSigrid `
+        -ContentType "application/json" -Body ([Text.Encoding]::UTF8.GetBytes($cuerpo))).rows
+}
+
+function Llamar-Cerrar($extra) {
+    $cuerpo = @{
+        hash              = $hash
+        numero_incidencia = $incidencia
+        veredicto         = "apto"
+        destino           = "archivo_y_cierre"
+        estado_archivo    = "archivado"
+        usuario_oid       = $oid
+        correo            = $correo
+    }
+    foreach ($k in $extra.Keys) { $cuerpo[$k] = $extra[$k] }
+    $json = $cuerpo | ConvertTo-Json -Depth 5 -Compress
+    try {
+        Invoke-RestMethod -Method Post -Uri "$base/api/cerrar" -ContentType "application/json" `
+            -Body ([Text.Encoding]::UTF8.GetBytes($json))
+    } catch {
+        # Sin esto, un 409 o un 503 salen como una excepcion muda (defecto 14 de F-010).
+        $r = $_.Exception.Response
+        $texto = (New-Object IO.StreamReader($r.GetResponseStream())).ReadToEnd()
+        Write-Host ("HTTP {0} -> {1}" -f [int]$r.StatusCode, $texto) -ForegroundColor Yellow
+    }
+}
+```
+
+### Abrir la ventana · **también para el dry-run**
+
+```powershell
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=true
+```
+
+Reinicia la Function: esperar ~30 s antes de la primera llamada.
+
+### Cerrar la ventana · **SIEMPRE al terminar, salga bien o mal**
+
+```powershell
+az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=false
+az functionapp config appsettings list -g rg-postventa-dev -n func-postventa-dev --query "[?name=='CIERRE_HABILITADO'].value" -o tsv
+```
+
+La segunda línea es la comprobación: tiene que imprimir `false`.
+
+### T22 · dry-run real contra Mirasierra, sin escribir
+
+```powershell
+Llamar-Cerrar @{} | ConvertTo-Json -Depth 6
+```
+
+Se espera, en el `dry_run`: `incidencia`, `descripcion`, el estado de origen
+**legible** (código y descripción), el destino con código `CER`, el
+`login_sigrid` con el que se firmaría, y en `avisos` **el de que la incidencia
+quedará cerrada sin el parte dentro de Sigrid** (R21). `estado` debe ser
+`dry_run_ok` y `filas_afectadas` **0**.
+
+Y que **nada ha cambiado en el ERP** — el `est` tiene que seguir siendo el de
+antes:
+
+```powershell
+Leer-Sigrid "SELECT c.ide, c.est, c.tiemod, e.cod FROM dbo.con c LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est WHERE c.tip = ? AND c.cod = ?" @(708, $incidencia)
+```
+
+### T23 · la siembra del login contra `dbo.usu` (R30–R33), en tres pasos
+
+**Paso 1** — **con la correspondencia vacía**, el dry-run de T22 deriva el
+candidato del correo y lo verifica. Comprobar que ese login existe
+**exactamente una vez** (tiene que devolver `1`, ni `0` ni `2`):
+
+```powershell
+$login = ($correo -split "@")[0]
+Leer-Sigrid "SELECT COUNT(*) FROM dbo.usu WHERE cod = ?" @($login)
+```
+
+**Paso 2** — que quedó **guardada y confirmada** en
+`postventa.usuarios_sigrid` (R33), y que un segundo dry-run ya no deriva nada.
+La lectura de PostgreSQL, con el intérprete del servicio (no hay `psql` en el
+PATH) y la contraseña **aparte del DSN**, como avisa el defecto 16. El `'@` de
+cierre va **pegado al margen izquierdo**, o PowerShell no parsea el bloque:
+
+```powershell
+# PG_HOST también se teclea, y por el mismo motivo que la raíz de la pasarela:
+# `pg-host` es un secreto del vault y la App Setting es una referencia, así que
+# `appsettings list` devolvería @Microsoft.KeyVault(SecretUri=...) sin resolver.
+$env:PG_HOST     = Read-Host "Host de PostgreSQL"
+$env:PG_DB       = "postventa"
+$env:PG_USER     = "postventa_app"
+$env:PG_PASSWORD = Read-Host "Contrasena de postventa_app"
+$env:SQL_TEMP    = "SELECT usuario_oid, login_sigrid, alta_at_utc, verificado_at_utc FROM postventa.usuarios_sigrid WHERE usuario_oid = %s"
+$env:CLAVE_TEMP  = $oid
+$leerPg = @'
+import os, psycopg
+from config.settings import obtener_ajustes
+from infrastructure.persistencia.conexion import dsn_desde_ajustes
+ajustes = obtener_ajustes()
+with psycopg.connect(dsn_desde_ajustes(ajustes), password=ajustes.pg_password) as cn:
+    with cn.cursor() as cur:
+        cur.execute(os.environ["SQL_TEMP"], (os.environ["CLAVE_TEMP"],))
+        for fila in cur.fetchall():
+            print(fila)
+'@
+Push-Location services\postventa-api
+& .\.venv\Scripts\python.exe -c $leerPg
+Pop-Location
+Remove-Item Env:\PG_PASSWORD, Env:\SQL_TEMP, Env:\CLAVE_TEMP -ErrorAction SilentlyContinue
+```
+
+`verificado_at_utc` **no** puede quedarse a `NULL`: eso es lo que R33 exige.
+
+**Paso 3** — con un usuario cuyo candidato **no exista** en `dbo.usu` (uno de
+los 2 de 8 que no siguen la convención), la misma llamada de T22 tiene que
+responder **409** nombrando el correo y el login intentado, **sin tocar
+Sigrid** (R31). `Llamar-Cerrar` ya imprime el código y el cuerpo. Se resuelve
+con el alta manual de T12 (R34):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File infra\07_alta_usuario_sigrid.ps1 -UsuarioOid $oid -LoginSigrid "EL-LOGIN-REAL-DEL-ERP" -VerificarAhora -SigridBaseUrl $sigridUrl -SigridBaseDatos $sigridBase
+```
+
+### T24 · el primer cierre real · los nueve pasos, en este orden
+
+**Paso 1** — anotar el estado de partida (y `tiemod`, que hace falta en el
+paso 8):
+
+```powershell
+$antes = Leer-Sigrid "SELECT ide, est, tiemod FROM dbo.con WHERE tip = ? AND cod = ?" @(708, $incidencia)
+$antes
+```
+
+**Paso 2** — anotar el último `ide` del log:
+
+```powershell
+$logAntes = (Leer-Sigrid "SELECT MAX(ide) FROM dbo.log" @())[0][0]
+$logAntes
+```
+
+**Paso 3** — ejecutar el dry-run **y leerlo** (es el comando de T22):
+
+```powershell
+Llamar-Cerrar @{} | ConvertTo-Json -Depth 6
+```
+
+**Paso 4** — confirmar en el front y ejecutar con `commit`. **Esto escribe en
+el ERP de producción**:
+
+```powershell
+Llamar-Cerrar @{ commit = $true; confirmado = $true } | ConvertTo-Json -Depth 6
+```
+
+**Paso 5** — la respuesta tiene que declarar **`"filas_afectadas": 2`** y
+`"estado": "cerrado"` (R22). Ni 1 ni 3: 2.
+
+**Paso 6** — releer `con.est`: tiene que ser el `est` que `conest` da para
+`cod = 'CER'`, y las dos lecturas tienen que coincidir:
+
+```powershell
+Leer-Sigrid "SELECT c.est, e.cod, e.res FROM dbo.con c LEFT JOIN dbo.conest e ON e.tip = c.tip AND e.est = c.est WHERE c.tip = ? AND c.cod = ?" @(708, $incidencia)
+Leer-Sigrid "SELECT est, cod, res FROM dbo.conest WHERE tip = ? AND cod = ?" @(708, "CER")
+```
+
+**Paso 7** — la fila nueva de `dbo.log`, **campo a campo** contra `design.md`
+§7.3 (R24, R25):
+
+```powershell
+Leer-Sigrid "SELECT ide, emp, ori, ope, fec, hor, usu, tab, tip, cod, res, tex, est FROM dbo.log WHERE ide > ? AND tab = ? AND tip = ? AND cod = ?" @($logAntes, "con", 708, $incidencia)
+```
+
+Valores esperados, **todos con su número real y ninguno con `?`**:
+
+| Campo | Valor que tiene que salir |
+|---|---|
+| `ide` | `$logAntes + 1` |
+| `emp` | el `emp` **de la reclamación**, no una constante |
+| `ori` | `0` |
+| `ope` | `5` (proceso ejecutado) |
+| `fec` | `AAAAMMDD` como **entero**, hoy, en hora **local** `Europe/Madrid` |
+| `hor` | `HHMMSS` como **entero** — **mirar la hora**: es la decisión §3.3.a del informe, la única que no se pudo tomar con un dato. Si sale con dos horas de menos, es que se escribió UTC y hay que arreglarlo |
+| `usu` | el login del ERP, sin truncar (máx. 48) |
+| `tab` | `con` |
+| `tip` | `708` |
+| `cod` | el código de la reclamación |
+| `res` | el `res` de la reclamación |
+| `tex` | exactamente `Cerrar parte (postventa-incidencias)` |
+| `est` | `1` |
+
+**Paso 8** — que **`con.tiemod` no se ha movido** (F-008 §2.3): comparar con el
+`tiemod` anotado en el paso 1.
+
+```powershell
+Leer-Sigrid "SELECT ide, est, tiemod FROM dbo.con WHERE tip = ? AND cod = ?" @(708, $incidencia)
+```
+
+**Paso 9** — la traza local: `estado = 'cerrado'`, con sus dos códigos de
+estado y su `confirmado_por`, y **sin el login** (R41, R43). Mismo bloque de
+PostgreSQL del T23.2, cambiando la consulta:
+
+```powershell
+$env:SQL_TEMP   = "SELECT hash_parte, numero_incidencia, estado, estado_origen_sigrid, estado_destino_sigrid, dry_run_at_utc, cerrado_at_utc, confirmado_por, motivo, intentos FROM postventa.cierres WHERE hash_parte = %s"
+$env:CLAVE_TEMP = $hash
+```
+
+La tabla **no tiene columna de login** a propósito; si apareciera un login en
+`motivo`, es un defecto de R43.
+
+### T25 · que el `tex` propio hace lo que se diseñó (R25)
+
+Dos lecturas. La primera tiene que **encontrar** el cierre nuevo (seguimos
+apareciendo en los informes de Posventa, que filtran por `Cerrar parte%`); la
+segunda tiene que devolver **exactamente los cierres de este servicio** y
+ninguno manual:
+
+```powershell
+Leer-Sigrid "SELECT COUNT(*) FROM dbo.log WHERE tab = ? AND cod = ? AND tex LIKE ?" @("con", $incidencia, "Cerrar parte%")
+Leer-Sigrid "SELECT ide, cod, usu, fec, tex FROM dbo.log WHERE tab = ? AND tex = ? ORDER BY ide DESC" @("con", "Cerrar parte (postventa-incidencias)")
+```
+
+### T26 · que el guard de escritura acepta el batch tal cual
+
+**Se comprueba dentro de T24, en el paso 4**: si `SqlWriteGuard` rechazara la
+sugerencia de tabla `WITH (UPDLOCK, HOLDLOCK)`, el `commit` devolverá un `502`
+con el motivo, y `Llamar-Cerrar` lo imprime. **No se improvisa otra vía**: se
+anota el motivo, se marca la feature `blocked` y se para.
+
+### T27 · reintento sobre lo ya cerrado (R18, R42)
+
+Repetir T24 sobre **la misma** incidencia. Tiene que salir `ya_cerrada`, **sin
+escribir nada** y sin pisar la traza local:
+
+```powershell
+Llamar-Cerrar @{ commit = $true; confirmado = $true } | ConvertTo-Json -Depth 6
+(Leer-Sigrid "SELECT MAX(ide) FROM dbo.log" @())[0][0]
+```
+
+El segundo comando tiene que devolver **el mismo `ide`** que dejó T24: si ha
+subido, se ha escrito una fila que no debía escribirse.
+
+### Al terminar
+
+Cerrar la ventana (comando de arriba), comprobar que imprime `false`, y marcar
+T22–T27 en `specs/F-009-cierre-sigrid/tasks.md` **solo lo que se haya
+ejecutado de verdad**.
+
+---
 
 ## Cómo se mergeó F-005, y por qué importa para la próxima
 

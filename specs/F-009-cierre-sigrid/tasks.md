@@ -1,0 +1,397 @@
+<!-- specs/F-009-cierre-sigrid/tasks.md -->
+# F-009 · Cierre de la incidencia en Sigrid (solo estado) — Tareas
+
+> Una tarea = un commit `F-009 Tn: ...`. Ordenadas por dependencia; los tests
+> van antes o junto a la implementación (fase RED obligatoria en rigor
+> `critico`).
+>
+> **No queda ninguna decisión abierta**: las seis están cerradas y fechadas en
+> `design.md` §10. Se puede implementar desde T1.
+
+## Bloque 1 · Dominio puro (sin red, sin BBDD, sin IA)
+
+- [x] **T1**: Crear `domain/models/cierre.py` con `Reclamacion`, `PlanDeCierre`,
+      `CODIGO_ESTADO_CIERRE`, `CODIGOS_ESTADO_CERRABLE` y `TEXTO_LOG_CIERRE`, y
+      la función pura `evaluar(reclamacion)`. | Verificación:
+      `test_f009_dominio_cierre.py` cubre R18 (ya cerrada), R19 (estado no
+      cerrable, `NPR` incluido) y R21 (el plan siempre trae el aviso de que la
+      reclamación quedará sin gráfico en el ERP). **Control negativo de R20**:
+      `Reclamacion` no tiene campo de gráficos y el dominio no menciona `rcg`
+      ni `gra`.
+
+- [x] **T2**: Crear los errores de `domain/models/errores.py` y los puertos
+      `domain/ports/erp.py` y `domain/ports/usuarios_sigrid.py`. |
+      Verificación: `test_f009_arquitectura.py` comprueba que `domain/` no
+      importa `httpx`, `psycopg` ni nada de `infrastructure/`.
+
+- [x] **T3**: Test de control negativo **R3**: ningún número de estado de Sigrid
+      literal en el código de producción. | Verificación:
+      `test_f009_estado_no_hardcodeado.py` recorre el árbol de producción y
+      falla si aparece un `est` numérico cableado. Fase RED: enseñar la traza
+      del fallo con un literal introducido a propósito en una copia aislada.
+
+## Bloque 2 · El SQL, comprobado carácter a carácter
+
+- [x] **T4**: Crear `infrastructure/sigrid/consultas.py` con los constructores
+      puros de la consulta del dry-run (`design.md` §7.1) y de la verificación
+      del login (§7.2). | Verificación: `test_f009_consultas.py` fija el SQL y
+      los parámetros, y comprueba R1/R4/R5 —que el estado se resuelve contra
+      `conest` por `cod` y que el `tip` sale de la reclamación— más el **control
+      negativo de R20**: el SQL de lectura no menciona `rcg` ni `gra`. Y los dos
+      casos de aborto sin escribir: R2 (`conest` no devuelve exactamente una
+      fila) y R7 (la búsqueda no devuelve exactamente una reclamación).
+
+- [x] **T5**: Crear `infrastructure/sigrid/escrituras.py` con el batch de §7.3.
+      | Verificación: `test_f009_escrituras.py` comprueba R22 (dos sentencias en
+      un batch), R23 (`WHERE` con `ide`, `tip` y estado de origen; tope de 2
+      filas), R24 (los campos de la fila de log, con `emp` **tomado de la
+      reclamación** y no cableado), R25 (el `tex` empieza por el texto del
+      proceso del ERP y nombra el servicio), R28 (el `usu` que se escribe es el
+      login de la persona, nunca una constante), R35 (no excede la longitud del
+      campo) y R26 (el `ide` se reserva en la
+      propia sentencia y el `FROM` es `dbo.con` filtrado, **no** un
+      `WHERE EXISTS`).
+
+- [x] **T6**: Conversión del código de incidencia al formato de Sigrid. |
+      Verificación: `test_f009_consultas.py` comprueba R6 — ida y vuelta contra
+      `domain/models/nombrado.py`, guion largo incluido.
+
+## Bloque 3 · El adaptador y sus puertas
+
+- [x] **T7**: Crear `infrastructure/sigrid/cliente.py`
+      (`AdaptadorSigridApi`), con `httpx`, reintentos con `tenacity` y la puerta
+      de entorno **en el constructor**. | Verificación:
+      `test_f009_adaptador_sigrid.py` con transporte simulado: R11 (aborta si el
+      estado cambió), R27 (un fallo no se reintenta solo como cierre), R50 (no
+      filtra el cuerpo crudo del error) y R36 (construirlo en `local` levanta).
+
+- [x] **T8**: Crear `infrastructure/sigrid/fabrica.py` con el orden
+      entorno → interruptor → configuración. | Verificación:
+      `test_f009_fabrica.py` comprueba R37 (doble comprobación: fábrica **y**
+      adaptador) y R38 (nombra todas las variables que faltan de una vez y
+      **ningún** valor).
+
+- [x] **T9**: Añadir a `config/settings.py` el bloque de F-009 y extender la
+      guardia de red de la suite a `sigrid-api`. | Verificación:
+      `test_f009_fabrica.py` y la guardia existente: R39 — ningún test abre una
+      conexión hacia `sigrid-api` y ninguno puede ejecutar una escritura.
+
+## Bloque 4 · El mapeo de usuarios
+
+- [x] **T10**: Crear `infrastructure/persistencia/sql/08_usuarios_sigrid.sql` y
+      registrarlo en `ddl.py` / `arranque.py`. | Verificación:
+      `test_f009_ddl_orden.py` y los `test_f005_ddl_*` existentes: idempotente,
+      dentro del schema propio y **nunca** en `public`.
+
+- [x] **T11**: Añadir `select_login_sigrid` / `upsert_login_sigrid` a
+      `sentencias.py`, `repositorio_pg.py` y `mapeo.py`. | Verificación:
+      `test_f009_usuarios_sigrid.py` con el doble de PG: R29 (si hay
+      correspondencia confirmada se usa **sin derivar nada**), R30 (si no la
+      hay, se deriva el candidato del correo y se verifica), R31 (candidato
+      inexistente o ambiguo → no se cierra), R32 (nunca se escribe un login sin
+      verificar), R33 (lo verificado se guarda como confirmado) y R34 (el alta
+      manual tiene **precedencia** sobre la derivación).
+
+- [x] **T12**: Crear `infra/07_alta_usuario_sigrid.ps1` para el **alta manual**
+      de una correspondencia (R34), re-ejecutable y sin credenciales dentro. |
+      Verificación: `test_f009_scripts_infra.py`, al modo de
+      `test_f005_scripts_infra.py` — el script existe, es idempotente y no trae
+      ningún secreto ni ningún login concreto.
+
+## Bloque 5 · El paso del pipeline
+
+- [x] **T13**: Crear `application/pipelines/paso_cierre.py` con el orden de
+      `design.md` §6. | Verificación: `test_f009_paso_cierre.py` con dobles:
+      R8 y R10 (el dry-run va primero y sin él no se escribe), R16, R17, R20
+      (**la precondición es propia: nada de `rcg` ni `gra`**), R40, R41 y R42
+      (`cerrado` es terminal y no se pisa).
+
+- [x] **T14**: Auto-cierre por preferencia. | Verificación:
+      `test_f009_paso_cierre.py`: R12, R13 (encadena sin saltarse el dry-run ni
+      ninguna validación) y R14 (por omisión, **falso**).
+
+- [x] **T15**: Control negativo de datos personales en el log del paso. |
+      Verificación: `test_f009_logs_sin_datos_personales.py` — R41, R42, R43,
+      al modo de `test_f005_logs_sin_datos_personales.py` y del de F-019: hacer
+      pasar DNI, nombre, observaciones manuscritas, correo, login y una clave de
+      función por el camino real y comprobar que **ninguno** aparece en la
+      salida — R44 (datos del parte y del propietario), R45 (identidad de quien
+      confirma) y R46 (secretos, ni en logs ni en mensajes de error). **Sin el
+      control negativo, un logger mudo pasaría igual.**
+
+## Bloque 6 · El borde HTTP y el front
+
+- [x] **T16**: Crear `interface_adapters/api/cerrar.py` y registrar la ruta en
+      `function_app.py`, con la traducción de errores. | Verificación:
+      `test_f009_cerrar_http.py`: R47 (400 diciendo qué falta), R48 (409,
+      incluido el caso de login sin confirmar), R49 (503 sin tocar Sigrid), R50
+      (502) y R51 (ni un campo manuscrito en la respuesta). Y que el mensaje de
+      R31 nombra el correo **al usuario** sin que eso acabe en el log (R45).
+
+- [x] **T17**: Añadir `cerrar()` a `services/postventa-front/js/api.js`. |
+      Verificación: `services/postventa-front/tests_js/api.test.js`.
+
+- [x] **T18**: Paso de cierre en el front: enseñar el dry-run —estados legibles,
+      con qué login se firmaría y **el aviso de que la reclamación quedará
+      cerrada sin el parte dentro de Sigrid**— y pedir confirmación reutilizando
+      `js/confirmacion.js`. | Verificación: `tests_js/confirmacion.test.js` y
+      `test_f007_js.py`: R15 (la confirmación caduca y un segundo clic fuera de
+      ventana no dispara), R9 (el dry-run enseña las cinco cosas) y R21 (el
+      aviso se pinta **siempre**, no solo a veces).
+
+## Bloque 7 · Documentación que la feature deja al día
+
+- [x] **T19**: Actualizar `docs/ARCHITECTURE.md` (paso 7 del pipeline, «Alcance
+      del cierre», tabla de sistemas externos) y `docs/DESPLIEGUE.md` (la App
+      Setting del interruptor y cómo se abre). **`ARCHITECTURE.md` §«Alcance del
+      cierre» dice hoy que el ERP comprueba el gráfico y que por eso el alcance
+      está «en el aire»: hay que sustituirlo por el orden decidido —validar →
+      cerrar → subir el PDF— y por el riesgo aceptado de `design.md` §2**, sin
+      suavizarlo. | Verificación: `test_f019_documentacion.py` extendido, o su
+      equivalente de F-009.
+
+- [x] **T20**: Actualizar `docs/INTEGRACION.md` con lo que ahora **escribimos**
+      en Sigrid. | Verificación: R52 — un test comprueba que las variables
+      nuevas están nombradas y que **ningún valor** aparece.
+
+- [x] **T21**: Actualizar `azure-apps/postventa_incidencias.md` (R53): este
+      servicio escribe en el ERP, qué escribe y qué se rompe si alguien cambia la
+      configuración de escritura de la pasarela. **Añadir además el obstáculo de
+      `design.md` §11**: el binario del parte vive en la base documental, que hoy
+      **no es escribible** por la pasarela — es lo que le espera a F-012 y le
+      toca decidirlo al dueño de `sigrid-api`. | Verificación: **MANUAL
+      (humano)** — es **otro repositorio**; commit local allí, sin push, y la
+      regla de propiedad del `CLAUDE.md` obliga a hacerlo **en este mismo
+      trabajo**. Enlazar, nunca duplicar.
+
+## Bloque 8 · Verificación contra el ERP de producción
+
+> **REGLA DURA**: prohibido escribir en Sigrid desde local o desde tests. Todo
+> este bloque se ejecuta **desde el entorno desplegado**, con el humano
+> delante, y tras autorización expresa para esa acción concreta. Es el
+> equivalente de la T24 de F-019.
+
+> ### Acta del 2026-09-14 · de dónde sale cada marca de este bloque
+>
+> **Este bloque no se recorrió nunca como tal**, pero **buena parte se ejecutó
+> de hecho** el 2026-09-11, dentro de la verificación de **F-012**: el
+> responsable cerró de verdad la reclamación **`RS26.09/0150` de la obra
+> `0626`** en el ERP de producción, con su parte adjunto, con autorización
+> expresa y comprobándolo él en la ficha de Sigrid. **Ese cierre es el de
+> T24.**
+>
+> **De las seis tareas, solo se marca T26**, y la marca sale de la respuesta
+> del paso 4 de T24 —que es donde su propio contrato dice que se observa—. Las
+> otras cinco **no se marcan**: el cierre ocurrió, pero **casi ninguna de sus
+> comprobaciones**. Ni uno solo de los cinco scripts de lectura de `infra/` se
+> ha ejecutado jamás, así que **la fila de auditoría del primer cierre real
+> está escrita en producción y nadie la ha mirado**, su **huso** incluido.
+>
+> **El acta completa —evidencia medida, tarea por tarea, los huecos con su
+> coste y el veredicto— está en `progress/guion_bloque8_F-009.md` §9**, con las
+> casillas rellenas. La fuente es `progress/guion_bloque9_F-012.md` §9. Nadie
+> ejecutó nada contra el ERP para levantarla.
+>
+> **Dos cosas que el texto de abajo dice mal, y se enmiendan sin borrarlas**:
+>
+> 1. **T22 dice «una reclamación de Mirasierra»**, y T24 hereda esa premisa. No
+>    fue Mirasierra ni la obra de prueba 404: el responsable decidió el
+>    **2026-09-10** verificar sobre la **0626**, que es **una obra en uso**
+>    (nota fechada en `progress/guion_bloque9_F-012.md`). **Mirasierra sigue
+>    fuera**: nadie ha autorizado cerrar una incidencia del piloto.
+> 2. **T22 espera «el aviso de que quedará cerrada sin el parte dentro de
+>    Sigrid (R21)»**. **R21 está derogado** por R48 de F-012 desde el
+>    2026-09-06: el dry-run trae en su lugar el bloque `grafico` (R49), y el
+>    `commit` **exige** el parte adjuntado (R2 de F-012). Un dry-run que aún
+>    trajera aquel aviso significaría que el despliegue no lleva F-012.
+
+> ### Nota del 2026-09-15 · la sesión de solo lectura: qué acredita y qué no
+>
+> El acta de arriba se deja **entera y con su fecha**. Esta nota la enmienda con
+> lo ocurrido un día después.
+>
+> El **2026-09-15** se ejecutó la **sesión de solo lectura** que el §9.5 del
+> guion recomendaba: cuatro de los cinco scripts de lectura de `infra/` —`09`,
+> `10`, `11` y `12`— contra el ERP de producción y contra el esquema propio.
+> **Los cuatro dan `PASA`.** **No se escribió nada**: la única ruta del ERP que
+> se tocó fue `POST /api/sql/read` y la ventana de escritura
+> (`CIERRE_HABILITADO`) **siguió cerrada todo el tiempo**. El acta está en
+> `progress/guion_bloque8_F-009.md` **§10**, y las casillas de **T24** y **T25**
+> llevan su enmienda fechada.
+>
+> **Lo que se marca**: **T25**, entera. Ver su casilla.
+>
+> **Lo que queda acreditado de T24 y sin embargo NO la marca** —los pasos 6, 7
+> y 9 de su procedimiento—:
+>
+> - **Paso 6** · `con.est` es `CER`, leído con `09_estado_reclamacion_sigrid.ps1`
+>   y con el destino resuelto contra `conest` (R1). Hasta hoy constaba **solo
+>   por lo que vio una persona en la ficha de Sigrid**.
+> - **Paso 7** · la fila nueva de `dbo.log` (`ide` 8457839), **campo a campo**
+>   contra `design.md` §7.3: `tab` con, `tip` 708, `cod` `RS26.09/0150`, `ope` 5,
+>   `est` 1, `ori` 0, `emp` 1, `usu` `pgris`, `tex` «Cerrar parte
+>   (postventa-incidencias)», `res` «fuga en caldera», **una sola fila nueva**.
+>   **R24 y R25 acreditados.** Y el **huso**: `HORA LOCAL (correcto)`, **0,0 min
+>   de diferencia** — el defecto que §0.2 del guion daba por probable **no
+>   existía**.
+> - **Paso 9** · la traza local en `cerrado`, con `oid` y **sin el login** del
+>   ERP. **R41 y R43 acreditados.**
+>
+> **Por qué T24 SIGUE SIN MARCAR.** Su contrato son **nueve pasos** y hay que
+> recorrerlos todos. Faltan cinco:
+>
+> - **2** · el `MAX(ide)` de `dbo.log` de partida. Nadie lo anotó.
+> - **3** · el dry-run leído **con el gráfico dentro**. El único que hubo fue el
+>   de `08:27:42`, **antes** de adjuntar.
+> - **4** · el `estado: "cerrado"` de la respuesta (del paso 4 solo consta el
+>   **HTTP 200**).
+> - **5** · **`filas_afectadas: 2`** (R22). **No es recuperable hacia atrás**:
+>   solo lo dará el siguiente cierre real. Es el hueco 8 del §9.4 del guion.
+> - **8** · que `con.tiemod` **no se movió**. Hoy vale `46275.647118`, pero sin
+>   el valor de partida ese número **no compara con nada**.
+>
+> **T22, T23 y T27 tampoco se marcan**, y no se han tocado hoy. De **T23** sí se
+> vio algo de refilón: el `usu` escrito en el ERP es `pgris`, lo que prueba que
+> el login se derivó, se resolvió contra el ERP y **se usó para firmar**. **No
+> prueba R33** (la correspondencia guardada como confirmada, con
+> `verificado_at_utc`) ni **R31** (que un login inexistente se rechace sin tocar
+> Sigrid). El hueco queda **reducido**, no cerrado.
+>
+> **Salvedad honesta, la misma que en T29**: esta nota y la marca de T25 se
+> escriben desde la rama **`feature/F-026-aprobacion-humana`**, no desde
+> `feature/F-009-cierre-sigrid`. El código de F-009 está en el historial de esa
+> rama, y lo que se acredita aquí **no depende del código sino del ERP**: son
+> lecturas de una fila escrita en producción el 2026-09-11.
+>
+> **Aviso para quien siga**: `infra/07_alta_usuario_sigrid.ps1` (líneas 161 y
+> 248) y `infra/17_traza_grafico_local.ps1` (línea 196) arrastran el mismo
+> defecto de comillas de PowerShell 5.1 que hoy tumbó al `12`, y **nunca se han
+> ejecutado**. El arreglo ya está escrito (`Invoke-PythonDelServicio`, en
+> `infra/08_lectura_sigrid_comun.ps1`); ver §10.6 del guion.
+
+- [ ] **T22**: **Dry-run real** contra una reclamación de Mirasierra, desde el
+      entorno desplegado y con el interruptor **apagado**. | Verificación:
+      **MANUAL (humano)**. Elegir una incidencia del piloto y llamar a
+      `POST /api/cerrar` con `commit: false`. Se espera: el código y la
+      descripción de la reclamación, el estado de origen legible, el destino
+      `CER`, el login con el que se firmaría y **el aviso de que quedará cerrada
+      sin el parte dentro de Sigrid** (R21). **Nada debe cambiar en el ERP**:
+      comprobarlo releyendo `con.est` con `POST /api/sql/read`, que debe seguir
+      en el estado de origen.
+
+- [ ] **T23**: **La siembra del login, contra el ERP** (R30–R33). |
+      Verificación: **MANUAL (humano)**, en tres pasos:
+      1. Con la tabla de correspondencias **vacía** para ese usuario, ejecutar
+         el dry-run: el login candidato se deriva de su correo y **se verifica**
+         contra `dbo.usu`. Comprobar que el candidato existe **exactamente una
+         vez**.
+      2. Comprobar que la correspondencia quedó **guardada como confirmada** en
+         `postventa.usuarios_sigrid` (R33), y que un segundo dry-run **ya no
+         deriva nada**.
+      3. Con un usuario cuyo candidato **no exista** en `dbo.usu`, comprobar que
+         responde **409** nombrando el correo y el login intentado, **sin tocar
+         Sigrid** (R31). Es el caso de los 2 de 8 medidos que no siguen la
+         convención, y se resuelve con el alta manual de T12 (R34).
+
+- [ ] **T24**: **El primer cierre real**, con autorización expresa del humano
+      para esa incidencia concreta. | Verificación: **MANUAL (humano)**.
+      Procedimiento, en este orden y sin saltarse ningún paso:
+      1. Anotar el estado de partida: `SELECT ide, est FROM dbo.con WHERE tip = ? AND cod = ?`.
+      2. Anotar `SELECT MAX(ide) FROM dbo.log`.
+      3. Ejecutar el dry-run (T22) y **leerlo**.
+      4. Confirmar en el front y ejecutar con `commit: true`.
+      5. Comprobar que la respuesta declara **2 filas afectadas** (R22).
+      6. Releer `con.est`: debe ser el `est` de `conest` con `cod = 'CER'`.
+      7. Leer la fila nueva de `dbo.log` y comprobar **campo a campo** contra
+         `design.md` §7.3: `tab`, `tip`, `cod`, `res`, `ope`, `est`, `ori`,
+         `emp`, `usu` y el `tex` propio (R24, R25).
+      8. Comprobar que **`con.tiemod` no se ha movido**, como en el ERP
+         (F-008 §2.3).
+      9. Comprobar que la traza local quedó en `cerrado` con su `oid` y sus
+         códigos de estado (R41), y que **no guarda el login** (R43).
+
+- [x] **T25**: **Comprobar que el `tex` propio hace lo que se diseñó** (R25). |
+      Verificación: **MANUAL (humano)**. Dos lecturas: que
+      `tex LIKE 'Cerrar parte%'` **encuentra** el cierre nuevo (seguimos en los
+      informes de Posventa) y que el filtro por el texto propio devuelve
+      **exactamente los cierres de este servicio** y ninguno manual.
+      **HECHO (2026-09-15).** **De dónde sale la marca**:
+      `infra\11_trazabilidad_tex_sigrid.ps1` ejecutado contra el ERP de
+      producción en la sesión de solo lectura —sin abrir la ventana de
+      escritura, solo `POST /api/sql/read`—, con veredicto
+      `TRAZABILIDAD DEL TEXTO PROPIO : PASA`. **Las dos lecturas, las dos en
+      verde**: (1) «el prefijo del ERP encuentra nuestro cierre» = **True**, y
+      devuelve **una sola** fila, `8457839 | 20260911 | 102812 | pgris | Cerrar
+      parte (postventa-incidencias)` — **seguimos saliendo en los informes de
+      Posventa**; (2) «cierres de este servicio en todo el ERP» esperado **1**,
+      obtenido **1** sobre `dbo.log` entera, y «el filtro exacto no devuelve más
+      de lo listado» **1/1** — el filtro exacto devuelve **solo lo nuestro** y
+      **ninguno** de los 6.843 cierres manuales. Son las **dos** condiciones de
+      D1 de `design.md`. **Salvedad de procedimiento**: hubo que arreglar antes
+      el script, que preguntaba `tex = ?` sobre una columna `text` y devolvía
+      `500` (commit `a356875`). Casilla y acta en
+      `progress/guion_bloque8_F-009.md` §10 y en la enmienda de la casilla de
+      T25. Marcada desde la rama `feature/F-026-aprobacion-humana`, no desde la
+      de F-009: ver la nota del 2026-09-15 al principio de este bloque.
+
+- [x] **T26**: **Comprobar que el guard de escritura acepta el batch tal cual**.
+      | Verificación: **MANUAL (humano)**, y se hace **dentro de T24**: si
+      `SqlWriteGuard` rechazara la sugerencia de tabla `WITH (UPDLOCK,
+      HOLDLOCK)`, anotarlo y caer a la variante sin sugerencias — que **sigue
+      fallando en seguro** por la clave única de `log.ide` (`design.md` §7.3).
+      No improvisar otra vía: si el guard rechaza algo no previsto, la feature
+      se marca `blocked` y se para.
+      **HECHO (2026-09-11), acreditado el 2026-09-14.** **De dónde sale la
+      marca**: el `POST /api/cerrar` con `commit` de `08:28:12` UTC respondió
+      **`200`** —medido en `appi-postventa-dev`, `progress/guion_bloque9_F-012.md`
+      §9.2— y **la reclamación `RS26.09/0150` quedó en `CER`**, comprobado por
+      el responsable en la ficha de Sigrid (§9.1 de aquel guion). El guard
+      valida **cada** sentencia del batch y la pasarela revierte el batch
+      entero ante un rechazo (`azure-apps/sigrid_api.md` §5 y §7.3): si hubiera
+      rechazado algo, el `UPDATE` se habría ido con él y **el ERP habría
+      quedado sin cambios**. Cambió, luego **el guard dejó pasar las dos
+      sentencias tal cual**, `WITH (UPDLOCK, HOLDLOCK)` incluida, y no hizo
+      falta la variante de reserva. **Salvedad**: `filas_afectadas` no se
+      anotó, así que del `INSERT` en `dbo.log` no hay observación directa (es
+      el hueco 8 de `progress/guion_bloque8_F-009.md` §9.4). Casilla rellena en
+      §5, T26, de ese guion.
+
+- [ ] **T27**: **Reintento sobre lo ya cerrado** (R18, R42). | Verificación:
+      **MANUAL (humano)**. Repetir T24 sobre la misma incidencia: debe salir
+      `ya_cerrada`, **sin escribir nada en Sigrid** —comprobar que `MAX(ide)` de
+      `dbo.log` no ha subido— y sin pisar la traza local.
+
+## Bloque 9 · Cierre
+
+- [x] **T28**: Campaña de mutación (`python -m harness.mutacion --feature
+      F-009`) y análisis de los supervivientes. | Verificación: rigor `critico`
+      → **cero supervivientes** sin justificación escrita aceptada por el
+      humano; informe en `progress/mutacion_F-009.md` con el nº de workers.
+      **HECHO (2026-09-02)**: `python -m harness.mutacion --feature F-009
+      --workers 1` — **nº de workers: 1, campaña en serie**, porque con 8 y con
+      16 la máquina satura y el veredicto `timeout` sale por carga, no por el
+      mutante (`progress/explore_F-009_timeouts.md`). Resultado real: **123
+      mutantes evaluados, 117 muertos, 6 supervivientes, 0 timeouts, 6.124,7 s**
+      (102 min). Los 6 supervivientes son **exactamente los seis previstos**:
+      los tres aceptados por escrito como riesgo por el humano el 2026-08-26
+      (`cliente.py:347`, `consultas.py:202` y `:207`) y los tres equivalentes ya
+      justificados (`escrituras.py:217`, `fabrica.py:130`, `cerrar.py:219`).
+      Informe en `progress/mutacion_F-009.md`, con los 26 análisis y **cero
+      `PENDIENTE`**. El nº de workers **queda escrito aquí y en
+      `progress/current.md` porque el informe que genera el arnés no lo
+      registra** (carencia del arnés, anotada para arreglarse aparte).
+
+- [x] **T29**: Ejecutar `bash harness/init.sh` en verde. | Verificación:
+      `bash harness/init.sh` termina con exit code 0, tests incluidos y con la
+      puerta de cobertura de las líneas cambiadas en `[OK]`.
+      **HECHO (2026-09-14).** **De dónde sale la marca**: ejecutado por el
+      implementer al levantar el acta del bloque 8, con salida
+      `ENTORNO LISTO. Puedes trabajar.` y **exit code 0**: `62 passed in
+      6.70s`, las dos suites de servicio (`api`, `front`) en verde y
+      `PUERTA COBERTURA: 99.0% de 1340 líneas cambiadas cubiertas (1327/1340,
+      umbral 80%)`. **Salvedad honesta**: se ejecutó desde la rama
+      `feature/F-026-aprobacion-humana`, no desde `feature/F-009-cierre-sigrid`
+      como pedía la P1 del guion. El código de F-009 **está en el historial de
+      esa rama** (`git merge-base --is-ancestor feature/F-009-cierre-sigrid
+      HEAD` devuelve cierto), así que el verde cubre F-009 **y todo lo que vino
+      después**, que es más exigente, no menos.

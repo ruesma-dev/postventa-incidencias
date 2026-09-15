@@ -153,11 +153,24 @@ def test_f019_r32_la_seccion_ocho_dice_que_archivar_exige_el_parte_guardado(
     assert "conste guardado" in seccion_ocho
 
 
-def test_f019_r32_la_seccion_ocho_ya_habla_de_nueve_endpoints(seccion_ocho):
+def test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints(seccion_ocho):
     """R32 · la cuenta también cambia, y decía «los seis».
 
     Un número que se queda atrás es la señal más barata de que el documento ya
-    no se mantiene, y este es el que se copia a `azure-apps/`.
+    no se mantiene, y este es el que se copia a `azure-apps/`. Iba por seis
+    antes de F-019, por nueve después, por **diez** desde que F-009 añadió
+    `POST /api/cerrar`, por **once** desde `/api/adjuntar` (F-012) y por
+    **doce** desde `POST /api/aprobar` (F-026, 2026-09-12). Cada vez ha habido
+    que venir aquí, que es el punto.
     """
     assert "Los seis quedan en nivel" not in seccion_ocho
-    assert "Los nueve quedan en nivel" in seccion_ocho
+    assert "Los nueve quedan en nivel" not in seccion_ocho
+    assert "Los diez quedan en nivel" not in seccion_ocho
+    assert "Los once quedan en nivel" not in seccion_ocho
+    # La cuenta se escribe a mano a propósito: un endpoint nuevo tiene que
+    # pasar por aquí, que es lo que este test viene a exigir. Quien la cambie
+    # aquí tiene además que acertar: desde el 2026-09-12,
+    # `test_f012_r68_integracion_declara_el_endpoint_nuevo_que_exponemos`
+    # cuenta las filas de la tabla y comprueba que el número dicho es el que
+    # sale. Este test obliga a pasar; aquel comprueba que lo escrito es cierto.
+    assert "Los doce quedan en nivel" in seccion_ocho

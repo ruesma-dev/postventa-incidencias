@@ -1,7 +1,7 @@
 # infra/cargar_secretos_postventa.ps1
 <#
 .SYNOPSIS
-    Crea o reutiliza el Key Vault del proyecto y sube los NUEVE secretos del
+    Crea o reutiliza el Key Vault del proyecto y sube los ONCE secretos del
     backend, pedidos uno a uno por consola. Re-ejecutable: si el vault ya
     existe, lo reutiliza; si un secreto ya esta, se puede dejar como esta.
 
@@ -32,9 +32,12 @@
     si los dos ficheros discreparan, la Function App arrancaria sin poder
     resolver sus referencias.
 
-    SON NUEVE, NO ONCE. El Key Vault acaba con once secretos, pero a mano solo
-    se cargan los NUEVE del backend (`pg-*`, `gemini-api-key`, `graph-*`,
-    `sharepoint-*`). Los otros dos, `swa-client-id` y `swa-client-secret`, LOS
+    SON ONCE, NO TRECE. El Key Vault acaba con trece secretos, pero a mano
+    solo se cargan los ONCE del backend (`pg-*`, `gemini-api-key`, `graph-*`,
+    `sharepoint-*` y los DOS de Sigrid: `sigrid-api-base-url` y
+    `sigrid-api-key`; `SIGRID_BASE_DATOS` no es un secreto de vault, es una
+    App Setting plana de `desplegar_backend.ps1`). Los otros dos,
+    `swa-client-id` y `swa-client-secret`, LOS
     CREA Y LOS GUARDA `desplegar_front.ps1` cuando genera el registro de
     aplicacion: cuando se ejecuta ESTE script todavia no existen, y cualquier
     valor que se teclee aqui lo sobrescribe despues el despliegue del front.
@@ -53,7 +56,7 @@
 
 .PARAMETER Solo
     Sube unicamente los secretos que se nombren. Para rotar una credencial del
-    backend sin tener que volver a teclear las otras ocho.
+    backend sin tener que volver a teclear las otras diez.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File $HOME\cargar_secretos_postventa.ps1 -WhatIf
@@ -278,8 +281,8 @@ if ($saltados.Count -gt 0) {
     }
 }
 Write-Host ""
-Write-Host "Anota en progress/ solo esto: 'nueve secretos cargados: si/no'."
-Write-Host "Son NUEVE (los del backend): swa-client-id y swa-client-secret los"
+Write-Host "Anota en progress/ solo esto: 'once secretos cargados: si/no'."
+Write-Host "Son ONCE (los del backend): swa-client-id y swa-client-secret los"
 Write-Host "crea y los guarda desplegar_front.ps1, y aqui se dejan vacios."
 Write-Host "Ningun valor, ningun nombre de host, ningun identificador."
 Write-Host ""

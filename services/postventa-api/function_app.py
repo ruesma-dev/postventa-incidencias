@@ -36,6 +36,14 @@ Endpoints:
         archiva y se cierra. Sin esto, `POST /api/archivar` no puede
         completar.
 
+    POST /api/aprobar
+        Registra que **una persona** aprueba un parte que la validación mandó
+        a revisión (F-026), y con eso lo admite en el circuito de archivo y
+        cierre. Guarda el parte y su veredicto en la misma llamada, para que
+        la huella aprobada sea la del veredicto que acaba de escribirse. No
+        depende de `ARCHIVO_HABILITADO` ni de `CIERRE_HABILITADO`: escribe en
+        el esquema propio y no en un sistema ajeno.
+
     GET /api/cola
         Los partes que esperan decisión humana, para que la cola **sobreviva
         entre sesiones** (F-019). Ver más abajo qué añade al cuadro de
@@ -54,13 +62,46 @@ Endpoints:
         está en `postventa.partes` la clave ajena la rechaza y responde
         **409 sin haber subido nada**.
 
+    POST /api/adjuntar
+        Adjunta **un** parte a su reclamación en Sigrid como gráfico (F-012):
+        el binario en la base documental, sus metadatos en la de negocio y el
+        enlace, **tres filas en dos bases**, escritas por el endpoint de
+        dominio de la pasarela en una transacción.
+
+        Es la **primera mitad del cierre** y va delante de `POST /api/cerrar`:
+        con esto, ninguna reclamación cerrada por este servicio queda sin su
+        parte dentro del ERP. Lleva los mismos candados que el cierre —dry-run
+        por omisión, confirmación explícita, la ventana `CIERRE_HABILITADO`
+        (**la misma**, no otra) y la puerta de entorno—, y uno propio: el PDF
+        se comprueba aquí —tope y firma— antes de mandarlo por el proxy.
+
+        Su reintento es **seguro**, y esa es la diferencia con el cierre: el
+        endpoint de la pasarela es idempotente por tamaño y `sha256`.
+
+    POST /api/cerrar
+        Cierra **una** incidencia en Sigrid: mueve el estado de la reclamación
+        y escribe su fila de auditoría. Desde F-012 **exige que el parte conste
+        adjuntado**: con `commit` y sin gráfico responde 409 sin tocar el ERP.
+        Es, con `/api/adjuntar`, una de las dos escrituras de este servicio en
+        un ERP de producción, y por eso es el endpoint con más candados:
+
+        - **Por omisión no cierra nada**: sin `commit` es un dry-run, que lee
+          y devuelve qué pasaría.
+        - Con `commit` exige además `confirmado` o el auto-cierre guardado del
+          usuario: sin ninguna de las dos cosas responde **400**.
+        - Desde un puesto de trabajo responde **503 sin tocar el ERP**, y en
+          el entorno desplegado la ventana de escritura
+          (`CIERRE_HABILITADO`) se despliega **apagada**.
+        - No cierra un parte que no sea apto **ni que no conste archivado**:
+          primero el documento, después el cierre.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
 
 ---
 
-## Por qué los nueve endpoints están en `ANONYMOUS`, y no es un descuido
+## Por qué los once endpoints están en `ANONYMOUS`, y no es un descuido
 
 **No lo toques sin leer esto.** Un endpoint anónimo parece un olvido, y el
 arreglo evidente —`auth_level=FUNCTION`— **rompe el front el mismo día que se
@@ -78,7 +119,7 @@ El servicio está desplegado como **backend enlazado** de una Static Web App
 De ahí las dos consecuencias que fijan este fichero:
 
 1. **`auth_level=FUNCTION` no vale**: la Static Web App no aporta la clave que
-   la Function exigiría, así que los nueve endpoints empezarían a devolver
+   la Function exigiría, así que los once endpoints empezarían a devolver
    `401` a través del front.
 2. **La autenticación integrada de Entra en la Function App tampoco vale**:
    espera un *bearer* que el proxy no envía.
@@ -111,7 +152,7 @@ ninguna de las dos está en este fichero:
 internet**, porque nadie alcanza el código sin pasar por el proxy y el proxy
 exige sesión. Lo que decide quién usa la aplicación es la capa 2.
 
-### Y los otros dos candados, que son de otra cosa
+### Y los otros tres candados, que son de otra cosa
 
 1. **La ventana de escritura de `POST /api/archivar`**: `ARCHIVO_HABILITADO`
    se despliega **apagado**, y fuera de esa ventana el endpoint responde `503`
@@ -121,13 +162,25 @@ exige sesión. Lo que decide quién usa la aplicación es la capa 2.
    ella** a propósito (R34): escriben en el esquema propio del proyecto, y
    atarlos dejaría sin poder guardar el trabajo de revisión justo cuando el
    archivado está cerrado, que es como se despliega.
-2. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
+2. **La ventana de escritura del ERP**, `CIERRE_HABILITADO`, que cubre
+   `POST /api/cerrar` **y `POST /api/adjuntar`** (F-009 y F-012): se despliega
+   **apagada**, igual y por el mismo mecanismo que la de SharePoint, pero
+   protegiendo algo distinto y más caro: **el ERP de producción del que depende
+   toda la empresa**. Es una variable aparte de la de SharePoint a propósito
+   —se abren en momentos distintos, y poder archivar no puede implicar poder
+   cerrar—, pero **es una sola para el gráfico y el cierre**, porque el gráfico
+   es la primera mitad del cierre: el mismo sistema, el mismo dueño y la misma
+   decisión. Encima de esa ventana hay dos puertas más que no son
+   configuración: el entorno tiene que ser `dev` o `pro`, y **por omisión la
+   llamada es un dry-run**, así que ni siquiera con todo abierto se escribe sin
+   que alguien lo pida y lo confirme.
+3. **Un tope de gasto con alerta en el proveedor de IA**, que es la defensa
    proporcionada al riesgo de `/api/extraer` y `/api/firma`: gastar cuota.
 
 ### Qué añade `GET /api/cola` a este cuadro
 
 Es el **primer endpoint del servicio que devuelve dato personal acumulado sin
-que el llamante aporte el PDF**. Los ocho restantes exigen que tú mandes el
+que el llamante aporte el PDF**. Los diez restantes exigen que tú mandes el
 parte, o que sepas su `hash`: quien no lo tiene no obtiene nada de él. La cola
 devuelve transcripciones manuscritas de clientes, códigos de obra y números de
 incidencia sin aportar nada.
@@ -162,22 +215,46 @@ from domain.models.errores import (
     ArchivoDeshabilitado,
     ArchivoFallido,
     ArchivoSinTraza,
+    CierreDeshabilitado,
+    CierreFallido,
+    CierreSinTraza,
     ConfiguracionPgIncompleta,
     ConfiguracionSharePointIncompleta,
+    ConfiguracionSigridIncompleta,
     CuerpoDeArchivoInvalido,
+    CuerpoDeCierreInvalido,
+    CuerpoDeGraficoInvalido,
     CuerpoDeValidacionInvalido,
+    EscrituraDocumentalDeshabilitada,
+    EstadoCambiadoDesdeElDryRun,
+    EstadoDeCierreNoResoluble,
+    EstadoNoCerrable,
     ExtraccionFallida,
+    GraficoDemasiadoGrande,
+    GraficoFallido,
+    GraficoNoEsPdf,
+    GraficoRechazadoPorLaPasarela,
+    GraficoSinTraza,
     LimiteDeEntradaSuperado,
     NombradoImposible,
     ParteDemasiadoGrande,
+    ParteNoAdjuntado,
+    ParteNoAprobable,
     ParteNoApto,
+    ParteNoArchivado,
     PersistenciaNoDisponible,
     PeticionDePersistenciaInvalida,
+    ReclamacionNoLocalizada,
     ReferenciaNoConsta,
     RemesaSinPdfUtilizable,
+    UsuarioSigridInexistente,
+    UsuarioSigridNoMapeado,
 )
 from domain.models.remesa import DocumentoEntrada
+from interface_adapters.api.adjuntar import adjuntar_grafico
+from interface_adapters.api.aprobar import aprobar_parte_http
 from interface_adapters.api.archivar import archivar_parte
+from interface_adapters.api.cerrar import cerrar_incidencia
 from interface_adapters.api.cola import leer_cola
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
@@ -455,6 +532,84 @@ def parte(req: func.HttpRequest) -> func.HttpResponse:
     return _json(cuerpo, 200)
 
 
+@app.route(route="aprobar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def aprobar(req: func.HttpRequest) -> func.HttpResponse:
+    """Registra la aprobación humana de un parte rechazado (F-026, R2).
+
+    Solo traduce, como los demás: saca el JSON, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. Cada código dice una cosa distinta y
+    lleva a una acción distinta (R20): **400** la petición está mal formada o
+    no dice quién decide, **409** el parte **no admite** esa decisión —ya es
+    apto, o le falta un dato que hay que teclear— o su remesa no consta, y
+    **503** aquí y ahora no hay base de datos. En los cuatro, sin haber
+    escrito nada.
+
+    El 400 y el 409 no se confunden a propósito: el 400 manda a revisar el
+    cuerpo y el 409 manda a corregir el papel, que son dos sitios distintos y
+    dos personas distintas.
+
+    El log lleva el `hash_parte`, el destino del que se rescató el parte y el
+    resultado, y **nada más** (R44). Ni el `oid` de quien aprueba —que es el
+    dato nuevo que trae este cuerpo—, ni el DNI, ni las observaciones: este
+    log viaja a Application Insights y sobrevive al parte.
+    """
+    try:
+        cuerpo = aprobar_parte_http(req.get_json())
+    except ValueError:
+        log.info("aprobar rechazado: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    except (PeticionDePersistenciaInvalida, CuerpoDeValidacionInvalido) as error:
+        log.info("aprobar rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ParteNoAprobable as error:
+        log.info("aprobar no admitido: %s", error.motivo)
+        return _json({"error": error.motivo}, 409)
+    except ReferenciaNoConsta as error:
+        log.info("aprobar sin remesa registrada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"la remesa de este parte no consta registrada, así que no "
+                    f"se ha aprobado nada: hay que registrarla antes con "
+                    f"POST /api/remesa y reenviar el parte con el 'remesa_id' "
+                    f"que devuelva. Motivo: {error.motivo}"
+                )
+            },
+            409,
+        )
+    except ConfiguracionPgIncompleta as error:
+        log.warning("aprobar sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no guarda nada: no se ha registrado la "
+                    f"aprobación. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("aprobar sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"registrado la aprobación: se puede reintentar cuando la "
+                    f"base vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info(
+        "aprobar: hash=%s destino=%s resultado=%s",
+        cuerpo["hash_parte"],
+        cuerpo["aprobacion"]["destino_aprobado"],
+        cuerpo["aprobacion"]["estado"],
+    )
+    return _json(cuerpo, 200)
+
+
 @app.route(route="cola", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def cola(req: func.HttpRequest) -> func.HttpResponse:
     """Los partes que esperan que una persona decida (F-019, R14).
@@ -618,5 +773,285 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["carpeta"],
         cuerpo["estado"],
         len(cuerpo["avisos"]),
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="adjuntar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def adjuntar(req: func.HttpRequest) -> func.HttpResponse:
+    """Adjunta **un** parte a su reclamación en Sigrid como gráfico (F-012).
+
+    Es la **primera mitad del cierre** y va delante de `POST /api/cerrar`: con
+    esto, ninguna reclamación cerrada por este servicio queda sin su parte
+    dentro del ERP.
+
+    Solo traduce: saca el fichero y los campos del `multipart`, llama al
+    handler y mapea sus errores de dominio a códigos HTTP. Cada código dice una
+    cosa distinta **a propósito**, y confundirlos lleva a acciones opuestas:
+
+    - **400** · la petición está mal formada, y se dice **qué** falta —el
+      fichero incluido— (R58).
+    - **409** · no se puede adjuntar tal y como están las cosas: el parte no es
+      apto, no consta archivado o no consta guardado, la reclamación no está o
+      no admite cierre, falta el mapeo del usuario, el PDF pasa del tope o no
+      es un PDF, o la pasarela rechaza la petición con uno de los códigos de
+      R33 (R59).
+    - **503** · aquí y ahora no se adjunta: entorno equivocado, ventana
+      cerrada, falta configuración, la base no responde, o **la pasarela dice
+      que le falta una precondición de su dueño** (R32, R60). Este último no es
+      culpa de quien llama ni de este servicio: es una App Setting de otro
+      proyecto, y el mensaje lo nombra.
+    - **502** · la pasarela falló, no respondió o devolvió algo que no se
+      entiende (R61).
+
+    **En todos ellos, sin haber escrito nada en el ERP**, con dos excepciones
+    que el propio mensaje declara:
+
+    - un `GraficoFallido` por corte de red **no garantiza** que la escritura no
+      saliera. Pero, al revés que en el cierre, **el reintento es seguro**: el
+      endpoint es idempotente por tamaño y `sha256`, así que volver a pedirlo
+      no duplica el gráfico;
+    - y el **500**, que es el único caso en el que el gráfico **sí está** en
+      Sigrid y lo que falta es la traza (`GraficoSinTraza`). No se recicla el
+      502 ni el 503 porque los dos prometen que no se ha escrito nada, y aquí
+      sí se escribió. Es el defecto 14 de F-010 aplicado por tercera vez.
+
+    El log lleva el `hash` del parte, la incidencia y el estado. **Nunca** el
+    contenido del PDF ni su texto codificado, ni el correo, ni el login, ni el
+    `oid`, ni el `cod` del gráfico —que lleva el login del ERP dentro— (R53,
+    R54, R55): este log lo lee cualquiera que abra Application Insights, y
+    sobrevive al parte.
+    """
+    fichero = next(iter(req.files.values()), None)
+
+    try:
+        cuerpo = adjuntar_grafico(
+            fichero.read() if fichero is not None else b"",
+            hash=req.form.get("hash", ""),
+            codigo_obra=req.form.get("codigo_obra", ""),
+            numero_incidencia=req.form.get("numero_incidencia", ""),
+            veredicto=req.form.get("veredicto", ""),
+            destino=req.form.get("destino", ""),
+            estado_archivo=req.form.get("estado_archivo", ""),
+            usuario_oid=req.form.get("usuario_oid", ""),
+            correo=req.form.get("correo", ""),
+            commit=req.form.get("commit", ""),
+            confirmado=req.form.get("confirmado", ""),
+        )
+    except (CuerpoDeGraficoInvalido, CuerpoDeCierreInvalido) as error:
+        log.info("adjuntar rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ReferenciaNoConsta as error:
+        log.info("adjuntar sin el parte guardado: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"este parte no consta guardado, así que **no se ha "
+                    f"adjuntado nada** al ERP: hay que guardarlo antes con "
+                    f"POST /api/parte —y registrar su remesa con "
+                    f"POST /api/remesa si tampoco consta— y volver a "
+                    f"intentarlo. Motivo: {error.motivo}"
+                )
+            },
+            409,
+        )
+    except (
+        ParteNoApto,
+        ParteNoArchivado,
+        NombradoImposible,
+        GraficoDemasiadoGrande,
+        GraficoNoEsPdf,
+        ReclamacionNoLocalizada,
+        EstadoDeCierreNoResoluble,
+        EstadoNoCerrable,
+        UsuarioSigridNoMapeado,
+        UsuarioSigridInexistente,
+        GraficoRechazadoPorLaPasarela,
+    ) as error:
+        # El motivo puede nombrar el correo del usuario, así que **no se
+        # registra tal cual**: va al usuario, que es su dueño y lo tiene
+        # delante, y al log va solo el tipo del error (R54).
+        log.info("adjuntar no procede: %s", type(error).__name__)
+        return _json({"error": error.motivo}, 409)
+    except EscrituraDocumentalDeshabilitada as error:
+        log.warning("adjuntar sin la precondición de la pasarela: %s", error.codigo)
+        return _json(
+            {
+                "error": (
+                    f"la pasarela sigrid-api no tiene habilitada la escritura "
+                    f"que hace falta para adjuntar el parte, así que **no se ha "
+                    f"escrito nada** en el ERP. Es configuración de su dueño y "
+                    f"no se corrige desde aquí: hay que pedírsela. Motivo: "
+                    f"{error.motivo}"
+                )
+            },
+            503,
+        )
+    except (CierreDeshabilitado, ConfiguracionSigridIncompleta) as error:
+        log.warning("adjuntar deshabilitado: %s", error.motivo)
+        return _json({"error": error.motivo}, 503)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("adjuntar sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no puede dejar traza del gráfico y no se ha "
+                    f"tocado el ERP. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("adjuntar sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"adjuntado nada al ERP: se puede reintentar cuando la "
+                    f"base vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except GraficoSinTraza as error:
+        log.error(
+            "adjuntar sin traza: el parte ESTÁ adjunto en el ERP y no consta: %s",
+            error.motivo,
+        )
+        return _json({"error": error.motivo}, 500)
+    except GraficoFallido as error:
+        log.warning("adjuntar fallido: %s", error.motivo)
+        return _json({"error": error.motivo}, 502)
+
+    log.info(
+        "adjuntar: parte=%s incidencia=%s estado=%s idempotente=%s filas=%s",
+        cuerpo["hash_parte"],
+        cuerpo["numero_incidencia"],
+        cuerpo["estado"],
+        cuerpo["idempotente"],
+        cuerpo["filas_afectadas"],
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="cerrar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def cerrar(req: func.HttpRequest) -> func.HttpResponse:
+    """Cierra **una** incidencia en Sigrid, o dice qué pasaría si se cerrara.
+
+    Solo traduce: saca el JSON de la petición, llama al handler y mapea sus
+    errores de dominio a códigos HTTP. Cada código dice una cosa distinta **a
+    propósito**, y confundirlos lleva a acciones opuestas:
+
+    - **400** · la petición está mal formada, y se dice **qué** falta. Aquí
+      entra también pedir `commit` sin `confirmado` y sin auto-cierre: no es
+      que la incidencia no se pueda cerrar, es que falta la confirmación que el
+      contrato exige (R12, R47).
+    - **409** · no se puede cerrar tal y como están las cosas: el parte no es
+      apto, no consta archivado, la reclamación no está o no admite cierre, el
+      estado de cierre no se resuelve, falta el mapeo del usuario, o la
+      reclamación se movió entre el dry-run y la escritura (R48).
+    - **503** · aquí y ahora no se cierra: entorno equivocado, ventana cerrada,
+      falta configuración, o la base de datos no responde (R49).
+    - **502** · la pasarela del ERP falló (R50).
+
+    **En todos ellos, sin haber escrito nada en el ERP**, con dos excepciones
+    que el propio mensaje declara:
+
+    - un `CierreFallido` por corte de red **no garantiza** que la escritura no
+      saliera. Por eso no se reintenta solo (R27): el reintento lo pide una
+      persona, después de mirar el ERP;
+    - y el **500**, que es el único caso en el que la incidencia **sí está
+      cerrada** y lo que falta es la traza (`CierreSinTraza`). No se recicla el
+      502 ni el 503 porque los dos prometen que no se ha escrito nada, y aquí
+      sí se escribió. Es el defecto 14 de F-010 —el que en el archivo produjo
+      `ArchivoSinTraza`— aplicado donde más caro sale.
+
+    El log lleva el `hash` del parte, el código de la incidencia y el estado.
+    **Nunca** el correo, ni el login de Sigrid, ni el `oid`, ni nada del papel
+    (R44, R45): este log lo lee cualquiera que abra Application Insights, y
+    sobrevive al parte.
+    """
+    try:
+        cuerpo = cerrar_incidencia(req.get_json())
+    except ValueError:
+        log.info("cerrar rechazado: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    except CuerpoDeCierreInvalido as error:
+        log.info("cerrar rechazado: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except (
+        ParteNoApto,
+        ParteNoArchivado,
+        # R62 (F-012) · el parte no consta adjuntado a la reclamación. Es un
+        # 409 y **sin haber tocado el ERP**: la precondición se comprueba
+        # contra la traza propia, antes de la escritura.
+        ParteNoAdjuntado,
+        ReclamacionNoLocalizada,
+        EstadoDeCierreNoResoluble,
+        EstadoNoCerrable,
+        UsuarioSigridNoMapeado,
+        UsuarioSigridInexistente,
+        EstadoCambiadoDesdeElDryRun,
+    ) as error:
+        # El motivo puede nombrar el correo del usuario (R31), así que **no se
+        # registra tal cual**: va al usuario, que es su dueño y lo tiene
+        # delante, y al log va solo el tipo del error (R45).
+        log.info("cerrar no procede: %s", type(error).__name__)
+        return _json({"error": error.motivo}, 409)
+    except (CierreDeshabilitado, ConfiguracionSigridIncompleta) as error:
+        log.warning("cerrar deshabilitado: %s", error.motivo)
+        return _json({"error": error.motivo}, 503)
+    except ConfiguracionPgIncompleta as error:
+        log.warning("cerrar sin base de datos configurada: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"falta configuración de la base de datos, así que este "
+                    f"entorno no puede dejar traza del cierre y no se ha "
+                    f"tocado el ERP. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except PersistenciaNoDisponible as error:
+        log.warning("cerrar sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"cerrado nada en el ERP: se puede reintentar cuando la "
+                    f"base vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    except CierreSinTraza as error:
+        log.error(
+            "cerrar sin traza: la incidencia ESTÁ cerrada en el ERP y no consta: %s",
+            error.motivo,
+        )
+        return _json(
+            {
+                "error": (
+                    f"la incidencia SÍ se ha cerrado en Sigrid, pero no se ha "
+                    f"podido dejar constancia en la base de datos: el ERP ya "
+                    f"está escrito y lo que falta es la traza, así que volver a "
+                    f"cerrarla no arregla nada —como mucho responderá "
+                    f"'ya_cerrada'—. Motivo: {error.motivo}"
+                )
+            },
+            500,
+        )
+    except CierreFallido as error:
+        log.warning("cerrar fallido: %s", error.motivo)
+        return _json({"error": error.motivo}, 502)
+
+    log.info(
+        "cerrar: parte=%s incidencia=%s estado=%s filas=%s",
+        cuerpo["hash_parte"],
+        cuerpo["numero_incidencia"],
+        cuerpo["estado"],
+        cuerpo["filas_afectadas"],
     )
     return _json(cuerpo, 200)

@@ -43,7 +43,7 @@ INFRA = RAIZ / "infra"
 #: T3 · la fuente unica de nombres de recurso, region y tags.
 SCRIPT_VARS = INFRA / "00_vars_postventa.ps1"
 
-#: T4 · crea o reutiliza el Key Vault y sube los nueve secretos del backend.
+#: T4 · crea o reutiliza el Key Vault y sube los once secretos del backend.
 SCRIPT_SECRETOS = INFRA / "cargar_secretos_postventa.ps1"
 
 #: T5 · el backend: recursos, identidad, referencias a Key Vault y publicacion.
@@ -193,8 +193,8 @@ def test_f010_t3_el_sufijo_de_unicidad_global_nace_vacio(variables):
     assert "00_vars_postventa.local.ps1" in variables
 
 
-def test_f010_t3_declara_los_once_secretos_del_key_vault(variables):
-    """R10 · los once nombres de `design.md` seccion 3, y ni un valor.
+def test_f010_t3_declara_todos_los_secretos_del_key_vault(variables):
+    """R10 · los once nombres de `design.md` seccion 3 mas los dos de F-009.
 
     Los nombres de secreto viven aqui para que `cargar_secretos_postventa.ps1`
     y `desplegar_backend.ps1` no puedan discrepar: uno los sube y el otro los
@@ -213,10 +213,27 @@ def test_f010_t3_declara_los_once_secretos_del_key_vault(variables):
         "sharepoint-drive-id",
         "swa-client-id",
         "swa-client-secret",
+        # F-009, anadidos el 2026-09-03 (hallazgo H1). Son DOS, y cada uno
+        # esta aqui por un motivo distinto: `sigrid-api-key` es una
+        # credencial, y `sigrid-api-base-url` es un host interno, que es el
+        # mismo motivo por el que ya estaba `pg-host` -tampoco autentica nada,
+        # pero no puede quedar escrito en el repositorio-.
+        "sigrid-api-base-url",
+        "sigrid-api-key",
     )
 
     for secreto in esperados:
         assert f'"{secreto}"' in variables
+
+    # Y `sigrid-base-datos` NO, desde la correccion del 2026-09-03: el nombre
+    # de la base del ERP es una App Setting plana, porque ya esta escrito en
+    # documentos versionados de este repositorio (`docs/referencia/
+    # 03_modelo_posventa_sigrid.md`, `specs/F-009-cierre-sigrid/design.md`).
+    # Tenerlo tambien en el vault era un secreto mas que aprovisionar a mano
+    # sin ganancia de seguridad, y cada uno de esos es una oportunidad de que
+    # un despliegue quede a medias. Esta asercion impide que vuelva por
+    # inercia y acabe fijado por partida doble, plano y por referencia.
+    assert '"sigrid-base-datos"' not in variables
 
 
 def test_f010_t3_el_presupuesto_del_proxy_esta_declarado_como_dato(variables):
@@ -254,7 +271,7 @@ def secretos() -> str:
 
 
 def test_f010_t4_el_script_de_secretos_existe():
-    """Sin el, las nueve credenciales viajan a mano y alguna acaba en un chat."""
+    """Sin el, las once credenciales viajan a mano y alguna acaba en un chat."""
     assert SCRIPT_SECRETOS.is_file()
 
 
@@ -358,6 +375,18 @@ def scripts_entregados() -> tuple[Path, ...]:
         "desplegar_backend.ps1",
         "desplegar_front.ps1",
         "verificar_despliegue.ps1",
+        # No es de F-010: es el Paso 0 del bloque 8 de F-009. Entra en el
+        # barrido porque se le exige lo mismo (R1, R7, R8) y el barrido esta
+        # aqui. Ver el bloque del final de este fichero.
+        "14_paso0_sigrid.ps1",
+        # Tampoco son de F-010: son el utillaje de puesta en marcha del bloque
+        # 9 de F-012 —abrir y cerrar la ventana de escritura contra el ERP, y
+        # comprobar el login que la siembra derivaria de un correo—. Entran
+        # aqui por lo mismo que el anterior: se les exige R1, R7 y R8, y el
+        # barrido esta escrito aqui. Su contrato propio se comprueba en
+        # `test_f012_scripts_infra.py`.
+        "19_ventana_escritura.ps1",
+        "20_login_sigrid.ps1",
     )
     return tuple(INFRA / nombre for nombre in de_f010 if (INFRA / nombre).is_file())
 
@@ -524,13 +553,71 @@ def test_f010_r20_los_tiempos_de_espera_caben_en_el_presupuesto(backend):
         assert valor < 45, f"{nombre} no cabe en el presupuesto del proxy"
 
 
-def test_f010_r28_ninguna_variable_de_sigrid_entra_en_el_despliegue(backend):
-    """R28 · el ERP no se toca en este piloto, y eso empieza por no configurarlo.
+def test_f010_r28_la_configuracion_sensible_de_sigrid_no_se_escribe_aqui(backend):
+    """R28, con su premisa corregida el 2026-09-03 (hallazgo H1).
 
-    F-008 y F-009 estan fuera a proposito. Una variable `SIGRID_*` colada aqui
-    seria la primera pieza de un cierre en produccion que nadie ha aprobado.
+    R28 se escribio cuando F-008 y F-009 estaban FUERA del piloto: entonces
+    este test exigia que no hubiera **ninguna** variable `SIGRID_*` en el
+    script, porque cualquiera de ellas habria sido la primera pieza de un
+    cierre en produccion que nadie habia aprobado.
+
+    F-009 esta implementada y aprobada, y el humano aprobo el 2026-09-03
+    aprovisionar su configuracion en el despliegue: sin ella `POST /api/cerrar`
+    responde 503 y el bloque 8 de verificacion contra el ERP no arranca. Asi
+    que la premisa cae, pero lo que R28 protegia de verdad NO cae, y es lo que
+    se comprueba ahora: **las DOS variables sensibles no se escriben en este
+    script**. La raiz de la pasarela es un host interno y la clave es una
+    credencial; las dos viajan por REFERENCIA a Key Vault, declaradas en
+    `00_vars_postventa.ps1`.
+
+    `SIGRID_BASE_DATOS` no esta entre ellas desde la correccion del mismo
+    2026-09-03: el nombre de la base del ERP ya esta escrito en documentos
+    versionados de este repositorio, asi que tenerlo ademas en el vault era un
+    secreto mas que aprovisionar a mano sin ganancia de seguridad real. Es una
+    App Setting plana, como los tiempos y la configuracion de la instalacion.
+    Lo que este test sigue vigilando sin una coma de rebaja es lo otro: la
+    raiz y la clave NO pueden aparecer escritas aqui.
     """
-    assert re.findall(r"\bSIGRID_[A-Z_]+", backend) == []
+    sensibles = ("SIGRID_API_BASE_URL", "SIGRID_API_KEY")
+
+    for variable in sensibles:
+        assert variable not in backend, f"{variable} no puede escribirse aqui"
+
+    # Y las que si estan, estan sin ningun valor que no pueda versionarse: son
+    # las de configuracion de la instalacion, ni una mas. Eran cinco hasta
+    # F-012, que anade SIGRID_GRATIPIDE_PARTE -la clase de grafico de Posventa,
+    # `auxgra.ide` 35-. No es sensible por lo mismo que SIGRID_TIP_RECLAMACION:
+    # es un numero de configuracion del ERP, ya escrito en documentos
+    # versionados de este repositorio, que no identifica ni autentica nada.
+    #
+    # La cuenta se escribe entera a mano A PROPOSITO: una variable SIGRID_*
+    # nueva tiene que pasar por aqui, y la que un dia sea sensible se topara
+    # con este test antes de llegar al script.
+    assert set(re.findall(r"\bSIGRID_[A-Z_]+", backend)) == {
+        "SIGRID_BASE_DATOS",
+        "SIGRID_TIMEOUT_S",
+        "SIGRID_REINTENTOS",
+        "SIGRID_TIP_RECLAMACION",
+        "SIGRID_ZONA_HORARIA",
+        "SIGRID_GRATIPIDE_PARTE",
+    }
+
+
+def test_f010_h2_el_cierre_se_despliega_apagado_y_cada_despliegue_lo_rearma(backend):
+    """H2 · `CIERRE_HABILITADO=false` en `$ajustes`, como `ARCHIVO_HABILITADO`.
+
+    Es el candado que separa leer el ERP de escribir en el ERP, y hasta el
+    2026-09-03 era el unico del despliegue que NO se rearmaba solo: no estaba
+    en `$ajustes` y se apoyaba en el valor por defecto del codigo, que solo se
+    aplica **mientras la App Setting no exista**. Encendido una vez para el
+    bloque 8 de F-009, ningun redespliegue lo habria vuelto a apagar.
+
+    Este test es el que impide que vuelva a desaparecer.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert "CIERRE_HABILITADO=false" in cuerpo
+    assert "CIERRE_HABILITADO=true" not in cuerpo
 
 
 def test_f010_r2_cada_recurso_se_crea_solo_si_no_existe(backend):
@@ -1333,3 +1420,241 @@ def test_f010_r8_el_barrido_no_salta_con_lo_que_si_deben_decir():
         assert PATRON_HOST.findall(linea) == []
         assert PATRON_IP.findall(linea) == []
         assert PATRON_CREDENCIAL.findall(linea) == []
+
+
+# --- Paso 0 del bloque 8 de F-009 · `14_paso0_sigrid.ps1` -------------------
+#
+# Este script NO es de F-010: aprovisiona la configuracion de Sigrid que el
+# bloque 8 de F-009 necesita antes de poder hacer nada contra el ERP. Sus
+# comprobaciones viven aqui, y no en `test_f009_scripts_infra.py`, porque lo
+# que hay que vigilar es exactamente lo mismo que en los cinco de F-010 —ni un
+# nombre de recurso repetido (R7), ni un valor dentro (R8), la ruta relativa en
+# la primera linea (R1)— y ese barrido ya esta escrito aqui. Por eso entra
+# tambien en `scripts_entregados()`.
+#
+# Lo que hace: precondiciones, los dos secretos de Sigrid en el vault, las ocho
+# App Settings sin publicar codigo, y la comprobacion —que hasta hoy solo se
+# podia hacer mirando el portal— de que las once referencias a Key Vault se
+# resuelven. El motivo de que exista: el Paso 0 eran cuatro pasos manuales en
+# `progress/guion_bloque8_F-009.md`, y el ultimo no se podia automatizar
+# porque nadie sabia que la API de gestion publica el ESTADO de una referencia
+# aunque no publique su valor.
+
+
+@pytest.fixture
+def paso0() -> str:
+    """El script del Paso 0, leido como ASCII igual que los demas."""
+    return (INFRA / "14_paso0_sigrid.ps1").read_text(encoding="ascii")
+
+
+def test_f009_paso0_el_script_existe():
+    """Sin el, el Paso 0 son cuatro comandos copiados a mano de un guion."""
+    assert (INFRA / "14_paso0_sigrid.ps1").is_file()
+
+
+def test_f009_paso0_carga_las_variables_por_punto(paso0):
+    """R7 · los nombres salen del fichero de variables, no de aqui."""
+    assert r'. "$PSScriptRoot\00_vars_postventa.ps1"' in paso0
+
+
+def test_f009_paso0_los_secretos_de_sigrid_se_derivan_y_no_se_escriben(paso0):
+    """Los NOMBRES de los dos secretos tampoco se escriben a mano.
+
+    Salen de `$PostventaAppSettingsSecretas` filtrando por `SIGRID_*`. Si
+    manana hubiera un tercero, entraria solo; escritos a mano, se quedaria
+    fuera en silencio, que es como el Paso 0 vuelve a quedarse a medias.
+    """
+    assert "$PostventaAppSettingsSecretas" in paso0
+    assert "SIGRID_*" in paso0
+    assert "sigrid-api-key" not in paso0
+    assert "sigrid-api-base-url" not in paso0
+
+
+def test_f009_paso0_llama_a_los_dos_scripts_y_no_duplica_lo_que_hacen(paso0):
+    """Delega: ni sube secretos por su cuenta ni fija App Settings.
+
+    Un tercer sitio donde se escriban las App Settings de Sigrid es un tercer
+    sitio que se queda desactualizado. `-SinPublicar` es lo que separa
+    «configurar» de «desplegar codigo»: el Paso 0 no publica nada.
+    """
+    assert r'& "$PSScriptRoot\cargar_secretos_postventa.ps1" -Solo' in paso0
+    assert r'& "$PSScriptRoot\desplegar_backend.ps1" -SinPublicar' in paso0
+    assert "az keyvault secret set" not in paso0
+    assert "appsettings set" not in paso0
+
+
+def test_f009_paso0_las_dos_escrituras_quedan_bajo_el_whatif(paso0):
+    """R3 · con `-WhatIf` no se llama a ninguno de los dos que escriben.
+
+    No basta con declarar el parametro: la guarda tiene que estar ANTES de la
+    primera invocacion en el propio texto del script.
+    """
+    assert "[switch]$WhatIf" in paso0
+    guarda = paso0.find("if (-not $WhatIf) {")
+    primera = paso0.find(r'& "$PSScriptRoot\cargar_secretos_postventa.ps1"')
+
+    assert -1 < guarda < primera
+
+
+def test_f009_paso0_con_whatif_se_comprueba_igualmente_el_estado(paso0):
+    """`-WhatIf` sirve ademas para mirar el entorno sin tocarlo.
+
+    La comprobacion de las referencias es una lectura, asi que se hace tambien
+    en seco: es la unica forma de saber que falta sin abrir el portal.
+    """
+    aviso = paso0.find("-WhatIf: no se ha")
+    comprobacion = paso0.find("$referencias = Leer-Referencias")
+
+    # La llamada va DESPUES de la rama que anuncia el `-WhatIf`, es decir
+    # fuera del `if/else` que decide si se escribe: se ejecuta por los dos
+    # caminos. Dentro de la rama que escribe, solo se veria tras tocar Azure.
+    assert -1 < aviso < comprobacion
+    assert "configreferences/appsettings" in paso0
+
+
+def test_f009_paso0_propaga_el_codigo_de_salida_de_lo_que_invoca(paso0):
+    """Si el despliegue falla, este script no puede salir con 0.
+
+    Un orquestador que se traga el fallo de lo que invoca es peor que no
+    tenerlo: deja creer que el Paso 0 esta hecho.
+    """
+    assert paso0.count("$LASTEXITCODE") >= 2
+    assert "exit $LASTEXITCODE" in paso0
+
+
+def test_f009_paso0_cada_causa_de_fallo_tiene_su_codigo_y_ninguno_se_repite(paso0):
+    """R5 · un codigo por causa, y el mensaje dice que hacer."""
+    codigos = re.findall(r"^\$SALIDA_[A-Z_]+ = (\d+)$", paso0, re.MULTILINE)
+
+    assert len(codigos) >= 5
+    assert len(set(codigos)) == len(codigos)
+    assert "Que hacer:" in paso0
+
+
+def test_f009_paso0_la_suscripcion_se_lee_en_ejecucion_y_no_se_imprime(paso0):
+    """R8 · el identificador de suscripcion no entra al repositorio NI SALE.
+
+    Hace falta para componer la URL de la API de gestion, asi que se lee con
+    `az account show` en tiempo de ejecucion. Lo que no puede pasar es que
+    acabe en la consola, en un fichero o en lo que alguien copie a `progress/`.
+    """
+    assert '"account", "show", "--query", "id"' in paso0
+
+    lineas_que_imprimen = [
+        linea
+        for linea in paso0.split("\n")
+        if "Write-Host" in linea and "$suscripcion" in linea
+    ]
+
+    assert lineas_que_imprimen == []
+
+
+def test_f009_paso0_la_tabla_de_referencias_imprime_estados_y_no_valores(paso0):
+    """Lo que se publica es el ESTADO, nunca el valor del secreto.
+
+    Es la razon de ser del punto 4: la API de gestion dice si una referencia
+    esta `Resolved` sin devolver lo que hay detras. Imprimir el valor seria
+    justo lo que el Key Vault existe para evitar.
+    """
+    assert "Resolved" in paso0
+    assert "properties.status" in paso0 or ".properties.status" in paso0
+    assert "details" in paso0
+
+    prohibidas = [
+        linea
+        for linea in paso0.split("\n")
+        if "Write-Host" in linea and re.search(r"\.value\b", linea)
+    ]
+
+    assert prohibidas == []
+
+
+def test_f009_paso0_el_veredicto_cuenta_las_referencias_esperadas(paso0):
+    """«11/11» no se escribe: se cuenta desde el fichero de variables.
+
+    Un numero escrito a mano miente el dia que se anada o se quite un secreto,
+    y miente diciendo que todo esta bien.
+    """
+    assert "Paso 0 COMPLETO" in paso0
+    assert "$PostventaAppSettingsSecretas.Count" in paso0
+    assert "11/11" not in paso0
+
+
+def test_f009_paso0_si_la_comprobacion_no_se_puede_hacer_no_sale_en_verde(paso0):
+    """Una comprobacion que no se ha hecho no es una comprobacion superada.
+
+    Misma regla que la guarda de `verificar_despliegue.ps1`: si `az rest`
+    falla —permisos, version de API—, se dice y se remite al portal, pero el
+    codigo de salida NO es 0.
+    """
+    assert "portal" in paso0.lower()
+    assert "$SALIDA_SIN_COMPROBACION" in paso0
+
+
+def test_f009_paso0_no_escribe_en_azure_por_su_cuenta(paso0):
+    """Las unicas llamadas directas de `az` son lecturas.
+
+    Lo que escribe lo escriben los dos scripts que invoca, cada uno con su
+    propia confirmacion escrita. Este no anade una tercera puerta: anade una
+    tercera oportunidad de equivocarse contando cuantas veces hay que teclear
+    una palabra.
+    """
+    assert PATRON_ESCRITURA_AZ.findall(sin_comentarios(paso0)) == []
+
+
+# --------------------------------------------------------------------------
+# F-012 · las dos App Settings del gráfico, y NINGÚN interruptor nuevo (T18)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("variable", "valor"),
+    [("SIGRID_GRATIPIDE_PARTE", "35"), ("GRAFICO_MAX_BYTES", "10485760")],
+)
+def test_f012_t18_el_despliegue_fija_las_dos_variables_del_grafico(
+    backend, variable, valor
+):
+    """T18 · fijadas aquí y no solo en `settings.py`.
+
+    Es la misma razón por la que `PG_PORT` o `GRAPH_REINTENTOS` están: la
+    configuración desplegada tiene que poder leerse entera en el portal sin
+    abrir el código. Y una de las dos —la clase de gráfico— es la que habría
+    que cambiar si Posventa dice que `PV002` no es la correcta, con la ventana
+    de escritura abierta y el humano delante: la peor hora para descubrir que
+    la variable no existe.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert f"{variable}={valor}" in cuerpo
+
+
+def test_f012_t18_el_despliegue_no_anade_ningun_interruptor_nuevo(backend):
+    """D-B · **una sola ventana de escritura en el ERP**.
+
+    No hay `GRAFICO_HABILITADO`, y no puede haberlo: un segundo interruptor
+    solo podría crear dos estados, y los dos son malos —o se vuelve a cerrar
+    sin gráfico, que es la anomalía que F-012 elimina, o todos los cierres
+    responden 409 por una configuración a medias—.
+    """
+    cuerpo = sin_comentarios(backend)
+
+    assert "GRAFICO_HABILITADO" not in cuerpo
+    assert "CIERRE_HABILITADO=false" in cuerpo
+    assert "CIERRE_HABILITADO=true" not in cuerpo
+
+
+def test_f012_t18_el_resumen_del_despliegue_nombra_tambien_el_grafico(backend):
+    """La línea que lee quien acaba de desplegar tiene que decir qué está
+    cerrado.
+
+    Decir «archivo y cierre» cuando además está cerrado el gráfico dejaría a
+    quien la lea creyendo que `/api/adjuntar` sí escribe.
+    """
+    resumen = next(
+        linea
+        for linea in backend.splitlines()
+        if "Ventana de escritura" in linea
+    )
+
+    assert "GRAFICO" in resumen.upper()
+    assert "CERRADA" in resumen.upper()

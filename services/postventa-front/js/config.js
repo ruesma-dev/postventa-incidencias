@@ -46,6 +46,23 @@ window.CONFIG_POSTVENTA = {
   REINTENTOS: 2,
   ESPERAS_MS: [1000, 3000],
 
+  // F-026 R51 · cuánto se espera DESDE LA ÚLTIMA PULSACIÓN antes de guardar
+  // una corrección. Lo que se dispara al cumplirse no es un guardado suelto:
+  // es `revalidarYGuardar`, o sea DOS peticiones —`/api/validar` y
+  // `/api/parte`—, y la segunda escribe en un PostgreSQL **compartido con
+  // otros dos proyectos en producción**.
+  //
+  // Por eso el número está aquí y no repartido por el código: el día que
+  // alguien quiera subirlo o bajarlo, esta línea es lo único que hay que
+  // tocar, y lee de camino por qué no es gratis bajarlo.
+  //
+  // 1.500 ms: escribir una observación de dos frases produce del orden de dos
+  // o tres guardados, no treinta. Bajarlo a 200 ms sería escribir por tecla
+  // contra una base que no es solo nuestra; subirlo mucho devuelve el defecto
+  // que esto viene a cerrar —quien escribe y cierra la pestaña pierde lo
+  // escrito—, porque lo que aún no se ha guardado solo vive en memoria.
+  RETARDO_AUTOGUARDADO_MS: 1500,
+
   // Por debajo de esta confianza, el campo se destaca para que se mire antes
   // de confirmar nada. Es el umbral del dominio
   // (domain/models/firma.py::UMBRAL_CONFIANZA): no se inventa aquí.

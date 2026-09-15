@@ -5,8 +5,9 @@
     "umbral_lineas_cambiadas": 80
   },
   "mutacion": {
-    "$doc": "timeout_por_mutante_s: segundos que se le conceden a la suite por cada mutante. workers (OPCIONAL, no declarada aqui a proposito): evaluadores concurrentes de 'python -m harness.mutacion'; sin ella el default es min(max(1, nucleos - 2), 16), que se adapta a la maquina en vez de viajar cableado de una a otra. Precedencia: --workers > mutacion.workers > default.",
-    "timeout_por_mutante_s": 120
+    "$doc": "timeout_por_mutante_s: segundos que se le conceden a la suite por cada mutante. workers: evaluadores concurrentes de 'python -m harness.mutacion'. Sin ella el default seria min(max(1, nucleos - 2), 16); se declara en 8 desde el 2026-09-02 porque el default saturaba esta maquina y los mutantes agotaban el timeout por carga, no por colgarse: la suite del servicio api pasa de 38,7 s en solitario a 131,6 s con 16 workers, por encima del tope de 120 s. Con 8 baja a 77,4 s -un 55% de margen- y solo se pierde un 18% de rendimiento. Medido en progress/explore_F-009_timeouts.md. Precedencia: --workers > mutacion.workers > default.",
+    "timeout_por_mutante_s": 120,
+    "workers": 8
   },
   "niveles": {
     "documental": {

@@ -189,6 +189,13 @@ class RepositorioEnMemoria:
     señal de toda la garantía de orden y tiene que llegar a HTTP—, y una cola
     que de verdad devuelve entradas y **recuerda el límite que le pidieron**,
     que es lo único con lo que se puede comprobar el tope duro de R16.
+
+    F-012 le añade otras tres, también sin doble nuevo: `traza_grafico` —lo que
+    responde `consultar_grafico`, y `None` significa «no consta»—, la lista de
+    `hash` con los que se ha consultado —comprobar **que se preguntó** es la
+    mitad de R24 y de R2— y `fallo_al_guardar_grafico`, que es lo único con lo
+    que se puede llegar a `GraficoSinTraza` (R47): el ERP escrito y la base
+    caída, que con el `fallo` general reventaría muchísimo antes.
     """
 
     def __init__(
@@ -197,6 +204,10 @@ class RepositorioEnMemoria:
         *,
         fallo: Exception | None = None,
         cola: Sequence[Any] = (),
+        traza_grafico: Any = None,
+        fallo_al_guardar_grafico: Exception | None = None,
+        estado_que_falla: Any = None,
+        aprobacion: Any = None,
     ) -> None:
         from domain.models.persistencia import ResultadoGuardado
 
@@ -205,6 +216,28 @@ class RepositorioEnMemoria:
         self.remesas: list[Any] = []
         self.archivos: list[Any] = []
         self.cierres: list[Any] = []
+        #: F-012 · las trazas del gráfico que se han pedido guardar, en orden.
+        self.graficos: list[Any] = []
+        #: F-012 · los `hash` con los que se ha consultado la traza, en orden.
+        self.graficos_consultados: list[str] = []
+        #: F-012 · lo que devuelve `consultar_grafico`. `None` es «no consta».
+        self.traza_grafico = traza_grafico
+        #: F-012 · un fallo **solo** al guardar la traza del gráfico (R47).
+        self.fallo_al_guardar_grafico = fallo_al_guardar_grafico
+        #: F-012 · acota ese fallo a un estado concreto. `None` = a todos.
+        #:
+        #: Hace falta para separar dos casos que el borde trata de forma
+        #: opuesta: la base caída **antes** de escribir en el ERP (un 503
+        #: honesto) y la base caída **después** (`GraficoSinTraza`, un 500, con
+        #: las tres filas ya dentro de Sigrid).
+        self.estado_que_falla = estado_que_falla
+        #: F-026 · las aprobaciones que se han pedido guardar, en orden.
+        self.aprobaciones: list[Any] = []
+        #: F-026 · los `hash` con los que se ha consultado la aprobación.
+        self.aprobaciones_consultadas: list[str] = []
+        #: F-026 · lo que devuelve `consultar_aprobacion`. `None` es «no la ha
+        #: aprobado nadie», que **no es un error**.
+        self.aprobacion = aprobacion
         #: Los límites con los que se ha llamado a la cola, en orden.
         self.limites: list[int] = []
         self.cola = tuple(cola)
@@ -250,6 +283,59 @@ class RepositorioEnMemoria:
         resultado = self._o_fallar()
         self.cierres.append(traza)
         return resultado
+
+    def guardar_grafico(self, *, traza: Any) -> Any:
+        """F-012 · registra la traza del gráfico, o levanta el fallo preparado.
+
+        `fallo_al_guardar_grafico` es aparte de `fallo` **a propósito**: hace
+        falta para el único camino que el paso trata distinto de todos los
+        demás, `GraficoSinTraza` (R47), donde la pasarela **ya escribió** y lo
+        que falla es la base. Con el `fallo` general no se podría llegar ahí:
+        reventaría en la traza del dry-run, mucho antes.
+        """
+        if self.fallo_al_guardar_grafico is not None and (
+            self.estado_que_falla is None or traza.estado == self.estado_que_falla
+        ):
+            raise self.fallo_al_guardar_grafico
+        resultado = self._o_fallar()
+        self.graficos.append(traza)
+        return resultado
+
+    def consultar_grafico(self, *, hash_parte: str) -> Any:
+        """F-012 · la traza que el test haya preparado, o `None`.
+
+        Se guarda el `hash` pedido para poder comprobar **que se preguntó**:
+        R24 y R2 son dos requisitos sobre una consulta que, si no se hiciera,
+        dejaría pasar exactamente lo que prohíben.
+        """
+        self.graficos_consultados.append(hash_parte)
+        if self.fallo is not None:
+            raise self.fallo
+        return self.traza_grafico
+
+    def guardar_aprobacion(self, *, aprobacion: Any) -> Any:
+        """F-026 · registra la aprobación humana, o levanta el fallo preparado.
+
+        Guardarla aquí y no en un doble nuevo es deliberado: los pasos del
+        circuito reciben **este** objeto, y si el puerto creciera sin que él
+        creciera, el doble dejaría de poder sustituir al adaptador justo en la
+        pieza que decide si un parte rechazado llega al ERP.
+        """
+        resultado = self._o_fallar()
+        self.aprobaciones.append(aprobacion)
+        return resultado
+
+    def consultar_aprobacion(self, *, hash_parte: str) -> Any:
+        """F-026 · la aprobación que el test haya preparado, o `None`.
+
+        Se guarda el `hash` pedido para poder comprobar **que se preguntó**:
+        R24 es un requisito sobre una lectura que, si no se hiciera, dejaría
+        que quien llama afirmara por su cuenta que el parte estaba aprobado.
+        """
+        self.aprobaciones_consultadas.append(hash_parte)
+        if self.fallo is not None:
+            raise self.fallo
+        return self.aprobacion
 
     def cola_validacion_humana(self, *, limite: int) -> tuple:
         self.limites.append(limite)

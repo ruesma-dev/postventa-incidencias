@@ -295,6 +295,141 @@ class Ajustes(BaseSettings):
         description="Intentos totales ante errores transitorios de Graph.",
     )
 
+    # --- Cierre de la incidencia en Sigrid (F-009) ---------------------
+    # **Esto escribe en el ERP de producción.** Es la única parte de la
+    # configuración del servicio que puede modificar un sistema ajeno del que
+    # depende toda la empresa, y por eso su valor por omisión —el de un `.env`
+    # recién copiado y el de un despliegue a medio configurar— es **no
+    # escribir nada**.
+    #
+    # Los `str | None` son **opcionales en el modelo y obligatorios en la
+    # fábrica**, exactamente como `GEMINI_API_KEY` (F-003), `PG_HOST` (F-005) y
+    # las de Graph (F-006): si fueran obligatorios aquí, `/health` dejaría de
+    # arrancar sin configuración de Sigrid y la suite entera necesitaría
+    # valores falsos en el entorno. Quien los exige es `construir_erp`, cuando
+    # de verdad hacen falta.
+
+    cierre_habilitado: bool = Field(
+        default=False,
+        validation_alias="CIERRE_HABILITADO",
+        description=(
+            "Interruptor maestro del cierre en Sigrid. **Falso por defecto a "
+            "propósito**, y con más motivo que el de SharePoint: lo que hay "
+            "detrás es el ERP de producción y deshacer un cierre es otro "
+            "proceso que alguien tiene que ejecutar a mano. Encenderlo es un "
+            "gesto explícito, y se comprueba dos veces: en la fábrica y en el "
+            "propio adaptador (R37)."
+        ),
+    )
+    sigrid_api_base_url: str | None = Field(
+        default=None,
+        validation_alias="SIGRID_API_BASE_URL",
+        description=(
+            "Raíz de la pasarela `sigrid-api`, que es el **único** acceso al "
+            "SQL Server de Sigrid en todo el ecosistema. Obligatoria en la "
+            "fábrica: es el destino."
+        ),
+    )
+    sigrid_api_key: str | None = Field(
+        default=None,
+        validation_alias="SIGRID_API_KEY",
+        description=(
+            "Clave de función de la pasarela. **Secreto**: en Azure va por "
+            "referencia a Key Vault; en local, solo en el `.env`, que no se "
+            "versiona. Jamás se escribe en un log, en una URL ni en un mensaje "
+            "de error."
+        ),
+    )
+    sigrid_base_datos: str | None = Field(
+        default=None,
+        validation_alias="SIGRID_BASE_DATOS",
+        description=(
+            "La base de negocio del ERP, que es la única con escritura "
+            "permitida en la pasarela. Va por configuración y **nunca literal "
+            "en el código**: el día que cambie, cambia una variable."
+        ),
+    )
+    sigrid_timeout_s: int = Field(
+        default=35,
+        validation_alias="SIGRID_TIMEOUT_S",
+        description=(
+            "Segundos que se le conceden a una llamada a la pasarela. Cabe "
+            "holgadamente en el presupuesto de 45 s de `ARCHITECTURE.md`, y el "
+            "balanceador de la pasarela corta a los 230 s de todas formas."
+        ),
+    )
+    sigrid_reintentos: int = Field(
+        default=3,
+        validation_alias="SIGRID_REINTENTOS",
+        description=(
+            "Intentos totales ante errores transitorios **de una lectura**. La "
+            "escritura no se reintenta nunca (R27), y eso no es configurable a "
+            "propósito: un tiempo agotado no dice que el ERP no haya escrito."
+        ),
+    )
+    sigrid_tip_reclamacion: int = Field(
+        default=708,
+        validation_alias="SIGRID_TIP_RECLAMACION",
+        description=(
+            "El tipo de concepto de la reclamación de posventa en `dbo.con`. "
+            "Es configuración de la instalación, igual que el número del "
+            "estado, y por eso viaja como parámetro del SQL y no pegado al "
+            "texto. Tiene valor por defecto porque está medido contra el ERP "
+            "—21.554 filas de la extensión, todas de este tipo— y porque sin "
+            "él la búsqueda no se podría acotar (R5)."
+        ),
+    )
+    sigrid_zona_horaria: str = Field(
+        default="Europe/Madrid",
+        validation_alias="SIGRID_ZONA_HORARIA",
+        description=(
+            "Huso con el que se escriben `fec` y `hor` en la fila de auditoría "
+            "del ERP (R24). Sigrid registra la **hora local**: escribir UTC "
+            "dejaría nuestras filas de log con dos horas menos que todas las "
+            "demás y nadie sabría por qué. La resuelve la fábrica, que falla "
+            "si el nombre no existe en vez de suponer un huso."
+        ),
+    )
+
+    # --- El parte como gráfico de la incidencia (F-012) -------------------
+    #
+    # **No hay interruptor nuevo**: el gráfico y el cierre son la MISMA ventana
+    # de escritura, `CIERRE_HABILITADO`, porque son el mismo sistema, el mismo
+    # dueño, la misma ventana y la misma decisión del humano (`design.md` D-B).
+    # El gráfico es la primera mitad del cierre; un segundo interruptor solo
+    # podría crear estados que no sirven para nada bueno.
+    #
+    # Estas dos **no son secretos** y por eso llevan valor por defecto: son
+    # parámetros medidos, como `SIGRID_TIP_RECLAMACION`.
+
+    sigrid_gratipide_parte: int = Field(
+        default=35,
+        validation_alias="SIGRID_GRATIPIDE_PARTE",
+        description=(
+            "La clase de gráfico con la que se adjunta el parte (`auxgra.ide`; "
+            "35 = `PV002`, «POSTVENTA:Fotos Reparaciones»). Es configuración de "
+            "la instalación, igual que el tipo de concepto y el número del "
+            "estado, y por eso viaja como variable y no como literal en el "
+            "código (R11). Tiene valor por defecto porque está medido: es la "
+            "clase bajo la que Posventa tiene 3.197 gráficos llamados «PARTE "
+            "FIRMADO». La pasarela mantiene además su propia lista blanca, así "
+            "que cambiarlo aquí a secas no basta: es una decisión de dos "
+            "dueños."
+        ),
+    )
+    grafico_max_bytes: int = Field(
+        default=10 * 1024 * 1024,
+        validation_alias="GRAFICO_MAX_BYTES",
+        description=(
+            "Tope propio del PDF que se adjunta, comprobado **antes** de llamar "
+            "a la pasarela (R18): mandar 13 MB por el proxy para que los "
+            "rechacen al otro lado gasta el presupuesto de 45 s en un rechazo "
+            "que ya se sabía. **No debe superar el de la pasarela** "
+            "(`SIGRID_DOCUMENT_MAX_BYTES`, 10 MB): subirlo aquí solo compra un "
+            "rechazo más tardío. Un parte firmado real ocupa 242.534 bytes, así "
+            "que el margen es de unas 40 veces."
+        ),
+    )
 
 
 @lru_cache(maxsize=1)

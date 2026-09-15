@@ -5,10 +5,10 @@ Lo escribe `instalar_arnes.ps1`. **No lo edites a mano.**
 
 | Dato | Valor |
 |---|---|
-| Version del arnes | `1.5.2` + el parche de la 1.6.3 aplicado a mano |
-| Fecha de la version | 2026-08-18 (parche de la 1.6.3: 2026-08-20) |
-| Instalado/actualizado el | 2026-08-20 |
-| Modo | instalar (1.4.0) + actualizacion manual a 1.4.1, 1.5.0, 1.5.1 y 1.5.2, mas el parche de la 1.6.3 |
+| Version del arnes | `1.5.2` + el parche de la 1.6.3 y tres piezas de la 1.7.8, aplicados a mano |
+| Fecha de la version | 2026-08-18 (parche de la 1.6.3: 2026-08-20; piezas de la 1.7.8: 2026-09-02) |
+| Instalado/actualizado el | 2026-08-20 (ultimo parche a mano: 2026-09-02) |
+| Modo | instalar (1.4.0) + actualizacion manual a 1.4.1, 1.5.0, 1.5.1 y 1.5.2, mas el parche de la 1.6.3 y tres piezas de la 1.7.8 |
 | Origen | `arnes-base` |
 
 > **Este repositorio NO lleva la 1.6.x completa, y `harness/VERSION` sigue
@@ -64,6 +64,42 @@ que conservar. Lo que aporta cada version se copio literal:
   repositorio: el de la 1.6.x tiene otra estructura -el metodo se llama
   `correr` y devuelve un `ResultadoSuite`- y traerlo entero seria hacer la
   1.6.0, no un parche.
+
+- **Tres piezas de la 1.7.8** (2026-09-02): el veredicto `timeout` de una
+  campana de mutacion no decia nada del mutante, decia que la maquina estaba
+  saturada. La suite del servicio `api` tarda 38,7 s en solitario y 131,6 s
+  ejecutada con los 16 workers que usaba la campana, por encima del tope de
+  120 s por mutante; tres campanas del MISMO commit de F-009 dieron 15, 27 y 0
+  timeouts, sobre mutantes distintos cada vez. Diagnostico con diez mediciones
+  en `progress/explore_F-009_timeouts.md`. Lo aplicado aqui:
+  1. `harness/alcance.py`: `harness` entra en `DIRECTORIOS_EXCLUIDOS`. Sin
+     esto, tocar el arnes desde la rama de una feature metia el codigo del
+     propio arnes en el alcance mutable y en la puerta de cobertura: la
+     campana se mutaba a si misma.
+  2. `harness/mutacion_paralela.py`: al terminar una campana paralela, los
+     mutantes en `timeout` se repasan EN SERIE sobre un solo worktree y se
+     sustituye su veredicto por el real (`reemplazar_timeouts`, `repasar`). Un
+     `timeout` deja de ser un veredicto y pasa a ser un reintento; el que
+     sobrevive al repaso si es senal de un cuelgue de verdad.
+  3. `harness/mutacion.py`: el informe registra con cuantos workers se midio y
+     cuantos timeouts se repasaron. Sin ese dato no se pudo reconstruir como
+     se habia lanzado la campana del 2026-08-27, que es justo lo que costo el
+     dia. Con ello, `harness/rigor.json` declara ya `mutacion.workers: 8`.
+  Vigilan el cambio `tests/test_alcance_excluidos.py`,
+  `tests/test_mutacion_repaso_timeouts.py` y
+  `tests/test_mutacion_informe_workers.py` (39 tests nuevos: la suite del
+  arnes pasa de 17 a 56). **Esta mejora nacio aqui**, cerrando la T28 de
+  F-009, y se porto a `arnes-base` en el mismo trabajo (regla de
+  propagacion), donde se sello como **1.7.8** sobre la 1.7.7. Alli hizo falta
+  una adaptacion que aqui NO aplica: como en `arnes-base` el arnes ES el
+  producto, la exclusion protege solo el alcance AUTOMATICO -el que sale del
+  diff- y no el que declara una persona con `--ficheros`, bandera que llego en
+  la 1.7.1 y que este repositorio no tiene. Detalle en
+  `progress/impl_arnes_reintento_timeouts.md`.
+
+  **Este repositorio sigue sin llevar la 1.6.x ni la 1.7.x completas**, y
+  `harness/VERSION` sigue diciendo `1.5.2` por el mismo motivo de siempre: de
+  esas ramas solo se han traido parches concretos, no el trabajo entero.
 
 Comprobado tras aplicarla: `harness/init.sh` solo difiere del payload 1.5.0 en
 las tres lineas de adaptacion de este proyecto (`REQUIERE_ENV=0` y las dos

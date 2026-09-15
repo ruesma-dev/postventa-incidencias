@@ -210,10 +210,25 @@ def test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas():
         "avisos",
     }
     # El contexto sí crece feature a feature, y eso es lo que se diseñó: F-004
-    # le añadió `lectura_firma` y `validacion`, y F-006 le añade `archivo`
+    # le añadió `lectura_firma` y `validacion`, F-006 le añade `archivo`
     # (`specs/F-006-sharepoint/design.md` §3.2), que es la `TrazaArchivo` de
     # F-005 —una entidad de dominio ya existente—, no una ruta ni un
-    # identificador sueltos.
+    # identificador sueltos, y F-009 le añade `cierre`, que es el
+    # `ResultadoCierre` del dominio: lleva el plan y el estado, y **ningún
+    # número de estado de Sigrid**, que es justo lo que la línea de abajo
+    # existe para impedir.
+    #
+    # F-012 le añade otros dos, y los dos son entidades de dominio ya
+    # existentes: `grafico` (el `ResultadoGrafico` que deja el paso 7a) y
+    # `traza_grafico` (la `TrazaGrafico` que `paso_cierre` **lee del
+    # repositorio** para su precondición, R2 y R49). Ni un byte del PDF, ni un
+    # `cod` del ERP suelto, ni el login de nadie: eso es lo que esta línea
+    # existe para impedir.
+    #
+    # F-026 le añade `aprobacion`, y es el mismo caso que `traza_grafico`: una
+    # entidad de dominio (`Aprobacion`) que el paso **lee del repositorio** y
+    # nunca del cuerpo de la petición (R24). Lleva el `oid` opaco de quien
+    # decidió y ni una letra del papel.
     #
     # Lo que este test sigue impidiendo es exactamente lo de antes: que
     # aparezcan aquí una ruta de SharePoint en crudo, un identificador de base
@@ -225,6 +240,10 @@ def test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas():
         "lectura_firma",
         "validacion",
         "archivo",
+        "grafico",
+        "traza_grafico",
+        "cierre",
+        "aprobacion",
         "avisos",
     }
 

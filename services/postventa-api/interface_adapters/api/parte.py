@@ -42,10 +42,9 @@ despliega.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_persistencia import paso_persistencia
@@ -54,29 +53,23 @@ from domain.models.errores import PeticionDePersistenciaInvalida
 from domain.models.extraccion import ExtraccionParte
 from domain.models.firma import LecturaFirma
 from domain.models.persistencia import ResultadoGuardado
-from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import ResultadoValidacion, validar_parte
 from domain.ports.persistencia import RepositorioPartesPort
 from infrastructure.persistencia.fabrica import construir_repositorio
 
+from interface_adapters.api.aprobacion_serializada import bloque_de_aprobacion
 from interface_adapters.api.cuerpos import (
     CLAVES_DE_LA_EXTRACCION,
     CLAVES_DE_LA_FIRMA,
+    CLAVES_DEL_PARTE,
     a_extraccion,
     a_lectura_de_firma,
+    a_parte_troceado,
+    a_remesa_id,
     bloque,
 )
 
-__all__ = ["CLAVES_DEL_PARTE", "guardar_parte_http"]
-
-#: Lo que tiene que traer el bloque `parte` del cuerpo.
-#:
-#: Los cuatro, y no solo el `hash`: `origen` y `paginas_origen` son lo que
-#: permite volver sobre la remesa sin reabrirla, y `modo_deteccion` es la
-#: diferencia entre «este documento no tenía ningún parte de dos hojas» y «en
-#: este documento no se ha podido mirar». Guardar un parte sin ellos deja una
-#: fila que no se puede rastrear.
-CLAVES_DEL_PARTE = ("hash", "origen", "paginas_origen", "modo_deteccion")
+__all__ = ["CLAVES_DEL_PARTE", "AnotaLosResultados", "guardar_parte_http"]
 
 
 def guardar_parte_http(
@@ -99,8 +92,8 @@ def guardar_parte_http(
             "'extraccion' y 'firma'"
         )
 
-    remesa_id = _remesa_id(cuerpo.get("remesa_id"))
-    parte = _a_parte_troceado(bloque(cuerpo, "parte", CLAVES_DEL_PARTE))
+    remesa_id = a_remesa_id(cuerpo.get("remesa_id"))
+    parte = a_parte_troceado(bloque(cuerpo, "parte", CLAVES_DEL_PARTE))
     extraccion = a_extraccion(
         bloque(cuerpo, "extraccion", CLAVES_DE_LA_EXTRACCION)
     )
@@ -115,7 +108,7 @@ def guardar_parte_http(
         validacion=_veredicto(extraccion, lectura),
     )
 
-    almacen = _AnotaLosResultados(
+    almacen = AnotaLosResultados(
         repositorio
         if repositorio is not None
         else construir_repositorio(obtener_ajustes())
@@ -130,6 +123,13 @@ def guardar_parte_http(
         "hash_parte": parte.hash,
         "resultado_parte": almacen.resultado_parte,
         "resultado_validacion": almacen.resultado_validacion,
+        # R22 (F-026) · **después** de guardar, y el orden es el requisito:
+        # `guardar_validacion` revoca la aprobación cuyo veredicto ya no
+        # coincide (R30), así que leerla antes devolvería como viva una
+        # aprobación que esta misma llamada acaba de tumbar.
+        "aprobacion": bloque_de_aprobacion(
+            almacen.consultar_aprobacion(hash_parte=parte.hash)
+        ),
         "avisos": list(contexto.avisos),
     }
 
@@ -145,7 +145,7 @@ def _veredicto(
     return validar_parte(extraccion, lectura)
 
 
-class _AnotaLosResultados:
+class AnotaLosResultados:
     """Envuelve el puerto y recuerda qué devolvió cada guardado.
 
     `paso_persistencia` **no se reescribe** (`design.md` §2): recibe el
@@ -162,6 +162,11 @@ class _AnotaLosResultados:
 
     Implementa `RepositorioPartesPort` entero delegando: si mañana el paso
     llamara a otra operación, este envoltorio no se interpone.
+
+    Es **público** desde F-026 porque `POST /api/aprobar` compone exactamente
+    lo mismo —guardar el parte y su veredicto, y contar qué pasó con cada
+    uno— y dos envoltorios distintos acabarían informando del mismo hecho de
+    dos formas distintas.
     """
 
     def __init__(self, interno: RepositorioPartesPort) -> None:
@@ -191,87 +196,13 @@ class _AnotaLosResultados:
     def guardar_cierre(self, **datos: Any) -> ResultadoGuardado:
         return self._interno.guardar_cierre(**datos)
 
+    def guardar_aprobacion(self, **datos: Any) -> ResultadoGuardado:
+        """F-026 · la escribe `/api/aprobar`, a través de este envoltorio."""
+        return self._interno.guardar_aprobacion(**datos)
+
+    def consultar_aprobacion(self, **datos: Any) -> Any:
+        """F-026 · la lee `/api/parte` para poder contarla en su respuesta (R22)."""
+        return self._interno.consultar_aprobacion(**datos)
+
     def cola_validacion_humana(self, **datos: Any) -> tuple:
         return self._interno.cola_validacion_humana(**datos)
-
-
-def _remesa_id(crudo: Any) -> str:
-    """El `remesa_id` que devolvió `POST /api/remesa`. Obligatorio (R10, R11).
-
-    Se comprueba que sea un UUID **aquí**: la columna es `uuid`, así que
-    dejarlo pasar convertiría un error del llamante en un 503 que manda a
-    mirar el servidor a quien tenía que corregir su petición.
-    """
-    if crudo is None:
-        raise PeticionDePersistenciaInvalida(
-            "el cuerpo no trae 'remesa_id': es el identificador que devolvió "
-            "POST /api/remesa, y hay que registrar la remesa antes de guardar "
-            "sus partes"
-        )
-    try:
-        return str(UUID(str(crudo)))
-    except (ValueError, AttributeError, TypeError) as mal_formado:
-        raise PeticionDePersistenciaInvalida(
-            "'remesa_id' no es un UUID: tiene que ser el que devolvió "
-            "POST /api/remesa"
-        ) from mal_formado
-
-
-def _a_parte_troceado(bloque_parte: Mapping[str, Any]) -> ParteTroceado:
-    """Reconstruye lo que produjo `POST /api/split`, **sin los bytes** (R12)."""
-    return ParteTroceado(
-        hash=_texto(bloque_parte["hash"], "parte.hash"),
-        origen=_texto(bloque_parte["origen"], "parte.origen"),
-        paginas_origen=_paginas(bloque_parte["paginas_origen"]),
-        modo_deteccion=_modo(bloque_parte["modo_deteccion"]),
-        # R12: el PDF vive en SharePoint. Aquí no entra ni un byte.
-        contenido=b"",
-    )
-
-
-def _texto(crudo: Any, nombre: str) -> str:
-    """Un texto obligatorio y no vacío del bloque `parte`."""
-    valor = str(crudo).strip() if isinstance(crudo, str) else ""
-    if not valor:
-        raise PeticionDePersistenciaInvalida(
-            f"'{nombre}' tiene que ser un texto no vacío"
-        )
-    return valor
-
-
-def _paginas(crudo: Any) -> tuple[int, ...]:
-    """Las páginas del original de las que salió el parte, numeradas desde 1.
-
-    Se exige que sean números: `paginas_origen` es lo que permite volver sobre
-    la remesa sin reabrirla, y una lista de textos deja una fila que no
-    localiza nada.
-    """
-    if isinstance(crudo, str) or not isinstance(crudo, Sequence):
-        raise PeticionDePersistenciaInvalida(
-            "'parte.paginas_origen' tiene que ser una lista de números de página"
-        )
-    paginas = []
-    for pagina in crudo:
-        if isinstance(pagina, bool) or not isinstance(pagina, int):
-            raise PeticionDePersistenciaInvalida(
-                "'parte.paginas_origen' tiene que traer solo números de página"
-            )
-        paginas.append(pagina)
-    return tuple(paginas)
-
-
-def _modo(crudo: Any) -> ModoDeteccion:
-    """Cómo se decidió dónde empezaba el parte, con los valores del dominio.
-
-    Un valor desconocido **no** se sustituye por el más común: guardaría una
-    mentira sobre cómo se troceó la remesa, y esa columna es lo que distingue
-    «no había partes de dos hojas» de «no se pudo mirar».
-    """
-    try:
-        return ModoDeteccion(crudo)
-    except ValueError as desconocido:
-        admitidos = ", ".join(modo.value for modo in ModoDeteccion)
-        raise PeticionDePersistenciaInvalida(
-            f"'parte.modo_deteccion' no es uno de los valores admitidos "
-            f"({admitidos})"
-        ) from desconocido

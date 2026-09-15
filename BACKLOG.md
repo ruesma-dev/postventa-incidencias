@@ -3,15 +3,19 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **22 features**, 12 abiertas, 10 terminadas.
+Resumen: **26 features**, 14 abiertas, 12 terminadas.
+
+En curso: **F-026**.
+
+Bloqueadas: **F-009**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | pendiente | critico | `feature/F-009-cierre-sigrid` |
-| F-011 | Fase 2: ingesta desde buzón de correo | 11 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | pendiente | critico | `feature/F-012-grafico-sigrid` |
+| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | bloqueada | critico | `feature/F-009-cierre-sigrid` |
+| F-024 | Datos del parte enlazados a Sigrid, para el datamart | 12 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
+| F-011 | Fase 2: ingesta desde buzón de correo | 13 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
@@ -21,6 +25,8 @@ Resumen: **22 features**, 12 abiertas, 10 terminadas.
 | F-020 | Ajustes de diseño del front: el PDF manda en la pantalla | 20 | pendiente | documental | `feature/F-020-diseno-front` |
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
+| F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
+| F-026 | Aprobacion humana de los partes que van a revision | 26 | en curso | estandar | `feature/F-026-aprobacion-humana` |
 
 ## Terminadas
 
@@ -35,27 +41,29 @@ Resumen: **22 features**, 12 abiertas, 10 terminadas.
 | F-007 | Front de carga y revisión | 7 | estandar |
 | F-010 | Despliegue en Azure y tarjeta en el portal | 8 | estandar |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | documental |
+| F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | critico |
 | F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | estandar |
+| F-025 | Archivar y cerrar en una sola confirmacion | 25 | critico |
 
 ## Detalle
 
 ### F-009 · Cierre de la incidencia en Sigrid (solo estado)
 
-estado **pendiente** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
+estado **bloqueada** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
 
 Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.
 
+### F-024 · Datos del parte enlazados a Sigrid, para el datamart
+
+estado **spec lista** · prioridad 12 · rigor `estandar` · SDD sí · rama `feature/F-024-datos-parte-sigrid`
+
+Conservar en nuestra base (schema postventa de psql-albaranes-rs9k2) la informacion del parte que hoy no llega a Sigrid, siempre enlazada con las claves del ERP para que el datamart (sigrid_dm, mismo servidor, otra base) pueda enriquecer con ella los partes de posventa cuando los incorpore. Decidido por el humano el 2026-09-06 tras revisar la guia de cierre de Posventa: el cierre en Sigrid solo registra el grafico y el estado, y todo lo demas del parte se perderia. TRES PIEZAS. (1) Extraccion: anadir al prompt y al schema los campos impresos que hoy no se extraen -oficio, empresa (el industrial que reparo), estancia- y los manuscritos hora_inicio y hora_fin, con su confianza y sin exigirlos (regla de F-003: no se exige lo que la realidad deja vacio); columnas nuevas en postventa.partes con ADD COLUMN IF NOT EXISTS, idempotente como el resto del DDL. (2) Claves del ERP: columna reclamacion_ide (con.ide de la reclamacion, que el dry-run de F-009 ya lee) en postventa.cierres; en postventa.graficos nace ya con ella desde F-012. (3) Una vista de lectura postventa.v_partes_sigrid en nuestro schema que junta parte, validacion, archivo, cierre y grafico por hash_parte y expone las claves de Sigrid (obra, numero de incidencia, reclamacion_ide, gra_cod), los campos extraidos con sus confianzas, la clasificacion de la firma, la URL de SharePoint y las fechas; SIN dni_cliente. PREGUNTA ABIERTA (la decide el humano al aprobar la spec): si la vista expone las observaciones manuscritas, el dato mas valioso para el datamart pero que puede llevar nombres; por defecto NO. FUERA DE ALCANCE: el acceso desde el datamart (su ETL tendria que conectarse a nuestra base con un rol de solo lectura propio, como hace con mcp_sigrid_dm_ro); se deja como peticion escrita al proyecto datamart-seg-anual y el contrato de la vista se documenta en azure-apps/postventa_incidencias.md §8. Va despues de F-012 y antes de F-011.
+
 ### F-011 · Fase 2: ingesta desde buzón de correo
 
-estado **pendiente** · prioridad 11 · rigor `estandar` · SDD sí · rama `feature/F-011-buzon-correo`
+estado **pendiente** · prioridad 13 · rigor `estandar` · SDD sí · rama `feature/F-011-buzon-correo`
 
 Recoger automáticamente las remesas que lleguen a un buzón corporativo, reaprovechando el pipeline existente. Patrón de albaranes-email y partes-email.
-
-### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
-
-estado **pendiente** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
-
-Replicar el 'importar desde archivo' que hace Posventa a mano: INSERT del PDF en gra (binario en ima) e INSERT en rcg para vincularlo al concepto de la reclamación, atómico con el cambio de estado. REQUIERE un endpoint de dominio nuevo en sigrid-api: hoy la pasarela lee documentos pero no los escribe, y sql/write ni reserva ide con applock ni está pensado para BLOBs. Ese endpoint se implementa en el repositorio sigrid-api, no aquí.
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 
@@ -111,6 +119,18 @@ estado **pendiente** · prioridad 22 · rigor `estandar` · SDD sí · rama `fea
 
 ORIGEN: un aviso de consumo que recibió el humano el 2026-08-26 estimando hasta un 67 % de ahorro cacheando contenido repetido. OJO, ese aviso es sobre la API de Anthropic y ESTE PROYECTO NO LA USA: `postventa-api` llama a Gemini (`google.genai`), así que el ahorro estimado no sale de aquí. Si el gasto directo de API de la organización viene de otro repositorio, la feature de caché va allí, no en este (límite de servicio). Lo que sí aplica aquí es la misma idea con el proveedor que sí usamos: hoy el `system_instruction` viaja ENTERO en cada llamada, y una remesa como la real de Mirasierra son 22 páginas por dos llamadas —extracción y clasificación de firma— es decir 44 envíos del mismo prompt. El SDK ya instalado trae soporte de caché de contexto. EL MATIZ QUE ORDENA LA FEATURE: `config/prompts.yaml` entero son 7.501 bytes, así que cada prompt suelto ronda el mínimo de tokens que Gemini exige para cachear y PUEDE QUE NO COMPENSE. Por eso la feature empieza midiendo y su primer entregable es un número, no un cambio de código: hoy nadie sabe lo que cuesta procesar una remesa. Cerrarla documentando que no compensa es un resultado válido. NO SE TOCA EL TEXTO DE LOS PROMPTS: eso es F-015, y cambiarlos sin su evaluador es justo lo que esa feature previene.
 
+### F-027 · Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura
+
+estado **pendiente** · prioridad 23 · rigor `estandar` · SDD sí · rama `feature/F-027-suite-barrido-cacheado`
+
+El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco ficheros que recorren el árbol del repositorio fichero a fichero, y repiten el mismo barrido en cada test: test_f003_arquitectura.py cuesta 12,7 s él solo, un tercio de la suite entera. Leer el árbol UNA vez en una fixture de sesión y que cada test consulte el resultado dejaría la suite en torno a 20 s. Medido en progress/explore_F-009_timeouts.md (medición 10) el 2026-09-02, a propósito de los timeouts de la campaña de mutación de F-009: con la suite a 20 s la campaña paralela volvería a caber de sobra en el tope de 120 s por mutante. Beneficia además a cada init.sh de cada sesión. OJO: toca tests de F-003, F-005, F-006 y F-009, features ya cerradas, con el riesgo de aflojar sin querer una comprobación de arquitectura; por eso lleva spec propia y review, y no se mete dentro de otra feature. RENUMERADA el 2026-09-15: nacio como F-022 el 2026-09-02 en la rama de F-012, sin ver que dev ya tenia una F-022 distinta -la cache de contexto de Gemini, del 2026-08-26-. Al mergear la cadena a dev colisionaron los dos identificadores; conserva el numero la que se dio de alta antes.
+
+### F-026 · Aprobacion humana de los partes que van a revision
+
+estado **en curso** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
+
+Hoy un parte que la validacion manda a revision humana se queda bloqueado para siempre: el front lo pinta en ambar, deja corregir sus campos y consultar la cola, pero NO existe ninguna forma de aprobarlo -ni boton, ni endpoint- y `esArchivable` solo mira el veredicto y el destino que puso la IA. Esta feature cierra ese circuito: cuando el humano corrige los campos o revisa el parte, este pasa a APROBADO y entra en el flujo normal de archivo y cierre. NO TOCA SIGRID: la puerta del ERP sigue siendo la misma y el cierre sigue exigiendo lo que exige. EL APROBADO SE GUARDA, no vive solo en el navegador (decision del humano del 2026-09-11): quien aprobo y cuando, en el esquema propio. El motivo no es completismo: un parte llega a revision porque la firma no parecia humana o porque trae observaciones manuscritas del cliente diciendo que la reparacion no esta bien, asi que aprobarlo es la decision de una persona que sobrescribe al sistema en una incidencia que acabara cerrada en el ERP, y esa decision tiene que quedar registrada.
+
 ### F-001 · Esqueleto del monorepo y /health
 
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
@@ -165,8 +185,20 @@ estado **terminada** · prioridad 9 · rigor `documental` · SDD no · rama `fea
 
 Confirmar contra el ERP lo que ya está documentado en azure-apps/sigrid_tablas.md, sigrid_api.md §9 y docs/referencia/01_cierre_incidencia_sigrid.md. Lo crítico: el proceso 'Cerrar parte' de Sigrid comprueba que la reclamación tenga un gráfico asociado, y existe una opción 6 'Cerrar parte sin archivo (RPV)'. Hay que averiguar qué escribe realmente cada uno de esos dos procesos antes de decidir el alcance del cierre. Además: el con.tip de la reclamación y el estado CERRADA en conest (el estado PENDIENTE es 3/PTE), en qué base vive gra, y si 'Asociar URL de Internet' permite referenciar el PDF de SharePoint en vez de incrustar el binario. Solo lecturas.
 
+### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
+
+estado **terminada** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-012-grafico-sigrid`
+
+Replicar el 'importar desde archivo' que hace Posventa a mano: adjuntar el PDF del parte a la reclamación como gráfico (fila en gra, binario en ima de la base documental y enlace rcg en la de negocio), ANTES del cambio de estado de F-009, de modo que ninguna reclamación quede cerrada sin su parte. DESBLOQUEADA EL 2026-09-06: el endpoint de dominio existe. sigrid-api expone POST /api/sigrid/concepto-grafico (su F-004, mergeada en dev el 2026-09-06; contrato en azure-apps/sigrid_api.md §8.8): dry-run por defecto, idempotente por tamaño+sha256, transaccional entre las dos bases (misma instancia, sin MSDTC), solo PDF hasta SIGRID_DOCUMENT_MAX_BYTES, y única vía de escritura en la documental. La atomicidad entre dos llamadas HTTP (adjuntar y cerrar) no existe: se sustituye por orden más idempotencia, y un fallo tras adjuntar deja la reclamación abierta con su gráfico, que el reintento cierra. Parámetros de partida: contip 708, gratipide 35 (PV002 'POSTVENTA:Fotos Reparaciones', docs/referencia/03_modelo_posventa_sigrid.md), usu el login que F-009 ya resuelve por usuario, sha256 del PDF archivado. La configuración de sigrid-api en dev (SIGRID_DOMAIN_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_ENABLED, SIGRID_DOCUMENT_WRITE_DATABASE y las listas blancas de contip y gratipide) es del dueño de sigrid-api y es precondición, no se toca desde aquí. DECISION DEL RESPONSABLE DEL 2026-09-10, y cambia una premisa: la verificación contra el ERP se hace sobre la incidencia RS26.09/0150 (tipo 708) de la OBRA 0626, y sobre ninguna otra. La 0626 NO es una obra de pruebas: es una obra EN USO; se le planteó de forma explícita y lo reafirmó. Cae así la premisa anterior, que decía literalmente 'Toda verificación contra el ERP se hace sobre reclamaciones de la OBRA DE PRUEBA 404, con dry-run antes de cada commit y autorización expresa del humano por incidencia' (decisión del 2026-09-06). Implica que la incidencia de la comprobación y su cierre quedan en el histórico de una obra en uso, con el documento adjunto colgado de ella. La incidencia la da de alta el responsable en el ERP: este servicio no crea incidencias, y si no existe, la comprobación previa responde que no la localiza. Lo que NO cambia: comprobación previa (dry-run) antes de cada escritura, autorización expresa del responsable por incidencia concreta -que aquí gana peso, no lo pierde-, CIERRE_HABILITADO como interruptor único para el documento adjunto y para el cambio de estado, y ninguna escritura desde un puesto de trabajo. Constancia fechada en specs/F-012-grafico-sigrid/ (glosario de requirements.md, §15 de design.md, bloque 9 de tasks.md) y en progress/guion_bloque9_F-012.md. Historia previa (hallazgo 2026-08-26, base documental fuera de ALLOWED_WRITE_DATABASES; 2026-09-03, cae la premisa de la réplica): en progress/history.md y progress/current.md.
+
 ### F-019 · Endpoints de persistencia: guardar la remesa y leer la cola
 
 estado **terminada** · prioridad 19 · rigor `estandar` · SDD sí · rama `feature/F-019-endpoints-persistencia`
 
 F-005 dejó `RepositorioPartesPort` completo —`guardar_remesa`, `guardar_parte`, `guardar_validacion`, `cola_validacion_humana`— y sus seis tablas creadas en la base real, pero **el único endpoint que escribe hoy es `/api/archivar`**, y solo su traza. El puerto existe y nadie lo llama: la remesa, los partes extraídos y el resultado de la validación no se guardan en ningún sitio. Consecuencia visible, detectada al diseñar F-007 (decisión D4): recargar la pestaña del front pierde todo el trabajo de revisión, y la cola de validación humana que F-004 declara no puede sobrevivir entre sesiones porque nada la escribe ni la lee. EL HUMANO DECIDIÓ EL 2026-08-20 sacar F-007 sin persistencia de sesión y dar de alta esta feature aparte, en vez de bloquear el front: el piloto de Mirasierra no se retrasa y el front no carga con una responsabilidad que es de `postventa-api`. Alcance: los endpoints que faltan sobre los puertos que YA existen; no hay que diseñar esquema ni tocar el DDL. **PREREQUISITO DEL ARCHIVADO REAL, DEMOSTRADO CONTRA EL ENTORNO DESPLEGADO EL 2026-08-25** (defecto 15 de F-010, T18): la tabla `archivos` tiene una clave ajena contra `partes` —`archivos_hash_parte_fkey`— y hoy NADA inserta el parte, así que `POST /api/archivar` sube el fichero a SharePoint y después NO puede escribir su traza: `ForeignKeyViolation`, «Key (hash_parte)=(...) is not present in table "partes"». Pasa con parte sintético y con parte real. Consecuencia: **tal y como está desplegado, el archivado no puede completar nunca**, y el circuito completo del piloto no se puede dar por bueno hasta que exista esta feature. Mientras tanto el borde responde 500 diciendo que el fichero SÍ está subido y que lo que falta es la traza (defecto 14). Al implementar esta feature hay que comprobar el orden: el parte se guarda ANTES de archivarlo.
+
+### F-025 · Archivar y cerrar en una sola confirmacion
+
+estado **terminada** · prioridad 25 · rigor `critico` · SDD sí · rama `feature/F-025-confirmacion-unica`
+
+Quitar el paso de vista previa del circuito. Hoy el front pide DOS confirmaciones para la misma decision: una para archivar y otra, tras ensenar el dry-run del grafico y del cierre, para escribir en el ERP. Al pulsar archivar sobre los partes aptos habra UNA sola confirmacion -la que ya existe- y al confirmarla se ejecutan los tres pasos seguidos: archivar en SharePoint, adjuntar el parte a la reclamacion y cerrarla. DECISION DEL HUMANO DEL 2026-09-11, tomada despues de verificar el circuito completo contra el ERP real: NO hace falta ensenar ningun resumen antes de confirmar; se le planteo que eso es lo que protege de cerrar la incidencia equivocada si la IA leyo mal el numero del papel, y lo reafirmo. OJO: esto DEROGA requisitos aprobados de F-009 y de F-012 que exigen dry-run mostrado al usuario antes de cada commit; se enmiendan con constancia fechada, citando la premisa original literal, NO se borran (mismo patron que R28 de F-010 el 2026-09-03). Las comprobaciones que el backend hace antes de escribir -que la reclamacion existe, en que estado esta, si el documento ya cuelga de ella- NO se tocan: lo que desaparece es la pantalla, no la verificacion. Los partes no aptos siguen sin archivarse.

@@ -14,7 +14,7 @@
     un error que no menciona ningun rol: media hora de investigacion para algo
     que aqui se detecta en dos segundos.
 
-    LOS SECRETOS NO ENTRAN EN NINGUNA APP SETTING. Los nueve que identifican o
+    LOS SECRETOS NO ENTRAN EN NINGUNA APP SETTING. Los once que identifican o
     autentican se fijan como REFERENCIA al Key Vault del proyecto, resuelta por la
     identidad gestionada en tiempo de arranque. Lo que queda escrito en la
     configuracion de la Function App es una URI; quien tenga acceso de lectura
@@ -23,28 +23,56 @@
     `cargar_secretos_postventa.ps1`: si discreparan, la Function App
     arrancaria sin poder resolver la referencia.
 
-    NINGUNA VARIABLE DE SIGRID. El cierre de la incidencia en el ERP es F-008
-    y F-009, y esta fuera del piloto a proposito. Una variable de Sigrid aqui
-    seria la primera pieza de un cierre en produccion que nadie ha aprobado.
+    LA CONFIGURACION DE SIGRID SI ENTRA, DESDE EL 2026-09-03. Hasta F-009 no
+    entraba ninguna variable `SIGRID_*`, porque el cierre en el ERP estaba
+    fuera del piloto (R28 de F-010, enmendado ese mismo dia). F-009 esta
+    implementada y aprobada, y sin su configuracion `POST /api/cerrar` responde
+    503 y el bloque de verificacion contra el ERP no puede ni arrancar
+    (hallazgo H1 de `progress/guion_bloque8_F-009.md`).
 
-    LA VENTANA DE ESCRITURA NACE CERRADA, Y ES EL CANDADO PRINCIPAL DEL
-    DESPLIEGUE. `ARCHIVO_HABILITADO` se fija en `false`. Fuera de esa ventana,
+    Que entra por donde, y es una raya que conviene no borrar:
+
+      - POR REFERENCIA a Key Vault, DOS: la raiz de la pasarela -un host
+        interno- y la clave de funcion. NI SUS NOMBRES SE ESCRIBEN AQUI: se
+        declaran en `00_vars_postventa.ps1` y llegan por el bucle de mas
+        abajo. Un test lo vigila, y por eso esta cabecera tampoco las nombra.
+      - EN CLARO en `$ajustes`, CINCO: `SIGRID_BASE_DATOS` y las cuatro de
+        tiempos y configuracion de la instalacion. Todas tienen su valor ya
+        escrito en documentos versionados de este repositorio, asi que
+        ponerlas aqui no revela nada que no estuviera.
+
+    `SIGRID_BASE_DATOS` estuvo unas horas del 2026-09-03 en el vault, por
+    exceso de celo, y BAJO a App Setting plana el mismo dia: el nombre de la
+    base del ERP ya esta escrito en `docs/referencia/` y en las specs, de modo
+    que subirlo al vault no daba seguridad y si un secreto mas que aprovisionar
+    a mano en cada entorno. El porque completo, en `00_vars_postventa.ps1`.
+
+    LAS DOS VENTANAS DE ESCRITURA NACEN CERRADAS, Y SON LOS CANDADOS
+    PRINCIPALES DEL DESPLIEGUE. `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` se
+    fijan en `false`, cada una en su linea. Fuera de esas ventanas,
     `POST /api/archivar` responde 503 a cualquiera -incluido un desconocido- y
-    NO toca SharePoint.
+    NO toca SharePoint, y `POST /api/cerrar` responde 503 y NO toca el ERP.
 
-    Por que hace falta fijarla explicitamente si el valor por defecto del
+    Son DOS variables, no una, y eso es deliberado: se abren en momentos
+    distintos y protegen cosas distintas. Poder archivar no puede implicar
+    poder escribir en el ERP de produccion.
+
+    Por que hace falta fijarlas explicitamente si el valor por defecto del
     codigo ya es `false`: porque el servicio se despliega con `ENTORNO=dev`, y
-    en dev la OTRA puerta -la que impide subir desde un puesto de trabajo-
+    en dev la OTRA puerta -la que impide escribir desde un puesto de trabajo-
     esta abierta por diseno. Y porque una App Setting sobrevive a los
-    despliegues: basta que alguien la encienda una vez y se olvide para que
-    quede encendida para siempre. Fijarla aqui hace que cada despliegue la
-    devuelva a su sitio.
+    despliegues: el valor por defecto del codigo solo se aplica MIENTRAS la
+    App Setting no exista, asi que basta que alguien la encienda una vez y se
+    olvide para que quede encendida para siempre. Fijarlas aqui hace que cada
+    despliegue las devuelva a su sitio. `CIERRE_HABILITADO` no estaba, y por
+    eso se anadio (hallazgo H2 del mismo guion): era el unico candado del
+    despliegue que no se rearmaba solo.
 
-    Se enciende A MANO, solo para archivar de verdad (T18 o una sesion con
-    negocio), y SE VUELVE A APAGAR en cuanto se termina. Las dos lineas estan
-    en `docs/DESPLIEGUE.md`, seccion 4. No hace falta redesplegar ni tocar
-    codigo. Dejarla abierta "por si acaso" es exactamente lo que este diseno
-    evita.
+    Cada una se enciende A MANO, solo para archivar o cerrar de verdad (T18, el
+    bloque 8 de F-009, o una sesion con negocio), y SE VUELVE A APAGAR en
+    cuanto se termina. Las lineas estan en `docs/DESPLIEGUE.md`, secciones 4 y 4 bis. No
+    hace falta redesplegar ni tocar codigo. Dejarlas abiertas "por si acaso" es
+    exactamente lo que este diseno evita.
 
     LOS TIEMPOS DE ESPERA Y EL PROXY. El proxy de la Static Web App corta
     cualquier peticion a los 45 s. El escalonado es: la IA abandona a los 35,
@@ -104,6 +132,10 @@ $ROL_KEYVAULT = "Key Vault Secrets User"
 # Los tiempos de espera del escalonado 35 / 40 / 45 (ver .DESCRIPTION).
 $TIEMPO_IA_S = 35
 $TIEMPO_GRAPH_S = 35
+# El de la pasarela de Sigrid juega en la misma liga: cede antes que el front
+# (40 s) y que el proxy (45 s). El balanceador de la pasarela corta a los 230 s
+# de todas formas, asi que quien manda aqui es nuestro presupuesto, no el suyo.
+$TIEMPO_SIGRID_S = 35
 
 
 function Salir-Con {
@@ -241,6 +273,7 @@ Write-Host "  Ninguna App Setting llevara un valor de secreto."
 Write-Host ""
 Write-Host ("  Tiempos de espera    : IA {0}s, Graph {1}s (el proxy corta a los {2}s)" -f $TIEMPO_IA_S, $TIEMPO_GRAPH_S, $PostventaPresupuestoProxyS)
 Write-Host "  La ventana de escritura de /api/archivar se despliega CERRADA."
+Write-Host "  La ventana de escritura de /api/cerrar (el ERP) tambien."
 Write-Host ""
 
 if ($WhatIf) {
@@ -397,10 +430,63 @@ $ajustes = @(
     "SHAREPOINT_CARPETA_BASE=Postventa",
     "GRAPH_TIMEOUT_S=$TIEMPO_GRAPH_S",
     "GRAPH_REINTENTOS=3",
+    # EL OTRO CANDADO, Y EL MAS SERIO: detras no hay una biblioteca de
+    # documentos, sino el ERP de produccion del que depende toda la empresa, y
+    # deshacer un cierre es otro proceso que alguien ejecuta a mano en Sigrid.
+    # Fuera de esta ventana /api/cerrar responde 503 y no toca el ERP ni para
+    # leer. Se enciende a mano y se vuelve a apagar (docs/DESPLIEGUE.md,
+    # seccion 4 bis). Cada despliegue la devuelve a su sitio, por si quedo
+    # encendida: es una variable APARTE de ARCHIVO_HABILITADO, porque poder
+    # archivar no puede implicar poder escribir en el ERP.
+    "CIERRE_HABILITADO=false",
+    # El resto de la configuracion de Sigrid que NO identifica ni autentica.
+    # Los mismos valores que el codigo trae por defecto, fijados aqui a
+    # proposito -como PG_PORT o GRAPH_REINTENTOS- para que la configuracion
+    # desplegada se pueda leer entera en el portal sin tener que abrir
+    # `config/settings.py`.
+    #
+    # La base del ERP: la de NEGOCIO, que es la unica con escritura permitida
+    # en la pasarela (la documental esta fuera de su lista blanca). Va aqui en
+    # claro, y no por referencia a Key Vault, porque su nombre ya esta escrito
+    # en documentos versionados de este repositorio -entre otros
+    # `docs/referencia/03_modelo_posventa_sigrid.md`-, asi que un secreto de
+    # vault no lo protegia de nada y en cambio habia que subirlo a mano en cada
+    # entorno. Correccion del 2026-09-03; el porque largo, en
+    # `00_vars_postventa.ps1`.
+    "SIGRID_BASE_DATOS=ruesma",
+    "SIGRID_TIMEOUT_S=$TIEMPO_SIGRID_S",
+    "SIGRID_REINTENTOS=3",
+    "SIGRID_TIP_RECLAMACION=708",
+    # El huso con el que se escriben `fec` y `hor` en la fila de auditoria del
+    # ERP. Sigrid registra la HORA LOCAL: desplegar sin esto -o con UTC- dejaria
+    # nuestras filas de `dbo.log` con una o dos horas menos que todas las demas,
+    # y nadie lo notaria hasta el dia en que hiciera falta reconstruir cuando se
+    # cerro algo.
+    "SIGRID_ZONA_HORARIA=Europe/Madrid",
+    # F-012 - el parte como GRAFICO de la incidencia. Estas dos NO son un
+    # candado ni un secreto: son parametros, y no hay un interruptor nuevo. La
+    # ventana de escritura del ERP es UNA, `CIERRE_HABILITADO`, y cubre el
+    # grafico Y el cierre, porque el grafico es la primera mitad del cierre:
+    # el mismo sistema, el mismo dueno, la misma decision. Un segundo
+    # interruptor solo podria crear dos estados, y los dos son malos.
+    #
+    # La clase de grafico de Posventa (`auxgra.ide` 35 = PV002,
+    # "POSTVENTA:Fotos Reparaciones"). Es configuracion de la instalacion,
+    # como SIGRID_TIP_RECLAMACION, y la pasarela mantiene ademas su propia
+    # lista blanca: cambiarlo aqui a secas no basta.
+    "SIGRID_GRATIPIDE_PARTE=35",
+    # El tope propio del PDF, comprobado ANTES de llamar a la pasarela. NO
+    # debe superar el de la pasarela (10 MB, su tope documental): subirlo aqui
+    # solo compra un rechazo mas tardio, con 13 MB ya mandados por el proxy.
+    # Un parte firmado real ocupa 242.534 bytes, asi que sobra margen.
+    "GRAFICO_MAX_BYTES=10485760",
     "AZURE_CLIENT_ID=$identidadCliente"
 )
 
-# Y ahora las nueve que si: REFERENCIA a Key Vault, nunca el valor.
+# Y ahora las once que si: REFERENCIA a Key Vault, nunca el valor. Dos son de
+# Sigrid, y solo una de las dos es una credencial (`sigrid-api-key`): la otra
+# esta en el vault porque es un host interno, igual que `pg-host`, y esos no
+# pueden quedar escritos en el repositorio.
 foreach ($appSetting in $PostventaAppSettingsSecretas.Keys) {
     $secreto = $PostventaAppSettingsSecretas[$appSetting]
     $referencia = "@Microsoft.KeyVault(SecretUri=" + $vaultUri + "secrets/" + $secreto + ")"
@@ -444,12 +530,14 @@ Write-Host "---------"
 Write-Host ("  Function App          : {0}" -f $PostventaFunction)
 Write-Host ("  Identidad             : {0} (con '{1}' sobre el vault)" -f $PostventaIdentidad, $ROL_KEYVAULT)
 Write-Host ("  App Settings          : {0}, de las que {1} son referencias" -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)
-Write-Host ("  Ventana de escritura  : CERRADA")
+Write-Host ("  Ventana de escritura  : CERRADA (archivo, y GRAFICO Y cierre en el ERP)")
 Write-Host ""
 Write-Host "Ahora, a mano (T14), en este orden:"
 Write-Host "  1. GET /api/health responde 200."
 Write-Host "  2. Ninguna App Setting aparece con error en el portal: las"
-Write-Host "     referencias a Key Vault se resuelven."
+Write-Host "     referencias a Key Vault se resuelven. Si las dos de Sigrid"
+Write-Host "     salen con error, es que faltan sus secretos en el vault:"
+Write-Host "     cargalos con cargar_secretos_postventa.ps1 -Solo."
 Write-Host "  3. POST /api/archivar contra el host desnudo responde 503. Si"
 Write-Host "     respondiera 200, PARA: la Function esta escribiendo en"
 Write-Host "     SharePoint a cualquiera que la llame."

@@ -1,6 +1,54 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## AL DÍA · 2026-09-16 · **T13 de F-028 terminada**, y el arnés está ROJO por otra cosa
+>
+> Rama `feature/F-028-estado-del-parte`. Lo de abajo («PARA RETOMAR · al
+> 2026-09-15») es de la rama de F-026 y **se conserva entero**: sigue valiendo
+> para el plan de merge y despliegue.
+>
+> **Qué se ha cerrado:** **T13** —`POST /api/estado`, su ruta en
+> `function_app.py` y la traducción de `ParteCerrado` a **409**, que no
+> existía—. El commit `822100e` había dejado la tarea a medias y en rojo a
+> propósito (el vigilante mató al implementer a los 600 s): 57 casos en verde y
+> 12 en rojo. **Los 12 eran de los tests, no del handler**, y el handler entra
+> sin tocar ni un byte. Informe: `progress/impl_F-028.md`, secciones **36 a
+> 47**.
+>
+> **No se ha entrado en T14 ni en T15.** La siguiente es **T14**.
+>
+> ### ⚠️ `bash harness/init.sh` sale ROJO, y **no es de F-028**
+>
+> ```
+> FAILED tests/test_f010_integracion_expuesto.py::test_f010_r26_dice_la_consecuencia_visible_de_cada_ausencia
+> E   AssertionError: assert 'Sigrid no se toca' in '...'
+> ```
+>
+> **Ya estaba rojo en `HEAD` antes de empezar** —comprobado con `git stash`—: lo
+> rompió el commit `6eb6d33` («INTEGRACION: los dos cierres reales...») al
+> reescribir `docs/INTEGRACION.md` y sacar de su tabla la fila que contenía esa
+> frase. Es documentación de F-010 y **decidir qué debe decir ahora ese
+> documento no es del implementer de T13**. Queda para el humano o para quien
+> retome F-010.
+>
+> Tiene **tres consecuencias** que no hay que confundir con un problema de
+> F-028:
+>
+> 1. `[KO] servicio api: pytest en rojo` — ese caso y ningún otro;
+> 2. `[KO] PUERTA COBERTURA: 58,3 %` es **falso**: `init.sh` lanza la suite con
+>    `-x`, se para ahí y mide media suite. Entera, la puerta da **100,0 % de 276
+>    líneas cambiadas**;
+> 3. **la campaña de mutación sale falsa**, y esta es la grave. El evaluador da
+>    un mutante por muerto cuando la suite falla; con un caso rojo antes de
+>    mutar nada, **todos** salen «muertos» sin que ningún test los cace. La
+>    campaña que consta en `progress/mutacion_F-028.md` se lanzó con ese único
+>    caso deselecionado y `--workers 1`, con la línea base **verde**. Mientras
+>    ese test siga rojo, **ninguna campaña lanzada a secas sobre el servicio
+>    `api` vale nada**.
+>
+> **T12 sigue sin marcar en `tasks.md`** aunque el commit `0af9830` la hizo. No
+> se marcó porque el encargo era «T13 y nada más». Es para el líder.
+
 > ## PARA RETOMAR · al 2026-09-15, tras la sesión de solo lectura de F-009
 >
 > **Dónde está todo:** rama `feature/F-026-aprobacion-humana`, árbol limpio,

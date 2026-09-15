@@ -1602,3 +1602,490 @@ Cuatro apuntes para quien lo coja:
 - **La base real y el ERP no se han tocado**: todo corre con
   `RepositorioEnMemoria`, `RepositorioFalso`, `ErpEnMemoria` y
   `ArchivoPortFalso`, sin red, sin BBDD y sin IA.
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 5, T13
+
+> Encargo: **T13 y nada más** de `specs/F-028-estado-del-parte/tasks.md`.
+> Parada obligada al terminar. **No se ha entrado en T14 ni en T15.**
+>
+> Rama `feature/F-028-estado-del-parte`, desde `6eb6d33`. Rigor **`estandar`**:
+> fase RED, puerta de cobertura y campaña de mutación. Sin `push`, sin tocar
+> `dev` ni `main`, sin tocar el `status` de ninguna feature, sin tocar
+> `azure-apps/`, `infrastructure/sigrid/` ni `infrastructure/sharepoint/`.
+
+**T13 venía a medias y en rojo a propósito.** El commit `822100e` la dejó así
+—«EL VIGILANTE MATO AL AGENTE por 600 s sin progreso»— con el handler escrito
+(356 líneas), su fichero de test (1.126) y **57 casos en verde y 12 en rojo**.
+Este encargo la termina. Lo primero que hay que saber, porque cambia cómo se
+lee todo lo demás:
+
+1. **Los 12 rojos eran de los tests, no del handler** —lo dice el propio
+   commit y se ha confirmado uno a uno—, y **ninguno** era lo que ese commit
+   creía: `consultar_estado_cierre` **ya estaba** en `AnotaLosResultados` (son
+   las nueve líneas de `parte.py` que el agente alcanzó a escribir antes de que
+   lo mataran). Lo que fallaba era otra cosa, y está en §38.
+2. **El handler no se ha tocado.** `interface_adapters/api/estado.py` entra en
+   este commit **byte a byte como lo dejó `822100e`**: `git diff 822100e --
+   services/postventa-api/interface_adapters/api/estado.py` está vacío. Se
+   miró requisito a requisito buscando el error del lado del código, y no lo
+   hay; el detalle, en §39.
+
+---
+
+## 36 · Qué se ha hecho, en una frase por tarea
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T13** | `2732199` | Los 12 tests arreglados, la ruta `POST /api/estado` en `function_app.py` con sus 12 traducciones —incluida la de `ParteCerrado` a **409**, que no existía— y `tests/utiles_rutas.py` |
+
+Lo que esto hace posible: **el endpoint existe de verdad**. Hasta hoy el
+handler estaba escrito y no lo llamaba nadie; `ParteCerrado` existía desde T4
+y `function_app.py` no sabía traducirlo, así que un parte cerrado que llegara
+por la puerta de atrás habría salido con un **500** —un error del servidor
+para algo que no lo es—.
+
+> **T12 sigue sin marcar en `tasks.md`** aunque el commit `0af9830` la hizo
+> («F-028 T12: el bloque «estado» de las respuestas»). No se ha marcado aquí
+> porque el encargo era «T13 y nada más», y marcar la tarea de otro es
+> exactamente la clase de arreglo silencioso que luego nadie sabe de dónde
+> salió. **Queda para el líder.**
+
+---
+
+## 37 · Ficheros tocados
+
+### Creados
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-api/tests/utiles_rutas.py` | La caché **de proceso** de `app.get_functions()`. Ver §40.3: no es adorno |
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `services/postventa-api/function_app.py` | La ruta `estado` (115 líneas), los dos errores nuevos en el bloque de imports, el import del handler y la entrada del endpoint en la cabecera |
+| `services/postventa-api/tests/test_f028_estado_http.py` | Los 12 arreglados, `_fila_humana` / `_filas_de_maquina`, el control de R37 reescrito sobre el árbol sintáctico, y **19 casos nuevos** de la ruta |
+| `services/postventa-api/tests/utiles_pg.py` | `registrar_decision` actualiza la situación que devolverá `consultar_situacion`. Ver §40.2 |
+| `services/postventa-api/tests/test_f026_aprobar_http.py` | Su `_rutas_registradas` **se muda** a `utiles_rutas.py` y delega; se quita el `lru_cache` que ya no usa |
+| `services/postventa-api/tests/test_f010_endpoints_protegidos.py` | `"estado"` entra en `ENDPOINTS` y el barrido pasa de 12 a **13** rutas |
+| `specs/F-028-estado-del-parte/tasks.md` | T13 marcada |
+
+**No se ha tocado** `interface_adapters/api/estado.py` (el handler),
+`estado_serializado.py`, el dominio, la persistencia, las tres puertas,
+`tests/test_f028_puertas.py` (la red de seguridad de T1, que sigue en verde con
+sus 48 casos), `sql/`, el front, `harness/features.json`, `azure-apps/`,
+`infrastructure/sigrid/` ni `infrastructure/sharepoint/`.
+
+---
+
+## 38 · Los 12 rojos que había, y qué tenía cada uno
+
+Eran **dos** causas, no doce.
+
+### 38.1 · Once daban por hecho que una llamada deja **una** fila. Deja dos
+
+Y las dos son correctas, que es lo que hace este caso interesante. `POST
+/api/estado` hace **las dos cosas en una llamada** (`design.md` §5): guarda el
+parte con `paso_persistencia` y escribe la decisión. Y `paso_persistencia`
+anota desde T8 la constancia del estado derivado **si cambió** (R23, R24). Con
+el cuerpo por omisión de ese fichero —un parte **no apto** que nunca se había
+guardado— la secuencia real es:
+
+| # | Fila | Autor | Qué cuenta |
+|---|---|---|---|
+| 1 | `→ pendiente` | máquina (`decidido_por` a `None`) | el parte nace pendiente (R4, R23) |
+| 2 | `pendiente → rechazado` | la persona | la decisión de T13 |
+
+Los tests miraban `repositorio.decisiones[0]` —la de máquina— y afirmaban
+sobre ella el `oid`, el motivo y la huella, que una constancia **no lleva a
+propósito**. De ahí los `assert None == 'oid-opaco-...'`.
+
+**Arreglo**: `_fila_humana(repositorio)`, que busca por `decidido_por` y no por
+posición —con el índice, el día que la constancia dejara de escribirse el test
+seguiría en verde afirmando sobre la fila equivocada— y **falla si hay más de
+una**, que sería el doble registro que R21 prohíbe. El test de R9 afirma ahora
+**las dos filas**: es la película que el histórico tiene que contar, y dejarla
+a medias era desperdiciar el mejor test del fichero.
+
+**Y con ello cambia una expectativa, que hay que decir en voz alta**: el
+`estado_anterior` de la respuesta pasa de `null` a `"pendiente"`. Es lo
+correcto y no un apaño: el handler lee la situación **después** de guardar
+—está escrito así y con su porqué en la docstring— precisamente para que el
+«de» salga del histórico ya actualizado y no del cuerpo (R33). El `null` que
+el test esperaba solo podía salir de leer antes.
+
+### 38.2 · El control de R37 miraba el **texto** y se topaba con una docstring
+
+`test_f028_r37_...` buscaba la cadena `"sharepoint"` en el fuente del handler y
+la encontraba dentro de la docstring de `_exigir_que_no_este_cerrado`, la que
+explica por qué un parte cerrado no se puede rechazar: «lo escrito en Sigrid y
+en **SharePoint** no se deshace desde aquí». El control era bueno; el módulo
+estaba **fallando por documentarse bien**.
+
+Es el mismo tropiezo que el bloque 3 dejó escrito en §5 de este informe, y se
+ha usado **su** solución y no otra: vocabulario del **árbol sintáctico**
+—nombres, atributos, argumentos, definiciones, alias y literales— saltándose
+las docstrings. Con **una línea más** que allí no hacía falta y aquí decide
+todo: `ImportFrom.module`. Un `from infrastructure.sharepoint.biblioteca import
+subir` deja «sharepoint» **únicamente** ahí; sin esa línea el control se habría
+puesto verde mirando a otro lado, que es peor que no tenerlo.
+
+Y por eso va acompañado de `test_f028_r37_el_control_del_vocabulario_ve_los_
+imports_de_verdad`: se le da al vocabulario un módulo de mentira que importa
+los dos adaptadores prohibidos **de las dos formas en que se importan de
+verdad** y se comprueba que las dos caen. Un control negativo que no sabe
+fallar da tranquilidad y no da nada más.
+
+---
+
+## 39 · Se buscó el fallo en el handler. No está
+
+El encargo decía: «arregla los tests, no el handler, salvo que al hacerlo
+descubras que el handler está mal de verdad — en ese caso dilo». Se buscó, y la
+conclusión es que **no lo está**. Lo que se comprobó, uno a uno:
+
+- **el orden** (`parte`, `validacion`, constancia, lectura, decisión) es el que
+  `design.md` §5 y la docstring prometen, y es el único que deja la huella del
+  veredicto que **acaba de escribirse**;
+- **la puerta del parte cerrado va antes de `paso_persistencia`**, que es lo
+  que hace honesto el 409: se comprueba con `repositorio.orden == []` y
+  `repositorio.partes == []`, no suponiendo;
+- **las cuatro claves propias se miran antes que nada**, así que un cuerpo sin
+  `usuario_oid` **y** sin `parte` falla por `usuario_oid`;
+- **`confirmado` exige el booleano** (`crudo is not True`), no un valor que
+  parezca verdadero;
+- **el motivo** se recorta por los extremos, se acota contra `LIMITE_MOTIVO`
+  —que es del dominio— y **se rechaza** en vez de recortarse;
+- **el veredicto se recalcula** y lo que venga hecho en el cuerpo se ignora;
+- **ni el `oid`, ni el correo, ni el nombre, ni el motivo** salen de la
+  respuesta.
+
+Lo único que se le podría objetar al handler es de forma y no de fondo, y se
+deja anotado sin tocarlo: `_exigir_que_no_este_cerrado` recibe el parámetro con
+el nombre `repositorio` cuando lo que le llega es el envoltorio
+`AnotaLosResultados`. Funciona —el envoltorio implementa el puerto entero
+delegando— y el tipo declarado, `RepositorioPartesPort`, es el correcto.
+
+---
+
+## 40 · Decisiones de diseño, y las tres que hay que juzgar
+
+### 40.1 · §31.2 resuelta: las tres puertas **siguen levantando `ParteNoApto`**
+
+El bloque 4 lo dejó abierto en §31.2 y el encargo pedía decidirlo ahora que la
+traducción de `ParteCerrado` existe. **Se decide no cambiarlo**, y por tres
+motivos:
+
+1. **`ParteCerrado` significa otra cosa.** Es de `design.md` §5: «se ha pedido
+   **cambiar el estado** de un parte ya cerrado». En las tres puertas nadie
+   está cambiando el estado de nada — se está pidiendo archivar, adjuntar o
+   cerrar un parte que no está `aprobado`. Reusar el tipo porque el código HTTP
+   coincide sería nombrar por el síntoma.
+2. **`cerrado` es uno de tres**, no un caso aparte. Las puertas rechazan
+   `pendiente`, `rechazado` y `cerrado`, y `MOTIVOS` le da a cada uno su
+   explicación porque **cada uno se arregla de una forma distinta** (§31.3).
+   Partir uno de los tres a otro tipo de excepción rompe esa simetría y obliga
+   a los tres handlers a capturar dos cosas donde hoy capturan una.
+3. **No se gana nada medible.** `ParteNoApto` ya se traduce a **409** en los
+   tres, que es el código que `design.md` §5 reserva, y el motivo que viaja
+   dentro dice literalmente que el parte está cerrado. Lo que se ganaría es un
+   tipo; lo que se pagaría es tocar `puerta_de_estado.py` y la tabla de
+   traducción de tres endpoints que hoy funcionan, y volver a mover
+   `tests/test_f028_puertas.py`, que es **la red de seguridad de T1** y lleva
+   intacta desde el bloque 0.
+
+> Si el reviewer prefiere el tipo propio, el sitio sigue siendo el que dijo el
+> bloque 4: una línea de `puerta_de_estado.py` y un `except` en los tres
+> handlers. Esta decisión no lo cierra, lo documenta.
+
+### 40.2 · El doble aprende a leerse a sí mismo
+
+`RepositorioEnMemoria.consultar_situacion` devolvía **siempre** lo que el test
+le preparó en el constructor, así que no veía la fila que el propio doble
+acababa de escribir. La tabla sí: `select_situacion_estado` lee las dos últimas
+filas del histórico, y una consulta posterior a una escritura ve lo que se
+acaba de apuntar.
+
+La diferencia no es teórica y es justo la que rompía: en **una sola llamada** a
+`/api/estado` se escribe la constancia y después se lee la situación para
+componer el `estado_anterior` de la decisión humana. Con el doble viejo ese
+encadenado no se podía probar — el test habría quedado afirmando sobre nada.
+
+Se mueve `ultimo_estado_registrado` siempre y `decision_humana` **solo si la
+fila la firmó una persona** (R24, R26): una constancia de máquina no es una
+decisión, y darle ese hueco convertiría una anotación en criterio.
+
+**Es un doble compartido y por eso se dice aquí**: la suite entera del servicio
+—2.612 casos— sigue en verde con el cambio, `tests/test_f028_puertas.py`
+incluido.
+
+### 40.3 · `utiles_rutas.py`, o por qué dos ficheros no pueden mirar rutas
+
+`function_app.app.get_functions()` **no es idempotente**: a la segunda llamada
+levanta `ValueError: Function health does not have a unique function name`.
+F-026 lo descubrió y lo resolvió con un `lru_cache` **en su fichero**, que vale
+mientras solo un fichero mire rutas. T13 necesita mirar la suya, y con dos
+cachés el segundo fichero revienta **y el fallo no habla de ninguno de los
+dos**: dice que `health` está repetida.
+
+El problema es del proceso, así que la caché se muda al proceso:
+`tests/utiles_rutas.py`. F-026 delega ahí en dos líneas. No se ha tocado
+ninguno de sus 48 casos.
+
+---
+
+## 41 · Fase RED · las trazas, pegadas
+
+### 41.1 · Los 12 que había, antes de tocar nada
+
+```
+$ cd services/postventa-api
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_estado_http.py -q
+...
+E   AssertionError: assert 2 == 1
+     +  where 2 = len([DecisionEstado(hash_parte='9f2b0011aabb',
+        estado=<EstadoParte.PENDIENTE: 'pendiente'>, ...)])
+tests/test_f028_estado_http.py:495: AssertionError
+
+E   AssertionError: assert None == 'oid-opaco-inventado-para-este-test'
+     +  where None = DecisionEstado(hash_parte='9f2b0011aabb',
+        estado=<EstadoParte.PENDIENTE: 'pendiente'>, estado_anterior=None,
+        decidido_por=None, motivo=None, huella_veredicto=None).decidido_por
+tests/test_f028_estado_http.py:1068: AssertionError
+
+E   AssertionError: assert ['parte', 'va...', 'decision'] == ['parte', 'va...', 'decision']
+      At index 3 diff: 'decision' != 'consulta_situacion'
+      Left contains one more item: 'decision'
+tests/test_f028_estado_http.py:550: AssertionError
+
+E   assert 'sharepoint' not in "from __futu...desde aquí')"
+E     'sharepoint' is contained here:
+E       grid y en sharepoint no se deshace desde aquí, y cambiar el
+E     ?           ++++++++++
+tests/test_f028_estado_http.py:1124: AssertionError
+
+=========================== short test summary info ===========================
+FAILED ...::test_f028_r9_rechazar_un_parte_deja_su_fila_con_quien_cuando_y_por_que
+FAILED ...::test_f028_r5_un_parte_apto_se_puede_rechazar_y_esa_es_la_feature
+FAILED ...::test_f028_r22_el_parte_y_su_veredicto_se_guardan_antes_que_la_decision
+FAILED ...::test_f028_r28_un_veredicto_metido_en_el_cuerpo_se_ignora
+FAILED ...::test_f028_r13_el_motivo_se_recorta_por_los_extremos
+FAILED ...::test_f028_r13_el_limite_del_motivo_lo_pone_el_dominio
+FAILED ...::test_f028_r18_un_cierre_a_medias_no_cierra_la_puerta[pendiente]
+FAILED ...::test_f028_r18_un_cierre_a_medias_no_cierra_la_puerta[dry_run_ok]
+FAILED ...::test_f028_r18_un_cierre_a_medias_no_cierra_la_puerta[error]
+FAILED ...::test_f028_r18_un_cierre_a_medias_no_cierra_la_puerta[None]
+FAILED ...::test_f028_r15_lo_que_se_guarda_de_la_persona_es_el_oid_y_nada_mas
+FAILED ...::test_f028_r37_cambiar_de_estado_no_toca_sharepoint_ni_el_erp
+12 failed, 57 passed in 1.28s
+```
+
+Tras arreglarlos y **antes** de escribir la ruta: `70 passed`.
+
+### 41.2 · La ruta, escrita en rojo primero
+
+Los 19 casos de la sección nueva se escribieron **antes** que la ruta, y así
+fallaban:
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_estado_http.py -q --tb=line
+E   AttributeError: <module 'function_app' from '...\function_app.py'>
+    has no attribute 'cambiar_estado_http'
+tests/test_f028_estado_http.py:1294: AttributeError
+
+E   AssertionError: el host no publica ninguna ruta «estado»
+tests/utiles_rutas.py:43: AssertionError
+
+=========================== short test summary info ===========================
+FAILED ...::test_f028_r31_la_ruta_devuelve_200_con_las_seis_claves_del_contrato
+FAILED ...::test_f028_r31_repetir_la_misma_decision_tambien_es_200
+FAILED ...::test_f028_r31_un_cuerpo_que_no_es_json_es_400
+FAILED ...::test_f028_r31_el_borde_responde_400_sin_escribir_nada[sin-usuario-oid]
+FAILED ...::test_f028_r31_el_borde_responde_400_sin_escribir_nada[sin-confirmado]
+FAILED ...::test_f028_r31_el_borde_responde_400_sin_escribir_nada[confirmado-es-la-cadena-y-no-el-booleano]
+FAILED ...::test_f028_r31_el_borde_responde_400_sin_escribir_nada[un-estado-que-no-existe]
+FAILED ...::test_f028_r31_el_borde_responde_400_sin_escribir_nada[a-pendiente-no-se-vuelve]
+FAILED ...::test_f028_r31_el_borde_responde_400_sin_escribir_nada[rechazo-sin-motivo]
+FAILED ...::test_f028_r31_el_borde_responde_400_sin_escribir_nada[motivo-demasiado-largo]
+FAILED ...::test_f028_r7_un_parte_cerrado_es_409_por_el_borde[cerrado]
+FAILED ...::test_f028_r7_un_parte_cerrado_es_409_por_el_borde[ya_cerrada]
+FAILED ...::test_f028_r31_sin_remesa_registrada_es_409
+FAILED ...::test_f028_r31_sin_base_de_datos_es_503[fallo0]
+FAILED ...::test_f028_r31_sin_base_de_datos_es_503[fallo1]
+FAILED ...::test_f028_r53_el_log_lleva_hash_origen_destino_y_resultado_y_nada_mas
+FAILED ...::test_f028_r53_un_rechazo_del_borde_tampoco_publica_lo_que_venia
+FAILED ...::test_f028_r31_la_ruta_es_post_anonima_y_se_llama_estado
+FAILED ...::test_f028_r32_la_ruta_no_mira_las_ventanas_de_escritura
+19 failed, 70 passed in 0.98s
+```
+
+Y después de escribirla: `89 passed in 1.03s`.
+
+---
+
+## 42 · La lista de casos de T13, recontada
+
+La verificación de T13 nombra doce casos. Están los doce, y **cada uno se
+prueba dos veces**: contra el handler (levanta el error de dominio) y contra la
+ruta (devuelve el código HTTP). Son cosas distintas y la campaña de mutación de
+F-009 ya enseñó por qué: cambiar un `409` por un `503` en la traducción no
+rompía nada porque ningún test recorría la ruta.
+
+| Caso de T13 | Handler | Ruta |
+|---|---|---|
+| **200** al cambiar | `test_f028_r9_rechazar_un_parte_deja_su_fila_...` | `..._la_ruta_devuelve_200_con_las_seis_claves_del_contrato` |
+| **200 `sin_cambios`** al repetir | `..._repetir_la_misma_decision_no_escribe_una_segunda_fila` (×2) | `..._repetir_la_misma_decision_tambien_es_200` |
+| **400** sin `usuario_oid` | `..._r14_sin_usuario_oid_no_se_registra_nada` (×5) | `[sin-usuario-oid]` |
+| **400** sin `confirmado: true` | `..._r29_sin_confirmacion_explicita_...` (×5) | `[sin-confirmado]` |
+| **400** con `confirmado` como cadena `"true"` | `[la-cadena-y-no-el-booleano]` | `[confirmado-es-la-cadena-y-no-el-booleano]` |
+| **400** con un estado que no es manual | `..._r10_un_estado_que_no_es_manual_...` (×8) | `[un-estado-que-no-existe]`, `[a-pendiente-no-se-vuelve]` |
+| **400** con **rechazo sin motivo** | `..._r11_un_rechazo_sin_motivo_...` (×5) | `[rechazo-sin-motivo]` |
+| **400** con motivo demasiado largo | `..._r13_un_motivo_demasiado_largo_...` | `[motivo-demasiado-largo]` |
+| **409** si el parte está `cerrado` | `..._r7_un_parte_cerrado_no_admite_cambios_...` (×4) | `..._r7_un_parte_cerrado_es_409_por_el_borde` (×2) |
+| **409** si la remesa no consta | `..._r31_sin_remesa_registrada_sube_referencia_no_consta` | `..._r31_sin_remesa_registrada_es_409` |
+| **503** sin base | `..._r31_sin_base_de_datos_el_error_sube_sin_traducir` (×2) | `..._r31_sin_base_de_datos_es_503` (×2) |
+| **Y en los rechazos, ni una escritura** | `repositorio.orden == []` en **los 30** | ídem en los **11** de la ruta |
+
+Esa última fila es la que no se supone: `orden == []` afirma que **no se ha
+tocado el puerto**, que es más fuerte que mirar si quedaron filas. En el 409
+del parte cerrado se afirma además `repositorio.partes == []` y
+`repositorio.cierres_consultados == [HASH]`: no solo no escribió, es que lo
+único que hizo fue preguntar por la traza de cierre.
+
+---
+
+## 43 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (servicio `api`) | **2612 passed, 13 skipped, 1 deselected** | la propia suite (ver §44) |
+| Tests ejecutados (arnés, raíz) | **62 passed** | `bash harness/init.sh` |
+| De ellos, **de T13** | **89** en `test_f028_estado_http.py` (70 del handler + 19 de la ruta) | `pytest tests/test_f028_estado_http.py` |
+| **Cobertura de las líneas cambiadas** | **100,0 %** (301/301, umbral 80 %) | `python -m harness.cobertura --base dev --config harness/rigor.json` |
+| **Mutantes generados** | **39** (alcance: 18 ficheros, 1.983 líneas) | `python -m harness.mutacion --feature F-028 --workers 1` |
+| **Supervivientes** | **0** | ídem, `progress/mutacion_F-028.md` |
+| **Timeouts** | **0** | ídem |
+| **Tiempo de la suite** | **~26-40 s** (`api`) · 3,4 s (raíz) | la propia suite |
+| **Tiempo de la campaña** | **948,3 s** en serie, 1 worker | `progress/mutacion_F-028.md` |
+
+**Ningún superviviente que analizar**: cada una de las 39 mutaciones la cazó al
+menos un test. Siete de ellas son de la ruta nueva y son justo las que F-009
+enseñó a temer —`200 → 201`, `400 → 401`, los dos `409 → 410`, los dos
+`503 → 504`—: sin los 19 casos de la sección de la ruta, esas siete habrían
+sobrevivido, porque nadie recorría el `try/except`.
+
+> La cifra de cobertura sube de 276 a 301 líneas entre la medición previa al
+> commit y esta: es el mismo código, contado contra `dev` con el commit ya
+> hecho. Las dos dan 100,0 %.
+
+---
+
+## 44 · Lo que está en rojo, y **no es de F-028**
+
+`bash harness/init.sh` sale **ROJO**, y hay que decir exactamente por qué
+porque no se arregla desde aquí.
+
+```
+FAILED tests/test_f010_integracion_expuesto.py::test_f010_r26_dice_la_consecuencia_visible_de_cada_ausencia
+E   AssertionError: assert 'Sigrid no se toca' in '...'
+```
+
+**Ya estaba rojo en `HEAD` antes de tocar nada** —comprobado con `git stash`—,
+y lo rompió el commit `6eb6d33` («INTEGRACION: los dos cierres reales, que el
+documento seguia negando»), que reescribió `docs/INTEGRACION.md` y sacó de la
+tabla la fila que contenía la frase «Sigrid no se toca» que ese test exige. Es
+**documentación de F-010** y la decisión de qué debe decir ahora ese documento
+no es del implementer de T13: se deja al líder.
+
+Sus dos consecuencias, para que nadie las confunda con un problema de F-028:
+
+- `[KO] servicio api: pytest en rojo` — ese caso y ningún otro;
+- `[KO] PUERTA COBERTURA: 58.3 %` — **falso**. `init.sh` lanza la suite con
+  `-x`, así que se para en ese fallo y mide la cobertura de media suite.
+  Ejecutada entera (menos ese caso), la puerta da **100,0 % de 276 líneas**.
+
+### 44.1 · Y lo mismo invalidaba la campaña de mutación
+
+Esto importa más y por eso va aparte. El evaluador de `harness.mutacion` da un
+mutante por **muerto** cuando la suite falla. Con un caso rojo **antes** de
+mutar nada, la suite falla siempre, así que **todos** los mutantes del servicio
+`api` salían «muertos» sin que ningún test los hubiera cazado. La primera
+campaña lanzada en este encargo dio 39/39 muertos y **no vale**: era una
+medición de la nada.
+
+La campaña que se reporta se lanzó con ese único caso deselecionado —un
+`pytest.ini` temporal en `services/postventa-api/`, **borrado al terminar y
+nunca commiteado**— y con `--workers 1`, porque los worktrees de la campaña
+paralela se crean desde `HEAD` y no verían ese fichero. La línea base, con esa
+deselección, es **verde**: `2612 passed, 13 skipped, 1 deselected`.
+
+---
+
+## 45 · Verificaciones MANUAL pendientes
+
+Las de T27 siguen pendientes y este bloque añade materia a dos de ellas. Nada
+de esto se puede comprobar sin la base real y sin el ERP, y **lo ejecuta el
+humano tras desplegar**:
+
+- **T27.5** («un parte cerrado responde 409 y la web lo explica»): la mitad del
+  backend ya se puede probar de verdad —`POST /api/estado` sobre un parte cuya
+  incidencia conste cerrada tiene que devolver **409** y **no dejar ni una
+  fila**—; la mitad de la web es del bloque 6.
+- **T27.3** («aprobar → rechazar → aprobar deja tres filas»): con el endpoint
+  puesto, ya se puede recorrer contra la base real. Ojo al contarlas: **el
+  primer guardado de un parte deja también su fila de constancia**, así que un
+  parte no apto recién subido y luego rechazado enseña **dos** filas, no una
+  (§38.1). La consulta de solo lectura es la que fija T27.
+- **Nuevo**: que el host publique la ruta al desplegar. Los tests la leen de
+  `app.get_functions()`, que es lo que se despliega, pero un `curl -X POST
+  .../api/estado` contra el entorno desplegado es la única comprobación de que
+  el despliegue la recogió.
+
+---
+
+## 46 · Por dónde sigue · el encargo de T14
+
+**T13 está cerrada. No se ha entrado en T14 ni en T15**, como pedía el encargo.
+
+Lo que T14 se encuentra ya hecho:
+
+- **el endpoint existe y su bloque `estado` está serializado**:
+  `estado_serializado.py` publica `bloque_de_estado` (a partir de una decisión)
+  y `bloque_de_estado_derivado` (a partir del veredicto y la situación, sin
+  escribir nada), y el segundo es exactamente lo que T14 necesita para la
+  respuesta de `/api/parte`;
+- **`AnotaLosResultados` ya sabe consultar la situación y la traza de cierre**,
+  así que T14 no tiene que ampliar el envoltorio;
+- las **nueve líneas de `parte.py`** que `822100e` dejó son de T14 y ya están
+  puestas (los dos métodos delegados del envoltorio). Lo que falta de T14 es
+  cambiar el bloque `aprobacion` de la respuesta por `estado`, que es lo que
+  retira la última llamada de producción a `consultar_aprobacion`.
+
+Tres apuntes para quien lo coja:
+
+- **`tests/test_f028_puertas.py` sigue siendo la red**, 48 casos, intacta desde
+  el bloque 0. Si uno se pone rojo en T14 o T15, **parar y decirlo**.
+- **Al añadir o quitar un endpoint hay que tocar `ENDPOINTS` de
+  `tests/test_f010_endpoints_protegidos.py`** y su recuento. T15 retira
+  `aprobar`: son 13 → 12 otra vez. Y lo que mira rutas ya no es de cada
+  fichero: es `tests/utiles_rutas.py`.
+- **T15 puede retirar el fichero de tests de `/api/aprobar` entero**, pero no
+  el módulo `utiles_rutas.py`, que ahora usan los dos.
+
+---
+
+## 47 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ROJO**, por **un caso de F-010 ajeno a esta
+  feature que ya estaba rojo en `HEAD`** (§44). Todo lo demás en verde.
+- Cobertura de las líneas cambiadas: **100,0 % (276/276)**, medida con la suite
+  entera.
+- Árbol limpio, **2 commits** sobre `6eb6d33` (`2732199` T13 y el de este
+  informe), los dos locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
+  `done` no es cosa del implementer.
+- **La base real y el ERP no se han tocado**: todo corre con
+  `RepositorioEnMemoria` y dobles en memoria, sin red, sin BBDD y sin IA.

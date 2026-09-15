@@ -883,6 +883,20 @@ sus comprobaciones.*
 | 9 · traza local (`cerrado`, `oid` sí, login no) | **no recorrido** (casilla de T29 de F-012, paso 7). R41 y R43 siguen apoyados solo en tests. **Recuperable hoy sin coste**: `12_traza_cierre_local.ps1` solo lee, y del esquema propio |
 | **T24 queda marcada** | **no**, y no por poco. **Lo sustantivo de F-009 está acreditado**: una reclamación real se cerró en el ERP de producción desde el servicio desplegado, con autorización, con su parte dentro, y el responsable lo vio en Sigrid. Pero de los **nueve pasos** del contrato de esta tarea solo constan el **4** (parcial: el HTTP, no el `estado` ni las filas) y **la mitad del 6** (el `CER`, no `tiemod` ni `MAX(ide)`). Los pasos **5, 7 y 9** —las 2 filas, la fila de `dbo.log` campo a campo **con su huso**, y la traza local— **no los ha mirado nadie**. *Acta del 2026-09-14* |
 
+> **Enmienda del 2026-09-15 · los pasos 6, 7 y 9, ya recorridos.** La tabla de
+> arriba se deja **tal cual**, con fecha, porque era cierta el 2026-09-14. Lo
+> que sigue la corrige en tres filas, con lo medido en la **sesión de solo
+> lectura** del **§10** (cuatro scripts, `PASA` los cuatro, sin abrir la ventana
+> de escritura). **Los pasos 2, 3, 4, 5 y 8 siguen como están arriba.**
+
+| Campo | Valor enmendado (2026-09-15) |
+|---|---|
+| 6 · `con.est` = `CER` · `tiemod` sin mover · nuevo `MAX(ide)` | **`CER`: COMPROBADO CON EL SCRIPT.** `09_estado_reclamacion_sigrid.ps1` da `ESTADO DE LA RECLAMACION : PASA`: `ide` **2833896**, `emp` **1**, `est` actual **9 = `CER / CERRADA`** y **destino resuelto contra `conest`** también **9 = `CER`** (R1). Ya no depende de lo que viera una persona en la ficha. **`tiemod`: sigue SIN comprobar** —hoy vale `46275.647118`, pero **nadie anotó el de partida**, así que no compara con nada—. **`MAX(ide)` = anterior + 1: sigue SIN comprobar y sigue sin ser recuperable** (hoy da `8466095` y, minutos después, `8466171`: el ERP sigue vivo). De dónde sale: **§10.3**, veredicto de `09` |
+| 7 · veredicto campo a campo | **COMPROBADO, PASA.** `10_log_cierre_sigrid.ps1` da `FILA DE AUDITORIA DEL CIERRE : PASA` sobre la fila `ide` **8457839** —localizada por `11`—, **una sola fila nueva (1/1)** y **los once campos del §7.3 de `design.md` en verde**: `tab` con, `tip` 708, `cod` `RS26.09/0150`, `ope` 5, `est` 1, `ori` 0, `emp` 1, `usu` `pgris`, `tex` «Cerrar parte (postventa-incidencias)», `res` «fuga en caldera». **R24 y R25 quedan acreditados.** De dónde sale: **§10.3**, veredicto de `10` |
+| 7 · **huso de `fec`/`hor`** | **COMPROBADO: `HORA LOCAL (correcto)`.** En el ERP está escrito `2026-09-11 10:28:12` (`fec = 20260911`, `hor = 102812`); frente a la hora local de referencia, **diferencia 0,0 min**; frente a la UTC, 120,0 min. **El defecto que §0.2 daba por probable NO existía: no escribimos en UTC.** Era la única decisión de la feature tomada sin un dato (`impl_F-009.md` §3.3.a) y ahora lo tiene. De dónde sale: **§10.3**, veredicto de `10`, lanzado con el parámetro `-InstanteCierreUtc` que el commit **`a356875`** añadió precisamente para poder juzgar el huso **días después** del cierre |
+| 9 · traza local (`cerrado`, `oid` sí, login no) | **COMPROBADO, PASA.** `12_traza_cierre_local.ps1` da `TRAZA LOCAL DEL CIERRE : PASA`: **1/1** trazas, origen `PTE`, destino `CER`, estado **`cerrado`**, marca de tiempo del dry-run **sí**, del cierre **sí**, «oid de quien confirmó (R41)» **sí**, «el login del ERP NO está en la traza (R43)» **no**. **R41 y R43 quedan acreditados.** Y los **`intentos 2`** cuadran con las dos llamadas a `cerrar` de §9.2 —dry-run `08:27:42` y commit `08:28:12`—, que es una confirmación cruzada que nadie había buscado. **Salvedad**: no se pasó `-UsuarioOid`, así que consta que **hay** un oid, no **cuál**. De dónde sale: **§10.3**, veredicto de `12` |
+| **T24 sigue sin marcar** | **sí, sigue sin marcar.** De los nueve pasos constan ahora el **4** (parcial), el **6**, el **7** y el **9**; faltan el **2**, el **3**, el **5** y el **8**, y el `filas_afectadas: 2` de R22 **no es recuperable hacia atrás**: lo dará el siguiente cierre real. *Enmienda del 2026-09-15* |
+
 ---
 
 ### T25 · Que el `tex` propio hace lo que se diseñó (R25)
@@ -929,6 +943,18 @@ es la más barata de recuperar de todo el bloque.*
 | nº de filas con el texto propio en todo el ERP | **no comprobado.** Tendría que valer **1**: consta **un** cierre real de este servicio, el de `08:28:12` del 2026-09-11 |
 | ¿alguna de esas filas no es nuestra? | **no comprobado** |
 | **T25 queda marcada** | **no.** Su precondición —«T24 marcada, con al menos un cierre real hecho»— **sí se cumple**: el cierre existe y su fila de `dbo.log` está escrita en producción. La tarea es **una lectura de dos consultas, sin ventana de escritura y sin riesgo**, y además **localiza la fila de log del cierre** —el script la lista una a una—, que es justo lo que le falta al paso 7 de T24. *Acta del 2026-09-14* |
+
+> **Enmienda del 2026-09-15 · T25 EJECUTADA y marcada.** La tabla de arriba se
+> deja tal cual, con fecha: era cierta el 2026-09-14. Lo que sigue la sustituye,
+> con lo medido en la sesión de solo lectura del **§10**.
+
+| Campo | Valor enmendado (2026-09-15) |
+|---|---|
+| Fecha y hora | **EJECUTADA el 2026-09-15**, en la sesión de solo lectura del §10, desde el puesto y sin abrir la ventana de escritura. Veredicto: `TRAZABILIDAD DEL TEXTO PROPIO : PASA`. Hubo que arreglar antes el script: preguntaba `tex = ?` sobre una columna `text` y devolvía `500` (commit **`a356875`**, defecto 2; ver §10.2) |
+| ¿el filtro por prefijo encuentra nuestro cierre? | **SÍ.** «el prefijo del ERP encuentra nuestro cierre» = **True/True**, y devuelve **una sola** fila de la incidencia: `8457839 \| 20260911 \| 102812 \| pgris \| Cerrar parte (postventa-incidencias)`. **Seguimos saliendo en los informes de Posventa**, que es la mitad de D1 de `design.md` |
+| nº de filas con el texto propio en todo el ERP | **1**, esperado **1**. Sobre `dbo.log` entera: `8457839 \| 20260911 \| 102812 \| pgris \| con \| 708 \| RS26.09/0150`. Y «el filtro exacto no devuelve más de lo listado» = **1/1** |
+| ¿alguna de esas filas no es nuestra? | **no.** El filtro exacto devuelve **solo lo nuestro** y **ninguno** de los 6.843 cierres manuales: es lo que permitiría revertir solo lo de este servicio si el piloto se torciera. La otra mitad de D1 |
+| **T25 queda marcada** | **SÍ.** Las dos condiciones de D1 comprobadas contra el ERP, sin escribir nada. Y de regalo, **la fila de log del cierre localizada** (`ide` 8457839), que es lo que permitió recorrer el paso 7 de T24. *Enmienda del 2026-09-15* |
 
 ---
 
@@ -1197,16 +1223,55 @@ decidir:
 
 | # | Hueco | Qué se pierde | Coste de cerrarlo |
 |---|---|---|---|
-| 1 | **La fila de `dbo.log` del primer cierre real, campo a campo, y su HUSO** (T24.7) | R24 y R25 enteros, y **el defecto que §0.2 daba por probable**: si `fec`/`hor` se escribió en UTC, nuestras filas quedan con una o dos horas menos que todas las demás del ERP y nadie lo nota hasta que haga falta reconstruir cuándo se cerró algo. **La fila está escrita en producción y nadie la ha mirado** | **Solo lectura, sin ventana de escritura.** `11_trazabilidad_tex_sigrid.ps1` localiza la fila por el `tex` propio y `10_log_cierre_sigrid.ps1` la verifica campo a campo y dice el huso. **Es el hueco más valioso y de los más baratos** |
-| 2 | **T25 entera** · el `tex` propio en los informes de Posventa | la mitad de D1 de `design.md`: que seguimos apareciendo en el filtro por prefijo, y que el filtro exacto devuelve **solo** lo nuestro | **Solo lectura.** Dos consultas, un script. Se hace en la misma sesión que el hueco 1 |
-| 3 | **La traza local del cierre** (T24.9) · R41, R43 | que la traza quedó en `cerrado`, con el `oid` y **sin el login** del ERP | **Solo lectura, y del esquema propio** (`12_traza_cierre_local.ps1`). Ni toca Sigrid |
-| 4 | **T23** · la siembra del login | R30–R34: que el candidato existe exactamente una vez, que la fila quedó `verificada`, y que **un login inexistente se rechaza sin escribir** | **Casi todo es solo lectura** (`07_alta_usuario_sigrid.ps1 -VerificarAhora` hace un `COUNT(*)`; `12_` lee el esquema propio). Solo el «segundo dry-run devuelve el mismo login» exige la ventana abierta |
+| 1 · **CERRADO 2026-09-15** | **La fila de `dbo.log` del primer cierre real, campo a campo, y su HUSO** (T24.7) | R24 y R25 enteros, y **el defecto que §0.2 daba por probable**: si `fec`/`hor` se escribió en UTC, nuestras filas quedan con una o dos horas menos que todas las demás del ERP y nadie lo nota hasta que haga falta reconstruir cuándo se cerró algo. **La fila está escrita en producción y nadie la ha mirado** | **Solo lectura, sin ventana de escritura.** `11_trazabilidad_tex_sigrid.ps1` localiza la fila por el `tex` propio y `10_log_cierre_sigrid.ps1` la verifica campo a campo y dice el huso. **Es el hueco más valioso y de los más baratos** |
+| 2 · **CERRADO 2026-09-15** | **T25 entera** · el `tex` propio en los informes de Posventa | la mitad de D1 de `design.md`: que seguimos apareciendo en el filtro por prefijo, y que el filtro exacto devuelve **solo** lo nuestro | **Solo lectura.** Dos consultas, un script. Se hace en la misma sesión que el hueco 1 |
+| 3 · **CERRADO 2026-09-15** | **La traza local del cierre** (T24.9) · R41, R43 | que la traza quedó en `cerrado`, con el `oid` y **sin el login** del ERP | **Solo lectura, y del esquema propio** (`12_traza_cierre_local.ps1`). Ni toca Sigrid |
+| 4 · **REDUCIDO 2026-09-15** | **T23** · la siembra del login | R30–R34: que el candidato existe exactamente una vez, que la fila quedó `verificada`, y que **un login inexistente se rechaza sin escribir** | **Casi todo es solo lectura** (`07_alta_usuario_sigrid.ps1 -VerificarAhora` hace un `COUNT(*)`; `12_` lee el esquema propio). Solo el «segundo dry-run devuelve el mismo login» exige la ventana abierta |
 | 5 | **T22 pasos 2 y 5** · el `503` con el interruptor apagado, y que el dry-run **no escribe** | la doble puerta de §0.1 observada en el borde —que es además el paso 3 de T32 de F-012, su «único resto abierto»— y la prueba de que un dry-run no mueve nada | el `503` **no escribe nada**: una llamada desde el front con la ventana cerrada, que es como está ahora. Lo de «no escribe» exige foto antes/después con la ventana abierta |
 | 6 | **T22 paso 4** · las seis cosas de R9 y el bloque `grafico` con `estado: adjuntado` | el contenido del dry-run, que es lo que la persona lee antes de confirmar; y que R48 derogó de verdad el aviso de R21 | exige la **ventana abierta** y una sesión en el front, pero **no escribe**: es un dry-run |
 | 7 | **T27** · el reintento sobre lo ya cerrado | R18 y R42: que repetir sale `ya_cerrada`, **sin escribir** y **sin pisar** la traza terminal. Es **el escenario más probable en uso normal** —alguien vuelve a pasar el mismo parte— y el único hueco de los ocho que **exige abrir la ventana de escritura** | ventana abierta + un `commit` sobre `RS26.09/0150`, que ya está cerrada. No hay que provocar ningún fallo. Es el mismo hueco que T30 de F-012 y T22 de F-025 |
 | 8 | **`filas_afectadas: 2`** (R22, T24.5) | la única prueba directa de que el batch afectó a **dos** filas y no a una | **no es recuperable hacia atrás**: solo lo dará el siguiente cierre real. Igual que el `MAX(ide)` de partida, que nadie anotó |
 
+> **Actualización del 2026-09-15 · quedan cinco huecos, no ocho.** La tabla de
+> arriba **no se toca ni se borra** —era el estado del 2026-09-14 y así se
+> queda—; solo se marca en la primera columna qué ha pasado con cada hueco. El
+> detalle está en el **§10**.
+>
+> - **Huecos 1, 2 y 3: CERRADOS.** Se hizo la sesión de solo lectura que
+>   recomendaba la opción (a) del §9.5 —`09`, `10`, `11` y `12`, **sin abrir la
+>   ventana de escritura**— y **los cuatro scripts dan `PASA`**. Con ellos
+>   quedan acreditados **T25 entera** y los **pasos 6, 7 y 9 de T24**, es decir
+>   **R24, R25, R41 y R43**. El más valioso de los tres, el huso de `fec`/`hor`:
+>   **`HORA LOCAL (correcto)`, 0,0 min de diferencia**. **El defecto que §0.2
+>   daba por probable no existía.**
+> - **Hueco 4: REDUCIDO, no cerrado.** Hoy se ha visto que el `usu` escrito en
+>   el ERP es **`pgris`**, lo que prueba que el login **se derivó, se resolvió
+>   contra el ERP y se usó para firmar** la fila de auditoría (R30–R32 en lo
+>   sustantivo). **Lo que sigue abierto es R33** —que la correspondencia quedara
+>   guardada como **confirmada**, con `verificado_at_utc` relleno—, **R31** —que
+>   un login inexistente responda `409` nombrando correo y login intentado, sin
+>   tocar Sigrid— y **R34**, más que el candidato exista **exactamente una vez**
+>   en `dbo.usu`. Nada de eso lo prueba una firma correcta. Ver §10.5.
+> - **Huecos 5, 6, 7 y 8: exactamente como estaban.** Ninguno se ha tocado. Los
+>   tres primeros siguen exigiendo la **ventana abierta**; el 8
+>   (`filas_afectadas: 2`, R22, y el `tiemod` de partida) **sigue sin ser
+>   recuperable hacia atrás**: solo lo dará el siguiente cierre real.
+>
+> **Aviso para quien recorra el hueco 4**: `infra/07_alta_usuario_sigrid.ps1`
+> (líneas 161 y 248) arrastra el mismo defecto de comillas que hoy tumbó al
+> `12`, y **nunca se ha ejecutado**. Se estrellará en la primera línea de T23.
+> El arreglo ya está escrito: `Invoke-PythonDelServicio`, en el común. Ver
+> §10.6.
+
 ### 9.5 · **Veredicto** (lo que el líder necesita para decidir)
+
+> **Nota del 2026-09-15.** Este veredicto es el del 2026-09-14 y se deja
+> entero. **Lo que recomendaba su punto 4(a) —hacer antes los huecos 1, 2 y 3,
+> por ser solo lectura y sin riesgo— ya se ha hecho, y los tres pasan**: ver
+> §9.4 (actualización) y **§10**. La decisión de fondo —cerrar F-009 con los
+> huecos restantes escritos, o no— **sigue siendo del responsable** y sigue
+> pendiente; lo que ha cambiado es que ahora son **cinco** huecos y **ninguno**
+> de ellos es el de la fila de auditoría.
 
 **Sí queda algo sustantivo sin verificar de F-009.** En una línea: *el cierre
 real está acreditado; sus comprobaciones, casi ninguna*.
@@ -1262,3 +1327,218 @@ real está acreditado; sus comprobaciones, casi ninguna*.
   dice «indirecto» y se deja sin marcar. La **única** inferencia que sí sostiene
   una marca es la de T26, y su cadena está escrita entera en su casilla para que
   el reviewer pueda romperla si no la comparte.
+
+---
+
+## 10 · Acta del 2026-09-15 · la sesión de solo lectura (huecos 1, 2 y 3)
+
+> **Qué se ejecutó, y qué NO.** Se ejecutó la **sesión de solo lectura** que
+> recomendaba la opción (a) del §9.5 para cerrar los huecos 1, 2 y 3 de §9.4.
+> Se lanzaron cuatro de los cinco scripts de lectura de §3 —`09`, `10`, `11` y
+> `12`; el `08` es el común y lo cargan los demás— contra el ERP de producción
+> y contra el esquema propio de PostgreSQL. **Los cuatro dan `PASA`.**
+>
+> **No se escribió nada.** La única ruta del ERP que se tocó fue
+> `POST /api/sql/read`, y la **ventana de escritura (`CIERRE_HABILITADO`)
+> siguió cerrada todo el tiempo**: no hubo ninguna llamada a `POST /api/cerrar`
+> ni con `commit` ni sin él. En PostgreSQL, solo lectura y solo del esquema
+> propio.
+>
+> Esta acta la levanta el arnés **sin ejecutar nada**: las cifras de abajo las
+> produjo esa sesión, delante del ERP, y aquí se transcriben.
+
+### 10.1 · Con qué se ejecutó
+
+Desde el puesto del responsable, con un **envoltorio fuera del repositorio**
+(`C:\Users\pgris\lectura_cierre_f009.ps1`, **no versionado**) que solo carga
+las variables del `.env` y llama a los scripts de `infra/`. Queda fuera a
+propósito: lleva el destino y el manejo de la clave, y la regla de `CLAUDE.md`
+sobre secretos manda sobre la comodidad de tenerlo versionado. Los scripts que
+hacen el trabajo sí están en el repositorio y son los de §3.
+
+### 10.2 · Lo primero que se aprendió: los rotos eran los scripts, no el ERP
+
+**Los cinco scripts de lectura se escribieron el 2026-09-05 y no se había
+lanzado ninguno.** Hoy se han lanzado cuatro y **tres estaban rotos**. Los tres
+fallos eran de los scripts; **ninguno era del ERP**, y ninguno se habría
+descubierto sin ejecutarlos.
+
+Están arreglados y confirmados en el commit **`a356875`** («F-009: tres
+defectos de los scripts de lectura, hallados al ejecutarlos»), cuyo mensaje
+lleva el detalle. En una línea cada uno:
+
+1. **`10_log_cierre_sigrid.ps1`** juzgaba el huso comparando la fila contra
+   **AHORA**, con 20 minutos de tolerancia: leído el cierre cuatro días después,
+   el veredicto habría salido `NO COINCIDE CON NINGUNA` **por construcción**.
+   Nuevo parámetro `-InstanteCierreUtc`, opcional.
+2. **`11_trazabilidad_tex_sigrid.ps1`** preguntaba la igualdad exacta con
+   `tex = ?` y `dbo.log.tex` está declarada `text`, tipo LOB sobre el que SQL
+   Server **no admite `=`**: devolvía `500` en dos décimas, que parece un
+   problema de red o de clave. Ahora pregunta con `LIKE` y patrón literal, y
+   **rechaza** un texto propio que lleve comodines.
+3. **`12_traza_cierre_local.ps1`** pasaba el guion de Python con `& $python -c`
+   y PowerShell 5.1 se come las comillas dobles al invocar un ejecutable nativo.
+   Arreglado con `Invoke-PythonDelServicio`, en el común
+   `08_lectura_sigrid_comun.ps1`.
+
+**El cuarto script, `09_estado_reclamacion_sigrid.ps1`, salió a la primera.**
+
+> **Lo que esto dice del bloque 8, y conviene no perder.** Un guion de
+> verificación con utillaje **escrito y nunca ejecutado** no es utillaje, es una
+> intención. El §3 de este guion lleva desde el 2026-09-05 describiendo cinco
+> scripts «re-ejecutables, que comprueban sus precondiciones y paran con un
+> mensaje claro en vez de reventar», y tres de los cuatro que se han probado
+> reventaban. **El defecto 1 es el peor de los tres**: no reventaba —respondía,
+> y respondía mal, que es lo único que un veredicto automático no se puede
+> permitir.
+
+### 10.3 · Lo medido, script a script
+
+Los cuatro veredictos, **literales**.
+
+#### `11_trazabilidad_tex_sigrid.ps1` — `TRAZABILIDAD DEL TEXTO PROPIO : PASA`
+
+- Filas de la incidencia que encuentra el **filtro por prefijo**
+  `tex LIKE 'Cerrar parte%'` —el de los informes de Posventa, el que mide sobre
+  6.843 filas—: **una sola**
+  → `8457839 | 20260911 | 102812 | pgris | Cerrar parte (postventa-incidencias)`.
+- Todas las filas del ERP con el **texto propio exacto**, sobre `dbo.log`
+  entera: **una sola**
+  → `8457839 | 20260911 | 102812 | pgris | con | 708 | RS26.09/0150`.
+- Comprobaciones: «el prefijo del ERP encuentra nuestro cierre» **True/True**;
+  «cierres de este servicio en todo el ERP» esperado **1**, obtenido **1**; «el
+  filtro exacto no devuelve más de lo listado» **1/1**.
+
+**Qué acredita: T25 entera**, es decir **las dos** condiciones de D1 de
+`design.md` — que seguimos saliendo en los informes de Posventa por el filtro
+de prefijo, y que el filtro exacto devuelve **solo lo nuestro**, ninguno de los
+6.843 cierres manuales. Y de paso **localiza la fila de log del cierre**
+(`ide` 8457839), que es justo lo que le faltaba al paso 7 de T24.
+
+#### `09_estado_reclamacion_sigrid.ps1` — `ESTADO DE LA RECLAMACION : PASA`
+
+- `ide` de la reclamación **2833896**; `emp` **1**; `cod` **`RS26.09/0150`**;
+  `res` **«fuga en caldera»**; `est` actual **9 = `CER / CERRADA`**; `est` de
+  destino resuelto contra `conest` **9 = `CER / CERRADA`**; `con.tiemod`
+  **46275.647118**.
+- `MAX(ide)` de `dbo.log`: **8466095** en la primera pasada y **8466171** en la
+  segunda. El ERP sigue vivo: son cierres de otros, hechos entre una lectura y
+  la siguiente.
+- Comprobación: «código del estado actual» esperado `CER`, obtenido **`CER`**.
+
+**Qué acredita: el paso 6 de T24**, que hasta hoy constaba **solo por lo que
+vio una persona en la ficha de Sigrid**. Ahora está leído del ERP, con el
+estado de destino resuelto contra `conest`, que es lo que R1 pide.
+
+#### `10_log_cierre_sigrid.ps1` — `FILA DE AUDITORIA DEL CIERRE : PASA`
+
+Lanzado con `-IdeFilaLog 8457839` (es decir, `-DesdeIde 8457838`),
+`-Res "fuga en caldera"`, `-Emp 1` y `-InstanteCierreUtc 2026-09-11T08:28:12Z`
+—el parámetro nuevo del arreglo 1—.
+
+- **El huso**: lo escrito en el ERP es **`2026-09-11 10:28:12`**
+  (`fec = 20260911`, `hor = 102812`). Hora **local** de referencia
+  `2026-09-11 10:28:12` → **diferencia 0,0 min**. Hora **UTC** de referencia
+  `2026-09-11 08:28:12` → diferencia 120,0 min. Veredicto:
+  **`HORA LOCAL (correcto)`**.
+- **Campo a campo**, los once del §7.3 de `design.md`, todos en verde:
+  `ide` **8457839**; filas nuevas **1/1**; `tab` **con**; `tip` **708**; `cod`
+  **`RS26.09/0150`**; `ope` **5**; `est` **1**; `ori` **0**; `emp` **1**; `usu`
+  **`pgris`**; `tex` **«Cerrar parte (postventa-incidencias)»**; `res`
+  **«fuga en caldera»**.
+
+**Qué acredita: el paso 7 de T24, y con él R24 y R25 enteros.** Y **mata el
+defecto que el §0.2 daba por probable: no escribimos en UTC.** Era *la única
+decisión de la feature que no se pudo tomar con un dato*
+(`progress/impl_F-009.md` §3.3.a); ahora lo tiene. Nuestra fila queda a la
+misma hora que las 8,4 millones que la rodean, y reconstruir cuándo se cerró
+algo seguirá saliendo bien.
+
+#### `12_traza_cierre_local.ps1` — `TRAZA LOCAL DEL CIERRE : PASA`
+
+- Trazas para esta incidencia **1/1**; estado de origen guardado **`PTE`**;
+  estado de destino guardado **`CER`**; motivo **«(sin motivo)»**; **intentos
+  2**; estado de la traza esperado `cerrado`, obtenido **`cerrado`**; marca de
+  tiempo del dry-run **sí**; marca de tiempo del cierre **sí**; «oid de quien
+  confirmó (R41)» **sí**; «el login del ERP NO está en la traza (R43)» esperado
+  **no**, obtenido **no**.
+- **Los `intentos 2` cuadran con lo medido en §9.2**: las dos llamadas a
+  `cerrar` del 2026-09-11, el dry-run de `08:27:42` y el `commit` de `08:28:12`.
+  Es una confirmación cruzada entre dos fuentes independientes —los registros de
+  `appi-postventa-dev` y la traza de PostgreSQL— que nadie había buscado.
+
+**Qué acredita: el paso 9 de T24, y con él R41 y R43.**
+
+> **Salvedad, y es la que impide dar el hueco 4 por cerrado.** **NO se pasó
+> `-UsuarioOid`**, así que lo comprobado es que la traza **guarda un oid**, no
+> **cuál**. Y sobre todo: **R33 —que la correspondencia del usuario quedó
+> marcada como CONFIRMADA, con `verificado_at_utc` relleno— sigue sin
+> comprobar**. Es parte del hueco 4 (T23), que queda **reducido**, no cerrado.
+
+### 10.4 · Qué NO prueba esta sesión
+
+Se escribe aparte para que no se lea de más:
+
+- **No prueba nada de T22, T23 ni T27.** Ninguna de las tres se ha tocado hoy.
+- **No prueba `filas_afectadas: 2`** (R22, hueco 8). Sigue sin ser recuperable
+  hacia atrás: lo dará el siguiente cierre real, no una lectura.
+- **No prueba que `tiemod` no se moviera.** Hoy vale **46275.647118**, pero
+  **nadie anotó el de partida** antes del cierre, así que el número de hoy no
+  compara con nada. Queda dentro del hueco 8, por el mismo motivo que el
+  `MAX(ide)`: la foto que faltaba era la de **antes**.
+- **No prueba R33**, ni que un login inexistente se rechace sin tocar Sigrid
+  (R31). Ver §10.5.
+- **No abre ninguna ventana.** Todo lo que exija `CIERRE_HABILITADO` en `true`
+  —los huecos 5, 6 y 7— sigue exactamente donde estaba.
+
+### 10.5 · Lo que sí se aprendió del usuario, sin haberlo buscado
+
+El `usu` escrito en el ERP es **`pgris`**. Eso prueba tres eslabones de la
+cadena R30–R32: que el **login candidato se derivó**, que **se resolvió a un
+login real** —el ERP lo aceptó como firma de la fila de auditoría— y que **se
+usó para firmar**, no el correo ni el `oid`.
+
+**Lo que NO prueba**: ni **R33** (que la correspondencia quedara guardada como
+**confirmada**, con `verificado_at_utc` relleno), ni **R31** (que un login
+inexistente responda `409` nombrando correo y login intentado, **sin tocar
+Sigrid**), ni que el candidato exista **exactamente una vez** en `dbo.usu`.
+
+Por eso el hueco 4 queda **reducido**, y por eso sigue abierto.
+
+### 10.6 · Pendiente que esta sesión deja abierto, con dueño
+
+El defecto 3 del §10.2 —`& $python -c` y las comillas de PowerShell 5.1—
+**sigue vivo en dos scripts que tampoco se han ejecutado nunca**:
+
+| Script | Dónde | Quién lo tiene que arreglar |
+|---|---|---|
+| `infra/07_alta_usuario_sigrid.ps1` | líneas **161** y **248** | **el encargo que cierre el hueco 4 (T23)**: ese script es el que hace el `COUNT(*)` de `-VerificarAhora`, así que se estrellará en la primera línea del guion de T23 |
+| `infra/17_traza_grafico_local.ps1` | línea **196** | **el encargo que recorra la precondición añadida de T24** (R2 de F-012), que es donde se invoca |
+
+El arreglo está escrito y probado: `Invoke-PythonDelServicio`, en
+`infra/08_lectura_sigrid_comun.ps1`. **No se ha aplicado hoy a propósito**:
+este encargo era documental, y arreglar un script que nadie va a ejecutar en la
+misma sesión es volver a crear el problema del §10.2 —código escrito y nunca
+probado— con otro nombre.
+
+### 10.7 · Veredicto del 2026-09-15
+
+1. **Los tres huecos baratos están cerrados, y los tres pasan.** De los **nueve
+   pasos** de T24, los que constan suben de «uno y medio» a **cuatro y medio**:
+   el **4** (parcial), el **6**, el **7** y el **9**. **T25 queda entera.**
+2. **El defecto que el diseño daba por probable no existía.** El huso es
+   **local**, con 0,0 minutos de diferencia. `design.md` §7.3 no decía en qué
+   huso se escribe `fec`/`hor`; ahora lo respalda un dato del ERP y no solo una
+   elección razonada.
+3. **El defecto que sí ha aparecido estaba en nuestra casa**: tres de los cuatro
+   scripts de lectura no funcionaban. Es el argumento más fuerte que ha dado
+   este bloque a favor de **ejecutar** el utillaje de verificación en vez de
+   darlo por bueno porque está escrito.
+4. **T24 sigue sin marcar, y no por poco**: le faltan los pasos **2, 3, 4, 5 y
+   8**, y el `filas_afectadas` **no es recuperable**. **T22, T23 y T27 tampoco
+   se marcan.** Del bloque 8 quedan marcadas **T25** y **T26**.
+5. **El pendiente documental del §9.5.5 sigue en pie y no depende de esta
+   sesión**: `azure-apps/postventa_incidencias.md` **sigue diciendo que «todavía
+   no se ha ejecutado ni un cierre real»**, y desde el 2026-09-11 es falso. Hoy
+   además hay con qué corregirlo bien: fecha, incidencia, `ide` de la fila de
+   auditoría y veredicto del huso. **Lo decide el líder**, no este encargo.

@@ -105,7 +105,7 @@
       escribe ninguna fila**; y teclear el código que faltaba deja
       `pendiente → aprobado`.
 
-- [ ] **T9**: `paso_cierre`: tras la escritura del cierre, la fila `→ cerrado`.
+- [x] **T9**: `paso_cierre`: tras la escritura del cierre, la fila `→ cerrado`.
       | Verificación: mismo fichero — la fila se escribe **después** de que el
       cierre conste, y un cierre fallido **no** la escribe.
 

@@ -66,6 +66,7 @@ from domain.models.errores import (
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
 )
+from domain.models.estado import EstadoParte
 from domain.models.persistencia import (
     EstadoArchivo,
     EstadoCierre,
@@ -79,6 +80,7 @@ from domain.ports.persistencia import (
 )
 from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
 
+from application.pipelines.constancia import anotar_estado
 from application.pipelines.contexto_parte import ContextoParte
 
 __all__ = [
@@ -130,6 +132,10 @@ def paso_cierre(
     6. **La traza `dry_run_ok`** (R40).
     7. Y **solo si `commit`** y hay confirmación o auto-cierre (R12, R13): la
        escritura y la traza `cerrado` (R41).
+    8. Cuando el cierre **ya consta** —el ERP escrito y su traza guardada, o la
+       reclamación que ya estaba cerrada—, la fila `→ cerrado` del histórico de
+       estado (F-028, R18). Va la última a propósito: es constancia, y lo que
+       no ocurrió no se apunta.
 
     Levanta `ParteNoApto`, `ParteNoArchivado`, `CuerpoDeCierreInvalido`,
     `UsuarioSigridNoMapeado`, `UsuarioSigridInexistente`,
@@ -421,6 +427,8 @@ def _escribir(
         )
         raise CierreSinTraza(sin_traza.motivo) from sin_traza
 
+    _anotar_que_el_parte_queda_cerrado(repositorio, ctx, ahora=ahora)
+
     log.info(
         "F-009 incidencia cerrada: parte=%s incidencia=%s origen=%s destino=%s filas=%d",
         ctx.parte.hash,
@@ -459,6 +467,7 @@ def _resolver_ya_cerrada(
             dry_run_at_utc=ahora,
         ),
     )
+    _anotar_que_el_parte_queda_cerrado(repositorio, ctx, ahora=ahora)
     log.info(
         "F-009 incidencia ya cerrada: parte=%s incidencia=%s",
         ctx.parte.hash,
@@ -513,6 +522,62 @@ def _traza(
         dry_run_at_utc=dry_run_at_utc,
         cerrado_at_utc=cerrado_at_utc,
     )
+
+
+def _anotar_que_el_parte_queda_cerrado(
+    repositorio: RepositorioPartesPort, ctx: ContextoParte, *, ahora: datetime
+) -> None:
+    """La fila `→ cerrado` del histórico de estado (F-028, T9).
+
+    Se llama **después** de que el cierre conste —la escritura hecha y su traza
+    guardada—, y por eso un cierre fallido no deja fila: una fila `→ cerrado` de
+    algo que reventó dejaría el parte en un estado terminal (R7) del que no sale
+    ninguna flecha, y nadie podría volver a intentarlo.
+
+    También se llama cuando la reclamación **ya estaba cerrada**. No la cerramos
+    nosotros, pero el hecho es el mismo —esa reclamación está cerrada en el
+    ERP— y el parte queda `cerrado` igual (R18). Si no se anotara, la última
+    fila del histórico diría `aprobado` mientras el parte está `cerrado`: el
+    relato contradiciendo al estado.
+
+    Y se aplica la misma regla de constancia que en `paso_persistencia`, que
+    aquí no es un detalle: el camino de «ya cerrada» se recorre **cada vez** que
+    alguien vuelve a lanzar una remesa procesada, así que sin la regla cada
+    pasada añadiría un `cerrado → cerrado`.
+
+    ## Si la base falla aquí, el cierre sigue siendo un cierre
+
+    Es el único sitio del proyecto donde un fallo de persistencia **se traga**, y
+    el motivo es que aquí arriba la incidencia **ya está cerrada en el ERP de
+    producción** y su `TrazaCierre` —que es de donde se deriva el estado (R18)—
+    **ya está guardada**. Lo que falla es el renglón del relato, que es
+    constancia y nunca criterio (R26).
+
+    Dejarlo salir convertiría un cierre que ocurrió en el 503 «vuelve a
+    intentarlo» de la base, y quien lo reintentara le pediría otra vez al ERP
+    que cerrara lo ya cerrado. No es `CierreSinTraza`, que es el caso de al
+    lado y sí sube: allí lo que falta es la traza, o sea el hecho; aquí falta
+    solo su eco, y el siguiente reproceso del parte lo recupera solo, porque la
+    regla de constancia lo volverá a calcular con la traza ya en `cerrado`.
+
+    El log lleva el `hash` y nada más: ni `oid`, ni motivo, ni nada del papel
+    (R52, R44, R45).
+    """
+    try:
+        situacion = repositorio.consultar_situacion(hash_parte=ctx.parte.hash)
+        anotar_estado(
+            repositorio,
+            situacion,
+            hash_parte=ctx.parte.hash,
+            estado=EstadoParte.CERRADO,
+            ahora=ahora,
+        )
+    except ErrorDePersistencia:
+        log.error(
+            "F-028 constancia de cierre no anotada: el parte %s ESTÁ cerrado y "
+            "su traza consta; falta solo la fila del histórico",
+            ctx.parte.hash,
+        )
 
 
 def _dejar_constancia(

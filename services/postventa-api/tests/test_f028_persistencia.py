@@ -1,5 +1,5 @@
 # services/postventa-api/tests/test_f028_persistencia.py
-"""El histórico de estado: SQL, mapeo, adaptador y constancia (F-028, T6 a T8).
+"""El histórico de estado: SQL, mapeo, adaptador y constancia (F-028, T6 a T9).
 
 **Sin base de datos y sin un socket abierto.** La guarda `sin_red` de
 `tests/conftest.py` sigue puesta durante toda la suite, y quien hace de
@@ -26,11 +26,12 @@ demostrar:
   igualmente.
 - **Ni el motivo ni el `oid` salen en ningún log** (R52). El motivo lo escribe
   una persona y puede llevar nombres; el `oid` es dato personal seudónimo.
-- **La regla de constancia** (T8, `design.md` §4): solo se añade fila si el
-  estado derivado **difiere** del último registrado. De ahí sale que un
+- **La regla de constancia** (T8 y T9, `design.md` §4): solo se añade fila si
+  el estado derivado **difiere** del último registrado. De ahí sale que un
   reproceso que no cambia nada no escriba nada —y sin eso, el autoguardado de
-  F-026 llenaría la tabla de renglones idénticos— y que la fila de máquina vaya
-  **sin autor** (R24).
+  F-026 llenaría la tabla de renglones idénticos—, que la fila de máquina vaya
+  **sin autor** (R24) y que la fila `→ cerrado` se escriba **después** de que
+  el cierre conste y nunca si el cierre falló.
 
 Ni un dato real: los `oid`, los `hash` y los motivos son inventados.
 """
@@ -42,10 +43,22 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from application.pipelines.contexto_parte import ContextoParte
+from application.pipelines.paso_cierre import paso_cierre
 from application.pipelines.paso_persistencia import paso_persistencia
 from domain.models.aprobacion import huella_de_veredicto
+from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
+from domain.models.errores import CierreFallido, ErrorDePersistencia
 from domain.models.estado import DecisionEstado, EstadoParte, SituacionParte
-from domain.models.persistencia import EstadoCierre, ResultadoGuardado
+from domain.models.persistencia import (
+    EPOCA_SIN_DECIDIR,
+    EstadoArchivo,
+    EstadoCierre,
+    EstadoGrafico,
+    PreferenciasUsuario,
+    ResultadoGuardado,
+    TrazaArchivo,
+    TrazaGrafico,
+)
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, validar_parte
 from domain.ports.persistencia import RepositorioPartesPort
@@ -54,6 +67,7 @@ from infrastructure.persistencia.mapeo import fila_a_decision_estado
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
 
 from tests.utiles_pg import ConexionDoble, RepositorioEnMemoria
+from tests.utiles_sigrid import ErpEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
 ESQUEMA = "postventa"
@@ -855,3 +869,268 @@ def test_f028_la_constancia_se_apunta_despues_de_guardar_la_validacion():
     ]
 
 
+class RepositorioConLaConstanciaRota(RepositorioEnMemoria):
+    """Todo funciona menos apuntar la fila del histórico.
+
+    Es el único doble con el que se puede llegar al caso que importa de T9: el
+    ERP **ya escrito**, su traza guardada, y la base fallando justo en la
+    anotación que solo cuenta la película. Con el `fallo` general del doble se
+    reventaría muchísimo antes, en la traza del dry-run.
+    """
+
+    def registrar_decision(self, *, decision):
+        raise ErrorDePersistencia("la base no está para apuntar nada ahora mismo")
+
+# ==========================================================================
+# T9 · La fila `→ cerrado`, después de que el cierre conste
+# ==========================================================================
+
+
+def _reclamacion(*, est: int = 3, cod_origen: str = "PTE") -> Reclamacion:
+    """La reclamación que devuelve el ERP de mentira. Toda inventada."""
+    return Reclamacion(
+        ide=111_222,
+        emp=1,
+        tip=708,
+        est=est,
+        codigo="RS26.09/0123",
+        descripcion="REPARACION",
+        estado_origen_cod=cod_origen,
+        estado_origen_res=f"ESTADO {cod_origen}",
+        estado_destino_est=90,
+        estado_destino_cod="CER",
+        estado_destino_res="CERRADA",
+    )
+
+
+class UsuariosConLoginConfirmado:
+    """Correspondencia ya confirmada: el camino corto de R29 de F-009."""
+
+    def resolver_login(self, *, usuario_oid: str) -> CorrespondenciaSigrid:
+        return CorrespondenciaSigrid(
+            usuario_oid=usuario_oid,
+            login_sigrid="logininventado",
+            alta_at_utc=AHORA,
+            verificado_at_utc=AHORA,
+        )
+
+    def guardar_login(self, *, correspondencia):  # pragma: no cover
+        return ResultadoGuardado.CREADO
+
+
+class PreferenciasSinAutoCierre:
+    """Lo que devuelve quien no ha decidido nada: sin auto-cierre."""
+
+    def obtener_preferencias(self, *, usuario_oid: str) -> PreferenciasUsuario:
+        return PreferenciasUsuario(
+            usuario_oid=usuario_oid,
+            auto_cierre=False,
+            actualizado_at_utc=EPOCA_SIN_DECIDIR,
+        )
+
+    def guardar_preferencias(self, *, preferencias):  # pragma: no cover
+        return ResultadoGuardado.CREADO
+
+
+#: La traza del gráfico **adjuntado**: precondición del `commit` desde F-012.
+GRAFICO_ADJUNTADO = TrazaGrafico(
+    hash_parte=HASH,
+    numero_incidencia="RS26.09/0123",
+    estado=EstadoGrafico.ADJUNTADO,
+    adjuntado_at_utc=AHORA,
+)
+
+
+def _contexto_listo_para_cerrar() -> ContextoParte:
+    """Un parte apto y archivado: lo que el cierre exige antes de mirar nada."""
+    return ContextoParte(
+        parte=_parte_troceado(),
+        extraccion=extraccion_de_ejemplo(hash_parte=HASH),
+        validacion=_veredicto(apto=True),
+        archivo=TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO),
+    )
+
+
+def _cerrar(
+    repositorio: RepositorioEnMemoria,
+    *,
+    erp: ErpEnMemoria | None = None,
+    commit: bool = True,
+) -> ContextoParte:
+    """Ejecuta `paso_cierre` con dobles. **Sin red y sin tocar el ERP.**"""
+    return paso_cierre(
+        _contexto_listo_para_cerrar(),
+        erp if erp is not None else ErpEnMemoria(_reclamacion()),
+        repositorio,
+        UsuariosConLoginConfirmado(),
+        PreferenciasSinAutoCierre(),
+        commit=commit,
+        confirmado=True,
+        usuario_oid=OID,
+        correo="personainventada@ejemplo.invalido",
+        numero_incidencia="RS26.09 - 0123",
+        ahora=AHORA,
+    )
+
+
+def test_f028_el_cierre_deja_su_fila_en_el_historico():
+    """La incidencia se cierra en el ERP y el parte pasa a `cerrado`.
+
+    `cerrado` es **terminal** (R7): esta fila es el último renglón del parte, y
+    sin ella el histórico se quedaría contando la película hasta la víspera del
+    final.
+    """
+    repositorio = RepositorioEnMemoria(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+    )
+
+    _cerrar(repositorio)
+
+    assert len(repositorio.decisiones) == 1
+    fila = repositorio.decisiones[0]
+    assert fila.estado is EstadoParte.CERRADO
+    assert fila.estado_anterior is EstadoParte.APROBADO
+    assert fila.decidido_por is None
+    assert fila.motivo is None
+
+
+def test_f028_la_fila_cerrado_se_escribe_despues_de_que_el_cierre_conste():
+    """El orden de T9, y es lo único que la hace creíble.
+
+    Si la fila se escribiera antes, un fallo al guardar la traza dejaría el
+    histórico diciendo que el parte está cerrado mientras la traza —que es la
+    fuente de la que se deriva el estado— dice que no. Se escribe cuando el
+    cierre ya consta, y no antes.
+    """
+    repositorio = RepositorioQueGrabaElOrden(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+    )
+
+    _cerrar(repositorio)
+
+    assert repositorio.llamadas[-2:] == [
+        "guardar_cierre:cerrado",
+        "registrar_decision:cerrado",
+    ]
+
+
+def test_f028_un_cierre_fallido_no_escribe_ninguna_fila():
+    """**Lo que no pasó no se apunta.**
+
+    Una fila `→ cerrado` de un cierre que reventó dejaría el parte en un estado
+    terminal del que no sale ninguna flecha, y nadie podría volver a
+    intentarlo: exactamente el daño que R7 hace caro.
+    """
+    repositorio = RepositorioEnMemoria(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+    )
+    erp = ErpEnMemoria(_reclamacion(), fallo_al_cerrar=RuntimeError("la pasarela"))
+
+    with pytest.raises(RuntimeError):
+        _cerrar(repositorio, erp=erp)
+
+    assert repositorio.decisiones == []
+
+
+def test_f028_un_cierre_que_afecta_a_otras_filas_tampoco_la_escribe():
+    """El otro cierre fallido: el que el ERP acepta y **no cuadra**.
+
+    `CierreFallido` no sale de una excepción de la pasarela, sale de contar las
+    filas. Va aparte porque es el camino que un `try` mal puesto dejaría
+    escapar: el ERP respondió que sí.
+    """
+    repositorio = RepositorioEnMemoria(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+    )
+    erp = ErpEnMemoria(_reclamacion(), filas_afectadas=1)
+
+    with pytest.raises(CierreFallido):
+        _cerrar(repositorio, erp=erp)
+
+    assert repositorio.decisiones == []
+
+
+def test_f028_el_dry_run_no_escribe_ninguna_fila():
+    """El ensayo no cierra nada, así que no cambia el estado de nada."""
+    repositorio = RepositorioEnMemoria(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+    )
+
+    _cerrar(repositorio, commit=False)
+
+    assert repositorio.decisiones == []
+
+
+def test_f028_r18_una_reclamacion_ya_cerrada_tambien_deja_su_fila():
+    """R18 · el hecho es el mismo: esa reclamación está cerrada en el ERP.
+
+    No la cerramos nosotros, pero el parte queda `cerrado` igual y el histórico
+    tiene que decirlo. Si no, su última fila diría `aprobado` mientras el parte
+    está `cerrado`, y eso es el histórico contradiciendo al estado.
+    """
+    repositorio = RepositorioEnMemoria(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+    )
+    erp = ErpEnMemoria(_reclamacion(est=90, cod_origen="CER"))
+
+    ctx = _cerrar(repositorio, erp=erp)
+
+    assert erp.cierres == []
+    assert ctx.cierre.estado is EstadoCierre.YA_CERRADA
+    assert [fila.estado for fila in repositorio.decisiones] == [EstadoParte.CERRADO]
+
+
+def test_f028_no_se_repite_la_fila_si_el_parte_ya_constaba_cerrado():
+    """La misma regla de constancia, en el camino que más se repite.
+
+    Volver a lanzar una remesa ya procesada pasa por aquí una vez por parte, y
+    el ERP contesta `ya_cerrada` todas las veces. Sin la regla, cada pasada
+    añadiría un `cerrado → cerrado`.
+    """
+    repositorio = RepositorioEnMemoria(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(
+            ultimo_estado_registrado=EstadoParte.CERRADO,
+            estado_cierre=EstadoCierre.CERRADO.value,
+        ),
+    )
+    erp = ErpEnMemoria(_reclamacion(est=90, cod_origen="CER"))
+
+    _cerrar(repositorio, erp=erp)
+
+    assert repositorio.decisiones == []
+
+
+def test_f028_si_la_constancia_falla_el_cierre_sigue_siendo_un_cierre(caplog):
+    """**El caso que toca el ERP de producción**, y por eso se escribe aparte.
+
+    La incidencia **ya está cerrada en Sigrid** y su traza —que es de donde se
+    deriva el estado (R18, R26)— **ya está guardada**. Lo único que falla es el
+    renglón del relato. Dejar salir ese error convertiría un cierre que ocurrió
+    en un 503 «vuelve a intentarlo», y quien lo reintentara volvería a pedirle
+    al ERP de producción que cerrara lo que ya estaba cerrado.
+
+    Así que se traga, se registra en el log y el paso devuelve lo que es
+    verdad: el cierre. La fila perdida la recupera el siguiente reproceso, que
+    aplica la misma regla de constancia con la traza ya en `cerrado`.
+
+    Y el log no lleva ni el `oid` ni ningún motivo (R52).
+    """
+    repositorio = RepositorioConLaConstanciaRota(
+        traza_grafico=GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(ultimo_estado_registrado=EstadoParte.APROBADO),
+    )
+
+    with caplog.at_level("ERROR"):
+        ctx = _cerrar(repositorio)
+
+    assert ctx.cierre.estado is EstadoCierre.CERRADO
+    assert repositorio.cierres[-1].estado is EstadoCierre.CERRADO
+    assert HASH in caplog.text
+    assert OID not in caplog.text

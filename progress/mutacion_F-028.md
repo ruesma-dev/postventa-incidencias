@@ -1,21 +1,26 @@
 <!-- progress/mutacion_F-028.md -->
 # F-028 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-028 --workers 1` el 2026-09-16 01:07.
+Generado por `python -m harness.mutacion --feature F-028 --workers 1` el 2026-09-16 01:41.
 
-> **NOTA A MANO (2026-09-16, T13), no la escribe el arnés.** Esta campaña se
-> lanzó con `--workers 1` y con **un caso deselecionado** mediante un
-> `pytest.ini` temporal, ya borrado:
-> `tests/test_f010_integracion_expuesto.py::test_f010_r26_dice_la_consecuencia_visible_de_cada_ausencia`.
-> Ese caso está **rojo en `HEAD` por un cambio de `docs/INTEGRACION.md`
-> (commit `6eb6d33`) ajeno a F-028**, y el evaluador de mutación da un mutante
-> por **muerto** cuando la suite falla: con la línea base en rojo, **todos** los
-> mutantes del servicio `api` salen «muertos» sin que ningún test los cace. Una
-> primera campaña de este encargo dio 39/39 así y **no valía**. Con la
-> deselección, la línea base es verde (`2612 passed, 13 skipped, 1 deselected`)
-> y estos números sí significan algo. **Mientras ese caso siga rojo, una
-> campaña lanzada a secas sobre `api` no vale nada.** Detalle en
-> `progress/impl_F-028.md` §44.
+> **NOTA A MANO (2026-09-16, T14), no la escribe el arnés.** Dos cosas que hay
+> que saber para leer los números de abajo:
+>
+> 1. **La línea base de esta campaña es verde, y sin deseleccionar nada.** El
+>    caso de F-010 que obligó a la deselección en T13 lo arregló el líder
+>    (`2670936`). Se comprobó **antes** de lanzarla, con `bash harness/init.sh`
+>    en verde y con la suite del servicio entera: `2619 passed, 3 skipped, 0
+>    failed`. Sin eso los 39/39 no significarían nada: el evaluador da un
+>    mutante por muerto cuando la suite falla, así que con la base en rojo
+>    **todos** salen «muertos» sin que ningún test los cace.
+> 2. **La campaña no generó ni un mutante de lo que toca T14.**
+>    `interface_adapters/api/parte.py` (57 líneas) y
+>    `application/pipelines/paso_persistencia.py` (74) están en alcance y no
+>    produjeron ninguno: lo que T14 cambia son llamadas, sin comparaciones, sin
+>    literales y sin operadores, que es lo único que este mutador reescribe. Es
+>    el mismo hueco que ya observaron los bloques 3 (§23.1) y 4 (§32.1). Los
+>    mutantes de T14 se han hecho **a mano**, 6 de 6 muertos, y están en
+>    `progress/impl_F-028.md` §54.
 
 ## Alcance
 
@@ -28,7 +33,7 @@ Origen del diff: **rama** (`b90c3a4986b94967c9ac1ad48fc742788c154d99` .. `featur
 | `services/postventa-api/application/pipelines/paso_archivo.py` | 24 |
 | `services/postventa-api/application/pipelines/paso_cierre.py` | 88 |
 | `services/postventa-api/application/pipelines/paso_grafico.py` | 14 |
-| `services/postventa-api/application/pipelines/paso_persistencia.py` | 58 |
+| `services/postventa-api/application/pipelines/paso_persistencia.py` | 74 |
 | `services/postventa-api/application/pipelines/puerta_de_estado.py` | 137 |
 | `services/postventa-api/domain/models/errores.py` | 71 |
 | `services/postventa-api/domain/models/estado.py` | 412 |
@@ -40,8 +45,8 @@ Origen del diff: **rama** (`b90c3a4986b94967c9ac1ad48fc742788c154d99` .. `featur
 | `services/postventa-api/infrastructure/persistencia/sentencias.py` | 169 |
 | `services/postventa-api/interface_adapters/api/estado.py` | 356 |
 | `services/postventa-api/interface_adapters/api/estado_serializado.py` | 107 |
-| `services/postventa-api/interface_adapters/api/parte.py` | 23 |
-| **Total** | **1983** |
+| `services/postventa-api/interface_adapters/api/parte.py` | 57 |
+| **Total** | **2033** |
 
 ## Totales
 
@@ -53,7 +58,7 @@ Origen del diff: **rama** (`b90c3a4986b94967c9ac1ad48fc742788c154d99` .. `featur
 | Supervivientes | 0 |
 | Timeouts | 0 |
 | Timeouts repasados en serie | 0: ningún mutante agotó el reloj |
-| Tiempo total | 948.3 s |
+| Tiempo total | 1000.5 s |
 | Workers | 1 |
 | Muestreo | no: campaña completa |
 

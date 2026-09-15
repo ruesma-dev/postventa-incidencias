@@ -2089,3 +2089,457 @@ Tres apuntes para quien lo coja:
   `done` no es cosa del implementer.
 - **La base real y el ERP no se han tocado**: todo corre con
   `RepositorioEnMemoria` y dobles en memoria, sin red, sin BBDD y sin IA.
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 5, T14
+
+> Encargo: **T14 y nada más** de `specs/F-028-estado-del-parte/tasks.md`.
+> Parada obligada al terminar. **No se ha entrado en T15.**
+>
+> Rama `feature/F-028-estado-del-parte`, desde `2670936`. Rigor **`estandar`**:
+> fase RED, puerta de cobertura y campaña de mutación. Sin `push`, sin tocar
+> `dev` ni `main`, sin tocar el `status` de ninguna feature, sin tocar
+> `azure-apps/`, `infrastructure/sigrid/` ni `infrastructure/sharepoint/`.
+
+La línea base estaba **verde de verdad** al empezar —el rojo de
+`test_f010_integracion_expuesto.py` que denunció §44 lo arregló el líder en
+`2670936` reponiendo la frase, no aflojando el test—, así que este encargo no
+ha necesitado deseleccionar nada ni para la suite ni para la campaña.
+
+---
+
+## 48 · Qué se ha hecho
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T14** | `96367a2` | `POST /api/parte` devuelve el bloque `estado` en vez de `aprobacion`, **sin una consulta más por parte** |
+
+Lo que esto cierra: **`parte.py:131` era el último sitio de producción que
+leía `consultar_aprobacion`**, y ya no lo lee. Comprobado con un `grep` sobre
+`domain/`, `infrastructure/`, `application/`, `interface_adapters/` y
+`function_app.py`: lo que queda de esa operación son **tres** sitios, y los
+tres están en la lista de T15 —el puerto (`domain/ports/persistencia.py:147`),
+el adaptador (`repositorio_pg.py:257`) y la delegación del envoltorio
+(`parte.py`)—. De `bloque_de_aprobacion` queda un solo llamante,
+`interface_adapters/api/aprobar.py`, que también retira T15.
+
+---
+
+## 49 · Ficheros tocados
+
+### Creados
+
+**Ninguno.**
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `interface_adapters/api/parte.py` | La respuesta cambia `aprobacion` por `estado`; dos imports; la sección nueva de la cabecera; la docstring de `AnotaLosResultados.consultar_aprobacion`, que prometía algo que ya no pasa |
+| `application/pipelines/paso_persistencia.py` | La situación que ya leía **se deja en `ctx.situacion`** (§50.1), con el párrafo que dice por qué y qué situación es exactamente la que se deja |
+| `tests/test_f028_estado_http.py` | **12 casos nuevos** en una sección T14, con sus tres ayudantes |
+| `tests/test_f019_parte_http.py` | `CLAVES_DE_LA_RESPUESTA`: `aprobacion` → `estado`, y los dos comentarios que lo explican |
+| `tests/test_f026_aprobar_http.py` | **Cinco casos retirados** con su recuadro fechado y su sustituto (§51), más los tres ayudantes y los tres imports que se quedaban sin llamante |
+| `specs/F-028-estado-del-parte/tasks.md` | T14 marcada `[x]` |
+
+### Lo que la spec prohíbe tocar, y que sigue intacto
+
+Comprobado con `git show --stat 96367a2`: en el diff **no aparece**
+`domain/models/validacion.py`, ni `sql/04_validaciones.sql` (regla dura 1), ni
+`domain/models/aprobacion.py` —o sea, ni `huella_de_veredicto` ni
+`_normalizar`— (regla dura 2 y D9), ni `sql/10_aprobaciones.sql` ni
+`sql/11_historico_estado.sql` (regla dura 3), ni `infrastructure/sigrid/`, ni
+`infrastructure/sharepoint/`, ni el front, ni `azure-apps/`, ni
+`harness/features.json`.
+
+Y **`tests/test_f028_puertas.py` no está en el diff**: sus 48 casos siguen en
+verde sin una sola edición desde el bloque 0, que es lo que este bloque tenía
+que demostrar además de lo suyo.
+
+---
+
+## 50 · Decisiones de diseño, y la que hay que juzgar
+
+### 50.1 · De dónde sale el estado sin gastar una consulta más
+
+**Es la decisión del encargo**, porque la verificación de T14 es exactamente
+esa: «volver a subir la remesa devuelve el estado de cada parte sin multiplicar
+las consultas».
+
+`paso_persistencia` ya leía la situación del parte —desde T8, para la regla de
+constancia (R23)— y la tiraba al salir. Lo que se ha hecho es **dejarla en
+`ctx.situacion`**, igual que hace `puerta_de_estado.exigir_parte_aprobado` en
+los tres pasos del circuito desde T11, y que el handler la recoja con
+`situacion_leida(contexto, almacen)`, que es el ayudante que T11 escribió
+justo para esto.
+
+El balance de consultas por parte en `POST /api/parte`, medido con el doble
+que las cuenta:
+
+| | Antes de T14 | Después |
+|---|---|---|
+| `consultar_situacion` | 1 (la constancia) | **1** (la constancia, reutilizada) |
+| `consultar_aprobacion` | 1 (el bloque de la respuesta) | **0** |
+| **Total** | **2** | **1** |
+
+O sea: T14 **no añade** ninguna consulta y **quita una**. En una remesa real de
+22 partes son 22 viajes menos por subida contra `psql-albaranes-rs9k2`, que es
+un servidor **compartido** con albaranes y compañía. Importa decirlo con el
+número porque el bloque 4 avisó de lo contrario: retirar el atajo del apto
+costó **66 consultas por tanda** (`design.md` §6 y §11.1), y ese aviso sigue en
+pie —es de las tres puertas del circuito, no de este endpoint—.
+
+Lo fija `test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte`, que
+afirma las dos mitades: `situaciones_consultadas == [HASH]` (una y no dos) y
+`aprobaciones_consultadas == []` (ninguna a la tabla congelada).
+
+**Las dos alternativas que se descartaron**, con lo que cuestan:
+
+1. **Que el handler consulte la situación por su cuenta**, como hace
+   `POST /api/estado`. Sale a **dos** consultas por parte, las mismas que
+   costaba antes: no empeora, pero deja sobre la mesa la mitad de la mejora y
+   la deja justo donde el diseño dijo que la iba a coger (§11.1: «el sitio
+   donde se acota es el contexto»).
+2. **Leer la situación una vez por parte y tanda**, que es lo que §11.1 propone
+   si el coste molestara. Es más de lo que pide T14, toca a los tres pasos del
+   circuito y no a este endpoint, y se queda como está escrito: pendiente de
+   que la medición manual diga si hace falta.
+
+### 50.2 · La situación que se reutiliza es la de **antes** de la fila de constancia, y es lo correcto
+
+Es lo único fino del cambio y por eso va escrito en la docstring del paso.
+`paso_persistencia` lee la situación y **después** puede escribir una fila de
+constancia. El handler reutiliza la **de antes**.
+
+No es un descuido: la derivación mira **tres hechos** —el veredicto, la última
+decisión **humana** y la traza de cierre— y una constancia no es ninguno de los
+tres (R26). Escribirla no puede cambiar el estado que se publica, y por eso
+volver a preguntar solo costaría un viaje.
+
+Quien sí necesita el `ultimo_estado_registrado` **de después** es
+`POST /api/estado`, para encadenar el `estado_anterior` de la fila humana que
+va a escribir; por eso ese handler vuelve a preguntar a propósito y lo dice
+donde lo hace. **No se ha tocado.**
+
+### 50.3 · La docstring que prometía algo que ya no pasa
+
+`AnotaLosResultados.consultar_aprobacion` decía «la lee `/api/parte` para poder
+contarla en su respuesta (R22)». Desde este commit no la lee nadie. La
+delegación **se queda** —el puerto todavía la declara y quitarla sola rompería
+la promesa de que el envoltorio implementa el puerto entero—, pero la docstring
+dice ahora lo que es: código que sobrevive hasta T15. Un comentario que miente
+es peor que no tenerlo.
+
+### Desviaciones respecto a la spec
+
+**Ninguna.** `design.md` §5 pide exactamente lo hecho —«`guardar_parte_http`
+sustituye su bloque `aprobacion` por el bloque `estado`, leído después de
+guardar»— y §8.2 lista `interface_adapters/api/parte.py` como fichero a
+modificar. `paso_persistencia.py` no está en la lista de §8.2 **para T14**,
+pero sí en la de la feature (lo modificó T8) y el cambio es de dos líneas: la
+situación que ya leía se guarda en el hueco que T10 creó en `ContextoParte`
+para esto mismo. Se declara aquí para que el reviewer lo mire con nombre
+propio.
+
+---
+
+## 51 · Los tests de antes que han cambiado, y por qué
+
+Son **seis**, y ninguno se ha «ajustado para que pase».
+
+### 51.1 · Uno actualizado · `tests/test_f019_parte_http.py`
+
+`CLAVES_DE_LA_RESPUESTA` enumera el contrato de `POST /api/parte` para que no
+crezca ni cambie sin que alguien lo escriba ahí. Cambia `aprobacion` por
+`estado`, que es **justo para lo que existe**: el test se puso rojo antes de
+tocarlo y su rojo es la señal de que el contrato se movió. El comentario que lo
+acompaña dice que no es un cambio de nombre y remite a
+`tests/test_f028_estado_http.py` para lo que va dentro del bloque.
+
+### 51.2 · Cinco retirados de `tests/test_f026_aprobar_http.py`
+
+Los cinco probaban **el bloque de respuesta que T14 sustituye**, no un
+comportamiento que siga existiendo. En su sitio queda un recuadro fechado con
+qué probaba cada uno y **dónde está su sustituto**, escrito y en verde antes de
+borrarlos:
+
+| Retirado | Qué probaba | Sustituto en F-028 |
+|---|---|---|
+| `test_f026_r22_guardar_un_parte_aprobado_lo_dice_en_la_respuesta` | Que la respuesta cuenta lo que una persona aprobó | `test_f028_r39_un_parte_que_aprobo_una_persona_lo_dice_en_la_respuesta` |
+| `test_f026_r22_un_parte_que_no_ha_aprobado_nadie_devuelve_null` | Que la clave está siempre y su valor dice qué pasa | `test_f028_r4_un_parte_que_nadie_ha_mirado_sale_pendiente_y_sin_firma` |
+| `test_f026_r22_una_aprobacion_revocada_se_devuelve_como_revocada` | «Se decidió y dejó de valer» ≠ «nadie decidió» | `test_f028_r19_una_aprobacion_sobre_otro_veredicto_no_firma_el_estado` |
+| `test_f026_r22_la_aprobacion_se_lee_despues_de_guardar` | Que se lee **después** de guardar el veredicto | `test_f028_r22_el_estado_se_lee_despues_de_guardar_el_veredicto` |
+| `test_f026_r38_la_respuesta_de_guardar_tampoco_publica_el_oid` | Que esa respuesta no lleva el `oid` | `test_f028_r42_la_respuesta_de_guardar_tampoco_publica_el_oid_ni_el_motivo` |
+
+Los cuatro primeros se ponían **rojos** con un `KeyError: 'aprobacion'`. No se
+han «adaptado» cambiándoles la clave, que es lo que los habría dejado verdes
+probando otra cosa.
+
+El quinto **seguía en verde**, y por eso merece su párrafo: comprobaba que no
+se filtraba el `oid` de un bloque que a partir de T14 ya no se emite, así que
+era verdad **por vacío** — la clase de test verde que tranquiliza sin medir
+nada. Su sustituto comprueba lo mismo sobre el bloque que sí viaja y **además**
+que no sale el motivo (R42, R52), que es el dato con más peligro porque lo
+escribe una persona en texto libre y puede llevar dentro el nombre de un
+cliente.
+
+Con ellos se van `_guardar`, `_aprobacion_guardada`, la anotación de
+`consultar_aprobacion` en `RepositorioQueAnotaElOrden` y los tres imports que
+se quedaban sin llamante (`Aprobacion`, `MotivoRevocacion`, `CodigoMotivo`):
+un ayudante sin llamantes es código muerto que el día de T15 alguien tendría
+que volver a leer para borrarlo.
+
+**Lo que NO se ha tocado de ese fichero**: todo lo de `POST /api/aprobar`, que
+sigue vivo hasta T15 y sigue devolviendo su bloque `aprobacion`.
+
+---
+
+## 52 · Fase RED · la traza, pegada
+
+Los 12 casos de la sección T14 se escribieron **antes** de tocar producción.
+El intérprete es el del servicio (`services/postventa-api/.venv`): el del
+repositorio no tiene `pydantic` y falla al cargar `conftest.py`.
+
+```
+$ cd services/postventa-api
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_estado_http.py -q -k "..." --tb=short
+
+E   AssertionError: assert {'aprobacion'...o_validacion'} == {'avisos', 'e...o_validacion'}
+E     Extra items in the left set:
+E     'aprobacion'
+E     Extra items in the right set:
+E     'estado'
+____ test_f028_r4_un_parte_que_nadie_ha_mirado_sale_pendiente_y_sin_firma _____
+tests\test_f028_estado_http.py:1633: in test_f028_r4_un_parte_que_nadie_ha_mirado_sale_pendiente_y_sin_firma
+    assert respuesta["estado"] == {
+E   KeyError: 'estado'
+_________ test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte _________
+tests\test_f028_estado_http.py:1758: in test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte
+    assert repositorio.aprobaciones_consultadas == []
+E   AssertionError: assert ['9f2b0011aabb'] == []
+E     Left contains one more item: '9f2b0011aabb'
+=========================== short test summary info ===========================
+FAILED ...::test_f028_r38_guardar_un_parte_devuelve_el_estado_y_no_la_aprobacion
+FAILED ...::test_f028_r4_un_parte_que_nadie_ha_mirado_sale_pendiente_y_sin_firma
+FAILED ...::test_f028_r23_un_parte_apto_sale_aprobado_y_dice_que_lo_dijo_la_maquina
+FAILED ...::test_f028_r39_un_parte_que_aprobo_una_persona_lo_dice_en_la_respuesta
+FAILED ...::test_f028_r5_un_parte_apto_rechazado_a_mano_sale_rechazado
+FAILED ...::test_f028_r18_un_parte_con_su_incidencia_cerrada_sale_cerrado
+FAILED ...::test_f028_r19_una_aprobacion_sobre_otro_veredicto_no_firma_el_estado
+FAILED ...::test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte
+FAILED ...::test_f028_r33_el_estado_de_la_respuesta_no_sale_del_cuerpo
+9 failed, 2 passed in 1.02s
+```
+
+Después del cambio: `100 passed in 0.92s` en ese fichero.
+
+El de la consulta —`assert ['9f2b0011aabb'] == []`— es el que cuenta de todo el
+bloque: leído en voz alta dice **«la respuesta seguía yendo a la tabla
+congelada de F-026 a preguntar por cada parte»**.
+
+### Los dos que ya pasaban en rojo, y por qué es lo correcto
+
+- `test_f028_r22_el_estado_se_lee_despues_de_guardar_el_veredicto`: el orden
+  `parte → validacion → consulta_situacion → decision` ya era el de T8. Su
+  valor no está en la fase RED sino en la de después: es el que se pone rojo si
+  mañana alguien adelanta la lectura, y de eso hay prueba en §54 (mutante M6);
+- `test_f028_r42_la_respuesta_de_guardar_tampoco_publica_el_oid_ni_el_motivo`:
+  el bloque `aprobacion` tampoco los publicaba. Es el sustituto del quinto
+  retirado (§51.2) y hereda su oficio, ahora sobre el bloque que sí viaja.
+
+---
+
+## 53 · La verificación de T14, recontada
+
+T14 pide una cosa y se prueba entera:
+
+| Lo que pide la tarea | Dónde se fija |
+|---|---|
+| La respuesta cambia `aprobacion` por `estado` | `test_f028_r38_guardar_un_parte_devuelve_el_estado_y_no_la_aprobacion` (las cinco claves exactas) y `CLAVES_DE_LA_RESPUESTA` de F-019 |
+| **Subir la remesa otra vez devuelve el estado de cada parte** | Los cuatro estados: `..._r4_...pendiente...`, `..._r23_...apto_sale_aprobado...`, `..._r5_...rechazado_a_mano...`, `..._r18_...incidencia_cerrada_sale_cerrado` |
+| **Sin una petición más por parte** | `test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte` |
+| Ni el `oid`, ni el correo, ni el nombre, ni el motivo (R42, R52) | `test_f028_r42_la_respuesta_de_guardar_tampoco_publica_el_oid_ni_el_motivo`, que serializa la respuesta entera a JSON y busca dentro |
+
+Y dos que no pide la tarea y sostienen el resto:
+
+- `test_f028_r19_una_aprobacion_sobre_otro_veredicto_no_firma_el_estado`: el
+  parte es apto, así que está `aprobado`, **pero lo dice la máquina**. Es la
+  distinción de R43 que no se ve a simple vista: quien comparase «el estado
+  derivado» con «el estado de la fila» los vería coincidir y anunciaría
+  «aprobado por una persona» con la fecha de una decisión que R19 ya tumbó;
+- `test_f028_r33_el_estado_de_la_respuesta_no_sale_del_cuerpo`: se le mete al
+  cuerpo un bloque `estado` y un bloque `aprobacion` ya hechos y **se ignoran
+  los dos**. Si el estado viniera del cuerpo, quien compone la petición podría
+  afirmar que un parte lo aprobó alguien que no lo aprobó.
+
+---
+
+## 54 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (servicio `api`) | **2.619 pasados, 13 saltados, 0 fallos** | `bash harness/init.sh` |
+| Tests ejecutados (arnés, raíz) | **62 pasados** | `bash harness/init.sh` |
+| De ellos, **nuevos de T14** | **12** en `tests/test_f028_estado_http.py` | `pytest tests/test_f028_estado_http.py` → 100 pasados en ese fichero |
+| Tests **retirados** | **5**, todos de `tests/test_f026_aprobar_http.py`, con su sustituto (§51.2) | — |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 303/303, umbral 80 %, nivel `estandar` | línea `PUERTA COBERTURA` de `init.sh` |
+| **Mutantes generados / supervivientes** | automáticos **39 / 0** (0 timeouts, 1.000,5 s) · **a mano 6 / 0** | `python -m harness.mutacion --feature F-028 --workers 1` y §54.2 |
+| **Tiempo de la suite** | **40,9 s** (`api`, bajo medición de cobertura) · 25,4 s sin ella · 4 s (raíz) | la propia suite |
+| **Ruff** | `All checks passed` sobre los cinco ficheros tocados | `python -m ruff check` |
+
+### Los supervivientes, y qué se hace con cada uno
+
+**Ninguno**, ni en la campaña automática ni en la manual. 39 mutantes
+evaluados, 39 muertos (informe en `progress/mutacion_F-028.md`), más 6 a mano,
+6 muertos.
+
+### 54.1 · La línea base estaba verde, y se comprobó antes de creerse el resultado
+
+El encargo lo pedía expresamente y es lo primero que se hizo, porque el
+evaluador de `harness.mutacion` da un mutante por **muerto** cuando la suite
+falla: con la base en rojo, **todos** salen «muertos» sin que ningún test los
+cace, que es lo que invalidó la primera campaña de T13.
+
+Aquí no hizo falta deseleccionar nada. Antes de lanzarla:
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde;
+- la suite del servicio, entera y a pelo → `2619 passed, 3 skipped` y **cero
+  fallos**.
+
+El caso de F-010 que estaba rojo lo arregló el líder en `2670936` reponiendo la
+frase que `docs/INTEGRACION.md` había perdido. Queda anotado también en
+`progress/mutacion_F-028.md`, porque ese fichero lo regenera la campaña y se
+llevó por delante la nota equivalente de T13.
+
+### 54.2 · Lo que hay que mirar de las evidencias: la campaña **no genera ni un mutante de T14**
+
+De los 39 mutantes, **cero** caen en los dos ficheros que T14 toca, y los dos
+están en alcance: `interface_adapters/api/parte.py` (57 líneas en alcance) y
+`application/pipelines/paso_persistencia.py` (74). Los 39 son de los bloques 1
+a 5 —`estado.py`, `function_app.py`, `ddl.py`, `repositorio_pg.py`,
+`sentencias.py`, `estado.py` del borde y `estado_serializado.py`— y siguen
+muriendo, que también es información: T14 no ha roto nada de lo ya probado.
+
+**Por qué, medido.** Los operadores del mutador son comparación, lógico, `not`,
+booleano, entero y aritmético. Lo que T14 cambia son **llamadas**: una clave de
+diccionario que pasa a llamar a otra función, y una asignación a un campo del
+contexto. Ni una comparación, ni un literal, ni un operador. Es el mismo hueco
+que ya observaron el bloque 3 (§23.1) y el bloque 4 (§32.1), y **no** se ha
+retorcido el código para darle material a la herramienta: escribir para el
+medidor no es escribir para el problema.
+
+Así que se ha mutado **a mano**, con el mismo método de los bloques 3 y 4 —se
+aplica la mutación, se corre la suite entera del servicio, se restaura el
+fichero; «muerto» = al menos un test falla—:
+
+| # | Mutante aplicado a mano | Resultado | Quién lo caza |
+|---|---|---|---|
+| M1 | `parte.py` vuelve a publicar el bloque `aprobacion` de F-026 | **muerto** (9 fallos) | los 9 casos del contrato: los 8 de la sección T14 más `test_f019_r7_guardar_un_parte_devuelve_200_con_su_contrato` |
+| M2 | `parte.py` **pregunta la situación otra vez** en vez de reutilizar la del contexto | **muerto** (2 fallos) | `test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte` y `test_f019_logs_sin_datos_personales` |
+| M3 | `parte.py` deriva el estado **sin el veredicto** que acaba de guardar | **muerto** (3 fallos) | `..._r23_un_parte_apto_sale_aprobado...`, `..._r39_...aprobo_una_persona...`, `..._r5_...rechazado_a_mano...` |
+| M4 | `parte.py` **nunca anuncia** que lo decidió una persona | **muerto** (2 fallos) | `..._r39_un_parte_que_aprobo_una_persona_lo_dice_en_la_respuesta`, `..._r5_...rechazado_a_mano...` |
+| M5 | `paso_persistencia` **no deja la situación en el contexto** | **muerto** (2 fallos) | `test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte` (pasa a dos consultas) |
+| M6 | `paso_persistencia` lee la situación **antes** de guardar el veredicto | **muerto** (3 fallos) | `test_f028_r22_el_estado_se_lee_despues_de_guardar_el_veredicto` y dos de la constancia |
+
+**6 de 6 muertos.** El que más vale es **M2**, porque es el único que no se ve
+mirando la respuesta: el JSON sale idéntico y lo único que cambia es que cada
+parte cuesta un viaje más a un PostgreSQL compartido. Sin
+`test_f028_r2_...` esa regresión entraría un día sin que nadie se enterara
+hasta tener 22 partes y una remesa lenta. **M5** es su gemelo por el otro lado:
+con la situación fuera del contexto, `situacion_leida` se cae al camino de la
+derecha y vuelve a preguntar — o sea, el mismo coste, escrito en otro sitio.
+
+El script de los seis está reproducido tal cual en la sesión y restaura cada
+fichero al terminar; el árbol quedó limpio, comprobado con `git status`.
+
+---
+
+## 55 · Verificaciones MANUAL pendientes
+
+Las de T27 siguen pendientes. T14 añade materia a una y **no crea ninguna
+nueva**:
+
+- **T27.2** («la aprobación que ya había en `postventa.aprobaciones` aparece
+  sembrada y el parte sigue saliendo `aprobado`»): con T14 esto ya se puede
+  comprobar **desde la propia pantalla**, sin consultar la base: al volver a
+  subir la remesa, la respuesta de `POST /api/parte` de ese parte tiene que
+  traer `"estado": {"estado": "aprobado", "decidido_por_persona": true, ...}`.
+  Antes de T14 la respuesta hablaba de la tabla vieja y no decía nada del
+  histórico sembrado.
+
+Y una observación de despliegue que **no es una verificación manual sino un
+aviso para el líder**, en §56.
+
+**La base real y el ERP no se han tocado**: todo corre con
+`RepositorioEnMemoria` y dobles en memoria, sin red, sin BBDD y sin IA.
+
+---
+
+## 56 · Lo que queda fuera del alcance de T14, y hay que decirlo
+
+**El front sigue leyendo `aprobacion` y a partir de este commit no la va a
+encontrar.** `services/postventa-front/js/app.js` (líneas 307, 516, 526, 550,
+558) y `js/pipeline.js::semaforoDe` esperan el bloque viejo; con el nuevo
+recibirán `undefined`. No revienta —`aprobacionVale(undefined, …)` devuelve
+`false`— pero **el anillo de «aprobado por una persona» (R39) desaparecería**
+y un parte que alguien aprobó a mano volvería a pintarse como pendiente.
+
+Es exactamente lo que la spec secuencia: el front es el **bloque 6** (T16, T17
+y T18), y `design.md` §5 ya lo declara como riesgo de despliegue con su
+mitigación —«el front y la Function se despliegan juntos (`infra/`)»—. Se
+apunta aquí porque el repositorio queda, entre T14 y el bloque 6, en un estado
+que **no se debe desplegar a medias**. Ningún test del front se ha puesto rojo,
+y eso no es tranquilizador: es que los tests del front prueban el front contra
+sus propios dobles, no contra el contrato del backend.
+
+**Tampoco es de T14** —y sigue intacto— nada de lo de T15: `/api/aprobar`, su
+handler, `aprobacion_serializada.py`, la tabla `postventa.aprobaciones`, las
+sentencias de F-026 y `domain/models/aprobacion.py`.
+
+---
+
+## 57 · Por dónde sigue · el encargo de T15
+
+**T14 está cerrada. No se ha entrado en T15**, como pedía el encargo.
+
+Lo que T15 se encuentra ya hecho:
+
+- **`consultar_aprobacion` ya no la llama nadie en producción**. Quedan tres
+  sitios y los tres están en la lista de T15: el puerto
+  (`domain/ports/persistencia.py:147`), el adaptador
+  (`repositorio_pg.py:257`) y la delegación de `AnotaLosResultados` en
+  `parte.py`, cuya docstring ya dice que sobrevive solo hasta T15;
+- **`bloque_de_aprobacion` tiene un solo llamante**,
+  `interface_adapters/api/aprobar.py`, que T15 retira entero;
+- **`tests/test_f026_aprobar_http.py` ya no prueba `/api/parte`**: lo que queda
+  ahí es todo de `/api/aprobar`, así que T15 puede llevárselo de una pieza.
+
+Cuatro apuntes para quien lo coja:
+
+- **`tests/test_f028_puertas.py` sigue siendo la red**, 48 casos, intacta desde
+  el bloque 0. Si uno se pone rojo en T15, **parar y decirlo**.
+- **`tests/utiles_rutas.py` no se va con el fichero de F-026**: lo usan los dos
+  (F-026 y F-028), y sin él `app.get_functions()` revienta a la segunda llamada
+  (§40.3).
+- **Al retirar la ruta `aprobar` hay que tocar `ENDPOINTS` de
+  `tests/test_f010_endpoints_protegidos.py`** y su recuento: son 13 → 12.
+- **`huella_de_veredicto` y `_normalizar` no se tocan** (D9 y §10): la usa
+  `estado.py::_aprueba_lo_que_hay`, que es lo que hace que una aprobación deje
+  de contar cuando el veredicto cambia (R19). Y ahora también la usan los tests
+  de T14 para montar la aprobación vigente.
+
+---
+
+## 58 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de
+  cobertura al **100,0 %** de las 303 líneas cambiadas. (La medición previa al
+  commit dio 304/304 y esta, con el commit hecho, 303/303: es el mismo código
+  contado contra `dev` desde dos sitios, y las dos dan 100,0 %.)
+- Árbol limpio, **2 commits** sobre `2670936` (`96367a2` T14 y el de este
+  informe), los dos locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
+  `done` no es cosa del implementer.
+- **La base real y el ERP no se han tocado**: todo corre con
+  `RepositorioEnMemoria` y dobles en memoria, sin red, sin BBDD y sin IA.

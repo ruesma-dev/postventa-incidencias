@@ -20,7 +20,7 @@
 | **T2** | `d9c4b51` | `domain/models/estado.py`: `EstadoParte`, `DecisionEstado`, `SituacionParte`, `ESTADOS_DE_CIERRE_EN_FIRME`, `LIMITE_MOTIVO` |
 | **T3** | `62ecaa1` | `estado_de_la_maquina` y `estado_del_parte` — la derivación de `design.md` §3 |
 | **T4** | `6308bbc` | `ParteCerrado` y `CambioDeEstadoInvalido` en `domain/models/errores.py` |
-| — | `dc10a6c` | Dos tests más, de los dos supervivientes de la campaña de mutación |
+| — | `af4f71d` | Dos tests más, de los dos supervivientes de la campaña de mutación |
 
 **Nada de producción fuera del dominio se ha tocado.** No hay ni una línea
 nueva en `application/`, `infrastructure/`, `interface_adapters/`,
@@ -256,7 +256,7 @@ supervivientes**. Informe completo en `progress/mutacion_F-028.md`.
 
 > Nota de método: la campaña paralela crea sus worktrees desde `HEAD`, así que
 > se aborta si el árbol tiene cambios sin commitear. Los dos tests se
-> commitearon antes de relanzarla (`dc10a6c`).
+> commitearon antes de relanzarla (`af4f71d`).
 
 ### Ruff
 
@@ -305,6 +305,6 @@ crudo de la columna de `cierres` y la derivación lo compara por valor—.
 ## 9 · Estado al cerrar el encargo
 
 - `bash harness/init.sh` → **ENTORNO LISTO**, en verde.
-- Árbol limpio, **5 commits** sobre `ed46181`, todos locales. **Sin `push`.**
+- Árbol limpio, **6 commits** sobre `ed46181`, todos locales. **Sin `push`.**
 - `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
   `done` no es cosa del implementer.

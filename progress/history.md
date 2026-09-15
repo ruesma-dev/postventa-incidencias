@@ -538,7 +538,7 @@ llegó por donde no se esperaba: el `ForeignKeyViolation` del primer intento
 
 ---
 
-## F-026 · Aprobación humana de los partes que van a revisión — CERRADA el 2026-09-14
+## F-026 · Aprobación humana de los partes que van a revisión — CERRADA el 2026-09-14, VERIFICADA EN REAL el 2026-09-15
 
 **El agujero que cierra**: un parte que la validación mandaba a revisión se
 quedaba bloqueado **para siempre**. Se podía ver y corregir, pero no existía
@@ -577,6 +577,26 @@ al cierre, así que las cuatro comprobaciones contra la base real **no se
 pueden acreditar**; y el cambio de la huella, que tocó código de producción,
 es **posterior a la review** y nadie lo revisó. El responsable cerró la
 feature con eso sabido.
+
+> **Enmienda del 2026-09-15 · la verificación en real, que faltaba.** El
+> párrafo anterior decía que las cuatro comprobaciones contra la base real «no
+> se pueden acreditar» porque no había ni una petición al entorno desplegado en
+> los tres días previos. **Eso queda superado, y el párrafo se conserva porque
+> describe bien cómo se cerró la feature.** Hoy, con la cadena mergeada a `dev`
+> y desplegada, el responsable recorrió el circuito entero contra el ERP de
+> producción: el parte de `RS26.09/0149` de la obra `0626` —**no apto** por
+> observaciones manuscritas, que es justo el caso que esta feature existe para
+> resolver— se **aprobó a mano** en la web, se archivó y **cerró la reclamación
+> en Sigrid**. Comprobado después por lectura, no de palabra: la reclamación
+> está en `CER` con su gráfico dentro, y su fila de auditoría —`ide` 8467000,
+> `2026-09-15 14:30:05`, firmada `pgris`— pasa las **once comprobaciones campo
+> a campo**, el huso incluido. Con esto el servicio lleva **dos** cierres reales
+> en el ERP, y los dos están auditados.
+>
+> **Y salió un defecto que no es de esta feature**: la IA leyó el número del
+> papel como `RS26.09 / 0149`, y los espacios que rodean la barra **rompen el
+> cierre** —la búsqueda en el ERP es por igualdad exacta— mientras el nombre del
+> fichero sale bien por casualidad. Se arregla en **F-028**.
 
 Detalle: `progress/impl_F-026.md`, `progress/review_F-026.md` y
 `progress/mutacion_F-026.md`.

@@ -128,7 +128,7 @@
 
 ## Bloque 5 · El borde HTTP
 
-- [ ] **T12**: Crear `interface_adapters/api/estado_serializado.py` con el
+- [x] **T12**: Crear `interface_adapters/api/estado_serializado.py` con el
       bloque `estado` de las respuestas. | Verificación: test de que trae
       `estado`, `decidido_por_persona`, `decidido_at_utc` y `estado_anterior`,
       y **ni el `oid`, ni el correo, ni el nombre, ni el motivo** (R42, R52).

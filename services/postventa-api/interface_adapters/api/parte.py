@@ -218,5 +218,14 @@ class AnotaLosResultados:
         """F-028 · la fila de constancia del histórico, si el estado cambió."""
         return self._interno.registrar_decision(**datos)
 
+    def consultar_estado_cierre(self, **datos: Any) -> Any:
+        """F-028 · la traza de cierre, que es lo que deja un parte `cerrado`.
+
+        La pregunta `POST /api/estado` **antes de escribir nada**, porque de
+        `cerrado` no se sale (R7) y el 409 tiene que llegar sin haber dejado
+        filas a su paso.
+        """
+        return self._interno.consultar_estado_cierre(**datos)
+
     def cola_validacion_humana(self, **datos: Any) -> tuple:
         return self._interno.cola_validacion_humana(**datos)

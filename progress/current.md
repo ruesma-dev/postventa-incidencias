@@ -2301,3 +2301,76 @@ El arreglo de los espacios cambia la expectativa de **un** test ya existente:
 `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`. Va con su enmienda
 fechada a R8 de F-006 (T19) y el implementer tiene obligación de decirlo en su
 informe. Ningún otro test de F-006 ni de F-009 cambia.
+
+---
+
+## 2026-09-15 · F-028 REPLANTEADA: la spec anterior queda anulada y rehecha
+
+**El bloque anterior de este fichero —«Spec de F-028 escrita»— describe una
+feature que ya no es la que se va a hacer.** El humano replanteó F-028 ese
+mismo día: no es «rechazar un parte aprobado», es **un modelo de estado
+explícito del parte**. La ficha de `harness/features.json` está reescrita con
+todo, la rama pasa a `feature/F-028-estado-del-parte` y la carpeta
+`specs/F-028-rechazo-manual/` se ha **borrado** y sustituida por
+`specs/F-028-estado-del-parte/`. Lo que sigue valiendo del bloque anterior: las
+mediciones, el apartado de los espacios y la respuesta sobre la huella.
+
+### Qué pide ahora, en sus palabras
+
+*«los partes pueden estar pendientes, rechazados, aprobados o cerrados; lo que
+quiero es poder cambiar el estado desde donde esté a aprobado o rechazado, y
+que se guarde un histórico del estado».*
+
+Nueve decisiones **ya tomadas** por él (D1–D9 en `requirements.md`): cuatro
+estados; el apto **nace aprobado** y el histórico dice que lo decidió la
+máquina; el no apto nace `pendiente`; una persona mueve a `aprobado` o
+`rechazado` desde los otros tres; `cerrado` es **terminal** y la web lo explica;
+motivo **obligatorio** al rechazar y opcional al aprobar; puede cambiarlo
+cualquiera que entre, con su `oid` opaco; histórico **append-only**; y las dos
+normalizaciones **no se alinean**. **No hay preguntas abiertas.**
+
+### La decisión de diseño, que es la que el humano debe mirar
+
+**El estado se DERIVA, no se guarda.** No hay columna `estado` en ninguna
+tabla. Sale de una sola función de dominio puro sobre tres hechos que ya tienen
+dueño: el veredicto (`validaciones`), la última decisión humana (el histórico
+nuevo) y la traza de cierre (`cierres`). El argumento decisivo: `cerrado`
+**pertenece al ERP**, y guardar una copia nuestra es la forma de acabar diciendo
+que un parte está cerrado cuando no lo está. La comparación completa, con lo que
+cuesta cada opción, está en `design.md` §3.
+
+Consecuencias que conviene que vea antes de aprobar:
+
+1. **Se retira el atajo del parte apto** en las tres puertas del backend. Hoy un
+   parte verde no consulta nada antes de archivar («22 consultas por paso» dice
+   su propia docstring), y **mientras eso siga así, rechazar un parte verde es
+   un botón que no hace nada**. Coste declarado: 66 consultas por tanda de 22
+   partes contra el PostgreSQL compartido.
+2. **`POST /api/aprobar` se retira** y lo sustituye `POST /api/estado`. Dos
+   endpoints que escriben la misma decisión divergen. Es la parte que más código
+   de F-026 toca, y F-026 se cerró ayer.
+3. **`postventa.aprobaciones` se congela y se siembra**: no se borra —tiene la
+   aprobación real del despliegue— y sus filas vigentes pasan al histórico con
+   un `INSERT … SELECT … WHERE NOT EXISTS` idempotente dentro del DDL.
+4. **La aprobación puede revivir**: si el veredicto cambia y luego vuelve a ser
+   el que se aprobó, la aprobación vuelve a contar. Es coherente con F-026 R32
+   —se aprobó *ese* veredicto— y sale gratis al derivar. Declarado en
+   `design.md` §11.3 por si prefiere lo contrario.
+
+### Lo que no cambia respecto a la versión anterior
+
+El asunto 2 (los espacios de los códigos) va tal cual: arreglo en
+`normalizar_codigo`, las dos conversiones por **tramos**, tabla de
+equivalencias, y **un solo test existente cambia de expectativa**
+(`test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`), con su enmienda
+fechada a R8 de F-006. Y la respuesta sobre la huella sigue siendo que **no hay
+riesgo**: `huella_de_veredicto` normaliza con otra función y el módulo no
+importa `nombrado`; el bloque 8 de `tasks.md` lo fija con tres controles
+negativos.
+
+### Cómo queda la spec
+
+`specs/F-028-estado-del-parte/` con `requirements.md` (59 requisitos EARS y las
+nueve decisiones listadas para que nadie las reabra), `design.md` y `tasks.md`
+(28 tareas en 11 bloques pequeños, uno por encargo). **Ni una línea de código
+tocada.**

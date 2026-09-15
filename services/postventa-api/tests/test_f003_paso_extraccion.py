@@ -225,10 +225,14 @@ def test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas():
     # `cod` del ERP suelto, ni el login de nadie: eso es lo que esta línea
     # existe para impedir.
     #
-    # F-026 le añade `aprobacion`, y es el mismo caso que `traza_grafico`: una
-    # entidad de dominio (`Aprobacion`) que el paso **lee del repositorio** y
-    # nunca del cuerpo de la petición (R24). Lleva el `oid` opaco de quien
-    # decidió y ni una letra del papel.
+    # F-026 le añadió `aprobacion` y **F-028 la sustituye por `situacion`**
+    # (T10): la misma familia que `traza_grafico` —una entidad de dominio,
+    # `SituacionParte`, que el paso **lee del repositorio** y nunca del cuerpo
+    # de la petición (R33)— pero con los tres hechos con los que se deriva el
+    # estado en vez de con un permiso suelto. Lleva el `oid` opaco de quien
+    # decidió y ni una letra del papel; el motivo de la decisión **no** viaja
+    # aquí. El campo cambia de nombre, no de naturaleza, y por eso esta línea
+    # sigue impidiendo exactamente lo mismo.
     #
     # Lo que este test sigue impidiendo es exactamente lo de antes: que
     # aparezcan aquí una ruta de SharePoint en crudo, un identificador de base
@@ -243,7 +247,7 @@ def test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas():
         "grafico",
         "traza_grafico",
         "cierre",
-        "aprobacion",
+        "situacion",
         "avisos",
     }
 

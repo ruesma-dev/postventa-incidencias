@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+from dataclasses import fields
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -485,3 +486,42 @@ def test_f028_r33_ningun_handler_lee_la_decision_del_cuerpo(handler):
     )
 
     assert sospechosas == []
+
+
+# --------------------------------------------------------------------------
+# T10 · el hueco del contexto es la **situación**, y dice de dónde viene
+# --------------------------------------------------------------------------
+
+
+def test_f028_r33_el_contexto_lleva_la_situacion_y_no_la_aprobacion():
+    """R33 · lo que los tres pasos dejan en el contexto es la **situación**.
+
+    F-026 dejaba ahí `aprobacion`; F-028 la sustituye, y no es un cambio de
+    nombre: lo que las puertas consultan a partir de ahora es la situación
+    entera —última decisión humana, último estado registrado y traza de
+    cierre—, que es lo único con lo que se puede derivar el estado (R2, R16).
+
+    Que queden las dos sería tener el mismo hecho en dos huecos del mismo
+    objeto, y el día que uno de los dos se quedara viejo nadie se enteraría.
+    """
+    campos = {campo.name: campo.type for campo in fields(ContextoParte)}
+
+    assert "situacion" in campos
+    assert "aprobacion" not in campos
+    assert "SituacionParte" in str(campos["situacion"])
+
+
+def test_f028_r33_el_contexto_dice_que_la_situacion_no_viene_del_cuerpo():
+    """R33 · la docstring lo dice, y decirlo es parte de la tarea.
+
+    Es el tercer caso de lo mismo que `traza_grafico` (F-012 R49) y que la
+    `aprobacion` de F-026 (su R24), y la advertencia escrita es lo que ha
+    impedido las dos veces anteriores que alguien «simplificara» el paso
+    aceptando el dato por parámetro. Sin ella, quien llama podría afirmar que
+    alguien aprobó lo que nadie aprobó, y con eso se cierra en el ERP de
+    producción una reclamación que la validación había rechazado.
+    """
+    documentacion = (ContextoParte.__doc__ or "").lower()
+
+    assert "situacion" in documentacion or "situación" in documentacion
+    assert "nunca del cuerpo" in documentacion

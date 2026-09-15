@@ -277,8 +277,8 @@ def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> 
     if admite_circuito(ctx.validacion, None):
         return
 
-    ctx.aprobacion = repositorio.consultar_aprobacion(hash_parte=ctx.parte.hash)
-    if admite_circuito(ctx.validacion, ctx.aprobacion):
+    aprobacion = repositorio.consultar_aprobacion(hash_parte=ctx.parte.hash)
+    if admite_circuito(ctx.validacion, aprobacion):
         return
 
     raise ParteNoApto(

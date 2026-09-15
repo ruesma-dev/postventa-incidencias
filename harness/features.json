@@ -473,6 +473,24 @@
       "rigor": "estandar",
       "priority": 23,
       "branch": "feature/F-027-suite-barrido-cacheado"
+    },
+    {
+      "id": "F-028",
+      "title": "Rechazar un parte aprobado: revocacion manual desde la web",
+      "description": "Pedida por el humano el 2026-09-15, mientras verificaba F-026 en real: hace falta poder cambiar el estado de un parte de aprobado a rechazado a mano. HOY NO SE PUEDE. F-026 dejo la aprobacion humana, pero la unica revocacion que existe es AUTOMATICA: MotivoRevocacion.VEREDICTO_CAMBIADO, que salta cuando un reproceso lee el papel y sale otra cosa (R30). Quien aprueba por error no tiene forma de deshacerlo, y el parte se archiva y cierra una incidencia del ERP de produccion. LA MITAD DEL TRABAJO YA ESTA HECHA, y por eso esta feature es pequena: el dominio ya modela la revocacion -`Aprobacion` tiene `revocada_at_utc` y `revocada_motivo`, `esta_vigente` la respeta, y una aprobacion revocada NO se borra (R33)-, y `puede_archivarse` ya deja de dar permiso en cuanto la aprobacion deja de estar vigente. Falta el GESTO: un motivo de revocacion nuevo -retirada por una persona-, el endpoint que la registra con el oid de quien la retira, y el boton en la cola. MISMA REGLA QUE GOBIERNA F-026: se registra al lado, nunca encima (R11). El veredicto de la maquina y sus motivos siguen intactos, y un parte rechazado vuelve a ser lo que era -no apto, con sus motivos- y deja de poder archivarse en el acto. TRES PREGUNTAS ABIERTAS que decide el humano al aprobar la spec. (1) Un parte YA ARCHIVADO Y CERRADO: por defecto NO se puede rechazar, porque lo escrito en SharePoint y en el ERP no se deshace desde aqui y fingir que si es peor que no ofrecerlo. (2) Si el rechazo exige escribir un motivo en texto o basta el gesto: por defecto texto libre y opcional, guardado junto a la revocacion. (3) Quien puede rechazar: por defecto cualquiera que pueda aprobar, con su oid registrado, no solo quien aprobo. NO TOCA SIGRID: como F-026, todo ocurre en nuestra base.",
+      "acceptance": [
+        "Desde la web se puede rechazar un parte aprobado, y deja de ser archivable en el acto",
+        "El rechazo se registra al lado y no encima: la aprobacion no se borra, queda revocada con su autor, su fecha y su motivo",
+        "El veredicto de la maquina y sus motivos siguen intactos tras el rechazo",
+        "Un parte rechazado se puede volver a aprobar, y la traza conserva las dos decisiones en orden",
+        "Un parte ya archivado y cerrado no se puede rechazar, y la web lo dice en vez de fallar",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 28,
+      "branch": "feature/F-028-rechazo-manual"
     }
   ]
 }

@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **26 features**, 14 abiertas, 12 terminadas.
+Resumen: **27 features**, 15 abiertas, 12 terminadas.
 
 En curso: **F-026**.
 
@@ -27,6 +27,7 @@ Bloqueadas: **F-009**.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-026 | Aprobacion humana de los partes que van a revision | 26 | en curso | estandar | `feature/F-026-aprobacion-humana` |
+| F-028 | Rechazar un parte aprobado: revocacion manual desde la web | 28 | pendiente | estandar | `feature/F-028-rechazo-manual` |
 
 ## Terminadas
 
@@ -130,6 +131,12 @@ El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco 
 estado **en curso** · prioridad 26 · rigor `estandar` · SDD sí · rama `feature/F-026-aprobacion-humana`
 
 Hoy un parte que la validacion manda a revision humana se queda bloqueado para siempre: el front lo pinta en ambar, deja corregir sus campos y consultar la cola, pero NO existe ninguna forma de aprobarlo -ni boton, ni endpoint- y `esArchivable` solo mira el veredicto y el destino que puso la IA. Esta feature cierra ese circuito: cuando el humano corrige los campos o revisa el parte, este pasa a APROBADO y entra en el flujo normal de archivo y cierre. NO TOCA SIGRID: la puerta del ERP sigue siendo la misma y el cierre sigue exigiendo lo que exige. EL APROBADO SE GUARDA, no vive solo en el navegador (decision del humano del 2026-09-11): quien aprobo y cuando, en el esquema propio. El motivo no es completismo: un parte llega a revision porque la firma no parecia humana o porque trae observaciones manuscritas del cliente diciendo que la reparacion no esta bien, asi que aprobarlo es la decision de una persona que sobrescribe al sistema en una incidencia que acabara cerrada en el ERP, y esa decision tiene que quedar registrada.
+
+### F-028 · Rechazar un parte aprobado: revocacion manual desde la web
+
+estado **pendiente** · prioridad 28 · rigor `estandar` · SDD sí · rama `feature/F-028-rechazo-manual`
+
+Pedida por el humano el 2026-09-15, mientras verificaba F-026 en real: hace falta poder cambiar el estado de un parte de aprobado a rechazado a mano. HOY NO SE PUEDE. F-026 dejo la aprobacion humana, pero la unica revocacion que existe es AUTOMATICA: MotivoRevocacion.VEREDICTO_CAMBIADO, que salta cuando un reproceso lee el papel y sale otra cosa (R30). Quien aprueba por error no tiene forma de deshacerlo, y el parte se archiva y cierra una incidencia del ERP de produccion. LA MITAD DEL TRABAJO YA ESTA HECHA, y por eso esta feature es pequena: el dominio ya modela la revocacion -`Aprobacion` tiene `revocada_at_utc` y `revocada_motivo`, `esta_vigente` la respeta, y una aprobacion revocada NO se borra (R33)-, y `puede_archivarse` ya deja de dar permiso en cuanto la aprobacion deja de estar vigente. Falta el GESTO: un motivo de revocacion nuevo -retirada por una persona-, el endpoint que la registra con el oid de quien la retira, y el boton en la cola. MISMA REGLA QUE GOBIERNA F-026: se registra al lado, nunca encima (R11). El veredicto de la maquina y sus motivos siguen intactos, y un parte rechazado vuelve a ser lo que era -no apto, con sus motivos- y deja de poder archivarse en el acto. TRES PREGUNTAS ABIERTAS que decide el humano al aprobar la spec. (1) Un parte YA ARCHIVADO Y CERRADO: por defecto NO se puede rechazar, porque lo escrito en SharePoint y en el ERP no se deshace desde aqui y fingir que si es peor que no ofrecerlo. (2) Si el rechazo exige escribir un motivo en texto o basta el gesto: por defecto texto libre y opcional, guardado junto a la revocacion. (3) Quien puede rechazar: por defecto cualquiera que pueda aprobar, con su oid registrado, no solo quien aprobo. NO TOCA SIGRID: como F-026, todo ocurre en nuestra base.
 
 ### F-001 · Esqueleto del monorepo y /health
 

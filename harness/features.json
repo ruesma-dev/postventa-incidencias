@@ -489,7 +489,7 @@
         "El cambio de normalizacion no revoca aprobaciones que estaban vigentes",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
       "priority": 28,

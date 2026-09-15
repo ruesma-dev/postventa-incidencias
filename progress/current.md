@@ -2239,3 +2239,65 @@ Un script de verificación que use `dsn_desde_ajustes` y no lo sepa **muere con
    **reanudar con su contexto intacto** en vez de empezar de cero.
 5. **Un informe se escribe incremental, no al final.** Es la contrapartida de
    la lección 4: lo que ya está en disco sobrevive a la caída.
+
+---
+
+## 2026-09-15 · Spec de F-028 escrita (spec-author)
+
+Escrita `specs/F-028-rechazo-manual/` con sus tres ficheros: `requirements.md`
+(45 requisitos EARS, 5 preguntas abiertas), `design.md` y `tasks.md` (25 tareas
+en 9 bloques pequeños, porque los encargos al implementer se dan de uno en uno).
+**No se ha tocado ni una línea de código.**
+
+### Lo que la spec propone, en corto
+
+- **Asunto 1 · rechazo manual.** No inventa mecanismo: reutiliza la revocación
+  que F-026 ya modeló. Motivo nuevo `MotivoRevocacion.RETIRADA_HUMANA`, dos
+  columnas más en `postventa.aprobaciones` (`revocada_por`, `revocada_nota`),
+  endpoint propio `POST /api/rechazar` con cuerpo mínimo —`hash_parte`,
+  `usuario_oid`, `confirmado: true`, `nota` opcional—, y botón en el detalle
+  del parte. El front no necesita tocar `aprobacionVale`: en cuanto el bloque
+  dice «revocado», el parte vuelve solo a su color y sale de la tanda.
+- **Asunto 2 · espacios.** El arreglo va en `normalizar_codigo`
+  (`domain/models/nombrado.py`): elimina los espacios que flanquean a un
+  separador, y las dos conversiones pasan a componerse por **tramos**, con lo
+  que quedan inversas exactas. `a_codigo_de_sigrid` gana además el caso
+  `RS26.09-0149` (guion pegado), que hoy tampoco encontraba la reclamación.
+
+### El riesgo de la huella: contestado, y la respuesta es que no hay riesgo
+
+`huella_de_veredicto` normaliza con `aprobacion.py::_normalizar`, que es **otra
+función** —recorta, colapsa y baja a minúsculas, sin tocar separadores— y
+`aprobacion.py` **no importa nada de `nombrado.py`**. Además, lo que entra en
+la huella son los valores **crudos** de la extracción. Conclusión medida:
+**cambiar `normalizar_codigo` no cambia ni una huella**, y no revoca ninguna
+aprobación vigente. El bloque 7 de `tasks.md` lo fija con tres controles
+negativos, uno de ellos con las huellas escritas literales.
+
+Queda declarado, eso sí, un **defecto latente de F-026 que esta spec NO
+arregla**: hoy una relectura que solo cambie los espacios alrededor de la barra
+**sí** revoca la aprobación («revocar por nada», contra su R32). Alinear las
+dos normalizaciones lo arreglaría, pero cambiaría las huellas ya escritas y
+revocaría las aprobaciones que ya hay en la base desde el despliegue. Va como
+pregunta abierta **P5**.
+
+### Lo que necesita decidir el humano antes de implementar
+
+| # | Pregunta | Propuesta por defecto |
+|---|---|---|
+| P1 | ¿Rechazar un parte ya archivado y cerrado? | **No**, y la puerta se pone en el **cierre** (`cierres.estado` en `cerrado`/`ya_cerrada`), no en el archivo: archivado-sin-cerrar sí se puede rechazar, con aviso de que el PDF sigue en SharePoint |
+| P2 | ¿Motivo en texto? | Texto libre **opcional**, 500 caracteres, en columna propia y nunca dentro del motivo cerrado |
+| P3 | ¿Quién puede rechazar? | Cualquiera que pueda aprobar, con su `oid` registrado |
+| P4 | **Nueva** · ¿histórico de decisiones? | **Sí**: tabla append-only `postventa.decisiones_aprobacion`. Sin ella el criterio «la traza conserva las dos decisiones en orden» **no se puede cumplir**: hoy volver a aprobar pone la revocación a `NULL` y borra el rechazo |
+| P5 | **Nueva** · ¿alinear `_normalizar` con `normalizar_codigo`? | **No**, por lo dicho arriba |
+
+P1, P2 y P4 **bloquean** el arranque del asunto 1 (cambian el diseño). P3 no
+bloquea. El asunto 2 (bloques 6 y 7) se puede arrancar sin ninguna de las
+cinco, y es el que desbloquea un cierre que hoy falla en real.
+
+### Un aviso para el implementer que el humano debe conocer
+
+El arreglo de los espacios cambia la expectativa de **un** test ya existente:
+`test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`. Va con su enmienda
+fechada a R8 de F-006 (T19) y el implementer tiene obligación de decirlo en su
+informe. Ningún otro test de F-006 ni de F-009 cambia.

@@ -2374,3 +2374,26 @@ negativos.
 nueve decisiones listadas para que nadie las reabra), `design.md` y `tasks.md`
 (28 tareas en 11 bloques pequeños, uno por encargo). **Ni una línea de código
 tocada.**
+
+---
+
+## F-028 · bloques 0 y 1 hechos (2026-09-15, implementer)
+
+Rama `feature/F-028-estado-del-parte`, 5 commits locales sobre `ed46181`,
+arnés en verde. **T1, T2, T3 y T4 cerradas**; el bloque 2 (persistencia, T5–T7)
+es el siguiente encargo.
+
+Lo entregado es **dominio puro**: `domain/models/estado.py` con los cuatro
+estados, `DecisionEstado`, `SituacionParte` y la derivación
+`estado_del_parte`; dos errores nuevos en `errores.py`; y el bloque 0, la red
+de seguridad de las tres puertas, que salió **verde antes de tocar nada**
+—ninguna puerta está floja hoy—.
+
+Ni una línea fuera de `domain/`: `application/`, `infrastructure/`,
+`interface_adapters/` y el front siguen exactamente como los dejó F-026.
+
+Cobertura de líneas cambiadas 100,0 % (59/59); mutación 11/11 muertos, 0
+supervivientes (los 2 de la primera campaña eran huecos reales y se cerraron
+con un test cada uno). **Sin desviaciones respecto a la spec.**
+
+Detalle completo, trazas de la fase RED y evidencias: `progress/impl_F-028.md`.

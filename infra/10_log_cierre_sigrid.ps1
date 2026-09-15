@@ -23,6 +23,14 @@
 
     NO ESCRIBE NADA: la unica ruta que toca es `POST /api/sql/read`.
 
+    EL HUSO SE JUZGA CONTRA UN INSTANTE DE REFERENCIA, y por omision ese
+    instante es AHORA: el script esta pensado para lanzarse justo despues del
+    cierre. Para leer un cierre PASADO hay que pasarle `-InstanteCierreUtc` con
+    el momento en que ocurrio -de los registros de Application Insights, por
+    ejemplo-. Sin el, las dos diferencias salen de dias y el veredicto seria
+    "NO COINCIDE CON NINGUNA" por construccion, no por un defecto: peor que no
+    mirar, porque parece una respuesta.
+
     LA FILA SE BUSCA POR ENCIMA DEL `MAX(ide)` ANOTADO ANTES DEL CIERRE. Es la
     forma de no confundirla con los 6.843 cierres manuales que ya tiene la
     tabla para el mismo proceso.
@@ -32,6 +40,11 @@
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File infra\10_log_cierre_sigrid.ps1 -CodigoIncidencia "<RSaa.mm/nnnn>" -DesdeIde <MAX(ide) de antes> -LoginEsperado "<login del ERP>" -EmpEsperada <emp de la reclamacion>
+
+.EXAMPLE
+    # Un cierre de hace dias: sin el instante en que ocurrio, el huso no se
+    # puede juzgar. El `ide` de la fila lo da `11_trazabilidad_tex_sigrid.ps1`.
+    powershell -ExecutionPolicy Bypass -File infra\10_log_cierre_sigrid.ps1 -CodigoIncidencia "<RSaa.mm/nnnn>" -DesdeIde <ide de la fila menos 1> -LoginEsperado "<login del ERP>" -InstanteCierreUtc "2026-09-11T08:28:12Z"
 #>
 
 [CmdletBinding()]
@@ -45,6 +58,7 @@ param(
     [int]$EmpEsperada = 1,
     [string]$ResEsperado,
     [string]$TexEsperado = "Cerrar parte (postventa-incidencias)",
+    [string]$InstanteCierreUtc,
     [int]$ToleranciaMinutos = 20
 )
 
@@ -116,14 +130,33 @@ $hor = [int](Get-SigridValor -Respuesta $respuesta -Fila $ultima -Columna "hor")
 # `escrituras.py` formatea el instante CON EL HUSO QUE TRAIGA PUESTO, y quien
 # se lo pone es el adaptador, con `SIGRID_ZONA_HORARIA`. Aqui se comprueba el
 # resultado, que es lo unico que le importa a quien lea el ERP dentro de un ano.
-$ahoraUtc = [datetime]::UtcNow
+# El instante contra el que se compara. Por omision, ahora. Si se pasa
+# `-InstanteCierreUtc`, ese: leer un cierre de hace dias con la hora de hoy no
+# mide nada. Se exige en UTC y con marca de zona, para que no dependa de la
+# configuracion regional del puesto.
+$refUtc = [datetime]::UtcNow
+if (-not [string]::IsNullOrWhiteSpace($InstanteCierreUtc)) {
+    $estilos = [Globalization.DateTimeStyles]::AdjustToUniversal -bor `
+        [Globalization.DateTimeStyles]::AssumeUniversal
+    $parseada = [datetime]::MinValue
+    $vale = [datetime]::TryParse($InstanteCierreUtc,
+        [Globalization.CultureInfo]::InvariantCulture, $estilos, [ref]$parseada)
+    if (-not $vale) {
+        Salir-Con ("-InstanteCierreUtc '$InstanteCierreUtc' no es una fecha. Se " +
+            "espera el instante EN UTC con forma 2026-09-11T08:28:12Z.") $SALIDA_PARAMETRO
+    }
+    $refUtc = $parseada
+}
+
 try {
     $zonaMadrid = [System.TimeZoneInfo]::FindSystemTimeZoneById("Romance Standard Time")
-    $ahoraLocal = [System.TimeZoneInfo]::ConvertTimeFromUtc($ahoraUtc, $zonaMadrid)
+    $refLocal = [System.TimeZoneInfo]::ConvertTimeFromUtc($refUtc, $zonaMadrid)
 }
 catch {
     Write-Host "AVISO: Windows no conoce 'Romance Standard Time'; se usa la hora del puesto." -ForegroundColor Yellow
-    $ahoraLocal = [datetime]::Now
+    # Solo vale si la referencia es ahora: con un instante pasado, el desfase
+    # del puesto no tiene por que ser el que habia aquel dia.
+    $refLocal = $refUtc + ([datetime]::Now - [datetime]::UtcNow)
 }
 
 $escrito = $null
@@ -141,8 +174,8 @@ catch {
         "declara 'Entero tipo fecha' AAAAMMDD y HHMMSS.") $SALIDA_SIN_DATO
 }
 
-$difLocal = [Math]::Abs(($escrito - $ahoraLocal).TotalMinutes)
-$difUtc = [Math]::Abs(($escrito - $ahoraUtc).TotalMinutes)
+$difLocal = [Math]::Abs(($escrito - $refLocal).TotalMinutes)
+$difUtc = [Math]::Abs(($escrito - $refUtc).TotalMinutes)
 
 $veredictoHuso = "NO COINCIDE CON NINGUNA"
 if ($difLocal -le $ToleranciaMinutos) { $veredictoHuso = "HORA LOCAL (correcto)" }
@@ -151,8 +184,14 @@ elseif ($difUtc -le $ToleranciaMinutos) { $veredictoHuso = "UTC (INCORRECTO)" }
 Write-Host ""
 Write-Host "Huso horario de la fila de log" -ForegroundColor Cyan
 Write-Host ("  escrito en el ERP : {0} (fec={1} hor={2})" -f $escrito.ToString("yyyy-MM-dd HH:mm:ss"), $fec, $hor)
-Write-Host ("  hora local ahora  : {0}  (diferencia {1:N1} min)" -f $ahoraLocal.ToString("yyyy-MM-dd HH:mm:ss"), $difLocal)
-Write-Host ("  hora UTC ahora    : {0}  (diferencia {1:N1} min)" -f $ahoraUtc.ToString("yyyy-MM-dd HH:mm:ss"), $difUtc)
+Write-Host ("  hora local de ref.: {0}  (diferencia {1:N1} min)" -f $refLocal.ToString("yyyy-MM-dd HH:mm:ss"), $difLocal)
+Write-Host ("  hora UTC de ref.  : {0}  (diferencia {1:N1} min)" -f $refUtc.ToString("yyyy-MM-dd HH:mm:ss"), $difUtc)
+if ([string]::IsNullOrWhiteSpace($InstanteCierreUtc)) {
+    Write-Host "  la referencia es AHORA: solo vale si el cierre acaba de ocurrir." -ForegroundColor DarkGray
+}
+else {
+    Write-Host ("  la referencia la has dado tu: $InstanteCierreUtc") -ForegroundColor DarkGray
+}
 Write-Host ""
 
 # --- Campo a campo -----------------------------------------------------------

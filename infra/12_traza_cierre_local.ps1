@@ -185,8 +185,9 @@ if usuario_oid:
         print(f"verificada|{'si' if verificado else 'no'}")
 '@
 
-$salida = & $python -c $codigoLectura
-$codigo = $LASTEXITCODE
+# Por fichero y no con `-c`: ver `Invoke-PythonDelServicio` en el 08.
+$salida = Invoke-PythonDelServicio -Python $python -Codigo $codigoLectura
+$codigo = $script:CodigoPythonDelServicio
 
 foreach ($variable in @(
     "PG_HOST_TEMP", "PG_PORT_TEMP", "PG_DB_TEMP", "PG_USER_TEMP",

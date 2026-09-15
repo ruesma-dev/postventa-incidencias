@@ -292,6 +292,46 @@ function Anotar {
     Comprobar -Que $Que -Esperado $Valor -Obtenido $Valor -SoloInformativo
 }
 
+function Invoke-PythonDelServicio {
+    <#
+    .SYNOPSIS
+        Ejecuta un trozo de Python con el interprete del servicio, POR FICHERO
+        y nunca con `-c`. Deja el codigo de salida en
+        `$script:CodigoPythonDelServicio`.
+
+    .DESCRIPTION
+        `& $python -c $codigo` NO FUNCIONA en PowerShell 5.1. Al pasar el
+        argumento a un ejecutable nativo, PowerShell se come las comillas
+        dobles que lleve dentro, y Python muere con un `SyntaxError` que apunta
+        a una linea que en el original estaba perfectamente bien -por ejemplo
+        `esquema.replace(_, ")`, que nadie ha escrito nunca-. Cuesta media hora
+        buscar el fallo en el sitio equivocado.
+
+        Se descubrio el 2026-09-15, la primera vez que se ejecuto el script 12.
+        El patron bueno ya estaba en el repositorio: `crear_base_postventa.ps1`
+        y `pruebas_bbdd_efimera.ps1` escriben el guion a un fichero y lo lanzan.
+
+        NINGUN SECRETO VIAJA EN EL FICHERO: los valores siguen yendo por
+        variables de entorno del proceso. El fichero temporal se borra SIEMPRE,
+        tambien si Python falla.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Python,
+        [Parameter(Mandatory = $true)][string]$Codigo
+    )
+
+    $fichero = Join-Path ([IO.Path]::GetTempPath()) ("postventa_" + [guid]::NewGuid().ToString("N") + ".py")
+    try {
+        Set-Content -LiteralPath $fichero -Value $Codigo -Encoding UTF8
+        $salida = & $Python $fichero
+        $script:CodigoPythonDelServicio = $LASTEXITCODE
+        return $salida
+    }
+    finally {
+        Remove-Item -LiteralPath $fichero -ErrorAction SilentlyContinue
+    }
+}
+
 function Escribir-Veredicto {
     <#
     .SYNOPSIS

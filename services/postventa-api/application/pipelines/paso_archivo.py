@@ -46,12 +46,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from domain.models.aprobacion import admite_circuito
 from domain.models.errores import (
     ArchivoFallido,
     ArchivoSinTraza,
     ErrorDePersistencia,
-    ParteNoApto,
 )
 from domain.models.nombrado import componer_destino
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
@@ -59,6 +57,7 @@ from domain.ports.archivo import ArchivoPort, ItemArchivado
 from domain.ports.persistencia import RepositorioPartesPort
 
 from application.pipelines.contexto_parte import ContextoParte
+from application.pipelines.puerta_de_estado import exigir_parte_aprobado
 
 __all__ = [
     "AVISO_REEMPLAZADO",
@@ -210,42 +209,32 @@ def _dejar_constancia(repositorio: RepositorioPartesPort, ctx: ContextoParte) ->
 
 
 def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> None:
-    """Solo se archiva lo que F-004 declaró apto **o alguien aprobó** (R17, R23).
+    """Solo se archiva el parte que está **`aprobado`** (F-028 R33).
 
-    Hasta F-026 esta puerta miraba una sola cosa. Ahora mira dos, y la segunda
-    es la decisión de una persona: `admite_circuito` (dominio puro) dice que sí
-    al apto de siempre y al no apto con aprobación viva **del mismo destino**.
+    Hasta F-026 esta puerta miraba el veredicto y, si no bastaba, una
+    aprobación suelta. Desde F-028 mira **el estado del parte**, que es lo que
+    combina los tres hechos —el veredicto, la última decisión de una persona y
+    la traza de cierre— con un criterio escrito una sola vez
+    (`domain/models/estado.py`).
 
-    «No hay veredicto» sigue siendo un motivo propio y va primero a propósito:
-    se arregla revalidando el parte, no aprobándolo, y una aprobación no puede
-    rescatar un parte del que nadie ha emitido veredicto.
+    Lo que eso cambia aquí, y es medio encargo de la feature: **desaparece el
+    atajo del apto**. Hasta ahora el parte verde pasaba sin consultar nada, y
+    mientras eso fuera así un parte apto rechazado por una persona se habría
+    archivado igual (`design.md` §0.5 y §6). El coste —una consulta por parte
+    y paso— está declarado y aceptado.
 
-    La aprobación **se lee aquí, del repositorio, y nunca del cuerpo** (R24).
-    Es el mismo argumento que ya escribió F-012 para `traza_grafico`: si
-    viniera del cuerpo, quien llama podría afirmar que alguien aprobó lo que
-    nadie aprobó.
-
-    Y se lee **solo si hace falta**: el parte apto no paga una consulta que no
-    puede cambiar la decisión, que en una remesa real de 22 partes son 22
-    consultas por paso. Lo que sí se hace siempre es dejar en el contexto lo
-    que se leyó, para que quien mire después vea de dónde salió.
+    Lo demás no se mueve: «no hay veredicto» sigue siendo un motivo propio y
+    va primero, y la situación **se lee del repositorio y nunca del cuerpo**
+    (R33). La explicación larga está en `puerta_de_estado.py`.
     """
-    if ctx.validacion is None:
-        raise ParteNoApto(
+    exigir_parte_aprobado(
+        ctx,
+        repositorio,
+        sin_veredicto=(
             "no consta que este parte haya pasado la validación: no se "
             "archiva un parte del que nadie ha emitido veredicto"
-        )
-    if admite_circuito(ctx.validacion, None):
-        return
-
-    aprobacion = repositorio.consultar_aprobacion(hash_parte=ctx.parte.hash)
-    if admite_circuito(ctx.validacion, aprobacion):
-        return
-
-    raise ParteNoApto(
-        f"el parte no es apto para archivo y cierre: la validación lo "
-        f"manda a «{ctx.validacion.destino.value}» y no consta que nadie lo "
-        f"haya aprobado para ese destino"
+        ),
+        y_por_eso="no se archiva",
     )
 
 

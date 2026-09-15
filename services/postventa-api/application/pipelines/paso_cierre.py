@@ -43,7 +43,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from domain.models.aprobacion import admite_circuito
 from domain.models.cierre import (
     CODIGO_ESTADO_CIERRE,
     CorrespondenciaSigrid,
@@ -60,7 +59,6 @@ from domain.models.errores import (
     ErrorDePersistencia,
     EstadoNoCerrable,
     ParteNoAdjuntado,
-    ParteNoApto,
     ParteNoArchivado,
     ReclamacionNoLocalizada,
     UsuarioSigridInexistente,
@@ -82,6 +80,10 @@ from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
 
 from application.pipelines.constancia import anotar_estado
 from application.pipelines.contexto_parte import ContextoParte
+from application.pipelines.puerta_de_estado import (
+    exigir_parte_aprobado,
+    situacion_leida,
+)
 
 __all__ = [
     "FILAS_ESPERADAS",
@@ -204,34 +206,34 @@ def paso_cierre(
 
 
 def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> None:
-    """Solo se cierra lo apto **o lo que alguien aprobó** (R16; F-026 R23).
+    """Solo se cierra el parte que está **`aprobado`** (R16; F-028 R33).
 
     Cerrar «por si acaso» una incidencia cuyo parte fue a la cola de validación
     humana la daría por resuelta en el ERP de producción sin que nadie haya
-    mirado el papel. Lo que F-026 cambia es **quién** puede haberlo mirado: la
-    máquina, o una persona que se hizo responsable y quedó registrada.
+    mirado el papel. Lo que F-028 cambia es que el permiso deja de ser un dato
+    suelto y pasa a ser **el estado del parte**: la máquina, o una persona que
+    se hizo responsable y quedó registrada, y **ninguna de las dos si otra
+    persona lo rechazó** (R5).
+
+    Aquí se gana además una puerta que antes no existía: un parte **`cerrado`**
+    no vuelve a pasar (R7). Su reclamación ya consta cerrada en el ERP, y
+    recorrer otra vez el circuito solo podría pedir un segundo cierre de lo ya
+    cerrado.
 
     «No hay veredicto» sigue siendo un motivo aparte, y va primero: se arregla
-    revalidando el parte, no aprobándolo. La aprobación se lee del repositorio
-    y nunca del cuerpo (R24) —igual que `traza_grafico` más abajo, y por el
-    mismo argumento—, y solo cuando el veredicto no basta.
+    revalidando el parte, no decidiendo sobre él. La situación se lee del
+    repositorio y nunca del cuerpo (R33) —igual que `traza_grafico` más abajo,
+    y por el mismo argumento—, y se queda en `ctx.situacion`, que es lo que
+    luego reutiliza la constancia del cierre.
     """
-    if ctx.validacion is None:
-        raise ParteNoApto(
+    exigir_parte_aprobado(
+        ctx,
+        repositorio,
+        sin_veredicto=(
             "no consta que este parte haya pasado la validación: no se cierra "
             "una incidencia con un parte del que nadie ha emitido veredicto"
-        )
-    if admite_circuito(ctx.validacion, None):
-        return
-
-    aprobacion = repositorio.consultar_aprobacion(hash_parte=ctx.parte.hash)
-    if admite_circuito(ctx.validacion, aprobacion):
-        return
-
-    raise ParteNoApto(
-        f"el parte no es apto para archivo y cierre: la validación lo manda "
-        f"a «{ctx.validacion.destino.value}» y no consta que nadie lo haya "
-        f"aprobado para ese destino"
+        ),
+        y_por_eso="no se cierra la incidencia",
     )
 
 
@@ -564,10 +566,9 @@ def _anotar_que_el_parte_queda_cerrado(
     (R52, R44, R45).
     """
     try:
-        situacion = repositorio.consultar_situacion(hash_parte=ctx.parte.hash)
         anotar_estado(
             repositorio,
-            situacion,
+            situacion_leida(ctx, repositorio),
             hash_parte=ctx.parte.hash,
             estado=EstadoParte.CERRADO,
             ahora=ahora,

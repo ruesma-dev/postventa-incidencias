@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from domain.models.estado import SituacionParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EntradaCola,
@@ -390,6 +391,28 @@ class RepositorioFalso:
         los tests que lo comprueban, sin que se hubiera escrito nada.
         """
         return None
+
+    def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
+        """F-028 · «de este parte no consta nada», que **no es un error**.
+
+        Los tres huecos vacíos son el caso normal del primer día, y es lo mismo
+        que devuelve el adaptador de verdad: nadie ha decidido, no hay ninguna
+        fila en el histórico y no hay traza de cierre. De ahí se deriva
+        `pendiente` o `aprobado` según el veredicto, que es lo que necesitan
+        los tests de F-006.
+
+        Devuelve valor en vez de levantar por lo mismo que la de arriba, y
+        ahora hace falta **siempre**: desde F-028 la puerta de aptitud pregunta
+        también por el parte apto —se retiró el atajo (`design.md` §6)—, así
+        que este doble tiene que saber contestar o ningún test de F-006 llegaría
+        a subir nada.
+
+        Que no sea programable es deliberado, igual que arriba: los casos con
+        decisión se prueban con `RepositorioEnMemoria`, que sí la sabe
+        devolver. Y **no se apunta en `registro`**: es una lectura, y ese
+        registro fija el orden de las escrituras (F-019 R19).
+        """
+        return SituacionParte()
 
 
 def parte_de_prueba(

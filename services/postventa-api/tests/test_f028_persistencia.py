@@ -47,7 +47,7 @@ from application.pipelines.paso_cierre import paso_cierre
 from application.pipelines.paso_persistencia import paso_persistencia
 from domain.models.aprobacion import huella_de_veredicto
 from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
-from domain.models.errores import CierreFallido, ErrorDePersistencia
+from domain.models.errores import CierreFallido, ErrorDePersistencia, ParteNoApto
 from domain.models.estado import DecisionEstado, EstadoParte, SituacionParte
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
@@ -979,6 +979,11 @@ def test_f028_el_cierre_deja_su_fila_en_el_historico():
     `cerrado` es **terminal** (R7): esta fila es el último renglón del parte, y
     sin ella el histórico se quedaría contando la película hasta la víspera del
     final.
+
+    Y la situación se pregunta **una sola vez** en todo el cierre: desde T11 la
+    lee la puerta de aptitud y la constancia reutiliza la que quedó en
+    `ctx.situacion` (`design.md` §11.1). Son viajes a un PostgreSQL compartido
+    con otros proyectos, y el paso se recorre una vez por parte.
     """
     repositorio = RepositorioEnMemoria(
         traza_grafico=GRAFICO_ADJUNTADO,
@@ -993,6 +998,7 @@ def test_f028_el_cierre_deja_su_fila_en_el_historico():
     assert fila.estado_anterior is EstadoParte.APROBADO
     assert fila.decidido_por is None
     assert fila.motivo is None
+    assert repositorio.situaciones_consultadas == [HASH]
 
 
 def test_f028_la_fila_cerrado_se_escribe_despues_de_que_el_cierre_conste():
@@ -1087,11 +1093,19 @@ def test_f028_r18_una_reclamacion_ya_cerrada_tambien_deja_su_fila():
 
 
 def test_f028_no_se_repite_la_fila_si_el_parte_ya_constaba_cerrado():
-    """La misma regla de constancia, en el camino que más se repite.
+    """El camino que más se repite, y desde T11 ni siquiera llega a recorrerse.
 
-    Volver a lanzar una remesa ya procesada pasa por aquí una vez por parte, y
-    el ERP contesta `ya_cerrada` todas las veces. Sin la regla, cada pasada
-    añadiría un `cerrado → cerrado`.
+    Volver a lanzar una remesa ya procesada pasa por aquí una vez por parte. La
+    fila `cerrado → cerrado` no se escribe, y desde el bloque 4 **por partida
+    doble**: la puerta de aptitud frena al parte `cerrado` antes de nada (R7,
+    `design.md` §6) y, si algún día se abriera, detrás sigue estando la regla
+    de constancia.
+
+    > Este caso cambió de expectativa en T11, y así consta en
+    > `progress/impl_F-028.md`: hasta el bloque 3 el paso llegaba al ERP,
+    > recibía `ya_cerrada` y era la regla de constancia la que evitaba la fila
+    > repetida. Ahora ni se le pregunta al ERP, que es **más** garantía y no
+    > menos: no se puede escribir dos veces lo que no se llega a intentar.
     """
     repositorio = RepositorioEnMemoria(
         traza_grafico=GRAFICO_ADJUNTADO,
@@ -1102,9 +1116,12 @@ def test_f028_no_se_repite_la_fila_si_el_parte_ya_constaba_cerrado():
     )
     erp = ErpEnMemoria(_reclamacion(est=90, cod_origen="CER"))
 
-    _cerrar(repositorio, erp=erp)
+    with pytest.raises(ParteNoApto):
+        _cerrar(repositorio, erp=erp)
 
     assert repositorio.decisiones == []
+    assert erp.lecturas == []
+    assert erp.cierres == []
 
 
 def test_f028_si_la_constancia_falla_el_cierre_sigue_siendo_un_cierre(caplog):

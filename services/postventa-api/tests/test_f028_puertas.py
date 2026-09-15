@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import ast
 import inspect
-from dataclasses import fields
+from dataclasses import dataclass, fields
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -54,8 +54,15 @@ from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_archivo import paso_archivo
 from application.pipelines.paso_cierre import paso_cierre
 from application.pipelines.paso_grafico import paso_grafico
-from domain.models.cierre import CorrespondenciaSigrid
+from domain.models.aprobacion import huella_de_veredicto
+from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
 from domain.models.errores import ParteNoApto
+from domain.models.estado import (
+    ESTADOS_DE_CIERRE_EN_FIRME,
+    DecisionEstado,
+    EstadoParte,
+    SituacionParte,
+)
 from domain.models.grafico import FIRMA_PDF
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
@@ -68,7 +75,7 @@ from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import CodigoMotivo, Destino, validar_parte
 
 from tests.utiles_pg import RepositorioEnMemoria
-from tests.utiles_sharepoint import ArchivoPortFalso
+from tests.utiles_sharepoint import ArchivoPortFalso, contexto_apto
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
@@ -230,7 +237,9 @@ def _archivar(ctx: ContextoParte, repositorio, archivador) -> ContextoParte:
     )
 
 
-def _adjuntar(ctx: ContextoParte, repositorio, erp, graficos) -> ContextoParte:
+def _adjuntar(
+    ctx: ContextoParte, repositorio, erp, graficos, *, commit: bool = True
+) -> ContextoParte:
     return paso_grafico(
         ctx,
         erp,
@@ -238,7 +247,7 @@ def _adjuntar(ctx: ContextoParte, repositorio, erp, graficos) -> ContextoParte:
         repositorio,
         UsuariosConLogin(),
         PreferenciasSinAutoCierre(),
-        commit=True,
+        commit=commit,
         confirmado=True,
         usuario_oid=OID,
         correo=CORREO,
@@ -250,14 +259,16 @@ def _adjuntar(ctx: ContextoParte, repositorio, erp, graficos) -> ContextoParte:
     )
 
 
-def _cerrar(ctx: ContextoParte, repositorio, erp) -> ContextoParte:
+def _cerrar(
+    ctx: ContextoParte, repositorio, erp, *, commit: bool = True
+) -> ContextoParte:
     return paso_cierre(
         ctx,
         erp,
         repositorio,
         UsuariosConLogin(),
         PreferenciasSinAutoCierre(),
-        commit=True,
+        commit=commit,
         confirmado=True,
         usuario_oid=OID,
         correo=CORREO,
@@ -525,3 +536,343 @@ def test_f028_r33_el_contexto_dice_que_la_situacion_no_viene_del_cuerpo():
 
     assert "situacion" in documentacion or "situación" in documentacion
     assert "nunca del cuerpo" in documentacion
+
+
+# --------------------------------------------------------------------------
+# T11 · los cuatro estados contra las tres puertas
+# --------------------------------------------------------------------------
+#
+# Lo de arriba es el bloque 0: lo que **no puede cambiar**. Lo de aquí abajo es
+# lo que T11 hace posible, y es medio encargo de la feature: que una persona
+# pueda **rechazar un parte verde** y que ese rechazo se note en las tres
+# puertas. Hasta T11 era imposible —`_exigir_admitido` devolvía «pasa» en
+# cuanto el veredicto era apto, sin consultar nada (`design.md` §0.5 y §6)— y
+# el botón de rechazar habría sido un botón que no hace nada.
+#
+# El criterio de las tres puertas pasa a ser uno y es el del dominio:
+# `estado_del_parte(...) is EstadoParte.APROBADO`. De los cuatro estados, pasa
+# **uno**.
+
+#: El código de la incidencia tal y como lo espera Sigrid.
+CODIGO_EN_SIGRID = "XX00.00/0000"
+
+
+def _reclamacion() -> Reclamacion:
+    """Una reclamación abierta e inventada, en el tipo de posventa."""
+    return Reclamacion(
+        ide=111_222,
+        emp=1,
+        tip=708,
+        est=3,
+        codigo=CODIGO_EN_SIGRID,
+        descripcion="REPARACION INVENTADA",
+        estado_origen_cod="PTE",
+        estado_origen_res="PENDIENTE",
+        estado_destino_est=90,
+        estado_destino_cod="CER",
+        estado_destino_res="CERRADA",
+    )
+
+
+@dataclass
+class Dobles:
+    """Los tres sitios por los que un parte puede salir de aquí.
+
+    Van juntos a propósito: lo que se afirma después de cada puerta cerrada no
+    es «no se llamó a este método» sino **que no salió nada a ninguna parte**,
+    y eso hay que mirarlo en los tres a la vez. Una puerta que se aflojara y
+    dejara subir el PDF a SharePoint sin cerrar la incidencia dejaría el parte
+    a medio camino, que es peor que no haber empezado.
+    """
+
+    archivador: ArchivoPortFalso
+    erp: ErpEnMemoria
+    graficos: GraficoEnMemoria
+
+
+def _dobles() -> Dobles:
+    return Dobles(ArchivoPortFalso(), ErpEnMemoria(_reclamacion()), GraficoEnMemoria())
+
+
+def _nada_ha_salido(dobles: Dobles) -> None:
+    """Ni un byte a SharePoint, ni una lectura del ERP, ni un cierre."""
+    assert dobles.archivador.llamadas == []
+    assert dobles.archivador.biblioteca.elementos == {}
+    assert dobles.archivador.biblioteca.carpetas == set()
+    assert dobles.erp.lecturas == []
+    assert dobles.erp.cierres == []
+    assert dobles.graficos.llamadas == []
+
+
+def _puerta_de_archivo(ctx, repositorio, dobles, *, commit=True):
+    return _archivar(ctx, repositorio, dobles.archivador)
+
+
+def _puerta_del_grafico(ctx, repositorio, dobles, *, commit=True):
+    return _adjuntar(ctx, repositorio, dobles.erp, dobles.graficos, commit=commit)
+
+
+def _puerta_del_cierre(ctx, repositorio, dobles, *, commit=True):
+    return _cerrar(ctx, repositorio, dobles.erp, commit=commit)
+
+
+#: Las tres puertas del circuito, llamadas con la misma forma.
+#:
+#: Van parametrizadas y no escritas tres veces porque el requisito es de las
+#: tres a la vez (R33): abrir una sola ya deja el parte a medio camino.
+PUERTAS = (
+    pytest.param(_puerta_de_archivo, id="archivo"),
+    pytest.param(_puerta_del_grafico, id="grafico"),
+    pytest.param(_puerta_del_cierre, id="cierre"),
+)
+
+
+def _contexto_apto() -> ContextoParte:
+    """El parte **verde**: firmado, completo y sin observaciones.
+
+    Es el que hasta T11 no consultaba nada, y por eso es el material del caso
+    que la feature viene a arreglar: un parte que la máquina declaró apto y
+    que una persona rechaza.
+    """
+    ctx = contexto_apto(hash_parte=HASH, contenido=PDF)
+    assert ctx.validacion.destino is Destino.ARCHIVO_Y_CIERRE
+    return ctx
+
+
+def _contexto_para(puerta, *, apto: bool = True) -> ContextoParte:
+    """El contexto que esa puerta necesita para que el ÚNICO motivo sea el estado.
+
+    La puerta del archivo exige que el parte **no** conste archivado —si
+    constara, la idempotencia de F-006 cortaría antes de subir nada y el caso
+    daría verde sin haber probado la puerta—; las del gráfico y el cierre
+    exigen justo lo contrario (F-006 R15, F-009 R17). Así, si mañana alguien
+    retirase la puerta de aptitud, estos casos fallarían **por lo que hay que
+    fallar** y no por la puerta de al lado.
+    """
+    ctx = _contexto_apto() if apto else _contexto(Destino.COLA_VALIDACION_HUMANA)
+    ctx.archivo = (
+        None
+        if puerta is _puerta_de_archivo
+        else TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO)
+    )
+    return ctx
+
+
+def _ha_pasado(puerta, dobles: Dobles) -> None:
+    """La prueba de que la puerta se abrió, mirada desde fuera.
+
+    Cada puerta deja su huella en un sitio distinto: el archivo, en la
+    biblioteca; el gráfico y el cierre, en la lectura de la reclamación que
+    hacen nada más pasar. Se mira el efecto y no el retorno del paso a
+    propósito: lo que importa es que el parte **siguió su camino**.
+    """
+    if puerta is _puerta_de_archivo:
+        assert dobles.archivador.biblioteca.elementos != {}
+    else:
+        assert dobles.erp.lecturas == [CODIGO_EN_SIGRID]
+
+
+def _decision(estado: EstadoParte, *, validacion=None, huella=None) -> DecisionEstado:
+    """La decisión de **una persona**, tal y como la devuelve el histórico.
+
+    `validacion` compone la huella del veredicto que se decidió, que es lo que
+    R19 compara: una aprobación vale para el veredicto sobre el que se tomó y
+    no para el siguiente. `huella` permite escribir a mano la de otro
+    veredicto, que es el caso que la puerta tiene que rechazar.
+    """
+    return DecisionEstado(
+        hash_parte=HASH,
+        estado=estado,
+        decidido_at_utc=AHORA,
+        decidido_por=OID,
+        motivo="motivo inventado para el test",
+        huella_veredicto=(
+            huella if validacion is None else huella_de_veredicto(validacion)
+        ),
+    )
+
+
+def _con(decision=None, *, cierre: str | None = None) -> RepositorioEnMemoria:
+    """Un repositorio que responde esa situación, y **solo** por esa vía.
+
+    Se le pasa la situación y **no** una aprobación de F-026: si la puerta
+    siguiera leyendo `consultar_aprobacion`, estos casos no encontrarían nada
+    y el test lo diría enseguida.
+    """
+    return RepositorioEnMemoria(
+        situacion=SituacionParte(decision_humana=decision, estado_cierre=cierre)
+    )
+
+
+# --- `aprobado` pasa, y son los dos caminos de llegar ----------------------
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f028_r3_el_parte_apto_sigue_pasando_las_tres_puertas(puerta):
+    """R3 · el verde nace `aprobado` y circula como circulaba desde F-006.
+
+    Es el control de que T11 no ha estrechado la puerta: el trabajo diario de
+    Posventa —22 partes verdes archivados en bloque— no cambia, y nadie tiene
+    que aprobar nada a mano. Lo que F-028 añade no es un permiso más: es poder
+    **rechazar** uno antes de que se archive.
+    """
+    dobles = _dobles()
+
+    puerta(_contexto_para(puerta), _con(), dobles, commit=False)
+
+    _ha_pasado(puerta, dobles)
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f028_r9_un_parte_no_apto_que_una_persona_aprobo_pasa(puerta):
+    """R9 · la decisión de una persona manda sobre la máquina.
+
+    Es el reverso exacto de los seis control-negativo de arriba: mismo parte,
+    misma llamada, mismo cuerpo. Lo único que cambia es que en el histórico
+    consta que alguien lo miró y lo aprobó — y que la huella apuntada es la
+    del veredicto que hay guardado ahora (R19).
+    """
+    ctx = _contexto_para(puerta, apto=False)
+    dobles = _dobles()
+    aprobado = _decision(EstadoParte.APROBADO, validacion=ctx.validacion)
+
+    puerta(ctx, _con(aprobado), dobles, commit=False)
+
+    _ha_pasado(puerta, dobles)
+
+
+# --- `rechazado` no pasa, **aunque el veredicto sea apto** -----------------
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f028_r5_un_parte_apto_rechazado_a_mano_no_pasa_ninguna_puerta(puerta):
+    """R5 · **el caso que la feature viene a hacer posible.**
+
+    Un parte que la máquina declaró apto y que una persona miró y rechazó no
+    se archiva, no se adjunta y no se cierra. Hasta T11 esto era imposible: la
+    puerta devolvía «pasa» en cuanto el veredicto era apto y no consultaba
+    nada, así que el rechazo no tenía por dónde llegar (`design.md` §0.5).
+
+    El rechazo **no caduca** y no necesita huella: lo automático puede retirar
+    un permiso, nunca concederlo. Si caducara, bastaría con volver a lanzar la
+    remesa para que un parte que alguien rechazó volviera a entrar en la tanda.
+    """
+    dobles = _dobles()
+
+    with pytest.raises(ParteNoApto) as fallo:
+        puerta(_contexto_para(puerta), _con(_decision(EstadoParte.RECHAZADO)), dobles)
+
+    _nada_ha_salido(dobles)
+    assert "rechaz" in fallo.value.motivo.lower()
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f028_r5_el_rechazo_tampoco_caduca_cuando_trae_otra_huella(puerta):
+    """R5 · ni siquiera si el veredicto cambió desde que se rechazó.
+
+    La asimetría es deliberada (`design.md` §3): una **aprobación** con otra
+    huella deja de contar, un **rechazo** con otra huella sigue contando. Si
+    las dos caducaran igual, reprocesar la remesa sería la forma de deshacer
+    un rechazo sin que constara que alguien lo deshizo.
+    """
+    dobles = _dobles()
+    rechazo = _decision(EstadoParte.RECHAZADO, huella="huella-de-otro-veredicto")
+
+    with pytest.raises(ParteNoApto):
+        puerta(_contexto_para(puerta), _con(rechazo), dobles)
+
+    _nada_ha_salido(dobles)
+
+
+# --- `pendiente`: la aprobación que dejó de valer --------------------------
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f028_r19_una_aprobacion_sobre_otro_veredicto_no_abre_nada(puerta):
+    """R19 · se aprobó *ese* veredicto, y este no es *ese* veredicto.
+
+    Es F-026 R30 conservada entera: el parte vuelve a estar `pendiente` y
+    decide la máquina. Que una aprobación deje de contar no es que nadie haya
+    rechazado el parte —la pantalla lo distingue (R43)—, pero la puerta hace
+    lo mismo con los dos: no se abre.
+    """
+    dobles = _dobles()
+    caducada = _decision(EstadoParte.APROBADO, huella="huella-de-otro-veredicto")
+
+    with pytest.raises(ParteNoApto):
+        puerta(_contexto_para(puerta, apto=False), _con(caducada), dobles)
+
+    _nada_ha_salido(dobles)
+
+
+# --- `cerrado`: terminal, y no se escribe dos veces ------------------------
+
+
+@pytest.mark.parametrize("estado_cierre", ESTADOS_DE_CIERRE_EN_FIRME)
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f028_r7_un_parte_ya_cerrado_no_vuelve_a_escribir_nada(puerta, estado_cierre):
+    """R7 · `cerrado` es terminal, y de ahí no sale ninguna flecha.
+
+    El parte es **apto**, la llamada trae `commit` y confirmación, y aun así
+    no se toca nada: la reclamación ya está cerrada en el ERP y volver a
+    recorrer el circuito solo puede escribir dos veces lo que ya está escrito
+    —subir otra vez el PDF, adjuntarlo otra vez, pedir otro cierre—.
+
+    Se parametriza sobre `ESTADOS_DE_CIERRE_EN_FIRME` y no sobre dos cadenas
+    escritas aquí: el dueño de qué cuenta como cerrado es el dominio, y si
+    mañana entrara un tercero este control lo cubriría solo.
+    """
+    dobles = _dobles()
+
+    with pytest.raises(ParteNoApto) as fallo:
+        puerta(_contexto_para(puerta), _con(cierre=estado_cierre), dobles)
+
+    _nada_ha_salido(dobles)
+    assert "cerrad" in fallo.value.motivo.lower()
+
+
+# --- R33 · la situación se lee del almacén, y el atajo del apto se retira --
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+@pytest.mark.parametrize("apto", [True, False])
+def test_f028_r33_las_tres_puertas_preguntan_por_la_situacion(puerta, apto):
+    """R33 · se **pregunta**, y se pregunta por el `hash` del parte.
+
+    Comprobar que se preguntó es la mitad del requisito: una puerta que
+    decidiera sin consultar estaría creyéndose lo que le llega.
+
+    Y se pregunta **también para el parte apto**, que es la retirada del atajo
+    de `design.md` §6. El coste está declarado y aceptado —una consulta por
+    parte y paso, 66 en una tanda de 22— porque sin ella el rechazo de un
+    parte verde no funciona, que es medio encargo. Mientras el atajo existió,
+    este caso daba `[]` para el apto.
+
+    Se pregunta **una vez** por parte y paso, que es como se acota el coste
+    (`design.md` §11.1): lo leído se queda en `ContextoParte.situacion`.
+    """
+    ctx = _contexto_para(puerta, apto=apto)
+    repositorio = _con(_decision(EstadoParte.APROBADO, validacion=ctx.validacion))
+
+    puerta(ctx, repositorio, _dobles(), commit=False)
+
+    assert repositorio.situaciones_consultadas == [HASH]
+    assert ctx.situacion is not None
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f028_r33_ninguna_puerta_consulta_ya_la_tabla_de_f026(puerta):
+    """La decisión sale del histórico, y de un solo sitio (`design.md` §4).
+
+    `postventa.aprobaciones` se congela: deja de escribirse y deja de leerse,
+    y su contenido vigente se sembró en el histórico. Si alguna puerta
+    siguiera consultándola, habría **dos** fuentes de la misma decisión y el
+    día que divergieran ganaría la que cada puerta hubiera elegido mirar.
+
+    La tabla no se borra y sigue consultable; lo que no puede es decidir.
+    """
+    repositorio = _con()
+
+    puerta(_contexto_para(puerta), repositorio, _dobles(), commit=False)
+
+    assert repositorio.aprobaciones_consultadas == []

@@ -48,7 +48,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from domain.models.aprobacion import admite_circuito
 from domain.models.cierre import (
     CODIGO_ESTADO_CIERRE,
     a_codigo_de_sigrid,
@@ -61,7 +60,6 @@ from domain.models.errores import (
     EstadoNoCerrable,
     GraficoFallido,
     GraficoSinTraza,
-    ParteNoApto,
     ParteNoArchivado,
     ReclamacionNoLocalizada,
 )
@@ -96,6 +94,7 @@ from application.pipelines.paso_cierre import (
     exigir_autorizacion_para_escribir,
     resolver_login_de_sigrid,
 )
+from application.pipelines.puerta_de_estado import exigir_parte_aprobado
 
 __all__ = ["paso_grafico"]
 
@@ -255,36 +254,28 @@ def paso_grafico(
 
 
 def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> None:
-    """Solo se adjunta lo apto **o lo que alguien aprobó** (R14; F-026 R23).
+    """Solo se adjunta el parte que está **`aprobado`** (R14; F-028 R33).
 
     Misma puerta que R16 de F-009, y aquí con el mismo peso: el gráfico es la
     primera mitad del cierre. Subir a Sigrid el parte de una incidencia que
     nadie ha validado deja en el ERP de producción un documento que no ha
-    pasado por ninguna revisión — y desde F-026, «que nadie ha validado» quiere
-    decir **ni la máquina ni una persona**.
+    pasado por ninguna revisión — y desde F-028, «que nadie ha validado» quiere
+    decir que su **estado** no es `aprobado`, lo mire quien lo mire.
 
-    La aprobación se lee del repositorio y nunca del cuerpo (R24), y solo
-    cuando el veredicto no basta: el apto de siempre no paga la consulta. La
-    explicación larga está en `paso_archivo._exigir_admitido`, que es la misma
-    puerta.
+    La situación se lee del repositorio y nunca del cuerpo (R33), y se lee
+    **siempre**: el atajo del apto se retira aquí igual que en las otras dos
+    puertas, porque una sola que lo conservara dejaría pasar al parte que otra
+    acaba de frenar. La explicación larga está en `puerta_de_estado.py`.
     """
-    if ctx.validacion is None:
-        raise ParteNoApto(
+    exigir_parte_aprobado(
+        ctx,
+        repositorio,
+        sin_veredicto=(
             "no consta que este parte haya pasado la validación: no se adjunta "
             "a una incidencia del ERP un parte del que nadie ha emitido "
             "veredicto"
-        )
-    if admite_circuito(ctx.validacion, None):
-        return
-
-    aprobacion = repositorio.consultar_aprobacion(hash_parte=ctx.parte.hash)
-    if admite_circuito(ctx.validacion, aprobacion):
-        return
-
-    raise ParteNoApto(
-        f"el parte no es apto para archivo y cierre: la validación lo manda "
-        f"a «{ctx.validacion.destino.value}» y no consta que nadie lo haya "
-        f"aprobado para ese destino, así que no se adjunta a la reclamación"
+        ),
+        y_por_eso="no se adjunta a la reclamación",
     )
 
 

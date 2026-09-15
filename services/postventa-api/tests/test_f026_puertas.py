@@ -55,7 +55,7 @@ from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import CodigoMotivo, Destino, validar_parte
 
 from tests.utiles_pg import RepositorioEnMemoria
-from tests.utiles_sharepoint import ArchivoPortFalso, RepositorioFalso, contexto_apto
+from tests.utiles_sharepoint import ArchivoPortFalso, RepositorioFalso
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
@@ -397,53 +397,26 @@ def _cerrar(repositorio, destino: Destino, erp=None):
     )
 
 
-@pytest.mark.parametrize("destino", DESTINOS_NO_APTOS)
-def test_f026_r23_un_parte_aprobado_y_vigente_si_se_archiva(destino):
-    """R23 · la puerta se abre, y se abre **para los dos destinos**.
-
-    Es el reverso exacto del control negativo de arriba: mismo parte, misma
-    llamada, mismo cuerpo. Lo único que cambia es que en la base consta que
-    una persona lo aprobó.
-    """
-    repositorio = RepositorioEnMemoria(aprobacion=_aprobacion(destino))
-    archivador = ArchivoPortFalso()
-
-    ctx = _archivar(repositorio, destino, archivador)
-
-    assert ctx.archivo.estado is EstadoArchivo.ARCHIVADO
-    assert archivador.biblioteca.elementos != {}
-
-
-@pytest.mark.parametrize("destino", DESTINOS_NO_APTOS)
-def test_f026_r23_un_parte_aprobado_y_vigente_si_se_adjunta(destino):
-    """R23 · y llega al ERP: la lectura de la reclamación lo demuestra."""
-    repositorio = RepositorioEnMemoria(aprobacion=_aprobacion(destino))
-    erp = ErpEnMemoria(_reclamacion())
-
-    _adjuntar(repositorio, destino, erp=erp)
-
-    assert erp.lecturas == [CODIGO_EN_SIGRID]
-
-
-@pytest.mark.parametrize("destino", DESTINOS_NO_APTOS)
-def test_f026_r23_un_parte_aprobado_y_vigente_si_llega_al_cierre(destino):
-    """R23 · pasa la puerta de aptitud y llega hasta el dry-run.
-
-    `commit=False`: lo que se comprueba es que **la puerta se abre**, no que
-    se cierre nada. Escribir en el ERP sigue exigiendo la confirmación de
-    F-025, que esta feature no toca (R27).
-    """
-    repositorio = RepositorioEnMemoria(
-        aprobacion=_aprobacion(destino),
-        traza_grafico=None,
-    )
-    erp = ErpEnMemoria(_reclamacion())
-
-    ctx = _cerrar(repositorio, destino, erp=erp)
-
-    assert erp.lecturas == [CODIGO_EN_SIGRID]
-    assert erp.cierres == []
-    assert ctx.cierre is not None
+# --------------------------------------------------------------------------
+# RETIRADOS POR F-028 (T11, 2026-09-15) · tres casos y su sustituto
+# --------------------------------------------------------------------------
+#
+# `test_f026_r23_un_parte_aprobado_y_vigente_si_se_archiva`, `..._si_se_adjunta`
+# y `..._si_llega_al_cierre` probaban que una fila **vigente** de
+# `postventa.aprobaciones` abría las tres puertas. Ese mecanismo ya no existe:
+# desde F-028 las puertas exigen que el **estado** del parte sea `aprobado`, y
+# la decisión de una persona vive en `postventa.historico_estado` y no en
+# aquella tabla, que se congela (`design.md` §4 y §6).
+#
+# Lo que probaban **se sigue probando**, con el mecanismo nuevo y sobre los
+# mismos dos destinos, en
+# `tests/test_f028_puertas.py::test_f028_r9_un_parte_no_apto_que_una_persona_aprobo_pasa`,
+# que además comprueba lo que estos no podían: que la huella apuntada sea la
+# del veredicto guardado ahora (R19).
+#
+# No se «adaptan» cambiándoles el doble: un test que se toca para que pase deja
+# de ser un control. Se retiran, y su sustituto está escrito aparte y en verde.
+# `tasks.md` T15 termina la retirada de F-026 en el bloque 5.
 
 
 @pytest.mark.parametrize("destino", DESTINOS_NO_APTOS)
@@ -496,38 +469,21 @@ def test_f026_r23_una_aprobacion_de_otro_destino_no_sirve(destino):
     assert archivador.biblioteca.elementos == {}
 
 
-@pytest.mark.parametrize("destino", DESTINOS_NO_APTOS)
-def test_f026_r24_los_tres_pasos_leen_la_aprobacion_del_repositorio(destino):
-    """R24 · se **pregunta**, y se pregunta por el `hash` del parte.
-
-    Comprobar que se preguntó es la mitad del requisito: una puerta que
-    decidiera sin consultar estaría creyéndose lo que le llega, que es
-    exactamente lo que R24 prohíbe.
-    """
-    for llamar in (_archivar, _adjuntar, _cerrar):
-        repositorio = RepositorioEnMemoria(aprobacion=_aprobacion(destino))
-
-        llamar(repositorio, destino)
-
-        assert repositorio.aprobaciones_consultadas == [HASH]
-
-
-def test_f026_r23_el_parte_apto_de_siempre_no_consulta_ninguna_aprobacion():
-    """El camino feliz no paga una consulta por parte y por paso.
-
-    Un parte apto circula como circulaba desde F-006, sin que nadie tenga que
-    aprobar nada: preguntar por su aprobación serían tres consultas inútiles
-    por parte —66 en una remesa real de 22— para una respuesta que no cambia
-    la decisión.
-    """
-    repositorio = RepositorioEnMemoria()
-
-    paso_archivo(
-        contexto_apto(hash_parte=HASH, contenido=PDF),
-        ArchivoPortFalso(),
-        repositorio,
-        carpeta_base="Postventa",
-        ahora=AHORA,
-    )
-
-    assert repositorio.aprobaciones_consultadas == []
+# --------------------------------------------------------------------------
+# RETIRADOS POR F-028 (T11, 2026-09-15) · la lectura y el atajo del apto
+# --------------------------------------------------------------------------
+#
+# `test_f026_r24_los_tres_pasos_leen_la_aprobacion_del_repositorio` afirmaba
+# que los tres pasos consultaban `consultar_aprobacion`. Ya no: consultan
+# `consultar_situacion`, y que se pregunte —que es la mitad de R24 y de R33—
+# lo fija ahora
+# `tests/test_f028_puertas.py::test_f028_r33_las_tres_puertas_preguntan_por_la_situacion`.
+#
+# `test_f026_r23_el_parte_apto_de_siempre_no_consulta_ninguna_aprobacion`
+# fijaba **el atajo del apto**, y F-028 lo retira a propósito: mientras
+# existiera, un parte apto rechazado por una persona se habría archivado igual
+# (`design.md` §0.5 y §6). Dejarlo aquí en verde sería peor que borrarlo: sigue
+# pasando —nadie consulta ya esa tabla— pero su nombre afirmaría lo contrario
+# de lo que hace el código. Lo que ocupa su sitio es el caso `[True-*]` del
+# test de arriba, que comprueba que el parte apto **sí** paga su consulta, y
+# `test_f028_r33_ninguna_puerta_consulta_ya_la_tabla_de_f026`.

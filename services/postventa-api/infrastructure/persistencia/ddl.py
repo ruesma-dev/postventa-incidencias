@@ -21,9 +21,25 @@ que la guarda lo mire.
 
 La lista negra de verbos (`VERBOS_PROHIBIDOS`) existe para que el error diga
 **qué** se intentó (R6). Pero lo que de verdad sostiene la guarda es que solo
-se reconocen **cinco formas** de sentencia, todas idempotentes y todas
+se reconocen **seis formas** de sentencia, todas idempotentes y todas
 cualificadas con el esquema configurado. Lo que no se reconoce, no pasa: una
 lista negra deja entrar todo lo que a nadie se le ocurrió prohibir.
+
+## La sexta forma, y por qué es la única de datos (F-028)
+
+Las cinco primeras son de **esquema**. La sexta es la **semilla**: un
+`INSERT … SELECT … WHERE NOT EXISTS`, y entró con F-028 porque su histórico de
+estado tiene que nacer con las aprobaciones que ya había en la tabla de F-026
+—si no, el día del despliegue todo parte aprobado a mano perdería su decisión
+humana—.
+
+Se admite lo más estrecho que sirve para eso, y cada condición quita una forma
+de hacer daño: **`NOT EXISTS` obligatorio** (sin él, cada arranque duplicaría
+filas), **todo cualificado** con el esquema propio —también lo que se lee, que
+en un servidor compartido es la mitad del problema— y **`ON CONFLICT`
+prohibido**, que es R21 de F-028 escrito aquí: el DDL de este proyecto no
+vuelve a admitir una escritura que pise filas. Lo que la sexta forma **no**
+abre sigue cerrado: no hay `UPDATE`, ni `DELETE`, ni `TRUNCATE`.
 
 Este módulo es **puro**: no importa `psycopg` y no abre nada. Que falle aquí
 es que el arranque se cae **sin haber tocado la base de datos de nadie**.
@@ -93,6 +109,14 @@ _PATRON_FICHERO = re.compile(r"^\d{2}_[a-z0-9_]+\.sql$")
 _PATRON_DOLAR = re.compile(r"\$\$|\$[A-Za-z_][A-Za-z0-9_]*\$")
 
 _ESPACIOS = re.compile(r"\s+")
+
+#: Cada tabla que una sentencia nombra: la que escribe (`INTO`) y las que lee
+#: (`FROM`, `JOIN`). Todas tienen que estar cualificadas con el esquema
+#: propio; en un servidor compartido, **leer** la base de otro proyecto cruza
+#: la misma frontera que escribir en ella.
+_PATRON_OBJETOS_REFERIDOS = re.compile(
+    r"\b(?:INTO|FROM|JOIN)\s+([A-Za-z0-9_.\"]+)", flags=re.IGNORECASE
+)
 
 #: Cuántos caracteres de la sentencia culpable entran en el mensaje de error.
 #: Suficiente para reconocerla; no tanto como para volcar una tabla entera en
@@ -202,7 +226,7 @@ def validar(sentencia: str, *, esquema: str) -> None:
     2. Es **una** sentencia, no varias.
     3. No usa ninguno de los `VERBOS_PROHIBIDOS` (R6).
     4. No nombra `public.` ni declara un tipo binario (R5, R12).
-    5. Tiene una de las cinco formas reconocidas, **idempotente** (R3) y
+    5. Tiene una de las **seis** formas reconocidas, **idempotente** (R3) y
        **cualificada** con el esquema configurado (R5).
 
     No abre nada y no conoce ninguna conexión: cuando esto falla, la base de
@@ -270,8 +294,10 @@ def _rechazar_tipos_binarios(limpia: str, en_mayusculas: str) -> None:
 
 
 def _validar_forma(limpia: str, en_mayusculas: str, esquema: str) -> None:
-    """Las cinco formas reconocidas. Lo que no está aquí, no se aplica."""
-    if en_mayusculas.startswith("CREATE SCHEMA"):
+    """Las seis formas reconocidas. Lo que no está aquí, no se aplica."""
+    if en_mayusculas.startswith("INSERT INTO"):
+        _validar_insert_semilla(limpia, en_mayusculas, esquema)
+    elif en_mayusculas.startswith("CREATE SCHEMA"):
         _validar_create_schema(limpia, esquema)
     elif en_mayusculas.startswith("CREATE TABLE"):
         _validar_create_table(limpia, esquema)
@@ -285,8 +311,62 @@ def _validar_forma(limpia: str, en_mayusculas: str, esquema: str) -> None:
         raise DdlInseguro(
             f"la sentencia no tiene ninguna de las formas reconocidas por la "
             f"guarda (CREATE SCHEMA / TABLE / INDEX / VIEW, ALTER TABLE ADD "
-            f"COLUMN): {_recortar(limpia)}"
+            f"COLUMN, INSERT SELECT con WHERE NOT EXISTS): "
+            f"{_recortar(limpia)}"
         )
+
+
+def _validar_insert_semilla(limpia: str, en_mayusculas: str, esquema: str) -> None:
+    """`INSERT INTO <esquema>.<tabla> (…) SELECT … WHERE NOT EXISTS (…)`.
+
+    La **semilla**: la única forma de sentencia de datos que el DDL admite, y
+    la única que no crea nada (F-028, `design.md` §8.4). Sirve para que una
+    tabla nueva nazca con lo que ya había en otra, que es un hecho que no puede
+    esperar a la primera petición: el DDL se aplica en el arranque, antes de
+    atenderla.
+
+    Tres condiciones, y cada una quita una forma concreta de hacer daño:
+
+    - **`SELECT` y `NOT EXISTS`, los dos.** Sin `NOT EXISTS` la sentencia no es
+      idempotente (R3), y una semilla no idempotente añade las mismas filas en
+      **cada arranque** de la Function. Un `INSERT … VALUES` cae por aquí, y es
+      lo correcto: datos escritos a mano dentro del DDL no son una semilla.
+    - **Todo cualificado**, lo que se escribe y lo que se lee. En un servidor
+      compartido con la producción de albaranes, partes y el datamart, leer la
+      tabla de otro proyecto cruza la misma frontera que escribir en ella.
+    - **Ni un `ON CONFLICT`.** Es R21 de F-028 escrito en la guarda: el
+      histórico de estado es append-only, y una escritura que pise filas
+      escondida en un fichero que se aplica solo al arrancar es justo la que
+      nadie revisaría. Las diez tablas anteriores tienen su `ON CONFLICT` en
+      `sentencias.py`, donde se lee.
+
+    Lo que esto **no** abre sigue cerrado: `UPDATE`, `DELETE` y `TRUNCATE` no
+    son formas reconocidas y caen en `_validar_forma` sin llegar aquí.
+    """
+    if "ON CONFLICT" in en_mayusculas:
+        raise DdlInseguro(
+            f"la semilla lleva un ON CONFLICT: el DDL no admite escrituras que "
+            f"pisen filas (F-028 R21): {_recortar(limpia)}"
+        )
+    if not re.search(r"\bSELECT\b", en_mayusculas):
+        raise DdlInseguro(
+            f"una semilla tiene que derivar sus filas de un SELECT: un INSERT "
+            f"con VALUES son datos escritos a mano dentro del DDL: "
+            f"{_recortar(limpia)}"
+        )
+    if not re.search(r"\bNOT EXISTS\s*\(", en_mayusculas):
+        raise DdlInseguro(
+            f"una semilla tiene que llevar WHERE NOT EXISTS para poder "
+            f"aplicarse dos veces sin duplicar filas (R3): {_recortar(limpia)}"
+        )
+
+    referidos = _PATRON_OBJETOS_REFERIDOS.findall(limpia)
+    if not referidos:
+        raise DdlInseguro(
+            f"la semilla no nombra ninguna tabla cualificada: {_recortar(limpia)}"
+        )
+    for objeto in referidos:
+        _exigir_cualificado(objeto, esquema, limpia)
 
 
 def _validar_create_schema(limpia: str, esquema: str) -> None:

@@ -70,7 +70,7 @@
 
 ## Bloque 2 · La persistencia
 
-- [ ] **T5**: Crear `sql/11_historico_estado.sql` con la tabla append-only, su
+- [x] **T5**: Crear `sql/11_historico_estado.sql` con la tabla append-only, su
       índice y la **semilla** de `design.md` §8.4, con su cabecera. |
       Verificación: `tests/test_f028_ddl_historico.py` — texto idempotente,
       todo cualificado con `postventa.`, ni una sentencia de ámbito de

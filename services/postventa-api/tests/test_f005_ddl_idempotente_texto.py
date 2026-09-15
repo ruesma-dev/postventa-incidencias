@@ -81,10 +81,11 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
 
     La lista se escribe entera y a mano **a propósito**: es la forma de que
     añadir o quitar un fichero de DDL no pueda pasar desapercibido. Eran los
-    siete del diseño de F-005; F-009 añadió el octavo, F-012 el noveno y F-026
-    el décimo, y los tres tuvieron que venir aquí a declararlo, que es
-    exactamente lo que se quería —el décimo llegó a existir como fichero un
-    commit antes de estar declarado aquí, y esta aserción fue lo que lo dijo—.
+    siete del diseño de F-005; F-009 añadió el octavo, F-012 el noveno, F-026
+    el décimo y F-028 el undécimo, y los cuatro tuvieron que venir aquí a
+    declararlo, que es exactamente lo que se quería —el décimo llegó a existir
+    como fichero un commit antes de estar declarado aquí, y esta aserción fue
+    lo que lo dijo—.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
@@ -99,22 +100,31 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
         "08_usuarios_sigrid.sql",
         "09_graficos.sql",
         "10_aprobaciones.sql",
+        "11_historico_estado.sql",
     ]
 
 
 def test_f005_r3_todas_las_sentencias_reales_son_idempotentes():
     """R3, R4 · dos arranques seguidos no pueden fallar.
 
-    Se mira el texto: cada sentencia lleva su `IF NOT EXISTS` o su `OR
-    REPLACE`. La comprobación contra una base de datos de verdad es la suite
-    de `tests_bbdd/`, que aplica el DDL dos veces y compara el
-    `information_schema`.
+    Se mira el texto: cada sentencia lleva su `IF NOT EXISTS`, su `OR REPLACE`
+    o —desde F-028— su `NOT EXISTS`. La comprobación contra una base de datos
+    de verdad es la suite de `tests_bbdd/`, que aplica el DDL dos veces y
+    compara el `information_schema`.
+
+    Las tres formas dicen lo mismo con palabras distintas: no hagas nada si ya
+    está hecho. `NOT EXISTS` es la de la **semilla** de F-028, que no crea nada
+    sino que copia filas de una tabla a otra, y que sin esa cláusula volvería a
+    copiarlas en **cada arranque** de la Function. Que valga aquí no la exime de
+    nada: `ddl.validar` la exige por su lado, con su propio control negativo en
+    `tests/test_f028_ddl_historico.py`.
     """
     sin_guarda = [
         sentencia
         for sentencia in _sentencias_reales()
         if "IF NOT EXISTS" not in sentencia.upper()
         and "OR REPLACE" not in sentencia.upper()
+        and "NOT EXISTS" not in sentencia.upper()
     ]
 
     assert sin_guarda == []

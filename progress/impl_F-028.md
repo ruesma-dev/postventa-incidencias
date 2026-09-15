@@ -1146,3 +1146,459 @@ Tres apuntes para quien lo coja:
   locales. **Sin `push`.**
 - `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
   `done` no es cosa del implementer.
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 4
+
+> Encargo: **T10 y T11** de `specs/F-028-estado-del-parte/tasks.md`, las tres
+> puertas. Parada obligada al terminar. **No se ha entrado en el bloque 5.**
+>
+> Rama `feature/F-028-estado-del-parte`, desde `2393fa2`. Rigor **`estandar`**:
+> fase RED, puerta de cobertura y campaña de mutación. Sin `push`, sin tocar
+> `dev` ni `main`, sin tocar el `status` de ninguna feature, sin tocar
+> `azure-apps/`, `infrastructure/sigrid/` ni `infrastructure/sharepoint/`.
+
+**Este es el bloque que cambia el criterio de las tres puertas**, y por eso lo
+primero que hay que saber es esto: `tests/test_f028_puertas.py` **sigue en
+verde con sus 16 casos de T1 sin una sola edición de sus cuerpos**. El único
+cambio en ese fichero fuera de lo añadido son dos ayudantes que ganan un
+`commit: bool = True` —valor por defecto idéntico al que tenían escrito a
+mano—, y se ve en el diff: `git diff 2393fa2 -- tests/test_f028_puertas.py`
+solo borra siete líneas, y son imports y esas dos firmas.
+
+---
+
+## 27 · Qué se ha hecho, en una frase por tarea
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T10** | `4130495` | `ContextoParte.aprobacion` → `situacion: SituacionParte \| None`, con la docstring que dice que viene del repositorio y **nunca del cuerpo** |
+| **T11** | `51fbe77` | Las tres puertas exigen `EstadoParte.APROBADO`; **se retira el atajo del apto**; la puerta vive en un solo sitio |
+
+Lo que esto hace posible, que es medio encargo de la feature: **un parte apto
+que una persona rechaza ya no se archiva, ni se adjunta, ni cierra su
+incidencia**. Hasta el commit `51fbe77` eso era imposible por construcción.
+
+---
+
+## 28 · Ficheros tocados
+
+### Creados
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-api/application/pipelines/puerta_de_estado.py` | La puerta de las tres puertas: `exigir_parte_aprobado` y `situacion_leida` |
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `application/pipelines/contexto_parte.py` | `aprobacion` → `situacion`, con su docstring (T10) |
+| `application/pipelines/paso_archivo.py` | `_exigir_admitido` delega en la puerta; fuera `admite_circuito` |
+| `application/pipelines/paso_grafico.py` | Lo mismo |
+| `application/pipelines/paso_cierre.py` | Lo mismo, **más** la puerta nueva del parte `cerrado` (R7) y la constancia reutilizando la situación ya leída |
+| `tests/test_f028_puertas.py` | **Ampliado**: 16 → 48 casos (2 de T10, 30 de T11) |
+| `tests/test_f026_puertas.py` | Cinco casos retirados, con su nota de sustitución (§30) |
+| `tests/test_f028_persistencia.py` | Un caso que ahora falla antes y mejor, y una aserción nueva (§30) |
+| `tests/test_f003_paso_extraccion.py` | El control de campos del contexto: `aprobacion` → `situacion` |
+| `tests/utiles_sharepoint.py` | `RepositorioFalso` aprende `consultar_situacion` |
+
+### Lo que la spec prohíbe tocar, y que sigue intacto
+
+Comprobado con `git diff 2393fa2 --stat`: no aparecen en el diff
+`domain/models/validacion.py`, `sql/04_validaciones.sql`,
+`sql/10_aprobaciones.sql`, `domain/models/aprobacion.py`,
+`infrastructure/sigrid/`, `infrastructure/sharepoint/`,
+`interface_adapters/api/`, `function_app.py`, el front, ni
+`harness/features.json`.
+
+**El borde no se ha tocado y no hacía falta**: las tres puertas siguen
+levantando `ParteNoApto`, que los tres handlers ya traducen a **409** con el
+motivo dentro. Un parte `cerrado` al que alguien intente archivar responde hoy
+un 409 que dice «su incidencia ya consta cerrada en el ERP, y "cerrado" es
+terminal», que es exactamente lo que R7 quiere que pase y el mismo código que
+`design.md` §5 reserva para `ParteCerrado` en el endpoint nuevo.
+
+---
+
+## 29 · Fase RED · las trazas, pegadas
+
+### T10 · antes de que el contexto tuviera `situacion`
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f028_puertas.py -q -k "contexto"
+
+    def test_f028_r33_el_contexto_lleva_la_situacion_y_no_la_aprobacion():
+        campos = {campo.name: campo.type for campo in fields(ContextoParte)}
+>       assert "situacion" in campos
+E       AssertionError: assert 'situacion' in {'parte': 'ParteTroceado',
+        'extraccion': 'ExtraccionParte | None', 'lectura_firma': 'LecturaFirma | None',
+        'validacion': 'ResultadoValidacion | None', ...}
+
+tests\test_f028_puertas.py:509: AssertionError
+
+    def test_f028_r33_el_contexto_dice_que_la_situacion_no_viene_del_cuerpo():
+        documentacion = (ContextoParte.__doc__ or "").lower()
+>       assert "situacion" in documentacion or "situación" in documentacion
+E       AssertionError
+
+tests\test_f028_puertas.py:526: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f028_puertas.py::test_f028_r33_el_contexto_lleva_la_situacion_y_no_la_aprobacion
+FAILED tests/test_f028_puertas.py::test_f028_r33_el_contexto_dice_que_la_situacion_no_viene_del_cuerpo
+2 failed, 16 deselected in 1.23s
+```
+
+### T11 · antes de retirar el atajo del apto
+
+**La traza que importa de todo el bloque**, porque es el defecto que la feature
+viene a arreglar, visto desde el test:
+
+```
+$ .venv/Scripts/python.exe -m pytest "tests/test_f028_puertas.py::test_f028_r5_un_parte_apto_rechazado_a_mano_no_pasa_ninguna_puerta" -q
+
+_ test_f028_r5_un_parte_apto_rechazado_a_mano_no_pasa_ninguna_puerta[archivo] _
+
+    @pytest.mark.parametrize("puerta", PUERTAS)
+    def test_f028_r5_un_parte_apto_rechazado_a_mano_no_pasa_ninguna_puerta(puerta):
+        dobles = _dobles()
+
+>       with pytest.raises(ParteNoApto) as fallo:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ParteNoApto
+
+tests\test_f028_puertas.py:762: Failed
+FFF                                                                      [100%]
+3 failed
+```
+
+«DID NOT RAISE» leído en voz alta: **el parte apto que una persona había
+rechazado se archivaba igual**, y en las otras dos puertas se adjuntaba al ERP
+y se cerraba la incidencia. Los tres casos fallaban, uno por puerta.
+
+Y la tanda entera de T11, antes de tocar producción:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f028_puertas.py -q
+...
+FAILED ...::test_f028_r9_un_parte_no_apto_que_una_persona_aprobo_pasa[archivo|grafico|cierre]
+FAILED ...::test_f028_r5_un_parte_apto_rechazado_a_mano_no_pasa_ninguna_puerta[archivo|grafico|cierre]
+FAILED ...::test_f028_r5_el_rechazo_tampoco_caduca_cuando_trae_otra_huella[archivo|grafico|cierre]
+FAILED ...::test_f028_r7_un_parte_ya_cerrado_no_vuelve_a_escribir_nada[archivo|grafico|cierre - cerrado|ya_cerrada]
+FAILED ...::test_f028_r33_las_tres_puertas_preguntan_por_la_situacion[True|False - archivo|grafico|cierre]
+21 failed, 27 passed in 1.98s
+```
+
+Los 27 que ya pasaban en rojo son los 16 de T1 —que no podían fallar, y ese es
+justo su oficio—, los 2 de T10 —ya implementados—, y los que describen lo que
+F-026 ya hacía bien y F-028 conserva: `test_f028_r3_...` (el apto pasa),
+`test_f028_r19_...` (una aprobación sobre otro veredicto no abre nada) y
+`test_f028_r33_ninguna_puerta_consulta_ya_la_tabla_de_f026` —este último
+pasaba en rojo **por el atajo**: el parte apto no consultaba nada, así que
+tampoco consultaba la tabla de F-026. Hoy pasa por el motivo bueno.
+
+---
+
+## 30 · Los tests de antes que han cambiado, y por qué
+
+Son siete, y ninguno se ha «ajustado para que pase». Se listan uno a uno
+porque un test que cambia sin justificación escrita es un test aflojado.
+
+### 30.1 · Cinco retirados de `tests/test_f026_puertas.py`
+
+Los cinco probaban **el mecanismo que T11 sustituye**, no un comportamiento que
+siga existiendo. En su sitio queda un recuadro fechado que dice qué probaban,
+por qué se van y **dónde está su sustituto** —escrito y en verde antes de
+borrarlos—:
+
+| Retirado | Qué probaba | Sustituto en F-028 |
+|---|---|---|
+| `test_f026_r23_un_parte_aprobado_y_vigente_si_se_archiva` | Una fila vigente de `postventa.aprobaciones` abría la puerta | `test_f028_r9_un_parte_no_apto_que_una_persona_aprobo_pasa[archivo]` |
+| `..._si_se_adjunta` | Lo mismo en el gráfico | `...[grafico]` |
+| `..._si_llega_al_cierre` | Lo mismo en el cierre | `...[cierre]` |
+| `test_f026_r24_los_tres_pasos_leen_la_aprobacion_del_repositorio` | Que se **preguntaba** al almacén | `test_f028_r33_las_tres_puertas_preguntan_por_la_situacion` |
+| `test_f026_r23_el_parte_apto_de_siempre_no_consulta_ninguna_aprobacion` | **El atajo del apto** | `..._preguntan_por_la_situacion[True-*]` y `..._ninguna_puerta_consulta_ya_la_tabla_de_f026` |
+
+Los cuatro primeros se ponían **rojos** con T11 y no podían quedarse: la
+decisión humana ya no vive en esa tabla. No se han «adaptado» cambiándoles el
+doble, que es lo que los habría dejado verdes sin que nadie se enterara de que
+probaban otra cosa.
+
+El quinto **seguía en verde**, y por eso merece un párrafo: `admite_circuito`
+ya no se llama desde ninguna puerta, así que `aprobaciones_consultadas == []`
+es trivialmente cierto. Dejarlo habría sido peor que borrarlo — un test verde
+cuyo nombre («el parte apto de siempre no consulta ninguna aprobación») afirma
+justo lo que `design.md` §6 retira. El sustituto comprueba lo contrario: que el
+apto **sí** paga su consulta.
+
+> **Para el bloque 5 (T15)**: quedan dos casos en ese fichero que siguen verdes
+> pero cuyo montaje ya es inerte —`test_f026_r31_una_aprobacion_revocada_no_abre_ninguna_puerta`
+> y `test_f026_r23_una_aprobacion_de_otro_destino_no_sirve`—: pasan una
+> `Aprobacion` a un doble al que ya nadie se la pide, así que hoy prueban lo
+> mismo que los `r25`. Se dejan a T15, que es quien retira `Aprobacion`. **No
+> están rotos**: están de más.
+
+### 30.2 · `tests/test_f028_persistencia.py` · un caso que ahora falla antes
+
+`test_f028_no_se_repite_la_fila_si_el_parte_ya_constaba_cerrado` montaba un
+parte con su traza de cierre ya en `cerrado` y comprobaba que un reproceso no
+añadía un segundo `cerrado → cerrado`. Con T11 ese parte **ya no pasa la puerta
+de aptitud**, así que el paso ni llega a preguntarle al ERP.
+
+Mantiene su nombre porque su afirmación sigue siendo verdad, y gana dos
+aserciones (`erp.lecturas == []`, `erp.cierres == []`): la garantía es **más
+fuerte** que antes, no menos. Antes se evitaba la fila repetida; ahora se evita
+además el viaje al ERP de producción. El cambio va explicado dentro del propio
+test, en un recuadro.
+
+También se le ha añadido a `test_f028_el_cierre_deja_su_fila_en_el_historico`
+la aserción `repositorio.situaciones_consultadas == [HASH]`: es lo que fija que
+la constancia **reutiliza** la situación que leyó la puerta y no hace un
+segundo viaje.
+
+### 30.3 · `tests/test_f003_paso_extraccion.py` · el control de campos
+
+`test_f003_r7_el_resultado_no_trae_veredicto_ni_firma_ni_rutas` enumera los
+campos de `ContextoParte` para que nadie meta ahí una ruta de SharePoint, un
+identificador de base o un estado de Sigrid. `aprobacion` → `situacion`, con el
+comentario que explica que el campo **cambia de nombre, no de naturaleza**: la
+lista blanca sigue teniendo la misma longitud y la misma fuerza.
+
+### 30.4 · `tests/utiles_sharepoint.py` · el doble aprende a contestar
+
+`RepositorioFalso` no sabía responder `consultar_situacion` y, al retirarse el
+atajo, **60 tests de F-006, F-010 y F-019 se pusieron rojos con un
+`AttributeError`**. No es un fallo de esos tests: es la consecuencia directa y
+esperada de que ahora se pregunte siempre. El doble devuelve una
+`SituacionParte()` vacía, que es lo que devuelve el adaptador de verdad cuando
+de un parte no consta nada, y la docstring explica por qué devuelve valor en
+vez de levantar.
+
+---
+
+## 31 · Decisiones de diseño, y las tres que hay que juzgar
+
+### 31.1 · La puerta vive en **un** módulo, y §8.2 no lo lista
+
+`design.md` §8.2 dice «`paso_archivo.py`, `paso_grafico.py`, `paso_cierre.py`:
+`_exigir_admitido` mira el estado». Lo implementado hace exactamente eso, pero
+la mecánica —leer la situación, derivar el estado, exigir `APROBADO` y componer
+el motivo— vive en `application/pipelines/puerta_de_estado.py` y los tres pasos
+la llaman con su frase.
+
+**Es una desviación de forma y se declara.** El argumento es el que ya escribió
+`constancia.py` en el bloque 3 y `confianza.py` en F-004: dos copias de una
+regla divergen el día que alguien la corrija en una sola, y en una campaña de
+mutación **cada copia se cuenta aparte**, con lo que la segunda y la tercera se
+quedan sin tests que las maten.
+
+Aquí pesa más que en ningún otro sitio del proyecto: esto es **lo único** que
+separa un parte sin revisar de un PDF con el DNI de un cliente en SharePoint y
+de una reclamación cerrada en el ERP. Tres copias son tres sitios donde puede
+aflojarse, y basta con que se afloje uno.
+
+Lo que **no** se ha unificado, a propósito: los mensajes de «no hay veredicto»
+y el final de cada error («no se archiva», «no se adjunta a la reclamación»,
+«no se cierra la incidencia»). Cada puerta le está diciendo al lector qué se ha
+quedado sin hacer, y esa parte sí es de cada paso.
+
+### 31.2 · El error sigue siendo `ParteNoApto`, y **no** `ParteCerrado`
+
+Un parte `cerrado` que llega a una de las tres puertas levanta `ParteNoApto`
+con un motivo que dice que está cerrado, no el `ParteCerrado` que T4 creó.
+
+Por qué: `ParteCerrado` es de `design.md` §5 —el **cambio de estado** de un
+parte cerrado, 409 en `POST /api/estado`— y su traducción HTTP la escribe T13,
+en el bloque 5. Levantarlo hoy desde las puertas daría un **500** en tres
+endpoints que funcionan, porque `function_app.py` todavía no sabe traducirlo, y
+el bloque 4 no toca el borde.
+
+Y no se pierde nada por el camino: `ParteNoApto` ya se traduce a **409** en los
+tres handlers, que es el código que `design.md` §5 reserva para el parte
+cerrado, y el motivo que viaja dentro dice literalmente por qué. Si el reviewer
+prefiere el tipo propio, el sitio es una línea de `puerta_de_estado.py` y la
+tabla de traducción de T13.
+
+### 31.3 · Los motivos son **tres** y no uno, y eso tiene un porqué operativo
+
+`MOTIVOS` mapea cada estado no admitido a su explicación. No es adorno: **cada
+estado se arregla de una forma distinta y quien lee el error es quien tiene que
+ir a arreglarlo**. El `pendiente` se resuelve mirando el parte y decidiendo; el
+`rechazado` solo lo deshace otra persona volviendo a decidir; el `cerrado` no
+se deshace de ninguna manera desde aquí (R7). Un error único para los tres
+mandaría a alguien a intentar lo que no se puede — y en este dominio «lo que no
+se puede» es deshacer una escritura en el ERP de producción.
+
+Los dos mensajes que la suite comprueba palabra a palabra son `"rechaz"` y
+`"cerrad"`, y están en los tests precisamente para que no se fundan en uno.
+
+### 31.4 · La constancia del cierre reutiliza la situación de la puerta
+
+El informe del bloque 3 lo dejó apuntado y se ha hecho:
+`_anotar_que_el_parte_queda_cerrado` ya no consulta, usa `situacion_leida(ctx,
+repositorio)`, que devuelve `ctx.situacion` —puesta por la puerta, que es lo
+primero que hace el paso— o consulta si no la hubiera.
+
+El `or` de la derecha no es defensa vacía: es lo que garantiza que, si algún
+día alguien reordenara el paso, lo que pase sea **una consulta de más** y no un
+`AttributeError` **justo en el punto en el que el ERP ya está escrito** — que
+es el único sitio del proyecto donde un fallo de persistencia se traga a
+propósito. La campaña de mutación lo ataca (mutante 7/19) y muere.
+
+### Desviaciones respecto a la spec
+
+Una, la de §31.1. Ninguna más: el criterio implementado es literalmente el de
+`design.md` §6, `estado_del_parte(...) is EstadoParte.APROBADO`, con la
+situación leída del repositorio.
+
+---
+
+## 32 · Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| **Tests ejecutados** (servicio `api`) | **2.517 pasados, 13 saltados, 0 fallos** |
+| **Tests del servicio `front`** | en verde (caché del portero: árbol sin cambios) |
+| **Casos en `test_f028_puertas.py`** | **48** (16 de T1 intactos + 2 de T10 + 30 de T11) |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 158/158, umbral 80 %, nivel `estandar` |
+| **Mutantes generados / supervivientes** | automáticos **19 / 0** (0 timeouts, 274,2 s) · **a mano 13 / 0** |
+| **Tiempo de la suite** | **103,19 s** bajo medición de cobertura (64,9 s sin ella) |
+| **Ruff** | Sin avisos nuevos: los dos que quedan en `tests/utiles_sharepoint.py` (`I001`, `RET501`) **ya estaban en `HEAD`** antes de tocarlo |
+
+### Los supervivientes, y qué se hace con cada uno
+
+**Ninguno**, ni en la campaña automática ni en la manual. 19 mutantes
+evaluados, 19 muertos (informe en `progress/mutacion_F-028.md`), más 13 a mano,
+13 muertos.
+
+### Los 13 mutantes **a mano**, porque la campaña no llega a este bloque
+
+Mismo método que usó el bloque 3 por el mismo motivo (§23.1): se aplica la
+mutación, se corre la suite acotada, se restaura el fichero. «Muerto» = al
+menos un test falla.
+
+| # | Mutante | Resultado |
+|---|---|---|
+| M1 | La puerta no levanta cuando falta el veredicto | muerto |
+| M2 | La puerta **no consulta el almacén** y se inventa una situación vacía | muerto |
+| M3 | La puerta se abre para todo lo que no sea `pendiente` | muerto |
+| M4 | La puerta se abre **también para el `rechazado`** | muerto |
+| M5 | La puerta se abre **también para el `cerrado`** | muerto |
+| M6 | La derivación ignora la traza de cierre | muerto |
+| M7 | La derivación ignora la decisión humana | muerto |
+| M8 | El motivo del rechazo deja de nombrar el rechazo | muerto |
+| M9 | El motivo del cerrado deja de nombrar el cierre | muerto |
+| M10 | La constancia del cierre vuelve a consultar en vez de reutilizar | muerto |
+| M11 | `paso_archivo` se queda sin puerta | muerto |
+| M12 | `paso_grafico` se queda sin puerta | muerto |
+| M13 | `paso_cierre` se queda sin puerta | muerto |
+
+**Dos de ellos hubo que reformularlos, y se cuenta porque es información sobre
+el método, no sobre el código**:
+
+- **M11 en su primera forma era un mutante equivalente**: cambiaba
+  `exigir_parte_aprobado(...)` por `return exigir_parte_aprobado(...)`, y como
+  el valor devuelto no lo lee nadie en `_exigir_admitido`, el programa mutado
+  hace exactamente lo mismo. Sobrevivió con razón. Reformulado como «la llamada
+  desaparece», muere.
+- **M9 en su primera forma solo cambiaba la primera mitad del mensaje**, y la
+  segunda seguía diciendo «"cerrado" es terminal», así que la aserción
+  `"cerrad" in motivo` seguía encontrando la palabra. Sustituido el mensaje
+  entero, muere.
+
+Los tres que más valen son **M2, M4 y M5**: son, literalmente, las tres formas
+de volver a dejar pasar lo que este bloque viene a frenar.
+
+### 32.1 · Lo que hay que mirar de las evidencias: la campaña genera **un solo** mutante del bloque
+
+De los 19, **uno** cae en `puerta_de_estado.py` (línea 137, el `or` de
+`situacion_leida`) y ninguno en el `if estado is EstadoParte.APROBADO`, que es
+el corazón de la puerta. El motivo es el mismo que ya observó el bloque 3: el
+mutador no reescribe comparaciones `is`, ni condiciones `x is None`, ni las
+entradas de un diccionario literal. Los otros 18 son del dominio y de la
+persistencia de los bloques anteriores, y siguen muriendo — que también es
+información: T11 no ha roto nada de lo que ya estaba probado.
+
+Por eso se ha mutado **a mano**, con el método del bloque 3, y ahí están los 13
+mutantes que la campaña no genera. Aun así, conclusión honesta: **para este
+bloque la campaña automática aporta poco y no es la evidencia que lo
+respalda.** La que lo respalda es la fase RED, que es
+directa y está pegada arriba: los 21 casos en rojo antes del cambio y los 48 en
+verde después, con los 16 control-negativo de T1 sin tocar. Quien quiera
+comprobarlo a mano, la forma más rápida es revertir el `if estado is
+EstadoParte.APROBADO` a `is not` y ver caer 30 casos.
+
+---
+
+## 33 · Verificaciones MANUAL pendientes
+
+Las de T27 siguen pendientes y este bloque añade peso a dos de ellas, que ahora
+**ya se pueden ejecutar de verdad** en cuanto se despliegue:
+
+- **T27.4 · un parte apto rechazado a mano no se archiva.** Era la que no podía
+  pasar antes de este bloque. Ojo: hasta que el bloque 5 dé el endpoint
+  `POST /api/estado`, la fila de rechazo hay que sembrarla a mano en
+  `postventa.historico_estado` para probarlo contra la base real.
+- **T27.5 · un parte cerrado responde 409.** Hoy ya lo responden `archivar`,
+  `adjuntar` y `cerrar`, con el motivo dentro. El 409 del **cambio de estado**
+  es de T13.
+
+Y una nueva, que sale del coste que este bloque acepta a conciencia:
+
+- **MANUAL (humano) · el coste de la retirada del atajo.** En la primera tanda
+  real de una remesa de ~22 partes, mirar cuánto tarda el circuito completo
+  contra `psql-albaranes-rs9k2`, que es **compartido**. `design.md` §6 lo
+  cuantifica en 66 consultas por tanda donde antes había cero para los verdes.
+  Si molestara, el arreglo **no es volver al atajo**: es leer la situación una
+  vez por parte y tanda, y el sitio donde se hace es `ContextoParte`.
+
+---
+
+## 34 · Por dónde sigue · el encargo del bloque 5
+
+**Todo el bloque 4 está cerrado.** El siguiente es el **bloque 5 · El borde
+HTTP**, T12 a T15, y es el que **retira** código de F-026: el endpoint
+`/api/aprobar`, la serialización de la aprobación, las sentencias y el puerto.
+
+Lo que el bloque 5 se encuentra ya hecho:
+
+- **la decisión ya no la lee nadie de `postventa.aprobaciones`**: las tres
+  puertas leen `consultar_situacion` y el único sitio de producción que sigue
+  llamando a `consultar_aprobacion` es `interface_adapters/api/parte.py:131`
+  —el bloque `aprobacion` de la respuesta—, que es justo lo que T14 sustituye
+  por el bloque `estado`;
+- `ContextoParte.situacion` ya existe y lo rellena la puerta, así que T14 puede
+  leer el estado sin una consulta más por parte;
+- `ParteCerrado` y `CambioDeEstadoInvalido` existen desde T4 y **siguen sin
+  traducirse** en `function_app.py`: eso es T13, y es lo que permitiría, si se
+  quiere, que las tres puertas pasen a levantar `ParteCerrado` (§31.2).
+
+Cuatro apuntes para quien lo coja:
+
+- **`tests/test_f028_puertas.py` sigue siendo la red, y ahora vigila más.** 48
+  casos. Si uno se pone rojo en el bloque 5, **parar y decirlo**: los 16 de T1
+  llevan intactos desde el bloque 0 y los 30 de T11 son los cuatro estados
+  contra las tres puertas.
+- **En `tests/test_f026_puertas.py` quedan dos casos inertes** (§30.1) que T15
+  debería retirar con el resto de `Aprobacion`.
+- **`RepositorioFalso` y `RepositorioEnMemoria` aún declaran
+  `consultar_aprobacion`**: se retira en T15, junto con el puerto.
+- **Que el bloque 5 no dé por hecho que puede quitar `huella_de_veredicto`**:
+  la usa `estado.py::_aprueba_lo_que_hay`, que es lo que hace que una
+  aprobación deje de contar cuando el veredicto cambia (R19). D9 y §10 la
+  congelan.
+
+---
+
+## 35 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de
+  cobertura al **100,0 %** de las 158 líneas cambiadas.
+- Árbol limpio, **2 commits** sobre `2393fa2` (`4130495`, `51fbe77`), todos
+  locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
+  `done` no es cosa del implementer.
+- **La base real y el ERP no se han tocado**: todo corre con
+  `RepositorioEnMemoria`, `RepositorioFalso`, `ErpEnMemoria` y
+  `ArchivoPortFalso`, sin red, sin BBDD y sin IA.

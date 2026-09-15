@@ -2434,3 +2434,52 @@ ficheros en alcance que no producen ningún mutante (propagable a `arnes-base`).
 
 Detalle completo, trazas de la fase RED, los nueve mutantes a mano y las
 decisiones: `progress/impl_F-028.md` §19 a §26.
+
+---
+
+## F-028 · bloque 4 hecho (2026-09-15, implementer)
+
+Rama `feature/F-028-estado-del-parte`, **2 commits locales** sobre `2393fa2`
+(`4130495` T10, `51fbe77` T11), arnés en verde. **T10 y T11 cerradas**; el
+bloque 5 —el borde HTTP, T12 a T15— es el siguiente encargo.
+
+**Lo que este bloque hace posible, que era medio encargo de la feature: un
+parte apto que una persona rechaza ya no se archiva, ni se adjunta, ni cierra
+su incidencia.** Hasta `51fbe77` eso era imposible por construcción —la puerta
+devolvía «pasa» en cuanto el veredicto era apto, sin consultar nada—, y la
+traza del test en rojo que lo demuestra («DID NOT RAISE ParteNoApto», tres
+veces, una por puerta) está pegada en el informe.
+
+Las tres puertas exigen ahora `estado_del_parte(...) is EstadoParte.APROBADO`
+con la situación leída **del repositorio y nunca del cuerpo**, y **se retira el
+atajo del apto**: todos los partes pagan una consulta por paso. El coste está
+declarado en `design.md` §6 (66 consultas por tanda de 22) y **se añade una
+verificación MANUAL** para medirlo en la primera tanda real contra el
+PostgreSQL compartido.
+
+La puerta vive en `application/pipelines/puerta_de_estado.py` —fichero nuevo, y
+la **única desviación** de la spec, que listaba los tres pasos— por lo mismo
+que `constancia.py` en el bloque 3: es la única decisión que separa un parte
+sin revisar de un cierre en el ERP, y tres copias son tres sitios donde puede
+aflojarse.
+
+**`tests/test_f028_puertas.py` pasa de 16 a 48 casos y los 16 de T1 siguen
+intactos** (el diff solo borra imports y dos firmas de ayudante). Siete tests
+de antes cambian, todos justificados uno a uno en el informe: **cinco
+retirados de F-026** —su mecanismo desaparece y su sustituto de F-028 está
+escrito y verde, incluido el que fijaba el atajo del apto—, uno de F-028 que
+ahora falla antes y mejor, y el control de campos del contexto de F-003.
+
+**Para el bloque 5**: el único sitio de producción que todavía lee
+`consultar_aprobacion` es `interface_adapters/api/parte.py:131`, que es justo
+lo que T14 sustituye. Y quedan **dos casos inertes** en
+`tests/test_f026_puertas.py` que T15 debería retirar con `Aprobacion`.
+
+Cobertura de líneas cambiadas 100,0 % (158/158). Mutación: 19/19 muertos en la
+campaña automática —que **solo genera un mutante de este bloque**, porque la
+herramienta no muta comparaciones de identidad— más **13 mutados a mano, 13
+muertos**, entre ellos los tres que reabren la puerta al `rechazado`, al
+`cerrado` y al que no consulta el almacén.
+
+Detalle completo, trazas de la fase RED, los tests cambiados y las decisiones:
+`progress/impl_F-028.md` §27 a §35.

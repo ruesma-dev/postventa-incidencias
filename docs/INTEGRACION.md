@@ -585,7 +585,9 @@ rodean, sin que nadie lo notara—.
 **Las ventanas de escritura siguen siendo la puerta.** `ARCHIVO_HABILITADO` y
 `CIERRE_HABILITADO` se despliegan **apagadas**, se abren para la prueba y se
 vuelven a cerrar: al terminar la del 2026-09-15 quedaron las dos en `false`. Con
-ellas cerradas, las rutas responden `503` y **no tocan el ERP ni para leer**.
+ellas cerradas, las rutas responden `503` y **Sigrid no se toca** —ni para
+leer—, que es lo que había que decir antes del primer cierre y lo que sigue
+siendo verdad después.
 
 ### Lo que este proyecto añade al ecosistema
 

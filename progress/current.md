@@ -58,9 +58,25 @@
 >
 > La segunda lleva fecha de **hoy**, y esa incidencia se cerró **ayer**. No es
 > un defecto: `anotar_estado` fecha la fila con el instante en que **se
-> constata** el estado, no con el del hecho. Al entrar en la web el parte se
-> reprocesó, se derivó `cerrado` de su traza de cierre, y como el histórico aún
-> decía `aprobado` se anotó el cambio con la hora de ese momento.
+> constata** el estado, no con el del hecho. **La escribió la propia recarga**:
+> el responsable volvió a cargar los partes hoy antes de lanzar el script, el
+> parte se reprocesó, se derivó `cerrado` de su traza de cierre, y como el
+> histórico aún decía `aprobado` se anotó el cambio con la hora de ese momento.
+>
+> ### Y esa recarga verificó, sin buscarlo, las dos cosas que más pesaban
+>
+> 1. **La aprobación del 2026-09-15 siguió vigente después del arreglo de los
+>    espacios.** El reproceso volvió a leer el papel y a calcular la huella del
+>    veredicto **con el arreglo ya desplegado**; si la huella se hubiera movido,
+>    la aprobación se habría caído sola (R19) y el parte habría vuelto a
+>    `pendiente`. No pasó. **Ese era el riesgo que la ficha de F-028 mandaba
+>    tratar**, y T23 lo cerró en el dominio: ahora está comprobado **contra la
+>    base real**.
+> 2. **El histórico no creció con ruido.** Se recargaron varios partes y quedan
+>    **4 filas en 3 partes**: solo se anotó el que de verdad cambió de estado.
+>    La regla de «escribir solo si el estado cambió» (§24, §38.1) funciona en
+>    real, que es lo que evita que la tabla acabe contando el ruido en vez de la
+>    película.
 >
 > **Solo ocurre con los partes que ya estaban cerrados antes de que existiera el
 > histórico** —los dos del piloto—: en uno nuevo, la constancia se escribe

@@ -214,7 +214,7 @@
 
 ## Bloque 8 · Que la huella no se ha movido
 
-- [ ] **T23**: `tests/test_f028_huella_intacta.py` con los tres controles
+- [x] **T23**: `tests/test_f028_huella_intacta.py` con los tres controles
       negativos de `design.md` §10: huellas esperadas **escritas literales**,
       el módulo de la huella no importa `nombrado`, y un parte aprobado por una
       persona sigue `aprobado` después del arreglo (R50, R51). | Verificación:

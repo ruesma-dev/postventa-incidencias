@@ -35,6 +35,35 @@ llamada, el login verificado contra el ERP y el estado de origen en el `WHERE`
 Y **«no hay veredicto» sigue siendo un motivo propio**, que va el primero: se
 arregla revalidando el parte, no decidiendo sobre él, y una decisión no puede
 rescatar un parte del que nadie ha emitido veredicto (`design.md` §3, punto 4).
+
+## Enmienda del 2026-09-16 (F-030 T8) · de dónde sale el veredicto
+
+Hasta hoy esta puerta leía el veredicto de **`ctx.validacion`**, es decir, del
+contexto que arma quien la llama. Para `POST /api/parte` y `POST /api/estado`
+eso era correcto —traen la extracción y emiten el veredicto con las reglas de
+F-004 en la propia llamada—, pero los **tres pasos del circuito** no reciben la
+extracción y no la van a recibir nunca: pedirla obligaría al front a reenviar
+el DNI y las observaciones manuscritas del cliente en cada petición. Sus tres
+endpoints fabricaban de todas formas un `ResultadoValidacion` con lo poco que
+tenían —el `veredicto` y el `destino` del formulario— y valores fijos para el
+resto: sin motivos, firma `humana` y sin observaciones.
+
+Eso rompió el circuito de dos maneras a la vez:
+
+1. la huella recomputada sobre ese objeto **no depende del parte** —es una de
+   tres constantes—, así que nunca coincidía con la que apuntó la persona que
+   aprobó, la aprobación no contaba y el parte volvía a `pendiente`. La
+   incidencia **RS26.09/0178** lleva desde el 2026-09-16 a las 18:09:33
+   aprobada por una persona y sin archivarse;
+2. y al revés: un cuerpo que dijera `veredicto=apto` pasaba las tres puertas
+   sin que nadie hubiera mirado el parte. Lo único que lo impedía era que el
+   front mandara la verdad, y eso no es una puerta, es una costumbre.
+
+Desde F-030 la puerta lee **`ctx.situacion.validacion`**, que viene del mismo
+`consultar_situacion` que ya se hacía —sin una consulta más (R18)— y por tanto
+de `postventa.validaciones`. **`ctx.validacion` no se vuelve a mirar aquí**, y
+ese es el blindaje: aunque alguien vuelva a meter un veredicto en el contexto
+desde el borde, esta puerta no se entera (R1, `design.md` §5.3).
 """
 
 from __future__ import annotations
@@ -96,6 +125,14 @@ def exigir_parte_aprobado(
     `design.md` §6, con su coste declarado —una consulta por parte y paso— y su
     porqué, que es que sin ella rechazar un parte verde no funciona.
 
+    Desde F-030 eso vale también para **el veredicto**, que llega dentro de esa
+    misma situación (R1). Por eso el orden es consulta primero y «no hay
+    veredicto» después: no hay forma de saber si hay veredicto guardado sin
+    preguntar, así que un parte sin validar paga la consulta antes de que le
+    digan que no. Es el mismo precio que F-028 aceptó al retirar el atajo del
+    apto, y lo que **no** cambia es el orden de precedencia de los motivos:
+    «no hay veredicto» sigue yendo el primero y sigue siendo el suyo (R8, R17).
+
     Lo leído se deja en `ctx.situacion` para que nadie vuelva a preguntarlo en
     la misma pasada (`design.md` §11.1). Y se devuelve el estado derivado, que
     es lo que necesita quien quiera contarlo después.
@@ -105,17 +142,18 @@ def exigir_parte_aprobado(
     reclamación», «no se cierra la incidencia»—, y ese final es justo la parte
     del mensaje que le dice a quien lo lee qué se ha quedado sin hacer.
     """
-    if ctx.validacion is None:
+    ctx.situacion = repositorio.consultar_situacion(hash_parte=ctx.parte.hash)
+    validacion = ctx.situacion.validacion  # ← del almacén, nunca del cuerpo
+    if validacion is None:
         raise ParteNoApto(sin_veredicto)
 
-    ctx.situacion = repositorio.consultar_situacion(hash_parte=ctx.parte.hash)
     estado = estado_del_parte(
-        ctx.validacion, ctx.situacion.decision_humana, ctx.situacion.estado_cierre
+        validacion, ctx.situacion.decision_humana, ctx.situacion.estado_cierre
     )
     if estado is EstadoParte.APROBADO:
         return estado
 
-    motivo = MOTIVOS[estado].format(destino=ctx.validacion.destino.value)
+    motivo = MOTIVOS[estado].format(destino=validacion.destino.value)
     raise ParteNoApto(f"{motivo}, así que {y_por_eso}")
 
 

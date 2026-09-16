@@ -630,6 +630,168 @@ def test_f030_r7_un_cuerpo_que_miente_no_pasa_ninguna_de_las_tres_puertas(puerta
 
 
 # --------------------------------------------------------------------------
+# T8 · la puerta juzga el veredicto **guardado** (R1, R8, R17)
+# --------------------------------------------------------------------------
+#
+# Los casos de T1 comprueban el resultado —el parte pasa, o no pasa—. Estos
+# comprueban **de dónde sale la decisión**, que es lo que la feature cambia y
+# lo único que impide que el defecto vuelva: la puerta lee
+# `ctx.situacion.validacion` y no vuelve a mirar `ctx.validacion`
+# (`design.md` §5.3).
+
+#: El final propio de cada puerta: la parte del mensaje que le dice a quien lo
+#: lee **qué se ha quedado sin hacer** (R17).
+FINALES = {
+    _puerta_de_archivo: "no se archiva",
+    _puerta_del_grafico: "no se adjunta a la reclamación",
+    _puerta_del_cierre: "no se cierra la incidencia",
+}
+
+
+def _veredicto_apto_guardado() -> ResultadoValidacion:
+    """El veredicto **apto** que emitiría F-004, con los dos campos del cuerpo.
+
+    Completo, firmado por una persona y sin observaciones manuscritas: es el
+    parte que recorre el circuito sin que nadie decida nada (R14).
+    """
+    extraccion = extraccion_de_ejemplo(
+        hash_parte=HASH,
+        codigo_obra=OBRA,
+        numero_incidencia=INCIDENCIA,
+        observaciones=None,
+    )
+    validacion = validar_parte(extraccion, lectura_de_firma("humana", hash_parte=HASH))
+    assert validacion.veredicto is Veredicto.APTO
+    assert validacion.destino is Destino.ARCHIVO_Y_CIERRE
+    return validacion
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f030_r1_un_stub_apto_en_el_contexto_no_abre_ninguna_puerta(puerta):
+    """R1 · el contexto dice `apto`, el almacén dice `revision_manual`: no pasa.
+
+    Es **el caso decisivo de la feature**, y lleva las dos fuentes a la
+    contradicción máxima a propósito: el veredicto del contexto es apto con
+    destino `archivo_y_cierre` —el que abriría la puerta sin que nadie haya
+    decidido nada— y el guardado es no apto a `revision_manual`, sin decisión
+    humana ninguna.
+
+    Manda el guardado. Y el blindaje que fija este caso es más fuerte que «el
+    borde ya no fabrica el veredicto», que es lo que retira T10: aunque
+    **alguien vuelva a meter un veredicto en el contexto** —un endpoint nuevo,
+    un rebase infeliz, una prueba a mano que se quedó—, esta puerta no lo
+    mira. El centinela estructural de T12 vigila que nadie lo fabrique; este
+    vigila que, si lo fabrican, no sirva de nada.
+    """
+    guardado = _veredicto_guardado(Destino.REVISION_MANUAL)
+    ctx = _contexto_para(
+        puerta, veredicto=Veredicto.APTO, destino=Destino.ARCHIVO_Y_CIERRE
+    )
+    repositorio = _repositorio(_situacion(guardado), con_grafico=True)
+    dobles = _dobles()
+
+    with pytest.raises(ParteNoApto):
+        puerta(ctx, repositorio, dobles)
+
+    _nada_ha_salido(dobles)
+    assert ctx.validacion is not None, (
+        "el contexto sigue trayendo su veredicto: lo que se afirma es que la "
+        "puerta no lo mira, no que nadie se lo haya puesto"
+    )
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f030_r1_un_stub_no_apto_en_el_contexto_no_cierra_una_puerta_abierta(puerta):
+    """R1 · y al revés: el contexto dice que no y el almacén que sí. Pasa.
+
+    La otra mitad, y sin ella la anterior no demuestra lo que dice: una puerta
+    que se limitara a rechazarlo todo también pasaría aquel caso. Aquí el
+    veredicto guardado es **apto a `archivo_y_cierre`** y el del contexto es
+    no apto a `revision_manual`; si la puerta mirase el contexto —o los dos, o
+    el más estricto de los dos—, el parte no pasaría.
+
+    Nadie ha decidido nada: pasa por ser apto, que es el camino normal de R14
+    y el que tiene que seguir funcionando igual que ayer.
+    """
+    ctx = _contexto_para(
+        puerta, veredicto=Veredicto.NO_APTO, destino=Destino.REVISION_MANUAL
+    )
+    repositorio = _repositorio(_situacion(_veredicto_apto_guardado()))
+    dobles = _dobles()
+
+    puerta(ctx, repositorio, dobles, commit=False)
+
+    _ha_pasado(puerta, dobles)
+
+
+@pytest.mark.parametrize("destino", DESTINOS_NO_APTOS)
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f030_r17_el_mensaje_de_pendiente_nombra_el_destino_guardado(puerta, destino):
+    """R17 · el mensaje dice el destino **guardado**, y acaba como el suyo.
+
+    El motivo importa porque cada estado se arregla de una forma distinta y
+    quien lee el error es quien va a arreglarlo: darle el destino del cuerpo
+    sería mandarle a mirar un dato que no ha decidido nada. El cuerpo miente
+    aquí a propósito con `archivo_y_cierre`, y ese literal **no puede
+    aparecer** en el mensaje.
+
+    Y los tres finales siguen siendo los suyos —«no se archiva», «no se
+    adjunta a la reclamación», «no se cierra la incidencia»—, que es la parte
+    del mensaje que dice qué se ha quedado sin hacer.
+    """
+    guardado = _veredicto_guardado(destino)
+    ctx = _contexto_para(
+        puerta, veredicto=Veredicto.APTO, destino=Destino.ARCHIVO_Y_CIERRE
+    )
+    repositorio = _repositorio(_situacion(guardado), con_grafico=True)
+
+    with pytest.raises(ParteNoApto) as fallo:
+        puerta(ctx, repositorio, _dobles())
+
+    motivo = fallo.value.motivo
+    assert "este parte está pendiente" in motivo
+    assert f"«{destino.value}»" in motivo
+    assert Destino.ARCHIVO_Y_CIERRE.value not in motivo, (
+        "el destino del cuerpo no pinta nada en el mensaje: manda el guardado"
+    )
+    assert motivo.endswith(f"así que {FINALES[puerta]}")
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f030_r8_sin_veredicto_guardado_cada_puerta_dice_lo_suyo(puerta):
+    """R8, R17 · «no hay veredicto» sigue siendo el primer motivo, y el suyo.
+
+    Al mudarse la fuente, el orden se invierte: **primero se consulta** y
+    después se mira si hay veredicto, porque no hay forma de saber si consta
+    validación sin preguntar. Lo que no cambia es la precedencia de los
+    motivos ni lo que se le cuenta a quien lee el error: «no consta que este
+    parte haya pasado la validación» sigue yendo el primero y sigue siendo un
+    motivo propio, que se arregla **revalidando** el parte y no decidiendo
+    sobre él.
+
+    El cuerpo trae un veredicto apto y no sirve de nada: es la misma lectura
+    de R1 desde el otro lado.
+    """
+    ctx = _contexto_para(
+        puerta, veredicto=Veredicto.APTO, destino=Destino.ARCHIVO_Y_CIERRE
+    )
+    repositorio = _repositorio(_situacion(None), con_grafico=True)
+    dobles = _dobles()
+
+    with pytest.raises(ParteNoApto) as fallo:
+        puerta(ctx, repositorio, dobles)
+
+    motivo = fallo.value.motivo
+    assert motivo.startswith("no consta que este parte haya pasado la validación")
+    assert "pendiente" not in motivo, "el de «sin veredicto» es un motivo propio"
+    _nada_ha_salido(dobles)
+    assert repositorio.situaciones_consultadas == [HASH], (
+        "se consulta **antes** de decir que no: es el precio de no poder "
+        "saberlo sin preguntar (`design.md` §5.3, punto 2)"
+    )
+
+
+# --------------------------------------------------------------------------
 # T2 · la ida y vuelta de la huella (R10)
 # --------------------------------------------------------------------------
 #

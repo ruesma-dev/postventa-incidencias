@@ -5945,8 +5945,8 @@ T25 **no añade ninguna**. Las que había siguen donde estaban:
 
 | Tarea | Commit | Qué deja |
 |---|---|---|
-| **T26** | este commit | La campaña de cierre: **32 mutantes, 32 muertos, 0 supervivientes**, con la línea base comprobada verde **antes**. Informe en `progress/mutacion_F-028.md` |
-| **T28** | el commit siguiente | `bash harness/init.sh` → **ENTORNO LISTO**, y las cuatro suites reejecutadas **a mano y sin caché** |
+| **T26** | `a828215` | La campaña de cierre: **32 mutantes, 32 muertos, 0 supervivientes**, con la línea base comprobada verde **antes**. Informe en `progress/mutacion_F-028.md` |
+| **T28** | este commit | `bash harness/init.sh` → **ENTORNO LISTO**, y las cuatro suites reejecutadas **a mano y sin caché** |
 
 **Ni una línea de código de producción.** El diff de estos dos commits son
 `tasks.md`, este informe y el informe que genera la campaña.
@@ -6368,3 +6368,75 @@ Y dos avisos de despliegue que no son verificaciones:
   Están reunidas para que las juzgue el reviewer, que es lo que pedía el
   encargo: ni he retirado `ParteNoAprobable`, ni he tocado las dos aserciones de
   §132.2, ni he cambiado el error que levantan las tres puertas.
+
+---
+
+## 137 · T28 · el arnés en verde, y sin fiarse de la caché
+
+```
+$ bash harness/init.sh
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] features.json válido
+[OK] BACKLOG.md al día
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea)
+62 passed in 2.50s
+[OK] pytest en verde (con medición de cobertura)
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 297 líneas cambiadas cubiertas (297/297, umbral 80%, nivel estandar)
+[OK] Rama actual: feature/F-028-estado-del-parte
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```
+
+**Y no se firma con esa línea.** Los dos servicios se resolvieron **por
+caché**, y §124.2 dejó escrito por qué eso no basta: **la caché del portero
+mira el árbol del servicio, y `docs/` vive fuera**, así que un documento roto
+puede pasar por verde. Es donde se coló el rojo de esta semana.
+
+Las cuatro suites, enteras y a mano, con la caché de pytest desactivada:
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/ -q -p no:cacheprovider
+2650 passed, 3 skipped in 23.18s
+
+$ cd services/postventa-front && ../../.venv/Scripts/python.exe -m pytest tests/ -q -p no:cacheprovider
+250 passed in 1.69s
+
+$ cd services/postventa-front && node --test "tests_js/*.test.js"
+tests 298   pass 298   fail 0
+
+$ (arnés, raíz)
+62 passed in 2.50s
+```
+
+**3.260 casos, cero fallos.** Esa es la cifra que hay que creerse, no la línea
+de caché.
+
+El único aviso que queda es `ruff: 61 avisos`, que es **deuda previa del
+repositorio**, no bloquea, y lleva sin moverse desde §105, §115 y §124. Este
+encargo no añade Python, así que no podía moverlo ni en un sentido ni en otro.
+
+---
+
+## 138 · Estado al cerrar el encargo · **la implementación de F-028 está cerrada**
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de
+  cobertura al **100,0 % de las 297 líneas cambiadas (297/297)** y la rama
+  correcta.
+- **Campaña de cierre: 32 mutantes, 32 muertos, 0 supervivientes**, con la
+  línea base comprobada verde antes (§129).
+- **`tasks.md`: las 28 tareas marcadas salvo T27**, que es del humano y **queda
+  sin marcar a propósito**.
+- Árbol limpio. **2 commits** sobre `16efdf5` —el de T26 y el de T28—, los dos
+  **locales**. **Sin `push`**, ni aquí ni en `azure-apps`.
+- `harness/features.json` **sin tocar**: F-028 sigue `in_progress`. **No he
+  marcado `done` nada**: eso ocurre tras el APROBADO del reviewer y lo mueve el
+  líder.
+- **La base real y el ERP no se han tocado en ningún momento de la feature.**
+  Todo corre con dobles en memoria, sin red, sin BBDD y sin IA.
+- Lo que el reviewer tiene reunido y con nombre propio: **§129.1** (por qué el
+  32 de 32 vale), **§130** (lo que ninguna puerta automática mide, y con qué se
+  respalda), **§131** (las nueve desviaciones de `design.md`), **§132** (los
+  puntos abiertos, ninguno tocado por mi cuenta) y **§135** (T27 entera, lista
+  para el humano).

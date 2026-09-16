@@ -268,4 +268,4 @@
       decidido_at_utc, motivo FROM postventa.historico_estado
       WHERE hash_parte = %s ORDER BY decidido_at_utc, cambio_id;`
 
-- [ ] **T28**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T28**: Ejecutar `bash harness/init.sh` en verde.

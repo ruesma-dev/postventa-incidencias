@@ -63,11 +63,15 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, validar_parte
 from domain.ports.persistencia import RepositorioPartesPort
-from infrastructure.persistencia import sentencias
+from infrastructure.persistencia import mapeo, sentencias
 from infrastructure.persistencia.mapeo import fila_a_decision_estado
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
 
-from tests.utiles_pg import ConexionDoble, RepositorioEnMemoria
+from tests.utiles_pg import (
+    ConexionDoble,
+    RepositorioEnMemoria,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import ErpEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
@@ -434,18 +438,27 @@ def test_f028_la_situacion_de_un_parte_sin_ninguna_fila_viene_vacia(repositorio)
 
 
 def test_f028_la_situacion_se_resuelve_con_dos_consultas(conexion, repositorio):
-    """Dos, las de `design.md` §8.5: el histórico y la traza de cierre.
+    """Dos, las de `design.md` §8.5: el histórico y lo que hay guardado del parte.
 
     Quien pregunta hace **una** llamada (R2). Que por debajo sean dos viajes a
     la misma conexión ya abierta es la decisión medida de §8.5; que sean tres
     sería una consulta de más por parte y por paso, y en una remesa de 22
     partes eso son 66 contra un PostgreSQL compartido.
+
+    > **Enmienda del 2026-09-16 · F-030 T6.** La segunda consulta traía solo el
+    > estado de cierre y ahora trae además **el veredicto guardado**, anclada
+    > en `partes`. El número no cambia, y ese es justamente el requisito
+    > (F-030 R18): la lectura del veredicto viaja **dentro** de la consulta que
+    > las tres puertas ya ejecutaban. El aserto que lo vigila —`len(...) == 2`—
+    > no se toca; lo único que cambia es cómo se nombra `cierres` en el texto,
+    > que ahora entra por `LEFT JOIN` y no por `FROM`.
     """
     repositorio.consultar_situacion(hash_parte=HASH)
 
     assert len(conexion.ejecutadas) == 2
     assert conexion.veces_con("UNION ALL") == 1
-    assert conexion.veces_con(f"FROM {ESQUEMA}.cierres") == 1
+    assert conexion.veces_con(f"LEFT JOIN {ESQUEMA}.cierres") == 1
+    assert conexion.veces_con(f"LEFT JOIN {ESQUEMA}.validaciones") == 1
 
 
 def test_f028_la_situacion_trae_la_ultima_decision_humana(conexion, repositorio):
@@ -520,12 +533,21 @@ def test_f028_r18_la_situacion_trae_el_estado_de_la_traza_de_cierre(
     Llega **en crudo**, como cadena: el dueño de lo que puede haber en esa
     columna es el `CHECK` de `sql/06_cierres.sql`, y la derivación lo compara
     por valor contra `ESTADOS_DE_CIERRE_EN_FIRME`.
+
+    Desde F-030 viene en la **última** de las diez columnas de
+    `select_veredicto_y_cierre`, y el caso lo prepara con las otras nueve a
+    `NULL`: es un parte **cerrado del que no consta validación**, y tiene que
+    seguir dando `cerrado`. Ese es el motivo de que los dos `JOIN` sean `LEFT`.
     """
-    conexion.responder(f"FROM {ESQUEMA}.cierres", [(EstadoCierre.CERRADO.value,)])
+    conexion.responder(
+        f"LEFT JOIN {ESQUEMA}.cierres",
+        [(None,) * 9 + (EstadoCierre.CERRADO.value,)],
+    )
 
     situacion = repositorio.consultar_situacion(hash_parte=HASH)
 
     assert situacion.estado_cierre == "cerrado"
+    assert situacion.validacion is None
 
 
 def test_f028_el_estado_de_cierre_se_puede_consultar_por_su_cuenta(
@@ -958,9 +980,16 @@ def _cerrar(
     erp: ErpEnMemoria | None = None,
     commit: bool = True,
 ) -> ContextoParte:
-    """Ejecuta `paso_cierre` con dobles. **Sin red y sin tocar el ERP.**"""
+    """Ejecuta `paso_cierre` con dobles. **Sin red y sin tocar el ERP.**
+
+    F-030 · el veredicto del contexto se deja también en el doble, porque desde
+    F-030 la puerta del paso lo lee de ahí (ver `tests/utiles_pg.py`).
+    """
+    ctx = _contexto_listo_para_cerrar()
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_cierre(
-        _contexto_listo_para_cerrar(),
+        ctx,
         erp if erp is not None else ErpEnMemoria(_reclamacion()),
         repositorio,
         UsuariosConLoginConfirmado(),
@@ -1325,3 +1354,162 @@ def test_f028_t15_r57_guardar_la_validacion_ya_no_revoca_nada(conexion, reposito
     # contar las ejecutadas es lo único que distingue «se retiró la llamada»
     # de «se retiró la función y alguien la repuso por otro camino».
     assert len(conexion.ejecutadas) == 1
+
+
+# --------------------------------------------------------------------------
+# F-030 · la situación trae también el veredicto guardado
+# --------------------------------------------------------------------------
+
+
+def _veredicto_guardado() -> ResultadoValidacion:
+    """El veredicto que emitió `POST /api/estado` con la extracción entera.
+
+    No apto y a la cola: el caso de la regresión. Un parte con observaciones
+    manuscritas que alguien tiene que mirar y que, una vez aprobado, tiene que
+    poder archivarse.
+    """
+    return validar_parte(
+        extraccion_de_ejemplo(
+            hash_parte=HASH,
+            observaciones="texto manuscrito inventado para el test",
+            codigo_obra="0000",
+            numero_incidencia="XX00.00 - 0000",
+        ),
+        lectura_de_firma("humana", hash_parte=HASH),
+    )
+
+
+def _fila_de_lo_guardado(
+    validacion: ResultadoValidacion | None, *, cierre: str | None = None
+) -> tuple:
+    """Las diez columnas de `select_veredicto_y_cierre`, en su orden.
+
+    Las cinco primeras salen de `mapeo.valores_de_validacion`, que es **la
+    misma función que escribió la fila**: si mañana cambiara el orden de lo que
+    se guarda, este ayudante se entera en vez de comparar contra una copia
+    escrita a mano.
+    """
+    if validacion is None:
+        return (None,) * 9 + (cierre,)
+    _, veredicto, destino, clasificacion, motivos, avisos, _ = (
+        mapeo.valores_de_validacion(validacion, AHORA)
+    )
+    return (
+        veredicto,
+        destino,
+        clasificacion,
+        motivos,
+        avisos,
+        validacion.observaciones,
+        validacion.confianza_observaciones,
+        validacion.codigo_obra,
+        validacion.numero_incidencia,
+        cierre,
+    )
+
+
+def test_f030_r2_la_situacion_trae_el_veredicto_guardado(conexion, repositorio):
+    """R2 · la cuarta cosa sale de la **misma** consulta que las otras tres.
+
+    Y sale con la misma huella que tenía en memoria, que es lo único que hace
+    que una aprobación humana siga contando: la huella que apuntó el escritor
+    salió del veredicto que esa misma llamada guardó.
+    """
+    guardado = _veredicto_guardado()
+    conexion.responder(
+        f"LEFT JOIN {ESQUEMA}.validaciones", [_fila_de_lo_guardado(guardado)]
+    )
+
+    situacion = repositorio.consultar_situacion(hash_parte=HASH)
+
+    assert situacion.validacion is not None
+    assert huella_de_veredicto(situacion.validacion) == huella_de_veredicto(guardado)
+    assert situacion.validacion.hash_parte == HASH
+    assert situacion.validacion.destino is guardado.destino
+    assert situacion.estado_cierre is None
+
+
+def test_f030_r18_traer_el_veredicto_no_cuesta_ninguna_consulta_mas(
+    conexion, repositorio
+):
+    """R18 · **dos** sentencias por llamada, con veredicto y sin él.
+
+    Es el requisito que impide que el coste suba en un PostgreSQL compartido
+    con otros proyectos: un método `consultar_validacion` llamado aparte habría
+    sumado tres viajes por parte —uno por paso del circuito—, y en una tanda de
+    22 partes eso son 66 consultas de más.
+
+    Se comprueba además que **no queda ni rastro** de la consulta vieja dentro
+    de este camino: si `select_estado_cierre` siguiera ejecutándose aquí,
+    serían tres.
+    """
+    conexion.responder(
+        f"LEFT JOIN {ESQUEMA}.validaciones",
+        [_fila_de_lo_guardado(_veredicto_guardado(), cierre="pendiente")],
+    )
+
+    repositorio.consultar_situacion(hash_parte=HASH)
+
+    assert len(conexion.ejecutadas) == 2
+    assert conexion.veces_con(f"FROM {ESQUEMA}.cierres") == 0
+    assert conexion.veces_con(f"FROM {ESQUEMA}.partes AS p") == 1
+
+
+def test_f030_r9_sin_ficha_del_parte_no_hay_veredicto_ni_cierre(
+    conexion, repositorio
+):
+    """R9 · de un parte del que no consta ni la ficha no vuelve **ninguna fila**.
+
+    La consulta se ancla en `partes`, así que un `hash` que no esté ahí no
+    devuelve nada. Eso son los dos huecos, y **no un error de base de datos**:
+    de ahí sale el error propio de «no consta que este parte haya pasado la
+    validación», que es el mismo que ve quien tiene ficha pero no veredicto.
+    Los dos se arreglan revalidando, no decidiendo.
+    """
+    situacion = repositorio.consultar_situacion(hash_parte=HASH)
+
+    assert situacion.validacion is None
+    assert situacion.estado_cierre is None
+    assert situacion == SituacionParte()
+
+
+def test_f030_r8_con_ficha_pero_sin_validacion_el_veredicto_es_none(
+    conexion, repositorio
+):
+    """R8 · hay fila, pero las cinco columnas de `validaciones` vienen a `NULL`.
+
+    Es lo que devuelve el `LEFT JOIN` de un parte que se subió y todavía no se
+    validó. Recomponer ahí un veredicto con huecos sería inventarse uno que
+    nadie emitió — exactamente el defecto que F-030 quita del borde—, así que
+    vuelve `None` y la puerta dice lo suyo.
+    """
+    conexion.responder(
+        f"LEFT JOIN {ESQUEMA}.validaciones", [_fila_de_lo_guardado(None)]
+    )
+
+    situacion = repositorio.consultar_situacion(hash_parte=HASH)
+
+    assert situacion.validacion is None
+    assert situacion.estado_cierre is None
+
+
+def test_f030_r16_un_parte_cerrado_sin_validacion_sigue_dando_cerrado(
+    conexion, repositorio
+):
+    """R16 · el hecho del ERP gana a todo, **también sin fila de validación**.
+
+    Este es el caso que obliga a anclar en `partes` y a que los dos `JOIN` sean
+    `LEFT`. Si la consulta se anclara en `validaciones`, un parte sin veredicto
+    se llevaría por delante el estado de cierre y un parte **cerrado** dejaría
+    de dar `cerrado` — y con eso volvería a entrar en un circuito que escribe
+    en el ERP de producción.
+    """
+    conexion.responder(
+        f"LEFT JOIN {ESQUEMA}.validaciones",
+        [_fila_de_lo_guardado(None, cierre=EstadoCierre.CERRADO.value)],
+    )
+
+    situacion = repositorio.consultar_situacion(hash_parte=HASH)
+
+    assert situacion.validacion is None
+    assert situacion.estado_cierre == "cerrado"

@@ -50,6 +50,7 @@ from domain.models.errores import (
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
 )
+from domain.models.estado import SituacionParte
 from domain.models.grafico import (
     CODIGOS_PASARELA_PRECONDICION,
     CODIGOS_PASARELA_RECHAZO,
@@ -67,6 +68,7 @@ from interface_adapters.api.adjuntar import CAMPOS_OBLIGATORIOS, adjuntar_grafic
 
 from tests.utiles_pg import RepositorioEnMemoria
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria, error_de_la_pasarela
+from tests.utiles_validacion import veredicto_apto
 
 AHORA = datetime(2026, 9, 6, 12, 0, 0, tzinfo=UTC)
 HASH = "hash-inventado-del-parte-0001"
@@ -134,6 +136,23 @@ FORMULARIO = {
 }
 
 
+def _repositorio(**extra) -> RepositorioEnMemoria:
+    """El doble del repositorio con el veredicto **guardado** dentro (F-030).
+
+    Desde F-030 la puerta del paso deriva el estado del veredicto que consta en
+    `postventa.validaciones`, y **no** del `veredicto` que venga en el cuerpo:
+    el endpoint ya no lo fabrica. Lo que estos casos declaraban en el
+    formulario hay que dejarlo ahora aquí.
+
+    No afloja nada: pone el mundo en su sitio. Cuando una petición llega de
+    verdad a este endpoint, el veredicto del parte ya está en la base —lo
+    escribió `POST /api/parte`—, y un doble que contestara «de este parte no
+    consta validación» modelaría un mundo que no existe.
+    """
+    extra.setdefault("situacion", SituacionParte(validacion=veredicto_apto(hash_parte=HASH)))
+    return RepositorioEnMemoria(**extra)
+
+
 def _adjuntar(
     *,
     contenido: bytes = PDF,
@@ -147,7 +166,7 @@ def _adjuntar(
         contenido,
         erp=erp if erp is not None else ErpEnMemoria(_reclamacion()),
         graficos=graficos if graficos is not None else GraficoEnMemoria(),
-        repositorio=repositorio if repositorio is not None else RepositorioEnMemoria(),
+        repositorio=repositorio if repositorio is not None else _repositorio(),
         usuarios=Usuarios(),
         preferencias=Preferencias(),
         ahora=AHORA,
@@ -333,7 +352,7 @@ def test_f012_r24_cuando_se_resuelve_desde_la_traza_no_se_inventa_un_dry_run():
 
     respuesta = _adjuntar(
         graficos=graficos,
-        repositorio=RepositorioEnMemoria(traza_grafico=traza),
+        repositorio=_repositorio(traza_grafico=traza),
         commit="true",
         confirmado="true",
     )

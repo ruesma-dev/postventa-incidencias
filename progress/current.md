@@ -1,6 +1,163 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## EN CURSO · 2026-09-16 · **F-030, bloques 4 y 5 entregados: la implementación está CERRADA**
+>
+> Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y
+> sin merge. Hecho: **T1–T20**, la feature entera de
+> `specs/F-030-veredicto-persistido/tasks.md`. Informe completo, con las trazas
+> de todas las fases RED, la cobertura y la mutación:
+> **`progress/impl_F-030.md`**. Campaña de mutación:
+> `progress/mutacion_F-030.md`.
+>
+> **Falta el APROBADO del reviewer**: la feature **no** se marca `done` hasta
+> entonces.
+>
+> ### Qué traen estos dos bloques
+>
+> **El test que faltó.** `tests/utiles_pg.py` gana `RepositorioComoLaBase`, un
+> doble que **guarda columnas y no objetos**: guarda las 18 de
+> `valores_de_campos`, las 7 de `valores_de_validacion` y un histórico
+> append-only, y recompone el veredicto con la **misma**
+> `mapeo.fila_a_validacion_y_cierre` de producción. Que no pueda devolver el
+> objeto que entró es todo su valor: es la propiedad que
+> `RepositorioEnMemoria` no tiene y por la que el defecto de RS26.09/0178 pasó
+> sin que ningún test se enterara. **`RepositorioEnMemoria` no se toca.**
+>
+> `tests/test_f030_circuito_borde_a_borde.py` recorre el circuito con **los
+> cuerpos reales**: `POST /api/estado` → `POST /api/archivar`, y lo mismo con
+> `/api/adjuntar` y `/api/cerrar` en **dry-run**, sobre un parte no apto con
+> observaciones manuscritas. El formulario **dice la verdad** (`no_apto`,
+> `cola_validacion_humana`) y el parte pasa igual, porque lo que decide es la
+> aprobación de la persona. Con **dos control-negativo** por puerta: sin nada
+> en la base, y con el parte guardado por `POST /api/parte` pero sin aprobar.
+>
+> **Compatibilidad hacia atrás, medida** (T16): una decisión ya guardada sigue
+> abriendo las tres puertas **sin que nadie vuelva a decidir** y sin que la
+> puerta apunte nada nuevo; y si el parte se revalida con otra lectura, la
+> huella deja de coincidir y vuelve a `pendiente`. Es lo que el humano puede
+> comprobar mañana con su parte.
+>
+> ### Los números, medidos
+>
+> - `bash harness/init.sh` → **ENTORNO LISTO (VERDE)**, exit code 0. Suite del
+>   servicio: **2 734 passed, 0 failed, 3 skipped** en 20,6 s.
+> - **PUERTA COBERTURA: 100,0 %** (30/30 líneas cambiadas, umbral 80 %, nivel
+>   `critico`).
+> - **Mutación: 3 mutantes, 3 muertos, 0 supervivientes**, 21,1 s, **3 workers**
+>   (se pidieron 8 y se resolvieron a 3, uno por mutante). Más **tres mutantes
+>   a mano** —la puerta leyendo `ctx.validacion`, la recomposición perdiendo
+>   las observaciones y la recomposición perdiendo el número de incidencia—,
+>   cazados por **84, 19 y 18** casos respectivamente.
+> - **DDL: cero.** `git diff --name-only dev...HEAD` son 40 ficheros y ninguno
+>   de `infrastructure/persistencia/sql/`. Hay un test que lo vigila (T17).
+>
+> ### `docs/ARCHITECTURE.md`, al día
+>
+> El punto 3 de «Semántica de dominio imprescindible» gana la **precisión
+> fechada del 2026-09-16 de F-030**: lo que decide si un parte entra en el
+> circuito es el estado derivado **del veredicto que consta guardado**, y
+> **ningún endpoint del circuito emite veredicto**. Las tres capas anteriores
+> —la regla general, F-026 y F-028— se conservan, y hay dos casos que lo
+> vigilan.
+>
+> ### Lo que sigue abierto
+>
+> 1. **El riesgo de `design.md` §10.7 ya está DADO DE ALTA como `F-031`**
+>    (commit `11c04d0`, estado `pending`): `/api/archivar` sigue nombrando la
+>    carpeta y el fichero con el `codigo_obra` y el `numero_incidencia` **del
+>    cuerpo**, no con los guardados. Hoy no hace daño porque el front manda lo
+>    que leyó. **No hay nada que decidir aquí**: está en el backlog y F-030 no
+>    lo cierra.
+> 2. **V1 y V2**, las dos verificaciones MANUAL de la feature, **pendientes del
+>    humano** y **ninguna es condición de cierre**:
+>    - **V1 · el parte que está esperando.** Con F-030 desplegado en `dev`,
+>      archivar el parte `b7e9b037` de **RS26.09/0178** y comprobar que se
+>      archiva sin volver a decidir nada. **Escribe en SharePoint: exige
+>      autorización expresa del humano para esa incidencia y no se hace desde
+>      local.**
+>    - **V2 · el coste, medido.** Contar las consultas de una tanda real de 22
+>      partes contra el PostgreSQL compartido y comprobar que no ha subido
+>      respecto a F-028 (R18).
+>
+> Ventanas de escritura de `dev`: **las dos abiertas**
+> (`ARCHIVO_HABILITADO` y `CIERRE_HABILITADO`). **Estos dos bloques no han
+> ejecutado ninguna llamada real** contra Azure, Sigrid, SharePoint ni el
+> PostgreSQL compartido.
+
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · **F-030, bloques 2 y 3**
+>
+> Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y
+> sin merge. Hecho: **T1–T12** de `specs/F-030-veredicto-persistido/tasks.md`
+> (bloques 0 a 3). Informe, con las trazas de las tres fases RED y la del
+> centinela: **`progress/impl_F-030.md`**.
+>
+> **La puerta ya juzga el veredicto guardado.** `exigir_parte_aprobado`
+> consulta primero y lee `ctx.situacion.validacion`; **`ctx.validacion` no se
+> vuelve a mirar ahí**, así que aunque alguien vuelva a meter un veredicto en
+> el contexto, la puerta no se entera (R1). Y los tres endpoints
+> —`archivar.py`, `adjuntar.py`, `cerrar.py`— han dejado de fabricar el suyo:
+> `_como_contexto` devuelve `validacion=None`. El contrato HTTP no cambia:
+> `veredicto` y `destino` siguen siendo obligatorios y siguen dando **400**
+> ante un valor desconocido (R19, D6).
+>
+> **`bash harness/init.sh` → ENTORNO LISTO (VERDE).** Suite del servicio:
+> `2 711 passed, 0 failed, 3 skipped`. **PUERTA COBERTURA al 100,0 %** (30/30
+> líneas cambiadas, umbral 80 %, nivel `critico`). Lint: 61 avisos antes y 61
+> ahora. **Cero regresiones.**
+>
+> Los **9 casos de T1** que reproducían el defecto están en verde: los 6 de
+> `test_f030_r11_...` —la aprobación humana que no sobrevivía, que es
+> RS26.09/0178— y los 3 de `test_f030_r7_...` —el cuerpo que miente—.
+>
+> ### Desviación de la spec, para que la mire el reviewer
+>
+> **El alcance de T11 era mucho mayor de lo que preveía `design.md` §5.5.** La
+> spec listaba cinco ficheros de test a tocar y describía T9 como «un cambio
+> mecánico en dos ayudantes». Lo medido: **232 casos en 14 ficheros** se
+> quedaron en la puerta al mudarse la fuente del veredicto, y la spec nombraba
+> tres de esos catorce. Los once restantes son tests de los **pasos** del
+> pipeline, no de los endpoints, y §5.5 no los previó.
+>
+> No se paró porque la **dirección** no era ambigua: §10.5 la prescribe letra
+> por letra —«cada uno se arregla preparando el veredicto en el doble; lo que
+> **no** vale es relajar la puerta»— y el encargo hacía explícitamente mías las
+> regresiones. Lo subestimado fue el **volumen**, no el método. **Ninguna
+> puerta se aflojó**: el arreglo se apoya en un ayudante compartido
+> (`con_el_veredicto_guardado`, en `tests/utiles_pg.py`) y dos builders de
+> veredicto emitidos por `validar_parte` de verdad. Todo aislado en el commit
+> `7d7dacc`, con los 14 ficheros listados uno a uno en el informe.
+>
+> Dos desviaciones menores, las dos en el informe: **T9 tocó tres ayudantes y
+> no dos** (los que nombraba §5.5 no existen en ese fichero), y **dos asertos
+> de `test_f006_archivar_http.py` cambiaron** porque miraban el stub que T10
+> retira —pasan a afirmar algo más fuerte: que no se fabrica ninguno—. Ningún
+> aserto de `test_f028_puertas.py`, `test_f028_huella_intacta.py` ni
+> `test_f026_*` cambia (regla dura 4).
+>
+> ### Lo que sigue abierto
+>
+> 1. **Riesgo declarado y fuera de alcance (`design.md` §10.7)**: `/api/archivar`
+>    sigue nombrando la carpeta y el fichero con el `codigo_obra` y el
+>    `numero_incidencia` **del cuerpo**, no con los guardados. Hoy no hace daño
+>    porque el front manda lo que leyó. Ya está **dado de alta como `F-031`**
+>    (commit `11c04d0`, estado `pending`); F-030 no lo cierra.
+> 2. **V1 y V2**, las dos verificaciones MANUAL de la feature entera: archivar
+>    RS26.09/0178 en `dev` —escribe en SharePoint y exige autorización expresa
+>    del humano para esa incidencia— y contar las consultas de una tanda real de
+>    22 partes (R18). Ninguna es condición de cierre.
+>
+> **Siguiente encargo: el bloque 4 (T13–T15).** El doble `RepositorioComoLaBase`
+> que guarda **columnas y no objetos**, y `test_f030_circuito_borde_a_borde.py`
+> con los cuerpos reales de los dos endpoints sobre el caso de RS26.09/0178,
+> con sus control-negativo.
+>
+> Ventanas de escritura de `dev`: **las dos abiertas**. Estos dos bloques no
+> han ejecutado ninguna llamada real contra Azure, Sigrid, SharePoint ni el
+> PostgreSQL compartido.
+
+
 > ## ✅ AL DÍA · 2026-09-16 · **`infra/22_ventana_archivo.ps1`**: la segunda puerta ya tiene script
 >
 > Rama `chore/script-22-ventana-archivo`, commits **locales, sin `push`** y
@@ -3111,3 +3268,82 @@ muertos**, entre ellos los tres que reabren la puerta al `rechazado`, al
 
 Detalle completo, trazas de la fase RED, los tests cambiados y las decisiones:
 `progress/impl_F-028.md` §27 a §35.
+
+---
+
+## 2026-09-16 · Spec de F-030 escrita (spec-author)
+
+`specs/F-030-veredicto-persistido/` con sus tres ficheros. **No se ha tocado ni
+una línea de código**, ni de `services/`, ni de `sql/`, ni de `infra/`. Ninguna
+llamada a SharePoint, a Sigrid ni a la base de datos.
+
+### El diagnóstico, confirmado con ficheros y líneas
+
+`POST /api/estado` apunta la huella del veredicto completo
+(`interface_adapters/api/estado.py:162,198`). Los tres endpoints del circuito no
+reciben la extracción y fabrican un `ResultadoValidacion` de pega —`motivos=()`,
+`clasificacion_firma=HUMANA` fija, `observaciones=None`, y por omisión del
+dataclass `codigo_obra=""` y `numero_incidencia=""`—: `archivar.py:190-198`,
+`adjuntar.py:244-249`, `cerrar.py:212-217`. La puerta recomputa la huella sobre
+ese objeto (`puerta_de_estado.py:112` → `domain/models/estado.py:325-328,355-357`)
+y no coincide.
+
+**Medido hoy, y confirma la medición del humano**: la huella del stub **no
+depende del parte**, solo del destino que venga en el cuerpo. Solo hay **tres
+huellas posibles** en todo el sistema — `archivo_y_cierre` → `371a85e5…`,
+`cola_validacion_humana` → `9d8596a0…`, `revision_manual` → `e647e345…`. La
+segunda es exactamente la que midió el humano sobre RS26.09/0178.
+
+**El contrato ya llevaba la deuda anotada**: `archivar.py:23-29` dice literal
+*«Leerlo de la base sería más fuerte, pero exige un método nuevo en
+`RepositorioPartesPort`, que es de F-005, y F-006 no cambia specs ajenas»*.
+
+### Lo que la spec resuelve, y que el humano preguntará
+
+1. **No hace falta ninguna columna nueva.** Los seis campos de la cadena
+   canónica están persistidos: tres en `postventa.validaciones` (destino,
+   motivos, clasificación) y tres en `postventa.partes` (observaciones, código
+   de obra, número de incidencia). **[MEDIDO]** — la huella del objeto original
+   y la del recompuesto desde columnas coinciden, incluidos los casos borde
+   (`None` frente a `"   "`, motivos desordenados, aviso recortado a 240).
+2. **Sin viaje nuevo a la base compartida.** La lectura del veredicto sustituye
+   a la sentencia del estado de cierre dentro de `consultar_situacion`: una sola
+   consulta anclada en `partes` con dos `LEFT JOIN`. Siguen siendo **dos
+   sentencias por llamada**, como hoy. Un `consultar_validacion` aparte habrían
+   sido tres viajes más por parte, seis en total: descartado y por escrito.
+3. **La aprobación de RS26.09/0178 REVALIDA SOLA.** No hay que volver a decidir
+   nada y no hay migración: la huella no cambia, y la que se apuntó salió del
+   veredicto que esa misma llamada acababa de guardar. En cuanto se despliegue,
+   el parte `b7e9b037` se archiva. Es la verificación manual **V1**, y **escribe
+   en SharePoint: exige autorización expresa del humano para esa incidencia**.
+4. **El defecto tiene una segunda cara, de seguridad, que la spec cierra de
+   paso**: hoy un cuerpo que diga `veredicto=apto` y `destino=archivo_y_cierre`
+   pasa las tres puertas **aunque la validación guardada mandara el parte a
+   revisión manual**. Lo único que lo impide es que el front mande la verdad.
+
+### Decisiones abiertas que necesita validar el humano
+
+- **Aprobar la spec** (PARADA 1) antes de que el implementer toque nada.
+- **§10.7 · riesgo declarado y fuera de alcance**: `/api/archivar` sigue
+  nombrando la carpeta y el fichero con el `codigo_obra` y el
+  `numero_incidencia` **del cuerpo**, no con los guardados. Como esos dos campos
+  entran en la huella, la puerta aprueba unos y el PDF se nombra con otros. Hoy
+  no pasa porque el front manda lo que leyó. **¿Se da de alta como feature
+  propia?**
+- **§10.2 · endurecimiento posterior**: guardar la huella en
+  `postventa.validaciones` haría imposible por construcción la deriva de la
+  recomposición y sacaría el texto manuscrito del circuito. Se descarta **para
+  hoy** porque dejaría a `NULL` las filas ya escritas —y con ellas la aprobación
+  de RS26.09/0178— hasta revalidar. **¿Se da de alta para más adelante?**
+- **El contrato HTTP se conserva** (D6): `veredicto` y `destino` se siguen
+  exigiendo y validando en los tres endpoints, y dejan de decidir. Quitarlos
+  obligaría a tocar el front en la misma sesión que arregla una regresión de
+  producción. **¿Conforme?**
+
+### Aviso al implementer
+
+Varios tests de `/api/archivar`, `/api/adjuntar` y `/api/cerrar` **se pondrán
+rojos**: pasaban la puerta gracias al `veredicto=apto` del cuerpo. Es el efecto
+buscado. Se arreglan preparando el veredicto en el doble, **nunca relajando la
+puerta**. Y ni un aserto de `test_f028_puertas.py` puede cambiar: solo sus dos
+ayudantes.

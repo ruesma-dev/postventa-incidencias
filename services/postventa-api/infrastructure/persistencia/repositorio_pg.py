@@ -55,6 +55,7 @@ from infrastructure.persistencia.mapeo import (
     fila_a_entrada_cola,
     fila_a_preferencias,
     fila_a_traza_grafico,
+    fila_a_validacion_y_cierre,
 )
 
 __all__ = ["RepositorioPostgres"]
@@ -246,24 +247,42 @@ class RepositorioPostgres:
 
         **Dos consultas y una sola llamada** (`design.md` §8.5): el `UNION ALL`
         del histórico, que trae la última fila humana y la última de
-        cualquiera, y la traza de cierre. Se descartó resolverlo todo en una
-        sentencia con `LEFT JOIN LATERAL`: ahorra un viaje a la misma conexión
-        ya abierta y cuesta un SQL que nadie de este repositorio sabe leer de un
-        vistazo.
+        cualquiera, y la que trae **el veredicto guardado y la traza de
+        cierre** juntos. Se descartó resolverlo todo en una sentencia con
+        `LEFT JOIN LATERAL`: ahorra un viaje a la misma conexión ya abierta y
+        cuesta un SQL que nadie de este repositorio sabe leer de un vistazo.
+
+        > **Enmienda del 2026-09-16 · F-030 T6.** La segunda consulta era
+        > `select_estado_cierre` y traía **solo** el estado de cierre. Ahora es
+        > `select_veredicto_y_cierre` y trae también el veredicto: la lectura
+        > del veredicto **viaja dentro de la consulta que las tres puertas ya
+        > ejecutaban**, así que siguen siendo dos sentencias por llamada y ni
+        > un viaje más (R18) contra un PostgreSQL que se comparte con otros
+        > proyectos. Un método aparte habría sumado tres viajes por parte.
+        >
+        > Hasta hoy el veredicto lo traía cada puerta por su cuenta, y los tres
+        > endpoints que no reciben la extracción acababan fabricándolo desde el
+        > cuerpo de la petición: eso dejó sin archivar un parte que una persona
+        > había aprobado (RS26.09/0178). `consultar_estado_cierre` **no se
+        > toca**: la siguen usando `estado.py` y `parte.py`.
 
         De la rama humana vuelve la **decisión entera**, porque es la que manda
         sobre la máquina y hay que poder contrastar su huella. De la otra vuelve
         **solo el estado**: las filas de máquina son constancia, nunca criterio
         (R26), y lo único que se hace con ellas es no repetir fila.
 
-        Los tres huecos vacíos **no son un error**: es el caso normal del primer
-        día, y de ahí sale `pendiente` sin que nadie tenga que fallar.
+        Los cuatro huecos vacíos **no son un error**: es el caso normal del
+        primer día, y de ahí sale `pendiente` sin que nadie tenga que fallar. Un
+        parte del que no consta ni la ficha no devuelve ninguna fila, y eso son
+        veredicto `None` y cierre `None` — no un error de base de datos (R9).
 
         El log dice qué se leyó y nunca **quién** ni **por qué**: el `oid` es
         dato personal seudónimo y el motivo lo escribe una persona que puede
-        nombrar a otra (R52). Y este es el camino más transitado del servicio
-        desde que las tres puertas consultan el estado: si filtrara, filtraría
-        en bucle.
+        nombrar a otra (R52). Del veredicto sale **el destino y nada más** —un
+        literal de `Enum`—: ni las observaciones, ni el código de obra, ni el
+        número de incidencia, que son del papel (F-030 R21). Y este es el
+        camino más transitado del servicio desde que las tres puertas consultan
+        el estado: si filtrara, filtraría en bucle.
         """
         sql, parametros = sentencias.select_situacion_estado(
             esquema=self._esquema, hash_parte=hash_parte
@@ -280,19 +299,30 @@ class RepositorioPostgres:
             else:
                 ultimo_estado = decision.estado
 
-        estado_cierre = self.consultar_estado_cierre(hash_parte=hash_parte)
+        sql, parametros = sentencias.select_veredicto_y_cierre(
+            esquema=self._esquema, hash_parte=hash_parte
+        )
+        filas = self._leer(sql, parametros, operacion="consultar_situacion")
+        validacion, estado_cierre = (
+            fila_a_validacion_y_cierre(filas[0], hash_parte=hash_parte)
+            if filas
+            else (None, None)
+        )
+
         log.info(
             "F-028 situación del parte leída: hash=%s decidida_por_persona=%s "
-            "ultimo_estado=%s cierre=%s",
+            "ultimo_estado=%s cierre=%s destino=%s",
             hash_parte,
             decision_humana is not None,
             None if ultimo_estado is None else ultimo_estado.value,
             estado_cierre,
+            None if validacion is None else validacion.destino.value,
         )
         return SituacionParte(
             decision_humana=decision_humana,
             ultimo_estado_registrado=ultimo_estado,
             estado_cierre=estado_cierre,
+            validacion=validacion,
         )
 
     def registrar_decision(self, *, decision: DecisionEstado) -> ResultadoGuardado:

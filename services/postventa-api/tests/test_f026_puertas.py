@@ -53,7 +53,7 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import CodigoMotivo, Destino, validar_parte
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
 from tests.utiles_sharepoint import ArchivoPortFalso, RepositorioFalso
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
@@ -165,11 +165,16 @@ def test_f026_r25_un_parte_no_apto_sin_aprobacion_no_se_archiva(destino):
     afirma es que **no hay ningún fichero arriba** y que no se creó ni la
     carpeta, no que alguien no llamara a un método.
     """
+    # F-030 · el veredicto que rechaza es el **guardado**: el aserto de abajo
+    # exige que el mensaje nombre el destino, y sin veredicto en el doble el
+    # motivo sería otro («no consta validación»).
     archivador, repositorio = ArchivoPortFalso(), RepositorioFalso()
+    ctx = _contexto(destino)
+    con_el_veredicto_guardado(repositorio, ctx)
 
     with pytest.raises(ParteNoApto) as fallo:
         paso_archivo(
-            _contexto(destino),
+            ctx,
             archivador,
             repositorio,
             carpeta_base="Postventa",

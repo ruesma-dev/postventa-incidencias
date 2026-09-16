@@ -323,6 +323,14 @@ class RepositorioFalso:
     #: cuenta aparte de `archivos` justo porque una llamada que falla no
     #: guarda nada y desplazaría el índice de `fallos`.
     llamadas_guardar_archivo: int = 0
+    #: F-030 · la situación que devuelve `consultar_situacion`.
+    #:
+    #: `None` es «de este parte no consta nada», que **no es un error**: es el
+    #: caso normal del primer día. Se hizo programable en F-030 porque desde
+    #: entonces la situación trae también el **veredicto guardado**, que es de
+    #: donde la puerta deriva el estado; los tests la preparan con
+    #: `con_el_veredicto_guardado` (`tests/utiles_pg.py`).
+    situacion: Any = None
 
     def guardar_archivo(self, *, traza: TrazaArchivo) -> ResultadoGuardado:
         self.llamadas_guardar_archivo += 1
@@ -372,7 +380,8 @@ class RepositorioFalso:
         raise NotImplementedError("F-006 no lee la cola")
 
     def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
-        """F-028 · «de este parte no consta nada», que **no es un error**.
+        """F-028 · lo que el test haya preparado, o «de este parte no consta
+        nada», que **no es un error**.
 
         Los tres huecos vacíos son el caso normal del primer día, y es lo mismo
         que devuelve el adaptador de verdad: nadie ha decidido, no hay ninguna
@@ -386,12 +395,19 @@ class RepositorioFalso:
         que este doble tiene que saber contestar o ningún test de F-006 llegaría
         a subir nada.
 
-        Que no sea programable es deliberado, igual que arriba: los casos con
-        decisión se prueban con `RepositorioEnMemoria`, que sí la sabe
-        devolver. Y **no se apunta en `registro`**: es una lectura, y ese
-        registro fija el orden de las escrituras (F-019 R19).
+        Los casos con **decisión humana** se siguen probando con
+        `RepositorioEnMemoria`, que sabe acumular el histórico; aquí solo se
+        programa la situación entera de una pieza. Y **no se apunta en
+        `registro`**: es una lectura, y ese registro fija el orden de las
+        escrituras (F-019 R19).
+
+        > Enmienda del 2026-09-16 (F-030): hasta hoy devolvía siempre una
+        > situación vacía y eso era deliberado. Dejó de poder serlo cuando el
+        > **veredicto guardado** pasó a viajar dentro de la situación: un doble
+        > que contestara «de este parte no consta validación» pararía en la
+        > puerta a todos los tests de F-006, que van de otra cosa.
         """
-        return SituacionParte()
+        return self.situacion if self.situacion is not None else SituacionParte()
 
 
 def parte_de_prueba(

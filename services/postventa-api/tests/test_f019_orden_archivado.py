@@ -49,8 +49,10 @@ from domain.models.errores import (
     PersistenciaNoDisponible,
     ReferenciaNoConsta,
 )
+from domain.models.estado import SituacionParte
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
 
+from tests.utiles_pg import con_el_veredicto_guardado
 from tests.utiles_sharepoint import (
     CARPETA_BASE,
     ArchivoPortFalso,
@@ -58,6 +60,7 @@ from tests.utiles_sharepoint import (
     RepositorioFalso,
     contexto_apto,
 )
+from tests.utiles_validacion import veredicto_apto
 
 AHORA = datetime(2026, 8, 26, 9, 30, tzinfo=UTC)
 
@@ -85,15 +88,32 @@ FORMULARIO_APTO = (
 
 
 def _dobles(**extra):
-    """El archivador y el repositorio, **compartiendo el mismo registro**."""
+    """El archivador y el repositorio, **compartiendo el mismo registro**.
+
+    F-030 · el repositorio contesta con el veredicto **apto guardado** de ese
+    parte: desde F-030 es de ahí de donde la puerta deriva el estado, y sin él
+    los casos del borde se pararían en la puerta en vez de llegar al orden de
+    las escrituras, que es lo que este fichero vigila. No afloja nada: cuando
+    una petición llega de verdad a `/api/archivar`, ese veredicto ya está en la
+    base. Ver `veredicto_apto` en `tests/utiles_validacion.py`.
+    """
     registro: list[str] = []
     archivador = ArchivoPortFalso(registro=registro, **extra.pop("archivador", {}))
-    repositorio = RepositorioFalso(registro=registro, **extra.pop("repositorio", {}))
+    del_repositorio = dict(extra.pop("repositorio", {}))
+    del_repositorio.setdefault(
+        "situacion", SituacionParte(validacion=veredicto_apto())
+    )
+    repositorio = RepositorioFalso(registro=registro, **del_repositorio)
     return archivador, repositorio, registro
 
 
 def _archivar(ctx, archivador, repositorio, **extra):
-    """El paso con la carpeta base y la hora de siempre."""
+    """El paso con la carpeta base y la hora de siempre.
+
+    F-030 · deja también en el doble el veredicto del contexto, por si el caso
+    no lo preparó (ver `tests/utiles_pg.py`).
+    """
+    con_el_veredicto_guardado(repositorio, ctx)
     return paso_archivo(
         ctx,
         archivador,
@@ -332,14 +352,15 @@ def test_f019_r19_un_parte_no_apto_no_escribe_ni_la_traza_previa():
 
     from tests.utiles_sharepoint import contexto_no_apto
 
-    archivador, repositorio, registro = _dobles()
+    # F-030 · lo que rechaza es el veredicto **guardado**, así que el doble
+    # tiene que contestar el del parte no apto y no el apto de por omisión.
+    ctx = contexto_no_apto(observaciones="algo escrito a mano")
+    archivador, repositorio, registro = _dobles(
+        repositorio={"situacion": SituacionParte(validacion=ctx.validacion)}
+    )
 
     with pytest.raises(ParteNoApto):
-        _archivar(
-            contexto_no_apto(observaciones="algo escrito a mano"),
-            archivador,
-            repositorio,
-        )
+        _archivar(ctx, archivador, repositorio)
 
     assert registro == []
     assert repositorio.archivos == []
@@ -473,7 +494,9 @@ def test_f019_r23_con_la_ventana_cerrada_el_repositorio_no_recibe_nada(
     import function_app
     from interface_adapters.api.archivar import archivar_parte
 
-    repositorio = RepositorioFalso()
+    repositorio = RepositorioFalso(
+        situacion=SituacionParte(validacion=veredicto_apto())
+    )
 
     def envoltura(contenido: bytes, **datos):
         return archivar_parte(contenido, repositorio=repositorio, **datos)

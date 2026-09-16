@@ -29,7 +29,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-__all__ = ["ConexionDoble", "CursorDoble", "Ejecutada", "RepositorioEnMemoria"]
+__all__ = [
+    "ConexionDoble",
+    "CursorDoble",
+    "Ejecutada",
+    "RepositorioComoLaBase",
+    "RepositorioEnMemoria",
+    "con_el_veredicto_guardado",
+]
 
 
 class Ejecutada:
@@ -401,3 +408,256 @@ class RepositorioEnMemoria:
         if self.fallo is not None:
             raise self.fallo
         return self.cola
+
+
+def con_el_veredicto_guardado(repositorio: Any, ctx: Any) -> Any:
+    """F-030 · deja en el doble el veredicto que la base tendría de ese parte.
+
+    Desde F-030 la puerta de los tres pasos deriva el estado del veredicto
+    **guardado** (`ctx.situacion.validacion`) y no vuelve a mirar el del
+    contexto. Los tests que ejercitan *otra cosa* del paso —la carpeta, el
+    nombre del fichero, la idempotencia, el dry-run, los logs— preparaban el
+    veredicto solo en el contexto, porque hasta ayer era de ahí de donde salía.
+    Al mudarse la fuente se quedarían todos parados en la puerta, y el rojo no
+    diría nada de lo que cada uno viene a probar.
+
+    Esto no afloja ninguna puerta: **pone el mundo en su sitio**. En
+    producción, cuando una petición llega a `/api/archivar`, el veredicto de
+    ese parte ya está en `postventa.validaciones` —lo escribió `POST /api/parte`
+    o `POST /api/estado`—, así que un doble que contestara «de este parte no
+    consta validación» estaría modelando un mundo que no existe.
+
+    Dos cosas que **no** hace, y son las que evitan que esto se convierta en
+    una puerta trasera:
+
+    1. **No inventa un veredicto.** Si el contexto no trae ninguno, el doble se
+       queda sin él: el caso «nadie ha emitido veredicto» tiene que seguir
+       siendo ese caso (R8).
+    2. **No pisa lo que el test haya preparado.** Si la situación ya trae un
+       veredicto, el test está diciendo algo a propósito —normalmente que las
+       dos fuentes se contradicen, que es el corazón de F-030— y se respeta.
+
+    Y por eso mismo **no se usa en los tests que vigilan la puerta**:
+    `test_f030_veredicto_persistido.py` y `test_f030_circuito_borde_a_borde.py`
+    separan las dos fuentes a mano, a propósito, porque es lo único que hace
+    que cacen el defecto (`design.md` §7.1).
+    """
+    from dataclasses import replace
+
+    from domain.models.estado import SituacionParte
+
+    if ctx.validacion is None:
+        return repositorio
+
+    situacion = repositorio.situacion
+    if situacion is None:
+        situacion = SituacionParte()
+    if situacion.validacion is None:
+        repositorio.situacion = replace(situacion, validacion=ctx.validacion)
+    return repositorio
+
+
+class RepositorioComoLaBase:
+    """F-030 · el doble que **guarda columnas y no objetos** (`design.md` §7.1).
+
+    ## Por qué hacía falta otro doble
+
+    `RepositorioEnMemoria` devuelve **el mismo objeto** que se le dio. Eso lo
+    hace cómodo y, para lo que aquí importa, ciego: la decisión humana y el
+    veredicto con el que se juzga esa decisión salían del mismo
+    `ResultadoValidacion`, así que las dos huellas coincidían **por
+    construcción**. Con esa propiedad, el test de F-028 no podía cazar la
+    regresión de RS26.09/0178 ni aunque estuviera escrito: no existía la única
+    situación en la que el defecto se ve, que es cuando el veredicto **vuelve
+    de las columnas**.
+
+    Este doble no tiene forma de devolver lo que entró, porque **no lo
+    guarda**. Guarda lo mismo que guardaría PostgreSQL:
+
+    - `guardar_parte(...)` → las 18 columnas de `mapeo.valores_de_campos`;
+    - `guardar_validacion(...)` → las 7 de `mapeo.valores_de_validacion`, que
+      **no incluyen las observaciones** (R21, R39: el texto manuscrito del
+      cliente no se copia a `validaciones`);
+    - `registrar_decision(...)` **acumula**, igual que la tabla append-only;
+    - `consultar_situacion(...)` **recompone** el veredicto con la misma
+      `mapeo.fila_a_validacion_y_cierre` que usa producción, armando la fila en
+      el orden de `sentencias.select_veredicto_y_cierre`.
+
+    Si la recomposición perdiera las observaciones, o el código de obra, o el
+    orden de los motivos, **la huella dejaría de coincidir y el test se pondría
+    rojo**. Esa es toda la razón de ser de este doble, y es exactamente la
+    propiedad por la que el defecto pasó.
+
+    **`RepositorioEnMemoria` no se toca**: sigue siendo el doble correcto para
+    los cientos de casos que prueban otra cosa del paso y a los que un ida y
+    vuelta por columnas solo les añadiría ruido.
+
+    No es una base de datos: no valida tipos, no aplica `CHECK` y no sabe de
+    transacciones. Lo único que imita es **la pérdida de identidad**, que es lo
+    que hay que imitar aquí. Lo que un doble no puede demostrar —que el SQL sea
+    PostgreSQL válido— sigue siendo trabajo de `tests_bbdd/`.
+    """
+
+    def __init__(self) -> None:
+        #: `postventa.partes`, por `hash_parte`: las 18 columnas de la ficha.
+        self.columnas_de_partes: dict[str, tuple] = {}
+        #: `postventa.validaciones`, por `hash_parte`: las 7 columnas.
+        self.columnas_de_validaciones: dict[str, tuple] = {}
+        #: `postventa.historico_estado`: **acumula**, nunca pisa (R21 de F-028).
+        self.decisiones: list[Any] = []
+        self.remesas: list[Any] = []
+        #: Las trazas, por `hash_parte`: una por parte, como sus tablas.
+        self.archivos: dict[str, Any] = {}
+        self.graficos: dict[str, Any] = {}
+        self.cierres: dict[str, Any] = {}
+        #: Con qué `hash` se ha preguntado, en orden: comprobar **que se
+        #: preguntó** es la mitad de R33 de F-028.
+        self.situaciones_consultadas: list[str] = []
+        self.graficos_consultados: list[str] = []
+
+    # --- las escrituras ---------------------------------------------------
+
+    def guardar_remesa(self, *, remesa: Any) -> Any:
+        from domain.models.persistencia import ResultadoGuardado
+
+        self.remesas.append(remesa)
+        return ResultadoGuardado.CREADO
+
+    def guardar_parte(
+        self, *, parte: Any, extraccion: Any, remesa_id: str, ahora: Any
+    ) -> Any:
+        """La ficha del parte, **en columnas**. El objeto se queda fuera."""
+        from domain.models.persistencia import ResultadoGuardado
+        from infrastructure.persistencia import mapeo
+
+        ya_estaba = parte.hash in self.columnas_de_partes
+        self.columnas_de_partes[parte.hash] = mapeo.valores_de_campos(extraccion)
+        return ResultadoGuardado.ACTUALIZADO if ya_estaba else ResultadoGuardado.CREADO
+
+    def guardar_validacion(self, *, resultado: Any, ahora: Any) -> Any:
+        """El veredicto, **en columnas**, y sin las observaciones (R21, R39)."""
+        from domain.models.persistencia import ResultadoGuardado
+        from infrastructure.persistencia import mapeo
+
+        ya_estaba = resultado.hash_parte in self.columnas_de_validaciones
+        self.columnas_de_validaciones[resultado.hash_parte] = (
+            mapeo.valores_de_validacion(resultado, ahora)
+        )
+        return ResultadoGuardado.ACTUALIZADO if ya_estaba else ResultadoGuardado.CREADO
+
+    def registrar_decision(self, *, decision: Any) -> Any:
+        """Añade una fila al histórico. **Nunca pisa ninguna.**
+
+        A diferencia de `RepositorioEnMemoria`, aquí no hay ninguna situación
+        preparada que actualizar: la que se devuelve se **deriva** de las filas
+        cada vez que alguien pregunta, que es lo que hace la consulta de
+        verdad.
+        """
+        from domain.models.persistencia import ResultadoGuardado
+
+        self.decisiones.append(decision)
+        return ResultadoGuardado.CREADO
+
+    def guardar_archivo(self, *, traza: Any) -> Any:
+        from domain.models.persistencia import ResultadoGuardado
+
+        self.archivos[traza.hash_parte] = traza
+        return ResultadoGuardado.CREADO
+
+    def guardar_grafico(self, *, traza: Any) -> Any:
+        from domain.models.persistencia import ResultadoGuardado
+
+        self.graficos[traza.hash_parte] = traza
+        return ResultadoGuardado.CREADO
+
+    def guardar_cierre(self, *, traza: Any) -> Any:
+        from domain.models.persistencia import ResultadoGuardado
+
+        self.cierres[traza.hash_parte] = traza
+        return ResultadoGuardado.CREADO
+
+    # --- las lecturas -----------------------------------------------------
+
+    def consultar_situacion(self, *, hash_parte: str) -> Any:
+        """Las cuatro cosas, recompuestas **desde las columnas** (F-030 R2).
+
+        El veredicto sale de `mapeo.fila_a_validacion_y_cierre`, la misma
+        función de producción, con la fila armada en el orden de
+        `sentencias.select_veredicto_y_cierre`. Lo demás sigue la semántica de
+        `select_situacion_estado`: la **última** fila humana manda como
+        `decision_humana`, y `ultimo_estado_registrado` es el estado de la
+        última fila del histórico, la firmara quien la firmara (R26).
+
+        Sin fila en `partes` no vuelve ninguna fila, y eso son veredicto `None`
+        y cierre `None`: la consulta de verdad se ancla ahí (R8, R9).
+        """
+        from domain.models.estado import SituacionParte
+        from infrastructure.persistencia import mapeo
+
+        self.situaciones_consultadas.append(hash_parte)
+
+        decision_humana = None
+        ultimo_estado = None
+        for decision in self.decisiones:
+            if decision.hash_parte != hash_parte:
+                continue
+            ultimo_estado = decision.estado
+            if decision.por_persona:
+                decision_humana = decision
+
+        fila = self._fila_de_veredicto_y_cierre(hash_parte)
+        validacion, estado_cierre = (
+            mapeo.fila_a_validacion_y_cierre(fila, hash_parte=hash_parte)
+            if fila is not None
+            else (None, None)
+        )
+        return SituacionParte(
+            decision_humana=decision_humana,
+            ultimo_estado_registrado=ultimo_estado,
+            estado_cierre=estado_cierre,
+            validacion=validacion,
+        )
+
+    def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:
+        """Lo que diga la traza de cierre, **como texto**: es una columna."""
+        traza = self.cierres.get(hash_parte)
+        return None if traza is None else traza.estado.value
+
+    def consultar_grafico(self, *, hash_parte: str) -> Any:
+        self.graficos_consultados.append(hash_parte)
+        return self.graficos.get(hash_parte)
+
+    def cola_validacion_humana(self, *, limite: int) -> tuple:
+        return ()
+
+    # --- lo que hace de `SELECT` ------------------------------------------
+
+    def _fila_de_veredicto_y_cierre(self, hash_parte: str) -> tuple | None:
+        """La fila que devolvería `select_veredicto_y_cierre`, por posición.
+
+        Las cinco primeras columnas salen de la fila de `validaciones` —y son
+        `None` si ese parte no tiene veredicto, porque el `JOIN` es `LEFT`—; las
+        cuatro siguientes, de la de `partes`, que es de donde tienen que salir:
+        el DDL de `validaciones` prohíbe copiar ahí el texto manuscrito del
+        cliente. La última es el estado de cierre.
+        """
+        from infrastructure.persistencia import mapeo
+
+        campos = self.columnas_de_partes.get(hash_parte)
+        if campos is None:
+            return None
+
+        validacion = self.columnas_de_validaciones.get(hash_parte)
+        del_veredicto = (None,) * 5 if validacion is None else tuple(validacion[1:6])
+
+        def columna(nombre: str) -> Any:
+            return campos[mapeo.COLUMNAS_DE_CAMPOS.index(nombre)]
+
+        return (
+            *del_veredicto,
+            columna("observaciones"),
+            columna("observaciones_confianza_pct"),
+            columna("codigo_obra"),
+            columna("numero_incidencia"),
+            self.consultar_estado_cierre(hash_parte=hash_parte),
+        )

@@ -61,6 +61,7 @@ from domain.models.errores import (
     ConfiguracionPgIncompleta,
     PersistenciaNoDisponible,
 )
+from domain.models.estado import SituacionParte
 
 from tests.test_f006_archivar_http import (
     PDF_CON_DATOS,
@@ -68,6 +69,7 @@ from tests.test_f006_archivar_http import (
     _cuerpo,
     _peticion,
 )
+from tests.utiles_pg import con_el_veredicto_guardado
 from tests.utiles_sharepoint import (
     CARPETA_BASE,
     ArchivoPortFalso,
@@ -75,6 +77,7 @@ from tests.utiles_sharepoint import (
     RepositorioFalso,
     contexto_apto,
 )
+from tests.utiles_validacion import veredicto_apto
 
 #: Un instante fijo: el paso no consulta el reloj.
 AHORA = datetime(2026, 8, 25, 14, 8, tzinfo=UTC)
@@ -97,13 +100,30 @@ def _repositorio_caido() -> RepositorioFalso:
     `test_f019_r21_...` y de `_caida_desde_el_principio` de aquí abajo.
 
     El motivo es el **real** del 2026-08-25, tal y como lo compone F-005.
+
+    F-030 · la situación trae el veredicto **guardado** del parte: desde F-030
+    es de ahí de donde la puerta deriva el estado, y sin él estos casos se
+    pararían en la puerta en vez de llegar a la caída de la base, que es lo que
+    vienen a probar. Ver `veredicto_apto` en `tests/utiles_validacion.py`.
     """
-    return RepositorioFalso(fallos={2: PersistenciaNoDisponible(MOTIVO_REAL)})
+    return RepositorioFalso(
+        fallos={2: PersistenciaNoDisponible(MOTIVO_REAL)},
+        situacion=SituacionParte(validacion=veredicto_apto()),
+    )
 
 
 def _caida_desde_el_principio() -> RepositorioFalso:
-    """Un repositorio que no responde a nada, ni a la traza previa."""
-    return RepositorioFalso(fallo=PersistenciaNoDisponible(MOTIVO_REAL))
+    """Un repositorio que no responde a nada, ni a la traza previa.
+
+    F-030 · la situación trae el veredicto **guardado** del parte: desde F-030
+    es de ahí de donde la puerta deriva el estado, y sin él estos casos se
+    pararían en la puerta en vez de llegar a la caída de la base, que es lo que
+    vienen a probar. Ver `veredicto_apto` en `tests/utiles_validacion.py`.
+    """
+    return RepositorioFalso(
+        fallo=PersistenciaNoDisponible(MOTIVO_REAL),
+        situacion=SituacionParte(validacion=veredicto_apto()),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -222,7 +242,13 @@ def test_f010_defecto14_falta_de_configuracion_de_pg_responde_503(monkeypatch):
 
 
 def _archivar(ctx, archivador, repositorio):
-    """El paso con la carpeta base y la hora de siempre."""
+    """El paso con la carpeta base y la hora de siempre.
+
+    **Enmienda del 2026-09-16 (F-030).** Desde F-030 la puerta del paso deriva
+    el estado del veredicto **guardado**, así que el ayudante lo deja también
+    en el doble antes de llamar (ver `tests/utiles_pg.py`).
+    """
+    con_el_veredicto_guardado(repositorio, ctx)
     return paso_archivo(
         ctx, archivador, repositorio, carpeta_base=CARPETA_BASE, ahora=AHORA
     )

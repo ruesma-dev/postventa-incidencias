@@ -83,17 +83,33 @@ class RepositorioPartesPort(Protocol):
         transporte: ya está en la fila del parte y una segunda copia de texto
         manuscrito de un cliente dobla la exposición y diverge (R21, R39).
 
-        **Y revoca la aprobación humana cuyo veredicto ya no es este** (F-026,
-        R30), en la misma operación. Forma parte del contrato y no es un
-        detalle del adaptador: quien implemente el puerto tiene que saberlo,
-        porque es lo que hace que quien lea la aprobación después vea la verdad
-        sin tener que calcularla.
+        **Y nada más**: una sola sentencia.
 
-        La alternativa —comprobar la vigencia al leer— obligaría a tener
-        delante el veredicto y la aprobación en todos los sitios que miran,
-        incluidos los tres pasos del circuito, cuyo cuerpo de petición no trae
-        ni los motivos ni las observaciones y por tanto **no puede** recomputar
-        la huella. Ver `design.md` §7.
+        > **Enmienda del 2026-09-16 · F-030 T7 (`design.md` §5.1).** Hasta hoy
+        > este contrato decía dos cosas que ya no son ciertas, y la segunda es
+        > la descripción literal del defecto que F-030 arregla. Decía:
+        >
+        > *«**Y revoca la aprobación humana cuyo veredicto ya no es este**
+        > (F-026, R30), en la misma operación. […] La alternativa —comprobar la
+        > vigencia al leer— obligaría a tener delante el veredicto y la
+        > aprobación en todos los sitios que miran, incluidos los tres pasos
+        > del circuito, cuyo cuerpo de petición no trae ni los motivos ni las
+        > observaciones y por tanto **no puede** recomputar la huella.»*
+        >
+        > **La revocación se retiró en F-028 T15.** La vigencia de una
+        > aprobación se resuelve **al derivar**, comparando en
+        > `estado.py::_aprueba_lo_que_hay` la huella apuntada en el histórico
+        > con la del veredicto de ahora. El adaptador ya llevaba su enmienda;
+        > el puerto se había quedado sin ella.
+        >
+        > **Y la premisa era cierta y dejó de serlo.** Los tres pasos del
+        > circuito no recomputan la huella **del cuerpo**: la recomponen del
+        > **veredicto guardado**, que viene en `SituacionParte.validacion` y
+        > llega con la consulta que ya hacían (F-030 R1, R18). Dejar escrito
+        > que «no pueden» era dejar escrito el razonamiento que llevó a
+        > fabricar un `ResultadoValidacion` de pega en los tres endpoints, y
+        > eso dejó sin archivar un parte que una persona había aprobado
+        > (RS26.09/0178).
         """
         ...
 
@@ -134,20 +150,37 @@ class RepositorioPartesPort(Protocol):
     def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
         """Lo que hace falta saber de un parte para derivar su estado (F-028).
 
-        **Una sola llamada** y tres cosas de vuelta (R2): la última decisión
-        **humana**, el último estado registrado —solo para la regla de
-        constancia— y el estado de la traza de cierre. Quien pregunta no tiene
-        que cruzar cuatro tablas ni saber que el histórico existe.
+        **Una sola llamada** y **cuatro** cosas de vuelta (R2): el veredicto
+        guardado, la última decisión **humana**, el último estado registrado
+        —solo para la regla de constancia— y el estado de la traza de cierre.
+        Son los cuatro que consume `estado_del_parte`, y vuelven juntos para
+        que quien deriva el estado no pueda mezclar una fuente con otra. Quien
+        pregunta no tiene que cruzar cuatro tablas ni saber que el histórico
+        existe.
 
-        Que los tres huecos vengan vacíos **no es un error**: es el caso normal
-        del primer día. Todo parte nace sin decisión, sin fila y sin traza de
-        cierre, y de ahí tiene que salir un estado igualmente
-        (`estado_del_parte` lo resuelve).
+        > **Enmienda del 2026-09-16 · F-030 T7 (`design.md` §5.1).** Eran tres:
+        > el veredicto se lo buscaba cada consumidor por su cuenta. Los tres
+        > endpoints del circuito —que no reciben la extracción y no la van a
+        > recibir nunca, porque pedirla obligaría al front a reenviar el DNI y
+        > las observaciones manuscritas del cliente en cada llamada— acabaron
+        > **fabricándolo** desde el cuerpo de la petición, y con eso un parte
+        > aprobado por una persona dejó de archivarse (RS26.09/0178).
+        >
+        > El veredicto viaja **dentro de la misma consulta**, así que la cuarta
+        > cosa no cuesta ninguna consulta más por parte y por paso (R18).
+
+        Que los cuatro huecos vengan vacíos **no es un error**: es el caso
+        normal del primer día. Todo parte nace sin veredicto, sin decisión, sin
+        fila y sin traza de cierre, y de ahí tiene que salir un estado
+        igualmente (`estado_del_parte` lo resuelve). Y un parte del que no
+        consta ni la ficha se comporta igual que uno sin validar: los dos
+        huecos, nunca un error de base de datos (F-030 R9).
 
         La leen las tres puertas del circuito, y la leen **de aquí y nunca del
         cuerpo de la petición** (R33): si viniera del cuerpo, quien llama podría
-        afirmar que alguien aprobó lo que nadie aprobó, y con eso se cierra en
-        el ERP de producción una reclamación que la validación había rechazado.
+        afirmar que alguien aprobó lo que nadie aprobó —o que un parte que la
+        validación mandó a revisión manual es apto—, y con eso se cierra en el
+        ERP de producción una reclamación que la validación había rechazado.
 
         La decisión que vuelve es la **humana**, no la última fila: las de
         máquina son constancia, nunca criterio (R26).

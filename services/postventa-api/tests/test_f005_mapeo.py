@@ -13,9 +13,16 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
+import pytest
 from domain.models.extraccion import CAMPOS_DEL_PARTE
 from domain.models.firma import ClasificacionFirma
-from domain.models.validacion import validar_parte
+from domain.models.validacion import (
+    CodigoMotivo,
+    Destino,
+    Motivo,
+    Veredicto,
+    validar_parte,
+)
 
 from infrastructure.persistencia import mapeo
 from infrastructure.persistencia.mapeo import (
@@ -370,3 +377,198 @@ def test_f005_r27_una_fila_de_preferencias_vuelve_al_dominio():
     assert preferencias.usuario_oid == "oid-inventado-0000"
     assert preferencias.auto_cierre is True
     assert preferencias.actualizado_at_utc == AHORA_INVENTADO
+
+
+# --------------------------------------------------------------------------
+# F-030 · el veredicto guardado, de vuelta al dominio
+# --------------------------------------------------------------------------
+
+#: Una fila de `select_veredicto_y_cierre` con veredicto y sin traza de cierre.
+#:
+#: Las diez columnas en el orden de `design.md` §3 de F-030: cinco de
+#: `validaciones`, cuatro de `partes` y el estado de `cierres`.
+FILA_CON_VEREDICTO = (
+    "no_apto",
+    "cola_validacion_humana",
+    "humana",
+    [{"codigo": "observaciones_manuscritas", "texto": "texto inventado"}],
+    ["un aviso inventado"],
+    "texto de ejemplo inventado",
+    82,
+    "0000",
+    "XX00.00 - 0000",
+    None,
+)
+
+
+def test_f030_r9_sin_fila_de_validacion_el_veredicto_vuelve_a_none():
+    """R8, R9 · «no hay veredicto» se distingue por el **veredicto**, no por el hash.
+
+    La consulta se ancla en `postventa.partes`, así que un parte que exista
+    pero al que nadie haya validado devuelve fila con las cinco columnas de
+    `validaciones` a `NULL`. Recomponer ahí un `ResultadoValidacion` con huecos
+    sería inventarse un veredicto que nadie emitió —que es exactamente el
+    defecto que F-030 viene a quitar— y además taparía el error propio de «no
+    consta que este parte haya pasado la validación», que se arregla
+    revalidando y no decidiendo.
+
+    El estado de cierre **sí vuelve**, y eso importa: un parte cerrado sin
+    fila de validación tiene que seguir dando `cerrado`, porque ese hecho es
+    del ERP y gana a todo.
+    """
+    fila = (None, None, None, None, None, None, 0, None, None, "cerrado")
+
+    validacion, estado_cierre = mapeo.fila_a_validacion_y_cierre(
+        fila, hash_parte="hash-inventado"
+    )
+
+    assert validacion is None
+    assert estado_cierre == "cerrado"
+
+
+def test_f030_r9_sin_ninguna_fila_no_hay_ni_veredicto_ni_cierre():
+    """R9 · un parte del que no consta ni la ficha se lee como los dos huecos.
+
+    Lo que no puede pasar es que el camino de «no consta nada» sea distinto del
+    de «no consta la validación»: los dos acaban en el mismo error y ninguno es
+    un fallo de base de datos.
+    """
+    fila = (None,) * 10
+
+    assert mapeo.fila_a_validacion_y_cierre(fila, hash_parte="hash-inventado") == (
+        None,
+        None,
+    )
+
+
+def test_f030_r10_el_veredicto_guardado_vuelve_entero():
+    """Las diez columnas se leen cada una en su sitio, y el `hash` no sale de la fila.
+
+    El orden es lo único que sostiene esta lectura: si alguien añadiera una
+    columna al `SELECT` sin tocar aquí, el destino se leería en el sitio del
+    veredicto. Por eso este caso afirma **campo a campo** y no solo la huella.
+    """
+    validacion, estado_cierre = mapeo.fila_a_validacion_y_cierre(
+        FILA_CON_VEREDICTO, hash_parte="hash-inventado"
+    )
+
+    assert validacion.hash_parte == "hash-inventado"
+    assert validacion.veredicto is Veredicto.NO_APTO
+    assert validacion.destino is Destino.COLA_VALIDACION_HUMANA
+    assert validacion.clasificacion_firma is ClasificacionFirma.HUMANA
+    assert validacion.motivos == (
+        Motivo(codigo=CodigoMotivo.OBSERVACIONES_MANUSCRITAS, texto="texto inventado"),
+    )
+    assert validacion.avisos == ("un aviso inventado",)
+    assert validacion.observaciones == "texto de ejemplo inventado"
+    assert validacion.confianza_observaciones == 82
+    assert validacion.codigo_obra == "0000"
+    assert validacion.numero_incidencia == "XX00.00 - 0000"
+    assert estado_cierre is None
+
+
+def test_f030_r10_los_motivos_y_los_avisos_valen_como_json_o_como_texto():
+    """El gemelo de R22: el driver puede deserializar el `jsonb` o no.
+
+    Si los motivos se perdieran por un detalle de adaptación, la huella
+    recompuesta dejaría de ser la del veredicto guardado y **caducaría la
+    aprobación de una persona** sin que nadie lo notara: el mismo síntoma que
+    la regresión que F-030 arregla, por otro camino.
+    """
+    fila = (
+        FILA_CON_VEREDICTO[:3]
+        + (
+            json.dumps(
+                [{"codigo": "observaciones_manuscritas", "texto": "texto inventado"}]
+            ),
+            json.dumps(["un aviso inventado"]),
+        )
+        + FILA_CON_VEREDICTO[5:]
+    )
+
+    validacion, _ = mapeo.fila_a_validacion_y_cierre(fila, hash_parte="hash-inventado")
+
+    assert validacion.motivos == (
+        Motivo(codigo=CodigoMotivo.OBSERVACIONES_MANUSCRITAS, texto="texto inventado"),
+    )
+    assert validacion.avisos == ("un aviso inventado",)
+
+
+def test_f030_r10_un_veredicto_sin_motivos_ni_avisos_no_revienta():
+    """Un `NULL` en las dos columnas `jsonb` es «ninguno», no un fallo.
+
+    Es el caso del parte apto: ni motivos que explicar ni diagnósticos que
+    emitir. Y las dos tuplas vacías son justo lo que necesita la cadena
+    canónica de la huella para dar el mismo valor que el veredicto en memoria.
+    """
+    fila = FILA_CON_VEREDICTO[:3] + (None, None) + FILA_CON_VEREDICTO[5:]
+
+    validacion, _ = mapeo.fila_a_validacion_y_cierre(fila, hash_parte="hash-inventado")
+
+    assert validacion.motivos == ()
+    assert validacion.avisos == ()
+
+
+def test_f030_r10_los_dos_campos_decisivos_a_null_se_leen_como_vacios():
+    """`NULL` en `codigo_obra` o en `numero_incidencia` es la cadena vacía.
+
+    No es criterio: es el valor por defecto que ya declara
+    `ResultadoValidacion`, y es lo que hace que la huella de un parte al que el
+    modelo no le pudo leer el número coincida con la del veredicto que se
+    emitió con `""`. Las **observaciones**, en cambio, se pasan tal cual
+    vienen: normalizarlas aquí sería una segunda copia del criterio de
+    `_normalizar`, que es de la huella y no se toca.
+    """
+    fila = FILA_CON_VEREDICTO[:5] + ("   ", 0, None, None, None)
+
+    validacion, _ = mapeo.fila_a_validacion_y_cierre(fila, hash_parte="hash-inventado")
+
+    assert validacion.codigo_obra == ""
+    assert validacion.numero_incidencia == ""
+    assert validacion.observaciones == "   "
+
+
+@pytest.mark.parametrize(
+    "posicion",
+    [
+        pytest.param(0, id="veredicto"),
+        pytest.param(1, id="destino"),
+        pytest.param(2, id="clasificacion_firma"),
+    ],
+)
+def test_f030_r1_un_literal_que_el_dominio_no_conoce_revienta(posicion):
+    """Un valor desconocido **rompe**, y no se degrada a nada.
+
+    Pasaría si alguien ampliara un `CHECK` de `sql/04_validaciones.sql` sin
+    ampliar el `Enum`. Traducirlo «como si fuera» otro haría que un destino
+    desconocido se leyera como `archivo_y_cierre`, y con eso se abre la puerta
+    que archiva un PDF con el DNI de un cliente y cierra una reclamación en el
+    ERP de producción. Es el mismo trato que ya reciben `EstadoGrafico` y
+    `EstadoParte`.
+    """
+    fila = (
+        FILA_CON_VEREDICTO[:posicion]
+        + ("valor_que_nadie_declaro",)
+        + FILA_CON_VEREDICTO[posicion + 1 :]
+    )
+
+    with pytest.raises(ValueError, match="valor_que_nadie_declaro"):
+        mapeo.fila_a_validacion_y_cierre(fila, hash_parte="hash-inventado")
+
+
+def test_f030_r1_un_codigo_de_motivo_desconocido_tambien_revienta():
+    """Y lo mismo con el código de un motivo, que viene dentro del `jsonb`.
+
+    El `jsonb` **no tiene `CHECK`**, así que este es el sitio por donde podría
+    entrar un código que el dominio no declara. Que reviente es lo correcto: un
+    motivo que nadie sabe leer no puede acabar contando como uno que sí, porque
+    los códigos de los motivos entran en la cadena canónica de la huella.
+    """
+    fila = (
+        FILA_CON_VEREDICTO[:3]
+        + ([{"codigo": "motivo_que_nadie_declaro", "texto": "texto inventado"}],)
+        + FILA_CON_VEREDICTO[4:]
+    )
+
+    with pytest.raises(ValueError, match="motivo_que_nadie_declaro"):
+        mapeo.fila_a_validacion_y_cierre(fila, hash_parte="hash-inventado")

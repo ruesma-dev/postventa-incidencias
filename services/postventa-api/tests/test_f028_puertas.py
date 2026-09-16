@@ -74,7 +74,7 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import CodigoMotivo, Destino, validar_parte
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
 from tests.utiles_sharepoint import ArchivoPortFalso, contexto_apto
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
@@ -225,9 +225,23 @@ def _contexto_sin_veredicto() -> ContextoParte:
 # --------------------------------------------------------------------------
 # Los tres pasos, llamados igual en todos los casos
 # --------------------------------------------------------------------------
+#
+# **Enmienda del 2026-09-16 (F-030 T9).** Desde F-030 la puerta deriva el
+# estado del veredicto **guardado** —`ctx.situacion.validacion`— y ya no mira
+# el del contexto. Los casos de este fichero preparaban el veredicto solo en el
+# contexto, porque hasta ayer era de ahí de donde salía, así que los tres
+# ayudantes lo dejan ahora también en el doble antes de llamar al paso.
+#
+# Es un cambio en los **tres ayudantes** y en ninguno de los 48 casos: ni un
+# aserto cambia, ni se afloja ninguna puerta. `con_el_veredicto_guardado` no
+# inventa veredictos —si el contexto no trae ninguno, el doble se queda sin él,
+# que es lo que exige el caso de `_contexto_sin_veredicto()`— y no pisa la
+# situación que un caso haya preparado a propósito. Su porqué entero está en
+# `tests/utiles_pg.py`.
 
 
 def _archivar(ctx: ContextoParte, repositorio, archivador) -> ContextoParte:
+    con_el_veredicto_guardado(repositorio, ctx)
     return paso_archivo(
         ctx,
         archivador,
@@ -240,6 +254,7 @@ def _archivar(ctx: ContextoParte, repositorio, archivador) -> ContextoParte:
 def _adjuntar(
     ctx: ContextoParte, repositorio, erp, graficos, *, commit: bool = True
 ) -> ContextoParte:
+    con_el_veredicto_guardado(repositorio, ctx)
     return paso_grafico(
         ctx,
         erp,
@@ -262,6 +277,7 @@ def _adjuntar(
 def _cerrar(
     ctx: ContextoParte, repositorio, erp, *, commit: bool = True
 ) -> ContextoParte:
+    con_el_veredicto_guardado(repositorio, ctx)
     return paso_cierre(
         ctx,
         erp,

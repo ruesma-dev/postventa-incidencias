@@ -266,13 +266,26 @@ def test_f028_r21_una_decision_es_inmutable():
 def test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas():
     """R2 · quien pregunta hace **una** llamada y recibe lo justo.
 
-    Las tres, y el porqué de cada una: la última decisión **humana** —lo que
-    manda sobre la máquina—, el último **estado registrado** —que no es
+    Las tres de F-028, y el porqué de cada una: la última decisión **humana**
+    —lo que manda sobre la máquina—, el último **estado registrado** —que no es
     criterio de nada y solo sirve para no repetir fila (R26)— y el estado de
     la **traza de cierre**, que gana a todo (R18).
 
-    Una cuarta cosa aquí sería una invitación a decidir con ella, y lo que se
-    decide se decide en `estado_del_parte`.
+    > **Enmienda del 2026-09-16 · F-030 T3.** Hasta hoy este caso afirmaba que
+    > los campos eran **exactamente esos tres**, y su docstring decía: *«Una
+    > cuarta cosa aquí sería una invitación a decidir con ella, y lo que se
+    > decide se decide en `estado_del_parte`.»*
+    >
+    > La cuarta cosa resultó ser **el primer argumento de `estado_del_parte`**.
+    > Dejarla fuera no impidió decidir con ella: obligó a los tres endpoints
+    > del circuito a fabricarla desde el cuerpo de la petición, y con eso un
+    > parte aprobado por una persona dejó de archivarse en producción
+    > (RS26.09/0178, F-030 §0). El veredicto guardado entra aquí por F-030 R2.
+    >
+    > **Lo que este caso sigue vigilando no se afloja**: el conjunto tiene que
+    > ser exactamente el declarado. Un quinto campo lo pone en rojo igual que
+    > antes lo ponía el cuarto, y la enmienda del campo nuevo está escrita y
+    > fechada en la docstring de `SituacionParte`.
     """
     nombres = {campo.name for campo in fields(SituacionParte)}
 
@@ -280,6 +293,7 @@ def test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas(
         "decision_humana",
         "ultimo_estado_registrado",
         "estado_cierre",
+        "validacion",
     }
 
 

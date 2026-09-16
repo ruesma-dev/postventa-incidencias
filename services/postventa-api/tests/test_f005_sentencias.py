@@ -34,7 +34,9 @@ from domain.models.validacion import validar_parte
 from infrastructure.persistencia.sentencias import (
     LIMITE_MAXIMO_COLA,
     select_cola,
+    select_estado_cierre,
     select_preferencias,
+    select_veredicto_y_cierre,
     upsert_archivo,
     upsert_cierre,
     upsert_parte,
@@ -45,6 +47,9 @@ from infrastructure.persistencia.sentencias import (
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
 ESQUEMA = "postventa"
+
+#: El hash de un parte inventado, reconocible si acabara pegado al SQL.
+HASH_INVENTADO = "hash-inventado-f030"
 AHORA_INVENTADO = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
 
 #: Un parte troceado inventado. Sus «bytes» son un texto reconocible: si
@@ -439,3 +444,106 @@ def test_f005_r5_un_esquema_hostil_no_llega_al_sql():
                 actualizado_at_utc=AHORA_INVENTADO,
             ),
         )
+
+
+# --------------------------------------------------------------------------
+# F-030 · el veredicto guardado y el cierre, en un solo viaje
+# --------------------------------------------------------------------------
+
+
+def test_f030_r18_la_consulta_nueva_nombra_las_tres_tablas_con_su_esquema():
+    """Las tres tablas, cada una con su esquema puesto por `_tabla`.
+
+    El esquema es lo **único** que se pega al texto del SQL en todo el módulo,
+    y por eso se valida: un `PG_SCHEMA` hostil sería una inyección con permisos
+    de despliegue. Que las tres pasen por `_tabla` es lo que impide que una se
+    quede sin validar por escribirla a mano.
+    """
+    sql, _ = select_veredicto_y_cierre(esquema=ESQUEMA, hash_parte=HASH_INVENTADO)
+
+    assert f"{ESQUEMA}.partes" in sql
+    assert f"{ESQUEMA}.validaciones" in sql
+    assert f"{ESQUEMA}.cierres" in sql
+
+
+def test_f030_r16_la_consulta_se_ancla_en_partes_y_los_dos_join_son_left():
+    """El anclaje y los dos `LEFT` son criterio, no estilo.
+
+    Si se anclara en `validaciones`, un parte **sin veredicto** se llevaría por
+    delante el estado de cierre, y entonces un parte **cerrado** sin fila de
+    validación dejaría de dar `cerrado` — que es el hecho del ERP que gana a
+    todo (F-028 R16, R18). Con un `JOIN` a secas pasaría lo mismo con cada
+    tabla por su lado, y el caso normal del primer día es justo ese: un parte
+    validado y sin cerrar.
+    """
+    sql, _ = select_veredicto_y_cierre(esquema=ESQUEMA, hash_parte=HASH_INVENTADO)
+
+    assert f"FROM {ESQUEMA}.partes AS p" in sql
+    assert f"LEFT JOIN {ESQUEMA}.validaciones AS v" in sql
+    assert f"LEFT JOIN {ESQUEMA}.cierres AS c" in sql
+    assert sql.count("LEFT JOIN") == sql.count("JOIN") == 2
+
+
+def test_f030_r18_el_hash_va_como_parametro_y_no_pegado_al_texto():
+    """Un solo `%s`, y el `hash` en los parámetros.
+
+    Es la misma regla que el resto del módulo: los valores no se interpolan.
+    Aquí además el `hash` identifica un documento con el DNI manuscrito de un
+    cliente, y el texto del SQL acaba en el log de errores del servidor.
+    """
+    sql, parametros = select_veredicto_y_cierre(
+        esquema=ESQUEMA, hash_parte=HASH_INVENTADO
+    )
+
+    assert sql.count("%s") == 1
+    assert parametros == (HASH_INVENTADO,)
+    assert HASH_INVENTADO not in sql
+
+
+def test_f030_r10_el_orden_de_las_columnas_es_el_que_lee_el_mapeo():
+    """Las diez columnas, en el orden exacto que desempaqueta el mapeo.
+
+    Este es el test que se entera el día que alguien añada una columna al
+    `SELECT` sin tocar `fila_a_validacion_y_cierre`: una fila leída por
+    posición se rompe **en silencio**, y aquí eso sería recomponer el veredicto
+    con el destino en el sitio del veredicto — o perder las observaciones, que
+    caducaría la aprobación de una persona sin que nadie lo notara.
+
+    Tres columnas salen de `partes` y no de `validaciones` porque el DDL de
+    `validaciones` prohíbe copiar ahí el texto manuscrito del cliente (R21,
+    R39): sin ese `JOIN` no se pueden recomponer los seis campos de la cadena
+    canónica de la huella.
+    """
+    sql, _ = select_veredicto_y_cierre(esquema=ESQUEMA, hash_parte=HASH_INVENTADO)
+
+    seleccionadas = tuple(
+        columna.strip()
+        for columna in sql.split("FROM", 1)[0].replace("SELECT", "", 1).split(",")
+    )
+
+    assert seleccionadas == (
+        "v.veredicto",
+        "v.destino",
+        "v.clasificacion_firma",
+        "v.motivos",
+        "v.avisos",
+        "p.observaciones",
+        "p.observaciones_confianza_pct",
+        "p.codigo_obra",
+        "p.numero_incidencia",
+        "c.estado",
+    )
+
+
+def test_f030_r18_la_consulta_del_estado_de_cierre_sigue_intacta():
+    """`select_estado_cierre` **no se toca**: la usan otros dos sitios.
+
+    La puerta del parte cerrado de `estado.py` y el handler de `parte.py`
+    siguen llamándola tal cual. F-030 sustituye la consulta **dentro de
+    `consultar_situacion`** y solo ahí; retirar la vieja sería romper dos
+    caminos que hoy funcionan por una limpieza que nadie pidió.
+    """
+    sql, parametros = select_estado_cierre(esquema=ESQUEMA, hash_parte=HASH_INVENTADO)
+
+    assert sql == f"SELECT estado\nFROM {ESQUEMA}.cierres\nWHERE hash_parte = %s"
+    assert parametros == (HASH_INVENTADO,)

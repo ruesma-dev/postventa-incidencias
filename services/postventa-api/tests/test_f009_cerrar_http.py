@@ -35,6 +35,7 @@ from domain.models.errores import (
     ParteNoArchivado,
     UsuarioSigridInexistente,
 )
+from domain.models.estado import SituacionParte
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
     EstadoGrafico,
@@ -45,6 +46,7 @@ from domain.models.persistencia import (
 from interface_adapters.api.cerrar import CAMPOS_OBLIGATORIOS, cerrar_incidencia
 
 from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_validacion import veredicto_apto, veredicto_no_apto
 
 #: La traza del gráfico **adjuntado**, que F-012 convirtió en precondición del
 #: `commit` (su R2). No es material de F-009: es el estado del mundo en el que
@@ -135,6 +137,23 @@ def _cuerpo(**cambios):
 _SIN_CUERPO = object()
 
 
+def _repositorio(**extra) -> RepositorioEnMemoria:
+    """El doble del repositorio con el veredicto **guardado** dentro (F-030).
+
+    Desde F-030 la puerta del paso deriva el estado del veredicto que consta en
+    `postventa.validaciones`, y **no** del `veredicto` que venga en el cuerpo:
+    el endpoint ya no lo fabrica. Lo que estos casos declaraban en el
+    formulario hay que dejarlo ahora aquí.
+
+    No afloja nada: pone el mundo en su sitio. Cuando una petición llega de
+    verdad a este endpoint, el veredicto del parte ya está en la base —lo
+    escribió `POST /api/parte`—, y un doble que contestara «de este parte no
+    consta validación» modelaría un mundo que no existe.
+    """
+    extra.setdefault("situacion", SituacionParte(validacion=veredicto_apto(hash_parte=HASH)))
+    return RepositorioEnMemoria(**extra)
+
+
 def _cerrar(
     cuerpo=_SIN_CUERPO, *, erp=None, repositorio=None, usuarios=None, preferencias=None
 ):
@@ -143,7 +162,7 @@ def _cerrar(
         erp=erp if erp is not None else ErpEnMemoria(_reclamacion()),
         repositorio=repositorio
         if repositorio is not None
-        else RepositorioEnMemoria(traza_grafico=_GRAFICO_ADJUNTADO),
+        else _repositorio(traza_grafico=_GRAFICO_ADJUNTADO),
         usuarios=usuarios if usuarios is not None else UsuariosEnMemoria(),
         preferencias=(
             preferencias if preferencias is not None else PreferenciasEnMemoria()
@@ -214,9 +233,24 @@ def test_f009_r47_el_error_del_cuerpo_no_devuelve_lo_que_si_venia():
 
 
 def test_f009_r48_un_parte_no_apto_sube_como_error_de_dominio():
-    """R48 · el borde no traduce: `function_app.py` lo mapea a 409."""
+    """R48 · el borde no traduce: `function_app.py` lo mapea a 409.
+
+    F-030 · lo que rechaza es el veredicto **guardado**, no el del cuerpo. El
+    cuerpo sigue declarándolo —el contrato HTTP no cambia (R19)— pero el que
+    manda está en el doble: sin él, este caso daría el mismo error por «no
+    consta que este parte haya pasado la validación» y dejaría de probar lo
+    que dice que prueba.
+    """
+    repositorio = _repositorio(
+        traza_grafico=_GRAFICO_ADJUNTADO,
+        situacion=SituacionParte(validacion=veredicto_no_apto(hash_parte=HASH)),
+    )
+
     with pytest.raises(ParteNoApto):
-        _cerrar(_cuerpo(veredicto="no_apto", destino="cola_validacion_humana"))
+        _cerrar(
+            _cuerpo(veredicto="no_apto", destino="cola_validacion_humana"),
+            repositorio=repositorio,
+        )
 
 
 def test_f009_r48_un_parte_que_no_consta_archivado_tambien():

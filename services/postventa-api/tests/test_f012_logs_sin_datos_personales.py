@@ -53,7 +53,7 @@ from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 from infrastructure.sigrid.graficos import AdaptadorGraficoSigridApi
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
 from tests.utiles_sigrid import (
     ClienteFalso,
     ErpEnMemoria,
@@ -202,11 +202,20 @@ def _contexto() -> ContextoParte:
 
 
 def _adjuntar(*, graficos=None, repositorio=None, commit=True, confirmado=True):
+    """`paso_grafico` con dobles.
+
+    F-030 · el veredicto del contexto se deja también en el doble, porque desde
+    F-030 la puerta del paso lo lee de ahí (ver `tests/utiles_pg.py`).
+    """
+    ctx = _contexto()
+    repositorio = repositorio if repositorio is not None else RepositorioEnMemoria()
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_grafico(
-        _contexto(),
+        ctx,
         ErpEnMemoria(_reclamacion()),
         graficos if graficos is not None else GraficoEnMemoria(),
-        repositorio if repositorio is not None else RepositorioEnMemoria(),
+        repositorio,
         UsuariosConLoginRaro(),
         Preferencias(),
         commit=commit,

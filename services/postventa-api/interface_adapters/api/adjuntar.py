@@ -36,6 +36,26 @@ Y como el cuerpo es un formulario y no JSON, `commit` y `confirmado` llegan
 como texto: solo cuenta **exactamente** la cadena `true`. Cualquier otra cosa
 —`"false"`, `"1"`, `"si"`— es no. En Python `"false"` es verdadero, y ahí
 está el fallo que esto impide.
+
+## El veredicto ya no llega en el cuerpo: se lee de donde está guardado
+
+**Enmienda del 2026-09-16 (F-030).** Hasta hoy este endpoint reconstruía un
+`ResultadoValidacion` con el `veredicto` y el `destino` del formulario y
+valores fijos para todo lo demás, y la puerta del paso derivaba el estado de
+**ese** objeto. Como la huella recomputada sobre él no dependía del parte, la
+decisión de una persona sobre ese parte no contaba nunca; y al revés, un
+cuerpo que dijera
+`veredicto=apto` pasaba la puerta sin que nadie hubiera mirado el parte.
+
+Desde F-030 el contexto sale de aquí **sin veredicto** y la puerta lo lee de
+`postventa.validaciones`, dentro de la consulta de situación que ya hacía
+(`F-030 design.md` §5.4). El porqué largo está en `archivar.py`, que es donde
+F-006 dejó anotada la decisión D4 que esta feature paga.
+
+`veredicto` y `destino` **siguen siendo obligatorios en el cuerpo y siguen
+validándose** contra las enumeraciones de F-004: el contrato HTTP no cambia y
+un valor desconocido sigue siendo un 400 (R19, D6 de F-030). Lo que ya no
+hacen es decidir nada.
 """
 
 from __future__ import annotations
@@ -47,11 +67,10 @@ from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_grafico import paso_grafico
 from config.settings import obtener_ajustes
 from domain.models.errores import CuerpoDeGraficoInvalido
-from domain.models.firma import ClasificacionFirma
 from domain.models.grafico import ResultadoGrafico
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
 from domain.models.remesa import ModoDeteccion, ParteTroceado
-from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
+from domain.models.validacion import Destino, Veredicto
 from domain.ports.erp import ErpPort
 from domain.ports.grafico import GraficoPort
 from domain.ports.persistencia import (
@@ -139,8 +158,6 @@ def adjuntar_grafico(
         _como_contexto(
             contenido,
             hash_parte=hash,
-            veredicto=veredicto,
-            destino=destino,
             estado_archivo=estado_archivo,
         ),
         erp if erp is not None else construir_erp(ajustes),
@@ -218,15 +235,15 @@ def _como_contexto(
     contenido: bytes,
     *,
     hash_parte: str,
-    veredicto: str,
-    destino: str,
     estado_archivo: str,
 ) -> ContextoParte:
     """Reconstruye el contexto mínimo que necesita el paso del gráfico.
 
-    Igual que en `archivar.py` y en `cerrar.py`: el veredicto y el estado del
-    archivo llegan en el formulario y **se vuelven a comprobar** dentro del
-    paso, exactamente igual que si vinieran de dentro (D4 de F-006).
+    El estado del archivo llega en el formulario y **se vuelve a comprobar**
+    dentro del paso, exactamente igual que si viniera de dentro. El
+    **veredicto ya no**: se va sin rellenar y lo lee la puerta del paso, de la
+    base, porque este endpoint no recibe la extracción y no puede emitirlo
+    (F-030; la enmienda está arriba y el porqué largo en `archivar.py`).
 
     De la extracción **no se reconstruye nada**: el paso no la necesita —la
     obra y la incidencia llegan aparte— y pedirla obligaría al front a
@@ -241,15 +258,7 @@ def _como_contexto(
             modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
             contenido=contenido,
         ),
-        validacion=ResultadoValidacion(
-            hash_parte=hash_parte.strip(),
-            veredicto=Veredicto(veredicto),
-            destino=Destino(destino),
-            motivos=(),
-            clasificacion_firma=ClasificacionFirma.HUMANA,
-            observaciones=None,
-            confianza_observaciones=0,
-        ),
+        validacion=None,
         archivo=TrazaArchivo(
             hash_parte=hash_parte.strip(),
             estado=EstadoArchivo(estado_archivo),

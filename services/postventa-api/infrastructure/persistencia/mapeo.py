@@ -31,6 +31,7 @@ from typing import Any
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.estado import DecisionEstado, EstadoParte
 from domain.models.extraccion import CAMPOS_DEL_PARTE, ExtraccionParte
+from domain.models.firma import ClasificacionFirma
 from domain.models.persistencia import (
     EntradaCola,
     EstadoGrafico,
@@ -38,8 +39,11 @@ from domain.models.persistencia import (
     TrazaGrafico,
 )
 from domain.models.validacion import (
+    CodigoMotivo,
+    Destino,
     Motivo,
     ResultadoValidacion,
+    Veredicto,
 )
 
 __all__ = [
@@ -50,6 +54,7 @@ __all__ = [
     "fila_a_entrada_cola",
     "fila_a_preferencias",
     "fila_a_traza_grafico",
+    "fila_a_validacion_y_cierre",
     "json_de_avisos",
     "json_de_motivos",
     "valores_de_campos",
@@ -348,6 +353,82 @@ def fila_a_decision_estado(fila: Sequence[Any]) -> DecisionEstado:
     )
 
 
+def fila_a_validacion_y_cierre(
+    fila: Sequence[Any], *, hash_parte: str
+) -> tuple[ResultadoValidacion | None, str | None]:
+    """El veredicto **guardado** y el estado de cierre, de vuelta al dominio (F-030).
+
+    El orden de las columnas es el de `sentencias.select_veredicto_y_cierre`, y
+    por eso las dos cosas viven pegadas: una fila leída por posición se rompe
+    **en silencio** el día que alguien añade una columna al `SELECT`, y aquí eso
+    sería recomponer el veredicto con el destino en el sitio del veredicto.
+
+    **Las dos cosas vuelven juntas porque vienen de la misma fila** — la misma
+    regla que ya siguen `fila_a_traza_grafico` y `fila_a_decision_estado`—, y
+    eso es lo que hace que leer el veredicto no cueste ni un viaje más contra
+    un PostgreSQL que se comparte con otros tres proyectos (R18).
+
+    Tres columnas salen de `postventa.partes` y no de `validaciones`: las
+    **observaciones**, el **código de obra** y el **número de incidencia**. No
+    es una comodidad: el DDL de `validaciones` prohíbe copiar ahí el texto
+    manuscrito del cliente (R21, R39), así que la única forma de recomponer los
+    seis campos de la cadena canónica de la huella es el `JOIN`.
+
+    `veredicto` a `None` **es «no hay fila de validación»**, y se distingue por
+    ahí y no por el `hash_parte`: la consulta se ancla en `partes`, así que el
+    `hash` viene siempre aunque no haya veredicto. En ese caso vuelve `None`, y
+    de ahí sale el error propio de «no consta que este parte haya pasado la
+    validación» (R8, R9) — que se arregla revalidando, no decidiendo.
+
+    Los cuatro enumerados **revientan** si la base trae un valor que el dominio
+    no conoce, igual que `EstadoGrafico` y `EstadoParte`: pasaría si alguien
+    ampliara un `CHECK` del `.sql` sin ampliar el `Enum`, y traducirlo «como si
+    fuera» otro haría que un destino desconocido se leyera como
+    `archivo_y_cierre` y abriera la puerta que escribe en el ERP de producción.
+
+    Las observaciones se pasan **tal cual vienen**, y pueden ser `None` o solo
+    espacios: normalizarlas aquí sería una segunda copia del criterio de
+    `_normalizar`, que es de `huella_de_veredicto` y no se toca (R13). Los dos
+    campos decisivos sí se traducen de `NULL` a `""`, porque eso no es criterio
+    sino el valor por defecto que ya declara `ResultadoValidacion`.
+
+    El `hash_parte` entra **por palabra clave y no de la fila**: es el que se
+    pidió, y `ResultadoValidacion.hash_parte` es identificador, no dato leído.
+    """
+    (
+        veredicto,
+        destino,
+        clasificacion_firma,
+        motivos,
+        avisos,
+        observaciones,
+        confianza_observaciones,
+        codigo_obra,
+        numero_incidencia,
+        estado_cierre,
+    ) = fila
+
+    if veredicto is None:
+        return None, estado_cierre
+
+    validacion = ResultadoValidacion(
+        hash_parte=hash_parte,
+        veredicto=Veredicto(veredicto),
+        destino=Destino(destino),
+        motivos=tuple(
+            Motivo(codigo=CodigoMotivo(codigo), texto=texto)
+            for codigo, texto in _motivos_desde_json(motivos)
+        ),
+        clasificacion_firma=ClasificacionFirma(clasificacion_firma),
+        observaciones=observaciones,
+        confianza_observaciones=confianza_observaciones,
+        avisos=_avisos_desde_json(avisos),
+        codigo_obra=codigo_obra or "",
+        numero_incidencia=numero_incidencia or "",
+    )
+    return validacion, estado_cierre
+
+
 def _motivos_desde_json(motivos: Any) -> tuple[tuple[str, str], ...]:
     """Los motivos guardados, como pares `(codigo, texto)`.
 
@@ -364,3 +445,24 @@ def _motivos_desde_json(motivos: Any) -> tuple[tuple[str, str], ...]:
         (motivo["codigo"], motivo["texto"])
         for motivo in motivos
     )
+
+
+def _avisos_desde_json(avisos: Any) -> tuple[str, ...]:
+    """Los avisos guardados, como tupla de textos.
+
+    El gemelo de `_motivos_desde_json`, con la misma tolerancia y por el mismo
+    motivo: el driver puede devolver un `jsonb` ya deserializado o como texto,
+    según cómo se haya declarado la columna en la consulta.
+
+    Los avisos **no entran en la cadena canónica de la huella**, así que el
+    recorte a `_RECORTE_AVISO` con el que se guardaron no caduca ninguna
+    aprobación: vuelven acotados y eso es lo que había que devolver. Que la
+    columna venga a `NULL` tampoco es un error — es un veredicto que no emitió
+    ningún diagnóstico— y da la tupla vacía, que es el valor por defecto del
+    dominio.
+    """
+    if avisos is None:
+        return ()
+    if isinstance(avisos, str):
+        avisos = json.loads(avisos)
+    return tuple(avisos)

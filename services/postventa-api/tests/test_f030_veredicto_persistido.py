@@ -100,7 +100,7 @@ from domain.ports.persistencia import RepositorioPartesPort
 # un import—. Así el rojo de T2 es suyo y se lee solo.
 from infrastructure.persistencia import mapeo
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioComoLaBase, RepositorioEnMemoria
 from tests.utiles_sharepoint import ArchivoPortFalso
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
@@ -1187,3 +1187,119 @@ def test_f030_r3_el_centinela_sabe_ver_una_construccion():
 
         assert _construcciones_de(culpable) != []
         assert _construcciones_de(inocente) == []
+
+
+# --------------------------------------------------------------------------
+# T13 · el doble que se comporta como la base (R23, `design.md` §7.1)
+# --------------------------------------------------------------------------
+#
+# `RepositorioEnMemoria` devuelve **el mismo objeto** que se le dio, y por eso
+# el test de F-028 no podía cazar la regresión ni aunque estuviera escrito: la
+# decisión y la puerta salían del mismo `ResultadoValidacion` y las dos huellas
+# coincidían por construcción. `RepositorioComoLaBase` no puede hacer eso
+# porque **no guarda el objeto**, solo sus columnas.
+#
+# Este caso es el control del doble: sin él, el circuito de borde a borde de
+# T14 podría pasar por la razón equivocada —que el doble devuelva lo que
+# entró— y no probaría nada de lo que dice probar.
+
+
+def _parte_troceado() -> ParteTroceado:
+    """El parte tal y como sale de `POST /api/split`, sin los bytes."""
+    return ParteTroceado(
+        hash=HASH,
+        origen="remesa-inventada.pdf",
+        paginas_origen=(3,),
+        modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
+        contenido=b"",
+    )
+
+
+def test_f030_r23_el_doble_de_la_base_no_devuelve_el_objeto_que_entro():
+    """R23 · lo que vuelve es **otro objeto** y tiene **la misma huella**.
+
+    Las dos mitades importan y ninguna sola vale:
+
+    - si volviera el mismo objeto, el doble sería `RepositorioEnMemoria` con
+      otro nombre y el circuito de T14 pasaría por la razón equivocada;
+    - si volviera otro objeto con otra huella, la aprobación de una persona
+      caducaría en cuanto el veredicto diera una vuelta por la base, que es
+      justo lo que R10 impide y lo que hace que RS26.09/0178 se archive sin
+      volver a decidir.
+
+    El veredicto lleva **observaciones manuscritas** a propósito: son la
+    columna que no está en `validaciones` —su DDL prohíbe copiar ahí el texto
+    del cliente (R21, R39)— y la que la recomposición tiene que ir a buscar a
+    `partes`. Una recomposición que las perdiera daría otra huella y este caso
+    se pondría rojo.
+    """
+    base = RepositorioComoLaBase()
+    validacion = _veredicto_guardado(Destino.COLA_VALIDACION_HUMANA)
+    extraccion, _ = _material(Destino.COLA_VALIDACION_HUMANA)
+    assert validacion.observaciones, "este caso necesita observaciones manuscritas"
+
+    base.guardar_parte(
+        parte=_parte_troceado(),
+        extraccion=extraccion,
+        remesa_id="remesa-inventada",
+        ahora=AHORA,
+    )
+    base.guardar_validacion(resultado=validacion, ahora=AHORA)
+
+    situacion = base.consultar_situacion(hash_parte=HASH)
+
+    assert situacion.validacion is not validacion
+    assert huella_de_veredicto(situacion.validacion) == huella_de_veredicto(validacion)
+    assert situacion.validacion.observaciones == validacion.observaciones
+    assert situacion.validacion.destino is validacion.destino
+    assert situacion.validacion.codigo_obra == OBRA
+    assert situacion.validacion.numero_incidencia == INCIDENCIA
+
+
+def test_f030_r23_el_doble_de_la_base_no_guarda_ni_un_veredicto_dentro():
+    """R23 · la propiedad, comprobada **por construcción** y no de oídas.
+
+    El caso de arriba mira lo que vuelve; este mira lo que queda dentro. Si
+    mañana alguien le añadiera al doble un atajo —«me quedo el objeto y lo
+    devuelvo, que es más cómodo»—, el de arriba seguiría en verde y este no:
+    lo que hace útil a este doble es exactamente que **no pueda** hacer eso.
+    """
+    base = RepositorioComoLaBase()
+    extraccion, _ = _material(Destino.COLA_VALIDACION_HUMANA)
+    base.guardar_parte(
+        parte=_parte_troceado(),
+        extraccion=extraccion,
+        remesa_id="remesa-inventada",
+        ahora=AHORA,
+    )
+    base.guardar_validacion(
+        resultado=_veredicto_guardado(Destino.COLA_VALIDACION_HUMANA), ahora=AHORA
+    )
+
+    guardado = [
+        valor
+        for fila in (
+            *base.columnas_de_validaciones.values(),
+            *base.columnas_de_partes.values(),
+        )
+        for valor in fila
+    ]
+
+    assert guardado, "el doble no ha guardado nada y el caso no probaría nada"
+    assert not any(isinstance(valor, ResultadoValidacion) for valor in guardado)
+    assert not any(isinstance(valor, ExtraccionParte) for valor in guardado)
+
+
+def test_f030_r23_sin_ficha_del_parte_el_doble_no_devuelve_veredicto():
+    """R8, R9 · la consulta se ancla en `partes`, y el doble también.
+
+    Un parte del que no consta ni la ficha no devuelve ninguna fila, y eso son
+    veredicto `None` y cierre `None` — no un error. De ahí sale el «no consta
+    que este parte haya pasado la validación» de las tres puertas.
+    """
+    situacion = RepositorioComoLaBase().consultar_situacion(hash_parte=HASH)
+
+    assert situacion.validacion is None
+    assert situacion.estado_cierre is None
+    assert situacion.decision_humana is None
+    assert situacion.ultimo_estado_registrado is None

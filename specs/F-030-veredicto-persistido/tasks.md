@@ -167,7 +167,7 @@
 
 ## Bloque 4 · El test que faltó
 
-- [ ] **T13**: Añadir a `tests/utiles_pg.py` el doble `RepositorioComoLaBase`,
+- [x] **T13**: Añadir a `tests/utiles_pg.py` el doble `RepositorioComoLaBase`,
       que **guarda columnas y no objetos** y reconstruye el veredicto con la
       misma `mapeo.fila_a_validacion_y_cierre` de producción
       (`design.md` §7.1). `RepositorioEnMemoria` **no se toca**. | Verificación:

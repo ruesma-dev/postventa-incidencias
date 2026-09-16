@@ -225,7 +225,7 @@
       si se da de alta como feature. | Verificación: `tests/test_f028_documentacion.py`
       y los controles de documentación en verde; la nota, en `progress/`.
 
-- [ ] **T20**: Ejecutar `bash harness/init.sh` en verde (incluye toda la suite)
+- [x] **T20**: Ejecutar `bash harness/init.sh` en verde (incluye toda la suite)
       y dejar `progress/impl_F-030.md` con las trazas de la fase RED, los tests
       cambiados uno a uno, las evidencias de cobertura y mutación, y las dos
       verificaciones manuales pendientes. | Verificación: `bash harness/init.sh`

@@ -953,3 +953,643 @@ Sigue abierto, de la feature entera: **V1** (archivar RS26.09/0178 en `dev`;
 escribe en SharePoint y exige autorización expresa del humano por incidencia) y
 **V2** (contar las consultas de una tanda real de 22 partes). Ninguna es
 condición de cierre.
+
+
+---
+
+# Bloques 4 y 5 · El test que faltó, y el cierre (T13–T20) — **ENTREGADO**
+
+> Ocho tareas, ocho commits, del `d3252a3` al `0a94f00` sobre
+> `feature/F-030-veredicto-persistido`, más el de este informe.
+>
+> **`bash harness/init.sh` termina en VERDE con exit code 0**: suite del
+> servicio `2 736 passed, 0 failed, 3 skipped`. **Cero regresiones**, **cero
+> supervivientes de mutación** y **cero DDL**.
+>
+> **Estos dos bloques no tocan ni una línea de producción.** Lo único que
+> cambia fuera de `tests/` es `docs/ARCHITECTURE.md` (T19). Ni una llamada
+> real a Azure, Sigrid, SharePoint ni al PostgreSQL compartido: las dos
+> ventanas de escritura siguen abiertas en `dev` y aquí no se ha usado
+> ninguna.
+>
+> **La feature no se marca `done`**: falta el APROBADO del reviewer.
+
+## Qué cambió, en una frase
+
+**La regresión ya no puede volver sin que un test lo diga.** Los bloques 2 y 3
+arreglaron el defecto; estos dos son la prueba de que se queda arreglado: el
+doble que se comporta como la base, el circuito recorrido de borde a borde con
+los cuerpos reales, la compatibilidad hacia atrás medida, y el cierre formal
+—cobertura, mutación, documentación y verde—.
+
+## Ficheros tocados
+
+### Producción: **ninguno**
+
+| Fichero | Qué |
+|---|---|
+| `docs/ARCHITECTURE.md` | La precisión fechada del 2026-09-16 de F-030 en el punto 3 de «Semántica de dominio imprescindible» (T19). **Documentación, no código.** |
+
+Ni `.env`, ni `infra/`, ni `services/postventa-front/`, ni
+`infrastructure/persistencia/sql/`, ni ningún módulo de
+`application/`, `domain/`, `infrastructure/` o `interface_adapters/`.
+
+### Tests y utillería (3)
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/tests/utiles_pg.py` | **`RepositorioComoLaBase`** (T13). `RepositorioEnMemoria` **no se toca**. |
+| `services/postventa-api/tests/test_f030_circuito_borde_a_borde.py` | **Nuevo.** T14 (4 casos) y T15 (6 casos). |
+| `services/postventa-api/tests/test_f030_veredicto_persistido.py` | Secciones de T13 (3 casos), T16 (7), T17 (3) y T19 (2). |
+
+### Memoria del arnés (4)
+
+`progress/current.md`, `progress/mutacion_F-030.md` (generado),
+`progress/impl_F-030.md` (este informe) y
+`specs/F-030-veredicto-persistido/tasks.md` (T13–T20 marcadas).
+
+---
+
+## T13 · el doble que se comporta como la base — commit `d3252a3`
+
+`tests/utiles_pg.py` gana `RepositorioComoLaBase`, con **una** regla: guarda lo
+que guardaría PostgreSQL y **no el objeto**.
+
+| Operación | Qué guarda |
+|---|---|
+| `guardar_parte` | las **18 columnas** de `mapeo.valores_de_campos` |
+| `guardar_validacion` | las **7 columnas** de `mapeo.valores_de_validacion` (sin observaciones: su DDL lo prohíbe, R21/R39) |
+| `registrar_decision` | **acumula**, como la tabla append-only |
+| `consultar_situacion` | **recompone** con la misma `mapeo.fila_a_validacion_y_cierre` de producción, armando la fila en el orden de `sentencias.select_veredicto_y_cierre` |
+
+Que no pueda devolver el objeto que entró es **todo su valor**: es la propiedad
+que `RepositorioEnMemoria` no tiene y por la que el defecto pasó. Si la
+recomposición perdiera las observaciones, el código de obra o el orden de los
+motivos, la huella dejaría de coincidir y el test se pondría rojo. Lo confirma
+la mutación a mano de T18: **M2 y M3 lo ponen rojo**.
+
+**Tres casos propios**, y cada uno mira una cosa distinta:
+
+1. `..._no_devuelve_el_objeto_que_entro`: lo devuelto **no es** el mismo objeto
+   y **sí** tiene la misma huella. Las dos mitades hacen falta: sin la primera
+   el doble sería `RepositorioEnMemoria` con otro nombre; sin la segunda, una
+   aprobación caducaría cada vez que el veredicto diera una vuelta por la base.
+2. `..._no_guarda_ni_un_veredicto_dentro`: la propiedad **por construcción**.
+   Si mañana alguien le metiera el atajo de quedarse el objeto, el primer caso
+   seguiría en verde y este no.
+3. `..._sin_ficha_del_parte_no_devuelve_veredicto`: la consulta de verdad se
+   ancla en `partes`, y el doble también (R8, R9).
+
+### Fase RED
+
+```
+$ git stash push -- services/postventa-api/tests/utiles_pg.py
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f030_veredicto_persistido.py \
+    -q --tb=line -p no:randomly -k "r23"
+
+tests\test_f030_veredicto_persistido.py:103: in <module>
+    from tests.utiles_pg import RepositorioComoLaBase, RepositorioEnMemoria
+E   ImportError: cannot import name 'RepositorioComoLaBase' from 'tests.utiles_pg'
+1 error in 0.25s
+$ git stash pop
+```
+
+Es un rojo de «todavía no existe» y no demuestra gran cosa por sí solo: **el
+rojo que vale para este doble es el de T18**, donde dos mutaciones de la
+recomposición lo ponen en rojo por lo que de verdad viene a vigilar.
+
+---
+
+## T14 · el circuito entero, con los cuerpos reales — commit `79b603d`
+
+`tests/test_f030_circuito_borde_a_borde.py`. El recorrido es
+`POST /api/estado` → `POST /api/archivar`, **con los cuerpos que manda el
+front**, sobre un parte **no apto con observaciones manuscritas**: el caso de
+RS26.09/0178.
+
+**La decisión de diseño que hace que este test valga algo**: el formulario del
+archivo **dice la verdad** —`veredicto=no_apto`, `destino=cola_validacion_humana`,
+que es lo que el front tiene de ese parte—, y el parte **se archiva igual**,
+porque lo que decide es la aprobación de la persona. Antes de F-030, este
+mismo formulario daba 409.
+
+Cuatro casos:
+
+| Caso | Qué fija |
+|---|---|
+| `r4_el_parte_que_una_persona_aprobo_se_archiva` | **El decisivo.** El parte se archiva, la biblioteca recibe el fichero y la traza queda en la base. |
+| `r4_la_huella_apuntada_es_la_del_veredicto_que_vuelve_de_la_base` | El **porqué**, medido: la huella que apuntó `POST /api/estado` y la del veredicto recompuesto desde las columnas son la misma. |
+| `r23_sin_aprobacion_el_archivo_no_pasa_la_puerta[sin_nada_en_la_base]` | Control negativo 1: de este parte no consta nada. |
+| `r23_sin_aprobacion_el_archivo_no_pasa_la_puerta[guardado_pero_sin_aprobar]` | Control negativo 2, **el que caza el defecto**: el parte entró por `POST /api/parte`, el veredicto **está** en la base y lo que falta es la aprobación. |
+
+> **Los dos mundos del control negativo, y por qué van los dos.** `design.md`
+> §7.2 pedía «el mismo recorrido sin el paso 1». Ese mundo deja la base vacía y
+> da «no consta que este parte haya pasado la validación», que es **otro**
+> error: un endpoint que volviera a fabricar el veredicto desde el cuerpo
+> seguiría pasando ese control. El segundo mundo —guardado por
+> `guardar_parte_http` y sin aprobar— es el que da «la validación lo manda a
+> «cola_validacion_humana» y no consta que nadie lo haya aprobado», que es la
+> forma exacta de RS26.09/0178 menos la aprobación. Es un **refuerzo** de lo
+> que pedía la spec, no un recorte.
+
+En los dos negativos se afirma además que **no se tocó SharePoint**: ni una
+llamada, ni un elemento, ni una carpeta. Un 409 después de haber subido el PDF
+de un parte sin revisar sería el fallo de verdad.
+
+### Fase RED · la comprobación de que el test caza el defecto
+
+**(a) Devolviendo solo el stub a `archivar.py`, este test sigue en verde — y
+está bien que así sea.**
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f030_circuito_borde_a_borde.py \
+    tests/test_f030_veredicto_persistido.py -q --tb=line -p no:randomly
+
+E   AssertionError: estos módulos del borde fabrican un ResultadoValidacion, y eso es
+    exactamente lo que rompió el circuito en F-030 […] {'archivar.py': [213]}
+FAILED tests/test_f030_veredicto_persistido.py::test_f030_r3_ningun_modulo_del_borde_construye_un_veredicto
+1 failed, 46 passed in 0.69s
+```
+
+El stub **solo** no reabre el defecto, porque T8 dejó la puerta ciega a
+`ctx.validacion` (R1): aunque alguien vuelva a fabricar un veredicto en el
+borde, la puerta no lo mira. Quien caza esa mitad es el **centinela estructural
+de T12**, y lo hace nombrando fichero y línea. Eso **no es que el test de T14
+no sirva**: es que hay dos defensas y cada una caza su mitad.
+
+**(b) El defecto entero —el stub en `archivar.py` **más** la puerta leyendo
+`ctx.validacion`— pone este test en ROJO, con el error de producción:**
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f030_circuito_borde_a_borde.py \
+    -q --tb=short -p no:randomly
+
+___________ test_f030_r4_el_parte_que_una_persona_aprobo_se_archiva ___________
+tests\test_f030_circuito_borde_a_borde.py:365: in test_f030_r4_...
+    respuesta = archivar_parte(
+interface_adapters\api\archivar.py:119: in archivar_parte
+    contexto = paso_archivo(
+application\pipelines\paso_archivo.py:230: in _exigir_admitido
+    exigir_parte_aprobado(
+application\pipelines\puerta_de_estado.py:157: in exigir_parte_aprobado
+    raise ParteNoApto(f"{motivo}, así que {y_por_eso}")
+E   domain.models.errores.ParteNoApto: este parte está pendiente: la validación lo
+    manda a «cola_validacion_humana» y no consta que nadie lo haya aprobado, así que
+    no se archiva
+_ test_f030_r23_sin_aprobacion_el_archivo_no_pasa_la_puerta[sin_nada_en_la_base] _
+E   AssertionError: assert 'no consta que este parte haya pasado la validación' in
+    'este parte está pendiente: la validación lo manda a «cola_validacion_humana» y
+    no consta que nadie lo haya aprobado, así que no se archiva'
+2 failed, 2 passed in 0.72s
+```
+
+**Es literalmente el error que dejó sin archivar el parte de RS26.09/0178.** Y
+el segundo rojo es un regalo: con el defecto, un parte del que **no consta
+nada** en la base recibe el error del veredicto que trae el cuerpo —el cuerpo
+estaba concediendo el veredicto—, que es la segunda cara del agujero (§0.9).
+
+Los dos cambios se deshicieron con `git checkout --` acto seguido; el árbol
+quedó limpio y la suite en verde antes del commit.
+
+---
+
+## T15 · las otras dos puertas, en dry-run — commit `db15535`
+
+Los equivalentes de `adjuntar_grafico` y `cerrar_incidencia` con `commit=False`,
+sus dobles (`ErpEnMemoria`, `GraficoEnMemoria`, `UsuariosConLogin`,
+`PreferenciasSinAutoCierre`) y **dos control-negativo cada uno**: seis casos.
+
+Dos decisiones que son lo que hace que los negativos prueben lo que dicen:
+
+1. **La puerta corta antes de cualquier otra comprobación**, y se afirma con
+   `erp.lecturas == []`. Los dos pasos leen la reclamación **nada más** pasar
+   la puerta, así que si no se leyó, la puerta cortó primero. Un parte sin
+   aprobar no llega ni a mirar el ERP, y mucho menos a mandarle un documento
+   con el DNI de un cliente dentro.
+2. **En el caso del cierre, el gráfico consta adjuntado a propósito.** Así la
+   puerta de F-012 no puede ser la que corte: si algo para el paso, es la del
+   estado. Es la diferencia entre un control y una coincidencia.
+
+> **Un aserto que hubo que afinar, y no es aflojarlo.** El final propio de cada
+> puerta (R17) es el de la rama `pendiente` —«no se adjunta a la reclamación»—,
+> pero la rama «no consta veredicto» tiene **su propio** final —«no se adjunta
+> a una incidencia del ERP un parte del que nadie ha emitido veredicto»—. Se
+> afirma el verbo común («no se adjunta») **y además** que no aparece el de
+> otra puerta («no se archiva»), que es más fuerte que exigir una sola de las
+> dos redacciones. El caso del archivo no lo necesitó porque las dos
+> redacciones empiezan igual.
+
+### Fase RED
+
+Con el defecto entero reintroducido —stub en `adjuntar.py` y en `cerrar.py`
+más la puerta leyendo `ctx.validacion`—:
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f030_circuito_borde_a_borde.py \
+    -q --tb=line -p no:randomly -k "r5 or r6 or r24"
+
+E   domain.models.errores.ParteNoApto: este parte está pendiente: la validación lo
+    manda a «cola_validacion_humana» y no consta que nadie lo haya aprobado, así que
+    no se adjunta a la reclamación
+...puerta_de_estado.py:157
+E   domain.models.errores.ParteNoApto: este parte está pendiente: la validación lo
+    manda a «cola_validacion_humana» y no consta que nadie lo haya aprobado, así que
+    no se cierra la incidencia
+...puerta_de_estado.py:157
+FAILED ...::test_f030_r5_el_parte_aprobado_se_adjunta_a_su_reclamacion_en_dry_run
+FAILED ...::test_f030_r6_el_parte_aprobado_llega_al_dry_run_del_cierre
+FAILED ...::test_f030_r24_sin_aprobacion_el_grafico_no_pasa_la_puerta[sin_nada_en_la_base]
+FAILED ...::test_f030_r24_sin_aprobacion_el_cierre_no_pasa_la_puerta[sin_nada_en_la_base]
+4 failed, 2 passed, 4 deselected in 0.63s
+```
+
+Los tres ficheros se restauraron con `git checkout --` acto seguido.
+
+---
+
+## T16 · compatibilidad hacia atrás — commit `61c2244`
+
+**Es lo que el humano va a comprobar mañana con su parte.** Siete casos, y van
+contra `RepositorioComoLaBase` y no contra un `SituacionParte` montado a mano,
+porque lo que hay que demostrar es que la decisión sobrevive **al viaje por las
+columnas**.
+
+| Caso | Qué fija |
+|---|---|
+| `r11_una_decision_ya_guardada_sigue_aprobando_sin_volver_a_decidir` (×3) | La aprobación guardada abre **las tres puertas**, y la puerta **no apunta nada nuevo** en el histórico: lo suyo es dejar pasar o no, no decidir. |
+| `r12_si_el_veredicto_guardado_cambia_la_aprobacion_deja_de_contar` (×3) | El parte se revalida con otra lectura → la huella deja de coincidir → vuelve a `pendiente`, con el destino **nuevo** en el mensaje. **Sin esta mitad, la primera podría estar pasando porque la huella no se compara en absoluto**, que sería peor que el defecto que se arregla. |
+| `r12_la_huella_apuntada_deja_de_coincidir_cuando_cambia_el_veredicto` | El porqué, **medido**: las dos huellas, antes y después, y que son distintas. |
+
+### Fase RED
+
+Contra el código de antes de T8 (`puerta_de_estado.py` leyendo
+`ctx.validacion`):
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f030_veredicto_persistido.py \
+    -q --tb=line -p no:randomly -k "r11_una_decision or r12_si_el"
+
+E   AssertionError: assert 'revision_manual' in 'este parte está pendiente: la
+    validación lo manda a «cola_validacion_humana» y no consta que nadie lo haya
+    aprobado, así que no se cierra la incidencia'
+FAILED ...::test_f030_r11_una_decision_ya_guardada_sigue_aprobando_sin_volver_a_decidir[archivo]
+FAILED ...::[grafico]   FAILED ...::[cierre]
+FAILED ...::test_f030_r12_si_el_veredicto_guardado_cambia_la_aprobacion_deja_de_contar[archivo]
+FAILED ...::[grafico]   FAILED ...::[cierre]
+6 failed, 44 deselected in 0.45s
+```
+
+---
+
+## T17 · el control de que no hay DDL — commit `8f95afd`
+
+Tres casos, y van tres porque miran cosas distintas y fallan en sitios
+distintos:
+
+1. **el diff**: `git diff --name-only dev...HEAD` no toca
+   `infrastructure/persistencia/sql/`;
+2. **su control del control**: el diff no puede venir vacío y tiene que incluir
+   `application/pipelines/puerta_de_estado.py`. Sin él, un diff vacío —rama
+   equivocada, `dev` que ya lo contiene todo— pondría verde el primero sin
+   haber comprobado nada;
+3. **la mitad que no depende de `git`**: los ficheros de DDL son **los once de
+   F-028 y ninguno más**, con la lista escrita a mano y no leída del árbol.
+
+Los dos primeros **se saltan** —no fallan— si `git` no está o si `dev` no está
+en el clon. Por eso existe el tercero: la regla más cara de deshacer no puede
+quedarse sin vigilancia por un detalle del `checkout`.
+
+### El diff de la rama, pegado
+
+```
+$ git diff --name-only dev...HEAD
+BACKLOG.md
+docs/ARCHITECTURE.md
+harness/features.json
+progress/current.md
+progress/impl_F-030.md
+progress/mutacion_F-030.md
+services/postventa-api/application/pipelines/puerta_de_estado.py
+services/postventa-api/domain/models/estado.py
+services/postventa-api/domain/ports/persistencia.py
+services/postventa-api/infrastructure/persistencia/mapeo.py
+services/postventa-api/infrastructure/persistencia/repositorio_pg.py
+services/postventa-api/infrastructure/persistencia/sentencias.py
+services/postventa-api/interface_adapters/api/adjuntar.py
+services/postventa-api/interface_adapters/api/archivar.py
+services/postventa-api/interface_adapters/api/cerrar.py
+services/postventa-api/tests/test_f005_logs_sin_datos_personales.py
+services/postventa-api/tests/test_f005_mapeo.py
+services/postventa-api/tests/test_f005_sentencias.py
+services/postventa-api/tests/test_f006_archivar_http.py
+services/postventa-api/tests/test_f006_paso_archivo.py
+services/postventa-api/tests/test_f009_cerrar_http.py
+services/postventa-api/tests/test_f009_logs_sin_datos_personales.py
+services/postventa-api/tests/test_f009_paso_cierre.py
+services/postventa-api/tests/test_f010_borde_persistencia.py
+services/postventa-api/tests/test_f012_adjuntar_http.py
+services/postventa-api/tests/test_f012_cerrar_exige_grafico.py
+services/postventa-api/tests/test_f012_logs_sin_datos_personales.py
+services/postventa-api/tests/test_f012_paso_grafico.py
+services/postventa-api/tests/test_f019_orden_archivado.py
+services/postventa-api/tests/test_f025_sin_dry_run_previo.py
+services/postventa-api/tests/test_f026_puertas.py
+services/postventa-api/tests/test_f028_estado_dominio.py
+services/postventa-api/tests/test_f028_persistencia.py
+services/postventa-api/tests/test_f028_puertas.py
+services/postventa-api/tests/test_f030_circuito_borde_a_borde.py
+services/postventa-api/tests/test_f030_veredicto_persistido.py
+services/postventa-api/tests/utiles_pg.py
+services/postventa-api/tests/utiles_sharepoint.py
+services/postventa-api/tests/utiles_validacion.py
+specs/F-030-veredicto-persistido/design.md
+specs/F-030-veredicto-persistido/requirements.md
+specs/F-030-veredicto-persistido/tasks.md
+```
+
+**42 ficheros, y ni uno de `infrastructure/persistencia/sql/`.** Nueve de
+producción —los de los bloques 1 a 3—, uno de documentación, veintitrés de
+tests y utillería, y el resto, memoria del arnés y spec.
+
+### La comprobación en rojo, de verdad
+
+Se creó `sql/12_inventado_para_el_control.sql` y se ejecutó:
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f030_veredicto_persistido.py \
+    -q --tb=line -p no:randomly -k "r20"
+
+E   AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+      Left contains one more item: '12_inventado_para_el_control.sql'
+FAILED tests/test_f030_veredicto_persistido.py::test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo
+1 failed, 2 passed, 52 deselected in 0.53s
+```
+
+El fichero se borró acto seguido.
+
+---
+
+## T18 · cobertura y mutación — commit `237556e`
+
+### Cobertura de las líneas cambiadas
+
+```
+[OK] PUERTA COBERTURA: 100.0% de 30 líneas cambiadas cubiertas (30/30, umbral 80%, nivel critico)
+```
+
+### Campaña automática
+
+```
+$ python -m harness.mutacion --feature F-030 --workers 8
+F-030: 9 fichero(s), 419 línea(s) de producción
+Campaña paralela: hasta 8 workers, uno por worktree.
+[1/3] muerto  .../mapeo.py:427 [logico] numero_incidencia=numero_incidencia or "", -> ... and "",
+[2/3] muerto  .../repositorio_pg.py:307 [entero] fila_a_validacion_y_cierre(filas[0], ...) -> filas[1]
+[3/3] muerto  .../mapeo.py:426 [logico] codigo_obra=codigo_obra or "", -> codigo_obra=codigo_obra and "",
+3 mutantes evaluados, 3 muertos, 0 supervivientes, 0 timeouts en 21.1 s
+Informe: progress/mutacion_F-030.md
+```
+
+| Métrica | Valor |
+|---|---|
+| Líneas de producción en alcance | **419**, en 9 ficheros |
+| Mutantes generados / evaluados | **3 / 3** |
+| Muertos | **3** |
+| **Supervivientes** | **0** |
+| Timeouts | 0 |
+| Tiempo total | **21,1 s** |
+| **Workers** | **3** (se pidieron **8**; el arnés los resuelve a uno por mutante y lo deja escrito en `progress/mutacion_F-030.md`) |
+| Muestreo | no: campaña completa |
+
+**Sección de análisis de supervivientes: no hay ninguno**, así que no hay nada
+que justificar ni ningún test que añadir por esa vía.
+
+> **Lo que este número NO dice, y hay que decirlo.** Tres mutantes sobre 419
+> líneas es poquísimo, y no es porque el código esté blindado: es que los
+> operadores del arnés son pocos y la mayoría de esas 419 líneas son
+> docstrings, comentarios de enmienda y firmas. **La campaña automática, sola,
+> no acredita nada en esta feature.** Lo que la acredita son los tres mutantes
+> a mano de abajo, que es justamente por lo que T18 los exige.
+
+### Los tres mutantes a mano, los que reabren el defecto
+
+Cada uno aplicado sobre el código real y evaluado contra **la suite entera del
+servicio** (`pytest tests -q`), y deshecho acto seguido:
+
+| # | Mutación | Casos que lo cazan | Veredicto |
+|---|---|---|---|
+| **M1** | `puerta_de_estado.py`: `validacion = ctx.situacion.validacion` → `ctx.validacion` | **84 failed**, 2 650 passed | **muerto** |
+| **M2** | `mapeo.fila_a_validacion_y_cierre`: `observaciones=observaciones` → `observaciones=None` | **19 failed**, 2 715 passed | **muerto** |
+| **M3** | `mapeo.fila_a_validacion_y_cierre`: `numero_incidencia=numero_incidencia or ""` → `numero_incidencia=""` | **18 failed**, 2 716 passed | **muerto** |
+
+Lo que hay que mirar de esta tabla no es el número, es **quién** los caza:
+
+- **M1** lo cazan, entre otros, los 6 de `r11_un_parte_no_apto_aprobado_a_mano`
+  (el defecto original), los 6 de `r1_un_stub_...` (el blindaje de R1), los 6 de
+  `r11`/`r12` de T16 y **los 4 casos del circuito de borde a borde**;
+- **M2 y M3** los cazan los 7 de `r10_el_veredicto_recompuesto_da_la_misma_huella`,
+  el caso propio del doble de T13 y **los cuatro casos buenos del circuito de
+  T14/T15**, que es la prueba de que el test de borde a borde no es decorativo:
+  una recomposición que pierda una columna del papel rompe la huella y el parte
+  aprobado deja de archivarse, **exactamente** como en producción.
+
+Tras deshacer M3, `mapeo.py` quedó marcado como modificado por un cambio de
+fin de línea (el guion escribe con `\n` y el fichero está en CRLF); `git diff`
+salía vacío y se restauró con `git checkout --`. **Ni una línea de producción
+distinta.**
+
+---
+
+## T19 · `docs/ARCHITECTURE.md` y la nota de F-031 — commit `0a94f00`
+
+El punto 3 de «Semántica de dominio imprescindible» gana su **cuarta capa**,
+fechada y bajo el punto que enmienda:
+
+> **Precisado por F-030 el 2026-09-16** […]: lo que decide si un parte entra en
+> el circuito es el estado derivado **del veredicto que consta guardado** en
+> `postventa.validaciones`, y de nada más. **Ningún endpoint del circuito emite
+> veredicto** […] y **tampoco lo fabrican**.
+
+Con el porqué —la aprobación que dejó de contar y el parte `b7e9b037` de
+RS26.09/0178— para que quien lo lea entienda de dónde sale la regla. **No se
+borra nada**: la regla general, la precisión de F-026 y la de F-028 siguen
+enteras, y hay un caso que lo exige.
+
+**Dos casos nuevos** (`r25`): uno afirma la precisión fechada y sus tres
+afirmaciones; el otro es el **control negativo** que impide que «dejarlo
+limpio» se lleve por delante las capas anteriores.
+
+`test_f028_documentacion.py`, `test_f026_documentacion.py`,
+`test_f009_documentacion.py` y `test_f012_documentacion.py`: **177 passed** con
+los de F-030 incluidos.
+
+### Fase RED
+
+Con el `docs/ARCHITECTURE.md` de `dev` encima:
+
+```
+$ git show dev:docs/ARCHITECTURE.md > docs/ARCHITECTURE.md
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f030_veredicto_persistido.py \
+    -q --tb=line -p no:randomly -k "r25"
+
+E   AssertionError: assert 'Precisado por F-030 el 2026-09-16' in '3. **La firma debe
+    ser humana.** Una casilla vacía, una aspa, o un trazo geométrico […]'
+FAILED ...::test_f030_r25_el_punto_3_dice_de_donde_sale_el_veredicto
+1 failed, 1 passed, 53 deselected in 0.36s
+$ git checkout -- docs/ARCHITECTURE.md
+```
+
+El segundo caso pasa contra el documento viejo **a propósito**: es el control
+negativo, y lo que vigila es que lo anterior siga ahí.
+
+### La nota del riesgo §10.7, en `progress/current.md`
+
+Queda anotado como **DADO DE ALTA**, no como pendiente de decidir:
+`/api/archivar` sigue nombrando la carpeta y el fichero con el `codigo_obra` y
+el `numero_incidencia` **del cuerpo**; hoy no hace daño porque el front manda
+lo que leyó; **está en el backlog como `F-031`** (commit `11c04d0`, estado
+`pending`). F-030 no lo cierra y no hay nada que proponer.
+
+---
+
+## T20 · el portero, en verde y con exit code 0
+
+```
+$ bash harness/init.sh ; echo "EXIT CODE: $?"
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea)
+62 passed in 2.48s
+[OK] pytest en verde (con medición de cobertura)
+2736 passed, 13 skipped in 33.53s
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 100.0% de 30 líneas cambiadas cubiertas (30/30, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-030-veredicto-persistido
+ENTORNO LISTO. Puedes trabajar.
+EXIT CODE: 0
+```
+
+### El recuento exacto
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests -q
+2736 passed, 3 skipped in 21.22s
+```
+
+| | Antes del bloque 4 (`5a157c4`) | Ahora |
+|---|---|---|
+| Pasan | 2 711 | **2 736** |
+| Fallan | 0 | **0** |
+| Se saltan | 3 | 3 |
+
+**+25 casos netos**, y son exactamente los nuevos: 3 de T13, 4 de T14, 6 de
+T15, 7 de T16, 3 de T17 y 2 de T19. **Ningún caso pasó de verde a rojo, y
+ningún test existente cambió de aserto en estos dos bloques.**
+
+| Fichero | Resultado |
+|---|---|
+| `test_f030_veredicto_persistido.py` | **55 passed** (40 de los bloques 0–3 + 3 de T13 + 7 de T16 + 3 de T17 + 2 de T19) |
+| `test_f030_circuito_borde_a_borde.py` | **10 passed** (4 de T14 + 6 de T15) |
+| Los cuatro ficheros de documentación + F-030 | 177 passed |
+
+La suite se ejecutó también **en orden aleatorio** (sin `-p no:randomly`):
+mismo resultado.
+
+---
+
+## Evidencias (bloques 4 y 5)
+
+Números **medidos**, no estimados.
+
+| Evidencia | Valor medido | Cómo se obtuvo |
+|---|---|---|
+| Tests ejecutados (servicio) | **2 739**: 2 736 pasan, **0 fallan**, 3 se saltan | `cd services/postventa-api && python -m pytest tests -q` |
+| Tests ejecutados (portero completo) | 2 736 pasan + 62 de la suite de la raíz, 13 se saltan | `bash harness/init.sh` |
+| Tests nuevos de estos bloques | **25** (3 de T13, 4 de T14, 6 de T15, 7 de T16, 3 de T17, 2 de T19) | 2 736 − 2 711 del punto de partida |
+| Tests que pasaron de verde a rojo | **0** | comparación de las dos salidas |
+| Tests existentes con un aserto cambiado | **0** en estos dos bloques | diff de los ocho commits |
+| **Cobertura de las líneas cambiadas** | **100,0 %** (30/30, umbral 80 %, nivel `critico`) | línea `PUERTA COBERTURA` de `bash harness/init.sh` |
+| **Mutantes generados y supervivientes** | **3 generados, 3 muertos, 0 supervivientes**, 21,1 s | `python -m harness.mutacion --feature F-030 --workers 8` → `progress/mutacion_F-030.md` |
+| **Workers de la campaña** | **3** (pedidos 8; el arnés asigna uno por mutante) | cabecera de `progress/mutacion_F-030.md` |
+| Mutantes **a mano**, los tres que reabren el defecto | **3 aplicados, 3 muertos**: M1 → 84 casos en rojo, M2 → 19, M3 → 18 | suite entera del servicio por cada uno |
+| Tiempo de ejecución de la suite | **21,22 s** (servicio), **33,53 s** dentro del portero, **2,48 s** la suite de la raíz | las salidas de pytest de arriba |
+| Avisos de lint | **61 antes, 61 ahora**: estos bloques no añaden ninguno. Los tres ficheros de tests tocados dan **0 avisos** por separado | `python -m ruff check .` y la línea `[AVISO] ruff` del portero |
+| **DDL** | **Cero.** 42 ficheros en `dev...HEAD` y ninguno de `infrastructure/persistencia/sql/`; los ficheros de DDL siguen siendo los once de F-028 | `git diff --name-only dev...HEAD` y el test de T17 |
+| Líneas de producción tocadas en estos bloques | **0** | el diff de los ocho commits |
+| Exit code del portero | **0** | `bash harness/init.sh ; echo $?` |
+
+---
+
+## Desviaciones de la spec, declaradas
+
+**1. El caso propio del doble de T13 vive en `test_f030_veredicto_persistido.py`
+y no en el fichero nuevo.** T13 pedía «un caso propio» sin decir dónde, y T14
+dice «**crear** `test_f030_circuito_borde_a_borde.py`». Ponerlo en el fichero
+existente respeta las dos cosas y deja el fichero nuevo siendo lo que su nombre
+dice: el circuito. Son tres casos y están bajo un encabezado «T13».
+
+**2. El control negativo de T14 y T15 tiene DOS mundos, no uno.**
+`design.md` §7.2 pedía «el mismo recorrido sin el paso 1», que deja la base
+vacía. Se añadió el mundo que de verdad caza el defecto —el parte guardado por
+`POST /api/parte` y **sin aprobar**—, porque con el primero a solas un endpoint
+que volviera a fabricar el veredicto desde el cuerpo seguiría en verde. Es un
+refuerzo, no un recorte: el mundo que pedía la spec sigue ahí, parametrizado.
+
+**3. T19 trae dos casos de test que la tarea no pedía.** T19 solo pedía
+actualizar `ARCHITECTURE.md` y verificar con los controles de documentación
+existentes, pero **ninguno de ellos mira el párrafo nuevo**: sin los dos casos
+de `r25`, la precisión de F-030 quedaría sin vigilancia mientras que las de
+F-026 y F-028 la tienen. Se siguió el patrón que ya usan
+`test_f026_documentacion.py` y `test_f028_documentacion.py`.
+
+**4. La comprobación de T14 «devolviendo el stub a `archivar.py` el test se
+pone rojo» **no** ocurre con el stub solo.** Está medido y explicado arriba: T8
+dejó la puerta ciega a `ctx.validacion`, así que el stub solo lo caza el
+centinela de T12. El rojo del test de borde a borde exige reintroducir **el
+defecto entero** (stub + puerta), y ahí sale el error exacto de producción. La
+spec daba por hecho un encadenamiento que el propio arreglo de T8 rompió —a
+mejor—.
+
+---
+
+## Lo que queda para cerrar la feature
+
+**Nada de implementación: T1–T20 están hechas y el portero está en verde con
+exit code 0.** Falta el **APROBADO del reviewer** contra `CHECKPOINTS.md`; la
+feature **no** se marca `done` antes de eso, y este implementer no la marca.
+
+## Verificaciones MANUAL (humano) — **PENDIENTES**
+
+Ninguna de las dos es condición de cierre —exigen el entorno desplegado o base
+de datos real—, y **ninguna se ha ejecutado**: todo lo de estos dos bloques ha
+corrido contra dobles en memoria.
+
+### **V1 · el parte que está esperando**
+
+Con F-030 desplegado en `dev`, archivar el parte **`b7e9b037`** de la incidencia
+**RS26.09/0178** y comprobar que **se archiva sin volver a decidir nada**. Es la
+prueba contra datos reales de lo que T16 demuestra contra columnas.
+
+> ⚠️ **Escribe en SharePoint.** Exige **autorización expresa del humano para esa
+> incidencia** y **no se hace desde local**: `CLAUDE.md` lo prohíbe. La ventana
+> `ARCHIVO_HABILITADO` de `dev` está **abierta** ahora mismo, y cada despliegue
+> del backend vuelve a cerrarla (`infra/desplegar_backend.ps1`), así que hay que
+> comprobarla con `infra/22_ventana_archivo.ps1 -Estado` antes de intentarlo.
+
+### **V2 · el coste, medido**
+
+Contar las consultas de una tanda real de **22 partes** contra el PostgreSQL
+compartido `psql-albaranes-rs9k2` y comprobar que **no ha subido** respecto a
+F-028 (R18). Continúa la verificación que dejó abierta F-028 §11.1.
+
+> El diseño dice que no puede subir —el veredicto viaja **dentro** de la
+> consulta de situación que las tres puertas ya hacían, y hay un test que
+> comprueba que ya no se ejecuta `FROM postventa.cierres` en ese camino—, pero
+> eso es la garantía de un doble, no una medida contra la base real.
+
+**Aviso de entorno vigente:** `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` están
+**las dos abiertas** en `dev`. Si no hay una sesión de verificación en curso,
+procede cerrarlas (`infra/19_ventana_escritura.ps1 -Cerrar` y
+`infra/22_ventana_archivo.ps1 -Cerrar`). **Decisión del humano, no de un
+agente.**

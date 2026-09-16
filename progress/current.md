@@ -1,46 +1,65 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## EN CURSO · 2026-09-16 · **F-030, bloque 0 entregado y EN ROJO a propósito**
+> ## EN CURSO · 2026-09-16 · **F-030, bloque 1 entregado; sigue en rojo a propósito**
 >
 > Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y
-> sin merge. Hecho: **T1 y T2** de `specs/F-030-veredicto-persistido/tasks.md`.
-> Informe con las trazas de la fase RED: **`progress/impl_F-030.md`**.
+> sin merge. Hecho: **T1–T7** de `specs/F-030-veredicto-persistido/tasks.md`
+> (bloques 0 y 1). Informe, con las trazas de las dos fases RED:
+> **`progress/impl_F-030.md`**.
 >
-> **Lo único que se ha escrito es `services/postventa-api/tests/test_f030_veredicto_persistido.py`**:
-> la red de seguridad de la regresión, antes de tocar producción. 16 casos
-> nuevos en rojo, y los tres rojos son los que la spec dice que tienen que ser:
-> la aprobación humana que no sobrevive (9 casos, `puerta_de_estado.py:119`), el
-> cuerpo que miente y hoy pasa las tres puertas (3 casos), y la ida y vuelta de
-> la huella (7 casos, `mapeo.fila_a_validacion_y_cierre` es de T4 y no existe
-> todavía). **No se ha arreglado el defecto**: eso son los bloques 1 a 3.
+> **El veredicto guardado ya se puede leer.** `SituacionParte` tiene su cuarto
+> campo, `mapeo.fila_a_validacion_y_cierre` recompone el veredicto desde sus
+> columnas, `sentencias.select_veredicto_y_cierre` lo trae con el estado de
+> cierre en la **misma** consulta y `consultar_situacion` devuelve las cuatro
+> cosas. **Siguen siendo dos sentencias por llamada** (R18): la vieja se
+> sustituye, no se añade. Y el andamio declarado de T3 —el `object.__setattr__`
+> de `_situacion`— está retirado.
 >
-> **[MEDIDO] las tres huellas del stub del cuerpo son las tres constantes de
-> §0.5** —`371a85e5…`, `9d8596a0…`, `e647e345…`—, la segunda es la que midió el
-> humano sobre RS26.09/0178; y con el veredicto **guardado** el estado sale
-> `aprobado`, así que los casos (a) se pondrán verdes en T8.
+> **Lo que todavía NO cambia: quién juzga.** `puerta_de_estado.py` sigue
+> mirando `ctx.validacion`, así que el defecto está intacto y esperando a T8.
+> Por eso la suite del servicio sigue en rojo, y es el rojo correcto:
 >
-> ### Dos cosas que decide el humano antes de seguir
+> - `9 failed, 2685 passed, 3 skipped` — los 9 son **exactamente** los de T1
+>   (6 de `test_f030_r11_...` y 3 de `test_f030_r7_...`), que arregla el bloque 2;
+> - los **7 de T2** —la ida y vuelta de la huella— están **en verde**;
+> - **nada de lo que pasaba antes se ha puesto en rojo** (2 651 → 2 685).
 >
-> 1. **`bash harness/init.sh` está ROJO por un motivo que NO es F-030 y que ya
->    estaba en `dev`**: `tests/test_f010_prompt_keys_infra.py:74` lee los `.ps1`
->    de `infra/` con `encoding="ascii"` y `infra/90_push_dev_main.ps1` empieza
->    por BOM (commit `ae38aa0`, anterior a esta rama). Tumba la colección del
->    módulo y `pytest -x` se para ahí, sin llegar a ejecutar ni un test del
->    servicio. Arreglarlo es elegir entre dos convenciones —`utf-8-sig` en el
->    test, o quitarle el BOM al script en contra de `CONVENTIONS.md`— y cae
->    fuera del encargo del bloque 0. **Mientras no se arregle, T20 no se puede
->    cerrar.**
-> 2. **Riesgo declarado y fuera de alcance (`design.md` §10.7)**: `/api/archivar`
+> `bash harness/init.sh`: **ROJO solo por esos 9**. Todo lo demás en verde,
+> incluida la **PUERTA COBERTURA al 100,0 %** (23/23 líneas cambiadas, umbral
+> 80 %, nivel `critico`). El fallo del BOM de `infra/90_push_dev_main.ps1` que
+> bloqueaba al portero en el bloque 0 **ya está resuelto** y llegó con el merge
+> de `dev` (`3e4a799`).
+>
+> ### Desviación de la spec, para que la mire el reviewer
+>
+> **T3 pedía `tests/test_f028_estado_dominio.py` en verde «sin cambios», y es
+> imposible.** Su centinela
+> `test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas`
+> afirma por construcción que los campos de `SituacionParte` son **exactamente
+> tres**, que es justo lo que T3 cambia por decisión de la propia spec. Se
+> enmendó con nota fechada y **sin aflojar nada**: el conjunto tiene que seguir
+> siendo exactamente el declarado, así que un quinto campo lo pone en rojo igual
+> que antes lo ponía el cuarto. El cambio está aislado en un aserto del commit
+> `c8bb670`. El fichero **no** está en la regla dura 4, que protege
+> `test_f028_puertas.py`, `test_f028_huella_intacta.py` y `test_f026_*`.
+>
+> ### Lo que sigue abierto
+>
+> 1. **Riesgo declarado y fuera de alcance (`design.md` §10.7)**: `/api/archivar`
 >    sigue nombrando la carpeta y el fichero con el `codigo_obra` y el
 >    `numero_incidencia` **del cuerpo**, no con los guardados. Hoy no hace daño
 >    porque el front manda lo que leyó. Ya está **dado de alta como `F-031`**
->    (commit `11c04d0`, estado `pending`); F-030 no lo cierra, y queda para el
->    humano decidir cuándo se aborda.
+>    (commit `11c04d0`, estado `pending`); F-030 no lo cierra.
+> 2. **V1 y V2**, las dos verificaciones MANUAL de la feature entera: archivar
+>    RS26.09/0178 en `dev` —escribe en SharePoint y exige autorización expresa
+>    del humano para esa incidencia— y contar las consultas de una tanda real de
+>    22 partes (R18). Ninguna es condición de cierre.
 >
-> **Siguiente encargo: el bloque 1 (T3–T7).** En T3 desaparece el andamio
-> declarado de `_situacion` (`object.__setattr__` mientras `SituacionParte` no
-> tenga el campo `validacion`).
+> **Siguiente encargo: el bloque 2 (T8, T9).** Que la puerta lea
+> `ctx.situacion.validacion` y deje de mirar `ctx.validacion`, y que los **dos
+> ayudantes** de `test_f028_puertas.py` preparen el veredicto en la situación
+> sin tocar ni un aserto. Con eso los 9 casos de T1 pasan a verde.
 >
 > Ventanas de escritura de `dev`: **las dos abiertas**. Este bloque no ha
 > ejecutado ninguna llamada real contra Azure, Sigrid, SharePoint ni el

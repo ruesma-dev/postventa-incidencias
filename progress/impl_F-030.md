@@ -274,3 +274,299 @@ Bloques 1 a 5 de `tasks.md` (T3–T20), en su orden y de uno en uno. El siguient
 encargo es el **bloque 1**: `SituacionParte` gana el veredicto (y con él
 desaparece el andamio de T3), `mapeo.fila_a_validacion_y_cierre`, la sentencia
 nueva y `consultar_situacion`.
+
+---
+
+# Bloque 1 · Traer el veredicto guardado, sin un viaje más (T3–T7) — **ENTREGADO**
+
+> Cinco tareas, cinco commits, del `c8bb670` al `aa94d32` sobre
+> `feature/F-030-veredicto-persistido`. **Los 7 casos de T2 están en verde.**
+> Los 9 de T1 siguen en rojo, y eso es lo correcto: son del bloque 2.
+>
+> Ni una llamada real. Ni a Sigrid, ni a SharePoint, ni al PostgreSQL. Las dos
+> ventanas de escritura siguen abiertas en `dev` y este bloque no ha tocado
+> ninguna.
+
+## Qué cambió, en una frase
+
+El veredicto guardado **ya se puede leer**: viaja dentro de la consulta de
+situación que las tres puertas ya hacían, así que llega sin costar ni un viaje
+más. Lo que todavía **no** ha cambiado es quién lo juzga: la puerta sigue
+mirando `ctx.validacion`. Eso es T8, del bloque 2.
+
+## Ficheros tocados
+
+### Producción (5)
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/domain/models/estado.py` | `SituacionParte` gana `validacion` como **cuarto y último** campo (T3), y su docstring queda enmendada con nota fechada. |
+| `services/postventa-api/infrastructure/persistencia/mapeo.py` | `fila_a_validacion_y_cierre` y `_avisos_desde_json` (T4). Sigue **puro**: sin `psycopg` y **sin logger**. |
+| `services/postventa-api/infrastructure/persistencia/sentencias.py` | `select_veredicto_y_cierre` (T5). |
+| `services/postventa-api/infrastructure/persistencia/repositorio_pg.py` | `consultar_situacion` usa la sentencia nueva y devuelve las cuatro cosas (T6). |
+| `services/postventa-api/domain/ports/persistencia.py` | Docstrings de contrato de `consultar_situacion` y `guardar_validacion` (T7). |
+
+### Tests (6)
+
+| Fichero | Qué |
+|---|---|
+| `tests/test_f030_veredicto_persistido.py` | **Se retira el andamio de T3** y se añaden 2 casos de T3 + 4 de T7. |
+| `tests/test_f005_mapeo.py` | 10 casos de T4. |
+| `tests/test_f005_sentencias.py` | 5 casos de T5. |
+| `tests/test_f028_persistencia.py` | 5 casos de T6; **2 casos existentes adaptados** (ver más abajo). |
+| `tests/test_f005_logs_sin_datos_personales.py` | 1 caso de T6 (R21). |
+| `tests/test_f028_estado_dominio.py` | **1 aserto de centinela enmendado**: la desviación de la spec, explicada abajo. |
+
+**No se tocó nada** de lo que la spec prohíbe: ni `aprobacion.py`, ni
+`validacion.py`, ni `infrastructure/persistencia/sql/`, ni
+`interface_adapters/api/`, ni `paso_persistencia.py`, ni `puerta_de_estado.py`,
+ni el front, ni `infra/`, ni `.env`. **No hay DDL** (R20).
+
+## El andamio de T1, retirado
+
+`_situacion()` colgaba el veredicto del objeto con `object.__setattr__` porque
+el campo no existía. Con T3 el campo existe, así que:
+
+- desaparecen la constante `_SITUACION_TRAE_VEREDICTO` y su rama;
+- `_situacion()` construye la situación **normal**, con los cuatro argumentos;
+- se anota en su docstring que el andamio se retiró en T3, para que no lo
+  busque nadie.
+
+## Decisiones de este bloque
+
+1. **`validacion` va el último de los cuatro campos** (lo manda `design.md`
+   §5.1). Todo el código construye `SituacionParte` por palabra clave, pero una
+   construcción posicional que aparezca por el camino tiene que seguir leyendo
+   los tres de antes en su sitio. Hay un caso que afirma el **orden**, no solo
+   el conjunto.
+2. **Los enumerados revientan, los dos campos decisivos no.**
+   `Veredicto`, `Destino`, `ClasificacionFirma` y `CodigoMotivo` levantan
+   `ValueError` ante un literal que el dominio no conoce. En cambio
+   `codigo_obra` y `numero_incidencia` a `NULL` se leen como `""`: eso no es
+   criterio, es el valor por defecto que ya declara `ResultadoValidacion`, y es
+   lo que hace que la huella coincida con la del veredicto que se emitió con
+   `""`. Las **observaciones** se pasan tal cual vienen —`None` o `"   "`—
+   porque normalizarlas aquí sería una segunda copia del criterio de
+   `_normalizar`, que es de la huella y no se toca (R13).
+3. **`veredicto IS NULL` es «no hay validación»**, no el `hash`. La consulta se
+   ancla en `partes`, así que el `hash` viene siempre. Un parte **con ficha y
+   sin veredicto** y uno **sin ficha** acaban los dos en los dos huecos, que es
+   lo que pedían R8 y R9.
+4. **Dos sentencias, ni una más.** `consultar_situacion` sustituye la llamada a
+   `consultar_estado_cierre`; no la añade. Hay un caso que comprueba que dentro
+   de ese camino ya **no se ejecuta** `FROM postventa.cierres`: si siguiera,
+   serían tres.
+5. **Al log va el destino y nada más.** Un literal de `Enum`, que no es del
+   papel y es lo que hace falta para diagnosticar por qué una puerta no se
+   abrió. El caso de R21 comprueba las tres ausencias —observaciones, código de
+   obra, número de incidencia— y además un **control positivo**, para que un
+   logger que no registrara nada no pasara por bueno.
+6. **Las dos enmiendas del puerto se citan literales.** La premisa retirada de
+   `guardar_validacion` —«los tres pasos del circuito … **no puede** recomputar
+   la huella»— es la descripción literal del defecto, y estaba escrita en el
+   sitio donde se declaran los contratos. Se enmienda, no se borra: hay un caso
+   que exige que el texto viejo **siga citado** dentro del recuadro y otro que
+   exige que **ya no se afirme** fuera de él.
+
+## Desviación de la spec, y por qué
+
+**T3 pedía `tests/test_f028_estado_dominio.py` en verde «sin cambios», y eso
+es imposible.** Ese fichero tiene un centinela estructural,
+`test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas`,
+que afirma por construcción que los campos de `SituacionParte` son
+**exactamente tres** — que es justo lo que T3 cambia por decisión de la propia
+spec (`design.md` §5.1, R2). El fichero no está en la regla dura 4 (que protege
+`test_f028_puertas.py`, `test_f028_huella_intacta.py` y `test_f026_*`), y
+§5.5 no lo lista porque no se previó.
+
+Qué se hizo, y qué **no**:
+
+- **Se enmendó el aserto con nota fechada**: el conjunto pasa a ser los cuatro
+  campos. El texto viejo se cita entero en la docstring, con el motivo.
+- **No se aflojó nada.** El caso sigue exigiendo que el conjunto sea
+  **exactamente** el declarado: un quinto campo lo pone en rojo igual que antes
+  lo ponía el cuarto. No se cambió a «contiene al menos», que habría sido
+  desactivar el centinela.
+
+Se deja anotado para el reviewer: si se prefiere otra lectura, el cambio está
+aislado en un solo aserto del commit `c8bb670`.
+
+## Fase RED · los tests del bloque, contra el código de antes del bloque
+
+El rigor es `critico`, así que no vale decir «se siguió TDD». Se montó un
+`git worktree` en `3e4a799` —el HEAD de antes de este bloque— con **los
+ficheros de test de ahora** encima, y se ejecutó. Comando:
+
+```
+git worktree add /tmp/f030red 3e4a799
+cp <los 5 ficheros de test> /tmp/f030red/services/postventa-api/tests/
+cd /tmp/f030red/services/postventa-api && python -m pytest \
+  tests/test_f005_mapeo.py tests/test_f028_persistencia.py \
+  tests/test_f005_logs_sin_datos_personales.py \
+  tests/test_f030_veredicto_persistido.py -q -p no:randomly
+```
+
+Resultado: **39 failed, 75 passed**, y `tests/test_f005_sentencias.py` ni
+siquiera colecciona. Las trazas, tal cual:
+
+### T5 · la sentencia no existe (el fichero entero no colecciona)
+
+```
+ImportError while importing test module '...\tests\test_f005_sentencias.py'.
+tests\test_f005_sentencias.py:34: in <module>
+    from infrastructure.persistencia.sentencias import (
+E   ImportError: cannot import name 'select_veredicto_y_cierre' from
+    'infrastructure.persistencia.sentencias'
+```
+
+### T3 · el cuarto campo no está
+
+```
+        nombres = tuple(campo.name for campo in fields(SituacionParte))
+
+>       assert nombres == (
+            "decision_humana",
+            "ultimo_estado_registrado",
+            "estado_cierre",
+            "validacion",
+        )
+E       AssertionError: assert ('decision_hu...stado_cierre') == ('decision_hu... 'validacion')
+E         Right contains one more item: 'validacion'
+
+tests\test_f030_veredicto_persistido.py:501: AssertionError
+```
+
+### T4 · la función no existe
+
+```
+E   AttributeError: module 'infrastructure.persistencia.mapeo' has no attribute
+    'fila_a_validacion_y_cierre'
+tests\test_f005_mapeo.py:451: AttributeError
+```
+
+### T6 · el adaptador seguía yendo a `cierres` por su cuenta
+
+```
+tests\test_f028_persistencia.py:1443: in test_f030_r18_traer_el_veredicto_no_cuesta_ninguna_consulta_mas
+    assert conexion.veces_con(f"FROM {ESQUEMA}.cierres") == 0
+E   AssertionError: assert 1 == 0
+E    +  where 1 = veces_con('FROM postventa.cierres')
+```
+
+### T6 (R21) · la situación no traía veredicto que registrar ni que callar
+
+```
+E   AttributeError: 'SituacionParte' object has no attribute 'validacion'
+------------------------------ Captured log call ------------------------------
+INFO  infrastructure.persistencia.repositorio_pg:repositorio_pg.py:284
+      F-028 situación del parte leída: hash=hash-inventado-0001
+      decidida_por_persona=False ultimo_estado=None cierre=None
+tests\test_f005_logs_sin_datos_personales.py:262: AttributeError
+```
+
+*(La línea de log de antes no llevaba `destino=`: se ve en la traza.)*
+
+### T7 · el puerto seguía afirmando lo retirado
+
+```
+E   AssertionError: assert 'revoca la a...a no es este' not in 'Guarda el v...sign.md` §7.'
+      'revoca la aprobaci...dicto ya no es este' is contained here:
+        R39). **Y revoca la aprobación humana cuyo veredicto ya no es este**
+        (F-026, R30), en la misma operación. […] incluidos los tres pasos del
+        circuito, cuyo cuerpo de pet...
+tests\test_f030_veredicto_persistido.py:873: AssertionError
+```
+
+**Un caso nuevo pasa en verde también contra el código viejo, y es a propósito:**
+`test_f030_r1_el_puerto_no_gana_ningun_metodo`. No es un test de fase RED, es un
+**centinela**: afirma que el puerto no crece con un `consultar_validacion`
+aparte, que habría costado tres consultas más por parte. Su valor está en el
+futuro, no en este bloque.
+
+## Estado de la suite
+
+### La suite del servicio, completa
+
+```
+cd services/postventa-api && python -m pytest tests -q
+...
+9 failed, 2685 passed, 3 skipped in 23.44s
+```
+
+- **Antes del bloque** (HEAD `3e4a799`): `16 failed, 2651 passed, 3 skipped`.
+- **Ahora**: `9 failed, 2685 passed, 3 skipped`.
+- **Los 7 que pasaron de rojo a verde son exactamente los 7 de T2**, los
+  `test_f030_r10_el_veredicto_recompuesto_da_la_misma_huella[...]`.
+- **Los 9 que siguen en rojo son exactamente los 9 de T1**: los 6 de
+  `test_f030_r11_...` y los 3 de `test_f030_r7_...`. Son del **bloque 2** (T8),
+  que es quien hace que la puerta lea el veredicto guardado.
+- **Nada de lo que pasaba antes se ha puesto en rojo.** 2 651 → 2 685 son +34:
+  27 casos nuevos y los 7 de T2 que cambiaron de lado.
+
+### Recuento por fichero tocado
+
+| Fichero | Resultado |
+|---|---|
+| `test_f030_veredicto_persistido.py` | 9 failed, 14 passed *(los 9 son de T1)* |
+| `test_f005_mapeo.py` | 29 passed |
+| `test_f005_sentencias.py` | 26 passed |
+| `test_f028_persistencia.py` | 56 passed |
+| `test_f005_logs_sin_datos_personales.py` | 6 passed |
+| `test_f028_estado_dominio.py` | 55 passed |
+
+### `bash harness/init.sh` · **ROJO, y es el rojo esperado**
+
+```
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea)
+[OK] pytest en verde (con medición de cobertura)
+[KO] servicio api (services/postventa-api): pytest en rojo
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 100.0% de 23 líneas cambiadas cubiertas (23/23, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-030-veredicto-persistido
+```
+
+El único `[KO]` es la suite del servicio, y el portero corta en el primer fallo:
+
+```
+tests\test_f030_veredicto_persistido.py:559: in test_f030_r11_...
+    puerta(ctx, repositorio, dobles, commit=False)
+application\pipelines\puerta_de_estado.py:119: in exigir_parte_aprobado
+    raise ParteNoApto(f"{motivo}, así que {y_por_eso}")
+E   domain.models.errores.ParteNoApto: este parte está pendiente: la validación
+    lo manda a «cola_validacion_humana» y no consta que nadie lo haya aprobado,
+    así que no se archiva
+```
+
+Es **el defecto**, intacto y esperando a T8: el veredicto ya está en la
+situación, pero la puerta todavía juzga el del contexto.
+
+**Los 61 avisos de ruff son deuda previa y no han subido**: se contaron 61 en
+`3e4a799` y 61 ahora, sobre un `git worktree` del punto de partida. Este bloque
+no añade ninguno.
+
+## Evidencias
+
+| Evidencia | Valor medido | Cómo se obtuvo |
+|---|---|---|
+| Tests ejecutados (servicio) | **2 697**: 2 685 pasan, 9 fallan (los 9 de T1, del bloque 2), 3 se saltan | `cd services/postventa-api && python -m pytest tests -q` |
+| Tests nuevos de este bloque | **27** (2 de T3, 10 de T4, 5 de T5, 6 de T6, 4 de T7) | 2 697 − 2 670 del punto de partida |
+| Tests que pasaron de rojo a verde | **7**, los de T2 | comparación de las dos salidas |
+| Tests que pasaron de verde a rojo | **0** | ídem |
+| Tests existentes adaptados | **3** (los dos de `consultar_situacion` en `test_f028_persistencia.py` y el centinela de `test_f028_estado_dominio.py`), ninguno aflojado | diff de los commits `7bc7721` y `c8bb670` |
+| Cobertura de las líneas cambiadas | **100,0 %** (23/23, umbral 80 %, nivel `critico`) | línea `PUERTA COBERTURA` de `bash harness/init.sh` |
+| Tiempo de la suite del servicio | **23,44 s** | la salida de pytest de arriba |
+| Avisos de lint | **61 antes, 61 ahora**: este bloque no añade ninguno | `python -m ruff check . --output-format=concise` sobre `3e4a799` y sobre `HEAD` |
+| Mutantes generados y supervivientes | **No procede en este bloque.** La campaña es **T18** (bloque 5), con cero supervivientes y análisis uno a uno; mutar ahora la puerta —que es el mutante decisivo— no diría nada, porque el arreglo es T8 | `python -m harness.mutacion --feature F-030` |
+
+## Lo que queda
+
+**Bloque 2 (T8, T9)**: que `puerta_de_estado.py` lea `ctx.situacion.validacion`
+y deje de mirar `ctx.validacion`, y que los **dos ayudantes** de
+`test_f028_puertas.py` preparen el veredicto en la situación. Con eso los 9
+casos de T1 pasan a verde. Después, bloques 3, 4 y 5.
+
+Sigue abierto, de la feature entera: **V1** (archivar RS26.09/0178 en `dev`,
+escribe en SharePoint y exige autorización expresa del humano) y **V2** (contar
+las consultas de una tanda real de 22 partes). Ninguna de las dos es condición
+de cierre.

@@ -66,7 +66,7 @@
 
 ## Bloque 1 · Traer el veredicto guardado, sin un viaje más
 
-- [ ] **T3**: Añadir `validacion: ResultadoValidacion | None = None` a
+- [x] **T3**: Añadir `validacion: ResultadoValidacion | None = None` a
       `SituacionParte` (`domain/models/estado.py`), **el último de los cuatro
       campos**, y enmendar con nota fechada el párrafo de su docstring que
       decía que una cuarta cosa sería una invitación a decidir con ella
@@ -75,7 +75,7 @@
       cambian de sitio; `tests/test_f028_estado_dominio.py` en verde sin
       cambios.
 
-- [ ] **T4**: Añadir `mapeo.fila_a_validacion_y_cierre(fila, *, hash_parte)` y
+- [x] **T4**: Añadir `mapeo.fila_a_validacion_y_cierre(fila, *, hash_parte)` y
       `_avisos_desde_json`, con el orden de columnas de `design.md` §3 y los
       enumerados que **revientan** ante un valor que el dominio no conoce.
       Módulo puro: sin `psycopg` y **sin logger**. | Verificación: el caso de
@@ -83,7 +83,7 @@
       `tests/test_f005_mapeo.py` para «no hay fila de validación → `None`» y
       «un literal desconocido revienta».
 
-- [ ] **T5**: Añadir `sentencias.select_veredicto_y_cierre(*, esquema, hash_parte)`
+- [x] **T5**: Añadir `sentencias.select_veredicto_y_cierre(*, esquema, hash_parte)`
       con el `SQL` de `design.md` §3: anclado en `postventa.partes`, con los dos
       `JOIN` a `validaciones` y a `cierres` en `LEFT`, el esquema por
       `_tabla(...)` y el `hash` como parámetro del driver, nunca interpolado. |
@@ -92,7 +92,7 @@
       hay exactamente un `%s` y el orden de columnas es el que lee
       `fila_a_validacion_y_cierre`.
 
-- [ ] **T6**: Hacer que `repositorio_pg.consultar_situacion` use la sentencia
+- [x] **T6**: Hacer que `repositorio_pg.consultar_situacion` use la sentencia
       nueva **en lugar de** `self.consultar_estado_cierre(...)` y devuelva la
       `SituacionParte` con las cuatro cosas; la línea de log gana el **destino**
       guardado y nada más. `consultar_estado_cierre` y `select_estado_cierre`
@@ -103,7 +103,7 @@
       en verde más el caso nuevo de R21 (el log no nombra observaciones, ni
       código de obra, ni número de incidencia).
 
-- [ ] **T7**: Actualizar las docstrings de contrato en
+- [x] **T7**: Actualizar las docstrings de contrato en
       `domain/ports/persistencia.py`: `consultar_situacion` pasa a prometer
       **cuatro** cosas, y `guardar_validacion` se enmienda con nota fechada
       —hoy sigue diciendo que revoca la aprobación (lo retiró F-028 T15) y

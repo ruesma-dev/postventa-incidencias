@@ -66,6 +66,29 @@
   /** F-026 R36 · el cuarto estado del semáforo. NO es un verde más. */
   const SEMAFORO_APROBADO = "aprobado";
 
+  /**
+   * F-028 R10 · los DOS destinos que una persona puede pedir, y no hay más.
+   *
+   * Copia de `interface_adapters/api/estado.py::ESTADOS_MANUALES`. A
+   * `pendiente` no se vuelve a mano —es donde nace lo que nadie ha mirado— y a
+   * `cerrado` solo se llega cerrando la incidencia en el ERP, que es otra cosa
+   * y tiene su propio circuito.
+   */
+  const ESTADOS_MANUALES = ["aprobado", "rechazado"];
+
+  /**
+   * F-028 R13 · lo que mide un motivo como mucho.
+   *
+   * Copia de `domain/models/estado.py::LIMITE_MOTIVO`, igual que
+   * `UMBRAL_CONFIANZA` y `CAMPOS_DEL_PARTE` son copias de sus constantes del
+   * dominio. El backend lo aplica igual; tenerlo aquí es lo que permite decir
+   * «te has pasado» con el texto delante, en vez de mandarlo y recibir un 400.
+   */
+  const LIMITE_MOTIVO = 500;
+
+  /** F-028 R11 · el estado cuyo motivo es obligatorio. */
+  const ESTADO_RECHAZADO = "rechazado";
+
   /** Lo que `/api/archivar` acepta, además del fichero. NADA personal (R29). */
   const CAMPOS_DE_ARCHIVO = [
     "hash",
@@ -747,6 +770,108 @@
   }
 
   /**
+   * F-028 · el cuerpo de `POST /api/estado`: el de guardar **más cuatro claves**.
+   *
+   * Es el relevo de `cuerpoDeAprobacion`, y hace lo que aquel no podía: además
+   * de aprobar un parte que la máquina rechazó, **rechazar uno que la máquina
+   * dio por bueno**. Por eso aquí no se pregunta si el parte «es aprobable»:
+   * una persona puede mover a `aprobado` o a `rechazado` cualquier parte que no
+   * esté `cerrado` (R9, R10), y lo que impide que un parte sin código de obra
+   * acabe archivado no es un veto de la pantalla, son las tres puertas del
+   * backend y el veredicto de F-004.
+   *
+   * El backend hace **las dos cosas en una llamada** —guarda el parte con su
+   * veredicto y escribe la decisión con la huella de *ese mismo* veredicto—,
+   * así que necesita exactamente lo que necesita `/api/parte`: los nueve campos
+   * y la lectura de la firma, **con las correcciones de la persona aplicadas**.
+   * Recortar la extracción cambiaría el veredicto sobre el que se decide, y la
+   * huella apuntada dejaría de ser la del veredicto que se está mirando.
+   *
+   * Lo que **no** lleva, igual que `cuerpoDeParte`: ni los bytes del PDF —el
+   * documento vive en SharePoint— ni ningún veredicto ya hecho, que el backend
+   * recalcula y no acepta del cuerpo (R28, R30).
+   *
+   * `confirmado` es el **booleano** de JSON. El backend rechaza a propósito la
+   * cadena `"true"`, y con razón: es el error clásico de un cliente que
+   * serializa mal, y tratarlo como confirmación dejaría un parte rechazado a
+   * nombre de alguien que no lo rechazó — un parte que deja de archivarse y de
+   * cerrar su incidencia sin que nadie se entere. No es una segunda
+   * confirmación de pantalla (R29): el botón **es** el acto explícito.
+   *
+   * **Se niega a componer** —no basta con no pintar el botón, porque aunque se
+   * pulse dos veces aquí se para— cuando falta algo de lo que hace que la
+   * decisión signifique algo:
+   *
+   *   1. un destino que no sea uno de los dos manuales (R10);
+   *   2. sin `usuarioOid`: una decisión anónima no es una decisión (R14);
+   *   3. un **rechazo sin motivo** (R11). Es la única de las cuatro que no se
+   *      puede recuperar después: quien vuelva a mirar el parte —otra persona,
+   *      o la misma dentro de un mes— necesita saber qué había que arreglar, y
+   *      «rechazado» a secas obliga a mirar el papel entero otra vez;
+   *   4. sin remesa registrada, porque el backend respondería 409.
+   *
+   * El orden es **el del backend** (`estado`, `usuario_oid`, `confirmado`,
+   * `motivo`, y la remesa después) para que el error que se enseñe aquí sea el
+   * mismo que habría respondido la petición.
+   *
+   * @param {object} parte El parte de la pantalla, con su extracción y su firma.
+   * @param {{estado: string, usuarioOid: string, remesaId: string,
+   *          motivo?: string}} opciones
+   */
+  function cuerpoDeCambioDeEstado(parte, opciones) {
+    const ajustes = opciones || {};
+    if (ESTADOS_MANUALES.indexOf(ajustes.estado) === -1) {
+      throw new Error(
+        "a este parte solo se le puede pedir 'aprobado' o 'rechazado': a " +
+          "'pendiente' no se vuelve a mano, y a 'cerrado' solo se llega " +
+          "cerrando la incidencia en el ERP",
+      );
+    }
+    // El `oid` se recorta antes de mirarlo, como hace el backend: una cadena
+    // de espacios es `truthy` en JavaScript, así que sin recortar se compondría
+    // una petición con `usuario_oid: "   "` que el backend contesta con un 400.
+    const usuarioOid = normalizarValor(ajustes.usuarioOid);
+    if (!usuarioOid) {
+      throw new Error(
+        "no se sabe quién decide sobre este parte: sin el identificador del " +
+          "usuario no se puede registrar quién se hizo responsable",
+      );
+    }
+
+    const motivo = normalizarValor(ajustes.motivo);
+    if (!motivo && ajustes.estado === ESTADO_RECHAZADO) {
+      throw new Error(
+        "rechazar un parte sin decir por qué deja a quien vuelva a mirarlo " +
+          "sin saber qué hay que arreglar: el motivo es obligatorio al rechazar",
+      );
+    }
+    if (motivo && motivo.length > LIMITE_MOTIVO) {
+      throw new Error(
+        `el motivo no puede pasar de ${LIMITE_MOTIVO} caracteres: es para ` +
+          "explicar la decisión, no para copiar ahí el parte",
+      );
+    }
+    if (!ajustes.remesaId) {
+      throw new Error(
+        "no hay ninguna remesa registrada para este parte: vuelve a subir la " +
+          "remesa para que quede constancia antes de decidir sobre él",
+      );
+    }
+
+    const cuerpo = cuerpoDeParte(parte, ajustes.remesaId);
+    cuerpo.estado = ajustes.estado;
+    cuerpo.usuario_oid = usuarioOid;
+    cuerpo.confirmado = true;
+    if (motivo) {
+      // Un motivo vacío **no viaja como clave vacía**: el backend distingue
+      // «no hay motivo» de «el motivo está en blanco», y al aprobar es
+      // opcional (R12).
+      cuerpo.motivo = motivo;
+    }
+    return cuerpo;
+  }
+
+  /**
    * Guarda el parte y su veredicto. **Nunca lanza** (F-019 R27).
    *
    * Devuelve `{ok, motivo, aprobacion}`. Un guardado fallido no es un error
@@ -1134,6 +1259,10 @@
     esAprobable: esAprobable,
     esCirculable: esCirculable,
     cuerpoDeAprobacion: cuerpoDeAprobacion,
+    // F-028 · el cambio de estado: qué se puede pedir y qué viaja al pedirlo.
+    ESTADOS_MANUALES: ESTADOS_MANUALES,
+    LIMITE_MOTIVO: LIMITE_MOTIVO,
+    cuerpoDeCambioDeEstado: cuerpoDeCambioDeEstado,
     cuerpoDeCierre: cuerpoDeCierre,
     cuerpoDeGrafico: cuerpoDeGrafico,
     estaAdjuntado: estaAdjuntado,

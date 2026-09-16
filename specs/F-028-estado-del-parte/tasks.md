@@ -162,7 +162,7 @@
 
 ## Bloque 6 · El front
 
-- [ ] **T16**: `js/api.js::cambiarEstado` y
+- [x] **T16**: `js/api.js::cambiarEstado` y
       `js/pipeline.js::cuerpoDeCambioDeEstado`; retirar `aprobar`. |
       Verificación: `tests_js/estado.test.js` — el cuerpo lleva `estado`,
       `usuario_oid`, `confirmado: true` y el motivo recortado; **se niega a

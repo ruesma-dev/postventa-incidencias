@@ -164,10 +164,31 @@ def test_f026_el_front_no_decide_la_aprobacion_en_app_js(app):
     )
 
 
-def test_f026_r2_aprobar_es_una_peticion_propia_a_su_endpoint(api):
-    """R18 · un endpoint propio: una petición, una decisión, una fila."""
-    assert '"/aprobar"' in api
-    assert 'paso: "aprobar"' in api
+# ---------------------------------------------------------------------------
+# Enmienda del 2026-09-16 · F-028 T16
+# ---------------------------------------------------------------------------
+# Aquí vivía `test_f026_r2_aprobar_es_una_peticion_propia_a_su_endpoint`, que
+# comprobaba que `js/api.js` traía `"/aprobar"` y `paso: "aprobar"`.
+#
+# Se retira porque **el endpoint ya no existe**: F-028 T15 retiró
+# `POST /api/aprobar` del backend y T16 retira `aprobar` del cliente. Dejarlo
+# adaptado a `"/estado"` con nombre de F-026 habría escondido que lo que se
+# prueba es otro endpoint.
+#
+# Lo que probaba —«una petición, una decisión, una fila de auditoría»: ruta
+# propia y paso de traza propio, no colgado de `parte`— NO se pierde. Su
+# sustituto está donde se prueba de verdad el cliente, contra un `fetch` doble
+# en vez de contra el texto del fichero:
+#
+#   `tests_js/api.test.js`
+#     · «f028: cambiarEstado manda POST /api/estado, con cuerpo JSON y su paso
+#        propio» — ruta, método, cabecera y `paso: "estado"`;
+#     · «f028 R52: por la traza del cambio de estado no pasa ni el oid ni el
+#        motivo» — y esa es más fuerte que la de F-026, porque ahora por el
+#        cuerpo viaja además el motivo, que es texto libre;
+#     · y la lista `LOS_ENDPOINTS`, que sigue exigiendo doce y los nombra uno a
+#       uno, así que un decimotercero o un cambio de nombre no pasan callando.
+# ---------------------------------------------------------------------------
 
 
 def test_f026_r22_la_respuesta_de_aprobar_se_guarda_en_el_parte(app):

@@ -1736,3 +1736,67 @@ ya superados; se conservan tal cual, sin reescribir.
 > portal —que se edita en `front-portal`, otro repositorio— y el desbloqueo de
 > **T18 de F-006**, la subida real a SharePoint, que exigirá autorización
 > expresa ante `CHECKPOINTS.md` C5.
+
+## F-028 · El estado del parte, y los espacios de los códigos — CERRADA el 2026-09-16
+
+**Lo pidió el responsable con estas palabras**, el 2026-09-15, justo después de
+verificar F-026 en real: «los partes pueden estar pendientes, rechazados,
+aprobados o cerrados; lo que quiero es poder cambiar el estado desde donde esté
+a aprobado o rechazado, y que se guarde un histórico del estado». La petición
+empezó siendo «rechazar un parte aprobado» y al concretarla salió **más simple
+y más amplia**: un modelo de estado, no una revocación.
+
+**La decisión de diseño: el estado se deriva, no se guarda.** Una función del
+dominio sobre tres hechos que ya tienen dueño —el veredicto, la última decisión
+humana y la traza de cierre— en vez de una columna nueva. El argumento no es el
+coste: **`cerrado` es un hecho de otro sistema**, y guardar una copia nuestra de
+lo que dice Sigrid es la forma de acabar diciendo que un parte está cerrado
+cuando no lo está. Con una columna habría que escribirla en todos los caminos y
+acertar siempre; el día que uno fallara a medias, se quedaría vieja **y nadie se
+enteraría**.
+
+**El defecto que obligó al histórico**: `upsert_aprobacion` pisaba la revocación
+con un `NULL` y `hash_parte` era la clave primaria, así que **aprobar →
+rechazar → aprobar dejaba una sola fila y ni rastro del rechazo**. Sin una
+tabla append-only, «la traza conserva las dos decisiones» era imposible.
+
+**El segundo asunto, que salió de ver fallar el circuito en real**: la IA leyó
+el número como `RS26.09 / 0149` y los espacios que rodean la barra **rompían el
+cierre**, porque la búsqueda en el ERP es por igualdad exacta. Lo que lo hacía
+difícil de ver: **el nombre del fichero salía bien por casualidad** —el colapso
+de espacios se comía el sobrante—, así que el parte se archivaba con el nombre
+correcto y solo fallaba el cierre.
+
+**El riesgo que la ficha mandaba tratar, y cómo acabó**: se temía que cambiar la
+normalización **revocara aprobaciones humanas vigentes**, porque la huella de
+F-026 normaliza los mismos campos. Se midió al escribir la spec —son funciones
+distintas y la huella se alimenta de valores crudos—, T23 lo comprobó en el
+dominio con el arreglo ya aplicado, y **el 2026-09-16 se confirmó contra la base
+real**: el responsable recargó los partes con el arreglo desplegado y la
+aprobación del día anterior **siguió vigente**.
+
+**Las puertas del arnés**: review **APROBADA** con ocho hallazgos, ninguno
+bloqueante; 3.260 casos en verde ejecutados **sin caché**; cobertura 100 % de
+las 297 líneas Python cambiadas; campaña de mutación **32 de 32**, con la línea
+base verificada verde antes de lanzarla. Y **118 mutantes aplicados a mano**
+—116 muertos, 2 equivalentes demostrados— para cubrir lo que el arnés **no
+mide**: unas 700 líneas de JavaScript y las retiradas de código, que no se
+pueden mutar.
+
+**Lo que NO tiene respaldo de lectura, y consta en `tasks.md`**: de las seis
+verificaciones contra la base real, **las dos primeras están leídas** y **las
+cuatro restantes las declaró el responsable** —«he probado las cuatro con el
+parte RS26.09/0150, y ha funcionado»—. La sexta se probó sobre una incidencia
+**ya cerrada** y con las **ventanas de escritura cerradas**, así que **el cierre
+real con un código leído con espacios sigue sin ejecutarse**: hace falta una
+reclamación abierta de la `0626`, que da de alta Posventa.
+
+**Tres hallazgos sobre el propio arnés** salieron de esta feature y están
+portados a `arnes-base`: que las puertas miden **solo Python** sin decirlo
+(1.7.13), que la caché del portero **mira el árbol del servicio y `docs/` vive
+fuera** (ampliación de 1.7.12), y que **una campaña lanzada con la suite en rojo
+da todos los mutantes por muertos** — pasó aquí y dio un 39/39 que no valía
+nada.
+
+Detalle: `progress/impl_F-028.md` (138 secciones, once encargos) y
+`progress/review_F-028.md`.

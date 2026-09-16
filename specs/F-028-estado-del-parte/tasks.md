@@ -250,7 +250,7 @@
       `progress/impl_F-028.md` con el número de mutantes, los supervivientes y
       qué se hace con cada uno.
 
-- [ ] **T27**: Verificaciones que necesitan la base real y el ERP, y que
+- [x] **T27**: Verificaciones que necesitan la base real y el ERP, y que
       **ejecuta el humano** tras desplegar:
       1. el DDL nuevo aplicado dos veces seguidas no falla, y **la semilla no
          duplica** ninguna fila;
@@ -267,5 +267,24 @@
       `SELECT estado_anterior, estado, decidido_por IS NOT NULL AS por_persona,
       decidido_at_utc, motivo FROM postventa.historico_estado
       WHERE hash_parte = %s ORDER BY decidido_at_utc, cambio_id;`
+
+> **Resultado, 2026-09-16.** Las **1 y 2 están LEÍDAS**: `21_historico_estado.ps1`
+> dio `PASA` —la semilla no duplica y la aprobación del 2026-09-15 conserva su
+> autor y su hora—, y la recarga de partes de ese día verificó además, sin
+> buscarlo, que **el arreglo de los espacios no movió la huella** (la aprobación
+> siguió vigente) y que **el histórico no crece con filas iguales**.
+>
+> Las **3, 4, 5 y 6 las declara el responsable**: «he probado las cuatro con el
+> parte RS26.09/0150, y ha funcionado». **No se han leído de la base**, y la
+> diferencia se deja escrita a propósito, que es la disciplina de este
+> repositorio: lo de arriba está medido, esto está declarado.
+>
+> Y una precisión sobre la **6** para quien lea esto después: se probó sobre
+> `RS26.09/0150`, que **ya estaba cerrada** desde el 2026-09-11, y **las dos
+> ventanas de escritura estaban cerradas** —comprobado ese mismo día—. Así que
+> lo que queda acreditado es **el camino hasta el cierre con un código leído con
+> espacios**, no un cierre nuevo. **El cierre real con espacios sigue sin
+> ejecutarse**, y para hacerlo hace falta una reclamación **abierta** de la
+> `0626`, que la da de alta Posventa.
 
 - [x] **T28**: Ejecutar `bash harness/init.sh` en verde.

@@ -28,8 +28,16 @@ const assert = require("node:assert/strict");
 const {
   ESTADOS_MANUALES,
   LIMITE_MOTIVO,
+  cuerpoDeArchivo,
   cuerpoDeCambioDeEstado,
+  cuerpoDeCierre,
+  cuerpoDeGrafico,
   cuerpoDeParte,
+  esCerrable,
+  esCirculable,
+  guardarParte,
+  pendientesDeCircuito,
+  semaforoDe,
 } = require("../js/pipeline.js");
 
 const HASH = "a1b2c3d4e5f6";
@@ -328,4 +336,352 @@ test("f028: las ediciones de la persona SÍ viajan, que es lo que se decide", ()
   const cuerpo = cuerpoDeCambioDeEstado(parte, opciones());
 
   assert.equal(cuerpo.extraccion.campos.codigo_obra.valor, "0999");
+});
+
+// ==========================================================================
+// T17 · El estado lo manda el backend. Aquí solo se pinta y se filtra
+// ==========================================================================
+//
+// `parte.estadoParte` es el bloque `estado` tal y como lo devuelven
+// `POST /api/parte` y `POST /api/estado`. Se llama así y no `parte.estado`
+// porque en `js/app.js` ese nombre lleva desde F-007 la **fase** del parte en
+// pantalla —«leyendo», «listo», «error»—, y dos cosas distintas con el mismo
+// nombre en el mismo objeto son un fallo esperando a que alguien las confunda.
+
+/** El bloque `estado` del backend, con sus cuatro claves y ni una más. */
+function estadoInventado(estado, porPersona) {
+  return {
+    estado: estado,
+    decidido_por_persona: Boolean(porPersona),
+    decidido_at_utc: porPersona ? "2026-09-15T10:12:00+00:00" : null,
+    estado_anterior: "pendiente",
+  };
+}
+
+/** El veredicto verde: lo que la máquina dio por bueno. */
+function validacionApta() {
+  return validacionInventada("apto", "archivo_y_cierre");
+}
+
+/** Un `FormData` de mentira: aquí no se prueba el navegador. */
+function FormDataFalsa() {
+  const pares = [];
+  this.append = function (clave, valor) {
+    pares.push([clave, valor]);
+  };
+  this.get = function (clave) {
+    const par = pares.find((p) => p[0] === clave);
+    return par ? par[1] : null;
+  };
+}
+
+// --- Las cuatro marcas -----------------------------------------------------
+
+test("f028 R38: un parte aprobado POR LA MÁQUINA se pinta verde", () => {
+  assert.equal(
+    semaforoDe(validacionApta(), estadoInventado("aprobado", false)),
+    "verde",
+  );
+});
+
+test("f028 R39: un parte aprobado POR UNA PERSONA no se pinta igual que el verde", () => {
+  // Es la distinción que la feature existe para registrar: uno lo dio por
+  // bueno la máquina y el otro lo dio por bueno una persona **a pesar** de la
+  // máquina. Pintarlos igual borra exactamente ese dato.
+  const porPersona = semaforoDe(
+    validacionInventada("no_apto", "cola_validacion_humana"),
+    estadoInventado("aprobado", true),
+  );
+
+  assert.equal(porPersona, "aprobado");
+  assert.notEqual(porPersona, "verde");
+});
+
+test("f028 R39: y la marca depende de QUIÉN decidió, no del veredicto", () => {
+  // Control negativo del anterior: el mismo veredicto apto, las dos marcas.
+  assert.equal(
+    semaforoDe(validacionApta(), estadoInventado("aprobado", true)),
+    "aprobado",
+  );
+  assert.equal(
+    semaforoDe(validacionApta(), estadoInventado("aprobado", false)),
+    "verde",
+  );
+});
+
+test("f028 R5: un parte APTO que una persona rechazó se pinta rechazado", () => {
+  // El caso que la feature viene a arreglar, visto desde la pantalla: hasta
+  // F-028 esto era imposible y el parte se pintaba verde.
+  assert.equal(
+    semaforoDe(validacionApta(), estadoInventado("rechazado", true)),
+    "rechazado",
+  );
+});
+
+test("f028 R38: un parte pendiente sigue siendo ámbar o rojo, según su destino", () => {
+  // La única lectura del veredicto que queda, y es un matiz de color: dentro
+  // de `pendiente`, la cola humana es ámbar y la revisión manual es roja.
+  assert.equal(
+    semaforoDe(
+      validacionInventada("no_apto", "cola_validacion_humana"),
+      estadoInventado("pendiente", false),
+    ),
+    "ambar",
+  );
+  assert.equal(
+    semaforoDe(
+      validacionInventada("no_apto", "revision_manual"),
+      estadoInventado("pendiente", false),
+    ),
+    "rojo",
+  );
+});
+
+test("f028 R7: un parte cerrado se pinta cerrado, aunque su veredicto sea apto", () => {
+  assert.equal(
+    semaforoDe(validacionApta(), estadoInventado("cerrado", false)),
+    "cerrado",
+  );
+});
+
+test("f028 R17: sin el bloque del backend NO se inventa ninguna marca", () => {
+  // Aquí no se deriva ningún estado: quien decide es el backend. Un parte cuyo
+  // guardado falló no tiene estado conocido, y pintarlo verde porque su
+  // veredicto es apto sería afirmar que está aprobado sin haberlo preguntado.
+  // El fallo se va al lado seguro: sin marca, nunca con la de aprobado.
+  for (const bloque of [undefined, null, {}, { estado: "" }]) {
+    assert.equal(
+      semaforoDe(validacionApta(), bloque),
+      "",
+      `«${JSON.stringify(bloque)}» no debería pintar nada`,
+    );
+  }
+});
+
+test("f028 R17: un estado que esta pantalla no conoce tampoco se pinta", () => {
+  assert.equal(
+    semaforoDe(validacionApta(), estadoInventado("inventado", false)),
+    "",
+  );
+});
+
+test("f028: un pendiente sin veredicto no tiene con qué elegir color, y no lo elige", () => {
+  assert.equal(semaforoDe(null, estadoInventado("pendiente", false)), "");
+  assert.equal(semaforoDe({}, estadoInventado("pendiente", false)), "");
+});
+
+test("f028: el aprobado, el rechazado y el cerrado no necesitan veredicto", () => {
+  // Los tres estados que el backend resuelve por sí solos no dependen del
+  // veredicto para nada, y por eso no se apagan cuando falta.
+  assert.equal(semaforoDe(null, estadoInventado("aprobado", true)), "aprobado");
+  assert.equal(semaforoDe(null, estadoInventado("aprobado", false)), "verde");
+  assert.equal(semaforoDe(null, estadoInventado("rechazado", true)), "rechazado");
+  assert.equal(semaforoDe(null, estadoInventado("cerrado", false)), "cerrado");
+});
+
+// --- El selector de la tanda ----------------------------------------------
+
+/** Un parte listo para la tanda: guardado, con su PDF y con su estado. */
+function parteDeLaTanda(estado, extra) {
+  return Object.assign(
+    parteInventado(),
+    {
+      guardado: true,
+      archivado: false,
+      cerrado: false,
+      validacion: validacionApta(),
+      estadoParte: estado,
+    },
+    extra || {},
+  );
+}
+
+test("f028 R33: entra en la tanda el que está APROBADO, lo diga la máquina o una persona", () => {
+  const maquina = parteDeLaTanda(estadoInventado("aprobado", false));
+  const persona = parteDeLaTanda(estadoInventado("aprobado", true));
+
+  assert.deepEqual(pendientesDeCircuito([maquina, persona]), [maquina, persona]);
+  assert.equal(esCirculable(maquina), true);
+  assert.equal(esCirculable(persona), true);
+});
+
+test("f028 R9: un parte NO APTO que una persona aprobó entra en la tanda", () => {
+  const parte = parteDeLaTanda(estadoInventado("aprobado", true), {
+    validacion: validacionInventada("no_apto", "revision_manual"),
+  });
+
+  assert.deepEqual(pendientesDeCircuito([parte]), [parte]);
+});
+
+test("f028 R5: un parte RECHAZADO sale de la tanda AUNQUE su veredicto sea apto", () => {
+  // Esto es lo que el responsable pidió, y hasta F-028 era imposible: el parte
+  // es verde para la máquina, una persona lo rechazó, y no se archiva, ni se
+  // adjunta, ni cierra su incidencia. El backend lo vuelve a comprobar en sus
+  // tres puertas; esto evita además que la tanda lo intente.
+  const parte = parteDeLaTanda(estadoInventado("rechazado", true));
+
+  assert.equal(parte.validacion.veredicto, "apto");
+  assert.deepEqual(pendientesDeCircuito([parte]), []);
+  assert.equal(esCirculable(parte), false);
+});
+
+test("f028 R7: un parte CERRADO también sale de la tanda, aunque sea apto", () => {
+  const parte = parteDeLaTanda(estadoInventado("cerrado", false));
+
+  assert.equal(parte.validacion.veredicto, "apto");
+  assert.deepEqual(pendientesDeCircuito([parte]), []);
+});
+
+test("f028 R4: un parte PENDIENTE sale de la tanda", () => {
+  const parte = parteDeLaTanda(estadoInventado("pendiente", false), {
+    validacion: validacionInventada("no_apto", "cola_validacion_humana"),
+  });
+
+  assert.deepEqual(pendientesDeCircuito([parte]), []);
+});
+
+test("f028 R17: sin bloque de estado el parte NO entra en la tanda", () => {
+  // El lado seguro otra vez: lo que no consta aprobado no circula. Detrás de
+  // la tanda hay dos escrituras en un ERP de producción.
+  for (const bloque of [undefined, null, {}]) {
+    assert.deepEqual(pendientesDeCircuito([parteDeLaTanda(bloque)]), []);
+  }
+});
+
+test("f028 R34: el estado no relaja las otras puertas de la tanda", () => {
+  // Un aprobado que no consta guardado sigue fuera (F-019 R27), y uno que ya
+  // se cerró en esta tanda también.
+  const sinGuardar = parteDeLaTanda(estadoInventado("aprobado", true), {
+    guardado: false,
+  });
+  const yaCerrado = parteDeLaTanda(estadoInventado("aprobado", true), {
+    archivado: true,
+    grafico: "adjuntado",
+    cerrado: true,
+  });
+
+  assert.deepEqual(pendientesDeCircuito([sinGuardar, yaCerrado]), []);
+});
+
+test("f028 R24: la tanda sigue llevando lo que quedó a medias", () => {
+  // Lo que F-025 R24 cerró no se toca: archivado sin adjuntar y adjuntado sin
+  // cerrar siguen dentro, porque si no, no habría forma de recuperarlos.
+  const archivado = parteDeLaTanda(estadoInventado("aprobado", false), {
+    archivado: true,
+  });
+  const adjuntado = parteDeLaTanda(estadoInventado("aprobado", false), {
+    archivado: true,
+    grafico: "adjuntado",
+  });
+
+  assert.deepEqual(pendientesDeCircuito([archivado, adjuntado]), [
+    archivado,
+    adjuntado,
+  ]);
+});
+
+test("f028: una lista vacía o ausente no revienta", () => {
+  assert.deepEqual(pendientesDeCircuito([]), []);
+  assert.deepEqual(pendientesDeCircuito(null), []);
+});
+
+// --- Y las tres composiciones se niegan igual ------------------------------
+
+test("f028 R5: el cuerpo de archivo se NIEGA a componer un parte apto rechazado", () => {
+  const parte = parteDeLaTanda(estadoInventado("rechazado", true));
+
+  assert.throws(() => cuerpoDeArchivo(parte, FormDataFalsa), /aprobad/i);
+});
+
+test("f028: un parte aprobado SIN veredicto dice qué le falta, no revienta", () => {
+  // Hueco que abre T17 y que hay que cerrar en el mismo commit: hasta ahora
+  // `esCirculable` miraba la validación, así que un parte sin veredicto no
+  // llegaba nunca a componer nada. Ahora `esCirculable` mira solo el estado, y
+  // sin esta comprobación lo que salía era un `TypeError` sobre
+  // `parte.validacion.veredicto` — un error que no dice nada a quien lo lee.
+  const parte = parteDeLaTanda(estadoInventado("aprobado", true), {
+    validacion: null,
+  });
+
+  assert.throws(() => cuerpoDeArchivo(parte, FormDataFalsa), /veredicto/i);
+  assert.equal(esCerrable(Object.assign(parte, { archivado: true })), false);
+});
+
+test("f028 R5: un parte apto rechazado NO es cerrable ni adjuntable, aunque conste archivado", () => {
+  const parte = parteDeLaTanda(estadoInventado("rechazado", true), {
+    archivado: true,
+  });
+
+  assert.equal(esCerrable(parte), false);
+  assert.throws(() => cuerpoDeCierre(parte, { usuarioOid: OID }), /aprobad/i);
+  assert.throws(
+    () => cuerpoDeGrafico(parte, { usuarioOid: OID }, FormDataFalsa),
+    /aprobad/i,
+  );
+});
+
+test("f028 R7: y un parte cerrado tampoco compone ninguna de las tres", () => {
+  const parte = parteDeLaTanda(estadoInventado("cerrado", false), {
+    archivado: true,
+  });
+
+  assert.throws(() => cuerpoDeArchivo(parte, FormDataFalsa), /aprobad/i);
+  assert.throws(() => cuerpoDeCierre(parte, { usuarioOid: OID }), /aprobad/i);
+  assert.throws(
+    () => cuerpoDeGrafico(parte, { usuarioOid: OID }, FormDataFalsa),
+    /aprobad/i,
+  );
+});
+
+// --- Lo que el backend dice al guardar llega al parte ----------------------
+
+/** Una `api` de mentira cuyo `guardarParte` devuelve lo que se le diga. */
+function apiQueDevuelve(datos) {
+  return {
+    guardarParte: function () {
+      return Promise.resolve(datos);
+    },
+  };
+}
+
+test("f028 R38: al guardar, el estado que devuelve el backend llega al parte", async () => {
+  // Viene de aquí y no de una petición aparte: serían 22 llamadas de más en
+  // una remesa real. Es lo que permite que al volver a subir la remesa cada
+  // parte se reconozca con el estado que tiene en la base.
+  const bloque = estadoInventado("aprobado", true);
+
+  const guardado = await guardarParte(
+    parteInventado(),
+    apiQueDevuelve({ hash_parte: HASH, estado: bloque }),
+    REMESA,
+  );
+
+  assert.equal(guardado.ok, true);
+  assert.deepEqual(guardado.estado, bloque);
+});
+
+test("f028: sin bloque de estado en la respuesta, lo que llega es null y no un hueco", async () => {
+  const guardado = await guardarParte(
+    parteInventado(),
+    apiQueDevuelve({ hash_parte: HASH }),
+    REMESA,
+  );
+
+  assert.equal(guardado.estado, null);
+});
+
+test("f028: un guardado fallido no inventa ningún estado", async () => {
+  // Y el parte se queda con el que ya tenía: ponerlo a `null` borraría de la
+  // pantalla una decisión que sigue escrita en la base.
+  const api = {
+    guardarParte: function () {
+      return Promise.reject({ mensaje: "409 la remesa no consta" });
+    },
+  };
+
+  const guardado = await guardarParte(parteInventado(), api, REMESA);
+
+  assert.equal(guardado.ok, false);
+  assert.equal(guardado.estado, null);
+  assert.match(guardado.motivo, /remesa/);
 });

@@ -19,20 +19,18 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+// Enmienda del 2026-09-16 · F-028 T17: de los trece nombres que importaba este
+// fichero quedan tres. Los diez que se van -`esCirculable`, `semaforoDe`,
+// `cuerpoDeArchivo`, `cuerpoDeCierre`, `cuerpoDeGrafico`, `esArchivable`,
+// `esCerrable`, `guardarParte`, `pendientesDeCircuito` y `cuerpoDeParte`- se
+// quedaban sin un solo llamante aquí, y un import sin uso es una pista falsa
+// sobre lo que un fichero prueba. `cuerpoDeParte` se queda: lo sigue usando el
+// caso que compara el cuerpo de aprobar con el de guardar.
 const {
   MOTIVOS_APROBABLES,
   esAprobable,
-  esCirculable,
   cuerpoDeAprobacion,
   cuerpoDeParte,
-  cuerpoDeArchivo,
-  cuerpoDeCierre,
-  cuerpoDeGrafico,
-  esArchivable,
-  esCerrable,
-  guardarParte,
-  pendientesDeCircuito,
-  semaforoDe,
 } = require("../js/pipeline.js");
 
 const HASH = "a1b2c3d4e5f6";
@@ -62,19 +60,6 @@ function validacionDeLaCola() {
   return validacionInventada("no_apto", "cola_validacion_humana", [
     motivo("observaciones_manuscritas"),
   ]);
-}
-
-/** El bloque `aprobacion` tal y como lo emite el backend (R22). */
-function aprobacionInventada(sobrescribir) {
-  return Object.assign(
-    {
-      estado: "aprobado",
-      destino_aprobado: "cola_validacion_humana",
-      motivos_aprobados: ["observaciones_manuscritas"],
-      aprobado_at_utc: "2026-09-12T10:12:00+00:00",
-    },
-    sobrescribir || {},
-  );
 }
 
 /** La extracción de `/api/extraer`, con los NUEVE campos. */
@@ -111,7 +96,6 @@ function parteInventado(extra) {
       extraccion: extraccionInventada(),
       firma: { hash_parte: HASH, firma: { clasificacion: "ilegible" } },
       validacion: validacionDeLaCola(),
-      aprobacion: null,
       contenido_b64: "JVBERi0xLjQK",
       fichero: new File([new Uint8Array([0x25, 0x50])], "parte-inventado.pdf"),
     },
@@ -185,110 +169,56 @@ test("f026: sin veredicto no se ofrece aprobar nada", () => {
 });
 
 // ===========================================================================
-// R36 · el cuarto estado del semáforo: un parte aprobado NO es un verde más
+// Enmienda del 2026-09-16 · F-028 T17 · el semáforo y el circuito se mudan
 // ===========================================================================
-
-test("f026 R36: un parte aprobado y vigente se pinta 'aprobado', nunca 'verde'", () => {
-  const semaforo = semaforoDe(validacionDeLaCola(), aprobacionInventada());
-
-  assert.equal(semaforo, "aprobado");
-  assert.notEqual(
-    semaforo,
-    "verde",
-    "uno lo dio por bueno la máquina y el otro una persona A PESAR de la " +
-      "máquina: pintarlos igual borra el dato que F-026 existe para registrar",
-  );
-});
-
-test("f026 R36: el aprobado se distingue del verde también viniendo de revisión manual", () => {
-  const validacion = validacionInventada("no_apto", "revision_manual", [
-    motivo("firma_no_humana"),
-  ]);
-  const aprobacion = aprobacionInventada({ destino_aprobado: "revision_manual" });
-
-  assert.equal(semaforoDe(validacion, aprobacion), "aprobado");
-});
-
-test("f026 R31: una aprobación revocada devuelve el parte a su color de origen", () => {
-  // La corrección de un campo cambió el veredicto, así que nadie ha opinado
-  // sobre lo nuevo: vuelve a hacer falta que una persona lo mire.
-  const revocada = aprobacionInventada({ estado: "revocado" });
-
-  assert.equal(semaforoDe(validacionDeLaCola(), revocada), "ambar");
-});
-
-test("f026 R36: la aprobación no cambia el color de un parte que ya era verde", () => {
-  const apto = validacionInventada("apto", "archivo_y_cierre");
-
-  assert.equal(semaforoDe(apto, aprobacionInventada()), "verde");
-});
-
-test("f007 R13: sin aprobación, el semáforo sigue diciendo exactamente lo que decía", () => {
-  // Control negativo: F-026 añade un estado, no reescribe los tres de F-007.
-  assert.equal(semaforoDe(validacionInventada("apto", "archivo_y_cierre")), "verde");
-  assert.equal(semaforoDe(validacionDeLaCola()), "ambar");
-  assert.equal(
-    semaforoDe(validacionInventada("no_apto", "revision_manual")),
-    "rojo",
-  );
-  assert.equal(semaforoDe(null), "");
-  assert.equal(semaforoDe(null, aprobacionInventada()), "");
-});
-
-// ===========================================================================
-// R23, R25, R31 · qué entra en el circuito
-// ===========================================================================
-
-test("f026 R23: el apto de siempre entra en el circuito, sin que nadie apruebe nada", () => {
-  const parte = parteInventado({
-    validacion: validacionInventada("apto", "archivo_y_cierre"),
-  });
-
-  assert.equal(esCirculable(parte), true);
-});
-
-test("f026 R23: un no apto con aprobación viva del mismo destino entra en el circuito", () => {
-  const parte = parteInventado({ aprobacion: aprobacionInventada() });
-
-  assert.equal(esCirculable(parte), true);
-});
-
-test("f026 R25: un no apto sin aprobación NO entra en el circuito", () => {
-  assert.equal(esCirculable(parteInventado()), false);
-});
-
-test("f026 R31: con la aprobación revocada, el parte vuelve a quedarse fuera", () => {
-  const parte = parteInventado({
-    aprobacion: aprobacionInventada({ estado: "revocado" }),
-  });
-
-  assert.equal(esCirculable(parte), false);
-});
-
-test("f026: una aprobación de otro destino no vale para el veredicto de ahora", () => {
-  // Si el parte pasó de la cola ámbar a revisión manual, la aprobación de la
-  // cola no dice nada de lo nuevo. Es lo mismo que comprueba
-  // `admite_circuito` en el backend, que es quien decide de verdad.
-  const parte = parteInventado({
-    validacion: validacionInventada("no_apto", "revision_manual", [
-      motivo("firma_no_humana"),
-    ]),
-    aprobacion: aprobacionInventada({ destino_aprobado: "cola_validacion_humana" }),
-  });
-
-  assert.equal(esCirculable(parte), false);
-});
-
-test("f026: sin veredicto no circula nada, ni con aprobación delante", () => {
-  const parte = parteInventado({
-    validacion: null,
-    aprobacion: aprobacionInventada(),
-  });
-
-  assert.equal(esCirculable(parte), false);
-  assert.equal(esCirculable(null), false);
-  assert.equal(esCirculable(undefined), false);
-});
+//
+// Aquí vivían once casos sobre `semaforoDe(validacion, aprobacion)` y
+// `esCirculable(parte)` tal y como los dejó F-026. Se retiran porque prueban
+// **el mecanismo que T17 sustituye**, no un comportamiento que siga
+// existiendo: el color y la entrada al circuito salían del veredicto y de una
+// aprobación con su destino, y desde F-028 salen del bloque `estado` que manda
+// el backend (R17, R33). La caducidad ya no se recomputa en pantalla: la
+// resuelve el backend al derivar (R19).
+//
+// Ninguno se ha «adaptado» pasándole un bloque `estado`, que es lo que los
+// habría dejado verdes probando otra cosa con nombre de F-026. Sus sustitutos
+// están escritos y en verde en `tests_js/estado.test.js`:
+//
+//   RETIRADO (semáforo)                              SUSTITUTO EN F-028
+//   · R36 «aprobado y vigente se pinta 'aprobado',   · R39 «un parte aprobado POR UNA PERSONA no se
+//     nunca 'verde'»                                   pinta igual que el verde»
+//   · R36 «el aprobado se distingue del verde        · R39 «y la marca depende de QUIÉN decidió, no
+//     también viniendo de revisión manual»             del veredicto»
+//   · R31 «una aprobación revocada devuelve el       · R17 «sin el bloque del backend NO se inventa
+//     parte a su color de origen»                      ninguna marca» + R38 «un parte pendiente sigue
+//                                                      siendo ámbar o rojo, según su destino»
+//   · R36 «la aprobación no cambia el color de un    · R38 «un parte aprobado POR LA MÁQUINA se pinta
+//     parte que ya era verde»                          verde»
+//   · f007 R13 «sin aprobación, el semáforo sigue    · R38 (ámbar y rojo) + R17 (sin bloque, sin
+//     diciendo exactamente lo que decía»               marca). Este dejó de ser cierto a propósito:
+//                                                      F-028 SÍ reescribe los tres colores de F-007, y
+//                                                      esa es justamente la feature.
+//
+//   RETIRADO (circuito)                              SUSTITUTO EN F-028
+//   · R23 «el apto de siempre entra, sin que nadie   · R33 «entra en la tanda el que está APROBADO, lo
+//     apruebe nada»                                    diga la máquina o una persona»
+//   · R23 «un no apto con aprobación viva del mismo  · R9 «un parte NO APTO que una persona aprobó
+//     destino entra en el circuito»                    entra en la tanda»
+//   · R25 «un no apto sin aprobación NO entra»       · R4 «un parte PENDIENTE sale de la tanda»
+//   · R31 «con la aprobación revocada se queda       · R17 «sin bloque de estado el parte NO entra en
+//     fuera»                                           la tanda»
+//   · «una aprobación de otro destino no vale»       · ídem — F-028 no compara destinos: el backend
+//                                                      compara la huella del veredicto entero, que es
+//                                                      más estrecho y no más laxo
+//   · «sin veredicto no circula nada»                · R17 «sin bloque de estado el parte NO entra»
+//
+// Y uno que aquí no se podía ni escribir, que es el encargo de la feature:
+// `estado.test.js` · R5 «un parte RECHAZADO sale de la tanda AUNQUE su
+// veredicto sea apto».
+//
+// Lo que NO se ha tocado de este fichero: `MOTIVOS_APROBABLES`, `esAprobable`
+// y `cuerpoDeAprobacion`, que siguen vivos porque `js/app.js` e `index.html`
+// los siguen llamando. Se van con T18, que es quien reescribe la pantalla.
 
 // ===========================================================================
 // R4, R19 · qué viaja en la petición de aprobación
@@ -385,171 +315,61 @@ test("f026: sin remesa registrada no se compone nada, porque el backend responde
 // uno solo se quedara mirando `esArchivable`, la feature entera se quedaría en
 // una marca de color, y encima el botón parecería funcionar.
 
-/** Un `FormData` de mentira que recuerda lo que le metieron. */
-class FormDataFalso {
-  constructor() {
-    this.campos = [];
-  }
-  append(nombre, valor, nombreFichero) {
-    this.campos.push({ nombre, valor, nombreFichero });
-  }
-  get(nombre) {
-    const encontrado = this.campos.find((campo) => campo.nombre === nombre);
-    return encontrado ? encontrado.valor : null;
-  }
-}
-
-/** El parte aprobado, guardado y listo para entrar en la tanda. */
-function parteAprobado(extra) {
-  return parteInventado(
-    Object.assign({ aprobacion: aprobacionInventada() }, extra || {}),
-  );
-}
-
-test("f026 R23: un aprobado vigente entra en la tanda de la confirmación única", () => {
-  const tanda = pendientesDeCircuito([parteAprobado()]);
-
-  assert.equal(tanda.length, 1);
-});
-
-test("f026 R25: un no apto sin aprobación sigue fuera de la tanda", () => {
-  // Es el control negativo de F-025 R36, y tiene que seguir en pie: lo que
-  // F-026 abre es la puerta de los aprobados, no la de los rechazados.
-  assert.deepEqual(pendientesDeCircuito([parteInventado()]), []);
-});
-
-test("f026 R31: un aprobado revocado vuelve a quedarse fuera de la tanda", () => {
-  const revocado = parteAprobado({
-    aprobacion: aprobacionInventada({ estado: "revocado" }),
-  });
-
-  assert.deepEqual(pendientesDeCircuito([revocado]), []);
-});
-
-test("f019 R27: un aprobado que no consta guardado tampoco entra en la tanda", () => {
-  // La aprobación no relaja ninguna otra puerta (R26): sin fila en la base,
-  // `/api/archivar` responde 409 y no sube nada.
-  assert.deepEqual(pendientesDeCircuito([parteAprobado({ guardado: false })]), []);
-});
-
-test("f026 R23: el cuerpo de archivo se compone para un parte aprobado", () => {
-  const cuerpo = cuerpoDeArchivo(parteAprobado(), FormDataFalso);
-
-  assert.equal(cuerpo.get("hash"), HASH);
-  assert.equal(cuerpo.get("codigo_obra"), "0677");
-  assert.equal(
-    cuerpo.get("veredicto"),
-    "no_apto",
-    "lo que se declara es el veredicto REAL: la aprobación va al lado, nunca encima",
-  );
-  assert.equal(cuerpo.get("destino"), "cola_validacion_humana");
-});
-
-test("f026 R31: el cuerpo de archivo se niega a componer para un revocado", () => {
-  const revocado = parteAprobado({
-    aprobacion: aprobacionInventada({ estado: "revocado" }),
-  });
-
-  assert.throws(() => cuerpoDeArchivo(revocado, FormDataFalso), /no es apto/i);
-});
-
-test("f026 R25: el cuerpo de archivo se sigue negando sin aprobación ninguna", () => {
-  assert.throws(() => cuerpoDeArchivo(parteInventado(), FormDataFalso), /no es apto/i);
-});
-
-test("f026 R23: un aprobado archivado es cerrable, y adjuntable", () => {
-  const parte = parteAprobado({ archivado: true });
-
-  assert.equal(esCerrable(parte), true);
-  assert.doesNotThrow(() =>
-    cuerpoDeGrafico(parte, { usuarioOid: OID }, FormDataFalso),
-  );
-});
-
-test("f026 R31: un revocado ni se cierra ni se adjunta, aunque conste archivado", () => {
-  const revocado = parteAprobado({
-    archivado: true,
-    aprobacion: aprobacionInventada({ estado: "revocado" }),
-  });
-
-  assert.equal(esCerrable(revocado), false);
-  assert.throws(
-    () => cuerpoDeGrafico(revocado, { usuarioOid: OID }, FormDataFalso),
-    /no se puede adjuntar/,
-  );
-  assert.throws(() => cuerpoDeCierre(revocado, { usuarioOid: OID }), /no se puede cerrar/);
-});
-
-test("f026 R36: `esArchivable` conserva su significado: lo que dio por bueno LA MÁQUINA", () => {
-  // Es la distinción que la feature existe para registrar, y `noArchivables()`
-  // depende de ella: si `esArchivable` empezara a decir «o lo aprobó alguien»,
-  // no quedaría ninguna forma de contar las dos cosas por separado.
-  const parte = parteAprobado();
-
-  assert.equal(esArchivable(parte.validacion), false);
-  assert.equal(esCirculable(parte), true);
-});
-
 // ===========================================================================
-// R22, R31 · la aprobación llega del backend en cada guardado
+// Enmienda del 2026-09-16 · F-028 T17 · la tanda, las tres composiciones y lo
+// que llega del backend al guardar
 // ===========================================================================
 //
-// Sin esto la pantalla solo sabría de aprobaciones las que se hayan hecho en
-// esta pestaña: al volver a subir la remesa —que es como se recupera el
-// trabajo tras recargar— los partes aprobados volverían a parecer rechazados.
-// Y, peor, una aprobación **revocada** por la revalidación seguiría pintada
-// como viva hasta que alguien recargase.
-
-/** Un `api` de mentira que devuelve lo que se le diga al guardar. */
-function apiQueGuarda(respuesta) {
-  return {
-    guardarParte: async () => respuesta,
-    validar: async () => validacionDeLaCola(),
-  };
-}
-
-test("f026 R22: al guardar, la aprobación que devuelve el backend llega al parte", async () => {
-  const api = apiQueGuarda({ hash_parte: HASH, aprobacion: aprobacionInventada() });
-
-  const guardado = await guardarParte(parteInventado(), api, REMESA);
-
-  assert.equal(guardado.ok, true);
-  assert.equal(guardado.aprobacion.estado, "aprobado");
-  assert.equal(guardado.aprobacion.destino_aprobado, "cola_validacion_humana");
-});
-
-test("f026 R31: si el backend dice que la revocó, eso es lo que llega", async () => {
-  // La revocación ocurre en la escritura (D-F): guardar una validación cuyo
-  // veredicto cambió revoca la aprobación en la misma operación. La pantalla
-  // se entera por la respuesta de ese mismo guardado, no en la recarga
-  // siguiente.
-  const api = apiQueGuarda({
-    hash_parte: HASH,
-    aprobacion: aprobacionInventada({ estado: "revocado" }),
-  });
-
-  const guardado = await guardarParte(parteInventado(), api, REMESA);
-
-  assert.equal(guardado.aprobacion.estado, "revocado");
-});
-
-test("f026 R22: sin aprobación en la respuesta, lo que llega es null y no un hueco", async () => {
-  const api = apiQueGuarda({ hash_parte: HASH, aprobacion: null });
-
-  const guardado = await guardarParte(parteInventado(), api, REMESA);
-
-  assert.equal(guardado.aprobacion, null);
-});
-
-test("f026: un guardado fallido no inventa ninguna aprobación", async () => {
-  const api = {
-    guardarParte: async () => {
-      throw new Error("inventado: el backend no responde");
-    },
-  };
-
-  const guardado = await guardarParte(parteInventado(), api, REMESA);
-
-  assert.equal(guardado.ok, false);
-  assert.equal(guardado.aprobacion, null);
-});
+// Aquí vivían catorce casos más: `parteAprobado`, la entrada en la tanda de
+// F-025, las tres composiciones (`cuerpoDeArchivo`, `esCerrable`,
+// `cuerpoDeGrafico`) y el bloque `aprobacion` que `guardarParte` sacaba de la
+// respuesta. Se retiran por lo mismo que los de arriba —prueban el mecanismo
+// que T17 sustituye— y con una razón añadida en los cuatro últimos: desde T14
+// el backend **ya no emite** ningún bloque `aprobacion`, así que
+// `guardado.aprobacion` era una clave que no podía llegar nunca.
+//
+// Cuatro de los catorce **seguían en verde** después del cambio, y por eso
+// merecen su párrafo: «un no apto sin aprobación sigue fuera de la tanda», «un
+// aprobado que no consta guardado tampoco entra», «el cuerpo de archivo se
+// sigue negando sin aprobación ninguna» y «un revocado ni se cierra ni se
+// adjunta» pasaban porque el montaje se había quedado **inerte** —le pasan una
+// `aprobacion` a un pipeline al que ya nadie se la pide, así que el parte se
+// queda fuera por no tener estado, no por lo que el nombre del test afirma—. Es
+// la clase de test verde que tranquiliza sin medir nada, y el mismo motivo por
+// el que el bloque 4 retiró cinco casos de `test_f026_puertas.py` y T15 otros
+// dos.
+//
+//   RETIRADO                                         SUSTITUTO EN F-028
+//   · R23 «un aprobado vigente entra en la tanda»    · R33 «entra en la tanda el que está APROBADO…»
+//   · R25 «un no apto sin aprobación sigue fuera»    · R4 «un parte PENDIENTE sale de la tanda»
+//   · R31 «un aprobado revocado se queda fuera»      · R17 «sin bloque de estado el parte NO entra»
+//   · f019 R27 «un aprobado sin guardar tampoco      · R34 «el estado no relaja las otras puertas de
+//     entra»                                           la tanda»
+//   · R23 «el cuerpo de archivo se compone para un   · R33 y R9; y que lo que se declara es el
+//     parte aprobado»                                  veredicto REAL lo fija `estado.test.js` con
+//                                                      «no viaja NI UN BYTE del PDF ni un veredicto ya
+//                                                      hecho»
+//   · R31 «el cuerpo de archivo se niega para un     · R5 «el cuerpo de archivo se NIEGA a componer un
+//     revocado»                                        parte apto rechazado»
+//   · R25 «el cuerpo de archivo se sigue negando     · ídem, y R7 «un parte cerrado tampoco compone
+//     sin aprobación ninguna»                          ninguna de las tres»
+//   · R23 «un aprobado archivado es cerrable, y      · R33 (`esCirculable` de los dos aprobados) y los
+//     adjuntable»                                      fixtures de `cierre.test.js` y `grafico.test.js`,
+//                                                      que ya montan el estado
+//   · R31 «un revocado ni se cierra ni se adjunta»   · R5 «un parte apto rechazado NO es cerrable ni
+//                                                      adjuntable, aunque conste archivado»
+//   · R36 «`esArchivable` conserva su significado»   · **se conserva donde vive**: `pipeline.test.js` ·
+//                                                      «f007 R21: solo es archivable apto +
+//                                                      archivo_y_cierre»
+//   · R22 «al guardar, la aprobación llega al        · R38 «al guardar, el estado que devuelve el
+//     parte»                                           backend llega al parte»
+//   · R31 «si el backend dice que la revocó, eso     · **Sin sustituto, y a propósito**: F-028 no
+//     es lo que llega»                                 revoca nada. La aprobación caduca al derivar, y
+//                                                      eso se prueba en el backend
+//                                                      (`test_f028_r19_…`, `test_f028_r20_…`)
+//   · R22 «sin aprobación en la respuesta, lo que    · «sin bloque de estado en la respuesta, lo que
+//     llega es null y no un hueco»                     llega es null y no un hueco»
+//   · «un guardado fallido no inventa ninguna        · «un guardado fallido no inventa ningún estado»
+//     aprobación»
+//
+// Con ellos se va `FormDataFalso`, que se quedaba sin un solo llamante.

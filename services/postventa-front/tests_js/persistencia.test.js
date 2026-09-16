@@ -420,9 +420,22 @@ test("f019 R27: un guardado fallido NO tira el veredicto ya obtenido", async () 
   assert.equal(resultado.guardado.ok, false);
 });
 
+// Enmienda del 2026-09-16 · F-028 T17: los dos partes de estos casos ganan su
+// bloque `estadoParte`. Desde F-028, `cuerpoDeArchivo` mira PRIMERO que el
+// parte conste aprobado (R33) y después que conste guardado, así que sin el
+// bloque los dos casos fallarían por el motivo de otro requisito y este par
+// dejaría de vigilar lo suyo — que es R27 de F-019.
+//
+// La combinación «con estado conocido pero sin guardar» no es artificial: es
+// exactamente lo que queda cuando un parte que ya estaba en la base se vuelve a
+// guardar y el guardado falla. `guardarParte` conserva a propósito el estado
+// que ya tenía, porque ponerlo a `null` borraría de la pantalla una decisión
+// que sigue escrita.
+
 test("f019 R27: cuerpoDeArchivo se NIEGA a componer un parte sin guardar", () => {
   const parte = parteInventado({
     validacion: validacionInventada(),
+    estadoParte: { estado: "aprobado", decidido_por_persona: false },
     guardado: false,
   });
 
@@ -432,6 +445,7 @@ test("f019 R27: cuerpoDeArchivo se NIEGA a componer un parte sin guardar", () =>
 test("f019 R27: y sí lo compone en cuanto el parte consta guardado", () => {
   const parte = parteInventado({
     validacion: validacionInventada(),
+    estadoParte: { estado: "aprobado", decidido_por_persona: false },
     guardado: true,
   });
 

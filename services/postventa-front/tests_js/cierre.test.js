@@ -19,13 +19,21 @@ const HASH = "a1b2c3d4e5f6";
 const OID = "oid-inventado-para-el-test";
 const CORREO = "fulanito@ejemplo.invalido";
 
-/** Un parte apto, guardado y ya archivado. El caso que sí se cierra. */
+/** Un parte aprobado, guardado y ya archivado. El caso que sí se cierra.
+ *
+ * Enmienda del 2026-09-16 · F-028 T17: el fixture gana `estadoParte`, que es
+ * el bloque `estado` que devuelve el backend. Desde F-028, lo que abre el
+ * circuito NO es el veredicto sino el estado del parte (R33), así que sin él
+ * este parte ya no sería cerrable — y eso es lo correcto: un parte cuyo estado
+ * no consta no se cierra.
+ */
 function parteCerrable(sobrescribir) {
   return Object.assign(
     {
       hash: HASH,
       guardado: true,
       archivado: true,
+      estadoParte: { estado: "aprobado", decidido_por_persona: false },
       validacion: { veredicto: "apto", destino: "archivo_y_cierre" },
       extraccion: {
         campos: {
@@ -51,12 +59,26 @@ test("f009 R17: un parte que no consta archivado NO es cerrable", () => {
   assert.equal(esCerrable(parteCerrable({ archivado: false })), false);
 });
 
-test("f009 R16: un parte no apto NO es cerrable aunque esté archivado", () => {
-  const noApto = parteCerrable({
-    validacion: { veredicto: "no_apto", destino: "cola_validacion_humana" },
-  });
+test("f009 R16 / f028 R33: un parte que no consta APROBADO no es cerrable aunque esté archivado", () => {
+  // Enmienda del 2026-09-16 · F-028 T17. Este caso miraba el veredicto
+  // (`no_apto` con destino de cola). Ahora mira el estado, que es lo que
+  // decide: el veredicto ya no abre ni cierra el circuito por su cuenta.
+  //
+  // Se conserva porque lo que afirma sigue siendo verdad y sigue siendo lo que
+  // importa —«lo que no está dado por bueno no cierra una incidencia en el
+  // ERP»—, y se refuerza con los dos estados que antes NO se podían probar:
+  // `rechazado` y `cerrado`. El caso del parte apto rechazado a mano, que es
+  // la feature, está en `tests_js/estado.test.js`.
+  for (const estado of ["pendiente", "rechazado", "cerrado"]) {
+    const noAprobado = parteCerrable({
+      estadoParte: { estado: estado, decidido_por_persona: true },
+    });
 
-  assert.equal(esCerrable(noApto), false);
+    assert.equal(esCerrable(noAprobado), false, estado);
+  }
+
+  // Y sin bloque de estado tampoco: aquí no se deriva nada (R17).
+  assert.equal(esCerrable(parteCerrable({ estadoParte: null })), false);
 });
 
 test("f009: sin número de incidencia no hay nada que cerrar", () => {

@@ -169,7 +169,7 @@
       componer un rechazo sin motivo** (R11) y sin `usuario_oid`; no lleva
       ningún byte del PDF (R30).
 
-- [ ] **T17**: `js/pipeline.js`: `semaforoDe(validacion, estado)` con las
+- [x] **T17**: `js/pipeline.js`: `semaforoDe(validacion, estado)` con las
       cuatro marcas y `pendientesDeCircuito` filtrando por `estado ===
       "aprobado"`. | Verificación: mismo fichero — un parte `rechazado` sale de
       la tanda aunque su veredicto sea apto; un `cerrado` también; y el

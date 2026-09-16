@@ -44,13 +44,19 @@ class FormDataFalso {
   }
 }
 
-/** Un parte apto, guardado, archivado y con su PDF: el que sí se adjunta. */
+/** Un parte aprobado, guardado, archivado y con su PDF: el que sí se adjunta.
+ *
+ * Enmienda del 2026-09-16 · F-028 T17: el fixture gana `estadoParte`, el
+ * bloque `estado` que devuelve el backend. Desde F-028 lo que abre el circuito
+ * es el estado del parte y no el veredicto (R33).
+ */
 function parteAdjuntable(sobrescribir) {
   return Object.assign(
     {
       hash: HASH,
       guardado: true,
       archivado: true,
+      estadoParte: { estado: "aprobado", decidido_por_persona: false },
       fichero: { name: "parte-a1b2c3d4.pdf" },
       validacion: { veredicto: "apto", destino: "archivo_y_cierre" },
       extraccion: {
@@ -89,17 +95,25 @@ test("f012: un parte apto, archivado y con PDF compone su multipart", () => {
   assert.equal(cuerpo.get("usuario_oid"), OID);
 });
 
-test("f012 R14: un parte que no es apto no compone nada", () => {
+test("f012 R14 / f028 R33: un parte que no consta APROBADO no compone nada", () => {
   // No basta con no pintar el botón: aunque se pulse dos veces, aquí se para.
-  assert.throws(
-    () =>
-      componer(
-        parteAdjuntable({
-          validacion: { veredicto: "no_apto", destino: "revision_manual" },
-        }),
-      ),
-    /no se puede adjuntar/,
-  );
+  //
+  // Enmienda del 2026-09-16 · F-028 T17: antes se montaba con un veredicto
+  // `no_apto`, porque el veredicto era el criterio. Ahora el criterio es el
+  // estado, y por eso se prueban los tres que no son `aprobado` —incluido
+  // `rechazado`, que antes no se podía ni montar—.
+  for (const estado of ["pendiente", "rechazado", "cerrado"]) {
+    assert.throws(
+      () =>
+        componer(
+          parteAdjuntable({
+            estadoParte: { estado: estado, decidido_por_persona: true },
+          }),
+        ),
+      /no se puede adjuntar/,
+      estado,
+    );
+  }
 });
 
 test("f012 R15: un parte que no consta archivado no compone nada", () => {
@@ -263,9 +277,11 @@ test("f012: adjuntable y cerrable son la misma puerta, y eso es deliberado", () 
   assert.equal(esCerrable(parte), true);
   assert.doesNotThrow(() => componer(parte));
 
-  const noApto = parteAdjuntable({
-    validacion: { veredicto: "no_apto", destino: "revision_manual" },
+  // Enmienda del 2026-09-16 · F-028 T17: el que se queda fuera de las dos es
+  // el que no consta aprobado, no el que no es apto.
+  const rechazado = parteAdjuntable({
+    estadoParte: { estado: "rechazado", decidido_por_persona: true },
   });
-  assert.equal(esCerrable(noApto), false);
-  assert.throws(() => componer(noApto));
+  assert.equal(esCerrable(rechazado), false);
+  assert.throws(() => componer(rechazado));
 });

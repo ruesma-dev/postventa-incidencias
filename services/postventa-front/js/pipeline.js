@@ -54,17 +54,45 @@
   const MOTIVOS_APROBABLES = ["observaciones_manuscritas", "firma_no_humana"];
 
   /**
-   * F-026 · cómo llama el backend a una aprobación que sigue en pie, y a una
-   * que dejó de valer (`interface_adapters/api/aprobacion_serializada.py`).
+   * F-028 · los CUATRO estados de un parte, tal y como los nombra el backend
+   * (`domain/models/estado.py::EstadoParte`).
    *
-   * «Revocada» se distingue de «no hay aprobación» a propósito: la pantalla
-   * tiene que poder contar «se decidió y dejó de valer», que es lo que hace
-   * que alguien vuelva a mirar el parte en vez de darlo por olvidado.
+   * Aquí no se deriva ninguno (R17): el estado lo manda el backend en el bloque
+   * `estado` de `/api/parte` y `/api/estado`, y la pantalla lo pinta. Estos
+   * literales están para **comparar** lo que llega, no para calcularlo.
+   *
+   * > Enmienda del 2026-09-16 · F-028 T17. Aquí vivía `APROBACION_VIGENTE`, de
+   * > F-026: el front miraba si la aprobación seguía en pie comparando su
+   * > destino con el de la validación de ahora. Eso se va entero —la caducidad
+   * > la resuelve el backend al derivar (R19), y la pantalla no recomputa nada—
+   * > y con ello se va también `aprobacionVale`.
    */
-  const APROBACION_VIGENTE = "aprobado";
+  const ESTADO_APROBADO = "aprobado";
+  const ESTADO_PENDIENTE = "pendiente";
+  const ESTADO_CERRADO = "cerrado";
 
-  /** F-026 R36 · el cuarto estado del semáforo. NO es un verde más. */
+  /**
+   * F-028 R38, R39 · las CUATRO marcas de la pantalla, y por qué son cinco
+   * literales.
+   *
+   * `pendiente` se pinta ámbar o rojo —es la única lectura del veredicto que
+   * queda, y es un matiz de color— y `aprobado` se pinta de dos maneras:
+   * **verde liso** si lo dio por bueno la máquina y **verde con anillo** si lo
+   * dio por bueno una persona. Esa segunda distinción es R39 y es medio motivo
+   * de que F-026 existiera: uno lo aprobó el veredicto y el otro lo aprobó
+   * alguien **a pesar** del veredicto, y pintarlos igual borra ese dato.
+   *
+   * `rechazado` y `cerrado` son marcas propias: un rechazado no puede parecer
+   * «pendiente de mirar» —ya lo miró alguien— y un cerrado no admite ningún
+   * gesto (R41).
+   */
   const SEMAFORO_APROBADO = "aprobado";
+  const SEMAFORO_VERDE = "verde";
+  const SEMAFORO_AMBAR = "ambar";
+  const SEMAFORO_ROJO = "rojo";
+  const SEMAFORO_RECHAZADO = "rechazado";
+  const SEMAFORO_CERRADO = "cerrado";
+  const SIN_MARCA = "";
 
   /**
    * F-028 R10 · los DOS destinos que una persona puede pedir, y no hay más.
@@ -200,41 +228,68 @@
   }
 
   /**
-   * Verde / ámbar / rojo, a partir de `veredicto` y `destino` (R13), y desde
-   * F-026 también **aprobado** (R36).
+   * F-028 · el estado que el backend dice de este parte, o cadena vacía.
    *
-   * El cuarto estado no es un verde más, y esa es la razón de que exista: uno
-   * lo dio por bueno la máquina y el otro lo dio por bueno una persona **a
-   * pesar** de la máquina. Pintarlos igual borra exactamente el dato que
-   * F-026 existe para registrar.
+   * `parte.estadoParte` es el bloque `estado` tal y como viene de
+   * `POST /api/parte` y `POST /api/estado`. Se llama así y no `parte.estado`
+   * porque en `js/app.js` ese nombre lleva desde F-007 la **fase** del parte en
+   * pantalla —«leyendo», «listo», «error»—, y dos cosas distintas con el mismo
+   * nombre en el mismo objeto son un fallo esperando a que alguien las
+   * confunda.
    *
-   * Una aprobación **revocada** no pinta nada: el parte vuelve a su color de
-   * origen —ámbar o rojo— porque el veredicto cambió y nadie ha opinado sobre
-   * lo nuevo (R31).
-   *
-   * @param {object} aprobacion El bloque `aprobacion` que devuelven
-   *        `POST /api/parte` y `POST /api/aprobar`, o `null`.
+   * Devuelve `""` —y no `null`— cuando no consta: así el llamante compara
+   * contra un literal y no tiene que distinguir tres formas de «no hay».
    */
-  function semaforoDe(validacion, aprobacion) {
-    if (!validacion || !validacion.destino) {
-      return "";
+  function estadoDe(parte) {
+    const bloque = parte && parte.estadoParte;
+    return (bloque && bloque.estado) || SIN_MARCA;
+  }
+
+  /**
+   * F-028 R38, R39 · la marca de este parte, a partir de **su estado**.
+   *
+   * **El estado lo manda el backend y aquí solo se pinta** (R17). Hasta F-026
+   * esta función derivaba el color del veredicto y de la aprobación; ahora
+   * decide por el estado, y la validación sirve para una sola cosa: elegir
+   * entre ámbar y rojo **dentro** de `pendiente`.
+   *
+   * No es un cambio cosmético. Mientras el color saliera del veredicto, un
+   * parte apto que una persona había rechazado se pintaba **verde**, que es
+   * exactamente el defecto que abre esta feature.
+   *
+   * Y por eso **sin bloque de estado no se pinta nada**: un parte cuyo guardado
+   * falló no tiene estado conocido, y pintarlo verde porque su veredicto es
+   * apto sería afirmar que está aprobado sin haberlo preguntado. El fallo se va
+   * al lado seguro —sin marca, nunca con la de aprobado—, que es el mismo
+   * criterio que aplica el dominio cuando le faltan las dos mitades de la
+   * huella.
+   *
+   * @param {object} validacion El veredicto de `/api/validar`.
+   * @param {object} estado El bloque `estado` del backend, o `null`.
+   */
+  function semaforoDe(validacion, estado) {
+    const cual = (estado && estado.estado) || SIN_MARCA;
+    if (cual === ESTADO_APROBADO) {
+      // R39 · la única distinción que no sale del estado, sino de quién lo
+      // decidió. El anillo es lo que separa «lo dio por bueno la máquina» de
+      // «alguien se hizo responsable a pesar de la máquina».
+      return estado.decidido_por_persona ? SEMAFORO_APROBADO : SEMAFORO_VERDE;
     }
-    if (
-      validacion.veredicto === VEREDICTO_APTO &&
-      validacion.destino === DESTINO_ARCHIVO
-    ) {
-      return "verde";
+    if (cual === SEMAFORO_RECHAZADO) {
+      return SEMAFORO_RECHAZADO;
     }
-    if (aprobacionVale(aprobacion, validacion)) {
-      return SEMAFORO_APROBADO;
+    if (cual === ESTADO_CERRADO) {
+      return SEMAFORO_CERRADO;
     }
-    if (validacion.destino === DESTINO_COLA) {
-      return "ambar";
+    if (cual === ESTADO_PENDIENTE) {
+      if (validacion && validacion.destino === DESTINO_COLA) {
+        return SEMAFORO_AMBAR;
+      }
+      if (validacion && validacion.destino === DESTINO_REVISION) {
+        return SEMAFORO_ROJO;
+      }
     }
-    if (validacion.destino === DESTINO_REVISION) {
-      return "rojo";
-    }
-    return "";
+    return SIN_MARCA;
   }
 
   /** ¿Este parte se puede archivar? Apto Y con destino de archivo (R21). */
@@ -274,41 +329,29 @@
   }
 
   /**
-   * ¿Hay una decisión de una persona que siga en pie **para este veredicto**?
+   * F-028 R33 · ¿entra este parte en el circuito de archivo, gráfico y cierre?
    *
-   * Que el destino tenga que coincidir es lo que hace que la aprobación sirva
-   * sin poder recomputar la huella en pantalla: si el parte pasó de la cola
-   * ámbar a revisión manual, la aprobación de la cola no dice nada de lo
-   * nuevo. El backend lo comprueba igual, y con la huella entera.
-   */
-  function aprobacionVale(aprobacion, validacion) {
-    return Boolean(
-      aprobacion &&
-        aprobacion.estado === APROBACION_VIGENTE &&
-        validacion &&
-        aprobacion.destino_aprobado === validacion.destino,
-    );
-  }
-
-  /**
-   * F-026 R23 · ¿entra este parte en el circuito de archivo, gráfico y cierre?
+   * **Un solo camino**: que su estado sea `aprobado`. Ni dos, ni el atajo del
+   * apto. Es el mismo criterio que aplican las tres puertas del backend desde
+   * T11 —`estado_del_parte(...) is EstadoParte.APROBADO`— y se comprueba allí
+   * otra vez, leyendo el almacén; esto evita que la tanda intente lo que va a
+   * responder 409.
    *
-   * Dos caminos, y solo dos: **el de siempre** —apto con destino de archivo,
-   * sin que nadie apruebe nada— y **el que abre F-026**: una aprobación viva
-   * del destino que declara la validación de ahora. Es la copia en pantalla de
-   * `domain/models/aprobacion.py::admite_circuito`, y el backend lo vuelve a
-   * comprobar en las tres puertas.
+   * Lo que esto arregla, y es medio encargo de la feature: hasta F-028 un parte
+   * **apto** entraba en el circuito aunque una persona lo hubiera rechazado,
+   * porque el criterio de la pantalla era el veredicto. Ahora un rechazado no
+   * circula aunque la máquina lo hubiera dado por bueno, y un no apto **sí**
+   * circula si alguien lo aprobó (R9).
+   *
+   * Y el `cerrado` queda fuera por la misma regla, sin necesidad de un caso
+   * aparte: `cerrado` no es `aprobado`.
    *
    * `esArchivable` **se conserva con su significado de siempre** —«lo que la
    * máquina dio por bueno»— porque lo usa `noArchivables()` y porque la
-   * distinción entre las dos cosas es el requisito (R36).
+   * distinción entre las dos cosas sigue siendo el requisito (R39).
    */
   function esCirculable(parte) {
-    const validacion = parte && parte.validacion;
-    return (
-      esArchivable(validacion) ||
-      aprobacionVale(parte && parte.aprobacion, validacion)
-    );
+    return estadoDe(parte) === ESTADO_APROBADO;
   }
 
   /** El valor efectivo de un campo: la corrección de la persona si la hay. */
@@ -343,20 +386,32 @@
   /**
    * El `multipart` de `POST /api/archivar`: el fichero y **cinco** campos (R20).
    *
-   * Se niega a componer nada que no sea apto (R21) **ni conste aprobado por
-   * una persona** (F-026 R23), o que ya esté archivado. No basta con no pintar
-   * el botón: aunque se pulse dos veces, aquí se para.
+   * Se niega a componer nada que no **conste aprobado** (F-028 R33), o que ya
+   * esté archivado. No basta con no pintar el botón: aunque se pulse dos veces,
+   * aquí se para.
    *
    * Lo que se declara en el cuerpo es el **veredicto real**, el que emitió
-   * F-004: la aprobación se registra al lado, nunca encima (F-026 R11). El
-   * backend la lee del almacén y nunca del cuerpo (R24).
+   * F-004: la decisión de la persona se registra al lado, nunca encima (R8). El
+   * backend lee el estado del almacén y nunca del cuerpo (R33).
    */
   function cuerpoDeArchivo(parte, FabricaFormData) {
     if (!esCirculable(parte)) {
       throw new Error(
-        "este parte no es apto para archivo y no consta aprobado por una " +
-          "persona (hace falta veredicto 'apto' con destino " +
-          "'archivo_y_cierre', o una aprobación vigente del destino actual)",
+        "este parte no consta aprobado, así que no se archiva: está " +
+          `«${estadoDe(parte) || "sin estado conocido"}». Solo se archiva lo ` +
+          "que la validación dio por bueno o lo que alguien aprobó a mano",
+      );
+    }
+    // El veredicto que se declara en el cuerpo es el **real**, el que emitió
+    // F-004, y hay que tenerlo. Antes de F-028 esta comprobación sobraba
+    // —`esCirculable` miraba la validación—, pero ahora mira solo el estado, y
+    // sin esto un parte sin veredicto reventaría con un `TypeError` en vez de
+    // decir qué le falta.
+    if (!parte.validacion || !parte.validacion.veredicto) {
+      throw new Error(
+        "este parte todavía no tiene veredicto, así que no se puede " +
+          "archivar: lo que viaja en el cuerpo es el veredicto real que " +
+          "emitió la validación, y aquí no hay ninguno",
       );
     }
     if (parte.archivado) {
@@ -394,8 +449,8 @@
    * F-009 · ¿se puede pedir el cierre de este parte?
    *
    * Las **dos precondiciones propias** del cierre, y ninguna más: el parte
-   * entra en el circuito —apto, **o** aprobado y vigente (F-026 R23)— y
-   * **consta archivado**. El backend las vuelve a comprobar —aquí no se decide
+   * entra en el circuito —su estado es `aprobado` (F-028 R33)— y **consta
+   * archivado**. El backend las vuelve a comprobar —aquí no se decide
    * nada, se decide allí—, pero pararlo antes evita ofrecer un botón que va a
    * responder 409.
    *
@@ -408,6 +463,11 @@
       parte &&
         parte.archivado &&
         esCirculable(parte) &&
+        // El veredicto viaja en los dos cuerpos, así que tiene que existir.
+        // Lo pedía `esCirculable` hasta F-028; ahora que ese solo mira el
+        // estado, se pide aquí y no se da por supuesto.
+        parte.validacion &&
+        parte.validacion.veredicto &&
         valorDeCampo(parte, "numero_incidencia"),
     );
   }
@@ -430,10 +490,9 @@
   function cuerpoDeCierre(parte, opciones) {
     if (!esCerrable(parte)) {
       throw new Error(
-        "este parte no se puede cerrar todavía: hace falta que entre en el " +
-          "circuito —veredicto 'apto' con destino 'archivo_y_cierre', o una " +
-          "aprobación vigente—, que conste archivado y que tenga número de " +
-          "incidencia",
+        "este parte no se puede cerrar todavía: hace falta que conste " +
+          `aprobado —está «${estadoDe(parte) || "sin estado conocido"}»—, ` +
+          "que conste archivado y que tenga número de incidencia",
       );
     }
 
@@ -506,10 +565,9 @@
   function cuerpoDeGrafico(parte, opciones, FabricaFormData) {
     if (!esCerrable(parte)) {
       throw new Error(
-        "este parte no se puede adjuntar todavía: hace falta que entre en el " +
-          "circuito —veredicto 'apto' con destino 'archivo_y_cierre', o una " +
-          "aprobación vigente—, que conste archivado y que tenga número de " +
-          "incidencia",
+        "este parte no se puede adjuntar todavía: hace falta que conste " +
+          `aprobado —está «${estadoDe(parte) || "sin estado conocido"}»—, ` +
+          "que conste archivado y que tenga número de incidencia",
       );
     }
     if (!parte.fichero) {
@@ -874,7 +932,7 @@
   /**
    * Guarda el parte y su veredicto. **Nunca lanza** (F-019 R27).
    *
-   * Devuelve `{ok, motivo, aprobacion}`. Un guardado fallido no es un error
+   * Devuelve `{ok, motivo, estado}`. Un guardado fallido no es un error
    * del proceso:
    * es un parte que **no se puede archivar**, y quien lo mire tiene que ver
    * por qué. Dejarlo escapar como excepción marcaría el parte como «error de
@@ -901,13 +959,15 @@
       return {
         ok: true,
         motivo: "",
-        // F-026 R22 · qué dice el backend de la aprobación de este parte,
-        // después de guardar. Viene de aquí y no de una petición aparte
-        // —serían 22 llamadas de más en una remesa real—, y es lo que permite
-        // dos cosas: que al volver a subir la remesa los partes aprobados se
-        // reconozcan, y que una revalidación que **revoca** la aprobación lo
-        // diga en el acto en vez de en la recarga siguiente (R31).
-        aprobacion: (datos && datos.aprobacion) || null,
+        // F-028 R38 · el estado de este parte según el backend, **después** de
+        // guardar. Viene de aquí y no de una petición aparte —serían 22
+        // llamadas de más en una remesa real—, y es lo que permite que al
+        // volver a subir la remesa cada parte se reconozca con el estado que
+        // tiene en la base: aprobado por alguien, rechazado, o ya cerrado.
+        //
+        // Hasta T14 esta clave era `aprobacion` y hablaba de la tabla de
+        // F-026, que ya no se lee. Lo que llega ahora es el bloque `estado`.
+        estado: (datos && datos.estado) || null,
       };
     } catch (error) {
       return {
@@ -916,9 +976,10 @@
           (error && error.mensaje) ||
           (error && error.message) ||
           String(error),
-        // Un guardado fallido no dice nada de la aprobación: no se inventa
-        // ninguna, y quien la tuviera se queda con la que ya tenía.
-        aprobacion: null,
+        // Un guardado fallido no dice nada del estado: no se inventa ninguno,
+        // y quien lo tuviera se queda con el que ya tenía. Ponerlo a `null`
+        // borraría de la pantalla una decisión que sigue escrita en la base.
+        estado: null,
       };
     }
   }
@@ -1259,10 +1320,14 @@
     esAprobable: esAprobable,
     esCirculable: esCirculable,
     cuerpoDeAprobacion: cuerpoDeAprobacion,
-    // F-028 · el cambio de estado: qué se puede pedir y qué viaja al pedirlo.
+    // F-028 · el estado del parte: qué se puede pedir, qué viaja al pedirlo y
+    // qué marca se pinta con lo que contesta el backend.
     ESTADOS_MANUALES: ESTADOS_MANUALES,
     LIMITE_MOTIVO: LIMITE_MOTIVO,
+    SEMAFORO_RECHAZADO: SEMAFORO_RECHAZADO,
+    SEMAFORO_CERRADO: SEMAFORO_CERRADO,
     cuerpoDeCambioDeEstado: cuerpoDeCambioDeEstado,
+    estadoDe: estadoDe,
     cuerpoDeCierre: cuerpoDeCierre,
     cuerpoDeGrafico: cuerpoDeGrafico,
     estaAdjuntado: estaAdjuntado,

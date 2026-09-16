@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **28 features**, 13 abiertas, 15 terminadas.
+Resumen: **29 features**, 14 abiertas, 15 terminadas.
 
 ## Trabajo abierto
 
@@ -22,6 +22,7 @@ Resumen: **28 features**, 13 abiertas, 15 terminadas.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
+| F-030 | REGRESION: la aprobacion humana no sobrevive a la puerta de F-028 | 30 | pendiente | critico | `feature/F-030-veredicto-persistido` |
 
 ## Terminadas
 
@@ -122,6 +123,12 @@ El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco 
 estado **pendiente** · prioridad 29 · rigor `estandar` · SDD no · rama `feature/F-029-scripts-infra-comillas`
 
 DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO ARRANCAN: se estrellan en la primera línea que ejecutan, y ninguno de los dos se ha ejecutado NUNCA. El defecto es el mismo que el 2026-09-15 tumbó a infra/12_traza_cierre_local.ps1: se invoca al intérprete con `& $python -c "<programa>"` y PowerShell 5.1 destroza el entrecomillado del programa antes de que llegue a Python. DÓNDE: infra/07_alta_usuario_sigrid.ps1, líneas 161 y 248; y infra/17_traza_grafico_local.ps1, línea 196. EL ARREGLO YA EXISTE EN EL REPOSITORIO, escrito y probado: la función `Invoke-PythonDelServicio` de infra/08_lectura_sigrid_comun.ps1, que es la que arregló al `12`. No hay que inventar nada: hay que aplicarla en los tres sitios y EJECUTAR los dos scripts, que es justo lo que no se hizo con el código anterior. POR QUÉ IMPORTA, aunque sea prioridad baja: bloquea dos verificaciones de F-009 que quedaron abiertas al cerrarla. (a) El `07_` es el que hace el COUNT(*) de `-VerificarAhora` sobre dbo.usu, o sea LA PRIMERA LÍNEA DE T23 (hueco 3 de progress/cierre_F-009.md §3: R31, R33 y R34). (b) El `17_` es el que se invoca en la PRECONDICIÓN AÑADIDA DE T24, la del gráfico adjuntado (R2 de F-012). Si algún día se recorren esos huecos, esto es lo primero que hay que arreglar. LECCIÓN QUE LO ACOMPAÑA, del §10.2 del guion del bloque 8: tres de los cuatro scripts de lectura no funcionaban porque estaban escritos y nunca ejecutados. Arreglar estos dos sin lanzarlos vuelve a crear el mismo problema con otro nombre. AVISO SOBRE LAS PUERTAS DEL ARNÉS: cobertura y mutación miden SOLO Python (carencia 1.7.13 del arnés, portada a arnes-base), así que aquí no aportan nada y la evidencia tiene que ser la ejecución real de los dos scripts contra lecturas, con su salida pegada. Origen: progress/guion_bloque8_F-009.md §10.6 y progress/cierre_F-009.md §5.
+
+### F-030 · REGRESION: la aprobacion humana no sobrevive a la puerta de F-028
+
+estado **pendiente** · prioridad 30 · rigor `critico` · SDD sí · rama `feature/F-030-veredicto-persistido`
+
+DEFECTO EN PRODUCCION detectado por el humano el 2026-09-16 a las 18:10 sobre la incidencia RS26.09/0178 (parte b7e9b037): un parte aprobado por una persona no se archiva, y el backend responde 'este parte esta pendiente: la validacion lo manda a cola_validacion_humana y no consta que nadie lo haya aprobado'. CAUSA, diagnosticada con las dos huellas calculadas: POST /api/estado guarda la decision junto a la HUELLA del veredicto completo (interface_adapters/api/estado.py:162,198), pero POST /api/archivar NO recibe la extraccion y fabrica un ResultadoValidacion de pega con motivos=(), clasificacion_firma=HUMANA fija y observaciones=None (archivar.py:190-198). La puerta recomputa la huella sobre ese veredicto falso (puerta_de_estado.py:112 -> domain/models/estado.py:325-328,355-357), no coincide con la apuntada y tumba la aprobacion. Medido sobre un parte con observaciones manuscritas: huella real 44aeec3e... contra huella del stub 9d8596a0... El mismo stub esta en adjuntar.py:244-249 y cerrar.py:212-217: las TRES puertas. ES REGRESION DE F-028: hasta F-026 la puerta era admite_circuito(validacion, aprobacion) y comparaba solo el destino aprobado, con esta docstring literal: 'lo que hace que la puerta sirva de algo sin poder recomputar la huella'. F-026 sabia que /api/archivar no puede rehacer el veredicto; F-028 (T11, commit 51fbe77) la sustituyo por estado_del_parte, que si lo recomputa, y no migro los tres endpoints. Entro en produccion con el despliegue del 2026-09-16 07:33 UTC. ALCANCE: todos los partes aprobados a mano, en archivar, adjuntar y cerrar; los verdes automaticos y los rechazos siguen bien. EL TEST QUE FALTO: test_f028_puertas.py:737 construye la decision y la puerta con el MISMO objeto de validacion, asi que las huellas coinciden por construccion, y no hay ni un test que recorra decidir -> archivar con el cuerpo real del endpoint. ARREGLO ELEGIDO POR EL HUMANO el 2026-09-16, descartado el parche por destino: que las tres puertas dejen de juzgar un veredicto venido del cuerpo y usen el veredicto PERSISTIDO, que es lo que R33 ya exige para la situacion. OJO: postventa.validaciones guarda veredicto, destino, clasificacion y motivos pero NO las observaciones ni los dos campos decisivos de la huella; hay que traerlos de postventa.partes para recomponerla.
 
 ### F-001 · Esqueleto del monorepo y /health
 

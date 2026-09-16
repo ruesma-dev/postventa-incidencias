@@ -4821,7 +4821,7 @@ T22 ni al revés.
   api: pytest en rojo` y `[KO] PUERTA COBERTURA`. **Ojo con esa segunda línea**:
   dice 58,6 % porque `init.sh` corre la suite con `-x` y la aborta en el primer
   fallo, así que mide media suite. Medida sobre la suite entera, la cobertura de
-  las líneas cambiadas es **100,0 % (295/295)**.
+  las líneas cambiadas es **100,0 % (297/297)**.
 - Árbol limpio, **2 commits** sobre `71a5e00` (`98968c8` T19 y `c12d826` T20),
   los dos locales. **Sin `push`.**
 - `harness/features.json` sin tocar: F-028 sigue `in_progress`.
@@ -4831,3 +4831,455 @@ T22 ni al revés.
   `domain/models/cierre.py` está sin tocar.
 - **La rama NO es desplegable** hasta T22. Dicho en §94 y repetido aquí porque
   es lo que más importa de este informe.
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 7, T21 y T22
+
+> **Encargo del 2026-09-16**: T21 y T22, las dos juntas y sin intercalar nada.
+> Parar al terminar y no entrar en el bloque 8.
+>
+> ## ✅ LÉASE ESTO ANTES QUE NADA: **la rama vuelve a estar EN VERDE**
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. **2.593 pasados, 13 saltados, 0
+> fallos** en `api`, front en verde (caché, árbol sin cambios) y **PUERTA
+> COBERTURA 100,0 % de 297 líneas cambiadas (297/297)**.
+>
+> Los **25 rojos** que declaraba §94 están los 25 en verde. Y lo que más
+> importa de los 25: **los 4 de `tests/test_f028_puertas.py` —la red de
+> seguridad del bloque 0— han vuelto a verde SOLOS**, sin que se tocara ni una
+> línea de ese fichero. Era la condición que ponía el encargo, y se cumple:
+> fallaban por el código convertido (`assert ['XX00.00-0000'] ==
+> ['XX00.00/0000']`), no por el control. El control nunca se aflojó.
+
+---
+
+## 99 · Qué se ha hecho, en una frase por tarea
+
+- **T21** (`30cf674`) · `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`
+  pasa a esperar `"RS26.08-0123"`; R8 de F-006 recibe su **recuadro fechado**
+  con el patrón de R28 de F-010; y `tests/test_f028_documentacion.py` (nuevo)
+  **fija ese recuadro con seis casos**, para que la enmienda no se pueda
+  perder en la siguiente edición del documento.
+- **T22** (`2482607`) · `a_codigo_de_sigrid` compone por tramos:
+  `return "/".join(tramos_de_codigo(codigo))`. **Una línea de código** y la
+  importación que la acompaña. Con ella vuelven a verde los 24 rojos que T20
+  dejó declarados.
+
+---
+
+## 100 · ⚠️ Qué test cambió de expectativa, y por qué
+
+Lo pide `tasks.md` T21 con todas las letras y `design.md` §9.4 lo llama «el
+único test existente que cambia de expectativa»: **un test que cambia sin
+justificación escrita es un test aflojado**. Así que va primero y con su
+nombre.
+
+**El test**: `tests/test_f006_nombrado.py::test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`
+
+**Lo que afirmaba** (literal, hasta `c12d826`):
+
+```python
+def test_f006_r8_los_espacios_interiores_se_colapsan_a_uno():
+    """R8 · varios espacios seguidos dentro del código pasan a ser uno."""
+    assert normalizar_codigo("RS26.08   -    0123") == "RS26.08 - 0123"
+```
+
+**Lo que afirma ahora**:
+
+```python
+    assert normalizar_codigo("RS26.08   -    0123") == "RS26.08-0123"
+    assert normalizar_codigo("RS26.08   0123") == "RS26.08 0123"
+```
+
+**Por qué cambia, y por qué esto no es aflojarlo.** R8 pedía —y sigue
+pidiendo— que «dos lecturas del mismo parte que solo difieran en espacios
+produzcan **el mismo** nombre». Esa garantía **no se cumplía**, y el ejemplo
+del propio requisito era el que describía el defecto:
+
+- `RS26.09- 0149` —guion pegado por delante, suelto por detrás— producía un
+  nombre de fichero **distinto** del canónico. Dos lecturas del mismo parte,
+  dos ficheros;
+- y el código que viajaba al ERP conservaba los espacios. Sigrid busca la
+  reclamación por **igualdad exacta**, así que el parte se archivaba bien y el
+  cierre fallaba en silencio. Es el fallo que abrió el asunto 2.
+
+O sea: **la garantía de R8 no se recorta, se cumple por primera vez**. Lo que
+cambia es el **valor intermedio** de `normalizar_codigo`, que este test fija.
+
+**Qué se ha hecho para que el cambio no quede sin respaldo**, que es lo que
+distingue esto de un test acomodado al código:
+
+1. **El test conserva su nombre.** Lo citan `design.md` §9.4 y `tasks.md` T21;
+   renombrarlo rompería la trazabilidad justo en el punto donde más falta hace.
+2. **Su docstring cita la expectativa anterior literal** y remite al recuadro
+   de R8. Quien lo lea dentro de seis meses ve qué decía antes y por qué ya no.
+3. **Se le añade una segunda aserción.** Con la primera sola, el test dejaría
+   de probar ningún colapso: los únicos espacios de `"RS26.08   -    0123"`
+   flanquean al guion y ahora desaparecen. `"RS26.08   0123"` → `"RS26.08 0123"`
+   conserva lo que R8 sí garantizaba y sigue garantizando. El mutante **N7** de
+   §105.2 demuestra que esa aserción no es decorativa.
+4. **R8 recibe su recuadro fechado** y su texto original **no se borra**
+   (§101), con un test que lo vigila.
+
+**Ningún otro test cambió de expectativa.** Los dos de F-009 sobre la
+conversión pasan **sin tocarlos**, y los cuatro de `test_f028_puertas.py`
+volvieron a verde solos.
+
+---
+
+## 101 · El recuadro de R8, y el test que lo sostiene (R55)
+
+`specs/F-006-sharepoint/requirements.md` queda con el patrón del proyecto
+—R28 de F-010 (2026-09-03), §7 de F-025, H-1 de F-026—: **la premisa original
+no se borra**, se cita literal y se dice qué la invalidó, quién lo decidió y
+cuándo.
+
+| Pieza del patrón | Qué dice el recuadro |
+|---|---|
+| Premisa original, **literal** | el texto entero de R8, ejemplo `0677  -  RS26.08` incluido |
+| Qué cambia | los espacios que flanquean a un separador **se eliminan**; `RS26.08   -    0123` → `RS26.08-0123` |
+| Qué la invalidó | el ERP busca por **igualdad exacta**: el parte se archivaba bien y el cierre fallaba |
+| Quién y cuándo | **el responsable del proyecto, el 2026-09-15**, al ver fallar el circuito en real; asunto 2 de F-028 |
+| Qué **no** cambia | R4 (ceros), R5 (sufijo), R7 (error ruidoso) y que el código de **obra** no se parte: `06-77` es una obra |
+
+El cuerpo de R8 se reescribe para que **el requisito no mienta** —decía
+«colapsar» y ahora el sistema elimina—, y la fila de trazabilidad queda anotada
+con «**Premisa enmendada el 2026-09-15**: ver el recuadro bajo R8», exactamente
+como hizo F-010 con su R28.
+
+**Y hay un test nuevo que lo vigila**: `tests/test_f028_documentacion.py`, con
+el patrón de `test_f026_documentacion.py` (aplanado de Markdown incluido, para
+que un reajuste de márgenes no lo ponga en rojo por un motivo falso). Seis
+casos: el recuadro existe, está fechado y nombra la feature; cita la premisa
+literal; dice el valor nuevo; dice el porqué y el quién; dice que la garantía
+no se recorta; y **control negativo** de que el texto original de R8 no se ha
+borrado del fichero.
+
+> **Decisión que `tasks.md` no enumera, y que el reviewer debe juzgar.** T21
+> pide «el recuadro presente» como verificación, pero no nombra ningún test, y
+> el test de documentación que sí enumera la spec es el de **T24** (R56, R57,
+> R58). He creado el fichero ahora con **solo los casos de R55**, para que T21
+> tenga verificación automática en vez de a ojo; **T24 lo extiende**, no lo
+> sustituye. Si el reviewer prefiere que R55 se verifique a ojo y el fichero
+> nazca en T24, es retirar seis tests y el fichero.
+>
+> Un detalle del aplanado, por si alguien lo toca: la cita del ejemplo
+> `0677  -  RS26.08` se comprueba contra el texto **sin aplanar**, y es el
+> único caso del fichero que lo hace. Aplanar colapsaría esos espacios dobles y
+> el test daría por buena una cita que ya no dice lo que decía el requisito —
+> justo el error que este fichero existe para cazar—. Va comentado en el sitio.
+
+---
+
+## 102 · Fase RED · las trazas, pegadas
+
+### 102.1 · T21 · el test con la expectativa vieja, contra el código de T20
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/test_f006_nombrado.py::test_f006_r8_los_espacios_interiores_se_colapsan_a_uno -q
+
+    def test_f006_r8_los_espacios_interiores_se_colapsan_a_uno():
+        """R8 · varios espacios seguidos dentro del código pasan a ser uno."""
+>       assert normalizar_codigo("RS26.08   -    0123") == "RS26.08 - 0123"
+E       AssertionError: assert 'RS26.08-0123' == 'RS26.08 - 0123'
+E
+E         - RS26.08 - 0123
+E         ?        - -
+E         + RS26.08-0123
+
+tests\test_f006_nombrado.py:435: AssertionError
+1 failed in 0.14s
+```
+
+### 102.2 · T21 · el test de documentación, **antes** de escribir el recuadro
+
+Escrito primero y ejecutado contra el `requirements.md` sin enmendar
+—restaurado a propósito con `git checkout --` para medirlo, y devuelto
+después—:
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_documentacion.py -q --tb=line
+FFFFF.                                                                   [100%]
+E   AssertionError: assert 'Enmienda' in '**R8.** El sistema debe colapsar los espacios redundantes de los códigos (`0677 - RS26.08` → ...
+E   ValueError: substring not found
+E   AssertionError: assert 'se eliminan' in '**R8.** El sistema debe colapsar los espacios redundantes ...
+E   AssertionError: assert 'igualdad exacta' in '**R8.** El sistema debe colapsar los espacios redundantes ...
+E   AssertionError: assert 'se cumple por primera vez' in '**R8.** El sistema debe colapsar los espacios redundantes ...
+5 failed, 1 passed in 0.06s
+```
+
+El que pasa es el **control negativo**: el texto original de R8 estaba, claro,
+porque todavía no se había tocado nada. Es lo que tenía que hacer.
+
+### 102.3 · T22 · los 24 rojos, y las dos trazas que los explican
+
+Línea base con T21 ya dentro y `cierre.py` **sin tocar**:
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/ -q --tb=no -p no:randomly
+24 failed, 2569 passed, 3 skipped in 21.34s
+```
+
+El caso de la tabla de T19 (R45), con su mensaje propio:
+
+```
+tests\test_f028_espacios_codigos.py:149: in test_f028_r45_todas_las_formas_dan_el_mismo_codigo_para_el_erp
+    assert a_codigo_de_sigrid(entrada) == CODIGO_DE_SIGRID, (
+E   AssertionError: la forma «guion normal con espacio a los dos lados» no llega al ERP como la canónica
+E   assert 'RS26.09-0149' == 'RS26.09/0149'
+E     - RS26.09/0149
+E     ?        ^
+E     + RS26.09-0149
+E     ?        ^
+```
+
+Y el de F-009, que es el mismo defecto visto desde la feature que lo sufre:
+
+```
+tests\test_f009_dominio_cierre.py:298: in test_f009_r6_el_codigo_del_parte_vuelve_al_formato_con_barra
+    assert a_codigo_de_sigrid("RS26.08 - 0123") == "RS26.08/0123"
+E   AssertionError: assert 'RS26.08-0123' == 'RS26.08/0123'
+```
+
+---
+
+## 103 · T22 · el cambio, y el control negativo que pide la tarea
+
+`domain/models/cierre.py`, **dos trozos y ni uno más**:
+
+```python
+-from domain.models.nombrado import SEPARADOR, normalizar_codigo
++from domain.models.nombrado import normalizar_codigo, tramos_de_codigo
+...
+-    return " ".join(codigo.replace(SEPARADOR, "/").split())
++    return "/".join(tramos_de_codigo(codigo))
+```
+
+Más la docstring, que explica por qué y deja escrito lo que la función gana:
+un código leído como `RS26.09-0149` —guion pegado, sin espacios— **antes salía
+tal cual** y el ERP no encontraba la reclamación; ahora sale `RS26.09/0149`.
+Mismo defecto, misma familia, arreglado de paso (`design.md` §9.2 lo anunciaba).
+
+### 103.1 · Control negativo del diff (lo pide T22 con nombre y apellidos)
+
+```
+$ git diff | grep -n "TEXTO_LOG_CIERRE\|batch_de_cierre\|escrituras"
+NINGUNA de las tres marcas aparece en el diff de T22
+```
+
+`git diff -- services/postventa-api/domain/models/cierre.py` son exactamente
+los dos *hunks* de arriba. **Lo que se ha arreglado es cómo se compone el
+código con el que se BUSCA la reclamación, no lo que se escribe en el ERP.**
+`TEXTO_LOG_CIERRE`, `batch_de_cierre` e `infrastructure/sigrid/escrituras.py`
+están intactos, y el camino que cerró `RS26.09/0150` y `RS26.09/0149` es el
+mismo que antes: lo único que cambia es que ahora también llega ahí el parte
+cuyo número se leyó con espacios.
+
+### 103.2 · La red de seguridad volvió a verde sola
+
+Los 4 de `tests/test_f028_puertas.py` que el encargo señalaba pasan **sin que
+el fichero se haya tocado** —no aparece en el diff del bloque 7— y sin que se
+haya tocado ninguna de las tres puertas. Era la comprobación que pedía el
+encargo («si alguno siguiera rojo después, para y dilo»): **ninguno sigue
+rojo**.
+
+---
+
+## 104 · Ficheros tocados
+
+### Creados
+
+- `services/postventa-api/tests/test_f028_documentacion.py` — 6 casos, R55.
+
+### Modificados
+
+- `services/postventa-api/tests/test_f006_nombrado.py` — **un** test cambia de
+  expectativa (§100), con su docstring y una aserción más.
+- `specs/F-006-sharepoint/requirements.md` — R8 reescrito + recuadro fechado +
+  fila de trazabilidad anotada. **Ningún texto borrado.**
+- `services/postventa-api/domain/models/cierre.py` — la importación y
+  `a_codigo_de_sigrid` (§103).
+- `specs/F-028-estado-del-parte/tasks.md` — T21 y T22 a `[x]`.
+- `progress/impl_F-028.md`, `progress/current.md`, `progress/mutacion_F-028.md`.
+
+### Lo que la spec prohíbe tocar, y sigue intacto
+
+`domain/models/validacion.py`, `sql/04_validaciones.sql`,
+`domain/models/aprobacion.py` (`huella_de_veredicto` y `_normalizar`),
+`infrastructure/sigrid/` **entero**, `infrastructure/sharepoint/`,
+`sql/10_aprobaciones.sql`, `harness/features.json` y `azure-apps/`. Ninguno
+aparece en el diff.
+
+---
+
+## 105 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (`api`) | **2.593 pasados, 0 fallos, 13 saltados** | `bash harness/init.sh` |
+| **Tests ejecutados** (`front`) | verde, **por caché** (árbol sin cambios) | `bash harness/init.sh` |
+| **Cobertura de las líneas cambiadas** | **100,0 % (297/297)**, umbral 80 % | línea `PUERTA COBERTURA` de `init.sh` |
+| **Mutantes generados (automáticos)** | **32 · 32 muertos · 0 supervivientes** | `python -m harness.mutacion --feature F-028` |
+| **Mutantes a mano** | **15 · 14 muertos · 1 superviviente equivalente** | §105.2 y §105.3 |
+| **Tiempo de la suite** | **31,7 s** dentro de `init.sh`; 22,8 s suelta | la propia suite |
+
+### 105.1 · La campaña automática da 32/32, y esta vez **sí** vale — pero no mide T22
+
+Al revés que en el bloque anterior (§95.1), la línea base estaba **verde**
+antes de lanzarla, así que los 32 muertos son muertos de verdad. Lo comprobé
+antes de creérmelo:
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/ -q --tb=no -p no:randomly
+2593 passed, 3 skipped in 22.79s
+```
+
+**Pero ni uno de los 32 cae sobre la línea de T22.** Es una limitación del
+generador, no un descuido: `harness.mutacion` muta operadores aritméticos,
+lógicos, comparaciones, `not`, booleanos y enteros, y
+`return "/".join(tramos_de_codigo(codigo))` no tiene ninguno. Lo más cerca que
+llega del bloque 7 es el mutante **[22]**, sobre `nombrado.py:237`
+(`if not tramos:` → `if tramos:`), que es de T20.
+
+**Así que el 32/32 no respalda T22.** Lo que la respalda son los mutantes a
+mano de §105.2, y dejarlo claro es la mitad del valor de esta sección.
+
+### 105.2 · Los 15 mutantes a mano
+
+**Ocho sobre `a_codigo_de_sigrid`** (T22), cada uno con la suite entera:
+
+| # | Mutante | Resultado |
+|---|---|---|
+| M1 | `"/".join(...)` → `"-".join(...)` | **muerto** |
+| M2 | `"/".join(...)` → `" / ".join(...)` | **muerto** |
+| M3 | `return codigo` (sin partir en tramos: **el bug de antes**) | **muerto** |
+| M4 | `normalizar_codigo(bruto)` → `bruto or ""` | **muerto** |
+| M5 | partir **solo** por la barra, ignorando el guion | **muerto** |
+| M6 | tramos al revés | **muerto** |
+| M7 | quedarse con el primer tramo | **muerto** |
+| M8 | quitar la guarda `if not codigo: return ""` | **SUPERVIVIENTE** (§105.3) |
+
+**Siete sobre lo de T21**, que no es código ejecutable sino constancia, y por
+eso se mutan el recuadro y la normalización que el test fija:
+
+| # | Mutante | Resultado |
+|---|---|---|
+| N1 | el recuadro pierde la fecha | **muerto** |
+| N2 | la cita literal pasa a ser un resumen | **muerto** |
+| N3 | la cita pierde los espacios dobles del ejemplo | **muerto** |
+| N4 | desaparece «se cumple por primera vez» | **muerto** |
+| N5 | desaparece quién lo decidió | **muerto** |
+| N6 | desaparece el porqué («igualdad exacta») | **muerto** |
+| N7 | el colapso se come **todos** los espacios interiores | **muerto** |
+
+**N3 y N7 son los dos que más me importaban.** N3 demuestra que el test de
+documentación no da por buena una cita «casi» literal: si alguien reenvuelve
+el párrafo y colapsa `0677  -  RS26.08`, salta. Y **N7 es el que justifica la
+segunda aserción de §100**: sin ella, un `normalizar_codigo` que borrara todos
+los espacios interiores —no solo los del separador— pasaría el test
+inadvertido, y el nombre de un parte con texto interior saldría mutilado.
+
+El árbol se restauró tras cada mutante y la suite quedó comprobada en verde al
+final (`2593 passed, 3 skipped`).
+
+### 105.3 · El superviviente M8, y por qué es **equivalente**
+
+`a_codigo_de_sigrid` conserva de F-009 esta guarda:
+
+```python
+codigo = normalizar_codigo(bruto)
+if not codigo:
+    return ""
+return "/".join(tramos_de_codigo(codigo))
+```
+
+Quitarla no cambia **ningún** resultado, y no es una impresión: con el cambio
+de T22, `tramos_de_codigo("")` devuelve la tupla vacía y `"/".join(())` es
+`""`, que es exactamente lo que devolvía la guarda. Medido:
+
+```
+None     -> ''    | con guarda '' | sin guarda '' | iguales True
+''       -> ''    | con guarda '' | sin guarda '' | iguales True
+'   '    -> ''    | con guarda '' | sin guarda '' | iguales True
+'/'      -> '/'   | con guarda '' | sin guarda '' | iguales True
+'///'    -> '///' | con guarda '' | sin guarda '' | iguales True
+' - '    -> '-'   | con guarda '' | sin guarda '' | iguales True
+'\t\n'   -> ''    | con guarda '' | sin guarda '' | iguales True
+'- /-'   -> '-/-' | con guarda '' | sin guarda '' | iguales True
+```
+
+**Es un mutante equivalente, no un hueco de test**: ningún test puede
+distinguir las dos versiones porque no hay ninguna entrada que las separe.
+
+**No la he quitado**, y la decisión es discutible, así que la dejo a la vista:
+la guarda **dice** algo que el `join` no dice —sin código no se convierte
+nada— y la tarea manda no tocar de `cierre.py` más de lo necesario. Quitarla
+sería un cambio de comportamiento nulo y de intención sí. Si el reviewer
+prefiere código sin ramas inalcanzables, es borrar tres líneas y ningún test
+se mueve; queda anotado precisamente para que esa decisión se tome mirándola.
+
+> Ojo a la diferencia con el superviviente equivalente del bloque anterior
+> (§95.3): aquel lo era **por la naturaleza del dato**; este lo es **porque T22
+> lo ha vuelto redundante**. Antes de T22, la guarda sí hacía falta: `" - "`
+> normalizado daba `"-"`, y el viejo `replace` habría devuelto `"-"` en vez de
+> cadena vacía.
+
+---
+
+## 106 · Verificaciones MANUAL pendientes
+
+No añado ninguna nueva: las de este bloque siguen siendo las que ya estaban
+declaradas y **las ejecuta el humano tras desplegar** (`tasks.md` T27).
+
+- **T27.6** — un parte cuyo número se lea con **espacios alrededor de la
+  barra** cierra la incidencia en el ERP. **Es la que cierra el asunto 2**, y
+  hasta este commit no se podía ni intentar: el código llegaba al ERP con
+  guion. Ahora el dominio entero está probado (la tabla de `design.md` §9.3,
+  fila a fila, en las dos conversiones), pero **el ERP de producción no lo
+  está y no puede estarlo desde aquí**: `CLAUDE.md` prohíbe escribir en Sigrid
+  desde local.
+- **T27.1 a T27.5** — las del estado, sin cambios respecto a §87.
+
+Recomendación para cuando llegue: hacer **primero el dry-run** de un parte con
+el número leído con espacios y comprobar que la reclamación que devuelve es la
+que se espera, **antes** de confirmar el cierre. El arreglo hace que se
+encuentre una reclamación donde antes no se encontraba ninguna; que sea la
+correcta es lo que hay que mirar con los ojos una vez.
+
+---
+
+## 107 · Lo que queda fuera del alcance de T21 y T22
+
+- **El bloque 8 (T23) no se ha tocado**, como pedía el encargo. Es el que
+  prueba que **la huella de F-026 no se ha movido**, y es el control que cierra
+  el riesgo que la ficha manda tratar. `tests/test_f028_huella_intacta.py` no
+  existe todavía.
+- **El defecto latente de D9 sigue ahí y sigue sin arreglarse** (`design.md`
+  §10): una relectura que solo cambie los espacios alrededor de la barra hace
+  que una aprobación humana deje de contar, porque la huella normaliza con otro
+  criterio. Está **declarado**, no olvidado, y arreglarlo cambiaría huellas ya
+  escritas.
+- **T24 (los recuadros de R56, R57 y R58) y T25 (los dos documentos) siguen
+  pendientes.** `docs/ARCHITECTURE.md` todavía **no** dice que los espacios
+  alrededor del separador no forman parte del código; lo pide T24.
+- **`azure-apps/` sin tocar**, como manda el encargo. Es T25.
+
+---
+
+## 108 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**. **2.593 pasados**, 13 saltados,
+  **0 fallos**; front en verde por caché; **PUERTA COBERTURA 100,0 % de 297
+  líneas cambiadas (297/297)**; rama correcta.
+- **La rama vuelve a ser desplegable.** Los 25 rojos de §94 están en verde, y
+  los 4 de la red de seguridad volvieron solos.
+- Árbol limpio. **2 commits** sobre `2307648`: `30cf674` (T21) y `2482607`
+  (T22), los dos **locales**. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`. No he marcado
+  `done` nada.
+- **No se ha entrado en el bloque 8**, como pedía el encargo.
+- Tres cosas con nombre propio para el reviewer: **§100** (qué test cambió de
+  expectativa y por qué), **§105.1** (el 32/32 automático **no** mide T22; lo
+  que la mide son los 15 mutantes a mano) y **§105.3** (el superviviente M8, y
+  por qué no lo he quitado).

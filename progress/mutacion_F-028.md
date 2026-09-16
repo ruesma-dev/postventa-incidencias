@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-028.md -->
 # F-028 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-028 --workers 8` el 2026-09-16 03:35.
+Generado por `python -m harness.mutacion --feature F-028 --workers 8` el 2026-09-16 03:54.
 
 ## Alcance
 
@@ -17,6 +17,7 @@ Origen del diff: **rama** (`b90c3a4986b94967c9ac1ad48fc742788c154d99` .. `featur
 | `services/postventa-api/application/pipelines/paso_persistencia.py` | 74 |
 | `services/postventa-api/application/pipelines/puerta_de_estado.py` | 137 |
 | `services/postventa-api/domain/models/aprobacion.py` | 67 |
+| `services/postventa-api/domain/models/cierre.py` | 22 |
 | `services/postventa-api/domain/models/errores.py` | 71 |
 | `services/postventa-api/domain/models/estado.py` | 412 |
 | `services/postventa-api/domain/models/nombrado.py` | 83 |
@@ -29,7 +30,7 @@ Origen del diff: **rama** (`b90c3a4986b94967c9ac1ad48fc742788c154d99` .. `featur
 | `services/postventa-api/interface_adapters/api/estado.py` | 356 |
 | `services/postventa-api/interface_adapters/api/estado_serializado.py` | 107 |
 | `services/postventa-api/interface_adapters/api/parte.py` | 53 |
-| **Total** | **2096** |
+| **Total** | **2118** |
 
 ## Totales
 
@@ -41,7 +42,7 @@ Origen del diff: **rama** (`b90c3a4986b94967c9ac1ad48fc742788c154d99` .. `featur
 | Supervivientes | 0 |
 | Timeouts | 0 |
 | Timeouts repasados en serie | 0: ningún mutante agotó el reloj |
-| Tiempo total | 120.3 s |
+| Tiempo total | 149.5 s |
 | Workers | 8 |
 | Muestreo | no: campaña completa |
 

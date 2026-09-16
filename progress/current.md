@@ -1,7 +1,62 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ⛔ AL DÍA · 2026-09-16 · **T19 y T20 de F-028 terminadas** · la rama NO es desplegable
+> ## ✅ AL DÍA · 2026-09-16 · **T21 y T22 de F-028 terminadas** · la rama vuelve a estar EN VERDE
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `30cf674` (T21)
+> y `2482607` (T22), locales, sin `push`.
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**: **2.593 pasados**, 13 saltados,
+> **0 fallos** en `api`; front en verde (caché, árbol sin cambios); **PUERTA
+> COBERTURA 100,0 % de 297 líneas cambiadas (297/297)**.
+>
+> **Los 25 rojos que declaraba §94 están los 25 en verde.** Y lo que más
+> importaba de ellos: **los 4 de `tests/test_f028_puertas.py` —la red de
+> seguridad del bloque 0— volvieron a verde SOLOS**, sin tocar ni una línea de
+> ese fichero ni de las tres puertas. Fallaban por el código convertido, no por
+> el control. El control nunca se aflojó.
+>
+> **Qué se ha cerrado: el bloque 7 entero, y con él el asunto 2 en el dominio.**
+>
+> - **T21** · `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno` pasa a
+>   esperar `"RS26.08-0123"`; R8 de F-006 recibe su **recuadro fechado** con el
+>   patrón de R28 de F-010 —premisa citada literal, qué la invalidó, y **el
+>   responsable, el 2026-09-15**, al ver fallar el circuito en real—; y
+>   `tests/test_f028_documentacion.py` (nuevo, 6 casos) **fija ese recuadro**.
+> - **T22** · `a_codigo_de_sigrid` compone por tramos:
+>   `return "/".join(tramos_de_codigo(codigo))`. **Una línea** y su
+>   importación. `cierre.py` no cambia en nada más: control negativo verificado
+>   sobre el diff — ni `TEXTO_LOG_CIERRE`, ni `batch_de_cierre`, ni
+>   `infrastructure/sigrid/escrituras.py`.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **UN test existente cambió de expectativa** (§100), que es lo que la spec
+>    manda declarar: `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`.
+>    No es aflojarlo: R8 pedía que dos lecturas del mismo parte produjeran el
+>    mismo nombre y **eso no se cumplía**; la garantía no se recorta, se cumple
+>    por primera vez. Conserva su nombre, cita la expectativa vieja en su
+>    docstring y **gana una segunda aserción** para no dejar de probar el
+>    colapso que sí sigue vigente.
+> 2. **La campaña automática da 32/32 y esta vez la línea base SÍ estaba verde,
+>    pero no mide T22** (§105.1): el generador no produce ningún mutante sobre
+>    `"/".join(...)`. Lo que respalda el bloque son los **15 mutantes a mano**:
+>    14 muertos y 1 superviviente **equivalente**.
+> 3. **El superviviente M8** (§105.3): la guarda `if not codigo: return ""` de
+>    `a_codigo_de_sigrid` quedó **redundante** con el cambio de T22 —
+>    `"/".join(())` ya es `""`—. Demostrado equivalente con ocho entradas. **No
+>    se ha quitado**, y el porqué está escrito para que la decisión se tome
+>    mirándola.
+>
+> **Decisión que `tasks.md` no enumera**: `tests/test_f028_documentacion.py` se
+> crea en T21 con **solo los casos de R55**, para que «el recuadro presente»
+> tenga verificación automática. **T24 lo extiende** con R56, R57 y R58.
+>
+> **Lo siguiente es el bloque 8 (T23)**: los tres controles negativos de que la
+> huella de F-026 **no se ha movido**. No se ha entrado en él. Informe:
+> `progress/impl_F-028.md`, secciones **99 a 108**.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T19 y T20 de F-028 · la rama estuvo en rojo (**resuelto por T22**)
 >
 > Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `98968c8` (T19) y
 > `c12d826` (T20), locales, sin `push`.

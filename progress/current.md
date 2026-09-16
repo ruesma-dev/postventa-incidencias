@@ -1,6 +1,45 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ AL DÍA · 2026-09-16 · **`infra/22_ventana_archivo.ps1`**: la segunda puerta ya tiene script
+>
+> Rama `chore/script-22-ventana-archivo`, commits **locales, sin `push`** y
+> **sin merge a `dev`**. `bash harness/init.sh` → **ENTORNO LISTO**. Ni una
+> línea de `services/` tocada. **La única llamada ejecutada contra Azure ha
+> sido la LECTURA** del modo `-Estado`; no se ha abierto ni cerrado nada.
+>
+> ### Este servicio tiene DOS puertas de escritura, y son independientes
+>
+> | App Setting | Qué abre | Script que la gobierna |
+> |---|---|---|
+> | `CIERRE_HABILITADO` | el **ERP** de producción: `POST /api/adjuntar` (gráfico) y `POST /api/cerrar` | `infra/19_ventana_escritura.ps1` |
+> | `ARCHIVO_HABILITADO` | el **SharePoint de Posventa**: `POST /api/archivar` | `infra/22_ventana_archivo.ps1` **(nuevo)** |
+>
+> **Abrir una NO abre la otra**, y para el circuito completo —archivar,
+> adjuntar y cerrar— hacen falta **las dos**. La de SharePoint se seguía
+> abriendo con un `az ... appsettings set` copiado a mano: exactamente el
+> problema que el 19 vino a resolver para la del ERP. El 2026-09-16 el humano
+> tuvo que abrirla a mano otra vez, y de ahí sale este script.
+>
+> **Y cada despliegue del backend vuelve a cerrar la de SharePoint**:
+> `infra/desplegar_backend.ps1` línea 429 la fuerza a `ARCHIVO_HABILITADO=false`
+> en cada pasada. Quien despliega y la quería abierta **tiene que volver a
+> abrirla a mano**. Es el motivo de que apareciera cerrada tras el despliegue
+> de las 07:33 UTC. El 22 lo deja escrito en su encabezado.
+>
+> ### Estado real leído hoy, y no es el que se suponía
+>
+> El modo `-Estado` del 22, ejecutado contra `func-postventa-dev` /
+> `rg-postventa-dev`, dice **«abierta»**: `ARCHIVO_HABILITADO=true`. Contrastado
+> con `az` a mano, y de paso **`CIERRE_HABILITADO` también está a `true`**.
+> **Las DOS puertas de `dev` están abiertas ahora mismo**, y ninguna la ha
+> abierto este trabajo. Si no hay una sesión de verificación en curso, procede
+> cerrarlas: `19_ventana_escritura.ps1 -Cerrar` y
+> `22_ventana_archivo.ps1 -Cerrar`. **Decisión del humano, no de un agente.**
+>
+> Detalle completo en `progress/impl_script22_ventana_archivo.md` y en el
+> addendum del 2026-09-16 de `progress/impl_utillaje_puesta_en_marcha.md`.
+
 > ## ✅ AL DÍA · 2026-09-16 · **F-009 CERRADA** con cinco huecos escritos y fechados · nace **F-029**
 >
 > Rama `feature/F-009-cierre-sigrid`, commits **locales, sin `push`** y **sin

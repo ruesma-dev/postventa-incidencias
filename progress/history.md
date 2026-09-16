@@ -1880,3 +1880,65 @@ falso hoy**.
 Detalle: `progress/cierre_F-009.md`, `progress/impl_F-009.md`,
 `progress/review2_F-009.md`, `progress/guion_bloque8_F-009.md` (§9, §10 y §11) y
 `progress/mutacion_F-009.md`.
+
+---
+
+## 2026-09-17 · F-030 CERRADA · la aprobacion humana vuelve a sobrevivir a la puerta
+
+**Que se rompio, y cuando.** El despliegue del **2026-09-16 a las 07:33 UTC**
+llevo a produccion F-028, y con ella una regresion: las tres puertas del
+circuito recomputaban la huella del veredicto sobre un `ResultadoValidacion`
+**fabricado desde el cuerpo de la peticion**. Ese objeto no reproduce nunca el
+veredicto que se firmo al aprobar —le faltan los motivos, las observaciones y la
+clasificacion de firma real—, asi que la huella no coincidia y **la aprobacion
+humana se caia**. Efecto: **ningun parte aprobado por una persona se archivaba**,
+ni se adjuntaba, ni se cerraba. Los verdes automaticos y los rechazos seguian
+bien, y por eso tardo en verse.
+
+**Quien lo encontro**: el humano, el **2026-09-16 a las 18:10**, con la
+incidencia **RS26.09/0178** (parte `b7e9b037`), que habia aprobado a las
+18:09:33 y no habia forma de archivar.
+
+**La causa exacta**: F-028 T11 (`51fbe77`) sustituyo `admite_circuito(validacion,
+aprobacion)` —que comparaba **solo el destino aprobado**— por `estado_del_parte`,
+que **si** recomputa la huella, y no migro los tres endpoints que fabricaban el
+veredicto. La docstring de la puerta vieja decia literalmente que servia «sin
+poder recomputar la huella»: F-026 sabia lo que F-028 olvido.
+
+**El arreglo, elegido por el humano el 2026-09-16** y descartado el parche por
+destino (habria reabierto lo que cerro R19): **quien trae la extraccion emite el
+veredicto; quien no la trae, lo lee**. Las tres puertas juzgan ahora el veredicto
+**persistido**, recompuesto desde `postventa.validaciones` y `postventa.partes`.
+**Sin DDL y sin columna nueva**: los seis campos de la huella ya estaban
+guardados, comprobado campo por campo.
+
+**Lo que costo de verdad, y que la spec subestimo**: **232 casos en 14 ficheros**
+se quedaron en la puerta al quitar el atajo. La spec preveia cinco ficheros. Once
+de los catorce eran tests de los **pasos** del pipeline, no de los endpoints: esa
+es la medida real de hasta donde llegaba el atajo. Ninguna puerta se aflojo para
+arreglarlos.
+
+**El test que faltaba, y por el que esto llego a produccion**: no habia ni uno
+que recorriera decidir -> archivar **con los cuerpos reales de los endpoints**.
+`test_f028_puertas.py:737` construia la decision y la puerta con el mismo objeto,
+asi que las huellas coincidian por construccion. Ahora existe
+`test_f030_circuito_borde_a_borde.py`, y ademas un **centinela estructural** que
+recorre `interface_adapters/api/` con `ast` y falla si alguien vuelve a construir
+un `ResultadoValidacion` en el borde.
+
+**Verificado**: `init.sh` en verde con exit code 0, cobertura **100 % (30/30)**
+de las lineas cambiadas, campana de mutacion **3/3/0/0 con 3 workers y cero
+supervivientes** —el reviewer la reejecuto entera en vez de creerse el informe, y
+reprodujo el mismo los dos rojos de T12 y T14—.
+
+**Lo que queda, y es del humano**: **V1**, archivar el parte `b7e9b037` de
+RS26.09/0178 en el entorno desplegado y comprobar que se archiva **sin volver a
+decidir** (escribe en produccion, obra en uso); y **V2**, medir que el coste en
+consultas no ha subido. Ninguna la puede ejecutar un agente.
+
+**Deuda dada de alta**: **F-031**, el nombrado del fichero archivado, que sale
+del cuerpo y no de lo persistido. Hoy no falla porque el front manda lo que leyo,
+pero un PDF con el DNI de un cliente no puede depender de eso.
+
+Detalle: `specs/F-030-veredicto-persistido/`, `progress/impl_F-030.md`,
+`progress/review_F-030.md` y `progress/mutacion_F-030.md`.

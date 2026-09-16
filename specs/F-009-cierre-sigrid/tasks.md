@@ -269,6 +269,35 @@
 > ejecutado**. El arreglo ya está escrito (`Invoke-PythonDelServicio`, en
 > `infra/08_lectura_sigrid_comun.ps1`); ver §10.6 del guion.
 
+> ### Acta del 2026-09-16 · **F-009 se cierra, y este bloque queda como está**
+>
+> Las dos actas de arriba se dejan **enteras y con su fecha**. Esta es la
+> última, y no añade ninguna verificación nueva: **cierra el bloque**.
+>
+> **Decisión del responsable del proyecto, 2026-09-16**, con estas palabras:
+> «ya he probado que cierra y escribe bien en sigrid. cierrala». Preguntado
+> **qué respalda esa prueba**, respondió: **los dos cierres reales ya
+> auditados**, y **ninguno nuevo** — `RS26.09/0150` del **2026-09-11** (fila de
+> `dbo.log` `ide` **8457839**, dentro de F-012) y `RS26.09/0149` del
+> **2026-09-15** (`ide` **8467000**, dentro de F-026). **Nadie ejecutó nada el
+> 2026-09-16.**
+>
+> **Qué queda marcado de este bloque**: **T25** y **T26**, y nada más.
+>
+> **Qué queda explícitamente NO RECORRIDO**: **T22**, **T23**, **T24** y
+> **T27**. Cada una lleva su motivo pegado a su casilla, abajo. **No se marcan,
+> no se dan por buenas y no se borran.**
+>
+> **El acta de cierre —la decisión, qué acredita cada uno de los dos cierres
+> reales, y los cinco huecos vivos uno a uno con su requisito— está en
+> `progress/cierre_F-009.md`.** Es la referencia de las cuatro casillas de
+> abajo. Y trae una advertencia que conviene leer antes de reabrir nada: el
+> quinto hueco —**`filas_afectadas: 2` (R22) y las fotos de partida del
+> `MAX(ide)` y de `con.tiemod`— NO ES RECUPERABLE HACIA ATRÁS**, porque la foto
+> que faltaba era la de **antes**; exigiría una reclamación **abierta nueva** de
+> la obra `0626`, que depende de Posventa
+> (`progress/peticion_posventa_prueba_F-012.md`, escrita y sin enviar).
+
 - [ ] **T22**: **Dry-run real** contra una reclamación de Mirasierra, desde el
       entorno desplegado y con el interruptor **apagado**. | Verificación:
       **MANUAL (humano)**. Elegir una incidencia del piloto y llamar a
@@ -278,6 +307,31 @@
       sin el parte dentro de Sigrid** (R21). **Nada debe cambiar en el ERP**:
       comprobarlo releyendo `con.est` con `POST /api/sql/read`, que debe seguir
       en el estado de origen.
+      **ENMIENDA DEL 2026-09-16 · el texto de arriba dice dos cosas mal, y se
+      corrigen aquí sin borrarlas** (ya estaban señaladas en el acta del
+      2026-09-14, al principio del bloque; se repiten pegadas a la casilla
+      porque es donde se leen):
+      (a) **No es «una reclamación de Mirasierra»**: la obra es la **`0626`**,
+      que **no es una obra de pruebas sino una obra en uso**. La premisa
+      anterior —«toda escritura de prueba cae en la obra de prueba 404»,
+      decisión del 2026-09-06— **la levantó el responsable el 2026-09-10** y
+      consta fechada en `progress/guion_bloque9_F-012.md`. **Mirasierra sigue
+      fuera**: nadie ha autorizado cerrar una incidencia del piloto.
+      (b) **No se espera «el aviso de que quedará cerrada sin el parte dentro
+      de Sigrid (R21)»**: **R21 quedó DEROGADO por R48 de F-012 el
+      2026-09-06**. Lo que el dry-run trae en su lugar es el **bloque
+      `grafico`** (**R49**), y el `commit` **exige** el parte ya adjuntado
+      (R2 de F-012). Un dry-run que aún trajera aquel aviso significaría que el
+      despliegue no lleva F-012.
+      **NO RECORRIDA (constancia del 2026-09-16).** Motivo: son los **huecos 1
+      y 2** de `progress/cierre_F-009.md` §3. Lo único que consta es que el
+      dry-run **funciona** contra el ERP (`200` en 4,4 s el 2026-09-11) y que
+      **no exige el gráfico** (R50 de F-012). **No consta nada de su
+      contenido** —las seis comprobaciones de R9 ni el bloque `grafico`—, ni el
+      **`503`** con la ventana cerrada (R37, R49), ni que el dry-run **no
+      escriba** (R8, R10). El paso 4 exige **ventana abierta** y leerlo **por
+      consola**: desde F-025 el front llama siempre con `commit` y **ya no pide
+      ningún dry-run por sí solo**.
 
 - [ ] **T23**: **La siembra del login, contra el ERP** (R30–R33). |
       Verificación: **MANUAL (humano)**, en tres pasos:
@@ -292,6 +346,20 @@
          responde **409** nombrando el correo y el login intentado, **sin tocar
          Sigrid** (R31). Es el caso de los 2 de 8 medidos que no siguen la
          convención, y se resuelve con el alta manual de T12 (R34).
+      **NO RECORRIDA (constancia del 2026-09-16).** Motivo: es el **hueco 3** de
+      `progress/cierre_F-009.md` §3, y está **bloqueado además por un script
+      roto**. Lo acreditado es solo lo que se vio de refilón el 2026-09-15: el
+      `usu` escrito en el ERP es **`pgris`**, luego el login **se derivó, se
+      resolvió contra el ERP y se usó para firmar** (R30–R32 en lo sustantivo).
+      **Eso no prueba R33** —la correspondencia guardada como confirmada, con
+      `verificado_at_utc` relleno—, ni **R31** —el `409` ante un login
+      inexistente, sin tocar Sigrid—, ni **R34** —que el candidato exista
+      **exactamente una vez** en `dbo.usu`—. **El bloqueo**:
+      `infra/07_alta_usuario_sigrid.ps1` (líneas **161** y **248**) no arranca
+      por el defecto de comillas de PowerShell 5.1 y **nunca se ha ejecutado**,
+      así que se estrella en el paso 1. El arreglo ya existe
+      (`Invoke-PythonDelServicio`, en `infra/08_lectura_sigrid_comun.ps1`) y
+      está dado de alta como **F-029**.
 
 - [ ] **T24**: **El primer cierre real**, con autorización expresa del humano
       para esa incidencia concreta. | Verificación: **MANUAL (humano)**.
@@ -309,6 +377,25 @@
          (F-008 §2.3).
       9. Comprobar que la traza local quedó en `cerrado` con su `oid` y sus
          códigos de estado (R41), y que **no guarda el login** (R43).
+      **NO RECORRIDA (constancia del 2026-09-16), y no por poco.** Su contrato
+      son **nueve pasos**. **Lo que consta, con su fecha y su fuente**: el
+      **paso 4 en parte** (solo el `HTTP 200` del `commit` de `08:28:12` UTC del
+      2026-09-11, no el `estado: "cerrado"` del cuerpo); el **paso 6** —`con.est`
+      en **`CER`** con el destino resuelto contra `conest`, **R1**—, el **paso
+      7** —la fila `ide` 8457839 de `dbo.log` **campo a campo** contra
+      `design.md` §7.3, **R24 y R25**, y el **huso** en **`HORA LOCAL`, 0,0 min
+      de desvío**— y el **paso 9** —la traza local en `cerrado`, con `oid` y sin
+      el login, **R41 y R43**—, los tres acreditados por la **sesión de solo
+      lectura del 2026-09-15** (`09_`, `10_`, `11_` y `12_`, los cuatro `PASA`).
+      **Lo que falta**: los pasos **2, 3, 4, 5 y 8**. El **5** —
+      **`filas_afectadas: 2`, R22**— y las fotos de partida de los pasos **2**
+      (`MAX(ide)` de `dbo.log`) y **8** (`con.tiemod`) son el **hueco 5** de
+      `progress/cierre_F-009.md` §3 y **NO SON RECUPERABLES HACIA ATRÁS**: la
+      foto que faltaba era la de **antes**, y nadie la tomó ni el 2026-09-11 ni
+      el 2026-09-15. Solo los dará un cierre real nuevo, que exige una
+      reclamación **abierta** de la `0626` y depende de Posventa. **Y una
+      precondición añadida que tampoco se puede recorrer hoy**: el `17_` que
+      verifica el gráfico adjuntado (R2 de F-012) tampoco arranca — **F-029**.
 
 - [x] **T25**: **Comprobar que el `tex` propio hace lo que se diseñó** (R25). |
       Verificación: **MANUAL (humano)**. Dos lecturas: que
@@ -360,6 +447,19 @@
       **MANUAL (humano)**. Repetir T24 sobre la misma incidencia: debe salir
       `ya_cerrada`, **sin escribir nada en Sigrid** —comprobar que `MAX(ide)` de
       `dbo.log` no ha subido— y sin pisar la traza local.
+      **NO RECORRIDA (constancia del 2026-09-16), y hay que decirlo así de
+      claro**: es el **hueco 4** de `progress/cierre_F-009.md` §3 y **el único
+      criterio de aceptación de la ficha de F-009 que ningún cierre real ha
+      ejercido**. Ni el del 2026-09-11 ni el del 2026-09-15 lo tocaron, y las
+      tres features que pasaron por delante lo dejaron sin marcar cada una por
+      su lado: **T30 de F-012**, **T22 de F-025** y F-026. La prueba de F-025
+      del 2026-09-11 **no sirve y se descartó a propósito**
+      (`progress/guion_bloque8_F-009.md` §9.6): sus registros no tienen
+      **ninguna** llamada a `cerrar`. **R18 y R42 quedan acreditados solo por
+      tests.** Es además **el escenario más probable en uso normal** —alguien
+      vuelve a pasar el mismo parte— y **el único hueco que exige abrir la
+      ventana de escritura**; no hay que provocar ningún fallo, basta un
+      `commit` sobre `RS26.09/0150` o `RS26.09/0149`, que ya están cerradas.
 
 ## Bloque 9 · Cierre
 

@@ -3111,3 +3111,82 @@ muertos**, entre ellos los tres que reabren la puerta al `rechazado`, al
 
 Detalle completo, trazas de la fase RED, los tests cambiados y las decisiones:
 `progress/impl_F-028.md` §27 a §35.
+
+---
+
+## 2026-09-16 · Spec de F-030 escrita (spec-author)
+
+`specs/F-030-veredicto-persistido/` con sus tres ficheros. **No se ha tocado ni
+una línea de código**, ni de `services/`, ni de `sql/`, ni de `infra/`. Ninguna
+llamada a SharePoint, a Sigrid ni a la base de datos.
+
+### El diagnóstico, confirmado con ficheros y líneas
+
+`POST /api/estado` apunta la huella del veredicto completo
+(`interface_adapters/api/estado.py:162,198`). Los tres endpoints del circuito no
+reciben la extracción y fabrican un `ResultadoValidacion` de pega —`motivos=()`,
+`clasificacion_firma=HUMANA` fija, `observaciones=None`, y por omisión del
+dataclass `codigo_obra=""` y `numero_incidencia=""`—: `archivar.py:190-198`,
+`adjuntar.py:244-249`, `cerrar.py:212-217`. La puerta recomputa la huella sobre
+ese objeto (`puerta_de_estado.py:112` → `domain/models/estado.py:325-328,355-357`)
+y no coincide.
+
+**Medido hoy, y confirma la medición del humano**: la huella del stub **no
+depende del parte**, solo del destino que venga en el cuerpo. Solo hay **tres
+huellas posibles** en todo el sistema — `archivo_y_cierre` → `371a85e5…`,
+`cola_validacion_humana` → `9d8596a0…`, `revision_manual` → `e647e345…`. La
+segunda es exactamente la que midió el humano sobre RS26.09/0178.
+
+**El contrato ya llevaba la deuda anotada**: `archivar.py:23-29` dice literal
+*«Leerlo de la base sería más fuerte, pero exige un método nuevo en
+`RepositorioPartesPort`, que es de F-005, y F-006 no cambia specs ajenas»*.
+
+### Lo que la spec resuelve, y que el humano preguntará
+
+1. **No hace falta ninguna columna nueva.** Los seis campos de la cadena
+   canónica están persistidos: tres en `postventa.validaciones` (destino,
+   motivos, clasificación) y tres en `postventa.partes` (observaciones, código
+   de obra, número de incidencia). **[MEDIDO]** — la huella del objeto original
+   y la del recompuesto desde columnas coinciden, incluidos los casos borde
+   (`None` frente a `"   "`, motivos desordenados, aviso recortado a 240).
+2. **Sin viaje nuevo a la base compartida.** La lectura del veredicto sustituye
+   a la sentencia del estado de cierre dentro de `consultar_situacion`: una sola
+   consulta anclada en `partes` con dos `LEFT JOIN`. Siguen siendo **dos
+   sentencias por llamada**, como hoy. Un `consultar_validacion` aparte habrían
+   sido tres viajes más por parte, seis en total: descartado y por escrito.
+3. **La aprobación de RS26.09/0178 REVALIDA SOLA.** No hay que volver a decidir
+   nada y no hay migración: la huella no cambia, y la que se apuntó salió del
+   veredicto que esa misma llamada acababa de guardar. En cuanto se despliegue,
+   el parte `b7e9b037` se archiva. Es la verificación manual **V1**, y **escribe
+   en SharePoint: exige autorización expresa del humano para esa incidencia**.
+4. **El defecto tiene una segunda cara, de seguridad, que la spec cierra de
+   paso**: hoy un cuerpo que diga `veredicto=apto` y `destino=archivo_y_cierre`
+   pasa las tres puertas **aunque la validación guardada mandara el parte a
+   revisión manual**. Lo único que lo impide es que el front mande la verdad.
+
+### Decisiones abiertas que necesita validar el humano
+
+- **Aprobar la spec** (PARADA 1) antes de que el implementer toque nada.
+- **§10.7 · riesgo declarado y fuera de alcance**: `/api/archivar` sigue
+  nombrando la carpeta y el fichero con el `codigo_obra` y el
+  `numero_incidencia` **del cuerpo**, no con los guardados. Como esos dos campos
+  entran en la huella, la puerta aprueba unos y el PDF se nombra con otros. Hoy
+  no pasa porque el front manda lo que leyó. **¿Se da de alta como feature
+  propia?**
+- **§10.2 · endurecimiento posterior**: guardar la huella en
+  `postventa.validaciones` haría imposible por construcción la deriva de la
+  recomposición y sacaría el texto manuscrito del circuito. Se descarta **para
+  hoy** porque dejaría a `NULL` las filas ya escritas —y con ellas la aprobación
+  de RS26.09/0178— hasta revalidar. **¿Se da de alta para más adelante?**
+- **El contrato HTTP se conserva** (D6): `veredicto` y `destino` se siguen
+  exigiendo y validando en los tres endpoints, y dejan de decidir. Quitarlos
+  obligaría a tocar el front en la misma sesión que arregla una regresión de
+  producción. **¿Conforme?**
+
+### Aviso al implementer
+
+Varios tests de `/api/archivar`, `/api/adjuntar` y `/api/cerrar` **se pondrán
+rojos**: pasaban la puerta gracias al `veredicto=apto` del cuerpo. Es el efecto
+buscado. Se arreglan preparando el veredicto en el doble, **nunca relajando la
+puerta**. Y ni un aserto de `test_f028_puertas.py` puede cambiar: solo sus dos
+ayudantes.

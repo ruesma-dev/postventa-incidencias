@@ -186,7 +186,7 @@
 
 ## Bloque 7 · Los espacios de los códigos (asunto 2)
 
-- [ ] **T19**: Escribir **primero** el test que reproduce el defecto:
+- [x] **T19**: Escribir **primero** el test que reproduce el defecto:
       `tests/test_f028_espacios_codigos.py` con la tabla de `design.md` §9.3,
       fila a fila, para `a_codigo_de_sigrid` y para `nombre_de_archivo` (R44 a
       R46). | Verificación: **fase RED** — falla en las tres filas rotas antes

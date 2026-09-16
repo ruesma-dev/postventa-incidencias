@@ -33,6 +33,7 @@ from collections.abc import Sequence
 import azure.functions as func
 import pytest
 from domain.models.errores import ArchivoFallido
+from domain.models.estado import SituacionParte
 from interface_adapters.api.archivar import archivar_parte
 
 from tests.utiles_sharepoint import (
@@ -40,6 +41,7 @@ from tests.utiles_sharepoint import (
     BibliotecaFalsa,
     RepositorioFalso,
 )
+from tests.utiles_validacion import veredicto_apto, veredicto_no_apto
 
 _FRONTERA = "frontera-sintetica-de-test-f006"
 
@@ -67,6 +69,33 @@ FORMULARIO_APTO = (
 
 NOMBRE_ESPERADO = "0677 - RS26.08 - 0123 PARTE FIRMADO.pdf"
 CARPETA_ESPERADA = "Postventa/0677"
+
+#: El `hash` del formulario de arriba, que es el del material de ejemplo.
+HASH_DEL_FORMULARIO = "9f2b0011aabb"
+
+
+def _repositorio(validacion=None, **extra) -> RepositorioFalso:
+    """El doble del repositorio con el veredicto **guardado** dentro (F-030).
+
+    Desde F-030 la puerta del paso deriva el estado del veredicto que consta en
+    `postventa.validaciones`, y **no** del `veredicto` que venga en el
+    formulario: el endpoint ya no lo fabrica. Así que lo que estos casos
+    declaraban en el cuerpo hay que dejarlo ahora aquí.
+
+    No es aflojar nada: es poner el mundo en su sitio. Cuando una petición
+    llega de verdad a `/api/archivar`, el veredicto de ese parte ya está en la
+    base —lo escribió `POST /api/parte`—, y un doble que contestara «de este
+    parte no consta validación» modelaría un mundo que no existe.
+
+    Por omisión guarda el veredicto **apto**, que es el del `FORMULARIO_APTO`.
+    Los casos que prueban el rechazo pasan el suyo a mano: dejarlos sin
+    veredicto les daría el mismo 409 **por otro motivo**.
+    """
+    if validacion is None:
+        validacion = veredicto_apto(hash_parte=HASH_DEL_FORMULARIO)
+    return RepositorioFalso(
+        situacion=SituacionParte(validacion=validacion), **extra
+    )
 
 
 def _peticion(
@@ -133,7 +162,7 @@ def test_f006_r30_archivar_devuelve_200_con_el_contrato(monkeypatch):
     import function_app
 
     biblioteca = BibliotecaFalsa()
-    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), RepositorioFalso())
+    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), _repositorio())
 
     respuesta = function_app.archivar(_peticion([("parte.pdf", PDF_CON_DATOS)]))
 
@@ -159,7 +188,7 @@ def test_f006_r30_la_respuesta_no_lleva_el_parte_ni_la_configuracion(monkeypatch
     """
     import function_app
 
-    _con_dobles(monkeypatch, ArchivoPortFalso(), RepositorioFalso())
+    _con_dobles(monkeypatch, ArchivoPortFalso(), _repositorio())
 
     cuerpo = _cuerpo(
         function_app.archivar(_peticion([("parte.pdf", PDF_CON_DATOS)]))
@@ -181,7 +210,7 @@ def test_f006_r30_reprocesar_devuelve_200_y_no_duplica(monkeypatch):
     import function_app
 
     biblioteca = BibliotecaFalsa()
-    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), RepositorioFalso())
+    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), _repositorio())
 
     primera = function_app.archivar(_peticion([("parte.pdf", PDF_CON_DATOS)]))
     segunda = function_app.archivar(_peticion([("parte.pdf", PDF_CON_DATOS)]))
@@ -201,7 +230,7 @@ def test_f006_r31_sin_fichero_responde_400(monkeypatch):
     import function_app
 
     biblioteca = BibliotecaFalsa()
-    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), RepositorioFalso())
+    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), _repositorio())
 
     respuesta = function_app.archivar(_peticion([]))
 
@@ -247,7 +276,7 @@ def test_f006_r31_un_cuerpo_que_no_cumple_el_contrato_responde_400(
     import function_app
 
     biblioteca = BibliotecaFalsa()
-    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), RepositorioFalso())
+    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), _repositorio())
 
     respuesta = function_app.archivar(
         _peticion([("parte.pdf", PDF_CON_DATOS)], campos)
@@ -266,7 +295,14 @@ def test_f006_r31_parte_no_apto_responde_409(monkeypatch):
     import function_app
 
     biblioteca = BibliotecaFalsa()
-    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), RepositorioFalso())
+    # F-030 · lo que rechaza es el veredicto **guardado**, no el del cuerpo:
+    # sin él, este caso daría el mismo 409 por «no consta validación» y
+    # dejaría de probar lo que dice que prueba.
+    _con_dobles(
+        monkeypatch,
+        ArchivoPortFalso(biblioteca),
+        _repositorio(veredicto_no_apto(hash_parte=HASH_DEL_FORMULARIO)),
+    )
 
     respuesta = function_app.archivar(
         _peticion(
@@ -295,7 +331,7 @@ def test_f006_r31_un_nombre_imposible_responde_409(monkeypatch):
     import function_app
 
     biblioteca = BibliotecaFalsa()
-    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), RepositorioFalso())
+    _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), _repositorio())
 
     respuesta = function_app.archivar(
         _peticion(
@@ -339,7 +375,7 @@ def test_f006_r31_fallo_del_proveedor_responde_502(monkeypatch):
     """
     import function_app
 
-    repositorio = RepositorioFalso()
+    repositorio = _repositorio()
     _con_dobles(
         monkeypatch,
         ArchivoPortFalso(fallo=ArchivoFallido("el proveedor no respondió")),
@@ -362,7 +398,7 @@ def test_f006_r31_ninguna_respuesta_de_error_lleva_el_contenido(monkeypatch):
     _con_dobles(
         monkeypatch,
         ArchivoPortFalso(fallo=ArchivoFallido("el proveedor no respondió")),
-        RepositorioFalso(),
+        _repositorio(),
     )
 
     respuesta = function_app.archivar(_peticion([("parte.pdf", PDF_CON_DATOS)]))
@@ -397,8 +433,6 @@ def test_f006_r30_el_endpoint_no_inventa_lecturas_de_los_campos_que_no_recibe():
         hash_parte="9f2b0011aabb",
         codigo_obra="0677",
         numero_incidencia="RS26.08/0123",
-        veredicto="apto",
-        destino="archivo_y_cierre",
     )
 
     assert isinstance(contexto, ContextoParte)
@@ -410,8 +444,12 @@ def test_f006_r30_el_endpoint_no_inventa_lecturas_de_los_campos_que_no_recibe():
             assert campo.valor is None, nombre
             assert campo.confianza_pct == 0, nombre
 
-    assert contexto.validacion.observaciones is None
-    assert contexto.validacion.confianza_observaciones == 0
+    # F-030 · y el contexto sale **sin veredicto**. Hasta hoy traía uno
+    # fabricado aquí con `observaciones=None` y confianza 0, que es lo que
+    # miraban estos dos asertos; ahora lo que se afirma es que no se fabrica
+    # ninguno, porque ese stub es lo que rompió el circuito. Quien emite el
+    # veredicto es F-004 y quien lo lee es la puerta, de la base.
+    assert contexto.validacion is None
 
 
 def test_f006_r30_el_contexto_que_monta_el_endpoint_no_lleva_datos_personales():
@@ -427,8 +465,6 @@ def test_f006_r30_el_contexto_que_monta_el_endpoint_no_lleva_datos_personales():
         hash_parte="9f2b0011aabb",
         codigo_obra="0677",
         numero_incidencia="RS26.08/0123",
-        veredicto="apto",
-        destino="archivo_y_cierre",
     )
 
     assert contexto.extraccion.campo("dni_cliente").valor is None

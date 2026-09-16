@@ -31,6 +31,7 @@ from domain.models.errores import ArchivoFallido, NombradoImposible, ParteNoApto
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
 from domain.models.validacion import Destino, Veredicto
 
+from tests.utiles_pg import con_el_veredicto_guardado
 from tests.utiles_sharepoint import (
     CARPETA_BASE,
     DRIVE_FALSO,
@@ -53,7 +54,15 @@ NOMBRE_ESPERADO = "0677 - RS26.08 - 0123 PARTE FIRMADO.pdf"
 
 
 def archivar(ctx, archivador, repositorio, **extra):
-    """Atajo: el paso con la carpeta base y la hora de siempre."""
+    """Atajo: el paso con la carpeta base y la hora de siempre.
+
+    **Enmienda del 2026-09-16 (F-030).** Desde F-030 la puerta del paso deriva
+    el estado del veredicto **guardado** —`ctx.situacion.validacion`— y ya no
+    mira el del contexto, así que el atajo lo deja también en el doble antes de
+    llamar. No inventa ninguno ni pisa la situación que el caso haya preparado:
+    el porqué entero está en `tests/utiles_pg.py`.
+    """
+    con_el_veredicto_guardado(repositorio, ctx)
     return paso_archivo(
         ctx,
         archivador,
@@ -119,9 +128,11 @@ def test_f006_r27_el_destino_sale_de_configuracion():
     Posventa— sea cambiar variables de entorno y no reescribir código.
     """
     archivador, repositorio = ArchivoPortFalso(), RepositorioFalso()
+    ctx = contexto_apto()
+    con_el_veredicto_guardado(repositorio, ctx)
 
     paso_archivo(
-        contexto_apto(),
+        ctx,
         archivador,
         repositorio,
         carpeta_base="OtraBiblioteca/Posventa",

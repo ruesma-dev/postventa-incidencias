@@ -48,7 +48,8 @@ login que esa persona tenga dado de alta, y eso queda registrado.
 `ResultadoValidacion` con el `veredicto` y el `destino` del cuerpo y valores
 fijos para todo lo demás, y la puerta del paso derivaba el estado de **ese**
 objeto. Como la huella recomputada sobre él no dependía del parte, la
-aprobación de una persona no contaba nunca; y al revés, un cuerpo que dijera
+decisión de una persona sobre ese parte no contaba nunca; y al revés, un
+cuerpo que dijera
 `veredicto=apto` pasaba la puerta sin que nadie hubiera mirado el parte, con
 una incidencia del ERP de producción al otro lado.
 

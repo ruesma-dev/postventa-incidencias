@@ -161,3 +161,63 @@ def extraccion_de_ejemplo(
         traza=traza_de_prueba("parte_posventa_es"),
         avisos=avisos,
     )
+
+
+def veredicto_apto(*, hash_parte: str = HASH_DE_PRUEBA, **campos: Any):
+    """F-030 · el veredicto **apto** que F-004 emitiría sobre ese parte.
+
+    Existe desde F-030, y para una sola cosa: los tests de los tres endpoints
+    del circuito —`/api/archivar`, `/api/adjuntar`, `/api/cerrar`— pasaban la
+    puerta porque el **formulario** decía `veredicto=apto`. Desde F-030 la
+    puerta lee el veredicto **guardado**, así que lo que antes se declaraba en
+    el cuerpo hay que dejarlo ahora en el doble del repositorio:
+
+        repositorio = RepositorioEnMemoria(
+            situacion=SituacionParte(validacion=veredicto_apto(hash_parte=HASH))
+        )
+
+    Eso no relaja ninguna puerta: **pone el mundo en su sitio**. En producción,
+    cuando una petición llega a `/api/archivar`, el veredicto de ese parte ya
+    está en `postventa.validaciones` —lo escribió `POST /api/parte`—, y un
+    doble que contestara «de este parte no consta validación» estaría modelando
+    un mundo que no existe.
+
+    Sale de `validar_parte`, la función de verdad de F-004, y no de un
+    `ResultadoValidacion` montado a mano: si mañana F-004 cambiara sus reglas,
+    estos tests se enterarían en vez de seguir archivando lo que ya no es apto.
+    El parte es el completo, firmado por una persona y **sin observaciones**
+    manuscritas, que es el único que F-004 declara apto.
+    """
+    from domain.models.validacion import Destino, Veredicto, validar_parte
+
+    campos.setdefault("observaciones", None)
+    extraccion = extraccion_de_ejemplo(hash_parte=hash_parte, **campos)
+    validacion = validar_parte(extraccion, lectura_de_firma("humana", hash_parte=hash_parte))
+    assert validacion.veredicto is Veredicto.APTO, "este material ya no da un apto"
+    assert validacion.destino is Destino.ARCHIVO_Y_CIERRE
+    return validacion
+
+
+def veredicto_no_apto(*, hash_parte: str = HASH_DE_PRUEBA, **campos: Any):
+    """F-030 · el veredicto **no apto** que F-004 emitiría sobre ese parte.
+
+    El gemelo de `veredicto_apto`, y para lo mismo: los tests que comprueban
+    que un parte sin aprobar **no pasa** la puerta tienen que dejar ese
+    veredicto en el doble, porque desde F-030 es de ahí de donde sale.
+
+    Y no es un detalle: si se dejaran sin veredicto, esos casos seguirían
+    dando el mismo código de error **por otro motivo** —«no consta que este
+    parte haya pasado la validación» en vez de «la validación lo manda a la
+    cola»— y dejarían de probar lo que dicen que prueban.
+
+    El parte es el completo y firmado **con observaciones manuscritas**, que
+    es el que F-004 manda a `cola_validacion_humana`: hay algo escrito a mano
+    y alguien tiene que leerlo.
+    """
+    from domain.models.validacion import Destino, Veredicto, validar_parte
+
+    extraccion = extraccion_de_ejemplo(hash_parte=hash_parte, **campos)
+    validacion = validar_parte(extraccion, lectura_de_firma("humana", hash_parte=hash_parte))
+    assert validacion.veredicto is Veredicto.NO_APTO, "este material ya no da un no apto"
+    assert validacion.destino is Destino.COLA_VALIDACION_HUMANA
+    return validacion

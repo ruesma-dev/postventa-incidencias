@@ -29,9 +29,9 @@ observaciones, con los dos campos decisivos vacíos— y la puerta del paso
 derivaba el estado de **ese** objeto. Rompía el circuito por los dos lados:
 
 - la huella recomputada sobre el stub no dependía del parte —era una de tres
-  constantes—, así que la aprobación de una persona no coincidía nunca con la
-  suya y el parte volvía a `pendiente`. La incidencia RS26.09/0178 se quedó
-  así, aprobada y sin archivar;
+  constantes—, así que lo que una persona hubiera decidido sobre ese parte no
+  coincidía nunca con la suya y el parte volvía a `pendiente`. La incidencia
+  RS26.09/0178 se quedó así, decidida por una persona y sin archivar;
 - y al revés, un cuerpo que dijera `veredicto=apto` pasaba la puerta sin que
   nadie hubiera mirado el parte. Lo único que lo impedía era que el front
   mandara la verdad.

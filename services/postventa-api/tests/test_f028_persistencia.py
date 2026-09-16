@@ -67,7 +67,11 @@ from infrastructure.persistencia import mapeo, sentencias
 from infrastructure.persistencia.mapeo import fila_a_decision_estado
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
 
-from tests.utiles_pg import ConexionDoble, RepositorioEnMemoria
+from tests.utiles_pg import (
+    ConexionDoble,
+    RepositorioEnMemoria,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import ErpEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
 
@@ -976,9 +980,16 @@ def _cerrar(
     erp: ErpEnMemoria | None = None,
     commit: bool = True,
 ) -> ContextoParte:
-    """Ejecuta `paso_cierre` con dobles. **Sin red y sin tocar el ERP.**"""
+    """Ejecuta `paso_cierre` con dobles. **Sin red y sin tocar el ERP.**
+
+    F-030 · el veredicto del contexto se deja también en el doble, porque desde
+    F-030 la puerta del paso lo lee de ahí (ver `tests/utiles_pg.py`).
+    """
+    ctx = _contexto_listo_para_cerrar()
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_cierre(
-        _contexto_listo_para_cerrar(),
+        ctx,
         erp if erp is not None else ErpEnMemoria(_reclamacion()),
         repositorio,
         UsuariosConLoginConfirmado(),

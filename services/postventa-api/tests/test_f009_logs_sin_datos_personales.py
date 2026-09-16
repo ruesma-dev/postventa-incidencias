@@ -54,7 +54,7 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
 from tests.utiles_sigrid import ErpEnMemoria
 
 AHORA = datetime(2026, 8, 26, 9, 46, 33, tzinfo=UTC)
@@ -214,10 +214,19 @@ def _contexto_con_datos_personales() -> ContextoParte:
 
 
 def _cerrar(*, erp, usuarios, commit: bool = True, confirmado: bool = True):
+    """`paso_cierre` con dobles.
+
+    F-030 · el veredicto del contexto se deja también en el doble, porque desde
+    F-030 la puerta del paso lo lee de ahí (ver `tests/utiles_pg.py`).
+    """
+    ctx = _contexto_con_datos_personales()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_cierre(
-        _contexto_con_datos_personales(),
+        ctx,
         erp,
-        RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
+        repositorio,
         usuarios,
         PreferenciasEnMemoria(),
         commit=commit,

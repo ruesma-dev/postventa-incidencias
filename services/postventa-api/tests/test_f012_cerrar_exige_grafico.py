@@ -38,6 +38,7 @@ from application.pipelines.paso_cierre import (
 )
 from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
 from domain.models.errores import ParteNoAdjuntado
+from domain.models.estado import SituacionParte
 from domain.models.firma import ClasificacionFirma
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
@@ -52,8 +53,9 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
 from tests.utiles_sigrid import ErpEnMemoria
+from tests.utiles_validacion import veredicto_apto
 
 AHORA = datetime(2026, 9, 6, 12, 0, 0, tzinfo=UTC)
 HASH = "hash-inventado-del-parte-0001"
@@ -153,10 +155,22 @@ def _cerrar(
     confirmado: bool = False,
     preferencias: Preferencias | None = None,
 ):
+    """`paso_cierre` con dobles, afinando solo lo que cada caso mire.
+
+    **Enmienda del 2026-09-16 (F-030).** Desde F-030 la puerta del paso deriva
+    el estado del veredicto **guardado** —`ctx.situacion.validacion`— y ya no
+    mira el del contexto, así que el ayudante lo deja también en el doble antes
+    de llamar. No inventa ninguno ni pisa la situación que el caso haya
+    preparado: el porqué entero está en `tests/utiles_pg.py`.
+    """
+    ctx = _contexto()
+    repositorio = repositorio if repositorio is not None else RepositorioEnMemoria()
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_cierre(
-        _contexto(),
+        ctx,
         erp if erp is not None else ErpEnMemoria(_reclamacion()),
-        repositorio if repositorio is not None else RepositorioEnMemoria(),
+        repositorio,
         Usuarios(),
         preferencias if preferencias is not None else Preferencias(),
         commit=commit,
@@ -449,7 +463,11 @@ def _respuesta_del_borde(traza: TrazaGrafico | None) -> dict:
             "usuario_oid": OID,
         },
         erp=ErpEnMemoria(_reclamacion()),
-        repositorio=RepositorioEnMemoria(traza_grafico=traza),
+        # F-030 · el veredicto lo lee la puerta de la base, no del cuerpo.
+        repositorio=RepositorioEnMemoria(
+            traza_grafico=traza,
+            situacion=SituacionParte(validacion=veredicto_apto(hash_parte=HASH)),
+        ),
         usuarios=Usuarios(),
         preferencias=Preferencias(),
         ahora=AHORA,

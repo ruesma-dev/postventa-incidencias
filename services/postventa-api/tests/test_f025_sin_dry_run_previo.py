@@ -74,7 +74,7 @@ from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 from infrastructure.sharepoint.fabrica import construir_archivador
 from infrastructure.sigrid.fabrica import construir_erp, construir_graficos
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 
 AHORA = datetime(2026, 9, 11, 12, 0, 0, tzinfo=UTC)
@@ -272,12 +272,22 @@ def _adjuntar(
     El valor por omisión es el contrario al de `test_f012_paso_grafico.py` a
     propósito: lo que este fichero vigila es el camino que F-025 usa, que es
     **siempre** con `commit` y sin ninguna llamada anterior.
+
+    **Enmienda del 2026-09-16 (F-030).** Desde F-030 la puerta del paso deriva
+    el estado del veredicto **guardado** —`ctx.situacion.validacion`— y ya no
+    mira el del contexto, así que el ayudante lo deja también en el doble antes
+    de llamar. No inventa ninguno ni pisa la situación que el caso haya
+    preparado: el porqué entero está en `tests/utiles_pg.py`.
     """
+    ctx = ctx if ctx is not None else _contexto()
+    repositorio = repositorio if repositorio is not None else RepositorioEnMemoria()
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_grafico(
-        ctx if ctx is not None else _contexto(),
+        ctx,
         erp if erp is not None else ErpEnMemoria(_reclamacion()),
         graficos if graficos is not None else GraficoEnMemoria(),
-        repositorio if repositorio is not None else RepositorioEnMemoria(),
+        repositorio,
         usuarios if usuarios is not None else UsuariosConLoginConfirmado(),
         Preferencias(),
         commit=commit,
@@ -301,15 +311,23 @@ def _cerrar(
     commit: bool = True,
     confirmado: bool = True,
 ) -> ContextoParte:
-    """`paso_cierre` con dobles. **Por omisión, con `commit`**."""
+    """`paso_cierre` con dobles. **Por omisión, con `commit`**.
+
+    **Enmienda del 2026-09-16 (F-030).** Desde F-030 la puerta del paso deriva
+    el estado del veredicto **guardado** —`ctx.situacion.validacion`— y ya no
+    mira el del contexto, así que el ayudante lo deja también en el doble antes
+    de llamar. No inventa ninguno ni pisa la situación que el caso haya
+    preparado: el porqué entero está en `tests/utiles_pg.py`.
+    """
+    ctx = ctx if ctx is not None else _contexto()
+    if repositorio is None:
+        repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_cierre(
-        ctx if ctx is not None else _contexto(),
+        ctx,
         erp if erp is not None else ErpEnMemoria(_reclamacion()),
-        (
-            repositorio
-            if repositorio is not None
-            else RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
-        ),
+        repositorio,
         usuarios if usuarios is not None else UsuariosConLoginConfirmado(),
         Preferencias(),
         commit=commit,

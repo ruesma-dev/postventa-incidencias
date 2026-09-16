@@ -48,7 +48,7 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
-from tests.utiles_pg import RepositorioEnMemoria
+from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
 from tests.utiles_sigrid import ErpEnMemoria
 
 AHORA = datetime(2026, 8, 26, 9, 46, 33, tzinfo=UTC)
@@ -180,11 +180,23 @@ def _cerrar(
     commit: bool = False,
     confirmado: bool = False,
 ) -> ContextoParte:
-    """Ejecuta el paso con dobles, dejando afinar solo lo que el test mire."""
+    """Ejecuta el paso con dobles, dejando afinar solo lo que el test mire.
+
+    **Enmienda del 2026-09-16 (F-030).** Desde F-030 la puerta del paso deriva
+    el estado del veredicto **guardado** —`ctx.situacion.validacion`— y ya no
+    mira el del contexto, así que el ayudante lo deja también en el doble antes
+    de llamar. No inventa ninguno ni pisa la situación que el caso haya
+    preparado: el porqué entero está en `tests/utiles_pg.py`.
+    """
+    ctx = ctx if ctx is not None else _contexto()
+    if repositorio is None:
+        repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
+    con_el_veredicto_guardado(repositorio, ctx)
+
     return paso_cierre(
-        ctx if ctx is not None else _contexto(),
+        ctx,
         erp if erp is not None else ErpEnMemoria(_reclamacion()),
-        repositorio if repositorio is not None else RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
+        repositorio,
         usuarios if usuarios is not None else UsuariosEnMemoria(),
         preferencias if preferencias is not None else PreferenciasEnMemoria(),
         commit=commit,
@@ -319,12 +331,15 @@ def test_f009_r7_una_incidencia_que_no_esta_en_el_erp_no_cierra_nada():
 def test_f009_r47_sin_numero_de_incidencia_no_se_pregunta_al_erp():
     """Sin código no hay a quién preguntar, y preguntar por «» sería absurdo."""
     erp = ErpEnMemoria(_reclamacion())
+    ctx = _contexto()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
+    con_el_veredicto_guardado(repositorio, ctx)
 
     with pytest.raises(CuerpoDeCierreInvalido):
         paso_cierre(
-            _contexto(),
+            ctx,
             erp,
-            RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
+            repositorio,
             UsuariosEnMemoria(),
             PreferenciasEnMemoria(),
             commit=False,
@@ -530,12 +545,15 @@ def test_f009_r32_sin_login_confirmado_no_se_escribe_en_el_erp():
             raise AssertionError("no se guarda un login sin verificar")
 
     erp = ErpEnMemoria(_reclamacion(), existe_login=False)
+    ctx = _contexto()
+    repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
+    con_el_veredicto_guardado(repositorio, ctx)
 
     with pytest.raises(UsuarioSigridInexistente):
         paso_cierre(
-            _contexto(),
+            ctx,
             erp,
-            RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO),
+            repositorio,
             SinCorrespondencia(),
             PreferenciasEnMemoria(),
             commit=True,

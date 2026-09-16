@@ -43,7 +43,8 @@ está el fallo que esto impide.
 `ResultadoValidacion` con el `veredicto` y el `destino` del formulario y
 valores fijos para todo lo demás, y la puerta del paso derivaba el estado de
 **ese** objeto. Como la huella recomputada sobre él no dependía del parte, la
-aprobación de una persona no contaba nunca; y al revés, un cuerpo que dijera
+decisión de una persona sobre ese parte no contaba nunca; y al revés, un
+cuerpo que dijera
 `veredicto=apto` pasaba la puerta sin que nadie hubiera mirado el parte.
 
 Desde F-030 el contexto sale de aquí **sin veredicto** y la puerta lo lee de

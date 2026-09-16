@@ -178,6 +178,24 @@ try:
 except Exception as fallo:
     # Ni el DSN ni la contrasena en el mensaje: acaba en la consola de alguien.
     print(f"ERROR|no se ha podido leer: {type(fallo).__name__}")
+    # Y si lo que falta es una TABLA, decir cuales hay: "UndefinedTable" a secas
+    # manda a buscar a ciegas, y la causa casi siempre es la misma -el DDL no se
+    # ha aplicado todavia porque el servicio no ha arrancado desde el despliegue-.
+    if type(fallo).__name__ == "UndefinedTable":
+        try:
+            with psycopg.connect(dsn) as conexion, conexion.cursor() as cursor:
+                cursor.execute(
+                    "SELECT table_name FROM information_schema.tables "
+                    "WHERE table_schema = %s ORDER BY table_name",
+                    (esquema,),
+                )
+                existentes = [nombre for (nombre,) in cursor.fetchall()]
+            print("tablas_del_esquema|" + (", ".join(existentes) or "(ninguna)"))
+            for necesaria in ("aprobaciones", "historico_estado", "partes"):
+                if necesaria not in existentes:
+                    print(f"falta|{esquema}.{necesaria}")
+        except Exception:
+            print("tablas_del_esquema|(no se han podido listar)")
     sys.exit(7)
 
 aprobaciones, vigentes, total, humanas, partes = panorama
@@ -214,6 +232,15 @@ foreach ($variable in @(
 }
 
 if ($codigo -ne 0) {
+    foreach ($linea in @($salida)) {
+        $texto = [string]$linea
+        if ($texto.StartsWith("tablas_del_esquema|")) {
+            Write-Host ("  Tablas que SI existen en el esquema: " + $texto.Split("|", 2)[1]) -ForegroundColor Yellow
+        }
+        if ($texto.StartsWith("falta|")) {
+            Write-Host ("  FALTA la tabla " + $texto.Split("|", 2)[1]) -ForegroundColor Red
+        }
+    }
     Salir-Con "No se ha podido leer el historico: $salida" $codigo
 }
 

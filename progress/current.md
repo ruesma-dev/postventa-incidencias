@@ -40,6 +40,36 @@
 > | **5** | Un parte cerrado responde **409**, y la web **lo explica** | Dos mitades y la web solo enseña una: **no ofrece el gesto** sobre un parte cerrado, así que hay que mirar **que lo explica** (la frase de por qué no se puede) y, aparte, que el 409 sigue estando para quien llame al endpoint por su cuenta: `curl -X POST …/api/estado` con un parte cerrado |
 > | **6** | Un parte con el número **con espacios alrededor de la barra** cierra la incidencia | **El defecto que abrió el asunto 2.** **HAZ PRIMERO EL DRY-RUN** y mira que la reclamación que devuelve **es la que esperas**, antes de confirmar: el arreglo hace que ahora se encuentre una reclamación donde antes no se encontraba ninguna, y **que sea la correcta es lo que hay que ver con los ojos una vez** |
 >
+> ### ✅ Verificaciones 1 y 2, HECHAS el 2026-09-16
+>
+> `infra_historico_estado.ps1 -NumeroIncidencia "RS26.09/0149"` → **PASA**.
+> La semilla **no ha duplicado** ninguna fila, y **la aprobación que había
+> sobrevivió**: 1 aprobación en la tabla congelada, 1 vigente, y su fila humana
+> en el histórico con **su autor y su hora reales** —`2026-09-15 12:29:51 UTC`,
+> la que se dio el día 15—. El histórico tiene 4 filas repartidas en 3 partes.
+>
+> **Y un matiz que hay que conocer para no leer mal esta tabla.** El histórico
+> de ese parte enseña dos filas:
+>
+> | # | desde | hasta | quién | cuándo (UTC) |
+> |---|---|---|---|---|
+> | 1 | — | `aprobado` | **persona** | 2026-09-15 12:29:51 |
+> | 2 | `aprobado` | `cerrado` | máquina | **2026-09-16 11:47:11** |
+>
+> La segunda lleva fecha de **hoy**, y esa incidencia se cerró **ayer**. No es
+> un defecto: `anotar_estado` fecha la fila con el instante en que **se
+> constata** el estado, no con el del hecho. Al entrar en la web el parte se
+> reprocesó, se derivó `cerrado` de su traza de cierre, y como el histórico aún
+> decía `aprobado` se anotó el cambio con la hora de ese momento.
+>
+> **Solo ocurre con los partes que ya estaban cerrados antes de que existiera el
+> histórico** —los dos del piloto—: en uno nuevo, la constancia se escribe
+> segundos después del cierre. Pero la consecuencia conviene tenerla escrita:
+> **para saber cuándo se cerró de verdad una incidencia, la fuente NO es el
+> histórico**, son `postventa.cierres` y la fila de `dbo.log` del ERP, que para
+> `RS26.09/0149` dicen `2026-09-15 14:30:05` hora local y están auditadas campo
+> a campo.
+>
 > ### Y una comprobación del despliegue, que no es de T27
 >
 > Que el host **publique la ruta nueva**: un `curl -X POST …/api/estado` contra

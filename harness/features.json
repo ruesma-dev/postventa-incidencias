@@ -525,7 +525,7 @@
         "Los verdes automaticos y los rechazos siguen comportandose igual que hoy",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 30,

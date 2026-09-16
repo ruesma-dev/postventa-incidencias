@@ -5,6 +5,8 @@
 
 Resumen: **30 features**, 15 abiertas, 15 terminadas.
 
+En curso: **F-030**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
@@ -22,7 +24,7 @@ Resumen: **30 features**, 15 abiertas, 15 terminadas.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
-| F-030 | REGRESION: la aprobacion humana no sobrevive a la puerta de F-028 | 30 | pendiente | critico | `feature/F-030-veredicto-persistido` |
+| F-030 | REGRESION: la aprobacion humana no sobrevive a la puerta de F-028 | 30 | en curso | critico | `feature/F-030-veredicto-persistido` |
 | F-031 | El nombrado del fichero archivado sale del cuerpo, no de lo persistido | 31 | pendiente | critico | `feature/F-031-nombrado-persistido` |
 
 ## Terminadas
@@ -127,7 +129,7 @@ DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO AR
 
 ### F-030 · REGRESION: la aprobacion humana no sobrevive a la puerta de F-028
 
-estado **pendiente** · prioridad 30 · rigor `critico` · SDD sí · rama `feature/F-030-veredicto-persistido`
+estado **en curso** · prioridad 30 · rigor `critico` · SDD sí · rama `feature/F-030-veredicto-persistido`
 
 DEFECTO EN PRODUCCION detectado por el humano el 2026-09-16 a las 18:10 sobre la incidencia RS26.09/0178 (parte b7e9b037): un parte aprobado por una persona no se archiva, y el backend responde 'este parte esta pendiente: la validacion lo manda a cola_validacion_humana y no consta que nadie lo haya aprobado'. CAUSA, diagnosticada con las dos huellas calculadas: POST /api/estado guarda la decision junto a la HUELLA del veredicto completo (interface_adapters/api/estado.py:162,198), pero POST /api/archivar NO recibe la extraccion y fabrica un ResultadoValidacion de pega con motivos=(), clasificacion_firma=HUMANA fija y observaciones=None (archivar.py:190-198). La puerta recomputa la huella sobre ese veredicto falso (puerta_de_estado.py:112 -> domain/models/estado.py:325-328,355-357), no coincide con la apuntada y tumba la aprobacion. Medido sobre un parte con observaciones manuscritas: huella real 44aeec3e... contra huella del stub 9d8596a0... El mismo stub esta en adjuntar.py:244-249 y cerrar.py:212-217: las TRES puertas. ES REGRESION DE F-028: hasta F-026 la puerta era admite_circuito(validacion, aprobacion) y comparaba solo el destino aprobado, con esta docstring literal: 'lo que hace que la puerta sirva de algo sin poder recomputar la huella'. F-026 sabia que /api/archivar no puede rehacer el veredicto; F-028 (T11, commit 51fbe77) la sustituyo por estado_del_parte, que si lo recomputa, y no migro los tres endpoints. Entro en produccion con el despliegue del 2026-09-16 07:33 UTC. ALCANCE: todos los partes aprobados a mano, en archivar, adjuntar y cerrar; los verdes automaticos y los rechazos siguen bien. EL TEST QUE FALTO: test_f028_puertas.py:737 construye la decision y la puerta con el MISMO objeto de validacion, asi que las huellas coinciden por construccion, y no hay ni un test que recorra decidir -> archivar con el cuerpo real del endpoint. ARREGLO ELEGIDO POR EL HUMANO el 2026-09-16, descartado el parche por destino: que las tres puertas dejen de juzgar un veredicto venido del cuerpo y usen el veredicto PERSISTIDO, que es lo que R33 ya exige para la situacion. OJO: postventa.validaciones guarda veredicto, destino, clasificacion y motivos pero NO las observaciones ni los dos campos decisivos de la huella; hay que traerlos de postventa.partes para recomponerla.
 

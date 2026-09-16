@@ -226,7 +226,7 @@
 
 ## Bloque 9 · Documentación y enmiendas
 
-- [ ] **T24**: Los recuadros fechados: R56 y R57 en
+- [x] **T24**: Los recuadros fechados: R56 y R57 en
       `specs/F-026-aprobacion-humana/requirements.md`, y R58 en
       `specs/F-025-confirmacion-unica/requirements.md` y en
       `docs/ARCHITECTURE.md` —incluida la nota de la semántica 5 sobre que los

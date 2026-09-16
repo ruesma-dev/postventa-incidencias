@@ -141,6 +141,19 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    cambia el veredicto sobre el que se decidió. El detalle está en
    `specs/F-026-aprobacion-humana/`.
 
+   **Precisado por F-028 el 2026-09-16**: dicho con el vocabulario del estado,
+   solo se archiva lo que está `aprobado` —uno de los cuatro estados:
+   `pendiente`, `aprobado`, `rechazado`, `cerrado`—. La novedad de F-028 no es
+   un permiso más, es el contrario: una persona puede dejar `rechazado` un
+   parte que la máquina dio por bueno, y ese parte **no se archiva** por mucho
+   que su veredicto sea apto. La decisión vive en
+   `postventa.historico_estado`, **append-only**, donde manda la última fila
+   humana; `postventa.aprobaciones` se **congela** —no se borra: se siembra en
+   el histórico, para que las decisiones que ya había sigan contando— y deja de
+   leerse y de escribirse. Lo que no cambia: la puerta se comprueba en los tres
+   pasos del backend, leyendo el estado **del repositorio y nunca del cuerpo de
+   la petición**. El detalle está en `specs/F-028-estado-del-parte/`.
+
    Y **solo se archiva lo que ya consta guardado** (F-019). El mecanismo no es
    una comprobación en Python: antes de tocar SharePoint se escribe la traza
    del archivo en estado `pendiente`, y `postventa.archivos.hash_parte` tiene
@@ -271,6 +284,18 @@ igual que hoy, y por debajo se suben los PDFs.
    ser** conformidad del cliente, y lo que decide que valen no es el modelo, es
    quien firma la aprobación.
 
+   **Precisado por F-028 el 2026-09-16**: lo que decide si un parte entra en el
+   circuito es su **estado**, y solo entra el que está `aprobado`. Una firma
+   que el modelo no dio por humana la sigue pudiendo dar por buena **una
+   persona**, exactamente igual que con F-026; lo que se añade es la dirección
+   contraria, que antes no existía: una persona puede dejar `rechazado` un
+   parte que la máquina dio por bueno, y entonces no se archiva ni se cierra.
+   La decisión consta en `postventa.historico_estado` —append-only, con quién
+   y cuándo, y manda la última fila humana—, y `postventa.aprobaciones` queda
+   congelada y sembrada en él. El criterio de la firma no lo toca nadie: una
+   casilla vacía, una aspa o un trazo geométrico **siguen sin ser**
+   conformidad del cliente.
+
    **Cómo convive esto con «las observaciones son el único motivo de
    rechazo»** (3 bis), que parece lo contrario: son dos cosas distintas y las
    dos se sostienen. El alcance de «único motivo» son **los datos
@@ -317,6 +342,18 @@ igual que hoy, y por debajo se suben los PDFs.
    (con barra) en el ERP y en el parte impreso, pero con guion en el nombre
    del fichero. Sin él no se puede nombrar ni
    cerrar nada: el parte va a revisión manual, nunca se inventa ni se deduce.
+
+   **Precisado por F-028 el 2026-09-16**: **los espacios que rodean al
+   separador no forman parte del código**. `RS26.09 / 0149`, `RS26.09 /0149`,
+   `RS26.09 - 0149`, `RS26.09- 0149` y `RS26.09 – 0149` son **el mismo** número
+   que `RS26.09/0149`: al ERP viaja siempre `RS26.09/0149`, y al nombre del
+   fichero, `RS26.09 - 0149`. Hasta el 2026-09-15 no era así y el cierre
+   fallaba **en silencio**: Sigrid busca la reclamación por **igualdad
+   exacta**, así que un número leído con un espacio de más se archivaba bien y
+   no cerraba nada. Lo que **no** pasa por esta regla es el **código de obra**:
+   `06-77` es una obra, no dos tramos, y partirlo por el guion metería un PDF
+   con el DNI manuscrito de un cliente en la carpeta de otra promoción.
+
 6. **Cerrar en Sigrid es escritura en producción.** Siempre dry-run primero;
    `commit: true` solo después de confirmación explícita (del usuario en el
    front, o de su preferencia de auto-cierre guardada).
@@ -347,6 +384,19 @@ igual que hoy, y por debajo se suben los PDFs.
    `postventa.cierres` por `hash_parte` y ve si lo cerró el veredicto o lo
    cerró una persona **a pesar** del veredicto; el ERP, por sí solo, no
    distingue esos dos cierres.
+
+   **Precisado por F-028 el 2026-09-16**: con el vocabulario del estado, solo
+   se archiva, se adjunta y se cierra lo que está `aprobado`. Y con una
+   diferencia que F-026 no podía expresar: un parte **apto** que una persona ha
+   dejado `rechazado` **no** pasa, porque lo automático puede retirar un
+   permiso y nunca concederlo. La decisión consta en
+   `postventa.historico_estado` —append-only, con quién y cuándo— y **sigue sin
+   escribirse en Sigrid**, por la misma decisión del responsable del
+   2026-09-11; `postventa.aprobaciones` se congela y se siembra en el
+   histórico. Quien audite un cierre cruza hoy `postventa.historico_estado` con
+   `postventa.cierres` por `hash_parte`, y ve si lo cerró el veredicto o lo
+   cerró una persona a pesar de él.
+
 8. **El nombre del fichero es `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`**
    —por ejemplo `0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`— y la carpeta va por
    código de obra. El sufijo se conserva porque distingue el parte conformado

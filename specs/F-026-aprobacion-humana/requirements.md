@@ -184,6 +184,33 @@ propio del proyecto, con `hash_parte` como clave primaria y clave ajena contra
 > siguen `archivos` (F-006), `cierres` (F-009) y `graficos` (F-012): **una tabla
 > por hecho con ciclo de vida propio**.
 
+> **Enmienda del 2026-09-16 · F-028 (R56).** La decisión humana deja de vivir
+> en una fila que se sustituye y pasa a vivir en el **histórico append-only**
+> `postventa.historico_estado`, donde manda la **última fila humana**.
+>
+> **R12 decía**, literal: *«La aprobación debe guardarse en una tabla propia
+> del esquema propio del proyecto, con `hash_parte` como clave primaria y clave
+> ajena contra `postventa.partes`.»*
+>
+> **Qué la invalidó**: `hash_parte` como **clave primaria** obliga a una fila
+> por parte, y con ella al `ON CONFLICT DO UPDATE` que borra la decisión
+> anterior (**§0.4** de `specs/F-028-estado-del-parte/requirements.md`). Con
+> eso, el criterio de aceptación de F-028 —«el histórico conserva las
+> decisiones en orden», y un ciclo aprobar → rechazar → aprobar deja **tres**
+> filas— es imposible de cumplir, no difícil.
+>
+> **Lo que no cambia**: sigue siendo una **tabla propia** del esquema propio,
+> con su clave ajena contra `postventa.partes`, y la decisión se sigue
+> registrando **al lado del veredicto, nunca encima** (R11). Lo que cambia es
+> la forma de la tabla, no de quién es el dato.
+>
+> **`postventa.aprobaciones` no se borra**: guarda decisiones que tomaron
+> personas de verdad, y el DDL del histórico la **siembra** para que sigan
+> contando. Se congela: ni se lee ni se escribe más.
+>
+> **Quién y cuándo**: el **responsable del proyecto**, el **2026-09-15**, al
+> replantear la feature después de ver F-026 funcionando.
+
 **R13.** De quien aprueba, el sistema debe guardar **el identificador opaco de
 Entra ID y nada más**: nunca su correo, nunca su nombre, nunca su login de
 Sigrid.
@@ -206,6 +233,28 @@ ejecutar ninguna sentencia fuera de ese esquema ni de ámbito de servidor.
 
 **R17.** El sistema debe dejar **una sola fila por parte**: volver a aprobar el
 mismo parte sustituye su aprobación, nunca acumula una segunda.
+
+> **Enmienda del 2026-09-16 · F-028 (R56).** Ya no hay una sola fila por
+> parte: hay **una fila por decisión**, y manda la **última fila humana**.
+>
+> **R17 decía**, literal: *«El sistema debe dejar una sola fila por parte:
+> volver a aprobar el mismo parte sustituye su aprobación, nunca acumula una
+> segunda.»*
+>
+> **Qué la invalidó**: sustituir **borra el rechazo anterior**. Con el
+> `ON CONFLICT DO UPDATE` que impone una fila por parte (**§0.4** de
+> `specs/F-028-estado-del-parte/requirements.md`), un ciclo aprobar → rechazar
+> → aprobar no deja ni rastro del rechazo, y quien audite el parte no verá que
+> alguien lo miró y dijo que no. El histórico de F-028 es **append-only** y
+> deja las tres filas, en orden.
+>
+> **Lo que no cambia**: sigue habiendo **una sola respuesta** a «¿en qué estado
+> está este parte?» (R2 y R17 de F-028). Lo que se acumula son los hechos, no
+> los criterios: el estado se **deriva**, y el histórico es constancia y nunca
+> criterio (R26 de F-028). Si mañana faltara una fila, el estado seguiría
+> siendo el correcto.
+>
+> **Quién y cuándo**: el **responsable del proyecto**, el **2026-09-15**.
 
 ---
 
@@ -238,6 +287,33 @@ las ventanas de escritura están cerradas, que es como se despliega el entorno
 **R22.** CUANDO el sistema devuelve el resultado de guardar un parte, debe decir
 **si ese parte consta aprobado** y si su aprobación **sigue vigente**, para que
 la pantalla lo sepa sin una petición más por parte.
+
+> **Enmienda del 2026-09-16 · F-028 (R56).** Lo que se devuelve al guardar un
+> parte ya no es «consta aprobado» más «sigue vigente»: es **el estado del
+> parte**, uno de cuatro —`pendiente`, `aprobado`, `rechazado`, `cerrado`—, y
+> quién lo sostiene.
+>
+> **R22 decía**, literal: *«CUANDO el sistema devuelve el resultado de guardar
+> un parte, debe decir si ese parte consta aprobado y si su aprobación sigue
+> vigente, para que la pantalla lo sepa sin una petición más por parte.»*
+>
+> **Qué la invalidó**: las dos banderas solo saben decir sí o no, y eso se
+> quedó corto en cuanto una persona pudo **rechazar** un parte que la máquina
+> había dado por bueno: «no aprobado» y «rechazado» no son lo mismo —del
+> segundo no se sale reprocesando—, y un parte `cerrado` no admite ningún
+> cambio. Con dos banderas, la pantalla tendría que reconstruir el estado por
+> su cuenta, que es la segunda copia del criterio que R17 de F-028 prohíbe. Y
+> la decisión ya no vive donde vivía: está en el **histórico append-only**
+> `postventa.historico_estado`, donde manda la **última fila humana**
+> (**§0.4** de `specs/F-028-estado-del-parte/requirements.md`, el
+> `ON CONFLICT DO UPDATE` que borraba el rechazo anterior).
+>
+> **Lo que no cambia**: el motivo por el que esto existe. Sigue viajando **en
+> la respuesta de guardar**, sin una petición más por parte, y la vigencia de
+> una decisión humana se sigue resolviendo por **huella del veredicto** (R30,
+> precisada más abajo).
+>
+> **Quién y cuándo**: el **responsable del proyecto**, el **2026-09-15**.
 
 ---
 
@@ -323,6 +399,34 @@ cola»: la aprobación es de **un** parte, con ese parte delante.
 aprobó, el sistema debe **revocar** la aprobación de ese parte, en la misma
 operación y sin que nadie tenga que acordarse de pedirlo.
 
+> **Precisión del 2026-09-16 · F-028 (R57). No se deroga: se precisa.** La
+> aprobación **sigue dejando de valer** cuando cambia el veredicto sobre el que
+> se decidió. Lo que cambia es **cuándo y cómo se resuelve**.
+>
+> **R30 decía**, literal: *«CUANDO se guarda una validación cuyo veredicto
+> difiere del que se aprobó, el sistema debe revocar la aprobación de ese
+> parte, en la misma operación y sin que nadie tenga que acordarse de
+> pedirlo.»*
+>
+> **Qué se precisa**: ya no hay ninguna escritura que revoque. Se resuelve al
+> **derivar** el estado, comparando la **huella** apuntada en el histórico con
+> la del veredicto guardado ahora (`domain/models/estado.py`,
+> `_aprueba_lo_que_hay`). Con el estado derivado no hay dato guardado que pueda
+> quedarse viejo, así que no hay nada que revocar.
+>
+> **Y cierra un hueco, no solo mueve el sitio**: revocar era una **segunda**
+> escritura detrás de la del veredicto, y entre las dos había una **ventana**.
+> Si la segunda fallaba —la base tose, el proceso se cae—, el parte se quedaba
+> aprobado sobre un veredicto que ya no existía, y nadie se enteraba.
+> Resolviéndolo al leer, esa ventana no existe.
+>
+> **Lo que no cambia**: el criterio, que es el de siempre —se aprobó *ese*
+> veredicto—, ni R32: volver a guardar el mismo veredicto **no** caduca nada, y
+> eso sigue siendo lo que hace que recargar la pantalla no tire por la ventana
+> el trabajo de revisión.
+>
+> **Quién y cuándo**: el **responsable del proyecto**, el **2026-09-15**.
+
 **R31.** MIENTRAS una aprobación esté revocada, el sistema **no debe** admitir
 ese parte en el circuito: vuelve a hacer falta que una persona lo apruebe.
 
@@ -330,6 +434,34 @@ ese parte en el circuito: vuelve a hacer falta que una persona lo apruebe.
 > revalidar cambia el veredicto, así que **revoca** cualquier aprobación previa.
 > La otra mitad —que ese vaciado siga convirtiendo un ámbar en verde sin traza—
 > está fuera del alcance de F-026 y va como **P3**.
+
+> **Precisión del 2026-09-16 · F-028 (R57). No se deroga: se precisa.**
+>
+> **R31 decía**, literal: *«MIENTRAS una aprobación esté revocada, el sistema
+> no debe admitir ese parte en el circuito: vuelve a hacer falta que una
+> persona lo apruebe.»*
+>
+> **Qué se precisa**: ya no existe «revocada» como dato guardado. Una
+> aprobación tomada sobre otro veredicto simplemente **no cuenta** al
+> **derivar** el estado —su **huella** no es la del veredicto de ahora—, y el
+> parte se queda donde lo deje la máquina, que en la práctica es `pendiente`.
+> La consecuencia es **exactamente la misma** que enunciaba R31: no entra en el
+> circuito, y vuelve a hacer falta que una persona lo apruebe.
+>
+> **Y una diferencia que sí importa, declarada**: como no hay marca que borrar,
+> si el veredicto vuelve a ser el que se aprobó —alguien corrige un campo y
+> deshace la corrección—, la aprobación **vuelve a contar**. Es lo que ya decía
+> R32 y lo que hace que recargar la pantalla no invalide el trabajo hecho, pero
+> visto desde aquí parece otra cosa: encontrárselo en producción sin haberlo
+> leído antes es como se abren los partes de incidencia.
+>
+> **Lo que no cambia**: que lo automático puede **retirar** un permiso y nunca
+> concederlo. Por eso el `rechazado` de una persona **no caduca jamás**, ni
+> aunque el veredicto pase a apto (R5 de F-028): si caducara, bastaría con
+> reprocesar la remesa para que un parte que alguien miró y rechazó volviera a
+> entrar en la tanda.
+>
+> **Quién y cuándo**: el **responsable del proyecto**, el **2026-09-15**.
 
 **R32.** CUANDO se vuelve a guardar una validación cuyo veredicto es **el
 mismo** que se aprobó, el sistema **no debe** revocar la aprobación.

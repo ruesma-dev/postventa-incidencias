@@ -1,8 +1,8 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-09-12. **Última feature que
-> lo tocó**: F-026 (nació con F-005).
+> **Origen**: este repositorio. **Fecha**: 2026-09-16. **Última feature que
+> lo tocó**: F-028 (nació con F-005).
 >
 > Este documento es la **fuente de verdad** de lo que `postventa-incidencias`
 > consume del ecosistema de Ruesma y de lo que expone a los demás. Se copia a
@@ -20,7 +20,7 @@
 
 | Recurso | Compartido con | Qué hacemos | Desde |
 |---|---|---|---|
-| PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo y cierres | **F-005** |
+| PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo, cierres y el **histórico de estado** de cada parte (F-028) | **F-005** |
 | `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y DOS ESCRITURAS en el ERP de producción**: el **parte adjunto como gráfico** —`POST /api/sigrid/concepto-grafico`, tres filas en dos bases— y el **cierre** —`con.est` al estado de cierre y su fila de auditoría en `dbo.log`—. Solo desde el entorno desplegado y con el interruptor encendido | F-008 / **F-009** / **F-012** |
 | SharePoint (Graph) | IT | Archivo de los PDF validados | F-006 |
 | Gemini | — | Extracción multimodal y clasificación de firma | F-003 |
@@ -56,14 +56,17 @@ Servidor  psql-albaranes-rs9k2      COMPARTIDO — no tocamos nada suyo
                ├── preferencias_usuario    auto-cierre por usuario
                ├── usuarios_sigrid         el login del ERP de quien confirma
                ├── graficos                traza del parte adjunto en Sigrid
-               └── aprobaciones            quién aprobó un parte NO apto, y cuándo
+               ├── aprobaciones            CONGELADA desde F-028: ya no se escribe
+               └── historico_estado        append-only: cada cambio de estado de un parte
 ```
 
-Las nueve van en el orden en que las crea el DDL (`01_esquema.sql` …
-`10_aprobaciones.sql`). Las tres últimas se listan **desde F-026**
+Las diez van en el orden en que las crea el DDL (`01_esquema.sql` …
+`11_historico_estado.sql`). Las tres penúltimas se listan **desde F-026**
 (2026-09-12): `aprobaciones` es suya, y `usuarios_sigrid` (F-009) y `graficos`
 (F-012) llevaban existiendo desde sus features sin figurar en este árbol —un
-inventario incompleto es peor que no tenerlo, así que se corrigen al pasar.
+inventario incompleto es peor que no tenerlo, así que se corrigen al pasar. La
+última, `historico_estado`, la añade **F-028** (2026-09-16), y es la misma
+feature que congela `aprobaciones`.
 
 **`aprobaciones` es la tabla nueva de F-026** y merece una línea aparte, porque
 es la única del esquema que registra **una decisión humana que contradice a la
@@ -74,6 +77,52 @@ del veredicto sobre el que se decidió; **ni una copia del texto manuscrito** y
 ningún binario. Cuando el veredicto cambia, la aprobación se **revoca** en la
 misma operación que guarda la validación nueva: la fila no se borra nunca, se
 marca. El detalle está en `specs/F-026-aprobacion-humana/design.md` §10.
+
+> **Corrige lo que este párrafo dijo hasta el 2026-09-16 (F-028).** Sus dos
+> últimas frases —«cuando el veredicto cambia, la aprobación se **revoca** en la
+> misma operación que guarda la validación nueva: la fila no se borra nunca, se
+> marca»— describían el **mecanismo vivo** de la decisión humana, y ya no lo es.
+> **`postventa.aprobaciones` está CONGELADA**: sigue declarada en el DDL, sigue
+> creándose en cada arranque y sigue consultable, pero **nadie escribe en ella**
+> —ni un `INSERT`, ni un `UPDATE`, ni la revocación— desde F-028. El párrafo no
+> se borra porque es lo que explica las filas que ya tiene dentro, escritas
+> entre el 2026-09-12 y el 2026-09-16, que siguen siendo la prueba de aquellas
+> decisiones y que **siguen consultándose** para auditar lo anterior a esa
+> fecha.
+>
+> No se migró, y fue deliberado: su clave primaria es `hash_parte`, volverla
+> append-only sería cambiarle la clave en una base **compartida y ya desplegada
+> con datos reales**, y eso es una migración de verdad, no un `ADD COLUMN`. Se
+> congela, se **siembra una vez** en la tabla nueva y se deja de escribir.
+
+**`historico_estado` es la tabla nueva de F-028** (2026-09-16) y es la primera
+del esquema cuya clave **no** es el `hash_parte`: es **append-only** y acumula
+**todos** los cambios de estado de un parte, en orden —de qué estado a cuál,
+quién lo decidió, cuándo y por qué—. Las diez anteriores se escriben con
+`INSERT ... ON CONFLICT (hash_parte) DO UPDATE` porque de cada una solo
+interesa el último valor; aquí interesan todos, que es justo lo que
+`aprobaciones` no podía dar: un ciclo aprobar → rechazar → aprobar dejaba
+**una** fila y borraba el rechazo por el camino, y después nadie podía
+responder a quién lo rechazó y por qué.
+
+Guarda el `oid` opaco de quien decide —**`NULL` cuando lo decidió la máquina**,
+que no se sustituye por un autor inventado—, el **motivo** en texto libre de
+quien revisa (tope de 500 caracteres en el borde) y la misma **huella**
+(`sha256`) del veredicto sobre el que se decidió; **ni una copia del texto
+manuscrito** y ningún binario, como en las demás. Es **constancia, nunca
+criterio**: el estado de un parte **no se guarda, se deriva** del veredicto, de
+la última decisión humana y de la traza de cierre, así que si mañana faltara
+una fila el estado seguiría siendo el correcto y lo único perdido sería una
+línea del relato. El detalle está en `specs/F-028-estado-del-parte/design.md`.
+
+**La semilla es lo único que cruza las dos tablas, y ocurre una vez.** El DDL
+de `11_historico_estado.sql` copia al histórico las aprobaciones **vigentes**
+de F-026; es idempotente —`NOT EXISTS` por parte— y se ejecuta con el resto del
+DDL al arrancar, antes de atender ninguna petición. Sin ella, el día del
+despliegue todo parte aprobado a mano se habría quedado sin su decisión humana.
+Las aprobaciones **ya revocadas no se siembran**: su efecto hoy es «no hay
+aprobación», y resucitarlas como última decisión humana volvería a abrirles la
+puerta del circuito que escribe en el ERP de producción.
 
 **Base propia y esquema nominado, las dos cosas.** La base propia es cómo
 aísla el ecosistema (`albaranes`, `partes`, `sigrid_dm`: un servidor, varias
@@ -464,7 +513,9 @@ La base guarda **datos personales de clientes**: DNI y observaciones
 manuscritas del parte, además de la promoción y la unidad, que localizan una
 vivienda. También el identificador opaco de Entra (`oid`) del empleado que
 sube la remesa, confirma un cierre o **aprueba un parte que la validación había
-rechazado** (F-026); nunca su correo ni su nombre.
+rechazado** (F-026) —desde **F-028**, el de quien **cambia el estado** de un
+parte, lo apruebe o lo rechace, en `postventa.historico_estado`—; nunca su
+correo ni su nombre.
 
 Ese último `oid` se guarda por una razón distinta de las otras dos y conviene
 que se sepa: no es traza de un proceso, es **la firma de una decisión** que
@@ -483,6 +534,11 @@ Consecuencias para quien administre el servidor:
   inventados y hay un test que barre el árbol buscando patrones de DNI y NIE.
 - Una copia de la base, un volcado o una captura de pantalla del contenido de
   `partes` es un fichero con datos personales y se trata como tal.
+- Desde **F-028** hay una **segunda superficie de texto libre**, y conviene
+  saberlo: el `motivo` con el que una persona rechaza —o aprueba— un parte, en
+  `postventa.historico_estado`. Lo escribe quien revisa, puede llevar dentro el
+  nombre de un cliente, y por eso **no sale en ningún log ni en ninguna
+  respuesta HTTP**: quien audite lo lee en la base.
 
 El detalle columna a columna está en `specs/F-005-persistencia/design.md` §6.
 
@@ -519,7 +575,7 @@ documento.
 | `POST /api/validar` | Solo reglas. Sin IA y sin efecto externo |
 | `POST /api/remesa` | **Escribe** en `postventa.remesas` (esquema propio). Devuelve el `remesa_id` que hay que reenviar después |
 | `POST /api/parte` | **Escribe** en `postventa.partes` y `postventa.validaciones`. Recalcula el veredicto con las reglas del dominio: nunca acepta el que venga en el cuerpo |
-| `POST /api/aprobar` | **Escribe** en `postventa.aprobaciones` (esquema propio): registra que **una persona** dio por bueno un parte que la validación automática había mandado a revisión, con su `oid`, los códigos del motivo y una huella del veredicto aprobado. **No toca ningún sistema ajeno, y en Sigrid no consta**. Recalcula el veredicto y nunca acepta el que venga en el cuerpo. Es lo que permite que un parte **no apto** entre después en el circuito de archivo y cierre; sin esa fila se queda fuera, y las tres puertas del backend lo comprueban una a una (F-026) |
+| `POST /api/estado` | **Escribe** en `postventa.historico_estado` (esquema propio): registra que **una persona** mueve un parte a `aprobado` o a `rechazado`, con su `oid`, el motivo —obligatorio al rechazar— y una huella del veredicto sobre el que decide. **No toca ningún sistema ajeno, y en Sigrid no consta**. Guarda además el parte y recalcula el veredicto: nunca acepta el que venga en el cuerpo. Es lo que decide si un parte entra después en el circuito de archivo y cierre —solo entra el que está `aprobado`—, y las tres puertas del backend lo comprueban una a una. Responde **409** si el parte ya está `cerrado`, que es un estado terminal porque lo escribió el ERP (F-028) |
 | `GET /api/cola` | **Lee** la cola de validación humana. Único endpoint que devuelve **dato personal acumulado** sin que el llamante aporte el PDF: tope duro de 500 entradas por llamada |
 | `POST /api/archivar` | **Escribe** en la biblioteca de dev de SharePoint y deja traza en la base. Exige que el parte **ya conste guardado**: si no, responde 409 sin subir nada |
 | `POST /api/adjuntar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: adjunta el PDF del parte a la reclamación como gráfico, **tres filas en dos bases**, por el endpoint de dominio de la pasarela. Va **antes** del cierre. `multipart/form-data`, con el fichero. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP. **Su reintento es seguro**: el endpoint de la pasarela es idempotente por contenido |
@@ -531,14 +587,19 @@ escritura cerrada —que es como se despliega— se sube la remesa, se trocea, s
 extrae, se valida, **se guarda** y se lee la cola; solo `POST /api/archivar`
 responde 503.
 
-**`POST /api/aprobar` tampoco mira ninguna de las dos ventanas**, y es
-deliberado: aprobar es registrar una decisión en nuestra base, no escribir
-fuera. Con `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` apagados se puede aprobar
-un parte y no pasa nada más; lo que la aprobación abre son las puertas de
-`POST /api/archivar`, `POST /api/adjuntar` y `POST /api/cerrar`, que **siguen
-teniendo las suyas intactas**. Dicho al revés, para que un parte no apto acabe
-dentro del ERP hacen falta las dos cosas: que una persona lo aprobara y que la
-ventana de escritura esté abierta.
+**`POST /api/estado` tampoco mira ninguna de las dos ventanas**, y es
+deliberado: decidir es registrar una decisión en nuestra base, no escribir
+fuera. Con `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` apagados se puede mover
+de estado un parte y no pasa nada más; lo que el estado `aprobado` abre son las
+puertas de `POST /api/archivar`, `POST /api/adjuntar` y `POST /api/cerrar`, que
+**siguen teniendo las suyas intactas**. Dicho al revés, para que un parte acabe
+dentro del ERP hacen falta las dos cosas: que esté `aprobado` y que la ventana
+de escritura esté abierta.
+
+Y admite un caso que antes no se podía ni enunciar: un parte que la máquina dio
+por **apto** y que una persona **rechaza** deja de archivarse, de adjuntarse y
+de cerrarse. La ruta de aprobación contestaba 409 a cualquier parte apto —«no
+hay nada que aprobar»—, así que la única forma de pararlo era no mirar.
 
 Los doce quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
@@ -549,6 +610,27 @@ así que solo se acepta lo que entra por el proxy, y el proxy exige sesión y
 pertenencia al grupo. El razonamiento completo y las capas de protección que
 sí sostienen el acceso están en la cabecera de
 `services/postventa-api/function_app.py` y en `docs/DESPLIEGUE.md` §4 y §5 bis.
+
+### Lo que deja de escribirse desde F-028 (2026-09-16)
+
+Es lo que necesita saber quien audite, y el motivo de que esta sección cambie:
+
+| Qué | Hasta el 2026-09-16 | Desde F-028 |
+|---|---|---|
+| El endpoint de la decisión humana | La ruta de aprobación, `/api/aprobar` | **Retirada**: ya no existe ninguna ruta con ese nombre, y llamarla da 404. La sustituye `POST /api/estado` |
+| Dónde queda la decisión | Una fila por parte en `postventa.aprobaciones`, **sustituida** en cada decisión nueva | Una fila **más** por decisión en `postventa.historico_estado`, que no se pisa nunca |
+| `postventa.aprobaciones` | Se escribía en cada aprobación y en cada revocación | **Congelada**: sigue declarada, sigue creándose y sigue consultable, pero **no se le escribe ni una fila más**. Sus filas vigentes se sembraron una vez en el histórico |
+| Qué se puede contradecir de la máquina | Solo **aprobar** un parte no apto | **Aprobar** y **rechazar**, también un parte que la máquina había dado por apto |
+| La marca de aprobación revocada | Una segunda escritura marcaba la fila al cambiar el veredicto | **No se escribe nada**: la caducidad se resuelve al **derivar** el estado, comparando la huella guardada con la del veredicto de ahora |
+
+Para el ecosistema, **nada de esto cruza ninguna frontera**: no se consume
+ningún recurso nuevo, no hay ninguna variable de entorno nueva, no se pide nada
+al servidor compartido fuera del esquema propio y **en Sigrid no queda
+constancia de la decisión**, exactamente igual que con F-026. Quien necesite
+distinguir un cierre automático de uno que una persona autorizó a pesar del
+veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
+`hash_parte`; para lo decidido **antes** del 2026-09-16,
+`postventa.aprobaciones` sigue ahí y sigue siendo la fuente.
 
 ### Qué NO está desplegado, y hay que decirlo antes de enseñarlo
 

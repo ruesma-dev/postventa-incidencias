@@ -5706,3 +5706,218 @@ lo de hoy:
   de este encargo; lo miden los 13 mutantes a mano de §115.2) y **§117** (el
   defecto latente D9, ahora con test, sigue sin arreglar **por decisión del
   humano**).
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 9, T25
+
+> Encargo del **2026-09-16**: la documentación del ecosistema, en **dos
+> repositorios**, y nada más. Bloque 10 sin tocar.
+>
+> Este informe **se añade** a los anteriores. Lo de arriba (§1 a §118) no se ha
+> borrado ni reescrito: sigue siendo el relato de los bloques 0 a 9.
+
+## 119 · Qué se ha hecho
+
+**T25** · `docs/INTEGRACION.md` —la fuente de verdad— y su copia
+`azure-apps/postventa_incidencias.md` cuentan ya lo que F-028 cambia para el
+ecosistema: **endpoint nuevo**, **endpoint retirado**, **tabla nueva**, **tabla
+congelada** y **qué deja de escribirse**. Se editó **primero la fuente y
+después la copia**, en la misma pasada y con el mismo texto, salvo donde las
+dos divergen a propósito (la cabecera).
+
+**Dos repositorios, dos commits, ninguno con `push`.**
+
+## 120 · Ficheros tocados
+
+### Modificados · `postventa-incidencias`
+
+- `docs/INTEGRACION.md` — cabecera (fecha y última feature), §1, §2, §7, §8.
+- `specs/F-028-estado-del-parte/tasks.md` — T25 marcada `[x]`.
+- `progress/impl_F-028.md` — este informe, añadido al final.
+
+### Modificados · `azure-apps` (repositorio aparte, commit aparte)
+
+- `postventa_incidencias.md` — la cabecera propia de la copia, más los mismos
+  cambios de §1, §2, §7 y §8.
+
+### Lo que el encargo prohíbe tocar, y sigue intacto
+
+- `harness/features.json` — **sin tocar**: F-028 sigue `in_progress` y no se ha
+  marcado `done` nada.
+- `services/postventa-api/infrastructure/sigrid/` y `.../sharepoint/` — **ni un
+  byte**: `git diff --stat` no los nombra.
+- Código de aplicación: **ninguno**. T25 es documentación y solo documentación.
+
+## 121 · Qué dice ahora cada documento, punto por punto
+
+| Dónde | Qué se ha escrito |
+|---|---|
+| §1, tabla «Qué consumimos hoy» | La fila del PostgreSQL compartido añade «y el **histórico de estado** de cada parte (F-028)» |
+| §2, árbol del esquema | Dos hojas nuevas: `aprobaciones` pasa a **`CONGELADA desde F-028: ya no se escribe`** y aparece `historico_estado` como **append-only**. El recuento pasa de «las nueve» a «las diez» y el rango del DDL, de `10_aprobaciones.sql` a `11_historico_estado.sql` |
+| §2, párrafo de `aprobaciones` | **No se ha borrado.** Debajo va un recuadro fechado que cita las dos frases que ya no son verdad —la revocación «en la misma operación»— y dice que la tabla está congelada, por qué no se migró (clave primaria `hash_parte`, base compartida y desplegada con datos reales) y por qué el texto viejo se conserva: explica las filas que la tabla ya tiene dentro |
+| §2, párrafos nuevos | `historico_estado`: qué guarda (`oid`, `NULL` = lo decidió la máquina, motivo en texto libre con tope de 500, huella `sha256`), qué **no** guarda (ni texto manuscrito ni binarios), que es **constancia y nunca criterio** —el estado se deriva, no se guarda— y la **semilla**, idempotente, que copia una vez las aprobaciones vigentes y **no** siembra las revocadas |
+| §7, datos personales | El `oid` de quien **cambia el estado**, y un punto nuevo en la lista del administrador: el `motivo` es una **segunda superficie de texto libre** que puede llevar el nombre de un cliente y **no sale en ningún log ni en ninguna respuesta HTTP** |
+| §8, tabla de endpoints | La fila de la ruta de aprobación **se sustituye** por `POST /api/estado`, con lo que escribe, lo que recalcula, que no toca ningún sistema ajeno y su **409** cuando el parte ya está `cerrado` |
+| §8, párrafo de las ventanas | Reescrito en el vocabulario del estado, más el caso que antes no se podía enunciar: un parte **apto** que una persona **rechaza** deja de archivarse, adjuntarse y cerrarse |
+| §8, subsección nueva | **«Lo que deja de escribirse desde F-028 (2026-09-16)»**: una tabla de cinco filas —endpoint, dónde queda la decisión, la tabla congelada, qué se puede contradecir de la máquina y la marca de revocación que ya no se escribe— y el párrafo de qué significa para el ecosistema (nada cruza ninguna frontera; en Sigrid no consta; quién se cruza con quién para auditar antes y después del 2026-09-16) |
+| Cabecera de la copia de `azure-apps` | Bloque **«LO QUE CAMBIA EN ESTA REVISIÓN (2026-09-16, F-028)»** con las cuatro cosas en cuatro puntos, más qué necesita saber quien audite las escrituras en Sigrid. El bloque de F-026 **no se borra**: pasa a «LO QUE CAMBIÓ EN LA REVISIÓN DEL 2026-09-12» y dice con todas las letras que **ninguno de los dos —endpoint y tabla— es ya el mecanismo vivo** |
+
+## 122 · Lo que la copia decía y ya no era verdad, que era medio encargo
+
+El encargo avisaba de que la copia describía `POST /api/aprobar` y
+`postventa.aprobaciones` como **el mecanismo vivo** de la decisión humana. Era
+exacto, y estaba en dos sitios:
+
+1. **La cabecera**, en el bloque de F-026: «Lo que añade es interno: **un
+   endpoint más** (`POST /api/aprobar`) y **una tabla más** en su propio
+   esquema (`postventa.aprobaciones`)». Y, más abajo, la instrucción al
+   auditor: «tiene que cruzar `postventa.aprobaciones` con `postventa.cierres`
+   por `hash_parte`».
+2. **§2 y §8**, que son texto común con la fuente y cambiaron con ella.
+
+No se ha dejado lo nuevo al lado de lo viejo: el bloque de F-026 queda
+**marcado como revisión anterior y desmentido en su parte caducada**, y la
+instrucción al auditor queda **reescrita** —`historico_estado` desde el
+2026-09-16, `aprobaciones` para lo de antes—.
+
+### Y una corrección más, que no es duplicado de la del líder
+
+La cabecera de la copia seguía cerrando con «**Ni el gráfico ni el cierre se
+han ejecutado contra el ERP**» y con la verificación «sobre reclamaciones de la
+**obra de prueba 404**». El líder corrigió eso el 2026-09-16 **en §8**, con las
+dos filas de `dbo.log` auditadas; la cabecera se le quedó atrás y seguía
+afirmando lo contrario a cuatro pantallas de distancia.
+
+Se ha sustituido por una **corrección fechada que manda a leer §8 y no repite
+ni una de sus dos filas**, como pedía el encargo. Es el único punto de T25 que
+toca algo que no son endpoints, tablas ni escrituras, y se ha hecho porque
+reescribir esa cabecera dejando dentro una afirmación que el propio documento
+desmiente más abajo habría sido peor que no tocarla.
+
+## 123 · Fase RED · no la hay, y esto es lo que hay en su lugar
+
+T25 es **documentación pura**: no añade una línea de código, así que no hay
+comportamiento que pueda fallar antes de existir. Escribir un test nuevo para
+poder pegar su traza roja sería fabricar la evidencia, no producirla.
+
+Lo que sí hay —y es lo que el encargo pedía mirar— es la **red de tests que ya
+protegía `docs/INTEGRACION.md` antes de empezar**, y que se leyó **antes** de
+tocar el documento. Son cinco ficheros, 93 casos:
+
+| Fichero | Qué exige del documento |
+|---|---|
+| `tests/test_f010_integracion_expuesto.py` | §8 completa: los nueve endpoints que nombra, los tres nombres de recurso, «**Sigrid no se toca**», «**pierde el trabajo en curso**», la tabla de ausencias con F-019 reatribuido, «no una API para terceros», y «anónimo» + «deliberado» + «rompe el front» |
+| `tests/test_f012_documentacion.py` | **Cuenta las filas de la tabla de endpoints** con una expresión regular y exige que el párrafo diga ese número en castellano: `Los doce quedan en nivel` |
+| `tests/test_f019_documentacion.py` | Que §8 diga `Los doce quedan en nivel` y **no** diga seis, nueve, diez ni once |
+| `tests/test_f009_documentacion.py` | Las ocho variables de F-009 nombradas, y ni un valor |
+| `tests/test_f005_integracion_sin_secretos.py` | Barrido de seis patrones: hosts, GUID, variable con valor, credencial, cadena de conexión e IP |
+
+**Las dos trampas del documento, y cómo se han sorteado:**
+
+- **La cuenta de endpoints se calcula, no se escribe.** `_endpoints_declarados`
+  casa `^\| \`(?:GET|POST) /api/...\``, así que **cualquier** fila de tabla que
+  empiece por una ruta entre comillas invertidas cuenta, y las rutas repetidas
+  fallan. Por eso la fila de la ruta de aprobación **se sustituye** en vez de
+  añadirse una nueva al lado: doce menos uno más uno siguen siendo doce, y el
+  literal «Los doce quedan en nivel» se queda como estaba. La tabla nueva de
+  «Lo que deja de escribirse» nombra las dos rutas **dentro de la celda**,
+  nunca al principio de la línea, así que no altera el recuento.
+- **Las frases literales.** «Sigrid no se toca» y «pierde el trabajo en curso»
+  viven en dos subsecciones de §8 que **no se han tocado**. La subsección nueva
+  se insertó **antes** de «Qué NO está desplegado», que es lo que mantiene
+  intacto el recorte por expresión regular de la tabla de ausencias —el
+  `fixture` corta de un `### ` al siguiente—.
+
+## 124 · Evidencias
+
+| Evidencia | Número real |
+|---|---|
+| **Tests ejecutados** (`services/postventa-api`) | **2.650 pasados**, 13 saltados, **0 fallos** |
+| Los cinco ficheros que vigilan este documento, solos | **93 pasados**, 0 fallos, 0,38 s |
+| **Cobertura de las líneas cambiadas** | **100,0 % de 297 (297/297)**, umbral 80 %, nivel `estandar` |
+| **Tiempo de la suite** | **22,01 s** el servicio `api` completo |
+| **Mutantes generados y supervivientes** | **0 y 0**, y no es un número que haya que creerse: ver abajo |
+| `bash harness/init.sh` | **ENTORNO LISTO** |
+
+Las dos cifras de cobertura y de mutación son las de los bloques anteriores,
+**no las de T25**, y decirlo importa:
+
+### 124.1 · Por qué la mutación no mide T25, y por qué no se ha lanzado
+
+La campaña de mutación muta **ficheros Python**. T25 no toca ni uno: el diff de
+este encargo son **dos ficheros Markdown, un `tasks.md` y este informe**. Una
+campaña sobre esta rama volvería a dar el mismo 32/32 de §115.1 —los mismos
+mutantes de T20 y T22— y **ninguno de ellos sería de T25**. Lanzarla otra vez
+para pegar un número verde aquí sería exactamente el gesto contra el que avisa
+§115.1.
+
+Lo que sí mide T25 son **los 93 casos de la tabla de §123**, que son tests de
+documentación de verdad: fallan si el documento deja de decir lo que dice, y
+cuatro de ellos fallarían si el recuento de endpoints se hubiera roto.
+
+### 124.2 · La línea base estaba verde, y se comprobó antes de creerse el resultado
+
+`bash harness/init.sh` al terminar da **ENTORNO LISTO**. Pero el portero
+resolvió la suite del servicio `api` **por caché** («árbol sin cambios desde el
+último verde»), y **esa caché tiene un punto ciego que afecta justo a este
+encargo**: mira el árbol del servicio, y `docs/INTEGRACION.md` vive fuera de
+él. Un documento roto habría pasado por verde.
+
+Por eso la suite del servicio se ha ejecutado **entera y a mano**, sin caché,
+después de tocar los documentos: **2.650 pasados, 13 saltados, 0 fallos**. Es
+la cifra que hay que creerse, no la línea de caché.
+
+Merece quedar escrito para el reviewer y para quien toque estos documentos
+después: **cambiar `docs/` no invalida la caché del servicio `api`**, y ahí es
+donde se coló el rojo de esta semana que menciona el encargo.
+
+### Ruff
+
+`61 avisos (deuda previa, no bloquea)`, el mismo número de §115 y de §105. T25
+no añade Python, así que no podía mover esta cifra ni en un sentido ni en otro.
+
+## 125 · Verificaciones MANUAL pendientes
+
+T25 **no añade ninguna**. Las que había siguen donde estaban:
+
+- **T27** entero, que ejecuta el humano tras desplegar: el DDL dos veces sin
+  duplicar semilla, la aprobación sembrada, el ciclo aprobar → rechazar →
+  aprobar con tres filas, el apto rechazado que no se archiva, el 409 del parte
+  cerrado y el número con espacios que cierra la incidencia.
+- Lo que sí conviene comprobar de T25, y es de ojo humano y no de test: que la
+  copia de `azure-apps` **se lee bien de arriba abajo** ahora que su cabecera
+  lleva tres revisiones encadenadas (F-028, F-026 y F-012). El contenido está
+  verificado; el orden de lectura es criterio.
+
+## 126 · Lo que queda fuera del alcance de T25
+
+- **`git push`, en los dos repositorios.** Los dos commits son **locales**. Ni
+  uno solo se ha empujado, y `azure-apps` tampoco tiene rama nueva: se commitea
+  sobre la suya.
+- **`sql/10_aprobaciones.sql` no se ha tocado** (regla dura 3). El documento
+  dice que la tabla está congelada; el fichero sigue siendo byte a byte el que
+  comprueba su `sha256` en §13.5.
+- **Bloque 10 sin empezar**: T26 (campaña de mutación de cierre), T27 (las
+  verificaciones del humano) y T28 (el `init.sh` final) siguen pendientes, como
+  pedía el encargo.
+- **Ninguna otra entrada de `azure-apps/`**: solo `postventa_incidencias.md`,
+  que es el documento del que este proyecto es dueño. `README.md` de aquel
+  repositorio **no se ha tocado**: su fila de la tabla describe el proyecto, no
+  sus endpoints, y sigue siendo verdad.
+
+## 127 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**. Suite del servicio `api`
+  reejecutada sin caché: **2.650 pasados, 13 saltados, 0 fallos**. **PUERTA
+  COBERTURA 100,0 % de 297 líneas cambiadas (297/297)**. Rama correcta.
+- **`git -C ../azure-apps status` limpio**, con su commit hecho y **sin
+  `push`**.
+- Árbol de `postventa-incidencias` limpio, con su commit hecho y **sin `push`**.
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`.
+- **No se ha entrado en el bloque 10.**
+- Dos cosas con nombre propio para el reviewer: **§124.2** (la caché del
+  portero no ve `docs/`, así que el verde de `init.sh` **por sí solo** no
+  respaldaba este encargo; lo respalda la suite reejecutada a mano) y **§122**
+  (la corrección de la cabecera de la copia sobre los cierres reales es
+  deliberada y **no duplica** la tabla de §8 que escribió el líder).

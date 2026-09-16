@@ -234,7 +234,7 @@
       Verificación: test de documentación con el patrón de
       `tests/test_f026_documentacion.py`; **ningún texto original borrado**.
 
-- [ ] **T25**: `docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md`
+- [x] **T25**: `docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md`
       (R59): endpoint nuevo, endpoint retirado, tabla nueva, tabla congelada y
       qué deja de escribirse. **Dos repositorios, dos commits, sin `push`.** |
       Verificación: `git -C ../azure-apps status` limpio al terminar y los

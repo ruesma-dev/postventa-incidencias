@@ -3,15 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **27 features**, 13 abiertas, 14 terminadas.
-
-Bloqueadas: **F-009**.
+Resumen: **28 features**, 13 abiertas, 15 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | bloqueada | critico | `feature/F-009-cierre-sigrid` |
 | F-024 | Datos del parte enlazados a Sigrid, para el datamart | 12 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 13 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | pendiente | estandar | `feature/F-013-archivo-posventa` |
@@ -24,6 +21,7 @@ Bloqueadas: **F-009**.
 | F-021 | Rehidratar la sesión del front al recargar el navegador | 21 | pendiente | estandar | `feature/F-021-rehidratar-sesion` |
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
+| F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
 
 ## Terminadas
 
@@ -38,6 +36,7 @@ Bloqueadas: **F-009**.
 | F-007 | Front de carga y revisión | 7 | estandar |
 | F-010 | Despliegue en Azure y tarjeta en el portal | 8 | estandar |
 | F-008 | Modelo de posventa en Sigrid: confirmar contra el ERP | 9 | documental |
+| F-009 | Cierre de la incidencia en Sigrid (solo estado) | 10 | critico |
 | F-012 | Futuro: subir el parte a Sigrid como gráfico de la incidencia | 12 | critico |
 | F-019 | Endpoints de persistencia: guardar la remesa y leer la cola | 19 | estandar |
 | F-025 | Archivar y cerrar en una sola confirmacion | 25 | critico |
@@ -45,12 +44,6 @@ Bloqueadas: **F-009**.
 | F-028 | Estado del parte -pendiente, aprobado, rechazado, cerrado- con historico y transicion manual | 28 | estandar |
 
 ## Detalle
-
-### F-009 · Cierre de la incidencia en Sigrid (solo estado)
-
-estado **bloqueada** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
-
-Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático.
 
 ### F-024 · Datos del parte enlazados a Sigrid, para el datamart
 
@@ -124,6 +117,12 @@ estado **pendiente** · prioridad 23 · rigor `estandar` · SDD sí · rama `fea
 
 El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco ficheros que recorren el árbol del repositorio fichero a fichero, y repiten el mismo barrido en cada test: test_f003_arquitectura.py cuesta 12,7 s él solo, un tercio de la suite entera. Leer el árbol UNA vez en una fixture de sesión y que cada test consulte el resultado dejaría la suite en torno a 20 s. Medido en progress/explore_F-009_timeouts.md (medición 10) el 2026-09-02, a propósito de los timeouts de la campaña de mutación de F-009: con la suite a 20 s la campaña paralela volvería a caber de sobra en el tope de 120 s por mutante. Beneficia además a cada init.sh de cada sesión. OJO: toca tests de F-003, F-005, F-006 y F-009, features ya cerradas, con el riesgo de aflojar sin querer una comprobación de arquitectura; por eso lleva spec propia y review, y no se mete dentro de otra feature. RENUMERADA el 2026-09-15: nacio como F-022 el 2026-09-02 en la rama de F-012, sin ver que dev ya tenia una F-022 distinta -la cache de contexto de Gemini, del 2026-08-26-. Al mergear la cadena a dev colisionaron los dos identificadores; conserva el numero la que se dio de alta antes.
 
+### F-029 · Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1
+
+estado **pendiente** · prioridad 29 · rigor `estandar` · SDD no · rama `feature/F-029-scripts-infra-comillas`
+
+DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO ARRANCAN: se estrellan en la primera línea que ejecutan, y ninguno de los dos se ha ejecutado NUNCA. El defecto es el mismo que el 2026-09-15 tumbó a infra/12_traza_cierre_local.ps1: se invoca al intérprete con `& $python -c "<programa>"` y PowerShell 5.1 destroza el entrecomillado del programa antes de que llegue a Python. DÓNDE: infra/07_alta_usuario_sigrid.ps1, líneas 161 y 248; y infra/17_traza_grafico_local.ps1, línea 196. EL ARREGLO YA EXISTE EN EL REPOSITORIO, escrito y probado: la función `Invoke-PythonDelServicio` de infra/08_lectura_sigrid_comun.ps1, que es la que arregló al `12`. No hay que inventar nada: hay que aplicarla en los tres sitios y EJECUTAR los dos scripts, que es justo lo que no se hizo con el código anterior. POR QUÉ IMPORTA, aunque sea prioridad baja: bloquea dos verificaciones de F-009 que quedaron abiertas al cerrarla. (a) El `07_` es el que hace el COUNT(*) de `-VerificarAhora` sobre dbo.usu, o sea LA PRIMERA LÍNEA DE T23 (hueco 3 de progress/cierre_F-009.md §3: R31, R33 y R34). (b) El `17_` es el que se invoca en la PRECONDICIÓN AÑADIDA DE T24, la del gráfico adjuntado (R2 de F-012). Si algún día se recorren esos huecos, esto es lo primero que hay que arreglar. LECCIÓN QUE LO ACOMPAÑA, del §10.2 del guion del bloque 8: tres de los cuatro scripts de lectura no funcionaban porque estaban escritos y nunca ejecutados. Arreglar estos dos sin lanzarlos vuelve a crear el mismo problema con otro nombre. AVISO SOBRE LAS PUERTAS DEL ARNÉS: cobertura y mutación miden SOLO Python (carencia 1.7.13 del arnés, portada a arnes-base), así que aquí no aportan nada y la evidencia tiene que ser la ejecución real de los dos scripts contra lecturas, con su salida pegada. Origen: progress/guion_bloque8_F-009.md §10.6 y progress/cierre_F-009.md §5.
+
 ### F-001 · Esqueleto del monorepo y /health
 
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
@@ -177,6 +176,12 @@ Scripts re-ejecutables en infra/ para Function App y Static Web App con auth de 
 estado **terminada** · prioridad 9 · rigor `documental` · SDD no · rama `feature/F-008-modelo-sigrid`
 
 Confirmar contra el ERP lo que ya está documentado en azure-apps/sigrid_tablas.md, sigrid_api.md §9 y docs/referencia/01_cierre_incidencia_sigrid.md. Lo crítico: el proceso 'Cerrar parte' de Sigrid comprueba que la reclamación tenga un gráfico asociado, y existe una opción 6 'Cerrar parte sin archivo (RPV)'. Hay que averiguar qué escribe realmente cada uno de esos dos procesos antes de decidir el alcance del cierre. Además: el con.tip de la reclamación y el estado CERRADA en conest (el estado PENDIENTE es 3/PTE), en qué base vive gra, y si 'Asociar URL de Internet' permite referenciar el PDF de SharePoint en vez de incrustar el binario. Solo lecturas.
+
+### F-009 · Cierre de la incidencia en Sigrid (solo estado)
+
+estado **terminada** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-009-cierre-sigrid`
+
+Mover con.est de la reclamación al estado CERRADA, resuelto contra conest y nunca hardcodeado. OJO: el proceso 'Cerrar parte' del ERP exige que la reclamación tenga un gráfico asociado; un UPDATE directo se saltaría esa comprobación. El alcance real de esta feature depende de lo que F-008 averigüe sobre ese proceso y sobre la opción 'Cerrar parte sin archivo (RPV)'. Dry-run primero, el usuario confirma en el front, y entonces commit. Con preferencia por usuario para pasarlo a automático. CERRADA EL 2026-09-16 CON CINCO HUECOS DE VERIFICACIÓN ABIERTOS, ESCRITOS Y FECHADOS, por decisión del responsable del proyecto, que ordenó cerrarla con estas palabras: «ya he probado que cierra y escribe bien en sigrid. cierrala». Preguntado qué respalda esa prueba, respondió: los DOS CIERRES REALES YA AUDITADOS, y ninguno nuevo — RS26.09/0150 del 2026-09-11 (fila de dbo.log ide 8457839, dentro de F-012) y RS26.09/0149 del 2026-09-15 (ide 8467000, dentro de F-026), los dos sobre la obra 0626, que es una obra EN USO. Mismo precedente que el cierre de F-012 el 2026-09-11: los huecos se escriben, no se ocultan. LOS CINCO HUECOS, con su requisito: (1) T22 pasos 2 y 5, el 503 de /api/cerrar con la ventana CIERRE_HABILITADO cerrada y que el dry-run no escribe (R37, R49, R8, R10); (2) T22 paso 4, las seis comprobaciones de R9 más el bloque grafico de R49 leídos por consola; (3) T23, el COUNT en dbo.usu de 07_alta_usuario_sigrid.ps1 -VerificarAhora (R34), la correspondencia confirmada en postventa.usuarios_sigrid (R33) y el login inexistente que responde 409 sin tocar Sigrid (R31) — bloqueado ADEMÁS por un script roto, ver F-029; (4) T27, el reintento sobre una incidencia ya cerrada que debe salir ya_cerrada sin escribir (R18, R42), que es el ÚNICO criterio de aceptación de esta ficha que ningún cierre real ha ejercido; (5) R22, filas_afectadas: 2 y las fotos de partida del MAX(ide) de dbo.log y de con.tiemod (pasos 2, 5 y 8 de T24), que NO ES RECUPERABLE HACIA ATRÁS porque la foto que faltaba era la de ANTES: exigiría una reclamación ABIERTA nueva de la obra 0626, que depende de Posventa (progress/peticion_posventa_prueba_F-012.md, escrita y sin enviar). LO QUE SÍ ESTÁ ACREDITADO: bloques 1-7 (T1-T21) con review APROBADA en progress/review2_F-009.md, T25 y T26 enteras, los pasos 6, 7 y 9 de T24 (R24, R25, R41, R43) por la sesión de solo lectura del 2026-09-15 —el huso de fec/hor resultó ser HORA LOCAL, 0,0 min de desvío: la hipótesis de que escribiéramos en UTC quedó descartada con dato—, T28 (117 muertos, 6 supervivientes justificados) y T29. ACTA COMPLETA EN progress/cierre_F-009.md. QUEDA DEROGADO EL blocked_by QUE ESTA FICHA ARRASTRABA, y hay que decir por qué: decía literalmente «Decision del humano del 2026-09-06: el bloque 8 (T22-T27, el primer cierre real) se ejecuta DESPUES de implementar y desplegar F-012 [...] Bloques 1-7 y T28 estan hechos y revisados; lo que falta no es codigo sino ejecucion contra el ERP. Antes de reanudar: Paso 0 del guion (infra/14_paso0_sigrid.ps1, lo ejecuta el humano) y corregir el guion segun specs/F-012-grafico-sigrid/design.md §13(b): P5 pasa de Mirasierra a la obra 404 [...]». Está desfasado en cuatro cosas: el Paso 0 se hizo el 2026-09-11; F-012 está done y desplegada; la obra de prueba 404 quedó derogada el 2026-09-10 en favor de la 0626 por decisión del responsable; y su frase «lo que falta no es codigo sino ejecucion» es FALSA HOY, porque hay dos scripts de infra/ rotos que impiden esa ejecución (F-029).
 
 ### F-012 · Futuro: subir el parte a Sigrid como gráfico de la incidencia
 

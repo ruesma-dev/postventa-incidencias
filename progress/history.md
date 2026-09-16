@@ -1800,3 +1800,83 @@ nada.
 
 Detalle: `progress/impl_F-028.md` (138 secciones, once encargos) y
 `progress/review_F-028.md`.
+
+## F-009 · Cierre de la incidencia en Sigrid (solo estado) — CERRADA el 2026-09-16, **con cinco huecos de verificación abiertos**
+
+**Cómo se cerró, y hay que empezar por ahí.** No se cerró porque el bloque 8
+pasara: se cerró **por decisión del responsable del proyecto**, el 2026-09-16,
+con estas palabras: «ya he probado que cierra y escribe bien en sigrid.
+cierrala». Preguntado **qué respalda esa prueba**, respondió: **los dos cierres
+reales ya auditados, y ninguno nuevo**. No hubo ninguna ejecución contra el ERP
+ese día. Mismo precedente que el cierre de **F-012** el 2026-09-11: los huecos
+se escriben y se fechan, **no se ocultan**.
+
+**Lo que hace la feature**: mueve `con.est` de la reclamación al estado
+**`CER`**, resuelto **contra `conest` en tiempo de ejecución** —ni un número de
+estado en el código— y escribiendo además su fila de auditoría en `dbo.log` con
+el `tex` propio, para que Posventa siga viendo nuestros cierres en sus informes
+y pueda distinguirlos de los manuales.
+
+**Lo que está acreditado contra el ERP de producción, y no de palabra**: dos
+cierres reales sobre la obra **`0626`** —que **no es una obra de pruebas, es
+una obra en uso**, premisa levantada por el responsable el 2026-09-10—.
+`RS26.09/0150` el **2026-09-11** (fila `ide` **8457839**, dentro de F-012) y
+`RS26.09/0149` el **2026-09-15** (`ide` **8467000**, dentro de F-026, partiendo
+de un parte **no apto aprobado a mano**). Las dos filas pasan las **once
+comprobaciones campo a campo** del §7.3 del diseño. Del bloque 8 quedan marcadas
+**T25** y **T26**; **T28** dio 117 muertos y 6 supervivientes justificados.
+
+**El defecto que el diseño daba por probable no existía.** Era *la única
+decisión de la feature que no se pudo tomar con un dato*: `design.md` §7.3 no
+decía en qué huso se escribe `fec`/`hor`, y se eligió **hora local** razonando
+que escribir UTC dejaría nuestras filas una o dos horas por detrás de los 6.843
+cierres manuales que las rodean **sin que nadie lo notara**. El 2026-09-15 se
+leyó la fila real: **`HORA LOCAL`, 0,0 minutos de desvío**. Y se confirmó una
+segunda vez con la fila del día 15.
+
+**LOS CINCO HUECOS QUE SOBREVIVEN**, cada uno con su requisito: (1) **T22 pasos
+2 y 5**, el `503` con la ventana cerrada y que el dry-run no escriba (R37, R49,
+R8, R10); (2) **T22 paso 4**, las seis comprobaciones de R9 y el bloque
+`grafico` de R49 leídos por consola; (3) **T23**, el `COUNT` en `dbo.usu`
+(R34), la correspondencia confirmada (R33) y el `409` del login inexistente
+(R31); (4) **T27**, el reintento sobre lo ya cerrado (R18, R42); (5) **R22**,
+`filas_afectadas: 2` y las fotos de partida del `MAX(ide)` y de `con.tiemod`.
+Acta completa en **`progress/cierre_F-009.md`**.
+
+**Dos de esos huecos merecen decirse enteros.** **T27 es el único criterio de
+aceptación de la ficha que ningún cierre real ha ejercido**: que reintentar
+sobre una incidencia ya cerrada responda `ya_cerrada` sin escribir está
+**acreditado solo por tests**, y es **el escenario más probable en uso normal**
+—alguien vuelve a pasar el mismo parte—. Lo dejaron sin marcar las cuatro
+features que pasaron por delante, cada una por su lado. Y el **hueco 5 no es
+recuperable hacia atrás**: la foto que faltaba era la de **antes** del cierre, y
+nadie la tomó ni el 11 ni el 15; exige una reclamación **abierta nueva** de la
+`0626`, que depende de Posventa
+(`progress/peticion_posventa_prueba_F-012.md`, escrita y sin enviar).
+
+**Dos requisitos enmendados, no borrados** (mismo patrón que el R28 de F-010 el
+2026-09-03): el criterio 3 de la ficha —«El dry-run se muestra al usuario antes
+de cerrar: qué incidencia y de qué estado a cuál pasaría»— quedó **derogado por
+F-025 el 2026-09-11**, y lo que desapareció es **la pantalla**, no la
+verificación previa del backend, que sigue ejecutándose dentro de la misma
+llamada. Y el **R21** —el aviso de «quedará cerrada sin el parte»— lo derogó
+**R48 de F-012** el 2026-09-06: el dry-run trae en su lugar el bloque `grafico`.
+
+**Lo que este cierre dejó escrito y no estaba**: que el front **solo compone el
+cierre si el parte consta `aprobado`** (F-028, R33 — archivado ya no basta, y la
+precondición P5 del guion no lo decía), y que **el histórico de estado NO es la
+fuente de cuándo se cerró una incidencia** — lo son `postventa.cierres` y la
+fila de `dbo.log`.
+
+**Deuda dada de alta al cerrar**: **F-029**, dos scripts de `infra/` que **no
+arrancan** por el defecto de comillas de PowerShell 5.1
+—`07_alta_usuario_sigrid.ps1` (161 y 248) y `17_traza_grafico_local.ps1`
+(196)—, con el arreglo ya escrito y probado en el repositorio
+(`Invoke-PythonDelServicio`). Bloquean el hueco 3 y la precondición añadida de
+T24. Esa es, además, la razón por la que el `blocked_by` que esta ficha
+arrastraba desde el 2026-09-06 —«lo que falta no es codigo sino ejecucion»— **es
+falso hoy**.
+
+Detalle: `progress/cierre_F-009.md`, `progress/impl_F-009.md`,
+`progress/review2_F-009.md`, `progress/guion_bloque8_F-009.md` (§9, §10 y §11) y
+`progress/mutacion_F-009.md`.

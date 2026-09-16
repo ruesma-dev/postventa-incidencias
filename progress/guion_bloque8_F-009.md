@@ -145,6 +145,18 @@ si la hora escrita coincide con la **local** o con la **UTC**. Si sale UTC, es
 un defecto y hay que pararse: la fila ya está escrita y corregirla es otra
 escritura en producción, que decide el humano.
 
+> **RESUELTO · la hipótesis del UTC quedó DESCARTADA CON DATO.** El párrafo de
+> arriba se deja entero porque describe bien por qué se eligió hora local y qué
+> se temía. Pero **el defecto que este apartado daba por probable no existía**:
+> el 2026-09-15 se ejecutó `10_log_cierre_sigrid.ps1` contra la fila real del
+> primer cierre (`ide` 8457839) y el veredicto fue **`HORA LOCAL (correcto)`,
+> con 0,0 minutos de diferencia** (§10.3). **Y se confirmó una segunda vez**,
+> de forma independiente: la fila del cierre del 2026-09-15 (`ide` 8467000,
+> `RS26.09/0149`) **también está en hora local**, y pasa las once
+> comprobaciones campo a campo (§11). Era *la única decisión de la feature que
+> no se pudo tomar con un dato*; ahora la respaldan **dos** observaciones del
+> ERP y no solo una elección razonada.
+
 ### 0.3 · T26: qué hacer si `SqlWriteGuard` rechaza el `WITH (UPDLOCK, HOLDLOCK)`
 
 Está previsto **un solo** rechazo, y tiene salida escrita:
@@ -357,6 +369,12 @@ resuelve, el endpoint responde `503` nombrando la variable que falte.
       `postventa.partes`: la de `postventa.cierres` (R40) y la de
       `postventa.graficos` (R46 de F-012). Un `hash` que no esté guardado hace
       fallar **hasta el dry-run**. Es la misma trampa del defecto 15 de F-010.
+      > **AMPLIADA EL 2026-09-16 · falta una condición, y la puso F-028.**
+      > Archivado **ya no basta**: el front solo compone el cierre si el parte
+      > consta **`aprobado`** (`esCerrable` / `cuerpoDeCierre` en
+      > `services/postventa-front/js/pipeline.js`, R33 de F-028). Un parte
+      > `pendiente` o `rechazado` **no llega ni a la llamada**. Detalle en
+      > **§11.3**.
       > **Por qué la 404 y no Mirasierra.** La decisión del humano del
       > 2026-09-06 es que **toda escritura de prueba** contra el ERP cae en la
       > obra de prueba. La candidata se localiza con
@@ -469,6 +487,26 @@ iniciada:
 de cierre pide primero el **dry-run de toda la tanda** (`pedirDryRunCierre`,
 sin `commit`), lo pinta, y solo después de la confirmación explícita
 —que **caduca**, R15— llama con `commit: true` y `confirmado: true`.
+
+> **DESFASADO · corregido el 2026-09-16, y no se borra.** El párrafo (a)
+> describe el front **de antes de F-025**. **F-025 eliminó ese paso el
+> 2026-09-11** (decisión del humano, R38–R41): `pedirDryRunCierre` **ya no
+> existe** —hay un test que lo vigila,
+> `services/postventa-front/tests/test_f025_front.py`— y el front **llama
+> siempre con `commit`** (`services/postventa-front/js/api.js`, ~451–497). No
+> hay pantalla de vista previa ni confirmación que caduque: hay **una sola**
+> confirmación, la del archivado, y detrás van archivar, adjuntar y cerrar
+> seguidos.
+>
+> **Lo que desapareció es la pantalla, NO la verificación**: la comprobación
+> previa del backend —que la reclamación existe, en qué estado está, si el
+> documento ya cuelga de ella— sigue ejecutándose **dentro de la misma
+> llamada**, antes de escribir.
+>
+> **Consecuencia directa para T22, y es la que importa aquí**: **la única vía
+> que queda para leer un dry-run es la consola, (b)**. Ningún uso normal del
+> front produce ya uno. Quien recorra el hueco 2 de §9.4 no puede esperar a que
+> «salga solo» al pulsar el botón: tiene que pedirlo a mano.
 
 **(b) La consola del navegador**, `F12` → **Consola**, en la pestaña del front.
 Va al **mismo origen**, así que pasa por el proxy que autentica. Se usa cuando
@@ -1218,6 +1256,15 @@ paso 6 de T24 y, con él, que el guard aceptó el batch (T26).
 
 ### 9.4 · Qué queda sin verificar, y qué cuesta cada hueco
 
+> **⚠ ANTES DE LEER LA TABLA · son CINCO huecos, no ocho.** La tabla que sigue
+> es **la foto del 2026-09-14** y se conserva sin tocar, porque así se decidió.
+> **La foto vigente es la actualización del 2026-09-15**, justo debajo de ella:
+> los huecos **1, 2 y 3 están CERRADOS** por la sesión de solo lectura de ese
+> día, y el **4 quedó reducido**. Quien cite «los ocho huecos» estará citando
+> una foto caducada. El recuento bueno, con cada hueco y su requisito, está en
+> **`progress/cierre_F-009.md` §3**, el acta con la que se cerró la feature el
+> 2026-09-16.
+
 Ordenado por lo que cuesta cerrarlo, que es lo que el líder necesita para
 decidir:
 
@@ -1309,6 +1356,15 @@ real está acreditado; sus comprobaciones, casi ninguna*.
    arrastran el paso 5 de §6 de este guion y el paso 8 de T32 de F-012, que lo
    dejó anotado como pendiente. La regla de propiedad de `CLAUDE.md` obliga a
    actualizarlo.
+   > **CABO CERRADO · ya no está abierto (constancia del 2026-09-16).** El
+   > punto se deja escrito porque describe bien lo que faltaba, pero **ya está
+   > hecho**: tanto `azure-apps/postventa_incidencias.md` como
+   > `docs/INTEGRACION.md` llevan la sección **«Lo que YA se ha ejecutado
+   > contra el ERP»**, que **corrige expresamente** el «todavía no se ha
+   > ejecutado ni un cierre real» y el «sobre reclamaciones de la obra de
+   > prueba 404», y lista **los dos cierres reales** con su fecha, su
+   > incidencia, su `ide` de `dbo.log` y el veredicto del huso. **Que nadie lo
+   > vuelva a listar como cabo abierto.**
 
 ### 9.6 · Lo que **no** se ha usado como evidencia, y por qué
 
@@ -1542,3 +1598,122 @@ probado— con otro nombre.
    no se ha ejecutado ni un cierre real»**, y desde el 2026-09-11 es falso. Hoy
    además hay con qué corregirlo bien: fecha, incidencia, `ide` de la fila de
    auditoría y veredicto del huso. **Lo decide el líder**, no este encargo.
+
+---
+
+## 11 · Acta del 2026-09-16 · el segundo cierre real, lo que aporta F-028, y el cierre de F-009
+
+> **Este apartado no ejecutó nada.** Ni contra Sigrid, ni contra `sigrid-api`,
+> ni contra Azure, ni contra el PostgreSQL compartido, ni contra SharePoint.
+> Recoge lo que ya estaba escrito en otras features y que **faltaba en este
+> guion**, y deja la constancia del cierre de F-009.
+
+### 11.1 · El **segundo** cierre real, que este guion no tenía escrito
+
+El **2026-09-15**, verificando **F-026**, el responsable recorrió otra vez el
+circuito completo contra el ERP de producción. Consta en la enmienda del
+2026-09-15 a la entrada de F-026 de `progress/history.md` y en
+`docs/INTEGRACION.md` / `azure-apps/postventa_incidencias.md`.
+
+| Qué | Cuál |
+|---|---|
+| Incidencia | **`RS26.09/0149`**, obra **`0626`** |
+| Punto de partida | un parte **NO APTO** por observaciones manuscritas, **aprobado a mano** en la web |
+| Qué pasó | se archivó y **cerró la reclamación en Sigrid**, con su gráfico dentro |
+| Fila de `dbo.log` | **`ide` 8467000**, `2026-09-15 14:30:05` **hora local**, firmada `pgris` |
+| Cómo se comprobó | **por lectura, no de palabra**: pasa las **once comprobaciones campo a campo** del §7.3 de `design.md`, el huso incluido |
+
+**Qué aporta a F-009, y es más de lo que parece:**
+
+- **Una segunda observación independiente de R24, R25 y del huso.** El primer
+  cierre podía haber acertado por casualidad; dos filas escritas en días
+  distintos, con partes distintos y estados de origen distintos, ya no.
+- **Un camino de entrada que el primero no ejercitó**: el del parte que la
+  máquina **rechaza** y una persona **aprueba**. Hasta aquí todo lo verificado
+  de F-009 venía de un parte apto.
+- **Y destapó un defecto real del cierre** que ningún test había cazado: la IA
+  leyó el número como `RS26.09 / 0149` y **los espacios que rodean la barra
+  rompían la búsqueda en el ERP**, que es por igualdad exacta. Lo arregló
+  **F-028** en `normalizar_codigo`, en el dominio.
+
+**Qué NO aporta**: exactamente lo mismo que el primero. No se anotó el
+`MAX(ide)` de partida, no se leyó `filas_afectadas`, no se recorrió el dry-run
+por consola, no se tocó T23 y **no se ejercitó T27**. Desde F-025 el front
+llama siempre con `commit`, así que **un cierre real no produce, por sí solo,
+ninguna de las lecturas que faltan**.
+
+### 11.2 · La **verificación 6 de F-028**, y por qué NO cierra ningún hueco de este bloque
+
+De las seis verificaciones contra la base real de **T27 de F-028**
+(`specs/F-028-estado-del-parte/tasks.md`), las **1 y 2 están leídas**
+(`21_historico_estado.ps1` → `PASA`) y las **3, 4, 5 y 6 las declara el
+responsable**: «he probado las cuatro con el parte RS26.09/0150, y ha
+funcionado». **Están declaradas, no medidas**, y la diferencia se deja escrita
+a propósito.
+
+**La 6 —el número con espacios alrededor de la barra— interesa a F-009 y hay
+que leerla con cuidado**: se probó sobre **`RS26.09/0150`, que ya estaba
+cerrada** desde el 2026-09-11, y **con las dos ventanas de escritura cerradas**.
+Por tanto:
+
+- **Lo que acredita**: el camino **hasta** el cierre con un código leído con
+  espacios. El código ya no se pierde por el camino.
+- **Lo que NO acredita, y hay que decirlo**: **no es un cierre nuevo** y **no es
+  T27**. Con `CIERRE_HABILITADO` en `false` la respuesta es `503` antes de tocar
+  el ERP (§0.1), no `ya_cerrada`. **R18 y R42 siguen sin ejercerse**, y el
+  **hueco 4** de §9.4 sigue exactamente donde estaba.
+- **Y confirma el hueco 5 desde otro sitio**: el cierre real con espacios
+  también **exige una reclamación ABIERTA de la `0626`**, que da de alta
+  Posventa. Es la misma llave que falta para `filas_afectadas: 2`.
+
+### 11.3 · Una precondición que aporta **F-028** y que la P5 de §2 no escribía
+
+**El front solo compone el cierre si el parte consta `aprobado`.** Está en
+`services/postventa-front/js/pipeline.js`: `esCerrable` exige **estado
+`aprobado`** (R33 de F-028) **más** `archivado` **más** número de incidencia, y
+`cuerpoDeCierre` **se niega a componer el cuerpo** si no se cumple —no basta con
+no pintar el botón, porque aunque se pulse dos veces, ahí se para—.
+
+**Por qué importa a quien recorra este guion**: la **P5 de §2** decía solo
+«parte archivado». **Eso ya no basta.** Un parte `pendiente` o `rechazado`
+**no llega ni a la llamada**, y quien lo intente verá el error del front, no una
+respuesta del backend. Antes de T22, T24 o T27 hay que comprobar **también** que
+el parte está en **`aprobado`**. Nada de esto cambia el backend, que vuelve a
+comprobar lo suyo: es una puerta **de más**, no de menos.
+
+### 11.4 · El **histórico de estado NO es la fuente** de cuándo se cerró una incidencia
+
+Constatado el 2026-09-16 al verificar F-028, y conviene tenerlo aquí porque
+este guion se recorre leyendo tablas: `anotar_estado` fecha cada fila del
+histórico **con el instante en que se constata el estado, no con el del hecho**.
+Se vio en `RS26.09/0149`: su fila `aprobado → cerrado` lleva fecha del
+**2026-09-16** y esa incidencia se cerró el **15** — la escribió la recarga de
+partes de ese día, que derivó `cerrado` de la traza de cierre.
+
+**No es un defecto, pero sí una trampa de lectura.** Solo ocurre con los partes
+que ya estaban cerrados antes de que existiera el histórico —los dos del
+piloto—; en uno nuevo la constancia se escribe segundos después. La consecuencia
+para este bloque:
+
+> **Para saber CUÁNDO se cerró de verdad una incidencia, la fuente NO es
+> `postventa.historico_estado`. Son `postventa.cierres` y la fila de `dbo.log`
+> del ERP**, que es lo que verifican los pasos 7 y 9 de T24 y lo que leen
+> `10_log_cierre_sigrid.ps1` y `12_traza_cierre_local.ps1`.
+
+### 11.5 · Con qué se cierra F-009
+
+**F-009 queda `done` el 2026-09-16, por decisión del responsable**, con
+**cinco huecos de verificación abiertos, escritos y fechados**. La frase con la
+que lo ordenó, el respaldo que dio —**los dos cierres reales auditados y ninguno
+nuevo**—, qué acredita cada uno, los cinco huecos uno a uno con su requisito y
+la advertencia de que **el quinto no es recuperable hacia atrás** están en el
+acta: **`progress/cierre_F-009.md`**.
+
+De este guion quedan marcadas **T25** y **T26**. **T22, T23, T24 y T27 quedan
+explícitamente NO recorridas**, cada una con su motivo pegado a su casilla en
+`specs/F-009-cierre-sigrid/tasks.md`.
+
+**Y queda deuda con dueño**: `infra/07_alta_usuario_sigrid.ps1` (líneas 161 y
+248) y `infra/17_traza_grafico_local.ps1` (línea 196) siguen sin arrancar por
+el defecto de comillas de §10.6, y bloquean T23 y la precondición añadida de
+T24. Dados de alta como **F-029**, prioridad baja, con el arreglo ya conocido.

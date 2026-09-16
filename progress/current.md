@@ -1,6 +1,80 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ AL DÍA · 2026-09-16 · **F-009 CERRADA** con cinco huecos escritos y fechados · nace **F-029**
+>
+> Rama `feature/F-009-cierre-sigrid`, commits **locales, sin `push`** y **sin
+> merge a `dev`**. `bash harness/init.sh` → **ENTORNO LISTO**. Trabajo
+> **documental**: no se ha tocado una línea de `services/` y **no se ha
+> ejecutado nada** contra Sigrid, SharePoint ni el PostgreSQL compartido.
+>
+> ### La decisión, y qué la respalda
+>
+> El responsable ordenó cerrar F-009 con estas palabras: **«ya he probado que
+> cierra y escribe bien en sigrid. cierrala»**. Preguntado qué respalda esa
+> prueba, respondió: **los dos cierres reales ya auditados, y ninguno nuevo** —
+> `RS26.09/0150` del **2026-09-11** (`ide` 8457839, dentro de F-012) y
+> `RS26.09/0149` del **2026-09-15** (`ide` 8467000, dentro de F-026). **Nadie
+> ejecutó nada contra el ERP el 2026-09-16.** Mismo precedente que el cierre de
+> F-012: los huecos se escriben, no se ocultan.
+>
+> ### Los cinco huecos que sobreviven al cierre
+>
+> | # | Hueco | Requisito | Por qué sigue abierto |
+> |---|---|---|---|
+> | 1 | **T22 pasos 2 y 5** · el `503` con la ventana cerrada, y que el dry-run no escribe | R37, R49 / R8, R10 | el `503` sale gratis pero nadie lo ha pedido; «no escribe» exige foto antes/después con la ventana abierta |
+> | 2 | **T22 paso 4** · las seis comprobaciones de R9 y el bloque `grafico` | R9, R49 | ventana abierta y **por consola**: desde F-025 el front ya no pide ningún dry-run por sí solo |
+> | 3 | **T23** · el `COUNT` en `dbo.usu`, R33 en `postventa.usuarios_sigrid`, y el `409` del login inexistente | R34, R33, R31 | **bloqueado además por un script roto** (`07_`), ver F-029 |
+> | 4 | **T27** · el reintento sobre lo ya cerrado → `ya_cerrada`, sin escribir | R18, R42 | **el ÚNICO criterio de aceptación de la ficha que ningún cierre real ha ejercido**, y el único hueco que exige abrir la ventana de escritura |
+> | 5 | **R22** · `filas_afectadas: 2`, y las fotos de partida del `MAX(ide)` y de `con.tiemod` | R22, T24 pasos 2/5/8 | **NO RECUPERABLE HACIA ATRÁS**: la foto que faltaba era la de **antes**. Exige una reclamación **abierta nueva** de la `0626`, que depende de Posventa |
+>
+> **Lo que sí está acreditado**: bloques 1–7 (T1–T21) con review **APROBADA**,
+> **T25** y **T26** enteras, los pasos **6, 7 y 9 de T24** (R24, R25, R41, R43)
+> por la sesión de solo lectura del 2026-09-15 —con el huso en **hora local,
+> 0,0 min de desvío**—, **T28** (117 muertos, 6 supervivientes justificados) y
+> **T29**.
+>
+> ### Qué se ha escrito
+>
+> | Fichero | Qué |
+> |---|---|
+> | `progress/cierre_F-009.md` | **el acta de cierre**: la decisión literal, qué acredita cada uno de los dos cierres reales, los cinco huecos uno a uno y la advertencia del hueco 5 |
+> | `harness/features.json` | F-009 a **`done`**; criterio 3 **derogado por F-025** citando la premisa literal (lo que cayó es **la pantalla**, no la verificación del backend); criterio 5 acotado a «acreditado solo por tests»; `blocked_by` retirado con el porqué. **Y alta de F-029** |
+> | `specs/F-009-cierre-sigrid/tasks.md` | **T22, T23, T24 y T27 explícitamente NO recorridas**, cada una con su motivo. T22 enmendada: no es Mirasierra sino la **0626**, y **R21 lo derogó R48** el 2026-09-06 |
+> | `progress/guion_bloque8_F-009.md` | §4(a) desfasado, §9.4 son **cinco** huecos y no ocho, §0.2 resuelto, §9.5.5 cerrado, y un **§11** con el segundo cierre real, la verificación 6 de F-028 y lo que aporta F-028 |
+>
+> ### F-029 · la deuda que sobrevive
+>
+> **Dos scripts de `infra/` no arrancan** por el defecto de comillas de
+> PowerShell 5.1 y **nunca se han ejecutado**:
+> `infra/07_alta_usuario_sigrid.ps1` (líneas **161** y **248**) y
+> `infra/17_traza_grafico_local.ps1` (línea **196**). El arreglo **ya existe y
+> está probado**: `Invoke-PythonDelServicio`, en
+> `infra/08_lectura_sigrid_comun.ps1`. Bloquean el hueco 3 (T23) y la
+> precondición añadida de T24. **Prioridad baja, rigor `estandar`.**
+>
+> ### Dos cosas que este trabajo dejó escritas y que no estaban
+>
+> 1. **El front solo compone el cierre si el parte consta `aprobado`**
+>    (`esCerrable` / `cuerpoDeCierre` en `js/pipeline.js`, R33 de F-028).
+>    Archivado **ya no basta**, y la P5 del guion no lo decía. Ampliada.
+> 2. **El histórico de estado NO es la fuente de cuándo se cerró una
+>    incidencia**: `anotar_estado` fecha la fila con el instante en que **se
+>    constata** el estado, no con el del hecho. Las fuentes son
+>    `postventa.cierres` y la fila de `dbo.log` del ERP.
+>
+> ### Cabos abiertos de verdad, tras el cierre
+>
+> - `progress/peticion_posventa_prueba_F-012.md` sigue **escrita y sin enviar**.
+>   Es **la llave del hueco 5** y también la del cierre real con espacios que
+>   dejó pendiente F-028.
+> - **F-029**, recién dada de alta.
+> - Avisos de `ruff` (61) que **no son de ninguna feature**: salen de `harness/`.
+> - **El cabo del «ni un cierre real» YA NO EXISTE**: `docs/INTEGRACION.md` y
+>   `azure-apps/postventa_incidencias.md` llevan la sección «Lo que YA se ha
+>   ejecutado contra el ERP» con los **dos** cierres, su `ide` y el veredicto
+>   del huso. Que nadie lo vuelva a listar.
+
 > ## 🧪 T27 de F-028 · **LAS SEIS VERIFICACIONES QUE EJECUTA EL HUMANO**, con su comando
 >
 > Lo pide el **hallazgo 1** de `progress/review_F-028.md`: F-009 tuvo su bloque
@@ -506,7 +580,17 @@
 > **T12 sigue sin marcar en `tasks.md`** aunque el commit `0af9830` la hizo. No
 > se marcó porque el encargo era «T13 y nada más». Es para el líder.
 
-> ## PARA RETOMAR · al 2026-09-15, tras la sesión de solo lectura de F-009
+> ## SUPERADO por el bloque del 2026-09-16 · **PARA RETOMAR · al 2026-09-15, tras la sesión de solo lectura de F-009**
+>
+> **Se conserva entero porque describe bien cómo se llegó al cierre, pero tres
+> cosas de aquí ya NO son verdad** (constancia del 2026-09-16): la tabla dice
+> **F-009 `blocked`** y **F-026 `in_progress`**, y las dos están **`done`**; «la
+> decisión que sigue encima de la mesa» **ya se tomó** —cerrar con los cinco
+> huecos escritos, ver el bloque de arriba—; y de sus cabos abiertos, **el del
+> «ni un cierre real» está corregido** (`docs/INTEGRACION.md` y
+> `azure-apps/postventa_incidencias.md`) y **el de los dos scripts rotos es
+> ahora la feature F-029**. Lo que sí sigue abierto es
+> `progress/peticion_posventa_prueba_F-012.md`, sin enviar.
 >
 > **Dónde está todo:** rama `feature/F-026-aprobacion-humana`, árbol limpio,
 > arnés en verde (`62 passed in 4.22s`, cobertura de líneas cambiadas 99,0 %).

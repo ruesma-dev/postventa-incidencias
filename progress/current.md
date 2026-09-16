@@ -1,48 +1,55 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## EN CURSO · 2026-09-16 · **F-030, bloque 1 entregado; sigue en rojo a propósito**
+> ## EN CURSO · 2026-09-16 · **F-030, bloques 2 y 3 entregados; la regresión está arreglada**
 >
 > Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y
-> sin merge. Hecho: **T1–T7** de `specs/F-030-veredicto-persistido/tasks.md`
-> (bloques 0 y 1). Informe, con las trazas de las dos fases RED:
-> **`progress/impl_F-030.md`**.
+> sin merge. Hecho: **T1–T12** de `specs/F-030-veredicto-persistido/tasks.md`
+> (bloques 0 a 3). Informe, con las trazas de las tres fases RED y la del
+> centinela: **`progress/impl_F-030.md`**.
 >
-> **El veredicto guardado ya se puede leer.** `SituacionParte` tiene su cuarto
-> campo, `mapeo.fila_a_validacion_y_cierre` recompone el veredicto desde sus
-> columnas, `sentencias.select_veredicto_y_cierre` lo trae con el estado de
-> cierre en la **misma** consulta y `consultar_situacion` devuelve las cuatro
-> cosas. **Siguen siendo dos sentencias por llamada** (R18): la vieja se
-> sustituye, no se añade. Y el andamio declarado de T3 —el `object.__setattr__`
-> de `_situacion`— está retirado.
+> **La puerta ya juzga el veredicto guardado.** `exigir_parte_aprobado`
+> consulta primero y lee `ctx.situacion.validacion`; **`ctx.validacion` no se
+> vuelve a mirar ahí**, así que aunque alguien vuelva a meter un veredicto en
+> el contexto, la puerta no se entera (R1). Y los tres endpoints
+> —`archivar.py`, `adjuntar.py`, `cerrar.py`— han dejado de fabricar el suyo:
+> `_como_contexto` devuelve `validacion=None`. El contrato HTTP no cambia:
+> `veredicto` y `destino` siguen siendo obligatorios y siguen dando **400**
+> ante un valor desconocido (R19, D6).
 >
-> **Lo que todavía NO cambia: quién juzga.** `puerta_de_estado.py` sigue
-> mirando `ctx.validacion`, así que el defecto está intacto y esperando a T8.
-> Por eso la suite del servicio sigue en rojo, y es el rojo correcto:
+> **`bash harness/init.sh` → ENTORNO LISTO (VERDE).** Suite del servicio:
+> `2 711 passed, 0 failed, 3 skipped`. **PUERTA COBERTURA al 100,0 %** (30/30
+> líneas cambiadas, umbral 80 %, nivel `critico`). Lint: 61 avisos antes y 61
+> ahora. **Cero regresiones.**
 >
-> - `9 failed, 2685 passed, 3 skipped` — los 9 son **exactamente** los de T1
->   (6 de `test_f030_r11_...` y 3 de `test_f030_r7_...`), que arregla el bloque 2;
-> - los **7 de T2** —la ida y vuelta de la huella— están **en verde**;
-> - **nada de lo que pasaba antes se ha puesto en rojo** (2 651 → 2 685).
->
-> `bash harness/init.sh`: **ROJO solo por esos 9**. Todo lo demás en verde,
-> incluida la **PUERTA COBERTURA al 100,0 %** (23/23 líneas cambiadas, umbral
-> 80 %, nivel `critico`). El fallo del BOM de `infra/90_push_dev_main.ps1` que
-> bloqueaba al portero en el bloque 0 **ya está resuelto** y llegó con el merge
-> de `dev` (`3e4a799`).
+> Los **9 casos de T1** que reproducían el defecto están en verde: los 6 de
+> `test_f030_r11_...` —la aprobación humana que no sobrevivía, que es
+> RS26.09/0178— y los 3 de `test_f030_r7_...` —el cuerpo que miente—.
 >
 > ### Desviación de la spec, para que la mire el reviewer
 >
-> **T3 pedía `tests/test_f028_estado_dominio.py` en verde «sin cambios», y es
-> imposible.** Su centinela
-> `test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas`
-> afirma por construcción que los campos de `SituacionParte` son **exactamente
-> tres**, que es justo lo que T3 cambia por decisión de la propia spec. Se
-> enmendó con nota fechada y **sin aflojar nada**: el conjunto tiene que seguir
-> siendo exactamente el declarado, así que un quinto campo lo pone en rojo igual
-> que antes lo ponía el cuarto. El cambio está aislado en un aserto del commit
-> `c8bb670`. El fichero **no** está en la regla dura 4, que protege
-> `test_f028_puertas.py`, `test_f028_huella_intacta.py` y `test_f026_*`.
+> **El alcance de T11 era mucho mayor de lo que preveía `design.md` §5.5.** La
+> spec listaba cinco ficheros de test a tocar y describía T9 como «un cambio
+> mecánico en dos ayudantes». Lo medido: **232 casos en 14 ficheros** se
+> quedaron en la puerta al mudarse la fuente del veredicto, y la spec nombraba
+> tres de esos catorce. Los once restantes son tests de los **pasos** del
+> pipeline, no de los endpoints, y §5.5 no los previó.
+>
+> No se paró porque la **dirección** no era ambigua: §10.5 la prescribe letra
+> por letra —«cada uno se arregla preparando el veredicto en el doble; lo que
+> **no** vale es relajar la puerta»— y el encargo hacía explícitamente mías las
+> regresiones. Lo subestimado fue el **volumen**, no el método. **Ninguna
+> puerta se aflojó**: el arreglo se apoya en un ayudante compartido
+> (`con_el_veredicto_guardado`, en `tests/utiles_pg.py`) y dos builders de
+> veredicto emitidos por `validar_parte` de verdad. Todo aislado en el commit
+> `7d7dacc`, con los 14 ficheros listados uno a uno en el informe.
+>
+> Dos desviaciones menores, las dos en el informe: **T9 tocó tres ayudantes y
+> no dos** (los que nombraba §5.5 no existen en ese fichero), y **dos asertos
+> de `test_f006_archivar_http.py` cambiaron** porque miraban el stub que T10
+> retira —pasan a afirmar algo más fuerte: que no se fabrica ninguno—. Ningún
+> aserto de `test_f028_puertas.py`, `test_f028_huella_intacta.py` ni
+> `test_f026_*` cambia (regla dura 4).
 >
 > ### Lo que sigue abierto
 >
@@ -56,13 +63,13 @@
 >    del humano para esa incidencia— y contar las consultas de una tanda real de
 >    22 partes (R18). Ninguna es condición de cierre.
 >
-> **Siguiente encargo: el bloque 2 (T8, T9).** Que la puerta lea
-> `ctx.situacion.validacion` y deje de mirar `ctx.validacion`, y que los **dos
-> ayudantes** de `test_f028_puertas.py` preparen el veredicto en la situación
-> sin tocar ni un aserto. Con eso los 9 casos de T1 pasan a verde.
+> **Siguiente encargo: el bloque 4 (T13–T15).** El doble `RepositorioComoLaBase`
+> que guarda **columnas y no objetos**, y `test_f030_circuito_borde_a_borde.py`
+> con los cuerpos reales de los dos endpoints sobre el caso de RS26.09/0178,
+> con sus control-negativo.
 >
-> Ventanas de escritura de `dev`: **las dos abiertas**. Este bloque no ha
-> ejecutado ninguna llamada real contra Azure, Sigrid, SharePoint ni el
+> Ventanas de escritura de `dev`: **las dos abiertas**. Estos dos bloques no
+> han ejecutado ninguna llamada real contra Azure, Sigrid, SharePoint ni el
 > PostgreSQL compartido.
 
 

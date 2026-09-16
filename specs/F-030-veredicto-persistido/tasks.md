@@ -117,7 +117,7 @@
 
 ## Bloque 2 · La puerta juzga el veredicto guardado
 
-- [ ] **T8**: Cambiar `application/pipelines/puerta_de_estado.py` para que lea
+- [x] **T8**: Cambiar `application/pipelines/puerta_de_estado.py` para que lea
       `ctx.situacion.validacion` y **no vuelva a mirar `ctx.validacion`**:
       consulta primero, «no hay veredicto» después, y el destino del mensaje
       sale del veredicto guardado (`design.md` §5.3). Actualizar la cabecera del
@@ -127,7 +127,7 @@
       veredicto a `revision_manual` → **no pasa**—, y el de R17 con los tres
       mensajes y el destino guardado dentro.
 
-- [ ] **T9**: Adaptar **los ayudantes** de `tests/test_f028_puertas.py` para
+- [x] **T9**: Adaptar **los ayudantes** de `tests/test_f028_puertas.py` para
       que el veredicto se prepare en la situación en vez de en el contexto
       (`design.md` §5.5). **Ni un aserto cambia.** | Verificación:
       `pytest services/postventa-api/tests/test_f028_puertas.py` — los 48 casos
@@ -138,7 +138,7 @@
 
 ## Bloque 3 · Los tres endpoints dejan de fabricar el veredicto
 
-- [ ] **T10**: Quitar el `ResultadoValidacion` de pega de
+- [x] **T10**: Quitar el `ResultadoValidacion` de pega de
       `interface_adapters/api/archivar.py`, `adjuntar.py` y `cerrar.py`:
       `_como_contexto` devuelve el contexto con `validacion=None`, se retiran
       los imports huérfanos y se sustituye el párrafo «El veredicto llega en el
@@ -150,14 +150,14 @@
       `test_f009_cerrar_http.py` siguen devolviendo **400** ante un `veredicto`
       o un `destino` desconocidos.
 
-- [ ] **T11**: Arreglar los tests de endpoint que pasaban la puerta gracias al
+- [x] **T11**: Arreglar los tests de endpoint que pasaban la puerta gracias al
       cuerpo, preparando el veredicto en el doble de repositorio
       (`design.md` §5.5, §10.5). **No se relaja ninguna puerta para poner un
       test en verde**: si aparece la tentación, **parar**. | Verificación:
       `pytest services/postventa-api/tests` en verde, y el informe lista uno a
       uno los tests cambiados con el motivo.
 
-- [ ] **T12**: Añadir el **centinela estructural** (R3): un test que recorre con
+- [x] **T12**: Añadir el **centinela estructural** (R3): un test que recorre con
       `ast` los módulos de `interface_adapters/api/` y falla si alguno construye
       un `ResultadoValidacion` (`design.md` §7.3). | Verificación: el test en
       verde, y en **rojo** si se le devuelve a `archivar.py` el stub (traza de

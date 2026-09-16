@@ -33,6 +33,7 @@ import json
 import logging
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import azure.functions as func
@@ -1812,3 +1813,85 @@ def test_f028_r42_la_respuesta_de_guardar_tampoco_publica_el_oid_ni_el_motivo():
     respuesta = _guardar_parte(repositorio)
 
     _sin_datos_personales(json.dumps(respuesta, ensure_ascii=False))
+
+
+# ==========================================================================
+# T15 · `POST /api/aprobar` se retira, y no queda media puerta abierta
+# ==========================================================================
+#
+# `design.md` §5: `/api/estado` **sustituye** a `/api/aprobar`, no convive con
+# él. Convivir sería lo peligroso: dos endpoints que escriben la decisión
+# humana en dos tablas distintas, y solo uno de ellos —el nuevo— capaz de
+# rechazar. Quien llamara al viejo dejaría una aprobación en
+# `postventa.aprobaciones` que **ya no lee nadie**, con lo que su decisión no
+# tendría ningún efecto y la pantalla diría que sí lo tuvo.
+#
+# Por eso se comprueban las tres capas por separado: el módulo, la ruta que el
+# host publica y el envoltorio que el handler usaba.
+
+
+def test_f028_t15_los_dos_modulos_de_f026_ya_no_existen():
+    """T15 · `aprobar.py` y `aprobacion_serializada.py` se van enteros.
+
+    Se mira el **paquete instalado**, no el disco: un `.py` borrado del árbol
+    pero presente en un despliegue viejo seguiría importándose.
+    """
+    import importlib.util
+
+    for modulo in (
+        "interface_adapters.api.aprobar",
+        "interface_adapters.api.aprobacion_serializada",
+    ):
+        assert importlib.util.find_spec(modulo) is None, modulo
+
+
+def test_f028_t15_el_host_ya_no_publica_la_ruta_aprobar():
+    """T15 · lo que se comprueba es **lo que se despliega**.
+
+    `rutas_registradas()` sale de `app.get_functions()`, que es lo que el host
+    de Functions publica de verdad. Borrar la función del fichero y dejar el
+    decorador —o al revés— no pasaría de aquí.
+
+    Y se afirma también que `estado` sigue publicada: un control que solo
+    mirase la ausencia se quedaría verde el día que se cayeran las dos.
+    """
+    from tests.utiles_rutas import rutas_registradas
+
+    publicadas = rutas_registradas()
+
+    assert "aprobar" not in publicadas
+    assert "estado" in publicadas
+
+
+def test_f028_t15_function_app_ya_no_sabe_aprobar():
+    """T15 · ni la función, ni el import del handler, ni la traducción.
+
+    El módulo se lee como **texto** a propósito, igual que hace
+    `test_f010_endpoints_protegidos.py`: lo que se fija es lo que dice el
+    fichero, no lo que quedara en memoria después de que el runtime lo
+    construyera.
+    """
+    import function_app
+
+    codigo = Path(function_app.__file__).read_text(encoding="utf-8")
+
+    assert not hasattr(function_app, "aprobar")
+    assert "aprobar_parte_http" not in codigo
+    assert 'route="aprobar"' not in codigo
+
+
+def test_f028_t15_el_envoltorio_de_parte_ya_no_delega_lo_de_f026():
+    """T15 · `AnotaLosResultados` implementa el puerto, y el puerto ha menguado.
+
+    Su docstring promete delegar el puerto **entero**. Dejarle dos métodos que
+    el puerto ya no declara —y que el adaptador ya no implementa— convertiría
+    esa promesa en su contrario: una llamada que el envoltorio acepta y que
+    revienta una capa más abajo.
+    """
+    from interface_adapters.api.parte import AnotaLosResultados
+
+    assert not hasattr(AnotaLosResultados, "guardar_aprobacion")
+    assert not hasattr(AnotaLosResultados, "consultar_aprobacion")
+    # Y lo que sí tiene que seguir delegando, sigue.
+    assert hasattr(AnotaLosResultados, "consultar_situacion")
+    assert hasattr(AnotaLosResultados, "consultar_estado_cierre")

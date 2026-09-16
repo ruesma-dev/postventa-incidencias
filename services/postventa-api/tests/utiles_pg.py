@@ -207,7 +207,6 @@ class RepositorioEnMemoria:
         traza_grafico: Any = None,
         fallo_al_guardar_grafico: Exception | None = None,
         estado_que_falla: Any = None,
-        aprobacion: Any = None,
         situacion: Any = None,
         estado_cierre: str | None = None,
     ) -> None:
@@ -233,13 +232,20 @@ class RepositorioEnMemoria:
         #: honesto) y la base caída **después** (`GraficoSinTraza`, un 500, con
         #: las tres filas ya dentro de Sigrid).
         self.estado_que_falla = estado_que_falla
-        #: F-026 · las aprobaciones que se han pedido guardar, en orden.
-        self.aprobaciones: list[Any] = []
-        #: F-026 · los `hash` con los que se ha consultado la aprobación.
+        #: F-026 · los `hash` con los que se consultó la tabla congelada.
+        #:
+        #: **Se queda vacía para siempre**, y esa es toda su gracia desde
+        #: F-028 T15: `consultar_aprobacion` ya no existe, ni en el puerto ni
+        #: en este doble, así que nada puede añadir nada aquí. Los casos de
+        #: F-028 que afirman `aprobaciones_consultadas == []` —R33 en
+        #: `test_f028_puertas.py`, R2 en `test_f028_estado_http.py`— pasan a
+        #: ser ciertos por construcción y no por comportamiento: lo que de
+        #: verdad vigila que nadie toque `postventa.aprobaciones` es
+        #: `test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026`.
+        #:
+        #: No se retira con el método porque esos dos casos son la red de
+        #: seguridad de la feature y T15 no los toca.
         self.aprobaciones_consultadas: list[str] = []
-        #: F-026 · lo que devuelve `consultar_aprobacion`. `None` es «no la ha
-        #: aprobado nadie», que **no es un error**.
-        self.aprobacion = aprobacion
         #: F-028 · las decisiones de estado que se han registrado, **en orden**.
         #:
         #: Una lista y no un diccionario por `hash`: el histórico es
@@ -333,30 +339,6 @@ class RepositorioEnMemoria:
         if self.fallo is not None:
             raise self.fallo
         return self.traza_grafico
-
-    def guardar_aprobacion(self, *, aprobacion: Any) -> Any:
-        """F-026 · registra la aprobación humana, o levanta el fallo preparado.
-
-        Guardarla aquí y no en un doble nuevo es deliberado: los pasos del
-        circuito reciben **este** objeto, y si el puerto creciera sin que él
-        creciera, el doble dejaría de poder sustituir al adaptador justo en la
-        pieza que decide si un parte rechazado llega al ERP.
-        """
-        resultado = self._o_fallar()
-        self.aprobaciones.append(aprobacion)
-        return resultado
-
-    def consultar_aprobacion(self, *, hash_parte: str) -> Any:
-        """F-026 · la aprobación que el test haya preparado, o `None`.
-
-        Se guarda el `hash` pedido para poder comprobar **que se preguntó**:
-        R24 es un requisito sobre una lectura que, si no se hiciera, dejaría
-        que quien llama afirmara por su cuenta que el parte estaba aprobado.
-        """
-        self.aprobaciones_consultadas.append(hash_parte)
-        if self.fallo is not None:
-            raise self.fallo
-        return self.aprobacion
 
     def consultar_situacion(self, *, hash_parte: str) -> Any:
         """F-028 · la situación que el test haya preparado, o una vacía.

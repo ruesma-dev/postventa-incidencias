@@ -81,7 +81,13 @@ FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 #:
 #: Eran seis hasta F-019, que anadio `remesa`, `parte` y `cola`; nueve hasta
 #: F-009, que anadio `cerrar`; diez hasta F-012, que anadio `adjuntar`; y once
-#: hasta F-026, que anade `aprobar`.
+#: hasta F-026, que anadio `aprobar`.
+#:
+#: F-028 los dejo en trece con `estado` y los devolvio a **doce** al retirar
+#: `aprobar` en T15: `/api/estado` lo **sustituye**, no convive con el
+#: (`design.md` §5). Es la primera vez que este fichero resta en vez de sumar,
+#: y por eso se escribe: un endpoint retirado tiene que pasar por aqui igual
+#: que uno nuevo, o el barrido seguiria exigiendo una ruta que ya no existe.
 ENDPOINTS = (
     "health",
     "split",
@@ -90,7 +96,6 @@ ENDPOINTS = (
     "validar",
     "remesa",
     "parte",
-    "aprobar",
     "estado",
     "cola",
     "archivar",
@@ -232,7 +237,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 13
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 12
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

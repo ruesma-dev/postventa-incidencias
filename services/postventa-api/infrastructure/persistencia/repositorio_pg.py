@@ -31,7 +31,6 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
-from domain.models.aprobacion import Aprobacion
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.errores import PersistenciaNoDisponible, ReferenciaNoConsta
 from domain.models.estado import DecisionEstado, EstadoParte, SituacionParte
@@ -51,7 +50,6 @@ from domain.models.validacion import ResultadoValidacion
 
 from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import (
-    fila_a_aprobacion,
     fila_a_correspondencia,
     fila_a_decision_estado,
     fila_a_entrada_cola,
@@ -124,29 +122,36 @@ class RepositorioPostgres:
     def guardar_validacion(
         self, *, resultado: ResultadoValidacion, ahora: datetime
     ) -> ResultadoGuardado:
-        """Guarda el veredicto, sustituyendo el anterior (R17), **y revoca la
-        aprobación humana que ya no le corresponde** (F-026, R30).
+        """Guarda el veredicto, sustituyendo el anterior (R17). **Y nada más.**
 
-        Las dos cosas van en la **misma transacción**, y eso es el requisito:
-        con dos habría una ventana —corta, pero real— en la que el veredicto
-        nuevo ya está guardado y la aprobación del viejo sigue viva, y un paso
-        que leyera justo ahí admitiría en el circuito un parte que nadie ha
-        aprobado.
+        > **Enmienda del 2026-09-16 · F-028 T15 (R57).** Hasta hoy esta
+        > operación llevaba pegada una segunda sentencia,
+        > `revocar_aprobacion_si_cambio`, en la misma transacción: F-026
+        > resolvía la vigencia de la decisión humana **al escribir** (su D-F),
+        > dejando la fila de `postventa.aprobaciones` marcada como revocada
+        > cuando el veredicto ya no era el aprobado.
+        >
+        > F-028 la resuelve **al derivar**: `estado.py::_aprueba_lo_que_hay`
+        > compara la huella apuntada en el histórico con la del veredicto de
+        > ahora, cada vez que hace falta el estado (R19). El resultado es el
+        > mismo y el histórico no pierde la fila —que es todo el punto de una
+        > tabla append-only—, así que la segunda sentencia ya no tiene nada que
+        > hacer y se retira con el resto del código de F-026.
+        >
+        > La preocupación que justificaba meterlas en una sola transacción
+        > —«una ventana en la que el veredicto nuevo ya está guardado y la
+        > aprobación del viejo sigue viva»— **desaparece por construcción**: no
+        > hay nada que actualizar, así que no hay ventana.
 
-        La revocación se ejecuta **siempre**, haya aprobación o no: si no la
-        hay, el `UPDATE` no toca ninguna fila. Consultar antes para decidir si
-        merece la pena sería una consulta de más en el camino más transitado
-        del servicio, y una condición de carrera con quien apruebe a la vez.
+        Este es el camino **más transitado del servicio**: se recorre una vez
+        por parte y por subida, 22 veces en una remesa real de Mirasierra. Que
+        vuelva a ser una sola sentencia es también una escritura menos por
+        parte contra un PostgreSQL compartido.
         """
         sql, parametros = sentencias.upsert_validacion(
             esquema=self._esquema, resultado=resultado, ahora=ahora
         )
-        revocacion = sentencias.revocar_aprobacion_si_cambio(
-            esquema=self._esquema, resultado=resultado, ahora=ahora
-        )
-        guardado = self._escribir(
-            sql, parametros, operacion="guardar_validacion", ademas=(revocacion,)
-        )
+        guardado = self._escribir(sql, parametros, operacion="guardar_validacion")
         log.info(
             "F-005 validación guardada: hash=%s destino=%s resultado=%s",
             resultado.hash_parte,
@@ -233,50 +238,6 @@ class RepositorioPostgres:
             traza.estado.value,
         )
         return traza
-
-    def guardar_aprobacion(self, *, aprobacion: Aprobacion) -> ResultadoGuardado:
-        """Registra que una persona aprobó este parte (F-026, R14, R17).
-
-        El log dice **qué** se aprobó y cómo fue, y nunca **quién**: el `oid`
-        es un dato personal seudónimo y la huella identifica un veredicto
-        concreto. Ninguno de los dos hace falta para saber que la operación fue
-        bien, y este log lo lee cualquiera que abra Application Insights (R13).
-        """
-        sql, parametros = sentencias.upsert_aprobacion(
-            esquema=self._esquema, aprobacion=aprobacion
-        )
-        resultado = self._escribir(sql, parametros, operacion="guardar_aprobacion")
-        log.info(
-            "F-026 aprobación registrada: hash=%s destino=%s resultado=%s",
-            aprobacion.hash_parte,
-            aprobacion.destino_aprobado.value,
-            resultado.value,
-        )
-        return resultado
-
-    def consultar_aprobacion(self, *, hash_parte: str) -> Aprobacion | None:
-        """La aprobación de ese parte, o `None` si no consta (F-026).
-
-        `None` **no es un error**: es que a ese parte no lo ha aprobado nadie.
-        Quien lo pide decide qué hacer con ello — los tres pasos del circuito,
-        no admitirlo si además no es apto.
-
-        Del resultado se registra si sigue vigente y nada más, por el mismo
-        motivo que en el guardado.
-        """
-        sql, parametros = sentencias.select_aprobacion(
-            esquema=self._esquema, hash_parte=hash_parte
-        )
-        filas = self._leer(sql, parametros, operacion="consultar_aprobacion")
-        if not filas:
-            return None
-        aprobacion = fila_a_aprobacion(filas[0])
-        log.info(
-            "F-026 aprobación leída: hash=%s vigente=%s",
-            hash_parte,
-            aprobacion.vigente,
-        )
-        return aprobacion
 
     # --- el estado del parte (F-028) --------------------------------------
 

@@ -937,3 +937,87 @@ def test_f028_r10_una_decision_a_un_estado_que_no_manda_no_esta_en_firme():
 
     assert estado_del_parte(validacion, pendiente, None) is EstadoParte.APROBADO
     assert decision_en_firme(validacion, pendiente, None) is None
+
+
+# --------------------------------------------------------------------------
+# T15 · lo que queda de F-026 en el dominio, y lo que se ha ido
+# --------------------------------------------------------------------------
+#
+# `domain/models/aprobacion.py` era el dominio entero de la decisión humana de
+# F-026. F-028 se la lleva a `estado.py` y del módulo viejo **solo** sobreviven
+# `huella_de_veredicto` y su `_normalizar` (D9, `design.md` §8.2 y §10): son los
+# que deciden si una aprobación caducó, y eso sigue gobernando el estado
+# derivado (R19).
+#
+# Estos tres casos son el control negativo de esa cirugía. Si alguno se pone
+# rojo, o se ha cortado de más —y con `huella_de_veredicto` se va la revocación
+# por cambio de veredicto— o se ha cortado de menos y queda dominio muerto.
+
+
+def _modulo_de_aprobacion():
+    import domain.models.aprobacion as modulo
+
+    return modulo
+
+
+#: Lo que T15 retira del módulo de F-026, nombre a nombre.
+RETIRADO_DE_F026 = (
+    "Aprobacion",
+    "MOTIVOS_APROBABLES",
+    "MotivoRevocacion",
+    "admite_circuito",
+    "es_aprobable",
+    "esta_vigente",
+)
+
+
+@pytest.mark.parametrize("nombre", RETIRADO_DE_F026)
+def test_f028_t15_del_dominio_de_f026_no_queda_nada_de_la_decision(nombre):
+    """T15 · la decisión humana ya no vive en `aprobacion.py` (`design.md` §8.2).
+
+    Dejarlos ahí sería peor que borrarlos: `admite_circuito` es el criterio que
+    las tres puertas usaban para dejar pasar un parte al ERP de producción, y
+    F-028 lo ha sustituido por `estado_del_parte(...) is APROBADO` (T11). Dos
+    criterios vivos para lo mismo es el escenario del que nace esta feature.
+    """
+    modulo = _modulo_de_aprobacion()
+
+    assert not hasattr(modulo, nombre)
+    assert nombre not in modulo.__all__
+
+
+def test_f028_t15_la_huella_y_su_normalizador_siguen_donde_estaban():
+    """D9 · lo único que se conserva, y se conserva **aquí**.
+
+    No se mueve de módulo ni se renombra: `estado.py::_aprueba_lo_que_hay` la
+    importa de esta ruta, y los tests de F-026 que la prueban siguen intactos.
+    Si alguien la mudara, esos tests se irían con ella y la feature perdería el
+    único control que dice que la huella no se ha movido (§10).
+    """
+    modulo = _modulo_de_aprobacion()
+
+    assert modulo.__all__ == ["huella_de_veredicto"]
+    assert callable(modulo.huella_de_veredicto)
+    assert callable(modulo._normalizar)
+
+
+def test_f028_t15_la_cabecera_explica_que_la_decision_vive_ahora_en_estado_py():
+    """`design.md` §8.2 · el patrón de enmienda fechada de este repositorio.
+
+    No se borra la premisa: se dice **qué la sustituyó y cuándo**. Una cabecera
+    que se limitara a quitar los párrafos de la decisión dejaría el módulo
+    contando media historia, y quien llegara dentro de seis meses no sabría si
+    la decisión humana desapareció o se mudó.
+
+    Lo que se exige: que el texto original de la regla de F-026 **siga citado**,
+    que diga a dónde se fue y con qué fecha, y que nombre el módulo que la
+    releva.
+    """
+    documentacion = _modulo_de_aprobacion().__doc__ or ""
+
+    assert "Enmienda" in documentacion
+    assert "2026-09-16" in documentacion
+    assert "estado.py" in documentacion
+    assert "F-028" in documentacion
+    # La premisa de F-026 no se borra: se cita.
+    assert "al lado del veredicto, nunca encima" in documentacion

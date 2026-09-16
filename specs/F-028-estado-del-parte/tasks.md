@@ -147,7 +147,7 @@
       otra vez devuelve el estado de cada parte **sin una petición más por
       parte**.
 
-- [ ] **T15**: Retirar `interface_adapters/api/aprobar.py`,
+- [x] **T15**: Retirar `interface_adapters/api/aprobar.py`,
       `aprobacion_serializada.py`, la ruta `aprobar`, `upsert_aprobacion`,
       `select_aprobacion`, `revocar_aprobacion_si_cambio`, `fila_a_aprobacion`,
       `guardar_aprobacion`, `consultar_aprobacion`, y de

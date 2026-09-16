@@ -183,10 +183,11 @@ class AnotaLosResultados:
     Implementa `RepositorioPartesPort` entero delegando: si mañana el paso
     llamara a otra operación, este envoltorio no se interpone.
 
-    Es **público** desde F-026 porque `POST /api/aprobar` compone exactamente
-    lo mismo —guardar el parte y su veredicto, y contar qué pasó con cada
-    uno— y dos envoltorios distintos acabarían informando del mismo hecho de
-    dos formas distintas.
+    Es **público** desde F-026, cuando `POST /api/aprobar` compuso exactamente
+    lo mismo —guardar el parte y su veredicto, y contar qué pasó con cada uno—
+    y dos envoltorios distintos habrían acabado informando del mismo hecho de
+    dos formas distintas. Aquel endpoint lo retiró F-028 T15; quien lo compone
+    hoy, por el mismo motivo, es `POST /api/estado`.
     """
 
     def __init__(self, interno: RepositorioPartesPort) -> None:
@@ -215,20 +216,6 @@ class AnotaLosResultados:
 
     def guardar_cierre(self, **datos: Any) -> ResultadoGuardado:
         return self._interno.guardar_cierre(**datos)
-
-    def guardar_aprobacion(self, **datos: Any) -> ResultadoGuardado:
-        """F-026 · la escribe `/api/aprobar`, a través de este envoltorio."""
-        return self._interno.guardar_aprobacion(**datos)
-
-    def consultar_aprobacion(self, **datos: Any) -> Any:
-        """F-026 · **ya no la llama nadie en producción** (F-028, T14).
-
-        La leía este mismo handler para el bloque `aprobacion` de su respuesta
-        (R22), que T14 sustituye por el bloque `estado`. La delegación se queda
-        aquí y no se retira sola porque el puerto todavía la declara: quien se
-        lleva las dos, la del puerto y esta, es T15.
-        """
-        return self._interno.consultar_aprobacion(**datos)
 
     def consultar_situacion(self, **datos: Any) -> Any:
         """F-028 · la lee `paso_persistencia` para la regla de constancia.

@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from application.pipelines.contexto_parte import ContextoParte
@@ -1151,3 +1152,176 @@ def test_f028_si_la_constancia_falla_el_cierre_sigue_siendo_un_cierre(caplog):
     assert repositorio.cierres[-1].estado is EstadoCierre.CERRADO
     assert HASH in caplog.text
     assert OID not in caplog.text
+
+
+# ==========================================================================
+# T15 · la tabla de F-026 se congela: deja de escribirse y no se borra
+# ==========================================================================
+#
+# Regla dura 3 de `tasks.md`: `postventa.aprobaciones` **no se toca**. Ni el
+# DDL, ni su fichero, ni una fila. Lo que T15 retira es el **código** que la
+# escribía y la leía; la tabla sigue ahí porque guarda decisiones que tomaron
+# personas de verdad —F-026 se cerró el 2026-09-15 con dos incidencias reales
+# cerradas y auditadas— y porque la semilla de `11_historico_estado.sql` lee de
+# ella en cada arranque.
+#
+# Son dos afirmaciones distintas y las dos hacen falta:
+#
+# 1. **sigue declarada** — si alguien borrara el `CREATE TABLE`, el primer
+#    despliegue en un entorno nuevo dejaría la semilla apuntando a una tabla
+#    que no existe, y el servicio no arrancaría (`ddl.cargar_ddl` valida antes
+#    de abrir la conexión);
+# 2. **nadie escribe en ella** — que es lo que T15 viene a conseguir, y lo que
+#    no se puede comprobar mirando un solo módulo.
+
+
+#: Los módulos de producción que **podrían** emitir SQL. Es donde hay que
+#: mirar: `domain/` y `application/` no saben que existen las tablas.
+DIRECTORIO_PERSISTENCIA = (
+    Path(__file__).resolve().parent.parent / "infrastructure" / "persistencia"
+)
+
+#: Los `.sql` que se aplican al arrancar. La tabla de F-026 sigue entre ellos.
+DIRECTORIO_SQL = DIRECTORIO_PERSISTENCIA / "sql"
+
+#: Lo que T15 retira del borde de la persistencia, por capas.
+RETIRADO_DE_F026_EN_PERSISTENCIA = {
+    "sentencias": ("upsert_aprobacion", "select_aprobacion", "revocar_aprobacion_si_cambio"),
+    "mapeo": ("fila_a_aprobacion",),
+    "puerto": ("guardar_aprobacion", "consultar_aprobacion"),
+}
+
+
+def _literales_fuera_de_docstring(ruta: Path) -> list[str]:
+    """Las cadenas que el módulo **usa**, saltándose lo que solo cuenta.
+
+    Mirar el fuente como texto crudo no sirve: las cabeceras de este
+    repositorio explican por qué la tabla de F-026 se congela, y nombrarla para
+    explicarlo no es escribir en ella. Lo que hay que vigilar no es lo que el
+    módulo *cuenta*, es lo que *hace*. Es el mismo método que ya usaron el
+    bloque 0 (§5 del informe) y T13 (§38.2).
+    """
+    import ast
+
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"))
+    docstrings = {
+        nodo.body[0].value
+        for nodo in ast.walk(arbol)
+        if isinstance(
+            nodo, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        )
+        and nodo.body
+        and isinstance(nodo.body[0], ast.Expr)
+        and isinstance(nodo.body[0].value, ast.Constant)
+        and isinstance(nodo.body[0].value.value, str)
+    }
+    return [
+        nodo.value
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.Constant)
+        and isinstance(nodo.value, str)
+        and nodo not in docstrings
+    ]
+
+
+def test_f028_t15_la_tabla_de_f026_sigue_declarada_en_el_ddl():
+    """Regla dura 3 · la tabla se congela, **no se borra**.
+
+    Y no es celo documental: la semilla de `11_historico_estado.sql` hace
+    `SELECT … FROM postventa.aprobaciones` en cada arranque. Sin el
+    `CREATE TABLE`, un entorno nuevo no levanta.
+    """
+    from infrastructure.persistencia.ddl import ficheros_ddl
+
+    ficheros = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
+    assert "10_aprobaciones.sql" in ficheros
+
+    texto = (DIRECTORIO_SQL / "10_aprobaciones.sql").read_text(encoding="utf-8")
+    assert f"CREATE TABLE IF NOT EXISTS {ESQUEMA}.aprobaciones" in texto
+
+
+def test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026():
+    """T15 · **nadie escribe en ella**, y esto es lo que lo demuestra.
+
+    El control mira **todas** las cadenas que compone la capa de persistencia,
+    no una función concreta: retirar `upsert_aprobacion` y dejar otro sitio que
+    monte un `INSERT INTO postventa.aprobaciones` sería exactamente el fallo
+    que este caso existe para cazar, y ningún test de una función retirada
+    puede verlo.
+
+    El `.sql` de la semilla queda fuera a propósito: es la lectura que la
+    regla dura 3 manda conservar, y es SQL, no un módulo.
+    """
+    culpables = {
+        ruta.name: [texto for texto in _literales_fuera_de_docstring(ruta)
+                    if "aprobaciones" in texto]
+        for ruta in sorted(DIRECTORIO_PERSISTENCIA.glob("*.py"))
+    }
+
+    assert {nombre: textos for nombre, textos in culpables.items() if textos} == {}
+
+
+def test_f028_t15_las_tres_sentencias_de_f026_se_han_retirado():
+    """T15 · ni el `upsert`, ni el `select`, ni la revocación.
+
+    Se comprueban el atributo **y** el `__all__`: dejar el nombre en la lista
+    de exportación de un módulo que ya no lo define es la clase de resto que
+    revienta en el `import` de otro sitio meses después.
+    """
+    for nombre in RETIRADO_DE_F026_EN_PERSISTENCIA["sentencias"]:
+        assert not hasattr(sentencias, nombre), nombre
+        assert nombre not in sentencias.__all__, nombre
+
+
+def test_f028_t15_el_mapeo_ya_no_sabe_reconstruir_una_aprobacion():
+    """T15 · `fila_a_aprobacion` se va con el `SELECT` que le daba de comer.
+
+    Su docstring decía que el orden de las columnas era el de
+    `select_aprobacion` «y por eso las dos cosas viven pegadas». Retirar una y
+    dejar la otra rompería justo esa pareja.
+    """
+    from infrastructure.persistencia import mapeo
+
+    for nombre in RETIRADO_DE_F026_EN_PERSISTENCIA["mapeo"]:
+        assert not hasattr(mapeo, nombre), nombre
+        assert nombre not in mapeo.__all__, nombre
+
+
+def test_f028_t15_el_puerto_ya_no_declara_las_operaciones_de_f026():
+    """T15 · el contrato del almacén deja de prometer lo que nadie implementa.
+
+    Importa más que en los otros dos sitios: `RepositorioPartesPort` es
+    `runtime_checkable`, y toda la suite comprueba con él que los dobles
+    puedan sustituir al adaptador. Un método que siguiera en el puerto
+    obligaría a cada doble a arrastrarlo para siempre.
+    """
+    for nombre in RETIRADO_DE_F026_EN_PERSISTENCIA["puerto"]:
+        assert not hasattr(RepositorioPartesPort, nombre), nombre
+        assert not hasattr(RepositorioPostgres, nombre), nombre
+        assert not hasattr(RepositorioEnMemoria, nombre), nombre
+
+
+def test_f028_t15_r57_guardar_la_validacion_ya_no_revoca_nada(conexion, repositorio):
+    """R57 · el guardado del veredicto vuelve a ser **una sola sentencia**.
+
+    F-026 le colgaba `revocar_aprobacion_si_cambio` en la misma transacción
+    porque la vigencia se resolvía al escribir (su D-F). F-028 la resuelve al
+    derivar —`estado.py::_aprueba_lo_que_hay` compara la huella apuntada con la
+    del veredicto de ahora (R19)—, así que esa segunda sentencia ya no tiene
+    nada que hacer.
+
+    Es el camino **más transitado del servicio**: se recorre una vez por parte
+    y por subida, 22 veces en una remesa real. Lo que se comprueba aquí es que
+    ninguna de esas 22 vuelve a tocar la tabla congelada.
+    """
+    validacion = _veredicto(apto=True)
+
+    repositorio.guardar_validacion(resultado=validacion, ahora=AHORA)
+
+    assert conexion.veces_con(f"{ESQUEMA}.aprobaciones") == 0
+    assert conexion.veces_con(f"{ESQUEMA}.validaciones") == 1
+    # **Una** sentencia, no dos. Es la afirmación entera de R57: `_escribir`
+    # ejecuta la que se le pasa y las que le cuelguen en `ademas`, así que
+    # contar las ejecutadas es lo único que distingue «se retiró la llamada»
+    # de «se retiró la función y alguien la repuso por otro camino».
+    assert len(conexion.ejecutadas) == 1

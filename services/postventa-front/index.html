@@ -140,22 +140,49 @@
                         class="w-full px-4 py-3 text-left hover:bg-slate-50"
                         :class="parteAbierto && parteAbierto.hash === parte.hash ? 'bg-slate-50' : ''">
                   <div class="flex items-center gap-2">
-                    <!-- F-026 R36 · el aprobado lleva el MISMO verde con
-                         anillo, no el verde liso. Uno lo dio por bueno la
-                         máquina y el otro lo dio por bueno una persona a pesar
-                         de la máquina: pintarlos igual borra exactamente el
-                         dato que esta feature existe para registrar. -->
+                    <!-- F-028 R38, R39 · las CUATRO marcas, y por qué son seis
+                         clases. `pendiente` se pinta ámbar o rojo —el único
+                         resto de color que queda del veredicto— y `aprobado` se
+                         pinta de dos maneras: verde liso si lo dio por bueno la
+                         máquina y verde CON ANILLO si lo dio por bueno una
+                         persona a pesar de la máquina. Pintarlos igual borra
+                         exactamente el dato que F-026 y F-028 existen para
+                         registrar (R39).
+
+                         Y las dos marcas nuevas no son cosméticas: un
+                         `rechazado` ya lo miró alguien, así que no puede
+                         parecer «pendiente de mirar» —de ahí el gris apagado y
+                         el tachado—, y un `cerrado` no admite ningún gesto
+                         (R41), de ahí el azul y el candado. -->
                     <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                           :class="{
                             'bg-emerald-500': parte.semaforo === 'verde',
                             'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parte.semaforo === 'aprobado',
                             'bg-amber-400': parte.semaforo === 'ambar',
                             'bg-red-500': parte.semaforo === 'rojo',
+                            'bg-slate-400 opacity-60': parte.semaforo === 'rechazado',
+                            'bg-sky-600': parte.semaforo === 'cerrado',
                             'bg-slate-300 animate-pulse': parte.estado === 'leyendo' || parte.estado === 'validando',
                             'bg-slate-300': parte.estado === 'pendiente',
                             'bg-red-700': parte.estado === 'error'
                           }"></span>
-                    <span class="font-mono text-xs text-slate-500" x-text="parte.hash.slice(0, 8)"></span>
+                    <span class="font-mono text-xs text-slate-500"
+                          :class="parte.semaforo === 'rechazado' ? 'line-through text-slate-400' : ''"
+                          x-text="parte.hash.slice(0, 8)"></span>
+                    <!-- R38 · el color solo no basta: hay que poder LEER en qué
+                         estado está, y si lo decidió una persona o la máquina
+                         (R39). Sin el `oid`, sin correo y sin nombre (R42):
+                         quien audite lo lee en la base. -->
+                    <span x-show="etiquetaDeEstado(parte)"
+                          class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          :class="{
+                            'bg-emerald-100 text-emerald-800': parte.semaforo === 'verde' || parte.semaforo === 'aprobado',
+                            'bg-amber-100 text-amber-800': parte.semaforo === 'ambar',
+                            'bg-red-100 text-red-800': parte.semaforo === 'rojo',
+                            'bg-slate-200 text-slate-500': parte.semaforo === 'rechazado',
+                            'bg-sky-100 text-sky-800': parte.semaforo === 'cerrado'
+                          }"
+                          x-text="(estaCerrado(parte) ? '🔒 ' : '') + etiquetaDeEstado(parte) + (decidioUnaPersona(parte) ? ' · una persona' : '')"></span>
                     <!-- F-025 R13 · en cuál de los tres pasos está este parte
                          ahora mismo. Con la cola a tres hay siempre tres líneas
                          moviéndose: eso es lo que distingue «está trabajando»
@@ -168,13 +195,13 @@
                     <span x-text="parte.origen"></span>
                     · pág. <span x-text="(parte.paginas_origen || []).join(', ')"></span>
                   </p>
-                  <!-- R36 · el color solo no basta: hay que poder leer que
-                       esto lo aprobó una persona. Sin el `oid`, sin correo y
-                       sin nombre (R38): quien audite lo lee en la base. -->
-                  <p x-show="estaAprobado(parte)" class="mt-1 text-xs text-sky-700">
-                    Aprobado por revisión humana · venía de
-                    <span x-text="destinoDeOrigen(parte)"></span>
-                    · <span x-text="fechaDeAprobacion(parte)"></span>
+                  <!-- R39, R43 · «lo decidió una persona» y cuándo. Ni el
+                       `oid`, ni el correo, ni el nombre, ni el motivo (R42): el
+                       motivo es texto libre y puede llevar dentro el nombre de
+                       un cliente; quien audite lo lee en la base. -->
+                  <p x-show="decidioUnaPersona(parte)" class="mt-1 text-xs text-sky-700">
+                    Lo decidió <strong>una persona</strong> ·
+                    <span x-text="fechaDeDecision(parte)"></span>
                   </p>
                   <ul x-show="parte.validacion && parte.validacion.motivos.length"
                       class="mt-1 list-disc pl-4 text-xs text-slate-500">
@@ -275,64 +302,132 @@
                    x-text="mensajeAutoguardado"></p>
               </div>
 
-              <!-- ── F-026 · la aprobación humana (R35-R39) ──────────────────
-                   El gesto va AQUÍ, en el detalle y con el PDF delante, que es
-                   donde se mira una firma. Nunca en la lista: aprobar es de UN
-                   parte, con ese parte delante (R28, R35).
+              <!-- ── F-028 · el estado del parte y los dos gestos (R38-R43) ──
+                   Los gestos van AQUÍ, en el detalle y con el PDF delante, que
+                   es donde se mira una firma. Nunca en la lista: la decisión es
+                   de UN parte, con ese parte delante (R36).
 
-                   Y no pide una segunda confirmación (R29). Aprobar no escribe
-                   en ningún sistema ajeno —escribe en el esquema propio y se
-                   deshace revalidando—; la confirmación única de F-025 sigue
-                   siendo la única que precede a una escritura externa. -->
+                   Y no piden una segunda confirmación (R29). Cambiar el estado
+                   no escribe en ningún sistema ajeno —escribe en el esquema
+                   propio—; la confirmación única de F-025 sigue siendo la única
+                   que precede a una escritura externa.
+
+                   Toda la sección se pinta contra métodos de `js/app.js`, y el
+                   `oid` no aparece ni dentro de una condición: lo pregunta
+                   `hayIdentidad()` (R42). -->
               <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
-                <!-- R36, R37 · lo que ya está aprobado: de dónde se rescató y
-                     cuándo. Ni el identificador de quien aprobó, ni su correo,
-                     ni su nombre (R38): eso se audita en la base. -->
-                <template x-if="estaAprobado(parteAbierto)">
-                  <p class="text-sm text-sky-800">
-                    <span class="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-offset-1 ring-sky-600"></span>
-                    <strong>Aprobado por revisión humana.</strong>
-                    Venía de <span x-text="destinoDeOrigen(parteAbierto)"></span>
-                    · aprobado el <span x-text="fechaDeAprobacion(parteAbierto)"></span>.
-                    Entra en la tanda de archivo y cierre como si fuera apto.
+                <!-- R38, R39, R43 · en qué estado consta y quién lo decidió. Ni
+                     el identificador de quien decidió, ni su correo, ni su
+                     nombre, ni el motivo que escribió (R42, R52): eso se audita
+                     en la base. -->
+                <p x-show="estadoDelParte()" class="text-sm text-slate-700">
+                  <span class="mr-1 inline-block h-2.5 w-2.5 rounded-full"
+                        :class="{
+                          'bg-emerald-500': parteAbierto.semaforo === 'verde',
+                          'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parteAbierto.semaforo === 'aprobado',
+                          'bg-amber-400': parteAbierto.semaforo === 'ambar',
+                          'bg-red-500': parteAbierto.semaforo === 'rojo',
+                          'bg-slate-400 opacity-60': parteAbierto.semaforo === 'rechazado',
+                          'bg-sky-600': parteAbierto.semaforo === 'cerrado'
+                        }"></span>
+                  Este parte consta
+                  <strong x-text="etiquetaDeEstado(parteAbierto)"></strong>.
+                  <span x-show="decidioUnaPersona(parteAbierto)">
+                    Lo decidió <strong>una persona</strong> el
+                    <span x-text="fechaDeDecision(parteAbierto)"></span>.
+                  </span>
+                  <span x-show="!decidioUnaPersona(parteAbierto) && !estaCerrado(parteAbierto)"
+                        class="text-slate-500">
+                    Lo dice la validación automática: no lo ha decidido nadie.
+                  </span>
+                </p>
+
+                <!-- R43 · el SEGUNDO hecho, que no es el mismo que el primero:
+                     había una decisión de una persona y ha dejado de contar
+                     porque el veredicto cambió. Sin decirlo, la decisión
+                     desaparecería de la pantalla en silencio y quien la tomó
+                     creería que sigue en pie. No acusa a nadie: corregir un
+                     campo es justo lo que la pantalla pide hacer. -->
+                <p x-show="parteAbierto.avisoEstado" x-text="parteAbierto.avisoEstado"
+                   class="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800"></p>
+
+                <!-- R41 · el parte cerrado NO ofrece ningún gesto, y la pantalla
+                     EXPLICA por qué en vez de fallar. Lo escrito en SharePoint y
+                     en el ERP no se deshace desde aquí, y cambiar el estado solo
+                     conseguiría que nuestra base dijera algo distinto del ERP
+                     (R7). -->
+                <template x-if="estaCerrado(parteAbierto)">
+                  <p class="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-2 text-sm text-sky-900">
+                    🔒 <strong>Esta incidencia ya está cerrada en el ERP, así que
+                    el estado de este parte no se puede cambiar desde aquí.</strong>
+                    Lo que se subió a SharePoint y lo que se escribió en Sigrid no
+                    se deshace desde esta pantalla: si hay que reabrir la
+                    incidencia, se reabre en Sigrid.
                   </p>
                 </template>
 
-                <div x-show="esAprobable()" class="flex flex-wrap items-center gap-3">
-                  <button type="button" @click="aprobarParte()"
-                          :disabled="!usuario.usuarioOid || !remesaId"
-                          class="rounded bg-sky-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
-                    Aprobar este parte
-                  </button>
-                  <span class="text-xs text-slate-500">
-                    La validación lo rechazó, pero el papel está bien: queda
-                    registrado quién lo aprueba y cuándo.
-                  </span>
-                </div>
+                <!-- R40 · los DOS gestos, mientras el parte no esté cerrado, y
+                     el campo de motivo delante de los dos. Al rechazar es
+                     obligatorio (R11) y al aprobar es opcional (R12). -->
+                <template x-if="!estaCerrado(parteAbierto)">
+                  <div class="mt-3 space-y-3">
+                    <label class="block text-xs">
+                      <span class="text-slate-500">
+                        Motivo de la decisión
+                        <span class="text-slate-400">— obligatorio para rechazar, opcional al aprobar</span>
+                      </span>
+                      <textarea x-model="motivoDeRechazo" rows="2"
+                                :maxlength="LIMITE_MOTIVO"
+                                placeholder="Qué hay que arreglar en este parte"
+                                class="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-sm"></textarea>
+                    </label>
 
-                <!-- R4 · sin saber quién decide no se puede registrar la
-                     decisión. Se dice, en vez de dejar un botón deshabilitado
-                     sin explicación. -->
-                <p x-show="esAprobable() && !usuario.usuarioOid"
-                   class="mt-2 text-xs text-amber-700">
-                  No se ha podido saber quién eres, así que no se puede
-                  registrar quién aprueba. Vuelve a entrar desde el enlace de la
-                  aplicación.
-                </p>
+                    <div class="flex flex-wrap items-center gap-3">
+                      <button type="button" @click="aprobarParte()"
+                              :disabled="!puedeDecidir()"
+                              class="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                        Aprobar este parte
+                      </button>
+                      <button type="button" @click="rechazarParte()"
+                              :disabled="!puedeRechazar()"
+                              class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                        Rechazar este parte
+                      </button>
+                    </div>
 
-                <!-- R39 · cuando no es aprobable, en vez del botón, qué hay que
-                     corregir. Aquí no hay nada que decidir: hay algo que
-                     teclear, y teclearlo ya funciona sin aprobar nada. -->
-                <p x-show="!esAprobable() && !estaAprobado(parteAbierto)"
-                   class="text-xs text-slate-500">
-                  Este parte no se puede aprobar. Solo se aprueban los que la
-                  validación rechazó por lo que el cliente escribió a mano o
-                  por la firma: si le falta el <strong>código de obra</strong> o el
-                  <strong>número de incidencia</strong>, corrígelo arriba y
-                  revalida.
-                </p>
+                    <!-- R11 · por qué el botón de rechazar está apagado. Un
+                         botón deshabilitado sin explicación deja a quien mira
+                         buscando el fallo en otro sitio. -->
+                    <p x-show="!hayMotivo()" class="text-xs text-slate-500">
+                      Para <strong>rechazar</strong> hace falta escribir el motivo:
+                      quien vuelva a mirar este parte —otra persona, o tú dentro de
+                      un mes— necesita saber qué hay que arreglar.
+                    </p>
 
-                <p x-show="mensajeAprobacion" x-text="mensajeAprobacion"
+                    <!-- R14 · sin saber quién decide no se puede registrar la
+                         decisión. Se dice, en vez de dejar dos botones
+                         deshabilitados sin explicación. -->
+                    <p x-show="!hayIdentidad()" class="text-xs text-amber-700">
+                      No se ha podido saber quién eres, así que no se puede
+                      registrar quién decide. Vuelve a entrar desde el enlace de la
+                      aplicación.
+                    </p>
+                    <p x-show="hayIdentidad() && !remesaId" class="text-xs text-amber-700">
+                      La remesa no consta registrada, así que la decisión no
+                      tendría de qué colgar. Vuelve a subir la remesa.
+                    </p>
+
+                    <p class="text-xs text-slate-500">
+                      Decidir aquí no archiva ni cierra nada: un parte aprobado
+                      entra en <strong>la tanda</strong> y se escribe al confirmarla.
+                      Si le falta el <strong>código de obra</strong> o el
+                      <strong>número de incidencia</strong>, corrígelo arriba y
+                      revalida antes de aprobarlo.
+                    </p>
+                  </div>
+                </template>
+
+                <p x-show="mensajeEstado" x-text="mensajeEstado"
                    class="mt-2 text-xs text-slate-600"></p>
               </div>
 
@@ -365,11 +460,13 @@
                class="rounded-lg border border-slate-200 bg-white p-6">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar y cerrar</h2>
         <p class="mt-2 text-sm text-slate-600">
-          <!-- F-026 R23 · en la tanda entran los aptos **y** los aprobados por
-               una persona. Decir «en verde» dejaría la cuenta sin explicar:
-               los aprobados están dentro de `pendientes()` y no son verdes. -->
+          <!-- F-028 R33 · en la tanda entra lo que consta **aprobado**, lo diga
+               la validación automática o una persona. Y nada más: un parte apto
+               que alguien rechazó a mano se queda fuera, que es medio encargo
+               de la feature. -->
           <span x-text="pendientes().length"></span> parte(s) por archivar y
-          cerrar: los aptos y los que ha aprobado una persona.
+          cerrar: los que constan <strong>aprobados</strong>, lo diga la
+          validación automática o una persona.
         </p>
         <!-- F-019 R27 · los aptos que NO se pudieron guardar no entran en el
              botón, y hay que decir cuántos son: si desaparecieran de la cuenta

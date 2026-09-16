@@ -27,6 +27,7 @@ const assert = require("node:assert/strict");
 
 const {
   ESTADOS_MANUALES,
+  avisoDeEstado,
   LIMITE_MOTIVO,
   cuerpoDeArchivo,
   cuerpoDeCambioDeEstado,
@@ -684,4 +685,80 @@ test("f028: un guardado fallido no inventa ningún estado", async () => {
   assert.equal(guardado.ok, false);
   assert.equal(guardado.estado, null);
   assert.match(guardado.motivo, /remesa/);
+});
+
+// ==========================================================================
+// T18 · R43 · los DOS hechos distintos que la pantalla no puede confundir
+// ==========================================================================
+//
+// R43 pide distinguir «lo decidió una persona» de «el veredicto cambió y la
+// aprobación dejó de contar». El primero sale del bloque: `decidido_por_persona`
+// lo dice. El segundo **no se puede leer de una sola respuesta**, y ese es el
+// problema: cuando una aprobación caduca (R19), el backend deja de firmarla y
+// lo que llega es un bloque con `decidido_por_persona: false`, igual que el de
+// un parte que nunca decidió nadie.
+//
+// Lo que sí distingue los dos casos es el par de respuestas consecutivas: había
+// una decisión firmada y, tras revalidar, ya no la hay. Eso es lo que compara
+// esta función, y por eso vive aquí y no en `js/app.js`: comparar dos bloques
+// es una decisión, y las decisiones se prueban.
+//
+// El texto **no acusa a nadie** (R43): dice que el veredicto cambió, no que
+// alguien hiciera algo mal.
+
+test("f028 R43: si había decisión de una persona y deja de haberla, se avisa", () => {
+  const aviso = avisoDeEstado(
+    estadoInventado("aprobado", true),
+    estadoInventado("pendiente", false),
+  );
+
+  assert.match(aviso, /veredicto/i);
+  assert.ok(aviso.length > 0);
+});
+
+test("f028 R43: el aviso no acusa a nadie ni nombra a quien decidió", () => {
+  const aviso = avisoDeEstado(
+    estadoInventado("aprobado", true),
+    estadoInventado("pendiente", false),
+  );
+
+  for (const prohibido of ["oid", "correo", "usuario", "culpa", "error"]) {
+    assert.ok(
+      aviso.toLowerCase().indexOf(prohibido) === -1,
+      `el aviso de R43 dice «${prohibido}»: es un hecho, no una acusación`,
+    );
+  }
+});
+
+test("f028 R43: mientras la decisión siga firmada no se avisa de nada", () => {
+  assert.equal(
+    avisoDeEstado(estadoInventado("aprobado", true), estadoInventado("aprobado", true)),
+    "",
+  );
+});
+
+test("f028 R43: un parte que nunca decidió nadie no estrena ningún aviso", () => {
+  // El caso que NO se puede confundir con el de arriba: los dos acaban en un
+  // bloque sin firmar, y solo uno de los dos tenía algo que perder.
+  assert.equal(
+    avisoDeEstado(estadoInventado("pendiente", false), estadoInventado("aprobado", false)),
+    "",
+  );
+  assert.equal(avisoDeEstado(null, estadoInventado("pendiente", false)), "");
+});
+
+test("f028 R43: un rechazo que sustituye a una aprobación tampoco es una caducidad", () => {
+  // Lo decidió una persona y lo sigue decidiendo una persona: no ha caducado
+  // nada, ha cambiado de opinión alguien. Avisar aquí sería ruido.
+  assert.equal(
+    avisoDeEstado(estadoInventado("aprobado", true), estadoInventado("rechazado", true)),
+    "",
+  );
+});
+
+test("f028 R43: sin bloque nuevo tampoco se inventa un aviso", () => {
+  // `guardarParte` devuelve `estado: null` cuando el guardado falló, y un
+  // guardado fallido no sabe nada del estado: decir que la decisión caducó
+  // sería afirmar algo que nadie ha comprobado.
+  assert.equal(avisoDeEstado(estadoInventado("aprobado", true), null), "");
 });

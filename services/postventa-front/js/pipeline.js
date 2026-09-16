@@ -37,21 +37,25 @@
   /** El umbral del dominio (`domain/models/firma.py::UMBRAL_CONFIANZA`). */
   const UMBRAL_CONFIANZA = 50;
 
-  /**
-   * F-026 R6 · los DOS motivos sobre los que una persona puede decidir.
-   *
-   * Copia de `domain/models/aprobacion.py::MOTIVOS_APROBABLES`, igual que
-   * `UMBRAL_CONFIANZA` y `CAMPOS_DEL_PARTE` son copias de sus constantes del
-   * dominio. **La decisión de verdad la toma el backend**, que vuelve a
-   * evaluarla en cada petición: esto solo evita ofrecer un botón que va a
-   * responder 409.
-   *
-   * Los otros dos motivos de F-004 —`codigo_obra_no_legible` y
-   * `numero_incidencia_no_legible`— no están, y no es política: ahí no hay
-   * nada que decidir, hay algo que teclear, y teclearlo ya funciona sin
-   * aprobar nada.
-   */
-  const MOTIVOS_APROBABLES = ["observaciones_manuscritas", "firma_no_humana"];
+  // ---------------------------------------------------------------------
+  // Enmienda del 2026-09-16 · F-028 T18
+  // ---------------------------------------------------------------------
+  // Aquí vivía `MOTIVOS_APROBABLES`, copia de
+  // `domain/models/aprobacion.py::MOTIVOS_APROBABLES`, y con él `esAprobable`
+  // y `cuerpoDeAprobacion`.
+  //
+  // Se van los tres porque F-028 **deroga la pregunta**: una persona puede
+  // mover a `aprobado` o a `rechazado` cualquier parte que no esté `cerrado`
+  // (R9, R10), venga el veredicto de donde venga. T15 ya retiró `es_aprobable`
+  // del dominio por lo mismo.
+  //
+  // Y dejarlos vivos no era neutral: `esAprobable` escondía el gesto en los
+  // partes **aptos**, que son justo los que esta feature existe para poder
+  // rechazar antes de que se archiven.
+  //
+  // Su sustituto es `cuerpoDeCambioDeEstado`, que no pregunta si el parte es
+  // aprobable y sí exige lo que hace que la decisión signifique algo: los dos
+  // destinos manuales, quién decide, el motivo al rechazar y la remesa.
 
   /**
    * F-028 · los CUATRO estados de un parte, tal y como los nombra el backend
@@ -116,6 +120,19 @@
 
   /** F-028 R11 · el estado cuyo motivo es obligatorio. */
   const ESTADO_RECHAZADO = "rechazado";
+
+  /**
+   * F-028 R43 · lo que se le dice a quien revisa cuando su decisión caducó.
+   *
+   * **Es un hecho, no una acusación.** Dice que el veredicto cambió —que es lo
+   * que pasó— y no que nadie hiciera nada mal: quien corrigió un campo estaba
+   * haciendo justo lo que la pantalla le pide, y lo que ocurre después es una
+   * consecuencia del diseño (R19), no un error suyo.
+   */
+  const AVISO_DECISION_CADUCADA =
+    "La decisión que había tomado una persona sobre este parte dejó de " +
+    "contar: el veredicto ha cambiado al revalidar, así que hay que volver " +
+    "a decidir sobre el veredicto nuevo.";
 
   /** Lo que `/api/archivar` acepta, además del fichero. NADA personal (R29). */
   const CAMPOS_DE_ARCHIVO = [
@@ -246,6 +263,44 @@
   }
 
   /**
+   * F-028 R43 · ¿la decisión de una persona ha dejado de contar?
+   *
+   * R43 pide distinguir dos hechos: «lo decidió una persona» y «el veredicto
+   * cambió y la decisión dejó de contar». El primero lo dice el propio bloque
+   * —`decidido_por_persona`—; el segundo **no se puede leer de una sola
+   * respuesta**, y ahí está el problema: cuando una aprobación caduca (R19), el
+   * backend deja de firmarla y lo que llega es un bloque con
+   * `decidido_por_persona: false`, idéntico al de un parte que nunca miró
+   * nadie.
+   *
+   * Lo que sí distingue los dos casos es **el par de respuestas consecutivas**:
+   * había una decisión firmada y, después de revalidar, ya no la hay. Eso es lo
+   * que compara esta función, y por eso vive aquí y no en `js/app.js`: comparar
+   * dos bloques es una decisión, y las decisiones se prueban.
+   *
+   * Esto **no deriva ningún estado** (R17): los dos bloques vienen del backend
+   * tal cual y aquí no se calcula ninguno, solo se mira si la firma se ha
+   * perdido por el camino.
+   *
+   * Callarse es el caso normal, y hay tres formas de llegar a él: que la
+   * decisión siga firmada, que nunca la hubiera, y que no haya bloque nuevo
+   * —un guardado fallido no sabe nada del estado, y decir que la decisión
+   * caducó sería afirmar algo que nadie ha comprobado—.
+   *
+   * @param {object} anterior El bloque `estado` que tenía el parte.
+   * @param {object} nuevo El que acaba de devolver el backend.
+   * @returns {string} El aviso de R43, o cadena vacía si no hay nada que decir.
+   */
+  function avisoDeEstado(anterior, nuevo) {
+    const habia = Boolean(anterior && anterior.decidido_por_persona);
+    const sigue = Boolean(nuevo && nuevo.decidido_por_persona);
+    if (habia && !sigue && nuevo) {
+      return AVISO_DECISION_CADUCADA;
+    }
+    return SIN_MARCA;
+  }
+
+  /**
    * F-028 R38, R39 · la marca de este parte, a partir de **su estado**.
    *
    * **El estado lo manda el backend y aquí solo se pinta** (R17). Hasta F-026
@@ -299,33 +354,6 @@
         validacion.veredicto === VEREDICTO_APTO &&
         validacion.destino === DESTINO_ARCHIVO,
     );
-  }
-
-  /**
-   * F-026 R6-R10 · ¿puede una persona aprobar este parte?
-   *
-   * Tres condiciones, y las tres hacen falta: hay veredicto, **no es apto**
-   * —lo que la máquina dio por bueno no tiene nada que aprobar— y **todos**
-   * sus motivos están en la lista. Basta uno fuera para que no se pueda: el
-   * parte que trae observaciones y además ha perdido el código de obra
-   * archivaría en una carpeta inventada.
-   *
-   * Es la copia en pantalla de `domain/models/aprobacion.py::es_aprobable`, y
-   * sirve para no ofrecer un gesto que el backend va a rechazar (R39). Quien
-   * decide sigue siendo el backend, que lo vuelve a evaluar con el veredicto
-   * que él mismo recalcula (R5).
-   */
-  function esAprobable(validacion) {
-    if (!validacion || validacion.veredicto === VEREDICTO_APTO) {
-      return false;
-    }
-    const motivos = validacion.motivos || [];
-    if (!motivos.length) {
-      return false;
-    }
-    return motivos.every(function (motivo) {
-      return MOTIVOS_APROBABLES.indexOf(motivo && motivo.codigo) !== -1;
-    });
   }
 
   /**
@@ -770,61 +798,6 @@
       extraccion: aplicarEdiciones(parte.extraccion, parte.ediciones),
       firma: parte.firma,
     };
-  }
-
-  /**
-   * F-026 · el cuerpo de `POST /api/aprobar`: el de guardar **más dos claves**.
-   *
-   * El backend hace las dos cosas en una sola llamada —guarda el parte con su
-   * veredicto y escribe la aprobación con la huella de *ese mismo* veredicto—,
-   * así que necesita exactamente lo que necesita `/api/parte`: los nueve
-   * campos y la lectura de la firma. Recortar la extracción no protegería
-   * nada y sí cambiaría el veredicto que se aprueba: sin las observaciones, el
-   * parte dejaría de traer `observaciones_manuscritas` y ni siquiera sería
-   * aprobable. Lo que F-026 añade, y es todo lo que añade, son `usuario_oid` y
-   * `confirmado`.
-   *
-   * Lo que **no** lleva, igual que `cuerpoDeParte`: ni los bytes del PDF —el
-   * documento vive en SharePoint (R12)— ni ningún veredicto ya hecho, que el
-   * backend recalcula (R5, R19). Si llegara hecho, quien llama se declararía
-   * aprobable y aprobaría un parte al que le falta el código de obra.
-   *
-   * `confirmado` es el **booleano** de JSON, que es lo único que el backend
-   * acepta. Y no es una segunda confirmación de pantalla (R29): el botón es el
-   * acto explícito, y la confirmación única de F-025 sigue siendo la única que
-   * precede a una escritura externa.
-   *
-   * Se niega a componer nada que no sea aprobable o que no tenga remesa: no
-   * basta con no pintar el botón, porque aunque se pulse dos veces, aquí se
-   * para.
-   */
-  function cuerpoDeAprobacion(parte, opciones) {
-    const ajustes = opciones || {};
-    if (!esAprobable(parte && parte.validacion)) {
-      throw new Error(
-        "este parte no se puede aprobar: solo se aprueban los que la " +
-          "validación rechazó por observaciones manuscritas o por la firma. " +
-          "Si le falta el código de obra o el número de incidencia, hay que " +
-          "corregirlo y revalidar",
-      );
-    }
-    if (!ajustes.usuarioOid) {
-      throw new Error(
-        "no se sabe quién aprueba este parte: sin el identificador del " +
-          "usuario no se puede registrar quién tomó la decisión",
-      );
-    }
-    if (!ajustes.remesaId) {
-      throw new Error(
-        "no hay ninguna remesa registrada para este parte: vuelve a subir la " +
-          "remesa para que quede constancia antes de aprobarlo",
-      );
-    }
-
-    const cuerpo = cuerpoDeParte(parte, ajustes.remesaId);
-    cuerpo.usuario_oid = ajustes.usuarioOid;
-    cuerpo.confirmado = true;
-    return cuerpo;
   }
 
   /**
@@ -1313,21 +1286,29 @@
     valorDeCampo: valorDeCampo,
     valoresDeCampos: valoresDeCampos,
     cuerpoDeArchivo: cuerpoDeArchivo,
-    // F-026 · la aprobación humana: qué se puede aprobar, qué circula y qué
-    // viaja en la petición.
-    MOTIVOS_APROBABLES: MOTIVOS_APROBABLES,
+    // F-026, conservado · quién entra en el circuito. La aprobación humana en
+    // sí se fue con F-028 T18: ver el recuadro del principio del fichero.
     SEMAFORO_APROBADO: SEMAFORO_APROBADO,
-    esAprobable: esAprobable,
     esCirculable: esCirculable,
-    cuerpoDeAprobacion: cuerpoDeAprobacion,
     // F-028 · el estado del parte: qué se puede pedir, qué viaja al pedirlo y
     // qué marca se pinta con lo que contesta el backend.
+    //
+    // Los cuatro literales de estado se exportan para que `js/app.js` compare
+    // contra ellos en vez de escribirlos otra vez: dos literales para el mismo
+    // estado divergen en la primera corrección, y el que manda es el del
+    // backend.
+    ESTADO_APROBADO: ESTADO_APROBADO,
+    ESTADO_RECHAZADO: ESTADO_RECHAZADO,
+    ESTADO_PENDIENTE: ESTADO_PENDIENTE,
+    ESTADO_CERRADO: ESTADO_CERRADO,
     ESTADOS_MANUALES: ESTADOS_MANUALES,
     LIMITE_MOTIVO: LIMITE_MOTIVO,
     SEMAFORO_RECHAZADO: SEMAFORO_RECHAZADO,
     SEMAFORO_CERRADO: SEMAFORO_CERRADO,
+    AVISO_DECISION_CADUCADA: AVISO_DECISION_CADUCADA,
     cuerpoDeCambioDeEstado: cuerpoDeCambioDeEstado,
     estadoDe: estadoDe,
+    avisoDeEstado: avisoDeEstado,
     cuerpoDeCierre: cuerpoDeCierre,
     cuerpoDeGrafico: cuerpoDeGrafico,
     estaAdjuntado: estaAdjuntado,

@@ -29,6 +29,19 @@ Lo que fija:
 **Control negativo, la mitad**: se comprueba que algo **no** está. Que la
 decisión quede registrada no exige publicarla en la pantalla de todo el que
 mire la remesa; quien necesite auditarla la lee en la base.
+
+> **Enmienda del 2026-09-16 · F-028 T18.** De los catorce casos que tenía este
+> fichero quedan **siete**. Los otros siete se retiraron con su recuadro
+> fechado, cada uno en el sitio donde vivía, y su sustituto está en
+> `tests/test_f028_front.py`: F-028 deroga la pregunta «¿es este parte
+> aprobable?» (R9, R10), retira el bloque `aprobacion` de la respuesta (T14) y
+> el endpoint que lo emitía (T15).
+>
+> Lo que **sigue aquí** es lo que F-028 conserva, no lo que sobrevivió por
+> descuido: que el gesto vive en el detalle y no en la lista (R35, hoy R36 de
+> F-028), que no se arma ninguna segunda confirmación (R29, hoy R29 y R35), que
+> el aprobado **por una persona** no se pinta como el verde liso (R36, hoy R39)
+> y que la tanda no habla solo de verdes (R23, hoy R33).
 """
 
 from __future__ import annotations
@@ -92,30 +105,25 @@ def _bloque(texto: str, desde: str, hasta: str) -> str:
 # ===========================================================================
 
 
-def test_f026_r22_el_parte_declara_su_aprobacion_desde_que_nace(app):
-    """Sin declararla en `_parteInicial`, Alpine no la hace reactiva.
-
-    Es exactamente el defecto que F-025 R13 documentó con `paso`: una clave
-    añadida a mitad de proceso no repinta la fila. Aquí lo que no repintaría es
-    la marca que distingue un parte aprobado de uno que siempre fue verde, que
-    es lo que esta feature existe para enseñar.
-    """
-    inicial = _bloque(app, "_parteInicial(crudo) {", "async _procesarRemesa(")
-
-    assert "aprobacion:" in inicial, (
-        "`_parteInicial` no declara `aprobacion`: la marca del parte aprobado "
-        "no repintaría al aprobarlo"
-    )
-
-
-def test_f026_la_aprobacion_nace_vacia_y_no_se_inventa_ninguna(app):
-    """Un parte recién troceado no lo ha aprobado nadie."""
-    inicial = _bloque(app, "_parteInicial(crudo) {", "async _procesarRemesa(")
-
-    assert re.search(r"aprobacion:\s*(null|crudo\.aprobacion \|\| null)", inicial), (
-        "la aprobación tiene que nacer vacía: dársela por hecha sería dar por "
-        "aprobado un parte que nadie ha mirado"
-    )
+# ---------------------------------------------------------------------------
+# Enmienda del 2026-09-16 · F-028 T18 · la aprobación de F-026 se muda entera
+# ---------------------------------------------------------------------------
+# Aquí vivían dos casos sobre el bloque `aprobacion` del parte —que se declara
+# desde que nace y que nace vacío—. Se retiran porque **ese bloque ya no lo
+# emite nadie**: T14 lo quitó de la respuesta del backend y T15 retiró el
+# endpoint entero. Dejarlos adaptados a `estadoParte` con nombre de F-026 habría
+# escondido que lo que se prueba es otra cosa.
+#
+# Lo que probaban —que Alpine haga reactivo lo que el backend dice del parte, o
+# la marca no repinta— NO se pierde:
+#
+#   `tests/test_f028_front.py`
+#     · `test_f028_r38_el_parte_declara_su_estado_desde_que_nace`, que además
+#       exige `avisoEstado` (R43);
+#     · `test_f028_el_estado_nace_vacio_y_no_se_inventa_ninguno`;
+#     · y `test_f028_el_parte_ya_no_declara_la_aprobacion_de_f026`, que es el
+#       control negativo de esta misma retirada.
+# ---------------------------------------------------------------------------
 
 
 # ===========================================================================
@@ -149,19 +157,22 @@ def test_f026_r29_aprobar_no_pasa_por_el_modulo_de_confirmacion(app):
 # ===========================================================================
 
 
-def test_f026_el_front_no_decide_la_aprobacion_en_app_js(app):
-    """`app.js` mueve estado y llama a los módulos, como siempre.
-
-    La regla de oro del front (`design.md` §3 de F-007): si algo merece un
-    test, no vive aquí. Lo que decide qué es aprobable y qué circula está en
-    `js/pipeline.js`, que sí tiene tests, y lo vuelve a decidir el backend.
-    """
-    assert "window.Pipeline.esAprobable(" in app
-    assert "window.Pipeline.cuerpoDeAprobacion(" in app
-    assert "MOTIVOS_APROBABLES" not in app, (
-        "la lista de motivos aprobables no se duplica en `app.js`: vive en "
-        "`js/pipeline.js` y, de verdad, en el dominio"
-    )
+# ---------------------------------------------------------------------------
+# Enmienda del 2026-09-16 · F-028 T18
+# ---------------------------------------------------------------------------
+# Aquí vivía `test_f026_el_front_no_decide_la_aprobacion_en_app_js`, que exigía
+# `window.Pipeline.esAprobable(` y `window.Pipeline.cuerpoDeAprobacion(` en
+# `js/app.js`. Se retira porque F-028 **deroga la pregunta** «¿es este parte
+# aprobable?» (R9, R10): una persona mueve a `aprobado` o a `rechazado`
+# cualquier parte que no esté `cerrado`, y las dos funciones se fueron de
+# `js/pipeline.js` con T18.
+#
+# Lo que probaba —que `app.js` no decide nada y llama a los módulos que sí
+# tienen tests— NO se pierde, y su sustituto es más ancho:
+# `test_f028_r17_app_js_no_compone_el_cuerpo_ni_decide_nada` y
+# `test_f028_el_front_ya_no_llama_al_endpoint_retirado`, que además es el
+# control negativo de la línea que dejaba la rama sin poder desplegarse.
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -191,17 +202,20 @@ def test_f026_el_front_no_decide_la_aprobacion_en_app_js(app):
 # ---------------------------------------------------------------------------
 
 
-def test_f026_r22_la_respuesta_de_aprobar_se_guarda_en_el_parte(app):
-    """Lo que devuelve el backend es lo que se pinta, no lo que se supone.
-
-    El estado de la aprobación —vigente o revocada— lo decide el backend al
-    escribirla (D-F). Si la pantalla se lo inventara, enseñaría aprobado un
-    parte cuya aprobación acaba de revocarse.
-    """
-    aprobar = _bloque(app, "async aprobarParte(", "\n    },")
-
-    assert "parte.aprobacion" in aprobar
-    assert "datos.aprobacion" in aprobar or "respuesta.aprobacion" in aprobar
+# ---------------------------------------------------------------------------
+# Enmienda del 2026-09-16 · F-028 T18
+# ---------------------------------------------------------------------------
+# Aquí vivía `test_f026_r22_la_respuesta_de_aprobar_se_guarda_en_el_parte`, que
+# exigía `parte.aprobacion = datos.aprobacion` dentro de `aprobarParte`. Se
+# retira porque la respuesta ya no trae ningún bloque `aprobacion` (T14) y
+# porque el método ya no pide `/api/aprobar` (T15, T16).
+#
+# Lo que probaba —«lo que se pinta es lo que dice el backend, no lo que suponga
+# la pantalla»— NO se pierde:
+# `test_f028_r38_lo_que_devuelve_el_guardado_es_lo_que_se_pinta`, que además
+# exige que solo se pise cuando el guardado salió bien, y
+# `test_f028_r17_la_marca_sale_del_estado_y_no_del_veredicto`.
+# ---------------------------------------------------------------------------
 
 
 # ===========================================================================
@@ -235,23 +249,32 @@ def test_f026_r35_el_boton_de_aprobar_no_esta_en_la_lista(html):
     assert "Aprobar este parte" not in _lista(html)
 
 
-def test_f026_r39_sin_ser_aprobable_no_se_ofrece_el_gesto(html):
-    """R39 · el botón solo aparece cuando hay algo que decidir."""
-    detalle = _detalle(html)
-
-    assert 'x-show="esAprobable()"' in detalle or "esAprobable()" in detalle
-    assert detalle.count("esAprobable()") >= 2, (
-        "hace falta la condición del botón y la del texto que dice qué "
-        "corregir cuando no es aprobable"
-    )
-
-
-def test_f026_r39_cuando_no_es_aprobable_se_dice_que_hay_que_corregir(html):
-    """R39 · y se dice **qué** hay que corregir, no solo que no se puede."""
-    detalle = _detalle(html)
-
-    assert "código de obra" in detalle
-    assert "número de incidencia" in detalle
+# ---------------------------------------------------------------------------
+# Enmienda del 2026-09-16 · F-028 T18 · los dos casos de «es aprobable»
+# ---------------------------------------------------------------------------
+# Aquí vivían `test_f026_r39_sin_ser_aprobable_no_se_ofrece_el_gesto` y
+# `test_f026_r39_cuando_no_es_aprobable_se_dice_que_hay_que_corregir`. Los dos
+# se retiran por lo mismo: F-028 **deroga** la pregunta (R9, R10) y la pantalla
+# ofrece los dos gestos a cualquier parte que no esté `cerrado`.
+#
+# Y no era una condición neutral: `esAprobable()` escondía el gesto en los
+# partes **aptos**, que son justo los que esta feature existe para poder
+# rechazar antes de que se archiven.
+#
+# El segundo de los dos **seguía en verde** después del cambio, y por eso se
+# retira en vez de dejarse: la sección nueva conserva el consejo —«si le falta
+# el código de obra o el número de incidencia, corrígelo arriba y revalida»— y
+# el test daba por comprobada una condición (`x-show="!esAprobable()"`) que ya
+# no existe. Es la clase de test verde que tranquiliza sin medir nada, la misma
+# que el bloque 4 retiró de `test_f026_puertas.py` y T15 y T17 de los suyos.
+#
+# Sustitutos en `tests/test_f028_front.py`:
+#   · `test_f028_r40_los_dos_botones_estan_en_el_detalle` (los DOS gestos, R40);
+#   · `test_f028_r41_el_parte_cerrado_no_ofrece_ningun_gesto` (la única
+#     condición que queda, y es la del cerrado);
+#   · `test_f028_r9_la_pregunta_de_si_un_parte_es_aprobable_queda_derogada`, que
+#     es el control negativo de la derogación.
+# ---------------------------------------------------------------------------
 
 
 def test_f026_r36_el_aprobado_no_se_pinta_como_el_verde_liso(html):
@@ -281,50 +304,35 @@ def test_f026_r36_hay_un_texto_que_dice_que_lo_aprobo_una_persona(html):
         assert "revisión humana" in bloque or "una persona" in bloque
 
 
-def test_f026_r37_el_texto_dice_de_donde_venia_y_cuando(html):
-    """R37 · de qué destino se rescató el parte y cuándo se aprobó."""
-    detalle = _detalle(html)
-
-    assert "destinoDeOrigen(" in detalle
-    assert "fechaDeAprobacion(" in detalle
-
-
-def test_f026_r38_la_pantalla_no_pinta_quien_aprobo(html):
-    """R38, R43 · ni el `oid`, ni el correo, ni el nombre.
-
-    Que la decisión quede registrada no exige publicarla en la pantalla de
-    todo el que mire la remesa. Quien necesite auditarla la lee en la base, con
-    el `JOIN` de la spec.
-    """
-    detalle = _detalle(html)
-    aprobacion = [
-        linea for linea in detalle.splitlines() if "aprobacion" in linea
-    ]
-
-    for linea in aprobacion:
-        for prohibido in ("usuarioOid", "aprobado_por", "correo", "userDetails"):
-            assert prohibido not in linea, (
-                f"la sección de la aprobación pinta {prohibido!r}: R38 dice que "
-                "el identificador de quien aprobó no sale en pantalla"
-            )
-
-
-def test_f026_r38_el_bloque_de_aprobacion_solo_usa_las_cuatro_claves_publicadas(html):
-    """Control negativo: lo que se lee del bloque es lo que el backend publica.
-
-    Son cuatro claves y ninguna más (`aprobacion_serializada.py`). Leer una que
-    no existe no rompería la pantalla —pintaría vacío— y por eso hay que
-    mirarlo aquí.
-    """
-    permitidas = {
-        "estado",
-        "destino_aprobado",
-        "motivos_aprobados",
-        "aprobado_at_utc",
-    }
-    usadas = set(re.findall(r"aprobacion\.(\w+)", _detalle(html) + _lista(html)))
-
-    assert usadas <= permitidas, f"claves que el backend no publica: {usadas - permitidas}"
+# ---------------------------------------------------------------------------
+# Enmienda del 2026-09-16 · F-028 T18 · los tres del bloque `aprobacion`
+# ---------------------------------------------------------------------------
+# Aquí vivían `test_f026_r37_el_texto_dice_de_donde_venia_y_cuando`,
+# `test_f026_r38_la_pantalla_no_pinta_quien_aprobo` y
+# `test_f026_r38_el_bloque_de_aprobacion_solo_usa_las_cuatro_claves_publicadas`.
+#
+# El primero se puso rojo: el bloque `estado` de F-028 **no publica**
+# `destino_aprobado`, así que «de dónde venía» ya no se puede decir. La fecha sí
+# sobrevive, y con ella el texto de R43.
+#
+# Los otros dos **seguían en verde, y en verde por nada**: los dos buscaban la
+# palabra `aprobacion` en el HTML, y desde este commit no aparece ninguna vez.
+# Uno recorría una lista vacía y el otro comparaba un conjunto vacío contra las
+# cuatro claves permitidas. Dos tests que no pueden fallar no protegen el
+# requisito de privacidad, que es de los que más pesan de la feature.
+#
+# Sustitutos en `tests/test_f028_front.py`, los tres más fuertes que el original:
+#   · `test_f028_r39_el_detalle_distingue_quien_decidio` — la fecha y la
+#     distinción de R39, sobre `decidioUnaPersona()`;
+#   · `test_f028_r42_la_seccion_del_estado_no_pinta_ningun_oid` — la misma lista
+#     de prohibidos **más** un `oid` con límites de palabra que caza cualquier
+#     variante;
+#   · `test_f028_r42_ningun_texto_de_la_plantilla_pinta_una_identidad` — sobre
+#     TODA la plantilla y no solo sobre una sección, mirando cada `x-text` y
+#     cada `x-html`;
+#   · `test_f028_r42_del_bloque_del_backend_solo_se_leen_las_cuatro_claves`, que
+#     sí tiene claves que mirar.
+# ---------------------------------------------------------------------------
 
 
 def test_f026_r23_el_boton_de_la_tanda_ya_no_habla_solo_de_verdes(html):

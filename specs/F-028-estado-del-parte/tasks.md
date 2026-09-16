@@ -175,7 +175,7 @@
       la tanda aunque su veredicto sea apto; un `cerrado` también; y el
       `aprobado` por persona se distingue del de máquina (R39).
 
-- [ ] **T18**: `js/app.js` e `index.html`: los dos botones en el detalle, el
+- [x] **T18**: `js/app.js` e `index.html`: los dos botones en el detalle, el
       campo de motivo obligatorio al rechazar, las cuatro marcas en lista y
       detalle, los textos de R43 y la frase del parte `cerrado` (R41). |
       Verificación: `services/postventa-front/tests/test_f028_front.py` — los

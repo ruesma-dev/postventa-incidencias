@@ -244,7 +244,7 @@
 
 ## Bloque 10 · Cierre
 
-- [ ] **T26**: Campaña de mutación sobre lo cambiado
+- [x] **T26**: Campaña de mutación sobre lo cambiado
       (`python -m harness.mutacion`; rigor `estandar`: los supervivientes se
       documentan y los juzga el reviewer). | Verificación: informe en
       `progress/impl_F-028.md` con el número de mutantes, los supervivientes y

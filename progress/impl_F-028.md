@@ -5921,3 +5921,450 @@ T25 **no añade ninguna**. Las que había siguen donde estaban:
   respaldaba este encargo; lo respalda la suite reejecutada a mano) y **§122**
   (la corrección de la cabecera de la copia sobre los cierres reales es
   deliberada y **no duplica** la tabla de §8 que escribió el líder).
+
+---
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 10, T26 y T28
+
+> Encargo del **2026-09-16**: **T26** (la campaña de mutación de cierre) y
+> **T28** (el arnés en verde). **T27 NO es mía** —son las seis verificaciones
+> que ejecuta el humano contra la base real y el ERP tras desplegar— y **queda
+> sin marcar**, lista para él.
+>
+> Este informe **se añade** a los anteriores. Lo de arriba (§1 a §127) no se ha
+> borrado ni reescrito: es el relato de los bloques 0 a 9. Esta última parte
+> está escrita para que el **reviewer** la use de entrada: los números de la
+> campaña, lo que ninguna puerta automática mide, las desviaciones de
+> `design.md` que se declararon por el camino y los puntos abiertos, todos
+> juntos y con su sección de origen.
+
+---
+
+## 128 · Qué se ha hecho
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T26** | este commit | La campaña de cierre: **32 mutantes, 32 muertos, 0 supervivientes**, con la línea base comprobada verde **antes**. Informe en `progress/mutacion_F-028.md` |
+| **T28** | el commit siguiente | `bash harness/init.sh` → **ENTORNO LISTO**, y las cuatro suites reejecutadas **a mano y sin caché** |
+
+**Ni una línea de código de producción.** El diff de estos dos commits son
+`tasks.md`, este informe y el informe que genera la campaña.
+
+---
+
+## 129 · T26 · la campaña de cierre
+
+### 129.1 · Primero: la línea base estaba verde, y se comprobó ANTES de lanzarla
+
+Es el aviso del encargo y es lo que invalidó la primera campaña de T13 (§44.1)
+y la entera del bloque 7 (§95.1): el evaluador de `harness.mutacion` da un
+mutante por **muerto** cuando la suite falla, así que con la base en rojo
+**todos** salen muertos sin que ningún test los cace. Una campaña perfecta sin
+la base comprobada no demuestra nada.
+
+Lo comprobado, en este orden y antes de mutar nada:
+
+```
+$ bash harness/init.sh
+ENTORNO LISTO. Puedes trabajar.
+[OK] PUERTA COBERTURA: 100.0% de 297 líneas cambiadas cubiertas (297/297, umbral 80%, nivel estandar)
+```
+
+`init.sh` resolvió **los dos servicios por caché** («árbol sin cambios desde el
+último verde»), así que por sí solo no bastaba —es el punto ciego de §124.2—.
+Las cuatro suites se reejecutaron enteras y a mano:
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest tests/ -q -p no:cacheprovider
+2650 passed, 3 skipped in 23.96s
+
+$ cd services/postventa-front && ../../.venv/Scripts/python.exe -m pytest tests/ -q -p no:cacheprovider
+250 passed in 1.65s
+
+$ cd services/postventa-front && node --test "tests_js/*.test.js"
+tests 298   pass 298   fail 0
+
+$ (arnés, raíz, dentro de init.sh)
+62 passed in 2.61s
+```
+
+**Cero fallos en las cuatro.** Solo entonces se lanzó la campaña.
+
+### 129.2 · El resultado
+
+```
+$ python -m harness.mutacion --feature F-028 --base dev
+F-028: 21 fichero(s), 2118 línea(s) de producción
+       (origen rama, b90c3a4..feature/F-028-estado-del-parte)
+Campaña paralela: hasta 8 workers, uno por worktree.
+...
+32 mutantes evaluados, 32 muertos, 0 supervivientes, 0 timeouts en 150.7 s
+Informe: progress/mutacion_F-028.md
+```
+
+| Métrica | Valor |
+|---|---|
+| Ficheros en alcance | **21** |
+| Líneas de producción en alcance | **2.118** |
+| Mutantes generados y evaluados | **32** |
+| **Muertos** | **32** |
+| **Supervivientes** | **0** |
+| Timeouts | **0** |
+| Muestreo | no: campaña completa |
+| Tiempo | **150,7 s** con 8 workers |
+
+**Qué se hace con cada superviviente: no hay ninguno que juzgar.** Las 32
+mutaciones las cazó al menos un test. Dónde caen:
+
+| Fichero | Mutantes | Los que más valen |
+|---|---|---|
+| `domain/models/estado.py` | **16** | `estado.py:408` (`and not _aprueba_lo_que_hay` → sin el `not`): es R19, la aprobación que deja de contar cuando el veredicto cambia. `estado.py:402` y `:322` son R26, que una fila de máquina no decida |
+| `interface_adapters/api/estado.py` | **7** | `:285` (`crudo is not True` → `is not False`) es R29, la confirmación explícita; `:321` (`>` → `>=`) es el límite del motivo |
+| `infrastructure/persistencia/repositorio_pg.py` | **3** | `:278` (`==` → `!=` sobre `ORIGEN_DECISION_HUMANA`): distinguir la última decisión humana de la última fila |
+| `infrastructure/persistencia/ddl.py` | **2** | Las dos condiciones de la semilla: `SELECT` obligatorio y `NOT EXISTS` obligatorio (§13.1) |
+| `application/pipelines/puerta_de_estado.py` | **1** | `:137`, el `or` de `situacion_leida` (§31.4) |
+| `infrastructure/persistencia/sentencias.py` | **1** | Las siete columnas del `INSERT` del histórico |
+| `domain/models/nombrado.py` | **1** | `:237` (`if not tramos` → `if tramos`), la guardia de R49 |
+| `interface_adapters/api/estado_serializado.py` | **1** | El `and` del `estado_anterior` |
+
+---
+
+## 130 · Lo que esta campaña NO mide, y con qué se respalda
+
+Va en voz alta, como en §76.1, §86.1, §95.1 y §115.1, porque un «32 de 32, cero
+supervivientes» presentado a secas se lee como si la feature entera estuviera
+medida, y **no lo está por ahí**. Son tres huecos, y los tres tienen respaldo
+escrito en este mismo informe.
+
+### 130.1 · El JavaScript y el HTML: el arnés muta solo Python
+
+`harness.mutacion` muta ficheros `.py`, y la puerta de cobertura mide Python
+(`harness/servicios.json` declara el front con lenguaje `python` por su
+`dev_server.py`). **Los bloques 6 y parte del 5 son JavaScript y HTML, y no
+producen ni un mutante ni una línea de cobertura.** Lo que la rama cambia ahí,
+medido con `git diff --stat` contra la base:
+
+| Fichero | Líneas tocadas |
+|---|---|
+| `services/postventa-front/js/pipeline.js` | 507 |
+| `services/postventa-front/js/app.js` | 250 |
+| `services/postventa-front/index.html` | 235 |
+| `services/postventa-front/js/api.js` | 36 |
+| **Total** | **703 añadidas, 325 borradas** |
+
+Ninguna de esas 1.028 líneas entra en las 2.118 del alcance, ni en las 297 de
+la puerta de cobertura, ni puede entrar.
+
+**Con qué se respalda**: los implementers de esos bloques lo mutaron **a mano**,
+y está recorrido mutante a mutante arriba:
+
+- **T16 y T17 · 15 mutantes a mano, 15 muertos** (§76.2). Los dos que más valen
+  son M12 y M13 —«el circuito se abre también para el `rechazado`» y «para todo
+  lo que no sea `pendiente`»—, que son literalmente las dos formas de volver a
+  dejar circular lo que el bloque viene a frenar; y detrás del circuito hay dos
+  escrituras en el ERP de producción y un PDF con el DNI de un cliente subiendo
+  a SharePoint.
+- **T18 · 21 mutantes a mano, 21 muertos** (§86.2), **con dos supervivientes en
+  la primera pasada** que destaparon dos tests flojos y se cerraron arreglando
+  los tests, no la cuenta (§86.3): M14 («se ofrecen los dos gestos sobre un
+  parte cerrado») sobrevivía porque el test miraba si una palabra aparecía
+  *antes* de otra en vez de comprobar el anidamiento; M16 («el rechazado se
+  pinta como un pendiente») sobrevivía porque el test metía todos los `:class`
+  en un solo diccionario y una marca tapaba a la otra.
+- Y una verificación que no es un test (§85.1): `js/app.js` **se ejecutó** bajo
+  Node con los nueve `js/*.js` cargados en el orden de `index.html`, 23
+  comprobaciones en verde, e `index.html` se validó con un analizador
+  (`<template x-if>` con una sola raíz, ninguna etiqueta sin cerrar).
+
+**36 mutantes a mano sobre el front, 36 muertos.**
+
+### 130.2 · Una retirada no se puede mutar, y esta campaña no toca ninguna
+
+`harness.mutacion` muta **código que existe**. T15 es la tarea más destructiva
+de la feature —**+518 / −3.169 líneas en 20 ficheros**— y lo que retira no
+aparece en el alcance de esta campaña: los cinco ficheros borrados en la rama
+(`interface_adapters/api/aprobar.py`, `api/aprobacion_serializada.py`,
+`tests/test_f026_aprobar_http.py`, `tests/test_f026_persistencia.py` y
+`tests_js/aprobacion.test.js`, **2.611 líneas**) **no están en la tabla de 21
+ficheros**, porque ya no existen. **Esta campaña no muta ni una de las
+retiradas, y hay que decirlo.**
+
+**Con qué se respalda**: T15 construyó **diez mutantes del revés** (§65.2) —un
+mutante de una retirada es **reponer lo que se fue** o **llevarse lo que tenía
+que quedarse**—, y los diez murieron. Los tres que más valen:
+
+- **M4** · una escritura **nueva** a `postventa.aprobaciones` **con otro
+  nombre**: ningún test de `upsert_aprobacion` podía cazarlo porque esa función
+  ya no existe. Lo caza el control del vocabulario sobre el árbol sintáctico
+  (§63.4);
+- **M8** · borrar `sql/10_aprobaciones.sql`, que es la regla dura 3 al revés:
+  mata 30 casos;
+- **M9 y M10** · cortar de más y llevarse `huella_de_veredicto` o
+  `_normalizar`: entre los dos tumban media suite de F-028.
+
+### 130.3 · Y los ficheros en alcance que no producen ningún mutante
+
+Trece de los 21 ficheros del alcance —**676 de las 2.118 líneas**— no producen
+ni un mutante, y el informe de la campaña no lo dice en ninguna parte:
+
+| Fichero | Líneas en alcance, sin un solo mutante |
+|---|---|
+| `application/pipelines/constancia.py` | 91 |
+| `application/pipelines/paso_cierre.py` | 88 |
+| `application/pipelines/paso_persistencia.py` | 74 |
+| `function_app.py` | 72 |
+| `domain/models/errores.py` | 71 |
+| `domain/models/aprobacion.py` | 67 |
+| `interface_adapters/api/parte.py` | 53 |
+| `domain/ports/persistencia.py` | 44 |
+| `infrastructure/persistencia/mapeo.py` | 34 |
+| `application/pipelines/paso_archivo.py` | 24 |
+| `application/pipelines/contexto_parte.py` | 22 |
+| `domain/models/cierre.py` | 22 |
+| `application/pipelines/paso_grafico.py` | 14 |
+
+El motivo está medido desde el bloque 3 (§23.1) y es siempre el mismo: los
+operadores del mutador son comparación, lógico, `not`, booleano, entero y
+aritmético, y ese código no les ofrece material —comparaciones de **identidad**
+(`is`, `is None`), llamadas, asignaciones, `try/except` y entradas de
+diccionarios literales—. **No se ha retorcido el código para darle material a
+la herramienta**: escribir para el medidor no es escribir para el problema.
+
+**Con qué se respalda**: los mutantes a mano de cada bloque, que son los que sí
+atacan esas líneas —bloque 3 · 9/9 (§23.1), bloque 4 · 13/13 (§32), T14 · 6/6
+(§54.2), T15 · 10/10 (§65.2), T22 · 8/8 (§105.2), T23 y T24 · 13/13 (§115.2)—.
+
+### 130.4 · El recuento a mano de la feature entera
+
+| Campaña | Mutantes | Muertos | Supervivientes |
+|---|---|---|---|
+| Bloque 3 (§23.1) | 9 | 9 | 0 |
+| Bloque 4 (§32) | 13 | 13 | 0 |
+| T14 (§54.2) | 6 | 6 | 0 |
+| T15 (§65.2) | 10 | 10 | 0 |
+| T16 y T17 · **JavaScript** (§76.2) | 15 | 15 | 0 |
+| T18 · **JavaScript y HTML** (§86.2) | 21 | 21 | 0 (2 en la 1.ª pasada, §86.3) |
+| T19 y T20 (§95.2) | 16 | 15 | **1 equivalente**, demostrado (§95.3) |
+| T21 y T22 (§105.2) | 15 | 14 | **1 equivalente**, demostrado (§105.3) |
+| T23 y T24 (§115.2) | 13 | 13 | 0 |
+| **Total a mano** | **118** | **116** | **2, los dos equivalentes** |
+
+Sumada la automática de cierre: **150 mutantes, 148 muertos, 2 supervivientes
+equivalentes con la equivalencia demostrada** —no argumentada—:
+
+- **§95.3 · M5** (`\s*` → `\s?` en el saneo de `normalizar_codigo`): probado a
+  lo bruto con las **55.987** cadenas de hasta 6 caracteres sobre el alfabeto
+  «espacio, tabulador, salto de línea, barra, guion, A»; entradas en las que
+  original y mutante difieren: **0**. No es un test flojo: el colapso previo
+  garantiza que nunca queda una racha de blancos que los distinga.
+- **§105.3 · M8** (quitar la guarda `if not codigo: return ""` de
+  `a_codigo_de_sigrid`): tras T22, `tramos_de_codigo("")` devuelve la tupla
+  vacía y `"/".join(())` es la cadena vacía, exactamente lo que devolvía la
+  guarda. Medido con ocho entradas. **La guarda se conserva**, y la decisión de
+  conservarla está a la vista del reviewer en §105.3.
+
+---
+
+## 131 · Las desviaciones de `design.md`, todas juntas
+
+El encargo las pide reunidas para que el reviewer no tenga que rebuscarlas.
+Cada una está declarada por su implementer en el sitio que se indica; aquí solo
+se listan, con lo que hay que juzgar de cada una.
+
+| # | Desviación | Bloque · § | Qué hay que juzgar |
+|---|---|---|---|
+| **D-1** | **`ddl.py` modificado y §8.2 no lo lista.** La semilla de §8.4 es un `INSERT … SELECT … WHERE NOT EXISTS`, la primera sentencia de datos del DDL del proyecto, y la guarda reconocía cinco formas. Se le enseña una **sexta**, con cuatro condiciones (`SELECT` obligatorio, `NOT EXISTS` obligatorio, `ON CONFLICT` prohibido, todo cualificado con el esquema propio) | 2 · **§13.1** | **Si la apertura es la mínima.** `UPDATE`, `DELETE`, `TRUNCATE` y `DROP TABLE` siguen cayendo, con control negativo cada uno. Sin este cambio el servicio **no arranca**: `cargar_ddl` valida antes de abrir la conexión |
+| **D-2** | **`application/pipelines/constancia.py` creado y §8.2 no lo anuncia.** §8.2 lista `paso_persistencia.py` y `paso_cierre.py`; la regla de §4 —«si el estado derivado no es el de la última fila, se añade una fila»— vive en un módulo propio | 3 · **§22.1** | La regla la aplican **los dos** pasos. Dos copias divergen, y **en una campaña de mutación cada copia se cuenta aparte**: la segunda se queda sin tests que la maten. Precedente exacto en el repositorio: `confianza.py` (F-004). El módulo **no** decide la política de errores, que es opuesta en cada paso (§22.3) |
+| **D-3** | **`application/pipelines/puerta_de_estado.py` creado y §8.2 no lo lista.** §8.2 dice «`_exigir_admitido` mira el estado» en los tres pasos; la mecánica vive en un módulo y los tres la llaman | 4 · **§31.1** | Es la desviación **de más peso**: esto es lo único que separa un parte sin revisar de un PDF con el DNI de un cliente en SharePoint y de una reclamación cerrada en el ERP. Tres copias son tres sitios donde aflojar. **No** se unificaron los mensajes: cada puerta dice qué se ha quedado sin hacer |
+| **D-4** | **`js/pipeline.js` tocado en T18**, que §8.2 limita a `js/app.js` e `index.html`. Dos motivos: `avisoDeEstado` (R43) y la retirada de `esAprobable`, `cuerpoDeAprobacion` y `MOTIVOS_APROBABLES` | 6 · **§83.1** y §83.4 | `avisoDeEstado` va ahí porque **comparar dos bloques es una decisión y las decisiones se prueban**; `app.js` no puede alojar una decisión sin tests (`test_f007_r36_app_js_es_solo_pegamento`). La alternativa —publicar una quinta clave `decision_caducada` en el bloque— es backend y reabriría el bloque 5 |
+| **D-5** | **`paso_persistencia.py` tocado en T14**, y §8.2 no lo lista **para T14** (sí para la feature: lo modificó T8). Dos líneas: la situación que ya leía se guarda en `ctx.situacion` | 5 · **§50.1** | Es lo que hace que el estado **no cueste una consulta más por parte**: de 2 consultas a 1, 22 viajes menos por subida a un PostgreSQL **compartido** |
+| **D-6** | **Tres piezas retiradas que T15 no enumera**: `mapeo._codigos_desde_json`, `mapeo.json_de_codigos_de_motivo` y el import de `ParteNoAprobable` en `function_app.py` | 5 · **§63.2** | Las tres son **la mitad interna** de algo que T15 sí enumera. Un ayudante privado sin llamantes es código muerto que además se queda sin cobertura |
+| **D-7** | **La guardia de R49**: un nº de incidencia de **solo separadores** (`/`, `-`, ` / `, `//`, ` - - `) ahora se niega con `NombradoImposible`. `tasks.md` no lo enumera | 7 · **§93.2** | Sin ella, unir **cero** tramos daría `0626 -  PARTE FIRMADO.pdf` —espacio doble, sin número— y `nombre_admisible` **lo acepta**: se archivaría en Posventa un fichero que nadie pidió. No es una regresión que abra T20: es un agujero que el cambio deja a la vista y se tapa en el mismo commit |
+| **D-8** | **`tests/test_f028_documentacion.py` nace en T21** con solo los casos de R55, cuando el fichero que la spec enumera es el de **T24**. T24 lo **extiende**, no lo sustituye | 7 · **§101** | Da a T21 verificación automática en vez de a ojo. Si el reviewer prefiere lo contrario, es retirar seis tests y el fichero |
+| **D-9** | **Discrepancia de la spec, no del código**: la verificación de T20 en `tasks.md` dice «T19 en verde», y **no es alcanzable** sin T22. La propia T22 lo delata al pedir «T19 **entero** en verde» | 7 · **§94.2** | **El bloque 7 no admite un corte entre T20 y T22.** Costó dejar la rama en rojo un encargo entero (25 tests, 24 de una sola causa). Queda como enmienda pendiente de `tasks.md` para el líder |
+
+Y una **precisión que no es desviación**, por si se lee como tal: los cuatro
+tests de los dos errores de T4 viven en `tests/test_f028_estado_dominio.py`
+porque §8.1 no les da fichero propio (§3).
+
+---
+
+## 132 · Los puntos anotados para revisión
+
+Reunidos igual que las desviaciones, y por el mismo motivo. **Ninguno es un
+fallo**: son decisiones que el implementer de turno no quiso tomar por su
+cuenta, o cosas ciertas que dejarían de serlo si nadie las mira.
+
+### 132.1 · `ParteNoAprobable` sigue vivo y **nadie lo levanta**
+
+`domain/models/errores.py::ParteNoAprobable` era el 409 de «este parte no se
+puede aprobar», y su único emisor era `interface_adapters/api/aprobar.py`, que
+T15 borró. F-028 **deroga ese concepto**: una persona puede mover a `aprobado`
+o a `rechazado` **cualquier** parte que no esté `cerrado` (R9, R10), y el único
+409 que queda es el del parte cerrado.
+
+O sea: la excepción está viva, documentada en el inventario de la cabecera de
+`errores.py`, y **ningún módulo la emite**. No se retiró porque `design.md`
+§8.2 solo manda **añadir** dos errores a ese fichero, no quitar ninguno, y T15
+no la nombra (§63.2). Declarada de nuevo en §67.3 y §88.5. **Queda para el
+líder o para una enmienda de `specs/F-026-aprobacion-humana/requirements.md`.**
+
+De la misma familia, y por el mismo motivo: **`repositorio_pg._escribir(…,
+ademas=…)`** se quedó sin su único llamante cuando T15 retiró la revocación. Es
+un mecanismo genérico del adaptador —«N sentencias en una transacción»— con su
+docstring propia, no una pieza de F-026, y su línea se sigue ejecutando en
+todos los guardados con la tupla vacía, así que no deja hueco de cobertura
+(§63.2).
+
+### 132.2 · Las dos aserciones que pasaron a ser ciertas **por construcción**
+
+Es lo que T15 contó como «lo peor del encargo» (§63.3), y sigue igual.
+`RepositorioEnMemoria.aprobaciones_consultadas` ya **no puede crecer**, porque
+T15 retiró `consultar_aprobacion` del doble. Las dos aserciones que la miran
+pasaron de ser ciertas **por comportamiento** a ciertas **por construcción**:
+
+| Aserción | Fichero | Por qué no se retiró |
+|---|---|---|
+| `test_f028_r33_ninguna_puerta_consulta_ya_la_tabla_de_f026` | `tests/test_f028_puertas.py` | Es **la red de seguridad del bloque 0**, que el encargo de T15 prohibía tocar y que lleva intacta desde el primer commit de la feature |
+| `test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte` | `tests/test_f028_estado_http.py` | Es de T14, y su **otra** aserción —`situaciones_consultadas == [HASH]`, una consulta y no dos— **sí** mide: la mata el mutante M2 de §54.2 |
+
+Lo que se hizo en su lugar: dejar el atributo con un comentario en
+`utiles_pg.py` que dice que se queda vacío para siempre y cuál es el control
+que de verdad vigila la tabla, y **escribir ese control** —
+`test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026`, que no
+mira una función retirada sino **todas** las cadenas que compone la capa de
+persistencia, sobre el árbol sintáctico y no sobre el texto (§63.4)—. Lo mata
+el mutante M4 de §65.2, que es una escritura nueva a la tabla congelada **con
+otro nombre**.
+
+**Lo que el reviewer tiene que decidir** es si las dos aserciones se quedan
+como están. La lectura del implementer de T15 fue que sí —retirarlas obliga a
+editar la red del bloque 0, y el día que alguien repusiera
+`consultar_aprobacion` volverían a medir—, pero **hoy no prueban nada**, y
+decirlo es lo que impide que dentro de un año alguien las cuente como
+cobertura.
+
+### 132.3 · Las tres puertas siguen levantando `ParteNoApto`, y no `ParteCerrado`
+
+Un parte `cerrado` que llega a `paso_archivo`, `paso_grafico` o `paso_cierre`
+levanta **`ParteNoApto`** con un motivo que dice que está cerrado, **no** el
+`ParteCerrado` que T4 creó.
+
+El bloque 4 lo dejó abierto (§31.2) porque entonces `function_app.py` no sabía
+traducir `ParteCerrado` y levantarlo habría dado un **500** en tres endpoints
+que funcionan. **T13 lo decidió con la traducción ya escrita** (§40.1), y
+decidió **no cambiarlo**, por tres motivos:
+
+1. **`ParteCerrado` significa otra cosa**: es de `design.md` §5, «se ha pedido
+   **cambiar el estado** de un parte ya cerrado». En las tres puertas nadie
+   cambia ningún estado: se pide archivar, adjuntar o cerrar un parte que no
+   está `aprobado`. Reusar el tipo porque el código HTTP coincide es nombrar
+   por el síntoma.
+2. **`cerrado` es uno de tres**, no un caso aparte. Las puertas rechazan
+   `pendiente`, `rechazado` y `cerrado`, y `MOTIVOS` le da a cada uno su
+   explicación porque **cada uno se arregla de una forma distinta** (§31.3).
+3. **No se gana nada medible**: `ParteNoApto` ya se traduce a **409** en los
+   tres handlers —el código que `design.md` §5 reserva— y el motivo que viaja
+   dentro dice literalmente que el parte está cerrado.
+
+**Si el reviewer prefiere el tipo propio**, el sitio lleva dos bloques escrito
+y no ha cambiado: una línea de `application/pipelines/puerta_de_estado.py`, un
+`except` en los tres handlers y la tabla de traducción de T13. Esta decisión
+**no lo cierra: lo documenta**.
+
+### 132.4 · Los demás puntos abiertos, en una línea cada uno
+
+| Punto | Dónde | Estado |
+|---|---|---|
+| **El defecto latente D9**: una relectura que solo cambie los espacios alrededor de la barra hace que una aprobación humana deje de contar, porque la huella normaliza con otro criterio | §117, `design.md` §10 | **Declarado, no olvidado**, y ahora con test propio (`test_f028_d9_el_defecto_latente_sigue_ahi_y_se_declara`), que **no lo bendice**: lo fija para que quien vaya a arreglarlo se tropiece con el porqué. Arreglarlo cambiaría huellas ya escritas en `postventa.aprobaciones`, con F-026 desplegada y decisiones reales dentro. **El humano decidió el 2026-09-15 no alinearlas aquí** |
+| **El superviviente equivalente M8 de T22**: la guarda `if not codigo: return ""` de `a_codigo_de_sigrid` es redundante desde T22 | §105.3 | **No se ha quitado.** La guarda *dice* algo que el `join` no dice. Si el reviewer prefiere código sin ramas redundantes, es borrar tres líneas y ningún test se mueve |
+| **`test_f028_r50_la_huella_canonica_se_recalcula_a_mano` duplica a propósito el algoritmo de `huella_de_veredicto`** dentro del test | §111.1 | Es una **segunda opinión**, y una que reutilizara las constantes de la primera no lo sería. Precio: un cambio legítimo del formato pone **dos** tests en rojo |
+| **`AnotaLosResultados` sigue sin `guardar_grafico` ni `consultar_grafico`**, y su docstring promete implementar el puerto entero | §22.2 | **Deuda previa**, no de esta feature. Hoy es inocuo: `/api/parte` no llega al paso del gráfico |
+| **`js/app.js` sigue sin tests**, y ahora tiene nueve métodos nuevos de pantalla | §88.2 | `test_f007_r36_app_js_es_solo_pegamento` sigue en verde y todo lo que **decide** vive en `js/pipeline.js`. El script de §85.1 demuestra que `app.js` se puede ejecutar bajo Node en 40 líneas; convertirlo en `tests_js/app.test.js` es una decisión de arquitectura del front (F-007 `design.md` §3) y **se deja al líder** |
+| **Dos `usuario.usuarioOid` en la sección de la tanda de `index.html`** (F-025 P2) | §83.2 | **No pintan nada** (son `:disabled` y un `x-show`) y esa sección no es T18. El control que sí importa —ningún `x-text` ni `x-html` saca una identidad— cubre **toda** la plantilla |
+| **Cuatro huecos del arnés genérico**, anotados por cuatro encargos distintos: que la campaña **no avise** de los ficheros en alcance sin mutantes (§23.1); que un servicio con código en **dos lenguajes** mida y mute solo uno sin decirlo (§76.1, §86.1); que `harness.mutacion` **no compruebe que la línea base está verde** antes de empezar (§95.1); y que **la caché del portero mire el árbol del servicio mientras `docs/` vive fuera**, con lo que un documento roto puede pasar por verde (§124.2) | §23.1, §76.1, §86.1, §95.1, §124.2 | **Pendientes de propagar a `arnes-base`**, y ningún implementer los ha tocado: el implementer no toca el arnés por su cuenta. **Para el líder** |
+
+---
+
+## 133 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** · servicio `api` | **2.650 pasados, 3 saltados, 0 fallos** | la suite entera **a mano, sin caché** (§129.1) |
+| **Tests ejecutados** · servicio `front` (Python) | **250 pasados, 0 fallos** | ídem |
+| **Tests ejecutados** · servicio `front` (JavaScript) | **298 pasados, 0 fallos** | `node --test "tests_js/*.test.js"` |
+| **Tests ejecutados** · arnés, raíz | **62 pasados** | `bash harness/init.sh` |
+| **Cobertura de las líneas cambiadas** | **100,0 % (297/297)**, umbral 80 %, nivel `estandar` | línea `PUERTA COBERTURA` de `init.sh` |
+| **Mutantes generados** | **32** (21 ficheros, 2.118 líneas en alcance) | `python -m harness.mutacion --feature F-028 --base dev` |
+| **Supervivientes** | **0** | ídem · `progress/mutacion_F-028.md` |
+| **Timeouts** | **0** | ídem |
+| **Mutantes a mano de la feature** | **118 · 116 muertos · 2 supervivientes equivalentes demostrados** | §130.4 |
+| **Tiempo de la suite** | `api` **23,96 s** · `front` 1,65 s (Python) + 0,38 s (JS) · raíz 2,61 s | la propia suite |
+| **Tiempo de la campaña** | **150,7 s** con 8 workers | `progress/mutacion_F-028.md` |
+| **Ruff** | **61 avisos**, deuda previa, **sin crecer** — el mismo número de §105, §115 y §124 | `bash harness/init.sh` |
+
+**Este encargo no añade Python de producción**, así que no podía mover ni la
+cobertura, ni el recuento de ruff, ni el número de mutantes.
+
+---
+
+## 134 · Fase RED · no la hay, y esto es lo que hay en su lugar
+
+T26 y T28 **no añaden comportamiento**: una campaña de mutación y una ejecución
+del arnés son **mediciones**. No hay nada que pueda fallar antes de existir, y
+escribir un test nuevo para poder pegar su traza roja sería fabricar la
+evidencia en vez de producirla — el mismo razonamiento que T25 dejó escrito en
+§123 y T23 en §112.1.
+
+Lo que hay en su lugar es lo que §129.1 pega entero: **la comprobación de que
+la línea base estaba verde antes de creerse el 32 de 32**, que es la única
+forma de que esa cifra signifique algo.
+
+---
+
+## 135 · Verificaciones MANUAL pendientes · **T27, entera y sin marcar**
+
+**T27 no es mía y queda sin marcar en `tasks.md`**, lista para el humano. Son
+las seis verificaciones que **solo** se pueden ejecutar contra la base real y
+el ERP, tras desplegar. Se recogen aquí con lo que cada bloque fue apuntando,
+para que quien las ejecute no tenga que recorrer 127 secciones:
+
+| # | Verificación | Lo que hay que saber antes de ejecutarla |
+|---|---|---|
+| **1** | El DDL nuevo aplicado **dos veces seguidas** no falla, y **la semilla no duplica** ninguna fila | Su idempotencia es el `NOT EXISTS`, y la guarda del DDL lo **exige** (§13.1). Importa más desde T15: `postventa.aprobaciones` ya no tiene código que la escriba, así que **la semilla es lo único que la conecta con el sistema vivo** (§66) |
+| **2** | La aprobación que ya había en `postventa.aprobaciones` **aparece sembrada** y el parte sigue saliendo `aprobado` | **Es la que cierra T15.** Hasta el despliegue había dos caminos y uno tapaba el fallo del otro; ahora **solo hay uno**: si la semilla no copió bien `aprobado_por` y `huella_aprobada`, el parte saldrá `pendiente` y no hay nada detrás que lo rescate (§66). Desde T14 se puede ver **desde la propia pantalla**: la respuesta trae `"estado": {"estado": "aprobado", "decidido_por_persona": true, …}` (§55). T23 probó en el dominio que la huella **no se movió** (§110); que la semilla metiera bien la fila **no se puede probar sin la base** (§116) |
+| **3** | Aprobar → rechazar → aprobar deja **tres** filas en el histórico, en orden y ninguna pisada | **Ojo al contarlas**: el primer guardado de un parte deja también **su fila de constancia**, así que un parte no apto recién subido y luego rechazado enseña **dos** filas, no una (§38.1). Y hay que comprobar que el histórico de un parte que se sube dos veces **no crece**, que aquí solo se puede probar contra un doble (§24) |
+| **4** | Un parte **apto** rechazado a mano **no se archiva** | Era imposible por construcción hasta el bloque 4. **Ya se puede ejecutar entera desde la web**: el backend desde el bloque 4, la tanda desde T17 y el botón de rechazar desde T18 (§87) |
+| **5** | Un parte cerrado responde **409** al intentar cambiarle el estado, y la web lo explica | Dos mitades. La web **no llega a pedir el 409**, porque no ofrece el gesto sobre un parte cerrado: hay que mirar **que lo explica** (la frase de R41) **y** que el 409 sigue estando para quien llame al endpoint por su cuenta (§87) |
+| **6** | Un parte cuyo número se lea **con espacios alrededor de la barra** cierra la incidencia — **el defecto que abrió el asunto 2** | **Hacer primero el dry-run** y comprobar que la reclamación que devuelve es la que se espera, **antes** de confirmar el cierre: el arreglo hace que se encuentre una reclamación donde antes no se encontraba ninguna, y que sea **la correcta** es lo que hay que mirar con los ojos una vez (§106) |
+
+La consulta de solo lectura que fija T27 está escrita en la propia tarea.
+
+Y dos avisos de despliegue que no son verificaciones:
+
+- **El front y la Function se despliegan juntos** (`infra/`). La rama es
+  desplegable desde T18 y lo sigue siendo (§89); desplegar solo una mitad
+  rompería la otra.
+- Que el host **publique la ruta** `POST /api/estado` al desplegar: los tests la
+  leen de `app.get_functions()`, que es lo que se despliega, pero un `curl -X
+  POST …/api/estado` contra el entorno es la única comprobación de que el
+  despliegue la recogió (§45).
+
+**La base real y el ERP no se han tocado en ningún momento de la feature.**
+
+---
+
+## 136 · Lo que queda fuera del alcance de T26 y T28
+
+- **T27 no se ha marcado ni ejecutado**, como pedía el encargo. Es del humano.
+- **`harness/features.json` sin tocar**: F-028 sigue `in_progress`, y marcarla
+  `done` no es cosa del implementer — ocurre tras el APROBADO del reviewer.
+- **Sin `push`, en ninguno de los dos repositorios.** Los commits de esta
+  feature —incluido el de `azure-apps` que hizo T25— son **locales**.
+- **`azure-apps/`, `infrastructure/sigrid/` e `infrastructure/sharepoint/` sin
+  tocar**, como pedía el encargo. No aparecen en el diff.
+- **Ninguna de las decisiones de §131 ni de §132 se ha tomado por mi cuenta.**
+  Están reunidas para que las juzgue el reviewer, que es lo que pedía el
+  encargo: ni he retirado `ParteNoAprobable`, ni he tocado las dos aserciones de
+  §132.2, ni he cambiado el error que levantan las tres puertas.

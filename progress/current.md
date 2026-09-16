@@ -1,7 +1,76 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ✅ AL DÍA · 2026-09-16 · **T23 y T24 de F-028 terminadas** · el control de la huella PASA
+> ## ✅ AL DÍA · 2026-09-16 · **T26 y T28 de F-028: la implementación está CERRADA** · solo queda T27, que es del humano
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits **locales, sin
+> `push`**.
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. **PUERTA COBERTURA 100,0 % de
+> 297 líneas cambiadas (297/297)**, umbral 80 %, nivel `estandar`.
+>
+> ### Lo primero: la campaña de cierre, y por qué su número vale
+>
+> **32 mutantes, 32 muertos, 0 supervivientes, 0 timeouts** en 150,7 s
+> (`python -m harness.mutacion --feature F-028 --base dev`; 21 ficheros, 2.118
+> líneas en alcance). **No hay ningún superviviente que juzgar.**
+>
+> Y vale porque **la línea base se comprobó verde ANTES de lanzarla**, que es
+> lo que invalidó la primera campaña de T13 y la entera del bloque 7. `init.sh`
+> resolvió los dos servicios **por caché**, así que no bastaba: las cuatro
+> suites se reejecutaron enteras y a mano —`api` **2.650 pasados**, `front`
+> **250** (Python) y **298** (JavaScript), raíz **62**, cero fallos—.
+>
+> ### Lo que la campaña NO mide, dicho en voz alta
+>
+> - **El JavaScript y el HTML**: el arnés muta y mide solo Python, y los
+>   bloques 6 y parte del 5 son front —**703 líneas añadidas y 325 borradas**
+>   entre `pipeline.js`, `app.js`, `index.html` y `api.js`—. Lo respaldan los
+>   **36 mutantes a mano** de T16/T17 (15) y T18 (21), todos muertos.
+> - **Las retiradas**: T15 borró cinco ficheros (**2.611 líneas**) y lo borrado
+>   no está en el alcance. Lo respaldan los **10 mutantes del revés** de §65.2
+>   —reponer lo que se fue, o llevarse lo que debía quedarse—, todos muertos.
+> - **Trece de los 21 ficheros en alcance no dan ni un mutante** (676 de las
+>   2.118 líneas): el mutador no reescribe `is`, llamadas ni `try/except`. Los
+>   respaldan los mutantes a mano de cada bloque.
+>
+> Recuento de la feature entera: **118 mutantes a mano, 116 muertos, 2
+> supervivientes equivalentes con la equivalencia demostrada** (§95.3 y
+> §105.3).
+>
+> ### Lo que el reviewer tiene sobre la mesa
+>
+> `progress/impl_F-028.md` §128–§136 reúne, para que no haya que rebuscarlo:
+>
+> - **§131 · las nueve desviaciones de `design.md`** declaradas por el camino,
+>   con lo que hay que juzgar de cada una. Las tres de más peso:
+>   `puerta_de_estado.py` (§31.1), `constancia.py` (§22.1) y `avisoDeEstado` en
+>   `js/pipeline.js` (§83.1). Y una que no es del código sino de la spec: la
+>   verificación de T20 —«T19 en verde»— **no es alcanzable sin T22** (§94.2).
+> - **§132 · los puntos abiertos**: `ParteNoAprobable` vivo **sin emisor**
+>   (§63.2); las **dos aserciones ciertas por construcción** sobre
+>   `aprobaciones_consultadas` (§63.3); y que **las tres puertas siguen
+>   levantando `ParteNoApto` y no `ParteCerrado`** (§31.2, decidido en §40.1).
+>   Ninguno se ha tocado: son del reviewer.
+> - **§135 · T27 entera, sin marcar**, con lo que cada bloque fue apuntando
+>   sobre cada una de las seis verificaciones.
+>
+> ### Qué queda
+>
+> 1. **T27**, las seis verificaciones contra la base real y el ERP. **Las
+>    ejecuta el humano tras desplegar**, y el front y la Function **se
+>    despliegan juntos** (`infra/`).
+> 2. El **reviewer** contra `CHECKPOINTS.md`.
+> 3. `harness/features.json` **sin tocar**: F-028 sigue `in_progress`. Marcarla
+>    `done` es del líder, tras el APROBADO.
+> 4. Pendiente de propagar a `arnes-base` (**del líder**, el implementer no
+>    toca el arnés): que la campaña avise de los ficheros en alcance sin
+>    mutantes; que un servicio en **dos lenguajes** diga que mide y muta solo
+>    uno; que `harness.mutacion` **compruebe la línea base** antes de empezar; y
+>    que la caché del portero **no ve `docs/`**, así que un documento roto puede
+>    pasar por verde.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · **T23 y T24 de F-028 terminadas** · el control de la huella PASA
 >
 > Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `6256762` (T23)
 > y `0417104` (T24), locales, sin `push`.

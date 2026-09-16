@@ -187,13 +187,13 @@ class DecisionEstado:
 
 @dataclass(frozen=True)
 class SituacionParte:
-    """Lo que hay que saber de un parte para derivar su estado. **Tres cosas.**
+    """Lo que hay que saber de un parte para derivar su estado. **Cuatro cosas.**
 
     Quien pregunta hace **una** llamada al repositorio y recibe esto, que es lo
     que pide R2: no cruzar cuatro tablas ni conocer el veredicto, la
     aprobación, el archivo y el cierre por separado.
 
-    Y son tres y nada más, cada una con su porqué:
+    Y son cuatro y nada más, cada una con su porqué:
 
     - `decision_humana`: la **última** fila humana del histórico. Manda sobre
       la máquina (R9) y es lo único que puede rechazar un parte apto.
@@ -203,13 +203,37 @@ class SituacionParte:
       ahí sale que un reproceso que no cambia nada no escriba nada.
     - `estado_cierre`: lo que dice la traza de cierre de F-009. Gana a todo
       (R18), porque `cerrado` es un hecho del ERP y no una opinión nuestra.
+    - `validacion`: el veredicto **guardado** de F-004, el que emitió quien
+      traía la extracción. Es el primer argumento de `estado_del_parte` y
+      viene de la misma consulta que los otros tres (F-030 R2, R18).
 
-    Una cuarta cosa aquí sería una invitación a decidir con ella, y lo que se
-    decide se decide en `estado_del_parte`.
+    > **Enmienda del 2026-09-16 · F-030 T3 (`design.md` §5.1).** Hasta hoy este
+    > párrafo decía, literal: *«Una cuarta cosa aquí sería una invitación a
+    > decidir con ella, y lo que se decide se decide en `estado_del_parte`.»*
+    >
+    > La frase protegía lo que no había que proteger. Lo que se decide se sigue
+    > decidiendo en `estado_del_parte`, y esa parte no cambia: aquí no hay ni
+    > una línea de criterio. Pero la cuarta cosa **es el primer argumento de
+    > `estado_del_parte`**, y dejarla fuera no impidió que nadie decidiera con
+    > ella: obligó a las tres puertas del circuito a buscarla por su cuenta, y
+    > los tres endpoints que no reciben la extracción acabaron **fabricándola**
+    > desde el cuerpo de la petición. El resultado, en producción: un parte no
+    > apto que una persona había aprobado dejó de archivarse, porque la huella
+    > recomputada sobre el veredicto inventado no era la del veredicto sobre el
+    > que se decidió (RS26.09/0178, F-030 §0).
+    >
+    > Tenerla aquí es justo lo que impide decidir con **otra**: quien deriva el
+    > estado recibe las cuatro juntas, de la misma consulta y del mismo
+    > almacén, y ya no puede mezclar una fuente con otra.
+    >
+    > Va la **última de los cuatro campos** aunque conceptualmente sea la
+    > primera: todo el código existente construye `SituacionParte` por palabra
+    > clave, pero ponerla delante rompería cualquier construcción posicional
+    > que apareciera por el camino.
 
-    Que los tres huecos vengan vacíos **no es un error**: es el caso normal del
-    primer día. Todo parte nace sin decisión, sin fila y sin traza de cierre, y
-    de ahí tiene que salir un estado igualmente.
+    Que los cuatro huecos vengan vacíos **no es un error**: es el caso normal del
+    primer día. Todo parte nace sin veredicto, sin decisión, sin fila y sin
+    traza de cierre, y de ahí tiene que salir un estado igualmente.
 
     Esto viene **del repositorio y nunca del cuerpo de la petición** (R33). Es
     el mismo argumento que escribió F-012 para `traza_grafico` y que F-026
@@ -221,6 +245,7 @@ class SituacionParte:
     decision_humana: DecisionEstado | None = None
     ultimo_estado_registrado: EstadoParte | None = None
     estado_cierre: str | None = None
+    validacion: ResultadoValidacion | None = None
 
 
 def estado_de_la_maquina(validacion: ResultadoValidacion | None) -> EstadoParte:

@@ -116,18 +116,6 @@ PDF = FIRMA_PDF + b"1.7\nsintetico para el test\n%%EOF\n"
 #: Los dos destinos no aptos: los que una persona puede acabar decidiendo.
 DESTINOS_NO_APTOS = (Destino.COLA_VALIDACION_HUMANA, Destino.REVISION_MANUAL)
 
-#: ¿`SituacionParte` trae ya el veredicto guardado?
-#:
-#: **Andamio de T1, y se retira en T3.** El campo `validacion` de
-#: `SituacionParte` lo añade T3; mientras no exista, `_situacion` lo cuelga del
-#: objeto para que el rojo de la fase RED sea el del defecto —la puerta juzga
-#: el veredicto del cuerpo— y no un `TypeError` de construcción, que no
-#: demostraría nada. En cuanto T3 esté, esta constante sobra y la rama de
-#: abajo con ella.
-_SITUACION_TRAE_VEREDICTO = "validacion" in {
-    campo.name for campo in fields(SituacionParte)
-}
-
 
 # --------------------------------------------------------------------------
 # Los dobles que necesitan las dos puertas que hablan con el ERP
@@ -351,14 +339,13 @@ def _situacion(
     última decisión humana y el estado de la traza de cierre salen de la misma
     consulta, y quien deriva el estado no puede mezclar una fuente con otra.
 
-    La rama de `object.__setattr__` es el **andamio de T3** descrito arriba y
-    desaparece con él.
+    El andamio de T1 —colgar `validacion` del objeto con `object.__setattr__`
+    porque el campo todavía no existía— se retiró en **T3**, que es cuando
+    `SituacionParte` ganó su cuarto campo. Aquí ya se construye normal.
     """
-    situacion = SituacionParte(decision_humana=decision, estado_cierre=cierre)
-    if _SITUACION_TRAE_VEREDICTO:
-        return replace(situacion, validacion=validacion)
-    object.__setattr__(situacion, "validacion", validacion)
-    return situacion
+    return SituacionParte(
+        decision_humana=decision, estado_cierre=cierre, validacion=validacion
+    )
 
 
 def _aprobacion_de_una_persona(validacion: ResultadoValidacion) -> DecisionEstado:
@@ -487,6 +474,51 @@ def _ha_pasado(puerta, dobles: Dobles) -> None:
         assert dobles.archivador.biblioteca.elementos != {}
     else:
         assert dobles.erp.lecturas == [CODIGO_EN_SIGRID]
+
+
+# --------------------------------------------------------------------------
+# T3 · la situación reúne las cuatro cosas (R2)
+# --------------------------------------------------------------------------
+
+
+def test_f030_r2_la_situacion_reune_las_cuatro_cosas_y_ninguna_mas():
+    """R2 · el veredicto guardado viaja **dentro** de la situación.
+
+    Los cuatro hechos que consume `estado_del_parte` salen de la misma
+    consulta y del mismo almacén, y por eso quien deriva el estado no puede
+    mezclar una fuente con otra. Un quinto campo aquí volvería a abrir la
+    pregunta «¿de dónde salió este dato?», que es la que costó la regresión.
+
+    `validacion` va **la última**, y el orden se afirma: todo el código
+    construye `SituacionParte` por palabra clave, pero una construcción
+    posicional que apareciera por el camino tiene que seguir leyendo los tres
+    campos de antes en su sitio.
+    """
+    nombres = tuple(campo.name for campo in fields(SituacionParte))
+
+    assert nombres == (
+        "decision_humana",
+        "ultimo_estado_registrado",
+        "estado_cierre",
+        "validacion",
+    )
+
+
+def test_f030_r2_una_situacion_vacia_sigue_siendo_valida_y_sin_veredicto():
+    """Los cuatro huecos vacíos **no son un error**: es el primer día.
+
+    Un parte nace sin veredicto, sin decisión, sin fila y sin traza de cierre.
+    Que el campo nuevo tenga valor por defecto es lo que impide que las decenas
+    de sitios que hoy construyen la situación con tres argumentos tengan que
+    acordarse del cuarto — y lo que hace que el que se olvidara acabara con un
+    veredicto inventado, que es justo lo que F-030 viene a quitar.
+    """
+    situacion = SituacionParte()
+
+    assert situacion.decision_humana is None
+    assert situacion.ultimo_estado_registrado is None
+    assert situacion.estado_cierre is None
+    assert situacion.validacion is None
 
 
 # --------------------------------------------------------------------------

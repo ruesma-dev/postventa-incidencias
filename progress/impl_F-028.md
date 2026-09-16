@@ -3248,3 +3248,546 @@ Tres apuntes para quien lo coja:
   `done` no es cosa del implementer.
 - **La base real y el ERP no se han tocado.** `sql/10_aprobaciones.sql` tampoco:
   el directorio `sql/` entero está fuera del diff.
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 6, T16 y T17
+
+> Encargo: **T16 y T17** de `specs/F-028-estado-del-parte/tasks.md`, la capa JS
+> del front. Parada obligada al terminar. **No se ha entrado en T18.**
+>
+> Rama `feature/F-028-estado-del-parte`, desde `70ec902`. Rigor **`estandar`**:
+> fase RED, puerta de cobertura y campaña de mutación. Sin `push`, sin tocar
+> `dev` ni `main`, sin tocar el `status` de ninguna feature, sin tocar
+> `azure-apps/`, `infrastructure/sigrid/` ni `infrastructure/sharepoint/`.
+
+La línea base estaba **verde de verdad** al empezar: `bash harness/init.sh` →
+ENTORNO LISTO, 2.528 pasados en `api`, 224 en `front`, 292 casos de JavaScript
+y cobertura 100 % de 283 líneas. No hizo falta deseleccionar nada ni para la
+suite ni para la campaña.
+
+**Lo que cierra este encargo, y es por lo que era urgente**: hasta `70ec902` el
+repositorio estaba en un estado **no desplegable** —lo denunciaron §56 y §67—
+porque `js/api.js::aprobar` llamaba a un endpoint que T15 había retirado y todo
+el front leía un bloque `aprobacion` que T14 había dejado de emitir. Con T16 y
+T17 la capa que *decide* algo ya habla el contrato nuevo. **Falta T18**: la
+pantalla (`js/app.js` e `index.html`) sigue llamando a lo viejo, así que el
+repositorio **sigue sin poder desplegarse** hasta que el bloque 6 esté entero.
+
+---
+
+## 70 · Qué se ha hecho, en una frase por tarea
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T16** | `9d379f3` | `js/api.js::cambiarEstado` (`POST /api/estado`, paso propio de traza) y `js/pipeline.js::cuerpoDeCambioDeEstado`; se retira `aprobar` |
+| **T17** | `efaaea4` | `semaforoDe(validacion, estado)` con las cuatro marcas, `esCirculable` por estado y `pendientesDeCircuito` filtrando por `estado === "aprobado"` |
+
+Lo que esto hace posible en pantalla, que es el encargo de la feature: **un
+parte `rechazado` sale de la tanda aunque su veredicto sea apto**. Hasta
+`efaaea4` el selector miraba el veredicto, así que un parte verde rechazado a
+mano entraba igual en el circuito que archiva en SharePoint y cierra la
+incidencia en el ERP. Tiene test propio y lo mata el mutante M12.
+
+---
+
+## 71 · Ficheros tocados
+
+### Creados
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-front/tests_js/estado.test.js` | Las dos mitades del bloque 6: qué viaja al decidir (T16) y qué se pinta y qué circula (T17). **41 casos** |
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `services/postventa-front/js/api.js` | `cambiarEstado` en lugar de `aprobar`; ruta `/estado` y `paso: "estado"` |
+| `services/postventa-front/js/pipeline.js` | `cuerpoDeCambioDeEstado`, `ESTADOS_MANUALES`, `LIMITE_MOTIVO`, `estadoDe`, `semaforoDe` reescrito, `esCirculable` reescrito, `guardarParte` devuelve `estado`; se retiran `aprobacionVale` y `APROBACION_VIGENTE` |
+| `services/postventa-front/tests_js/api.test.js` | Los tres casos de `aprobar` reescritos sobre `cambiarEstado` (§74.1) |
+| `services/postventa-front/tests_js/aprobacion.test.js` | **25 casos retirados** con dos recuadros fechados (§74.2) |
+| `services/postventa-front/tests_js/pipeline.test.js` | **3 casos del semáforo retirados** con su recuadro; el fixture gana `estadoParte`; uno reescrito |
+| `services/postventa-front/tests_js/cierre.test.js` | El fixture gana `estadoParte`; un caso reescrito sobre el estado |
+| `services/postventa-front/tests_js/grafico.test.js` | Ídem, dos casos reescritos |
+| `services/postventa-front/tests_js/circuito.test.js` | Ídem, dos casos reescritos |
+| `services/postventa-front/tests_js/persistencia.test.js` | Dos partes ganan `estadoParte` para que sigan fallando por lo suyo (R27 de F-019) |
+| `services/postventa-front/tests/test_f026_front.py` | Un caso retirado con su recuadro fechado (§74.1) |
+| `specs/F-028-estado-del-parte/tasks.md` | T16 y T17 marcadas `[x]` |
+| `progress/mutacion_F-028.md` | Lo genera la campaña |
+
+### Lo que la spec prohíbe tocar, y que sigue intacto
+
+Comprobado con `git diff 70ec902 --stat`: en el diff **no aparece** ni un
+fichero de `services/postventa-api/` —ni el dominio, ni la persistencia, ni las
+tres puertas, ni el borde, ni `sql/`—, ni `domain/models/validacion.py`, ni
+`domain/models/aprobacion.py`, ni `infrastructure/sigrid/`, ni
+`infrastructure/sharepoint/`, ni `azure-apps/`, ni `harness/features.json`, ni
+`js/confirmacion.js` (R35), ni `js/app.js`, ni `index.html` (los dos son T18).
+
+Y **`tests/test_f028_puertas.py` no está en el diff**: sus 48 casos siguen en
+verde sin una sola edición desde el bloque 0.
+
+---
+
+## 72 · Fase RED · las trazas, pegadas
+
+### 72.1 · T16 · antes de que existieran `cuerpoDeCambioDeEstado` y `cambiarEstado`
+
+```
+$ cd services/postventa-front
+$ node --test "tests_js/estado.test.js"
+
+✖ f028 R10: los dos únicos destinos manuales son aprobado y rechazado
+✖ f028 R10: no se compone ningún cambio a un estado que no sea manual
+✖ f028 R11: un rechazo SIN motivo no se compone, y se dice por qué
+✖ f028 R12: al aprobar el motivo es opcional, y sin él el cuerpo no lo lleva
+✖ f028 R14: sin saber quién decide no se compone ninguna petición
+✖ f028 R11, R14: el rechazo sin motivo NI oid tampoco se cuela por el otro lado
+✖ f028: sin remesa registrada no se compone nada, porque el backend responde 409
+✖ f028 R13: el motivo viaja recortado por los extremos
+✖ f028 R13: el límite del motivo es el del dominio, y pasarse se rechaza
+✖ f028 R13: el motivo se acota DESPUÉS de recortar, no antes
+✖ f028 R29: la confirmación viaja como el BOOLEANO de JSON, no como la cadena
+✖ f028: el cuerpo es el de guardar MÁS las cuatro claves propias, y ni una más
+✖ f028 R30: no viaja NI UN BYTE del PDF ni un veredicto ya hecho
+✖ f028 R30: un veredicto metido a mano en el parte tampoco se cuela
+✖ f028: las ediciones de la persona SÍ viajan, que es lo que se decide
+ℹ tests 15
+ℹ pass 0
+ℹ fail 15
+
+✖ failing tests:
+test at tests_js\estado.test.js:112:1
+✖ f028 R10: los dos únicos destinos manuales son aprobado y rechazado
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  + undefined
+  - [
+  -   'aprobado',
+  -   'rechazado'
+  - ]
+```
+
+**15 de 15 en rojo.** Después de escribir las dos funciones: `15 passed`.
+
+### 72.2 · Y la fase RED destapó un hueco real, que es lo que hay que mirar de T16
+
+Con la implementación ya escrita, **catorce** casos pasaron y uno siguió rojo:
+
+```
+$ node --test "tests_js/estado.test.js"
+ℹ pass 14
+ℹ fail 1
+
+✖ f028 R14: sin saber quién decide no se compone ninguna petición
+  AssertionError [ERR_ASSERTION]: Missing expected exception:
+  un cambio de estado con oid «"   "» no debería componerse
+    expected: /qui[eé]n/i,
+    operator: 'throws'
+```
+
+Leído en voz alta: **un `usuario_oid` de solo espacios se colaba**. `"   "` es
+`truthy` en JavaScript, así que `if (!ajustes.usuarioOid)` lo dejaba pasar y se
+componía una petición con `usuario_oid: "   "` que el backend contesta con un
+400 —él sí hace `.strip()` antes de mirarlo (`estado.py::_usuario_oid`)—. El
+arreglo es recortar antes de mirar, como hace el backend, y mandar el valor
+recortado. **No es teórico**: el `oid` lo pone `api.identidad()`, que lo saca
+de `/.auth/me` a través del proxy de la Static Web App, y un valor en blanco
+vuelve de ahí sin que nadie lo note. Lo mata el mutante M4.
+
+> El mismo defecto está en `cuerpoDeAprobacion` (F-026) y **no se ha
+> arreglado**: esa función se retira en T18 con el resto de lo que llama
+> `js/app.js`, y arreglar código que se va es trabajo que se tira.
+
+### 72.3 · T17 · antes de que el semáforo y la tanda miraran el estado
+
+```
+$ node --test "tests_js/estado.test.js"
+ℹ tests 40
+ℹ pass 23
+ℹ fail 17
+
+✖ f028 R39: un parte aprobado POR UNA PERSONA no se pinta igual que el verde
+✖ f028 R39: y la marca depende de QUIÉN decidió, no del veredicto
+✖ f028 R5: un parte APTO que una persona rechazó se pinta rechazado
+✖ f028 R7: un parte cerrado se pinta cerrado, aunque su veredicto sea apto
+✖ f028 R17: sin el bloque del backend NO se inventa ninguna marca
+✖ f028 R17: un estado que esta pantalla no conoce tampoco se pinta
+✖ f028: el aprobado, el rechazado y el cerrado no necesitan veredicto
+✖ f028 R9: un parte NO APTO que una persona aprobó entra en la tanda
+✖ f028 R5: un parte RECHAZADO sale de la tanda AUNQUE su veredicto sea apto
+✖ f028 R7: un parte CERRADO también sale de la tanda, aunque sea apto
+✖ f028 R17: sin bloque de estado el parte NO entra en la tanda
+✖ f028 R5: el cuerpo de archivo se NIEGA a componer un parte apto rechazado
+✖ f028 R5: un parte apto rechazado NO es cerrable ni adjuntable, aunque conste archivado
+✖ f028 R7: y un parte cerrado tampoco compone ninguna de las tres
+✖ f028 R38: al guardar, el estado que devuelve el backend llega al parte
+✖ f028: sin bloque de estado en la respuesta, lo que llega es null y no un hueco
+✖ f028: un guardado fallido no inventa ningún estado
+```
+
+El que cuenta de todo el bloque es **«un parte RECHAZADO sale de la tanda
+AUNQUE su veredicto sea apto»**: es el caso que el responsable pidió y que
+hasta este commit no se podía ni escribir. Después del cambio:
+`41 passed` (los 40 más el de §73.3).
+
+### 72.4 · Los 23 que ya pasaban en rojo, y por qué es lo correcto
+
+Son **todos control negativo** —«un parte pendiente sale de la tanda», «una
+lista vacía no revienta», «el estado no relaja las otras puertas», los quince
+de T16 ya implementados—: antes del cambio ningún parte tenía bloque `estado`,
+así que afirmar que *no* circula salía gratis. Su valor no está en la fase RED
+sino en la de después: son los que se ponen rojos si la condición desaparece, y
+de eso hay prueba en §76 (mutantes M13 y M14).
+
+---
+
+## 73 · Decisiones de diseño, y las tres que hay que juzgar
+
+### 73.1 · El bloque del backend se guarda en `parte.estadoParte`, y no en `parte.estado`
+
+**Es la decisión con más consecuencias para T18** y por eso va primero.
+`js/app.js` usa `parte.estado` desde F-007 para la **fase** del parte en
+pantalla —`"leyendo"`, `"listo"`, `"error"`—. El bloque que devuelven
+`/api/parte` y `/api/estado` se llama `estado` en el JSON, así que asignarlo a
+`parte.estado` habría metido dos cosas distintas en el mismo campo del mismo
+objeto: un día la fase pisa al estado del parte y el parte aparece `"listo"` en
+vez de `aprobado`, o al revés, y el bicho es de los que tardan una tarde.
+
+Se llama `estadoParte`, está escrito en la docstring de `estadoDe` y en la
+cabecera de la sección T17 de `tests_js/estado.test.js`. **T18 puede
+renombrar la fase si prefiere** —es suya, `app.js` es su fichero—, pero
+mientras no lo haga, este nombre es lo que evita la colisión.
+
+La clave que devuelve `guardarParte` sí se llama `estado`, porque es
+literalmente lo que vino en la respuesta.
+
+### 73.2 · Sin bloque `estado`, **no se pinta ninguna marca y el parte no circula**
+
+Es la aplicación literal de R17 y de `design.md` §7 —«el estado lo manda el
+backend y el front lo pinta: no hay derivación en JavaScript»— y tiene un
+efecto visible que hay que declarar: **un parte cuyo guardado falló se queda
+sin color**. Antes se pintaba verde/ámbar/rojo a partir del veredicto.
+
+Por qué se acepta, y por qué no se ha dejado un camino de respaldo:
+
+1. **El caso normal no existe.** El bloque llega en la respuesta de
+   `POST /api/parte`, que es parte de `procesarParte`. Sin él tampoco hay
+   `parte.guardado`, y sin `guardado` el parte ya estaba fuera de la tanda
+   desde F-019 R27 y la pantalla ya enseña `errorGuardado` con el motivo.
+2. **El respaldo sería exactamente el defecto de la feature.** Pintar verde un
+   parte apto cuyo estado no se ha podido leer es afirmar que está aprobado sin
+   haberlo preguntado — y si ese parte estaba rechazado en la base, la pantalla
+   estaría diciendo lo contrario de lo que consta.
+3. **El fallo se va al lado seguro**, que es el criterio que ya tomó el bloque
+   1 en `_aprueba_lo_que_hay`: sin marca, nunca con la marca de aprobado.
+
+Lo fija `f028 R17: sin el bloque del backend NO se inventa ninguna marca` y lo
+mata el mutante **M11**, que es el que repone la derivación.
+
+### 73.3 · Un hueco que abre T17 y se cierra en el mismo commit
+
+`esCirculable` dejó de mirar `parte.validacion`. Antes no podía: los dos
+caminos de F-026 —`esArchivable(validacion)` y `aprobacionVale(...)`— exigían
+una validación, así que un parte sin veredicto no llegaba nunca a componer
+nada. Ahora sí llega, y `cuerpoDeArchivo` hace
+`cuerpo.append("veredicto", parte.validacion.veredicto)`: lo que salía era un
+`TypeError` en vez de un error que diga qué falta.
+
+Se ha cerrado en los dos sitios donde el veredicto viaja de verdad
+—`cuerpoDeArchivo` con su propia comprobación, `esCerrable` con una condición
+más—, **no** metiéndolo otra vez en `esCirculable`, que tiene que seguir siendo
+«su estado es `aprobado`» y nada más (R33). Tiene test:
+`f028: un parte aprobado SIN veredicto dice qué le falta, no revienta`.
+
+### 73.4 · Lo que se retira porque se queda sin llamante, y lo que NO se retira
+
+Se van con T17, declarados aquí uno a uno porque `tasks.md` no los nombra y son
+**la mitad interna** de lo que T17 sí sustituye —el mismo criterio de §63.2—:
+
+| Retirado | De quién era la mitad |
+|---|---|
+| `pipeline.js::aprobacionVale` | de `esCirculable` y del `semaforoDe` viejo. Comparaba el destino aprobado con el de la validación de ahora; F-028 resuelve la caducidad **al derivar**, en el backend (R19) |
+| `pipeline.js::APROBACION_VIGENTE` | el literal que `aprobacionVale` comparaba |
+| `aprobacion.test.js::FormDataFalso`, `parteAprobado`, `apiQueGuarda`, `aprobacionInventada` | ayudantes de los 25 casos retirados; sin un solo llamante |
+
+**Lo que NO se retira aunque haya quedado a medio camino**, y no lo cruzo por
+mi cuenta:
+
+- **`pipeline.js::cuerpoDeAprobacion`, `esAprobable` y `MOTIVOS_APROBABLES`.**
+  Los tres siguen vivos porque `js/app.js` e `index.html` los llaman, y esos
+  dos ficheros son **T18**. `cuerpoDeAprobacion` compone hoy el cuerpo de un
+  endpoint que ya no existe, así que es código muerto en cuanto T18 reescriba
+  la pantalla; `esAprobable` es además una copia de `es_aprobable`, que T15
+  retiró del dominio porque F-028 **deroga** esa pregunta (R9, R10: una persona
+  puede mover a `aprobado` o a `rechazado` cualquier parte que no esté
+  `cerrado`). **Los tres son para T18.**
+- **`js/app.js:546 · api.aprobar(cuerpo, parte.hash)`.** Desde T16 ese método no
+  existe, así que el botón de aprobar da hoy un `TypeError` en vez de un 404.
+  Las dos cosas son igual de rotas y las dos las arregla T18; decirlo aquí es
+  para que nadie lo lea como un descuido de este commit.
+
+---
+
+## 74 · Los tests de antes que han cambiado, y por qué
+
+Son **31**, en siete ficheros, y ninguno se ha «ajustado para que pase». Van
+uno a uno porque un test que cambia sin justificación escrita es un test
+aflojado.
+
+### 74.1 · T16 · tres reescritos y uno retirado
+
+| Fichero | Qué pasa |
+|---|---|
+| `tests_js/api.test.js` · la entrada `aprobar` de `LOS_ENDPOINTS` | **Reescrita** como `cambiarEstado` → `/api/estado`. Siguen siendo **doce** endpoints, y por eso el comentario del recuento dice ahora en voz alta que «no son los mismos doce»: el número que no se mueve es justo el caso que esa lista existe para no dejar pasar en silencio, y lo que lo caza es la comparación nombre a nombre |
+| `tests_js/api.test.js` · «aprobar manda POST /api/aprobar…» | **Reescrito** sobre `cambiarEstado`: ruta, método, cabecera y `paso: "estado"` |
+| `tests_js/api.test.js` · «por la traza de aprobar no pasa el oid» | **Reescrito** y **más fuerte**: ahora por el cuerpo viaja además el `motivo`, que es texto libre y puede llevar dentro el nombre de un cliente (R52) |
+| `tests/test_f026_front.py` · `test_f026_r2_aprobar_es_una_peticion_propia_a_su_endpoint` | **Retirado** con recuadro fechado. Buscaba `"/aprobar"` y `paso: "aprobar"` en el texto de `api.js`. Su sustituto son los dos de arriba, que prueban lo mismo contra un `fetch` doble en vez de contra el texto del fichero |
+
+### 74.2 · T17 · 25 retirados de `tests_js/aprobacion.test.js`
+
+Dos recuadros fechados dentro del propio fichero, con la tabla completa
+«retirado → sustituto». El resumen:
+
+- **11 del semáforo y del circuito de F-026** (`semaforoDe(validacion,
+  aprobacion)`, `esCirculable` con destino). Probaban **el mecanismo que T17
+  sustituye**: el color y la entrada al circuito salían del veredicto y de una
+  aprobación con su destino. Todos tienen sustituto en `estado.test.js`, y uno
+  de ellos —«sin aprobación, el semáforo sigue diciendo exactamente lo que
+  decía»— **dejó de ser cierto a propósito**: F-028 sí reescribe los tres
+  colores de F-007, y eso es la feature.
+- **14 de la tanda, las tres composiciones y `guardarParte`**. Cuatro de estos
+  catorce **seguían en verde** y merecen su párrafo: «un no apto sin aprobación
+  sigue fuera de la tanda», «un aprobado que no consta guardado tampoco entra»,
+  «el cuerpo de archivo se sigue negando sin aprobación ninguna» y «un revocado
+  ni se cierra ni se adjunta» pasaban porque el montaje se había quedado
+  **inerte** —le pasan una `aprobacion` a un pipeline al que ya nadie se la
+  pide, así que el parte se queda fuera por no tener estado y no por lo que su
+  nombre afirma—. Es la misma clase de test verde que el bloque 4 retiró de
+  `test_f026_puertas.py` (§30.1) y T15 dos más (§64.4).
+- **Uno se queda sin sustituto, y se dice**: «si el backend dice que la revocó,
+  eso es lo que llega». F-028 **no revoca nada**; la aprobación caduca al
+  derivar, y eso se prueba en el backend (`test_f028_r19_…`, `test_f028_r20_…`).
+
+Con ellos se van cuatro ayudantes y nueve imports que se quedaban sin un solo
+llamante.
+
+### 74.3 · T17 · tres retirados de `tests_js/pipeline.test.js`
+
+Los tres del semáforo de F-007: «el semáforo sale de veredicto y destino», «sin
+veredicto todavía, no hay semáforo que pintar» y «un apto con destino que no es
+archivo_y_cierre NO es verde». Se retiran con su recuadro porque **derivar el
+color del veredicto es exactamente lo que F-028 prohíbe** (R17). No se les ha
+pasado un segundo argumento para dejarlos verdes; sus sustitutos cubren más que
+ellos, incluidas las dos marcas que antes no existían.
+
+**`esArchivable` sigue en ese fichero y sin tocar**, y es deliberado: conserva
+su significado de siempre —«lo que la máquina dio por bueno»—, lo usa
+`noArchivables()` y distinguirlo del aprobado a mano **es** el requisito (R39).
+
+### 74.4 · T17 · cinco reescritos y seis fixtures ampliados
+
+| Fichero | Qué cambia |
+|---|---|
+| `cierre.test.js` | `parteCerrable` gana `estadoParte`; «un parte no apto NO es cerrable» → **«un parte que no consta APROBADO no es cerrable»**, recorriendo los tres estados que no son `aprobado` —incluido `rechazado`, que antes no se podía ni montar— más el caso sin bloque |
+| `grafico.test.js` | `parteAdjuntable` gana `estadoParte`; dos casos reescritos igual |
+| `circuito.test.js` | `parteDeLaTanda` gana `estadoParte`; «los que no son aptos quedan fuera» → por estado; y «un parte no apto no llega a ninguna petición» se monta ahora **apto y rechazado a mano**, que es más fuerte: comprueba que la negativa no tumba la tanda **sobre el parte que la máquina había dado por bueno** |
+| `pipeline.test.js` | El fixture común gana `estadoParte` —por el mismo motivo que ya tenía `guardado`—; «componer el cuerpo de archivo de un parte no apto es imposible» → «de un parte **no aprobado**» |
+| `persistencia.test.js` | Los dos partes de R27 (F-019) ganan `estadoParte`. Sin él fallarían por el motivo de **otro** requisito —`cuerpoDeArchivo` mira primero el estado— y el par dejaría de vigilar lo suyo. La combinación «con estado conocido pero sin guardar» no es artificial: es lo que queda cuando un parte que ya estaba en la base se vuelve a guardar y el guardado falla, porque `guardarParte` conserva a propósito el estado que ya tenía |
+
+---
+
+## 75 · La verificación de T16 y T17, recontada
+
+| Lo que pide la tarea | Dónde se fija |
+|---|---|
+| **T16** · el cuerpo lleva `estado`, `usuario_oid`, `confirmado: true` y el motivo recortado | `f028: el cuerpo es el de guardar MÁS las cuatro claves propias, y ni una más`, `f028 R29: la confirmación viaja como el BOOLEANO de JSON`, `f028 R13: el motivo viaja recortado por los extremos` |
+| **T16** · se niega a componer un rechazo **sin motivo** (R11) | `f028 R11: un rechazo SIN motivo no se compone, y se dice por qué` (5 formas de «vacío», espacios incluidos) |
+| **T16** · y **sin `usuario_oid`** | `f028 R14: sin saber quién decide no se compone ninguna petición` (4 formas), más `f028 R11, R14: el rechazo sin motivo NI oid tampoco se cuela por el otro lado` — **las dos puertas, no una** |
+| **T16** · no lleva ningún byte del PDF (R30) | `f028 R30: no viaja NI UN BYTE del PDF ni un veredicto ya hecho`, sobre el JSON ya serializado, más su control negativo `…un veredicto metido a mano en el parte tampoco se cuela` |
+| **T17** · las cuatro marcas | Siete casos: verde, aprobado con anillo, rechazado, cerrado, ámbar, rojo y sin marca |
+| **T17** · `pendientesDeCircuito` filtra por `estado === "aprobado"` | `f028 R33: entra en la tanda el que está APROBADO, lo diga la máquina o una persona` y `f028 R9: un parte NO APTO que una persona aprobó entra en la tanda` |
+| **T17** · **un parte `rechazado` sale de la tanda aunque su veredicto sea apto** | `f028 R5: un parte RECHAZADO sale de la tanda AUNQUE su veredicto sea apto`, que **afirma primero** `parte.validacion.veredicto === "apto"` para que el caso no pueda quedarse sin su mitad |
+| **T17** · un `cerrado` también | `f028 R7: un parte CERRADO también sale de la tanda, aunque sea apto` |
+| **T17** · el `aprobado` por persona se distingue del de máquina (R39) | `f028 R39: un parte aprobado POR UNA PERSONA no se pinta igual que el verde` y su control negativo `…y la marca depende de QUIÉN decidió, no del veredicto` |
+
+Y tres que no pide la tarea y sostienen el resto: que las **tres**
+composiciones (`cuerpoDeArchivo`, `esCerrable`, `cuerpoDeGrafico`) se niegan
+igual —no basta con no pintar el botón—, que el motivo se acota **después** de
+recortar, y que las ediciones de la persona **sí** viajan, porque el backend
+recalcula el veredicto sobre lo que se le manda y sin ellas la huella apuntada
+no sería la del veredicto que se está mirando.
+
+---
+
+## 76 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (servicio `front`, Python) | **223 pasados, 0 fallos** | `bash harness/init.sh` |
+| **Tests ejecutados** (servicio `front`, JavaScript) | **305 pasados, 0 fallos** | `node --test "tests_js/*.test.js"`, que lanza el puente `tests/test_f007_js.py` |
+| Tests ejecutados (servicio `api`) | **2.528 pasados, 13 saltados** | la suite del servicio, a pelo |
+| Tests ejecutados (arnés, raíz) | **62 pasados** | `bash harness/init.sh` |
+| De ellos, **nuevos de este bloque** | **41** en `tests_js/estado.test.js` (15 de T16 + 26 de T17) | `node --test "tests_js/estado.test.js"` |
+| Tests **retirados** | **29** (25 de `aprobacion.test.js`, 3 de `pipeline.test.js`, 1 de `test_f026_front.py`), todos con su sustituto en §74 | — |
+| Tests **reescritos en su sitio** | **8**, con su enmienda fechada dentro | §74 |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 283/283, umbral 80 %, nivel `estandar` | línea `PUERTA COBERTURA` de `init.sh`. **Ver §76.1: no mide nada de este bloque** |
+| **Mutantes generados / supervivientes** | automáticos **31 / 0** (0 timeouts, 146,2 s, 8 workers) · **a mano 15 / 0** | `python -m harness.mutacion --feature F-028` y §76.2 |
+| **Tiempo de la suite** | `api` **23,7 s** · `front` **1,9 s** (Python) + **0,41 s** (JavaScript) · raíz 3,0 s | la propia suite |
+| **Ruff** | `All checks passed` sobre el único `.py` tocado; el repositorio sigue en **61** avisos, sin crecer | `python -m ruff check` |
+
+### Los supervivientes, y qué se hace con cada uno
+
+**Ninguno**, ni en la campaña automática ni en la manual.
+
+### 76.1 · Lo que hay que mirar de las evidencias: **ni la cobertura ni la campaña miden este bloque**
+
+Va en voz alta porque presentarlo de otro modo sería el número que tranquiliza
+sin medir nada, que es el aviso del encargo.
+
+**La puerta de cobertura da 100,0 % de 283 líneas, y son las mismas 283 líneas
+que medía T15.** El arnés mide cobertura de **Python** (`harness/servicios.json`
+lo dice expresamente: el front va con lenguaje `python` por `dev_server.py`), y
+T16 y T17 no tocan una sola línea de Python de producción. Las **307 líneas de
+JavaScript de producción** que este bloque cambia no entran en esa cifra ni pueden entrar.
+
+**Y la campaña automática no genera ni un mutante de este bloque**, por lo
+mismo: `harness.mutacion` muta ficheros `.py`. Los 31 mutantes son de los
+bloques 1 a 5 y **siguen muriendo** —que también es información: el bloque 6 no
+ha roto nada de lo ya probado—, pero no dicen absolutamente nada de T16 ni de
+T17.
+
+La línea base se comprobó **antes** de creerse el resultado, como avisaba el
+encargo y como enseñó T13 (§44.1): `bash harness/init.sh` → ENTORNO LISTO, y la
+suite del servicio `api` entera y a pelo → `2528 passed, 13 skipped`, cero
+fallos.
+
+> **Propagación pendiente a `arnes-base`, y no la hago yo.** Es el mismo hueco
+> que el bloque 3 anotó en §23.1 —que la campaña no avise de los ficheros en
+> alcance sin mutantes— más uno nuevo: un servicio con código en **dos
+> lenguajes** mide y muta solo uno, y el informe no lo dice. Queda anotado para
+> que lo decida el líder; el implementer no toca el arnés por su cuenta.
+
+### 76.2 · Los 15 mutantes **a mano**, que son la evidencia que sí respalda el bloque
+
+Mismo método que los bloques 3, 4 y 5: se aplica la mutación sobre el fichero,
+se corre la suite del front entera —`node --test "tests_js/*.test.js"` y
+`pytest`, porque hay controles que miran el texto de `api.js`— y se restaura.
+«Muerto» = al menos un caso falla. El script está en el área de trabajo de la
+sesión, restaura cada fichero en un `finally` y el árbol quedó limpio,
+comprobado con `git status`.
+
+| # | Mutante aplicado a mano | Resultado | Quién lo caza |
+|---|---|---|---|
+| M1 | `cuerpoDeCambioDeEstado` deja de exigir motivo al rechazar (R11) | **muerto** | `f028 R11: un rechazo SIN motivo no se compone` |
+| M2 | `confirmado` viaja como la **cadena** `"true"` (R29) | **muerto** | `f028 R29: la confirmación viaja como el BOOLEANO de JSON` |
+| M3 | deja de exigir quién decide (R14) | **muerto** | `f028 R14: sin saber quién decide…` y `f028 R11, R14: …tampoco se cuela por el otro lado` |
+| M4 | el `oid` deja de recortarse: uno de espacios se cuela | **muerto** | `f028 R14`, caso `"   "` — es el hueco de §72.2 |
+| M5 | se admite cualquier `estado`, no solo los dos manuales (R10) | **muerto** | `f028 R10: no se compone ningún cambio a un estado que no sea manual` |
+| M6 | el motivo demasiado largo deja de rechazarse (R13) | **muerto** | `f028 R13: el límite del motivo es el del dominio` |
+| M7 | el cuerpo lleva el **veredicto ya hecho** (R28, R30) | **muerto** | `f028 R30: no viaja NI UN BYTE del PDF ni un veredicto ya hecho` |
+| M8 | `cambiarEstado` vuelve a llamar a `/aprobar` | **muerto** | `LOS_ENDPOINTS` y `f028: cambiarEstado manda POST /api/estado` |
+| M9 | el cambio de estado pierde su paso propio de traza | **muerto** | ídem |
+| M10 | el aprobado **por una persona** se pinta igual que el verde (R39) | **muerto** | `f028 R39` (los dos casos) |
+| M11 | sin bloque de estado, el semáforo **vuelve a derivar del veredicto** (R17) | **muerto** | `f028 R17: sin el bloque del backend NO se inventa ninguna marca` |
+| M12 | el circuito se abre **también para el `rechazado`** (R5) | **muerto** | `f028 R5: un parte RECHAZADO sale de la tanda…` y las tres composiciones |
+| M13 | el circuito se abre para **todo lo que no sea `pendiente`** (R7) | **muerto** | `f028 R7: un parte CERRADO también sale de la tanda` |
+| M14 | la tanda **deja de filtrar por el estado** (R33) | **muerto** | `f028 R5`, `f028 R7`, `f028 R4` y `f028 R17` |
+| M15 | `guardarParte` vuelve a leer el bloque `aprobacion`, que ya no viaja | **muerto** | `f028 R38: al guardar, el estado que devuelve el backend llega al parte` |
+
+**15 de 15 muertos.** Los cuatro que más valen:
+
+- **M12 y M13** son, literalmente, las dos formas de volver a dejar circular lo
+  que este bloque viene a frenar — y detrás del circuito hay dos escrituras en
+  un ERP de producción y un PDF con el DNI de un cliente subiendo a SharePoint.
+- **M2** es el error clásico del front que serializa mal, y es el único de los
+  quince que **no se ve mirando la pantalla**: la petición sale, el backend la
+  rechaza con un 400 y lo que ve el usuario es «no se ha podido registrar».
+- **M11** es el que repone la derivación en JavaScript, o sea el defecto
+  original de la feature escrito en el front.
+
+---
+
+## 77 · Verificaciones MANUAL pendientes
+
+Las de T27 siguen pendientes y este bloque **no crea ninguna nueva**, pero deja
+media de una lista para ejecutar y añade un aviso de despliegue:
+
+- **T27.4** («un parte apto rechazado a mano no se archiva»): la mitad del
+  backend está desde el bloque 4 y la mitad del front, desde T17 —la tanda ya
+  no lo lleva—. Lo que falta para poder ejecutarla **desde la pantalla** es el
+  botón de rechazar, que es T18.
+- **T27.5** («un parte cerrado responde 409 y la web lo explica»): la marca del
+  cerrado ya existe (`semaforoDe` → `"cerrado"`); **la frase que lo explica
+  (R41) es T18**.
+- **Aviso de despliegue, y no es una verificación**: `js/app.js` sigue llamando
+  a `api.aprobar` y a `window.Pipeline.cuerpoDeAprobacion`, y sigue pasándole a
+  `semaforoDe` el bloque viejo. **El repositorio no se debe desplegar hasta que
+  T18 esté.** Es lo que la spec secuencia y lo que `design.md` §5 declara como
+  riesgo, con su mitigación: el front y la Function se despliegan juntos
+  (`infra/`).
+
+**La base real y el ERP no se han tocado**: todo lo de este bloque corre con
+`fetch` dobles inyectados y objetos en memoria, sin red, sin BBDD y sin IA. La
+guardia de red de sesión de `tests/conftest.py` sigue puesta.
+
+---
+
+## 78 · Por dónde sigue · el encargo de T18
+
+**T16 y T17 están cerradas. No se ha entrado en T18**, como pedía el encargo.
+
+Lo que T18 se encuentra ya hecho:
+
+- **`api.cambiarEstado(cuerpo, hash)`** y **`Pipeline.cuerpoDeCambioDeEstado(parte,
+  {estado, usuarioOid, remesaId, motivo})`**, que se niega a componer un rechazo
+  sin motivo y sin `oid`. `app.js` solo tiene que recoger el motivo del campo
+  de texto y pasarlo;
+- **`Pipeline.semaforoDe(validacion, parte.estadoParte)`** devuelve una de
+  `"verde"`, `"aprobado"`, `"ambar"`, `"rojo"`, `"rechazado"`, `"cerrado"` o
+  `""`. `index.html` ya pinta las cuatro primeras (líneas 150-153); **faltan las
+  clases de `rechazado` (gris apagado y tachado) y `cerrado` (azul con
+  candado)**, y `Pipeline.SEMAFORO_RECHAZADO` / `SEMAFORO_CERRADO` están
+  exportadas para no repetir los literales;
+- **`Pipeline.estadoDe(parte)`** devuelve el estado o `""`, que es lo que T18
+  necesita para decidir si enseña los dos botones o la frase de R41;
+- **`Pipeline.ESTADOS_MANUALES` y `LIMITE_MOTIVO`**, para el desplegable y para
+  acotar el campo de motivo con el número del dominio y no con uno inventado.
+
+Cinco apuntes para quien lo coja:
+
+- **El campo del parte se llama `parte.estadoParte`**, no `parte.estado`, y el
+  porqué está en §73.1. `guardarParte` lo devuelve como `guardado.estado`, así
+  que `_anotarGuardado` tiene que hacer `parte.estadoParte = guardado.estado`
+  —y **solo cuando el guardado salió bien**, igual que hoy—.
+- **`app.js` está roto a propósito en tres sitios** y T18 los arregla:
+  `api.aprobar` (línea 546, ya no existe), `cuerpoDeAprobacion` (compone para un
+  endpoint retirado) y `semaforoDe(validacion, parte.aprobacion)` (le pasa el
+  bloque viejo).
+- **Con T18 se van `cuerpoDeAprobacion`, `esAprobable` y `MOTIVOS_APROBABLES`**
+  de `pipeline.js`, y con ellos los 13 casos que quedan en
+  `tests_js/aprobacion.test.js` —que entonces se puede retirar entero— y los
+  casos de `tests/test_f026_front.py` que miran `esAprobable()` en el HTML
+  (líneas 159-160 y 221-222). F-028 **deroga** la pregunta «¿es este parte
+  aprobable?» (R9, R10), así que no hay que buscarles sustituto: hay que decir
+  que se deroga, como hizo T15 en §64.1.
+- **`js/confirmacion.js` no se toca** (R29, R35): el botón **es** el acto
+  explícito y `test_f025_r2_solo_se_arma_una_confirmacion_en_todo_el_front`
+  tiene que seguir en verde sin tocarlo.
+- **`tests/test_f028_puertas.py` sigue siendo la red**, 48 casos, intacta desde
+  el bloque 0. Si uno se pone rojo en T18, **parar y decirlo**.
+
+---
+
+## 79 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de
+  cobertura al **100,0 %** de las 283 líneas cambiadas (que son las de Python:
+  ver §76.1).
+- Árbol limpio, **3 commits** sobre `70ec902` (`9d379f3` T16, `efaaea4` T17 y
+  el de este informe), todos locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
+  `done` no es cosa del implementer.
+- **La base real y el ERP no se han tocado.** El backend entero está fuera del
+  diff: `git diff 70ec902 -- services/postventa-api/` está vacío.

@@ -1,7 +1,57 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## AL DÍA · 2026-09-16 · **T13 de F-028 terminada**, y el arnés está ROJO por otra cosa
+> ## AL DÍA · 2026-09-16 · **T16 y T17 de F-028 terminadas** · el arnés, en VERDE
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, `bash harness/init.sh` →
+> **ENTORNO LISTO**: 2.528 pasados en `api`, 223 en `front`, **305 casos de
+> JavaScript** y cobertura **100,0 % de 283 líneas cambiadas**. Commits
+> `9d379f3` (T16) y `efaaea4` (T17), locales, sin `push`.
+>
+> **Qué se ha cerrado:** la capa JS del front.
+>
+> - **T16** · `js/api.js::cambiarEstado` → `POST /api/estado` con su paso propio
+>   de traza, y se retira `aprobar`, que llamaba a un endpoint que T15 borró.
+>   `js/pipeline.js::cuerpoDeCambioDeEstado` compone el cuerpo y **se niega** sin
+>   destino manual (R10), sin quien decide (R14), con un rechazo sin motivo
+>   (R11), con un motivo pasado del límite del dominio (R13) o sin remesa.
+>   `confirmado` viaja como el **booleano** de JSON. Ni un byte del PDF ni un
+>   veredicto hecho (R28, R30).
+> - **T17** · `semaforoDe(validacion, estado)` pinta las cuatro marcas y
+>   distingue el aprobado **por una persona** del de la máquina (R39);
+>   `esCirculable` y `pendientesDeCircuito` filtran por `estado === "aprobado"`.
+>   **Un parte `rechazado` sale de la tanda aunque su veredicto sea apto** —el
+>   caso que el responsable pidió— y un `cerrado` también.
+>
+> Informe: `progress/impl_F-028.md`, secciones **70 a 79**.
+>
+> ### ⚠️ Sigue sin poder desplegarse: falta T18
+>
+> `js/app.js` e `index.html` **no se han tocado** (son T18, y el encargo era
+> pararse antes). Hoy `app.js` llama a `api.aprobar` —que ya no existe— y a
+> `cuerpoDeAprobacion`, y le pasa a `semaforoDe` el bloque viejo. **El front y
+> la Function se despliegan juntos**, así que hasta que T18 esté, nada de esto
+> sale a Azure. Lo que T18 se encuentra hecho y los cinco apuntes para cogerla
+> están en la sección **78** del informe.
+>
+> ### Dos cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **Ni la puerta de cobertura ni la campaña de mutación miden este bloque**
+>    (informe §76.1). El arnés mide y muta **Python**, y T16 y T17 son 307
+>    líneas de **JavaScript**. Los 31 mutantes de la campaña son de los bloques
+>    1 a 5 y siguen muriendo, pero no dicen nada de este. Lo que respalda el
+>    bloque es la fase RED (§72) y **15 mutantes aplicados a mano, 15 muertos**
+>    (§76.2). Queda anotado para el líder como posible mejora del arnés
+>    genérico: un servicio con dos lenguajes mide uno solo y no lo dice.
+> 2. **29 tests retirados y 8 reescritos**, todos con su recuadro fechado y su
+>    sustituto nombrado (§74). Cuatro de los retirados **seguían en verde** y se
+>    van por eso mismo: su montaje se había quedado inerte.
+>
+> La fase RED destapó un defecto real que no estaba en la spec: un
+> `usuario_oid` de solo espacios es `truthy` en JavaScript y se colaba en la
+> petición (§72.2). Arreglado y con test.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T13 de F-028, y el arnés está ROJO por otra cosa
 >
 > Rama `feature/F-028-estado-del-parte`. Lo de abajo («PARA RETOMAR · al
 > 2026-09-15») es de la rama de F-026 y **se conserva entero**: sigue valiendo

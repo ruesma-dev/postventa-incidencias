@@ -104,10 +104,47 @@ empieza o acaba en espacio, o acaba en punto, ENTONCES el sistema debe
 levantar `NombradoImposible` **sin sanearlo en silencio**: un nombre mutilado
 se archiva igual de mal que uno equivocado, y nadie se entera.
 
-**R8.** El sistema debe colapsar los espacios redundantes de los códigos
-(`0677  -  RS26.08` → `0677 - RS26.08`) y recortar los de los extremos, de
-forma que dos lecturas del mismo parte que solo difieran en espacios produzcan
-**el mismo** nombre.
+**R8.** El sistema debe **eliminar** los espacios que flanquean a un separador
+del código —la barra `/` y el guion `-`—, colapsar a uno los espacios
+redundantes que no tocan un separador y recortar los de los extremos, de forma
+que dos lecturas del mismo parte que solo difieran en espacios produzcan **el
+mismo** nombre y **el mismo** código para el ERP.
+
+> **Enmienda del 2026-09-15 · el ejemplo de R8 describía el defecto, no la
+> garantía; la garantía no se recorta, se cumple por primera vez.**
+>
+> R8 decía, literal: *«El sistema debe colapsar los espacios redundantes de los
+> códigos (`0677  -  RS26.08` → `0677 - RS26.08`) y recortar los de los
+> extremos, de forma que dos lecturas del mismo parte que solo difieran en
+> espacios produzcan **el mismo** nombre.»*
+>
+> **Lo que cambia es una cosa y solo una**: los espacios que rodean a un
+> separador ya no se colapsan a uno, **se eliminan**. `RS26.08   -    0123`
+> normaliza ahora a `RS26.08-0123` y no a `RS26.08 - 0123`.
+>
+> **Qué la invalidó.** La premisa original era que colapsar bastaba para que
+> dos lecturas del mismo parte produjeran el mismo nombre. No bastaba, y se vio
+> en real: `RS26.09- 0149` —guion pegado por un lado y suelto por el otro—
+> producía un nombre de fichero **distinto** del canónico, y el código que
+> viajaba al ERP conservaba los espacios. Sigrid busca la reclamación por
+> **igualdad exacta**, así que el parte se archivaba bien y el cierre fallaba:
+> medio circuito en verde tapando la mitad rota. Lo que R8 prometía no se
+> estaba cumpliendo; ahora sí.
+>
+> **Quién y cuándo.** Lo decidió el **responsable del proyecto el 2026-09-15**,
+> al ver fallar el circuito en real, y quedó recogido como **asunto 2** de
+> F-028 (sus R44 a R49 y R55). El arreglo vive en un solo sitio,
+> `domain/models/nombrado.py::normalizar_codigo`, del que dependen las dos
+> conversiones del código —el nombre del fichero y el formato del ERP—, y por
+> eso se corrige ahí y no en las puntas: dos criterios del mismo concepto
+> divergen siempre.
+>
+> **Lo que no cambia.** Los ceros a la izquierda se conservan (R4), el sufijo y
+> la extensión van literales (R5), un nombre imposible sigue siendo un error
+> ruidoso (R7) y el código de **obra** no se parte por sus guiones: `06-77` es
+> una obra, no dos. El test que fija R8 —
+> `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`— cambió de
+> expectativa ese mismo día y lleva esta enmienda citada en su docstring.
 
 **R9.** El nombrado debe ser **dominio puro**: una función sin reloj, sin
 azar, sin red y sin configuración, que dadas las mismas dos cadenas devuelva
@@ -269,7 +306,7 @@ otro repositorio git y ningún agente commitea en un repositorio ajeno.
 | R5 | `test_f006_r5_el_sufijo_y_la_extension_van_literales` |
 | R6 | `test_f006_r6_sin_codigo_de_obra_no_se_nombra`, `test_f006_r6_sin_numero_de_incidencia_no_se_nombra`, `test_f006_r6_el_nombrado_imposible_no_sube_nada` |
 | R7 | `test_f006_r7_un_caracter_prohibido_no_se_sanea_en_silencio` |
-| R8 | `test_f006_r8_los_espacios_redundantes_colapsan` |
+| R8 | `test_f006_r8_los_espacios_redundantes_colapsan`, `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`. **Premisa enmendada el 2026-09-15**: ver el recuadro bajo R8 |
 | R9 | `test_f006_r9_el_nombrado_es_puro_y_deterministico` |
 | R10 | `test_f006_r10_la_carpeta_es_base_mas_codigo_de_obra` |
 | R11 | `test_f006_r11_la_carpeta_se_crea_si_no_existe` |

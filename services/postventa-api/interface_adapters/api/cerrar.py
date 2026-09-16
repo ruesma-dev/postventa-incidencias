@@ -41,6 +41,26 @@ guardada, o de un candidato **que el ERP tiene que confirmar** antes de que se
 escriba nada (R30–R32). Es decir: quien mintiera sobre su `oid` no conseguiría
 firmar como otro; conseguiría, como mucho, que el cierre se firmara con el
 login que esa persona tenga dado de alta, y eso queda registrado.
+
+## El veredicto ya no llega en el cuerpo: se lee de donde está guardado
+
+**Enmienda del 2026-09-16 (F-030).** Hasta hoy este endpoint reconstruía un
+`ResultadoValidacion` con el `veredicto` y el `destino` del cuerpo y valores
+fijos para todo lo demás, y la puerta del paso derivaba el estado de **ese**
+objeto. Como la huella recomputada sobre él no dependía del parte, la
+aprobación de una persona no contaba nunca; y al revés, un cuerpo que dijera
+`veredicto=apto` pasaba la puerta sin que nadie hubiera mirado el parte, con
+una incidencia del ERP de producción al otro lado.
+
+Desde F-030 el contexto sale de aquí **sin veredicto** y la puerta lo lee de
+`postventa.validaciones`, dentro de la consulta de situación que ya hacía
+(`F-030 design.md` §5.4). El porqué largo está en `archivar.py`, que es donde
+F-006 dejó anotada la decisión D4 que esta feature paga.
+
+`veredicto` y `destino` **siguen siendo obligatorios en el cuerpo y siguen
+validándose** contra las enumeraciones de F-004: el contrato HTTP no cambia y
+un valor desconocido sigue siendo un 400 (R19, D6 de F-030). Lo que ya no
+hacen es decidir nada.
 """
 
 from __future__ import annotations
@@ -54,10 +74,9 @@ from application.pipelines.paso_cierre import paso_cierre
 from config.settings import obtener_ajustes
 from domain.models.cierre import PlanDeCierre
 from domain.models.errores import CuerpoDeCierreInvalido
-from domain.models.firma import ClasificacionFirma
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo, TrazaGrafico
 from domain.models.remesa import ModoDeteccion, ParteTroceado
-from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
+from domain.models.validacion import Destino, Veredicto
 from domain.ports.erp import ErpPort
 from domain.ports.persistencia import (
     RepositorioPartesPort,
@@ -189,9 +208,11 @@ def _bandera(valor: Any) -> bool:
 def _como_contexto(datos: Mapping[str, Any]) -> ContextoParte:
     """Reconstruye el contexto mínimo que necesita el paso de cierre.
 
-    Igual que en `archivar.py`: el veredicto y el estado del archivo llegan en
-    el cuerpo y **se vuelven a comprobar** dentro del paso, exactamente igual
-    que si vinieran de dentro.
+    El estado del archivo llega en el cuerpo y **se vuelve a comprobar** dentro
+    del paso, exactamente igual que si viniera de dentro. El **veredicto ya
+    no**: se va sin rellenar y lo lee la puerta del paso, de la base, porque
+    este endpoint no recibe la extracción y no puede emitirlo (F-030; la
+    enmienda está arriba y el porqué largo en `archivar.py`).
 
     De la extracción **no se reconstruye nada**: el paso de cierre no la
     necesita —el número de incidencia llega aparte— y pedirla obligaría al
@@ -209,15 +230,7 @@ def _como_contexto(datos: Mapping[str, Any]) -> ContextoParte:
             modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
             contenido=b"",
         ),
-        validacion=ResultadoValidacion(
-            hash_parte=hash_parte,
-            veredicto=Veredicto(datos["veredicto"]),
-            destino=Destino(datos["destino"]),
-            motivos=(),
-            clasificacion_firma=ClasificacionFirma.HUMANA,
-            observaciones=None,
-            confianza_observaciones=0,
-        ),
+        validacion=None,
         archivo=TrazaArchivo(
             hash_parte=hash_parte,
             estado=EstadoArchivo(datos["estado_archivo"]),

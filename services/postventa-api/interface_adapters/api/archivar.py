@@ -20,13 +20,32 @@ La única vía permitida es el entorno desplegado (`design.md` §5), y algo tien
 que haber ahí que se pueda invocar. Este endpoint es lo que hace posible la
 verificación manual **T18**.
 
-## El veredicto llega en el cuerpo, y se vuelve a comprobar
+## El veredicto ya no llega en el cuerpo: se lee de donde está guardado
 
-Decisión **D4** de `design.md` §10. Leerlo de la base sería más fuerte, pero
-exige un método nuevo en `RepositorioPartesPort`, que es de F-005, y F-006 no
-cambia specs ajenas. Lo que sí se hace es **no fiarse**: el veredicto que
-llega se reconstruye como `ResultadoValidacion` y `paso_archivo` lo vuelve a
-comprobar contra el destino, igual que si viniera de dentro.
+**Enmienda del 2026-09-16 (F-030).** Hasta hoy este endpoint reconstruía un
+`ResultadoValidacion` con el `veredicto` y el `destino` del formulario y
+valores fijos para todo lo demás —sin motivos, firma `humana`, sin
+observaciones, con los dos campos decisivos vacíos— y la puerta del paso
+derivaba el estado de **ese** objeto. Rompía el circuito por los dos lados:
+
+- la huella recomputada sobre el stub no dependía del parte —era una de tres
+  constantes—, así que la aprobación de una persona no coincidía nunca con la
+  suya y el parte volvía a `pendiente`. La incidencia RS26.09/0178 se quedó
+  así, aprobada y sin archivar;
+- y al revés, un cuerpo que dijera `veredicto=apto` pasaba la puerta sin que
+  nadie hubiera mirado el parte. Lo único que lo impedía era que el front
+  mandara la verdad.
+
+Desde F-030 el contexto sale de aquí **sin veredicto**, y la puerta lo lee de
+`postventa.validaciones` dentro de la consulta de situación que ya hacía
+(`F-030 design.md` §5.4). Aquella decisión D4 de F-006 —«no se lee de la base
+porque exige un método nuevo en el puerto, y eso es de F-005»— queda atendida
+**sin método nuevo**: el veredicto viaja dentro de `SituacionParte`.
+
+`veredicto` y `destino` **siguen siendo obligatorios en el cuerpo y siguen
+validándose** contra las enumeraciones de F-004: el contrato HTTP no cambia y
+un valor desconocido sigue siendo un 400 (R19, D6 de F-030). Lo que ya no
+hacen es decidir nada.
 """
 
 from __future__ import annotations
@@ -44,9 +63,8 @@ from domain.models.extraccion import (
     ExtraccionParte,
     TrazaExtraccion,
 )
-from domain.models.firma import ClasificacionFirma
 from domain.models.remesa import ModoDeteccion, ParteTroceado
-from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
+from domain.models.validacion import Destino, Veredicto
 from domain.ports.archivo import ArchivoPort
 from domain.ports.persistencia import RepositorioPartesPort
 from infrastructure.persistencia.fabrica import construir_repositorio
@@ -103,8 +121,6 @@ def archivar_parte(
             hash_parte=hash,
             codigo_obra=codigo_obra,
             numero_incidencia=numero_incidencia,
-            veredicto=veredicto,
-            destino=destino,
         ),
         archivador if archivador is not None else construir_archivador(ajustes),
         repositorio
@@ -152,8 +168,6 @@ def _como_contexto(
     hash_parte: str,
     codigo_obra: str,
     numero_incidencia: str,
-    veredicto: str,
-    destino: str,
 ) -> ContextoParte:
     """Reconstruye el contexto mínimo que necesita el paso de archivo.
 
@@ -166,6 +180,10 @@ def _como_contexto(
     necesita, y pedirlos obligaría al front a reenviar el DNI y las
     observaciones manuscritas del cliente en cada archivo, que es exactamente
     el dato que no debe viajar de más.
+
+    Y **el veredicto se va sin rellenar** (F-030): este endpoint no recibe la
+    extracción, así que no puede emitirlo, y fabricarlo con lo poco que tiene
+    es lo que rompió el circuito. Lo lee la puerta del paso, de la base.
     """
     campos = {nombre: CampoExtraido(valor=None, confianza_pct=0) for nombre in CAMPOS_DEL_PARTE}
     campos["codigo_obra"] = CampoExtraido(valor=codigo_obra, confianza_pct=100)
@@ -187,15 +205,7 @@ def _como_contexto(
                 proveedor="", modelo="", prompt_key="", version_prompt="", huella_prompt=""
             ),
         ),
-        validacion=ResultadoValidacion(
-            hash_parte=hash_parte,
-            veredicto=Veredicto(veredicto),
-            destino=Destino(destino),
-            motivos=(),
-            clasificacion_firma=ClasificacionFirma.HUMANA,
-            observaciones=None,
-            confianza_observaciones=0,
-        ),
+        validacion=None,
     )
 
 

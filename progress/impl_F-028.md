@@ -5283,3 +5283,426 @@ correcta es lo que hay que mirar con los ojos una vez.
   expectativa y por qué), **§105.1** (el 32/32 automático **no** mide T22; lo
   que la mide son los 15 mutantes a mano) y **§105.3** (el superviviente M8, y
   por qué no lo he quitado).
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloques 8 y 9, T23 y T24
+
+> **Encargo del 2026-09-16**: T23 (bloque 8) y T24 (bloque 9), las dos, y
+> parar. **No entrar en T25**, que toca dos repositorios.
+>
+> ## ✅ LO PRIMERO, PORQUE ES LO QUE EL ENCARGO PEDÍA SABER YA
+>
+> **Los tres controles de T23 pasan. Ninguna decisión humana vigente se ha
+> invalidado.** No había que parar.
+>
+> Las **siete huellas** medidas en el árbol anterior al bloque 7 y en el de
+> ahora son **idénticas**, carácter a carácter. El módulo de la huella **no
+> importa** `nombrado` ni usa ninguna pieza del bloque 7. Y un parte aprobado
+> por una persona —incluido el que tiene el número leído con espacios
+> alrededor de la barra, que es el caso exacto del riesgo— **sigue
+> `aprobado`**.
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. **2.650 pasados**, 13 saltados,
+> **0 fallos**; front en verde (caché); **PUERTA COBERTURA 100,0 % de 297
+> líneas cambiadas (297/297)**.
+
+---
+
+## 109 · Qué se ha hecho, en una frase por tarea
+
+- **T23** (`6256762`) · `tests/test_f028_huella_intacta.py`, **15 casos**: los
+  tres controles negativos de `design.md` §10 —el valor, el acoplamiento y el
+  efecto—, con las siete huellas esperadas **escritas literales** y medidas en
+  el árbol anterior al bloque 7. **Ni una línea de código de producción.**
+- **T24** (`0417104`) · **siete recuadros fechados**: R12, R17 y R22 de F-026
+  **enmendados** (R56); R30 y R31 **precisados, no derogados** (R57); R36 de
+  F-025 con un **segundo** recuadro debajo del de F-026 (R58); y los tres
+  puntos de `docs/ARCHITECTURE.md` que F-026 precisó, más la **semántica 5**,
+  al día (R58). **42 casos nuevos** en `tests/test_f028_documentacion.py`, ocho
+  de ellos control negativo. **Ningún texto original borrado.**
+
+---
+
+## 110 · ⚠️ T23 · el control que la ficha exigía. Los tres pasan
+
+El encargo lo decía con todas las letras: si alguno fallaba, **parar**, porque
+significaría que el arreglo de los espacios está revocando decisiones que
+tomaron personas. No hay que parar. Esto es lo que se ha medido, control a
+control.
+
+### 110.1 · Control del **valor** (R50) · las siete huellas no se han movido
+
+Siete veredictos, cuatro de ellos con el número o la obra escritos con
+espacios alrededor del separador —que son justo los que el bloque 7 toca—.
+Las huellas esperadas van **escritas literales** en el test, en hexadecimal.
+No se calculan con la función que se está probando: eso sería comparar una
+huella consigo misma, y pasaría verde aunque el arreglo hubiera cambiado las
+huellas de todo el sistema.
+
+| Caso | Huella (medida antes y después del bloque 7) |
+|---|---|
+| apto con el número canónico | `e5ba9b9d…a70d20` |
+| apto con espacios a los dos lados de la barra | `930f188a…2d930b7` |
+| apto con guion y espacios (la forma del asunto 2) | `50cb4591…77aaa3d5` |
+| apto con el código de obra escrito `06 - 77` | `716b481c…ee2792c00` |
+| en cola por observaciones manuscritas | `e7157161…fa9a00bfef3` |
+| revisión manual, número con espacio delante | `5d6f33cd…5584ea8580` |
+| revisión manual, número canónico | `b69ff1d8…2cf85a5fe148` |
+
+### 110.2 · Control del **acoplamiento** (R51) · dos funciones, dos módulos
+
+`domain/models/aprobacion.py` importa exactamente tres cosas —`__future__`,
+`hashlib` y `domain.models.validacion`— y ninguna es el nombrado. Se comprueba
+sobre el **árbol sintáctico** y no sobre el texto, y no es remilgo: el módulo
+menciona la palabra «nombrado» en prosa, dentro de la enmienda de H-1, así que
+un `"nombrado" not in fuente` se pondría rojo por una cita. Hay además un
+segundo control por el otro lado —ni `normalizar_codigo`, ni
+`tramos_de_codigo`, ni `SEPARADORES_DE_CODIGO` aparecen en el fuente—, que
+caza el `from domain.models import nombrado` que el control de importaciones
+dejaría pasar.
+
+Y queda escrito **en qué se separan**, que es lo que pide R51:
+
+```
+normalizar_codigo("RS26.09 / 0149")  ->  "RS26.09/0149"
+_normalizar("RS26.09 / 0149")        ->  "rs26.09 / 0149"
+```
+
+Una prepara un código para **identificar algo fuera** (un fichero en
+SharePoint, una reclamación que el ERP busca por igualdad exacta); la otra
+prepara un texto para **comparar dos lecturas del mismo papel**. La segunda es
+deliberadamente tonta, porque lo que no puede hacer es cambiar de valor cuando
+se toque el nombrado.
+
+### 110.3 · Control del **efecto** (R50) · la decisión de la persona sigue en pie
+
+Tres casos, y el tercero es el del riesgo:
+
+1. un parte que la máquina dejó en la cola, aprobado por una persona con la
+   huella guardada **antes** del arreglo, sigue `aprobado`;
+2. `decision_en_firme` sigue devolviendo esa decisión, o sea que la pantalla
+   sigue diciendo **«aprobado por una persona»** y no «lo dio por bueno la
+   máquina» (R43). Sin este caso, un parte apto habría podido quedarse
+   `aprobado` **por la máquina** y nadie habría notado que la marca de autoría
+   se perdió;
+3. **el parte cuyo número se leyó `RS26.09 /0149`** —el del asunto 2— aprobado
+   a mano, sigue `aprobado`. Si la huella hubiera seguido a
+   `normalizar_codigo`, esta sería la primera aprobación en caerse.
+
+---
+
+## 111 · De dónde salen los siete literales · la medición, con las dos trazas
+
+Esto es lo que separa un control de verdad de una foto: los literales **no
+salen del código de hoy**. Se midieron en el árbol **anterior al bloque 7**
+—`git worktree` sobre `71a5e00`, el último commit antes de T19— y se
+compararon con el de ahora.
+
+```
+$ git worktree add <scratch>/antes-bloque7 71a5e00
+$ PYTHONPATH=<scratch>/antes-bloque7/services/postventa-api \
+    ./.venv/Scripts/python.exe <scratch>/medir_huellas.py
+apto_canonico: e5ba9b9dab22705ffa67a48af2670559ac629be72f67ec72f4b645a995a70d20
+apto_barra_con_espacios: 930f188aa51e7819c247081b235b1e8adb13683cee312fdef24dc1bbd2d930b7
+apto_guion_con_espacios: 50cb4591a881d84f1f4dba35fc318623d311f58e2b1eb75101a2bfb177aaa3d5
+apto_obra_con_guion_espaciado: 716b481ce240827bb7ce20b6c144e50e3243dad73b68cdd2babb0fdee2792c00
+cola_observaciones: e7157161e90fdf660f2724373e499bf441f421e7b99af0b779c42fa9a00bfef3
+revision_manual_dos_motivos: 5d6f33cd1e38795a69674d8e2294a3db60daf538116ffd015544cd5584ea8580
+revision_manual_numero_canonico: b69ff1d8d47a03f3ac1ee6567f9d0d83c25f32135d23266b2ce82cf85a5fe148
+
+$ PYTHONPATH=services/postventa-api ./.venv/Scripts/python.exe <scratch>/medir_huellas.py
+apto_canonico: e5ba9b9dab22705ffa67a48af2670559ac629be72f67ec72f4b645a995a70d20
+apto_barra_con_espacios: 930f188aa51e7819c247081b235b1e8adb13683cee312fdef24dc1bbd2d930b7
+apto_guion_con_espacios: 50cb4591a881d84f1f4dba35fc318623d311f58e2b1eb75101a2bfb177aaa3d5
+apto_obra_con_guion_espaciado: 716b481ce240827bb7ce20b6c144e50e3243dad73b68cdd2babb0fdee2792c00
+cola_observaciones: e7157161e90fdf660f2724373e499bf441f421e7b99af0b779c42fa9a00bfef3
+revision_manual_dos_motivos: 5d6f33cd1e38795a69674d8e2294a3db60daf538116ffd015544cd5584ea8580
+revision_manual_numero_canonico: b69ff1d8d47a03f3ac1ee6567f9d0d83c25f32135d23266b2ce82cf85a5fe148
+```
+
+**Las siete, idénticas.** El worktree se retiró al terminar; el script de
+medición vivió en el scratchpad y **no se ha versionado**.
+
+### 111.1 · Y un segundo camino, que no depende de ninguna medición
+
+Un literal medido sigue siendo una foto: si el código ya hubiera estado mal
+antes del bloque 7, la foto lo consagraría. Por eso hay un caso más
+—`test_f028_r50_la_huella_canonica_se_recalcula_a_mano`— que **reconstruye la
+cadena canónica a mano** con `hashlib` y sale el mismo hexadecimal:
+
+```
+$ python -c "import hashlib; ..."
+canonica a mano -> e5ba9b9dab22705ffa67a48af2670559ac629be72f67ec72f4b645a995a70d20
+con espacios    -> 930f188aa51e7819c247081b235b1e8adb13683cee312fdef24dc1bbd2d930b7
+```
+
+Fija además **el formato**: los seis campos, en su orden, separados por saltos
+de línea y en minúsculas. Si mañana alguien añade un campo o cambia el orden,
+el test lo dice con palabras en vez de enseñar solo un hexadecimal distinto.
+
+> **Decisión que el reviewer debe juzgar**: este caso **duplica** a propósito
+> el algoritmo de `huella_de_veredicto` dentro del test. Es una segunda
+> opinión, y una segunda opinión que reutiliza las constantes de la primera no
+> lo es —por eso el separador se escribe en el test y no se importa de
+> `aprobacion.py`—. El precio es que un cambio legítimo del formato pondrá
+> **dos** tests en rojo en vez de uno. Me parece el precio correcto; si el
+> reviewer no lo ve así, es borrar un test y no se mueve nada más.
+
+---
+
+## 112 · Fase RED · las trazas, pegadas
+
+### 112.1 · T23 · un control negativo **no tiene** fase RED natural, y esto es lo que hay en su lugar
+
+Los tres controles de T23 pasan desde el primer momento: ese es justo su
+resultado esperado. Escribirlos «en rojo» primero habría exigido romper a
+propósito el código de producción, y lo que mide un control negativo no es que
+el código haga algo, sino que **no** ha dejado de hacerlo.
+
+Lo que sí se puede —y se ha hecho— es demostrar que **el test es capaz de
+fallar**, y que falla exactamente por el motivo para el que existe. El mutante
+es **la unificación de buena fe**: que alguien vea dos normalizaciones que
+«hacen lo mismo» y las junte.
+
+```
+$ # mutante: _normalizar pasa a delegar en normalizar_codigo
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_huella_intacta.py -q -p no:randomly --tb=line
+
+E   AssertionError: la huella de «apto con espacios a los dos lados de la barra» ha cambiado: hay aprobaciones humanas vigentes que dejan de contar
+    assert 'e5ba9b9dab22...645a995a70d20' == '930f188aa51e...dc1bbd2d930b7'
+E   AssertionError: la huella de «apto con guion y espacios, la forma que abrió el asunto 2» ha cambiado: hay aprobaciones humanas vigentes que dejan de contar
+E   AssertionError: la huella de «apto con el código de obra escrito «06 - 77»» ha cambiado: hay aprobaciones humanas vigentes que dejan de contar
+E   AssertionError: assert 'normalizar_codigo' not in '# services/...o).lower()\n'
+E   AssertionError: assert 'rs26.09/0149' == 'rs26.09 / 0149'
+E   AssertionError: assert <EstadoParte.PENDIENTE: 'pendiente'> is <EstadoParte.APROBADO: 'aprobado'>
+9 failed, 6 passed in 0.10s
+```
+
+Léase la penúltima línea despacio, porque es el daño entero en un `assert`:
+**el parte que una persona aprobó vuelve a `pendiente`**. Eso es lo que este
+fichero existe para que no ocurra en silencio. El árbol se restauró con
+`git checkout --` y la suite quedó comprobada en verde.
+
+### 112.2 · T24 · los tests **antes** de escribir un solo recuadro
+
+Escritos primero y ejecutados contra los tres documentos sin enmendar
+—restaurados a propósito con `git checkout 6256762 --` para medirlo, y
+devueltos después—:
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_documentacion.py -q -p no:randomly --tb=line
+......FFFFFFFFFFFFFFF...FFFFFFFF..FFF..FFF...FF.                         [100%]
+E   AssertionError: assert 'Enmienda' in '**R12.** La aprobación debe guardarse en una **tabla propia** del esquema propio del proyecto...'
+E   AssertionError: assert 'Enmienda' in '**R17.** El sistema debe dejar **una sola fila por parte**: volver a aprobar el mismo parte...'
+E   AssertionError: assert 'Enmienda' in '**R22.** CUANDO el sistema devuelve el resultado de guardar un parte, debe decir...'
+E   ValueError: substring not found
+E   AssertionError: assert 'ON CONFLICT DO UPDATE' in '**R12.** La aprobación debe guardarse en una **tabla propia**...'
+31 failed, 17 passed in 0.14s
+```
+
+**Los 17 que pasan son los control-negativo**, y tenían que pasar: comprueban
+que el texto original de R12, R17, R22, R30, R31, R36 y de los tres puntos de
+`ARCHITECTURE.md` **no se ha borrado**, y en ese momento nadie lo había
+tocado. Que nacieran en verde es la prueba de que miden lo que dicen medir.
+
+---
+
+## 113 · T24 · los siete recuadros, y qué dice cada uno
+
+**Ningún texto original se ha borrado.** Es el patrón del proyecto —R28 de
+F-010 (2026-09-03), §7 de F-025, H-1 de F-026 y el R8 de F-006 de anteayer— y
+la razón por la que existe: un requisito derogado que desaparece deja a quien
+lo lee sin saber que hubo una decisión.
+
+| Dónde | Qué dice el recuadro |
+|---|---|
+| **R12** de F-026 (R56) | La decisión se muda al histórico append-only. Qué la invalidó: `hash_parte` como **clave primaria** obliga al `ON CONFLICT DO UPDATE` que borra la decisión anterior (**§0.4**), y con eso «el histórico conserva las decisiones en orden» es **imposible**, no difícil. Lo que no cambia: sigue siendo tabla propia, con su clave ajena, y la decisión se registra **al lado del veredicto, nunca encima** (R11). Y `postventa.aprobaciones` **no se borra**: se congela y se siembra |
+| **R17** de F-026 (R56) | Ya no hay una fila por parte: hay **una fila por decisión**. Qué la invalidó: sustituir **borra el rechazo anterior**, y un ciclo aprobar → rechazar → aprobar no dejaba rastro. Lo que no cambia: sigue habiendo **una sola respuesta** al estado; lo que se acumula son los hechos, no los criterios (R26 de F-028) |
+| **R22** de F-026 (R56) | Lo que se devuelve al guardar ya no son dos banderas: es **el estado**. Qué la invalidó: «aprobado / vigente» no sabe decir `rechazado` —del que no se sale reprocesando— ni `cerrado`, y obligaría a la pantalla a reconstruir el estado por su cuenta, que es la segunda copia del criterio que R17 de F-028 prohíbe. Lo que no cambia: viaja **en la respuesta de guardar**, sin una petición más |
+| **R30** de F-026 (R57) | **No se deroga: se precisa.** La aprobación **sigue** dejando de valer cuando cambia el veredicto; lo que cambia es que se resuelve al **derivar**, comparando huellas, y no con una escritura que marca la fila. Y cierra un hueco: revocar era una **segunda** escritura, y entre las dos había una **ventana** en la que el parte se quedaba aprobado sobre un veredicto que ya no existía |
+| **R31** de F-026 (R57) | **No se deroga: se precisa.** Ya no existe «revocada» como dato: una aprobación tomada sobre otro veredicto **no cuenta** al derivar, y la consecuencia es la misma. Declara la diferencia que sí importa: si el veredicto vuelve a ser el que se aprobó, la aprobación **vuelve a contar**. Y lo que no cambia: el `rechazado` humano **no caduca jamás** |
+| **R36** de F-025 (R58) | Segundo recuadro, **debajo** del de F-026 y sin tocarlo. **«Solo se archiva, se adjunta y se cierra lo que está `aprobado`.»** Qué lo invalidó: con F-026 la única operación era aprobar lo rechazado; F-028 añade la contraria, y entonces «apto» deja de bastar —un parte **apto y `rechazado` no se archiva**—. La puerta es **más estrecha**, no más ancha, y se sigue comprobando en **los tres pasos del backend**, leyendo **del repositorio y nunca del cuerpo** |
+| **Tres puntos** de `ARCHITECTURE.md` (R58) | Paso 6 del pipeline, semántica 3 y semántica 7, cada uno con su **«Precisado por F-028 el 2026-09-16»** debajo del de F-026, que sigue entero. Los tres nombran `postventa.historico_estado`, dicen que `postventa.aprobaciones` se congela y se siembra, y los tres declaran el caso nuevo: el parte **apto** que una persona dejó `rechazado` |
+| **Semántica 5** de `ARCHITECTURE.md` (R58) | **Los espacios que rodean al separador no forman parte del código.** Las cinco formas con espacio son **el mismo** número que `RS26.09/0149`; al ERP viaja siempre con barra y al fichero con ` - `. Con el porqué —Sigrid busca por **igualdad exacta**, así que el parte se archivaba bien y el cierre fallaba **en silencio**— y con el aviso que impide arreglar de más: **`06-77` es una obra**, no dos tramos |
+
+### 113.1 · Los tests de F-025 y de F-026 **no se han tocado, y siguen en verde**
+
+Era el riesgo real de esta tarea: `test_f026_documentacion.py` fija el
+contenido de esos mismos bloques —«salvo aprobación humana registrada»,
+«motivo aprobable», «no se escribe en Sigrid»— y `test_f025_documentacion.py`
+hace lo propio con R36. Todo lo de T24 es **aditivo**: ni una línea borrada, ni
+una reescrita.
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_documentacion.py \
+    tests/test_f026_documentacion.py tests/test_f025_documentacion.py -q -p no:randomly
+90 passed in 0.23s
+```
+
+El aviso del encargo sobre `docs/INTEGRACION.md` y su test (R26 de F-010) se
+ha respetado por la vía más simple: **T24 no lo toca**. Es T25.
+
+---
+
+## 114 · Ficheros tocados
+
+### Creados
+
+- `services/postventa-api/tests/test_f028_huella_intacta.py` — 15 casos, T23.
+
+### Modificados
+
+- `services/postventa-api/tests/test_f028_documentacion.py` — **+42 casos**
+  (R56, R57, R58). El `_bloque_r8` de T21 se generalizó a
+  `_bloque(fichero, abre, cierra)`; los seis casos de R55 no cambian de
+  expectativa ni de nombre.
+- `specs/F-026-aprobacion-humana/requirements.md` — cinco recuadros. **Nada
+  borrado.**
+- `specs/F-025-confirmacion-unica/requirements.md` — un recuadro, debajo del de
+  F-026. **Nada borrado.**
+- `docs/ARCHITECTURE.md` — cuatro precisiones. **Nada borrado.**
+- `specs/F-028-estado-del-parte/tasks.md` — T23 y T24 a `[x]`.
+- `progress/impl_F-028.md`, `progress/current.md`, `progress/mutacion_F-028.md`.
+
+### Lo que el encargo prohíbe tocar, y sigue intacto
+
+`azure-apps/` (es T25), `docs/INTEGRACION.md` (es T25),
+`infrastructure/sigrid/`, `infrastructure/sharepoint/`,
+`harness/features.json` —F-028 sigue `in_progress`, no he marcado `done`
+nada—, `domain/models/aprobacion.py` (`huella_de_veredicto` y `_normalizar`,
+regla dura 2), `domain/models/validacion.py`, `sql/04_validaciones.sql` y
+`sql/10_aprobaciones.sql`. **Ninguno aparece en el diff.**
+
+**Y algo que conviene decir en voz alta**: T23 y T24 **no añaden ni una línea
+de código de producción**. El diff de estos dos commits es tests y documentos.
+
+---
+
+## 115 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (`api`) | **2.650 pasados, 0 fallos, 13 saltados** | `bash harness/init.sh` |
+| **Tests nuevos** | **57** · 15 de T23 + 42 de T24 | 2.593 → 2.608 → 2.650 |
+| **Tests ejecutados** (`front`) | verde, **por caché** (árbol sin cambios) | `bash harness/init.sh` |
+| **Cobertura de las líneas cambiadas** | **100,0 % (297/297)**, umbral 80 % | línea `PUERTA COBERTURA` de `init.sh` |
+| **Mutantes generados (automáticos)** | **32 · 32 muertos · 0 supervivientes** en 151,8 s | `python -m harness.mutacion --feature F-028` |
+| **Mutantes a mano** | **13 · 13 muertos · 0 supervivientes** | §115.2 |
+| **Tiempo de la suite** | **31,7 s** dentro de `init.sh`; 22,2 s suelta | la propia suite |
+
+### 115.1 · El 32/32 automático es verdad, y **no mide nada de este encargo**
+
+La línea base estaba verde antes de lanzarla, así que los 32 muertos son
+muertos de verdad. Pero `harness.mutacion` muta **operadores de código de
+producción**, y T23 y T24 no añaden código de producción: añaden **controles**
+y **constancia**. Ni uno de los 32 cae sobre nada de lo que se ha escrito hoy.
+
+Decirlo es la mitad del valor de esta sección: un «32/32, sin supervivientes»
+sin esta línea se lee como si el trabajo de hoy estuviera medido, y no lo
+está por ahí.
+
+### 115.2 · Los 13 mutantes a mano, que son los que sí lo miden
+
+Cada uno se aplicó, se ejecutó el fichero que debería cazarlo y se restauró el
+árbol con `git checkout --`.
+
+**Seis sobre lo que vigila T23**:
+
+| # | Mutante | Resultado |
+|---|---|---|
+| M1 | `_normalizar` delega en `normalizar_codigo` (**la unificación temida**) | **muerto** · 9 rojos |
+| M2 | la cadena canónica cambia el orden de obra y número | **muerto** · 11 rojos |
+| M3 | `_normalizar` deja de bajar a minúsculas | **muerto** · 12 rojos |
+| M4 | `aprobacion.py` importa `nombrado` **sin llegar a usarlo** | **muerto** · 1 rojo |
+| M5 | un campo más en la canónica (el `hash_parte`) | **muerto** · 11 rojos |
+| M6 | una aprobación humana cuenta siempre, mire o no la huella | **muerto** · 1 rojo |
+
+**M4 y M6 son los dos que más me importaban.** M4 no cambia **ningún**
+resultado —el import no se usa— y aun así muere: es el control del
+acoplamiento haciendo su trabajo, que es impedir la dependencia **antes** de
+que haga daño. Y M6 lo mata **solo** el test del defecto latente D9, lo que
+demuestra que ese caso no es decorativo: es el que vigila que la caducidad de
+una aprobación siga existiendo.
+
+**Siete sobre lo que vigila T24**, que no es código sino constancia:
+
+| # | Mutante | Resultado |
+|---|---|---|
+| N1 | el recuadro de R12 pierde la fecha | **muerto** |
+| N2 | la cita de R17 pasa a ser un resumen | **muerto** |
+| N3 | el recuadro de R30 **deroga** en vez de precisar | **muerto** |
+| N4 | el recuadro de R31 se calla que la aprobación puede revivir | **muerto** |
+| N5 | alguien «limpia» `ARCHITECTURE.md` y borra la precisión de F-026 | **muerto** |
+| N6 | la semántica 5 pierde el aviso del código de obra | **muerto** |
+| N7 | el recuadro de F-026 en R36 de F-025 se degrada a «nota vieja» | **muerto** |
+
+**N2, N3 y N5 son los que justifican que esto sea un test.** N2 demuestra que
+una cita «casi» literal no cuela; N3, que degradar una precisión a derogación
+—que es exactamente el error que R57 quiere impedir— salta; y N5, que el
+control negativo caza el impulso de dejar el documento «limpio» borrando la
+capa anterior.
+
+**13 de 13 muertos, ningún superviviente.** Es la primera campaña de esta
+feature sin ninguno.
+
+---
+
+## 116 · Verificaciones MANUAL pendientes
+
+No añado ninguna nueva. Las de esta feature siguen siendo las de `tasks.md`
+T27, y **las ejecuta el humano tras desplegar**. Dos con relación directa con
+lo de hoy:
+
+- **T27.2** — la aprobación que ya había en `postventa.aprobaciones` aparece
+  sembrada y el parte **sigue saliendo `aprobado`**. T23 prueba en el dominio
+  que la huella no se movió; lo que no puede probar desde aquí es que la
+  **semilla** haya metido bien esa fila en el histórico, porque eso necesita la
+  base real. **Son dos cosas distintas y las dos hacen falta.**
+- **T27.6** — el parte cuyo número se lea con espacios alrededor de la barra
+  cierra la incidencia en el ERP. Sigue siendo la que cierra el asunto 2, y
+  sigue sin poder intentarse desde local (`CLAUDE.md` prohíbe escribir en
+  Sigrid).
+
+---
+
+## 117 · Lo que queda fuera del alcance de T23 y T24
+
+- **T25 no se ha tocado**, como pedía el encargo: ni `docs/INTEGRACION.md` ni
+  `azure-apps/postventa_incidencias.md`. Son dos repositorios y van en su
+  propio encargo. Ojo al aviso del líder cuando llegue: `INTEGRACION.md` tiene
+  un test que exige frases concretas (R26 de F-010,
+  `tests/test_f010_integracion_expuesto.py`).
+- **El defecto latente de D9 sigue ahí y sigue sin arreglarse**, ahora con su
+  test: una relectura que solo cambie los espacios alrededor de la barra hace
+  que una aprobación humana deje de contar. Arreglarlo es alinear las dos
+  normalizaciones, y eso **cambiaría las huellas ya escritas** en
+  `postventa.aprobaciones`, con F-026 desplegada y decisiones reales dentro. El
+  humano decidió el 2026-09-15 no alinearlas aquí. El test
+  `test_f028_d9_el_defecto_latente_sigue_ahi_y_se_declara` **no bendice el
+  defecto**: lo fija para que quien vaya a arreglarlo se tropiece con el porqué
+  y traiga un plan para las huellas que ya están escritas.
+- **T26 (la campaña de mutación de cierre) y T28 (el `init.sh` final)** siguen
+  siendo tareas del bloque 10, aunque la campaña se haya lanzado hoy: lo de hoy
+  es la evidencia de este encargo, no el cierre de la feature.
+
+---
+
+## 118 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**. **2.650 pasados**, 13 saltados,
+  **0 fallos**; front en verde por caché; **PUERTA COBERTURA 100,0 % de 297
+  líneas cambiadas (297/297)**; rama correcta.
+- **Los tres controles de T23 pasan. No hay que parar**: el arreglo de los
+  espacios no ha invalidado ninguna decisión humana vigente.
+- Árbol limpio. **2 commits** sobre `133728b`: `6256762` (T23) y `0417104`
+  (T24), los dos **locales**. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`. No he marcado
+  `done` nada.
+- **No se ha entrado en T25**, como pedía el encargo.
+- Tres cosas con nombre propio para el reviewer: **§111.1** (el test que
+  recalcula la huella a mano duplica el algoritmo **a propósito**; es una
+  decisión, no un descuido), **§115.1** (el 32/32 automático **no** mide nada
+  de este encargo; lo miden los 13 mutantes a mano de §115.2) y **§117** (el
+  defecto latente D9, ahora con test, sigue sin arreglar **por decisión del
+  humano**).

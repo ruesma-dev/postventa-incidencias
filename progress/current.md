@@ -1,7 +1,79 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ✅ AL DÍA · 2026-09-16 · **T21 y T22 de F-028 terminadas** · la rama vuelve a estar EN VERDE
+> ## ✅ AL DÍA · 2026-09-16 · **T23 y T24 de F-028 terminadas** · el control de la huella PASA
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `6256762` (T23)
+> y `0417104` (T24), locales, sin `push`.
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**: **2.650 pasados**, 13 saltados,
+> **0 fallos** en `api`; front en verde (caché); **PUERTA COBERTURA 100,0 % de
+> 297 líneas cambiadas (297/297)**.
+>
+> ### Lo primero, porque es lo que el encargo pedía saber
+>
+> **Los tres controles de T23 pasan. Ninguna decisión humana vigente se ha
+> invalidado, así que no había que parar.** El riesgo que la ficha mandaba
+> tratar —que cambiar la normalización revocara aprobaciones que tomaron
+> personas— queda **medido con el bloque 7 ya aplicado**, que era lo único que
+> lo demostraba de verdad:
+>
+> - **el valor**: las **siete** huellas medidas en el árbol anterior al bloque
+>   7 (`git worktree` sobre `71a5e00`) y en el de ahora son **idénticas**, y
+>   van escritas **literales** en el test. Cuatro de las siete llevan el número
+>   o la obra con espacios alrededor del separador;
+> - **el acoplamiento**: `domain/models/aprobacion.py` importa exactamente
+>   `__future__`, `hashlib` y `domain.models.validacion`. Ni `nombrado`, ni
+>   `normalizar_codigo`, ni `tramos_de_codigo`;
+> - **el efecto**: un parte aprobado por una persona sigue `aprobado` —incluido
+>   el que tiene el número leído `RS26.09 /0149`, el caso exacto del riesgo— y
+>   la pantalla sigue diciendo **«aprobado por una persona»**.
+>
+> ### Qué se ha cerrado
+>
+> - **T23** (`6256762`) · `tests/test_f028_huella_intacta.py`, **15 casos**.
+>   **Ni una línea de código de producción.**
+> - **T24** (`0417104`) · **siete recuadros fechados**: R12, R17 y R22 de F-026
+>   enmendados (R56); R30 y R31 **precisados, no derogados** (R57); R36 de
+>   F-025 con un segundo recuadro debajo del de F-026; los tres puntos de
+>   `docs/ARCHITECTURE.md` que F-026 precisó, al día; y la **semántica 5**, que
+>   pasa a decir que **los espacios alrededor del separador no forman parte del
+>   código**. **42 casos nuevos**, ocho de ellos control negativo.
+>   **Ningún texto original borrado**, y los tests de documentación de F-025 y
+>   F-026 siguen en verde **sin tocarlos**.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **§111.1** — el caso que recalcula la huella a mano **duplica a propósito**
+>    el algoritmo dentro del test. Es una segunda opinión y por eso no importa
+>    ninguna constante de `aprobacion.py`; el precio es que un cambio legítimo
+>    del formato pondrá dos tests en rojo.
+> 2. **§115.1** — la campaña automática da **32/32 sin supervivientes**, y
+>    **no mide nada de este encargo**: T23 y T24 no añaden código de
+>    producción. Lo que sí lo mide son los **13 mutantes a mano** de §115.2,
+>    **13 muertos y ningún superviviente** (la primera campaña de la feature
+>    sin ninguno).
+> 3. **§117** — el **defecto latente D9** sigue sin arreglar, ahora **con
+>    test**: una relectura que solo cambie los espacios alrededor de la barra
+>    hace que una aprobación humana deje de contar. Arreglarlo cambiaría las
+>    huellas ya escritas en `postventa.aprobaciones`, y el humano decidió el
+>    2026-09-15 no alinear las dos normalizaciones aquí.
+>
+> ### Por dónde sigue
+>
+> **T25**, en su propio encargo: `docs/INTEGRACION.md` y
+> `azure-apps/postventa_incidencias.md` —**dos repositorios, dos commits, sin
+> `push`**—. Aviso vigente: `INTEGRACION.md` tiene un test que exige frases
+> concretas (R26 de F-010, `tests/test_f010_integracion_expuesto.py`), y ya se
+> rompió una vez esta semana por reescribirlo sin mirarlo. Después, el bloque
+> 10: T26, T27 (las seis verificaciones MANUAL del humano tras desplegar) y
+> T28.
+>
+> El informe completo, en `progress/impl_F-028.md` §109–§118.
+
+---
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · **T21 y T22 de F-028** · la rama vuelve a estar EN VERDE
 >
 > Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `30cf674` (T21)
 > y `2482607` (T22), locales, sin `push`.

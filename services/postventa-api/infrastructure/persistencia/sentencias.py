@@ -61,6 +61,7 @@ __all__ = [
     "select_login_sigrid",
     "select_preferencias",
     "select_situacion_estado",
+    "select_veredicto_y_cierre",
     "upsert_archivo",
     "upsert_cierre",
     "upsert_grafico",
@@ -535,6 +536,63 @@ def select_estado_cierre(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
     """
     tabla = _tabla(esquema, "cierres")
     sql = f"SELECT estado\nFROM {tabla}\nWHERE hash_parte = %s"
+    return sql, (hash_parte,)
+
+
+def select_veredicto_y_cierre(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
+    """El veredicto guardado **y** el estado de cierre, en un solo viaje (F-030).
+
+    Sustituye a `select_estado_cierre` **dentro de `consultar_situacion`** y
+    solo ahí: la lectura del veredicto viaja dentro de la consulta que las tres
+    puertas ya ejecutaban, así que siguen siendo dos sentencias por llamada y
+    **ni un viaje más** (R18). No es una optimización prematura: este
+    PostgreSQL lo comparten albaranes y compañía, y una tanda son 22 partes por
+    tres pasos.
+
+    Trae **tres columnas de `partes`** que no están en `validaciones`: las
+    observaciones, el código de obra y el número de incidencia. Su propio DDL
+    lo manda —ahí no se copia el texto manuscrito de un cliente (R21, R39)— y
+    sin ellas no se pueden recomponer los seis campos de la cadena canónica de
+    la huella, que es lo que hace que una aprobación humana siga contando.
+
+    **Se ancla en `partes` y los dos `JOIN` son `LEFT`**, y ninguna de las dos
+    cosas es de estilo:
+
+    - `validaciones` y `cierres` tienen `hash_parte` como clave primaria **y**
+      como `REFERENCES postventa.partes`, así que ninguna puede tener fila
+      donde no la haya en `partes`: anclar ahí no pierde nada.
+    - Si se anclara en `validaciones`, un parte **sin veredicto** se llevaría
+      por delante el estado de cierre, y entonces un parte **cerrado** sin fila
+      de validación dejaría de dar `cerrado` — que es el hecho del ERP que gana
+      a todo (F-028 R16, R18).
+    - Si los `JOIN` no fueran `LEFT`, pasaría lo mismo con cada uno por su
+      lado: el caso normal del primer día es un parte validado y sin cerrar.
+
+    **Sin fila de `partes` no vuelve ninguna fila**, y eso se traduce a
+    veredicto `None` y cierre `None`: es exactamente lo que devuelve hoy
+    `select_estado_cierre` en ese caso, y de ahí sale el error propio de «no
+    consta que este parte haya pasado la validación» (R8, R9).
+
+    El `hash` va como **parámetro del driver**, nunca pegado al texto. Lo único
+    que se interpola es el esquema, y lo valida `_tabla`.
+
+    El orden de las diez columnas es el que lee
+    `mapeo.fila_a_validacion_y_cierre`, y las dos cosas viven pegadas por eso.
+    """
+    partes = _tabla(esquema, "partes")
+    validaciones = _tabla(esquema, "validaciones")
+    cierres = _tabla(esquema, "cierres")
+    sql = (
+        "SELECT v.veredicto, v.destino, v.clasificacion_firma, v.motivos,\n"
+        "       v.avisos,\n"
+        "       p.observaciones, p.observaciones_confianza_pct,\n"
+        "       p.codigo_obra, p.numero_incidencia,\n"
+        "       c.estado\n"
+        f"FROM {partes} AS p\n"
+        f"LEFT JOIN {validaciones} AS v ON v.hash_parte = p.hash_parte\n"
+        f"LEFT JOIN {cierres} AS c ON c.hash_parte = p.hash_parte\n"
+        "WHERE p.hash_parte = %s"
+    )
     return sql, (hash_parte,)
 
 

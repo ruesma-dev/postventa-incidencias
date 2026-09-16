@@ -296,6 +296,25 @@ igual que hoy, y por debajo se suben los PDFs.
    casilla vacía, una aspa o un trazo geométrico **siguen sin ser**
    conformidad del cliente.
 
+   **Precisado por F-030 el 2026-09-16**, el mismo día y a costa de una
+   regresión en producción: lo que decide si un parte entra en el circuito es
+   el estado derivado **del veredicto que consta guardado** en
+   `postventa.validaciones`, y de nada más. **Ningún endpoint del circuito
+   emite veredicto**: `POST /api/archivar`, `POST /api/adjuntar` y
+   `POST /api/cerrar` no reciben la extracción del parte —pedirla obligaría al
+   front a reenviar el DNI y las observaciones manuscritas del cliente en cada
+   llamada— así que no pueden emitirlo, y **tampoco lo fabrican**: el veredicto
+   lo emite F-004 con la extracción delante, o se lee de la base. Lo que venga
+   en el cuerpo de esas tres peticiones se comprueba contra las enumeraciones
+   del dominio y no abre ni cierra ninguna puerta.
+
+   Por qué está escrito aquí y no solo en la spec: mientras esos tres endpoints
+   armaron un veredicto con lo poco que traía el formulario, la puerta
+   recomponía la huella sobre ese objeto de pega, no coincidía nunca con la que
+   apuntó quien decidió, y **una aprobación humana dejó de contar**. El parte
+   `b7e9b037` de la incidencia RS26.09/0178 estuvo aprobado y sin archivar. Lo
+   que no cambia, otra vez, es el criterio de la firma.
+
    **Cómo convive esto con «las observaciones son el único motivo de
    rechazo»** (3 bis), que parece lo contrario: son dos cosas distintas y las
    dos se sostienen. El alcance de «único motivo» son **los datos

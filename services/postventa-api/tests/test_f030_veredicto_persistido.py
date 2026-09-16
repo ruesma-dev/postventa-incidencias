@@ -1580,3 +1580,77 @@ def test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo():
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
     assert nombres == DDL_DE_F028
+
+
+# --------------------------------------------------------------------------
+# T19 · la precisión del 2026-09-16 en `docs/ARCHITECTURE.md` (R25)
+# --------------------------------------------------------------------------
+#
+# `ARCHITECTURE.md` es lo primero que lee quien llega al proyecto y es contra lo
+# que valida el reviewer. Mientras el punto 3 de «Semántica de dominio
+# imprescindible» siga diciendo solo lo de F-028 —«lo que decide es su
+# estado»—, calla lo que ha costado esta regresión: **de dónde sale el
+# veredicto del que ese estado se deriva**, y que los tres endpoints del
+# circuito no emiten ninguno.
+#
+# Se sigue la regla del proyecto: lo anterior **no se borra**, se enmienda con
+# una precisión fechada. Por eso van dos casos y no uno.
+
+#: El punto 3 va de su título al del punto 4, igual que en
+#: `test_f028_documentacion.py`: si alguien renumera el documento, los dos
+#: ficheros se enteran a la vez.
+PUNTO_3_ABRE = "3. **La firma debe ser humana.**"
+PUNTO_3_CIERRA = "4. **Lo manuscrito es dato de primera"
+
+
+def _punto_3_de_la_semantica() -> str:
+    """El punto 3 de la semántica de dominio, aplanado a una línea.
+
+    Se aplana para que las comprobaciones no dependan de dónde parta las líneas
+    el que escriba: lo que se vigila es **lo que dice**, no cómo está
+    maquetado.
+    """
+    texto = (
+        Path(__file__).resolve().parents[3] / "docs" / "ARCHITECTURE.md"
+    ).read_text(encoding="utf-8")
+
+    assert PUNTO_3_ABRE in texto, "el punto 3 de la semántica ha cambiado de título"
+    desde = texto.index(PUNTO_3_ABRE)
+    assert PUNTO_3_CIERRA in texto[desde:], "no se encuentra el punto 4 tras el 3"
+    hasta = texto.index(PUNTO_3_CIERRA, desde)
+    return _llano(texto[desde:hasta])
+
+
+def test_f030_r25_el_punto_3_dice_de_donde_sale_el_veredicto():
+    """R25 · la precisión de F-030, fechada y bajo el punto que enmienda.
+
+    Tres cosas y las tres hacen falta: que el estado se deriva del veredicto
+    **guardado**, que ningún endpoint del circuito lo emite, y la fecha. Sin la
+    fecha no se puede juzgar la decisión, porque no se sabe qué se sabía cuando
+    se tomó.
+    """
+    punto = _punto_3_de_la_semantica()
+
+    assert "Precisado por F-030 el 2026-09-16" in punto
+    assert "veredicto que consta guardado" in punto
+    assert "postventa.validaciones" in punto
+    assert "Ningún endpoint del circuito" in punto
+    assert "emite veredicto" in punto
+
+
+def test_f030_r25_el_punto_3_conserva_las_dos_capas_anteriores():
+    """R25 · **control negativo**: enmendar no es borrar lo de antes.
+
+    El punto 3 acumula ya tres capas y las tres siguen haciendo falta: la regla
+    general —una firma que no es humana no es conformidad— rige el 95 % de los
+    partes, la de F-026 explica por qué un no apto puede archivarse y la de
+    F-028, por qué un apto puede no archivarse. Quitar cualquiera para «dejarlo
+    limpio» deja el documento describiendo la excepción como si fuera la norma.
+    """
+    punto = _punto_3_de_la_semantica()
+
+    assert "Un parte sin firma válida no se archiva ni se cierra" in punto
+    assert "Precisado por F-026 el 2026-09-12" in punto
+    assert "salvo aprobación humana registrada" in punto
+    assert "Precisado por F-028 el 2026-09-16" in punto
+    assert "está `aprobado`" in punto

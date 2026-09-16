@@ -1,7 +1,92 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## EN CURSO · 2026-09-16 · **F-030, bloques 2 y 3 entregados; la regresión está arreglada**
+> ## EN CURSO · 2026-09-16 · **F-030, bloques 4 y 5 entregados: la implementación está CERRADA**
+>
+> Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y
+> sin merge. Hecho: **T1–T20**, la feature entera de
+> `specs/F-030-veredicto-persistido/tasks.md`. Informe completo, con las trazas
+> de todas las fases RED, la cobertura y la mutación:
+> **`progress/impl_F-030.md`**. Campaña de mutación:
+> `progress/mutacion_F-030.md`.
+>
+> **Falta el APROBADO del reviewer**: la feature **no** se marca `done` hasta
+> entonces.
+>
+> ### Qué traen estos dos bloques
+>
+> **El test que faltó.** `tests/utiles_pg.py` gana `RepositorioComoLaBase`, un
+> doble que **guarda columnas y no objetos**: guarda las 18 de
+> `valores_de_campos`, las 7 de `valores_de_validacion` y un histórico
+> append-only, y recompone el veredicto con la **misma**
+> `mapeo.fila_a_validacion_y_cierre` de producción. Que no pueda devolver el
+> objeto que entró es todo su valor: es la propiedad que
+> `RepositorioEnMemoria` no tiene y por la que el defecto de RS26.09/0178 pasó
+> sin que ningún test se enterara. **`RepositorioEnMemoria` no se toca.**
+>
+> `tests/test_f030_circuito_borde_a_borde.py` recorre el circuito con **los
+> cuerpos reales**: `POST /api/estado` → `POST /api/archivar`, y lo mismo con
+> `/api/adjuntar` y `/api/cerrar` en **dry-run**, sobre un parte no apto con
+> observaciones manuscritas. El formulario **dice la verdad** (`no_apto`,
+> `cola_validacion_humana`) y el parte pasa igual, porque lo que decide es la
+> aprobación de la persona. Con **dos control-negativo** por puerta: sin nada
+> en la base, y con el parte guardado por `POST /api/parte` pero sin aprobar.
+>
+> **Compatibilidad hacia atrás, medida** (T16): una decisión ya guardada sigue
+> abriendo las tres puertas **sin que nadie vuelva a decidir** y sin que la
+> puerta apunte nada nuevo; y si el parte se revalida con otra lectura, la
+> huella deja de coincidir y vuelve a `pendiente`. Es lo que el humano puede
+> comprobar mañana con su parte.
+>
+> ### Los números, medidos
+>
+> - `bash harness/init.sh` → **ENTORNO LISTO (VERDE)**, exit code 0. Suite del
+>   servicio: **2 734 passed, 0 failed, 3 skipped** en 20,6 s.
+> - **PUERTA COBERTURA: 100,0 %** (30/30 líneas cambiadas, umbral 80 %, nivel
+>   `critico`).
+> - **Mutación: 3 mutantes, 3 muertos, 0 supervivientes**, 21,1 s, **3 workers**
+>   (se pidieron 8 y se resolvieron a 3, uno por mutante). Más **tres mutantes
+>   a mano** —la puerta leyendo `ctx.validacion`, la recomposición perdiendo
+>   las observaciones y la recomposición perdiendo el número de incidencia—,
+>   cazados por **84, 19 y 18** casos respectivamente.
+> - **DDL: cero.** `git diff --name-only dev...HEAD` son 40 ficheros y ninguno
+>   de `infrastructure/persistencia/sql/`. Hay un test que lo vigila (T17).
+>
+> ### `docs/ARCHITECTURE.md`, al día
+>
+> El punto 3 de «Semántica de dominio imprescindible» gana la **precisión
+> fechada del 2026-09-16 de F-030**: lo que decide si un parte entra en el
+> circuito es el estado derivado **del veredicto que consta guardado**, y
+> **ningún endpoint del circuito emite veredicto**. Las tres capas anteriores
+> —la regla general, F-026 y F-028— se conservan, y hay dos casos que lo
+> vigilan.
+>
+> ### Lo que sigue abierto
+>
+> 1. **El riesgo de `design.md` §10.7 ya está DADO DE ALTA como `F-031`**
+>    (commit `11c04d0`, estado `pending`): `/api/archivar` sigue nombrando la
+>    carpeta y el fichero con el `codigo_obra` y el `numero_incidencia` **del
+>    cuerpo**, no con los guardados. Hoy no hace daño porque el front manda lo
+>    que leyó. **No hay nada que decidir aquí**: está en el backlog y F-030 no
+>    lo cierra.
+> 2. **V1 y V2**, las dos verificaciones MANUAL de la feature, **pendientes del
+>    humano** y **ninguna es condición de cierre**:
+>    - **V1 · el parte que está esperando.** Con F-030 desplegado en `dev`,
+>      archivar el parte `b7e9b037` de **RS26.09/0178** y comprobar que se
+>      archiva sin volver a decidir nada. **Escribe en SharePoint: exige
+>      autorización expresa del humano para esa incidencia y no se hace desde
+>      local.**
+>    - **V2 · el coste, medido.** Contar las consultas de una tanda real de 22
+>      partes contra el PostgreSQL compartido y comprobar que no ha subido
+>      respecto a F-028 (R18).
+>
+> Ventanas de escritura de `dev`: **las dos abiertas**
+> (`ARCHIVO_HABILITADO` y `CIERRE_HABILITADO`). **Estos dos bloques no han
+> ejecutado ninguna llamada real** contra Azure, Sigrid, SharePoint ni el
+> PostgreSQL compartido.
+
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · **F-030, bloques 2 y 3**
 >
 > Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y
 > sin merge. Hecho: **T1–T12** de `specs/F-030-veredicto-persistido/tasks.md`

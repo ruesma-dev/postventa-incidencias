@@ -216,7 +216,7 @@
       `python -m harness.mutacion` y la sección de análisis en
       `progress/impl_F-030.md`.
 
-- [ ] **T19**: Actualizar `docs/ARCHITECTURE.md` con la precisión del
+- [x] **T19**: Actualizar `docs/ARCHITECTURE.md` con la precisión del
       2026-09-16 en «Semántica de dominio imprescindible» punto 3: **lo que
       decide si un parte entra en el circuito es el estado derivado del
       veredicto guardado**, y ningún endpoint del circuito emite veredicto.

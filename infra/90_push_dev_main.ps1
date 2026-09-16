@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SINOPSIS
     Publica el trabajo local en origin: dev siempre, main solo si se pide.
 

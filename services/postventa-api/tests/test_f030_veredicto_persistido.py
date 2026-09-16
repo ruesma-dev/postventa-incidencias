@@ -1528,6 +1528,74 @@ def _ficheros_cambiados_en_la_rama() -> list[str] | None:
     return [linea.strip() for linea in diff.stdout.splitlines() if linea.strip()]
 
 
+#: La rama en la que este control tiene algo que mirar. Sale de la ficha de
+#: F-030 en `harness/features.json`, campo `branch`.
+RAMA_DE_LA_FEATURE = "feature/F-030-veredicto-persistido"
+
+
+def _rama_actual() -> str | None:
+    """El nombre de la rama de trabajo, o `None` si no se puede saber.
+
+    Lectura local: no abre ningun socket y no escribe nada.
+    """
+    try:
+        resultado = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError):  # pragma: no cover - no hay git en el PATH
+        return None
+    if resultado.returncode != 0:  # pragma: no cover - repositorio no sano
+        return None
+    return resultado.stdout.strip() or None
+
+
+def _la_rama_ya_esta_en_dev() -> bool:
+    """`True` cuando `HEAD` ya forma parte de `dev`: la rama cumplio su ciclo.
+
+    Cubre el ultimo caso que quedaba en rojo: hacer `checkout` de la rama de la
+    feature **despues** de mergearla. Ahi el diff viene vacio y no es un fallo.
+    Un diff vacio **sin** estar mergeada si lo es, y sigue siendolo.
+    """
+    try:
+        resultado = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", "HEAD", "dev"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError):  # pragma: no cover - no hay git en el PATH
+        return False
+    return resultado.returncode == 0
+
+
+def _fuera_de_la_rama_de_la_feature() -> bool:
+    """`True` cuando no estamos en la rama de F-030.
+
+    Los dos controles de abajo comparan la rama con `dev`, asi que **solo
+    tienen algo que mirar mientras la feature vive en su rama**. Mergeada, el
+    diff viene vacio; en una rama `chore/` trae otros ficheros y no el modulo
+    de esta feature. Ninguna de las dos cosas es un fallo de F-030, y las dos
+    dejaban el portero en rojo.
+
+    Anadido el **2026-09-17**, al mergear F-030 a `dev`: el segundo control se
+    puso en rojo y habria dejado `dev` en rojo para siempre. Lo destapo
+    `init.sh` ejecutando la suite **sin cache**.
+
+    Esto **no afloja el control**: dentro de `RAMA_DE_LA_FEATURE` los dos casos
+    se ejecutan enteros y siguen exigiendo lo mismo que exigian —incluido que
+    el diff no venga vacio—. Y lo que no depende de `git`,
+    `test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo`, se comprueba **siempre**
+    y en cualquier rama.
+    """
+    rama = _rama_actual()
+    return rama is not None and rama != RAMA_DE_LA_FEATURE
+
+
 def test_f030_r20_el_diff_de_la_rama_no_toca_ni_un_fichero_de_ddl():
     """R20 · **sin columna nueva y sin migración** (D3), comprobado en el diff.
 
@@ -1539,6 +1607,14 @@ def test_f030_r20_el_diff_de_la_rama_no_toca_ni_un_fichero_de_ddl():
     cambiados = _ficheros_cambiados_en_la_rama()
     if cambiados is None:  # pragma: no cover - depende del clon, no del código
         pytest.skip("no hay 'git' o la rama 'dev' no está en este clon")
+    if _fuera_de_la_rama_de_la_feature() or (
+        not cambiados and _la_rama_ya_esta_en_dev()
+    ):
+        pytest.skip(
+            f"este control vive en {RAMA_DE_LA_FEATURE} mientras no esta "
+            "mergeada. Lo que no depende de 'git' se sigue comprobando en "
+            "cualquier rama, en test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo"
+        )
 
     culpables = [ruta for ruta in cambiados if CARPETA_DDL in ruta.replace("\\", "/")]
 
@@ -1559,6 +1635,14 @@ def test_f030_r20_el_control_del_diff_no_esta_mirando_una_lista_vacia():
     cambiados = _ficheros_cambiados_en_la_rama()
     if cambiados is None:  # pragma: no cover - depende del clon, no del código
         pytest.skip("no hay 'git' o la rama 'dev' no está en este clon")
+    if _fuera_de_la_rama_de_la_feature() or (
+        not cambiados and _la_rama_ya_esta_en_dev()
+    ):
+        pytest.skip(
+            f"este control vive en {RAMA_DE_LA_FEATURE} mientras no esta "
+            "mergeada. Lo que no depende de 'git' se sigue comprobando en "
+            "cualquier rama, en test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo"
+        )
 
     normalizados = [ruta.replace("\\", "/") for ruta in cambiados]
 

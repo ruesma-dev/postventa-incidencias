@@ -202,7 +202,7 @@
       | Verificación: los dos casos en verde en
       `tests/test_f030_veredicto_persistido.py`.
 
-- [ ] **T17**: Añadir el control de que **no hay DDL** en la feature (R20): el
+- [x] **T17**: Añadir el control de que **no hay DDL** en la feature (R20): el
       diff de la rama no toca `infrastructure/persistencia/sql/`. |
       Verificación: el test, más `git diff --name-only dev...HEAD` pegado en el
       informe.

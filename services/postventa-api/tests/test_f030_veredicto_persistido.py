@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import ast
 import inspect
+import subprocess
 from dataclasses import dataclass, fields, replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1446,3 +1447,136 @@ def test_f030_r12_la_huella_apuntada_deja_de_coincidir_cuando_cambia_el_veredict
     assert huella_de_veredicto(antes) == huella_de_veredicto(de_la_cola)
     assert huella_de_veredicto(despues) == huella_de_veredicto(revisado)
     assert huella_de_veredicto(antes) != huella_de_veredicto(despues)
+
+
+# --------------------------------------------------------------------------
+# T17 · en esta feature no hay DDL (R20)
+# --------------------------------------------------------------------------
+#
+# La regla dura 2 de `tasks.md` dice que aquí no se toca ni un fichero de
+# `infrastructure/persistencia/sql/`, y el motivo no es de estilo: el DDL se
+# aplica contra `psql-albaranes-rs9k2`, que es un PostgreSQL **compartido** con
+# albaranes y compañía, y una columna nueva en una tabla de este esquema es una
+# migración que hay que aplicar, revertir y explicar.
+#
+# La decisión D3 del humano fue explícita —«sin columna nueva»— y `design.md`
+# §2 la sostiene midiendo que la huella se puede recomponer con lo que ya hay
+# guardado. Este control es lo que impide que esa decisión se deshaga en un
+# commit distraído.
+#
+# Van **dos** comprobaciones y no una, porque miran cosas distintas y fallan en
+# sitios distintos: la del diff mira lo que ha cambiado esta rama y depende de
+# que `dev` esté a mano; la de los nombres mira lo que hay en el árbol y no
+# depende de nada.
+
+#: La raíz del repositorio, subiendo desde este fichero.
+RAIZ = Path(__file__).resolve().parents[3]
+
+#: La carpeta del DDL, la que esta feature no puede tocar.
+CARPETA_DDL = "services/postventa-api/infrastructure/persistencia/sql/"
+
+#: Los once ficheros de DDL que dejó F-028, **y ninguno más**.
+#:
+#: Escritos a mano y no leídos del disco a propósito: una lista que se
+#: recalculara del propio árbol daría verde ante cualquier fichero nuevo, que
+#: es justo lo que viene a cazar.
+DDL_DE_F028 = (
+    "01_esquema.sql",
+    "02_remesas.sql",
+    "03_partes.sql",
+    "04_validaciones.sql",
+    "05_archivos.sql",
+    "06_cierres.sql",
+    "07_preferencias.sql",
+    "08_usuarios_sigrid.sql",
+    "09_graficos.sql",
+    "10_aprobaciones.sql",
+    "11_historico_estado.sql",
+)
+
+
+def _ficheros_cambiados_en_la_rama() -> list[str] | None:
+    """`git diff --name-only dev...HEAD`, o `None` si no se puede preguntar.
+
+    No abre ningún socket —`git` es local— y no escribe nada: es una lectura
+    del repositorio de trabajo. Devuelve `None` cuando no hay `git` a mano o
+    cuando la rama `dev` no está en este clon, que es lo que pasa en un
+    `checkout` superficial: eso no es un fallo de la feature y no puede poner
+    la suite en rojo.
+    """
+    try:
+        dev = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", "dev"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if dev.returncode != 0:
+            return None
+        diff = subprocess.run(
+            ["git", "diff", "--name-only", "dev...HEAD"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError):  # pragma: no cover - no hay git en el PATH
+        return None
+    if diff.returncode != 0:  # pragma: no cover - el repositorio no está sano
+        return None
+    return [linea.strip() for linea in diff.stdout.splitlines() if linea.strip()]
+
+
+def test_f030_r20_el_diff_de_la_rama_no_toca_ni_un_fichero_de_ddl():
+    """R20 · **sin columna nueva y sin migración** (D3), comprobado en el diff.
+
+    Es la comprobación que el humano puede repetir a mano con el mismo comando,
+    y por eso se usa `dev...HEAD` y no `dev..HEAD`: lo que interesa es lo que ha
+    cambiado **esta rama** desde que se separó, no lo que haya pasado en `dev`
+    mientras tanto.
+    """
+    cambiados = _ficheros_cambiados_en_la_rama()
+    if cambiados is None:  # pragma: no cover - depende del clon, no del código
+        pytest.skip("no hay 'git' o la rama 'dev' no está en este clon")
+
+    culpables = [ruta for ruta in cambiados if CARPETA_DDL in ruta.replace("\\", "/")]
+
+    assert culpables == [], (
+        "esta feature no puede traer DDL: se aplica contra un PostgreSQL "
+        f"compartido y la decisión D3 fue «sin columna nueva». Sobran: {culpables}"
+    )
+
+
+def test_f030_r20_el_control_del_diff_no_esta_mirando_una_lista_vacia():
+    """El control del control: si el diff viniera vacío, el de arriba mentiría.
+
+    Un `git diff` que no devolviera nada —rama equivocada, `dev` que ya
+    contiene todo esto— pondría verde el caso anterior sin haber comprobado
+    nada. Aquí se exige que la rama haya cambiado algo y que entre lo cambiado
+    esté el módulo del que va la feature.
+    """
+    cambiados = _ficheros_cambiados_en_la_rama()
+    if cambiados is None:  # pragma: no cover - depende del clon, no del código
+        pytest.skip("no hay 'git' o la rama 'dev' no está en este clon")
+
+    normalizados = [ruta.replace("\\", "/") for ruta in cambiados]
+
+    assert normalizados, "el diff de la rama no puede estar vacío"
+    assert any(
+        ruta.endswith("application/pipelines/puerta_de_estado.py")
+        for ruta in normalizados
+    ), "la rama tiene que haber tocado la puerta: es de lo que va la feature"
+
+
+def test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo():
+    """R20 · la mitad que no depende de `git`, y por eso no se puede saltar.
+
+    Si `dev` no estuviera a mano, el control de arriba se salta y la feature se
+    quedaría sin vigilancia justo en la regla más cara de deshacer. Este mira el
+    árbol: los ficheros de DDL son los once de F-028 y ninguno más.
+    """
+    carpeta = RAIZ / CARPETA_DDL
+    nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
+
+    assert nombres == DDL_DE_F028

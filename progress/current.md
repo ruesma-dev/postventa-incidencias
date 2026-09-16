@@ -1,6 +1,51 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## EN CURSO · 2026-09-16 · **F-030, bloque 0 entregado y EN ROJO a propósito**
+>
+> Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y
+> sin merge. Hecho: **T1 y T2** de `specs/F-030-veredicto-persistido/tasks.md`.
+> Informe con las trazas de la fase RED: **`progress/impl_F-030.md`**.
+>
+> **Lo único que se ha escrito es `services/postventa-api/tests/test_f030_veredicto_persistido.py`**:
+> la red de seguridad de la regresión, antes de tocar producción. 16 casos
+> nuevos en rojo, y los tres rojos son los que la spec dice que tienen que ser:
+> la aprobación humana que no sobrevive (9 casos, `puerta_de_estado.py:119`), el
+> cuerpo que miente y hoy pasa las tres puertas (3 casos), y la ida y vuelta de
+> la huella (7 casos, `mapeo.fila_a_validacion_y_cierre` es de T4 y no existe
+> todavía). **No se ha arreglado el defecto**: eso son los bloques 1 a 3.
+>
+> **[MEDIDO] las tres huellas del stub del cuerpo son las tres constantes de
+> §0.5** —`371a85e5…`, `9d8596a0…`, `e647e345…`—, la segunda es la que midió el
+> humano sobre RS26.09/0178; y con el veredicto **guardado** el estado sale
+> `aprobado`, así que los casos (a) se pondrán verdes en T8.
+>
+> ### Dos cosas que decide el humano antes de seguir
+>
+> 1. **`bash harness/init.sh` está ROJO por un motivo que NO es F-030 y que ya
+>    estaba en `dev`**: `tests/test_f010_prompt_keys_infra.py:74` lee los `.ps1`
+>    de `infra/` con `encoding="ascii"` y `infra/90_push_dev_main.ps1` empieza
+>    por BOM (commit `ae38aa0`, anterior a esta rama). Tumba la colección del
+>    módulo y `pytest -x` se para ahí, sin llegar a ejecutar ni un test del
+>    servicio. Arreglarlo es elegir entre dos convenciones —`utf-8-sig` en el
+>    test, o quitarle el BOM al script en contra de `CONVENTIONS.md`— y cae
+>    fuera del encargo del bloque 0. **Mientras no se arregle, T20 no se puede
+>    cerrar.**
+> 2. **Riesgo declarado y fuera de alcance (`design.md` §10.7)**: `/api/archivar`
+>    sigue nombrando la carpeta y el fichero con el `codigo_obra` y el
+>    `numero_incidencia` **del cuerpo**, no con los guardados. Hoy no hace daño
+>    porque el front manda lo que leyó. **Se propone darlo de alta como feature
+>    propia**; F-030 no lo cierra.
+>
+> **Siguiente encargo: el bloque 1 (T3–T7).** En T3 desaparece el andamio
+> declarado de `_situacion` (`object.__setattr__` mientras `SituacionParte` no
+> tenga el campo `validacion`).
+>
+> Ventanas de escritura de `dev`: **las dos abiertas**. Este bloque no ha
+> ejecutado ninguna llamada real contra Azure, Sigrid, SharePoint ni el
+> PostgreSQL compartido.
+
+
 > ## ✅ AL DÍA · 2026-09-16 · **`infra/22_ventana_archivo.ps1`**: la segunda puerta ya tiene script
 >
 > Rama `chore/script-22-ventana-archivo`, commits **locales, sin `push`** y

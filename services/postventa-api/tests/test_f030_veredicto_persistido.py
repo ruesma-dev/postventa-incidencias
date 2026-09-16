@@ -1,5 +1,5 @@
 # services/postventa-api/tests/test_f030_veredicto_persistido.py
-"""La red de seguridad de F-030, escrita **antes** de tocar producción (T1).
+"""La red de seguridad de F-030, escrita **antes** de tocar producción (T1, T2).
 
 Este fichero es el bloque 0 de la feature y hoy tiene que estar en **ROJO**.
 No prueba nada nuevo: reproduce una **regresión que está viva en producción**
@@ -36,6 +36,11 @@ construcción. Aquí las dos fuentes están **separadas a propósito** —el cue
 en el contexto, el veredicto en el almacén— y es lo único que hace que el caso
 sirva de algo.
 
+T2 añade la otra mitad: que el veredicto **recompuesto desde las columnas**
+dé exactamente la misma huella que el que estuvo en memoria (R10). Sin esa
+garantía, leer de la base no arreglaría nada: la aprobación seguiría sin
+contar, solo que por otro motivo.
+
 Sin red, sin base de datos y sin IA: los tres pasos hablan con puertos y se
 ejercitan con los dobles de siempre. A los dobles se les pregunta **qué salió
 de aquí**, que es la única forma de comprobar que no se tocó SharePoint ni el
@@ -49,6 +54,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, fields, replace
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 from application.pipelines.contexto_parte import ContextoParte
@@ -81,6 +87,12 @@ from domain.models.validacion import (
     Veredicto,
     validar_parte,
 )
+
+# Se importa el **módulo** y no la función: `fila_a_validacion_y_cierre` es de
+# T4 y todavía no existe, y un `from ... import` dejaría en rojo el fichero
+# entero —incluidos los casos de T1, que fallan por su propio motivo y no por
+# un import—. Así el rojo de T2 es suyo y se lee solo.
+from infrastructure.persistencia import mapeo
 
 from tests.utiles_pg import RepositorioEnMemoria
 from tests.utiles_sharepoint import ArchivoPortFalso
@@ -581,3 +593,156 @@ def test_f030_r7_un_cuerpo_que_miente_no_pasa_ninguna_de_las_tres_puertas(puerta
     assert repositorio.graficos == []
     assert repositorio.cierres == []
     assert fallo.value.motivo, "el rechazo tiene que decir por qué"
+
+
+# --------------------------------------------------------------------------
+# T2 · la ida y vuelta de la huella (R10)
+# --------------------------------------------------------------------------
+#
+# Leer el veredicto de la base solo arregla el defecto si el veredicto
+# recompuesto desde las columnas produce **exactamente la misma huella** que el
+# que estuvo en memoria. Si derivara aunque fuera en un espacio, la aprobación
+# seguiría sin contar y solo habríamos cambiado el motivo.
+#
+# Las tres equivalencias que lo sostienen (`design.md` §2) son las que esta
+# tabla recorre: `None` y «solo espacios» dan la misma huella, el orden de los
+# motivos da igual porque la huella los ordena, y el recorte de los avisos a
+# 240 caracteres no entra en la cadena canónica.
+
+#: «Esta columna de `partes` trae lo mismo que el veredicto en memoria».
+IGUAL = object()
+
+
+@dataclass(frozen=True)
+class CasoDeHuella:
+    """Un veredicto en memoria y las columnas con las que se recompone.
+
+    `observaciones`, `codigo_obra` y `numero_incidencia` son las tres columnas
+    que la consulta trae de `postventa.partes` con un `JOIN`, y son justo
+    donde aparecen las diferencias que no deben caducar una aprobación: la base
+    guarda **el literal que leyó el modelo** y el veredicto guarda lo que
+    `validar_parte` hizo con él.
+    """
+
+    nombre: str
+    validacion: ResultadoValidacion
+    observaciones: Any = IGUAL
+    codigo_obra: Any = IGUAL
+    numero_incidencia: Any = IGUAL
+    motivos_al_reves: bool = False
+
+    def columnas_de_partes(self) -> tuple[Any, ...]:
+        """Las cuatro columnas que salen de `postventa.partes`."""
+        return (
+            self.validacion.observaciones
+            if self.observaciones is IGUAL
+            else self.observaciones,
+            self.validacion.confianza_observaciones,
+            self.validacion.codigo_obra
+            if self.codigo_obra is IGUAL
+            else self.codigo_obra,
+            self.validacion.numero_incidencia
+            if self.numero_incidencia is IGUAL
+            else self.numero_incidencia,
+        )
+
+
+def _fila_de_la_consulta(caso: CasoDeHuella) -> tuple[Any, ...]:
+    """La fila que devolverá `select_veredicto_y_cierre` (`design.md` §3).
+
+    Las cinco primeras columnas se sacan de `mapeo.valores_de_validacion`, que
+    es **la misma función que escribió la fila**: si mañana cambiara el orden
+    de lo que se guarda, este test se enteraría en vez de comparar contra una
+    copia del orden escrita a mano.
+    """
+    _, veredicto, destino, clasificacion, motivos, avisos, _ = (
+        mapeo.valores_de_validacion(caso.validacion, AHORA)
+    )
+    if caso.motivos_al_reves:
+        motivos = mapeo.json_de_motivos(tuple(reversed(caso.validacion.motivos)))
+
+    return (veredicto, destino, clasificacion, motivos, avisos) + (
+        caso.columnas_de_partes()
+    ) + (None,)
+
+
+def _casos_de_huella() -> tuple[CasoDeHuella, ...]:
+    """La tabla de casos borde de R10, cada uno con su porqué.
+
+    Ninguno es rebuscado: los seis salen de cómo lee el modelo y de cómo
+    guarda la base. El que se dejara fuera sería el que caducara una
+    aprobación humana el día que apareciera.
+    """
+    con_observaciones = _veredicto_guardado(Destino.COLA_VALIDACION_HUMANA)
+    con_dos_motivos = validar_parte(
+        extraccion_de_ejemplo(
+            hash_parte=HASH, codigo_obra=OBRA, numero_incidencia=INCIDENCIA
+        ),
+        lectura_de_firma("marca_simple", hash_parte=HASH),
+    )
+    assert len(con_dos_motivos.motivos) >= 2, "el caso del orden necesita dos motivos"
+
+    return (
+        CasoDeHuella(
+            nombre="motivos_en_orden_inverso",
+            validacion=con_dos_motivos,
+            motivos_al_reves=True,
+        ),
+        CasoDeHuella(
+            nombre="observaciones_con_saltos_de_linea_y_mayusculas",
+            validacion=con_observaciones,
+            observaciones=(
+                f"  {con_observaciones.observaciones.upper().replace(' ', chr(10))}  "
+            ),
+        ),
+        CasoDeHuella(
+            nombre="observaciones_none_frente_a_solo_espacios",
+            validacion=replace(con_observaciones, observaciones=None),
+            observaciones="   ",
+        ),
+        CasoDeHuella(
+            nombre="codigo_obra_con_espacio_final",
+            validacion=con_observaciones,
+            codigo_obra=f"{OBRA} ",
+        ),
+        CasoDeHuella(
+            nombre="numero_incidencia_con_espacios_en_el_separador",
+            validacion=con_observaciones,
+            numero_incidencia=INCIDENCIA.replace(" - ", "  -  "),
+        ),
+        CasoDeHuella(
+            nombre="campos_decisivos_vacios_guardados_como_null",
+            validacion=replace(con_observaciones, codigo_obra="", numero_incidencia=""),
+            codigo_obra=None,
+            numero_incidencia=None,
+        ),
+        CasoDeHuella(
+            nombre="un_aviso_de_mas_de_240_caracteres",
+            validacion=replace(con_observaciones, avisos=("A" * 300,)),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "caso", [pytest.param(caso, id=caso.nombre) for caso in _casos_de_huella()]
+)
+def test_f030_r10_el_veredicto_recompuesto_da_la_misma_huella(caso: CasoDeHuella):
+    """R10 · lo guardado basta para recomponer la huella, y da la misma.
+
+    Es lo que sostiene D3 —«sin columna nueva»— y lo que hace que la aprobación
+    de RS26.09/0178 siga valiendo en cuanto se despliegue F-030: la huella que
+    apuntó el escritor salió del veredicto que esa misma llamada guardó, así
+    que la recompuesta desde esas dos filas tiene que ser la misma.
+
+    Hoy falla porque `mapeo.fila_a_validacion_y_cierre` es de T4 y todavía no
+    existe. Ese rojo es el esperado en el bloque 0.
+    """
+    recompuesto, estado_cierre = mapeo.fila_a_validacion_y_cierre(
+        _fila_de_la_consulta(caso), hash_parte=HASH
+    )
+
+    assert huella_de_veredicto(recompuesto) == huella_de_veredicto(caso.validacion)
+    assert recompuesto.hash_parte == HASH
+    assert recompuesto.veredicto is caso.validacion.veredicto
+    assert recompuesto.destino is caso.validacion.destino
+    assert estado_cierre is None

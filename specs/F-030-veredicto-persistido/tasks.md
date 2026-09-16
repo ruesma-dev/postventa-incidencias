@@ -51,7 +51,7 @@
       sin red, sin BBDD y sin IA. | Verificación: `pytest services/postventa-api/tests/test_f030_veredicto_persistido.py`
       en **rojo**, con la traza pegada en `progress/impl_F-030.md` (fase RED).
 
-- [ ] **T2**: Añadir al mismo fichero el caso de **ida y vuelta de la huella**
+- [x] **T2**: Añadir al mismo fichero el caso de **ida y vuelta de la huella**
       (R10), todavía en rojo: una tabla de veredictos —motivos en orden
       inverso, observaciones con saltos de línea y mayúsculas, observaciones
       `None` frente a `"   "`, `codigo_obra` con espacio final,

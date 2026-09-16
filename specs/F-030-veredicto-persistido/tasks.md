@@ -207,7 +207,7 @@
       Verificación: el test, más `git diff --name-only dev...HEAD` pegado en el
       informe.
 
-- [ ] **T18**: Pasar la puerta de **cobertura** sobre las líneas cambiadas
+- [x] **T18**: Pasar la puerta de **cobertura** sobre las líneas cambiadas
       (≥ 80 %) y la **campaña de mutación** con **cero supervivientes**: cada
       superviviente exige un test nuevo o una justificación escrita. Mutar a
       mano, como mínimo, los tres que reabren el defecto: la puerta leyendo

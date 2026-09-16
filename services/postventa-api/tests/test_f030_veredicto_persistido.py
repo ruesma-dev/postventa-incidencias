@@ -52,9 +52,13 @@ de cabo a rabo.
 
 from __future__ import annotations
 
+import ast
 import inspect
 from dataclasses import dataclass, fields, replace
 from datetime import UTC, datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from textwrap import dedent
 from typing import Any
 
 import pytest
@@ -1050,3 +1054,136 @@ def test_f030_r1_las_dos_premisas_retiradas_siguen_citadas_y_fechadas():
     assert REVOCACION_RETIRADA in contrato
     assert PREMISA_RETIRADA in contrato
     assert "RS26.09/0178" in contrato
+
+
+# --------------------------------------------------------------------------
+# T12 · el centinela estructural (R3)
+# --------------------------------------------------------------------------
+#
+# Todo lo de arriba vigila el **comportamiento**: que la puerta decida con lo
+# guardado. Esto vigila la **causa**: que nadie vuelva a fabricar un veredicto
+# en el borde. Son cosas distintas y hacen falta las dos —un stub que nadie
+# mire no rompe nada hoy, pero es el material con el que se reconstruye el
+# defecto—, y esta es la barata: no se puede esquivar sin verla, y ataca la
+# construcción a mano y no el síntoma.
+#
+# Mismo patrón que
+# `test_f028_persistencia.py::test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026`,
+# y por el mismo motivo: lo que no se puede mutar hay que mirarlo.
+
+#: La carpeta del borde HTTP, la que este centinela recorre entera.
+BORDE_HTTP = Path(__file__).resolve().parents[1] / "interface_adapters" / "api"
+
+
+def _construcciones_de(ruta: Path) -> list[int]:
+    """Las líneas de ese módulo que **construyen** un `ResultadoValidacion`.
+
+    Se mira el árbol y no el texto: `"ResultadoValidacion"` aparece en las
+    anotaciones de tipo de `parte.py`, `validar.py` y `estado_serializado.py`
+    —que son legítimas— y en las cabeceras de los tres endpoints, que cuentan
+    lo que pasó. Un `grep` las cazaría todas y el centinela nacería inútil o
+    lleno de excepciones. Lo que se busca es una **llamada**, que es la única
+    forma de fabricar uno.
+
+    Se acepta tanto `ResultadoValidacion(...)` como
+    `validacion.ResultadoValidacion(...)`: cambiar la forma del import no
+    puede ser la manera de esquivar esto.
+    """
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"), filename=str(ruta))
+    llamadas = (nodo for nodo in ast.walk(arbol) if isinstance(nodo, ast.Call))
+    return sorted(
+        llamada.lineno
+        for llamada in llamadas
+        if (
+            isinstance(llamada.func, ast.Name)
+            and llamada.func.id == "ResultadoValidacion"
+        )
+        or (
+            isinstance(llamada.func, ast.Attribute)
+            and llamada.func.attr == "ResultadoValidacion"
+        )
+    )
+
+
+def test_f030_r3_ningun_modulo_del_borde_construye_un_veredicto():
+    """R3 · el veredicto lo emite F-004 con la extracción, o no existe.
+
+    **Lo que falló no fue un cálculo mal hecho: fue una construcción a mano.**
+    `archivar.py`, `adjuntar.py` y `cerrar.py` montaban un `ResultadoValidacion`
+    con el `veredicto` y el `destino` del formulario y valores fijos para el
+    resto, sobre un parte que desde ese endpoint no había mirado nadie. De ahí
+    salieron las dos caras del defecto: una huella que no dependía del parte y
+    un cuerpo que podía declararse apto a sí mismo.
+
+    El control recorre **la carpeta entera** y no los tres ficheros de la
+    feature: el fallo que este caso existe para cazar es que mañana aparezca un
+    endpoint nuevo que vuelva a fabricarlo, y un control apuntado a tres
+    nombres no lo vería.
+
+    Quien sí puede emitir un veredicto es quien trae la extracción, y lo hace
+    llamando a `validar_parte` —`parte.py`, `validar.py`, `estado.py`—, que es
+    justo lo que esta comprobación deja pasar: `validar_parte(...)` es una
+    llamada a otra cosa.
+    """
+    modulos = sorted(BORDE_HTTP.glob("*.py"))
+    assert modulos, "la carpeta del borde no puede estar vacía: el control se cayó"
+
+    culpables = {
+        ruta.name: lineas
+        for ruta in modulos
+        if (lineas := _construcciones_de(ruta))
+    }
+
+    assert culpables == {}, (
+        "estos módulos del borde fabrican un ResultadoValidacion, y eso es "
+        "exactamente lo que rompió el circuito en F-030: el veredicto lo emite "
+        f"F-004 con la extracción, o se lee de la base. {culpables}"
+    )
+
+
+def test_f030_r3_el_centinela_sabe_ver_una_construccion():
+    """El control del control: un centinela que no se ha visto fallar no vale.
+
+    Se le da un módulo escrito aquí mismo con la construcción de pega que
+    tenía `archivar.py` —la misma, letra por letra— y tiene que verla. Sin
+    este caso, un error en el recorrido del árbol dejaría el centinela en
+    verde para siempre y nadie se enteraría.
+
+    Y el negativo al lado: una **anotación de tipo** con ese mismo nombre no
+    es una construcción y no puede hacerlo saltar, que es lo que separa este
+    control de un `grep`.
+    """
+    fabrica = dedent(
+        '''
+        from domain.models.validacion import ResultadoValidacion
+
+        def _como_contexto(veredicto, destino) -> ResultadoValidacion | None:
+            return ResultadoValidacion(
+                hash_parte="da igual",
+                veredicto=Veredicto(veredicto),
+                destino=Destino(destino),
+                motivos=(),
+                clasificacion_firma=ClasificacionFirma.HUMANA,
+                observaciones=None,
+                confianza_observaciones=0,
+            )
+        '''
+    )
+    solo_anotaciones = dedent(
+        '''
+        from domain.models.validacion import ResultadoValidacion, validar_parte
+
+        def _emitir(extraccion, firma) -> ResultadoValidacion:
+            resultado: ResultadoValidacion = validar_parte(extraccion, firma)
+            return resultado
+        '''
+    )
+
+    with TemporaryDirectory() as carpeta:
+        culpable = Path(carpeta) / "fabrica.py"
+        culpable.write_text(fabrica, encoding="utf-8")
+        inocente = Path(carpeta) / "anotaciones.py"
+        inocente.write_text(solo_anotaciones, encoding="utf-8")
+
+        assert _construcciones_de(culpable) != []
+        assert _construcciones_de(inocente) == []

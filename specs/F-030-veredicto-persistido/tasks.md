@@ -185,7 +185,7 @@
       el test **caza el defecto**: devolviendo el stub a `archivar.py` se pone
       rojo (traza en el informe).
 
-- [ ] **T15**: Añadir al mismo fichero los equivalentes de `adjuntar_grafico` y
+- [x] **T15**: Añadir al mismo fichero los equivalentes de `adjuntar_grafico` y
       de `cerrar_incidencia` en dry-run (`commit=False`), con sus dobles y sus
       control-negativo (R5, R6, R24). | Verificación: los dos casos en verde y
       los dos control-negativo levantando `ParteNoApto` en la puerta del estado,

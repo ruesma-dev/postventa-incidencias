@@ -63,17 +63,26 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
 from domain.models.errores import ParteNoApto
 from domain.models.estado import EstadoParte
-from domain.models.grafico import FIRMA_PDF
+from domain.models.grafico import FIRMA_PDF, EstadoGrafico, TrazaGrafico
+from domain.models.persistencia import (
+    EPOCA_SIN_DECIDIR,
+    PreferenciasUsuario,
+    ResultadoGuardado,
+)
 from domain.models.validacion import Destino, Veredicto
+from interface_adapters.api.adjuntar import adjuntar_grafico
 from interface_adapters.api.archivar import archivar_parte
+from interface_adapters.api.cerrar import cerrar_incidencia
 from interface_adapters.api.estado import cambiar_estado_http
 from interface_adapters.api.parte import guardar_parte_http
 
 from tests.utiles_ia import CAMPOS_DE_EJEMPLO
 from tests.utiles_pg import RepositorioComoLaBase
 from tests.utiles_sharepoint import ArchivoPortFalso
+from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 
 AHORA = datetime(2026, 9, 16, 10, 0, tzinfo=UTC)
 
@@ -356,3 +365,217 @@ def test_f030_r23_sin_aprobacion_el_archivo_no_pasa_la_puerta(mundo, motivo):
     assert archivador.biblioteca.elementos == {}
     assert archivador.biblioteca.carpetas == set()
     assert base.archivos == {}
+
+
+# --------------------------------------------------------------------------
+# T15 · las otras dos puertas del circuito, en dry-run (R5, R6, R24)
+# --------------------------------------------------------------------------
+#
+# Mismo recorrido y misma forma que el del archivo, y por el mismo motivo: la
+# aprobación de una persona tiene que sobrevivir al viaje por la base en las
+# **tres** puertas, no en una. Abrir solo la del archivo dejaría el parte a
+# medio camino —el PDF en SharePoint y la incidencia abierta—, que es peor que
+# no empezar.
+#
+# Los dos van en **dry-run** (`commit=False`): lo que se comprueba aquí es la
+# puerta del estado, y lo que venga después son las otras puertas, que esta
+# feature no toca. Ni una escritura real en el ERP, y los dobles lo afirman.
+
+
+class UsuariosConLogin:
+    """Correspondencia ya confirmada: el camino corto de R29 de F-009."""
+
+    def resolver_login(self, *, usuario_oid: str) -> CorrespondenciaSigrid:
+        return CorrespondenciaSigrid(
+            usuario_oid=usuario_oid,
+            login_sigrid="logininventado",
+            alta_at_utc=AHORA,
+            verificado_at_utc=AHORA,
+        )
+
+    def guardar_login(self, *, correspondencia: CorrespondenciaSigrid):
+        return ResultadoGuardado.CREADO
+
+
+class PreferenciasSinAutoCierre:
+    """Lo que devuelve quien no ha decidido nada: sin auto-cierre."""
+
+    def obtener_preferencias(self, *, usuario_oid: str) -> PreferenciasUsuario:
+        return PreferenciasUsuario(
+            usuario_oid=usuario_oid,
+            auto_cierre=False,
+            actualizado_at_utc=EPOCA_SIN_DECIDIR,
+        )
+
+    def guardar_preferencias(self, *, preferencias):  # pragma: no cover
+        return ResultadoGuardado.CREADO
+
+
+def _reclamacion() -> Reclamacion:
+    """Una reclamación abierta e inventada, en el tipo de posventa."""
+    return Reclamacion(
+        ide=111_222,
+        emp=1,
+        tip=708,
+        est=3,
+        codigo=INCIDENCIA,
+        descripcion="REPARACION INVENTADA",
+        estado_origen_cod="PTE",
+        estado_origen_res="PENDIENTE",
+        estado_destino_est=90,
+        estado_destino_cod="CER",
+        estado_destino_res="CERRADA",
+    )
+
+
+def _con_el_grafico_ya_adjuntado(base: RepositorioComoLaBase) -> RepositorioComoLaBase:
+    """El estado del mundo en el que ocurre un cierre, desde F-012.
+
+    No es material de F-030: el gráfico se adjunta **antes** del cierre y su
+    traza es precondición del `commit` (R2 de F-012). Se siembra a mano para
+    que la puerta de al lado no corte antes y el caso pueda enseñar lo suyo,
+    que es la puerta **del estado**.
+    """
+    base.guardar_grafico(
+        traza=TrazaGrafico(
+            hash_parte=HASH,
+            numero_incidencia=INCIDENCIA,
+            estado=EstadoGrafico.ADJUNTADO,
+            adjuntado_at_utc=AHORA,
+        )
+    )
+    return base
+
+
+def _adjuntar(base: RepositorioComoLaBase, erp: ErpEnMemoria, graficos: GraficoEnMemoria):
+    """`POST /api/adjuntar` con su formulario real, en dry-run."""
+    return adjuntar_grafico(
+        PDF,
+        hash=HASH,
+        codigo_obra=OBRA,
+        numero_incidencia=INCIDENCIA,
+        veredicto=VEREDICTO_DEL_FORMULARIO,
+        destino=DESTINO_DEL_FORMULARIO,
+        estado_archivo="archivado",
+        usuario_oid=OID,
+        correo=CORREO,
+        commit=False,
+        confirmado=True,
+        erp=erp,
+        graficos=graficos,
+        repositorio=base,
+        usuarios=UsuariosConLogin(),
+        preferencias=PreferenciasSinAutoCierre(),
+        ahora=AHORA,
+    )
+
+
+def _cerrar(base: RepositorioComoLaBase, erp: ErpEnMemoria):
+    """`POST /api/cerrar` con su cuerpo real, en dry-run."""
+    return cerrar_incidencia(
+        {
+            "hash": HASH,
+            "numero_incidencia": INCIDENCIA,
+            "veredicto": VEREDICTO_DEL_FORMULARIO,
+            "destino": DESTINO_DEL_FORMULARIO,
+            "estado_archivo": "archivado",
+            "usuario_oid": OID,
+            "correo": CORREO,
+            "commit": False,
+            "confirmado": True,
+        },
+        erp=erp,
+        repositorio=base,
+        usuarios=UsuariosConLogin(),
+        preferencias=PreferenciasSinAutoCierre(),
+        ahora=AHORA,
+    )
+
+
+def test_f030_r5_el_parte_aprobado_se_adjunta_a_su_reclamacion_en_dry_run():
+    """R5, R24 · la segunda puerta, con el mismo parte y el mismo formulario.
+
+    El dry-run llega hasta la pasarela documental —que aquí es un doble— y eso
+    solo puede pasar si la puerta del estado se abrió. Y se abrió con el
+    veredicto **guardado**, porque el del formulario dice `no_apto`.
+
+    Lo que se afirma es el **efecto**: la reclamación se leyó y a la pasarela
+    se le pidió un ensayo, nunca un `commit`.
+    """
+    base = _base_con_el_parte_aprobado()
+    erp = ErpEnMemoria(_reclamacion())
+    graficos = GraficoEnMemoria()
+
+    respuesta = _adjuntar(base, erp, graficos)
+
+    assert erp.lecturas == [INCIDENCIA]
+    assert [commit for _, commit in graficos.llamadas] == [False]
+    assert erp.cierres == []
+    assert respuesta["hash_parte"] == HASH
+
+
+def test_f030_r6_el_parte_aprobado_llega_al_dry_run_del_cierre():
+    """R6, R24 · la tercera puerta. Misma forma, mismo parte, mismo cuerpo.
+
+    Que se lea la reclamación es la prueba de que se pasó: la puerta del estado
+    es lo primero que hace el paso, antes de hablar con el ERP. Y **nada se
+    cierra**: el cuerpo pide un ensayo.
+    """
+    base = _con_el_grafico_ya_adjuntado(_base_con_el_parte_aprobado())
+    erp = ErpEnMemoria(_reclamacion())
+
+    respuesta = _cerrar(base, erp)
+
+    assert erp.lecturas == [INCIDENCIA]
+    assert erp.cierres == []
+    assert respuesta["hash_parte"] == HASH
+
+
+@pytest.mark.parametrize(("mundo", "motivo"), SIN_APROBAR)
+def test_f030_r24_sin_aprobacion_el_grafico_no_pasa_la_puerta(mundo, motivo):
+    """R24 · y **antes de cualquier otra comprobación**.
+
+    Eso es lo que afirma `erp.lecturas == []`: el paso del gráfico lee la
+    reclamación nada más pasar la puerta, así que si no se leyó, la puerta cortó
+    primero. Un parte sin aprobar no puede llegar ni a mirar el ERP, y mucho
+    menos a mandarle un documento con el DNI de un cliente dentro.
+    """
+    base = mundo()
+    erp = ErpEnMemoria(_reclamacion())
+    graficos = GraficoEnMemoria()
+
+    with pytest.raises(ParteNoApto) as fallo:
+        _adjuntar(base, erp, graficos)
+
+    assert motivo in str(fallo.value)
+    # El final es el de esta puerta y no el de otra, y los dos mundos lo
+    # dicen con sus palabras: «no se adjunta a la reclamación» cuando el
+    # parte está pendiente, «no se adjunta a una incidencia del ERP…»
+    # cuando no consta veredicto. Lo que no puede es hablar de archivar.
+    assert "no se adjunta" in str(fallo.value)
+    assert "no se archiva" not in str(fallo.value)
+    assert erp.lecturas == []
+    assert graficos.llamadas == []
+    assert base.graficos == {}
+
+
+@pytest.mark.parametrize(("mundo", "motivo"), SIN_APROBAR)
+def test_f030_r24_sin_aprobacion_el_cierre_no_pasa_la_puerta(mundo, motivo):
+    """R24 · lo mismo en la puerta que escribe en el ERP de producción.
+
+    Aquí el gráfico **sí** consta adjuntado, así que la puerta de F-012 no
+    puede ser la que corte: si algo para el paso, es la del estado. Es la
+    diferencia entre un control y una coincidencia.
+    """
+    base = _con_el_grafico_ya_adjuntado(mundo())
+    erp = ErpEnMemoria(_reclamacion())
+
+    with pytest.raises(ParteNoApto) as fallo:
+        _cerrar(base, erp)
+
+    assert motivo in str(fallo.value)
+    assert "no se cierra" in str(fallo.value)
+    assert "no se adjunta" not in str(fallo.value)
+    assert erp.lecturas == []
+    assert erp.cierres == []
+    assert base.cierres == {}

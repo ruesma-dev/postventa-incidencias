@@ -19,7 +19,7 @@ Rama `feature/F-012-grafico-sigrid`. Ni un `git push`. Ningún estado de
 
 | Fichero | Qué es |
 |---|---|
-| `infra/19_ventana_escritura.ps1` | **Nuevo.** Consulta, abre y cierra la ventana de escritura contra el ERP (`CIERRE_HABILITADO` de nuestra Function App). 365 líneas. |
+| `infra/19_ventana_escritura.ps1` | **Nuevo.** Consulta, abre y cierra la ventana de escritura contra el **ERP** (`CIERRE_HABILITADO` de nuestra Function App). 365 líneas. **Es UNA de las DOS puertas**: la de **SharePoint** (`ARCHIVO_HABILITADO`) es otra y tiene su propio script desde el 2026-09-16, `infra/22_ventana_archivo.ps1` — ver el addendum al final de este documento. |
 | `infra/20_login_sigrid.ps1` | **Nuevo.** Comprueba, solo leyendo, si el login que la siembra derivaría de un correo existe en el maestro de usuarios del ERP. 224 líneas. |
 | `services/postventa-api/tests/test_f012_scripts_infra.py` | **+31 tests** en una sección nueva al final, con el estilo de las que ya había. |
 | `services/postventa-api/tests/test_f010_scripts_infra.py` | Los dos scripts entran en el censo `scripts_entregados()`, que es donde vive el barrido de R1, R7 y R8. |
@@ -363,3 +363,61 @@ script 19, conviven las dos vías y la del documento es la que se queda vieja.
 | **Tiempo de ejecución de la suite** | **88,42 s** (api) · **10,96 s** (raíz) · **1,92 s** (los dos ficheros de tests de scripts) | salida de la propia suite |
 | **Análisis sintáctico PowerShell** | **0 errores** en los dos (1 143 y 540 tokens) | `Parser::ParseFile`, §4 |
 | **`ruff`** | **58 avisos**, la deuda previa exacta; **0** en los ficheros tocados | `python -m ruff check .` |
+
+---
+
+## Addendum · 2026-09-16 · la SEGUNDA puerta: `infra/22_ventana_archivo.ps1`
+
+> Esto **no es parte del encargo de F-012** que documenta el resto del fichero,
+> y no reescribe nada de lo de arriba. Se añade aquí porque este documento es
+> donde se lista el utillaje de puesta en marcha, y quien venga a buscar «la
+> ventana» tiene que encontrar **las dos**, no una.
+
+### Son DOS puertas, y son INDEPENDIENTES
+
+| App Setting | Qué abre | Script | Qué hay detrás |
+|---|---|---|---|
+| `CIERRE_HABILITADO` | `POST /api/adjuntar` (gráfico) y `POST /api/cerrar` | `infra/19_ventana_escritura.ps1` | el **ERP de producción** del que depende toda la empresa |
+| `ARCHIVO_HABILITADO` | `POST /api/archivar` | `infra/22_ventana_archivo.ps1` | el **SharePoint de Posventa**: PDF con datos personales de clientes, DNI incluido |
+
+**Abrir una no abre la otra.** Son dos App Settings distintas a propósito
+(`function_app.py`, sección de los candados): se abren en momentos distintos y
+poder archivar no puede implicar poder escribir en el ERP. Para el circuito
+completo —archivar, adjuntar, cerrar— hacen falta **las dos**, cada una con su
+script.
+
+### Por qué el 22 existe
+
+El 19 resolvió el problema **solo para la puerta del ERP**. La de SharePoint
+se siguió abriendo con **una línea de `az ... appsettings set` copiada a mano**,
+con el grupo de recursos y el nombre de la Function App tecleados dentro de un
+documento — que es, literalmente, lo que el encabezado del 19 describe como
+inaceptable: «un comando copiado de un documento no tiene precondiciones, no
+tiene veredicto, no tiene código de salida y no se entera de si lo que pidió ha
+ocurrido». El **2026-09-16** hubo que abrirla a mano otra vez. El 22 es la
+respuesta.
+
+### Lo que hay que saber y no estaba escrito en ningún sitio operable
+
+**Cada despliegue del backend vuelve a cerrar la de SharePoint.**
+`infra/desplegar_backend.ps1`, **línea 429**, fuerza `ARCHIVO_HABILITADO=false`
+en cada pasada, a propósito: la ventana se despliega **cerrada** por si quedó
+encendida. Quien despliega y la quería abierta **tiene que volver a abrirla a
+mano**. Es el motivo de que el 2026-09-16 apareciera cerrada tras el despliegue
+de las 07:33 UTC, sin que nadie la hubiera cerrado. Queda escrito en el
+encabezado del 22, que es donde lo va a leer quien la vaya a abrir.
+
+### Qué hace, calcado al 19
+
+Tres modos, **y el de por omisión solo mira**: `-Estado` lee y lo dice en
+palabras («abierta» / «cerrada»); `-Abrir` avisa —SharePoint de Posventa, PDF
+con datos personales, y que **esto no abre el cierre en Sigrid**— y exige
+teclear `ABRIR`; `-Cerrar` cierra **sin** confirmación, porque cerrar siempre
+es seguro. Tras escribir **relee del plano de gestión** e imprime el valor
+real, no el pedido, advirtiendo de que la Function tarda unos segundos en
+reiniciar. Si `az` falla, el estado es **«desconocida»** y sale con código
+distinto de 0: no se inventa un «cerrada» tranquilizador. **Los mismos códigos
+de salida que el 19** (2, 3, 4, 5, 6, 8, 9), porque son dos puertas pero el
+mismo gesto.
+
+Informe del trabajo: `progress/impl_script22_ventana_archivo.md`.

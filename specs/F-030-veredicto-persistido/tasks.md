@@ -175,7 +175,7 @@
       comprueba que lo que devuelve `consultar_situacion` **no es el mismo
       objeto** y sí tiene **la misma huella**.
 
-- [ ] **T14**: Crear `tests/test_f030_circuito_borde_a_borde.py` con el
+- [x] **T14**: Crear `tests/test_f030_circuito_borde_a_borde.py` con el
       recorrido `cambiar_estado_http` → `archivar_parte` usando **los cuerpos
       reales de los dos endpoints** sobre un parte **no apto con observaciones**
       —el caso de RS26.09/0178— contra `RepositorioComoLaBase` y un doble de

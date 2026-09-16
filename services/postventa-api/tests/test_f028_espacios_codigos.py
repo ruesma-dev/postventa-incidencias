@@ -36,7 +36,14 @@ from __future__ import annotations
 
 import pytest
 from domain.models.cierre import a_codigo_de_sigrid
-from domain.models.nombrado import nombre_de_archivo, normalizar_codigo
+from domain.models.errores import NombradoImposible
+from domain.models.nombrado import (
+    SEPARADORES_DE_CODIGO,
+    carpeta_de_archivo,
+    nombre_de_archivo,
+    normalizar_codigo,
+    tramos_de_codigo,
+)
 
 #: El código de obra de la tabla. **Inventado**: no es de nadie.
 OBRA = "0626"
@@ -241,3 +248,170 @@ def test_f028_r45_r46_el_nombre_del_fichero_devuelve_el_codigo_del_erp(entrada):
     )
 
     assert a_codigo_de_sigrid(tramo_de_la_incidencia) == CODIGO_DE_SIGRID
+
+
+# --------------------------------------------------------------------------
+# Los tramos · la pieza que hace inversas exactas a las dos conversiones (R47)
+# --------------------------------------------------------------------------
+
+
+def test_f028_los_dos_separadores_estan_declarados():
+    """`SEPARADORES_DE_CODIGO` son la barra y el guion, y **solo** esos dos.
+
+    Se escriben **a mano**, no iterando la constante: un test que recorre lo
+    que vigila da verde aunque alguien la vacíe. Y se afirma que no hay un
+    tercero: meter aquí el punto partiría `RS26.09` por la mitad.
+    """
+    assert "/" in SEPARADORES_DE_CODIGO
+    assert "-" in SEPARADORES_DE_CODIGO
+    assert set(SEPARADORES_DE_CODIGO) == {"/", "-"}
+
+
+@pytest.mark.parametrize(
+    "codigo", ("RS26.09/0149", "RS26.09-0149")
+)
+def test_f028_r47_la_barra_y_el_guion_dan_los_mismos_tramos(codigo):
+    """R47 · es **esto** lo que hace que las dos conversiones no diverjan.
+
+    Escrito con barra o con guion, el código son los mismos dos tramos. A
+    partir de ahí, una conversión los une con ` - ` y la otra con `/`, y
+    ninguna de las dos tiene que saber cómo venía escrito el papel.
+    """
+    assert tramos_de_codigo(codigo) == ("RS26.09", "0149")
+
+
+def test_f028_un_codigo_sin_separador_es_un_solo_tramo():
+    """Un código que no lleva separador no se parte en nada.
+
+    Es el caso corriente del código de obra si alguien lo pasara por aquí, y
+    el de un número de incidencia que Sigrid emitiera sin barra.
+    """
+    assert tramos_de_codigo("RS26090149") == ("RS26090149",)
+
+
+@pytest.mark.parametrize(
+    ("codigo", "tramos"),
+    (
+        ("", ()),
+        ("/", ()),
+        ("-", ()),
+        ("//-", ()),
+        ("/0149", ("0149",)),
+        ("RS26.09/", ("RS26.09",)),
+        ("A/B/C", ("A", "B", "C")),
+    ),
+)
+def test_f028_los_tramos_vacios_se_descartan(codigo, tramos):
+    """Un separador suelto no produce un tramo vacío.
+
+    Si los tramos vacíos sobrevivieran, `/0149` se uniría como ` - 0149` y el
+    nombre del fichero saldría con un espacio doble donde no hay nada que
+    separar. Descartarlos aquí es lo que permite que quien nombra el fichero
+    pueda distinguir «no hay ningún tramo» y negarse (R49).
+    """
+    assert tramos_de_codigo(codigo) == tramos
+
+
+# --------------------------------------------------------------------------
+# R48 · Lo que el arreglo NO puede tocar de F-006
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("obra", ("0626", "0000626", "007", "0"))
+def test_f028_r48_los_ceros_a_la_izquierda_siguen_intactos(obra):
+    """R48 · F-006 R4 sigue en pie: `0626` nunca es `626`.
+
+    Es la garantía más cara de romper de las tres: un cero perdido archiva el
+    parte en la carpeta de otra promoción, y ahí no lo busca nadie.
+    """
+    assert nombre_de_archivo(
+        codigo_obra=obra, numero_incidencia=CODIGO_DE_SIGRID
+    ).startswith(f"{obra} - ")
+
+
+def test_f028_r48_el_codigo_de_obra_no_se_parte_en_tramos():
+    """R48 · la obra **no** pasa por los tramos, y es deliberado.
+
+    `06-77` es **una** obra escrita con guion, no dos tramos. Si la obra se
+    compusiera por tramos, el guion pasaría a ` - ` y —peor— la carpeta se
+    partiría en una subcarpeta que nadie pidió. La obra solo se normaliza.
+    """
+    assert nombre_de_archivo(
+        codigo_obra="06-77", numero_incidencia=CODIGO_DE_SIGRID
+    ) == "06-77 - RS26.09 - 0149 PARTE FIRMADO.pdf"
+
+    assert (
+        carpeta_de_archivo(carpeta_base="Postventa", codigo_obra="06-77")
+        == "Postventa/06-77"
+    )
+
+
+def test_f028_r48_el_guion_raro_del_codigo_de_obra_sigue_normalizando():
+    """R48 · F-006 R3 sigue en pie también para la obra, y sin partirla.
+
+    El guion largo de `06–77` pasa a guion normal —dos lecturas del mismo
+    papel tienen que dar la misma carpeta— pero el código sigue siendo uno.
+    """
+    assert normalizar_codigo("06–77") == "06-77"
+
+
+def test_f028_r48_el_sufijo_y_la_extension_siguen_literales():
+    """R48 · F-006 R5 sigue en pie: ` PARTE FIRMADO` y `.pdf`, sin tocar."""
+    nombre = nombre_de_archivo(
+        codigo_obra=OBRA, numero_incidencia="RS26.09 / 0149"
+    )
+
+    assert nombre.endswith(" PARTE FIRMADO.pdf")
+    assert nombre.count("PARTE FIRMADO") == 1
+
+
+def test_f028_r48_un_caracter_prohibido_sigue_sin_sanearse_en_silencio():
+    """R48 · F-006 R7 sigue en pie: error ruidoso, nunca un `_` por lo bajo.
+
+    Se inyecta en la **obra** porque la barra del nº de incidencia ya no llega
+    nunca a la comprobación: ahora es un separador de tramos.
+    """
+    with pytest.raises(NombradoImposible) as fallo:
+        nombre_de_archivo(codigo_obra="06|77", numero_incidencia=CODIGO_DE_SIGRID)
+
+    assert "_" not in fallo.value.motivo
+
+
+# --------------------------------------------------------------------------
+# R49 · Un código que se queda sin nada sigue siendo un error
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("ausente", (None, "", "   ", "\t", "\n  \t "))
+def test_f028_r49_un_codigo_vacio_sigue_siendo_nombrado_imposible(ausente):
+    """R49 · F-006 R6 **sin cambios**: sin nº de incidencia no se archiva.
+
+    El arreglo de los espacios no puede convertir un código ausente en un
+    nombre con un hueco: un parte archivado con un número inventado es peor
+    que un parte sin archivar, porque el segundo lo ve alguien.
+    """
+    with pytest.raises(NombradoImposible) as fallo:
+        nombre_de_archivo(codigo_obra=OBRA, numero_incidencia=ausente)
+
+    assert "incidencia" in fallo.value.motivo.lower()
+
+
+@pytest.mark.parametrize("solo_separadores", ("/", "-", " / ", "//", " - - "))
+def test_f028_r49_un_codigo_de_solo_separadores_tampoco_se_archiva(
+    solo_separadores,
+):
+    """R49 · el hueco que abre componer por tramos, tapado en el mismo sitio.
+
+    `"/"` **no** normaliza a la cadena vacía —es un carácter—, así que la
+    guardia de R6 lo deja pasar. Pero no tiene ni un tramo, y unir cero tramos
+    daría `0626 -  PARTE FIRMADO.pdf`, con un espacio doble y sin número:
+    un nombre que `nombre_admisible` acepta —no lleva carácter prohibido, ni
+    empieza ni acaba en espacio— y que en la carpeta de Posventa no significa
+    nada. Se niega, como manda R7: error ruidoso, no saneo silencioso.
+    """
+    with pytest.raises(NombradoImposible) as fallo:
+        nombre_de_archivo(
+            codigo_obra=OBRA, numero_incidencia=solo_separadores
+        )
+
+    assert "incidencia" in fallo.value.motivo.lower()

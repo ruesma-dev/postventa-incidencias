@@ -43,6 +43,7 @@ carpetas.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from domain.models.errores import NombradoImposible
@@ -52,6 +53,7 @@ __all__ = [
     "EXTENSION",
     "GUIONES_EQUIVALENTES",
     "SEPARADOR",
+    "SEPARADORES_DE_CODIGO",
     "SUFIJO",
     "DestinoArchivo",
     "carpeta_de_archivo",
@@ -59,6 +61,7 @@ __all__ = [
     "nombre_admisible",
     "nombre_de_archivo",
     "normalizar_codigo",
+    "tramos_de_codigo",
 ]
 
 #: Espacio, guion **normal** (`U+002D`) y espacio. El guion es el normal a
@@ -85,12 +88,50 @@ GUIONES_EQUIVALENTES = "‐‑‒–—―−"
 #: Lo que SharePoint (y Windows) no admiten en un nombre de fichero.
 CARACTERES_PROHIBIDOS = '"*:<>?/\\|'
 
+#: Los dos caracteres que separan los **tramos** de un código (R44).
+#:
+#: La barra es como escribe Sigrid el código de incidencia (`RS26.09/0149`); el
+#: guion es como acaba en el nombre del fichero, porque una barra lo partiría en
+#: dos carpetas. Son **el mismo separador escrito de dos maneras**, y por eso el
+#: saneo los trata igual.
+#:
+#: Ojo a lo que esto **no** dice: que un guion sea siempre un separador. El
+#: código de **obra** no pasa por los tramos —`06-77` es una obra, no dos— y eso
+#: se decide en cada llamante, no aquí.
+SEPARADORES_DE_CODIGO = "/-"
+
 #: La traducción de todos los guiones raros al normal, de una pasada.
 _A_GUION_NORMAL = str.maketrans({guion: "-" for guion in GUIONES_EQUIVALENTES})
 
+#: Un separador con lo que lo rodee pegado: es lo que se quita en R44.
+#:
+#: Se construye desde `SEPARADORES_DE_CODIGO` y no con los dos caracteres
+#: escritos a mano: dos listas del mismo concepto divergen, que es el mismo
+#: motivo por el que este módulo tiene una sola normalización.
+_ESPACIOS_JUNTO_AL_SEPARADOR = re.compile(
+    rf"\s*([{re.escape(SEPARADORES_DE_CODIGO)}])\s*"
+)
+
+#: Cualquiera de los separadores, para partir un código en tramos.
+_CUALQUIER_SEPARADOR = re.compile(rf"[{re.escape(SEPARADORES_DE_CODIGO)}]")
+
 
 def normalizar_codigo(bruto: str | None) -> str:
-    """Guiones al normal, espacios colapsados y extremos recortados.
+    """Guiones al normal, espacios colapsados, extremos recortados **y los
+    espacios que flanquean a un separador, eliminados**.
+
+    Lo último es R44, y llegó tarde: hasta el 2026-09-15 esta función dejaba
+    `RS26.09 / 0149` tal cual. El nombre del fichero salía bien **por
+    casualidad** —la barra pasa a ` - ` y el colapso posterior se come el
+    sobrante—, así que el parte se archivaba en su sitio y solo fallaba el
+    cierre, porque el ERP busca la reclamación **por igualdad exacta**. Medio
+    circuito en verde tapando la mitad rota.
+
+    Se arregla **aquí** y no en las dos conversiones porque las dos se apoyan en
+    esta a propósito (F-028 R47): dos criterios del mismo concepto divergen
+    siempre. Y `RS26.09- 0149` lo demuestra: es la única forma que también
+    estropeaba el nombre del fichero, y un saneo puesto en el lado del ERP no la
+    habría cazado.
 
     **No toca los ceros a la izquierda** y **no convierte a número**: lo que
     entra como `str` sale como `str`, y `0677` sigue siendo `0677`.
@@ -101,7 +142,27 @@ def normalizar_codigo(bruto: str | None) -> str:
     """
     if bruto is None:
         return ""
-    return " ".join(bruto.translate(_A_GUION_NORMAL).split())
+    colapsado = " ".join(bruto.translate(_A_GUION_NORMAL).split())
+    return _ESPACIOS_JUNTO_AL_SEPARADOR.sub(r"\1", colapsado)
+
+
+def tramos_de_codigo(codigo: str) -> tuple[str, ...]:
+    """Los tramos de un código **ya normalizado**, sin separadores ni vacíos.
+
+    `RS26.09/0149` y `RS26.09-0149` dan los mismos dos tramos, y en eso consiste
+    que las dos conversiones del código sean inversas exactas (R47): una los une
+    con ` - ` para el nombre del fichero, la otra con `/` para el ERP, y ninguna
+    de las dos tiene que saber con qué separador venía escrito el papel.
+
+    Se espera el código **ya pasado por `normalizar_codigo`**. No lo normaliza
+    por su cuenta a propósito: quien llama tiene que haber decidido antes qué
+    hace con un código vacío, y esconder aquí esa decisión la dejaría sin dueño.
+
+    Los tramos vacíos se descartan, de modo que un código que sea solo
+    separadores devuelve la tupla vacía en vez de un puñado de cadenas vacías.
+    Quien decide que eso es un error es, otra vez, quien nombra el fichero.
+    """
+    return tuple(tramo for tramo in _CUALQUIER_SEPARADOR.split(codigo) if tramo)
 
 
 def nombre_admisible(nombre: str) -> bool:
@@ -138,14 +199,21 @@ def nombre_de_archivo(
 
     1. Se normalizan los dos códigos. Vacío → `NombradoImposible` diciendo
        **cuál** falta: «faltan datos» obliga a mirar el papel entero.
-    2. En la incidencia, la barra pasa a ` - `. Se hace **después** de
-       normalizar los guiones para que `RS26.08 – 0123` (guion largo) y
-       `RS26.08/0123` acaben en el mismo sitio: son el mismo parte leído dos
+    2. La incidencia se parte en **tramos** (F-028 R46). Se hace **después** de
+       normalizar —que es donde se traducen los guiones raros y se quitan los
+       espacios del separador— para que `RS26.08 – 0123`, `RS26.08- 0123` y
+       `RS26.08/0123` acaben en el mismo sitio: son el mismo parte leído tres
        veces.
-    3. Se vuelven a colapsar los espacios de la incidencia: una barra rodeada
-       de espacios (`RS26.08 / 0123`) dejaría espacios dobles.
+    3. Los tramos se unen con ` - `. Unirlos **es** la vieja sustitución de la
+       barra y el viejo colapso de espacios, hechos de una vez y sin que quede
+       ningún caso a medio camino: antes, un guion pegado por un lado y suelto
+       por el otro no lo tocaba nadie.
     4. Se compone.
     5. Se **comprueba**, no se sanea (R7).
+
+    Y lo que **no** cambia: el código de **obra** no pasa por los tramos, solo
+    se normaliza. Convertir sus guiones en separadores partiría `06-77` en una
+    subcarpeta, y ahí sí se archivaría el parte donde no es.
 
     Los parámetros son de solo palabra clave para que nadie pueda invertir
     obra e incidencia en la llamada y archivar el parte con el nombre del
@@ -165,8 +233,14 @@ def nombre_de_archivo(
             "el nombre del fichero"
         )
 
-    incidencia = " ".join(incidencia.replace("/", SEPARADOR).split())
-    nombre = f"{obra}{SEPARADOR}{incidencia}{SUFIJO}{EXTENSION}"
+    tramos = tramos_de_codigo(incidencia)
+    if not tramos:
+        raise NombradoImposible(
+            "el nº de incidencia del parte es solo separadores "
+            f"(«{incidencia}»): sin ningún tramo no hay nombre que componer"
+        )
+
+    nombre = f"{obra}{SEPARADOR}{SEPARADOR.join(tramos)}{SUFIJO}{EXTENSION}"
 
     if not nombre_admisible(nombre):
         raise NombradoImposible(

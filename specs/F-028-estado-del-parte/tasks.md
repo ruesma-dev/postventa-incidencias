@@ -192,7 +192,7 @@
       R46). | Verificación: **fase RED** — falla en las tres filas rotas antes
       de tocar el dominio, y la traza del fallo va en el informe.
 
-- [ ] **T20**: Arreglar `normalizar_codigo` y añadir `tramos_de_codigo` y
+- [x] **T20**: Arreglar `normalizar_codigo` y añadir `tramos_de_codigo` y
       `SEPARADORES_DE_CODIGO`; `nombre_de_archivo` compone por tramos (R44,
       R46, R48, R49). | Verificación: T19 en verde y **toda**
       `tests/test_f006_nombrado.py` en verde salvo el único test de T21.

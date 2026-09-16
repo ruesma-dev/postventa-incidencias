@@ -40,7 +40,7 @@
 
 ## Bloque 0 · La red de seguridad, en rojo, antes de tocar nada
 
-- [ ] **T1**: Crear `services/postventa-api/tests/test_f030_veredicto_persistido.py`
+- [x] **T1**: Crear `services/postventa-api/tests/test_f030_veredicto_persistido.py`
       con los casos que **reproducen la regresión** y hoy tienen que estar en
       **ROJO**: (a) un parte no apto aprobado por una persona, con la huella
       del veredicto **guardado**, no pasa ninguna de las tres puertas cuando el

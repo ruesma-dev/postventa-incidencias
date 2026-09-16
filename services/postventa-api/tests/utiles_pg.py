@@ -29,7 +29,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-__all__ = ["ConexionDoble", "CursorDoble", "Ejecutada", "RepositorioEnMemoria"]
+__all__ = [
+    "ConexionDoble",
+    "CursorDoble",
+    "Ejecutada",
+    "RepositorioEnMemoria",
+    "con_el_veredicto_guardado",
+]
 
 
 class Ejecutada:
@@ -401,3 +407,50 @@ class RepositorioEnMemoria:
         if self.fallo is not None:
             raise self.fallo
         return self.cola
+
+
+def con_el_veredicto_guardado(repositorio: Any, ctx: Any) -> Any:
+    """F-030 · deja en el doble el veredicto que la base tendría de ese parte.
+
+    Desde F-030 la puerta de los tres pasos deriva el estado del veredicto
+    **guardado** (`ctx.situacion.validacion`) y no vuelve a mirar el del
+    contexto. Los tests que ejercitan *otra cosa* del paso —la carpeta, el
+    nombre del fichero, la idempotencia, el dry-run, los logs— preparaban el
+    veredicto solo en el contexto, porque hasta ayer era de ahí de donde salía.
+    Al mudarse la fuente se quedarían todos parados en la puerta, y el rojo no
+    diría nada de lo que cada uno viene a probar.
+
+    Esto no afloja ninguna puerta: **pone el mundo en su sitio**. En
+    producción, cuando una petición llega a `/api/archivar`, el veredicto de
+    ese parte ya está en `postventa.validaciones` —lo escribió `POST /api/parte`
+    o `POST /api/estado`—, así que un doble que contestara «de este parte no
+    consta validación» estaría modelando un mundo que no existe.
+
+    Dos cosas que **no** hace, y son las que evitan que esto se convierta en
+    una puerta trasera:
+
+    1. **No inventa un veredicto.** Si el contexto no trae ninguno, el doble se
+       queda sin él: el caso «nadie ha emitido veredicto» tiene que seguir
+       siendo ese caso (R8).
+    2. **No pisa lo que el test haya preparado.** Si la situación ya trae un
+       veredicto, el test está diciendo algo a propósito —normalmente que las
+       dos fuentes se contradicen, que es el corazón de F-030— y se respeta.
+
+    Y por eso mismo **no se usa en los tests que vigilan la puerta**:
+    `test_f030_veredicto_persistido.py` y `test_f030_circuito_borde_a_borde.py`
+    separan las dos fuentes a mano, a propósito, porque es lo único que hace
+    que cacen el defecto (`design.md` §7.1).
+    """
+    from dataclasses import replace
+
+    from domain.models.estado import SituacionParte
+
+    if ctx.validacion is None:
+        return repositorio
+
+    situacion = repositorio.situacion
+    if situacion is None:
+        situacion = SituacionParte()
+    if situacion.validacion is None:
+        repositorio.situacion = replace(situacion, validacion=ctx.validacion)
+    return repositorio

@@ -210,3 +210,64 @@ def test_f005_r29_el_test_veria_una_fuga_si_la_hubiera(caplog):
         _sin_datos_personales(caplog.text)
 
     assert DNI_INVENTADO in str(detectado.value)
+
+
+# --------------------------------------------------------------------------
+# F-030 R21 · la consulta nueva lee texto del papel, y no lo registra
+# --------------------------------------------------------------------------
+
+#: Los dos campos decisivos, inventados y **reconocibles**: si acabaran en el
+#: log, este test los vería. No son genéricos a propósito.
+OBRA_INVENTADA = "9999-OBRA-INVENTADA"
+INCIDENCIA_INVENTADA = "XX99.99 - 9999"
+
+
+def test_f030_r21_leer_la_situacion_no_publica_nada_del_papel(caplog, conexion):
+    """R21 · la consulta que trae el veredicto guardado **lee texto del papel**.
+
+    Desde F-030, `consultar_situacion` trae con un `JOIN` a `partes` las
+    observaciones manuscritas, el código de obra y el número de incidencia:
+    hacen falta para recomponer los seis campos de la cadena canónica de la
+    huella, y sin ellos la aprobación de una persona caducaría sola.
+
+    Ese es justo el motivo por el que este caso existe. Es **el camino más
+    transitado del servicio** —una consulta por parte y por paso, 66 en una
+    tanda de 22 partes—, así que si filtrara, filtraría en bucle. De todo lo
+    que vuelve, al log sale **el destino y nada más**: un literal de `Enum`,
+    que no es del papel y es lo que hace falta para diagnosticar por qué una
+    puerta no se abrió.
+    """
+    conexion.responder(
+        "LEFT JOIN postventa.validaciones",
+        [
+            (
+                "no_apto",
+                "cola_validacion_humana",
+                "humana",
+                [{"codigo": "observaciones_manuscritas", "texto": "texto inventado"}],
+                [],
+                OBSERVACIONES_INVENTADAS,
+                74,
+                OBRA_INVENTADA,
+                INCIDENCIA_INVENTADA,
+                None,
+            )
+        ],
+    )
+    repositorio = RepositorioPostgres(conexion, esquema=ESQUEMA)
+
+    with caplog.at_level(logging.DEBUG):
+        situacion = repositorio.consultar_situacion(hash_parte="hash-inventado-0001")
+
+    assert situacion.validacion.observaciones == OBSERVACIONES_INVENTADAS
+    assert situacion.validacion.codigo_obra == OBRA_INVENTADA
+    assert situacion.validacion.numero_incidencia == INCIDENCIA_INVENTADA
+
+    _sin_datos_personales(caplog.text)
+    assert OBRA_INVENTADA not in caplog.text
+    assert INCIDENCIA_INVENTADA not in caplog.text
+    assert "texto inventado" not in caplog.text
+
+    # Control positivo: sin esto, un logger que no registrara nada pasaría.
+    assert "cola_validacion_humana" in caplog.text
+    assert "hash-inventado-0001" in caplog.text

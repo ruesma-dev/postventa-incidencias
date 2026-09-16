@@ -3791,3 +3791,579 @@ Cinco apuntes para quien lo coja:
   `done` no es cosa del implementer.
 - **La base real y el ERP no se han tocado.** El backend entero está fuera del
   diff: `git diff 70ec902 -- services/postventa-api/` está vacío.
+
+---
+
+# T18 · La pantalla · encargo del 2026-09-16
+
+## 80 · Qué se ha hecho
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T18** | `4b85e6b` | `index.html` y `js/app.js` reescritos sobre el estado: los dos gestos en el detalle, el motivo obligatorio al rechazar, las cuatro marcas en lista y detalle, los textos de R43 y la frase del parte `cerrado`. Se retira la aprobación de F-026 de los dos ficheros y de `js/pipeline.js` |
+
+Y lo que esto cierra, que es el motivo del encargo: **la rama vuelve a ser
+desplegable**. Desde `a0b4ac7` (T15) `js/app.js` llamaba a `api.aprobar`, que
+`9d379f3` (T16) retiró del cliente, contra un endpoint que T15 había quitado del
+backend. Eran tres líneas rotas a propósito —enumeradas en §73.4— y las tres
+están arregladas. El detalle, en §89.
+
+---
+
+## 81 · Ficheros tocados
+
+### Creados
+
+| Ruta | Qué es |
+|---|---|
+| `services/postventa-front/tests/test_f028_front.py` | Lo que la pantalla tiene que decir y lo que no puede decir. **36 casos** |
+
+### Borrados
+
+| Ruta | Por qué |
+|---|---|
+| `services/postventa-front/tests_js/aprobacion.test.js` | Sus **13 casos restantes** probaban `esAprobable`, `MOTIVOS_APROBABLES` y `cuerpoDeAprobacion`, que se van con T18. §84.2 los recorre uno a uno |
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `services/postventa-front/index.html` | Los dos gestos y el campo de motivo en el detalle; las cuatro marcas en la lista (punto de color + etiqueta legible) y en el detalle; la frase del `cerrado`; el aviso de R43; el texto de la tanda. Se retira la sección de aprobación de F-026 |
+| `services/postventa-front/js/app.js` | `aprobarParte()`, `rechazarParte()` y `_cambiarEstado`; `motivoDeRechazo`, `mensajeEstado` y `LIMITE_MOTIVO` en el estado; `estadoParte` y `avisoEstado` en `_parteInicial`; `estadoDelParte`, `etiquetaDeEstado`, `estaCerrado`, `decidioUnaPersona`, `fechaDeDecision`, `hayIdentidad`, `hayMotivo`, `puedeDecidir`, `puedeRechazar`. Se retiran `esAprobable`, `estaAprobado`, `destinoDeOrigen`, `fechaDeAprobacion`, `aprobarParte` (el viejo) y `mensajeAprobacion` |
+| `services/postventa-front/js/pipeline.js` | `avisoDeEstado` y `AVISO_DECISION_CADUCADA` (R43); se exportan `ESTADO_APROBADO`, `ESTADO_RECHAZADO`, `ESTADO_PENDIENTE` y `ESTADO_CERRADO`; se retiran `esAprobable`, `cuerpoDeAprobacion` y `MOTIVOS_APROBABLES` con su recuadro fechado |
+| `services/postventa-front/tests_js/estado.test.js` | Sección **T18**: 6 casos nuevos sobre `avisoDeEstado` |
+| `services/postventa-front/tests/test_f026_front.py` | **7 casos retirados** en cinco recuadros fechados (§84.1); quedan 7 |
+| `specs/F-028-estado-del-parte/tasks.md` | T18 marcada `[x]` |
+| `progress/mutacion_F-028.md` | Lo genera la campaña |
+
+### Lo que la spec prohíbe tocar, y que sigue intacto
+
+Comprobado con `git diff 5b3fe22 --name-only`: en el diff **no aparece ni un
+fichero de `services/postventa-api/`** —`git diff 5b3fe22 -- services/postventa-api/`
+está vacío—, ni `azure-apps/`, ni `harness/features.json`, ni
+`infrastructure/sigrid/`, ni `infrastructure/sharepoint/`, ni
+`domain/models/validacion.py`, ni `domain/models/aprobacion.py`, ni `sql/`.
+
+Y **`js/confirmacion.js` tampoco está en el diff** (R29, R35):
+`test_f025_r2_solo_se_arma_una_confirmacion_en_todo_el_front` sigue en verde sin
+tocarlo, y F-028 añade su propio control del mismo hecho
+(`test_f028_r29_decidir_no_arma_ninguna_confirmacion_nueva`).
+
+**`tests/test_f028_puertas.py` sigue siendo la red**, 48 casos, intacta desde el
+bloque 0. Se ejecutó a pelo al terminar: `48 passed in 0.50s`.
+
+---
+
+## 82 · Fase RED · las trazas, pegadas
+
+### 82.1 · La mitad de `js/pipeline.js` · antes de que existiera `avisoDeEstado`
+
+```
+$ cd services/postventa-front
+$ node --test "tests_js/estado.test.js"
+
+✖ f028 R43: si había decisión de una persona y deja de haberla, se avisa (0.1448ms)
+✖ f028 R43: el aviso no acusa a nadie ni nombra a quien decidió (0.1046ms)
+✖ f028 R43: mientras la decisión siga firmada no se avisa de nada (0.0727ms)
+✖ f028 R43: un parte que nunca decidió nadie no estrena ningún aviso (0.0747ms)
+✖ f028 R43: un rechazo que sustituye a una aprobación tampoco es una caducidad (0.0594ms)
+✖ f028 R43: sin bloque nuevo tampoco se inventa un aviso (0.0575ms)
+ℹ tests 47
+ℹ pass 41
+ℹ fail 6
+
+✖ failing tests:
+test at tests_js\estado.test.js:711:1
+✖ f028 R43: si había decisión de una persona y deja de haberla, se avisa
+  TypeError: avisoDeEstado is not a function
+      at TestContext.<anonymous> (...\tests_js\estado.test.js:712:17)
+```
+
+**6 de 6 en rojo.** Después de escribir la función: `47 passed`.
+
+### 82.2 · La pantalla · antes de tocar `index.html` y `js/app.js`
+
+```
+$ python -m pytest tests/test_f028_front.py -q
+FFFFFF.FFFFFFFF.FFFFFFFF.FFFFFFF..FF                                     [100%]
+
+___________ test_f028_r38_el_parte_declara_su_estado_desde_que_nace ___________
+
+        inicial = _bloque(app, "_parteInicial(crudo) {", "async _procesarRemesa(")
+
+>       assert "estadoParte:" in inicial, (
+            "`_parteInicial` no declara `estadoParte`: la marca del estado no "
+            "repintaría al cambiarlo"
+        )
+E       AssertionError: `_parteInicial` no declara `estadoParte`: la marca del
+        estado no repintaría al cambiarlo
+E       assert 'estadoParte:' in '_parteInicial(crudo) {\n      return {\n
+        hash: crudo.hash,\n ... errorGuardado: "",\n        aprobacion: null,\n
+        };\n    },\n\n    '
+
+31 failed, 5 passed in 0.29s
+```
+
+**31 de 36 en rojo.** Después del cambio: `36 passed`.
+
+### 82.3 · Los 5 que ya pasaban en rojo, y por qué es lo correcto
+
+| El que pasaba | Por qué pasaba, y qué vale |
+|---|---|
+| `…r36_ningun_gesto_en_la_lista` | Control negativo: F-026 ya tenía el botón solo en el detalle, y R36 conserva esa garantía. Su valor está en el después: se pone rojo si alguien mete el botón de rechazar en la fila |
+| `…r29_decidir_no_arma_ninguna_confirmacion_nueva` | Cuenta `Confirmacion.armar(` y ya valía 1. Es el control de que T18 **no** añade una segunda confirmación, y no podía fallar antes de escribir T18 |
+| `…r39_el_aprobado_por_una_persona_no_es_el_verde_liso` | El anillo de F-026 R36 ya estaba. Lo que este test hace es **impedir que se pierda** al reescribir el bloque, que es exactamente el riesgo de esta tarea |
+| `…r42_ningun_texto_de_la_plantilla_pinta_una_identidad` | Ningún `x-text` pintaba un `oid` antes tampoco. Lo caza el mutante M19 |
+| `…r42_del_bloque_del_backend_solo_se_leen_las_cuatro_claves` | **Pasaba en vacío**: no había ninguna `estadoParte.` que mirar. Hoy sí las hay, y es lo que lo convierte en un test de verdad. Lo dejo dicho porque un verde así, antes, no medía nada — es la misma clase de test que §84.1 retira de F-026 |
+
+---
+
+## 83 · Decisiones de diseño, y las cuatro que hay que juzgar
+
+### 83.1 · R43 no se puede leer de una sola respuesta, y por eso hay una función nueva
+
+**Es la decisión con más contenido de la tarea**, y por eso va primero.
+
+R43 pide distinguir dos hechos: «lo decidió una persona» y «el veredicto cambió
+y la decisión dejó de contar». El primero lo dice el bloque:
+`decidido_por_persona`. **El segundo no está publicado en ninguna clave.**
+
+Cuando una aprobación caduca (R19), `decision_en_firme` devuelve `None` y
+`bloque_de_estado` emite `decidido_por_persona: false`, `decidido_at_utc: null` y
+`estado_anterior: null`. Es **byte a byte el mismo bloque** que el de un parte
+que nadie ha mirado nunca. Mirando una sola respuesta, la pantalla no puede
+cumplir R43.
+
+Lo que sí distingue los dos casos es **el par de respuestas consecutivas**:
+había una decisión firmada y, después de revalidar, ya no la hay. Eso es
+`js/pipeline.js::avisoDeEstado(anterior, nuevo)`, que se llama en
+`_anotarGuardado` **antes** de pisar `parte.estadoParte` —después ya no quedaría
+con qué comparar— y deja el texto en `parte.avisoEstado`.
+
+Tres cosas que hay que mirar de esta decisión:
+
+1. **No deriva ningún estado** (R17). Los dos bloques vienen del backend tal
+   cual; aquí no se calcula ninguno, solo se mira si la firma se perdió por el
+   camino.
+2. **Vive en `js/pipeline.js` y no en `js/app.js`**, porque comparar dos bloques
+   es una decisión y las decisiones se prueban. Tiene 6 casos propios y la matan
+   cuatro mutantes (M1 a M4).
+3. **El aviso es por parte, no por pantalla.** `parte.avisoEstado` nace
+   declarado en `_parteInicial` igual que todo lo demás: `_anotarGuardado` lo
+   llama también el autoguardado, y un mensaje global se pintaría sobre el parte
+   equivocado.
+
+El texto **no acusa a nadie**, que es lo que R43 pide expresamente: dice que el
+veredicto ha cambiado al revalidar, no que nadie hiciera nada mal. Quien corrigió
+un campo estaba haciendo justo lo que la pantalla le pide. Tiene control negativo
+propio (`…el aviso no acusa a nadie ni nombra a quien decidió`).
+
+> **Alternativa descartada, y se dice:** publicar una quinta clave en el bloque
+> —algo como `decision_caducada`— sería más directo, pero toca
+> `estado_serializado.py` y el contrato que fija `tests/test_f028_estado_http.py`,
+> que es backend y **no es T18**. Si el reviewer prefiere esa vía, es una tarea
+> del bloque 5 reabierta, no una corrección de esta.
+
+### 83.2 · El `oid` no aparece en la plantilla, ni dentro de una condición
+
+La tarea pide que el test compruebe que «no aparece ningún `oid` en la
+plantilla». Tomado al pie de la letra, el HTML de antes ya lo incumplía:
+`index.html` traía `usuario.usuarioOid` en tres sitios —el `:disabled` del botón
+de aprobar de F-026 y dos de la sección de la tanda de F-025—, aunque ninguno lo
+**pintase**.
+
+Lo que se ha hecho, en vez de relajar el test o de dejarlo pasar:
+
+- la sección del estado pregunta por `hayIdentidad()`, un método de `app.js`, así
+  que **el `oid` no aparece en ella ni una vez**, ni siquiera dentro de una
+  condición. Lo comprueba `…r42_la_seccion_del_estado_no_pinta_ningun_oid`, que
+  además de la lista de prohibidos busca `\boid\b` sin distinguir mayúsculas;
+- y sobre **toda** la plantilla se comprueba lo que de verdad importa: que
+  ningún `x-text` ni `x-html` —las dos formas que tiene Alpine de escribir un
+  valor en la página— saque una identidad. Ese es
+  `…r42_ningun_texto_de_la_plantilla_pinta_una_identidad`.
+
+**Lo que NO se ha tocado** son los dos `usuario.usuarioOid` de la sección de la
+tanda (F-025 P2). No pintan nada —son `:disabled` y un `x-show`— y esa sección no
+es T18. Queda dicho aquí para que nadie lo lea como un descuido: si el reviewer
+quiere el criterio literal en todo el fichero, es un cambio de una línea en
+`index.html` y de otra en `app.js`, pero toca una feature cerrada.
+
+### 83.3 · Un solo campo de motivo para los dos gestos
+
+`design.md` §8.2 nombra `motivoDeRechazo` y `design.md` §7 dice que al rechazar
+es obligatorio y al aprobar «se ofrece opcional». Se ha resuelto con **un solo
+campo**, etiquetado «obligatorio para rechazar, opcional al aprobar», cuyo valor
+viaja en los dos gestos.
+
+Por qué uno y no dos: dos campos de texto para el mismo concepto, uno al lado del
+otro, es la clase de pantalla en la que se escribe en el de arriba y se pulsa el
+botón de abajo. Y el riesgo del campo único —escribir un motivo pensando en
+rechazar y acabar aprobando— deja el motivo escrito en una aprobación, que es
+información de más, nunca de menos.
+
+Se conserva el nombre de la spec (`motivoDeRechazo`) aunque el campo sirva para
+los dos: renombrarlo dejaría la spec y el código diciendo cosas distintas.
+
+### 83.4 · `esAprobable`, `cuerpoDeAprobacion` y `MOTIVOS_APROBABLES` se van, y no era neutral dejarlos
+
+§78 lo anticipaba y se cumple: los tres se retiran de `js/pipeline.js` con su
+recuadro fechado. F-028 **deroga la pregunta** (R9, R10) igual que T15 la derogó
+en el dominio.
+
+Lo que hay que mirar, y no es solo limpieza: **`esAprobable()` escondía el gesto
+en los partes aptos**. Mientras siguiera gobernando la sección, el botón de
+**rechazar** no se habría ofrecido justo en los partes que esta feature existe
+para poder rechazar antes de que se archiven. Dejarlo «por si acaso» habría
+dejado la feature en una marca de color.
+
+Con ellos se va `tests_js/aprobacion.test.js` entero (§84.2).
+
+### Desviaciones respecto a la spec
+
+**Una, y es un añadido.** `design.md` §8.2 dice que T18 toca `js/app.js` e
+`index.html`; se ha tocado además **`js/pipeline.js`**, por dos motivos ya
+razonados: la retirada de las tres piezas de F-026 (§83.4, que §78 declaraba como
+trabajo de T18) y la función `avisoDeEstado` (§83.1), que va ahí porque `app.js`
+no puede alojar una decisión sin tests.
+
+El resto de la tarea se ha implementado tal cual.
+
+---
+
+## 84 · Los tests de antes que han cambiado, y por qué
+
+Son **20**, en dos ficheros, y ninguno se ha «ajustado para que pase».
+
+### 84.1 · Siete retirados de `tests/test_f026_front.py`, en cinco recuadros
+
+De los catorce casos quedan **siete**. Los otros siete van con su recuadro
+fechado en el sitio donde vivían, y **tres de ellos seguían en verde**:
+
+| Retirado | Rojo o verde | Sustituto en `tests/test_f028_front.py` |
+|---|---|---|
+| `…r22_el_parte_declara_su_aprobacion_desde_que_nace` | **rojo** | `…r38_el_parte_declara_su_estado_desde_que_nace`, que además exige `avisoEstado` |
+| `…la_aprobacion_nace_vacia_y_no_se_inventa_ninguna` | **rojo** | `…el_estado_nace_vacio_y_no_se_inventa_ninguno` + `…el_parte_ya_no_declara_la_aprobacion_de_f026` |
+| `…el_front_no_decide_la_aprobacion_en_app_js` | **rojo** | `…r17_app_js_no_compone_el_cuerpo_ni_decide_nada` + `…el_front_ya_no_llama_al_endpoint_retirado` |
+| `…r22_la_respuesta_de_aprobar_se_guarda_en_el_parte` | **rojo** | `…r38_lo_que_devuelve_el_guardado_es_lo_que_se_pinta`, que además exige que solo se pise cuando el guardado salió bien |
+| `…r39_sin_ser_aprobable_no_se_ofrece_el_gesto` | **rojo** | `…r40_los_dos_botones_estan_en_el_detalle` + `…r41_el_parte_cerrado_no_ofrece_ningun_gesto` + `…r9_la_pregunta_…_queda_derogada` |
+| `…r37_el_texto_dice_de_donde_venia_y_cuando` | **rojo** | `…r39_el_detalle_distingue_quien_decidio`. «De dónde venía» **no tiene sustituto y se dice**: el bloque `estado` no publica `destino_aprobado`, y F-028 no compara destinos. La fecha sí sobrevive |
+| `…r39_cuando_no_es_aprobable_se_dice_que_hay_que_corregir` | **verde** | La sección nueva conserva el consejo —«si le falta el código de obra o el número de incidencia, corrígelo arriba y revalida»—, así que el test seguía pasando **dando por comprobada una condición que ya no existe** (`x-show="!esAprobable()"`) |
+| `…r38_la_pantalla_no_pinta_quien_aprobo` | **verde, y en verde por nada** | Recorría las líneas del detalle que contienen `aprobacion`, y desde este commit no hay ninguna: **iteraba sobre una lista vacía**. Sustituto: los dos controles de R42, uno de ellos sobre toda la plantilla |
+| `…r38_el_bloque_de_aprobacion_solo_usa_las_cuatro_claves_publicadas` | **verde, y en verde por nada** | Comparaba un conjunto vacío contra las cuatro claves permitidas. Sustituto: `…r42_del_bloque_del_backend_solo_se_leen_las_cuatro_claves`, que sí tiene claves que mirar |
+
+Los tres verdes merecen el párrafo que ya se han ganado los bloques 4, 5 y 6: **un
+test que no puede fallar no protege nada**, y estos dos últimos eran los que
+sostenían el requisito de privacidad, que es de los que más pesan de la feature.
+
+**Lo que se queda, y es deliberado**: que el gesto vive en el detalle y no en la
+lista, que no se arma ninguna segunda confirmación, que el aprobado por una
+persona no se pinta como el verde liso y que la tanda no habla solo de verdes.
+Los cuatro siguen siendo ciertos con F-028 y los cuatro siguen en verde sin una
+sola edición. La cabecera del fichero lo dice en un recuadro fechado.
+
+### 84.2 · `tests_js/aprobacion.test.js` · el fichero entero, 13 casos
+
+Se retira completo porque sus trece casos prueban las tres piezas que T18 borra:
+
+- **7 de `esAprobable` y `MOTIVOS_APROBABLES`** (R6 a R10 de F-026): la lista de
+  motivos, los dos aprobables, el motivo fuera de la lista, el parte sin código
+  de obra, el apto que «no tiene nada que aprobar» y el parte sin veredicto.
+  **No tienen sustituto y no hace falta buscárselo**: F-028 deroga la pregunta
+  (R9, R10). Lo que sí tiene control es la derogación en sí:
+  `test_f028_r9_la_pregunta_de_si_un_parte_es_aprobable_queda_derogada`.
+- **6 de `cuerpoDeAprobacion`** (R4, R19, R29 de F-026): sin `oid` no se compone,
+  el booleano de la confirmación, el cuerpo es el de guardar más dos claves, no
+  viajan los bytes del PDF, el no aprobable se niega, y sin remesa no se compone.
+  **Los cinco primeros tienen sustituto uno a uno** en la sección T16 de
+  `tests_js/estado.test.js`, y los sustitutos son más anchos —el de `oid` cubre
+  ahora cuatro formas de vacío, incluida la cadena de espacios que la fase RED de
+  T16 destapó—. El sexto («el no aprobable se niega») se va con la pregunta.
+
+Con el fichero se van sus cinco ayudantes y el `require` de `cuerpoDeParte`.
+
+Es la misma decisión que T15 tomó con `test_f026_persistencia.py` y
+`test_f026_aprobar_http.py` (§64.2, §64.3): cuando lo que se retira es el
+mecanismo entero, el fichero se va con él y la tabla «retirado → sustituto»
+queda escrita aquí.
+
+---
+
+## 85 · La verificación de T18, recontada
+
+T18 pide seis cosas y las cuatro que el encargo subraya van primero:
+
+| Lo que pide la tarea | Dónde se fija |
+|---|---|
+| **El botón de rechazar está deshabilitado mientras no haya motivo** | `…r11_el_boton_de_rechazar_esta_deshabilitado_sin_motivo`, que busca el `:disabled` del botón **y** que mire `puedeRechazar()`; `…r11_puede_rechazar_exige_el_motivo`; y `…r11_hay_motivo_no_acepta_una_cadena_de_espacios`, que cierra el hueco del `truthy` que T16 encontró en el `oid`. Mutantes M5, M6 y M13 |
+| **La frase del parte `cerrado`** (R41) | `…r41_la_pantalla_explica_por_que_no_se_puede_cambiar` (la frase, literal) y `…r41_el_parte_cerrado_no_ofrece_ningun_gesto`, que comprueba que **cada uno de los tres gestos** —aprobar, rechazar y el campo de motivo— está dentro de una plantilla cuya condición niega `estaCerrado`. Mutantes M14 y M15 |
+| **Ningún `oid` en la plantilla** | `…r42_la_seccion_del_estado_no_pinta_ningun_oid` y `…r42_ningun_texto_de_la_plantilla_pinta_una_identidad`. El alcance exacto y lo que queda fuera, en §83.2. Mutante M19 |
+| **Las cuatro marcas se distinguen de verdad, y el aprobado por persona del de la máquina** (R39) | `…r38_la_lista_pinta_las_cuatro_marcas` (las seis clases), `…r38_el_rechazado_no_se_pinta_como_el_pendiente` y `…el_cerrado_tiene_marca_propia_y_candado`, los dos **grupo de clases a grupo de clases**, y `…r39_el_aprobado_por_una_persona_no_es_el_verde_liso`. Mutantes M16 y M17 |
+| Los dos botones en el detalle (R40), y ninguno en la lista (R36) | `…r40_los_dos_botones_estan_en_el_detalle` y `…r36_ningun_gesto_en_la_lista` |
+| El campo de motivo, acotado con el límite del dominio (R13) | `…r40_el_campo_de_motivo_esta_en_el_detalle` y `…r13_el_campo_de_motivo_se_acota_con_el_limite_del_dominio`, que además exige que **no** haya un `maxlength` literal al lado. Mutante M18 |
+| Las cuatro marcas **en el detalle** y no solo en la lista (R38) | `…r38_el_detalle_tambien_enseña_el_estado` |
+| Los textos de R43 | `…r43_la_pantalla_avisa_cuando_la_decision_deja_de_contar`, `…r43_el_aviso_lo_decide_pipeline_y_no_app_js`, `…r43_el_aviso_se_calcula_antes_de_pisar_el_estado` y los 6 casos de `tests_js/estado.test.js`. Mutantes M1 a M4, M10 y M20 |
+
+Y cuatro que no pide la tarea y sostienen el resto: que el estado **solo** se
+pisa cuando el guardado salió bien (M8), que la marca sale del bloque del backend
+y no del veredicto (M7), que la marca «por una persona» sale de
+`decidido_por_persona` y no de comparar estados (M11), y que `app.js` no compone
+ningún cuerpo ni llama a nada retirado.
+
+### 85.1 · Y una verificación que no es un test: la pantalla se ha ejecutado
+
+`js/app.js` no tiene tests por diseño —es la única habitación sin tests de la
+casa, y `test_f007_r36_app_js_es_solo_pegamento` existe para que siga
+vacía—, así que todo lo de arriba comprueba **texto**. Para no entregar una
+pantalla que solo se ha leído, se cargaron los nueve `js/*.js` en un contexto de
+Node —en el mismo orden que `index.html`, con `fetch` doble que lanza si alguien
+lo toca— y se ejercitaron los métodos nuevos contra objetos en memoria:
+
+```
+OK   estadoDelParte: "aprobado"          OK   puedeRechazar sin motivo: false
+OK   etiquetaDeEstado: "Aprobado"        OK   puedeRechazar con espacios: false
+OK   decidioUnaPersona: true             OK   puedeRechazar con motivo: true
+OK   estaCerrado(cerrado): true          OK   puedeRechazar sin identidad: false
+OK   etiqueta(sin bloque): ""            OK   avisoEstado tras caducar: La decisión…
+OK   estadoParte pisado: "pendiente"     OK   guardado fallido no pisa: "aprobado"
+OK   cuerpo.estado: "rechazado"          OK   guardado fallido no avisa: ""
+OK   semaforo del rechazado: "rechazado" OK   el rechazado sale de la tanda: 0
+exit=0
+```
+
+23 comprobaciones, 23 en verde. **No se ha versionado**: el script vive en el
+área de trabajo de la sesión, porque convertirlo en suite sería decidir que
+`app.js` pasa a tener tests, y eso es una decisión de arquitectura que no me
+toca. Queda propuesto en §88.
+
+Además, `index.html` se ha validado con un analizador: **ninguna etiqueta
+descuadrada, ninguna sin cerrar**, y cada `<template x-if>` con **una sola raíz**,
+que es lo que Alpine exige y lo que ningún test de texto habría cazado.
+
+---
+
+## 86 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (servicio `front`, Python) | **250 pasados, 0 fallos** | `bash harness/init.sh` |
+| **Tests ejecutados** (servicio `front`, JavaScript) | **298 pasados, 0 fallos** | `node --test "tests_js/*.test.js"`, que lanza el puente `tests/test_f007_js.py` |
+| Tests ejecutados (servicio `api`) | **2.528 pasados, 13 saltados** | sin cambios: el backend entero está fuera del diff |
+| Tests ejecutados (arnés, raíz) | **62 pasados** | `bash harness/init.sh` |
+| De ellos, **nuevos de T18** | **42** — 36 en `tests/test_f028_front.py` y 6 en `tests_js/estado.test.js` | las dos suites |
+| Tests **retirados** | **20** — 13 de `tests_js/aprobacion.test.js` (el fichero entero) y 7 de `tests/test_f026_front.py`, todos con su sustituto o su derogación en §84 | — |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 283/283, umbral 80 %, nivel `estandar` | línea `PUERTA COBERTURA` de `init.sh`. **Ver §86.1: no mide nada de esta tarea** |
+| **Mutantes generados / supervivientes** | automáticos **31 / 0** (0 timeouts, 146,1 s) · **a mano 21 / 0** | `python -m harness.mutacion --feature F-028` y §86.2 |
+| **Tiempo de la suite** | `front` **1,94 s** (Python) + **0,35 s** (JavaScript) · raíz 2,35 s · `api` sin ejecutar de nuevo (árbol sin cambios) | la propia suite |
+| **Ruff** | `All checks passed` sobre los dos `.py` tocados; el repositorio sigue en **61** avisos, sin crecer | `python -m ruff check` |
+
+### Los supervivientes, y qué se hace con cada uno
+
+**Ninguno al cerrar**, ni en la campaña automática ni en la manual. Pero la
+manual **tuvo dos en la primera pasada**, y eso es lo que más vale de esta
+sección: ver §86.3.
+
+### 86.1 · Lo que hay que mirar de las evidencias: **ni la cobertura ni la campaña miden esta tarea**
+
+Va en voz alta, como en §76.1, porque presentarlo de otro modo sería el número
+que tranquiliza sin medir nada.
+
+**La puerta de cobertura da 100,0 % de 283 líneas, y son las mismas 283 líneas de
+T15, T16 y T17.** El arnés mide cobertura de **Python** (`harness/servicios.json`
+lo dice: el front va con lenguaje `python` por `dev_server.py`), y T18 no toca una
+sola línea de Python de producción. Lo que esta tarea cambia son **423 líneas añadidas y 247 retiradas de
+JavaScript y de HTML** —`index.html` 166/69, `js/app.js` 174/76,
+`js/pipeline.js` 83/102—, y no entran en esa cifra ni pueden entrar.
+
+**Y la campaña automática no genera ni un mutante de T18**: `harness.mutacion`
+muta ficheros `.py`. Los 31 mutantes son de los bloques 1 a 5 y **siguen
+muriendo** —que también es información: la pantalla no ha roto nada de lo ya
+probado—, pero no dicen nada de esta tarea.
+
+Lo que sí la respalda son los **21 mutantes a mano** de §86.2 y la ejecución real
+de §85.1.
+
+> **Propagación pendiente a `arnes-base`, y no la hago yo.** Es el mismo hueco que
+> anotó §76.1 y ya lleva dos bloques seguidos: un servicio con código en **dos
+> lenguajes** mide y muta solo uno, y ni `init.sh` ni el informe de mutación lo
+> dicen. Queda anotado para el líder; el implementer no toca el arnés por su
+> cuenta.
+
+### 86.2 · Los 21 mutantes **a mano**, que son la evidencia que sí respalda la tarea
+
+Mismo método que los bloques 3 a 6: se aplica la mutación sobre el fichero, se
+corre la suite del front entera —`pytest`, que arrastra `node --test` por el
+puente— y se restaura. «Muerto» = al menos un caso falla. El script está en el
+área de trabajo de la sesión, restaura cada fichero en un `finally` y el árbol
+quedó limpio, comprobado con `git status`.
+
+| # | Mutante aplicado a mano | Resultado | Quién lo caza |
+|---|---|---|---|
+| M1 | `avisoDeEstado` no avisa nunca (R43) | **muerto** | `f028 R43: si había decisión de una persona y deja de haberla, se avisa` |
+| M2 | avisa también de un parte que **nunca** decidió nadie | **muerto** | `f028 R43: un parte que nunca decidió nadie no estrena ningún aviso` |
+| M3 | avisa aunque la decisión **siga firmada** | **muerto** | `f028 R43: mientras la decisión siga firmada no se avisa de nada` |
+| M4 | el aviso mira el **estado** en vez de quién firmó | **muerto** | los seis casos de R43 |
+| M5 | `hayMotivo` deja de recortar: un motivo de espacios habilita el botón (R11) | **muerto** | `…r11_hay_motivo_no_acepta_una_cadena_de_espacios` |
+| M6 | `puedeRechazar` deja de exigir motivo (R11) | **muerto** | `…r11_puede_rechazar_exige_el_motivo` |
+| M7 | la marca vuelve a salir del bloque `aprobacion` viejo (R17) | **muerto** | `…r17_la_marca_sale_del_estado_y_no_del_veredicto` |
+| M8 | un guardado fallido **pisa** el estado que sigue en la base (R38) | **muerto** | `…r38_lo_que_devuelve_el_guardado_es_lo_que_se_pinta` |
+| M9 | `estadoParte` deja de nacer declarado: la marca no repinta | **muerto** | `…r38_el_parte_declara_su_estado_desde_que_nace` |
+| M10 | `avisoEstado` deja de nacer declarado (R43) | **muerto** | ídem |
+| M11 | la marca «por una persona» se deduce del **estado** y no de `decidido_por_persona` (R39) | **muerto** | `…r39_la_marca_por_persona_sale_de_la_clave_del_backend` |
+| M12 | `estaCerrado` duplica el literal `"cerrado"` en `app.js` | **muerto** | `…r41_estar_cerrado_lo_dice_el_backend` |
+| M13 | el botón de rechazar pierde su `:disabled` (R11) | **muerto** | `…r11_el_boton_de_rechazar_esta_deshabilitado_sin_motivo` |
+| M14 | se ofrecen los dos gestos **sobre un parte cerrado** (R41) | **muerto** | `…r41_el_parte_cerrado_no_ofrece_ningun_gesto` — **y en la primera pasada sobrevivió: §86.3** |
+| M15 | desaparece la frase que explica el cerrado (R41) | **muerto** | `…r41_la_pantalla_explica_por_que_no_se_puede_cambiar` |
+| M16 | el rechazado se pinta **como un pendiente** (R38) | **muerto** | `…r38_el_rechazado_no_se_pinta_como_el_pendiente` — **también sobrevivió: §86.3** |
+| M17 | el cerrado pierde el candado (R38) | **muerto** | `…el_cerrado_tiene_marca_propia_y_candado` |
+| M18 | el límite del motivo se escribe a mano en la plantilla (R13) | **muerto** | `…r13_el_campo_de_motivo_se_acota_con_el_limite_del_dominio` |
+| M19 | el `oid` vuelve a la plantilla (R42) | **muerto** | `…r42_la_seccion_del_estado_no_pinta_ningun_oid` |
+| M20 | el aviso de R43 deja de pintarse | **muerto** | `…r43_la_pantalla_avisa_cuando_la_decision_deja_de_contar` |
+| M21 | vuelve `esAprobable` a `js/pipeline.js` (R9, R10) | **muerto** | `…r9_la_pregunta_de_si_un_parte_es_aprobable_queda_derogada` |
+
+**21 de 21 muertos.** Los que más valen:
+
+- **M14** es, literalmente, ofrecerle a alguien dos botones sobre una incidencia
+  ya cerrada en el ERP: la petición sale, el backend responde 409 y lo que ve
+  quien pulsó es un error en vez de la explicación que R41 pide.
+- **M13 y M6** son las dos formas de dejar rechazar sin motivo. Lo que se pierde
+  no se recupera después: quien vuelva a mirar el parte dentro de un mes no sabrá
+  qué había que arreglar.
+- **M8** es el que borra de la pantalla una decisión que sigue escrita en la base,
+  y lo hace en el caso en que menos se mira: cuando el guardado ya ha fallado.
+- **M11** es la trampa de R43 que §53 ya había señalado en el backend, escrita
+  esta vez en el front: anunciar «lo decidió una persona» sobre una decisión que
+  R19 tumbó.
+
+### 86.3 · Los dos supervivientes de la primera pasada, y qué agujero tapaban
+
+Esto es lo que la campaña a mano existe para encontrar, así que va entero y no en
+una nota.
+
+**M14 · «se ofrecen los dos gestos sobre un parte cerrado» sobrevivió.** El test
+de R41 comprobaba que la sección contuviera `estaCerrado(` y que apareciera
+*antes* del primer botón. Las dos cosas seguían siendo ciertas con la condición
+puesta a `true`, porque la frase del cerrado —que está más arriba— también
+nombra `estaCerrado`. Un test que mira si una palabra aparece «antes» de otra no
+comprueba anidamiento.
+
+Arreglo: el test recorre las plantillas con **una pila**, encuentra el
+`<template x-if>` más interno que envuelve a cada gesto y exige que su condición
+**niegue** `estaCerrado`. Se comprueba para los tres —aprobar, rechazar y el
+campo de motivo—, no solo para el primero. No se usa una expresión regular a
+propósito: las plantillas están anidadas y una regex no codiciosa cerraría en la
+plantilla equivocada, que es el mismo tipo de error que dejó pasar M14.
+
+**M16 · «el rechazado se pinta como un pendiente» sobrevivió.** El test metía
+**todos** los `:class` de la lista en un solo diccionario. Como el punto de color
+y la etiqueta de texto usan clases distintas para la misma marca, la clase de la
+etiqueta tapaba la del punto y la comparación se hacía sobre el grupo
+equivocado.
+
+Arreglo: `_grupos_de_marcas` devuelve **un diccionario por cada `:class`**, y el
+test exige que dentro de cada grupo el rechazado no comparta clase con el ámbar
+ni con el rojo. El de `cerrado` se reescribió igual y ahora lo compara contra las
+cinco marcas restantes, no solo contra el verde.
+
+Los dos agujeros tenían la misma forma —**un test de texto que da por comprobada
+una estructura sin mirar la estructura**— y los dos habrían pasado la revisión sin
+que nadie los viera. Después del arreglo: **21 de 21 muertos**, y los 36 casos
+siguen en verde.
+
+### 86.4 · La línea base estaba verde, y se comprobó antes de creerse el resultado
+
+Como avisaba el encargo y como enseñó T13 (§44.1): `bash harness/init.sh` →
+**ENTORNO LISTO** antes de tocar nada, con `62 passed` en la raíz, los dos
+servicios en verde y la puerta de cobertura al 100,0 %.
+
+---
+
+## 87 · Verificaciones MANUAL pendientes
+
+Las de T27 siguen pendientes y esta tarea **no crea ninguna nueva**, pero deja
+listas para ejecutar las dos que le faltaban su mitad de pantalla:
+
+- **T27.4** («un parte apto rechazado a mano no se archiva»): ya se puede
+  ejecutar **entera desde la web**. La mitad del backend está desde el bloque 4,
+  la de la tanda desde T17 y **el botón de rechazar es esto**.
+- **T27.5** («un parte cerrado responde 409 y la web lo explica»): la frase de
+  R41 ya está, y la pantalla **no llega a pedir el 409**, porque no ofrece el
+  gesto. Quien verifique tiene que mirar las dos cosas: que la web lo explica, y
+  que el 409 sigue estando para quien llame al endpoint por su cuenta (eso lo
+  cubre `tests/test_f028_estado_http.py`).
+
+Dos cosas que conviene mirar con el navegador delante y que ningún test de texto
+comprueba, y por eso van aquí:
+
+1. **Que el `🔒` se ve** en el navegador de quien revisa. Es un carácter, no una
+   imagen, y depende de la fuente del sistema. Si se viera como un cuadro, la
+   marca del cerrado sigue distinguiéndose por color y por la palabra
+   «Cerrado» —de ahí que la etiqueta lleve texto y no solo el candado—, pero
+   conviene saberlo.
+2. **Que el campo de motivo no molesta en los partes verdes.** Está siempre
+   visible mientras el parte no esté cerrado, y en una remesa de 22 partes aptos
+   nadie lo va a usar. Si estorba, esconderlo detrás del botón de rechazar es un
+   cambio pequeño, pero es una decisión de quien usa la pantalla y no mía.
+
+**La base real y el ERP no se han tocado**: todo lo de esta tarea corre contra el
+texto de los ficheros y contra objetos en memoria, sin red, sin BBDD y sin IA. La
+guardia de red de sesión de `tests/conftest.py` sigue puesta, y el `fetch` del
+script de humo lanza si alguien lo llama.
+
+---
+
+## 88 · Lo que queda fuera del alcance de T18, y hay que decirlo
+
+1. **`docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md` siguen
+   documentando `POST /api/aprobar`.** Es **T25** (R59, bloque 9) y no se ha
+   tocado nada. Sigue siendo cierto lo que anotó §67.2: el documento afirma doce
+   endpoints y el servicio publica doce, pero **no son los mismos doce**.
+2. **`js/app.js` sigue sin tener tests**, y ahora tiene bastante más lógica de
+   pantalla que antes —nueve métodos nuevos—. Todo lo que **decide** algo está en
+   `js/pipeline.js`, y `test_f007_r36_app_js_es_solo_pegamento` sigue en verde,
+   así que la regla se respeta. Pero el script de §85.1 demuestra que **se puede
+   ejecutar `app.js` bajo Node sin navegador**, en 40 líneas y sin dependencias.
+   Convertirlo en `tests_js/app.test.js` es una decisión de arquitectura del front
+   (F-007 `design.md` §3) y **la dejo para el líder**, no la tomo yo.
+3. **Los dos `usuario.usuarioOid` de la sección de la tanda** (F-025) siguen en
+   `index.html`. No pintan nada y esa sección no es T18; el razonamiento entero
+   está en §83.2.
+4. **R43 se resuelve comparando dos respuestas y no leyendo una clave.** Funciona
+   y está probado, pero depende de que la pantalla haya visto la respuesta
+   anterior: si alguien recarga la página, el aviso se pierde —aunque también se
+   pierde la remesa entera, que es lo que F-019 R30 ya declara—. La alternativa
+   —publicar la caducidad en el bloque— es backend y está razonada en §83.1.
+5. **`ParteNoAprobable` sigue en `domain/models/errores.py` sin que nadie lo
+   levante**, igual que anotó §67.3. Con T18 se queda además sin su último
+   pariente en el front. Sigue siendo del líder.
+
+---
+
+## 89 · Estado al cerrar el encargo · **la rama vuelve a ser desplegable**
+
+Lo digo explícitamente porque es lo que pedía el encargo.
+
+**Sí, la rama es desplegable.** Las tres líneas que §73.4 dejó rotas a propósito
+están arregladas, y se ha comprobado una por una:
+
+| Lo que estaba roto | Cómo se comprueba que ya no |
+|---|---|
+| `js/app.js:546 · api.aprobar(cuerpo, parte.hash)` — el método no existe desde T16 | `test_f028_el_front_ya_no_llama_al_endpoint_retirado`, que busca `api.aprobar(` en `app.js`. Hoy llama a `api.cambiarEstado(`, que sí existe y apunta a `POST /api/estado`, que el backend publica desde T13 |
+| `cuerpoDeAprobacion` — componía para un endpoint retirado | La función ya no existe en `js/pipeline.js` (mutante M21) y `app.js` usa `cuerpoDeCambioDeEstado` |
+| `semaforoDe(validacion, parte.aprobacion)` — le pasaba el bloque viejo, que el backend ya no emite | `test_f028_r17_la_marca_sale_del_estado_y_no_del_veredicto` (mutante M7) |
+
+Y no queda ninguna otra llamada del front a algo que el backend no sirva: los
+doce endpoints de `LOS_ENDPOINTS` en `tests_js/api.test.js` siguen comprobados
+nombre a nombre.
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de cobertura
+  al **100,0 %** de las 283 líneas cambiadas (que son las de Python: ver §86.1).
+- Árbol limpio, **2 commits** sobre `5b3fe22` (`4b85e6b` T18 y el de este
+  informe), los dos locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla `done`
+  no es cosa del implementer.
+- **No se ha entrado en el bloque 7**, como pedía el encargo: `normalizar_codigo`,
+  `tramos_de_codigo`, `nombre_de_archivo` y `a_codigo_de_sigrid` están sin tocar,
+  y `tests/test_f028_espacios_codigos.py` no existe.
+- **La base real y el ERP no se han tocado.** El backend entero está fuera del
+  diff: `git diff 5b3fe22 -- services/postventa-api/` está vacío.

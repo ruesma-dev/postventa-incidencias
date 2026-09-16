@@ -1,7 +1,63 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## AL DÍA · 2026-09-16 · **T16 y T17 de F-028 terminadas** · el arnés, en VERDE
+> ## AL DÍA · 2026-09-16 · **T18 de F-028 terminada** · la rama VUELVE A SER DESPLEGABLE
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, `bash harness/init.sh` →
+> **ENTORNO LISTO**: 2.528 pasados en `api`, **250 en `front`**, **298 casos de
+> JavaScript** y cobertura **100,0 % de 283 líneas cambiadas**. Commit
+> `4b85e6b`, local, sin `push`.
+>
+> **Qué se ha cerrado: la pantalla, y con ella el bloque 6 entero.**
+>
+> - **los dos gestos en el detalle** (R40), con el PDF delante y el campo de
+>   motivo delante de los dos. El botón de **rechazar está deshabilitado
+>   mientras no haya motivo** (R11), y un motivo de solo espacios no cuenta;
+> - **las cuatro marcas** en la lista y en el detalle (R38): el rechazado gris
+>   apagado y **tachado** —que no se confunda con «pendiente de mirar»—, el
+>   cerrado azul y con candado, y el aprobado **por una persona** con anillo,
+>   separado del que dio por bueno la máquina (R39);
+> - **la frase del parte `cerrado`** (R41): la pantalla **explica** por qué no
+>   se puede cambiar, en vez de fallar, y no ofrece ningún gesto;
+> - **los textos de R43**, que son dos hechos distintos: «lo decidió una
+>   persona · fecha» y «la decisión dejó de contar porque el veredicto cambió»;
+> - **ningún `oid` en la sección del estado**, ni siquiera dentro de una
+>   condición: lo pregunta `hayIdentidad()` (R42).
+>
+> Informe: `progress/impl_F-028.md`, secciones **80 a 89**.
+>
+> ### ✅ La rama vuelve a poder desplegarse
+>
+> Las tres líneas que T16/T17 dejaron rotas a propósito están arregladas y cada
+> una tiene su control negativo: `api.aprobar` (ya no existe),
+> `cuerpoDeAprobacion` (retirada) y `semaforoDe(validacion, parte.aprobacion)`
+> (ahora recibe el bloque nuevo). El detalle, con su tabla, en la sección **89**.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **R43 no se puede leer de una sola respuesta** y por eso hay una función
+>    nueva, `js/pipeline.js::avisoDeEstado`, que compara dos bloques
+>    consecutivos. El porqué —y la alternativa descartada, que sería tocar el
+>    backend— están en **§83.1**. Es la única desviación respecto a `design.md`
+>    §8.2, que no nombraba `pipeline.js` en T18.
+> 2. **La campaña a mano tuvo DOS supervivientes en la primera pasada**, y los
+>    dos tapaban un agujero real de mis propios tests: un test de texto que daba
+>    por comprobada una estructura sin mirarla. Están contados enteros en
+>    **§86.3**, con el arreglo. Después: **21 de 21 muertos**.
+> 3. **20 tests retirados** —`tests_js/aprobacion.test.js` entero y 7 de
+>    `tests/test_f026_front.py`—, todos con su recuadro fechado y su sustituto o
+>    su derogación nombrada (§84). **Tres de los siete seguían en verde**, dos de
+>    ellos iterando sobre listas vacías, y eran los que sostenían el requisito de
+>    privacidad.
+>
+> Y el aviso de siempre, que ya lleva tres bloques: **ni la puerta de cobertura
+> ni `harness.mutacion` miden una sola línea de esto**, porque el arnés solo
+> mide y muta Python (§86.1). Lo que respalda la tarea son los 21 mutantes a
+> mano y la ejecución real de `app.js` bajo Node (§85.1).
+>
+> **No se ha entrado en el bloque 7.** La siguiente es **T19**.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T16 y T17 de F-028
 >
 > Rama `feature/F-028-estado-del-parte`, árbol limpio, `bash harness/init.sh` →
 > **ENTORNO LISTO**: 2.528 pasados en `api`, 223 en `front`, **305 casos de

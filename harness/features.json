@@ -530,6 +530,22 @@
       "rigor": "critico",
       "priority": 30,
       "branch": "feature/F-030-veredicto-persistido"
+    },
+    {
+      "id": "F-031",
+      "title": "El nombrado del fichero archivado sale del cuerpo, no de lo persistido",
+      "description": "Hallazgo de la spec de F-030 (design.md seccion 10.7), 2026-09-16, declarado FUERA DE ALCANCE alli a proposito y dado de alta aqui por decision del humano. POST /api/archivar decide la carpeta de SharePoint y el nombre del fichero con el codigo_obra y el numero_incidencia DEL FORMULARIO, no con los guardados. Esos dos campos entran en la huella del veredicto, asi que a partir de F-030 se da una asimetria: la puerta aprueba los valores de la base y el fichero se nombra con los del cuerpo. Si no coincidieran, un PDF con el DNI de un cliente acabaria archivado en la carpeta de OTRA OBRA. Hoy no ocurre porque el front manda lo que leyo, de modo que esto es una defensa en profundidad, no un fallo observado. NO se metio en F-030 porque cerrarlo obliga a dos cosas que aquella no toca: mover el nombrado a lo persistido, y mirar que hace el front cuando una persona corrige a mano el codigo de obra o el numero de incidencia -si esa correccion se guarda antes de archivar, o solo viaja en el cuerpo-. Esa segunda parte puede cambiar el circuito del front, no solo el backend.",
+      "acceptance": [
+        "La carpeta y el nombre del fichero archivado salen del codigo_obra y el numero_incidencia persistidos, no del cuerpo de la peticion",
+        "Queda escrito que hace el front cuando una persona corrige uno de esos dos campos, y el circuito garantiza que lo corregido esta guardado antes de archivar",
+        "Un cuerpo que mienta en esos dos campos no puede cambiar donde acaba el PDF",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 31,
+      "branch": "feature/F-031-nombrado-persistido"
     }
   ]
 }

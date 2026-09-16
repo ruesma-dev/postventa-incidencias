@@ -4367,3 +4367,467 @@ nombre a nombre.
   y `tests/test_f028_espacios_codigos.py` no existe.
 - **La base real y el ERP no se han tocado.** El backend entero está fuera del
   diff: `git diff 5b3fe22 -- services/postventa-api/` está vacío.
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 7, T19 y T20
+
+> **Encargo del 2026-09-16**: T19 y T20 del bloque 7 —el defecto de los
+> espacios en los códigos—, y parar. No entrar en T21 ni en T22.
+>
+> ## ⛔ LÉASE ESTO ANTES QUE NADA: la rama **NO es desplegable** en este commit
+>
+> `bash harness/init.sh` sale **EN ROJO**, y no solo por el test que T21 tiene
+> que actualizar. Hay **25 tests en rojo**, y **24 de ellos son una sola
+> causa**: `a_codigo_de_sigrid` todavía convierte con `replace(" - ", "/")`, y
+> el arreglo de T20 deja esa sustitución sin efecto. Componer por tramos es
+> **T22**, que el encargo prohíbe expresamente tocar.
+>
+> **T20 y T22 no se pueden separar.** No es una decisión mía ni un descuido:
+> es una consecuencia inevitable de R44, y la explico entera en **§94**. La
+> línea de verificación de T20 en `tasks.md` —«T19 en verde»— **no es
+> alcanzable** sin T22, y T22 lo delata al pedir «T19 **entero** en verde».
+>
+> Lo que sí se ha cumplido, y era la condición que puso el encargo:
+> `tests/test_f006_nombrado.py` está **entero en verde salvo un único test**,
+> `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`, que es el de T21 y
+> **no se ha tocado**. Ningún otro de ese fichero se ha puesto en rojo.
+
+---
+
+## 90 · Qué se ha hecho, en una frase por tarea
+
+- **T19** (`98968c8`) · `tests/test_f028_espacios_codigos.py`: la tabla de
+  `design.md` §9.3 recorrida **entera y fila a fila** para las dos
+  conversiones, escrita **antes** de tocar el dominio. Falló donde tenía que
+  fallar: las **tres filas rotas**, con la quinta rompiendo además el nombre
+  del fichero. Trazas pegadas en **§92**.
+- **T20** (`c12d826`) · el arreglo, en `normalizar_codigo` (R44), más
+  `SEPARADORES_DE_CODIGO` y `tramos_de_codigo`; `nombre_de_archivo` compone
+  uniendo los tramos (R46, R48, R49).
+
+---
+
+## 91 · Ficheros tocados
+
+### Creados
+
+| Fichero | Qué es |
+|---|---|
+| `services/postventa-api/tests/test_f028_espacios_codigos.py` | **59 casos**. La tabla de §9.3 para las dos conversiones, el saneo de R44 sobre `normalizar_codigo` directamente, los tramos, y los control-negativo de R48 y R49 |
+
+### Modificados
+
+| Fichero | Qué cambia |
+|---|---|
+| `services/postventa-api/domain/models/nombrado.py` | `import re`; `SEPARADORES_DE_CODIGO`; dos expresiones regulares privadas; `normalizar_codigo` quita los espacios del separador; `tramos_de_codigo` nueva; `nombre_de_archivo` compone por tramos y se niega si no hay ninguno; `__all__` al día |
+| `specs/F-028-estado-del-parte/tasks.md` | T19 y T20 marcadas `[x]` |
+
+**Ni una línea más.** El diff de producción del bloque 7 es **un solo fichero**:
+`services/postventa-api/domain/models/nombrado.py`. `git diff 71a5e00 --stat`
+sobre `domain/`, `application/`, `infrastructure/` e `interface_adapters/` no
+devuelve ningún otro.
+
+### Lo que la spec prohíbe tocar, y que sigue intacto
+
+- `domain/models/validacion.py` y `sql/04_validaciones.sql` — **sin tocar**
+  (regla dura 1).
+- `huella_de_veredicto` y `aprobacion.py::_normalizar` — **sin tocar** (regla
+  dura 2, D9). Ver §93.4: el riesgo de la ficha está medido y **no ocurre**.
+- `infrastructure/sigrid/` y `infrastructure/sharepoint/` — **sin tocar**.
+- `sql/10_aprobaciones.sql` — **sin tocar** (regla dura 3).
+- `domain/models/cierre.py` — **sin tocar**: es T22.
+- `harness/features.json` — **sin tocar**. F-028 sigue `in_progress`.
+- `azure-apps/` — **sin tocar**.
+- **Ni base de datos real, ni ERP, ni SharePoint, ni red, ni IA.** Todo lo de
+  este bloque son dos cadenas entrando en una función pura.
+
+---
+
+## 92 · Fase RED · las trazas, pegadas
+
+Comando exacto, sobre el árbol **sin una línea del dominio tocada** (commit
+`71a5e00` más el fichero de test):
+
+```
+$ cd services/postventa-api
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_espacios_codigos.py -q
+...
+14 failed, 16 passed in 0.23s
+```
+
+### 92.1 · Las tres filas rotas de la conversión al ERP (R45)
+
+Es el defecto que el responsable vio fallar en real el 2026-09-15.
+
+```
+$ ./.venv/Scripts/python.exe -m pytest "tests/test_f028_espacios_codigos.py::test_f028_r45_todas_las_formas_dan_el_mismo_codigo_para_el_erp" -q
+
+E       AssertionError: la forma «barra con espacio a los dos lados» no llega al ERP como la canónica
+E       assert 'RS26.09 / 0149' == 'RS26.09/0149'
+E         - RS26.09/0149
+E         + RS26.09 / 0149
+E         ?        + +
+E       AssertionError: la forma «barra con espacio solo delante» no llega al ERP como la canónica
+E       assert 'RS26.09 /0149' == 'RS26.09/0149'
+E         - RS26.09/0149
+E         + RS26.09 /0149
+E         ?        +
+E       AssertionError: la forma «guion normal pegado delante y con espacio detrás» no llega al ERP como la canónica
+E       assert 'RS26.09- 0149' == 'RS26.09/0149'
+E         - RS26.09/0149
+E         ?        ^
+E         + RS26.09- 0149
+E         ?        ^^
+
+3 failed, 3 passed in 0.17s
+```
+
+**Tres rotas de seis, y las otras tres ya pasaban.** Eso es exactamente lo que
+tenía el defecto escondido: la forma canónica y las dos de guion «normal»
+funcionaban, así que en una revisión por encima el circuito parecía bien.
+
+### 92.2 · La fila que además estropea el nombre del fichero (R46)
+
+```
+$ ./.venv/Scripts/python.exe -m pytest "tests/test_f028_espacios_codigos.py::test_f028_r46_todas_las_formas_dan_el_mismo_nombre_de_fichero" -q
+
+E       AssertionError: la forma «guion normal pegado delante y con espacio detrás» se archivaría con otro nombre
+E       assert '0626 - RS26....E FIRMADO.pdf' == '0626 - RS26....E FIRMADO.pdf'
+E         - 0626 - RS26.09 - 0149 PARTE FIRMADO.pdf
+E         ?               -
+E         + 0626 - RS26.09- 0149 PARTE FIRMADO.pdf
+```
+
+**Una sola de las seis.** Las otras cinco salían bien **por casualidad**: la
+barra pasa a `" - "` y el colapso posterior se comía el sobrante. Por eso el
+parte se archivaba con el nombre correcto y **solo fallaba el cierre** — medio
+circuito en verde tapando la mitad rota.
+
+### 92.3 · El saneo, donde R44 dice que vive
+
+```
+$ ./.venv/Scripts/python.exe -m pytest "tests/test_f028_espacios_codigos.py::test_f028_r44_normalizar_quita_los_espacios_que_rodean_al_separador" -q
+
+E       AssertionError: la forma «barra con espacio a los dos lados» normaliza a «RS26.09 / 0149»
+E       assert 'RS26.09 / 0149' in ('RS26.09/0149', 'RS26.09-0149')
+E       AssertionError: la forma «barra con espacio solo delante» normaliza a «RS26.09 /0149»
+E       assert 'RS26.09 /0149' in ('RS26.09/0149', 'RS26.09-0149')
+E       AssertionError: la forma «guion normal con espacio a los dos lados» normaliza a «RS26.09 - 0149»
+E       assert 'RS26.09 - 0149' in ('RS26.09/0149', 'RS26.09-0149')
+E       AssertionError: la forma «guion normal pegado delante y con espacio detrás» normaliza a «RS26.09- 0149»
+E       assert 'RS26.09- 0149' in ('RS26.09/0149', 'RS26.09-0149')
+E       AssertionError: la forma «guion largo con espacio a los dos lados» normaliza a «RS26.09 - 0149»
+E       assert 'RS26.09 - 0149' in ('RS26.09/0149', 'RS26.09-0149')
+
+5 failed, 1 passed in 0.15s
+```
+
+Cinco de seis. Se afirma **sobre `normalizar_codigo` directamente** y no solo
+por sus resultados porque es donde R44 pone el arreglo: comprobarlo únicamente
+por las dos puntas dejaría pasar un saneo local en una de ellas, que es lo que
+R47 prohíbe.
+
+---
+
+## 93 · Decisiones de diseño, y las tres que hay que juzgar
+
+### 93.1 · El saneo va en `normalizar_codigo`, y eso es lo que rompe T20 sin T22
+
+`design.md` §9.1 lo manda y la docstring de `a_codigo_de_sigrid` lo razonaba
+desde F-009: «se apoya en `normalizar_codigo` —no en una copia— […] dos
+criterios del mismo concepto divergen siempre».
+
+Y la prueba de que el sitio es ese la da la fila `RS26.09- 0149`: es la
+**única** que estropea también el nombre del fichero. Un saneo puesto en el
+lado del ERP la habría dejado viva en el archivo de Posventa.
+
+La consecuencia —que la conversión al ERP se queda rota hasta T22— está en §94.
+
+### 93.2 · Un nº de incidencia de **solo separadores** ahora se niega (R49)
+
+Es lo único que hago y que `tasks.md` no enumera, así que va por delante para
+que el reviewer lo juzgue.
+
+`"/"` **no** normaliza a la cadena vacía —es un carácter—, así que la guardia
+de F-006 R6 lo deja pasar. Con el nombre compuesto por tramos, unir **cero**
+tramos daría `0626 -  PARTE FIRMADO.pdf`: con un espacio doble y sin número. Y
+`nombre_admisible` **lo acepta**: no lleva ningún carácter prohibido, no empieza
+ni acaba en espacio y no acaba en punto.
+
+Es decir: se archivaría en Posventa un fichero con un nombre que nadie pidió, en
+un archivo que se consulta a mano, y nadie se enteraría — que es literalmente el
+escenario que F-006 R7 existe para impedir.
+
+Se levanta `NombradoImposible` con un motivo que **nombra el campo**, como los
+otros dos, y con seis casos que lo fijan (`/`, `-`, ` / `, `//`, ` - - `).
+
+> Antes de T20 ese caso tampoco estaba bien: `"/"` producía
+> `0677 - - PARTE FIRMADO.pdf`. No es una regresión que yo abra, es un agujero
+> que el cambio deja a la vista y se tapa en el mismo commit.
+
+### 93.3 · El código de **obra** no pasa por los tramos, y tiene test propio
+
+`design.md` §9.2 lo dice con todas las letras y es la trampa obvia del cambio:
+`06-77` es **una** obra escrita con guion, no dos tramos. Si la obra se
+compusiera por tramos, el guion pasaría a `" - "` y —mucho peor— la carpeta se
+partiría en una subcarpeta que nadie pidió.
+
+Lo fija `test_f028_r48_el_codigo_de_obra_no_se_parte_en_tramos`, que comprueba
+**el nombre y la carpeta**, y lo respalda el mutante **M14** de §95.2, que muere.
+
+### 93.4 · El riesgo de la huella: ya estaba descartado y **no se ha rediseñado nada por él**
+
+La ficha avisaba de que cambiar la normalización podría revocar aprobaciones
+vigentes. Está medido y no ocurre, y el encargo lo daba por cerrado. Lo dejo
+comprobado también desde aquí, con el diff en la mano:
+
+- `aprobacion.py` **no importa nada** de `nombrado.py`
+  (`grep -n "nombrado" domain/models/aprobacion.py` no devuelve nada);
+- la huella usa `aprobacion.py::_normalizar`, que es otra función y **no se ha
+  tocado**;
+- `domain/models/aprobacion.py` no aparece en el diff del bloque.
+
+El control explícito es el **bloque 8**, y no se ha adelantado.
+
+---
+
+## 94 · ⛔ Lo que queda en rojo, por qué, y por qué no lo he arreglado
+
+### 94.1 · Los 25 rojos, y sus **dos** causas
+
+```
+$ cd services/postventa-api && ./.venv/Scripts/python.exe -m pytest -q --tb=no
+25 failed, 2562 passed, 13 skipped in 21.42s
+```
+
+| Cuántos | Tests | Causa | Lo arregla |
+|---|---|---|---|
+| **1** | `test_f006_nombrado.py::test_f006_r8_los_espacios_interiores_se_colapsan_a_uno` | Afirma `normalizar_codigo("RS26.08   -    0123") == "RS26.08 - 0123"`; ahora da `"RS26.08-0123"` | **T21**, que cambia su expectativa. **No lo he tocado**, como pedía el encargo |
+| **24** | `test_f009_consultas.py` (3), `test_f009_dominio_cierre.py` (1), `test_f009_paso_cierre.py` (5), `test_f012_cerrar_exige_grafico.py` (1), `test_f028_puertas.py` (4), `test_f028_espacios_codigos.py` (10) | **Una sola**: `a_codigo_de_sigrid` | **T22** |
+
+Los 24 fallan todos con la misma forma. Este es el de `test_f028_puertas.py`,
+que es la red de seguridad de T1 y por eso es el que más duele ver:
+
+```
+E   AssertionError: assert ['XX00.00-0000'] == ['XX00.00/0000']
+```
+
+### 94.2 · Por qué T20 rompe `a_codigo_de_sigrid`, y por qué era inevitable
+
+`a_codigo_de_sigrid` convierte así, desde F-009:
+
+```python
+codigo = normalizar_codigo(bruto)                        # "RS26.08 - 0123"
+return " ".join(codigo.replace(SEPARADOR, "/").split())  # SEPARADOR == " - "
+```
+
+Su conversión **depende de que `normalizar_codigo` deje los espacios puestos**:
+busca literalmente `" - "`. R44 manda quitarlos. Así que en cuanto el arreglo
+entra, `normalizar_codigo("RS26.08 - 0123")` da `"RS26.08-0123"`, el `replace`
+ya no encuentra nada y el código sale con guion en vez de con barra.
+
+**No hay forma de cumplir R44 sin romper esa línea**, y por eso `design.md` §9.2
+rehace las dos conversiones por tramos. La única punta que T20 rehace es la del
+nombre; la otra es T22, de una línea.
+
+> **Discrepancia de la spec, para el líder.** `tasks.md` pide en T20
+> «Verificación: T19 en verde», y eso **no es alcanzable** en T20: las filas de
+> guion de la columna del ERP solo pueden estar en verde cuando
+> `a_codigo_de_sigrid` componga por tramos. La propia T22 lo delata al pedir
+> «T19 **entero** en verde». **El bloque 7 no admite un corte entre T20 y T22.**
+
+### 94.3 · Y por qué no lo he arreglado igualmente
+
+Porque el encargo lo prohíbe con todas las letras («No entres en T21 ni en
+T22») y porque tocar `cierre.py` sería hacer T22 por mi cuenta. Tampoco he
+marcado la feature `blocked`: el encargo prohíbe expresamente tocar el `status`
+de ninguna feature.
+
+Así que paro, lo dejo escrito y **lo levanto**: T22 es una línea, ya está
+especificada y **deja los 24 en verde de una vez**. Mi recomendación es
+autorizarla —junto con T21— en el encargo siguiente, sin intercalar nada. Si se
+prefiere que la rama vuelva a estar verde ahora mismo, la alternativa es
+revertir `c12d826` y hacer el bloque 7 entero de una tacada; no recomiendo
+dejar la rama en este estado más de lo necesario.
+
+---
+
+## 95 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (servicio `api`) | **2.562 pasados, 25 fallos, 13 saltados** | `pytest -q` en `services/postventa-api` |
+| De ellos, **nuevos del bloque 7** | **59**, todos en `tests/test_f028_espacios_codigos.py` · **49 en verde, 10 pendientes de T22** | la propia suite |
+| Tests ejecutados (servicio `front`) | **250 pasados, 0 fallos** | sin cambios: el front está fuera del diff |
+| Tests ejecutados (arnés, raíz) | **62 pasados** | `bash harness/init.sh` |
+| Tests **retirados** | **ninguno** | — |
+| Tests **con la expectativa cambiada** | **ninguno**: el único que cambia es el de T21, y **sigue sin tocar**, en rojo | `git diff 71a5e00 -- services/postventa-api/tests/test_f006_nombrado.py` está vacío |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — **295/295**, umbral 80 %, nivel `estandar` | `python -m harness.cobertura`. Eran 283 antes del bloque: las 12 nuevas son las de `nombrado.py`, y están cubiertas |
+| **Mutantes automáticos** | **32 / 32 muertos, 0 supervivientes** — y **este número NO VALE**: ver §95.1 | `python -m harness.mutacion --feature F-028` → `progress/mutacion_F-028.md` |
+| **Mutantes a mano** | **16 generados · 15 muertos · 1 superviviente**, y el superviviente es **equivalente**, demostrado | §95.2 y §95.3 |
+| **Tiempo de la suite** | `api` **21,4 s** · `front` 1,7 s · raíz 2,5 s | la propia suite |
+| **Ruff** | `All checks passed` sobre los dos ficheros tocados; el repositorio sigue en **61** avisos, sin crecer | `python -m ruff check` |
+
+### 95.1 · La campaña automática da 32 de 32 y **es exactamente el número que no hay que creerse**
+
+Va en voz alta, como en §54.1 y §65.1, porque presentarla como respaldo sería
+mentir con un número verdadero.
+
+`harness.mutacion` juzga a un mutante lanzando la suite: si el proceso sale con
+código distinto de 0, lo da por **muerto**. Y la suite **ya sale distinta de
+cero sin mutar nada**:
+
+```
+$ cd services/postventa-api
+$ ./.venv/Scripts/python.exe -m pytest -x -q --tb=no -p no:cacheprovider > /dev/null; echo $?
+1
+```
+
+Con la línea base en rojo, **cualquier** mutante —incluido uno que no cambiara
+nada— saldría «muerto». Los 32 de 32 no dicen nada de T20. Lo digo aquí y no en
+una nota al pie porque el informe de mutación queda escrito en
+`progress/mutacion_F-028.md` con ese titular.
+
+> **Propagación pendiente a `arnes-base`, y no la hago yo.** `harness.mutacion`
+> **no comprueba que la línea base esté verde** antes de empezar. Debería
+> medirla y negarse —o al menos avisar— en vez de publicar un 100 % que solo
+> dice que la suite ya fallaba. Es el tercer hueco del arnés que anota esta
+> feature (los dos anteriores, en §76.1 y §86.1, son de medición en dos
+> lenguajes). Queda para el líder: el implementer no toca el arnés por su
+> cuenta.
+
+### 95.2 · Los 16 mutantes **a mano**, que son la evidencia que sí respalda T20
+
+Misma receta que los bloques 3 a 6, con una diferencia que es el motivo de que
+esta campaña valga algo: **la línea base se construye verde a propósito**. Se
+mide qué nodos estaban rojos **antes** de mutar nada —no se escriben a mano— y
+se deseleccionan; el resto de la suite del servicio `api` se ejecuta entera.
+
+```
+LINEA BASE (sin mutar, con los rojos deseleccionados):
+   2561 passed, 13 skipped, 26 deselected in 19.82s
+```
+
+> Se deseleccionan **26** y los rojos son **25**: el `--deselect` de pytest
+> empareja por prefijo de id, y los ids con espacios (`[RS26.08 - 0123]`) se
+> cortan por el espacio, así que arrastran también a
+> `test_f009_r6_todas_las_formas_del_codigo_acaban_en_la_de_sigrid[RS26.08/0123]`,
+> que estaba en verde. No afecta al resultado: ese caso es de
+> `a_codigo_de_sigrid`, no de `nombrado.py`, y su hermano
+> `[  RS26.08/0123  ]` sigue dentro de la línea base.
+
+«Muerto» = al menos un caso falla. El script restaura el fichero en un
+`finally` y el árbol quedó limpio, comprobado con `git status`.
+
+| # | Mutante aplicado a mano | Resultado |
+|---|---|---|
+| M1 | `SEPARADORES_DE_CODIGO` pierde el guion (`"/-"` → `"/"`) | muerto |
+| M2 | `SEPARADORES_DE_CODIGO` pierde la barra (`"/-"` → `"-"`) | muerto |
+| M3 | El saneo solo mira **detrás** del separador (`\s*(…)\s*` → `(…)\s*`) | muerto |
+| M4 | El saneo solo mira **delante** (`\s*(…)\s*` → `\s*(…)`) | muerto |
+| M5 | El saneo quita como mucho **un** espacio por lado (`\s*` → `\s?`) | **SUPERVIVIENTE · equivalente**, ver §95.3 |
+| M6 | El saneo se come también el separador (`sub(r"\1")` → `sub("")`) | muerto |
+| M7 | El arreglo de R44 se cae entero (vuelta al código de antes) | muerto |
+| M8 | El saneo ocurre **antes** de traducir los guiones raros | muerto |
+| M9 | `tramos_de_codigo` conserva los tramos vacíos | muerto |
+| M10 | `tramos_de_codigo` parte solo por la barra | muerto |
+| M11 | `tramos_de_codigo` parte por espacios | muerto |
+| M12 | Los tramos se unen **sin** separador | muerto |
+| M13 | Los tramos se unen con **barra** (la barra vuelve al nombre) | muerto |
+| M14 | El código de **obra** también pasa por los tramos | muerto |
+| M15 | Se quita la guardia de R49 (código de solo separadores) | muerto |
+| M16 | La guardia de R49 invertida — es el **único** mutante que el arnés sí genera de este fichero (`nombrado.py:237`) | muerto |
+
+M3, M4 y M5 están escritos aparte **a propósito**: son los tres arreglos a
+medias que un saneo apresurado produce, y cada uno deja viva una fila distinta
+de la tabla.
+
+### 95.3 · El superviviente M5, y por qué es **equivalente** y no un hueco
+
+M5 cambia `\s*` por `\s?` y **ningún test se entera**. No es un test flojo: es
+que los dos programas son el mismo.
+
+La sustitución se aplica sobre `colapsado`, que ya ha pasado por
+`" ".join(bruto.split())`. Ahí dentro **no queda ninguna racha de espacios**:
+todo blanco es exactamente un espacio. Así que `\s*` nunca puede casar más de
+uno, y `\s?` hace lo mismo.
+
+No me lo creo por el razonamiento; se comprueba a lo bruto, con las **55.987**
+cadenas de hasta 6 caracteres sobre el alfabeto «espacio, tabulador, salto de
+línea, barra, guion, A»:
+
+```
+cadenas probadas hasta 6 caracteres sobre « \t\n/-A»
+entradas en las que original y mutante difieren: 0
+[]
+
+sin el colapso previo, sí se distinguen:
+  original: A/A
+  mutado  : A / A
+```
+
+La segunda mitad es la que cierra el análisis: los dos **sí** se distinguen si
+se quita el colapso previo — y quitarlo o moverlo es el mutante **M8**, que
+muere. O sea: la propiedad está cubierta, solo que por el test que vigila el
+orden y no por uno que cuente espacios.
+
+**Se queda `\s*` y no `\s?`.** Son equivalentes hoy porque el colapso va
+delante; `\s*` sigue siendo correcto si mañana ese colapso se moviera, y `\s?`
+no. Entre dos formas equivalentes, la que no depende de una precondición puesta
+en otra línea.
+
+---
+
+## 96 · Verificaciones MANUAL pendientes
+
+Las de T27 siguen pendientes, y este bloque **deja apuntada una**, que es la que
+cierra el asunto 2 de la feature:
+
+- **R45 contra el ERP** (`requirements.md` §10 ya la declara
+  `MANUAL (humano)`): pasar un parte cuyo número la IA lea con espacios
+  alrededor del separador y comprobar que **la reclamación se localiza** y el
+  cierre ocurre. El dominio está probado entero —la tabla de §9.3, fila a
+  fila—, pero que el ERP encuentre la reclamación con el código canónico solo lo
+  demuestra el ERP.
+  **Todavía no se puede ejecutar**: necesita T22.
+
+**La base real y el ERP no se han tocado.** Todo lo de este bloque corre sobre
+funciones puras, sin red, sin BBDD y sin IA. La guardia de red de sesión de
+`tests/conftest.py` sigue puesta.
+
+---
+
+## 97 · Por dónde sigue · T21 y T22, y **juntas**
+
+1. **T21** · actualizar `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`
+   a `normalizar_codigo("RS26.08   -    0123") == "RS26.08-0123"`, con su
+   comentario, y escribir el recuadro fechado de R8 en
+   `specs/F-006-sharepoint/requirements.md` (R55).
+2. **T22** · `a_codigo_de_sigrid` compone por tramos:
+   `"/".join(tramos_de_codigo(codigo))`, sin tocar nada más de `cierre.py`.
+   `tramos_de_codigo` ya existe y está probada. **Esto deja los 24 rojos de
+   §94.1 en verde de una vez.**
+
+Las dos tareas juntas devuelven la rama a verde. Hacerlas por separado deja la
+rama rota entre medias otra vez, sin ganar nada: T21 no arregla ningún rojo de
+T22 ni al revés.
+
+---
+
+## 98 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **EN ROJO**, y es lo que §94 explica: `[KO] servicio
+  api: pytest en rojo` y `[KO] PUERTA COBERTURA`. **Ojo con esa segunda línea**:
+  dice 58,6 % porque `init.sh` corre la suite con `-x` y la aborta en el primer
+  fallo, así que mide media suite. Medida sobre la suite entera, la cobertura de
+  las líneas cambiadas es **100,0 % (295/295)**.
+- Árbol limpio, **2 commits** sobre `71a5e00` (`98968c8` T19 y `c12d826` T20),
+  los dos locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`.
+- **No se ha entrado en T21 ni en T22**, como pedía el encargo:
+  `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno` está sin tocar,
+  `specs/F-006-sharepoint/requirements.md` está sin tocar y
+  `domain/models/cierre.py` está sin tocar.
+- **La rama NO es desplegable** hasta T22. Dicho en §94 y repetido aquí porque
+  es lo que más importa de este informe.

@@ -1,7 +1,66 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## AL DÍA · 2026-09-16 · **T18 de F-028 terminada** · la rama VUELVE A SER DESPLEGABLE
+> ## ⛔ AL DÍA · 2026-09-16 · **T19 y T20 de F-028 terminadas** · la rama NO es desplegable
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `98968c8` (T19) y
+> `c12d826` (T20), locales, sin `push`.
+>
+> **`bash harness/init.sh` sale EN ROJO, y es lo primero que hay que leer.**
+> Hay **25 tests en rojo** con **dos** causas:
+>
+> - **1** es `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`, que es el
+>   que **T21** tiene que actualizar. El encargo prohibía tocarlo y no se ha
+>   tocado.
+> - **24** son **una sola causa**: `a_codigo_de_sigrid` sigue convirtiendo con
+>   `replace(" - ", "/")`, y el arreglo de R44 deja esa sustitución sin efecto.
+>   Componer por tramos es **T22**, y el encargo prohibía entrar en ella.
+>
+> **T20 y T22 no se pueden separar**, y no es un descuido del implementer: es
+> una consecuencia inevitable de R44. La línea de verificación de T20 en
+> `tasks.md` —«T19 en verde»— **no es alcanzable** sin T22, y la propia T22 lo
+> delata al pedir «T19 **entero** en verde». Entero en
+> `progress/impl_F-028.md` **§94**.
+>
+> **Qué se ha cerrado: el arreglo de los espacios, en el sitio correcto.**
+>
+> - **T19** · `tests/test_f028_espacios_codigos.py`, **59 casos**, escrito
+>   **antes** que el código: la tabla de `design.md` §9.3 fila a fila para las
+>   dos conversiones. Falló en las **tres filas rotas**, y la quinta
+>   (`RS26.09- 0149`) rompía además el nombre del fichero. Trazas pegadas en
+>   **§92**.
+> - **T20** · `normalizar_codigo` quita los espacios que flanquean a un
+>   separador (R44); `SEPARADORES_DE_CODIGO` y `tramos_de_codigo` nuevas;
+>   `nombre_de_archivo` compone uniendo tramos. **Un solo fichero de
+>   producción**: `domain/models/nombrado.py`.
+>
+> `tests/test_f006_nombrado.py` queda **entero en verde salvo el único test de
+> T21**, que era la condición que ponía el encargo.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **La campaña automática de mutación da 32/32 y NO VALE** (§95.1): con la
+>    línea base en rojo, el ejecutor da por muerto cualquier mutante. Lo que
+>    respalda T20 son los **16 mutantes a mano** de §95.2, evaluados contra una
+>    línea base construida verde a propósito: **15 muertos y 1 superviviente
+>    equivalente**, demostrado con 55.987 cadenas (§95.3).
+> 2. **Una decisión que `tasks.md` no enumera** (§93.2): un nº de incidencia de
+>    solo separadores (`"/"`) ya no se archiva. No normaliza a vacío, así que la
+>    guardia de F-006 R6 lo dejaba pasar, y al componer por tramos habría dado
+>    `0626 -  PARTE FIRMADO.pdf` — un nombre que `nombre_admisible` **acepta**.
+> 3. **El riesgo de la huella de F-026 sigue descartado y no se ha rediseñado
+>    nada por él** (§93.4). El control explícito es el bloque 8 y **no** se ha
+>    adelantado.
+>
+> **Propagación pendiente a `arnes-base`** (la tercera que anota esta feature):
+> `harness.mutacion` **no comprueba que la línea base esté verde** antes de
+> empezar, y publica un 100 % que solo dice que la suite ya fallaba.
+>
+> **Lo siguiente son T21 y T22, y hay que hacerlas juntas**: las dos devuelven
+> la rama a verde; por separado la dejan rota entre medias sin ganar nada.
+> Informe: `progress/impl_F-028.md`, secciones **90 a 98**.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T18 de F-028
 >
 > Rama `feature/F-028-estado-del-parte`, árbol limpio, `bash harness/init.sh` →
 > **ENTORNO LISTO**: 2.528 pasados en `api`, **250 en `front`**, **298 casos de

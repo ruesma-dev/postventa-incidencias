@@ -649,6 +649,11 @@ def test_f028_r42_ningun_texto_de_la_plantilla_pinta_una_identidad(html):
     """
     pintados = re.findall(r'x-(?:text|html)="([^"]*)"', html)
 
+    assert pintados, (
+        "la plantilla no tiene ni un x-text ni un x-html: este control no "
+        "estaria mirando nada y pasaria en verde igual"
+    )
+
     for expresion in pintados:
         for prohibido in PROHIBIDO_EN_PANTALLA:
             assert prohibido not in expresion, (
@@ -666,6 +671,11 @@ def test_f028_r42_del_bloque_del_backend_solo_se_leen_las_cuatro_claves(html, ap
     """
     usadas = set(re.findall(r"estadoParte\.(\w+)", html + app))
     usadas |= set(re.findall(r"bloque\.(\w+)", app))
+
+    assert usadas, (
+        "no se lee ni una clave del bloque del backend: este control no "
+        "estaria mirando nada y pasaria en verde igual"
+    )
 
     assert usadas <= CLAVES_PUBLICADAS, (
         f"claves que el backend no publica: {usadas - CLAVES_PUBLICADAS}"

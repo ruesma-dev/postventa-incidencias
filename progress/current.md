@@ -1,6 +1,56 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## 🧪 T27 de F-028 · **LAS SEIS VERIFICACIONES QUE EJECUTA EL HUMANO**, con su comando
+>
+> Lo pide el **hallazgo 1** de `progress/review_F-028.md`: F-009 tuvo su bloque
+> propio aquí y F-028 no lo tenía, y aquí es donde se mira antes de desplegar.
+> Detrás de la verificación 6 hay **un cierre real en el ERP de producción**.
+>
+> **Antes de nada, dos cosas del despliegue:**
+>
+> - **El front y la Function van juntos.** La rama es desplegable desde T18;
+>   desplegar solo una mitad rompe la otra. El front, con `-SoloFront`: el modo
+>   completo regenera el secreto y rompe el login.
+> - **Las ventanas de escritura se despliegan cerradas** y hay **dos**:
+>   `CIERRE_HABILITADO` (el ERP) y `ARCHIVO_HABILITADO` (SharePoint). Se abren
+>   para las verificaciones 4 y 6, y **se vuelven a cerrar al terminar**.
+>
+> ### La consulta de solo lectura, que es la que decide las 1, 2 y 3
+>
+> ```sql
+> SELECT estado_anterior, estado, decidido_por IS NOT NULL AS por_persona,
+>        decidido_at_utc, motivo
+> FROM postventa.historico_estado
+> WHERE hash_parte = %s
+> ORDER BY decidido_at_utc, cambio_id;
+> ```
+>
+> Se lanza como las lecturas del bloque 8 de F-009: con el intérprete del
+> servicio y `psycopg`, **sin `psql`**, que no está en el PATH de este puesto.
+>
+> ### Las seis
+>
+> | # | Qué se comprueba | Cómo, y el detalle que importa |
+> |---|---|---|
+> | **1** | El DDL **dos veces seguidas** no falla y **la semilla no duplica** | Desplegar y volver a aplicar. Su idempotencia es el `NOT EXISTS`. Importa más que antes: desde T15 **nadie escribe** en `postventa.aprobaciones`, así que **la semilla es lo único que la conecta con el sistema vivo** |
+> | **2** | La aprobación que ya había **aparece sembrada** y su parte **sigue saliendo `aprobado`** | Es la de `RS26.09/0149`, la que aprobaste a mano el 2026-09-15. Se ve **desde la propia pantalla**. **Es la verificación que cierra T15**: antes había dos caminos y uno tapaba el fallo del otro; ahora solo hay uno, y si la semilla no copió bien el autor y la huella, **el parte saldrá `pendiente` y no hay nada detrás que lo rescate** |
+> | **3** | Aprobar → rechazar → aprobar deja **tres** filas, en orden y ninguna pisada | Con la consulta de arriba. **Ojo al contarlas**: el primer guardado de un parte deja **su propia fila de constancia**, así que un parte no apto recién subido y luego rechazado enseña **dos**, no una |
+> | **4** | Un parte **apto rechazado a mano NO se archiva** | **Es lo que pediste el 2026-09-15.** Era imposible por construcción hasta el bloque 4. Se hace entera desde la web: subir un parte que salga verde, rechazarlo con su motivo, y comprobar que **no entra en la tanda** |
+> | **5** | Un parte cerrado responde **409**, y la web **lo explica** | Dos mitades y la web solo enseña una: **no ofrece el gesto** sobre un parte cerrado, así que hay que mirar **que lo explica** (la frase de por qué no se puede) y, aparte, que el 409 sigue estando para quien llame al endpoint por su cuenta: `curl -X POST …/api/estado` con un parte cerrado |
+> | **6** | Un parte con el número **con espacios alrededor de la barra** cierra la incidencia | **El defecto que abrió el asunto 2.** **HAZ PRIMERO EL DRY-RUN** y mira que la reclamación que devuelve **es la que esperas**, antes de confirmar: el arreglo hace que ahora se encuentre una reclamación donde antes no se encontraba ninguna, y **que sea la correcta es lo que hay que ver con los ojos una vez** |
+>
+> ### Y una comprobación del despliegue, que no es de T27
+>
+> Que el host **publique la ruta nueva**: un `curl -X POST …/api/estado` contra
+> el entorno es lo único que demuestra que el despliegue la recogió. Los tests
+> la leen de `app.get_functions()`, que es lo que se despliega, pero eso no
+> prueba que esté publicada.
+>
+> **Al terminar: cerrar las dos ventanas** con
+> `infra9_ventana_escritura.ps1 -Cerrar` y
+> `az functionapp config appsettings set … ARCHIVO_HABILITADO=false`.
+
 > ## ✅ AL DÍA · 2026-09-16 · **T26 y T28 de F-028: la implementación está CERRADA** · solo queda T27, que es del humano
 >
 > Rama `feature/F-028-estado-del-parte`, árbol limpio, commits **locales, sin

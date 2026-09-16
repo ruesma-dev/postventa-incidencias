@@ -2543,3 +2543,708 @@ Cuatro apuntes para quien lo coja:
   `done` no es cosa del implementer.
 - **La base real y el ERP no se han tocado**: todo corre con
   `RepositorioEnMemoria` y dobles en memoria, sin red, sin BBDD y sin IA.
+
+---
+
+# F-028 · Estado del parte — informe del implementer · bloque 5, T15
+
+> Encargo: **T15 y nada más** de `specs/F-028-estado-del-parte/tasks.md`.
+> Parada obligada al terminar. **No se ha entrado en el bloque 6.**
+>
+> Rama `feature/F-028-estado-del-parte`, desde `014fd6a`. Rigor **`estandar`**:
+> fase RED, puerta de cobertura y campaña de mutación. Sin `push`, sin tocar
+> `dev` ni `main`, sin tocar el `status` de ninguna feature, sin tocar
+> `azure-apps/`, `infrastructure/sigrid/` ni `infrastructure/sharepoint/`.
+
+**Es la tarea más destructiva de la feature**, y por eso lo primero que hay que
+saber son las tres cosas que no se han tocado:
+
+1. **`sql/10_aprobaciones.sql` no aparece en el diff.** Ni el fichero, ni el
+   directorio `sql/` entero: `git diff 014fd6a -- services/postventa-api/infrastructure/persistencia/sql/` está **vacío**. La tabla
+   `postventa.aprobaciones` sigue declarada, sigue aplicándose en el arranque y
+   la semilla de `11_historico_estado.sql` sigue leyendo de ella. Y ahora hay
+   además un test que comprueba que **nadie escribe** en ella.
+2. **`tests/test_f028_puertas.py` no aparece en el diff.** Sus **48 casos**
+   siguen intactos desde el bloque 0 y en verde. Ninguno se ha puesto rojo en
+   ningún momento de este trabajo.
+3. **Los 14 tests de la huella de F-026 se conservan byte a byte.** El diff de
+   `tests/test_f026_aprobacion_dominio.py` **no añade ni una línea** que
+   contenga `def test_` o un `assert`: las 29 líneas añadidas son cabecera e
+   imports. `huella_de_veredicto` y `_normalizar` siguen en
+   `domain/models/aprobacion.py`, con el mismo nombre y en el mismo módulo.
+
+---
+
+## 59 · Qué se ha hecho
+
+| Tarea | Commit | Qué deja |
+|---|---|---|
+| **T15** | `a0b4ac7` | Retirado el código de F-026 que enumera la tarea; la tabla, congelada y vigilada; la cabecera del módulo, con su enmienda fechada |
+
+Lo que esto cierra: **`POST /api/aprobar` ya no existe**, y con él se va el
+último sitio del servicio que podía escribir una decisión humana en un almacén
+que ya nadie lee. `design.md` §5 dice que `/api/estado` **sustituye** a
+`/api/aprobar`, no que conviva con él, y esa era la parte peligrosa de dejarlo:
+quien llamara al viejo habría dejado una aprobación en `postventa.aprobaciones`
+sin ningún efecto sobre el estado del parte, y la pantalla le habría dicho que
+sí lo tuvo.
+
+Los endpoints del servicio vuelven de **trece a doce**.
+
+---
+
+## 60 · Ficheros tocados
+
+### Creados
+
+**Ninguno.** T15 solo resta.
+
+### Borrados
+
+| Ruta | Qué era |
+|---|---|
+| `interface_adapters/api/aprobar.py` | El handler de `POST /api/aprobar` (231 líneas) |
+| `interface_adapters/api/aprobacion_serializada.py` | El bloque `aprobacion` de las respuestas (61) |
+| `tests/test_f026_aprobar_http.py` | Los 28 casos del endpoint retirado (848) |
+| `tests/test_f026_persistencia.py` | Los 35 casos de las sentencias retiradas (803) |
+
+### Modificados
+
+| Ruta | Qué cambia |
+|---|---|
+| `domain/models/aprobacion.py` | **Solo quedan `huella_de_veredicto` y `_normalizar`**, más sus dos separadores. Cabecera nueva con la enmienda fechada (§62) |
+| `domain/ports/persistencia.py` | Fuera `guardar_aprobacion` y `consultar_aprobacion` |
+| `infrastructure/persistencia/sentencias.py` | Fuera `upsert_aprobacion`, `select_aprobacion`, `revocar_aprobacion_si_cambio` y sus tres listas de columnas |
+| `infrastructure/persistencia/mapeo.py` | Fuera `fila_a_aprobacion`, `_codigos_desde_json` y `json_de_codigos_de_motivo` (§63.2) |
+| `infrastructure/persistencia/repositorio_pg.py` | Fuera los dos métodos, y **`guardar_validacion` deja de revocar** (R57, §63.1) |
+| `interface_adapters/api/parte.py` | `AnotaLosResultados` deja de delegar las dos operaciones |
+| `function_app.py` | Fuera la ruta `aprobar`, su import y su entrada en la cabecera |
+| `tests/utiles_pg.py` | `RepositorioEnMemoria` pierde las dos operaciones; `aprobaciones_consultadas` **se queda** y hay que leer por qué (§63.3) |
+| `tests/utiles_sharepoint.py` | `RepositorioFalso` pierde `consultar_aprobacion` |
+| `tests/test_f010_endpoints_protegidos.py` | 13 → **12** endpoints, con el porqué escrito |
+| `tests/test_f026_aprobacion_dominio.py` | 41 → **14** casos: se conserva el bloque de la huella, intacto |
+| `tests/test_f026_puertas.py` | Los **dos casos inertes** que el bloque 4 dejó anotados, retirados |
+| `tests/test_f028_estado_dominio.py`, `test_f028_persistencia.py`, `test_f028_estado_http.py` | **18 casos nuevos** de T15 |
+| `specs/F-028-estado-del-parte/tasks.md` | T15 marcada `[x]` |
+| `progress/mutacion_F-028.md` | Lo genera la campaña |
+
+**Balance: 518 líneas añadidas, 3.169 borradas** en 20 ficheros.
+
+### Lo que la spec prohíbe tocar, y que sigue intacto
+
+Comprobado con `git diff 014fd6a --stat`: en el diff **no aparecen**
+`domain/models/validacion.py` ni `sql/04_validaciones.sql` (regla dura 1); ni
+`sql/10_aprobaciones.sql` ni `sql/11_historico_estado.sql` ni ningún otro `.sql`
+(regla dura 3); ni `infrastructure/sigrid/`, ni `infrastructure/sharepoint/`
+(regla dura 2); ni `tests/test_f028_puertas.py`; ni el front; ni `azure-apps/`;
+ni `harness/features.json`.
+
+`huella_de_veredicto` y `_normalizar` **sí** están en el diff, porque el módulo
+que los contiene se ha podado alrededor, pero **sus cuerpos no cambian**: el
+único cambio dentro de `huella_de_veredicto` es la palabra «revocar» → «caducar»
+en tres frases de su docstring, porque el mecanismo que la revocaba ya no
+existe. Ni una línea de código.
+
+---
+
+## 61 · Fase RED · las trazas, pegadas
+
+Los 18 casos de T15 se escribieron **antes** de tocar producción, en tres
+tandas. El intérprete es el del servicio (`services/postventa-api/.venv`): el
+del repositorio no tiene `pydantic` y falla al cargar `conftest.py`.
+
+### 61.1 · El dominio · antes de podar `domain/models/aprobacion.py`
+
+```
+$ cd services/postventa-api
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_estado_dominio.py -q -k "t15" --tb=short
+
+_ test_f028_t15_del_dominio_de_f026_no_queda_nada_de_la_decision[admite_circuito] _
+tests\test_f028_estado_dominio.py:985: in test_f028_t15_del_dominio_de_f026_no_queda_nada_de_la_decision
+    assert not hasattr(modulo, nombre)
+E   AssertionError: assert not True
+E    +  where True = hasattr(<module 'domain.models.aprobacion' from '...\domain\models\aprobacion.py'>, 'admite_circuito')
+_______ test_f028_t15_la_huella_y_su_normalizador_siguen_donde_estaban ________
+tests\test_f028_estado_dominio.py:999: in test_f028_t15_la_huella_y_su_normalizador_siguen_donde_estaban
+    assert modulo.__all__ == ["huella_de_veredicto"]
+E   AssertionError: assert ['MOTIVOS_APR...vigente', ...] == ['huella_de_veredicto']
+E     At index 0 diff: 'MOTIVOS_APROBABLES' != 'huella_de_veredicto'
+E     Left contains 6 more items, first extra item: 'Aprobacion'
+__ test_f028_t15_la_cabecera_explica_que_la_decision_vive_ahora_en_estado_py __
+tests\test_f028_estado_dominio.py:1018: in ...
+    assert "Enmienda" in documentacion
+E   AssertionError: assert 'Enmienda' in 'La aprobación humana de un parte que la validación mandó a revisión (F-026).\n\n**Dominio puro.** ...'
+=========================== short test summary info ===========================
+FAILED ...[Aprobacion]  FAILED ...[MOTIVOS_APROBABLES]  FAILED ...[MotivoRevocacion]
+FAILED ...[admite_circuito]  FAILED ...[es_aprobable]  FAILED ...[esta_vigente]
+FAILED ...::test_f028_t15_la_huella_y_su_normalizador_siguen_donde_estaban
+FAILED ...::test_f028_t15_la_cabecera_explica_que_la_decision_vive_ahora_en_estado_py
+8 failed, 47 deselected in 0.62s
+```
+
+Después de reescribir el módulo: `8 passed in 0.41s`.
+
+### 61.2 · La persistencia · antes de retirar las sentencias y el puerto
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_persistencia.py -q -k "t15" --tb=short
+
+____ test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026 ____
+    assert {nombre: textos for nombre, textos in culpables.items() if textos} == {}
+E   AssertionError: assert {'sentencias....probaciones']} == {}
+E     Left contains 1 more item:
+E     {'sentencias.py': ['aprobaciones', 'aprobaciones', 'aprobaciones']}
+__________ test_f028_t15_las_tres_sentencias_de_f026_se_han_retirado __________
+    assert not hasattr(sentencias, nombre), nombre
+E   AssertionError: upsert_aprobacion
+________ test_f028_t15_el_puerto_ya_no_declara_las_operaciones_de_f026 ________
+    assert not hasattr(RepositorioPartesPort, nombre), nombre
+E   AssertionError: guardar_aprobacion
+__________ test_f028_t15_r57_guardar_la_validacion_ya_no_revoca_nada __________
+    assert conexion.veces_con(f"{ESQUEMA}.aprobaciones") == 0
+E   AssertionError: assert 1 == 0
+E    +  where 1 = veces_con('postventa.aprobaciones')
+=========================== short test summary info ===========================
+FAILED ...::test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026
+FAILED ...::test_f028_t15_las_tres_sentencias_de_f026_se_han_retirado
+FAILED ...::test_f028_t15_el_mapeo_ya_no_sabe_reconstruir_una_aprobacion
+FAILED ...::test_f028_t15_el_puerto_ya_no_declara_las_operaciones_de_f026
+FAILED ...::test_f028_t15_r57_guardar_la_validacion_ya_no_revoca_nada
+5 failed, 1 passed, 45 deselected in 0.86s
+```
+
+El `assert 1 == 0` es el de R57, y leído en voz alta dice lo que todavía pasaba:
+**cada guardado de un veredicto seguía tocando la tabla congelada**, 22 veces
+por remesa.
+
+El que ya pasaba en rojo es
+`test_f028_t15_la_tabla_de_f026_sigue_declarada_en_el_ddl`, y eso es **lo
+correcto**: es un control negativo de la regla dura 3, tiene que estar verde
+antes y después. Su fase útil no es esta, es la de después — lo mata el mutante
+M8 (§65).
+
+### 61.3 · El borde · antes de retirar el endpoint
+
+```
+$ ./.venv/Scripts/python.exe -m pytest tests/test_f028_estado_http.py -q -k "t15" --tb=short
+
+_____________ test_f028_t15_los_dos_modulos_de_f026_ya_no_existen _____________
+    assert importlib.util.find_spec(modulo) is None, modulo
+E   AssertionError: interface_adapters.api.aprobar
+_____________ test_f028_t15_el_host_ya_no_publica_la_ruta_aprobar _____________
+    assert "aprobar" not in publicadas
+E   AssertionError: assert 'aprobar' not in {'health': <...>, 'split': <...>, ...}
+________________ test_f028_t15_function_app_ya_no_sabe_aprobar ________________
+    assert not hasattr(function_app, "aprobar")
+E   AssertionError: assert not True
+________ test_f028_t15_el_envoltorio_de_parte_ya_no_delega_lo_de_f026 _________
+    assert not hasattr(AnotaLosResultados, "guardar_aprobacion")
+E   AssertionError: assert not True
+4 failed, 100 deselected in 1.15s
+```
+
+Después de la retirada: los cuatro en verde, y la suite entera del servicio
+también.
+
+---
+
+## 62 · La cabecera de `domain/models/aprobacion.py`, que era medio encargo
+
+`design.md` §8.2 pide que «la cabecera del módulo explique que la decisión vive
+ahora en `estado.py`», y el encargo añade el patrón de este repositorio: **no se
+borra la premisa, se dice qué la sustituyó y cuándo**.
+
+Lo que hay, y es lo que el reviewer tiene que juzgar:
+
+- un recuadro **`Enmienda del 2026-09-16 · F-028 T15`** que enumera lo que el
+  módulo era —las seis piezas retiradas, con `admite_circuito` señalado como
+  «el criterio con el que las tres puertas dejaban pasar un parte al circuito»—;
+- **la premisa de F-026 citada literal**, entre comillas y sin tocar: «*La
+  aprobación se registra al lado del veredicto, nunca encima (R11)…*». Sigue
+  siendo verdad, y decirlo importa: lo que cambió no es que F-004 vuelva a ser
+  pisable, es **dónde vive la segunda cosa**;
+- **los dos motivos de la mudanza**, que son los de `requirements.md` §0.4 y
+  §0.5: que F-026 no podía rechazar un parte apto, y que su tabla tiene una
+  fila por parte, así que un ciclo aprobar → rechazar → aprobar no dejaba rastro
+  del rechazo;
+- la frase que cierra la ambigüedad para quien llegue dentro de seis meses:
+  **«la tabla no se ha borrado»**, con el porqué —guarda decisiones de personas
+  reales y el DDL del histórico la siembra en cada arranque—;
+- y una sección nueva que explica **por qué sobrevive la huella y por qué
+  sobrevive aquí**, con la única diferencia de fondo respecto a F-026: antes la
+  caducidad se resolvía **al escribir** y ahora se resuelve **al derivar**.
+
+El test que lo fija es
+`test_f028_t15_la_cabecera_explica_que_la_decision_vive_ahora_en_estado_py`, y
+exige las cuatro cosas por separado: la palabra «Enmienda», la fecha, el nombre
+del módulo que releva y **la cita de la premisa**. Una cabecera que se limitara
+a borrar los párrafos viejos no pasa.
+
+> **Un detalle que costó un rojo y merece quedar escrito.** La primera versión
+> de la cabecera decía que `postventa.aprobaciones` «se pisa con `ON CONFLICT DO
+> UPDATE`», y eso puso rojo a
+> `test_f005_arquitectura.py::test_f005_r31_solo_el_adaptador_de_persistencia_escribe_sql`,
+> que barre el código de producción buscando verbos SQL fuera de
+> `infrastructure/persistencia/`. El test tenía razón y el arreglo fue decir lo
+> mismo sin el SQL: «tiene una fila por parte y cada decisión nueva sustituye a
+> la anterior». **No se tocó el test.**
+
+---
+
+## 63 · Decisiones de diseño, y las tres que hay que juzgar
+
+### 63.1 · `guardar_validacion` vuelve a ser **una sola sentencia** (R57)
+
+Es la decisión de más peso operativo del encargo y no está en la lista literal
+de T15 —lo está en `design.md` §8.2, «`guardar_validacion` deja de revocar
+(R57)»— pero **no había alternativa**: T15 retira
+`revocar_aprobacion_si_cambio`, y su único llamante era esa operación.
+
+Lo que había: el guardado del veredicto llevaba colgada una segunda sentencia en
+la misma transacción, porque F-026 resolvía la vigencia de la decisión humana
+**al escribir** (su D-F). Lo que hay ahora: nada. F-028 la resuelve **al
+derivar** —`estado.py::_aprueba_lo_que_hay` compara la huella apuntada en el
+histórico con la del veredicto de ahora, cada vez que hace falta el estado
+(R19)—.
+
+**La preocupación que justificaba meterlas en una sola transacción desaparece
+por construcción**, y eso va escrito en la docstring: el argumento de F-026 era
+«una ventana, corta pero real, en la que el veredicto nuevo ya está guardado y
+la aprobación del viejo sigue viva». Ya no hay nada que actualizar, así que no
+hay ventana.
+
+Y tiene precio en el sitio donde más se nota. `guardar_validacion` es el camino
+**más transitado del servicio**: una vez por parte y por subida, **22 veces en
+una remesa real de Mirasierra**. Cada una de esas 22 hacía un `UPDATE` de más
+contra `psql-albaranes-rs9k2`, que es un servidor **compartido** con albaranes y
+compañía. Ya no.
+
+Lo fija `test_f028_t15_r57_guardar_la_validacion_ya_no_revoca_nada`, que afirma
+las tres mitades: cero sentencias contra la tabla congelada, una contra
+`validaciones`, y **`len(conexion.ejecutadas) == 1`**. Esta última es la que
+cuenta: `_escribir` ejecuta la sentencia que se le pasa **más las que le cuelguen
+en `ademas`**, así que contar las ejecutadas es lo único que distingue «se retiró
+la llamada» de «se retiró la función y alguien la repuso por otro camino». Lo
+mata el mutante M5 (§65).
+
+### 63.2 · Tres piezas retiradas que T15 **no enumera**, y por qué se van igual
+
+Se declaran aquí con nombre propio para que el reviewer las juzgue una a una.
+Las tres son **la mitad interna** de algo que T15 sí enumera, igual que
+`_COLUMNAS_APROBACION_VIVA`, `_COLUMNAS_REVOCACION` y `_COLUMNA_JSONB_APROBACION`
+—que tampoco están en la lista y son el cuerpo de `upsert_aprobacion`—:
+
+| Retirado | De quién era la mitad | Por qué no se queda |
+|---|---|---|
+| `mapeo._codigos_desde_json` | de `fila_a_aprobacion` (en la lista) | Privado y sin ningún otro llamante. Un `_ayudante` sin llamantes es código muerto que además se queda sin cobertura |
+| `mapeo.json_de_codigos_de_motivo` | de `upsert_aprobacion` (en la lista) | Su único llamante era el `upsert`. Su docstring entera habla de «la fila de la aprobación», así que dejarla viva es dejar un comentario que miente sobre una función que nadie llama |
+| El import de `ParteNoAprobable` en `function_app.py` | del `except` de la ruta `aprobar` | Sin la ruta, es un import sin uso y `ruff` lo canta (F401) |
+
+**Lo que NO se ha retirado aunque haya quedado sin llamante**, porque ahí la
+línea sí está fuera de T15 y no la cruzo por mi cuenta:
+
+- **`domain/models/errores.py::ParteNoAprobable`.** Era el 409 de «este parte no
+  se puede aprobar», y su único emisor era `aprobar.py`. F-028 no tiene ese
+  concepto: una persona puede mover a `aprobado` o a `rechazado` **cualquier**
+  parte que no esté `cerrado` (R9, R10), y el único 409 que queda es el del
+  parte cerrado. O sea que la excepción está viva, documentada en el inventario
+  de la cabecera de `errores.py` y **nadie la levanta**. `design.md` §8.2 solo
+  manda **añadir** dos errores a ese fichero, no quitar ninguno, y T15 no la
+  nombra. **Queda para el líder o para T24**, que es quien escribe las enmiendas
+  de `specs/F-026-aprobacion-humana/requirements.md`.
+- **`repositorio_pg._escribir(..., ademas=...)`.** Se queda sin su único
+  llamante al retirar la revocación. Es un mecanismo genérico del adaptador —«N
+  sentencias en una transacción»— con su docstring propia, no una pieza de
+  F-026, y su línea se sigue ejecutando en todos los guardados con la tupla
+  vacía, así que no deja hueco de cobertura. **No lo quito porque no es mío**,
+  pero lo digo para que no se lea como un descuido.
+
+### 63.3 · `aprobaciones_consultadas` se queda en el doble, y es lo peor del encargo
+
+Es lo que más honestamente hay que contar. `RepositorioEnMemoria` tenía
+`aprobaciones_consultadas`, y **dos tests de F-028 afirman sobre ella**:
+
+- `test_f028_r33_ninguna_puerta_consulta_ya_la_tabla_de_f026`, en
+  `tests/test_f028_puertas.py` —que es **la red de seguridad de T1 y no se
+  toca**—;
+- `test_f028_r2_el_estado_no_cuesta_una_consulta_mas_por_parte`, en
+  `tests/test_f028_estado_http.py`.
+
+Al retirar `consultar_aprobacion` del doble, esa lista **ya no puede crecer**.
+Las dos aserciones pasan de ser ciertas **por comportamiento** a ciertas **por
+construcción**: es exactamente la clase de test verde que tranquiliza sin medir
+nada, y el informe del bloque 4 (§30.1) y el de T14 (§51.2) retiraron sendos
+tests justo por eso.
+
+Aquí no se pueden retirar: uno de los dos es la red de seguridad que el encargo
+prohíbe tocar, y el otro es de T14. Así que lo que se ha hecho es:
+
+1. **dejar el atributo**, con un comentario en `utiles_pg.py` que dice
+   literalmente que se queda vacío para siempre, por qué, y cuál es el control
+   que de verdad vigila la tabla;
+2. **escribir ese control**, que es
+   `test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026` —y
+   que es más fuerte que lo que había: no mira una función retirada, mira
+   **todas** las cadenas que compone la capa de persistencia—.
+
+**Lo que el reviewer tiene que decidir** es si las dos aserciones vacías se
+quedan como están. Mi lectura es que sí, y por dos motivos: retirarlas obliga a
+editar la red de seguridad del bloque 0, y el día que alguien repusiera
+`consultar_aprobacion` volverían a medir. Pero son dos aserciones que hoy no
+prueban nada, y decirlo es lo que impide que dentro de un año alguien las cuente
+como cobertura.
+
+### 63.4 · El control de la tabla mira el **árbol sintáctico**, no el texto
+
+`test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026` recorre
+los `.py` de `infrastructure/persistencia/` y recoge **las cadenas que el módulo
+usa, saltándose las docstrings**. Es el método que ya usaron el bloque 0 (§5) y
+T13 (§38.2), y hace falta por lo mismo: las cabeceras de este repositorio
+**explican** por qué la tabla se congela, y nombrarla para explicarlo no es
+escribir en ella. Un control sobre el texto crudo se habría puesto rojo por la
+cabecera de `ddl.py`, y el arreglo habría sido dejar de explicarlo.
+
+El `.sql` de la semilla queda fuera del barrido a propósito: es la **lectura**
+que la regla dura 3 manda conservar, y es SQL, no un módulo.
+
+### Desviaciones respecto a la spec
+
+**Ninguna respecto a `design.md` §8.2**, que lista uno a uno todos los ficheros
+tocados —incluido `guardar_validacion` (R57) y los «tests de F-026» que se
+sustituyen—. Las tres retiradas de §63.2 son extensiones declaradas de la lista
+literal de `tasks.md` T15, y están ahí para que se juzguen por nombre.
+
+---
+
+## 64 · Los 90 tests retirados, uno a uno, con su sustituto
+
+El encargo lo pide expresamente: **un test que desaparece sin sustituto es
+cobertura que se pierde en silencio**. Van los cuatro ficheros.
+
+### 64.1 · `tests/test_f026_aprobacion_dominio.py` · 25 retirados, 14 conservados
+
+Los 14 conservados son **el bloque entero de la huella** (T3 de F-026), byte a
+byte. Los 25 retirados:
+
+| Retirado (bloque) | Sustituto en F-028 |
+|---|---|
+| `r6_los_motivos_aprobables_son_exactamente_dos` (T2) | **Sin sustituto, y a propósito** — ver el recuadro de abajo |
+| `r6_un_parte_con_observaciones_manuscritas_es_aprobable` (T2) | ídem |
+| `r6_un_parte_con_firma_no_humana_es_aprobable` (T2) | ídem |
+| `r8_un_parte_con_los_dos_motivos_aprobables_es_aprobable` (T2) | ídem |
+| `r7_un_parte_sin_codigo_de_obra_no_es_aprobable` (T2) | ídem |
+| `r7_un_parte_sin_numero_de_incidencia_no_es_aprobable` (T2) | ídem |
+| `r9_un_motivo_no_aprobable_contamina_al_resto` (T2) | ídem |
+| `r8_un_no_apto_sin_motivos_no_es_aprobable` (T2) | ídem |
+| `r7_una_aprobacion_de_lo_inaprobable_tampoco_abriria_la_puerta` (T2) | ídem |
+| `r10_un_parte_que_ya_es_apto_no_se_aprueba` (T2) | **Lo contrario** está probado: `test_f028_r5_un_rechazo_humano_manda_sobre_un_veredicto_apto` y `test_f028_r5_un_parte_apto_rechazado_a_mano_no_pasa_ninguna_puerta`. Es la feature |
+| `r10_sin_veredicto_no_hay_nada_que_aprobar` (T2) | `test_f028_r4_sin_veredicto_el_parte_esta_pendiente` |
+| `r11_la_aprobacion_no_toca_el_veredicto_de_f004` (T2) | Regla dura 1: `domain/models/validacion.py` no está en el diff de la feature entera, y `test_f028_r17_nadie_mas_deriva_el_estado_del_parte` lo vigila desde el otro lado |
+| `r2_una_aprobacion_recien_hecha_esta_vigente` (T4) | `test_f028_r20_la_misma_huella_conserva_la_aprobacion` |
+| `r31_una_aprobacion_revocada_no_esta_vigente` (T4) | `test_f028_r19_una_aprobacion_de_otro_veredicto_no_cuenta` — F-028 no revoca, **caduca al derivar** |
+| `r24_sin_aprobacion_no_hay_vigencia` (T4) | `test_f028_r26_una_fila_de_maquina_no_decide_nada` y `test_f028_r2_una_situacion_vacia_es_un_parte_del_que_no_consta_nada` |
+| `r33_la_revocacion_no_borra_quien_decidio_ni_cuando` (T4) | `test_f028_r21_el_insert_del_historico_no_lleva_ningun_on_conflict` y `..._r21_el_insert_tampoco_actualiza_ni_borra_por_otro_camino`: el histórico no borra **nada**, que es más fuerte |
+| `r34_el_motivo_de_revocacion_es_una_etiqueta_corta_y_cerrada` (T4) | **Sin sustituto**: no hay revocación, así que no hay motivo de revocación que acotar. Lo que sí se acota es el motivo **de la persona**, en `test_f028_r13_el_limite_del_motivo_lo_declara_el_dominio` |
+| `r23_el_apto_de_siempre_sigue_entrando_en_el_circuito` (T4) | `test_f028_r3_un_parte_apto_nace_aprobado` y `test_f028_r3_el_parte_apto_sigue_pasando_las_tres_puertas` |
+| `r23_un_no_apto_con_aprobacion_viva_entra_en_el_circuito` (T4) | `test_f028_r9_una_aprobacion_humana_rescata_un_parte_no_apto` y `test_f028_r9_un_parte_no_apto_que_una_persona_aprobo_pasa` |
+| `r25_un_no_apto_sin_aprobacion_no_entra` (T4) | `test_f028_r4_un_parte_no_apto_nace_pendiente` y los seis casos R33 de `test_f028_puertas.py` |
+| `r31_un_no_apto_con_aprobacion_revocada_no_entra` (T4) | `test_f028_r19_una_aprobacion_sobre_otro_veredicto_no_abre_nada` |
+| `r30_una_aprobacion_de_otro_destino_no_sirve` (T4) | `test_f028_r19_una_aprobacion_de_otro_veredicto_no_cuenta`: F-028 no compara destinos, compara **la huella del veredicto entero** —que incluye el destino, los motivos, la firma, las observaciones y los dos campos decisivos—. Es **más estrecho**, no más laxo |
+| `r25_sin_validacion_no_se_admite_nada` (T4) | `test_f028_r4_sin_veredicto_el_parte_esta_pendiente` + los tres R34 de `test_f028_puertas.py` |
+| `r10_un_apto_con_destino_raro_no_entra_por_la_puerta_de_siempre` (T4) | `test_f028_r3_un_apto_con_otro_destino_no_nace_aprobado` |
+| `una_aprobacion_no_se_puede_modificar_despues_de_creada` (huecos) | `test_f028_r21_una_decision_es_inmutable` y `test_f028_r33_la_situacion_leida_del_almacen_es_inmutable` |
+
+> **Los nueve «sin sustituto» de T2 no son cobertura perdida: son una regla que
+> F-028 deroga a propósito.** F-026 preguntaba «¿es este parte **aprobable**?» y
+> respondía mirando sus motivos: `observaciones_manuscritas` y `firma_no_humana`
+> sí; `codigo_obra_no_legible` y `numero_incidencia_no_legible` no. F-028 no
+> tiene esa pregunta (D1–D9, R9 y R10): **una persona puede mover a `aprobado` o
+> a `rechazado` cualquier parte que no esté `cerrado`**, y lo que impide que un
+> parte sin código de obra acabe archivado no es un veto en el borde, son las
+> tres puertas del circuito y el veredicto de F-004, que sigue intacto. El único
+> 409 que sobrevive es el del parte cerrado, y tiene seis casos propios entre
+> `test_f028_r7_un_parte_cerrado_no_admite_cambios_ni_escribe_nada` y
+> `test_f028_r7_un_parte_cerrado_es_409_por_el_borde`.
+
+### 64.2 · `tests/test_f026_persistencia.py` · el fichero entero, 35 casos
+
+**Los 35 probaban las cuatro sentencias retiradas, su mapeo o su adaptador.** No
+queda ni uno que hable de algo que siga existiendo, y por eso el fichero se va
+de una pieza. Agrupados por lo que probaban:
+
+| Retirados | Qué probaban | Sustituto en F-028 |
+|---|---|---|
+| `r17_aprobar_dos_veces_actualiza_la_misma_fila`, `r17_volver_a_aprobar_deja_la_aprobacion_viva` | Que el `upsert` **pisa** la fila anterior | `test_f028_r21_el_insert_del_historico_no_lleva_ningun_on_conflict` y `test_f028_r21_el_insert_tampoco_actualiza_ni_borra_por_otro_camino`, que prueban **lo contrario y es el punto de la feature**: el histórico acumula |
+| `el_upsert_no_interpola_ni_un_valor_en_el_texto`, `el_upsert_tiene_tantos_marcadores_como_parametros`, `la_revocacion_tiene_tantos_marcadores_como_parametros` | Que ningún valor se pega al SQL | `test_f028_r22_el_insert_escribe_las_siete_columnas_de_la_fila` y los controles de `test_f028_persistencia.py` sobre `insert_decision_estado` |
+| `r14_lo_que_se_guarda_son_codigos_de_motivo_y_no_textos`, `los_codigos_se_serializan_como_lista_de_cadenas`, `solo_la_columna_de_motivos_se_declara_como_jsonb` | El `jsonb` de `motivos_aprobados` | **Sin sustituto, y no hace falta**: `historico_estado` **no tiene ninguna columna `jsonb`** ni ninguna binaria, y eso lo comprueba `tests/test_f028_ddl_historico.py`. Es una columna que ya no existe |
+| `r15_el_upsert_no_lleva_ni_una_letra_del_texto_manuscrito` | Que el papel no entra en esa tabla | `test_f028_r52_una_decision_no_tiene_hueco_para_datos_del_papel` y `test_f028_r52_registrar_una_decision_no_saca_el_motivo_ni_el_oid` |
+| `r33_la_revocacion_es_un_update_y_nunca_un_delete`, `r30_la_revocacion_solo_toca_lo_vigente_y_lo_que_cambio`, `r30_la_huella_viaja_como_parametro_y_no_pegada_al_sql`, `r34_el_motivo_de_la_revocacion_es_una_etiqueta_corta` | La sentencia de revocación | **Sin sustituto: no hay revocación.** La caducidad se resuelve al derivar, y eso lo prueban `test_f028_r19_una_aprobacion_de_otro_veredicto_no_cuenta` y `test_f028_r20_la_misma_huella_conserva_la_aprobacion` |
+| `el_select_busca_por_hash_con_parametro`, `el_select_lee_las_mismas_columnas_que_escribe_el_upsert` | El `SELECT` de la tabla | `test_f028_la_situacion_se_resuelve_con_un_union_all_de_dos_limit_1` y `test_f028_r25_la_consulta_ordena_por_instante_y_desempata_por_contador` |
+| `fila_a_aprobacion_reconstruye_la_dataclass_con_sus_enum`, `fila_a_aprobacion_admite_el_jsonb_como_texto`, `r33_una_fila_revocada_vuelve_del_mapeo_como_revocada`, `lo_que_escribe_el_upsert_vuelve_igual_por_el_mapeo` | `fila_a_aprobacion` | `test_f028_una_fila_humana_vuelve_al_dominio_entera`, `test_f028_r24_una_fila_de_maquina_vuelve_sin_autor_y_lo_dice` y `test_f028_un_estado_que_el_dominio_no_conoce_revienta_al_mapear` |
+| `un_esquema_hostil_no_llega_al_sql`, `las_tres_sentencias_van_al_esquema_propio` | Que el esquema se valida y nada va sin cualificar | `test_f028_el_insert_solo_escribe_en_el_historico` y los control negativos de esquema de `tests/test_f028_ddl_historico.py` |
+| `el_adaptador_cumple_el_puerto_ampliado`, `el_doble_en_memoria_tambien_cumple_el_puerto_ampliado` | Que adaptador y doble cumplen el puerto | `test_f028_el_adaptador_cumple_el_puerto_ampliado` y `test_f028_el_doble_en_memoria_tambien_cumple_el_puerto_ampliado` — **mismo nombre, mismo oficio, puerto nuevo** |
+| `guardar_la_aprobacion_ejecuta_el_upsert`, `consultar_una_aprobacion_que_no_existe_devuelve_none`, `consultar_devuelve_la_aprobacion_del_parte` | Las dos operaciones del adaptador | `test_f028_registrar_una_decision_ejecuta_el_insert`, `test_f028_la_situacion_de_un_parte_sin_ninguna_fila_viene_vacia` y `test_f028_la_situacion_trae_la_ultima_decision_humana` |
+| `r30_guardar_una_validacion_revoca_en_la_misma_operacion`, `r30_las_dos_sentencias_van_en_una_sola_transaccion`, `r30_la_revocacion_compara_con_la_huella_del_veredicto_guardado`, `r32_revalidar_sin_cambios_manda_la_misma_huella`, `r30_un_veredicto_distinto_manda_otra_huella`, `r30_corregir_el_numero_de_incidencia_manda_otra_huella`, `r33_la_revocacion_que_se_ejecuta_no_borra_la_fila`, `r34_lo_que_se_escribe_como_motivo_es_la_etiqueta_corta` | La revocación enganchada al guardado | **`test_f028_t15_r57_guardar_la_validacion_ya_no_revoca_nada`**, que afirma justo lo contrario, más los cuatro casos de caducidad del dominio (`r19`, `r20`) que prueban que el resultado no se pierde |
+| `el_log_de_la_aprobacion_no_lleva_ni_el_oid_ni_la_huella` | Que el log no publica datos personales | `test_f028_r52_registrar_una_decision_no_saca_el_motivo_ni_el_oid`, `test_f028_r52_leer_la_situacion_tampoco_los_saca` y `test_f028_el_log_si_registra_lo_que_hace_falta_para_operar` |
+
+### 64.3 · `tests/test_f026_aprobar_http.py` · el fichero entero, 28 casos
+
+Todos son de `POST /api/aprobar`. **Los 28 tienen sustituto en
+`tests/test_f028_estado_http.py`**, y no por casualidad: el fichero de T13 se
+escribió recorriendo esta misma lista.
+
+| Retirado | Sustituto en F-028 |
+|---|---|
+| `r2_aprobar_registra_quien_y_cuando_y_lo_devuelve` | `r9_rechazar_un_parte_deja_su_fila_con_quien_cuando_y_por_que` |
+| `r2_el_parte_y_su_veredicto_se_guardan_antes_que_la_aprobacion` | `r22_el_parte_y_su_veredicto_se_guardan_antes_que_la_decision` |
+| `r2_la_aprobacion_lleva_la_huella_del_veredicto_que_se_guardo` | `r22_el_estado_anterior_sale_de_la_ultima_fila_del_historico` y `r19_aprobar_lo_que_aprobo_otro_veredicto_si_escribe_fila` |
+| `r4_sin_usuario_oid_no_se_registra_nada` (×5) | `r14_sin_usuario_oid_no_se_registra_nada` (×5) |
+| `r4_sin_confirmacion_explicita_no_se_registra_nada` (×5) | `r29_sin_confirmacion_explicita_no_se_registra_nada` (×5) |
+| `r9_un_motivo_no_aprobable_es_409_sin_escribir_nada` | **Derogado** (§64.1). Lo que queda de 409 es `r7_un_parte_cerrado_no_admite_cambios_ni_escribe_nada` (×4) |
+| `r10_un_parte_que_ya_es_apto_es_409` | **Derogado, y es la feature**: `r5_un_parte_apto_se_puede_rechazar_y_esa_es_la_feature` |
+| `r9_el_motivo_del_rechazo_no_lleva_nada_del_papel` | `r42_la_respuesta_no_lleva_el_oid_ni_el_motivo` y `r53_un_rechazo_del_borde_tampoco_publica_lo_que_venia` |
+| `r5_un_veredicto_metido_en_el_cuerpo_se_ignora` | `r28_un_veredicto_metido_en_el_cuerpo_se_ignora` |
+| `r5_un_parte_con_firma_no_humana_tambien_se_aprueba` | `r9_deshacer_la_propia_decision_si_escribe_fila` y `r12_al_aprobar_el_motivo_es_opcional` |
+| `r38_la_respuesta_no_lleva_el_oid_ni_el_texto_del_papel` | `r42_la_respuesta_no_lleva_el_oid_ni_el_motivo` |
+| `r13_lo_que_se_guarda_de_la_persona_es_el_oid_y_nada_mas` | `r15_lo_que_se_guarda_de_la_persona_es_el_oid_y_nada_mas` |
+| `r20_un_cuerpo_que_no_es_un_objeto_es_400` (×3) | `r31_un_cuerpo_que_no_es_un_objeto_es_400` (×3) |
+| `r20_un_bloque_que_falta_es_400` (×3) | `r31_un_bloque_que_falta_es_400` (×3) |
+| `r20_sin_remesa_registrada_sube_referencia_no_consta` | `r31_sin_remesa_registrada_sube_referencia_no_consta` |
+| `r20_sin_base_de_datos_el_error_sube_sin_traducir` (×2) | `r31_sin_base_de_datos_el_error_sube_sin_traducir` (×2) |
+| `r21_el_endpoint_no_mira_las_ventanas_de_escritura` | `r32_el_endpoint_no_mira_las_ventanas_de_escritura` |
+| `r21_aprobar_no_toca_sharepoint_ni_el_erp` | `r37_cambiar_de_estado_no_toca_sharepoint_ni_el_erp`, **más** `r37_el_control_del_vocabulario_ve_los_imports_de_verdad`, que aquel no tenía |
+| `r20_aprobar_devuelve_200_con_su_contrato` | `r31_la_ruta_devuelve_200_con_las_seis_claves_del_contrato` |
+| `r20_un_cuerpo_que_no_es_json_es_400` | `r31_un_cuerpo_que_no_es_json_es_400` |
+| `r20_r4_sin_usuario_oid_el_borde_responde_400` | `r31_el_borde_responde_400_sin_escribir_nada[sin-usuario-oid]` |
+| `r20_un_parte_no_aprobable_es_409` (×2) | **Derogado**; el 409 que queda es `r7_un_parte_cerrado_es_409_por_el_borde` (×2) |
+| `r20_sin_remesa_registrada_es_409` | `r31_sin_remesa_registrada_es_409` |
+| `r20_sin_base_de_datos_es_503` (×2) | `r31_sin_base_de_datos_es_503` (×2) |
+| `r44_el_log_lleva_hash_destino_y_resultado_y_nada_mas` | `r53_el_log_lleva_hash_origen_destino_y_resultado_y_nada_mas` |
+| `r44_un_rechazo_tampoco_publica_lo_que_venia` | `r53_un_rechazo_del_borde_tampoco_publica_lo_que_venia` |
+| `r18_la_ruta_es_post_anonima_y_se_llama_aprobar` | `r31_la_ruta_es_post_anonima_y_se_llama_estado` |
+| `r21_la_ruta_no_mira_las_ventanas_de_escritura` | `r32_la_ruta_no_mira_las_ventanas_de_escritura` |
+
+**`tests/utiles_rutas.py` NO se va con el fichero**: lo usa
+`tests/test_f028_estado_http.py`, y sin él `app.get_functions()` revienta a la
+segunda llamada (§40.3). Su cabecera sigue contando que F-026 descubrió el
+problema, que es un hecho y no una deuda.
+
+### 64.4 · `tests/test_f026_puertas.py` · los dos casos inertes
+
+Los que el bloque 4 dejó anotados expresamente para T15 (§30.1). En su sitio
+queda un **recuadro fechado del 2026-09-16** dentro del propio fichero, con qué
+probaban, por qué se van y dónde está el sustituto:
+
+| Retirado | Qué probaba | Sustituto |
+|---|---|---|
+| `r31_una_aprobacion_revocada_no_abre_ninguna_puerta` (×2 destinos) | Que una decisión revocada no abría las tres puertas | `test_f028_r19_una_aprobacion_sobre_otro_veredicto_no_abre_nada` |
+| `r23_una_aprobacion_de_otro_destino_no_sirve` (×2 destinos) | Que la aprobación valía para el destino aprobado | ídem — y más estrecho: F-028 compara la huella del veredicto entero |
+
+Los dos **seguían en verde**, y ese era el problema: desde T11 pasaban una
+`Aprobacion` a un doble al que ninguna puerta se la pedía, así que probaban lo
+mismo que los `r25` de arriba y **no lo que sus nombres afirman**. Con ellos se
+van `_aprobacion`, `_reclamacion`, `_archivar`, `_adjuntar`, `_cerrar` y
+`CODIGO_EN_SIGRID`, que se quedaban sin un solo llamante.
+
+Los **13 casos que quedan** en ese fichero siguen en verde sin tocarlos: los seis
+`r25` (un parte no apto sin decisión no se archiva, no se adjunta, no cierra),
+el control de que el material no es aprobable por accidente, y los seis de R24
+(ningún paso recibe la decisión por parámetro, ningún handler la lee del cuerpo).
+
+---
+
+## 65 · Evidencias
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| **Tests ejecutados** (servicio `api`) | **2.528 pasados, 13 saltados, 0 fallos** | `bash harness/init.sh` |
+| Tests ejecutados (arnés, raíz) | **62 pasados** | `bash harness/init.sh` |
+| De ellos, **nuevos de T15** | **18 casos** (8 dominio + 6 persistencia + 4 borde), de 11 funciones | `pytest -k t15` |
+| Tests **retirados** | **90 funciones** (25 + 35 + 28 + 2), todas con su sustituto en §64 | — |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 283/283, umbral 80 %, nivel `estandar` | línea `PUERTA COBERTURA` de `init.sh` |
+| **Mutantes generados / supervivientes** | automáticos **31 / 0** (0 timeouts, 158,3 s, 8 workers) · **a mano 10 / 0** | `python -m harness.mutacion --feature F-028` y §65.2 |
+| **Tiempo de la suite** | **35,4 s** (`api`, bajo medición de cobertura) · 25,4 s sin ella · 4 s (raíz) | la propia suite |
+| **Balance de líneas** | **+518 / −3.169** en 20 ficheros | `git show --stat a0b4ac7` |
+| **Ruff** | **0 avisos** en los 15 ficheros tocados; el repositorio baja de **62 a 61** | `python -m ruff check` |
+
+### Los supervivientes, y qué se hace con cada uno
+
+**Ninguno**, ni en la campaña automática ni en la manual.
+
+### 65.1 · La línea base estaba verde, y se comprobó **antes** de creerse el resultado
+
+El encargo lo advertía y es lo primero que se hizo, porque el evaluador de
+`harness.mutacion` da un mutante por **muerto** cuando la suite falla: con la
+base en rojo, **todos** salen «muertos» sin que ningún test los cace, que es lo
+que invalidó la primera campaña de T13 (§44.1).
+
+Aquí no hizo falta deseleccionar nada. Inmediatamente antes de lanzarla:
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, cobertura 100,0 %;
+- la suite del servicio, entera y a pelo → `2528 passed, 3 skipped` y **cero
+  fallos**.
+
+El descenso de 39 mutantes (T14) a **31** no es una campaña más floja: es que el
+alcance ha **menguado** con el código. `function_app.py` pasa de **115 a 72**
+líneas en alcance, `sentencias.py` de **169 a 144** y `mapeo.py` de **49 a 34**;
+`domain/models/aprobacion.py` entra por primera vez en el alcance de la feature,
+con 67. El total baja de 2.033 a **2.013** líneas **pese a** que este commit
+suma un fichero nuevo al diff. Los 31 mutantes que quedan son de los bloques 1 a
+5 y **siguen muriendo**, que también es información: T15 no ha roto nada de lo
+ya probado.
+
+### 65.2 · Lo que hay que mirar de las evidencias: **una retirada no se puede mutar**
+
+Es el punto de método de este encargo y va en voz alta. `harness.mutacion` muta
+**código que existe**. T15 casi solo borra, así que la campaña automática no
+tiene nada suyo que atacar: de los 31 mutantes, **cero** caen en lo que T15
+hace. `domain/models/aprobacion.py` entra en alcance con 67 líneas y no produce
+ni un mutante, porque lo que queda es un `sha256` y un `if texto is None` —y el
+mutador no reescribe comparaciones `is`, como ya observaron el bloque 3 (§23.1),
+el 4 (§32.1) y T14 (§54.2)—.
+
+**Presentar «31/31 muertos» como evidencia de T15 sería el número que tranquiliza
+sin medir nada.** Lo que mide T15 es otra cosa, y hay que construirla al revés:
+un mutante de una retirada es **reponer lo que se fue**, o **llevarse lo que
+tenía que quedarse**.
+
+Así que se han mutado **diez puntos a mano**, con el método de los bloques 3, 4
+y 5 —se aplica la mutación, se corre la suite acotada (376 casos de los diez
+ficheros implicados), se restaura con `git checkout`; «muerto» = al menos un test
+falla—. El script está en el área de trabajo de la sesión y **restaura cada
+fichero al terminar**; el árbol quedó limpio, comprobado con `git status`.
+
+| # | Mutante aplicado a mano | Resultado | Quién lo caza |
+|---|---|---|---|
+| M1 | `aprobacion.py` **repone `admite_circuito`**, el criterio viejo de las puertas | **muerto** (2 fallos) | `t15_del_dominio_de_f026_no_queda_nada_de_la_decision[admite_circuito]`, `t15_la_huella_y_su_normalizador_siguen_donde_estaban` |
+| M2 | La enmienda de la cabecera **pierde la fecha y la cita** | **muerto** (1) | `t15_la_cabecera_explica_que_la_decision_vive_ahora_en_estado_py` |
+| M3 | `sentencias.py` **repone `upsert_aprobacion`** | **muerto** (2) | `t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026`, `t15_las_tres_sentencias_de_f026_se_han_retirado` |
+| M4 | **Una escritura NUEVA a la tabla congelada, con otro nombre** | **muerto** (1) | `t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026` |
+| M5 | `guardar_validacion` **vuelve a revocar** (R57) | **muerto** (2) | `t15_r57_guardar_la_validacion_ya_no_revoca_nada`, `t15_ningun_modulo_...` |
+| M6 | El envoltorio **vuelve a delegar `consultar_aprobacion`** | **muerto** (1) | `t15_el_envoltorio_de_parte_ya_no_delega_lo_de_f026` |
+| M7 | **La ruta `aprobar` vuelve al host** | **muerto** (4) | `t15_el_host_ya_no_publica_la_ruta_aprobar`, `t15_function_app_ya_no_sabe_aprobar`, y los **dos de F-010** sobre el recuento |
+| M8 | **Se borra `sql/10_aprobaciones.sql`** (regla dura 3 al revés) | **muerto** (30) | `t15_la_tabla_de_f026_sigue_declarada_en_el_ddl` y 29 casos de `test_f026_ddl_aprobaciones.py` y `test_f028_ddl_historico.py` |
+| M9 | **Se corta de más**: `_normalizar` desaparece del módulo | **muerto** (69) | 69 casos, entre ellos `r20_la_misma_huella_conserva_la_aprobacion` y `r9_una_aprobacion_humana_rescata_un_parte_no_apto` |
+| M10 | **Se corta de más**: `huella_de_veredicto` deja de ser pública | **muerto** (8 errores de importación) | La suite entera de F-028 y los 14 de la huella de F-026 |
+
+**10 de 10 muertos.** Los que más valen son tres:
+
+- **M4** es el único que no se ve mirando ninguna función retirada: alguien
+  vuelve a escribir en `postventa.aprobaciones` **con otro nombre**. Ningún test
+  de `upsert_aprobacion` puede cazarlo, porque `upsert_aprobacion` ya no existe.
+  Lo caza el control del vocabulario, que es justo para lo que está (§63.4).
+- **M8** es el error caro de esta tarea: llevarse la tabla con el código. Mata a
+  30 casos, y el primero que salta es el de la regla dura 3.
+- **M9 y M10** son el error simétrico: cortar de más y llevarse la huella. Entre
+  los dos tumban media suite de F-028, que es exactamente lo que el encargo
+  avisaba que pasaría («si al retirar algo un test de la huella se pone rojo,
+  para y dilo»). **No pasó en ningún momento del trabajo real.**
+
+### Ruff
+
+`python -m ruff check` sobre los **15 ficheros tocados**: cero avisos en catorce
+y **uno** en `tests/utiles_sharepoint.py` (`I001`, orden de imports), que
+**ya estaba en `HEAD` antes de tocarlo** —comprobado contra `HEAD~1`—. El
+recuento del repositorio entero **baja de 62 a 61**: el `RET501` que el bloque 4
+dejó anotado en ese mismo fichero se va con el `return None` de
+`consultar_aprobacion`.
+
+---
+
+## 66 · Verificaciones MANUAL pendientes
+
+Las de T27 siguen pendientes. T15 **no crea ninguna nueva** y añade peso a dos,
+que siguen necesitando la base real y las ejecuta el humano tras desplegar:
+
+- **T27.1** (el DDL aplicado dos veces no falla y la semilla no duplica): ahora
+  importa más. `postventa.aprobaciones` deja de tener código que la escriba, así
+  que **la semilla es lo único que la conecta con el sistema vivo**. Si el
+  `CREATE TABLE` no se aplicara en un entorno nuevo, la semilla apuntaría a una
+  tabla que no existe y `cargar_ddl` levantaría antes de abrir la conexión. Aquí
+  solo se puede comprobar que el fichero sigue declarado y en su sitio.
+- **T27.2** (la aprobación que ya había aparece sembrada y el parte sigue
+  saliendo `aprobado`): es **la verificación que cierra T15**. Hasta hoy había
+  dos caminos —la tabla vieja y el histórico— y uno de ellos tapaba el fallo del
+  otro. Desde este commit **solo hay uno**: si la semilla no copió bien
+  `aprobado_por` y `huella_aprobada`, el parte que alguien aprobó antes del
+  despliegue saldrá `pendiente`, y no hay nada detrás que lo rescate.
+
+**La base real y el ERP no se han tocado**: todo corre con
+`RepositorioEnMemoria`, `RepositorioFalso`, `ErpEnMemoria` y dobles en memoria,
+sin red, sin BBDD y sin IA.
+
+---
+
+## 67 · Lo que queda fuera del alcance de T15, y hay que decirlo
+
+1. **El front sigue sin poder cambiar el estado.** Lo denunció T14 en §56 y
+   sigue igual: `services/postventa-front/js/app.js` y `js/pipeline.js` leen el
+   bloque `aprobacion`, que ya no viaja, y `js/api.js::aprobar` llama a un
+   endpoint que **desde este commit devuelve 404**. Ningún test del front se ha
+   puesto rojo, y eso no tranquiliza: los tests del front prueban el front
+   contra sus propios dobles, no contra el contrato del backend. **El
+   repositorio, entre T15 y el bloque 6, no se debe desplegar.** Es lo que la
+   spec secuencia (T16–T18) y lo que `design.md` §5 ya declaraba como riesgo,
+   con su mitigación: el front y la Function se despliegan juntos (`infra/`).
+2. **`docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md` siguen
+   documentando `POST /api/aprobar` y sin documentar `POST /api/estado`.** Es
+   **T25** (R59, bloque 9) y no se ha tocado nada de eso. Los dos tests que
+   vigilan esos documentos —`test_f012_r68_...` cuenta las filas de la tabla de
+   §8 y exige que el párrafo diga ese número, y `test_f019_r32_...` exige «Los
+   doce quedan en nivel»— **siguen en verde**, porque cuentan lo que el
+   documento declara y el documento no ha cambiado. Dicho de otro modo: hoy el
+   documento afirma doce endpoints y el servicio publica doce, pero **no son los
+   mismos doce**. T25 tiene que arreglar las dos cosas a la vez.
+3. **`ParteNoAprobable` sigue en `domain/models/errores.py` sin que nadie lo
+   levante**, y `_escribir(..., ademas=...)` sigue en el adaptador sin
+   llamantes. Los dos están razonados en §63.2 y **los dos quedan para el
+   líder**.
+
+---
+
+## 68 · Por dónde sigue · el encargo del bloque 6
+
+**T15 está cerrada, y con ella el bloque 5 entero.** No se ha entrado en el
+bloque 6, como pedía el encargo.
+
+Lo que el bloque 6 se encuentra ya hecho:
+
+- **el backend está completo y probado**: `POST /api/estado` existe, publica su
+  bloque `estado` con las cuatro claves y responde 200 / 400 / 409 / 503 según
+  el caso, y `POST /api/parte` devuelve el estado de cada parte sin una consulta
+  más;
+- **`POST /api/aprobar` ya no existe**, así que `js/api.js::aprobar` no tiene a
+  quién llamar: T16 no está «retirando algo que aún funciona», está arreglando
+  algo que desde este commit está roto;
+- **el contrato del bloque `estado`** —`estado`, `decidido_por_persona`,
+  `decidido_at_utc`, `estado_anterior`, y **ni el `oid`, ni el correo, ni el
+  nombre, ni el motivo** (R42, R52)— está fijado por
+  `tests/test_f028_estado_http.py`, que es contra lo que el front tiene que
+  programar.
+
+Tres apuntes para quien lo coja:
+
+- **`tests/test_f028_puertas.py` sigue siendo la red**, 48 casos, intacta desde
+  el bloque 0. Si uno se pone rojo en el bloque 6, **parar y decirlo**.
+- **El cuerpo de `POST /api/estado` exige `confirmado: true` como booleano**, no
+  como la cadena `"true"`, y **exige motivo al rechazar** (R11). Las dos cosas
+  las tiene que respetar `cuerpoDeCambioDeEstado` (T16), y las dos tienen test
+  en el backend por si sirven de contrato.
+- **El front y la Function se despliegan juntos.** Hasta que el bloque 6 esté,
+  este repositorio no se despliega.
+
+---
+
+## 69 · Estado al cerrar el encargo
+
+- `bash harness/init.sh` → **ENTORNO LISTO**, en verde, con la puerta de
+  cobertura al **100,0 %** de las **283** líneas cambiadas. (La medición hecha
+  justo tras el commit de T15, con el informe todavía sin commitear, dio
+  **320/320**; la de cierre, **283/283**. Es el mismo código contado contra
+  `dev` desde dos sitios, y las dos dan 100,0 % — pasó igual en T13 y en T14.)
+- Árbol limpio, **2 commits** sobre `014fd6a` (`a0b4ac7` T15 y el de este
+  informe), los dos locales. **Sin `push`.**
+- `harness/features.json` sin tocar: F-028 sigue `in_progress`, y marcarla
+  `done` no es cosa del implementer.
+- **La base real y el ERP no se han tocado.** `sql/10_aprobaciones.sql` tampoco:
+  el directorio `sql/` entero está fuera del diff.

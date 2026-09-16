@@ -52,6 +52,7 @@ de cabo a rabo.
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass, fields, replace
 from datetime import UTC, datetime
 from typing import Any
@@ -87,6 +88,7 @@ from domain.models.validacion import (
     Veredicto,
     validar_parte,
 )
+from domain.ports.persistencia import RepositorioPartesPort
 
 # Se importa el **módulo** y no la función: `fila_a_validacion_y_cierre` es de
 # T4 y todavía no existe, y un `from ... import` dejaría en rojo el fichero
@@ -778,3 +780,111 @@ def test_f030_r10_el_veredicto_recompuesto_da_la_misma_huella(caso: CasoDeHuella
     assert recompuesto.veredicto is caso.validacion.veredicto
     assert recompuesto.destino is caso.validacion.destino
     assert estado_cierre is None
+
+
+# --------------------------------------------------------------------------
+# T7 · el contrato del puerto dice lo que pasa ahora
+# --------------------------------------------------------------------------
+#
+# Lo que se vigila aquí **no es un documento técnico, es la memoria de una
+# decisión**, y se sigue la regla del proyecto: lo que se deroga **no se
+# borra**, se enmienda con un recuadro fechado que cita la premisa original
+# literal. El motivo, aquí, es más concreto que de costumbre: la premisa que
+# `guardar_validacion` sostenía —«los tres pasos del circuito … no puede[n]
+# recomputar la huella»— es la **descripción literal del defecto**. Quien la
+# leyera dentro de seis meses tendría delante el razonamiento que llevó a
+# fabricar un veredicto de pega, escrito en el sitio donde se declaran los
+# contratos.
+
+#: La premisa retirada, literal. Sigue en el puerto, **dentro del recuadro**.
+PREMISA_RETIRADA = "no puede** recomputar la huella"
+
+#: Lo que el puerto afirmaba y ya no es cierto desde F-028 T15.
+REVOCACION_RETIRADA = "revoca la aprobación humana cuyo veredicto ya no es este"
+
+
+def _llano(texto: str) -> str:
+    """El texto con los saltos de línea colapsados, para buscar frases en él."""
+    return " ".join(texto.split())
+
+
+def _afirmado(docstring: str) -> str:
+    """El contrato **sin** las líneas citadas en el recuadro de enmienda.
+
+    Un recuadro cita el texto viejo entero, así que buscarlo en la docstring
+    completa no distingue «lo sigue afirmando» de «lo cita para decir que ya no
+    vale». Lo que se afirma es lo que queda fuera del `>`.
+    """
+    return _llano(
+        "\n".join(
+            linea
+            for linea in docstring.splitlines()
+            if not linea.strip().startswith(">")
+        )
+    )
+
+
+def test_f030_r1_el_puerto_no_gana_ningun_metodo():
+    """El contrato no crece: la cuarta cosa viaja en la respuesta que ya había.
+
+    Un `consultar_validacion` aparte habría costado tres consultas más por
+    parte —una por paso del circuito— contra un PostgreSQL compartido con otros
+    proyectos (R18). Que el puerto tenga los mismos métodos que antes es la
+    forma de comprobar que la lectura del veredicto no se ha ido por su cuenta.
+    """
+    metodos = {
+        nombre for nombre in vars(RepositorioPartesPort) if not nombre.startswith("_")
+    }
+
+    assert "consultar_validacion" not in metodos
+    assert "consultar_situacion" in metodos
+    assert "consultar_estado_cierre" in metodos
+
+
+def test_f030_r2_el_puerto_promete_cuatro_cosas_y_no_tres():
+    """`consultar_situacion` documenta las cuatro, y de dónde salen.
+
+    El contrato es lo que lee quien implemente otro adaptador —o el doble de un
+    test—: si siguiera prometiendo tres, el veredicto volvería a ser algo que
+    cada consumidor se busca por su cuenta, que es exactamente como empezó
+    esto.
+    """
+    afirmado = _afirmado(inspect.getdoc(RepositorioPartesPort.consultar_situacion))
+
+    assert "**cuatro** cosas de vuelta" in afirmado
+    assert "el veredicto guardado" in afirmado
+    assert "nunca del cuerpo de la petición" in afirmado
+
+
+def test_f030_r1_el_puerto_ya_no_afirma_la_revocacion_ni_la_premisa_del_defecto():
+    """Las dos frases que `guardar_validacion` sostenía y ya no son ciertas.
+
+    La primera la retiró **F-028 T15**: la vigencia de una aprobación se
+    resuelve al derivar el estado, no con una escritura que marca la fila. El
+    adaptador llevaba su enmienda desde entonces; el puerto se había quedado
+    sin ella.
+
+    La segunda es **la descripción literal del defecto**: era cierta cuando se
+    escribió y dejó de serlo hoy. Los tres pasos del circuito no recomponen la
+    huella del cuerpo — la recomponen del veredicto **guardado**.
+    """
+    afirmado = _afirmado(inspect.getdoc(RepositorioPartesPort.guardar_validacion))
+
+    assert REVOCACION_RETIRADA not in afirmado
+    assert PREMISA_RETIRADA not in afirmado
+
+
+def test_f030_r1_las_dos_premisas_retiradas_siguen_citadas_y_fechadas():
+    """Control negativo: enmendar es **añadir un recuadro**, no borrar el texto.
+
+    Si alguien reescribe el contrato y se lleva por delante la cita, se pierde
+    lo único que explica por qué el código hacía lo que hacía — y el siguiente
+    que lea `_como_contexto` sin ese rastro volverá a fabricar el veredicto,
+    que es precisamente lo que pasó.
+    """
+    contrato = _llano(inspect.getdoc(RepositorioPartesPort.guardar_validacion))
+
+    assert "Enmienda del 2026-09-16 · F-030 T7" in contrato
+    assert REVOCACION_RETIRADA in contrato
+    assert PREMISA_RETIRADA in contrato
+    assert "RS26.09/0178" in contrato

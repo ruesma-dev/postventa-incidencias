@@ -197,14 +197,14 @@
       R46, R48, R49). | Verificación: T19 en verde y **toda**
       `tests/test_f006_nombrado.py` en verde salvo el único test de T21.
 
-- [ ] **T21**: Actualizar
+- [x] **T21**: Actualizar
       `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno` a la expectativa
       nueva, con su comentario, y escribir el recuadro fechado de R8 en
       `specs/F-006-sharepoint/requirements.md` (R55). | Verificación: el test en
       verde y el recuadro presente; el informe del implementer dice
       explícitamente **qué test cambió de expectativa y por qué**.
 
-- [ ] **T22**: `a_codigo_de_sigrid` compone por tramos (R45, R47), **sin tocar
+- [x] **T22**: `a_codigo_de_sigrid` compone por tramos (R45, R47), **sin tocar
       nada más de `cierre.py`**. | Verificación: T19 entero en verde, los dos
       tests de F-009 sobre la conversión en verde **sin tocarlos**, y control
       negativo de que `TEXTO_LOG_CIERRE`, `batch_de_cierre` e

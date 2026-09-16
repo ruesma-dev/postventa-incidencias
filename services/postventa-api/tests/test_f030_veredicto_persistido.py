@@ -1303,3 +1303,146 @@ def test_f030_r23_sin_ficha_del_parte_el_doble_no_devuelve_veredicto():
     assert situacion.estado_cierre is None
     assert situacion.decision_humana is None
     assert situacion.ultimo_estado_registrado is None
+
+
+# --------------------------------------------------------------------------
+# T16 · compatibilidad hacia atrás: qué pasa con lo ya decidido (R11, R12, §8)
+# --------------------------------------------------------------------------
+#
+# La pregunta que contesta esta sección es la que el humano va a comprobar
+# mañana con su parte: **¿hay que volver a decidir lo ya decidido?** No. Y no
+# porque se haya migrado nada, sino porque **la huella no cambia** (R13): la
+# que apuntó `POST /api/estado` salió del veredicto que esa misma llamada
+# guardó unas líneas antes, así que la recompuesta desde esas filas es la
+# misma.
+#
+# Va contra `RepositorioComoLaBase` y no contra un `SituacionParte` montado a
+# mano: lo que hay que demostrar es justamente que la decisión sobrevive **al
+# viaje por las columnas**, y un doble que devolviera el objeto que entró no
+# demostraría nada.
+
+
+def _base_con_lo_guardado(
+    validacion: ResultadoValidacion,
+    *,
+    decision: DecisionEstado | None = None,
+) -> RepositorioComoLaBase:
+    """La base tal y como la dejó `POST /api/estado` el día que se decidió.
+
+    La ficha del parte, su veredicto y —si la hubo— la fila del histórico, en
+    el mismo orden en el que las escribe el circuito de verdad.
+    """
+    base = RepositorioComoLaBase()
+    extraccion, _ = _material(validacion.destino)
+    base.guardar_parte(
+        parte=_parte_troceado(),
+        extraccion=extraccion,
+        remesa_id="remesa-inventada",
+        ahora=AHORA,
+    )
+    base.guardar_validacion(resultado=validacion, ahora=AHORA)
+    if decision is not None:
+        base.registrar_decision(decision=decision)
+    return base
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f030_r11_una_decision_ya_guardada_sigue_aprobando_sin_volver_a_decidir(
+    puerta,
+):
+    """R11, §8 · **no hay migración y no hay que volver a decidir nada.**
+
+    Es lo que va a pasar con el parte `b7e9b037` de RS26.09/0178 en cuanto se
+    despliegue F-030: la aprobación está en `postventa.historico_estado` desde
+    el 2026-09-16 con su huella real, el veredicto está en
+    `postventa.validaciones`, y la puerta compara por fin las dos cosas que hay
+    que comparar. Se archiva sin que nadie toque nada.
+
+    Y **sin escribir ninguna decisión nueva**: eso es lo que afirma el recuento
+    del histórico. Una puerta que «arreglara» esto volviendo a apuntar algo
+    estaría decidiendo por su cuenta, que es lo contrario de lo que se quiere.
+    """
+    guardado = _veredicto_guardado(Destino.COLA_VALIDACION_HUMANA)
+    aprobacion = _aprobacion_de_una_persona(guardado)
+    base = _base_con_lo_guardado(guardado, decision=aprobacion)
+    ctx = _contexto_para(puerta, veredicto=guardado.veredicto, destino=guardado.destino)
+    dobles = _dobles()
+
+    puerta(ctx, base, dobles, commit=False)
+
+    _ha_pasado(puerta, dobles)
+    assert base.decisiones == [aprobacion], (
+        "la puerta no puede apuntar nada: lo suyo es dejar pasar o no"
+    )
+
+
+@pytest.mark.parametrize("puerta", PUERTAS)
+def test_f030_r12_si_el_veredicto_guardado_cambia_la_aprobacion_deja_de_contar(
+    puerta,
+):
+    """R12, §8 · la otra mitad, y es la que hace que R11 no sea un agujero.
+
+    Una aprobación dice **sobre qué veredicto exacto** decidió una persona. Si
+    el parte se revalida con otra lectura —el modelo lee distinto, o alguien
+    corrige un campo decisivo—, lo que esa persona miró ya no es lo que hay, y
+    la aprobación deja de contar: el parte vuelve a `pendiente` y hay que
+    volver a mirarlo. Es lo que ya protegía R19 de F-028, y F-030 no lo afloja.
+
+    Sin este caso, el de arriba podría estar pasando porque la huella no se
+    compara en absoluto, que sería mucho peor que el defecto que se arregla.
+    """
+    guardado = _veredicto_guardado(Destino.COLA_VALIDACION_HUMANA)
+    aprobacion = _aprobacion_de_una_persona(guardado)
+    base = _base_con_lo_guardado(guardado, decision=aprobacion)
+
+    # El parte se vuelve a procesar y esta vez se lee otra cosa: la firma es
+    # una marca y no hay observaciones, así que el destino pasa a ser otro.
+    revalidado = _veredicto_guardado(Destino.REVISION_MANUAL)
+    otra_extraccion, _ = _material(Destino.REVISION_MANUAL)
+    base.guardar_parte(
+        parte=_parte_troceado(),
+        extraccion=otra_extraccion,
+        remesa_id="remesa-inventada",
+        ahora=AHORA,
+    )
+    base.guardar_validacion(resultado=revalidado, ahora=AHORA)
+
+    ctx = _contexto_para(puerta, veredicto=guardado.veredicto, destino=guardado.destino)
+    dobles = _dobles()
+
+    with pytest.raises(ParteNoApto) as fallo:
+        puerta(ctx, base, dobles, commit=False)
+
+    assert "este parte está pendiente" in str(fallo.value)
+    assert Destino.REVISION_MANUAL.value in str(fallo.value)
+    _nada_ha_salido(dobles)
+
+
+def test_f030_r12_la_huella_apuntada_deja_de_coincidir_cuando_cambia_el_veredicto():
+    """R12 · el porqué del caso de arriba, medido y no contado.
+
+    Lo que hace que la aprobación caduque es una comparación de huellas, no un
+    efecto lateral de los dobles. Aquí se ve: la apuntada es la del veredicto
+    de la cola y la que se recompone después es la de `revision_manual`, y son
+    distintas. Si alguien tocara `_normalizar` o `huella_de_veredicto` (R13),
+    este caso y el de R11 se contradirían y habría que parar.
+    """
+    de_la_cola = _veredicto_guardado(Destino.COLA_VALIDACION_HUMANA)
+    revisado = _veredicto_guardado(Destino.REVISION_MANUAL)
+
+    base = _base_con_lo_guardado(de_la_cola)
+    antes = base.consultar_situacion(hash_parte=HASH).validacion
+
+    otra_extraccion, _ = _material(Destino.REVISION_MANUAL)
+    base.guardar_parte(
+        parte=_parte_troceado(),
+        extraccion=otra_extraccion,
+        remesa_id="remesa-inventada",
+        ahora=AHORA,
+    )
+    base.guardar_validacion(resultado=revisado, ahora=AHORA)
+    despues = base.consultar_situacion(hash_parte=HASH).validacion
+
+    assert huella_de_veredicto(antes) == huella_de_veredicto(de_la_cola)
+    assert huella_de_veredicto(despues) == huella_de_veredicto(revisado)
+    assert huella_de_veredicto(antes) != huella_de_veredicto(despues)

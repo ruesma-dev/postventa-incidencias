@@ -195,7 +195,7 @@
 
 ## Bloque 5 · Cierre: rigor, documentación y verde
 
-- [ ] **T16**: Añadir el caso de **compatibilidad hacia atrás** (R11, R12, §8):
+- [x] **T16**: Añadir el caso de **compatibilidad hacia atrás** (R11, R12, §8):
       una decisión guardada con la huella del veredicto que hay en la base
       sigue aprobando el parte **sin volver a decidir**; y si el veredicto
       guardado cambia después, deja de contar y el parte vuelve a `pendiente`.

@@ -264,6 +264,10 @@ tarea que lo medirá.
 - **Aviso de entorno vigente:** `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` están
   **abiertas** en `dev`. Este bloque no ha ejecutado ninguna llamada real.
 
+> El riesgo de `design.md` §10.7 —el nombrado de `/api/archivar` sale del
+> cuerpo— **ya está dado de alta como `F-031`** (commit `11c04d0`, `pending`),
+> así que no hay nada que proponer: sigue fuera del alcance de F-030.
+
 ## Lo que queda para cerrar la feature
 
 Bloques 1 a 5 de `tasks.md` (T3–T20), en su orden y de uno en uno. El siguiente

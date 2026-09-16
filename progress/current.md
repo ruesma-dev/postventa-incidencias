@@ -34,8 +34,9 @@
 > 2. **Riesgo declarado y fuera de alcance (`design.md` §10.7)**: `/api/archivar`
 >    sigue nombrando la carpeta y el fichero con el `codigo_obra` y el
 >    `numero_incidencia` **del cuerpo**, no con los guardados. Hoy no hace daño
->    porque el front manda lo que leyó. **Se propone darlo de alta como feature
->    propia**; F-030 no lo cierra.
+>    porque el front manda lo que leyó. Ya está **dado de alta como `F-031`**
+>    (commit `11c04d0`, estado `pending`); F-030 no lo cierra, y queda para el
+>    humano decidir cuándo se aborda.
 >
 > **Siguiente encargo: el bloque 1 (T3–T7).** En T3 desaparece el andamio
 > declarado de `_situacion` (`object.__setattr__` mientras `SituacionParte` no

@@ -31,9 +31,9 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
-from domain.models.aprobacion import Aprobacion
 from domain.models.cierre import CorrespondenciaSigrid
 from domain.models.errores import PersistenciaNoDisponible, ReferenciaNoConsta
+from domain.models.estado import DecisionEstado, EstadoParte, SituacionParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
@@ -50,8 +50,8 @@ from domain.models.validacion import ResultadoValidacion
 
 from infrastructure.persistencia import sentencias
 from infrastructure.persistencia.mapeo import (
-    fila_a_aprobacion,
     fila_a_correspondencia,
+    fila_a_decision_estado,
     fila_a_entrada_cola,
     fila_a_preferencias,
     fila_a_traza_grafico,
@@ -122,29 +122,36 @@ class RepositorioPostgres:
     def guardar_validacion(
         self, *, resultado: ResultadoValidacion, ahora: datetime
     ) -> ResultadoGuardado:
-        """Guarda el veredicto, sustituyendo el anterior (R17), **y revoca la
-        aprobación humana que ya no le corresponde** (F-026, R30).
+        """Guarda el veredicto, sustituyendo el anterior (R17). **Y nada más.**
 
-        Las dos cosas van en la **misma transacción**, y eso es el requisito:
-        con dos habría una ventana —corta, pero real— en la que el veredicto
-        nuevo ya está guardado y la aprobación del viejo sigue viva, y un paso
-        que leyera justo ahí admitiría en el circuito un parte que nadie ha
-        aprobado.
+        > **Enmienda del 2026-09-16 · F-028 T15 (R57).** Hasta hoy esta
+        > operación llevaba pegada una segunda sentencia,
+        > `revocar_aprobacion_si_cambio`, en la misma transacción: F-026
+        > resolvía la vigencia de la decisión humana **al escribir** (su D-F),
+        > dejando la fila de `postventa.aprobaciones` marcada como revocada
+        > cuando el veredicto ya no era el aprobado.
+        >
+        > F-028 la resuelve **al derivar**: `estado.py::_aprueba_lo_que_hay`
+        > compara la huella apuntada en el histórico con la del veredicto de
+        > ahora, cada vez que hace falta el estado (R19). El resultado es el
+        > mismo y el histórico no pierde la fila —que es todo el punto de una
+        > tabla append-only—, así que la segunda sentencia ya no tiene nada que
+        > hacer y se retira con el resto del código de F-026.
+        >
+        > La preocupación que justificaba meterlas en una sola transacción
+        > —«una ventana en la que el veredicto nuevo ya está guardado y la
+        > aprobación del viejo sigue viva»— **desaparece por construcción**: no
+        > hay nada que actualizar, así que no hay ventana.
 
-        La revocación se ejecuta **siempre**, haya aprobación o no: si no la
-        hay, el `UPDATE` no toca ninguna fila. Consultar antes para decidir si
-        merece la pena sería una consulta de más en el camino más transitado
-        del servicio, y una condición de carrera con quien apruebe a la vez.
+        Este es el camino **más transitado del servicio**: se recorre una vez
+        por parte y por subida, 22 veces en una remesa real de Mirasierra. Que
+        vuelva a ser una sola sentencia es también una escritura menos por
+        parte contra un PostgreSQL compartido.
         """
         sql, parametros = sentencias.upsert_validacion(
             esquema=self._esquema, resultado=resultado, ahora=ahora
         )
-        revocacion = sentencias.revocar_aprobacion_si_cambio(
-            esquema=self._esquema, resultado=resultado, ahora=ahora
-        )
-        guardado = self._escribir(
-            sql, parametros, operacion="guardar_validacion", ademas=(revocacion,)
-        )
+        guardado = self._escribir(sql, parametros, operacion="guardar_validacion")
         log.info(
             "F-005 validación guardada: hash=%s destino=%s resultado=%s",
             resultado.hash_parte,
@@ -232,49 +239,116 @@ class RepositorioPostgres:
         )
         return traza
 
-    def guardar_aprobacion(self, *, aprobacion: Aprobacion) -> ResultadoGuardado:
-        """Registra que una persona aprobó este parte (F-026, R14, R17).
+    # --- el estado del parte (F-028) --------------------------------------
 
-        El log dice **qué** se aprobó y cómo fue, y nunca **quién**: el `oid`
-        es un dato personal seudónimo y la huella identifica un veredicto
-        concreto. Ninguno de los dos hace falta para saber que la operación fue
-        bien, y este log lo lee cualquiera que abra Application Insights (R13).
+    def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
+        """Lo que hace falta para derivar el estado de un parte (F-028, R2).
+
+        **Dos consultas y una sola llamada** (`design.md` §8.5): el `UNION ALL`
+        del histórico, que trae la última fila humana y la última de
+        cualquiera, y la traza de cierre. Se descartó resolverlo todo en una
+        sentencia con `LEFT JOIN LATERAL`: ahorra un viaje a la misma conexión
+        ya abierta y cuesta un SQL que nadie de este repositorio sabe leer de un
+        vistazo.
+
+        De la rama humana vuelve la **decisión entera**, porque es la que manda
+        sobre la máquina y hay que poder contrastar su huella. De la otra vuelve
+        **solo el estado**: las filas de máquina son constancia, nunca criterio
+        (R26), y lo único que se hace con ellas es no repetir fila.
+
+        Los tres huecos vacíos **no son un error**: es el caso normal del primer
+        día, y de ahí sale `pendiente` sin que nadie tenga que fallar.
+
+        El log dice qué se leyó y nunca **quién** ni **por qué**: el `oid` es
+        dato personal seudónimo y el motivo lo escribe una persona que puede
+        nombrar a otra (R52). Y este es el camino más transitado del servicio
+        desde que las tres puertas consultan el estado: si filtrara, filtraría
+        en bucle.
         """
-        sql, parametros = sentencias.upsert_aprobacion(
-            esquema=self._esquema, aprobacion=aprobacion
+        sql, parametros = sentencias.select_situacion_estado(
+            esquema=self._esquema, hash_parte=hash_parte
         )
-        resultado = self._escribir(sql, parametros, operacion="guardar_aprobacion")
+        filas = self._leer(sql, parametros, operacion="consultar_situacion")
+
+        decision_humana: DecisionEstado | None = None
+        ultimo_estado: EstadoParte | None = None
+        for fila in filas:
+            origen, *resto = fila
+            decision = fila_a_decision_estado(resto)
+            if origen == sentencias.ORIGEN_DECISION_HUMANA:
+                decision_humana = decision
+            else:
+                ultimo_estado = decision.estado
+
+        estado_cierre = self.consultar_estado_cierre(hash_parte=hash_parte)
         log.info(
-            "F-026 aprobación registrada: hash=%s destino=%s resultado=%s",
-            aprobacion.hash_parte,
-            aprobacion.destino_aprobado.value,
+            "F-028 situación del parte leída: hash=%s decidida_por_persona=%s "
+            "ultimo_estado=%s cierre=%s",
+            hash_parte,
+            decision_humana is not None,
+            None if ultimo_estado is None else ultimo_estado.value,
+            estado_cierre,
+        )
+        return SituacionParte(
+            decision_humana=decision_humana,
+            ultimo_estado_registrado=ultimo_estado,
+            estado_cierre=estado_cierre,
+        )
+
+    def registrar_decision(self, *, decision: DecisionEstado) -> ResultadoGuardado:
+        """Añade una fila al histórico. **Nunca pisa ninguna** (F-028, R21).
+
+        Es la única escritura de este adaptador sin `ON CONFLICT`, y es el punto
+        de la feature: el histórico acumula. Quien evita las filas repetidas es
+        la regla de constancia —solo se escribe si el estado derivado cambió—,
+        no la base.
+
+        El log dice **de qué estado a cuál** fue el parte, si lo decidió una
+        persona y cómo acabó la escritura. Nunca el `oid` ni el motivo (R52):
+        ninguno de los dos hace falta para saber que la operación fue bien, y
+        este log lo lee cualquiera que abra Application Insights.
+        """
+        sql, parametros = sentencias.insert_decision_estado(
+            esquema=self._esquema, decision=decision
+        )
+        resultado = self._escribir(sql, parametros, operacion="registrar_decision")
+        log.info(
+            "F-028 cambio de estado registrado: hash=%s de=%s a=%s "
+            "por_persona=%s resultado=%s",
+            decision.hash_parte,
+            None
+            if decision.estado_anterior is None
+            else decision.estado_anterior.value,
+            decision.estado.value,
+            decision.por_persona,
             resultado.value,
         )
         return resultado
 
-    def consultar_aprobacion(self, *, hash_parte: str) -> Aprobacion | None:
-        """La aprobación de ese parte, o `None` si no consta (F-026).
+    def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:
+        """El estado de la traza de cierre de ese parte, o `None` (F-028, R18).
 
-        `None` **no es un error**: es que a ese parte no lo ha aprobado nadie.
-        Quien lo pide decide qué hacer con ello — los tres pasos del circuito,
-        no admitirlo si además no es apto.
+        `None` **no es un error**: es que a ese parte no se le ha intentado
+        cerrar nada todavía, que es el caso de todos hasta que alguien pulsa el
+        botón.
 
-        Del resultado se registra si sigue vigente y nada más, por el mismo
-        motivo que en el guardado.
+        Vuelve **en crudo**, como cadena, y no como `EstadoCierre`: el dueño de
+        lo que puede haber en esa columna es el `CHECK` de `sql/06_cierres.sql`,
+        y la derivación lo compara por valor. Convertirlo aquí obligaría a
+        decidir qué hacer con un estado que el `Enum` no conozca, y eso ya lo
+        decide quien lee la traza entera (`consultar_grafico` y F-009).
+
+        **No se registra nada**: lo llama `consultar_situacion`, que ya escribe
+        una línea con el resultado, y duplicarla sería escribir dos veces por
+        parte y por paso.
         """
-        sql, parametros = sentencias.select_aprobacion(
+        sql, parametros = sentencias.select_estado_cierre(
             esquema=self._esquema, hash_parte=hash_parte
         )
-        filas = self._leer(sql, parametros, operacion="consultar_aprobacion")
+        filas = self._leer(sql, parametros, operacion="consultar_estado_cierre")
         if not filas:
             return None
-        aprobacion = fila_a_aprobacion(filas[0])
-        log.info(
-            "F-026 aprobación leída: hash=%s vigente=%s",
-            hash_parte,
-            aprobacion.vigente,
-        )
-        return aprobacion
+        return filas[0][0]
 
     def cola_validacion_humana(self, *, limite: int) -> tuple[EntradaCola, ...]:
         """Los partes que esperan que una persona decida (R22).

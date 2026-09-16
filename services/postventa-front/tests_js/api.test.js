@@ -152,11 +152,22 @@ function cuerpoDeCierreInventado() {
   };
 }
 
-/** El cuerpo de `POST /api/aprobar`: el de guardar mas las dos claves de F-026. */
-function cuerpoDeAprobacionInventado() {
+/**
+ * El cuerpo de `POST /api/estado`: el de guardar mas las cuatro claves de F-028.
+ *
+ * Enmienda del 2026-09-16 · F-028 T16. Antes habia aqui un
+ * `cuerpoDeAprobacionInventado` para `POST /api/aprobar`, que F-028 T15 retiro
+ * del backend: ese endpoint devuelve 404 desde aquel commit. Lo que se prueba
+ * sigue siendo lo mismo -que el cliente llama a SU ruta, con su metodo, su
+ * cabecera y su paso propio de traza-, y por eso los tres casos de `aprobar`
+ * se han reescrito sobre `cambiarEstado` en vez de borrarse.
+ */
+function cuerpoDeCambioDeEstadoInventado() {
   return Object.assign(cuerpoDeParteInventado(), {
+    estado: "rechazado",
     usuario_oid: "oid-inventado-para-el-test",
     confirmado: true,
+    motivo: "Inventado: la firma no es del cliente",
   });
 }
 
@@ -173,10 +184,10 @@ const LOS_ENDPOINTS = [
   { nombre: "archivar", ruta: "/api/archivar", metodo: "POST", llamar: (api) => api.archivar(new FormData(), HASH_INVENTADO) },
   { nombre: "cerrar", ruta: "/api/cerrar", metodo: "POST", llamar: (api) => api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO) },
   { nombre: "adjuntar", ruta: "/api/adjuntar", metodo: "POST", llamar: (api) => api.adjuntar(new FormData(), HASH_INVENTADO) },
-  { nombre: "aprobar", ruta: "/api/aprobar", metodo: "POST", llamar: (api) => api.aprobar(cuerpoDeAprobacionInventado(), HASH_INVENTADO) },
+  { nombre: "cambiarEstado", ruta: "/api/estado", metodo: "POST", llamar: (api) => api.cambiarEstado(cuerpoDeCambioDeEstadoInventado(), HASH_INVENTADO) },
 ];
 
-test("f007 R27 / f019 / f009 / f012 / f026: los DOCE endpoints llaman a su ruta, con su metodo", async () => {
+test("f007 R27 / f019 / f009 / f012 / f028: los DOCE endpoints llaman a su ruta, con su metodo", async () => {
   for (const endpoint of LOS_ENDPOINTS) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
 
@@ -199,6 +210,13 @@ test("f007 R27: son doce, y la lista se entera si aparece un decimotercero", () 
   // `/api`. Eran diez hasta F-012, que anade `adjuntar`, y once hasta F-026,
   // que anade `aprobar`; la cuenta tuvo que cuadrar aqui antes de que el
   // metodo existiera, que es para lo que esta.
+  //
+  // Enmienda del 2026-09-16 · F-028 T16: siguen siendo DOCE, pero no los
+  // mismos doce. `aprobar` se va con su endpoint (`POST /api/aprobar`, que el
+  // backend retiro en T15) y entra `cambiarEstado` (`POST /api/estado`). Que
+  // el numero no se mueva es justo el caso que esta lista existe para NO dejar
+  // pasar en silencio, y por eso va tambien la comparacion nombre a nombre de
+  // la linea siguiente.
   const { api } = apiDePrueba([respuesta(200, {})]);
   const auxiliares = ["peticion", "cuerpoDeParte", "identidad"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
@@ -351,34 +369,42 @@ test("f019: los tres endpoints nuevos trazan su paso, y nada mas", async () => {
   }
 });
 
-test("f026: aprobar manda POST /api/aprobar, con cuerpo JSON y su paso propio", async () => {
+test("f028: cambiarEstado manda POST /api/estado, con cuerpo JSON y su paso propio", async () => {
   // Un paso propio y no «parte»: el registro tiene que poder distinguir
-  // «alguien guardo el parte» de «alguien decidio aprobarlo», que es la unica
-  // puerta por la que un parte rechazado entra en el circuito del ERP.
+  // «alguien guardo el parte» de «alguien decidio su estado», que es la unica
+  // puerta por la que un parte entra -o deja de entrar- en el circuito del ERP.
   const { api, llamadas, trazas } = apiDePrueba([
-    respuesta(200, { hash_parte: HASH_INVENTADO, aprobacion: { estado: "aprobado" } }),
+    respuesta(200, {
+      hash_parte: HASH_INVENTADO,
+      resultado_estado: "cambiado",
+      estado: { estado: "rechazado", decidido_por_persona: true },
+    }),
   ]);
 
-  const datos = await api.aprobar(cuerpoDeAprobacionInventado(), HASH_INVENTADO);
+  const datos = await api.cambiarEstado(
+    cuerpoDeCambioDeEstadoInventado(),
+    HASH_INVENTADO,
+  );
 
-  assert.equal(llamadas[0].url, "/api/aprobar");
+  assert.equal(llamadas[0].url, "/api/estado");
   assert.equal(llamadas[0].opciones.method, "POST");
   assert.equal(
     llamadas[0].opciones.headers["Content-Type"],
     "application/json",
     "sin esta cabecera el backend no parsea el cuerpo y responde 400",
   );
-  assert.equal(trazas[trazas.length - 1].paso, "aprobar");
+  assert.equal(trazas[trazas.length - 1].paso, "estado");
   assert.equal(trazas[trazas.length - 1].hash, HASH_INVENTADO);
-  assert.equal(datos.aprobacion.estado, "aprobado");
+  assert.equal(datos.estado.estado, "rechazado");
 });
 
-test("f026 R43: por la traza de aprobar no pasa el oid de quien aprueba", async () => {
+test("f028 R52: por la traza del cambio de estado no pasa ni el oid ni el motivo", async () => {
   // R28 de F-007 sigue mandando: hash, paso, estado y http, y nada mas. El
-  // cuerpo de esta peticion lleva el identificador de una persona.
+  // cuerpo de esta peticion lleva el identificador de una persona Y el motivo,
+  // que es texto libre y puede llevar dentro el nombre de un cliente.
   const { api, trazas } = apiDePrueba([respuesta(200, {})]);
 
-  await api.aprobar(cuerpoDeAprobacionInventado(), HASH_INVENTADO);
+  await api.cambiarEstado(cuerpoDeCambioDeEstadoInventado(), HASH_INVENTADO);
   const evento = trazas[trazas.length - 1];
 
   assert.deepEqual(

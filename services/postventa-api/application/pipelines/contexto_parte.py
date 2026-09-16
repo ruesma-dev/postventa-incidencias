@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from domain.models.aprobacion import Aprobacion
 from domain.models.cierre import ResultadoCierre
+from domain.models.estado import SituacionParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.firma import LecturaFirma
 from domain.models.grafico import ResultadoGrafico
@@ -59,18 +59,26 @@ class ContextoParte:
     base es otra cosa y va aparte, porque guarda menos: el `oid` y nunca el
     login (R43).
 
-    `aprobacion` es la decisión de una persona sobre un parte que F-004
-    rechazó (F-026). Es el segundo caso de lo mismo que `traza_grafico`, y por
-    la misma razón: **viene del repositorio y nunca del cuerpo de la
-    petición** (R24). La leen los tres pasos del circuito dentro de su puerta
-    de aptitud; si viniera del cuerpo, quien llama podría afirmar que alguien
-    aprobó lo que nadie aprobó, y con eso se cierra en el ERP de producción
-    una reclamación que la validación había rechazado.
+    `situacion` es lo que hay en el almacén sobre el estado de este parte
+    (F-028): la última decisión de una persona, el último estado registrado en
+    el histórico y lo que dice la traza de cierre. Sustituye a la `aprobacion`
+    de F-026 —que solo traía una de las tres— porque lo que las puertas exigen
+    ya no es un permiso suelto sino el **estado** del parte, y ese se deriva de
+    los tres hechos a la vez (R2, R16).
 
-    Que sea `None` significa exactamente «no consta que nadie lo haya
-    aprobado», y una aprobación **revocada** llega hasta aquí diciendo que lo
-    está: el paso necesita distinguir las dos cosas tan poco como la pantalla
-    necesita distinguirlas mucho (R31).
+    Es el tercer caso de lo mismo que `traza_grafico`, y por la misma razón:
+    **viene del repositorio y nunca del cuerpo de la petición** (R33). La leen
+    los tres pasos del circuito dentro de su puerta de aptitud; si viniera del
+    cuerpo, quien llama podría afirmar que alguien aprobó lo que nadie aprobó,
+    y con eso se cierra en el ERP de producción una reclamación que la
+    validación había rechazado.
+
+    Que sea `None` significa «todavía no se ha preguntado», y no «no hay
+    nada»: un parte del que no consta nada trae una `SituacionParte` con sus
+    tres huecos vacíos, que es el caso normal del primer día. La distinción
+    importa porque quien la deja aquí es el propio paso, al abrir su puerta, y
+    quien la lee después —la constancia del cierre— tiene que saber si ya se
+    preguntó o no.
     """
 
     parte: ParteTroceado
@@ -81,5 +89,5 @@ class ContextoParte:
     grafico: ResultadoGrafico | None = None
     traza_grafico: TrazaGrafico | None = None
     cierre: ResultadoCierre | None = None
-    aprobacion: Aprobacion | None = None
+    situacion: SituacionParte | None = None
     avisos: list[str] = field(default_factory=list)

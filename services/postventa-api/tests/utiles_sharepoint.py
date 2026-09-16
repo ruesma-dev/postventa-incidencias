@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from domain.models.estado import SituacionParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     EntradaCola,
@@ -370,26 +371,27 @@ class RepositorioFalso:
     def cola_validacion_humana(self, *, limite: int) -> tuple[EntradaCola, ...]:
         raise NotImplementedError("F-006 no lee la cola")
 
-    def consultar_aprobacion(self, *, hash_parte: str) -> None:
-        """F-026 · «a este parte no lo ha aprobado nadie», que **no es un error**.
+    def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
+        """F-028 · «de este parte no consta nada», que **no es un error**.
 
-        Ésta sí devuelve valor en vez de levantar, y es la excepción a la regla
-        de arriba **por lo que significa**: `None` es una respuesta legítima
-        del puerto —la más común, de hecho— y levantar aquí convertiría en un
-        fallo del test lo que en producción es el caso normal. Los tests de
-        F-006 archivan partes aptos y partes no aptos, y el no apto pasa por
-        esta consulta desde que la puerta mira dos cosas.
+        Los tres huecos vacíos son el caso normal del primer día, y es lo mismo
+        que devuelve el adaptador de verdad: nadie ha decidido, no hay ninguna
+        fila en el histórico y no hay traza de cierre. De ahí se deriva
+        `pendiente` o `aprobado` según el veredicto, que es lo que necesitan
+        los tests de F-006.
 
-        Que no sea programable también es deliberado: los casos con aprobación
-        se prueban con `RepositorioEnMemoria`, que sí la sabe devolver.
+        Devuelve valor en vez de levantar por lo mismo que la de arriba, y
+        ahora hace falta **siempre**: desde F-028 la puerta de aptitud pregunta
+        también por el parte apto —se retiró el atajo (`design.md` §6)—, así
+        que este doble tiene que saber contestar o ningún test de F-006 llegaría
+        a subir nada.
 
-        **No se apunta en `registro`**: ese registro existe para fijar el orden
-        de las *escrituras* entre los dos puertos (F-019, R19), y una lectura
-        que no deja rastro en ningún sitio no es un apunte de ese orden.
-        Meterla ahí convertiría «no se escribió nada» en «se escribió algo» en
-        los tests que lo comprueban, sin que se hubiera escrito nada.
+        Que no sea programable es deliberado, igual que arriba: los casos con
+        decisión se prueban con `RepositorioEnMemoria`, que sí la sabe
+        devolver. Y **no se apunta en `registro`**: es una lectura, y ese
+        registro fija el orden de las escrituras (F-019 R19).
         """
-        return None
+        return SituacionParte()
 
 
 def parte_de_prueba(

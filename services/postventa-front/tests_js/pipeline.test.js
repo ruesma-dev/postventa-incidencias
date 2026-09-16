@@ -97,6 +97,13 @@ function parteInventado(extra) {
       // guardado. Lo que ese requisito fija tiene su propio fichero:
       // `tests_js/persistencia.test.js`.
       guardado: true,
+      // Enmienda del 2026-09-16 · F-028 T17 · el bloque `estado` que devuelve
+      // el backend. Se pone en el fixture común por el mismo motivo que
+      // `guardado`: desde F-028, lo que abre el circuito es el estado del
+      // parte y no su veredicto (R33), así que el estado normal de un parte
+      // procesado y dado por bueno lo incluye. Lo que ese requisito fija tiene
+      // su propio fichero: `tests_js/estado.test.js`.
+      estadoParte: { estado: "aprobado", decidido_por_persona: false },
       fichero: new File([new Uint8Array([0x25, 0x50])], "parte-inventado.pdf"),
     },
     extra || {},
@@ -331,26 +338,39 @@ test("f007 R17: revalidar sin extracción previa es un error de programación", 
 });
 
 // --- R13 · el semáforo ------------------------------------------------------
-
-test("f007 R13: el semáforo sale de veredicto y destino, no de una escala nueva", () => {
-  assert.equal(semaforoDe(validacionInventada("apto", "archivo_y_cierre")), "verde");
-  assert.equal(
-    semaforoDe(validacionInventada("no_apto", "cola_validacion_humana")),
-    "ambar",
-  );
-  assert.equal(semaforoDe(validacionInventada("no_apto", "revision_manual")), "rojo");
-});
-
-test("f007 R13: sin veredicto todavía, no hay semáforo que pintar", () => {
-  assert.equal(semaforoDe(null), "");
-  assert.equal(semaforoDe(undefined), "");
-  assert.equal(semaforoDe({}), "");
-});
-
-test("f007 R13: un apto con destino que no es archivo_y_cierre NO es verde", () => {
-  // Defensa contra una combinación imposible: verde significa archivable.
-  assert.notEqual(semaforoDe(validacionInventada("apto", "revision_manual")), "verde");
-});
+//
+// Enmienda del 2026-09-16 · F-028 T17
+//
+// Aquí había tres casos que llamaban a `semaforoDe(validacion)` con un solo
+// argumento y esperaban que el color saliera del veredicto y del destino:
+//
+//   · «f007 R13: el semáforo sale de veredicto y destino, no de una escala
+//      nueva» — apto → verde, cola → ámbar, revisión → rojo;
+//   · «f007 R13: sin veredicto todavía, no hay semáforo que pintar»;
+//   · «f007 R13: un apto con destino que no es archivo_y_cierre NO es verde».
+//
+// Se retiran porque **derivar el color del veredicto es exactamente lo que
+// F-028 prohíbe** (R17): mientras el semáforo saliera de ahí, un parte apto
+// que una persona había rechazado se pintaba verde, que es el defecto que abre
+// la feature. El estado lo manda ahora el backend y la pantalla solo lo pinta.
+//
+// No se han «adaptado» pasándoles un segundo argumento, que es lo que los
+// habría dejado verdes probando otra cosa. Sus sustitutos están en
+// `tests_js/estado.test.js`, y cubren más de lo que cubrían estos:
+//
+//   · las cuatro marcas, estado a estado, incluidas `rechazado` y `cerrado`,
+//     que antes no existían;
+//   · el ámbar y el rojo, que son lo único que sigue saliendo del destino, y
+//     ahora solo **dentro** de `pendiente`;
+//   · «sin el bloque del backend NO se inventa ninguna marca», que es el
+//     heredero directo del «sin veredicto no hay semáforo» y va al mismo lado
+//     seguro: sin marca, nunca con la de aprobado;
+//   · y R39, la distinción entre el aprobado de la máquina y el de una
+//     persona, que aquí no se podía ni escribir.
+//
+// Lo que sí sigue en este fichero es `esArchivable`, y a propósito: conserva
+// su significado de siempre —«lo que la máquina dio por bueno»— porque lo usa
+// `noArchivables()` y porque distinguirlo del aprobado a mano es el requisito.
 
 // --- R21 · nunca se archiva lo que no es apto ------------------------------
 
@@ -366,14 +386,19 @@ test("f007 R21: solo es archivable apto + archivo_y_cierre", () => {
   assert.equal(esArchivable({}), false);
 });
 
-test("f007 R21: componer el cuerpo de archivo de un parte no apto es imposible", () => {
+test("f007 R21 / f028 R33: componer el cuerpo de archivo de un parte no aprobado es imposible", () => {
   // No basta con no pintar el botón: aunque se pulse dos veces, aquí se para.
+  //
+  // Enmienda del 2026-09-16 · F-028 T17: lo que se niega ya no es «no es
+  // apto» sino «no consta aprobado». El caso del parte apto rechazado a mano
+  // —el que la feature viene a arreglar— está en `tests_js/estado.test.js`.
   const parte = parteInventado({
     extraccion: extraccionInventada(),
     validacion: validacionInventada("no_apto", "cola_validacion_humana"),
+    estadoParte: { estado: "pendiente", decidido_por_persona: false },
   });
 
-  assert.throws(() => cuerpoDeArchivo(parte), /no es apto/i);
+  assert.throws(() => cuerpoDeArchivo(parte), /no consta aprobado/i);
 });
 
 test("f007 R21: un parte ya archivado no se vuelve a componer", () => {

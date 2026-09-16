@@ -95,16 +95,24 @@ def _create_index() -> str:
 # --------------------------------------------------------------------------
 
 
-def test_f026_r16_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo():
+def test_f026_r16_el_fichero_sigue_la_convencion_y_se_aplica_en_su_sitio():
     """`NN_nombre.sql`, y después de los nueve que ya había.
 
     El orden importa: la tabla tiene una clave ajena contra `postventa.partes`
     y contra un esquema vacío no se puede crear hasta que exista `03_partes`.
+
+    Dejó de ser **el último** el 2026-09-15: F-028 añadió
+    `11_historico_estado.sql`, cuya semilla **lee de esta tabla** y por tanto
+    tiene que aplicarse después. Lo que este test sigue fijando es lo que le
+    importa a F-026 —que el fichero existe, sigue la convención y va detrás de
+    `03_partes`—, y se le añade el orden frente al histórico, que es la
+    dependencia nueva.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
-    assert nombres[-1] == FICHERO
+    assert FICHERO in nombres
     assert nombres.index("03_partes.sql") < nombres.index(FICHERO)
+    assert nombres.index(FICHERO) < nombres.index("11_historico_estado.sql")
 
 
 def test_f026_r16_la_guarda_acepta_todas_sus_sentencias():

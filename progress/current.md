@@ -1,6 +1,465 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## 🧪 T27 de F-028 · **LAS SEIS VERIFICACIONES QUE EJECUTA EL HUMANO**, con su comando
+>
+> Lo pide el **hallazgo 1** de `progress/review_F-028.md`: F-009 tuvo su bloque
+> propio aquí y F-028 no lo tenía, y aquí es donde se mira antes de desplegar.
+> Detrás de la verificación 6 hay **un cierre real en el ERP de producción**.
+>
+> **Antes de nada, dos cosas del despliegue:**
+>
+> - **El front y la Function van juntos.** La rama es desplegable desde T18;
+>   desplegar solo una mitad rompe la otra. El front, con `-SoloFront`: el modo
+>   completo regenera el secreto y rompe el login.
+> - **Las ventanas de escritura se despliegan cerradas** y hay **dos**:
+>   `CIERRE_HABILITADO` (el ERP) y `ARCHIVO_HABILITADO` (SharePoint). Se abren
+>   para las verificaciones 4 y 6, y **se vuelven a cerrar al terminar**.
+>
+> ### La consulta de solo lectura, que es la que decide las 1, 2 y 3
+>
+> ```sql
+> SELECT estado_anterior, estado, decidido_por IS NOT NULL AS por_persona,
+>        decidido_at_utc, motivo
+> FROM postventa.historico_estado
+> WHERE hash_parte = %s
+> ORDER BY decidido_at_utc, cambio_id;
+> ```
+>
+> Se lanza como las lecturas del bloque 8 de F-009: con el intérprete del
+> servicio y `psycopg`, **sin `psql`**, que no está en el PATH de este puesto.
+>
+> ### Las seis
+>
+> | # | Qué se comprueba | Cómo, y el detalle que importa |
+> |---|---|---|
+> | **1** | El DDL **dos veces seguidas** no falla y **la semilla no duplica** | Desplegar y volver a aplicar. Su idempotencia es el `NOT EXISTS`. Importa más que antes: desde T15 **nadie escribe** en `postventa.aprobaciones`, así que **la semilla es lo único que la conecta con el sistema vivo** |
+> | **2** | La aprobación que ya había **aparece sembrada** y su parte **sigue saliendo `aprobado`** | Es la de `RS26.09/0149`, la que aprobaste a mano el 2026-09-15. Se ve **desde la propia pantalla**. **Es la verificación que cierra T15**: antes había dos caminos y uno tapaba el fallo del otro; ahora solo hay uno, y si la semilla no copió bien el autor y la huella, **el parte saldrá `pendiente` y no hay nada detrás que lo rescate** |
+> | **3** | Aprobar → rechazar → aprobar deja **tres** filas, en orden y ninguna pisada | Con la consulta de arriba. **Ojo al contarlas**: el primer guardado de un parte deja **su propia fila de constancia**, así que un parte no apto recién subido y luego rechazado enseña **dos**, no una |
+> | **4** | Un parte **apto rechazado a mano NO se archiva** | **Es lo que pediste el 2026-09-15.** Era imposible por construcción hasta el bloque 4. Se hace entera desde la web: subir un parte que salga verde, rechazarlo con su motivo, y comprobar que **no entra en la tanda** |
+> | **5** | Un parte cerrado responde **409**, y la web **lo explica** | Dos mitades y la web solo enseña una: **no ofrece el gesto** sobre un parte cerrado, así que hay que mirar **que lo explica** (la frase de por qué no se puede) y, aparte, que el 409 sigue estando para quien llame al endpoint por su cuenta: `curl -X POST …/api/estado` con un parte cerrado |
+> | **6** | Un parte con el número **con espacios alrededor de la barra** cierra la incidencia | **El defecto que abrió el asunto 2.** **HAZ PRIMERO EL DRY-RUN** y mira que la reclamación que devuelve **es la que esperas**, antes de confirmar: el arreglo hace que ahora se encuentre una reclamación donde antes no se encontraba ninguna, y **que sea la correcta es lo que hay que ver con los ojos una vez** |
+>
+> ### Y una comprobación del despliegue, que no es de T27
+>
+> Que el host **publique la ruta nueva**: un `curl -X POST …/api/estado` contra
+> el entorno es lo único que demuestra que el despliegue la recogió. Los tests
+> la leen de `app.get_functions()`, que es lo que se despliega, pero eso no
+> prueba que esté publicada.
+>
+> **Al terminar: cerrar las dos ventanas** con
+> `infra9_ventana_escritura.ps1 -Cerrar` y
+> `az functionapp config appsettings set … ARCHIVO_HABILITADO=false`.
+
+> ## ✅ AL DÍA · 2026-09-16 · **T26 y T28 de F-028: la implementación está CERRADA** · solo queda T27, que es del humano
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits **locales, sin
+> `push`**.
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**. **PUERTA COBERTURA 100,0 % de
+> 297 líneas cambiadas (297/297)**, umbral 80 %, nivel `estandar`.
+>
+> ### Lo primero: la campaña de cierre, y por qué su número vale
+>
+> **32 mutantes, 32 muertos, 0 supervivientes, 0 timeouts** en 150,7 s
+> (`python -m harness.mutacion --feature F-028 --base dev`; 21 ficheros, 2.118
+> líneas en alcance). **No hay ningún superviviente que juzgar.**
+>
+> Y vale porque **la línea base se comprobó verde ANTES de lanzarla**, que es
+> lo que invalidó la primera campaña de T13 y la entera del bloque 7. `init.sh`
+> resolvió los dos servicios **por caché**, así que no bastaba: las cuatro
+> suites se reejecutaron enteras y a mano —`api` **2.650 pasados**, `front`
+> **250** (Python) y **298** (JavaScript), raíz **62**, cero fallos—.
+>
+> ### Lo que la campaña NO mide, dicho en voz alta
+>
+> - **El JavaScript y el HTML**: el arnés muta y mide solo Python, y los
+>   bloques 6 y parte del 5 son front —**703 líneas añadidas y 325 borradas**
+>   entre `pipeline.js`, `app.js`, `index.html` y `api.js`—. Lo respaldan los
+>   **36 mutantes a mano** de T16/T17 (15) y T18 (21), todos muertos.
+> - **Las retiradas**: T15 borró cinco ficheros (**2.611 líneas**) y lo borrado
+>   no está en el alcance. Lo respaldan los **10 mutantes del revés** de §65.2
+>   —reponer lo que se fue, o llevarse lo que debía quedarse—, todos muertos.
+> - **Trece de los 21 ficheros en alcance no dan ni un mutante** (676 de las
+>   2.118 líneas): el mutador no reescribe `is`, llamadas ni `try/except`. Los
+>   respaldan los mutantes a mano de cada bloque.
+>
+> Recuento de la feature entera: **118 mutantes a mano, 116 muertos, 2
+> supervivientes equivalentes con la equivalencia demostrada** (§95.3 y
+> §105.3).
+>
+> ### Lo que el reviewer tiene sobre la mesa
+>
+> `progress/impl_F-028.md` §128–§136 reúne, para que no haya que rebuscarlo:
+>
+> - **§131 · las nueve desviaciones de `design.md`** declaradas por el camino,
+>   con lo que hay que juzgar de cada una. Las tres de más peso:
+>   `puerta_de_estado.py` (§31.1), `constancia.py` (§22.1) y `avisoDeEstado` en
+>   `js/pipeline.js` (§83.1). Y una que no es del código sino de la spec: la
+>   verificación de T20 —«T19 en verde»— **no es alcanzable sin T22** (§94.2).
+> - **§132 · los puntos abiertos**: `ParteNoAprobable` vivo **sin emisor**
+>   (§63.2); las **dos aserciones ciertas por construcción** sobre
+>   `aprobaciones_consultadas` (§63.3); y que **las tres puertas siguen
+>   levantando `ParteNoApto` y no `ParteCerrado`** (§31.2, decidido en §40.1).
+>   Ninguno se ha tocado: son del reviewer.
+> - **§135 · T27 entera, sin marcar**, con lo que cada bloque fue apuntando
+>   sobre cada una de las seis verificaciones.
+>
+> ### Qué queda
+>
+> 1. **T27**, las seis verificaciones contra la base real y el ERP. **Las
+>    ejecuta el humano tras desplegar**, y el front y la Function **se
+>    despliegan juntos** (`infra/`).
+> 2. El **reviewer** contra `CHECKPOINTS.md`.
+> 3. `harness/features.json` **sin tocar**: F-028 sigue `in_progress`. Marcarla
+>    `done` es del líder, tras el APROBADO.
+> 4. Pendiente de propagar a `arnes-base` (**del líder**, el implementer no
+>    toca el arnés): que la campaña avise de los ficheros en alcance sin
+>    mutantes; que un servicio en **dos lenguajes** diga que mide y muta solo
+>    uno; que `harness.mutacion` **compruebe la línea base** antes de empezar; y
+>    que la caché del portero **no ve `docs/`**, así que un documento roto puede
+>    pasar por verde.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · **T23 y T24 de F-028 terminadas** · el control de la huella PASA
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `6256762` (T23)
+> y `0417104` (T24), locales, sin `push`.
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**: **2.650 pasados**, 13 saltados,
+> **0 fallos** en `api`; front en verde (caché); **PUERTA COBERTURA 100,0 % de
+> 297 líneas cambiadas (297/297)**.
+>
+> ### Lo primero, porque es lo que el encargo pedía saber
+>
+> **Los tres controles de T23 pasan. Ninguna decisión humana vigente se ha
+> invalidado, así que no había que parar.** El riesgo que la ficha mandaba
+> tratar —que cambiar la normalización revocara aprobaciones que tomaron
+> personas— queda **medido con el bloque 7 ya aplicado**, que era lo único que
+> lo demostraba de verdad:
+>
+> - **el valor**: las **siete** huellas medidas en el árbol anterior al bloque
+>   7 (`git worktree` sobre `71a5e00`) y en el de ahora son **idénticas**, y
+>   van escritas **literales** en el test. Cuatro de las siete llevan el número
+>   o la obra con espacios alrededor del separador;
+> - **el acoplamiento**: `domain/models/aprobacion.py` importa exactamente
+>   `__future__`, `hashlib` y `domain.models.validacion`. Ni `nombrado`, ni
+>   `normalizar_codigo`, ni `tramos_de_codigo`;
+> - **el efecto**: un parte aprobado por una persona sigue `aprobado` —incluido
+>   el que tiene el número leído `RS26.09 /0149`, el caso exacto del riesgo— y
+>   la pantalla sigue diciendo **«aprobado por una persona»**.
+>
+> ### Qué se ha cerrado
+>
+> - **T23** (`6256762`) · `tests/test_f028_huella_intacta.py`, **15 casos**.
+>   **Ni una línea de código de producción.**
+> - **T24** (`0417104`) · **siete recuadros fechados**: R12, R17 y R22 de F-026
+>   enmendados (R56); R30 y R31 **precisados, no derogados** (R57); R36 de
+>   F-025 con un segundo recuadro debajo del de F-026; los tres puntos de
+>   `docs/ARCHITECTURE.md` que F-026 precisó, al día; y la **semántica 5**, que
+>   pasa a decir que **los espacios alrededor del separador no forman parte del
+>   código**. **42 casos nuevos**, ocho de ellos control negativo.
+>   **Ningún texto original borrado**, y los tests de documentación de F-025 y
+>   F-026 siguen en verde **sin tocarlos**.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **§111.1** — el caso que recalcula la huella a mano **duplica a propósito**
+>    el algoritmo dentro del test. Es una segunda opinión y por eso no importa
+>    ninguna constante de `aprobacion.py`; el precio es que un cambio legítimo
+>    del formato pondrá dos tests en rojo.
+> 2. **§115.1** — la campaña automática da **32/32 sin supervivientes**, y
+>    **no mide nada de este encargo**: T23 y T24 no añaden código de
+>    producción. Lo que sí lo mide son los **13 mutantes a mano** de §115.2,
+>    **13 muertos y ningún superviviente** (la primera campaña de la feature
+>    sin ninguno).
+> 3. **§117** — el **defecto latente D9** sigue sin arreglar, ahora **con
+>    test**: una relectura que solo cambie los espacios alrededor de la barra
+>    hace que una aprobación humana deje de contar. Arreglarlo cambiaría las
+>    huellas ya escritas en `postventa.aprobaciones`, y el humano decidió el
+>    2026-09-15 no alinear las dos normalizaciones aquí.
+>
+> ### Por dónde sigue
+>
+> **T25**, en su propio encargo: `docs/INTEGRACION.md` y
+> `azure-apps/postventa_incidencias.md` —**dos repositorios, dos commits, sin
+> `push`**—. Aviso vigente: `INTEGRACION.md` tiene un test que exige frases
+> concretas (R26 de F-010, `tests/test_f010_integracion_expuesto.py`), y ya se
+> rompió una vez esta semana por reescribirlo sin mirarlo. Después, el bloque
+> 10: T26, T27 (las seis verificaciones MANUAL del humano tras desplegar) y
+> T28.
+>
+> El informe completo, en `progress/impl_F-028.md` §109–§118.
+
+---
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · **T21 y T22 de F-028** · la rama vuelve a estar EN VERDE
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `30cf674` (T21)
+> y `2482607` (T22), locales, sin `push`.
+>
+> `bash harness/init.sh` → **ENTORNO LISTO**: **2.593 pasados**, 13 saltados,
+> **0 fallos** en `api`; front en verde (caché, árbol sin cambios); **PUERTA
+> COBERTURA 100,0 % de 297 líneas cambiadas (297/297)**.
+>
+> **Los 25 rojos que declaraba §94 están los 25 en verde.** Y lo que más
+> importaba de ellos: **los 4 de `tests/test_f028_puertas.py` —la red de
+> seguridad del bloque 0— volvieron a verde SOLOS**, sin tocar ni una línea de
+> ese fichero ni de las tres puertas. Fallaban por el código convertido, no por
+> el control. El control nunca se aflojó.
+>
+> **Qué se ha cerrado: el bloque 7 entero, y con él el asunto 2 en el dominio.**
+>
+> - **T21** · `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno` pasa a
+>   esperar `"RS26.08-0123"`; R8 de F-006 recibe su **recuadro fechado** con el
+>   patrón de R28 de F-010 —premisa citada literal, qué la invalidó, y **el
+>   responsable, el 2026-09-15**, al ver fallar el circuito en real—; y
+>   `tests/test_f028_documentacion.py` (nuevo, 6 casos) **fija ese recuadro**.
+> - **T22** · `a_codigo_de_sigrid` compone por tramos:
+>   `return "/".join(tramos_de_codigo(codigo))`. **Una línea** y su
+>   importación. `cierre.py` no cambia en nada más: control negativo verificado
+>   sobre el diff — ni `TEXTO_LOG_CIERRE`, ni `batch_de_cierre`, ni
+>   `infrastructure/sigrid/escrituras.py`.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **UN test existente cambió de expectativa** (§100), que es lo que la spec
+>    manda declarar: `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`.
+>    No es aflojarlo: R8 pedía que dos lecturas del mismo parte produjeran el
+>    mismo nombre y **eso no se cumplía**; la garantía no se recorta, se cumple
+>    por primera vez. Conserva su nombre, cita la expectativa vieja en su
+>    docstring y **gana una segunda aserción** para no dejar de probar el
+>    colapso que sí sigue vigente.
+> 2. **La campaña automática da 32/32 y esta vez la línea base SÍ estaba verde,
+>    pero no mide T22** (§105.1): el generador no produce ningún mutante sobre
+>    `"/".join(...)`. Lo que respalda el bloque son los **15 mutantes a mano**:
+>    14 muertos y 1 superviviente **equivalente**.
+> 3. **El superviviente M8** (§105.3): la guarda `if not codigo: return ""` de
+>    `a_codigo_de_sigrid` quedó **redundante** con el cambio de T22 —
+>    `"/".join(())` ya es `""`—. Demostrado equivalente con ocho entradas. **No
+>    se ha quitado**, y el porqué está escrito para que la decisión se tome
+>    mirándola.
+>
+> **Decisión que `tasks.md` no enumera**: `tests/test_f028_documentacion.py` se
+> crea en T21 con **solo los casos de R55**, para que «el recuadro presente»
+> tenga verificación automática. **T24 lo extiende** con R56, R57 y R58.
+>
+> **Lo siguiente es el bloque 8 (T23)**: los tres controles negativos de que la
+> huella de F-026 **no se ha movido**. No se ha entrado en él. Informe:
+> `progress/impl_F-028.md`, secciones **99 a 108**.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T19 y T20 de F-028 · la rama estuvo en rojo (**resuelto por T22**)
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, commits `98968c8` (T19) y
+> `c12d826` (T20), locales, sin `push`.
+>
+> **`bash harness/init.sh` sale EN ROJO, y es lo primero que hay que leer.**
+> Hay **25 tests en rojo** con **dos** causas:
+>
+> - **1** es `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`, que es el
+>   que **T21** tiene que actualizar. El encargo prohibía tocarlo y no se ha
+>   tocado.
+> - **24** son **una sola causa**: `a_codigo_de_sigrid` sigue convirtiendo con
+>   `replace(" - ", "/")`, y el arreglo de R44 deja esa sustitución sin efecto.
+>   Componer por tramos es **T22**, y el encargo prohibía entrar en ella.
+>
+> **T20 y T22 no se pueden separar**, y no es un descuido del implementer: es
+> una consecuencia inevitable de R44. La línea de verificación de T20 en
+> `tasks.md` —«T19 en verde»— **no es alcanzable** sin T22, y la propia T22 lo
+> delata al pedir «T19 **entero** en verde». Entero en
+> `progress/impl_F-028.md` **§94**.
+>
+> **Qué se ha cerrado: el arreglo de los espacios, en el sitio correcto.**
+>
+> - **T19** · `tests/test_f028_espacios_codigos.py`, **59 casos**, escrito
+>   **antes** que el código: la tabla de `design.md` §9.3 fila a fila para las
+>   dos conversiones. Falló en las **tres filas rotas**, y la quinta
+>   (`RS26.09- 0149`) rompía además el nombre del fichero. Trazas pegadas en
+>   **§92**.
+> - **T20** · `normalizar_codigo` quita los espacios que flanquean a un
+>   separador (R44); `SEPARADORES_DE_CODIGO` y `tramos_de_codigo` nuevas;
+>   `nombre_de_archivo` compone uniendo tramos. **Un solo fichero de
+>   producción**: `domain/models/nombrado.py`.
+>
+> `tests/test_f006_nombrado.py` queda **entero en verde salvo el único test de
+> T21**, que era la condición que ponía el encargo.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **La campaña automática de mutación da 32/32 y NO VALE** (§95.1): con la
+>    línea base en rojo, el ejecutor da por muerto cualquier mutante. Lo que
+>    respalda T20 son los **16 mutantes a mano** de §95.2, evaluados contra una
+>    línea base construida verde a propósito: **15 muertos y 1 superviviente
+>    equivalente**, demostrado con 55.987 cadenas (§95.3).
+> 2. **Una decisión que `tasks.md` no enumera** (§93.2): un nº de incidencia de
+>    solo separadores (`"/"`) ya no se archiva. No normaliza a vacío, así que la
+>    guardia de F-006 R6 lo dejaba pasar, y al componer por tramos habría dado
+>    `0626 -  PARTE FIRMADO.pdf` — un nombre que `nombre_admisible` **acepta**.
+> 3. **El riesgo de la huella de F-026 sigue descartado y no se ha rediseñado
+>    nada por él** (§93.4). El control explícito es el bloque 8 y **no** se ha
+>    adelantado.
+>
+> **Propagación pendiente a `arnes-base`** (la tercera que anota esta feature):
+> `harness.mutacion` **no comprueba que la línea base esté verde** antes de
+> empezar, y publica un 100 % que solo dice que la suite ya fallaba.
+>
+> **Lo siguiente son T21 y T22, y hay que hacerlas juntas**: las dos devuelven
+> la rama a verde; por separado la dejan rota entre medias sin ganar nada.
+> Informe: `progress/impl_F-028.md`, secciones **90 a 98**.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T18 de F-028
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, `bash harness/init.sh` →
+> **ENTORNO LISTO**: 2.528 pasados en `api`, **250 en `front`**, **298 casos de
+> JavaScript** y cobertura **100,0 % de 283 líneas cambiadas**. Commit
+> `4b85e6b`, local, sin `push`.
+>
+> **Qué se ha cerrado: la pantalla, y con ella el bloque 6 entero.**
+>
+> - **los dos gestos en el detalle** (R40), con el PDF delante y el campo de
+>   motivo delante de los dos. El botón de **rechazar está deshabilitado
+>   mientras no haya motivo** (R11), y un motivo de solo espacios no cuenta;
+> - **las cuatro marcas** en la lista y en el detalle (R38): el rechazado gris
+>   apagado y **tachado** —que no se confunda con «pendiente de mirar»—, el
+>   cerrado azul y con candado, y el aprobado **por una persona** con anillo,
+>   separado del que dio por bueno la máquina (R39);
+> - **la frase del parte `cerrado`** (R41): la pantalla **explica** por qué no
+>   se puede cambiar, en vez de fallar, y no ofrece ningún gesto;
+> - **los textos de R43**, que son dos hechos distintos: «lo decidió una
+>   persona · fecha» y «la decisión dejó de contar porque el veredicto cambió»;
+> - **ningún `oid` en la sección del estado**, ni siquiera dentro de una
+>   condición: lo pregunta `hayIdentidad()` (R42).
+>
+> Informe: `progress/impl_F-028.md`, secciones **80 a 89**.
+>
+> ### ✅ La rama vuelve a poder desplegarse
+>
+> Las tres líneas que T16/T17 dejaron rotas a propósito están arregladas y cada
+> una tiene su control negativo: `api.aprobar` (ya no existe),
+> `cuerpoDeAprobacion` (retirada) y `semaforoDe(validacion, parte.aprobacion)`
+> (ahora recibe el bloque nuevo). El detalle, con su tabla, en la sección **89**.
+>
+> ### Tres cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **R43 no se puede leer de una sola respuesta** y por eso hay una función
+>    nueva, `js/pipeline.js::avisoDeEstado`, que compara dos bloques
+>    consecutivos. El porqué —y la alternativa descartada, que sería tocar el
+>    backend— están en **§83.1**. Es la única desviación respecto a `design.md`
+>    §8.2, que no nombraba `pipeline.js` en T18.
+> 2. **La campaña a mano tuvo DOS supervivientes en la primera pasada**, y los
+>    dos tapaban un agujero real de mis propios tests: un test de texto que daba
+>    por comprobada una estructura sin mirarla. Están contados enteros en
+>    **§86.3**, con el arreglo. Después: **21 de 21 muertos**.
+> 3. **20 tests retirados** —`tests_js/aprobacion.test.js` entero y 7 de
+>    `tests/test_f026_front.py`—, todos con su recuadro fechado y su sustituto o
+>    su derogación nombrada (§84). **Tres de los siete seguían en verde**, dos de
+>    ellos iterando sobre listas vacías, y eran los que sostenían el requisito de
+>    privacidad.
+>
+> Y el aviso de siempre, que ya lleva tres bloques: **ni la puerta de cobertura
+> ni `harness.mutacion` miden una sola línea de esto**, porque el arnés solo
+> mide y muta Python (§86.1). Lo que respalda la tarea son los 21 mutantes a
+> mano y la ejecución real de `app.js` bajo Node (§85.1).
+>
+> **No se ha entrado en el bloque 7.** La siguiente es **T19**.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T16 y T17 de F-028
+>
+> Rama `feature/F-028-estado-del-parte`, árbol limpio, `bash harness/init.sh` →
+> **ENTORNO LISTO**: 2.528 pasados en `api`, 223 en `front`, **305 casos de
+> JavaScript** y cobertura **100,0 % de 283 líneas cambiadas**. Commits
+> `9d379f3` (T16) y `efaaea4` (T17), locales, sin `push`.
+>
+> **Qué se ha cerrado:** la capa JS del front.
+>
+> - **T16** · `js/api.js::cambiarEstado` → `POST /api/estado` con su paso propio
+>   de traza, y se retira `aprobar`, que llamaba a un endpoint que T15 borró.
+>   `js/pipeline.js::cuerpoDeCambioDeEstado` compone el cuerpo y **se niega** sin
+>   destino manual (R10), sin quien decide (R14), con un rechazo sin motivo
+>   (R11), con un motivo pasado del límite del dominio (R13) o sin remesa.
+>   `confirmado` viaja como el **booleano** de JSON. Ni un byte del PDF ni un
+>   veredicto hecho (R28, R30).
+> - **T17** · `semaforoDe(validacion, estado)` pinta las cuatro marcas y
+>   distingue el aprobado **por una persona** del de la máquina (R39);
+>   `esCirculable` y `pendientesDeCircuito` filtran por `estado === "aprobado"`.
+>   **Un parte `rechazado` sale de la tanda aunque su veredicto sea apto** —el
+>   caso que el responsable pidió— y un `cerrado` también.
+>
+> Informe: `progress/impl_F-028.md`, secciones **70 a 79**.
+>
+> ### ⚠️ Sigue sin poder desplegarse: falta T18
+>
+> `js/app.js` e `index.html` **no se han tocado** (son T18, y el encargo era
+> pararse antes). Hoy `app.js` llama a `api.aprobar` —que ya no existe— y a
+> `cuerpoDeAprobacion`, y le pasa a `semaforoDe` el bloque viejo. **El front y
+> la Function se despliegan juntos**, así que hasta que T18 esté, nada de esto
+> sale a Azure. Lo que T18 se encuentra hecho y los cinco apuntes para cogerla
+> están en la sección **78** del informe.
+>
+> ### Dos cosas que el reviewer tiene que mirar con nombre propio
+>
+> 1. **Ni la puerta de cobertura ni la campaña de mutación miden este bloque**
+>    (informe §76.1). El arnés mide y muta **Python**, y T16 y T17 son 307
+>    líneas de **JavaScript**. Los 31 mutantes de la campaña son de los bloques
+>    1 a 5 y siguen muriendo, pero no dicen nada de este. Lo que respalda el
+>    bloque es la fase RED (§72) y **15 mutantes aplicados a mano, 15 muertos**
+>    (§76.2). Queda anotado para el líder como posible mejora del arnés
+>    genérico: un servicio con dos lenguajes mide uno solo y no lo dice.
+> 2. **29 tests retirados y 8 reescritos**, todos con su recuadro fechado y su
+>    sustituto nombrado (§74). Cuatro de los retirados **seguían en verde** y se
+>    van por eso mismo: su montaje se había quedado inerte.
+>
+> La fase RED destapó un defecto real que no estaba en la spec: un
+> `usuario_oid` de solo espacios es `truthy` en JavaScript y se colaba en la
+> petición (§72.2). Arreglado y con test.
+
+> ## SUPERADO por el bloque de arriba · 2026-09-16 · T13 de F-028, y el arnés está ROJO por otra cosa
+>
+> Rama `feature/F-028-estado-del-parte`. Lo de abajo («PARA RETOMAR · al
+> 2026-09-15») es de la rama de F-026 y **se conserva entero**: sigue valiendo
+> para el plan de merge y despliegue.
+>
+> **Qué se ha cerrado:** **T13** —`POST /api/estado`, su ruta en
+> `function_app.py` y la traducción de `ParteCerrado` a **409**, que no
+> existía—. El commit `822100e` había dejado la tarea a medias y en rojo a
+> propósito (el vigilante mató al implementer a los 600 s): 57 casos en verde y
+> 12 en rojo. **Los 12 eran de los tests, no del handler**, y el handler entra
+> sin tocar ni un byte. Informe: `progress/impl_F-028.md`, secciones **36 a
+> 47**.
+>
+> **No se ha entrado en T14 ni en T15.** La siguiente es **T14**.
+>
+> ### ⚠️ `bash harness/init.sh` sale ROJO, y **no es de F-028**
+>
+> ```
+> FAILED tests/test_f010_integracion_expuesto.py::test_f010_r26_dice_la_consecuencia_visible_de_cada_ausencia
+> E   AssertionError: assert 'Sigrid no se toca' in '...'
+> ```
+>
+> **Ya estaba rojo en `HEAD` antes de empezar** —comprobado con `git stash`—: lo
+> rompió el commit `6eb6d33` («INTEGRACION: los dos cierres reales...») al
+> reescribir `docs/INTEGRACION.md` y sacar de su tabla la fila que contenía esa
+> frase. Es documentación de F-010 y **decidir qué debe decir ahora ese
+> documento no es del implementer de T13**. Queda para el humano o para quien
+> retome F-010.
+>
+> Tiene **tres consecuencias** que no hay que confundir con un problema de
+> F-028:
+>
+> 1. `[KO] servicio api: pytest en rojo` — ese caso y ningún otro;
+> 2. `[KO] PUERTA COBERTURA: 58,3 %` es **falso**: `init.sh` lanza la suite con
+>    `-x`, se para ahí y mide media suite. Entera, la puerta da **100,0 % de 276
+>    líneas cambiadas**;
+> 3. **la campaña de mutación sale falsa**, y esta es la grave. El evaluador da
+>    un mutante por muerto cuando la suite falla; con un caso rojo antes de
+>    mutar nada, **todos** salen «muertos» sin que ningún test los cace. La
+>    campaña que consta en `progress/mutacion_F-028.md` se lanzó con ese único
+>    caso deselecionado y `--workers 1`, con la línea base **verde**. Mientras
+>    ese test siga rojo, **ninguna campaña lanzada a secas sobre el servicio
+>    `api` vale nada**.
+>
+> **T12 sigue sin marcar en `tasks.md`** aunque el commit `0af9830` la hizo. No
+> se marcó porque el encargo era «T13 y nada más». Es para el líder.
+
 > ## PARA RETOMAR · al 2026-09-15, tras la sesión de solo lectura de F-009
 >
 > **Dónde está todo:** rama `feature/F-026-aprobacion-humana`, árbol limpio,
@@ -2374,3 +2833,112 @@ negativos.
 nueve decisiones listadas para que nadie las reabra), `design.md` y `tasks.md`
 (28 tareas en 11 bloques pequeños, uno por encargo). **Ni una línea de código
 tocada.**
+
+---
+
+## F-028 · bloques 0 y 1 hechos (2026-09-15, implementer)
+
+Rama `feature/F-028-estado-del-parte`, 5 commits locales sobre `ed46181`,
+arnés en verde. **T1, T2, T3 y T4 cerradas**; el bloque 2 (persistencia, T5–T7)
+es el siguiente encargo.
+
+Lo entregado es **dominio puro**: `domain/models/estado.py` con los cuatro
+estados, `DecisionEstado`, `SituacionParte` y la derivación
+`estado_del_parte`; dos errores nuevos en `errores.py`; y el bloque 0, la red
+de seguridad de las tres puertas, que salió **verde antes de tocar nada**
+—ninguna puerta está floja hoy—.
+
+Ni una línea fuera de `domain/`: `application/`, `infrastructure/`,
+`interface_adapters/` y el front siguen exactamente como los dejó F-026.
+
+Cobertura de líneas cambiadas 100,0 % (59/59); mutación 11/11 muertos, 0
+supervivientes (los 2 de la primera campaña eran huecos reales y se cerraron
+con un test cada uno). **Sin desviaciones respecto a la spec.**
+
+Detalle completo, trazas de la fase RED y evidencias: `progress/impl_F-028.md`.
+
+---
+
+## F-028 · bloque 3 hecho (2026-09-15, implementer)
+
+Rama `feature/F-028-estado-del-parte`, **2 commits locales** sobre `7cab1cb`
+(`4c0934a` T8, `117421e` T9), arnés en verde. **T8 y T9 cerradas**; el bloque 4
+—las tres puertas, T10 y T11— es el siguiente encargo, y es el primero que
+**afloja** algo que hoy funciona.
+
+Lo entregado es la **regla de constancia** de `design.md` §4: si el estado
+derivado no es el de la última fila, se añade una fila. `paso_persistencia` la
+aplica tras guardar el veredicto y `paso_cierre` tras el cierre. La regla vive
+en `application/pipelines/constancia.py` —fichero nuevo, y la **única
+desviación** de la spec, que no lo listaba— por lo mismo que `confianza.py` en
+F-004: dos copias divergen, y en una campaña de mutación cada copia se cuenta
+aparte.
+
+**Las tres puertas no se han tocado** y `tests/test_f028_puertas.py` sigue en
+verde sin editarlo (16 pasados). Tampoco se ha retirado nada de F-026: eso es
+T15.
+
+**El caso que hay que conocer**: si la base falla al apuntar la fila
+`→ cerrado`, el error **se traga**. La incidencia ya está cerrada en el ERP de
+producción y su traza —de donde se deriva el estado— ya está guardada; dejarlo
+salir convertiría un cierre que ocurrió en un 503 «vuelve a intentarlo». La
+fila la recupera el siguiente reproceso.
+
+Cobertura de líneas cambiadas 100,0 % (158/158). Mutación: 18/18 muertos, 0
+supervivientes, **pero ni un mutante del código de este bloque** —la
+herramienta no muta comparaciones de identidad y aquí no hay otra cosa—, así
+que se mutaron **a mano los nueve puntos** del bloque: **9 de 9 muertos**.
+Queda anotado para el líder que `harness/mutacion.py` debería avisar de los
+ficheros en alcance que no producen ningún mutante (propagable a `arnes-base`).
+
+Detalle completo, trazas de la fase RED, los nueve mutantes a mano y las
+decisiones: `progress/impl_F-028.md` §19 a §26.
+
+---
+
+## F-028 · bloque 4 hecho (2026-09-15, implementer)
+
+Rama `feature/F-028-estado-del-parte`, **2 commits locales** sobre `2393fa2`
+(`4130495` T10, `51fbe77` T11), arnés en verde. **T10 y T11 cerradas**; el
+bloque 5 —el borde HTTP, T12 a T15— es el siguiente encargo.
+
+**Lo que este bloque hace posible, que era medio encargo de la feature: un
+parte apto que una persona rechaza ya no se archiva, ni se adjunta, ni cierra
+su incidencia.** Hasta `51fbe77` eso era imposible por construcción —la puerta
+devolvía «pasa» en cuanto el veredicto era apto, sin consultar nada—, y la
+traza del test en rojo que lo demuestra («DID NOT RAISE ParteNoApto», tres
+veces, una por puerta) está pegada en el informe.
+
+Las tres puertas exigen ahora `estado_del_parte(...) is EstadoParte.APROBADO`
+con la situación leída **del repositorio y nunca del cuerpo**, y **se retira el
+atajo del apto**: todos los partes pagan una consulta por paso. El coste está
+declarado en `design.md` §6 (66 consultas por tanda de 22) y **se añade una
+verificación MANUAL** para medirlo en la primera tanda real contra el
+PostgreSQL compartido.
+
+La puerta vive en `application/pipelines/puerta_de_estado.py` —fichero nuevo, y
+la **única desviación** de la spec, que listaba los tres pasos— por lo mismo
+que `constancia.py` en el bloque 3: es la única decisión que separa un parte
+sin revisar de un cierre en el ERP, y tres copias son tres sitios donde puede
+aflojarse.
+
+**`tests/test_f028_puertas.py` pasa de 16 a 48 casos y los 16 de T1 siguen
+intactos** (el diff solo borra imports y dos firmas de ayudante). Siete tests
+de antes cambian, todos justificados uno a uno en el informe: **cinco
+retirados de F-026** —su mecanismo desaparece y su sustituto de F-028 está
+escrito y verde, incluido el que fijaba el atajo del apto—, uno de F-028 que
+ahora falla antes y mejor, y el control de campos del contexto de F-003.
+
+**Para el bloque 5**: el único sitio de producción que todavía lee
+`consultar_aprobacion` es `interface_adapters/api/parte.py:131`, que es justo
+lo que T14 sustituye. Y quedan **dos casos inertes** en
+`tests/test_f026_puertas.py` que T15 debería retirar con `Aprobacion`.
+
+Cobertura de líneas cambiadas 100,0 % (183/183). Mutación: 19/19 muertos en la
+campaña automática —que **solo genera un mutante de este bloque**, porque la
+herramienta no muta comparaciones de identidad— más **13 mutados a mano, 13
+muertos**, entre ellos los tres que reabren la puerta al `rechazado`, al
+`cerrado` y al que no consulta el almacén.
+
+Detalle completo, trazas de la fase RED, los tests cambiados y las decisiones:
+`progress/impl_F-028.md` §27 a §35.

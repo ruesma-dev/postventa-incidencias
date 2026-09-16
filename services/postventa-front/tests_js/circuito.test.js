@@ -105,7 +105,13 @@ function apiDoble(guion) {
   };
 }
 
-/** Un parte apto, guardado y con su PDF: el que entra en la tanda. */
+/** Un parte aprobado, guardado y con su PDF: el que entra en la tanda.
+ *
+ * Enmienda del 2026-09-16 · F-028 T17: el fixture gana `estadoParte`, el
+ * bloque `estado` que devuelve el backend. Lo que mete un parte en la tanda ya
+ * no es su veredicto sino su estado (R33), así que sin él este parte se
+ * quedaría fuera — y eso es lo correcto.
+ */
 function parteDeLaTanda(sobrescribir) {
   return Object.assign(
     {
@@ -114,6 +120,7 @@ function parteDeLaTanda(sobrescribir) {
       archivado: false,
       cerrado: false,
       grafico: "",
+      estadoParte: { estado: "aprobado", decidido_por_persona: false },
       fichero: { name: "parte-a1b2c3d4.pdf" },
       validacion: { veredicto: "apto", destino: "archivo_y_cierre" },
       extraccion: {
@@ -188,16 +195,26 @@ test("R24 · los ya cerrados quedan fuera", () => {
   assert.deepEqual(pendientesDeCircuito([parte]), []);
 });
 
-test("R36 · los que no son aptos quedan fuera, aunque estén guardados", () => {
-  const revision = parteDeLaTanda({
-    validacion: { veredicto: "no_apto", destino: "revision_manual" },
+test("R36 / f028 R33 · los que no constan APROBADOS quedan fuera, aunque estén guardados", () => {
+  // Enmienda del 2026-09-16 · F-028 T17. Este caso montaba tres partes con
+  // veredictos que no eran «apto con destino de archivo», porque ese era el
+  // criterio de la tanda. Desde F-028 el criterio es el estado que manda el
+  // backend, y montarlo con el veredicto probaría algo que ya no decide nada.
+  //
+  // Lo que afirma —«lo que no está dado por bueno no entra en un circuito que
+  // escribe dos veces en el ERP de producción»— se conserva entero, y ahora se
+  // puede probar con el estado que antes era imposible: `rechazado`. El caso
+  // del parte APTO rechazado a mano, que es la feature, está en
+  // `tests_js/estado.test.js`.
+  const pendiente = parteDeLaTanda({
+    estadoParte: { estado: "pendiente", decidido_por_persona: false },
   });
-  const cola = parteDeLaTanda({
-    validacion: { veredicto: "apto", destino: "cola_validacion_humana" },
+  const rechazado = parteDeLaTanda({
+    estadoParte: { estado: "rechazado", decidido_por_persona: true },
   });
-  const sinVeredicto = parteDeLaTanda({ validacion: null });
+  const sinEstado = parteDeLaTanda({ estadoParte: null });
 
-  assert.deepEqual(pendientesDeCircuito([revision, cola, sinVeredicto]), []);
+  assert.deepEqual(pendientesDeCircuito([pendiente, rechazado, sinEstado]), []);
 });
 
 test("R24 · los que no se pudieron guardar quedan fuera", () => {
@@ -483,18 +500,24 @@ test("R20 · el circuito NUNCA lanza: un parte roto no tumba la tanda", async ()
   assert.ok(resultado.error.includes("reventón inventado"));
 });
 
-test("R36 · un parte no apto no llega a ninguna petición", async () => {
-  // `cuerpoDeArchivo` se niega a componer nada que no sea apto, y aquí se
-  // comprueba que esa negativa se convierte en un resultado y no en una
+test("R36 / f028 R5 · un parte que no consta aprobado no llega a ninguna petición", async () => {
+  // `cuerpoDeArchivo` se niega a componer nada que no conste aprobado, y aquí
+  // se comprueba que esa negativa se convierte en un resultado y no en una
   // excepción que tumbe la tanda.
+  //
+  // Enmienda del 2026-09-16 · F-028 T17: el parte se monta ahora **apto y
+  // rechazado a mano**, que es el caso que la feature viene a arreglar y que
+  // antes no se podía escribir. Es más fuerte que el anterior: no solo
+  // comprueba que la negativa no revienta la tanda, sino que la negativa
+  // ocurre sobre un parte que la máquina había dado por bueno.
   const api = apiDoble();
 
-  const resultado = await correr(
-    parteDeLaTanda({
-      validacion: { veredicto: "no_apto", destino: "revision_manual" },
-    }),
-    api,
-  );
+  const parte = parteDeLaTanda({
+    estadoParte: { estado: "rechazado", decidido_por_persona: true },
+  });
+  assert.equal(parte.validacion.veredicto, "apto");
+
+  const resultado = await correr(parte, api);
 
   assert.deepEqual(api.pasos(), []);
   assert.equal(resultado.estado, "error_archivo");

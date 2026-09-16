@@ -40,7 +40,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from domain.models.nombrado import SEPARADOR, normalizar_codigo
+from domain.models.nombrado import normalizar_codigo, tramos_de_codigo
 from domain.models.persistencia import EstadoCierre
 
 __all__ = [
@@ -261,17 +261,33 @@ def a_codigo_de_sigrid(bruto: str | None) -> str:
     partiría el fichero en dos carpetas; aquí vuelve a ser barra, que es como
     lo escribe el ERP.
 
-    Se apoya en `normalizar_codigo` del propio módulo de nombrado —no en una
-    copia— para que las dos conversiones traten igual los guiones raros que
-    salen de los escaneos y de Word. Dos criterios del mismo concepto divergen
-    siempre.
+    Se apoya en `normalizar_codigo` y en `tramos_de_codigo` del propio módulo de
+    nombrado —no en una copia— para que las dos conversiones traten igual los
+    guiones raros que salen de los escaneos y de Word. Dos criterios del mismo
+    concepto divergen siempre.
+
+    **Compone por tramos, y eso es lo que la hace inversa exacta** (F-028 R45,
+    R47). Hasta el 2026-09-15 buscaba literalmente el ` - ` del nombre del
+    fichero y lo cambiaba por una barra, lo que dejaba dos agujeros: un código
+    leído como `RS26.09-0149` —guion pegado— salía tal cual y el ERP no
+    encontraba la reclamación, y en cuanto R44 dejó de rodear el separador de
+    espacios aquel `replace` no encontraba ya nada que sustituir. Partir en
+    tramos y unirlos con `/` no depende de cómo viniera escrito el papel: las
+    seis formas de `design.md` §9.3 dan el mismo código. **Y esto importa más
+    que en el nombre del fichero**, porque Sigrid busca la reclamación por
+    **igualdad exacta**: un espacio de más no devuelve «casi» la reclamación,
+    no devuelve ninguna, y el parte se queda sin cerrar.
 
     Un código que ya venga con barra sale igual: la conversión es idempotente.
+
+    Un código que sea **solo separadores** no tiene ningún tramo y sale como
+    cadena vacía, igual que uno ausente. Es lo que quien llama ya sabe tratar:
+    sin código no se busca ninguna reclamación y no se cierra nada.
     """
     codigo = normalizar_codigo(bruto)
     if not codigo:
         return ""
-    return " ".join(codigo.replace(SEPARADOR, "/").split())
+    return "/".join(tramos_de_codigo(codigo))
 
 
 def derivar_login_candidato(correo: str | None) -> str:

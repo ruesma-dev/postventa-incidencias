@@ -207,7 +207,8 @@ class RepositorioEnMemoria:
         traza_grafico: Any = None,
         fallo_al_guardar_grafico: Exception | None = None,
         estado_que_falla: Any = None,
-        aprobacion: Any = None,
+        situacion: Any = None,
+        estado_cierre: str | None = None,
     ) -> None:
         from domain.models.persistencia import ResultadoGuardado
 
@@ -231,13 +232,39 @@ class RepositorioEnMemoria:
         #: honesto) y la base caída **después** (`GraficoSinTraza`, un 500, con
         #: las tres filas ya dentro de Sigrid).
         self.estado_que_falla = estado_que_falla
-        #: F-026 · las aprobaciones que se han pedido guardar, en orden.
-        self.aprobaciones: list[Any] = []
-        #: F-026 · los `hash` con los que se ha consultado la aprobación.
+        #: F-026 · los `hash` con los que se consultó la tabla congelada.
+        #:
+        #: **Se queda vacía para siempre**, y esa es toda su gracia desde
+        #: F-028 T15: `consultar_aprobacion` ya no existe, ni en el puerto ni
+        #: en este doble, así que nada puede añadir nada aquí. Los casos de
+        #: F-028 que afirman `aprobaciones_consultadas == []` —R33 en
+        #: `test_f028_puertas.py`, R2 en `test_f028_estado_http.py`— pasan a
+        #: ser ciertos por construcción y no por comportamiento: lo que de
+        #: verdad vigila que nadie toque `postventa.aprobaciones` es
+        #: `test_f028_t15_ningun_modulo_de_produccion_escribe_en_la_tabla_de_f026`.
+        #:
+        #: No se retira con el método porque esos dos casos son la red de
+        #: seguridad de la feature y T15 no los toca.
         self.aprobaciones_consultadas: list[str] = []
-        #: F-026 · lo que devuelve `consultar_aprobacion`. `None` es «no la ha
-        #: aprobado nadie», que **no es un error**.
-        self.aprobacion = aprobacion
+        #: F-028 · las decisiones de estado que se han registrado, **en orden**.
+        #:
+        #: Una lista y no un diccionario por `hash`: el histórico es
+        #: append-only, y un doble que guardara la última por parte no podría
+        #: hacer fallar a un código que pisara filas — que es exactamente lo
+        #: que F-028 viene a impedir (R21, R25).
+        self.decisiones: list[Any] = []
+        #: F-028 · los `hash` con los que se ha consultado la situación.
+        #:
+        #: Comprobar **que se preguntó** es la mitad de R33: una puerta que no
+        #: consultara el almacén estaría decidiendo con lo que le cuente quien
+        #: llama.
+        self.situaciones_consultadas: list[str] = []
+        #: F-028 · lo que devuelve `consultar_situacion`. `None` significa «este
+        #: parte no tiene ni decisión, ni fila, ni traza de cierre», que es el
+        #: caso normal del primer día y **no es un error**.
+        self.situacion = situacion
+        #: F-028 · lo que devuelve `consultar_estado_cierre`, en crudo.
+        self.estado_cierre = estado_cierre
         #: Los límites con los que se ha llamado a la cola, en orden.
         self.limites: list[int] = []
         self.cola = tuple(cola)
@@ -313,29 +340,61 @@ class RepositorioEnMemoria:
             raise self.fallo
         return self.traza_grafico
 
-    def guardar_aprobacion(self, *, aprobacion: Any) -> Any:
-        """F-026 · registra la aprobación humana, o levanta el fallo preparado.
+    def consultar_situacion(self, *, hash_parte: str) -> Any:
+        """F-028 · la situación que el test haya preparado, o una vacía.
 
-        Guardarla aquí y no en un doble nuevo es deliberado: los pasos del
-        circuito reciben **este** objeto, y si el puerto creciera sin que él
-        creciera, el doble dejaría de poder sustituir al adaptador justo en la
-        pieza que decide si un parte rechazado llega al ERP.
+        Devolver `SituacionParte()` y no `None` cuando no se ha preparado nada
+        es lo que hace el adaptador de verdad: los tres huecos vacíos son el
+        caso normal del primer día, y quien lo consulta tiene que poder derivar
+        un estado igualmente sin comprobar antes si hay algo.
         """
-        resultado = self._o_fallar()
-        self.aprobaciones.append(aprobacion)
-        return resultado
+        from domain.models.estado import SituacionParte
 
-    def consultar_aprobacion(self, *, hash_parte: str) -> Any:
-        """F-026 · la aprobación que el test haya preparado, o `None`.
-
-        Se guarda el `hash` pedido para poder comprobar **que se preguntó**:
-        R24 es un requisito sobre una lectura que, si no se hiciera, dejaría
-        que quien llama afirmara por su cuenta que el parte estaba aprobado.
-        """
-        self.aprobaciones_consultadas.append(hash_parte)
+        self.situaciones_consultadas.append(hash_parte)
         if self.fallo is not None:
             raise self.fallo
-        return self.aprobacion
+        return self.situacion if self.situacion is not None else SituacionParte()
+
+    def registrar_decision(self, *, decision: Any) -> Any:
+        """F-028 · apunta la decisión **sin pisar ninguna anterior** (R21).
+
+        Acumula, igual que la tabla. Un doble que guardara solo la última por
+        parte dejaría pasar un código que pisara filas, que es el defecto de
+        `postventa.aprobaciones` del que nace esta feature.
+
+        Y la situación que devuelve a partir de ahora **cuenta con esta fila**,
+        porque es lo que hace la tabla: `select_situacion_estado` lee las dos
+        últimas filas del histórico, así que una consulta posterior a esta
+        escritura ve el estado que se acaba de apuntar. Un doble que siguiera
+        contestando lo que se preparó en el constructor dejaría en verde a quien
+        leyera la situación **antes** de escribir, y con eso el `estado_anterior`
+        de una decisión humana se quedaría sin encadenar con la constancia que
+        `paso_persistencia` acaba de dejar (R22, R23): `POST /api/estado` hace
+        las dos cosas en una sola llamada.
+
+        Solo se mueve `decision_humana` si la fila la firmó una persona (R24,
+        R26): una constancia de máquina no es una decisión, y darle ese hueco
+        convertiría una anotación en criterio.
+        """
+        from dataclasses import replace
+
+        from domain.models.estado import SituacionParte
+
+        resultado = self._o_fallar()
+        self.decisiones.append(decision)
+
+        situacion = self.situacion if self.situacion is not None else SituacionParte()
+        cambios: dict[str, Any] = {"ultimo_estado_registrado": decision.estado}
+        if decision.por_persona:
+            cambios["decision_humana"] = decision
+        self.situacion = replace(situacion, **cambios)
+        return resultado
+
+    def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:
+        """F-028 · lo que diga la traza de cierre, o `None` si no consta."""
+        if self.fallo is not None:
+            raise self.fallo
+        return self.estado_cierre
 
     def cola_validacion_humana(self, *, limite: int) -> tuple:
         self.limites.append(limite)

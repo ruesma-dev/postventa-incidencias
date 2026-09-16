@@ -31,7 +31,7 @@
 
 ## Bloque 0 · La red de seguridad, antes de tocar nada
 
-- [ ] **T1**: Crear `services/postventa-api/tests/test_f028_puertas.py` con los
+- [x] **T1**: Crear `services/postventa-api/tests/test_f028_puertas.py` con los
       **control-negativo** que tienen que seguir en verde al final del trabajo:
       un parte no apto **sin decisión humana** no llega a archivar, ni a
       adjuntar, ni a cerrar; ninguno de los tres pasos lee la decisión del
@@ -45,7 +45,7 @@
 
 ## Bloque 1 · El dominio del estado
 
-- [ ] **T2**: Crear `domain/models/estado.py` con `EstadoParte` (los cuatro),
+- [x] **T2**: Crear `domain/models/estado.py` con `EstadoParte` (los cuatro),
       `DecisionEstado`, `SituacionParte`, `ESTADOS_DE_CIERRE_EN_FIRME` y
       `LIMITE_MOTIVO`. **Dominio puro.** | Verificación:
       `tests/test_f028_estado_dominio.py` — el enumerado tiene cuatro valores y
@@ -53,7 +53,7 @@
       `sql/06_cierres.sql`. **Fase RED**: traza del fallo antes de que exista el
       módulo.
 
-- [ ] **T3**: Añadir `estado_de_la_maquina(validacion)` y
+- [x] **T3**: Añadir `estado_de_la_maquina(validacion)` y
       `estado_del_parte(validacion, decision_humana, estado_cierre)` con el
       orden de `design.md` §3. | Verificación: mismo fichero — apto nace
       `aprobado` (R3); no apto nace `pendiente` (R4); sin veredicto,
@@ -62,7 +62,7 @@
       distinta **no** cuenta y se cae a la máquina (R19); con la misma huella
       **sí** (R20); y el `rechazado` **no caduca** nunca.
 
-- [ ] **T4**: Añadir `ParteCerrado` y `CambioDeEstadoInvalido` a
+- [x] **T4**: Añadir `ParteCerrado` y `CambioDeEstadoInvalido` a
       `domain/models/errores.py`. | Verificación: test de que heredan de donde
       heredan sus hermanos; la traducción a 409 y 400 se cierra en T13.
 
@@ -70,7 +70,7 @@
 
 ## Bloque 2 · La persistencia
 
-- [ ] **T5**: Crear `sql/11_historico_estado.sql` con la tabla append-only, su
+- [x] **T5**: Crear `sql/11_historico_estado.sql` con la tabla append-only, su
       índice y la **semilla** de `design.md` §8.4, con su cabecera. |
       Verificación: `tests/test_f028_ddl_historico.py` — texto idempotente,
       todo cualificado con `postventa.`, ni una sentencia de ámbito de
@@ -78,7 +78,7 @@
       dominio, la semilla con `NOT EXISTS`, ninguna columna binaria, y
       `sql/10_aprobaciones.sql` **sin cambios** (regla dura 3).
 
-- [ ] **T6**: `sentencias.py`: `insert_decision_estado`,
+- [x] **T6**: `sentencias.py`: `insert_decision_estado`,
       `select_situacion_estado` (el `UNION ALL` de las dos últimas filas) y
       `select_estado_cierre`; `mapeo.fila_a_decision_estado`. | Verificación:
       `tests/test_f028_persistencia.py` con dobles — el `INSERT` no lleva
@@ -86,7 +86,7 @@
       `decidido_at_utc DESC, cambio_id DESC`, y la fila humana se distingue de
       la de máquina por `decidido_por IS NOT NULL`.
 
-- [ ] **T7**: `domain/ports/persistencia.py` y `repositorio_pg.py`:
+- [x] **T7**: `domain/ports/persistencia.py` y `repositorio_pg.py`:
       `consultar_situacion`, `registrar_decision` y `consultar_estado_cierre`.
       **Todavía no se retira nada de F-026.** | Verificación: mismo fichero de
       test — una situación sin ninguna fila devuelve los tres huecos vacíos, y
@@ -96,7 +96,7 @@
 
 ## Bloque 3 · La constancia: que el histórico cuente la película
 
-- [ ] **T8**: `paso_persistencia`: tras guardar la validación, calcular el
+- [x] **T8**: `paso_persistencia`: tras guardar la validación, calcular el
       estado derivado y **añadir la fila de constancia solo si difiere del
       último estado registrado** (`design.md` §4). | Verificación:
       `tests/test_f028_persistencia.py` — el primer guardado de un parte apto
@@ -105,7 +105,7 @@
       escribe ninguna fila**; y teclear el código que faltaba deja
       `pendiente → aprobado`.
 
-- [ ] **T9**: `paso_cierre`: tras la escritura del cierre, la fila `→ cerrado`.
+- [x] **T9**: `paso_cierre`: tras la escritura del cierre, la fila `→ cerrado`.
       | Verificación: mismo fichero — la fila se escribe **después** de que el
       cierre conste, y un cierre fallido **no** la escribe.
 
@@ -113,11 +113,11 @@
 
 ## Bloque 4 · Las tres puertas
 
-- [ ] **T10**: `contexto_parte.py`: `aprobacion` → `situacion`, con la
+- [x] **T10**: `contexto_parte.py`: `aprobacion` → `situacion`, con la
       docstring que diga que viene del repositorio y **nunca del cuerpo**. |
       Verificación: la suite existente sigue en verde salvo lo que T11 sustituye.
 
-- [ ] **T11**: `paso_archivo`, `paso_grafico` y `paso_cierre`: `_exigir_admitido`
+- [x] **T11**: `paso_archivo`, `paso_grafico` y `paso_cierre`: `_exigir_admitido`
       pasa a exigir `EstadoParte.APROBADO` y **se retira el atajo del apto**
       (`design.md` §6). | Verificación: `tests/test_f028_puertas.py` ampliado —
       los cuatro estados contra los tres pasos: `aprobado` pasa, `pendiente` no,
@@ -128,12 +128,12 @@
 
 ## Bloque 5 · El borde HTTP
 
-- [ ] **T12**: Crear `interface_adapters/api/estado_serializado.py` con el
+- [x] **T12**: Crear `interface_adapters/api/estado_serializado.py` con el
       bloque `estado` de las respuestas. | Verificación: test de que trae
       `estado`, `decidido_por_persona`, `decidido_at_utc` y `estado_anterior`,
       y **ni el `oid`, ni el correo, ni el nombre, ni el motivo** (R42, R52).
 
-- [ ] **T13**: Crear `interface_adapters/api/estado.py` (`POST /api/estado`) y
+- [x] **T13**: Crear `interface_adapters/api/estado.py` (`POST /api/estado`) y
       su ruta en `function_app.py`. | Verificación:
       `tests/test_f028_estado_http.py` — 200 al cambiar; 200 `sin_cambios` al
       repetir la misma decisión; 400 sin `usuario_oid`, sin `confirmado: true`,
@@ -142,12 +142,12 @@
       demasiado largo; 409 si el parte está `cerrado` (R7) y si la remesa no
       consta; 503 sin base. **Y en los rechazos, ni una escritura.**
 
-- [ ] **T14**: `parte.py`: la respuesta cambia el bloque `aprobacion` por
+- [x] **T14**: `parte.py`: la respuesta cambia el bloque `aprobacion` por
       `estado` (`design.md` §5). | Verificación: test de que subir la remesa
       otra vez devuelve el estado de cada parte **sin una petición más por
       parte**.
 
-- [ ] **T15**: Retirar `interface_adapters/api/aprobar.py`,
+- [x] **T15**: Retirar `interface_adapters/api/aprobar.py`,
       `aprobacion_serializada.py`, la ruta `aprobar`, `upsert_aprobacion`,
       `select_aprobacion`, `revocar_aprobacion_si_cambio`, `fila_a_aprobacion`,
       `guardar_aprobacion`, `consultar_aprobacion`, y de
@@ -162,20 +162,20 @@
 
 ## Bloque 6 · El front
 
-- [ ] **T16**: `js/api.js::cambiarEstado` y
+- [x] **T16**: `js/api.js::cambiarEstado` y
       `js/pipeline.js::cuerpoDeCambioDeEstado`; retirar `aprobar`. |
       Verificación: `tests_js/estado.test.js` — el cuerpo lleva `estado`,
       `usuario_oid`, `confirmado: true` y el motivo recortado; **se niega a
       componer un rechazo sin motivo** (R11) y sin `usuario_oid`; no lleva
       ningún byte del PDF (R30).
 
-- [ ] **T17**: `js/pipeline.js`: `semaforoDe(validacion, estado)` con las
+- [x] **T17**: `js/pipeline.js`: `semaforoDe(validacion, estado)` con las
       cuatro marcas y `pendientesDeCircuito` filtrando por `estado ===
       "aprobado"`. | Verificación: mismo fichero — un parte `rechazado` sale de
       la tanda aunque su veredicto sea apto; un `cerrado` también; y el
       `aprobado` por persona se distingue del de máquina (R39).
 
-- [ ] **T18**: `js/app.js` e `index.html`: los dos botones en el detalle, el
+- [x] **T18**: `js/app.js` e `index.html`: los dos botones en el detalle, el
       campo de motivo obligatorio al rechazar, las cuatro marcas en lista y
       detalle, los textos de R43 y la frase del parte `cerrado` (R41). |
       Verificación: `services/postventa-front/tests/test_f028_front.py` — los
@@ -186,25 +186,25 @@
 
 ## Bloque 7 · Los espacios de los códigos (asunto 2)
 
-- [ ] **T19**: Escribir **primero** el test que reproduce el defecto:
+- [x] **T19**: Escribir **primero** el test que reproduce el defecto:
       `tests/test_f028_espacios_codigos.py` con la tabla de `design.md` §9.3,
       fila a fila, para `a_codigo_de_sigrid` y para `nombre_de_archivo` (R44 a
       R46). | Verificación: **fase RED** — falla en las tres filas rotas antes
       de tocar el dominio, y la traza del fallo va en el informe.
 
-- [ ] **T20**: Arreglar `normalizar_codigo` y añadir `tramos_de_codigo` y
+- [x] **T20**: Arreglar `normalizar_codigo` y añadir `tramos_de_codigo` y
       `SEPARADORES_DE_CODIGO`; `nombre_de_archivo` compone por tramos (R44,
       R46, R48, R49). | Verificación: T19 en verde y **toda**
       `tests/test_f006_nombrado.py` en verde salvo el único test de T21.
 
-- [ ] **T21**: Actualizar
+- [x] **T21**: Actualizar
       `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno` a la expectativa
       nueva, con su comentario, y escribir el recuadro fechado de R8 en
       `specs/F-006-sharepoint/requirements.md` (R55). | Verificación: el test en
       verde y el recuadro presente; el informe del implementer dice
       explícitamente **qué test cambió de expectativa y por qué**.
 
-- [ ] **T22**: `a_codigo_de_sigrid` compone por tramos (R45, R47), **sin tocar
+- [x] **T22**: `a_codigo_de_sigrid` compone por tramos (R45, R47), **sin tocar
       nada más de `cierre.py`**. | Verificación: T19 entero en verde, los dos
       tests de F-009 sobre la conversión en verde **sin tocarlos**, y control
       negativo de que `TEXTO_LOG_CIERRE`, `batch_de_cierre` e
@@ -214,7 +214,7 @@
 
 ## Bloque 8 · Que la huella no se ha movido
 
-- [ ] **T23**: `tests/test_f028_huella_intacta.py` con los tres controles
+- [x] **T23**: `tests/test_f028_huella_intacta.py` con los tres controles
       negativos de `design.md` §10: huellas esperadas **escritas literales**,
       el módulo de la huella no importa `nombrado`, y un parte aprobado por una
       persona sigue `aprobado` después del arreglo (R50, R51). | Verificación:
@@ -226,7 +226,7 @@
 
 ## Bloque 9 · Documentación y enmiendas
 
-- [ ] **T24**: Los recuadros fechados: R56 y R57 en
+- [x] **T24**: Los recuadros fechados: R56 y R57 en
       `specs/F-026-aprobacion-humana/requirements.md`, y R58 en
       `specs/F-025-confirmacion-unica/requirements.md` y en
       `docs/ARCHITECTURE.md` —incluida la nota de la semántica 5 sobre que los
@@ -234,7 +234,7 @@
       Verificación: test de documentación con el patrón de
       `tests/test_f026_documentacion.py`; **ningún texto original borrado**.
 
-- [ ] **T25**: `docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md`
+- [x] **T25**: `docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md`
       (R59): endpoint nuevo, endpoint retirado, tabla nueva, tabla congelada y
       qué deja de escribirse. **Dos repositorios, dos commits, sin `push`.** |
       Verificación: `git -C ../azure-apps status` limpio al terminar y los
@@ -244,7 +244,7 @@
 
 ## Bloque 10 · Cierre
 
-- [ ] **T26**: Campaña de mutación sobre lo cambiado
+- [x] **T26**: Campaña de mutación sobre lo cambiado
       (`python -m harness.mutacion`; rigor `estandar`: los supervivientes se
       documentan y los juzga el reviewer). | Verificación: informe en
       `progress/impl_F-028.md` con el número de mutantes, los supervivientes y
@@ -268,4 +268,4 @@
       decidido_at_utc, motivo FROM postventa.historico_estado
       WHERE hash_parte = %s ORDER BY decidido_at_utc, cambio_id;`
 
-- [ ] **T28**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T28**: Ejecutar `bash harness/init.sh` en verde.

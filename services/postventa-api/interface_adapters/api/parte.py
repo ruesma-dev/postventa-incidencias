@@ -32,6 +32,25 @@ manuscrito, vive en SharePoint y el disco de este servidor es compartido y
 solo crece. `upsert_parte` los ignora de todas formas: lo que se evita aquí es
 **ofrecer la vía**.
 
+## Y el estado del parte viaja en la respuesta (F-028, `design.md` §5)
+
+La respuesta lleva el bloque `estado` —el que F-026 llamaba `aprobacion`—
+porque al recargar la pantalla hay que volver a subir la remesa, y eso guarda
+sus 22 partes. Si la respuesta no dijera en qué estado queda cada uno, la
+pantalla tendría que preguntarlo parte a parte: 22 llamadas de más para pintar
+una marca.
+
+Y **no cuesta una consulta más**: `paso_persistencia` ya lee la situación del
+parte para la regla de constancia (R23) y la deja en `ContextoParte`, así que
+aquí solo se deriva. El sitio donde se paga esa lectura es uno y está medido
+(`design.md` §6 y §11.1); duplicarla serían otros 22 viajes por remesa a un
+PostgreSQL **compartido** con los demás proyectos.
+
+Lo que se publica del estado lo decide `estado_serializado.py`, que lo
+comparten este endpoint y `POST /api/estado`: **ni el `oid`, ni el correo, ni
+el nombre, ni el motivo** (R42, R52). Esta respuesta la recibe quien sube la
+remesa, que no tiene por qué ser quien decidió sobre ninguno de sus partes.
+
 ## No mira `ARCHIVO_HABILITADO` (R34)
 
 Esa ventana protege la biblioteca de SharePoint, que es un sistema ajeno. Esto
@@ -48,6 +67,7 @@ from typing import Any
 
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_persistencia import paso_persistencia
+from application.pipelines.puerta_de_estado import situacion_leida
 from config.settings import obtener_ajustes
 from domain.models.errores import PeticionDePersistenciaInvalida
 from domain.models.extraccion import ExtraccionParte
@@ -57,7 +77,6 @@ from domain.models.validacion import ResultadoValidacion, validar_parte
 from domain.ports.persistencia import RepositorioPartesPort
 from infrastructure.persistencia.fabrica import construir_repositorio
 
-from interface_adapters.api.aprobacion_serializada import bloque_de_aprobacion
 from interface_adapters.api.cuerpos import (
     CLAVES_DE_LA_EXTRACCION,
     CLAVES_DE_LA_FIRMA,
@@ -68,6 +87,7 @@ from interface_adapters.api.cuerpos import (
     a_remesa_id,
     bloque,
 )
+from interface_adapters.api.estado_serializado import bloque_de_estado_derivado
 
 __all__ = ["CLAVES_DEL_PARTE", "AnotaLosResultados", "guardar_parte_http"]
 
@@ -123,12 +143,12 @@ def guardar_parte_http(
         "hash_parte": parte.hash,
         "resultado_parte": almacen.resultado_parte,
         "resultado_validacion": almacen.resultado_validacion,
-        # R22 (F-026) · **después** de guardar, y el orden es el requisito:
-        # `guardar_validacion` revoca la aprobación cuyo veredicto ya no
-        # coincide (R30), así que leerla antes devolvería como viva una
-        # aprobación que esta misma llamada acaba de tumbar.
-        "aprobacion": bloque_de_aprobacion(
-            almacen.consultar_aprobacion(hash_parte=parte.hash)
+        # F-028 · el estado del parte, derivado de la situación que
+        # `paso_persistencia` acaba de leer del almacén (R33) y del veredicto
+        # que se acaba de guardar. **Sin una consulta más por parte**: son 22
+        # viajes por remesa a un PostgreSQL compartido.
+        "estado": bloque_de_estado_derivado(
+            contexto.validacion, situacion_leida(contexto, almacen)
         ),
         "avisos": list(contexto.avisos),
     }
@@ -163,10 +183,11 @@ class AnotaLosResultados:
     Implementa `RepositorioPartesPort` entero delegando: si mañana el paso
     llamara a otra operación, este envoltorio no se interpone.
 
-    Es **público** desde F-026 porque `POST /api/aprobar` compone exactamente
-    lo mismo —guardar el parte y su veredicto, y contar qué pasó con cada
-    uno— y dos envoltorios distintos acabarían informando del mismo hecho de
-    dos formas distintas.
+    Es **público** desde F-026, cuando `POST /api/aprobar` compuso exactamente
+    lo mismo —guardar el parte y su veredicto, y contar qué pasó con cada uno—
+    y dos envoltorios distintos habrían acabado informando del mismo hecho de
+    dos formas distintas. Aquel endpoint lo retiró F-028 T15; quien lo compone
+    hoy, por el mismo motivo, es `POST /api/estado`.
     """
 
     def __init__(self, interno: RepositorioPartesPort) -> None:
@@ -196,13 +217,28 @@ class AnotaLosResultados:
     def guardar_cierre(self, **datos: Any) -> ResultadoGuardado:
         return self._interno.guardar_cierre(**datos)
 
-    def guardar_aprobacion(self, **datos: Any) -> ResultadoGuardado:
-        """F-026 · la escribe `/api/aprobar`, a través de este envoltorio."""
-        return self._interno.guardar_aprobacion(**datos)
+    def consultar_situacion(self, **datos: Any) -> Any:
+        """F-028 · la lee `paso_persistencia` para la regla de constancia.
 
-    def consultar_aprobacion(self, **datos: Any) -> Any:
-        """F-026 · la lee `/api/parte` para poder contarla en su respuesta (R22)."""
-        return self._interno.consultar_aprobacion(**datos)
+        Delega y no anota nada: aquí se anotan los dos resultados que el
+        contrato de la respuesta promete, y el estado del parte no es uno de
+        ellos —lo sirve `estado_serializado.py` a partir de lo que hay en el
+        almacén, no de lo que este envoltorio viera pasar—.
+        """
+        return self._interno.consultar_situacion(**datos)
+
+    def registrar_decision(self, **datos: Any) -> Any:
+        """F-028 · la fila de constancia del histórico, si el estado cambió."""
+        return self._interno.registrar_decision(**datos)
+
+    def consultar_estado_cierre(self, **datos: Any) -> Any:
+        """F-028 · la traza de cierre, que es lo que deja un parte `cerrado`.
+
+        La pregunta `POST /api/estado` **antes de escribir nada**, porque de
+        `cerrado` no se sale (R7) y el 409 tiene que llegar sin haber dejado
+        filas a su paso.
+        """
+        return self._interno.consultar_estado_cierre(**datos)
 
     def cola_validacion_humana(self, **datos: Any) -> tuple:
         return self._interno.cola_validacion_humana(**datos)

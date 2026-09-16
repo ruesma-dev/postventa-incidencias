@@ -36,13 +36,16 @@ Endpoints:
         archiva y se cierra. Sin esto, `POST /api/archivar` no puede
         completar.
 
-    POST /api/aprobar
-        Registra que **una persona** aprueba un parte que la validación mandó
-        a revisión (F-026), y con eso lo admite en el circuito de archivo y
-        cierre. Guarda el parte y su veredicto en la misma llamada, para que
-        la huella aprobada sea la del veredicto que acaba de escribirse. No
-        depende de `ARCHIVO_HABILITADO` ni de `CIERRE_HABILITADO`: escribe en
-        el esquema propio y no en un sistema ajeno.
+    POST /api/estado
+        Registra que **una persona** mueve un parte a `aprobado` o a
+        `rechazado` (F-028), que es lo que decide si entra en el circuito de
+        archivo y cierre. **Sustituye a `POST /api/aprobar`** y hace lo que
+        aquel no podía: rechazar un parte que la máquina había dado por bueno.
+        Guarda el parte y su veredicto en la misma llamada, para que la huella
+        apuntada sea la del veredicto que acaba de escribirse. De `cerrado` no
+        se sale (**409**), porque eso es un hecho del ERP y no una opinión
+        nuestra. No depende de `ARCHIVO_HABILITADO` ni de `CIERRE_HABILITADO`:
+        escribe en el esquema propio y no en un sistema ajeno.
 
     GET /api/cola
         Los partes que esperan decisión humana, para que la cola **sobreviva
@@ -215,6 +218,7 @@ from domain.models.errores import (
     ArchivoDeshabilitado,
     ArchivoFallido,
     ArchivoSinTraza,
+    CambioDeEstadoInvalido,
     CierreDeshabilitado,
     CierreFallido,
     CierreSinTraza,
@@ -237,9 +241,9 @@ from domain.models.errores import (
     GraficoSinTraza,
     LimiteDeEntradaSuperado,
     NombradoImposible,
+    ParteCerrado,
     ParteDemasiadoGrande,
     ParteNoAdjuntado,
-    ParteNoAprobable,
     ParteNoApto,
     ParteNoArchivado,
     PersistenciaNoDisponible,
@@ -252,10 +256,10 @@ from domain.models.errores import (
 )
 from domain.models.remesa import DocumentoEntrada
 from interface_adapters.api.adjuntar import adjuntar_grafico
-from interface_adapters.api.aprobar import aprobar_parte_http
 from interface_adapters.api.archivar import archivar_parte
 from interface_adapters.api.cerrar import cerrar_incidencia
 from interface_adapters.api.cola import leer_cola
+from interface_adapters.api.estado import cambiar_estado_http
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
@@ -532,45 +536,67 @@ def parte(req: func.HttpRequest) -> func.HttpResponse:
     return _json(cuerpo, 200)
 
 
-@app.route(route="aprobar", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
-def aprobar(req: func.HttpRequest) -> func.HttpResponse:
-    """Registra la aprobación humana de un parte rechazado (F-026, R2).
+@app.route(route="estado", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def estado(req: func.HttpRequest) -> func.HttpResponse:
+    """Registra que una persona mueve el estado de un parte (F-028, R9).
 
-    Solo traduce, como los demás: saca el JSON, llama al handler y mapea sus
-    errores de dominio a códigos HTTP. Cada código dice una cosa distinta y
-    lleva a una acción distinta (R20): **400** la petición está mal formada o
-    no dice quién decide, **409** el parte **no admite** esa decisión —ya es
-    apto, o le falta un dato que hay que teclear— o su remesa no consta, y
-    **503** aquí y ahora no hay base de datos. En los cuatro, sin haber
-    escrito nada.
+    **Sustituye a `POST /api/aprobar`** y hace lo que aquel no podía: rechazar
+    un parte que la máquina había dado por bueno. Solo traduce, como los demás:
+    saca el JSON, llama al handler y mapea sus errores de dominio a códigos
+    HTTP. Aquí no hay ni una decisión de negocio.
 
-    El 400 y el 409 no se confunden a propósito: el 400 manda a revisar el
-    cuerpo y el 409 manda a corregir el papel, que son dos sitios distintos y
-    dos personas distintas.
+    Cada código dice una cosa distinta y lleva a una acción distinta (R31):
 
-    El log lleva el `hash_parte`, el destino del que se rescató el parte y el
-    resultado, y **nada más** (R44). Ni el `oid` de quien aprueba —que es el
-    dato nuevo que trae este cuerpo—, ni el DNI, ni las observaciones: este
-    log viaja a Application Insights y sobrevive al parte.
+    - **200** · el estado cambió, **o** ya estaba en ese estado por la misma
+      decisión (`resultado_estado: "sin_cambios"`). Dos pulsaciones seguidas
+      son un dedo, no un error, y el estado final es el que se pedía;
+    - **400** · el cuerpo está mal formado, no dice quién decide, no viene
+      confirmado con el booleano de JSON, pide un `estado` que no es uno de
+      los dos manuales, rechaza **sin motivo** o el motivo se pasa de largo.
+      Se va a revisar el cuerpo;
+    - **409** · la petición está bien y lo que no admite la decisión es **el
+      parte**: está `cerrado` —y de ahí no sale ninguna flecha (R7), porque
+      eso lo escribió el ERP y no nosotros— o su remesa no consta registrada.
+      Se va a otro sitio: al ERP en el primer caso, a `POST /api/remesa` en el
+      segundo;
+    - **503** · aquí y ahora no hay base de datos. Se reintenta más tarde.
+
+    **En los cuatro que no son 200, sin haber escrito nada** (R31), y eso lo
+    sostiene el handler: las cuatro claves propias se miran antes que nada y la
+    puerta del parte cerrado va **antes** de guardar.
+
+    El 400 y el 409 no se confunden a propósito, y el 409 y el 503 tampoco: los
+    tres mandan a personas distintas a sitios distintos. Unificarlos «porque
+    todos son fallos» es lo que costó media hora en el defecto 15 de F-010.
+
+    El log lleva el `hash_parte`, de qué estado venía, a cuál va y el
+    resultado, y **nada más** (R53). Ni el `oid` de quien decide, ni el
+    **motivo** —que lo escribe una persona en texto libre y puede llevar dentro
+    el nombre de un cliente—, ni el DNI, ni las observaciones: este log viaja a
+    Application Insights y sobrevive al parte (R52).
     """
     try:
-        cuerpo = aprobar_parte_http(req.get_json())
+        cuerpo = cambiar_estado_http(req.get_json())
     except ValueError:
-        log.info("aprobar rechazado: el cuerpo no es JSON válido")
+        log.info("estado rechazado: el cuerpo no es JSON válido")
         return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
-    except (PeticionDePersistenciaInvalida, CuerpoDeValidacionInvalido) as error:
-        log.info("aprobar rechazado: %s", error.motivo)
+    except (
+        CambioDeEstadoInvalido,
+        PeticionDePersistenciaInvalida,
+        CuerpoDeValidacionInvalido,
+    ) as error:
+        log.info("estado rechazado: %s", error.motivo)
         return _json({"error": error.motivo}, 400)
-    except ParteNoAprobable as error:
-        log.info("aprobar no admitido: %s", error.motivo)
+    except ParteCerrado as error:
+        log.info("estado no admitido, el parte está cerrado: %s", error.motivo)
         return _json({"error": error.motivo}, 409)
     except ReferenciaNoConsta as error:
-        log.info("aprobar sin remesa registrada: %s", error.motivo)
+        log.info("estado sin remesa registrada: %s", error.motivo)
         return _json(
             {
                 "error": (
                     f"la remesa de este parte no consta registrada, así que no "
-                    f"se ha aprobado nada: hay que registrarla antes con "
+                    f"se ha cambiado nada: hay que registrarla antes con "
                     f"POST /api/remesa y reenviar el parte con el 'remesa_id' "
                     f"que devuelva. Motivo: {error.motivo}"
                 )
@@ -578,34 +604,35 @@ def aprobar(req: func.HttpRequest) -> func.HttpResponse:
             409,
         )
     except ConfiguracionPgIncompleta as error:
-        log.warning("aprobar sin base de datos configurada: %s", error.motivo)
+        log.warning("estado sin base de datos configurada: %s", error.motivo)
         return _json(
             {
                 "error": (
                     f"falta configuración de la base de datos, así que este "
-                    f"entorno no guarda nada: no se ha registrado la "
-                    f"aprobación. Motivo: {error.motivo}"
+                    f"entorno no guarda nada: no se ha registrado la decisión. "
+                    f"Motivo: {error.motivo}"
                 )
             },
             503,
         )
     except PersistenciaNoDisponible as error:
-        log.warning("aprobar sin base de datos: %s", error.motivo)
+        log.warning("estado sin base de datos: %s", error.motivo)
         return _json(
             {
                 "error": (
                     f"no se ha podido hablar con la base de datos y no se ha "
-                    f"registrado la aprobación: se puede reintentar cuando la "
+                    f"registrado la decisión: se puede reintentar cuando la "
                     f"base vuelva. Motivo: {error.motivo}"
                 )
             },
             503,
         )
     log.info(
-        "aprobar: hash=%s destino=%s resultado=%s",
+        "estado: hash=%s de=%s a=%s resultado=%s",
         cuerpo["hash_parte"],
-        cuerpo["aprobacion"]["destino_aprobado"],
-        cuerpo["aprobacion"]["estado"],
+        cuerpo["estado"]["estado_anterior"],
+        cuerpo["estado"]["estado"],
+        cuerpo["resultado_estado"],
     )
     return _json(cuerpo, 200)
 

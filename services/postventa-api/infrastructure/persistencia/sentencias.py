@@ -28,12 +28,8 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from domain.models.aprobacion import (
-    Aprobacion,
-    MotivoRevocacion,
-    huella_de_veredicto,
-)
 from domain.models.cierre import CorrespondenciaSigrid
+from domain.models.estado import DecisionEstado, EstadoParte
 from domain.models.extraccion import ExtraccionParte
 from domain.models.persistencia import (
     PreferenciasUsuario,
@@ -49,7 +45,6 @@ from infrastructure.persistencia.ddl import validar_nombre_de_esquema
 from infrastructure.persistencia.mapeo import (
     columnas_de_campos,
     json_de_avisos,
-    json_de_codigos_de_motivo,
     valores_de_campos,
     valores_de_traza_ia,
     valores_de_validacion,
@@ -57,13 +52,15 @@ from infrastructure.persistencia.mapeo import (
 
 __all__ = [
     "LIMITE_MAXIMO_COLA",
-    "revocar_aprobacion_si_cambio",
-    "select_aprobacion",
+    "ORIGEN_DECISION_HUMANA",
+    "ORIGEN_ULTIMO_CAMBIO",
+    "insert_decision_estado",
     "select_cola",
+    "select_estado_cierre",
     "select_grafico",
     "select_login_sigrid",
     "select_preferencias",
-    "upsert_aprobacion",
+    "select_situacion_estado",
     "upsert_archivo",
     "upsert_cierre",
     "upsert_grafico",
@@ -388,159 +385,167 @@ def select_grafico(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
     return sql, (hash_parte,)
 
 
-#: Las columnas de `aprobaciones` que se escriben al aprobar, en el orden en
-#: que viajan sus parámetros.
+#: Las columnas de `historico_estado` que viajan en cada fila, en el orden en
+#: que se escriben y en el que se leen.
 #:
-#: Las dos de la revocación **no están aquí a propósito**: no se escriben nunca
-#: desde el `upsert`. Aprobar produce siempre una aprobación viva, y eso lo
-#: garantiza la sentencia poniéndolas a `NULL` literal, no que quien la llame
-#: se acuerde de construir la dataclass sin revocar (R17).
-_COLUMNAS_APROBACION_VIVA: tuple[str, ...] = (
+#: Una sola lista para el `INSERT` y para el `SELECT` **a propósito**, como
+#: `_COLUMNAS_GRAFICO`: `fila_a_decision_estado` desempaqueta por posición, y
+#: dos listas del mismo orden divergen — el día que divergieran, una decisión
+#: volvería con la huella en el sitio del `oid` y nadie lo notaría.
+#:
+#: `cambio_id` no está: lo pone la base (`bigserial`) y nadie lo lee. Es lo que
+#: desempata dos cambios del mismo parte en el mismo instante, y para eso basta
+#: con que esté en el `ORDER BY`.
+_COLUMNAS_HISTORICO: tuple[str, ...] = (
     "hash_parte",
-    "aprobado_por",
-    "aprobado_at_utc",
-    "destino_aprobado",
-    "motivos_aprobados",
-    "huella_aprobada",
-    "validado_at_utc",
+    "estado",
+    "decidido_at_utc",
+    "estado_anterior",
+    "decidido_por",
+    "motivo",
+    "huella_veredicto",
 )
 
-#: Las dos columnas de la revocación. Se escriben **solo** desde
-#: `revocar_aprobacion_si_cambio`, y revocar no borra (R33).
-_COLUMNAS_REVOCACION: tuple[str, ...] = ("revocada_at_utc", "revocada_motivo")
-
-#: Lo que lee `select_aprobacion`: lo escrito más el estado de la revocación.
+#: El orden del histórico: lo más reciente primero, y el contador desempata.
 #:
-#: Una sola lista para el `SELECT` **a propósito**, como `_COLUMNAS_GRAFICO`:
-#: `fila_a_aprobacion` desempaqueta por posición, y dos listas del mismo orden
-#: divergen — el día que divergieran, la aprobación volvería con la huella en
-#: el sitio del `oid` y nadie lo notaría.
-_COLUMNAS_APROBACION: tuple[str, ...] = (
-    *_COLUMNAS_APROBACION_VIVA,
-    *_COLUMNAS_REVOCACION,
-)
+#: Las dos cosas hacen falta. Sin `cambio_id DESC`, dos cambios del mismo parte
+#: en el mismo instante —una decisión humana y la constancia que la sigue caen
+#: seguidas— volverían en el orden que decidiera PostgreSQL, y la «última
+#: decisión humana» sería la que tocara ese día. Es el mismo orden que declara
+#: el índice `ix_historico_estado_parte`, y por eso se escribe una vez.
+_ORDEN_HISTORICO = "ORDER BY decidido_at_utc DESC, cambio_id DESC"
 
-#: La única columna `jsonb` de la tabla, y por tanto la única que lleva
-#: `::jsonb` en el `VALUES`.
-_COLUMNA_JSONB_APROBACION = "motivos_aprobados"
+#: Marcador de la rama que trae la última decisión **de una persona**.
+#:
+#: No es un valor que venga de fuera: es parte de la forma de la consulta, como
+#: el nombre de la tabla, y por eso se pega al texto en vez de viajar como
+#: parámetro. Las dos ramas del `UNION ALL` pueden devolver **la misma fila**
+#: —cuando el último cambio lo decidió una persona—, y sin el marcador quien
+#: lea no podría distinguir eso de «hay una decisión humana antigua y una
+#: constancia reciente», que son situaciones opuestas.
+ORIGEN_DECISION_HUMANA = "decision_humana"
+
+#: Marcador de la rama que trae el último cambio, lo decidiera quien lo
+#: decidiera. De esa fila **solo** se mira el estado, y solo para la regla de
+#: constancia (R26): el histórico es constancia, nunca criterio.
+ORIGEN_ULTIMO_CAMBIO = "ultimo_cambio"
 
 
-def upsert_aprobacion(*, esquema: str, aprobacion: Aprobacion) -> tuple[str, tuple]:
-    """Registra que **una persona** aprobó este parte (F-026, R14, R17).
+def insert_decision_estado(
+    *, esquema: str, decision: DecisionEstado
+) -> tuple[str, tuple]:
+    """Añade una fila al histórico de estado. **Append-only** (F-028, R21).
 
-    Una sola fila por parte: la clave primaria es el `hash_parte`, así que
-    volver a aprobar el mismo parte —lo que pasa en cuanto alguien corrige un
-    campo, revalida y vuelve a mirarlo— **sustituye** la aprobación en vez de
-    acumular una segunda.
+    **No lleva `ON CONFLICT`, y es el punto entero de la feature.** Las otras
+    diez tablas del esquema se escriben con `ON CONFLICT (hash_parte) DO
+    UPDATE` porque de cada una solo interesa el último estado; aquí interesan
+    todos, en orden. `postventa.aprobaciones` es lo que pasa cuando no: un
+    ciclo aprobar → rechazar → aprobar deja **una** fila y borra el rechazo por
+    el camino, así que nadie puede responder después a «quién lo rechazó y por
+    qué» (R25, `design.md` §0.4).
 
-    Y el `DO UPDATE` deja la fila **viva**, poniendo las dos columnas de la
-    revocación a `NULL` literal. Es el camino normal después de una revocación,
-    y escribirlo aquí en vez de confiarlo al objeto que llega es lo que impide
-    que una segunda aprobación nazca muerta.
+    De quien decide viaja el `oid` **opaco** de Entra ID y nada más (R15), y de
+    la máquina no viaja ningún autor: `decidido_por` a `NULL` **es** «lo decidió
+    la máquina» (R24). Inventarse ahí un `"sistema"` convertiría una anotación
+    en una acusación, y borraría lo único que distingue las dos clases de fila.
 
-    De quien aprueba viaja el `oid` **opaco** de Entra ID y nada más (R13), y
-    de los motivos viajan sus **códigos** (R14). Ni una letra de la
-    transcripción manuscrita entra en esta tabla (R15): sobre qué veredicto se
-    decidió va como huella.
+    Ni una letra del papel entra aquí: sobre qué veredicto se decidió va como
+    **huella**, y el `motivo` es texto de **quien revisa**. Los dos viajan como
+    parámetros del driver, nunca interpolados en el texto.
+
+    El `RETURNING (xmax = 0)` devuelve siempre `creado` —un `INSERT` sin
+    conflicto no actualiza nada— y está para que el adaptador pueda usar el
+    mismo camino de escritura que las demás operaciones.
     """
-    tabla = _tabla(esquema, "aprobaciones")
-    marcadores = ", ".join(
-        "%s::jsonb" if columna == _COLUMNA_JSONB_APROBACION else "%s"
-        for columna in _COLUMNAS_APROBACION_VIVA
-    )
-    limpieza = ",\n".join(f"    {columna} = NULL" for columna in _COLUMNAS_REVOCACION)
+    tabla = _tabla(esquema, "historico_estado")
     sql = (
-        f"INSERT INTO {tabla} ({', '.join(_COLUMNAS_APROBACION_VIVA)})\n"
-        f"VALUES ({marcadores})\n"
-        f"ON CONFLICT (hash_parte) DO UPDATE SET\n"
-        f"{_asignaciones(_COLUMNAS_APROBACION_VIVA, excluidas={'hash_parte'})},\n"
-        f"{limpieza}\n"
+        f"INSERT INTO {tabla} ({', '.join(_COLUMNAS_HISTORICO)})\n"
+        f"VALUES ({', '.join(['%s'] * len(_COLUMNAS_HISTORICO))})\n"
         f"RETURNING (xmax = 0) AS creado"
     )
     parametros = (
-        aprobacion.hash_parte,
-        aprobacion.aprobado_por,
-        aprobacion.aprobado_at_utc,
-        aprobacion.destino_aprobado.value,
-        json_de_codigos_de_motivo(aprobacion.motivos_aprobados),
-        aprobacion.huella_aprobada,
-        aprobacion.validado_at_utc,
+        decision.hash_parte,
+        decision.estado.value,
+        decision.decidido_at_utc,
+        _valor_de_estado(decision.estado_anterior),
+        decision.decidido_por,
+        decision.motivo,
+        decision.huella_veredicto,
     )
     return sql, parametros
 
 
-def select_aprobacion(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
-    """La aprobación de un parte, por su `hash`, o ninguna fila (F-026).
+def select_situacion_estado(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
+    """Las **dos** últimas filas que hacen falta de un parte (`design.md` §8.5).
 
-    La leen los tres pasos del circuito —para saber si el parte entra— y
-    `POST /api/parte`, para que la pantalla pueda decirlo sin una petición más
-    por parte (R22).
+    Un `UNION ALL` de dos `SELECT … LIMIT 1` sobre el mismo índice:
 
-    Devuelve **las mismas columnas y en el mismo orden** que escribe
-    `upsert_aprobacion`, más las dos de la revocación: las dos se apoyan en
-    `_COLUMNAS_APROBACION`.
+    - la última fila **humana** (`decidido_por IS NOT NULL`), que es la decisión
+      vigente y la única que manda sobre la máquina (R9);
+    - la última fila **de cualquiera**, de la que solo se mira el estado y solo
+      para la regla de constancia —si el estado derivado no es este, se añade
+      una fila— (R26).
 
-    No filtra por `revocada_at_utc IS NULL`: quien lee necesita distinguir «a
-    este parte no lo ha aprobado nadie» de «lo aprobaron y dejó de valer», y lo
-    segundo es lo que la pantalla tiene que contar para que alguien vuelva a
-    mirarlo (R31).
+    Que la rama humana filtre por `decidido_por IS NOT NULL` y no por otra cosa
+    no es un detalle: **quién decidió es el tipo de fila**. No hay columna
+    «tipo», porque inventarse un autor para la máquina era justo lo que R24
+    prohíbe. Si el filtro fuera otro, una fila de constancia podría colarse como
+    decisión de una persona, y con eso se abre la puerta del circuito que
+    escribe en el ERP de producción.
+
+    Las dos ramas pueden devolver **la misma fila**; por eso cada una se marca
+    con su origen.
+
+    **Alternativa descartada** (`design.md` §8.5): un `LEFT JOIN LATERAL` que lo
+    resolviera todo en una sentencia. Ahorra un viaje a la misma conexión ya
+    abierta y cuesta un SQL que nadie de este repositorio sabe leer de un
+    vistazo.
     """
-    tabla = _tabla(esquema, "aprobaciones")
+    tabla = _tabla(esquema, "historico_estado")
+    columnas = ", ".join(_COLUMNAS_HISTORICO)
     sql = (
-        f"SELECT {', '.join(_COLUMNAS_APROBACION)}\n"
-        f"FROM {tabla}\n"
-        "WHERE hash_parte = %s"
+        f"(SELECT '{ORIGEN_DECISION_HUMANA}' AS origen, {columnas}\n"
+        f" FROM {tabla}\n"
+        f" WHERE hash_parte = %s AND decidido_por IS NOT NULL\n"
+        f" {_ORDEN_HISTORICO}\n"
+        f" LIMIT 1)\n"
+        f"UNION ALL\n"
+        f"(SELECT '{ORIGEN_ULTIMO_CAMBIO}' AS origen, {columnas}\n"
+        f" FROM {tabla}\n"
+        f" WHERE hash_parte = %s\n"
+        f" {_ORDEN_HISTORICO}\n"
+        f" LIMIT 1)"
     )
+    return sql, (hash_parte, hash_parte)
+
+
+def select_estado_cierre(*, esquema: str, hash_parte: str) -> tuple[str, tuple]:
+    """El estado de la traza de cierre de un parte, o ninguna fila (F-028, R18).
+
+    Es el tercer hecho de la situación, y **es de otro sistema**: `cerrado` no
+    es una opinión nuestra, es lo que dice el ERP y lo que F-009 dejó apuntado
+    al escribirlo. Por eso se lee cada vez en vez de guardar una copia nuestra:
+    una copia acabaría diciendo que un parte está cerrado cuando no lo está, o
+    al revés (`design.md` §3).
+
+    Se trae **solo** la columna `estado`. El resto de la traza —el número de
+    incidencia, quién confirmó, el motivo— no hace falta para derivar el estado,
+    y `confirmado_por` es dato personal seudónimo: lo que no se lee no se puede
+    filtrar.
+    """
+    tabla = _tabla(esquema, "cierres")
+    sql = f"SELECT estado\nFROM {tabla}\nWHERE hash_parte = %s"
     return sql, (hash_parte,)
 
 
-def revocar_aprobacion_si_cambio(
-    *, esquema: str, resultado: ResultadoValidacion, ahora: datetime
-) -> tuple[str, tuple]:
-    """Revoca la aprobación si el veredicto ya no es el que se aprobó (R30).
+def _valor_de_estado(estado: EstadoParte | None) -> str | None:
+    """El literal que va a la columna, o `None` si no hay estado.
 
-    Es la pieza de D-F (`design.md` §7): **la vigencia no se comprueba al leer,
-    se resuelve al escribir**. Esta sentencia viaja pegada al guardado de la
-    validación, en la misma operación, de modo que quien lea la fila después ve
-    la verdad sin tener que calcularla — y los tres pasos del circuito, que no
-    pueden recomputar la huella porque su cuerpo no trae ni los motivos ni las
-    observaciones, no tienen que hacerlo.
-
-    Las dos condiciones del `WHERE` hacen falta, y cada una impide una cosa:
-
-    - `revocada_at_utc IS NULL` evita reescribir la fecha de una revocación ya
-      hecha. La primera es la que cuenta; machacarla sería perder cuándo dejó de
-      valer.
-    - `huella_aprobada <> %s` es lo que separa «el veredicto cambió» de «se ha
-      vuelto a subir la misma remesa». Sin él, el único gesto con el que se
-      recupera el trabajo tras recargar la pantalla revocaría todas las
-      aprobaciones (R32).
-
-    **No borra** (R33): la decisión se tomó, y quién la tomó y cuándo sigue
-    siendo información. Y el motivo es una **etiqueta corta y cerrada** (R34),
-    nunca el texto del cliente que la provocó — que sería copiar la
-    transcripción manuscrita a una segunda tabla, justo lo que R15 prohíbe.
-
-    Se ejecuta siempre, haya aprobación o no: si no la hay, el `UPDATE` no toca
-    ninguna fila y no ha pasado nada. Consultar antes para decidir si merece la
-    pena sería una consulta de más en el camino más transitado del servicio, y
-    una condición de carrera con quien apruebe a la vez.
+    `estado_anterior` a `None` significa «no había estado registrado antes»: es
+    la primera fila de ese parte. Escribir ahí `'pendiente'` sería afirmar un
+    tramo de la película que nadie presenció.
     """
-    tabla = _tabla(esquema, "aprobaciones")
-    sql = (
-        f"UPDATE {tabla}\n"
-        "SET revocada_at_utc = %s, revocada_motivo = %s\n"
-        "WHERE hash_parte = %s\n"
-        "  AND revocada_at_utc IS NULL\n"
-        "  AND huella_aprobada <> %s"
-    )
-    parametros = (
-        ahora,
-        MotivoRevocacion.VEREDICTO_CAMBIADO.value,
-        resultado.hash_parte,
-        huella_de_veredicto(resultado),
-    )
-    return sql, parametros
+    return None if estado is None else estado.value
 
 
 def select_cola(*, esquema: str, limite: int) -> tuple[str, tuple]:

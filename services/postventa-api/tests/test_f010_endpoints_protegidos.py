@@ -81,7 +81,13 @@ FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 #:
 #: Eran seis hasta F-019, que anadio `remesa`, `parte` y `cola`; nueve hasta
 #: F-009, que anadio `cerrar`; diez hasta F-012, que anadio `adjuntar`; y once
-#: hasta F-026, que anade `aprobar`.
+#: hasta F-026, que anadio `aprobar`.
+#:
+#: F-028 los dejo en trece con `estado` y los devolvio a **doce** al retirar
+#: `aprobar` en T15: `/api/estado` lo **sustituye**, no convive con el
+#: (`design.md` §5). Es la primera vez que este fichero resta en vez de sumar,
+#: y por eso se escribe: un endpoint retirado tiene que pasar por aqui igual
+#: que uno nuevo, o el barrido seguiria exigiendo una ruta que ya no existe.
 ENDPOINTS = (
     "health",
     "split",
@@ -90,7 +96,7 @@ ENDPOINTS = (
     "validar",
     "remesa",
     "parte",
-    "aprobar",
+    "estado",
     "cola",
     "archivar",
     "adjuntar",
@@ -152,7 +158,7 @@ def test_f019_r30_la_cabecera_dice_que_anade_la_cola_al_cuadro(codigo):
 
 
 def test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada(codigo):
-    """R32 · los once siguen anonimos **y** la cabecera dice por que.
+    """R32 · los doce siguen anonimos **y** la cabecera dice por que.
 
     Las dos mitades en un solo test, y no en dos, porque lo que hay que
     impedir es que se separen: un `auth_level` cambiado con la nota intacta

@@ -301,6 +301,38 @@ cola humana **siguen fuera** (aprobarlos es **F-026**).
 > ninguna confirmación nueva**: aprobar no pregunta «¿seguro?», así que la
 > confirmación del circuito sigue siendo **una sola**.
 
+> **Enmienda del 2026-09-16 · F-028 (R58). Se añade a la de arriba, que sigue
+> entera.**
+>
+> **Qué cambia**: el vocabulario. Donde la enmienda de F-026 decía «si y solo
+> si consta aprobado y vigente en `postventa.aprobaciones`», hoy se dice que
+> **solo se archiva, se adjunta y se cierra lo que está `aprobado`**, uno de
+> los cuatro estados de F-028 (`pendiente`, `aprobado`, `rechazado`,
+> `cerrado`).
+>
+> **Qué lo invalidó**: con F-026 la única operación era aprobar lo rechazado,
+> así que «apto **o** aprobado» bastaba para describir la puerta. F-028 añade
+> la operación contraria —una persona puede **rechazar** un parte que la
+> máquina dio por bueno— y entonces «apto» deja de bastar: un parte **apto y
+> `rechazado` no se archiva**, y con el vocabulario viejo eso no se podía ni
+> enunciar. La puerta pasa a preguntar por el **estado**, que es la única
+> respuesta que hay (R2 y R17 de F-028).
+>
+> **Lo que no cambia, y es lo que más importa**: la prohibición sigue entera y
+> se sigue comprobando en **los tres pasos del backend** —archivar, adjuntar y
+> cerrar—, leyendo el estado **del repositorio, nunca del cuerpo de la
+> petición**, con su control negativo escrito **antes** que la feature
+> (`services/postventa-api/tests/test_f028_puertas.py`). La puerta es **más
+> estrecha** que la de F-026, no más ancha: donde antes entraba todo lo apto,
+> ahora entra lo apto **que nadie haya rechazado**.
+>
+> **F-025 sigue `done`**: esto no reabre la feature ni cambia su alcance. La
+> confirmación del circuito sigue siendo **una sola**, porque cambiar el estado
+> no arma ninguna confirmación nueva.
+>
+> **Quién y cuándo**: el **responsable del proyecto**, el **2026-09-15**, al
+> replantear F-026 después de verla funcionando.
+
 **R37.** CUANDO termina el circuito de un parte, el sistema debe enseñar el
 **número de incidencia** de la reclamación sobre la que escribió.
 

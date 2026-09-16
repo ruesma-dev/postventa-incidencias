@@ -58,6 +58,14 @@ El de la **aprobación humana** (F-026) es uno solo, `ParteNoAprobable` (→ 409
 y cae del lado de «no se puede tal y como está»: la petición está bien formada
 y lo que no admite la decisión es el estado del parte.
 
+Los del **estado del parte** (F-028) son dos y repiten ese mismo reparto sobre
+`POST /api/estado`: `ParteCerrado` (→ 409) es «la petición está bien y el parte
+ya está cerrado en el ERP, que es un estado terminal», y
+`CambioDeEstadoInvalido` (→ 400) es «el cuerpo no trae lo que dice el
+contrato» —falta quién decide, falta la confirmación, el estado pedido no es
+uno de los dos manuales o el rechazo viene sin motivo—. **En los dos, sin
+haber escrito nada.**
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
@@ -912,6 +920,69 @@ class ParteNoAprobable(Exception):
     El motivo dice **cuál** lo impide y qué hay que corregir (R9), y **nunca**
     lleva el texto de las observaciones ni ningún otro dato del papel: esto
     acaba en un log (R43).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ParteCerrado(Exception):
+    """Se ha pedido cambiar el estado de un parte ya cerrado (F-028, R7).
+
+    `cerrado` es **terminal** y de ahí no sale ninguna flecha (D5). Lo escrito
+    en Sigrid y en SharePoint no se deshace desde aquí, y cambiar el estado
+    solo conseguiría que nuestra base dijera algo distinto del ERP: la
+    incidencia seguiría cerrada y el parte figuraría como rechazado.
+
+    El borde lo traduce a **409 y nunca a 400**, con el mismo reparto que
+    `ParteNoApto` y `ParteNoAprobable`: la petición está perfectamente formada
+    —trae su `usuario_oid`, su confirmación y su motivo—, y lo que no admite
+    la decisión es **el estado del parte**. Un 400 mandaría a revisar el
+    cuerpo a quien no tiene nada que revisar.
+
+    En la pantalla no llega a levantarse casi nunca, porque la web ya no
+    ofrece ningún gesto sobre un parte cerrado y lo **explica** en vez de
+    fallar (R41). Esto es la puerta de atrás: quien llame al endpoint
+    directamente se lleva el 409.
+
+    Si alguna vez apareciera la necesidad de **deshacer** un cierre, no se
+    implementa aquí: es escritura de reversión en el ERP de producción, la
+    decide el dueño del proceso y se marcaría `blocked` según `CLAUDE.md`.
+
+    El motivo dice **por qué** no se puede y **nunca** lleva el `oid` de quien
+    decidió, el motivo que escribió ni ningún dato del papel: esto acaba en un
+    log (R52, R53).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CambioDeEstadoInvalido(Exception):
+    """El cuerpo de `POST /api/estado` no trae lo que dice el contrato (F-028).
+
+    Los casos, y todos se arreglan en el cuerpo de la petición (R31): falta
+    **quién decide** (R14), falta la confirmación explícita o no es el booleano
+    de JSON (R29), el `estado` pedido **no es uno de los dos manuales** —a
+    `pendiente` no se vuelve a mano y a `cerrado` solo se llega cerrando la
+    incidencia (R10)—, el rechazo viene **sin motivo** (R11) o el motivo pasa
+    de `LIMITE_MOTIVO` (R13).
+
+    El borde lo traduce a **400**, y no a 409: la petición está mal formada,
+    no es que el parte no admita la decisión. La distinción no es cosmética,
+    y es la misma que ya escribió `CuerpoDeArchivoInvalido`: un estado
+    desconocido tratado «como si fuera rechazado» dejaría un parte fuera de la
+    tanda sin que nadie lo hubiera decidido; tratado al revés, lo metería. Se
+    rechaza y punto.
+
+    **Sin haber escrito nada**, que es la otra mitad del requisito: un cuerpo
+    mal formado no puede dejar media fila en el histórico.
+
+    El motivo dice **qué** falta y nunca lo que sí venía: por aquí pasan el
+    `oid` de quien decide y el texto que escribió, y esto acaba en un log
+    (R52, R53).
     """
 
     def __init__(self, motivo: str) -> None:

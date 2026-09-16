@@ -380,27 +380,35 @@
       },
 
       /**
-       * F-026 · registra que una persona aprueba este parte.
+       * F-028 · registra que una persona **decide** el estado de este parte.
        *
-       * **Endpoint propio** y no una clave más en `/api/parte` (R18): guardar
-       * ocurre en cada revalidación, y aprobar es una decisión de una persona.
-       * Una petición, una decisión, una fila de auditoría.
+       * Releva a `aprobar` (F-026), que llamaba a `POST /api/aprobar`: ese
+       * endpoint ya no existe. Y hace lo que aquel no podía, que era medio
+       * encargo de F-028: **rechazar un parte que la máquina dio por bueno**.
+       * `/api/aprobar` contestaba 409 a cualquier parte apto porque «no hay
+       * nada que aprobar», así que un parte verde rechazado a mano se
+       * archivaba igual.
        *
-       * El cuerpo lo compone `js/pipeline.js::cuerpoDeAprobacion`: el de
-       * `/api/parte` más `usuario_oid` y `confirmado`. **No lleva los bytes
-       * del PDF** ni ningún veredicto ya hecho — el backend lo recalcula con
-       * las reglas del dominio y no acepta el del cuerpo (R5).
+       * **Endpoint propio** y no una clave más en `/api/parte` (R27): guardar
+       * ocurre en cada revalidación, y decidir es un acto de una persona. Una
+       * petición, una decisión, una fila de auditoría.
        *
-       * Devuelve el bloque `aprobacion` que hay que pintar (R22). Un **409**
-       * es «este parte no es aprobable», y no se reintenta: insistir no lo
-       * vuelve aprobable.
+       * El cuerpo lo compone `js/pipeline.js::cuerpoDeCambioDeEstado`: el de
+       * `/api/parte` más `estado`, `usuario_oid`, `confirmado` y, al rechazar,
+       * `motivo`. **No lleva los bytes del PDF** ni ningún veredicto ya hecho
+       * — el backend lo recalcula con las reglas del dominio y no acepta el
+       * del cuerpo (R28, R30).
+       *
+       * Devuelve el bloque `estado` que hay que pintar. Un **409** es «este
+       * parte está cerrado» o «la remesa no consta», y no se reintenta:
+       * insistir no reabre una incidencia cerrada en el ERP.
        */
-      aprobar: function (cuerpo, hash) {
-        return peticion("/aprobar", {
+      cambiarEstado: function (cuerpo, hash) {
+        return peticion("/estado", {
           metodo: "POST",
           cuerpo: JSON.stringify(cuerpo),
           cabeceras: { "Content-Type": "application/json" },
-          paso: "aprobar",
+          paso: "estado",
           hash: hash,
         });
       },

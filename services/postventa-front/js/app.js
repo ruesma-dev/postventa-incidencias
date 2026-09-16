@@ -69,10 +69,20 @@ function appPostventa() {
     // persona suponga que sí.
     estadoAutoguardado: "",
     mensajeAutoguardado: "",
-    // F-026 · qué pasó con la última aprobación que se pidió. Nace declarado
-    // para que Alpine lo haga reactivo, como todo lo demás de esta pantalla.
-    mensajeAprobacion: "",
+    // F-028 · qué pasó con el último cambio de estado que se pidió. Nace
+    // declarado para que Alpine lo haga reactivo, como todo lo demás de esta
+    // pantalla.
+    mensajeEstado: "",
+    // F-028 R11, R40 · el motivo de la decisión que se está tomando. Es **uno
+    // solo** para los dos gestos: al rechazar es obligatorio —quien vuelva a
+    // mirar el parte necesita saber qué hay que arreglar— y al aprobar es
+    // opcional (R12). Nace declarado por lo mismo que todo lo de aquí: sin eso
+    // el botón de rechazar no se rehabilitaría al escribir.
+    motivoDeRechazo: "",
     CAMPOS: window.Pipeline.CAMPOS_DEL_PARTE,
+    // F-028 R13 · lo que mide un motivo como mucho, para acotar el campo con
+    // el número del dominio y no con uno inventado en la plantilla.
+    LIMITE_MOTIVO: window.Pipeline.LIMITE_MOTIVO,
 
     // --- archivar y cerrar, en un solo gesto (F-025 R1, R2) ---
     // El estado de la confirmación lo compone `js/confirmacion.js`: aquí solo
@@ -230,17 +240,25 @@ function appPostventa() {
         // F-019 R27: hasta que conste guardado, el parte no es archivable.
         guardado: false,
         errorGuardado: "",
-        // F-026 R22 · lo que el backend dice de la aprobación de este parte:
-        // `{estado, destino_aprobado, motivos_aprobados, aprobado_at_utc}`, o
-        // `null` si no lo ha aprobado nadie. **Nace declarada** aunque nazca
-        // vacía: añadirla a mitad de sesión no la haría reactiva y la marca
-        // del parte aprobado no repintaría, que es el defecto que F-025
-        // documentó con `paso`.
+        // F-028 R38 · el bloque `estado` que manda el backend:
+        // `{estado, decidido_por_persona, decidido_at_utc, estado_anterior}`,
+        // o `null` mientras no conste. **Nace declarado** aunque nazca vacío:
+        // añadirlo a mitad de sesión no lo haría reactivo y la marca del estado
+        // no repintaría, que es el defecto que F-025 documentó con `paso`.
         //
-        // Viene SIEMPRE del backend —de `/api/parte` o de `/api/aprobar`—,
-        // nunca se compone aquí: quien decide si sigue vigente es quien la
-        // escribió.
-        aprobacion: null,
+        // Se llama `estadoParte` y no `estado` porque ese nombre lleva desde
+        // F-007 la **fase** del parte en pantalla —«leyendo», «listo»,
+        // «error»—, y dos cosas distintas con el mismo nombre en el mismo
+        // objeto son un fallo esperando a que alguien las confunda.
+        //
+        // Viene SIEMPRE del backend —de `/api/parte` o de `/api/estado`— y
+        // aquí no se deriva ninguno (R17): quien decide en qué estado está un
+        // parte es quien tiene delante el histórico y la traza de cierre.
+        estadoParte: null,
+        // F-028 R43 · el aviso de que la decisión de una persona dejó de contar
+        // porque el veredicto cambió. Es el segundo de los dos hechos que R43
+        // exige no confundir, y nace declarado por lo mismo que el de arriba.
+        avisoEstado: "",
       };
     },
 
@@ -295,16 +313,23 @@ function appPostventa() {
       // constancia, o un error que nadie sabe leer.
       parte.guardado = Boolean(guardado && guardado.ok);
       parte.errorGuardado = (guardado && guardado.motivo) || "";
-      // F-026 R22, R31 · lo que el backend dice de la aprobación, después de
-      // guardar. Solo se pisa cuando el guardado salió bien: un guardado
-      // fallido no sabe nada de la aprobación, y ponerla a `null` borraría de
-      // la pantalla una decisión que sigue escrita en la base.
+      // F-028 R38 · el estado que dice el backend, después de guardar. Solo se
+      // pisa cuando el guardado salió bien: un guardado fallido no sabe nada
+      // del estado, y ponerlo a `null` borraría de la pantalla una decisión que
+      // sigue escrita en la base.
       //
       // Cuando sí salió bien, esto es lo que hace que una revalidación que
-      // **revocó** la aprobación se vea en el acto: la revocación ocurre en la
-      // escritura, y esta es la respuesta de esa misma escritura.
+      // **tumbó** una aprobación se vea en el acto: la aprobación caduca al
+      // derivar (R19), y esta es la respuesta de esa misma escritura.
       if (guardado && guardado.ok) {
-        parte.aprobacion = guardado.aprobacion;
+        // R43 · antes de pisarlo, porque después ya no queda con qué comparar.
+        // Si había decisión firmada y deja de haberla, hay que decirlo: el
+        // bloque nuevo es indistinguible del de un parte que nadie miró.
+        parte.avisoEstado = window.Pipeline.avisoDeEstado(
+          parte.estadoParte,
+          guardado.estado,
+        );
+        parte.estadoParte = guardado.estado;
         // F-026 R51 · y lo que acaba de quedar guardado es contra lo que se
         // compara la siguiente pulsación. Sin esta foto, escribir el mismo
         // valor que ya está en la base dispararía un guardado de más.
@@ -317,10 +342,12 @@ function appPostventa() {
 
     _anotarVeredicto(parte, validacion) {
       parte.validacion = validacion;
-      // F-026 R36 · el semáforo mira las dos cosas: lo que dijo la máquina y
-      // lo que decidió una persona. Un parte aprobado no se pinta como uno que
-      // siempre fue verde.
-      parte.semaforo = window.Pipeline.semaforoDe(validacion, parte.aprobacion);
+      // F-028 R17, R38 · la marca sale **del estado que manda el backend**, no
+      // del veredicto. Mientras el color saliera del veredicto, un parte apto
+      // que una persona había rechazado se pintaba verde, que es el defecto que
+      // abre esta feature. La validación solo elige entre ámbar y rojo dentro
+      // de `pendiente`, y eso es un matiz de color.
+      parte.semaforo = window.Pipeline.semaforoDe(validacion, parte.estadoParte);
       parte.estado = "listo";
     },
 
@@ -350,9 +377,12 @@ function appPostventa() {
       this._revocarPdf();
       this.parteAbierto = parte;
       this.mensajeRevalidacion = "";
-      // El mensaje de la aprobación anterior no es de este parte: dejarlo
-      // diría «aprobado» encima de uno que nadie ha aprobado.
-      this.mensajeAprobacion = "";
+      // El mensaje del cambio anterior no es de este parte: dejarlo diría
+      // «rechazado» encima de uno sobre el que nadie ha decidido nada.
+      this.mensajeEstado = "";
+      // Y el motivo tampoco: es texto libre sobre **otro** parte, y arrastrarlo
+      // acabaría escribiéndolo en la decisión de este.
+      this.motivoDeRechazo = "";
       // El PDF va desde un blob en memoria, nunca desde una URL con el
       // contenido dentro.
       this.urlPdf = URL.createObjectURL(parte.fichero);
@@ -487,43 +517,64 @@ function appPostventa() {
     },
 
     // =====================================================================
-    // Aprobación humana del parte (F-026)
+    // El estado del parte, y los dos gestos que lo mueven (F-028, R38-R43)
     // =====================================================================
     //
-    // Aquí no se decide nada, como siempre: qué es aprobable y qué viaja en la
-    // petición está en `js/pipeline.js`, que sí tiene tests, y lo vuelve a
-    // decidir el backend con el veredicto que él mismo recalcula (R5). Esto
-    // mueve estado de Alpine y pide la petición.
+    // Aquí no se decide nada, como siempre: **el estado lo manda el backend y
+    // esta pantalla lo pinta** (R17). Qué viaja al decidir está en
+    // `js/pipeline.js::cuerpoDeCambioDeEstado`, que sí tiene tests y se niega a
+    // componer un rechazo sin motivo, y lo vuelve a decidir el backend con el
+    // veredicto que él mismo recalcula (R28). Esto mueve estado de Alpine y
+    // pide la petición.
+    //
+    // > Enmienda del 2026-09-16 · F-028 T18. Aquí vivía la aprobación humana de
+    // > F-026: `esAprobable`, `estaAprobado`, `destinoDeOrigen`,
+    // > `fechaDeAprobacion` y `aprobarParte` contra `POST /api/aprobar`. Se va
+    // > entera porque F-028 **deroga la pregunta** «¿es este parte aprobable?»
+    // > (R9, R10) y porque el endpoint no existe desde T15. Lo que no se pierde
+    // > es lo que F-026 vino a registrar: que una decisión la tomó una persona
+    // > y cuándo, que ahora lo dice `decidido_por_persona` (R39).
 
-    esAprobable(parte) {
-      // R35, R39 · el gesto solo se ofrece cuando hay algo que decidir. Si al
-      // parte le falta el código de obra o el número de incidencia, no hay
-      // nada que aprobar: hay algo que teclear.
-      const elegido = parte || this.parteAbierto;
-      return window.Pipeline.esAprobable(elegido && elegido.validacion);
+    estadoDelParte(parte) {
+      // R38 · en cuál de los cuatro está, según el backend. Cadena vacía si no
+      // consta —un parte cuyo guardado falló—, y entonces no se pinta ninguna
+      // marca ni se ofrece ningún gesto: el fallo se va al lado seguro.
+      return window.Pipeline.estadoDe(parte || this.parteAbierto);
     },
 
-    estaAprobado(parte) {
-      // R36 · el cuarto estado del semáforo. Lo calcula `js/pipeline.js` al
-      // anotar el veredicto; aquí solo se lee, para no tener dos formas de
-      // responder a la misma pregunta.
-      return Boolean(parte) && parte.semaforo === window.Pipeline.SEMAFORO_APROBADO;
+    etiquetaDeEstado(parte) {
+      // El mismo estado, en castellano llano y con mayúscula. Es un literal de
+      // pantalla, no un criterio: lo que se compara son las constantes.
+      const estado = this.estadoDelParte(parte);
+      if (estado === window.Pipeline.ESTADO_APROBADO) return "Aprobado";
+      if (estado === window.Pipeline.ESTADO_RECHAZADO) return "Rechazado";
+      if (estado === window.Pipeline.ESTADO_CERRADO) return "Cerrado";
+      if (estado === window.Pipeline.ESTADO_PENDIENTE) return "Pendiente";
+      return "";
     },
 
-    destinoDeOrigen(parte) {
-      // R37 · de dónde se rescató el parte, en castellano llano. Es la mitad
-      // del texto que distingue esta marca del verde de siempre.
-      const destino = (parte && parte.aprobacion && parte.aprobacion.destino_aprobado) || "";
-      if (destino === "cola_validacion_humana") return "la cola de validación humana";
-      if (destino === "revision_manual") return "revisión manual";
-      return destino;
+    estaCerrado(parte) {
+      // R7, R41 · `cerrado` es terminal y de ahí no sale ninguna flecha. No se
+      // deriva aquí: es lo que dice el bloque del backend.
+      return this.estadoDelParte(parte) === window.Pipeline.ESTADO_CERRADO;
     },
 
-    fechaDeAprobacion(parte) {
-      // R37 · cuándo se aprobó. El backend la emite en UTC e ISO-8601; aquí se
+    decidioUnaPersona(parte) {
+      // R39, R43 · la única distinción que no sale del estado, sino de quién lo
+      // decidió. Y sale de la clave que el backend publica para eso, no de
+      // comparar estados: un parte apto cuya aprobación R19 tumbó tiene el
+      // mismo estado derivado que si la aprobación contara, y anunciarlo como
+      // decidido por una persona sería firmar una decisión que no cuenta.
+      const bloque = (parte || this.parteAbierto || {}).estadoParte;
+      return Boolean(bloque && bloque.decidido_por_persona);
+    },
+
+    fechaDeDecision(parte) {
+      // R43 · cuándo se decidió. El backend la emite en UTC e ISO-8601; aquí se
       // enseña en la hora de quien mira, que es la que le sirve para saber si
       // fue hoy o el mes pasado.
-      const momento = parte && parte.aprobacion && parte.aprobacion.aprobado_at_utc;
+      const bloque = (parte || this.parteAbierto || {}).estadoParte;
+      const momento = bloque && bloque.decidido_at_utc;
       if (!momento) {
         return "";
       }
@@ -531,36 +582,79 @@ function appPostventa() {
       return isNaN(fecha.getTime()) ? String(momento) : fecha.toLocaleString("es-ES");
     },
 
+    hayIdentidad() {
+      // R14 · sin saber quién decide no se registra ninguna decisión. Se
+      // pregunta aquí y no en la plantilla para que **el `oid` no aparezca en
+      // el HTML** ni siquiera dentro de una condición (R42).
+      return Boolean(this.usuario.usuarioOid);
+    },
+
+    hayMotivo() {
+      // R11 · una cadena de espacios es `truthy` en JavaScript y no es un
+      // motivo. Se recorta antes de mirarlo, como hacen `js/pipeline.js` y el
+      // backend: sin esto, el botón se dejaría pulsar con el campo en blanco y
+      // lo que vería quien lo pulsa sería un 400.
+      return Boolean(this.motivoDeRechazo.trim());
+    },
+
+    puedeDecidir() {
+      // Las dos condiciones comunes a los dos gestos: quién decide (R14) y una
+      // remesa registrada, sin la cual el backend responde 409.
+      return this.hayIdentidad() && Boolean(this.remesaId);
+    },
+
+    puedeRechazar() {
+      // R11 · y el motivo, que es lo único que no se puede recuperar después:
+      // quien vuelva a mirar el parte —otra persona, o la misma dentro de un
+      // mes— necesita saber qué había que arreglar.
+      return this.puedeDecidir() && this.hayMotivo();
+    },
+
     async aprobarParte() {
+      await this._cambiarEstado(window.Pipeline.ESTADO_APROBADO);
+    },
+
+    async rechazarParte() {
+      await this._cambiarEstado(window.Pipeline.ESTADO_RECHAZADO);
+    },
+
+    async _cambiarEstado(estado) {
       // R29 · **sin segunda confirmación**: el botón es el acto explícito.
-      // Aprobar no escribe en ningún sistema ajeno —escribe en el esquema
-      // propio y se deshace revalidando—, y la confirmación única de F-025
-      // sigue siendo la única que precede a una escritura externa.
+      // Cambiar el estado no escribe en ningún sistema ajeno —escribe en el
+      // esquema propio—, y la confirmación única de F-025 sigue siendo la única
+      // que precede a una escritura externa.
       const parte = this.parteAbierto;
-      this.mensajeAprobacion = "Registrando la aprobación…";
+      this.mensajeEstado = "Registrando la decisión…";
       try {
-        const cuerpo = window.Pipeline.cuerpoDeAprobacion(parte, {
-          remesaId: this.remesaId,
+        const cuerpo = window.Pipeline.cuerpoDeCambioDeEstado(parte, {
+          estado: estado,
           usuarioOid: this.usuario.usuarioOid,
+          remesaId: this.remesaId,
+          motivo: this.motivoDeRechazo,
         });
-        const datos = await api.aprobar(cuerpo, parte.hash);
+        const datos = await api.cambiarEstado(cuerpo, parte.hash);
         // Lo que se pinta es lo que dice el backend, no lo que suponga la
-        // pantalla: quién decide si la aprobación sigue vigente es quien la
-        // escribió (D-F).
-        parte.aprobacion = datos.aprobacion;
-        // `/api/aprobar` guarda el parte y su veredicto en la misma llamada
-        // (`design.md` §6), así que a la vuelta consta guardado: dejarlo en
+        // pantalla: quien deriva el estado es quien tiene delante el histórico
+        // y la traza de cierre (R17).
+        parte.estadoParte = datos.estado;
+        // La decisión que se acaba de tomar es sobre el veredicto de ahora, así
+        // que lo que hubiera caducado antes ya no tiene nada que avisar.
+        parte.avisoEstado = "";
+        // `/api/estado` guarda el parte y su veredicto en la misma llamada
+        // (`design.md` §5), así que a la vuelta consta guardado: dejarlo en
         // rojo lo mantendría fuera de la tanda por un fallo ya resuelto.
         parte.guardado = true;
         parte.errorGuardado = "";
         parte.semaforo = window.Pipeline.semaforoDe(
           parte.validacion,
-          parte.aprobacion,
+          parte.estadoParte,
         );
-        this.mensajeAprobacion =
-          "Aprobado. Este parte entra en la tanda de archivo y cierre.";
+        this.motivoDeRechazo = "";
+        this.mensajeEstado = this.estaCerrado(parte)
+          ? "Este parte consta cerrado en el ERP."
+          : `Registrado: el parte queda ${this.etiquetaDeEstado(parte).toLowerCase()}.`;
       } catch (error) {
-        this.mensajeAprobacion = (error && error.mensaje) || String(error);
+        this.mensajeEstado = (error && error.mensaje) || String(error);
       }
     },
 
@@ -809,6 +903,10 @@ function appPostventa() {
       this.terminados = 0;
       this.remesaId = "";
       this.parteAbierto = null;
+      // F-028 · el motivo es texto libre escrito sobre un parte de la remesa
+      // anterior: arrastrarlo acabaría escribiéndolo en la decisión de otro.
+      this.motivoDeRechazo = "";
+      this.mensajeEstado = "";
       this.confirmacionArchivo = window.Confirmacion.cancelar();
       this.avisoArchivo = "";
       this.entornoNoArchiva = "";

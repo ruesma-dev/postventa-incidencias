@@ -131,7 +131,7 @@
       `test_f032_saneo_en_la_extraccion.py` en **VERDE** entero, y
       `pytest services/postventa-api/tests` sin regresiones.
 
-- [ ] **T10**: Añadir el test de R13 **de borde a borde con dobles**: un cuerpo
+- [x] **T10**: Añadir el test de R13 **de borde a borde con dobles**: un cuerpo
       de `POST /api/parte` cuyo `codigo_obra` sea `06 26` y cuyo
       `numero_incidencia` sea `RS 26.09/0178` produce una llamada a
       `sentencias.upsert_parte` con `0626` y `RS26.09/0178`. Sin base de datos:

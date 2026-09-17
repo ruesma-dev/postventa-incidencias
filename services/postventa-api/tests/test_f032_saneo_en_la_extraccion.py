@@ -714,6 +714,79 @@ def test_f032_r13_lo_que_se_guarda_no_lleva_espacios(monkeypatch):
     assert fila["numero_incidencia"] == NUMERO_LIMPIO
 
 
+#: El `oid` **opaco** de quien decide, inventado y sin forma de GUID:
+#: `test_f006_repo_sin_identificadores.py` prohíbe que entre en el repositorio
+#: una cadena con forma de identificador, aunque sea inventada, porque quien la
+#: lea no puede distinguirla de una de verdad.
+OID_INVENTADO = "oid-opaco-inventado-para-este-test"
+
+
+def test_f032_r13_la_correccion_de_una_persona_tambien_se_guarda_limpia():
+    """R13 · el segundo endpoint que escribe en `partes`: `POST /api/estado`.
+
+    Y es **el del caso real**. `/api/parte` guarda lo que leyó la máquina;
+    `/api/estado` guarda lo que una persona decide después de mirar la
+    pantalla, y por ahí pasa el cuerpo entero otra vez —extracción incluida—.
+    El 2026-09-17 el rescate consistió exactamente en eso: alguien corrigió el
+    código a mano y volvió a guardar.
+
+    Si el saneo viviera solo en el pipeline, este camino repondría el valor
+    sucio en la tabla en cuanto alguien tocara cualquier otro campo. Por eso se
+    prueba aquí y no se da por cubierto con el de `/api/parte`: son dos
+    handlers distintos y solo comparten `cuerpos.a_extraccion`, que es
+    justamente lo que se afirma.
+    """
+    from interface_adapters.api.estado import cambiar_estado_http
+
+    repositorio = RepositorioQueEscribeComoLaBase()
+
+    respuesta = cambiar_estado_http(
+        {
+            **_cuerpo_de_parte(),
+            "estado": "aprobado",
+            "usuario_oid": OID_INVENTADO,
+            "confirmado": True,
+        },
+        repositorio=repositorio,
+    )
+
+    assert respuesta["estado"]["estado"] == "aprobado"
+    sql, parametros = repositorio.sentencias_de_parte[0]
+    fila = _fila_que_iria_a_la_tabla(sql, parametros)
+
+    assert fila["codigo_obra"] == OBRA_LIMPIA
+    assert fila["numero_incidencia"] == NUMERO_LIMPIO
+
+
+def test_f032_r15_lo_que_se_guarda_no_gana_avisos_inventados_en_el_borde():
+    """R15 · la columna `avisos_extraccion` no se llena por el transporte.
+
+    El aviso del saneo es de la **lectura** (T8, el pipeline): dice qué leyó el
+    modelo y qué se guardó. Si el borde lo fabricara también, el mismo parte
+    acumularía un aviso más cada vez que alguien lo revalida —y un parte de la
+    cola se revalida cada vez que se corrige un campo—, hasta convertir la
+    columna en ruido que nadie lee.
+    """
+    from interface_adapters.api.estado import cambiar_estado_http
+
+    repositorio = RepositorioQueEscribeComoLaBase()
+
+    cambiar_estado_http(
+        {
+            **_cuerpo_de_parte(),
+            "estado": "aprobado",
+            "usuario_oid": OID_INVENTADO,
+            "confirmado": True,
+        },
+        repositorio=repositorio,
+    )
+
+    sql, parametros = repositorio.sentencias_de_parte[0]
+    fila = _fila_que_iria_a_la_tabla(sql, parametros)
+
+    assert json.loads(fila["avisos_extraccion"]) == []
+
+
 def test_f032_r14_lo_que_se_guarda_conserva_el_texto_manuscrito(monkeypatch):
     """R14 · por ese mismo camino, la observación manuscrita llega intacta.
 

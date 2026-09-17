@@ -1,6 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## IMPLEMENTACIÓN EN CURSO · 2026-09-17 · **F-032, bloques 0 y 1 (T1–T5)**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Encargo del líder: **solo T1–T5**;
+> el bloque 2 se encarga aparte. El detalle vive en `progress/impl_F-032.md`.
+>
+> - **T1 hecho**: las tres huellas del control de `design.md` §7.2 medidas
+>   sobre `fd4fc70` con el árbol limpio y **antes de tocar una línea**, y
+>   confirmadas por un segundo camino (`hashlib` a mano). Sin código de
+>   producción.
+> - Sin desviaciones respecto a la spec. `aprobacion.py` intacto (regla dura 1).
+
+
 > ## EN CURSO · 2026-09-17 · **F-032: spec escrita, pendiente de aprobación del humano**
 >
 > Rama `feature/F-032-codigos-sin-espacios`. Escrita

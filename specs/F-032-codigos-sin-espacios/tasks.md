@@ -43,7 +43,7 @@
 
 ## Bloque 0 · Medir antes de tocar nada
 
-- [ ] **T1**: Medir, **en el árbol actual y antes de cambiar una línea**, la
+- [x] **T1**: Medir, **en el árbol actual y antes de cambiar una línea**, la
       huella de los tres veredictos del control de §7.2 de `design.md`:
       (a) apto con `numero_incidencia="RS 26.09/0178"`, (b) apto con
       `codigo_obra="06 26"` y (c) no apto con observaciones y

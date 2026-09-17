@@ -104,11 +104,10 @@ empieza o acaba en espacio, o acaba en punto, ENTONCES el sistema debe
 levantar `NombradoImposible` **sin sanearlo en silencio**: un nombre mutilado
 se archiva igual de mal que uno equivocado, y nadie se entera.
 
-**R8.** El sistema debe **eliminar** los espacios que flanquean a un separador
-del código —la barra `/` y el guion `-`—, colapsar a uno los espacios
-redundantes que no tocan un separador y recortar los de los extremos, de forma
-que dos lecturas del mismo parte que solo difieran en espacios produzcan **el
-mismo** nombre y **el mismo** código para el ERP.
+**R8.** El sistema debe **eliminar todos los blancos** de un código —estén
+junto a un separador, dentro de un tramo o en los extremos—, de forma que dos
+lecturas del mismo parte que solo difieran en espacios produzcan **el mismo**
+nombre y **el mismo** código para el ERP.
 
 > **Enmienda del 2026-09-15 · el ejemplo de R8 describía el defecto, no la
 > garantía; la garantía no se recorta, se cumple por primera vez.**
@@ -142,9 +141,44 @@ mismo** nombre y **el mismo** código para el ERP.
 > **Lo que no cambia.** Los ceros a la izquierda se conservan (R4), el sufijo y
 > la extensión van literales (R5), un nombre imposible sigue siendo un error
 > ruidoso (R7) y el código de **obra** no se parte por sus guiones: `06-77` es
-> una obra, no dos. El test que fija R8 —
-> `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`— cambió de
-> expectativa ese mismo día y lleva esta enmienda citada en su docstring.
+> una obra, no dos. El test que fija R8 —entonces
+> `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`, hoy renombrado por
+> la enmienda siguiente— cambió de expectativa ese mismo día y lleva esta
+> enmienda citada en su docstring.
+
+> **Segunda enmienda, del 2026-09-17 · el colapso no se afloja: se retira.
+> Ningún espacio forma parte de un código.**
+>
+> **Qué cambia.** Los espacios que **no** tocan un separador ya no se colapsan
+> a uno: se **eliminan**, igual que los demás. `RS 26.09/0178` normaliza a
+> `RS26.09/0178` y `06 26` a `0626`. Cuenta como blanco **cualquiera** de
+> Unicode: espacio, tabulador, salto de línea, espacio no separable (`U+00A0`)
+> y fino no separable (`U+202F`).
+>
+> **Qué la invalidó.** La premisa de la enmienda anterior era que el espacio
+> problemático **siempre** estaba pegado al separador. No era cierta, y se vio
+> en real el **2026-09-17**, verificando F-030 contra producción: la IA leyó
+> `RS 26.09/0178` —con el espacio **dentro del primer tramo**— y el cierre
+> murió en `ReclamacionNoLocalizada` hasta que una persona editó el código a
+> mano. El mismo defecto archivaba la obra leída `06 26` en `Postventa/06 26`,
+> que para Graph no es `Postventa/0626`: un PDF con el DNI manuscrito de un
+> cliente en la carpeta de otra promoción, y ese daño **no se ve**.
+>
+> **Quién y cuándo.** Lo decidió el **responsable del proyecto el 2026-09-17**,
+> después de rescatar aquel cierre a mano. Queda recogido en
+> `specs/F-032-codigos-sin-espacios/`. El arreglo sigue viviendo en un solo
+> sitio, `domain/models/nombrado.py::normalizar_codigo`, del que cuelgan las
+> tres salidas —el código del ERP, el nombre del fichero y la carpeta—.
+>
+> **Lo que no cambia.** Los ceros a la izquierda se conservan (R4), el sufijo y
+> la extensión van literales (R5), un nombre imposible sigue siendo un error
+> ruidoso (R7) y el código de **obra** no se parte por sus guiones: `06-77`
+> sigue siendo una obra. Tampoco cambia la normalización de la **huella** del
+> veredicto (`domain/models/aprobacion.py`), que es **otra** y no se toca: F-032
+> R17 y D1. El test que fija R8 pasa a llamarse
+> `test_f006_r8_los_espacios_interiores_se_eliminan` y lleva las dos enmiendas
+> contadas en su docstring; la tabla de casos completa está en
+> `services/postventa-api/tests/test_f032_espacios_en_los_codigos.py`.
 
 **R9.** El nombrado debe ser **dominio puro**: una función sin reloj, sin
 azar, sin red y sin configuración, que dadas las mismas dos cadenas devuelva
@@ -306,7 +340,7 @@ otro repositorio git y ningún agente commitea en un repositorio ajeno.
 | R5 | `test_f006_r5_el_sufijo_y_la_extension_van_literales` |
 | R6 | `test_f006_r6_sin_codigo_de_obra_no_se_nombra`, `test_f006_r6_sin_numero_de_incidencia_no_se_nombra`, `test_f006_r6_el_nombrado_imposible_no_sube_nada` |
 | R7 | `test_f006_r7_un_caracter_prohibido_no_se_sanea_en_silencio` |
-| R8 | `test_f006_r8_los_espacios_redundantes_colapsan`, `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`. **Premisa enmendada el 2026-09-15**: ver el recuadro bajo R8 |
+| R8 | `test_f006_r8_los_espacios_redundantes_colapsan`, `test_f006_r8_los_espacios_interiores_se_eliminan`, y la tabla entera en `test_f032_espacios_en_los_codigos.py`. **Premisa enmendada dos veces, el 2026-09-15 y el 2026-09-17**: ver los dos recuadros bajo R8 |
 | R9 | `test_f006_r9_el_nombrado_es_puro_y_deterministico` |
 | R10 | `test_f006_r10_la_carpeta_es_base_mas_codigo_de_obra` |
 | R11 | `test_f006_r11_la_carpeta_se_crea_si_no_existe` |

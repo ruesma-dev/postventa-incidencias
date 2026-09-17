@@ -82,7 +82,7 @@
       no previó. | Verificación: `pytest services/postventa-api/tests` con la
       lista de fallos pegada en el informe.
 
-- [ ] **T5**: Cambiar la expectativa de
+- [x] **T5**: Cambiar la expectativa de
       `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`
       (`tests/test_f006_nombrado.py:431-456`): `normalizar_codigo("RS26.08   0123")`
       pasa a valer `"RS26.080123"`, y el test se renombra a

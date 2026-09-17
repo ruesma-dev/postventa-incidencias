@@ -6,11 +6,26 @@
 > Rama `feature/F-032-codigos-sin-espacios`. Encargo del líder: **solo T1–T5**;
 > el bloque 2 se encarga aparte. El detalle vive en `progress/impl_F-032.md`.
 >
-> - **T1 hecho**: las tres huellas del control de `design.md` §7.2 medidas
->   sobre `fd4fc70` con el árbol limpio y **antes de tocar una línea**, y
->   confirmadas por un segundo camino (`hashlib` a mano). Sin código de
->   producción.
-> - Sin desviaciones respecto a la spec. `aprobacion.py` intacto (regla dura 1).
+> - **T1**: las tres huellas del control de `design.md` §7.2 medidas sobre
+>   `fd4fc70` con el árbol limpio y **antes de tocar una línea**, confirmadas
+>   por un segundo camino (`hashlib` a mano). Sin código de producción.
+> - **T2**: `tests/test_f032_espacios_en_los_codigos.py` con la tabla entera de
+>   §5. Fase RED con traza real: **39 failed, 69 passed**, todos por
+>   `AssertionError` sobre el valor y ninguno por importación.
+> - **T3**: `normalizar_codigo` elimina todos los blancos y desaparece
+>   `_ESPACIOS_JUNTO_AL_SEPARADOR`. Docstring con la enmienda del 2026-09-17.
+> - **T4**: suite completa sin `-x`. **Un solo fallo y el previsto**
+>   (`test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`). Los centinelas
+>   de F-028, F-026 y F-009, verdes sin tocarlos.
+> - **T5**: ese test, renombrado y con la expectativa nueva, y la **segunda
+>   enmienda fechada de R8** en `specs/F-006-sharepoint/requirements.md`.
+>
+> `bash harness/init.sh` **en verde**: 2842 passed / 15 skipped y puerta de
+> cobertura 100 % de 1 línea cambiada.
+>
+> **Sin desviaciones respecto a la spec.** `aprobacion.py`, los centinelas de
+> F-028 y el front, intactos (reglas duras 1, 2 y 4). Los bloques 2 a 5 **no se
+> han empezado**: se encargan aparte.
 
 
 > ## EN CURSO · 2026-09-17 · **F-032: spec escrita, pendiente de aprobación del humano**

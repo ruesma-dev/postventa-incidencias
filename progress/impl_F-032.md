@@ -290,10 +290,147 @@ razonamiento.
 
 ## T5 · El test de F-006 R8, enmendado (bloque 1)
 
-PENDIENTE
+**Dos ficheros tocados, y ninguno más:**
+
+1. `services/postventa-api/tests/test_f006_nombrado.py` ·
+   `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno` pasa a llamarse
+   **`test_f006_r8_los_espacios_interiores_se_eliminan`** y su segundo aserto
+   cambia de expectativa:
+
+   ```python
+   # antes
+   assert normalizar_codigo("RS26.08   0123") == "RS26.08 0123"
+   # ahora
+   assert normalizar_codigo("RS26.08   0123") == "RS26.080123"
+   ```
+
+   El primero (`"RS26.08   -    0123"` → `"RS26.08-0123"`) no se toca: sigue
+   valiendo y sigue siendo el que F-028 fijó.
+
+   Su docstring cuenta la historia **completa**, que es lo que impide que el
+   siguiente que pase lea un aserto suelto: cómo nació (el colapso de F-006),
+   por qué cambió el 2026-09-15 (F-028, con el literal de lo que afirmaba
+   entonces) y por qué vuelve a cambiar el 2026-09-17 (F-032), con el caso real
+   delante y el motivo de que el colapso no se afloje sino que **se retire**.
+
+2. `specs/F-006-sharepoint/requirements.md` · el cuerpo de **R8** pasa a pedir
+   «eliminar **todos** los blancos» y se añade la **segunda enmienda fechada**
+   del 2026-09-17 con el contenido de `design.md` §9.1: qué cambia, qué la
+   invalidó, quién y cuándo, y qué **no** cambia —incluida la advertencia de
+   que la normalización de la **huella** es otra y no se toca (R17, D1)—.
+   Se corrigen además los dos punteros que quedaban al nombre viejo del test:
+   la frase de la primera enmienda y la fila de trazabilidad.
+
+Las menciones al nombre viejo que hay en `specs/F-028-*` y en la propia spec de
+F-032 **se dejan como están**: son el registro de lo que se decidió aquel día,
+no punteros vivos.
+
+### Verificación
+
+```
+cd services/postventa-api
+./.venv/Scripts/python.exe -m pytest tests -q
+
+2842 passed, 5 skipped in 49.32s
+```
+
+Verde entero. Cero fallos.
+
+---
+
+## Estado del arnés al cerrar el bloque 1
+
+`bash harness/init.sh` **en verde**, sin maquillaje. Lo pertinente, literal:
+
+```
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea)
+[OK] pytest en verde (con medición de cobertura)        ← suite del arnés, 62 passed
+2842 passed, 15 skipped in 63.17s (0:01:03)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché)
+[OK] PUERTA COBERTURA: 100.0% de 1 líneas cambiadas cubiertas (1/1, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-032-codigos-sin-espacios
+ENTORNO LISTO. Puedes trabajar.
+```
+
+Los 61 avisos de `ruff` son **deuda previa** y no de esta rama: los ficheros que
+esta feature toca pasan `ruff check` limpios.
+
+---
+
+## Lo que queda fuera de este encargo
+
+Los bloques 2 a 5 **no se han empezado**, y por eso no están hechos:
+
+- **B2/B3 · el saneo en la extracción** (R11–R16, T6–T10): `CAMPOS_DE_CODIGO` y
+  `sanear_valor_leido` en el dominio, y sus dos llamantes —`paso_extraccion` y
+  `cuerpos.a_extraccion`—. Hoy lo que se guarda en `postventa.partes` **sigue
+  naciendo con el espacio que leyó el modelo**: lo que ya funciona es que ese
+  valor sucio ya no rompe el ERP, el nombre ni la carpeta, porque los tres
+  normalizan. El criterio de aceptación 3 no está cumplido todavía.
+- **B4 · los controles de alcance** (T11, T12): el fichero
+  `tests/test_f032_huella_intacta.py` con los tres literales de T1 **está por
+  escribir**. La medición ya está hecha y es la de este informe; lo que falta
+  es dejarla fijada en un test.
+- **B5 · documentación, medición y cierre** (T13–T15): la precisión de F-032 en
+  la semántica 5 de `docs/ARCHITECTURE.md`, el defecto **D-A1** escrito aquí
+  para el humano, la **medición previa de `design.md` §6.3** y la campaña de
+  mutación.
+
+### Verificaciones MANUAL pendientes (no son de este bloque, pero se recuerdan)
+
+- **R26 · la medición previa del §6.3, antes de desplegar.** Consulta de solo
+  lectura sobre `postventa` que lista los partes archivados cuyos códigos
+  guardados llevan algún blanco. **Sin ella no se despliega**, y va antes
+  porque re-archivar pisa `postventa.archivos.nombre_fichero`, que es la única
+  pista del nombre viejo.
+- **R27** · si devuelve filas, esos partes **no se re-archivan desde el
+  circuito**: lo decide una persona.
+- **El caso real de punta a punta**, con escritura en el ERP de producción:
+  exige autorización expresa del humano para esa incidencia concreta.
 
 ---
 
 ## Evidencias
 
-PENDIENTE
+Números **medidos**, no estimados, en este árbol (`c78a69b` + T5) con el
+intérprete del servicio.
+
+| Evidencia | Valor | De dónde sale |
+|---|---|---|
+| Tests ejecutados · servicio `api` | **2842 passed, 15 skipped, 0 failed** | `bash harness/init.sh` (suite completa del servicio) |
+| Tests ejecutados · arnés | **62 passed** | `bash harness/init.sh`, sección de la raíz |
+| Tests del fichero nuevo de F-032 | **108 passed** (eran **39 failed / 69 passed** en la fase RED de T2) | `pytest tests/test_f032_espacios_en_los_codigos.py` |
+| Cobertura de las líneas cambiadas | **100,0 % de 1 línea (1/1)**, umbral 80 %, nivel `critico` | línea `PUERTA COBERTURA` de `init.sh` |
+| Tiempo de ejecución de la suite | **63,17 s** dentro de `init.sh`; **49,32 s** lanzada a solas | la propia salida de pytest |
+| Mutantes generados y supervivientes | **NO EJECUTADO todavía**, con motivo | ver abajo |
+
+**Por qué no hay campaña de mutación en este informe**: es la tarea **T15, del
+bloque 5**, y este encargo era T1–T5. La campaña es cara y se lanza **al
+terminar** la feature, no a mitad: mutar ahora el dominio del saneo —que aún no
+existe (bloques 2 y 3)— daría un recuento que no significa nada y habría que
+repetirlo entero. Queda como lo primero que se mide al cerrar, y el nivel
+`critico` exige **cero supervivientes**, cada uno con test nuevo o
+justificación escrita.
+
+**Fase RED**: hecha y con la traza real pegada (T2, arriba). 39 fallos, todos
+`AssertionError` sobre el valor, ninguno por importación ni por recogida.
+
+### Ficheros tocados en T1–T5
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/domain/models/nombrado.py` | **producción**: `normalizar_codigo` elimina todos los blancos; se borra `_ESPACIOS_JUNTO_AL_SEPARADOR`; docstring con la enmienda fechada |
+| `services/postventa-api/tests/test_f032_espacios_en_los_codigos.py` | **nuevo**: la tabla entera de casos (13 + 8 formas) |
+| `services/postventa-api/tests/test_f006_nombrado.py` | el test de R8, renombrado y con la expectativa nueva |
+| `specs/F-006-sharepoint/requirements.md` | R8 reescrito + segunda enmienda fechada |
+| `specs/F-032-codigos-sin-espacios/tasks.md` | T1–T5 marcadas |
+| `progress/impl_F-032.md`, `progress/current.md` | este informe y el rastro del arnés |
+
+**Ni un fichero prohibido**: `domain/models/aprobacion.py`,
+`tests/test_f028_*`, `tests/test_f026_*`, `domain/models/cierre.py`,
+`infrastructure/sigrid/consultas.py`, `infrastructure/persistencia/**`,
+`config/prompts.yaml`, `services/postventa-front/**`, `infra/` y `.env` están
+**sin tocar**. Ninguna escritura contra Azure, Sigrid, SharePoint ni
+PostgreSQL: todo lo de estos dos bloques es dominio puro en memoria.

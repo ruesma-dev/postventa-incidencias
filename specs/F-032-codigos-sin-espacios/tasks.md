@@ -65,7 +65,7 @@
 
 ## Bloque 1 · El cambio de una línea
 
-- [ ] **T3**: Cambiar `normalizar_codigo` en
+- [x] **T3**: Cambiar `normalizar_codigo` en
       `services/postventa-api/domain/models/nombrado.py`: eliminar **todos** los
       blancos (`"".join(bruto.translate(_A_GUION_NORMAL).split())`) y **borrar**
       `_ESPACIOS_JUNTO_AL_SEPARADOR`, que queda sin trabajo. Reescribir la

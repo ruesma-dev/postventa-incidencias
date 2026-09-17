@@ -197,7 +197,46 @@ carpeta, y ahí nadie echa en falta el PDF.
 
 ## T3 · El cambio en `normalizar_codigo` (bloque 1)
 
-PENDIENTE
+**Fichero tocado**: `services/postventa-api/domain/models/nombrado.py`, y
+**solo ese**. 42 líneas añadidas y 26 borradas, de las cuales el cambio de
+comportamiento son **dos**:
+
+```python
+# antes
+colapsado = " ".join(bruto.translate(_A_GUION_NORMAL).split())
+return _ESPACIOS_JUNTO_AL_SEPARADOR.sub(r"\1", colapsado)
+
+# ahora
+return "".join(bruto.translate(_A_GUION_NORMAL).split())
+```
+
+Lo demás es la docstring reescrita y el borrado de
+`_ESPACIOS_JUNTO_AL_SEPARADOR`, que **queda sin trabajo**: después de quitar
+todos los blancos no puede quedar ninguno flanqueando a un separador, y un
+regex que ya no puede casar nada es un regex que dentro de seis meses alguien
+lee como si significara algo. `import re` sigue haciendo falta para
+`_CUALQUIER_SEPARADOR`, que parte el código en tramos.
+
+La docstring lleva la **enmienda fechada del 2026-09-17** con las cuatro cosas
+que pide la tarea: qué decía antes (literal), qué la invalidó (la premisa de
+F-028 de que el espacio siempre tocaba al separador, y el cierre que costó),
+quién y cuándo, y **qué no cambia** —ceros a la izquierda, sufijo y extensión
+literales, error ruidoso ante un nombre imposible y el código de obra sin
+partir por sus guiones—. También queda escrito ahí que `str.split()` cubre
+cualquier blanco Unicode sin lista que mantener, y que el `U+200B` **no** entra
+(defecto D3, declarado).
+
+### Verificación
+
+```
+cd services/postventa-api
+./.venv/Scripts/python.exe -m pytest tests/test_f032_espacios_en_los_codigos.py -q
+
+108 passed in 0.27s
+```
+
+Verde entero: los 39 que fallaban en T2 pasan, y los 69 que ya pasaban siguen
+pasando. `ruff` limpio sobre el fichero.
 
 ---
 

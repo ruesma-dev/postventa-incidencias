@@ -98,7 +98,7 @@
 
 ## Bloque 2 · La regla del saneo, en el dominio
 
-- [ ] **T6**: Crear `services/postventa-api/tests/test_f032_saneo_en_la_extraccion.py`
+- [x] **T6**: Crear `services/postventa-api/tests/test_f032_saneo_en_la_extraccion.py`
       con los casos de R11–R16 en **ROJO**: los dos códigos salen sin espacios
       por el camino del pipeline y por el del cuerpo HTTP; los otros siete
       campos se copian **tal cual** (una observación manuscrita con espacios

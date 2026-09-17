@@ -12,8 +12,27 @@ las claves que devolvió el modelo. Así R2 —no puede faltar ninguna— y R7 �
 puede sobrar una inventada— son la misma línea de código, y no dos reglas que
 alguien tenga que acordarse de mantener sincronizadas.
 
-Y lo que este paso **no** hace: no reagrupa páginas (eso es F-014), no juzga
-la firma (F-004) y no normaliza ningún valor (F-006 nombrará el fichero).
+Y lo que este paso **no** hace: no reagrupa páginas (eso es F-014) y no juzga
+la firma (F-004).
+
+> **Enmienda del 2026-09-17 · F-032 (R11, R15).** Hasta hoy esta cabecera decía
+> también que el paso «**no normaliza ningún valor**», y dejó de ser verdad: los
+> dos **códigos** —`codigo_obra` y `numero_incidencia`— salen de aquí ya sin
+> blancos, con `sanear_valor_leido`, la regla del dominio.
+>
+> El motivo tiene fecha: el 2026-09-17 la IA leyó `RS 26.09/0178` —con el
+> espacio dentro del primer tramo—, el cierre murió en
+> `ReclamacionNoLocalizada` y hubo que editar el parte a mano. Lo que sale de
+> aquí es lo que ve el front y lo que la persona devuelve en el cuerpo: si
+> saliera sucio, la pantalla estaría enseñando un código que no es el que se va
+> a usar para buscar la reclamación.
+>
+> **Los otros siete campos se siguen copiando tal cual**, y ahí la frase vieja
+> sigue entera: quitarle los espacios a una observación manuscrita la
+> convertiría en otra cosa. Qué campo es un código lo decide el dominio
+> (`CAMPOS_DE_CODIGO`), no este paso. Y el saneo **no es silencioso**: cuando
+> cambia el valor deja aviso (R15), porque si no taparía una lectura mala del
+> modelo sin que nadie se entere.
 """
 
 from __future__ import annotations
@@ -28,6 +47,7 @@ from domain.models.extraccion import (
     ExtraccionParte,
     RespuestaModelo,
     TrazaExtraccion,
+    sanear_valor_leido,
 )
 from domain.models.prompt import PromptSpec
 from domain.ports.extractor import ExtractorPort
@@ -103,7 +123,19 @@ def _completar_y_sanear(
         confianza, aviso = sanear_confianza(bruto.confianza_pct)
         if aviso is not None:
             avisos.append(f"{nombre}: {aviso}")
-        campos[nombre] = CampoExtraido(valor=bruto.valor, confianza_pct=confianza)
+        # F-032 R11 · los dos códigos salen sin blancos; los otros siete
+        # campos, tal cual. Qué es un código lo decide el dominio.
+        valor = sanear_valor_leido(nombre, bruto.valor)
+        if valor != bruto.valor:
+            # R15 · el saneo no es silencioso: quien mire el parte tiene que
+            # poder ver que el valor guardado no es letra por letra el del
+            # papel. Ni el código de obra ni el nº de incidencia son un dato
+            # personal: ya viven en claro en sus propias columnas.
+            avisos.append(
+                f"{nombre}: el modelo leyó «{bruto.valor}» y se ha guardado "
+                f"sin espacios como «{valor}»"
+            )
+        campos[nombre] = CampoExtraido(valor=valor, confianza_pct=confianza)
 
     avisos.extend(
         f"{sobrante}: el modelo devolvió un campo que no está en el contrato, "

@@ -118,7 +118,7 @@
 
 ## Bloque 3 · Los dos llamantes, y solo esos dos
 
-- [ ] **T8**: Aplicar el saneo en
+- [x] **T8**: Aplicar el saneo en
       `application/pipelines/paso_extraccion.py::_completar_y_sanear`, con el
       **aviso de R15** cuando el valor cambie, y corregir la docstring del
       módulo, que hoy afirma que este paso «no normaliza ningún valor».

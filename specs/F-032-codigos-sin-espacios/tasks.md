@@ -74,7 +74,7 @@
       | Verificación: `pytest services/postventa-api/tests/test_f032_espacios_en_los_codigos.py`
       en **VERDE** entero.
 
-- [ ] **T4**: Ejecutar la suite completa del servicio y comprobar que el único
+- [x] **T4**: Ejecutar la suite completa del servicio y comprobar que el único
       fallo es `test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`, y que
       `test_f028_espacios_codigos.py`, `test_f028_huella_intacta.py`,
       `test_f026_*` y `test_f009_*` siguen **verdes sin tocarlos**. Si falla

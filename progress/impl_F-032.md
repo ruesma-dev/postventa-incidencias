@@ -242,7 +242,49 @@ pasando. `ruff` limpio sobre el fichero.
 
 ## T4 · La suite completa, y la única consecuencia admitida (bloque 1)
 
-PENDIENTE
+```
+cd services/postventa-api
+./.venv/Scripts/python.exe -m pytest tests -q --tb=short
+
+1 failed, 2841 passed, 5 skipped in 44.72s
+```
+
+Se lanzó **sin `-x`** a propósito: con `-x` la suite para en el primer fallo y
+no se puede afirmar que sea el único. El recuento de arriba es el de la suite
+entera recorrida.
+
+**El único fallo es el previsto**, y es el test que codifica la regla que esta
+feature sustituye:
+
+```
+___________ test_f006_r8_los_espacios_interiores_se_colapsan_a_uno ____________
+tests\test_f006_nombrado.py:456: in test_f006_r8_los_espacios_interiores_se_colapsan_a_uno
+    assert normalizar_codigo("RS26.08   0123") == "RS26.08 0123"
+E   AssertionError: assert 'RS26.080123' == 'RS26.08 0123'
+E     - RS26.08 0123
+E     ?        -
+E     + RS26.080123
+```
+
+Nada más se movió: **ni una consecuencia que la spec no hubiera previsto**.
+
+### Los centinelas que tenían que seguir verdes sin tocarlos
+
+Ejecutados aparte, además de dentro de la suite, porque son el control que esta
+feature tiene que **pasar**, no ajustar:
+
+| Suite | Resultado |
+|---|---|
+| `test_f028_espacios_codigos.py` + `test_f028_huella_intacta.py` + `test_f026_aprobacion_dominio.py` | **88 passed** |
+| `test_f026_*` (los cuatro ficheros) | **76 passed** |
+| `test_f009_*` (los quince ficheros) | **355 passed** |
+
+Y el control de que no se han «ajustado»: `git diff dev --stat` sobre
+`domain/models/aprobacion.py`, `tests/test_f028_huella_intacta.py`,
+`tests/test_f028_espacios_codigos.py` y `services/postventa-front/` devuelve
+**vacío**. Las siete huellas literales de F-028 siguen valiendo lo que valían
+con el cambio ya aplicado, que es R18 cumplido por ejecución y no por
+razonamiento.
 
 ---
 

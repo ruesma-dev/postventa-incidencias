@@ -124,7 +124,7 @@
       módulo, que hoy afirma que este paso «no normaliza ningún valor».
       | Verificación: los tests del camino del pipeline, en verde.
 
-- [ ] **T9**: Aplicar el mismo saneo en
+- [x] **T9**: Aplicar el mismo saneo en
       `interface_adapters/api/cuerpos.py::a_extraccion` —el camino por el que el
       valor llega de verdad a `postventa.partes` (`design.md` §4)—, sin emitir
       avisos y sin cambiar ninguna clave del contrato. | Verificación:

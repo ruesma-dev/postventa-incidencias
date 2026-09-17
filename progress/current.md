@@ -71,14 +71,20 @@
 >    lo cierra.
 > 2. **V1 y V2**, las dos verificaciones MANUAL de la feature, **pendientes del
 >    humano** y **ninguna es condición de cierre**:
->    - **V1 · el parte que está esperando.** Con F-030 desplegado en `dev`,
->      archivar el parte `b7e9b037` de **RS26.09/0178** y comprobar que se
->      archiva sin volver a decidir nada. **Escribe en SharePoint: exige
->      autorización expresa del humano para esa incidencia y no se hace desde
->      local.**
->    - **V2 · el coste, medido.** Contar las consultas de una tanda real de 22
->      partes contra el PostgreSQL compartido y comprobar que no ha subido
->      respecto a F-028 (R18).
+>    - **V1 · HECHA el 2026-09-17, y con un matiz que importa.** El humano
+>      desplegó F-030 en `dev` y archivó el parte `b7e9b037` de
+>      **RS26.09/0178**: el circuito completo funcionó —archivar, adjuntar y
+>      cerrar— **sin volver a decidir nada**, que es justo lo que §8 de
+>      `design.md` prometía. F-030 queda verificada contra producción.
+>      **El matiz**: antes tuvo que **editar a mano el código del parte**. La IA
+>      había leído `RS 26.09/0178`, con un espacio dentro del primer tramo, y
+>      con ese espacio la búsqueda en Sigrid —igualdad exacta, `consultas.py`
+>      líneas 78-84— no encuentra la reclamación. O sea que V1 salió bien
+>      **después** de una corrección manual que no debería haber hecho falta.
+>      De ahí sale **F-032**.
+>    - **V2 · el coste, medido.** Sigue **pendiente**.
+>      Contar las consultas de una tanda real de 22 partes contra el PostgreSQL
+>      compartido y comprobar que no ha subido respecto a F-028 (R18).
 >
 > Ventanas de escritura de `dev`: **las dos abiertas**
 > (`ARCHIVO_HABILITADO` y `CIERRE_HABILITADO`). **Estos dos bloques no han

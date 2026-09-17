@@ -1942,3 +1942,58 @@ pero un PDF con el DNI de un cliente no puede depender de eso.
 
 Detalle: `specs/F-030-veredicto-persistido/`, `progress/impl_F-030.md`,
 `progress/review_F-030.md` y `progress/mutacion_F-030.md`.
+
+---
+
+## 2026-09-17 · F-032 CERRADA · los codigos dejan de admitir espacios
+
+**De donde sale.** De verificar F-030 contra produccion. El circuito funciono,
+pero el humano tuvo que **editar a mano el codigo del parte**: la IA habia leido
+`RS 26.09/0178`, con un espacio **dentro del primer tramo**. La busqueda de la
+reclamacion en Sigrid es **igualdad exacta** (`consultas.py:78-84`), asi que
+devolvia cero filas y el cierre moria en `ReclamacionNoLocalizada`.
+
+**Por que F-028 no lo habia cogido.** Habia **dos normalizaciones separadas a
+proposito**, y F-028 (R44-R47) solo arreglo los espacios **que flanquean el
+separador** —`RS26.09 / 0149`—. `normalizar_codigo` colapsaba los interiores a
+uno, asi que el espacio lejos de la barra sobrevivia. Y nadie mas normalizaba: la
+extraccion guardaba el valor crudo, F-004 lo copiaba al veredicto, el front solo
+hacia `trim` y `postventa.partes` se quedaba el literal sucio.
+
+**Dos danos mas, que no se veian.** El nombre del fichero salia
+`0626 - RS 26.09 - 0178 PARTE FIRMADO.pdf` y `nombre_admisible` lo **aceptaba**:
+el mismo parte podia acabar en SharePoint con dos nombres. Y el **codigo de
+obra** pasa por la misma funcion y decide **la carpeta**: un `06 26` mandaria un
+PDF con el DNI manuscrito de un cliente a una carpeta que no es.
+
+**El arreglo, en los dos sitios que NO tocan la huella** (alcance decidido por el
+humano el 2026-09-17): `normalizar_codigo` elimina todos los blancos, y la
+extraccion sanea los dos codigos para que lo persistido **nazca limpio**.
+
+**Lo que se descarto por escrito**: tocar `_normalizar` de la huella. Habria
+mandado a `pendiente` todo parte aprobado cuyo codigo u observaciones llevaran un
+espacio, y rompia R50/R51 de F-028 y la seccion 8 de design.md de F-030. Si algun
+dia se quieren alinear, es feature propia con migracion.
+
+**La prueba de que no se invalido nada**: `aprobacion.py` **sin una sola linea de
+diff** en toda la rama (R17), y un control con **los tres hexadecimales medidos
+ANTES** de tocar el codigo, recalculados a mano con `hashlib`. El reviewer los
+verifico uno a uno en vez de creerse el informe.
+
+**Verificado**: `init.sh` en verde, **2897 pasan**, cobertura 100 % de las 12
+lineas cambiadas, mutacion con cero supervivientes.
+
+**Lo que queda, y es del humano**: **T14**, la medicion previa contra la base
+—que lista los partes ya archivados cuyo nombre cambiaria—, **sin la cual no se
+despliega** (R26); y la verificacion de punta a punta con un parte real cuyo
+codigo lleve un espacio, que es el criterio de aceptacion 1.
+
+**Deuda dada de alta**: **F-033**, el defecto D-A1 que destapo esta spec. La
+primera capa contra el duplicado en SharePoint **esta inerte desde el endpoint**:
+`archivar.py` no le pasa la traza previa a `paso_archivo`, asi que `/api/archivar`
+vuelve a subir siempre. Lo que evitaba el duplicado era el reemplazo del
+homonimo, y eso solo funcionaba mientras el nombre no cambiara. F-032 hace que
+cambie.
+
+Detalle: `specs/F-032-codigos-sin-espacios/`, `progress/impl_F-032.md` y
+`progress/review_F-032.md`.

@@ -559,7 +559,7 @@
         "Queda resuelto que pasa con un parte ya archivado con el nombre sucio, sin duplicarlo en SharePoint",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 32,

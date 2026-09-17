@@ -1,6 +1,73 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## EN CURSO · 2026-09-17 · **F-032: spec escrita, pendiente de aprobación del humano**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Escrita
+> **`specs/F-032-codigos-sin-espacios/`** (requirements, design, tasks). **No se
+> ha tocado ni una línea de código.**
+>
+> ### Lo que resuelve la spec, y lo que encontró por el camino
+>
+> 1. **El alcance es el que fijó el humano el 2026-09-17**: `normalizar_codigo`
+>    elimina todos los blancos en vez de colapsarlos (una línea, cubre ERP,
+>    carpeta y nombre de fichero) y la extracción sanea `codigo_obra` y
+>    `numero_incidencia`. La huella (`aprobacion.py::_normalizar`) **no se
+>    toca**, y queda escrito como alternativa descartada con su motivo y su
+>    fecha (`requirements.md` §8, D1).
+> 2. **Hacen falta DOS puntos de saneo en la extracción, no uno.** [MEDIDO]
+>    `paso_extraccion` nunca persiste: su resultado va al front y vuelve en el
+>    cuerpo. Quien construye la extracción que acaba en `postventa.partes` es
+>    `cuerpos.a_extraccion` (`parte.py:117`, `estado.py:157`, `validar.py:57`).
+>    Sanear solo en el pipeline **no cumpliría** el criterio de aceptación 3.
+> 3. **Por qué NO se migran las filas ya guardadas, con un motivo que no estaba
+>    escrito en ninguna spec.** [MEDIDO] `sentencias.py:589` lee
+>    `p.codigo_obra, p.numero_incidencia` **de `partes`** y `mapeo.py:406-426`
+>    los mete en el `ResultadoValidacion` sobre el que la puerta **recompone la
+>    huella**. Un `UPDATE` de limpieza revocaría decisiones humanas vivas: es
+>    tocar la huella por la puerta de atrás. Reprocesar un parte sí lo limpia
+>    **y caduca su aprobación** (R19 de F-028), que es el comportamiento
+>    correcto y así queda escrito.
+> 4. **El riesgo del renombrado en SharePoint, resuelto y medido.** Un parte ya
+>    archivado con el nombre sucio se re-archivaría con nombre nuevo y el viejo
+>    quedaría huérfano: el reemplazo solo alcanza al homónimo. Se asume, pero
+>    con una **medición previa obligatoria** (`design.md` §6.3, SQL de solo
+>    lectura sobre nuestro schema) **antes de desplegar**, porque re-archivar
+>    pisa `postventa.archivos.nombre_fichero`, que es la única pista del nombre
+>    viejo. Lo esperable es cero filas: el parte de ayer se editó a mano antes
+>    de archivarlo.
+> 5. **Defecto D-A1, declarado y NO arreglado aquí.** [MEDIDO] La capa L1 de
+>    idempotencia del archivo —la que `docs/ARCHITECTURE.md` describe en el paso
+>    6— **está inerte**: `archivar.py:118-128` llama a `paso_archivo` sin
+>    `traza_previa`, y el único sitio del árbol que la pasa son los tests
+>    (`paso_archivo.py:96,131`). `SituacionParte` no la trae y el puerto no
+>    tiene `consultar_archivo`. Es lo único que haría **imposible** el
+>    duplicado.
+> 6. **La tabla de casos** amplía la de F-028 a 13 formas del número y 8 del
+>    código de obra, con el caso real de ayer escrito literal (`RS 26.09/0178`),
+>    tabuladores y espacio no separable.
+> 7. **El control de la huella para este cambio concreto**: tres veredictos
+>    nuevos —con el espacio **dentro** del tramo, que es lo que F-028 no
+>    tocaba—, medidos **antes** del cambio (T1 del bloque 0) y recalculados a
+>    mano con `hashlib` por un segundo camino.
+>
+> ### Decisiones abiertas que necesita validar el humano
+>
+> - **Aprobar la spec** (PARADA 1) antes de que el implementer toque nada.
+> - **§6.2 · defecto D-A1**: ¿se da de alta como feature propia lo de cablear la
+>   traza previa del archivo, o se acumula a **F-031**, que ya va a mirar de
+>   dónde salen los códigos con los que se nombra el fichero archivado?
+> - **§6.3 · la medición previa (T14)** es la única tarea que necesita la base
+>   real. Es de **solo lectura** y dentro de nuestro schema, pero la ejecuta el
+>   humano o la autoriza: **sin ella no se despliega** (R26).
+> - **D3 · el espacio de ancho cero (`U+200B`)** sobrevive al saneo —`split()`
+>   no lo considera blanco— y produciría un nombre de fichero con un carácter
+>   invisible que `nombre_admisible` acepta. Se declara y **no** se arregla:
+>   ¿conforme, o se quiere dentro?
+> - **El criterio de aceptación 1 solo se puede dar por cumplido con un cierre
+>   real**: es escritura en el ERP de producción y exige autorización expresa
+>   del humano para esa incidencia concreta.
+
 > ## EN CURSO · 2026-09-16 · **F-030, bloques 4 y 5 entregados: la implementación está CERRADA**
 >
 > Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y

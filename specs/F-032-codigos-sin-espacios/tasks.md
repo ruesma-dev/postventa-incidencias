@@ -143,7 +143,7 @@
 
 ## Bloque 4 · Los controles que no pueden moverse
 
-- [ ] **T11**: Crear `services/postventa-api/tests/test_f032_huella_intacta.py`
+- [x] **T11**: Crear `services/postventa-api/tests/test_f032_huella_intacta.py`
       con los **tres controles** de `design.md` §7.2: (1) las tres huellas
       medidas en T1, escritas literales; (2) el recálculo a mano con `hashlib`
       sobre la cadena canónica escrita en el test, que tiene que dar lo mismo, y
@@ -155,7 +155,7 @@
       `pytest services/postventa-api/tests/test_f032_huella_intacta.py` en verde,
       y los tres literales coincidiendo con la traza de T1.
 
-- [ ] **T12**: Añadir los controles de alcance: R17 —`aprobacion.py` sin diff en
+- [x] **T12**: Añadir los controles de alcance: R17 —`aprobacion.py` sin diff en
       toda la rama—, R22 —ningún `UPDATE` ni fichero nuevo en
       `infrastructure/persistencia/sql/`—, R24 —`ArchivoPort` sin borrado ni
       renombrado—, R29 —`services/postventa-front/` sin diff y el contrato HTTP
@@ -168,7 +168,7 @@
 
 ## Bloque 5 · Documentación, medición y cierre
 
-- [ ] **T13**: Añadir la precisión fechada de F-032 a la **semántica 5** de
+- [x] **T13**: Añadir la precisión fechada de F-032 a la **semántica 5** de
       `docs/ARCHITECTURE.md` (texto en `design.md` §9.2) y dejar escrito en
       `progress/impl_F-032.md` el **defecto D-A1** —la capa L1 de idempotencia
       del archivo está inerte desde `/api/archivar`— con su evidencia
@@ -187,7 +187,15 @@
       (humano)** · la consulta de `design.md` §6.3 tal cual, con su resultado
       real pegado en el informe. **Sin esta tarea no se despliega** (R26).
 
-- [ ] **T15**: Campaña de mutación y cierre. | Verificación:
+      > **Sigue sin marcar, y está en manos del humano (2026-09-17).** El
+      > implementer **no puede** ejecutarla: no tiene credenciales de la base
+      > —la contraseña sale de `Read-Host` o de Key Vault, nunca de un fichero
+      > del repositorio— y el arnés le prohíbe abrir la conexión. La consulta,
+      > lista para copiar, está en `progress/impl_F-032.md`, sección «T14».
+      > **Mientras esta casilla siga vacía, F-032 no se despliega** (R26), por
+      > mucho que todo lo demás esté en verde.
+
+- [x] **T15**: Campaña de mutación y cierre. | Verificación:
       `python -m harness.mutacion --feature F-032` con **cero supervivientes**
       (cada uno, si lo hubiera, con test nuevo o justificación escrita) y
       `bash harness/init.sh` en verde, con la cobertura de las líneas cambiadas

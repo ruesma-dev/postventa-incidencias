@@ -1,7 +1,69 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## IMPLEMENTACIÓN EN CURSO · 2026-09-17 · **F-032, bloques 2 y 3 (T6–T10)**
+> ## IMPLEMENTACIÓN CERRADA · 2026-09-17 · **F-032, bloques 4 y 5 (T11–T13, T15)**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Último encargo del líder: **T11,
+> T12, T13 y T15**; **T14 es del humano**. El detalle vive en
+> `progress/impl_F-032.md`.
+>
+> Con esto la implementación de F-032 está **terminada**: falta la medición de
+> T14, el veredicto del reviewer y las verificaciones manuales de después del
+> despliegue.
+>
+> - **T11**: `tests/test_f032_huella_intacta.py`, 10 tests. Los **tres
+>   literales medidos en T1** —sobre `fd4fc70`, antes de tocar una línea—
+>   escritos tal cual, y **los tres siguen valiendo lo mismo**. Con el
+>   recálculo a mano con `hashlib` por un segundo camino y el efecto: un parte
+>   no apto aprobado por una persona antes del cambio **sigue `aprobado`** y
+>   sigue constando decidido por una persona.
+> - **T12**: `tests/test_f032_alcance_cerrado.py`, 13 tests. R17, R22, R23, R24
+>   y R29, cada uno con **dos mitades**: la del diff contra `dev` y otra que no
+>   depende de `git` y se comprueba siempre. Es lo que evita el defecto que
+>   F-030 tuvo que arreglar el 2026-09-17 —un control atado al diff deja `dev`
+>   en rojo al mergear—: se copiaron sus tres guardas.
+> - **T13**: la precisión fechada de F-032 en la **semántica 5** de
+>   `docs/ARCHITECTURE.md`, debajo de la de F-028 y sin borrarla. **No** se
+>   toca `azure-apps/postventa_incidencias.md`: no cambia endpoint, tabla ni
+>   variable. El defecto **D-A1 ya está dado de alta como F-033**.
+> - **T15**: mutación **3 mutantes, 3 muertos, 0 supervivientes**, 0 timeouts,
+>   44,3 s, **3 workers efectivos** (tope 8). Informe en
+>   `progress/mutacion_F-032.md`.
+>
+> `bash harness/init.sh` **en verde**: **2897 passed / 15 skipped** y puerta de
+> cobertura **100 % de 12 líneas cambiadas** (umbral 80 %, nivel `critico`).
+>
+> ### Lo que el líder tiene que llevarle al humano
+>
+> 1. **T14 · la medición previa contra la base `postventa`**, de solo lectura y
+>    dentro de nuestro schema. **Sin ella no se despliega** (R26), y va antes
+>    del despliegue porque re-archivar pisa `postventa.archivos.nombre_fichero`,
+>    que es la única pista del nombre viejo. La consulta está lista para copiar
+>    en `progress/impl_F-032.md`, sección «T14». Lo esperable es **cero filas**.
+> 2. Si devolviera filas: esos partes **no se re-archivan desde el circuito**
+>    (R27) y lo decide una persona. El sistema no borra ni renombra nada.
+> 3. **El criterio de aceptación 1 solo se puede dar por cumplido con un cierre
+>    real**: escritura en el ERP de producción, con autorización expresa para
+>    esa incidencia concreta, dry-run y confirmación.
+>
+> ### Desviaciones respecto a la spec
+>
+> **Una, consciente y menor**: `design.md` §1.1 listaba tres ficheros nuevos de
+> test y se han escrito **cuatro**. Los controles de alcance (R17, R22, R23,
+> R24, R29) fueron a un fichero propio, `test_f032_alcance_cerrado.py`, en vez
+> de repartirse: miden **lo que la feature se prohíbe**, no lo que hace, y
+> meterlos dentro del centinela de la huella lo habría diluido. Ningún
+> requisito cambia de contenido. Razonada en el informe.
+>
+> **Ni una línea de producción** en estos dos bloques: los cuatro ficheros de
+> producción se cerraron en T9. `aprobacion.py`, los centinelas de F-028 y
+> F-026, el front, `infra/`, `persistencia/**`, `prompts.yaml`, `cierre.py` y
+> `sigrid/consultas.py`: **intactos**, y comprobado con `git diff dev --stat`
+> restringido a ellos, que devuelve vacío. Ninguna escritura contra Azure,
+> Sigrid, SharePoint ni PostgreSQL.
+
+
+> ## IMPLEMENTACIÓN · 2026-09-17 · **F-032, bloques 2 y 3 (T6–T10)**
 >
 > Rama `feature/F-032-codigos-sin-espacios`. Encargo del líder: **solo T6–T10**;
 > el bloque 4 se encarga aparte. El detalle vive en `progress/impl_F-032.md`.

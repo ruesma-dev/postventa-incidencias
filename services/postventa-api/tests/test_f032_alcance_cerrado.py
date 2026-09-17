@@ -262,10 +262,14 @@ def test_f032_r17_la_huella_sigue_juntando_los_mismos_seis_campos():
 
     assert lineas == (
         "codigos = sorted((motivo.codigo.value for motivo in validacion.motivos))",
-        "canonica = _SEPARADOR_CANONICO.join((validacion.destino.value, "
-        "_SEPARADOR_MOTIVOS.join(codigos), validacion.clasificacion_firma.value, "
-        "_normalizar(validacion.observaciones), _normalizar(validacion.codigo_obra), "
-        "_normalizar(validacion.numero_incidencia)))",
+        (
+            "canonica = _SEPARADOR_CANONICO.join((validacion.destino.value, "
+            "_SEPARADOR_MOTIVOS.join(codigos), "
+            "validacion.clasificacion_firma.value, "
+            "_normalizar(validacion.observaciones), "
+            "_normalizar(validacion.codigo_obra), "
+            "_normalizar(validacion.numero_incidencia)))"
+        ),
         "return hashlib.sha256(canonica.encode('utf-8')).hexdigest()",
     )
 
@@ -377,7 +381,7 @@ def test_f032_r22_ningun_update_que_no_sea_el_de_un_upsert():
 
     sueltos = [
         fragmento
-        for fragmento in re.findall(r".{0,60}UPDATE", codigo, re.S)
+        for fragmento in re.findall(r".{0,60}UPDATE", codigo, re.DOTALL)
         if "ON CONFLICT" not in fragmento
     ]
 

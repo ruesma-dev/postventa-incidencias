@@ -45,6 +45,7 @@ from domain.models.extraccion import (
     CampoExtraido,
     ExtraccionParte,
     TrazaExtraccion,
+    sanear_valor_leido,
 )
 from domain.models.firma import LecturaFirma, clasificacion_desde_texto
 from domain.models.remesa import ModoDeteccion, ParteTroceado
@@ -112,6 +113,23 @@ def a_extraccion(bloque_extraccion: Mapping[str, Any]) -> ExtraccionParte:
     Los nueve campos son contrato: si falta uno, no se valida. Rellenarlo con
     un vacío de consolación sería inventarse que el papel estaba en blanco, y
     de ahí saldría un veredicto sobre un dato que nadie leyó.
+
+    > **Añadido por F-032 el 2026-09-17 (R12, R13).** Aquí se sanean los dos
+    > **códigos**, con la misma función del dominio que usa el paso del
+    > pipeline. No es una redundancia: **esta es la puerta por la que el valor
+    > llega de verdad a `postventa.partes`**. `paso_extraccion` no persiste
+    > nada —su resultado viaja al front, la persona puede corregirlo y lo
+    > devuelve—, y los tres endpoints que guardan o revalidan (`/api/parte`,
+    > `/api/validar`, `/api/estado`) reconstruyen la extracción **aquí**.
+    > Sanear solo en el pipeline dejaría la base sucia en cuanto alguien
+    > corrigiera un campo en la pantalla, que es exactamente lo que pasó el
+    > 2026-09-17 con `RS 26.09/0178`.
+    >
+    > **Ni una clave del contrato cambia** (R29): entra y sale lo mismo, con el
+    > valor limpio. Y **no se emite aviso**, a diferencia del pipeline: esta
+    > extracción se construye con `avisos=()` por contrato —los avisos son de
+    > la **lectura**, no del transporte (F-019)—, y fabricarlos en el borde los
+    > duplicaría en cada revalidación del mismo parte.
     """
     campos = bloque_extraccion["campos"]
     if not isinstance(campos, Mapping):
@@ -126,20 +144,31 @@ def a_extraccion(bloque_extraccion: Mapping[str, Any]) -> ExtraccionParte:
     return ExtraccionParte(
         hash_parte=str(bloque_extraccion["hash_parte"]),
         campos={
-            nombre: a_campo(campos[nombre]) for nombre in CAMPOS_DEL_PARTE
+            nombre: a_campo(campos[nombre], nombre) for nombre in CAMPOS_DEL_PARTE
         },
         traza=a_traza(bloque_extraccion["traza"]),
         avisos=(),
     )
 
 
-def a_campo(crudo: Any) -> CampoExtraido:
-    """Un campo del cuerpo, con la confianza saneada por la regla de siempre."""
+def a_campo(crudo: Any, nombre: str) -> CampoExtraido:
+    """Un campo del cuerpo, con la confianza **y el valor** saneados (F-032 R12).
+
+    `nombre` es obligatorio y no tiene valor por defecto a propósito: sin él no
+    se puede saber si el campo es un código o un texto, y un saneo que no
+    sanea nada en silencio es peor que ninguno. Quien llame sin decir qué campo
+    es, se entera al instante.
+
+    Es la misma simetría que ya existía con la confianza: **lo que llega de
+    fuera se sanea con el criterio de dentro**, el del dominio, y no con una
+    regla propia del borde.
+    """
     valores = crudo if isinstance(crudo, Mapping) else {}
     confianza, _ = sanear_confianza(valores.get("confianza_pct"))
     valor = valores.get("valor")
     return CampoExtraido(
-        valor=None if valor is None else str(valor), confianza_pct=confianza
+        valor=sanear_valor_leido(nombre, None if valor is None else str(valor)),
+        confianza_pct=confianza,
     )
 
 

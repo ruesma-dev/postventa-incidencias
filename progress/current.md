@@ -1,6 +1,213 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## IMPLEMENTACIÓN CERRADA · 2026-09-17 · **F-032, bloques 4 y 5 (T11–T13, T15)**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Último encargo del líder: **T11,
+> T12, T13 y T15**; **T14 es del humano**. El detalle vive en
+> `progress/impl_F-032.md`.
+>
+> Con esto la implementación de F-032 está **terminada**: falta la medición de
+> T14, el veredicto del reviewer y las verificaciones manuales de después del
+> despliegue.
+>
+> - **T11**: `tests/test_f032_huella_intacta.py`, 10 tests. Los **tres
+>   literales medidos en T1** —sobre `fd4fc70`, antes de tocar una línea—
+>   escritos tal cual, y **los tres siguen valiendo lo mismo**. Con el
+>   recálculo a mano con `hashlib` por un segundo camino y el efecto: un parte
+>   no apto aprobado por una persona antes del cambio **sigue `aprobado`** y
+>   sigue constando decidido por una persona.
+> - **T12**: `tests/test_f032_alcance_cerrado.py`, 13 tests. R17, R22, R23, R24
+>   y R29, cada uno con **dos mitades**: la del diff contra `dev` y otra que no
+>   depende de `git` y se comprueba siempre. Es lo que evita el defecto que
+>   F-030 tuvo que arreglar el 2026-09-17 —un control atado al diff deja `dev`
+>   en rojo al mergear—: se copiaron sus tres guardas.
+> - **T13**: la precisión fechada de F-032 en la **semántica 5** de
+>   `docs/ARCHITECTURE.md`, debajo de la de F-028 y sin borrarla. **No** se
+>   toca `azure-apps/postventa_incidencias.md`: no cambia endpoint, tabla ni
+>   variable. El defecto **D-A1 ya está dado de alta como F-033**.
+> - **T15**: mutación **3 mutantes, 3 muertos, 0 supervivientes**, 0 timeouts,
+>   44,3 s, **3 workers efectivos** (tope 8). Informe en
+>   `progress/mutacion_F-032.md`.
+>
+> `bash harness/init.sh` **en verde**: **2897 passed / 15 skipped** y puerta de
+> cobertura **100 % de 12 líneas cambiadas** (umbral 80 %, nivel `critico`).
+>
+> ### Lo que el líder tiene que llevarle al humano
+>
+> 1. **T14 · la medición previa contra la base `postventa`**, de solo lectura y
+>    dentro de nuestro schema. **Sin ella no se despliega** (R26), y va antes
+>    del despliegue porque re-archivar pisa `postventa.archivos.nombre_fichero`,
+>    que es la única pista del nombre viejo. La consulta está lista para copiar
+>    en `progress/impl_F-032.md`, sección «T14». Lo esperable es **cero filas**.
+> 2. Si devolviera filas: esos partes **no se re-archivan desde el circuito**
+>    (R27) y lo decide una persona. El sistema no borra ni renombra nada.
+> 3. **El criterio de aceptación 1 solo se puede dar por cumplido con un cierre
+>    real**: escritura en el ERP de producción, con autorización expresa para
+>    esa incidencia concreta, dry-run y confirmación.
+>
+> ### Desviaciones respecto a la spec
+>
+> **Una, consciente y menor**: `design.md` §1.1 listaba tres ficheros nuevos de
+> test y se han escrito **cuatro**. Los controles de alcance (R17, R22, R23,
+> R24, R29) fueron a un fichero propio, `test_f032_alcance_cerrado.py`, en vez
+> de repartirse: miden **lo que la feature se prohíbe**, no lo que hace, y
+> meterlos dentro del centinela de la huella lo habría diluido. Ningún
+> requisito cambia de contenido. Razonada en el informe.
+>
+> **Ni una línea de producción** en estos dos bloques: los cuatro ficheros de
+> producción se cerraron en T9. `aprobacion.py`, los centinelas de F-028 y
+> F-026, el front, `infra/`, `persistencia/**`, `prompts.yaml`, `cierre.py` y
+> `sigrid/consultas.py`: **intactos**, y comprobado con `git diff dev --stat`
+> restringido a ellos, que devuelve vacío. Ninguna escritura contra Azure,
+> Sigrid, SharePoint ni PostgreSQL.
+
+
+> ## IMPLEMENTACIÓN · 2026-09-17 · **F-032, bloques 2 y 3 (T6–T10)**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Encargo del líder: **solo T6–T10**;
+> el bloque 4 se encarga aparte. El detalle vive en `progress/impl_F-032.md`.
+>
+> Lo que arregla este encargo: que los dos códigos **se guarden limpios** en
+> `postventa.partes`, para que nadie tenga que volver a editar un parte a mano
+> como el 2026-09-17 con `RS 26.09/0178`. El bloque 1 había arreglado las tres
+> **salidas** (ERP, nombre y carpeta); esto es la **entrada**.
+>
+> - **T6**: `tests/test_f032_saneo_en_la_extraccion.py` con R11–R16 por los dos
+>   caminos. Fase RED con traza real: **21 failed, 8 passed**. Los 8 verdes son
+>   las garantías que ya se cumplían —los siete textos se copian tal cual,
+>   incluida una observación manuscrita con espacios dobles y saltos de línea—.
+> - **T7**: `CAMPOS_DE_CODIGO` y `sanear_valor_leido` en
+>   `domain/models/extraccion.py`, apoyándose en `normalizar_codigo` y **nunca
+>   en una copia**. 24 passed / 6 failed, que es justo lo que pide la tarea.
+> - **T8**: el saneo en `paso_extraccion::_completar_y_sanear` con el aviso de
+>   R15, y la docstring del módulo corregida (decía que no normalizaba nada).
+> - **T9**: el mismo saneo en `cuerpos.a_extraccion`, que es **la puerta por la
+>   que el valor llega de verdad a la tabla**. Sin avisos y sin tocar el
+>   contrato HTTP.
+> - **T10**: el borde a borde. El de `POST /api/parte` ya se tendió en T6 (su
+>   traza RED está allí); T10 añade `POST /api/estado`, el endpoint por el que
+>   la corrección de una persona vuelve a la tabla —el camino del caso real—,
+>   comprobado en rojo quitando el saneo del borde y restaurándolo.
+>
+> `bash harness/init.sh` **en verde**: 2874 passed / 15 skipped y puerta de
+> cobertura **100 % de 12 líneas cambiadas**.
+>
+> ### Desviaciones respecto a la spec
+>
+> **Ninguna en el código de producción**: `extraccion.py`, `paso_extraccion.py`
+> y `cuerpos.py` quedaron como dice `design.md` §4, letra por letra. Dos cosas
+> que sí conviene que el líder sepa, y están razonadas en el informe:
+>
+> 1. **Un error del propio test de T6**, que T7 puso rojo: la tabla de formas
+>    equivalentes metía `RS26.09 - 0178`. El saneo **no unifica separadores**
+>    —eso es `a_codigo_de_sigrid`—. Corregida, y añadido el test que fija lo
+>    contrario: `06 - 77` sanea a `06-77` y **no se parte por su guion** (F-028
+>    R48).
+> 2. **T10 encontró su test principal ya escrito**, porque el de R13 formaba
+>    parte de «los casos de R11–R16» de T6. En vez de dejar la tarea vacía,
+>    T10 añadió el segundo endpoint que escribe en `partes`.
+>
+> `aprobacion.py`, los centinelas de F-028 y F-026, el front, `infra/`,
+> `persistencia/**` y `prompts.yaml`: **intactos**. Ninguna escritura contra
+> Azure, Sigrid, SharePoint ni PostgreSQL. Los bloques 4 y 5 **no se han
+> empezado**.
+
+
+> ## IMPLEMENTACIÓN · 2026-09-17 · **F-032, bloques 0 y 1 (T1–T5)**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Encargo del líder: **solo T1–T5**;
+> el bloque 2 se encarga aparte. El detalle vive en `progress/impl_F-032.md`.
+>
+> - **T1**: las tres huellas del control de `design.md` §7.2 medidas sobre
+>   `fd4fc70` con el árbol limpio y **antes de tocar una línea**, confirmadas
+>   por un segundo camino (`hashlib` a mano). Sin código de producción.
+> - **T2**: `tests/test_f032_espacios_en_los_codigos.py` con la tabla entera de
+>   §5. Fase RED con traza real: **39 failed, 69 passed**, todos por
+>   `AssertionError` sobre el valor y ninguno por importación.
+> - **T3**: `normalizar_codigo` elimina todos los blancos y desaparece
+>   `_ESPACIOS_JUNTO_AL_SEPARADOR`. Docstring con la enmienda del 2026-09-17.
+> - **T4**: suite completa sin `-x`. **Un solo fallo y el previsto**
+>   (`test_f006_r8_los_espacios_interiores_se_colapsan_a_uno`). Los centinelas
+>   de F-028, F-026 y F-009, verdes sin tocarlos.
+> - **T5**: ese test, renombrado y con la expectativa nueva, y la **segunda
+>   enmienda fechada de R8** en `specs/F-006-sharepoint/requirements.md`.
+>
+> `bash harness/init.sh` **en verde**: 2842 passed / 15 skipped y puerta de
+> cobertura 100 % de 1 línea cambiada.
+>
+> **Sin desviaciones respecto a la spec.** `aprobacion.py`, los centinelas de
+> F-028 y el front, intactos (reglas duras 1, 2 y 4). Los bloques 2 a 5 **no se
+> han empezado**: se encargan aparte.
+
+
+> ## EN CURSO · 2026-09-17 · **F-032: spec escrita, pendiente de aprobación del humano**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Escrita
+> **`specs/F-032-codigos-sin-espacios/`** (requirements, design, tasks). **No se
+> ha tocado ni una línea de código.**
+>
+> ### Lo que resuelve la spec, y lo que encontró por el camino
+>
+> 1. **El alcance es el que fijó el humano el 2026-09-17**: `normalizar_codigo`
+>    elimina todos los blancos en vez de colapsarlos (una línea, cubre ERP,
+>    carpeta y nombre de fichero) y la extracción sanea `codigo_obra` y
+>    `numero_incidencia`. La huella (`aprobacion.py::_normalizar`) **no se
+>    toca**, y queda escrito como alternativa descartada con su motivo y su
+>    fecha (`requirements.md` §8, D1).
+> 2. **Hacen falta DOS puntos de saneo en la extracción, no uno.** [MEDIDO]
+>    `paso_extraccion` nunca persiste: su resultado va al front y vuelve en el
+>    cuerpo. Quien construye la extracción que acaba en `postventa.partes` es
+>    `cuerpos.a_extraccion` (`parte.py:117`, `estado.py:157`, `validar.py:57`).
+>    Sanear solo en el pipeline **no cumpliría** el criterio de aceptación 3.
+> 3. **Por qué NO se migran las filas ya guardadas, con un motivo que no estaba
+>    escrito en ninguna spec.** [MEDIDO] `sentencias.py:589` lee
+>    `p.codigo_obra, p.numero_incidencia` **de `partes`** y `mapeo.py:406-426`
+>    los mete en el `ResultadoValidacion` sobre el que la puerta **recompone la
+>    huella**. Un `UPDATE` de limpieza revocaría decisiones humanas vivas: es
+>    tocar la huella por la puerta de atrás. Reprocesar un parte sí lo limpia
+>    **y caduca su aprobación** (R19 de F-028), que es el comportamiento
+>    correcto y así queda escrito.
+> 4. **El riesgo del renombrado en SharePoint, resuelto y medido.** Un parte ya
+>    archivado con el nombre sucio se re-archivaría con nombre nuevo y el viejo
+>    quedaría huérfano: el reemplazo solo alcanza al homónimo. Se asume, pero
+>    con una **medición previa obligatoria** (`design.md` §6.3, SQL de solo
+>    lectura sobre nuestro schema) **antes de desplegar**, porque re-archivar
+>    pisa `postventa.archivos.nombre_fichero`, que es la única pista del nombre
+>    viejo. Lo esperable es cero filas: el parte de ayer se editó a mano antes
+>    de archivarlo.
+> 5. **Defecto D-A1, declarado y NO arreglado aquí.** [MEDIDO] La capa L1 de
+>    idempotencia del archivo —la que `docs/ARCHITECTURE.md` describe en el paso
+>    6— **está inerte**: `archivar.py:118-128` llama a `paso_archivo` sin
+>    `traza_previa`, y el único sitio del árbol que la pasa son los tests
+>    (`paso_archivo.py:96,131`). `SituacionParte` no la trae y el puerto no
+>    tiene `consultar_archivo`. Es lo único que haría **imposible** el
+>    duplicado.
+> 6. **La tabla de casos** amplía la de F-028 a 13 formas del número y 8 del
+>    código de obra, con el caso real de ayer escrito literal (`RS 26.09/0178`),
+>    tabuladores y espacio no separable.
+> 7. **El control de la huella para este cambio concreto**: tres veredictos
+>    nuevos —con el espacio **dentro** del tramo, que es lo que F-028 no
+>    tocaba—, medidos **antes** del cambio (T1 del bloque 0) y recalculados a
+>    mano con `hashlib` por un segundo camino.
+>
+> ### Decisiones abiertas que necesita validar el humano
+>
+> - **Aprobar la spec** (PARADA 1) antes de que el implementer toque nada.
+> - **§6.2 · defecto D-A1**: ¿se da de alta como feature propia lo de cablear la
+>   traza previa del archivo, o se acumula a **F-031**, que ya va a mirar de
+>   dónde salen los códigos con los que se nombra el fichero archivado?
+> - **§6.3 · la medición previa (T14)** es la única tarea que necesita la base
+>   real. Es de **solo lectura** y dentro de nuestro schema, pero la ejecuta el
+>   humano o la autoriza: **sin ella no se despliega** (R26).
+> - **D3 · el espacio de ancho cero (`U+200B`)** sobrevive al saneo —`split()`
+>   no lo considera blanco— y produciría un nombre de fichero con un carácter
+>   invisible que `nombre_admisible` acepta. Se declara y **no** se arregla:
+>   ¿conforme, o se quiere dentro?
+> - **El criterio de aceptación 1 solo se puede dar por cumplido con un cierre
+>   real**: es escritura en el ERP de producción y exige autorización expresa
+>   del humano para esa incidencia concreta.
+
 > ## EN CURSO · 2026-09-16 · **F-030, bloques 4 y 5 entregados: la implementación está CERRADA**
 >
 > Rama `feature/F-030-veredicto-persistido`, commits **locales**, sin `push` y

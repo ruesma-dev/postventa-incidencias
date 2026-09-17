@@ -430,30 +430,50 @@ def test_f006_r8_los_extremos_se_recortan(bruto):
     assert normalizar_codigo(bruto) == "0677"
 
 
-def test_f006_r8_los_espacios_interiores_se_colapsan_a_uno():
-    """R8 · varios espacios seguidos dentro del código pasan a ser uno, y los
-    que **flanquean a un separador** desaparecen del todo.
+def test_f006_r8_los_espacios_interiores_se_eliminan():
+    """R8 · **ningún blanco forma parte del código**, toque o no un separador.
 
-    **Este test cambió de expectativa el 2026-09-15** (F-028 R44, R55). Hasta
-    ese día afirmaba, literal:
+    Este es el test que codifica la regla de R8, y ha cambiado **dos veces**.
+    Las dos están aquí porque la historia es la que explica por qué la regla de
+    hoy es la correcta, y sin ella el siguiente que pase leerá un aserto suelto.
+
+    **Como nació** (F-006): el colapso a uno. Afirmaba, literal:
 
         assert normalizar_codigo("RS26.08   -    0123") == "RS26.08 - 0123"
 
-    Cambiarlo no es aflojarlo: R8 pedía que dos lecturas del mismo parte que
-    solo difirieran en espacios produjeran **el mismo** nombre, y eso es
-    exactamente lo que no se cumplía. El colapso dejaba `RS26.08 - 0123`, un
-    valor intermedio con espacios, y de ahí salían dos daños: el código que se
-    manda al ERP no era el que el ERP busca —lo busca por igualdad exacta, y
-    por eso fallaba el cierre en real—, y `RS26.09- 0149` producía además un
-    nombre de fichero distinto del canónico. La enmienda fechada de R8 está en
-    `specs/F-006-sharepoint/requirements.md`, bajo el propio requisito.
+    **Primer cambio, el 2026-09-15** (F-028 R44, R55). R8 pedía que dos
+    lecturas del mismo parte que solo difirieran en espacios produjeran **el
+    mismo** nombre, y el colapso no lo cumplía: dejaba `RS26.08 - 0123`, un
+    valor intermedio con espacios. De ahí salían dos daños —el código que se
+    manda al ERP no era el que el ERP busca, que lo busca por **igualdad
+    exacta**, y `RS26.09- 0149` producía además un nombre de fichero distinto
+    del canónico—. F-028 eliminó los espacios que **flanquean a un separador**
+    y dejó vivo el colapso para el resto, que es lo que afirmaba la segunda
+    línea de este test hasta hoy:
 
-    La segunda afirmación es la que conserva lo que R8 sí garantizaba y sigue
-    garantizando: un espacio interior que **no** toca un separador se colapsa,
-    no desaparece. Sin ella este test dejaría de probar ningún colapso.
+        assert normalizar_codigo("RS26.08   0123") == "RS26.08 0123"
+
+    **Segundo cambio, el 2026-09-17** (F-032 R1), y es el que hay que mirar.
+    La premisa de F-028 era que el espacio problemático **siempre** tocaba al
+    separador. No era cierta, y se vio en real el mismo día en que se verificaba
+    F-030 contra producción: la IA leyó `RS 26.09/0178` —el espacio **dentro
+    del primer tramo**— y el cierre murió en `ReclamacionNoLocalizada` hasta que
+    una persona editó el código a mano. El mismo defecto archivaba la obra
+    `06 26` en `Postventa/06 26`, que no es `Postventa/0626`.
+
+    Así que el colapso no se afloja: **se retira**. Un espacio no es parte de un
+    código, esté donde esté, y con eso R8 cumple por fin entera la garantía que
+    prometía desde el primer día. La segunda enmienda fechada está en
+    `specs/F-006-sharepoint/requirements.md`, bajo el propio requisito, y la
+    tabla de casos completa en `tests/test_f032_espacios_en_los_codigos.py`.
+
+    Lo que **no** cambia y sigue vigilado en otros tests de este mismo fichero:
+    los ceros a la izquierda, el sufijo y la extensión literales, el error
+    ruidoso ante un nombre imposible y que el código de obra no se parte por sus
+    guiones.
     """
     assert normalizar_codigo("RS26.08   -    0123") == "RS26.08-0123"
-    assert normalizar_codigo("RS26.08   0123") == "RS26.08 0123"
+    assert normalizar_codigo("RS26.08   0123") == "RS26.080123"
 
 
 def test_f006_r8_el_colapso_ocurre_tambien_despues_de_sustituir_la_barra():

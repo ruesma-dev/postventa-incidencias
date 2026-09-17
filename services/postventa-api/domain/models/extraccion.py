@@ -6,6 +6,13 @@ modelo lee: primero **en bruto**, tal y como lo devuelve el proveedor, y luego
 **saneado**, con la confianza ya dentro de rango. Quien sanea es la aplicación
 (R4), y por eso el dominio guarda las dos formas sin mezclarlas.
 
+> **Añadido por F-032 el 2026-09-17.** Lo que el dominio sí sabe, y aquí vive,
+> es **qué es cada campo**: `CAMPOS_DE_CODIGO` y `sanear_valor_leido` dicen
+> cuáles de los nueve son un código y cómo se sanea uno. Aplicarlo sigue siendo
+> de la aplicación y del borde HTTP —los dos llamantes—, así que «quien sanea es
+> la aplicación» no cambia: lo que cambia es que el **criterio** deja de estar
+> repartido. `sanear_valor_leido` no tiene reloj, ni red, ni configuración.
+
 Aquí no hay proveedor, ni SDK, ni prompt: el dominio no sabe **quién** leyó el
 parte. Eso es lo que permite cambiar de modelo por configuración sin tocar
 nada de este fichero (R11, R13).
@@ -15,6 +22,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+
+from domain.models.nombrado import normalizar_codigo
 
 #: Los campos que se extraen de un parte, en el orden de la tabla de R1.
 #:
@@ -54,6 +63,48 @@ CAMPOS_DEL_PARTE: tuple[str, ...] = (
 CAMPOS_MANUSCRITOS: frozenset[str] = frozenset(
     {"fecha_servicio", "dni_cliente", "observaciones"}
 )
+
+#: Los dos campos que son un **código** y no un texto (F-032 R14).
+#:
+#: Escritos literales y no derivados de nada: son exactamente los dos que
+#: identifican algo fuera de este sistema —el `codigo_obra` decide la carpeta
+#: de SharePoint donde acaba el PDF, y el `numero_incidencia`, qué reclamación
+#: se cierra en el ERP—. Los otros siete llevan texto de una persona.
+CAMPOS_DE_CODIGO: tuple[str, ...] = ("codigo_obra", "numero_incidencia")
+
+
+def sanear_valor_leido(nombre: str, valor: str | None) -> str | None:
+    """El valor de un campo listo para viajar y para guardarse (F-032, R11–R16).
+
+    Un **código** sale sin blancos: es lo que identifica una reclamación en el
+    ERP —que busca por **igualdad exacta**— y la carpeta del archivo. Cualquier
+    otro campo sale **tal cual**: quitarle los espacios a una observación
+    manuscrita la convertiría en otra cosa, y esa transcripción es justo lo que
+    lee una persona para decidir si el parte vale.
+
+    Se apoya en `normalizar_codigo` y **no en una copia**. Es la misma regla que
+    nombra el fichero y que busca en el ERP, así que el día que cambie, cambia
+    para las tres. Dos criterios del mismo concepto divergen siempre, y a este
+    proyecto ya le pasó: F-028 dejó dos ideas distintas de «espacio sobrante» y
+    el **2026-09-17** la IA leyó `RS 26.09/0178`, el cierre murió en
+    `ReclamacionNoLocalizada` y hubo que editar el parte a mano.
+
+    Dos cosas que no hace, y las dos importan:
+
+    - **`None` se devuelve sin tocar** (R16): un campo que el modelo no leyó no
+      se convierte en uno leído. Devolver `""` sería afirmar que el papel estaba
+      en blanco, que es otra cosa;
+    - **un código que se queda vacío sale `None`** y no `""`: un valor de solo
+      blancos no dice nada que un `NULL` no diga, F-004 ya trata «solo espacios»
+      como vacío y la huella del veredicto normaliza los dos al mismo sitio, así
+      que esto **no mueve ninguna huella**.
+
+    Un `import` de `domain/models/nombrado.py` es una dependencia **dentro** del
+    dominio, y `nombrado` no importa a nadie salvo `errores`: no hay ciclo.
+    """
+    if valor is None or nombre not in CAMPOS_DE_CODIGO:
+        return valor
+    return normalizar_codigo(valor) or None
 
 
 @dataclass(frozen=True)

@@ -373,6 +373,16 @@ igual que hoy, y por debajo se suben los PDFs.
    `06-77` es una obra, no dos tramos, y partirlo por el guion metería un PDF
    con el DNI manuscrito de un cliente en la carpeta de otra promoción.
 
+   **Precisado por F-032 el 2026-09-17**: **ningún espacio forma parte del
+   código**, ni junto al separador ni dentro de un tramo. `RS 26.09/0178` es el
+   mismo número que `RS26.09/0178`, y `06 26` la misma obra que `0626`. F-028
+   había dejado fuera el espacio que no toca al separador, y el 2026-09-17 eso
+   costó un cierre que hubo que rescatar editando el código a mano. Los códigos
+   se sanean **al leerlos**, así que lo que se guarda en `postventa.partes` nace
+   sin espacios. Lo que sigue sin cambiar: el código de obra **no se parte por
+   sus guiones** (`06-77` es una obra), y la normalización de la **huella** del
+   veredicto es **otra** y no se toca.
+
 6. **Cerrar en Sigrid es escritura en producción.** Siempre dry-run primero;
    `commit: true` solo después de confirmación explícita (del usuario en el
    front, o de su preferencia de auto-cierre guardada).

@@ -103,47 +103,63 @@ SEPARADORES_DE_CODIGO = "/-"
 #: La traducción de todos los guiones raros al normal, de una pasada.
 _A_GUION_NORMAL = str.maketrans({guion: "-" for guion in GUIONES_EQUIVALENTES})
 
-#: Un separador con lo que lo rodee pegado: es lo que se quita en R44.
-#:
-#: Se construye desde `SEPARADORES_DE_CODIGO` y no con los dos caracteres
-#: escritos a mano: dos listas del mismo concepto divergen, que es el mismo
-#: motivo por el que este módulo tiene una sola normalización.
-_ESPACIOS_JUNTO_AL_SEPARADOR = re.compile(
-    rf"\s*([{re.escape(SEPARADORES_DE_CODIGO)}])\s*"
-)
-
 #: Cualquiera de los separadores, para partir un código en tramos.
 _CUALQUIER_SEPARADOR = re.compile(rf"[{re.escape(SEPARADORES_DE_CODIGO)}]")
 
 
 def normalizar_codigo(bruto: str | None) -> str:
-    """Guiones al normal, espacios colapsados, extremos recortados **y los
-    espacios que flanquean a un separador, eliminados**.
+    """Guiones al normal y **ningún blanco**: un espacio no es parte del código.
 
-    Lo último es R44, y llegó tarde: hasta el 2026-09-15 esta función dejaba
-    `RS26.09 / 0149` tal cual. El nombre del fichero salía bien **por
-    casualidad** —la barra pasa a ` - ` y el colapso posterior se come el
-    sobrante—, así que el parte se archivaba en su sitio y solo fallaba el
-    cierre, porque el ERP busca la reclamación **por igualdad exacta**. Medio
-    circuito en verde tapando la mitad rota.
+    > **Enmienda del 2026-09-17 · F-032 (`specs/F-032-codigos-sin-espacios/`).**
+    > Hasta hoy esta función decía, literal: *«Guiones al normal, espacios
+    > **colapsados**, extremos recortados y los espacios que flanquean a un
+    > separador, eliminados»*. Los espacios interiores se colapsaban a uno
+    > (`" ".join(...split())`) y solo desaparecían los que tocaban a un
+    > separador.
+    >
+    > **Qué la invalidó**: la premisa de F-028 era que el espacio problemático
+    > siempre estaba pegado al separador. No era cierta. El **2026-09-17**, al
+    > verificar F-030 contra producción, la IA leyó `RS 26.09/0178` —el espacio
+    > **dentro del primer tramo**— y el cierre murió en
+    > `ReclamacionNoLocalizada` hasta que una persona editó el código a mano.
+    > El mismo defecto mandaba la obra `06 26` a la carpeta `Postventa/06 26`,
+    > que no es `Postventa/0626`; ese daño, además, **no se ve**.
+    >
+    > **Quién y cuándo**: el responsable del proyecto, el 2026-09-17, después
+    > de rescatar aquel cierre a mano.
+
+    `str.split()` sin argumentos parte por **cualquier blanco Unicode**, así que
+    el tabulador, el salto de línea, el espacio no separable (`U+00A0`) y el
+    fino no separable (`U+202F`) se van igual que el espacio normal, y sin una
+    lista de caracteres que mantener. Lo que **no** se va es el `U+200B`
+    (ancho cero), que Python no considera blanco: es el defecto declarado D3 de
+    `requirements.md` §8, y tiene su test.
+
+    Y el orden importa: los guiones raros se traducen **antes**, que es lo que
+    hace que `RS26.09 – 0178` y `RS26.09-0178` acaben en el mismo sitio.
 
     Se arregla **aquí** y no en las dos conversiones porque las dos se apoyan en
     esta a propósito (F-028 R47): dos criterios del mismo concepto divergen
-    siempre. Y `RS26.09- 0149` lo demuestra: es la única forma que también
-    estropeaba el nombre del fichero, y un saneo puesto en el lado del ERP no la
-    habría cazado.
+    siempre. Una sola línea cubre las tres salidas —el código del ERP, el nombre
+    del fichero y la carpeta—, porque las tres cuelgan de aquí.
 
-    **No toca los ceros a la izquierda** y **no convierte a número**: lo que
-    entra como `str` sale como `str`, y `0677` sigue siendo `0677`.
+    **Lo que NO cambia**, y conviene tenerlo escrito al lado:
 
-    Un código ausente, vacío o de solo espacios sale como cadena vacía. No se
+    - **los ceros a la izquierda** se conservan y no se convierte a número: lo
+      que entra como `str` sale como `str`, y `0677` sigue siendo `0677`;
+    - **el sufijo y la extensión** del nombre del fichero siguen literales;
+    - **un nombre imposible sigue siendo un error ruidoso**, nunca un saneo
+      silencioso;
+    - **el código de obra no se parte por sus guiones**: `06-77` es una obra, no
+      dos tramos. Lo único que desaparece son los blancos, nunca el separador.
+
+    Un código ausente, vacío o de solo blancos sale como cadena vacía. No se
     levanta nada aquí: quien decide que eso es un error es quien va a nombrar
     el fichero, y este mismo saneo lo usa también la carpeta.
     """
     if bruto is None:
         return ""
-    colapsado = " ".join(bruto.translate(_A_GUION_NORMAL).split())
-    return _ESPACIOS_JUNTO_AL_SEPARADOR.sub(r"\1", colapsado)
+    return "".join(bruto.translate(_A_GUION_NORMAL).split())
 
 
 def tramos_de_codigo(codigo: str) -> tuple[str, ...]:

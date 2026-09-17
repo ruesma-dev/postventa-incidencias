@@ -52,7 +52,7 @@
       de producción en esta tarea.** | Verificación: la traza pegada en el
       informe, con el commit exacto sobre el que se midió.
 
-- [ ] **T2**: Crear `services/postventa-api/tests/test_f032_espacios_en_los_codigos.py`
+- [x] **T2**: Crear `services/postventa-api/tests/test_f032_espacios_en_los_codigos.py`
       con **la tabla entera** de `design.md` §5 —las 13 formas del número y las
       8 del código de obra, con el caso real `RS 26.09/0178` escrito literal—
       parametrizada sobre las tres salidas: `normalizar_codigo`,

@@ -564,6 +564,23 @@
       "rigor": "critico",
       "priority": 32,
       "branch": "feature/F-032-codigos-sin-espacios"
+    },
+    {
+      "id": "F-033",
+      "title": "La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint",
+      "description": "Defecto D-A1, hallado y MEDIDO por la spec de F-032 el 2026-09-17 (design.md seccion 6.2), dado de alta por decision del humano ese mismo dia. La arquitectura declara TRES capas contra subir dos veces el mismo parte a SharePoint, y la primera -L1, cortar sin llamar a nadie cuando el parte ya consta archivado, F-006 R14- NO ESTA CONECTADA: paso_archivo la espera como argumento opcional (paso_archivo.py:96, traza_previa=None) y archivar.py:118-128 no se la pasa. El unico sitio del arbol que la pasa es tests/test_f019_orden_archivado.py. Consecuencia: POST /api/archivar VUELVE A SUBIR SIEMPRE, y lo que evitaba el duplicado era el reemplazo del HOMONIMO (paso_archivo.py _subir busca por nombre), que funcionaba solo porque el nombre no cambiaba nunca. AGRAVANTE: re-archivar pisa la traza de postventa.archivos -clave por hash_parte-, asi que el nombre_fichero y la carpeta viejos se pierden y el fichero huerfano deja de ser localizable desde nuestra base. POR QUE SALE AHORA: F-032 hace que el nombre del fichero CAMBIE al limpiar los espacios, y con ello el reemplazo por homonimo deja de tapar el agujero. F-032 NO lo arregla -reabriria el alcance que fijo el humano el 2026-09-17- y mitiga con una consulta de solo lectura antes de desplegar. LO QUE HACE FALTA: un campo nuevo en SituacionParte, un metodo consultar_archivo en RepositorioPartesPort, su adaptador, una sentencia, su mapeo y los tests de los tres. Pisa el terreno de F-019 y de F-031, asi que conviene mirarlas juntas. Hoy SituacionParte no trae la traza del archivo (domain/models/estado.py:189-208) y el puerto solo tiene consultar_grafico, consultar_situacion y consultar_estado_cierre.",
+      "acceptance": [
+        "Un parte que ya consta archivado no se vuelve a subir a SharePoint: L1 corta antes de llamar a nadie",
+        "La traza de postventa.archivos no se pisa de forma que se pierda el rastro de un fichero ya subido",
+        "El corte se comprueba desde el endpoint, no solo desde el paso: hay test que recorre /api/archivar",
+        "La consulta de la situacion no cuesta ninguna sentencia mas de las que ya costaba",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 33,
+      "branch": "feature/F-033-l1-traza-archivo"
     }
   ]
 }

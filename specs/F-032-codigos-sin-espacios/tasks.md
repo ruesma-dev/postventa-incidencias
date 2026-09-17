@@ -107,7 +107,7 @@
       memoria, sin red, sin BBDD y sin IA. | Verificación: en **ROJO**, traza en
       el informe (fase RED).
 
-- [ ] **T7**: Añadir `CAMPOS_DE_CODIGO` y `sanear_valor_leido` a
+- [x] **T7**: Añadir `CAMPOS_DE_CODIGO` y `sanear_valor_leido` a
       `services/postventa-api/domain/models/extraccion.py`, apoyándose en
       `normalizar_codigo` (nunca en una copia), con la docstring que explique
       por qué un código se sanea y un texto no. | Verificación: los tests de

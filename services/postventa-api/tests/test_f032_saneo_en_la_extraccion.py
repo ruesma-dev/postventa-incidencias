@@ -152,16 +152,30 @@ TEXTOS_DE_EJEMPLO: dict[str, str] = {
     "numero_pagina": "1",
 }
 
-#: Las formas del número que el bloque 1 dejó equivalentes, para comprobar que
-#: la regla del saneo **es** la del nombrado y no una copia con su propia vida.
+#: Formas del número que el saneo tiene que dejar **en la misma cadena**.
+#:
+#: Todas llevan la barra como separador. Las escritas con guion —`RS26.09 -
+#: 0178`— **no** entran aquí, y no es un descuido: el saneo quita blancos y
+#: traduce guiones raros al normal, pero **no unifica separadores**. Quien hace
+#: que la barra y el guion lleguen igual al ERP es `a_codigo_de_sigrid`, que
+#: parte en tramos y los une con `/`.
+#:
+#: Meterlas en esta lista fue el error que T7 puso rojo, y queda escrito porque
+#: la confusión es exactamente la que F-028 R48 protege: el código de obra
+#: `06-77` **no se parte por su guion**, y un saneo que tocara separadores lo
+#: archivaría en una carpeta que no existe.
 FORMAS_EQUIVALENTES: tuple[str, ...] = (
     "RS26.09/0178",
     "RS 26.09/0178",
     "RS26.09 / 0178",
-    "RS26.09 - 0178",
     "RS\t26.09/0178",
     "  RS 26.09/0178  ",
+    "RS  26.09 /  0178",
 )
+
+#: El código de obra con guion, que el saneo **no** puede partir (F-028 R48).
+OBRA_CON_GUION_LEIDA = "06 - 77"
+OBRA_CON_GUION_LIMPIA = "06-77"
 
 
 # --------------------------------------------------------------------------
@@ -321,6 +335,26 @@ def test_f032_r11_la_regla_del_dominio_no_es_una_copia_de_normalizar_codigo():
         sanear_valor_leido("numero_incidencia", forma) for forma in FORMAS_EQUIVALENTES
     }
     assert saneados == {NUMERO_LIMPIO}
+
+
+def test_f032_r14_el_saneo_no_toca_el_separador_de_un_codigo_de_obra():
+    """R14 · lo único que desaparece son los blancos: **el guion se queda**.
+
+    `06 - 77` es **una** obra escrita con un espacio de más, no dos tramos, y
+    F-028 R48 ya lo fijó. Un saneo que se pasara de listo y unificara
+    separadores archivaría ese parte en una carpeta que no existe, y ese daño
+    **no se ve**: para Graph es otra carpeta, y allí nadie echa en falta el PDF.
+
+    Quien sí une los tramos con `/` es `a_codigo_de_sigrid`, y solo para el
+    número que viaja al ERP. Son dos cosas distintas, y este test está para que
+    sigan siéndolo.
+    """
+    sanear_valor_leido = _regla_del_dominio()
+
+    assert (
+        sanear_valor_leido("codigo_obra", OBRA_CON_GUION_LEIDA)
+        == OBRA_CON_GUION_LIMPIA
+    )
 
 
 @pytest.mark.parametrize("nombre", CAMPOS_DE_TEXTO)

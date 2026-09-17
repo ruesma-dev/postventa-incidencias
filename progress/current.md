@@ -1,7 +1,58 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## IMPLEMENTACIÓN EN CURSO · 2026-09-17 · **F-032, bloques 0 y 1 (T1–T5)**
+> ## IMPLEMENTACIÓN EN CURSO · 2026-09-17 · **F-032, bloques 2 y 3 (T6–T10)**
+>
+> Rama `feature/F-032-codigos-sin-espacios`. Encargo del líder: **solo T6–T10**;
+> el bloque 4 se encarga aparte. El detalle vive en `progress/impl_F-032.md`.
+>
+> Lo que arregla este encargo: que los dos códigos **se guarden limpios** en
+> `postventa.partes`, para que nadie tenga que volver a editar un parte a mano
+> como el 2026-09-17 con `RS 26.09/0178`. El bloque 1 había arreglado las tres
+> **salidas** (ERP, nombre y carpeta); esto es la **entrada**.
+>
+> - **T6**: `tests/test_f032_saneo_en_la_extraccion.py` con R11–R16 por los dos
+>   caminos. Fase RED con traza real: **21 failed, 8 passed**. Los 8 verdes son
+>   las garantías que ya se cumplían —los siete textos se copian tal cual,
+>   incluida una observación manuscrita con espacios dobles y saltos de línea—.
+> - **T7**: `CAMPOS_DE_CODIGO` y `sanear_valor_leido` en
+>   `domain/models/extraccion.py`, apoyándose en `normalizar_codigo` y **nunca
+>   en una copia**. 24 passed / 6 failed, que es justo lo que pide la tarea.
+> - **T8**: el saneo en `paso_extraccion::_completar_y_sanear` con el aviso de
+>   R15, y la docstring del módulo corregida (decía que no normalizaba nada).
+> - **T9**: el mismo saneo en `cuerpos.a_extraccion`, que es **la puerta por la
+>   que el valor llega de verdad a la tabla**. Sin avisos y sin tocar el
+>   contrato HTTP.
+> - **T10**: el borde a borde. El de `POST /api/parte` ya se tendió en T6 (su
+>   traza RED está allí); T10 añade `POST /api/estado`, el endpoint por el que
+>   la corrección de una persona vuelve a la tabla —el camino del caso real—,
+>   comprobado en rojo quitando el saneo del borde y restaurándolo.
+>
+> `bash harness/init.sh` **en verde**: 2874 passed / 15 skipped y puerta de
+> cobertura **100 % de 12 líneas cambiadas**.
+>
+> ### Desviaciones respecto a la spec
+>
+> **Ninguna en el código de producción**: `extraccion.py`, `paso_extraccion.py`
+> y `cuerpos.py` quedaron como dice `design.md` §4, letra por letra. Dos cosas
+> que sí conviene que el líder sepa, y están razonadas en el informe:
+>
+> 1. **Un error del propio test de T6**, que T7 puso rojo: la tabla de formas
+>    equivalentes metía `RS26.09 - 0178`. El saneo **no unifica separadores**
+>    —eso es `a_codigo_de_sigrid`—. Corregida, y añadido el test que fija lo
+>    contrario: `06 - 77` sanea a `06-77` y **no se parte por su guion** (F-028
+>    R48).
+> 2. **T10 encontró su test principal ya escrito**, porque el de R13 formaba
+>    parte de «los casos de R11–R16» de T6. En vez de dejar la tarea vacía,
+>    T10 añadió el segundo endpoint que escribe en `partes`.
+>
+> `aprobacion.py`, los centinelas de F-028 y F-026, el front, `infra/`,
+> `persistencia/**` y `prompts.yaml`: **intactos**. Ninguna escritura contra
+> Azure, Sigrid, SharePoint ni PostgreSQL. Los bloques 4 y 5 **no se han
+> empezado**.
+
+
+> ## IMPLEMENTACIÓN · 2026-09-17 · **F-032, bloques 0 y 1 (T1–T5)**
 >
 > Rama `feature/F-032-codigos-sin-espacios`. Encargo del líder: **solo T1–T5**;
 > el bloque 2 se encarga aparte. El detalle vive en `progress/impl_F-032.md`.

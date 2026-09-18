@@ -11,7 +11,7 @@ Resumen: **32 features**, 15 abiertas, 17 terminadas.
 |---|---|---|---|---|---|
 | F-024 | Datos del parte enlazados a Sigrid, para el datamart | 12 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 13 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | spec lista | estandar | `feature/F-013-archivo-posventa` |
+| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 13 | spec lista | critico | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 14 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 15 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
 | F-016 | Interpretación automática de las observaciones manuscritas | 16 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
@@ -63,7 +63,7 @@ Recoger automáticamente las remesas que lleguen a un buzón corporativo, reapro
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 
-estado **spec lista** · prioridad 13 · rigor `estandar` · SDD sí · rama `feature/F-013-archivo-posventa`
+estado **spec lista** · prioridad 13 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
 
 Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
 

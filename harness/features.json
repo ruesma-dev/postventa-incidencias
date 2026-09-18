@@ -233,9 +233,10 @@
       ],
       "status": "spec_ready",
       "sdd": true,
-      "rigor": "estandar",
+      "rigor": "critico",
       "priority": 13,
-      "branch": "feature/F-013-archivo-posventa"
+      "branch": "feature/F-013-archivo-posventa",
+      "blocked_by": "F-033 y F-031, por decision del humano del 2026-09-18 (D-2 y D-3 de design.md): sin la capa L1 re-archivar un parte ya subido a IT lo subiria tambien a Posventa y perderia su traza, y la carpeta tiene que salir de lo persistido y no del cuerpo. Orden: F-033 -> F-031 -> F-013."
     },
     {
       "id": "F-014",

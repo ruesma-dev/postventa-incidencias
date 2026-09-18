@@ -118,7 +118,8 @@ def _archivar(ctx, archivador, repositorio, **extra):
     if "traza_previa" in extra:
         # F-033 · L1 lee la traza de la situación: se siembra ahí (design §7).
         repositorio.situacion = dataclasses.replace(
-            repositorio.situacion or SituacionParte(), archivo=extra["traza_previa"]
+            repositorio.situacion or SituacionParte(),
+            archivo=extra.pop("traza_previa"),
         )
     return paso_archivo(
         ctx,

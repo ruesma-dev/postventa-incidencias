@@ -98,7 +98,7 @@ línea.
       verde **con el paso todavía sin cambiar** (el atajo pasa la traza por
       los dos caminos durante esta tarea, y el siguiente commit quita uno).
 
-- [ ] **T7**: `paso_archivo.py`: fuera `traza_previa`, dentro
+- [x] **T7**: `paso_archivo.py`: fuera `traza_previa`, dentro
       `drive_id_vigente`; L1 desde `situacion_leida(ctx, repositorio).archivo`;
       `_en_otro_destino`; los dos avisos nuevos; R18, R19 y R20 (`design.md`
       §4). Docstring del módulo y de la función actualizados (la tabla de las

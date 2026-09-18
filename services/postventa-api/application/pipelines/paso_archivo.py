@@ -23,7 +23,7 @@ que las otras no:
 
 | Capa | Qué evita | Cómo |
 |---|---|---|
-| **L1 · traza** | Volver a subir el mismo parte | La traza en estado `archivado` corta **antes de llamar a nadie**: ni token, ni red, ni bytes |
+| **L1 · traza** | Volver a subir el mismo parte | La traza en estado `archivado` corta **antes de llamar a nadie**: ni token, ni red, ni bytes. Desde F-033 sale **del almacén** —de la situación que ya leyó la puerta— y nunca del llamante |
 | **L2 · reemplazo** | El `fichero (1).pdf` | La subida reemplaza siempre el homónimo; el puerto no ofrece otra opción |
 | **L3 · carpeta** | Dos carpetas para la misma obra | `asegurar_carpeta` trata «ya existe» como éxito |
 
@@ -40,31 +40,65 @@ guardado**: es la misma restricción que el 2026-08-25 hizo fallar el proceso
 F-005 usa como clave primaria de la tabla `archivos`. F-006 no define ningún
 criterio propio: ni por nombre, ni por incidencia, ni por bytes. Dos criterios
 del mismo concepto divergen siempre.
+
+## Enmienda del 2026-09-18 (F-033) · de dónde sale la traza de L1
+
+Hasta hoy la tabla de arriba decía «la traza en estado `archivado` corta», y
+era verdad **solo en los tests**: el paso la recibía por un parámetro opcional,
+`traza_previa`, y `POST /api/archivar` no se la pasaba nunca. L1 estaba inerte
+desde el borde y cada re-archivo volvía a subir el PDF; lo tapaba L2 mientras
+el nombre y la carpeta no cambiaran.
+
+Desde F-033:
+
+- la traza viaja **dentro de la situación** (`SituacionParte.archivo`), en la
+  misma consulta que ya hace la puerta de estado: L1 no cuesta ninguna
+  sentencia más (R3, R8);
+- `traza_previa` **desaparece** de la firma (R7, D-2): dos fuentes para la
+  misma decisión divergen, y la del parámetro es la que dejó L1 inerte;
+- L1 corta por `hash` + estado **y por nada más** (R13, D-1). Si la traza
+  apunta a otro destino —otro nombre, otra carpeta u otra biblioteca que la
+  vigente—, se corta igual y se avisa (`AVISO_ARCHIVADO_EN_OTRO_DESTINO`): lo
+  archivado se queda donde está (R16);
+- la base ya no pisa una traza `archivado` (R17), así que una carrera entre
+  dos peticiones del mismo parte se ve como `SIN_CAMBIOS` en la traza previa,
+  y entonces **no se sube** (R18, D-7);
+- no hay ninguna forma de forzar el re-archivo del mismo parte desde el
+  circuito (R21, D-4). Un escaneo nuevo es otro `hash`, y otro parte.
 """
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from domain.models.errores import (
     ArchivoFallido,
     ArchivoSinTraza,
     ErrorDePersistencia,
+    PersistenciaNoDisponible,
 )
-from domain.models.nombrado import componer_destino
-from domain.models.persistencia import EstadoArchivo, TrazaArchivo
+from domain.models.nombrado import DestinoArchivo, componer_destino
+from domain.models.persistencia import EstadoArchivo, ResultadoGuardado, TrazaArchivo
 from domain.ports.archivo import ArchivoPort, ItemArchivado
 from domain.ports.persistencia import RepositorioPartesPort
 
 from application.pipelines.contexto_parte import ContextoParte
-from application.pipelines.puerta_de_estado import exigir_parte_aprobado
+from application.pipelines.puerta_de_estado import (
+    exigir_parte_aprobado,
+    situacion_leida,
+)
 
 __all__ = [
+    "AVISO_ARCHIVADO_EN_OTRO_DESTINO",
+    "AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA",
     "AVISO_REEMPLAZADO",
     "AVISO_YA_ARCHIVADO",
     "MIME_PDF",
     "paso_archivo",
 ]
+
+log = logging.getLogger(__name__)
 
 #: Lo que se sube siempre: el PDF del parte troceado.
 MIME_PDF = "application/pdf"
@@ -86,6 +120,31 @@ AVISO_REEMPLAZADO = (
     "esta versión: si eran dos escaneos distintos, el anterior ya no está"
 )
 
+#: F-033 R14 · L1 ha cortado y la traza guardada **no** es el destino de hoy.
+#:
+#: Va **además** de `AVISO_YA_ARCHIVADO`, nunca en su lugar. Sin él, quien lee
+#: la respuesta vería una carpeta y un nombre distintos de los que acaba de
+#: pedir y no sabría si el fichero está en los dos sitios. No lleva ningún
+#: identificador de biblioteca (R15, R24).
+AVISO_ARCHIVADO_EN_OTRO_DESTINO = (
+    "este parte se archivó en otra ruta o en otra biblioteca y sigue allí: no "
+    "se ha vuelto a subir al destino actual, y la carpeta y el nombre que "
+    "devuelve esta respuesta son los de entonces"
+)
+
+#: F-033 R20 · la traza guardada estaba en `pendiente` con **otra** ruta.
+#:
+#: `pendiente` puede ser un fichero **subido sin traza final**
+#: (`ArchivoSinTraza`), y la traza previa que se va a escribir ahora la pisa:
+#: este aviso, y la línea de log que lo acompaña, son el rastro que queda.
+#: Lleva carpeta y nombre, que son códigos de obra e incidencia y no datos del
+#: papel; ningún identificador de biblioteca.
+AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA = (
+    "hubo un intento anterior de archivar este parte en «{carpeta}/{nombre}» "
+    "que no llegó a confirmarse: si aquel fichero llegó a subirse, sigue allí "
+    "y conviene revisarlo"
+)
+
 
 def paso_archivo(
     ctx: ContextoParte,
@@ -94,7 +153,7 @@ def paso_archivo(
     *,
     carpeta_base: str,
     ahora: datetime,
-    traza_previa: TrazaArchivo | None = None,
+    drive_id_vigente: str | None = None,
 ) -> ContextoParte:
     """Archiva el parte y deja constancia de lo que pasó.
 
@@ -104,15 +163,30 @@ def paso_archivo(
        de tocar el puerto: un parte que no es apto **ni consta aprobado** no
        crea ni la carpeta.
     2. **Nombrado** (R1–R9). `NombradoImposible` sale sin haber tocado nada.
-    3. **Idempotencia por traza** (R14). La capa barata.
+    3. **Idempotencia por traza** (R14). La capa barata. Desde F-033 la traza
+       sale de la situación que leyó la puerta en el paso 1
+       (`ctx.situacion.archivo`), sin ninguna consulta más; si apunta a otro
+       destino, se corta igual y se avisa (F-033 R13–R15). Si estaba en
+       `pendiente` con **otra** ruta, no corta, pero deja aviso y log antes
+       de pisarla (F-033 R20).
     4. **Traza previa en `pendiente`** (F-019, R19). La garantía de orden: si
        el parte no consta guardado, la clave ajena la rechaza y el archivado
-       se aborta **sin haber llamado a nadie**.
+       se aborta **sin haber llamado a nadie**. Si vuelve `SIN_CAMBIOS`, otra
+       petición lo archivó por medio: se relee una vez y **no se sube**
+       (F-033 R18).
     5. `asegurar_carpeta` (R11, R12).
     6. `buscar` el homónimo, para poder avisar del reemplazo (R16).
     7. `subir`, reemplazando (R15).
     8. **Traza final** (R23, R24), que se persiste tanto si fue bien como si
-       no.
+       no. Un `SIN_CAMBIOS` aquí se registra y no es fallo (F-033 R19).
+
+    `drive_id_vigente` es la biblioteca de la configuración y sirve **solo**
+    para decir si la traza guardada está en otra (F-033 R14, R15). Es opcional
+    para que los casos que no hablan de bibliotecas no tengan que inventarse
+    una; el borde lo pasa siempre. No aparece en ningún log ni aviso.
+
+    No hay ningún parámetro para forzar el re-archivo de un parte que ya
+    consta archivado, a propósito (F-033 R21, D-4).
 
     Levanta `ParteNoApto`, `NombradoImposible`, `ArchivoFallido`,
     —desde F-019— `ReferenciaNoConsta` y `PersistenciaNoDisponible` de la
@@ -128,18 +202,26 @@ def paso_archivo(
         numero_incidencia=_campo(ctx, "numero_incidencia"),
     )
 
-    if _ya_archivado(ctx, traza_previa):
-        ctx.avisos.append(AVISO_YA_ARCHIVADO)
-        ctx.archivo = traza_previa
-        return ctx
+    # L1 · del almacén: la situación que ya leyó la puerta (F-033 R7, R8).
+    guardada = situacion_leida(ctx, repositorio).archivo
+    if _ya_archivado(ctx, guardada):
+        return _devolver_la_guardada(ctx, guardada, destino, drive_id_vigente)
 
-    _dejar_constancia_previa(repositorio, ctx, destino)
+    _avisar_del_intento_anterior(ctx, guardada, destino)
+
+    previa = _dejar_constancia_previa(repositorio, ctx, destino)
+    if previa is ResultadoGuardado.SIN_CAMBIOS:
+        return _tomar_la_de_la_otra_peticion(
+            ctx, repositorio, destino, drive_id_vigente
+        )
 
     try:
         item = _subir(ctx, archivador, destino)
     except ArchivoFallido as fallo:
         ctx.archivo = _traza_de_error(ctx, destino, motivo=fallo.motivo)
-        repositorio.guardar_archivo(traza=ctx.archivo)
+        _registrar_si_no_se_aplico(
+            ctx, repositorio.guardar_archivo(traza=ctx.archivo)
+        )
         raise
 
     ctx.archivo = _traza_de_exito(ctx, item, ahora=ahora)
@@ -147,9 +229,142 @@ def paso_archivo(
     return ctx
 
 
-def _dejar_constancia_previa(
-    repositorio: RepositorioPartesPort, ctx: ContextoParte, destino
+def _devolver_la_guardada(
+    ctx: ContextoParte,
+    guardada: TrazaArchivo,
+    destino: DestinoArchivo,
+    drive_id_vigente: str | None,
+) -> ContextoParte:
+    """El corte de L1: la traza guardada **tal cual**, y sus avisos (F-033 R10, R14).
+
+    No se rehace ni se completa nada: la carpeta, el nombre y el `web_url` que
+    devuelve la respuesta son los de la traza, porque es donde **está** el
+    fichero. Si no coinciden con el destino de hoy, el segundo aviso lo dice.
+    """
+    ctx.avisos.append(AVISO_YA_ARCHIVADO)
+    if _en_otro_destino(guardada, destino, drive_id_vigente):
+        ctx.avisos.append(AVISO_ARCHIVADO_EN_OTRO_DESTINO)
+    ctx.archivo = guardada
+    return ctx
+
+
+def _en_otro_destino(
+    traza: TrazaArchivo, destino: DestinoArchivo, drive_id_vigente: str | None
+) -> bool:
+    """¿La traza guardada apunta a otro sitio que el destino de hoy? (F-033 R14, R15).
+
+    Otro nombre (F-032), otra carpeta, u otra biblioteca que la vigente
+    (F-013). La biblioteca solo se compara **cuando se conocen las dos**: sin
+    `drive_id` en la configuración o en la traza no se puede afirmar nada, y
+    se omite (R15). Un nombre o una carpeta a `None` en la traza **sí** cuenta
+    como distinto: no se puede afirmar que sea la misma ruta.
+
+    Vive en el paso y no en el dominio: compara una traza de persistencia con
+    configuración, y el dominio no sabe de bibliotecas.
+    """
+    return (
+        traza.nombre_fichero != destino.nombre_fichero
+        or traza.carpeta != destino.carpeta
+        or (
+            drive_id_vigente is not None
+            and traza.drive_id is not None
+            and traza.drive_id != drive_id_vigente
+        )
+    )
+
+
+def _avisar_del_intento_anterior(
+    ctx: ContextoParte, guardada: TrazaArchivo | None, destino: DestinoArchivo
 ) -> None:
+    """Una traza `pendiente` de **este** parte con otra ruta: aviso y log (F-033 R20).
+
+    Va **antes** de la traza previa, que la pisa: después ya no quedaría
+    rastro de la ruta anterior. No corta (D-5): `pendiente` no distingue una
+    subida huérfana de un fallo que no dejó nada, y cortar bloquearía también
+    el caso común. El log lleva `hash`, carpeta y nombre, y nada de la
+    biblioteca.
+
+    Solo `pendiente`: una traza en `error` es una subida que falló, y no deja
+    fichero que buscar.
+    """
+    if (
+        guardada is None
+        or guardada.hash_parte != ctx.parte.hash
+        or guardada.estado is not EstadoArchivo.PENDIENTE
+    ):
+        return
+    if (
+        guardada.carpeta == destino.carpeta
+        and guardada.nombre_fichero == destino.nombre_fichero
+    ):
+        return
+    ctx.avisos.append(
+        AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA.format(
+            carpeta=guardada.carpeta, nombre=guardada.nombre_fichero
+        )
+    )
+    log.warning(
+        "archivar: parte=%s tenía un intento anterior sin confirmar en "
+        "carpeta=%s fichero=%s; se archiva en la ruta de hoy",
+        ctx.parte.hash,
+        guardada.carpeta,
+        guardada.nombre_fichero,
+    )
+
+
+def _tomar_la_de_la_otra_peticion(
+    ctx: ContextoParte,
+    repositorio: RepositorioPartesPort,
+    destino: DestinoArchivo,
+    drive_id_vigente: str | None,
+) -> ContextoParte:
+    """La carrera de F-033 R18 (D-7): otra petición archivó el parte por medio.
+
+    La traza previa volvió `SIN_CAMBIOS`, y con el `WHERE` de R17 eso solo
+    pasa si la fila ya está en `archivado`. Se relee la situación **una vez**
+    —la única lectura adicional de F-033, y solo en este camino— y se responde
+    como L1. Se pregunta al repositorio y no a `situacion_leida`, que
+    devolvería la de la puerta: la de antes de la carrera.
+
+    Si la relectura no trae `archivado` —imposible salvo un borrado manual por
+    medio—, se levanta **sin subir**: ante la duda, no se sube.
+    """
+    ctx.situacion = repositorio.consultar_situacion(hash_parte=ctx.parte.hash)
+    guardada = ctx.situacion.archivo
+    if not _ya_archivado(ctx, guardada):
+        raise PersistenciaNoDisponible(
+            "la traza de archivo de este parte no admitió el estado "
+            "«pendiente» y, al releerla, no consta archivado: no se ha subido "
+            "nada a SharePoint; conviene revisar la traza antes de reintentar"
+        )
+    return _devolver_la_guardada(ctx, guardada, destino, drive_id_vigente)
+
+
+def _registrar_si_no_se_aplico(
+    ctx: ContextoParte, resultado: ResultadoGuardado
+) -> None:
+    """F-033 R19 · la traza final o la de error no se aplicó: se dice, y se sigue.
+
+    Solo es alcanzable en una carrera entre dos peticiones del mismo parte
+    (`design.md` §8): la otra ya dejó la traza en `archivado` y el `WHERE` de
+    R17 la protege. No es un fallo —la subida de esta petición ocurrió, o su
+    error ya sube—, pero tiene que quedar en el log. Solo `hash`, estado de la
+    traza que no entró y resultado: nada de la biblioteca.
+    """
+    if resultado is not ResultadoGuardado.SIN_CAMBIOS:
+        return
+    log.warning(
+        "archivar: parte=%s la traza %s no se aplicó (%s): otra petición ya la "
+        "había dejado en archivado",
+        ctx.parte.hash,
+        ctx.archivo.estado.value,
+        resultado.value,
+    )
+
+
+def _dejar_constancia_previa(
+    repositorio: RepositorioPartesPort, ctx: ContextoParte, destino: DestinoArchivo
+) -> ResultadoGuardado:
     """Escribe la traza en `pendiente` **antes de tocar el puerto** (F-019, R19).
 
     Es la garantía de orden de F-019, y **el orden es el requisito**: no se
@@ -175,6 +390,9 @@ def _dejar_constancia_previa(
     (→ 409 «guarda el parte primero») de `PersistenciaNoDisponible` (→ 503
     «no se ha subido nada, se puede reintentar»), y esas dos respuestas llevan
     a acciones opuestas. Aquí no se sabe de códigos de estado.
+
+    Desde F-033 devuelve lo que contestó el repositorio: un `SIN_CAMBIOS` es
+    la carrera de R18, y quien llama no sube.
     """
     ctx.archivo = TrazaArchivo(
         hash_parte=ctx.parte.hash,
@@ -182,7 +400,7 @@ def _dejar_constancia_previa(
         nombre_fichero=destino.nombre_fichero,
         carpeta=destino.carpeta,
     )
-    repositorio.guardar_archivo(traza=ctx.archivo)
+    return repositorio.guardar_archivo(traza=ctx.archivo)
 
 
 def _dejar_constancia(repositorio: RepositorioPartesPort, ctx: ContextoParte) -> None:
@@ -203,9 +421,10 @@ def _dejar_constancia(repositorio: RepositorioPartesPort, ctx: ContextoParte) ->
     nada arriba» y el borde lo traduce como tal.
     """
     try:
-        repositorio.guardar_archivo(traza=ctx.archivo)
+        resultado = repositorio.guardar_archivo(traza=ctx.archivo)
     except ErrorDePersistencia as sin_traza:
         raise ArchivoSinTraza(sin_traza.motivo) from sin_traza
+    _registrar_si_no_se_aplico(ctx, resultado)
 
 
 def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> None:

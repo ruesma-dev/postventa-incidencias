@@ -115,7 +115,7 @@ línea.
 
 ## Bloque 3 · Documentación y cierre
 
-- [ ] **T9**: `docs/ARCHITECTURE.md`, paso 6, bajo «tres capas»: precisión
+- [x] **T9**: `docs/ARCHITECTURE.md`, paso 6, bajo «tres capas»: precisión
       fechada **F-033, 2026-09-xx** (R25): L1 lee la traza de la situación, en
       la misma consulta; `archivado` no se pisa; una traza en otro destino
       corta y avisa; el re-archivo del mismo parte no existe desde el

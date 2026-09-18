@@ -130,7 +130,7 @@ línea.
       de `git`) y sus tres guardas para no dejar `dev` en rojo al mergear. |
       Verificación: el test en verde en la rama.
 
-- [ ] **T11**: Campaña de mutación. | Verificación:
+- [x] **T11**: Campaña de mutación. | Verificación:
       `python -m harness.mutacion --feature F-033` con **cero supervivientes**
       (cada uno, si lo hubiera, con test nuevo o justificación escrita para el
       humano); informe en `progress/mutacion_F-033.md` con el nº de workers.

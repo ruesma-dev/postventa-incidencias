@@ -1,7 +1,7 @@
 # F-033 · Informe del implementer
 
 > Rama `feature/F-033-l1-traza-archivo`. Rigor `critico`.
-> Este informe crece por bloques: **Bloque 1 (T1–T4)** abajo.
+> Este informe crece por bloques: **Bloque 1 (T1–T4)** y **Bloque 2 (T5–T8)** abajo.
 
 ## Bloque 1 · La traza en la situación (persistencia)
 
@@ -314,3 +314,378 @@ Ninguna de este bloque. T13 y T14 (humano) siguen pendientes, fuera de la rama.
 | Tiempo de la suite del servicio | 105.54 s con cobertura (dentro de `init.sh`); 55.12 s sin cobertura |
 | Mutantes generados / supervivientes | **No medido en este bloque, por plan**: la campaña es la tarea **T11** del bloque 3 (`python -m harness.mutacion --feature F-033`), sobre el diff completo de la feature. Lanzarla ahora obligaría a repetirla entera tras el bloque 2 |
 | `ruff` sobre los ficheros tocados | los mismos 2 avisos previos (`PYI034` en `utiles_pg.py`), ninguno nuevo |
+
+---
+
+## Bloque 2 · L1 en el paso y en el endpoint (T5–T8)
+
+### Fase RED · T5 (salida real, antes de tocar producción)
+
+Comando, lanzado desde `services/postventa-api/` con el `venv` del servicio
+(mismo motivo que en el bloque 1: el Python global no trae `pydantic`), sobre
+`3cfe4c6` más solo los dos ficheros de tests nuevos (commit `b98ac7d`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f033_l1_desde_el_almacen.py tests/test_f033_archivar_http.py -q --tb=line -p no:cacheprovider --show-capture=no
+```
+
+Lo que interesa leer en la traza:
+
+- **El defecto D-A1, cazado**: `test_f033_circuito_archivar_dos_veces_sube_una`
+  cae en `test_f033_archivar_http.py:318: assert 2 == 1` — la biblioteca
+  falsa recibió **dos subidas** del mismo parte con `RepositorioComoLaBase`.
+  Es exactamente lo que `tasks.md` T5 exige ver en rojo.
+- R7/R10/R13: con la traza `archivado` en la situación, el paso llamaba al
+  archivador (`assert [('asegurar_c...')] == []`) y escribía la traza previa
+  (`assert 2 == 0`, `'repositorio.guardar_archivo(pendiente)' not in [...]`).
+- R12 desde el endpoint: el cuerpo de la respuesta no era el de la traza
+  guardada y `avisos == []`.
+- R7/R21: `traza_previa` seguía en la firma y `DID NOT RAISE TypeError`.
+- R14/R15/R20: los avisos nuevos y `drive_id_vigente` no existían
+  (`AttributeError`, `TypeError: ... unexpected keyword argument
+  'drive_id_vigente'`); R18/R19: `RepositorioFalso` sin `resultados`.
+- Los 14 que ya pasaban son **guardas de regresión** que tienen que seguir
+  así: orden de F-019 sin corte, `pendiente`/`error` no cortan, un escaneo
+  nuevo sube con aviso de reemplazo, el nombrado va antes que L1, etc.
+
+Salida completa (solo se ha quitado el prefijo absoluto de las rutas):
+
+```
+FFFFF.F...F...FFFFFFFFFFFF.FFFFFFF.FFF...FF.F.FFFFFFFF                   [100%]
+================================== FAILURES ===================================
+E   assert 'traza_previa' not in mappingproxy(OrderedDict({'ctx': <Parameter "ctx: 'ContextoParte'">, 'archivador': <Parameter "archivador: 'ArchivoPor..., 'ahora': <Parameter "ahora: 'datetime'">, 'traza_previa': <Parameter "traza_previa: 'TrazaArchivo | None' = None">}))
+tests\test_f033_l1_desde_el_almacen.py:187: assert 'traza_previa' not in mappingproxy(OrderedDict({'ctx': <Parameter "ctx: 'ContextoParte'">, 'archivador': <Parameter "archivador: 'ArchivoPor..., 'ahora': <Parameter "ahora: 'datetime'">, 'traza_previa': <Parameter "traza_previa: 'TrazaArchivo | None' = None">}))
+E   Failed: DID NOT RAISE TypeError
+tests\test_f033_l1_desde_el_almacen.py:194: Failed: DID NOT RAISE TypeError
+E   KeyError: 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:202: KeyError: 'drive_id_vigente'
+E   AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+      
+      Left contains 3 more items, first extra item: ('asegurar_carpeta', {'carpeta': 'Postventa/0677'})
+      Use -v to get more diff
+tests\test_f033_l1_desde_el_almacen.py:214: AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+E   AssertionError: assert 2 == 0
+     +  where 2 = RepositorioQueCuenta(archivos=[TrazaArchivo(hash_parte='9f2b0011aabb', estado=<EstadoArchivo.PENDIENTE: 'pendiente'>, ...ta/centinela-f033', motivo=None, archivado_at_utc=datetime.datetime(2026, 9, 1, 9, 30, tzinfo=datetime.timezone.utc)))).llamadas_guardar_archivo
+tests\test_f033_l1_desde_el_almacen.py:231: AssertionError: assert 2 == 0
+E   AssertionError: assert 'repositorio.guardar_archivo(pendiente)' not in ['repositorio.guardar_archivo(pendiente)', 'archivador.asegurar_carpeta', 'archivador.buscar', 'archivador.subir', 'repositorio.guardar_archivo(archivado)']
+tests\test_f033_l1_desde_el_almacen.py:256: AssertionError: assert 'repositorio.guardar_archivo(pendiente)' not in ['repositorio.guardar_archivo(pendiente)', 'archivador.asegurar_carpeta', 'archivador.buscar', 'archivador.subir', 'repositorio.guardar_archivo(archivado)']
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_ARCHIVADO_EN_OTRO_DESTINO'
+tests\test_f033_l1_desde_el_almacen.py:389: AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_ARCHIVADO_EN_OTRO_DESTINO'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+tests\test_f033_l1_desde_el_almacen.py:164: TypeError: paso_archivo() got an unexpected keyword argument 'drive_id_vigente'
+E   TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+tests\test_f033_l1_desde_el_almacen.py:112: TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+E   TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+tests\test_f033_l1_desde_el_almacen.py:112: TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+E   TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+tests\test_f033_l1_desde_el_almacen.py:112: TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+E   TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+tests\test_f033_l1_desde_el_almacen.py:112: TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+E   TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+tests\test_f033_l1_desde_el_almacen.py:112: TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+E   TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+tests\test_f033_l1_desde_el_almacen.py:112: TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+E   TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+tests\test_f033_l1_desde_el_almacen.py:112: TypeError: RepositorioFalso.__init__() got an unexpected keyword argument 'resultados'
+E   AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA'
+tests\test_f033_l1_desde_el_almacen.py:175: AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA'
+E   AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA'
+tests\test_f033_l1_desde_el_almacen.py:175: AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA'
+E   AssertionError: assert 'Postventa/0678' in ''
+     +  where '' = <_pytest.logging.LogCaptureFixture object at 0x00000201785FA5D0>.text
+tests\test_f033_l1_desde_el_almacen.py:614: AssertionError: assert 'Postventa/0678' in ''
+E   AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA'
+tests\test_f033_l1_desde_el_almacen.py:175: AttributeError: module 'application.pipelines.paso_archivo' has no attribute 'AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA'
+E   AssertionError: assert {'ahora', 'ar...traza_previa'} == {'ahora', 'ar...'repositorio'}
+      
+      Extra items in the left set:
+      'traza_previa'
+      Extra items in the right set:
+      'drive_id_vigente'
+      Use -v to get more diff
+tests\test_f033_l1_desde_el_almacen.py:677: AssertionError: assert {'ahora', 'ar...traza_previa'} == {'ahora', 'ar...'repositorio'}
+E   AssertionError: assert {'hash_parte'...chivado', ...} == {'hash_parte'...chivado', ...}
+      
+      Omitting 4 identical items, use -vv to show
+      Differing items:
+      {'web_url': 'https://ejemplo.invalido/postventa/Postventa/0677/0677%20-%20RS26.08%20-%200123%20PARTE%20FIRMADO.pdf'} != {'web_url': 'https://ejemplo.invalido/postventa/guardada-f033'}
+      {'avisos': []} != {'avisos': ['este parte ya estaba archivado: se devuelve el destino que ya tenía y no se ha vuelto a subir']}
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:234: AssertionError: assert {'hash_parte'...chivado', ...} == {'hash_parte'...chivado', ...}
+E   AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+      
+      Left contains 3 more items, first extra item: ('asegurar_carpeta', {'carpeta': 'Postventa/0677'})
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:266: AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+E   AssertionError: assert [] == ['este parte ...elto a subir']
+      
+      Right contains one more item: 'este parte ya estaba archivado: se devuelve el destino que ya tenía y no se ha vuelto a subir'
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:284: AssertionError: assert [] == ['este parte ...elto a subir']
+E   AssertionError: assert [] == ['este parte ...elto a subir']
+      
+      Right contains one more item: 'este parte ya estaba archivado: se devuelve el destino que ya tenía y no se ha vuelto a subir'
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:294: AssertionError: assert [] == ['este parte ...elto a subir']
+E   assert 2 == 1
+     +  where 2 = <tests.utiles_sharepoint.BibliotecaFalsa object at 0x00000201795E9F10>.subidas
+tests\test_f033_archivar_http.py:318: assert 2 == 1
+E   AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+      
+      Left contains 3 more items, first extra item: ('asegurar_carpeta', {'carpeta': 'Postventa/0626'})
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:352: AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+E   AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+      
+      Left contains 3 more items, first extra item: ('asegurar_carpeta', {'carpeta': 'Postventa/0677'})
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:383: AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+E   AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+      
+      Left contains 3 more items, first extra item: ('asegurar_carpeta', {'carpeta': 'Postventa/0677'})
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:406: AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+E   AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+      
+      Left contains 3 more items, first extra item: ('asegurar_carpeta', {'carpeta': 'Postventa/0677'})
+      Use -v to get more diff
+tests\test_f033_archivar_http.py:406: AssertionError: assert [('asegurar_c...cation/pdf'})] == []
+=========================== short test summary info ===========================
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r7_el_paso_ya_no_acepta_la_traza_por_parametro
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r7_pasarle_una_traza_es_un_error_de_tipo
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r7_drive_id_vigente_es_opcional_y_por_palabra_clave
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r7_la_traza_archivada_de_la_situacion_corta
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r8_el_corte_cuesta_una_consulta_y_ninguna_escritura
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r9_l1_va_antes_que_la_traza_previa
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r10_devuelve_la_traza_guardada_tal_cual
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[igual_en_todo]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[otro_nombre_f032]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[otra_carpeta]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[otra_biblioteca_f013]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[sin_drive_vigente]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[traza_sin_drive]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[ninguno_de_los_dos_drive]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[traza_sin_nombre]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r13_r14_corta_siempre_y_avisa_si_es_otro_destino[traza_sin_carpeta]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r14_el_aviso_dice_que_sigue_alli_y_que_no_se_subio
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r15_el_drive_id_no_sale_en_ningun_log_ni_aviso
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r16_lo_archivado_en_otro_destino_se_queda_donde_esta
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r18_sin_cambios_en_la_previa_relee_y_no_sube
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r18_la_relectura_responde_como_l1_tambien_en_otro_destino
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r18_si_la_relectura_no_trae_archivado_no_se_sube_nada
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r18_sin_carrera_no_hay_relectura[creado]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r18_sin_carrera_no_hay_relectura[actualizado]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r19_sin_cambios_en_la_final_se_registra_y_responde
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r19_sin_cambios_en_la_de_error_deja_salir_el_fallo
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r20_pendiente_en_otra_ruta_sigue_con_aviso_y_log[otra_carpeta]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r20_pendiente_en_otra_ruta_sigue_con_aviso_y_log[otro_nombre]
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r20_el_aviso_va_antes_de_escribir_la_traza_previa
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r20_el_aviso_no_lleva_identificadores_de_biblioteca
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar
+FAILED tests/test_f033_archivar_http.py::test_f033_r12_un_parte_archivado_responde_200_con_la_traza_guardada
+FAILED tests/test_f033_archivar_http.py::test_f033_r21_un_campo_forzar_en_el_cuerpo_no_abre_nada
+FAILED tests/test_f033_archivar_http.py::test_f033_r15_sin_biblioteca_configurada_solo_se_comparan_carpeta_y_nombre
+FAILED tests/test_f033_archivar_http.py::test_f033_r15_con_la_misma_biblioteca_no_hay_aviso_de_otro_destino
+FAILED tests/test_f033_archivar_http.py::test_f033_circuito_archivar_dos_veces_sube_una
+FAILED tests/test_f033_archivar_http.py::test_f033_circuito_f032_el_nombre_viejo_se_queda_y_se_avisa
+FAILED tests/test_f033_archivar_http.py::test_f033_circuito_f013_otra_biblioteca_no_se_sube_y_no_se_dice_cual
+FAILED tests/test_f033_archivar_http.py::test_f033_circuito_la_traza_vuelve_por_columnas_y_corta[drive-inventado-posventa]
+FAILED tests/test_f033_archivar_http.py::test_f033_circuito_la_traza_vuelve_por_columnas_y_corta[None]
+40 failed, 14 passed in 3.32s
+```
+
+Y en verde, ya con T6–T8:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f033_archivar_http.py tests/test_f033_l1_desde_el_almacen.py -q -p no:cacheprovider
+......................................................                   [100%]
+54 passed in 1.47s
+```
+
+### Tareas del bloque 2 (commits)
+
+| Tarea | Commit | Qué |
+|---|---|---|
+| T5 | `b98ac7d` | RED: `tests/test_f033_l1_desde_el_almacen.py` (44 casos) y `tests/test_f033_archivar_http.py` (10 casos) |
+| T6 | `dec048e` | `RepositorioFalso.resultados` (R18); los atajos de F-006 y F-019 siembran `traza_previa` en la situación **y** la siguen pasando (dos caminos durante la tarea) |
+| T7 | `6f98f9b` | `paso_archivo.py`: fuera `traza_previa`, dentro `drive_id_vigente`; L1 desde `situacion_leida(...).archivo`; `_en_otro_destino`; los dos avisos; R18, R19, R20. Se quita el camino viejo de los atajos |
+| T8 | `88eee31` | `archivar.py` pasa `drive_id_vigente=ajustes.sharepoint_drive_id` (R15) |
+
+### Qué cambió (ficheros tocados)
+
+Producción (`services/postventa-api/`):
+
+- `application/pipelines/paso_archivo.py`
+  - Firma: `traza_previa` desaparece; entra `drive_id_vigente: str | None = None`,
+    por palabra clave (R7, R15, R21). No hay ningún parámetro de «forzar».
+  - L1 lee `situacion_leida(ctx, repositorio).archivo`: la situación que ya
+    dejó la puerta en `ctx.situacion`, **sin consulta propia** (R7, R8). El
+    orden sigue siendo puerta → nombrado → L1 → previa → carpeta → homónimo →
+    subida → final (R9).
+  - `_devolver_la_guardada`: devuelve **la** traza guardada (`is`) con
+    `AVISO_YA_ARCHIVADO` y, si `_en_otro_destino`, también
+    `AVISO_ARCHIVADO_EN_OTRO_DESTINO` (R10, R13, R14).
+  - `_en_otro_destino`: la función de `design.md` §4.3 tal cual (nombre,
+    carpeta, y biblioteca solo si se conocen las dos).
+  - `_avisar_del_intento_anterior`: traza `pendiente` de este `hash` con otra
+    carpeta u otro nombre → `AVISO_INTENTO_ANTERIOR_EN_OTRA_RUTA` + `log.warning`
+    con `hash`, carpeta y nombre, **antes** de la traza previa (R20).
+  - `_dejar_constancia_previa` devuelve el `ResultadoGuardado`; si es
+    `SIN_CAMBIOS`, `_tomar_la_de_la_otra_peticion` relee **una vez** con
+    `repositorio.consultar_situacion` (no con `situacion_leida`, que daría la
+    de antes de la carrera), actualiza `ctx.situacion` y responde como L1; si
+    la relectura no trae `archivado`, `PersistenciaNoDisponible` sin subir (R18).
+  - `_registrar_si_no_se_aplico`: `SIN_CAMBIOS` en la traza final o en la de
+    error → `log.warning` con `hash`, estado y resultado; no es fallo (R19).
+  - Docstrings: la tabla de las tres capas dice ya de dónde sale L1; enmienda
+    fechada del 2026-09-18 en el módulo; la de la función, con los pasos 3, 4
+    y 8 ampliados y el porqué de `drive_id_vigente`.
+- `interface_adapters/api/archivar.py`: una línea de código
+  (`drive_id_vigente=ajustes.sharepoint_drive_id`) y un apartado de docstring
+  que dice que L1 sale de la situación que lee la puerta (R15). Nada más.
+
+Tests:
+
+- Nuevos: `tests/test_f033_l1_desde_el_almacen.py`, `tests/test_f033_archivar_http.py`.
+- `tests/utiles_sharepoint.py::RepositorioFalso`: campo `resultados:
+  dict[int, ResultadoGuardado]`; por omisión `CREADO`, como antes. Una
+  llamada que vuelve `SIN_CAMBIOS` **no** se añade a `archivos` (ver
+  «Decisiones»).
+- `tests/test_f006_paso_archivo.py::archivar` y
+  `tests/test_f019_orden_archivado.py::_archivar`: si reciben `traza_previa=`,
+  la **siembran** en `repositorio.situacion.archivo` y ya no la pasan al paso.
+  `git diff dev` de los dos ficheros: **+7 líneas cada uno, 0 borradas** (el
+  atajo y un import). Ni un cuerpo de test ni un aserto tocados.
+
+Ni una línea en `infrastructure/persistencia/sql/` (sin DDL), ni en
+`paso_grafico.py`, `paso_cierre.py`, `adjuntar.py`, `cerrar.py`,
+`nombrado.py`, `infrastructure/sharepoint/**`, `puerta_de_estado.py`, el
+front, `azure-apps/` ni `harness/features.json`.
+
+### Decisiones de diseño (bloque 2)
+
+1. **R8 se mide contando consultas de situación**, con una subclase de
+   `RepositorioFalso` en el propio fichero de tests (`RepositorioQueCuenta`),
+   y en el circuito con `RepositorioComoLaBase.situaciones_consultadas ==
+   [HASH, HASH]` (una por petición). Que cada consulta son **dos** sentencias
+   ya lo fija R3 en el bloque 1 contra `ConexionDoble`.
+2. **R18 «responde como L1» incluye R14**: si la traza que dejó la otra
+   petición está en otra ruta, sale también el aviso de otro destino. Se
+   reutiliza la misma función del corte (`_devolver_la_guardada`), para que
+   los dos caminos no puedan divergir.
+3. **El doble de la carrera vive en el fichero de tests**
+   (`RepositorioEnCarrera`): `utiles_sharepoint.py` solo gana `resultados`,
+   como pide `design.md` §1.2 («Nada más»). La subclase cambia la situación
+   después de la primera escritura, que es lo que hace la otra petición.
+4. **`RepositorioFalso` no guarda lo que devuelve `SIN_CAMBIOS`**: es la
+   semántica de la base con el `WHERE` de R17, igual que ya hace
+   `RepositorioComoLaBase`. Ningún test existente programa `resultados`, así
+   que no cambia nada fuera de F-033.
+5. **Los HTTP de F-033 construyen sus `Ajustes` con `_env_file=None`** y los
+   inyectan en `interface_adapters.api.archivar.obtener_ajustes`: si no, el
+   `SHAREPOINT_DRIVE_ID` del `.env` de quien ejecuta la suite decidiría si
+   sale el aviso de otro destino (mismo motivo que `test_f006_fabrica.py`).
+6. Los dos logs nuevos son `warning` (R19, R20): son rastro de algo que una
+   persona puede querer mirar. Solo llevan `hash`, carpeta, nombre, estado y
+   resultado; los tests comprueban con centinelas que no salen `drive_id`,
+   `item_id` ni `web_url` (R15, R24).
+
+### Desviaciones y puntos para el reviewer (bloque 2)
+
+- **D-impl-4 · Corrección del caso de circuito después del RED.** Tras T8,
+  `test_f033_circuito_archivar_dos_veces_sube_una` seguía en rojo, pero por
+  otro motivo: la biblioteca vigente del caso era `drive-inventado-posventa`
+  y la traza que deja el `ArchivoPortFalso` al subir lleva `drive-de-mentira`,
+  así que la segunda petición salía —con razón— con el aviso de otro destino.
+  Era el **montaje** del caso, no el código: en la vida real la biblioteca
+  configurada y la de la traza recién escrita son la misma. Se fija la vigente
+  a `DRIVE_FALSO` (con el porqué en la docstring, en el commit de T8). La
+  expectativa **no se afloja**: siguen exigidos una subida, `avisos ==
+  [AVISO_YA_ARCHIVADO]` exacto y la traza intacta. La evidencia RED no cambia:
+  el aserto que cayó en T5 fue el de las subidas (`:318 assert 2 == 1`), que
+  va antes que el de los avisos.
+- **D-impl-5 · Un `pendiente` sin ruta (carpeta y nombre a `None`)** cuenta
+  como «otra ruta» en R20 —misma regla que `design.md` §4.3 fija para R14— y
+  el aviso sale como `«None/None»`. En producción no ocurre: la única que
+  escribe `pendiente` es `_dejar_constancia_previa`, y siempre con carpeta y
+  nombre. Sí ocurre en un test existente
+  (`test_f006_r14_una_traza_que_no_es_archivado_no_corta[pendiente]`, que
+  siembra un `pendiente` sin ruta y no mira los avisos). No se ha añadido un
+  caso especial porque la spec no lo pide; si el reviewer prefiere que un
+  `pendiente` sin ruta no avise, es una condición más en
+  `_avisar_del_intento_anterior`.
+- **D-impl-6 · El 503 de la relectura sin `archivado` (R18).** `design.md`
+  §4.5 manda `PersistenciaNoDisponible`, y el borde la traduce a 503 con su
+  texto de siempre («no se ha podido hablar con la base de datos … se puede
+  reintentar»), que en este caso no es exacto: la base sí respondió. El
+  motivo propio sí lo dice («no admitió el estado pendiente y, al releerla,
+  no consta archivado: no se ha subido nada»). No se ha tocado
+  `function_app.py` porque la spec no lo pide; es un camino que solo se abre
+  con un borrado manual por medio.
+
+### Qué se verificó, con el resultado real
+
+- T5: los dos ficheros nuevos → `40 failed, 14 passed` (traza arriba).
+- T6: `pytest tests/test_f006_paso_archivo.py tests/test_f019_orden_archivado.py tests/test_f006_archivar_http.py -q`
+  → `61 passed`, con el paso todavía sin cambiar y los atajos pasando la traza
+  por los dos caminos.
+- T7: `pytest tests/test_f033_l1_desde_el_almacen.py -q` → `44 passed`;
+  `pytest tests -q -k "f006 or f019 or f033"` → `477 passed` y 1 rojo
+  esperado (el caso F-013 del endpoint, que necesita T8).
+- T8: `pytest tests/test_f033_archivar_http.py tests/test_f033_l1_desde_el_almacen.py -q`
+  → `54 passed` (tras D-impl-4).
+- `bash harness/init.sh` → **ENTORNO LISTO** (ver «Evidencias (bloque 2)»).
+- `ruff` desde la raíz sobre los ficheros tocados: sin avisos nuevos; total
+  del repositorio 61, los mismos que antes (deuda previa).
+
+### Verificaciones MANUAL pendientes
+
+Ninguna de este bloque. **T13** (antes de desplegar, lectura de
+`postventa.archivos` por estado) y **T14** (después de desplegar, re-archivo
+de un parte ya archivado con la ventana abierta) siguen pendientes del
+humano, fuera de la rama.
+
+### Qué queda fuera de este bloque
+
+- **Bloque 3** (T9–T12): precisión fechada en `docs/ARCHITECTURE.md`,
+  control de alcance (T10), **campaña de mutación** (T11, sobre el diff
+  completo de la feature) y `init.sh` final con números.
+- Con los bloques 1 y 2, `/api/archivar` **ya no vuelve a subir** un parte
+  que consta `archivado`. Aun así **no se recomienda desplegar** sin el
+  bloque 3 (sin mutación no hay cierre de rigor `critico`) ni sin T13.
+- Fuera de F-033, con dueña: que `adjuntar` y `cerrar` lean «consta
+  archivado» del almacén es **F-034** (D-6); no se han tocado.
+
+## Evidencias (bloque 2)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests del servicio `api` (dentro de `bash harness/init.sh`) | **2985 passed, 20 skipped**, 0 fallos |
+| Tests de la raíz (`init.sh`) | 62 passed |
+| Tests nuevos del bloque 2 | 54 (44 en `test_f033_l1_desde_el_almacen.py`, 10 en `test_f033_archivar_http.py`), todos en verde; 40 de ellos en rojo en T5 |
+| Cobertura de las líneas cambiadas | **100.0 % de 65 líneas** (65/65, umbral 80 %, nivel `critico`), línea `PUERTA COBERTURA` de `init.sh` |
+| Tiempo de la suite del servicio | 116.33 s con cobertura (dentro de `init.sh`); ~91 s sin cobertura |
+| Mutantes generados / supervivientes | **No medido en este bloque, por plan**: es la tarea **T11** del bloque 3, sobre el diff completo de la feature |
+| `ruff` | 61 avisos en el repositorio, los mismos que antes del bloque; ninguno en los ficheros tocados |

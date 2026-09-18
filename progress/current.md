@@ -1,6 +1,34 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## BLOQUE 2 HECHO · 2026-09-18 · **F-033, T5–T8 · L1 en el paso y en el endpoint** (`in_progress`)
+>
+> Rama `feature/F-033-l1-traza-archivo`, commits `b98ac7d` (T5, RED),
+> `dec048e` (T6), `6f98f9b` (T7), `88eee31` (T8). Detalle en
+> `progress/impl_F-033.md`, sección «Bloque 2».
+>
+> - `paso_archivo` ya **no** acepta `traza_previa`: L1 lee
+>   `ctx.situacion.archivo`, la situación que leyó la puerta, sin consulta
+>   propia. Entra `drive_id_vigente` y `archivar.py` le pasa
+>   `SHAREPOINT_DRIVE_ID`.
+> - Traza `archivado` en otro destino → corta igual y avisa
+>   (`AVISO_ARCHIVADO_EN_OTRO_DESTINO`). `pendiente` en otra ruta → sigue, con
+>   aviso y log. `SIN_CAMBIOS` en la traza previa → relee una vez y no sube;
+>   en la final → log, no es fallo.
+> - RED real: el circuito de doble archivado con `RepositorioComoLaBase`
+>   caía por **dos subidas** (`assert 2 == 1`); hoy, una.
+> - `bash harness/init.sh` en verde: 2985 passed; cobertura de líneas
+>   cambiadas 100 % (65/65).
+>
+> **Para el reviewer** (en el informe, «Desviaciones… (bloque 2)»): D-impl-4
+> (montaje del caso de circuito corregido tras el RED, sin aflojar), D-impl-5
+> (un `pendiente` sin ruta avisa como «None/None»; no pasa en producción) y
+> D-impl-6 (el 503 de la relectura de R18 lleva el texto genérico del borde).
+>
+> **Qué queda**: **Bloque 3** (T9 `ARCHITECTURE.md`, T10 control de alcance,
+> T11 mutación con cero supervivientes, T12 `init.sh` final). Y T13/T14 del
+> humano. No desplegar antes.
+
 > ## BLOQUE 1 HECHO · 2026-09-18 · **F-033, T1–T4 · la traza en la situación** (`in_progress`)
 >
 > Rama `feature/F-033-l1-traza-archivo`, commits `29758f0` (T1, RED),

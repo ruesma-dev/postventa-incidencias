@@ -28,6 +28,7 @@ from application.pipelines.paso_archivo import (
     paso_archivo,
 )
 from domain.models.errores import ArchivoFallido, NombradoImposible, ParteNoApto
+from domain.models.estado import SituacionParte
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
 from domain.models.validacion import Destino, Veredicto
 
@@ -63,6 +64,11 @@ def archivar(ctx, archivador, repositorio, **extra):
     el porqué entero está en `tests/utiles_pg.py`.
     """
     con_el_veredicto_guardado(repositorio, ctx)
+    if "traza_previa" in extra:
+        # F-033 · L1 lee la traza de la situación: se siembra ahí (design §7).
+        repositorio.situacion = replace(
+            repositorio.situacion or SituacionParte(), archivo=extra["traza_previa"]
+        )
     return paso_archivo(
         ctx,
         archivador,

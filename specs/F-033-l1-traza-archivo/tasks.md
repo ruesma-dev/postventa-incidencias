@@ -79,7 +79,7 @@ línea.
 
 ## Bloque 2 · L1 en el paso y en el endpoint
 
-- [ ] **T5**: RED. Crear `tests/test_f033_l1_desde_el_almacen.py` (R7–R11,
+- [x] **T5**: RED. Crear `tests/test_f033_l1_desde_el_almacen.py` (R7–R11,
       R13–R16, R18–R21) y `tests/test_f033_archivar_http.py` (R12, R14, R23 y
       los tres recorridos de circuito de `design.md` §6). Pegar la salida real
       del fallo. En particular, **el circuito de doble archivado con
@@ -88,7 +88,7 @@ línea.
       caza. | Verificación: `python -m pytest services/postventa-api/tests/test_f033_l1_desde_el_almacen.py services/postventa-api/tests/test_f033_archivar_http.py -q`
       en rojo; traza en el informe.
 
-- [ ] **T6**: `RepositorioFalso` (`tests/utiles_sharepoint.py`) con resultados
+- [x] **T6**: `RepositorioFalso` (`tests/utiles_sharepoint.py`) con resultados
       programables de `guardar_archivo` (R18); los atajos `archivar(...)` de
       `test_f006_paso_archivo.py` y `_archivar(...)` de
       `test_f019_orden_archivado.py` siembran `traza_previa` en

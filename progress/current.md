@@ -1,6 +1,55 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ CERRADA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada**
+>
+> Review **APROBADO** (`progress/review_F-033.md`, cuatro hallazgos de gravedad baja y
+> ninguno bloqueante). Rama `feature/F-033-l1-traza-archivo`, commits locales,
+> **sin push y sin merge a `dev`**. **No se despliega sin T13.** T13 sirve además para
+> contar cuántas trazas `archivado` apuntan a IT (observación O-2 de la review:
+> con D-1 esos partes no se subirán nunca a Posventa; lo decide el humano en F-013).
+>
+> ### Verificaciones MANUAL pendientes (del humano, listas para copiar)
+>
+> **T13 · antes de desplegar (R26).** Solo lectura, dentro del schema
+> `postventa`, con las credenciales del humano:
+>
+> ```sql
+> SET search_path TO postventa;
+>
+> -- 1. Cuántas trazas hay en cada estado, y cuántas con biblioteca.
+> SELECT estado, count(*) AS trazas, count(drive_id) AS con_biblioteca
+> FROM postventa.archivos
+> GROUP BY estado
+> ORDER BY estado;
+>
+> -- 2. Las que se quedaron en 'pendiente': posibles ficheros subidos
+> --    sin traza final (ArchivoSinTraza). Sin drive_id ni web_url.
+> SELECT hash_parte, carpeta, nombre_fichero, intentos
+> FROM postventa.archivos
+> WHERE estado = 'pendiente'
+> ORDER BY hash_parte;
+> ```
+>
+> Anotar el resultado en `progress/` **sin identificadores de biblioteca**. Lo
+> esperable: cero filas en la segunda. Si sale alguna, una persona mira esa
+> carpeta en SharePoint antes de desplegar.
+>
+> **T14 · después de desplegar (R27).** Con autorización expresa para un parte
+> concreto que ya conste `archivado`, y la ventana `ARCHIVO_HABILITADO`
+> abierta solo para ello:
+>
+> 1. Anotar los tres valores de
+>    `SELECT estado, intentos, archivado_at_utc FROM postventa.archivos WHERE hash_parte = '<hash>';`
+> 2. Volver a archivarlo desde el front (o `POST /api/archivar` con el mismo
+>    cuerpo).
+> 3. Comprobar: la respuesta trae `AVISO_YA_ARCHIVADO` («este parte ya estaba
+>    archivado: se devuelve el destino que ya tenía y no se ha vuelto a
+>    subir»); en SharePoint el fichero conserva su fecha de modificación y no
+>    hay otro; y la consulta del paso 1 devuelve **los mismos tres valores**
+>    (`intentos` igual: no hubo ninguna escritura).
+> 4. Cerrar la ventana.
+
 > ## BLOQUE 3 HECHO · 2026-09-18 · **F-033, T9–T12 · documentación y cierre** (`in_progress`, listo para el reviewer)
 >
 > Rama `feature/F-033-l1-traza-archivo`, commits `444a50c` (T9), `801eb45`

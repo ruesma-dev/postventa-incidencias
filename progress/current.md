@@ -1,6 +1,26 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## MEDICIONES PREVIAS AL DESPLIEGUE · 2026-09-18 · F-032 T14 y F-033 T13, EJECUTADAS por el humano
+>
+> `infra/25_mediciones_despliegue.ps1`, solo lectura del schema `postventa`.
+>
+> - **F-033 T13 (R26): CUMPLIDO.** 133 trazas, las 133 `archivado` y con
+>   biblioteca; **0 `pendiente`**.
+> - **Para F-013 (O-2):** las 133 están en **una sola biblioteca**, la de IT
+>   (primer archivado 2026-08-26, último 2026-09-18). Con D-1 de F-033 ninguna se
+>   subirá a Posventa. El humano dijo que lo de IT «eran pruebas, se puede
+>   olvidar»; la decisión sobre estas trazas sigue abierta para F-013.
+> - **F-032 T14 (R26): 1 fila.** `hash_parte` `b7e9b037…d1ce` (RS26.09/0178,
+>   obra 0626), archivado 2026-09-17 07:16 UTC, guardado con el código
+>   `RS 26.09/0178`, carpeta `Postventa/0626`, fichero
+>   `0626 - RS 26.09 - 0178 PARTE FIRMADO.pdf`. Es el parte del caso que
+>   originó F-032. Por R27 **no se re-archiva desde el circuito**, y desde
+>   F-033 el propio L1 lo impide: la traza `archivado` corta antes de subir, así
+>   que el nombre nuevo no puede generar un huérfano. El fichero con el nombre
+>   viejo está en la biblioteca de IT. Si se quiere renombrar, lo hace una
+>   persona a mano; el sistema no borra ni renombra nada.
+
 > ## ✅ CERRADA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada**
 >
 > Review **APROBADO** (`progress/review_F-033.md`, cuatro hallazgos de gravedad baja y

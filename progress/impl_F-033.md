@@ -1,7 +1,7 @@
 # F-033 · Informe del implementer
 
 > Rama `feature/F-033-l1-traza-archivo`. Rigor `critico`.
-> Este informe crece por bloques: **Bloque 1 (T1–T4)** y **Bloque 2 (T5–T8)** abajo.
+> Este informe crece por bloques: **Bloque 1 (T1–T4)**, **Bloque 2 (T5–T8)** y **Bloque 3 (T9–T12)** abajo; al final, el **resumen para el reviewer**.
 
 ## Bloque 1 · La traza en la situación (persistencia)
 
@@ -689,3 +689,254 @@ humano, fuera de la rama.
 | Tiempo de la suite del servicio | 116.33 s con cobertura (dentro de `init.sh`); ~91 s sin cobertura |
 | Mutantes generados / supervivientes | **No medido en este bloque, por plan**: es la tarea **T11** del bloque 3, sobre el diff completo de la feature |
 | `ruff` | 61 avisos en el repositorio, los mismos que antes del bloque; ninguno en los ficheros tocados |
+
+---
+
+## Bloque 3 · Documentación y cierre (T9–T12)
+
+### Tareas del bloque 3 (commits)
+
+| Tarea | Commit | Qué |
+|---|---|---|
+| T9 | `444a50c` | `docs/ARCHITECTURE.md`, paso 6, bajo «tres capas»: «**Precisado por F-033 el 2026-09-18**» (R25) |
+| T10 | `801eb45` | `tests/test_f033_alcance_cerrado.py` (8 controles: dos mitades por frontera y las tres guardas del diff) |
+| T11 | `ae698a1` | `progress/mutacion_F-033.md`: 21 mutantes, 21 muertos, **0 supervivientes** |
+| T12 | último commit de la rama | `bash harness/init.sh` en verde; este informe y `progress/current.md` |
+
+### T9 · `docs/ARCHITECTURE.md`
+
+`git show --numstat` del commit: **`17 0 docs/ARCHITECTURE.md`**: solo se
+añaden líneas; no se borra ni se cambia nada. La precisión va justo después
+de la viñeta **carpeta** de las tres capas, con el formato de las demás del
+documento («**Precisado por F-0xx el AAAA-MM-DD**»), y dice lo que pide R25:
+L1 lee la traza del almacén **en la misma consulta** que la puerta (un
+`LEFT JOIN` más, ninguna sentencia añadida); `archivado` no se pisa (y la
+carrera se relee una vez); una traza `archivado` en otro destino corta igual y
+avisa; el re-archivo del mismo parte no existe desde el circuito. Remite a
+`specs/F-033-l1-traza-archivo/`.
+
+### T10 · Control de alcance
+
+**Fichero propio**, `tests/test_f033_alcance_cerrado.py`, como permite
+`tasks.md` T10 («o fichero propio si crece»): son 8 controles con la
+maquinaria de `git` de F-032, y dentro de `test_f033_l1_desde_el_almacen.py`
+diluirían lo que ese fichero mide. Copia de F-032 las tres guardas
+(`RAMA_DE_LA_FEATURE = "feature/F-033-l1-traza-archivo"`,
+`_fuera_de_la_rama_de_la_feature`, `_la_rama_ya_esta_en_dev`) y el control de
+los controles (el diff no está vacío y contiene `paso_archivo.py`).
+
+| Frontera | Mitad del diff (`dev...HEAD`) | Mitad que no depende de `git` |
+|---|---|---|
+| `infrastructure/persistencia/sql/` | ni un fichero de `sql/` en el diff | los `.sql` son los once de F-028, lista escrita a mano |
+| `services/postventa-front/` (R23) | ni un fichero del front en el diff | `archivar.CAMPOS_OBLIGATORIOS` sigue siendo los cinco de siempre (sin `forzar`, R21); las seis claves de salida ya las fija `test_f033_archivar_http.py` |
+| D-6 (`paso_grafico.py`, `paso_cierre.py`, `adjuntar.py`, `cerrar.py`) y `nombrado.py` (F-031) | ninguno de los cinco en el diff | los nombres nuevos de F-033 (`drive_id_vigente`, `_en_otro_destino` y los dos avisos) aparecen en el código de producción **exactamente** en `paso_archivo.py` (y `drive_id_vigente` también en `archivar.py`), leídos con `tokenize` para no contar la prosa; y un control de que el recorrido de producción ve los cinco ficheros y ninguno de `tests/` |
+
+**Decisión**: para D-6/F-031 la mitad sin `git` **no** congela el contenido
+de esos cinco ficheros, porque F-034 y F-031 los van a cambiar legítimamente
+y el test se pondría rojo en su rama sin motivo. Lo duradero es que L1 vive
+en un solo sitio.
+
+**Los controles cazan lo que dicen cazar.** No es fase RED de un requisito
+(un control de ausencia pasa desde que se escribe): es la prueba de que no
+son verdes vacíos. Con dos ficheros temporales **sin versionar**, borrados
+justo después (`git status` limpio salvo el test nuevo):
+`infrastructure/persistencia/sql/12_prueba_t10.sql` y
+`application/pipelines/prueba_t10_temporal.py` con `drive_id_vigente = None`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f033_alcance_cerrado.py -q -p no:cacheprovider --tb=line
+..F...F.                                                                 [100%]
+================================== FAILURES ===================================
+E   AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+      
+      Left contains one more item: '12_prueba_t10.sql'
+      Use -v to get more diff
+tests\test_f033_alcance_cerrado.py:230: AssertionError: assert ('01_esquema....res.sql', ...) == ('01_esquema....res.sql', ...)
+E   AssertionError: assert {'drive_id_vi..._archivo.py'}} == {'drive_id_vi..._archivo.py'}}
+      
+      Omitting 3 identical items, use -vv to show
+      Differing items:
+      {'drive_id_vigente': {'application/pipelines/paso_archivo.py', 'application/pipelines/prueba_t10_temporal.py', 'interface_adapters/api/archivar.py'}} != {'drive_id_vigente': {'application/pipelines/paso_archivo.py', 'interface_adapters/api/archivar.py'}}
+      Use -v to get more diff
+tests\test_f033_alcance_cerrado.py:376: AssertionError: assert {'drive_id_vi..._archivo.py'}} == {'drive_id_vi..._archivo.py'}}
+=========================== short test summary info ===========================
+FAILED tests/test_f033_alcance_cerrado.py::test_f033_no_hay_ni_un_fichero_de_ddl_nuevo
+FAILED tests/test_f033_alcance_cerrado.py::test_f033_lo_nuevo_de_l1_solo_vive_en_el_paso_y_su_endpoint
+2 failed, 6 passed in 1.71s
+```
+
+(Solo se ha quitado el prefijo absoluto de las rutas.) Sin los temporales:
+`8 passed`. Los números de línea citados son de antes de `ruff format`, que
+partió una línea; el contenido es el mismo.
+
+### T11 · Mutación
+
+**Línea base verde comprobada antes, sin caché**: el `init.sh` de arranque
+había dado verde **por caché**, así que se reejecutó la suite entera del
+servicio con su `venv`:
+`.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider` →
+**`2993 passed, 10 skipped in 56.50s`**.
+
+Campaña: `python -m harness.mutacion --feature F-033 --base dev`, desde la
+raíz, **8 workers** (uno por worktree; el valor por defecto del arnés).
+Alcance: 7 ficheros, 474 líneas de producción del diff
+`11dda9d..feature/F-033-l1-traza-archivo`.
+
+**21 mutantes generados, 21 evaluados, 21 muertos, 0 supervivientes, 0
+timeouts, 253.0 s.** Informe completo en `progress/mutacion_F-033.md`. No
+hay ningún superviviente que analizar. Qué se mutó: las condiciones de
+`_en_otro_destino` (nombre, carpeta, biblioteca y sus `and`/`or`), las de
+`_avisar_del_intento_anterior` (hash, estado `pendiente`, carpeta y nombre),
+la negación de la relectura de R18, las dos constantes del corte y el
+`len(fila) != esperadas` de `mapeo.py`, el `VALUES` y el `[1:]` de
+`sentencias.py`, y el `filas[0]` de `repositorio_pg.py`.
+
+Los worktrees de la campaña se limpiaron solos. El worktree
+`.claude/worktrees/agent-a6e2f9bed1d46cdbc` que lista `git worktree list` ya
+existía y no es de esta campaña: no se ha tocado.
+
+### T12 · `bash harness/init.sh`
+
+**ENTORNO LISTO**: servicio `api` **2993 passed, 20 skipped** en 91.84 s
+(con cobertura y reejecutado de verdad, no por caché); raíz 62 passed; front
+en verde (caché, árbol sin cambios); **PUERTA COBERTURA 100.0 % de 65 líneas
+cambiadas** (65/65, umbral 80 %, `critico`); `ruff` 61 avisos, los mismos de
+antes (deuda previa); el fichero nuevo, limpio en `ruff check` y
+`ruff format --check`.
+
+### Qué expone o consume el proyecto (para el líder, `azure-apps/`)
+
+**Nada cambia.** Ningún endpoint nuevo ni cambiado (R23: misma entrada,
+mismas seis claves y mismos códigos; solo dos textos posibles más dentro de
+`avisos`). Ninguna variable de entorno nueva (`SHAREPOINT_DRIVE_ID` ya se
+consumía; ahora también la lee el paso para comparar). Ninguna tabla ni
+columna nueva (sin DDL: `postventa.archivos` ya se escribía y ahora además se
+lee en la consulta de la situación). Ninguna base nueva. Coincide con
+`design.md` §1.3. No se ha tocado `azure-apps/`.
+
+### Verificaciones MANUAL pendientes (del humano, listas para copiar)
+
+**T13 · antes de desplegar (R26).** Solo lectura, dentro del schema
+`postventa`, con las credenciales del humano:
+
+```sql
+SET search_path TO postventa;
+
+-- 1. Cuántas trazas hay en cada estado, y cuántas con biblioteca.
+SELECT estado, count(*) AS trazas, count(drive_id) AS con_biblioteca
+FROM postventa.archivos
+GROUP BY estado
+ORDER BY estado;
+
+-- 2. Las que se quedaron en 'pendiente': posibles ficheros subidos
+--    sin traza final (ArchivoSinTraza). Sin drive_id ni web_url.
+SELECT hash_parte, carpeta, nombre_fichero, intentos
+FROM postventa.archivos
+WHERE estado = 'pendiente'
+ORDER BY hash_parte;
+```
+
+Anotar el resultado en `progress/` **sin identificadores de biblioteca**. Lo
+esperable: cero filas en la segunda. Si sale alguna, una persona mira esa
+carpeta en SharePoint antes de desplegar.
+
+**T14 · después de desplegar (R27).** Con autorización expresa para un parte
+concreto que ya conste `archivado`, y la ventana `ARCHIVO_HABILITADO`
+abierta solo para ello:
+
+1. Anotar los tres valores de
+   `SELECT estado, intentos, archivado_at_utc FROM postventa.archivos WHERE hash_parte = '<hash>';`
+2. Volver a archivarlo desde el front (o `POST /api/archivar` con el mismo
+   cuerpo).
+3. Comprobar: la respuesta trae `AVISO_YA_ARCHIVADO` («este parte ya estaba
+   archivado: se devuelve el destino que ya tenía y no se ha vuelto a
+   subir»); en SharePoint el fichero conserva su fecha de modificación y no
+   hay otro; y la consulta del paso 1 devuelve **los mismos tres valores**
+   (`intentos` igual: no hubo ninguna escritura).
+4. Cerrar la ventana.
+
+## Evidencias (final, bloque 3)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests del servicio `api` (`bash harness/init.sh`, reejecutados) | **2993 passed, 20 skipped**, 0 fallos |
+| Tests del servicio `api` sin cobertura ni caché (línea base de T11) | 2993 passed, 10 skipped |
+| Tests de la raíz (`init.sh`) | 62 passed |
+| Tests nuevos de F-033 | **101**: 39 (`test_f033_situacion_con_archivo.py`) + 44 (`test_f033_l1_desde_el_almacen.py`) + 10 (`test_f033_archivar_http.py`) + 8 (`test_f033_alcance_cerrado.py`) |
+| Cobertura de las líneas cambiadas | **100.0 % de 65 líneas** (65/65, umbral 80 %, `critico`), línea `PUERTA COBERTURA` |
+| Mutantes generados / supervivientes | **21 / 0** (21 muertos, 0 timeouts, 8 workers, 253.0 s), `progress/mutacion_F-033.md` |
+| Tiempo de la suite del servicio | 91.84 s con cobertura (dentro de `init.sh`); 56.50 s sin cobertura |
+| `ruff` | 61 avisos en el repositorio, los mismos que antes; ninguno en ficheros de F-033 |
+
+---
+
+## Resumen para el reviewer
+
+**Qué es F-033.** L1 (la capa **traza** del paso 6) deja de recibir la traza
+por parámetro —el endpoint nunca se la pasaba, así que en el circuito real
+no cortaba (defecto D-A1)— y la lee de la situación que ya consulta la
+puerta de estado, con un tercer `LEFT JOIN` a `postventa.archivos` en la
+misma sentencia. `upsert_archivo` no pisa una fila `archivado`. Traza
+`archivado` en otro destino: corta y avisa. `pendiente` en otra ruta: sigue,
+con aviso y log. Carrera en la traza previa: relee una vez y responde como L1.
+
+**Commits** (rama `feature/F-033-l1-traza-archivo`, desde `dev` `11dda9d`):
+T1 `29758f0` (RED) · T2 `257456d` · T3 `60e61c7` · T4 `9d0fc33` · informe
+`3cfe4c6` · T5 `b98ac7d` (RED) · T6 `dec048e` · T7 `6f98f9b` · T8 `88eee31` ·
+informe `7a32b13` · T9 `444a50c` · T10 `801eb45` · T11 `ae698a1` · T12 (el
+último de la rama).
+
+**Fase RED**: T1 (35 rojos de 39) y T5 (40 rojos de 54, con el defecto D-A1
+cazado: `test_f033_archivar_http.py:318 assert 2 == 1`, dos subidas del
+mismo parte). Trazas pegadas en los bloques 1 y 2.
+
+**Números finales**: 2993 passed / 20 skipped; cobertura de líneas
+cambiadas 100 % (65/65); mutación 21/21 muertos, 0 supervivientes.
+
+**Todas las desviaciones (D-impl-*) de los tres bloques**:
+
+1. **D-impl-1** (bloque 1) · Dos tests que fijaban el conjunto exacto de
+   campos de `SituacionParte` (`test_f028_estado_dominio.py::test_f028_r2_…`
+   y `test_f030_veredicto_persistido.py::test_f030_r2_…`) no estaban en la
+   lista de `design.md` §7. Se tratan como cambio de **forma**: se añade
+   `"archivo"` manteniendo la igualdad exacta, con enmienda fechada. **Es lo
+   primero que hay que mirar** si se considera cambio de expectativa.
+2. **D-impl-2** (bloque 1) · `test_f005_logs_sin_datos_personales.py::test_f030_r21_…`
+   tenía una fila literal de diez columnas, fuera de §7: se le añaden ocho
+   `None`. Asertos intactos.
+3. **D-impl-3** (bloque 1) · El ayudante `_fila_de_la_consulta` de
+   `test_f030_veredicto_persistido.py`, que §7 sí listaba, **no** se cambia:
+   alimenta a `fila_a_validacion_y_cierre`, que sigue siendo de diez.
+4. **D-impl-4** (bloque 2) · Tras el RED, el caso de circuito
+   `test_f033_circuito_archivar_dos_veces_sube_una` se corrigió en su
+   **montaje** (biblioteca vigente = `DRIVE_FALSO`, la que deja el doble al
+   subir), sin aflojar ningún aserto.
+5. **D-impl-5** (bloque 2) · Un `pendiente` sin ruta (carpeta y nombre a
+   `None`) cuenta como «otra ruta» en R20 y avisa como «None/None». No ocurre
+   en producción; si se prefiere que no avise, es una condición más.
+6. **D-impl-6** (bloque 2) · El 503 de la relectura sin `archivado` (R18)
+   lleva el texto genérico del borde («no se ha podido hablar con la base de
+   datos…»), que en este caso no es exacto; el motivo propio sí es preciso.
+   No se tocó `function_app.py` porque la spec no lo pide.
+7. **D-impl-7** (bloque 3) · El control de alcance va en **fichero propio**
+   (`test_f033_alcance_cerrado.py`), opción que `tasks.md` T10 permite. La
+   mitad sin `git` de la frontera D-6/F-031 comprueba que lo nuevo de L1
+   vive solo en el paso y su endpoint, y **no** congela el contenido de esos
+   cinco ficheros, que F-034 y F-031 van a cambiar.
+8. **Comandos de verificación** (los tres bloques) · Los de `tasks.md`
+   (`python -m pytest services/postventa-api/tests/...` desde la raíz) usan
+   el Python global, sin `pydantic`. Se han ejecutado con el `venv` del
+   servicio desde `services/postventa-api/`, igual que `harness/init.sh`.
+
+**Qué no se ha tocado** (medido por `test_f033_alcance_cerrado.py` y el
+diff): `infrastructure/persistencia/sql/`, el front, `paso_grafico.py`,
+`paso_cierre.py`, `adjuntar.py`, `cerrar.py`, `nombrado.py`,
+`infrastructure/sharepoint/**`, `puerta_de_estado.py` y `azure-apps/`.
+`harness/features.json` aparece en el diff de la rama solo por los commits
+del líder (`1c54677`, `7f903c8`, `9bcc92d`); el implementer no lo ha tocado.
+
+**Qué falta para cerrar**: la revisión contra `CHECKPOINTS.md`; T13
+(humano, antes de desplegar) y T14 (humano, después de desplegar), listas
+arriba. Fuera de F-033, con dueña: F-034 (D-6: que `adjuntar`/`cerrar` lean
+«consta archivado» del almacén) y la decisión sobre las trazas `archivado`
+que apuntan a IT (dato del humano del 2026-09-18, pendiente para F-013).

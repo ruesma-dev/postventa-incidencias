@@ -1,6 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## BLOQUE 3 HECHO · 2026-09-18 · **F-033, T9–T12 · documentación y cierre** (`in_progress`, listo para el reviewer)
+>
+> Rama `feature/F-033-l1-traza-archivo`, commits `444a50c` (T9), `801eb45`
+> (T10), `ae698a1` (T11) y el de T12 (informe y este bloque). Detalle y
+> **resumen para el reviewer, con las siete desviaciones D-impl-1…7**, en
+> `progress/impl_F-033.md`.
+>
+> - T9: `docs/ARCHITECTURE.md`, «Precisado por F-033 el 2026-09-18» bajo las
+>   tres capas; solo añade líneas (+17, −0).
+> - T10: `tests/test_f033_alcance_cerrado.py`, fichero propio (D-impl-7):
+>   sin DDL, sin front, sin D-6 ni nombrado; dos mitades por frontera y las
+>   tres guardas del diff. Se comprobó que se ponen rojos ante un `.sql`
+>   nuevo y ante un uso de `drive_id_vigente` fuera de su sitio.
+> - T11: línea base verde reejecutada sin caché (2993 passed); mutación
+>   **21 mutantes, 0 supervivientes** (8 workers, 253 s).
+> - T12: `bash harness/init.sh` en verde: 2993 passed, 20 skipped;
+>   cobertura de líneas cambiadas 100 % (65/65).
+> - Lo que el proyecto expone o consume **no cambia**: `azure-apps/` no se toca.
+>
+> **Qué queda**: revisión (reviewer) contra `CHECKPOINTS.md`; **T13** (humano,
+> lectura antes de desplegar) y **T14** (humano, después de desplegar), con
+> los comandos listos para copiar en el informe. No desplegar sin T13.
+
 > ## BLOQUE 2 HECHO · 2026-09-18 · **F-033, T5–T8 · L1 en el paso y en el endpoint** (`in_progress`)
 >
 > Rama `feature/F-033-l1-traza-archivo`, commits `b98ac7d` (T5, RED),

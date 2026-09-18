@@ -135,7 +135,7 @@ línea.
       (cada uno, si lo hubiera, con test nuevo o justificación escrita para el
       humano); informe en `progress/mutacion_F-033.md` con el nº de workers.
 
-- [ ] **T12**: Ejecutar `bash harness/init.sh` en verde. | Verificación: el
+- [x] **T12**: Ejecutar `bash harness/init.sh` en verde. | Verificación: el
       comando termina en verde, con la puerta de cobertura de las líneas
       cambiadas en `[OK]` por encima del umbral de `critico`; números en la
       sección «Evidencias» de `progress/impl_F-033.md`.

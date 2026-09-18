@@ -286,6 +286,12 @@ def test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas(
     > ser exactamente el declarado. Un quinto campo lo pone en rojo igual que
     > antes lo ponía el cuarto, y la enmienda del campo nuevo está escrita y
     > fechada en la docstring de `SituacionParte`.
+
+    > **Enmienda del 2026-09-18 · F-033 T2 (R1).** El quinto campo llegó:
+    > `archivo`, la traza de archivo de F-006, que lee L1 del paso 6 y **no**
+    > entra en `estado_del_parte`. Su enmienda está escrita y fechada en la
+    > docstring de `SituacionParte`, como pide el párrafo anterior. El aserto
+    > sigue siendo de igualdad exacta: un sexto campo lo pone en rojo.
     """
     nombres = {campo.name for campo in fields(SituacionParte)}
 
@@ -294,6 +300,7 @@ def test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas(
         "ultimo_estado_registrado",
         "estado_cierre",
         "validacion",
+        "archivo",
     }
 
 

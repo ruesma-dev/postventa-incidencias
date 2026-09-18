@@ -114,7 +114,18 @@ class RepositorioPartesPort(Protocol):
         ...
 
     def guardar_archivo(self, *, traza: TrazaArchivo) -> ResultadoGuardado:
-        """Registra qué pasó al archivar el parte. Una fila por parte (R23)."""
+        """Registra qué pasó al archivar el parte. Una fila por parte (R23).
+
+        > **Enmienda del 2026-09-18 · F-033 T2 (R17).** Un parte ya marcado
+        > como `archivado` **no se pisa**: devuelve `SIN_CAMBIOS` y deja la
+        > fila intacta, igual que el cierre (`cerrado`) y el gráfico
+        > (`adjuntado`). Hasta hoy cualquier escritura pisaba la traza, y con
+        > ella la carpeta, el nombre y los identificadores del fichero que ya
+        > estaba subido: dejaba de ser localizable desde nuestra base.
+        >
+        > `pendiente` y `error` sí se pisan: son reintentos, y el `hash` de un
+        > parte que falló tiene que poder volver a archivarse.
+        """
         ...
 
     def guardar_cierre(self, *, traza: TrazaCierre) -> ResultadoGuardado:
@@ -168,6 +179,14 @@ class RepositorioPartesPort(Protocol):
         >
         > El veredicto viaja **dentro de la misma consulta**, así que la cuarta
         > cosa no cuesta ninguna consulta más por parte y por paso (R18).
+
+        > **Enmienda del 2026-09-18 · F-033 T2 (R1–R3).** Y son **cinco**: la
+        > quinta es la traza de archivo de F-006 (`SituacionParte.archivo`), o
+        > `None` si no consta. No cuenta para derivar el estado; la lee la
+        > primera capa contra el duplicado en SharePoint, que hasta hoy
+        > dependía de que quien llamaba le pasara la traza —y desde el endpoint
+        > nadie se la pasaba—. Viaja en la **misma** consulta, así que tampoco
+        > cuesta ninguna más: siguen siendo dos sentencias por llamada.
 
         Que los cuatro huecos vengan vacíos **no es un error**: es el caso
         normal del primer día. Todo parte nace sin veredicto, sin decisión, sin

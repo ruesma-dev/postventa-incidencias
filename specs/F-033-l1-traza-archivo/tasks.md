@@ -50,7 +50,7 @@
       falla por `SituacionParte` sin `archivo`, sentencia sin tercer `JOIN` y
       `upsert_archivo` sin `WHERE`; traza pegada en el informe.
 
-- [ ] **T2**: `SituacionParte.archivo` (R1), con la enmienda fechada del
+- [x] **T2**: `SituacionParte.archivo` (R1), con la enmienda fechada del
       docstring («cuatro cosas» → cinco, citando la frase vieja), y los
       docstrings del puerto (`consultar_situacion`, `guardar_archivo`). |
       Verificación: los tests de R1 de T1 en verde; `python -m pytest services/postventa-api/tests -q -k "f028 or f030"` en verde.

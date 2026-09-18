@@ -50,7 +50,7 @@ from datetime import datetime
 from enum import Enum
 
 from domain.models.aprobacion import huella_de_veredicto
-from domain.models.persistencia import EstadoCierre
+from domain.models.persistencia import EstadoCierre, TrazaArchivo
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
 __all__ = [
@@ -187,7 +187,7 @@ class DecisionEstado:
 
 @dataclass(frozen=True)
 class SituacionParte:
-    """Lo que hay que saber de un parte para derivar su estado. **Cuatro cosas.**
+    """Lo que hay que saber de un parte para derivar su estado. **Cinco cosas.**
 
     Quien pregunta hace **una** llamada al repositorio y recibe esto, que es lo
     que pide R2: no cruzar cuatro tablas ni conocer el veredicto, la
@@ -231,9 +231,29 @@ class SituacionParte:
     > clave, pero ponerla delante rompería cualquier construcción posicional
     > que apareciera por el camino.
 
+    > **Enmienda del 2026-09-18 · F-033 T2 (`design.md` §3.1).** La primera
+    > línea de este docstring decía, literal: *«Lo que hay que saber de un
+    > parte para derivar su estado. **Cuatro cosas.**»* Ahora son cinco.
+    >
+    > - `archivo`: la traza de archivo de F-006 (`postventa.archivos`), o
+    >   `None` si de este parte no consta ninguna, que **no es un error**. No
+    >   entra en `estado_del_parte` —el estado no cambia por ella—: la lee la
+    >   primera capa contra el duplicado en SharePoint (L1 del paso 6), que
+    >   hasta F-033 dependía de que **quien llamaba** le pasara la traza, y
+    >   desde el endpoint nadie se la pasaba.
+    >
+    > Viaja por el mismo motivo que el veredicto de F-030: quien decide algo
+    > con ella la recibe de la misma consulta y del mismo almacén, y no de un
+    > argumento que puede no llegar. Y viaja **sin costar ninguna consulta
+    > más**: es un tercer `LEFT JOIN` de la sentencia que ya traía el veredicto
+    > y el cierre (F-033 R3).
+    >
+    > Va **la última de los cinco**, por la misma razón que la cuarta.
+
     Que los cuatro huecos vengan vacíos **no es un error**: es el caso normal del
     primer día. Todo parte nace sin veredicto, sin decisión, sin fila y sin
-    traza de cierre, y de ahí tiene que salir un estado igualmente.
+    traza de cierre, y de ahí tiene que salir un estado igualmente. Lo mismo
+    vale para el quinto desde F-033: todo parte nace sin traza de archivo.
 
     Esto viene **del repositorio y nunca del cuerpo de la petición** (R33). Es
     el mismo argumento que escribió F-012 para `traza_grafico` y que F-026
@@ -246,6 +266,7 @@ class SituacionParte:
     ultimo_estado_registrado: EstadoParte | None = None
     estado_cierre: str | None = None
     validacion: ResultadoValidacion | None = None
+    archivo: TrazaArchivo | None = None
 
 
 def estado_de_la_maquina(validacion: ResultadoValidacion | None) -> EstadoParte:

@@ -1,7 +1,7 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## SPEC ESCRITA · 2026-09-18 · **F-013, mudar el archivo a la biblioteca de Posventa**
+> ## SPEC ESCRITA Y ENMENDADA · 2026-09-18 · **F-013, mudar el archivo a la biblioteca de Posventa**
 >
 > Rama `feature/F-013-archivo-posventa` (desde `dev`). Spec en
 > `specs/F-013-archivo-posventa/` (requirements, design, tasks). **Ni una
@@ -19,31 +19,36 @@
 > Sigrid (`rcp→upv→obr`, lectura nueva por `sql/read`), y la obra de Sigrid
 > tiene que coincidir con la del parte.
 >
-> ### Decisiones abiertas para el humano (`design.md` §9)
+> ### Decisiones: CERRADAS por el humano el 2026-09-18 (`design.md` §9)
 >
-> 1. **D-1 · Carpeta base** («PARTES FIRMADOS (sistema)», H3). Recomendación:
->    **raíz de la biblioteca**; una carpeta delante nos obligaría a crear
->    carpetas de obra propias, contra H2.
-> 2. **D-2 · F-033 antes que F-013**. Recomendación: **sí, dependencia dura**
->    del corte. Sin la capa L1, re-archivar un parte ya en IT lo sube a
->    Posventa y pisa su traza (se pierde el puntero a IT, contra H4).
-> 3. **D-3 · F-031 antes que F-013**. Recomendación: **sí** (orden F-033 →
->    F-031 → F-013). Si no, el riesgo es el de hoy y algo menor: F-013 añade
->    que la obra de Sigrid coincida con la del parte.
-> 4. **D-4 · Quién crea carpetas**. Recomendación: nosotros **solo la hoja
->    `PARTES FIRMADOS`** dentro de una unidad existente; obra y unidad, nunca.
-> 5. **D-5 · Cola humana**. Recomendación: en F-013 basta el 409 con motivo y
->    candidatas; una vista en el front o un mapa unidad→carpeta serían fichas
->    nuevas.
-> 6. **D-6 · Regla de casado de la unidad** (números como enteros, sufijo
->    contiguo con número). Recomendación: la propuesta, **condicionada a medir
->    antes** (T2, T3): si `upv.cod` ya es `VILLA 05`, igualdad estricta.
-> 7. **D-7 · Sigrid caída al archivar**. Recomendación: 503 y no se sube; no
->    caer al dato del papel.
-> 8. **D-R · Rigor**. Recomendación: subir F-013 de `estandar` a
->    **`critico`** (biblioteca real, sincronizada por OneDrive, DNI, fallo
->    silencioso).
+> Respuesta literal: *«si, pero quiero que tenga permiso para crear todas las
+> carpetas no solo partes firmados.»* Aceptadas tal cual D-1 (base = raíz),
+> D-2 y D-3 (orden **F-033 → F-031 → F-013**), D-5 (409 con motivo), D-6
+> (regla de casado, condicionada a T2/T3), D-7 (503 si Sigrid cae) y D-R
+> (**`critico`**; la ficha la actualiza el líder). **D-4 cambia**: el sistema
+> puede crear **toda** la ruta que falte. Spec enmendada el mismo día, con
+> recuadros fechados en R9, R13–R16:
 >
+> - **Cuándo se crea**: solo si en ese nivel no hay **ninguna** carpeta que
+>   case **ni ninguna parecida** (R34). Si hay parecidas —otra grafía del mismo
+>   código de obra, del mismo número de unidad o de la palabra clave del tramo
+>   fijo, p. ej. `0677-MIRASIERRA`, `VILLA 05 - GARCIA`, `PARTES DE
+>   INCIDENCIAS`—, **409 `<nivel>_parecida` y no se crea** (R35, con tests
+>   obligatorios). Ambigüedad, 409 igual. Variable `SHAREPOINT_CREAR_CARPETAS`.
+> - **Con qué nombre**: obra = `<cod> <con.res de esa obra>` literal (hoy
+>   daría `0677 15 VIVIENDAS UNIFAMILIARES EN MIRASIERRA(MADRID)`); unidad =
+>   `con.cod` o `con.res` de la `upv` según `SHAREPOINT_NOMBRE_UNIDAD`. **Nunca
+>   se reformatea** (no se fabrica `VILLA 05` desde «Villa 5»). Los dos valores
+>   **quedan condicionados a T2/T3** y se fijan en la parada **T4** con los datos
+>   delante (R36, R37). Nombre imposible → 409, sin saneo, y todos los nombres
+>   se comprueban antes de crear la primera carpeta (R38).
+> - **Riesgo nuevo** (`design.md` §10, 11–14): duplicado por una grafía que ni
+>   comparte el número (`VILLA CINCO`); nombre correcto pero feo para
+>   Posventa; carpetas vacías si falla la subida. **Deshacer lo hace una
+>   persona** (mover el PDF y borrar o renombrar la carpeta); el sistema no
+>   borra, no mueve ni renombra nunca (R43). Nueva verificación manual **R42**:
+>   primera creación real con Posventa avisada antes.
+
 > ### Lo que el humano tiene que hacer antes de implementar la regla
 >
 > - **T2 y T3 son MANUALES y van antes del código**: los dos scripts de solo

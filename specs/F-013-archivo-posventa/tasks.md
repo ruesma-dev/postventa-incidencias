@@ -7,8 +7,11 @@
 > SharePoint, Sigrid, Key Vault ni PostgreSQL desde esta rama**: los dos
 > scripts nuevos son de solo lectura y los lanza el humano.
 >
-> **Precondiciones de arranque**: spec aprobada por el humano, con D-1…D-7 y
-> D-R contestadas (`design.md` §9). **Precondición del bloque 5 y del corte**:
+> **Decisiones**: D-1…D-7 y D-R **cerradas por el humano el 2026-09-18**
+> (`design.md` §9), con D-4 cambiada: el sistema puede crear **toda** la ruta
+> que falte, solo cuando no hay ninguna carpeta ni parecida (R34, R35). Quedan
+> dos valores por fijar con datos, en T4: el nombre de obra (R36) y
+> `SHAREPOINT_NOMBRE_UNIDAD` (R37). **Precondición del bloque 5 y del corte**:
 > F-033 mergeada en `dev` (D-2).
 
 ## Bloque 0 · Medir antes de escribir la regla
@@ -26,18 +29,25 @@
 - [ ] **T2 · MANUAL (humano)**: con las `GRAPH_*` en la sesión,
   `powershell -ExecutionPolicy Bypass -File infra\23_destino_posventa.ps1 -UrlSitio "<URL del sitio Postventa>" -CodigoObra 0677`.
   Anotar en `progress/explore_F-013.md`, **sin identificadores ni nombres de
-  cliente**: literal de la carpeta de obra, si está en la raíz o debajo de
-  algo (D-1), literal de `PARTES INCIDENCIAS`, literales de las unidades, si
-  cada unidad tiene `PARTES FIRMADOS`, cuántas carpetas hay en la raíz y si la
-  biblioteca tiene versionado. | Verificación: MANUAL (humano)
+  cliente**: literal de la carpeta de obra y **cómo se relaciona con el
+  `con.res` de la obra** (R36), si está en la raíz (D-1), literal de `PARTES
+  INCIDENCIAS`, literales de las unidades, si cada unidad tiene `PARTES
+  FIRMADOS`, **qué otras carpetas de la raíz serían «parecidas» de la 0677**
+  (§4.5), grafías de unidad que la regla amplia **no** detectaría (p. ej.
+  `VILLA CINCO`, riesgo 11), cuántas carpetas hay en la raíz y si la biblioteca
+  tiene versionado. | Verificación: MANUAL (humano)
 - [ ] **T3 · MANUAL (humano)**:
   `powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677`.
   Anotar en el mismo fichero `con.cod` y `con.res` de las unidades **si no
   llevan nombres de persona**; si los llevan, anotar solo su forma
-  (`VILLA NN`, `BLOQUE X - VILLA NN`…). | Verificación: MANUAL (humano)
-- [ ] **T4 · PARADA**: el líder lleva T2/T3 al humano, que confirma D-1, D-4 y
-  D-6 con los datos delante. **Si la medición desmiente la regla de §4 del
-  diseño, se vuelve al spec-author** y no se sigue. Commit solo del informe.
+  (`VILLA NN`, `BLOQUE X - VILLA NN`…) y **descartar `nombre`** como origen
+  del nombre de carpeta (`design.md` §4.6). | Verificación: MANUAL (humano)
+- [ ] **T4 · PARADA**: el líder lleva T2/T3 al humano, que fija con los datos
+  delante: (1) la regla del nombre de obra (R36: literal de `con.res`, o una
+  derivación determinista medida); (2) el valor por omisión de
+  `SHAREPOINT_NOMBRE_UNIDAD` (R37); (3) que la regla de casado de la unidad
+  (D-6) y la de parecidas (§4.5) se sostienen con la 0677. **Si la medición
+  desmiente §4, se vuelve al spec-author** y no se sigue. Commit solo del informe.
   | Verificación: decisión del humano anotada en `progress/current.md`
 
 ## Bloque 1 · Configuración y dominio puro
@@ -49,8 +59,11 @@
   primero en rojo. | Verificación:
   `pytest services/postventa-api/tests/test_f013_fabricas.py`
 - [ ] **T6**: `tests/test_f013_destino_dominio.py` en **rojo**: la tabla de
-  §4.3 entera, R9 con los dos ejemplos medidos, R10 (ceros, `677`, `06770 X`),
-  R13/R14 ambigüedades, `unir_ruta` con base vacía (R17). | Verificación:
+  §4.3, §4.5 y §4.6 enteras, R9, R10 (ceros, `677`, `06770 X`), R13/R14
+  ambigüedades, los cuatro casos obligatorios de R35 (`0677-MIRASIERRA`,
+  `VILLA 05 - GARCIA`, `PARTES DE INCIDENCIAS`, y `VILLA 07` que **no**
+  bloquea), R36–R38 (nombres literales, imposibles), R39 (lo creado casa
+  consigo mismo) y `unir_ruta` con base vacía (R17). | Verificación:
   el fichero falla por `ImportError`/aserción, traza en el commit
 - [ ] **T7**: `domain/models/destino_posventa.py` y `DestinoNoResuelto` en
   `domain/models/errores.py`. | Verificación:
@@ -62,24 +75,28 @@
   `tests/utiles_destino.py` (`ExploradorFalso` con registro de llamadas,
   `UbicacionesFalsas`). | Verificación: `pytest -k f013` sin regresiones
 - [ ] **T9**: `application/pipelines/destino_archivo.py` +
-  `tests/test_f013_resolver_destino.py` (R6–R8, R13–R16; la obra se valida
-  **antes** de listar; `crear_hoja` solo con la opción). | Verificación:
+  `tests/test_f013_resolver_destino.py` (R6–R8, R13–R16, R34–R39, R41; la obra
+  se valida **antes** de listar; los nombres se comprueban antes de anotar
+  ninguna creación; bajo un nivel nuevo no se lista; con
+  `SHAREPOINT_CREAR_CARPETAS` apagado, `sin_carpeta_<nivel>`; el resolutor
+  **no escribe**). | Verificación:
   `pytest services/postventa-api/tests/test_f013_resolver_destino.py`
 - [ ] **T10**: `paso_archivo.py` con `resolver_destino` opcional, orden de
   `design.md` §5 + `tests/test_f013_paso_archivo_posventa.py` (R4, R5, R15,
-  R18, R20–R22) y `tests/test_f013_por_obra_intacto.py` (R2, con sus dos
+  R18, R20–R22, R40; las creaciones van **después** de la traza previa, en
+  orden y un nivel por llamada) y `tests/test_f013_por_obra_intacto.py` (R2, con sus dos
   mitades: diff y sin git). | Verificación: los dos ficheros + **todos** los
   `test_f006_*` y `test_f019_*` sin tocar, en verde
 
 ## Bloque 3 · Adaptadores
 
-- [ ] **T11**: `listar_carpetas` y `crear_hoja` en
+- [ ] **T11**: `listar_carpetas` y `crear_subcarpeta` en
   `infrastructure/sharepoint/graph.py` +
   `tests/test_f013_adaptador_graph_listado.py` (paginación con `nextLink`,
   filtro de carpetas, `404`→`None`, padre ausente → `ArchivoFallido` sin
-  `POST` a la raíz, nada del `nextLink` en los logs). | Verificación: el
+  crear intermedias, `409` → éxito, nada del `nextLink` en los logs). | Verificación: el
   fichero y `test_f006_adaptador_graph.py` en verde
-- [ ] **T12**: `infrastructure/sigrid/consultas_ubicacion.py`,
+- [ ] **T12**: `infrastructure/sigrid/consultas_ubicacion.py` (con `o.res`),
   `infrastructure/sigrid/ubicacion.py` y `construir_ubicaciones` en
   `infrastructure/sigrid/fabrica.py` + `tests/test_f013_ubicacion_sigrid.py`
   (SQL carácter a carácter, parámetros, nulos, solo `sql/read`, fábrica sin
@@ -94,8 +111,8 @@
   `tests/test_f013_archivar_http.py` (R19, R23; sin R25). | Verificación:
   `pytest services/postventa-api/tests/test_f013_archivar_http.py` y
   `test_f006_archivar_http.py` en verde
-- [ ] **T14**: en `infra/23_destino_posventa.ps1`, la columna «resolvería»
-  (R28) ejecutando la regla del dominio por fichero con
+- [ ] **T14**: en `infra/23_destino_posventa.ps1`, la columna
+  «resolvería / crearía (nombre) / bloquearía» (R28) ejecutando la regla del dominio por fichero con
   `Invoke-PythonDelServicio`; ampliar `test_f013_scripts_infra.py`.
   | Verificación: `pytest services/postventa-api/tests/test_f013_scripts_infra.py`
 
@@ -118,12 +135,16 @@
   premisa (R26, R29): `docs/INTEGRACION.md` §3 (sitio, estructura, «sin
   listados de carpeta», tabla «qué se rompe» con carpetas renombradas y `423`,
   dependencia de `sigrid-api` al archivar, variables nuevas en §4, lo que
-  sigue en IT y cómo localizarlo); `docs/DESPLIEGUE.md` (runbook del corte,
+  sigue en IT y cómo localizarlo; **el procedimiento para deshacer una
+  carpeta creada por error**, R43, `design.md` §10.14, con la consulta de
+  solo lectura de los partes de una carpeta); `docs/DESPLIEGUE.md` (runbook del corte,
   `design.md` §7.3, y los dos scripts); `docs/ARCHITECTURE.md` (paso 6 y fila
   de SharePoint); `specs/F-006-sharepoint/requirements.md` (vocabulario
   «Destino de dev», R10, R11, R27) y `design.md` (§7 «F-013 sale casi
   gratis»). Más `infra/00_vars_postventa.ps1` y `infra/desplegar_backend.ps1`
-  con `$EstructuraArchivo`/`$CarpetaBaseArchivo` **en `por_obra`/`Postventa`**.
+  con `$EstructuraArchivo`/`$CarpetaBaseArchivo` **en `por_obra`/`Postventa`**,
+  y `SHAREPOINT_CREAR_CARPETAS`/`SHAREPOINT_NOMBRE_UNIDAD` en los App Settings
+  que escribe el despliegue.
   Y `tests/test_f013_documentacion.py`. | Verificación:
   `pytest services/postventa-api/tests/test_f013_documentacion.py`
 - [ ] **T18**: dejar escrito para el líder, en `progress/impl_F-013.md`, el
@@ -142,7 +163,8 @@
 ## Bloque 7 · Cierre
 
 - [ ] **T20**: campaña de mutación (nivel `critico`, si D-R lo confirma) sobre
-  `destino_posventa.py`, `destino_archivo.py`, `paso_archivo.py` y
+  `destino_posventa.py` (con las reglas de parecidas y de nombres como
+  objetivo principal), `destino_archivo.py`, `paso_archivo.py` y
   `consultas_ubicacion.py`; informe `progress/mutacion_F-013.md`.
   | Verificación: cero supervivientes sin justificar
 - [ ] **T21**: ejecutar `bash harness/init.sh` en verde. | Verificación:
@@ -163,7 +185,14 @@ Runbook completo en `design.md` §7.3 y, tras T17, en `docs/DESPLIEGUE.md`.
    `desplegar_backend.ps1`.
 5. **R33**: ventana `ARCHIVO_HABILITADO` abierta para **un parte autorizado
    expresamente**, archivado desde el front, comprobación **con Posventa** en
-   su OneDrive (carpeta correcta, ninguna carpeta nueva salvo la hoja), y
-   cierre de la ventana. Anotar resultado sin identificadores.
+   su OneDrive (carpeta correcta y **ninguna carpeta nueva**: se elige un
+   parte cuya ruta ya exista entera según el paso 2), y cierre de la ventana.
+   Anotar resultado sin identificadores.
+5 bis. **R42**: con Posventa **avisada antes**, un segundo parte autorizado
+   cuya unidad (u obra) el script diga «se crearía: <nombre>». Comprobar con
+   ellos que el nombre les sirve y que no hay duplicado. Si no les sirve, lo
+   deshace una persona con el procedimiento de R43 (`docs/INTEGRACION.md`) y
+   se enmienda R36/R37 **antes** de volver a crear. Hasta entonces,
+   `SHAREPOINT_CREAR_CARPETAS=false` si hace falta.
 6. Avisar a Posventa de la convivencia con sus ficheros manuales
    (`design.md` §9, nota final).

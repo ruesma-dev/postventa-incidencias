@@ -15,6 +15,15 @@
 > búsqueda y no hay identificador del sitio en el repo, a propósito—, así que
 > todo lo que dependa de sus carpetas reales va marcado **[NO MEDIDO]** y
 > tiene su verificación manual (T2, T3).
+>
+> **Enmienda del 2026-09-18 · decisiones cerradas.** El humano respondió a §9
+> ese mismo día: *«si, pero quiero que tenga permiso para crear todas las
+> carpetas no solo partes firmados.»* Acepta D-1, D-2, D-3, D-5, D-6, D-7 y
+> D-R tal y como se recomendaban, y **cambia D-4**: el sistema puede crear
+> **toda** la ruta que falte. Lo que eso obliga a resolver —con qué nombre se
+> crea, y cuándo se crea y cuándo no— está en §4.5, §4.6 y §5; el riesgo
+> nuevo, en §10 (11–14). §9 conserva el texto de las preguntas como se
+> hicieron.
 
 ## 0 · Dónde está el riesgo
 
@@ -24,7 +33,7 @@
 |---|---|---|
 | El parte va a la carpeta de **otra unidad** de la misma obra | Un parte firmado de la Villa 5 dentro de la Villa 7, en su OneDrive | Lleva DNI manuscrito. Nadie lo busca ahí, y nuestra traza dice «archivado» |
 | El parte va a **otra obra** | Igual, en otra promoción | El mismo, peor |
-| Creamos una carpeta de obra o unidad **al lado** de la suya | `0677 15 VIVIENDAS...` junto a `0677 MIRASIERRA` | Su archivo partido en dos, y visible en todos sus equipos al momento |
+| Creamos una carpeta de obra o unidad **al lado** de la suya | `0677 15 VIVIENDAS...` junto a `0677-MIRASIERRA` | Su archivo partido en dos, y visible en todos sus equipos al momento. Desde D-4 (2026-09-18) el sistema **sí** crea carpetas, así que este es **el** riesgo de la feature: lo contiene la regla de las parecidas (§4.5, R35) |
 | Se re-archiva en Posventa un parte ya archivado en IT | Aparece un parte «nuevo» | Y nuestra traza pierde el puntero a IT (F-033) |
 | Reemplazamos un fichero que alguien tiene abierto por OneDrive | Conflicto de sincronización / `423 Locked` | Graph lo rechaza; no se reintenta (§10) |
 
@@ -44,9 +53,9 @@ Posventa** en segundos. Consecuencias de diseño:
   adaptador capaz de llegar a Graph (F-006 R19–R22, intactos);
 - se prefiere el 409 «destino no resuelto» a cualquier heurística generosa.
 
-### 0.3 · Rigor: se propone `critico`
+### 0.3 · Rigor: `critico` (decidido por el humano el 2026-09-18, D-R)
 
-F-013 está en `estandar`. Se propone **`critico`** (decisión **D-R**): escribe
+F-013 estaba en `estandar`. Pasa a **`critico`** (D-R, aceptada): escribe
 en la biblioteca real del negocio, con datos personales, y el fallo principal
 es silencioso. Es exactamente el perfil por el que F-006 y F-031/F-033 son
 `critico`. En la práctica cambia el umbral de cobertura y exige campaña de
@@ -70,7 +79,9 @@ mutación sin supervivientes sin justificar sobre `destino_posventa.py`,
 
 **Conclusión que manda sobre el diseño**: ni Sigrid ni el papel dan el nombre
 de la carpeta; como mucho dan con qué **casarla**. La carpeta se **encuentra**,
-no se compone.
+no se compone. **Precisado el 2026-09-18 (D-4)**: cuando no hay ninguna que
+encontrar —ni parecida—, se crea, y entonces sí se compone, desde Sigrid
+(§4.5, §4.6).
 
 ## 2 · Ficheros
 
@@ -79,7 +90,7 @@ no se compone.
 | Ruta | Capa | Qué |
 |---|---|---|
 | `services/postventa-api/domain/models/destino_posventa.py` | domain (puro) | `EstructuraArchivo`, `MotivoDestino`, `UbicacionReclamacion`, `clave_de_unidad`, `carpetas_de_obra`, `carpetas_de_unidad`, `carpeta_con_nombre`, `unir_ruta` (§4) |
-| `services/postventa-api/domain/ports/biblioteca.py` | domain | `ExploradorBibliotecaPort`: `listar_carpetas`, `crear_hoja` (§3.2) |
+| `services/postventa-api/domain/ports/biblioteca.py` | domain | `ExploradorBibliotecaPort`: `listar_carpetas`, `crear_subcarpeta` (§3.2) |
 | `services/postventa-api/domain/ports/ubicacion.py` | domain | `UbicacionPort`: `leer_ubicacion` (§3.3) |
 | `services/postventa-api/application/pipelines/destino_archivo.py` | application | `resolver_destino_posventa` y `DestinoResuelto` (§5) |
 | `services/postventa-api/infrastructure/sigrid/consultas_ubicacion.py` | infrastructure (puro) | SQL de la ubicación y su mapeo (§6.2) |
@@ -93,9 +104,9 @@ no se compone.
 
 | Ruta | Qué cambia |
 |---|---|
-| `services/postventa-api/config/settings.py` | Cuatro campos: `sharepoint_estructura` (`SHAREPOINT_ESTRUCTURA`, `"por_obra"`), `sharepoint_carpeta_incidencias` (`"PARTES INCIDENCIAS"`), `sharepoint_carpeta_firmados` (`"PARTES FIRMADOS"`), `sharepoint_crear_hoja` (`True`). Descripción de `sharepoint_carpeta_base` actualizada: vacía = raíz, solo admitida en `posventa` |
+| `services/postventa-api/config/settings.py` | Cinco campos: `sharepoint_estructura` (`SHAREPOINT_ESTRUCTURA`, `"por_obra"`), `sharepoint_carpeta_incidencias` (`"PARTES INCIDENCIAS"`), `sharepoint_carpeta_firmados` (`"PARTES FIRMADOS"`), `sharepoint_crear_carpetas` (`SHAREPOINT_CREAR_CARPETAS`, `True`, D-4) y `sharepoint_nombre_unidad` (`SHAREPOINT_NOMBRE_UNIDAD`, `codigo`/`nombre`, por omisión el que fije T4; §4.6). Descripción de `sharepoint_carpeta_base` actualizada: vacía = raíz, solo admitida en `posventa` |
 | `services/postventa-api/domain/models/errores.py` | `DestinoNoResuelto(motivo: str, detalle: str, candidatas: tuple[str, ...])` |
-| `services/postventa-api/infrastructure/sharepoint/graph.py` | `listar_carpetas` y `crear_hoja` en `AdaptadorSharePointGraph` (§6.1). Lo demás, intacto |
+| `services/postventa-api/infrastructure/sharepoint/graph.py` | `listar_carpetas` y `crear_subcarpeta` en `AdaptadorSharePointGraph` (§6.1). Lo demás, intacto |
 | `services/postventa-api/infrastructure/sharepoint/fabrica.py` | Valida `SHAREPOINT_ESTRUCTURA` y la base según estrategia (R3, R17), antes del token |
 | `services/postventa-api/infrastructure/sigrid/fabrica.py` | `construir_ubicaciones(ajustes)`: entorno `dev`/`pro` y configuración de lectura de Sigrid; **sin** `CIERRE_HABILITADO` (§6.2) |
 | `services/postventa-api/application/pipelines/paso_archivo.py` | Parámetro opcional `resolver_destino`; si llega, sustituye a `componer_destino` + `asegurar_carpeta` en el orden de §5. Sin él, el paso hace **exactamente** lo de hoy (R2) |
@@ -148,9 +159,10 @@ class ExploradorBibliotecaPort(Protocol):
         """Nombres de las CARPETAS hijas (no ficheros), todas las páginas.
         `carpeta=""` es la raíz. `None` si la carpeta no existe."""
 
-    def crear_hoja(self, *, padre: str, nombre: str) -> None:
-        """Crea `nombre` dentro de `padre`, que TIENE que existir.
-        Ya existente = éxito. Nunca crea intermedias: padre ausente = ArchivoFallido."""
+    def crear_subcarpeta(self, *, padre: str, nombre: str) -> None:
+        """Crea `nombre` dentro de `padre`, que TIENE que existir (`padre=""` es
+        la raíz). Ya existente = éxito. Nunca crea intermedias: padre ausente =
+        ArchivoFallido. Un nivel por llamada (R15)."""
 ```
 
 El adaptador de Graph implementa `ArchivoPort` **y** este puerto; la fábrica
@@ -163,6 +175,7 @@ devuelve la misma instancia y el borde la pasa por los dos lados.
 @dataclass(frozen=True)
 class UbicacionReclamacion:
     obra_codigo: str | None
+    obra_nombre: str | None      # con.res de ESA obra (upv.obride), para crear (R36)
     unidad_codigo: str | None
     unidad_nombre: str | None
 
@@ -191,11 +204,12 @@ compara literal: `0677` ≠ `677`, `06770 X` no casa. **No** se mira el nombre
 de la obra: medido, el de Sigrid no se parece a una carpeta (§1).
 
 Riesgo declarado: si Posventa escribe `0677-MIRASIERRA` o `0677_MIRASIERRA`,
-no casa → 409 `obra_sin_carpeta`. Es la dirección segura del fallo, y T2 lo
-mide antes de encender nada. Si la medición lo desmiente, se amplía la regla
-con el separador observado, **con test**, no a ojo.
+no casa. Desde D-4 eso **no** lleva a crear `0677 ...` al lado: esas grafías
+son **parecidas** (§4.5) y bloquean la creación → 409 `obra_parecida`. T2 lo
+mide antes de encender nada; si la medición muestra un separador sistemático,
+se amplía la regla **estricta** con ese separador, **con test**, no a ojo.
 
-### 4.2 Los tramos fijos (R14, R16)
+### 4.2 Los tramos fijos (R14, R16, R34, R35)
 
 ```python
 def carpeta_con_nombre(nombres: Iterable[str], *, buscado: str) -> tuple[str, ...]:
@@ -247,31 +261,105 @@ def unir_ruta(*tramos: str) -> str:
     """Une ignorando tramos vacíos y barras de los extremos: base '' no produce '/0677'."""
 ```
 
+### 4.5 Parecidas: cuándo se crea y cuándo no (R34, R35) — D-4
+
+La regla que convierte el permiso de crear de D-4 en algo seguro: **por
+nivel**, se clasifican las carpetas hijas en tres grupos.
+
+| Grupo | Regla | Qué pasa |
+|---|---|---|
+| **Casan** | La estricta del nivel (§4.1–§4.3) | 1 → se usa; >1 → 409 `<nivel>_ambigua` |
+| **Parecidas** | No casan, pero cumplen la **amplia** del nivel (abajo) | ≥1 y 0 que casan → **409 `<nivel>_parecida`**, no se crea nada |
+| Ninguna de las dos | — | 0 casan y 0 parecidas → **se crea** (si `SHAREPOINT_CREAR_CARPETAS`) |
+
+```python
+def parecidas_de_obra(nombres, *, codigo_obra) -> tuple[str, ...]
+def parecidas_de_unidad(nombres, *, ubicacion) -> tuple[str, ...]
+def parecidas_de_tramo(nombres, *, buscado) -> tuple[str, ...]
+```
+
+Las reglas amplias, a propósito **generosas** —su error cuesta un 409, el de
+la estricta cuesta un duplicado en OneDrive—:
+
+- **Obra**: algún token de `clave_de_unidad(nombre)` es numéricamente igual
+  al código (`int`, así que `677` y `00677` también): `0677-MIRASIERRA`,
+  `0677_X`, `OBRA 0677`, `677 MIRASIERRA`. Si el código de obra no es numérico
+  (hay códigos administrativos), igualdad de token literal.
+- **Unidad**: algún token numérico de la carpeta es igual a algún token
+  numérico de `K(unidad_codigo)` o `K(unidad_nombre)`: `VILLA 05 - GARCIA`,
+  `CHALET 5`, `V-5`, `5`. **No** lo son `VILLA 07` ni `VILLA 15`: un número
+  distinto es otra unidad, y es justo lo que se tiene que poder crear.
+- **Tramo fijo**: la clave de la carpeta contiene el token distintivo del
+  tramo (`INCIDENCIAS` para `PARTES INCIDENCIAS`, `FIRMADOS` para `PARTES
+  FIRMADOS`; se toma el **último** token de la clave configurada):
+  `PARTES DE INCIDENCIAS`, `INCIDENCIAS 2025`, `FIRMADOS`.
+
+Consecuencia que hay que aceptar sabiéndola: una obra cuyo código aparezca
+como número en el nombre de otra carpeta de la raíz (p. ej. una obra `0005` y
+una carpeta `LISTADO 5`) bloquea la creación de esa obra. Es un 409 con la
+carpeta culpable en `candidatas`, y lo resuelve una persona. Se prefiere así.
+
+### 4.6 Con qué nombre se crea (R36–R38) — condicionado a T2/T3
+
+| Nivel | Nombre | Medido / condición |
+|---|---|---|
+| Obra | `<cod obra> <con.res de la obra>`, blancos colapsados | Hoy daría `0677 15 VIVIENDAS UNIFAMILIARES EN MIRASIERRA(MADRID)` **[MEDIDO]**. Posventa probablemente usa algo corto (`0677 MIRASIERRA`) **[NO MEDIDO]**, que **no** se puede derivar de Sigrid sin inventar. Si T2 muestra una relación determinista con `con.res` (p. ej. siempre la última palabra antes del paréntesis), se escribe como regla con test en T4; si no, se queda el literal: largo, pero de origen conocido y el mismo para todos |
+| `PARTES INCIDENCIAS` | literal de `SHAREPOINT_CARPETA_INCIDENCIAS` | — |
+| Unidad | `con.cod` o `con.res` de la `upv`, según `SHAREPOINT_NOMBRE_UNIDAD` | **Se decide en T4**: `codigo` si T3 muestra que `upv.cod` ya es de la forma `VILLA 05`; `nombre` si no (daría «Viviendas Bloque Villa 5», hipótesis). **Si `upv.res` trae nombres de persona (T3), `nombre` queda descartado**: el nombre de carpeta acaba en logs y en OneDrive |
+| `PARTES FIRMADOS` | literal de `SHAREPOINT_CARPETA_FIRMADOS` | — |
+
+Tres reglas comunes:
+
+1. **Literal, nunca reformateado**: ni relleno de ceros, ni abreviaturas, ni
+   mayúsculas forzadas. Reformatear sería inventar la convención de Posventa a
+   partir de un ejemplo.
+2. **Imposible = 409, nunca saneo** (R38): mismos caracteres prohibidos que
+   `nombrado.CARACTERES_PROHIBIDOS` —se **importan**, no se copian— más blancos
+   en los extremos y punto final.
+3. **Todos los nombres se componen y comprueban antes de la primera creación**
+   (R38): no puede quedar una carpeta de obra vacía porque el nombre de la
+   unidad era imposible.
+
+Y la propiedad que lo cierra (R39): **lo que se crea casa consigo mismo**. El
+nombre de obra empieza por `<cod> ` (regla estricta §4.1); el de unidad es
+`K == K(unidad_codigo)` o `K == K(unidad_nombre)` (sufijo trivial, §4.3); los
+tramos fijos son el literal buscado. Un test por nivel lo fija: resolver, crear
+en el doble, volver a resolver → casa, 0 creaciones.
+
 ## 5 · El paso, y el orden
 
 `resolver_destino_posventa(ctx, *, nombre_fichero, explorador, ubicaciones,
-base, incidencias, firmados, crear_hoja) -> DestinoResuelto`, en
-`application/pipelines/destino_archivo.py`:
+base, incidencias, firmados, crear_carpetas, nombre_unidad) -> DestinoResuelto`,
+en `application/pipelines/destino_archivo.py`:
 
 1. `leer_ubicacion(codigo_reclamacion=a_codigo_de_sigrid(numero))` — R6, R7.
    El código se convierte con la **misma** función que usa el cierre
    (`a_codigo_de_sigrid`, `domain/models/cierre.py`), nunca con una copia.
+   Fallo de red/configuración → se deja subir (503, R41).
 2. Obra de la ubicación vs. código de obra del parte, normalizados — R8.
-3. `listar_carpetas(base)` → `carpetas_de_obra` — R10, R13.
-4. `listar_carpetas(obra)` → `carpeta_con_nombre(INCIDENCIAS)` — R14.
-5. `listar_carpetas(obra/INCIDENCIAS)` → `carpetas_de_unidad` — R11, R14.
-6. `listar_carpetas(obra/INCIDENCIAS/unidad)` → `carpeta_con_nombre(FIRMADOS)`;
-   si no está: `crear_hoja` pendiente (R15) o 409 `sin_carpeta_firmados` (R16).
+3. **Componer y comprobar los cuatro nombres de creación** (§4.6) — R36–R38.
+   Aún no se ha listado nada.
+4. Por cada nivel, en orden (obra, `INCIDENCIAS`, unidad, `FIRMADOS`):
+   `listar_carpetas(padre)` → casan / parecidas (§4.5):
+   - 1 casa → se baja a ella;
+   - >1 casan → 409 `<nivel>_ambigua`;
+   - 0 casan y ≥1 parecida → 409 `<nivel>_parecida`;
+   - 0 y 0 → si `crear_carpetas`, se **anota** la creación y **todos los
+     niveles de debajo se anotan también sin listar** (el padre es nuevo, no
+     puede tener nada); si no, 409 `sin_carpeta_<nivel>` (R16).
+5. Nada se crea aquí: el resolutor es **puro respecto a escrituras** y devuelve
+   la lista de creaciones pendientes. Las ejecuta el paso **después** de la
+   traza previa (§5, tabla, paso 6).
 
 ```python
 @dataclass(frozen=True)
 class DestinoResuelto:
-    destino: DestinoArchivo                 # carpeta completa + nombre (de nombrado.py)
-    hoja_por_crear: tuple[str, str] | None  # (padre, nombre) o None
+    destino: DestinoArchivo                          # carpeta completa + nombre (nombrado.py)
+    carpetas_por_crear: tuple[tuple[str, str], ...]  # (padre, nombre), en orden
 ```
 
-Cada fallo levanta `DestinoNoResuelto(motivo, detalle, candidatas)`. **Cuatro
-listados y una lectura por parte**, todo lecturas; con 22 partes, ~110 GET.
+Cada fallo levanta `DestinoNoResuelto(motivo, detalle, candidatas)`. **Hasta
+cuatro listados y una lectura por parte**, todo lecturas; con 22 partes, ~110 GET.
 Asumible (F-006 hace ~3 por parte) y dentro de los 35 s por llamada. Sin caché
 entre partes: cada llamada es un parte y la Function no guarda estado (y una
 caché escondería la carpeta que Posventa acaba de crear, que es justo el
@@ -286,7 +374,7 @@ reintento de R20).
 | 3 | L1 (traza `archivado` corta) | **inerte** hoy; F-033 | F-033 |
 | 4 | **Resolver destino** | — | §5 arriba. `DestinoNoResuelto` → traza `error` con motivo (R18) y se relanza |
 | 5 | Traza previa `pendiente` (F-019) | igual | igual, con la carpeta resuelta |
-| 6 | Carpeta | `asegurar_carpeta` (crea intermedias) | `crear_hoja` **solo** si hace falta; **nunca** `asegurar_carpeta` (R15) |
+| 6 | Carpeta | `asegurar_carpeta` (crea intermedias) | `crear_subcarpeta` por cada `carpetas_por_crear`, en orden, un nivel por llamada; aviso y log por carpeta (R40); **nunca** `asegurar_carpeta` (R15). Si una creación falla, `ArchivoFallido` como hoy: traza `error`, y el reintento vuelve a resolver y encuentra lo ya creado (R39) |
 | 7–9 | `buscar`, `subir` (replace), traza final | igual | igual |
 
 La traza de error del paso 4 **puede** fallar con `ReferenciaNoConsta` si el
@@ -305,11 +393,12 @@ resolver.
   SharePoint). `404` → `None`. Todo con `_con_reintentos`: `404` tolerado,
   transitorios reintentados, el resto → `ArchivoFallido` con el código y nada
   más (R26 de F-006). El `nextLink` lleva el `drive_id`: **no se loguea**.
-- `crear_hoja`: `POST {ruta del padre}:/children` con
-  `conflictBehavior=fail` y `409` tolerado —lo que ya hace `_crear_carpeta`,
-  que se reutiliza—, pero exigiendo `padre` no vacío y **sin recorrer
-  tramos**: si el padre no existe, Graph responde `404` y eso es
-  `ArchivoFallido`, no una carpeta nueva.
+- `crear_subcarpeta`: `POST {ruta del padre}:/children` (o
+  `root/children` si `padre=""`) con `conflictBehavior=fail` y `409`
+  tolerado —lo que ya hace `_crear_carpeta`, que se reutiliza— y **sin
+  recorrer tramos**: si el padre no existe, Graph responde `404` y eso es
+  `ArchivoFallido`, no una carpeta nueva. El `409` de una carrera entre dos
+  partes (R39) deja **una** carpeta porque el nombre es determinista.
 - La puerta de entorno del constructor no cambia: listar también exige
   `dev`/`pro`, porque solo se construye el adaptador allí.
 
@@ -317,7 +406,7 @@ resolver.
 
 ```sql
 -- infrastructure/sigrid/consultas_ubicacion.py  (SQL_UBICACION)
-SELECT o.cod, u.cod, u.res
+SELECT o.cod, o.res, u.cod, u.res
 FROM dbo.con c
 JOIN dbo.rcp r      ON r.ide = c.ide
 LEFT JOIN dbo.upv v ON v.ide = r.upvide
@@ -341,7 +430,9 @@ WHERE c.tip = ? AND c.cod = ?
   **archivar pasa a depender de `sigrid-api`**; si la pasarela cae, `503`
   (`ConfiguracionSigridIncompleta`/transitorio) y no se sube nada.
 - `unidad_nombre` **no se registra** en ningún log (puede llevar texto libre
-  de la ficha; §1). Sí el nombre de la carpeta resuelta.
+  de la ficha; §1). Sí el nombre de la carpeta resuelta o creada —por eso, si
+  T3 muestra nombres de persona en `upv.res`, `SHAREPOINT_NOMBRE_UNIDAD` no
+  puede valer `nombre` (§4.6)—.
 
 ## 7 · Infra, despliegue y el corte
 
@@ -363,8 +454,10 @@ F-006. Hace:
    INCIDENCIAS` → cada unidad → si tiene `PARTES FIRMADOS`, y aplica **la
    misma regla** de §4 (el script ejecuta `domain/models/destino_posventa.py`
    con el intérprete del servicio **por fichero, nunca con `-c`**, con
-   `Invoke-PythonDelServicio` de `08_lectura_sigrid_comun.ps1`) para decir qué
-   carpeta resolvería. **No lista ficheros** —sus nombres pueden llevar el de
+   `Invoke-PythonDelServicio` de `08_lectura_sigrid_comun.ps1`) para decir, por
+   cada unidad que le pase el humano (salida de `24_ubicacion_sigrid.ps1`), si
+   la **resolvería**, la **crearía** —y con qué nombre— o la **bloquearía**
+   (parecida o ambigua). **No crea nada.** **No lista ficheros** —sus nombres pueden llevar el de
    un cliente— y cuenta cuántos hay en cada hoja sin nombrarlos.
 
 Ni `POST` (salvo el token), ni `PUT`, ni `PATCH`, ni `DELETE`: lo comprueba un
@@ -441,18 +534,27 @@ recortar a `Sites.Selected`, habrá que conceder **el sitio de Posventa**
 (`write`) —y, si se conserva la lectura de lo de IT, el de IT (`read`)—.
 Se anota en la ficha de F-018 (T18); no se hace aquí.
 
-## 9 · Decisiones abiertas para el humano
+## 9 · Decisiones del humano (cerradas el 2026-09-18)
 
-| Id | Pregunta | Opciones | Recomendación |
-|---|---|---|---|
-| **D-1** | Carpeta base con la estructura de Posventa (H3: «PARTES FIRMADOS (sistema)») | (a) **raíz** de la biblioteca (`SHAREPOINT_CARPETA_BASE=""`); (b) una carpeta delante, p. ej. `PARTES FIRMADOS (sistema)/<cod> <OBRA>/...` | **(a)**. Con (b) las carpetas de obra serían **nuestras**, no las de Posventa, y habría que crearlas: contradice H2 y R15. Si las carpetas de obra de Posventa no están en la raíz (T2 lo dirá), (b) pasa a ser «la ruta donde sí están», no una carpeta nuestra |
-| **D-2** | ¿F-033 antes de F-013? | (a) sí, dependencia dura; (b) F-013 la absorbe; (c) F-013 compara `drive_id` | **(a)**, §8.1 |
-| **D-3** | ¿F-031 antes de F-013? | (a) sí; (b) no, con riesgo residual escrito | **(a)**; (b) aceptable, §8.2 |
-| **D-4** | ¿Quién crea las carpetas? | (a) nosotros **solo la hoja** `PARTES FIRMADOS` dentro de una unidad existente (`SHAREPOINT_CREAR_HOJA=true`); (b) nada: toda carpeta ausente → 409; (c) también la unidad | **(a)**. La hoja es la carpeta «de los partes firmados», que es lo que archivamos; obra y unidad son el esqueleto de Posventa. (c) descartada: una unidad mal casada crearía `VILLA 5` junto a `VILLA 05` |
-| **D-5** | Cola humana del «destino no resuelto» | (a) el 409 con motivo, y la persona archiva a mano o pide la carpeta; (b) además, filtro en el front de partes con traza `error` por destino; (c) además, que una persona **elija** la carpeta y se guarde un mapa `unidad → carpeta` en el schema propio | **(a)** en F-013. (b) y (c) son **fichas nuevas** (front; y tabla + endpoint), y (c) solo si T2/T3 muestran que la regla falla a menudo |
-| **D-6** | Regla de casado de la unidad (§4.3) | (a) la propuesta: clave canónica, números como enteros, sufijo contiguo con número; (b) igualdad estricta con `upv.cod`; (c) mapa explícito mantenido a mano | **(a)**, **condicionada a T3**: si `upv.cod` resulta ser ya `VILLA 05` o equivalente, (b) es más simple y más segura |
-| **D-7** | Si la ubicación de Sigrid falla por red | (a) 503, no se sube; (b) caer a la `unidad` del papel | **(a)**. (b) reintroduce la IA en la decisión de la carpeta |
-| **D-R** | Rigor | `estandar` / `critico` | **`critico`** (§0.3) |
+Las preguntas se hicieron con la tabla de abajo, y el humano respondió el
+mismo día, literal: *«si, pero quiero que tenga permiso para crear todas las
+carpetas no solo partes firmados.»* La columna «Decidido» es lo que manda; las
+opciones y la recomendación se conservan para que se entienda por qué.
+
+| Id | Pregunta | Opciones | Recomendación | **Decidido (humano, 2026-09-18)** |
+|---|---|---|---|---|
+| **D-1** | Carpeta base con la estructura de Posventa (H3: «PARTES FIRMADOS (sistema)») | (a) **raíz** de la biblioteca (`SHAREPOINT_CARPETA_BASE=""`); (b) una carpeta delante | (a). Con (b) las carpetas de obra serían nuestras, contra H2 | **(a) raíz** |
+| **D-2** | ¿F-033 antes de F-013? | (a) sí, dependencia dura; (b) F-013 la absorbe; (c) F-013 compara `drive_id` | (a), §8.1 | **(a)** |
+| **D-3** | ¿F-031 antes de F-013? | (a) sí; (b) no, con riesgo residual escrito | (a) | **(a)**: orden F-033 → F-031 → F-013 |
+| **D-4** | ¿Quién crea las carpetas? | (a) solo la hoja `PARTES FIRMADOS`; (b) nada; (c) también la unidad | (a) | **Otra: el sistema puede crear toda la ruta que falte** —obra, `PARTES INCIDENCIAS`, unidad y `PARTES FIRMADOS`—. Traducción: §4.5 (solo si no hay ninguna **ni parecida**), §4.6 (nombres), `SHAREPOINT_CREAR_CARPETAS` encendido |
+| **D-5** | Cola humana del «destino no resuelto» | (a) el 409 con motivo; (b) filtro en el front; (c) mapa `unidad → carpeta` | (a); (b) y (c) fichas nuevas | **(a)** |
+| **D-6** | Regla de casado de la unidad (§4.3) | (a) la propuesta; (b) igualdad con `upv.cod`; (c) mapa a mano | (a), condicionada a T3 | **(a), condicionada a T3** |
+| **D-7** | Si la ubicación de Sigrid falla por red | (a) 503; (b) caer a la `unidad` del papel | (a) | **(a)** |
+| **D-R** | Rigor | `estandar` / `critico` | `critico` | **`critico`** |
+
+Lo que D-4 deja **pendiente de medir**, sin reabrirla: el nombre corto de la
+obra (§4.6, T2) y el campo de la unidad (`SHAREPOINT_NOMBRE_UNIDAD`, T3). Se
+fijan en la parada T4 con los datos delante.
 
 Y una que **no** es de F-013 pero hay que saber: la nomenclatura manual de
 Posventa (`RS26.08 – 0123 PARTE FIRMADO`, sin obra, con raya) **no coincide**
@@ -462,13 +564,17 @@ R13); se avisa a Posventa en la comunicación del corte.
 
 ## 10 · Riesgos y alternativas descartadas
 
-1. **Componer la carpeta desde Sigrid** (`<con.cod> <con.res>`). Descartada:
-   medido, `con.res` es «15 VIVIENDAS UNIFAMILIARES EN MIRASIERRA(MADRID)», y
-   crearía carpetas paralelas en el archivo de Posventa.
+1. **Componer la carpeta desde Sigrid** (`<con.cod> <con.res>`) **en vez de
+   buscarla**. Descartada: medido, `con.res` es «15 VIVIENDAS UNIFAMILIARES EN
+   MIRASIERRA(MADRID)», y crearía carpetas paralelas en el archivo de Posventa.
+   Desde D-4 se compone así **solo** para crear cuando no hay ninguna ni
+   parecida (§4.6).
 2. **Componer la unidad desde el papel**. Descartada: «Viviendas Bloque Villa
    5» ≠ `VILLA 05`, y es lectura de IA.
-3. **Crear lo que falte** (como F-006 R11). Descartada para obra y unidad
-   (D-4): el fallo se vería en todos los equipos de Posventa.
+3. **Crear lo que falte** (como F-006 R11), **sin mirar parecidas**.
+   Descartada. D-4 permite crear toda la ruta, pero crear a ciegas —el
+   `asegurar_carpeta` de F-006— pondría `0677 15 VIVIENDAS...` junto a
+   `0677-MIRASIERRA`. Se crea solo con 0 que casan y 0 parecidas (§4.5).
 4. **Casado «contiene» o por similitud**. Descartado: `VILLA 5` dentro de
    `VILLA 51`. Una similitud difusa es la forma de que el DNI acabe en la
    vivienda de al lado sin que nadie se entere.
@@ -492,17 +598,39 @@ R13); se avisa a Posventa en la comunicación del corte.
    código del parte (R8), no contra su `ide`, así que dos obras `0677` en el
    maestro no molestan mientras la carpeta sea una. Si hubiera dos carpetas
    `0677 ...`, 409 ambigua (R13).
+11. **Duplicado por otra grafía** (D-4). El riesgo principal desde el
+   2026-09-18. Contención: la regla de parecidas (§4.5), generosa a propósito;
+   tests obligatorios de R35. Residual: una grafía que ni siquiera comparta el
+   número (`VILLA CINCO`) no se detecta y se crearía `VILLA 5` al lado. T2 mide
+   si hay casos así en la obra piloto antes de encender.
+12. **El nombre creado no le sirve a Posventa** (`0677 15 VIVIENDAS
+   UNIFAMILIARES EN MIRASIERRA(MADRID)` frente a su `0677 MIRASIERRA`). Es
+   **correcto pero feo**, y visible en todos sus equipos. Contención: T4 fija el
+   nombre con T2 delante; R42 hace la primera creación con Posventa avisada.
+13. **Carpetas creadas y vacías** si la subida falla después de crearlas.
+   Aceptado: el reintento las encuentra y sube (R39). No se borran.
+14. **Deshacer una carpeta creada por error** lo hace **una persona**; el
+   sistema no borra, no mueve y no renombra nunca (R43). Procedimiento en
+   `docs/INTEGRACION.md`: localizar los partes de esa carpeta con la consulta
+   de solo lectura sobre `postventa.archivos`, moverlos a la buena dentro de la
+   misma biblioteca (el `item_id` se conserva; la columna `carpeta` de la traza
+   queda con el nombre viejo, riesgo 8), y borrar o renombrar la sobrante. El
+   borrado va a la papelera del sitio y se propaga a los OneDrive. Si la carpeta
+   buena **no** existía y el nombre creado solo es feo, lo sencillo es
+   **renombrarla** a mano: la siguiente resolución la encontrará si sigue
+   empezando por el código (obra) o casando con la unidad (§4.1, §4.3); si no,
+   dará 409 `parecida`, que es el aviso correcto.
 
 ## 11 · Tests (todos sin red, sin BBDD y sin IA)
 
 | Fichero | Cubre |
 |---|---|
-| `test_f013_destino_dominio.py` | R9, R10, R11, R13, R14 (casado), R17 (`unir_ruta`), tabla de §4.3 entera, `clave_de_unidad` con tildes/ceros/blancos |
-| `test_f013_resolver_destino.py` | R6–R8, R13–R16 con `ExploradorFalso` y `UbicacionesFalsas`; que la obra se valida **antes** de listar; `crear_hoja` solo con la opción |
-| `test_f013_paso_archivo_posventa.py` | R4, R5, R15, R18, R20–R22: orden de §5 (registro de llamadas del doble), sin `asegurar_carpeta` en `posventa`, traza `error` con motivo, reintento tras crear la carpeta |
+| `test_f013_destino_dominio.py` | R9, R10, R11, R13, R14 (casado), R17 (`unir_ruta`), tabla de §4.3 entera, `clave_de_unidad` con tildes/ceros/blancos; **§4.5 entera** (casan / parecidas / ninguna por nivel, con los cuatro casos obligatorios de R35); **§4.6** (nombres de R36–R38, literal sin reformatear, imposibles) |
+| `test_f013_resolver_destino.py` | R6–R8, R13–R16, R34–R39, R41 con `ExploradorFalso` y `UbicacionesFalsas`: la obra se valida **antes** de listar; los nombres se comprueban antes de anotar ninguna creación; con un nivel nuevo, los de debajo se anotan **sin listar**; `crear_carpetas` apagado → `sin_carpeta_<nivel>`; lo creado casa en la segunda resolución (R39) |
+| `test_f013_paso_archivo_posventa.py` | R4, R5, R15, R18, R20–R22, R40 (aviso por carpeta creada), creación **después** de la traza previa y en orden: orden de §5 (registro de llamadas del doble), sin `asegurar_carpeta` en `posventa`, traza `error` con motivo, reintento tras crear la carpeta |
 | `test_f013_por_obra_intacto.py` | R2: el paso sin resolutor hace las mismas llamadas que hoy; los tests de F-006 no se tocan (control de alcance por diff, patrón de `test_f032_alcance_cerrado.py`, con su mitad que no depende de git) |
-| `test_f013_adaptador_graph_listado.py` | R12 (dos páginas con `nextLink`), filtro de carpetas, `404`→`None`, `crear_hoja` con padre ausente → `ArchivoFallido` y **ningún** `POST` a la raíz |
-| `test_f013_ubicacion_sigrid.py` | SQL carácter a carácter, parámetros en orden, mapeo con nulos, solo `sql/read` |
+| `test_f013_adaptador_graph_listado.py` | R12 (dos páginas con `nextLink`), filtro de carpetas, `404`→`None`, `crear_subcarpeta` con padre ausente → `ArchivoFallido` sin crear intermedias; `409` → éxito |
+| `test_f013_ubicacion_sigrid.py` | SQL carácter a carácter (con `o.res`), parámetros en orden, mapeo con nulos, solo `sql/read` |
 | `test_f013_fabricas.py` | R1, R3, R17 (base vacía en `por_obra`), `construir_ubicaciones` sin `CIERRE_HABILITADO` y con entorno `test` → se niega |
 | `test_f013_archivar_http.py` | R19 (409, `error`/`motivo`/`candidatas`, sin IDs), R23 (log sin `unidad_nombre`), R25 desde el endpoint (tras F-033) |
 | `test_f013_arquitectura.py` | domain sin `httpx`; `destino_posventa.py` sin E/S; `nombrado.py` y `ArchivoPort` sin cambios |
@@ -513,7 +641,8 @@ R13); se avisa a Posventa en la comunicación del corte.
 
 Todo cae dentro de `postventa-api` y de su responsabilidad —archivar el parte—:
 no hay servicio nuevo ni lógica ajena. Lo que **no** es de aquí y se deja
-fuera: el esqueleto de carpetas de Posventa (lo mantiene Posventa, D-4), los
+fuera: renombrar, mover o borrar carpetas de Posventa (lo hace una persona;
+el sistema solo **crea** cuando no hay ninguna ni parecida, D-4), los
 permisos del tenant (humano, F-018), el endpoint o el SQL de `sigrid-api` (se
 usa `sql/read` tal y como está desplegado; **no** hace falta tocar la
 pasarela) y el documento de `azure-apps/` (otro repositorio, T19). La cola

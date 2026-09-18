@@ -1,7 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## SPEC ESCRITA Y ENMENDADA · 2026-09-18 · **F-013, mudar el archivo a la biblioteca de Posventa**
+> ## SPEC APROBADA · 2026-09-18 · **F-013, mudar el archivo a la biblioteca de Posventa**
+>
+> **Aprobada por el humano el 2026-09-18** («si»), con la enmienda de D-4
+> incluida. Queda `spec_ready` y **bloqueada por F-033 y F-031** (orden F-033 →
+> F-031 → F-013). F-018 ya pedía asignar la biblioteca de Posventa en su
+> criterio 2: no hace falta tocar esa ficha.
 >
 > Rama `feature/F-013-archivo-posventa` (desde `dev`). Spec en
 > `specs/F-013-archivo-posventa/` (requirements, design, tasks). **Ni una

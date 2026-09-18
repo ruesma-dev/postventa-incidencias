@@ -1,7 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## SPEC ESCRITA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada** (`spec_ready`)
+> ## SPEC APROBADA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada** (`spec_ready`)
+>
+> **Aprobada por el humano el 2026-09-18** con todas las recomendaciones
+> (D-1 a D-7). D-6 dado de alta como **F-034** (`critico`, bloqueada por
+> F-033). Orden: **F-033 → F-031 → F-034 → F-013**.
+>
+> **Dato nuevo del humano, el mismo día**: *«lo que esta en IT eran pruebas,
+> se puede olvidar.»* Deroga la premisa H4 de F-013 («lo de IT se queda en IT,
+> localizable»): no hay que documentar cómo localizarlo. Pendiente de enmendar
+> en la spec de F-013 (recuadro fechado) y de decidir qué pasa con las trazas
+> `archivado` que apuntan a IT, porque con D-1 esos partes no se subirían
+> nunca a Posventa.
 >
 > Rama `feature/F-033-l1-traza-archivo` (desde `dev`, `11dda9d`). Spec en
 > `specs/F-033-l1-traza-archivo/` (requirements R1–R27, design, tasks T1–T14).

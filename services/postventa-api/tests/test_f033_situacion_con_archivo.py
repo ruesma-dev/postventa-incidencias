@@ -347,7 +347,7 @@ def test_f033_r3_el_corte_del_mapeo_coincide_con_la_sentencia():
         if columna.startswith("a.")
     )
 
-    assert mapeo.COLUMNAS_DE_VEREDICTO_Y_CIERRE == primera_de_archivo == 10
+    assert mapeo.COLUMNAS_ANTES_DE_LA_TRAZA == primera_de_archivo == 10
     assert mapeo.COLUMNAS_DE_TRAZA_ARCHIVO == len(seleccionadas) - 10 == 8
 
 

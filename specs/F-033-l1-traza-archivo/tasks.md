@@ -64,7 +64,7 @@
       R3 (forma) y R17 (sentencia) de T1 en verde;
       `python -m pytest services/postventa-api/tests/test_f005_sentencias.py -q` en verde.
 
-- [ ] **T4**: `mapeo.py`: `fila_a_traza_archivo` y `fila_a_situacion_guardada`
+- [x] **T4**: `mapeo.py`: `fila_a_traza_archivo` y `fila_a_situacion_guardada`
       con el corte con nombre (R4, R5; `design.md` §3.3). `repositorio_pg.py`:
       `consultar_situacion` rellena `archivo` y registra su estado (R6). En el
       mismo commit, las filas de diez → dieciocho en

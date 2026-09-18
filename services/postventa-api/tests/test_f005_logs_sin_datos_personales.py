@@ -251,6 +251,8 @@ def test_f030_r21_leer_la_situacion_no_publica_nada_del_papel(caplog, conexion):
                 OBRA_INVENTADA,
                 INCIDENCIA_INVENTADA,
                 None,
+                # F-033 T4 · las ocho columnas de la traza de archivo, sin traza.
+                *(None,) * 8,
             )
         ],
     )

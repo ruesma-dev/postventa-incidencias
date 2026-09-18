@@ -559,10 +559,23 @@ class RepositorioComoLaBase:
         return ResultadoGuardado.CREADO
 
     def guardar_archivo(self, *, traza: Any) -> Any:
-        from domain.models.persistencia import ResultadoGuardado
+        """La traza de archivo, **sin pisar una `archivado`** (F-033, R17).
 
+        Es la semántica del `WHERE` de `upsert_archivo`: si la fila ya está en
+        `archivado`, no se toca y vuelve `SIN_CAMBIOS`; si está en `pendiente`
+        o `error`, se pisa y vuelve `ACTUALIZADO`. Un doble que pisara siempre
+        dejaría en verde a un paso que confiara en la tabla para no perder el
+        rastro del fichero subido.
+        """
+        from domain.models.persistencia import EstadoArchivo, ResultadoGuardado
+
+        anterior = self.archivos.get(traza.hash_parte)
+        if anterior is not None and anterior.estado is EstadoArchivo.ARCHIVADO:
+            return ResultadoGuardado.SIN_CAMBIOS
         self.archivos[traza.hash_parte] = traza
-        return ResultadoGuardado.CREADO
+        if anterior is None:
+            return ResultadoGuardado.CREADO
+        return ResultadoGuardado.ACTUALIZADO
 
     def guardar_grafico(self, *, traza: Any) -> Any:
         from domain.models.persistencia import ResultadoGuardado
@@ -590,6 +603,10 @@ class RepositorioComoLaBase:
 
         Sin fila en `partes` no vuelve ninguna fila, y eso son veredicto `None`
         y cierre `None`: la consulta de verdad se ancla ahí (R8, R9).
+
+        Desde F-033 son **cinco**: la fila lleva además las ocho columnas de la
+        traza de archivo y se parte con `mapeo.fila_a_situacion_guardada`, la
+        función de producción. Sin fila en `partes`, tampoco hay traza (R4).
         """
         from domain.models.estado import SituacionParte
         from infrastructure.persistencia import mapeo
@@ -606,16 +623,17 @@ class RepositorioComoLaBase:
                 decision_humana = decision
 
         fila = self._fila_de_veredicto_y_cierre(hash_parte)
-        validacion, estado_cierre = (
-            mapeo.fila_a_validacion_y_cierre(fila, hash_parte=hash_parte)
+        validacion, estado_cierre, archivo = (
+            mapeo.fila_a_situacion_guardada(fila, hash_parte=hash_parte)
             if fila is not None
-            else (None, None)
+            else (None, None, None)
         )
         return SituacionParte(
             decision_humana=decision_humana,
             ultimo_estado_registrado=ultimo_estado,
             estado_cierre=estado_cierre,
             validacion=validacion,
+            archivo=archivo,
         )
 
     def consultar_estado_cierre(self, *, hash_parte: str) -> str | None:
@@ -639,9 +657,16 @@ class RepositorioComoLaBase:
         `None` si ese parte no tiene veredicto, porque el `JOIN` es `LEFT`—; las
         cuatro siguientes, de la de `partes`, que es de donde tienen que salir:
         el DDL de `validaciones` prohíbe copiar ahí el texto manuscrito del
-        cliente. La última es el estado de cierre.
+        cliente. La décima es el estado de cierre.
+
+        F-033 le añade **las ocho de la traza de archivo** al final, sacadas de
+        los parámetros de `sentencias.upsert_archivo` —lo que la tabla habría
+        guardado, en el orden de `_COLUMNAS_ARCHIVO`—, o ocho `None` si no hay
+        traza, que es lo que devuelve el `LEFT JOIN` que no casa. Así la traza
+        vuelve **recompuesta** por `mapeo.fila_a_traza_archivo` y no es el mismo
+        objeto que entró.
         """
-        from infrastructure.persistencia import mapeo
+        from infrastructure.persistencia import mapeo, sentencias
 
         campos = self.columnas_de_partes.get(hash_parte)
         if campos is None:
@@ -653,6 +678,14 @@ class RepositorioComoLaBase:
         def columna(nombre: str) -> Any:
             return campos[mapeo.COLUMNAS_DE_CAMPOS.index(nombre)]
 
+        traza = self.archivos.get(hash_parte)
+        if traza is None:
+            de_archivo: tuple = (None,) * mapeo.COLUMNAS_DE_TRAZA_ARCHIVO
+        else:
+            _, guardadas = sentencias.upsert_archivo(esquema="postventa", traza=traza)
+            # Sin el `hash_parte` (primera) ni el estado terminal (última).
+            de_archivo = tuple(guardadas[1 : len(sentencias._COLUMNAS_ARCHIVO)])
+
         return (
             *del_veredicto,
             columna("observaciones"),
@@ -660,4 +693,5 @@ class RepositorioComoLaBase:
             columna("codigo_obra"),
             columna("numero_incidencia"),
             self.consultar_estado_cierre(hash_parte=hash_parte),
+            *de_archivo,
         )

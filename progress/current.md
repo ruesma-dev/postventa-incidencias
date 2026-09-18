@@ -1,6 +1,194 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ CERRADA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada**
+>
+> Review **APROBADO** (`progress/review_F-033.md`, cuatro hallazgos de gravedad baja y
+> ninguno bloqueante). Rama `feature/F-033-l1-traza-archivo`, commits locales,
+> **sin push y sin merge a `dev`**. **No se despliega sin T13.** T13 sirve además para
+> contar cuántas trazas `archivado` apuntan a IT (observación O-2 de la review:
+> con D-1 esos partes no se subirán nunca a Posventa; lo decide el humano en F-013).
+>
+> ### Verificaciones MANUAL pendientes (del humano, listas para copiar)
+>
+> **T13 · antes de desplegar (R26).** Solo lectura, dentro del schema
+> `postventa`, con las credenciales del humano:
+>
+> ```sql
+> SET search_path TO postventa;
+>
+> -- 1. Cuántas trazas hay en cada estado, y cuántas con biblioteca.
+> SELECT estado, count(*) AS trazas, count(drive_id) AS con_biblioteca
+> FROM postventa.archivos
+> GROUP BY estado
+> ORDER BY estado;
+>
+> -- 2. Las que se quedaron en 'pendiente': posibles ficheros subidos
+> --    sin traza final (ArchivoSinTraza). Sin drive_id ni web_url.
+> SELECT hash_parte, carpeta, nombre_fichero, intentos
+> FROM postventa.archivos
+> WHERE estado = 'pendiente'
+> ORDER BY hash_parte;
+> ```
+>
+> Anotar el resultado en `progress/` **sin identificadores de biblioteca**. Lo
+> esperable: cero filas en la segunda. Si sale alguna, una persona mira esa
+> carpeta en SharePoint antes de desplegar.
+>
+> **T14 · después de desplegar (R27).** Con autorización expresa para un parte
+> concreto que ya conste `archivado`, y la ventana `ARCHIVO_HABILITADO`
+> abierta solo para ello:
+>
+> 1. Anotar los tres valores de
+>    `SELECT estado, intentos, archivado_at_utc FROM postventa.archivos WHERE hash_parte = '<hash>';`
+> 2. Volver a archivarlo desde el front (o `POST /api/archivar` con el mismo
+>    cuerpo).
+> 3. Comprobar: la respuesta trae `AVISO_YA_ARCHIVADO` («este parte ya estaba
+>    archivado: se devuelve el destino que ya tenía y no se ha vuelto a
+>    subir»); en SharePoint el fichero conserva su fecha de modificación y no
+>    hay otro; y la consulta del paso 1 devuelve **los mismos tres valores**
+>    (`intentos` igual: no hubo ninguna escritura).
+> 4. Cerrar la ventana.
+
+> ## BLOQUE 3 HECHO · 2026-09-18 · **F-033, T9–T12 · documentación y cierre** (`in_progress`, listo para el reviewer)
+>
+> Rama `feature/F-033-l1-traza-archivo`, commits `444a50c` (T9), `801eb45`
+> (T10), `ae698a1` (T11) y el de T12 (informe y este bloque). Detalle y
+> **resumen para el reviewer, con las siete desviaciones D-impl-1…7**, en
+> `progress/impl_F-033.md`.
+>
+> - T9: `docs/ARCHITECTURE.md`, «Precisado por F-033 el 2026-09-18» bajo las
+>   tres capas; solo añade líneas (+17, −0).
+> - T10: `tests/test_f033_alcance_cerrado.py`, fichero propio (D-impl-7):
+>   sin DDL, sin front, sin D-6 ni nombrado; dos mitades por frontera y las
+>   tres guardas del diff. Se comprobó que se ponen rojos ante un `.sql`
+>   nuevo y ante un uso de `drive_id_vigente` fuera de su sitio.
+> - T11: línea base verde reejecutada sin caché (2993 passed); mutación
+>   **21 mutantes, 0 supervivientes** (8 workers, 253 s).
+> - T12: `bash harness/init.sh` en verde: 2993 passed, 20 skipped;
+>   cobertura de líneas cambiadas 100 % (65/65).
+> - Lo que el proyecto expone o consume **no cambia**: `azure-apps/` no se toca.
+>
+> **Qué queda**: revisión (reviewer) contra `CHECKPOINTS.md`; **T13** (humano,
+> lectura antes de desplegar) y **T14** (humano, después de desplegar), con
+> los comandos listos para copiar en el informe. No desplegar sin T13.
+
+> ## BLOQUE 2 HECHO · 2026-09-18 · **F-033, T5–T8 · L1 en el paso y en el endpoint** (`in_progress`)
+>
+> Rama `feature/F-033-l1-traza-archivo`, commits `b98ac7d` (T5, RED),
+> `dec048e` (T6), `6f98f9b` (T7), `88eee31` (T8). Detalle en
+> `progress/impl_F-033.md`, sección «Bloque 2».
+>
+> - `paso_archivo` ya **no** acepta `traza_previa`: L1 lee
+>   `ctx.situacion.archivo`, la situación que leyó la puerta, sin consulta
+>   propia. Entra `drive_id_vigente` y `archivar.py` le pasa
+>   `SHAREPOINT_DRIVE_ID`.
+> - Traza `archivado` en otro destino → corta igual y avisa
+>   (`AVISO_ARCHIVADO_EN_OTRO_DESTINO`). `pendiente` en otra ruta → sigue, con
+>   aviso y log. `SIN_CAMBIOS` en la traza previa → relee una vez y no sube;
+>   en la final → log, no es fallo.
+> - RED real: el circuito de doble archivado con `RepositorioComoLaBase`
+>   caía por **dos subidas** (`assert 2 == 1`); hoy, una.
+> - `bash harness/init.sh` en verde: 2985 passed; cobertura de líneas
+>   cambiadas 100 % (65/65).
+>
+> **Para el reviewer** (en el informe, «Desviaciones… (bloque 2)»): D-impl-4
+> (montaje del caso de circuito corregido tras el RED, sin aflojar), D-impl-5
+> (un `pendiente` sin ruta avisa como «None/None»; no pasa en producción) y
+> D-impl-6 (el 503 de la relectura de R18 lleva el texto genérico del borde).
+>
+> **Qué queda**: **Bloque 3** (T9 `ARCHITECTURE.md`, T10 control de alcance,
+> T11 mutación con cero supervivientes, T12 `init.sh` final). Y T13/T14 del
+> humano. No desplegar antes.
+
+> ## BLOQUE 1 HECHO · 2026-09-18 · **F-033, T1–T4 · la traza en la situación** (`in_progress`)
+>
+> Rama `feature/F-033-l1-traza-archivo`, commits `29758f0` (T1, RED),
+> `257456d` (T2), `60e61c7` (T3), `9d0fc33` (T4). Detalle en
+> `progress/impl_F-033.md`.
+>
+> - `SituacionParte` trae `archivo` (quinto campo, último, `None` por omisión).
+> - La traza viaja en `select_veredicto_y_cierre` como tercer `LEFT JOIN`:
+>   **siguen siendo dos sentencias** por `consultar_situacion` (medido).
+> - `upsert_archivo` ya **no pisa** una fila `archivado` (`WHERE … <> %s`,
+>   estado como parámetro); `RepositorioComoLaBase` imita esa semántica.
+> - Sin DDL. Ninguna escritura contra ningún sistema.
+> - `bash harness/init.sh` en verde: 2931 passed; cobertura de líneas
+>   cambiadas 100 % (21/21).
+>
+> **Desviaciones a revisar** (en el informe, «Desviaciones»): dos tests que
+> fijaban el conjunto exacto de campos de `SituacionParte` y una fila literal
+> de diez en `test_f005_logs_…` no estaban en la lista de `design.md` §7; se
+> han tratado como cambio de forma, manteniendo la igualdad exacta. Y el
+> ayudante de fila de `test_f030_veredicto_persistido.py` que §7 sí listaba
+> **no** se toca: alimenta a `fila_a_validacion_y_cierre`, que sigue siendo
+> de diez.
+>
+> **Qué queda**: **Bloque 2** (T5–T8, L1 en el paso y en el endpoint) y
+> Bloque 3 (T9–T12). Hasta el bloque 2, `/api/archivar` no cambia de
+> comportamiento: no desplegar el bloque 1 suelto.
+
+> ## SPEC APROBADA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada** (`spec_ready`)
+>
+> **Aprobada por el humano el 2026-09-18** con todas las recomendaciones
+> (D-1 a D-7). D-6 dado de alta como **F-034** (`critico`, bloqueada por
+> F-033). Orden: **F-033 → F-031 → F-034 → F-013**.
+>
+> **Dato nuevo del humano, el mismo día**: *«lo que esta en IT eran pruebas,
+> se puede olvidar.»* Deroga la premisa H4 de F-013 («lo de IT se queda en IT,
+> localizable»): no hay que documentar cómo localizarlo. Pendiente de enmendar
+> en la spec de F-013 (recuadro fechado) y de decidir qué pasa con las trazas
+> `archivado` que apuntan a IT, porque con D-1 esos partes no se subirían
+> nunca a Posventa.
+>
+> Rama `feature/F-033-l1-traza-archivo` (desde `dev`, `11dda9d`). Spec en
+> `specs/F-033-l1-traza-archivo/` (requirements R1–R27, design, tasks T1–T14).
+> Rigor `critico`. **Sin DDL. Sin código de producción. Sin escrituras en
+> ningún sistema**: todo lo medido es lectura del repositorio, incluida la spec
+> de F-013 en su rama (`8f72e66`).
+>
+> **Lo medido de la ficha, verificado**: `paso_archivo.py:97` (`traza_previa`,
+> no `:96`), `archivar.py:118-131` no la pasa, solo la pasan
+> `test_f006_paso_archivo.py` y `test_f019_orden_archivado.py`;
+> `SituacionParte` (`estado.py:189-248`) sin traza; `upsert_archivo` pisa sin
+> `WHERE`. Y la situación cuesta **dos** sentencias, fijado por tests
+> (`test_f028_persistencia.py:458` y `:1453`).
+>
+> **Decisión de diseño cerrada por el criterio de la ficha**: la traza viaja
+> como tercer `LEFT JOIN` dentro de `select_veredicto_y_cierre` (siguen dos
+> sentencias). **No** hay `consultar_archivo` en el puerto, aunque la ficha lo
+> nombraba: sería la tercera sentencia y una segunda fuente (design §3.1).
+>
+> ### Decisiones abiertas que tiene que validar el humano (design §10)
+>
+> - **D-1** Traza `archivado` en **otro destino** (nombre de F-032, biblioteca
+>   de F-013): recomendación **cortar siempre** por `hash` + estado, con aviso
+>   propio que diga que sigue donde estaba. Con eso R25 de F-013 queda cumplido
+>   sin que F-013 añada nada.
+> - **D-2** Quitar `traza_previa` del paso y leer L1 solo del almacén:
+>   recomendación **sí**; los tests migran sembrando la situación, sin tocar
+>   asertos.
+> - **D-3** Rastro: recomendación **no pisar** (`archivado` terminal en el
+>   `upsert`, como `cierres`/`graficos`, sin DDL). Histórico append-only
+>   descartado mientras no haya caso.
+> - **D-4** Re-archivo deliberado del mismo parte: recomendación **no existe
+>   desde el circuito**. Un escaneo nuevo es otro `hash` y se archiva normal;
+>   mover lo archivado lo hace una persona.
+> - **D-5** Traza `pendiente` con otra ruta (posible subida huérfana de un
+>   `ArchivoSinTraza`): recomendación **seguir con aviso + log**.
+> - **D-6 · HALLAZGO**: `adjuntar.py:262-265` y `cerrar.py:235-238` leen
+>   «consta archivado» **del cuerpo**, y el front lo manda **fijo**
+>   (`pipeline.js:540`, `:631`). La puerta del gráfico no tiene otra detrás que
+>   mire el archivo: un parte aprobado y sin archivar se adjuntaría al ERP.
+>   Recomendación: **ficha nueva `critico`**, después de F-033 y antes de F-013.
+>   No se arregla en F-033.
+> - **D-7** Carrera en la traza previa (`SIN_CAMBIOS`): recomendación **releer
+>   una vez y cortar**, sin subir.
+>
+> Verificaciones **MANUAL (humano)** ya escritas: T13 (lectura antes de
+> desplegar: trazas por estado y las `pendiente`) y T14 (re-archivar un parte
+> archivado tras desplegar, con autorización, y comprobar que no cambia nada).
+
 > ## IMPLEMENTACIÓN CERRADA · 2026-09-17 · **F-032, bloques 4 y 5 (T11–T13, T15)**
 >
 > Rama `feature/F-032-codigos-sin-espacios`. Último encargo del líder: **T11,

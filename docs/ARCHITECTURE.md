@@ -181,6 +181,23 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
      aceptación prohíbe, y es el comportamiento por defecto de más de un
      cliente de Graph;
    - **carpeta** — crearla dos veces es un éxito, no un error.
+
+   **Precisado por F-033 el 2026-09-18**: la capa **traza** lee la traza del
+   almacén, dentro de la **misma consulta** con la que la puerta de estado lee
+   la situación del parte (un `LEFT JOIN` más a `postventa.archivos`, sin
+   ninguna sentencia añadida). Hasta F-033 el paso la recibía por parámetro y
+   el endpoint nunca se la pasaba, así que en el circuito real esta capa no
+   cortaba. Además:
+   - **`archivado` no se pisa**: la escritura de la traza no actualiza una fila
+     que ya consta `archivado`, y si otra petición la dejó así entre la lectura
+     y la escritura, se relee una vez y se responde como si la capa hubiera
+     cortado desde el principio;
+   - **una traza `archivado` que apunta a otro destino** —otra carpeta, otro
+     nombre de fichero u otra biblioteca— **corta igual** y lo avisa: el fichero
+     se queda donde está y no se sube otro;
+   - **el re-archivo del mismo parte no existe desde el circuito**: ni campo del
+     cuerpo ni parámetro para forzarlo. Si algún día hace falta, será una ficha
+     propia. El detalle está en `specs/F-033-l1-traza-archivo/`.
 7a. **Gráfico** (F-012) — el PDF del parte se adjunta a la reclamación como
    **gráfico** de Sigrid, a través del endpoint de dominio de la pasarela
    (`POST /api/sigrid/concepto-grafico`): tres filas en dos bases —el binario

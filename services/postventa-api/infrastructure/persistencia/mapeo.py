@@ -34,8 +34,10 @@ from domain.models.extraccion import CAMPOS_DEL_PARTE, ExtraccionParte
 from domain.models.firma import ClasificacionFirma
 from domain.models.persistencia import (
     EntradaCola,
+    EstadoArchivo,
     EstadoGrafico,
     PreferenciasUsuario,
+    TrazaArchivo,
     TrazaGrafico,
 )
 from domain.models.validacion import (
@@ -47,12 +49,16 @@ from domain.models.validacion import (
 )
 
 __all__ = [
+    "COLUMNAS_ANTES_DE_LA_TRAZA",
     "COLUMNAS_DE_CAMPOS",
+    "COLUMNAS_DE_TRAZA_ARCHIVO",
     "columnas_de_campos",
     "fila_a_correspondencia",
     "fila_a_decision_estado",
     "fila_a_entrada_cola",
     "fila_a_preferencias",
+    "fila_a_situacion_guardada",
+    "fila_a_traza_archivo",
     "fila_a_traza_grafico",
     "fila_a_validacion_y_cierre",
     "json_de_avisos",
@@ -427,6 +433,94 @@ def fila_a_validacion_y_cierre(
         numero_incidencia=numero_incidencia or "",
     )
     return validacion, estado_cierre
+
+
+#: El corte de la fila de `sentencias.select_veredicto_y_cierre` (F-033).
+#:
+#: Las diez primeras columnas son el veredicto y el cierre de F-030, y las lee
+#: `fila_a_validacion_y_cierre` sin cambiar; las ocho siguientes son la traza
+#: de archivo, y las lee `fila_a_traza_archivo`. Viven aquí, con nombre y
+#: pegadas a los dos desempaquetados, porque una fila leída por posición se
+#: rompe **en silencio**: un test las compara con la sentencia.
+COLUMNAS_ANTES_DE_LA_TRAZA = 10
+COLUMNAS_DE_TRAZA_ARCHIVO = 8
+
+
+def fila_a_traza_archivo(
+    columnas: Sequence[Any], *, hash_parte: str
+) -> TrazaArchivo | None:
+    """Las ocho columnas de `archivos`, de vuelta al dominio, o `None` (F-033, R2).
+
+    El orden es el de `sentencias._COLUMNAS_ARCHIVO` sin el `hash_parte`, que
+    es el tramo que `select_veredicto_y_cierre` pone al final de su fila.
+
+    `estado` a `NULL` **es «no hay fila en `archivos`»**: la columna es
+    `NOT NULL` en la tabla, así que la única forma de que llegue vacía es que
+    el `LEFT JOIN` no haya casado. Eso vuelve `None`, que no es un error: es el
+    caso de todo parte que todavía no se ha archivado.
+
+    `EstadoArchivo(estado)` **revienta** con un valor que el dominio no conoce
+    (R5), igual que `EstadoGrafico` y `EstadoParte`: traducirlo «como si fuera»
+    otro podría leerse como `archivado` y cortar un archivo que no se ha hecho,
+    o como `error` y volver a subir un parte que ya está en SharePoint.
+
+    El `hash_parte` entra **por palabra clave y no de la fila**: es el que se
+    pidió.
+    """
+    (
+        estado,
+        nombre_fichero,
+        carpeta,
+        drive_id,
+        item_id,
+        web_url,
+        motivo,
+        archivado_at_utc,
+    ) = columnas
+    if estado is None:
+        return None
+    return TrazaArchivo(
+        hash_parte=hash_parte,
+        estado=EstadoArchivo(estado),
+        nombre_fichero=nombre_fichero,
+        carpeta=carpeta,
+        drive_id=drive_id,
+        item_id=item_id,
+        web_url=web_url,
+        motivo=motivo,
+        archivado_at_utc=archivado_at_utc,
+    )
+
+
+def fila_a_situacion_guardada(
+    fila: Sequence[Any], *, hash_parte: str
+) -> tuple[ResultadoValidacion | None, str | None, TrazaArchivo | None]:
+    """Parte la fila de `select_veredicto_y_cierre` en sus dos tramos (F-033).
+
+    Las diez primeras van a `fila_a_validacion_y_cierre`, **sin tocarla**, y las
+    ocho últimas a `fila_a_traza_archivo`. Vuelven las tres cosas juntas porque
+    vienen de la misma fila: eso es lo que hace que traer la traza de archivo
+    no cueste ninguna sentencia más (R3).
+
+    Exige **exactamente** dieciocho columnas. Una fila más corta o más larga es
+    una sentencia y un mapeo que han divergido, y se falla con `ValueError` en
+    vez de leer por posición lo que no es: aquí eso sería tomar el estado de
+    cierre por el de archivo, y decidir con él si se sube o no un PDF con el DNI
+    manuscrito de un cliente.
+    """
+    esperadas = COLUMNAS_ANTES_DE_LA_TRAZA + COLUMNAS_DE_TRAZA_ARCHIVO
+    if len(fila) != esperadas:
+        raise ValueError(
+            f"la fila de la situación trae {len(fila)} columnas y se esperaban "
+            f"{esperadas}: la sentencia y el mapeo han divergido"
+        )
+    validacion, estado_cierre = fila_a_validacion_y_cierre(
+        fila[:COLUMNAS_ANTES_DE_LA_TRAZA], hash_parte=hash_parte
+    )
+    archivo = fila_a_traza_archivo(
+        fila[COLUMNAS_ANTES_DE_LA_TRAZA:], hash_parte=hash_parte
+    )
+    return validacion, estado_cierre, archivo
 
 
 def _motivos_desde_json(motivos: Any) -> tuple[tuple[str, str], ...]:

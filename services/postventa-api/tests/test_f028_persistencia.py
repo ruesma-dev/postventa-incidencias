@@ -538,10 +538,14 @@ def test_f028_r18_la_situacion_trae_el_estado_de_la_traza_de_cierre(
     `select_veredicto_y_cierre`, y el caso lo prepara con las otras nueve a
     `NULL`: es un parte **cerrado del que no consta validación**, y tiene que
     seguir dando `cerrado`. Ese es el motivo de que los dos `JOIN` sean `LEFT`.
+
+    > **Enmienda del 2026-09-18 · F-033 T4.** La fila tiene **dieciocho**
+    > columnas: detrás del cierre, las ocho de la traza de archivo, aquí a
+    > `NULL` (sin traza). Cambia la forma de la fila, no lo que se espera.
     """
     conexion.responder(
         f"LEFT JOIN {ESQUEMA}.cierres",
-        [(None,) * 9 + (EstadoCierre.CERRADO.value,)],
+        [(None,) * 9 + (EstadoCierre.CERRADO.value,) + (None,) * 8],
     )
 
     situacion = repositorio.consultar_situacion(hash_parte=HASH)
@@ -1382,15 +1386,21 @@ def _veredicto_guardado() -> ResultadoValidacion:
 def _fila_de_lo_guardado(
     validacion: ResultadoValidacion | None, *, cierre: str | None = None
 ) -> tuple:
-    """Las diez columnas de `select_veredicto_y_cierre`, en su orden.
+    """Las dieciocho columnas de `select_veredicto_y_cierre`, en su orden.
 
     Las cinco primeras salen de `mapeo.valores_de_validacion`, que es **la
     misma función que escribió la fila**: si mañana cambiara el orden de lo que
     se guarda, este ayudante se entera en vez de comparar contra una copia
     escrita a mano.
+
+    > **Enmienda del 2026-09-18 · F-033 T4.** Eran diez. Detrás del cierre van
+    > ahora las ocho columnas de la traza de archivo (F-033 R2), a `NULL`: los
+    > casos que usan este ayudante hablan del veredicto y del cierre, y un
+    > parte sin archivar es su caso normal.
     """
+    sin_traza = (None,) * 8
     if validacion is None:
-        return (None,) * 9 + (cierre,)
+        return (None,) * 9 + (cierre,) + sin_traza
     _, veredicto, destino, clasificacion, motivos, avisos, _ = (
         mapeo.valores_de_validacion(validacion, AHORA)
     )
@@ -1405,6 +1415,7 @@ def _fila_de_lo_guardado(
         validacion.codigo_obra,
         validacion.numero_incidencia,
         cierre,
+        *sin_traza,
     )
 
 

@@ -323,6 +323,13 @@ class RepositorioFalso:
     #: cuenta aparte de `archivos` justo porque una llamada que falla no
     #: guarda nada y desplazaría el índice de `fallos`.
     llamadas_guardar_archivo: int = 0
+    #: F-033 · lo que devuelve la n-ésima llamada a `guardar_archivo` (1 = la
+    #: primera). Lo que no esté aquí devuelve `CREADO`, como siempre.
+    #:
+    #: Existe para la carrera de R18: con el `WHERE` de R17, la base responde
+    #: `SIN_CAMBIOS` si otra petición ya dejó la traza en `archivado`. Una
+    #: llamada que vuelve `SIN_CAMBIOS` **no guarda nada**, igual que la base.
+    resultados: dict[int, ResultadoGuardado] = field(default_factory=dict)
     #: F-030 · la situación que devuelve `consultar_situacion`.
     #:
     #: `None` es «de este parte no consta nada», que **no es un error**: es el
@@ -340,8 +347,12 @@ class RepositorioFalso:
         fallo_de_esta = self.fallos.get(self.llamadas_guardar_archivo)
         if fallo_de_esta is not None:
             raise fallo_de_esta
-        self.archivos.append(traza)
-        return ResultadoGuardado.CREADO
+        resultado = self.resultados.get(
+            self.llamadas_guardar_archivo, ResultadoGuardado.CREADO
+        )
+        if resultado is not ResultadoGuardado.SIN_CAMBIOS:
+            self.archivos.append(traza)
+        return resultado
 
     @property
     def ultima_traza(self) -> TrazaArchivo:

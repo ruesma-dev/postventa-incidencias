@@ -500,6 +500,13 @@ def test_f030_r2_la_situacion_reune_las_cuatro_cosas_y_ninguna_mas():
     construye `SituacionParte` por palabra clave, pero una construcción
     posicional que apareciera por el camino tiene que seguir leyendo los tres
     campos de antes en su sitio.
+
+    > **Enmienda del 2026-09-18 · F-033 T2 (R1).** Hay un quinto campo,
+    > `archivo`, y responde a la pregunta de arriba: sale de la **misma**
+    > consulta y del mismo almacén que los otros cuatro (F-033 R2, R3). No
+    > entra en `estado_del_parte`; lo lee L1 del paso 6. Va **el último**, así
+    > que los cuatro de antes siguen en su sitio, que es lo que este caso
+    > vigila. El aserto sigue siendo de igualdad exacta.
     """
     nombres = tuple(campo.name for campo in fields(SituacionParte))
 
@@ -508,6 +515,7 @@ def test_f030_r2_la_situacion_reune_las_cuatro_cosas_y_ninguna_mas():
         "ultimo_estado_registrado",
         "estado_cierre",
         "validacion",
+        "archivo",
     )
 
 

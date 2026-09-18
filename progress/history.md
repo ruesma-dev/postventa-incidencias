@@ -1997,3 +1997,24 @@ cambie.
 
 Detalle: `specs/F-032-codigos-sin-espacios/`, `progress/impl_F-032.md` y
 `progress/review_F-032.md`.
+
+---
+
+## F-033 · L1 contra el duplicado en SharePoint, conectada desde el endpoint — 2026-09-18
+
+**Cerrada.** Rama `feature/F-033-l1-traza-archivo`, spec aprobada por el humano
+el 2026-09-18 (D-1 a D-7), tres bloques de implementación y review **APROBADO**
+a la primera (`progress/review_F-033.md`).
+
+Qué cambia: la capa L1 del paso 6 lee la traza del archivo de la situación que
+ya consulta la puerta (tercer `LEFT JOIN` en `select_veredicto_y_cierre`, sigue
+costando **dos** sentencias), y `/api/archivar` deja de volver a subir un parte
+que ya consta archivado. `upsert_archivo` no pisa una fila `archivado`. Sin DDL.
+
+Evidencias: 2993 tests en verde, 101 nuevos; cobertura **100 %** de 65 líneas
+cambiadas; mutación **21 mutantes, 0 supervivientes**.
+
+Lo que sale de aquí: **F-034** (adjuntar y cerrar leen «archivado» del cuerpo,
+hallazgo D-6) y la decisión pendiente para F-013 sobre las trazas `archivado`
+que apuntan a la biblioteca de IT. Pendiente del humano: **T13** antes de
+desplegar y **T14** después.

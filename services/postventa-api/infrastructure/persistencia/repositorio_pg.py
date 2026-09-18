@@ -54,8 +54,8 @@ from infrastructure.persistencia.mapeo import (
     fila_a_decision_estado,
     fila_a_entrada_cola,
     fila_a_preferencias,
+    fila_a_situacion_guardada,
     fila_a_traza_grafico,
-    fila_a_validacion_y_cierre,
 )
 
 __all__ = ["RepositorioPostgres"]
@@ -162,7 +162,12 @@ class RepositorioPostgres:
         return guardado
 
     def guardar_archivo(self, *, traza: TrazaArchivo) -> ResultadoGuardado:
-        """Registra qué pasó al archivar: una fila por parte (R23)."""
+        """Registra qué pasó al archivar: una fila por parte (R23).
+
+        Desde F-033 (R17), **sin pisar una traza ya `archivado`**: el `DO
+        UPDATE` no se aplica, la sentencia no devuelve fila y esto responde
+        `SIN_CAMBIOS`, que se registra como cualquier otro resultado.
+        """
         sql, parametros = sentencias.upsert_archivo(
             esquema=self._esquema, traza=traza
         )
@@ -266,6 +271,13 @@ class RepositorioPostgres:
         > había aprobado (RS26.09/0178). `consultar_estado_cierre` **no se
         > toca**: la siguen usando `estado.py` y `parte.py`.
 
+        > **Enmienda del 2026-09-18 · F-033 T4 (R2, R3, R6).** La segunda
+        > consulta trae además **la traza de archivo**, con un tercer `LEFT
+        > JOIN`, y la fila se parte con `fila_a_situacion_guardada`. Siguen
+        > siendo **dos** sentencias. Del log sale **el estado** de la traza y
+        > nada más: ni `drive_id`, ni `item_id`, ni `web_url`, ni el `motivo`
+        > (F-006 R26), ni la carpeta ni el nombre.
+
         De la rama humana vuelve la **decisión entera**, porque es la que manda
         sobre la máquina y hay que poder contrastar su huella. De la otra vuelve
         **solo el estado**: las filas de máquina son constancia, nunca criterio
@@ -303,26 +315,28 @@ class RepositorioPostgres:
             esquema=self._esquema, hash_parte=hash_parte
         )
         filas = self._leer(sql, parametros, operacion="consultar_situacion")
-        validacion, estado_cierre = (
-            fila_a_validacion_y_cierre(filas[0], hash_parte=hash_parte)
+        validacion, estado_cierre, archivo = (
+            fila_a_situacion_guardada(filas[0], hash_parte=hash_parte)
             if filas
-            else (None, None)
+            else (None, None, None)
         )
 
         log.info(
             "F-028 situación del parte leída: hash=%s decidida_por_persona=%s "
-            "ultimo_estado=%s cierre=%s destino=%s",
+            "ultimo_estado=%s cierre=%s destino=%s archivo=%s",
             hash_parte,
             decision_humana is not None,
             None if ultimo_estado is None else ultimo_estado.value,
             estado_cierre,
             None if validacion is None else validacion.destino.value,
+            None if archivo is None else archivo.estado.value,
         )
         return SituacionParte(
             decision_humana=decision_humana,
             ultimo_estado_registrado=ultimo_estado,
             estado_cierre=estado_cierre,
             validacion=validacion,
+            archivo=archivo,
         )
 
     def registrar_decision(self, *, decision: DecisionEstado) -> ResultadoGuardado:

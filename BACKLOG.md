@@ -5,6 +5,8 @@
 
 Resumen: **33 features**, 16 abiertas, 17 terminadas.
 
+En curso: **F-033**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
@@ -23,7 +25,7 @@ Resumen: **33 features**, 16 abiertas, 17 terminadas.
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
 | F-031 | El nombrado del fichero archivado sale del cuerpo, no de lo persistido | 31 | pendiente | critico | `feature/F-031-nombrado-persistido` |
-| F-033 | La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint | 33 | spec lista | critico | `feature/F-033-l1-traza-archivo` |
+| F-033 | La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint | 33 | en curso | critico | `feature/F-033-l1-traza-archivo` |
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 34 | pendiente | critico | `feature/F-034-archivo-persistido-en-erp` |
 
 ## Terminadas
@@ -136,7 +138,7 @@ Hallazgo de la spec de F-030 (design.md seccion 10.7), 2026-09-16, declarado FUE
 
 ### F-033 · La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint
 
-estado **spec lista** · prioridad 33 · rigor `critico` · SDD sí · rama `feature/F-033-l1-traza-archivo`
+estado **en curso** · prioridad 33 · rigor `critico` · SDD sí · rama `feature/F-033-l1-traza-archivo`
 
 Defecto D-A1, hallado y MEDIDO por la spec de F-032 el 2026-09-17 (design.md seccion 6.2), dado de alta por decision del humano ese mismo dia. La arquitectura declara TRES capas contra subir dos veces el mismo parte a SharePoint, y la primera -L1, cortar sin llamar a nadie cuando el parte ya consta archivado, F-006 R14- NO ESTA CONECTADA: paso_archivo la espera como argumento opcional (paso_archivo.py:96, traza_previa=None) y archivar.py:118-128 no se la pasa. El unico sitio del arbol que la pasa es tests/test_f019_orden_archivado.py. Consecuencia: POST /api/archivar VUELVE A SUBIR SIEMPRE, y lo que evitaba el duplicado era el reemplazo del HOMONIMO (paso_archivo.py _subir busca por nombre), que funcionaba solo porque el nombre no cambiaba nunca. AGRAVANTE: re-archivar pisa la traza de postventa.archivos -clave por hash_parte-, asi que el nombre_fichero y la carpeta viejos se pierden y el fichero huerfano deja de ser localizable desde nuestra base. POR QUE SALE AHORA: F-032 hace que el nombre del fichero CAMBIE al limpiar los espacios, y con ello el reemplazo por homonimo deja de tapar el agujero. F-032 NO lo arregla -reabriria el alcance que fijo el humano el 2026-09-17- y mitiga con una consulta de solo lectura antes de desplegar. LO QUE HACE FALTA: un campo nuevo en SituacionParte, un metodo consultar_archivo en RepositorioPartesPort, su adaptador, una sentencia, su mapeo y los tests de los tres. Pisa el terreno de F-019 y de F-031, asi que conviene mirarlas juntas. Hoy SituacionParte no trae la traza del archivo (domain/models/estado.py:189-208) y el puerto solo tiene consultar_grafico, consultar_situacion y consultar_estado_cierre.
 

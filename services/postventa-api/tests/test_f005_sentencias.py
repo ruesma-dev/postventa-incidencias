@@ -458,12 +458,16 @@ def test_f030_r18_la_consulta_nueva_nombra_las_tres_tablas_con_su_esquema():
     y por eso se valida: un `PG_SCHEMA` hostil sería una inyección con permisos
     de despliegue. Que las tres pasen por `_tabla` es lo que impide que una se
     quede sin validar por escribirla a mano.
+
+    > **Enmienda del 2026-09-18 · F-033 T3.** Son **cuatro**: `archivos` entra
+    > con el tercer `LEFT JOIN` (F-033 R2) y también pasa por `_tabla`.
     """
     sql, _ = select_veredicto_y_cierre(esquema=ESQUEMA, hash_parte=HASH_INVENTADO)
 
     assert f"{ESQUEMA}.partes" in sql
     assert f"{ESQUEMA}.validaciones" in sql
     assert f"{ESQUEMA}.cierres" in sql
+    assert f"{ESQUEMA}.archivos" in sql
 
 
 def test_f030_r16_la_consulta_se_ancla_en_partes_y_los_dos_join_son_left():
@@ -475,13 +479,19 @@ def test_f030_r16_la_consulta_se_ancla_en_partes_y_los_dos_join_son_left():
     todo (F-028 R16, R18). Con un `JOIN` a secas pasaría lo mismo con cada
     tabla por su lado, y el caso normal del primer día es justo ese: un parte
     validado y sin cerrar.
+
+    > **Enmienda del 2026-09-18 · F-033 T3.** Los `JOIN` son **tres**: el
+    > tercero trae la traza de archivo (F-033 R2). El criterio no cambia
+    > —todos `LEFT`, todos anclados en `partes`— y se afirma también del nuevo:
+    > un parte validado y sin archivar es el caso normal.
     """
     sql, _ = select_veredicto_y_cierre(esquema=ESQUEMA, hash_parte=HASH_INVENTADO)
 
     assert f"FROM {ESQUEMA}.partes AS p" in sql
     assert f"LEFT JOIN {ESQUEMA}.validaciones AS v" in sql
     assert f"LEFT JOIN {ESQUEMA}.cierres AS c" in sql
-    assert sql.count("LEFT JOIN") == sql.count("JOIN") == 2
+    assert f"LEFT JOIN {ESQUEMA}.archivos AS a" in sql
+    assert sql.count("LEFT JOIN") == sql.count("JOIN") == 3
 
 
 def test_f030_r18_el_hash_va_como_parametro_y_no_pegado_al_texto():
@@ -513,6 +523,11 @@ def test_f030_r10_el_orden_de_las_columnas_es_el_que_lee_el_mapeo():
     `validaciones` prohíbe copiar ahí el texto manuscrito del cliente (R21,
     R39): sin ese `JOIN` no se pueden recomponer los seis campos de la cadena
     canónica de la huella.
+
+    > **Enmienda del 2026-09-18 · F-033 T3.** Dieciocho: las diez de antes,
+    > **en el mismo orden**, y detrás las ocho de la traza de archivo (F-033
+    > R2). Las diez primeras siguen siendo exactamente las que desempaqueta
+    > `fila_a_validacion_y_cierre`, que no cambia.
     """
     sql, _ = select_veredicto_y_cierre(esquema=ESQUEMA, hash_parte=HASH_INVENTADO)
 
@@ -532,6 +547,14 @@ def test_f030_r10_el_orden_de_las_columnas_es_el_que_lee_el_mapeo():
         "p.codigo_obra",
         "p.numero_incidencia",
         "c.estado",
+        "a.estado",
+        "a.nombre_fichero",
+        "a.carpeta",
+        "a.drive_id",
+        "a.item_id",
+        "a.web_url",
+        "a.motivo",
+        "a.archivado_at_utc",
     )
 
 

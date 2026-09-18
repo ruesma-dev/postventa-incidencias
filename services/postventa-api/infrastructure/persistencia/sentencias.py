@@ -208,30 +208,55 @@ def upsert_validacion(
     return sql, valores_de_validacion(resultado, ahora)
 
 
+#: Las columnas de `archivos`, en el orden en que se escriben y se leen (F-033).
+#:
+#: Una sola lista para el `INSERT` de `upsert_archivo` y para el tramo de la
+#: traza en `select_veredicto_y_cierre`, **a propósito** y por lo mismo que
+#: `_COLUMNAS_GRAFICO`: dos listas del mismo orden divergen, y el día que
+#: divergieran `mapeo.fila_a_traza_archivo` leería la carpeta donde está el
+#: nombre del fichero sin que nadie lo notara. Es exactamente la tupla que
+#: `upsert_archivo` declaraba en su cuerpo hasta F-033, en el mismo orden.
+_COLUMNAS_ARCHIVO: tuple[str, ...] = (
+    "hash_parte",
+    "estado",
+    "nombre_fichero",
+    "carpeta",
+    "drive_id",
+    "item_id",
+    "web_url",
+    "motivo",
+    "archivado_at_utc",
+)
+
+
 def upsert_archivo(*, esquema: str, traza: TrazaArchivo) -> tuple[str, tuple]:
-    """Deja **una** fila de archivo por parte (R23).
+    """Deja **una** fila de archivo por parte (R23), **sin pisar una archivada**.
 
     `intentos` se incrementa en cada reintento: es lo que permite ver que un
     parte lleva cinco subidas fallidas sin tener que leer un log.
+
+    > **Enmienda del 2026-09-18 · F-033 T3 (R17).** Hasta hoy el `DO UPDATE` no
+    > llevaba `WHERE`: cualquier escritura pisaba la fila, también una en
+    > `archivado`, y con ella la carpeta, el nombre, el `drive_id`, el
+    > `item_id` y el `web_url` del fichero que ya estaba subido — que dejaba de
+    > ser localizable desde nuestra base.
+    >
+    > Ahora lleva el mismo `WHERE` que `upsert_cierre` y `upsert_grafico`: si la
+    > fila ya está en `archivado`, no se actualiza y la sentencia **no devuelve
+    > ninguna fila**; el repositorio lee esa ausencia como `SIN_CAMBIOS`.
+    > `pendiente` y `error` se siguen pisando: son reintentos.
+    >
+    > El estado terminal viaja como **parámetro**, no pegado al SQL, por la
+    > misma regla que todo lo demás de este módulo.
     """
     tabla = _tabla(esquema, "archivos")
-    columnas = (
-        "hash_parte",
-        "estado",
-        "nombre_fichero",
-        "carpeta",
-        "drive_id",
-        "item_id",
-        "web_url",
-        "motivo",
-        "archivado_at_utc",
-    )
     sql = (
-        f"INSERT INTO {tabla} ({', '.join(columnas)}, intentos)\n"
-        f"VALUES ({', '.join(['%s'] * len(columnas))}, 0)\n"
+        f"INSERT INTO {tabla} ({', '.join(_COLUMNAS_ARCHIVO)}, intentos)\n"
+        f"VALUES ({', '.join(['%s'] * len(_COLUMNAS_ARCHIVO))}, 0)\n"
         f"ON CONFLICT (hash_parte) DO UPDATE SET\n"
-        f"{_asignaciones(columnas, excluidas={'hash_parte'})},\n"
+        f"{_asignaciones(_COLUMNAS_ARCHIVO, excluidas={'hash_parte'})},\n"
         f"    intentos = {tabla}.intentos + 1\n"
+        f"WHERE {tabla}.estado <> %s\n"
         f"RETURNING (xmax = 0) AS creado"
     )
     parametros = (
@@ -244,6 +269,7 @@ def upsert_archivo(*, esquema: str, traza: TrazaArchivo) -> tuple[str, tuple]:
         traza.web_url,
         traza.motivo,
         traza.archivado_at_utc,
+        _ESTADO_ARCHIVO_TERMINAL,
     )
     return sql, parametros
 
@@ -578,19 +604,41 @@ def select_veredicto_y_cierre(*, esquema: str, hash_parte: str) -> tuple[str, tu
 
     El orden de las diez columnas es el que lee
     `mapeo.fila_a_validacion_y_cierre`, y las dos cosas viven pegadas por eso.
+
+    > **Enmienda del 2026-09-18 · F-033 T3 (R2, R3).** Trae también **la traza
+    > de archivo**: un tercer `LEFT JOIN` a `archivos`, anclado en `partes` como
+    > los otros dos, con sus ocho columnas **al final** —las diez de antes no
+    > se mueven, y `fila_a_validacion_y_cierre` no se toca—. Las ocho salen de
+    > `_COLUMNAS_ARCHIVO` sin el `hash`, la misma lista que escribe
+    > `upsert_archivo`, y las parte `mapeo.fila_a_situacion_guardada`.
+    >
+    > Es lo que lee la primera capa contra el duplicado en SharePoint (L1 del
+    > paso 6), y viaja aquí para que **no cueste ninguna sentencia más**: siguen
+    > siendo dos por `consultar_situacion` (criterio 4 de la ficha). `LEFT` por
+    > lo mismo que los otros: un parte validado y sin archivar es el caso
+    > normal, y un `JOIN` a secas se llevaría por delante el veredicto.
+    > `archivos` tiene el `hash_parte` como clave primaria, así que el tercer
+    > `JOIN` no multiplica filas.
+    >
+    > El nombre de la función **se conserva**: renombrarla tocaría cinco
+    > ficheros de test sin añadir nada (`design.md` §3.2).
     """
     partes = _tabla(esquema, "partes")
     validaciones = _tabla(esquema, "validaciones")
     cierres = _tabla(esquema, "cierres")
+    archivos = _tabla(esquema, "archivos")
+    de_archivo = ", ".join(f"a.{columna}" for columna in _COLUMNAS_ARCHIVO[1:])
     sql = (
         "SELECT v.veredicto, v.destino, v.clasificacion_firma, v.motivos,\n"
         "       v.avisos,\n"
         "       p.observaciones, p.observaciones_confianza_pct,\n"
         "       p.codigo_obra, p.numero_incidencia,\n"
-        "       c.estado\n"
+        "       c.estado,\n"
+        f"       {de_archivo}\n"
         f"FROM {partes} AS p\n"
         f"LEFT JOIN {validaciones} AS v ON v.hash_parte = p.hash_parte\n"
         f"LEFT JOIN {cierres} AS c ON c.hash_parte = p.hash_parte\n"
+        f"LEFT JOIN {archivos} AS a ON a.hash_parte = p.hash_parte\n"
         "WHERE p.hash_parte = %s"
     )
     return sql, (hash_parte,)
@@ -718,6 +766,13 @@ _ESTADO_TERMINAL = "cerrado"
 #: externas distintas: «adjuntado pero no cerrado» es un estado real, y
 #: compartir la constante haría que cambiar una cambiara la otra.
 _ESTADO_GRAFICO_TERMINAL = "adjuntado"
+
+#: El estado de archivo que no se pisa (F-033, R17). También como **parámetro**.
+#:
+#: Otra constante y no la del cierre ni la del gráfico por la misma razón que
+#: esas dos son distintas entre sí: son hechos distintos, y compartirla haría
+#: que cambiar una cambiara las otras.
+_ESTADO_ARCHIVO_TERMINAL = "archivado"
 
 
 def _tabla(esquema: str, nombre: str) -> str:

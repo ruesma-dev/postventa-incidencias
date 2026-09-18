@@ -55,7 +55,7 @@
       docstrings del puerto (`consultar_situacion`, `guardar_archivo`). |
       Verificación: los tests de R1 de T1 en verde; `python -m pytest services/postventa-api/tests -q -k "f028 or f030"` en verde.
 
-- [ ] **T3**: `sentencias.py`: `_COLUMNAS_ARCHIVO`, `upsert_archivo` con
+- [x] **T3**: `sentencias.py`: `_COLUMNAS_ARCHIVO`, `upsert_archivo` con
       `WHERE … estado <> %s` y `_ESTADO_ARCHIVO_TERMINAL` como parámetro (R17),
       y el tercer `LEFT JOIN` con las ocho columnas al final en
       `select_veredicto_y_cierre` (R2, R3), con enmienda fechada en su

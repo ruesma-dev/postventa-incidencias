@@ -1,6 +1,62 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## SPEC ESCRITA · 2026-09-18 · **F-013, mudar el archivo a la biblioteca de Posventa**
+>
+> Rama `feature/F-013-archivo-posventa` (desde `dev`). Spec en
+> `specs/F-013-archivo-posventa/` (requirements, design, tasks). **Ni una
+> línea de producción** y ninguna escritura en SharePoint, Sigrid, Key Vault,
+> Azure ni PostgreSQL. Lecturas hechas: el datamart (`maestro.obras`) y el
+> repositorio. La biblioteca de Posventa **no se pudo listar** desde la sesión.
+>
+> **Lo que cambia respecto a lo que se creía**: F-013 **no** es «cambiar tres
+> variables». Medido: el nombre de la obra 0677 en Sigrid es «15 VIVIENDAS
+> UNIFAMILIARES EN MIRASIERRA(MADRID)», el parte imprime la unidad como
+> «Viviendas Bloque Villa 5» (Posventa la llama `VILLA 05`), y el código de
+> obra no es único en Sigrid (922 obras, 846 códigos). Así que la carpeta **se
+> encuentra** listando la biblioteca y casando, no se compone; y si no casa sin
+> ambigüedad, **no se archiva** (409 con motivo). La obra y la unidad salen de
+> Sigrid (`rcp→upv→obr`, lectura nueva por `sql/read`), y la obra de Sigrid
+> tiene que coincidir con la del parte.
+>
+> ### Decisiones abiertas para el humano (`design.md` §9)
+>
+> 1. **D-1 · Carpeta base** («PARTES FIRMADOS (sistema)», H3). Recomendación:
+>    **raíz de la biblioteca**; una carpeta delante nos obligaría a crear
+>    carpetas de obra propias, contra H2.
+> 2. **D-2 · F-033 antes que F-013**. Recomendación: **sí, dependencia dura**
+>    del corte. Sin la capa L1, re-archivar un parte ya en IT lo sube a
+>    Posventa y pisa su traza (se pierde el puntero a IT, contra H4).
+> 3. **D-3 · F-031 antes que F-013**. Recomendación: **sí** (orden F-033 →
+>    F-031 → F-013). Si no, el riesgo es el de hoy y algo menor: F-013 añade
+>    que la obra de Sigrid coincida con la del parte.
+> 4. **D-4 · Quién crea carpetas**. Recomendación: nosotros **solo la hoja
+>    `PARTES FIRMADOS`** dentro de una unidad existente; obra y unidad, nunca.
+> 5. **D-5 · Cola humana**. Recomendación: en F-013 basta el 409 con motivo y
+>    candidatas; una vista en el front o un mapa unidad→carpeta serían fichas
+>    nuevas.
+> 6. **D-6 · Regla de casado de la unidad** (números como enteros, sufijo
+>    contiguo con número). Recomendación: la propuesta, **condicionada a medir
+>    antes** (T2, T3): si `upv.cod` ya es `VILLA 05`, igualdad estricta.
+> 7. **D-7 · Sigrid caída al archivar**. Recomendación: 503 y no se sube; no
+>    caer al dato del papel.
+> 8. **D-R · Rigor**. Recomendación: subir F-013 de `estandar` a
+>    **`critico`** (biblioteca real, sincronizada por OneDrive, DNI, fallo
+>    silencioso).
+>
+> ### Lo que el humano tiene que hacer antes de implementar la regla
+>
+> - **T2 y T3 son MANUALES y van antes del código**: los dos scripts de solo
+>   lectura (`infra/23_destino_posventa.ps1`, `infra/24_ubicacion_sigrid.ps1`)
+>   los escribe T1, y el humano los lanza para ver las carpetas reales de la
+>   obra 0677 y cómo nombra Sigrid sus unidades. T4 es una PARADA.
+> - **Para F-018** (no se toca aquí): al recortar a `Sites.Selected` hay que
+>   conceder el **sitio de Posventa**. Conviene que el líder lo añada ya a la
+>   ficha.
+> - Lo archivado en IT se queda allí (H4); la documentación dirá cómo
+>   localizarlo desde `postventa.archivos`.
+
+
 > ## IMPLEMENTACIÓN CERRADA · 2026-09-17 · **F-032, bloques 4 y 5 (T11–T13, T15)**
 >
 > Rama `feature/F-032-codigos-sin-espacios`. Último encargo del líder: **T11,

@@ -43,7 +43,7 @@
 
 ## Bloque 1 · La traza en la situación (persistencia)
 
-- [ ] **T1**: RED. Crear `tests/test_f033_situacion_con_archivo.py` con los
+- [x] **T1**: RED. Crear `tests/test_f033_situacion_con_archivo.py` con los
       tests de R1–R6 y R17 (`design.md` §6, primera fila). Ejecutarlos y pegar
       la **salida real del fallo** en `progress/impl_F-033.md`. |
       Verificación: `python -m pytest services/postventa-api/tests/test_f033_situacion_con_archivo.py -q`

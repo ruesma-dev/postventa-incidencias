@@ -1,6 +1,56 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## SPEC ESCRITA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada** (`spec_ready`)
+>
+> Rama `feature/F-033-l1-traza-archivo` (desde `dev`, `11dda9d`). Spec en
+> `specs/F-033-l1-traza-archivo/` (requirements R1–R27, design, tasks T1–T14).
+> Rigor `critico`. **Sin DDL. Sin código de producción. Sin escrituras en
+> ningún sistema**: todo lo medido es lectura del repositorio, incluida la spec
+> de F-013 en su rama (`8f72e66`).
+>
+> **Lo medido de la ficha, verificado**: `paso_archivo.py:97` (`traza_previa`,
+> no `:96`), `archivar.py:118-131` no la pasa, solo la pasan
+> `test_f006_paso_archivo.py` y `test_f019_orden_archivado.py`;
+> `SituacionParte` (`estado.py:189-248`) sin traza; `upsert_archivo` pisa sin
+> `WHERE`. Y la situación cuesta **dos** sentencias, fijado por tests
+> (`test_f028_persistencia.py:458` y `:1453`).
+>
+> **Decisión de diseño cerrada por el criterio de la ficha**: la traza viaja
+> como tercer `LEFT JOIN` dentro de `select_veredicto_y_cierre` (siguen dos
+> sentencias). **No** hay `consultar_archivo` en el puerto, aunque la ficha lo
+> nombraba: sería la tercera sentencia y una segunda fuente (design §3.1).
+>
+> ### Decisiones abiertas que tiene que validar el humano (design §10)
+>
+> - **D-1** Traza `archivado` en **otro destino** (nombre de F-032, biblioteca
+>   de F-013): recomendación **cortar siempre** por `hash` + estado, con aviso
+>   propio que diga que sigue donde estaba. Con eso R25 de F-013 queda cumplido
+>   sin que F-013 añada nada.
+> - **D-2** Quitar `traza_previa` del paso y leer L1 solo del almacén:
+>   recomendación **sí**; los tests migran sembrando la situación, sin tocar
+>   asertos.
+> - **D-3** Rastro: recomendación **no pisar** (`archivado` terminal en el
+>   `upsert`, como `cierres`/`graficos`, sin DDL). Histórico append-only
+>   descartado mientras no haya caso.
+> - **D-4** Re-archivo deliberado del mismo parte: recomendación **no existe
+>   desde el circuito**. Un escaneo nuevo es otro `hash` y se archiva normal;
+>   mover lo archivado lo hace una persona.
+> - **D-5** Traza `pendiente` con otra ruta (posible subida huérfana de un
+>   `ArchivoSinTraza`): recomendación **seguir con aviso + log**.
+> - **D-6 · HALLAZGO**: `adjuntar.py:262-265` y `cerrar.py:235-238` leen
+>   «consta archivado» **del cuerpo**, y el front lo manda **fijo**
+>   (`pipeline.js:540`, `:631`). La puerta del gráfico no tiene otra detrás que
+>   mire el archivo: un parte aprobado y sin archivar se adjuntaría al ERP.
+>   Recomendación: **ficha nueva `critico`**, después de F-033 y antes de F-013.
+>   No se arregla en F-033.
+> - **D-7** Carrera en la traza previa (`SIN_CAMBIOS`): recomendación **releer
+>   una vez y cortar**, sin subir.
+>
+> Verificaciones **MANUAL (humano)** ya escritas: T13 (lectura antes de
+> desplegar: trazas por estado y las `pendiente`) y T14 (re-archivar un parte
+> archivado tras desplegar, con autorización, y comprobar que no cambia nada).
+
 > ## IMPLEMENTACIÓN CERRADA · 2026-09-17 · **F-032, bloques 4 y 5 (T11–T13, T15)**
 >
 > Rama `feature/F-032-codigos-sin-espacios`. Último encargo del líder: **T11,

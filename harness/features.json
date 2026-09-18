@@ -231,7 +231,7 @@
         "Lo archivado en IT durante dev queda localizable o migrado, según se decida con Posventa",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
       "priority": 13,

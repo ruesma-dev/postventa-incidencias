@@ -122,7 +122,7 @@ línea.
       circuito. **Sin borrar** nada. | Verificación: `git diff docs/ARCHITECTURE.md`
       solo añade líneas.
 
-- [ ] **T10**: Control de alcance en `tests/test_f033_l1_desde_el_almacen.py`
+- [x] **T10**: Control de alcance en `tests/test_f033_l1_desde_el_almacen.py`
       (o fichero propio si crece): ni un fichero cambiado bajo
       `infrastructure/persistencia/sql/`, ni en `services/postventa-front/`,
       ni en los cuatro ficheros de D-6, ni en `nombrado.py`; con las **dos

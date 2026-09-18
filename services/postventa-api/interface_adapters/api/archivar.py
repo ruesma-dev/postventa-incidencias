@@ -46,6 +46,13 @@ porque exige un método nuevo en el puerto, y eso es de F-005»— queda atendid
 validándose** contra las enumeraciones de F-004: el contrato HTTP no cambia y
 un valor desconocido sigue siendo un 400 (R19, D6 de F-030). Lo que ya no
 hacen es decidir nada.
+
+## L1 sale de la situación que lee la puerta (F-033, 2026-09-18)
+
+Este endpoint **no** pasa ninguna traza de archivo al paso: L1 la lee de la
+situación que ya consulta la puerta de estado, del almacén. Lo único que añade
+es la biblioteca vigente (`SHAREPOINT_DRIVE_ID`), para que el paso pueda avisar
+si lo archivado está en otra; no sale en la respuesta ni en ningún log.
 """
 
 from __future__ import annotations
@@ -128,6 +135,7 @@ def archivar_parte(
         else construir_repositorio(ajustes),
         carpeta_base=ajustes.sharepoint_carpeta_base,
         ahora=ahora if ahora is not None else datetime.now(UTC),
+        drive_id_vigente=ajustes.sharepoint_drive_id,
     )
     return _serializar(contexto)
 

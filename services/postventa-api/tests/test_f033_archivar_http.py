@@ -43,6 +43,7 @@ from interface_adapters.api.archivar import archivar_parte
 
 from tests.utiles_pg import RepositorioComoLaBase
 from tests.utiles_sharepoint import (
+    DRIVE_FALSO,
     HOST_FALSO,
     ArchivoPortFalso,
     BibliotecaFalsa,
@@ -304,8 +305,13 @@ def test_f033_circuito_archivar_dos_veces_sube_una(monkeypatch):
 
     Antes de F-033 la segunda subía otra vez: el endpoint no pasaba la traza
     al paso y L1 no cortaba nunca. Lo tapaba L2 porque el nombre coincidía.
+
+    La biblioteca vigente es **la del archivador falso** (`DRIVE_FALSO`), que
+    es la que queda en la traza al subir: en la vida real, la configurada y la
+    de la traza recién escrita son la misma. Con otra, el caso vería —con
+    razón— el aviso de otro destino.
     """
-    _con_biblioteca_vigente(monkeypatch, DRIVE_POSVENTA)
+    _con_biblioteca_vigente(monkeypatch, DRIVE_FALSO)
     biblioteca = BibliotecaFalsa()
     base = _base_con_el_parte_apto()
     _con_dobles(monkeypatch, ArchivoPortFalso(biblioteca), base)

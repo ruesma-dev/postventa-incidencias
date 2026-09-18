@@ -106,7 +106,7 @@ línea.
       viejo. | Verificación: `test_f033_l1_desde_el_almacen.py` en verde;
       `python -m pytest services/postventa-api/tests -q -k "f006 or f019"` en verde.
 
-- [ ] **T8**: `archivar.py` pasa `drive_id_vigente=ajustes.sharepoint_drive_id`
+- [x] **T8**: `archivar.py` pasa `drive_id_vigente=ajustes.sharepoint_drive_id`
       (R15). Docstring: una línea que diga que L1 sale de la situación que lee
       la puerta. | Verificación: `test_f033_archivar_http.py` en verde,
       incluidos los tres recorridos de circuito.

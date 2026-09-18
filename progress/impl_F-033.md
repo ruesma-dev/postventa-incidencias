@@ -179,3 +179,138 @@ garantías que ya existían y que el test fija para que no se pierdan):
    traduce «sin fila» a `SIN_CAMBIOS` para cualquier escritura (lo usan
    `cierres` y `graficos`). Lo nuevo de R17 es que la sentencia **lo
    provoque** para `archivos`, y eso sí estaba en rojo (casos de la sentencia).
+
+### Tareas del bloque 1 (commits)
+
+| Tarea | Commit | Qué |
+|---|---|---|
+| T1 | `29758f0` | RED: `tests/test_f033_situacion_con_archivo.py` (39 casos) |
+| T2 | `257456d` | `SituacionParte.archivo` (quinto campo, el último, `None` por omisión) + enmiendas fechadas |
+| T3 | `60e61c7` | `sentencias.py`: `_COLUMNAS_ARCHIVO`, `WHERE … estado <> %s` en `upsert_archivo`, tercer `LEFT JOIN` |
+| T4 | `9d0fc33` | `mapeo.py` + `repositorio_pg.py` + `RepositorioComoLaBase`; filas de diez → dieciocho |
+
+### Qué cambió (ficheros tocados)
+
+Producción (`services/postventa-api/`):
+
+- `domain/models/estado.py`: `archivo: TrazaArchivo | None = None`, último
+  campo; «**Cuatro cosas.**» → «**Cinco cosas.**», con enmienda fechada que
+  cita la frase vieja (R1).
+- `domain/ports/persistencia.py`: solo docstrings (`consultar_situacion`: la
+  quinta cosa; `guardar_archivo`: no pisa `archivado`). Ningún método nuevo.
+- `infrastructure/persistencia/sentencias.py`: `_COLUMNAS_ARCHIVO` (lista única
+  para escribir y leer); `upsert_archivo` con `WHERE {tabla}.estado <> %s` y
+  `_ESTADO_ARCHIVO_TERMINAL = "archivado"` como **último parámetro** (R17);
+  `select_veredicto_y_cierre` con `LEFT JOIN postventa.archivos AS a ON
+  a.hash_parte = p.hash_parte` y las ocho columnas `a.*` al final, generadas
+  desde `_COLUMNAS_ARCHIVO[1:]` (R2, R3). Nombre de la función conservado.
+- `infrastructure/persistencia/mapeo.py`: `COLUMNAS_ANTES_DE_LA_TRAZA = 10`,
+  `COLUMNAS_DE_TRAZA_ARCHIVO = 8`, `fila_a_traza_archivo(columnas, *, hash_parte)`
+  y `fila_a_situacion_guardada(fila, *, hash_parte)`. `fila_a_validacion_y_cierre`
+  **sin tocar** (R2–R5).
+- `infrastructure/persistencia/repositorio_pg.py`: `consultar_situacion` usa
+  `fila_a_situacion_guardada`, rellena `archivo` y añade `archivo=<estado|None>`
+  al log (R6). Siguen siendo **dos** `_leer`. Docstring de `guardar_archivo`.
+
+Tests:
+
+- Nuevo: `tests/test_f033_situacion_con_archivo.py`.
+- `tests/utiles_pg.py::RepositorioComoLaBase`: `guardar_archivo` con semántica
+  terminal (`archivado` → `SIN_CAMBIOS`; `pendiente`/`error` → `ACTUALIZADO`);
+  la fila de la situación lleva las ocho columnas de la traza (sacadas de los
+  parámetros de `sentencias.upsert_archivo`, u ocho `None`) y se parte con
+  `mapeo.fila_a_situacion_guardada`, la función de producción.
+- Cambios **de forma** listados en §7: `test_f005_sentencias.py` (3 casos:
+  cuatro tablas; tres `JOIN`, todos `LEFT`, con aserto del tercero; tupla de
+  dieciocho) y `test_f028_persistencia.py` (`_fila_de_lo_guardado` y la fila
+  literal del caso `test_f028_r18_…`: de diez a dieciocho).
+- Cambios de forma **fuera de la lista de §7**: ver «Desviaciones».
+
+Ni una línea bajo `infrastructure/persistencia/sql/` (**sin DDL**), ni en el
+paso, ni en `archivar.py`, ni en el front, ni en `harness/features.json`.
+
+### Decisiones de diseño
+
+1. **Nombre del corte.** El diseño pedía «constante con nombre» sin fijarlo.
+   El primer nombre, `COLUMNAS_DE_VEREDICTO_Y_CIERRE`, hizo saltar el barrido
+   de F-009 R3 (`test_f009_r3_ninguna_constante_de_estado_de_produccion_es_un_numero`,
+   que busca `CIERRE`/`ESTADO` en constantes enteras). Se renombró a
+   `COLUMNAS_ANTES_DE_LA_TRAZA` en vez de tocar ese barrido.
+2. **El doble recompone la traza desde los parámetros de producción**
+   (`sentencias.upsert_archivo`) y no desde una copia escrita a mano. Sigue
+   guardando el objeto en `base.archivos`, porque
+   `test_f030_circuito_borde_a_borde.py:309` lo lee así.
+3. **El `ValueError`** de una fila de otro largo dice cuántas columnas trae y
+   cuántas se esperaban; no lleva ningún valor de la fila.
+4. El test del corte (R3) compara la constante con la **posición real** de la
+   primera `a.` del `SELECT`, no con un 10 suelto.
+
+### Desviaciones respecto a la spec (justificadas)
+
+- **D-impl-1 · Dos tests fijaban el conjunto exacto de campos de
+  `SituacionParte`** y no estaban en la lista cerrada de `design.md` §7:
+  `test_f028_estado_dominio.py::test_f028_r2_la_situacion_trae_las_tres_cosas_que_hacen_falta_y_ninguna_mas`
+  y `test_f030_veredicto_persistido.py::test_f030_r2_la_situacion_reune_las_cuatro_cosas_y_ninguna_mas`.
+  R1 (aprobado) exige el quinto campo: no había implementación posible sin
+  tocarlos. Se tratan como **cambio de forma**, análogo a la «tupla de
+  columnas» que §7 sí lista: se añade `"archivo"` y se **mantiene la igualdad
+  exacta** (un sexto campo los sigue poniendo en rojo). El propio caso de F-028
+  prescribe el procedimiento («la enmienda del campo nuevo está escrita y
+  fechada en la docstring de `SituacionParte`») y se ha seguido, con enmienda
+  fechada también en la docstring de cada test. **Para el reviewer**: si lo
+  considera cambio de expectativa, es esto lo que hay que mirar.
+- **D-impl-2 · `test_f005_logs_sin_datos_personales.py::test_f030_r21_…`**
+  prepara una fila literal de diez columnas para `consultar_situacion` y no
+  estaba en §7. Se le añaden ocho `None` (sin traza). Mismo tipo de cambio que
+  `_fila_de_lo_guardado`; los asertos, intactos.
+- **D-impl-3 · El ayudante de fila de `test_f030_veredicto_persistido.py`
+  (l. 859, `_fila_de_la_consulta`) NO se ha cambiado**, aunque §7 lo lista.
+  Solo alimenta a `mapeo.fila_a_validacion_y_cierre`, que sigue siendo de diez
+  columnas y no cambia (`design.md` §3.3). Alargarlo lo rompía (probado: 7
+  rojos «too many values to unpack (expected 10)»). La única edición en ese
+  fichero es la de D-impl-1.
+- **Comandos de verificación**: los de `tasks.md` (`python -m pytest
+  services/postventa-api/tests/...` desde la raíz) usan el Python global, sin
+  `pydantic`; se han ejecutado con el `venv` del servicio desde
+  `services/postventa-api/`, que es lo mismo que hace `harness/init.sh`.
+
+### Qué se verificó, con el resultado real
+
+- T2: `pytest tests -q -k "f028 or f030"` → `514 passed, 2 skipped` (tras
+  D-impl-1; antes, 2 rojos: los dos casos del conjunto de campos).
+- T3: `pytest tests/test_f005_sentencias.py -q` → `26 passed`. En
+  `test_f033_…` pasaban ya los de la sentencia (R2 de forma, R17); seguían en
+  rojo los que necesitan el mapeo (T4), como estaba previsto.
+- T4: `pytest tests/test_f033_situacion_con_archivo.py -q` → `39 passed`
+  (incluido R3 contado, `len(conexion.ejecutadas) == 2`, con traza y sin ella);
+  `pytest tests -q -k "f005 or f028 or f030"` en verde; suite entera
+  `2931 passed, 10 skipped`.
+- `bash harness/init.sh` → **ENTORNO LISTO** (ver «Evidencias»).
+
+### Verificaciones MANUAL pendientes
+
+Ninguna de este bloque. T13 y T14 (humano) siguen pendientes, fuera de la rama.
+
+### Qué queda fuera de este bloque
+
+- **Bloque 2** (T5–T8): L1 en el paso y en el endpoint. Con solo este bloque
+  `/api/archivar` **no cambia de comportamiento**: el paso sigue usando
+  `traza_previa` y el endpoint no se la pasa. Lo que sí cambiaría al
+  desplegar solo esto: la consulta de la situación trae ocho columnas más por
+  un `LEFT JOIN`, y `upsert_archivo` deja de pisar una traza `archivado` (el
+  paso aún no mira ese `SIN_CAMBIOS`; eso es R18/R19, bloque 2). No se
+  recomienda desplegar el bloque 1 suelto.
+- **Bloque 3** (T9–T12): `ARCHITECTURE.md`, control de alcance, mutación,
+  `init.sh` final.
+
+## Evidencias (bloque 1)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests del servicio `api` (dentro de `bash harness/init.sh`) | **2931 passed, 20 skipped**, 0 fallos |
+| Tests de la raíz (`init.sh`) | 62 passed |
+| Tests nuevos de F-033 | 39 en `test_f033_situacion_con_archivo.py`, todos en verde |
+| Cobertura de las líneas cambiadas | **100.0 % de 21 líneas** (21/21, umbral 80 %, nivel `critico`), línea `PUERTA COBERTURA` de `init.sh` |
+| Tiempo de la suite del servicio | 105.54 s con cobertura (dentro de `init.sh`); 55.12 s sin cobertura |
+| Mutantes generados / supervivientes | **No medido en este bloque, por plan**: la campaña es la tarea **T11** del bloque 3 (`python -m harness.mutacion --feature F-033`), sobre el diff completo de la feature. Lanzarla ahora obligaría a repetirla entera tras el bloque 2 |
+| `ruff` sobre los ficheros tocados | los mismos 2 avisos previos (`PYI034` en `utiles_pg.py`), ninguno nuevo |

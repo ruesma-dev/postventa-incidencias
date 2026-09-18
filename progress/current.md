@@ -1,6 +1,33 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## BLOQUE 1 HECHO · 2026-09-18 · **F-033, T1–T4 · la traza en la situación** (`in_progress`)
+>
+> Rama `feature/F-033-l1-traza-archivo`, commits `29758f0` (T1, RED),
+> `257456d` (T2), `60e61c7` (T3), `9d0fc33` (T4). Detalle en
+> `progress/impl_F-033.md`.
+>
+> - `SituacionParte` trae `archivo` (quinto campo, último, `None` por omisión).
+> - La traza viaja en `select_veredicto_y_cierre` como tercer `LEFT JOIN`:
+>   **siguen siendo dos sentencias** por `consultar_situacion` (medido).
+> - `upsert_archivo` ya **no pisa** una fila `archivado` (`WHERE … <> %s`,
+>   estado como parámetro); `RepositorioComoLaBase` imita esa semántica.
+> - Sin DDL. Ninguna escritura contra ningún sistema.
+> - `bash harness/init.sh` en verde: 2931 passed; cobertura de líneas
+>   cambiadas 100 % (21/21).
+>
+> **Desviaciones a revisar** (en el informe, «Desviaciones»): dos tests que
+> fijaban el conjunto exacto de campos de `SituacionParte` y una fila literal
+> de diez en `test_f005_logs_…` no estaban en la lista de `design.md` §7; se
+> han tratado como cambio de forma, manteniendo la igualdad exacta. Y el
+> ayudante de fila de `test_f030_veredicto_persistido.py` que §7 sí listaba
+> **no** se toca: alimenta a `fila_a_validacion_y_cierre`, que sigue siendo
+> de diez.
+>
+> **Qué queda**: **Bloque 2** (T5–T8, L1 en el paso y en el endpoint) y
+> Bloque 3 (T9–T12). Hasta el bloque 2, `/api/archivar` no cambia de
+> comportamiento: no desplegar el bloque 1 suelto.
+
 > ## SPEC APROBADA · 2026-09-18 · **F-033 · L1 contra el duplicado, conectada** (`spec_ready`)
 >
 > **Aprobada por el humano el 2026-09-18** con todas las recomendaciones

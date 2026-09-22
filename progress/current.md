@@ -1,6 +1,210 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-031 · BLOQUES 4 Y 5 HECHOS · 2026-09-22 · lista para el reviewer
+>
+> **15 de las 17 tareas cerradas.** Las dos que quedan son **T14 y T15**, las
+> verificaciones `MANUAL (humano)`: **no las ejecuta ningún agente**. El guion
+> de las dos, con su comando y qué mirar en cada paso, está listo para copiar
+> en **`progress/impl_F-031.md` §8 ter**.
+>
+> Informe completo de estos dos bloques, con las **11 desviaciones de los
+> cuatro bloques reunidas en una sola lista**: `progress/impl_F-031.md`.
+>
+> **`bash harness/init.sh` en VERDE.** Cobertura de líneas cambiadas **100 %**
+> (28/28, umbral 80 %). Mutación de la feature entera: **3 de 3 muertos, 0
+> supervivientes** (78,6 s, 3 workers). Estos dos bloques **no cambian ni una
+> línea de producción**: solo tests de alcance y documentación.
+>
+> ### Bloque 5 · las puertas de rigor
+>
+> - **T16** · campaña de mutación lanzada con la **línea base comprobada de
+>   verdad**, reejecutando las tres suites **enteras y sin caché** antes de
+>   lanzarla (3.066 + 256 + 310, todo verde), no fiándose del verde cacheado
+>   del arnés. El alcance sigue siendo 305 líneas de Python porque **el mutador
+>   solo muerde `.py`** (`harness/alcance.py:134`): el JavaScript del Bloque 3
+>   no entra, y se dice así en vez de omitirlo.
+> - **T17** · arnés en verde, con la rama correcta.
+> - **T14 y T15** · **del humano**. V1 ya es ejercitable entera desde el
+>   Bloque 3; V2 es la única comprobación contra la biblioteca real y va con
+>   dry-run y autorización expresa.
+>
+> ### Bloque 4 · cierre de alcance y documentación
+>
+> - **T11** · `services/postventa-api/tests/test_f031_alcance_cerrado.py`, **10
+>   controles** en verde. Cada frontera lleva **dos**: el del diff de la rama
+>   (`git diff dev...HEAD`) y su hermano que **no depende de `git`** y se
+>   comprueba en cualquier rama, que es lo que lo convierte en guardia y no en
+>   foto.
+> - **T12** · dos recuadros **«Precisado por F-031 el 2026-09-22»** en
+>   `docs/ARCHITECTURE.md` (paso 6 del pipeline y semántica 8), la nota de
+>   **CIERRE** del hallazgo en `specs/F-030-veredicto-persistido/design.md`
+>   §10.7 y la nota al margen del nombrado en `specs/F-006-sharepoint/design.md`
+>   §4. Y lo de abajo sobre `azure-apps/`.
+> - **T13** · H-1 verificado y **ya decidido** (ver más abajo).
+>
+> ### `azure-apps/postventa_incidencias.md` NO cambia — medido, y no se ha tocado
+>
+> `design.md` §7.1 lo anticipaba y se ha comprobado leyendo el documento:
+>
+> | Lo que el documento dice | ¿Cambia con F-031? |
+> |---|---|
+> | Qué expone: la tabla de endpoints, `POST /api/archivar` («escribe en la biblioteca, exige que el parte conste guardado, si no 409 sin subir nada») | **No.** Sigue siendo cierto, y ahora **más**: el 409 gana un motivo, no un código nuevo |
+> | El contrato HTTP | **No.** Los cinco campos obligatorios del cuerpo son los mismos (R10) y las seis claves de la respuesta también (R26) |
+> | Cómo se llama el fichero y dónde se archiva | **No.** `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`, carpeta por código de obra. F-031 cambia de dónde salen esos dos códigos, no el nombre que producen |
+> | Qué consumimos: Graph, `sigrid-api`, el PostgreSQL compartido | **No.** Ni una llamada más, ni una consulta más, ni DDL |
+> | Las variables de entorno | **No.** Ninguna nueva y ninguna con otro significado |
+> | El volumen contra el PostgreSQL compartido (§5) | **No.** El vaciado del front solo **adelanta** guardados que el rebote de 1,5 s iba a hacer igual, y **no dispara ninguno** si no hay nada escrito sin guardar (R22) |
+>
+> Por eso **no se ha tocado `azure-apps/`**: no hay nada que actualizar. Si el
+> líder quisiera añadir una línea de precisión al endpoint, sería un adorno, no
+> una corrección: hoy el documento no dice nada falso.
+>
+> ### T13 · HALLAZGO H-1 · verificado hoy y **ya decidido**
+>
+> La anotación que T13 pide **ya existe** más abajo en este mismo fichero (la
+> escribió el `spec-author` al aprobarse la spec) y el humano **ya la decidió**
+> el 2026-09-22: se recoge ampliando la ficha de **F-034** (recomendación D-6).
+> Lo que se ha hecho en esta tarea es **comprobar que sigue siendo cierta**, que
+> es lo único que quedaba por hacer:
+>
+> 1. **Las ocho referencias están medidas y vigentes hoy**, leídas una a una:
+>    `adjuntar.py:94-95, 107-108, 148-149, 172-173` (el cuerpo trae los dos
+>    códigos y viajan al paso) → `paso_grafico.py:116-117, 157, 175-176` (con
+>    ellos se **nombra el gráfico** y se **localiza la reclamación**);
+>    `cerrar.py:100, 149` → `paso_cierre.py:117, 155` (con el número del cuerpo
+>    se elige **qué reclamación se cierra en el ERP de producción**).
+> 2. **La ficha de F-034 está ampliada**: su `acceptance` tiene ya el punto de
+>    los dos códigos persistidos citando H-1 y estas mismas líneas, y su
+>    `description` lleva la enmienda «AMPLIADA el 2026-09-22 por decisión del
+>    humano». O sea: la decisión **está ejecutada**, no solo tomada.
+> 3. **F-031 no lo ha tocado ni de refilón**, y hay test que lo vigila:
+>    `test_f031_r29_la_rama_no_toca_adjuntar_ni_cerrar_ni_sus_pasos`. La
+>    tentación era real —F-031 acaba de escribir `_codigos_guardados(ctx)` y los
+>    dos endpoints de al lado ya leen la misma `SituacionParte`—, y no se ha
+>    cedido: cambiar de dónde sale el `numero_incidencia` de `/api/cerrar`
+>    cambia **qué se cierra en producción**, y eso no se decide dentro de una
+>    ficha que no lo ha revisado.
+>
+> **Nada pendiente de decisión aquí.** H-1 entra por F-034, que ya lo lleva
+> escrito.
+
+> ## 🔧 F-031 · BLOQUES 2 Y 3 HECHOS · 2026-09-22 · faltan el Bloque 4 y el 5
+>
+> **T1–T10 cerradas: las dos mitades de la feature están hechas.**
+>
+> - **Bloque 2 (backend, T2–T7)**: el fichero se nombra con el `codigo_obra` y
+>   el `numero_incidencia` **guardados**, y los dos que vienen en el cuerpo de
+>   `POST /api/archivar` dejan de nombrar y pasan a **cotejar**: si no cuadran,
+>   **409 y no se archiva nada**.
+> - **Bloque 3 (front, T8–T10)**: `js/autoguardado.js` gana
+>   `vaciarPendientes()` —fuerza lo escrito y sin guardar de **cualquier**
+>   parte y **espera**, con tope de tres rondas— y `confirmarArchivo` lo espera
+>   **después** de resolver la confirmación única de F-025 y **antes** de
+>   calcular la tanda (R19). Si el vaciado no sale bien, **la tanda no se
+>   lanza** y se pinta el aviso (R20).
+>
+> Informe completo de los dos bloques, con la fase RED y las evidencias
+> medidas: **`progress/impl_F-031.md`**.
+>
+> `bash harness/init.sh` en **verde**. Servicio `front`: **256 passed** y
+> **310 tests de JavaScript** (`node --test "tests_js/*.test.js"`), con
+> `autoguardado.test.js`, `confirmacion.test.js` y `circuito.test.js` **sin
+> tocar**. Puerta de cobertura **100 %** (28/28, umbral 80 %) — esas 28 líneas
+> son las del Bloque 2: la puerta mide **solo Python** y el Bloque 3 no cambió
+> ni una línea de Python de producción.
+>
+> ### ✅ Se levanta la condición de despliegue
+>
+> El bloque anterior dejaba escrito que **no se despliega F-031 hasta tener las
+> dos mitades**, porque solo el backend **empeora** el caso de la corrección
+> reciente (`design.md` §1.3). **Las dos están.** Lo que falta para cerrar la
+> feature no es funcionalidad.
+>
+> ### Lo que queda
+>
+> - **Bloque 4 (T11–T13)**: `tests/test_f031_alcance_cerrado.py` (R29), la
+>   documentación (`docs/ARCHITECTURE.md`, las notas de cierre en las specs de
+>   F-006 y F-030, y dejar escrito que `azure-apps/postventa_incidencias.md`
+>   **no** cambia) y la anotación de H-1.
+> - **Bloque 5 (T14–T16)**: **V1** y **V2** manuales (necesitan una persona
+>   delante) y la campaña de mutación de la feature entera. **V1 ya es
+>   ejercitable entera**: hasta este bloque, su primera mitad —«no ver el 409
+>   porque el vaciado lo evita»— no se podía comprobar.
+>
+> ### Dos desviaciones declaradas, para que las mire el reviewer
+>
+> 1. **Bloque 2** · `design.md` §9 daba `tests/test_f033_archivar_http.py` por
+>    intacto y **no lo era**: su caso del circuito F-032 manda un formulario con
+>    `0626` contra una base que guardaba `0677`, así que con el cotejo nuevo
+>    salía un 409. Se ha puesto la base a decir lo mismo que el formulario, que
+>    es el mundo real.
+> 2. **Bloque 3** · se ha añadido un fichero de test que `tasks.md` no pedía,
+>    `services/postventa-front/tests/test_f031_front.py` (6 casos sobre el texto
+>    fuente de `app.js`). Sin él, **R19 se quedaba sin ningún test**, contra R28
+>    y contra el rigor `critico` de la ficha: `js/app.js` no lo ejecuta ninguna
+>    suite y R19 es un orden entre dos líneas. Mismo planteamiento que
+>    `test_f025_front.py` y `test_f026_front.py`, que ya existen.
+
+> ## ✅ SPEC DE F-031 APROBADA · 2026-09-22 · `spec_ready`, lista para implementar
+>
+> **Aprobada por el humano el 2026-09-22** («si») con las recomendaciones de
+> D-1 a D-7. El hallazgo **H-1** se recoge **ampliando la ficha de F-034**,
+> que pasa a cubrir también el `codigo_obra` y el `numero_incidencia` que
+> `/api/adjuntar` y `/api/cerrar` toman del cuerpo.
+>
+> `specs/F-031-nombrado-persistido/` (requirements, design, tasks). Rama
+> `feature/F-031-nombrado-persistido`, desde `dev` (`7b013ff`). **No se ha
+> escrito ni una línea de código de producción** y no se ha tocado SharePoint,
+> Sigrid, Azure ni PostgreSQL: todo lo medido sale de leer el árbol.
+>
+> **Lo que la medición cambió respecto a la ficha**: los dos códigos guardados
+> **ya viajan** en la consulta de situación desde F-030
+> (`sentencias.py:635` trae `p.codigo_obra, p.numero_incidencia`, y
+> `mapeo.py:432-433` los deja en `ResultadoValidacion`). Así que F-031 **no
+> cuesta ninguna consulta, ninguna columna, ninguna sentencia ni ningún método
+> nuevo del puerto**. Es lo contrario de F-033.
+>
+> **La segunda mitad, medida en el front**: `confirmarArchivo`
+> (`js/app.js:703-746`) lanza la tanda **sin mirar si queda algo sin guardar**;
+> `autoguardado.hayPendiente` (`js/autoguardado.js:283`) existe y **no lo llama
+> nadie**. La ventana real son los **1.500 ms** de rebote de
+> `js/config.js:64` más el guardado en vuelo. Y ojo: hacer **solo** el backend
+> **empeoraría** ese caso —archivaría con el código viejo, en silencio—, así que
+> las dos mitades van juntas (`design.md` §1.3).
+>
+> ### Decisiones abiertas que necesita validar el humano (`design.md` §11)
+>
+> **Bloquean el arranque D-1, D-3 y D-5**; las otras se pueden cerrar con la
+> recomendación.
+>
+> | Id | Pregunta | Recomendación |
+> |---|---|---|
+> | **D-1** | ¿De dónde lee el paso los códigos guardados? | De `ctx.situacion.validacion`, que ya los trae. La alternativa (campos propios en `SituacionParte`) mete dos copias del mismo dato en el mismo objeto |
+> | **D-2** | ¿Cómo llega al paso lo declarado en el cuerpo? | Parámetro explícito, y el endpoint deja de rellenar la `ExtraccionParte` de pega |
+> | **D-3** | ¿Qué pasa si el cuerpo difiere de la base? | **409 y no se archiva.** Archivar con lo guardado más un aviso llegaría **después** de subir el PDF, y con L1 de F-033 eso ya no se arregla |
+> | **D-4** | ¿Siguen obligatorios los dos campos del cuerpo? | Sí: dejan de nombrar y pasan a **cotejar**. El contrato HTTP no cambia |
+> | **D-5** | ¿Qué hace el front antes de archivar? | Forzar el guardado y esperar; si falla, **no se lanza la tanda**. La tanda se calcula **después** del vaciado, porque guardar revalida y puede encogerla |
+> | **D-6** | Hallazgo **H-1** (abajo) | Ampliar el `acceptance` de **F-034** |
+> | **D-7** | ¿El cotejo compara literal o normalizado? | Normalizado (F-032): `RS 26.09/0178` y `RS26.09/0178` son el **mismo** código y no pueden dar 409 |
+>
+> ### HALLAZGO H-1 · fuera de alcance, para decidir
+>
+> `/api/adjuntar` y `/api/cerrar` toman `codigo_obra` y `numero_incidencia`
+> **del cuerpo**, igual que archivar: `adjuntar.py:94-95, 107-108, 148-149,
+> 172-173` → `paso_grafico.py:116-117, 157, 175-176` (nombra el fichero **y**
+> localiza la reclamación), y `cerrar.py:100, 149` → `paso_cierre.py:117, 155`
+> (elige **qué reclamación se cierra en el ERP de producción**). Es la misma
+> familia y **más grave** que esta ficha, y **F-034 no lo cubre**: su
+> `acceptance` habla solo del `estado_archivo`. Recomendación: ampliar F-034.
+>
+> ### Encaje con F-013 (aprobada, en espera)
+>
+> F-013 §2.3 y §8.2 declaran que **F-031 decide de dónde salen los códigos** y
+> que su `resolver_destino` los recibe del paso. F-031 los deja resueltos en
+> **un solo punto** dentro de `paso_archivo` y **no toca** nada del terreno de
+> F-013: ni estructura de la biblioteca, ni Sigrid, ni creación de carpetas.
+
 > ## ✅ VERIFICACIONES DE F-033 CERRADAS · 2026-09-22 · **Posventa lo está probando en real**
 >
 > El responsable dio la feature por cerrada: *«ahora lo esta probando postventa

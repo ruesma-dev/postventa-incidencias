@@ -58,6 +58,7 @@ __all__ = [
     "DestinoArchivo",
     "carpeta_de_archivo",
     "componer_destino",
+    "es_el_mismo_codigo",
     "nombre_admisible",
     "nombre_de_archivo",
     "normalizar_codigo",
@@ -160,6 +161,31 @@ def normalizar_codigo(bruto: str | None) -> str:
     if bruto is None:
         return ""
     return "".join(bruto.translate(_A_GUION_NORMAL).split())
+
+
+def es_el_mismo_codigo(uno: str | None, otro: str | None) -> bool:
+    """¿Son dos formas de escribir el mismo código? (F-031 R4).
+
+    Vive aquí, y no en el paso que la usa, por lo que este módulo ya tiene
+    escrito unas líneas más arriba: **el dueño de «qué es el mismo código» es
+    quien lo normaliza** (F-028 R47, F-032). Dos criterios del mismo concepto
+    divergen siempre, y este ya cambió una vez —el 2026-09-17— por un espacio
+    dentro del primer tramo. Con el cotejo colgando de `normalizar_codigo`, el
+    día que vuelva a cambiar se mueve con ella y no hay que acordarse de nada.
+
+    Lo que eso significa en la práctica, y es el requisito: `RS 26.09/0178` y
+    `RS26.09/0178` son **el mismo** código, igual que `06 26` y `0626`, así
+    que un cuerpo que traiga uno y una base que guarde el otro **no** pueden
+    producir un error. Lo que sí son distintos son `0677` y `677`: los ceros a
+    la izquierda se conservan y `677` es otra obra.
+
+    **Dos códigos vacíos dan `True`, y no es un descuido.** El caso «los dos
+    vacíos» lo decide `nombre_de_archivo` un paso más adelante, con
+    `NombradoImposible` diciendo **cuál** falta (F-031 R7); que el cotejo
+    también opinara sobre él produciría dos errores distintos para el mismo
+    hecho, y quien los recibiera no sabría cuál atender.
+    """
+    return normalizar_codigo(uno) == normalizar_codigo(otro)
 
 
 def tramos_de_codigo(codigo: str) -> tuple[str, ...]:

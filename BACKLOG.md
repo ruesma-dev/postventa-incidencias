@@ -5,6 +5,8 @@
 
 Resumen: **33 features**, 15 abiertas, 18 terminadas.
 
+En curso: **F-031**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
@@ -22,7 +24,7 @@ Resumen: **33 features**, 15 abiertas, 18 terminadas.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
-| F-031 | El nombrado del fichero archivado sale del cuerpo, no de lo persistido | 31 | pendiente | critico | `feature/F-031-nombrado-persistido` |
+| F-031 | El nombrado del fichero archivado sale del cuerpo, no de lo persistido | 31 | en curso | critico | `feature/F-031-nombrado-persistido` |
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 34 | pendiente | critico | `feature/F-034-archivo-persistido-en-erp` |
 
 ## Terminadas
@@ -130,7 +132,7 @@ DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO AR
 
 ### F-031 · El nombrado del fichero archivado sale del cuerpo, no de lo persistido
 
-estado **pendiente** · prioridad 31 · rigor `critico` · SDD sí · rama `feature/F-031-nombrado-persistido`
+estado **en curso** · prioridad 31 · rigor `critico` · SDD sí · rama `feature/F-031-nombrado-persistido`
 
 Hallazgo de la spec de F-030 (design.md seccion 10.7), 2026-09-16, declarado FUERA DE ALCANCE alli a proposito y dado de alta aqui por decision del humano. POST /api/archivar decide la carpeta de SharePoint y el nombre del fichero con el codigo_obra y el numero_incidencia DEL FORMULARIO, no con los guardados. Esos dos campos entran en la huella del veredicto, asi que a partir de F-030 se da una asimetria: la puerta aprueba los valores de la base y el fichero se nombra con los del cuerpo. Si no coincidieran, un PDF con el DNI de un cliente acabaria archivado en la carpeta de OTRA OBRA. Hoy no ocurre porque el front manda lo que leyo, de modo que esto es una defensa en profundidad, no un fallo observado. NO se metio en F-030 porque cerrarlo obliga a dos cosas que aquella no toca: mover el nombrado a lo persistido, y mirar que hace el front cuando una persona corrige a mano el codigo de obra o el numero de incidencia -si esa correccion se guarda antes de archivar, o solo viaja en el cuerpo-. Esa segunda parte puede cambiar el circuito del front, no solo el backend.
 

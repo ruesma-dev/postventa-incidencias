@@ -198,6 +198,33 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    - **el re-archivo del mismo parte no existe desde el circuito**: ni campo del
      cuerpo ni parámetro para forzarlo. Si algún día hace falta, será una ficha
      propia. El detalle está en `specs/F-033-l1-traza-archivo/`.
+
+   **Precisado por F-031 el 2026-09-22**: **la carpeta y el nombre del fichero
+   salen del `codigo_obra` y el `numero_incidencia` que constan guardados** en
+   `postventa.partes`, no de los que trae el cuerpo de la petición. Salen, en
+   concreto, de la **misma** situación que la puerta de estado acaba de leer
+   (`ctx.situacion.validacion`), así que el fichero se nombra byte por byte con
+   los dos valores que la puerta acaba de dar por buenos. Hasta F-031 la puerta
+   aprobaba **unos** valores y el fichero se nombraba con **otros** —los del
+   cuerpo—, y coincidían solo porque el front manda lo que leyó: una costumbre,
+   no una garantía. Además:
+   - **lo que venga en el cuerpo ya solo puede cerrar la puerta, nunca
+     abrirla**: los dos campos siguen siendo obligatorios (contrato HTTP
+     intacto) pero pasan a **cotejarse** contra lo guardado. Si no cuadran, el
+     endpoint responde **409** diciendo **cuál** de los dos y con qué valores,
+     y **no se archiva nada**;
+   - **el cotejo va antes de dejar cualquier rastro**: después de la puerta y
+     antes del nombrado, de la traza previa en `pendiente` y de cualquier
+     llamada a SharePoint. Con L1 cortando por `hash` + estado y sin forma de
+     forzar el re-archivo, un PDF puesto en la carpeta equivocada no se
+     arregla desde el circuito;
+   - **el cotejo normaliza los dos lados** con el mismo criterio que F-032, así
+     que `RS 26.09/0178` y `RS26.09/0178` son el mismo número y no un 409;
+   - **el front fuerza el guardado de lo escrito y lo espera** antes de calcular
+     la tanda: quien corrige un código y pulsa «archivar y cerrar» dentro del
+     rebote de 1,5 s del autoguardado no manda un código que no esté en la
+     base. Las dos mitades van juntas. El detalle está en
+     `specs/F-031-nombrado-persistido/`.
 7a. **Gráfico** (F-012) — el PDF del parte se adjunta a la reclamación como
    **gráfico** de Sigrid, a través del endpoint de dominio de la pasarela
    (`POST /api/sigrid/concepto-grafico`): tres filas en dos bases —el binario
@@ -450,6 +477,14 @@ igual que hoy, y por debajo se suben los PDFs.
    Los separadores se normalizan a ` - ` con guion normal: el código que emite
    Sigrid puede traer guion largo (`–`), y un nombre de fichero no es sitio
    para depender de eso.
+
+   **Precisado por F-031 el 2026-09-22**: **los dos códigos que rellenan ese
+   nombre —y la carpeta— son los que constan guardados para el parte**, no los
+   que declare quien llama. Las cuatro reglas del nombrado, el sufijo y los
+   separadores no cambian ni una letra: lo que cambia es **de dónde salen sus
+   entradas**. Si el código guardado está vacío o es innombrable, no se archiva
+   y se dice cuál falta; un código ilegible **no se aprueba, se teclea y se
+   guarda**, que es la regla que F-026 ya tenía escrita.
 9. **Reprocesar una remesa no puede duplicar nada.** El mismo parte, subido
    dos veces, es el mismo parte: se identifica por hash del PDF troceado y
    por número de incidencia.

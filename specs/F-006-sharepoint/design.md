@@ -244,6 +244,19 @@ del esquema propio, ni a nivel de servidor.
 
 ## 4 · El nombrado (dominio puro)
 
+> **Nota al margen · F-031, 2026-09-22.** Todo lo que esta sección dice sobre
+> **qué** se hace con los dos códigos sigue vigente letra por letra: las cuatro
+> reglas, el sufijo, los separadores y `nombre_admisible` no han cambiado. Lo
+> que cambió es **de dónde salen sus entradas**. En F-006 el paso los tomaba de
+> la extracción que venía en el contexto, y desde F-030 el borde metía ahí los
+> dos campos del **cuerpo** de la petición; desde F-031 salen del `codigo_obra`
+> y el `numero_incidencia` que constan **guardados** en `postventa.partes`,
+> leídos de la misma situación que la puerta de estado acaba de aprobar, y los
+> dos del cuerpo pasan a **cotejarse** contra ellos (409 si no cuadran, sin
+> archivar nada). La columna «De dónde sale» de la tabla de abajo se lee, a
+> partir de esa fecha, como «del papel, **pasando por lo que se guardó**».
+> Detalle: `specs/F-031-nombrado-persistido/`.
+
 ### 4.1 La trampa, escrita antes que el código
 
 Tres cosas distintas que es fácil confundir, y que decide `docs/ARCHITECTURE.md`

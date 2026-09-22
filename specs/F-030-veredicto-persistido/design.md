@@ -524,6 +524,23 @@ a mirar qué hace el front cuando una persona corrige un campo. **Se propone
 darlo de alta como feature propia** y se deja anotado en
 `progress/current.md` para que lo decida el humano.
 
+> **CERRADO por F-031 el 2026-09-22.** El humano lo dio de alta como ficha
+> propia y ya está implementada: la carpeta y el nombre salen del `codigo_obra`
+> y el `numero_incidencia` **guardados**, leídos de la misma situación que la
+> puerta de estado acaba de aprobar; los dos campos del cuerpo siguen siendo
+> obligatorios pero pasan a **cotejarse**, y un cuerpo que no cuadre da **409**
+> sin archivar nada, antes de dejar rastro; y el front fuerza el guardado de lo
+> escrito y lo espera antes de lanzar la tanda, que es la mitad sin la cual
+> esto habría **empeorado** el caso de la corrección reciente. La asimetría que
+> esta sección describe ya no existe. El detalle, en
+> `specs/F-031-nombrado-persistido/`.
+>
+> Lo que F-031 **no** cerró, y sigue abierto: `/api/adjuntar` y `/api/cerrar`
+> tienen el mismo defecto de familia y es **peor** —ahí lo que está en juego es
+> qué reclamación se cierra en el ERP de producción—. Es el hallazgo **H-1** de
+> `specs/F-031-nombrado-persistido/design.md` §8, y por decisión del humano del
+> 2026-09-22 va en el `acceptance` ampliado de **F-034**.
+
 ---
 
 ## 11 · Encaje en la arquitectura y límite de microservicio

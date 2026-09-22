@@ -34,7 +34,7 @@
 | El parte va a la carpeta de **otra unidad** de la misma obra | Un parte firmado de la Villa 5 dentro de la Villa 7, en su OneDrive | Lleva DNI manuscrito. Nadie lo busca ahí, y nuestra traza dice «archivado» |
 | El parte va a **otra obra** | Igual, en otra promoción | El mismo, peor |
 | Creamos una carpeta de obra o unidad **al lado** de la suya | `0677 15 VIVIENDAS...` junto a `0677-MIRASIERRA` | Su archivo partido en dos, y visible en todos sus equipos al momento. Desde D-4 (2026-09-18) el sistema **sí** crea carpetas, así que este es **el** riesgo de la feature: lo contiene la regla de las parecidas (§4.5, R35) |
-| Se re-archiva en Posventa un parte ya archivado en IT | Aparece un parte «nuevo» | Y nuestra traza pierde el puntero a IT (F-033) |
+| Se re-archiva en Posventa un parte ya archivado en IT | Aparece un parte «nuevo» | Y nuestra traza pierde el puntero a IT (F-033). **Desde el 2026-09-22 (§9 bis) esto ya no puede pasar y así se quiere**: F-033 corta, y las 133 trazas de IT no se tocan |
 | Reemplazamos un fichero que alguien tiene abierto por OneDrive | Conflicto de sincronización / `423 Locked` | Graph lo rechaza; no se reintenta (§10) |
 
 Ninguno produce un error ruidoso en nuestro lado **si el diseño no lo
@@ -477,8 +477,13 @@ Orden, y cada paso lo da el humano:
 1. **F-033 desplegada** (D-2). Sin ella no se enciende nada.
 2. `23_destino_posventa.ps1 -UrlSitio ... -CodigoObra 0677` y
    `24_ubicacion_sigrid.ps1 -CodigoObra 0677` en verde (T2, T3).
-3. Consulta de solo lectura de lo archivado en IT (R26) y anotación del
-   recuento, sin identificadores.
+3. ~~Consulta de solo lectura de lo archivado en IT (R26) y anotación del
+   recuento, sin identificadores.~~ **Hecho ya, y fuera del corte**
+   (2026-09-22): el recuento se midió el 2026-09-18 con
+   `infra/25_mediciones_despliegue.ps1` —**133**, todas `archivado`, todas en
+   la biblioteca de IT—. No hay que repetirlo ni hacer nada con esas trazas
+   (§9 bis). Si se quiere confirmar que no han crecido, la misma medición, de
+   solo lectura.
 4. Cargar en Key Vault los IDs de Posventa en `sharepoint-site-id` y
    `sharepoint-drive-id` (`cargar_secretos_postventa.ps1 -Solo`). Los de IT
    **no se guardan en el repo**; si se quieren conservar, en el propio Key
@@ -501,6 +506,12 @@ entera, así que re-archivar un parte ya archivado en IT: (a) lo sube a
 Posventa, contra H4; y (b) `upsert` de `postventa.archivos` por `hash_parte`
 **pisa** `drive_id`, `carpeta` y `web_url`, y el puntero a IT se pierde, contra
 R26. Y re-archivar no es raro: el circuito de F-025 re-archiva al reintentar.
+
+> **Precisión del 2026-09-22.** F-033 está implementada, aprobada y mergeada
+> en `dev`, así que este escenario ya está cerrado. Lo que su **D-1** decidió
+> —cortar siempre por `hash` + estado— tiene una consecuencia que **el humano
+> ha aceptado expresamente** y que ya no es una decisión abierta: los **133**
+> partes archivados en IT **nunca se subirán a Posventa**. Ver §9 bis.
 
 **Recomendación: F-033 se implementa y despliega antes que F-013**
 (dependencia dura para el corte, §7.3 paso 1). F-013 no la absorbe: F-033 toca
@@ -534,6 +545,11 @@ recortar a `Sites.Selected`, habrá que conceder **el sitio de Posventa**
 (`write`) —y, si se conserva la lectura de lo de IT, el de IT (`read`)—.
 Se anota en la ficha de F-018 (T18); no se hace aquí.
 
+> **Precisión del 2026-09-22.** Con la premisa de localizar lo de IT derogada
+> (§9 bis), el `read` sobre el sitio de IT **ya no lo pide F-013**: si se
+> concede, será por otro motivo. Que no se conceda **no borra nada** —los
+> ficheros siguen en su biblioteca—; es exactamente «olvidar sin borrar».
+
 ## 9 · Decisiones del humano (cerradas el 2026-09-18)
 
 Las preguntas se hicieron con la tabla de abajo, y el humano respondió el
@@ -561,6 +577,54 @@ Posventa (`RS26.08 – 0123 PARTE FIRMADO`, sin obra, con raya) **no coincide**
 con la nuestra, así que en una carpeta donde ya subieran el parte a mano
 convivirán dos ficheros del mismo parte. No se deduplica por contenido (F-006
 R13); se avisa a Posventa en la comunicación del corte.
+
+## 9 bis · Enmienda del 2026-09-22 · lo de IT se olvida, pero no se borra
+
+> **La premisa original no se borra, se cita.** H4 del 2026-09-18: *«Lo ya
+> archivado en IT se queda en IT, sin migración, y se documenta que sigue
+> allí»*. De ahí salían R24–R26 y, en el diseño, el paso 3 del corte (§7.3) y
+> el `read` sobre el sitio de IT (§8.3).
+
+Dos frases del humano la enmiendan, y hay que leerlas juntas:
+
+| Fecha | Literal | Qué hace |
+|---|---|---|
+| **2026-09-18** | *«lo que esta en IT eran pruebas, se puede olvidar»* | **Deroga** la parte de H4 que obligaba a documentar **cómo localizar** lo archivado en IT. Si eran pruebas, no hay inventario que mantener |
+| **2026-09-22** | *«los partes en IT se pueden olvidar, pero no borrar»* | **Precisa** la anterior y pone el límite: olvidar **no** es borrar |
+
+**Qué significa «no borrar», en concreto.** No se borra ni se toca **nada** de
+estas tres cosas:
+
+1. Los **ficheros** de la biblioteca de IT. Siguen donde están.
+2. Las **filas de `postventa.archivos`** de esos partes. Ninguna sentencia del
+   corte ni del despliegue de F-013 las toca.
+3. La **traza `archivado`** con su `drive_id` de IT. **No** se retira para
+   permitir re-archivarlos en Posventa. Era la alternativa que quedó apuntada;
+   queda descartada.
+
+**La contrapartida, que es la razón de escribir esto.** Con **D-1 de F-033**
+—cortar siempre por `hash` + estado— una traza `archivado` impide volver a
+subir ese parte. Al no tocar las trazas, los **133 partes** de IT **nunca se
+subirán a la biblioteca de Posventa**. Es lo aceptado. F-013 archiva allí
+**solo lo que se archive a partir de su despliegue**.
+
+**La cifra, medida.** **133** trazas, todas `archivado` y todas con biblioteca,
+en **una sola** biblioteca —la de IT—, fechadas del 2026-08-26 al 2026-09-18;
+`pendiente`: **0**. **[MEDIDO]** el 2026-09-18 con
+`infra/25_mediciones_despliegue.ps1`, de solo lectura. Fuente:
+`progress/cierre_verificaciones_F-033.md`.
+
+**Decisión abierta que se cierra.** La que dejaron apuntada el implementer de
+F-033 y su review (**O-2**: *«F-013 tendrá que decidir qué hace con esas
+trazas»*), repetida en el acta de cierre de F-033 como *«falta decidir si se
+olvidan del todo o si al desplegar F-013 se les retira la traza»*. **Cerrada**:
+no se les retira la traza, no se hace nada con ellas.
+
+**Qué cambia en esta spec, y qué no.** Cambia el texto de H4, R24 y R26
+(`requirements.md` §0 y §8), el paso 3 del corte (§7.3), la fila de riesgo de
+§0.1, la nota de §8.1 y la de §8.3, y la tarea de documentación T17
+(`tasks.md`). **No cambia** ni una línea de diseño ejecutable: ningún módulo,
+ninguna sentencia, ningún test de comportamiento. Es una enmienda documental.
 
 ## 10 · Riesgos y alternativas descartadas
 

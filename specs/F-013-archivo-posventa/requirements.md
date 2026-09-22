@@ -24,7 +24,7 @@
 | **H1** | Destino: el sitio de **Posventa**, biblioteca **«Documentos compartidos»**. Se abandona la biblioteca temporal del sitio de IT | R1, R2; configuración, `design.md` §6 |
 | **H2** | Estructura: **la que ya usa Posventa**, `<cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS / <fichero>`. El nombre del fichero **no cambia** | R3–R16 |
 | **H3** | «PARTES FIRMADOS (sistema)» como carpeta base de la estructura propia: con la estructura de Posventa probablemente no aplica. Se dejó abierto y **se cerró el mismo día como D-1**: raíz de la biblioteca | D-1; R17 |
-| **H4** | **Lo ya archivado en IT se queda en IT**, sin migración, y se documenta que sigue allí | R24–R26 |
+| **H4** | **Lo ya archivado en IT se queda en IT**, sin migración, y se documenta que sigue allí | R24–R26. **Enmendada el 2026-09-22**: la segunda mitad («se documenta que sigue allí», en el sentido de documentar cómo localizarlo) decae; el «se queda en IT, sin migración» se refuerza a **no se borra nada**. Recuadro en §8 |
 
 ### 0 bis · Las decisiones abiertas, cerradas por el humano el 2026-09-18
 
@@ -92,6 +92,8 @@ comprueba permisos; y la documentación.
 | Que carpeta y nombre salgan de lo persistido y no del cuerpo | Ficha propia, toca el front | **F-031** (D-3, `design.md` §8.2) |
 | Recortar permisos a `Sites.Selected` y conceder el sitio de Posventa | Lo ejecuta el humano en el tenant | **F-018** (se le anota, T-doc) |
 | Migrar lo archivado en IT | Decisión H4 | — |
+| **Borrar** lo archivado en IT: ficheros de su biblioteca, filas de `postventa.archivos` | Decisión del humano del **2026-09-22**: «se pueden olvidar, pero no borrar» (§8) | — |
+| **Retirar la traza `archivado`** de esos partes para poder re-archivarlos en Posventa | La misma decisión. Cierra la decisión abierta que dejaron F-033 (O-2) y su acta de cierre | — |
 | Pintar la cola de «destino no resuelto» en el front | Es circuito de front | propuesta de ficha nueva (D-5) |
 
 ## Vocabulario
@@ -355,20 +357,77 @@ configuración, ENTONCES el sistema no debe subir ni crear nada, debe responder
 
 ## 8 · Lo archivado en IT
 
+> **Enmienda del 2026-09-22 · la premisa H4 se deroga en parte y se precisa.
+> Nada se borra de esta spec: la premisa original se cita entera y sigue
+> abajo.**
+>
+> **La premisa original**, H4 del 2026-09-18: *«Lo ya archivado en IT se queda
+> en IT, sin migración, y se documenta que sigue allí»*. De ahí salían R24–R26,
+> y en particular la obligación de R26 de documentar **cómo localizar** esos
+> partes.
+>
+> **Qué la invalidó, y quién.** El humano, en dos pasos:
+>
+> - **2026-09-18**, literal: *«lo que esta en IT eran pruebas, se puede
+>   olvidar»*. Si son pruebas, no hay nada que localizar: documentar el
+>   procedimiento de búsqueda sería mantener vivo un inventario de material
+>   desechado. **Decae la obligación de documentar cómo localizarlo** (R26).
+> - **2026-09-22**, literal: *«los partes en IT se pueden olvidar, pero no
+>   borrar»*. Precisa la anterior y marca el límite: olvidar **no** es borrar.
+>   **No se borra nada**: ni los ficheros de la biblioteca de IT, ni las filas
+>   de `postventa.archivos`, ni se les retira la traza `archivado` para
+>   poder re-archivarlos en Posventa (R24).
+>
+> **La contrapartida aceptada, escrita.** Con **D-1 de F-033** —cortar siempre
+> por `hash` + estado—, un parte con traza `archivado` no se vuelve a subir.
+> Como esas trazas **no se tocan**, los **133 partes** archivados en IT
+> **nunca se subirán a la biblioteca de Posventa**. Es lo aceptado, no un
+> efecto colateral por descubrir. F-013 archiva en Posventa **solo lo que se
+> archive a partir de su despliegue**.
+>
+> **La cifra, medida.** **133** trazas, **todas** `archivado` y todas con
+> biblioteca, en **una sola** biblioteca —la de IT—, del 2026-08-26 al
+> 2026-09-18. **[MEDIDO]** el 2026-09-18 con
+> `infra/25_mediciones_despliegue.ps1` (solo lectura); fuente:
+> `progress/cierre_verificaciones_F-033.md`. Trazas `pendiente`: **0**.
+>
+> **Qué cierra.** La **decisión abierta** que dejaron apuntada el implementer
+> de F-033 y su review (**observación O-2**: «F-013 tendrá que decidir qué hace
+> con esas trazas»). Queda **cerrada**: no se hace nada con ellas.
+>
+> Esto **no reabre F-033 ni cambia el alcance de F-013**: se corrige el texto
+> de H4 y de R26 para que no mientan, y se deja la constancia.
+
 **R24.** El sistema no debe mover, copiar, borrar ni volver a subir nada de la
-biblioteca de IT (H4).
+biblioteca de IT (H4). **Precisado el 2026-09-22**: tampoco debe borrarse
+—ni por el sistema ni en el corte, que lo da una persona— **ninguna fila de
+`postventa.archivos`** de esos partes, ni retirárseles el estado `archivado`
+ni el `drive_id` que apunta a IT. No hay ningún paso del despliegue de F-013
+que escriba sobre esas trazas.
 
 **R25.** MIENTRAS un parte conste `archivado` en `postventa.archivos` con el
 `drive_id` de la biblioteca de IT, el sistema no debe volver a subirlo a la de
 Posventa. **Esto no lo garantiza F-013: lo garantiza la capa L1 de F-033**, y
 por eso F-033 es precondición de desplegar F-013 (D-2). Un test de F-013 lo
-comprueba **desde el endpoint** una vez F-033 esté mergeada.
+comprueba **desde el endpoint** una vez F-033 esté mergeada. Desde la enmienda
+del 2026-09-22 esto no es solo una salvaguarda: es **el resultado querido**
+para los 133 partes de IT.
 
 **R26.** La documentación debe decir, con fecha, que los partes archivados
-hasta el corte siguen en la biblioteca de IT, **cómo localizarlos** (consulta de
-solo lectura sobre `postventa.archivos` por `drive_id`/`web_url`, sin
-identificadores en el repo) y que el archivo de Posventa **no los contiene**
-(criterio de aceptación 2 de la ficha, opción «localizable»).
+hasta el corte —**133**, medidos el 2026-09-18— siguen en la biblioteca de IT,
+que **no se migran, no se borran y no se les retira la traza**, y que por eso
+el archivo de Posventa **no los contiene ni los contendrá**.
+
+> **Enmendado el 2026-09-22.** R26 decía además: *«**cómo localizarlos**
+> (consulta de solo lectura sobre `postventa.archivos` por
+> `drive_id`/`web_url`, sin identificadores en el repo)»*, por la segunda
+> mitad de H4 y por el criterio de aceptación 2 de la ficha, opción
+> «localizable». Esa obligación **decae** con la decisión del 2026-09-18 («eran
+> pruebas, se puede olvidar»): ver el recuadro de §8. Lo que R26 protegía de
+> verdad sigue en pie y es lo que dice ahora —que quede escrito, con fecha, que
+> el archivo de Posventa no los contiene—. La consulta de solo lectura **no se
+> retira del repositorio**: sigue haciendo falta para R43 (qué partes hay en
+> una carpeta antes de deshacerla).
 
 ## 9 · Infra y documentación
 

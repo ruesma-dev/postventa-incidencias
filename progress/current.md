@@ -1,12 +1,59 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ENMIENDA DOCUMENTAL · 2026-09-22 · **F-013: lo de IT se olvida, pero no se borra**
+>
+> Enmienda **solo de spec**, sin una línea de código, en la rama
+> `feature/F-013-archivo-posventa`. Recoge dos frases del humano con recuadro
+> fechado, citando la premisa original sin borrarla (patrón de R28 de F-010):
+>
+> - **2026-09-18**, *«lo que esta en IT eran pruebas, se puede olvidar»*:
+>   **deroga** la mitad de la premisa **H4** que obligaba a documentar **cómo
+>   localizar** lo archivado en IT.
+> - **2026-09-22**, *«los partes en IT se pueden olvidar, pero no borrar»*:
+>   la precisa. **No se borra nada**: ni los ficheros de la biblioteca de IT,
+>   ni las filas de `postventa.archivos`, ni se les retira la traza
+>   `archivado` para poder re-archivarlos en Posventa.
+>
+> **Contrapartida aceptada y escrita**: con **D-1 de F-033** (cortar siempre
+> por `hash` + estado) y las trazas intactas, los **133 partes** de IT
+> —**[MEDIDO]** el 2026-09-18 con `infra/25_mediciones_despliegue.ps1`, todos
+> `archivado` y todos en una sola biblioteca, la de IT— **nunca se subirán a
+> la biblioteca de Posventa**. F-013 archiva allí **solo lo que se archive a
+> partir de su despliegue**.
+>
+> **Queda CERRADA** la decisión abierta que dejaron el implementer de F-033 y
+> su review (**observación O-2**, repetida en el acta de cierre de F-033):
+> «qué hace F-013 con esas trazas». Respuesta: nada.
+>
+> Tocado, quirúrgicamente y sin reescribir secciones:
+> `requirements.md` (fila **H4** de §0, dos filas nuevas en la tabla de
+> «No entra», recuadro de §8, **R24** precisado, **R25** matizado, **R26**
+> enmendado con su recuadro); `design.md` (fila de riesgo de §0.1, paso 3 del
+> corte de §7.3 —tachado: ya medido, sale del corte—, nota en §8.1, nota en
+> §8.3 sobre el `read` de IT y **§9 bis** nueva con la enmienda completa);
+> `tasks.md` (**T17** ya no manda documentar cómo localizarlo, **T18**
+> precisado, paso 3 del runbook tachado).
+>
+> **Sin cambios ejecutables**: ningún módulo, ninguna sentencia, ningún test
+> de comportamiento. `bash harness/init.sh` **en verde** (2892 tests del api +
+> 62 del arnés; puerta de cobertura N/A porque F-013 no cambia líneas Python
+> frente a `dev`). Commit local, sin push. Rama devuelta a `dev` al terminar.
+>
+> **F-013 sigue `spec_ready`** y **sigue bloqueada por F-033 y F-031**. Matiz:
+> **F-033 ya está cerrada** (implementada, aprobada, mergeada en `dev` y con
+> sus verificaciones manuales en acta), así que la dependencia viva es
+> **F-031**.
+
 > ## SPEC APROBADA · 2026-09-18 · **F-013, mudar el archivo a la biblioteca de Posventa**
 >
 > **Aprobada por el humano el 2026-09-18** («si»), con la enmienda de D-4
 > incluida. Queda `spec_ready` y **bloqueada por F-033 y F-031** (orden F-033 →
 > F-031 → F-013). F-018 ya pedía asignar la biblioteca de Posventa en su
 > criterio 2: no hace falta tocar esa ficha.
+>
+> **Enmendada el 2026-09-22** en lo tocante a lo archivado en IT: ver el
+> bloque de arriba y `design.md` §9 bis. La aprobación no se reabre.
 >
 > Rama `feature/F-013-archivo-posventa` (desde `dev`). Spec en
 > `specs/F-013-archivo-posventa/` (requirements, design, tasks). **Ni una

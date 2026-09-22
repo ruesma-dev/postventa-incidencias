@@ -135,7 +135,11 @@
   premisa (R26, R29): `docs/INTEGRACION.md` §3 (sitio, estructura, «sin
   listados de carpeta», tabla «qué se rompe» con carpetas renombradas y `423`,
   dependencia de `sigrid-api` al archivar, variables nuevas en §4, lo que
-  sigue en IT y cómo localizarlo; **el procedimiento para deshacer una
+  sigue en IT ~~y cómo localizarlo~~ —**enmendado el 2026-09-22**
+  (`design.md` §9 bis): se documenta que los **133** partes de IT se quedan
+  allí, que **no se migran, no se borran y no se les retira la traza**, y que
+  por eso Posventa no los contendrá; **no** se documenta cómo localizarlos—;
+  **el procedimiento para deshacer una
   carpeta creada por error**, R43, `design.md` §10.14, con la consulta de
   solo lectura de los partes de una carpeta); `docs/DESPLIEGUE.md` (runbook del corte,
   `design.md` §7.3, y los dos scripts); `docs/ARCHITECTURE.md` (paso 6 y fila
@@ -150,7 +154,9 @@
 - [ ] **T18**: dejar escrito para el líder, en `progress/impl_F-013.md`, el
   texto que hay que añadir a la ficha de **F-018** en `harness/features.json`:
   al recortar a `Sites.Selected` hay que conceder el **sitio de Posventa**
-  (escritura) y, si se quiere seguir leyendo lo de IT, el de IT (lectura). El
+  (escritura) y, si se quiere seguir leyendo lo de IT, el de IT (lectura)
+  —**precisado el 2026-09-22**: ese `read` **ya no lo pide F-013**
+  (`design.md` §8.3, §9 bis); no concederlo no borra nada—. El
   implementer **no** edita `features.json`. | Verificación: el párrafo existe
   en el informe
 - [ ] **T19**: `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
@@ -177,9 +183,12 @@ Runbook completo en `design.md` §7.3 y, tras T17, en `docs/DESPLIEGUE.md`.
 1. F-033 desplegada.
 2. Repetir T2 con `-CodigoObra` de la obra piloto: todas las unidades que se
    vayan a archivar dicen «resolvería: sí» (R31).
-3. Consulta de solo lectura en `postventa`: recuento de `archivos` en estado
+3. ~~Consulta de solo lectura en `postventa`: recuento de `archivos` en estado
    `archivado` por `drive_id` (sin imprimir el valor), para dejar escrito
-   cuántos partes siguen en IT (R26).
+   cuántos partes siguen en IT (R26).~~ **Ya hecho, sale del corte**
+   (2026-09-22): medido el 2026-09-18 con `infra/25_mediciones_despliegue.ps1`
+   —**133**, todas en la biblioteca de IT—. **No se toca nada de esas trazas**
+   (`design.md` §9 bis).
 4. `cargar_secretos_postventa.ps1 -Solo` con los IDs de Posventa;
    `$EstructuraArchivo = "posventa"`, `$CarpetaBaseArchivo` según D-1;
    `desplegar_backend.ps1`.

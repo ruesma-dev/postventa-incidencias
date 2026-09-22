@@ -195,14 +195,24 @@ def _repositorio_falso(archivo: TrazaArchivo | None) -> RepositorioFalso:
     )
 
 
-def _base_con_el_parte_apto(archivo: TrazaArchivo | None = None) -> RepositorioComoLaBase:
+def _base_con_el_parte_apto(
+    archivo: TrazaArchivo | None = None, **codigos: str
+) -> RepositorioComoLaBase:
     """`RepositorioComoLaBase` con la ficha y el veredicto apto de este parte.
 
     Es lo que habría en `postventa.partes` y `postventa.validaciones` tras
     `POST /api/parte`. Si se pasa `archivo`, se escribe por `guardar_archivo`,
     como lo haría el paso: vuelve **por columnas** en la situación.
+
+    > **Enmienda del 2026-09-22 (F-031).** `codigos` permite decirle a la base
+    > **qué códigos constan guardados** de este parte. Hasta hoy daba igual
+    > —el nombre del fichero salía del formulario—, pero desde F-031 sale de
+    > lo guardado y el formulario solo se coteja contra ello, así que el caso
+    > que archiva con `0626` tiene que tener `0626` en la base. Es el mismo
+    > mundo de siempre puesto en su sitio: cuando una petición llega de verdad
+    > a `/api/archivar`, esos códigos ya están en `postventa.partes`.
     """
-    ctx = contexto_apto(hash_parte=HASH)
+    ctx = contexto_apto(hash_parte=HASH, **codigos)
     base = RepositorioComoLaBase()
     base.guardar_parte(
         parte=parte_de_prueba(hash_parte=HASH),
@@ -347,7 +357,12 @@ def test_f033_circuito_f032_el_nombre_viejo_se_queda_y_se_avisa(monkeypatch):
     _con_biblioteca_vigente(monkeypatch, DRIVE_POSVENTA)
     archivador = ArchivoPortFalso()
     base = _base_con_el_parte_apto(
-        _archivada(nombre_fichero=NOMBRE_VIEJO_F032, carpeta=CARPETA_F032)
+        _archivada(nombre_fichero=NOMBRE_VIEJO_F032, carpeta=CARPETA_F032),
+        # F-031 · la base guarda los códigos **ya saneados** por F-032, que son
+        # los mismos que manda el formulario. Lo que sigue siendo viejo es el
+        # nombre de la traza, que es de lo que va este caso.
+        codigo_obra="0626",
+        numero_incidencia="RS26.09/0178",
     )
     _con_dobles(monkeypatch, archivador, base)
 

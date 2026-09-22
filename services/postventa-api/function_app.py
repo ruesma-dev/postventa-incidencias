@@ -222,6 +222,7 @@ from domain.models.errores import (
     CierreDeshabilitado,
     CierreFallido,
     CierreSinTraza,
+    CodigosNoCoinciden,
     ConfiguracionPgIncompleta,
     ConfiguracionSharePointIncompleta,
     ConfiguracionSigridIncompleta,
@@ -690,11 +691,19 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
     Solo traduce: saca el fichero y los campos de la petición, llama al
     handler y mapea sus errores de dominio a códigos HTTP. Cada código dice
     una cosa distinta a propósito: **400** la petición está mal formada,
-    **409** el parte no se puede archivar tal y como está —no es apto, o no se
-    puede nombrar—, **503** aquí y ahora no se archiva —ventana cerrada, falta
-    configuración, o la base de datos no responde— y **502** el proveedor del
-    archivo no respondió. En todos ellos, **sin haber subido nada**, y el
-    mensaje lo dice.
+    **409** el parte no se puede archivar tal y como está, **503** aquí y
+    ahora no se archiva —ventana cerrada, falta configuración, o la base de
+    datos no responde— y **502** el proveedor del archivo no respondió. En
+    todos ellos, **sin haber subido nada**, y el mensaje lo dice.
+
+    Dentro del 409 caben hoy **tres** motivos, y el mensaje los distingue
+    porque se arreglan de formas distintas: el parte **no es apto**
+    —revalidarlo o que alguien decida sobre él—, **no se puede nombrar**
+    —falta un código o el nombre lleva algo que SharePoint no admite, y va a
+    revisión manual— y, desde F-031, **lo declarado no es lo que consta
+    guardado**, que se arregla guardando la corrección con `POST /api/parte`
+    y volviendo a archivar. Ese tercero es el único de los tres en el que
+    reintentar, después de guardar, funciona.
 
     **La excepción, y por eso es un código aparte: 500.** Es el único caso en
     el que el PDF **sí está** en SharePoint y lo que falta es la traza
@@ -728,7 +737,7 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
     except CuerpoDeArchivoInvalido as error:
         log.info("archivar rechazado: %s", error.motivo)
         return _json({"error": error.motivo}, 400)
-    except (ParteNoApto, NombradoImposible) as error:
+    except (ParteNoApto, CodigosNoCoinciden, NombradoImposible) as error:
         log.info("archivar no procede: %s", error.motivo)
         return _json({"error": error.motivo}, 409)
     except ReferenciaNoConsta as error:

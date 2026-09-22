@@ -131,12 +131,18 @@
       (`api.archivar` con un código distinto) se espera el 409 de R3 pintado en
       el parte. **No sube nada**: `ARCHIVO_HABILITADO` está apagado en local.
       El resultado real se copia a `progress/impl_F-031.md`.
+      **PENDIENTE DEL HUMANO**: necesita una persona delante y no la ejecuta
+      ningún agente. El guion, con los dos comandos y lo que hay que mirar en
+      cada paso, está listo para copiar en `progress/impl_F-031.md` §8 ter.
 
 - [ ] **T15**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. En el
       entorno desplegado y **solo con un parte que el humano autorice**:
       archivar y comprobar que el nombre y la carpeta son los mismos que antes
       de la feature. Única comprobación contra la biblioteca real. El resultado
       real se copia a `progress/impl_F-031.md`.
+      **PENDIENTE DEL HUMANO**: escritura contra la biblioteca real, con
+      dry-run previo y autorización explícita. Ningún agente la ejecuta. El
+      guion está en `progress/impl_F-031.md` §8 ter.
 
 - [x] **T16**: campaña de mutación sobre lo cambiado
       (`python -m harness.mutacion --feature F-031`), con **cero
@@ -145,4 +151,7 @@
       **Verificación**: el informe existe, está completado y no deja ningún
       superviviente sin analizar.
 
-- [ ] **T17**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T17**: Ejecutar `bash harness/init.sh` en verde.
+      **VERDE el 2026-09-22**, con la rama correcta y la puerta de cobertura al
+      **100 %** (28/28, umbral 80 %, nivel `critico`). Salida en
+      `progress/impl_F-031.md` §5 ter.

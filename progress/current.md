@@ -1,10 +1,35 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## 🔧 F-031 · BLOQUE 4 EN CURSO · 2026-09-22 · T11, T12 y T13 cerradas
+> ## ✅ F-031 · BLOQUES 4 Y 5 HECHOS · 2026-09-22 · lista para el reviewer
 >
-> Cierre de alcance y documentación. Queda el **Bloque 5** (V1 y V2 manuales,
-> la campaña de mutación de la feature entera y el verde final).
+> **15 de las 17 tareas cerradas.** Las dos que quedan son **T14 y T15**, las
+> verificaciones `MANUAL (humano)`: **no las ejecuta ningún agente**. El guion
+> de las dos, con su comando y qué mirar en cada paso, está listo para copiar
+> en **`progress/impl_F-031.md` §8 ter**.
+>
+> Informe completo de estos dos bloques, con las **11 desviaciones de los
+> cuatro bloques reunidas en una sola lista**: `progress/impl_F-031.md`.
+>
+> **`bash harness/init.sh` en VERDE.** Cobertura de líneas cambiadas **100 %**
+> (28/28, umbral 80 %). Mutación de la feature entera: **3 de 3 muertos, 0
+> supervivientes** (78,6 s, 3 workers). Estos dos bloques **no cambian ni una
+> línea de producción**: solo tests de alcance y documentación.
+>
+> ### Bloque 5 · las puertas de rigor
+>
+> - **T16** · campaña de mutación lanzada con la **línea base comprobada de
+>   verdad**, reejecutando las tres suites **enteras y sin caché** antes de
+>   lanzarla (3.066 + 256 + 310, todo verde), no fiándose del verde cacheado
+>   del arnés. El alcance sigue siendo 305 líneas de Python porque **el mutador
+>   solo muerde `.py`** (`harness/alcance.py:134`): el JavaScript del Bloque 3
+>   no entra, y se dice así en vez de omitirlo.
+> - **T17** · arnés en verde, con la rama correcta.
+> - **T14 y T15** · **del humano**. V1 ya es ejercitable entera desde el
+>   Bloque 3; V2 es la única comprobación contra la biblioteca real y va con
+>   dry-run y autorización expresa.
+>
+> ### Bloque 4 · cierre de alcance y documentación
 >
 > - **T11** · `services/postventa-api/tests/test_f031_alcance_cerrado.py`, **10
 >   controles** en verde. Cada frontera lleva **dos**: el del diff de la rama

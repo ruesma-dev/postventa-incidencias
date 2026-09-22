@@ -694,3 +694,390 @@ f89b00e F-031 T10: confirmarArchivo espera el vaciado antes de calcular la tanda
 ```
 
 Ningún `git push`, ningún PR, ningún commit fuera de la rama de la feature.
+
+---
+
+# F-031 · Bloques 4 y 5 (cierre) · informe de implementación
+
+> Rama `feature/F-031-nombrado-persistido`. Rigor **`critico`**.
+> Encargo: **T11 en adelante** — cierre de alcance, documentación, puertas de
+> rigor y verde final. Con esto **quedan hechas las 15 tareas que ejecuta un
+> agente**; las dos únicas abiertas son **T14 y T15**, que son del humano.
+>
+> **No se ha escrito en ningún sistema externo.** Ni SharePoint, ni Sigrid, ni
+> Azure, ni PostgreSQL. No hay DDL. Las dos verificaciones `MANUAL (humano)`
+> **no se han ejecutado**, por instrucción del encargo: quedan preparadas en
+> §8 ter, con su comando, listas para copiar.
+>
+> **No se ha tocado nada de lo declarado fuera**: `adjuntar.py`, `cerrar.py`,
+> `paso_grafico.py`, `paso_cierre.py` (F-034), `harness/features.json` ni
+> `azure-apps/`.
+
+## 1 ter · Qué cambió, en una frase
+
+**Nada de funcionalidad.** Estos dos bloques ponen por escrito lo que la
+feature se prohíbe (un fichero de tests de alcance), lo que la feature cambia
+en los documentos normativos, y pasan las puertas de rigor que la ficha
+`critico` exige.
+
+## 2 ter · Ficheros tocados
+
+### 2 ter.1 · Producción
+
+**Ninguno.** Ni una línea de `services/`. Es la comprobación más rápida de que
+estos dos bloques no pueden haber roto nada.
+
+### 2 ter.2 · Tests nuevos (1)
+
+- `services/postventa-api/tests/test_f031_alcance_cerrado.py` — **10
+  controles**. Calcado de `test_f033_alcance_cerrado.py`, que a su vez copió el
+  criterio de F-032, como pide R29 con esos dos nombres.
+
+### 2 ter.3 · Documentación (5 ficheros)
+
+| Fichero | Qué |
+|---|---|
+| `docs/ARCHITECTURE.md` | Dos recuadros **«Precisado por F-031 el 2026-09-22»**: paso 6 del pipeline (de dónde salen los dos códigos, el cotejo, dónde va en el orden, la normalización y la mitad del front) y semántica 8 (las reglas del nombrado no cambian; cambian sus entradas) |
+| `specs/F-030-veredicto-persistido/design.md` §10.7 | Nota de **CIERRE** del hallazgo que F-030 dejó declarado y fuera de alcance, con lo que sí se cerró y lo que **no** (H-1, que va a F-034) |
+| `specs/F-006-sharepoint/design.md` §4 | Nota al margen del nombrado: sigue vigente letra por letra salvo el origen de sus entradas |
+| `progress/current.md` | Bloque nuevo arriba (T11–T13, `azure-apps/` y el estado de H-1) |
+| `specs/F-031-nombrado-persistido/tasks.md` | T11, T12, T13 y T16 marcadas; T14 y T15 con su **PENDIENTE DEL HUMANO** y el puntero al guion |
+
+### 2 ter.4 · Informe de mutación
+
+- `progress/mutacion_F-031.md` regenerado por la campaña de T16, con el
+  análisis del implementer repuesto (ver §6 ter.4).
+
+## 3 ter · Decisiones de diseño y por qué
+
+1. **Cada frontera del alcance lleva DOS controles**, y es lo que separa este
+   fichero de una foto: el del **diff** de la rama (`git diff dev...HEAD`) y su
+   **hermano que no depende de `git`**. El primero deja de tener algo que mirar
+   en cuanto la rama se mergea —por eso lleva las tres guardas que F-030 tuvo
+   que inventar el 2026-09-17 para no dejar `dev` en rojo—; el segundo se
+   comprueba **en cualquier rama y para siempre**. Es el criterio de F-032 y
+   F-033, que R29 nombra.
+2. **Las listas se escriben a mano, no se derivan del árbol.** Los once
+   ficheros de DDL, los once métodos del puerto, los cinco campos de
+   `SituacionParte`: una lista recalculada leyendo el propio código daría verde
+   ante exactamente lo que viene a cazar.
+3. **Un control para `SituacionParte` aunque `tasks.md` no lo pidiera con ese
+   nombre.** `design.md` D-1 descartó explícitamente la alternativa (b) —dos
+   campos nuevos ahí, leídos de las mismas dos columnas—. Sin este control esa
+   alternativa puede volver por la puerta de atrás sin que nadie se entere, y
+   entonces habría **dos representaciones del mismo dato** en el mismo objeto.
+4. **Un control de que el paso ya no lee `ctx.extraccion`.** Es el corolario de
+   toda la feature: `_campo` era la **segunda fuente** de los dos códigos.
+   Ninguno de los otros nueve lo habría cazado, porque reintroducirla no exige
+   tocar ninguno de los ficheros que el diff vigila: basta volver a escribirla
+   en `paso_archivo.py`, que la feature **sí** toca.
+5. **La documentación se escribe donde ya hay recuadros de la misma familia**,
+   con el mismo encabezado fechado que F-026, F-028, F-030, F-032 y F-033. Un
+   documento normativo con seis formatos distintos de enmienda deja de leerse.
+6. **No se ha tocado `azure-apps/`**, ni siquiera para añadir una línea de
+   precisión: lo que hay escrito sigue siendo cierto (§6 ter.3), y el encargo
+   reserva ese repositorio al líder.
+
+## 4 ter · Fase RED · qué aplica aquí y qué no
+
+**La fase RED de los requisitos centrales está en los bloques 2 y 3**, con sus
+trazas pegadas: §4.3 (el `200 == 409` con el defecto a la vista, que es R1, R3
+y R5) y §4 bis.1 (los doce casos del vaciado, R18). Estos dos bloques **no
+añaden ningún requisito de comportamiento**: T11 es un control de alcance y
+T12–T13 son documentación.
+
+Lo que sí se ha hecho, porque un control de alcance que no muerde es peor que
+no tenerlo: **poner a propósito lo que el fichero prohíbe y comprobar que se
+pone rojo**. Se parchearon dos ficheros de producción, se ejecutó, y **se
+revirtieron** (`git status` limpio después, comprobado).
+
+El parche: un `_campo_resucitado(ctx, nombre)` que lee `ctx.extraccion` en
+`paso_archivo.py`, y un `es_el_mismo_codigo` colado en `paso_grafico.py`.
+Comando: `pytest tests/test_f031_alcance_cerrado.py -q`
+
+```
+>       assert accesos == [], (
+            "el paso de archivo volvió a leer `ctx.extraccion`: es la segunda "
+            "fuente de los dos códigos que F-031 vino a cerrar (design.md §4.3)"
+        )
+E       AssertionError: el paso de archivo volvió a leer `ctx.extraccion`: es la
+        segunda fuente de los dos códigos que F-031 vino a cerrar (design.md §4.3)
+E       assert [<ast.Attribu...01CA21B07590>] == []
+E         Left contains one more item: <ast.Attribute object at 0x000001CA21B07590>
+
+=========================== short test summary info ===========================
+FAILED tests/test_f031_alcance_cerrado.py::test_f031_r29_lo_nuevo_solo_vive_en_los_cinco_ficheros_de_la_feature
+FAILED tests/test_f031_alcance_cerrado.py::test_f031_r29_el_paso_de_archivo_ya_no_lee_la_extraccion
+2 failed, 8 passed in 1.90s
+```
+
+**Y hay un detalle que el reviewer debe saber, porque es la razón de ser de las
+dos mitades**: el control del **diff** de H-1
+(`test_f031_r29_la_rama_no_toca_adjuntar_ni_cerrar_ni_sus_pasos`) **NO** se
+puso rojo con ese parche, porque `git diff dev...HEAD` compara **commits**, no
+el árbol de trabajo. Quien lo cazó fue su hermano que no depende de `git`. Es
+exactamente para lo que está, y es la prueba de que un fichero de alcance con
+solo controles de diff daría una falsa tranquilidad.
+
+Revertido el parche: **10 passed**.
+
+## 5 ter · Verificaciones de cada tarea, con su resultado real
+
+| Tarea | Comando | Resultado |
+|---|---|---|
+| T11 | `pytest tests/test_f031_alcance_cerrado.py -q` | **10 passed in 2.83s** |
+| T11 (muerde) | el mismo, con el parche de §4 ter | **2 failed, 8 passed** — y revertido |
+| T11 (lint) | `ruff check` + `ruff format --check` sobre el fichero | `All checks passed!` · `1 file already formatted` |
+| T12 | `bash harness/init.sh` | **VERDE** (valida los documentos normativos) |
+| T12 | `git diff` de los tres documentos, revisado a ojo | **65 líneas, todas añadidas, 0 borradas**. Ni una línea existente modificada |
+| T13 | las ocho referencias de H-1, leídas una a una con `sed -n` | **las ocho vigentes hoy** (§6 ter.2) |
+| T13 | la ficha de F-034 en `features.json`, leída | **ya ampliada** con H-1 y sus líneas |
+| T16 | `python -m harness.mutacion --feature F-031` | **3 evaluados, 3 muertos, 0 supervivientes, 0 timeouts**, 78,6 s, 3 workers |
+| T16 (línea base) | las tres suites **enteras y sin caché**, antes de la campaña | **3.066 + 256 + 310**, todo en verde |
+| T17 | `bash harness/init.sh` | **VERDE** |
+
+Salida del arnés al cerrar la feature:
+
+```
+62 passed in 6.30s
+[OK] pytest en verde (con medición de cobertura)
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 28 líneas cambiadas cubiertas (28/28, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-031-nombrado-persistido
+ENTORNO LISTO. Puedes trabajar.
+```
+
+> **Sobre la caché de ese verde**: dice «árbol sin cambios desde el último
+> verde» porque las suites enteras se acababan de ejecutar a mano, sin caché,
+> para la línea base de la mutación (§5 ter, fila T16). Los números están en
+> §9 ter y no salen de ninguna caché.
+
+## 6 ter · Desviaciones **de los cuatro bloques**, reunidas
+
+Lista única para el reviewer. Las siete primeras vienen de los informes de los
+bloques 2 y 3 y se reproducen aquí para que no haya que releerlos; las cuatro
+últimas son de estos dos bloques.
+
+| # | Bloque | Desviación | Dónde está razonada |
+|---|---|---|---|
+| **1** | 2 | `design.md` §9 daba `tests/test_f033_archivar_http.py` por intacto y **no lo era**: su caso del circuito F-032 mandaba `0626`/`RS26.09/0178` contra un repositorio que guardaba `0677`/`RS26.08/0123`, y con el cotejo nuevo eso es 409. Se arregló poniendo la base a decir lo mismo que el formulario —que es lo que pasa en el mundo real— y el caso sigue afirmando lo mismo que afirmaba | §6.1 |
+| **2** | 2 | **Precedencia entre R7 y R3** cuando lo guardado está vacío: desde el endpoint gana el **cotejo**, no `NombradoImposible`. Se implementó lo que dice el diseño, sin caso especial; lo que R7 exige en sustancia (409, no se archiva, se dice cuál falta) se conserva entero, y su camino sigue vivo y con test sobre el paso | §6.2 |
+| **3** | 2 | El «caso central de R1» de T4 vive en `test_f031_cotejo_de_codigos.py` y no en el fichero de nombrado, porque lo que afirma es R3 + R5 | §6.3 |
+| **4** | 2 | Dos frases de una enmienda en `archivar.py` disparaban la guarda de F-026 R24 (la raíz «aprob» sobre el texto fuente de los handlers). **Se reescribió el comentario; no se tocó la guarda** | §6.4 |
+| **5** | 3 | **Un fichero de test de más**: `services/postventa-front/tests/test_f031_front.py`, 6 casos, que `tasks.md` no pedía. Sin él **R19 se quedaba sin ningún test**, contra R28 y contra el rigor `critico`. Mismo planteamiento que `test_f025_front.py` y `test_f026_front.py` | §6 bis.1 |
+| **6** | 3 | El comando `node --test tests_js` de T8–T10 **no arranca** con Node 24 (v24.14.1): un directorio se intenta cargar como módulo. Se usa el patrón `tests_js/*.test.js`, que es lo que el puente `tests/test_f007_js.py` lleva usando desde F-007 | §6 bis.2 |
+| **7** | 3 | **R23 y R24 no necesitaron ni una línea**: ya se cumplían. Se declaran para que no parezcan requisitos olvidados | §6 bis.3 |
+| **8** | 4 | **El fichero de T11 lleva más controles de los que `tasks.md` enumera**: los once métodos del puerto, los cinco campos de `SituacionParte` y el de `ctx.extraccion`. Los tres son las mitades «que no dependen de `git`» de lo que T11 sí pide, y sin ellos el fichero se apaga el día que la rama se mergea | §3 ter, puntos 1–4 |
+| **9** | 4 | **T13 se cumplió verificando, no escribiendo**: la anotación de H-1 ya existía en `progress/current.md` (la dejó el `spec-author`) y el humano **ya la había decidido** el 2026-09-22. Lo que faltaba —y es lo que se ha hecho— era comprobar que las ocho referencias siguen siendo ciertas y que la decisión está **ejecutada** en la ficha de F-034. Los informes de los bloques 2 y 3 la daban por «sin empezar»: **no lo estaba** | §6 ter.2 |
+| **10** | 5 | **T14 y T15 NO se han ejecutado.** Es instrucción explícita del encargo, no un olvido: las recorre el humano. Quedan preparadas con su comando en §8 ter | §8 ter |
+| **11** | 5 | **La campaña de T16 tiene el mismo alcance que la del Bloque 2** (305 líneas, 5 ficheros, 3 mutantes) y no uno mayor, porque el mutador **solo muerde Python** y lo que añadieron los bloques 3 y 4 es JavaScript y tests | §6 ter.4 |
+
+### 6 ter.1 · Sobre la nº 8: por qué no es «test de más» gratuito
+
+R29 pide cerrar el alcance «igual que hizo `test_f032_alcance_cerrado.py` y
+`test_f033_alcance_cerrado.py`». Los dos hacen exactamente esto: dos controles
+por frontera. Copiar solo la mitad del diff habría producido un fichero que
+**se apaga solo** —`pytest.skip` en todas partes— en cuanto F-031 entre en
+`dev`, que es justo cuando el alcance empieza a necesitar guardia.
+
+### 6 ter.2 · Sobre la nº 9: H-1, medido hoy
+
+Las ocho referencias de `design.md` §8, leídas una a una en el árbol actual:
+
+| Referencia | Qué hay hoy en esa línea |
+|---|---|
+| `adjuntar.py:94-95` | `"codigo_obra",` / `"numero_incidencia",` (campos obligatorios del cuerpo) |
+| `adjuntar.py:107-108` | los dos como parámetros del handler |
+| `adjuntar.py:148-149`, `:172-173` | los dos viajando al paso |
+| `paso_grafico.py:116-117` | los dos en la firma del paso |
+| `paso_grafico.py:157` | `codigo = _codigo_de_incidencia(numero_incidencia)` — **con esto se localiza la reclamación** |
+| `paso_grafico.py:175-176` | los dos, con los que se nombra el fichero adjunto |
+| `cerrar.py:100`, `:149` | `"numero_incidencia"` obligatorio, y `numero_incidencia=str(datos["numero_incidencia"])` **del cuerpo** |
+| `paso_cierre.py:117`, `:155` | el parámetro y `codigo = _codigo_de_incidencia(numero_incidencia)` — **con esto se elige qué reclamación se cierra en el ERP de producción** |
+
+Y la ficha de **F-034** ya lo lleva en su `acceptance`, citando H-1 y estas
+mismas líneas, con la enmienda «AMPLIADA el 2026-09-22 por decisión del
+humano» en su `description`. **No queda nada que decidir.**
+
+### 6 ter.3 · `azure-apps/postventa_incidencias.md` NO cambia · medido
+
+El encargo pide decirlo en el informe y **no tocar** ese repositorio. Se ha
+leído el documento y se ha comprobado contra el diff de la feature:
+
+| Lo que el documento describe | ¿Cambia? |
+|---|---|
+| La tabla de endpoints: `POST /api/archivar` «escribe en la biblioteca de dev, exige que el parte ya conste guardado, si no responde 409 sin subir nada» | **No.** Sigue siendo cierto; el 409 gana un motivo, no un código nuevo, y el documento no enumera los motivos |
+| El contrato HTTP | **No.** Los cinco campos obligatorios del cuerpo son los mismos (R10, y hay test: `CAMPOS_OBLIGATORIOS`) y las seis claves de la respuesta también (R26) |
+| «Cómo se llama»: `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`, carpeta por código de obra | **No.** F-031 cambia de dónde salen esos dos códigos, no el nombre que producen. Es justo lo que V2 va a comprobar contra la biblioteca real |
+| Qué consumimos: Graph, `sigrid-api`, el PostgreSQL compartido | **No.** Ni una llamada más, ni una consulta más, ni DDL (R17, con test) |
+| Las variables de entorno (§4) | **No.** Ninguna nueva, ninguna con otro significado |
+| El volumen contra el servidor compartido (§5) | **No.** El vaciado del front solo **adelanta** guardados que el rebote de 1,5 s iba a hacer igual, y **no dispara ninguno** si no hay nada escrito sin guardar (R22, con tres casos de control negativo) |
+
+**Conclusión: no hay nada que actualizar**, tal y como anticipaba `design.md`
+§7.1. Si el líder quisiera añadir una línea de precisión al endpoint sería un
+adorno, no una corrección: hoy el documento no dice nada falso.
+
+### 6 ter.4 · Sobre la nº 11: el alcance de la mutación
+
+**Medido**: `harness/alcance.py:134` filtra con
+`if not normalizada.endswith(".py")`. El Bloque 3 cambió dos ficheros
+**JavaScript** de producción y el Bloque 4 añadió un fichero de **tests**;
+nada de eso entra en una campaña. La mutación de JavaScript **no está
+disponible en este proyecto**, y se dice así, con el motivo, en vez de omitir
+el dato.
+
+Un efecto secundario que conviene saber: **el informe se regenera entero** y
+la nota de análisis del implementer que llevaba desde el Bloque 2 quedó
+borrada. Se ha **repuesto y ampliado** en `progress/mutacion_F-031.md`, con un
+aviso al principio para el siguiente que lance la campaña.
+
+## 7 ter · Estado de la feature al cerrar estos bloques
+
+- **T1–T13, T16 y T17: hechas.** Las 15 tareas que ejecuta un agente.
+- **T14 y T15: del humano**, preparadas en §8 ter. Son las dos únicas casillas
+  abiertas de `tasks.md`.
+- **Funcionalidad: completa desde el Bloque 3.** La condición de despliegue que
+  el informe del Bloque 2 dejó escrita —«no se despliega F-031 hasta tener las
+  dos mitades»— quedó levantada allí y sigue levantada.
+- **Nada bloqueado.** `harness/features.json` no se ha tocado, y marcar la
+  feature `done` no me corresponde: es del líder, tras el APROBADO del
+  reviewer.
+
+## 8 ter · Verificaciones `MANUAL (humano)` · listas para copiar
+
+**No se han ejecutado.** Lo siguiente es el guion, para que el humano las
+recorra y pegue aquí el resultado real.
+
+### V1 · T14 · en local, sin subir nada
+
+Dos terminales:
+
+```bash
+# 1 · backend
+cd services/postventa-api && func start
+
+# 2 · front
+cd services/postventa-front && python dev_server.py
+```
+
+Con las dos arriba, en el navegador:
+
+1. Subir una remesa de `muestras/` y dejar que extraiga y valide.
+2. Aprobar un parte para que entre en el circuito.
+3. **Corregir el código de obra** de ese parte y pulsar **«archivar y cerrar»
+   antes de 1,5 segundos** (antes de que salte el autoguardado).
+   - **Se espera NO ver el 409**: el vaciado de R18 fuerza el guardado y lo
+     espera, así que el cotejo del backend no tiene nada que rechazar. Esta
+     mitad **no era ejercitable** hasta el Bloque 3.
+4. Forzar el 409 a mano, desde la consola del navegador, para ver el mensaje
+   nuevo pintado en el parte:
+   ```js
+   // un código de obra que NO es el que consta guardado para ese parte
+   await api.archivar({ ...cuerpo, codigo_obra: "0999" })
+   ```
+   - **Se espera el 409 de R3**, con un mensaje que **nombra cuál** de los dos
+     códigos no cuadra y **los dos valores**, pintado en el parte por el camino
+     que ya pinta los demás errores del circuito, **sin tumbar la tanda** (R24).
+
+**No sube nada**: `ARCHIVO_HABILITADO` está apagado en local y el endpoint
+responde 503 antes de tocar Graph.
+
+**Qué anotar aquí**: si el 409 salió o no en el paso 3 (si salió, es un fallo
+de la feature), el texto literal del mensaje del paso 4, y si la tanda siguió
+viva.
+
+### V2 · T15 · en el entorno desplegado, con un parte autorizado
+
+**Solo con un parte que el humano autorice expresamente**, y con dry-run
+previo. Es la única comprobación que toca la biblioteca real.
+
+1. Archivar un parte normal —sin corregir nada— desde el entorno desplegado.
+2. Comprobar en SharePoint que **el nombre del fichero y la carpeta son los
+   mismos que antes de la feature**: `<cod obra> - <cod incidencia> PARTE
+   FIRMADO.pdf` bajo `Postventa/<código de obra>/`.
+
+**Qué anotar aquí**: el nombre y la carpeta obtenidos, y el parte usado
+(identificado por su `hash`, **nunca** con datos del papel).
+
+**Por qué importa aunque suene trivial**: es lo que demuestra que mover la
+fuente de los dos códigos **no cambió el resultado** en el caso normal. Los
+3.066 tests dicen que el código hace lo que dice; esto dice que lo que dice es
+lo que la biblioteca real llevaba viendo.
+
+## 9 ter · Evidencias
+
+Números **medidos**, no estimados. Salidas de esta misma sesión.
+
+| Evidencia | Medida |
+|---|---|
+| **Tests ejecutados** y resultado | Servicio `api`: **3.066 passed, 14 skipped**, 0 failed (suite entera, sin caché). Con el arnés, que añade `tests_bbdd`: **3.066 passed, 24 skipped**. Servicio `front`: **256 passed**. JavaScript: **310 passed, 0 failed**. Arnés: **62 passed** |
+| **Tests nuevos** de estos bloques | **10**, todos en `tests/test_f031_alcance_cerrado.py` |
+| **Tests nuevos de la feature entera** | **94** · 66 (Bloque 2) + 18 (Bloque 3) + 10 (Bloque 4), todos con nombre trazable |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 28/28 líneas, umbral 80 %, nivel `critico`. Línea `PUERTA COBERTURA` de `bash harness/init.sh`. Sigue siendo 28 porque estos bloques **no cambian ni una línea de producción** |
+| **Mutantes generados y supervivientes** | **3 generados, 3 evaluados, 3 muertos, 0 supervivientes, 0 timeouts**, en **78,6 s** con **3 workers**. Informe: `progress/mutacion_F-031.md`. Ninguna sección queda en `PENDIENTE` |
+| **Tiempo de ejecución de la suite** | Servicio `api`: **65,58 s** (sin caché) / 111,47 s con el arnés y `tests_bbdd`. Servicio `front`: **3,33 s**. JavaScript: **819 ms**. Arnés: **6,30 s** |
+| **Lint** | `python -m ruff check .`: **61 avisos, los mismos que antes de estos bloques** (deuda previa, no bloquea). Sobre el fichero nuevo: `All checks passed!` y `1 file already formatted` |
+
+### 9 ter.1 · La línea base de la mutación, comprobada de verdad
+
+La campaña **no** se lanzó fiándose del verde cacheado del arnés. Antes se
+reejecutaron las tres suites **enteras**:
+
+| Suite | Comando | Resultado |
+|---|---|---|
+| `api` | `pytest tests -q -p no:cacheprovider` | **3.066 passed, 14 skipped** en 65,58 s |
+| `front` | `pytest tests -q -p no:cacheprovider` | **256 passed** en 3,33 s |
+| JavaScript | `node --test "tests_js/*.test.js"` | **310 passed, 0 failed** en 819 ms |
+
+(La diferencia de skips con el arnés —14 frente a 24— es que `init.sh` ejecuta
+además `tests_bbdd`, que se salta entero sin base de datos. No es una
+discrepancia.)
+
+## 10 ter · Commits de estos bloques
+
+```
+eb8ec80 F-031 T16: campana de mutacion de la feature entera, 3 de 3 muertos
+a58851a F-031 T13: H-1 verificado linea a linea, y la decision ya esta ejecutada
+087b683 F-031 T12: la documentacion normativa dice de donde salen los dos codigos
+d5ec367 F-031 T11: el alcance cerrado, con las dos mitades de cada frontera
+```
+
+El de T11 se enmendó una vez, a los pocos segundos, para corregir el mensaje:
+había salido con un `@` inicial por una sintaxis de aquí-documento mal pasada.
+Sin cambios de contenido.
+
+Ningún `git push`, ningún PR, ningún commit fuera de la rama de la feature.
+
+---
+
+## Resumen para el reviewer
+
+**Qué es F-031, entera.** La carpeta y el nombre del PDF que se archiva salen
+del `codigo_obra` y el `numero_incidencia` **que constan guardados**, leídos de
+la misma situación que la puerta de estado acaba de aprobar. Los dos que vienen
+en el cuerpo de `POST /api/archivar` siguen siendo obligatorios pero **dejan de
+nombrar y pasan a cotejar**: si no cuadran, **409 y no se archiva nada**, antes
+de dejar rastro. Y el front **fuerza el guardado de lo escrito y lo espera**
+antes de calcular la tanda, que es la mitad sin la cual esto habría empeorado
+el caso de la corrección reciente.
+
+**Qué mirar, por orden de valor:**
+
+1. **La fase RED de §4.3** — el `200 == 409` con el log del defecto a la vista:
+   el cuerpo mandó `677`, la base guardaba `0677`, y el sistema archivó en
+   `carpeta=Postventa/677`. Ése es el defecto entero, medido.
+2. **Las 11 desviaciones de §6 ter**, reunidas en una tabla. Ninguna se ha
+   ocultado; las dos que más merecen una opinión son la **nº 2** (precedencia
+   R7/R3) y la **nº 9** (T13 ya estaba hecha).
+3. **§6 ter.3** — por qué `azure-apps/` no cambia, punto por punto.
+4. **§8 ter** — las dos verificaciones del humano, que siguen abiertas.
+
+**Estado**: `bash harness/init.sh` en **VERDE**. Cobertura de líneas cambiadas
+**100 %** (28/28). Mutación **3 de 3 muertos, 0 supervivientes**. 15 de 17
+tareas hechas; **las dos que faltan las recorre el humano**.
+
+**Lo que NO se ha tocado, y hay test que lo vigila**: `adjuntar.py`,
+`cerrar.py`, `paso_grafico.py`, `paso_cierre.py` (H-1 → F-034), la persistencia
+entera, el puerto, `SituacionParte` y el DDL. Ni `harness/features.json`, ni
+`azure-apps/`, ni una línea de SQL, ni una escritura contra ningún sistema.

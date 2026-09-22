@@ -258,36 +258,6 @@ def test_f031_r1_el_nombre_y_la_carpeta_salen_de_lo_guardado_y_no_del_cuerpo():
     assert not any(OBRA_DEL_CUERPO in nombre for nombre in biblioteca.nombres)
 
 
-def test_f031_r1_un_cuerpo_que_dice_otra_obra_no_sube_nada():
-    """R1, R3, R5 · el caso central: `codigo_obra=0677` guardado, `0999` declarado.
-
-    No es que se archive con el guardado y se avise: **no se archiva**. Con L1
-    de F-033 cortando por `hash` + estado y sin forma de forzar el re-archivo,
-    un PDF subido a la carpeta equivocada no se arregla desde el circuito
-    (`design.md` §7.4), así que el coste de equivocarse aquí es permanente.
-    """
-    from domain.models.errores import CodigosNoCoinciden
-
-    biblioteca = BibliotecaFalsa()
-    archivador = ArchivoPortFalso(biblioteca)
-    repositorio = RepositorioFalso(situacion=situacion_guardada())
-
-    with pytest.raises(CodigosNoCoinciden):
-        archivar(
-            archivador,
-            repositorio,
-            declarados=CodigosDelParte(
-                codigo_obra=OBRA_DEL_CUERPO,
-                numero_incidencia=INCIDENCIA_GUARDADA,
-            ),
-        )
-
-    assert biblioteca.subidas == 0
-    assert biblioteca.carpetas == set()
-    assert archivador.llamadas == []
-    assert repositorio.llamadas_guardar_archivo == 0
-
-
 @pytest.mark.parametrize(
     ("caso", "obra_del_cuerpo", "incidencia_del_cuerpo"),
     (

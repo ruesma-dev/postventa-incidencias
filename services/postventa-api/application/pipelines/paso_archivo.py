@@ -70,6 +70,7 @@ Desde F-033:
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 
 from domain.models.errores import (
@@ -95,10 +96,31 @@ __all__ = [
     "AVISO_REEMPLAZADO",
     "AVISO_YA_ARCHIVADO",
     "MIME_PDF",
+    "CodigosDelParte",
     "paso_archivo",
 ]
 
 log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class CodigosDelParte:
+    """Los dos códigos que deciden la carpeta y el nombre del fichero.
+
+    Una pieza y no dos cadenas sueltas por lo mismo que `DestinoArchivo` es
+    una pieza: van siempre juntos y siempre en el mismo orden, y dos
+    parámetros posicionales del mismo tipo se invierten un día sin que ningún
+    test de tipos lo vea — y ese día el parte se archiva con el nombre del
+    revés.
+
+    Se usa para las **dos** cosas, y conviene no confundirlas: los guardados
+    (`_codigos_guardados`), que son los que nombran (F-031 R1), y los
+    declarados en el cuerpo de la petición, que **solo** sirven para cotejar
+    (R3) y no pueden decidir nada (R11).
+    """
+
+    codigo_obra: str
+    numero_incidencia: str
 
 #: Lo que se sube siempre: el PDF del parte troceado.
 MIME_PDF = "application/pdf"
@@ -154,6 +176,7 @@ def paso_archivo(
     carpeta_base: str,
     ahora: datetime,
     drive_id_vigente: str | None = None,
+    codigos_declarados: CodigosDelParte | None = None,
 ) -> ContextoParte:
     """Archiva el parte y deja constancia de lo que pasó.
 
@@ -162,7 +185,12 @@ def paso_archivo(
     1. **Puerta de aptitud** (R17, R18; F-026 R23). Antes de nombrar y antes
        de tocar el puerto: un parte que no es apto **ni consta aprobado** no
        crea ni la carpeta.
-    2. **Nombrado** (R1–R9). `NombradoImposible` sale sin haber tocado nada.
+    1 bis. **Cotejo de los códigos declarados** (F-031 R3, R5). Va aquí y no
+       más abajo, y eso es un requisito: a partir del paso 4 ya hay una fila
+       escrita en `postventa.archivos`, y a partir del 5 ya se ha hablado con
+       SharePoint.
+    2. **Nombrado** (R1–R9), desde los códigos **guardados** (F-031 R1).
+       `NombradoImposible` sale sin haber tocado nada.
     3. **Idempotencia por traza** (R14). La capa barata. Desde F-033 la traza
        sale de la situación que leyó la puerta en el paso 1
        (`ctx.situacion.archivo`), sin ninguna consulta más; si apunta a otro
@@ -185,10 +213,19 @@ def paso_archivo(
     para que los casos que no hablan de bibliotecas no tengan que inventarse
     una; el borde lo pasa siempre. No aparece en ningún log ni aviso.
 
+    `codigos_declarados` es **lo que afirma quien llama**, y sirve solo para
+    el cotejo de F-031 R3: no decide nada, no puede mover el destino y no
+    entra en el nombrado (R11). Es opcional para que los casos que no hablan
+    de cuerpos no tengan que inventarse uno; el borde lo pasa siempre. Cuando
+    es `None` no hay nada que cotejar y el nombrado usa lo guardado igual, que
+    es la mitad silenciosa del requisito: **el camino sin cotejo tampoco puede
+    archivar con otros códigos**.
+
     No hay ningún parámetro para forzar el re-archivo de un parte que ya
     consta archivado, a propósito (F-033 R21, D-4).
 
-    Levanta `ParteNoApto`, `NombradoImposible`, `ArchivoFallido`,
+    Levanta `ParteNoApto`, `CodigosNoCoinciden`, `NombradoImposible`,
+    `ArchivoFallido`,
     —desde F-019— `ReferenciaNoConsta` y `PersistenciaNoDisponible` de la
     traza previa, y —si la subida salió bien y la traza final no se pudo
     escribir— `ArchivoSinTraza`. Los traduce a HTTP el borde; aquí no se sabe
@@ -196,10 +233,13 @@ def paso_archivo(
     """
     _exigir_admitido(ctx, repositorio)
 
+    # F-031 · los dos códigos, resueltos **una vez** y desde lo guardado (R1).
+    guardados = _codigos_guardados(ctx)
+
     destino = componer_destino(
         carpeta_base=carpeta_base,
-        codigo_obra=_campo(ctx, "codigo_obra"),
-        numero_incidencia=_campo(ctx, "numero_incidencia"),
+        codigo_obra=guardados.codigo_obra,
+        numero_incidencia=guardados.numero_incidencia,
     )
 
     # L1 · del almacén: la situación que ya leyó la puerta (F-033 R7, R8).
@@ -457,17 +497,40 @@ def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> 
     )
 
 
-def _campo(ctx: ContextoParte, nombre: str) -> str | None:
-    """El valor leído de un campo del parte, o `None` si no se leyó nada.
+def _codigos_guardados(ctx: ContextoParte) -> CodigosDelParte:
+    """Los dos códigos que constan **guardados** de este parte (F-031 R1, R2).
 
-    Que falte la extracción entera no es un caso del camino normal —F-004 no
-    declara apto lo que no se ha leído—, pero si llegara, el nombrado se
-    negará diciendo qué falta, que es mejor que reventar con un `AttributeError`
-    a mitad del paso.
+    Se leen de `ctx.situacion.validacion`, que la puerta de aptitud acaba de
+    dejar puesta unas líneas más arriba, y por tanto de la misma consulta que
+    ya se hacía: **ni una sentencia más** (R2). Los dos campos viajan ahí
+    desde F-030, que los necesitaba para recomponer la huella del veredicto, y
+    salen de `postventa.partes`, no de `validaciones`.
+
+    Que se lean de **ese** objeto y no de un campo propio de `SituacionParte`
+    es la decisión D-1, aprobada por el humano el 2026-09-22, y da una
+    propiedad que ningún otro camino da gratis: el fichero se nombra, byte por
+    byte, con los dos valores que la puerta **acaba de aprobar**. Dos
+    representaciones del mismo dato en el mismo objeto divergen el día que
+    alguien toque una sola.
+
+    Sin `validacion` devuelve dos cadenas vacías y **no levanta nada**: quien
+    decide que eso es un error es el nombrado, un paso más adelante, y lo dice
+    nombrando cuál de los dos falta (R7). No se añade aquí una guardia
+    inalcanzable —la puerta levanta `ParteNoApto` antes de llegar—, que es lo
+    que `nombre_admisible` ya razona en su docstring: una guardia que nadie
+    puede ejercitar es una guardia que nadie sabe si funciona.
+
+    Un único punto de lectura, con nombre, es además lo que hace que F-013 no
+    tenga que volver a decidir de dónde salen: su `resolver_destino` se llama
+    desde este mismo paso y los recibirá de aquí.
     """
-    if ctx.extraccion is None:
-        return None
-    return ctx.extraccion.campo(nombre).valor
+    validacion = ctx.situacion.validacion if ctx.situacion is not None else None
+    if validacion is None:
+        return CodigosDelParte(codigo_obra="", numero_incidencia="")
+    return CodigosDelParte(
+        codigo_obra=validacion.codigo_obra,
+        numero_incidencia=validacion.numero_incidencia,
+    )
 
 
 def _ya_archivado(ctx: ContextoParte, traza: TrazaArchivo | None) -> bool:

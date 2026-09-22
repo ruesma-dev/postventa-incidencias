@@ -1,11 +1,16 @@
 # services/postventa-api/tests/test_f031_cotejo_de_codigos.py
 """Lo declarado tiene que ser lo guardado, o no se archiva (F-031 R3–R6, R9–R11).
 
-Se prueba **desde `POST /api/archivar`**, con la petición `multipart/form-data`
-construida a mano y los dos puertos sustituidos por dobles, igual que
-`test_f006_archivar_http.py`: así se ejercita el borde entero —parseo, códigos
-de estado, JSON— y por debajo corre el paso de verdad. **SharePoint no aparece
-por ninguna parte** y no se abre ni un socket (R28).
+Se prueba casi todo **desde `POST /api/archivar`**, con la petición
+`multipart/form-data` construida a mano y los dos puertos sustituidos por
+dobles, igual que `test_f006_archivar_http.py`: así se ejercita el borde
+entero —parseo, códigos de estado, JSON— y por debajo corre el paso de verdad.
+**SharePoint no aparece por ninguna parte** y no se abre ni un socket (R28).
+
+La excepción es el **caso central de R3 y R5**, que se ejercita además
+directamente sobre `paso_archivo`: lo que ahí se afirma no es un código HTTP,
+es que ninguno de los dos puertos llegó a recibir una sola llamada, y eso se
+lee mejor sin el borde por medio.
 
 ## Qué separa este fichero de `test_f031_nombrado_persistido.py`
 
@@ -27,6 +32,7 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import UTC, datetime
 
 import azure.functions as func
 import pytest
@@ -61,6 +67,9 @@ CLAVES_DE_LA_RESPUESTA = {
 PDF_CON_DATOS = b"%PDF-1.4 Fdo. Cliente Inventado DNI 00000000T"
 
 HASH = "9f2b0011aabb"
+
+#: Un instante fijo: el paso no consulta el reloj, la hora entra por parámetro.
+AHORA = datetime(2026, 9, 22, 10, 0, tzinfo=UTC)
 
 #: Lo que consta **guardado** de este parte. Inventado.
 OBRA_GUARDADA = "0677"
@@ -205,6 +214,46 @@ def test_f031_errores_el_docstring_dice_en_que_se_diferencia_de_sus_hermanas():
     assert "ParteNoApto" in documentacion
     assert "NombradoImposible" in documentacion
     assert "F-031" in documentacion
+
+
+# --------------------------------------------------------------------------
+# R3, R5 · el caso central, sobre el paso y sin el borde por medio
+# --------------------------------------------------------------------------
+
+
+def test_f031_r3_un_cuerpo_que_dice_otra_obra_no_sube_nada():
+    """R3, R5 · `codigo_obra=0677` guardado, `0999` declarado: **cero llamadas**.
+
+    Es el caso que sostiene la feature. No es que se archive con el guardado y
+    se avise: **no se archiva**. Con L1 de F-033 cortando por `hash` + estado y
+    sin forma de forzar el re-archivo, un PDF subido a la carpeta equivocada no
+    se arregla desde el circuito (`design.md` §7.4): el coste de equivocarse
+    aquí es permanente, y por eso el cotejo va antes que todo lo que deja
+    rastro.
+    """
+    from application.pipelines.paso_archivo import CodigosDelParte, paso_archivo
+    from tests.utiles_sharepoint import CARPETA_BASE, contexto_apto
+
+    biblioteca = BibliotecaFalsa()
+    archivador = ArchivoPortFalso(biblioteca)
+    repositorio = RepositorioFalso(situacion=situacion_guardada())
+
+    with pytest.raises(CodigosNoCoinciden):
+        paso_archivo(
+            contexto_apto(hash_parte=HASH),
+            archivador,
+            repositorio,
+            carpeta_base=CARPETA_BASE,
+            ahora=AHORA,
+            codigos_declarados=CodigosDelParte(
+                codigo_obra="0999", numero_incidencia=INCIDENCIA_GUARDADA
+            ),
+        )
+
+    assert archivador.llamadas == []
+    assert biblioteca.subidas == 0
+    assert biblioteca.carpetas == set()
+    assert repositorio.llamadas_guardar_archivo == 0
 
 
 # --------------------------------------------------------------------------

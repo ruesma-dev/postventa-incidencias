@@ -715,6 +715,29 @@ function appPostventa() {
       }
       this.avisoArchivo = "";
 
+      // F-031 R18 · lo escrito y sin guardar se fuerza y se ESPERA, antes de
+      // calcular nada. Desde F-031 el backend nombra el fichero con los
+      // códigos GUARDADOS y coteja los del cuerpo: quien corrija un código y
+      // pulse dentro de los 1.500 ms del rebote se llevaría un 409 que no
+      // entiende. Cuánto se espera y si hay algo que guardar lo decide
+      // `js/autoguardado.js`, que sí tiene tests.
+      //
+      // Va DESPUÉS de `Confirmacion.resolver`, así que ni alarga ni reinicia
+      // la ventana de la confirmación única de F-025.
+      const vaciado = await this._autoguardado().vaciarPendientes();
+      if (!vaciado.ok) {
+        // R20 · la tanda **no** se lanza. Archivar con una corrección que no
+        // está en la base es el fallo silencioso que F-031 viene a cerrar, y
+        // la confirmación ya está consumida: hay que volver a confirmar,
+        // porque lo que se iba a archivar ha cambiado.
+        this.avisoArchivo = window.Autoguardado.AVISO_SIN_GUARDAR;
+        return;
+      }
+
+      // F-031 R19 · la tanda se calcula DESPUÉS del vaciado, no antes.
+      // Guardar revalida (`revalidarYGuardar`, F-026 R50) y una corrección
+      // puede tumbar un veredicto: una tanda calculada antes archivaría un
+      // parte que acaba de dejar de ser archivable.
       const tanda = this.pendientes();
       if (!tanda.length) {
         return;

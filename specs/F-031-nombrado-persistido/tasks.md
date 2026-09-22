@@ -89,7 +89,7 @@
       **Verificación**: `node --test tests_js` en verde, **incluido**
       `autoguardado.test.js` sin cambios (F-026 intacta).
 
-- [ ] **T10**: `js/app.js` · `confirmarArchivo` espera el vaciado, **antes** de
+- [x] **T10**: `js/app.js` · `confirmarArchivo` espera el vaciado, **antes** de
       calcular la tanda (R19), y no la lanza si falla (R20), con su aviso.
       **Verificación**: `node --test tests_js` en verde, con
       `confirmacion.test.js` y `circuito.test.js` sin cambios; y

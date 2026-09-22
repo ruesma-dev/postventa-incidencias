@@ -65,6 +65,37 @@ Desde F-033:
   y entonces **no se sube** (R18, D-7);
 - no hay ninguna forma de forzar el re-archivo del mismo parte desde el
   circuito (R21, D-4). Un escaneo nuevo es otro `hash`, y otro parte.
+
+## Enmienda del 2026-09-22 (F-031) · de dónde salen el nombre y la carpeta
+
+Hasta hoy este paso nombraba el fichero con `_campo(ctx, "codigo_obra")` y
+`_campo(ctx, "numero_incidencia")`, es decir, con lo que trajera **el cuerpo
+de la petición** metido en una `ExtraccionParte` de pega por el borde. Desde
+F-030 la puerta de aptitud, en cambio, aprobaba los códigos **guardados**, que
+entran en la huella del veredicto.
+
+Esa asimetría es lo que cierra F-031: la puerta aprobaba **unos** valores y el
+fichero se nombraba con **otros**. Coincidían porque el front mandaba lo que
+había leído, y eso no es una garantía, es una costumbre — la misma frase que
+F-030 escribió sobre el veredicto.
+
+Qué cambia, y qué no:
+
+- el nombre y la carpeta salen de `ctx.situacion.validacion`, o sea de la
+  consulta de situación que la puerta ya hacía: **ni una sentencia más**, ni
+  una columna, ni un método nuevo del puerto (R1, R2, R17; decisión D-1);
+- los dos códigos del cuerpo llegan **explícitos**, en `codigos_declarados`, y
+  dejan de nombrar para pasar a **cotejar** (R10, D-2). Si no cuadran con lo
+  guardado, sale `CodigosNoCoinciden` en el punto **1 bis** —antes de la traza
+  previa y antes de tocar el puerto— y no se archiva nada (R3, R5, D-3);
+- el cotejo normaliza los dos lados con el criterio de F-032, así que
+  `RS 26.09/0178` y `RS26.09/0178` **no** son un conflicto (R4, D-7);
+- `_campo` **desaparece**: era el único consumidor de `ctx.extraccion` aquí, y
+  dejarlo sería dejar viva la segunda fuente que la feature viene a cerrar. Es
+  la misma decisión que F-033 tomó con `traza_previa` (su D-2);
+- las cuatro reglas del nombrado, las tres capas de idempotencia y la garantía
+  de orden de F-019 **no se mueven** (R12, R14, R15): cambia de dónde salen
+  las entradas, no qué se hace con ellas.
 """
 
 from __future__ import annotations
@@ -76,10 +107,15 @@ from datetime import datetime
 from domain.models.errores import (
     ArchivoFallido,
     ArchivoSinTraza,
+    CodigosNoCoinciden,
     ErrorDePersistencia,
     PersistenciaNoDisponible,
 )
-from domain.models.nombrado import DestinoArchivo, componer_destino
+from domain.models.nombrado import (
+    DestinoArchivo,
+    componer_destino,
+    es_el_mismo_codigo,
+)
 from domain.models.persistencia import EstadoArchivo, ResultadoGuardado, TrazaArchivo
 from domain.ports.archivo import ArchivoPort, ItemArchivado
 from domain.ports.persistencia import RepositorioPartesPort
@@ -235,6 +271,7 @@ def paso_archivo(
 
     # F-031 · los dos códigos, resueltos **una vez** y desde lo guardado (R1).
     guardados = _codigos_guardados(ctx)
+    _exigir_codigos_declarados(codigos_declarados, guardados)
 
     destino = componer_destino(
         carpeta_base=carpeta_base,
@@ -495,6 +532,58 @@ def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> 
         ),
         y_por_eso="no se archiva",
     )
+
+
+def _exigir_codigos_declarados(
+    declarados: CodigosDelParte | None, guardados: CodigosDelParte
+) -> None:
+    """Lo declarado tiene que ser lo guardado, o no se archiva (F-031 R3, R4).
+
+    Compara campo a campo con `es_el_mismo_codigo`, que normaliza los dos
+    lados con el criterio de F-032: `RS 26.09/0178` y `RS26.09/0178` son **el
+    mismo** código y no pueden dar un error (R4, decisión D-7). El front manda
+    lo que devuelve `valorDeCampo`, que solo hace `trim()`, mientras que la
+    base guarda lo que F-032 saneó al leerlo; con un cotejo literal, el caso
+    que costó un cierre a mano el 2026-09-17 sería un error diario.
+
+    Levanta nombrando **el primero que falla**, con los dos valores y con la
+    acción concreta: guardar el parte y volver a archivar. Los dos códigos
+    identifican una obra y una reclamación, no a una persona, así que pueden
+    ir en el mensaje; nada más del papel puede (R25).
+
+    Sin `declarados` no hay nada que cotejar y se sigue adelante. Eso **no**
+    abre ninguna puerta: el nombrado usa lo guardado igual, así que el camino
+    sin cotejo tampoco puede archivar con otros códigos (R11).
+
+    Dónde se llama es la mitad del requisito (R5): **antes** de la traza
+    previa y antes de tocar el puerto de archivo. A partir del paso 4 ya hay
+    una fila en `postventa.archivos` y a partir del 5 ya se habló con
+    SharePoint; un cotejo que fallara después dejaría rastro de un archivado
+    que nunca debió intentarse, y con L1 de F-033 —que corta por `hash` +
+    estado y no admite forzar el re-archivo— eso ya no se arregla desde el
+    circuito.
+
+    Y va **después** de la puerta, no antes, porque necesita la situación que
+    la puerta lee: adelantarlo obligaría a una segunda consulta (contra R2).
+    """
+    if declarados is None:
+        return
+    for etiqueta, declarado, guardado in (
+        ("el código de obra", declarados.codigo_obra, guardados.codigo_obra),
+        (
+            "el nº de incidencia",
+            declarados.numero_incidencia,
+            guardados.numero_incidencia,
+        ),
+    ):
+        if not es_el_mismo_codigo(declarado, guardado):
+            raise CodigosNoCoinciden(
+                f"{etiqueta} de la petición («{declarado}») no es el que consta "
+                f"guardado para este parte («{guardado}»), así que **no se ha "
+                f"archivado nada**: el nombre y la carpeta salen de lo guardado. "
+                f"Hay que guardar la corrección con POST /api/parte y volver a "
+                f"archivar"
+            )
 
 
 def _codigos_guardados(ctx: ContextoParte) -> CodigosDelParte:

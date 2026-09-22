@@ -144,7 +144,10 @@ línea.
 
 ## Verificación manual pendiente del humano (fuera de la rama)
 
-- [ ] **T13 · MANUAL (humano) · antes de desplegar** (R26). Solo lectura,
+- [x] **T13 · MANUAL (humano) · antes de desplegar** (R26). **EJECUTADA el
+      2026-09-18** con `infra/25_mediciones_despliegue.ps1`: 133 trazas, las 133
+      `archivado` y con biblioteca, **0 `pendiente`**. R26 cumplido. Resultado en
+      `progress/current.md` y en `progress/cierre_verificaciones_F-033.md`. Solo lectura,
       dentro del schema `postventa`, con las credenciales que el humano tiene
       y ningún agente:
 
@@ -170,7 +173,12 @@ línea.
       mira esa carpeta en SharePoint antes de desplegar: desde F-033 el
       siguiente archivado de ese parte avisará (R20), pero la traza se pisará.
 
-- [ ] **T14 · MANUAL (humano) · después de desplegar** (R27). Con
+- [x] **T14 · MANUAL (humano) · después de desplegar** (R27). **NO RECORRIDA
+      COMO ESTÁ ESCRITA.** El 2026-09-22 el responsable dio la feature por
+      cerrada porque **Posventa la está probando en real**; no hay foto
+      antes/después de un re-archivado ni constancia de `AVISO_YA_ARCHIVADO`
+      observado. Qué la respalda y qué no, en
+      `progress/cierre_verificaciones_F-033.md`. Con
       **autorización expresa** para un parte concreto que ya conste
       `archivado`, y la ventana `ARCHIVO_HABILITADO` abierta solo para ello:
 

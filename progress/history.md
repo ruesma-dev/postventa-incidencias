@@ -2018,3 +2018,10 @@ Lo que sale de aquí: **F-034** (adjuntar y cerrar leen «archivado» del cuerpo
 hallazgo D-6) y la decisión pendiente para F-013 sobre las trazas `archivado`
 que apuntan a la biblioteca de IT. Pendiente del humano: **T13** antes de
 desplegar y **T14** después.
+
+### Addendum 2026-09-22 · F-033, verificaciones manuales
+
+Desplegada en `dev` el 2026-09-18 junto con F-032, con **T13 medida** (133
+trazas, 0 `pendiente`). **T14 no se recorrió**: el responsable dio la feature
+por cerrada el 2026-09-22 porque Posventa ya la está probando en real. El hueco
+y cómo cerrarlo, en `progress/cierre_verificaciones_F-033.md`.

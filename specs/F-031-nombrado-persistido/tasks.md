@@ -138,7 +138,7 @@
       de la feature. Única comprobación contra la biblioteca real. El resultado
       real se copia a `progress/impl_F-031.md`.
 
-- [ ] **T16**: campaña de mutación sobre lo cambiado
+- [x] **T16**: campaña de mutación sobre lo cambiado
       (`python -m harness.mutacion --feature F-031`), con **cero
       supervivientes** sin justificación escrita; informe en
       `progress/mutacion_F-031.md` con el nº de workers.

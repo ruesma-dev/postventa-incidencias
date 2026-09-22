@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-031.md -->
 # F-031 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-031 --workers 3` el 2026-09-22 13:12.
+Generado por `python -m harness.mutacion --feature F-031 --workers 3` el 2026-09-22 13:41.
 
 ## Alcance
 
@@ -26,7 +26,7 @@ Origen del diff: **rama** (`127e457579eceae2611f854beccb840aee4e1f68` .. `featur
 | Supervivientes | 0 |
 | Timeouts | 0 |
 | Timeouts repasados en serie | 0: ningún mutante agotó el reloj |
-| Tiempo total | 82.7 s |
+| Tiempo total | 78.6 s |
 | Workers | 3 |
 | Muestreo | no: campaña completa |
 
@@ -34,20 +34,46 @@ Origen del diff: **rama** (`127e457579eceae2611f854beccb840aee4e1f68` .. `featur
 
 Ninguno: cada mutación aplicada la cazó al menos un test.
 
-## Nota del implementer · esta es la segunda vuelta
+## Nota del implementer · ésta es la campaña de T16, la de la feature entera
 
-> Campaña del **Bloque 2 (backend)** de F-031. La T16 de `tasks.md` es la de
-> la feature entera y sigue pendiente: se lanzará con el front hecho, porque
-> el alcance del diff cambiará.
+> Lanzada al cerrar el **Bloque 5**, con los cuatro bloques hechos. Sustituye a
+> las dos vueltas del Bloque 2, cuyo análisis se conserva abajo porque explica
+> por qué hoy no hay supervivientes. Un informe regenerado pisa lo que había:
+> si se vuelve a lanzar la campaña, esta sección hay que reponerla.
 
-La **primera** campaña, el 2026-09-22 a las 13:09, dio **3 mutantes, 2
-muertos, 1 superviviente**, en 86,9 s. El superviviente era:
+### Por qué el alcance sigue siendo 305 líneas de Python
 
-- `services/postventa-api/application/pipelines/paso_archivo.py:142`
-  `[booleano]` · `@dataclass(frozen=True)` → `@dataclass(frozen=False)`.
+**Medido**, no supuesto: `harness/alcance.py:134` filtra el alcance con
+`if not normalizada.endswith(".py")`. **El mutador solo muerde Python.**
+
+Lo que el Bloque 3 cambió son dos ficheros **JavaScript** de producción
+(`js/autoguardado.js`, `js/app.js`) y dos de tests; lo que el Bloque 4 añadió
+es un fichero de **tests**. Nada de eso entra en una campaña, así que el
+alcance de la feature entera coincide, línea por línea, con el del Bloque 2.
+La mutación de JavaScript **no está disponible en este proyecto**: se dice
+así, con el motivo, en vez de omitir el dato.
+
+De esas 305 líneas salen solo **3 mutantes** porque casi todo lo cambiado es
+docstring y enmiendas fechadas, y el mutador solo muerde operadores y
+constantes reales.
+
+### Los tres mutantes, uno a uno
+
+| Mutante | Veredicto |
+|---|---|
+| `nombrado.py:188` · `normalizar_codigo(uno) == normalizar_codigo(otro)` → `!=` | **muerto** |
+| `paso_archivo.py:579` · `if not es_el_mismo_codigo(...)` → `if es_el_mismo_codigo(...)` | **muerto** |
+| `paso_archivo.py:142` · `@dataclass(frozen=True)` → `frozen=False` | **muerto** (ver abajo) |
+
+### El único que sobrevivió alguna vez, y por qué se mató en vez de justificarlo
+
+En la **primera** campaña del Bloque 2 (2026-09-22, 13:09 · 3 mutantes, 2
+muertos, **1 superviviente**, 86,9 s) sobrevivió el tercero:
+`paso_archivo.py:142` `[booleano]` · `@dataclass(frozen=True)` →
+`@dataclass(frozen=False)`.
 
 **Por qué ningún test lo cazaba**: `CodigosDelParte` se construye en dos
-sitios —`_codigos_guardados` y el borde— y nadie escribe encima del objeto
+sitios —`_codigos_guardados` y el borde— y nadie escribía encima del objeto
 después, así que quitarle la inmutabilidad no cambiaba ningún resultado
 observable. Era una guardia sin nadie que la ejercitara.
 
@@ -61,6 +87,18 @@ nombre del fichero, y ni el cotejo ni el nombrado estarían protegiendo nada.
 
 El test es
 `tests/test_f031_nombrado_persistido.py::test_f031_r11_los_codigos_resueltos_no_se_pueden_reescribir`
-(commit `55db9c8`). Con él, la segunda campaña —la de arriba— mata los **3 de
-3**.
+(commit `55db9c8`). Desde él, las campañas matan los **3 de 3**: la segunda
+vuelta del Bloque 2 (82,7 s) y ésta (78,6 s).
+
+### La línea base, comprobada antes de lanzar esto
+
+Una campaña contra una suite que ya venía roja no mide nada. Antes de lanzarla
+se reejecutaron las tres suites **enteras y sin caché**, no se leyó el verde
+del arnés:
+
+| Suite | Comando | Resultado |
+|---|---|---|
+| `api` | `pytest tests -q -p no:cacheprovider` | **3.066 passed, 14 skipped** en 65,58 s |
+| `front` | `pytest tests -q -p no:cacheprovider` | **256 passed** en 3,33 s |
+| JavaScript | `node --test "tests_js/*.test.js"` | **310 passed, 0 failed** en 819 ms |
 

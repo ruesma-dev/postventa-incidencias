@@ -106,7 +106,7 @@
       (R17).
       **Verificación**: `pytest tests/test_f031_alcance_cerrado.py -q` en verde.
 
-- [ ] **T12**: documentación — recuadro fechado en `docs/ARCHITECTURE.md` (paso
+- [x] **T12**: documentación — recuadro fechado en `docs/ARCHITECTURE.md` (paso
       6 y semántica 8), nota de cierre en
       `specs/F-030-veredicto-persistido/design.md` §10.7 y nota al margen en
       `specs/F-006-sharepoint/design.md` (`design.md` §10). Comprobar y dejar

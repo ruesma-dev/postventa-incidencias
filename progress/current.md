@@ -9,7 +9,7 @@
 > **409 y no se archiva nada**. Informe completo, con la fase RED y las
 > evidencias medidas: **`progress/impl_F-031.md`**.
 >
-> `bash harness/init.sh` en **verde**: 3.055 tests del servicio `api`, puerta
+> `bash harness/init.sh` en **verde**: 3.056 tests del servicio `api`, puerta
 > de cobertura **100 % de las líneas cambiadas** (28/28, umbral 80 %).
 >
 > ### ⚠️ Lo que falta, y por qué esto NO se despliega todavía

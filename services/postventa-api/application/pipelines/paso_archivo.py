@@ -260,8 +260,8 @@ def paso_archivo(
     No hay ningún parámetro para forzar el re-archivo de un parte que ya
     consta archivado, a propósito (F-033 R21, D-4).
 
-    Levanta `ParteNoApto`, `CodigosNoCoinciden`, `NombradoImposible`,
-    `ArchivoFallido`,
+    Levanta `ParteNoApto`, —desde F-031— `CodigosNoCoinciden`,
+    `NombradoImposible`, `ArchivoFallido`,
     —desde F-019— `ReferenciaNoConsta` y `PersistenciaNoDisponible` de la
     traza previa, y —si la subida salió bien y la traza final no se pudo
     escribir— `ArchivoSinTraza`. Los traduce a HTTP el borde; aquí no se sabe

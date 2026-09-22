@@ -36,7 +36,7 @@ manda lo que leyó — una costumbre, no una garantía.
 
 ### 2.2 · Tests nuevos (2)
 
-- `services/postventa-api/tests/test_f031_nombrado_persistido.py` — 38 casos:
+- `services/postventa-api/tests/test_f031_nombrado_persistido.py` — 39 casos:
   R1, R2, R4 (la función pura), R7, R8, R11 y R12.
 - `services/postventa-api/tests/test_f031_cotejo_de_codigos.py` — 27 casos:
   el error de dominio, R3, R4 (desde el borde), R5, R6, R9, R10, R11 y R25.
@@ -208,7 +208,7 @@ Salida del arnés al cerrar el bloque:
 ```
 62 passed in 6.51s
 [OK] pytest en verde (con medición de cobertura)
-3055 passed, 24 skipped in 93.33s (0:01:33)
+3056 passed, 24 skipped in 94.81s (0:01:34)
 [OK] servicio api (services/postventa-api): pytest en verde
 [OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
 [OK] PUERTA COBERTURA: 100.0% de 28 líneas cambiadas cubiertas (28/28, umbral 80%, nivel critico)
@@ -331,16 +331,44 @@ Números **medidos**, no estimados. Salidas de esta misma sesión.
 
 | Evidencia | Medida |
 |---|---|
-| **Tests ejecutados** y resultado | Servicio `api`: **3.055 passed, 24 skipped**, 0 failed. Arnés: **62 passed**. Servicio `front`: verde (caché, árbol sin cambios) |
-| **Tests nuevos** de la feature | **65** (38 en `test_f031_nombrado_persistido.py` + 27 en `test_f031_cotejo_de_codigos.py`), todos con nombre trazable `test_f031_rN_…` |
+| **Tests ejecutados** y resultado | Servicio `api`: **3.056 passed, 24 skipped**, 0 failed. Arnés: **62 passed**. Servicio `front`: verde (caché, árbol sin cambios) |
+| **Tests nuevos** de la feature | **66** (39 en `test_f031_nombrado_persistido.py` + 27 en `test_f031_cotejo_de_codigos.py`), todos con nombre trazable `test_f031_rN_…` |
 | **Cobertura de las líneas cambiadas** | **100,0 %** — 28/28 líneas, umbral 80 %, nivel `critico`. Línea `PUERTA COBERTURA` de `bash harness/init.sh` |
-| **Tiempo de ejecución de la suite** | **93,33 s** el servicio `api`; 6,51 s el arnés |
-| **Mutantes generados y supervivientes** | PENDIENTE_MUTACION |
+| **Tiempo de ejecución de la suite** | **94,81 s** el servicio `api`; 6,51 s el arnés |
+| **Mutantes generados y supervivientes** | **3 generados, 3 evaluados, 3 muertos, 0 supervivientes, 0 timeouts**, en 82,7 s con 3 workers. Informe: `progress/mutacion_F-031.md`. Ninguna sección queda en `PENDIENTE` |
 | **Lint** | `python -m ruff check .`: **61 avisos, los mismos que antes de la feature** (deuda previa). El único aviso nuevo que introduje —un `I001`— se corrigió en el commit `2077f39` |
+
+### 9.1 · La campaña de mutación, con nombre y apellidos
+
+`python -m harness.mutacion --feature F-031`. El alcance son **305 líneas de
+producción en 5 ficheros**; de ahí salen solo **3 mutantes** porque casi todo
+lo cambiado es docstring y enmiendas fechadas, y el mutador solo muerde
+operadores y constantes reales.
+
+| Mutante | Veredicto |
+|---|---|
+| `nombrado.py:188` · `normalizar_codigo(uno) == normalizar_codigo(otro)` → `!=` | **muerto** |
+| `paso_archivo.py:579` · `if not es_el_mismo_codigo(...)` → `if es_el_mismo_codigo(...)` | **muerto** |
+| `paso_archivo.py:142` · `@dataclass(frozen=True)` → `frozen=False` | **muerto en la segunda vuelta** |
+
+El tercero **sobrevivió en la primera campaña** (3 mutantes, 2 muertos, 1
+superviviente, 86,9 s). No se justificó como equivalente: se **mató**, con un
+test que ejercita la inmutabilidad de `CodigosDelParte`
+(`test_f031_r11_los_codigos_resueltos_no_se_pueden_reescribir`, commit
+`55db9c8`). La inmutabilidad ahí no es decoración —es la misma razón que
+`DestinoArchivo` tiene escrita— y una guardia que nadie ejercita es una
+guardia que nadie sabe si funciona.
+
+Segunda campaña, tras el test: **3 de 3 muertos, 0 supervivientes**.
+
+> Esta campaña es la del **Bloque 2**. La T16 de `tasks.md` es la de la
+> **feature entera** y sigue pendiente: se lanzará cuando el front esté hecho,
+> porque el alcance del diff cambiará.
 
 ## 10 · Commits del bloque
 
 ```
+55db9c8 F-031: mata el superviviente de la campana de mutacion (frozen de CodigosDelParte)
 2077f39 F-031: imports del test de cotejo al inicio del modulo (ruff I001)
 db9703d F-031 T7: el borde pasa los codigos declarados y el 409 nuevo sale por HTTP
 cf17133 F-031 T6: el cotejo en el punto 1 bis, antes de dejar cualquier rastro

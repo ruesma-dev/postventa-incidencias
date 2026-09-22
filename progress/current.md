@@ -1,6 +1,20 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ VERIFICACIONES DE F-033 CERRADAS · 2026-09-22 · **Posventa lo está probando en real**
+>
+> El responsable dio la feature por cerrada: *«ahora lo esta probando postventa
+> en produccion. da la feature por cerrada»*. **T13 hecha y medida** el
+> 2026-09-18 (133 trazas, 0 `pendiente`). **T14 NO recorrida como está
+> escrita**: no hay foto antes/después de un re-archivado ni
+> `AVISO_YA_ARCHIVADO` observado. Acta con lo que respalda el cierre, lo que no,
+> y cómo cerrar el hueco cuando se quiera:
+> **`progress/cierre_verificaciones_F-033.md`**.
+>
+> **Sigue abierto**: F-034, F-031 y F-013 (aprobada, en espera de las dos). Y la
+> decisión de las **133 trazas de la biblioteca de IT**, que con F-033 no se
+> subirán nunca a Posventa.
+
 > ## MEDICIONES PREVIAS AL DESPLIEGUE · 2026-09-18 · F-032 T14 y F-033 T13, EJECUTADAS por el humano
 >
 > `infra/25_mediciones_despliegue.ps1`, solo lectura del schema `postventa`.

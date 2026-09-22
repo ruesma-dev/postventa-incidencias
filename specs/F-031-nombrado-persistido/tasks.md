@@ -27,7 +27,7 @@
 
 ## Bloque 2 · Backend
 
-- [ ] **T2**: `domain/models/nombrado.py` · añadir `es_el_mismo_codigo(uno,
+- [x] **T2**: `domain/models/nombrado.py` · añadir `es_el_mismo_codigo(uno,
       otro)` (dominio puro, apoyada en `normalizar_codigo`) y exportarla en
       `__all__`. Nada más de ese módulo se toca.
       **Verificación**: `pytest tests/test_f031_nombrado_persistido.py -k r4`
@@ -35,13 +35,13 @@
       `RS26.09/0178`, `06 26` ≡ `0626`, `RS26.09 – 0178` ≡ `RS26.09-0178`) y
       los dos vacíos ≡ vacío.
 
-- [ ] **T3**: `domain/models/errores.py` · añadir `CodigosNoCoinciden` con
+- [x] **T3**: `domain/models/errores.py` · añadir `CodigosNoCoinciden` con
       `.motivo`, con su docstring diciendo en qué se diferencia de `ParteNoApto`
       y de `NombradoImposible` (`design.md` §3.2).
       **Verificación**: `pytest tests/test_f031_cotejo_de_codigos.py -k errores`
       en verde.
 
-- [ ] **T4 (RED)**: escribir `tests/test_f031_nombrado_persistido.py` y
+- [x] **T4 (RED)**: escribir `tests/test_f031_nombrado_persistido.py` y
       `tests/test_f031_cotejo_de_codigos.py` **antes** de tocar el paso, con un
       test por requisito de `requirements.md` §1.1 y nombre trazable
       (`test_f031_rN_…`). Caso central de R1: situación con `codigo_obra=0677`
@@ -50,14 +50,14 @@
       salida (los N fallos, con su motivo) copiada a `progress/impl_F-031.md`
       como fase RED.
 
-- [ ] **T5**: `application/pipelines/paso_archivo.py` · `CodigosDelParte`,
+- [x] **T5**: `application/pipelines/paso_archivo.py` · `CodigosDelParte`,
       `_codigos_guardados(ctx)` leyendo de `ctx.situacion`, el nombrado pasando
       a usarlos (R1) y `_campo` retirado (`design.md` §4.1, §4.3).
       **Verificación**: `pytest tests/test_f031_nombrado_persistido.py -q` en
       verde y `pytest tests/test_f006_paso_archivo.py tests/test_f033_*.py
       tests/test_f019_orden_archivado.py -q` sin cambios en verde.
 
-- [ ] **T6**: `paso_archivo.py` · el cotejo `_exigir_codigos_declarados` en el
+- [x] **T6**: `paso_archivo.py` · el cotejo `_exigir_codigos_declarados` en el
       punto **1 bis** del orden (`design.md` §4.2) y el parámetro
       `codigos_declarados`. Docstring del módulo con la enmienda fechada, al
       estilo de las de F-030 y F-033.
@@ -66,7 +66,7 @@
       repositorio no registra **ninguna** escritura y el doble de SharePoint no
       registra **ninguna** llamada.
 
-- [ ] **T7**: `interface_adapters/api/archivar.py` (pasa los códigos
+- [x] **T7**: `interface_adapters/api/archivar.py` (pasa los códigos
       declarados; `_como_contexto` deja de rellenar los dos campos) y
       `function_app.py` (`CodigosNoCoinciden` → 409, y el comentario de los
       códigos del endpoint ampliado). `design.md` §5.

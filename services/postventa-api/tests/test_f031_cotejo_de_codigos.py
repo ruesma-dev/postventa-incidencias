@@ -36,6 +36,7 @@ from datetime import UTC, datetime
 
 import azure.functions as func
 import pytest
+from application.pipelines.paso_archivo import CodigosDelParte, paso_archivo
 from domain.models.errores import (
     CodigosNoCoinciden,
     NombradoImposible,
@@ -45,9 +46,11 @@ from domain.models.estado import SituacionParte
 from interface_adapters.api.archivar import archivar_parte
 
 from tests.utiles_sharepoint import (
+    CARPETA_BASE,
     ArchivoPortFalso,
     BibliotecaFalsa,
     RepositorioFalso,
+    contexto_apto,
 )
 from tests.utiles_validacion import veredicto_apto
 
@@ -231,9 +234,6 @@ def test_f031_r3_un_cuerpo_que_dice_otra_obra_no_sube_nada():
     aquí es permanente, y por eso el cotejo va antes que todo lo que deja
     rastro.
     """
-    from application.pipelines.paso_archivo import CodigosDelParte, paso_archivo
-    from tests.utiles_sharepoint import CARPETA_BASE, contexto_apto
-
     biblioteca = BibliotecaFalsa()
     archivador = ArchivoPortFalso(biblioteca)
     repositorio = RepositorioFalso(situacion=situacion_guardada())

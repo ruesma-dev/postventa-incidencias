@@ -1,6 +1,60 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## 📄 SPEC DE F-031 ESCRITA · 2026-09-22 · `spec_ready`, **espera aprobación del humano**
+>
+> `specs/F-031-nombrado-persistido/` (requirements, design, tasks). Rama
+> `feature/F-031-nombrado-persistido`, desde `dev` (`7b013ff`). **No se ha
+> escrito ni una línea de código de producción** y no se ha tocado SharePoint,
+> Sigrid, Azure ni PostgreSQL: todo lo medido sale de leer el árbol.
+>
+> **Lo que la medición cambió respecto a la ficha**: los dos códigos guardados
+> **ya viajan** en la consulta de situación desde F-030
+> (`sentencias.py:635` trae `p.codigo_obra, p.numero_incidencia`, y
+> `mapeo.py:432-433` los deja en `ResultadoValidacion`). Así que F-031 **no
+> cuesta ninguna consulta, ninguna columna, ninguna sentencia ni ningún método
+> nuevo del puerto**. Es lo contrario de F-033.
+>
+> **La segunda mitad, medida en el front**: `confirmarArchivo`
+> (`js/app.js:703-746`) lanza la tanda **sin mirar si queda algo sin guardar**;
+> `autoguardado.hayPendiente` (`js/autoguardado.js:283`) existe y **no lo llama
+> nadie**. La ventana real son los **1.500 ms** de rebote de
+> `js/config.js:64` más el guardado en vuelo. Y ojo: hacer **solo** el backend
+> **empeoraría** ese caso —archivaría con el código viejo, en silencio—, así que
+> las dos mitades van juntas (`design.md` §1.3).
+>
+> ### Decisiones abiertas que necesita validar el humano (`design.md` §11)
+>
+> **Bloquean el arranque D-1, D-3 y D-5**; las otras se pueden cerrar con la
+> recomendación.
+>
+> | Id | Pregunta | Recomendación |
+> |---|---|---|
+> | **D-1** | ¿De dónde lee el paso los códigos guardados? | De `ctx.situacion.validacion`, que ya los trae. La alternativa (campos propios en `SituacionParte`) mete dos copias del mismo dato en el mismo objeto |
+> | **D-2** | ¿Cómo llega al paso lo declarado en el cuerpo? | Parámetro explícito, y el endpoint deja de rellenar la `ExtraccionParte` de pega |
+> | **D-3** | ¿Qué pasa si el cuerpo difiere de la base? | **409 y no se archiva.** Archivar con lo guardado más un aviso llegaría **después** de subir el PDF, y con L1 de F-033 eso ya no se arregla |
+> | **D-4** | ¿Siguen obligatorios los dos campos del cuerpo? | Sí: dejan de nombrar y pasan a **cotejar**. El contrato HTTP no cambia |
+> | **D-5** | ¿Qué hace el front antes de archivar? | Forzar el guardado y esperar; si falla, **no se lanza la tanda**. La tanda se calcula **después** del vaciado, porque guardar revalida y puede encogerla |
+> | **D-6** | Hallazgo **H-1** (abajo) | Ampliar el `acceptance` de **F-034** |
+> | **D-7** | ¿El cotejo compara literal o normalizado? | Normalizado (F-032): `RS 26.09/0178` y `RS26.09/0178` son el **mismo** código y no pueden dar 409 |
+>
+> ### HALLAZGO H-1 · fuera de alcance, para decidir
+>
+> `/api/adjuntar` y `/api/cerrar` toman `codigo_obra` y `numero_incidencia`
+> **del cuerpo**, igual que archivar: `adjuntar.py:94-95, 107-108, 148-149,
+> 172-173` → `paso_grafico.py:116-117, 157, 175-176` (nombra el fichero **y**
+> localiza la reclamación), y `cerrar.py:100, 149` → `paso_cierre.py:117, 155`
+> (elige **qué reclamación se cierra en el ERP de producción**). Es la misma
+> familia y **más grave** que esta ficha, y **F-034 no lo cubre**: su
+> `acceptance` habla solo del `estado_archivo`. Recomendación: ampliar F-034.
+>
+> ### Encaje con F-013 (aprobada, en espera)
+>
+> F-013 §2.3 y §8.2 declaran que **F-031 decide de dónde salen los códigos** y
+> que su `resolver_destino` los recibe del paso. F-031 los deja resueltos en
+> **un solo punto** dentro de `paso_archivo` y **no toca** nada del terreno de
+> F-013: ni estructura de la biblioteca, ni Sigrid, ni creación de carpetas.
+
 > ## ✅ VERIFICACIONES DE F-033 CERRADAS · 2026-09-22 · **Posventa lo está probando en real**
 >
 > El responsable dio la feature por cerrada: *«ahora lo esta probando postventa

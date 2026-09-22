@@ -353,6 +353,35 @@ def test_f031_r2_los_codigos_salen_del_mismo_objeto_que_aprobo_la_puerta():
     )
 
 
+def test_f031_r11_los_codigos_resueltos_no_se_pueden_reescribir():
+    """R11 · `CodigosDelParte` es inmutable, por lo mismo que `DestinoArchivo`.
+
+    Entre resolverlos y componer con ellos la carpeta y el nombre hay varias
+    líneas, y en el borde hay además una llamada entera de por medio. Si
+    alguien pudiera reescribir un código por el camino —o reutilizar el objeto
+    de los declarados para «arreglar» los guardados—, ni el cotejo ni el
+    nombrado estarían protegiendo nada: lo que se comprobó en el paso 1 bis no
+    sería lo que acaba en el nombre del fichero.
+
+    Lo destapó la campaña de mutación de esta feature: `frozen=True` →
+    `frozen=False` sobrevivía porque hoy nadie intenta escribir encima. Una
+    guardia que nadie ejercita es una guardia que nadie sabe si funciona.
+    """
+    from dataclasses import FrozenInstanceError
+
+    codigos = CodigosDelParte(
+        codigo_obra=OBRA_GUARDADA, numero_incidencia=INCIDENCIA_GUARDADA
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        codigos.codigo_obra = OBRA_DEL_CUERPO
+    with pytest.raises(FrozenInstanceError):
+        codigos.numero_incidencia = INCIDENCIA_DEL_CUERPO
+
+    assert codigos.codigo_obra == OBRA_GUARDADA
+    assert codigos.numero_incidencia == INCIDENCIA_GUARDADA
+
+
 @pytest.mark.parametrize(
     ("caso", "situacion"),
     (

@@ -1,6 +1,42 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## 🔧 F-031 · BLOQUE 2 (BACKEND) HECHO · 2026-09-22 · falta el Bloque 3, el front
+>
+> **T1–T7 cerradas.** El backend ya nombra el fichero con el `codigo_obra` y
+> el `numero_incidencia` **guardados**, y los dos que vienen en el cuerpo de
+> `POST /api/archivar` dejan de nombrar y pasan a **cotejar**: si no cuadran,
+> **409 y no se archiva nada**. Informe completo, con la fase RED y las
+> evidencias medidas: **`progress/impl_F-031.md`**.
+>
+> `bash harness/init.sh` en **verde**: 3.055 tests del servicio `api`, puerta
+> de cobertura **100 % de las líneas cambiadas** (28/28, umbral 80 %).
+>
+> ### ⚠️ Lo que falta, y por qué esto NO se despliega todavía
+>
+> **El Bloque 3 (T8–T10, el front) está sin empezar**, y `design.md` §1.3 dice
+> por qué importa: desplegar **solo** el backend **empeora** el caso de la
+> corrección reciente. Hoy, quien corrige un código y pulsa «archivar y
+> cerrar» antes de los 1.500 ms de rebote archiva con el código **corregido** y
+> deja la base con el viejo —ruidoso el día que alguien compare—; con solo esta
+> mitad desplegada se llevaría un **409** que no entiende, porque su corrección
+> todavía no está guardada. No es el fallo silencioso que la feature viene a
+> cerrar, pero tampoco es la mejora que se prometió.
+>
+> Los dos bloques se encargaron **por separado a propósito**, y la condición
+> sigue en pie: **no se despliega F-031 hasta tener las dos mitades**. Después
+> del Bloque 3 quedan además el Bloque 4 (alcance cerrado y documentación) y el
+> Bloque 5 (V1 y V2 manuales, mutación y verde final).
+>
+> ### Una desviación declarada, para que la mire el reviewer
+>
+> `design.md` §9 daba `tests/test_f033_archivar_http.py` por intacto y **no lo
+> era**: su caso del circuito F-032 manda un formulario con `0626` contra una
+> base que guardaba `0677`, así que con el cotejo nuevo salía un 409. Se ha
+> puesto la base a decir lo mismo que el formulario, que es el mundo real.
+> Está razonado en el informe junto con las otras cuatro adaptaciones de tests
+> ya existentes.
+
 > ## ✅ SPEC DE F-031 APROBADA · 2026-09-22 · `spec_ready`, lista para implementar
 >
 > **Aprobada por el humano el 2026-09-22** («si») con las recomendaciones de

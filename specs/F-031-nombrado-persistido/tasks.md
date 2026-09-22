@@ -98,7 +98,7 @@
 
 ## Bloque 4 · Cierre de alcance y documentación
 
-- [ ] **T11**: `tests/test_f031_alcance_cerrado.py` (R29): `adjuntar.py`,
+- [x] **T11**: `tests/test_f031_alcance_cerrado.py` (R29): `adjuntar.py`,
       `cerrar.py`, `paso_grafico.py`, `paso_cierre.py`, `sentencias.py`,
       `mapeo.py`, `repositorio_pg.py`, `domain/ports/persistencia.py`,
       `domain/models/estado.py` y todo `infrastructure/persistencia/sql/` **sin

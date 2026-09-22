@@ -322,11 +322,20 @@ def test_f006_r31_parte_no_apto_responde_409(monkeypatch):
     assert biblioteca.carpetas == set()
 
 
-def test_f006_r31_un_nombre_imposible_responde_409(monkeypatch):
-    """R31 · «no se puede nombrar; va a revisión manual». Sin subir nada.
+def test_f006_r31_un_cuerpo_con_un_codigo_raro_responde_409(monkeypatch):
+    """R31 · sigue siendo 409 y sigue sin subir nada, **por otro motivo**.
 
-    Mismo código que el parte no apto porque es el mismo caso desde fuera: el
-    parte no se puede archivar tal y como está y tiene que mirarlo alguien.
+    > **Enmienda del 2026-09-22 (F-031).** Este caso probaba el nombre
+    > imposible: el cuerpo traía `06|77`, el paso nombraba con lo declarado y
+    > el nombre resultante no valía para SharePoint. Desde F-031 el nombrado
+    > **no mira el cuerpo**, así que lo que ese `06|77` dispara ahora es el
+    > **cotejo**: el cuerpo dice `06|77` y la base dice `0677`. El código HTTP
+    > y la consecuencia que importa —no se sube nada— son los mismos; lo que
+    > cambia es el motivo, y por eso ahora se afirma sobre él.
+    >
+    > El camino del nombre imposible **no se pierde**: lo cubre el caso
+    > siguiente, ya desde el código guardado, que es donde de verdad es
+    > alcanzable (F-031 R8).
     """
     import function_app
 
@@ -347,7 +356,56 @@ def test_f006_r31_un_nombre_imposible_responde_409(monkeypatch):
     )
 
     assert respuesta.status_code == 409
+    motivo = _cuerpo(respuesta)["error"]
+    assert "código de obra" in motivo
+    assert "06|77" in motivo and "0677" in motivo
     assert biblioteca.subidas == 0
+
+
+def test_f006_r31_un_nombre_imposible_desde_lo_guardado_responde_409(monkeypatch):
+    """R31 + F-031 R8 · «no se puede nombrar; va a revisión manual». Sin subir nada.
+
+    El caso de arriba, con el código raro **en la base** y el cuerpo diciendo
+    lo mismo: el cotejo pasa y lo que falla es el nombrado. Es la única forma
+    en la que este camino sigue siendo alcanzable desde el endpoint, y tenía
+    que seguir teniendo test: `normalizar_codigo` quita blancos, pero no quita
+    lo que SharePoint no admite.
+
+    Mismo código que el parte no apto porque es el mismo caso desde fuera: el
+    parte no se puede archivar tal y como está y tiene que mirarlo alguien.
+    """
+    from dataclasses import replace
+
+    import function_app
+
+    biblioteca = BibliotecaFalsa()
+    _con_dobles(
+        monkeypatch,
+        ArchivoPortFalso(biblioteca),
+        _repositorio(
+            replace(
+                veredicto_apto(hash_parte=HASH_DEL_FORMULARIO), codigo_obra="06|77"
+            )
+        ),
+    )
+
+    respuesta = function_app.archivar(
+        _peticion(
+            [("parte.pdf", PDF_CON_DATOS)],
+            (
+                ("hash", "9f2b0011aabb"),
+                ("codigo_obra", "06|77"),
+                ("numero_incidencia", "RS26.08/0123"),
+                ("veredicto", "apto"),
+                ("destino", "archivo_y_cierre"),
+            ),
+        )
+    )
+
+    assert respuesta.status_code == 409
+    assert "no vale para SharePoint" in _cuerpo(respuesta)["error"]
+    assert biblioteca.subidas == 0
+    assert biblioteca.carpetas == set()
 
 
 def test_f006_r31_archivo_deshabilitado_responde_503():
@@ -407,42 +465,37 @@ def test_f006_r31_ninguna_respuesta_de_error_lleva_el_contenido(monkeypatch):
 
 
 def test_f006_r30_el_endpoint_no_inventa_lecturas_de_los_campos_que_no_recibe():
-    """R30 · los siete campos que no llegan se reconstruyen **vacíos y a cero**.
+    """R30 · los **nueve** campos se reconstruyen vacíos y a cero.
 
     Lo destapó la campaña de mutación (T20): las confianzas del contexto que
     monta el handler no las miraba ningún test.
 
-    Y sí importan. El endpoint recibe **dos** campos —obra e incidencia— y no
-    los otros siete, a propósito: pedirlos obligaría al front a reenviar el DNI
-    y las observaciones manuscritas del cliente en cada archivo. Reconstruirlos
-    con confianza **cero** es decir la verdad —«de esto no se ha leído nada»—;
-    con cualquier valor mayor se estaría afirmando que el papel estaba en
-    blanco, y eso es un dato inventado que F-004 se creería si este contexto se
-    revalidara.
+    Y sí importan. Este endpoint no recibe la extracción —pedirla obligaría al
+    front a reenviar el DNI y las observaciones manuscritas del cliente en cada
+    archivo—, así que reconstruir los campos con confianza **cero** es decir la
+    verdad: «de esto no se ha leído nada». Con cualquier valor mayor se estaría
+    afirmando que el papel estaba en blanco, y eso es un dato inventado que
+    F-004 se creería si este contexto se revalidara.
 
-    Y al revés: los dos que sí llegan van a confianza plena, porque vienen de
-    una validación ya hecha. Degradarlos aquí los volvería ilegibles y mandaría
-    a revisión manual un parte que ya estaba aprobado.
+    > **Enmienda del 2026-09-22 (F-031).** Hasta hoy dos de los nueve
+    > —`codigo_obra` y `numero_incidencia`— se rellenaban con lo que traía el
+    > cuerpo y a confianza plena, porque el paso nombraba el fichero con
+    > ellos. Ya no: el nombre sale de lo guardado y los dos del cuerpo viajan
+    > explícitos, solo para cotejar. Rellenarlos aquí afirmaba «esto leyó la
+    > IA» sobre lo que había escrito un formulario, que es la confusión que
+    > dejó el defecto.
     """
     from application.pipelines.contexto_parte import ContextoParte
     from domain.models.extraccion import CAMPOS_DEL_PARTE
     from interface_adapters.api.archivar import _como_contexto
 
-    contexto = _como_contexto(
-        PDF_CON_DATOS,
-        hash_parte="9f2b0011aabb",
-        codigo_obra="0677",
-        numero_incidencia="RS26.08/0123",
-    )
+    contexto = _como_contexto(PDF_CON_DATOS, hash_parte="9f2b0011aabb")
 
     assert isinstance(contexto, ContextoParte)
     for nombre in CAMPOS_DEL_PARTE:
         campo = contexto.extraccion.campo(nombre)
-        if nombre in ("codigo_obra", "numero_incidencia"):
-            assert campo.confianza_pct == 100, nombre
-        else:
-            assert campo.valor is None, nombre
-            assert campo.confianza_pct == 0, nombre
+        assert campo.valor is None, nombre
+        assert campo.confianza_pct == 0, nombre
 
     # F-030 · y el contexto sale **sin veredicto**. Hasta hoy traía uno
     # fabricado aquí con `observaciones=None` y confianza 0, que es lo que
@@ -460,12 +513,7 @@ def test_f006_r30_el_contexto_que_monta_el_endpoint_no_lleva_datos_personales():
     """
     from interface_adapters.api.archivar import _como_contexto
 
-    contexto = _como_contexto(
-        PDF_CON_DATOS,
-        hash_parte="9f2b0011aabb",
-        codigo_obra="0677",
-        numero_incidencia="RS26.08/0123",
-    )
+    contexto = _como_contexto(PDF_CON_DATOS, hash_parte="9f2b0011aabb")
 
     assert contexto.extraccion.campo("dni_cliente").valor is None
     assert contexto.extraccion.campo("observaciones").valor is None

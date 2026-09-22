@@ -284,11 +284,25 @@ def test_f033_r9_la_puerta_va_antes_que_l1():
 
 
 def test_f033_r9_el_nombrado_va_antes_que_l1():
-    """R9 · un nombre imposible sale antes de mirar la traza."""
+    """R9 · un nombre imposible sale antes de mirar la traza.
+
+    > **Enmienda del 2026-09-22 (F-031).** Hasta hoy el caso vaciaba el código
+    > de obra **del contexto** (`contexto_apto(codigo_obra=None)`), porque el
+    > nombrado leía de ahí. Desde F-031 el nombre sale del código **guardado**,
+    > así que un contexto sin código ya no produce ningún nombre imposible: es
+    > la situación la que tiene que traerlo vacío. R9 no cambia —el nombrado
+    > sigue yendo antes que L1—, cambia de dónde se le quita la entrada.
+    """
     archivador, repositorio, registro = _dobles(_archivada())
+    repositorio.situacion = dataclasses.replace(
+        repositorio.situacion,
+        validacion=dataclasses.replace(
+            repositorio.situacion.validacion, codigo_obra=""
+        ),
+    )
 
     with pytest.raises(NombradoImposible):
-        _archivar(archivador, repositorio, ctx=contexto_apto(codigo_obra=None))
+        _archivar(archivador, repositorio)
 
     assert registro == []
 
@@ -671,7 +685,16 @@ def test_f033_r20_el_aviso_no_lleva_identificadores_de_biblioteca():
 
 
 def test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar():
-    """R21 · ni parámetro del paso: la firma entera, cerrada."""
+    """R21 · ni parámetro del paso: la firma entera, cerrada.
+
+    > **Enmienda del 2026-09-22 (F-031).** La firma gana
+    > `codigos_declarados`, y el test lo recoge en vez de relajarse a un
+    > `not in`: lo que R21 exige es que **la firma entera** esté a la vista, de
+    > modo que cualquier parámetro nuevo obligue a mirar si abre una puerta.
+    > Éste no la abre: es lo que afirma quien llama, solo sirve para
+    > **cotejarlo** contra lo guardado (F-031 R3) y no puede decidir nada
+    > (F-031 R11) — mucho menos re-archivar un parte que ya consta archivado.
+    """
     parametros = set(inspect.signature(paso.paso_archivo).parameters)
 
     assert parametros == {
@@ -681,6 +704,7 @@ def test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar():
         "carpeta_base",
         "ahora",
         "drive_id_vigente",
+        "codigos_declarados",
     }
 
 

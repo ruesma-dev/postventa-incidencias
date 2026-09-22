@@ -66,6 +66,13 @@ contrato» —falta quién decide, falta la confirmación, el estado pedido no e
 uno de los dos manuales o el rechazo viene sin motivo—. **En los dos, sin
 haber escrito nada.**
 
+El del **nombrado persistido** (F-031) es uno solo, `CodigosNoCoinciden`
+(→ 409), y cae del mismo lado que los anteriores: la petición está bien
+formada y lo que no cuadra es que **lo declarado no es lo que consta
+guardado**. Tiene nombre propio y no se recicla `ParteNoApto` porque los dos
+son 409 y llevan a acciones opuestas: aquél se arregla decidiendo sobre el
+parte, éste **guardando la corrección** y volviendo a archivar.
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
@@ -352,6 +359,48 @@ class NombradoImposible(Exception):
     En la práctica no debería llegar aquí ningún parte sin códigos: F-004 no
     los declara aptos. Por eso esto es una **red de seguridad**, no el camino
     normal.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CodigosNoCoinciden(Exception):
+    """Lo declarado en la petición no es lo que consta guardado (F-031, R3).
+
+    Desde F-031 la carpeta y el nombre del fichero salen del `codigo_obra` y
+    el `numero_incidencia` **guardados**, y los dos que vienen en el cuerpo de
+    `POST /api/archivar` dejan de nombrar y pasan a **cotejar**. Cuando el
+    cotejo falla, esto es lo que sale, y el archivado se aborta **antes** de
+    escribir la traza previa y antes de llamar al puerto de archivo (R5): ni
+    carpeta, ni búsqueda, ni bytes, ni fila en `postventa.archivos`.
+
+    ## En qué se diferencia de sus dos hermanas de 409
+
+    Los tres son 409 y los tres dejan el parte sin archivar, pero **llevan a
+    acciones opuestas**, y por eso son tres errores y no uno:
+
+    - `ParteNoApto` se arregla **decidiendo sobre el parte**: revalidarlo, o
+      que una persona lo apruebe. No hay nada que corregir en la petición.
+    - `NombradoImposible` se arregla **corrigiendo el papel**: falta un código
+      o el que hay lleva algo que SharePoint no admite, y el parte va a
+      revisión manual. Nada que se pueda reintentar tal cual.
+    - `CodigosNoCoinciden` se arregla **guardando la corrección**
+      (`POST /api/parte`) y volviendo a archivar. Es el único de los tres en
+      el que reintentar, después de guardar, funciona.
+
+    Reutilizar `ParteNoApto` habría hecho que el `except` del borde se la
+    tragara y que a una persona le llegara «este parte no ha pasado la
+    validación» cuando lo que pasa es que su corrección todavía no está en la
+    base. Es la misma razón por la que existen `ParteNoArchivado`,
+    `ArchivoSinTraza` y `ReferenciaNoConsta`.
+
+    El `motivo` nombra **qué campo** no coincide, con los dos valores y con la
+    acción concreta, y **nada más** (R25): los dos códigos identifican una
+    obra y una reclamación, no a una persona, así que pueden salir; el DNI,
+    las observaciones, la descripción, la unidad y la promoción, no. Un 409
+    que no dijera cuál de los dos falla obligaría a mirar la base a mano.
     """
 
     def __init__(self, motivo: str) -> None:

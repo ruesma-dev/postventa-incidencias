@@ -53,6 +53,30 @@ Este endpoint **no** pasa ninguna traza de archivo al paso: L1 la lee de la
 situación que ya consulta la puerta de estado, del almacén. Lo único que añade
 es la biblioteca vigente (`SHAREPOINT_DRIVE_ID`), para que el paso pueda avisar
 si lo archivado está en otra; no sale en la respuesta ni en ningún log.
+
+## Los dos códigos dejan de nombrar y pasan a cotejar (F-031, 2026-09-22)
+
+**Enmienda del 2026-09-22.** Hasta hoy este handler metía `codigo_obra` y
+`numero_incidencia` dentro de la `ExtraccionParte` de pega y el paso nombraba
+el fichero con ellos. Es decir: desde F-030 la puerta de estado dejaba pasar
+mirando los códigos **guardados**, y el PDF se nombraba con los
+**declarados**. Coincidían porque
+el front manda lo que leyó —una costumbre, no una garantía—, y la ventana
+real del defecto son los 1.500 ms de rebote del autoguardado: quien corrige
+un código y pulsa «archivar y cerrar» sin esperar manda uno que no está en la
+base.
+
+Desde F-031:
+
+- los dos códigos viajan al paso **explícitos**, en `codigos_declarados`, y
+  sirven solo para **cotejarlos** contra lo guardado. Si no cuadran, sale un
+  **409** y no se archiva nada (F-031 R3, R5; decisiones D-2 y D-3);
+- `_como_contexto` **deja de rellenarlos**: los nueve campos de la extracción
+  van vacíos, y ese objeto deja de ser una fuente de datos;
+- `CAMPOS_OBLIGATORIOS` **no cambia** (R10): los cinco siguen siendo
+  obligatorios y un cuerpo incompleto sigue siendo un 400 (R6). Lo que cambia
+  es para qué sirven dos de ellos. Retirarlos del contrato habría perdido la
+  detección: sin lo declarado no hay con qué cotejar (D-4).
 """
 
 from __future__ import annotations
@@ -61,7 +85,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from application.pipelines.contexto_parte import ContextoParte
-from application.pipelines.paso_archivo import paso_archivo
+from application.pipelines.paso_archivo import CodigosDelParte, paso_archivo
 from config.settings import obtener_ajustes
 from domain.models.errores import CuerpoDeArchivoInvalido
 from domain.models.extraccion import (
@@ -101,8 +125,8 @@ def archivar_parte(
 ) -> dict[str, Any]:
     """Archiva **un** parte apto y devuelve el cuerpo de la respuesta.
 
-    Levanta `CuerpoDeArchivoInvalido` (→ 400), `ParteNoApto` y
-    `NombradoImposible` (→ 409), `ArchivoDeshabilitado`,
+    Levanta `CuerpoDeArchivoInvalido` (→ 400), `ParteNoApto`,
+    `CodigosNoCoinciden` y `NombradoImposible` (→ 409), `ArchivoDeshabilitado`,
     `ConfiguracionSharePointIncompleta`, `ConfiguracionPgIncompleta` y
     `PersistenciaNoDisponible` (→ 503), `ArchivoFallido` (→ 502) y
     `ArchivoSinTraza` (→ 500) **sin traducirlas**: convertir eso en códigos
@@ -123,12 +147,7 @@ def archivar_parte(
     )
     ajustes = obtener_ajustes()
     contexto = paso_archivo(
-        _como_contexto(
-            contenido,
-            hash_parte=hash,
-            codigo_obra=codigo_obra,
-            numero_incidencia=numero_incidencia,
-        ),
+        _como_contexto(contenido, hash_parte=hash),
         archivador if archivador is not None else construir_archivador(ajustes),
         repositorio
         if repositorio is not None
@@ -136,6 +155,11 @@ def archivar_parte(
         carpeta_base=ajustes.sharepoint_carpeta_base,
         ahora=ahora if ahora is not None else datetime.now(UTC),
         drive_id_vigente=ajustes.sharepoint_drive_id,
+        # F-031 · lo que **afirma** el cuerpo. Solo sirve para cotejarlo
+        # contra lo guardado (R3); no nombra nada y no decide nada (R11).
+        codigos_declarados=CodigosDelParte(
+            codigo_obra=codigo_obra, numero_incidencia=numero_incidencia
+        ),
     )
     return _serializar(contexto)
 
@@ -170,34 +194,33 @@ def _exigir_valor_conocido(enumeracion, valor: str, nombre: str) -> None:
         )
 
 
-def _como_contexto(
-    contenido: bytes,
-    *,
-    hash_parte: str,
-    codigo_obra: str,
-    numero_incidencia: str,
-) -> ContextoParte:
+def _como_contexto(contenido: bytes, *, hash_parte: str) -> ContextoParte:
     """Reconstruye el contexto mínimo que necesita el paso de archivo.
 
     Al endpoint le llega un parte ya troceado y **suelto**, igual que a
     `/api/extraer`: quien conoce su origen es el front, que lo tiene de la
     respuesta de `/api/split`.
 
-    De la extracción solo se reconstruyen los dos campos que deciden el
-    nombre. Los otros siete van vacíos **a propósito**: este endpoint no los
-    necesita, y pedirlos obligaría al front a reenviar el DNI y las
-    observaciones manuscritas del cliente en cada archivo, que es exactamente
-    el dato que no debe viajar de más.
+    Los **nueve** campos de la extracción van vacíos y a cero. Siete lo iban
+    ya, a propósito: este endpoint no los necesita, y pedirlos obligaría al
+    front a reenviar el DNI y las observaciones manuscritas del cliente en
+    cada archivo, que es exactamente el dato que no debe viajar de más.
 
     Y **el veredicto se va sin rellenar** (F-030): este endpoint no recibe la
     extracción, así que no puede emitirlo, y fabricarlo con lo poco que tiene
     es lo que rompió el circuito. Lo lee la puerta del paso, de la base.
+
+    > **Enmienda del 2026-09-22 (F-031).** Los otros dos —`codigo_obra` y
+    > `numero_incidencia`— **dejan de rellenarse aquí**, y con eso este objeto
+    > deja de ser una fuente de datos y pasa a ser lo que F-030 decía que era:
+    > un contexto mínimo con el `hash` y los bytes. Rellenarlos afirmaba «esto
+    > leyó la IA» sobre lo que había escrito un formulario, y esa confusión es
+    > la que dejó el defecto: el fichero acababa nombrado con lo declarado
+    > mientras la puerta de estado miraba lo guardado. Los dos siguen llegando al
+    > endpoint y siguen siendo obligatorios (R10), pero viajan **explícitos**,
+    > en `codigos_declarados`, y solo para cotejar.
     """
     campos = {nombre: CampoExtraido(valor=None, confianza_pct=0) for nombre in CAMPOS_DEL_PARTE}
-    campos["codigo_obra"] = CampoExtraido(valor=codigo_obra, confianza_pct=100)
-    campos["numero_incidencia"] = CampoExtraido(
-        valor=numero_incidencia, confianza_pct=100
-    )
     return ContextoParte(
         parte=ParteTroceado(
             hash=hash_parte,

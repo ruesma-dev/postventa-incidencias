@@ -14,12 +14,16 @@
 
 ## Bloque 1 · Parada obligatoria
 
-- [ ] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §11 y
+- [x] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §11 y
       esperar respuesta. **Bloquean el arranque D-1** (de dónde se leen los
       códigos), **D-3** (409 ante divergencia) y **D-5** (qué hace el front);
       las demás se pueden cerrar con la recomendación.
       **Verificación**: la respuesta del humano queda transcrita, literal y
       fechada, en `progress/current.md`. Sin ella, **no se toca código**.
+      **CUMPLIDA el 2026-09-22**: el humano aprobó la spec («si») con las
+      recomendaciones de D-1 a D-7, y H-1 se recoge ampliando la ficha de
+      F-034. La transcripción, fechada, está en el bloque de F-031 de
+      `progress/current.md` (commit `35ad69d`).
 
 ## Bloque 2 · Backend
 

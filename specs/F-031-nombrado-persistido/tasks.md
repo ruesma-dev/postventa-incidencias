@@ -114,7 +114,7 @@
       **Verificación**: `bash harness/init.sh` en verde (valida los documentos
       normativos) y el diff revisado a ojo.
 
-- [ ] **T13**: anotar en `progress/current.md` el hallazgo **H-1** de
+- [x] **T13**: anotar en `progress/current.md` el hallazgo **H-1** de
       `design.md` §8 —`/api/adjuntar` y `/api/cerrar` toman los códigos del
       cuerpo— con la recomendación D-6 (ampliar el `acceptance` de F-034), para
       que lo decida el humano.

@@ -1,6 +1,69 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## 🔧 F-031 · BLOQUE 4 EN CURSO · 2026-09-22 · T11, T12 y T13 cerradas
+>
+> Cierre de alcance y documentación. Queda el **Bloque 5** (V1 y V2 manuales,
+> la campaña de mutación de la feature entera y el verde final).
+>
+> - **T11** · `services/postventa-api/tests/test_f031_alcance_cerrado.py`, **10
+>   controles** en verde. Cada frontera lleva **dos**: el del diff de la rama
+>   (`git diff dev...HEAD`) y su hermano que **no depende de `git`** y se
+>   comprueba en cualquier rama, que es lo que lo convierte en guardia y no en
+>   foto.
+> - **T12** · dos recuadros **«Precisado por F-031 el 2026-09-22»** en
+>   `docs/ARCHITECTURE.md` (paso 6 del pipeline y semántica 8), la nota de
+>   **CIERRE** del hallazgo en `specs/F-030-veredicto-persistido/design.md`
+>   §10.7 y la nota al margen del nombrado en `specs/F-006-sharepoint/design.md`
+>   §4. Y lo de abajo sobre `azure-apps/`.
+> - **T13** · H-1 verificado y **ya decidido** (ver más abajo).
+>
+> ### `azure-apps/postventa_incidencias.md` NO cambia — medido, y no se ha tocado
+>
+> `design.md` §7.1 lo anticipaba y se ha comprobado leyendo el documento:
+>
+> | Lo que el documento dice | ¿Cambia con F-031? |
+> |---|---|
+> | Qué expone: la tabla de endpoints, `POST /api/archivar` («escribe en la biblioteca, exige que el parte conste guardado, si no 409 sin subir nada») | **No.** Sigue siendo cierto, y ahora **más**: el 409 gana un motivo, no un código nuevo |
+> | El contrato HTTP | **No.** Los cinco campos obligatorios del cuerpo son los mismos (R10) y las seis claves de la respuesta también (R26) |
+> | Cómo se llama el fichero y dónde se archiva | **No.** `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`, carpeta por código de obra. F-031 cambia de dónde salen esos dos códigos, no el nombre que producen |
+> | Qué consumimos: Graph, `sigrid-api`, el PostgreSQL compartido | **No.** Ni una llamada más, ni una consulta más, ni DDL |
+> | Las variables de entorno | **No.** Ninguna nueva y ninguna con otro significado |
+> | El volumen contra el PostgreSQL compartido (§5) | **No.** El vaciado del front solo **adelanta** guardados que el rebote de 1,5 s iba a hacer igual, y **no dispara ninguno** si no hay nada escrito sin guardar (R22) |
+>
+> Por eso **no se ha tocado `azure-apps/`**: no hay nada que actualizar. Si el
+> líder quisiera añadir una línea de precisión al endpoint, sería un adorno, no
+> una corrección: hoy el documento no dice nada falso.
+>
+> ### T13 · HALLAZGO H-1 · verificado hoy y **ya decidido**
+>
+> La anotación que T13 pide **ya existe** más abajo en este mismo fichero (la
+> escribió el `spec-author` al aprobarse la spec) y el humano **ya la decidió**
+> el 2026-09-22: se recoge ampliando la ficha de **F-034** (recomendación D-6).
+> Lo que se ha hecho en esta tarea es **comprobar que sigue siendo cierta**, que
+> es lo único que quedaba por hacer:
+>
+> 1. **Las ocho referencias están medidas y vigentes hoy**, leídas una a una:
+>    `adjuntar.py:94-95, 107-108, 148-149, 172-173` (el cuerpo trae los dos
+>    códigos y viajan al paso) → `paso_grafico.py:116-117, 157, 175-176` (con
+>    ellos se **nombra el gráfico** y se **localiza la reclamación**);
+>    `cerrar.py:100, 149` → `paso_cierre.py:117, 155` (con el número del cuerpo
+>    se elige **qué reclamación se cierra en el ERP de producción**).
+> 2. **La ficha de F-034 está ampliada**: su `acceptance` tiene ya el punto de
+>    los dos códigos persistidos citando H-1 y estas mismas líneas, y su
+>    `description` lleva la enmienda «AMPLIADA el 2026-09-22 por decisión del
+>    humano». O sea: la decisión **está ejecutada**, no solo tomada.
+> 3. **F-031 no lo ha tocado ni de refilón**, y hay test que lo vigila:
+>    `test_f031_r29_la_rama_no_toca_adjuntar_ni_cerrar_ni_sus_pasos`. La
+>    tentación era real —F-031 acaba de escribir `_codigos_guardados(ctx)` y los
+>    dos endpoints de al lado ya leen la misma `SituacionParte`—, y no se ha
+>    cedido: cambiar de dónde sale el `numero_incidencia` de `/api/cerrar`
+>    cambia **qué se cierra en producción**, y eso no se decide dentro de una
+>    ficha que no lo ha revisado.
+>
+> **Nada pendiente de decisión aquí.** H-1 entra por F-034, que ya lo lleva
+> escrito.
+
 > ## 🔧 F-031 · BLOQUES 2 Y 3 HECHOS · 2026-09-22 · faltan el Bloque 4 y el 5
 >
 > **T1–T10 cerradas: las dos mitades de la feature están hechas.**

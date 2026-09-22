@@ -77,7 +77,7 @@
 
 ## Bloque 3 · Front
 
-- [ ] **T8 (RED)**: `services/postventa-front/tests_js/autoguardado_vaciado.test.js`
+- [x] **T8 (RED)**: `services/postventa-front/tests_js/autoguardado_vaciado.test.js`
       con un test por requisito de `requirements.md` §1.3 (R18, R20, R21, R22),
       con temporizador inyectado como ya hacen los tests de F-026.
       **Verificación**: `cd services/postventa-front && node --test tests_js`

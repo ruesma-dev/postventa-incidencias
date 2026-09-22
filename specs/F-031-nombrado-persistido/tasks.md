@@ -83,7 +83,7 @@
       **Verificación**: `cd services/postventa-front && node --test tests_js`
       **en rojo**, con la salida en `progress/impl_F-031.md`.
 
-- [ ] **T9**: `js/autoguardado.js` · `vaciarPendientes()` (`design.md` §6.1),
+- [x] **T9**: `js/autoguardado.js` · `vaciarPendientes()` (`design.md` §6.1),
       conservando la promesa del guardado en vuelo para poder esperarla, con el
       tope de rondas y sin tocar `parte.ediciones`.
       **Verificación**: `node --test tests_js` en verde, **incluido**

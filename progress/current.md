@@ -1,41 +1,62 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## 🔧 F-031 · BLOQUE 2 (BACKEND) HECHO · 2026-09-22 · falta el Bloque 3, el front
+> ## 🔧 F-031 · BLOQUES 2 Y 3 HECHOS · 2026-09-22 · faltan el Bloque 4 y el 5
 >
-> **T1–T7 cerradas.** El backend ya nombra el fichero con el `codigo_obra` y
-> el `numero_incidencia` **guardados**, y los dos que vienen en el cuerpo de
-> `POST /api/archivar` dejan de nombrar y pasan a **cotejar**: si no cuadran,
-> **409 y no se archiva nada**. Informe completo, con la fase RED y las
-> evidencias medidas: **`progress/impl_F-031.md`**.
+> **T1–T10 cerradas: las dos mitades de la feature están hechas.**
 >
-> `bash harness/init.sh` en **verde**: 3.056 tests del servicio `api`, puerta
-> de cobertura **100 % de las líneas cambiadas** (28/28, umbral 80 %).
+> - **Bloque 2 (backend, T2–T7)**: el fichero se nombra con el `codigo_obra` y
+>   el `numero_incidencia` **guardados**, y los dos que vienen en el cuerpo de
+>   `POST /api/archivar` dejan de nombrar y pasan a **cotejar**: si no cuadran,
+>   **409 y no se archiva nada**.
+> - **Bloque 3 (front, T8–T10)**: `js/autoguardado.js` gana
+>   `vaciarPendientes()` —fuerza lo escrito y sin guardar de **cualquier**
+>   parte y **espera**, con tope de tres rondas— y `confirmarArchivo` lo espera
+>   **después** de resolver la confirmación única de F-025 y **antes** de
+>   calcular la tanda (R19). Si el vaciado no sale bien, **la tanda no se
+>   lanza** y se pinta el aviso (R20).
 >
-> ### ⚠️ Lo que falta, y por qué esto NO se despliega todavía
+> Informe completo de los dos bloques, con la fase RED y las evidencias
+> medidas: **`progress/impl_F-031.md`**.
 >
-> **El Bloque 3 (T8–T10, el front) está sin empezar**, y `design.md` §1.3 dice
-> por qué importa: desplegar **solo** el backend **empeora** el caso de la
-> corrección reciente. Hoy, quien corrige un código y pulsa «archivar y
-> cerrar» antes de los 1.500 ms de rebote archiva con el código **corregido** y
-> deja la base con el viejo —ruidoso el día que alguien compare—; con solo esta
-> mitad desplegada se llevaría un **409** que no entiende, porque su corrección
-> todavía no está guardada. No es el fallo silencioso que la feature viene a
-> cerrar, pero tampoco es la mejora que se prometió.
+> `bash harness/init.sh` en **verde**. Servicio `front`: **256 passed** y
+> **310 tests de JavaScript** (`node --test "tests_js/*.test.js"`), con
+> `autoguardado.test.js`, `confirmacion.test.js` y `circuito.test.js` **sin
+> tocar**. Puerta de cobertura **100 %** (28/28, umbral 80 %) — esas 28 líneas
+> son las del Bloque 2: la puerta mide **solo Python** y el Bloque 3 no cambió
+> ni una línea de Python de producción.
 >
-> Los dos bloques se encargaron **por separado a propósito**, y la condición
-> sigue en pie: **no se despliega F-031 hasta tener las dos mitades**. Después
-> del Bloque 3 quedan además el Bloque 4 (alcance cerrado y documentación) y el
-> Bloque 5 (V1 y V2 manuales, mutación y verde final).
+> ### ✅ Se levanta la condición de despliegue
 >
-> ### Una desviación declarada, para que la mire el reviewer
+> El bloque anterior dejaba escrito que **no se despliega F-031 hasta tener las
+> dos mitades**, porque solo el backend **empeora** el caso de la corrección
+> reciente (`design.md` §1.3). **Las dos están.** Lo que falta para cerrar la
+> feature no es funcionalidad.
 >
-> `design.md` §9 daba `tests/test_f033_archivar_http.py` por intacto y **no lo
-> era**: su caso del circuito F-032 manda un formulario con `0626` contra una
-> base que guardaba `0677`, así que con el cotejo nuevo salía un 409. Se ha
-> puesto la base a decir lo mismo que el formulario, que es el mundo real.
-> Está razonado en el informe junto con las otras cuatro adaptaciones de tests
-> ya existentes.
+> ### Lo que queda
+>
+> - **Bloque 4 (T11–T13)**: `tests/test_f031_alcance_cerrado.py` (R29), la
+>   documentación (`docs/ARCHITECTURE.md`, las notas de cierre en las specs de
+>   F-006 y F-030, y dejar escrito que `azure-apps/postventa_incidencias.md`
+>   **no** cambia) y la anotación de H-1.
+> - **Bloque 5 (T14–T16)**: **V1** y **V2** manuales (necesitan una persona
+>   delante) y la campaña de mutación de la feature entera. **V1 ya es
+>   ejercitable entera**: hasta este bloque, su primera mitad —«no ver el 409
+>   porque el vaciado lo evita»— no se podía comprobar.
+>
+> ### Dos desviaciones declaradas, para que las mire el reviewer
+>
+> 1. **Bloque 2** · `design.md` §9 daba `tests/test_f033_archivar_http.py` por
+>    intacto y **no lo era**: su caso del circuito F-032 manda un formulario con
+>    `0626` contra una base que guardaba `0677`, así que con el cotejo nuevo
+>    salía un 409. Se ha puesto la base a decir lo mismo que el formulario, que
+>    es el mundo real.
+> 2. **Bloque 3** · se ha añadido un fichero de test que `tasks.md` no pedía,
+>    `services/postventa-front/tests/test_f031_front.py` (6 casos sobre el texto
+>    fuente de `app.js`). Sin él, **R19 se quedaba sin ningún test**, contra R28
+>    y contra el rigor `critico` de la ficha: `js/app.js` no lo ejecuta ninguna
+>    suite y R19 es un orden entre dos líneas. Mismo planteamiento que
+>    `test_f025_front.py` y `test_f026_front.py`, que ya existen.
 
 > ## ✅ SPEC DE F-031 APROBADA · 2026-09-22 · `spec_ready`, lista para implementar
 >

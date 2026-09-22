@@ -379,3 +379,318 @@ d08de87 F-031 T2: es_el_mismo_codigo, dominio puro sobre normalizar_codigo
 ```
 
 Ningún `git push`, ningún PR, ningún commit fuera de la rama de la feature.
+
+---
+
+# F-031 · Bloque 3 (front) · informe de implementación
+
+> Rama `feature/F-031-nombrado-persistido`. Rigor **`critico`**.
+> Encargo: **solo el Bloque 3 de `tasks.md`** (T8–T10). El Bloque 4 (alcance y
+> documentación) y el 5 (manuales y mutación de la feature entera) **no se han
+> tocado** — ver §7 bis.
+>
+> **No se ha escrito en ningún sistema externo.** Ni SharePoint, ni Sigrid, ni
+> Azure, ni PostgreSQL. No hay DDL. Todos los tests corren sin red, sin BBDD y
+> sin IA: el temporizador del front entra **inyectado**, como ya hacía F-026.
+>
+> **No se ha tocado nada de lo que el encargo declaró fuera**: `adjuntar.py`,
+> `cerrar.py`, `paso_grafico.py`, `paso_cierre.py` (eso es F-034), ni
+> `harness/features.json`, ni una línea del backend.
+
+## 1 bis · Qué cambió, en una frase
+
+El front **fuerza el guardado de lo escrito y sin guardar, y lo espera**, antes
+de calcular la tanda y lanzar la primera petición de archivo. Si ese guardado no
+sale bien, **la tanda no se lanza** y se dice por qué.
+
+Ésta es la mitad que faltaba. `design.md` §1.3 es explícito: desplegar **solo**
+el backend **empeora** el caso de la corrección reciente. Con las dos mitades,
+quien corrija un código de obra y pulse «archivar y cerrar» dentro de los
+1.500 ms del rebote ya no manda al backend un código que no está en la base:
+se guarda primero, y el cotejo del Bloque 2 no tiene nada que rechazar.
+
+## 2 bis · Ficheros tocados
+
+### 2 bis.1 · Producción (2)
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-front/js/autoguardado.js` | `vaciarPendientes()`, la constante `AVISO_SIN_GUARDAR`, el tope `RONDAS_DE_VACIADO`, la promesa del guardado en vuelo conservada (`promesaEnVuelo`), el registro `partesConPendiente` y la enmienda fechada del módulo |
+| `services/postventa-front/js/app.js` | `confirmarArchivo` espera el vaciado **después** de `Confirmacion.resolver` y **antes** de `this.pendientes()`, y corta con `return` si no sale bien |
+
+### 2 bis.2 · Tests nuevos (2)
+
+- `services/postventa-front/tests_js/autoguardado_vaciado.test.js` — **12
+  casos**: R18 (4), R20 (3), R21 (2), R22 (3). Nombre trazable `f031 RN: …`.
+- `services/postventa-front/tests/test_f031_front.py` — **6 casos** sobre el
+  texto fuente de `app.js`. Ver §6 bis.1: es una **adición** respecto a
+  `tasks.md`.
+
+### 2 bis.3 · Tests ya existentes
+
+**Ninguno se ha tocado.** `autoguardado.test.js` (F-026), `confirmacion.test.js`
+(F-025) y `circuito.test.js` siguen letra por letra como estaban, que es
+exactamente lo que pedían las verificaciones de T9 y T10.
+
+## 3 bis · Decisiones de diseño y por qué
+
+1. **`vaciarPendientes()` vive en `js/autoguardado.js`, no en `app.js`.** Lo
+   dice la cabecera del propio módulo y la regla de oro de `app.js`: lo que se
+   puede probar con `node --test` no se deja en el fichero de Alpine. Lo que
+   queda en `app.js` es **el orden de tres líneas**, y para eso está §6 bis.1.
+2. **El módulo conserva ahora la promesa del guardado en vuelo.** F-026 solo
+   necesitaba la bandera `enVuelo` («¿hay uno en el aire?»); F-031 necesita
+   **esperarlo**, y una bandera no se espera. `promesaEnVuelo` se asigna fuera
+   de la cadena, porque el último `.then` corre en una microtarea posterior:
+   cuando `disparar` devuelve, la promesa ya está puesta.
+3. **Registro `partesConPendiente`**, y es lo que hace cierto el «de cualquier
+   parte» de R18. `pendientes` guarda **valores**, y para guardarlos hace falta
+   el parte entero (`guardar` es `revalidarYGuardar`, que necesita sus bytes y
+   su extracción). Hasta F-026 bastaba el parte que venía en la pulsación
+   —siempre se guardaba el recién tecleado—; el vaciado tiene que poder guardar
+   el de un parte cuyo guardado se cayó hace dos papeles. Se limpia en los dos
+   sitios donde se limpia `pendientes`, para que no crezca sin fin.
+4. **Tope de tres rondas** (`RONDAS_DE_VACIADO`). No es adorno: `disparar` se
+   reprograma cuando encuentra otro guardado en vuelo, y un bucle sin tope no
+   terminaría nunca con alguien tecleando delante (riesgo 4 de `design.md`
+   §13). Pasadas las tres, `{ok:false}` y la tanda no se lanza, que es lo que
+   hay que hacer de todas formas.
+5. **El vaciado reutiliza `hayCambios` y `disparar` tal y como F-026 los
+   dejó**, en vez de escribir un segundo criterio. De ahí salen gratis R21 (no
+   toca `parte.ediciones`, porque el módulo nunca lo ha tocado) y R22 (sin
+   cambios, ni una petición). Un segundo criterio de «hay cambios» habría
+   divergido del primero, que es justo lo que este repositorio evita.
+6. **`AVISO_SIN_GUARDAR` vive en el módulo**, no en `app.js`, por lo mismo que
+   `AVISO_CADUCADA` vive en `js/confirmacion.js`: `app.js` es la única
+   habitación de la casa sin tests, y un texto escrito ahí no lo comprueba
+   nadie. Se **apoya** en el `MENSAJE_FALLO` de F-026 y solo añade lo que
+   aquél no podía decir —que la tanda no ha salido—, para no dar dos
+   explicaciones del mismo hecho.
+7. **El vaciado va después de `Confirmacion.resolver`.** Si se colara antes, el
+   tiempo del guardado contaría dentro de la ventana de la confirmación única
+   de F-025 y una base lenta la caducaría sola. Y si el vaciado falla, la
+   confirmación ya está consumida y hay que volver a confirmar: **correcto**,
+   porque lo que se iba a archivar ha cambiado.
+8. **El vaciado va antes de `this.pendientes()`** (R19). Guardar revalida
+   (`revalidarYGuardar`, F-026 R50) y una corrección puede tumbar un veredicto:
+   una tanda calculada antes archivaría un parte que acaba de dejar de ser
+   archivable.
+
+## 4 bis · Fase RED · las trazas reales
+
+### 4 bis.1 · T8 · los doce casos del vaciado
+
+Comando: `cd services/postventa-front && node --test "tests_js/*.test.js"`
+
+```
+✖ f031 R18: el vaciado no espera al rebote, fuerza el guardado y lo espera (3.3586ms)
+✖ f031 R18: el vaciado retira el rebote en espera en vez de dejarlo vivo (0.5373ms)
+✖ f031 R18: con un guardado en vuelo, el vaciado espera a que termine (2.2569ms)
+✖ f031 R18: se vacía lo pendiente de CUALQUIER parte, no solo del abierto (1.2033ms)
+✖ f031 R20: si el guardado se cae, el vaciado devuelve que NO (0.4689ms)
+✖ f031 R20: el vaciado tiene tope de rondas y no se queda en bucle (0.496ms)
+✖ f031 R20: el aviso dice que no se ha archivado nada y se apoya en el de F-026 (1.918ms)
+✖ f031 R21: aunque el vaciado falle, lo que la persona escribió sigue ahí (0.4197ms)
+✖ f031 R21: el vaciado correcto tampoco toca `ediciones` ni lo que leyó la IA (0.4298ms)
+✖ f031 R22: sin nada escrito, el vaciado no dispara ni un guardado (0.6742ms)
+✖ f031 R22: escribir y deshacer no deja nada que vaciar (0.4894ms)
+✖ f031 R22: un segundo vaciado seguido no vuelve a escribir (0.3681ms)
+ℹ tests 310
+ℹ pass 298
+ℹ fail 12
+```
+
+Con el motivo, el mismo en los doce:
+
+```
+test at tests_js\autoguardado_vaciado.test.js:168:1
+✖ f031 R18: el vaciado no espera al rebote, fuerza el guardado y lo espera
+  TypeError: montaje.auto.vaciarPendientes is not a function
+      at TestContext.<anonymous> (...\tests_js\autoguardado_vaciado.test.js:177:38)
+```
+
+**Lo que dice ese rojo**: 298 casos ya existentes siguen pasando —F-026 entre
+ellos— y los 12 nuevos caen porque el método no existe. Después de T9:
+`ℹ tests 310 / ℹ pass 310 / ℹ fail 0`.
+
+### 4 bis.2 · T10 · el orden de `confirmarArchivo`
+
+El fichero de tests de `app.js` se escribió **después** del cambio, así que
+para tener el rojo de verdad se revirtió `js/app.js` a su versión anterior
+(`git checkout --`) y se ejecutó contra ella. Comando:
+`cd services/postventa-front && python -m pytest tests/test_f031_front.py -q`
+
+```
+    def test_f031_r20_si_el_vaciado_falla_no_se_lanza_la_tanda(confirmar):
+>       assert "if (!vaciado.ok)" in confirmar, (
+            "`confirmarArchivo` no mira el resultado del vaciado (R20)"
+        )
+E       AssertionError: `confirmarArchivo` no mira el resultado del vaciado (R20)
+E       assert 'if (!vaciado.ok)' in 'async confirmarArchivo() {\n      const decision = window.Confirmacion.resolver(\n ...
+
+tests\test_f031_front.py:142: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_f031_front.py::test_f031_r18_confirmar_archivo_espera_el_vaciado
+FAILED tests/test_f031_front.py::test_f031_r19_la_tanda_se_calcula_despues_del_vaciado
+FAILED tests/test_f031_front.py::test_f031_r19_el_vaciado_va_despues_de_resolver_la_confirmacion
+FAILED tests/test_f031_front.py::test_f031_r20_si_el_vaciado_falla_no_se_lanza_la_tanda
+FAILED tests/test_f031_front.py::test_f031_r20_el_aviso_es_el_del_modulo_y_no_uno_inventado_aqui
+5 failed, 1 passed in 0.16s
+```
+
+**El que pasó, y por qué se declara**: `test_f031_r20_el_aviso_existe_de_verdad_en_el_modulo`
+comprueba que `js/autoguardado.js` exporta `AVISO_SIN_GUARDAR`, y **T9 ya lo
+había puesto**. Es un control de que el nombre que `app.js` pinta no es
+huérfano, no un test del cambio de T10. Se deja dicho para que no cuente como
+rojo lo que no lo fue.
+
+Restaurado `app.js`: **6 passed**.
+
+## 5 bis · Verificaciones de cada tarea, con su resultado real
+
+| Tarea | Comando | Resultado |
+|---|---|---|
+| T8 | `node --test "tests_js/*.test.js"` | **rojo**: 310 tests, 298 passed, **12 failed** (los doce nuevos) — §4 bis.1 |
+| T9 | `node --test "tests_js/*.test.js"` | **310 passed, 0 failed**, con `autoguardado.test.js` de F-026 **sin tocar** |
+| T10 | `node --test "tests_js/*.test.js"` | **310 passed**, con `confirmacion.test.js` y `circuito.test.js` **sin tocar** |
+| T10 | `pytest tests -q` (servicio `front`) | **256 passed in 4.71s** (250 antes + los 6 nuevos), incluido el puente `tests/test_f007_js.py` |
+| Cierre | `bash harness/init.sh` | **VERDE** |
+
+> **Nota sobre el comando de `tasks.md`.** T8, T9 y T10 lo escriben como
+> `node --test tests_js`. Con Node 24 —el instalado: **v24.14.1**— un argumento
+> que es un **directorio** se intenta cargar como módulo y la ejecución muere
+> con `MODULE_NOT_FOUND` antes de descubrir ningún test. Se ha usado el
+> **patrón** `tests_js/*.test.js`, que es exactamente lo que el puente
+> `tests/test_f007_js.py` lleva usando desde F-007 y lo que tiene escrito en su
+> docstring. No es una desviación de fondo: es el mismo comando bien escrito.
+
+Salida del arnés al cerrar el bloque:
+
+```
+62 passed in 8.57s
+[OK] pytest en verde (con medición de cobertura)
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+256 passed in 5.32s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 100.0% de 28 líneas cambiadas cubiertas (28/28, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-031-nombrado-persistido
+ENTORNO LISTO. Puedes trabajar.
+```
+
+## 6 bis · Desviaciones respecto a la spec, declaradas
+
+### 6 bis.1 · Un fichero de test de más: `tests/test_f031_front.py`
+
+`tasks.md` T10 solo pedía los dos comandos en verde, y `design.md` §2.1 no
+lista ningún fichero de test para `app.js`. **Se ha añadido igualmente**, con
+seis casos, y el motivo es concreto: sin él, **R19 se quedaba sin ningún
+test**. R19 es un requisito de `requirements.md` §1.3, la ficha es de rigor
+`critico` y R28 exige «para cada requisito de §1.1 y §1.3, al menos un test».
+
+R19 es además el requisito más frágil de los cuatro: es **un orden entre dos
+líneas**, mover una no rompe nada visible, y lo que deja detrás es el defecto
+exacto que R19 describe —archivar un parte que el guardado acaba de dejar
+fuera del circuito—.
+
+Se prueba sobre el **texto fuente** porque `js/app.js` no lo ejecuta ningún
+test (su propia cabecera lo dice), y con el fuente **sin comentarios**: F-031
+ha dejado ahí comentarios que citan R18, R19 y R20, y nombrar una cosa no es
+hacerla. Mismo planteamiento y mismo motivo que `test_f009_front.py`,
+`test_f012_front.py`, `test_f025_front.py` y `test_f026_front.py`, que ya
+existen y hacen lo mismo con el HTML y con `app.js`.
+
+### 6 bis.2 · El comando de `tasks.md` con Node 24
+
+Ver la nota de §5 bis. `node --test tests_js` (directorio) no arranca con la
+versión instalada; se usa el patrón, que es lo que hace el puente de F-007.
+
+### 6 bis.3 · R24 no necesitó ni una línea
+
+`requirements.md` R24 —«el 409 del backend se pinta tal cual en el parte, por
+el camino que ya pinta los demás errores del circuito, sin tumbar la tanda»—
+**ya se cumple sin tocar nada**: `ejecutarCircuito` nunca lanza (F-025 R20),
+devuelve hasta dónde llegó, y `_aplicarResultado` pinta el motivo del error en
+el parte. Se declara aquí para que no parezca un requisito olvidado: no se ha
+implementado porque no hacía falta, y `tests_js/circuito.test.js` ya lo cubre.
+Lo mismo con **R23**, que es F-019 R27 y F-028 R33 conservados: el selector de
+la tanda sigue siendo `pendientesDeCircuito` y no se ha tocado.
+
+## 7 bis · Lo que queda fuera de este encargo (y sigue pendiente)
+
+- **Bloque 4 (T11–T13)**: `tests/test_f031_alcance_cerrado.py` (R29), la
+  documentación (`docs/ARCHITECTURE.md`, las notas en las specs de F-006 y
+  F-030, y dejar escrito que `azure-apps/postventa_incidencias.md` no cambia) y
+  la anotación de H-1. **Sin empezar.**
+- **Bloque 5 (T14–T16)**: V1 y V2 manuales y la campaña de mutación de la
+  feature completa. **Sin empezar.**
+
+Con el Bloque 3 cerrado, **la condición de despliegue de §7 del informe del
+Bloque 2 queda satisfecha**: las dos mitades están hechas. Lo que falta para
+cerrar la feature es el alcance escrito (Bloque 4) y las puertas de rigor
+(Bloque 5), no funcionalidad.
+
+## 8 bis · Verificaciones `MANUAL (humano)` pendientes
+
+Las dos siguen siendo del Bloque 5 y **no se han recorrido**. Lo que cambia con
+este bloque es que **T14 / V1 ya es ejercitable entera**: hasta ahora su primera
+mitad —«se espera **no ver** el 409, porque el vaciado lo evita»— no se podía
+comprobar porque el vaciado no existía. Ahora sí.
+
+- **T14 / V1** · `func start` en `services/postventa-api` y `python
+  dev_server.py` en `services/postventa-front`: corregir el código de obra de
+  un parte y pulsar «archivar y cerrar» **antes de 1,5 s**. Se espera **no ver
+  el 409**. Y forzándolo desde la consola (`api.archivar` con un código
+  distinto) se espera el 409 de R3 pintado en el parte. **No sube nada**:
+  `ARCHIVO_HABILITADO` está apagado en local.
+- **T15 / V2** · en el entorno desplegado y solo con un parte que el humano
+  autorice. No procede hasta que la feature esté completa.
+
+## 9 bis · Evidencias
+
+Números **medidos**, no estimados. Salidas de esta misma sesión.
+
+| Evidencia | Medida |
+|---|---|
+| **Tests ejecutados** y resultado | JavaScript: **310 passed, 0 failed** (`node --test "tests_js/*.test.js"`). Servicio `front`: **256 passed**. Servicio `api`: verde (caché, árbol sin cambios). Arnés: **62 passed** |
+| **Tests nuevos** de este bloque | **18** — 12 en `tests_js/autoguardado_vaciado.test.js` (`f031 RN: …`) y 6 en `tests/test_f031_front.py` (`test_f031_rN_…`) |
+| **Cobertura de las líneas cambiadas** | **100,0 %** — 28/28, umbral 80 %, nivel `critico`, línea `PUERTA COBERTURA` de `bash harness/init.sh`. **Ojo**: esas 28 líneas son las del Bloque 2; la puerta mide **solo Python** y **este bloque no ha cambiado ni una línea de Python de producción** (ver 9 bis.1) |
+| **Tiempo de ejecución de la suite** | JavaScript: **~1,9 s** (`duration_ms` del propio runner). Servicio `front`: **5,32 s**. Arnés: 8,57 s |
+| **Mutantes generados y supervivientes** | **No aplicable a este bloque** — ver 9 bis.1 |
+| **Lint** | `python -m ruff check .`: **61 avisos, los mismos que antes del bloque** (deuda previa). `ruff check` sobre el fichero nuevo: `All checks passed!` |
+
+### 9 bis.1 · Por qué no hay campaña de mutación en este bloque
+
+**Medido**, no supuesto: `harness/alcance.py:134` filtra el alcance con
+`if not normalizada.endswith(".py")`. El mutador **solo muerde Python**.
+
+Lo que ha cambiado este bloque es:
+
+- **dos ficheros JavaScript de producción** (`js/autoguardado.js`,
+  `js/app.js`), que el mutador no ve;
+- **un fichero JavaScript de tests** y **un fichero Python de tests**, que no
+  son código de producción y nunca entran en una campaña.
+
+O sea: **cero líneas de Python de producción**. Una campaña lanzada ahora
+volvería a generar exactamente los 3 mutantes del Bloque 2, ya muertos los
+tres. Por eso no se lanza aquí, y por eso la cobertura de líneas cambiadas que
+imprime el arnés sigue siendo la del Bloque 2.
+
+**No es una exención**: `tasks.md` **T16** —la campaña de la feature entera— es
+del Bloque 5 y **sigue pendiente**. Y la mutación del JavaScript no está
+disponible en este proyecto; se dice así, con el motivo, en vez de omitirlo.
+
+Lo que sustituye a la mutación en el front es el planteamiento de los propios
+tests, que es el que ya usa F-026: el temporizador entra **inyectado** y se
+cuenta lo que se **cancela**, no solo lo que se guarda. Tres casos del fichero
+nuevo son control negativo puro —cero guardados, cero temporizadores, cero
+estados publicados—, que es lo que caza un vaciado que dispare de más.
+
+## 10 bis · Commits del bloque
+
+```
+f89b00e F-031 T10: confirmarArchivo espera el vaciado antes de calcular la tanda
+8ec692f F-031 T9: vaciarPendientes() fuerza lo escrito y espera, con tope de rondas
+1b70b62 F-031 T8 (RED): los tests del vaciado del front, antes de tocar el modulo
+```
+
+Ningún `git push`, ningún PR, ningún commit fuera de la rama de la feature.

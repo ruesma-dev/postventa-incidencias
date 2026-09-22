@@ -1,7 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## 📄 SPEC DE F-031 ESCRITA · 2026-09-22 · `spec_ready`, **espera aprobación del humano**
+> ## ✅ SPEC DE F-031 APROBADA · 2026-09-22 · `spec_ready`, lista para implementar
+>
+> **Aprobada por el humano el 2026-09-22** («si») con las recomendaciones de
+> D-1 a D-7. El hallazgo **H-1** se recoge **ampliando la ficha de F-034**,
+> que pasa a cubrir también el `codigo_obra` y el `numero_incidencia` que
+> `/api/adjuntar` y `/api/cerrar` toman del cuerpo.
 >
 > `specs/F-031-nombrado-persistido/` (requirements, design, tasks). Rama
 > `feature/F-031-nombrado-persistido`, desde `dev` (`7b013ff`). **No se ha

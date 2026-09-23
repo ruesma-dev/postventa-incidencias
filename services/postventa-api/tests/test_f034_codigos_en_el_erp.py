@@ -28,6 +28,7 @@ from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime
 
 import pytest
+from application.pipelines import codigos_del_parte as modulo_codigos_del_parte
 from application.pipelines import paso_archivo as modulo_paso_archivo
 from application.pipelines.codigos_del_parte import (
     CodigosDelParte,
@@ -259,6 +260,39 @@ def test_f034_r11_codigos_divergentes_dicen_cual_y_llevan_la_cola(
         f"{etiqueta} de la petición («{declarado}») no es el que consta "
         f"guardado para este parte («{guardado}»), así que {Y_POR_ESO}"
     )
+
+
+def test_f034_r11_codigos_si_las_dos_listas_no_casan_falla_en_vez_de_cotejar_a_medias(
+    monkeypatch,
+):
+    """El cotejo nunca se da por bueno mirando **menos** códigos de los que toca.
+
+    `exigir_codigos_declarados` empareja lo declarado con lo guardado con un
+    `zip(..., strict=True)` sobre dos llamadas a `_a_mirar`. Hoy las dos listas
+    salen siempre del mismo largo, así que el `strict` no se nota; está para el
+    día en que alguien toque `_a_mirar` —o empareje otra cosa— y las dos dejen
+    de casar. Sin él, `zip` se callaría en la más corta y el código que se
+    quedara fuera **no se cotejaría**: un nº de incidencia distinto pasaría el
+    1 bis y se escribiría con lo guardado sin haber avisado a nadie de que el
+    cuerpo no cuadraba (R11). Con él, revienta.
+
+    Se fuerza la asimetría sustituyendo `_a_mirar` por uno que, para lo
+    declarado, devuelve solo la obra; la incidencia declarada es otra. Lo que
+    se exige es que **no pase en silencio**. Mata el mutante `strict=False` de
+    la campaña de T15 (`progress/mutacion_F-034.md`).
+    """
+    declarados = _guardados(incidencia="RS26.09/0999")
+    guardados = _guardados()
+    original = modulo_codigos_del_parte._a_mirar
+
+    def asimetrico(codigos, *, solo_incidencia):
+        pares = original(codigos, solo_incidencia=solo_incidencia)
+        return pares[:1] if codigos is declarados else pares
+
+    monkeypatch.setattr(modulo_codigos_del_parte, "_a_mirar", asimetrico)
+
+    with pytest.raises(ValueError, match="zip"):
+        exigir_codigos_declarados(declarados, guardados, y_por_eso=Y_POR_ESO)
 
 
 def test_f034_r11_codigos_si_fallan_los_dos_se_nombra_primero_la_obra():

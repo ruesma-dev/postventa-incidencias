@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 CERRADA · 2026-09-23 · falta desplegarla
+>
+> Review 2 APROBADA. V1 y V2 cerradas por decisión del humano («dalo por
+> cerrado»): V1 cubierta por tests, V2 sin ejecutar. Acta:
+> **`progress/cierre_F-034.md`**. **Siguiente: F-035**, el diseño del portal de
+> posventa (prioridad 1 desde el 2026-09-23).
+
 > ## ✅ F-034 · CORRECCIÓN DE LA REVIEW HECHA · 2026-09-23 · siguiente: reviewer (y T16/T17 del humano)
 >
 > Review **RECHAZADA** (`f0f20a0`) por H-R1 (los tests de `/api/cerrar` no

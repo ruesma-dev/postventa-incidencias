@@ -2043,3 +2043,19 @@ humano sin detalle (`progress/cierre_F-031.md`).
 
 De aquí salió **H-1**, que amplió F-034: adjuntar y cerrar toman del cuerpo el
 número de incidencia que **elige la reclamación que se cierra en el ERP**.
+
+---
+
+## F-034 · Adjuntar y cerrar leen de lo persistido el estado de archivo y los dos códigos — 2026-09-23
+
+**Cerrada.** Spec aprobada el 2026-09-22; seis bloques; review 1 **RECHAZADA** (los tests de
+`/api/cerrar` no veían el login) y review 2 **APROBADA** tras corregirlo solo con tests. Es la
+feature que decide **qué reclamación se cierra en el ERP**: ahora sale del número guardado, y
+un cuerpo que no cuadre da 409 antes de hablar con Sigrid, también en dry-run.
+
+Evidencias: 3.246 tests; cobertura 100 % de 88 líneas; mutación 12/12; 23/24 mutaciones de
+orden en rojo. V1 cubierta por tests y V2 sin ejecutar, por decisión del humano
+(`progress/cierre_F-034.md`).
+
+De aquí salió la **regla del reviewer para las puertas que protegen un orden** (punto 7 del
+reviewer; RM7 en `arnes-base`, 2026-09-23).

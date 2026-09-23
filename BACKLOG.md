@@ -3,9 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **33 features**, 14 abiertas, 19 terminadas.
-
-En curso: **F-034**.
+Resumen: **33 features**, 13 abiertas, 20 terminadas.
 
 ## Trabajo abierto
 
@@ -24,7 +22,6 @@ En curso: **F-034**.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
-| F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 34 | en curso | critico | `feature/F-034-archivo-persistido-en-erp` |
 
 ## Terminadas
 
@@ -49,6 +46,7 @@ En curso: **F-034**.
 | F-031 | El nombrado del fichero archivado sale del cuerpo, no de lo persistido | 31 | critico |
 | F-032 | Los codigos no admiten espacios: ni para Sigrid, ni para la carpeta, ni al guardarlos | 32 | critico |
 | F-033 | La primera capa contra el duplicado en SharePoint esta inerte desde el endpoint | 33 | critico |
+| F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 34 | critico |
 
 ## Detalle
 
@@ -129,12 +127,6 @@ El 55 % de los 38,7 s que tarda la suite del servicio api son 67 tests de cinco 
 estado **pendiente** · prioridad 29 · rigor `estandar` · SDD no · rama `feature/F-029-scripts-infra-comillas`
 
 DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO ARRANCAN: se estrellan en la primera línea que ejecutan, y ninguno de los dos se ha ejecutado NUNCA. El defecto es el mismo que el 2026-09-15 tumbó a infra/12_traza_cierre_local.ps1: se invoca al intérprete con `& $python -c "<programa>"` y PowerShell 5.1 destroza el entrecomillado del programa antes de que llegue a Python. DÓNDE: infra/07_alta_usuario_sigrid.ps1, líneas 161 y 248; y infra/17_traza_grafico_local.ps1, línea 196. EL ARREGLO YA EXISTE EN EL REPOSITORIO, escrito y probado: la función `Invoke-PythonDelServicio` de infra/08_lectura_sigrid_comun.ps1, que es la que arregló al `12`. No hay que inventar nada: hay que aplicarla en los tres sitios y EJECUTAR los dos scripts, que es justo lo que no se hizo con el código anterior. POR QUÉ IMPORTA, aunque sea prioridad baja: bloquea dos verificaciones de F-009 que quedaron abiertas al cerrarla. (a) El `07_` es el que hace el COUNT(*) de `-VerificarAhora` sobre dbo.usu, o sea LA PRIMERA LÍNEA DE T23 (hueco 3 de progress/cierre_F-009.md §3: R31, R33 y R34). (b) El `17_` es el que se invoca en la PRECONDICIÓN AÑADIDA DE T24, la del gráfico adjuntado (R2 de F-012). Si algún día se recorren esos huecos, esto es lo primero que hay que arreglar. LECCIÓN QUE LO ACOMPAÑA, del §10.2 del guion del bloque 8: tres de los cuatro scripts de lectura no funcionaban porque estaban escritos y nunca ejecutados. Arreglar estos dos sin lanzarlos vuelve a crear el mismo problema con otro nombre. AVISO SOBRE LAS PUERTAS DEL ARNÉS: cobertura y mutación miden SOLO Python (carencia 1.7.13 del arnés, portada a arnes-base), así que aquí no aportan nada y la evidencia tiene que ser la ejecución real de los dos scripts contra lecturas, con su salida pegada. Origen: progress/guion_bloque8_F-009.md §10.6 y progress/cierre_F-009.md §5.
-
-### F-034 · Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado
-
-estado **en curso** · prioridad 34 · rigor `critico` · SDD sí · rama `feature/F-034-archivo-persistido-en-erp`
-
-Hallazgo D-6 de la spec de F-033 (design.md seccion 10), 2026-09-18, dado de alta por decision del humano ese mismo dia. adjuntar.py (lineas 262-265) y cerrar.py (lineas 235-238) construyen la TrazaArchivo con el estado_archivo que llega EN EL CUERPO, y el front lo manda FIJO a archivado (pipeline.js:540 y :631). Consecuencia: la puerta del grafico no tiene otra detras que mire el archivo de verdad, y un parte aprobado pero sin archivar se adjuntaria al ERP de produccion. Es la misma familia de defecto que F-030 (el veredicto del cuerpo) y F-031 (el nombrado del cuerpo): la fuente tiene que ser lo persistido. AMPLIADA el 2026-09-22 por decision del humano con el hallazgo H-1 de la spec de F-031: no es solo el estado_archivo, son tambien los dos codigos, y esa mitad es MAS GRAVE porque el numero de incidencia elige la reclamacion que se cierra en Sigrid. Orden decidido por el humano: F-033 -> F-031 -> F-034 -> F-013. F-033 ya trae la traza del archivo dentro de la consulta de situacion, que es lo que esta ficha deberia leer.
 
 ### F-001 · Esqueleto del monorepo y /health
 
@@ -249,3 +241,9 @@ Detectado por el humano el 2026-09-17 al verificar F-030 contra produccion (V1).
 estado **terminada** · prioridad 33 · rigor `critico` · SDD sí · rama `feature/F-033-l1-traza-archivo`
 
 Defecto D-A1, hallado y MEDIDO por la spec de F-032 el 2026-09-17 (design.md seccion 6.2), dado de alta por decision del humano ese mismo dia. La arquitectura declara TRES capas contra subir dos veces el mismo parte a SharePoint, y la primera -L1, cortar sin llamar a nadie cuando el parte ya consta archivado, F-006 R14- NO ESTA CONECTADA: paso_archivo la espera como argumento opcional (paso_archivo.py:96, traza_previa=None) y archivar.py:118-128 no se la pasa. El unico sitio del arbol que la pasa es tests/test_f019_orden_archivado.py. Consecuencia: POST /api/archivar VUELVE A SUBIR SIEMPRE, y lo que evitaba el duplicado era el reemplazo del HOMONIMO (paso_archivo.py _subir busca por nombre), que funcionaba solo porque el nombre no cambiaba nunca. AGRAVANTE: re-archivar pisa la traza de postventa.archivos -clave por hash_parte-, asi que el nombre_fichero y la carpeta viejos se pierden y el fichero huerfano deja de ser localizable desde nuestra base. POR QUE SALE AHORA: F-032 hace que el nombre del fichero CAMBIE al limpiar los espacios, y con ello el reemplazo por homonimo deja de tapar el agujero. F-032 NO lo arregla -reabriria el alcance que fijo el humano el 2026-09-17- y mitiga con una consulta de solo lectura antes de desplegar. LO QUE HACE FALTA: un campo nuevo en SituacionParte, un metodo consultar_archivo en RepositorioPartesPort, su adaptador, una sentencia, su mapeo y los tests de los tres. Pisa el terreno de F-019 y de F-031, asi que conviene mirarlas juntas. Hoy SituacionParte no trae la traza del archivo (domain/models/estado.py:189-208) y el puerto solo tiene consultar_grafico, consultar_situacion y consultar_estado_cierre.
+
+### F-034 · Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado
+
+estado **terminada** · prioridad 34 · rigor `critico` · SDD sí · rama `feature/F-034-archivo-persistido-en-erp`
+
+Hallazgo D-6 de la spec de F-033 (design.md seccion 10), 2026-09-18, dado de alta por decision del humano ese mismo dia. adjuntar.py (lineas 262-265) y cerrar.py (lineas 235-238) construyen la TrazaArchivo con el estado_archivo que llega EN EL CUERPO, y el front lo manda FIJO a archivado (pipeline.js:540 y :631). Consecuencia: la puerta del grafico no tiene otra detras que mire el archivo de verdad, y un parte aprobado pero sin archivar se adjuntaria al ERP de produccion. Es la misma familia de defecto que F-030 (el veredicto del cuerpo) y F-031 (el nombrado del cuerpo): la fuente tiene que ser lo persistido. AMPLIADA el 2026-09-22 por decision del humano con el hallazgo H-1 de la spec de F-031: no es solo el estado_archivo, son tambien los dos codigos, y esa mitad es MAS GRAVE porque el numero de incidencia elige la reclamacion que se cierra en Sigrid. Orden decidido por el humano: F-033 -> F-031 -> F-034 -> F-013. F-033 ya trae la traza del archivo dentro de la consulta de situacion, que es lo que esta ficha deberia leer.

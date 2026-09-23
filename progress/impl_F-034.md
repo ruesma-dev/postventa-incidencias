@@ -1545,6 +1545,9 @@ Lo esencial:
 
 ### 10.2 · T16 · V1 · guion para el humano (no ejecutado)
 
+> **Decisión del humano, 2026-09-23**, preguntado por V1 y V2: literalmente **«dalo por cerrado»**. V1 queda **cubierta por los tests** (opción (a) de este apartado, respaldada por el reviewer en las dos reviews). La prueba del 409 por consola (V2-4) **no se ha ejecutado**.
+
+
 **Qué pide V1**: que los dos 409 nuevos (`CodigosNoCoinciden` y
 `CodigoNoConsta`) se vean en pantalla y no tumben la tanda (R32).
 
@@ -1593,6 +1596,9 @@ su lugar.** Medido leyendo el código, no supuesto:
 **Resultado real de V1**: _pendiente del humano_ (qué opción, y la frase).
 
 ### 10.3 · T17 · V2 · guion para el humano (no ejecutado)
+
+> **Decisión del humano, 2026-09-23**, preguntado por V1 y V2: literalmente **«dalo por cerrado»**. V2 queda **cerrada por decisión del humano, sin ejecutar** la comparación de dry-runs antes y después de desplegar. No consta ninguna simulación contra el ERP para esta feature.
+
 
 **Qué pide V2**: en el entorno desplegado, con un parte que el humano
 autorice, un `/api/adjuntar` y un `/api/cerrar` **en dry-run** y comprobar

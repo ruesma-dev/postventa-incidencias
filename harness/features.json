@@ -595,7 +595,7 @@
         "La consulta de la situacion no cuesta ninguna sentencia mas de las que ya costaba",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 34,

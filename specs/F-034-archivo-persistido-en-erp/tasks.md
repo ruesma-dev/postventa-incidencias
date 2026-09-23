@@ -258,7 +258,7 @@
       doce los cazan los tests de F-034 por sí solos. La campaña **no muta el
       JS** (T11). Detalle en `progress/mutacion_F-034.md`.
 
-- [ ] **T16**: **Verificación: MANUAL (humano)** · V1 de `design.md` §12. Que
+- [x] **T16**: **Verificación: MANUAL (humano)** · V1 de `design.md` §12. **Cerrada el 2026-09-23 por decisión del humano («dalo por cerrado»): cubierta por los tests**, ver `progress/cierre_F-034.md`. Que
       los dos 409 nuevos se ven en pantalla y **no tumban la tanda**. Atención:
       con `CIERRE_HABILITADO` apagado el backend responde **503 antes de
       cualquier puerta** (D-6 de `requirements.md`), así que `func start` a
@@ -274,7 +274,7 @@
       siempre con `commit`; y, como complemento sin riesgo, el paso V2-4 de
       T17 (el 409 en el entorno desplegado, por consola). Decide el humano.
 
-- [ ] **T17**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. En el
+- [x] **T17**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. **Cerrada el 2026-09-23 por decisión del humano («dalo por cerrado»), SIN ejecutar**, ver `progress/cierre_F-034.md`. En el
       entorno desplegado y **solo con un parte que el humano autorice**: un
       `POST /api/adjuntar` y un `POST /api/cerrar` **en dry-run** (sin
       `commit`) y comprobar que la reclamación y el nombre del fichero que

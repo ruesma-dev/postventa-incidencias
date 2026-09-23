@@ -86,13 +86,16 @@
       escritos aparte, los cinco puertos inyectados) vive en
       `tests/utiles_circuito.py`.
 
-- [ ] **T5**: `application/pipelines/puerta_de_estado.py` · añadir
+- [x] **T5**: `application/pipelines/puerta_de_estado.py` · añadir
       `exigir_parte_archivado(ctx, *, y_por_eso)` leyendo `ctx.situacion.archivo`
       (`design.md` §3.3), con la enmienda fechada en la cabecera del módulo.
       `exigir_parte_aprobado` **no se toca** (R20).
       **Verificación**: `pytest tests/test_f034_archivo_persistido.py -k puerta`
       en verde y `pytest tests/test_f028_*.py tests/test_f030_*.py -q` sin
       cambios en verde.
+      **Hecha (2026-09-23)**: `-k puerta` 12 de 13 en verde; el que falta
+      (`…_el_grafico_usa_la_compartida_y_no_su_copia`) es el recableado de T6.
+      F-028 y F-030: 498 passed, 2 skipped, sin tocarlos.
 
 - [ ] **T6**: `application/pipelines/paso_grafico.py` · el cotejo en el punto
       **1 bis**, los códigos guardados alimentando `_codigo_de_incidencia` y

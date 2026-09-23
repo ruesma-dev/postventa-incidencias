@@ -2025,3 +2025,21 @@ Desplegada en `dev` el 2026-09-18 junto con F-032, con **T13 medida** (133
 trazas, 0 `pendiente`). **T14 no se recorrió**: el responsable dio la feature
 por cerrada el 2026-09-22 porque Posventa ya la está probando en real. El hueco
 y cómo cerrarlo, en `progress/cierre_verificaciones_F-033.md`.
+
+---
+
+## F-031 · El nombrado del fichero archivado sale de lo persistido — 2026-09-23
+
+**Cerrada.** Spec aprobada el 2026-09-22; cinco bloques; review **APROBADO** a
+la primera. `/api/archivar` nombra la carpeta y el fichero con los códigos
+**guardados**; los del cuerpo solo se cotejan (normalizados, F-032) y si no
+cuadran es **409 antes de subir nada**. El front **vacía el autoguardado y lo
+espera** antes de calcular la tanda, y no la lanza si el guardado falla: sin
+esa mitad, el backend solo habría empeorado el caso de la corrección reciente.
+
+Evidencias: 94 tests nuevos, cobertura 100 % de 28 líneas, mutación 3/3, 310
+tests de JavaScript. Desplegada el 2026-09-23. V1 y V2 declaradas por el
+humano sin detalle (`progress/cierre_F-031.md`).
+
+De aquí salió **H-1**, que amplió F-034: adjuntar y cerrar toman del cuerpo el
+número de incidencia que **elige la reclamación que se cierra en el ERP**.

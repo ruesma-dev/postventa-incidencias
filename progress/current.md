@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-031 CERRADA · 2026-09-23 · desplegada y en uso
+>
+> Review APROBADO, `init.sh` en verde, mergeada y desplegada (backend 11:01 UTC).
+> V1 y V2 dadas por buenas por el humano («todo ok»), **sin detalle pegado**, y
+> el guion de V1 tenía dos defectos: todo en **`progress/cierre_F-031.md`**.
+> **Siguiente: F-034**, spec aprobada; después F-013.
+
 > ## ✅ DESPLIEGUE CON LAS VENTANAS ABIERTAS · 2026-09-23 · encargo operativo, sin feature
 >
 > Decisión del humano: *«quiero que por defecto publique abierto, no

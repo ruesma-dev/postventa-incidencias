@@ -542,7 +542,7 @@
         "Un cuerpo que mienta en esos dos campos no puede cambiar donde acaba el PDF",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 31,

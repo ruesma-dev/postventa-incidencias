@@ -1,6 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ DESPLIEGUE CON LAS VENTANAS ABIERTAS · 2026-09-23 · encargo operativo, sin feature
+>
+> Decisión del humano: *«quiero que por defecto publique abierto, no
+> cerrado»*; *«Las dos»*. `infra/desplegar_backend.ps1` fija ahora
+> `ARCHIVO_HABILITADO=true` y `CIERRE_HABILITADO=true`; **`-VentanasCerradas`
+> las cierra las dos**. El defecto del **código** (`config/settings.py:228` y
+> `:312`, `default=False`) **no cambia**. Tests de R33/H2/T18 reescritos con
+> control negativo; enmienda fechada bajo R33 de F-010 y notas en F-006 R20,
+> F-009 R37, F-012 R39; `DESPLIEGUE.md`, `INTEGRACION.md`, `ARCHITECTURE.md` y
+> cabeceras de 22, 19 y 14 al día; `90_push_dev_main.ps1` con `--no-pager`.
+> Rama `chore/despliegue-ventanas-abiertas`, fusionada en `dev` con `--no-ff`.
+> Nada ejecutado contra Azure.
+>
+> **Pendiente de decidir:** (1) `verificar_despliegue.ps1` no sale en verde con
+> la ventana de archivo abierta (su guarda no se ha tocado); (2) docstrings de
+> `function_app.py` que dicen «se despliega apagada», fuera del encargo;
+> (3) `azure-apps/postventa_incidencias.md` (`:86`, `:400-401`, `:783-785`)
+> dice que se despliegan apagadas: no se ha tocado ese repositorio.
+> **Riesgo aceptado**: con la ventana del ERP abierta, cualquier versión
+> desplegada escribe en Sigrid PRO sin puerta manual, y hasta que F-034 esté
+> desplegada `/api/adjuntar` y `/api/cerrar` toman el número de incidencia del
+> cuerpo. Informe: `progress/impl_despliegue_ventanas_abiertas.md`.
+
 > ## ✅ SPEC DE F-034 APROBADA · 2026-09-22 · `spec_ready`
 >
 > **Aprobada por el humano el 2026-09-22** («a, aprobado»): **D-1 opción (a)**

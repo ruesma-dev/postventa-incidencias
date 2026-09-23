@@ -5,6 +5,8 @@
 
 Resumen: **33 features**, 14 abiertas, 19 terminadas.
 
+En curso: **F-034**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
@@ -22,7 +24,7 @@ Resumen: **33 features**, 14 abiertas, 19 terminadas.
 | F-022 | Caché de contexto en las llamadas a Gemini: dejar de repetir el prompt en cada página | 22 | pendiente | estandar | `feature/F-022-cache-prompts-gemini` |
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
-| F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 34 | spec lista | critico | `feature/F-034-archivo-persistido-en-erp` |
+| F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 34 | en curso | critico | `feature/F-034-archivo-persistido-en-erp` |
 
 ## Terminadas
 
@@ -130,7 +132,7 @@ DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO AR
 
 ### F-034 · Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado
 
-estado **spec lista** · prioridad 34 · rigor `critico` · SDD sí · rama `feature/F-034-archivo-persistido-en-erp`
+estado **en curso** · prioridad 34 · rigor `critico` · SDD sí · rama `feature/F-034-archivo-persistido-en-erp`
 
 Hallazgo D-6 de la spec de F-033 (design.md seccion 10), 2026-09-18, dado de alta por decision del humano ese mismo dia. adjuntar.py (lineas 262-265) y cerrar.py (lineas 235-238) construyen la TrazaArchivo con el estado_archivo que llega EN EL CUERPO, y el front lo manda FIJO a archivado (pipeline.js:540 y :631). Consecuencia: la puerta del grafico no tiene otra detras que mire el archivo de verdad, y un parte aprobado pero sin archivar se adjuntaria al ERP de produccion. Es la misma familia de defecto que F-030 (el veredicto del cuerpo) y F-031 (el nombrado del cuerpo): la fuente tiene que ser lo persistido. AMPLIADA el 2026-09-22 por decision del humano con el hallazgo H-1 de la spec de F-031: no es solo el estado_archivo, son tambien los dos codigos, y esa mitad es MAS GRAVE porque el numero de incidencia elige la reclamacion que se cierra en Sigrid. Orden decidido por el humano: F-033 -> F-031 -> F-034 -> F-013. F-033 ya trae la traza del archivo dentro de la consulta de situacion, que es lo que esta ficha deberia leer.
 

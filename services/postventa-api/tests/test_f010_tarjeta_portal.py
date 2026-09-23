@@ -161,7 +161,31 @@ def test_f010_r34_el_runbook_trae_las_dos_lineas_de_la_ventana_de_escritura(runb
     """
     assert "ARCHIVO_HABILITADO=true" in runbook
     assert "ARCHIVO_HABILITADO=false" in runbook
-    assert "Se cierra **siempre** al terminar" in runbook
+    # Hasta el 2026-09-22 aqui se exigia «Se cierra **siempre** al terminar»:
+    # la ventana nacia cerrada en cada despliegue. Desde el 2026-09-23 nace
+    # ABIERTA (decision del humano, enmienda bajo R33 de F-010), y lo que el
+    # runbook tiene que decir es como se despliega cerrada y que el siguiente
+    # despliegue la vuelve a abrir: quien la cierre a mano y no lo sepa, la
+    # vera abierta tras la siguiente publicacion.
+    assert "-VentanasCerradas" in runbook
+    assert "El siguiente despliegue la vuelve a abrir" in runbook
+
+
+def test_despliegue_ventanas_el_runbook_dice_la_decision_y_el_riesgo(runbook):
+    """2026-09-23 · abiertas por defecto, el codigo sin cambiar, y el riesgo.
+
+    Una puerta que el despliegue deja abierta sin que el runbook diga por que,
+    quien lo decidio, que el defecto del codigo sigue apagado y que riesgo se
+    acepto es una puerta que el siguiente cierra «porque parece un descuido»,
+    o que nadie sabe que esta abierta.
+    """
+    texto = " ".join(runbook.split())
+
+    assert "2026-09-23" in texto
+    assert "`config/settings.py`" in texto
+    assert "Riesgo aceptado" in texto
+    assert "sin una puerta manual" in texto
+    assert "Mientras F-034 no esté desplegada" in texto
 
 
 def test_f010_t10_el_runbook_explica_por_que_los_endpoints_son_anonimos(runbook):

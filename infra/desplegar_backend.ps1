@@ -47,32 +47,53 @@
     que subirlo al vault no daba seguridad y si un secreto mas que aprovisionar
     a mano en cada entorno. El porque completo, en `00_vars_postventa.ps1`.
 
-    LAS DOS VENTANAS DE ESCRITURA NACEN CERRADAS, Y SON LOS CANDADOS
-    PRINCIPALES DEL DESPLIEGUE. `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO` se
-    fijan en `false`, cada una en su linea. Fuera de esas ventanas,
-    `POST /api/archivar` responde 503 a cualquiera -incluido un desconocido- y
-    NO toca SharePoint, y `POST /api/cerrar` responde 503 y NO toca el ERP.
+    LAS DOS VENTANAS DE ESCRITURA SE DESPLIEGAN ABIERTAS, DESDE EL 2026-09-23.
+    `ARCHIVO_HABILITADO` (SharePoint) y `CIERRE_HABILITADO` (el ERP: grafico y
+    cierre) se fijan en `true`, cada una en su linea de `$ajustes`, salvo que
+    se despliegue con `-VentanasCerradas`, que las fija LAS DOS en `false`.
 
-    Son DOS variables, no una, y eso es deliberado: se abren en momentos
-    distintos y protegen cosas distintas. Poder archivar no puede implicar
-    poder escribir en el ERP de produccion.
+    Por que, quien y cuando. Hasta el 2026-09-22 nacian CERRADAS: se abrian a
+    mano solo para archivar o cerrar de verdad y se volvian a apagar al
+    terminar. Posventa ya usa el servicio en real, y cada despliegue les
+    cerraba el archivo y el cierre hasta que alguien los reabria a mano con
+    `22_ventana_archivo.ps1` y `19_ventana_escritura.ps1`. El humano decidio el
+    2026-09-23: "quiero que por defecto publique abierto, no cerrado", y a la
+    pregunta de que ventanas, "Las dos". La enmienda, con la premisa de antes
+    citada, esta bajo R33 de `specs/F-010-despliegue/requirements.md`.
 
-    Por que hace falta fijarlas explicitamente si el valor por defecto del
-    codigo ya es `false`: porque el servicio se despliega con `ENTORNO=dev`, y
-    en dev la OTRA puerta -la que impide escribir desde un puesto de trabajo-
-    esta abierta por diseno. Y porque una App Setting sobrevive a los
-    despliegues: el valor por defecto del codigo solo se aplica MIENTRAS la
-    App Setting no exista, asi que basta que alguien la encienda una vez y se
-    olvide para que quede encendida para siempre. Fijarlas aqui hace que cada
-    despliegue las devuelva a su sitio. `CIERRE_HABILITADO` no estaba, y por
-    eso se anadio (hallazgo H2 del mismo guion): era el unico candado del
-    despliegue que no se rearmaba solo.
+    EL VALOR POR DEFECTO DEL CODIGO NO CAMBIA. En `config/settings.py` las dos
+    siguen naciendo apagadas (`archivo_habilitado` y `cierre_habilitado`, las
+    dos con `default=False`): en un puesto de trabajo y en los tests sigue
+    siendo imposible escribir, y ademas alli la puerta de ENTORNO lo impide
+    por su cuenta. Lo que cambia es SOLO lo que este script escribe en la
+    Function App desplegada.
 
-    Cada una se enciende A MANO, solo para archivar o cerrar de verdad (T18, el
-    bloque 8 de F-009, o una sesion con negocio), y SE VUELVE A APAGAR en
-    cuanto se termina. Las lineas estan en `docs/DESPLIEGUE.md`, secciones 4 y 4 bis. No
-    hace falta redesplegar ni tocar codigo. Dejarlas abiertas "por si acaso" es
-    exactamente lo que este diseno evita.
+    Fuera de las ventanas -desplegando con `-VentanasCerradas`, o cerrandolas
+    despues con los scripts 22 y 19- `POST /api/archivar` responde 503 y NO
+    toca SharePoint, y `POST /api/adjuntar` y `POST /api/cerrar` responden 503
+    y NO tocan el ERP.
+
+    Son DOS variables, no una, y eso sigue siendo deliberado: protegen cosas
+    distintas y cada una se sigue cerrando y abriendo POR SEPARADO, con su
+    script, sin redesplegar. Poder archivar no puede implicar poder escribir en
+    el ERP de produccion; lo unico que las junta es este despliegue.
+
+    Por que se siguen fijando EXPLICITAMENTE en cada despliegue: porque una App
+    Setting sobrevive a los despliegues, y el valor por defecto del codigo
+    solo se aplica MIENTRAS la App Setting no exista. Fijarlas aqui hace que
+    el estado tras desplegar lo decida el despliegue, no lo que alguien dejo
+    puesto a mano (hallazgo H2 del guion del bloque 8 de F-009). Lo que cambio
+    el 2026-09-23 es HACIA DONDE las devuelve.
+
+    RIESGO ACEPTADO. Con la ventana del ERP abierta por defecto, CUALQUIER
+    version desplegada escribe en Sigrid de produccion sin una puerta manual:
+    quedan el dry-run por omision y la confirmacion del usuario, no un gesto
+    de alguien en el plano de gestion. Y MIENTRAS F-034 NO ESTE DESPLEGADA,
+    `/api/adjuntar` y `/api/cerrar` siguen tomando el numero de incidencia del
+    CUERPO de la peticion. Quien no quiera ese riesgo en un despliegue
+    concreto -una version a medias, una prueba- despliega con
+    `-VentanasCerradas`. El detalle, en `docs/DESPLIEGUE.md`, secciones 4 y
+    4 bis.
 
     LOS TIEMPOS DE ESPERA Y EL PROXY. El proxy de la Static Web App corta
     cualquier peticion a los 45 s. El escalonado es: la IA abandona a los 35,
@@ -89,16 +110,27 @@
     Crea y configura los recursos, pero no sube el codigo. Util para dejar la
     infraestructura lista y publicar aparte.
 
+.PARAMETER VentanasCerradas
+    Despliega LAS DOS ventanas de escritura cerradas: `ARCHIVO_HABILITADO` y
+    `CIERRE_HABILITADO` en `false`. Sin el, las dos quedan ABIERTAS (decision
+    del 2026-09-23). No hay forma de cerrar solo una desde aqui: para eso
+    estan `22_ventana_archivo.ps1` y `19_ventana_escritura.ps1`.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1 -WhatIf
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1
+
+.EXAMPLE
+    # Una version que no debe escribir ni en SharePoint ni en el ERP:
+    powershell -ExecutionPolicy Bypass -File $HOME\desplegar_backend.ps1 -VentanasCerradas
 #>
 
 [CmdletBinding()]
 param(
     [switch]$SinPublicar,
+    [switch]$VentanasCerradas,
     [switch]$WhatIf
 )
 
@@ -136,6 +168,18 @@ $TIEMPO_GRAPH_S = 35
 # (40 s) y que el proxy (45 s). El balanceador de la pasarela corta a los 230 s
 # de todas formas, asi que quien manda aqui es nuestro presupuesto, no el suyo.
 $TIEMPO_SIGRID_S = 35
+
+# Las dos ventanas de escritura (ver .DESCRIPTION). ABIERTAS por defecto desde
+# el 2026-09-23, por decision del humano; `-VentanasCerradas` las cierra LAS
+# DOS. Son dos variables y no una porque son dos App Settings que protegen
+# cosas distintas: lo unico que las junta es este despliegue. El valor por
+# defecto del CODIGO (`config/settings.py`) NO cambia: sigue en `False`.
+$ventanaArchivo = "true"
+$ventanaCierre = "true"
+if ($VentanasCerradas) {
+    $ventanaArchivo = "false"
+    $ventanaCierre = "false"
+}
 
 
 function Salir-Con {
@@ -256,6 +300,14 @@ function Estado($existe) {
     return "(se crea)"
 }
 
+# El estado de una ventana EN PALABRAS, a partir del valor que se va a fijar.
+# Solo "true" es abierta: cualquier otra cosa se dice cerrada, que es lo que
+# el codigo hace con ella.
+function Estado-Ventana($valor) {
+    if ($valor -eq "true") { return "ABIERTA" }
+    return "CERRADA"
+}
+
 Write-Host ""
 Write-Host "Despliegue del backend"
 Write-Host "----------------------"
@@ -272,8 +324,13 @@ Write-Host ("  Secretos por REFERENCIA a Key Vault : {0}" -f $PostventaAppSettin
 Write-Host "  Ninguna App Setting llevara un valor de secreto."
 Write-Host ""
 Write-Host ("  Tiempos de espera    : IA {0}s, Graph {1}s (el proxy corta a los {2}s)" -f $TIEMPO_IA_S, $TIEMPO_GRAPH_S, $PostventaPresupuestoProxyS)
-Write-Host "  La ventana de escritura de /api/archivar se despliega CERRADA."
-Write-Host "  La ventana de escritura de /api/cerrar (el ERP) tambien."
+Write-Host ("  Ventana de archivo (/api/archivar, SharePoint)            : se despliega {0}" -f (Estado-Ventana $ventanaArchivo))
+Write-Host ("  Ventana del ERP (/api/adjuntar y /api/cerrar, Sigrid PRO) : se despliega {0}" -f (Estado-Ventana $ventanaCierre))
+if (-not $VentanasCerradas) {
+    Write-Host "  Con las ventanas abiertas, esta version escribira en SharePoint y en el" -ForegroundColor Yellow
+    Write-Host "  ERP de produccion en cuanto un usuario lo confirme. Si no debe, aborta" -ForegroundColor Yellow
+    Write-Host "  y vuelve a lanzarlo con -VentanasCerradas." -ForegroundColor Yellow
+}
 Write-Host ""
 
 if ($WhatIf) {
@@ -422,23 +479,31 @@ $ajustes = @(
     "PG_DB=postventa",
     "PG_SCHEMA=postventa",
     "PG_SSLMODE=require",
-    # EL CANDADO. La ventana de escritura se despliega CERRADA: fuera de ella
-    # /api/archivar responde 503 a cualquiera y no toca SharePoint. Se
-    # enciende a mano y se vuelve a apagar (docs/DESPLIEGUE.md, seccion 4).
-    # Cada despliegue la devuelve a su sitio, por si quedo encendida.
-    "ARCHIVO_HABILITADO=false",
+    # LA VENTANA DE ARCHIVO. Se despliega ABIERTA desde el 2026-09-23 (decision
+    # del humano: Posventa ya usa el servicio en real) y CERRADA con
+    # -VentanasCerradas. Fuera de ella /api/archivar responde 503 y no toca
+    # SharePoint. Se cierra y se abre sin redesplegar con
+    # 22_ventana_archivo.ps1 (docs/DESPLIEGUE.md, seccion 4). Cada despliegue
+    # la devuelve al valor de $ventanaArchivo, por si alguien la dejo de otra
+    # forma. El defecto del CODIGO (config/settings.py) sigue en False.
+    "ARCHIVO_HABILITADO=$ventanaArchivo",
     "SHAREPOINT_CARPETA_BASE=Postventa",
     "GRAPH_TIMEOUT_S=$TIEMPO_GRAPH_S",
     "GRAPH_REINTENTOS=3",
-    # EL OTRO CANDADO, Y EL MAS SERIO: detras no hay una biblioteca de
+    # LA VENTANA DEL ERP, Y LA MAS SERIA: detras no hay una biblioteca de
     # documentos, sino el ERP de produccion del que depende toda la empresa, y
     # deshacer un cierre es otro proceso que alguien ejecuta a mano en Sigrid.
-    # Fuera de esta ventana /api/cerrar responde 503 y no toca el ERP ni para
-    # leer. Se enciende a mano y se vuelve a apagar (docs/DESPLIEGUE.md,
-    # seccion 4 bis). Cada despliegue la devuelve a su sitio, por si quedo
-    # encendida: es una variable APARTE de ARCHIVO_HABILITADO, porque poder
-    # archivar no puede implicar poder escribir en el ERP.
-    "CIERRE_HABILITADO=false",
+    # Se despliega ABIERTA desde el 2026-09-23 (decision del humano, "Las
+    # dos") y CERRADA con -VentanasCerradas. RIESGO ACEPTADO: abierta, esta
+    # version escribe en Sigrid de produccion sin una puerta manual, y mientras
+    # F-034 no este desplegada /api/adjuntar y /api/cerrar toman el numero de
+    # incidencia del cuerpo. Fuera de ella los dos responden 503 y no tocan el
+    # ERP ni para leer. Se cierra y se abre sin redesplegar con
+    # 19_ventana_escritura.ps1 (docs/DESPLIEGUE.md, seccion 4 bis). Es una
+    # variable APARTE de ARCHIVO_HABILITADO, porque poder archivar no puede
+    # implicar poder escribir en el ERP. El defecto del CODIGO
+    # (config/settings.py) sigue en False.
+    "CIERRE_HABILITADO=$ventanaCierre",
     # El resto de la configuracion de Sigrid que NO identifica ni autentica.
     # Los mismos valores que el codigo trae por defecto, fijados aqui a
     # proposito -como PG_PORT o GRAPH_REINTENTOS- para que la configuracion
@@ -530,7 +595,7 @@ Write-Host "---------"
 Write-Host ("  Function App          : {0}" -f $PostventaFunction)
 Write-Host ("  Identidad             : {0} (con '{1}' sobre el vault)" -f $PostventaIdentidad, $ROL_KEYVAULT)
 Write-Host ("  App Settings          : {0}, de las que {1} son referencias" -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)
-Write-Host ("  Ventana de escritura  : CERRADA (archivo, y GRAFICO Y cierre en el ERP)")
+Write-Host ("  Ventana de escritura  : archivo {0}; GRAFICO y cierre en el ERP {1}" -f (Estado-Ventana $ventanaArchivo), (Estado-Ventana $ventanaCierre))
 Write-Host ""
 Write-Host "Ahora, a mano (T14), en este orden:"
 Write-Host "  1. GET /api/health responde 200."
@@ -538,8 +603,10 @@ Write-Host "  2. Ninguna App Setting aparece con error en el portal: las"
 Write-Host "     referencias a Key Vault se resuelven. Si las dos de Sigrid"
 Write-Host "     salen con error, es que faltan sus secretos en el vault:"
 Write-Host "     cargalos con cargar_secretos_postventa.ps1 -Solo."
-Write-Host "  3. POST /api/archivar contra el host desnudo responde 503. Si"
-Write-Host "     respondiera 200, PARA: la Function esta escribiendo en"
+Write-Host "  3. POST /api/archivar contra el host desnudo NO responde 200: la"
+Write-Host "     plataforma lo corta antes con un 400 (Easy Auth del backend"
+Write-Host "     enlazado, docs/DESPLIEGUE.md 5 bis). Si respondiera 200, PARA:"
+Write-Host "     con las ventanas abiertas, la Function estaria escribiendo en"
 Write-Host "     SharePoint a cualquiera que la llame."
 Write-Host "  4. Tras T16, intenta la restriccion de acceso publico y comprueba"
 Write-Host "     que la Static Web App sigue alcanzando el backend. Si no,"

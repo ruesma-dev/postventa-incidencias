@@ -210,11 +210,25 @@ independientes.
    constructor del adaptador**, así que componer las piezas a mano tampoco
    sirve.
 2. `ARCHIVO_HABILITADO` tiene que estar encendido, y está **apagado por
-   defecto**: un despliegue a medio configurar no sube nada.
+   defecto en el código** (`config/settings.py`, `default=False`): un
+   despliegue a medio configurar no sube nada.
 3. La suite de tests no puede abrir conexiones de red, y ningún test construye
    un adaptador capaz de llegar a Graph.
 
 La única subida real permitida se hace **desde el entorno desplegado**.
+
+> **Desde el 2026-09-23, el cierre 2 sigue siendo cierto para el código, pero
+> ya no para el despliegue.** El humano decidió ese día que
+> `desplegar_backend.ps1` publique **las dos** ventanas de escritura
+> **abiertas** (*«quiero que por defecto publique abierto, no cerrado»*; *«Las
+> dos»*): Posventa ya usa el servicio en real y cada despliegue les cerraba el
+> archivo y el cierre. El script fija `ARCHIVO_HABILITADO=true` y
+> `CIERRE_HABILITADO=true` salvo con `-VentanasCerradas`, que las cierra las
+> dos. En un puesto de trabajo nada cambia: el defecto del código sigue
+> apagado y el cierre 1 lo impide por su cuenta. En el entorno desplegado, lo
+> que decide quién sube es la plataforma —Easy Auth en el host desnudo y la
+> sesión del grupo de Posventa en el front, `docs/DESPLIEGUE.md` §5 bis—, no
+> la ventana. El riesgo aceptado, en `docs/DESPLIEGUE.md` §4 bis.
 
 ### Qué se rompe si alguien toca algo
 
@@ -280,9 +294,15 @@ escribir nada. Si el ERP no lo confirma, **no se cierra**.
 ### Las puertas, de fuera adentro
 
 1. **El entorno.** Escribir solo se permite con `ENTORNO` en `dev` o `pro`.
-2. **El interruptor.** `CIERRE_HABILITADO`, apagado por defecto. Se comprueba
-   en la fábrica **y en el constructor del adaptador**: componer las piezas a
-   mano tampoco deja escribir.
+2. **El interruptor.** `CIERRE_HABILITADO`, apagado por defecto **en el
+   código**. Se comprueba en la fábrica **y en el constructor del adaptador**:
+   componer las piezas a mano tampoco deja escribir. **Desde el 2026-09-23 el
+   despliegue lo publica encendido** (salvo `-VentanasCerradas`): en el
+   entorno desplegado esta puerta está abierta por decisión del humano, y
+   **cualquier versión desplegada escribe en Sigrid de producción sin una
+   puerta manual**; y mientras F-034 no esté desplegada, `/api/adjuntar` y
+   `/api/cerrar` toman el número de incidencia del cuerpo de la petición.
+   Riesgo aceptado, detallado en `docs/DESPLIEGUE.md` §4 bis.
 3. **El dry-run.** `POST /api/cerrar` lee y no escribe salvo que se le pida
    `commit` explícitamente.
 4. **La confirmación.** Con `commit` hace falta además la confirmación del
@@ -425,7 +445,7 @@ despliegue no tenga que aprender dos vocabularios.
 
 | Variable | Obligatoria | Notas |
 |---|---|---|
-| `ARCHIVO_HABILITADO` | no | **Interruptor maestro, apagado por defecto.** Sin encenderlo no se sube nada, pase lo que pase |
+| `ARCHIVO_HABILITADO` | no | **Interruptor maestro, apagado por defecto en el código.** Sin encenderlo no se sube nada, pase lo que pase. **El despliegue lo publica encendido desde el 2026-09-23** (salvo `-VentanasCerradas`) |
 | `SHAREPOINT_SITE_ID` | no | El sitio del destino. No lo usa el adaptador, que va directo a la biblioteca; lo usan el script de verificación y este documento |
 | `SHAREPOINT_DRIVE_ID` | sí, para archivar | La biblioteca donde se archivan los partes |
 | `SHAREPOINT_CARPETA_BASE` | no | Carpeta raíz; debajo, una por código de obra |
@@ -439,7 +459,7 @@ despliegue no tenga que aprender dos vocabularios.
 
 | Variable | Obligatoria | Notas |
 |---|---|---|
-| `CIERRE_HABILITADO` | no | **Interruptor maestro, apagado por defecto.** Sin encenderlo no se escribe nada en el ERP, pase lo que pase. Cubre **las dos escrituras**, el gráfico y el cierre: el gráfico es la primera mitad del cierre y no hay `GRAFICO_HABILITADO`. Es una variable **aparte** de `ARCHIVO_HABILITADO` a propósito: se abren en momentos distintos, y poder archivar no puede implicar poder escribir en el ERP |
+| `CIERRE_HABILITADO` | no | **Interruptor maestro, apagado por defecto en el código; el despliegue lo publica encendido desde el 2026-09-23** (salvo `-VentanasCerradas`). Sin encenderlo no se escribe nada en el ERP, pase lo que pase. Cubre **las dos escrituras**, el gráfico y el cierre: el gráfico es la primera mitad del cierre y no hay `GRAFICO_HABILITADO`. Es una variable **aparte** de `ARCHIVO_HABILITADO` a propósito: se abren en momentos distintos, y poder archivar no puede implicar poder escribir en el ERP |
 | `SIGRID_API_BASE_URL` | sí, para cerrar | La raíz de la pasarela, que es el **único** acceso al SQL Server de Sigrid en todo el ecosistema |
 | `SIGRID_API_KEY` | sí, para cerrar | **Secreto**. En Azure va por referencia a Key Vault; en local, solo en el `.env`, que no se versiona. Jamás en un log, en una URL ni en un mensaje de error |
 | `SIGRID_BASE_DATOS` | sí, para cerrar | La base de negocio del ERP, que es la única con escritura permitida en la pasarela |

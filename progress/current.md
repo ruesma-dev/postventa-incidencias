@@ -1,6 +1,36 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-031 CERRADA · 2026-09-23 · desplegada y en uso
+>
+> Review APROBADO, `init.sh` en verde, mergeada y desplegada (backend 11:01 UTC).
+> V1 y V2 dadas por buenas por el humano («todo ok»), **sin detalle pegado**, y
+> el guion de V1 tenía dos defectos: todo en **`progress/cierre_F-031.md`**.
+> **Siguiente: F-034**, spec aprobada; después F-013.
+
+> ## ✅ DESPLIEGUE CON LAS VENTANAS ABIERTAS · 2026-09-23 · encargo operativo, sin feature
+>
+> Decisión del humano: *«quiero que por defecto publique abierto, no
+> cerrado»*; *«Las dos»*. `infra/desplegar_backend.ps1` fija ahora
+> `ARCHIVO_HABILITADO=true` y `CIERRE_HABILITADO=true`; **`-VentanasCerradas`
+> las cierra las dos**. El defecto del **código** (`config/settings.py:228` y
+> `:312`, `default=False`) **no cambia**. Tests de R33/H2/T18 reescritos con
+> control negativo; enmienda fechada bajo R33 de F-010 y notas en F-006 R20,
+> F-009 R37, F-012 R39; `DESPLIEGUE.md`, `INTEGRACION.md`, `ARCHITECTURE.md` y
+> cabeceras de 22, 19 y 14 al día; `90_push_dev_main.ps1` con `--no-pager`.
+> Rama `chore/despliegue-ventanas-abiertas`, fusionada en `dev` con `--no-ff`.
+> Nada ejecutado contra Azure.
+>
+> **Pendiente de decidir:** (1) `verificar_despliegue.ps1` no sale en verde con
+> la ventana de archivo abierta (su guarda no se ha tocado); (2) docstrings de
+> `function_app.py` que dicen «se despliega apagada», fuera del encargo;
+> (3) `azure-apps/postventa_incidencias.md` (`:86`, `:400-401`, `:783-785`)
+> dice que se despliegan apagadas: no se ha tocado ese repositorio.
+> **Riesgo aceptado**: con la ventana del ERP abierta, cualquier versión
+> desplegada escribe en Sigrid PRO sin puerta manual, y hasta que F-034 esté
+> desplegada `/api/adjuntar` y `/api/cerrar` toman el número de incidencia del
+> cuerpo. Informe: `progress/impl_despliegue_ventanas_abiertas.md`.
+
 > ## ✅ SPEC DE F-034 APROBADA · 2026-09-22 · `spec_ready`
 >
 > **Aprobada por el humano el 2026-09-22** («a, aprobado»): **D-1 opción (a)**
@@ -519,6 +549,119 @@
 > Verificaciones **MANUAL (humano)** ya escritas: T13 (lectura antes de
 > desplegar: trazas por estado y las `pendiente`) y T14 (re-archivar un parte
 > archivado tras desplegar, con autorización, y comprobar que no cambia nada).
+
+> ## ENMIENDA DOCUMENTAL · 2026-09-22 · **F-013: lo de IT se olvida, pero no se borra**
+>
+> Enmienda **solo de spec**, sin una línea de código, en la rama
+> `feature/F-013-archivo-posventa`. Recoge dos frases del humano con recuadro
+> fechado, citando la premisa original sin borrarla (patrón de R28 de F-010):
+>
+> - **2026-09-18**, *«lo que esta en IT eran pruebas, se puede olvidar»*:
+>   **deroga** la mitad de la premisa **H4** que obligaba a documentar **cómo
+>   localizar** lo archivado en IT.
+> - **2026-09-22**, *«los partes en IT se pueden olvidar, pero no borrar»*:
+>   la precisa. **No se borra nada**: ni los ficheros de la biblioteca de IT,
+>   ni las filas de `postventa.archivos`, ni se les retira la traza
+>   `archivado` para poder re-archivarlos en Posventa.
+>
+> **Contrapartida aceptada y escrita**: con **D-1 de F-033** (cortar siempre
+> por `hash` + estado) y las trazas intactas, los **133 partes** de IT
+> —**[MEDIDO]** el 2026-09-18 con `infra/25_mediciones_despliegue.ps1`, todos
+> `archivado` y todos en una sola biblioteca, la de IT— **nunca se subirán a
+> la biblioteca de Posventa**. F-013 archiva allí **solo lo que se archive a
+> partir de su despliegue**.
+>
+> **Queda CERRADA** la decisión abierta que dejaron el implementer de F-033 y
+> su review (**observación O-2**, repetida en el acta de cierre de F-033):
+> «qué hace F-013 con esas trazas». Respuesta: nada.
+>
+> Tocado, quirúrgicamente y sin reescribir secciones:
+> `requirements.md` (fila **H4** de §0, dos filas nuevas en la tabla de
+> «No entra», recuadro de §8, **R24** precisado, **R25** matizado, **R26**
+> enmendado con su recuadro); `design.md` (fila de riesgo de §0.1, paso 3 del
+> corte de §7.3 —tachado: ya medido, sale del corte—, nota en §8.1, nota en
+> §8.3 sobre el `read` de IT y **§9 bis** nueva con la enmienda completa);
+> `tasks.md` (**T17** ya no manda documentar cómo localizarlo, **T18**
+> precisado, paso 3 del runbook tachado).
+>
+> **Sin cambios ejecutables**: ningún módulo, ninguna sentencia, ningún test
+> de comportamiento. `bash harness/init.sh` **en verde** (2892 tests del api +
+> 62 del arnés; puerta de cobertura N/A porque F-013 no cambia líneas Python
+> frente a `dev`). Commit local, sin push. Rama devuelta a `dev` al terminar.
+>
+> **F-013 sigue `spec_ready`** y **sigue bloqueada por F-033 y F-031**. Matiz:
+> **F-033 ya está cerrada** (implementada, aprobada, mergeada en `dev` y con
+> sus verificaciones manuales en acta), así que la dependencia viva es
+> **F-031**.
+
+> ## SPEC APROBADA · 2026-09-18 · **F-013, mudar el archivo a la biblioteca de Posventa**
+>
+> **Aprobada por el humano el 2026-09-18** («si»), con la enmienda de D-4
+> incluida. Queda `spec_ready` y **bloqueada por F-033 y F-031** (orden F-033 →
+> F-031 → F-013). F-018 ya pedía asignar la biblioteca de Posventa en su
+> criterio 2: no hace falta tocar esa ficha.
+>
+> **Enmendada el 2026-09-22** en lo tocante a lo archivado en IT: ver el
+> bloque de arriba y `design.md` §9 bis. La aprobación no se reabre.
+>
+> Rama `feature/F-013-archivo-posventa` (desde `dev`). Spec en
+> `specs/F-013-archivo-posventa/` (requirements, design, tasks). **Ni una
+> línea de producción** y ninguna escritura en SharePoint, Sigrid, Key Vault,
+> Azure ni PostgreSQL. Lecturas hechas: el datamart (`maestro.obras`) y el
+> repositorio. La biblioteca de Posventa **no se pudo listar** desde la sesión.
+>
+> **Lo que cambia respecto a lo que se creía**: F-013 **no** es «cambiar tres
+> variables». Medido: el nombre de la obra 0677 en Sigrid es «15 VIVIENDAS
+> UNIFAMILIARES EN MIRASIERRA(MADRID)», el parte imprime la unidad como
+> «Viviendas Bloque Villa 5» (Posventa la llama `VILLA 05`), y el código de
+> obra no es único en Sigrid (922 obras, 846 códigos). Así que la carpeta **se
+> encuentra** listando la biblioteca y casando, no se compone; y si no casa sin
+> ambigüedad, **no se archiva** (409 con motivo). La obra y la unidad salen de
+> Sigrid (`rcp→upv→obr`, lectura nueva por `sql/read`), y la obra de Sigrid
+> tiene que coincidir con la del parte.
+>
+> ### Decisiones: CERRADAS por el humano el 2026-09-18 (`design.md` §9)
+>
+> Respuesta literal: *«si, pero quiero que tenga permiso para crear todas las
+> carpetas no solo partes firmados.»* Aceptadas tal cual D-1 (base = raíz),
+> D-2 y D-3 (orden **F-033 → F-031 → F-013**), D-5 (409 con motivo), D-6
+> (regla de casado, condicionada a T2/T3), D-7 (503 si Sigrid cae) y D-R
+> (**`critico`**; la ficha la actualiza el líder). **D-4 cambia**: el sistema
+> puede crear **toda** la ruta que falte. Spec enmendada el mismo día, con
+> recuadros fechados en R9, R13–R16:
+>
+> - **Cuándo se crea**: solo si en ese nivel no hay **ninguna** carpeta que
+>   case **ni ninguna parecida** (R34). Si hay parecidas —otra grafía del mismo
+>   código de obra, del mismo número de unidad o de la palabra clave del tramo
+>   fijo, p. ej. `0677-MIRASIERRA`, `VILLA 05 - GARCIA`, `PARTES DE
+>   INCIDENCIAS`—, **409 `<nivel>_parecida` y no se crea** (R35, con tests
+>   obligatorios). Ambigüedad, 409 igual. Variable `SHAREPOINT_CREAR_CARPETAS`.
+> - **Con qué nombre**: obra = `<cod> <con.res de esa obra>` literal (hoy
+>   daría `0677 15 VIVIENDAS UNIFAMILIARES EN MIRASIERRA(MADRID)`); unidad =
+>   `con.cod` o `con.res` de la `upv` según `SHAREPOINT_NOMBRE_UNIDAD`. **Nunca
+>   se reformatea** (no se fabrica `VILLA 05` desde «Villa 5»). Los dos valores
+>   **quedan condicionados a T2/T3** y se fijan en la parada **T4** con los datos
+>   delante (R36, R37). Nombre imposible → 409, sin saneo, y todos los nombres
+>   se comprueban antes de crear la primera carpeta (R38).
+> - **Riesgo nuevo** (`design.md` §10, 11–14): duplicado por una grafía que ni
+>   comparte el número (`VILLA CINCO`); nombre correcto pero feo para
+>   Posventa; carpetas vacías si falla la subida. **Deshacer lo hace una
+>   persona** (mover el PDF y borrar o renombrar la carpeta); el sistema no
+>   borra, no mueve ni renombra nunca (R43). Nueva verificación manual **R42**:
+>   primera creación real con Posventa avisada antes.
+
+> ### Lo que el humano tiene que hacer antes de implementar la regla
+>
+> - **T2 y T3 son MANUALES y van antes del código**: los dos scripts de solo
+>   lectura (`infra/23_destino_posventa.ps1`, `infra/24_ubicacion_sigrid.ps1`)
+>   los escribe T1, y el humano los lanza para ver las carpetas reales de la
+>   obra 0677 y cómo nombra Sigrid sus unidades. T4 es una PARADA.
+> - **Para F-018** (no se toca aquí): al recortar a `Sites.Selected` hay que
+>   conceder el **sitio de Posventa**. Conviene que el líder lo añada ya a la
+>   ficha.
+> - Lo archivado en IT se queda allí (H4); la documentación dirá cómo
+>   localizarlo desde `postventa.archivos`.
+
 
 > ## IMPLEMENTACIÓN CERRADA · 2026-09-17 · **F-032, bloques 4 y 5 (T11–T13, T15)**
 >

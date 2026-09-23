@@ -288,6 +288,15 @@ desplegados (misma lista que F-009).
 `CIERRE_HABILITADO`, comprobado **en la fábrica y en el propio adaptador** del
 gráfico, de modo que componer las piezas a mano tampoco permita escribir.
 
+> **Nota del 2026-09-23 · R39 NO se enmienda.** Desde ese día el despliegue
+> publica `CIERRE_HABILITADO` **abierto** salvo con `-VentanasCerradas`
+> (decisión del humano: *«quiero que por defecto publique abierto, no
+> cerrado»*; *«Las dos»*), así que en el entorno desplegado el gráfico se puede
+> escribir sin abrir antes la ventana a mano. El interruptor sigue siendo
+> **uno** y sigue comprobándose en la fábrica y en el adaptador, y su defecto
+> en el código sigue siendo `False`. La enmienda y el riesgo aceptado, bajo R33
+> de `specs/F-010-despliegue/requirements.md`.
+
 **R40.** SI falta configuración para hablar con la pasarela, ENTONCES el
 sistema debe nombrar **todas** las variables que faltan de una vez y **jamás**
 sus valores.

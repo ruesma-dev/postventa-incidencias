@@ -726,7 +726,9 @@ cabecera `x-ms-client-principal`; **no** una clave ni un token que la Function
 pueda exigir. `auth_level=FUNCTION` rompería el front. El control de acceso
 está en capas y ninguna vive en el `auth_level`: grupo de Entra con asignación
 obligatoria, **ventana de escritura** de `/api/archivar` (`ARCHIVO_HABILITADO`,
-que se despliega apagado), tope de gasto en el proveedor de IA y, si resulta
+apagado por defecto en el código; hasta el 2026-09-22 se desplegaba apagado y
+desde el 2026-09-23 el despliegue lo publica encendido salvo con
+`-VentanasCerradas`, por decisión del humano), tope de gasto en el proveedor de IA y, si resulta
 compatible, restricción de acceso público. Está explicado en la cabecera de
 `services/postventa-api/function_app.py` y en `docs/DESPLIEGUE.md` §4.
 

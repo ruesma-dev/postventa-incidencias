@@ -123,7 +123,7 @@
 
 ## Bloque 5 · Puertas de rigor y verde
 
-- [ ] **T14**: **Verificación: MANUAL (humano)** · V1 de `design.md` §12. Con
+- [x] **T14**: **Verificación: MANUAL (humano)** · V1 de `design.md` §12. **Cerrada el 2026-09-23 por declaración del humano («todo ok»), sin detalle pegado**: ver `progress/cierre_F-031.md`. Con
       `func start` en `services/postventa-api` y `python dev_server.py` en
       `services/postventa-front`: corregir el código de obra de un parte y
       pulsar «archivar y cerrar» **antes** de 1,5 s. Se espera **no ver el
@@ -135,7 +135,7 @@
       ningún agente. El guion, con los dos comandos y lo que hay que mirar en
       cada paso, está listo para copiar en `progress/impl_F-031.md` §8 ter.
 
-- [ ] **T15**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. En el
+- [x] **T15**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. **Cerrada el 2026-09-23 por declaración del humano («todo ok») tras el despliegue de las 11:01 UTC**: ver `progress/cierre_F-031.md`. En el
       entorno desplegado y **solo con un parte que el humano autorice**:
       archivar y comprobar que el nombre y la carpeta son los mismos que antes
       de la feature. Única comprobación contra la biblioteca real. El resultado

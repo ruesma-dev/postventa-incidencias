@@ -10,6 +10,18 @@
     tocan el ERP ni para leer: el interruptor se mira ANTES de leer nada
     (`infrastructure/sigrid/fabrica.py`).
 
+    CADA DESPLIEGUE DEL BACKEND LA DEJA ABIERTA, DESDE EL 2026-09-23.
+    `desplegar_backend.ps1` fija `CIERRE_HABILITADO=true` en cada pasada salvo
+    con `-VentanasCerradas`, que la cierra junto con la de archivo. Decision
+    del humano: "quiero que por defecto publique abierto, no cerrado", y a la
+    pregunta de que ventanas, "Las dos". Hasta el 2026-09-22 el despliegue la
+    dejaba cerrada y este script era la unica forma de abrirla. El valor por
+    defecto del CODIGO no cambia: sigue APAGADO en `config/settings.py`.
+    Quien la CIERRE con este script y quiera que siga cerrada tiene que
+    desplegar con `-VentanasCerradas`: el siguiente despliegue la vuelve a
+    abrir. RIESGO ACEPTADO: abierta, cualquier version desplegada escribe en
+    Sigrid de produccion sin una puerta manual (`docs/DESPLIEGUE.md` 4 bis).
+
     POR QUE EXISTE ESTE SCRIPT. Hasta hoy abrirla y cerrarla eran DOS LINEAS DE
     `az` COPIADAS A MANO desde `progress/guion_bloque9_F-012.md` -paso 3 de T25
     y pasos 1 y 2 de T32-, con el grupo de recursos y el nombre de la Function

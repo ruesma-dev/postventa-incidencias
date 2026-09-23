@@ -896,7 +896,32 @@ function appPostventa() {
       // el PDF no. Que se los salte lo fija `tests_js/circuito.test.js`.
       //
       // La confirmación ya se dio y sigue valiendo para este parte: es un
-      // reintento de lo que se acaba de autorizar, no una tanda nueva.
+      // reintento de lo que se acaba de autorizar, no una tanda nueva. El
+      // vaciado de abajo ni la consume ni la reinicia.
+      //
+      // F-034 R29 (H-2) · lo escrito y sin guardar se fuerza y se ESPERA antes
+      // de lanzar nada, igual que en `confirmarArchivo`. Desde F-034 el backend
+      // cierra la reclamación del número **guardado** y coteja el del cuerpo:
+      // quien corrija el número de incidencia y pulse aquí dentro del rebote
+      // mandaría un número que todavía no está en la base. Este era el único
+      // camino del front que llegaba a `/api/cerrar` sin pasar por el vaciado.
+      //
+      // No se mete en `_lanzarTanda` a propósito (`design.md` §7.1): allí
+      // llegaría con la tanda ya calculada, y F-031 R19 exige vaciar ANTES de
+      // calcularla en `confirmarArchivo`.
+      //
+      // El aviso de un intento anterior se retira primero, como allí: si este
+      // sale bien, dejarlo diría «quedan correcciones sin guardar» encima de un
+      // cierre hecho.
+      this.avisoArchivo = "";
+      const vaciado = await this._autoguardado().vaciarPendientes();
+      if (!vaciado.ok) {
+        // R30 · no se lanza nada y la pantalla se queda como estaba, con el
+        // mismo aviso que `confirmarArchivo`.
+        this.avisoArchivo = window.Autoguardado.AVISO_SIN_GUARDAR;
+        return;
+      }
+
       const arranque = await window.Pipeline.conGuardaDeTanda(() =>
         this._lanzarTanda([parte]),
       );

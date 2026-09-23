@@ -168,7 +168,7 @@
 
 ## Bloque 4 · El front
 
-- [ ] **T11**: `services/postventa-front/tests_js/reintento_vaciado.test.js`
+- [x] **T11**: `services/postventa-front/tests_js/reintento_vaciado.test.js`
       (RED primero) y después `js/app.js::reintentarCierre` esperando
       `vaciarPendientes()` antes de lanzar el circuito, con su guarda y su
       aviso (`design.md` §7.1; R29, R30, R32, R33).
@@ -177,6 +177,14 @@
       `confirmacion.test.js` y `pipeline.test.js` **sin cambios** (R31: el
       cuerpo de las dos peticiones no se toca); y `pytest tests -q` del puente
       `tests/test_f007_js.py` en verde.
+      **Hecha (2026-09-23)**: RED con traza real (5 fallos, los de R29 y R30)
+      y verde en `progress/impl_F-034.md` §8. `node --test "tests_js/*.test.js"`
+      → 322 pass, 0 fail (el patrón y no la carpeta: con Node 24 la carpeta
+      da `MODULE_NOT_FOUND`, ver `tests/test_f007_js.py`); ningún otro fichero
+      de `tests_js/` tocado; `pytest tests -q` del front → 256 passed. El test
+      ejecuta `js/app.js` de verdad en un contexto de `node:vm` con la API
+      doble. Hallazgo **H-6** (el rebote de F-026 pone el parte en «listo» y
+      esconde «Reintentar el cierre»), anotado y no cambiado.
 
 ## Bloque 5 · Alcance, consultas y documentación
 

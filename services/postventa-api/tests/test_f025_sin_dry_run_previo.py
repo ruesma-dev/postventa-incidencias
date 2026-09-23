@@ -332,11 +332,17 @@ def _cerrar(
     mira el del contexto, así que el ayudante lo deja también en el doble antes
     de llamar. No inventa ninguno ni pisa la situación que el caso haya
     preparado: el porqué entero está en `tests/utiles_pg.py`.
+
+    **Enmienda del 2026-09-23 (F-034).** Lo mismo con la traza de archivo
+    (`con_el_archivo_guardado`), que desde F-034 el cierre lee de lo
+    guardado; el veredicto del contexto ya lleva el nº con el que se guardó
+    el parte y el declarado se pasa igual, como hace el borde.
     """
     ctx = ctx if ctx is not None else _contexto()
     if repositorio is None:
         repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_cierre(
         ctx,
@@ -348,7 +354,9 @@ def _cerrar(
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
+        codigos_declarados=CodigosDelParte(
+            codigo_obra="", numero_incidencia=INCIDENCIA
+        ),
         ahora=AHORA,
     )
 

@@ -446,6 +446,13 @@ def _puerta_del_grafico(ctx, repositorio, dobles, *, commit=True):
 
 
 def _puerta_del_cierre(ctx, repositorio, dobles, *, commit=True):
+    """El cierre, con la traza de archivo del caso también en el doble.
+
+    **Enmienda del 2026-09-23 (F-034).** Igual que `_puerta_del_grafico`: el
+    cierre lee el archivo y el nº de incidencia de lo guardado. **El veredicto
+    no se toca**, y no se declara cuerpo (`codigos_declarados=None`).
+    """
+    con_el_archivo_guardado(repositorio, ctx)
     return paso_cierre(
         ctx,
         dobles.erp,
@@ -456,7 +463,6 @@ def _puerta_del_cierre(ctx, repositorio, dobles, *, commit=True):
         confirmado=True,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
         ahora=AHORA,
     )
 

@@ -31,6 +31,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import paso_cierre
 from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
@@ -54,7 +55,11 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
-from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
+from tests.utiles_pg import (
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import ErpEnMemoria
 
 AHORA = datetime(2026, 8, 26, 9, 46, 33, tzinfo=UTC)
@@ -208,6 +213,7 @@ def _contexto_con_datos_personales() -> ContextoParte:
             clasificacion_firma=ClasificacionFirma.HUMANA,
             observaciones=OBSERVACIONES,
             confianza_observaciones=80,
+            numero_incidencia="RS26.08 - 0123",
         ),
         archivo=TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO),
     )
@@ -218,10 +224,18 @@ def _cerrar(*, erp, usuarios, commit: bool = True, confirmado: bool = True):
 
     F-030 · el veredicto del contexto se deja también en el doble, porque desde
     F-030 la puerta del paso lo lee de ahí (ver `tests/utiles_pg.py`).
+
+    **Enmienda del 2026-09-23 (F-034).** Desde F-034 el cierre lee la traza
+    de archivo y el nº de incidencia de lo **guardado**: la traza del
+    contexto se deja también en el doble (`con_el_archivo_guardado`, con las
+    mismas dos reglas que su hermano), el veredicto lleva el nº con el que se
+    guardó el parte y el declarado se pasa igual, como hace el borde. El
+    cotejo no se afloja: la divergencia vive en `test_f034_codigos_en_el_erp.py`.
     """
     ctx = _contexto_con_datos_personales()
     repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_cierre(
         ctx,
@@ -233,7 +247,9 @@ def _cerrar(*, erp, usuarios, commit: bool = True, confirmado: bool = True):
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia="RS26.08 - 0123",
+        codigos_declarados=CodigosDelParte(
+            codigo_obra="", numero_incidencia="RS26.08 - 0123"
+        ),
         ahora=AHORA,
     )
 

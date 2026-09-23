@@ -435,12 +435,14 @@ NOMBRES_NUEVOS_Y_DONDE_VIVEN = {
     "CodigosDelParte": {
         "application/pipelines/codigos_del_parte.py",
         "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
         "application/pipelines/paso_grafico.py",
         "interface_adapters/api/adjuntar.py",
         "interface_adapters/api/archivar.py",
     },
     "codigos_declarados": {
         "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
         "application/pipelines/paso_grafico.py",
         "interface_adapters/api/adjuntar.py",
         "interface_adapters/api/archivar.py",
@@ -448,11 +450,13 @@ NOMBRES_NUEVOS_Y_DONDE_VIVEN = {
     "codigos_guardados": {
         "application/pipelines/codigos_del_parte.py",
         "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
         "application/pipelines/paso_grafico.py",
     },
     "exigir_codigos_declarados": {
         "application/pipelines/codigos_del_parte.py",
         "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
         "application/pipelines/paso_grafico.py",
     },
 }

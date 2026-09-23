@@ -377,11 +377,13 @@ def _codigo_de_incidencia(numero_incidencia: str) -> str:
 
     **Desde F-034 recibe el número guardado** y ya no es el camino del código
     vacío: ese lo corta antes `exigir_codigos_completos` con un 409 que dice
-    qué falta (R15). Lo que todavía llega aquí es un número guardado que no
-    está vacío pero **no tiene ningún tramo** —solo separadores—, porque
-    `a_codigo_de_sigrid` lo deja en cadena vacía. No es código muerto y no se
-    retira (`design.md` §4.2): sin él, se preguntaría al ERP por una cadena
-    vacía.
+    qué falta (R15). Hasta la decisión **H-4** del 2026-09-23 todavía llegaba
+    aquí un número guardado que no está vacío pero **no tiene ningún tramo**
+    —solo separadores—, con este 400 que mandaba a mirar el cuerpo; desde
+    entonces `exigir_codigos_completos` lo corta también, con el mismo
+    `a_codigo_de_sigrid` que usa esta función, y el `if` de abajo es
+    inalcanzable por construcción. No se retira (`design.md` §4.2): es la
+    última guarda antes de preguntarle al ERP por una cadena vacía.
     """
     codigo = a_codigo_de_sigrid(numero_incidencia)
     if not codigo:

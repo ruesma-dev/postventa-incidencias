@@ -140,13 +140,20 @@
       de **H-4** (decisión del líder del 2026-09-23). El mundo del cierre,
       `MundoDelCierre`, en `tests/utiles_circuito.py`.
 
-- [ ] **T9**: `application/pipelines/paso_cierre.py` · el cotejo en **1 bis**
+- [x] **T9**: `application/pipelines/paso_cierre.py` · el cotejo en **1 bis**
       con `solo_incidencia=True`, `_codigo_de_incidencia` con el número
       **guardado**, y `_exigir_archivado` sustituido por la puerta compartida
       (`design.md` §5). `_exigir_adjuntado` **no se toca** (R22). Docstring del
       módulo con la enmienda fechada.
       **Verificación**: `pytest tests/test_f034_*.py tests/test_f009_paso_cierre.py
       tests/test_f025_sin_dry_run_previo.py -q` en verde.
+      **Hecha (2026-09-23)**: el paso y sus tests de paso (F-009, F-012, F-025,
+      F-026, F-028, F-030) en verde, adaptados sin relajar el cotejo (detalle
+      en `progress/impl_F-034.md` §7.3). Incluye **H-4** en
+      `codigos_del_parte.exigir_codigos_completos` (decisión del líder dentro
+      de D-4). Los tests de F-034 que recorren el **borde** de `/cerrar` siguen
+      en rojo en este commit porque el borde es T10; se ponen en verde en el
+      siguiente.
 
 - [ ] **T10**: `interface_adapters/api/cerrar.py` y su `except` de
       `function_app.py`, igual que T7.

@@ -70,6 +70,7 @@ from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
 from tests.utiles_pg import (
     ConexionDoble,
     RepositorioEnMemoria,
+    con_el_archivo_guardado,
     con_el_veredicto_guardado,
 )
 from tests.utiles_sigrid import ErpEnMemoria
@@ -988,9 +989,15 @@ def _cerrar(
 
     F-030 · el veredicto del contexto se deja también en el doble, porque desde
     F-030 la puerta del paso lo lee de ahí (ver `tests/utiles_pg.py`).
+
+    F-034 (2026-09-23) · lo mismo con la traza de archivo
+    (`con_el_archivo_guardado`), y el nº de incidencia ya no se pasa suelto:
+    lo decide el **guardado** —el del veredicto de ejemplo— y estos casos no
+    hablan de cuerpos, así que no declaran ninguno (`design.md` §4.2).
     """
     ctx = _contexto_listo_para_cerrar()
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_cierre(
         ctx,
@@ -1002,7 +1009,6 @@ def _cerrar(
         confirmado=True,
         usuario_oid=OID,
         correo="personainventada@ejemplo.invalido",
-        numero_incidencia="RS26.09 - 0123",
         ahora=AHORA,
     )
 

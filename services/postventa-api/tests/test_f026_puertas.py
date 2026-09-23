@@ -241,7 +241,9 @@ def test_f026_r25_un_parte_no_apto_sin_aprobacion_no_cierra_la_incidencia(destin
             confirmado=True,
             usuario_oid=OID,
             correo=CORREO,
-            numero_incidencia=INCIDENCIA,
+            codigos_declarados=CodigosDelParte(
+                codigo_obra="", numero_incidencia=INCIDENCIA
+            ),
             ahora=AHORA,
         )
 

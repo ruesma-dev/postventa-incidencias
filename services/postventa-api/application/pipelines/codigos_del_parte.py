@@ -49,6 +49,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from domain.models.cierre import a_codigo_de_sigrid
 from domain.models.errores import CodigoNoConsta, CodigosNoCoinciden
 from domain.models.nombrado import es_el_mismo_codigo, normalizar_codigo
 
@@ -190,6 +191,22 @@ def exigir_codigos_declarados(
             )
 
 
+def _falta(etiqueta: str, codigo: str) -> bool:
+    """¿Falta ese código guardado? El criterio de `exigir_codigos_completos`.
+
+    - **La obra** falta si `normalizar_codigo` la deja vacía: el mismo criterio
+      con el que el nombrado decide que falta un código.
+    - **El nº de incidencia** falta, además, si no tiene **ningún tramo** —solo
+      separadores, como `/`—: `a_codigo_de_sigrid` lo deja en cadena vacía y no
+      hay con qué buscar la reclamación. Es la decisión **H-4** (ver el
+      docstring de `exigir_codigos_completos`); `a_codigo_de_sigrid` de un
+      código vacío también es vacío, así que la primera condición va incluida.
+    """
+    if etiqueta == _ETIQUETA_INCIDENCIA:
+        return not a_codigo_de_sigrid(codigo)
+    return not normalizar_codigo(codigo)
+
+
 def exigir_codigos_completos(
     guardados: CodigosDelParte, *, solo_incidencia: bool = False, y_por_eso: str
 ) -> None:
@@ -198,6 +215,22 @@ def exigir_codigos_completos(
     «Falta» es lo que `normalizar_codigo` deja vacío —ausente, vacío o de solo
     blancos—, el mismo criterio con el que el nombrado decide que falta un
     código: dos criterios del mismo concepto divergen siempre.
+
+    > **Enmienda del 2026-09-23 (F-034, H-4) · decisión del líder dentro de
+    > D-4**, aprobada por el humano («lo guardado está incompleto» → 409
+    > `CodigoNoConsta`). Un **nº de incidencia** guardado que no está vacío
+    > pero **no tiene ningún tramo** —solo separadores: `/`, ` / `, `-`— también
+    > falta: `a_codigo_de_sigrid` lo deja en cadena vacía, y hasta hoy eso
+    > llegaba al `CuerpoDeCierreInvalido` de `_codigo_de_incidencia` en el
+    > gráfico y el cierre, un **400** que decía «la petición no trae el número
+    > de incidencia» cuando lo incompleto es lo guardado. **Solo el nº de
+    > incidencia**: una obra de solo separadores sigue su camino de siempre
+    > hasta `NombradoImposible` (R24). Y **archivar no cambia** (R26): no llama
+    > a esta función —el hueco lo dice allí el nombrado—, y lo vigilan dos
+    > tests de `test_f034_codigos_en_el_erp.py` (`-k h4_r26`). Por eso no hace
+    > falta un parámetro que lo encienda solo para gráfico y cierre: son sus
+    > dos únicos llamadores, y un interruptor que nadie apaga sería un mutante
+    > que ningún test puede matar.
 
     Levanta `CodigoNoConsta` nombrando **cuál** falta —la obra antes que la
     incidencia— y **no** lo sustituye por el que traiga el cuerpo: eso volvería
@@ -213,7 +246,7 @@ def exigir_codigos_completos(
     nombrado con `NombradoImposible`, como desde F-006 (F-034 R26).
     """
     for etiqueta, codigo in _a_mirar(guardados, solo_incidencia=solo_incidencia):
-        if not normalizar_codigo(codigo):
+        if _falta(etiqueta, codigo):
             raise CodigoNoConsta(
                 f"no consta guardado {etiqueta} de este parte, así que "
                 f"{y_por_eso}: hay que teclearlo en el parte y guardarlo "

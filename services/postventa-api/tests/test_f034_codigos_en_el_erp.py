@@ -12,7 +12,11 @@ Este fichero crece por bloques (`tasks.md`):
 - **Bloque 2**: `POST /api/adjuntar` y `paso_grafico` con los cinco puertos
   inyectados (R8, R11–R17, R19, R20, R24, R27, R34, R35). El mundo —lo
   guardado y lo declarado, escritos aparte— sale de `tests/utiles_circuito.py`.
-- **Bloque 3**: `POST /api/cerrar` (R9, R16 con solo la incidencia).
+- **Bloque 3**: `POST /api/cerrar` y `paso_cierre` con los cuatro puertos
+  inyectados (R9, R11–R17, R19, R20, R27, R34, R35; R16 con solo la
+  incidencia), y **H-4**: un nº de incidencia guardado sin ningún tramo es lo
+  guardado incompleto → 409 `CodigoNoConsta` en gráfico y cierre, con archivar
+  intacto (decisión del líder del 2026-09-23 dentro de D-4).
 
 **Sin red, sin base de datos, sin IA y sin tocar el ERP** (R37).
 """
@@ -36,6 +40,7 @@ from application.pipelines.paso_archivo import paso_archivo
 from domain.models.errores import (
     CodigoNoConsta,
     CodigosNoCoinciden,
+    CuerpoDeCierreInvalido,
     CuerpoDeGraficoInvalido,
     NombradoImposible,
     ParteNoApto,
@@ -51,6 +56,8 @@ from tests.utiles_circuito import (
     OID,
     PDF,
     MundoDelAdjuntar,
+    MundoDelCierre,
+    cuerpo_de_cierre,
     formulario,
     situacion_guardada,
 )
@@ -842,3 +849,464 @@ def test_f034_r35_adjuntar_la_respuesta_sigue_teniendo_las_ocho_claves():
         "dry_run",
         "avisos",
     }
+
+
+# ==========================================================================
+# Bloque 3 · T8 · `POST /api/cerrar` con los puertos inyectados (R9–R19)
+# ==========================================================================
+#
+# **Lo más grave de la feature**: aquí el número de incidencia decide **qué
+# reclamación se cierra** en el ERP de producción, y un cierre en Sigrid no se
+# deshace desde este circuito. Mismo patrón que el Bloque 2: handler o ruta de
+# verdad con los cuatro puertos inyectados —la puerta de entorno no se evalúa y
+# el 503 no puede tapar el 409—, y cada negativo con su control positivo.
+
+
+def _mundo_del_cierre(
+    obra: str = OBRA_GUARDADA,
+    incidencia: str = INCIDENCIA_GUARDADA,
+    *,
+    estado_archivo: EstadoArchivo | None = EstadoArchivo.ARCHIVADO,
+) -> MundoDelCierre:
+    """Parte apto y archivado **según la base**, con esos códigos guardados."""
+    return MundoDelCierre(
+        situacion_guardada(
+            hash_parte=HASH,
+            codigo_obra=obra,
+            numero_incidencia=incidencia,
+            estado_archivo=estado_archivo,
+        )
+    )
+
+
+def _declarado_al_cerrar(incidencia: str = INCIDENCIA_GUARDADA, **cambios) -> dict:
+    """El cuerpo de `/cerrar`: **lo declarado**, sin `codigo_obra` (R16)."""
+    return cuerpo_de_cierre(hash_parte=HASH, numero_incidencia=incidencia, **cambios)
+
+
+def _paso_cierre_directo(mundo: MundoDelCierre, **opciones):
+    """`paso_cierre` a pelo, con los puertos del mundo y un contexto mínimo."""
+    from application.pipelines.paso_cierre import paso_cierre
+
+    ctx = ContextoParte(parte=parte_de_prueba(hash_parte=HASH, contenido=b""))
+    return paso_cierre(
+        ctx,
+        mundo.erp,
+        mundo.repositorio,
+        mundo.usuarios,
+        mundo.preferencias,
+        commit=False,
+        confirmado=False,
+        usuario_oid=OID,
+        correo=CORREO,
+        ahora=AHORA,
+        **opciones,
+    )
+
+
+def test_f034_r9_control_positivo_mismo_numero_si_cierra():
+    """El control de todo el bloque: mismo número, mismo mundo → se cierra.
+
+    Y se cierra **la guardada**: la única lectura del ERP es la de su código.
+    """
+    mundo = _mundo_del_cierre()
+
+    respuesta = mundo.cerrar(_declarado_al_cerrar(commit=True, confirmado=True))
+
+    assert respuesta["estado"] == "cerrado"
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+    assert len(mundo.erp.cierres) == 1
+
+
+@pytest.mark.parametrize("commit", [False, True], ids=["dry_run", "commit"])
+def test_f034_r9_cerrar_otra_incidencia_en_el_cuerpo_no_toca_el_erp(commit):
+    """R9, R11, R13, R14 · **caso central de la feature**.
+
+    Guardado `RS26.08/0123`, cuerpo `RS26.09/0999` → 409 y **cero** llamadas:
+    ni se resuelve el login, ni se lee ninguna reclamación, ni se cierra nada,
+    ni se escribe ninguna traza de cierre ni fila del histórico. **También en
+    dry-run** (R14): enseñar el cierre de la reclamación que nombra un cuerpo
+    que miente es enseñar otra cosa.
+    """
+    mundo = _mundo_del_cierre()
+
+    with pytest.raises(CodigosNoCoinciden) as fallo:
+        mundo.cerrar(
+            _declarado_al_cerrar(OTRA_INCIDENCIA, commit=commit, confirmado=True)
+        )
+
+    motivo = fallo.value.motivo
+    assert motivo.startswith("el nº de incidencia de la petición")
+    assert f"«{OTRA_INCIDENCIA}»" in motivo
+    assert f"«{INCIDENCIA_GUARDADA}»" in motivo
+    assert "no se ha cerrado nada" in motivo
+    assert "POST /api/parte" in motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r12_cerrar_el_cotejo_normaliza_y_no_da_409():
+    """R12 · `RS 26.08/0123` ≡ `RS26.08/0123`: el caso del 2026-09-17 no es un 409."""
+    mundo = _mundo_del_cierre()
+
+    respuesta = mundo.cerrar(_declarado_al_cerrar("RS 26.08/0123"))
+
+    assert respuesta["estado"] == "dry_run_ok"
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+
+
+@pytest.mark.parametrize("obra", ["", "0999"], ids=["sin obra guardada", "otra obra"])
+def test_f034_r16_cerrar_no_coteja_ni_exige_la_obra(obra):
+    """R16 · el cuerpo de `/cerrar` no trae `codigo_obra` y el cotejo no lo exige.
+
+    Con la obra guardada vacía —o cualquiera— el cierre sigue: allí la obra no
+    decide nada. Exigirla daría un 409 sin ninguna escritura que evitar.
+    """
+    mundo = _mundo_del_cierre(obra=obra)
+
+    respuesta = mundo.cerrar(_declarado_al_cerrar())
+
+    assert "codigo_obra" not in _declarado_al_cerrar()
+    assert respuesta["estado"] == "dry_run_ok"
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+
+
+def test_f034_r15_cerrar_sin_incidencia_guardada_es_409_y_no_usa_la_del_cuerpo():
+    """R15 · lo guardado está incompleto: 409 diciendo cuál falta, sin rellenarlo.
+
+    El cuerpo trae un número bien formado y **no** se usa para tapar el hueco:
+    eso volvería a dejar que el cuerpo eligiera qué reclamación se cierra.
+    """
+    mundo = _mundo_del_cierre(incidencia="")
+
+    with pytest.raises(CodigoNoConsta) as fallo:
+        mundo.cerrar(_declarado_al_cerrar(commit=True, confirmado=True))
+
+    assert fallo.value.motivo.startswith("no consta guardado el nº de incidencia")
+    assert "no se ha cerrado nada" in fallo.value.motivo
+    assert "POST /api/parte" in fallo.value.motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+@pytest.mark.parametrize(
+    "declarados",
+    [None, CodigosDelParte(codigo_obra="", numero_incidencia="")],
+    ids=["sin declarados", "declarado vacío"],
+)
+def test_f034_r15_paso_cierre_sin_incidencia_guardada_no_llega_al_login(declarados):
+    """R15 · vacío guardado y vacío (o nada) declarado: `CodigoNoConsta`, no un 400.
+
+    El cotejo da por iguales dos vacíos, así que lo que corta es la exigencia
+    de lo guardado completo, antes del login contra el ERP.
+    """
+    mundo = _mundo_del_cierre(incidencia="")
+
+    with pytest.raises(CodigoNoConsta):
+        _paso_cierre_directo(mundo, codigos_declarados=declarados)
+
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r13_cerrar_el_cotejo_va_antes_que_la_puerta_de_archivo():
+    """R13, `design.md` §5 · 1 bis antes que 2: primero **qué** reclamación."""
+    mundo = _mundo_del_cierre(estado_archivo=None)
+
+    with pytest.raises(CodigosNoCoinciden):
+        mundo.cerrar(_declarado_al_cerrar(OTRA_INCIDENCIA))
+
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r20_cerrar_la_puerta_de_aptitud_sigue_yendo_la_primera():
+    """R20, R21 · sin veredicto guardado sale `ParteNoApto`, como antes de F-034."""
+    mundo = MundoDelCierre(SituacionParte())
+
+    with pytest.raises(ParteNoApto):
+        mundo.cerrar(_declarado_al_cerrar(OTRA_INCIDENCIA))
+
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r17_cerrar_un_cuerpo_sin_numero_sigue_siendo_400():
+    """R17 · una petición mal formada no es un conflicto de estado."""
+    mundo = _mundo_del_cierre()
+
+    with pytest.raises(CuerpoDeCierreInvalido) as fallo:
+        mundo.cerrar(_declarado_al_cerrar(""))
+
+    assert "numero_incidencia" in fallo.value.motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r9_cerrar_el_handler_pasa_lo_declarado_solo_para_cotejar(monkeypatch):
+    """R9, R19, D-7 · el borde entrega el número **como declarado**, tal cual vino.
+
+    Ni un `numero_incidencia` suelto: va dentro de `codigos_declarados`, y
+    solo sirve para cotejar.
+    """
+    from interface_adapters.api import cerrar as modulo_cerrar
+
+    opciones: list[dict] = []
+
+    def espia(_ctx, *_puertos, **recibidas):
+        opciones.append(recibidas)
+        raise CodigosNoCoinciden("parado por el espía del test")
+
+    monkeypatch.setattr(modulo_cerrar, "paso_cierre", espia)
+
+    with pytest.raises(CodigosNoCoinciden):
+        _mundo_del_cierre().cerrar(_declarado_al_cerrar("RS 26.08/0123"))
+
+    declarados = opciones[0]["codigos_declarados"]
+    assert isinstance(declarados, CodigosDelParte)
+    assert declarados.numero_incidencia == "RS 26.08/0123"
+    assert "numero_incidencia" not in opciones[0]
+
+
+def test_f034_r19_paso_cierre_ya_no_acepta_el_numero_suelto():
+    """R19, D-7 · la firma del cierre **declara** la asimetría, como la del gráfico."""
+    import inspect
+
+    from application.pipelines.paso_cierre import paso_cierre
+
+    parametros = inspect.signature(paso_cierre).parameters
+
+    assert "numero_incidencia" not in parametros
+    assert parametros["codigos_declarados"].default is None
+
+
+def test_f034_r19_sin_declarados_el_cierre_lee_la_reclamacion_guardada():
+    """R9, R19 · el camino sin cotejo **no** puede cerrar otra reclamación."""
+    mundo = _mundo_del_cierre()
+
+    ctx = _paso_cierre_directo(mundo)
+
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+    assert ctx.cierre.estado.value == "dry_run_ok"
+
+
+def test_f034_r16_paso_cierre_con_declarados_coteja_solo_la_incidencia():
+    """R16 · desde el paso: la obra declarada no cuenta, la incidencia sí."""
+    mundo = _mundo_del_cierre()
+
+    _paso_cierre_directo(
+        mundo,
+        codigos_declarados=CodigosDelParte(
+            codigo_obra="9999", numero_incidencia=INCIDENCIA_GUARDADA
+        ),
+    )
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+
+    otro = _mundo_del_cierre()
+    with pytest.raises(CodigosNoCoinciden):
+        _paso_cierre_directo(
+            otro,
+            codigos_declarados=CodigosDelParte(
+                codigo_obra=OBRA_GUARDADA, numero_incidencia=OTRA_INCIDENCIA
+            ),
+        )
+    assert otro.nada_ha_tocado_el_erp()
+
+
+@pytest.mark.parametrize(
+    ("incidencia_guardada", "declarada", "error"),
+    [
+        (INCIDENCIA_GUARDADA, OTRA_INCIDENCIA, "CodigosNoCoinciden"),
+        ("", INCIDENCIA_GUARDADA, "CodigoNoConsta"),
+    ],
+    ids=["CodigosNoCoinciden", "CodigoNoConsta"],
+)
+def test_f034_r27_cerrar_por_la_ruta_los_dos_errores_nuevos_son_409(
+    monkeypatch, caplog, incidencia_guardada, declarada, error
+):
+    """R27, R35, R36 · 409 con `{"error": <motivo>}` y nada más; al log, el tipo."""
+    mundo = _mundo_del_cierre(incidencia=incidencia_guardada)
+
+    with caplog.at_level("DEBUG"):
+        respuesta = mundo.por_la_ruta(monkeypatch, _declarado_al_cerrar(declarada))
+
+    assert respuesta.status_code == 409
+    cuerpo = json.loads(respuesta.get_body())
+    assert set(cuerpo) == {"error"}
+    assert cuerpo["error"]
+    assert cuerpo["error"] not in caplog.text
+    assert error in caplog.text
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r34_cerrar_el_motivo_no_lleva_nada_del_papel_salvo_el_codigo():
+    """R34 · ni el DNI, ni la descripción, ni el correo en un 409 de códigos."""
+    mundo = _mundo_del_cierre()
+
+    with pytest.raises(CodigosNoCoinciden) as fallo:
+        mundo.cerrar(_declarado_al_cerrar(OTRA_INCIDENCIA))
+
+    assert DNI_INVENTADO not in fallo.value.motivo
+    assert "Sellado" not in fallo.value.motivo
+    assert CORREO not in fallo.value.motivo
+    assert OID not in fallo.value.motivo
+
+
+def test_f034_r35_cerrar_la_respuesta_sigue_teniendo_las_seis_claves():
+    """R35 · ni una clave más en la respuesta de `POST /api/cerrar`."""
+    respuesta = _mundo_del_cierre().cerrar(_declarado_al_cerrar())
+
+    assert set(respuesta) == {
+        "hash_parte",
+        "numero_incidencia",
+        "estado",
+        "filas_afectadas",
+        "dry_run",
+        "avisos",
+    }
+
+
+# ==========================================================================
+# H-4 · decisión del líder del 2026-09-23 (dentro de D-4, aprobada por el
+# humano): un nº de incidencia **guardado** sin ningún tramo —solo
+# separadores— es lo guardado incompleto → 409 `CodigoNoConsta` en gráfico y
+# cierre; **archivar no cambia** (R26).
+# ==========================================================================
+
+#: Números guardados que no están vacíos pero no tienen ningún tramo:
+#: `a_codigo_de_sigrid` los deja en cadena vacía. El último es un guion largo,
+#: que `normalizar_codigo` traduce a guion normal.
+SIN_TRAMOS = ["/", " / ", "-", "–"]
+
+
+@pytest.mark.parametrize("incidencia", SIN_TRAMOS)
+@pytest.mark.parametrize("solo_incidencia", [False, True])
+def test_f034_h4_codigos_incidencia_sin_tramos_es_lo_guardado_incompleto(
+    incidencia, solo_incidencia
+):
+    """H-4 · la pieza compartida: sin ningún tramo, el nº de incidencia **falta**.
+
+    Con y sin `solo_incidencia`: los dos pasos que escriben en el ERP la
+    llaman, y en los dos el número es lo que elige la reclamación. El mensaje
+    es el mismo que el del número vacío, porque se arregla igual.
+    """
+    with pytest.raises(CodigoNoConsta) as fallo:
+        exigir_codigos_completos(
+            _guardados(incidencia=incidencia),
+            solo_incidencia=solo_incidencia,
+            y_por_eso=Y_POR_ESO,
+        )
+
+    assert fallo.value.motivo == (
+        f"no consta guardado el nº de incidencia de este parte, así que "
+        f"{Y_POR_ESO}: hay que teclearlo en el parte y guardarlo (POST "
+        f"/api/parte) antes de volver a intentarlo"
+    )
+
+
+def test_f034_h4_codigos_una_obra_sin_tramos_no_es_codigo_no_consta():
+    """H-4, R24 · la decisión es sobre el **nº de incidencia**, no sobre la obra.
+
+    Una obra guardada `/` sigue su camino de siempre: en el gráfico acaba en
+    `NombradoImposible` (un carácter que SharePoint no admite), que es su caso
+    propio y tiene que seguir alcanzable.
+    """
+    exigir_codigos_completos(_guardados(obra="/"), y_por_eso=Y_POR_ESO)
+
+    mundo = _mundo_del_adjuntar(obra="/")
+    with pytest.raises(NombradoImposible):
+        mundo.adjuntar(_declarado(obra="/"))
+    assert mundo.graficos.llamadas == []
+
+
+@pytest.mark.parametrize(
+    "declarada", ["/", INCIDENCIA_GUARDADA], ids=["la misma", "una buena"]
+)
+def test_f034_h4_adjuntar_incidencia_guardada_sin_tramos_es_409_codigo_no_consta(
+    monkeypatch, declarada
+):
+    """H-4 · `/api/adjuntar`: 409 `CodigoNoConsta`, no el 400 que mentía.
+
+    Antes salía `CuerpoDeCierreInvalido` («la petición no trae el número de
+    incidencia»): un 400 que mandaba a mirar el cuerpo cuando lo incompleto es
+    lo guardado. Da igual lo que declare el cuerpo: lo completo va antes que el
+    cotejo.
+    """
+    mundo = _mundo_del_adjuntar(incidencia="/")
+
+    respuesta = mundo.por_la_ruta(monkeypatch, _declarado(incidencia=declarada))
+
+    assert respuesta.status_code == 409
+    motivo = json.loads(respuesta.get_body())["error"]
+    assert motivo.startswith("no consta guardado el nº de incidencia")
+    assert "no se ha adjuntado nada" in motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+@pytest.mark.parametrize(
+    "declarada", ["/", INCIDENCIA_GUARDADA], ids=["la misma", "una buena"]
+)
+def test_f034_h4_cerrar_incidencia_guardada_sin_tramos_es_409_codigo_no_consta(
+    monkeypatch, declarada
+):
+    """H-4 · `/api/cerrar`: lo mismo, y aquí es lo que elige qué se cierra."""
+    mundo = _mundo_del_cierre(incidencia="/")
+
+    respuesta = mundo.por_la_ruta(
+        monkeypatch, _declarado_al_cerrar(declarada, commit=True, confirmado=True)
+    )
+
+    assert respuesta.status_code == 409
+    motivo = json.loads(respuesta.get_body())["error"]
+    assert motivo.startswith("no consta guardado el nº de incidencia")
+    assert "no se ha cerrado nada" in motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+#: Lo que `POST /api/archivar` dice hoy de un nº guardado de solo separadores,
+#: medido antes de H-4 (sonda del 2026-09-23 sobre `0837ef6`). Es un
+#: `NombradoImposible` y tiene que seguir siéndolo, byte a byte (R26).
+MENSAJE_DE_ARCHIVAR_SIN_TRAMOS = (
+    "el nº de incidencia del parte es solo separadores («{normalizado}»): sin "
+    "ningún tramo no hay nombre que componer"
+)
+
+
+@pytest.mark.parametrize(
+    ("incidencia", "normalizado"), [("/", "/"), (" / ", "/"), ("-", "-")]
+)
+def test_f034_h4_r26_archivar_no_cambia_con_una_incidencia_sin_tramos(
+    incidencia, normalizado
+):
+    """H-4, R26 · **archivar queda idéntico**: `NombradoImposible`, no `CodigoNoConsta`.
+
+    Archivar no llama a `exigir_codigos_completos` (allí el hueco lo dice el
+    nombrado, como desde F-006), así que H-4 no puede alcanzarlo; este test lo
+    comprueba por comportamiento, con el mensaje literal de antes, y sin haber
+    tocado la biblioteca ni la traza.
+    """
+    biblioteca = BibliotecaFalsa()
+    archivador = ArchivoPortFalso(biblioteca)
+    repositorio = RepositorioFalso(situacion=_situacion(incidencia=incidencia))
+
+    with pytest.raises(NombradoImposible) as error:
+        paso_archivo(
+            contexto_apto(hash_parte=HASH),
+            archivador,
+            repositorio,
+            carpeta_base=CARPETA_BASE,
+            ahora=datetime(2026, 9, 23, 10, 0, tzinfo=UTC),
+            codigos_declarados=_guardados(incidencia=incidencia),
+        )
+
+    assert error.value.motivo == MENSAJE_DE_ARCHIVAR_SIN_TRAMOS.format(
+        normalizado=normalizado
+    )
+    assert archivador.llamadas == []
+    assert repositorio.llamadas_guardar_archivo == 0
+
+
+def test_f034_h4_r26_archivar_no_llama_a_la_exigencia_de_completos():
+    """H-4, R26 · el camino por el que H-4 podría llegar a archivar no existe.
+
+    Si algún día `paso_archivo` empezara a llamar a `exigir_codigos_completos`,
+    el criterio de H-4 cambiaría su comportamiento en silencio; este control
+    obliga a volver a decidirlo.
+    """
+    import inspect
+
+    assert "exigir_codigos_completos(" not in inspect.getsource(modulo_paso_archivo)

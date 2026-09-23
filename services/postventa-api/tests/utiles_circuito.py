@@ -31,10 +31,16 @@ Montarlo aquí una vez tiene dos ventajas que no son de comodidad:
 **Sin red, sin base de datos, sin IA y sin tocar el ERP** (R37). Ni un dato
 real: el PDF es sintético y ni el login, ni el correo, ni el `oid` son de
 nadie.
+
+El Bloque 3 (T8) añade el mundo de `POST /api/cerrar` —`MundoDelCierre` y
+`cuerpo_de_cierre`— con las mismas dos reglas: lo guardado y lo declarado se
+escriben aparte, y los cuatro puertos van inyectados para que el 503 de la
+ventana no tape la puerta.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
@@ -45,9 +51,11 @@ from domain.models.grafico import FIRMA_PDF
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
     EstadoArchivo,
+    EstadoGrafico,
     PreferenciasUsuario,
     ResultadoGuardado,
     TrazaArchivo,
+    TrazaGrafico,
 )
 
 from tests.utiles_pg import RepositorioEnMemoria
@@ -61,9 +69,12 @@ __all__ = [
     "OID",
     "PDF",
     "MundoDelAdjuntar",
+    "MundoDelCierre",
     "Preferencias",
     "Usuarios",
+    "cuerpo_de_cierre",
     "formulario",
+    "peticion_json",
     "peticion_multipart",
     "reclamacion",
     "situacion_guardada",
@@ -278,4 +289,125 @@ def peticion_multipart(campos: dict[str, str], *, contenido: bytes = PDF):
         url="/api/adjuntar",
         headers={"Content-Type": f"multipart/form-data; boundary={frontera}"},
         body=cuerpo,
+    )
+
+
+# --------------------------------------------------------------------------
+# Bloque 3 (T8) · el mundo de `POST /api/cerrar`
+# --------------------------------------------------------------------------
+
+
+def cuerpo_de_cierre(
+    *,
+    hash_parte: str,
+    numero_incidencia: str,
+    estado_archivo: str = "archivado",
+    **cambios: Any,
+) -> dict[str, Any]:
+    """El cuerpo JSON de `POST /api/cerrar`: **lo declarado**, nada más.
+
+    Sin `codigo_obra`, como el de verdad (`cerrar.py`, R16): el cierre solo
+    coteja el número de incidencia. `commit` y `confirmado` van en `cambios`
+    como booleanos de JSON, que es lo único que el borde toma por `true`.
+    """
+    campos: dict[str, Any] = {
+        "hash": hash_parte,
+        "numero_incidencia": numero_incidencia,
+        "veredicto": "apto",
+        "destino": "archivo_y_cierre",
+        "estado_archivo": estado_archivo,
+        "usuario_oid": OID,
+        "correo": CORREO,
+    }
+    campos.update(cambios)
+    return campos
+
+
+class MundoDelCierre:
+    """Los cuatro puertos de `POST /api/cerrar`, inyectados y observables.
+
+    Gemelo de `MundoDelAdjuntar`: `cerrar(...)` llama al **handler** de verdad
+    (`interface_adapters.api.cerrar.cerrar_incidencia`) y `por_la_ruta(...)` a
+    la **ruta** de verdad (`function_app.cerrar`) con el handler envuelto para
+    que reciba estos puertos.
+
+    La traza del gráfico **adjuntado** está puesta por defecto: es el mundo en
+    el que un cierre con `commit` puede ocurrir (F-012 R2), y sin ella el
+    control positivo con `commit` se pararía en `ParteNoAdjuntado` y no
+    demostraría nada.
+
+    `nada_ha_tocado_el_erp()` es la pregunta de R13 para el cierre: ni una
+    lectura de la reclamación, ni una verificación de login, ni un cierre, ni
+    una traza de cierre, ni una fila del histórico, ni siquiera la consulta de
+    la traza del gráfico (que en el paso va **después** del dry-run).
+    """
+
+    def __init__(
+        self,
+        situacion: SituacionParte,
+        *,
+        codigo_en_sigrid: str = "RS26.08/0123",
+    ) -> None:
+        self.erp = ErpEnMemoria(reclamacion(codigo_en_sigrid))
+        self.repositorio = RepositorioEnMemoria(
+            situacion=situacion,
+            traza_grafico=TrazaGrafico(
+                hash_parte="",
+                numero_incidencia=codigo_en_sigrid,
+                estado=EstadoGrafico.ADJUNTADO,
+                adjuntado_at_utc=AHORA,
+            ),
+        )
+        self.usuarios = Usuarios()
+        self.preferencias = Preferencias()
+
+    def _puertos(self) -> dict[str, Any]:
+        return {
+            "erp": self.erp,
+            "repositorio": self.repositorio,
+            "usuarios": self.usuarios,
+            "preferencias": self.preferencias,
+            "ahora": AHORA,
+        }
+
+    def cerrar(self, cuerpo: dict[str, Any]) -> dict:
+        """El handler, con los puertos de este mundo."""
+        from interface_adapters.api.cerrar import cerrar_incidencia
+
+        return cerrar_incidencia(cuerpo, **self._puertos())
+
+    def por_la_ruta(self, monkeypatch, cuerpo: dict[str, Any]):
+        """La ruta HTTP de verdad, con el handler de verdad y estos puertos."""
+        import function_app
+        from interface_adapters.api.cerrar import cerrar_incidencia
+
+        puertos = self._puertos()
+
+        def con_los_puertos(del_cuerpo: Any) -> dict:
+            return cerrar_incidencia(del_cuerpo, **puertos)
+
+        monkeypatch.setattr(function_app, "cerrar_incidencia", con_los_puertos)
+        return function_app.cerrar(peticion_json(cuerpo))
+
+    def nada_ha_tocado_el_erp(self) -> bool:
+        """R13 · cero llamadas al ERP, cero trazas y cero filas de estado."""
+        return (
+            self.erp.lecturas == []
+            and self.erp.verificaciones == []
+            and self.erp.cierres == []
+            and self.repositorio.cierres == []
+            and self.repositorio.graficos_consultados == []
+            and self.repositorio.decisiones == []
+        )
+
+
+def peticion_json(cuerpo: dict[str, Any], *, ruta: str = "/api/cerrar"):
+    """Una petición JSON a la ruta indicada (por defecto, `/api/cerrar`)."""
+    import azure.functions as func
+
+    return func.HttpRequest(
+        method="POST",
+        url=ruta,
+        headers={"Content-Type": "application/json"},
+        body=json.dumps(cuerpo).encode("utf-8"),
     )

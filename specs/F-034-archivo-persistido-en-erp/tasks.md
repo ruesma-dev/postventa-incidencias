@@ -126,7 +126,7 @@
 
 ## Bloque 3 · `/api/cerrar` y `paso_cierre`
 
-- [ ] **T8 (RED)**: ampliar `tests/test_f034_codigos_en_el_erp.py` con los
+- [x] **T8 (RED)**: ampliar `tests/test_f034_codigos_en_el_erp.py` con los
       casos de `POST /api/cerrar`, **antes** de tocar el paso. Caso central de
       R9: situación con `numero_incidencia="RS26.08/0123"`, cuerpo con
       `"RS26.09/0999"` → 409, **cero** llamadas al doble del ERP y **ninguna**
@@ -134,6 +134,11 @@
       `codigo_obra` y el cotejo no lo exige.
       **Verificación**: los tests nuevos **en rojo**, con la salida en
       `progress/impl_F-034.md`.
+      **Hecha (2026-09-23)**: 37 fallos y 97 verdes, con motivos y trazas
+      centrales en `progress/impl_F-034.md` §7.1. Incluye los casos de la
+      mitad A desde `/api/cerrar` (en `test_f034_archivo_persistido.py`) y los
+      de **H-4** (decisión del líder del 2026-09-23). El mundo del cierre,
+      `MundoDelCierre`, en `tests/utiles_circuito.py`.
 
 - [ ] **T9**: `application/pipelines/paso_cierre.py` · el cotejo en **1 bis**
       con `solo_incidencia=True`, `_codigo_de_incidencia` con el número

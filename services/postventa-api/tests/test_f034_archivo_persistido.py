@@ -19,7 +19,9 @@ Aquí se prueba:
   borde deja de fabricar la traza (R4) y `estado_archivo` sigue siendo
   obligatorio y validado (R6). Sin una sola consulta más (R2).
 
-`POST /api/cerrar` es el Bloque 3 (T8–T10) y crece aquí entonces.
+- **desde `POST /api/cerrar`** (Bloque 3, T8), con los cuatro puertos
+  inyectados: lo mismo, y aquí lo que está en juego es **cerrar** en el ERP de
+  producción una incidencia cuyo parte no consta guardado en ningún sitio.
 
 **Sin red, sin base de datos, sin IA y sin tocar el ERP** (R37).
 """
@@ -29,10 +31,15 @@ from __future__ import annotations
 import json
 
 import pytest
+from application.pipelines import paso_cierre as modulo_paso_cierre
 from application.pipelines import paso_grafico as modulo_paso_grafico
 from application.pipelines import puerta_de_estado
 from application.pipelines.contexto_parte import ContextoParte
-from domain.models.errores import CuerpoDeGraficoInvalido, ParteNoArchivado
+from domain.models.errores import (
+    CuerpoDeCierreInvalido,
+    CuerpoDeGraficoInvalido,
+    ParteNoArchivado,
+)
 from domain.models.estado import SituacionParte
 from domain.models.persistencia import EstadoArchivo, TrazaArchivo
 from domain.models.remesa import ModoDeteccion, ParteTroceado
@@ -40,6 +47,8 @@ from domain.models.remesa import ModoDeteccion, ParteTroceado
 from tests.utiles_circuito import (
     PDF,
     MundoDelAdjuntar,
+    MundoDelCierre,
+    cuerpo_de_cierre,
     formulario,
     situacion_guardada,
 )
@@ -51,6 +60,9 @@ INCIDENCIA = "RS26.08/0123"
 #: La cola que el gráfico pone al mensaje de la puerta. Es, byte a byte, la de
 #: `paso_grafico._exigir_archivado` antes de F-034.
 COLA_DEL_GRAFICO = "no se adjunta a la reclamación: primero el documento, después el ERP"
+#: Y la del cierre, byte a byte la de `paso_cierre._exigir_archivado` antes de
+#: F-034.
+COLA_DEL_CIERRE = "no se cierra la incidencia: primero el documento, después el cierre"
 
 #: Los estados guardados que **no** abren la puerta, con cómo los nombra el
 #: mensaje: `None` es «no hay traza» (el `LEFT JOIN` que no casa).
@@ -363,5 +375,158 @@ def test_f034_r6_adjuntar_el_modulo_dice_que_estado_archivo_ya_no_decide():
     from interface_adapters.api import adjuntar as modulo_adjuntar
 
     cabecera = modulo_adjuntar.__doc__ or ""
+    assert "F-034" in cabecera
+    assert "estado_archivo" in cabecera
+
+
+# ==========================================================================
+# Bloque 3 · T8 · desde `POST /api/cerrar`, con los puertos inyectados
+# ==========================================================================
+
+
+def test_f034_r1_puerta_el_cierre_usa_la_compartida_y_no_su_copia():
+    """R1, D-6 · la copia privada del cierre desaparece, como la del gráfico."""
+    assert not hasattr(modulo_paso_cierre, "_exigir_archivado")
+    assert (
+        modulo_paso_cierre.exigir_parte_archivado
+        is puerta_de_estado.exigir_parte_archivado
+    )
+
+
+def _mundo_del_cierre(estado_archivo: EstadoArchivo | None) -> MundoDelCierre:
+    """Parte apto con su nº de incidencia guardado y el archivo que pida el caso."""
+    return MundoDelCierre(
+        situacion_guardada(
+            hash_parte=HASH,
+            codigo_obra=OBRA,
+            numero_incidencia=INCIDENCIA,
+            estado_archivo=estado_archivo,
+        )
+    )
+
+
+def _cuerpo_de_cierre(**cambios) -> dict:
+    """Lo declarado en `/cerrar`: el mismo nº que el guardado, salvo que se diga."""
+    return cuerpo_de_cierre(hash_parte=HASH, numero_incidencia=INCIDENCIA, **cambios)
+
+
+def test_f034_r3_control_positivo_el_mismo_mundo_con_archivo_si_cierra():
+    """El control de los casos de abajo: con la traza guardada, **se cierra**.
+
+    Mismo mundo y mismo cuerpo que los casos negativos; solo cambia lo
+    guardado. Sin él, un 409 de abajo podría salir de cualquier otra cosa.
+    """
+    mundo = _mundo_del_cierre(EstadoArchivo.ARCHIVADO)
+
+    respuesta = mundo.cerrar(_cuerpo_de_cierre(commit=True, confirmado=True))
+
+    assert respuesta["estado"] == "cerrado"
+    assert len(mundo.erp.cierres) == 1
+
+
+@pytest.mark.parametrize("commit", [False, True], ids=["dry_run", "commit"])
+@pytest.mark.parametrize(("guardado", "nombre"), ESTADOS_QUE_NO_ABREN)
+def test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp(
+    guardado, nombre, commit
+):
+    """R3, R5 · **caso central del cierre**: el cuerpo dice `archivado` y la base no.
+
+    409 con el `ParteNoArchivado` de siempre —el mensaje, byte a byte el de
+    antes, nombrando el estado **guardado**— y **cero** llamadas al ERP, cero
+    trazas de cierre y cero filas del histórico. También en dry-run.
+    """
+    mundo = _mundo_del_cierre(guardado)
+
+    with pytest.raises(ParteNoArchivado) as fallo:
+        mundo.cerrar(
+            _cuerpo_de_cierre(
+                estado_archivo="archivado", commit=commit, confirmado=True
+            )
+        )
+
+    assert fallo.value.motivo == (
+        f"este parte no consta archivado (estado del archivo: {nombre}), "
+        f"así que {COLA_DEL_CIERRE}"
+    )
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r3_cerrar_por_la_ruta_es_409_con_el_motivo_y_nada_mas(monkeypatch):
+    """R3, R27 · lo mismo por la ruta HTTP de verdad: el 409 del `except` real."""
+    mundo = _mundo_del_cierre(None)
+
+    respuesta = mundo.por_la_ruta(
+        monkeypatch, _cuerpo_de_cierre(estado_archivo="archivado")
+    )
+
+    assert respuesta.status_code == 409
+    cuerpo = json.loads(respuesta.get_body())
+    assert set(cuerpo) == {"error"}
+    assert "(estado del archivo: ninguno)" in cuerpo["error"]
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+@pytest.mark.parametrize("del_cuerpo", ["pendiente", "error"])
+def test_f034_r7_cerrar_cuerpo_corto_con_archivo_guardado_pasa(del_cuerpo):
+    """R7 · **manda lo guardado**: si la base dice `archivado`, se sigue.
+
+    Antes de F-034 esto daba `ParteNoArchivado`, porque decidía el cuerpo.
+    """
+    mundo = _mundo_del_cierre(EstadoArchivo.ARCHIVADO)
+
+    respuesta = mundo.cerrar(_cuerpo_de_cierre(estado_archivo=del_cuerpo))
+
+    assert respuesta["estado"] == "dry_run_ok"
+    assert mundo.erp.lecturas == [INCIDENCIA]
+    assert mundo.erp.cierres == []
+
+
+@pytest.mark.parametrize("valor", ["", "archivadisimo"])
+def test_f034_r6_cerrar_estado_archivo_sigue_siendo_obligatorio_y_validado(valor):
+    """R6, R17, R18 · el contrato HTTP de `/cerrar` no cambia: falta o no existe → 400."""
+    mundo = _mundo_del_cierre(EstadoArchivo.ARCHIVADO)
+
+    with pytest.raises(CuerpoDeCierreInvalido) as fallo:
+        mundo.cerrar(_cuerpo_de_cierre(estado_archivo=valor))
+
+    assert "estado_archivo" in fallo.value.motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r4_cerrar_el_borde_ya_no_fabrica_la_traza_de_archivo(monkeypatch):
+    """R4 · en `/cerrar` también: el contexto llega al paso **sin** `TrazaArchivo`."""
+    from interface_adapters.api import cerrar as modulo_cerrar
+
+    recibidos: list[ContextoParte] = []
+
+    def espia(ctx, *_puertos, **_opciones):
+        recibidos.append(ctx)
+        raise ParteNoArchivado("parado por el espía del test")
+
+    monkeypatch.setattr(modulo_cerrar, "paso_cierre", espia)
+
+    with pytest.raises(ParteNoArchivado):
+        _mundo_del_cierre(EstadoArchivo.ARCHIVADO).cerrar(
+            _cuerpo_de_cierre(estado_archivo="archivado")
+        )
+
+    assert len(recibidos) == 1
+    assert recibidos[0].archivo is None
+
+
+def test_f034_r2_cerrar_la_traza_guardada_no_cuesta_ninguna_consulta_mas():
+    """R2 · una sola consulta de situación por petición, la de la puerta de aptitud."""
+    mundo = _mundo_del_cierre(EstadoArchivo.ARCHIVADO)
+
+    mundo.cerrar(_cuerpo_de_cierre())
+
+    assert mundo.repositorio.situaciones_consultadas == [HASH]
+
+
+def test_f034_r6_cerrar_el_modulo_dice_que_estado_archivo_ya_no_decide():
+    """R6 · la enmienda fechada en el docstring de `cerrar.py`, como en `adjuntar.py`."""
+    from interface_adapters.api import cerrar as modulo_cerrar
+
+    cabecera = modulo_cerrar.__doc__ or ""
     assert "F-034" in cabecera
     assert "estado_archivo" in cabecera

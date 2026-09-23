@@ -5,11 +5,13 @@
 
 Resumen: **47 features**, 27 abiertas, 20 terminadas.
 
+En curso: **F-013**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 0 | spec lista | critico | `feature/F-013-archivo-posventa` |
+| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 0 | en curso | critico | `feature/F-013-archivo-posventa` |
 | F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | pendiente | estandar | `feature/F-035-portal-posventa` |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | pendiente | critico | `feature/F-036-importar-excel` |
 | F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 3 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
@@ -66,7 +68,7 @@ Resumen: **47 features**, 27 abiertas, 20 terminadas.
 
 ### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
 
-estado **spec lista** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
+estado **en curso** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
 
 Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
 

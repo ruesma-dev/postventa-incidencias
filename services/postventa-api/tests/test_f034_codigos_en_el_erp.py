@@ -1380,3 +1380,23 @@ def test_f034_r13_cerrar_control_positivo_el_doble_apunta_el_login():
     assert respuesta["estado"] == "dry_run_ok"
     assert mundo.usuarios.llamadas == [("resolver_login", OID)]
     assert not mundo.nada_ha_tocado_el_erp()
+
+
+# ==========================================================================
+# Corrección de la review (H-R2) · R14 con nombre propio en cada endpoint
+# ==========================================================================
+#
+# R37 pide un test con nombre trazable por requisito. R14 (el cotejo corta
+# **también en dry-run**) ya lo cubrían los casos `[dry_run]` de R9 y R11;
+# estos alias los ejecutan con su nombre, **sin ninguna aserción nueva ni
+# cambiada**: el cuerpo es la llamada al caso de siempre.
+
+
+def test_f034_r14_adjuntar_en_dry_run_otra_incidencia_no_toca_el_erp():
+    """R14 · alias del caso `[dry_run]` de R11 en `POST /api/adjuntar`."""
+    test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp(commit="")
+
+
+def test_f034_r14_cerrar_en_dry_run_otra_incidencia_no_toca_el_erp():
+    """R14 · alias del caso `[dry_run]` de R9 en `POST /api/cerrar`."""
+    test_f034_r9_cerrar_otra_incidencia_en_el_cuerpo_no_toca_el_erp(commit=False)

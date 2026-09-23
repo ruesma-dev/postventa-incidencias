@@ -530,3 +530,32 @@ def test_f034_r6_cerrar_el_modulo_dice_que_estado_archivo_ya_no_decide():
     cabecera = modulo_cerrar.__doc__ or ""
     assert "F-034" in cabecera
     assert "estado_archivo" in cabecera
+
+
+# ==========================================================================
+# Corrección de la review (H-R2) · R14 con nombre propio en cada endpoint
+# ==========================================================================
+#
+# R14 (la puerta corta **también en dry-run**) ya lo cubrían los casos
+# `[dry_run]` de R3; estos alias los ejecutan con su nombre, **sin ninguna
+# aserción nueva ni cambiada**: el cuerpo es la llamada al caso de siempre.
+
+
+@pytest.mark.parametrize(("guardado", "nombre"), ESTADOS_QUE_NO_ABREN)
+def test_f034_r14_adjuntar_en_dry_run_sin_archivo_guardado_no_toca_el_erp(
+    guardado, nombre
+):
+    """R14 · alias de los casos `[dry_run]` de R3 en `POST /api/adjuntar`."""
+    test_f034_r3_adjuntar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp(
+        guardado, nombre, commit=""
+    )
+
+
+@pytest.mark.parametrize(("guardado", "nombre"), ESTADOS_QUE_NO_ABREN)
+def test_f034_r14_cerrar_en_dry_run_sin_archivo_guardado_no_toca_el_erp(
+    guardado, nombre
+):
+    """R14 · alias de los casos `[dry_run]` de R3 en `POST /api/cerrar`."""
+    test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp(
+        guardado, nombre, commit=False
+    )

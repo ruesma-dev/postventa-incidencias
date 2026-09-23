@@ -22,11 +22,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import paso_cierre
 from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
 from domain.models.errores import (
     CierreFallido,
+    CodigoNoConsta,
     CuerpoDeCierreInvalido,
     EstadoNoCerrable,
     ParteNoApto,
@@ -48,7 +50,11 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
-from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
+from tests.utiles_pg import (
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import ErpEnMemoria
 
 AHORA = datetime(2026, 8, 26, 9, 46, 33, tzinfo=UTC)
@@ -56,6 +62,11 @@ HASH = "hash-inventado-del-parte"
 OID = "oid-inventado-para-el-test"
 CORREO = "fulanito@ejemplo.invalido"
 INCIDENCIA = "RS26.08 - 0123"
+
+#: F-034 · lo que declara el cuerpo de `/cerrar`: el mismo nº que el guardado,
+#: que es lo que manda el borde en el caso normal. Sin obra: el cuerpo de
+#: `/cerrar` no la trae (R16).
+DECLARADOS = CodigosDelParte(codigo_obra="", numero_incidencia=INCIDENCIA)
 
 #: La traza del gráfico **adjuntado**, que F-012 convirtió en precondición del
 #: `commit` (su R2). No es material de F-009: es el estado del mundo en el que
@@ -158,6 +169,7 @@ def _contexto(
                 clasificacion_firma=ClasificacionFirma.HUMANA,
                 observaciones=None,
                 confianza_observaciones=0,
+                numero_incidencia=INCIDENCIA,
             )
             if con_validacion
             else None
@@ -187,11 +199,21 @@ def _cerrar(
     mira el del contexto, así que el ayudante lo deja también en el doble antes
     de llamar. No inventa ninguno ni pisa la situación que el caso haya
     preparado: el porqué entero está en `tests/utiles_pg.py`.
+
+    **Enmienda del 2026-09-23 (F-034).** Lo mismo con la traza de archivo y el
+    nº de incidencia, que desde F-034 el cierre lee de lo **guardado**: la
+    traza que el caso declara en el contexto se deja también en el doble
+    (`con_el_archivo_guardado`, con las mismas dos reglas), el veredicto del
+    contexto lleva el nº con el que se guardó el parte, y el declarado en el
+    cuerpo se pasa **igual** al guardado, que es lo que hace el borde en el
+    caso normal. El cotejo no se afloja: los casos de divergencia viven en
+    `test_f034_codigos_en_el_erp.py`.
     """
     ctx = ctx if ctx is not None else _contexto()
     if repositorio is None:
         repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_cierre(
         ctx,
@@ -203,7 +225,7 @@ def _cerrar(
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
+        codigos_declarados=DECLARADOS,
         ahora=AHORA,
     )
 
@@ -329,13 +351,24 @@ def test_f009_r7_una_incidencia_que_no_esta_en_el_erp_no_cierra_nada():
 
 
 def test_f009_r47_sin_numero_de_incidencia_no_se_pregunta_al_erp():
-    """Sin código no hay a quién preguntar, y preguntar por «» sería absurdo."""
+    """Sin código no hay a quién preguntar, y preguntar por «» sería absurdo.
+
+    **Enmienda del 2026-09-23 (F-034 R15, D-4).** El número ya no llega
+    suelto: sale de lo **guardado**, y uno guardado en blanco es lo guardado
+    incompleto → `CodigoNoConsta` (409), no el `CuerpoDeCierreInvalido` (400)
+    de antes, que mandaba a mirar un cuerpo que estaba bien. Lo que este
+    test vigila no cambia: **no se pregunta al ERP**.
+    """
+    from dataclasses import replace
+
     erp = ErpEnMemoria(_reclamacion())
     ctx = _contexto()
+    ctx.validacion = replace(ctx.validacion, numero_incidencia="   ")
     repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
-    with pytest.raises(CuerpoDeCierreInvalido):
+    with pytest.raises(CodigoNoConsta):
         paso_cierre(
             ctx,
             erp,
@@ -346,7 +379,9 @@ def test_f009_r47_sin_numero_de_incidencia_no_se_pregunta_al_erp():
             confirmado=False,
             usuario_oid=OID,
             correo=CORREO,
-            numero_incidencia="   ",
+            codigos_declarados=CodigosDelParte(
+                codigo_obra="", numero_incidencia="   "
+            ),
             ahora=AHORA,
         )
 
@@ -548,6 +583,7 @@ def test_f009_r32_sin_login_confirmado_no_se_escribe_en_el_erp():
     ctx = _contexto()
     repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     with pytest.raises(UsuarioSigridInexistente):
         paso_cierre(
@@ -560,7 +596,7 @@ def test_f009_r32_sin_login_confirmado_no_se_escribe_en_el_erp():
             confirmado=True,
             usuario_oid=OID,
             correo=CORREO,
-            numero_incidencia=INCIDENCIA,
+            codigos_declarados=DECLARADOS,
             ahora=AHORA,
         )
 

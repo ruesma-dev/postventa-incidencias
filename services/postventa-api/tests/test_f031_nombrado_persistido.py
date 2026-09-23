@@ -31,9 +31,15 @@ from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
+
+# Enmienda del 2026-09-23 (F-034), aprobada por el humano ese día («si» a la
+# opción (a) de progress/impl_F-034.md §2.4): `_codigos_guardados` se mudó a
+# `codigos_del_parte.py` sin cambiar ni una regla. Solo cambia este import.
+from application.pipelines.codigos_del_parte import (
+    codigos_guardados as _codigos_guardados,
+)
 from application.pipelines.paso_archivo import (
     CodigosDelParte,
-    _codigos_guardados,
     paso_archivo,
 )
 from domain.models.errores import NombradoImposible

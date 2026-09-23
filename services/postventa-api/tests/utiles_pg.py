@@ -35,6 +35,7 @@ __all__ = [
     "Ejecutada",
     "RepositorioComoLaBase",
     "RepositorioEnMemoria",
+    "con_el_archivo_guardado",
     "con_el_veredicto_guardado",
 ]
 
@@ -454,6 +455,60 @@ def con_el_veredicto_guardado(repositorio: Any, ctx: Any) -> Any:
         situacion = SituacionParte()
     if situacion.validacion is None:
         repositorio.situacion = replace(situacion, validacion=ctx.validacion)
+    return repositorio
+
+
+def con_el_archivo_guardado(repositorio: Any, ctx: Any) -> Any:
+    """F-034 · deja en el doble la traza de archivo que la base tendría.
+
+    El hermano de `con_el_veredicto_guardado`, y por lo mismo. Desde F-034 la
+    puerta de archivo de `paso_grafico` lee la traza **guardada**
+    (`ctx.situacion.archivo`, la de `postventa.archivos` que F-033 trajo a la
+    consulta de situación) y no vuelve a mirar `ctx.archivo`. Los tests que
+    ejercitan *otra cosa* del paso —el fichero, la idempotencia, el dry-run,
+    los logs— preparaban el archivo solo en el contexto, porque hasta F-034 era
+    de ahí de donde salía; al mudarse la fuente se quedarían parados en la
+    puerta y el rojo no diría nada de lo que cada uno viene a probar.
+
+    **No afloja la puerta**: pone el mundo en su sitio. Cuando una petición
+    llega de verdad a `/api/adjuntar`, la traza del archivo ya está en la
+    base —la escribió `POST /api/archivar`—. Y las mismas dos reglas que su
+    hermano:
+
+    1. **No inventa una traza.** Si el contexto no trae ninguna, el doble se
+       queda sin ella: el caso «no consta archivado» sigue siendo ese caso.
+    2. **No pisa lo que el test haya preparado.** Si la situación ya trae una
+       traza, el test está diciendo algo a propósito —normalmente que el
+       cuerpo y la base se contradicen, que es el corazón de F-034— y se
+       respeta.
+
+    `ctx.archivo` se deja como estaba: la puerta no lo mira, y dejarlo puesto
+    es justo lo que demuestra que no lo mira. Los tests que vigilan la puerta
+    —`test_f034_archivo_persistido.py`— no usan esto: separan las dos fuentes
+    a mano.
+
+    Con `RepositorioComoLaBase`, que guarda columnas y no objetos, la traza
+    entra por donde entra en la base de verdad —`guardar_archivo`, que es lo
+    que haría `POST /api/archivar`— y vuelve recompuesta en la situación. Y
+    tampoco pisa: si ese parte ya tiene traza, se queda la que había.
+    """
+    from dataclasses import replace
+
+    from domain.models.estado import SituacionParte
+
+    if ctx.archivo is None:
+        return repositorio
+
+    if isinstance(repositorio, RepositorioComoLaBase):
+        if ctx.archivo.hash_parte not in repositorio.archivos:
+            repositorio.guardar_archivo(traza=ctx.archivo)
+        return repositorio
+
+    situacion = repositorio.situacion
+    if situacion is None:
+        situacion = SituacionParte()
+    if situacion.archivo is None:
+        repositorio.situacion = replace(situacion, archivo=ctx.archivo)
     return repositorio
 
 

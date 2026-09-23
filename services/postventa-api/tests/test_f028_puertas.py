@@ -55,7 +55,11 @@ from application.pipelines.paso_archivo import paso_archivo
 from application.pipelines.paso_cierre import paso_cierre
 from application.pipelines.paso_grafico import paso_grafico
 from domain.models.aprobacion import huella_de_veredicto
-from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
+from domain.models.cierre import (
+    CorrespondenciaSigrid,
+    Reclamacion,
+    a_codigo_de_sigrid,
+)
 from domain.models.errores import ParteNoApto
 from domain.models.estado import (
     ESTADOS_DE_CIERRE_EN_FIRME,
@@ -74,7 +78,12 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import CodigoMotivo, Destino, validar_parte
 
-from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
+from tests.utiles_ia import CAMPOS_DE_EJEMPLO
+from tests.utiles_pg import (
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sharepoint import ArchivoPortFalso, contexto_apto
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
@@ -254,7 +263,18 @@ def _archivar(ctx: ContextoParte, repositorio, archivador) -> ContextoParte:
 def _adjuntar(
     ctx: ContextoParte, repositorio, erp, graficos, *, commit: bool = True
 ) -> ContextoParte:
+    """El gráfico, con el veredicto **y** la traza de archivo en el doble.
+
+    **Enmienda del 2026-09-23 (F-034).** Desde F-034 el gráfico lee también la
+    traza de archivo de lo guardado, así que se deja en el doble igual que el
+    veredicto (`con_el_archivo_guardado`, mismas dos reglas). Y ya no recibe
+    los códigos sueltos: los que decide son los **guardados**, y estos casos
+    no hablan de cuerpos, así que no declaran ninguno (`codigos_declarados`
+    queda en `None`, que es para lo que es opcional, `design.md` §4.2). El
+    cotejo de lo declarado se prueba en `test_f034_codigos_en_el_erp.py`.
+    """
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
     return paso_grafico(
         ctx,
         erp,
@@ -266,8 +286,6 @@ def _adjuntar(
         confirmado=True,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
-        codigo_obra=OBRA,
         gratipide=35,
         tope_bytes=10 * 1024 * 1024,
         ahora=AHORA,
@@ -277,7 +295,15 @@ def _adjuntar(
 def _cerrar(
     ctx: ContextoParte, repositorio, erp, *, commit: bool = True
 ) -> ContextoParte:
+    """El cierre, con el veredicto y la traza de archivo del caso en el doble.
+
+    **Enmienda del 2026-09-23 (F-034).** Igual que `_adjuntar`: el cierre lee
+    el archivo y el nº de incidencia de lo **guardado**, así que la traza del
+    contexto se deja también en el doble y no se declara ningún cuerpo
+    (`codigos_declarados=None`, `design.md` §4.2).
+    """
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
     return paso_cierre(
         ctx,
         erp,
@@ -288,7 +314,6 @@ def _cerrar(
         confirmado=True,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
         ahora=AHORA,
     )
 
@@ -572,6 +597,12 @@ def test_f028_r33_el_contexto_dice_que_la_situacion_no_viene_del_cuerpo():
 #: El código de la incidencia tal y como lo espera Sigrid.
 CODIGO_EN_SIGRID = "XX00.00/0000"
 
+#: F-034 · el código con el que el **gráfico** y el **cierre** buscan la
+#: reclamación: el nº de incidencia **guardado** del parte, que es el que F-004
+#: leyó del material de ejemplo (`CAMPOS_DE_EJEMPLO`), en el formato de Sigrid.
+#: Hasta F-034 salía del cuerpo (`INCIDENCIA`, de ahí `CODIGO_EN_SIGRID`).
+CODIGO_GUARDADO_EN_SIGRID = a_codigo_de_sigrid(CAMPOS_DE_EJEMPLO["numero_incidencia"][0])
+
 
 def _reclamacion() -> Reclamacion:
     """Una reclamación abierta e inventada, en el tipo de posventa."""
@@ -685,7 +716,10 @@ def _ha_pasado(puerta, dobles: Dobles) -> None:
     if puerta is _puerta_de_archivo:
         assert dobles.archivador.biblioteca.elementos != {}
     else:
-        assert dobles.erp.lecturas == [CODIGO_EN_SIGRID]
+        # F-034 (2026-09-23) · el gráfico y el cierre buscan con el nº
+        # **guardado**, no con el del cuerpo: se exige exactamente esa
+        # lectura, ni más ni otra.
+        assert dobles.erp.lecturas == [CODIGO_GUARDADO_EN_SIGRID]
 
 
 def _decision(estado: EstadoParte, *, validacion=None, huella=None) -> DecisionEstado:

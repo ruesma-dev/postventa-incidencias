@@ -69,8 +69,10 @@ from domain.models.estado import EstadoParte
 from domain.models.grafico import FIRMA_PDF, EstadoGrafico, TrazaGrafico
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
+    EstadoArchivo,
     PreferenciasUsuario,
     ResultadoGuardado,
+    TrazaArchivo,
 )
 from domain.models.validacion import Destino, Veredicto
 from interface_adapters.api.adjuntar import adjuntar_grafico
@@ -447,6 +449,21 @@ def _con_el_grafico_ya_adjuntado(base: RepositorioComoLaBase) -> RepositorioComo
     return base
 
 
+def _con_el_archivo_ya_guardado(base: RepositorioComoLaBase) -> RepositorioComoLaBase:
+    """El estado del mundo en el que ocurre un adjuntado, desde F-034.
+
+    No es material de F-030: el parte se archiva **antes** de adjuntarlo, y
+    desde F-034 (2026-09-23) la puerta de archivo del gráfico lee la traza
+    **guardada** y no el `estado_archivo` del formulario. Se siembra a mano,
+    igual que el gráfico de al lado, para que esa puerta no corte antes y el
+    caso pueda enseñar lo suyo, que es la puerta **del estado**.
+    """
+    base.guardar_archivo(
+        traza=TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO)
+    )
+    return base
+
+
 def _adjuntar(base: RepositorioComoLaBase, erp: ErpEnMemoria, graficos: GraficoEnMemoria):
     """`POST /api/adjuntar` con su formulario real, en dry-run."""
     return adjuntar_grafico(
@@ -502,7 +519,7 @@ def test_f030_r5_el_parte_aprobado_se_adjunta_a_su_reclamacion_en_dry_run():
     Lo que se afirma es el **efecto**: la reclamación se leyó y a la pasarela
     se le pidió un ensayo, nunca un `commit`.
     """
-    base = _base_con_el_parte_aprobado()
+    base = _con_el_archivo_ya_guardado(_base_con_el_parte_aprobado())
     erp = ErpEnMemoria(_reclamacion())
     graficos = GraficoEnMemoria()
 
@@ -521,7 +538,9 @@ def test_f030_r6_el_parte_aprobado_llega_al_dry_run_del_cierre():
     es lo primero que hace el paso, antes de hablar con el ERP. Y **nada se
     cierra**: el cuerpo pide un ensayo.
     """
-    base = _con_el_grafico_ya_adjuntado(_base_con_el_parte_aprobado())
+    base = _con_el_grafico_ya_adjuntado(
+        _con_el_archivo_ya_guardado(_base_con_el_parte_aprobado())
+    )
     erp = ErpEnMemoria(_reclamacion())
 
     respuesta = _cerrar(base, erp)

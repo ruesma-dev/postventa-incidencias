@@ -38,9 +38,11 @@ from domain.models.errores import (
 from domain.models.estado import SituacionParte
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
+    EstadoArchivo,
     EstadoGrafico,
     PreferenciasUsuario,
     ResultadoGuardado,
+    TrazaArchivo,
     TrazaGrafico,
 )
 from interface_adapters.api.cerrar import CAMPOS_OBLIGATORIOS, cerrar_incidencia
@@ -116,11 +118,19 @@ def _reclamacion(*, est: int = 3, cod_origen: str = "PTE") -> Reclamacion:
     )
 
 
+#: El nº de incidencia del parte: el que el cuerpo declara **y** el que consta
+#: guardado (F-034). Desde F-034 el cierre busca la reclamación con el
+#: guardado y el del cuerpo solo coteja, así que el mundo normal de estos
+#: casos es el de los dos iguales; la divergencia vive en
+#: `test_f034_codigos_en_el_erp.py`.
+NUMERO_INCIDENCIA = "RS26.08 - 0123"
+
+
 def _cuerpo(**cambios):
     """El cuerpo mínimo que el contrato exige, con lo que el test cambie."""
     base = {
         "hash": HASH,
-        "numero_incidencia": "RS26.08 - 0123",
+        "numero_incidencia": NUMERO_INCIDENCIA,
         "veredicto": "apto",
         "destino": "archivo_y_cierre",
         "estado_archivo": "archivado",
@@ -137,7 +147,9 @@ def _cuerpo(**cambios):
 _SIN_CUERPO = object()
 
 
-def _repositorio(**extra) -> RepositorioEnMemoria:
+def _repositorio(
+    *, archivo: EstadoArchivo | None = EstadoArchivo.ARCHIVADO, **extra
+) -> RepositorioEnMemoria:
     """El doble del repositorio con el veredicto **guardado** dentro (F-030).
 
     Desde F-030 la puerta del paso deriva el estado del veredicto que consta en
@@ -149,8 +161,27 @@ def _repositorio(**extra) -> RepositorioEnMemoria:
     verdad a este endpoint, el veredicto del parte ya está en la base —lo
     escribió `POST /api/parte`—, y un doble que contestara «de este parte no
     consta validación» modelaría un mundo que no existe.
+
+    **Enmienda del 2026-09-23 (F-034).** Lo mismo con la traza de archivo y el
+    nº de incidencia, que desde F-034 el cierre lee de lo **guardado**: el
+    veredicto apto se emite sobre el nº que declara el cuerpo
+    (`NUMERO_INCIDENCIA`) y la situación trae la traza de archivo en el
+    estado que pida el caso (`archivado` por defecto, que es el mundo en el
+    que se cierra). `archivo=None` es «no hay traza».
     """
-    extra.setdefault("situacion", SituacionParte(validacion=veredicto_apto(hash_parte=HASH)))
+    extra.setdefault(
+        "situacion",
+        SituacionParte(
+            validacion=veredicto_apto(
+                hash_parte=HASH, numero_incidencia=NUMERO_INCIDENCIA
+            ),
+            archivo=(
+                TrazaArchivo(hash_parte=HASH, estado=archivo)
+                if archivo is not None
+                else None
+            ),
+        ),
+    )
     return RepositorioEnMemoria(**extra)
 
 
@@ -254,9 +285,19 @@ def test_f009_r48_un_parte_no_apto_sube_como_error_de_dominio():
 
 
 def test_f009_r48_un_parte_que_no_consta_archivado_tambien():
-    """R48 · primero el documento, después el cierre."""
+    """R48 · primero el documento, después el cierre.
+
+    **Enmienda del 2026-09-23 (F-034 R1).** «No consta archivado» lo dice
+    ya la traza **guardada**, no el `estado_archivo` del cuerpo: el caso
+    deja en la base un archivo `pendiente` (y el cuerpo lo dice igual).
+    """
     with pytest.raises(ParteNoArchivado):
-        _cerrar(_cuerpo(estado_archivo="pendiente"))
+        _cerrar(
+            _cuerpo(estado_archivo="pendiente"),
+            repositorio=_repositorio(
+                archivo=EstadoArchivo.PENDIENTE, traza_grafico=_GRAFICO_ADJUNTADO
+            ),
+        )
 
 
 def test_f009_r48_una_reclamacion_que_no_admite_cierre_tambien():

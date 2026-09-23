@@ -409,26 +409,58 @@ def test_f031_d1_situacion_parte_no_gana_campos_para_los_codigos():
 #: la levanta el paso y la traduce a 409 el borde. `CodigosDelParte` y
 #: `codigos_declarados` son la firma que une el paso con su endpoint. Los dos
 #: privados no salen del paso, que es lo que los hace privados.
+#:
+#: **Enmienda del 2026-09-23 (F-034).** Aprobada por el humano ese día —«si» a
+#: la opción (a) de `progress/impl_F-034.md` §2.4—. F-034 lleva el cotejo al
+#: gráfico y al cierre, y para no copiarlo lo muda a
+#: `application/pipelines/codigos_del_parte.py` sin cambiar ni una regla
+#: (decisión D-2 de F-034). Por eso: `es_el_mismo_codigo` y
+#: `CodigosNoCoinciden` los usa ahora el módulo compartido y no el paso;
+#: `CodigosDelParte` vive allí y el paso y su endpoint la importan; y los dos
+#: privados pasan a ser `codigos_guardados` y `exigir_codigos_declarados`,
+#: públicos en el módulo compartido y llamados desde el paso. Las filas que
+#: añadan los Bloques 2 y 3 de F-034 (el gráfico, el cierre y sus endpoints)
+#: las ajusta cada una de sus tareas, y el control lo hereda
+#: `test_f034_alcance_cerrado.py`. Solo cambian esta tabla y este comentario.
 NOMBRES_NUEVOS_Y_DONDE_VIVEN = {
     "es_el_mismo_codigo": {
         "domain/models/nombrado.py",
-        "application/pipelines/paso_archivo.py",
+        "application/pipelines/codigos_del_parte.py",
     },
     "CodigosNoCoinciden": {
         "domain/models/errores.py",
-        "application/pipelines/paso_archivo.py",
+        "application/pipelines/codigos_del_parte.py",
         "function_app.py",
     },
     "CodigosDelParte": {
+        "application/pipelines/codigos_del_parte.py",
         "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
+        "application/pipelines/paso_grafico.py",
+        "interface_adapters/api/adjuntar.py",
+        "interface_adapters/api/cerrar.py",
         "interface_adapters/api/archivar.py",
     },
     "codigos_declarados": {
         "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
+        "application/pipelines/paso_grafico.py",
+        "interface_adapters/api/adjuntar.py",
+        "interface_adapters/api/cerrar.py",
         "interface_adapters/api/archivar.py",
     },
-    "_codigos_guardados": {"application/pipelines/paso_archivo.py"},
-    "_exigir_codigos_declarados": {"application/pipelines/paso_archivo.py"},
+    "codigos_guardados": {
+        "application/pipelines/codigos_del_parte.py",
+        "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
+        "application/pipelines/paso_grafico.py",
+    },
+    "exigir_codigos_declarados": {
+        "application/pipelines/codigos_del_parte.py",
+        "application/pipelines/paso_archivo.py",
+        "application/pipelines/paso_cierre.py",
+        "application/pipelines/paso_grafico.py",
+    },
 }
 
 #: Las carpetas del servicio que **no** son código de producción.

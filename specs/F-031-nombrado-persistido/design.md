@@ -479,6 +479,24 @@ habla solo del `estado_archivo` del cuerpo.
 esos dos endpoints y ya va a leer la situación persistida, en vez de abrir una
 ficha más. Se anota en `progress/current.md` para que lo decida el humano.
 
+> **H-1 · CERRADO por F-034 el 2026-09-23** (implementado en la rama
+> `feature/F-034-archivo-persistido-en-erp`; rige en el entorno desplegado
+> **desde el despliegue de F-034**). El humano lo llevó al `acceptance`
+> ampliado de F-034 (D-6 de esta ficha, opción (a)). `paso_grafico` localiza la
+> reclamación y nombra el gráfico con los dos códigos **guardados**, y
+> `paso_cierre` **cierra la reclamación del número guardado**; los del cuerpo
+> siguen obligatorios pero solo **cotejan**, con el mismo criterio normalizado
+> de esta ficha, y un cuerpo que no cuadre recibe **409** antes de hablar con
+> el ERP, también en dry-run. Las piezas del cotejo que esta ficha escribió en
+> `paso_archivo.py` (`CodigosDelParte`, `_codigos_guardados`,
+> `_exigir_codigos_declarados`) se mudaron **sin cambiar ninguna regla** a
+> `application/pipelines/codigos_del_parte.py`, compartido por los tres pasos
+> (D-2 de F-034); la tabla de `test_f031_alcance_cerrado.py` se enmendó con
+> fecha por decisión del humano del 2026-09-23, y el control lo hereda
+> `test_f034_alcance_cerrado.py`. El front vacía los pendientes también al
+> reintentar el cierre (H-2 de F-034), el único camino que el vaciado de §6.2
+> no cubría. El detalle, en `specs/F-034-archivo-persistido-en-erp/`.
+
 ## 9 · Tests: qué cambia de lo que ya hay
 
 | Test existente | Qué le pasa |

@@ -300,6 +300,25 @@ imposible-por-construcción, pero deja de ser el camino del código vacío: ese 
 corta `exigir_codigos_completos` en 1 bis con un 409 (R15). Se documenta en su
 docstring para que nadie lo tome por muerto.
 
+> **Enmienda del 2026-09-23 (Bloque 3, hallazgo H-4 del implementer) ·
+> decisión del líder dentro de D-4, aprobada por el humano.** «Imposible por
+> construcción» **no era cierto** tal como quedó el Bloque 2: un nº de
+> incidencia **guardado** que no está vacío pero **no tiene ningún tramo**
+> —solo separadores, p. ej. `/`— pasaba `exigir_codigos_completos`
+> (`normalizar_codigo("/")` no es vacío) y `a_codigo_de_sigrid("/")` lo dejaba
+> en `""`, así que llegaba a este `CuerpoDeCierreInvalido`: un **400** que decía
+> «la petición no trae el número de incidencia» cuando lo incompleto es lo
+> guardado. Y en `/cerrar`, antes de T9, un cuerpo con un número bueno
+> **cerraba esa reclamación** aunque lo guardado fuera `/` (traza real en
+> `progress/impl_F-034.md` §7.1). Desde T9, `exigir_codigos_completos` trata el
+> **nº de incidencia** sin tramos como lo guardado incompleto
+> (`not a_codigo_de_sigrid(numero)`) → **409 `CodigoNoConsta`** en gráfico y
+> cierre. Solo el número: una **obra** de solo separadores sigue hasta
+> `NombradoImposible` (R24). **Archivar no cambia** (R26): no llama a esa
+> función, y lo vigilan `test_f034_h4_r26_*`. Con eso, ahora sí, el `if` de
+> `_codigo_de_incidencia` es inalcanzable por construcción en los dos pasos,
+> porque usa el mismo `a_codigo_de_sigrid`; se conserva como última guarda.
+
 ## 5 · `paso_cierre`
 
 Mismo patrón, con **un** código:
@@ -454,6 +473,21 @@ despliegue, al revés que F-031, donde las dos mitades tenían que ir juntas.
   ídem.
 - `azure-apps/postventa_incidencias.md` · **nada**, y se deja escrito por qué
   (§11.1 de `requirements.md` no aplica; ver aquí abajo).
+
+> **Comprobado el 2026-09-23 (T14), leyendo `azure-apps` sin tocarlo**
+> (commit `1b57e35` de ese repositorio). Lo que el proyecto **expone** no
+> cambia: los mismos endpoints, los mismos campos obligatorios en los dos
+> cuerpos (lo fija `test_f034_r18_los_dos_cuerpos_piden_lo_mismo_de_siempre`)
+> y las mismas claves de respuesta (R35); el `409` ya existía en los dos y
+> gana un motivo. Lo que **consume** tampoco: las mismas llamadas a
+> `sigrid-api` y al PostgreSQL compartido, sin DDL y sin una sentencia más
+> (lo fija `test_f034_sin_consultas_de_mas.py`). Por eso el documento **no
+> cambia por esta feature**. Una cosa para quien lo mantenga, **cuando se
+> despliegue** F-034: su frase del riesgo aceptado del 2026-09-23 («mientras
+> F-034 no esté desplegada `/api/adjuntar` y `/api/cerrar` toman el número de
+> incidencia del cuerpo») sigue siendo cierta hasta ese despliegue, y después
+> conviene añadirle la misma nota que llevan `docs/DESPLIEGUE.md` §4 bis y
+> `docs/INTEGRACION.md` §3 bis. Lo decide y lo hace el líder.
 
 ## 11 · Encaje, límites y decisiones abiertas
 

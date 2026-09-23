@@ -31,6 +31,7 @@ import hashlib
 from datetime import UTC, datetime
 
 import pytest
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_grafico import paso_grafico
 from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
@@ -67,7 +68,11 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
-from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
+from tests.utiles_pg import (
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 
 AHORA = datetime(2026, 9, 6, 12, 0, 0, tzinfo=UTC)
@@ -178,6 +183,8 @@ def _contexto(
                 clasificacion_firma=ClasificacionFirma.HUMANA,
                 observaciones=None,
                 confianza_observaciones=0,
+                codigo_obra=OBRA,
+                numero_incidencia=INCIDENCIA,
             )
             if con_validacion
             else None
@@ -210,10 +217,21 @@ def _adjuntar(
     mira el del contexto, así que el ayudante lo deja también en el doble antes
     de llamar. No inventa ninguno ni pisa la situación que el caso haya
     preparado: el porqué entero está en `tests/utiles_pg.py`.
+
+    **Enmienda del 2026-09-23 (F-034).** Lo mismo con la traza de archivo y los
+    dos códigos, que desde F-034 el paso lee de lo **guardado**: la traza que
+    el caso declara en el contexto se deja también en el doble
+    (`con_el_archivo_guardado`, con las mismas dos reglas), el veredicto del
+    contexto lleva los dos códigos con los que se guardó el parte, y los
+    declarados en el cuerpo se pasan **iguales** a los guardados, que es lo que
+    hace el borde en el caso normal. El cotejo no se afloja: si un caso
+    quisiera otros códigos, tendría que decirlo, y los casos de divergencia
+    viven en `test_f034_codigos_en_el_erp.py`.
     """
     ctx = ctx if ctx is not None else _contexto()
     repositorio = repositorio if repositorio is not None else RepositorioEnMemoria()
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_grafico(
         ctx,
@@ -226,8 +244,9 @@ def _adjuntar(
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
-        codigo_obra=OBRA,
+        codigos_declarados=CodigosDelParte(
+            codigo_obra=OBRA, numero_incidencia=INCIDENCIA
+        ),
         gratipide=gratipide,
         tope_bytes=tope_bytes,
         ahora=AHORA,

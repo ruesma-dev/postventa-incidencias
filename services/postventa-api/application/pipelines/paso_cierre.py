@@ -36,6 +36,31 @@ supuesto:
 Lo que hace seguro apoyarse en un supuesto no confirmado es el paso 3: el
 supuesto **propone**, el ERP **dispone**, y solo lo que el ERP confirma se
 guarda y se escribe.
+
+## Enmienda del 2026-09-23 (F-034 T9) · qué reclamación se cierra
+
+Hasta hoy este paso cerraba en el ERP de producción decidiendo con **dos datos
+del cuerpo** de la petición, que el borde le pasaba tal cual:
+
+- el **estado del archivo**: `_exigir_archivado` miraba `ctx.archivo`, y ese
+  objeto lo fabricaba `cerrar._como_contexto` con el `estado_archivo` del
+  cuerpo, que el front manda fijo a `archivado`. Un parte aprobado y sin
+  archivar se cerraba con solo decirlo;
+- el **número de incidencia**, que elegía **qué reclamación se cierra**
+  (`_codigo_de_incidencia` → `_dry_run` → la escritura de `con.est`). Un cuerpo
+  con otro número cerraba **otra** reclamación, y en Sigrid eso no se deshace
+  desde este circuito.
+
+Desde F-034 (`specs/F-034-archivo-persistido-en-erp/`) los dos salen de **lo
+guardado**, de la `SituacionParte` que la puerta de aptitud acaba de leer y sin
+una consulta más: el archivo, de `ctx.situacion.archivo` con la puerta
+compartida `exigir_parte_archivado`; el número, de `codigos_guardados(ctx)`. Lo
+que traiga el cuerpo entra por `codigos_declarados` y **solo coteja** —solo el
+número: el cuerpo de `/cerrar` no trae obra (R16)—, en el punto 1 bis y antes
+de hablar con nadie: si no es lo guardado, 409 y no se escribe nada, tampoco
+en dry-run (R9, R11, R13, R14). Lo declarado puede cerrar la puerta, nunca
+abrirla ni moverla (R19). El parámetro `numero_incidencia` desaparece de la
+firma para que el cuerpo de la función no pueda volver a usarlo (D-7).
 """
 
 from __future__ import annotations
@@ -59,14 +84,12 @@ from domain.models.errores import (
     ErrorDePersistencia,
     EstadoNoCerrable,
     ParteNoAdjuntado,
-    ParteNoArchivado,
     ReclamacionNoLocalizada,
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
 )
 from domain.models.estado import EstadoParte
 from domain.models.persistencia import (
-    EstadoArchivo,
     EstadoCierre,
     EstadoGrafico,
     TrazaCierre,
@@ -78,10 +101,17 @@ from domain.ports.persistencia import (
 )
 from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
 
+from application.pipelines.codigos_del_parte import (
+    CodigosDelParte,
+    codigos_guardados,
+    exigir_codigos_completos,
+    exigir_codigos_declarados,
+)
 from application.pipelines.constancia import anotar_estado
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.puerta_de_estado import (
     exigir_parte_aprobado,
+    exigir_parte_archivado,
     situacion_leida,
 )
 
@@ -102,6 +132,25 @@ log = logging.getLogger(__name__)
 #: siempre que la incidencia se cerró.
 FILAS_ESPERADAS = 2
 
+#: Lo que se le dice a quien lee cada 409 de F-034, según por qué no se cierra.
+#: La parte fija del mensaje la pone la pieza compartida; esta es la cola, que
+#: es lo que dice **qué se ha quedado sin hacer** y qué hacer.
+#:
+#: La del archivo es, byte a byte, la del `_exigir_archivado` que sustituye.
+_Y_POR_ESO_SIN_ARCHIVAR = (
+    "no se cierra la incidencia: primero el documento, después el cierre"
+)
+#: Lo guardado está incompleto: `exigir_codigos_completos` añade la acción
+#: (teclear el código y guardarlo), que es la misma en cualquier endpoint.
+_Y_POR_ESO_FALTA_UN_CODIGO = "**no se ha cerrado nada** en el ERP"
+#: Lo declarado no es lo guardado: la cola lleva la acción entera, como la de
+#: `paso_archivo` y `paso_grafico` (decisión del humano del 2026-09-23).
+_Y_POR_ESO_NO_COINCIDEN = (
+    "**no se ha cerrado nada** en el ERP: la reclamación que se cierra sale "
+    "de lo guardado. Hay que guardar la corrección con POST /api/parte y "
+    "volver a cerrar"
+)
+
 
 def paso_cierre(
     ctx: ContextoParte,
@@ -114,7 +163,7 @@ def paso_cierre(
     confirmado: bool,
     usuario_oid: str,
     correo: str,
-    numero_incidencia: str,
+    codigos_declarados: CodigosDelParte | None = None,
     ahora: datetime,
 ) -> ContextoParte:
     """Cierra la incidencia en Sigrid y deja constancia de lo que pasó.
@@ -122,14 +171,26 @@ def paso_cierre(
     Los pasos, **en este orden**, y el orden es la mitad del requisito:
 
     1. **Puerta de aptitud** (R16). Antes de nada: un parte que nadie ha
-       validado no cierra una incidencia del ERP.
+       validado no cierra una incidencia del ERP. Deja la situación leída en
+       `ctx.situacion`.
+
+       **1 bis. El nº de incidencia** (F-034 R9, R11, R13, R15): el
+       **guardado** tiene que estar —y tener algún tramo, H-4— y lo
+       **declarado** en el cuerpo tiene que ser lo guardado; solo el número,
+       porque el cuerpo de `/cerrar` no trae obra (R16). Va aquí y no más
+       abajo porque a partir del login ya se habla con el ERP y a partir del
+       dry-run ya hay trazas escritas; y antes de la puerta de archivo porque
+       primero se resuelve **qué** reclamación y después en qué estado está
+       el parte.
     2. **Puerta de archivo** (R17). El orden del procedimiento de Posventa:
        primero el documento, después el cierre. Es lo que sostiene el riesgo
-       aceptado de `design.md` §2.
+       aceptado de `design.md` §2. Desde F-034, **según lo guardado** (R1),
+       no según el cuerpo.
     3. **El login**, resuelto y **verificado contra el ERP** (R29–R32). Va
        antes del dry-run para que un usuario sin correspondencia se entere
        enseguida y no después de leer media reclamación.
-    4. **El dry-run** (R8), que es una lectura y no escribe nada.
+    4. **El dry-run** (R8), que es una lectura y no escribe nada, sobre la
+       reclamación del nº **guardado** (F-034 R9).
     5. **`evaluar`** (R18, R19), que es dominio puro.
     6. **La traza `dry_run_ok`** (R40).
     7. Y **solo si `commit`** y hay confirmación o auto-cierre (R12, R13): la
@@ -139,7 +200,8 @@ def paso_cierre(
        estado (F-028, R18). Va la última a propósito: es constancia, y lo que
        no ocurrió no se apunta.
 
-    Levanta `ParteNoApto`, `ParteNoArchivado`, `CuerpoDeCierreInvalido`,
+    Levanta `ParteNoApto`, `CodigoNoConsta`, `CodigosNoCoinciden`,
+    `ParteNoArchivado`, `CuerpoDeCierreInvalido`,
     `UsuarioSigridNoMapeado`, `UsuarioSigridInexistente`,
     `ReclamacionNoLocalizada`, `EstadoDeCierreNoResoluble`, `EstadoNoCerrable`,
     `EstadoCambiadoDesdeElDryRun` y `CierreFallido` **sin traducir**:
@@ -150,9 +212,10 @@ def paso_cierre(
     (R44, R45): lo lee cualquiera que abra Application Insights.
     """
     _exigir_admitido(ctx, repositorio)
-    _exigir_archivado(ctx)
+    guardados = _codigos_con_los_que_se_cierra(ctx, codigos_declarados)
+    exigir_parte_archivado(ctx, y_por_eso=_Y_POR_ESO_SIN_ARCHIVAR)
 
-    codigo = _codigo_de_incidencia(numero_incidencia)
+    codigo = _codigo_de_incidencia(guardados.numero_incidencia)
     login = resolver_login_de_sigrid(
         usuarios, erp, usuario_oid=usuario_oid, correo=correo, ahora=ahora
     )
@@ -237,22 +300,40 @@ def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> 
     )
 
 
-def _exigir_archivado(ctx: ContextoParte) -> None:
-    """El parte tiene que constar **archivado** (R17).
+def _codigos_con_los_que_se_cierra(
+    ctx: ContextoParte, declarados: CodigosDelParte | None
+) -> CodigosDelParte:
+    """1 bis · el nº de incidencia **guardado**, completo y cotejado (F-034).
 
-    `pendiente` y `error` no valen, y son justo los dos estados en los que el
-    fichero puede no estar arriba. Si el PDF no está guardado en ninguna parte,
-    cerrar la incidencia la da por resuelta sin dejar la prueba en ningún
-    sitio — y el riesgo aceptado de `design.md` §2 solo es asumible **porque el
-    parte firmado existe**.
+    Sale de la situación que la puerta de aptitud acaba de leer —ni una
+    consulta más (R10)— y es el que elige **qué reclamación se cierra** en el
+    ERP de producción (R9). Antes de devolverlo:
+
+    1. **tiene que estar** (R15), y tener algún tramo (H-4): si no,
+       `CodigoNoConsta`, y **no** se rellena con el del cuerpo. Va antes que el
+       cotejo por lo mismo que en el gráfico: lo que hay que hacer es
+       teclearlo, y eso es lo que tiene que decir el mensaje;
+    2. **lo declarado tiene que ser lo guardado** (R11, R12), normalizado con
+       el criterio de F-032: si no, `CodigosNoCoinciden`.
+
+    **Solo el número** (`solo_incidencia=True`, R16): el cuerpo de `/cerrar`
+    no trae `codigo_obra` y en el cierre la obra no decide nada.
+
+    Los dos cortes ocurren **antes** del login, de la lectura de la reclamación
+    y de cualquier traza (R13), y también en dry-run (R14). Sin `declarados`
+    no hay nada que cotejar y se cierra igual con lo guardado (R19).
     """
-    if ctx.archivo is None or ctx.archivo.estado != EstadoArchivo.ARCHIVADO:
-        estado = "ninguno" if ctx.archivo is None else ctx.archivo.estado.value
-        raise ParteNoArchivado(
-            f"este parte no consta archivado (estado del archivo: {estado}), "
-            f"así que no se cierra la incidencia: primero el documento, después "
-            f"el cierre"
-        )
+    guardados = codigos_guardados(ctx)
+    exigir_codigos_completos(
+        guardados, solo_incidencia=True, y_por_eso=_Y_POR_ESO_FALTA_UN_CODIGO
+    )
+    exigir_codigos_declarados(
+        declarados,
+        guardados,
+        solo_incidencia=True,
+        y_por_eso=_Y_POR_ESO_NO_COINCIDEN,
+    )
+    return guardados
 
 
 def _exigir_adjuntado(ctx: ContextoParte) -> None:
@@ -297,6 +378,13 @@ def _codigo_de_incidencia(numero_incidencia: str) -> str:
 
     Sin código no hay a quién preguntar, y preguntar por una cadena vacía
     devolvería lo que devolviera. El borde lo traduce a **400**.
+
+    **Desde F-034 recibe el número guardado** y el `if` de abajo es
+    inalcanzable por construcción: `exigir_codigos_completos` corta antes, en
+    1 bis y con un 409, tanto el número vacío (R15) como el que no tiene ningún
+    tramo (H-4, con el mismo `a_codigo_de_sigrid` que usa esta función). No se
+    retira (`design.md` §4.2): es la última guarda antes de preguntarle al ERP
+    por una cadena vacía, y si alguien afloja la de arriba, esta sigue ahí.
     """
     codigo = a_codigo_de_sigrid(numero_incidencia)
     if not codigo:

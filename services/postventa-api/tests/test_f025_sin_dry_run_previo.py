@@ -42,6 +42,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import paso_cierre
 from application.pipelines.paso_grafico import paso_grafico
@@ -74,7 +75,11 @@ from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 from infrastructure.sharepoint.fabrica import construir_archivador
 from infrastructure.sigrid.fabrica import construir_erp, construir_graficos
 
-from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
+from tests.utiles_pg import (
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 
 AHORA = datetime(2026, 9, 11, 12, 0, 0, tzinfo=UTC)
@@ -245,6 +250,8 @@ def _contexto(
                 clasificacion_firma=ClasificacionFirma.HUMANA,
                 observaciones=None,
                 confianza_observaciones=0,
+                codigo_obra=OBRA,
+                numero_incidencia=INCIDENCIA,
             )
             if con_validacion
             else None
@@ -278,10 +285,16 @@ def _adjuntar(
     mira el del contexto, así que el ayudante lo deja también en el doble antes
     de llamar. No inventa ninguno ni pisa la situación que el caso haya
     preparado: el porqué entero está en `tests/utiles_pg.py`.
+
+    **Enmienda del 2026-09-23 (F-034).** Lo mismo con la traza de archivo
+    (`con_el_archivo_guardado`), que desde F-034 el gráfico lee de lo
+    guardado; el veredicto del contexto lleva los dos códigos con los que se
+    guardó el parte y los declarados se pasan iguales, como hace el borde.
     """
     ctx = ctx if ctx is not None else _contexto()
     repositorio = repositorio if repositorio is not None else RepositorioEnMemoria()
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_grafico(
         ctx,
@@ -294,8 +307,9 @@ def _adjuntar(
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
-        codigo_obra=OBRA,
+        codigos_declarados=CodigosDelParte(
+            codigo_obra=OBRA, numero_incidencia=INCIDENCIA
+        ),
         gratipide=35,
         tope_bytes=TOPE,
         ahora=AHORA,
@@ -318,11 +332,17 @@ def _cerrar(
     mira el del contexto, así que el ayudante lo deja también en el doble antes
     de llamar. No inventa ninguno ni pisa la situación que el caso haya
     preparado: el porqué entero está en `tests/utiles_pg.py`.
+
+    **Enmienda del 2026-09-23 (F-034).** Lo mismo con la traza de archivo
+    (`con_el_archivo_guardado`), que desde F-034 el cierre lee de lo
+    guardado; el veredicto del contexto ya lleva el nº con el que se guardó
+    el parte y el declarado se pasa igual, como hace el borde.
     """
     ctx = ctx if ctx is not None else _contexto()
     if repositorio is None:
         repositorio = RepositorioEnMemoria(traza_grafico=GRAFICO_ADJUNTADO)
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_cierre(
         ctx,
@@ -334,7 +354,9 @@ def _cerrar(
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
+        codigos_declarados=CodigosDelParte(
+            codigo_obra="", numero_incidencia=INCIDENCIA
+        ),
         ahora=AHORA,
     )
 

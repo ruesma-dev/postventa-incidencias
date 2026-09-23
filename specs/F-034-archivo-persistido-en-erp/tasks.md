@@ -16,24 +16,33 @@
 
 ## Bloque 0 · Parada obligatoria
 
-- [ ] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §11.2 y
+- [x] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §11.2 y
       esperar respuesta. **Bloquea el arranque D-1** (cómo llega F-031 a esta
       rama: `git rev-list --left-right --count dev...feature/F-031-nombrado-persistido`
       → `0 23`, es decir, F-031 **no está en `dev`**). Las demás —D-2 a D-8— se
       pueden cerrar con la recomendación, pero se enseñan igual.
       **Verificación**: la respuesta del humano queda transcrita, literal y
       fechada, en `progress/current.md`. Sin ella, **no se toca código**.
+      **Hecha (2026-09-23)**: el humano aprobó la spec el 2026-09-22 con
+      **«a, aprobado»** —D-1 opción (a) y D-2 a D-8 con la recomendación—,
+      transcrito en el bloque de F-034 de `progress/current.md`. El `0 23` se
+      midió antes del merge; hoy el mismo comando da **`19 0`**: F-031 no tiene
+      ningún commit fuera de `dev` (`bd8d577` es ancestro de `dev`), y
+      `git merge-base --is-ancestor feature/F-031-nombrado-persistido HEAD`
+      confirma que está entera en esta rama.
 
 ## Bloque 1 · Las piezas compartidas
 
-- [ ] **T2**: `domain/models/errores.py` · añadir `CodigoNoConsta` con
+- [x] **T2**: `domain/models/errores.py` · añadir `CodigoNoConsta` con
       `.motivo` y con su docstring diciendo en qué se diferencia de
       `CodigosNoCoinciden`, de `ParteNoArchivado` y de `NombradoImposible`
       (`design.md` §3.2).
       **Verificación**: `pytest tests/test_f034_codigos_en_el_erp.py -k errores`
       en verde.
+      **Hecha (2026-09-23)**: RED y verde en `progress/impl_F-034.md`; 7 tests
+      `-k errores` en verde y la suite del servicio entera en verde.
 
-- [ ] **T3**: crear `application/pipelines/codigos_del_parte.py` con
+- [x] **T3**: crear `application/pipelines/codigos_del_parte.py` con
       `CodigosDelParte`, `codigos_guardados(ctx)`,
       `exigir_codigos_declarados(...)` y `exigir_codigos_completos(...)`
       (`design.md` §3.1), y hacer que `paso_archivo.py` y `archivar.py` los
@@ -44,10 +53,20 @@
       **sin tocarles el contenido**, y `pytest tests/test_f034_*.py -k codigos`
       en verde para los casos de `solo_incidencia` y de cotejo normalizado
       (R12: `RS 26.09/0178` ≡ `RS26.09/0178`, `06 26` ≡ `0626`).
+      > **Enmienda del 2026-09-23, aprobada por el humano** («si» a
+      > `progress/impl_F-034.md` §2.4 (a) y §2.5; ver el recuadro bajo R26):
+      > la verificación pasa a ser esos mismos tests en verde **tocando solo**
+      > la tabla `NOMBRES_NUEVOS_Y_DONDE_VIVEN` (y su comentario) de
+      > `test_f031_alcance_cerrado.py` y el `import` de `_codigos_guardados` de
+      > `test_f031_nombrado_persistido.py`, más un test de F-034 que exige que
+      > el mensaje de archivar sea byte a byte el de F-031. `y_por_eso` lleva
+      > la cola de cada endpoint; la parte fija del mensaje es común.
+      **Hecha (2026-09-23)**: RED y verde en `progress/impl_F-034.md`; la
+      verificación enmendada da 461 passed, 8 skipped.
 
 ## Bloque 2 · `/api/adjuntar` y `paso_grafico`
 
-- [ ] **T4 (RED)**: escribir `tests/test_f034_archivo_persistido.py` y
+- [x] **T4 (RED)**: escribir `tests/test_f034_archivo_persistido.py` y
       `tests/test_f034_codigos_en_el_erp.py` **antes** de tocar el paso, con un
       test por requisito de `requirements.md` §1.1 y §1.2 y nombre trazable
       (`test_f034_rN_…`). Casos centrales, los dos desde `POST /api/adjuntar`
@@ -61,16 +80,24 @@
       **Verificación**: `pytest tests/test_f034_*.py -q` **en rojo**, con la
       salida (los N fallos y su motivo) copiada a `progress/impl_F-034.md` como
       fase RED.
+      **Hecha (2026-09-23)**: 39 fallos y 42 verdes, con los motivos y las
+      cuatro trazas centrales en `progress/impl_F-034.md` §6.1. Los casos de
+      `/api/cerrar` son de T8. El mundo compartido (lo guardado y lo declarado
+      escritos aparte, los cinco puertos inyectados) vive en
+      `tests/utiles_circuito.py`.
 
-- [ ] **T5**: `application/pipelines/puerta_de_estado.py` · añadir
+- [x] **T5**: `application/pipelines/puerta_de_estado.py` · añadir
       `exigir_parte_archivado(ctx, *, y_por_eso)` leyendo `ctx.situacion.archivo`
       (`design.md` §3.3), con la enmienda fechada en la cabecera del módulo.
       `exigir_parte_aprobado` **no se toca** (R20).
       **Verificación**: `pytest tests/test_f034_archivo_persistido.py -k puerta`
       en verde y `pytest tests/test_f028_*.py tests/test_f030_*.py -q` sin
       cambios en verde.
+      **Hecha (2026-09-23)**: `-k puerta` 12 de 13 en verde; el que falta
+      (`…_el_grafico_usa_la_compartida_y_no_su_copia`) es el recableado de T6.
+      F-028 y F-030: 498 passed, 2 skipped, sin tocarlos.
 
-- [ ] **T6**: `application/pipelines/paso_grafico.py` · el cotejo en el punto
+- [x] **T6**: `application/pipelines/paso_grafico.py` · el cotejo en el punto
       **1 bis**, los códigos guardados alimentando `_codigo_de_incidencia` y
       `componer_peticion`, `_exigir_archivado` sustituido por la puerta
       compartida, y la firma con `codigos_declarados` en lugar de los dos `str`
@@ -79,8 +106,13 @@
       en verde, **incluido** el test de R13: ante divergencia, el doble del ERP
       no registra **ninguna** llamada y el repositorio no registra **ninguna**
       escritura.
+      **Hecha (2026-09-23)**: el paso en verde con sus tests de paso (F-012,
+      F-025, F-026, F-028, F-030 y los de paso de F-034, adaptados sin relajar
+      nada: detalle en `progress/impl_F-034.md` §6.3). Los tests de F-034 que
+      recorren el **borde** siguen en rojo en este commit porque el borde es
+      T7; se ponen en verde en el siguiente.
 
-- [ ] **T7**: `interface_adapters/api/adjuntar.py` (pasa los códigos
+- [x] **T7**: `interface_adapters/api/adjuntar.py` (pasa los códigos
       declarados; `_como_contexto` deja de fabricar la `TrazaArchivo`) y
       `function_app.py` (los dos errores nuevos → 409 y el comentario de los
       códigos del endpoint ampliado). `design.md` §6.
@@ -88,10 +120,13 @@
       tests/test_f012_cerrar_exige_grafico.py tests/test_f034_*.py -q` en
       verde, con los casos existentes adaptados **sin relajar el cotejo** y el
       diff de tests revisado a ojo (riesgo 4 de `design.md` §13).
+      **Hecha (2026-09-23)**: 190 passed en esa verificación; suite del
+      servicio 3.147 passed, 18 skipped. Diff de tests revisado: **cero**
+      `assert` retirados; lo adaptado, en `progress/impl_F-034.md` §6.3.
 
 ## Bloque 3 · `/api/cerrar` y `paso_cierre`
 
-- [ ] **T8 (RED)**: ampliar `tests/test_f034_codigos_en_el_erp.py` con los
+- [x] **T8 (RED)**: ampliar `tests/test_f034_codigos_en_el_erp.py` con los
       casos de `POST /api/cerrar`, **antes** de tocar el paso. Caso central de
       R9: situación con `numero_incidencia="RS26.08/0123"`, cuerpo con
       `"RS26.09/0999"` → 409, **cero** llamadas al doble del ERP y **ninguna**
@@ -99,25 +134,41 @@
       `codigo_obra` y el cotejo no lo exige.
       **Verificación**: los tests nuevos **en rojo**, con la salida en
       `progress/impl_F-034.md`.
+      **Hecha (2026-09-23)**: 37 fallos y 97 verdes, con motivos y trazas
+      centrales en `progress/impl_F-034.md` §7.1. Incluye los casos de la
+      mitad A desde `/api/cerrar` (en `test_f034_archivo_persistido.py`) y los
+      de **H-4** (decisión del líder del 2026-09-23). El mundo del cierre,
+      `MundoDelCierre`, en `tests/utiles_circuito.py`.
 
-- [ ] **T9**: `application/pipelines/paso_cierre.py` · el cotejo en **1 bis**
+- [x] **T9**: `application/pipelines/paso_cierre.py` · el cotejo en **1 bis**
       con `solo_incidencia=True`, `_codigo_de_incidencia` con el número
       **guardado**, y `_exigir_archivado` sustituido por la puerta compartida
       (`design.md` §5). `_exigir_adjuntado` **no se toca** (R22). Docstring del
       módulo con la enmienda fechada.
       **Verificación**: `pytest tests/test_f034_*.py tests/test_f009_paso_cierre.py
       tests/test_f025_sin_dry_run_previo.py -q` en verde.
+      **Hecha (2026-09-23)**: el paso y sus tests de paso (F-009, F-012, F-025,
+      F-026, F-028, F-030) en verde, adaptados sin relajar el cotejo (detalle
+      en `progress/impl_F-034.md` §7.3). Incluye **H-4** en
+      `codigos_del_parte.exigir_codigos_completos` (decisión del líder dentro
+      de D-4). Los tests de F-034 que recorren el **borde** de `/cerrar` siguen
+      en rojo en este commit porque el borde es T10; se ponen en verde en el
+      siguiente.
 
-- [ ] **T10**: `interface_adapters/api/cerrar.py` y su `except` de
+- [x] **T10**: `interface_adapters/api/cerrar.py` y su `except` de
       `function_app.py`, igual que T7.
       **Verificación**: `pytest tests/test_f009_cerrar_http.py
       tests/test_f012_cerrar_exige_grafico.py tests/test_f034_*.py -q` en
       verde, incluidos los dos tests que fijan la semántica de
       `estado_archivo` (`design.md` §6.1).
+      **Hecha (2026-09-23)**: esa verificación en verde; suite del servicio
+      3.200 passed, 28 skipped; cobertura de líneas cambiadas 86/86. Tests del
+      borde adaptados (F-009, F-012, F-030) y filas de `cerrar.py` en la tabla
+      de F-031: detalle en `progress/impl_F-034.md` §7.3.
 
 ## Bloque 4 · El front
 
-- [ ] **T11**: `services/postventa-front/tests_js/reintento_vaciado.test.js`
+- [x] **T11**: `services/postventa-front/tests_js/reintento_vaciado.test.js`
       (RED primero) y después `js/app.js::reintentarCierre` esperando
       `vaciarPendientes()` antes de lanzar el circuito, con su guarda y su
       aviso (`design.md` §7.1; R29, R30, R32, R33).
@@ -126,17 +177,31 @@
       `confirmacion.test.js` y `pipeline.test.js` **sin cambios** (R31: el
       cuerpo de las dos peticiones no se toca); y `pytest tests -q` del puente
       `tests/test_f007_js.py` en verde.
+      **Hecha (2026-09-23)**: RED con traza real (5 fallos, los de R29 y R30)
+      y verde en `progress/impl_F-034.md` §8. `node --test "tests_js/*.test.js"`
+      → 322 pass, 0 fail (el patrón y no la carpeta: con Node 24 la carpeta
+      da `MODULE_NOT_FOUND`, ver `tests/test_f007_js.py`); ningún otro fichero
+      de `tests_js/` tocado; `pytest tests -q` del front → 256 passed. El test
+      ejecuta `js/app.js` de verdad en un contexto de `node:vm` con la API
+      doble. Hallazgo **H-6** (el rebote de F-026 pone el parte en «listo» y
+      esconde «Reintentar el cierre»), anotado y no cambiado.
 
 ## Bloque 5 · Alcance, consultas y documentación
 
-- [ ] **T12**: `tests/test_f034_sin_consultas_de_mas.py` (R38): un doble de
+- [x] **T12**: `tests/test_f034_sin_consultas_de_mas.py` (R38): un doble de
       repositorio que **cuenta** las llamadas a `consultar_situacion` y a
       `consultar_grafico`, y exige que `paso_grafico` y `paso_cierre` hagan
       exactamente las mismas que antes de la feature.
       **Verificación**: `pytest tests/test_f034_sin_consultas_de_mas.py -q` en
       verde, con el número esperado escrito en el propio test.
+      **Hecha (2026-09-23)**: 10 passed. El contador apunta **todas** las
+      llamadas al puerto, no solo las dos lecturas; la lista esperada de cada
+      caso se escribe a mano y se **midió en `dev`** (`e2e5d7a`) ejecutando el
+      mismo fichero: los cinco casos positivos, verdes allí también; los cuatro
+      rechazos nuevos, `DID NOT RAISE` allí. Trazas en
+      `progress/impl_F-034.md` §9.1.
 
-- [ ] **T13**: `tests/test_f034_alcance_cerrado.py` (R39), con el patrón de
+- [x] **T13**: `tests/test_f034_alcance_cerrado.py` (R39), con el patrón de
       `test_f033_alcance_cerrado.py` —control de `diff` con sus tres guardas
       **más** un control que no dependa de `git`—: `sentencias.py`, `mapeo.py`,
       `repositorio_pg.py`, `domain/ports/persistencia.py`,
@@ -146,8 +211,18 @@
       y `archivar.py`, **solo el `import`**.
       **Verificación**: `pytest tests/test_f034_alcance_cerrado.py -q` en verde
       dentro de la rama.
+      **Hecha (2026-09-23)**: 25 passed, **ninguno saltado** dentro de la rama.
+      Hereda y amplía el control «dónde vive lo nuevo» de F-031 (decisión del
+      humano del 2026-09-23): `codigos_del_parte.py` es la única definición de
+      las cuatro piezas y solo las usan los ficheros previstos. «Solo el
+      `import`» de `paso_archivo.py` y `archivar.py` se comprueba comparando su
+      árbol sintáctico —sin prosa ni `import`— con el de la base de la rama
+      (`git merge-base dev HEAD`), deshaciendo solo la mudanza aprobada de T3.
+      Además: el código de producción tocado es **exactamente** el de
+      `design.md` §2, y del front solo `app.js` y su test. Sondas y trazas en
+      `progress/impl_F-034.md` §9.2.
 
-- [ ] **T14**: documentación — recuadro fechado en `docs/ARCHITECTURE.md`
+- [x] **T14**: documentación — recuadro fechado en `docs/ARCHITECTURE.md`
       (pasos 7a y 7b), nota de cierre de **D-6** en
       `specs/F-033-l1-traza-archivo/design.md` §10 y de **H-1** en
       `specs/F-031-nombrado-persistido/design.md` §8 (`design.md` §10).
@@ -156,17 +231,34 @@
       en `progress/current.md` para F-013.
       **Verificación**: `bash harness/init.sh` en verde (valida los documentos
       normativos) y el diff revisado a ojo.
+      **Hecha (2026-09-23)**: recuadros «Precisado por F-034 el 2026-09-23» en
+      los pasos 7a y 7b de `docs/ARCHITECTURE.md`; notas de cierre de D-6
+      (F-033 §10) y de H-1 (F-031 §8); comprobación de `azure-apps` escrita
+      en `design.md` §10 (no cambia). Por encargo del líder, además, la nota
+      **«desde el despliegue de F-034»** junto a cada sitio donde está escrito
+      el riesgo aceptado del 2026-09-23: `docs/DESPLIEGUE.md` §4 bis,
+      `docs/INTEGRACION.md` §3 bis, cabecera (y comentario de `$ajustes`) de
+      `infra/desplegar_backend.ps1` y recuadro de R33 de F-010. Nada borrado.
+      H-3 anotado para F-013 en `progress/current.md`. Detalle en
+      `progress/impl_F-034.md` §9.3.
 
 ## Bloque 6 · Puertas de rigor y verde
 
-- [ ] **T15**: campaña de mutación sobre lo cambiado
+- [x] **T15**: campaña de mutación sobre lo cambiado
       (`python -m harness.mutacion --feature F-034`), con **cero
       supervivientes** sin justificación escrita; informe en
       `progress/mutacion_F-034.md` con el nº de workers.
       **Verificación**: el informe existe, está completado y no deja ningún
       superviviente sin analizar.
+      **Hecha (2026-09-23)**: línea base verde sin caché (api 3.235, front
+      256, JS 322). Vuelta 1: 12 mutantes, 1 superviviente (`strict=True` del
+      cotejo, equivalente con el código de hoy), matado con un test de
+      «fallar cerrado» (`97ea9d3`, RED contra el mutante). Vuelta 2: **12
+      generados, 12 muertos, 0 supervivientes**, 8 workers, 0 timeouts. Los
+      doce los cazan los tests de F-034 por sí solos. La campaña **no muta el
+      JS** (T11). Detalle en `progress/mutacion_F-034.md`.
 
-- [ ] **T16**: **Verificación: MANUAL (humano)** · V1 de `design.md` §12. Que
+- [x] **T16**: **Verificación: MANUAL (humano)** · V1 de `design.md` §12. **Cerrada el 2026-09-23 por decisión del humano («dalo por cerrado»): cubierta por los tests**, ver `progress/cierre_F-034.md`. Que
       los dos 409 nuevos se ven en pantalla y **no tumban la tanda**. Atención:
       con `CIERRE_HABILITADO` apagado el backend responde **503 antes de
       cualquier puerta** (D-6 de `requirements.md`), así que `func start` a
@@ -174,13 +266,28 @@
       front local contra un backend con los puertos dobles, o aceptar que R32
       queda cubierta por los tests de `node --test` y declararlo. El resultado
       real se copia a `progress/impl_F-034.md`.
+      **Guion listo (2026-09-23), sin ejecutar**: `progress/impl_F-034.md`
+      §10.2. Propone la segunda salida (declarar R32 cubierta por los tests
+      de `reintento_vaciado.test.js`), porque desde la pantalla ninguno de los
+      dos 409 se puede provocar sin trucar el estado y, con las ventanas
+      abiertas por defecto desde el 2026-09-23, la tanda de la pantalla va
+      siempre con `commit`; y, como complemento sin riesgo, el paso V2-4 de
+      T17 (el 409 en el entorno desplegado, por consola). Decide el humano.
 
-- [ ] **T17**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. En el
+- [x] **T17**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. **Cerrada el 2026-09-23 por decisión del humano («dalo por cerrado»), SIN ejecutar**, ver `progress/cierre_F-034.md`. En el
       entorno desplegado y **solo con un parte que el humano autorice**: un
       `POST /api/adjuntar` y un `POST /api/cerrar` **en dry-run** (sin
       `commit`) y comprobar que la reclamación y el nombre del fichero que
       enseña el dry-run son los mismos que antes de la feature. **No escribe
       nada en el ERP**: el dry-run es una lectura. El resultado real se copia a
       `progress/impl_F-034.md`.
+      **Guion listo (2026-09-23), sin ejecutar**: `progress/impl_F-034.md`
+      §10.3 (V2-1 a V2-4, con fragmentos de consola que usan `fetch`,
+      `window.CONFIG_POSTVENTA` y `Alpine.$data`; `api` no es global). Aviso:
+      el dry-run no escribe en Sigrid pero **sí** deja la traza `dry_run_ok` en
+      la base propia.
 
-- [ ] **T18**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T18**: Ejecutar `bash harness/init.sh` en verde.
+      **Hecha (2026-09-23)**: 3.236 passed, 28 skipped; raíz 62 passed;
+      front en verde; `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas
+      cubiertas (88/88)`. Traza en `progress/impl_F-034.md` §10.4.

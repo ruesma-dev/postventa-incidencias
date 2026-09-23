@@ -1,6 +1,232 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 CERRADA · 2026-09-23 · falta desplegarla
+>
+> Review 2 APROBADA. V1 y V2 cerradas por decisión del humano («dalo por
+> cerrado»): V1 cubierta por tests, V2 sin ejecutar. Acta:
+> **`progress/cierre_F-034.md`**. **Siguiente: F-035**, el diseño del portal de
+> posventa (prioridad 1 desde el 2026-09-23).
+
+> ## ✅ F-034 · CORRECCIÓN DE LA REVIEW HECHA · 2026-09-23 · siguiente: reviewer (y T16/T17 del humano)
+>
+> Review **RECHAZADA** (`f0f20a0`) por H-R1 (los tests de `/api/cerrar` no
+> veían el login) y H-R2 (R14 sin test con nombre). Corregido **solo con
+> tests**, sin tocar producción (`1db79e6`, `4542bdd` y el commit del informe).
+>
+> - **H-R1**: el doble `Usuarios` de `tests/utiles_circuito.py` apunta cada
+>   llamada y `nada_ha_tocado_el_erp()` de **los dos** mundos la exige vacía.
+>   Los dos `r15_…_no_llega_al_login` lo afirman en el cuerpo y dos controles
+>   positivos prueban que la lista no está vacía por construcción. **RED** en
+>   una copia desechable (worktree del scratchpad, ya retirado): M1 y M2 de la
+>   review, **vivas** con el doble viejo, **mueren** con el nuevo (18 y 7
+>   fallos, suite entera). Extra: M3, el login por delante en `paso_grafico`,
+>   **también vivía** y ahora muere (20 fallos): `/adjuntar` tenía el mismo
+>   agujero.
+> - **H-R2**: cuatro alias `test_f034_r14_*` (cotejo y puerta de archivo, en
+>   `/adjuntar` y `/cerrar`), sin ninguna aserción nueva ni cambiada.
+> - `bash harness/init.sh` en verde: **3.246 passed**, 28 skipped, cobertura
+>   **88/88**. Mutación relanzada sobre `4542bdd`, línea base sin caché
+>   comprobada: **12/12 muertos, 0 supervivientes** (139,8 s).
+>
+> Informe: **`progress/impl_F-034.md` §12**. T16 y T17 siguen siendo del
+> humano. Nada escrito en ningún sistema; sin DDL; `features.json` y
+> `azure-apps/` sin tocar.
+
+> ## ✅ F-034 · BLOQUE 6 HECHO · 2026-09-23 · siguiente: T16 y T17 (humano) y reviewer
+>
+> **T15 y T18 cerradas** (`97ea9d3`, `d3cc9f5` y el commit de cierre). Ni una
+> línea de producción en este bloque: el único cambio de código es un test.
+>
+> - **T15** · línea base verde **sin caché** antes de mutar (api 3.235, front
+>   256, JS 322/322) y control del worktree sin mutar (verde). Vuelta 1: 12
+>   mutantes, **1 superviviente** (`strict=True` del `zip` del cotejo,
+>   equivalente con el código de hoy), matado con un test de «fallar cerrado»
+>   con RED contra el mutante. Vuelta 2: **12/12 muertos, 0 supervivientes,
+>   0 timeouts** (8 workers, `--timeout 600`); los doce los cazan los tests de
+>   F-034 solos. El `if` de `_codigo_de_incidencia` (H-4) **no generó
+>   mutantes** (línea sin cambios). **La campaña no muta el JS.** Informe:
+>   `progress/mutacion_F-034.md`.
+> - **T16 y T17 · MANUAL del humano, sin ejecutar.** Guiones en
+>   `progress/impl_F-034.md` §10.2 y §10.3, pensados para recorrerse: por
+>   consola con `fetch`, `window.CONFIG_POSTVENTA` y `Alpine.$data` (`api` no es
+>   global), en el **entorno desplegado** (en local `func start` da 503 antes de
+>   las puertas). **V1**: se propone declarar R32 cubierta por tests (ningún 409
+>   nuevo se provoca desde la pantalla sin trucar el estado, y la tanda va
+>   siempre con `commit` con las ventanas abiertas); complemento: V2-4, el 409
+>   por consola. **V2**: dry-runs de cerrar y adjuntar antes y después de
+>   desplegar F-034, con un parte autorizado aprobado, archivado y sin cerrar;
+>   no escribe en Sigrid, **sí** deja la traza `dry_run_ok` en la base propia.
+> - **T18** · `bash harness/init.sh` en verde: **3.236 passed**, 28 skipped,
+>   cobertura **88/88**.
+> - T13 estaba `[ ]` en `tasks.md` pese a estar hecha: marcada.
+>
+> **Para el líder**: `rigor.json` tiene 120 s por mutante y la suite `api` ya
+> tarda 122–127 s sola (candidato a `arnes-base`); siguen la nota de
+> `azure-apps` al desplegar y la frase de F-030 §10.7. H-5 y H-6, abiertos.
+>
+> **Resumen para el reviewer (desviaciones y hallazgos de los seis bloques):
+> `progress/impl_F-034.md` §11.** Nada escrito en ningún sistema; sin DDL;
+> `features.json` y `azure-apps/` sin tocar.
+
+> ## ✅ F-034 · BLOQUE 5 HECHO · 2026-09-23 · siguiente: Bloque 6 (mutación, MANUAL y verde)
+>
+> **T12, T13 y T14 cerradas** (`5bd78d0`, `c377400`, `f50d0f6`). Ni una línea
+> de código de producción en este bloque.
+>
+> - **T12** `tests/test_f034_sin_consultas_de_mas.py` (10): cuenta **todas**
+>   las llamadas al repositorio desde los dos handlers; una sola
+>   `consultar_situacion` y una sola `consultar_grafico` por petición, y la
+>   lista completa **medida en `dev`** con el mismo fichero (verde allí en los
+>   cinco casos positivos). Los rechazos nuevos cuestan una sola consulta.
+> - **T13** `tests/test_f034_alcance_cerrado.py` (25, ninguno saltado en la
+>   rama): dos mitades y las tres guardas del diff. El código de producción
+>   tocado es **exactamente** el de `design.md` §2; persistencia, puerto,
+>   `estado.py`, nombrado, gráfico, cierre y `sql/` intactos; de
+>   `paso_archivo.py` y `archivar.py`, solo la mudanza aprobada (comparado por
+>   árbol sintáctico con la base de la rama). **Hereda y amplía** el control
+>   «dónde vive lo nuevo» de F-031 (decisión del humano del 2026-09-23).
+> - **T14** documentación, solo añadidos fechados: pasos 7a y 7b de
+>   `ARCHITECTURE.md`, cierre de D-6 (F-033) y de H-1 (F-031), y la nota
+>   **«desde el despliegue de F-034»** junto al riesgo aceptado del 2026-09-23
+>   en `DESPLIEGUE.md` §4 bis, `INTEGRACION.md` §3 bis, cabecera de
+>   `infra/desplegar_backend.ps1` y recuadro de R33 de F-010.
+>   `azure-apps/postventa_incidencias.md` **no cambia** por la feature (lo que
+>   se expone y se consume es lo mismo; el 409 gana un motivo); **para el
+>   líder**: su frase del riesgo (`:406-409`) necesitará la misma nota cuando se
+>   despliegue F-034. Tampoco tocado: F-030 `design.md` §10.7 dice que H-1
+>   «sigue abierto».
+>
+> `bash harness/init.sh` en verde: **3.235 passed**, 28 skipped, cobertura
+> 88/88. Nada escrito en ningún sistema; sin DDL; `features.json` y
+> `azure-apps/` sin tocar.
+>
+> **Para F-013 · H-3 de F-034** (`specs/F-034-archivo-persistido-en-erp/design.md`
+> §8): la puerta de archivo de gráfico y cierre (`exigir_parte_archivado`) mira
+> el **estado** de la traza guardada pero **no su biblioteca** (`drive_id`): un
+> parte archivado en la biblioteca de IT pasa igual que uno de Posventa. No se
+> tocó en F-034 (D-8); es terreno de F-013, junto con el asunto de las 133
+> trazas de IT.
+>
+> **Queda**: **Bloque 6** (T15 mutación —con los mutantes equivalentes del
+> `if` de `_codigo_de_incidencia`—, T16 y T17 MANUAL del humano, T18 verde).
+> Informe: **`progress/impl_F-034.md`** §9.
+
+> ## ✅ F-034 · BLOQUE 4 HECHO · 2026-09-23 · siguiente: Bloque 5 (alcance y documentación)
+>
+> **T11 cerrada** (`56e1102`). `reintentarCierre` (`js/app.js`) ya **espera**
+> `vaciarPendientes()` de F-031 antes de lanzar el circuito y, si el vaciado
+> falla, **no lanza nada** y pinta `AVISO_SIN_GUARDAR`, igual que
+> `confirmarArchivo`; retira además el aviso de un intento anterior. H-2
+> cerrado. El cuerpo de las peticiones no cambia (R31). Test nuevo
+> `tests_js/reintento_vaciado.test.js` (12), que **ejecuta `app.js`** en
+> `node:vm` con la API doble: RED con traza real (5 fallos, R29 y R30; el
+> cierre salía con el número corregido y sin guardar) y verde. `node --test
+> "tests_js/*.test.js"` 322/322; `pytest` del front 256 passed; ningún test
+> existente tocado. `bash harness/init.sh` en verde (cobertura 88/88, solo
+> Python). Nada escrito en ningún sistema; backend y `features.json` sin tocar.
+>
+> **Hallazgo nuevo H-6** (no cambiado, anterior a F-034): guardar una
+> corrección de un parte «adjuntado» lo pone en «listo» (`_anotarVeredicto`,
+> F-026) y esconde el botón «Reintentar el cierre»; el parte sigue saliendo
+> por «Archivar y cerrar» si el guardado sale bien.
+>
+> **Queda**: **Bloque 5** (T12 contador de consultas, T13 alcance cerrado,
+> T14 documentación) y **Bloque 6** (T15 mutación, T16 y T17 MANUAL, T18
+> verde). Informe: **`progress/impl_F-034.md`** §8.
+
+> ## ✅ F-034 · BLOQUE 3 HECHO · 2026-09-23 · siguiente: Bloque 4 (el front)
+>
+> **T8 (RED), T9 y T10 cerradas** (`e1603db`, `d3bccda`, `2a6efc4`).
+> `POST /api/cerrar` ya decide **con lo guardado**: `paso_cierre` coteja el nº
+> de incidencia en **1 bis** (completos → declarados, `solo_incidencia=True`)
+> antes de hablar con nadie, también en dry-run, y **cierra la reclamación del
+> nº guardado**; la puerta de archivo es la compartida (`exigir_parte_archivado`,
+> traza guardada); la firma pierde `numero_incidencia` y gana
+> `codigos_declarados`; `cerrar._como_contexto` ya no fabrica la `TrazaArchivo`;
+> los dos errores nuevos son 409 también en `cerrar`. RED con traza real (37
+> fallos; la sonda de antes cerraba la reclamación que nombraba el cuerpo) y
+> verde: 134 tests de F-034. **H-4 cerrado** según la decisión del líder (nº
+> guardado sin tramos → 409 `CodigoNoConsta` en gráfico y cierre; archivar
+> idéntico, con tests; `design.md` §4.2 enmendado con fecha). Tests existentes
+> adaptados con 3 líneas de comprobación sustituidas y explicadas; tabla de
+> F-031 ampliada **solo en filas**. `bash harness/init.sh` en verde: 3.200
+> passed, cobertura **86/86**. Nada escrito en Sigrid, SharePoint, Azure ni PG;
+> sin DDL; sin tocar `features.json`.
+>
+> **Queda**: **Bloque 4** (T11, `reintentarCierre` espera
+> `vaciarPendientes()`), **Bloque 5** (T12–T14: contador de consultas, alcance
+> cerrado, documentación) y **Bloque 6** (T15 mutación —ojo: el `if` de
+> `_codigo_de_incidencia` es ya inalcanzable, mutantes equivalentes—, T16 y
+> T17 MANUAL, T18 verde). Hallazgo nuevo para el reviewer: **H-5** (el cotejo
+> no iguala `RS26.08 - 0123` con `RS26.08/0123`; lado seguro, criterio de R12).
+> Informe: **`progress/impl_F-034.md`** §7.
+
+> ## ✅ F-034 · BLOQUE 2 HECHO · 2026-09-23 · siguiente: Bloque 3 (`/api/cerrar`)
+>
+> **T4 (RED), T5, T6 y T7 cerradas** (`0e48a8d`, `de054ef`, `5291b51`,
+> `bc9a6ce`). `POST /api/adjuntar` ya decide **con lo guardado**: la puerta de
+> archivo compartida `exigir_parte_archivado` (en `puerta_de_estado.py`) lee
+> `ctx.situacion.archivo` y nunca `ctx.archivo`; `paso_grafico` coteja en
+> **1 bis** (completos → declarados) antes de hablar con nadie, también en
+> dry-run, y busca la reclamación y compone el nombre con los códigos
+> **guardados**; la firma pierde `numero_incidencia`/`codigo_obra` y gana
+> `codigos_declarados`; el borde ya no fabrica la `TrazaArchivo`; los dos
+> errores nuevos son 409. RED con traza real (39 fallos) y verde: 81 tests de
+> F-034. Tests existentes adaptados con **cero `assert` retirados**; tabla de
+> F-031 ampliada **solo en filas** (autorizado). `bash harness/init.sh` en
+> verde: 3.147 passed, cobertura **69/69**. Nada escrito en Sigrid,
+> SharePoint, Azure ni PG; sin DDL.
+>
+> **Queda**: **Bloque 3** (T8–T10, `/api/cerrar` y `paso_cierre`, lo más grave:
+> qué reclamación se **cierra**). Hasta entonces la rama **no es desplegable**:
+> adjuntar y cerrar tienen reglas distintas. Pendiente de decidir (humano o
+> reviewer) antes o dentro del Bloque 3: **H-4**, un nº guardado de solo
+> separadores todavía llega al 400 de `_codigo_de_incidencia` con un texto que
+> ya no es cierto (seguro, sin tocar el ERP). Luego Bloques 4–6 (T11–T18).
+> Informe: **`progress/impl_F-034.md`** §6.
+
+> ## ✅ F-034 · BLOQUE 1 HECHO · 2026-09-23 · siguiente: Bloque 2
+>
+> **T1, T2 y T3 cerradas** (`34982e7`, `633a8fb`, `75cb5ac`). T3: módulo nuevo
+> `application/pipelines/codigos_del_parte.py` (`CodigosDelParte`,
+> `codigos_guardados`, `exigir_codigos_declarados` con `solo_incidencia` e
+> `y_por_eso`, `exigir_codigos_completos` → `CodigoNoConsta`); `paso_archivo.py`
+> y `archivar.py` lo importan **sin cambiar ninguna regla**, y el mensaje de
+> archivar es **byte a byte** el de F-031 (test propio). Enmienda fechada y
+> mínima de dos tests de F-031 (solo la tabla de ubicaciones y un `import`) y
+> recuadros en R26 y T3, según la decisión del humano de abajo.
+> `bash harness/init.sh` en verde: 3.097 passed, cobertura **43/43**. Nada
+> escrito en Sigrid, SharePoint, Azure ni PG; sin DDL.
+>
+> **Queda**: **Bloque 2** (T4–T7, `/api/adjuntar` y `paso_grafico`), que al
+> llevar `codigos_declarados`/`CodigosDelParte` al gráfico tendrá que ampliar
+> las filas de la tabla de F-031 (autorizado); luego Bloques 3 a 6 (T8–T18),
+> con la mutación (T15) y las MANUAL (T16, T17). Informe:
+> **`progress/impl_F-034.md`** §5.
+
+> ## ▶ F-034 DESBLOQUEADA · 2026-09-23 · decisión del humano sobre el choque de T3
+>
+> Respuesta literal: **«si»**, a las dos propuestas de `progress/impl_F-034.md`
+> §2.4 y §2.5:
+>
+> 1. **Opción (a)**: enmienda fechada y mínima de los tests de F-031. En
+>    `test_f031_alcance_cerrado.py`, **solo** la tabla
+>    `NOMBRES_NUEVOS_Y_DONDE_VIVEN` y su comentario («Enmienda del 2026-09-23
+>    (F-034)»); en `test_f031_nombrado_persistido.py`, **solo el `import`** de
+>    `codigos_guardados`. Se enmiendan también R26 y la verificación de T3. El
+>    control «dónde vive lo nuevo» lo hereda y amplía `test_f034_alcance_cerrado.py`
+>    (T13). Ninguna regla de F-031 cambia.
+> 2. **§2.5**: el mensaje de archivar no cambia ni un byte; la parte fija es
+>    común y `y_por_eso` lleva la cola de cada endpoint («no se ha adjuntado
+>    nada…», «no se ha cerrado nada…», con la acción de guardar la corrección).
+
+> ## ✔ (resuelto) F-034 · Bloque 1 parado en T3 · 2026-09-23
+>
+> El choque de T3 con el control siempre activo de `test_f031_alcance_cerrado.py`
+> quedó resuelto por la decisión del humano de arriba. Detalle del bloqueo:
+> `progress/impl_F-034.md` §2.
+
 > ## ✅ F-031 CERRADA · 2026-09-23 · desplegada y en uso
 >
 > Review APROBADO, `init.sh` en verde, mergeada y desplegada (backend 11:01 UTC).

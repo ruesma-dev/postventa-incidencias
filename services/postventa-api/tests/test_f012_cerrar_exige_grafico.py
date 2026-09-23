@@ -31,6 +31,7 @@ from datetime import UTC, datetime
 
 import pytest
 from application.pipelines import paso_cierre as modulo
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import (
     exigir_autorizacion_para_escribir,
@@ -53,7 +54,11 @@ from domain.models.persistencia import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 
-from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
+from tests.utiles_pg import (
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import ErpEnMemoria
 from tests.utiles_validacion import veredicto_apto
 
@@ -127,6 +132,7 @@ def _contexto() -> ContextoParte:
             clasificacion_firma=ClasificacionFirma.HUMANA,
             observaciones=None,
             confianza_observaciones=0,
+            numero_incidencia=INCIDENCIA,
         ),
         archivo=TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO),
     )
@@ -162,10 +168,18 @@ def _cerrar(
     mira el del contexto, así que el ayudante lo deja también en el doble antes
     de llamar. No inventa ninguno ni pisa la situación que el caso haya
     preparado: el porqué entero está en `tests/utiles_pg.py`.
+
+    **Enmienda del 2026-09-23 (F-034).** Desde F-034 el cierre lee la traza
+    de archivo y el nº de incidencia de lo **guardado**: la traza del
+    contexto se deja también en el doble (`con_el_archivo_guardado`, con las
+    mismas dos reglas que su hermano), el veredicto lleva el nº con el que se
+    guardó el parte y el declarado se pasa igual, como hace el borde. El
+    cotejo no se afloja: la divergencia vive en `test_f034_codigos_en_el_erp.py`.
     """
     ctx = _contexto()
     repositorio = repositorio if repositorio is not None else RepositorioEnMemoria()
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_cierre(
         ctx,
@@ -177,7 +191,9 @@ def _cerrar(
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
+        codigos_declarados=CodigosDelParte(
+            codigo_obra="", numero_incidencia=INCIDENCIA
+        ),
         ahora=AHORA,
     )
 
@@ -464,9 +480,18 @@ def _respuesta_del_borde(traza: TrazaGrafico | None) -> dict:
         },
         erp=ErpEnMemoria(_reclamacion()),
         # F-030 · el veredicto lo lee la puerta de la base, no del cuerpo.
+        # F-034 · y el archivo y el nº de incidencia, también: el veredicto se
+        # emite sobre el nº que declara el cuerpo y la traza de archivo consta.
         repositorio=RepositorioEnMemoria(
             traza_grafico=traza,
-            situacion=SituacionParte(validacion=veredicto_apto(hash_parte=HASH)),
+            situacion=SituacionParte(
+                validacion=veredicto_apto(
+                    hash_parte=HASH, numero_incidencia=INCIDENCIA
+                ),
+                archivo=TrazaArchivo(
+                    hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO
+                ),
+            ),
         ),
         usuarios=Usuarios(),
         preferencias=Preferencias(),

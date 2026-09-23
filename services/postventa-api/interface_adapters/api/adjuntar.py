@@ -56,6 +56,29 @@ F-006 dejó anotada la decisión D4 que esta feature paga.
 validándose** contra las enumeraciones de F-004: el contrato HTTP no cambia y
 un valor desconocido sigue siendo un 400 (R19, D6 de F-030). Lo que ya no
 hacen es decidir nada.
+
+## El archivo y los dos códigos tampoco: se leen de lo guardado
+
+**Enmienda del 2026-09-23 (F-034).** Hasta hoy este endpoint decidía con tres
+campos más del formulario, y los tres decidían una escritura en el ERP de
+producción:
+
+- `estado_archivo`: `_como_contexto` fabricaba con él una `TrazaArchivo` y la
+  puerta del paso la miraba a ella. El front lo manda **fijo** a `archivado`,
+  así que un parte apto y sin archivar se adjuntaba con solo decirlo;
+- `numero_incidencia` y `codigo_obra`: elegían **a qué reclamación** se
+  adjunta el parte y **con qué nombre** cuelga de ella.
+
+Desde F-034 (`specs/F-034-archivo-persistido-en-erp/`) el contexto sale de aquí
+**sin traza de archivo** y el paso lee la guardada; y los dos códigos viajan al
+paso como `codigos_declarados`, que **solo cotejan**: si no son los guardados,
+409 y no se toca el ERP (R8, R11, R19). Los tres **siguen siendo obligatorios
+y siguen validándose** —un campo que falta o un `estado_archivo` desconocido es
+el 400 de siempre—: el contrato HTTP no cambia (R6, R17, R18). Lo que cambia es
+para qué sirven: los dos códigos, para cotejar; `estado_archivo`, **para nada**,
+porque manda lo guardado y un cuerpo que se quede corto no es un conflicto
+(R7). Se queda en el contrato para no obligar a desplegar el front a la vez
+(`design.md` §9, D-3).
 """
 
 from __future__ import annotations
@@ -63,12 +86,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_grafico import paso_grafico
 from config.settings import obtener_ajustes
 from domain.models.errores import CuerpoDeGraficoInvalido
 from domain.models.grafico import ResultadoGrafico
-from domain.models.persistencia import EstadoArchivo, TrazaArchivo
+from domain.models.persistencia import EstadoArchivo
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, Veredicto
 from domain.ports.erp import ErpPort
@@ -123,7 +147,8 @@ def adjuntar_grafico(
     """Adjunta **un** parte a su reclamación, o dice qué se adjuntaría.
 
     Levanta `CuerpoDeGraficoInvalido` y `CuerpoDeCierreInvalido` (→ 400),
-    `ParteNoApto`, `ParteNoArchivado`, `NombradoImposible`,
+    `ParteNoApto`, `CodigosNoCoinciden`, `CodigoNoConsta`, `ParteNoArchivado`,
+    `NombradoImposible`,
     `GraficoDemasiadoGrande`, `GraficoNoEsPdf`, `ReclamacionNoLocalizada`,
     `EstadoNoCerrable`, `UsuarioSigridNoMapeado`, `UsuarioSigridInexistente`,
     `GraficoRechazadoPorLaPasarela` y `ReferenciaNoConsta` (→ 409),
@@ -155,11 +180,7 @@ def adjuntar_grafico(
     ajustes = obtener_ajustes()
 
     contexto = paso_grafico(
-        _como_contexto(
-            contenido,
-            hash_parte=hash,
-            estado_archivo=estado_archivo,
-        ),
+        _como_contexto(contenido, hash_parte=hash),
         erp if erp is not None else construir_erp(ajustes),
         graficos if graficos is not None else construir_graficos(ajustes),
         repositorio if repositorio is not None else construir_repositorio(ajustes),
@@ -169,8 +190,11 @@ def adjuntar_grafico(
         confirmado=_bandera(confirmado),
         usuario_oid=usuario_oid.strip(),
         correo=correo.strip(),
-        numero_incidencia=numero_incidencia,
-        codigo_obra=codigo_obra,
+        # F-034 · lo que **afirma** quien llama, tal cual vino: solo coteja
+        # contra lo guardado, que es con lo que el paso escribe (R8, R19).
+        codigos_declarados=CodigosDelParte(
+            codigo_obra=codigo_obra, numero_incidencia=numero_incidencia
+        ),
         gratipide=ajustes.sigrid_gratipide_parte,
         tope_bytes=ajustes.grafico_max_bytes,
         ahora=ahora if ahora is not None else datetime.now(UTC),
@@ -231,23 +255,21 @@ def _bandera(valor: Any) -> bool:
     return isinstance(valor, str) and valor.strip() == "true"
 
 
-def _como_contexto(
-    contenido: bytes,
-    *,
-    hash_parte: str,
-    estado_archivo: str,
-) -> ContextoParte:
+def _como_contexto(contenido: bytes, *, hash_parte: str) -> ContextoParte:
     """Reconstruye el contexto mínimo que necesita el paso del gráfico.
 
-    El estado del archivo llega en el formulario y **se vuelve a comprobar**
-    dentro del paso, exactamente igual que si viniera de dentro. El
-    **veredicto ya no**: se va sin rellenar y lo lee la puerta del paso, de la
-    base, porque este endpoint no recibe la extracción y no puede emitirlo
-    (F-030; la enmienda está arriba y el porqué largo en `archivar.py`).
+    El `hash` y los bytes, y **nada más**. El **veredicto** se va sin rellenar
+    y lo lee la puerta del paso, de la base, porque este endpoint no recibe la
+    extracción y no puede emitirlo (F-030; la enmienda está arriba y el porqué
+    largo en `archivar.py`). Y desde F-034 **tampoco la traza de archivo**: el
+    paso la lee de la base, y fabricarla aquí con el `estado_archivo` del
+    formulario volvería a dejar un objeto con un estado que no ha salido de
+    ninguna lectura, esperando a que alguien lo use (R4). La segunda fuente
+    desaparece, no se tapa.
 
-    De la extracción **no se reconstruye nada**: el paso no la necesita —la
-    obra y la incidencia llegan aparte— y pedirla obligaría al front a
-    reenviar el DNI y las observaciones manuscritas del cliente en cada
+    De la extracción **no se reconstruye nada**: el paso no la necesita —los
+    dos códigos que deciden salen de lo guardado— y pedirla obligaría al front
+    a reenviar el DNI y las observaciones manuscritas del cliente en cada
     llamada, que es justo el dato que no debe viajar de más.
     """
     return ContextoParte(
@@ -259,10 +281,6 @@ def _como_contexto(
             contenido=contenido,
         ),
         validacion=None,
-        archivo=TrazaArchivo(
-            hash_parte=hash_parte.strip(),
-            estado=EstadoArchivo(estado_archivo),
-        ),
     )
 
 

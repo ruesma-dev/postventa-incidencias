@@ -303,6 +303,11 @@ escribir nada. Si el ERP no lo confirma, **no se cierra**.
    puerta manual**; y mientras F-034 no esté desplegada, `/api/adjuntar` y
    `/api/cerrar` toman el número de incidencia del cuerpo de la petición.
    Riesgo aceptado, detallado en `docs/DESPLIEGUE.md` §4 bis.
+   **Nota del 2026-09-23 (F-034): desde el despliegue de F-034**, los dos
+   endpoints dejan de tomar del cuerpo el número de incidencia y el estado de
+   archivo: deciden con lo **guardado** del parte y un cuerpo que no cuadre
+   recibe 409 sin llegar al ERP. Hasta ese despliegue, la frase anterior
+   sigue siendo cierta.
 3. **El dry-run.** `POST /api/cerrar` lee y no escribe salvo que se le pida
    `commit` explícitamente.
 4. **La confirmación.** Con `commit` hace falta además la confirmación del

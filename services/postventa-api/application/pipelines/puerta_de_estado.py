@@ -64,17 +64,42 @@ Desde F-030 la puerta lee **`ctx.situacion.validacion`**, que viene del mismo
 de `postventa.validaciones`. **`ctx.validacion` no se vuelve a mirar aquí**, y
 ese es el blindaje: aunque alguien vuelva a meter un veredicto en el contexto
 desde el borde, esta puerta no se entera (R1, `design.md` §5.3).
+
+## Enmienda del 2026-09-23 (F-034 T5) · la puerta de archivo, aquí y desde lo guardado
+
+Hasta hoy «¿consta archivado?» se decidía en **dos copias** privadas
+—`paso_grafico._exigir_archivado` y `paso_cierre._exigir_archivado`— que
+miraban `ctx.archivo`. Y `ctx.archivo` lo **fabricaba el borde** con el
+`estado_archivo` del formulario (`adjuntar._como_contexto`,
+`cerrar._como_contexto`), que el front manda **fijo** a `archivado`. Detrás de
+esa puerta no había ninguna otra que mirara el archivo de verdad: un parte
+aprobado y **sin archivar** llegaba al ERP de producción con solo mandar esa
+cadena (`specs/F-034-archivo-persistido-en-erp/requirements.md` §0.1, que es
+la D-6 de F-033).
+
+Desde F-034 la regla vive **aquí**, en `exigir_parte_archivado`, junto a
+`exigir_parte_aprobado` y por lo mismo que ella: lee la **misma**
+`SituacionParte` que la consulta de aptitud acaba de dejar en `ctx.situacion`,
+y de ella solo `ctx.situacion.archivo` —la traza de `postventa.archivos` que
+F-033 trajo a esa consulta—. **`ctx.archivo` no se mira**, igual que la puerta
+de aptitud dejó de mirar `ctx.validacion` en F-030: aunque alguien volviera a
+fabricar una traza desde el cuerpo, esta puerta no se enteraría (F-034 R1, R5).
+Sin una consulta más (R2): la traza viaja en la fila que ya se leía.
+
+`exigir_parte_aprobado` **no cambia** (F-034 R20): ni su criterio, ni su orden
+de motivos, ni que lea siempre y del almacén.
 """
 
 from __future__ import annotations
 
-from domain.models.errores import ParteNoApto
+from domain.models.errores import ParteNoApto, ParteNoArchivado
 from domain.models.estado import EstadoParte, SituacionParte, estado_del_parte
+from domain.models.persistencia import EstadoArchivo
 from domain.ports.persistencia import RepositorioPartesPort
 
 from application.pipelines.contexto_parte import ContextoParte
 
-__all__ = ["exigir_parte_aprobado", "situacion_leida"]
+__all__ = ["exigir_parte_aprobado", "exigir_parte_archivado", "situacion_leida"]
 
 #: Lo que se le cuenta a quien lea el error, según por qué no pasa.
 #:
@@ -155,6 +180,41 @@ def exigir_parte_aprobado(
 
     motivo = MOTIVOS[estado].format(destino=validacion.destino.value)
     raise ParteNoApto(f"{motivo}, así que {y_por_eso}")
+
+
+def exigir_parte_archivado(ctx: ContextoParte, *, y_por_eso: str) -> None:
+    """El parte tiene que constar archivado **según el almacén** (F-034 R1).
+
+    Lee `ctx.situacion.archivo` —la traza de `postventa.archivos` que la puerta
+    de aptitud acaba de traer, sin una consulta más (R2)— y **nunca**
+    `ctx.archivo`: lo que declare el cuerpo de la petición no abre esta puerta
+    (R5) ni la cierra (R7). `pendiente` y `error` no valen, y son justo los dos
+    estados en los que el fichero puede no estar arriba; sin traza, tampoco.
+
+    Es la regla del procedimiento de Posventa, **primero el documento, después
+    el ERP**: el riesgo aceptado de F-009 §2 —cerrar sin que nadie mire Sigrid—
+    solo es asumible porque el parte firmado existe en SharePoint, y en el
+    gráfico, además, lo que se sube son los bytes que se archivaron.
+
+    Sin situación leída se trata como «no hay traza» y no pasa. En el circuito
+    no ocurre —la puerta de aptitud va antes y siempre la deja puesta—, pero si
+    alguien la llamara fuera de ese orden lo que tiene que salir es un 409 que
+    diga «ninguno», no un `AttributeError` ni un pase.
+
+    `y_por_eso` lo pone cada paso, igual que en `exigir_parte_aprobado`: es la
+    parte del mensaje que dice qué se ha quedado sin hacer. Con la cola de cada
+    uno, el mensaje es **byte a byte** el de las dos copias que sustituye.
+    """
+    situacion = ctx.situacion
+    traza = situacion.archivo if situacion is not None else None  # ← del almacén
+    if traza is not None and traza.estado == EstadoArchivo.ARCHIVADO:
+        return
+
+    estado = "ninguno" if traza is None else traza.estado.value
+    raise ParteNoArchivado(
+        f"este parte no consta archivado (estado del archivo: {estado}), "
+        f"así que {y_por_eso}"
+    )
 
 
 def situacion_leida(

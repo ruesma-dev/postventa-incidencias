@@ -250,6 +250,31 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    - **`ok && (committed || idempotente)`** es la única forma de dar un
      gráfico por colgado: en la respuesta idempotente `committed` vale `false`
      **en un éxito**, y decidir por él daría por fallido cada reintento.
+
+   **Precisado por F-034 el 2026-09-23**: **«consta archivado» se lee de la
+   traza guardada** en `postventa.archivos`, y **la reclamación a la que se
+   adjunta —y el nombre del gráfico— salen del `codigo_obra` y el
+   `numero_incidencia` guardados** en `postventa.partes`. Todo viene de la
+   **misma** situación que la puerta de estado acaba de leer
+   (`ctx.situacion`), sin una sola sentencia más. Hasta F-034 el endpoint
+   fabricaba la traza de archivo con el `estado_archivo` del cuerpo —que el
+   front manda fijo— y buscaba la reclamación con los códigos del cuerpo. Además:
+   - **lo que venga en el cuerpo ya solo puede cerrar la puerta, nunca
+     abrirla ni moverla**: los tres campos siguen siendo obligatorios y
+     validados (contrato HTTP intacto), `estado_archivo` ya no decide nada y
+     los dos códigos **se cotejan** contra lo guardado con el criterio
+     normalizado de F-031/F-032. Si no cuadran, **409** diciendo cuál, y no se
+     adjunta nada;
+   - **si falta un código guardado** (vacío, o un número sin ningún tramo),
+     **409** `CodigoNoConsta` diciendo cuál: se teclea en el parte y se guarda.
+     Nunca se rellena con el del cuerpo;
+   - **el cotejo va antes de hablar con nadie**: tras la puerta de aptitud y
+     antes de la de archivo, del fichero, de la traza local y del login.
+     También en dry-run: un dry-run que enseñara la reclamación de un cuerpo
+     que miente enseñaría otra cosa;
+   - la puerta de archivo vive **en un solo sitio**,
+     `puerta_de_estado.exigir_parte_archivado`, compartida con el cierre. El
+     detalle está en `specs/F-034-archivo-persistido-en-erp/`.
 7b. **Cierre** (F-009) — dry-run contra `sigrid-api`, confirmación del usuario,
    y solo entonces `commit: true`. Es, con el paso 7a, una de las **dos
    escrituras de este proyecto en un ERP de producción**, y por eso es el paso
@@ -286,6 +311,25 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
      dry-run: si alguien movió la reclamación entretanto, no se aplica nada;
    - **qué no se reintenta**: nada. Un fallo de escritura lo reintenta una
      persona, después de mirar el ERP.
+
+   **Precisado por F-034 el 2026-09-23**: **la reclamación que se cierra es la
+   del `numero_incidencia` guardado** para el parte, y **«consta archivado» se
+   lee de la traza guardada**, los dos de la misma situación que la puerta de
+   estado acaba de leer y sin una sentencia más. Hasta F-034 se cerraba la
+   reclamación que nombrara el cuerpo de la petición, y el archivo lo decía
+   también el cuerpo. Además:
+   - el número del cuerpo sigue siendo obligatorio (contrato intacto) pero **se
+     coteja** contra el guardado —solo el número: el cuerpo de `/api/cerrar` no
+     trae obra—; si no cuadra, **409** y **no se cierra nada**, ni en dry-run.
+     Si el guardado falta o no tiene ningún tramo, **409** `CodigoNoConsta`;
+   - la puerta de archivo es la misma que la del gráfico
+     (`exigir_parte_archivado`); la de «consta adjuntado» no cambia;
+   - **el front guarda lo escrito y lo espera también al reintentar el
+     cierre** («Reintentar el cierre»), igual que ya hacía al lanzar la tanda
+     desde F-031: sin eso, corregir un número y reintentar mandaría un número
+     que no está en la base y recibiría el 409. Si el guardado falla, no se
+     lanza nada y se dice. El detalle está en
+     `specs/F-034-archivo-persistido-en-erp/`.
 
 ### Por qué el proceso va parte a parte y no de una tacada
 

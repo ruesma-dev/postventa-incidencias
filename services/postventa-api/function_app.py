@@ -222,6 +222,7 @@ from domain.models.errores import (
     CierreDeshabilitado,
     CierreFallido,
     CierreSinTraza,
+    CodigoNoConsta,
     CodigosNoCoinciden,
     ConfiguracionPgIncompleta,
     ConfiguracionSharePointIncompleta,
@@ -831,7 +832,13 @@ def adjuntar(req: func.HttpRequest) -> func.HttpResponse:
       apto, no consta archivado o no consta guardado, la reclamación no está o
       no admite cierre, falta el mapeo del usuario, el PDF pasa del tope o no
       es un PDF, o la pasarela rechaza la petición con uno de los códigos de
-      R33 (R59).
+      R33 (R59). Desde F-034, dos más, y los dos **antes de hablar con el
+      ERP**: el código de obra o el nº de incidencia del cuerpo **no son los
+      guardados** (`CodigosNoCoinciden`: se guarda la corrección con
+      `POST /api/parte` y se reintenta), o **lo guardado no trae uno de los
+      dos** (`CodigoNoConsta`: hay que teclearlo en el parte y guardarlo). Y
+      «no consta archivado» se decide ya con la traza **guardada**, no con el
+      `estado_archivo` del cuerpo.
     - **503** · aquí y ahora no se adjunta: entorno equivocado, ventana
       cerrada, falta configuración, la base no responde, o **la pasarela dice
       que le falta una precondición de su dueño** (R32, R60). Este último no es
@@ -893,6 +900,8 @@ def adjuntar(req: func.HttpRequest) -> func.HttpResponse:
         )
     except (
         ParteNoApto,
+        CodigosNoCoinciden,
+        CodigoNoConsta,
         ParteNoArchivado,
         NombradoImposible,
         GraficoDemasiadoGrande,
@@ -986,7 +995,14 @@ def cerrar(req: func.HttpRequest) -> func.HttpResponse:
     - **409** · no se puede cerrar tal y como están las cosas: el parte no es
       apto, no consta archivado, la reclamación no está o no admite cierre, el
       estado de cierre no se resuelve, falta el mapeo del usuario, o la
-      reclamación se movió entre el dry-run y la escritura (R48).
+      reclamación se movió entre el dry-run y la escritura (R48). Desde F-034,
+      dos más, y los dos **antes de hablar con el ERP**: el nº de incidencia
+      del cuerpo **no es el guardado** (`CodigosNoCoinciden`: se guarda la
+      corrección con `POST /api/parte` y se reintenta), o **lo guardado no lo
+      trae** (`CodigoNoConsta`: hay que teclearlo en el parte y guardarlo). La
+      reclamación que se cierra sale del nº **guardado**, y «no consta
+      archivado» se decide con la traza **guardada**, no con el
+      `estado_archivo` del cuerpo.
     - **503** · aquí y ahora no se cierra: entorno equivocado, ventana cerrada,
       falta configuración, o la base de datos no responde (R49).
     - **502** · la pasarela del ERP falló (R50).
@@ -1018,6 +1034,8 @@ def cerrar(req: func.HttpRequest) -> func.HttpResponse:
         return _json({"error": error.motivo}, 400)
     except (
         ParteNoApto,
+        CodigosNoCoinciden,
+        CodigoNoConsta,
         ParteNoArchivado,
         # R62 (F-012) · el parte no consta adjuntado a la reclamación. Es un
         # 409 y **sin haber tocado el ERP**: la precondición se comprueba

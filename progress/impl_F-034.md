@@ -1,6 +1,12 @@
 <!-- progress/impl_F-034.md -->
-# F-034 · Informe del implementer · Bloques 1, 2 y 3 · **HECHOS** (T1–T10)
+# F-034 · Informe del implementer · Bloques 1 a 5 · **HECHOS** (T1–T14)
 
+> **Estado: Bloque 5 cerrado** (encargo del 2026-09-23). T12, T13 y T14
+> hechas y commiteadas (`5bd78d0`, `c377400`, `f50d0f6`); lo hecho, en **§9**.
+> `bash harness/init.sh` en verde: 3.235 passed, 28 skipped, cobertura
+> **88/88**. **Queda el Bloque 6** (T15 mutación, T16 y T17 MANUAL, T18 verde).
+> Las «Evidencias» vigentes son las del final del fichero.
+>
 > Rama `feature/F-034-archivo-persistido-en-erp`. Rigor `critico`. Fecha:
 > 2026-09-23. Tres encargos: el **Bloque 1** (T2–T3, y marcar T1), el
 > **Bloque 2** (T4–T7, `/api/adjuntar` y `paso_grafico`) y el **Bloque 3**
@@ -1184,3 +1190,305 @@ ENTORNO LISTO. Puedes trabajar.
 | Mutación | **No aplicable a este bloque**: `harness.mutacion` solo muta Python. La campaña de T15 cubre lo Python de la feature |
 | Tiempo de la suite | JS completa 1,32 s; el fichero nuevo 0,43 s; `pytest` del front 5,58 s |
 | Ficheros de test existentes tocados | **Cero** |
+
+## 9 · Bloque 5 · Alcance, consultas y documentación (T12–T14)
+
+| Tarea | Commit | Qué |
+|---|---|---|
+| **T12** | `5bd78d0` | `tests/test_f034_sin_consultas_de_mas.py` (nuevo, 10 tests), R38 |
+| **T13** | `c377400` | `tests/test_f034_alcance_cerrado.py` (nuevo, 25 tests), R39 con R23, R24, R26, R31 |
+| **T14** | `f50d0f6` | Documentación: 9 ficheros, solo añadidos (nada borrado) |
+
+Ni una línea de código de producción en este bloque (lo comprueba el propio
+T13: el código de producción que toca la rama es el mismo que al cerrar el
+Bloque 4). Nada escrito en Sigrid, SharePoint, Azure ni PostgreSQL; sin DDL;
+`harness/features.json` y `azure-apps/` sin tocar.
+
+### 9.1 · T12 · el contador de llamadas (R38)
+
+**Qué cuenta.** `RepositorioQueCuenta` envuelve el `RepositorioEnMemoria` de
+siempre y apunta **cada** llamada a un método público del puerto, en orden. No
+solo `consultar_situacion` y `consultar_grafico` (lo que pedía la tarea): todas,
+lecturas y escrituras, porque «ninguna sentencia más» incluye una consulta de
+estado de cierre o una traza de más. Se recorre el **handler** de cada endpoint
+(`adjuntar_grafico`, `cerrar_incidencia`) con los puertos inyectados, así que
+también se cuenta lo que pudiera preguntar el borde.
+
+**Números esperados, escritos a mano en el test** (constantes `LLAMADAS_*`):
+
+| Caso | Llamadas al repositorio |
+|---|---|
+| adjuntar, dry-run | `consultar_situacion`, `consultar_grafico`, `guardar_grafico` |
+| adjuntar, `commit` + confirmado | `consultar_situacion`, `consultar_grafico`, `guardar_grafico` ×2 |
+| adjuntar, gráfico ya `adjuntado` (capa 1) | `consultar_situacion`, `consultar_grafico` |
+| cerrar, dry-run | `consultar_situacion`, `guardar_cierre`, `consultar_grafico` |
+| cerrar, `commit` + confirmado | `consultar_situacion`, `guardar_cierre`, `consultar_grafico`, `guardar_cierre`, `registrar_decision` |
+| los cuatro rechazos nuevos (cotejo y archivo, en los dos endpoints, con `commit` + confirmado) | **solo** `consultar_situacion` |
+
+En todos los positivos, `consultar_situacion` = **1** y `consultar_grafico` =
+**1**. Un control más (`test_f034_r38_el_contador_ve_todos_los_metodos_del_puerto`)
+llama a cada método de `RepositorioPartesPort` a través del contador y exige
+verlo: si el puerto ganara un método, el contador no podría pasarlo por alto.
+
+**«Las mismas que antes de la feature», medido y no deducido.** El mismo
+fichero, **sin cambiar una línea**, contra una copia de `dev` (`e2e5d7a`, la
+base de la rama; `git archive dev services/postventa-api` en el scratchpad, con
+`tests/utiles_circuito.py` copiado al lado; los dos handlers tienen la misma
+firma antes y después). Desde `services/postventa-api` de esa copia, con el
+intérprete del proyecto:
+
+```
+$ python -m pytest tests/test_f034_sin_consultas_de_mas.py -q -p no:cacheprovider --tb=short -rA
+tests\test_f034_sin_consultas_de_mas.py:377: in test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta
+E   Failed: DID NOT RAISE CodigosNoCoinciden
+tests\test_f034_sin_consultas_de_mas.py:377: in test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta
+E   Failed: DID NOT RAISE ParteNoArchivado
+tests\test_f034_sin_consultas_de_mas.py:377: in test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta
+E   Failed: DID NOT RAISE CodigosNoCoinciden
+tests\test_f034_sin_consultas_de_mas.py:377: in test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta
+E   Failed: DID NOT RAISE ParteNoArchivado
+PASSED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_el_contador_ve_todos_los_metodos_del_puerto
+PASSED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_adjuntar_hace_las_mismas_llamadas_que_antes[dry_run]
+PASSED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_adjuntar_hace_las_mismas_llamadas_que_antes[commit]
+PASSED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_adjuntar_ya_adjuntado_hace_las_mismas_llamadas_que_antes
+PASSED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_cerrar_hace_las_mismas_llamadas_que_antes[dry_run]
+PASSED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_cerrar_hace_las_mismas_llamadas_que_antes[commit]
+FAILED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta[adjuntar_codigos]
+FAILED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta[adjuntar_archivo]
+FAILED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta[cerrar_codigos]
+FAILED tests/test_f034_sin_consultas_de_mas.py::test_f034_r38_un_rechazo_nuevo_cuesta_una_sola_consulta[cerrar_archivo]
+4 failed, 6 passed in 2.26s
+```
+
+Los cinco positivos (y el control del contador) **verdes en `dev`**: son los
+números de antes. Los cuatro rechazos, `DID NOT RAISE` en `dev`: es el defecto
+de la feature visto desde el contador (antes, esos cuerpos llegaban al ERP).
+
+**Control al revés (sonda, no versionada).** Copia de `HEAD` en el scratchpad
+con una línea `repositorio.consultar_situacion(hash_parte=ctx.parte.hash)`
+**de más** en `paso_grafico` y en `paso_cierre`, justo antes del 1 bis, mismo
+comando:
+
+```
+      Left contains one more item: 'consultar_situacion'
+...
+9 failed, 1 passed in 2.25s
+```
+
+Falla todo salvo el control del contador: una consulta de más no pasa.
+
+**Verde en la rama**, desde `services/postventa-api`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f034_sin_consultas_de_mas.py -q -p no:cacheprovider
+..........                                                               [100%]
+10 passed in 1.16s
+```
+
+**Nota honesta.** El primer borrador tenía tres fallos míos, cazados al
+ejecutarlo: un `pytest.raises(Exception)` demasiado ancho que escondía un
+`TypeError` del propio test (un `numero_incidencia` pasado dos veces) —se
+cambió por la clase exacta de cada error—; una aserción sobre la clave
+`idempotente` de la respuesta, que en `/api/adjuntar` habla de la
+idempotencia **de la pasarela** y no de la traza local —se cambió por
+`estado == "adjuntado"` más cero llamadas a la pasarela—; y los rechazos sin
+`confirmado`, que en `dev` salían por `CuerpoDeCierreInvalido` en vez de
+enseñar el defecto —pasaron a `commit` + `confirmado`, el caso que escribiría—.
+
+### 9.2 · T13 · el alcance cerrado (R39)
+
+**Las dos mitades**, con el patrón de F-031/F-033 y sus tres guardas del diff
+(`RAMA_DE_LA_FEATURE`, `_fuera_de_la_rama_de_la_feature`,
+`_la_rama_ya_esta_en_dev`): fuera de la rama o ya mergeada, las del diff se
+**saltan** y las otras siguen corriendo; `dev` no se queda en rojo al mergear.
+
+| Frontera | Mitad del diff (solo en la rama) | Mitad sin `git` (siempre) |
+|---|---|---|
+| El control de los controles | el diff no está vacío y trae `paso_grafico.py`, `paso_cierre.py` y `js/app.js` | el recorrido de producción ve los 8 intocables y los 10 del backend de la feature, y ningún test |
+| Código de producción tocado | **exactamente** los 11 de `design.md` §2 (10 del backend + `js/app.js`): ni uno más, ni uno menos | — |
+| Persistencia, puerto, `estado.py`, `nombrado.py`, `grafico.py`, `cierre.py` (R23, R39) | ninguno de los 8 en el diff | puerto = 11 métodos escritos a mano; métodos públicos del adaptador = esos 11 + los 4 de preferencias y usuarios; `SituacionParte` = 5 campos; `__all__` de `sentencias.py` escrito a mano |
+| `sql/` (R23) | ni un fichero en el diff | los 11 de F-028 y ninguno más |
+| Dominio del nombrado y del gráfico (R24) | (incluido arriba) | `__all__` de `nombrado.py` escrito a mano; parámetros de `componer_peticion` (sigue recibiendo **dos cadenas**) |
+| `paso_archivo.py` y `archivar.py`: solo el `import` (R26) | árbol sintáctico **idéntico** al de la base de la rama (`git merge-base dev HEAD`), quitando prosa e `import` y deshaciendo **solo** la mudanza aprobada de T3 (ver abajo) | `paso_archivo` importa del módulo compartido exactamente sus tres piezas y `archivar` la clase; `archivar` ya no la importa de `paso_archivo` |
+| Front (R31) | del front, solo `js/app.js` y `tests_js/reintento_vaciado.test.js` | los `CAMPOS_OBLIGATORIOS` de `adjuntar.py` y `cerrar.py`, escritos a mano y copiados de la base (R18, D-3) |
+| **Heredado de F-031 y ampliado** (decisión del humano del 2026-09-23) | — | las 4 piezas (`CodigosDelParte`, `codigos_guardados`, `exigir_codigos_declarados`, `exigir_codigos_completos`) **solo se definen** en `codigos_del_parte.py` (clase, función **o** asignación, a cualquier nivel); tabla `NOMBRES_NUEVOS_Y_DONDE_VIVEN` con 9 nombres (las 6 filas de F-031 más `exigir_codigos_completos`, `CodigoNoConsta` y `exigir_parte_archivado`); los retirados (`_exigir_archivado`, `_codigos_guardados`, `_exigir_codigos_declarados`) no vuelven |
+| La segunda fuente del archivo (R1, R4, R5) | — | ni `paso_grafico`, ni `paso_cierre`, ni `puerta_de_estado`, ni `codigos_del_parte` leen o escriben `ctx.archivo`; `adjuntar.py` y `cerrar.py` ya no conocen `TrazaArchivo` |
+
+**Cómo se comprueba «solo el `import`» de `paso_archivo.py`.** T3 no fue
+«solo el `import`» al pie de la letra: borró la clase y los dos privados, añadió
+la constante `_Y_POR_ESO_NO_SE_ARCHIVA` y cambió dos llamadas (enmienda
+aprobada por el humano, §2.4 (a) y §2.5). El test deshace exactamente eso y
+nada más: en el árbol de la base quita `CodigosDelParte`, `_codigos_guardados`
+y `_exigir_codigos_declarados`; en el de hoy quita la constante, vuelve a
+llamar a las piezas por su nombre privado y retira el `y_por_eso=` de la
+llamada al cotejo. Lo que queda tiene que ser **idéntico** (`ast.dump`): mismo
+orden, mismas llamadas, mismos argumentos. Para `archivar.py`, idéntico sin más
+que quitar prosa e `import`. La base es la de la rama y no `dev` a secas, para
+que otra feature mergeada en `dev` después no cambie lo que se compara. Un test
+propio (`test_f034_r26_el_comparador_no_es_ciego`) demuestra que el comparador
+sí ve un cambio de orden entre dos llamadas y no ve un cambio de prosa o de
+`import`.
+
+**Sondas (no versionadas).**
+
+1. Contra la copia de `dev` del scratchpad (sin `.git`, así que las mitades
+   del diff se saltan): las mitades sin `git` **cazan lo que F-034 cambió**.
+
+   ```
+   $ python -m pytest tests/test_f034_alcance_cerrado.py -q -p no:cacheprovider --tb=line -rs
+   ...: AssertionError: assert {'_codigos_gu...o_grafico.py'} == {}
+   ...: assert [289, 289, 290, 290] == []        (ctx.archivo en paso_grafico)
+   ...: assert [249, 249, 250, 250] == []        (ctx.archivo en paso_cierre)
+   ...: FileNotFoundError: ... application\pipelines\codigos_del_parte.py
+   ...: AssertionError: assert 'TrazaArchivo' not in {...}   (adjuntar.py)
+   ...: AssertionError: assert 'TrazaArchivo' not in {...}   (cerrar.py)
+   ...: Extra items in the left set: 'services/postventa-api/application/pipelines/codigos_del_parte.py'
+   SKIPPED [7] tests\test_f034_alcance_cerrado.py:138: no hay 'git' o la rama 'dev' no está en este clon
+   10 failed, 8 passed, 7 skipped in 4.05s
+   ```
+
+   (Salida abreviada: los comentarios entre paréntesis son míos; las líneas,
+   las de `--tb=line`.)
+
+2. En la rama, con dos cambios temporales deshechos con `git checkout --` al
+   terminar (el árbol quedó limpio): (a) en `paso_archivo.py`, añadir
+   `solo_incidencia=True` a la llamada al cotejo —**aflojar una regla de
+   archivar**, lo que R26 prohíbe—; (b) añadir al final de `paso_grafico.py`
+   una `def codigos_guardados(ctx)` —una **copia** de una pieza compartida—:
+
+   ```
+   E   AssertionError: paso_archivo.py cambió algo más que la mudanza (R26)
+   E   AssertionError: assert {'CodigosDelP...el_parte.py'}} == {'CodigosDelP...el_parte.py'}}
+   2 failed, 23 passed in 7.67s
+   ```
+
+**Verde en la rama**, sin ningún salto:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f034_alcance_cerrado.py -q -p no:cacheprovider --tb=short -rs
+.........................                                                [100%]
+25 passed in 8.38s
+```
+
+Y junto a los alcances de F-031, F-032 y F-033 (cuyos controles del diff se
+saltan en esta rama, como tiene que ser) y T12: `53 passed, 13 skipped in
+12.26s`.
+
+**Nota honesta.** En el primer intento escribí mal a mano los campos
+obligatorios (añadí `correo`, que no lo es en ninguno de los dos endpoints); el
+test lo cazó y se corrigió copiándolos de la base de la rama (`git show dev:…`),
+que es de donde tienen que salir.
+
+**Decisiones.**
+
+- **El control de producción es una lista cerrada (igualdad), no un «no
+  toques esto».** Es más estricto que el de F-031/F-033 y es a propósito: dice
+  también que no falta ninguno. Solo cuenta código que se ejecuta
+  (`services/*` sin `tests`, `tests_js`, `tests_bbdd`); `docs/`, `infra/`,
+  `specs/` y `progress/` quedan fuera.
+- **Los `CAMPOS_OBLIGATORIOS` van en T13 como mitad sin `git` del front**,
+  igual que hizo F-033 con su R23: si el backend dejara de pedir un campo, el
+  contrato habría cambiado aunque el front no se tocara.
+- **`test_f031_alcance_cerrado.py` no se ha tocado** en este bloque: su tabla
+  sigue viva y verde; la de F-034 es un superconjunto, no un sustituto.
+- Los dos ficheros nuevos salieron con CRLF del entorno y se normalizaron a LF
+  antes del commit, como el resto del árbol (el índice ya estaba en LF).
+
+### 9.3 · T14 · la documentación
+
+Todo son **añadidos fechados**; no se ha borrado ninguna frase. Las 3 líneas
+que el diff marca como cambiadas son reflujo: un comentario de
+`desplegar_backend.ps1` y una frase del recuadro de R33 de F-010 a la que se le
+añade un paréntesis, las dos con su texto de antes intacto.
+
+| Fichero | Qué |
+|---|---|
+| `docs/ARCHITECTURE.md` | Recuadro **«Precisado por F-034 el 2026-09-23»** en el paso **7a** (archivo y dos códigos de lo guardado, el cotejo en 1 bis antes de hablar con nadie y también en dry-run, `CodigoNoConsta`, la puerta compartida) y en el **7b** (la reclamación que se cierra es la del número guardado, cotejo solo del número, la puerta de archivo compartida, el vaciado al reintentar el cierre). Mismo formato que los de F-031 y F-033 |
+| `specs/F-033-l1-traza-archivo/design.md` §10 | Nota **«D-6 · CERRADA por F-034 el 2026-09-23»**, con el puntero a esta carpeta |
+| `specs/F-031-nombrado-persistido/design.md` §8 | Nota **«H-1 · CERRADO por F-034 el 2026-09-23»**, con la mudanza de las piezas, la enmienda de su tabla de alcance y el puntero |
+| `specs/F-034-archivo-persistido-en-erp/design.md` §10 | Recuadro con la comprobación de `azure-apps` (abajo) |
+| `docs/DESPLIEGUE.md` §4 bis | Nota bajo el punto 2 del riesgo aceptado: **«desde el despliegue de F-034»** dejan de tomar del cuerpo el número y el estado de archivo; hasta ese despliegue el punto 2 sigue siendo cierto; el punto 1 no lo toca F-034 |
+| `docs/INTEGRACION.md` §3 bis | La misma nota, en la puerta 2 («El interruptor») |
+| `infra/desplegar_backend.ps1` | Párrafo **«NOTA DEL 2026-09-23 (F-034)»** en la cabecera, tras «RIESGO ACEPTADO», y un paréntesis en el comentario de `CIERRE_HABILITADO` de `$ajustes`, que dice lo mismo. Solo comentarios, ASCII como el resto del fichero |
+| `specs/F-010-despliegue/requirements.md` (recuadro de R33) | La nota, entre paréntesis, en la frase del riesgo |
+| `specs/F-034-archivo-persistido-en-erp/tasks.md` | T12–T14 `[x]` con su nota |
+
+Las frases que ya estaban («Mientras F-034 no esté desplegada…») se conservan
+**literalmente**: siguen siendo ciertas hasta desplegar, y
+`test_f010_tarjeta_portal.py::test_despliegue_ventanas_el_runbook_dice_la_decision_y_el_riesgo`
+las exige. Los tests que leen la documentación (`test_f010_*`,
+`test_f009_documentacion.py`, `test_f012_documentacion.py`, los de secretos e
+identificadores y el de arquitectura de F-006): `329 passed, 3 skipped`.
+
+**La fecha de los recuadros.** `design.md` §10 proponía «Precisado por F-034
+el **2026-09-22**» (la fecha de la spec). He puesto **2026-09-23**, la fecha en
+que el cambio existe en el código, como hacen los recuadros de F-031 y F-033.
+Si el reviewer prefiere la de la spec, es cambiar dos fechas.
+
+**`azure-apps/postventa_incidencias.md`: no cambia por esta feature**
+(comprobado leyéndolo, commit `1b57e35` de ese repositorio; **no se ha
+tocado**). Lo que el proyecto **expone**: los mismos endpoints, los mismos
+campos obligatorios (T13) y las mismas claves de respuesta (R35); el `409` ya
+existía en los dos endpoints y **gana un motivo** (`CodigosNoCoinciden`,
+`CodigoNoConsta`). Lo que **consume**: las mismas llamadas a `sigrid-api` y
+al PostgreSQL compartido, sin DDL y sin una sentencia más (T12). **Para el
+líder**: su frase del riesgo aceptado (`postventa_incidencias.md:406-409`,
+«mientras F-034 no esté desplegada `/api/adjuntar` y `/api/cerrar` toman el
+número de incidencia del cuerpo de la petición») es la misma que se ha anotado
+aquí; sigue siendo cierta hasta el despliegue y, cuando se despliegue F-034,
+conviene añadirle la misma nota. Las filas de `/api/adjuntar` y `/api/cerrar`
+(`:681-682`) no enumeran los 409 de las puertas y no quedan falsas.
+
+**H-3 anotado para F-013** en `progress/current.md` (la puerta de archivo no
+mira la biblioteca de la traza: un parte archivado en la biblioteca de IT pasa
+igual que uno de Posventa).
+
+**Fuera del encargo, para el líder.** `specs/F-030-veredicto-persistido/design.md`
+§10.7 termina diciendo que H-1 «sigue abierto» y «va en el `acceptance`
+ampliado de F-034». `design.md` §10 de F-034 no lo pide y no lo he tocado; con
+F-034 mergeada, esa frase quedará superada (la nota de cierre vive en F-031
+§8, que es donde nació H-1).
+
+### 9.4 · Verde (traza real)
+
+`bash harness/init.sh` (tal cual), con T14 ya en el árbol:
+
+```
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+62 passed in 5.66s
+[OK] pytest en verde (con medición de cobertura)
+3235 passed, 28 skipped in 142.38s (0:02:22)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-034-archivo-persistido-en-erp
+ENTORNO LISTO. Puedes trabajar.
+```
+
+3.235 = los 3.200 del Bloque 3 + 10 de T12 + 25 de T13. La cobertura no cambia
+(88/88) porque este bloque no toca ninguna línea `.py` de producción.
+
+### 9.5 · Qué queda fuera y qué falta
+
+- **Bloque 6**: T15 (campaña de mutación sobre lo Python de la feature, con los
+  mutantes equivalentes previstos del `if` de `_codigo_de_incidencia`, §7.4),
+  T16 y T17 (MANUAL, humano) y T18 (verde).
+- Para el líder: la nota de `azure-apps` al desplegar y la frase de F-030
+  §10.7 (§9.3).
+- H-5 y H-6 siguen abiertos para el reviewer y el humano; este bloque no los
+  toca.
+- Nada escrito en Sigrid, SharePoint, Azure ni PostgreSQL; sin DDL; sin tocar
+  `harness/features.json` ni `azure-apps/`.
+
+## Evidencias · vigentes al cerrar el Bloque 5 (T12–T14)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh`: servicio api **3.235 passed, 28 skipped** (142,38 s); raíz 62 passed (5,66 s); front en verde (caché, árbol sin cambios desde el Bloque 4: 256 passed y `node --test` 322/322 entonces). Tests de F-034 en Python: **169** (44 + 90 + 10 + 25), en verde, **ninguno saltado** dentro de la rama |
+| Cobertura de líneas cambiadas | `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88, umbral 80%, nivel critico)`. Igual que en el Bloque 4: este bloque no cambia código de producción |
+| Mutación | **No lanzada**: es T15 (Bloque 6), sobre la feature entera |
+| Tiempo de la suite | 142,38 s el servicio api dentro de `init.sh`; T12 1,16 s; T13 8,38 s (llama a `git`) |
+| `ruff` | 61 avisos, la deuda previa (ni uno nuevo); los dos ficheros nuevos, `All checks passed!` y `ruff format --check` limpio |
+| Ficheros de test existentes tocados | **Cero** |
+
+Las del Bloque 4, para comparar: servicio api 3.200 passed (caché); cobertura 88/88.

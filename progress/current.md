@@ -1,6 +1,49 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 · BLOQUE 5 HECHO · 2026-09-23 · siguiente: Bloque 6 (mutación, MANUAL y verde)
+>
+> **T12, T13 y T14 cerradas** (`5bd78d0`, `c377400`, `f50d0f6`). Ni una línea
+> de código de producción en este bloque.
+>
+> - **T12** `tests/test_f034_sin_consultas_de_mas.py` (10): cuenta **todas**
+>   las llamadas al repositorio desde los dos handlers; una sola
+>   `consultar_situacion` y una sola `consultar_grafico` por petición, y la
+>   lista completa **medida en `dev`** con el mismo fichero (verde allí en los
+>   cinco casos positivos). Los rechazos nuevos cuestan una sola consulta.
+> - **T13** `tests/test_f034_alcance_cerrado.py` (25, ninguno saltado en la
+>   rama): dos mitades y las tres guardas del diff. El código de producción
+>   tocado es **exactamente** el de `design.md` §2; persistencia, puerto,
+>   `estado.py`, nombrado, gráfico, cierre y `sql/` intactos; de
+>   `paso_archivo.py` y `archivar.py`, solo la mudanza aprobada (comparado por
+>   árbol sintáctico con la base de la rama). **Hereda y amplía** el control
+>   «dónde vive lo nuevo» de F-031 (decisión del humano del 2026-09-23).
+> - **T14** documentación, solo añadidos fechados: pasos 7a y 7b de
+>   `ARCHITECTURE.md`, cierre de D-6 (F-033) y de H-1 (F-031), y la nota
+>   **«desde el despliegue de F-034»** junto al riesgo aceptado del 2026-09-23
+>   en `DESPLIEGUE.md` §4 bis, `INTEGRACION.md` §3 bis, cabecera de
+>   `infra/desplegar_backend.ps1` y recuadro de R33 de F-010.
+>   `azure-apps/postventa_incidencias.md` **no cambia** por la feature (lo que
+>   se expone y se consume es lo mismo; el 409 gana un motivo); **para el
+>   líder**: su frase del riesgo (`:406-409`) necesitará la misma nota cuando se
+>   despliegue F-034. Tampoco tocado: F-030 `design.md` §10.7 dice que H-1
+>   «sigue abierto».
+>
+> `bash harness/init.sh` en verde: **3.235 passed**, 28 skipped, cobertura
+> 88/88. Nada escrito en ningún sistema; sin DDL; `features.json` y
+> `azure-apps/` sin tocar.
+>
+> **Para F-013 · H-3 de F-034** (`specs/F-034-archivo-persistido-en-erp/design.md`
+> §8): la puerta de archivo de gráfico y cierre (`exigir_parte_archivado`) mira
+> el **estado** de la traza guardada pero **no su biblioteca** (`drive_id`): un
+> parte archivado en la biblioteca de IT pasa igual que uno de Posventa. No se
+> tocó en F-034 (D-8); es terreno de F-013, junto con el asunto de las 133
+> trazas de IT.
+>
+> **Queda**: **Bloque 6** (T15 mutación —con los mutantes equivalentes del
+> `if` de `_codigo_de_incidencia`—, T16 y T17 MANUAL del humano, T18 verde).
+> Informe: **`progress/impl_F-034.md`** §9.
+
 > ## ✅ F-034 · BLOQUE 4 HECHO · 2026-09-23 · siguiente: Bloque 5 (alcance y documentación)
 >
 > **T11 cerrada** (`56e1102`). `reintentarCierre` (`js/app.js`) ya **espera**

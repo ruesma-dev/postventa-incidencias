@@ -188,12 +188,18 @@
 
 ## Bloque 5 · Alcance, consultas y documentación
 
-- [ ] **T12**: `tests/test_f034_sin_consultas_de_mas.py` (R38): un doble de
+- [x] **T12**: `tests/test_f034_sin_consultas_de_mas.py` (R38): un doble de
       repositorio que **cuenta** las llamadas a `consultar_situacion` y a
       `consultar_grafico`, y exige que `paso_grafico` y `paso_cierre` hagan
       exactamente las mismas que antes de la feature.
       **Verificación**: `pytest tests/test_f034_sin_consultas_de_mas.py -q` en
       verde, con el número esperado escrito en el propio test.
+      **Hecha (2026-09-23)**: 10 passed. El contador apunta **todas** las
+      llamadas al puerto, no solo las dos lecturas; la lista esperada de cada
+      caso se escribe a mano y se **midió en `dev`** (`e2e5d7a`) ejecutando el
+      mismo fichero: los cinco casos positivos, verdes allí también; los cuatro
+      rechazos nuevos, `DID NOT RAISE` allí. Trazas en
+      `progress/impl_F-034.md` §9.1.
 
 - [ ] **T13**: `tests/test_f034_alcance_cerrado.py` (R39), con el patrón de
       `test_f033_alcance_cerrado.py` —control de `diff` con sus tres guardas

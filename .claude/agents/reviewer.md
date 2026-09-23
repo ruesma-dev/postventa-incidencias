@@ -86,6 +86,20 @@ nivel de rigor dice cuánta evidencia hay que exigir.
 6. **Ningún checkpoint marcado N/A sin justificación escrita** en tu informe.
    Un N/A sin motivo se trata como checkbox vacío. No haber instalado una
    herramienta o no haber lanzado la campaña no es un motivo.
+7. **Orden · Una puerta que protege un ORDEN se prueba moviéndola.**
+   Aprobada por el humano el 2026-09-23, a propuesta del reviewer de F-034 de
+   `postventa-incidencias`. El recálculo puro y los operadores de
+   `harness.mutacion` **no ven el orden entre llamadas a colaboradores
+   distintos**, y eso es justo lo que protege una familia entera de features:
+   «la puerta va **antes** de hablar con el ERP», «antes de escribir», «antes de
+   subir». En una feature de rigor `critico` cuyo requisito central sea un orden
+   así, aplica **a mano, en una copia desechable de tu scratchpad y nunca en el
+   árbol de trabajo**, al menos una mutación que **baje la puerta un paso** por
+   cada colaborador que la puerta dice preceder, y exige que la suite se ponga
+   en **rojo**. Si alguna sobrevive, los tests no ven a ese colaborador:
+   rechaza. Caso de origen: en F-034 dos puertas se podían bajar por debajo del
+   login contra el ERP y la suite entera seguía en verde, porque el doble del
+   servicio de usuarios no anotaba ninguna llamada.
 
 En proyectos que no sean Python, las puertas de cobertura y mutación no están
 disponibles: eso es un N/A **justificado por el lenguaje**, y hay que

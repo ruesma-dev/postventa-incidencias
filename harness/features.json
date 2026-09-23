@@ -202,7 +202,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 13,
+      "priority": 113,
       "branch": "feature/F-011-buzon-correo"
     },
     {
@@ -234,7 +234,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 13,
+      "priority": 113,
       "branch": "feature/F-013-archivo-posventa",
       "blocked_by": "F-033 y F-031, por decision del humano del 2026-09-18 (D-2 y D-3 de design.md): sin la capa L1 re-archivar un parte ya subido a IT lo subiria tambien a Posventa y perderia su traza, y la carpeta tiene que salir de lo persistido y no del cuerpo. Orden: F-033 -> F-031 -> F-013."
     },
@@ -253,7 +253,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 14,
+      "priority": 114,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
     },
@@ -273,7 +273,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 15,
+      "priority": 115,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     },
@@ -292,7 +292,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 16,
+      "priority": 116,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     },
@@ -310,7 +310,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 17,
+      "priority": 117,
       "branch": "feature/F-017-checkpoints-manual"
     },
     {
@@ -328,7 +328,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 18,
+      "priority": 118,
       "branch": "feature/F-018-minimo-privilegio-graph"
     },
     {
@@ -365,7 +365,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 20,
+      "priority": 120,
       "branch": "feature/F-020-diseno-front"
     },
     {
@@ -383,7 +383,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 21,
+      "priority": 121,
       "branch": "feature/F-021-rehidratar-sesion"
     },
     {
@@ -401,7 +401,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 22,
+      "priority": 122,
       "branch": "feature/F-022-cache-prompts-gemini"
     },
     {
@@ -419,7 +419,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 12,
+      "priority": 112,
       "branch": "feature/F-024-datos-parte-sigrid"
     },
     {
@@ -471,7 +471,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 23,
+      "priority": 123,
       "branch": "feature/F-027-suite-barrido-cacheado"
     },
     {
@@ -511,7 +511,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 29,
+      "priority": 129,
       "branch": "feature/F-029-scripts-infra-comillas"
     },
     {
@@ -598,7 +598,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 34,
+      "priority": 134,
       "branch": "feature/F-034-archivo-persistido-en-erp",
       "blocked_by": "F-033: es quien trae la traza del archivo a la consulta de situacion."
     },
@@ -615,7 +615,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 35,
+      "priority": 1,
       "branch": "feature/F-035-portal-posventa"
     },
     {
@@ -631,7 +631,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 36,
+      "priority": 2,
       "branch": "feature/F-036-importar-excel"
     },
     {
@@ -646,7 +646,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 37,
+      "priority": 3,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
@@ -662,7 +662,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 38,
+      "priority": 4,
       "branch": "feature/F-038-bandeja-revision"
     },
     {
@@ -678,7 +678,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 39,
+      "priority": 5,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
@@ -694,7 +694,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 40,
+      "priority": 6,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "Endpoint nuevo en sigrid-api para crear la incidencia: se propone en su repositorio."
     },
@@ -711,7 +711,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 41,
+      "priority": 7,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -727,7 +727,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 42,
+      "priority": 8,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -742,7 +742,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 43,
+      "priority": 9,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -757,7 +757,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 44,
+      "priority": 10,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -773,7 +773,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 45,
+      "priority": 11,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -788,7 +788,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 46,
+      "priority": 12,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -803,7 +803,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 47,
+      "priority": 13,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -818,7 +818,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 48,
+      "priority": 14,
       "branch": "feature/F-048-datamart-posventa"
     }
   ]

@@ -36,7 +36,7 @@ Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
 |---|---|---|---|---|
 | 0 | `00_vars_postventa.ps1` | No hace nada: **declara** los nombres de recurso, las regiones y los tags. Los demás lo cargan por punto | — | Nunca se ejecuta suelto |
 | 1 | `cargar_secretos_postventa.ps1` | Crea o reutiliza el grupo de recursos y el Key Vault, y sube los **once** secretos del backend, pedidos a ciegas | `$HOME` o `infra\` | Solo al rotar una credencial (`-Solo <nombre>`, **no con `-File`**: ver abajo) |
-| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código | **`infra\` obligatorio** | Cada vez que cambie el backend |
+| 2 | `desplegar_backend.ps1` | Almacenamiento, Log Analytics, Application Insights, identidad gestionada, permiso de lectura sobre el Key Vault, Function App, App Settings por referencia y publicación del código. Deja **abiertas** las dos ventanas de escritura (§4); `-VentanasCerradas` las cierra | **`infra\` obligatorio** | Cada vez que cambie el backend |
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
 
@@ -228,8 +228,20 @@ recomponen solos.
 
 ## 4 · La ventana de escritura de `/api/archivar`
 
-**Es el candado principal del despliegue**, y conviene entender por qué antes
-de tocarlo.
+> **Desde el 2026-09-23 el despliegue la deja ABIERTA, y a la del ERP (§4 bis)
+> también.** Decisión del humano: *«vamos a desplegar, pero quiero que por
+> defecto publique abierto, no cerrado»*, y a la pregunta de qué ventanas,
+> *«Las dos»*. Posventa ya usa el servicio en real, y cada despliegue les
+> cerraba el archivo y el cierre hasta que alguien los reabría a mano.
+> `desplegar_backend.ps1` fija `ARCHIVO_HABILITADO=true` y
+> `CIERRE_HABILITADO=true`; con **`-VentanasCerradas`** fija **las dos** en
+> `false`. La enmienda, con la premisa de antes citada, está bajo R33 de
+> `specs/F-010-despliegue/requirements.md`.
+>
+> **El valor por defecto del código NO cambia**: `config/settings.py` declara
+> `archivo_habilitado` y `cierre_habilitado` con `default=False`. En un puesto
+> de trabajo y en los tests sigue siendo imposible escribir; lo que cambia es
+> solo lo que el despliegue escribe en la Function App.
 
 Los seis endpoints quedan en `ANONYMOUS` porque **la plataforma lo exige**: con
 un backend enlazado, la Static Web App autentica al usuario y reenvía la
@@ -238,30 +250,45 @@ pueda exigir. Poner `auth_level=FUNCTION` rompería el front el mismo día. La
 explicación larga está en la cabecera de `services/postventa-api/function_app.py`
 y en `specs/F-010-despliegue/design.md` §9 bis.
 
-Lo que sí controlamos es **cuándo `/api/archivar` puede escribir**.
-`ARCHIVO_HABILITADO` **se despliega apagado**: fuera de la ventana, el endpoint
-responde `503` a cualquiera —incluido un desconocido— y **no toca SharePoint**.
+Lo que sí controlamos es **cuándo `/api/archivar` puede escribir**. Con
+`ARCHIVO_HABILITADO` apagado el endpoint responde `503` a cualquiera y **no
+toca SharePoint**. Hasta el 2026-09-22 se desplegaba apagado y se abría solo
+para archivar de verdad; hoy se despliega **encendido**, y quien no quiera que
+una versión concreta archive la despliega con `-VentanasCerradas` o la cierra
+después.
 
-**Abrir la ventana**, justo antes de archivar de verdad:
+**La vía buena es el script**, que lee antes y después y dice el estado en
+palabras: `infra_ventana_archivo.ps1` (sin parámetros solo mira; `-Cerrar`
+la cierra sin preguntar; `-Abrir` avisa y pide una palabra). Las dos líneas de
+`az` equivalentes, por si el script no está a mano:
+
+**Abrirla**, si se desplegó con `-VentanasCerradas` o alguien la cerró:
 
 ```
 az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings ARCHIVO_HABILITADO=true
 ```
 
-**Cerrarla en cuanto se termine**, salga bien o mal:
+**Cerrarla**, cuando haga falta que no se archive —una incidencia, una versión
+dudosa—, salga bien o mal lo que se esté haciendo:
 
 ```
 az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings ARCHIVO_HABILITADO=false
 ```
 
-Se cierra **siempre** al terminar. Dejarla abierta «por si acaso» es
-exactamente lo que este diseño evita: mientras esté abierta, `/api/archivar`
-escribe en SharePoint para cualquiera que llame a la Function. No hace falta
-redesplegar ni tocar código: es una App Setting.
+**El siguiente despliegue la vuelve a abrir.** Cada despliegue la fija, a
+propósito (hallazgo H2 del guion del bloque 8 de F-009): quien la haya cerrado
+a mano y quiera que siga cerrada tiene que desplegar con `-VentanasCerradas`.
+No hace falta redesplegar ni tocar código para abrirla o cerrarla: es una App
+Setting.
 
-Si has abierto la ventana, `verificar_despliegue.ps1` **no hace** su segunda
-comprobación y te lo dice: con la ventana abierta, esa llamada subiría un PDF
-de verdad.
+**Lo que protege a SharePoint con la ventana abierta** no es la ventana, sino
+la plataforma: el host desnudo de la Function lo corta Easy Auth (§5 bis) y el
+front exige sesión del grupo de Posventa. Con la ventana abierta, sube un parte
+cualquier usuario de ese grupo que lo pida desde el front.
+
+Con la ventana abierta, `verificar_despliegue.ps1` **no hace** su segunda
+comprobación y te lo dice: esa llamada subiría un PDF de verdad. Tras un
+despliegue por defecto su veredicto, por tanto, **no sale en verde** (§5).
 
 ## 4 bis · La ventana de escritura del ERP: `/api/adjuntar` y `/api/cerrar`
 
@@ -280,17 +307,20 @@ cierre encendido se volvería a cerrar sin el parte dentro, que es exactamente
 la anomalía que F-012 eliminó; al revés, todos los cierres responderían `409`
 por una configuración a medias.
 
-**Consecuencia que hay que saber antes de abrirla**: abrir la ventana para
-probar el gráfico abre también el cierre. Es aceptable por lo mismo de siempre
-—dry-run por omisión, confirmación explícita, el humano delante, y la ventana
-se cierra al terminar—, y de hecho la verificación de F-012 sobre la obra de
-prueba **quiere** cerrar la reclamación después de adjuntar.
+**Consecuencia que hay que saber**: la ventana abierta para el gráfico está
+abierta también para el cierre. Es aceptable por lo mismo de siempre —dry-run
+por omisión y confirmación explícita del usuario—, y de hecho la verificación
+de F-012 sobre la obra de prueba **quería** cerrar la reclamación después de
+adjuntar.
 
-`CIERRE_HABILITADO` **se despliega apagado, y por el mismo mecanismo que el de
-archivo**: `desplegar_backend.ps1` lo fija en `false` en `$ajustes`, línea a
-línea al lado de `ARCHIVO_HABILITADO`, así que **cada despliegue lo devuelve a
-su sitio**. Fuera de la ventana, los dos endpoints responden `503` a cualquiera
-—incluido un desconocido— y **no tocan el ERP**, ni siquiera para leer.
+`CIERRE_HABILITADO` **se despliega ABIERTO desde el 2026-09-23, y por el mismo
+mecanismo que el de archivo** (recuadro del §4): `desplegar_backend.ps1` lo fija
+en `$ajustes`, línea a línea al lado de `ARCHIVO_HABILITADO`, en `true` por
+defecto y en `false` con `-VentanasCerradas`, así que **cada despliegue lo
+devuelve al valor que el despliegue decide**. Hasta el 2026-09-22 lo fijaba en
+`false`. Fuera de la ventana, los dos endpoints responden `503` a cualquiera y
+**no tocan el ERP**, ni siquiera para leer. **El defecto del código no cambia**:
+`config/settings.py`, `cierre_habilitado`, `default=False`.
 
 > **Ahora sí es el mismo mecanismo; hasta el 2026-09-03 no lo era, y este
 > documento decía que sí.** `CIERRE_HABILITADO` no estaba en `$ajustes`: se
@@ -306,17 +336,45 @@ y protegen cosas distintas: poder archivar no puede implicar poder cerrar. Si
 fueran la misma, abrir la ventana para subir unos partes abriría a la vez la
 escritura en Sigrid, y nadie se daría cuenta hasta que se cerrara algo.
 
-**Abrir la ventana**, justo antes de cerrar de verdad y con el humano delante:
+**La vía buena es el script**: `infra9_ventana_escritura.ps1` (sin
+parámetros solo mira; `-Cerrar` la cierra sin preguntar; `-Abrir` avisa de que
+abre también el cierre y pide una palabra). Las dos líneas de `az`
+equivalentes:
+
+**Abrirla**, si se desplegó con `-VentanasCerradas` o alguien la cerró:
 
 ```
 az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=true
 ```
 
-**Cerrarla en cuanto se termine**, salga bien o mal:
+**Cerrarla**, cuando haga falta que no se escriba en el ERP —una incidencia,
+una versión dudosa, una prueba—, salga bien o mal:
 
 ```
 az functionapp config appsettings set -g rg-postventa-dev -n func-postventa-dev --settings CIERRE_HABILITADO=false
 ```
+
+**El siguiente despliegue la vuelve a abrir**, salvo con `-VentanasCerradas`.
+
+### Riesgo aceptado con la ventana del ERP abierta por defecto
+
+Aceptado por el humano el 2026-09-23 al decidir el despliegue abierto, y escrito
+aquí para que nadie lo descubra después:
+
+1. **Cualquier versión desplegada escribe en Sigrid de producción sin una
+   puerta manual.** Quedan el dry-run por omisión, la confirmación del usuario
+   y la puerta de entorno, pero ya no el gesto de alguien abriendo la ventana
+   en el plano de gestión. Una versión con un defecto en el cierre lo ejecuta
+   contra el ERP en cuanto un usuario confirme.
+2. **Mientras F-034 no esté desplegada, `/api/adjuntar` y `/api/cerrar` siguen
+   tomando el número de incidencia del cuerpo de la petición**, no de lo
+   persistido del parte. Un usuario autenticado del grupo de Posventa puede
+   mandar un número que no es el del parte.
+
+Lo que sigue impidiendo que **un desconocido** llegue a escribir es la
+plataforma (Easy Auth en el host desnudo y la sesión del grupo en el front,
+§5 bis), no esta ventana. Quien no quiera este riesgo en un despliegue
+concreto lo lanza con `-VentanasCerradas`.
 
 ### Lo que la ventana NO sustituye
 
@@ -334,10 +392,12 @@ archivo. Encima de ella hay dos puertas más que no son configuración:
    sin gráfico responde `409` **sin tocar el ERP**: la ventana abierta no basta
    para cerrar una reclamación sin su parte dentro.
 
-Así que la secuencia de un cierre real es, en este orden: abrir la ventana →
-`/api/adjuntar` **sin** `commit` y `/api/cerrar` **sin** `commit`, y **leer los
-dos dry-run** → confirmar → `/api/adjuntar` con `commit` → **solo si responde
-`adjuntado`**, `/api/cerrar` con `commit` → **cerrar la ventana**.
+Así que la secuencia de un cierre real es, en este orden: `/api/adjuntar`
+**sin** `commit` y `/api/cerrar` **sin** `commit`, y **leer los dos dry-run** →
+confirmar → `/api/adjuntar` con `commit` → **solo si responde `adjuntado`**,
+`/api/cerrar` con `commit`. Hasta el 2026-09-22 la secuencia empezaba abriendo
+la ventana y terminaba cerrándola; desde el 2026-09-23 la ventana ya está
+abierta tras desplegar (salvo `-VentanasCerradas`).
 
 ### Las variables de Sigrid, y cuál es el secreto
 
@@ -348,7 +408,7 @@ Eran ocho hasta F-012, que añade las dos del gráfico.
 
 | App Setting | Qué es | Cómo se despliega |
 |---|---|---|
-| `CIERRE_HABILITADO` | El interruptor. Apagado por defecto | `$ajustes`, `false` en cada despliegue |
+| `CIERRE_HABILITADO` | El interruptor. Apagado por defecto **en el código** | `$ajustes`, `true` en cada despliegue desde el 2026-09-23; `false` con `-VentanasCerradas` |
 | `SIGRID_API_BASE_URL` | La raíz de la pasarela: un **host interno** | Referencia a Key Vault (`sigrid-api-base-url`) |
 | `SIGRID_API_KEY` | **Secreto**: la clave de función de la pasarela | Referencia a Key Vault (`sigrid-api-key`) |
 | `SIGRID_BASE_DATOS` | La base de negocio del ERP, la única escribible en la pasarela | `$ajustes`, en claro |
@@ -406,6 +466,15 @@ Comprueba tres cosas, todas de lectura: `GET /api/health` responde `200`,
 `POST /api/archivar` responde `503` con la ventana cerrada, y la Static Web App
 sin sesión redirige al inicio de sesión.
 
+> **Desde el 2026-09-23, tras un despliegue por defecto la segunda no se hace**:
+> la ventana de archivo queda abierta (§4), y con ella abierta el script no
+> llama —subiría un PDF de verdad— y el veredicto sale `NO VERIFICADO`. Es la
+> guarda funcionando, no un fallo del despliegue. Para una verificación
+> completa con este script hay que desplegar con `-VentanasCerradas` (o cerrar
+> la ventana con `22_ventana_archivo.ps1 -Cerrar`), verificar, y volver a
+> abrirla. Cómo encaja este script con las ventanas abiertas por defecto está
+> **pendiente de decisión**.
+
 Lo que se anota en `progress/` son las cuatro líneas que imprime, **sin la URL
 y sin ningún identificador**.
 
@@ -445,8 +514,9 @@ Con **sesión iniciada** en el front y la pestaña abierta, `F12` → **Consola*
 se pega el fragmento entero. Va al **mismo origen**, así que pasa por el proxy
 que autentica; por eso aquí no hay ninguna URL que escribir.
 
-Antes de pegarlo: **la ventana de escritura tiene que estar abierta** (§4), y
-**se cierra en cuanto termine**, salga bien o mal.
+Antes de pegarlo: **la ventana de escritura tiene que estar abierta** (§4).
+Desde el 2026-09-23 lo está tras un despliegue por defecto; hasta entonces se
+abría para esto y se cerraba en cuanto terminaba, salga bien o mal.
 
 ```js
 // T18 - verificacion de la subida a SharePoint, desde la consola del FRONT.

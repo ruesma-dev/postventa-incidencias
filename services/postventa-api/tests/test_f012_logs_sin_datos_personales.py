@@ -30,6 +30,7 @@ import logging
 from datetime import UTC, datetime
 
 import pytest
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_grafico import paso_grafico
 from domain.models.cierre import CorrespondenciaSigrid, Reclamacion
@@ -53,7 +54,11 @@ from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, ResultadoValidacion, Veredicto
 from infrastructure.sigrid.graficos import AdaptadorGraficoSigridApi
 
-from tests.utiles_pg import RepositorioEnMemoria, con_el_veredicto_guardado
+from tests.utiles_pg import (
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+    con_el_veredicto_guardado,
+)
 from tests.utiles_sigrid import (
     ClienteFalso,
     ErpEnMemoria,
@@ -196,6 +201,8 @@ def _contexto() -> ContextoParte:
             clasificacion_firma=ClasificacionFirma.HUMANA,
             observaciones=OBSERVACIONES,
             confianza_observaciones=80,
+            codigo_obra="0000",
+            numero_incidencia="XX00.00 - 0000",
         ),
         archivo=TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO),
     )
@@ -206,10 +213,15 @@ def _adjuntar(*, graficos=None, repositorio=None, commit=True, confirmado=True):
 
     F-030 · el veredicto del contexto se deja también en el doble, porque desde
     F-030 la puerta del paso lo lee de ahí (ver `tests/utiles_pg.py`).
+
+    F-034 · y la traza de archivo, que desde F-034 también se lee de lo
+    guardado; el veredicto lleva los dos códigos con los que se guardó el
+    parte, y los declarados se pasan iguales, como hace el borde.
     """
     ctx = _contexto()
     repositorio = repositorio if repositorio is not None else RepositorioEnMemoria()
     con_el_veredicto_guardado(repositorio, ctx)
+    con_el_archivo_guardado(repositorio, ctx)
 
     return paso_grafico(
         ctx,
@@ -222,8 +234,9 @@ def _adjuntar(*, graficos=None, repositorio=None, commit=True, confirmado=True):
         confirmado=confirmado,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia="XX00.00 - 0000",
-        codigo_obra="0000",
+        codigos_declarados=CodigosDelParte(
+            codigo_obra="0000", numero_incidencia="XX00.00 - 0000"
+        ),
         gratipide=35,
         tope_bytes=10 * 1024 * 1024,
         ahora=AHORA,

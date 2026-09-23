@@ -36,6 +36,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_archivo import paso_archivo
 from application.pipelines.paso_cierre import paso_cierre
@@ -206,8 +207,9 @@ def test_f026_r25_un_parte_no_apto_sin_aprobacion_no_se_adjunta(destino):
             confirmado=True,
             usuario_oid=OID,
             correo=CORREO,
-            numero_incidencia=INCIDENCIA,
-            codigo_obra=OBRA,
+            codigos_declarados=CodigosDelParte(
+                codigo_obra=OBRA, numero_incidencia=INCIDENCIA
+            ),
             gratipide=35,
             tope_bytes=10 * 1024 * 1024,
             ahora=AHORA,

@@ -101,7 +101,11 @@ from domain.ports.persistencia import RepositorioPartesPort
 # un import—. Así el rojo de T2 es suyo y se lee solo.
 from infrastructure.persistencia import mapeo
 
-from tests.utiles_pg import RepositorioComoLaBase, RepositorioEnMemoria
+from tests.utiles_pg import (
+    RepositorioComoLaBase,
+    RepositorioEnMemoria,
+    con_el_archivo_guardado,
+)
 from tests.utiles_sharepoint import ArchivoPortFalso
 from tests.utiles_sigrid import ErpEnMemoria, GraficoEnMemoria
 from tests.utiles_validacion import extraccion_de_ejemplo, lectura_de_firma
@@ -413,6 +417,17 @@ def _puerta_de_archivo(ctx, repositorio, dobles, *, commit=True):
 
 
 def _puerta_del_grafico(ctx, repositorio, dobles, *, commit=True):
+    """El gráfico, con la traza de archivo del caso también en el doble.
+
+    **Enmienda del 2026-09-23 (F-034).** Desde F-034 el gráfico lee el archivo
+    de lo guardado y no de `ctx.archivo`, así que la traza que el caso prepara
+    en el contexto se deja también en el doble (`con_el_archivo_guardado`: no
+    inventa ninguna ni pisa la de la situación). **El veredicto no se toca**:
+    este fichero separa a mano las dos fuentes del veredicto y eso sigue igual.
+    Y ya no se le pasan los códigos sueltos: decide lo guardado, y estos casos
+    no declaran cuerpo (`codigos_declarados=None`, `design.md` §4.2).
+    """
+    con_el_archivo_guardado(repositorio, ctx)
     return paso_grafico(
         ctx,
         dobles.erp,
@@ -424,8 +439,6 @@ def _puerta_del_grafico(ctx, repositorio, dobles, *, commit=True):
         confirmado=True,
         usuario_oid=OID,
         correo=CORREO,
-        numero_incidencia=INCIDENCIA,
-        codigo_obra=OBRA,
         gratipide=35,
         tope_bytes=10 * 1024 * 1024,
         ahora=AHORA,

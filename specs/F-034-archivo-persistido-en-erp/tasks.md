@@ -97,7 +97,7 @@
       (`…_el_grafico_usa_la_compartida_y_no_su_copia`) es el recableado de T6.
       F-028 y F-030: 498 passed, 2 skipped, sin tocarlos.
 
-- [ ] **T6**: `application/pipelines/paso_grafico.py` · el cotejo en el punto
+- [x] **T6**: `application/pipelines/paso_grafico.py` · el cotejo en el punto
       **1 bis**, los códigos guardados alimentando `_codigo_de_incidencia` y
       `componer_peticion`, `_exigir_archivado` sustituido por la puerta
       compartida, y la firma con `codigos_declarados` en lugar de los dos `str`
@@ -106,6 +106,11 @@
       en verde, **incluido** el test de R13: ante divergencia, el doble del ERP
       no registra **ninguna** llamada y el repositorio no registra **ninguna**
       escritura.
+      **Hecha (2026-09-23)**: el paso en verde con sus tests de paso (F-012,
+      F-025, F-026, F-028, F-030 y los de paso de F-034, adaptados sin relajar
+      nada: detalle en `progress/impl_F-034.md` §6.3). Los tests de F-034 que
+      recorren el **borde** siguen en rojo en este commit porque el borde es
+      T7; se ponen en verde en el siguiente.
 
 - [ ] **T7**: `interface_adapters/api/adjuntar.py` (pasa los códigos
       declarados; `_como_contexto` deja de fabricar la `TrazaArchivo`) y

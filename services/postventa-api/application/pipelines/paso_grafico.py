@@ -41,6 +41,31 @@ de que PyMuPDF puede no conservar al reserializar lo que copia, así que la
 igualdad no está garantizada por construcción y una comprobación que fallara
 sola mandaría partes buenos a un 409. La integridad **del transporte** sí se
 comprueba: el `sha256` se calcula aquí y lo coteja la pasarela (R7).
+
+## Enmienda del 2026-09-23 (F-034 T6) · con qué se escribe en el ERP
+
+Hasta hoy este paso escribía en el ERP de producción con **tres datos del
+cuerpo** de la petición, que el borde le pasaba tal cual:
+
+- el **estado del archivo**: `_exigir_archivado` miraba `ctx.archivo`, y ese
+  objeto lo fabricaba `adjuntar._como_contexto` con el `estado_archivo` del
+  formulario, que el front manda fijo a `archivado`. Un parte aprobado y sin
+  archivar se adjuntaba con solo decirlo;
+- el **número de incidencia**, que elegía **a qué reclamación** se adjunta el
+  parte (`_codigo_de_incidencia` → `erp.leer_reclamacion`);
+- el **código de obra** y ese mismo número, que componían **el nombre** con el
+  que el parte cuelga de la reclamación (`componer_peticion`).
+
+Desde F-034 (`specs/F-034-archivo-persistido-en-erp/`) los tres salen de **lo
+guardado**, de la `SituacionParte` que la puerta de aptitud acaba de leer y sin
+una consulta más: el archivo, de `ctx.situacion.archivo` con la puerta
+compartida `exigir_parte_archivado`; los dos códigos, de
+`codigos_guardados(ctx)`. Lo que traiga el cuerpo entra por
+`codigos_declarados` y **solo coteja**, en el punto 1 bis y antes de hablar con
+nadie: si no es lo guardado, 409 y no se escribe nada, tampoco en dry-run
+(R11, R13, R14). Lo declarado puede cerrar la puerta, nunca abrirla ni moverla
+(R19). Los dos parámetros `numero_incidencia` y `codigo_obra` desaparecen de la
+firma para que el cuerpo de la función no pueda volver a usarlos (D-7).
 """
 
 from __future__ import annotations
@@ -60,7 +85,6 @@ from domain.models.errores import (
     EstadoNoCerrable,
     GraficoFallido,
     GraficoSinTraza,
-    ParteNoArchivado,
     ReclamacionNoLocalizada,
 )
 from domain.models.grafico import (
@@ -73,7 +97,6 @@ from domain.models.grafico import (
     validar_fichero,
 )
 from domain.models.persistencia import (
-    EstadoArchivo,
     EstadoGrafico,
     TrazaGrafico,
 )
@@ -85,6 +108,12 @@ from domain.ports.persistencia import (
 )
 from domain.ports.usuarios_sigrid import RepositorioUsuariosSigridPort
 
+from application.pipelines.codigos_del_parte import (
+    CodigosDelParte,
+    codigos_guardados,
+    exigir_codigos_completos,
+    exigir_codigos_declarados,
+)
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import (
     # **Una** regla de autorización para escribir en el ERP, no dos copias que
@@ -94,11 +123,33 @@ from application.pipelines.paso_cierre import (
     exigir_autorizacion_para_escribir,
     resolver_login_de_sigrid,
 )
-from application.pipelines.puerta_de_estado import exigir_parte_aprobado
+from application.pipelines.puerta_de_estado import (
+    exigir_parte_aprobado,
+    exigir_parte_archivado,
+)
 
 __all__ = ["paso_grafico"]
 
 log = logging.getLogger(__name__)
+
+#: Lo que se le dice a quien lee cada 409 de F-034, según por qué no se adjunta.
+#: La parte fija del mensaje la pone la pieza compartida; esta es la cola, que
+#: es lo que dice **qué se ha quedado sin hacer** y qué hacer.
+#:
+#: La del archivo es, byte a byte, la del `_exigir_archivado` que sustituye.
+_Y_POR_ESO_SIN_ARCHIVAR = (
+    "no se adjunta a la reclamación: primero el documento, después el ERP"
+)
+#: Lo guardado está incompleto: `exigir_codigos_completos` añade la acción
+#: (teclear el código y guardarlo), que es la misma en cualquier endpoint.
+_Y_POR_ESO_FALTA_UN_CODIGO = "**no se ha adjuntado nada** al ERP"
+#: Lo declarado no es lo guardado: la cola lleva la acción entera, como la de
+#: `paso_archivo` (decisión del humano del 2026-09-23 sobre el mensaje).
+_Y_POR_ESO_NO_COINCIDEN = (
+    "**no se ha adjuntado nada** al ERP: la reclamación y el nombre del "
+    "fichero salen de lo guardado. Hay que guardar la corrección con "
+    "POST /api/parte y volver a adjuntar"
+)
 
 
 def paso_grafico(
@@ -113,8 +164,7 @@ def paso_grafico(
     confirmado: bool,
     usuario_oid: str,
     correo: str,
-    numero_incidencia: str,
-    codigo_obra: str,
+    codigos_declarados: CodigosDelParte | None = None,
     gratipide: int,
     tope_bytes: int,
     ahora: datetime,
@@ -123,9 +173,19 @@ def paso_grafico(
 
     Los pasos, **en este orden**, y el orden es la mitad del requisito:
 
-    1. **Puerta de aptitud** (R14) y **puerta de archivo** (R15). Las mismas
-       que el cierre: no se sube al ERP el parte de una incidencia que nadie ha
-       validado, ni uno cuyo documento no conste guardado.
+    1. **Puerta de aptitud** (R14). La misma que el cierre: no se sube al ERP
+       el parte de una incidencia que nadie ha validado. Deja la situación
+       leída en `ctx.situacion`.
+
+       **1 bis. Los dos códigos** (F-034 R11, R13, R15): los **guardados**
+       tienen que estar completos y lo **declarado** en el cuerpo tiene que ser
+       lo guardado. Va aquí y no más abajo porque a partir del login ya se
+       habla con el ERP y a partir del dry-run ya hay trazas escritas; y va
+       antes de la puerta de archivo porque primero se resuelve **sobre qué**
+       parte y qué reclamación se opera, y después en qué estado está.
+
+       **Puerta de archivo** (R15): el parte tiene que constar archivado
+       **según lo guardado** (F-034 R1), no según el cuerpo.
     2. **El fichero** (R18, R19): tope y firma de PDF. Antes de tocar la base y
        antes de leer nada del ERP, con lo que ya se tiene en la mano.
     3. **La traza local** (R24): si dice `adjuntado`, se acabó. Cero llamadas.
@@ -146,7 +206,8 @@ def paso_grafico(
     `oid`, ni el `gra_cod` —que lleva el login del ERP dentro— (R53, R54).
     """
     _exigir_admitido(ctx, repositorio)
-    _exigir_archivado(ctx)
+    guardados = _codigos_con_los_que_se_escribe(ctx, codigos_declarados)
+    exigir_parte_archivado(ctx, y_por_eso=_Y_POR_ESO_SIN_ARCHIVAR)
 
     bytes_, sha256 = validar_fichero(ctx.parte.contenido, tope_bytes=tope_bytes)
 
@@ -154,7 +215,7 @@ def paso_grafico(
     if traza_previa is not None and traza_previa.estado == EstadoGrafico.ADJUNTADO:
         return _resolver_desde_la_traza(ctx, traza_previa)
 
-    codigo = _codigo_de_incidencia(numero_incidencia)
+    codigo = _codigo_de_incidencia(guardados.numero_incidencia)
     login = resolver_login_de_sigrid(
         usuarios, erp, usuario_oid=usuario_oid, correo=correo, ahora=ahora
     )
@@ -172,8 +233,8 @@ def paso_grafico(
     peticion = componer_peticion(
         reclamacion=reclamacion,
         login=login,
-        codigo_obra=codigo_obra,
-        numero_incidencia=numero_incidencia,
+        codigo_obra=guardados.codigo_obra,
+        numero_incidencia=guardados.numero_incidencia,
         gratipide=gratipide,
         contenido=ctx.parte.contenido,
         bytes=bytes_,
@@ -279,20 +340,33 @@ def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> 
     )
 
 
-def _exigir_archivado(ctx: ContextoParte) -> None:
-    """El parte tiene que constar **archivado** (R15).
+def _codigos_con_los_que_se_escribe(
+    ctx: ContextoParte, declarados: CodigosDelParte | None
+) -> CodigosDelParte:
+    """1 bis · los dos códigos **guardados**, completos y cotejados (F-034).
 
-    Misma puerta que R17 de F-009, y aquí con un motivo más: lo que se sube a
-    Sigrid son **exactamente los bytes que se archivaron**. Si el archivo no
-    consta, no hay nada con lo que cotejar después lo que quedó dentro del ERP.
+    Salen de la situación que la puerta de aptitud acaba de leer —ni una
+    consulta más (R10)— y son los que eligen la reclamación y componen el
+    nombre del fichero (R8). Antes de devolverlos:
+
+    1. **tienen que estar los dos** (R15): si falta uno, `CodigoNoConsta`
+       diciendo cuál, y **no** se rellena con el del cuerpo. Va antes que el
+       cotejo a propósito: con un código guardado vacío, lo que hay que hacer
+       es teclearlo, y eso es lo que tiene que decir el mensaje aunque el
+       cuerpo traiga otro;
+    2. **lo declarado tiene que ser lo guardado** (R11, R12), normalizado con
+       el criterio de F-032: si no, `CodigosNoCoinciden` diciendo cuál.
+
+    Los dos cortes ocurren **antes** del login, de la lectura de la reclamación
+    y de cualquier traza (R13), y también en dry-run (R14). Sin `declarados`
+    no hay nada que cotejar y se escribe igual con lo guardado (R19).
     """
-    if ctx.archivo is None or ctx.archivo.estado != EstadoArchivo.ARCHIVADO:
-        estado = "ninguno" if ctx.archivo is None else ctx.archivo.estado.value
-        raise ParteNoArchivado(
-            f"este parte no consta archivado (estado del archivo: {estado}), "
-            f"así que no se adjunta a la reclamación: primero el documento, "
-            f"después el ERP"
-        )
+    guardados = codigos_guardados(ctx)
+    exigir_codigos_completos(guardados, y_por_eso=_Y_POR_ESO_FALTA_UN_CODIGO)
+    exigir_codigos_declarados(
+        declarados, guardados, y_por_eso=_Y_POR_ESO_NO_COINCIDEN
+    )
+    return guardados
 
 
 def _codigo_de_incidencia(numero_incidencia: str) -> str:
@@ -300,6 +374,14 @@ def _codigo_de_incidencia(numero_incidencia: str) -> str:
 
     Sin código no hay a quién adjuntar nada, y preguntar por una cadena vacía
     devolvería lo que devolviera. El borde lo traduce a **400**.
+
+    **Desde F-034 recibe el número guardado** y ya no es el camino del código
+    vacío: ese lo corta antes `exigir_codigos_completos` con un 409 que dice
+    qué falta (R15). Lo que todavía llega aquí es un número guardado que no
+    está vacío pero **no tiene ningún tramo** —solo separadores—, porque
+    `a_codigo_de_sigrid` lo deja en cadena vacía. No es código muerto y no se
+    retira (`design.md` §4.2): sin él, se preguntaría al ERP por una cadena
+    vacía.
     """
     codigo = a_codigo_de_sigrid(numero_incidencia)
     if not codigo:

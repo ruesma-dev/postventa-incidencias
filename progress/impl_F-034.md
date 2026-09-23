@@ -313,3 +313,123 @@ Vigentes al cerrar el Bloque 1 (tras T3):
 
 Las del primer encargo (tras T2), para comparar: 3.073 passed, 28 skipped
 (161,17 s); cobertura 4/4.
+
+## 6 · Bloque 2 · `/api/adjuntar` y `paso_grafico` (T4–T7)
+
+### 6.1 · T4 · fase RED (traza real)
+
+Tests escritos **antes** de tocar `puerta_de_estado.py`, `paso_grafico.py`,
+`adjuntar.py` y `function_app.py`:
+
+- `tests/test_f034_archivo_persistido.py` (nuevo): la puerta compartida
+  (`-k puerta`) y R1–R7 desde `POST /api/adjuntar`;
+- `tests/test_f034_codigos_en_el_erp.py` (ampliado): R8, R11–R17, R19, R20,
+  R24, R27, R34, R35 desde `POST /api/adjuntar` y `paso_grafico`;
+- `tests/utiles_circuito.py` (nuevo, utillería): el mundo de los endpoints que
+  escriben en el ERP, con **lo guardado** (`situacion_guardada`) y **lo
+  declarado** (`formulario`) escritos aparte, los cinco puertos inyectados y
+  `nada_ha_tocado_el_erp()` (cero lecturas y verificaciones del ERP, cero
+  llamadas a la pasarela, cero trazas escritas **y** cero consultas de la traza
+  del gráfico). `por_la_ruta` llama a `function_app.adjuntar` de verdad con el
+  handler de verdad envuelto para recibir esos puertos: el 409 sale del
+  `except` real y no del de una excepción fabricada, y el 503 de la ventana
+  no puede tapar nada porque la fábrica no se evalúa.
+
+Cada caso negativo tiene su **control positivo** con el mismo mundo
+(`test_f034_r3_control_positivo_…`, `test_f034_r11_control_positivo_…`), y
+los dos pasan **ya en RED**: el mundo es válido y el 409 que se espera no puede
+salir de otra cosa.
+
+Comando, desde `services/postventa-api`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f034_archivo_persistido.py tests/test_f034_codigos_en_el_erp.py -q -p no:cacheprovider
+39 failed, 42 passed in 4.72s
+```
+
+Los 39 fallos y su motivo (salida de `--tb=line`; donde un mismo motivo se
+repite por parametrización se agrupa con `(xN)`, el resto es literal):
+
+```
+tests\test_f034_archivo_persistido.py:117: AttributeError: module 'application.pipelines.puerta_de_estado' has no attribute 'exigir_parte_archivado'. Did you mean: 'exigir_parte_aprobado'?
+tests\test_f034_archivo_persistido.py:131: AttributeError: (idem) (x3, R3 puerta: None / pendiente / error)
+tests\test_f034_archivo_persistido.py:151: AttributeError: (idem) (x3, R5 puerta: el cuerpo no la abre)
+tests\test_f034_archivo_persistido.py:163: AttributeError: (idem) (x3, R7 puerta: el cuerpo no la cierra)
+tests\test_f034_archivo_persistido.py:177: AttributeError: (idem) (R1 puerta sin situación)
+tests\test_f034_archivo_persistido.py:188: AssertionError: assert 'exigir_parte_archivado' in ['exigir_parte_aprobado', 'situacion_leida']
+tests\test_f034_archivo_persistido.py:200: AssertionError: assert not True
+tests\test_f034_archivo_persistido.py:260: Failed: DID NOT RAISE ParteNoArchivado   (x6, R3 central: None/pendiente/error x dry_run/commit)
+tests\test_f034_archivo_persistido.py:279: assert 200 == 409
+application\pipelines\paso_grafico.py:291: domain.models.errores.ParteNoArchivado: este parte no consta archivado (estado del archivo: pendiente), así que no se adjunta a la reclamación: primero el documento, después el ERP
+application\pipelines\paso_grafico.py:291: domain.models.errores.ParteNoArchivado: este parte no consta archivado (estado del archivo: error), así que no se adjunta a la reclamación: primero el documento, después el ERP
+tests\test_f034_archivo_persistido.py:341: AssertionError: assert TrazaArchivo(hash_parte='f034a0a0a0a0', estado=<EstadoArchivo.ARCHIVADO: 'archivado'>, nombre_fichero=None, carpeta=None, drive_id=None, item_id=None, web_url=None, motivo=No[…]
+tests\test_f034_archivo_persistido.py:366: AssertionError: assert 'F-034' in 'Handler de `POST /api/adjuntar`, sin nada de Azure dentro.\n\nAquí se **componen los cinco puertos** —el ERP, el del ... HTTP no cambia y\nun valor desconocido[…]
+tests\test_f034_codigos_en_el_erp.py:505: Failed: DID NOT RAISE CodigosNoCoinciden   (x2, R11 central: dry_run y commit)
+tests\test_f034_codigos_en_el_erp.py:527: Failed: DID NOT RAISE CodigosNoCoinciden
+tests\test_f034_codigos_en_el_erp.py:579: Failed: DID NOT RAISE CodigoNoConsta   (x2, R15: sin incidencia / sin obra guardada)
+tests\test_f034_codigos_en_el_erp.py:609: TypeError: paso_grafico() got an unexpected keyword argument 'codigos_declarados'   (x2)
+tests\test_f034_codigos_en_el_erp.py:638: Failed: DID NOT RAISE CodigosNoCoinciden
+domain\models\grafico.py:271: domain.models.errores.GraficoNoEsPdf: el fichero no empieza por la firma de un PDF, así que no se adjunta a la reclamación: la pasarela solo admite PDF y el contenido no se registra para poder decir qué era
+tests\test_f034_codigos_en_el_erp.py:717: KeyError: 'codigos_declarados'
+tests\test_f034_codigos_en_el_erp.py:738: assert 'numero_incidencia' not in mappingproxy(OrderedDict({'ctx': <Parameter "ctx: 'ContextoParte'">, 'erp': <Parameter "erp: 'ErpPort'">, 'graficos': ...rameter "gratipide: 'int'">, 'tope_bytes': […]
+tests\test_f034_codigos_en_el_erp.py:756: TypeError: paso_grafico() missing 2 required keyword-only arguments: 'numero_incidencia' and 'codigo_obra'
+tests\test_f034_codigos_en_el_erp.py:805: assert 200 == 409   (x2, R27 por la ruta: CodigosNoCoinciden y CodigoNoConsta)
+tests\test_f034_codigos_en_el_erp.py:823: Failed: DID NOT RAISE CodigosNoCoinciden
+```
+
+Qué dice cada uno: la puerta compartida no existe (R1, R3, R5, R7); el gráfico
+conserva su copia (`:200`); un cuerpo `archivado` sobre un parte sin traza
+**pasa** (R3, `:260`, `:279`); un cuerpo `pendiente` frena lo que la base da
+por archivado (R7, las dos líneas de `paso_grafico.py:291`); el borde fabrica
+la `TrazaArchivo` (R4, `:341`); sin enmienda fechada (R6, `:366`); un cuerpo
+con **otra** incidencia u otra obra pasa (R11, R16, `:505`, `:527`); un código
+guardado vacío se rellena con el del cuerpo (R15, `:579`); el cotejo no existe
+y el fichero se mira antes (R13, `:638`, `grafico.py:271`); el borde pasa los
+códigos sueltos y la firma del paso los conserva (R8, R19, `:717`, `:738`,
+`:756`); la ruta devuelve 200 (R27, `:805`); y el 409 de códigos no existe
+(R34, `:823`).
+
+Las cuatro trazas centrales, enteras (`--tb=short`):
+
+```
+$ .venv/Scripts/python.exe -m pytest "tests/test_f034_archivo_persistido.py::test_f034_r3_adjuntar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[None-ninguno-commit]" "tests/test_f034_codigos_en_el_erp.py::test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[dry_run]" "tests/test_f034_codigos_en_el_erp.py::test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[commit]" "tests/test_f034_archivo_persistido.py::test_f034_r3_adjuntar_por_la_ruta_es_409_con_el_motivo_y_nada_mas" -q -p no:cacheprovider --tb=short
+FFFF                                                                     [100%]
+================================== FAILURES ===================================
+_ test_f034_r3_adjuntar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[None-ninguno-commit] _
+tests\test_f034_archivo_persistido.py:260: in test_f034_r3_adjuntar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp
+    with pytest.raises(ParteNoArchivado) as fallo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ParteNoArchivado
+_ test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[dry_run] _
+tests\test_f034_codigos_en_el_erp.py:505: in test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp
+    with pytest.raises(CodigosNoCoinciden) as fallo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE CodigosNoCoinciden
+_ test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[commit] __
+tests\test_f034_codigos_en_el_erp.py:505: in test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp
+    with pytest.raises(CodigosNoCoinciden) as fallo:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE CodigosNoCoinciden
+______ test_f034_r3_adjuntar_por_la_ruta_es_409_con_el_motivo_y_nada_mas ______
+tests\test_f034_archivo_persistido.py:279: in test_f034_r3_adjuntar_por_la_ruta_es_409_con_el_motivo_y_nada_mas
+    assert respuesta.status_code == 409
+E   assert 200 == 409
+E    +  where 200 = <azure.functions._http.HttpResponse object at 0x000001FDA92B6540>.status_code
+------------------------------ Captured log call ------------------------------
+INFO     application.pipelines.paso_grafico:paso_grafico.py:233 F-012 dry-run del gráfico correcto: parte=f034a0a0a0a0 incidencia=RS26.08/0123 bytes=36 idempotente=False
+INFO     function_app:function_app.py:963 adjuntar: parte=f034a0a0a0a0 incidencia=RS26.08/0123 estado=dry_run_ok idempotente=False filas=0
+=========================== short test summary info ===========================
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_adjuntar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[None-ninguno-commit]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[dry_run]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[commit]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_adjuntar_por_la_ruta_es_409_con_el_motivo_y_nada_mas
+4 failed in 2.62s
+```
+
+La última es el defecto de la mitad A, visto en el log: **un parte sin ninguna
+traza de archivo en la base** llega al dry-run del ERP (`dry_run_ok`) por la
+ruta HTTP de verdad, con solo decir `estado_archivo=archivado` en el cuerpo.
+
+Los 42 que pasan en RED son los 31 del Bloque 1 más 11 que **tienen** que
+pasar antes y después: los dos controles positivos, R12 (dos), R17, R20, R24,
+R35, R6 obligatorio (dos) y R2.

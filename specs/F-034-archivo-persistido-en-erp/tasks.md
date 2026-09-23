@@ -66,7 +66,7 @@
 
 ## Bloque 2 · `/api/adjuntar` y `paso_grafico`
 
-- [ ] **T4 (RED)**: escribir `tests/test_f034_archivo_persistido.py` y
+- [x] **T4 (RED)**: escribir `tests/test_f034_archivo_persistido.py` y
       `tests/test_f034_codigos_en_el_erp.py` **antes** de tocar el paso, con un
       test por requisito de `requirements.md` §1.1 y §1.2 y nombre trazable
       (`test_f034_rN_…`). Casos centrales, los dos desde `POST /api/adjuntar`
@@ -80,6 +80,11 @@
       **Verificación**: `pytest tests/test_f034_*.py -q` **en rojo**, con la
       salida (los N fallos y su motivo) copiada a `progress/impl_F-034.md` como
       fase RED.
+      **Hecha (2026-09-23)**: 39 fallos y 42 verdes, con los motivos y las
+      cuatro trazas centrales en `progress/impl_F-034.md` §6.1. Los casos de
+      `/api/cerrar` son de T8. El mundo compartido (lo guardado y lo declarado
+      escritos aparte, los cinco puertos inyectados) vive en
+      `tests/utiles_circuito.py`.
 
 - [ ] **T5**: `application/pipelines/puerta_de_estado.py` · añadir
       `exigir_parte_archivado(ctx, *, y_por_eso)` leyendo `ctx.situacion.archivo`

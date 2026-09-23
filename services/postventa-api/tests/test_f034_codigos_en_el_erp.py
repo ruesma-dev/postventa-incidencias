@@ -3,20 +3,23 @@
 
 Este fichero crece por bloques (`tasks.md`):
 
-- **Bloque 1** (este): las piezas compartidas. El error nuevo,
+- **Bloque 1**: las piezas compartidas. El error nuevo,
   `CodigoNoConsta` (R15, R28), y en qué se diferencia de sus tres hermanas
   de 409; y el módulo `application/pipelines/codigos_del_parte.py`, con el
   cotejo normalizado (R12), su variante de solo la incidencia (R16), la
   exigencia de lo guardado completo (R15) y la prueba de que el mensaje de
   `POST /api/archivar` no ha cambiado ni un byte al moverlo (R26).
-- **Bloques 2 y 3**: `POST /api/adjuntar` y `POST /api/cerrar` con los puertos
-  inyectados (R8–R19, R24, R27).
+- **Bloque 2**: `POST /api/adjuntar` y `paso_grafico` con los cinco puertos
+  inyectados (R8, R11–R17, R19, R20, R24, R27, R34, R35). El mundo —lo
+  guardado y lo declarado, escritos aparte— sale de `tests/utiles_circuito.py`.
+- **Bloque 3**: `POST /api/cerrar` (R9, R16 con solo la incidencia).
 
 **Sin red, sin base de datos, sin IA y sin tocar el ERP** (R37).
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime
 
@@ -28,23 +31,36 @@ from application.pipelines.codigos_del_parte import (
     exigir_codigos_completos,
     exigir_codigos_declarados,
 )
+from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_archivo import paso_archivo
 from domain.models.errores import (
     CodigoNoConsta,
     CodigosNoCoinciden,
+    CuerpoDeGraficoInvalido,
     NombradoImposible,
     ParteNoApto,
     ParteNoArchivado,
 )
 from domain.models.estado import SituacionParte
+from domain.models.persistencia import EstadoArchivo
 from interface_adapters.api import archivar as modulo_archivar
 
+from tests.utiles_circuito import (
+    AHORA,
+    CORREO,
+    OID,
+    PDF,
+    MundoDelAdjuntar,
+    formulario,
+    situacion_guardada,
+)
 from tests.utiles_sharepoint import (
     CARPETA_BASE,
     ArchivoPortFalso,
     BibliotecaFalsa,
     RepositorioFalso,
     contexto_apto,
+    parte_de_prueba,
 )
 from tests.utiles_validacion import veredicto_apto
 
@@ -415,3 +431,414 @@ def test_f034_r26_codigos_archivo_y_su_endpoint_usan_la_pieza_compartida():
     assert modulo_archivar.CodigosDelParte is CodigosDelParte
     assert not hasattr(modulo_paso_archivo, "_codigos_guardados")
     assert not hasattr(modulo_paso_archivo, "_exigir_codigos_declarados")
+
+
+# ==========================================================================
+# Bloque 2 · T4 · `POST /api/adjuntar` con los puertos inyectados (R8–R19)
+# ==========================================================================
+#
+# Todos los casos de abajo recorren el **handler de verdad**
+# (`adjuntar_grafico`) o la **ruta de verdad** (`function_app.adjuntar`) con
+# los cinco puertos inyectados, así que la puerta de entorno no se evalúa y el
+# 503 no puede tapar el 409 que se quiere ver (D-6 de `requirements.md`). Cada
+# caso negativo tiene su control positivo con el mismo mundo.
+
+#: Un número de incidencia que **no** es el guardado: otra reclamación.
+OTRA_INCIDENCIA = "RS26.09/0999"
+#: El DNI del parte de ejemplo (inventado): si sale en un motivo, R34 falla.
+DNI_INVENTADO = "00000000T"
+
+
+def _mundo_del_adjuntar(
+    obra: str = OBRA_GUARDADA,
+    incidencia: str = INCIDENCIA_GUARDADA,
+    *,
+    estado_archivo: EstadoArchivo | None = EstadoArchivo.ARCHIVADO,
+) -> MundoDelAdjuntar:
+    """Parte apto y archivado **según la base**, con esos códigos guardados."""
+    return MundoDelAdjuntar(
+        situacion_guardada(
+            hash_parte=HASH,
+            codigo_obra=obra,
+            numero_incidencia=incidencia,
+            estado_archivo=estado_archivo,
+        )
+    )
+
+
+def _declarado(
+    obra: str = OBRA_GUARDADA, incidencia: str = INCIDENCIA_GUARDADA, **cambios: str
+) -> dict[str, str]:
+    """El cuerpo de la petición: **lo declarado**, escrito aparte a propósito."""
+    return formulario(
+        hash_parte=HASH, codigo_obra=obra, numero_incidencia=incidencia, **cambios
+    )
+
+
+def test_f034_r11_control_positivo_mismos_codigos_si_adjunta():
+    """El control de todo el bloque: mismos códigos, mismo mundo → se adjunta.
+
+    Si esto no pasara, los 409 de abajo no demostrarían nada: podrían salir de
+    cualquier otra cosa del mundo.
+    """
+    mundo = _mundo_del_adjuntar()
+
+    respuesta = mundo.adjuntar(_declarado(commit="true", confirmado="true"))
+
+    assert respuesta["estado"] == "adjuntado"
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+    assert mundo.graficos.orden == [False, True]
+
+
+@pytest.mark.parametrize("commit", ["", "true"], ids=["dry_run", "commit"])
+def test_f034_r11_adjuntar_otra_incidencia_en_el_cuerpo_no_toca_el_erp(commit):
+    """R8, R11, R13, R14 · **caso central**: el cuerpo nombra otra reclamación.
+
+    Guardado `RS26.08/0123`, cuerpo `RS26.09/0999` → 409 y **cero** llamadas:
+    ni se resuelve el login, ni se lee ninguna reclamación, ni se llama a la
+    pasarela, ni se escribe ni se consulta la traza del gráfico. **También en
+    dry-run** (R14): enseñar la reclamación que nombra un cuerpo que miente es
+    enseñar otra cosa.
+    """
+    mundo = _mundo_del_adjuntar()
+
+    with pytest.raises(CodigosNoCoinciden) as fallo:
+        mundo.adjuntar(
+            _declarado(incidencia=OTRA_INCIDENCIA, commit=commit, confirmado="true")
+        )
+
+    motivo = fallo.value.motivo
+    assert motivo.startswith("el nº de incidencia de la petición")
+    assert f"«{OTRA_INCIDENCIA}»" in motivo
+    assert f"«{INCIDENCIA_GUARDADA}»" in motivo
+    assert "no se ha adjuntado nada" in motivo
+    assert "POST /api/parte" in motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r16_adjuntar_otra_obra_en_el_cuerpo_tampoco_pasa():
+    """R11, R16 · en `/adjuntar` se cotejan **los dos**: la obra también.
+
+    La obra decide el nombre con el que el parte cuelga de la reclamación, y
+    ese nombre es el que cruza con SharePoint.
+    """
+    mundo = _mundo_del_adjuntar()
+
+    with pytest.raises(CodigosNoCoinciden) as fallo:
+        mundo.adjuntar(_declarado(obra="0999"))
+
+    assert fallo.value.motivo.startswith("el código de obra de la petición")
+    assert "«0999»" in fallo.value.motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+@pytest.mark.parametrize(
+    ("obra", "incidencia"),
+    [("06 26", INCIDENCIA_GUARDADA), (OBRA_GUARDADA, "RS 26.08/0123")],
+    ids=["obra con espacio", "incidencia con espacio"],
+)
+def test_f034_r12_adjuntar_el_cotejo_normaliza_y_no_da_409(obra, incidencia):
+    """R12 · `06 26` ≡ `0626` y `RS 26.08/0123` ≡ `RS26.08/0123`.
+
+    El front manda lo que devuelve `valorDeCampo`, que solo hace `trim()`, y la
+    base guarda lo que F-032 saneó. Con un cotejo literal, el caso que costó un
+    cierre a mano el 2026-09-17 sería un 409 diario.
+    """
+    mundo = _mundo_del_adjuntar()
+
+    respuesta = mundo.adjuntar(_declarado(obra=obra, incidencia=incidencia))
+
+    assert respuesta["estado"] == "dry_run_ok"
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+
+
+@pytest.mark.parametrize(
+    ("obra", "incidencia", "etiqueta"),
+    [
+        (OBRA_GUARDADA, "", "el nº de incidencia"),
+        ("", INCIDENCIA_GUARDADA, "el código de obra"),
+    ],
+    ids=["sin incidencia guardada", "sin obra guardada"],
+)
+def test_f034_r15_adjuntar_sin_codigo_guardado_es_409_y_no_usa_el_del_cuerpo(
+    obra, incidencia, etiqueta
+):
+    """R15 · lo guardado está incompleto: 409 diciendo **cuál** falta.
+
+    El cuerpo trae los dos códigos, y **no** se usan para rellenar el hueco:
+    eso volvería a dejar decidir al cuerpo (R19). Tampoco es un 400: la
+    petición está bien formada, lo que está incompleto es lo guardado.
+
+    Y sale `CodigoNoConsta`, no `CodigosNoCoinciden`, aunque lo declarado y lo
+    guardado difieran: lo que hay que hacer es teclear el código que falta, y
+    eso es lo que el mensaje tiene que decir (por eso en 1 bis la exigencia de
+    lo completo va antes que el cotejo).
+    """
+    mundo = _mundo_del_adjuntar(obra, incidencia)
+
+    with pytest.raises(CodigoNoConsta) as fallo:
+        mundo.adjuntar(_declarado())
+
+    assert fallo.value.motivo.startswith(f"no consta guardado {etiqueta}")
+    assert "no se ha adjuntado nada" in fallo.value.motivo
+    assert "POST /api/parte" in fallo.value.motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+@pytest.mark.parametrize(
+    "declarados",
+    [None, CodigosDelParte(codigo_obra=OBRA_GUARDADA, numero_incidencia="")],
+    ids=["sin declarados", "declarado vacío"],
+)
+def test_f034_r15_grafico_sin_incidencia_guardada_no_llega_al_login(declarados):
+    """R15 · vacío guardado y vacío (o nada) declarado, y aun así no pasa.
+
+    Desde el borde no se llega aquí —un campo vacío es el 400 de R17—, pero el
+    paso no puede fiarse de eso. El cotejo da por iguales dos vacíos
+    (`es_el_mismo_codigo`), así que lo que tiene que cortar es la exigencia de
+    lo guardado completo. Sin ella, el paso llegaría hasta el
+    `CuerpoDeCierreInvalido` de `_codigo_de_incidencia` —un 400 que manda a
+    mirar el cuerpo— **después** de haber resuelto el login contra el ERP.
+    """
+    from application.pipelines.paso_grafico import paso_grafico
+
+    mundo = _mundo_del_adjuntar(OBRA_GUARDADA, "")
+    ctx = ContextoParte(parte=parte_de_prueba(hash_parte=HASH, contenido=PDF))
+
+    with pytest.raises(CodigoNoConsta):
+        paso_grafico(
+            ctx,
+            mundo.erp,
+            mundo.graficos,
+            mundo.repositorio,
+            mundo.usuarios,
+            mundo.preferencias,
+            commit=False,
+            confirmado=False,
+            usuario_oid=OID,
+            correo=CORREO,
+            codigos_declarados=declarados,
+            gratipide=35,
+            tope_bytes=10 * 1024 * 1024,
+            ahora=AHORA,
+        )
+
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r13_adjuntar_el_cotejo_va_antes_que_la_puerta_de_archivo():
+    """R13, `design.md` §4.1 · 1 bis antes que 2: primero **sobre qué** parte.
+
+    Con los códigos cruzados **y** sin archivo guardado, el error es el de los
+    códigos: resolver primero la identidad y después el estado, como hace
+    `paso_archivo` desde F-031.
+    """
+    mundo = _mundo_del_adjuntar(estado_archivo=None)
+
+    with pytest.raises(CodigosNoCoinciden):
+        mundo.adjuntar(_declarado(incidencia=OTRA_INCIDENCIA))
+
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r13_adjuntar_el_cotejo_va_antes_que_mirar_el_fichero():
+    """R13 · el cotejo va antes que el tope y la firma del PDF (punto 3)."""
+    mundo = _mundo_del_adjuntar()
+
+    with pytest.raises(CodigosNoCoinciden):
+        mundo.adjuntar(
+            _declarado(incidencia=OTRA_INCIDENCIA), contenido=b"PK\x03\x04 un zip"
+        )
+
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r20_adjuntar_la_puerta_de_aptitud_sigue_yendo_la_primera():
+    """R20, R21 · la aptitud va antes que el cotejo: sin ella no hay situación.
+
+    Un parte sin veredicto guardado y con los códigos cruzados sale por
+    `ParteNoApto`, como antes de F-034: el cotejo se intercala **después**.
+    """
+    mundo = MundoDelAdjuntar(SituacionParte())
+
+    with pytest.raises(ParteNoApto):
+        mundo.adjuntar(_declarado(incidencia=OTRA_INCIDENCIA))
+
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r17_adjuntar_un_cuerpo_sin_codigo_sigue_siendo_400():
+    """R17 · una petición mal formada no es un conflicto de estado."""
+    mundo = _mundo_del_adjuntar()
+
+    with pytest.raises(CuerpoDeGraficoInvalido) as fallo:
+        mundo.adjuntar(_declarado(incidencia=""))
+
+    assert "numero_incidencia" in fallo.value.motivo
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r24_adjuntar_un_codigo_guardado_imposible_es_nombrado_imposible():
+    """R24 · `NombradoImposible` sigue alcanzable, ahora con lo **guardado**.
+
+    Un código guardado con un carácter que SharePoint no admite no se sanea:
+    no se adjunta y se dice por qué. Y no llega a la pasarela.
+    """
+    mundo = _mundo_del_adjuntar(obra="06*26")
+
+    with pytest.raises(NombradoImposible):
+        mundo.adjuntar(_declarado(obra="06*26"))
+
+    assert mundo.graficos.llamadas == []
+
+
+def test_f034_r8_adjuntar_el_handler_pasa_lo_declarado_solo_para_cotejar(
+    monkeypatch,
+):
+    """R8, R19, D-7 · el borde entrega los dos códigos **como declarados**.
+
+    Ni `numero_incidencia` ni `codigo_obra` llegan ya al paso como parámetros
+    sueltos: van juntos en `codigos_declarados`, tal y como vinieron, y solo
+    sirven para cotejar.
+    """
+    from interface_adapters.api import adjuntar as modulo_adjuntar
+
+    opciones: list[dict] = []
+
+    def espia(_ctx, *_puertos, **recibidas):
+        opciones.append(recibidas)
+        raise CodigosNoCoinciden("parado por el espía del test")
+
+    monkeypatch.setattr(modulo_adjuntar, "paso_grafico", espia)
+
+    with pytest.raises(CodigosNoCoinciden):
+        _mundo_del_adjuntar().adjuntar(_declarado(obra="06 26"))
+
+    assert opciones[0]["codigos_declarados"] == CodigosDelParte(
+        codigo_obra="06 26", numero_incidencia=INCIDENCIA_GUARDADA
+    )
+    assert "numero_incidencia" not in opciones[0]
+    assert "codigo_obra" not in opciones[0]
+
+
+def test_f034_r19_paso_grafico_ya_no_acepta_los_codigos_sueltos():
+    """R19, D-7 · la firma **declara** la asimetría: lo declarado entra por un
+    sitio y lo guardado sale de `ctx`.
+
+    Mientras existieran dos parámetros llamados `numero_incidencia` y
+    `codigo_obra`, el cuerpo de la función podría volver a usarlos para nombrar
+    o para buscar, y el defecto volvería sin que nadie lo notara.
+    """
+    import inspect
+
+    from application.pipelines.paso_grafico import paso_grafico
+
+    parametros = inspect.signature(paso_grafico).parameters
+
+    assert "numero_incidencia" not in parametros
+    assert "codigo_obra" not in parametros
+    assert parametros["codigos_declarados"].default is None
+
+
+def test_f034_r19_sin_declarados_el_grafico_escribe_con_lo_guardado():
+    """R8, R19 · el camino sin cotejo **no** puede escribir en otra reclamación.
+
+    Sin `codigos_declarados` no hay nada que cotejar, y el paso lee la
+    reclamación y compone el nombre con los códigos **guardados**, los mismos
+    que la puerta de aptitud acaba de aprobar.
+    """
+    from application.pipelines.paso_grafico import paso_grafico
+    from domain.models.nombrado import nombre_de_archivo
+
+    mundo = _mundo_del_adjuntar()
+    ctx = ContextoParte(parte=parte_de_prueba(hash_parte=HASH, contenido=PDF))
+
+    paso_grafico(
+        ctx,
+        mundo.erp,
+        mundo.graficos,
+        mundo.repositorio,
+        mundo.usuarios,
+        mundo.preferencias,
+        commit=False,
+        confirmado=False,
+        usuario_oid=OID,
+        correo=CORREO,
+        gratipide=35,
+        tope_bytes=10 * 1024 * 1024,
+        ahora=AHORA,
+    )
+
+    assert mundo.erp.lecturas == [INCIDENCIA_GUARDADA]
+    assert mundo.graficos.ultima().nom == nombre_de_archivo(
+        codigo_obra=OBRA_GUARDADA, numero_incidencia=INCIDENCIA_GUARDADA
+    )
+
+
+@pytest.mark.parametrize(
+    ("guardados", "declarados", "error"),
+    [
+        (
+            (OBRA_GUARDADA, INCIDENCIA_GUARDADA),
+            (OBRA_GUARDADA, OTRA_INCIDENCIA),
+            "CodigosNoCoinciden",
+        ),
+        ((OBRA_GUARDADA, ""), (OBRA_GUARDADA, INCIDENCIA_GUARDADA), "CodigoNoConsta"),
+    ],
+    ids=["CodigosNoCoinciden", "CodigoNoConsta"],
+)
+def test_f034_r27_adjuntar_por_la_ruta_los_dos_errores_nuevos_son_409(
+    monkeypatch, caplog, guardados, declarados, error
+):
+    """R27, R35, R36 · 409 con `{"error": <motivo>}` y nada más; al log, el tipo.
+
+    Por la ruta de verdad y con el handler de verdad: el código sale del
+    `except` real. El motivo nombra los códigos y **no** va al log tal cual
+    —el `except` es compartido con errores que nombran el correo—: al log va
+    el tipo del error (F-012 R54).
+    """
+    mundo = _mundo_del_adjuntar(*guardados)
+
+    with caplog.at_level("DEBUG"):
+        respuesta = mundo.por_la_ruta(monkeypatch, _declarado(*declarados))
+
+    assert respuesta.status_code == 409
+    cuerpo = json.loads(respuesta.get_body())
+    assert set(cuerpo) == {"error"}
+    assert cuerpo["error"]
+    assert cuerpo["error"] not in caplog.text
+    assert error in caplog.text
+    assert mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r34_adjuntar_el_motivo_no_lleva_nada_del_papel_salvo_los_codigos():
+    """R34 · el motivo nombra obra e incidencia y **nada más** del parte.
+
+    Ni el DNI ni la descripción del parte de ejemplo —inventados, pero con la
+    forma de los de verdad— ni el correo de quien llama pueden aparecer en un
+    409 de códigos.
+    """
+    mundo = _mundo_del_adjuntar()
+
+    with pytest.raises(CodigosNoCoinciden) as fallo:
+        mundo.adjuntar(_declarado(incidencia=OTRA_INCIDENCIA))
+
+    assert DNI_INVENTADO not in fallo.value.motivo
+    assert "Sellado" not in fallo.value.motivo
+    assert CORREO not in fallo.value.motivo
+
+
+def test_f034_r35_adjuntar_la_respuesta_sigue_teniendo_las_ocho_claves():
+    """R35 · ni una clave más en la respuesta de `POST /api/adjuntar`."""
+    respuesta = _mundo_del_adjuntar().adjuntar(_declarado())
+
+    assert set(respuesta) == {
+        "hash_parte",
+        "numero_incidencia",
+        "estado",
+        "idempotente",
+        "filas_afectadas",
+        "motivo",
+        "dry_run",
+        "avisos",
+    }

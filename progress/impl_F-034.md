@@ -948,3 +948,5 @@ ENTORNO LISTO. Puedes trabajar.
 | Asserts retirados en tests existentes | 3 líneas, todas con sustituto y explicadas en §7.3 (una expectativa 400 → 409 por R15, y una fusión de ramas en `_ha_pasado` de F-028) |
 
 Las del Bloque 2, para comparar: 3.147 passed (143,38 s); cobertura 69/69.
+
+Última ejecución de `bash harness/init.sh`, ya con el informe commiteado (`9734c35`): 3.200 passed, 28 skipped (158,31 s); `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88)`. La diferencia con 86/86 es el recuento de líneas del commit de documentación, no un cambio de código.

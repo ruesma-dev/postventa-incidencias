@@ -1,6 +1,33 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 · BLOQUE 3 HECHO · 2026-09-23 · siguiente: Bloque 4 (el front)
+>
+> **T8 (RED), T9 y T10 cerradas** (`e1603db`, `d3bccda`, `2a6efc4`).
+> `POST /api/cerrar` ya decide **con lo guardado**: `paso_cierre` coteja el nº
+> de incidencia en **1 bis** (completos → declarados, `solo_incidencia=True`)
+> antes de hablar con nadie, también en dry-run, y **cierra la reclamación del
+> nº guardado**; la puerta de archivo es la compartida (`exigir_parte_archivado`,
+> traza guardada); la firma pierde `numero_incidencia` y gana
+> `codigos_declarados`; `cerrar._como_contexto` ya no fabrica la `TrazaArchivo`;
+> los dos errores nuevos son 409 también en `cerrar`. RED con traza real (37
+> fallos; la sonda de antes cerraba la reclamación que nombraba el cuerpo) y
+> verde: 134 tests de F-034. **H-4 cerrado** según la decisión del líder (nº
+> guardado sin tramos → 409 `CodigoNoConsta` en gráfico y cierre; archivar
+> idéntico, con tests; `design.md` §4.2 enmendado con fecha). Tests existentes
+> adaptados con 3 líneas de comprobación sustituidas y explicadas; tabla de
+> F-031 ampliada **solo en filas**. `bash harness/init.sh` en verde: 3.200
+> passed, cobertura **86/86**. Nada escrito en Sigrid, SharePoint, Azure ni PG;
+> sin DDL; sin tocar `features.json`.
+>
+> **Queda**: **Bloque 4** (T11, `reintentarCierre` espera
+> `vaciarPendientes()`), **Bloque 5** (T12–T14: contador de consultas, alcance
+> cerrado, documentación) y **Bloque 6** (T15 mutación —ojo: el `if` de
+> `_codigo_de_incidencia` es ya inalcanzable, mutantes equivalentes—, T16 y
+> T17 MANUAL, T18 verde). Hallazgo nuevo para el reviewer: **H-5** (el cotejo
+> no iguala `RS26.08 - 0123` con `RS26.08/0123`; lado seguro, criterio de R12).
+> Informe: **`progress/impl_F-034.md`** §7.
+
 > ## ✅ F-034 · BLOQUE 2 HECHO · 2026-09-23 · siguiente: Bloque 3 (`/api/cerrar`)
 >
 > **T4 (RED), T5, T6 y T7 cerradas** (`0e48a8d`, `de054ef`, `5291b51`,

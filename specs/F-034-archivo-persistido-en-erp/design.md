@@ -300,6 +300,25 @@ imposible-por-construcción, pero deja de ser el camino del código vacío: ese 
 corta `exigir_codigos_completos` en 1 bis con un 409 (R15). Se documenta en su
 docstring para que nadie lo tome por muerto.
 
+> **Enmienda del 2026-09-23 (Bloque 3, hallazgo H-4 del implementer) ·
+> decisión del líder dentro de D-4, aprobada por el humano.** «Imposible por
+> construcción» **no era cierto** tal como quedó el Bloque 2: un nº de
+> incidencia **guardado** que no está vacío pero **no tiene ningún tramo**
+> —solo separadores, p. ej. `/`— pasaba `exigir_codigos_completos`
+> (`normalizar_codigo("/")` no es vacío) y `a_codigo_de_sigrid("/")` lo dejaba
+> en `""`, así que llegaba a este `CuerpoDeCierreInvalido`: un **400** que decía
+> «la petición no trae el número de incidencia» cuando lo incompleto es lo
+> guardado. Y en `/cerrar`, antes de T9, un cuerpo con un número bueno
+> **cerraba esa reclamación** aunque lo guardado fuera `/` (traza real en
+> `progress/impl_F-034.md` §7.1). Desde T9, `exigir_codigos_completos` trata el
+> **nº de incidencia** sin tramos como lo guardado incompleto
+> (`not a_codigo_de_sigrid(numero)`) → **409 `CodigoNoConsta`** en gráfico y
+> cierre. Solo el número: una **obra** de solo separadores sigue hasta
+> `NombradoImposible` (R24). **Archivar no cambia** (R26): no llama a esa
+> función, y lo vigilan `test_f034_h4_r26_*`. Con eso, ahora sí, el `if` de
+> `_codigo_de_incidencia` es inalcanzable por construcción en los dos pasos,
+> porque usa el mismo `a_codigo_de_sigrid`; se conserva como última guarda.
+
 ## 5 · `paso_cierre`
 
 Mismo patrón, con **un** código:

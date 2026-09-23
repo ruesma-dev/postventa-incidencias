@@ -138,6 +138,65 @@ y se detallan en `tasks.md`.
   forma que fuera de la ventana de escritura `POST /api/archivar` responda
   `503` a cualquiera —incluido un desconocido— y no toque SharePoint.
 
+> **Enmienda del 2026-09-23 · la premisa de R33 cayó: el despliegue ya no
+> deja las ventanas cerradas, sino abiertas.**
+>
+> R33 se escribió: *«El sistema debe desplegar `ARCHIVO_HABILITADO`
+> **apagado**, de forma que fuera de la ventana de escritura `POST
+> /api/archivar` responda `503` a cualquiera —incluido un desconocido— y no
+> toque SharePoint.»* Y el 2026-09-03 (hallazgo **H2** de
+> `progress/guion_bloque8_F-009.md` §8) se le sumó `CIERRE_HABILITADO`, fijado
+> igual en `false` en cada despliegue. Eso describía un piloto: nadie usaba el
+> servicio en real, y las ventanas se abrían a mano solo para archivar o cerrar
+> de verdad (T18, el bloque 8 de F-009, el bloque 9 de F-012).
+>
+> **Qué la invalida.** Posventa ya usa el servicio en real, y cada despliegue
+> les cerraba el archivo y el cierre hasta que alguien los reabría a mano con
+> `infra/22_ventana_archivo.ps1` y `infra/19_ventana_escritura.ps1`: una
+> puerta que se cierra sola en cada publicación y que hay que acordarse de
+> reabrir deja al usuario sin servicio sin que nadie haya decidido cerrarlo.
+>
+> **Quién lo decidió.** El humano, el 2026-09-23: *«vamos a desplegar, pero
+> quiero que por defecto publique abierto, no cerrado»*, y a la pregunta de qué
+> ventanas, *«Las dos»*.
+>
+> **Lo que dice ahora.** `desplegar_backend.ps1` fija `ARCHIVO_HABILITADO` y
+> `CIERRE_HABILITADO` en `true` en cada despliegue, cada una en su línea de
+> `$ajustes`, y **las dos** en `false` con el interruptor `-VentanasCerradas`.
+> Lo fijan `test_despliegue_ventanas_abiertas_por_defecto_y_cerradas_con_el_switch`
+> y su control negativo, en `test_f010_scripts_infra.py`.
+>
+> **Lo que NO cambia.** (1) El **valor por defecto del código**:
+> `config/settings.py` sigue declarando `archivo_habilitado` y
+> `cierre_habilitado` con `default=False`, así que en un puesto de trabajo y en
+> los tests sigue siendo imposible escribir (R20 de F-006, R37 de F-009, R39 de
+> F-012, intactos). (2) La **razón de H2**: cada despliegue sigue fijando las
+> dos explícitamente, para que el estado tras publicar lo decida el despliegue y
+> no lo que alguien dejó puesto a mano. (3) **R34**: las ventanas se siguen
+> abriendo y cerrando cambiando una App Setting, sin redesplegar, y ahora con
+> script (`22_…` y `19_…`).
+>
+> **Riesgo aceptado, y por escrito.** Con la ventana del ERP abierta por
+> defecto, **cualquier versión desplegada escribe en Sigrid de producción sin
+> una puerta manual**: quedan el dry-run por omisión y la confirmación del
+> usuario, pero ya no el gesto de alguien en el plano de gestión. Y **mientras
+> F-034 no esté desplegada**, `/api/adjuntar` y `/api/cerrar` siguen tomando el
+> número de incidencia **del cuerpo de la petición**. Lo que sigue impidiendo
+> que un desconocido llegue a escribir no es esta ventana sino la plataforma:
+> el host desnudo lo corta Easy Auth y el front exige sesión del grupo de
+> Posventa (`docs/DESPLIEGUE.md` §5 bis). Quien no quiera ese riesgo en un
+> despliegue concreto lo lanza con `-VentanasCerradas`.
+>
+> **Consecuencia sobre R27.** La comprobación 2 de `verificar_despliegue.ps1`
+> exige la ventana de archivo **cerrada** —con ella abierta no hace la
+> llamada, porque subiría un PDF—, así que tras un despliegue por defecto su
+> veredicto no sale en verde. No se ha tocado: su guarda sigue siendo correcta,
+> y desde el 2026-08-25 esa comprobación tampoco se podía hacer por el host
+> desnudo (§5 bis). Queda anotado como pendiente de decisión.
+>
+> **F-010 sigue `done`**: esto no reabre la feature. Se corrige el texto y se
+> deja la constancia, como con R28.
+
 - **R34.** CUANDO haga falta archivar de verdad (T18 o una sesión con
   negocio), el sistema debe permitir abrir y cerrar esa ventana **cambiando
   una App Setting, sin redesplegar y sin tocar código**.
@@ -307,7 +366,7 @@ y se detallan en `tasks.md`.
 | R17 | **MANUAL (humano)**: se aplica la restricción y se comprueba que la SWA sigue alcanzando el backend; si no, se revierte y se anota | **T14** |
 | R18 | `test_f010_r18_health_sigue_anonimo` | T8 |
 | R32 | `test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada` | T8 |
-| R33 | **Fase RED** + test sobre `desplegar_backend.ps1`: fija `ARCHIVO_HABILITADO` apagado | T5 |
+| R33 | **Fase RED** + test sobre `desplegar_backend.ps1`: fija `ARCHIVO_HABILITADO` apagado. **Premisa enmendada el 2026-09-23**: las dos ventanas se despliegan abiertas y `-VentanasCerradas` las cierra (`test_despliegue_ventanas_abiertas_por_defecto_y_cerradas_con_el_switch`); ver el recuadro bajo R33 | T5 |
 | R34 | Test: el runbook trae las dos líneas de `az` que abren y cierran la ventana | T10 |
 | R35 | **MANUAL (humano)**: tope y alerta configurados antes de T16 | **T14 bis** |
 | R19 | Test: el front no gana ni URL de backend ni CORS; `baseApi` sigue siendo `/api` | T9 |

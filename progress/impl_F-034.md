@@ -1855,3 +1855,280 @@ exactamente los 11 ficheros de `design.md` §2 (T13 lo vigila).
 
 Las del Bloque 5, para comparar: 3.235 passed (142,38 s); cobertura 88/88;
 mutación no lanzada.
+
+## 12 · Corrección de la review (RECHAZADA, `f0f20a0`) · H-R1 y H-R2
+
+> 2026-09-23. **Solo tests**: ni una línea de código de producción. Nada
+> escrito en Sigrid, SharePoint, Azure ni PostgreSQL; sin DDL;
+> `harness/features.json`, `azure-apps/`, T16, T17 y la propuesta de
+> automejora del reviewer, sin tocar.
+
+| Commit | Qué |
+|---|---|
+| `1db79e6` | **H-R1** · el doble `Usuarios` apunta cada llamada y `nada_ha_tocado_el_erp()` de los dos mundos la exige vacía; aserción explícita en los dos `r15_…_no_llega_al_login`; dos controles positivos |
+| `4542bdd` | **H-R2** · alias `test_f034_r14_*` en `/adjuntar` y `/cerrar` |
+| (el de este informe) | Campaña de mutación relanzada, su informe y `progress/current.md` |
+
+### 12.1 · Qué cambió
+
+- **`tests/utiles_circuito.py`** (la opción principal de la review, no la
+  alternativa): `Usuarios` gana un `__init__` con `self.llamadas:
+  list[tuple[str, str]]` y apunta `("resolver_login", usuario_oid)` y
+  `("guardar_login", usuario_oid)`. `MundoDelAdjuntar.nada_ha_tocado_el_erp()`
+  y `MundoDelCierre.nada_ha_tocado_el_erp()` exigen además
+  `self.usuarios.llamadas == []`. Se apunta el `oid` **inventado** del mundo,
+  nunca un dato real.
+- **`tests/test_f034_codigos_en_el_erp.py`**:
+  - `test_f034_r15_grafico_sin_incidencia_guardada_no_llega_al_login` y
+    `test_f034_r15_paso_cierre_sin_incidencia_guardada_no_llega_al_login`
+    ganan `assert mundo.usuarios.llamadas == []` delante de la aserción de
+    siempre: ahora **dicen en el cuerpo lo que dicen en el nombre**. Ninguna
+    aserción existente cambia ni se retira.
+  - Dos **controles positivos** nuevos,
+    `test_f034_r13_adjuntar_control_positivo_el_doble_apunta_el_login` y
+    `test_f034_r13_cerrar_control_positivo_el_doble_apunta_el_login`: con el
+    mismo mundo y un cuerpo que pasa las puertas, `usuarios.llamadas ==
+    [("resolver_login", OID)]` y `nada_ha_tocado_el_erp()` es **falso**. Sin
+    ellos, un doble que no apuntara nada haría pasar los negativos en falso.
+  - **H-R2**: `test_f034_r14_adjuntar_en_dry_run_otra_incidencia_no_toca_el_erp`
+    y `test_f034_r14_cerrar_en_dry_run_otra_incidencia_no_toca_el_erp`, que
+    llaman al caso `[dry_run]` de R11 y de R9.
+- **`tests/test_f034_archivo_persistido.py`** · **H-R2**:
+  `test_f034_r14_adjuntar_en_dry_run_sin_archivo_guardado_no_toca_el_erp` y
+  `test_f034_r14_cerrar_en_dry_run_sin_archivo_guardado_no_toca_el_erp`,
+  parametrizados con `ESTADOS_QUE_NO_ABREN`, que llaman a los casos
+  `[dry_run]` de R3.
+
+Los cuatro alias de R14 **no tienen ninguna aserción propia**: su cuerpo es la
+llamada al test de siempre. No se renombró nada para no romper las
+referencias de este informe, de la review y de la tabla «quién mata» del
+informe de mutación. `grep -c "def test_f034_r14_"` → 2 en cada uno de los
+dos ficheros: uno por endpoint y por puerta.
+
+### 12.2 · Fase RED (traza real) · las mutaciones de H-R1, en una copia desechable
+
+**Dónde**: `git worktree add --detach <scratchpad>/wt_hr1 HEAD` (`f0f20a0`),
+dentro del scratchpad de la sesión, **nunca en el árbol real**. Las
+mutaciones las aplica un guion que se niega a escribir fuera del scratchpad
+(`assert "scratchpad" in str(raiz)`). El worktree se retiró al acabar
+(`git worktree remove --force` y `git worktree prune`; `git worktree list` ya
+no lo lista). Se ejecutó con el intérprete del venv del servicio,
+`services/postventa-api/.venv/Scripts/python.exe`, desde la carpeta del
+servicio **en la copia** (comprobado: `paso_cierre.__file__` apunta a la
+copia).
+
+#### M1 · el cotejo de 1 bis y la puerta de archivo, por debajo del login (fila 1 de H-R1)
+
+```diff
+     _exigir_admitido(ctx, repositorio)
++    login = resolver_login_de_sigrid(
++        usuarios, erp, usuario_oid=usuario_oid, correo=correo, ahora=ahora
++    )
+     guardados = _codigos_con_los_que_se_cierra(ctx, codigos_declarados)
+     exigir_parte_archivado(ctx, y_por_eso=_Y_POR_ESO_SIN_ARCHIVAR)
+ 
+     codigo = _codigo_de_incidencia(guardados.numero_incidencia)
+-    login = resolver_login_de_sigrid(
+-        usuarios, erp, usuario_oid=usuario_oid, correo=correo, ahora=ahora
+-    )
+```
+
+**Antes** (doble viejo, los tres ficheros de F-034 que usan el mundo):
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f034_archivo_persistido.py tests/test_f034_codigos_en_el_erp.py tests/test_f034_sin_consultas_de_mas.py -q -p no:cacheprovider
+145 passed in 6.57s
+```
+
+Vivo, como midió el reviewer. **Después** (doble nuevo copiado a la copia,
+suite `api` **entera**):
+
+```
+$ .venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider --no-header -rf
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[None-ninguno-dry_run]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[None-ninguno-commit]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[pendiente-pendiente-dry_run]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[pendiente-pendiente-commit]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[error-error-dry_run]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[error-error-commit]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_por_la_ruta_es_409_con_el_motivo_y_nada_mas
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r9_cerrar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[dry_run]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r9_cerrar_otra_incidencia_en_el_cuerpo_no_toca_el_erp[commit]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r15_cerrar_sin_incidencia_guardada_es_409_y_no_usa_la_del_cuerpo
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r15_paso_cierre_sin_incidencia_guardada_no_llega_al_login[sin declarados]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r15_paso_cierre_sin_incidencia_guardada_no_llega_al_login[declarado vac\xedo]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r13_cerrar_el_cotejo_va_antes_que_la_puerta_de_archivo
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r16_paso_cierre_con_declarados_coteja_solo_la_incidencia
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r27_cerrar_por_la_ruta_los_dos_errores_nuevos_son_409[CodigosNoCoinciden]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_r27_cerrar_por_la_ruta_los_dos_errores_nuevos_son_409[CodigoNoConsta]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_h4_cerrar_incidencia_guardada_sin_tramos_es_409_codigo_no_consta[la misma]
+FAILED tests/test_f034_codigos_en_el_erp.py::test_f034_h4_cerrar_incidencia_guardada_sin_tramos_es_409_codigo_no_consta[una buena]
+18 failed, 3211 passed, 25 skipped in 134.16s (0:02:14)
+```
+
+Y el que la review señaló por el nombre, ahora rojo por lo que promete:
+
+```
+_ test_f034_r15_paso_cierre_sin_incidencia_guardada_no_llega_al_login[sin declarados] _
+        mundo = _mundo_del_cierre(incidencia="")
+        with pytest.raises(CodigoNoConsta):
+            _paso_cierre_directo(mundo, codigos_declarados=declarados)
+>       assert mundo.nada_ha_tocado_el_erp()
+E       assert False
+E        +  where False = nada_ha_tocado_el_erp()
+```
+
+#### M2 · solo la puerta de archivo, por debajo del login (fila 2 de H-R1)
+
+```diff
+     _exigir_admitido(ctx, repositorio)
+     guardados = _codigos_con_los_que_se_cierra(ctx, codigos_declarados)
+-    exigir_parte_archivado(ctx, y_por_eso=_Y_POR_ESO_SIN_ARCHIVAR)
+ 
+     codigo = _codigo_de_incidencia(guardados.numero_incidencia)
+     login = resolver_login_de_sigrid(
+         usuarios, erp, usuario_oid=usuario_oid, correo=correo, ahora=ahora
+     )
++    exigir_parte_archivado(ctx, y_por_eso=_Y_POR_ESO_SIN_ARCHIVAR)
+```
+
+```
+--- ANTES (doble viejo, los tres ficheros de F-034)
+145 passed in 3.84s
+--- DESPUES (doble nuevo, suite api entera)
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[None-ninguno-dry_run]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[None-ninguno-commit]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[pendiente-pendiente-dry_run]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[pendiente-pendiente-commit]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[error-error-dry_run]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_cuerpo_archivado_sin_archivo_guardado_no_toca_el_erp[error-error-commit]
+FAILED tests/test_f034_archivo_persistido.py::test_f034_r3_cerrar_por_la_ruta_es_409_con_el_motivo_y_nada_mas
+7 failed, 3222 passed, 25 skipped in 114.15s (0:01:54)
+```
+
+```
+>       assert mundo.nada_ha_tocado_el_erp()
+E       assert False
+E        +  where False = nada_ha_tocado_el_erp()
+tests\test_f034_archivo_persistido.py:451: AssertionError
+```
+
+**Qué es exactamente lo que ahora se ve.** Sonda en la copia (un test
+desechable que reproduce el caso de R3 en dry-run y enseña las listas):
+
+```
+M1: usuarios.llamadas = [('resolver_login', 'oid-inventado-para-el-test')]
+    erp.verificaciones = [] | erp.lecturas = []
+M2: usuarios.llamadas = [('resolver_login', 'oid-inventado-para-el-test')]
+    erp.verificaciones = [] | erp.lecturas = []
+```
+
+Es el agujero de H-R1 visto de frente: con la correspondencia confirmada, el
+ERP queda intacto aunque el login se haya resuelto, y solo la lista nueva lo
+delata.
+
+#### M3 (extra, no lo pedía la review) · el login por delante de las puertas en `paso_grafico.py`
+
+El login sube a justo detrás de la aptitud, **delante** del cotejo, de la
+puerta de archivo y de la consulta de la traza local. La mutación de la
+review en gráfico moría por `graficos_consultados`; esta no la mueve, así que
+aísla el login:
+
+```diff
+     _exigir_admitido(ctx, repositorio)
++    login = resolver_login_de_sigrid(
++        usuarios, erp, usuario_oid=usuario_oid, correo=correo, ahora=ahora
++    )
+     guardados = _codigos_con_los_que_se_escribe(ctx, codigos_declarados)
+```
+
+```
+--- ANTES (doble viejo, los tres ficheros de F-034)
+145 passed in 3.02s
+--- DESPUES (doble nuevo, suite api entera)
+20 failed, 3209 passed, 25 skipped in 76.32s (0:01:16)
+```
+
+Entre los 20: los seis `test_f034_r3_adjuntar_cuerpo_archivado_…`,
+`test_f034_r3_adjuntar_por_la_ruta_…`, los dos
+`test_f034_r11_adjuntar_otra_incidencia_…`,
+`test_f034_r16_adjuntar_otra_obra_…`, los dos
+`test_f034_r15_adjuntar_sin_codigo_guardado_…`, **los dos
+`test_f034_r15_grafico_sin_incidencia_guardada_no_llega_al_login`**, los dos
+`test_f034_r13_adjuntar_…`, los dos `test_f034_r27_adjuntar_por_la_ruta_…` y
+los dos `test_f034_h4_adjuntar_…`.
+
+**Hallazgo para el reviewer**: con el doble viejo, M3 **también vivía** en los
+tres ficheros de F-034 (no se midió contra la suite entera con el doble
+viejo). `/adjuntar` tenía el mismo agujero que `/cerrar`; la mutación de la
+tabla de H-R1 no lo enseñaba porque movía también la consulta de la traza
+local. El doble nuevo lo cierra en los dos endpoints.
+
+### 12.3 · Verde con el código real
+
+- En el árbol real, tras el cambio de `utiles_circuito.py`, los ficheros de
+  F-034 y los de F-012 que tienen su propio doble de `Usuarios`:
+  `256 passed in 17.30s`. Tras los controles positivos y las aserciones de
+  r15, F-034: `172 passed in 10.61s`. Los alias de R14,
+  `-k "r14 or alcance or r39"`: `33 passed`.
+- `python -m ruff check` sobre los tres ficheros tocados:
+  `All checks passed!`.
+- `bash harness/init.sh` (tal cual), en `4542bdd`:
+
+```
+[OK] features.json válido
+[OK] BACKLOG.md al día
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+62 passed in 5.76s
+[OK] pytest en verde (con medición de cobertura)
+3246 passed, 28 skipped in 153.83s (0:02:33)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-034-archivo-persistido-en-erp
+ENTORNO LISTO. Puedes trabajar.
+```
+
+3.246 = 3.236 + 10 tests nuevos: 2 controles positivos, 2 alias de R14 de
+códigos y 6 alias de R14 de archivo (3 estados × 2 endpoints).
+
+### 12.4 · Campaña de mutación relanzada
+
+`python -m harness.mutacion --feature F-034 --base dev --workers 8 --timeout 600`
+sobre `4542bdd`, con la línea base **sin caché** comprobada antes: api `3246
+passed, 18 skipped in 94.90s`; front `256 passed in 4.82s`; JS `322 pass, 0
+fail` (Node v24.14.1).
+
+```
+F-034: 10 fichero(s), 738 línea(s) de producción (origen rama, e2e5d7a8543f38389dc53e0551f684bce131fa36..feature/F-034-archivo-persistido-en-erp)
+Campaña paralela: hasta 8 workers, uno por worktree.
+12 mutantes evaluados, 12 muertos, 0 supervivientes, 0 timeouts en 139.8 s
+Informe: progress/mutacion_F-034.md
+```
+
+Los doce mutantes son los mismos de la vuelta 2 de T15 (el cambio no toca
+producción). Coste por mutante: 139,8 × 8 ÷ 12 = 93,2 s, por debajo de la
+suite; no es sospechoso porque la herramienta evalúa con `-x` y un mutante
+muerto no recorre la suite entera. La nota de esta campaña, y la de T15
+conservada, están al final de `progress/mutacion_F-034.md`.
+
+### 12.5 · Qué queda fuera y qué falta
+
+- **Ningún defecto de producción** destapado: los tests nuevos pasan a la
+  primera con el código real, como anticipaba la review.
+- **T16 y T17**, del humano (§10.2, §10.3): sin tocar.
+- La **propuesta de automejora** del reviewer (mutaciones de orden a mano en
+  features `critico`) sigue pendiente del humano; M3 es un argumento más a su
+  favor.
+- Veredicto del reviewer sobre esta corrección.
+
+## Evidencias · tras la corrección de la review
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh`: api **3.246 passed, 28 skipped** (153,83 s); raíz **62 passed** (5,76 s); front en verde (caché). Sin caché: api 3.246 passed, 18 skipped (94,90 s); front **256 passed** (4,82 s); JS **322 pass, 0 fail**. Tests de F-034 en Python: **180** (50 + 95 + 10 + 25) |
+| Cobertura de líneas cambiadas | `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88, umbral 80%, nivel critico)`; la corrección no toca producción |
+| Mutación | **12 generados, 12 muertos, 0 supervivientes, 0 timeouts** (139,8 s, 8 workers). Además, tres mutaciones de orden **a mano** (M1, M2, M3): vivas con el doble viejo y **muertas** con el nuevo |
+| Tiempo de la suite | api 153,83 s en `init.sh` (con `coverage`); 94,90 s sin caché y sin `coverage` |
+| Verificaciones MANUAL | **T16 y T17 pendientes del humano** |

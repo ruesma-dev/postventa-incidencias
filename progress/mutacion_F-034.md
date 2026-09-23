@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-034.md -->
 # F-034 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-034 --workers 8` el 2026-09-23 16:21.
+Generado por `python -m harness.mutacion --feature F-034 --workers 8` el 2026-09-23 17:23.
 
 ## Alcance
 
@@ -31,7 +31,7 @@ Origen del diff: **rama** (`e2e5d7a8543f38389dc53e0551f684bce131fa36` .. `featur
 | Supervivientes | 0 |
 | Timeouts | 0 |
 | Timeouts repasados en serie | 0: ningún mutante agotó el reloj |
-| Tiempo total | 359.8 s |
+| Tiempo total | 139.8 s |
 | Workers | 8 |
 | Muestreo | no: campaña completa |
 
@@ -39,7 +39,37 @@ Origen del diff: **rama** (`e2e5d7a8543f38389dc53e0551f684bce131fa36` .. `featur
 
 Ninguno: cada mutación aplicada la cazó al menos un test.
 
-## Nota del implementer · T15 (Bloque 6), la campaña de la feature entera
+## Nota del implementer · corrección de la review (H-R1, H-R2), campaña relanzada
+
+Relanzada sobre `HEAD` **`4542bdd`** (los dos commits de la corrección, solo
+de tests), como pide el punto 3 de «Cambios requeridos» de
+`progress/review_F-034.md`.
+
+- **Comando real** (el mismo de T15): `python -m harness.mutacion --feature
+  F-034 --base dev --workers 8 --timeout 600`. La cabecera de arriba la
+  escribe la herramienta y no lista todos los flags.
+- **Línea base verde sin caché antes de mutar**, sobre `4542bdd`: api
+  `pytest tests -q -p no:cacheprovider` → `3246 passed, 18 skipped in 94.90s`;
+  front Python → `256 passed in 4.82s`; JS `node --test "tests_js/*.test.js"`
+  (Node v24.14.1) → `tests 322, pass 322, fail 0`.
+- **Resultado**: 738 líneas, **12 generados, 12 muertos, 0 supervivientes,
+  0 timeouts**, 139,8 s con 8 workers. Los doce mutantes son **los mismos**
+  (fichero, línea, operador y texto) que en la vuelta 2 de T15: el cambio es
+  solo de tests, así que el alcance de producción no se mueve.
+- **Coste por mutante**: 139,8 s × 8 ÷ 12 = **93,2 s**, por debajo de la suite
+  entera (94,9 s). No es sospechoso: la herramienta evalúa con `-x`
+  (`harness/mutacion.py:304`), así que un mutante muerto termina en el primer
+  fallo y no recorre la suite. La vuelta 2 de T15 costó 239,9 s por mutante con
+  la máquina cargada; ahora la máquina estaba libre.
+- **Lo que la herramienta sigue sin ver** (lo dice la propuesta de automejora
+  de la review): el **orden** entre llamadas a puertos distintos. Por eso H-R1
+  se demostró con tres mutaciones **a mano** en una copia desechable, con la
+  traza en `progress/impl_F-034.md` §12.
+
+## Nota del implementer · T15 (vuelta de la review anterior, sobre `d3cc9f5`)
+
+> Conservada tal cual: la herramienta reescribe este fichero entero en cada
+> campaña. Todo lo de debajo describe la campaña de T15, no la de arriba.
 
 > Lanzada el 2026-09-23 con los Bloques 0–5 cerrados (T1–T14). Dos vueltas:
 > la **1**, con un superviviente; la **2**, esta, con **cero**, tras un test

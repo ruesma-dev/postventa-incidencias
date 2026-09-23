@@ -1,6 +1,31 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 · CORRECCIÓN DE LA REVIEW HECHA · 2026-09-23 · siguiente: reviewer (y T16/T17 del humano)
+>
+> Review **RECHAZADA** (`f0f20a0`) por H-R1 (los tests de `/api/cerrar` no
+> veían el login) y H-R2 (R14 sin test con nombre). Corregido **solo con
+> tests**, sin tocar producción (`1db79e6`, `4542bdd` y el commit del informe).
+>
+> - **H-R1**: el doble `Usuarios` de `tests/utiles_circuito.py` apunta cada
+>   llamada y `nada_ha_tocado_el_erp()` de **los dos** mundos la exige vacía.
+>   Los dos `r15_…_no_llega_al_login` lo afirman en el cuerpo y dos controles
+>   positivos prueban que la lista no está vacía por construcción. **RED** en
+>   una copia desechable (worktree del scratchpad, ya retirado): M1 y M2 de la
+>   review, **vivas** con el doble viejo, **mueren** con el nuevo (18 y 7
+>   fallos, suite entera). Extra: M3, el login por delante en `paso_grafico`,
+>   **también vivía** y ahora muere (20 fallos): `/adjuntar` tenía el mismo
+>   agujero.
+> - **H-R2**: cuatro alias `test_f034_r14_*` (cotejo y puerta de archivo, en
+>   `/adjuntar` y `/cerrar`), sin ninguna aserción nueva ni cambiada.
+> - `bash harness/init.sh` en verde: **3.246 passed**, 28 skipped, cobertura
+>   **88/88**. Mutación relanzada sobre `4542bdd`, línea base sin caché
+>   comprobada: **12/12 muertos, 0 supervivientes** (139,8 s).
+>
+> Informe: **`progress/impl_F-034.md` §12**. T16 y T17 siguen siendo del
+> humano. Nada escrito en ningún sistema; sin DDL; `features.json` y
+> `azure-apps/` sin tocar.
+
 > ## ✅ F-034 · BLOQUE 6 HECHO · 2026-09-23 · siguiente: T16 y T17 (humano) y reviewer
 >
 > **T15 y T18 cerradas** (`97ea9d3`, `d3cc9f5` y el commit de cierre). Ni una

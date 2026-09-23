@@ -1,6 +1,32 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 · T1 HECHA · 2026-09-24 · siguiente: T2 y T3 (humano) y parada T4
+>
+> **T1 cerrada** (`553ce39`): `infra/23_destino_posventa.ps1` (Graph, solo
+> `GET` + token: sitio y biblioteca desde la URL, roles, y con `-CodigoObra` el
+> árbol **solo de carpetas** con casan/parecidas y ficheros **contados**) e
+> `infra/24_ubicacion_sigrid.ps1` (Sigrid, solo `sql/read`: unidades de
+> posventa de la obra con `con.cod`, `con.res` y reclamaciones). Test
+> `test_f013_scripts_infra.py`: RED 40 failed → **44 passed**; 5 mutantes a mano,
+> 5 muertos; ensayo local con red falsa en verde. `bash harness/init.sh` en
+> verde: **3.283 passed**, 35 skipped. **Nada ejecutado contra Azure, Graph ni
+> Sigrid.**
+>
+> - **Desviación**: los scripts van **sin BOM** (ASCII + CRLF) como los otros 25
+>   de `infra/`: con BOM, `test_f010_prompt_keys_infra.py:77` (lee todo `infra/`
+>   como `ascii`) tumbaba la suite. T1 y `design.md` §11 pedían BOM.
+> - **Añadidos al 23** que la spec no nombra: `-MostrarNombres` (por defecto los
+>   nombres salen enmascarados, `VILLA 05 - <txt>`), `-DesdeKeyVault` (lee las
+>   `GRAPH_*` del vault en memoria), `-CarpetaObra`, `-MaxCarpetasObra`.
+> - **Para el líder, antes del bloque 1**: 8 puntos de la spec desfasados, con
+>   fichero y línea, en **`progress/impl_F-013.md` §8**. El más serio: el
+>   runbook del corte da por cerrada `ARCHIVO_HABILITADO` y desde el 2026-09-23
+>   se despliega **abierta** (el primer archivado en Posventa no sería el
+>   autorizado de R33, y podría crear carpetas antes de R42).
+> - **Las líneas de T2 y T3** (y cómo cargar las `GRAPH_*` sin escribir secretos
+>   en disco): **`progress/impl_F-013.md` §7**.
+
 > ## ✅ F-034 CERRADA · 2026-09-23 · falta desplegarla
 >
 > Review 2 APROBADA. V1 y V2 cerradas por decisión del humano («dalo por

@@ -664,6 +664,7 @@ def test_f034_r15_grafico_sin_incidencia_guardada_no_llega_al_login(declarados):
             ahora=AHORA,
         )
 
+    assert mundo.usuarios.llamadas == []  # lo que dice el nombre (H-R1)
     assert mundo.nada_ha_tocado_el_erp()
 
 
@@ -1037,6 +1038,7 @@ def test_f034_r15_paso_cierre_sin_incidencia_guardada_no_llega_al_login(declarad
     with pytest.raises(CodigoNoConsta):
         _paso_cierre_directo(mundo, codigos_declarados=declarados)
 
+    assert mundo.usuarios.llamadas == []  # lo que dice el nombre (H-R1)
     assert mundo.nada_ha_tocado_el_erp()
 
 
@@ -1344,3 +1346,37 @@ def test_f034_h4_r26_archivar_no_llama_a_la_exigencia_de_completos():
     import inspect
 
     assert "exigir_codigos_completos(" not in inspect.getsource(modulo_paso_archivo)
+
+
+# ==========================================================================
+# Corrección de la review (H-R1) · el login también se ve
+# ==========================================================================
+#
+# `nada_ha_tocado_el_erp()` exige desde esta corrección que el doble
+# `Usuarios` no haya apuntado ninguna llamada: R13 dice «antes de resolver el
+# login contra el ERP». Estos dos controles positivos demuestran que la lista
+# **no está vacía por construcción**: con el mismo mundo y un cuerpo que pasa
+# las puertas, el login se resuelve una vez, y `nada_ha_tocado_el_erp()` lo ve.
+# Sin ellos, un doble que no apuntara nada haría pasar los negativos en falso.
+
+
+def test_f034_r13_adjuntar_control_positivo_el_doble_apunta_el_login():
+    """H-R1 · pasadas las puertas, el login se resuelve y el mundo lo ve."""
+    mundo = _mundo_del_adjuntar()
+
+    respuesta = mundo.adjuntar(_declarado())
+
+    assert respuesta["estado"] == "dry_run_ok"
+    assert mundo.usuarios.llamadas == [("resolver_login", OID)]
+    assert not mundo.nada_ha_tocado_el_erp()
+
+
+def test_f034_r13_cerrar_control_positivo_el_doble_apunta_el_login():
+    """H-R1 · lo mismo en `/api/cerrar`, donde se decide qué se cierra."""
+    mundo = _mundo_del_cierre()
+
+    respuesta = mundo.cerrar(_declarado_al_cerrar())
+
+    assert respuesta["estado"] == "dry_run_ok"
+    assert mundo.usuarios.llamadas == [("resolver_login", OID)]
+    assert not mundo.nada_ha_tocado_el_erp()

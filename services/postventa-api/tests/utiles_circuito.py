@@ -91,9 +91,24 @@ PDF = FIRMA_PDF + b"1.7\nsintetico para F-034\n%%EOF\n"
 
 
 class Usuarios:
-    """Correspondencia ya confirmada: el login sale sin derivar nada."""
+    """Correspondencia ya confirmada: el login sale sin derivar nada.
+
+    **Apunta cada llamada** en `llamadas` (H-R1 de la review de F-034). Con
+    la correspondencia confirmada, resolver el login no deja rastro en el ERP
+    —no hace falta verificarlo—, así que sin esta lista ningún test podía ver
+    si el login se resolvía **antes o después** de las puertas: una puerta
+    movida por debajo del login pasaba la suite entera en verde. En
+    producción, para un usuario **sin** correspondencia confirmada, resolver
+    el login es una lectura a Sigrid y una escritura en la tabla de
+    correspondencias; por eso `nada_ha_tocado_el_erp()` de los dos mundos
+    exige esta lista vacía.
+    """
+
+    def __init__(self) -> None:
+        self.llamadas: list[tuple[str, str]] = []
 
     def resolver_login(self, *, usuario_oid: str) -> CorrespondenciaSigrid:
+        self.llamadas.append(("resolver_login", usuario_oid))
         return CorrespondenciaSigrid(
             usuario_oid=usuario_oid,
             login_sigrid=LOGIN,
@@ -102,6 +117,7 @@ class Usuarios:
         )
 
     def guardar_login(self, *, correspondencia):  # pragma: no cover
+        self.llamadas.append(("guardar_login", correspondencia.usuario_oid))
         return ResultadoGuardado.CREADO
 
 
@@ -207,8 +223,8 @@ class MundoDelAdjuntar:
     envuelto para que reciba estos mismos puertos: así se ve el código HTTP que
     sale del `except` real, no el de una excepción fabricada por el test.
 
-    `nada_ha_tocado_el_erp()` es la pregunta de R13: ni una lectura de la
-    reclamación, ni una verificación de login, ni una llamada a la pasarela, ni
+    `nada_ha_tocado_el_erp()` es la pregunta de R13: ni el login resuelto, ni
+    una lectura de la reclamación, ni una verificación de login, ni una llamada a la pasarela, ni
     una traza escrita, ni siquiera la consulta de la traza local del gráfico.
     """
 
@@ -254,9 +270,14 @@ class MundoDelAdjuntar:
         return function_app.adjuntar(peticion_multipart(campos))
 
     def nada_ha_tocado_el_erp(self) -> bool:
-        """R13 · cero llamadas al ERP y a la pasarela, y cero trazas."""
+        """R13 · cero llamadas al ERP y a la pasarela, y cero trazas.
+
+        Y **ni siquiera se ha resuelto el login** (`usuarios.llamadas`): es lo
+        primero del paso que puede hablar con Sigrid (H-R1 de la review).
+        """
         return (
-            self.erp.lecturas == []
+            self.usuarios.llamadas == []
+            and self.erp.lecturas == []
             and self.erp.verificaciones == []
             and self.erp.cierres == []
             and self.graficos.llamadas == []
@@ -336,8 +357,8 @@ class MundoDelCierre:
     control positivo con `commit` se pararía en `ParteNoAdjuntado` y no
     demostraría nada.
 
-    `nada_ha_tocado_el_erp()` es la pregunta de R13 para el cierre: ni una
-    lectura de la reclamación, ni una verificación de login, ni un cierre, ni
+    `nada_ha_tocado_el_erp()` es la pregunta de R13 para el cierre: ni el login
+    resuelto, ni una lectura de la reclamación, ni una verificación de login, ni un cierre, ni
     una traza de cierre, ni una fila del histórico, ni siquiera la consulta de
     la traza del gráfico (que en el paso va **después** del dry-run).
     """
@@ -390,9 +411,16 @@ class MundoDelCierre:
         return function_app.cerrar(peticion_json(cuerpo))
 
     def nada_ha_tocado_el_erp(self) -> bool:
-        """R13 · cero llamadas al ERP, cero trazas y cero filas de estado."""
+        """R13 · cero llamadas al ERP, cero trazas y cero filas de estado.
+
+        Y **ni siquiera se ha resuelto el login** (`usuarios.llamadas`): R13
+        dice «antes de resolver el login contra el ERP», y sin mirar esta
+        lista una puerta movida por debajo del login pasaba en verde (H-R1 de
+        la review).
+        """
         return (
-            self.erp.lecturas == []
+            self.usuarios.llamadas == []
+            and self.erp.lecturas == []
             and self.erp.verificaciones == []
             and self.erp.cierres == []
             and self.repositorio.cierres == []

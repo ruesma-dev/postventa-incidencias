@@ -1,6 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 · BLOQUE 4 HECHO · 2026-09-23 · siguiente: Bloque 5 (alcance y documentación)
+>
+> **T11 cerrada** (`56e1102`). `reintentarCierre` (`js/app.js`) ya **espera**
+> `vaciarPendientes()` de F-031 antes de lanzar el circuito y, si el vaciado
+> falla, **no lanza nada** y pinta `AVISO_SIN_GUARDAR`, igual que
+> `confirmarArchivo`; retira además el aviso de un intento anterior. H-2
+> cerrado. El cuerpo de las peticiones no cambia (R31). Test nuevo
+> `tests_js/reintento_vaciado.test.js` (12), que **ejecuta `app.js`** en
+> `node:vm` con la API doble: RED con traza real (5 fallos, R29 y R30; el
+> cierre salía con el número corregido y sin guardar) y verde. `node --test
+> "tests_js/*.test.js"` 322/322; `pytest` del front 256 passed; ningún test
+> existente tocado. `bash harness/init.sh` en verde (cobertura 88/88, solo
+> Python). Nada escrito en ningún sistema; backend y `features.json` sin tocar.
+>
+> **Hallazgo nuevo H-6** (no cambiado, anterior a F-034): guardar una
+> corrección de un parte «adjuntado» lo pone en «listo» (`_anotarVeredicto`,
+> F-026) y esconde el botón «Reintentar el cierre»; el parte sigue saliendo
+> por «Archivar y cerrar» si el guardado sale bien.
+>
+> **Queda**: **Bloque 5** (T12 contador de consultas, T13 alcance cerrado,
+> T14 documentación) y **Bloque 6** (T15 mutación, T16 y T17 MANUAL, T18
+> verde). Informe: **`progress/impl_F-034.md`** §8.
+
 > ## ✅ F-034 · BLOQUE 3 HECHO · 2026-09-23 · siguiente: Bloque 4 (el front)
 >
 > **T8 (RED), T9 y T10 cerradas** (`e1603db`, `d3bccda`, `2a6efc4`).

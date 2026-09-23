@@ -950,3 +950,237 @@ ENTORNO LISTO. Puedes trabajar.
 Las del Bloque 2, para comparar: 3.147 passed (143,38 s); cobertura 69/69.
 
 Última ejecución de `bash harness/init.sh`, ya con el informe commiteado (`9734c35`): 3.200 passed, 28 skipped (158,31 s); `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88)`. Entre las dos ejecuciones no cambió ningún `.py` (`git diff 2a6efc4 -- '*.py'` vacío); la primera se lanzó con T10 todavía sin commitear. No he investigado por qué el recuento de la puerta pasa de 86 a 88 líneas; las dos veces, al 100 %.
+
+## 8 · Bloque 4 · El front (T11)
+
+### 8.1 · Qué cambió (commit `56e1102`)
+
+- **`services/postventa-front/js/app.js::reintentarCierre`** (+26 líneas, casi
+  todas comentario): antes de `conGuardaDeTanda(() => this._lanzarTanda([parte]))`
+  ahora hace, en este orden, `this.avisoArchivo = ""`,
+  `const vaciado = await this._autoguardado().vaciarPendientes()` y, si
+  `!vaciado.ok`, `this.avisoArchivo = window.Autoguardado.AVISO_SIN_GUARDAR;
+  return;`. Es `design.md` §7.1 tal cual, más la línea que retira el aviso
+  (decisión en §8.3). Reutiliza la pieza y el aviso de F-031: ni una línea
+  nueva en `js/autoguardado.js` ni en `js/pipeline.js`.
+- **`services/postventa-front/tests_js/reintento_vaciado.test.js`** (nuevo, 12
+  tests). **Ejecuta `js/app.js` de verdad**: carga los módulos del front en un
+  contexto de `node:vm` cuyo `window` es el propio contexto (como en el
+  navegador), cambia `window.Api` por un doble que apunta cada petición en una
+  sola lista ordenada, y pone un `setTimeout` de mentira que nunca dispara, así
+  que todo guardado que aparece lo ha forzado el vaciado. Es el primer test del
+  repo que ejecuta `app.js`: los anteriores (`test_f031_front.py`,
+  `test_f025_front.py`…) solo miran su texto fuente. Aquí hacía falta
+  ejecutarlo, porque lo que se pide es que se **espere** y que, si falla, **no
+  salga nada**.
+- `specs/F-034-archivo-persistido-en-erp/tasks.md`: T11 marcada.
+- **Nada más**: ningún otro fichero de `tests_js/` ni de `tests/` tocado
+  (`autoguardado.test.js`, `circuito.test.js`, `confirmacion.test.js` y
+  `pipeline.test.js` sin cambios, R31), ni el backend, ni `features.json`.
+
+Lo que cubre cada test:
+
+| Requisito | Test(s) | En RED |
+|---|---|---|
+| R29 · se guarda y se **espera** antes de cerrar | orden `validar → guardar → cerrar`, con la corrección en el guardado y el mismo número en el cierre; con el guardado en vuelo, el cierre no sale hasta que resuelve; se vacía lo pendiente de **otro** parte también | rojo (3) |
+| R30 · si falla, no se lanza nada y se dice | cero escrituras (`archivar`/`adjuntar`/`cerrar`), aviso = `AVISO_SIN_GUARDAR`, `fase`, `totalTanda`, `terminados`, `resultadosCierre` y el parte (`archivado`, `grafico`, `error`, `cerrado`) como estaban, guarda de tanda suelta; el reintento siguiente guarda y **entonces** cierra, y retira el aviso | rojo (2) |
+| R31 · el cuerpo del cierre no cambia | las nueve claves de siempre, `estado_archivo`, `commit` y `confirmado` | verde (conservación) |
+| R32 · los 409 se pintan sin tumbar nada | un 409 del cierre deja el parte en `adjuntado` con el motivo del backend y el reintento no revienta; en una tanda de dos por `confirmarArchivo`, el 409 del gráfico de uno no impide que el otro se cierre | verde (conservación: es `anotarFallo` de F-025) |
+| R33 · lo escrito se queda; sin cambios, sin guardado | tras el fallo, `ediciones` intactas y `extraccion` sin tocar; sin cambios, solo sale `cerrar`; escribir y deshacer, igual | verde (conservación: F-026/F-031) |
+| `design.md` §7.1 · la confirmación de F-025 no se toca | `confirmacionArchivo` es el mismo objeto tras el reintento, salga bien o mal el vaciado | verde (conservación) |
+
+Los siete que ya estaban en verde son **de conservación** por definición: R31,
+R32 y R33 piden que algo que ya funcionaba siga igual, y la única forma de que
+fallaran antes del cambio sería que el código viejo estuviera roto. Los que
+sostienen la feature (R29, R30) son los cinco rojos.
+
+### 8.2 · Fase RED (traza real)
+
+Comando, desde `services/postventa-front`, con el test escrito y `app.js`
+todavía sin tocar:
+
+```
+$ node --test tests_js/reintento_vaciado.test.js
+✖ f034 R29: reintentar el cierre con una corrección sin guardar la guarda ANTES de cerrar (18.0726ms)
+✖ f034 R29: con el guardado en vuelo, el cierre NO sale hasta que termina (9.1354ms)
+✖ f034 R29: se vacía lo pendiente de otro parte también, no solo del que se reintenta (6.5261ms)
+✖ f034 R30: si el guardado se cae, no sale ni una escritura y se pinta el aviso de F-031 (7.7903ms)
+✖ f034 R30: tras el fallo, el siguiente reintento vuelve a guardar y entonces sí cierra (11.4682ms)
+✔ f034 R31: el cuerpo del cierre lleva exactamente las mismas claves que antes (11.4898ms)
+✔ f034 R32: un 409 del cierre se pinta en el parte y el reintento no revienta (8.5615ms)
+✔ f034 R32: en una tanda, el 409 de un parte no impide que el otro se cierre (10.5224ms)
+✔ f034 R33: aunque el guardado falle, lo que la persona escribió sigue ahí (8.9608ms)
+✔ f034 R33: sin nada distinto de lo guardado, el reintento no dispara ningún guardado (5.5914ms)
+✔ f034 R33: escribir y deshacer antes de reintentar tampoco guarda nada (4.3404ms)
+✔ f034 §7.1: el reintento no consume ni reinicia la confirmación de la tanda (12.8474ms)
+ℹ tests 12
+ℹ pass 7
+ℹ fail 5
+```
+
+Las dos trazas centrales, tal cual:
+
+```
+✖ f034 R29: reintentar el cierre con una corrección sin guardar la guarda ANTES de cerrar (18.0726ms)
+  AssertionError [ERR_ASSERTION]: el cierre salió sin guardar antes la corrección (R29): el backend cotejaría un número que no consta en la base
+  + actual - expected
+    [
+  -   'validar',
+  -   'guardar',
+      'cerrar'
+    ]
+    actual: [ 'cerrar' ],
+    expected: [ 'validar', 'guardar', 'cerrar' ],
+
+✖ f034 R30: si el guardado se cae, no sale ni una escritura y se pinta el aviso de F-031 (7.7903ms)
+  AssertionError [ERR_ASSERTION]: con la corrección sin guardar se ha escrito igualmente (R30): el ERP recibiría un número que no consta en la base
+  + actual - expected
+  + [
+  +   {
+  +     cuerpo: {
+  +       commit: true,
+  +       confirmado: true,
+  +       correo: 'fulanito@ejemplo.invalido',
+  +       destino: 'archivo_directo',
+  +       estado_archivo: 'archivado',
+  +       hash: 'a1b2c3d4e5f6',
+  +       numero_incidencia: 'RS26.09/0999',
+  +       usuario_oid: 'oid-inventado-para-el-test',
+  +       veredicto: 'apto'
+  +     },
+  +     hash: 'a1b2c3d4e5f6',
+  +     que: 'cerrar'
+  +   }
+  + ]
+  - []
+```
+
+Es exactamente H-2: el cierre sale con `commit: true` y el número **corregido
+y sin guardar** (`RS26.09/0999`) mientras la base sigue con `RS26.08/0123`. Con
+el backend de F-034 eso es un 409 que la persona no entiende; con el de antes,
+el cierre de la reclamación que nombra el cuerpo.
+
+Una segunda RED, más pequeña, tras poner el vaciado y **antes** de la línea
+que retira el aviso (decisión de §8.3), mismo comando:
+
+```
+✖ f034 R30: tras el fallo, el siguiente reintento vuelve a guardar y entonces sí cierra (13.9282ms)
+  AssertionError [ERR_ASSERTION]: el aviso del intento fallido sigue en pantalla
+  + 'No se ha archivado nada: quedan correcciones sin guardar. No se ha podido guardar la corrección. Lo que has escrito sigue en pantalla: vuelve a escribir algo o pulsa «Revalidar» para reintentarlo.'
+  - ''
+```
+
+En esa misma ejecución falló también el primer test de R30 por una
+comprobación que era **mía y equivocada** (`parte.estado === "adjuntado"`, ver
+H-6 en §8.4): se sustituyó por `archivado`, `grafico` y `error`, que son lo que
+el circuito tocaría, y se explica en el propio test. Y una tercera, de montaje:
+`deepEqual(resultadosCierre, [])` falla entre contextos de `vm` aunque el array
+esté vacío (otro `Array.prototype`); pasa a `.length === 0`, también comentado.
+
+### 8.3 · Decisiones (dentro de lo aprobado)
+
+- **El vaciado va antes de la guarda de tanda y fuera de `_lanzarTanda`**, como
+  pide `design.md` §7.1. Consecuencia aceptada: si hay una tanda corriendo y
+  alguien pulsa «Reintentar el cierre», se guarda lo pendiente y luego la
+  guarda de F-025 no deja lanzar nada. Guardar una corrección no escribe en el
+  ERP y es lo que el rebote haría igual 1.500 ms después. En la práctica el
+  botón está `:disabled` mientras `fase === 'archivando_y_cerrando'`.
+- **`this.avisoArchivo = ""` antes del vaciado** (una línea más que el boceto
+  de §7.1). `confirmarArchivo` ya lo hace, y sin ella un reintento que sale
+  bien dejaría en pantalla «No se ha archivado nada: quedan correcciones sin
+  guardar» encima de un cierre hecho. El test de R30 que la fija salió rojo
+  sin la línea (§8.2).
+- **El aviso es el de F-031, con su texto**, como pide R30 («con el mismo
+  aviso»). Empieza por «No se ha archivado nada»: en el reintento el parte ya
+  está archivado, así que lo más exacto sería «no se ha cerrado nada». La frase
+  sigue siendo verdad (no se ha hecho nada) y el aviso vive en
+  `js/autoguardado.js`, que esta feature no toca (`design.md` §2.3). Si el
+  humano prefiere un texto propio para el reintento, es un cambio de una
+  constante en `autoguardado.js` con su test, **fuera** de esta ficha.
+- **Tests por ejecución y no por texto fuente.** La spec pedía el fichero en
+  `tests_js/`. Para probar la espera y el corte hacía falta ejecutar
+  `app.js`, y se hace con `node:vm`, sin dependencias nuevas (Node lo trae,
+  igual que `node:test`) y sin tocar `app.js` para hacerlo probable.
+
+### 8.4 · Hallazgo H-6 para el reviewer y el humano (no cambiado)
+
+**Corregir un campo de un parte «adjuntado» esconde el botón «Reintentar el
+cierre».** El guardado de F-026 (`_guardarCorreccion`) revalida y llama a
+`_anotarVeredicto`, que pone `parte.estado = "listo"` **salga bien o mal el
+guardado**. El recuadro de `index.html` filtra por
+`parte.estado === 'adjuntado'`, así que el parte desaparece de él.
+
+- **No lo trae F-034**: con el código de antes pasa igual en cuanto salta el
+  rebote (1.500 ms después de escribir), sin pulsar nada. El vaciado de T11
+  solo lo adelanta.
+- **No se pierde el parte**: si el guardado sale bien, vuelve a estar en
+  `pendientes()` y el botón principal «Archivar y cerrar» lo recoge; el
+  circuito se salta archivar y adjuntar (constan hechos) y solo pide el
+  cierre. Si el guardado falla, no está en ninguna de las dos listas hasta que
+  se guarde, que es lo que dice el aviso («vuelve a escribir algo o pulsa
+  «Revalidar»»).
+- Arreglarlo es tocar `_anotarVeredicto` (F-026) o el filtro del recuadro
+  (F-012), fuera de esta ficha. Lo dejo para que se decida si merece feature.
+- Medido leyendo el código (`js/app.js::_guardarCorreccion` y
+  `_anotarVeredicto`) y con el test de R30, donde el parte sale en `listo`; no
+  lo he visto en un navegador.
+
+### 8.5 · Verde (traza real)
+
+```
+$ node --test tests_js/reintento_vaciado.test.js
+ℹ tests 12
+ℹ pass 12
+ℹ fail 0
+ℹ duration_ms 427.9429
+
+$ node --test "tests_js/*.test.js"
+ℹ tests 322
+ℹ pass 322
+ℹ fail 0
+ℹ duration_ms 1318.5829
+
+$ python -m pytest tests -q -p no:cacheprovider      (services/postventa-front)
+256 passed in 5.50s
+```
+
+Nota sobre el comando de la verificación de T11: `node --test tests_js` (la
+carpeta) muere en Node 24 con `MODULE_NOT_FOUND` antes de descubrir ningún
+test; se usa el patrón, como hace el puente `tests/test_f007_js.py` y como
+documenta su cabecera.
+
+`bash harness/init.sh` (tal cual), con T11 commiteada:
+
+```
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+62 passed in 8.46s
+[OK] pytest en verde (con medición de cobertura)
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+256 passed in 5.58s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-034-archivo-persistido-en-erp
+ENTORNO LISTO. Puedes trabajar.
+```
+
+### 8.6 · Qué queda fuera y qué falta
+
+- **R32 en pantalla de verdad** es T16 (MANUAL, humano). Lo que hay aquí es la
+  lógica de `app.js` ejecutada con la API doble; no se ha abierto un navegador.
+- **Bloque 5** (T12 contador de consultas, T13 `test_f034_alcance_cerrado.py`
+  —que tendrá que admitir también `js/app.js` y este test nuevo si mira el
+  front—, T14 documentación) y **Bloque 6** (T15 mutación, T16 y T17 MANUAL,
+  T18 verde). Sin empezar.
+- **H-6** (§8.4) para el reviewer y el humano.
+- Nada escrito en Sigrid, SharePoint, Azure ni PostgreSQL; sin tocar el
+  backend ni `harness/features.json`.
+
+## Evidencias · vigentes al cerrar el Bloque 4 (T11)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | `node --test "tests_js/*.test.js"`: **322 pass, 0 fail** (12 nuevos de F-034); `pytest` del front **256 passed** (5,58 s en `init.sh`); raíz 62 passed; servicio api sin cambios (caché de `init.sh`; 3.200 passed, 28 skipped en el Bloque 3) |
+| Cobertura de líneas cambiadas | `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88)`. **No incluye el JS**: la puerta mide solo Python, y este bloque no cambia ninguna línea `.py`. Las líneas nuevas de `reintentarCierre` las ejecutan los 12 tests de `reintento_vaciado.test.js` (las dos ramas del `if (!vaciado.ok)` tienen test), pero el arnés no tiene herramienta de cobertura de JS |
+| Mutación | **No aplicable a este bloque**: `harness.mutacion` solo muta Python. La campaña de T15 cubre lo Python de la feature |
+| Tiempo de la suite | JS completa 1,32 s; el fichero nuevo 0,43 s; `pytest` del front 5,58 s |
+| Ficheros de test existentes tocados | **Cero** |

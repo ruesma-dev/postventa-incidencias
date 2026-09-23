@@ -371,6 +371,17 @@ aquí para que nadie lo descubra después:
    persistido del parte. Un usuario autenticado del grupo de Posventa puede
    mandar un número que no es el del parte.
 
+   > **Nota del 2026-09-23 (F-034).** **Desde el despliegue de F-034**,
+   > `/api/adjuntar` y `/api/cerrar` **dejan de tomar del cuerpo** el número
+   > de incidencia y el estado de archivo: la reclamación que se adjunta y la
+   > que se cierra salen del número **guardado** del parte, «consta archivado»
+   > sale de la traza **guardada**, y un cuerpo que no cuadre recibe **409** sin
+   > llegar al ERP, ni siquiera en dry-run. Hasta ese despliegue, este punto 2
+   > sigue siendo cierto tal cual; y después queda solo lo que F-034 declara
+   > fuera de su alcance (su D-1: quien pueda escribir en la base puede cambiar
+   > lo guardado). El punto 1 no lo toca F-034. El detalle, en
+   > `specs/F-034-archivo-persistido-en-erp/`.
+
 Lo que sigue impidiendo que **un desconocido** llegue a escribir es la
 plataforma (Easy Auth en el host desnudo y la sesión del grupo en el front,
 §5 bis), no esta ventana. Quien no quiera este riesgo en un despliegue

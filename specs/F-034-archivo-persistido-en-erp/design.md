@@ -474,6 +474,21 @@ despliegue, al revés que F-031, donde las dos mitades tenían que ir juntas.
 - `azure-apps/postventa_incidencias.md` · **nada**, y se deja escrito por qué
   (§11.1 de `requirements.md` no aplica; ver aquí abajo).
 
+> **Comprobado el 2026-09-23 (T14), leyendo `azure-apps` sin tocarlo**
+> (commit `1b57e35` de ese repositorio). Lo que el proyecto **expone** no
+> cambia: los mismos endpoints, los mismos campos obligatorios en los dos
+> cuerpos (lo fija `test_f034_r18_los_dos_cuerpos_piden_lo_mismo_de_siempre`)
+> y las mismas claves de respuesta (R35); el `409` ya existía en los dos y
+> gana un motivo. Lo que **consume** tampoco: las mismas llamadas a
+> `sigrid-api` y al PostgreSQL compartido, sin DDL y sin una sentencia más
+> (lo fija `test_f034_sin_consultas_de_mas.py`). Por eso el documento **no
+> cambia por esta feature**. Una cosa para quien lo mantenga, **cuando se
+> despliegue** F-034: su frase del riesgo aceptado del 2026-09-23 («mientras
+> F-034 no esté desplegada `/api/adjuntar` y `/api/cerrar` toman el número de
+> incidencia del cuerpo») sigue siendo cierta hasta ese despliegue, y después
+> conviene añadirle la misma nota que llevan `docs/DESPLIEGUE.md` §4 bis y
+> `docs/INTEGRACION.md` §3 bis. Lo decide y lo hace el líder.
+
 ## 11 · Encaje, límites y decisiones abiertas
 
 ### 11.1 · Límite de microservicio

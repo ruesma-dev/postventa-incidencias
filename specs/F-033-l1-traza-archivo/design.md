@@ -401,6 +401,20 @@ consulta que esos dos pasos ya hacen en su puerta.
 | **D-6** | «Consta archivado» de `adjuntar`/`cerrar` desde el cuerpo (§9) | (a) ficha nueva `critico` antes de F-013; (b) absorberlo en F-033 como bloque final; (c) dejarlo | **(a)** |
 | **D-7** | Carrera en la traza previa | (a) releer una vez y cortar; (b) 409 «otra petición lo archivó»; (c) ignorar y subir | **(a)**: el front recibe lo mismo que en un L1 normal |
 
+> **D-6 · CERRADA por F-034 el 2026-09-23** (implementada en la rama
+> `feature/F-034-archivo-persistido-en-erp`; rige en el entorno desplegado
+> **desde el despliegue de F-034**). Se hizo la opción **(a)**, ficha propia
+> `critico` antes de F-013, y el humano amplió su `acceptance` con H-1 de
+> F-031 (los dos códigos del cuerpo). `/api/adjuntar` y `/api/cerrar` deciden
+> «consta archivado» con `ctx.situacion.archivo` —la traza que F-033 trajo a
+> la consulta de situación—, en una sola puerta compartida
+> (`puerta_de_estado.exigir_parte_archivado`); el borde ya no fabrica la
+> `TrazaArchivo` con el `estado_archivo` del cuerpo, que sigue obligatorio y
+> validado pero no decide nada. Un cuerpo que diga `archivado` sobre un parte
+> sin esa traza recibe **409** y no llega al ERP, ni en dry-run. Sin una
+> sentencia más. Lo que §9 describe ya no existe. El detalle, en
+> `specs/F-034-archivo-persistido-en-erp/`.
+
 ## 11 · El terreno que deja para F-013 y F-031
 
 - **F-013** (spec en `feature/F-013-archivo-posventa`, `8f72e66`): su tabla del

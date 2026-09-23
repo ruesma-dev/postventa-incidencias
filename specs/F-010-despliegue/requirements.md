@@ -181,7 +181,11 @@ y se detallan en `tasks.md`.
 > una puerta manual**: quedan el dry-run por omisión y la confirmación del
 > usuario, pero ya no el gesto de alguien en el plano de gestión. Y **mientras
 > F-034 no esté desplegada**, `/api/adjuntar` y `/api/cerrar` siguen tomando el
-> número de incidencia **del cuerpo de la petición**. Lo que sigue impidiendo
+> número de incidencia **del cuerpo de la petición** (nota del 2026-09-23:
+> **desde el despliegue de F-034** dejan de tomar del cuerpo el número de
+> incidencia y el estado de archivo, deciden con lo guardado del parte y un
+> cuerpo que no cuadre recibe 409 sin llegar al ERP; hasta ese despliegue,
+> sigue siendo cierto). Lo que sigue impidiendo
 > que un desconocido llegue a escribir no es esta ventana sino la plataforma:
 > el host desnudo lo corta Easy Auth y el front exige sesión del grupo de
 > Posventa (`docs/DESPLIEGUE.md` §5 bis). Quien no quiera ese riesgo en un

@@ -95,6 +95,13 @@
     `-VentanasCerradas`. El detalle, en `docs/DESPLIEGUE.md`, secciones 4 y
     4 bis.
 
+    NOTA DEL 2026-09-23 (F-034). DESDE EL DESPLIEGUE DE F-034, `/api/adjuntar`
+    y `/api/cerrar` dejan de tomar del cuerpo el numero de incidencia y el
+    estado de archivo: deciden con lo GUARDADO del parte, y un cuerpo que no
+    cuadre recibe 409 sin llegar al ERP. Hasta ese despliegue, lo de arriba
+    sigue siendo cierto. La primera mitad del riesgo (sin puerta manual) no
+    la cambia F-034.
+
     LOS TIEMPOS DE ESPERA Y EL PROXY. El proxy de la Static Web App corta
     cualquier peticion a los 45 s. El escalonado es: la IA abandona a los 35,
     el front a los 40, el proxy corta a los 45. CADA CAPA CEDE ANTES QUE LA DE
@@ -497,8 +504,9 @@ $ajustes = @(
     # dos") y CERRADA con -VentanasCerradas. RIESGO ACEPTADO: abierta, esta
     # version escribe en Sigrid de produccion sin una puerta manual, y mientras
     # F-034 no este desplegada /api/adjuntar y /api/cerrar toman el numero de
-    # incidencia del cuerpo. Fuera de ella los dos responden 503 y no tocan el
-    # ERP ni para leer. Se cierra y se abre sin redesplegar con
+    # incidencia del cuerpo (desde el despliegue de F-034 deciden con lo
+    # guardado del parte; ver la cabecera). Fuera de ella los dos responden
+    # 503 y no tocan el ERP ni para leer. Se cierra y se abre sin redesplegar con
     # 19_ventana_escritura.ps1 (docs/DESPLIEGUE.md, seccion 4 bis). Es una
     # variable APARTE de ARCHIVO_HABILITADO, porque poder archivar no puede
     # implicar poder escribir en el ERP. El defecto del CODIGO

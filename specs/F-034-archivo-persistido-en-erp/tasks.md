@@ -222,7 +222,7 @@
       `design.md` §2, y del front solo `app.js` y su test. Sondas y trazas en
       `progress/impl_F-034.md` §9.2.
 
-- [ ] **T14**: documentación — recuadro fechado en `docs/ARCHITECTURE.md`
+- [x] **T14**: documentación — recuadro fechado en `docs/ARCHITECTURE.md`
       (pasos 7a y 7b), nota de cierre de **D-6** en
       `specs/F-033-l1-traza-archivo/design.md` §10 y de **H-1** en
       `specs/F-031-nombrado-persistido/design.md` §8 (`design.md` §10).
@@ -231,6 +231,16 @@
       en `progress/current.md` para F-013.
       **Verificación**: `bash harness/init.sh` en verde (valida los documentos
       normativos) y el diff revisado a ojo.
+      **Hecha (2026-09-23)**: recuadros «Precisado por F-034 el 2026-09-23» en
+      los pasos 7a y 7b de `docs/ARCHITECTURE.md`; notas de cierre de D-6
+      (F-033 §10) y de H-1 (F-031 §8); comprobación de `azure-apps` escrita
+      en `design.md` §10 (no cambia). Por encargo del líder, además, la nota
+      **«desde el despliegue de F-034»** junto a cada sitio donde está escrito
+      el riesgo aceptado del 2026-09-23: `docs/DESPLIEGUE.md` §4 bis,
+      `docs/INTEGRACION.md` §3 bis, cabecera (y comentario de `$ajustes`) de
+      `infra/desplegar_backend.ps1` y recuadro de R33 de F-010. Nada borrado.
+      H-3 anotado para F-013 en `progress/current.md`. Detalle en
+      `progress/impl_F-034.md` §9.3.
 
 ## Bloque 6 · Puertas de rigor y verde
 

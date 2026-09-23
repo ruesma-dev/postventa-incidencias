@@ -251,6 +251,14 @@ componer las piezas de otra manera no puede ser la vía para saltárselo.
 no debe construir el adaptador real. Su valor por defecto es **falso**: el
 comportamiento por omisión es **no subir**.
 
+> **Nota del 2026-09-23 · R20 NO se enmienda.** Desde ese día
+> `desplegar_backend.ps1` publica `ARCHIVO_HABILITADO=true` salvo con
+> `-VentanasCerradas` (decisión del humano: *«quiero que por defecto publique
+> abierto, no cerrado»*; *«Las dos»*). El valor por defecto **del código**, que
+> es lo que fija R20, sigue siendo falso en `config/settings.py`: lo que cambia
+> es solo lo que el despliegue escribe encima. La enmienda, bajo R33 de
+> `specs/F-010-despliegue/requirements.md`.
+
 **R21.** El sistema no debe abrir ninguna conexión de red durante la suite, y
 ningún test debe construir el adaptador real de SharePoint. La guardia de red
 de F-003 (`tests/conftest.py`) se reutiliza **sin tocarla**.

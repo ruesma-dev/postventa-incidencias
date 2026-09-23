@@ -444,6 +444,19 @@ def test_f010_r7_ningun_script_repite_un_nombre_de_recurso(script):
 # en `progress/impl_F-010.md`. No es ceremonia: es el unico requisito de esta
 # feature cuyo incumplimiento pone un servicio que escribe en SharePoint al
 # alcance de cualquiera que sepa el nombre de host.
+#
+# ENMIENDA DEL 2026-09-23 (recuadro bajo R33 de
+# `specs/F-010-despliegue/requirements.md`). Hasta ese dia estos tests exigian
+# que el despliegue dejara las dos ventanas CERRADAS. Posventa ya usa el
+# servicio en real, y cada despliegue les cerraba el archivo y el cierre hasta
+# que alguien los reabria a mano. El humano decidio: «quiero que por defecto
+# publique abierto, no cerrado», y a la pregunta de que ventanas, «Las dos».
+# Lo que se fija ahora es ese comportamiento, sin aflojar nada: ABIERTAS por
+# defecto, CERRADAS LAS DOS con `-VentanasCerradas`, cada App Setting en su
+# linea y con su valor saliendo de una variable del script que solo ese
+# interruptor puede poner en `false`. El valor por defecto del CODIGO
+# (`config/settings.py`) NO cambia: sigue apagado, y lo fijan
+# `test_f006_fabrica.py` y `test_f009_fabrica.py`.
 
 
 @pytest.fixture
@@ -451,39 +464,136 @@ def backend() -> str:
     return SCRIPT_BACKEND.read_text(encoding="ascii")
 
 
-def test_f010_r33_el_despliegue_deja_la_ventana_de_escritura_cerrada(backend):
-    """R33 · `ARCHIVO_HABILITADO` se despliega **apagado**. FASE RED.
+#: Las dos ventanas del despliegue: la App Setting y la variable del script
+#: que lleva su valor. Son DOS variables, no una: se abren y se cierran juntas
+#: al desplegar, pero protegen cosas distintas y cada una se sigue gobernando
+#: por separado (`22_ventana_archivo.ps1` y `19_ventana_escritura.ps1`).
+VENTANAS_DEL_DESPLIEGUE = (
+    ("ARCHIVO_HABILITADO", "ventanaArchivo"),
+    ("CIERRE_HABILITADO", "ventanaCierre"),
+)
 
-    Es el candado principal de todo el despliegue (`design.md` seccion 9 bis,
-    capa 3). La Function App queda anonima porque la plataforma lo exige, asi
-    que lo unico que impide que un desconocido suba un PDF a SharePoint es que
-    esta App Setting valga `false` el dia que el servicio sale a internet.
 
-    El valor por defecto del codigo ya es `false`, pero eso no basta: el
-    servicio se despliega con `ENTORNO=dev`, y en dev la otra puerta -la que
-    impide subir desde un puesto de trabajo- esta abierta por diseno. Si el
-    script no fija la App Setting explicitamente, basta que alguien la
-    encienda una vez y se olvide para que quede encendida para siempre.
+def problemas_de_ventana(cuerpo: str, app_setting: str, variable: str) -> list[str]:
+    """Lo que falta para que la ventana nazca ABIERTA y se cierre con el switch.
 
-    Por eso se comprueba que la fija, que la fija en `false`, y que en ninguna
-    parte del script la pone en `true`.
+    `cuerpo` es el script SIN comentarios. Devuelve la lista de problemas; una
+    lista vacia es el comportamiento decidido el 2026-09-23:
+
+    - el script declara `[switch]$VentanasCerradas` en su `param(...)`;
+    - la App Setting toma su valor de la variable, y en ninguna parte del
+      script se escribe con un literal (`=true` o `=false`) que se salte el
+      interruptor;
+    - la variable se asigna EXACTAMENTE dos veces, antes de `$ajustes`: una
+      incondicional a `"true"` -el defecto- y otra a `"false"` DENTRO del
+      bloque `if ($VentanasCerradas) { ... }`, y en ningun otro sitio.
+    """
+    problemas: list[str] = []
+
+    parametros = re.search(r"(?s)^param\((.*?)^\)", cuerpo, re.MULTILINE)
+    if not parametros or "[switch]$VentanasCerradas" not in parametros.group(1):
+        problemas.append("falta [switch]$VentanasCerradas en param(...)")
+
+    if f'"{app_setting}=${variable}"' not in cuerpo:
+        problemas.append(f"{app_setting} no toma su valor de ${variable}")
+    for literal in ("true", "false"):
+        if f"{app_setting}={literal}" in cuerpo:
+            problemas.append(f"{app_setting}={literal} escrito a mano")
+
+    asignaciones = [
+        (hallada.start(), hallada.group(1))
+        for hallada in re.finditer(
+            rf'^[ \t]*\${variable}\s*=\s*"([^"]*)"[ \t]*$', cuerpo, re.MULTILINE
+        )
+    ]
+    bloque = re.search(
+        r"(?s)^if \(\$VentanasCerradas\) \{\n(.*?)^\}", cuerpo, re.MULTILINE
+    )
+    inicio_ajustes = cuerpo.find("$ajustes = @(")
+
+    if len(asignaciones) != 2:
+        problemas.append(f"${variable} se asigna {len(asignaciones)} veces, no 2")
+    elif not bloque:
+        problemas.append("falta el bloque if ($VentanasCerradas) { ... }")
+    else:
+        (pos_defecto, defecto), (pos_switch, con_switch) = asignaciones
+        dentro = bloque.start(1) <= pos_switch < bloque.end(1)
+        if defecto != "true" or pos_defecto >= bloque.start():
+            problemas.append(f"${variable} no nace en \"true\" antes del switch")
+        if con_switch != "false" or not dentro:
+            problemas.append(f"${variable} no pasa a \"false\" dentro del switch")
+        if inicio_ajustes == -1 or pos_switch > inicio_ajustes:
+            problemas.append(f"${variable} se decide despues de $ajustes")
+
+    return problemas
+
+
+@pytest.mark.parametrize(
+    ("app_setting", "variable"), VENTANAS_DEL_DESPLIEGUE, ids=lambda x: x
+)
+def test_despliegue_ventanas_abiertas_por_defecto_y_cerradas_con_el_switch(
+    backend, app_setting, variable
+):
+    """R33 y H2, enmendados el 2026-09-23 · abierta por defecto. FASE RED.
+
+    Las dos, `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO`, con el mismo
+    comportamiento: `desplegar_backend.ps1` a secas las deja ABIERTAS, y
+    `desplegar_backend.ps1 -VentanasCerradas` las deja CERRADAS LAS DOS.
+
+    Cada despliegue sigue fijandolas EXPLICITAMENTE, que es lo que el H2 de
+    F-009 vino a garantizar y no cae: una App Setting sobrevive a los
+    despliegues, y el valor por defecto del codigo solo se aplica mientras no
+    exista. Lo que cambia es hacia donde las devuelve cada despliegue.
+
+    Un script que las deje cerradas por defecto, que no tenga el interruptor
+    o que escriba el valor a mano saltandoselo pone esto en rojo.
+    """
+    assert problemas_de_ventana(sin_comentarios(backend), app_setting, variable) == []
+
+
+def test_despliegue_ventanas_control_negativo_cerrada_por_defecto(backend):
+    """Control negativo: la comprobacion SI ve el comportamiento de antes.
+
+    Se compone en memoria el script del 2026-09-22 -la variable nace en
+    `false`- y el script sin el interruptor. Si alguno pasara, el test de
+    arriba no estaria fijando nada.
     """
     cuerpo = sin_comentarios(backend)
+    for app_setting, variable in VENTANAS_DEL_DESPLIEGUE:
+        cerrada = re.sub(
+            rf'^([ \t]*\${variable}\s*=\s*)"true"',
+            r'\1"false"',
+            cuerpo,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        sin_switch = cuerpo.replace("[switch]$VentanasCerradas", "[switch]$Otra")
+        a_mano = cuerpo.replace(f"${variable}\"", "false\"", 1)
 
-    assert "ARCHIVO_HABILITADO=false" in cuerpo
-    assert "ARCHIVO_HABILITADO=true" not in cuerpo
+        assert cerrada != cuerpo
+        assert a_mano != cuerpo
+        assert problemas_de_ventana(cerrada, app_setting, variable) != []
+        assert problemas_de_ventana(sin_switch, app_setting, variable) != []
+        assert problemas_de_ventana(a_mano, app_setting, variable) != []
 
 
-def test_f010_r33_el_script_explica_por_que_la_ventana_nace_cerrada(backend):
-    """R33 · y por que no se enciende "ya que estamos".
+def test_f010_r33_el_script_explica_por_que_las_ventanas_nacen_abiertas(backend):
+    """R33, enmendado el 2026-09-23 · y dice por que, quien y cuando.
 
-    Un `false` sin explicacion es un `false` que el siguiente cambia. La
-    cabecera tiene que decir que se enciende a mano, solo cuando toca, y que
-    se vuelve a apagar.
+    Un `true` sin explicacion es un `true` que el siguiente cambia, o que
+    alguien toma por un descuido. La cabecera tiene que decir la decision y
+    su fecha, el interruptor que las cierra, que el valor por defecto del
+    CODIGO no cambia -y donde mirarlo-, y que fuera de las ventanas los
+    endpoints siguen respondiendo 503.
     """
-    assert "ventana de escritura" in backend.lower()
-    assert "503" in backend
-    assert "se apaga" in backend.lower() or "se vuelve a apagar" in backend.lower()
+    ayuda = backend[: backend.index("#>")]
+
+    assert "ventana de escritura" in ayuda.lower() or "ventanas de escritura" in ayuda.lower()
+    assert "503" in ayuda
+    assert "2026-09-23" in ayuda
+    assert ".PARAMETER VentanasCerradas" in ayuda
+    assert "config/settings.py" in ayuda
+    assert "NO CAMBIA" in ayuda
 
 
 def test_f010_t5_el_script_del_backend_existe():
@@ -603,21 +713,30 @@ def test_f010_r28_la_configuracion_sensible_de_sigrid_no_se_escribe_aqui(backend
     }
 
 
-def test_f010_h2_el_cierre_se_despliega_apagado_y_cada_despliegue_lo_rearma(backend):
-    """H2 · `CIERRE_HABILITADO=false` en `$ajustes`, como `ARCHIVO_HABILITADO`.
+@pytest.mark.parametrize(
+    ("app_setting", "variable"), VENTANAS_DEL_DESPLIEGUE, ids=lambda x: x
+)
+def test_f010_h2_cada_despliegue_fija_las_dos_ventanas_en_ajustes(
+    backend, app_setting, variable
+):
+    """H2 · las dos ventanas van DENTRO de `$ajustes`, en cada despliegue.
 
-    Es el candado que separa leer el ERP de escribir en el ERP, y hasta el
-    2026-09-03 era el unico del despliegue que NO se rearmaba solo: no estaba
-    en `$ajustes` y se apoyaba en el valor por defecto del codigo, que solo se
-    aplica **mientras la App Setting no exista**. Encendido una vez para el
-    bloque 8 de F-009, ningun redespliegue lo habria vuelto a apagar.
+    `CIERRE_HABILITADO` era hasta el 2026-09-03 el unico candado del
+    despliegue que NO se rearmaba solo: no estaba en `$ajustes` y se apoyaba
+    en el valor por defecto del codigo, que solo se aplica **mientras la App
+    Setting no exista**.
 
-    Este test es el que impide que vuelva a desaparecer.
+    Desde el 2026-09-23 lo que cada despliegue fija es ABIERTA (o CERRADA con
+    `-VentanasCerradas`), no CERRADA; pero la razon de H2 sigue en pie: el
+    estado de las ventanas tras desplegar lo decide el despliegue, no lo que
+    alguien dejo puesto a mano la semana anterior. Este test es el que impide
+    que cualquiera de las dos vuelva a desaparecer de `$ajustes`.
     """
     cuerpo = sin_comentarios(backend)
+    ajustes = re.search(r"(?s)\$ajustes = @\((.*?)^\)", cuerpo, re.MULTILINE)
 
-    assert "CIERRE_HABILITADO=false" in cuerpo
-    assert "CIERRE_HABILITADO=true" not in cuerpo
+    assert ajustes, "no se encuentra el bloque $ajustes"
+    assert f'"{app_setting}=${variable}"' in ajustes.group(1)
 
 
 def test_f010_r2_cada_recurso_se_crea_solo_si_no_existe(backend):
@@ -1639,22 +1758,32 @@ def test_f012_t18_el_despliegue_no_anade_ningun_interruptor_nuevo(backend):
     cuerpo = sin_comentarios(backend)
 
     assert "GRAFICO_HABILITADO" not in cuerpo
-    assert "CIERRE_HABILITADO=false" in cuerpo
-    assert "CIERRE_HABILITADO=true" not in cuerpo
+    # La del ERP sigue siendo UNA, y desde el 2026-09-23 nace abierta salvo
+    # con `-VentanasCerradas` (el detalle lo fija el test parametrizado de
+    # arriba): lo que no puede aparecer es un segundo interruptor.
+    assert '"CIERRE_HABILITADO=$ventanaCierre"' in cuerpo
+    assert problemas_de_ventana(cuerpo, "CIERRE_HABILITADO", "ventanaCierre") == []
 
 
 def test_f012_t18_el_resumen_del_despliegue_nombra_tambien_el_grafico(backend):
-    """La línea que lee quien acaba de desplegar tiene que decir qué está
-    cerrado.
+    """La línea que lee quien acaba de desplegar tiene que decir cómo han
+    quedado las ventanas, y nombrar el gráfico.
 
-    Decir «archivo y cierre» cuando además está cerrado el gráfico dejaría a
-    quien la lea creyendo que `/api/adjuntar` sí escribe.
+    Decir «archivo y cierre» sin el gráfico dejaría a quien la lea sin saber
+    si `/api/adjuntar` escribe. Y desde el 2026-09-23 el estado depende de
+    `-VentanasCerradas`, así que la línea no puede llevarlo escrito a mano:
+    tiene que salir de las dos variables que fijan las App Settings. Una
+    «CERRADA» literal con las ventanas abiertas es peor que no decir nada.
     """
+    cuerpo = sin_comentarios(backend)
     resumen = next(
         linea
-        for linea in backend.splitlines()
+        for linea in cuerpo.splitlines()
         if "Ventana de escritura" in linea
     )
 
     assert "GRAFICO" in resumen.upper()
-    assert "CERRADA" in resumen.upper()
+    assert "$ventanaArchivo" in resumen
+    assert "$ventanaCierre" in resumen
+    assert "CERRADA" not in resumen
+    assert "ABIERTA" not in resumen

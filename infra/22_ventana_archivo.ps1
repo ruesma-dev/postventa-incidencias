@@ -31,12 +31,23 @@
     tiene codigo de salida y no se entera de si lo que pidio ha ocurrido. El
     2026-09-16 hubo que abrirla otra vez a mano; este script es la respuesta.
 
-    CADA DESPLIEGUE DEL BACKEND LA VUELVE A CERRAR. `desplegar_backend.ps1`
-    -linea 429- la fuerza a `ARCHIVO_HABILITADO=false` en cada pasada, a
-    proposito: la ventana se despliega CERRADA por si quedo encendida. Quien
-    despliega y la queria abierta TIENE QUE VOLVER A ABRIRLA A MANO, con este
+    CADA DESPLIEGUE DEL BACKEND LA VUELVE A ABRIR, DESDE EL 2026-09-23.
+    `desplegar_backend.ps1` fija `ARCHIVO_HABILITADO` en cada pasada, a
+    proposito, y desde ese dia la fija en `true` salvo que se despliegue con
+    `-VentanasCerradas`, que la cierra junto con la del ERP. Decision del
+    humano: "quiero que por defecto publique abierto, no cerrado", y a la
+    pregunta de que ventanas, "Las dos". Posventa ya usa el servicio en real.
+
+    HASTA EL 2026-09-22 ERA AL REVES: el despliegue la forzaba a `false`, y
+    quien la queria abierta tenia que volver a abrirla a mano con este
     script. Es el motivo de que el 2026-09-16 apareciera cerrada tras el
-    despliegue de las 07:33 UTC, sin que nadie la hubiera cerrado.
+    despliegue de las 07:33 UTC, sin que nadie la hubiera cerrado. Hoy la
+    consecuencia es la simetrica: quien la CIERRE con este script y quiera
+    que siga cerrada tiene que desplegar con `-VentanasCerradas`, o el
+    siguiente despliegue la vuelve a abrir.
+
+    El valor por defecto del CODIGO no cambia: sigue APAGADO en
+    `config/settings.py`. Lo que cambio es solo lo que escribe el despliegue.
 
     TRES MODOS, Y EL DE POR DEFECTO SOLO MIRA:
 
@@ -409,6 +420,7 @@ Write-Host "puede seguir sirviendo con el valor anterior. Lo que vale es que" -F
 Write-Host "/api/archivar responda 503 con la ventana cerrada, que es lo que" -ForegroundColor Yellow
 Write-Host "comprueba verificar_despliegue.ps1." -ForegroundColor Yellow
 Write-Host ""
-Write-Host "Y RECUERDA: cada despliegue del backend la vuelve a cerrar." -ForegroundColor Yellow
+Write-Host "Y RECUERDA: cada despliegue del backend la vuelve a ABRIR, salvo" -ForegroundColor Yellow
+Write-Host "que se lance con -VentanasCerradas (desde el 2026-09-23)." -ForegroundColor Yellow
 Write-Host ""
 exit 0

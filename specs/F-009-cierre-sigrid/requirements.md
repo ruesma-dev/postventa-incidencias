@@ -233,6 +233,16 @@ la escritura debe estar permitida únicamente en los entornos desplegados.
 defecto, y ese interruptor debe comprobarse **en la fábrica y en el propio
 adaptador**, de modo que componer las piezas a mano tampoco permita escribir.
 
+> **Nota del 2026-09-23 · R37 NO se enmienda, pero hay que leerlo bien.** El
+> humano decidió ese día que el despliegue publique las dos ventanas
+> **abiertas** (*«quiero que por defecto publique abierto, no cerrado»*; *«Las
+> dos»*): `desplegar_backend.ps1` fija ahora `CIERRE_HABILITADO=true` salvo con
+> `-VentanasCerradas`. Lo que R37 exige —el interruptor **apagado por defecto
+> en el código** y comprobado en la fábrica y en el adaptador— sigue intacto:
+> `config/settings.py` mantiene `default=False`. Lo que cambió es lo que el
+> **despliegue** escribe encima, y la enmienda con la premisa anterior y el
+> riesgo aceptado está bajo R33 de `specs/F-010-despliegue/requirements.md`.
+
 > R36 y R37 replican exactamente el patrón que F-006 aplicó a SharePoint
 > (`ENTORNOS_CON_ARCHIVO` + `ARCHIVO_HABILITADO`), por el mismo motivo y con la
 > misma doble comprobación.

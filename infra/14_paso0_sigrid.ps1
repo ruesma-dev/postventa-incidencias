@@ -22,8 +22,9 @@
          ese script, no este.
       3. Las App Settings, invocando `desplegar_backend.ps1 -SinPublicar`:
          las dos sensibles por referencia a Key Vault y las seis planas,
-         incluido el interruptor del cierre, que nace apagado. Sin publicar
-         codigo.
+         incluido el interruptor del cierre, que desde el 2026-09-23 nace
+         ABIERTO (decision del humano; `desplegar_backend.ps1` sin
+         `-VentanasCerradas`). Sin publicar codigo.
       4. La comprobacion que faltaba: que las referencias a Key Vault estan
          RESUELTAS. Se lee del plano de gestion de Azure, que publica el
          ESTADO de cada referencia -y su motivo de fallo- sin publicar jamas

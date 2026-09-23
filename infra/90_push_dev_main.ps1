@@ -39,7 +39,7 @@ if ($rama -ne 'dev') {
 }
 
 Write-Host "`nCommits que subiran a dev:" -ForegroundColor Cyan
-git log --oneline origin/dev..dev
+git --no-pager log --oneline origin/dev..dev
 
 # --- dev --------------------------------------------------------------------
 Write-Host "`nSubiendo dev..." -ForegroundColor Cyan

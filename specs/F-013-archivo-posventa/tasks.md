@@ -16,7 +16,7 @@
 
 ## Bloque 0 · Medir antes de escribir la regla
 
-- [ ] **T1**: crear `infra/23_destino_posventa.ps1` (URL → sitio y
+- [x] **T1**: crear `infra/23_destino_posventa.ps1` (URL → sitio y
   biblioteca, roles del token, y con `-CodigoObra` el árbol **solo de
   carpetas** obra → `PARTES INCIDENCIAS` → unidades → hoja, contando ficheros
   sin nombrarlos; IDs solo con `-MostrarIdentificadores`; `-WhatIf`) e

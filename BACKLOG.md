@@ -9,6 +9,7 @@ Resumen: **47 features**, 27 abiertas, 20 terminadas.
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
+| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 0 | spec lista | critico | `feature/F-013-archivo-posventa` |
 | F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | pendiente | estandar | `feature/F-035-portal-posventa` |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | pendiente | critico | `feature/F-036-importar-excel` |
 | F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 3 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
@@ -25,7 +26,6 @@ Resumen: **47 features**, 27 abiertas, 20 terminadas.
 | F-048 | Los datos de posventa al datamart | 14 | pendiente | estandar | `feature/F-048-datamart-posventa` |
 | F-024 | Datos del parte enlazados a Sigrid, para el datamart | 112 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 113 | pendiente | estandar | `feature/F-011-buzon-correo` |
-| F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 113 | spec lista | critico | `feature/F-013-archivo-posventa` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 114 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
 | F-015 | Evaluación del prompt de extracción contra partes reales | 115 | pendiente | critico | `feature/F-015-evaluacion-prompt` |
 | F-016 | Interpretación automática de las observaciones manuscritas | 116 | pendiente | critico | `feature/F-016-interpretacion-observaciones` |
@@ -63,6 +63,12 @@ Resumen: **47 features**, 27 abiertas, 20 terminadas.
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 134 | critico |
 
 ## Detalle
+
+### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
+
+estado **spec lista** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
+
+Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
 
 ### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
 
@@ -159,12 +165,6 @@ Conservar en nuestra base (schema postventa de psql-albaranes-rs9k2) la informac
 estado **pendiente** · prioridad 113 · rigor `estandar` · SDD sí · rama `feature/F-011-buzon-correo`
 
 Recoger automáticamente las remesas que lleguen a un buzón corporativo, reaprovechando el pipeline existente. Patrón de albaranes-email y partes-email.
-
-### F-013 · Futuro: mudar el archivo a la biblioteca de Posventa
-
-estado **spec lista** · prioridad 113 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
-
-Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
 
 ### F-014 · Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción
 

@@ -79,6 +79,6 @@ def test_f034_r28_errores_el_modulo_lo_cuenta_entre_los_409():
     Es el mapa que lee quien llega al módulo: si `CodigoNoConsta` no aparece
     ahí, el reparto 400/409/503 que el borde respeta queda incompleto.
     """
-    import domain.models.errores as errores
+    from domain.models import errores
 
     assert "CodigoNoConsta" in (errores.__doc__ or "")

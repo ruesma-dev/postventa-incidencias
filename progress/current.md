@@ -1,6 +1,36 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⛔ F-034 · BLOQUE 1 PARADO EN T3 · 2026-09-23 · hace falta decisión del humano
+>
+> **Hecho**: T1 marcada (aprobación «a, aprobado» del 2026-09-22; hoy
+> `dev...feature/F-031-nombrado-persistido` → `19 0`, F-031 entera en `dev` y
+> en esta rama) y **T2** (`CodigoNoConsta`, 409, con RED real y 7 tests).
+> `bash harness/init.sh` en verde, cobertura 4/4. Commits `34982e7`, `633a8fb`
+> y el de este informe. Nada escrito en Sigrid, SharePoint, Azure ni PG.
+>
+> **Bloqueo (spec incorrecta)**: T3 y R26 exigen que los tests de F-031 sigan
+> verdes **sin tocarlos**, y `design.md` §13 riesgo 3 manda **parar y
+> consultar** si `test_f031_alcance_cerrado.py` se pone rojo, suponiendo que
+> sus controles son de `diff`. No todos:
+> `test_f031_r29_lo_nuevo_solo_vive_en_los_cinco_ficheros_de_la_feature` corre
+> **siempre** y fija que `CodigosDelParte`, `codigos_declarados`,
+> `es_el_mismo_codigo`, `CodigosNoCoinciden`, `_codigos_guardados` y
+> `_exigir_codigos_declarados` vivan **solo** en archivo. Sonda real: crear
+> `codigos_del_parte.py` con solo la clase ya lo pone rojo. Y los Bloques 2-3
+> lo romperían igual (llevan `codigos_declarados` al gráfico y al cierre). Además
+> `test_f031_nombrado_persistido.py` importa el privado `_codigos_guardados`.
+>
+> **Propuesta (a), recomendada**: enmienda fechada «F-034» de **solo** la tabla
+> `NOMBRES_NUEVOS_Y_DONDE_VIVEN` de F-031 y del `import` de
+> `_codigos_guardados`; el control pasa a `test_f034_alcance_cerrado.py` (T13);
+> se enmiendan R26 y la verificación de T3. Ninguna regla de F-031 cambia.
+> Detalle, opciones (b)/(c) y una duda menor sobre `y_por_eso`:
+> **`progress/impl_F-034.md` §2**.
+>
+> **Queda**: T3 (tras la decisión) y los Bloques 2 a 6 (T4–T18). F-034 sigue
+> `in_progress` en `features.json` (el líder pidió no tocarlo).
+
 > ## ✅ F-031 CERRADA · 2026-09-23 · desplegada y en uso
 >
 > Review APROBADO, `init.sh` en verde, mergeada y desplegada (backend 11:01 UTC).

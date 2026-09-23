@@ -211,6 +211,16 @@
       y `archivar.py`, **solo el `import`**.
       **Verificación**: `pytest tests/test_f034_alcance_cerrado.py -q` en verde
       dentro de la rama.
+      **Hecha (2026-09-23)**: 25 passed, **ninguno saltado** dentro de la rama.
+      Hereda y amplía el control «dónde vive lo nuevo» de F-031 (decisión del
+      humano del 2026-09-23): `codigos_del_parte.py` es la única definición de
+      las cuatro piezas y solo las usan los ficheros previstos. «Solo el
+      `import`» de `paso_archivo.py` y `archivar.py` se comprueba comparando su
+      árbol sintáctico —sin prosa ni `import`— con el de la base de la rama
+      (`git merge-base dev HEAD`), deshaciendo solo la mudanza aprobada de T3.
+      Además: el código de producción tocado es **exactamente** el de
+      `design.md` §2, y del front solo `app.js` y su test. Sondas y trazas en
+      `progress/impl_F-034.md` §9.2.
 
 - [ ] **T14**: documentación — recuadro fechado en `docs/ARCHITECTURE.md`
       (pasos 7a y 7b), nota de cierre de **D-6** en

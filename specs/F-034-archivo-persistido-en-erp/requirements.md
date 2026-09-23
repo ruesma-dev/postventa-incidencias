@@ -212,6 +212,23 @@ ni de `paso_archivo`: si extrae a un módulo compartido piezas que F-031 dejó
 allí, lo hace **sin cambiar ni una regla**, y los tests de F-031 y de F-006
 quedan en verde sin tocarles el contenido.
 
+> **Enmienda del 2026-09-23 (T3), aprobada por el humano ese día** («si» a la
+> opción (a) y al §2.5 de `progress/impl_F-034.md`). «Sin tocarles el
+> contenido» no era cumplible: `test_f031_alcance_cerrado.py` tiene un control
+> que **no** depende de `git`
+> (`test_f031_r29_lo_nuevo_solo_vive_en_los_cinco_ficheros_de_la_feature`) y
+> fija en qué ficheros viven `CodigosDelParte`, `codigos_declarados`,
+> `es_el_mismo_codigo`, `CodigosNoCoinciden` y los dos privados de F-031; y
+> `test_f031_nombrado_persistido.py` importaba el privado `_codigos_guardados`.
+> Crear el módulo compartido de D-2 ya lo ponía rojo (sonda real en el
+> informe). Queda así: de esos dos ficheros se tocan **solo** la tabla
+> `NOMBRES_NUEVOS_Y_DONDE_VIVEN` con su comentario (enmienda fechada) y **solo
+> el `import`** de `_codigos_guardados`; las filas que añadan los Bloques 2 y 3
+> las ajusta cada tarea, y el control lo hereda `test_f034_alcance_cerrado.py`
+> (T13). El resto de los tests de F-031 y F-006, sin tocar. **Ninguna regla
+> cambia**, y el mensaje de `POST /api/archivar` es byte a byte el de F-031
+> (lo vigila `test_f034_r26_codigos_el_mensaje_de_archivar_es_byte_a_byte_el_de_f031`).
+
 ### 1.4 · Los errores nuevos y su código HTTP
 
 **R27.** El sistema debe traducir el conflicto de códigos a **409** en los dos

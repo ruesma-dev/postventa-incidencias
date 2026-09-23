@@ -84,8 +84,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+# F-034 · la pieza compartida con el gráfico y el cierre (D-2); ni una regla
+# de este endpoint cambia (R26).
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
-from application.pipelines.paso_archivo import CodigosDelParte, paso_archivo
+from application.pipelines.paso_archivo import paso_archivo
 from config.settings import obtener_ajustes
 from domain.models.errores import CuerpoDeArchivoInvalido
 from domain.models.extraccion import (

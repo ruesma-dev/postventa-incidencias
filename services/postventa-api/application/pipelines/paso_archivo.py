@@ -96,30 +96,40 @@ Qué cambia, y qué no:
 - las cuatro reglas del nombrado, las tres capas de idempotencia y la garantía
   de orden de F-019 **no se mueven** (R12, R14, R15): cambia de dónde salen
   las entradas, no qué se hace con ellas.
+
+## Enmienda del 2026-09-23 (F-034) · dónde vive el cotejo
+
+`CodigosDelParte` y los dos privados de F-031 —`_codigos_guardados` y
+`_exigir_codigos_declarados`— se mueven a `codigos_del_parte.py`, porque desde
+F-034 los aplican también el gráfico y el cierre, y dos copias de una regla
+divergen (decisión D-2, aprobada por el humano el 2026-09-22). **Ninguna regla
+de este paso cambia** (F-034 R26): mismo orden, mismo criterio normalizado y el
+mismo mensaje byte a byte, que aquí se completa con `_Y_POR_ESO_NO_SE_ARCHIVA`.
+`CodigosDelParte` se sigue exportando desde este módulo, porque es el tipo de
+su parámetro `codigos_declarados`.
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from datetime import datetime
 
 from domain.models.errores import (
     ArchivoFallido,
     ArchivoSinTraza,
-    CodigosNoCoinciden,
     ErrorDePersistencia,
     PersistenciaNoDisponible,
 )
-from domain.models.nombrado import (
-    DestinoArchivo,
-    componer_destino,
-    es_el_mismo_codigo,
-)
+from domain.models.nombrado import DestinoArchivo, componer_destino
 from domain.models.persistencia import EstadoArchivo, ResultadoGuardado, TrazaArchivo
 from domain.ports.archivo import ArchivoPort, ItemArchivado
 from domain.ports.persistencia import RepositorioPartesPort
 
+from application.pipelines.codigos_del_parte import (
+    CodigosDelParte,
+    codigos_guardados,
+    exigir_codigos_declarados,
+)
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.puerta_de_estado import (
     exigir_parte_aprobado,
@@ -139,24 +149,17 @@ __all__ = [
 log = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class CodigosDelParte:
-    """Los dos códigos que deciden la carpeta y el nombre del fichero.
-
-    Una pieza y no dos cadenas sueltas por lo mismo que `DestinoArchivo` es
-    una pieza: van siempre juntos y siempre en el mismo orden, y dos
-    parámetros posicionales del mismo tipo se invierten un día sin que ningún
-    test de tipos lo vea — y ese día el parte se archiva con el nombre del
-    revés.
-
-    Se usa para las **dos** cosas, y conviene no confundirlas: los guardados
-    (`_codigos_guardados`), que son los que nombran (F-031 R1), y los
-    declarados en el cuerpo de la petición, que **solo** sirven para cotejar
-    (R3) y no pueden decidir nada (R11).
-    """
-
-    codigo_obra: str
-    numero_incidencia: str
+#: F-031 R3 · la cola del 409 de códigos que no coinciden, **tal cual la
+#: escribió F-031**: desde F-034 el cotejo vive en `codigos_del_parte.py`, que
+#: pone la parte fija («<cuál> de la petición («…») no es el que consta
+#: guardado para este parte («…»), así que ») y esto la completa. El mensaje
+#: resultante es byte a byte el de antes (F-034 R26), y lo vigila
+#: `tests/test_f034_codigos_en_el_erp.py`.
+_Y_POR_ESO_NO_SE_ARCHIVA = (
+    "**no se ha archivado nada**: el nombre y la carpeta salen de lo "
+    "guardado. Hay que guardar la corrección con POST /api/parte y volver a "
+    "archivar"
+)
 
 #: Lo que se sube siempre: el PDF del parte troceado.
 MIME_PDF = "application/pdf"
@@ -270,8 +273,10 @@ def paso_archivo(
     _exigir_admitido(ctx, repositorio)
 
     # F-031 · los dos códigos, resueltos **una vez** y desde lo guardado (R1).
-    guardados = _codigos_guardados(ctx)
-    _exigir_codigos_declarados(codigos_declarados, guardados)
+    guardados = codigos_guardados(ctx)
+    exigir_codigos_declarados(
+        codigos_declarados, guardados, y_por_eso=_Y_POR_ESO_NO_SE_ARCHIVA
+    )
 
     destino = componer_destino(
         carpeta_base=carpeta_base,
@@ -531,94 +536,6 @@ def _exigir_admitido(ctx: ContextoParte, repositorio: RepositorioPartesPort) -> 
             "archiva un parte del que nadie ha emitido veredicto"
         ),
         y_por_eso="no se archiva",
-    )
-
-
-def _exigir_codigos_declarados(
-    declarados: CodigosDelParte | None, guardados: CodigosDelParte
-) -> None:
-    """Lo declarado tiene que ser lo guardado, o no se archiva (F-031 R3, R4).
-
-    Compara campo a campo con `es_el_mismo_codigo`, que normaliza los dos
-    lados con el criterio de F-032: `RS 26.09/0178` y `RS26.09/0178` son **el
-    mismo** código y no pueden dar un error (R4, decisión D-7). El front manda
-    lo que devuelve `valorDeCampo`, que solo hace `trim()`, mientras que la
-    base guarda lo que F-032 saneó al leerlo; con un cotejo literal, el caso
-    que costó un cierre a mano el 2026-09-17 sería un error diario.
-
-    Levanta nombrando **el primero que falla**, con los dos valores y con la
-    acción concreta: guardar el parte y volver a archivar. Los dos códigos
-    identifican una obra y una reclamación, no a una persona, así que pueden
-    ir en el mensaje; nada más del papel puede (R25).
-
-    Sin `declarados` no hay nada que cotejar y se sigue adelante. Eso **no**
-    abre ninguna puerta: el nombrado usa lo guardado igual, así que el camino
-    sin cotejo tampoco puede archivar con otros códigos (R11).
-
-    Dónde se llama es la mitad del requisito (R5): **antes** de la traza
-    previa y antes de tocar el puerto de archivo. A partir del paso 4 ya hay
-    una fila en `postventa.archivos` y a partir del 5 ya se habló con
-    SharePoint; un cotejo que fallara después dejaría rastro de un archivado
-    que nunca debió intentarse, y con L1 de F-033 —que corta por `hash` +
-    estado y no admite forzar el re-archivo— eso ya no se arregla desde el
-    circuito.
-
-    Y va **después** de la puerta, no antes, porque necesita la situación que
-    la puerta lee: adelantarlo obligaría a una segunda consulta (contra R2).
-    """
-    if declarados is None:
-        return
-    for etiqueta, declarado, guardado in (
-        ("el código de obra", declarados.codigo_obra, guardados.codigo_obra),
-        (
-            "el nº de incidencia",
-            declarados.numero_incidencia,
-            guardados.numero_incidencia,
-        ),
-    ):
-        if not es_el_mismo_codigo(declarado, guardado):
-            raise CodigosNoCoinciden(
-                f"{etiqueta} de la petición («{declarado}») no es el que consta "
-                f"guardado para este parte («{guardado}»), así que **no se ha "
-                f"archivado nada**: el nombre y la carpeta salen de lo guardado. "
-                f"Hay que guardar la corrección con POST /api/parte y volver a "
-                f"archivar"
-            )
-
-
-def _codigos_guardados(ctx: ContextoParte) -> CodigosDelParte:
-    """Los dos códigos que constan **guardados** de este parte (F-031 R1, R2).
-
-    Se leen de `ctx.situacion.validacion`, que la puerta de aptitud acaba de
-    dejar puesta unas líneas más arriba, y por tanto de la misma consulta que
-    ya se hacía: **ni una sentencia más** (R2). Los dos campos viajan ahí
-    desde F-030, que los necesitaba para recomponer la huella del veredicto, y
-    salen de `postventa.partes`, no de `validaciones`.
-
-    Que se lean de **ese** objeto y no de un campo propio de `SituacionParte`
-    es la decisión D-1, aprobada por el humano el 2026-09-22, y da una
-    propiedad que ningún otro camino da gratis: el fichero se nombra, byte por
-    byte, con los dos valores que la puerta **acaba de aprobar**. Dos
-    representaciones del mismo dato en el mismo objeto divergen el día que
-    alguien toque una sola.
-
-    Sin `validacion` devuelve dos cadenas vacías y **no levanta nada**: quien
-    decide que eso es un error es el nombrado, un paso más adelante, y lo dice
-    nombrando cuál de los dos falta (R7). No se añade aquí una guardia
-    inalcanzable —la puerta levanta `ParteNoApto` antes de llegar—, que es lo
-    que `nombre_admisible` ya razona en su docstring: una guardia que nadie
-    puede ejercitar es una guardia que nadie sabe si funciona.
-
-    Un único punto de lectura, con nombre, es además lo que hace que F-013 no
-    tenga que volver a decidir de dónde salen: su `resolver_destino` se llama
-    desde este mismo paso y los recibirá de aquí.
-    """
-    validacion = ctx.situacion.validacion if ctx.situacion is not None else None
-    if validacion is None:
-        return CodigosDelParte(codigo_obra="", numero_incidencia="")
-    return CodigosDelParte(
-        codigo_obra=validacion.codigo_obra,
-        numero_incidencia=validacion.numero_incidencia,
     )
 
 

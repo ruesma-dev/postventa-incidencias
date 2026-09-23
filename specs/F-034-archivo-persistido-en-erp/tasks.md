@@ -42,7 +42,7 @@
       **Hecha (2026-09-23)**: RED y verde en `progress/impl_F-034.md`; 7 tests
       `-k errores` en verde y la suite del servicio entera en verde.
 
-- [ ] **T3**: crear `application/pipelines/codigos_del_parte.py` con
+- [x] **T3**: crear `application/pipelines/codigos_del_parte.py` con
       `CodigosDelParte`, `codigos_guardados(ctx)`,
       `exigir_codigos_declarados(...)` y `exigir_codigos_completos(...)`
       (`design.md` §3.1), y hacer que `paso_archivo.py` y `archivar.py` los
@@ -53,6 +53,16 @@
       **sin tocarles el contenido**, y `pytest tests/test_f034_*.py -k codigos`
       en verde para los casos de `solo_incidencia` y de cotejo normalizado
       (R12: `RS 26.09/0178` ≡ `RS26.09/0178`, `06 26` ≡ `0626`).
+      > **Enmienda del 2026-09-23, aprobada por el humano** («si» a
+      > `progress/impl_F-034.md` §2.4 (a) y §2.5; ver el recuadro bajo R26):
+      > la verificación pasa a ser esos mismos tests en verde **tocando solo**
+      > la tabla `NOMBRES_NUEVOS_Y_DONDE_VIVEN` (y su comentario) de
+      > `test_f031_alcance_cerrado.py` y el `import` de `_codigos_guardados` de
+      > `test_f031_nombrado_persistido.py`, más un test de F-034 que exige que
+      > el mensaje de archivar sea byte a byte el de F-031. `y_por_eso` lleva
+      > la cola de cada endpoint; la parte fija del mensaje es común.
+      **Hecha (2026-09-23)**: RED y verde en `progress/impl_F-034.md`; la
+      verificación enmendada da 461 passed, 8 skipped.
 
 ## Bloque 2 · `/api/adjuntar` y `paso_grafico`
 

@@ -1,6 +1,99 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ SPEC DE F-034 APROBADA · 2026-09-22 · `spec_ready`
+>
+> **Aprobada por el humano el 2026-09-22** («a, aprobado»): **D-1 opción (a)**
+> —F-031 mergeada en `dev` (`bd8d577`) y F-034 rebasada encima— y D-2 a D-8
+> con la recomendación. **No arranca la implementación hasta que F-031 quede
+> `done`**: sus verificaciones V1 y V2 son del humano y el arnés solo admite
+> una feature `in_progress`.
+>
+> **`specs/F-034-archivo-persistido-en-erp/`** (requirements, design, tasks).
+> Rama `feature/F-034-archivo-persistido-en-erp`, creada desde `dev` (`127e457`).
+> No se ha escrito código de producción y no se ha tocado Sigrid, SharePoint,
+> Azure ni PostgreSQL.
+>
+> **Las dos mitades, medidas sobre `dev`:**
+>
+> - **A · el estado del archivo** (D-6 de F-033): `adjuntar.py:262-265` y
+>   `cerrar.py:235-238` fabrican la `TrazaArchivo` con el `estado_archivo` del
+>   cuerpo, y el front lo manda fijo (`js/pipeline.js:540` y `:631`, constante
+>   de `:158`). Detrás no hay otra puerta que mire el archivo.
+> - **B · los dos códigos** (H-1 de F-031): `paso_grafico.py:157` elige la
+>   reclamación y `:175-176` nombra el fichero; `paso_cierre.py:155` elige **qué
+>   reclamación se cierra en producción**. Las diez referencias de la ficha
+>   ampliada están verificadas una a una.
+>
+> **Lo que responde la spec, con medición:**
+>
+> - **El contrato HTTP NO cambia** (R18): mismos campos obligatorios, mismos
+>   400, un 409 más por endpoint. El front no cambia lo que manda (R31), así que
+>   backend y front se despliegan por separado y en cualquier orden
+>   (`design.md` §9).
+> - **El front SÍ se toca, en un solo punto** (R29). Hallazgo propio **H-2**:
+>   `js/app.js:866-882` (`reintentarCierre`) entra al circuito llamando a
+>   `_lanzarTanda([parte])` **sin pasar por el vaciado** que F-031 puso en
+>   `confirmarArchivo`. Es el único camino del front que llega a `/api/cerrar`
+>   sin vaciar los pendientes.
+> - **Parte sin archivar** → 409 con el `ParteNoArchivado` que ya existe, con el
+>   estado **persistido** en el mensaje. **Códigos que difieren** → 409
+>   `CodigosNoCoinciden` (la de F-031), cotejo **normalizado** (F-032), abortando
+>   **antes** de hablar con el ERP y antes de escribir ninguna traza.
+> - **Ninguna sentencia más** (R2, R10, R38): todo sale de `ctx.situacion`, que
+>   desde F-030 trae los dos códigos y desde F-033 la traza del archivo. Cero
+>   columnas, cero métodos del puerto, cero DDL.
+> - **Ventanas de escritura**: **[MEDIDO]** `adjuntar.py:163-167` y
+>   `cerrar.py:141-144` construyen los adaptadores **como argumentos**, así que
+>   `CIERRE_HABILITADO` apagado da **503 antes de cualquier puerta**. Los 409
+>   nuevos son inalcanzables en local sin inyectar los puertos, y eso cambia la
+>   verificación manual (T16).
+> - **Dry-run**: el cotejo se aplica también con `commit=false` (R14). Un dry-run
+>   que enseñara la reclamación que nombra un cuerpo que miente estaría
+>   enseñando otra cosa.
+>
+> ## ⛔ DECISIÓN QUE BLOQUEA EL ARRANQUE · D-1
+>
+> **F-031 NO está en `dev`.** `git rev-list --left-right --count
+> dev...feature/F-031-nombrado-persistido` → **`0 23`**. F-034 necesita cuatro
+> piezas suyas que en `dev` no existen: `es_el_mismo_codigo`,
+> `CodigosNoCoinciden`, `CodigosDelParte`/`_codigos_guardados` y
+> `vaciarPendientes()`.
+>
+> - **(a) recomendada**: el humano mergea `feature/F-031-nombrado-persistido` a
+>   `dev` y F-034 se rebasa encima. Es el orden que él fijó. **Coste**: espera a
+>   las dos verificaciones manuales de F-031 (T14, T15), que siguen pendientes.
+> - **(b)**: F-034 mergea esa rama dentro de la suya y las dos llegan juntas.
+>   Consigue lo mismo sin esperar a nada.
+> - **(c) no**: reescribir copias propias de las cuatro piezas.
+>
+> **El implementer no arranca hasta que el humano cierre D-1** (T1 de
+> `tasks.md`).
+>
+> ## Decisiones abiertas, con recomendación (`design.md` §11.2)
+>
+> Las siete restantes se pueden cerrar con la recomendación, pero se enseñan:
+>
+> - **D-2** · `CodigosDelParte` y su cotejo → **módulo nuevo compartido**
+>   `application/pipelines/codigos_del_parte.py` (lo aplican los tres pasos;
+>   precedente exacto: `puerta_de_estado.py`).
+> - **D-3** · `estado_archivo` del cuerpo → **sigue obligatorio y validado (400)
+>   y no decide nada**; no se coteja (un 409 ahí solo podría saltar cuando el
+>   cliente se queda corto, sin ninguna escritura que evitar) y no se retira del
+>   contrato (cambiarlo obligaría a coordinar el despliegue del front).
+> - **D-4** · «lo guardado está incompleto» → **409** con error propio
+>   `CodigoNoConsta`, no el 400 de hoy.
+> - **D-5** · ¿se toca el front? → **sí, solo `reintentarCierre`**.
+> - **D-6** · la puerta de archivo → **unificada** en `puerta_de_estado.py`
+>   (`exigir_parte_archivado`), hoy son dos copias.
+> - **D-7** · los dos `str` de los pasos → **se sustituyen** por
+>   `codigos_declarados`, no se conservan.
+> - **D-8** · cotejar además la **biblioteca** de la traza (hallazgo **H-3**:
+>   ninguna puerta la mira, un parte archivado en IT pasa igual) → **no aquí,
+>   es F-013**.
+>
+> **H-3 queda anotado para F-013**, que ya tiene abierto el asunto de las 133
+> trazas de la biblioteca de IT.
 > ## ✅ F-031 · BLOQUES 4 Y 5 HECHOS · 2026-09-22 · lista para el reviewer
 >
 > **15 de las 17 tareas cerradas.** Las dos que quedan son **T14 y T15**, las

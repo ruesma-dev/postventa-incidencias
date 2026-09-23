@@ -436,11 +436,13 @@ NOMBRES_NUEVOS_Y_DONDE_VIVEN = {
         "application/pipelines/codigos_del_parte.py",
         "application/pipelines/paso_archivo.py",
         "application/pipelines/paso_grafico.py",
+        "interface_adapters/api/adjuntar.py",
         "interface_adapters/api/archivar.py",
     },
     "codigos_declarados": {
         "application/pipelines/paso_archivo.py",
         "application/pipelines/paso_grafico.py",
+        "interface_adapters/api/adjuntar.py",
         "interface_adapters/api/archivar.py",
     },
     "codigos_guardados": {

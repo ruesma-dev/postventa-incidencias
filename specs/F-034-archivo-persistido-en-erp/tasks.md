@@ -112,7 +112,7 @@
       recorren el **borde** siguen en rojo en este commit porque el borde es
       T7; se ponen en verde en el siguiente.
 
-- [ ] **T7**: `interface_adapters/api/adjuntar.py` (pasa los códigos
+- [x] **T7**: `interface_adapters/api/adjuntar.py` (pasa los códigos
       declarados; `_como_contexto` deja de fabricar la `TrazaArchivo`) y
       `function_app.py` (los dos errores nuevos → 409 y el comentario de los
       códigos del endpoint ampliado). `design.md` §6.
@@ -120,6 +120,9 @@
       tests/test_f012_cerrar_exige_grafico.py tests/test_f034_*.py -q` en
       verde, con los casos existentes adaptados **sin relajar el cotejo** y el
       diff de tests revisado a ojo (riesgo 4 de `design.md` §13).
+      **Hecha (2026-09-23)**: 190 passed en esa verificación; suite del
+      servicio 3.147 passed, 18 skipped. Diff de tests revisado: **cero**
+      `assert` retirados; lo adaptado, en `progress/impl_F-034.md` §6.3.
 
 ## Bloque 3 · `/api/cerrar` y `paso_cierre`
 

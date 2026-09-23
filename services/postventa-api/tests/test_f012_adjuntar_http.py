@@ -59,9 +59,11 @@ from domain.models.grafico import (
 )
 from domain.models.persistencia import (
     EPOCA_SIN_DECIDIR,
+    EstadoArchivo,
     EstadoGrafico,
     PreferenciasUsuario,
     ResultadoGuardado,
+    TrazaArchivo,
     TrazaGrafico,
 )
 from interface_adapters.api.adjuntar import CAMPOS_OBLIGATORIOS, adjuntar_grafico
@@ -148,8 +150,26 @@ def _repositorio(**extra) -> RepositorioEnMemoria:
     verdad a este endpoint, el veredicto del parte ya está en la base —lo
     escribió `POST /api/parte`—, y un doble que contestara «de este parte no
     consta validación» modelaría un mundo que no existe.
+
+    **Enmienda del 2026-09-23 (F-034).** Lo mismo con el archivo y los dos
+    códigos, que desde F-034 el paso lee de lo guardado: la situación trae la
+    traza de archivo en `archivado` —la escribió `POST /api/archivar`— y el
+    veredicto apto se emite sobre **los mismos dos códigos** que declara el
+    `FORMULARIO`, que es el caso normal (el front manda lo que está guardado).
+    El cotejo no se afloja: estos casos no hablan de cuerpos que difieren, y
+    los que sí viven en `test_f034_codigos_en_el_erp.py`.
     """
-    extra.setdefault("situacion", SituacionParte(validacion=veredicto_apto(hash_parte=HASH)))
+    extra.setdefault(
+        "situacion",
+        SituacionParte(
+            validacion=veredicto_apto(
+                hash_parte=HASH,
+                codigo_obra=FORMULARIO["codigo_obra"],
+                numero_incidencia=FORMULARIO["numero_incidencia"],
+            ),
+            archivo=TrazaArchivo(hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO),
+        ),
+    )
     return RepositorioEnMemoria(**extra)
 
 

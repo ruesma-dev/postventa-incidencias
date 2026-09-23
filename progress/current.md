@@ -1,6 +1,22 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-034 DESBLOQUEADA · 2026-09-23 · decisión del humano sobre el choque de T3
+>
+> Respuesta literal: **«si»**, a las dos propuestas de `progress/impl_F-034.md`
+> §2.4 y §2.5:
+>
+> 1. **Opción (a)**: enmienda fechada y mínima de los tests de F-031. En
+>    `test_f031_alcance_cerrado.py`, **solo** la tabla
+>    `NOMBRES_NUEVOS_Y_DONDE_VIVEN` y su comentario («Enmienda del 2026-09-23
+>    (F-034)»); en `test_f031_nombrado_persistido.py`, **solo el `import`** de
+>    `codigos_guardados`. Se enmiendan también R26 y la verificación de T3. El
+>    control «dónde vive lo nuevo» lo hereda y amplía `test_f034_alcance_cerrado.py`
+>    (T13). Ninguna regla de F-031 cambia.
+> 2. **§2.5**: el mensaje de archivar no cambia ni un byte; la parte fija es
+>    común y `y_por_eso` lleva la cola de cada endpoint («no se ha adjuntado
+>    nada…», «no se ha cerrado nada…», con la acción de guardar la corrección).
+
 > ## ⛔ F-034 · BLOQUE 1 PARADO EN T3 · 2026-09-23 · hace falta decisión del humano
 >
 > **Hecho**: T1 marcada (aprobación «a, aprobado» del 2026-09-22; hoy

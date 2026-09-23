@@ -595,12 +595,11 @@
         "La consulta de la situacion no cuesta ninguna sentencia mas de las que ya costaba",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 34,
-      "branch": "feature/F-034-archivo-persistido-en-erp",
-      "blocked_by": "2026-09-23, T3: la spec choca con un control SIEMPRE activo de F-031 (test_f031_alcance_cerrado.py::test_f031_r29_lo_nuevo_solo_vive_en_los_cinco_ficheros_de_la_feature), que fija en que ficheros viven CodigosDelParte, codigos_declarados, es_el_mismo_codigo y CodigosNoCoinciden; R26 prohibe tocar los tests de F-031 y el diseno aprobado (D-2, D-7) los lleva a un modulo compartido y al grafico y al cierre. Decide el humano: progress/impl_F-034.md seccion 2.4."
+      "branch": "feature/F-034-archivo-persistido-en-erp"
     }
   ]
 }

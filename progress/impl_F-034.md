@@ -1,7 +1,14 @@
 <!-- progress/impl_F-034.md -->
-# F-034 · Informe del implementer · Bloques 1 a 5 · **HECHOS** (T1–T14)
+# F-034 · Informe del implementer · Bloques 1 a 6 · **HECHOS** (T1–T15, T18; T16 y T17 son del humano)
 
-> **Estado: Bloque 5 cerrado** (encargo del 2026-09-23). T12, T13 y T14
+> **Estado: Bloque 6 cerrado** (encargo del 2026-09-23). T15 (`97ea9d3`,
+> `d3cc9f5`) y T18 hechas: mutación **12/12 muertos, 0 supervivientes**;
+> `bash harness/init.sh` en verde (3.236 passed, cobertura 88/88). **T16 y
+> T17 son MANUAL del humano y no se han ejecutado**: guiones listos en §10.2 y
+> §10.3. **El resumen para el reviewer, con todas las desviaciones y hallazgos
+> de los seis bloques, está en §11**; las «Evidencias» vigentes, al final.
+>
+> **Estado anterior: Bloque 5 cerrado** (encargo del 2026-09-23). T12, T13 y T14
 > hechas y commiteadas (`5bd78d0`, `c377400`, `f50d0f6`); lo hecho, en **§9**.
 > `bash harness/init.sh` en verde: 3.235 passed, 28 skipped, cobertura
 > **88/88**. **Queda el Bloque 6** (T15 mutación, T16 y T17 MANUAL, T18 verde).
@@ -1492,3 +1499,359 @@ ENTORNO LISTO. Puedes trabajar.
 | Ficheros de test existentes tocados | **Cero** |
 
 Las del Bloque 4, para comparar: servicio api 3.200 passed (caché); cobertura 88/88.
+
+## 10 · Bloque 6 · Puertas de rigor y verde (T15–T18)
+
+| Tarea | Commit | Qué |
+|---|---|---|
+| **T15** | `97ea9d3`, `d3cc9f5` | Campaña de mutación: **12 generados, 12 muertos, 0 supervivientes** (vuelta 2). Un test nuevo para el superviviente de la vuelta 1 |
+| **T16** | — | **MANUAL (humano), no ejecutada.** Guion en §10.2 |
+| **T17** | — | **MANUAL (humano), no ejecutada.** Guion en §10.3 |
+| **T18** | (este cierre) | `bash harness/init.sh` en verde, §10.4 |
+
+Nada escrito en Sigrid, SharePoint, Azure ni PostgreSQL; sin DDL;
+`harness/features.json` y `azure-apps/` sin tocar. Ni una línea de producción
+en este bloque: el único cambio de código es un test.
+
+### 10.1 · T15 · la campaña de mutación
+
+Todo el detalle —comando, línea base, control, las dos vueltas, quién mata a
+cada mutante y lo que no se mide— está en **`progress/mutacion_F-034.md`**.
+Lo esencial:
+
+- **Línea base verde sin caché antes de mutar**: api `3235 passed, 18
+  skipped in 126.96s`; front Python `256 passed in 5.97s`; front JS
+  `node --test "tests_js/*.test.js"` → `322 pass, 0 fail`.
+- **Control contra muertes falsas**: la suite sin mutar, en un worktree
+  separado de `HEAD` como los de la campaña → `3229 passed, 35 skipped`.
+- **Vuelta 1**: 12 mutantes, 11 muertos, **1 superviviente**:
+  `codigos_del_parte.py:185` `strict=True` → `strict=False`, el `zip` del
+  cotejo. Equivalente con el código de hoy (las dos listas salen siempre del
+  mismo largo), pero es la garantía de que el cotejo **no se da por bueno
+  mirando menos códigos** si alguien toca `_a_mirar`. Se mata con un test
+  (`test_f034_r11_codigos_si_las_dos_listas_no_casan_falla_en_vez_de_cotejar_a_medias`),
+  con su RED contra el mutante pegada en el informe de mutación.
+- **Vuelta 2**: **12/12 muertos, 0 supervivientes, 0 timeouts**, 8 workers,
+  359,8 s. Una sonda aparte demuestra que **los doce los cazan los tests de
+  F-034 por sí solos** (tabla en el informe de mutación).
+- **El `if` de `_codigo_de_incidencia`** (H-4) no generó mutantes: sus líneas
+  no cambian respecto de `dev` (solo el docstring). El «superviviente probable»
+  que avisaban los Bloques 3 y 5 no ha llegado a existir.
+- **La campaña no muerde el JavaScript** (`js/app.js`, T11): `harness.mutacion`
+  solo muta Python. Lo sostienen los 12 tests de `reintento_vaciado.test.js`.
+- `--timeout 600` en vez de los 120 s de `rigor.json`, solo como margen: la
+  suite api tarda ya 122–127 s en solitario. No hizo falta (0 timeouts);
+  queda como aviso al líder en el informe de mutación.
+
+### 10.2 · T16 · V1 · guion para el humano (no ejecutado)
+
+**Qué pide V1**: que los dos 409 nuevos (`CodigosNoCoinciden` y
+`CodigoNoConsta`) se vean en pantalla y no tumben la tanda (R32).
+
+**Por qué no hay un guion «de pantalla» que se pueda recorrer, y qué hay en
+su lugar.** Medido leyendo el código, no supuesto:
+
+1. **En local no llega a ninguna puerta.** Con `func start`, `CIERRE_HABILITADO`
+   está apagado: `adjuntar_grafico` y `cerrar_incidencia` validan el cuerpo
+   (un cuerpo mal formado da 400) y en cuanto construyen el adaptador del ERP
+   (`construir_erp` → `infrastructure/sigrid/cliente.py:158/175`) responden
+   **503, antes de la puerta de aptitud, del cotejo y de la de archivo**.
+   Además la puerta de entorno impide escribir desde un puesto aunque se
+   encienda la variable. Un guion con `func start` no ve ningún 409 de F-034.
+2. **En la consola del navegador `api` no existe.** Lo global es `window.Api`
+   (el **módulo**, con `crearApi`), y el estado de la pantalla está en Alpine:
+   `Alpine.$data(document.querySelector('[x-data]'))` (Alpine 3.14.1 lo expone;
+   comprobado en su `cdn.min.js`). Los fragmentos de §10.3 usan eso y
+   `fetch` directo.
+3. **Desde la pantalla, ninguno de los dos 409 se puede provocar sin trucar el
+   estado.** El front compone los dos cuerpos con los mismos valores que
+   guarda, desde T11 guarda antes de reintentar el cierre, y `esCerrable` no
+   deja componer nada sin nº de incidencia. Los dos 409 son la defensa contra
+   un cuerpo que no cuadra, no un camino de la pantalla. Y **en el entorno
+   desplegado, desde el 2026-09-23 las dos ventanas están abiertas por
+   defecto**: cualquier tanda de la pantalla va con `commit` y `confirmado`
+   (R8 de F-025), así que «provocar el 409 desde la pantalla» y fallar en el
+   intento sería **escribir en Sigrid**. No se propone.
+4. **Un front local contra un backend con los puertos dobles no existe.**
+   Montarlo sería un fichero ejecutable nuevo, fuera de la lista cerrada de
+   `design.md` §2 (que T13 vigila). No se ha hecho.
+
+**Propuesta (decide el humano)**:
+
+- **(a) recomendada** · Declarar R32 cubierta por los tests y copiar aquí la
+  frase de la decisión. Lo que la cubre: en `tests_js/reintento_vaciado.test.js`,
+  `f034 R32: un 409 del cierre se pinta en el parte y el reintento no revienta`
+  y `f034 R32: en una tanda, el 409 de un parte no impide que el otro se
+  cierre`, que **ejecutan `js/app.js` de verdad** (en `node:vm`, con la API
+  doble); el pintado es el `anotarFallo` genérico de F-025 para cualquier 409,
+  que es el mismo con motivo nuevo o viejo.
+- **(b) complemento, sin riesgo** · En la misma sesión de T17 (§10.3), el
+  paso **V2-4**: la petición **sin `commit`** con otro nº de incidencia
+  devuelve el 409 de F-034 con su texto, en el entorno desplegado. Demuestra
+  el 409 de verdad, pero en la consola, no en pantalla.
+
+**Resultado real de V1**: _pendiente del humano_ (qué opción, y la frase).
+
+### 10.3 · T17 · V2 · guion para el humano (no ejecutado)
+
+**Qué pide V2**: en el entorno desplegado, con un parte que el humano
+autorice, un `/api/adjuntar` y un `/api/cerrar` **en dry-run** y comprobar
+que la reclamación y el nombre del fichero son los mismos que antes de la
+feature.
+
+**Qué escribe y qué no**, para autorizarlo sabiendo:
+
+- **En Sigrid, nada.** Sin `commit` los dos endpoints solo **leen** (la
+  reclamación y la comprobación del login, por `sigrid-api`).
+- **En la base propia, sí, una traza de dry-run**, como cualquier dry-run
+  (T12 lo midió: el dry-run de adjuntar hace `guardar_grafico` y el de cerrar
+  `guardar_cierre`, con estado `dry_run_ok`). Si el gráfico ya consta
+  `adjuntado`, adjuntar responde `ya_estaba` y **no** escribe nada.
+- **En SharePoint, nada.** No se pulsa ningún botón de la pantalla: «Archivar
+  y cerrar» y «Reintentar el cierre» van **siempre** con `commit`.
+- El paso V2-4 (el 409) **no escribe nada en ningún sitio**: T12 midió que un
+  rechazo del cotejo cuesta una sola `consultar_situacion`.
+
+**Precondiciones**
+
+- **F-034 desplegada** (el despliegue es decisión y acción del humano, fuera
+  de esta tarea). Para comparar con «antes», V2-1 a V2-3 se hacen **dos
+  veces**: una con lo desplegado hoy, **antes** de desplegar F-034, y otra
+  **después**. Los mismos fragmentos valen para las dos versiones: el cuerpo
+  no cambia (R31).
+- **Un parte autorizado por el humano** que conste en la base **aprobado,
+  archivado y sin cerrar** (un parte ya cerrado no pasa la puerta de aptitud y
+  da 409 `ParteNoApto` en las dos versiones). Anotar de él: su `hash`, su nº de
+  incidencia y su código de obra **tal como constan guardados**, y el nombre
+  de su fichero en SharePoint. De SharePoint hay que **descargar** ese PDF
+  (lo pide `/api/adjuntar`; bajar un fichero es una lectura).
+- Sesión iniciada en el front desplegado con un usuario del grupo de Posventa.
+  Si alguna petición da **503**, la ventana está cerrada (despliegue con
+  `-VentanasCerradas`): **parar**, no abrirla sin decidirlo.
+
+**V2-1 · preparar (consola del navegador, F12, pestaña del front desplegado)**
+
+```js
+const app = Alpine.$data(document.querySelector('[x-data]'));
+const yo = app.usuario;                 // lo carga la pantalla al arrancar
+console.log(yo.usuarioOid ? "sesión OK" : "SIN SESIÓN: recarga e inicia sesión");
+const BASE = window.CONFIG_POSTVENTA.baseApi;   // "/api"
+// Rellenar con lo GUARDADO del parte autorizado:
+const HASH = "<hash>";
+const INCIDENCIA = "<nº de incidencia guardado>";
+const OBRA = "<código de obra guardado>";
+```
+
+**V2-2 · `/api/cerrar` en dry-run** (no necesita el PDF):
+
+```js
+const cuerpoCierre = {
+  hash: HASH, numero_incidencia: INCIDENCIA,
+  veredicto: "apto", destino: "archivo_y_cierre", estado_archivo: "archivado",
+  usuario_oid: yo.usuarioOid,
+  ...(yo.correo ? { correo: yo.correo } : {}),   // como el front: solo si lo hay
+  // SIN commit y SIN confirmado: dry-run
+};
+const rc = await fetch(BASE + "/cerrar", { method: "POST",
+  headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpoCierre) });
+const dc = await rc.json();
+console.log(rc.status, dc.estado, dc.numero_incidencia, dc.dry_run && dc.dry_run.incidencia);
+```
+
+Qué mirar: `200`; `estado` = `dry_run_ok` (nunca `cerrado`); `numero_incidencia` y
+`dry_run.incidencia` = el código de Sigrid del nº **guardado**; `filas_afectadas`
+= 0. Anotar los cuatro valores.
+
+**V2-3 · `/api/adjuntar` en dry-run** (necesita el PDF bajado de SharePoint).
+Primero, un selector de fichero **visible** (un `click()` desde la consola
+puede no abrir el diálogo):
+
+```js
+const sel = document.createElement("input");
+sel.type = "file"; sel.accept = "application/pdf";
+document.body.prepend(sel);             // aparece arriba del todo: pulsarlo y elegir el PDF
+```
+
+Tras elegirlo:
+
+```js
+const pdf = sel.files[0];
+const fd = new FormData();
+fd.append("fichero", pdf, pdf.name);
+fd.append("hash", HASH);
+fd.append("codigo_obra", OBRA);
+fd.append("numero_incidencia", INCIDENCIA);
+fd.append("veredicto", "apto");
+fd.append("destino", "archivo_y_cierre");
+fd.append("estado_archivo", "archivado");
+fd.append("usuario_oid", yo.usuarioOid);
+if (yo.correo) fd.append("correo", yo.correo);
+// SIN commit y SIN confirmado: dry-run
+const ra = await fetch(BASE + "/adjuntar", { method: "POST", body: fd });
+const da = await ra.json();
+console.log(ra.status, da.estado, da.numero_incidencia, da.dry_run);
+```
+
+Qué mirar: `200`; `estado` = `dry_run_ok` (o `adjuntado` con
+`dry_run.ya_estaba`, ver abajo); `filas_afectadas` = 0; en `dry_run`, `incidencia` = el
+código de Sigrid del nº guardado y `nombre_fichero` = el nombre con el que se
+subiría el gráfico. Si el gráfico ya constaba adjuntado, `dry_run.ya_estaba`
+es `true` y el nombre sale de la traza. Anotar `incidencia` y
+`nombre_fichero`.
+
+**Comparación**: los valores de V2-2 y V2-3 **antes** y **después** de
+desplegar F-034 tienen que ser **idénticos**. Si ya no hay «antes» (F-034 ya
+desplegada), lo que se comprueba es que `incidencia` es el nº guardado y que
+`nombre_fichero` lleva la obra y el nº guardados.
+
+**V2-4 · el 409 nuevo, sin escribir nada (solo con F-034 desplegada)**. Mismo
+cuerpo del cierre con **otro** nº de incidencia (uno inventado que no sea el
+guardado):
+
+```js
+const r409 = await fetch(BASE + "/cerrar", { method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ ...cuerpoCierre, numero_incidencia: "RS00.00/0000" }) });
+console.log(r409.status, (await r409.json()).error);
+```
+
+Qué mirar: `409` y el texto «el nº de incidencia de la petición
+(«RS00.00/0000») no es el que consta guardado para este parte («…»), así que
+**no se ha cerrado nada** en el ERP…». Con la versión de **antes**, este paso
+**no se hace**: el dry-run leería la reclamación `RS00.00/0000`, que es
+justo el defecto que F-034 cierra (no escribe, pero no aporta nada).
+
+Al terminar: `sel.remove()` o recargar la página. Si el caso de H-5 (estilos de
+separador, §7.5) se diera —un 409 de V2-4 **también** con el nº bueno en V2-2
+o V2-3—, anotarlo tal cual: sería la prueba de que el cuerpo y lo guardado no
+salen del mismo saneo.
+
+**Lo que sí se ha comprobado de este guion sin salir de local.** Los cuerpos
+de V2-2 y V2-3 llevan las mismas claves y los mismos valores fijos
+(`veredicto`, `destino`, `estado_archivo`) que `cuerpo_de_cierre` y
+`formulario` de `tests/utiles_circuito.py`, con los que los tests del borde
+obtienen `200` y `estado == "dry_run_ok"` (p. ej.
+`test_f034_archivo_persistido.py:310` y `:479`) y el 409 con el texto de
+V2-4. `destino` es un valor de `Destino` (`archivo_y_cierre`), validado por
+`_exigir_cuerpo`. `window.CONFIG_POSTVENTA`, `Alpine.$data` y
+`app.usuario` salen de leer `js/config.js`, `js/app.js` e `index.html`. **Lo
+que no se ha podido comprobar** es el navegador contra el entorno desplegado:
+eso es V2.
+
+**Resultado real de V2**: _pendiente del humano_ (los valores de antes y
+después, y el 409 de V2-4).
+
+### 10.4 · T18 · verde (traza real)
+
+`bash harness/init.sh` (tal cual), con T15 commiteada (`d3cc9f5`):
+
+```
+[OK] features.json válido
+[OK] BACKLOG.md al día
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+62 passed in 7.96s
+[OK] pytest en verde (con medición de cobertura)
+3236 passed, 28 skipped in 181.98s (0:03:01)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-034-archivo-persistido-en-erp
+ENTORNO LISTO. Puedes trabajar.
+```
+
+3.236 = los 3.235 del Bloque 5 + el test nuevo de T15. El front sale de caché
+en `init.sh`, pero se reejecutó sin caché al empezar el bloque (256 passed y
+`node --test` 322/322, §10.1) y su árbol no ha cambiado desde entonces. Los
+181,98 s de la suite (frente a ~142 s en bloques anteriores) son de la misma
+suite con la máquina cargada justo después de la campaña; no hay tests nuevos
+lentos (el añadido tarda 2 s).
+
+### 10.5 · Qué queda fuera y qué falta
+
+- **T16 y T17, del humano**, con su guion en §10.2 y §10.3. En `tasks.md`
+  siguen `[ ]` con una nota que apunta aquí.
+- Para el líder: el tope de 120 s por mutante de `rigor.json` ya es menor que
+  la suite `api` (§10.1), la nota de `azure-apps` al desplegar y la frase de
+  F-030 §10.7 (§9.3).
+
+## 11 · Resumen para el reviewer · los seis bloques
+
+### 11.1 · Qué cambió
+
+`/api/adjuntar` y `/api/cerrar` **deciden con lo guardado**: «consta
+archivado» sale de la traza guardada (puerta compartida
+`exigir_parte_archivado`, mitad A: R1–R7) y los dos códigos con los que se
+escribe en el ERP salen de la validación guardada (mitad B: R8–R17), con un
+**cotejo en el punto 1 bis** contra lo que declara el cuerpo —antes de
+cualquier traza y de hablar con el ERP, también en dry-run— y un 409 nuevo
+(`CodigosNoCoinciden`, reutilizado de F-031, y `CodigoNoConsta`, nuevo). El
+cierre coteja solo el número (R16). Las piezas de F-031 se mudan a
+`codigos_del_parte.py` y archivar las importa de ahí **sin cambiar ninguna
+regla** (R26). En el front, «Reintentar el cierre» **guarda y espera** antes
+de lanzar el circuito (R29–R33, cierra H-2). Código de producción tocado:
+exactamente los 11 ficheros de `design.md` §2 (T13 lo vigila).
+
+### 11.2 · Desviaciones respecto de la spec (todas justificadas en su sección)
+
+| # | Bloque | Desviación | Quién la decidió | Dónde |
+|---|---|---|---|---|
+| 1 | B1 | **R26 y la verificación de T3 enmendadas**: el control R29 de F-031 (sin `git`, siempre activo) congelaba dónde viven las piezas que F-034 existe para mover; se enmendó **solo** su tabla `NOMBRES_NUEVOS_Y_DONDE_VIVEN` y el `import` de `test_f031_nombrado_persistido.py`. `design.md` §13 riesgo 3 («no debería») era falso | **Humano**, 2026-09-23 («si» a §2.4 (a) y §2.5) | §2, §5 |
+| 2 | B1 | Mensajes: parte fija común + `y_por_eso` con la cola de cada endpoint; en archivar, byte a byte el de F-031 (con test). `CodigoNoConsta` lleva la acción en la parte fija: **asimetría deliberada** con su hermana | Humano (§2.5) y este implementer | §5.2 |
+| 3 | B2 | `tests/utiles_circuito.py` (utillería de tests) no estaba en la lista de `design.md` §2.1 | Implementer | §6.3 |
+| 4 | B2, B3 | Commits intermedios de T6 (`5291b51`) y T9 (`d3bccda`) con los tests del **borde** en rojo: la firma del paso cambia en una tarea y el borde en la siguiente; verde en `bc9a6ce` y `2a6efc4` | Implementer (orden de `tasks.md`) | §6.6, §7.6 |
+| 5 | B3 | **H-4**: un nº de incidencia guardado sin ningún tramo (`/`) es lo guardado incompleto → 409 `CodigoNoConsta` en gráfico y cierre (antes: 400 con un texto falso, y en `/cerrar` **cerraba** la reclamación del cuerpo). Sin parámetro nuevo (nadie lo apagaría); archivar intacto, con test. Enmienda fechada en `design.md` §4.2 | **Líder**, 2026-09-23, dentro de D-4 | §6.5, §7.4 |
+| 6 | B3 | Una expectativa cambiada en un test existente: `test_f009_r47_…` pasa de 400 `CuerpoDeCierreInvalido` a 409 `CodigoNoConsta` (es R15/D-4); lo que vigila —no se pregunta al ERP— sigue. En `test_f028_puertas.py`, `_ha_pasado` funde dos ramas (2 `assert` retirados, 1 añadido, ninguno aflojado). `test_f009_r48` deja el `pendiente` en la base | Implementer | §7.3 |
+| 7 | B4 | Una línea más que el boceto de `design.md` §7.1 (`this.avisoArchivo = ""`), con test; el aviso del reintento es el de F-031 («No se ha archivado nada…»); tests de JS **por ejecución** de `app.js` en `node:vm`; `node --test tests_js` (carpeta) no funciona con Node 24, se usa el patrón | Implementer | §8.1–§8.3 |
+| 8 | B5 | T12 cuenta **todas** las llamadas al repositorio, no solo las dos lecturas, con la lista medida en `dev`. T13 es una **lista cerrada** de producción (más estricta que F-031/F-033); «solo el `import`» de `paso_archivo.py` se comprueba por árbol sintáctico deshaciendo la mudanza aprobada; T13 incluye los `CAMPOS_OBLIGATORIOS` | Implementer | §9.1, §9.2 |
+| 9 | B5 | Recuadros de documentación fechados el **2026-09-23** (la spec proponía 2026-09-22); notas «desde el despliegue de F-034» junto al riesgo aceptado en cuatro documentos | Implementer / **líder** (las notas) | §9.3 |
+| 10 | B6 | Campaña con `--timeout 600` (la suite ya pasa de los 120 s); test nuevo para el superviviente `strict=True` en vez de declararlo equivalente; T13 marcada `[x]` en `tasks.md` (se quedó sin marcar en el B5) | Implementer | §10.1 |
+| 11 | B6 | **T16 y T17 no ejecutadas** (MANUAL, humano). Para V1 no hay guion de pantalla recorrible y se propone declarar R32 cubierta por tests (§10.2) | Pendiente del **humano** | §10.2, §10.3 |
+
+### 11.3 · Hallazgos
+
+| Id | Estado | Qué |
+|---|---|---|
+| **H-1** | Cerrado por F-034 | Nota de cierre en F-031 `design.md` §8 (§9.3) |
+| **H-2** | Cerrado por F-034 (T11) | El reintento del cierre salía con la corrección sin guardar; ahora guarda y espera (§8) |
+| **H-3** | Abierto, para **F-013** | La puerta de archivo mira el estado de la traza, no su biblioteca (`drive_id`); anotado en `progress/current.md` |
+| **H-4** | **Cerrado por decisión del líder** | Ver fila 5 de §11.2. Consecuencia: el `if` de `_codigo_de_incidencia` es inalcanzable; se conserva como última guarda; la campaña no lo muta (línea sin cambios) |
+| **H-5** | Abierto, para reviewer y humano | El cotejo (`es_el_mismo_codigo`, R12 de F-031) no iguala estilos de separador: `RS26.08 - 0123` ≠ `RS26.08/0123` aunque Sigrid los vea iguales. Lado seguro (un 409 de más, nunca otra reclamación); en el circuito real cuerpo y guardado salen del mismo saneo. Se vería en V2 (§7.5, §10.3) |
+| **H-6** | Abierto, para reviewer y humano | Corregir un campo de un parte `adjuntado` lo pasa a `listo` y esconde «Reintentar el cierre» (F-026/F-012, anterior a F-034; T11 solo lo adelanta). El parte no se pierde: lo recoge «Archivar y cerrar» (§8.4) |
+| D-6 (F-033) | Cerrado por F-034 | Nota en F-033 `design.md` §10 |
+| — | Para el líder | `azure-apps/postventa_incidencias.md:406-409` necesitará la nota al desplegar (no se ha tocado); F-030 `design.md` §10.7 dice que H-1 «sigue abierto»; el tope de 120 s de `rigor.json` < suite `api`; la puerta de cobertura pasó de 86 a 88 líneas entre dos ejecuciones sin cambios de `.py` (no investigado; las dos al 100 %) |
+
+### 11.4 · Qué se verificó y con qué resultado
+
+- **RED con traza real** en todos los requisitos centrales: T2 (§1.1), T3
+  (§5.3), T4 (39 fallos, §6.1), T8 (37 fallos, §7.1, incluido **el cierre de la
+  reclamación del cuerpo** visto de frente), T11 (5 fallos, §8.2), T12 (medido
+  en `dev`, §9.1), T13 (sondas, §9.2) y el test de T15 contra su mutante.
+- **Verde**: `bash harness/init.sh` → api 3.236 passed, 28 skipped; raíz 62;
+  front 256 y JS 322/322 (sin caché, §10.1); cobertura de líneas cambiadas
+  **88/88**; mutación **12/12 muertos**.
+- **Nada** escrito en Sigrid, SharePoint, Azure ni PostgreSQL en ningún
+  bloque; sin DDL; `harness/features.json` y `azure-apps/` sin tocar.
+
+### 11.5 · Qué falta para cerrar
+
+1. **T16 (V1)**: decisión del humano entre (a) y (b) de §10.2, y su frase aquí.
+2. **T17 (V2)**: el guion de §10.3 en el entorno desplegado con un parte
+   autorizado; resultado real aquí. Requiere desplegar F-034 (y, para el
+   «antes», hacer V2-1 a V2-3 **antes** de desplegar).
+3. Veredicto del reviewer contra `CHECKPOINTS.md`, y las decisiones sobre H-5
+   y H-6.
+
+## Evidencias · finales (Bloque 6)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh`: servicio api **3.236 passed, 28 skipped** (181,98 s); raíz **62 passed** (7,96 s); front en verde (caché). Sin caché al empezar el bloque: api 3.235 passed, 18 skipped (126,96 s); front **256 passed** (5,97 s); JS **322 pass, 0 fail** (1,38 s). Tests de F-034 en Python: **170** (44 + 91 + 10 + 25), ninguno saltado en la rama; en JS, 12 |
+| Cobertura de líneas cambiadas | `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88, umbral 80%, nivel critico)`. Solo Python: el arnés no mide cobertura de JS (las dos ramas del `if (!vaciado.ok)` tienen test) |
+| Mutación | `python -m harness.mutacion --feature F-034 --base dev --workers 8 --timeout 600` → **12 generados, 12 muertos, 0 supervivientes, 0 timeouts** (359,8 s, 8 workers), tras una vuelta 1 con 1 superviviente matado por un test nuevo. Informe completo en `progress/mutacion_F-034.md`. No muta JS |
+| Tiempo de la suite | api 181,98 s en `init.sh` (máquina cargada tras la campaña); 126,96 s sin caché y sin `coverage` al empezar el bloque; 122,43 s en el worktree de control |
+| `ruff` | 61 avisos, la deuda previa (ni uno nuevo); el test tocado, `All checks passed!` y formateado |
+| Verificaciones MANUAL | **T16 y T17 pendientes del humano** (guiones en §10.2 y §10.3) |
+
+Las del Bloque 5, para comparar: 3.235 passed (142,38 s); cobertura 88/88;
+mutación no lanzada.

@@ -1,6 +1,42 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 · BLOQUE 6 HECHO · 2026-09-23 · siguiente: T16 y T17 (humano) y reviewer
+>
+> **T15 y T18 cerradas** (`97ea9d3`, `d3cc9f5` y el commit de cierre). Ni una
+> línea de producción en este bloque: el único cambio de código es un test.
+>
+> - **T15** · línea base verde **sin caché** antes de mutar (api 3.235, front
+>   256, JS 322/322) y control del worktree sin mutar (verde). Vuelta 1: 12
+>   mutantes, **1 superviviente** (`strict=True` del `zip` del cotejo,
+>   equivalente con el código de hoy), matado con un test de «fallar cerrado»
+>   con RED contra el mutante. Vuelta 2: **12/12 muertos, 0 supervivientes,
+>   0 timeouts** (8 workers, `--timeout 600`); los doce los cazan los tests de
+>   F-034 solos. El `if` de `_codigo_de_incidencia` (H-4) **no generó
+>   mutantes** (línea sin cambios). **La campaña no muta el JS.** Informe:
+>   `progress/mutacion_F-034.md`.
+> - **T16 y T17 · MANUAL del humano, sin ejecutar.** Guiones en
+>   `progress/impl_F-034.md` §10.2 y §10.3, pensados para recorrerse: por
+>   consola con `fetch`, `window.CONFIG_POSTVENTA` y `Alpine.$data` (`api` no es
+>   global), en el **entorno desplegado** (en local `func start` da 503 antes de
+>   las puertas). **V1**: se propone declarar R32 cubierta por tests (ningún 409
+>   nuevo se provoca desde la pantalla sin trucar el estado, y la tanda va
+>   siempre con `commit` con las ventanas abiertas); complemento: V2-4, el 409
+>   por consola. **V2**: dry-runs de cerrar y adjuntar antes y después de
+>   desplegar F-034, con un parte autorizado aprobado, archivado y sin cerrar;
+>   no escribe en Sigrid, **sí** deja la traza `dry_run_ok` en la base propia.
+> - **T18** · `bash harness/init.sh` en verde: **3.236 passed**, 28 skipped,
+>   cobertura **88/88**.
+> - T13 estaba `[ ]` en `tasks.md` pese a estar hecha: marcada.
+>
+> **Para el líder**: `rigor.json` tiene 120 s por mutante y la suite `api` ya
+> tarda 122–127 s sola (candidato a `arnes-base`); siguen la nota de
+> `azure-apps` al desplegar y la frase de F-030 §10.7. H-5 y H-6, abiertos.
+>
+> **Resumen para el reviewer (desviaciones y hallazgos de los seis bloques):
+> `progress/impl_F-034.md` §11.** Nada escrito en ningún sistema; sin DDL;
+> `features.json` y `azure-apps/` sin tocar.
+
 > ## ✅ F-034 · BLOQUE 5 HECHO · 2026-09-23 · siguiente: Bloque 6 (mutación, MANUAL y verde)
 >
 > **T12, T13 y T14 cerradas** (`5bd78d0`, `c377400`, `f50d0f6`). Ni una línea

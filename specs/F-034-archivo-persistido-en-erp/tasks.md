@@ -266,6 +266,13 @@
       front local contra un backend con los puertos dobles, o aceptar que R32
       queda cubierta por los tests de `node --test` y declararlo. El resultado
       real se copia a `progress/impl_F-034.md`.
+      **Guion listo (2026-09-23), sin ejecutar**: `progress/impl_F-034.md`
+      §10.2. Propone la segunda salida (declarar R32 cubierta por los tests
+      de `reintento_vaciado.test.js`), porque desde la pantalla ninguno de los
+      dos 409 se puede provocar sin trucar el estado y, con las ventanas
+      abiertas por defecto desde el 2026-09-23, la tanda de la pantalla va
+      siempre con `commit`; y, como complemento sin riesgo, el paso V2-4 de
+      T17 (el 409 en el entorno desplegado, por consola). Decide el humano.
 
 - [ ] **T17**: **Verificación: MANUAL (humano)** · V2 de `design.md` §12. En el
       entorno desplegado y **solo con un parte que el humano autorice**: un
@@ -274,5 +281,13 @@
       enseña el dry-run son los mismos que antes de la feature. **No escribe
       nada en el ERP**: el dry-run es una lectura. El resultado real se copia a
       `progress/impl_F-034.md`.
+      **Guion listo (2026-09-23), sin ejecutar**: `progress/impl_F-034.md`
+      §10.3 (V2-1 a V2-4, con fragmentos de consola que usan `fetch`,
+      `window.CONFIG_POSTVENTA` y `Alpine.$data`; `api` no es global). Aviso:
+      el dry-run no escribe en Sigrid pero **sí** deja la traza `dry_run_ok` en
+      la base propia.
 
-- [ ] **T18**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T18**: Ejecutar `bash harness/init.sh` en verde.
+      **Hecha (2026-09-23)**: 3.236 passed, 28 skipped; raíz 62 passed;
+      front en verde; `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas
+      cubiertas (88/88)`. Traza en `progress/impl_F-034.md` §10.4.

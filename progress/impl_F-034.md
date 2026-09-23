@@ -1,20 +1,27 @@
 <!-- progress/impl_F-034.md -->
-# F-034 · Informe del implementer · Bloque 1 · **HECHO** (T1–T3)
+# F-034 · Informe del implementer · Bloques 1 y 2 · **HECHOS** (T1–T7)
 
 > Rama `feature/F-034-archivo-persistido-en-erp`. Rigor `critico`. Fecha:
-> 2026-09-23. Encargo: **solo el Bloque 1** (T2–T3) y marcar T1.
+> 2026-09-23. Dos encargos: el **Bloque 1** (T2–T3, y marcar T1) y el
+> **Bloque 2** (T4–T7, `/api/adjuntar` y `paso_grafico`).
 >
-> **Estado: Bloque 1 cerrado.** T1, T2 y T3 hechas y commiteadas
-> (`34982e7`, `633a8fb`, `75cb5ac`). T3 estuvo **bloqueada** por el choque de
-> §2 y se desbloqueó con la decisión del humano del 2026-09-23 («si» a §2.4
-> (a) y a §2.5), transcrita en `progress/current.md` (commit `6186da1`). Lo
-> hecho en T3, en §5. `bash harness/init.sh` en verde. **Bloque 2 sin tocar.**
+> **Estado: Bloque 2 cerrado.** T4 (RED), T5, T6 y T7 hechas y commiteadas
+> (`0e48a8d`, `de054ef`, `5291b51`, `bc9a6ce`); lo hecho, en §6.
+> `bash harness/init.sh` en verde (3.147 passed, cobertura 69/69). Un hallazgo
+> para decidir antes o dentro del Bloque 3: **H-4** (§6.5). **Queda el
+> Bloque 3** (`/api/cerrar`, T8–T10) y los Bloques 4–6.
+>
+> Bloque 1: T1, T2 y T3 (`34982e7`, `633a8fb`, `75cb5ac`). T3 estuvo
+> **bloqueada** por el choque de §2 y se desbloqueó con la decisión del humano
+> del 2026-09-23 («si» a §2.4 (a) y a §2.5), transcrita en
+> `progress/current.md` (commit `6186da1`); lo hecho en T3, en §5.
 >
 > No se ha tocado Sigrid, SharePoint, Azure ni PostgreSQL. Sin DDL. No se ha
 > tocado `harness/features.json`.
 >
 > Las secciones §1–§4 son el informe del primer encargo, tal cual se escribió
-> al bloquear; §5 y las «Evidencias» del final son las vigentes.
+> al bloquear; §5 es el cierre del Bloque 1; §6 el Bloque 2. Las
+> «Evidencias» vigentes son **las últimas** del fichero.
 
 ## 1 · Lo hecho
 
@@ -433,3 +440,177 @@ ruta HTTP de verdad, con solo decir `estado_archivo=archivado` en el cuerpo.
 Los 42 que pasan en RED son los 31 del Bloque 1 más 11 que **tienen** que
 pasar antes y después: los dos controles positivos, R12 (dos), R17, R20, R24,
 R35, R6 obligatorio (dos) y R2.
+
+### 6.2 · Qué cambió en producción (T5–T7)
+
+| Tarea | Commit | Fichero | Cambio |
+|---|---|---|---|
+| T4 | `0e48a8d` | (solo tests) | Fase RED, §6.1 |
+| T5 | `de054ef` | `application/pipelines/puerta_de_estado.py` | Función nueva `exigir_parte_archivado(ctx, *, y_por_eso)`: lee `ctx.situacion.archivo` y **nunca** `ctx.archivo`; sin situación → «ninguno» y 409 (no `AttributeError`). Mensaje `este parte no consta archivado (estado del archivo: {estado}), así que {y_por_eso}`, que con la cola de cada paso es byte a byte el de las dos copias. Enmienda fechada en la cabecera. `exigir_parte_aprobado` **sin tocar** (R20) |
+| T6 | `5291b51` | `application/pipelines/paso_grafico.py` | Firma: `numero_incidencia: str` y `codigo_obra: str` **desaparecen**; entra `codigos_declarados: CodigosDelParte \| None = None` (D-7). Punto **1 bis** nuevo, `_codigos_con_los_que_se_escribe(ctx, declarados)`: `codigos_guardados` → `exigir_codigos_completos` → `exigir_codigos_declarados`, y devuelve los **guardados**. `_exigir_archivado` borrado; en su lugar `exigir_parte_archivado` de `puerta_de_estado`. `_codigo_de_incidencia` y `componer_peticion` reciben `guardados.numero_incidencia` / `guardados.codigo_obra` (R8). Tres colas `_Y_POR_ESO_*` como constantes con nombre. Enmienda fechada en la cabecera y docstring de la función con el 1 bis |
+| T7 | `bc9a6ce` | `interface_adapters/api/adjuntar.py` | `_como_contexto(contenido, *, hash_parte)` ya **no** fabrica `TrazaArchivo` (R4); el handler pasa `codigos_declarados=CodigosDelParte(codigo_obra, numero_incidencia)` tal cual vinieron. `CAMPOS_OBLIGATORIOS` y `_exigir_cuerpo` **sin tocar**: `estado_archivo` sigue obligatorio y validado (R6, R17, R18). Enmienda fechada en la cabecera; docstring del handler con los dos 409 nuevos. Import de `TrazaArchivo` retirado |
+| T7 | `bc9a6ce` | `function_app.py` | `CodigosNoCoinciden` y `CodigoNoConsta` en el `except` de **409** de `adjuntar` (al log va el tipo, R36); `CodigoNoConsta` importado; docstring de la ruta ampliado. El `except` de `cerrar` **no se ha tocado** (Bloque 3) |
+
+Orden resultante de `paso_grafico` (`design.md` §4.1): aptitud → **1 bis
+códigos** → **archivo (guardado)** → fichero → traza local → login →
+reclamación (con el **guardado**) → evaluar / dry-run / traza → commit.
+
+### 6.3 · Tests: qué se añadió y qué se adaptó (riesgo 4, revisado a ojo)
+
+**Nuevos**
+
+- `tests/utiles_circuito.py` — utillería (§6.1). **No estaba en la lista de
+  ficheros de `design.md` §2.1**: la añado porque el Bloque 3 necesita el mismo
+  mundo para `/api/cerrar`, y dos copias del mundo divergirían. Solo tests.
+- `tests/utiles_pg.py::con_el_archivo_guardado(repositorio, ctx)` — hermana de
+  `con_el_veredicto_guardado`, con sus mismas dos reglas (no inventa una traza;
+  no pisa la que el caso haya puesto en la situación). Con
+  `RepositorioComoLaBase` la traza entra por `guardar_archivo`, como en la base
+  de verdad. **No** la usan los tests que vigilan la puerta (los de F-034
+  separan las dos fuentes a mano).
+- `tests/test_f034_archivo_persistido.py` — 28 tests (13 `-k puerta`).
+- `tests/test_f034_codigos_en_el_erp.py` — 22 tests nuevos (53 en el fichero).
+
+**Adaptados** (los que llamaban a `paso_grafico` con los dos `str` o esperaban
+que el archivo saliera de `ctx.archivo`). **Cero `assert` retirados**
+(`git diff 4781f37 -- services/postventa-api/tests | grep -cE '^-\s*assert'`
+→ `0`) y ninguno aflojado:
+
+| Fichero | Adaptación |
+|---|---|
+| `test_f012_paso_grafico.py` | El veredicto del contexto lleva `codigo_obra=OBRA`, `numero_incidencia=INCIDENCIA` (los guardados); `_adjuntar` añade `con_el_archivo_guardado` y declara `CodigosDelParte(OBRA, INCIDENCIA)`. El caso R15 de F-012 (sin archivo / `pendiente` / `error`) sigue dando `ParteNoArchivado`, ahora desde lo guardado |
+| `test_f012_logs_sin_datos_personales.py` | Igual que el anterior |
+| `test_f025_sin_dry_run_previo.py` | Igual, **solo** en el ayudante del gráfico; el del cierre no se toca (Bloque 3) |
+| `test_f026_puertas.py` | Solo la llamada: `codigos_declarados=CodigosDelParte(OBRA, INCIDENCIA)`. El caso sale por `ParteNoApto` antes del cotejo, como antes |
+| `test_f028_puertas.py` | `_adjuntar` añade `con_el_archivo_guardado` y **no declara** códigos (`None`, `design.md` §4.2: estos casos no hablan de cuerpos). `_ha_pasado` para el gráfico exige ahora **exactamente** `[CODIGO_GUARDADO_EN_SIGRID]` (`a_codigo_de_sigrid` del nº guardado del material de ejemplo, `RS26.08/0123`) en vez del del cuerpo: es el cambio de R8 visto desde F-028. Para el cierre sigue `CODIGO_EN_SIGRID` **hasta el Bloque 3** |
+| `test_f030_veredicto_persistido.py` | `_puerta_del_grafico` añade `con_el_archivo_guardado` y no declara códigos. **El veredicto no se toca**: el fichero sigue separando a mano sus dos fuentes |
+| `test_f030_circuito_borde_a_borde.py` | Ayudante nuevo `_con_el_archivo_ya_guardado(base)`, gemelo de `_con_el_grafico_ya_adjuntado`, usado solo en `test_f030_r5_…` |
+| `test_f012_adjuntar_http.py` | `_repositorio`: el veredicto apto se emite sobre **los dos códigos del `FORMULARIO`** y la situación trae la traza `archivado` |
+| `test_f031_alcance_cerrado.py` | **Solo filas** de `NOMBRES_NUEVOS_Y_DONDE_VIVEN`, bajo la nota de enmienda que ya existía (autorizado): `paso_grafico.py` en `CodigosDelParte`, `codigos_declarados`, `codigos_guardados` y `exigir_codigos_declarados`; `adjuntar.py` en `CodigosDelParte` y `codigos_declarados`. El comentario, sin tocar |
+
+### 6.4 · Decisiones de diseño (dentro de lo aprobado)
+
+1. **En 1 bis, «completos» va antes que «declarados».** Con un código guardado
+   vacío y un cuerpo que trae otro, R15 pide decir **cuál falta** y que hay que
+   teclearlo; con el cotejo primero saldría `CodigosNoCoinciden` («guarda la
+   corrección»). Lo fija `test_f034_r15_adjuntar_sin_codigo_guardado_…`.
+2. **1 bis antes que la puerta de archivo** (`design.md` §4.1): con los códigos
+   cruzados y sin archivo, sale `CodigosNoCoinciden`. Lo fija
+   `test_f034_r13_adjuntar_el_cotejo_va_antes_que_la_puerta_de_archivo`.
+3. **Mensajes del gráfico** (parte fija común, cola en `y_por_eso`, decisión
+   del humano del 2026-09-23 sobre §2.5):
+   - `CodigosNoCoinciden`: «… así que **no se ha adjuntado nada** al ERP: la
+     reclamación y el nombre del fichero salen de lo guardado. Hay que guardar
+     la corrección con POST /api/parte y volver a adjuntar» (paralelo exacto
+     del de archivar);
+   - `CodigoNoConsta`: «no consta guardado <cuál> de este parte, así que
+     **no se ha adjuntado nada** al ERP: hay que teclearlo en el parte y
+     guardarlo (POST /api/parte) antes de volver a intentarlo»;
+   - `ParteNoArchivado`: byte a byte el de antes.
+4. **`codigos_declarados` va tal cual vino** (sin `strip`): el cotejo ya
+   normaliza (R12) y así el espía de R8 ve lo que mandó el cliente.
+5. **Los tests de puerta de F-028/F-030 no declaran códigos** (`None`), como
+   ya hacía F-031 con `paso_archivo` en esos mismos ficheros. El cotejo está
+   probado donde toca (F-034) y con controles positivos.
+
+### 6.5 · Hallazgo para el reviewer y el humano (no cambiado)
+
+**H-4 · `_codigo_de_incidencia` sigue siendo alcanzable y su mensaje ya no es
+cierto.** `design.md` §4.2 lo da por «imposible por construcción» tras
+`exigir_codigos_completos`. **No lo es**: un nº de incidencia **guardado** que
+sea **solo separadores** (p. ej. `/`) pasa `exigir_codigos_completos`
+(`normalizar_codigo("/")` = `"/"`, no vacío), y `a_codigo_de_sigrid("/")`
+devuelve `""`, así que se llega a `CuerpoDeCierreInvalido` → **400** con el
+texto «la petición no trae el número de incidencia…», que ahora miente (el
+número sale de lo guardado). Ocurre **antes** del login y sin tocar el ERP
+(solo la consulta de la traza local), así que es **seguro**; lo que falla es la
+clasificación (400 en vez de 409) y el texto. No lo he cambiado porque el
+diseño dice conservarlo y cambiarlo tocaría el criterio compartido de «falta»
+(el de `normalizar_codigo`) o el texto de un 400 que también usa
+`paso_cierre`. Queda escrito en el docstring de `_codigo_de_incidencia`.
+Propuesta, si se quiere cerrar: que `exigir_codigos_completos` considere
+también «sin ningún tramo» (`tramos_de_codigo`) para la incidencia; afecta al
+Bloque 3 igual, así que conviene decidirlo antes.
+
+### 6.6 · Verde (traza real)
+
+F-034 entero, desde `services/postventa-api`:
+
+```
+$ .venv/Scripts/python.exe -m pytest tests/test_f034_archivo_persistido.py tests/test_f034_codigos_en_el_erp.py -q -p no:cacheprovider
+81 passed in 3.63s
+```
+
+Las cuatro centrales de §6.1, mismo comando que en RED:
+
+```
+....                                                                     [100%]
+4 passed in 2.21s
+```
+
+Verificaciones de cada tarea:
+
+- T5: `pytest tests/test_f034_archivo_persistido.py -k puerta` → 12 de 13 al
+  cerrar T5 (el 13.º, «el gráfico usa la compartida», es de T6; hoy 13/13);
+  `pytest tests/test_f028_*.py tests/test_f030_*.py -q` → `498 passed, 2 skipped`.
+- T6/T7: `pytest tests/test_f030_circuito_borde_a_borde.py tests/test_f026_puertas.py
+  tests/test_f012_cerrar_exige_grafico.py tests/test_f034_archivo_persistido.py
+  tests/test_f034_codigos_en_el_erp.py tests/test_f012_adjuntar_http.py -q` →
+  `190 passed in 4.69s`.
+
+**Nota honesta sobre el commit de T6** (`5291b51`): cambia la firma del paso y
+sus tests de paso, pero el borde se recablea en T7, así que en ese commit los
+tests de F-034 que recorren `/api/adjuntar` (y `test_f012_adjuntar_http.py`)
+están en rojo con `TypeError: paso_grafico() got an unexpected keyword argument
+'numero_incidencia'`. Se ponen en verde en el commit siguiente (`bc9a6ce`), que
+es sobre el que corre `init.sh`.
+
+`bash harness/init.sh` (tal cual), al cerrar el bloque:
+
+```
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+62 passed in 7.09s
+[OK] pytest en verde (con medición de cobertura)
+3147 passed, 28 skipped in 143.38s (0:02:23)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 69 líneas cambiadas cubiertas (69/69, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-034-archivo-persistido-en-erp
+ENTORNO LISTO. Puedes trabajar.
+```
+
+### 6.7 · Qué queda fuera y qué falta
+
+- **`/api/cerrar` sigue con el defecto** hasta el Bloque 3: `paso_cierre` mira
+  `ctx.archivo` y elige la reclamación con el `numero_incidencia` del cuerpo, y
+  `cerrar._como_contexto` sigue fabricando la `TrazaArchivo`. Es lo más grave
+  de la feature (qué reclamación se **cierra**) y es T8–T10. Esta rama **no se
+  puede desplegar** así: adjuntar y cerrar tendrían reglas distintas.
+- **Bloque 3 tendrá que**: añadir `paso_cierre.py` y `cerrar.py` a las filas
+  de la tabla de F-031; pasar `_ha_pasado` de `test_f028_puertas.py` a
+  `CODIGO_GUARDADO_EN_SIGRID` también para el cierre (y revisar el gemelo en
+  `test_f030_veredicto_persistido.py`); usar `con_el_archivo_guardado` en los
+  ayudantes de cierre (F-025, F-028, F-030) y
+  `_con_el_archivo_ya_guardado` en `test_f030_r6_…`; y reutilizar
+  `tests/utiles_circuito.py` (hará falta un `MundoDelCierre` o ampliar el
+  actual).
+- Decidir **H-4** (§6.5) antes o dentro del Bloque 3.
+- Bloques 4 a 6 (front, alcance/documentación, mutación y MANUAL), sin
+  empezar. `test_f034_alcance_cerrado.py` (T13) tendrá que admitir
+  `tests/utiles_circuito.py` y `utiles_pg.py` como tocados.
+- `azure-apps/postventa_incidencias.md`: sin tocar (T14 lo comprueba).
+- Nada escrito en Sigrid, SharePoint, Azure ni PostgreSQL; sin DDL; sin tocar
+  `harness/features.json`.
+
+## Evidencias · vigentes al cerrar el Bloque 2 (T4–T7)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | `bash harness/init.sh`: servicio api **3.147 passed, 28 skipped** (143,38 s); raíz 62 passed (7,09 s); front en verde (caché, árbol sin cambios). Tests de F-034: **81** (28 + 53), en verde |
+| Cobertura de líneas cambiadas | `PUERTA COBERTURA: 100.0% de 69 líneas cambiadas cubiertas (69/69, umbral 80%, nivel critico)` |
+| Mutación | **No lanzada**: es T15 (Bloque 6), sobre la feature entera. Lanzarla por bloques contaría dos veces `codigos_del_parte.py` y `puerta_de_estado.py`, que el Bloque 3 vuelve a ejercitar desde el cierre |
+| Tiempo de la suite | 143,38 s el servicio api dentro de `init.sh` |
+| `ruff` | 61 avisos, la deuda previa (ni uno nuevo); los ficheros tocados, limpios (`ruff check` → `All checks passed!`) |
+| Asserts retirados en tests existentes | **0** |
+
+Las del Bloque 1, para comparar: 3.097 passed (150,47 s); cobertura 43/43.

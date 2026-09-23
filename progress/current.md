@@ -1,6 +1,30 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-034 · BLOQUE 2 HECHO · 2026-09-23 · siguiente: Bloque 3 (`/api/cerrar`)
+>
+> **T4 (RED), T5, T6 y T7 cerradas** (`0e48a8d`, `de054ef`, `5291b51`,
+> `bc9a6ce`). `POST /api/adjuntar` ya decide **con lo guardado**: la puerta de
+> archivo compartida `exigir_parte_archivado` (en `puerta_de_estado.py`) lee
+> `ctx.situacion.archivo` y nunca `ctx.archivo`; `paso_grafico` coteja en
+> **1 bis** (completos → declarados) antes de hablar con nadie, también en
+> dry-run, y busca la reclamación y compone el nombre con los códigos
+> **guardados**; la firma pierde `numero_incidencia`/`codigo_obra` y gana
+> `codigos_declarados`; el borde ya no fabrica la `TrazaArchivo`; los dos
+> errores nuevos son 409. RED con traza real (39 fallos) y verde: 81 tests de
+> F-034. Tests existentes adaptados con **cero `assert` retirados**; tabla de
+> F-031 ampliada **solo en filas** (autorizado). `bash harness/init.sh` en
+> verde: 3.147 passed, cobertura **69/69**. Nada escrito en Sigrid,
+> SharePoint, Azure ni PG; sin DDL.
+>
+> **Queda**: **Bloque 3** (T8–T10, `/api/cerrar` y `paso_cierre`, lo más grave:
+> qué reclamación se **cierra**). Hasta entonces la rama **no es desplegable**:
+> adjuntar y cerrar tienen reglas distintas. Pendiente de decidir (humano o
+> reviewer) antes o dentro del Bloque 3: **H-4**, un nº guardado de solo
+> separadores todavía llega al 400 de `_codigo_de_incidencia` con un texto que
+> ya no es cierto (seguro, sin tocar el ERP). Luego Bloques 4–6 (T11–T18).
+> Informe: **`progress/impl_F-034.md`** §6.
+
 > ## ✅ F-034 · BLOQUE 1 HECHO · 2026-09-23 · siguiente: Bloque 2
 >
 > **T1, T2 y T3 cerradas** (`34982e7`, `633a8fb`, `75cb5ac`). T3: módulo nuevo

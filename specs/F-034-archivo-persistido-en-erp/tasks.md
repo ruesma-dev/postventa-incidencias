@@ -201,7 +201,7 @@
       rechazos nuevos, `DID NOT RAISE` allí. Trazas en
       `progress/impl_F-034.md` §9.1.
 
-- [ ] **T13**: `tests/test_f034_alcance_cerrado.py` (R39), con el patrón de
+- [x] **T13**: `tests/test_f034_alcance_cerrado.py` (R39), con el patrón de
       `test_f033_alcance_cerrado.py` —control de `diff` con sus tres guardas
       **más** un control que no dependa de `git`—: `sentencias.py`, `mapeo.py`,
       `repositorio_pg.py`, `domain/ports/persistencia.py`,
@@ -244,12 +244,19 @@
 
 ## Bloque 6 · Puertas de rigor y verde
 
-- [ ] **T15**: campaña de mutación sobre lo cambiado
+- [x] **T15**: campaña de mutación sobre lo cambiado
       (`python -m harness.mutacion --feature F-034`), con **cero
       supervivientes** sin justificación escrita; informe en
       `progress/mutacion_F-034.md` con el nº de workers.
       **Verificación**: el informe existe, está completado y no deja ningún
       superviviente sin analizar.
+      **Hecha (2026-09-23)**: línea base verde sin caché (api 3.235, front
+      256, JS 322). Vuelta 1: 12 mutantes, 1 superviviente (`strict=True` del
+      cotejo, equivalente con el código de hoy), matado con un test de
+      «fallar cerrado» (`97ea9d3`, RED contra el mutante). Vuelta 2: **12
+      generados, 12 muertos, 0 supervivientes**, 8 workers, 0 timeouts. Los
+      doce los cazan los tests de F-034 por sí solos. La campaña **no muta el
+      JS** (T11). Detalle en `progress/mutacion_F-034.md`.
 
 - [ ] **T16**: **Verificación: MANUAL (humano)** · V1 de `design.md` §12. Que
       los dos 409 nuevos se ven en pantalla y **no tumban la tanda**. Atención:

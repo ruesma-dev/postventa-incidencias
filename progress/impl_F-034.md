@@ -949,4 +949,4 @@ ENTORNO LISTO. Puedes trabajar.
 
 Las del Bloque 2, para comparar: 3.147 passed (143,38 s); cobertura 69/69.
 
-Última ejecución de `bash harness/init.sh`, ya con el informe commiteado (`9734c35`): 3.200 passed, 28 skipped (158,31 s); `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88)`. La diferencia con 86/86 es el recuento de líneas del commit de documentación, no un cambio de código.
+Última ejecución de `bash harness/init.sh`, ya con el informe commiteado (`9734c35`): 3.200 passed, 28 skipped (158,31 s); `PUERTA COBERTURA: 100.0% de 88 líneas cambiadas cubiertas (88/88)`. Entre las dos ejecuciones no cambió ningún `.py` (`git diff 2a6efc4 -- '*.py'` vacío); la primera se lanzó con T10 todavía sin commitear. No he investigado por qué el recuento de la puerta pasa de 86 a 88 líneas; las dos veces, al 100 %.

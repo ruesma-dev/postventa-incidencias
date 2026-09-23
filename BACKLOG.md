@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **33 features**, 14 abiertas, 19 terminadas.
+Resumen: **47 features**, 28 abiertas, 19 terminadas.
 
 ## Trabajo abierto
 
@@ -23,6 +23,20 @@ Resumen: **33 features**, 14 abiertas, 19 terminadas.
 | F-027 | Acelerar la suite: cachear el barrido del repositorio en los tests de arquitectura | 23 | pendiente | estandar | `feature/F-027-suite-barrido-cacheado` |
 | F-029 | Dos scripts de infra/ no arrancan: el defecto de comillas de PowerShell 5.1 | 29 | pendiente | estandar | `feature/F-029-scripts-infra-comillas` |
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 34 | spec lista | critico | `feature/F-034-archivo-persistido-en-erp` |
+| F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 35 | pendiente | estandar | `feature/F-035-portal-posventa` |
+| F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 36 | pendiente | critico | `feature/F-036-importar-excel` |
+| F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 37 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
+| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 38 | pendiente | critico | `feature/F-038-bandeja-revision` |
+| F-039 | Propuesta del industrial al crear la incidencia | 39 | pendiente | critico | `feature/F-039-propuesta-industrial` |
+| F-040 | Volcar a Sigrid las incidencias aprobadas | 40 | pendiente | critico | `feature/F-040-volcado-sigrid` |
+| F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 41 | pendiente | critico | `feature/F-041-ficha-incidencia` |
+| F-042 | No procede: justificación obligatoria y email al cliente | 42 | pendiente | critico | `feature/F-042-no-procede-email` |
+| F-043 | Operaciones en bloque sobre incidencias | 43 | pendiente | critico | `feature/F-043-operaciones-bloque` |
+| F-044 | Imprimir partes en bloque a PDF o impresora con la plantilla de posventa | 44 | pendiente | estandar | `feature/F-044-impresion-bloque` |
+| F-045 | Registrar un parte sin firma: la incidencia pasa a TER, no a CER | 45 | pendiente | critico | `feature/F-045-parte-sin-firma` |
+| F-046 | Coste de la posventa desde la obra POSTV2 | 46 | pendiente | critico | `feature/F-046-coste-postv2` |
+| F-047 | Vincular incidencias con la proforma, el coste y la venta | 47 | pendiente | critico | `feature/F-047-incidencia-proforma` |
+| F-048 | Los datos de posventa al datamart | 48 | pendiente | estandar | `feature/F-048-datamart-posventa` |
 
 ## Terminadas
 
@@ -133,6 +147,90 @@ DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO AR
 estado **spec lista** · prioridad 34 · rigor `critico` · SDD sí · rama `feature/F-034-archivo-persistido-en-erp`
 
 Hallazgo D-6 de la spec de F-033 (design.md seccion 10), 2026-09-18, dado de alta por decision del humano ese mismo dia. adjuntar.py (lineas 262-265) y cerrar.py (lineas 235-238) construyen la TrazaArchivo con el estado_archivo que llega EN EL CUERPO, y el front lo manda FIJO a archivado (pipeline.js:540 y :631). Consecuencia: la puerta del grafico no tiene otra detras que mire el archivo de verdad, y un parte aprobado pero sin archivar se adjuntaria al ERP de produccion. Es la misma familia de defecto que F-030 (el veredicto del cuerpo) y F-031 (el nombrado del cuerpo): la fuente tiene que ser lo persistido. AMPLIADA el 2026-09-22 por decision del humano con el hallazgo H-1 de la spec de F-031: no es solo el estado_archivo, son tambien los dos codigos, y esa mitad es MAS GRAVE porque el numero de incidencia elige la reclamacion que se cierra en Sigrid. Orden decidido por el humano: F-033 -> F-031 -> F-034 -> F-013. F-033 ya trae la traza del archivo dentro de la consulta de situacion, que es lo que esta ficha deberia leer.
+
+### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
+
+estado **pendiente** · prioridad 35 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal.
+
+### F-036 · Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión
+
+estado **pendiente** · prioridad 36 · rigor `critico` · SDD sí · rama `feature/F-036-importar-excel`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Primera vía de entrada. El humano pasará un Excel de ejemplo y un correo con los pasos de cómo se crea hoy una incidencia. Se valida el fichero, se marcan duplicados y las filas quedan en una bandeja, sin tocar Sigrid.
+
+### F-037 · Entrada desde la web de clientes: el contrato con el proyecto independiente
+
+estado **pendiente** · prioridad 37 · rigor `critico` · SDD sí · rama `feature/F-037-entrada-web-clientes`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). La WEB DE CLIENTES es un PROYECTO INDEPENDIENTE (recomendación del líder del 2026-09-23: usuarios externos, otro acceso y otra exposición); tendrá su repositorio y su documento en azure-apps. Esta ficha es solo nuestra mitad: el contrato por el que la web deja incidencias en la MISMA bandeja que el Excel de F-036.
+
+### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
+
+estado **pendiente** · prioridad 38 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid.
+
+### F-039 · Propuesta del industrial al crear la incidencia
+
+estado **pendiente** · prioridad 39 · rigor `critico` · SDD sí · rama `feature/F-039-propuesta-industrial`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Criterio del humano (2026-09-23): se proponen los industriales que HAN HECHO ESE TIPO DE TRABAJO EN ESA OBRA. El usuario puede cambiarlo. Lectura de Sigrid por sigrid-api.
+
+### F-040 · Volcar a Sigrid las incidencias aprobadas
+
+estado **pendiente** · prioridad 40 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre.
+
+### F-041 · Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid
+
+estado **pendiente** · prioridad 41 · rigor `critico` · SDD sí · rama `feature/F-041-ficha-incidencia`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Desde el portal se gestiona la incidencia igual que en Sigrid. Escritura en el ERP; puede necesitar endpoints nuevos en sigrid-api.
+
+### F-042 · No procede: justificación obligatoria y email al cliente
+
+estado **pendiente** · prioridad 42 · rigor `critico` · SDD sí · rama `feature/F-042-no-procede-email`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Si el usuario pasa una incidencia a NO PROCEDE, la app pide una justificación y envía un email al cliente. Buzón de envío por decidir; para pruebas, el de dev. Requiere permiso de envío de correo para la aplicación.
+
+### F-043 · Operaciones en bloque sobre incidencias
+
+estado **pendiente** · prioridad 43 · rigor `critico` · SDD sí · rama `feature/F-043-operaciones-bloque`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Cambiar estado, asignar industrial y demás operaciones sobre varias incidencias a la vez.
+
+### F-044 · Imprimir partes en bloque a PDF o impresora con la plantilla de posventa
+
+estado **pendiente** · prioridad 44 · rigor `estandar` · SDD sí · rama `feature/F-044-impresion-bloque`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Plantilla de referencia del humano: postventa_17-12-2025.pdf en su OneDrive (Documentos/postventa). Se convierte con markitdown a docs/referencia en la spec, preguntando antes si lleva datos personales; el PDF original no se versiona.
+
+### F-045 · Registrar un parte sin firma: la incidencia pasa a TER, no a CER
+
+estado **pendiente** · prioridad 45 · rigor `critico` · SDD sí · rama `feature/F-045-parte-sin-firma`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Amplía el circuito de cierre ya hecho: forzar el registro de un parte sin firma deja la incidencia en TER en vez de CER. Escritura en el ERP.
+
+### F-046 · Coste de la posventa desde la obra POSTV2
+
+estado **pendiente** · prioridad 46 · rigor `critico` · SDD sí · rama `feature/F-046-coste-postv2`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). POSTV2 es la obra de Sigrid donde se gestiona el coste de posventa; CADA OBRA (promoción) ES UN CAPÍTULO de POSTV2. Lectura por sigrid-api.
+
+### F-047 · Vincular incidencias con la proforma, el coste y la venta
+
+estado **pendiente** · prioridad 47 · rigor `critico` · SDD sí · rama `feature/F-047-incidencia-proforma`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). En algún punto del proceso la incidencia se relaciona con la proforma; con eso se vinculan coste y venta a cada incidencia. El momento y el campo exactos los investiga la spec.
+
+### F-048 · Los datos de posventa al datamart
+
+estado **pendiente** · prioridad 48 · rigor `estandar` · SDD sí · rama `feature/F-048-datamart-posventa`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Decisión del humano (2026-09-23): todos los datos del ciclo de posventa van al datamart para cruzarlos. Relación con F-024 (datos del parte enlazados a Sigrid). Cruza la frontera del proyecto: el datamart es de datamart-seg-anual; se coordina vía azure-apps.
 
 ### F-001 · Esqueleto del monorepo y /health
 

@@ -16,13 +16,20 @@
 
 ## Bloque 0 · Parada obligatoria
 
-- [ ] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §11.2 y
+- [x] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §11.2 y
       esperar respuesta. **Bloquea el arranque D-1** (cómo llega F-031 a esta
       rama: `git rev-list --left-right --count dev...feature/F-031-nombrado-persistido`
       → `0 23`, es decir, F-031 **no está en `dev`**). Las demás —D-2 a D-8— se
       pueden cerrar con la recomendación, pero se enseñan igual.
       **Verificación**: la respuesta del humano queda transcrita, literal y
       fechada, en `progress/current.md`. Sin ella, **no se toca código**.
+      **Hecha (2026-09-23)**: el humano aprobó la spec el 2026-09-22 con
+      **«a, aprobado»** —D-1 opción (a) y D-2 a D-8 con la recomendación—,
+      transcrito en el bloque de F-034 de `progress/current.md`. El `0 23` se
+      midió antes del merge; hoy el mismo comando da **`19 0`**: F-031 no tiene
+      ningún commit fuera de `dev` (`bd8d577` es ancestro de `dev`), y
+      `git merge-base --is-ancestor feature/F-031-nombrado-persistido HEAD`
+      confirma que está entera en esta rama.
 
 ## Bloque 1 · Las piezas compartidas
 

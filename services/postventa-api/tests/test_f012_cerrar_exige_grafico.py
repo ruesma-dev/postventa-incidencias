@@ -480,9 +480,18 @@ def _respuesta_del_borde(traza: TrazaGrafico | None) -> dict:
         },
         erp=ErpEnMemoria(_reclamacion()),
         # F-030 · el veredicto lo lee la puerta de la base, no del cuerpo.
+        # F-034 · y el archivo y el nº de incidencia, también: el veredicto se
+        # emite sobre el nº que declara el cuerpo y la traza de archivo consta.
         repositorio=RepositorioEnMemoria(
             traza_grafico=traza,
-            situacion=SituacionParte(validacion=veredicto_apto(hash_parte=HASH)),
+            situacion=SituacionParte(
+                validacion=veredicto_apto(
+                    hash_parte=HASH, numero_incidencia=INCIDENCIA
+                ),
+                archivo=TrazaArchivo(
+                    hash_parte=HASH, estado=EstadoArchivo.ARCHIVADO
+                ),
+            ),
         ),
         usuarios=Usuarios(),
         preferencias=Preferencias(),

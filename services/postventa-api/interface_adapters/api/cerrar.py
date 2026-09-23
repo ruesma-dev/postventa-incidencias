@@ -62,6 +62,31 @@ F-006 dejó anotada la decisión D4 que esta feature paga.
 validándose** contra las enumeraciones de F-004: el contrato HTTP no cambia y
 un valor desconocido sigue siendo un 400 (R19, D6 de F-030). Lo que ya no
 hacen es decidir nada.
+
+## El archivo y el nº de incidencia tampoco: se leen de lo guardado
+
+**Enmienda del 2026-09-23 (F-034).** Hasta hoy este endpoint decidía con dos
+campos más del cuerpo, y los dos decidían una escritura en el ERP de
+producción:
+
+- `estado_archivo`: `_como_contexto` fabricaba con él una `TrazaArchivo` y la
+  puerta del paso la miraba a ella. El front lo manda **fijo** a `archivado`,
+  así que un parte apto y sin archivar se cerraba con solo decirlo;
+- `numero_incidencia`: elegía **qué reclamación se cierra**. Un cuerpo con
+  otro número cerraba otra reclamación, y un cierre en Sigrid no se deshace
+  desde este circuito.
+
+Desde F-034 (`specs/F-034-archivo-persistido-en-erp/`) el contexto sale de aquí
+**sin traza de archivo** y el paso lee la guardada; y el número viaja al paso
+dentro de `codigos_declarados`, que **solo coteja**: si no es el guardado, 409
+y no se toca el ERP (R9, R11, R19). El cuerpo sigue sin traer `codigo_obra` y
+esta feature no lo añade (R16): en el cierre solo se coteja el número. Los dos
+campos **siguen siendo obligatorios y siguen validándose** —un campo que falta
+o un `estado_archivo` desconocido es el 400 de siempre—: el contrato HTTP no
+cambia (R6, R17, R18). Lo que cambia es para qué sirven: el número, para
+cotejar; `estado_archivo`, **para nada**, porque manda lo guardado y un cuerpo
+que se quede corto no es un conflicto (R7). Se queda en el contrato para no
+obligar a desplegar el front a la vez (`design.md` §9, D-3).
 """
 
 from __future__ import annotations
@@ -70,12 +95,13 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
+from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
 from application.pipelines.paso_cierre import paso_cierre
 from config.settings import obtener_ajustes
 from domain.models.cierre import PlanDeCierre
 from domain.models.errores import CuerpoDeCierreInvalido
-from domain.models.persistencia import EstadoArchivo, TrazaArchivo, TrazaGrafico
+from domain.models.persistencia import EstadoArchivo, TrazaGrafico
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, Veredicto
 from domain.ports.erp import ErpPort
@@ -117,6 +143,7 @@ def cerrar_incidencia(
     """Ejecuta el dry-run —y, si procede, el cierre— y devuelve la respuesta.
 
     Levanta `CuerpoDeCierreInvalido` (→ 400), `ParteNoApto`,
+    `CodigosNoCoinciden`, `CodigoNoConsta`,
     `ParteNoArchivado`, `ReclamacionNoLocalizada`, `EstadoDeCierreNoResoluble`,
     `EstadoNoCerrable`, `UsuarioSigridNoMapeado`, `UsuarioSigridInexistente` y
     `EstadoCambiadoDesdeElDryRun` (→ 409), `CierreDeshabilitado`,
@@ -146,7 +173,13 @@ def cerrar_incidencia(
         confirmado=_bandera(datos.get("confirmado")),
         usuario_oid=str(datos["usuario_oid"]).strip(),
         correo=str(datos.get("correo") or "").strip(),
-        numero_incidencia=str(datos["numero_incidencia"]),
+        # F-034 · lo que **afirma** quien llama, tal cual vino: solo coteja
+        # contra lo guardado, que es con lo que el paso elige la reclamación
+        # (R9, R19). Sin obra: el cuerpo de `/cerrar` no la trae y el paso
+        # coteja solo el número (R16).
+        codigos_declarados=CodigosDelParte(
+            codigo_obra="", numero_incidencia=str(datos["numero_incidencia"])
+        ),
         ahora=ahora if ahora is not None else datetime.now(UTC),
     )
     return _serializar(contexto)
@@ -209,33 +242,32 @@ def _bandera(valor: Any) -> bool:
 def _como_contexto(datos: Mapping[str, Any]) -> ContextoParte:
     """Reconstruye el contexto mínimo que necesita el paso de cierre.
 
-    El estado del archivo llega en el cuerpo y **se vuelve a comprobar** dentro
-    del paso, exactamente igual que si viniera de dentro. El **veredicto ya
-    no**: se va sin rellenar y lo lee la puerta del paso, de la base, porque
-    este endpoint no recibe la extracción y no puede emitirlo (F-030; la
-    enmienda está arriba y el porqué largo en `archivar.py`).
+    El `hash`, y **nada más**. El **veredicto** se va sin rellenar y lo lee la
+    puerta del paso, de la base, porque este endpoint no recibe la extracción
+    y no puede emitirlo (F-030; la enmienda está arriba y el porqué largo en
+    `archivar.py`). Y desde F-034 **tampoco la traza de archivo**: el paso la
+    lee de la base, y fabricarla aquí con el `estado_archivo` del cuerpo
+    volvería a dejar un objeto con un estado que no ha salido de ninguna
+    lectura, esperando a que alguien lo use (R4). La segunda fuente
+    desaparece, no se tapa.
 
     De la extracción **no se reconstruye nada**: el paso de cierre no la
-    necesita —el número de incidencia llega aparte— y pedirla obligaría al
-    front a reenviar el DNI y las observaciones manuscritas del cliente en cada
-    cierre, que es justo el dato que no debe viajar de más (R51).
+    necesita —el número con el que se cierra sale de lo guardado— y pedirla
+    obligaría al front a reenviar el DNI y las observaciones manuscritas del
+    cliente en cada cierre, que es justo el dato que no debe viajar de más
+    (R51).
 
     Y los bytes del PDF tampoco: este endpoint no sube nada.
     """
-    hash_parte = str(datos["hash"]).strip()
     return ContextoParte(
         parte=ParteTroceado(
-            hash=hash_parte,
+            hash=str(datos["hash"]).strip(),
             origen="",
             paginas_origen=(),
             modo_deteccion=ModoDeteccion.UNA_PAGINA_POR_PARTE,
             contenido=b"",
         ),
         validacion=None,
-        archivo=TrazaArchivo(
-            hash_parte=hash_parte,
-            estado=EstadoArchivo(datos["estado_archivo"]),
-        ),
     )
 
 

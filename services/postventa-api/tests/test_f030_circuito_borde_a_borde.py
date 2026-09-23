@@ -538,7 +538,9 @@ def test_f030_r6_el_parte_aprobado_llega_al_dry_run_del_cierre():
     es lo primero que hace el paso, antes de hablar con el ERP. Y **nada se
     cierra**: el cuerpo pide un ensayo.
     """
-    base = _con_el_grafico_ya_adjuntado(_base_con_el_parte_aprobado())
+    base = _con_el_grafico_ya_adjuntado(
+        _con_el_archivo_ya_guardado(_base_con_el_parte_aprobado())
+    )
     erp = ErpEnMemoria(_reclamacion())
 
     respuesta = _cerrar(base, erp)

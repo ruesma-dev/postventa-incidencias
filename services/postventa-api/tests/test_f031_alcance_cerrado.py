@@ -438,6 +438,7 @@ NOMBRES_NUEVOS_Y_DONDE_VIVEN = {
         "application/pipelines/paso_cierre.py",
         "application/pipelines/paso_grafico.py",
         "interface_adapters/api/adjuntar.py",
+        "interface_adapters/api/cerrar.py",
         "interface_adapters/api/archivar.py",
     },
     "codigos_declarados": {
@@ -445,6 +446,7 @@ NOMBRES_NUEVOS_Y_DONDE_VIVEN = {
         "application/pipelines/paso_cierre.py",
         "application/pipelines/paso_grafico.py",
         "interface_adapters/api/adjuntar.py",
+        "interface_adapters/api/cerrar.py",
         "interface_adapters/api/archivar.py",
     },
     "codigos_guardados": {

@@ -155,12 +155,16 @@
       en rojo en este commit porque el borde es T10; se ponen en verde en el
       siguiente.
 
-- [ ] **T10**: `interface_adapters/api/cerrar.py` y su `except` de
+- [x] **T10**: `interface_adapters/api/cerrar.py` y su `except` de
       `function_app.py`, igual que T7.
       **Verificación**: `pytest tests/test_f009_cerrar_http.py
       tests/test_f012_cerrar_exige_grafico.py tests/test_f034_*.py -q` en
       verde, incluidos los dos tests que fijan la semántica de
       `estado_archivo` (`design.md` §6.1).
+      **Hecha (2026-09-23)**: esa verificación en verde; suite del servicio
+      3.200 passed, 28 skipped; cobertura de líneas cambiadas 86/86. Tests del
+      borde adaptados (F-009, F-012, F-030) y filas de `cerrar.py` en la tabla
+      de F-031: detalle en `progress/impl_F-034.md` §7.3.
 
 ## Bloque 4 · El front
 

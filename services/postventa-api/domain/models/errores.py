@@ -73,6 +73,15 @@ guardado**. Tiene nombre propio y no se recicla `ParteNoApto` porque los dos
 son 409 y llevan a acciones opuestas: aquél se arregla decidiendo sobre el
 parte, éste **guardando la corrección** y volviendo a archivar.
 
+El de los **códigos guardados incompletos** (F-034) es uno solo,
+`CodigoNoConsta` (→ 409), y cae del mismo lado: la petición está bien formada
+y lo que está incompleto es **lo guardado** —falta el número de incidencia, o
+en `/api/adjuntar` el código de obra, con el que habría que escribir en el
+ERP—. No es el 400 de `CuerpoDeCierreInvalido`, que mandaría a quien lo lee a
+mirar su cuerpo, ni `CodigosNoCoinciden`, que se arregla guardando una
+corrección que aquí no existe: se arregla **tecleando el código** en el parte
+y guardándolo.
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
@@ -401,6 +410,50 @@ class CodigosNoCoinciden(Exception):
     obra y una reclamación, no a una persona, así que pueden salir; el DNI,
     las observaciones, la descripción, la unidad y la promoción, no. Un 409
     que no dijera cuál de los dos falla obligaría a mirar la base a mano.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CodigoNoConsta(Exception):
+    """Lo guardado no trae el código con el que habría que escribir (F-034, R15).
+
+    Desde F-034, `POST /api/adjuntar` localiza la reclamación y nombra el
+    fichero con el `codigo_obra` y el `numero_incidencia` **guardados**, y
+    `POST /api/cerrar` elige con el `numero_incidencia` guardado **qué
+    reclamación se cierra en el ERP de producción**. Si el que hace falta está
+    vacío en la base, esto es lo que sale, y **no** se sustituye por el que
+    traiga el cuerpo: eso volvería a dejar que el cuerpo decidiera (R19). Se
+    levanta antes de hablar con el ERP y antes de escribir ninguna traza.
+
+    ## En qué se diferencia de sus hermanas de 409
+
+    Las cuatro son 409 y las cuatro dejan el ERP sin tocar, pero cada una
+    manda a quien la lee **a un sitio distinto** (R28), y por eso son cuatro
+    errores y no uno:
+
+    - `CodigosNoCoinciden` (F-031) · **lo declarado no es lo guardado**. Se
+      arregla guardando la corrección (`POST /api/parte`) y reintentando. Aquí
+      no hay ninguna corrección que guardar: lo guardado está vacío.
+    - `CodigoNoConsta` (este) · **lo guardado está incompleto**. Se arregla
+      tecleando el código que falta en el parte y guardándolo.
+    - `ParteNoArchivado` (F-009) · **el parte no consta archivado**. Se
+      arregla archivando primero (`POST /api/archivar`).
+    - `NombradoImposible` (F-006) · **el nombre compuesto no vale para
+      SharePoint**: el código guardado lleva un carácter que no se admite. Se
+      arregla corrigiendo ese carácter. Sigue alcanzable desde
+      `/api/adjuntar` para ese caso y solo para ese (R24): el del código vacío
+      lo corta este error antes, con el mismo nombre en los dos endpoints, en
+      vez de salir por `NombradoImposible` en uno y por otro camino en el otro.
+
+    Tampoco es el 400 de `CuerpoDeCierreInvalido`: la petición está bien
+    formada, y un 400 mandaría a quien lo lee a revisar su cuerpo.
+
+    El `motivo` dice **cuál** de los dos falta y la acción concreta, y nada
+    más del papel (R34): ni el DNI, ni las observaciones, ni la descripción,
+    ni la unidad, ni la promoción.
     """
 
     def __init__(self, motivo: str) -> None:

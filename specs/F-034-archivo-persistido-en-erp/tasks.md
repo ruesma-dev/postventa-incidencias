@@ -33,12 +33,14 @@
 
 ## Bloque 1 · Las piezas compartidas
 
-- [ ] **T2**: `domain/models/errores.py` · añadir `CodigoNoConsta` con
+- [x] **T2**: `domain/models/errores.py` · añadir `CodigoNoConsta` con
       `.motivo` y con su docstring diciendo en qué se diferencia de
       `CodigosNoCoinciden`, de `ParteNoArchivado` y de `NombradoImposible`
       (`design.md` §3.2).
       **Verificación**: `pytest tests/test_f034_codigos_en_el_erp.py -k errores`
       en verde.
+      **Hecha (2026-09-23)**: RED y verde en `progress/impl_F-034.md`; 7 tests
+      `-k errores` en verde y la suite del servicio entera en verde.
 
 - [ ] **T3**: crear `application/pipelines/codigos_del_parte.py` con
       `CodigosDelParte`, `codigos_guardados(ctx)`,

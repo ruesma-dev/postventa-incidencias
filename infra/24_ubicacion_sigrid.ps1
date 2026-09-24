@@ -10,9 +10,17 @@
     biblioteca de Posventa, y la unidad la dice Sigrid: reclamacion (`rcp`) ->
     unidad de posventa (`upv`) -> obra (`upv.obride`). Antes de escribir la
     regla que casa la unidad de Sigrid con la carpeta de Posventa (D-6,
-    `design.md` 4.3) hay que ver QUE devuelve Sigrid para la obra piloto, y de
-    que campo saldria el nombre de una carpeta de unidad creada
-    (`SHAREPOINT_NOMBRE_UNIDAD`, R37). Eso es lo que imprime este script.
+    `design.md` 4.3) hubo que ver QUE devuelve Sigrid para la obra piloto
+    (T3). Eso es lo que imprime este script.
+
+    Con -SalidaCsv (T14) deja ademas esas unidades en un CSV, FUERA DEL
+    REPOSITORIO, para que `23_destino_posventa.ps1 -UnidadesCsv` diga, unidad a
+    unidad, si el sistema resolveria, crearia o bloquearia su carpeta (R28,
+    R31). Columnas: `obra` (el ordinal "obra 1", "obra 2" que imprime este
+    script; NUNCA el `ide` del ERP), `obra_cod`, `obra_res`, `unidad_cod`,
+    `unidad_res` y `reclamaciones`. El CSV lleva los LITERALES de `con.res`
+    -sin mascara: la regla los necesita tal cual-, asi que no se copia a
+    `progress/` ni al repositorio, y se borra al acabar.
 
     Una consulta, de LECTURA, parametrizada:
 
@@ -27,7 +35,8 @@
     regla de F-013 compara el codigo LITERAL (R10), y si Sigrid lo guardara sin
     ceros habria que saberlo antes de escribirla.
 
-    NO ESCRIBE NADA. Ni en Sigrid, ni en PostgreSQL, ni en disco. La unica
+    NO ESCRIBE NADA. Ni en Sigrid, ni en PostgreSQL, ni en disco (salvo el CSV
+    de -SalidaCsv, fuera del repositorio). La unica
     ruta que toca es `POST /api/sql/read` de `sigrid-api`, a traves de
     `08_lectura_sigrid_comun.ps1`, servida por el usuario de solo lectura de
     la pasarela. La regla dura de `CLAUDE.md` es que en Sigrid solo se escribe
@@ -61,6 +70,11 @@
 .PARAMETER MostrarNombres
     Imprime `con.res` y `con.cod` literales en vez de su forma enmascarada.
 
+.PARAMETER SalidaCsv
+    Ruta de un CSV, FUERA del repositorio, donde dejar las unidades para
+    `23_destino_posventa.ps1 -UnidadesCsv`. Si cae dentro del repositorio, el
+    script se para antes de preguntar nada a Sigrid.
+
 .PARAMETER WhatIf
     No llama a nada: dice que consulta haria, con que parametros, y que
     variables de la sesion estan puestas (nunca su valor).
@@ -74,6 +88,10 @@
 .EXAMPLE
     # El literal de los nombres, para decidir R37 (y anotarlo SIN nombres de persona):
     powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -MostrarNombres
+
+.EXAMPLE
+    # Las unidades para el ensayo en seco del 23 (T14), en un CSV fuera del repositorio:
+    powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SigridBaseDatos ruesma -SalidaCsv "$env:TEMP\unidades_0677.csv"
 #>
 
 [CmdletBinding()]
@@ -84,6 +102,7 @@ param(
     [int]$Tip = 708,
     [int]$MaxFilas = 500,
     [switch]$MostrarNombres,
+    [string]$SalidaCsv,
     [switch]$WhatIf
 )
 
@@ -183,6 +202,11 @@ WHERE o.cod IN (?, ?)
 ORDER BY o.ide, u.cod
 '@
 
+# T14 - Las columnas del CSV de -SalidaCsv: las mismas, y en el mismo orden,
+# que `COLUMNAS_CSV` de la regla del 23 (lo exige test_f013_scripts_infra.py).
+# Sin `obra_ide`: la obra va como el ordinal que imprime este script.
+$ColumnasCsv = @("obra", "obra_cod", "obra_res", "unidad_cod", "unidad_res", "reclamaciones")
+
 $codigo = ""
 if ($CodigoObra) { $codigo = $CodigoObra.Trim() }
 $sinCeros = $codigo.TrimStart("0")
@@ -196,6 +220,7 @@ if ($WhatIf) {
     Write-Host ("Formas del codigo : '{0}' y '{1}'" -f $codigo, $sinCeros)
     Write-Host ("Tipo (tip)        : {0}" -f $Tip)
     Write-Host ("Nombres           : {0}" -f $(if ($MostrarNombres) { "LITERALES (-MostrarNombres)" } else { "enmascarados" }))
+    Write-Host ("CSV para el 23    : {0}" -f $(if ($SalidaCsv) { $SalidaCsv } else { "(sin -SalidaCsv: no se escribe)" }))
     Write-Host ""
     Write-Host "Variables de la sesion (solo si estan; nunca su valor):"
     foreach ($nombre in @("SIGRID_API_BASE_URL", "SIGRID_BASE_DATOS", "SIGRID_API_KEY")) {
@@ -223,6 +248,22 @@ if ($codigo -notmatch "^[A-Za-z0-9._-]{1,20}$") {
 if ($MaxFilas -lt 1 -or $MaxFilas -gt 1000) {
     Salir-Con "-MaxFilas va de 1 a 1000: sigrid-api no sirve mas por peticion." $SALIDA_PARAMETRO
 }
+$rutaCsv = $null
+if ($SalidaCsv) {
+    # Una ruta relativa cuenta desde la raiz del repositorio (el Set-Location
+    # de arriba): es decir, cae DENTRO, y se rechaza.
+    $rutaCsv = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($SalidaCsv)
+    $raizCompleta = (Resolve-Path -LiteralPath $raiz).ProviderPath.TrimEnd("\")
+    if ($rutaCsv.StartsWith($raizCompleta + "\", [StringComparison]::OrdinalIgnoreCase) -or
+        $rutaCsv -ieq $raizCompleta) {
+        Salir-Con ("-SalidaCsv tiene que quedar fuera del repositorio: el CSV lleva los " +
+            "literales de con.res. Por ejemplo, en la carpeta de `$env:TEMP.") $SALIDA_PARAMETRO
+    }
+    $carpetaCsv = Split-Path -Parent $rutaCsv
+    if (-not $carpetaCsv -or -not (Test-Path -LiteralPath $carpetaCsv -PathType Container)) {
+        Salir-Con "La carpeta de -SalidaCsv no existe." $SALIDA_PARAMETRO
+    }
+}
 
 $destino = Get-SigridDestino -BaseUrl $SigridBaseUrl -BaseDatos $SigridBaseDatos
 $clave = Get-SigridClave
@@ -247,6 +288,7 @@ $respuesta = Invoke-SigridLectura -BaseUrl $destino.BaseUrl -Clave $clave `
 $obras = @()
 $porObra = @{}
 $totalReclamaciones = 0
+$filasCsv = @()
 $conTextoLibre = 0
 $sinNumero = 0
 $sinReclamaciones = 0
@@ -294,14 +336,31 @@ foreach ($obraIde in $obras) {
 
         Write-Host ("  {0,-26} {1,-44} {2,6}  {3}" -f `
             (Format-Nombre $cod), (Format-Nombre $res), $reclamaciones, $(if ($textoLibre) { "si" } else { "no" }))
+
+        $filasCsv += [pscustomobject]@{
+            obra = $numeroObra
+            obra_cod = $obra.Cod
+            obra_res = $obra.Res
+            unidad_cod = $cod
+            unidad_res = $res
+            reclamaciones = $reclamaciones
+        }
     }
     Write-Host ""
 }
 
 if ($conTextoLibre -gt 0) {
     Write-Host ("AVISO: {0} unidad(es) llevan palabras que no son de la estructura. Si " -f $conTextoLibre) -ForegroundColor Yellow
-    Write-Host "alguna es un nombre de persona, SHAREPOINT_NOMBRE_UNIDAD no puede valer" -ForegroundColor Yellow
-    Write-Host "'nombre' (design.md 4.6). Comprobalo con -MostrarNombres." -ForegroundColor Yellow
+    Write-Host "alguna es un nombre de persona, no se anota en progress/ (compruebalo con" -ForegroundColor Yellow
+    Write-Host "-MostrarNombres). El nombre de una carpeta nueva sale del con.cod (R37), no de aqui." -ForegroundColor Yellow
+    Write-Host ""
+}
+
+if ($rutaCsv) {
+    # Solo las columnas de $ColumnasCsv, y en su orden: nada mas puede colarse.
+    $filasCsv | Select-Object -Property $ColumnasCsv | Export-Csv -LiteralPath $rutaCsv -NoTypeInformation -Encoding UTF8
+    Write-Host ("CSV para el 23: {0} unidad(es) en {1}" -f $filasCsv.Count, $rutaCsv) -ForegroundColor Cyan
+    Write-Host "  Lleva los LITERALES de con.res: no lo copies a progress/ ni al repositorio; borralo al acabar." -ForegroundColor Yellow
     Write-Host ""
 }
 

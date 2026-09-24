@@ -30,12 +30,28 @@
          (`design.md` 4.1, 4.2 y 4.5). Los ficheros se CUENTAN y no se
          nombran: su nombre puede llevar el de un cliente. De uno de ellos
          mira cuantas versiones tiene, para saber si hay versionado.
+      5. Con -UnidadesCsv (la salida de `24_ubicacion_sigrid.ps1 -SalidaCsv`),
+         dice para CADA unidad de Sigrid si el sistema la RESOLVERIA, la
+         CREARIA -y con que nombre- o la BLOQUEARIA (parecida, ambigua...):
+         R28, R31. Es la verificacion en seco de la regla contra el archivo
+         real, con SHAREPOINT_CREAR_CARPETAS=true, el valor del corte.
 
-    LAS REGLAS DE CASADO DE ESTE SCRIPT SON PROVISIONALES. Son una traduccion
-    directa de `design.md` 4.1, 4.2 y 4.5 para poder MEDIR antes de escribir
-    el dominio (bloque 0). En T14 se sustituyen por la regla del dominio
-    (`domain/models/destino_posventa.py`) ejecutada con el interprete del
-    servicio, que anade la columna resolveria / crearia / bloquearia.
+    LA REGLA ES LA DEL DOMINIO (T14). El casado, las parecidas y lo que se
+    crearia los decide `domain/models/destino_posventa.py` -y, unidad a unidad,
+    el resolutor de verdad, `application/pipelines/destino_archivo.py`-,
+    ejecutados con el interprete del servicio y POR FICHERO
+    (`Invoke-PythonDelServicio` del 08). Lo que este script dice que
+    "resolveria" o "crearia" es lo que hara el sistema. Las copias en
+    PowerShell de T1 (Test-ObraCasa y compania) se retiraron: dieron por
+    "parecida" la carpeta real de la 0677 (`progress/explore_F-013.md`).
+    El resolutor solo ve lo que este script ha listado: si la regla baja por
+    una carpeta que el recorrido no ha visto, esa unidad sale "sin medir".
+
+    EL RESUMEN cuenta lo que cuelga de la carpeta de obra que RESUELVE la
+    regla. Si no resuelve ninguna, lo dice en una linea propia y cuenta las
+    parecidas (o las que casan, si casan varias); con -CarpetaObra, cuenta la
+    forzada y lo rotula. (En T2 contaba solo bajo una obra que casara con la
+    regla provisional, y salio con ceros.)
 
     NINGUN IDENTIFICADOR SE IMPRIME salvo con -MostrarIdentificadores: los ID
     del sitio y de la biblioteca van a Key Vault con
@@ -71,6 +87,12 @@
     Fuerza la carpeta de obra a recorrer, por su nombre LITERAL. Para medir
     una obra cuya carpeta la regla no encuentre.
 
+.PARAMETER UnidadesCsv
+    El CSV de `24_ubicacion_sigrid.ps1 -SalidaCsv` (fuera del repositorio).
+    Sin el, el script dice el arbol y que casa, pero no que haria el sistema
+    con cada unidad de Sigrid. Una ruta relativa cuenta desde la raiz del
+    repositorio.
+
 .PARAMETER WhatIf
     No llama a nada: dice que haria y que variables estan puestas (nunca su
     valor).
@@ -80,6 +102,10 @@
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File infra\23_destino_posventa.ps1 -UrlSitio "<URL del sitio>" -CodigoObra 0677 -DesdeKeyVault
+
+.EXAMPLE
+    # R31: lo que haria el sistema con cada unidad de la 0677 (antes, el 24 con -SalidaCsv):
+    powershell -ExecutionPolicy Bypass -File infra\23_destino_posventa.ps1 -UrlSitio "<URL del sitio>" -CodigoObra 0677 -DesdeKeyVault -UnidadesCsv "$env:TEMP\unidades_0677.csv"
 #>
 
 [CmdletBinding()]
@@ -91,6 +117,8 @@ param(
     [string]$CarpetaBase = "",
     [string]$CarpetaIncidencias = "PARTES INCIDENCIAS",
     [string]$CarpetaFirmados = "PARTES FIRMADOS",
+    [string]$CarpetaFirmadosAlternativa = "PARTES FIRMADO",
+    [string]$UnidadesCsv,
     [int]$MaxCarpetasObra = 5,
     [switch]$MostrarIdentificadores,
     [switch]$MostrarNombres,
@@ -110,6 +138,7 @@ $SALIDA_CREDENCIALES = 7    # no hay credenciales, o Entra no da el token
 $SALIDA_GRAPH = 8           # Graph rechaza una lectura
 $SALIDA_SIN_SITIO = 9       # el sitio no existe o la aplicacion no lo ve
 $SALIDA_SIN_BIBLIOTECA = 10 # ninguna biblioteca casa, o casan varias
+$SALIDA_REGLA = 11          # la regla del dominio no se ha podido ejecutar
 
 $GRAFO = "https://graph.microsoft.com/v1.0"
 $NOMBRE_BIBLIOTECA_POR_OMISION = "Documentos compartidos"
@@ -346,63 +375,332 @@ function Get-Hijos {
     }
 }
 
-function Get-Tokens {
+function Get-HijosAnotados {
     <#
     .SYNOPSIS
-        La clave de `design.md` 4.3, PROVISIONAL (T14 usa la del dominio).
+        Get-Hijos, y anota el listado para la regla del dominio.
 
     .DESCRIPTION
-        Sin tildes, mayusculas, todo lo no alfanumerico es separador, y los
-        tokens numericos pasan a entero: '05' -> '5'.
+        El resolutor del ensayo en seco solo puede contestar con lo que este
+        script ha listado de verdad: lo que no se haya visto sale "sin medir",
+        nunca adivinado. Se anotan la ruta y las carpetas (los nombres de los
+        ficheros no se guardan en ningun sitio: Get-Hijos solo los cuenta).
     #>
-    param([string]$Texto)
+    param([string]$Ruta)
 
-    $limpio = ($Texto.Normalize([Text.NormalizationForm]::FormKD) -replace "\p{Mn}", "").ToUpperInvariant()
-    $tokens = @()
-    foreach ($trozo in [regex]::Split($limpio, "[^\p{L}\p{N}]+")) {
-        if (-not $trozo) { continue }
-        if ($trozo -match "^[0-9]+$") { $trozo = ([decimal]$trozo).ToString() }
-        $tokens += $trozo
+    $hijos = Get-Hijos $Ruta
+    $carpetas = $null
+    if ($null -ne $hijos) { $carpetas = @($hijos.Carpetas) }
+    $script:Arbol += [pscustomobject]@{ ruta = $Ruta; carpetas = $carpetas }
+    return $hijos
+}
+
+function Invoke-ReglaDelDominio {
+    <#
+    .SYNOPSIS
+        Ejecuta la regla del dominio ($reglaDelDominio) con una entrada y
+        devuelve lo que responde.
+
+    .DESCRIPTION
+        Con el interprete del servicio y POR FICHERO (`Invoke-PythonDelServicio`
+        del 08: `python -c` no funciona en PowerShell 5.1). La entrada va en un
+        JSON en la carpeta temporal, cuya ruta llega en F013_ENTRADA_TEMP, y se
+        borra SIEMPRE, tambien si Python falla. No lleva ningun secreto: nombres
+        de carpeta y, con -UnidadesCsv, la ruta del CSV. La respuesta llega en
+        JSON y en ASCII.
+    #>
+    param([Parameter(Mandatory = $true)][hashtable]$Entrada)
+
+    $Entrada["servicio"] = $servicio
+    $fichero = Join-Path ([IO.Path]::GetTempPath()) ("postventa_f013_" + [guid]::NewGuid().ToString("N") + ".json")
+    $codigoPython = $null
+    try {
+        Set-Content -LiteralPath $fichero -Value (ConvertTo-Json -InputObject $Entrada -Depth 8 -Compress) -Encoding UTF8
+        $env:F013_ENTRADA_TEMP = $fichero
+        $salida = Invoke-PythonDelServicio -Python $python -Codigo $reglaDelDominio
+        $codigoPython = $script:CodigoPythonDelServicio
     }
-    return , $tokens
-}
-
-function Test-ObraCasa {
-    # R10: el nombre, recortado, ES el codigo o empieza por el codigo y un
-    # blanco. Literal: 0677 no casa con 677 ni con 06770.
-    param([string]$Nombre, [string]$Codigo)
-    $n = $Nombre.Trim()
-    return ($n -ceq $Codigo) -or $n.StartsWith($Codigo + " ", [StringComparison]::Ordinal)
-}
-
-function Test-ObraParecida {
-    # 4.5: alguna palabra del nombre es numericamente el codigo (677, 00677,
-    # 0677-X, OBRA 0677). Si el codigo no es numerico, sus palabras estan todas.
-    param([string]$Nombre, [string]$Codigo)
-    $tokens = Get-Tokens $Nombre
-    if ($Codigo -match "^[0-9]+$") {
-        $numero = ([decimal]$Codigo).ToString()
-        return ($tokens -contains $numero)
+    finally {
+        Remove-Item Env:\F013_ENTRADA_TEMP -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $fichero -ErrorAction SilentlyContinue
     }
-    foreach ($t in (Get-Tokens $Codigo)) {
-        if (-not ($tokens -contains $t)) { return $false }
+    if ($codigoPython -ne 0) {
+        Salir-Con ("La regla del dominio no se ha podido ejecutar (Python ha salido con " +
+            "$codigoPython). Mira el error de arriba.") $SALIDA_REGLA
     }
-    return $true
+    return ((@($salida) -join "`n") | ConvertFrom-Json)
 }
 
-function Test-TramoCasa {
-    # 4.2: igualdad de clave (Partes Incidencias casa con PARTES INCIDENCIAS).
-    param([string]$Nombre, [string]$Buscado)
-    return ((Get-Tokens $Nombre) -join " ") -eq ((Get-Tokens $Buscado) -join " ")
+function Get-Lista {
+    # Una lista de la respuesta de la regla, sin nulos y siempre como array.
+    param($Valor)
+    return , @(@($Valor) | Where-Object { $null -ne $_ })
 }
 
-function Test-TramoParecido {
-    # 4.5: contiene la ultima palabra del tramo (INCIDENCIAS, FIRMADOS).
-    param([string]$Nombre, [string]$Buscado)
-    $distintivo = Get-Tokens $Buscado
-    if ($distintivo.Count -eq 0) { return $false }
-    return ((Get-Tokens $Nombre) -contains $distintivo[-1])
+function Format-Veredicto {
+    <#
+    .SYNOPSIS
+        Lo que haria el sistema con un nivel o una unidad, en una linea.
+    #>
+    param($Veredicto)
+
+    switch ([string]$Veredicto.veredicto) {
+        "resolveria" { return ("resolveria: {0}" -f (Format-Nombre $Veredicto.carpeta)) }
+        "crearia" {
+            $nuevas = Get-Lista $Veredicto.crear
+            if ($nuevas.Count -eq 0) { return "crearia (el nombre sale del con.res de la obra: pasa -UnidadesCsv)" }
+            return ("crearia: {0}" -f (($nuevas | ForEach-Object { Format-Nombre $_ }) -join " + "))
+        }
+        "bloquearia" {
+            $candidatas = Get-Lista $Veredicto.candidatas
+            $texto = "BLOQUEARIA ({0})" -f $Veredicto.motivo
+            if ($candidatas.Count -gt 0) {
+                $texto = $texto + ": " + (($candidatas | ForEach-Object { Format-Nombre $_ }) -join ", ")
+            }
+            return $texto
+        }
+        "sin medir" { return "SIN MEDIR: la regla baja por una carpeta que este recorrido no ha listado" }
+        default { return [string]$Veredicto.veredicto }
+    }
 }
+
+# --- La regla del dominio (T14) ----------------------------------------------
+# Se ejecuta con el interprete del servicio y POR FICHERO. SOLO LEE: el JSON
+# de entrada y, si lo hay, el CSV del 24. Ni Graph, ni Sigrid, ni escribe nada:
+# el explorador que le da al resolutor solo sabe contestar con lo ya listado.
+$reglaDelDominio = @'
+# F-013 T14 - La regla del dominio para infra/23_destino_posventa.ps1.
+# SOLO LEE: el arbol que el script ya listo y, si lo hay, el CSV del 24. No
+# habla con Graph ni con Sigrid, no escribe ningun fichero y no crea nada.
+# Entrada: un JSON cuya ruta llega en F013_ENTRADA_TEMP. Salida: un JSON, en
+# ASCII, por la salida estandar.
+import csv
+import json
+import os
+import sys
+
+with open(os.environ["F013_ENTRADA_TEMP"], encoding="utf-8-sig") as entrada_json:
+    ENTRADA = json.load(entrada_json)
+
+sys.path.insert(0, ENTRADA["servicio"])
+
+from application.pipelines.destino_archivo import resolver_destino_posventa  # noqa: E402
+from domain.models.destino_posventa import (  # noqa: E402
+    UbicacionReclamacion,
+    UnidadDeObra,
+    carpeta_con_nombre,
+    carpetas_de_obra,
+    clave_de_unidad,
+    nombre_de_obra_nueva,
+    parecidas_de_obra,
+    parecidas_de_tramo,
+    unir_ruta,
+)
+from domain.models.errores import ArchivoFallido, DestinoNoResuelto  # noqa: E402
+from domain.models.nombrado import normalizar_codigo  # noqa: E402
+
+# Las columnas que escribe 24_ubicacion_sigrid.ps1 -SalidaCsv. Sin `obride`:
+# `obra` es el ordinal que el 24 imprime ("obra 1", "obra 2").
+COLUMNAS_CSV = ("obra", "obra_cod", "obra_res", "unidad_cod", "unidad_res", "reclamaciones")
+
+
+class SinMedir(Exception):
+    """La regla pide una carpeta que el script no ha listado."""
+
+
+def lista(valor):
+    """PowerShell 5.1 convierte un array de uno en su elemento: se deshace."""
+    if valor is None:
+        return []
+    if isinstance(valor, (str, dict)):
+        return [valor]
+    return list(valor)
+
+
+def textos(valor):
+    return [str(v) for v in lista(valor)]
+
+
+def o_nada(valor):
+    valor = "" if valor is None else str(valor)
+    return valor if valor.strip() else None
+
+
+def clasificar_obra(entrada):
+    carpetas = textos(entrada.get("carpetas"))
+    codigo = entrada["codigo"]
+    return {
+        "casan": list(carpetas_de_obra(carpetas, codigo_obra=codigo)),
+        "parecidas": list(parecidas_de_obra(carpetas, codigo_obra=codigo)),
+    }
+
+
+def clasificar_tramos(entrada):
+    buscado = entrada["buscado"]
+    alternativa = entrada.get("alternativa") or ""
+    grupos = []
+    for grupo in lista(entrada.get("grupos")):
+        carpetas = textos(grupo.get("carpetas"))
+        grupos.append(
+            {
+                "ruta": grupo["ruta"],
+                "casan": list(carpeta_con_nombre(carpetas, buscado=buscado, alternativa=alternativa)),
+                "parecidas": list(parecidas_de_tramo(carpetas, buscado=buscado, alternativa=alternativa)),
+                "cifras": [p for p in clave_de_unidad(grupo.get("nombre") or "") if p.isdigit()],
+            }
+        )
+    return {"grupos": grupos}
+
+
+class BibliotecaMedida:
+    """Lo que el script ha listado, y nada mas: el explorador del resolutor."""
+
+    def __init__(self, arbol):
+        self.hijas = {}
+        for listado in lista(arbol):
+            carpetas = listado.get("carpetas")
+            self.hijas[unir_ruta(listado["ruta"] or "")] = (
+                None if carpetas is None else tuple(textos(carpetas))
+            )
+
+    def listar_carpetas(self, *, carpeta):
+        ruta = unir_ruta(carpeta)
+        if ruta not in self.hijas:
+            raise SinMedir(ruta)
+        return self.hijas[ruta]
+
+
+class SigridDelCsv:
+    """Las dos lecturas de Sigrid, contestadas con el CSV del 24."""
+
+    def __init__(self, ubicacion, unidades):
+        self.ubicacion = ubicacion
+        self.unidades = unidades
+
+    def leer_ubicacion(self, *, codigo_reclamacion):
+        return (self.ubicacion,)
+
+    def leer_unidades_del_numero(self, *, codigo_obra):
+        return self.unidades
+
+
+def leer_csv(ruta):
+    with open(ruta, encoding="utf-8-sig", newline="") as fichero:
+        lector = csv.DictReader(fichero)
+        faltan = [c for c in COLUMNAS_CSV if c not in (lector.fieldnames or [])]
+        if faltan:
+            raise SystemExit("el CSV no trae las columnas: " + ", ".join(faltan))
+        return [dict(fila) for fila in lector]
+
+
+def veredicto_de_nivel(casan, parecidas, *, ambigua, parecida, nombre_nuevo):
+    if len(casan) == 1:
+        return {"veredicto": "resolveria", "carpeta": casan[0]}
+    if len(casan) > 1:
+        return {"veredicto": "bloquearia", "motivo": ambigua, "candidatas": list(casan)}
+    if parecidas:
+        return {"veredicto": "bloquearia", "motivo": parecida, "candidatas": list(parecidas)}
+    return {"veredicto": "crearia", "crear": [nombre_nuevo] if nombre_nuevo else []}
+
+
+def veredicto(entrada):
+    codigo = entrada["codigo"]
+    base = entrada.get("base") or ""
+    incidencias = entrada["incidencias"]
+    firmados = entrada["firmados"]
+    alternativa = entrada.get("alternativa") or ""
+    biblioteca = BibliotecaMedida(entrada.get("arbol"))
+    filas = leer_csv(entrada["csv"]) if entrada.get("csv") else []
+
+    # La obra e INCIDENCIAS: lo que haria el sistema en esos dos niveles.
+    del_codigo = [f for f in filas if normalizar_codigo(f["obra_cod"]) == normalizar_codigo(codigo)]
+    obra_res = o_nada(del_codigo[0]["obra_res"]) if del_codigo else None
+    try:
+        raiz = biblioteca.listar_carpetas(carpeta=base) or ()
+        obra = veredicto_de_nivel(
+            carpetas_de_obra(raiz, codigo_obra=codigo),
+            parecidas_de_obra(raiz, codigo_obra=codigo),
+            ambigua="obra_ambigua",
+            parecida="obra_parecida",
+            nombre_nuevo=nombre_de_obra_nueva(codigo, obra_res) if obra_res else None,
+        )
+    except SinMedir:
+        obra = {"veredicto": "sin medir"}
+    tramo = {"veredicto": "-"}
+    if obra["veredicto"] == "resolveria":
+        try:
+            dentro = biblioteca.listar_carpetas(carpeta=unir_ruta(base, obra["carpeta"])) or ()
+            tramo = veredicto_de_nivel(
+                carpeta_con_nombre(dentro, buscado=incidencias),
+                parecidas_de_tramo(dentro, buscado=incidencias),
+                ambigua="incidencias_ambigua",
+                parecida="incidencias_parecida",
+                nombre_nuevo=incidencias,
+            )
+        except SinMedir:
+            tramo = {"veredicto": "sin medir"}
+    elif obra["veredicto"] == "crearia":
+        tramo = {"veredicto": "crearia", "crear": [incidencias]}
+
+    # Cada unidad de Sigrid, con el resolutor de verdad (R28, R31).
+    unidades = tuple(
+        UnidadDeObra(
+            obra_ref="obra " + str(f["obra"]),
+            obra_codigo=o_nada(f["obra_cod"]),
+            unidad_codigo=o_nada(f["unidad_cod"]),
+            unidad_nombre=o_nada(f["unidad_res"]),
+        )
+        for f in filas
+    )
+    resultado = []
+    for fila in filas:
+        ubicacion = UbicacionReclamacion(
+            obra_codigo=o_nada(fila["obra_cod"]),
+            obra_nombre=o_nada(fila["obra_res"]),
+            unidad_codigo=o_nada(fila["unidad_cod"]),
+            unidad_nombre=o_nada(fila["unidad_res"]),
+        )
+        linea = {
+            "obra": str(fila["obra"]),
+            "unidad_cod": fila["unidad_cod"],
+            "reclamaciones": fila["reclamaciones"],
+        }
+        try:
+            resuelto = resolver_destino_posventa(
+                codigo_obra=codigo,
+                numero_incidencia="ENSAYO-1",
+                nombre_fichero="(sin fichero: ensayo en seco)",
+                explorador=biblioteca,
+                ubicaciones=SigridDelCsv(ubicacion, unidades),
+                base=base,
+                incidencias=incidencias,
+                firmados=firmados,
+                firmados_alternativa=alternativa,
+                crear_carpetas=True,
+            )
+        except DestinoNoResuelto as sin_destino:
+            linea.update(
+                veredicto="bloquearia",
+                motivo=str(sin_destino.motivo),
+                candidatas=list(sin_destino.candidatas),
+            )
+        except (SinMedir, ArchivoFallido):
+            linea.update(veredicto="sin medir")
+        else:
+            crear = [nombre for _padre, nombre in resuelto.carpetas_por_crear]
+            linea.update(
+                veredicto="crearia" if crear else "resolveria",
+                carpeta=resuelto.destino.carpeta,
+                crear=crear,
+            )
+        resultado.append(linea)
+    return {"obra": obra, "incidencias": tramo, "unidades": resultado}
+
+
+MODOS = {"obra": clasificar_obra, "tramos": clasificar_tramos, "veredicto": veredicto}
+
+print(json.dumps(MODOS[ENTRADA["modo"]](ENTRADA), ensure_ascii=True))
+'@
 
 function Get-UltimoTramoDeUrl {
     param([string]$Url)
@@ -475,7 +773,9 @@ if ($WhatIf) {
     Write-Host ("Biblioteca         : {0}" -f $NombreBiblioteca)
     Write-Host ("Carpeta base       : {0}" -f $(if ($CarpetaBase) { $CarpetaBase } else { "(raiz, D-1)" }))
     Write-Host ("Obra               : {0}" -f $(if ($codigo) { $codigo } else { "(sin -CodigoObra: solo sitio, biblioteca y base)" }))
-    Write-Host ("Tramos fijos       : '{0}' y '{1}'" -f $CarpetaIncidencias, $CarpetaFirmados)
+    Write-Host ("Tramos fijos       : '{0}' y '{1}' (o '{2}')" -f $CarpetaIncidencias, $CarpetaFirmados, $CarpetaFirmadosAlternativa)
+    Write-Host ("Unidades de Sigrid : {0}" -f $(if ($UnidadesCsv) { $UnidadesCsv } else { "(sin -UnidadesCsv: no se dice que haria con cada unidad)" }))
+    Write-Host ("Regla              : {0}" -f $(if ($codigo) { "la del dominio, con services\postventa-api\.venv (por fichero)" } else { "(sin -CodigoObra: no hace falta)" }))
     Write-Host ("Nombres            : {0}" -f $(if ($MostrarNombres) { "LITERALES (-MostrarNombres)" } else { "enmascarados" }))
     Write-Host ""
     Write-Host "Credenciales de Graph (solo si estan; nunca su valor):"
@@ -519,6 +819,24 @@ if ($MaxCarpetasObra -lt 1) {
 }
 if (-not $CarpetaIncidencias.Trim() -or -not $CarpetaFirmados.Trim()) {
     Salir-Con "Los dos tramos fijos no pueden ir vacios." $SALIDA_PARAMETRO
+}
+if ($UnidadesCsv -and -not $codigo) {
+    Salir-Con "-UnidadesCsv solo tiene sentido con -CodigoObra." $SALIDA_PARAMETRO
+}
+$rutaUnidades = $null
+if ($UnidadesCsv) {
+    $rutaUnidades = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($UnidadesCsv)
+    if (-not (Test-Path -LiteralPath $rutaUnidades -PathType Leaf)) {
+        Salir-Con ("-UnidadesCsv no es ningun fichero. Se genera con " +
+            "24_ubicacion_sigrid.ps1 -SalidaCsv.") $SALIDA_PARAMETRO
+    }
+}
+# La regla del dominio se ejecuta con el interprete del servicio (T14).
+$servicio = Join-Path $raiz "services\postventa-api"
+$python = Join-Path $servicio ".venv\Scripts\python.exe"
+if ($codigo -and -not (Test-Path -LiteralPath $python)) {
+    Salir-Con ("No encuentro el interprete del servicio en $python (la regla del " +
+        "dominio se ejecuta con el). Crea el venv primero.") $SALIDA_REGLA
 }
 
 if ($DesdeKeyVault) {
@@ -652,7 +970,8 @@ if ($MostrarIdentificadores) { Write-Identificadores -Sitio $sitio -Biblioteca $
 # --- 3/4 La carpeta base -----------------------------------------------------
 Write-Host ""
 Write-Host ("3/4 Carpeta base: {0} (sin crearla)..." -f $(if ($CarpetaBase) { Format-Nombre $CarpetaBase } else { "la raiz, D-1" }))
-$base = Get-Hijos $CarpetaBase
+$script:Arbol = @()
+$base = Get-HijosAnotados $CarpetaBase
 if ($null -ne $base) {
     Write-Host ("    carpetas: {0}   ficheros sueltos: {1}" -f $base.Carpetas.Count, $base.Ficheros)
 }
@@ -678,15 +997,16 @@ if (-not $codigo -or $null -eq $base) {
     Escribir-Veredicto -Titulo "DESTINO DE POSVENTA"
 }
 
-# --- 4/4 La obra, solo carpetas ----------------------------------------------
+# --- 4/4 La obra, solo carpetas, con la regla del dominio --------------------
 Write-Host ""
 Write-Host ("4/4 Estructura de la obra {0} (solo carpetas; los ficheros se cuentan, no se nombran)" -f $codigo)
-Write-Host "    Reglas PROVISIONALES (design.md 4.1, 4.2, 4.5); T14 las sustituye por las del dominio."
+Write-Host "    Regla del DOMINIO (destino_posventa.py), con el interprete del servicio."
 
-$obraCasan = @($base.Carpetas | Where-Object { Test-ObraCasa $_ $codigo })
-$obraParecidas = @($base.Carpetas | Where-Object { -not (Test-ObraCasa $_ $codigo) -and (Test-ObraParecida $_ $codigo) })
+$clasificacionObra = Invoke-ReglaDelDominio @{ modo = "obra"; codigo = $codigo; carpetas = @($base.Carpetas) }
+$obraCasan = Get-Lista $clasificacionObra.casan
+$obraParecidas = Get-Lista $clasificacionObra.parecidas
 Write-Host ""
-Write-Host ("    Carpetas de obra que CASAN (R10): {0}" -f $obraCasan.Count)
+Write-Host ("    Carpetas de obra que CASAN (4.1): {0}" -f $obraCasan.Count)
 foreach ($n in $obraCasan) { Write-Host ("      - {0}" -f (Format-Nombre $n)) }
 Write-Host ("    Carpetas PARECIDAS (4.5)        : {0}" -f $obraParecidas.Count)
 foreach ($n in $obraParecidas) { Write-Host ("      - {0}" -f (Format-Nombre $n)) }
@@ -707,80 +1027,170 @@ if ($aRecorrer.Count -gt $MaxCarpetasObra) {
     $aRecorrer = @($aRecorrer | Select-Object -First $MaxCarpetasObra)
 }
 if ($obraCasan.Count -eq 0 -and $obraParecidas.Count -eq 0 -and -not $CarpetaObra) {
-    Write-Host "    Ninguna casa y ninguna se parece: con D-4 el sistema CREARIA la carpeta de obra (nombre: T14)." -ForegroundColor Yellow
+    Write-Host "    Ninguna casa y ninguna se parece: con D-4 el sistema CREARIA la carpeta de obra (abajo, con que nombre)." -ForegroundColor Yellow
 }
 
+# El resumen cuenta lo que cuelga de la obra que RESUELVE la regla. El de T2
+# contaba solo bajo una obra que casara con la regla provisional, y con la
+# 0677 -que solo era "parecida"- salio con ceros (progress/explore_F-013.md).
+$rotuloResumen = $null
+if ($CarpetaObra) {
+    $obrasDelResumen = @($CarpetaObra)
+    $rotuloResumen = "resumen de la carpeta forzada con -CarpetaObra"
+}
+elseif ($obraCasan.Count -eq 1) {
+    $obrasDelResumen = @($obraCasan[0])
+}
+elseif ($obraCasan.Count -gt 1) {
+    $obrasDelResumen = $obraCasan
+    $rotuloResumen = "resumen sin obra resuelta: casan varias (ambigua), se muestran las que casan"
+}
+else {
+    $obrasDelResumen = $obraParecidas
+    $rotuloResumen = "resumen sin obra resuelta: se muestran las parecidas"
+}
+
+# Primero se lista (solo GET) y se clasifica con la regla, nivel a nivel; luego
+# se imprime. Asi la regla se ejecuta una vez por nivel y no una por carpeta.
+$recorrido = @()
+foreach ($obra in $aRecorrer) {
+    $rutaObra = Join-Ruta @($CarpetaBase, $obra.Nombre)
+    $recorrido += [pscustomobject]@{
+        Nombre = $obra.Nombre
+        Marca = $obra.Marca
+        Ruta = $rutaObra
+        Hijos = (Get-HijosAnotados $rutaObra)
+        EnResumen = ($obrasDelResumen -ccontains $obra.Nombre)
+    }
+}
+
+$gruposIncidencias = @()
+foreach ($o in $recorrido) {
+    if ($null -eq $o.Hijos) { continue }
+    $gruposIncidencias += @{ ruta = $o.Ruta; nombre = $o.Nombre; carpetas = @($o.Hijos.Carpetas) }
+}
+$incidenciasPorObra = @{}
+if ($gruposIncidencias.Count -gt 0) {
+    $respuesta = Invoke-ReglaDelDominio @{ modo = "tramos"; buscado = $CarpetaIncidencias; alternativa = ""; grupos = $gruposIncidencias }
+    foreach ($g in (Get-Lista $respuesta.grupos)) { $incidenciasPorObra[[string]$g.ruta] = $g }
+}
+
+$tramosListados = @()
+$unidadesListadas = @()
+foreach ($o in $recorrido) {
+    if ($null -eq $o.Hijos) { continue }
+    $clasificacion = $incidenciasPorObra[$o.Ruta]
+    foreach ($n in (Get-Lista $clasificacion.casan)) {
+        $tramosListados += [pscustomobject]@{ Obra = $o.Ruta; Nombre = $n; Marca = "casa"; Ruta = (Join-Ruta @($o.Ruta, $n)) }
+    }
+    foreach ($n in (Get-Lista $clasificacion.parecidas)) {
+        $tramosListados += [pscustomobject]@{ Obra = $o.Ruta; Nombre = $n; Marca = "parecida"; Ruta = (Join-Ruta @($o.Ruta, $n)) }
+    }
+}
+foreach ($inc in $tramosListados) {
+    $inc | Add-Member -NotePropertyName Unidades -NotePropertyValue (Get-HijosAnotados $inc.Ruta)
+    if ($null -eq $inc.Unidades) { continue }
+    foreach ($unidad in $inc.Unidades.Carpetas) {
+        $rutaUnidad = Join-Ruta @($inc.Ruta, $unidad)
+        $unidadesListadas += [pscustomobject]@{
+            Tramo = $inc.Ruta
+            Nombre = $unidad
+            Ruta = $rutaUnidad
+            Hijos = (Get-HijosAnotados $rutaUnidad)
+        }
+    }
+}
+
+$gruposHoja = @()
+foreach ($u in $unidadesListadas) {
+    $carpetasUnidad = @()
+    if ($null -ne $u.Hijos) { $carpetasUnidad = @($u.Hijos.Carpetas) }
+    $gruposHoja += @{ ruta = $u.Ruta; nombre = $u.Nombre; carpetas = $carpetasUnidad }
+}
+$hojaPorUnidad = @{}
+if ($gruposHoja.Count -gt 0) {
+    $respuesta = Invoke-ReglaDelDominio @{ modo = "tramos"; buscado = $CarpetaFirmados; alternativa = $CarpetaFirmadosAlternativa; grupos = $gruposHoja }
+    foreach ($g in (Get-Lista $respuesta.grupos)) { $hojaPorUnidad[[string]$g.ruta] = $g }
+}
+
+# --- Lo recorrido, y el resumen ----------------------------------------------
 $incidenciasQueCasan = 0
+$rotuloTramo = $null
 $unidadesTotal = 0
-$unidadesConFirmados = 0
-$unidadesConFirmadosParecida = 0
+$unidadesConHoja = 0
+$unidadesConHojaParecida = 0
+$unidadesSinHoja = 0
 $unidadesSinCifras = 0
 $ficherosEnHojas = 0
 $numerosRepetidos = @()
 $versionado = "sin ficheros que mirar"
 
-foreach ($obra in $aRecorrer) {
-    $rutaObra = Join-Ruta @($CarpetaBase, $obra.Nombre)
-    $hijosObra = Get-Hijos $rutaObra
+foreach ($o in $recorrido) {
     Write-Host ""
-    Write-Host ("    OBRA [{0}] {1}" -f $obra.Marca, (Format-Nombre $obra.Nombre)) -ForegroundColor Cyan
-    if ($null -eq $hijosObra) { Write-Host "      (no se ha podido listar)"; continue }
-    Write-Host ("      subcarpetas: {0}   ficheros sueltos: {1}" -f $hijosObra.Carpetas.Count, $hijosObra.Ficheros)
+    Write-Host ("    OBRA [{0}] {1}" -f $o.Marca, (Format-Nombre $o.Nombre)) -ForegroundColor Cyan
+    if ($null -eq $o.Hijos) { Write-Host "      (no se ha podido listar)"; continue }
+    Write-Host ("      subcarpetas: {0}   ficheros sueltos: {1}" -f $o.Hijos.Carpetas.Count, $o.Hijos.Ficheros)
 
-    $incCasan = @($hijosObra.Carpetas | Where-Object { Test-TramoCasa $_ $CarpetaIncidencias })
-    $incParecidas = @($hijosObra.Carpetas | Where-Object { -not (Test-TramoCasa $_ $CarpetaIncidencias) -and (Test-TramoParecido $_ $CarpetaIncidencias) })
-    foreach ($n in $hijosObra.Carpetas) {
+    $clasificacion = $incidenciasPorObra[$o.Ruta]
+    $incCasan = Get-Lista $clasificacion.casan
+    $incParecidas = Get-Lista $clasificacion.parecidas
+    foreach ($n in $o.Hijos.Carpetas) {
         $marca = ""
         if ($incCasan -ccontains $n) { $marca = "  <- casa con '$CarpetaIncidencias'" }
         elseif ($incParecidas -ccontains $n) { $marca = "  <- PARECIDA a '$CarpetaIncidencias'" }
         Write-Host ("        - {0}{1}" -f (Format-Nombre $n), $marca)
     }
-    if ($obra.Marca -ne "parecida") { $incidenciasQueCasan = $incidenciasQueCasan + $incCasan.Count }
 
-    $tramosInc = @()
-    foreach ($n in $incCasan) { $tramosInc += [pscustomobject]@{ Nombre = $n; Marca = "casa" } }
-    foreach ($n in $incParecidas) { $tramosInc += [pscustomobject]@{ Nombre = $n; Marca = "parecida" } }
+    # Que tramos cuenta el resumen: los que casan; si no casa ninguno, las
+    # parecidas, y se dice.
+    $tramosDelResumen = @()
+    if ($o.EnResumen) {
+        $incidenciasQueCasan = $incidenciasQueCasan + $incCasan.Count
+        if ($incCasan.Count -gt 0) { $tramosDelResumen = $incCasan }
+        elseif ($incParecidas.Count -gt 0) {
+            $tramosDelResumen = $incParecidas
+            $rotuloTramo = "resumen sin '$CarpetaIncidencias' que case: se cuentan las parecidas"
+        }
+    }
 
-    foreach ($inc in $tramosInc) {
-        $rutaInc = Join-Ruta @($rutaObra, $inc.Nombre)
-        $unidades = Get-Hijos $rutaInc
+    foreach ($inc in @($tramosListados | Where-Object { $_.Obra -eq $o.Ruta })) {
         Write-Host ""
         Write-Host ("      {0} [{1}]" -f (Format-Nombre $inc.Nombre), $inc.Marca) -ForegroundColor Cyan
-        if ($null -eq $unidades) { Write-Host "        (no se ha podido listar)"; continue }
-        Write-Host ("        unidades: {0}   ficheros sueltos: {1}" -f $unidades.Carpetas.Count, $unidades.Ficheros)
-        Write-Host ("        {0,-34} {1,-8} {2,5} {3,5}  {4,-22} {5}" -f "UNIDAD", "CIFRAS", "SUBC.", "FICH.", $CarpetaFirmados, "EN LA HOJA")
-        Write-Host ("        " + ("-" * 92))
+        if ($null -eq $inc.Unidades) { Write-Host "        (no se ha podido listar)"; continue }
+        Write-Host ("        unidades: {0}   ficheros sueltos: {1}" -f $inc.Unidades.Carpetas.Count, $inc.Unidades.Ficheros)
+        Write-Host ("        {0,-34} {1,-8} {2,5} {3,5}  {4,-26} {5}" -f "UNIDAD", "CIFRAS", "SUBC.", "FICH.", $CarpetaFirmados, "EN LA HOJA")
+        Write-Host ("        " + ("-" * 96))
+        $cuenta = $tramosDelResumen -ccontains $inc.Nombre
 
         $vistos = @{}
-        foreach ($unidad in $unidades.Carpetas) {
-            $rutaUnidad = Join-Ruta @($rutaInc, $unidad)
-            $hijosUnidad = Get-Hijos $rutaUnidad
-            $numeros = @((Get-Tokens $unidad) | Where-Object { $_ -match "^[0-9]+$" })
+        foreach ($u in @($unidadesListadas | Where-Object { $_.Tramo -eq $inc.Ruta })) {
+            $hoja = $hojaPorUnidad[$u.Ruta]
+            $numeros = Get-Lista $hoja.cifras
             foreach ($numero in $numeros) {
                 if ($vistos.ContainsKey($numero)) { if (-not ($numerosRepetidos -contains $numero)) { $numerosRepetidos += $numero } }
                 else { $vistos[$numero] = $true }
             }
-            if ($inc.Marca -eq "casa" -and $obra.Marca -ne "parecida") {
+            if ($cuenta) {
                 $unidadesTotal = $unidadesTotal + 1
                 if ($numeros.Count -eq 0) { $unidadesSinCifras = $unidadesSinCifras + 1 }
             }
-            if ($null -eq $hijosUnidad) {
-                Write-Host ("        {0,-34} (no se ha podido listar)" -f (Format-Nombre $unidad))
+            if ($null -eq $u.Hijos) {
+                Write-Host ("        {0,-34} (no se ha podido listar)" -f (Format-Nombre $u.Nombre))
                 continue
             }
-            $firCasan = @($hijosUnidad.Carpetas | Where-Object { Test-TramoCasa $_ $CarpetaFirmados })
-            $firParecidas = @($hijosUnidad.Carpetas | Where-Object { -not (Test-TramoCasa $_ $CarpetaFirmados) -and (Test-TramoParecido $_ $CarpetaFirmados) })
-            $estadoHoja = "no"
+            $firCasan = Get-Lista $hoja.casan
+            $firParecidas = Get-Lista $hoja.parecidas
+            $estadoHoja = "no (se crearia)"
             $enHoja = "-"
             if ($firCasan.Count -gt 1) { $estadoHoja = "AMBIGUA ({0})" -f $firCasan.Count }
             elseif ($firCasan.Count -eq 1) {
-                $estadoHoja = "si"
-                $hoja = Get-Hijos (Join-Ruta @($rutaUnidad, $firCasan[0]))
-                if ($null -ne $hoja) {
-                    $enHoja = "{0} fich., {1} carp." -f $hoja.Ficheros, $hoja.Carpetas.Count
-                    if ($inc.Marca -eq "casa" -and $obra.Marca -ne "parecida") { $ficherosEnHojas = $ficherosEnHojas + $hoja.Ficheros }
-                    if ($versionado -eq "sin ficheros que mirar" -and $null -ne $hoja.PrimerFichero) {
-                        $versiones = Invoke-GraphLectura -Url ("$GRAFO/drives/$script:IdBiblioteca/items/" + [Uri]::EscapeDataString($hoja.PrimerFichero) + "/versions") `
+                $estadoHoja = "si: {0}" -f (Format-Nombre $firCasan[0])
+                $contenido = Get-Hijos (Join-Ruta @($u.Ruta, $firCasan[0]))
+                if ($null -ne $contenido) {
+                    $enHoja = "{0} fich., {1} carp." -f $contenido.Ficheros, $contenido.Carpetas.Count
+                    if ($cuenta) { $ficherosEnHojas = $ficherosEnHojas + $contenido.Ficheros }
+                    if ($versionado -eq "sin ficheros que mirar" -and $null -ne $contenido.PrimerFichero) {
+                        $versiones = Invoke-GraphLectura -Url ("$GRAFO/drives/$script:IdBiblioteca/items/" + [Uri]::EscapeDataString($contenido.PrimerFichero) + "/versions") `
                             -Que "las versiones de un fichero" -Tolerar404
                         if ($null -eq $versiones) { $versionado = "no se ha podido mirar" }
                         elseif (@($versiones.value).Count -gt 1) { $versionado = "si (un fichero tiene {0} versiones)" -f @($versiones.value).Count }
@@ -789,33 +1199,77 @@ foreach ($obra in $aRecorrer) {
                 }
             }
             elseif ($firParecidas.Count -gt 0) { $estadoHoja = "PARECIDA ({0})" -f $firParecidas.Count }
-            if ($inc.Marca -eq "casa" -and $obra.Marca -ne "parecida") {
-                if ($firCasan.Count -eq 1) { $unidadesConFirmados = $unidadesConFirmados + 1 }
-                elseif ($firCasan.Count -eq 0 -and $firParecidas.Count -gt 0) { $unidadesConFirmadosParecida = $unidadesConFirmadosParecida + 1 }
+            if ($cuenta) {
+                if ($firCasan.Count -eq 1) { $unidadesConHoja = $unidadesConHoja + 1 }
+                elseif ($firCasan.Count -eq 0 -and $firParecidas.Count -gt 0) { $unidadesConHojaParecida = $unidadesConHojaParecida + 1 }
+                elseif ($firCasan.Count -eq 0) { $unidadesSinHoja = $unidadesSinHoja + 1 }
             }
-            Write-Host ("        {0,-34} {1,-8} {2,5} {3,5}  {4,-22} {5}" -f `
-                (Format-Nombre $unidad), $(if ($numeros.Count) { $numeros -join "," } else { "NINGUNA" }), `
-                $hijosUnidad.Carpetas.Count, $hijosUnidad.Ficheros, $estadoHoja, $enHoja)
+            Write-Host ("        {0,-34} {1,-8} {2,5} {3,5}  {4,-26} {5}" -f `
+                (Format-Nombre $u.Nombre), $(if ($numeros.Count) { $numeros -join "," } else { "NINGUNA" }), `
+                $u.Hijos.Carpetas.Count, $u.Hijos.Ficheros, $estadoHoja, $enHoja)
         }
     }
 }
 
+# --- 5 Lo que haria el sistema (R28, R31) ------------------------------------
+$veredicto = Invoke-ReglaDelDominio @{
+    modo = "veredicto"
+    codigo = $codigo
+    base = $CarpetaBase
+    incidencias = $CarpetaIncidencias
+    firmados = $CarpetaFirmados
+    alternativa = $CarpetaFirmadosAlternativa
+    arbol = $script:Arbol
+    csv = $rutaUnidades
+}
 Write-Host ""
+Write-Host "    LO QUE HARIA EL SISTEMA (el resolutor del dominio, en seco; SHAREPOINT_CREAR_CARPETAS=true)" -ForegroundColor Cyan
+Write-Host ("      obra                 : {0}" -f (Format-Veredicto $veredicto.obra))
+Write-Host ("      {0,-20} : {1}" -f $CarpetaIncidencias, (Format-Veredicto $veredicto.incidencias))
+$porUnidad = Get-Lista $veredicto.unidades
+$resolveria = @($porUnidad | Where-Object { $_.veredicto -eq "resolveria" }).Count
+$crearia = @($porUnidad | Where-Object { $_.veredicto -eq "crearia" }).Count
+$bloquearia = @($porUnidad | Where-Object { $_.veredicto -eq "bloquearia" }).Count
+$sinMedir = @($porUnidad | Where-Object { $_.veredicto -eq "sin medir" }).Count
+if (-not $rutaUnidades) {
+    Write-Host "      Sin -UnidadesCsv: no se dice que haria con cada unidad de Sigrid. Lanza antes" -ForegroundColor Yellow
+    Write-Host "      24_ubicacion_sigrid.ps1 -SalidaCsv <ruta fuera del repo> y pasa aqui -UnidadesCsv." -ForegroundColor Yellow
+}
+else {
+    Write-Host ""
+    Write-Host ("      {0,-5} {1,-22} {2,6}  {3}" -f "OBRA", "UNIDAD con.cod", "RECL.", "EL SISTEMA...")
+    Write-Host ("      " + ("-" * 100))
+    foreach ($u in $porUnidad) {
+        Write-Host ("      {0,-5} {1,-22} {2,6}  {3}" -f $u.obra, (Format-Nombre $u.unidad_cod), $u.reclamaciones, (Format-Veredicto $u))
+    }
+}
+
+Write-Host ""
+if ($rotuloResumen) { Write-Host ("    {0}" -f $rotuloResumen) -ForegroundColor Yellow }
+if ($rotuloTramo) { Write-Host ("    {0}" -f $rotuloTramo) -ForegroundColor Yellow }
 if ($CarpetaObra) {
     Anotar -Que "carpeta de obra forzada con -CarpetaObra" -Valor "si"
 }
 else {
-    Comprobar -Que "carpetas de obra que casan (R10)" -Esperado 1 -Obtenido $obraCasan.Count
+    Comprobar -Que "carpeta de obra que resuelve la regla (4.1)" -Esperado 1 -Obtenido $obraCasan.Count
 }
 Anotar -Que "carpetas de obra parecidas (4.5)" -Valor $obraParecidas.Count
 Comprobar -Que "PARTES INCIDENCIAS que casan en la obra" -Esperado 1 -Obtenido $incidenciasQueCasan
 Anotar -Que "unidades bajo PARTES INCIDENCIAS" -Valor $unidadesTotal
-Anotar -Que "unidades con su PARTES FIRMADOS" -Valor $unidadesConFirmados
-Anotar -Que "unidades con solo una PARECIDA de la hoja" -Valor $unidadesConFirmadosParecida
+Anotar -Que "unidades con su hoja (o la alternativa)" -Valor $unidadesConHoja
+Anotar -Que "unidades con solo una PARECIDA de la hoja" -Valor $unidadesConHojaParecida
+Anotar -Que "unidades sin hoja (se crearia)" -Valor $unidadesSinHoja
 Anotar -Que "unidades sin cifras en el nombre (riesgo 11)" -Valor $unidadesSinCifras
 Anotar -Que "numeros de unidad repetidos (D-6: ambigua)" -Valor $(if ($numerosRepetidos.Count) { $numerosRepetidos -join ", " } else { "ninguno" })
 Anotar -Que "ficheros en las hojas (contados)" -Valor $ficherosEnHojas
 Anotar -Que "versionado de la biblioteca" -Valor $versionado
+if ($rutaUnidades) {
+    Anotar -Que "unidades de Sigrid (CSV del 24)" -Valor $porUnidad.Count
+    Anotar -Que "unidades que resolveria" -Valor $resolveria
+    Anotar -Que "unidades que crearia" -Valor $crearia
+    Comprobar -Que "unidades que bloquearia (R31: ninguna)" -Esperado 0 -Obtenido $bloquearia
+    Comprobar -Que "unidades sin medir" -Esperado 0 -Obtenido $sinMedir
+}
 
 Write-Host "No se ha creado nada, no se ha subido nada y no se ha borrado nada." -ForegroundColor Green
 Escribir-Veredicto -Titulo "DESTINO DE POSVENTA"

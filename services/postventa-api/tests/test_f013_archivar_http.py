@@ -1,9 +1,11 @@
 # services/postventa-api/tests/test_f013_archivar_http.py
-"""F-013 T13 · el borde de `POST /api/archivar` con la estrategia `posventa`.
+"""F-013 T13 y T15 · el borde de `POST /api/archivar` con la estrategia `posventa`.
 
-Cubre R2, R19, R23 y R41 de `specs/F-013-archivo-posventa/requirements.md`
-**desde el endpoint**: la composición de `interface_adapters/api/archivar.py`
-(`design.md` §2.2) y la traducción de errores de `function_app.py`.
+Cubre R2, R19, R23, R41 y —T15— R25 y R45 de
+`specs/F-013-archivo-posventa/requirements.md` **desde el endpoint**: la
+composición de `interface_adapters/api/archivar.py` (`design.md` §2.2), la
+traducción de errores de `function_app.py` y el corte de L1 de F-033 con un
+parte que ya consta archivado en la biblioteca de IT (al final del fichero).
 
 ## Lo que se afirma aquí y no en los tests del paso
 
@@ -37,7 +39,9 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
+import application.pipelines.paso_archivo as paso
 import azure.functions as func
 import pytest
 from config.settings import obtener_ajustes
@@ -47,6 +51,7 @@ from domain.models.errores import (
     UbicacionNoDisponible,
 )
 from domain.models.estado import SituacionParte
+from domain.models.persistencia import EstadoArchivo, TrazaArchivo
 from interface_adapters.api import archivar
 
 from tests.utiles_destino import (
@@ -861,3 +866,206 @@ def test_f013_t13_la_biblioteca_falsa_de_f006_no_es_explorador():
 
     assert not isinstance(ArchivoPortFalso(BibliotecaFalsa()), ExploradorBibliotecaPort)
     assert isinstance(ArchivadorDePosventa(), ExploradorBibliotecaPort)
+
+
+# --------------------------------------------------------------------------
+# T15 · R25 = R45 · lo archivado en IT se queda en IT, y sin preguntar a nadie
+# --------------------------------------------------------------------------
+# R25: un parte que consta `archivado` con el `drive_id` de la biblioteca de
+# IT no se vuelve a subir a la de Posventa; no lo garantiza F-013, lo
+# garantiza la capa L1 de F-033, y aquí se comprueba **desde el endpoint**.
+# R45: con `posventa`, L1 corta **antes de resolver**: ni las dos lecturas de
+# Sigrid, ni un listado, ni una carpeta creada, ni una subida, ni una traza
+# escrita. El aviso de «otro destino» se decide con lo que se sabe sin
+# resolver —el nombre y la biblioteca—, nunca con la carpeta.
+#
+# Todos los dobles apuntan en **un solo** `registro` —explorador, archivador,
+# Sigrid y repositorio—, y lo que se afirma es el registro **entero**: una
+# lista vacía. Mirar solo `subidas` dejaría pasar una lectura de Sigrid o un
+# listado previos al corte, que es justo lo que R45 prohíbe.
+
+#: La biblioteca vigente es la que fija la fixture `estrategia`
+#: (`SHAREPOINT_DRIVE_ID`); la de IT, otra reconocible. Las dos, inventadas.
+DRIVE_POSVENTA = "drive-inventado-posventa"
+DRIVE_IT = "drive-inventado-it"
+#: Donde archivaba F-006 en IT: `<base>/<obra>`.
+CARPETA_IT = "Postventa/0677"
+#: El nombre que sale de lo guardado para la villa 5 (F-006 R5, F-031 R1).
+NOMBRE_VILLA_5 = "0677 - RS26.08 - 0005 PARTE FIRMADO.pdf"
+#: El nombre de antes de limpiar el código (el caso F-032), inventado.
+NOMBRE_VIEJO_VILLA_5 = "0677 - RS 26.08 - 0005 PARTE FIRMADO.pdf"
+ITEM_ARCHIVADO = "item-inventado-t15"
+WEB_URL_ARCHIVADA = "https://ejemplo.invalido/postventa/archivada-t15"
+ARCHIVADO_EN = datetime(2026, 9, 1, 9, 30, tzinfo=UTC)
+
+
+def _archivada(**cambios) -> TrazaArchivo:
+    """La traza `archivado` de la villa 5, por omisión la de la biblioteca de IT."""
+    valores = {
+        "hash_parte": HASH,
+        "estado": EstadoArchivo.ARCHIVADO,
+        "nombre_fichero": NOMBRE_VILLA_5,
+        "carpeta": CARPETA_IT,
+        "drive_id": DRIVE_IT,
+        "item_id": ITEM_ARCHIVADO,
+        "web_url": WEB_URL_ARCHIVADA,
+        "archivado_at_utc": ARCHIVADO_EN,
+    }
+    valores.update(cambios)
+    return TrazaArchivo(**valores)
+
+
+def _mundo_con_la_villa_5_archivada(traza: TrazaArchivo):
+    """Los cuatro dobles, **con un mismo `registro`**, y la traza ya guardada.
+
+    Sigrid sabría ubicar la villa 5 y el árbol medido la resolvería sin crear
+    nada: si el corte fallara, el parte **se subiría**, y el caso lo vería.
+    """
+    registro: list[str] = []
+    archivador = ArchivadorDePosventa(ExploradorFalso(arbol_0677(), registro=registro))
+    ubicaciones = ubicaciones_0677(registro=registro)
+    repositorio = RepositorioFalso(
+        situacion=SituacionParte(
+            validacion=veredicto_apto(
+                hash_parte=HASH, numero_incidencia=reclamacion_0677(5)
+            ),
+            archivo=traza,
+        ),
+        registro=registro,
+    )
+    return registro, archivador, ubicaciones, repositorio
+
+
+def test_f013_r25_r45_archivado_en_it_no_lee_sigrid_ni_lista_ni_crea_ni_sube(
+    estrategia, monkeypatch, caplog
+):
+    """R25, R45 · el parte de IT: 200, la traza de IT tal cual y los dos avisos.
+
+    Con `SHAREPOINT_ESTRUCTURA=posventa` y la biblioteca de Posventa
+    configurada, un parte que consta `archivado` en la de IT: el registro de
+    llamadas queda **vacío** —ni `leer_ubicacion`, ni
+    `leer_unidades_del_numero`, ni `listar_carpetas`, ni `crear_subcarpeta`,
+    ni `buscar`, ni `subir`, ni `guardar_archivo`—, la respuesta es la traza
+    de IT y lleva los dos avisos de F-033 (R14), en ese orden.
+    """
+    estrategia()
+    registro, archivador, ubicaciones, repositorio = _mundo_con_la_villa_5_archivada(
+        _archivada()
+    )
+    _con_costuras(
+        monkeypatch,
+        archivador=archivador,
+        repositorio=repositorio,
+        ubicaciones=ubicaciones,
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        respuesta = _archivar(5)
+
+    assert respuesta.status_code == 200, _cuerpo(respuesta)
+    # El registro de llamadas **entero**, de los cuatro dobles a la vez.
+    assert registro == []
+    assert ubicaciones.llamadas == []
+    assert archivador.explorador.llamadas == []
+    assert archivador.llamadas == []
+    assert archivador.biblioteca.subidas == 0
+    assert repositorio.archivos == []
+    # La respuesta es lo que consta, no lo que se habría resuelto hoy.
+    assert _cuerpo(respuesta) == {
+        "hash_parte": HASH,
+        "nombre_fichero": NOMBRE_VILLA_5,
+        "carpeta": CARPETA_IT,
+        "estado": "archivado",
+        "web_url": WEB_URL_ARCHIVADA,
+        "avisos": [paso.AVISO_YA_ARCHIVADO, paso.AVISO_ARCHIVADO_EN_OTRO_DESTINO],
+    }
+    # F-033 R15, R24 · ni la biblioteca de IT ni la vigente salen de aquí.
+    salida = caplog.text + respuesta.get_body().decode("utf-8")
+    for centinela in (DRIVE_IT, DRIVE_POSVENTA, ITEM_ARCHIVADO):
+        assert centinela not in salida
+
+
+def test_f013_r25_r45_por_las_fabricas_tampoco_se_lee_ni_se_lista(estrategia, fabricas):
+    """R25, R45 · lo mismo sin costuras, con la composición de las fábricas.
+
+    Aquí el explorador es, como en producción, **el mismo** archivador que
+    devuelve `construir_archivador`, y el lector de Sigrid sale de
+    `construir_ubicaciones`. Que se **construya** es del diseño (`design.md`
+    §2.2) y no toca la red; lo que R45 prohíbe es **leer**, y eso se afirma
+    con el registro entero. No se fija aquí si se construye o no.
+    """
+    import function_app
+
+    estrategia()
+    registro, archivador, ubicaciones, repositorio = _mundo_con_la_villa_5_archivada(
+        _archivada()
+    )
+    fabricas.archivador = archivador
+    fabricas.repositorio = repositorio
+    fabricas.ubicaciones = ubicaciones
+
+    respuesta = function_app.archivar(_peticion(_formulario(5)))
+
+    assert respuesta.status_code == 200, _cuerpo(respuesta)
+    assert registro == []
+    assert _cuerpo(respuesta)["carpeta"] == CARPETA_IT
+    assert _cuerpo(respuesta)["avisos"] == [
+        paso.AVISO_YA_ARCHIVADO,
+        paso.AVISO_ARCHIVADO_EN_OTRO_DESTINO,
+    ]
+
+
+@pytest.mark.parametrize(
+    ("traza", "avisos"),
+    [
+        pytest.param(
+            _archivada(drive_id=DRIVE_POSVENTA, carpeta=f"{INC}/VILLA 05/{FIRMADOS}"),
+            [paso.AVISO_YA_ARCHIVADO],
+            id="posventa-mismo-nombre",
+        ),
+        pytest.param(
+            _archivada(drive_id=DRIVE_POSVENTA, carpeta="NOMBRE ANTERIOR INVENTADO/VILLA 05"),
+            [paso.AVISO_YA_ARCHIVADO],
+            id="posventa-carpeta-renombrada",
+        ),
+        pytest.param(
+            _archivada(
+                drive_id=DRIVE_POSVENTA,
+                carpeta=f"{INC}/VILLA 05/{FIRMADOS}",
+                nombre_fichero=NOMBRE_VIEJO_VILLA_5,
+            ),
+            [paso.AVISO_YA_ARCHIVADO, paso.AVISO_ARCHIVADO_EN_OTRO_DESTINO],
+            id="posventa-nombre-viejo",
+        ),
+    ],
+)
+def test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca(
+    estrategia, monkeypatch, traza, avisos
+):
+    """R45 · el segundo aviso se decide **sin resolver**: nombre y biblioteca.
+
+    Es el control del caso de IT: con la **misma** biblioteca y el mismo
+    nombre no hay segundo aviso, así que el de arriba sale de la biblioteca y
+    no de otra cosa. La carpeta **no** cuenta: una renombrada después no
+    recibe el aviso (consecuencia aceptada en R45), porque conocer la de hoy
+    exigiría leer Sigrid y listar. Un nombre distinto (F-032) sí lo recibe. En
+    los tres casos, ni una llamada.
+    """
+    estrategia()
+    registro, archivador, ubicaciones, repositorio = _mundo_con_la_villa_5_archivada(
+        traza
+    )
+    _con_costuras(
+        monkeypatch,
+        archivador=archivador,
+        repositorio=repositorio,
+        ubicaciones=ubicaciones,
+    )
+
+    respuesta = _archivar(5)
+
+    assert respuesta.status_code == 200, _cuerpo(respuesta)
+    assert registro == []
+    assert _cuerpo(respuesta)["carpeta"] == traza.carpeta
+    assert _cuerpo(respuesta)["nombre_fichero"] == traza.nombre_fichero
+    assert _cuerpo(respuesta)["avisos"] == avisos

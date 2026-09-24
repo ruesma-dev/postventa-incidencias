@@ -60,6 +60,7 @@ __all__ = [
     "UNIDADES_EN_POSVENTA_0677",
     "ExploradorFalso",
     "UbicacionesFalsas",
+    "arbol_0677",
     "explorador_0677",
     "reclamacion_0677",
     "ubicacion_0677",
@@ -141,7 +142,12 @@ def _unir(padre: str, nombre: str) -> str:
     return f"{padre}/{nombre}" if padre else nombre
 
 
-def _arbol_0677() -> dict[str, tuple[str, ...]]:
+def arbol_0677() -> dict[str, tuple[str, ...]]:
+    """El árbol medido de la 0677 como `ruta -> hijas`, nuevo en cada llamada.
+
+    Para montar variantes: se copia, se cambia un nivel y se da a
+    `ExploradorFalso`.
+    """
     obra = CARPETA_OBRA_0677
     incidencias = _unir(obra, INCIDENCIAS)
     arbol: dict[str, tuple[str, ...]] = {
@@ -322,7 +328,7 @@ class UbicacionesFalsas:
 
 def explorador_0677(**opciones: Any) -> ExploradorFalso:
     """Un explorador **nuevo** con el árbol medido de la 0677 (T2)."""
-    return ExploradorFalso(_arbol_0677(), ficheros=_ficheros_0677(), **opciones)
+    return ExploradorFalso(arbol_0677(), ficheros=_ficheros_0677(), **opciones)
 
 
 def ubicacion_0677(n: int) -> UbicacionReclamacion:

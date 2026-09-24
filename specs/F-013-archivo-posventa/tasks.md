@@ -126,7 +126,7 @@
   VILLA 02 con `PARTES FIRMADO` y VILLA 04 sin subcarpetas; T3: las 15
   unidades), **sin** nombres de persona. | Verificación:
   `pytest -k f013` sin regresiones
-- [ ] **T9**: `application/pipelines/destino_archivo.py` con la firma de
+- [x] **T9**: `application/pipelines/destino_archivo.py` con la firma de
   `design.md` §5 enmendada (**sin `ctx`**; los códigos entran como dos
   cadenas) + `tests/test_f013_resolver_destino.py`: R6–R8, R13–R16, R34–R39,
   R41 (también en la segunda lectura), R44 (dos obras → 409 **sin listar**;

@@ -1088,6 +1088,27 @@ def test_f013_r50_dos_grupos_que_comparten_villa_casan_los_dos():
     ) == nombre_derivado_de_unidad("0677.03VILLA 5.", codigo_obra="0677")
 
 
+def test_f013_r50_la_unidad_que_casa_solo_por_su_codigo_tambien_cuenta():
+    """R50 · la regla estricta entera: también la regla 1, el `con.cod`.
+
+    Una unidad cuyo código corto es `VILLA 05` casa con la carpeta `VILLA 05`
+    aunque no tenga `con.res`; junto a la villa 5 medida (que casa por el
+    nombre) son **dos** → `unidad_carpeta_compartida`. Contar solo las que
+    casan por el nombre dejaría pasar la carpeta compartida, y una carpeta
+    elegida por el código se quedaría sin su unidad (añadido en T20: mutante a
+    mano U4, que quitaba el código y sobrevivía).
+    """
+    por_el_codigo = UnidadDeObra(
+        obra_ref="obra-a", obra_codigo="0677", unidad_codigo="VILLA 05", unidad_nombre=None
+    )
+
+    solo_ella = unidades_que_casan((por_el_codigo,), carpeta="Villa 5")
+    las_dos = unidades_que_casan(FILAS_0677 + (por_el_codigo,), carpeta="VILLA 05")
+
+    assert solo_ella == (por_el_codigo,)
+    assert [fila.unidad_codigo for fila in las_dos] == ["0677.03VILLA 5.", "VILLA 05"]
+
+
 # --------------------------------------------------------------------------
 # El árbol medido, obra e incidencias (T2)
 # --------------------------------------------------------------------------

@@ -1,6 +1,34 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⏸ F-013 · PARADA T4 CERRADA · 2026-09-24 · decisiones del humano con la medición delante
+>
+> Medición de T2 y T3 en `progress/explore_F-013.md` (commit `32ddd42`). La
+> medición **desmiente §4 de `design.md`**: la carpeta real de la obra es
+> `677  MIRASIERRA` (sin cero, dos espacios, nombre corto que no es el de
+> Sigrid), así que la regla provisional no la casaba. Por la regla de T4, **la
+> spec vuelve al spec-author** antes del Bloque 1.
+>
+> Decisiones del humano, 2026-09-24 (respuestas literales a la pregunta):
+>
+> 1. **Nombre al crear**: «Unidad al estilo Posventa (Recomendado)». Unidad
+>    `VILLA NN` derivada del `con.cod` de Sigrid (`0677.03VILLA 13.` →
+>    `VILLA 13`, dos cifras); obra `<cod> <con.res de Sigrid>`, que Posventa
+>    renombra si quiere: como se casa por número, el sistema la sigue
+>    encontrando.
+> 2. **Unidad sin subcarpetas** (VILLA 04, 142 partes sueltos): «Crear PARTES
+>    FIRMADOS (Recomendado)». Lo antiguo se queda donde está.
+> 3. **Arranque**: «Crear desde el principio». `SHAREPOINT_CREAR_CARPETAS`
+>    activo desde el primer despliegue contra Posventa, con las ventanas
+>    abiertas por defecto: el primer parte de una villa sin carpeta (VILLA 12
+>    y 13 tienen reclamaciones y no tienen carpeta) la creará.
+> 4. **Casar la obra por su número** (677 = 0677), ignorando el resto del
+>    nombre: propuesto por el líder como necesario y no discutido.
+>
+> Sin respuesta todavía (no bloquean la enmienda): el literal de la carpeta
+> **parecida** de VILLA 02 (con la regla actual, 409 y no se archiva) y si las
+> villas 8-15 tienen carpeta en otro sitio de la biblioteca.
+
 > ## ✅ F-013 · T1 HECHA · 2026-09-24 · siguiente: T2 y T3 (humano) y parada T4
 >
 > **T1 cerrada** (`553ce39`): `infra/23_destino_posventa.ps1` (Graph, solo

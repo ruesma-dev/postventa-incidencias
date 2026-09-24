@@ -2403,13 +2403,14 @@ ficha de **F-018 · Mínimo privilegio en Graph**:
 
 ---
 
-## Bloque 7 · T20 y T21 (2026-09-25) · **T20 hecha; T21 BLOQUEADA**
+## Bloque 7 · T20 y T21 (2026-09-25) · **hechas** (T21 tras la decisión del líder, §4)
 
 > Encargo del líder: solo T20 y T21, en `feature/F-013-archivo-posventa` desde
 > `50b9cd2` con el árbol limpio. Commits de este bloque: `ea91013` (test nuevo
-> de T20) y el de este informe. Sin push; `harness/features.json` y `.env` sin
-> tocar (por encargo, tampoco para marcar el bloqueo: va en
-> `progress/current.md`).
+> de T20), `bfb45f8` (informe de T20 y bloqueo de T21), `a5dccf5` (el arreglo
+> de T21, solo test) y el de este cierre. Sin push; `harness/features.json` y
+> `.env` sin tocar (por encargo, tampoco para marcar el bloqueo, que fue solo
+> en `progress/current.md` y `tasks.md` y ya está quitado).
 
 ### 0 · Decisiones del líder sobre lo pendiente del bloque 6 (no se reabren)
 
@@ -2428,8 +2429,9 @@ ficha de **F-018 · Mínimo privilegio en Graph**:
 |---|---|
 | `services/postventa-api/tests/test_f013_destino_dominio.py` | Test nuevo `test_f013_r50_la_unidad_que_casa_solo_por_su_codigo_tambien_cuenta` (commit `ea91013`): cierra el hueco que destapó el mutante a mano U4 |
 | `progress/mutacion_F-013.md` | **Nuevo**: el informe de la herramienta, sin retocar salvo el análisis del superviviente, y la nota del implementer (comando, condiciones, alcance, mutación a mano de T20, tabla de las mutaciones de orden de los bloques 2 a 5, historia de las campañas) |
-| `specs/F-013-archivo-posventa/tasks.md` | T20 `[x]` con su nota; T21 `[ ]` con la nota del bloqueo |
-| `progress/impl_F-013.md`, `progress/current.md` | Este informe y la entrada del bloqueo |
+| `services/postventa-api/tests/test_f013_scripts_infra.py` | `_ejecutar_regla` compila la regla del 23 como `<regla_del_23>` y no como un fichero en `tmp_path`; comentario con el porqué y las fechas, que deshace lo de `84085b8` (commit `a5dccf5`, §4) |
+| `specs/F-013-archivo-posventa/tasks.md` | T20 y T21 `[x]` con su nota |
+| `progress/impl_F-013.md`, `progress/current.md` | Este informe; en `current.md`, la entrada del bloque (el bloqueo, sustituido por el cierre) |
 
 **Sin código de producción.**
 
@@ -2491,7 +2493,7 @@ propósito).
 
 **Veredicto de T20: cero supervivientes sin justificar.**
 
-### 3 · T21 · `bash harness/init.sh` · **BLOQUEADA** (lo primero que hay que leer)
+### 3 · T21 · `bash harness/init.sh` · primero **bloqueada** (resuelto en §4)
 
 `bash harness/init.sh`, tal cual, **dos veces** tras `ea91013`. Las dos, lo
 mismo:
@@ -2564,7 +2566,56 @@ nueva) o `coverage json -i` en `init.sh` (cambio del arnés, a portar a
 tocar nada, es relanzar `init.sh` cuando la máquina esté sin pytest de otros
 proyectos.
 
-### 4 · Verificación
+### 4 · T21 en verde, tras la decisión del líder (opción a)
+
+**Decisión del líder**: aplicar la propuesta de §3: la regla del 23 se compila
+en el test con el nombre `<regla_del_23>`, con un comentario en el test con el
+porqué y la fecha (deshace lo de `84085b8`, que resultó frágil).
+
+**Cambio** (`a5dccf5`, solo test, dentro de F-013): en `_ejecutar_regla`
+(`tests/test_f013_scripts_infra.py`) desaparece el fichero `regla_del_23.py`
+en `tmp_path` y el `exec` pasa a ser `exec(compile(_regla_embebida(),
+"<regla_del_23>", "exec"), {"__name__": "regla_del_23"})`. El código que se
+ejecuta es el mismo: `_regla_embebida()` lo sigue sacando del `.ps1`
+versionado. `tmp_path` se sigue usando para la entrada JSON
+(`F013_ENTRADA_TEMP`), que la regla lee y que no pasa por `coverage`.
+
+**El camino real no cambia**: `git diff --stat -- infra/` vacío. El `.ps1`
+sigue escribiendo la regla en un fichero y ejecutándola como proceso aparte,
+y esa vía la demostró el ensayo local del bloque 4 (§5); este cambio solo
+afecta a cómo la ejecuta **el test**.
+
+**Verificación**:
+
+| Comando (desde `services/postventa-api`) | Resultado |
+|---|---|
+| `pytest tests/test_f013_scripts_infra.py -q -p no:cacheprovider` | **60 passed in 1.63s** |
+| El mismo bajo `coverage run --data-file=<scratchpad>` con `--basetemp=<scratchpad>/bt`, **borrando `bt` antes de** `coverage json` (lo que hacían las sesiones ajenas) | `60 passed in 2.20s`; `coverage json` **exit 0**; `regla_del_23` aparece **0 veces** en el JSON |
+| `ruff check tests/test_f013_scripts_infra.py` | All checks passed! |
+
+**`bash harness/init.sh`, tal cual, sobre `a5dccf5`** (salida real, sin la
+barra de puntos):
+
+```
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+62 passed in 10.54s
+[OK] pytest en verde (con medición de cobertura)
+    2 servicio(s): api (python), front (python)
+[OK] harness/servicios.json válido
+4284 passed, 35 skipped in 242.55s (0:04:02)
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[OK] PUERTA COBERTURA: 100.0% de 551 líneas cambiadas cubiertas (551/551, umbral 80%, nivel critico)
+[OK] Rama actual: feature/F-013-archivo-posventa
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```
+
+Ya no aparece el aviso «coverage no pudo escribir su coverage.json», con la
+máquina igual de cargada que en §3. **T21 hecha.**
+
+### 5 · Verificación
 
 | Comando | Resultado |
 |---|---|
@@ -2574,26 +2625,27 @@ proyectos.
 | `pytest tests/test_f013_destino_dominio.py tests/test_f013_resolver_destino.py` | **381 passed** |
 | `ruff check tests/test_f013_destino_dominio.py` | All checks passed |
 | `bash harness/init.sh` (T21, dos veces, sobre `ea91013`) | suites en verde (**4.284 passed, 35 skipped**); **`[KO]` PUERTA COBERTURA 0 %** por la causa de §3 |
+| `pytest tests/test_f013_scripts_infra.py` tras `a5dccf5` | **60 passed**; `coverage json` sin error aunque se borre el temporal |
+| `bash harness/init.sh` (T21, sobre `a5dccf5`) | **ENTORNO LISTO**: api **4.284 passed, 35 skipped**; **PUERTA COBERTURA 100 % de 551** |
 
-### 5 · Qué queda fuera y qué falta
+### 6 · Qué queda fuera y qué falta
 
-- **Falta T21**: decidir entre aplicar la propuesta de §3 (un commit de una
-  línea en `test_f013_scripts_infra.py`) o relanzar `init.sh` con la máquina
-  sin pytest ajenos. Con cualquiera de las dos, T21 debería quedar en verde:
-  las suites lo están y la puerta mide 100 %.
-- **Para el líder**: en la tabla del punto 7, los 3 equivalentes de la
-  mutación a mano del bloque 2 (P2, M19, M20) están justificados en el
-  informe pero, a diferencia de `_Nivel`, no consta aceptación del humano. No
-  son supervivientes de la herramienta (a los que se aplica
-  `supervivientes_maximos: 0`); lo señalo por si el reviewer lo pide.
+- **T20 y T21, hechas.** Con el bloque 7 quedan hechas todas las tareas de
+  `tasks.md` que son del implementer; lo siguiente es la review.
+- Los 3 equivalentes de la mutación a mano del bloque 2 (P2, M19, M20),
+  justificados pero sin aceptación del humano registrada: **los lleva el
+  líder** al humano y al reviewer (decisión del líder, 2026-09-25); no se han
+  tocado.
+- La campaña del arnés **no se relanza** tras `a5dccf5`: es solo de tests
+  (como `ea91013`), el alcance de producción y sus 109 mutantes no cambian.
 - **Nada del corte** se ha hecho ni cambia lo desplegado.
 
 ### Evidencias
 
 | Evidencia | Valor |
 |---|---|
-| Tests ejecutados | `init.sh`: api **4.284 passed, 35 skipped en 241,96 s** (y 238,56 s en la segunda); front en verde (caché); arnés **62 passed** en 18,19 s |
-| Cobertura de las líneas cambiadas | `init.sh`: **`[KO]` 0,0 % de 621** (no mide: `coverage json` abortó, §3). Medida de diagnóstico con `coverage json -i`: **100,0 % de 551 líneas (551/551)** |
+| Tests ejecutados | `init.sh` final (sobre `a5dccf5`): api **4.284 passed, 35 skipped en 242,55 s**; front en verde (caché); arnés **62 passed** en 10,54 s. Las dos pasadas anteriores (sobre `ea91013`): los mismos 4.284 en verde, puerta en rojo (§3) |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 551 líneas cambiadas cubiertas (551/551, umbral 80%, nivel critico)`** (`init.sh` final). Antes del arreglo, `[KO]` 0,0 % de 621 porque `coverage json` abortaba (§3) |
 | Mutantes generados y supervivientes | Arnés: **109 generados, 108 muertos, 1 superviviente** (`_Nivel`, equivalente aceptado por el humano el 2026-09-24), 0 timeouts, 2.407,1 s con 6 workers. A mano (T20): **18 generados, 18 muertos** tras cerrar U4 con test |
-| Tiempo de la suite | api 241,96 s; arnés 18,19 s |
+| Tiempo de la suite | api 242,55 s; arnés 10,54 s (`init.sh` final) |
 | Fase RED | No aplica en sentido estricto: T20 no escribe código; el test nuevo cubre comportamiento que ya existía y pasó a la primera. Su «rojo» es el mutante U4 inyectado (traza en §2) |

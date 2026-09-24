@@ -1,30 +1,26 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ⛔ F-013 · BLOQUE 7 · T20 HECHA, **T21 BLOQUEADA** · 2026-09-25
+> ## ✅ F-013 · BLOQUE 7 HECHO (T20 y T21) · 2026-09-25 · siguiente: review
 >
 > implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 7 · T20 y
-> T21»** (el bloqueo, en su §3). `harness/features.json` **sin tocar** por
-> encargo del líder (el bloqueo se anota solo aquí); sin push.
+> T21»**. Solo tests (`ea91013`, `a5dccf5`) e informes (`bfb45f8` y el
+> cierre); sin código de producción. `harness/features.json` sin tocar; sin
+> push.
 >
-> - **T20 hecha**: campaña del arnés **109 mutantes, 108 muertos, 1
->   superviviente** (`_Nivel`, aceptado por el humano el 2026-09-24), 0
->   timeouts. Mutación a mano de `unidades_que_casan` y vecinas (la
->   herramienta no les genera mutantes): 18/18 tras cerrar un hueco real con
->   test (`ea91013`, solo test). Informe `progress/mutacion_F-013.md`.
-> - **T21 bloqueada**: `bash harness/init.sh` dos veces: suites **en verde**
->   (api 4.284 passed, 35 skipped) pero **`[KO]` PUERTA COBERTURA 0 %**:
->   `coverage json` aborta con «No source for code» sobre el
->   `regla_del_23.py` que un test de T14 escribe en `tmp_path` y ejecuta en
->   proceso; el directorio temporal de pytest es **común a todos los
->   proyectos** y las ~22 sesiones de pytest/mutación de otros proyectos que
->   corren ahora lo borran antes de `coverage json`. Medida de diagnóstico
->   con `-i`: **100 % de 551 líneas**.
-> - **Decisión para el líder**: (a) arreglo de una línea en
->   `test_f013_scripts_infra.py` — compilar con `"<regla_del_23>"` en vez de
->   la ruta del temporal, comprobado a mano (60 passed y `coverage json` sin
->   error con el temporal borrado) —, o (b) relanzar `init.sh` con la máquina
->   sin pytest de otros proyectos.
+> - **T20**: campaña del arnés **109 mutantes, 108 muertos, 1 superviviente**
+>   (`_Nivel`, aceptado por el humano el 2026-09-24), 0 timeouts. Mutación a
+>   mano de `unidades_que_casan` y vecinas (la herramienta no les genera
+>   mutantes): 18/18 tras cerrar un hueco real con test (`ea91013`). Informe
+>   `progress/mutacion_F-013.md`.
+> - **T21**: estuvo bloqueada (puerta de cobertura a 0 % porque un test de
+>   T14 compilaba la regla del 23 desde el temporal de pytest, que borraban
+>   sesiones de otros proyectos). Por decisión del líder, la regla se compila
+>   como `<regla_del_23>` (`a5dccf5`); el `.ps1` no cambia.
+>   `bash harness/init.sh` en verde: **4.284 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+> - Los equivalentes a mano del bloque 2 (P2, M19, M20) los lleva el líder al
+>   humano y al reviewer.
 
 > ## ✅ F-013 · BLOQUE 6 HECHO (T16–T19) · 2026-09-25 · siguiente: Bloque 7 (T20, T21)
 >

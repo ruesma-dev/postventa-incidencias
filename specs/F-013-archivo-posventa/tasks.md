@@ -333,14 +333,14 @@
   > 18/18 tras cerrar un hueco con test (`ea91013`). Informe:
   > `progress/mutacion_F-013.md`; resumen en `progress/impl_F-013.md`,
   > «Bloque 7».
-- [ ] **T21**: ejecutar `bash harness/init.sh` en verde. | Verificación:
+- [x] **T21**: ejecutar `bash harness/init.sh` en verde. | Verificación:
   `bash harness/init.sh`
-  > **Bloqueada el 2026-09-25**: suites en verde (api 4.284 passed, 35
-  > skipped), pero la PUERTA COBERTURA sale a 0 % porque `coverage json` no
-  > encuentra el `regla_del_23.py` que un test de T14 escribe en `tmp_path`:
-  > otras sesiones de pytest de otros proyectos, a la vez en la máquina,
-  > borran ese directorio temporal compartido. Diagnóstico y propuesta en
-  > `progress/impl_F-013.md`, «Bloque 7», §3.
+  > **Hecha el 2026-09-25**: ENTORNO LISTO sobre `a5dccf5`; api 4.284
+  > passed, 35 skipped; PUERTA COBERTURA 100 % de 551 líneas. Antes, la puerta
+  > salía a 0 % porque un test de T14 compilaba la regla del 23 desde un
+  > fichero del temporal de pytest, que borraban sesiones de otros proyectos;
+  > arreglado en el test (`<regla_del_23>`, decisión del líder). Informe:
+  > `progress/impl_F-013.md`, «Bloque 7», §3 y §4.
 
 ## Después del merge: el corte (MANUAL, humano; no son tareas del implementer)
 

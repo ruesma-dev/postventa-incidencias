@@ -46,12 +46,12 @@ lee (`-UnidadesCsv`).
 
 from __future__ import annotations
 
+import contextlib
 import csv
+import io
 import json
 import os
 import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -629,26 +629,34 @@ def _listados(arbol: dict[str, tuple[str, ...]]) -> list[dict]:
 
 
 def _ejecutar_regla(tmp_path: Path, entrada: dict) -> dict:
-    """Ejecuta la regla del 23 como la ejecuta el 23: por fichero, con la
-    entrada en un JSON temporal cuya ruta va en `F013_ENTRADA_TEMP`.
+    """Ejecuta la regla del 23 con la entrada como la recibe del 23: un JSON
+    temporal cuya ruta va en `F013_ENTRADA_TEMP`.
 
-    Un proceso aparte, sin red (la regla no llama a nadie: lo fija otro test).
+    **En este proceso** (`exec` sobre un espacio de nombres limpio) y no en uno
+    aparte: el 2026-09-24 un `subprocess` de este test murio con
+    `0xC0000142` (fallo de arranque del proceso en Windows) en mitad de un
+    `init.sh` que la maquina tardo 3 h 41 min en completar. La prueba de que
+    la regla funciona como proceso aparte, por fichero, es el ensayo local del
+    informe (`progress/impl_F-013.md`, «Bloque 4»). Sin red: la regla no llama
+    a nadie (lo fija otro test).
     """
-    codigo = tmp_path / "regla.py"
-    codigo.write_text(_regla_embebida(), encoding="utf-8")
     fichero = tmp_path / "entrada.json"
     fichero.write_text(json.dumps({"servicio": str(SERVICIO), **entrada}), encoding="utf-8-sig")
-    resultado = subprocess.run(
-        [sys.executable, str(codigo)],
-        env={**os.environ, "F013_ENTRADA_TEMP": str(fichero)},
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
-    )
-    assert resultado.returncode == 0, resultado.stderr
-    assert resultado.stdout.isascii(), "la salida de la regla tiene que ser ASCII"
-    return json.loads(resultado.stdout)
+    salida = io.StringIO()
+    anterior = os.environ.get("F013_ENTRADA_TEMP")
+    os.environ["F013_ENTRADA_TEMP"] = str(fichero)
+    try:
+        with contextlib.redirect_stdout(salida):
+            # Codigo del propio repositorio (el .ps1 versionado), no una entrada externa.
+            exec(compile(_regla_embebida(), "regla_del_23", "exec"), {"__name__": "regla_del_23"})  # noqa: S102
+    finally:
+        if anterior is None:
+            del os.environ["F013_ENTRADA_TEMP"]
+        else:
+            os.environ["F013_ENTRADA_TEMP"] = anterior
+    texto = salida.getvalue()
+    assert texto.isascii(), "la salida de la regla tiene que ser ASCII"
+    return json.loads(texto)
 
 
 def _veredicto(tmp_path: Path, arbol: dict, filas: list[dict] | None) -> dict:

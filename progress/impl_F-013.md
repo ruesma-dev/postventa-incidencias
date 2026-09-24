@@ -341,3 +341,228 @@ dos ventanas de escritura. Repaso con fichero y línea, **sin arreglar nada**:
 | Mutación (arnés) | `python -m harness.mutacion --feature F-013` (informe al scratchpad, para no adelantar el de T20): **0 ficheros, 0 líneas de producción, 0 mutantes**. El arnés solo muta `.py` de producción; la campaña de la feature es T20 |
 | Mutación (a mano, PowerShell) | **5 mutantes inyectados, 5 muertos, 0 supervivientes** (§5) |
 | Sintaxis PowerShell 5.1 | `Parser::ParseFile`: 0 errores en los dos |
+
+---
+
+## Bloque 1 · T5–T7 · Configuración y dominio puro (2026-09-24)
+
+**Alcance del encargo: solo el Bloque 1.** No incluye nada del Bloque 2 (puertos,
+resolutor, paso). Sin DDL, sin escrituras contra ningún sistema,
+`harness/features.json` sin tocar. Ningún test toca la red.
+
+Commits: `77c62dd` (T5), `4d86c99` (T6, en rojo, con la traza en el mensaje),
+`cd00118` (estilo de T5: ruff), `a941acf` (T7), `0783c54` (T7: cierre de los
+supervivientes de la mutación, §5), más el de este informe.
+
+### 1 · Qué cambió
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/config/settings.py` | Cinco campos: `sharepoint_estructura` (`"por_obra"`), `sharepoint_carpeta_incidencias` (`"PARTES INCIDENCIAS"`), `sharepoint_carpeta_firmados` (`"PARTES FIRMADOS"`), `sharepoint_carpeta_firmados_alternativa` (`"PARTES FIRMADO"`) y `sharepoint_crear_carpetas` (`True`). **Ninguno** llamado `sharepoint_nombre_unidad`. Descripción de `sharepoint_carpeta_base` actualizada (vacía = raíz, solo en `posventa`) y una nota fechada en el comentario de F-006 que decía que F-013 sería «cambiar tres variables» |
+| `services/postventa-api/infrastructure/sharepoint/fabrica.py` | `_problemas_de_estructura`: una estrategia que no sea **exactamente** `por_obra`/`posventa` (R3) y una base vacía —o de solo blancos o barras— en `por_obra` (R17) → `ConfiguracionSharePointIncompleta`. Va dentro de la puerta 3 (configuración), **antes** de construir el adaptador, y en el mismo mensaje que las variables que falten. El orden entorno → interruptor → configuración no cambia |
+| `services/postventa-api/domain/models/destino_posventa.py` (nuevo) | El dominio de `design.md` §2.1 y §4 (lista abajo). Solo biblioteca estándar y `nombrado.py` |
+| `services/postventa-api/domain/models/errores.py` | `DestinoNoResuelto(motivo, detalle, candidatas=())`, con `candidatas` convertida en tupla; un párrafo en la docstring del módulo (familia 409) |
+| `services/postventa-api/tests/test_f013_fabricas.py` (nuevo) | 37 tests: R1, R3, R17, R49 |
+| `services/postventa-api/tests/test_f013_destino_dominio.py` (nuevo) | 246 tests: las tablas de `design.md` §4.1, §4.2, §4.3, §4.5, §4.6 y §4.7 enteras, fila a fila, más R9, R13/R14, R17, R18/R19, R35 (los cuatro obligatorios y los del recuadro), R36–R39, R44, R46 y R50 |
+| `specs/F-013-archivo-posventa/tasks.md` | T5, T6 y T7 marcadas `[x]` |
+
+**Lo que expone `destino_posventa.py`**: `EstructuraArchivo`, `MotivoDestino`
+(los 22 códigos de R18, lista cerrada), `UbicacionReclamacion`, `UnidadDeObra`,
+`PATRON_CODIGO_UNIDAD`, `clave_de_unidad`, `numero_de_obra`, `carpetas_de_obra`,
+`parecidas_de_obra`, `carpeta_con_nombre`, `parecidas_de_tramo`,
+`carpetas_de_unidad`, `parecidas_de_unidad`, `nombre_de_obra_nueva`,
+`nombre_derivado_de_unidad`, `nombre_de_carpeta_admisible`,
+`obras_del_mismo_numero`, `unidades_que_casan` y `unir_ruta`.
+
+**Los controles de alcance de F-031, F-033 y F-034, sin tocarlos**: en verde
+(28 passed; los 15 skipped son los controles del diff, que viven en las ramas de
+esas features). El módulo nuevo no nombra ninguno de los identificadores
+vigilados de `design.md` §2.3: R44 compara con `normalizar_codigo` y
+`numero_de_obra`, nunca con `es_el_mismo_codigo`. Nada de este bloque ha chocado
+con ellos.
+
+### 2 · Decisiones de diseño (y lo que la spec no fijaba)
+
+1. **`EstructuraArchivo` nace en T5**, sola, en `destino_posventa.py`: la
+   fábrica la necesita para validar (R3), y la spec la coloca en ese módulo
+   (§3.1). La lista de valores no se duplica en la fábrica. Por eso la fase RED
+   de T6 es un `ImportError` del **resto** de nombres, no del módulo.
+2. **La estrategia en `settings.py` es `str`, no el enum**: si fuera un tipo
+   cerrado, un valor mal escrito tumbaría `/health` al leer los ajustes. Quien
+   la valida es la fábrica, como con el resto de lo de SharePoint. Y la
+   comparación es **exacta**: ni blancos ni mayúsculas se «arreglan»
+   (`" posventa"` y `"POSVENTA"` → error). Falla cerrado.
+3. **Dos funciones que la lista de §2.1 no nombra**, y que R36 y R38 necesitan
+   en el dominio (T6 pide sus tests aquí): `nombre_de_obra_nueva(codigo,
+   con_res)` —`<código normalizado> <con.res colapsado>`— y
+   `nombre_de_carpeta_admisible`, que **delega** en `nombrado.nombre_admisible`
+   (importada, no copiada: `design.md` §4.6). Sin `con.res`, el nombre de la
+   obra acaba en blanco y R38 lo rechaza con `nombre_carpeta_imposible`, en vez
+   de inventar un nombre.
+4. **`parecidas_de_tramo` recibe también `alternativa`**. La firma de §4.5 es
+   anterior a R49. Sin ella, la partición se rompería en la hoja:
+   `PARTES FIRMADO` casaría **y** sería parecida. Solo sirve para excluir.
+5. **`obra_ref` fuera del `repr` de `UnidadDeObra`** (`field(repr=False)`),
+   con test: §3.3 y R23 dicen que no se loguea. Así, un `log.info("%s", fila)`
+   descuidado no lo saca.
+6. **Parecida de obra con código no numérico**: la spec dice «igualdad de
+   token literal». Aquí es «las palabras del código aparecen seguidas entre las
+   del nombre», sin mayúsculas ni tildes. Con un código de una palabra es
+   exactamente la igualdad de token; con uno con guion (`AD-01`) es la
+   generalización natural. Es generosa, como pide §4.5: su error cuesta un 409.
+7. **Las secuencias de cifras de las reglas amplias se buscan tras NFKD**: una
+   cifra de ancho completo (`６７７ MIRASIERRA`) no casa por la estricta (solo
+   cifras ASCII, como exige §4.1), pero **sí** es parecida. Es más generoso que
+   el `re.findall` literal de §4.5, nunca menos.
+8. **Números de la unidad para la regla amplia**: si el `con.cod` cumple el
+   patrón de R37 (solo el patrón, sin exigir que su obra sea la del parte), se
+   toma su `<n>`; si no, los números de su clave, como antes. En los dos casos
+   se añaden los del `con.res`.
+9. **`numero_de_obra` normaliza** el código (`normalizar_codigo`, idempotente):
+   `" 06 77 "` → 677, coherente con F-032 (un blanco no forma parte del código).
+10. **Un código de obra vacío no casa con nada ni se parece a nada, y un tramo
+    configurado vacío tampoco**: guardas explícitas, con test. El resolutor no
+    debería llegar ahí (el nombrado falla antes), pero una clave vacía casaría
+    con carpetas como `---`.
+11. **Tramos: igualdad por `clave_de_unidad`**, tal cual dice §4.2. Un efecto
+    que conviene saber: la puntuación también separa, así que
+    `PARTES-INCIDENCIAS` **casa** con `PARTES INCIDENCIAS` (tienen la misma
+    clave). Es la regla escrita y no se ha restringido; si el líder la quiere
+    más estricta, es una enmienda.
+
+### 3 · Fase RED (traza real)
+
+**T5**. Comando exacto, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_fabricas.py -q -p no:cacheprovider --tb=line
+```
+
+Salida real (extracto; líneas `E` y de fallo agrupadas):
+
+```
+E   KeyError: 'sharepoint_estructura'
+E   KeyError: 'sharepoint_carpeta_firmados_alternativa'
+E   AttributeError: 'Ajustes' object has no attribute 'sharepoint_crear_carpetas'
+E   AttributeError: 'Ajustes' object has no attribute 'sharepoint_carpeta_firmados'. Did you mean: 'sharepoint_carpeta_base'?
+tests\test_f013_fabricas.py:190: Failed: DID NOT RAISE ConfiguracionSharePointIncompleta      (x6, R3)
+tests\test_f013_fabricas.py:289: Failed: DID NOT RAISE ConfiguracionSharePointIncompleta      (x5, R17)
+tests\test_f013_fabricas.py:340: AssertionError: assert 'SHAREPOINT_ESTRUCTURA' in 'faltan variables para archivar en SharePoint: SHAREPOINT_DRIVE_ID. Se dicen los nombres y nunca los valores: uno de ellos es una credencial'
+FAILED tests/test_f013_fabricas.py::test_f013_r3_estrategia_desconocida_falla_antes_de_construir_el_adaptador[otra]
+FAILED tests/test_f013_fabricas.py::test_f013_r17_base_vacia_en_por_obra_es_error_de_configuracion[]
+FAILED tests/test_f013_fabricas.py::test_f013_r49_la_alternativa_por_omision_es_la_de_villa_02
+[...]
+27 failed, 10 passed in 0.29s
+```
+
+Los 10 que ya pasaban en RED son los **controles positivos** (las dos
+estrategias y la base con nombre construyen; la puerta del entorno sigue yendo
+antes; la variable retirada no existe), que ya eran ciertos antes del cambio.
+GREEN: **37 passed**.
+
+**T6**. Comando exacto:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_destino_dominio.py -q -p no:cacheprovider
+```
+
+Salida real, completa:
+
+```
+_____________ ERROR collecting tests/test_f013_destino_dominio.py _____________
+ImportError while importing test module '...\tests\test_f013_destino_dominio.py'.
+tests\test_f013_destino_dominio.py:31: in <module>
+    from domain.models.destino_posventa import (
+E   ImportError: cannot import name 'PATRON_CODIGO_UNIDAD' from 'domain.models.destino_posventa' (...\domain\models\destino_posventa.py)
+=========================== short test summary info ===========================
+ERROR tests/test_f013_destino_dominio.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.51s
+```
+
+Commiteado así (`4d86c99`, con la traza en el mensaje). GREEN tras T7:
+**238 passed** (246 tras los tests que añadió la mutación, §5). Que las aserciones muerden —y no solo el import— lo demuestra
+la campaña de mutación de §5.
+
+### 4 · Verificación
+
+| Comando (desde `services/postventa-api`) | Resultado |
+|---|---|
+| `pytest tests/test_f013_fabricas.py` | **37 passed** |
+| `pytest tests/test_f013_destino_dominio.py` | **246 passed** |
+| `pytest tests/test_f031_alcance_cerrado.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py -rs` | **28 passed, 15 skipped** (controles del diff de sus ramas), sin tocarlos |
+| `pytest tests/test_f006_fabrica.py tests/test_f025_sin_dry_run_previo.py tests/test_f005_ajustes.py` (los vecinos de la fábrica y de los ajustes) | en verde (93 passed junto con el de T5) |
+| `python -m ruff check` sobre los seis ficheros tocados | All checks passed (el aviso global de 61 es deuda previa) |
+| `bash harness/init.sh` (estado final, tras `0783c54`) | **ENTORNO LISTO**: api **3.566 passed, 35 skipped en 146,37 s**; PUERTA COBERTURA **100,0 % de 178 líneas cambiadas** (178/178, umbral 80 %, nivel `critico`). La pasada anterior, tras `a941acf`: 3.558 passed en 108,20 s, 182/182 |
+
+### 5 · Mutación
+
+La campaña formal de la feature es **T20** (bloque 7), y su informe,
+`progress/mutacion_F-013.md`. Aquí se ha lanzado la del arnés sobre lo que
+lleva la rama, **con el informe en el scratchpad** para no adelantar el de T20
+(el mismo criterio que en T1). Alcance recalculado por la herramienta: rama
+`fadb678..feature/F-013-archivo-posventa`, 4 ficheros de producción
+(`settings.py`, `destino_posventa.py`, `errores.py`, `fabrica.py`).
+
+**Primera pasada** (`python -m harness.mutacion --feature F-013`, 8 workers,
+sobre `a941acf`): **56 mutantes, 47 muertos, 9 supervivientes**, 0 timeouts,
+1.862,4 s. Análisis, uno a uno:
+
+| # | Línea y mutación | Análisis | Qué se hizo |
+|---|---|---|---|
+| 1 | `destino_posventa.py:240` `len(recortado) > len(codigo)` → `>=` | **Equivalente**: se evalúa solo si `recortado != codigo` y empieza por `codigo`, así que ya es más largo. La guarda era redundante | Se quita la guarda (con un comentario de por qué el índice existe) |
+| 2 | `:275` `range(len - largo + 1)` → `range(len + largo + 1)` | **Equivalente**: las ventanas de más dan cortes más cortos, que no pueden ser iguales a `buscadas` (no vacía) | `_contiene_seguidas` pasa a ser una búsqueda de texto con las palabras unidas por un blanco (las palabras no llevan blancos): sin aritmética |
+| 3 | `:275` `… + 1` → `… + 2` | **Equivalente**, por lo mismo | Íd. |
+| 4 | `:354` `endswith("S") and len > 1` → `or` | **Hueco real**: ningún test tenía una palabra de tramo **sin** `S` final (`FIRMADOS` e `INCIDENCIAS` acaban en `S`) | Test nuevo, `test_f013_r35_la_palabra_del_tramo_sin_su_s_final` (`ARCHIVO`: se usa entera) |
+| 5 | `:354` `len > 1` → `>= 1` | **Hueco real** en la guarda del prefijo vacío (palabra que es solo `S`) | Íd. (`PARTES S`) |
+| 6 | `:354` `len > 1` → `> 2` | **Hueco real**, una palabra de dos letras acabada en `S` | Íd. (`HOJA OS`) |
+| 7 | `:355` `[:-1]` → `[:-2]` | **Hueco real**: se quita exactamente una `S` | Íd. (`CLASES` → `CLASE`, y `CLAS` no es parecida) |
+| 8 | `:381` `not clave or not any(…)` → `and` | **Hueco real**: ningún test tenía una carpeta **sin número** que casara por la regla 1 o fuera sufijo del nombre. `not clave` era redundante (una clave vacía no tiene números) | Test nuevo `test_f013_r11_sin_numero_no_casa_aunque_sea_sufijo_del_nombre` y se quita `not clave` |
+| 9 | `:386` `len(clave) <= len(nombre)` → `<` | **Hueco real**: ningún caso con la carpeta igual al `con.res` entero (el sufijo trivial de R39). La guarda de longitud era redundante (un corte más largo que el nombre da el nombre entero, distinto de la clave) | Tests nuevos `…_la_carpeta_con_el_nombre_entero_de_la_unidad_casa` y `…_una_carpeta_mas_larga_que_el_nombre_no_casa`, y se quita la guarda |
+
+Las 4–7 se cierran además reescribiendo la línea como
+`clave_buscada[-1].removesuffix("S") or clave_buscada[-1]`, sin enteros ni
+comparaciones. **Comprobado a mano antes de simplificar**: cada superviviente
+del 4 al 9, reinyectado en el fichero real (y el fichero restaurado byte a byte
+después, `cmp`), lo mata al menos uno de los tests nuevos. El 6 sobrevivía a
+la primera versión de esos tests y hubo que añadirle la fila `HOJA OS`.
+Commit `0783c54`: sin cambio de comportamiento, 246 tests del dominio en verde.
+
+**Segunda pasada** (misma orden, 8 workers, sobre `0783c54`, con el árbol
+limpio): **43 mutantes, 43 muertos, 0 supervivientes, 0 timeouts**, 3.511,9 s.
+Los 40 timeouts de la pasada paralela se repasaron en serie y los 40 salieron
+muertos (el repaso mide el mutante y no la carga de la máquina). Informe
+generado: en el scratchpad, `mutacion_F-013_bloque1_v2.md`; **no** se ha
+escrito `progress/mutacion_F-013.md`, que es de T20.
+
+### 6 · Qué queda fuera y qué falta
+
+- **Fuera, a propósito (Bloque 2 en adelante)**: los puertos
+  `ExploradorBibliotecaPort` y `UbicacionPort`, los dobles y el árbol medido
+  como dato compartido (T8); el resolutor, que es quien convierte lo que
+  devuelve este dominio en los 409 de `MotivoDestino`, y el caso de conjunto de
+  las 15 unidades (T9); el paso (T10). Nada de este bloque se usa todavía
+  desde producción: `destino_posventa.py` solo lo importa la fábrica (por
+  `EstructuraArchivo`) y `SHAREPOINT_ESTRUCTURA` sigue valiendo `por_obra` por
+  omisión, así que el comportamiento desplegable no cambia.
+- **No se ha tocado** `.env.example` ni `local.settings.json.example` con las
+  variables nuevas: la spec no lo pide en T5 y T17 es la tarea de
+  documentación. Si el líder quiere que figuren, es una línea por variable.
+- **Para el líder, sin bloquear**: la decisión 11 de §2 (`PARTES-INCIDENCIAS`
+  casa por la clave de §4.2) y la 6 (parecida de un código no numérico con
+  varias palabras). Las dos siguen lo escrito, o su generalización más
+  directa; si se quieren de otra forma, es una enmienda con test.
+- **Verificaciones MANUAL**: ninguna en este bloque.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests del bloque | `test_f013_fabricas.py` **37 passed** (RED: 27 failed, 10 passed); `test_f013_destino_dominio.py` **246 passed** (RED: `ImportError` en la recogida) |
+| Controles de alcance de F-031, F-033 y F-034 | **28 passed, 15 skipped** (los del diff, fuera de sus ramas), sin tocarlos |
+| Suite del proyecto (`bash harness/init.sh`, estado final) | api **3.566 passed, 35 skipped en 146,37 s**; front en verde (caché); arnés 62 passed en 5,54 s |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 178 líneas cambiadas cubiertas (178/178, umbral 80%, nivel critico)`** |
+| Mutación, primera pasada (8 workers) | 56 generados, 47 muertos, **9 supervivientes**, 0 timeouts, 1.862,4 s; los 9 analizados arriba |
+| Mutación, segunda pasada (8 workers) | **43 generados, 43 muertos, 0 supervivientes**, 0 timeouts (40 repasados en serie, todos muertos), 3.511,9 s |
+| Mutantes a mano | supervivientes 4–9 reinyectados contra los tests nuevos: todos mueren (el 6, tras añadir la fila `HOJA OS`) |
+| ruff sobre los ficheros tocados | All checks passed |

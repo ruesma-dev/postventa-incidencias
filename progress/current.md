@@ -1,6 +1,41 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 · BLOQUE 1 HECHO (T5–T7) · 2026-09-24 · siguiente: Bloque 2 (T8–T10)
+>
+> implementer. Configuración y dominio puro, sin red ni escrituras en ningún
+> sistema; `harness/features.json` sin tocar. Informe:
+> **`progress/impl_F-013.md`, sección «Bloque 1»**.
+>
+> - **T5** (`77c62dd`, estilo `cd00118`): cinco campos en `settings.py`
+>   (`SHAREPOINT_ESTRUCTURA`, `_CARPETA_INCIDENCIAS`, `_CARPETA_FIRMADOS`,
+>   `_CARPETA_FIRMADOS_ALTERNATIVA` = `PARTES FIRMADO`, `_CREAR_CARPETAS` =
+>   `true`), ninguno para el nombre de la unidad. La fábrica rechaza una
+>   estrategia desconocida (R3) y la base vacía en `por_obra` (R17) antes de
+>   construir el adaptador. RED 27 failed → 37 passed.
+> - **T6** (`4d86c99`): `test_f013_destino_dominio.py` con las tablas de
+>   `design.md` §4 enteras, en rojo por `ImportError` (traza en el commit).
+> - **T7** (`a941acf`, y `0783c54` tras la mutación): `domain/models/destino_posventa.py`
+>   (casado de la obra por número, hoja alternativa, unidad, parecidas
+>   enmendadas, `VILLA NN`, R44, R50, `unir_ruta`) y `DestinoNoResuelto`.
+>   246 passed. Los controles de alcance de F-031, F-033 y F-034, en verde sin
+>   tocarlos.
+> - **Mutación** (del arnés, informe en el scratchpad; la formal es T20): la 1.ª
+>   pasada dejó 9 supervivientes (4 huecos reales con test nuevo, el resto
+>   equivalentes por código redundante, que se simplificó); la 2.ª,
+>   **43/43 muertos, 0 supervivientes**.
+> - `bash harness/init.sh` en verde: **3.566 passed**, 35 skipped en 146 s;
+>   cobertura del 100 % sobre 178 líneas cambiadas.
+> - **Decisiones que el líder debe conocer** (informe §2): la estrategia se
+>   compara exacta (sin recortar ni pasar a minúsculas); dos funciones que §2.1
+>   no nombra (`nombre_de_obra_nueva`, `nombre_de_carpeta_admisible`);
+>   `parecidas_de_tramo` recibe también la alternativa (para la partición);
+>   `obra_ref` fuera del `repr`; y, por la regla escrita en §4.2,
+>   `PARTES-INCIDENCIAS` casa con `PARTES INCIDENCIAS`.
+>
+> **Queda**: Bloque 2 (T8 puertos y dobles con el árbol medido, T9 resolutor,
+> T10 paso), y del 3 al 7.
+
 > ## ▶ F-013 · SPEC ENMENDADA APROBADA · 2026-09-24 · arranca el Bloque 1
 >
 > El humano aprobó la enmienda de `4579d7b` con **«si»**, incluidas las tres

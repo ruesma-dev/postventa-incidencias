@@ -251,13 +251,19 @@
 
 ## Bloque 6 · Arquitectura, documentación e infra de despliegue
 
-- [ ] **T16**: `tests/test_f013_arquitectura.py` (domain sin `httpx`, puro;
+- [x] **T16**: `tests/test_f013_arquitectura.py` (domain sin `httpx`, puro;
   `nombrado.py` y `ArchivoPort` sin cambios; más lo que añade `design.md` §11
   enmendado: los nombres vigilados fuera de `destino_archivo.py` y
   `destino_posventa.py`, los dos métodos del explorador, `obra_ref` fuera de
   logs) y el barrido del host del tenant en
   `test_f006_repo_sin_identificadores.py` (R30). | Verificación: los dos
   ficheros en verde
+  > **Hecha el 2026-09-24.** Añadir el barrido a ese fichero de F-006 chocaba
+  > con `test_f013_r2_los_tests_de_otras_fichas_no_se_han_tocado` (F-013,
+  > bloque 2): §2.2 manda tocarlo y la fila de §11 prohibía tocar tests de
+  > F-006. Se resolvió como T10 bis: el fichero se nombra como única excepción
+  > y un control nuevo exige que su diff **solo añada** lo de R30. Informe:
+  > `progress/impl_F-013.md`, «Bloque 6».
 - [ ] **T17**: documentación con **recuadros fechados** que citan literal la
   premisa (R26, R29): `docs/INTEGRACION.md` §3 (sitio, estructura, «sin
   listados de carpeta», tabla «qué se rompe» con carpetas renombradas y `423`,

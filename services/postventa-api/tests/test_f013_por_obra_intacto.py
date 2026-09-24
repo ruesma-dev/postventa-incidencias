@@ -227,13 +227,29 @@ FICHERO_DE_T10_BIS = f"{SERVICIO}tests/test_f033_l1_desde_el_almacen.py"
 TEST_DE_T10_BIS = "test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar"
 
 
+#: La única excepción entre los tests de F-006, con nombre (T16, R30).
+#:
+#: `design.md` §2.2 y `tasks.md` T16 mandan añadir el barrido del host del
+#: inquilino a **este** fichero de F-006, y el control de abajo lo prohibía:
+#: la spec se contradecía (§2.2 frente a la fila de §11). Se resuelve como
+#: T10 bis con el test de F-033: el fichero se nombra, y el control siguiente
+#: exige que su diff **solo añada** —ni un test de F-006 cambia ni desaparece—.
+#: Recuadro del 2026-09-24 en `progress/impl_F-013.md`, «Bloque 6».
+FICHERO_DE_T16 = f"{SERVICIO}tests/test_f006_repo_sin_identificadores.py"
+
+
 def test_f013_r2_los_tests_de_otras_fichas_no_se_han_tocado():
-    """R2, `design.md` §11 · F-006, F-019, F-031, F-032, F-034: ni una línea."""
+    """R2, `design.md` §11 · F-006, F-019, F-031, F-032, F-034: ni una línea.
+
+    Salvo `FICHERO_DE_T16`, que solo puede crecer (control siguiente).
+    """
     cambiados = _cambiados(_base_de_la_rama_o_saltar())
 
     ajenos = [
         ruta for ruta in cambiados
-        if ruta.startswith(f"{SERVICIO}tests/") and Path(ruta).name.startswith(TESTS_AJENOS)
+        if ruta.startswith(f"{SERVICIO}tests/")
+        and Path(ruta).name.startswith(TESTS_AJENOS)
+        and ruta != FICHERO_DE_T16
     ]
     de_f033 = [
         ruta for ruta in cambiados
@@ -241,6 +257,50 @@ def test_f013_r2_los_tests_de_otras_fichas_no_se_han_tocado():
     ]
     assert ajenos == []
     assert de_f033 in ([], [FICHERO_DE_T10_BIS])
+
+
+def _nombre_de_sentencia(nodo: ast.stmt) -> str:
+    """Cómo se llama lo que declara una sentencia de primer nivel."""
+    if isinstance(nodo, ast.FunctionDef | ast.ClassDef):
+        return nodo.name
+    if isinstance(nodo, ast.Assign):
+        return ",".join(objetivo.id for objetivo in nodo.targets if isinstance(objetivo, ast.Name))
+    if isinstance(nodo, ast.Import | ast.ImportFrom):
+        return ",".join(alias.name for alias in nodo.names)
+    return type(nodo).__name__
+
+
+def test_f013_t16_del_barrido_de_f006_solo_se_anade_lo_del_host():
+    """T16 · `test_f006_repo_sin_identificadores.py` solo crece, y solo con R30.
+
+    Cada sentencia de primer nivel que tenía en la base de la rama sigue ahí,
+    **idéntica** (`ast.dump`) y en el mismo orden; el docstring del módulo solo
+    gana texto al final; y lo nuevo es de R30: el `import re`, los tests
+    `test_f013_r30_*` y las piezas con «host» en el nombre. Así ningún test de
+    F-006 puede cambiar ni desaparecer por la puerta que abre la excepción.
+    """
+    base = _base_de_la_rama_o_saltar()
+    antes = ast.parse(_en_la_base(base, FICHERO_DE_T16))
+    hoy = ast.parse((RAIZ / FICHERO_DE_T16).read_text(encoding="utf-8"))
+
+    assert ast.get_docstring(hoy, clean=False).startswith(ast.get_docstring(antes, clean=False))
+
+    sentencias_de_antes = [ast.dump(nodo) for nodo in antes.body[1:]]
+    sentencias_de_hoy = iter(ast.dump(nodo) for nodo in hoy.body[1:])
+    # Subsecuencia: cada una de antes aparece, en orden, entre las de hoy.
+    assert all(
+        any(sentencia == de_hoy for de_hoy in sentencias_de_hoy) for sentencia in sentencias_de_antes
+    )
+
+    nuevas = [
+        _nombre_de_sentencia(nodo) for nodo in hoy.body[1:] if ast.dump(nodo) not in sentencias_de_antes
+    ]
+    assert nuevas, "el barrido del host de R30 no está en el fichero"
+    assert [
+        nombre
+        for nombre in nuevas
+        if not (nombre == "re" or nombre.startswith("test_f013_r30_") or "host" in nombre.lower())
+    ] == []
 
 
 def test_f013_t10_bis_de_los_tests_de_f033_solo_cambia_el_de_la_firma():

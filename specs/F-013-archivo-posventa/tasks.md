@@ -234,7 +234,7 @@
 
 ## Bloque 5 · Lo archivado en IT (F-033 ya está en `dev`)
 
-- [ ] **T15**: añadir a `test_f013_archivar_http.py` el R25 **desde el
+- [x] **T15**: añadir a `test_f013_archivar_http.py` el R25 **desde el
   endpoint**, que es también R45: un parte con traza `archivado` y `drive_id`
   distinto del configurado no llama ni a la ubicación (ninguna de las dos
   lecturas), ni a los listados, ni a la subida, y responde con los dos avisos
@@ -244,6 +244,10 @@
   > `blocked` y se para.»* F-033 está mergeada y desplegada, y la rama sale de
   > `dev` (`fadb678`, que **es** la cabeza de `dev` a esta fecha): ni rebase ni
   > espera. Si `dev` avanzara antes de T15, lo decide el líder.
+  > **T15 hecha el 2026-09-24** en `52ce8eb` (solo test: pasó a la primera,
+  > y se demostró que muerde con mutación a mano). `dev` solo avanzó con
+  > `ba561b1`, un merge de documentación que no hace falta. Informe:
+  > `progress/impl_F-013.md`, «Bloque 5 · T15».
 
 ## Bloque 6 · Arquitectura, documentación e infra de despliegue
 

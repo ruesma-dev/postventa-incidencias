@@ -1,6 +1,26 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 · BLOQUE 5 HECHO (T15) · 2026-09-24 · siguiente: Bloque 6 (T16)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 5 ·
+> T15»**. Solo tests (`52ce8eb`), **sin código de producción**; sin rebase
+> (`ba561b1` es solo documentación); `harness/features.json` sin tocar; sin push.
+>
+> - R25 = R45 desde el endpoint: con `posventa`, un parte `archivado` en IT
+>   responde 200 con su traza y los dos avisos de F-033, y el registro de
+>   llamadas **entero** de los cuatro dobles queda vacío (ni Sigrid, ni
+>   listados, ni carpetas, ni subida, ni traza). Control: misma biblioteca →
+>   un aviso; carpeta renombrada → un aviso; nombre viejo → dos.
+> - Pasó a la primera; mutación a mano: 10 mutantes, 9 muertos por T15 y el
+>   de la construcción anticipada muerto por T13 (T15 no la fija, a propósito).
+> - **Observación para el líder**: con `posventa` y `sigrid-api` sin
+>   configurar, lo ya archivado respondería 503 (la ubicación se construye en
+>   el borde antes del paso). No viola R25/R45; decidir si se documenta en
+>   T17 o se enmienda.
+> - `bash harness/init.sh` en verde: **4.010 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+
 > ## ✅ F-013 · BLOQUE 4 HECHO (T13 y T14) · 2026-09-24 · siguiente: Bloque 5 (T15)
 >
 > implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 4 · T13 y

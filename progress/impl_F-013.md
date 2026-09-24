@@ -1841,3 +1841,215 @@ El superviviente es `destino_archivo.py:102` (`@dataclass(frozen=True)` →
 | Mutación del arnés (6 workers, timeout 900 s) | **109 generados, 108 muertos, 1 superviviente** (`_Nivel`, equivalente **aceptado por el humano**), **0 timeouts**, 1.806,3 s; de `archivar.py` y `function_app.py`, 4/4 muertos |
 | Ensayo local de los scripts (red falsa, árbol de T2, 15 unidades de T3) | 24: salida 0, 1 `sql/read`; 23: salida 0, `PASA`, **21 `GET` + el token**, R31 exacto, resumen obra 1 / `PARTES INCIDENCIAS` 1 / unidades 7 |
 | Sintaxis PowerShell 5.1 | `Parser::ParseFile`: 0 errores en los dos |
+
+---
+
+## Bloque 5 · T15 (2026-09-24)
+
+**Alcance del encargo: solo T15** (lo archivado en IT, desde el endpoint).
+Nada de T16 en adelante. **Ni una línea de código de producción tocada**: es
+un test sobre comportamiento que ya existía (L1 de F-033 + `_sin_resolver`
+del bloque 2). Sin red, sin escrituras en ningún sistema;
+`harness/features.json`, `.env` y `azure-apps/` sin tocar; sin push. Sin
+rebase (enmienda de T15): `dev` solo avanzó con `ba561b1`, merge de
+documentación que no hace falta; `fadb678` es ancestro de la rama
+(comprobado con `git merge-base --is-ancestor`).
+
+Commits: `52ce8eb` (T15: los tests), más el de `tasks.md` y este informe.
+
+### 1 · Qué cambió
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/tests/test_f013_archivar_http.py` | Sección nueva al final, «T15 · R25 = R45». Material: `_archivada(**cambios)` (la traza `archivado` de la villa 5, por omisión en IT: `drive-inventado-it`, carpeta `Postventa/0677`) y `_mundo_con_la_villa_5_archivada(traza)`, que monta **los cuatro dobles con un solo `registro`** —`ExploradorFalso`, `ArchivadorDePosventa` (comparte el del explorador), `UbicacionesFalsas` de la 0677 y `RepositorioFalso` con la traza en la situación—. Tres tests (cinco casos). Docstring del módulo ampliado a T15. Imports: `paso_archivo` (los dos avisos por su constante), `EstadoArchivo`, `TrazaArchivo`, `datetime` |
+| `specs/F-013-archivo-posventa/tasks.md` | T15 `[x]` con nota fechada (commit, sin código de producción, `ba561b1` no hace falta) |
+
+Los tres tests (`-k "f013 and (r25 or r45)"` selecciona estos 5 casos y los
+5 de `test_f013_paso_archivo_posventa.py` del bloque 2):
+
+1. **`test_f013_r25_r45_archivado_en_it_no_lee_sigrid_ni_lista_ni_crea_ni_sube`**
+   — el caso del encargo. `SHAREPOINT_ESTRUCTURA=posventa`,
+   `SHAREPOINT_DRIVE_ID=drive-inventado-posventa`, costuras `archivador`,
+   `repositorio` y `ubicaciones` (el explorador es el propio archivador, como
+   en producción). Afirma: 200; **`registro == []`** (el registro entero de
+   los cuatro dobles: ni `leer_ubicacion`, ni `leer_unidades_del_numero`, ni
+   `listar_carpetas`, ni `crear_subcarpeta`, ni `buscar`, ni `subir`, ni
+   `guardar_archivo`), y además las listas propias de cada doble vacías,
+   `subidas == 0` y `repositorio.archivos == []`; el **cuerpo entero** igual
+   a la traza de IT con `avisos == [AVISO_YA_ARCHIVADO,
+   AVISO_ARCHIVADO_EN_OTRO_DESTINO]`, en ese orden; y ni el `drive_id` de IT,
+   ni el vigente, ni el `item_id` en el log (DEBUG, todos los loggers) ni en
+   la respuesta (F-033 R15, R24).
+2. **`test_f013_r25_r45_por_las_fabricas_tampoco_se_lee_ni_se_lista`** — lo
+   mismo sin costuras, por las tres fábricas sustituidas (fixture
+   `fabricas`): el archivador sale de `construir_archivador` y el lector de
+   Sigrid de `construir_ubicaciones`. `registro == []` y los dos avisos. **No**
+   fija si la ubicación se construye (ver §2, decisión 2).
+3. **`test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca`**
+   (3 casos, traza en la biblioteca de Posventa) — el **control** del
+   primero: misma biblioteca y mismo nombre → **un** aviso (así el segundo
+   aviso del caso de IT sale de la biblioteca y no de otra cosa); carpeta
+   distinta de la que se resolvería hoy (renombrada) → **un** aviso
+   (consecuencia aceptada en R45); nombre viejo (F-032) → **dos** avisos. En
+   los tres, `registro == []`, y la carpeta y el nombre de la respuesta son
+   los de la traza.
+
+### 2 · Decisiones de diseño (y lo que la spec no fijaba)
+
+1. **Un solo `registro` para los cuatro dobles** y aserción sobre la lista
+   entera (`== []`), como pide el encargo. El `RepositorioFalso` apunta en él
+   solo sus escrituras (`guardar_archivo`), no la lectura de la situación
+   (F-019: ese registro fija el orden de las escrituras); por eso «vacío»
+   significa también «ni una traza escrita», y se comprueba además con
+   `repositorio.archivos == []`.
+2. **Construir el lector de Sigrid no es leerlo.** Con `posventa`, el borde
+   construye `construir_ubicaciones(ajustes)` **antes** de llamar al paso
+   (`design.md` §2.2, T13), también para un parte que luego L1 corta. Eso no
+   abre red (el adaptador solo guarda configuración) y R45 prohíbe la
+   **lectura**, no la construcción. El test 2 no afirma ni una cosa ni la
+   otra para no fijar un detalle de composición que no es de R45 (el orden de
+   construcción ya lo fija `test_f013_t13_el_orden_de_construccion_en_posventa`).
+   **Observación para el líder**, no hallazgo: por esa construcción
+   anticipada, con `posventa` y la configuración de `sigrid-api` ausente, un
+   parte **ya archivado** respondería 503 (`ConfiguracionSigridIncompleta`)
+   en vez de 200 con la traza. No viola R25 ni R45 —no se sube ni se lee
+   nada— y en `dev`/`pro` la configuración de `sigrid-api` existe (la usa el
+   cierre); pero si se quisiera que lo archivado responda 200 aun con Sigrid
+   sin configurar, habría que construir la ubicación de forma perezosa
+   (dentro del resolutor). No se ha tocado: no lo pide la spec.
+3. **El nombre de la traza es el que sale de lo guardado**
+   (`0677 - RS26.08 - 0005 PARTE FIRMADO.pdf`, escrito a mano en el test y no
+   calculado con `nombre_de_archivo`): así el segundo aviso del caso de IT
+   depende **solo** de la biblioteca, y el control lo demuestra.
+4. Todo inventado: bibliotecas `drive-inventado-*`, `item-inventado-t15`,
+   URL en `ejemplo.invalido`, sin nombres de persona.
+
+### 3 · Fase RED (traza real) · el test pasa a la primera: se demuestra que muerde
+
+T15 es, por definición del encargo, un test sobre comportamiento que **ya
+existía** (L1 de F-033 cortando antes del resolutor, `paso_archivo.py`
+líneas 367-372). Primera ejecución, ya en verde:
+
+```
+$ cd services/postventa-api
+$ .venv/Scripts/python.exe -m pytest tests/test_f013_archivar_http.py -k "f013 and (r25 or r45)" -v -p no:cacheprovider
+collecting ... collected 32 items / 27 deselected / 5 selected
+
+tests/test_f013_archivar_http.py::test_f013_r25_r45_archivado_en_it_no_lee_sigrid_ni_lista_ni_crea_ni_sube PASSED [ 20%]
+tests/test_f013_archivar_http.py::test_f013_r25_r45_por_las_fabricas_tampoco_se_lee_ni_se_lista PASSED [ 40%]
+tests/test_f013_archivar_http.py::test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca[posventa-mismo-nombre] PASSED [ 60%]
+tests/test_f013_archivar_http.py::test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca[posventa-carpeta-renombrada] PASSED [ 80%]
+tests/test_f013_archivar_http.py::test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca[posventa-nombre-viejo] PASSED [100%]
+
+====================== 5 passed, 27 deselected in 3.89s =======================
+```
+
+Así que la RED se sustituye por **mutación a mano en copia desechable**:
+`tar` del servicio (sin `.venv`, `.env`, cachés) al scratchpad (`mut/`),
+`mutar_t15.py` sustituye un ancla **única** (lo comprueba con `assert`),
+lanza pytest con el intérprete del servicio desde la copia, y restaura el
+fichero en un `finally`. Copia base en verde antes de mutar (`5 passed, 27
+deselected in 7.12s`). El repositorio no se tocó.
+
+Comando: `.venv/Scripts/python.exe mutar_t15.py` (desde el scratchpad).
+Salida real, recortada a la línea de aserción y el resumen de cada mutante
+(las rutas largas del scratchpad, quitadas):
+
+```
+== M1 resolver ANTES del corte de L1 (y cortar después): MUERTO
+   E   AssertionError: assert ['ubicaciones...IAS/VILLA 05'] == []
+   ...test_f013_archivar_http.py:967: AssertionError: assert ['ubicaciones
+   5 failed, 27 deselected in 3.85s
+== M2 L1 compara con el destino RESUELTO en vez de _sin_resolver: MUERTO
+   E   AssertionError: assert ['ubicaciones...IAS/VILLA 05'] == []
+   5 failed, 27 deselected in 3.65s
+== M3 el borde LLAMA a la ubicación antes del paso (precarga de unidades): MUERTO
+   E   AssertionError: assert ['ubicaciones..._numero:0677'] == []
+   4 failed, 1 passed, 27 deselected in 3.91s
+== M4 el borde CONSTRUYE la ubicación antes del archivador (fichero entero): MUERTO
+   E   AssertionError: assert ['ubicaciones...'repositorio'] == ['archivador'...'ubicaciones']
+   FAILED tests/test_f013_archivar_http.py::test_f013_t13_el_orden_de_construccion_en_posventa
+   FAILED tests/test_f013_archivar_http.py::test_f013_t13_fuera_de_dev_y_pro_el_error_es_el_del_archivo
+   2 failed, 30 passed in 3.78s
+== M4b el mismo, solo con la selección de T15: SOBREVIVE
+   5 passed, 27 deselected in 2.36s
+== M5 L1 deja de comparar la biblioteca: MUERTO
+   E   AssertionError: assert {'hash_parte'...chivado', ...} == {'hash_parte'...chivado', ...}
+   FAILED tests/test_f013_archivar_http.py::test_f013_r25_r45_archivado_en_it_no_lee_sigrid_ni_lista_ni_crea_ni_sube
+   FAILED tests/test_f013_archivar_http.py::test_f013_r25_r45_por_las_fabricas_tampoco_se_lee_ni_se_lista
+   2 failed, 3 passed, 27 deselected in 3.03s
+== M6 _sin_resolver sin la carpeta de la traza (compara carpeta): MUERTO
+   E   AssertionError: assert ['este parte ... de entonces'] == ['este parte ...elto a subir']
+   FAILED tests/test_f013_archivar_http.py::test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca[posventa-mismo-nombre]
+   FAILED tests/test_f013_archivar_http.py::test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca[posventa-carpeta-renombrada]
+   2 failed, 3 passed, 27 deselected in 2.86s
+== M7 _sin_resolver toma el nombre de la traza (no compara nombre): MUERTO
+   E   AssertionError: assert ['este parte ...elto a subir'] == ['este parte ... de entonces']
+   FAILED tests/test_f013_archivar_http.py::test_f013_r45_el_aviso_de_otro_destino_sale_del_nombre_y_la_biblioteca[posventa-nombre-viejo]
+   1 failed, 4 passed, 27 deselected in 2.18s
+== M8 traza previa escrita antes de devolver la guardada: MUERTO
+   E   AssertionError: assert ['repositorio...o(pendiente)'] == []
+   5 failed, 27 deselected in 2.71s
+== M9 L1 solo corta en por_obra: MUERTO
+   E   AssertionError: assert ['ubicaciones...ILLA 05', ...] == []
+   5 failed, 27 deselected in 3.60s
+```
+
+| # | Mutante (dónde) | Resultado | Qué lo caza |
+|---|---|---|---|
+| M1 | `paso_archivo.py`: llamar al resolutor **antes** del corte de L1 (y cortar después) | muere (5/5) | `registro == []`: aparecen las dos lecturas de Sigrid y los listados |
+| M2 | `paso_archivo.py`: L1 compara con el destino **resuelto** en vez de `_sin_resolver` | muere (5/5) | ídem |
+| M3 | `archivar.py`: el borde **llama** a `leer_unidades_del_numero` antes del paso (precarga) | muere (4/5) | `registro == []`. El caso por fábricas sobrevive porque el mutante solo precarga la ubicación inyectada |
+| M4 | `archivar.py`: la ubicación se **construye** antes que el archivador | muere con el fichero entero (2 tests de T13) | `test_f013_t13_el_orden_de_construccion_en_posventa`, `test_f013_t13_fuera_de_dev_y_pro_…` |
+| M4b | el mismo, solo la selección de T15 | **sobrevive, a propósito** | construir no es leer (decisión 2): T15 no fija la construcción; el orden lo fija T13 |
+| M5 | `_en_otro_destino` deja de comparar la biblioteca | muere (2/5) | los dos casos de IT: falta el segundo aviso |
+| M6 | `_sin_resolver` con otra carpeta (la carpeta pasa a contar) | muere (2/5) | el control (mismo nombre y carpeta renombrada): sale un aviso de más |
+| M7 | `_sin_resolver` con el nombre de la traza (el nombre deja de contar) | muere (1/5) | el control del nombre viejo (F-032) |
+| M8 | la traza previa se escribe antes de devolver la guardada | muere (5/5) | `registro == ['repositorio.guardar_archivo(pendiente)']` |
+| M9 | L1 solo corta en `por_obra` | muere (5/5) | `registro`: Sigrid, listados, `buscar`, `subir`… |
+
+**10 mutantes, 9 muertos por los tests de T15; el décimo (M4b) es el M4 visto
+solo con T15, muerto por los de T13.** Ningún hueco.
+
+### 4 · Verificación
+
+| Comando (desde `services/postventa-api`, con `.venv/Scripts/python.exe -m`) | Resultado |
+|---|---|
+| Verificación de T15: `pytest tests -k "f013 and (r25 or r45)"` | **10 passed**, 4.025 deselected (los 5 nuevos y los 5 de `test_f013_paso_archivo_posventa.py`) |
+| Fichero entero + vecinos: `pytest tests/test_f013_archivar_http.py tests/test_f006_archivar_http.py tests/test_f033_archivar_http.py tests/test_f031_alcance_cerrado.py tests/test_f032_alcance_cerrado.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py` | **93 passed, 20 skipped** |
+| Controles de alcance F-031…F-034 (`-rs`) | **36 passed, 20 skipped**; los 20 skip son los de siempre («este control vive en feature/F-03x-… mientras no esté mergeada»). **Ningún test ni fichero de F-031…F-034 tocado** |
+| `ruff check services/postventa-api/tests/test_f013_archivar_http.py` | All checks passed |
+| `bash harness/init.sh` | ver «Evidencias» |
+
+### 5 · Mutación del arnés
+
+**No relanzada**: T15 no toca código de producción (el diff del bloque es
+solo `tests/` y `tasks.md`), así que el alcance de la herramienta y su
+resultado son los del bloque 4 (109 mutantes, 108 muertos, `_Nivel`
+aceptado). Lo que muerde T15 lo demuestra la mutación a mano de §3.
+
+### 6 · Qué queda fuera y qué falta
+
+- **Fuera, a propósito**: T16 (arquitectura y barrido del host), T17
+  (documentación), T18 (F-018), T19 (`azure-apps/`), T20 (campaña formal);
+  `harness/features.json` sin tocar.
+- **Para el líder**: la observación de §2, decisión 2 (con `posventa` y
+  `sigrid-api` sin configurar, lo ya archivado responde 503 por la
+  construcción anticipada del lector). No bloquea ni viola R25/R45; decide si
+  se deja así (y T17 lo documenta en la tabla «qué se rompe») o si merece una
+  enmienda.
+- **Verificaciones MANUAL**: ninguna de este bloque. Que los 133 partes de IT
+  se queden en IT **en el entorno desplegado** se verá en el corte (paso de
+  `tasks.md` del humano), no aquí.
+- `progress/mutacion_F-013.md` sigue sin escribirse: es de T20.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests del bloque | `-k "f013 and (r25 or r45)"`: **10 passed** (5 nuevos de T15); `test_f013_archivar_http.py` entero **32 passed** |
+| Fase RED | no aplicable en sentido estricto (comportamiento ya existente, pasó a la primera); sustituida por **mutación a mano**: 10 mutantes, **9 muertos por T15** y el décimo (M4b, construcción) muerto por T13, a propósito fuera de T15 |
+| Controles de alcance | F-031…F-034: **36 passed, 20 skipped** (los del diff de otras ramas); intactos |
+| Suite del proyecto (`bash harness/init.sh`, tras `52ce8eb` y la marca de T15) | api **4.010 passed, 35 skipped en 187,83 s**; front en verde (caché); arnés 62 passed en 7,51 s; **ENTORNO LISTO** |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 551 líneas cambiadas cubiertas (551/551, umbral 80%, nivel critico)`** (sin líneas de producción nuevas) |
+| Mutación del arnés | **no relanzada**: sin cambios en producción; vale la del bloque 4 (109 / 108 / 1 aceptado) |

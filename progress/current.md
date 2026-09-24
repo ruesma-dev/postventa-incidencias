@@ -1,21 +1,32 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ⏳ F-013 · BLOQUE 2 (cierre): T10 bis y T10 EN CURSO · 2026-09-24
+> ## ✅ F-013 · BLOQUE 2 CERRADO (T10 bis y T10) · 2026-09-24 · siguiente: Bloque 3 (T11, T12)
 >
-> implementer. Encargo: solo T10 bis y T10 (opción (a) del humano, enmienda
-> de `tasks.md` en `309f445`). `harness/features.json` sin tocar.
+> implementer. Opción (a) del humano. Informe: **`progress/impl_F-013.md`,
+> sección «Bloque 2 (cierre) · T10 bis y T10»**. Sin red ni escrituras en
+> ningún sistema; `harness/features.json` sin tocar; sin push.
 >
-> - **Tarea en curso**: T10 (RED primero), T10 bis en el mismo commit que la
->   firma nueva.
-> - **Decisión tomada (hueco de la spec)**: quién ejecuta `crear_subcarpeta`
->   en el paso. La firma solo gana `resolver_destino` (T10 bis fija el conjunto
->   exacto), así que el paso no puede recibir un explorador aparte. `design.md`
->   §3.2 dice que el adaptador de Graph implementa `ArchivoPort` **y** el
->   explorador, y que «el borde la pasa por los dos lados»: el paso crea con
->   **el mismo `archivador`**, y si llega un resolutor con un archivador que
->   no es `ExploradorBibliotecaPort` falla con `TypeError` **antes de nada**
->   (error de composición, sin tocar ningún puerto).
+> - **T10** (RED `c6ec311`: 46 failed, 18 passed → código en `e279907`):
+>   `paso_archivo` gana `resolver_destino`; en el orden de `design.md` §5
+>   enmendado (tras L1 y el cotejo, antes del aviso y de la traza previa;
+>   creaciones tras la traza previa, en orden, un nivel por llamada; R18, R40,
+>   R45, R47). Tests nuevos: `test_f013_paso_archivo_posventa.py` (46) y
+>   `test_f013_por_obra_intacto.py` (19, con los controles del diff).
+> - **T10 bis** (en `e279907`, el mismo commit que la firma): el test de firma
+>   de F-033 recoge `resolver_destino` con `==` y recuadro fechado; 10
+>   inserciones y nada más. Ningún otro test de F-031…F-034 tocado.
+> - **Decisión que el líder debe conocer**: las carpetas las crea el paso con
+>   **el mismo `archivador`** (que en `posventa` es también
+>   `ExploradorBibliotecaPort`, `design.md` §3.2); si no lo es, `TypeError`
+>   antes de nada. **T13 tiene que pasar la misma instancia** como
+>   `archivador` y como `explorador` del `partial`.
+> - Mutación a mano de orden: 12/12 muertos (1 hueco cerrado en `668145c`).
+>   Arnés (timeout 900 s, 6 workers, sin `init.sh` a la vez): 73 mutantes, 72
+>   muertos, 1 superviviente **equivalente** (`_Nivel` frozen, ya visto en el
+>   bloque 2; nivel `critico`: requiere aceptación del humano), 0 timeouts.
+> - `bash harness/init.sh` en verde: **3.807 passed**, 35 skipped;
+>   cobertura **100 % de 347 líneas cambiadas**.
 
 > ## ⛔ F-013 · BLOQUE 2: T8 y T9 HECHAS, **T10 BLOQUEADA** · 2026-09-24 · decide el líder
 >

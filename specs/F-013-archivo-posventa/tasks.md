@@ -149,7 +149,7 @@
 > passed con el parámetro añadido). Se resuelve como lo resolvió F-031 el
 > 2026-09-22: con una tarea con nombre que enmienda ese test, y solo ese.
 
-- [ ] **T10 bis**: enmendar `test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar`
+- [x] **T10 bis**: enmendar `test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar`
   añadiendo `resolver_destino` al conjunto exacto de parámetros (el `==` se
   mantiene: **no** se relaja a un `not in`) y un recuadro fechado en su
   docstring, a continuación del de F-031, que diga por qué **no** abre una
@@ -160,7 +160,7 @@
   test de F-031, F-032, F-033 ni F-034** se toca. | Verificación:
   `pytest tests/test_f033_l1_desde_el_almacen.py` en verde con el parámetro
   añadido; `git diff` de ese fichero limitado al conjunto y al recuadro
-- [ ] **T10**: `paso_archivo.py` con `resolver_destino` opcional, en el orden
+- [x] **T10**: `paso_archivo.py` con `resolver_destino` opcional, en el orden
   de `design.md` §5 **enmendado**: el resolutor va **después de L1** y
   **antes** del aviso del intento anterior y de la traza previa; recibe
   `guardados.codigo_obra` y `guardados.numero_incidencia` (de
@@ -178,6 +178,9 @@
   `test_f034_r26_de_paso_archivo_solo_cambia_la_mudanza` (y los demás
   controles del diff de F-031, F-033 y F-034) como **SKIPPED** por estar fuera
   de su rama, no como fallo
+  > **T10 bis y T10 hechas el 2026-09-24**: RED `c6ec311`, código y enmienda
+  > del test de F-033 juntos en `e279907`, refuerzo tras la mutación a mano en
+  > `668145c`. Informe: `progress/impl_F-013.md`, «Bloque 2 (cierre)».
 
 ## Bloque 3 · Adaptadores
 

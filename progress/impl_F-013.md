@@ -873,3 +873,225 @@ escrito `progress/mutacion_F-013.md`, que es de T20.
 | Mutación a mano | T8: **6/6 muertos**; T9: **26 generados, 23 muertos, 3 equivalentes** (P2, M19, M20), 0 huecos |
 | Mutación del arnés (8 workers) | **68 generados, 66 muertos, 2 supervivientes** (1 hueco real cerrado con test, 1 equivalente), 0 timeouts tras repasar 60 en serie, 6.334,4 s |
 | Conflicto de T10 | `test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar`: **1 failed, 43 passed** con `resolver_destino` añadido a la firma (§0) |
+
+## Bloque 2 (cierre) · T10 bis y T10 (2026-09-24)
+
+**Alcance del encargo: solo T10 bis y T10**, con la opción (a) del humano
+(enmienda de `tasks.md` en `309f445`). Sin DDL, sin escrituras contra ningún
+sistema, `harness/features.json` sin tocar, sin push. Ningún test toca la red.
+
+Commits: `c6ec311` (RED de T10), `e279907` (T10 + T10 bis juntos: la firma
+nueva y la enmienda del test de F-033 en el mismo commit), `668145c`
+(refuerzo de un test tras la mutación a mano), más el de este informe y
+`tasks.md`.
+
+### 1 · Qué cambió
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/application/pipelines/paso_archivo.py` | Parámetro `resolver_destino` (opcional, por palabra clave, `None` por omisión). Sin él, el paso hace lo de F-006 (R2). Con él, el orden de `design.md` §5 enmendado (abajo). Nuevos: `AVISO_CARPETA_CREADA` (en `__all__`), el alias `ResolverDestino` y los privados `_sin_resolver`, `_resolver`, `_dejar_rastro_del_intento_pendiente` y `_crear_las_que_faltan`. `_subir` pierde `asegurar_carpeta`, que sube al cuerpo del paso (en `posventa` lo sustituyen las creaciones). Recuadro «Enmienda del 2026-09-24 (F-013)» en el docstring del módulo, y pasos 2, 3 bis y 5 en el de la función |
+| `services/postventa-api/tests/test_f033_l1_desde_el_almacen.py` | **T10 bis**: `test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar` gana `"resolver_destino"` en el conjunto exacto (el `==` se mantiene) y un recuadro fechado 2026-09-24 (F-013) tras el de F-031. `git diff`: **10 inserciones, 0 borrados**, esas dos cosas y nada más |
+| `services/postventa-api/tests/test_f013_paso_archivo_posventa.py` (nuevo) | 46 tests del paso con el resolutor (R4, R5, R15, R18, R20–R22, R40, R41, R45, R47, R48 y la composición) |
+| `services/postventa-api/tests/test_f013_por_obra_intacto.py` (nuevo) | 19 tests de R2 con sus dos mitades: 5 sin `git` y 14 del diff (incluido el control de T10 bis) |
+| `specs/F-013-archivo-posventa/tasks.md` | T10 bis y T10 marcadas `[x]`, con nota de commits |
+| `progress/current.md` | Entrada de la sesión |
+
+**El paso con `resolver_destino`, en su orden** (el orden es el requisito):
+
+1. Si el `archivador` no es `ExploradorBibliotecaPort` → `TypeError` **antes
+   de nada** (decisión 1).
+2. Puerta de estado; cotejo de los declarados (F-031, 1 bis).
+3. Nombre con `nombre_de_archivo` desde `codigos_guardados(ctx)` (R5). La
+   carpeta aún no se conoce.
+4. L1 desde el almacén. Si corta, compara con un `DestinoArchivo` cuya carpeta
+   es **la de la propia traza** (`_sin_resolver`): deciden el nombre y la
+   biblioteca, no la carpeta (R45). `_en_otro_destino`, intacta.
+5. `_resolver`: llama al resolutor con `codigo_obra`, `numero_incidencia` (los
+   guardados, dos cadenas) y `nombre_fichero`; nunca con `ctx`. Si levanta
+   `DestinoNoResuelto`: log de R47 si la traza guardada de **este** parte
+   estaba `pendiente` → traza `error` con el **código** del motivo y sin
+   carpeta (R18) → `_registrar_si_no_se_aplico` (F-033 R19) → se relanza.
+   Cualquier otro fallo (Sigrid, R41; `ArchivoFallido` del listado) sube **tal
+   cual y sin traza**.
+6. Aviso del intento anterior (F-033 R20) contra la carpeta **resuelta**.
+7. Traza previa `pendiente`; `SIN_CAMBIOS` → la de la otra petición, sin crear
+   ni subir.
+8. `crear_subcarpeta` por cada `(padre, nombre)` de `carpetas_por_crear`, en
+   orden y un nivel por llamada, con aviso `AVISO_CARPETA_CREADA` y log
+   `F-013 carpeta creada: <ruta>` (WARNING) por carpeta (R40). Nunca
+   `asegurar_carpeta` (R15). Un fallo aquí es `ArchivoFallido` como hoy:
+   traza `error` con la carpeta resuelta, sin subir; el reintento vuelve a
+   resolver y crea solo lo que falta (R39, con test).
+9. `buscar`, `subir` (reemplazo), traza final: sin cambios.
+
+### 2 · Decisiones de diseño (y lo que la spec no fijaba)
+
+1. **Quién ejecuta `crear_subcarpeta`** (hueco de la spec). T10 bis fija la
+   firma a los parámetros de antes **más `resolver_destino` y ninguno más**,
+   así que el paso no puede recibir un explorador aparte. `design.md` §3.2:
+   *«El adaptador de Graph implementa `ArchivoPort` **y** este puerto; la
+   fábrica devuelve la misma instancia y el borde la pasa por los dos
+   lados»*. El paso crea con **el mismo `archivador`**. Si llega un resolutor
+   con un archivador que no es `ExploradorBibliotecaPort`
+   (`runtime_checkable`), `TypeError` **antes de la puerta**: es un error de
+   composición del borde, no del parte, y no hace ni una lectura. Anotado en
+   `progress/current.md`. **Para T13**: el borde tiene que pasar la misma
+   instancia como `archivador` y como `explorador` del `partial`.
+2. **La traza `error` de R18 lleva `carpeta=None`** (la carpeta no se ha
+   resuelto; la columna admite nulos, `05_archivos.sql`) y `motivo` como
+   `str` plano del código (`str(MotivoDestino)`), sin el texto legible, que es
+   para una persona y va en el 409 (T13).
+3. **Los fallos del resolutor que no son `DestinoNoResuelto`** (Sigrid caída,
+   R41; `None` del listado → `ArchivoFallido`, decisión 1 del bloque 2) suben
+   **sin escribir traza**: aún no hay `pendiente` que cerrar, y una `error`
+   con un motivo inventado diría menos que el 503/502 del borde. La tabla de
+   §5 solo pide traza para `DestinoNoResuelto`.
+4. **R47 se dispara con un `pendiente` de este `hash`**, sin comparar rutas
+   (la de hoy no se conoce): deja carpeta, nombre, `hash` y el código del
+   motivo; nunca el `drive_id`.
+5. **R40 con nivel WARNING** en el logger del paso: es la línea que el runbook
+   busca en el log (paso 8 del corte); con INFO se perdería según el nivel
+   del host. El aviso nombra «la biblioteca de Posventa» y la ruta; ningún
+   identificador.
+6. **R45 con una traza sin carpeta** (`carpeta=None`): `_sin_resolver` da
+   `None` a los dos lados y la carpeta tampoco decide. Test con nombre.
+7. **En `por_obra`, L1 sigue comparando la carpeta** (F-033 R14): lo que
+   relaja R45 es solo de `posventa`. Test en `test_f013_por_obra_intacto.py`.
+8. **Los controles del diff son tests**:
+   `test_f013_t10_bis_de_los_tests_de_f033_solo_cambia_el_de_la_firma`
+   compara con la base de la rama (`git merge-base dev HEAD`) cada función de
+   `test_f033_l1_desde_el_almacen.py` con `ast.dump`: solo puede cambiar la de
+   la firma, y su conjunto solo gana `resolver_destino`. Otro exige que
+   ningún `test_f006_*`, `test_f019_*`, `test_f031_*`, `test_f032_*` ni
+   `test_f034_*` aparezca en el diff, y de F-033 solo ese fichero. Y otro, que
+   once piezas de F-019/F-033 de `paso_archivo.py` (`_en_otro_destino`,
+   `_avisar_del_intento_anterior`, `_dejar_constancia_previa`…) sean las
+   mismas sentencia a sentencia. Fuera de la rama, o ya mergeada, se saltan
+   (patrón de F-032).
+
+### 3 · Fase RED (traza real)
+
+Comando exacto, desde `services/postventa-api`, con los dos ficheros nuevos
+escritos y `paso_archivo.py` sin tocar (commit `c6ec311`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_paso_archivo_posventa.py tests/test_f013_por_obra_intacto.py -q -p no:cacheprovider --tb=short
+```
+
+Salida real de los tres casos centrales (orden de creaciones de R15, lo
+archivado en IT de R45 y el control de T10 bis):
+
+```
+__ test_f013_r15_la_unidad_que_falta_se_crea_tras_la_traza_previa_y_en_orden __
+tests\test_f013_paso_archivo_posventa.py:439: in test_f013_r15_la_unidad_que_falta_se_crea_tras_la_traza_previa_y_en_orden
+    ctx = m.archivar()
+          ^^^^^^^^^^^^
+tests\test_f013_paso_archivo_posventa.py:196: in archivar
+    return paso.paso_archivo(
+E   TypeError: paso_archivo() got an unexpected keyword argument 'resolver_destino'
+_ test_f013_r45_un_parte_archivado_en_it_no_llama_ni_a_sigrid_ni_a_la_biblioteca _
+tests\test_f013_paso_archivo_posventa.py:873: in test_f013_r45_un_parte_archivado_en_it_no_llama_ni_a_sigrid_ni_a_la_biblioteca
+    ctx = m.archivar(drive_id_vigente=DRIVE_POSVENTA)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f013_paso_archivo_posventa.py:196: in archivar
+    return paso.paso_archivo(
+E   TypeError: paso_archivo() got an unexpected keyword argument 'resolver_destino'
+______ test_f013_t10_bis_de_los_tests_de_f033_solo_cambia_el_de_la_firma ______
+tests\test_f013_por_obra_intacto.py:267: in test_f013_t10_bis_de_los_tests_de_f033_solo_cambia_el_de_la_firma
+    assert ganados == {"resolver_destino"}
+E   AssertionError: assert set() == {'resolver_destino'}
+```
+
+Resumen de los dos ficheros: **46 failed, 18 passed** (los 18 son la mitad de
+R2 que ya se cumple hoy —el paso sin resolutor— y la composición de los
+dobles). GREEN con el código: **63 passed, 1 failed** (el control de T10 bis,
+que exige la enmienda del test de F-033); con T10 bis, **64 passed**; con el
+refuerzo de §5, **65 passed** (46 + 19).
+
+### 4 · Verificación
+
+| Comando (desde `services/postventa-api`) | Resultado |
+|---|---|
+| `pytest tests/test_f033_l1_desde_el_almacen.py` (verificación de T10 bis) | en verde con el parámetro añadido; junto con los dos ficheros nuevos, **109 passed** |
+| `git diff 309f445 -- tests/test_f033_l1_desde_el_almacen.py` | 10 inserciones: el recuadro y `"resolver_destino",`; nada más |
+| `pytest tests/test_f013_paso_archivo_posventa.py` / `tests/test_f013_por_obra_intacto.py` | **46 passed** / **19 passed** (los 14 del diff se **ejecutan** en esta rama) |
+| `pytest tests -k "f006 or f019 or f031 or f032_alcance or f033 or f034" -rs` (verificación de T10) | **750 passed, 20 skipped**. Los 20 SKIPPED son los controles del diff de otras ramas: 4 de F-031, 5 de F-032, 4 de F-033 y **7 de F-034**, entre ellos `test_f034_r26_de_paso_archivo_solo_cambia_la_mudanza` («este control vive en feature/F-034-… mientras no esté mergeada»). Ninguno falla |
+| `pytest tests -k f013` | **569 passed** |
+| `python -m ruff check` sobre los cuatro ficheros tocados | All checks passed |
+| `bash harness/init.sh` | ver «Evidencias» |
+
+### 5 · Mutación
+
+**A mano, de orden** (punto 7 del reviewer). Script en el scratchpad
+(`mutantes_orden_t10.py`): copia desechable del servicio, sustitución exacta
+en el `paso_archivo.py` de la copia, suite de los cuatro ficheros del paso
+(`test_f013_paso_archivo_posventa.py`, `test_f013_por_obra_intacto.py`,
+`test_f033_l1_desde_el_almacen.py`, `test_f006_paso_archivo.py`) y
+restaurar. Base sin mutar y restaurada: 124 passed, 14 skipped (los del
+diff, sin `git` en la copia). Comprobado al final: **árbol real intacto**.
+Los tests comparan el registro compartido **entero** —repositorio,
+archivador, explorador, ubicaciones y el log del paso, con un handler que
+apunta cada línea—.
+
+| # | Puerta movida (una por colaborador que precede) | Resultado | Test que lo caza |
+|---|---|---|---|
+| O0 | comprobación de composición después de la puerta | **muere** (tras el refuerzo) | `…archivador_que_no_crea_carpetas_no_se_toca_nada` |
+| O1 | resolver antes de la puerta de estado | **muere** | `test_f013_r22_un_parte_no_aprobado_…` |
+| O2 | resolver antes del cotejo (1 bis) | **muere** | `test_f013_r22_un_cuerpo_que_no_cuadra_…` |
+| O3 | resolver antes del corte de L1 | **muere** | `test_f013_r45_un_parte_archivado_en_it_…` |
+| O4 | aviso del intento anterior antes de resolver | **muere** | `test_f013_r22_el_aviso_…_compara_con_la_carpeta_resuelta` |
+| O5 | traza previa (y aviso) antes de resolver | **muere** | `test_f013_r4_…_con_el_orden_entero` |
+| O6 | crear carpetas antes de la traza previa | **muere** | `test_f013_r15_la_unidad_que_falta_se_crea_tras_la_traza_previa_…` |
+| O7 | crear carpetas después de subir | **muere** | ídem |
+| O8 | creaciones en orden inverso | **muere** | ídem |
+| O9 | log de R47 después de la traza `error` | **muere** | `test_f013_r47_…_antes_de_la_traza_error` |
+| O10 | aviso y log de R40 antes de `crear_subcarpeta` | **muere** | `test_f013_r15_…` |
+| O11 | `DestinoNoResuelto` sin escribir la traza `error` | **muere** | `test_f013_r18_sin_destino_queda_la_traza_error_…` |
+
+**12 de 12 muertos.** O0 **sobrevivía** en la primera pasada: el caso del
+`TypeError` usaba dobles que no apuntan `consultar_situacion`, así que mover la
+comprobación detrás de la puerta no se veía. **Hueco real**, cerrado en
+`668145c` con un repositorio que apunta también la lectura (y un control de
+que la apunta); reinyectado, muere.
+
+**Del arnés** (`python -m harness.mutacion --feature F-013 --timeout 900 --workers 6`,
+lanzada **después** de `init.sh` y sin nada más corriendo; informe en el
+scratchpad, `mutacion_F-013_bloque2_cierre.md`, para no adelantar el de T20).
+La herramienta **no** admite limitar el alcance a unos ficheros (lo calcula
+del diff de la rama: 8 ficheros, 1.495 líneas); sí admite subir el timeout,
+y se subió de 120 s a **900 s** por mutante con **6 workers** en vez de 8, por
+lo del bloque 2 (60 timeouts con `init.sh` a la vez). Resultado: **73
+mutantes, 72 muertos, 1 superviviente, 0 timeouts** en 2.216,7 s. De
+`paso_archivo.py` generó **5** (los operadores de la herramienta son
+comparaciones, lógicos, `not`, booleanos y enteros: no mueve sentencias, por
+eso el orden se cubre a mano arriba): la comprobación de composición
+(`and`→`or`, quitar el `not`) y las dos condiciones de R47 (`!=`→`==`,
+`or`→`and` ×2): **los 5 muertos**.
+
+| # | Línea y mutación | Análisis | Qué se hizo |
+|---|---|---|---|
+| 1 | `destino_archivo.py:102` `@dataclass(frozen=True)` → `frozen=False` en `_Nivel` | **Equivalente**, el mismo del bloque 2 (§5 de «Bloque 2», fila 2): `_Nivel` es privado, sus cuatro instancias se construyen en línea en la llamada a `bajar` y nadie les asigna nada | Nada; se deja `frozen=True` por coherencia. Pendiente de la aceptación del humano (nivel `critico`: cada superviviente, test o justificación aceptada) |
+
+### 6 · Qué queda fuera y qué falta
+
+- **Fuera, a propósito**: el borde (T13: `archivar.py` compone el `partial`
+  con `explorador` = **el mismo** adaptador que el archivador, decisión 1; y
+  `DestinoNoResuelto` → 409 en `function_app.py`), los adaptadores (T11, T12)
+  y R25 desde el endpoint (T15). Hasta T13 nadie llama al paso con
+  `resolver_destino`: el comportamiento desplegable **no cambia** (R2).
+- **Siguiente**: Bloque 3 (T11 Graph, T12 Sigrid) y del 4 al 7.
+- **Verificaciones MANUAL**: ninguna en este bloque.
+- `progress/mutacion_F-013.md` no se ha escrito: es de T20.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests de T10 | `test_f013_paso_archivo_posventa.py` **46 passed**; `test_f013_por_obra_intacto.py` **19 passed** (RED: **46 failed, 18 passed**, `TypeError: paso_archivo() got an unexpected keyword argument 'resolver_destino'`) |
+| Test de T10 bis | `test_f033_l1_desde_el_almacen.py` en verde (con los dos nuevos, **109 passed**); diff de 10 inserciones |
+| Controles de alcance (`-k "f006 or f019 or f031 or f032_alcance or f033 or f034" -rs`) | **750 passed, 20 skipped** (los del diff de otras ramas, `test_f034_r26_…` incluido), sin tocarlos salvo T10 bis |
+| `pytest -k f013` | **569 passed** |
+| Suite del proyecto (`bash harness/init.sh`, tras `668145c`) | api **3.807 passed, 35 skipped en 202,32 s**; front en verde (caché); arnés 62 passed en 10,29 s; **ENTORNO LISTO** |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 347 líneas cambiadas cubiertas (347/347, umbral 80%, nivel critico)`** |
+| Mutación a mano (orden) | **12 generados, 12 muertos** (1 hueco real, O0, cerrado con test en `668145c`) |
+| Mutación del arnés (6 workers, timeout 900 s) | **73 generados, 72 muertos, 1 superviviente** (equivalente, analizado arriba), **0 timeouts**, 2.216,7 s; de `paso_archivo.py`, 5/5 muertos |

@@ -1382,3 +1382,462 @@ el humano** el 2026-09-24: preguntado si aceptaba la justificación, respondió
 literalmente «si». Es la aceptación que exige el nivel `critico` para un
 superviviente sin test; T20 lo recoge así en `progress/mutacion_F-013.md`.
 
+---
+
+## Bloque 4 · T13 y T14 (2026-09-24)
+
+**Alcance del encargo: solo T13 y T14** (el borde y los scripts). Nada de T15
+en adelante. Sin DDL, sin escrituras contra ningún sistema; **ningún script se
+ha lanzado contra la red real** (ensayo local con red falsa, §5);
+`harness/features.json`, `.env` y `azure-apps/` sin tocar; sin push.
+
+La sesión se cortó una vez (fallo de conexión, sin progreso 600 s) con todo lo
+de T13 y T14 ya commiteado; al retomar se comprobó con `git` que el 23 estaba
+completo (`b87df4c`) y no se rehízo nada.
+
+Commits: `ee7e675` (RED de T13), `f91095c` (RED de T14), `3893e5d` (T13),
+`3d9c5b1` (T13: estrategia desconocida, tras la mutación a mano), `b87df4c`
+(T14), `3bb32e1` (T14: condición del CSV fijada, tras la mutación a mano),
+`edc9984` (T14: la regla se prueba en este proceso), `84085b8` (T14: ese
+`exec`, con un fichero de verdad fuera del servicio), `800f587` (`tasks.md`),
+más el de este informe.
+
+### 1 · Qué cambió
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/interface_adapters/api/archivar.py` | **T13.** `archivar_parte` gana las costuras `explorador` y `ubicaciones`. El archivador y el repositorio se construyen antes, en el mismo orden de F-006; `_resolutor_de_la_estrategia(ajustes, …)` devuelve `None` en `por_obra`, el `functools.partial` de `resolver_destino_posventa` en `posventa` (base, los dos tramos, la alternativa y `SHAREPOINT_CREAR_CARPETAS`, todo de `ajustes`) y `ConfiguracionSharePointIncompleta` con una estrategia desconocida. `construir_ubicaciones` solo en `posventa` y **después** de archivador y repositorio. El explorador es, salvo costura, **el mismo** archivador. Recuadro «La estrategia de destino se elige aquí (F-013, 2026-09-24)» en el docstring del módulo. `CAMPOS_OBLIGATORIOS` sin cambios |
+| `services/postventa-api/function_app.py` | **T13.** `DestinoNoResuelto` → **409** `{"error", "motivo", "candidatas"}` (R19): `error` = «no se ha subido nada ni se ha creado ninguna carpeta en la biblioteca de Posventa: » + el `detalle` del resolutor (que dice qué tiene que hacer una persona); `motivo` = el código de R18; `candidatas` = nombres de carpeta (lista vacía si no hay). Log `archivar sin destino: motivo=<código> <detalle>` (INFO). `UbicacionNoDisponible` y `ConfiguracionSigridIncompleta` → **503** con «no se ha podido saber en Sigrid dónde va este parte… Motivo: …» (R41). Recuadro fechado en el docstring de `archivar` |
+| `services/postventa-api/tests/test_f013_archivar_http.py` (nuevo) | 27 tests del borde |
+| `infra/23_destino_posventa.ps1` | **T14.** Fuera `Test-ObraCasa`, `Test-ObraParecida`, `Test-TramoCasa`, `Test-TramoParecido` **y `Get-Tokens`** (la clave de §4.3 copiada). Nuevos: la regla del dominio embebida (`$reglaDelDominio`, Python) que se ejecuta con `Invoke-ReglaDelDominio` → `Invoke-PythonDelServicio` del 08 (intérprete del servicio, por fichero); `Get-HijosAnotados` (anota cada listado para la regla); `Format-Veredicto`, `Get-Lista`; parámetros `-UnidadesCsv` y `-CarpetaFirmadosAlternativa` (`"PARTES FIRMADO"`); código de salida 11 (la regla no se pudo ejecutar); sección 4/4 reescrita con el resumen corregido y la tabla «LO QUE HARIA EL SISTEMA» |
+| `infra/24_ubicacion_sigrid.ps1` | **T14.** `-SalidaCsv <ruta>`: CSV con `$ColumnasCsv` = `obra` (el ordinal «obra 1» que ya imprime; **nunca** `obra_ide`), `obra_cod`, `obra_res`, `unidad_cod`, `unidad_res`, `reclamaciones`, vía `Select-Object -Property $ColumnasCsv | Export-Csv`. La ruta tiene que quedar **fuera del repositorio** (se comprueba antes de preguntar nada a Sigrid; salida 3). El aviso que citaba `SHAREPOINT_NOMBRE_UNIDAD` (retirada en T4) se actualiza |
+| `services/postventa-api/tests/test_f013_scripts_infra.py` | 16 tests nuevos de T14 (60 en total) |
+| `specs/F-013-archivo-posventa/tasks.md` | T13 y T14 marcadas `[x]`, con nota de commits |
+
+**El borde en `posventa`, en su orden:** cuerpo → ajustes →
+`construir_archivador` → `construir_repositorio` → (estrategia)
+`construir_ubicaciones` → `paso_archivo(…, resolver_destino=partial(…))`.
+En `por_obra`: el mismo camino con `resolver_destino=None`, y sin
+`construir_ubicaciones`.
+
+**El 23, cómo aplica la regla del dominio.** Tres modos de un mismo programa
+Python (embebido en el `.ps1`, ASCII, solo lectura):
+
+1. `obra`: `carpetas_de_obra` / `parecidas_de_obra` sobre la raíz;
+2. `tramos`: `carpeta_con_nombre` / `parecidas_de_tramo` (y las cifras de
+   `clave_de_unidad`), una llamada para `PARTES INCIDENCIAS` de todas las obras
+   recorridas y otra para las hojas de todas las unidades (con la alternativa);
+3. `veredicto`: con el árbol **que el script ha listado** y el CSV del 24,
+   llama al **resolutor de verdad** (`resolver_destino_posventa`) por cada
+   unidad de Sigrid, con `crear_carpetas=True` (el valor del corte), un
+   explorador que solo contesta con lo listado (`SinMedir` si la regla pide
+   otra carpeta) y un `UbicacionPort` que contesta con la fila del CSV. Dice
+   «resolvería <ruta>», «crearía <nombres>» o «BLOQUEARIA (<motivo>):
+   <candidatas>», y lo mismo para la obra y para `PARTES INCIDENCIAS`.
+
+Tres `Invoke-PythonDelServicio` como mucho por ejecución (uno más sin obra
+recorrida, ninguno sin `-CodigoObra`). La entrada va en un JSON en `%TEMP%`
+(ruta en `F013_ENTRADA_TEMP`), borrado siempre en un `finally`; la salida,
+JSON en ASCII. Los nombres se imprimen con la máscara de siempre salvo
+`-MostrarNombres`.
+
+**El resumen, corregido** (`progress/explore_F-013.md`): cuenta bajo la obra
+que **resuelve la regla** (una sola que casa). Si casan varias, las cuenta y
+lo rotula («resumen sin obra resuelta: casan varias (ambigua)…»); si no casa
+ninguna, cuenta las parecidas y lo dice en su línea («resumen sin obra
+resuelta: se muestran las parecidas»); con `-CarpetaObra`, cuenta la forzada
+(«resumen de la carpeta forzada con -CarpetaObra»). Lo mismo un nivel más
+abajo con `PARTES INCIDENCIAS`. Veredicto nuevo: con `-UnidadesCsv`,
+«unidades que bloquearia (R31: ninguna)» y «unidades sin medir» tienen que
+ser 0 para `PASA`.
+
+### 2 · Decisiones de diseño (y lo que la spec no fijaba)
+
+1. **Orden de construcción: archivador → repositorio → ubicaciones** (el
+   encargo solo fijaba «ubicaciones después del archivador»). El par
+   archivador/repositorio conserva el orden de F-006, y lo nuevo, que solo
+   existe en `posventa`, va detrás. Un test fija la secuencia entera
+   (`test_f013_t13_el_orden_de_construccion_en_posventa`).
+2. **La costura `explorador`**: si llega, es lo que recibe el `partial`; si
+   no, el propio archivador (inyectado o construido). En producción nunca
+   llega: el explorador **es** el archivador, y `construir_archivador` se
+   llama una vez (test que lo cuenta).
+3. **Estrategia desconocida en el borde → 503** (`ConfiguracionSharePointIncompleta`).
+   En producción no puede llegar (la fábrica la rechaza, R3), pero con el
+   archivador inyectado se tomaba por `por_obra` sin que nada lo viera: lo
+   destapó el mutante a mano O9 (§4). Falla cerrado, sin tocar nada.
+4. **El texto del 409** antepone «no se ha subido nada ni se ha creado ninguna
+   carpeta en la biblioteca de Posventa» al `detalle` del resolutor, como el
+   resto de 409/503 de este endpoint dicen qué no se ha hecho. El `detalle` ya
+   dice qué tiene que hacer una persona (lo fijó T9).
+5. **El 503 de Sigrid** comparte cuerpo para `UbicacionNoDisponible` y
+   `ConfiguracionSigridIncompleta` («no se ha podido saber en Sigrid dónde va
+   este parte… Motivo: …»); el motivo distingue los dos (el de configuración
+   nombra las variables, nunca sus valores).
+6. **El 23 usa el resolutor de verdad** (`application/pipelines/destino_archivo.py`)
+   para el veredicto por unidad, y no solo `destino_posventa.py` como decía
+   §7.1. Es lo que garantiza lo que pide R28 enmendado —«lo que dice
+   resolvería o crearía es lo que hará el sistema»—, incluidas R37, R44, R46,
+   R49 y R50 **en su orden**; reimplementar el recorrido con las funciones del
+   dominio habría sido otra copia. El resolutor es puro (solo biblioteca
+   estándar y `domain/`), así que el script no necesita nada más del servicio.
+7. **Lo no listado sale «sin medir»**, no se adivina: el explorador del
+   ensayo solo contesta con los listados que el 23 hizo (tests y mutante M5).
+8. **La obra en el CSV es un ordinal** («obra 1», «obra 2»), el mismo que el
+   24 ya imprimía: basta para `obras_del_mismo_numero` (R44) y `unidades_que_casan`
+   (R50) y no es un identificador del ERP. El spec pedía «`con.cod`, `con.res`;
+   sin `obride`»; se añaden `obra_cod`/`obra_res` (el `con.cod`/`con.res` de la
+   obra: R8 y el nombre de R36), el ordinal y `reclamaciones` (dato para el
+   humano; la regla no lo usa).
+9. **Límite conocido del ensayo en seco (R44)**: el 24 pregunta las obras con
+   `o.cod IN ('0677', '677')`; el adaptador del sistema, `LIKE '%677'` filtrado
+   por número (§6.2). Una obra `00677` la vería el sistema y no el 24. Con la
+   0677 hay **una** obra (T3), así que no cambia nada de R31; si algún día
+   importa, es cambiar la consulta del 24 por la del adaptador.
+10. **`-CarpetaFirmadosAlternativa`** en el 23 (no lo nombraba §7.1): sin él,
+    el script no podría ensayar R49 con otro valor, y el defecto es el mismo
+    que el de `settings.py`.
+11. **El test de la regla la ejecuta en este proceso** (`exec` sobre un
+    espacio de nombres limpio, `edc9984`) y no en un `subprocess`: en el
+    primer `init.sh` de este bloque —3 h 41 min, con la máquina colgada por el
+    corte de conexión— el `subprocess` murió con `0xC0000142` (fallo de
+    arranque del proceso). El camino real (proceso aparte, por fichero, desde
+    PowerShell 5.1) lo prueba el ensayo de §5. **Y el `exec` se compila con
+    la ruta de un fichero de verdad en `tmp_path`** (`84085b8`): con un nombre
+    inventado (`"regla_del_23"`), `coverage` lo tomaba por un fichero del
+    servicio que no existe, `coverage json` fallaba («No source for code») y
+    la PUERTA COBERTURA de `init.sh` salía **0 %** (medido dos veces antes de
+    la corrección; reproducido a mano con `coverage json`).
+
+### 3 · Fase RED (traza real)
+
+**T13.** Comando exacto, desde `services/postventa-api`, con el fichero de
+tests escrito y ni `archivar.py` ni `function_app.py` tocados (commit
+`ee7e675`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_archivar_http.py -q -p no:cacheprovider --tb=short
+```
+
+Salida real (extracto):
+
+```
+EEFFEEFFFFFFF.FFFFEFFFFFF.                                               [100%]
+_ ERROR at setup of test_f013_r2_en_por_obra_no_se_construye_la_ubicacion_ni_se_lista _
+tests\test_f013_archivar_http.py:238: in fabricas
+    monkeypatch.setattr(archivar, "construir_ubicaciones", _ubicaciones)
+E   AttributeError: <module 'interface_adapters.api.archivar' from '...\interface_adapters\api\archivar.py'> has no attribute 'construir_ubicaciones'
+[...]
+tests\test_f013_archivar_http.py:166: in envoltura
+    return archivar.archivar_parte(contenido, **costuras, **datos)
+E   TypeError: archivar_parte() got an unexpected keyword argument 'ubicaciones'
+[...]
+E   assert 200 == 503
+INFO     function_app:function_app.py:806 archivar: parte=9f2b0013aabb fichero=0677 - RS26.08 - 0005 PARTE FIRMADO.pdf carpeta=/0677 estado=archivado avisos=0
+[...]
+19 failed, 2 passed, 5 errors in 20.63s
+```
+
+(El `200 == 503` es el de la estrategia desconocida antes de existir el
+test: la `posventa` sin borde se archivaba en `<base>/<obra>`.) Los 2 que
+pasaban en RED son `CAMPOS_OBLIGATORIOS` y el control del material (el doble
+de F-006 no es explorador), ciertos antes del cambio. GREEN: **26 passed**;
+con el de la estrategia desconocida, **27 passed**.
+
+**T14.** Comando exacto, con los tests nuevos escritos y los scripts sin
+tocar (commit `f91095c`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_scripts_infra.py -q -p no:cacheprovider --tb=line -k t14
+```
+
+Salida real (extracto):
+
+```
+FFFFFFFFFFFFFFFF                                                         [100%]
+E   AssertionError: Test-ObraCasa
+    assert 'Test-ObraCasa' not in '\n\n[Cmdlet...DE POSVENTA"'
+      'Test-ObraCasa' is contained here:
+        function Test-ObraCasa {
+E   AssertionError: el 23 no lleva la regla del dominio en $reglaDelDominio
+E   AssertionError: el 24 no declara $ColumnasCsv
+E   AssertionError: no encuentro la funcion Invoke-ReglaDelDominio
+E   assert 'Marca -ne "parecida"' not in '\n\n[Cmdlet...DE POSVENTA"'
+E   assert '[string]$SalidaCsv' in '\n\n[CmdletBinding()]\nparam(\n    [string]$CodigoObra, ...'
+E   assert 'fuera del repositorio' in '\n\n[CmdletBinding()]\nparam(...'
+FAILED tests/test_f013_scripts_infra.py::test_f013_t14_la_regla_da_lo_de_r31_para_la_0677
+[...]
+16 failed, 44 deselected in 0.57s
+```
+
+GREEN: **60 passed** (los 44 de T1 y los 16 nuevos).
+
+### 4 · Mutación a mano (punto 7 del reviewer)
+
+**T13, orden y composición** (`mutantes_t13.py` en el scratchpad: copia
+desechable del servicio, sustitución exacta, `test_f013_archivar_http.py` y
+`test_f006_archivar_http.py`, restaurar; base y restaurada en verde, 42
+passed). Primera pasada: 25 generados, 24 muertos, **1 superviviente, hueco
+real**: O9 (la estrategia comparada con `por_obra` en vez de con
+`posventa`: una estrategia desconocida se tomaba por `por_obra`). Cerrado en
+`3d9c5b1` (§2, decisión 3) con test. Segunda pasada, con O9 reescrito en dos
+(O9 y O9b): **26 generados, 26 muertos**.
+
+| # | Mutante | Resultado |
+|---|---|---|
+| O1 | la ubicación se construye **antes** que el archivador | muere (2) |
+| O2 | la ubicación entre archivador y repositorio | muere (1) |
+| O3 | la ubicación se construye también en `por_obra` | muere (8) |
+| O4 | un **segundo** `construir_archivador` como explorador | muere (23) |
+| O5 | la costura `explorador` se ignora | muere (1) |
+| O6 | la costura `ubicaciones` se ignora | muere (13) |
+| O7 | el resolutor también en `por_obra` | muere (9) |
+| O8 | nunca hay resolutor | muere (18) |
+| O9 | estrategia desconocida tomada por `por_obra` | muere (1) tras `3d9c5b1` |
+| O9b | estrategia desconocida tomada por `posventa` | muere (1) |
+| C1–C5 | base, incidencias, firmados, alternativa o `crear_carpetas` fijos en vez de los de `ajustes` | los 5 mueren |
+| C6 | incidencias y firmados cruzados | muere (8) |
+| E1 | `DestinoNoResuelto` sin traducir | muere (6) |
+| E2 | `DestinoNoResuelto` como 502 | muere (5) |
+| E3, E4 | el 409 sin `candidatas` / sin `motivo` | mueren (3, 5) |
+| E5 | el 409 con el detalle a secas | muere (1) |
+| E6, E7 | `UbicacionNoDisponible` / `ConfiguracionSigridIncompleta` sin traducir | mueren (3, 1) |
+| E8 | el 503 de Sigrid como 502 | muere (4) |
+| E9 | el 503 de Sigrid sin el motivo | muere (2) |
+| E10 | el log del 409 sin el código del motivo | muere (1) |
+
+**T14, los dos scripts** (el arnés no muta PowerShell; `mutantes_t14.py` y
+`mutantes_t14b.py`: inyección en el fichero real, `test_f013_scripts_infra.py`
+y restauración byte a byte comprobada). **17 generados, 17 muertos**, uno
+tras un refuerzo:
+
+| # | Mutante | Resultado |
+|---|---|---|
+| M1 | un `POST` en `Get-HijosAnotados` | muere |
+| M2 | la biblioteca del ensayo sabe crear (`crear_subcarpeta`) | muere |
+| M3 | el ensayo con `crear_carpetas=False` | muere (2) |
+| M4 | el ensayo sin la hoja alternativa | muere |
+| M5 | lo no listado se da por vacío (se adivina) | muere |
+| M6 | una sola obra para todas las filas (R44 ciego) | muere |
+| M7 | la obra nueva sin el `con.res` | muere |
+| M8 | el resumen vuelve a filtrar por `Marca -ne "parecida"` | muere |
+| M9 | el JSON temporal no se borra | muere |
+| M10 | la regla con `python -c` | muere |
+| M11 | vuelve `Test-ObraCasa` | muere |
+| M12 | la regla escribe un fichero | muere |
+| M13 | el CSV con `obra_ide` | muere |
+| M14 | el CSV sin `Select-Object` (todas las propiedades) | muere |
+| M15 | la comprobación del repositorio, **después** de leer Sigrid | muere |
+| M16 | el 24 sin la comprobación del repositorio | muere |
+| M17 | la condición rota (`$false -and …`: nunca rechaza) | **sobrevivía**; muere tras `3bb32e1` (el texto de la condición, fijado) |
+
+(M15 y M16 de la primera versión del script no movían ni quitaban la
+comprobación entera —mutantes mal escritos, sobrevivían sin decir nada del
+test—; `mutantes_t14b.py` los reescribe bien.) Tras `edc9984` (la regla en
+este proceso) se relanzaron los 17: los mismos muertos.
+
+### 5 · Ensayo local con la red falsa (T14)
+
+Patrón de T1 (`progress/impl_F-013.md` §5 del bloque 0): copia de los dos
+scripts en el scratchpad (`ensayo_t14/infra`), con un `08` de ensayo que carga
+el real y sustituye **solo** `Invoke-RestMethod`, `Invoke-SigridLectura`,
+`Get-SigridDestino` y `Get-SigridClave`; el servicio, por una unión de
+directorio a `services/postventa-api` (para que el 23 encuentre su intérprete).
+El falso `Invoke-RestMethod` lanza ante cualquier verbo que no sea `GET` o el
+token, y apunta cada llamada. Datos: **el árbol medido en T2** (raíz con 52
+carpetas —la de la obra, `677  MIRASIERRA`, y otras sin 677, inventadas— y 7
+ficheros, servida en dos páginas con `nextLink`; dentro de la obra 4
+subcarpetas y 2 ficheros; `VILLA 01`…`07`; `PARTES FIRMADOS` en 01, 03, 05, 06
+y 07 con 0, 4, 2, 2 y 3 ficheros; `PARTES FIRMADO` en la 02 (5 ficheros,
+inventados); VILLA 04 sin subcarpetas y 142 ficheros) y **las 15 unidades de
+T3** (`0677.03VILLA N.` / `Viviendas Bloque Villa N`; reclamaciones con los
+totales medidos —1.197, seis unidades sin ninguna, la 12 con 9 y la 13 con
+213— y el reparto de las demás inventado). Credenciales de ensayo en la
+sesión del proceso; ningún valor real.
+
+**24 con `-SalidaCsv`** (salida 0, `PASA`; 1 llamada: `POST <pasarela>/api/sql/read parametros: 708 | 0677 | 677`):
+
+```
+Obra 1: codigo '0677' (igual al pedido, literal: si)
+  con.res : 15 VIVIENDAS UNIFAMILIARES EN <txt>(<txt>)
+  UNIDAD con.cod             UNIDAD con.res                                RECL.  TEXTO NO RECONOCIDO
+  0677.03VILLA 1.            Viviendas Bloque Villa 1                        140  no
+  [... las 15 ...]
+  0677.03VILLA 15.           Viviendas Bloque Villa 15                         0  no
+
+CSV para el 23: 15 unidad(es) en <scratchpad>\ensayo_t14_csv\unidades_0677.csv
+  Lleva los LITERALES de con.res: no lo copies a progress/ ni al repositorio; borralo al acabar.
+[...]
+UNIDADES DE POSVENTA EN SIGRID : PASA
+```
+
+Cabecera del CSV escrito: `"obra","obra_cod","obra_res","unidad_cod","unidad_res","reclamaciones"` (con BOM, entrecomillado, como `Export-Csv -Encoding UTF8` de PowerShell 5.1).
+
+**23 con `-UnidadesCsv`** (salida 0, `PASA`; 22 llamadas: **21 `GET` y el
+`POST` del token**, la raíz en dos páginas; el JSON temporal, borrado):
+
+```
+3/4 Carpeta base: la raiz, D-1 (sin crearla)...
+    carpetas: 52   ficheros sueltos: 7
+
+4/4 Estructura de la obra 0677 (solo carpetas; los ficheros se cuentan, no se nombran)
+    Regla del DOMINIO (destino_posventa.py), con el interprete del servicio.
+
+    Carpetas de obra que CASAN (4.1): 1
+      - 677  <txt>
+    Carpetas PARECIDAS (4.5)        : 0
+
+    OBRA [casa] 677  <txt>
+      subcarpetas: 4   ficheros sueltos: 2
+        - <txt>
+        - PARTES INCIDENCIAS  <- casa con 'PARTES INCIDENCIAS'
+        - <txt>
+        - <txt>
+
+      PARTES INCIDENCIAS [casa]
+        unidades: 7   ficheros sueltos: 0
+        UNIDAD                             CIFRAS   SUBC. FICH.  PARTES FIRMADOS            EN LA HOJA
+        ------------------------------------------------------------------------------------------------
+        VILLA 01                           1            1     0  si: PARTES FIRMADOS        0 fich., 0 carp.
+        VILLA 02                           2            1     0  si: PARTES FIRMADO         5 fich., 0 carp.
+        VILLA 03                           3            1     0  si: PARTES FIRMADOS        4 fich., 0 carp.
+        VILLA 04                           4            0   142  no (se crearia)            -
+        VILLA 05                           5            1     0  si: PARTES FIRMADOS        2 fich., 0 carp.
+        VILLA 06                           6            1     0  si: PARTES FIRMADOS        2 fich., 0 carp.
+        VILLA 07                           7            1     0  si: PARTES FIRMADOS        3 fich., 0 carp.
+
+    LO QUE HARIA EL SISTEMA (el resolutor del dominio, en seco; SHAREPOINT_CREAR_CARPETAS=true)
+      obra                 : resolveria: 677  <txt>
+      PARTES INCIDENCIAS   : resolveria: PARTES INCIDENCIAS
+
+      OBRA  UNIDAD con.cod          RECL.  EL SISTEMA...
+      ----------------------------------------------------------------------------------------------------
+      1     0677.03VILLA 1.           140  resolveria: 677  <txt>/PARTES INCIDENCIAS/VILLA 01/PARTES FIRMADOS
+      1     0677.03VILLA 2.           140  resolveria: 677  <txt>/PARTES INCIDENCIAS/VILLA 02/PARTES FIRMADO
+      1     0677.03VILLA 3.           139  resolveria: 677  <txt>/PARTES INCIDENCIAS/VILLA 03/PARTES FIRMADOS
+      1     0677.03VILLA 4.           139  crearia: PARTES FIRMADOS
+      1     0677.03VILLA 5.           139  resolveria: 677  <txt>/PARTES INCIDENCIAS/VILLA 05/PARTES FIRMADOS
+      1     0677.03VILLA 6.           139  resolveria: 677  <txt>/PARTES INCIDENCIAS/VILLA 06/PARTES FIRMADOS
+      1     0677.03VILLA 7.           139  resolveria: 677  <txt>/PARTES INCIDENCIAS/VILLA 07/PARTES FIRMADOS
+      1     0677.03VILLA 8.             0  crearia: VILLA 08 + PARTES FIRMADOS
+      1     0677.03VILLA 9.             0  crearia: VILLA 09 + PARTES FIRMADOS
+      1     0677.03VILLA 10.            0  crearia: VILLA 10 + PARTES FIRMADOS
+      1     0677.03VILLA 11.            0  crearia: VILLA 11 + PARTES FIRMADOS
+      1     0677.03VILLA 12.            9  crearia: VILLA 12 + PARTES FIRMADOS
+      1     0677.03VILLA 13.          213  crearia: VILLA 13 + PARTES FIRMADOS
+      1     0677.03VILLA 14.            0  crearia: VILLA 14 + PARTES FIRMADOS
+      1     0677.03VILLA 15.            0  crearia: VILLA 15 + PARTES FIRMADOS
+
+No se ha creado nada, no se ha subido nada y no se ha borrado nada.
+
+QUE                                            ESPERADO               OBTENIDO
+----------------------------------------------------------------------------------------------------
+la aplicacion ve el sitio                      si                     si
+biblioteca localizada                          si                     si
+como se ha elegido la biblioteca               (dato)                 la biblioteca por defecto del sitio (Documentos compartidos)
+permisos de aplicacion del token               (dato)                 Mail.ReadWrite, Sites.ReadWrite.All
+permiso de escritura en sitios                 si                     si
+la carpeta base existe                         si                     si
+carpetas en la base                            (dato)                 52
+ficheros sueltos en la base                    (dato)                 7
+carpeta de obra que resuelve la regla (4.1)    1                      1
+carpetas de obra parecidas (4.5)               (dato)                 0
+PARTES INCIDENCIAS que casan en la obra        1                      1
+unidades bajo PARTES INCIDENCIAS               (dato)                 7
+unidades con su hoja (o la alternativa)        (dato)                 6
+unidades con solo una PARECIDA de la hoja      (dato)                 0
+unidades sin hoja (se crearia)                 (dato)                 1
+unidades sin cifras en el nombre (riesgo 11)   (dato)                 0
+numeros de unidad repetidos (D-6: ambigua)     (dato)                 ninguno
+ficheros en las hojas (contados)               (dato)                 16
+versionado de la biblioteca                    (dato)                 no concluyente (el fichero mirado tiene 1 version)
+unidades de Sigrid (CSV del 24)                (dato)                 15
+unidades que resolveria                        (dato)                 6
+unidades que crearia                           (dato)                 9
+unidades que bloquearia (R31: ninguna)         0                      0
+unidades sin medir                             0                      0
+
+DESTINO DE POSVENTA : PASA
+```
+
+**Es exactamente R31**: obra y `PARTES INCIDENCIAS` «resolvería»; VILLA 01,
+02 (con `PARTES FIRMADO`), 03, 05, 06 y 07 «resolvería»; VILLA 04 «crearía
+`PARTES FIRMADOS`»; VILLA 08…15 «crearía `VILLA NN`» y su hoja; ninguna
+«bloquearía». Y el **resumen, sin ceros**: obra 1, `PARTES INCIDENCIAS` 1,
+unidades 7 (el de T2 daba 0, 0, 0).
+
+Las demás variantes, también en local:
+
+| Variante | Salida | Lo que dice |
+|---|---|---|
+| obra renombrada a `0677-MIRASIERRA` (solo parecida) | 6, `NO PASA` | obra «BLOQUEARIA (obra_parecida): 0677-<txt>», las 15 unidades igual; línea «resumen sin obra resuelta: se muestran las parecidas» y el resumen cuenta bajo la parecida (INCIDENCIAS 1, unidades 7) |
+| lo mismo con `-CarpetaObra "0677-MIRASIERRA"` | 6, `NO PASA` | «resumen de la carpeta forzada con -CarpetaObra»; el veredicto por unidad sigue siendo el de la regla (bloquearía) |
+| sin `-UnidadesCsv` | 0, `PASA` | obra y tramo «resolvería»; «Sin -UnidadesCsv: no se dice que haria con cada unidad de Sigrid…» |
+| `-WhatIf` | 0 | ninguna llamada; enseña el CSV y «la del dominio, con services\postventa-api\.venv (por fichero)» |
+| 24 con `-SalidaCsv unidades.csv` (relativa = dentro del repo) | 3 | «-SalidaCsv tiene que quedar fuera del repositorio…»; **ninguna** llamada a Sigrid |
+
+PowerShell 5.1: `Parser::ParseFile` de los dos, **0 errores**. Los dos siguen
+ASCII + CRLF, sin BOM.
+
+### 6 · Verificación
+
+| Comando (desde `services/postventa-api`) | Resultado |
+|---|---|
+| Verificación de T13: `pytest tests/test_f013_archivar_http.py tests/test_f006_archivar_http.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py -rs` | **63 passed, 11 skipped** (los 11: controles del diff de F-033 y F-034, fuera de sus ramas) — con los de F-031, F-032 y `test_f013_por_obra_intacto.py`, **96 passed, 20 skipped** |
+| Verificación de T14: `pytest tests/test_f013_scripts_infra.py` | **60 passed** |
+| Vecinos: `test_f010_prompt_keys_infra.py`, `test_f010_scripts_infra.py`, `test_f006_scripts_infra.py`, `test_f006_repo_sin_identificadores.py` con el de T14 | **268 passed, 3 skipped** |
+| Controles: `pytest tests -k "f013 or arquitectura or alcance or f006 or f019 or f031 or f033 or f034 or logs_sin or f009 or f012"` | **2.366 passed, 20 skipped** (los del diff de otras ramas). **Ningún test de F-006, F-031, F-032, F-033 ni F-034 tocado** en este bloque |
+| `ruff check` sobre los ficheros tocados | All checks passed |
+| `bash harness/init.sh` | ver «Evidencias» |
+
+### 6 bis · Mutación del arnés
+
+`python -m harness.mutacion --feature F-013 --timeout 900 --workers 6`,
+lanzada **después** de `init.sh` y sin nada más corriendo en este
+repositorio; informe en el scratchpad (`mutacion_F-013_bloque4.md`), **no** en
+`progress/mutacion_F-013.md`, que es de T20. Alcance recalculado por la
+herramienta (diff de la rama desde `fadb678`): **14 ficheros, 2.291 líneas**,
+ahora con `archivar.py` (102) y `function_app.py` (43).
+
+**109 mutantes, 108 muertos, 1 superviviente, 0 timeouts, 1.806,3 s.** De este
+bloque generó 4, **los 4 muertos**: `function_app.py:784` `409 → 410` y
+`:802` `503 → 504`; `archivar.py:244` `== POR_OBRA → !=` y `:246`
+`!= POSVENTA → ==`. (Los operadores de la herramienta no mueven sentencias:
+el orden de la composición lo cubren los 26 mutantes a mano de §4.)
+
+El superviviente es `destino_archivo.py:102` (`@dataclass(frozen=True)` →
+`frozen=False` en `_Nivel`), el **equivalente ya aceptado por el humano** el
+2026-09-24 (nota del líder al final del bloque 3). No se vuelve a analizar.
+
+### 7 · Qué queda fuera y qué falta
+
+- **Fuera, a propósito**: R25/R45 desde el endpoint (T15), arquitectura y
+  documentación (T16, T17 —incluida la documentación de los dos scripts con
+  sus parámetros reales: `-UnidadesCsv`, `-CarpetaFirmadosAlternativa`,
+  `-SalidaCsv`—), F-018 (T18), `azure-apps/` (T19) y la campaña formal (T20).
+  `SHAREPOINT_ESTRUCTURA` sigue valiendo `por_obra` por omisión: **el
+  comportamiento desplegado no cambia** hasta el corte.
+- **Para el corte (humano, paso 2 de `tasks.md`)**: relanzar el 24 con
+  `-SalidaCsv` y el 23 con `-UnidadesCsv` contra la red real. El ensayo de §5
+  es lo que tiene que salir; si la VILLA 02 dijera «bloquearía», el literal de
+  su hoja no es `PARTES FIRMADO` (riesgo 16).
+- **Para el líder**: las decisiones 3 (estrategia desconocida → 503 en el
+  borde), 6 (el 23 usa el resolutor, no solo el dominio), 8 (columnas del CSV)
+  y 9 (el 24 pregunta las obras por `IN`, no por `LIKE`) rellenan huecos de la
+  spec; T17 tendría que reflejar la 6 y la 8 en `docs/DESPLIEGUE.md`.
+- **Verificaciones MANUAL**: ninguna de este bloque; las de los scripts contra
+  la red real son del corte.
+- `progress/mutacion_F-013.md` no se ha escrito: es de T20.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests del bloque | `test_f013_archivar_http.py` **27 passed** (RED: **19 failed, 2 passed, 5 errors**, `AttributeError … 'construir_ubicaciones'` y `TypeError … 'ubicaciones'`); `test_f013_scripts_infra.py` **60 passed** (RED de los 16 nuevos: **16 failed**) |
+| Controles de alcance y vecinos | `-k "f013 or arquitectura or alcance or f006 or f019 or f031 or f033 or f034 or logs_sin or f009 or f012"`: **2.366 passed, 20 skipped** (los del diff de otras ramas); sin tocar ningún test de F-006, F-031, F-032, F-033 ni F-034 |
+| Suite del proyecto (`bash harness/init.sh`, estado final tras `84085b8`) | api **4.005 passed, 35 skipped en 174,05 s**; front en verde (caché); arnés 62 passed en 12,06 s; **ENTORNO LISTO** |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 551 líneas cambiadas cubiertas (551/551, umbral 80%, nivel critico)`** |
+| Mutación a mano | T13 (orden, composición y traducción de errores): **26 generados, 26 muertos** (1 hueco real, O9, cerrado en `3d9c5b1`); T14 (scripts): **17 generados, 17 muertos** (1 hueco, M17, cerrado en `3bb32e1`) |
+| Mutación del arnés (6 workers, timeout 900 s) | **109 generados, 108 muertos, 1 superviviente** (`_Nivel`, equivalente **aceptado por el humano**), **0 timeouts**, 1.806,3 s; de `archivar.py` y `function_app.py`, 4/4 muertos |
+| Ensayo local de los scripts (red falsa, árbol de T2, 15 unidades de T3) | 24: salida 0, 1 `sql/read`; 23: salida 0, `PASA`, **21 `GET` + el token**, R31 exacto, resumen obra 1 / `PARTES INCIDENCIAS` 1 / unidades 7 |
+| Sintaxis PowerShell 5.1 | `Parser::ParseFile`: 0 errores en los dos |

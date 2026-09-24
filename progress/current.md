@@ -1,6 +1,30 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 · BLOQUE 4 HECHO (T13 y T14) · 2026-09-24 · siguiente: Bloque 5 (T15)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 4 · T13 y
+> T14»**. Sin red ni escrituras en ningún sistema (los scripts, solo en
+> ensayo local con red falsa); `harness/features.json` sin tocar; sin push.
+>
+> - **T13** (RED `ee7e675` → `3893e5d`, `3d9c5b1`): el borde compone según
+>   `SHAREPOINT_ESTRUCTURA`; `por_obra` como F-006 (ni Sigrid ni listados);
+>   `posventa` con el `partial` del resolutor, la misma instancia como
+>   archivador y explorador, `construir_ubicaciones` tras archivador y
+>   repositorio. `DestinoNoResuelto` → 409 `{error, motivo, candidatas}`;
+>   `UbicacionNoDisponible`/`ConfiguracionSigridIncompleta` → 503.
+> - **T14** (RED `f91095c` → `b87df4c`, `3bb32e1`, `edc9984`, `84085b8`): el
+>   23 con la regla del dominio y el resolutor de verdad (por fichero),
+>   `-UnidadesCsv`, resumen corregido; el 24 con `-SalidaCsv` (sin `obride`,
+>   fuera del repo). Ensayo local: R31 exacto y resumen 1/1/7.
+> - **Decisiones para el líder**: estrategia desconocida → 503 en el borde; el
+>   23 usa el resolutor (no solo el dominio); columnas del CSV; el 24 pregunta
+>   las obras por `IN` y no por `LIKE`.
+> - Mutación a mano 26/26 (T13) y 17/17 (scripts), con 2 huecos cerrados.
+>   Arnés: 109 mutantes, 108 muertos; el superviviente es `_Nivel` (aceptado).
+> - `bash harness/init.sh` en verde: **4.005 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+
 > ## ✅ F-013 · BLOQUE 3 HECHO (T11 y T12) · 2026-09-24 · siguiente: Bloque 4 (T13, T14)
 >
 > implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 3 · T11 y

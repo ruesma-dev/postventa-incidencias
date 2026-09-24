@@ -1,6 +1,49 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⛔ F-013 · BLOQUE 2: T8 y T9 HECHAS, **T10 BLOQUEADA** · 2026-09-24 · decide el líder
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 2»** (el
+> §0 explica el bloqueo con la traza). Sin red ni escrituras en ningún
+> sistema; `harness/features.json` **sin tocar** por indicación del líder (la
+> feature no está marcada `blocked` en el JSON: lo decide él).
+>
+> **El bloqueo.** T10 pide añadir `resolver_destino` a la firma de
+> `paso_archivo` **y** mantener en verde sin tocarlos los tests de F-033.
+> `test_f033_l1_desde_el_almacen.py::test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar`
+> fija la firma **entera** con `==` (F-031 ya lo enmendó el 2026-09-22 para
+> `codigos_declarados`). Comprobado con el parámetro añadido de forma temporal
+> y el fichero restaurado: **1 failed, 43 passed**, «Extra items in the left
+> set: 'resolver_destino'». No se ha improvisado nada.
+>
+> **Propuesta (a), recomendada**: una tarea con nombre («T10 bis») que enmiende
+> ese test con recuadro fechado añadiendo `resolver_destino`, y la línea de
+> verificación de T10. No abre ninguna puerta: en `posventa` L1 corta antes de
+> resolver (R45). **(b)**, no recomendada: esquivar la firma con una función
+> aparte (se desvía de `design.md` §2.2 y duplica el orden del paso).
+>
+> - **T8** (`8bfb964`): `domain/ports/biblioteca.py` (exactamente
+>   `listar_carpetas` y `crear_subcarpeta`), `domain/ports/ubicacion.py` (las
+>   dos lecturas), `tests/utiles_destino.py` (`ExploradorFalso` y
+>   `UbicacionesFalsas`, que anotan cada llamada en un registro compartido; el
+>   árbol medido de la 0677 y sus 15 unidades, igual carácter a carácter que el
+>   de T6). RED `ModuleNotFoundError` → 42 passed.
+> - **T9** (`560d88f`): `application/pipelines/destino_archivo.py`, el
+>   resolutor sin `ctx` y sin escribir, en el orden de `design.md` §5
+>   enmendado. 133 tests; el caso de conjunto (las 15 unidades de la 0677)
+>   da la última columna de §4.6. RED `ImportError` → 134 passed. Mutantes a
+>   mano: 26, 23 muertos y 3 equivalentes, incluidos los de **orden** (mover
+>   cada puerta un paso: mueren). Arnés: 68 mutantes, 66 muertos; de los 2
+>   supervivientes, 1 hueco cerrado con test (`821b27d`) y 1 equivalente.
+> - `bash harness/init.sh` en verde: **3.742 passed**, 35 skipped; cobertura
+>   **100 % de 304 líneas cambiadas**.
+> - **Decisión que el líder debe conocer**: un `None` de `listar_carpetas`
+>   (base inexistente, o carpeta borrada entre dos listados) es
+>   `ArchivoFallido` (502), no un 409: la spec no lo fijaba.
+>
+> **Queda**: desbloquear T10 (decisión del líder), después el Bloque 3 (T11
+> Graph, T12 Sigrid; no dependen de T10 y podrían ir antes) y del 4 al 7.
+
 > ## ✅ F-013 · BLOQUE 1 HECHO (T5–T7) · 2026-09-24 · siguiente: Bloque 2 (T8–T10)
 >
 > implementer. Configuración y dominio puro, sin red ni escrituras en ningún

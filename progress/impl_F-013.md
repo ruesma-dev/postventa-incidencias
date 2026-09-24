@@ -566,3 +566,310 @@ escrito `progress/mutacion_F-013.md`, que es de T20.
 | Mutación, segunda pasada (8 workers) | **43 generados, 43 muertos, 0 supervivientes**, 0 timeouts (40 repasados en serie, todos muertos), 3.511,9 s |
 | Mutantes a mano | supervivientes 4–9 reinyectados contra los tests nuevos: todos mueren (el 6, tras añadir la fila `HOJA OS`) |
 | ruff sobre los ficheros tocados | All checks passed |
+
+---
+
+## Bloque 2 · T8 y T9 hechas; **T10 BLOQUEADA** (2026-09-24)
+
+**Alcance del encargo: solo el Bloque 2** (T8–T10). Sin DDL, sin escrituras
+contra ningún sistema, `harness/features.json` sin tocar (lo pidió el líder
+expresamente, así que la feature **no** se ha marcado `blocked` en el JSON:
+lo decide el líder). Ningún test toca la red.
+
+Commits: `8bfb964` (T8), `560d88f` (T9), `821b27d` (T9: superviviente de la mutación), más el de este informe.
+
+### 0 · Por qué T10 está bloqueada (lo primero que hay que leer)
+
+T10 pide añadir a `paso_archivo` el parámetro opcional `resolver_destino`
+(`tasks.md` T10; `design.md` §2.2: «Parámetro opcional `resolver_destino`») y,
+en la misma línea de verificación, que
+`pytest tests -k "f006 or f019 or f031 or f032_alcance or f033 or f034"` siga en
+verde **sin tocar** esos tests. Las dos cosas no pueden ser verdad a la vez:
+
+`tests/test_f033_l1_desde_el_almacen.py:685`,
+`test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar`, fija la firma
+**entera** de `paso_archivo` con un `==` sobre el conjunto de parámetros, a
+propósito (su docstring: *«lo que R21 exige es que **la firma entera** esté a
+la vista, de modo que cualquier parámetro nuevo obligue a mirar si abre una
+puerta»*). F-031 ya pasó por aquí el 2026-09-22 y **enmendó ese test** con un
+recuadro fechado para añadir `codigos_declarados`.
+
+**Comprobado, no supuesto.** Con el parámetro añadido de forma temporal
+(`resolver_destino=None`, sin más cambios; el fichero se restauró byte a byte
+y el árbol quedó limpio), comando:
+
+```
+cd services/postventa-api && .venv/Scripts/python.exe -m pytest tests/test_f033_l1_desde_el_almacen.py -q -p no:cacheprovider --tb=short
+```
+
+Salida real:
+
+```
+..........................................F.                             [100%]
+================================== FAILURES ===================================
+__________ test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar ___________
+tests\test_f033_l1_desde_el_almacen.py:700: in test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar
+    assert parametros == {
+E   AssertionError: assert {'ahora', 'ar...vigente', ...} == {'ahora', 'ar...vigente', ...}
+E
+E     Extra items in the left set:
+E     'resolver_destino'
+E     Use -v to get more diff
+=========================== short test summary info ===========================
+FAILED tests/test_f033_l1_desde_el_almacen.py::test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar
+1 failed, 43 passed in 1.28s
+```
+
+No he improvisado ninguna salida (ni tocar el test de F-033, ni esconder el
+resolutor en otro sitio para no cambiar la firma). **Opciones para el líder**:
+
+- **(a) Recomendada.** Una tarea con nombre (p. ej. «T10 bis») que enmiende
+  `test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar` añadiendo
+  `resolver_destino` al conjunto, con recuadro fechado como el de F-031, y que
+  enmiende la línea de verificación de T10 para decir que ese test **sí** se
+  toca y por qué. El argumento de que no abre ninguna puerta está en la spec:
+  en `posventa` L1 corta **antes** de resolver (R45, `design.md` §5 enmendado,
+  fila 3), así que el resolutor no puede re-archivar un parte que consta
+  archivado; solo elige la carpeta de uno que no lo está.
+- (b) Sin cambiar la firma: una función aparte (`paso_archivo_posventa`) o
+  inyectar el resolutor por otro camino. Es desviarse de `design.md` §2.2 y
+  duplicar el orden del paso en dos sitios; no la recomiendo.
+
+**Lo demás de T10 se ha revisado y no choca**: el control de F-031 R29 (el
+paso no lee `ctx.extraccion`) y las tablas de nombres vigilados de F-031, F-033
+y F-034 son compatibles con lo diseñado (el resolutor recibe dos cadenas y no
+nombra ninguno de esos nombres; lo fija un test de T9), y
+`test_f034_r26_de_paso_archivo_solo_cambia_la_mudanza` se **salta** en esta
+rama (`-rs`: los 7 controles del diff de F-034, SKIPPED por estar fuera de su
+rama, igual que los 4 de F-031, los 4 de F-033 y los 5 de F-032).
+
+### 1 · Qué cambió
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/domain/ports/biblioteca.py` (nuevo) | `ExploradorBibliotecaPort` (`runtime_checkable`) con **exactamente** `listar_carpetas(*, carpeta)` y `crear_subcarpeta(*, padre, nombre)` (R48, `design.md` §3.2). Docstrings con el contrato: solo carpetas, todas las páginas, `None` si no existe; un nivel, padre ausente = `ArchivoFallido`, «ya existe» = éxito |
+| `services/postventa-api/domain/ports/ubicacion.py` (nuevo) | `UbicacionPort` (`runtime_checkable`) con `leer_ubicacion(*, codigo_reclamacion)` y `leer_unidades_del_numero(*, codigo_obra)` (`design.md` §3.3). Solo lecturas; los fallos suben (R41) |
+| `services/postventa-api/application/pipelines/destino_archivo.py` (nuevo) | `resolver_destino_posventa`, `DestinoResuelto` y `TECHO_DE_FILAS_DE_SIGRID = 1000` (lista abajo) |
+| `services/postventa-api/tests/utiles_destino.py` (nuevo) | `ExploradorFalso`, `UbicacionesFalsas`, el árbol medido de la 0677 y sus 15 unidades, y los montadores `arbol_0677`, `explorador_0677`, `ubicacion_0677`, `reclamacion_0677`, `ubicaciones_0677` |
+| `services/postventa-api/tests/test_f013_puertos_y_dobles.py` (nuevo) | 42 tests: los dos puertos (métodos, firmas, palabra clave), los dos dobles y el árbol medido |
+| `services/postventa-api/tests/test_f013_resolver_destino.py` (nuevo) | 134 tests del resolutor |
+| `specs/F-013-archivo-posventa/tasks.md` | T8 y T9 marcadas `[x]`. T10, sin marcar |
+
+**El resolutor, en el orden en que hace las cosas** (`design.md` §5 enmendado):
+
+1. `leer_ubicacion(a_codigo_de_sigrid(numero_incidencia))` — R6 (la misma
+   función que el cierre, importada: lo fija un test con `is`). Cero filas →
+   `reclamacion_no_localizada`; varias → `reclamacion_ambigua`; una sin unidad
+   (código **y** nombre vacíos) o sin obra → `reclamacion_sin_unidad` (R7).
+2. R8 con `normalizar_codigo` a los dos lados → `obra_no_coincide`.
+3. `leer_unidades_del_numero(codigo_obra normalizado)` — R44: primero el techo
+   (≥ 1.000 filas → `unidades_sin_verificar`), después `obras_del_mismo_numero`
+   ≠ 1 → `obra_numero_no_unico`. Se queda con las filas de **esa** obra.
+4. Los cuatro niveles con un mismo recorrido (`_Camino.bajar`): lista **una
+   vez**; >1 que casan → `<nivel>_ambigua`; 1 → baja; 0 y parecidas →
+   `<nivel>_parecida`; 0 y 0 con crear apagado → `sin_carpeta_<nivel>`; 0 y 0
+   con crear encendido → **anota**: compone (`nombre_de_obra_nueva`, el literal
+   del tramo, `nombre_derivado_de_unidad` → `None` es
+   `unidad_sin_nombre_derivable`), comprueba R38 (`nombre_carpeta_imposible`)
+   y R46 (`nombre_no_casaria`, con la **misma** regla estricta del nivel), y
+   desde ahí los niveles de debajo se anotan **sin listar**.
+5. R50 en cuanto la unidad está elegida o anotada, y **antes** de listar
+   dentro de ella → `unidad_carpeta_compartida`.
+6. Devuelve `DestinoResuelto(destino=DestinoArchivo(carpeta, nombre_fichero),
+   carpetas_por_crear=((padre, nombre), …))`. **No escribe** ni registra nada.
+
+### 2 · Decisiones de diseño (y lo que la spec no fijaba)
+
+1. **Un `None` de `listar_carpetas` es `ArchivoFallido`** (hueco de la spec:
+   §5 no dice qué hacer). El resolutor solo lista la base y carpetas que el
+   listado anterior acaba de dar, así que `None` es una base mal configurada o
+   una carpeta borrada/renombrada entre dos llamadas. No es un nivel que
+   falte: la base no se crea nunca (R15 habla de cuatro niveles), y crear en
+   una carpeta que acaba de desaparecer sería crear a ciegas. Falla cerrado,
+   sin subir ni crear, y el borde lo traducirá como cualquier `ArchivoFallido`
+   (502). Dos tests lo fijan. **Para el líder**: si lo quiere como 409 con
+   motivo propio, es una enmienda (la lista de R18 es cerrada).
+2. **R7 «sin unidad»**: código **y** nombre de la unidad vacíos o en blanco;
+   basta uno de los dos para que cuelgue de una unidad. Con solo el `con.cod`,
+   R7 no para y lo que pasa después es lo que dice §4.3 (la regla 1 no casa
+   `VILLA 05` con `0677.03VILLA 5.`; la carpeta lleva su número y es
+   **parecida** → 409). Test con nombre.
+3. **R35 antes que R16**: con crear apagado y una parecida, el motivo es
+   `<nivel>_parecida` (dice lo que hay), no `sin_carpeta_<nivel>`. Es el orden
+   del algoritmo de §5; hay un test por nivel.
+4. **R44: techo antes que obras**, y «ninguna obra» es también
+   `obra_numero_no_unico` (R44: «más de una obra, o ninguna»). Con 1.000 filas
+   y dos obras sale `unidades_sin_verificar`: con la lista posiblemente
+   cortada, «dos obras» tampoco se puede afirmar.
+5. **R50 solo con las filas de la obra** de R44: las que el `LIKE` deja pasar
+   de más (`1677`) no cuentan. Test con una `1677` que tiene su propia villa 5.
+6. **La segunda lectura recibe el código normalizado** (`0677`, no ` 0677 `).
+   El adaptador (T12) compone los patrones con `numero_de_obra`, que normaliza
+   igual, así que es por claridad del registro de llamadas.
+7. **Candidatas**: en R38 y R46, el nombre compuesto (es la carpeta
+   implicada); en R50, la carpeta de unidad; en R7, R8, R16, R37 y R44,
+   ninguna. Nunca un identificador (R23).
+8. **El texto del 409 dice qué tiene que hacer «una persona»** en todos los
+   motivos (R19) y **nunca** lleva el `con.res` de la unidad ni la referencia
+   de obra (R23). Un test lo recorre sobre ocho motivos.
+9. **Ni un log en el resolutor**: lo que haya que contar (R40, R47) lo cuenta
+   el paso, y así el `con.res` de la unidad no puede salir de aquí.
+10. **El nombre de la obra nueva usa el código del parte** (el guardado,
+    normalizado; R36). Tras R8 es el mismo que el de Sigrid: el mutante que usa
+    el de Sigrid es **equivalente** (§5).
+11. **R46 en la obra es inalcanzable**: `<código> <con.res>` siempre empieza
+    por el código y un blanco, y sin `con.res` R38 para antes. Se comprueba
+    igual —el recorrido es el mismo para los cuatro niveles, y así lo dice
+    R46—; en tramos sí es alcanzable (un tramo configurado sin palabras,
+    `---`, es admisible pero no casaría: test). T20 lo tratará como mutante
+    equivalente si aparece.
+12. **Dobles**: los dos anotan cada llamada en `llamadas` y en un `registro`
+    compartido con cadenas `explorador.listar_carpetas:<ruta>`,
+    `ubicaciones.leer_ubicacion:<código>`… (el patrón de F-019). Los tests del
+    resolutor comparan el registro **entero** en cada puerta, así que mover
+    una comprobación un paso más tarde respecto de cualquier colaborador pone
+    un test en rojo (§5, mutantes P1–P5). `_resolver` comprueba en **cada**
+    test, también cuando se para, que el explorador no recibió ninguna
+    `crear_subcarpeta`.
+13. **Un solo árbol medido.** El de `utiles_destino.py` no sustituye a las
+    constantes de `test_f013_destino_dominio.py` (T6 no se ha tocado): un test
+    exige que sean **iguales** carácter a carácter, y el caso de conjunto usa
+    la `TABLA_4_6` de T6 importada, así que la última columna de §4.6 vive en
+    un solo sitio.
+14. **El árbol de prueba se poda**: al quitar una carpeta de un listado, lo que
+    colgaba de ella deja de existir (como en la biblioteca real). Lo enseñó el
+    test de R39: sin podar, `VILLA 05` «ya existía» dentro de un
+    `PARTES INCIDENCIAS` huérfano.
+
+### 3 · Fase RED (traza real)
+
+**T8**. Comando exacto, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_puertos_y_dobles.py -q -p no:cacheprovider
+```
+
+Salida real (extracto final):
+
+```
+tests\test_f013_puertos_y_dobles.py:30: in <module>
+    from domain.ports.biblioteca import ExploradorBibliotecaPort
+E   ModuleNotFoundError: No module named 'domain.ports.biblioteca'
+=========================== short test summary info ===========================
+ERROR tests/test_f013_puertos_y_dobles.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.57s
+```
+
+GREEN: **42 passed**. Que las aserciones muerden —y no solo el import— lo
+demuestran los mutantes a mano de §5 (T8: 6 de 6 muertos).
+
+**T9**. Comando exacto:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_resolver_destino.py -q -p no:cacheprovider
+```
+
+Salida real (extracto final):
+
+```
+tests\test_f013_resolver_destino.py:37: in <module>
+    from application.pipelines import destino_archivo
+E   ImportError: cannot import name 'destino_archivo' from 'application.pipelines' (C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\application\pipelines\__init__.py)
+=========================== short test summary info ===========================
+ERROR tests/test_f013_resolver_destino.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.85s
+```
+
+GREEN: primera pasada **125 passed, 1 failed** (el de R39 «desde
+incidencias», por el árbol de prueba sin podar, decisión 14; el fallo era del
+dato de prueba, no del resolutor); tras podar, **126 passed**; con los 7 tests
+de «crear apagado + parecida» que añadí al buscar mutantes (decisión 3),
+**133 passed**.
+
+### 4 · Verificación
+
+| Comando (desde `services/postventa-api` salvo el último) | Resultado |
+|---|---|
+| `pytest tests/test_f013_puertos_y_dobles.py` | **42 passed** |
+| `pytest tests/test_f013_resolver_destino.py` | **134 passed** (133 + el del superviviente de la mutación, §5) |
+| `pytest tests -k f013` (verificación de T8, sin regresiones) | **504 passed** |
+| `pytest tests/test_f031_alcance_cerrado.py tests/test_f032_alcance_cerrado.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py -rs` | **36 passed, 20 skipped** (todos los skipped son controles del diff de sus ramas), sin tocarlos |
+| `python -m ruff check` sobre los seis ficheros nuevos | All checks passed |
+| `bash harness/init.sh` (estado final, tras `821b27d`) | **ENTORNO LISTO**: api **3.742 passed, 35 skipped en 165,78 s**; PUERTA COBERTURA **100,0 % de 304 líneas cambiadas** (304/304, umbral 80 %, nivel `critico`). La pasada anterior, tras `560d88f` y con la campaña de mutación corriendo a la vez: 3.741 passed en 275,47 s |
+
+### 5 · Mutación
+
+**A mano** (script en el scratchpad que inyecta un cambio, lanza el test y
+restaura el fichero byte a byte; comprobado al final de cada tanda):
+
+- **Dobles (T8)**, contra `test_f013_puertos_y_dobles.py`: **6 de 6 muertos**
+  (crear intermedias; «ya existe» no es éxito; listar no anota en el registro;
+  carpeta ausente devuelve vacío; la segunda lectura no falla; no anota lo
+  creado).
+- **Resolutor (T9)**, contra `test_f013_resolver_destino.py`: **26 mutantes,
+  23 muertos, 3 equivalentes**. Los cinco de **orden** (el punto 7 del
+  reviewer), uno por colaborador:
+
+  | # | Puerta movida | Resultado |
+  |---|---|---|
+  | P1 | R8 después de la segunda lectura de Sigrid | **muere** |
+  | P2 | R44 después de construir el recorrido (sin listar) | sobrevive — **equivalente**: construir `_Camino` no llama a nadie |
+  | P3 | R44 después de listar la raíz y elegir la obra | **muere** |
+  | P4 | R50 después de listar dentro de la unidad | **muere** |
+  | P5 | la segunda lectura antes que la primera | **muere** |
+
+  Y los de lógica, M1–M21: bajo un nivel nuevo sí se lista; techo con `>`;
+  sin R46; sin R38; crea la alternativa; sin obra no para; unidad a medias
+  para; R8 sin normalizar; segunda lectura sin normalizar; R50 con filas de
+  otras obras; R50 admite cero; sin forma ERP; `None` como vacío; crea con
+  crear apagado; ignora parecidas; R44 admite ninguna; ambigua solo con tres;
+  base sin `unir_ruta`; **el resolutor escribe** — **todos muertos**. Los dos
+  equivalentes restantes: M19 (la carpeta final desde `camino.ruta` en vez de
+  `unir_ruta(base, …)`: son el mismo valor por construcción) y M20 (la obra
+  nueva con el código de Sigrid en vez del del parte: tras R8 son iguales
+  normalizados, y `nombre_de_obra_nueva` normaliza).
+
+**Del arnés** (`python -m harness.mutacion --feature F-013 --workers 8`,
+informe en el scratchpad para no adelantar el de T20):
+alcance recalculado por la herramienta, 7 ficheros de producción de la rama
+(`destino_archivo.py`, `destino_posventa.py`, los dos puertos, `errores.py`,
+`settings.py`, `fabrica.py`; 1.271 líneas). **68 mutantes, 66 muertos, 2
+supervivientes, 0 timeouts** en 6.334,4 s (60 timeouts de la pasada paralela
+—la suite corría a la vez que `init.sh`— repasados en serie: los 60, muertos).
+Análisis de los dos:
+
+| # | Línea y mutación | Análisis | Qué se hizo |
+|---|---|---|---|
+| 1 | `destino_archivo.py:89` `@dataclass(frozen=True)` → `frozen=False` en `DestinoResuelto` | **Hueco real**: ningún test comprobaba que el resultado no se pudiera reescribir entre resolver y crear (entre medias hay una traza previa y varias llamadas; lo que se comprobó —R38, R46, R50— dejaría de proteger nada) | Test nuevo `test_f013_t9_el_destino_resuelto_no_se_puede_reescribir`; reinyectado el mutante, **muere** (1 failed, 133 passed). Commit `821b27d` |
+| 2 | `destino_archivo.py:102` `@dataclass(frozen=True)` → `frozen=False` en `_Nivel` | **Equivalente**: `_Nivel` es privado, sus cuatro instancias se construyen en línea en la llamada a `bajar` y nadie les asigna nada; `frozen` no tiene efecto observable | Nada; se deja `frozen=True` por coherencia con el resto de dataclasses del módulo |
+
+Informe generado: en el scratchpad, `mutacion_F-013_bloque2.md`; **no** se ha
+escrito `progress/mutacion_F-013.md`, que es de T20.
+
+### 6 · Qué queda fuera y qué falta
+
+- **T10, bloqueada** (§0). Sin ella, nada de este bloque se usa desde
+  producción: el resolutor existe y está probado, pero ni el paso ni el borde
+  lo llaman, y `SHAREPOINT_ESTRUCTURA` sigue en `por_obra` por omisión. El
+  comportamiento desplegable no cambia.
+- **Bloque 3** (T11 adaptador de Graph, T12 adaptador de Sigrid) no depende de
+  T10 y se podría encargar en paralelo a la decisión del líder; T13 (el borde)
+  sí necesita T10.
+- **Fuera, a propósito**: logs de R40/R47 y la traza `error` con el motivo
+  (R18), que son del paso (T10); el 409 del borde (T13).
+- **Verificaciones MANUAL**: ninguna en este bloque.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests del bloque | `test_f013_puertos_y_dobles.py` **42 passed** (RED: `ModuleNotFoundError` en la recogida); `test_f013_resolver_destino.py` **134 passed** (RED: `ImportError` en la recogida) |
+| `pytest -k f013` | **504 passed** en 4,62 s |
+| Controles de alcance de F-031, F-032, F-033 y F-034 | **36 passed, 20 skipped** (los del diff, fuera de sus ramas), sin tocarlos |
+| Suite del proyecto (`bash harness/init.sh`, estado final) | api **3.742 passed, 35 skipped en 165,78 s**; front en verde (caché); arnés 62 passed en 6,68 s |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 304 líneas cambiadas cubiertas (304/304, umbral 80%, nivel critico)`** |
+| Mutación a mano | T8: **6/6 muertos**; T9: **26 generados, 23 muertos, 3 equivalentes** (P2, M19, M20), 0 huecos |
+| Mutación del arnés (8 workers) | **68 generados, 66 muertos, 2 supervivientes** (1 hueco real cerrado con test, 1 equivalente), 0 timeouts tras repasar 60 en serie, 6.334,4 s |
+| Conflicto de T10 | `test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar`: **1 failed, 43 passed** con `resolver_destino` añadido a la firma (§0) |

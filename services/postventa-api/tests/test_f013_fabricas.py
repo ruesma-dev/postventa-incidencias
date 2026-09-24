@@ -22,11 +22,12 @@ espía que solo cuenta cuántas veces lo habrían construido.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
+import infrastructure.sharepoint.fabrica as fabrica_sharepoint
 import pytest
 from config.settings import Ajustes
 from domain.models.errores import ConfiguracionSharePointIncompleta
-
-import infrastructure.sharepoint.fabrica as fabrica_sharepoint
 
 #: Un secreto **inventado**, para comprobar que no sale en ningún mensaje.
 SECRETO_INVENTADO = "secreto-inventado-que-no-existe-f013"
@@ -59,7 +60,7 @@ class _EspiaDelAdaptador:
     llegado tarde.
     """
 
-    construcciones: list[dict] = []
+    construcciones: ClassVar[list[dict]] = []
 
     def __init__(self, **argumentos) -> None:
         type(self).construcciones.append(argumentos)

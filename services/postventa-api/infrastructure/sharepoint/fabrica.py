@@ -149,16 +149,20 @@ def _problemas_de_estructura(ajustes: Ajustes) -> list[str]:
     admitidas = tuple(estructura.value for estructura in EstructuraArchivo)
     if ajustes.sharepoint_estructura not in admitidas:
         return [
-            f"SHAREPOINT_ESTRUCTURA no es una estrategia de destino conocida; "
-            f"valores admitidos: {', '.join(admitidas)}"
+            (
+                f"SHAREPOINT_ESTRUCTURA no es una estrategia de destino "
+                f"conocida; valores admitidos: {', '.join(admitidas)}"
+            )
         ]
     if (
         ajustes.sharepoint_estructura == EstructuraArchivo.POR_OBRA
         and not ajustes.sharepoint_carpeta_base.strip().strip("/").strip()
     ):
         return [
-            "SHAREPOINT_CARPETA_BASE no puede estar vacía con la estrategia "
-            "por_obra: las carpetas por código de obra quedarían sueltas en la "
-            "raíz de la biblioteca"
+            (
+                "SHAREPOINT_CARPETA_BASE no puede estar vacía con la estrategia "
+                "por_obra: las carpetas por código de obra quedarían sueltas en "
+                "la raíz de la biblioteca"
+            )
         ]
     return []

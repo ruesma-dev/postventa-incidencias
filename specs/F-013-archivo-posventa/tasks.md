@@ -89,7 +89,7 @@
   campo de la unidad»), `r17_*` y `r49_*` (defecto de la alternativa y vacía),
   primero en rojo. | Verificación:
   `pytest tests/test_f013_fabricas.py`
-- [ ] **T6**: `tests/test_f013_destino_dominio.py` en **rojo**, con las tablas
+- [x] **T6**: `tests/test_f013_destino_dominio.py` en **rojo**, con las tablas
   de `design.md` **enteras y como tablas** (`pytest.mark.parametrize` fila a
   fila): §4.1 enmendada (casado por número: `677  MIRASIERRA` casa; `06770 X`,
   `0677-MIRASIERRA`, `677MIRASIERRA`, `OBRA 0677` no; código no numérico,

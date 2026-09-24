@@ -1,6 +1,22 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⏳ F-013 · BLOQUE 2 (cierre): T10 bis y T10 EN CURSO · 2026-09-24
+>
+> implementer. Encargo: solo T10 bis y T10 (opción (a) del humano, enmienda
+> de `tasks.md` en `309f445`). `harness/features.json` sin tocar.
+>
+> - **Tarea en curso**: T10 (RED primero), T10 bis en el mismo commit que la
+>   firma nueva.
+> - **Decisión tomada (hueco de la spec)**: quién ejecuta `crear_subcarpeta`
+>   en el paso. La firma solo gana `resolver_destino` (T10 bis fija el conjunto
+>   exacto), así que el paso no puede recibir un explorador aparte. `design.md`
+>   §3.2 dice que el adaptador de Graph implementa `ArchivoPort` **y** el
+>   explorador, y que «el borde la pasa por los dos lados»: el paso crea con
+>   **el mismo `archivador`**, y si llega un resolutor con un archivador que
+>   no es `ExploradorBibliotecaPort` falla con `TypeError` **antes de nada**
+>   (error de composición, sin tocar ningún puerto).
+
 > ## ⛔ F-013 · BLOQUE 2: T8 y T9 HECHAS, **T10 BLOQUEADA** · 2026-09-24 · decide el líder
 >
 > implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 2»** (el

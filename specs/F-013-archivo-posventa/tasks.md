@@ -203,7 +203,7 @@
 
 ## Bloque 4 · El borde y los scripts
 
-- [ ] **T13**: composición en `interface_adapters/api/archivar.py` según
+- [x] **T13**: composición en `interface_adapters/api/archivar.py` según
   `SHAREPOINT_ESTRUCTURA` (costuras `explorador` y `ubicaciones`; el
   resolutor, con `functools.partial`) y `DestinoNoResuelto` → 409 en
   `function_app.py` + `tests/test_f013_archivar_http.py` (R19, R23 —sin
@@ -211,7 +211,7 @@
   no cambia. | Verificación:
   `pytest tests/test_f013_archivar_http.py tests/test_f006_archivar_http.py tests/test_f033_alcance_cerrado.py tests/test_f034_alcance_cerrado.py`
   en verde
-- [ ] **T14**: los dos scripts de T1, con la regla del dominio (`design.md`
+- [x] **T14**: los dos scripts de T1, con la regla del dominio (`design.md`
   §7.1 enmendado). En `infra/23_destino_posventa.ps1`: la columna «resolvería
   / crearía (nombre) / bloquearía» (R28) ejecutando `destino_posventa.py` por
   fichero con `Invoke-PythonDelServicio`, **retirando** `Test-ObraCasa`,
@@ -227,6 +227,10 @@
   medido de T2 y las 15 unidades de T3: el 23 tiene que dar las
   «resolvería / crearía» de R31 y un resumen **sin ceros** (obra 1,
   `PARTES INCIDENCIAS` 1, unidades 7); salida pegada en el informe
+  > **T13 y T14 hechas el 2026-09-24**: T13 RED `ee7e675`, código `3893e5d`
+  > y `3d9c5b1` (estrategia desconocida, tras la mutación a mano); T14 RED
+  > `f91095c`, scripts `b87df4c`, refuerzos `3bb32e1` y `edc9984`. Informe:
+  > `progress/impl_F-013.md`, «Bloque 4 · T13 y T14».
 
 ## Bloque 5 · Lo archivado en IT (F-033 ya está en `dev`)
 

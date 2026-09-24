@@ -2400,3 +2400,200 @@ ficha de **F-018 · Mínimo privilegio en Graph**:
 | Mutación a mano | T16: **11 generados, 11 muertos**; T17: **10 generados, 10 muertos** (1 hueco real, M6, cerrado antes del commit) |
 | Mutación del arnés | **no relanzada**: sin cambios en producción; vale la del bloque 4 (109 / 108 / 1 aceptado) |
 | `azure-apps` | commit local `9ed8957`, sin push; 0 GUID, 0 hosts del inquilino, 0 IPv4 en el documento |
+
+---
+
+## Bloque 7 · T20 y T21 (2026-09-25) · **T20 hecha; T21 BLOQUEADA**
+
+> Encargo del líder: solo T20 y T21, en `feature/F-013-archivo-posventa` desde
+> `50b9cd2` con el árbol limpio. Commits de este bloque: `ea91013` (test nuevo
+> de T20) y el de este informe. Sin push; `harness/features.json` y `.env` sin
+> tocar (por encargo, tampoco para marcar el bloqueo: va en
+> `progress/current.md`).
+
+### 0 · Decisiones del líder sobre lo pendiente del bloque 6 (no se reabren)
+
+1. **Se acepta** la excepción con nombre del control del diff para
+   `test_f006_repo_sin_identificadores.py`, con el control de que **solo
+   crece** (bloque 6, §0).
+2. La divergencia previa del gemelo de `azure-apps` respecto a
+   `docs/INTEGRACION.md` queda **fuera de F-013**.
+3. **Sin** validación extra de `SHAREPOINT_CREAR_CARPETAS` en el script
+   (bloque 6, decisión 6).
+4. El texto de T18 **ya está** en la ficha de F-018 (commit `50b9cd2`).
+
+### 1 · Qué cambió
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/tests/test_f013_destino_dominio.py` | Test nuevo `test_f013_r50_la_unidad_que_casa_solo_por_su_codigo_tambien_cuenta` (commit `ea91013`): cierra el hueco que destapó el mutante a mano U4 |
+| `progress/mutacion_F-013.md` | **Nuevo**: el informe de la herramienta, sin retocar salvo el análisis del superviviente, y la nota del implementer (comando, condiciones, alcance, mutación a mano de T20, tabla de las mutaciones de orden de los bloques 2 a 5, historia de las campañas) |
+| `specs/F-013-archivo-posventa/tasks.md` | T20 `[x]` con su nota; T21 `[ ]` con la nota del bloqueo |
+| `progress/impl_F-013.md`, `progress/current.md` | Este informe y la entrada del bloqueo |
+
+**Sin código de producción.**
+
+### 2 · T20 · la campaña de mutación
+
+**Campaña del arnés** — `python -m harness.mutacion --feature F-013 --timeout
+900 --workers 6`, sobre `50b9cd2`, de 00:08:57 a 00:49:15. **Sola en este
+repositorio**: `init.sh` corrió antes y había terminado, y durante la campaña
+no se lanzó nada más aquí. **En la máquina no estaba sola**: ya corrían
+campañas de mutación de otros proyectos (`albaranes` F-048 desde las 23:46 y
+`contratos` F-026 desde las 23:54 del día 24; `datamart-seg-anual` arrancó la
+suya a las 00:59). No afectó al resultado: **0 timeouts** con 132,5 s de
+coste medio por mutante frente a un tope de 900 s.
+
+**Resultado: 109 mutantes, 108 muertos, 1 superviviente, 0 timeouts,
+2.407,1 s.** Los cuatro ficheros de T20: `destino_posventa.py` 39/39,
+`destino_archivo.py` 24/25, `paso_archivo.py` 5/5, `consultas_ubicacion.py`
+10/10 (el resto del diff, 30/30). El superviviente es
+`destino_archivo.py:102` (`frozen=True` → `False` en `_Nivel`),
+**equivalente y aceptado por el humano el 2026-09-24** (nota del líder, arriba),
+citado así en el informe. Coincide en números con la campaña del bloque 4
+(109/108/1): desde entonces no ha cambiado código de producción.
+
+**Mutación a mano de T20** — la herramienta da **0 mutantes** a
+`unidades_que_casan` y a `carpetas_de_unidad` (cuerpos sin operadores), y
+`unidades_que_casan` es objetivo principal de T20. Script `mutar_t20.py` en el
+scratchpad, sobre una copia desechable: 18 mutantes sobre `unidades_que_casan`,
+`carpetas_de_unidad`, `nombre_derivado_de_unidad` y `obras_del_mismo_numero`.
+Primera pasada: **17 muertos, 1 superviviente, hueco real**:
+
+```
+== U4 unidades_que_casan: sin el código de la unidad: SOBREVIVE
+   380 passed in 3.64s
+```
+
+Ningún test tenía una unidad que casara **solo por su código** (regla 1 de
+§4.3). Cerrado **solo con un test** (no exige tocar producción), commit
+`ea91013`. Pasa a la primera en el código real (el comportamiento ya
+existía); con U4 inyectado, falla:
+
+```
+== U4 unidades_que_casan: sin el código de la unidad: MUERTO
+   FAILED tests/test_f013_destino_dominio.py::test_f013_r50_la_unidad_que_casa_solo_por_su_codigo_tambien_cuenta
+   1 failed, 234 passed in 2.36s
+```
+
+Segunda pasada: **18 generados, 18 muertos**; base y restaurada `381 passed`.
+La tabla entera, en `progress/mutacion_F-013.md`. La campaña del arnés **no se
+relanza** tras `ea91013`: es solo de tests; el alcance de producción y los 109
+mutantes no cambian, y un test añadido solo puede matar más.
+
+**Punto 7 del reviewer (orden)** — resumido en `progress/mutacion_F-013.md`,
+«Mutación de orden a mano de los bloques anteriores», con un enlace a cada
+sección: bloque 2 (T9) 26 generados, 23 muertos, 3 equivalentes justificados
+(P2, M19, M20); bloque 2-cierre (T10) 12/12, O0 cerrado en `668145c`; bloque 4
+(T13) 26/26, O9 cerrado en `3d9c5b1`, y (T14) 17/17, M17 cerrado en
+`3bb32e1`; bloque 5 (T15) 10 mutantes, todos muertos (M4b, por T13, a
+propósito).
+
+**Veredicto de T20: cero supervivientes sin justificar.**
+
+### 3 · T21 · `bash harness/init.sh` · **BLOQUEADA** (lo primero que hay que leer)
+
+`bash harness/init.sh`, tal cual, **dos veces** tras `ea91013`. Las dos, lo
+mismo:
+
+```
+4284 passed, 35 skipped in 241.96s (0:04:01)
+[AVISO] servicio api (services/postventa-api): coverage no pudo escribir su coverage.json
+[OK] servicio api (services/postventa-api): pytest en verde
+[OK] servicio front (services/postventa-front): pytest en verde (caché: árbol sin cambios desde el último verde)
+[KO] PUERTA COBERTURA: 0.0% de 621 líneas cambiadas cubiertas (0/621, umbral 80%, nivel critico)
+----------------------------------------
+1 comprobaciones fallidas. NO empieces a trabajar.
+```
+
+(La segunda: `4284 passed, 35 skipped in 238.56s`, el mismo `[KO]`.) Las
+suites están **en verde**; lo que falla es la puerta de cobertura, porque
+`coverage json` no llega a escribir el fichero.
+
+**Causa, reproducida:**
+
+```
+$ .venv/Scripts/python.exe -m coverage json -o <scratchpad>/cov_prueba.json
+No source for code: 'C:\Users\pgris\AppData\Local\Temp\pytest-of-pgris\pytest-52034\test_f013_t14_dos_obras_con_el0\regla_del_23.py'
+```
+
+1. `_ejecutar_regla` (`tests/test_f013_scripts_infra.py`, T14, bloque 4)
+   escribe la regla del 23 en `tmp_path / "regla_del_23.py"` y la ejecuta **en
+   el propio proceso** con `exec(compile(…, str(codigo), "exec"))`. `coverage
+   run` la mide como un fichero más, con esa ruta.
+2. `tmp_path` cuelga de `…\Temp\pytest-of-pgris\pytest-N\`, **común a todos
+   los proyectos del usuario**. Cada sesión de pytest que arranca borra las
+   sesiones terminadas más allá de las tres últimas.
+3. Hoy la máquina tiene **22 procesos de pytest o de mutación de otros
+   proyectos** (`albaranes`, `contratos`, `drawings`, `sigrid-api`, `bc3` y
+   otros): más de un centenar de sesiones en los cuatro minutos de nuestra
+   suite (`pytest-51921` → `pytest-52034`). Entre que acaba nuestro pytest y
+   arranca `coverage json`, nuestro `pytest-N` ya está borrado, y `coverage
+   json` sin `-i` aborta con «No source for code».
+4. En los bloques 4 a 6 no pasó porque la máquina no tenía esa carga.
+
+**Lo que mediría la puerta** (diagnóstico, **no** es el verde de T21): con
+`coverage json -i` (ignora el fichero desaparecido) y `python -m
+harness.cobertura --base dev --config harness/rigor.json`:
+`PUERTA COBERTURA: 100.0% de 551 líneas cambiadas cubiertas (551/551, umbral
+80%, nivel critico)`. El `coverage.json` se borró después, para que el
+siguiente `init.sh` no tome la caché con un fichero hecho a mano.
+
+**Por qué no lo he arreglado**: el arreglo cambia cómo ejecuta la regla un
+test de T14 y no estaba en el encargo; la regla del implementer, ante una
+herramienta que falla de forma inesperada, es no improvisar y parar. Y
+relanzar `init.sh` no sirve mientras dure la carga de los otros proyectos.
+
+**Propuesta (una línea, en el test de F-013)**: compilar con un nombre que no
+es un fichero, `compile(…, "<regla_del_23>", "exec")`, en vez de
+`str(codigo)`. `coverage` no mide los nombres entre `<…>`, así que deja de
+depender de que el directorio temporal siga existiendo; el test sigue
+leyendo la regla del `.ps1` versionado y ejecutándola igual. **Comprobado**
+sobre el fichero real y restaurado byte a byte después (`cmp`), con
+`--basetemp` en el scratchpad y **borrándolo antes** de `coverage json`, que
+es lo que hacen hoy las otras sesiones:
+
+| Variante | `pytest tests/test_f013_scripts_infra.py` | `coverage json` con el temporal borrado |
+|---|---|---|
+| Tal cual | 60 passed | `No source for code: '…\bt\test_f013_t14_dos_obras_con_el0\regla_del_23.py'` |
+| Con `"<regla_del_23>"` | 60 passed | escribe el JSON, sin error |
+
+Alternativas peores: `[tool.coverage.run] source` en el servicio (configuración
+nueva) o `coverage json -i` en `init.sh` (cambio del arnés, a portar a
+`arnes-base`, y taparía cualquier otro fichero desaparecido). La otra vía, sin
+tocar nada, es relanzar `init.sh` cuando la máquina esté sin pytest de otros
+proyectos.
+
+### 4 · Verificación
+
+| Comando | Resultado |
+|---|---|
+| `bash harness/init.sh` (antes de la campaña, sobre `50b9cd2`) | **ENTORNO LISTO**; cobertura 100 % de 551 (caché de suites) |
+| Campaña de T20 | 109 / 108 / 1 aceptado / 0 timeouts, 2.407,1 s |
+| Mutación a mano de T20 | 18/18 tras `ea91013` |
+| `pytest tests/test_f013_destino_dominio.py tests/test_f013_resolver_destino.py` | **381 passed** |
+| `ruff check tests/test_f013_destino_dominio.py` | All checks passed |
+| `bash harness/init.sh` (T21, dos veces, sobre `ea91013`) | suites en verde (**4.284 passed, 35 skipped**); **`[KO]` PUERTA COBERTURA 0 %** por la causa de §3 |
+
+### 5 · Qué queda fuera y qué falta
+
+- **Falta T21**: decidir entre aplicar la propuesta de §3 (un commit de una
+  línea en `test_f013_scripts_infra.py`) o relanzar `init.sh` con la máquina
+  sin pytest ajenos. Con cualquiera de las dos, T21 debería quedar en verde:
+  las suites lo están y la puerta mide 100 %.
+- **Para el líder**: en la tabla del punto 7, los 3 equivalentes de la
+  mutación a mano del bloque 2 (P2, M19, M20) están justificados en el
+  informe pero, a diferencia de `_Nivel`, no consta aceptación del humano. No
+  son supervivientes de la herramienta (a los que se aplica
+  `supervivientes_maximos: 0`); lo señalo por si el reviewer lo pide.
+- **Nada del corte** se ha hecho ni cambia lo desplegado.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | `init.sh`: api **4.284 passed, 35 skipped en 241,96 s** (y 238,56 s en la segunda); front en verde (caché); arnés **62 passed** en 18,19 s |
+| Cobertura de las líneas cambiadas | `init.sh`: **`[KO]` 0,0 % de 621** (no mide: `coverage json` abortó, §3). Medida de diagnóstico con `coverage json -i`: **100,0 % de 551 líneas (551/551)** |
+| Mutantes generados y supervivientes | Arnés: **109 generados, 108 muertos, 1 superviviente** (`_Nivel`, equivalente aceptado por el humano el 2026-09-24), 0 timeouts, 2.407,1 s con 6 workers. A mano (T20): **18 generados, 18 muertos** tras cerrar U4 con test |
+| Tiempo de la suite | api 241,96 s; arnés 18,19 s |
+| Fase RED | No aplica en sentido estricto: T20 no escribe código; el test nuevo cubre comportamiento que ya existía y pasó a la primera. Su «rojo» es el mutante U4 inyectado (traza en §2) |

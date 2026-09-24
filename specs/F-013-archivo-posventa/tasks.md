@@ -320,15 +320,27 @@
 
 ## Bloque 7 · Cierre
 
-- [ ] **T20**: campaña de mutación (nivel `critico`) sobre
+- [x] **T20**: campaña de mutación (nivel `critico`) sobre
   `destino_posventa.py` (con las reglas de parecidas, el casado por número,
   `nombre_derivado_de_unidad`, `obras_del_mismo_numero` y
   `unidades_que_casan` como objetivo principal), `destino_archivo.py`,
   `paso_archivo.py` y `consultas_ubicacion.py`; informe
   `progress/mutacion_F-013.md`.
   | Verificación: cero supervivientes sin justificar
+  > **Hecha el 2026-09-25**: 109 mutantes, 108 muertos, 1 superviviente
+  > (`_Nivel`, equivalente aceptado por el humano el 2026-09-24). Mutación a
+  > mano de lo que la herramienta no muta (`unidades_que_casan` y vecinas):
+  > 18/18 tras cerrar un hueco con test (`ea91013`). Informe:
+  > `progress/mutacion_F-013.md`; resumen en `progress/impl_F-013.md`,
+  > «Bloque 7».
 - [ ] **T21**: ejecutar `bash harness/init.sh` en verde. | Verificación:
   `bash harness/init.sh`
+  > **Bloqueada el 2026-09-25**: suites en verde (api 4.284 passed, 35
+  > skipped), pero la PUERTA COBERTURA sale a 0 % porque `coverage json` no
+  > encuentra el `regla_del_23.py` que un test de T14 escribe en `tmp_path`:
+  > otras sesiones de pytest de otros proyectos, a la vez en la máquina,
+  > borran ese directorio temporal compartido. Diagnóstico y propuesta en
+  > `progress/impl_F-013.md`, «Bloque 7», §3.
 
 ## Después del merge: el corte (MANUAL, humano; no son tareas del implementer)
 

@@ -515,3 +515,23 @@ def test_f013_r23_el_log_del_listado_dice_la_carpeta_y_cuantas_hay(registros):
         and "paginas=1" in linea
         for linea in del_adaptador
     )
+
+
+def test_f013_r23_el_log_del_listado_dice_la_duracion_y_no_la_hora(
+    registros, monkeypatch
+):
+    """Lo destapó la mutación del bloque 3: cambiar la resta por una suma en
+    `time.monotonic() - arranque` no rompía ningún test. Con un reloj que
+    arranca en 10.000 s y avanza medio segundo por lectura, la duración cabe en
+    unos segundos; la suma daría más de 20.000."""
+    reloj = iter(10_000.0 + 0.5 * paso for paso in range(1_000))
+    monkeypatch.setattr(graph.time, "monotonic", lambda: next(reloj))
+    adap, _ = adaptador(
+        ok(_pagina(_carpeta("A"), siguiente=_siguiente(2))), ok(_pagina(_carpeta("B")))
+    )
+
+    adap.listar_carpetas(carpeta="")
+
+    linea = next(linea for linea in registros if "F-013 carpetas listadas" in linea)
+    segundos = float(linea.rsplit("segundos=", 1)[1])
+    assert 0 < segundos < 60

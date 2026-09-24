@@ -921,3 +921,26 @@ def test_f013_t12_la_fabrica_pasa_la_configuracion_al_adaptador(monkeypatch):
 
 def test_f013_t12_la_fabrica_exporta_su_constructor():
     assert "construir_ubicaciones" in fabrica.__all__
+
+
+def test_f013_r23_las_dos_lecturas_registran_la_duracion_y_no_la_hora(
+    registros, monkeypatch
+):
+    """Lo destapó la mutación del bloque 3: la suma en lugar de la resta en
+    `time.monotonic() - arranque` no rompía ningún test, en ninguna de las dos
+    lecturas. El reloj arranca en 10.000 s: la suma daría más de 20.000."""
+    reloj = iter(10_000.0 + 0.5 * paso for paso in range(1_000))
+    monkeypatch.setattr(ubicacion.time, "monotonic", lambda: next(reloj))
+    adaptador, _ = _adaptador(
+        _lectura(COLUMNAS_UBICACION, [_fila_ubicacion()]),
+        _lectura(COLUMNAS_UNIDADES, _filas_0677()),
+    )
+
+    adaptador.leer_ubicacion(codigo_reclamacion="RS26.08/0005")
+    adaptador.leer_unidades_del_numero(codigo_obra="0677")
+
+    lineas = [linea for linea in registros if linea.startswith(ubicacion.__name__)]
+    assert len(lineas) == 2
+    for linea in lineas:
+        segundos = float(linea.rsplit("segundos=", 1)[1])
+        assert 0 < segundos < 60

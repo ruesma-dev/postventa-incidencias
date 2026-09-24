@@ -1095,3 +1095,280 @@ eso el orden se cubre a mano arriba): la comprobación de composición
 | Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 347 líneas cambiadas cubiertas (347/347, umbral 80%, nivel critico)`** |
 | Mutación a mano (orden) | **12 generados, 12 muertos** (1 hueco real, O0, cerrado con test en `668145c`) |
 | Mutación del arnés (6 workers, timeout 900 s) | **73 generados, 72 muertos, 1 superviviente** (equivalente, analizado arriba), **0 timeouts**, 2.216,7 s; de `paso_archivo.py`, 5/5 muertos |
+
+## Bloque 3 · T11 y T12 (2026-09-24)
+
+**Alcance del encargo: solo T11 y T12** (los adaptadores). Nada de T13 en
+adelante: ni el borde, ni `archivar.py`, ni `function_app.py`. Sin DDL, sin
+escrituras contra ningún sistema, `harness/features.json` sin tocar, sin push.
+Ningún test toca la red: dobles de transporte de `tests/utiles_sharepoint.py`
+y `tests/utiles_sigrid.py`, con la guardia de red de `conftest.py` por debajo.
+
+Commits: `7b7d0d1` (RED de T11), `d6ab81a` (T11), `7a3468b` (RED de T12),
+`66327f7` (T12), `4da38a3` (dos tests tras la mutación del arnés), más el
+de este informe.
+
+### 1 · Qué cambió
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/infrastructure/sharepoint/graph.py` | **T11.** `listar_carpetas` y `crear_subcarpeta` en `AdaptadorSharePointGraph`, que así cumple `ExploradorBibliotecaPort` **y** `ArchivoPort` con la misma instancia. Nuevos: `CONSULTA_DE_LISTADO`, `_pedir_pagina`, `_url_de_hijos` y los privados de módulo `_listado_fallido`, `_cuerpo_de_pagina`, `_carpetas_de`, `_pagina_siguiente`. Recuadro «Enmienda del 2026-09-24 (F-013 T11)» en el docstring del módulo. Las tres operaciones de F-006 y `_crear_carpeta`, **sin tocar** |
+| `services/postventa-api/infrastructure/sigrid/consultas_ubicacion.py` (nuevo) | **T12**, puro: `SQL_UBICACION`, `SQL_UNIDADES_DEL_NUMERO`, `SQL_UNIDADES_DEL_CODIGO` (carácter a carácter de `design.md` §6.2 enmendado), `select_ubicacion`, `select_unidades_del_numero` (patrones desde `numero_de_obra`), `fila_a_ubicacion`, `fila_a_unidad` |
+| `services/postventa-api/infrastructure/sigrid/ubicacion.py` (nuevo) | **T12**: `AdaptadorUbicacionSigridApi` (las dos lecturas de `UbicacionPort`), `exigir_entorno_con_ubicacion`, `RUTA_LECTURA = "/api/sql/read"`, `MAX_FILAS_UBICACION` (10) y `MAX_FILAS_UNIDADES` (1.000) |
+| `services/postventa-api/infrastructure/sigrid/fabrica.py` | **T12**: `construir_ubicaciones(ajustes)` (entorno → configuración; **sin** `CIERRE_HABILITADO`) y recuadro fechado en el docstring del módulo |
+| `services/postventa-api/domain/models/errores.py` | **T12**: `UbicacionNoDisponible(motivo)` (decisión 3, abajo) |
+| `services/postventa-api/tests/test_f013_adaptador_graph_listado.py` (nuevo) | 43 tests de T11 |
+| `services/postventa-api/tests/test_f013_ubicacion_sigrid.py` (nuevo) | 112 tests de T12 |
+| `specs/F-013-archivo-posventa/tasks.md` | T11 y T12 marcadas `[x]` |
+| `progress/current.md` | Entrada de la sesión |
+
+**T11, lo que hace cada método:**
+
+- `listar_carpetas(carpeta)`: `GET …/root/children` (raíz) o
+  `…/root:/<ruta codificada>:/children` con `?$select=name,folder&$top=200`;
+  sigue el `@odata.nextLink` **tal cual** hasta que no lo haya (R12); se queda
+  con los elementos que son objeto, llevan la faceta `folder` y un `name` de
+  texto, con el nombre tal y como existe (el doble blanco de `677  MIRASIERRA`
+  incluido). `404` de la **primera** página → `None`; una tupla vacía si la
+  carpeta existe sin subcarpetas (VILLA 04). Reintentos y errores con
+  `_con_reintentos` de F-006. Una línea de log por listado:
+  `F-013 carpetas listadas: carpeta=<ruta o (raíz)> carpetas=N paginas=N segundos=…`.
+- `crear_subcarpeta(padre, nombre)`: `_crear_carpeta` de F-006 **tal cual**:
+  un `POST` en el padre, `conflictBehavior=fail`, `409` tolerado (R39), y un
+  padre ausente es el `404` de Graph → `ArchivoFallido` (R15). Ni `GET` previo
+  ni tramos.
+
+**T12, las dos lecturas:**
+
+- `leer_ubicacion(codigo_reclamacion)`: `SQL_UBICACION` con
+  `(SIGRID_TIP_RECLAMACION, código)`, `max_rows` 10; devuelve **todas** las
+  filas mapeadas (0, 1 o varias: decide el dominio, R7).
+- `leer_unidades_del_numero(codigo_obra)`: con número,
+  `SQL_UNIDADES_DEL_NUMERO` y `('%<n>', '%[^0]%<n>')` —`('%677',
+  '%[^0]%677')` para la 0677—; sin número, `SQL_UNIDADES_DEL_CODIGO` con el
+  código normalizado. `max_rows` 1.000, el mismo número que
+  `TECHO_DE_FILAS_DE_SIGRID` del resolutor (lo fija un test).
+- Solo `POST <base>/api/sql/read`, con la clave en `x-functions-key`. Del
+  cliente del cierre se **importan** `construir_cliente_http`, `ErrorDeSigrid`,
+  `es_transitorio`, `CORRECTOS`, `ENTORNOS_CON_CIERRE` y `MAX_FILAS_LECTURA`;
+  nada del adaptador del cierre, de `escrituras.py`, de `graficos.py` ni de
+  `consultas.py` (un test lo fija con `ast`). Ni `ubicacion.py` ni
+  `consultas_ubicacion.py` contienen `sql/write`, `concepto-grafico` ni
+  `/api/sigrid`.
+- Log: `F-013 ubicación leída en Sigrid: incidencia=… filas=N segundos=…` y
+  `F-013 unidades leídas en Sigrid: obra=… filas=N segundos=…`. **Nunca**
+  `obra_ref` ni el `con.res` de la unidad (test con un nombre inventado de
+  persona dentro).
+
+### 2 · Decisiones de diseño (y lo que la spec no fijaba)
+
+1. **El adaptador de Graph es los dos puertos, comprobado sin nombrarlo.** Los
+   tests de T11 construyen el adaptador con el ayudante `adaptador()` de
+   `test_f006_adaptador_graph.py`, **importado**: ese fichero es uno de los dos
+   autorizados por `test_f006_arquitectura.py` (R21) y siempre inyecta el
+   cliente falso. Así ningún test de F-006 se toca (lo exige el control de
+   diff de `test_f013_por_obra_intacto.py`) y el guardián no necesita otra
+   excepción. Que la **fábrica** devuelve esa clase se fija con
+   `fabrica_sharepoint.AdaptadorSharePointGraph is graph.AdaptadorSharePointGraph`
+   e `issubclass(…, ExploradorBibliotecaPort)` / `ArchivoPort`, sin construir
+   el adaptador real fuera de los ficheros autorizados. `construir_archivador`
+   **no** se ha tocado: sigue anotada como `-> ArchivoPort`; **para T13**,
+   el borde pasa esa misma instancia como `archivador` y como `explorador`
+   (decisión 1 del cierre del bloque 2).
+2. **El `nextLink` solo se sigue si empieza por `https://graph.microsoft.com/v1.0/`**
+   (no lo pedía la spec). El token viaja en la cabecera de cada página; seguir
+   un enlace a otro host se lo mandaría a un tercero. Si no apunta a Graph, o
+   no es texto, o es vacío → `ArchivoFallido` sin pedirlo y sin decir adónde
+   apuntaba. Tres tests.
+3. **`UbicacionNoDisponible`, un error nuevo en `domain/models/errores.py`**
+   (hueco de la spec; `design.md` §2.2 solo lista `DestinoNoResuelto` para ese
+   fichero). R41 pide **503** cuando la lectura falla por red, tiempo o
+   configuración, y §6.2 dice «503 (`ConfiguracionSigridIncompleta`/transitorio)»
+   sin nombrar el tipo del fallo en ejecución. Los existentes no sirven:
+   `CierreFallido` es del cierre y el borde de archivar no lo mapea (sería un
+   500; en `/api/cerrar` es 502); `ConfiguracionSigridIncompleta` mentiría
+   («falta configuración») ante un `503` de la pasarela; `ArchivoFallido` es
+   502. **Para T13**: `function_app.py` tiene que mapear
+   `UbicacionNoDisponible` **y** `ConfiguracionSigridIncompleta` a 503 en
+   `/api/archivar` (hoy ninguno de los dos está en ese `except`). Los tests del
+   resolutor y del paso (bloque 2) usaban `TimeoutError` como fallo de red; con
+   el adaptador real, lo que sube es `UbicacionNoDisponible`, y el paso lo deja
+   subir igual («cualquier otro fallo sube tal cual y sin traza»).
+4. **La puerta del entorno de la ubicación levanta `ArchivoDeshabilitado`**,
+   no `CierreDeshabilitado` (hueco de la spec: §6.2 dice «entorno `dev`/`pro`
+   (la lista del cierre, importada, no copiada)» sin el tipo). La **lista** es
+   `ENTORNOS_CON_CIERRE`, importada (test con `is`); el **error** es el de
+   archivar, porque el de cierre diría que se ha intentado escribir en el ERP,
+   y porque el borde de archivar ya traduce `ArchivoDeshabilitado` a 503.
+   Está en la fábrica **y** en el constructor, como en los otros adaptadores.
+5. **Una respuesta con `truncated: true` y menos filas de las pedidas no se
+   devuelve** (`UbicacionNoDisponible`, no lo pedía la spec). El resolutor
+   solo reconoce una lista cortada si llega a 1.000 (R44); si la pasarela
+   tuviera un techo menor que el pedido (`MAX_ALLOWED_ROWS` es configurable,
+   `sigrid_api.md` §4.1), llegaría cortada con, por ejemplo, 500 filas y el
+   resolutor no vería la segunda obra. Con 1.000 filas cortadas se devuelven
+   las 1.000, y el resolutor responde `unidades_sin_verificar` (test de punta a
+   punta). La primera lectura con 10 filas cortadas se devuelve: son «varias»
+   → `reclamacion_ambigua`.
+6. **La primera lectura pide 10 filas** (`MAX_FILAS_LECTURA` del cierre,
+   importado): basta con distinguir 0, 1 o varias, y cada fila de más es el
+   nombre de una unidad que viaja sin necesidad.
+7. **`obra_ref` es obligatorio**: una fila de unidades sin `obride` (o en
+   blanco) es `ValueError` en el mapeo y `UbicacionNoDisponible` en el
+   adaptador. Con el `JOIN` de §6.2 no puede venir nulo, pero si viniera, dos
+   filas sin él contarían como una sola obra y esconderían la segunda (R44).
+8. **Una fila tiene que ser lista o tupla de cuatro**: una cadena de cuatro
+   letras se desempaquetaría en cuatro «columnas». El mensaje del error no
+   lleva la fila (puede traer el nombre de la unidad o la referencia de obra).
+9. **Los códigos se mapean a texto con `str()` y los nulos se quedan en
+   `None`**; no se recortan: normaliza el dominio.
+10. **Se registran el código de la incidencia, el de la obra, el número de
+    filas y los segundos** de cada lectura: el tiempo de la segunda está
+    **[NO MEDIDO]** en `design.md` §6.2 y lo mide el primer archivado real.
+
+### 3 · Fase RED (traza real)
+
+**T11.** Comando exacto, desde `services/postventa-api`, con el fichero de
+tests escrito y `graph.py` sin tocar (commit `7b7d0d1`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_adaptador_graph_listado.py -q -p no:cacheprovider --tb=short
+```
+
+Salida real (extracto de los casos centrales):
+
+```
+___ test_f013_t11_el_adaptador_de_graph_es_archivador_y_explorador_a_la_vez ___
+tests\test_f013_adaptador_graph_listado.py:117: in test_f013_t11_el_adaptador_de_graph_es_archivador_y_explorador_a_la_vez
+    assert isinstance(adap, ExploradorBibliotecaPort)
+E   assert False
+E    +  where False = isinstance(<infrastructure.sharepoint.graph.AdaptadorSharePointGraph object at 0x0000012FA24D9AF0>, ExploradorBibliotecaPort)
+_______________ test_f013_r12_sigue_el_next_link_hasta_agotarlo _______________
+tests\test_f013_adaptador_graph_listado.py:206: in test_f013_r12_sigue_el_next_link_hasta_agotarlo
+    listado = adap.listar_carpetas(carpeta="")
+              ^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'AdaptadorSharePointGraph' object has no attribute 'listar_carpetas'. Did you mean: '_crear_carpeta'?
+_ test_f013_r15_con_el_padre_ausente_es_archivo_fallido_sin_crear_intermedias _
+tests\test_f013_adaptador_graph_listado.py:379: in test_f013_r15_con_el_padre_ausente_es_archivo_fallido_sin_crear_intermedias
+    adap.crear_subcarpeta(padre=f"{INCIDENCIAS}/VILLA 08", nombre="PARTES FIRMADOS")
+    ^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'AdaptadorSharePointGraph' object has no attribute 'crear_subcarpeta'. Did you mean: '_crear_carpeta'?
+...
+39 failed in 3.08s
+```
+
+GREEN: **39 passed**; con tres tests más de forma de la respuesta (no JSON,
+cuerpo que no es objeto, `nextLink` vacío), **42 passed**; con el de la
+duración del log (§5), **43 passed**.
+
+**T12.** Comando exacto, con el fichero de tests escrito y sin ninguno de los
+módulos (commit `7a3468b`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_ubicacion_sigrid.py -q -p no:cacheprovider --tb=short
+```
+
+Salida real:
+
+```
+tests\test_f013_ubicacion_sigrid.py:43: in <module>
+    from domain.models.errores import (
+E   ImportError: cannot import name 'UbicacionNoDisponible' from 'domain.models.errores' (C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\domain\models\errores.py)
+=========================== short test summary info ===========================
+ERROR tests/test_f013_ubicacion_sigrid.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 1.91s
+```
+
+GREEN: primera pasada **108 passed, 3 failed** (los tres del truncado por
+debajo de lo pedido: el test buscaba «cortada» y el mensaje decía «ha
+cortado»; se cambió el mensaje, no el test); después, **111 passed**; con
+el de la duración de los logs (§5), **112 passed**. Que las
+aserciones muerden —y no solo el import— lo demuestran los 21 mutantes a mano
+de §5 (21 muertos).
+
+### 4 · Verificación
+
+| Comando (desde `services/postventa-api` salvo `init.sh`) | Resultado |
+|---|---|
+| Verificación de T11: `pytest tests/test_f013_adaptador_graph_listado.py tests/test_f006_adaptador_graph.py tests/test_f032_alcance_cerrado.py` (más `test_f006_arquitectura.py`, `test_f006_fabrica.py` y `test_f013_fabricas.py`) | **165 passed, 5 skipped** (los 5 del diff de F-032, fuera de su rama). `ArchivoPort` sigue con sus tres métodos |
+| Verificación de T12: `pytest tests/test_f013_ubicacion_sigrid.py` y `pytest tests -k "f009 or f012"` | **111 passed**; **857 passed** |
+| Controles: `pytest tests -k "f013 or arquitectura or alcance or f006 or f019 or f031 or f033 or f034 or logs_sin" -rs` | **1.533 passed, 20 skipped**: los 20 son los controles del diff de otras ramas (4 de F-031, 5 de F-032, 4 de F-033, 7 de F-034), sin tocar ninguno |
+| `python -m ruff check` sobre los ficheros tocados | All checks passed |
+| `bash harness/init.sh` (estado final, tras `4da38a3`) | **ENTORNO LISTO**: api **3.962 passed, 35 skipped en 291,73 s**; `PUERTA COBERTURA: 100.0% de 526 líneas cambiadas cubiertas (526/526, umbral 80%, nivel critico)`. La pasada anterior, tras `66327f7`: 3.960 passed en 274,44 s, la misma cobertura |
+
+### 5 · Mutación
+
+**A mano** (`mutantes_t11_t12.py` en el scratchpad: copia desechable del
+servicio, sustitución exacta, suite del fichero de T11 o T12, y restaurar;
+base y restaurada en verde, 42 y 111 passed). **21 generados, 21 muertos**:
+
+| # | Mutante | Resultado |
+|---|---|---|
+| A1 | no sigue el `nextLink` | muere |
+| A2 | `crear_subcarpeta` recorre tramos con `asegurar_carpeta` | muere |
+| A3 | sigue un `nextLink` a cualquier host | muere |
+| A4 | registra el `nextLink` | muere |
+| A5 | un `404` en una página siguiente es `None` | muere |
+| A6 | devuelve también ficheros | muere |
+| A7 | página sin lista = vacía | muere |
+| A8 | crear con `rename` en vez de `fail` | muere |
+| B1 | la lectura va a la ruta de escritura | muere |
+| B2 | truncado por debajo de lo pedido se acepta | muere |
+| B3 | la segunda lectura pide 200 filas | muere |
+| B4 | registra `obra_ref` | muere |
+| B5 | un error de mapeo sube como `ValueError` | muere |
+| B6 | no se reintenta ningún transitorio | muere |
+| B7 | `obra_ref` sin convertir a texto | muere |
+| B8 | los patrones con los ceros del código | muere |
+| B9 | código no numérico sin normalizar | muere |
+| B10 | la fábrica exige `CIERRE_HABILITADO` | muere |
+| B11 | la fábrica sin la puerta del entorno | muere |
+| B12 | el constructor sin la puerta del entorno | muere |
+| B13 | tipo y código en orden inverso | muere |
+
+**Del arnés**: `python -m harness.mutacion --feature F-013 --timeout 900 --workers 6`,
+lanzada **después** de `init.sh` y sin nada más corriendo; informe en el
+scratchpad (`mutacion_F-013_bloque3.md`), **no** en `progress/mutacion_F-013.md`,
+que es de T20. La herramienta calcula el alcance del diff de la rama: 12
+ficheros, 2.146 líneas. **105 mutantes, 101 muertos, 4 supervivientes, 0
+timeouts** en 3.352,8 s. De este bloque generó 14 en `graph.py`, 8 en
+`ubicacion.py` y 10 en `consultas_ubicacion.py` (en `fabrica.py` de Sigrid,
+ninguno: no tiene operadores que mutar).
+
+| # | Línea y mutación | Análisis | Qué se hizo |
+|---|---|---|---|
+| 1 | `graph.py:368` `time.monotonic() - arranque` → `+` (log de `listar_carpetas`) | **Hueco real**: ningún test fijaba la duración del log; la suma da un número de seis cifras que parece «va lentísimo» y no un error (el mismo hueco que F-006 cerró en `subir`) | Test `test_f013_r23_el_log_del_listado_dice_la_duracion_y_no_la_hora`, con un reloj falso que arranca en 10.000 s. Reinyectado: **muere** (1 failed, 42 passed). Commit `4da38a3` |
+| 2 | `ubicacion.py:166` ídem (log de `leer_ubicacion`) | **Hueco real**, el mismo | Test `test_f013_r23_las_dos_lecturas_registran_la_duracion_y_no_la_hora`. Reinyectado: **muere** (1 failed, 111 passed). `4da38a3` |
+| 3 | `ubicacion.py:181` ídem (log de `leer_unidades_del_numero`) | **Hueco real**, el mismo; esta duración es la que tiene que medir el tiempo **[NO MEDIDO]** de la segunda lectura | El mismo test. Reinyectado: **muere** (1 failed, 111 passed). `4da38a3` |
+| 4 | `destino_archivo.py:102` `@dataclass(frozen=True)` → `frozen=False` en `_Nivel` | **Equivalente**, el mismo del bloque 2 y de su cierre: `_Nivel` es privado, sus cuatro instancias se construyen en línea en la llamada a `bajar` y nadie les asigna nada | Nada; sigue pendiente de la aceptación del humano (nivel `critico`) |
+
+### 6 · Qué queda fuera y qué falta
+
+- **Fuera, a propósito**: el borde (T13). Hasta T13 nadie construye el
+  explorador ni el lector de la ubicación desde producción: el comportamiento
+  desplegable **no cambia** (`SHAREPOINT_ESTRUCTURA` sigue en `por_obra` por
+  omisión).
+- **Para T13, tres cosas que salen de este bloque**: (a) la misma instancia
+  de `construir_archivador` como `archivador` y como `explorador`; (b)
+  `construir_ubicaciones(ajustes)` solo en `posventa`, y **después** de
+  `construir_archivador` (así, en `test`, el error es el del archivo); (c)
+  `UbicacionNoDisponible` y `ConfiguracionSigridIncompleta` → **503** en
+  `/api/archivar` (decisión 3).
+- **Para el líder**: las decisiones 3 (error nuevo) y 4 (tipo del error de la
+  puerta) rellenan huecos de la spec; si prefiere otra cosa, es una enmienda
+  pequeña y localizada (`ubicacion.py` y `errores.py`).
+- **Verificaciones MANUAL**: ninguna en este bloque. El tiempo real de la
+  segunda lectura sigue **[NO MEDIDO]**; lo dirá el log del primer archivado.
+- `progress/mutacion_F-013.md` no se ha escrito: es de T20.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests del bloque | `test_f013_adaptador_graph_listado.py` **43 passed** (RED: **39 failed**, `AttributeError … 'listar_carpetas'` e `isinstance(…, ExploradorBibliotecaPort)` falso); `test_f013_ubicacion_sigrid.py` **112 passed** (RED: `ImportError … 'UbicacionNoDisponible'` en la recogida) |
+| Controles de alcance y arquitectura | **1.533 passed, 20 skipped** (los del diff de otras ramas), sin tocar ningún test de F-006, F-009, F-012, F-031…F-034 |
+| Suite del proyecto (`bash harness/init.sh`, estado final tras `4da38a3`) | api **3.962 passed, 35 skipped en 291,73 s**; front en verde (caché); arnés 62 passed en 8,88 s; **ENTORNO LISTO** |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 526 líneas cambiadas cubiertas (526/526, umbral 80%, nivel critico)`** |
+| Mutación a mano | **21 generados, 21 muertos** |
+| Mutación del arnés (6 workers, timeout 900 s) | **105 generados, 101 muertos, 4 supervivientes**, 0 timeouts, 3.352,8 s: 3 huecos reales del bloque (la duración de los logs) cerrados con test y reinyectados (mueren), 1 equivalente ya conocido (`_Nivel`) |

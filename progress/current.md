@@ -1,6 +1,33 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 · BLOQUE 3 HECHO (T11 y T12) · 2026-09-24 · siguiente: Bloque 4 (T13, T14)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 3 · T11 y
+> T12»**. Sin red ni escrituras en ningún sistema; `harness/features.json` sin
+> tocar; sin push.
+>
+> - **T11** (RED `7b7d0d1`: 39 failed → `d6ab81a`): `listar_carpetas` y
+>   `crear_subcarpeta` en el adaptador de Graph, que cumple los dos puertos con
+>   la misma instancia. Solo carpetas, todas las páginas, `404` → `None`,
+>   `nextLink` solo hacia Graph y fuera de los logs; crear = un `POST`, `409`
+>   éxito, padre ausente → `ArchivoFallido`.
+> - **T12** (RED `7a3468b`: `ImportError` → `66327f7`):
+>   `consultas_ubicacion.py`, `ubicacion.py` (solo `/api/sql/read`) y
+>   `construir_ubicaciones` (sin `CIERRE_HABILITADO`; con `ENTORNO=test` se
+>   niega). `('%677', '%[^0]%677')` para la 0677.
+> - **Decisiones que el líder debe conocer** (huecos de la spec): error nuevo
+>   `UbicacionNoDisponible` para R41 (el borde lo tiene que mapear a 503 en
+>   T13, junto con `ConfiguracionSigridIncompleta`); la puerta del entorno de
+>   la ubicación levanta `ArchivoDeshabilitado`; una lista `truncated` con
+>   menos filas de las pedidas no se devuelve; el `nextLink` solo se sigue si
+>   apunta a Graph.
+> - Mutación a mano 21/21 muertos. Arnés (900 s, 6 workers, solo): 105
+>   mutantes, 101 muertos; 3 huecos reales (duración de los logs) cerrados en
+>   `4da38a3`; 1 equivalente ya conocido (`_Nivel`, pendiente de aceptación).
+> - `bash harness/init.sh` en verde: **3.962 passed**, 35 skipped; cobertura
+>   **100 % de 526 líneas cambiadas**.
+
 > ## ✅ F-013 · BLOQUE 2 CERRADO (T10 bis y T10) · 2026-09-24 · siguiente: Bloque 3 (T11, T12)
 >
 > implementer. Opción (a) del humano. Informe: **`progress/impl_F-013.md`,

@@ -916,3 +916,11 @@ def test_f013_t14_el_24_no_deja_el_csv_dentro_del_repositorio():
 
     assert "fuera del repositorio" in ejecutable
     assert ejecutable.index("fuera del repositorio") < ejecutable.index("Invoke-SigridLectura -")
+    # La condicion, fijada por su texto: un test estatico no la evalua, y
+    # romperla (`$false -and ...`) dejaria el mensaje en su sitio sin que nada
+    # lo viera. El comportamiento lo comprueba el ensayo local del informe.
+    assert (
+        "    if ($rutaCsv.StartsWith($raizCompleta + \"\\\", "
+        "[StringComparison]::OrdinalIgnoreCase) -or\n"
+        "        $rutaCsv -ieq $raizCompleta) {"
+    ) in ejecutable.replace("\r\n", "\n")

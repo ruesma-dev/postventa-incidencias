@@ -1,6 +1,17 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-013 · SPEC ENMENDADA APROBADA · 2026-09-24 · arranca el Bloque 1
+>
+> El humano aprobó la enmienda de `4579d7b` con **«si»**, incluidas las tres
+> decisiones del spec-author que le tocaba validar: **R44** (dos obras con el
+> mismo número en Sigrid → 409, con una lectura más por parte), **R50** (una
+> carpeta de unidad que casaría con dos unidades → 409) y que **H-3 de F-034**
+> (la puerta de gráfico y cierre no mira en qué biblioteca se archivó) queda
+> fuera. Respuestas del mismo día ya recogidas en la enmienda: las villas 8-15
+> se crean, y `PARTES FIRMADO` cuenta como hoja (el literal real se comprueba en
+> el paso 2 del corte: si fuera otro, 409 sin archivar).
+
 > ## ✅ F-013 · SPEC ENMENDADA TRAS T4 · 2026-09-24 · siguiente: aprobación del humano y Bloque 1
 >
 > spec-author. Enmienda de `specs/F-013-archivo-posventa/` con la medición de

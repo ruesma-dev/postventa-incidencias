@@ -2053,3 +2053,350 @@ aceptado). Lo que muerde T15 lo demuestra la mutación a mano de §3.
 | Suite del proyecto (`bash harness/init.sh`, tras `52ce8eb` y la marca de T15) | api **4.010 passed, 35 skipped en 187,83 s**; front en verde (caché); arnés 62 passed en 7,51 s; **ENTORNO LISTO** |
 | Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 551 líneas cambiadas cubiertas (551/551, umbral 80%, nivel critico)`** (sin líneas de producción nuevas) |
 | Mutación del arnés | **no relanzada**: sin cambios en producción; vale la del bloque 4 (109 / 108 / 1 aceptado) |
+
+---
+
+## Bloque 6 · T16 a T19 (2026-09-24, cerrado el 2026-09-25)
+
+**Alcance del encargo: solo T16, T17, T18 y T19.** Nada de T20 ni T21. **Ni una
+línea de código de producción**: tests, documentación, dos scripts de `infra/`
+y `.env.example`. Sin red, sin escrituras en ningún sistema; `.env` y
+`harness/features.json` sin tocar; sin push en ninguno de los dos
+repositorios.
+
+Commits: `b1e7a67` (T16), `021ae39` (T17), más el de este informe y
+`tasks.md`. En **`azure-apps`**: `9ed8957` (T19), solo
+`postventa_incidencias.md` (el árbol estaba limpio antes y lo está después).
+
+### 0 · Lo primero: una contradicción de la spec, resuelta como T10 bis
+
+`tasks.md` T16 y `design.md` §2.2 mandan añadir el barrido del host del
+inquilino (R30) **a `tests/test_f006_repo_sin_identificadores.py`**. Y el
+control del diff de F-013 que escribí en el bloque 2,
+`test_f013_r2_los_tests_de_otras_fichas_no_se_han_tocado`
+(`tests/test_f013_por_obra_intacto.py`), prohíbe tocar **cualquier**
+`test_f006_*`, siguiendo la fila de `design.md` §11 («los tests de F-006 no se
+tocan»). Las dos cosas no podían ser verdad a la vez; lo comprobé, no lo
+supuse: al añadir el barrido, el control se puso rojo (§3).
+
+**No choca con F-031…F-034 ni con F-010**, que son los que el encargo manda
+parar con `blocked`: choca con un control **de F-013**, mío. Lo resolví como
+se resolvió T10 bis con el test de F-033, sin aflojar nada:
+
+- `FICHERO_DE_T16` nombra `test_f006_repo_sin_identificadores.py` como **única**
+  excepción del control, con un comentario que dice por qué.
+- Un control nuevo, `test_f013_t16_del_barrido_de_f006_solo_se_anade_lo_del_host`,
+  exige que ese fichero **solo crezca**: cada sentencia de primer nivel de la
+  base de la rama sigue ahí, idéntica (`ast.dump`) y en su orden; el docstring
+  solo gana texto al final; y lo nuevo es de R30 (`import re`, tests
+  `test_f013_r30_*`, piezas con «host» en el nombre). Cambiar o quitar un test
+  de F-006 lo pone rojo (mutantes A9 y A10, §4).
+- Los tests nuevos se llaman `test_f013_r30_*`, no `test_f006_*`: se ve de
+  quién son.
+
+**Para el líder**: es una decisión que tomé sin preguntar porque la spec nombra
+el fichero expresamente y el control contrario es mío. Si la prefiere de otra
+forma —por ejemplo, el barrido en un fichero `test_f013_*` que importe el
+recorrido de F-006—, es mover tres funciones. Anotado en `tasks.md` (T16) y en
+`progress/current.md`.
+
+### 1 · Qué cambió
+
+| Fichero | Qué |
+|---|---|
+| `services/postventa-api/tests/test_f013_arquitectura.py` (nuevo) | **T16.** 147 tests: lo nuevo (`destino_posventa.py`, los dos puertos, `destino_archivo.py`) sin HTTP, sin E/S, sin config ni borde, y con una lista **positiva** de imports permitidos; el resolutor **sin ningún log**; `ArchivoPort` con sus tres operaciones exactas y `nombrado.py` sin saber de estrategias, más la mitad del diff (ni una línea de los dos en la rama); los nombres vigilados de F-031/F-033/F-034 (y `ctx`, `extraccion`, `ContextoParte`) fuera de `destino_archivo.py` y `destino_posventa.py`; el explorador con **exactamente** dos métodos (R48); `obra_ref`/`obride` fuera de **todo** log, error con mensaje y `raise` del servicio, con controles negativos y positivos del detector |
+| `services/postventa-api/tests/test_f006_repo_sin_identificadores.py` | **T16, R30.** Al final y solo añadiendo: `PATRON_HOST_DEL_INQUILINO` (host de SharePoint del inquilino, `-my` incluido, y dominio de Entra; compuesto troceado), `_hallazgos_de_host` con el **mismo recorrido** que los GUID y sin tolerancias, y 19 tests `test_f013_r30_*` (el barrido del árbol, 12 inyecciones en cuatro rincones y seis frases legítimas que no muerden). Un párrafo fechado al final del docstring |
+| `services/postventa-api/tests/test_f013_por_obra_intacto.py` | **T16.** La excepción con nombre y el control de «solo crece» (§0) |
+| `services/postventa-api/tests/test_f013_documentacion.py` (nuevo) | **T17.** 106 tests (abajo) |
+| `docs/INTEGRACION.md` | **T17.** Recuadros fechados en §1, §3 (cabecera y volumen), §4, §8 (dos); subsecciones «Con F-013» al final de §3: destino y estructura, listados, **dos lecturas de `sigrid-api`**, los **22 motivos** del 409, lo que se queda en IT, **R43** con su consulta de solo lectura y la tabla «qué se rompe» de F-013; §4, «Las de F-013»; §6, una fila para el dueño de `sigrid-api`; §9, seis filas. Cabecera: fecha y última feature |
+| `docs/DESPLIEGUE.md` | **T17.** Recuadro en §1; fila en §8; **§9 nueva, el runbook del corte** (antes, despliegue, justo después, el mismo día, los tres frenos) y los dos scripts con sus parámetros reales |
+| `docs/ARCHITECTURE.md` | **T17.** Recuadro dentro del paso 6 y recuadro tras la tabla de sistemas, por la fila de SharePoint |
+| `specs/F-006-sharepoint/requirements.md` | **T17.** Recuadros en «Destino de dev», tras R11 (R10 y R11) y tras R27 |
+| `specs/F-006-sharepoint/design.md` | **T17.** Recuadro en §7: «F-013 sale casi gratis» no salió |
+| `infra/00_vars_postventa.ps1` | **T17.** `$EstructuraArchivo = "por_obra"`, `$CarpetaBaseArchivo = "Postventa"` y `$CrearCarpetasArchivo = "true"`, con su explicación |
+| `infra/desplegar_backend.ps1` | **T17.** `"SHAREPOINT_CARPETA_BASE=Postventa",` sustituida por las tres App Settings desde esas variables; párrafo en `.DESCRIPTION`; la línea «Destino del archivo» antes de la confirmación y en el resumen. **Las ventanas, sin tocar** |
+| `services/postventa-api/.env.example` | **T17.** Las cinco variables de T5 con el defecto del código (pendiente del bloque 1) |
+| `specs/F-013-archivo-posventa/tasks.md` | T16, T17, T18 y T19 `[x]`, con nota |
+| `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md` | **T19**, otro repositorio: cabecera (origen `021ae39`, fecha), bloque «Lo que cambia en esta revisión (F-013)» y los mismos bloques que INTEGRACION.md en §1, §3, §4, §6, §8 y §9 |
+
+**Lo que fija `test_f013_documentacion.py`**:
+
+- **R29**: en los cinco documentos, cada premisa enmendada está **citada** en
+  un recuadro cuya **cabecera** es «Enmienda (o Precisión) del 2026-09-24
+  (F-013)» **y sigue en su sitio** fuera de los recuadros (nada se borra); los
+  recuadros dicen quién (el humano) y cuándo (2026-09-18); el de ARCHITECTURE
+  está **dentro del paso 6**. Con controles negativos (parafrasear, borrar la
+  premisa, recuadro sin fecha) y uno positivo.
+- **INTEGRACION**: destino y estructura, listados («hasta cuatro», «solo
+  carpetas», el `nextLink` solo hacia Graph), las dos lecturas (`sql/read`,
+  sin `CIERRE_HABILITADO`, `UbicacionNoDisponible`, `ArchivoDeshabilitado`,
+  `unidades_sin_verificar`), la tabla «qué se rompe» (carpeta de obra
+  renombrada, `423`, pasarela sin configurar e «incluso un parte ya archivado
+  responde 503», estructura mal escrita, «el vacío no llega»), **cada uno de
+  los 22 códigos de `MotivoDestino`** (importado del dominio: si se añade un
+  motivo sin documentarlo, rojo), las cinco variables en §4, R26 (133, «no se
+  migran, no se borran y no se les retira la traza», «no los contiene ni los
+  contendrá», «no se documenta cómo localizarlos», la premisa H4 y las dos
+  frases del humano, literales), H-3 de F-034 y R43 (procedimiento y consulta
+  que empieza por `SELECT`, sobre `postventa.archivos` y sin ninguna palabra
+  que escriba).
+- **DESPLIEGUE §9**: cada paso, el aviso a Posventa **antes** del despliegue
+  (por posición en el texto), los tres frenos y los dos scripts (parámetros
+  reales, sin BOM, fuera del repositorio, `resolver_destino_posventa`, nunca
+  `obride`, `LIKE`).
+- **Infra**: las tres variables con su valor de hasta el corte; las tres App
+  Settings en `$ajustes` desde ellas; ni `SHAREPOINT_CARPETA_BASE=Postventa` ni
+  la alternativa escritas a mano ni las variables re-declaradas; la línea
+  «Destino del archivo» dos veces; las ventanas abiertas por defecto.
+- **`.env.example`**: las cinco con **el mismo valor que el defecto de
+  `config/settings.py`** (leído de `Ajustes.model_fields`) y en `por_obra`.
+- **La variable retirada** (troceada en el test) no aparece en ningún
+  documento, script de `infra/` ni en el ejemplo.
+
+### 2 · Decisiones de diseño (y lo que la spec no fijaba)
+
+1. **El host del inquilino es SharePoint y Entra.** R30 dice «el nombre de host
+   del tenant»; se barren los hosts de SharePoint del inquilino (con `-my`,
+   `-admin`…) y su dominio de Entra. Hoy, 0 en el árbol. Hace falta una letra o
+   cifra pegada al punto: el marcador `<inquilino>.` del script 23 y el dominio
+   suelto entre comillas no casan (tests positivos con las frases reales del
+   23 y de los informes de F-010).
+2. **Arquitectura con `ast`**, no con texto: un docstring que explica por qué
+   no se usa `ctx.extraccion` no es usarlo. Y dos listas: la negativa de F-006
+   ampliada y una **positiva** por fichero (lo nuevo que alguien importe, sea
+   lo que sea, no está en ella).
+3. **«El resolutor no registra nada» es un test**: la decisión 9 del bloque 2
+   era una costumbre; ahora es un invariante (es lo que garantiza que el
+   `con.res` de la unidad no sale por un log, R23).
+4. **`obra_ref` se vigila en todo el servicio**, no solo en los ficheros de
+   F-013: logs (`log`, `logger`, `logging.getLogger(...)`), los tres errores
+   que acaban en un mensaje y cualquier `raise`. Usarla para contar obras no
+   es fuga (control positivo con la línea real de `obras_del_mismo_numero`).
+5. **El runbook sigue la numeración de `design.md` §7.3 enmendado** (1–3
+   antes, 4–5 despliegue, 6 justo después, 7–8 el mismo día). Lo que `design.md`
+   dejaba a T17 —comprobar los App Settings «con un `az … appsettings list` de
+   solo lectura»— se hace así, con una consulta que solo saca los tres del
+   destino. Y añadí lo que el runbook necesitaba y no decía: **qué pasa si el
+   valor vacío de la base no llega** a la App Setting (la base vuelve al
+   defecto del código, `Postventa`, que no existe en la raíz de Posventa: 502
+   sin subir nada; freno 1 y de vuelta al líder), borrar el CSV del 24 al
+   acabar (lleva literales de `con.res`) y `cargar_secretos_postventa.ps1 -Solo`
+   con los dos nombres **separados por coma** desde la sesión (`[string[]]`;
+   con blanco, el segundo no entraría en el array).
+6. **`desplegar_backend.ps1` enseña el destino** («Destino del archivo:
+   estructura '…', carpeta base '…', crear carpetas '…'») antes de pedir
+   `DESPLEGAR` y en el resumen: el paso 5 del runbook se apoya en esa línea
+   para abortar si el fichero de variables no dice lo que debe. No valida los
+   valores (como ninguna otra App Setting del script): la fábrica rechaza una
+   estructura desconocida (503), y un `SHAREPOINT_CREAR_CARPETAS` que no sea
+   `true`/`false` tumbaría `Ajustes` entero (comprobado: `ValidationError`),
+   igual que un `GRAPH_REINTENTOS` no numérico. Lo mitiga esa línea; si el
+   líder quiere una validación en el script, es un cambio pequeño con código
+   de salida propio.
+7. **Solo `.env.example`**, como pidió el líder; `local.settings.json.example`
+   sigue sin las cinco (fuera del encargo).
+8. **El gemelo de `azure-apps` se refrescó por bloques, no copiando el
+   fichero entero.** La copia ya **divergía** de `docs/INTEGRACION.md` antes de
+   F-013 (tiene una subsección, «Cómo se configura el acceso a la pasarela
+   (desde el 2026-09-03)», que INTEGRACION no tiene, y le faltan recuadros que
+   INTEGRACION sí tiene): sobrescribirla habría borrado lo suyo. Los bloques de
+   F-013 se llevaron con un script que los **extrae de INTEGRACION.md** y los
+   inserta en las mismas anclas (texto idéntico, sin transcribir a mano). La
+   divergencia previa queda anotada abajo, para el líder.
+9. **La cabecera de INTEGRACION.md** pasa a «Fecha: 2026-09-24. Última feature
+   que lo tocó: F-013, antes de su corte»: es metadato, no una premisa.
+10. **Las decisiones de los bloques 3–5 que el líder dio por buenas están
+    documentadas**: `UbicacionNoDisponible` → 503 y la puerta de entorno de la
+    ubicación con `ArchivoDeshabilitado` (INTEGRACION §3, «dos lecturas»); el
+    `nextLink` solo hacia Graph (§3, «listados»); estrategia desconocida → 503
+    (tabla «qué se rompe»); el 23 con el resolutor, las columnas del CSV, los
+    parámetros reales y el límite `IN`/`LIKE` (DESPLIEGUE §9); y la decisión 2
+    del bloque 5, **fallar cerrado**, en la tabla «qué se rompe».
+
+### 3 · Fase RED (traza real)
+
+**T16, R30.** Tests escritos al final de `test_f006_repo_sin_identificadores.py`
+antes que el patrón y el recorrido. Comando, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f006_repo_sin_identificadores.py -q -p no:cacheprovider --tb=line -k "r30"
+```
+
+Salida real (líneas de error agrupadas con `sort | uniq -c`; los nombres
+parametrizados no se pegan porque llevan inyectado el dominio que el propio
+barrido prohíbe):
+
+```
+     13 E   NameError: name '_hallazgos_de_host' is not defined
+      6 E   NameError: name 'PATRON_HOST_DEL_INQUILINO' is not defined
+      1 19 failed, 29 deselected in 16.57s
+```
+
+Y el control del diff, con el fichero de F-006 ya tocado y antes de la
+excepción (§0), mismo comando con `tests/test_f013_por_obra_intacto.py` y
+`-k "r30 or otras_fichas"`:
+
+```
+      Left contains one more item: 'services/postventa-api/tests/test_f006_repo_sin_identificadores.py'
+C:\...\tests\test_f013_por_obra_intacto.py:242: AssertionError: assert ['services/po...ficadores.py'] == []
+FAILED tests/test_f013_por_obra_intacto.py::test_f013_r2_los_tests_de_otras_fichas_no_se_han_tocado
+20 failed, 47 deselected in 6.48s
+```
+
+GREEN: `test_f006_repo_sin_identificadores.py` **48 passed**; los tres ficheros
+de T16 juntos, **215 passed**.
+
+**T16, arquitectura.** `test_f013_arquitectura.py` pasó a la primera (**147
+passed**): los invariantes ya se cumplían. Que muerden lo demuestra la
+mutación a mano de §4 (11 de 11).
+
+**T17.** `test_f013_documentacion.py` escrito antes que los documentos, la
+infra y el ejemplo. Comando:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f013_documentacion.py -q -p no:cacheprovider --tb=line
+```
+
+Salida real (resumen y errores agrupados):
+
+```
+     31 E   ValueError: substring not found
+      5 E   AssertionError: assert 'humano' in ''
+      1 E   assert '"SHAREPOINT_ESTRUCTURA=$EstructuraArchivo"' in '\n    "ENTORNO=dev",\n    "NIVEL_LOG=INFO", ...
+      1 E   assert 'SHAREPOINT_...SE=Postventa' not in '# infra/des...""\nexit 0\n'
+      1 E   KeyError: 'SHAREPOINT_ESTRUCTURA'
+      1 E   AssertionError: §3 no dice «Documentos compartidos»
+      1 E   AssertionError: requirements.md no tiene ningún recuadro fechado de F-013
+      1 E   AssertionError: ningún recuadro de F-013 habla de los 133 partes de IT
+      1 E   AssertionError: la tabla de F-013 no dice «incluso un parte ya archivado responde 503»
+      [...]
+95 failed, 7 passed in 1.46s
+```
+
+Los 7 que pasaban en RED eran ciertos antes del cambio: la variable retirada
+no está en ningún documento, script ni ejemplo; el control negativo del
+barrido de SQL; y las ventanas abiertas por defecto (lo que F-013 **no** debía
+tocar). GREEN: **102 passed**; con los cuatro controles del propio control de
+citas, **106 passed**.
+
+### 4 · Mutación a mano
+
+Scripts en el scratchpad (`mutar_t16.py`, `mutar_t17.py`): inyectan en el
+fichero real, lanzan el test y restauran **byte a byte** en un `finally`
+(comprobado con `assert` y con `git status` al final: árbol intacto).
+
+**T16 — 11 generados, 11 muertos:**
+
+| # | Mutante | Resultado | Lo caza |
+|---|---|---|---|
+| A1 | `destino_posventa.py` importa `httpx` | muere (2) | `…no_conoce_ni_http…`, `…solo_importa_lo_permitido` |
+| A2 | el resolutor registra el `con.res` de la unidad | muere (3) | `test_f013_r23_el_resolutor_no_registra_nada` y los dos de imports |
+| A3 | el explorador gana `mover` (asignado a la clase) | muere | `test_f013_r48_…_exactamente_dos_metodos` |
+| A3b | el explorador gana `borrar` en su cuerpo | muere | ídem |
+| A4 | `obra_ref` a un log de `ubicacion.py` | muere | `test_f013_r23_obra_ref_no_sale…[infrastructure/sigrid/ubicacion.py]` |
+| A5 | el resolutor lee `ctx.extraccion` | muere (2) | `…el_destino_no_nombra_lo_vigilado[extraccion/ctx-destino_archivo.py]` |
+| A6 | `nombrado.py` cambia en la rama | muere | `…nombrado_y_archivo_port_no_se_tocan_en_la_rama[nombrado.py]` |
+| A7 | `ArchivoPort` gana `listar_carpetas` | muere (2) | `test_f013_r5_archivo_port_conserva…` y la mitad del diff |
+| A8 | el host del inquilino en `docs/DESPLIEGUE.md` | muere | `test_f013_r30_ningun_fichero_del_repositorio…` |
+| A9 | un test de F-006 del barrido cambia (`>= 60` → `>= 59`) | muere | `test_f013_t16_del_barrido_de_f006_solo_se_anade…` |
+| A10 | se retira un test de F-006 del barrido | muere | ídem |
+
+**T17 — 10 generados; 9 muertos a la primera y 1 hueco real, cerrado:**
+
+| # | Mutante | Resultado |
+|---|---|---|
+| M1 | el despliegue vuelve a escribir `SHAREPOINT_CARPETA_BASE=Postventa` | muere (2) |
+| M2 | `$EstructuraArchivo = "posventa"` antes del corte | muere |
+| M3 | falta el motivo `nombre_no_casaria` en INTEGRACION | muere |
+| M4 | el runbook sin el freno de `$CrearCarpetasArchivo = "false"` | muere |
+| M5 | `.env.example` con `SHAREPOINT_CREAR_CARPETAS=false` | muere |
+| M6 | el recuadro del paso 6 de ARCHITECTURE pierde su cabecera fechada | **sobrevivía** → muere (2) |
+| M7 | la tabla sin «incluso un parte ya archivado responde 503» | muere |
+| M8 | el aviso a Posventa pasa a después del despliegue | muere |
+| M9 | la cita de F-006 (design §7) parafraseada | muere |
+| M10 | el runbook sin el límite `IN`/`LIKE` | muere |
+
+**M6 era un hueco real**: el control aceptaba como «recuadro de F-013»
+cualquier cita que **contuviera** la fecha y «F-013» en algún sitio, y el del
+paso 6 las lleva en el cuerpo aunque se le quite la cabecera. R29 pide
+recuadros **fechados**: ahora la **cabecera** tiene que ser «Enmienda (o
+Precisión) del 2026-09-24 (F-013)» (`CABECERA_DE_RECUADRO`). Con eso, un
+recuadro de INTEGRACION cuya cabecera era «Deja de ser cierto con F-013
+(2026-09-24)» pasó a «Enmienda del 2026-09-24 (F-013) · deja de ser cierto».
+Reinyectado: **muere**. Todo antes del commit de T17.
+
+**Del arnés**: **no relanzada**. El bloque no toca código de producción (el
+diff del bloque es `tests/`, documentos, dos `.ps1` y `.env.example`), así que
+el alcance de la herramienta y su resultado son los del bloque 4 (109
+generados, 108 muertos, `_Nivel` aceptado por el humano). La campaña formal es
+T20.
+
+### 5 · Verificación
+
+| Comando (desde `services/postventa-api`, con `.venv/Scripts/python.exe -m`) | Resultado |
+|---|---|
+| T16: `pytest tests/test_f013_arquitectura.py tests/test_f006_repo_sin_identificadores.py` (+ `test_f013_por_obra_intacto.py`) | **215 passed** |
+| T17: `pytest tests/test_f013_documentacion.py` | **106 passed** |
+| T17: `pytest -k "(f010 and infra) or documentacion or integracion or arquitectura or identificadores or f013 or scripts_infra or datos_personales"` | **1.663 passed, 3 skipped** (los 3, los de siempre de `test_f010_scripts_infra.py`): **los tests de F-010 sobre los dos scripts, en verde sin tocarlos** |
+| Controles: `pytest -k "f013 or arquitectura or alcance or f006 or f010" -rs` (tras T16) | **1.480 passed, 23 skipped**: los 20 del diff de F-031 (4), F-032 (5), F-033 (4) y F-034 (7), fuera de sus ramas, y 3 de F-010. **Ningún test de F-010 ni de F-031…F-034 tocado** |
+| PowerShell 5.1 (`5.1.26100.9549`): `Parser::ParseFile` de `00_vars_postventa.ps1` y `desplegar_backend.ps1` | **0 errores** en los dos; los dos siguen ASCII y CRLF |
+| Las líneas nuevas, evaluadas en PowerShell con `00_vars_postventa.ps1` cargado por punto (sin `az`) | `Destino del archivo : estructura 'por_obra', carpeta base 'Postventa', crear carpetas 'true'`; con `$CarpetaBaseArchivo = ""`, el ajuste sale `SHAREPOINT_CARPETA_BASE=` |
+| `azure-apps`: barrido del gemelo con los patrones de GUID, host del inquilino e IPv4 | **0, 0 y 0**; `git -C …\azure-apps log -1` → `9ed8957`; `git status` limpio |
+| `python -m ruff check` sobre los cinco ficheros de test tocados | All checks passed |
+| `bash harness/init.sh` | ver «Evidencias» |
+
+### 6 · T18 · el texto para la ficha de F-018 (lo añade el líder)
+
+`harness/features.json` **no se ha tocado**. El párrafo, listo para pegar en la
+ficha de **F-018 · Mínimo privilegio en Graph**:
+
+> **Desde F-013 (2026-09-24), al recortar a `Sites.Selected` hay que conceder
+> dos cosas distintas, y una de ellas ya no la pide F-013.** (1) **El sitio de
+> Posventa, con escritura** (`write`): desde el corte de F-013 el archivo va a
+> su biblioteca «Documentos compartidos», donde el servicio **lista carpetas**
+> y **crea** las que falten (un `POST` por nivel), además de subir el PDF.
+> Hoy no hace falta concederlo porque el token trae permisos de aplicación
+> amplios —**medido el 2026-09-24** (T2 de F-013): `Sites.ReadWrite.All` (y
+> `Mail.ReadWrite`)—, así que el servicio escribirá en Posventa sin que nadie
+> le conceda nada; con `Sites.Selected` y sin esta concesión, cada archivado
+> respondería `403`, no reintentable. (2) **El sitio de IT, solo lectura**
+> (`read`), **únicamente si se quiere seguir leyendo lo archivado allí**:
+> **precisado el 2026-09-22**, ese `read` **ya no lo pide F-013** (`design.md`
+> §8.3 y §9 bis de F-013: los 133 partes de IT se olvidan, no se localizan).
+> No concederlo **no borra nada**: los ficheros siguen en su biblioteca y sus
+> trazas en `postventa.archivos`. Ningún identificador de sitio en la ficha: se
+> resuelven con `infra/23_destino_posventa.ps1 -MostrarIdentificadores` y
+> van al Key Vault.
+
+### 7 · Qué queda fuera y qué falta
+
+- **Fuera, a propósito**: T20 (campaña de mutación formal,
+  `progress/mutacion_F-013.md`) y T21; `harness/features.json` (T18 es solo el
+  párrafo de §6); `local.settings.json.example` (decisión 7).
+- **Para el líder**:
+  1. La excepción del control del diff para `test_f006_repo_sin_identificadores.py`
+     (§0): aceptarla o pedir el barrido en otro fichero.
+  2. **El gemelo de `azure-apps` ya divergía** de `docs/INTEGRACION.md` antes
+     de F-013 (decisión 8). No es de este encargo arreglarlo; conviene una
+     pasada que los reconcilie, sin perder la subsección propia del gemelo.
+  3. La observación de la decisión 6 (un valor mal escrito de
+     `SHAREPOINT_CREAR_CARPETAS` tumbaría `Ajustes`): sin cambios, a su
+     criterio.
+  4. El texto de T18 (§6), para la ficha de F-018.
+- **Verificaciones MANUAL**: ninguna de este bloque. Las del corte —R31 con la
+  red real, R33, R42— son del humano y están en `docs/DESPLIEGUE.md` §9.
+- **Nada del corte se ha hecho**: `00_vars_postventa.ps1` sigue en
+  `por_obra`/`Postventa`, y lo desplegado no cambia hasta que el humano lo
+  decida.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests del bloque | `test_f013_arquitectura.py` **147 passed** (pasó a la primera; mutación a mano 11/11); `test_f006_repo_sin_identificadores.py` **48 passed** (RED de R30: **19 failed**, `NameError`); `test_f013_por_obra_intacto.py` **20 passed** (RED: el control del diff, **1 failed**); `test_f013_documentacion.py` **106 passed** (RED: **95 failed, 7 passed**) |
+| Tests de F-010 sobre los dos scripts, y controles de F-031…F-034 | en verde **sin tocarlos** (1.663 passed, 3 skipped; 1.480 passed, 23 skipped) |
+| Suite del proyecto (`bash harness/init.sh`, con T16 y T17 commiteados) | api **4.283 passed, 35 skipped en 213,69 s**; front en verde (caché); arnés 62 passed en 15,02 s; **ENTORNO LISTO** |
+| Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 551 líneas cambiadas cubiertas (551/551, umbral 80%, nivel critico)`** (sin líneas de producción nuevas en este bloque) |
+| Mutación a mano | T16: **11 generados, 11 muertos**; T17: **10 generados, 10 muertos** (1 hueco real, M6, cerrado antes del commit) |
+| Mutación del arnés | **no relanzada**: sin cambios en producción; vale la del bloque 4 (109 / 108 / 1 aceptado) |
+| `azure-apps` | commit local `9ed8957`, sin push; 0 GUID, 0 hosts del inquilino, 0 IPv4 en el documento |

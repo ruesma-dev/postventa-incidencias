@@ -1,6 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 · BLOQUE 6 HECHO (T16–T19) · 2026-09-25 · siguiente: Bloque 7 (T20, T21)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 6 · T16 a
+> T19»**. Sin código de producción: tests (`b1e7a67`), documentación, infra y
+> `.env.example` (`021ae39`); en `azure-apps`, `9ed8957` (T19). Sin push;
+> `.env` y `harness/features.json` sin tocar.
+>
+> - **Desviación con nombre (T16)**: la spec manda el barrido del host (R30)
+>   a `test_f006_repo_sin_identificadores.py`, y el control del diff de F-013
+>   (bloque 2) prohibía tocar tests de F-006. Resuelto como T10 bis: ese
+>   fichero es la única excepción y un control nuevo exige que **solo crezca**
+>   con lo de R30. Sin choque con F-010 ni F-031…F-034. **A validar por el
+>   líder** (informe, §0).
+> - T17: recuadros fechados que citan la premisa en INTEGRACION, DESPLIEGUE,
+>   ARCHITECTURE y la spec de F-006; runbook del corte en `docs/DESPLIEGUE.md`
+>   §9; `infra/` en `por_obra`/`Postventa`/`true` hasta el corte, ventanas
+>   intactas; la decisión 2 del bloque 5 (falla cerrado) en «qué se rompe».
+> - T18: el párrafo para la ficha de F-018, en el informe §6 (lo pega el líder).
+> - Para el líder: el gemelo de `azure-apps` ya divergía de INTEGRACION antes
+>   de F-013 (se refrescó por bloques, sin pisar lo suyo).
+> - `bash harness/init.sh` en verde: **4.283 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+
 > ## ✅ F-013 · BLOQUE 5 HECHO (T15) · 2026-09-24 · siguiente: Bloque 6 (T16)
 >
 > implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 5 ·

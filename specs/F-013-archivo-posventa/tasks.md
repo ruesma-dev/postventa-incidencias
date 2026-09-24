@@ -298,7 +298,7 @@
   > `sigrid-api` sin configurar, incluso lo ya archivado responde 503: se
   > deja así). El runbook del corte es `docs/DESPLIEGUE.md` §9. Informe:
   > `progress/impl_F-013.md`, «Bloque 6».
-- [ ] **T18**: dejar escrito para el líder, en `progress/impl_F-013.md`, el
+- [x] **T18**: dejar escrito para el líder, en `progress/impl_F-013.md`, el
   texto que hay que añadir a la ficha de **F-018** en `harness/features.json`:
   al recortar a `Sites.Selected` hay que conceder el **sitio de Posventa**
   (escritura) y, si se quiere seguir leyendo lo de IT, el de IT (lectura)
@@ -307,13 +307,16 @@
   2026-09-24** (T2): el token trae hoy `Sites.ReadWrite.All`. El
   implementer **no** edita `features.json`. | Verificación: el párrafo existe
   en el informe
-- [ ] **T19**: `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
+  > **Hecha el 2026-09-24**: `progress/impl_F-013.md`, «Bloque 6», §6.
+- [x] **T19**: `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
   (**otro repositorio**, commit local propio allí, sin push): destino
   biblioteca de Posventa con su estructura, lectura nueva `rcp→upv→obr` **y
   la de las unidades del número** por `sql/read`, variables nuevas, lo que
   queda en IT. Sin identificadores.
   | Verificación: `git -C C:\Users\pgris\PycharmProjects\azure-apps log -1`
   muestra el commit; `git diff` sin GUID
+  > **Hecha el 2026-09-24**: commit local `9ed8957` en `azure-apps`, sin
+  > push; 0 GUID y 0 hosts del inquilino en el documento. Informe: «Bloque 6».
 
 ## Bloque 7 · Cierre
 

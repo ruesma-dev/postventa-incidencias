@@ -545,6 +545,32 @@ def test_f013_t13_alternativa_vacia_llega_al_resolutor(estrategia, monkeypatch):
     assert _cuerpo(respuesta)["candidatas"] == [ALTERNATIVA]
 
 
+def test_f013_t13_una_estrategia_desconocida_no_se_adivina(estrategia, monkeypatch):
+    """R3 · con el archivador inyectado, una estrategia desconocida es 503.
+
+    En producción `construir_archivador` la rechaza antes; aquí se comprueba
+    que el borde tampoco la toma por una de las dos: ni sube a `<base>/<obra>`
+    ni lee Sigrid ni lista.
+    """
+    estrategia("posventa ")
+    archivador = ArchivadorDePosventa()
+    ubicaciones = ubicaciones_0677()
+    _con_costuras(
+        monkeypatch,
+        archivador=archivador,
+        repositorio=_repositorio(5),
+        ubicaciones=ubicaciones,
+    )
+
+    respuesta = _archivar(5)
+
+    assert respuesta.status_code == 503
+    assert "SHAREPOINT_ESTRUCTURA" in _cuerpo(respuesta)["error"]
+    assert archivador.llamadas == []
+    assert archivador.explorador.llamadas == []
+    assert ubicaciones.llamadas == []
+
+
 def test_f013_t13_campos_obligatorios_no_cambian():
     """`CAMPOS_OBLIGATORIOS` sigue siendo el de F-006/F-031 (`design.md` §2.2)."""
     assert archivar.CAMPOS_OBLIGATORIOS == (

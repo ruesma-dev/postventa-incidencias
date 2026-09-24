@@ -120,7 +120,10 @@ from application.pipelines.destino_archivo import resolver_destino_posventa
 from application.pipelines.paso_archivo import ResolverDestino, paso_archivo
 from config.settings import Ajustes, obtener_ajustes
 from domain.models.destino_posventa import EstructuraArchivo
-from domain.models.errores import CuerpoDeArchivoInvalido
+from domain.models.errores import (
+    ConfiguracionSharePointIncompleta,
+    CuerpoDeArchivoInvalido,
+)
 from domain.models.extraccion import (
     CAMPOS_DEL_PARTE,
     CampoExtraido,
@@ -234,10 +237,17 @@ def _resolutor_de_la_estrategia(
     con un `TypeError` antes de tocar nada.
 
     Una estrategia que no sea ninguna de las dos no llega aquí en producción:
-    `construir_archivador` la rechaza antes (R3).
+    `construir_archivador` la rechaza antes (R3). Si llegara —con el
+    archivador inyectado—, tampoco se adivina: `ConfiguracionSharePointIncompleta`
+    (→ 503), sin haber tocado nada.
     """
-    if ajustes.sharepoint_estructura != EstructuraArchivo.POSVENTA:
+    if ajustes.sharepoint_estructura == EstructuraArchivo.POR_OBRA:
         return None
+    if ajustes.sharepoint_estructura != EstructuraArchivo.POSVENTA:
+        raise ConfiguracionSharePointIncompleta(
+            "SHAREPOINT_ESTRUCTURA no es una estrategia de destino conocida: "
+            "no se archiva con una estrategia adivinada"
+        )
     return partial(
         resolver_destino_posventa,
         explorador=explorador,

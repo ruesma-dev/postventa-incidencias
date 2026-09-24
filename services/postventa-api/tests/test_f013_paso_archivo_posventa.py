@@ -333,9 +333,11 @@ def test_f013_t10_con_resolutor_y_un_archivador_que_no_crea_carpetas_no_se_toca_
     """Composición rota: el resolutor sin un archivador que sepa crear carpetas.
 
     Es un error de programación del borde, no del parte, y sale **antes de
-    nada**: ni la puerta, ni Sigrid, ni la biblioteca, ni una traza.
+    nada**: ni la puerta, ni Sigrid, ni la biblioteca, ni una traza. El
+    repositorio de este caso apunta también **la lectura** de la puerta, que
+    los dobles de F-019 no apuntan.
     """
-    m = montar(5)
+    m = montar(5, repositorio_cls=_RepositorioQueApuntaLaLectura)
     solo_archivo = ArchivoPortFalso(registro=m.registro)
 
     with pytest.raises(TypeError, match="crear_subcarpeta"):
@@ -346,6 +348,23 @@ def test_f013_t10_con_resolutor_y_un_archivador_que_no_crea_carpetas_no_se_toca_
 
     assert m.registro == []
     assert m.resoluciones == []
+
+
+def test_f013_t10_el_repositorio_que_apunta_la_lectura_la_apunta(montar):
+    """El control del control: sin el `TypeError`, la puerta sí se vería."""
+    m = montar(5, repositorio_cls=_RepositorioQueApuntaLaLectura)
+
+    m.archivar()
+
+    assert m.registro[0] == "repositorio.consultar_situacion"
+
+
+class _RepositorioQueApuntaLaLectura(RepositorioFalso):
+    """`RepositorioFalso` que apunta también `consultar_situacion` en el registro."""
+
+    def consultar_situacion(self, *, hash_parte: str) -> SituacionParte:
+        self.registro.append("repositorio.consultar_situacion")
+        return super().consultar_situacion(hash_parte=hash_parte)
 
 
 # ==========================================================================

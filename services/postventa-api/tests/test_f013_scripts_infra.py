@@ -35,14 +35,36 @@ que lo que se fija aqui es, sobre todo, lo que **no** pueden hacer:
 
 Este fichero no contiene ningun identificador ni ningun host: los controles
 negativos se componen en memoria a partir de trozos.
+
+**T14 (2026-09-24).** El 23 deja de llevar las reglas de casado en PowerShell
+y aplica **la del dominio**, con el interprete del servicio y por fichero: el
+Python que lleva dentro se extrae aqui y **se ejecuta** contra el arbol medido
+de la 0677 (T2) y sus 15 unidades (T3), y tiene que dar exactamente lo de R31.
+El 24 escribe esas unidades en un CSV (`-SalidaCsv`) sin `obride`, y el 23 las
+lee (`-UnidadesCsv`).
 """
 
 from __future__ import annotations
 
+import csv
+import json
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+
+from tests.utiles_destino import (
+    ALTERNATIVA,
+    CARPETA_OBRA_0677,
+    FIRMADOS,
+    INCIDENCIAS,
+    RES_OBRA_0677,
+    UNIDADES_0677,
+    arbol_0677,
+)
 
 #: Raiz del repositorio, tres niveles por encima de este fichero.
 RAIZ = Path(__file__).resolve().parent.parent.parent.parent
@@ -529,3 +551,368 @@ def test_f013_r32_el_barrido_de_sql_caza_una_escritura_inyectada():
     assert PATRON_SQL_QUE_ESCRIBE.findall("UPDATE dbo.con SET est = 1")
     assert PATRON_SQL_QUE_ESCRIBE.findall("EXEC dbo.algo")
     assert PATRON_SQL_QUE_ESCRIBE.findall("SELECT u.cod FROM dbo.upv v") == []
+
+
+# --------------------------------------------------------------------------
+# T14 · la regla del dominio en el 23, y el CSV del 24 (R28, R31)
+# --------------------------------------------------------------------------
+
+#: Las cuatro copias provisionales de T1 y la clave de §4.3 copiada en
+#: PowerShell. T14 las retira: la regla es la del dominio.
+REGLAS_PROVISIONALES = (
+    "Test-ObraCasa",
+    "Test-ObraParecida",
+    "Test-TramoCasa",
+    "Test-TramoParecido",
+    "Get-Tokens",
+)
+
+#: El directorio del servicio, que es el que la regla mete en `sys.path`.
+SERVICIO = RAIZ / "services" / "postventa-api"
+
+OBRA = CARPETA_OBRA_0677
+INC = f"{OBRA}/{INCIDENCIAS}"
+
+
+def _regla_embebida() -> str:
+    """El Python que el 23 ejecuta con `Invoke-PythonDelServicio`."""
+    encontrado = re.search(
+        r"^\$reglaDelDominio = @'\r?\n(.*?)\r?\n'@",
+        _texto(SCRIPT_DESTINO),
+        re.DOTALL | re.MULTILINE,
+    )
+    assert encontrado, "el 23 no lleva la regla del dominio en $reglaDelDominio"
+    return encontrado.group(1)
+
+
+def _columnas_del_24() -> tuple[str, ...]:
+    encontrado = re.search(r"^\$ColumnasCsv = @\(([^)]*)\)", _texto(SCRIPT_UBICACION), re.MULTILINE)
+    assert encontrado, "el 24 no declara $ColumnasCsv"
+    return tuple(re.findall(r'"([^"]+)"', encontrado.group(1)))
+
+
+def _columnas_de_la_regla() -> tuple[str, ...]:
+    encontrado = re.search(r"^COLUMNAS_CSV = \(([^)]*)\)", _regla_embebida(), re.MULTILINE)
+    assert encontrado, "la regla no declara COLUMNAS_CSV"
+    return tuple(re.findall(r'"([^"]+)"', encontrado.group(1)))
+
+
+def _csv_del_24(ruta: Path, filas: list[dict[str, str]]) -> Path:
+    """El CSV como lo escribe `Export-Csv -NoTypeInformation -Encoding UTF8`
+    en PowerShell 5.1: con BOM, todo entrecomillado y CRLF."""
+    with ruta.open("w", encoding="utf-8-sig", newline="") as fichero:
+        escritor = csv.writer(fichero, quoting=csv.QUOTE_ALL, lineterminator="\r\n")
+        escritor.writerow(_columnas_del_24())
+        for fila in filas:
+            escritor.writerow([fila.get(columna, "") for columna in _columnas_del_24()])
+    return ruta
+
+
+def _unidades_0677(obra: str = "1") -> list[dict[str, str]]:
+    """Las 15 unidades de T3, como filas del CSV del 24."""
+    return [
+        {
+            "obra": obra,
+            "obra_cod": unidad.obra_codigo,
+            "obra_res": RES_OBRA_0677,
+            "unidad_cod": unidad.unidad_codigo,
+            "unidad_res": unidad.unidad_nombre,
+            "reclamaciones": "0",
+        }
+        for unidad in UNIDADES_0677
+    ]
+
+
+def _listados(arbol: dict[str, tuple[str, ...]]) -> list[dict]:
+    """Lo que el 23 anota de cada listado: la ruta y sus carpetas."""
+    return [{"ruta": ruta, "carpetas": list(hijas)} for ruta, hijas in arbol.items()]
+
+
+def _ejecutar_regla(tmp_path: Path, entrada: dict) -> dict:
+    """Ejecuta la regla del 23 como la ejecuta el 23: por fichero, con la
+    entrada en un JSON temporal cuya ruta va en `F013_ENTRADA_TEMP`.
+
+    Un proceso aparte, sin red (la regla no llama a nadie: lo fija otro test).
+    """
+    codigo = tmp_path / "regla.py"
+    codigo.write_text(_regla_embebida(), encoding="utf-8")
+    fichero = tmp_path / "entrada.json"
+    fichero.write_text(json.dumps({"servicio": str(SERVICIO), **entrada}), encoding="utf-8-sig")
+    resultado = subprocess.run(
+        [sys.executable, str(codigo)],
+        env={**os.environ, "F013_ENTRADA_TEMP": str(fichero)},
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert resultado.stdout.isascii(), "la salida de la regla tiene que ser ASCII"
+    return json.loads(resultado.stdout)
+
+
+def _veredicto(tmp_path: Path, arbol: dict, filas: list[dict] | None) -> dict:
+    entrada = {
+        "modo": "veredicto",
+        "codigo": "0677",
+        "base": "",
+        "incidencias": INCIDENCIAS,
+        "firmados": FIRMADOS,
+        "alternativa": ALTERNATIVA,
+        "arbol": _listados(arbol),
+        "csv": None,
+    }
+    if filas is not None:
+        entrada["csv"] = str(_csv_del_24(tmp_path / "unidades.csv", filas))
+    return _ejecutar_regla(tmp_path, entrada)
+
+
+def _resumen(unidades: list[dict]) -> list[tuple]:
+    return [
+        (
+            unidad["unidad_cod"],
+            unidad["veredicto"],
+            tuple(unidad.get("crear") or ()),
+            unidad.get("motivo"),
+        )
+        for unidad in unidades
+    ]
+
+
+#: R31 · lo que el 23 tiene que decir de la 0677 con T2 y T3, fila a fila.
+R31_0677 = [
+    *(
+        (f"0677.03VILLA {n}.", "resolveria", (), None)
+        for n in (1, 2, 3)
+    ),
+    ("0677.03VILLA 4.", "crearia", (FIRMADOS,), None),
+    *(
+        (f"0677.03VILLA {n}.", "resolveria", (), None)
+        for n in (5, 6, 7)
+    ),
+    *(
+        (f"0677.03VILLA {n}.", "crearia", (f"VILLA {n:02d}", FIRMADOS), None)
+        for n in range(8, 16)
+    ),
+]
+
+
+def test_f013_t14_el_23_ya_no_lleva_las_reglas_provisionales():
+    """T14 · ni `Test-ObraCasa` ni las otras tres copias, ni la clave copiada.
+
+    Mientras existieran, lo que dijera el 23 podia no ser lo que hace el
+    sistema: la medicion de T2 lo demostro (la 0677 salio «parecida»).
+    """
+    ejecutable = _sin_comentarios(_texto(SCRIPT_DESTINO))
+
+    for provisional in REGLAS_PROVISIONALES:
+        assert provisional not in ejecutable, provisional
+
+
+def test_f013_t14_el_23_ejecuta_la_regla_del_dominio_por_fichero():
+    """T14, `design.md` §7.1 · con el interprete del servicio y **por fichero**.
+
+    `Invoke-PythonDelServicio` del 08: `python -c` no funciona en PowerShell
+    5.1 (se come las comillas). La regla importa el dominio y el resolutor de
+    verdad, no una copia.
+    """
+    ejecutable = _sin_comentarios(_texto(SCRIPT_DESTINO))
+    regla = _regla_embebida()
+
+    assert "Invoke-PythonDelServicio -Python $python -Codigo $reglaDelDominio" in ejecutable
+    assert '".venv\\Scripts\\python.exe"' in ejecutable
+    assert not re.search(r"\$python\s+-c\b", ejecutable)
+    assert "from domain.models.destino_posventa import" in regla
+    assert "from application.pipelines.destino_archivo import resolver_destino_posventa" in regla
+
+
+def test_f013_t14_la_regla_embebida_no_escribe_ni_llama_a_nadie():
+    """R27, R28 · la regla solo lee: el JSON de entrada y el CSV del 24.
+
+    Ni crea carpetas (el explorador que le da al resolutor solo sabe listar lo
+    ya listado), ni abre un fichero para escribir, ni habla con la red.
+    """
+    regla = _regla_embebida()
+
+    assert "crear_subcarpeta" not in regla
+    for prohibido in ("httpx", "requests", "urllib", "socket", "subprocess", "infrastructure"):
+        assert prohibido not in regla, prohibido
+    aperturas = re.findall(r"open\(([^)]*)\)", regla)
+    assert aperturas, "la regla lee la entrada y el CSV con open()"
+    for apertura in aperturas:
+        assert not re.search(r"""["'][wax+]""", apertura), apertura
+
+
+def test_f013_t14_la_regla_embebida_es_ascii():
+    """Va dentro de un `.ps1`: ASCII puro, como el resto del script."""
+    assert _regla_embebida().isascii()
+
+
+def test_f013_t14_el_23_solo_escribe_el_temporal_de_la_regla():
+    """El 23 no escribe en disco nada mas que la entrada de la regla, en `%TEMP%`,
+    y la borra siempre (`finally`). Ni un CSV, ni un informe."""
+    ejecutable = _sin_comentarios(_texto(SCRIPT_DESTINO))
+    funcion = _funcion(_texto(SCRIPT_DESTINO), "Invoke-ReglaDelDominio")
+
+    assert "Export-Csv" not in ejecutable
+    assert "Out-File" not in ejecutable
+    assert ejecutable.count("Set-Content") == 1
+    assert "Set-Content" in funcion
+    assert "GetTempPath()" in funcion
+    assert "finally" in funcion
+    assert "Remove-Item -LiteralPath $fichero" in funcion
+
+
+def test_f013_t14_la_regla_da_lo_de_r31_para_la_0677(tmp_path):
+    """R31 · **el caso que para el corte**: la 0677 medida, unidad a unidad.
+
+    VILLA 01, 02, 03, 05, 06 y 07 «resolveria» (la 02, con su `PARTES
+    FIRMADO`); VILLA 04 «crearia» `PARTES FIRMADOS`; VILLA 08 … 15 «crearia»
+    `VILLA NN` y su hoja; ninguna «bloquearia». La obra y `PARTES INCIDENCIAS`,
+    «resolveria».
+    """
+    resultado = _veredicto(tmp_path, arbol_0677(), _unidades_0677())
+
+    assert resultado["obra"] == {"veredicto": "resolveria", "carpeta": OBRA}
+    assert resultado["incidencias"] == {"veredicto": "resolveria", "carpeta": INCIDENCIAS}
+    assert _resumen(resultado["unidades"]) == R31_0677
+    villa_02 = resultado["unidades"][1]
+    assert villa_02["carpeta"] == f"{INC}/VILLA 02/{ALTERNATIVA}"
+
+
+def test_f013_t14_sin_csv_dice_la_obra_y_ninguna_unidad(tmp_path):
+    """Sin `-UnidadesCsv`: la obra y el tramo, y ninguna unidad (no se inventan)."""
+    resultado = _veredicto(tmp_path, arbol_0677(), None)
+
+    assert resultado["obra"]["veredicto"] == "resolveria"
+    assert resultado["unidades"] == []
+
+
+def test_f013_t14_una_obra_solo_parecida_bloquearia_todas(tmp_path):
+    """R35 · con `0677-MIRASIERRA` (parecida) y ninguna que case: bloquearia."""
+    arbol = arbol_0677()
+    arbol[""] = ("0677-MIRASIERRA", "0680 OTRA OBRA")
+
+    resultado = _veredicto(tmp_path, arbol, _unidades_0677())
+
+    assert resultado["obra"] == {
+        "veredicto": "bloquearia",
+        "motivo": "obra_parecida",
+        "candidatas": ["0677-MIRASIERRA"],
+    }
+    assert {unidad["veredicto"] for unidad in resultado["unidades"]} == {"bloquearia"}
+    assert {unidad["motivo"] for unidad in resultado["unidades"]} == {"obra_parecida"}
+
+
+def test_f013_t14_sin_ninguna_obra_crearia_con_el_nombre_de_r36(tmp_path):
+    """R36 · ni casa ni se parece ninguna: se crearia `<cod> <con.res>` y todo lo de debajo."""
+    arbol = {"": ("0680 OTRA OBRA", "ADMINISTRACION")}
+
+    resultado = _veredicto(tmp_path, arbol, _unidades_0677())
+
+    assert resultado["obra"] == {"veredicto": "crearia", "crear": [f"0677 {RES_OBRA_0677}"]}
+    assert resultado["incidencias"] == {"veredicto": "crearia", "crear": [INCIDENCIAS]}
+    assert resultado["unidades"][4]["crear"] == [
+        f"0677 {RES_OBRA_0677}",
+        INCIDENCIAS,
+        "VILLA 05",
+        FIRMADOS,
+    ]
+
+
+def test_f013_t14_dos_obras_con_el_numero_bloquearian(tmp_path):
+    """R44 · dos obras con el mismo número en el CSV (obra 1 y obra 2): bloquearia."""
+    filas = [*_unidades_0677("1"), *_unidades_0677("2")]
+
+    resultado = _veredicto(tmp_path, arbol_0677(), filas)
+
+    assert {unidad["motivo"] for unidad in resultado["unidades"]} == {"obra_numero_no_unico"}
+
+
+def test_f013_t14_lo_que_no_se_ha_listado_sale_sin_medir(tmp_path):
+    """Si la regla baja por una carpeta que el 23 no listo, no se adivina."""
+    arbol = arbol_0677()
+    del arbol[f"{INC}/VILLA 05"]
+
+    resultado = _veredicto(tmp_path, arbol, _unidades_0677())
+
+    assert resultado["unidades"][4]["veredicto"] == "sin medir"
+    assert resultado["unidades"][0]["veredicto"] == "resolveria"
+
+
+def test_f013_t14_la_clasificacion_de_cada_nivel_es_la_del_dominio(tmp_path):
+    """Los dos modos con los que el 23 recorre el arbol: obra y tramos."""
+    obra = _ejecutar_regla(
+        tmp_path,
+        {"modo": "obra", "codigo": "0677", "carpetas": [*arbol_0677()[""], "0677-ANEXO"]},
+    )
+    hojas = _ejecutar_regla(
+        tmp_path,
+        {
+            "modo": "tramos",
+            "buscado": FIRMADOS,
+            "alternativa": ALTERNATIVA,
+            "grupos": [
+                {"ruta": f"{INC}/VILLA 02", "nombre": "VILLA 02", "carpetas": [ALTERNATIVA]},
+                {"ruta": f"{INC}/VILLA 04", "nombre": "VILLA 04", "carpetas": []},
+                {"ruta": f"{INC}/VILLA X", "nombre": "VILLA CINCO", "carpetas": ["FIRMADOS"]},
+            ],
+        },
+    )
+
+    assert obra == {"casan": [OBRA], "parecidas": ["0677-ANEXO"]}
+    assert hojas["grupos"] == [
+        {"ruta": f"{INC}/VILLA 02", "casan": [ALTERNATIVA], "parecidas": [], "cifras": ["2"]},
+        {"ruta": f"{INC}/VILLA 04", "casan": [], "parecidas": [], "cifras": ["4"]},
+        {"ruta": f"{INC}/VILLA X", "casan": [], "parecidas": ["FIRMADOS"], "cifras": []},
+    ]
+
+
+def test_f013_t14_el_resumen_cuenta_lo_que_resuelve_la_regla():
+    """El defecto del resumen (`progress/explore_F-013.md`), corregido.
+
+    El resumen de T1 contaba solo bajo una obra que **casara** con la regla
+    provisional (`Marca -ne "parecida"`) y salio con ceros. Ahora cuenta bajo
+    la que resuelve la regla del dominio y, si no hay, lo dice en su linea;
+    con `-CarpetaObra`, cuenta la forzada y lo rotula.
+    """
+    ejecutable = _sin_comentarios(_texto(SCRIPT_DESTINO))
+
+    assert 'Marca -ne "parecida"' not in ejecutable
+    assert "resumen sin obra resuelta: se muestran las parecidas" in ejecutable
+    assert "resumen de la carpeta forzada con -CarpetaObra" in ejecutable
+
+
+def test_f013_t14_los_parametros_del_csv():
+    """`-SalidaCsv` en el 24 y `-UnidadesCsv` en el 23 (`design.md` §7.1)."""
+    assert "[string]$SalidaCsv" in _sin_comentarios(_texto(SCRIPT_UBICACION))
+    assert "[string]$UnidadesCsv" in _sin_comentarios(_texto(SCRIPT_DESTINO))
+
+
+def test_f013_t14_el_csv_del_24_no_lleva_obride_y_es_el_que_lee_el_23():
+    """Las columnas del CSV, escritas una vez en cada lado y **iguales**.
+
+    Sin `obride` ni ningun `ide` del ERP: la obra va como el ordinal que el 24
+    ya imprime («obra 1»). Y lo que se exporta pasa por `Select-Object` con esa
+    lista: ninguna otra propiedad puede colarse en el fichero.
+    """
+    columnas = _columnas_del_24()
+    ejecutable = _sin_comentarios(_texto(SCRIPT_UBICACION))
+
+    assert columnas == _columnas_de_la_regla()
+    assert columnas == ("obra", "obra_cod", "obra_res", "unidad_cod", "unidad_res", "reclamaciones")
+    assert not [columna for columna in columnas if "ide" in columna]
+    assert "Select-Object -Property $ColumnasCsv | Export-Csv" in ejecutable
+    assert ejecutable.count("Export-Csv") == 1
+
+
+def test_f013_t14_el_24_no_deja_el_csv_dentro_del_repositorio():
+    """El CSV lleva los literales de `con.res`: fuera del repositorio o nada.
+
+    La comprobacion va **antes** de la lectura de Sigrid: si la ruta no vale,
+    no se ha preguntado nada.
+    """
+    ejecutable = _sin_comentarios(_texto(SCRIPT_UBICACION))
+
+    assert "fuera del repositorio" in ejecutable
+    assert ejecutable.index("fuera del repositorio") < ejecutable.index("Invoke-SigridLectura -")

@@ -115,7 +115,7 @@
 
 ## Bloque 2 · Puertos, resolutor y paso
 
-- [ ] **T8**: `domain/ports/biblioteca.py` (**exactamente** `listar_carpetas`
+- [x] **T8**: `domain/ports/biblioteca.py` (**exactamente** `listar_carpetas`
   y `crear_subcarpeta`, R48), `domain/ports/ubicacion.py` (`leer_ubicacion` y
   `leer_unidades_del_numero`, `design.md` §3.3) y `tests/utiles_destino.py`
   (`ExploradorFalso` con registro de llamadas y capaz de tener ficheros

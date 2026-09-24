@@ -608,9 +608,11 @@ def test_f013_r18_la_traza_error_que_no_se_aplica_se_registra_y_sube_el_409(mont
     """F-033 R19 en este camino: `SIN_CAMBIOS` en la traza `error` no es fallo."""
     m = montar(8, crear_carpetas=False, resultados={1: ResultadoGuardado.SIN_CAMBIOS})
 
-    with caplog.at_level(logging.WARNING, logger=LOGGER_DEL_PASO):
-        with pytest.raises(DestinoNoResuelto):
-            m.archivar()
+    with (
+        caplog.at_level(logging.WARNING, logger=LOGGER_DEL_PASO),
+        pytest.raises(DestinoNoResuelto),
+    ):
+        m.archivar()
 
     assert any("no se aplicó" in r.getMessage() for r in caplog.records)
 
@@ -1002,9 +1004,11 @@ def test_f013_r47_la_linea_es_un_aviso_del_logger_del_paso(montar, caplog):
     """R47 · nivel de aviso, en el logger del paso, con el `hash` del parte."""
     m = montar(8, archivo=_pendiente("Postventa/0677", _nombre(8)), crear_carpetas=False)
 
-    with caplog.at_level(logging.INFO, logger=LOGGER_DEL_PASO):
-        with pytest.raises(DestinoNoResuelto):
-            m.archivar()
+    with (
+        caplog.at_level(logging.INFO, logger=LOGGER_DEL_PASO),
+        pytest.raises(DestinoNoResuelto),
+    ):
+        m.archivar()
 
     (registro,) = [r for r in caplog.records if "Postventa/0677" in r.getMessage()]
     assert registro.levelno == logging.WARNING

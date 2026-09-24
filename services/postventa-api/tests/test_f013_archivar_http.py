@@ -39,7 +39,6 @@ import logging
 from collections.abc import Sequence
 
 import azure.functions as func
-import interface_adapters.api.archivar as archivar
 import pytest
 from config.settings import obtener_ajustes
 from domain.models.destino_posventa import UbicacionReclamacion, UnidadDeObra
@@ -48,6 +47,7 @@ from domain.models.errores import (
     UbicacionNoDisponible,
 )
 from domain.models.estado import SituacionParte
+from interface_adapters.api import archivar
 
 from tests.utiles_destino import (
     ALTERNATIVA,
@@ -139,12 +139,12 @@ def _peticion(campos: Sequence[tuple[str, str]]) -> func.HttpRequest:
         f"--{_FRONTERA}\r\n"
         'Content-Disposition: form-data; name="fichero"; filename="parte.pdf"\r\n'
         "Content-Type: application/pdf\r\n\r\n"
-    ).encode("utf-8") + PDF + b"\r\n"
+    ).encode() + PDF + b"\r\n"
     for nombre, valor in campos:
         cuerpo += (
             f"--{_FRONTERA}\r\n"
             f'Content-Disposition: form-data; name="{nombre}"\r\n\r\n{valor}\r\n'
-        ).encode("utf-8")
+        ).encode()
     cuerpo += f"--{_FRONTERA}--\r\n".encode()
     return func.HttpRequest(
         method="POST",

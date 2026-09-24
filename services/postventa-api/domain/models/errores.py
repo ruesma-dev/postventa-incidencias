@@ -1,7 +1,7 @@
 # services/postventa-api/domain/models/errores.py
 """Errores de dominio: de la ingesta de remesas (F-002), de la extracción
 (F-003), de la validación (F-004), de la persistencia (F-005), del archivo
-(F-006) y del cierre en Sigrid (F-009).
+(F-006), del cierre en Sigrid (F-009) y del destino en Posventa (F-013).
 
 Los de la ingesta son los casos en los que algo de la entrada **no se puede
 trocear**. Los dos que dejan la remesa entera sin resultado tienen su código
@@ -82,11 +82,20 @@ mirar su cuerpo, ni `CodigosNoCoinciden`, que se arregla guardando una
 corrección que aquí no existe: se arregla **tecleando el código** en el parte
 y guardándolo.
 
+El del **destino en la biblioteca de Posventa** (F-013) es uno solo,
+`DestinoNoResuelto` (→ 409), y cae del mismo lado: no ha fallado nadie, **falta
+una decisión** —una carpeta ambigua, una parecida que impide crear, una
+reclamación que Sigrid no sitúa— y la resuelve una persona. Lleva el motivo
+**como código** (`MotivoDestino`, R18) y las carpetas candidatas por su nombre,
+nunca un identificador.
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
 
 from __future__ import annotations
+
+from collections.abc import Iterable
 
 
 class ErrorDeIngesta(Exception):
@@ -564,6 +573,30 @@ class ConfiguracionSharePointIncompleta(Exception):
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+class DestinoNoResuelto(Exception):
+    """El destino del parte en la biblioteca de Posventa no se resuelve (F-013).
+
+    No se sube nada ni se crea ninguna carpeta (R18): una carpeta del camino es
+    ambigua, solo hay parecidas, el nombre que habría que crear es imposible o
+    Sigrid no sitúa la reclamación. El borde lo traduce a **409** (R19): no es
+    un fallo de nadie, falta una decisión de una persona.
+
+    - `motivo`: el **código** del motivo (`MotivoDestino`: `obra_ambigua`,
+      `unidad_parecida`…), que va tal cual a la traza `error` y a la respuesta.
+    - `detalle`: el texto legible, que dice qué tiene que hacer una persona.
+    - `candidatas`: los **nombres** de las carpetas implicadas; nunca un
+      identificador de biblioteca, de sitio ni del ERP (R23).
+    """
+
+    def __init__(
+        self, motivo: str, detalle: str, candidatas: Iterable[str] = ()
+    ) -> None:
+        super().__init__(f"{motivo}: {detalle}")
+        self.motivo = motivo
+        self.detalle = detalle
+        self.candidatas: tuple[str, ...] = tuple(candidatas)
 
 
 class ParteNoArchivado(Exception):

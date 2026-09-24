@@ -104,7 +104,7 @@
   R39 y R46 (lo creado casa consigo mismo; un `con.res` que no acaba en su
   villa no casaría) y `unir_ruta` con base vacía (R17). | Verificación:
   el fichero falla por `ImportError`/aserción, traza en el commit
-- [ ] **T7**: `domain/models/destino_posventa.py` (lo de `design.md` §2.1 más
+- [x] **T7**: `domain/models/destino_posventa.py` (lo de `design.md` §2.1 más
   `UnidadDeObra`, `numero_de_obra`, `nombre_derivado_de_unidad`,
   `obras_del_mismo_numero` y `unidades_que_casan`) y `DestinoNoResuelto` en
   `domain/models/errores.py`. **Sin** nombrar ninguno de los nombres vigilados

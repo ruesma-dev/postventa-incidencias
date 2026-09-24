@@ -184,7 +184,7 @@
 
 ## Bloque 3 · Adaptadores
 
-- [ ] **T11**: `listar_carpetas` y `crear_subcarpeta` en
+- [x] **T11**: `listar_carpetas` y `crear_subcarpeta` en
   `infrastructure/sharepoint/graph.py` +
   `tests/test_f013_adaptador_graph_listado.py` (paginación con `nextLink`,
   filtro de carpetas, `404`→`None`, padre ausente → `ArchivoFallido` sin

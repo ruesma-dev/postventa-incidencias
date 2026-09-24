@@ -37,12 +37,19 @@ import pytest
 from domain.models.errores import ArchivoFallido
 from domain.ports.archivo import ArchivoPort
 from domain.ports.biblioteca import ExploradorBibliotecaPort
-
 from infrastructure.sharepoint import fabrica as fabrica_sharepoint
 from infrastructure.sharepoint import graph
 from infrastructure.sharepoint.graph import GRAPH
+
 from tests.test_f006_adaptador_graph import DRIVE, SECRETO, TENANT, adaptador
-from tests.utiles_sharepoint import conflicto, creado, fallo, no_encontrado, ok
+from tests.utiles_sharepoint import (
+    RespuestaFalsa,
+    conflicto,
+    creado,
+    fallo,
+    no_encontrado,
+    ok,
+)
 
 #: Lo que se pide al listar: el nombre y la faceta `folder`, 200 por página.
 CONSULTA = "?$select=name,folder&$top=200"
@@ -264,6 +271,33 @@ def test_f013_r12_una_pagina_sin_lista_de_elementos_es_archivo_fallido(cuerpo):
     """Una respuesta que no trae lo que el contrato promete no es «ninguna
     carpeta»: tomarla por vacía sería crear una obra que ya existe."""
     adap, _ = adaptador(ok(cuerpo))
+
+    with pytest.raises(ArchivoFallido):
+        adap.listar_carpetas(carpeta="")
+
+
+def test_f013_r12_una_pagina_que_no_es_json_es_archivo_fallido_con_motivo():
+    """La página de error de un proxy: ni un `ValueError` suelto ni «vacía»."""
+    adap, _ = adaptador(RespuestaFalsa(200, None))
+
+    with pytest.raises(ArchivoFallido) as caido:
+        adap.listar_carpetas(carpeta="")
+
+    assert "no es JSON" in caido.value.motivo
+
+
+def test_f013_r12_una_pagina_que_no_es_un_objeto_es_archivo_fallido():
+    adap, _ = adaptador(RespuestaFalsa(200, [_carpeta(OBRA)]))  # type: ignore[arg-type]
+
+    with pytest.raises(ArchivoFallido) as caido:
+        adap.listar_carpetas(carpeta="")
+
+    assert "forma esperada" in caido.value.motivo
+
+
+def test_f013_r12_un_next_link_vacio_no_es_el_final_del_listado():
+    """Graph señala el final **sin** `nextLink`; uno vacío no es un final."""
+    adap, _ = adaptador(ok(_pagina(_carpeta("A"), siguiente="")))
 
     with pytest.raises(ArchivoFallido):
         adap.listar_carpetas(carpeta="")

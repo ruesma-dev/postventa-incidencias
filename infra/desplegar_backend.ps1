@@ -109,6 +109,17 @@
     reintenta y libera la plaza de la cola- y no un corte opaco de la
     plataforma con una llamada zombi por detras gastando cuota.
 
+    EL DESTINO DEL ARCHIVO (F-013, 2026-09-24). `SHAREPOINT_ESTRUCTURA`,
+    `SHAREPOINT_CARPETA_BASE` y `SHAREPOINT_CREAR_CARPETAS` se escriben en cada
+    despliegue desde `$EstructuraArchivo`, `$CarpetaBaseArchivo` y
+    `$CrearCarpetasArchivo`, declaradas en `00_vars_postventa.ps1`. Hasta el
+    corte valen `por_obra`, `Postventa` y `true`: lo mismo que se archivaba
+    antes de F-013. El corte (docs/DESPLIEGUE.md, seccion 9) cambia las dos
+    primeras a `posventa` y vacia, y se despliega SIN `-VentanasCerradas`: la
+    ventana de archivo abierta es parte de lo decidido ("crear desde el
+    principio"). Este script no sabe de estrategias: solo escribe lo que diga
+    el fichero de variables, y lo ensena antes de pedir la confirmacion.
+
 .PARAMETER WhatIf
     Solo lecturas. Dice que crearia o reutilizaria y NO hace ninguna llamada
     de escritura.
@@ -333,6 +344,7 @@ Write-Host ""
 Write-Host ("  Tiempos de espera    : IA {0}s, Graph {1}s (el proxy corta a los {2}s)" -f $TIEMPO_IA_S, $TIEMPO_GRAPH_S, $PostventaPresupuestoProxyS)
 Write-Host ("  Ventana de archivo (/api/archivar, SharePoint)            : se despliega {0}" -f (Estado-Ventana $ventanaArchivo))
 Write-Host ("  Ventana del ERP (/api/adjuntar y /api/cerrar, Sigrid PRO) : se despliega {0}" -f (Estado-Ventana $ventanaCierre))
+Write-Host ("  Destino del archivo  : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $CarpetaBaseArchivo, $CrearCarpetasArchivo)
 if (-not $VentanasCerradas) {
     Write-Host "  Con las ventanas abiertas, esta version escribira en SharePoint y en el" -ForegroundColor Yellow
     Write-Host "  ERP de produccion en cuanto un usuario lo confirme. Si no debe, aborta" -ForegroundColor Yellow
@@ -494,7 +506,17 @@ $ajustes = @(
     # la devuelve al valor de $ventanaArchivo, por si alguien la dejo de otra
     # forma. El defecto del CODIGO (config/settings.py) sigue en False.
     "ARCHIVO_HABILITADO=$ventanaArchivo",
-    "SHAREPOINT_CARPETA_BASE=Postventa",
+    # EL DESTINO DEL ARCHIVO (F-013). Los tres valores salen de
+    # 00_vars_postventa.ps1 y se fijan en CADA despliegue, por lo mismo que
+    # las ventanas: una App Setting sobrevive a los despliegues. Hasta el
+    # 2026-09-24 aqui habia una linea fija con la carpeta `Postventa`; sigue
+    # valiendo eso (`por_obra` / `Postventa`) HASTA EL CORTE, que es cambiar
+    # las variables de 00_vars_postventa.ps1 y redesplegar (docs/DESPLIEGUE.md,
+    # seccion 9). SHAREPOINT_CREAR_CARPETAS es el freno de la creacion de
+    # carpetas en `posventa` sin tocar la estructura.
+    "SHAREPOINT_ESTRUCTURA=$EstructuraArchivo",
+    "SHAREPOINT_CARPETA_BASE=$CarpetaBaseArchivo",
+    "SHAREPOINT_CREAR_CARPETAS=$CrearCarpetasArchivo",
     "GRAPH_TIMEOUT_S=$TIEMPO_GRAPH_S",
     "GRAPH_REINTENTOS=3",
     # LA VENTANA DEL ERP, Y LA MAS SERIA: detras no hay una biblioteca de
@@ -604,6 +626,7 @@ Write-Host ("  Function App          : {0}" -f $PostventaFunction)
 Write-Host ("  Identidad             : {0} (con '{1}' sobre el vault)" -f $PostventaIdentidad, $ROL_KEYVAULT)
 Write-Host ("  App Settings          : {0}, de las que {1} son referencias" -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)
 Write-Host ("  Ventana de escritura  : archivo {0}; GRAFICO y cierre en el ERP {1}" -f (Estado-Ventana $ventanaArchivo), (Estado-Ventana $ventanaCierre))
+Write-Host ("  Destino del archivo   : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $CarpetaBaseArchivo, $CrearCarpetasArchivo)
 Write-Host ""
 Write-Host "Ahora, a mano (T14), en este orden:"
 Write-Host "  1. GET /api/health responde 200."

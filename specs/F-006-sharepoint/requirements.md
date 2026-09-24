@@ -60,6 +60,15 @@ Fuera de alcance, explícitamente:
   (`domain/models/persistencia.py`): qué se subió, dónde, con qué estado.
 - **Destino de dev**: biblioteca propia dentro del **sitio de IT**, el mismo
   donde vive la de albaranes. Es **configuración**, no una constante.
+
+  > **Enmienda del 2026-09-24 (F-013).** Este término decía, y dice, que el
+  > destino es una «biblioteca propia dentro del **sitio de IT**, el mismo
+  > donde vive la de albaranes». Deja de ser el destino el día del corte de
+  > F-013 (`docs/DESPLIEGUE.md` §9): el humano decidió el 2026-09-18 que el
+  > archivo vaya al sitio de **Posventa**, biblioteca «Documentos
+  > compartidos» (H1 de `specs/F-013-archivo-posventa/requirements.md`). Lo
+  > que se archivó hasta entonces —133 partes— se queda en IT, sin migrar ni
+  > borrar.
 - **Doble de prueba**: objeto de test que cumple `ArchivoPort` o el cliente
   HTTP del adaptador. **Nunca** hay red y **nunca** hay subida real.
 
@@ -195,6 +204,22 @@ El código de obra entra en la ruta con sus ceros (R4).
 **R11.** CUANDO la carpeta del código de obra no existe en la biblioteca, el
 sistema debe crearla antes de subir el fichero.
 
+> **Enmienda del 2026-09-24 (F-013) a R10 y R11.** R10 compone la carpeta
+> como «`<carpeta base>/<código de obra>`, con la carpeta base leída de
+> configuración», y R11 dice: «CUANDO la carpeta del código de obra no existe
+> en la biblioteca, el sistema debe crearla antes de subir el fichero.» Los
+> dos siguen valiendo, sin cambiar una letra, con
+> `SHAREPOINT_ESTRUCTURA=por_obra`, que es el valor por defecto y lo
+> desplegado hasta el corte. Con `posventa` no valen: el humano decidió el
+> 2026-09-18 archivar con **la estructura que ya usa Posventa** (H2 de
+> F-013), `<obra>/PARTES INCIDENCIAS/<unidad>/PARTES FIRMADOS`, cuyas
+> carpetas crean ellos a mano. Allí la carpeta **se encuentra** listando la
+> biblioteca (R10 y R11 de F-013), y solo se crea un nivel cuando no hay
+> ninguna carpeta que case **ni ninguna parecida** (R34, R35 de F-013), de
+> uno en uno y nunca con `asegurar_carpeta` (R15 de F-013). Además, con
+> `por_obra` una base vacía pasa a ser un error de configuración (R17 de
+> F-013).
+
 **R12.** MIENTRAS la carpeta ya exista, el sistema debe reutilizarla: no crea
 una segunda, no falla y no renombra la que hay. Pedir la carpeta dos veces
 seguidas deja **una** carpeta.
@@ -298,6 +323,18 @@ intento y duración.
 **R27.** El sitio, la biblioteca y la carpeta base del destino deben ser
 **configuración** leída del entorno. Cambiarlos no debe tocar el dominio, la
 aplicación ni el pipeline: eso es lo que hace posible F-013 sin rehacer nada.
+
+> **Enmienda del 2026-09-24 (F-013) a R27.** R27 termina con «eso es lo que
+> hace posible F-013 sin rehacer nada». Para **el destino** fue cierto: el
+> sitio y la biblioteca de Posventa se cambian en configuración. Para **la
+> estructura**, no: el humano decidió el 2026-09-18 la estructura que ya usa
+> Posventa (H2 de F-013), y encontrar sus carpetas exige listar la
+> biblioteca, leer la obra y la unidad en Sigrid y un resolutor nuevo
+> (`specs/F-013-archivo-posventa/requirements.md`, «Por qué esta feature no
+> es "cambiar tres variables"»). Lo que R27 protegía sigue en pie: cambiar de
+> estrategia es configuración (`SHAREPOINT_ESTRUCTURA`), y no toca el dominio,
+> la aplicación ni el pipeline de F-006, que siguen haciendo exactamente lo de
+> R10–R12 en `por_obra`.
 
 **R28.** SI falta una variable obligatoria del destino o de la credencial,
 ENTONCES el sistema debe levantar `ConfiguracionSharePointIncompleta`

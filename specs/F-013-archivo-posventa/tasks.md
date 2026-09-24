@@ -264,7 +264,7 @@
   > F-006. Se resolvió como T10 bis: el fichero se nombra como única excepción
   > y un control nuevo exige que su diff **solo añada** lo de R30. Informe:
   > `progress/impl_F-013.md`, «Bloque 6».
-- [ ] **T17**: documentación con **recuadros fechados** que citan literal la
+- [x] **T17**: documentación con **recuadros fechados** que citan literal la
   premisa (R26, R29): `docs/INTEGRACION.md` §3 (sitio, estructura, «sin
   listados de carpeta», tabla «qué se rompe» con carpetas renombradas y `423`,
   dependencia de `sigrid-api` al archivar —**dos** lecturas por parte—,
@@ -292,6 +292,12 @@
   Y `tests/test_f013_documentacion.py`. | Verificación:
   `pytest tests/test_f013_documentacion.py` y `pytest -k "f010 and infra"`
   en verde
+  > **Hecha el 2026-09-24.** Además de lo de arriba, a petición del líder:
+  > `.env.example` con las cinco variables de T5 (pendiente del bloque 1) y
+  > la tabla «qué se rompe» con la decisión 2 del bloque 5 (con `posventa` y
+  > `sigrid-api` sin configurar, incluso lo ya archivado responde 503: se
+  > deja así). El runbook del corte es `docs/DESPLIEGUE.md` §9. Informe:
+  > `progress/impl_F-013.md`, «Bloque 6».
 - [ ] **T18**: dejar escrito para el líder, en `progress/impl_F-013.md`, el
   texto que hay que añadir a la ficha de **F-018** en `harness/features.json`:
   al recortar a `Sites.Selected` hay que conceder el **sitio de Posventa**

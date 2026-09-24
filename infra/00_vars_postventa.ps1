@@ -165,6 +165,33 @@ $PostventaAppSettingsSecretas = [ordered]@{
     "SIGRID_API_KEY"       = "sigrid-api-key"
 }
 
+# --- El destino del archivo (F-013) -----------------------------------------
+# A DONDE archiva `/api/archivar`. Las tres las escribe `desplegar_backend.ps1`
+# como App Settings en CADA despliegue (SHAREPOINT_ESTRUCTURA,
+# SHAREPOINT_CARPETA_BASE y SHAREPOINT_CREAR_CARPETAS). Son NOMBRES y banderas,
+# no identificadores: el sitio y la biblioteca van en el Key Vault
+# (`sharepoint-site-id`, `sharepoint-drive-id`), nunca aqui.
+#
+# HASTA EL CORTE, lo de siempre: `por_obra` bajo la carpeta `Postventa` de la
+# biblioteca de dev del sitio de IT (F-006). EL DIA DEL CORTE (runbook en
+# docs/DESPLIEGUE.md, seccion 9) se cambian a
+#     $EstructuraArchivo = "posventa"
+#     $CarpetaBaseArchivo = ""       (la raiz de la biblioteca, D-1)
+# despues de cargar en el Key Vault los IDs de la biblioteca de Posventa.
+#
+# $CrearCarpetasArchivo va en "true" desde ya: el humano decidio el 2026-09-24
+# (T4-3 de F-013) "crear desde el principio". Solo actua con `posventa`: en
+# `por_obra` la carpeta de la obra se asegura como siempre. Es el FRENO de la
+# creacion sin tocar la estructura: "false" y redesplegar, y el sistema sigue
+# archivando donde la ruta existe y responde 409 `sin_carpeta_<nivel>` donde
+# falta.
+#
+# La forma alternativa de la hoja (SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA) NO
+# se escribe: vale su defecto del codigo, "PARTES FIRMADO".
+$EstructuraArchivo = "por_obra"
+$CarpetaBaseArchivo = "Postventa"
+$CrearCarpetasArchivo = "true"
+
 # --- El fichero local, si existe --------------------------------------------
 # Va AL FINAL, para que pueda pisar cualquier cosa de arriba. Si define un
 # sufijo, los cuatro nombres globales se recomponen con el.

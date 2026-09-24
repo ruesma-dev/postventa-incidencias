@@ -570,6 +570,23 @@ la ruta final `Postventa/0677/0677 - RS26.08 - 0123 PARTE FIRMADO.pdf`
 gracias a esto, cambiar tres variables y su documento: su `acceptance` («la
 ruta destino es configuración, no código») queda satisfecho ya desde aquí.
 
+> **Enmienda del 2026-09-24 (F-013) · «F-013 sale casi gratis» no salió.**
+> Este párrafo dice que «F-013 —mudar el archivo a la biblioteca de
+> Posventa— es, gracias a esto, cambiar tres variables y su documento». Era
+> cierto **para el destino** y dejó de serlo **para la estructura**: el
+> humano decidió el 2026-09-18 archivar en el sitio de Posventa con **la
+> estructura que ya usa Posventa**, `<cod> <OBRA> / PARTES INCIDENCIAS /
+> <UNIDAD> / PARTES FIRMADOS` (H1, H2), con permiso para crear toda la ruta
+> que falte (D-4). Esas carpetas las crea Posventa a mano, y ni Sigrid ni el
+> papel dan su nombre: la carpeta de la obra piloto resultó ser
+> `677  MIRASIERRA` (medido el 2026-09-24). Así que F-013 añade un puerto
+> para listar y crear carpetas, una lectura nueva de Sigrid, un resolutor, un
+> 409 «destino no resuelto» y la estrategia `SHAREPOINT_ESTRUCTURA`. Lo que
+> este diseño dejó bien puesto se conserva: el destino sigue siendo
+> configuración, el adaptador sirve para las dos estrategias y, con
+> `por_obra`, todo lo de F-006 sigue igual. El detalle, en
+> `specs/F-013-archivo-posventa/`.
+
 ---
 
 ## 8 · El adaptador y el borde

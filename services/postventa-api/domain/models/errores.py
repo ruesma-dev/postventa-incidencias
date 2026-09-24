@@ -599,6 +599,30 @@ class DestinoNoResuelto(Exception):
         self.candidatas: tuple[str, ...] = tuple(candidatas)
 
 
+class UbicacionNoDisponible(Exception):
+    """Sigrid no ha dicho dónde está la reclamación (F-013, R41, D-7).
+
+    Con la estrategia `posventa`, archivar depende de `sigrid-api`: sin la obra
+    y la unidad de la reclamación **no se sube ni se crea nada**, y no se cae
+    al campo `unidad` del papel. Reintentos agotados, un error no transitorio,
+    una respuesta que no trae lo que el contrato promete, o una lista cortada
+    por debajo de lo pedido.
+
+    El borde lo traduce a **503**: es un sistema del que dependemos que no
+    responde ahora, no un fallo de quien manda la petición; se reintenta más
+    tarde. No es `CierreFallido` (el cierre no se ha intentado) ni un 409 (no
+    falta ninguna decisión de una persona).
+
+    El `motivo` dice **qué** pasó y **nunca** el cuerpo de la respuesta, la
+    URL de la pasarela, la clave de función, la referencia de la obra en el ERP
+    ni el nombre de la unidad (R23).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
 class ParteNoArchivado(Exception):
     """Se ha pedido cerrar un parte que no consta archivado (F-009, R17).
 

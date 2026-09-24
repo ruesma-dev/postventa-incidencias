@@ -191,7 +191,7 @@
   crear intermedias, `409` → éxito, nada del `nextLink` en los logs). | Verificación: el
   fichero, `test_f006_adaptador_graph.py` y `test_f032_alcance_cerrado.py` en
   verde (`ArchivoPort` sigue con sus tres métodos)
-- [ ] **T12**: `infrastructure/sigrid/consultas_ubicacion.py` (`SQL_UBICACION`
+- [x] **T12**: `infrastructure/sigrid/consultas_ubicacion.py` (`SQL_UBICACION`
   con `o.res`, y `SQL_UNIDADES_DEL_NUMERO` / `SQL_UNIDADES_DEL_CODIGO` de
   `design.md` §6.2 enmendado), `infrastructure/sigrid/ubicacion.py` (las dos
   lecturas; `obra_ref` en texto y fuera de todo log) y `construir_ubicaciones`

@@ -217,6 +217,9 @@ class Ajustes(BaseSettings):
     # biblioteca, el tenant y la aplicación viajan por entorno. Es lo que hace
     # que F-013 —mudar el archivo a la biblioteca de Posventa— sea cambiar
     # tres variables y su documento, y no reescribir el adaptador.
+    # (Precisado el 2026-09-24 por F-013: es cierto para el **destino**, no
+    # para la **estructura** de Posventa, que necesita el bloque de F-013 de
+    # más abajo.)
     #
     # Los `str | None` son **opcionales en el modelo y obligatorios en la
     # fábrica**, exactamente como `GEMINI_API_KEY` (F-003) y `PG_HOST`
@@ -258,8 +261,79 @@ class Ajustes(BaseSettings):
         default="Postventa",
         validation_alias="SHAREPOINT_CARPETA_BASE",
         description=(
-            "Carpeta raíz dentro de la biblioteca. Debajo de ella cuelga una "
-            "carpeta por código de obra."
+            "Carpeta raíz dentro de la biblioteca. En `por_obra` (F-006), "
+            "debajo cuelga una carpeta por código de obra y **no puede estar "
+            "vacía**: dejaría esas carpetas sueltas en la raíz (F-013 R17, lo "
+            "rechaza la fábrica). En `posventa` (F-013), vacía = la raíz de la "
+            "biblioteca, que es donde Posventa tiene sus carpetas de obra (D-1)."
+        ),
+    )
+
+    # --- La estructura de Posventa (F-013) ------------------------------
+    # Cómo se compone la carpeta del parte. Con `por_obra` —el valor por
+    # omisión— todo sigue exactamente como en F-006 (R2). Con `posventa`, la
+    # carpeta se **resuelve** contra las que ya existen en la biblioteca de
+    # Posventa, `<obra>/<INCIDENCIAS>/<unidad>/<FIRMADOS>`, y solo se crea lo
+    # que falta cuando no hay ninguna ni parecida (`design.md` §4.5).
+    #
+    # Ninguna es un secreto. La estrategia se guarda como texto a propósito:
+    # si fuera un tipo cerrado aquí, un valor mal escrito tumbaría `/health`
+    # al leer los ajustes; quien la valida, nombrando los valores admitidos,
+    # es `construir_archivador` (R3), igual que el resto de lo de SharePoint.
+    #
+    # **No hay campo para el nombre de la unidad**: `SHAREPOINT_NOMBRE_UNIDAD`
+    # se retiró el 2026-09-24 (T4-1). La unidad se crea como `VILLA NN`
+    # derivado del `con.cod` con una regla fija (R37), y una regla fija no
+    # tiene nada que elegir por configuración.
+
+    sharepoint_estructura: str = Field(
+        default="por_obra",
+        validation_alias="SHAREPOINT_ESTRUCTURA",
+        description=(
+            "Estrategia de destino: `por_obra` (F-006, `<base>/<cod obra>`) o "
+            "`posventa` (F-013, la estructura de Posventa). Cualquier otro "
+            "valor para la fábrica del archivador (R3)."
+        ),
+    )
+    sharepoint_carpeta_incidencias: str = Field(
+        default="PARTES INCIDENCIAS",
+        validation_alias="SHAREPOINT_CARPETA_INCIDENCIAS",
+        description=(
+            "Literal del tramo fijo que cuelga de la carpeta de obra y del que "
+            "cuelgan las unidades (R1). Se casa sin mayúsculas ni tildes, y si "
+            "hay que crearlo se crea con este literal."
+        ),
+    )
+    sharepoint_carpeta_firmados: str = Field(
+        default="PARTES FIRMADOS",
+        validation_alias="SHAREPOINT_CARPETA_FIRMADOS",
+        description=(
+            "Literal de la hoja, la carpeta final dentro de la unidad (R1). Es "
+            "la **única** forma con la que se crea la hoja: nunca con la "
+            "alternativa (R37, R49)."
+        ),
+    )
+    sharepoint_carpeta_firmados_alternativa: str = Field(
+        default="PARTES FIRMADO",
+        validation_alias="SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA",
+        description=(
+            "La **única** otra forma que se acepta como hoja (R49, T4-6): el "
+            "literal medido en VILLA 02 de la obra piloto. Si casa, se archiva "
+            "en ella con su nombre; si en la misma unidad están las dos, el "
+            "destino es ambiguo. Vacía = ninguna alternativa."
+        ),
+    )
+    sharepoint_crear_carpetas: bool = Field(
+        default=True,
+        validation_alias="SHAREPOINT_CREAR_CARPETAS",
+        description=(
+            "Si se pueden crear los niveles que falten —obra, `INCIDENCIAS`, "
+            "unidad y hoja— cuando no hay ninguna carpeta ni parecida (D-4). "
+            "Encendido por omisión: «crear desde el principio» (T4-3). No es "
+            "la puerta de la escritura, que sigue siendo `ARCHIVO_HABILITADO`; "
+            "apagarlo convierte cada nivel que falte en un 409 "
+            "`sin_carpeta_<nivel>` y es el freno de la creación sin cambiar de "
+            "estrategia."
         ),
     )
     graph_tenant_id: str | None = Field(

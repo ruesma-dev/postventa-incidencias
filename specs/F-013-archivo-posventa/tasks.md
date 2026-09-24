@@ -78,7 +78,7 @@
 
 ## Bloque 1 · Configuración y dominio puro
 
-- [ ] **T5**: `config/settings.py` con **cinco** campos (`design.md` §2.2,
+- [x] **T5**: `config/settings.py` con **cinco** campos (`design.md` §2.2,
   enmendado): `sharepoint_estructura`, `sharepoint_carpeta_incidencias`,
   `sharepoint_carpeta_firmados`, `sharepoint_carpeta_firmados_alternativa`
   (`"PARTES FIRMADO"`) y `sharepoint_crear_carpetas` (`True`); **ninguno**

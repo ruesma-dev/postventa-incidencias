@@ -17,7 +17,9 @@ El **orden** de lo que hace importa, y es el que protege:
    `False` por defecto: el comportamiento por omisión es **no subir**.
 3. **¿Está completa la configuración?** (R28). Se nombran **todas** las
    variables que faltan de una vez —descubrirlas de una en una son tres
-   vueltas de despliegue— y **jamás** un valor.
+   vueltas de despliegue— y **jamás** un valor. Desde F-013 esta puerta
+   comprueba también la **estrategia** (`SHAREPOINT_ESTRUCTURA`, R3) y que la
+   base no esté vacía en `por_obra` (R17), y los dice junto a lo que falte.
 4. Y solo entonces se construye el adaptador, que vuelve a comprobar el
    entorno por su cuenta (`design.md` §5, puerta 1).
 
@@ -30,6 +32,7 @@ from __future__ import annotations
 import logging
 
 from config.settings import Ajustes
+from domain.models.destino_posventa import EstructuraArchivo
 from domain.models.errores import (
     ArchivoDeshabilitado,
     ConfiguracionSharePointIncompleta,
@@ -107,15 +110,55 @@ def _exigir_configuracion(ajustes: Ajustes) -> None:
     Una variable creada y dejada en blanco cuenta como ausente: es un caso
     real de despliegue, y sin este control el servicio arrancaría para fallar
     después contra Graph con un error indescifrable.
+
+    Desde F-013, en la misma pasada y en el mismo mensaje, la estrategia y la
+    base (`_problemas_de_estructura`): quien despliega no descubre los fallos
+    de configuración de uno en uno.
     """
     faltan = [
         variable
         for campo, variable in VARIABLES_OBLIGATORIAS
         if not (getattr(ajustes, campo) or "").strip()
     ]
+    problemas = []
     if faltan:
-        raise ConfiguracionSharePointIncompleta(
+        problemas.append(
             f"faltan variables para archivar en SharePoint: "
             f"{', '.join(faltan)}. Se dicen los nombres y nunca los valores: "
             f"uno de ellos es una credencial"
         )
+    problemas.extend(_problemas_de_estructura(ajustes))
+    if problemas:
+        raise ConfiguracionSharePointIncompleta("; ".join(problemas))
+
+
+def _problemas_de_estructura(ajustes: Ajustes) -> list[str]:
+    """La estrategia de destino y la base que admite (F-013 R3, R17).
+
+    - `SHAREPOINT_ESTRUCTURA` tiene que ser **exactamente** uno de los dos
+      valores. No se recortan blancos ni se pasan a minúsculas: una variable
+      mal escrita para el despliegue, no archiva con una estrategia adivinada.
+    - En `por_obra`, la base no puede quedar vacía (ni de solo blancos o
+      barras, que `carpeta_de_archivo` recortaría a nada): produciría `/0677`
+      y dejaría las carpetas por código sueltas en la raíz de la biblioteca de
+      Posventa. En `posventa`, vacía es la raíz (D-1) y se admite.
+
+    El dominio no sabe de estrategias (`design.md` §2.3): por eso la base
+    vacía se rechaza aquí y no en `nombrado.py`.
+    """
+    admitidas = tuple(estructura.value for estructura in EstructuraArchivo)
+    if ajustes.sharepoint_estructura not in admitidas:
+        return [
+            f"SHAREPOINT_ESTRUCTURA no es una estrategia de destino conocida; "
+            f"valores admitidos: {', '.join(admitidas)}"
+        ]
+    if (
+        ajustes.sharepoint_estructura == EstructuraArchivo.POR_OBRA
+        and not ajustes.sharepoint_carpeta_base.strip().strip("/").strip()
+    ):
+        return [
+            "SHAREPOINT_CARPETA_BASE no puede estar vacía con la estrategia "
+            "por_obra: las carpetas por código de obra quedarían sueltas en la "
+            "raíz de la biblioteca"
+        ]
+    return []

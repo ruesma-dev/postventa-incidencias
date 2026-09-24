@@ -280,6 +280,22 @@ def test_f013_r15_el_resolutor_no_nombra_ninguna_escritura(escritura):
     assert escritura not in _nombres_de_codigo()
 
 
+def test_f013_t9_el_destino_resuelto_no_se_puede_reescribir():
+    """Entre resolver y crear hay una traza previa y varias llamadas: si alguien
+    pudiera cambiar la carpeta o la lista de creaciones por el camino, lo que se
+    comprobó (R38, R46, R50) no protegería nada. Como `DestinoArchivo`."""
+    from dataclasses import FrozenInstanceError
+
+    _, explorador, sigrid = _dobles(13)
+    resuelto = _resolver(explorador, sigrid, n=13)
+
+    with pytest.raises(FrozenInstanceError):
+        resuelto.carpetas_por_crear = ()  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        resuelto.destino = DestinoArchivo(carpeta="OTRA", nombre_fichero=NOMBRE)  # type: ignore[misc]
+    assert isinstance(resuelto.carpetas_por_crear, tuple)
+
+
 def test_f013_r6_usa_la_misma_conversion_del_codigo_que_el_cierre():
     """R6 · `a_codigo_de_sigrid` de `cierre.py`, importada y no copiada."""
     assert destino_archivo.a_codigo_de_sigrid is cierre.a_codigo_de_sigrid

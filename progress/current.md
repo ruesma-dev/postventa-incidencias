@@ -1,6 +1,69 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 · SPEC ENMENDADA TRAS T4 · 2026-09-24 · siguiente: aprobación del humano y Bloque 1
+>
+> spec-author. Enmienda de `specs/F-013-archivo-posventa/` con la medición de
+> T2/T3 y las decisiones de la parada T4, en recuadros fechados que citan lo
+> que decía cada requisito (nada borrado). **Sin código de producción.**
+>
+> - **Casado de la obra por número** (R10, T4-4): primera palabra del nombre,
+>   solo cifras, igual como entero al número de la obra; el resto no cuenta.
+>   `677  MIRASIERRA` casa; `0677-MIRASIERRA` y `677MIRASIERRA` son parecidas;
+>   dos carpetas con el mismo número → `obra_ambigua` (R13). Códigos no
+>   numéricos: la literal de antes.
+> - **Nombres al crear** (T4-1): obra `<cod> <con.res>` literal (R36, sin
+>   cambios; Posventa puede renombrarla si sigue empezando por el número);
+>   unidad **`VILLA NN`** derivada del `con.cod` con un patrón fijo medido
+>   (`<obra>.<grupo>VILLA <n>.`, solo `VILLA`), tabla de los 15 casos en
+>   `design.md` §4.6; fuera del patrón → 409 `unidad_sin_nombre_derivable`,
+>   solo cuando hay que crear. **`SHAREPOINT_NOMBRE_UNIDAD` se retira.**
+> - **VILLA 04** (T4-2, R48): se crea `PARTES FIRMADOS`; el explorador solo
+>   tiene `listar_carpetas` y `crear_subcarpeta`. **VILLA 02** (T4-6, R49):
+>   `PARTES FIRMADO` casa como alternativa (config
+>   `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA`), una forma y ninguna más; con
+>   las dos → `firmados_ambigua`. **Villas 8–15** (T4-5): se crean.
+> - **Arranque** (T4-3): runbook reescrito (`design.md` §7.3, `tasks.md`
+>   «Después del merge»): medición en seco antes, aviso a Posventa **antes del
+>   despliegue**, `$CrearCarpetasArchivo = "true"` nueva en `00_vars`,
+>   comprobaciones con Posventa el mismo día (R33, R42 reescritas) y tres
+>   frenos. Cierra el punto 1 de `impl_F-013.md` §8.
+> - **Desfases técnicos** (`impl_F-013.md` §8, 2–8): línea citada (`:497`); el
+>   resolutor va **entre L1 y el aviso del intento anterior** (R22, R45) y
+>   recibe los códigos de `codigos_guardados(ctx)` **como dos cadenas, sin
+>   `ctx`**; tests de alcance de F-031/F-032/F-033/F-034 que hay que mantener
+>   en verde, con los nombres vigilados (`design.md` §2.3); T15 sin
+>   precondición pendiente; parámetros añadidos del 23 y **sin BOM**
+>   aceptados. Hallados además: L1 en `posventa` no puede comparar la carpeta
+>   (R45) y una traza `pendiente` se perdía ante un 409 (R47).
+> - **Hueco que enseñó la medición**: la regla amplia de tramo no habría
+>   marcado `PARTES FIRMADO` como parecida (habría creado un duplicado); se
+>   ensancha (sin `S` final, por prefijo), y las de obra y unidad miran todas
+>   las secuencias de cifras (`design.md` §4.5).
+> - **Defecto del resumen del script 23**: lo corrige T14, con ensayo local
+>   sobre el árbol medido.
+>
+> **Para que el humano valide, sin bloquear** (las tres fallan cerradas o no
+> cambian nada):
+>
+> 1. **R44** (spec-author): dos obras de Sigrid con el mismo **número** → 409
+>    `obra_numero_no_unico`. Cuesta una segunda lectura de Sigrid por parte
+>    (`design.md` §4.7, §6.2). En la 0677, una obra (T3). Hará parar obras
+>    con código repetido (922 obras, 846 códigos).
+> 2. **R50** (spec-author): una carpeta de unidad que casaría con dos unidades
+>    de la obra → 409 `unidad_carpeta_compartida` (la derivación ignora el
+>    grupo `03`). En la 0677 no para nada.
+> 3. **H-3 de F-034**: la puerta de gráfico y cierre no mira la biblioteca; la
+>    spec lo lee como coherente con «olvidar sin borrar» y no la toca (R26).
+>
+> **A verificar en el corte (riesgo 16 de `design.md` §10)**: el literal
+> `PARTES FIRMADO` no cuadra del todo con la medición (la regla provisional
+> del 23 exigía la palabra `FIRMADOS` y aun así la marcó parecida). No
+> bloquea: si el literal es otro, la regla da 409. El paso 2 del corte lo
+> comprueba (VILLA 02 tiene que decir «resolvería»).
+>
+> Ninguna pregunta abierta de la medición. `harness/features.json` sin tocar.
+
 > ## ⏸ F-013 · PARADA T4 CERRADA · 2026-09-24 · decisiones del humano con la medición delante
 >
 > Medición de T2 y T3 en `progress/explore_F-013.md` (commit `32ddd42`). La

@@ -24,6 +24,18 @@
 > crea, y cuándo se crea y cuándo no— está en §4.5, §4.6 y §5; el riesgo
 > nuevo, en §10 (11–14). §9 conserva el texto de las preguntas como se
 > hicieron.
+>
+> **Enmienda del 2026-09-24 · la medición (T2/T3) y la parada T4.** La
+> medición (`progress/explore_F-013.md`) desmintió §4.1: la carpeta de la 0677
+> es `677  MIRASIERRA`, y con la regla literal no casaba. El humano decidió en
+> T4 (§9 ter): casar la obra **por número**, crear la unidad como `VILLA NN`
+> derivado del `con.cod`, crear `PARTES FIRMADOS` en una unidad sin
+> subcarpetas, admitir `PARTES FIRMADO` como hoja, crear las villas 8–15 y
+> **arrancar creando desde el primer despliegue**, con las ventanas abiertas.
+> Además se ponen al día los desfases que dejaron F-031, F-033 y F-034, ya
+> desplegadas (`progress/impl_F-013.md` §8). Cambian §1, §2, §3.3, §4 entera,
+> §5, §6.2, §7, §8, §10 y §11; cada cambio de fondo lleva recuadro con esta
+> fecha y cita lo que decía.
 
 ## 0 · Dónde está el riesgo
 
@@ -49,6 +61,10 @@ Posventa** en segundos. Consecuencias de diseño:
 
 - no hay «prueba» contra la biblioteca real: cada subida es una entrega. La
   primera se hace con un parte autorizado por el humano (R33, paso 5 del corte en `tasks.md`);
+  **enmendado el 2026-09-24 (T4-3)**: con las ventanas abiertas por defecto y
+  «crear desde el principio», la primera la hace quien archive primero; lo
+  que se conserva es la comprobación con Posventa ese mismo día (R33, R42,
+  §7.3);
 - los tests siguen sin red (guardia de la suite) y ningún test construye un
   adaptador capaz de llegar a Graph (F-006 R19–R22, intactos);
 - se prefiere el 409 «destino no resuelto» a cualquier heurística generosa.
@@ -77,6 +93,25 @@ mutación sin supervivientes sin justificar sobre `destino_posventa.py`,
 | ¿Contiene `upv.res` datos personales? | **[NO MEDIDO]**. `upv.cliide` apunta al propietario; `res` es un resumen libre | T3 lo mira y **no se loguea** (R23) |
 | ¿Tiene versionado la biblioteca de Posventa? | **[NO MEDIDO]** (por omisión en SharePoint, sí) | T2 |
 
+> **Medido el 2026-09-24 (T2 y T3; `progress/explore_F-013.md`).** Filas que
+> sustituyen a las **[NO MEDIDO]** de arriba, que se dejan como estaban:
+>
+> | Pregunta | Respuesta medida |
+> |---|---|
+> | Biblioteca | Una sola en el sitio, «Documentos» (`…/Documentos compartidos`), la de por defecto. Token con `Mail.ReadWrite` y `Sites.ReadWrite.All` |
+> | Raíz (D-1) | 52 carpetas y 7 ficheros sueltos |
+> | Carpeta de obra de la 0677 | **`677  MIRASIERRA`**: sin el cero y con **dos** blancos; el nombre corto **no** es el `con.res`. Ninguna otra carpeta de la raíz casa ni se parece |
+> | `PARTES INCIDENCIAS` | Existe dentro y casa. Hay otras tres subcarpetas de trabajo interno y 2 ficheros sueltos |
+> | Unidades en Posventa | 7: `VILLA 01` … `VILLA 07`, **siempre dos cifras** |
+> | Hoja | `PARTES FIRMADOS` en 01, 03, 05, 06 y 07; en **VILLA 02**, `PARTES FIRMADO` (literal dado por el humano el 2026-09-24); **VILLA 04** sin subcarpetas y 142 ficheros sueltos |
+> | Obras con código 0677/677 y unidades de posventa en Sigrid | **1**, código guardado `0677` |
+> | Unidades de posventa de la 0677 | **15**: `con.cod` `0677.03VILLA N.` y `con.res` `Viviendas Bloque Villa N`, N = 1 … 15 sin cero; 1.197 reclamaciones; sin reclamaciones las 8, 9, 10, 11, 14 y 15; la 12 tiene 9 y la 13, 213 |
+> | ¿Nombres de persona en `con.res` de las unidades? | **Ninguno** |
+> | Versionado | No concluyente (el fichero mirado tiene 1 versión) |
+>
+> Y las villas 8 a 15 **no tienen carpeta en ningún otro sitio** de la
+> biblioteca (humano, 2026-09-24: «no tienen carpeta, que se creen»).
+
 **Conclusión que manda sobre el diseño**: ni Sigrid ni el papel dan el nombre
 de la carpeta; como mucho dan con qué **casarla**. La carpeta se **encuentra**,
 no se compone. **Precisado el 2026-09-18 (D-4)**: cuando no hay ninguna que
@@ -95,25 +130,32 @@ encontrar —ni parecida—, se crea, y entonces sí se compone, desde Sigrid
 | `services/postventa-api/application/pipelines/destino_archivo.py` | application | `resolver_destino_posventa` y `DestinoResuelto` (§5) |
 | `services/postventa-api/infrastructure/sigrid/consultas_ubicacion.py` | infrastructure (puro) | SQL de la ubicación y su mapeo (§6.2) |
 | `services/postventa-api/infrastructure/sigrid/ubicacion.py` | infrastructure | `AdaptadorUbicacionSigridApi` sobre `POST /api/sql/read` (§6.2) |
-| `infra/23_destino_posventa.ps1` | infra | Solo lectura: URL → sitio y biblioteca, permisos del token, y en seco la estructura de una obra (R27, R28; §7.1) |
-| `infra/24_ubicacion_sigrid.ps1` | infra | Solo lectura por `sql/read`: unidades de posventa de una obra con `con.cod`/`con.res` y número de reclamaciones (R32; §7.2) |
+| `infra/23_destino_posventa.ps1` | infra | Solo lectura: URL → sitio y biblioteca, permisos del token, y en seco la estructura de una obra (R27, R28; §7.1). **Creado en T1**; T14 lo modifica |
+| `infra/24_ubicacion_sigrid.ps1` | infra | Solo lectura por `sql/read`: unidades de posventa de una obra con `con.cod`/`con.res` y número de reclamaciones (R32; §7.2). **Creado en T1**; T14 le añade la salida para el 23 |
 | `services/postventa-api/tests/test_f013_*.py` | tests | Ver §11 |
-| `services/postventa-api/tests/utiles_destino.py` | tests | Dobles: `ExploradorFalso` (árbol de carpetas en memoria que registra cada llamada) y `UbicacionesFalsas` |
+| `services/postventa-api/tests/utiles_destino.py` | tests | Dobles: `ExploradorFalso` (árbol de carpetas en memoria que registra cada llamada) y `UbicacionesFalsas` (con las dos lecturas de §3.3) |
+
+> **Precisión del 2026-09-24.** `infra/23_destino_posventa.ps1` e
+> `infra/24_ubicacion_sigrid.ps1` **ya existen** (T1, commit `553ce39`); en
+> este feature se **modifican** en T14 (§7.1). Y `domain/models/destino_posventa.py`
+> gana, respecto a la lista de arriba, `numero_de_obra`,
+> `nombre_derivado_de_unidad`, `obras_del_mismo_numero` y
+> `unidades_que_casan` (§4.1, §4.6, §4.7).
 
 ### 2.2 A modificar
 
 | Ruta | Qué cambia |
 |---|---|
-| `services/postventa-api/config/settings.py` | Cinco campos: `sharepoint_estructura` (`SHAREPOINT_ESTRUCTURA`, `"por_obra"`), `sharepoint_carpeta_incidencias` (`"PARTES INCIDENCIAS"`), `sharepoint_carpeta_firmados` (`"PARTES FIRMADOS"`), `sharepoint_crear_carpetas` (`SHAREPOINT_CREAR_CARPETAS`, `True`, D-4) y `sharepoint_nombre_unidad` (`SHAREPOINT_NOMBRE_UNIDAD`, `codigo`/`nombre`, por omisión el que fije T4; §4.6). Descripción de `sharepoint_carpeta_base` actualizada: vacía = raíz, solo admitida en `posventa` |
+| `services/postventa-api/config/settings.py` | Cinco campos: `sharepoint_estructura` (`SHAREPOINT_ESTRUCTURA`, `"por_obra"`), `sharepoint_carpeta_incidencias` (`"PARTES INCIDENCIAS"`), `sharepoint_carpeta_firmados` (`"PARTES FIRMADOS"`), `sharepoint_carpeta_firmados_alternativa` (`SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA`, `"PARTES FIRMADO"`, vacía = ninguna; R49) y `sharepoint_crear_carpetas` (`SHAREPOINT_CREAR_CARPETAS`, `True`, D-4). Descripción de `sharepoint_carpeta_base` actualizada: vacía = raíz, solo admitida en `posventa`. **Enmendado el 2026-09-24**: decía `sharepoint_nombre_unidad` (`SHAREPOINT_NOMBRE_UNIDAD`, `codigo`/`nombre`, por omisión el que fije T4) en lugar de la alternativa; se retira por T4-1 (R1, R37) |
 | `services/postventa-api/domain/models/errores.py` | `DestinoNoResuelto(motivo: str, detalle: str, candidatas: tuple[str, ...])` |
 | `services/postventa-api/infrastructure/sharepoint/graph.py` | `listar_carpetas` y `crear_subcarpeta` en `AdaptadorSharePointGraph` (§6.1). Lo demás, intacto |
 | `services/postventa-api/infrastructure/sharepoint/fabrica.py` | Valida `SHAREPOINT_ESTRUCTURA` y la base según estrategia (R3, R17), antes del token |
 | `services/postventa-api/infrastructure/sigrid/fabrica.py` | `construir_ubicaciones(ajustes)`: entorno `dev`/`pro` y configuración de lectura de Sigrid; **sin** `CIERRE_HABILITADO` (§6.2) |
-| `services/postventa-api/application/pipelines/paso_archivo.py` | Parámetro opcional `resolver_destino`; si llega, sustituye a `componer_destino` + `asegurar_carpeta` en el orden de §5. Sin él, el paso hace **exactamente** lo de hoy (R2) |
-| `services/postventa-api/interface_adapters/api/archivar.py` | Compone según `ajustes.sharepoint_estructura`; con `posventa` construye explorador y ubicaciones y pasa el resolutor. Dos costuras de test nuevas (`explorador`, `ubicaciones`) |
+| `services/postventa-api/application/pipelines/paso_archivo.py` | Parámetro opcional `resolver_destino`; si llega, sustituye a `componer_destino` + `asegurar_carpeta` en el orden de §5. Sin él, el paso hace **exactamente** lo de hoy (R2). **Precisado el 2026-09-24**: el resolutor entra entre L1 y el aviso del intento anterior, y recibe los códigos de `codigos_guardados(ctx)` —que el paso ya calcula— como **dos cadenas**, nunca el contexto (§5) |
+| `services/postventa-api/interface_adapters/api/archivar.py` | Compone según `ajustes.sharepoint_estructura`; con `posventa` construye explorador y ubicaciones y pasa el resolutor ya configurado (`functools.partial` de `resolver_destino_posventa` con explorador, ubicaciones, base, tramos, alternativa y `crear_carpetas`). Dos costuras de test nuevas (`explorador`, `ubicaciones`). `CAMPOS_OBLIGATORIOS` **no cambia** (lo fija `test_f033_alcance_cerrado.py`) |
 | `services/postventa-api/function_app.py` | `DestinoNoResuelto` → **409** `{"error", "motivo", "candidatas"}` (R19) |
 | `services/postventa-api/tests/test_f006_repo_sin_identificadores.py` | Añade el barrido del host del tenant (R30); el patrón se construye troceado para no contenerse a sí mismo |
-| `infra/00_vars_postventa.ps1` y `infra/desplegar_backend.ps1:430` | La estructura y la base salen de variables (`$EstructuraArchivo`, `$CarpetaBaseArchivo`), con **`por_obra` / `Postventa` hasta el corte** (§7.3) |
+| `infra/00_vars_postventa.ps1` y `infra/desplegar_backend.ps1:430` | La estructura y la base salen de variables (`$EstructuraArchivo`, `$CarpetaBaseArchivo`), con **`por_obra` / `Postventa` hasta el corte** (§7.3). **Enmendado el 2026-09-24**: la línea citada ya no es la 430; `"SHAREPOINT_CARPETA_BASE=Postventa",` está hoy en la **497** (se cita por contenido, que no se mueve). Entra una tercera variable, `$CrearCarpetasArchivo` (`"true"`, T4-3), que el despliegue escribe como `SHAREPOINT_CREAR_CARPETAS` y que es el freno de la creación sin tocar la estructura (§7.3). `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA` no se escribe: vale su defecto del código |
 | `docs/INTEGRACION.md`, `docs/DESPLIEGUE.md`, `docs/ARCHITECTURE.md`, `specs/F-006-sharepoint/{requirements,design}.md` | Recuadros fechados (R29), §8 de este diseño |
 | `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md` | **Otro repositorio**. Destino, estructura, lectura nueva de Sigrid y variables. Commit propio allí (T19) |
 
@@ -137,6 +179,34 @@ encontrar —ni parecida—, se crea, y entonces sí se compone, desde Sigrid
   como está; el script nuevo es otro fichero (§7.1).
 - El front.
 - La capa L1 de F-033 y el origen de los códigos de F-031 (§8).
+
+> **Añadido el 2026-09-24 · lo que F-031, F-033 y F-034 dejaron fijado, y
+> que F-013 tiene que respetar sin tocar sus tests.** Tres controles de
+> alcance se comprueban **siempre**, en cualquier rama, y lo vigilan:
+>
+> - `application/pipelines/codigos_del_parte.py` y
+>   `application/pipelines/puerta_de_estado.py` **no se tocan** (la puerta de
+>   archivo del gráfico y del cierre sigue sin mirar la biblioteca: H-3 de
+>   F-034, `requirements.md` R26).
+> - `paso_archivo.py` **no lee `ctx.extraccion`** ni vuelve a tener `_campo`
+>   (`test_f031_alcance_cerrado.py::test_f031_r29_el_paso_de_archivo_ya_no_lee_la_extraccion`).
+> - Los nombres de las tablas `NOMBRES_NUEVOS_Y_DONDE_VIVEN` de
+>   `test_f031_alcance_cerrado.py`, `test_f033_alcance_cerrado.py` y
+>   `test_f034_alcance_cerrado.py` solo aparecen donde dicen. En concreto,
+>   **ni `destino_archivo.py` ni `destino_posventa.py`** pueden nombrar
+>   `codigos_guardados`, `CodigosDelParte`, `codigos_declarados`,
+>   `exigir_codigos_declarados`, `es_el_mismo_codigo`, `drive_id_vigente` ni
+>   `_en_otro_destino`. Por eso el resolutor recibe dos cadenas (§5) y R8
+>   compara con `normalizar_codigo` (que no está en esas tablas), no con
+>   `es_el_mismo_codigo`. Si un día hiciera falta, se amplía la tabla **en una
+>   tarea con nombre**, nunca de paso.
+> - `ArchivoPort` no gana métodos
+>   (`test_f032_alcance_cerrado.py::test_f032_r24_el_puerto_de_archivo_no_gana_borrado_ni_renombrado`):
+>   por eso el explorador es un puerto aparte (§3.2).
+> - Los controles del **diff** de F-031, F-033 y F-034 (p. ej.
+>   `test_f034_r26_de_paso_archivo_solo_cambia_la_mudanza`) se **saltan**
+>   fuera de su rama; T10 lo comprueba con `-rs` en el primer cambio de
+>   `paso_archivo.py`.
 
 ## 3 · Puertos
 
@@ -168,6 +238,12 @@ class ExploradorBibliotecaPort(Protocol):
 El adaptador de Graph implementa `ArchivoPort` **y** este puerto; la fábrica
 devuelve la misma instancia y el borde la pasa por los dos lados.
 
+**Dos métodos y ninguno más** (precisado el 2026-09-24, R48): ni listar
+ficheros, ni mover, ni renombrar, ni borrar. Un test lo fija sobre los
+nombres de los métodos, con el patrón de
+`test_f032_r24_el_puerto_de_archivo_no_gana_borrado_ni_renombrado`. Es lo que
+garantiza que los 142 partes sueltos de VILLA 04 no se tocan.
+
 ### 3.3 `UbicacionPort`
 
 ```python
@@ -184,6 +260,30 @@ class UbicacionPort(Protocol):
     def leer_ubicacion(self, *, codigo_reclamacion: str) -> tuple[UbicacionReclamacion, ...]:
         """Todas las filas: el dominio decide qué es 0, 1 o varias (R7)."""
 ```
+
+> **Añadido el 2026-09-24 · R44 y R50.** Una segunda lectura, en el mismo
+> puerto (es la misma pasarela, el mismo `sql/read` y la misma fábrica):
+>
+> ```python
+> # domain/models/destino_posventa.py
+> @dataclass(frozen=True)
+> class UnidadDeObra:
+>     obra_ref: str            # referencia OPACA de la obra (upv.obride); solo para contar obras (R44)
+>     obra_codigo: str | None
+>     unidad_codigo: str | None
+>     unidad_nombre: str | None
+>
+> # domain/ports/ubicacion.py
+>     def leer_unidades_del_numero(self, *, codigo_obra: str) -> tuple[UnidadDeObra, ...]:
+>         """Las unidades de posventa de las obras cuyo código tiene el número de
+>         `codigo_obra` (o el mismo código, si no es numérico). El SQL
+>         preselecciona; el dominio decide qué fila es de la misma obra (§4.7)."""
+> ```
+>
+> `obra_ref` es un identificador del ERP y se trata como los de SharePoint
+> (R23): no se loguea, no se devuelve, no se persiste y no aparece en ningún
+> mensaje ni candidata. Sirve **solo** para contar obras distintas: dos obras
+> con el mismo código literal (`0677` y `0677`) no se distinguen de otra forma.
 
 Puerto nuevo y no un método en `ErpPort` por lo mismo que F-012 hizo
 `GraficoPort`: `ErpPort` documenta «tres métodos y ni uno más», su doble y sus
@@ -209,6 +309,48 @@ son **parecidas** (§4.5) y bloquean la creación → 409 `obra_parecida`. T2 lo
 mide antes de encender nada; si la medición muestra un separador sistemático,
 se amplía la regla **estricta** con ese separador, **con test**, no a ojo.
 
+> **Enmienda del 2026-09-24 · T4-4: la obra casa por su número.** La regla
+> de arriba («empieza por el código seguido de un blanco», comparación
+> literal) queda **solo** para códigos de obra que no son numéricos. T2 midió
+> que la carpeta real de la 0677 es `677  MIRASIERRA`: la literal no la casaba,
+> y todos los partes de la obra piloto habrían sido 409 `obra_parecida`.
+>
+> ```python
+> def numero_de_obra(codigo: str) -> int | None:
+>     """int(codigo) si, ya normalizado, está formado solo por cifras 0-9;
+>     None si lleva cualquier otra cosa (códigos administrativos)."""
+> ```
+>
+> **Regla estricta nueva** (R10): con `n = numero_de_obra(codigo_obra)` no
+> nulo, una carpeta casa si `nombre.split()` —blancos de cualquier clase y
+> cantidad— no está vacío, su **primera palabra** cumple
+> `re.fullmatch("[0-9]+", palabra)` (cifras ASCII: `str.isdigit` admitiría
+> `²`) e `int(palabra) == n`. El resto del nombre no se mira. Con `n` nulo, la
+> literal de siempre.
+>
+> | Carpeta (obra `0677`) | ¿Casa? | ¿Parecida (§4.5)? |
+> |---|---|---|
+> | `677  MIRASIERRA` (la real) | **Sí** | no (casa) |
+> | `0677 MIRASIERRA` | Sí | no |
+> | `677` | Sí | no |
+> | `00677 X` | Sí (mismo entero) | no |
+> | `0677 15 VIVIENDAS UNIFAMILIARES EN MIRASIERRA(MADRID)` (la que crearía el sistema) | Sí | no |
+> | `06770 X` | No (6770) | No |
+> | `0677-MIRASIERRA` | No (la primera palabra no es solo cifras) | **Sí** |
+> | `677MIRASIERRA` | No | **Sí** (§4.5 enmendado) |
+> | `OBRA 0677`, `LISTADO 677` | No | **Sí** |
+> | `0680 OTRA` | No | No |
+>
+> Dos carpetas que casan —`677  MIRASIERRA` y `0677 MIRASIERRA FASE 2`— son
+> `obra_ambigua` con las dos (R13): el sistema no elige por el resto del
+> nombre ni por los ceros. **Por qué no se elige «la más parecida»**: sería
+> volver a mirar el nombre, que es justo lo que la medición demostró que no
+> se puede derivar de Sigrid.
+>
+> **Lo que se pierde, y se acepta**: con la literal, `0677` y `677` eran
+> obras distintas; ahora van a la misma carpeta. Solo es un problema si
+> Sigrid tiene **dos obras** con el mismo número, y eso lo para R44 (§4.7).
+
 ### 4.2 Los tramos fijos (R14, R16, R34, R35)
 
 ```python
@@ -219,6 +361,28 @@ Igualdad por `clave_de_unidad` (mayúsculas, sin tildes, blancos colapsados):
 `Partes Incidencias` casa con `PARTES INCIDENCIAS`, y se usa **el nombre tal
 y como existe**. Dos que casen (p. ej. `PARTES INCIDENCIAS` y `Partes
 incidencias`) → ambigüedad → 409.
+
+> **Añadido el 2026-09-24 · T4-6 (R49).** La hoja admite **una** forma
+> alternativa, la de `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA` (por omisión
+> `PARTES FIRMADO`, el literal de VILLA 02):
+>
+> ```python
+> def carpeta_con_nombre(nombres, *, buscado: str, alternativa: str = "") -> tuple[str, ...]:
+> ```
+>
+> Casa lo que tenga la clave de `buscado` **o** la de `alternativa` (si no
+> está vacía); nada más. `INCIDENCIAS` no tiene alternativa. La regla es
+> mínima a propósito: **una** forma más, escrita, y no «singular o plural».
+>
+> | Hojas en la unidad | Resultado |
+> |---|---|
+> | `PARTES FIRMADOS` | casa, se usa |
+> | `PARTES FIRMADO` (VILLA 02) | casa, se usa **con su nombre** |
+> | `Partes Firmado` | casa (misma clave) |
+> | `PARTES FIRMADOS` y `PARTES FIRMADO` | **`firmados_ambigua`** → 409 con las dos |
+> | `PARTE FIRMADO`, `FIRMADOS 2024` | no casan; **parecidas** (§4.5) → 409 `firmados_parecida` |
+> | ninguna subcarpeta (VILLA 04) | 0 y 0 → **se crea `PARTES FIRMADOS`** (R48), nunca la alternativa |
+> | alternativa configurada vacía y solo `PARTES FIRMADO` | no casa; parecida → 409 |
 
 ### 4.3 La carpeta de unidad (R11, R14) — regla propuesta, **D-6**
 
@@ -247,6 +411,16 @@ al menos un token numérico** y cumple una de dos:
 
 La exigencia del token numérico evita que `VILLA` a secas case con todas. El
 sufijo evita el falso positivo «contiene»: `VILLA 5` no casa con «Villa 51».
+
+> **Medido el 2026-09-24: la regla se sostiene (D-6 cerrada).** Los siete
+> casos reales casan por la regla 2, contra el `con.res`:
+> `K(VILLA 05) = (VILLA, 5)` es sufijo de
+> `K(Viviendas Bloque Villa 5) = (VIVIENDAS, BLOQUE, VILLA, 5)`. La regla 1
+> no casa nunca con los datos reales —`K(0677.03VILLA 5.) = (677, 03VILLA, 5)`—
+> y se deja: no estorba y cubre un ERP que algún día guarde la forma corta.
+> `VILLA 01` **no** casa con la unidad 11 (`(VILLA, 1)` no es sufijo de
+> `(…, VILLA, 11)`), que es lo que R50 vuelve a comprobar contra todas las
+> unidades de la obra.
 
 **Por qué no se usa la `unidad` extraída del papel**: es lectura de IA con
 confianza, y la de Sigrid es el dato del ERP de la reclamación que vamos a
@@ -299,6 +473,50 @@ como número en el nombre de otra carpeta de la raíz (p. ej. una obra `0005` y
 una carpeta `LISTADO 5`) bloquea la creación de esa obra. Es un 409 con la
 carpeta culpable en `candidatas`, y lo resuelve una persona. Se prefiere así.
 
+> **Enmienda del 2026-09-24 · lo que la medición enseñó de las amplias.**
+> Casan y parecidas son una **partición** (se clasifica primero con la
+> estricta; solo lo que no casa puede ser parecida), así que la carpeta real
+> `677  MIRASIERRA` casa y **no** es parecida. Y las tres amplias se
+> ensanchan, porque su error cuesta un 409 y el de quedarse cortas, un
+> duplicado:
+>
+> - **Obra**: en vez de los tokens de la clave, **todas las secuencias de
+>   cifras** del nombre (`re.findall("[0-9]+", nombre)`), comparadas como
+>   entero con el número de la obra. Así `677MIRASIERRA` y `OBRA0677` también
+>   paran, y `06770 X` sigue sin parar. Para códigos no numéricos, lo de
+>   antes.
+> - **Unidad**: del lado de la carpeta, también **todas las secuencias de
+>   cifras** (`VILLA5`, `V-5`). Del lado de la unidad, los números de
+>   `K(unidad_nombre)` y el `<n>` del patrón de R37 si el `con.cod` lo cumple;
+>   **no** todos los de `K(unidad_codigo)`: el `con.cod` medido
+>   (`0677.03VILLA 13.`) lleva el número de la obra y el `03` del grupo, y con
+>   ellos `VILLA 03` sería parecida de la unidad 13 y bloquearía crear
+>   `VILLA 13` (T4-5). Solo si el `con.cod` no cumple el patrón se usan los de
+>   `K(unidad_codigo)`, como antes.
+> - **Tramo fijo**: la palabra distintiva se compara **sin su `S` final** y
+>   por **prefijo**: un token de la carpeta es del tramo si empieza por
+>   `FIRMADO` (o `INCIDENCIA`). Motivo, medido: la hoja de VILLA 02 es
+>   `PARTES FIRMADO`, y con «contiene el token `FIRMADOS`» **no** habría sido
+>   parecida —el sistema habría creado `PARTES FIRMADOS` a su lado—. Hoy casa
+>   como alternativa (§4.2), pero `PARTE FIRMADO` o `PARTES INCIDENCIA` tienen
+>   que parar.
+>
+> | Nivel | Carpeta | Para lo buscado | Estricta | Amplia | Resultado |
+> |---|---|---|---|---|---|
+> | Obra | `677  MIRASIERRA` | obra 0677 | casa | — | se usa |
+> | Obra | `677MIRASIERRA` | obra 0677 | no | sí | 409 `obra_parecida` si no hay otra que case |
+> | Unidad | `VILLA 03` | unidad 13 (`0677.03VILLA 13.`) | no | **no** | no bloquea: se crea `VILLA 13` |
+> | Unidad | `VILLA 01` … `VILLA 07` | unidades 8 … 15 | no | no | se crean `VILLA 08` … `VILLA 15` |
+> | Unidad | `VILLA5` | unidad 5 | no | sí | 409 `unidad_parecida` |
+> | Hoja | `PARTE FIRMADO` | `PARTES FIRMADOS` | no | sí | 409 `firmados_parecida` |
+> | Hoja | `PARTES FIRMADO` | `PARTES FIRMADOS` | **casa** (alternativa) | — | se usa |
+> | Incidencias | `PARTES INCIDENCIA` | `PARTES INCIDENCIAS` | no | sí | 409 `incidencias_parecida` |
+>
+> Consecuencia nueva, aceptada: una unidad con el número de la obra en el
+> nombre de otra carpeta hermana (`LISTADO 677` dentro de `PARTES
+> INCIDENCIAS`) ya **no** bloquea, porque el número de la obra dejó de ser
+> número de la unidad. Es lo correcto: no es la misma villa.
+
 ### 4.6 Con qué nombre se crea (R36–R38) — condicionado a T2/T3
 
 | Nivel | Nombre | Medido / condición |
@@ -325,6 +543,115 @@ nombre de obra empieza por `<cod> ` (regla estricta §4.1); el de unidad es
 `K == K(unidad_codigo)` o `K == K(unidad_nombre)` (sufijo trivial, §4.3); los
 tramos fijos son el literal buscado. Un test por nivel lo fija: resolver, crear
 en el doble, volver a resolver → casa, 0 creaciones.
+
+> **Enmienda del 2026-09-24 · T4-1: los nombres, decididos con la medición
+> delante.** La tabla y las reglas de arriba se conservan como se escribieron;
+> esto es lo que manda desde hoy.
+>
+> | Nivel | Nombre al crear | Por qué |
+> |---|---|---|
+> | Obra | `<cod obra> <con.res de la obra>`, blancos colapsados (**sin cambios**, R36) | T2 midió `677  MIRASIERRA`, que no se deriva del `con.res` sin inventar. Posventa puede renombrarla: mientras empiece por el número y un blanco, se sigue encontrando (§4.1). Para la 0677 **no se crea**: existe |
+> | `PARTES INCIDENCIAS` | literal de `SHAREPOINT_CARPETA_INCIDENCIAS` | — |
+> | Unidad | **`VILLA NN`**, derivado del `con.cod` (R37) | T2 midió siete `VILLA 01` … `VILLA 07`, siempre dos cifras; T3, que ni `con.cod` ni `con.res` tienen esa forma. El humano eligió «unidad al estilo Posventa» |
+> | `PARTES FIRMADOS` | literal de `SHAREPOINT_CARPETA_FIRMADOS`; **nunca** la alternativa | R49 |
+>
+> ```python
+> #: R37 · el único patrón del que se deriva un nombre de unidad. Medido en T3.
+> PATRON_CODIGO_UNIDAD = re.compile(r"(?P<obra>[0-9]+)\.(?P<grupo>[0-9]+)VILLA +(?P<n>[0-9]+)\.")
+>
+> def nombre_derivado_de_unidad(unidad_codigo: str | None, *, codigo_obra: str) -> str | None:
+>     """`VILLA NN` si `unidad_codigo.strip()` cumple ENTERO el patrón (fullmatch)
+>     y el número de su <obra> es el de `codigo_obra`; None en otro caso.
+>     NN = f"{int(n):02d}". El <grupo> no entra en el nombre (Posventa no lo usa)."""
+> ```
+>
+> `None` → 409 `unidad_sin_nombre_derivable` **solo si hay que crear** la
+> unidad (R37). Las mayúsculas de `VILLA` son las medidas y no se relajan;
+> un `con.cod` con otra palabra (`CHALET`, `PORTAL`) no se deriva: ampliar el
+> patrón exige medir cómo lo nombra Posventa, y es otra enmienda.
+>
+> **Los 15 casos medidos de la 0677** (T2 y T3). Es la tabla que T6 convierte
+> en test, fila a fila:
+>
+> | `con.cod` (Sigrid) | `con.res` (Sigrid) | Carpeta en Posventa hoy | Nombre derivado | Qué hará el sistema |
+> |---|---|---|---|---|
+> | `0677.03VILLA 1.` | `Viviendas Bloque Villa 1` | `VILLA 01` con `PARTES FIRMADOS` | `VILLA 01` (no hace falta: casa la existente) | resuelve; no crea nada |
+> | `0677.03VILLA 2.` | `Viviendas Bloque Villa 2` | `VILLA 02` con `PARTES FIRMADO` | `VILLA 02` (no hace falta: casa la existente) | resuelve; archiva en `PARTES FIRMADO` (R49) |
+> | `0677.03VILLA 3.` | `Viviendas Bloque Villa 3` | `VILLA 03` con `PARTES FIRMADOS` | `VILLA 03` (no hace falta: casa la existente) | resuelve; no crea nada |
+> | `0677.03VILLA 4.` | `Viviendas Bloque Villa 4` | `VILLA 04` **sin subcarpetas** (142 ficheros sueltos) | `VILLA 04` (no hace falta: casa la existente) | resuelve la unidad; **crea `PARTES FIRMADOS`** (R48) |
+> | `0677.03VILLA 5.` | `Viviendas Bloque Villa 5` | `VILLA 05` con `PARTES FIRMADOS` | `VILLA 05` (no hace falta: casa la existente) | resuelve; no crea nada |
+> | `0677.03VILLA 6.` | `Viviendas Bloque Villa 6` | `VILLA 06` con `PARTES FIRMADOS` | `VILLA 06` (no hace falta: casa la existente) | resuelve; no crea nada |
+> | `0677.03VILLA 7.` | `Viviendas Bloque Villa 7` | `VILLA 07` con `PARTES FIRMADOS` | `VILLA 07` (no hace falta: casa la existente) | resuelve; no crea nada |
+> | `0677.03VILLA 8.` | `Viviendas Bloque Villa 8` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 08` | **crea** `VILLA 08` y su `PARTES FIRMADOS` al llegar el primer parte (0 reclamaciones hoy) |
+> | `0677.03VILLA 9.` | `Viviendas Bloque Villa 9` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 09` | **crea** `VILLA 09` y su `PARTES FIRMADOS` al llegar el primer parte (0 reclamaciones hoy) |
+> | `0677.03VILLA 10.` | `Viviendas Bloque Villa 10` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 10` | **crea** `VILLA 10` y su `PARTES FIRMADOS` al llegar el primer parte (0 reclamaciones hoy) |
+> | `0677.03VILLA 11.` | `Viviendas Bloque Villa 11` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 11` | **crea** `VILLA 11` y su `PARTES FIRMADOS` al llegar el primer parte (0 reclamaciones hoy) |
+> | `0677.03VILLA 12.` | `Viviendas Bloque Villa 12` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 12` | **crea** `VILLA 12` y su `PARTES FIRMADOS` al llegar el primer parte (9 reclamaciones hoy) |
+> | `0677.03VILLA 13.` | `Viviendas Bloque Villa 13` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 13` | **crea** `VILLA 13` y su `PARTES FIRMADOS` al llegar el primer parte (213 reclamaciones hoy) |
+> | `0677.03VILLA 14.` | `Viviendas Bloque Villa 14` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 14` | **crea** `VILLA 14` y su `PARTES FIRMADOS` al llegar el primer parte (0 reclamaciones hoy) |
+> | `0677.03VILLA 15.` | `Viviendas Bloque Villa 15` | no existe (humano: «no tienen carpeta, que se creen») | `VILLA 15` | **crea** `VILLA 15` y su `PARTES FIRMADOS` al llegar el primer parte (0 reclamaciones hoy) |
+>
+> Casos fuera del patrón, también en la tabla del test: `0677.03VILLA 13`
+> (sin punto final), `0677.03Villa 13.` (minúsculas), `0677.03CHALET 3.`,
+> `0680.03VILLA 13.` (otra obra), `0677.VILLA 13.` (sin grupo), `None` y
+> `""` → `None`; `0677.03VILLA  13.` (dos blancos) → `VILLA 13`;
+> `0677.03VILLA 100.` → `VILLA 100`; `00677.03VILLA 5.` con obra `0677` →
+> `VILLA 05` (mismo número de obra).
+>
+> **`SHAREPOINT_NOMBRE_UNIDAD` sobra, y se retira** (R1, R3). Con una regla
+> fija no hay nada que elegir; y la variable tenía un valor, `nombre`, que
+> habría creado `Viviendas Bloque Villa 13` al lado de `VILLA 01` … `VILLA 07`.
+> La condición de «si `con.res` trae nombres de persona, `nombre` queda
+> descartado» deja de hacer falta: T3 midió que no los trae, y en todo caso
+> ya no se usa para crear.
+>
+> **Y la propiedad de R39 pasa de demostrarse a comprobarse** (R46). Con la
+> derivación, «lo creado casa consigo mismo» ya no es trivial: `VILLA 13`
+> casa con la unidad 13 **porque** su `con.res` acaba en `Villa 13` (§4.3,
+> regla 2), no porque salga de él. Una unidad cuyo `con.res` fuera
+> `Villa 13 bis` recibiría `VILLA 13`, que ni casaría con ella ni dejaría de
+> ser su parecida: la siguiente resolución daría 409 para siempre. Por eso el
+> resolutor, antes de anotar cada creación, aplica la regla estricta del
+> nivel al nombre compuesto con los mismos datos; si no casa, 409
+> `nombre_no_casaria` y nada creado.
+
+### 4.7 · Números repetidos en Sigrid (R44, R50) — añadido el 2026-09-24
+
+Casar por número tiene un precio que la regla literal no tenía: **todo** lo
+que en Sigrid tenga el mismo número va a la misma carpeta de Posventa. Dos
+comprobaciones puras sobre la segunda lectura (§3.3, §6.2):
+
+```python
+def obras_del_mismo_numero(filas: Iterable[UnidadDeObra], *, codigo_obra: str) -> frozenset[str]:
+    """Los `obra_ref` distintos de las filas cuyo `obra_codigo` es la misma obra:
+    mismo número (§4.1) o, si no es numérico, el mismo código normalizado."""
+
+def unidades_que_casan(filas: Iterable[UnidadDeObra], *, carpeta: str) -> tuple[UnidadDeObra, ...]:
+    """Las unidades de la obra con las que `carpeta` casa por la regla ESTRICTA de §4.3."""
+```
+
+- **R44 · la obra.** Si `obras_del_mismo_numero` no tiene **exactamente
+  una**, 409 `obra_numero_no_unico` antes de listar nada. Hoy, medido: en la
+  0677, **una** (T3 buscó `0677` y `677` con unidades de posventa); en
+  general, 922 obras y 846 códigos en el maestro (§1), así que habrá obras en
+  las que esto pare. Es lo correcto: Posventa tampoco podría distinguirlas por
+  su carpeta. Si la lectura trae **1.000 filas** (el techo de `sigrid-api`),
+  409 `unidades_sin_verificar`: con la respuesta posiblemente cortada no se
+  puede afirmar ni R44 ni R50.
+- **R50 · la unidad.** Elegida o compuesta la carpeta de unidad, con las
+  filas de **esa** obra: `unidades_que_casan` tiene que dar **exactamente
+  una**. Si dos unidades de Sigrid casan con `VILLA 05` —dos grupos con una
+  villa 5 cada uno, `0677.03VILLA 5.` y `0677.04VILLA 5.`, que la derivación
+  de R37 llevaría al mismo nombre porque ignora el grupo—, 409
+  `unidad_carpeta_compartida`. En la 0677 hay un solo grupo (`03`) y quince
+  números distintos **[MEDIDO, T3]**, así que no para nada.
+
+**Por qué no se decide con la primera lectura**: la ubicación trae **una**
+fila, la de la reclamación; saber si hay otra obra u otra unidad con el mismo
+número exige mirar las demás. **Por qué una lectura y no dos**: las unidades
+de las obras con ese número responden a las dos preguntas a la vez y son
+pocas (15 en la piloto). **Decisión del spec-author, a validar por el humano
+sin bloquear** (`requirements.md` §0 ter): las dos fallan cerradas.
 
 ## 5 · El paso, y el orden
 
@@ -382,6 +709,87 @@ parte no está guardado: se deja subir, y el borde responde el 409 «guarda el
 parte primero» que ya existe. Es coherente: sin parte guardado no hay nada que
 resolver.
 
+> **Enmienda del 2026-09-24 · el paso de hoy y la medición.** La firma, el
+> algoritmo y la tabla de arriba se escribieron antes de que F-031, F-033 y
+> F-034 se cerraran y desplegaran, y antes de medir. Tres cosas quedaron
+> viejas: la fila 3 dice «L1 **inerte** hoy» y L1 está activa desde F-033;
+> falta el **1 bis** de F-031 (el cotejo de los códigos declarados); y el
+> resolutor recibía `ctx`, que le habría dado acceso a `ctx.extraccion` y a
+> `ctx.situacion` por la puerta de atrás. Esto es lo que manda:
+>
+> **La firma.** Sin contexto; los códigos, como cadenas, y ya guardados:
+>
+> ```python
+> def resolver_destino_posventa(
+>     *, codigo_obra: str, numero_incidencia: str, nombre_fichero: str,
+>     explorador: ExploradorBibliotecaPort, ubicaciones: UbicacionPort,
+>     base: str, incidencias: str, firmados: str, firmados_alternativa: str,
+>     crear_carpetas: bool,
+> ) -> DestinoResuelto:
+> ```
+>
+> El borde fija con `functools.partial` todo menos los tres primeros y lo
+> pasa como `resolver_destino`; el paso lo llama con
+> `guardados.codigo_obra`, `guardados.numero_incidencia` y el nombre del
+> fichero. Así `codigos_guardados` sigue viviendo solo donde dicen las tablas
+> de F-031 y F-034 (§2.3), y el resolutor no puede leer lo que no le llega.
+>
+> **El algoritmo** (sustituye a los pasos 1–5 de arriba):
+>
+> 1. `leer_ubicacion(a_codigo_de_sigrid(numero_incidencia))` → R7. Fallo de
+>    red o configuración → sube tal cual (503, R41).
+> 2. R8 con `normalizar_codigo` a los dos lados (no `es_el_mismo_codigo`, §2.3).
+> 3. `leer_unidades_del_numero(codigo_obra)` → R44 (`obra_numero_no_unico`,
+>    `unidades_sin_verificar`). Fallo de red → 503 (R41).
+> 4. Por nivel, en orden (obra, `INCIDENCIAS`, unidad, `FIRMADOS`):
+>    `listar_carpetas(padre)` → casan / parecidas (§4.1, §4.2 con la
+>    alternativa en la hoja, §4.3, §4.5): 1 casa → se baja; >1 →
+>    `<nivel>_ambigua`; 0 y ≥1 parecida → `<nivel>_parecida`; 0 y 0 → si
+>    `crear_carpetas`, se **compone** el nombre de ese nivel (R36, R37 →
+>    `unidad_sin_nombre_derivable`), se comprueba (R38 →
+>    `nombre_carpeta_imposible`; R46 → `nombre_no_casaria`) y se **anota**; los
+>    niveles de debajo se componen, comprueban y anotan **sin listar**; si no,
+>    `sin_carpeta_<nivel>` (R16).
+> 5. En cuanto la unidad está elegida o anotada, R50 con las filas de su obra
+>    (`unidad_carpeta_compartida`).
+> 6. Nada se crea aquí; devuelve `DestinoResuelto`. Los nombres se componen
+>    **cuando hacen falta** (precisión de R38): la garantía de «ningún nombre
+>    imposible deja una carpeta a medias» la da que el paso solo ejecuta
+>    `carpetas_por_crear` tras una resolución completa.
+>
+> Lecturas por parte: **dos** de Sigrid y **hasta cuatro** listados; con 22
+> partes, ~130 llamadas, todas lecturas. Sin caché, por lo mismo que antes.
+>
+> **El orden en el paso** (sustituye a la tabla de arriba, que se conserva).
+> Es el de `paso_archivo` hoy (`application/pipelines/paso_archivo.py`,
+> líneas 273–311) con el resolutor insertado:
+>
+> | # | Paso | `por_obra` (hoy, sin tocar) | Con `posventa` |
+> |---|---|---|---|
+> | 1 | Puerta de estado `aprobado` (`_exigir_admitido`) | igual | igual |
+> | 1 bis | Cotejo de los declarados con los guardados (`exigir_codigos_declarados`, F-031) | igual | igual |
+> | 2 | Nombre del fichero desde **lo guardado** (`codigos_guardados`, F-031) | `componer_destino(carpeta_base, …)` | `nombre_de_archivo(…)` —el mismo nombre; la carpeta aún no se conoce |
+> | 3 | **L1** desde el almacén (`situacion_leida(...).archivo`, F-033) | igual | igual, y **antes** de resolver (R45): el aviso de otro destino compara nombre y biblioteca, no carpeta |
+> | 4 | **Resolver destino** | — | §5 arriba. `DestinoNoResuelto` → log de R47 si la traza guardada es `pendiente` → traza `error` con motivo (R18) → se relanza |
+> | 5 | Aviso del intento anterior (F-033 R20) | igual | igual, contra la carpeta **resuelta** |
+> | 6 | Traza previa `pendiente` (F-019); `SIN_CAMBIOS` → la de la otra petición (F-033 R18) | igual | igual, con la carpeta resuelta |
+> | 7 | Carpeta | `asegurar_carpeta` | `crear_subcarpeta` por cada `carpetas_por_crear`, en orden; aviso y log por carpeta (R40); **nunca** `asegurar_carpeta` (R15) |
+> | 8–10 | `buscar`, `subir` (replace), traza final (F-033 R19) | igual | igual |
+>
+> **Por qué entre L1 y el aviso, y no en otro sitio.** Antes de L1, un parte
+> ya archivado —los 133 de IT, por ejemplo— llamaría a Sigrid y listaría la
+> biblioteca de Posventa por nada, contra R25 y R45. Después del aviso, el
+> aviso compararía la traza `pendiente` con una carpeta que aún no se conoce.
+> Y antes de la traza previa por R22.
+>
+> **Cómo L1 decide «otro destino» sin carpeta (R45).** `_en_otro_destino` de
+> F-033 compara nombre, carpeta y biblioteca, y no se cambia su firma (la
+> fijan los tests de F-033). En `posventa`, el paso le da en el punto 3 un
+> `DestinoArchivo` cuya carpeta es **la de la propia traza guardada**: la
+> carpeta no puede discrepar y decide lo demás. Un test de F-013 lo fija:
+> un parte `archivado` en IT (otro `drive_id`) corta con los dos avisos de
+> F-033 y **cero** llamadas a ubicaciones y al explorador.
+
 ## 6 · Infraestructura
 
 ### 6.1 Graph
@@ -434,6 +842,46 @@ WHERE c.tip = ? AND c.cod = ?
   T3 muestra nombres de persona en `upv.res`, `SHAREPOINT_NOMBRE_UNIDAD` no
   puede valer `nombre` (§4.6)—.
 
+> **Añadido el 2026-09-24 · la segunda lectura (R44, R50).** Dos sentencias
+> más en `consultas_ubicacion.py`, **una** de las cuales se usa por parte
+> según el código de obra sea numérico o no. Preseleccionan; decide el
+> dominio (§4.7):
+>
+> ```sql
+> -- SQL_UNIDADES_DEL_NUMERO  (código numérico; parámetros ('%677', '%[^0]%677'))
+> SELECT v.obride, o.cod, u.cod, u.res
+> FROM dbo.upv v
+> JOIN dbo.con o ON o.ide = v.obride
+> JOIN dbo.con u ON u.ide = v.ide
+> WHERE LTRIM(RTRIM(o.cod)) LIKE ? AND LTRIM(RTRIM(o.cod)) NOT LIKE ?
+>
+> -- SQL_UNIDADES_DEL_CODIGO  (código no numérico; parámetro (código normalizado,))
+> SELECT v.obride, o.cod, u.cod, u.res
+> FROM dbo.upv v
+> JOIN dbo.con o ON o.ide = v.obride
+> JOIN dbo.con u ON u.ide = v.ide
+> WHERE LTRIM(RTRIM(o.cod)) = ?
+> ```
+>
+> - El primer patrón es el número **sin ceros a la izquierda** con `%`
+>   delante (`%677`); el segundo quita lo que acaba igual pero lleva otra cifra
+>   o letra delante (`1677`, `X677`): así el techo de 1.000 filas lo consumen
+>   solo las obras con ese número. Los dos parámetros los compone el adaptador
+>   a partir de `numero_de_obra` (dominio); solo cifras, así que no hay nada que
+>   escapar en el `LIKE`. Aunque el SQL dejara pasar de más, el dominio vuelve
+>   a filtrar por número (§4.7).
+> - `v.obride` sale como `obra_ref` en texto y **no** se loguea (§3.3).
+> - Mismo adaptador, mismo `sql/read`, misma política de reintentos y de
+>   errores que la primera; misma prohibición de `sql/write`.
+> - **[NO MEDIDO]**: el tiempo de esta lectura contra el ERP real (el `LIKE`
+>   con `%` delante recorre las obras con unidades de posventa). Se espera
+>   pequeño —`upv` y el maestro de obras son tablas de miles de filas— y lo
+>   mide el primer archivado real (§7.3); si pasara de unos segundos, se
+>   enmienda con la medición delante, no a ojo.
+> - `LTRIM(RTRIM())` y `LIKE` con clase de caracteres son T-SQL de cualquier
+>   versión; no se usa `TRY_CAST` (la versión del SQL Server de Sigrid no está
+>   en `azure-apps/sigrid_api.md`).
+
 ## 7 · Infra, despliegue y el corte
 
 ### 7.1 `infra/23_destino_posventa.ps1` (solo lectura)
@@ -462,6 +910,40 @@ F-006. Hace:
 
 Ni `POST` (salvo el token), ni `PUT`, ni `PATCH`, ni `DELETE`: lo comprueba un
 test estático (T1 y T14).
+
+> **Precisión del 2026-09-24 · cómo quedó en T1 y qué le toca en T14.**
+>
+> - **Parámetros que T1 añadió** y que esta spec no nombraba, aceptados:
+>   `-MostrarNombres` (por defecto los nombres salen enmascarados,
+>   `VILLA 05 - <txt>`), `-DesdeKeyVault` (lee las `GRAPH_*` del vault en
+>   memoria, para no teclear el secreto), `-CarpetaObra` (fuerza el literal de
+>   la carpeta de obra), `-MaxCarpetasObra`, y `-CarpetaBase`,
+>   `-CarpetaIncidencias` y `-CarpetaFirmados` (`progress/impl_F-013.md` §2
+>   y §3).
+> - **Sin BOM**: los dos scripts son ASCII + CRLF, como los otros 25 de
+>   `infra/`. Con BOM, `tests/test_f010_prompt_keys_infra.py` (lee todo
+>   `infra/` como `ascii`) tumbaba la suite. Es la excepción documentada que
+>   admite `docs/CONVENTIONS.md`; §11 y T1 se enmiendan igual.
+> - **El defecto del resumen** (`progress/explore_F-013.md`): la tabla final
+>   cuenta unidades, `PARTES INCIDENCIAS` y hojas **solo** bajo una carpeta de
+>   obra que **case**. Como en la medición la 0677 solo era «parecida», el
+>   resumen salió con ceros aunque el árbol de arriba traía los datos. La
+>   medición es buena; el resumen engaña. T14 lo corrige: el resumen cuenta lo
+>   que cuelga de la carpeta de obra que **resuelve la regla del dominio**
+>   (que ya casa `677  MIRASIERRA`) y, si no resuelve ninguna, lo dice en una
+>   línea propia («resumen sin obra resuelta: se muestran las parecidas») en
+>   vez de dar ceros; con `-CarpetaObra`, cuenta la forzada y lo rotula.
+> - **La regla, del dominio**: T14 sustituye `Test-ObraCasa`,
+>   `Test-ObraParecida`, `Test-TramoCasa` y `Test-TramoParecido` (copias
+>   provisionales en PowerShell) por el dominio, ejecutado por fichero con
+>   `Invoke-PythonDelServicio`. Así el 23 casa por número (§4.1), admite la
+>   hoja alternativa (§4.2), usa las amplias enmendadas (§4.5), deriva
+>   `VILLA NN` (§4.6) y comprueba R46 y R50: lo que dice «resolvería» o
+>   «crearía» es lo que hará el sistema.
+> - **Las unidades de Sigrid entran por fichero**: `24_ubicacion_sigrid.ps1`
+>   gana `-SalidaCsv <ruta>` (fuera del repositorio; `con.cod`, `con.res`,
+>   `v.obride` **no**) y el 23, `-UnidadesCsv <ruta>`. Sin él, el 23 hace lo de
+>   hoy (árbol y casan / parecidas) y lo dice.
 
 ### 7.2 `infra/24_ubicacion_sigrid.ps1` (solo lectura)
 
@@ -496,9 +978,92 @@ Orden, y cada paso lo da el humano:
 Vuelta atrás: los pasos 4 y 5 al revés. No hay datos que deshacer: la traza de
 cada parte dice en qué biblioteca está (`drive_id`).
 
+> **Enmienda del 2026-09-24 · T4-3: «crear desde el principio», con las
+> ventanas abiertas.** El runbook de arriba se conserva como se escribió. Da
+> por hecho que tras desplegar con `posventa` la ventana `ARCHIVO_HABILITADO`
+> está **cerrada** y se abre «solo para el parte autorizado» (paso 6). Desde
+> el 2026-09-23 `desplegar_backend.ps1` la deja **abierta** por defecto
+> (decisión del humano: Posventa ya usa el servicio en real), y el humano
+> decidió en T4 que `SHAREPOINT_CREAR_CARPETAS` va **activo desde el primer
+> despliegue**. Consecuencia: el primer archivado en Posventa, y la primera
+> carpeta creada, los provoca **quien archive primero**. No hay «parte
+> autorizado único» que prometer. Este es el runbook que manda (va a
+> `docs/DESPLIEGUE.md` en T17):
+>
+> **Antes de desplegar** (solo lecturas, el humano):
+>
+> 1. F-033, F-031 y F-034 desplegadas. **Ya lo están** (2026-09-23).
+> 2. Relanzar el 24 y el 23 **ya con T14** para la 0677
+>    (`24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SalidaCsv <fuera del repo>` y
+>    `23_destino_posventa.ps1 -UrlSitio … -CodigoObra 0677 -DesdeKeyVault
+>    -UnidadesCsv <el mismo>`). Tiene que salir **exactamente** lo de R31:
+>    obra, `PARTES INCIDENCIAS` y VILLA 01, 02, 03, 05, 06, 07 «resolvería»;
+>    VILLA 04 «crearía `PARTES FIRMADOS`»; VILLA 08–15 «crearía `VILLA NN`» y su
+>    hoja; ninguna «bloquearía». Si no, **no se despliega** y vuelve al líder.
+> 3. **Avisar a Posventa antes de desplegar**, por escrito: desde el
+>    despliegue, lo archivado va a su biblioteca; el sistema **creará** las
+>    carpetas que falten (en la 0677, `VILLA 08` … `VILLA 15` según lleguen sus
+>    partes —la 12 y la 13 tienen reclamaciones— y `PARTES FIRMADOS` dentro de
+>    `VILLA 04`); en `VILLA 02` archivará en su `PARTES FIRMADO`; convivirá con
+>    sus ficheros manuales (§9, nota final); y si ven una carpeta que no
+>    quieren, **que no la borren**: nos avisan y se sigue R43.
+>
+> **El despliegue:**
+>
+> 4. Cargar en Key Vault los IDs de Posventa (`cargar_secretos_postventa.ps1
+>    -Solo`), igual que antes.
+> 5. `00_vars_postventa.ps1`: `$EstructuraArchivo = "posventa"`,
+>    `$CarpetaBaseArchivo = ""` (D-1), `$CrearCarpetasArchivo = "true"`.
+>    `desplegar_backend.ps1` **sin** `-VentanasCerradas`. Desde este momento
+>    cualquier archivado va a Posventa y puede crear carpetas.
+>
+> **Justo después** (solo lecturas, el humano, en el mismo rato):
+>
+> 6. Comprobar la configuración desplegada: `22_ventana_archivo.ps1` sin
+>    parámetros dice «abierta», y los App Settings `SHAREPOINT_ESTRUCTURA`,
+>    `SHAREPOINT_CARPETA_BASE` y `SHAREPOINT_CREAR_CARPETAS` valen `posventa`,
+>    vacío y `true` (mirándolos en el portal de Azure, sin cambiar nada; T17
+>    decide si el runbook lo hace con un `az … appsettings list` de solo
+>    lectura).
+>
+> **El mismo día, cuando haya archivados** (solo lecturas + Posventa):
+>
+> 7. **R33**: `25_mediciones_despliegue.ps1` cuenta ya trazas `archivado` en
+>    una **segunda** biblioteca (la de Posventa; sin imprimir su ID). Con
+>    Posventa, sobre uno de esos partes de una ruta que ya existía: está en su
+>    carpeta y en su OneDrive. Resultado a `progress/`, sin identificadores.
+> 8. **R42**: en cuanto aparezca la primera carpeta creada —aviso en la
+>    respuesta de `/api/archivar` y `F-013 carpeta creada: <ruta>` en el log
+>    (R40)—, relanzar el 23 (solo lectura): esa unidad pasa a «resolvería». Con
+>    Posventa: el nombre les sirve y no hay duplicado.
+>
+> **Frenos**, de más rápido a más completo, todos sin tocar datos:
+>
+> - `22_ventana_archivo.ps1 -Cerrar`: para **todo** el archivado en el acto,
+>   sin redesplegar (la ventana del ERP no se toca).
+> - `$CrearCarpetasArchivo = "false"` y redesplegar: sigue archivando donde la
+>   ruta existe y da 409 `sin_carpeta_<nivel>` donde falta.
+> - `$EstructuraArchivo = "por_obra"`, IDs de IT de vuelta en Key Vault y
+>   redesplegar: la vuelta atrás de siempre.
+>
+> Si una carpeta creada no le sirve a Posventa: freno 1, R43 (lo deshace una
+> persona), enmienda de R36/R37 y solo entonces se vuelve a abrir.
+>
+> **Riesgo aceptado por el humano, con nombre**: entre el paso 5 y el 8
+> pueden crearse varias carpetas sin que nadie las haya visto. Lo contienen la
+> medición de la obra piloto (paso 2), el aviso previo (paso 3) y que el freno
+> es inmediato. El punto 1 del informe de T1 (`progress/impl_F-013.md` §8: «el
+> primer archivado en Posventa no sería el autorizado de R33, y podría crear
+> carpetas antes de R42») queda **cerrado por esta decisión**, no por un
+> arreglo técnico.
+
 ## 8 · Relación con F-033, F-031 y F-018
 
 ### 8.1 F-033 (L1 inerte) — **D-2**
+
+> **Título precisado el 2026-09-24**: «L1 inerte» describe cómo estaba
+> antes de F-033. F-033 está **desplegada** y L1 es activa desde el almacén;
+> la nota del 2026-09-22 de abajo lo matizaba, el título no.
 
 Hoy `/api/archivar` sube siempre; lo que evitaba el duplicado era reemplazar
 el homónimo **en la misma carpeta**. Con F-013 la carpeta cambia de biblioteca
@@ -536,6 +1101,21 @@ F-013 antes que F-031, el riesgo residual es **el de hoy, estrictamente
 menor** gracias a R8, y queda escrito así en los riesgos. El diseño de F-013
 no se toca en ninguno de los dos órdenes: el resolutor recibe los códigos del
 contexto, y F-031 decide de dónde salen.
+
+> **Enmienda del 2026-09-24 · F-031 está cerrada y desplegada.** El primer
+> párrafo de §8.2 decía que F-013 usa los códigos «tal y como llegan al paso
+> (`ctx.extraccion`), igual que hoy». Ya no es así, y hacerlo **rompería la
+> suite**: desde F-031 el paso los toma de `codigos_guardados(ctx)`
+> (`paso_archivo.py`, línea 276) y
+> `test_f031_alcance_cerrado.py::test_f031_r29_el_paso_de_archivo_ya_no_lee_la_extraccion`
+> —que se comprueba **siempre**, sin git— prohíbe cualquier acceso a
+> `.extraccion` en `paso_archivo.py`. El resolutor recibe los códigos
+> **guardados**, como dos cadenas (§5). El riesgo residual que se describía
+> («un cuerpo que mienta en los dos de forma coherente») **lo cerró F-031**:
+> los códigos del cuerpo ya solo se cotejan. Y la recomendación de orden **ya
+> se cumplió** (F-033 → F-031 → F-034 → F-013). R8 sigue valiendo: ahora
+> compara lo **guardado** con lo que dice Sigrid, que son dos fuentes
+> independientes.
 
 ### 8.3 F-018 (mínimo privilegio)
 
@@ -620,11 +1200,36 @@ trazas»*), repetida en el acta de cierre de F-033 como *«falta decidir si se
 olvidan del todo o si al desplegar F-013 se les retira la traza»*. **Cerrada**:
 no se les retira la traza, no se hace nada con ellas.
 
+**H-3 de F-034 (añadido el 2026-09-24).** La puerta de archivo del gráfico
+y del cierre (`exigir_parte_archivado`, `puerta_de_estado.py`) mira el
+**estado** de la traza y **no su biblioteca**: un parte archivado en IT pasa
+esa puerta igual que uno de Posventa, y se puede adjuntar y cerrar en Sigrid.
+Esta spec lo lee como coherente con «olvidar sin borrar» —esos partes **están**
+archivados— y **no toca la puerta** (§2.3). Anotado para que el humano lo
+valide sin bloquear.
+
 **Qué cambia en esta spec, y qué no.** Cambia el texto de H4, R24 y R26
 (`requirements.md` §0 y §8), el paso 3 del corte (§7.3), la fila de riesgo de
 §0.1, la nota de §8.1 y la de §8.3, y la tarea de documentación T17
 (`tasks.md`). **No cambia** ni una línea de diseño ejecutable: ningún módulo,
 ninguna sentencia, ningún test de comportamiento. Es una enmienda documental.
+
+## 9 ter · La parada T4, cerrada por el humano el 2026-09-24
+
+Con `progress/explore_F-013.md` delante. Literales en `requirements.md` §0
+ter; aquí, qué toca cada una del diseño.
+
+| Id | Decidido | Diseño |
+|---|---|---|
+| **T4-1** | Unidad `VILLA NN` derivada del `con.cod`; obra `<cod> <con.res>` literal | §4.6; `SHAREPOINT_NOMBRE_UNIDAD` retirada |
+| **T4-2** | Unidad sin subcarpetas → se crea `PARTES FIRMADOS`; lo antiguo no se toca | §3.2 (dos métodos y ninguno más), §4.2 |
+| **T4-3** | «Crear desde el principio», ventanas abiertas | §7.3 (runbook enmendado), §2.2 (`$CrearCarpetasArchivo`) |
+| **T4-4** | Obra por número, ignorando el resto del nombre | §4.1, §4.5, §4.7 |
+| **T4-5** | Villas 8–15 sin carpeta en ningún sitio: «que se creen» | §4.6 (tabla de 15) |
+| **T4-6** | `PARTES FIRMADO` (VILLA 02) cuenta como hoja | §4.2 (una alternativa y ninguna más; con las dos → ambigua) |
+
+Y las dos del spec-author que fallan cerradas, a validar sin bloquear: R44 y
+R50 (§4.7). Con esto **no queda ninguna pregunta abierta de la medición**.
 
 ## 10 · Riesgos y alternativas descartadas
 
@@ -685,6 +1290,34 @@ ninguna sentencia, ningún test de comportamiento. Es una enmienda documental.
    empezando por el código (obra) o casando con la unidad (§4.1, §4.3); si no,
    dará 409 `parecida`, que es el aviso correcto.
 
+> **Enmienda del 2026-09-24 · lo que la medición cambia en los riesgos.**
+> Los catorce de arriba se conservan; estos cinco los precisan o se añaden.
+>
+> - **10 (precisado)**: con el casado por número, dos obras de Sigrid con el
+>   mismo número —no solo el mismo código— irían a la misma carpeta. Ya no es
+>   «no molestan mientras la carpeta sea una»: lo para R44 (§4.7). En la 0677
+>   hay una.
+> - **11 (precisado)**: la regla amplia de tramo tenía un hueco medido —el
+>   singular `PARTES FIRMADO` no era parecida—. Se ensancha (§4.5). Sigue el
+>   residual de las grafías sin número (`VILLA CINCO`): T2 no encontró
+>   ninguna en la 0677.
+> - **12 (resuelto)**: el nombre de la obra creada sigue siendo largo, pero en
+>   la 0677 no se crea; el de la unidad, `VILLA NN`, es el de Posventa (T4-1).
+> - **15 (nuevo) · crear desde el principio**: entre el despliegue y la
+>   comprobación con Posventa pueden crearse varias carpetas (§7.3). Aceptado
+>   por el humano (T4-3); frenos en §7.3.
+> - **16 (nuevo) · el literal de VILLA 02 no cuadra del todo con la
+>   medición.** El script 23 marcó la hoja de VILLA 02 como «parecida» con su
+>   regla provisional, que exigía la palabra `FIRMADOS` **exacta**; `PARTES
+>   FIRMADO` no la contiene, así que con ese literal el script **no** la habría
+>   marcado. O el literal lleva algo más de lo que se ha transcrito, o hay otra
+>   carpeta. No bloquea: si el literal es otro, la regla nueva da 409
+>   `firmados_parecida` (o `ambigua`), que es fallar cerrado. Se verifica en el
+>   paso 2 del runbook (§7.3): VILLA 02 tiene que decir «resolvería»; si no,
+>   vuelve al humano con el literal a la vista (`-MostrarNombres`).
+> - **17 (nuevo) · el número de la obra ya no distingue `0677` de `677`**.
+>   Aceptado por T4-4; lo cubre R44.
+
 ## 11 · Tests (todos sin red, sin BBDD y sin IA)
 
 | Fichero | Cubre |
@@ -700,6 +1333,23 @@ ninguna sentencia, ningún test de comportamiento. Es una enmienda documental.
 | `test_f013_arquitectura.py` | domain sin `httpx`; `destino_posventa.py` sin E/S; `nombrado.py` y `ArchivoPort` sin cambios |
 | `test_f013_scripts_infra.py` | R27, R28, R30: los dos scripts solo `GET` (+ token / `sql/read`), sin IDs ni host del tenant, UTF-8 con BOM y CRLF |
 | `test_f013_documentacion.py` | R26, R29: los recuadros fechados existen y citan la premisa literal |
+
+> **Enmienda del 2026-09-24 · qué añade la medición a cada fichero.**
+>
+> | Fichero | Añade |
+> |---|---|
+> | `test_f013_destino_dominio.py` | Tabla de §4.1 enmendada entera (`677  MIRASIERRA` casa; `06770 X`, `0677-MIRASIERRA`, `677MIRASIERRA`, `OBRA 0677` no; código no numérico, literal); tabla de §4.2 (alternativa, ambigua con las dos, sin alternativa configurada); tabla de §4.5 enmendada (partición casan/parecidas; `VILLA 03` no es parecida de la 13); **los 15 casos de §4.6** y los de fuera del patrón (`nombre_derivado_de_unidad`); `obras_del_mismo_numero` y `unidades_que_casan` (§4.7) con dos obras `0677`, con `0677` y `677`, y con dos grupos que comparten villa |
+> | `test_f013_resolver_destino.py` | R44 (dos obras → 409 **sin listar**; 1.000 filas → 409), R46 (un `con.res` que no acaba en la villa → `nombre_no_casaria`, cero creaciones), R48 (VILLA 04: solo se anota `PARTES FIRMADOS`), R49 (VILLA 02), R50 (dos unidades casan → 409), R37 (`unidad_sin_nombre_derivable` **solo** si hay que crear la unidad), la firma sin `ctx` y **el árbol medido de la 0677 entero**: las 15 unidades dan lo de la tabla de §4.6 |
+> | `test_f013_paso_archivo_posventa.py` | El orden de §5 enmendado (registro de llamadas): el 1 bis antes de todo, L1 antes de la primera llamada a ubicaciones, el aviso de F-033 R20 contra la carpeta resuelta; R45 (un parte `archivado` en IT: dos avisos de F-033 y cero llamadas al resolutor); R47 (traza `pendiente` + destino no resuelto → línea de log antes de la traza `error`) |
+> | `test_f013_arquitectura.py` | `destino_archivo.py` y `destino_posventa.py` no nombran `ContextoParte`, `extraccion`, `codigos_guardados`, `CodigosDelParte`, `es_el_mismo_codigo` ni `drive_id_vigente` (§2.3); `ExploradorBibliotecaPort` tiene **exactamente** `listar_carpetas` y `crear_subcarpeta` (R48); `obra_ref` no aparece en ningún `log.`/`logger.` ni en `DestinoNoResuelto` |
+> | `test_f013_fabricas.py` | `settings.py` **no** tiene `sharepoint_nombre_unidad` (R3); `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA` con su defecto y vacía |
+> | `test_f013_ubicacion_sigrid.py` | Las dos sentencias nuevas carácter a carácter; los parámetros (`%677`, `%[^0]%677`) compuestos desde `numero_de_obra`; `obra_ref` en texto |
+> | `test_f013_scripts_infra.py` | **Sin BOM** (ya lo dice el de T1: `test_f013_t1_sin_bom_como_el_resto_de_infra`), no «UTF-8 con BOM» como decía la fila de arriba; y en T14: el 23 ya no contiene `Test-ObraCasa` ni las otras tres copias; el resumen no filtra por `Marca -ne "parecida"`; `-UnidadesCsv` y `-SalidaCsv`, y el CSV del 24 sin `obride` |
+>
+> Y los que **no son de F-013 y tienen que seguir en verde sin tocarlos** en
+> cada tarea que cambie `paso_archivo.py`, `archivar.py`, `graph.py` o
+> `function_app.py`: `test_f006_*`, `test_f019_*`, `test_f031_*`,
+> `test_f032_alcance_cerrado.py`, `test_f033_*` y `test_f034_*` (§2.3).
 
 ## 12 · Límite de microservicio
 

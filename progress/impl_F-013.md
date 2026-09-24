@@ -1372,3 +1372,13 @@ ninguno: no tiene operadores que mutar).
 | Cobertura de las líneas cambiadas | **`PUERTA COBERTURA: 100.0% de 526 líneas cambiadas cubiertas (526/526, umbral 80%, nivel critico)`** |
 | Mutación a mano | **21 generados, 21 muertos** |
 | Mutación del arnés (6 workers, timeout 900 s) | **105 generados, 101 muertos, 4 supervivientes**, 0 timeouts, 3.352,8 s: 3 huecos reales del bloque (la duración de los logs) cerrados con test y reinyectados (mueren), 1 equivalente ya conocido (`_Nivel`) |
+
+## Nota del líder · superviviente `_Nivel` aceptado (2026-09-24)
+
+El superviviente `destino_archivo.py:102` (`@dataclass(frozen=True)` →
+`frozen=False` en `_Nivel`), analizado como **equivalente** en el bloque 2
+(§5, fila 2), en su cierre y en el bloque 3 (§5, fila 4), queda **aceptado por
+el humano** el 2026-09-24: preguntado si aceptaba la justificación, respondió
+literalmente «si». Es la aceptación que exige el nivel `critico` para un
+superviviente sin test; T20 lo recoge así en `progress/mutacion_F-013.md`.
+

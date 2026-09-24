@@ -24,7 +24,8 @@
 >   apunta a Graph.
 > - Mutación a mano 21/21 muertos. Arnés (900 s, 6 workers, solo): 105
 >   mutantes, 101 muertos; 3 huecos reales (duración de los logs) cerrados en
->   `4da38a3`; 1 equivalente ya conocido (`_Nivel`, pendiente de aceptación).
+>   `4da38a3`; 1 equivalente ya conocido (`_Nivel`), **aceptado por el humano el
+>   2026-09-24** («si»).
 > - `bash harness/init.sh` en verde: **3.962 passed**, 35 skipped; cobertura
 >   **100 % de 526 líneas cambiadas**.
 

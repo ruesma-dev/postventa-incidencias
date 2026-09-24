@@ -642,19 +642,24 @@ def _ejecutar_regla(tmp_path: Path, entrada: dict) -> dict:
     """
     fichero = tmp_path / "entrada.json"
     fichero.write_text(json.dumps({"servicio": str(SERVICIO), **entrada}), encoding="utf-8-sig")
-    # El codigo, en un fichero de verdad y FUERA del servicio: `coverage` mide
-    # lo que se ejecuta en el arbol del servicio, y un nombre inventado dentro
-    # de el (`regla_del_23`) le rompe `coverage json` («No source for code»):
-    # paso asi el 2026-09-24 y la PUERTA COBERTURA salio a 0 %.
-    codigo = tmp_path / "regla_del_23.py"
-    codigo.write_text(_regla_embebida(), encoding="utf-8")
+    # El nombre del codigo compilado es `<regla_del_23>`, entre `<…>`, y no la
+    # ruta de un fichero: `coverage` no traza los nombres que empiezan por
+    # `<`, asi que `coverage json` no busca ningun fuente de la regla.
+    # - El 2026-09-24 el nombre era `regla_del_23` (sin `<…>`): coverage lo
+    #   tomaba por un fichero inexistente del servicio y `coverage json` fallaba
+    #   («No source for code»), PUERTA COBERTURA a 0 %.
+    # - `84085b8` lo cambio por un fichero de verdad en `tmp_path`. El
+    #   2026-09-25 (T21) volvio a fallar igual: el directorio temporal de pytest
+    #   es comun a todos los proyectos del usuario, y las sesiones de pytest de
+    #   otros proyectos que corrian a la vez lo borraban antes de `coverage
+    #   json`. Con `<regla_del_23>` no depende de ningun fichero.
     salida = io.StringIO()
     anterior = os.environ.get("F013_ENTRADA_TEMP")
     os.environ["F013_ENTRADA_TEMP"] = str(fichero)
     try:
         with contextlib.redirect_stdout(salida):
             # Codigo del propio repositorio (el .ps1 versionado), no una entrada externa.
-            exec(compile(codigo.read_text(encoding="utf-8"), str(codigo), "exec"), {"__name__": "regla_del_23"})  # noqa: S102
+            exec(compile(_regla_embebida(), "<regla_del_23>", "exec"), {"__name__": "regla_del_23"})  # noqa: S102
     finally:
         if anterior is None:
             del os.environ["F013_ENTRADA_TEMP"]

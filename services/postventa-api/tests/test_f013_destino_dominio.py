@@ -345,6 +345,7 @@ def test_f013_r10_se_usa_el_nombre_tal_y_como_existe():
         (" ADM  GENERAL ", True, False),
         ("ADM GENERAL", True, False),
         ("ADMX", False, False),
+        ("ADM.", False, True),
         ("ADM-GENERAL", False, True),
         ("adm general", False, True),  # la literal distingue mayúsculas
         ("OFICINA ADM", False, True),
@@ -521,6 +522,43 @@ def test_f013_r11_la_regla_1_casa_por_el_codigo():
     assert carpetas_de_unidad(["Villa 5", "VILLA 06"], ubicacion=corta) == ("Villa 5",)
 
 
+def test_f013_r11_sin_numero_no_casa_aunque_sea_sufijo_del_nombre():
+    """R11 · la exigencia del número vale también para las dos reglas.
+
+    `VILLA A` es sufijo de «Viviendas Bloque Villa A» y `LOCAL` es el código
+    entero de la unidad, y ninguno casa: una carpeta sin número no identifica
+    una unidad (añadido tras la mutación del bloque 1, superviviente 8).
+    """
+    sin_numeros = UbicacionReclamacion(
+        obra_codigo="0677",
+        obra_nombre=None,
+        unidad_codigo="LOCAL",
+        unidad_nombre="Viviendas Bloque Villa A",
+    )
+
+    assert carpetas_de_unidad(["VILLA A", "LOCAL", "Villa A"], ubicacion=sin_numeros) == ()
+
+
+def test_f013_r11_la_carpeta_con_el_nombre_entero_de_la_unidad_casa():
+    """R11 y R39 · el sufijo trivial: la clave de la carpeta **es** la del nombre.
+
+    Añadido tras la mutación del bloque 1 (superviviente 9): ningún caso de
+    la tabla tenía la misma longitud que la clave del `con.res`.
+    """
+    assert carpetas_de_unidad(
+        ["Viviendas Bloque Villa 5", "VIVIENDAS BLOQUE VILLA 05"],
+        ubicacion=UBICACION_VILLA_5,
+    ) == ("Viviendas Bloque Villa 5", "VIVIENDAS BLOQUE VILLA 05")
+
+
+def test_f013_r11_una_carpeta_mas_larga_que_el_nombre_no_casa():
+    """R11 · más palabras que el nombre no puede ser su sufijo."""
+    assert (
+        carpetas_de_unidad(["OTRAS Viviendas Bloque Villa 5"], ubicacion=UBICACION_VILLA_5)
+        == ()
+    )
+
+
 def test_f013_r14_dos_carpetas_de_la_misma_unidad_se_devuelven_las_dos():
     """R14 · `VILLA 05` y `05` casan las dos → `unidad_ambigua`."""
     assert carpetas_de_unidad(
@@ -660,6 +698,30 @@ def test_f013_r35_tabla_4_5_unidad(carpetas, ubicacion, casan, parecidas):
 def test_f013_r35_tabla_4_5_tramos(carpetas, buscado, parecidas):
     """R35 · la amplia del tramo: un token que empieza por la palabra sin su `S`."""
     assert carpeta_con_nombre(carpetas, buscado=buscado) == ()
+    assert parecidas_de_tramo(carpetas, buscado=buscado) == parecidas
+
+
+@pytest.mark.parametrize(
+    ("carpetas", "buscado", "parecidas"),
+    (
+        # Una palabra que no acaba en `S` se usa entera: `ARCHIV` no es parecida
+        # de `ARCHIVO`, y `ARCHIVOS 2024` sí.
+        (("DOCUMENTOS ARCHIV", "ARCHIVOS 2024"), "PARTES ARCHIVO", ("ARCHIVOS 2024",)),
+        # Solo se quita **una** `S`: `CLASES` → `CLASE`, y `CLAS` no es parecida.
+        (("CLAS", "CLASE 3"), "CLASES", ("CLASE 3",)),
+        # Una palabra que es solo `S` se queda como está: no vale el prefijo vacío.
+        (("PLANOS", "S 2"), "PARTES S", ("S 2",)),
+        # Y se quita también en una palabra de dos letras: `OS` → `O`.
+        (("PLANOS", "O 1"), "HOJA OS", ("O 1",)),
+    ),
+)
+def test_f013_r35_la_palabra_del_tramo_sin_su_s_final(carpetas, buscado, parecidas):
+    """R35 · «sin su `S` final», exactamente una, y nunca el prefijo vacío.
+
+    Añadido tras la mutación del bloque 1 (supervivientes 4 a 7): los tramos
+    reales (`FIRMADOS`, `INCIDENCIAS`) acaban en `S` y no distinguían estos
+    casos.
+    """
     assert parecidas_de_tramo(carpetas, buscado=buscado) == parecidas
 
 

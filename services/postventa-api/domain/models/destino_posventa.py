@@ -235,11 +235,8 @@ def _casa_con_la_obra(nombre: str, *, codigo: str, numero: int | None) -> bool:
     recortado = nombre.strip()
     if recortado == codigo:
         return True
-    return (
-        recortado.startswith(codigo)
-        and len(recortado) > len(codigo)
-        and recortado[len(codigo)].isspace()
-    )
+    # Si empieza por el código y no es el código, es más largo: el índice existe.
+    return recortado.startswith(codigo) and recortado[len(codigo)].isspace()
 
 
 def carpetas_de_obra(nombres: Iterable[str], *, codigo_obra: str | None) -> tuple[str, ...]:
@@ -268,12 +265,12 @@ def carpetas_de_obra(nombres: Iterable[str], *, codigo_obra: str | None) -> tupl
 
 
 def _contiene_seguidas(palabras: tuple[str, ...], buscadas: tuple[str, ...]) -> bool:
-    """¿Aparecen `buscadas` seguidas dentro de `palabras`?"""
-    largo = len(buscadas)
-    return any(
-        palabras[inicio : inicio + largo] == buscadas
-        for inicio in range(len(palabras) - largo + 1)
-    )
+    """¿Aparecen `buscadas` seguidas dentro de `palabras`?
+
+    Las palabras no llevan blancos (`_PALABRA`), así que unirlas con uno y
+    rodearlas de otro convierte «seguidas y enteras» en una búsqueda de texto.
+    """
+    return f" {' '.join(buscadas)} " in f" {' '.join(palabras)} "
 
 
 def parecidas_de_obra(nombres: Iterable[str], *, codigo_obra: str | None) -> tuple[str, ...]:
@@ -350,9 +347,9 @@ def parecidas_de_tramo(
     clave_buscada = clave_de_unidad(buscado)
     if not clave_buscada:
         return ()
-    distintiva = clave_buscada[-1]
-    if distintiva.endswith("S") and len(distintiva) > 1:
-        distintiva = distintiva[:-1]
+    # Sin su `S` final, una sola; y si la palabra es solo `S`, entera: un
+    # prefijo vacío haría parecida cualquier carpeta.
+    distintiva = clave_buscada[-1].removesuffix("S") or clave_buscada[-1]
     claves = _claves_del_tramo(buscado, alternativa)
     return tuple(
         nombre
@@ -378,12 +375,14 @@ def _casa_con_la_unidad(
     `VILLA 5` case con «Villa 51».
     """
     clave = clave_de_unidad(carpeta)
-    if not clave or not any(_es_numero(palabra) for palabra in clave):
+    # Sin número no casa; y una clave vacía no tiene ninguno.
+    if not any(_es_numero(palabra) for palabra in clave):
         return False
     if clave == clave_de_unidad(unidad_codigo):
         return True
-    clave_del_nombre = clave_de_unidad(unidad_nombre)
-    return len(clave) <= len(clave_del_nombre) and clave_del_nombre[-len(clave) :] == clave
+    # `clave` no está vacía; si es más larga que la del nombre, el corte da el
+    # nombre entero, que no puede ser igual a ella.
+    return clave_de_unidad(unidad_nombre)[-len(clave) :] == clave
 
 
 def carpetas_de_unidad(

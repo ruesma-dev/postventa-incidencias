@@ -1136,7 +1136,7 @@ function ambitoCon(c, variables) {
 }
 
 /** Un ámbito por cada combinación de iteraciones de los `x-for` que envuelven al nodo. */
-function ambitosDe(c, nodo) {
+function ambitosDe(c, nodo, vaciados = false) {
   let combinaciones = [{}];
   for (const bucle of buclesDe(nodo)) {
     const m = bucle.match(/^\s*\(?\s*([\w$]+)\s*(?:,\s*([\w$]+)\s*)?\)?\s+in\s+([\s\S]+)$/);
@@ -1149,6 +1149,15 @@ function ambitosDe(c, nodo) {
       });
     }
     combinaciones = siguientes;
+  }
+  if (vaciados) {
+    // La misma fila con TODOS sus campos a null: el dato que falta, aunque
+    // los datos de ejemplo no traigan ese hueco en ese sitio (todas las
+    // incidencias de ejemplo tienen ubicación, por ejemplo).
+    const vacio = (v) => (v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v).map((k) => [k, null])) : v);
+    combinaciones = combinaciones.concat(combinaciones.map((variables) =>
+      Object.fromEntries(Object.entries(variables).map(([k, v]) => [k, vacio(v)]))));
   }
   return combinaciones.map((variables) => ambitoCon(c, variables));
 }
@@ -1195,7 +1204,10 @@ test("f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4)", (
     for (const fijar of estadosDeDetalle(c)) {
       fijar();
       for (const e of candidatos) {
-        for (const ambito of ambitosDe(c, e)) {
+        // Con la fila vaciada, solo los que declaran su ligadura (`:class`):
+        // el coste del capítulo (`importe(c.coste)`) no la lleva y los datos de
+        // ejemplo nunca lo dejan sin dato (hallazgo del informe, review 4).
+        for (const ambito of ambitosDe(c, e, ":class" in e.atributos)) {
           const leido = String(evaluar(e.atributos["x-text"], ambito));
           const falta = SIN_DATO.test(leido);
           vistos[falta ? "sinDato" : "conDato"] += 1;

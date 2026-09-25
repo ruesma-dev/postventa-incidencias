@@ -20,6 +20,16 @@
 > `sigrid/partes-reclamacion` y la ruta de archivo de Posventa) y la decisión
 > D-10; las tareas que cambian lo dicen con esta fecha. Ninguna tarea nueva:
 > lo nuevo cabe en las que había.
+>
+> **Decisiones del humano del 2026-09-25 (acta en `design.md` §13.1).** D-1,
+> D-2 y D-3 cambian la premisa: el portal es la portada (`index.html`), el
+> circuito se muda a `partes.html` y es su pestaña, con una barra superior
+> común. Cambia el bloque 3: la T8 y la T9 de la premisa se conservan,
+> **sustituidas**, y entran **T8** (la mudanza), **T9** (el portal) y **T9
+> bis** (la barra del circuito). T1, T2, T3, T10, T11 y T12 dicen qué
+> cambia; T13 sigue siendo la última. Encargo por bloques: **B3** pasa a ser
+> T5–T9 bis. Tras T13, la publicación de D-4 (del humano, no del
+> implementer).
 
 ## Bloque 1 · Parada obligatoria
 
@@ -33,6 +43,15 @@
       *(2026-09-25)*: se añade **D-10** (catálogos de Sigrid con códigos
       reales), que condiciona T5; y las preguntas de `progress/spec_F-035.md`
       (la plantilla de impresión sigue sin mirar: no se lee sin permiso).
+      *(Decisiones del 2026-09-25)*: **D-1…D-10 respondidas** (acta literal
+      en `design.md` §13.1). T1 queda en la **aprobación de esta spec
+      enmendada**, que incluye lo que D-3 arrastra y el humano no ha visto
+      todavía: la mudanza del circuito a `partes.html`, **una línea en siete
+      tests** (la constante `INDEX`), la pestaña nueva del navegador al salir
+      del circuito, y el placeholder de F-045 en la tarjeta de `inicio` (D-7).
+      Siguen abiertas, **sin bloquear el arranque**: el alcance del acceso
+      (D-5: ¿`posventa-usuarios` o el departamento?; solo condiciona el
+      texto de T10) y el título y la descripción de la tarjeta (H-4).
 
 ## Bloque 2 · Tests en rojo (fase RED)
 
@@ -46,7 +65,11 @@
       (claves del alta en cada fila), R39 (`etiquetaCatalogo`; tipos y oficios
       usados están en el catálogo), R40 (los dos resultados de volcado,
       `resumenVolcado`, `etiquetaEstadoVolcado`) y R41 (forma de
-      `carpetaArchivo`), según `design.md` §11.
+      `carpetaArchivo`), según `design.md` §11. *(Decisiones del
+      2026-09-25)*: R31 pasa a cruzar la barra de `partes.html` (la de
+      `index.html` era la premisa); entran R44 (las dos barras frente a
+      `Portal.SECCIONES` y `enlaceSeccion`), `enlaceSeccion` en sus dos
+      modos, y R5 con `#/partes` → `inicio`.
       **Verificación**: desde `services/postventa-front`,
       `node --test "tests_js/portal.test.js" "tests_js/maqueta_datos.test.js"`
       **en rojo** (los módulos no existen), y la salida copiada a
@@ -61,7 +84,13 @@
       `pytest.skip` con el motivo), R34, R35, R36 y la guardia de pegamento de
       `js/portal_app.js` (`design.md` §8.2). *(2026-09-25)*: y R38 (las
       etiquetas de los campos del alta en el detalle de la bandeja y en la
-      pestaña «Datos»).
+      pestaña «Datos»). *(Decisiones del 2026-09-25)*: donde dice
+      `portal.html`, `index.html`; R30 pasa a ser la comparación con
+      `difflib` de `partes.html` contra el `index.html` de la base, y R32 la
+      guardia de las siete líneas `INDEX` (las dos **solo en la rama de
+      F-035**, `design.md` §11); entran R17 y R35 enmendados, R42, R43, R45,
+      R46 y R47. La guardia de R32 **no** puede quedar en rojo por la propia
+      T3: el fichero nuevo `test_f035_portal.py` es un alta y cuenta como tal.
       **Verificación**: `python -m pytest tests/test_f035_portal.py -q` desde
       el front, **en rojo**, salida a `progress/impl_F-035.md`.
 
@@ -99,25 +128,74 @@
       **Verificación**: `node --test "tests_js/portal.test.js"` con R16 en
       verde; `node --check js/portal_app.js`.
 
-- [ ] **T8**: `portal.html` con las ocho secciones del inventario de
-      `design.md` §5 (*2026-09-25*: con los recuadros de §5.2, §5.3, §5.5,
-      §5.6 y §5.7: detalle de la bandeja con los campos del alta, panel de
-      volcado con sus dos resultados, pestaña «Datos» por bloques, ruta de
-      archivo de Posventa), el aviso de maqueta (R13), la navegación y la región del
-      aviso; contrato de carga de R34. Nada de datos escritos a mano en el
-      HTML: listas y fichas se pintan con `x-for` desde `MaquetaDatos`.
-      **Verificación**: `python -m pytest tests/test_f035_portal.py -q` en verde
-      salvo R30/R31 (dependen de T9) y R36 (T10); `node --test
-      "tests_js/*.test.js"` en verde salvo R31.
+> **Premisa sustituida el 2026-09-25 (D-1, D-2, D-3).** Las dos tareas de
+> este recuadro se conservan como estaban y **no se ejecutan**: las
+> sustituyen T8, T9 y T9 bis, debajo.
+>
+> - [ ] ~~**T8**~~ *(premisa)*: `portal.html` con las ocho secciones del
+>       inventario de `design.md` §5 (*2026-09-25*: con los recuadros de
+>       §5.2, §5.3, §5.5, §5.6 y §5.7: detalle de la bandeja con los campos
+>       del alta, panel de volcado con sus dos resultados, pestaña «Datos»
+>       por bloques, ruta de archivo de Posventa), el aviso de maqueta
+>       (R13), la navegación y la región del aviso; contrato de carga de
+>       R34. Nada de datos escritos a mano en el HTML: listas y fichas se
+>       pintan con `x-for` desde `MaquetaDatos`.
+>       **Verificación**: `python -m pytest tests/test_f035_portal.py -q` en
+>       verde salvo R30/R31 (dependen de T9) y R36 (T10); `node --test
+>       "tests_js/*.test.js"` en verde salvo R31.
+> - [ ] ~~**T9**~~ *(premisa)*: `index.html`: **solo añadir** el
+>       `<nav data-portal-nav>` dentro del `<header>`, entre `:34` y `:35`
+>       (`design.md` §2), con los enlaces a `portal.html#/<id>` en pestaña
+>       nueva y «Partes firmados» como página actual. Ni una línea existente
+>       tocada.
+>       **Verificación**: `git diff --numstat dev -- services/postventa-front/index.html`
+>       con **0** en la columna de líneas borradas; `python -m pytest -q` del
+>       front entero en verde (los ~256 de antes siguen igual) y `node --test
+>       "tests_js/*.test.js"` en verde (los 322 de antes más los nuevos).
 
-- [ ] **T9**: `index.html`: **solo añadir** el `<nav data-portal-nav>` dentro
-      del `<header>`, entre `:34` y `:35` (`design.md` §2), con los enlaces a
-      `portal.html#/<id>` en pestaña nueva y «Partes firmados» como página
-      actual. Ni una línea existente tocada.
-      **Verificación**: `git diff --numstat dev -- services/postventa-front/index.html`
-      con **0** en la columna de líneas borradas; `python -m pytest -q` del front
-      entero en verde (los ~256 de antes siguen igual) y `node --test
-      "tests_js/*.test.js"` en verde (los 322 de antes más los nuevos).
+- [ ] **T8** *(2026-09-25, D-3)*: **mudar el circuito**, en **un solo
+      commit**: `git mv services/postventa-front/index.html
+      services/postventa-front/partes.html`; en `partes.html`, **solo** la
+      línea 1 (`<!-- services/postventa-front/partes.html -->`); y en los
+      siete ficheros de `design.md` §1.2, **solo** la línea
+      `INDEX = RAIZ_FRONT / "index.html"` → `INDEX = RAIZ_FRONT /
+      "partes.html"  # F-035 (D-3): el circuito se mudó de index.html`.
+      Nada más: ni la barra (T9 bis), ni el portal (T9), ni un docstring.
+      **Verificación**: desde `services/postventa-front`, `python -m pytest
+      tests -q --ignore=tests/test_f035_portal.py` con **los mismos tests en
+      verde que antes de T8**, salvo el puente `tests/test_f007_js.py`, que
+      ejecuta también los `tests_js` de F-035 (en rojo desde T2); `node
+      --test` sobre los **quince** ficheros de `tests_js/` de la base (todos
+      menos `portal.test.js` y `maqueta_datos.test.js`) con sus 322 tests en
+      verde; `git diff --numstat HEAD~1 -- services/postventa-front/tests`
+      con `1 1` en exactamente los siete ficheros; `git show --stat HEAD`
+      muestra `index.html => partes.html`. `.\dev_front.ps1` **no arranca**
+      entre T8 y T9 (no hay `index.html`): es esperado y dura un commit.
+
+- [ ] **T9** *(2026-09-25, D-1, D-2, D-3)*: el portal en
+      **`services/postventa-front/index.html`**: el contenido de la T8 de la
+      premisa (las secciones de `design.md` §5 con sus recuadros, salvo
+      `partes`, que no tiene bloque; la tarjeta «Partes firmados» de
+      `inicio` con el enlace a `partes.html` y el placeholder de F-045; el
+      aviso de maqueta; la región del aviso; contrato de carga de R34), con
+      la **barra superior** de `design.md` §2 como primer elemento y los
+      `href` de `Portal.enlaceSeccion(id, "portal")`. Nada de datos
+      escritos a mano en el HTML.
+      **Verificación**: `python -m pytest tests/test_f035_portal.py -q` en
+      verde salvo R30, R31, R43, R45 y R47 (dependen de T9 bis) y R36 (T10);
+      `node --test "tests_js/*.test.js"` en verde salvo R44 del lado del
+      circuito; `.\dev_front.ps1` vuelve a arrancar y `/` abre el portal.
+
+- [ ] **T9 bis** *(2026-09-25, D-2)*: en `partes.html`, **solo añadir** la
+      barra superior (`<nav data-barra-portal>`) como primer hijo del
+      `<div x-data="appPostventa()">`, tras la línea `:16` (`design.md` §2):
+      HTML plano, `partes` con `aria-current="page"` y sin enlace, las otras
+      siete a `./#/<id>` con `target="_blank"` y `rel="noopener"`, y la
+      leyenda de R47. Ni una línea existente tocada.
+      **Verificación**: `python -m pytest -q` del front entero en verde (los
+      ~256 de antes siguen igual, con R30/R43 comprobando el diff contra la
+      base) y `node --test "tests_js/*.test.js"` en verde (los 322 de antes
+      más los nuevos).
 
 ## Bloque 4 · Documentación, evidencias y verde
 
@@ -126,7 +204,15 @@
       de `design.md` §7.3) y `docs/ARCHITECTURE.md` (R37: sección «El portal
       de posventa (F-035)» con el mapa de §4 y la regla de los placeholders;
       la fila de Entra ID de `:544` —`:578` desde `54c0884`— según la
-      respuesta a D-5).
+      respuesta a D-5). *(Decisiones del 2026-09-25)*: D-5 respondida: la
+      fila de Entra ID se **corrige con un recuadro fechado** (el grupo de
+      seguridad `posventa-usuarios` existe, medido por el líder el
+      2026-09-25; hay además un grupo `Postventa` no de seguridad; el
+      alcance del acceso, según responda el humano), **sin un GUID**; el
+      README dice que la portada es el portal y el circuito vive en
+      `partes.html` (R36); y `docs/DESPLIEGUE.md` §6 gana un recuadro: la
+      tarjeta apunta a la raíz y aterriza en el portal, con la propuesta de
+      título y descripción de H-4 para quien lleve `front-portal`.
       **Verificación**: `python -m pytest tests/test_f035_portal.py -k r36 -q`
       (front) y `python -m pytest tests/test_f035_placeholders_vivos.py -k r37 -q`
       (raíz) en verde; los tests de `tests/test_f007_documentacion.py` siguen en
@@ -140,6 +226,14 @@
       que la copia se retiró. (c) Comprobar R32/R33 a mano con
       `git diff --name-status dev -- services/postventa-front/tests services/postventa-front/tests_js services/postventa-front/js`
       (solo altas `A` de los ficheros nuevos).
+      *(Decisiones del 2026-09-25)*: (b) son **ocho** mutaciones (`design.md`
+      §11, recuadro: la 7 añade `@click` a la barra del circuito, la 8 cambia
+      una aserción de `test_f025_front.py`). (c) queda así: en `tests_js/` y
+      `js/`, solo altas `A`; en `tests/`, altas `A` más `M` en **exactamente**
+      los siete ficheros de §1.2, y `git diff -U0 dev -- <cada uno>` enseña
+      solo la línea `INDEX`; y `git diff -M --name-status dev --
+      services/postventa-front/index.html services/postventa-front/partes.html`
+      enseña la mudanza.
       **Verificación**: las tres salidas pegadas en `progress/impl_F-035.md`.
 
 - [ ] **T12**: **MANUAL (humano)**. V1 y V2 de `requirements.md` §3. En
@@ -156,8 +250,23 @@
       **Verificación**: el resultado real, anotado por el humano en
       `progress/current.md`. D-4 (desplegar a `dev`) se decide **después** de
       esto.
+      *(Decisiones del 2026-09-25)*: V1 y V2 **con las URL nuevas**
+      (`requirements.md` §3, recuadro): el portal en
+      `http://localhost:5173/`; la pestaña «Partes firmados» lleva, en la
+      misma pestaña, a `http://localhost:5173/partes.html`, que pinta y
+      funciona como el circuito de siempre con la barra encima; y desde el
+      circuito, «Bandeja de revisión» abre el portal en otra pestaña. D-4 ya
+      está decidida («si»): se publica **después** de V1 y V2.
 
 - [ ] **T13**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       ejecutadas **sin caché** (el árbol del front ha cambiado) y la puerta de
       cobertura en N/A con su motivo impreso.
+
+> **Después del cierre (D-4, 2026-09-25) · no es tarea del implementer.**
+> Con F-035 aprobada por el reviewer y mergeada en `dev`, **el humano**
+> publica con `infra\desplegar_front.ps1 -SoloFront` y hace **V4**
+> (`requirements.md` §3): la raíz y la tarjeta abren el portal,
+> `/partes.html` abre el circuito con el backend en verde, a dónde vuelve el
+> inicio de sesión desde `/partes.html`, y el aviso a Posventa. El resultado,
+> anotado por el humano en `progress/current.md`.

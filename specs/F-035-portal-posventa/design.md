@@ -18,6 +18,28 @@
 > enmiendas encima). Lo que cambia va en recuadros con esta fecha: §5.2,
 > §5.3, §5.5, §5.6, §5.7, §6.3, §7, §8.1, §10, §11, §13 (D-10 nueva) y §14.
 
+> **Decisiones del humano del 2026-09-25 (acta en §13).** El humano ha
+> respondido D-1…D-10. Tres respuestas **cambian la premisa** del diseño y
+> van en recuadros con el rótulo «Decisión del 2026-09-25», que citan lo que
+> había sin borrarlo:
+>
+> - **D-1** («pagina aparte. esto que hemos hecho sera una pestaña de dicho
+>   portal»): el portal es la página; el circuito **deja de ser una página
+>   ajena enlazada** y pasa a ser la pestaña `partes` del portal.
+> - **D-2** («barra superior»): una **barra superior común**, en el portal y
+>   en el circuito.
+> - **D-3** («si»): **la portada `/` pasa a ser el portal**. Revierte la
+>   recomendación anterior. Diseño elegido, medido en §2: el circuito se
+>   **muda de fichero**, de `index.html` a `partes.html`, sin tocar ni una
+>   línea de su lógica, de `staticwebapp.config.json` ni de `dev_server.py`;
+>   el portal ocupa `index.html` (donde decía `portal.html`).
+>
+> Recuadros de esta ronda: cabecera, §1.2, §1.3, §2, §3, §4, §5.1, §5.5,
+> §5.7, §6.3, §8.1, §9, §11, §12, §13 y §14. **Regla de lectura**: en todo lo
+> anterior a esta ronda, **`portal.html` se lee `index.html`** (el portal) y
+> **el `index.html` del circuito se lee `partes.html`**, salvo donde un
+> recuadro diga otra cosa.
+
 ## 1 · Lo que hay hoy, medido
 
 ### 1.1 · El front
@@ -63,6 +85,31 @@ Meter la maqueta en `index.html` obligaría a **reescribir o acotar** esas
 aserciones, y R32 lo prohíbe: son la memoria de por qué el circuito es como
 es. De ahí la página aparte (§2).
 
+> **Decisión del 2026-09-25 (D-3) · medido de nuevo.** §2 decía que mover
+> el circuito «toca el `INDEX` de nueve ficheros de test». Medido sobre
+> `fb356a4` (`grep` en `tests/` y `tests_js/`): **nueve** ficheros nombran
+> `index.html`, pero solo **siete** lo fijan como el circuito, con una única
+> línea `INDEX = RAIZ_FRONT / "index.html"`:
+>
+> | Fichero | Línea | Qué hace con `index.html` | ¿Cambia con la mudanza? |
+> |---|---|---|---|
+> | `test_f007_estaticos.py` | `:36` | Constante `INDEX`: contrato de carga, los nueve scripts, sin almacenamiento | Sí, esa línea |
+> | `test_f009_front.py` | `:44` | Constante `INDEX` | Sí, esa línea |
+> | `test_f012_front.py` | `:46` | Constante `INDEX` | Sí, esa línea |
+> | `test_f025_front.py` | `:47` | Constante `INDEX` | Sí, esa línea |
+> | `test_f026_autoguardado.py` | `:33` | Constante `INDEX` | Sí, esa línea |
+> | `test_f026_front.py` | `:55` | Constante `INDEX` | Sí, esa línea |
+> | `test_f028_front.py` | `:47` | Constante `INDEX` | Sí, esa línea |
+> | `test_f007_dev_server.py` | `:181-472`, `:530` | Que `dev_server.py` **exige un `index.html`** en su raíz para arrancar, con raíces temporales propias | **No**: el portal es el nuevo `index.html` y la exigencia se sigue cumpliendo |
+> | `test_f031_front.py` | `:174` | Solo en el texto de un mensaje de error; lee `js/app.js` | **No** |
+> | `tests_js/reintento_vaciado.test.js` | `:47` | Solo en un comentario | **No** |
+>
+> Y la tabla de arriba se da **la vuelta a favor**: las aserciones negativas
+> leen `INDEX`, así que al cambiar esa constante **siguen al circuito** a
+> `partes.html` y siguen protegiéndolo igual, y el portal —ahora en
+> `index.html`— queda fuera de ellas sin reescribir ni acotar ni una. Es lo
+> que hace posible D-3 con el menor cambio (§2, recuadro).
+
 ### 1.3 · Acceso y despliegue
 
 - `staticwebapp.config.json` exige `authenticated` en `/*` y no tiene
@@ -75,6 +122,44 @@ es. De ahí la página aparte (§2).
   maqueta**, se quiera o no. Es la decisión **D-4**.
 - `dev_server.py` sirve cualquier estático de la carpeta: `portal.html` se abre
   en local sin tocarlo.
+
+> **Decisión del 2026-09-25 (D-3) · lo que se mide para mover la portada.**
+>
+> - **Quién sirve `/`**: en Azure, la Static Web App sirve `index.html` como
+>   documento por defecto; en local, `dev_server.py` hereda
+>   `SimpleHTTPRequestHandler` (`do_GET`, `:59-63`) y hace lo mismo. **Poner
+>   el portal en `index.html` basta para que `/` sea el portal en los dos
+>   sitios**, sin tocar ninguno.
+> - `dev_server.py:164-167` **se niega a arrancar sin `index.html`**: con el
+>   portal ahí, sigue arrancando. `dev_front.ps1:69` anuncia
+>   `http://localhost:$Puerto/`, que pasa a abrir el portal: correcto.
+> - **Acceso**: `staticwebapp.config.json` protege `/*` con `authenticated`,
+>   así que `/`, `/index.html` y `/partes.html` quedan igual de protegidos
+>   **sin tocar el fichero**. El `401` redirige a `/.auth/login/aad` sin
+>   `post_login_redirect_uri`: quien abra `/partes.html` sin sesión puede
+>   volver del inicio de sesión a la portada en vez de al circuito (riesgo
+>   de §12, se mira en V4).
+> - **`globalHeaders` lleva `X-Frame-Options: DENY`**: el navegador se niega
+>   a pintar cualquier página del front dentro de un `<iframe>`, **incluso
+>   del mismo origen**. Incrustar el circuito en el portal con un marco
+>   obligaría a relajar esa cabecera (§2, alternativa descartada).
+> - **Despliegue**: `infra/desplegar_front.ps1:502-507` sube la carpeta
+>   entera; no nombra `index.html` ni comprueba su contenido. `partes.html`
+>   se publica sin tocar `infra/`.
+> - **El circuito no depende de su nombre de fichero**: ni `js/app.js` ni
+>   los otros ocho módulos usan `location`, `window.open`, `href` ni la
+>   cadena `index.html` (medido con `grep` sobre `js/*.js`); los estáticos
+>   se cargan con rutas relativas (`js/…`, `css/…`) que valen igual desde
+>   `partes.html`, en la misma carpeta; y el backend está en `/api/*` del
+>   mismo origen.
+> - **La tarjeta del portal corporativo ya existe**: medido en
+>   `front-portal/public/assets/js/catalog.js` (solo lectura; ni el host ni
+>   el GUID se copian aquí), la entrada `postventa-incidencias` apunta a la
+>   **raíz** de la Static Web App, sin ruta, con `requiredGroupName:
+>   'posventa-usuarios'`. Con D-3, **la tarjeta aterriza en el portal**, que
+>   es lo que se quiere, **sin tocar `front-portal`**. Su título («Partes de
+>   Posventa») y su descripción (habla solo de leer y archivar partes) dejan
+>   de describir lo que abre: se propone al humano (§9, H-4), no se toca.
 
 ## 2 · La decisión: una página aparte con rutas por hash
 
@@ -111,6 +196,91 @@ La portada del dominio (`/`) sigue siendo el circuito. Convertir el portal en
 portada —mover el circuito a otra página— toca el `INDEX` de nueve ficheros de
 test y la URL de la tarjeta: es la decisión **D-3**, fuera de esta ficha.
 
+> **Decisión del 2026-09-25 (D-1, D-2, D-3) · el portal es la portada y el
+> circuito, su pestaña `partes`.** Lo de arriba se conserva como premisa
+> original. Tres frases suyas **dejan de valer**: «`portal.html` es una
+> aplicación Alpine…» (el portal se llama `index.html`), «El circuito sigue
+> siendo `index.html`» (se muda a `partes.html`) y «La portada del dominio
+> (`/`) sigue siendo el circuito» (el humano ha dicho «si» a D-3). Lo demás
+> del apartado —una sola página con rutas por hash, las alternativas A–D, el
+> porqué del hash— **sigue valiendo** para el portal.
+>
+> **Quién es quién desde ahora:**
+>
+> | Fichero | Antes (premisa) | Ahora |
+> |---|---|---|
+> | `services/postventa-front/index.html` | El circuito | **El portal** (lo que la premisa llamaba `portal.html`), portada `/` |
+> | `services/postventa-front/partes.html` | — | **El circuito**, el mismo fichero de antes renombrado con `git mv`: su pestaña `partes` |
+> | `services/postventa-front/portal.html` | La maqueta | **No existe** |
+>
+> **Cómo se integra el circuito como pestaña: cuatro opciones, medidas.**
+>
+> | | Opción | Riesgo para el circuito en producción | Veredicto |
+> |---|---|---|---|
+> | **E** | **El circuito sigue en su propio HTML** (`partes.html`) y la **barra superior común** lo presenta como la pestaña `partes`: el portal enlaza a `partes.html` y el circuito lleva la misma barra, en HTML plano, con `partes` marcada como la pestaña actual | Cambia **solo su URL** (`/` → `/partes.html`) y gana un bloque de HTML sin directivas. Ni un módulo JS, ni `css/styles.css`, ni `staticwebapp.config.json`, ni `dev_server.py`, ni el backend. En tests, **una línea** en cada uno de los siete ficheros de §1.2 (la constante `INDEX`), con una guardia que prueba que no cambia nada más (R32) | **Elegida** |
+> | **F** | El circuito se queda en `index.html` y la portada se **reescribe** en la Static Web App (`"route": "/", "rewrite": "/portal.html"`) | Cero líneas de test, pero toca `staticwebapp.config.json`, que es **el fichero de autenticación de todo el front, `/api/*` del circuito incluido**, y que `test_f010_config_swa.py` vigila regla a regla; obliga a replicar la reescritura en `dev_server.py` (y sus tests) para que local y Azure no difieran; y **no se puede comprobar sin desplegar** que la plataforma distinga `/` de `/index.html` al aplicar la regla (si no los distingue, el circuito queda inalcanzable). El riesgo cae justo en el acceso al circuito | Descartada |
+> | **G** | **Incrustar** el circuito en el portal con un `<iframe src="partes.html">` | Exige quitar o relajar `X-Frame-Options: DENY` (§1.3), una cabecera de seguridad de todo el front; y dentro de un marco cambian el alto, el arrastre de ficheros de la remesa y la impresión del navegador, que el circuito nunca ha probado así | Descartada |
+> | **H** | **Incrustar** el marcado del circuito dentro del portal (una sección más) | Es la alternativa **C** de arriba: reescribir 973 líneas de pegamento y poner en juego ~578 tests del circuito. La ficha lo prohíbe («integrado, no reescrito») | Descartada |
+>
+> **Por qué E es la de menos riesgo.** Todo lo que ejecuta el circuito
+> —sus nueve scripts, su hoja de estilos, su configuración de acceso y su
+> backend— es **byte a byte** lo que hay hoy en producción; lo único que
+> cambia es el nombre del fichero HTML que los carga y una barra de enlaces
+> que Alpine no procesa. La alternativa F, la única que no toca tests, mueve
+> el riesgo al fichero de autenticación, que es justo donde un error deja al
+> circuito sin servicio. Los siete cambios de test son mecánicos, iguales, y
+> una guardia (R32 enmendado) demuestra que no cambia ninguna aserción.
+>
+> **La barra superior (D-2), en las dos páginas.**
+>
+> - Es el **primer elemento visible** de la página: `<nav data-barra-portal>`
+>   con la marca («Posventa · Ruesma») y las ocho pestañas de
+>   `Portal.SECCIONES`, en su orden y con sus etiquetas (R44). Mismo aspecto
+>   en las dos páginas (mismas clases de Tailwind, escritas enteras).
+> - **En el portal** (`index.html`): las pestañas del portal son enlaces
+>   `#/<id>`, la activa resaltada por Alpine; la pestaña `partes` es un
+>   enlace a `partes.html` **en la misma pestaña del navegador** (la maqueta
+>   no tiene nada que perder) (R46). El aviso de maqueta (R13) va **debajo**
+>   de la barra.
+> - **En el circuito** (`partes.html`): la barra se inserta como **primer
+>   hijo del `<div x-data="appPostventa()">`**, justo después de la línea
+>   `:16` y antes del `<header>` de `:18`, para que el diseño en columna de
+>   ese `div` (`min-h-screen flex flex-col`) la absorba sin barra de
+>   desplazamiento nueva. Es **HTML plano**: ni un atributo `x-*`, `@*` ni
+>   `:*`, ni `<script>`, ni `<button>` (R45), así que Alpine la recorre sin
+>   hacer nada. `partes` va como `<span aria-current="page">`, sin enlace; las
+>   otras siete son `<a href="./#/<id>" target="_blank" rel="noopener">`
+>   (R31 enmendado), y la barra lleva una leyenda visible: «Las demás
+>   pestañas son una maqueta con datos de ejemplo y se abren aparte, para no
+>   perder la remesa» (R47). La cabecera del circuito, su pie y todo lo demás
+>   se quedan como están.
+> - **Por qué pestaña nueva desde el circuito.** La remesa en curso vive en
+>   memoria: `js/*.js` no tiene ni un `beforeunload` (medido) y el pie del
+>   circuito lo dice («si la recargas, hay que volver a subir la remesa»).
+>   Salir del circuito en la misma pestaña del navegador la perdería sin
+>   aviso. Alternativa descartada: misma pestaña con un aviso de
+>   `beforeunload` — es lógica nueva en `js/app.js`, y D-3 exige que el
+>   circuito siga «exactamente igual». Si a Posventa le extraña (V3), lo
+>   resuelve una ficha que toque el circuito (F-045 es la primera).
+> - **`#/partes` en el portal**: no hay bloque `partes` dentro del portal (la
+>   pestaña **es** el circuito), así que la ruta cae en R5 y muestra
+>   `inicio`. No se añade código de redirección.
+>
+> **Lo que hay en el portal sobre el circuito** (sustituye a la viñeta «En
+> `portal.html`, la sección `partes`…» de arriba): la tarjeta «Partes
+> firmados» de `inicio` (§5.1) y la pestaña «Parte» de la ficha (§5.5)
+> enlazan a `partes.html` en la misma pestaña; el placeholder de F-045 vive
+> en esos dos sitios (§6.3).
+>
+> **Dónde aterriza cada entrada al front:**
+>
+> | Entrada | Antes | Ahora |
+> |---|---|---|
+> | Tarjeta del portal corporativo (raíz de la Static Web App, medido en §1.3) | El circuito | **El portal**, `inicio` — lo que se quiere; `front-portal` no se toca |
+> | Favorito de un usuario a `/` | El circuito | El portal; el circuito, a un clic en la pestaña «Partes firmados» |
+> | `http://localhost:5173/` (`dev_front.ps1`) | El circuito | El portal |
+> | `/partes.html` | — | El circuito |
+
 ## 3 · Ficheros
 
 ### 3.1 · A crear
@@ -132,6 +302,13 @@ propósito**: la suite del front se salta por caché cuando su árbol no cambia
 (`init.sh`, sección 7 bis), y cambiar el estado de una ficha en
 `features.json` no toca ese árbol. En la raíz se ejecuta siempre.
 
+> **Decisión del 2026-09-25 (D-3).** La primera fila de la tabla («`portal.html`
+> · La maqueta») pasa a ser **`services/postventa-front/index.html`**: el
+> portal, con el mismo contenido que describía esa fila más la barra
+> superior de §2. Como `index.html` ya existe (hoy es el circuito), no se
+> «crea» sino que **se escribe de nuevo** después de mudar el circuito
+> (§3.2). `tests/test_f035_portal.py` cubre además R30, R32 y R42–R47.
+
 ### 3.2 · A modificar
 
 | Ruta | Qué cambia |
@@ -141,7 +318,20 @@ propósito**: la suite del front se salta por caché cuando su árbol no cambia
 | `docs/ARCHITECTURE.md` | Sección nueva «El portal de posventa (F-035)» con el mapa de §4 y la regla de los placeholders (R37). La fila de Entra ID (`:544`; **`:578` en `54c0884`**) se corrige según la respuesta a **D-5** |
 | `harness/features.json`, `BACKLOG.md` | Estado de F-035, como siempre |
 
-### 3.3 · Que NO se tocan (y tientan)
+> **Decisión del 2026-09-25 (D-1, D-2, D-3, D-5).** La fila de `index.html`
+> («**Solo se añade** el bloque `<nav data-portal-nav>` en la cabecera») queda
+> sustituida por estas; las de `README.md`, `ARCHITECTURE.md` y
+> `features.json` siguen, con lo que se añade abajo:
+>
+> | Ruta | Qué cambia |
+> |---|---|
+> | `services/postventa-front/index.html` → **`services/postventa-front/partes.html`** | `git mv` (el historial sigue al circuito). En `partes.html`: la **línea 1** pasa a `<!-- services/postventa-front/partes.html -->` (convención de cabecera de `docs/CONVENTIONS.md`) y **se añade** la barra superior tras `:16` (§2). Ni una línea más cambiada ni borrada (R43) |
+> | `services/postventa-front/index.html` (nuevo contenido) | El portal (§3.1, recuadro) |
+> | Los siete ficheros de test de §1.2 (`test_f007_estaticos.py`, `test_f009_front.py`, `test_f012_front.py`, `test_f025_front.py`, `test_f026_autoguardado.py`, `test_f026_front.py`, `test_f028_front.py`) | **Una línea** cada uno: `INDEX = RAIZ_FRONT / "index.html"` → `INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html`. Ni el nombre de la constante, ni un docstring, ni una aserción. Van **en el mismo commit** que el `git mv`, o la suite queda en rojo entre commits (R32 enmendado) |
+> | `services/postventa-front/README.md` | Además de R36: dónde vive ahora el circuito (`partes.html`) y la portada; la sección «Tres cosas del `index.html` que parecen cosméticas» se refiere ahora a `partes.html` y lo dice con una nota, sin reescribirla |
+> | `docs/ARCHITECTURE.md` | Además de R37: la fila de Entra ID (`:578`) se **corrige con un recuadro** (D-5): el grupo `posventa-usuarios` existe. Sin un GUID |
+> | `docs/DESPLIEGUE.md` §6 | Recuadro: la tarjeta apunta a la raíz y, desde F-035, aterriza en el portal; propuesta de título y descripción para quien lleve `front-portal` (H-4). El bloque para pegar no se reescribe |
+
 
 - `js/app.js` y los otros ocho módulos del circuito (R33): la maqueta no reutiliza
   ni `Confirmacion` ni `Api`. Si una sección real los necesita, la ficha que la
@@ -155,6 +345,14 @@ propósito**: la suite del front se salta por caché cuando su árbol no cambia
 - `services/postventa-api/` entero: ni un endpoint, ni una ruta, ni una
   variable.
 - `azure-apps/` y `front-portal`: ver D-5 y D-8.
+
+> **Decisión del 2026-09-25 (D-3).** Esta lista **no cambia** con la
+> mudanza, y es lo que la hace la opción de menos riesgo: ni `js/*.js`, ni
+> `css/styles.css`, ni `staticwebapp.config.json`, ni `dev_server.py`, ni
+> `dev_front.ps1`, ni `infra/*`, ni `services/postventa-api/`. De los tests
+> existentes, **solo** la línea `INDEX` de los siete ficheros de §1.2; de
+> `tests_js/`, **nada**. `front-portal` tampoco: la tarjeta ya apunta a la
+> raíz (§1.3).
 
 ## 4 · El mapa del portal
 
@@ -173,6 +371,17 @@ La navegación es una barra horizontal bajo la cabecera, con las ocho entradas
 en ese orden y la activa resaltada; en pantallas estrechas pasa a desplazarse
 en horizontal. El aviso de maqueta (R13) va entre la cabecera y la navegación.
 
+> **Decisión del 2026-09-25 (D-1, D-2).** «Una barra horizontal **bajo la
+> cabecera**» y «el aviso **entre la cabecera y la navegación**» dejan de
+> valer: la navegación es la **barra superior común** de §2 (recuadro), el
+> primer elemento de la página, en el portal y en el circuito; el aviso de
+> maqueta va **debajo** de ella y solo en el portal. Las ocho entradas, su
+> orden y sus fichas no cambian. La fila `partes` cambia de sentido:
+>
+> | Sección (`id`) | Etiqueta | Qué muestra | Fichas que la construyen |
+> |---|---|---|---|
+> | `partes` | Partes firmados | **El circuito mismo** (`partes.html`): la pestaña lleva a él; no hay bloque `partes` dentro del portal | F-045 (el circuito: F-001…F-034, ya hecho) |
+
 ## 5 · Inventario de pantallas
 
 Convenciones de esta sección: **[P F-0NN]** es un placeholder con su ficha;
@@ -189,6 +398,14 @@ los de `js/maqueta_datos.js` (§7), todos ficticios.
 - Un párrafo que dice qué es la maqueta y para qué sirve (validar el recorrido).
 - Los contadores se calculan en `Portal` a partir de los datos de ejemplo, no
   se escriben a mano en el HTML.
+
+> **Decisión del 2026-09-25 (D-1, D-3).** La tarjeta «Partes pendientes de
+> cierre (enlace a `partes`)» pasa a llamarse **«Partes firmados»**, enlaza
+> a **`partes.html`** en la misma pestaña (R46) y recoge lo que era la
+> sección `partes` de §5.7: la frase de que el circuito ya funciona y el
+> placeholder «Registrar un parte sin firma (la incidencia queda en TER, no
+> en CER)» **[P F-045]**. Sin contador: los partes pendientes son del
+> circuito, que la maqueta no lee.
 
 ### 5.2 · `entrada` (F-036, F-037)
 
@@ -434,6 +651,10 @@ confirmación expresa y queda constancia de quién» (criterio de F-045).
 > pisos o locales, que F-013 no ha medido. El dato vive en el bloque
 > `incidencias` (F-041), que es el de la ficha.
 
+> **Decisión del 2026-09-25 (D-3).** El enlace «Abrir el circuito de partes
+> firmados» de la pestaña «Parte» apunta a **`partes.html`** (decía
+> `index.html`), en la misma pestaña (R46).
+
 **Económico** (F-047): proforma, coste y venta de la incidencia. Una incidencia
 de ejemplo **enlazada** y otra **sin enlazar** (R22: «sin enlazar», no cero).
 «Enlazar proforma» **[P F-047]**. Pendiente: «en qué momento y con qué campo se
@@ -474,6 +695,14 @@ antes → después). Texto: «Queda histórico de cada cambio» (criterio de F-0
 > en la **biblioteca de Posventa** (la carpeta `PARTES FIRMADOS` de cada
 > vivienda), adjuntar a Sigrid y cerrar.» Con un ejemplo de ruta que cumple
 > R41 (`9901  EJEMPLO NORTE/PARTES INCIDENCIAS/VILLA 003/PARTES FIRMADOS`).
+
+> **Decisión del 2026-09-25 (D-1, D-3).** Esta sección **deja de existir
+> como bloque del portal**: «esto que hemos hecho sera una pestaña de dicho
+> portal» — la pestaña `partes` **es** el circuito (`partes.html`), no una
+> página del portal que enlaza a él. Su contenido (la frase, con el texto de
+> la enmienda de arriba y su ruta de ejemplo, y el placeholder de F-045) se
+> muda a la tarjeta «Partes firmados» de `inicio` (§5.1). `#/partes` en el
+> portal cae en R5 (§2).
 
 ### 5.8 · `economico` (F-046, F-047)
 
@@ -562,6 +791,13 @@ marca los que dicen a cuántas afectarían (R12). Catálogo inicial:
 >
 > Y la `explicacion` de `bandeja.verVolcado` y `bandeja.volcar` dice que el
 > volcado va **por obra** y que reintentar no duplica (referencia `PVI-…`).
+
+> **Decisión del 2026-09-25 (D-1, D-3).** `partes.registrarSinFirma` sigue
+> en el catálogo con el mismo `id` (su prefijo nombra la sección de la que
+> es, no el bloque donde se pinta), pero se dibuja en la tarjeta «Partes
+> firmados» de `inicio` (§5.1). F-045 conserva así sus dos placeholders
+> (`partes.registrarSinFirma` y `ficha.registrarSinFirma`), ninguno en el
+> circuito: la barra de `partes.html` no lleva botones (R45).
 
 El implementer puede añadir entradas si el inventario de §5 lo pide; **no**
 puede usar una ficha que no esté en `harness/features.json` (R27) ni la propia
@@ -697,6 +933,15 @@ use.
 | `resumenVolcado(partes: Array<{estado}>): {previstos, creados, idempotentes, rechazados, no_procesados}` *(2026-09-25)* | R40. Cuenta por estado con los nombres del resumen del contrato; un estado desconocido no suma a ninguno |
 | `etiquetaEstadoVolcado(estado: string, estados: Array<{cod, etiqueta}>): string` *(2026-09-25)* | R40. Estado desconocido → el código tal cual, nunca lanza |
 
+> **Decisión del 2026-09-25 (D-1, D-2, D-3).** Cambian dos firmas y entra
+> una:
+>
+> | Firma | Responsabilidad |
+> |---|---|
+> | `SECCIONES: ReadonlyArray<{id, etiqueta, fichas, pagina}>` | Como antes, más `pagina`: `null` para las siete secciones que viven en el portal y `"partes.html"` para `partes` (R2, R44) |
+> | `resolverRuta(hash, idsIncidencia)` | Como antes, pero una sección con `pagina` distinta de `null` **no es una sección del portal**: `#/partes` devuelve `inicio` sin aviso (R5) |
+> | `enlaceSeccion(id: string, desde: "portal" \| "circuito"): {href, nuevaPestana}` | R31, R44, R46. Desde el portal: `{href: "#/<id>", nuevaPestana: false}` y, para `partes`, `{href: "partes.html", nuevaPestana: false}`. Desde el circuito: `{href: "./#/<id>", nuevaPestana: true}`; `partes` → `null` (es la página actual). Un `id` desconocido → `null`, nunca lanza. Es la **única** fuente de los `href` de las dos barras: el test de R44 cruza con ella el HTML de las dos páginas |
+
 ### 8.2 · `js/portal_app.js` (pegamento; `portalPosventa` global y `module.exports`)
 
 Estado: `seccion`, `incidenciaAbierta`, `pestanaFicha`, `filtros` (uno por
@@ -734,6 +979,27 @@ falso y comprobar R16 recorriendo todos los placeholders y todas las rutas con
   el portal corporativo, hace falta la tarjeta del bloque de
   `docs/DESPLIEGUE.md` §6, que es tarea del humano o de quien lleve
   `front-portal`.
+
+> **Decisión del 2026-09-25 (D-5, D-3).** El humano: «creo que existe». El
+> líder lo ha medido hoy, **solo lectura**, con `az ad group list`:
+>
+> - existe el grupo **de seguridad** `posventa-usuarios`, con **7 miembros**:
+>   el que ya usa el front del piloto y el que citan `docs/DESPLIEGUE.md` y
+>   `docs/INTEGRACION.md`;
+> - existe además un grupo `Postventa` **no de seguridad**, con **9
+>   miembros**; probablemente el de Microsoft 365 del sitio de Posventa.
+>
+> Consecuencias: la discrepancia de la segunda viñeta **se resuelve**: la
+> fila de Entra ID de `docs/ARCHITECTURE.md` (`:578`, «No existe grupo de
+> Posventa») está **desactualizada** y **T10 la corrige** con un recuadro
+> fechado, sin un GUID en ningún fichero. La tercera viñeta también
+> cambia: la tarjeta **ya existe** en `front-portal`, apunta a la raíz y
+> exige `posventa-usuarios` (§1.3); con D-3 aterriza en el portal sin
+> tocarla. **Pregunta abierta para el humano**: ¿el acceso al portal es
+> `posventa-usuarios` (7) o hay que ampliarlo al departamento (¿los 9 de
+> `Postventa`?)? Ampliarlo no es de F-035: es añadir miembros al grupo de
+> seguridad (Entra) o asignar otro grupo a la aplicación, y lo haría el
+> humano; la maqueta hereda el acceso que haya (R35).
 
 ## 10 · Límite de servicio
 
@@ -797,6 +1063,29 @@ en el informe:
 5. `harness/features.json` con F-044 en `done` → cae R28.
 6. *(2026-09-25)* Un parte del dry-run de ejemplo pasa a `creado` → cae R40.
 
+> **Decisión del 2026-09-25 (D-1, D-2, D-3) · tests nuevos y enmendados.**
+> Las filas de R30, R31 y R32 de la tabla se conservan como premisa; estas
+> las **sustituyen** donde chocan. Todo sin red y sin BBDD; lo único que
+> necesita git es lo que ya lo necesitaba (git local).
+>
+> | Requisitos | Test |
+> |---|---|
+> | R30 / R43 (el circuito es el de antes) | `tests/test_f035_portal.py`, **solo en la rama de F-035**: lee `git show <merge-base>:services/postventa-front/index.html` y `partes.html`, y compara línea a línea con `difflib.SequenceMatcher`. Pasa si los códigos de operación son solo `equal`, **un** `replace` de la línea 1 (la cabecera con la ruta) y **un** `insert` justo después de la línea del `x-data="appPostventa()"` que contiene `data-barra-portal`. Cualquier `delete` o cualquier otro `replace` falla con la línea |
+> | R32 enmendado (los tests del circuito no cambian) | `tests/test_f035_portal.py`, **solo en la rama de F-035**: `git diff --numstat <merge-base> -- services/postventa-front/tests services/postventa-front/tests_js` da `1 1` **exactamente** en los siete ficheros de §1.2 y altas en los ficheros nuevos; nada más. Y `git diff -U0` de cada uno de los siete: la línea quitada es `INDEX = RAIZ_FRONT / "index.html"` y la puesta empieza por `INDEX = RAIZ_FRONT / "partes.html"` |
+> | R42 (la portada es el portal) | `tests/test_f035_portal.py` (permanente): `index.html` monta `x-data="portalPosventa()"`, no carga ningún módulo del circuito (R15) y carga los tres de la maqueta en su orden (R34); `partes.html` existe y monta `x-data="appPostventa()"`. Y con el `HandlerDeTest` de `test_f007_dev_server.py` como patrón (copiado, no importado), que `dev_server.py` traduce `/` a `index.html` |
+> | R44 (barra común) | `tests_js/portal.test.js`: lee `index.html` y `partes.html` con `fs`, extrae el `<nav data-barra-portal>` de cada una y comprueba que las etiquetas y su orden son las de `Portal.SECCIONES` y que cada `href` es el de `enlaceSeccion(id, "portal" \| "circuito")` |
+> | R45 (barra inerte en el circuito) | `tests/test_f035_portal.py` (permanente): el `<nav data-barra-portal>` de `partes.html` no tiene ningún atributo que empiece por `x-`, `@` o `:`, ni `<script>`, `<button>`, `<form>` ni `<input>`; y `test_f007_estaticos.py` —sin tocarlo, salvo su `INDEX`— sigue exigiendo los nueve scripts del circuito en `partes.html` |
+> | R31 enmendado, R46, R47 | `tests/test_f035_portal.py`: en `partes.html`, cada enlace de la barra lleva `target="_blank"` y `rel` con `noopener`, `partes` es un `aria-current="page"` sin `href`, y la leyenda de R47 está; en `index.html`, la pestaña `partes` y los enlaces al circuito de `inicio` y de la ficha apuntan a `partes.html` **sin** `target` |
+> | R17 enmendado | `tests/test_f035_portal.py`: todo `href` de `index.html` es `#/…` o `partes.html` |
+> | R35 enmendado | Como antes, para `/`, `/index.html` y `/partes.html` |
+>
+> **Compensación manual** (sigue C4 bis): siete y ocho, en la misma copia
+> aislada:
+>
+> 7. Se añade `@click="x()"` a un enlace de la barra de `partes.html` → cae R45.
+> 8. Se cambia, además de `INDEX`, una aserción de `test_f025_front.py` → cae
+>    la guardia de R32.
+
 ## 12 · Riesgos
 
 | Riesgo | Mitigación |
@@ -809,6 +1098,12 @@ en el informe:
 | Tailwind por CDN no pinta clases construidas dinámicamente | Clases escritas enteras en el HTML, como ya hace `index.html` |
 | *(2026-09-25)* Posventa toma los valores del alta de la maqueta (`0002`, «Escrita», el volcado por obra) por decididos | Son los defectos del contrato de `sigrid-api`, no decisiones de F-040; cada uno lleva su pendiente (R26) y la validación V3 los pregunta |
 | *(2026-09-25)* El contrato de `sigrid/partes-reclamacion` cambia antes de F-040 y la maqueta enseña estados o motivos viejos | Viven en un único bloque de datos (`volcado`, F-040), que F-040 retira al construir el panel real (R28) |
+| *(D-3, 2026-09-25)* Quien usa hoy el circuito entra por la tarjeta o por un favorito a `/` y se encuentra el portal | La pestaña «Partes firmados» está a un clic, en la barra superior; aviso a Posventa al publicar (D-4, V4) |
+| *(D-3)* Tras el inicio de sesión, quien abrió `/partes.html` sin sesión vuelve a la portada | El `401` redirige sin `post_login_redirect_uri` (§1.3). No se toca la configuración para esto; se mira en V4 y, si molesta, se propone una ficha |
+| *(D-3)* El navegador tiene en caché el `index.html` viejo y enseña el circuito en `/` tras publicar | `Ctrl+F5` en V4, como ya dice `docs/DESPLIEGUE.md` §6 para el portal corporativo |
+| *(D-2)* Posventa, desde el circuito real, toma las otras pestañas por funcionalidad | Leyenda de R47 en la barra del circuito, aviso de maqueta en el portal (R13), placeholders marcados |
+| *(D-2)* La pestaña nueva al salir del circuito extraña | Es lo que evita perder la remesa sin tocar `app.js`; se pregunta en V3 |
+| *(D-3)* Un cambio de test «de paso» al mudar el circuito | La guardia de R32 enmendado: solo la línea `INDEX` de los siete ficheros |
 
 ## 13 · Decisiones abiertas (con recomendación)
 
@@ -868,6 +1163,26 @@ en el informe:
   tipos también ficticios (`EJ01 · Fontanería (ejemplo)`) — más fácil de
   comprobar por test, peor para validar con Posventa.
 
+### 13.1 · Acta de las decisiones del humano · 2026-09-25
+
+Transmitidas por el líder. Entre comillas, las palabras literales del
+humano; donde el líder transmite la respuesta sin cita, se dice. Las
+recomendaciones de arriba se conservan tal cual, como premisa.
+
+| | Respuesta del humano | Qué queda decidido | Dónde se aplica |
+|---|---|---|---|
+| **D-1** | «pagina aparte. esto que hemos hecho sera una pestaña de dicho portal» | El portal es una página aparte del circuito, **y el circuito pasa a ser una pestaña del portal** (la sección `partes`), no un enlace a una página ajena. Revisa la «consecuencia que el humano tiene que aceptar» de la recomendación: el circuito ya no queda solo «enlazado», queda **presentado como pestaña** por la barra común | §2, §4, §5.1, §5.7, §6.3; R44–R47 |
+| **D-2** | «barra superior» | La navegación del portal es una **barra superior común**, visible también en el circuito. Del circuito al resto, pestaña nueva del navegador (R31 enmendado); del portal al circuito, la misma | §2, §4; R31, R44–R47 |
+| **D-3** | «si» | **La portada `/` pasa a ser el portal.** Revierte la recomendación («no en F-035»). Diseño: el circuito se muda a `partes.html` con `git mv`; el portal ocupa `index.html`; siete líneas de test (la constante `INDEX`), nada más; la tarjeta del portal corporativo aterriza en el portal sin tocar `front-portal`. Opción de menos riesgo y alternativas descartadas (reescritura en la Static Web App, `<iframe>`, incrustar el marcado), en §2 | §1.2, §1.3, §2, §3; R1, R17, R30, R32, R35, R42, R43 |
+| **D-4** | «si» | Se publica para que lo vea Posventa, **después de V1 y V2**, con `desplegar_front.ps1 -SoloFront` ejecutado por el humano tras el cierre y el merge a `dev`, y avisando a Posventa de que las pestañas nuevas son una maqueta y de que el circuito está en la pestaña «Partes firmados». Se comprueba con **V4** | `requirements.md` §3 (V4); `tasks.md`, tras T13 |
+| **D-5** | «creo que existe» | Medido por el líder (solo lectura, `az ad group list`): existe el grupo de seguridad `posventa-usuarios` (7 miembros), el del piloto; y un grupo `Postventa` no de seguridad (9 miembros, probablemente el de Microsoft 365 del sitio). La fila de Entra ID de `docs/ARCHITECTURE.md` está desactualizada: **T10 la corrige**. Ni un GUID en ningún fichero. **Abierto**: ¿acceso con `posventa-usuarios` o ampliarlo al departamento? | §9; T10 |
+| **D-6** | Acepta la recomendación (el líder lo transmite sin cita literal) | Funciona lo que lee y navega sobre los datos de ejemplo; placeholder lo que escribe, envía o llama | §5, §6 (sin cambios) |
+| **D-7** | «ok» (el líder: «ok, como estaban») | Como estaba: «Aprobar las seleccionadas» es F-043. Consecuencia de D-1/D-3 que **se somete al humano**: el registro sin firma (F-045) ya no puede ir «en la sección `partes`» del portal, porque esa sección es ahora el circuito; va en la tarjeta «Partes firmados» de `inicio` y en la ficha, y sigue **sin** tocar el circuito | §5.1, §6.3 |
+| **D-8** | «ok» (el líder: «ok, como estaban») | `azure-apps/` no se toca en F-035. D-3 no lo cambia: `azure-apps/postventa_incidencias.md` no describe rutas del front (medido: no nombra `index.html`), ni cambia un endpoint, tabla, variable o grupo | — |
+| **D-9** | «¿por qué no mutamos javascript? sino como recomiendas» | **Queda la recomendación para F-035**: campaña con 0 mutantes y compensación a mano (§11, ahora ocho mutaciones). La mutación de JavaScript la registra **el líder, aparte, como propuesta del arnés** (candidata a `arnes-base`); no es trabajo de F-035 | §11; H-5 |
+| **D-10** | «ok» (el líder: «ok, como estaban») | Catálogos generales de Sigrid con códigos reales; todo lo que identifica a alguien o a una obra, ficticio | §7.2, R24 (sin cambios) |
+| Plantilla de impresión | Se queda para F-044 (el líder lo transmite sin cita literal) | **No se abre ni se convierte** en F-035. El pendiente de §5.6 no cambia | §5.6 |
+
 ## 14 · Hallazgos (fuera de alcance, para el líder)
 
 - **H-1**: `docs/ARCHITECTURE.md:544` (`:578` en `54c0884`) contradice lo registrado del despliegue de
@@ -887,3 +1202,19 @@ en el informe:
   a `PTE` después, o el escritorio lo hace solo al crear. Es de F-040, no de
   F-035: la maqueta no enseña el estado de los `creado` y lo deja como
   pendiente (§5.3).
+- **H-1, resuelto el 2026-09-25** (D-5): el grupo existe; T10 corrige la fila.
+- **H-2, precisión del 2026-09-25** (D-3): con la mudanza, `index.html:596-597`
+  pasa a ser `partes.html` en las mismas líneas desplazadas por la barra;
+  sigue sin corregirse en F-035 (R43 solo permite añadir la barra y cambiar
+  la línea 1).
+- **H-4** *(2026-09-25)*: **la tarjeta del portal corporativo describe solo
+  el circuito.** En `front-portal`, título «Partes de Posventa» y una
+  descripción de lectura y archivo de partes; con D-3 abre el portal entero.
+  Propuesta para quien lleve `front-portal` (no se toca desde aquí): título
+  «Posventa» y descripción «Portal de posventa: incidencias, bandeja de
+  revisión, partes firmados y coste. Las secciones nuevas son una maqueta en
+  validación.» T10 la deja escrita en `docs/DESPLIEGUE.md` §6.
+- **H-5** *(2026-09-25)*: **mutación de JavaScript** (D-9). El humano
+  pregunta por qué no se muta JavaScript. Es una capacidad del arnés, no de
+  este proyecto: el líder la registra aparte como propuesta del arnés
+  (`arnes-base`). F-035 no la espera.

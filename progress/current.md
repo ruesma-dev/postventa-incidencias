@@ -1,6 +1,30 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## SPEC DE F-035 ENMENDADA CON LAS DECISIONES DEL HUMANO · 2026-09-25 · `spec_ready`, **pendiente de aprobación**
+>
+> spec-author. `specs/F-035-portal-posventa/` enmendada con D-1…D-10 (acta
+> literal en `design.md` §13.1; resumen en **`progress/spec_F-035.md`** §5–§7).
+> Sin código, sin push.
+>
+> - Respuestas literales: D-1 «pagina aparte. esto que hemos hecho sera una
+>   pestaña de dicho portal»; D-2 «barra superior»; D-3 «si»; D-4 «si»; D-5
+>   «creo que existe»; D-9 «¿por qué no mutamos javascript? sino como
+>   recomiendas»; D-6 con la recomendación; D-7, D-8 y D-10 «ok»; plantilla
+>   de impresión para F-044.
+> - **Diseño de D-3**: el portal ocupa `index.html` (portada `/`); el
+>   circuito se muda con `git mv` a `partes.html` y es la pestaña `partes`,
+>   con una barra superior común en HTML plano. Ni `js/*.js`, ni
+>   `staticwebapp.config.json`, ni `dev_server.py`: solo **una línea en siete
+>   tests** (`INDEX`), con guardia. La tarjeta de `front-portal` ya apunta a
+>   la raíz y aterriza en el portal sin tocarla.
+> - **Abierto para el humano**: aprobar la spec enmendada (incluidas las
+>   siete líneas de test y la pestaña nueva del navegador al salir del
+>   circuito); D-7 (F-045 en la tarjeta de `inicio`, no en `partes`); D-5
+>   (¿`posventa-usuarios` o el departamento?); H-4 (título y descripción de
+>   la tarjeta). D-9: el líder registra aparte la mutación de JavaScript como
+>   propuesta del arnés.
+
 > ## SPEC DE F-035 AL DÍA · 2026-09-25 · `spec_ready`, **pendiente de aprobación del humano**
 >
 > spec-author. **`specs/F-035-portal-posventa/`**, rama

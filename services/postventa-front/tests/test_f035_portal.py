@@ -1836,3 +1836,151 @@ def test_f035_r51_cada_pestana_de_la_ficha_se_marca_a_si_misma():
         assert _normaliza(tab.atributos.get(":aria-selected", "")) == esperada, (
             f"«{tab.texto()}» abre «{abre.group(1)}» y tiene que marcarse con :aria-selected=\"{esperada}\""
         )
+
+
+# =============================================================================
+# Correcciones de la review 3 (progress/review3_F-035.md)
+# =============================================================================
+
+# --- R55 · El movimiento reducido GANA, no solo existe (cambio requerido 1) ------
+#
+# El bloque de `prefers-reduced-motion` usa `:is(*, #rs-movimiento-reducido)`
+# para tener especificidad de id (1,0,0) sin `!important` (R60). Con un `*`
+# pelado (0,0,0) cualquier regla de clase le gana y el pulso y las
+# transiciones siguen en marcha (mutante G de la review 3, visto en Chrome).
+# Se exige la forma `:is(*, #id)` en los tres selectores (el elemento, `::before`
+# y `::after`) y que ninguna regla con `animation*`/`transition*` de las hojas
+# use un id: con eso, la del bloque gana a todas.
+
+_UNIVERSAL_CON_ID = re.compile(r"^:is\(\s*\*\s*,\s*#[\w-]+\s*\)(::before|::after)?$")
+
+
+@pytest.mark.parametrize("hoja", HOJAS_DE_LA_MARCA, ids=lambda h: h.name)
+def test_f035_r55_el_movimiento_reducido_gana_por_especificidad(hoja):
+    reglas = reglas_css(css_sin_comentarios(hoja))
+    apagan = [
+        r for r in reglas
+        if any(re.search(r"prefers-reduced-motion\s*:\s*reduce", c) for c in r.contexto)
+        and r.valor("transition") == "none" and r.valor("animation") == "none"
+    ]
+    assert apagan, f"{hoja.name}: falta la regla que apaga transition y animation"
+
+    selectores = [s for r in apagan for s in _trocea(r.selector, ",")]
+    flojos = [s for s in selectores if not _UNIVERSAL_CON_ID.match(s)]
+    assert not flojos, (
+        f"{hoja.name}: el movimiento reducido tiene que ganar por especificidad "
+        f"(:is(*, #id), sin !important); estos selectores pierden contra una clase: {flojos}"
+    )
+    pseudos = {(_UNIVERSAL_CON_ID.match(s).group(1) or "") for s in selectores}
+    assert pseudos == {"", "::before", "::after"}, (
+        f"{hoja.name}: el apagado cubre el elemento, ::before y ::after ({sorted(pseudos)})"
+    )
+
+    con_id = [
+        repr(r) for r in reglas
+        if r not in apagan
+        and any(p.startswith(("animation", "transition")) for p, _ in r.declaraciones)
+        and "#" in r.selector
+    ]
+    assert con_id == [], (
+        f"{hoja.name}: una regla con movimiento y selector de id empataría con el "
+        f"bloque de movimiento reducido: {con_id}"
+    )
+
+
+# --- R40 · Cada chip del volcado, en su panel (cambio requerido 2) ---------------
+#
+# «Dry-run siempre primero» es la regla central del volcado: el panel del
+# volcado hecho no puede salir etiquetado «Simulación» ni al revés (mutante S1).
+
+CHIPS_DEL_VOLCADO = {
+    "Simulación": "r.resultado === datos.volcado.dryRun",
+    "Hecho en Sigrid": "r.resultado === datos.volcado.hecho",
+}
+
+
+def test_f035_r40_cada_chip_del_volcado_va_en_su_panel():
+    bloque = seccion(leer_html(PORTAL), "bandeja")
+
+    for texto, condicion in CHIPS_DEL_VOLCADO.items():
+        chip = _uno(
+            [e for e in bloque.elementos() if "rs-chip" in clases(e) and e.texto() == texto],
+            f"chip «{texto}» del volcado",
+        )
+        assert _normaliza(chip.atributos.get("x-show", "")) == condicion, (
+            f"el chip «{texto}» se enseña con x-show=\"{condicion}\", "
+            f"no con «{chip.atributos.get('x-show')}»"
+        )
+
+
+# --- §5.2 · Los errores de la importación se ven cuando los hay (P-R1, mutante O2)
+
+
+def test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_errores():
+    bloque = seccion(leer_html(PORTAL), "entrada")
+    plantilla = _uno(
+        [e for e in bloque.elementos() if e.nombre == "template" and "datos.entrada.errores" in e.atributos.get("x-for", "")],
+        "x-for de los errores de la importación",
+    )
+    lista = plantilla.padre
+
+    assert _normaliza(lista.atributos.get("x-show", "")) == "datos.entrada.errores.length", (
+        f"la lista de errores se enseña cuando hay errores, no con «{lista.atributos.get('x-show')}»"
+    )
+
+
+# --- R57 · Cada chip pinta el estado que dice (P-R1, :data-estado) ---------------
+
+
+def test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto():
+    """El `:data-estado` (el color) y el `x-text` (lo que se lee) miran el mismo campo."""
+    problemas = []
+    for e in leer_html(PORTAL).elementos():
+        estado = _normaliza(e.atributos.get(":data-estado", ""))
+        if not estado:
+            continue
+        if not re.fullmatch(r"[a-z]+\.estado", estado) or not re.search(
+            rf"(^|\(){re.escape(estado)}(\)|$)", _normaliza(e.atributos.get("x-text", ""))
+        ):
+            problemas.append(f"<{e.nombre} :data-estado=\"{estado}\" x-text=\"{e.atributos.get('x-text')}\">")
+    assert problemas == [], "chips cuyo color no es el del estado que se lee:\n" + "\n".join(problemas)
+
+
+# --- R-1 de la review 3 · styles.css no puede esconder ni desactivar el circuito --
+#
+# `css/styles.css` lo carga el circuito en producción y lo editarán las fichas
+# del portal. R60 cierra el `!important`; esto cierra los otros caminos por los
+# que una regla escondería o desactivaría un aviso o un botón del circuito
+# (mutantes H, I y R de la review 3). Decisión del líder.
+
+_OPACIDAD_CERO = re.compile(r"^(0|0?\.0+|0%)$")
+_BARRA_ESTRECHA = {".rs-barra__sep", ".rs-barra__etiqueta"}
+
+
+def _solo_pseudoelemento(selector: str) -> bool:
+    return selector.endswith(("::before", "::after"))
+
+
+def test_f035_r60_styles_css_no_puede_esconder_ni_desactivar_el_circuito():
+    problemas = []
+    for regla in reglas_css(css_sin_comentarios(STYLES_CSS)):
+        en_keyframes = any(c.startswith("@keyframes") for c in regla.contexto)
+        en_barra_estrecha = any(re.search(r"max-width\s*:\s*560px", c) for c in regla.contexto)
+        selectores = _trocea(regla.selector, ",")
+        for propiedad, valor in regla.declaraciones:
+            if propiedad == "pointer-events":
+                problemas.append(f"{regla!r}: pointer-events ({valor})")
+            elif propiedad == "visibility" and valor == "hidden":
+                problemas.append(f"{regla!r}: visibility: hidden")
+            elif propiedad == "opacity" and _OPACIDAD_CERO.match(valor) and not en_keyframes:
+                problemas.append(f"{regla!r}: opacity: {valor} fuera de @keyframes")
+            elif propiedad == "display" and valor == "none":
+                admitida = all(_solo_pseudoelemento(s) for s in selectores) or (
+                    en_barra_estrecha and set(selectores) <= _BARRA_ESTRECHA
+                )
+                if not admitida:
+                    problemas.append(f"{regla!r}: display: none")
+    assert problemas == [], (
+        "css/styles.css la carga el circuito en producción: ninguna regla puede esconder "
+        "ni desactivar nada suyo (review 3, R-1):\n" + "\n".join(problemas)
+    )

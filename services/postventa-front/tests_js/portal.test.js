@@ -1093,3 +1093,186 @@ test("f035 R57: ningún estado se pinta fuera de su chip (salvo las opciones de 
     "un estado pintado sin chip ni data-estado",
   );
 });
+
+
+// ── Review 4 · Las ligaduras de presentación dicen la verdad del dato ───────
+//
+// El barrido de la review 4 (una mutación por aparición) dejaba vivas las
+// `:class` de presentación: vaciadas, la suite seguía en verde. Aquí se
+// EJECUTAN contra el componente y los datos de ejemplo, como lo haría Alpine:
+// cada expresión (`x-for`, `x-text`, `:class`, `@click`) se evalúa con el
+// componente como ámbito, y se comprueba que la clase cuenta lo mismo que el
+// texto que se ve. No se fija la redacción de ninguna expresión.
+
+/** Evalúa una expresión de Alpine con `ambito` como alcance (lo que hace Alpine con `with`). */
+function evaluar(expresion, ambito) {
+  return new Function("__ambito", `with (__ambito) { return (${expresion}); }`)(ambito);
+}
+
+/** Los `x-for` que envuelven a `nodo`, de fuera adentro. */
+function buclesDe(nodo) {
+  const lista = [];
+  for (let n = nodo.padre; n; n = n.padre) {
+    if (n.nombre === "template" && n.atributos["x-for"]) lista.unshift(n.atributos["x-for"]);
+  }
+  return lista;
+}
+
+/**
+ * El componente con las variables de los `x-for` encima. Es un `Proxy` para
+ * que lo que escribe un método (`this.filaBandejaAbierta = id`) caiga en el
+ * componente, como en Alpine, y no en una copia.
+ */
+function ambitoCon(c, variables) {
+  return new Proxy(c, {
+    has: (destino, clave) => clave in variables || clave in destino,
+    get: (destino, clave) => (clave in variables ? variables[clave] : destino[clave]),
+    set: (destino, clave, valor) => {
+      if (clave in variables) variables[clave] = valor;
+      else destino[clave] = valor;
+      return true;
+    },
+  });
+}
+
+/** Un ámbito por cada combinación de iteraciones de los `x-for` que envuelven al nodo. */
+function ambitosDe(c, nodo) {
+  let combinaciones = [{}];
+  for (const bucle of buclesDe(nodo)) {
+    const m = bucle.match(/^\s*\(?\s*([\w$]+)\s*(?:,\s*([\w$]+)\s*)?\)?\s+in\s+([\s\S]+)$/);
+    assert.ok(m, `x-for sin entender: ${bucle}`);
+    const siguientes = [];
+    for (const variables of combinaciones) {
+      const coleccion = evaluar(m[3], ambitoCon(c, variables));
+      Array.from(coleccion || []).forEach((valor, i) => {
+        siguientes.push({ ...variables, [m[1]]: valor, ...(m[2] ? { [m[2]]: i } : {}) });
+      });
+    }
+    combinaciones = siguientes;
+  }
+  return combinaciones.map((variables) => ambitoCon(c, variables));
+}
+
+function clasesEn(nodo, ambito) {
+  const fijas = (nodo.atributos.class || "").split(/\s+/);
+  const dinamicas = nodo.atributos[":class"] ? String(evaluar(nodo.atributos[":class"], ambito)).split(/\s+/) : [];
+  return new Set([...fijas, ...dinamicas].filter(Boolean));
+}
+
+/**
+ * Estados del componente que abren, a la vez, la fila i de la bandeja, la
+ * incidencia i y el capítulo i: así cada panel de detalle se pinta con cada
+ * uno de sus datos de ejemplo.
+ */
+function estadosDeDetalle(c) {
+  const d = datos();
+  const n = Math.max(d.bandeja.filas.length, d.incidencias.filas.length, d.capitulos.filas.length);
+  const estados = [];
+  for (let i = 0; i < n; i += 1) {
+    estados.push(() => {
+      c.filaBandejaAbierta = (d.bandeja.filas[i] || {}).id || null;
+      c.incidenciaAbierta = (d.incidencias.filas[i] || {}).id || null;
+      c.capituloAbierto = (d.capitulos.filas[i] || {}).obra || null;
+    });
+  }
+  return estados;
+}
+
+/** Lo que el portal escribe cuando falta un dato (R22, R25, F-039). */
+const SIN_DATO = /^(sin completar|sin enlazar|Sin histórico\b)/;
+
+test("f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4)", () => {
+  conVentanaFalsa(() => {
+    const c = nuevoComponente();
+    const candidatos = elementos(arbol(leer("index.html"))).filter((e) => {
+      const x = e.atributos["x-text"] || "";
+      return /'sin completar'|'sin enlazar'|Sin histórico|\bimporte\(/.test(x);
+    });
+    assert.ok(candidatos.length >= 12, `los datos que pueden faltar (hay ${candidatos.length})`);
+
+    const vistos = { conDato: 0, sinDato: 0 };
+    const problemas = [];
+    for (const fijar of estadosDeDetalle(c)) {
+      fijar();
+      for (const e of candidatos) {
+        for (const ambito of ambitosDe(c, e)) {
+          const leido = String(evaluar(e.atributos["x-text"], ambito));
+          const falta = SIN_DATO.test(leido);
+          vistos[falta ? "sinDato" : "conDato"] += 1;
+          if (falta !== clasesEn(e, ambito).has("rs-sin-dato")) {
+            problemas.push(`<${e.nombre} x-text="${e.atributos["x-text"]}"> dice «${leido}» ${falta ? "sin" : "con"} rs-sin-dato`);
+          }
+        }
+      }
+    }
+    assert.deepEqual([...new Set(problemas)], [], "la marca rs-sin-dato no cuenta lo mismo que el texto");
+    assert.ok(vistos.sinDato > 0 && vistos.conDato > 0, `el test ve los dos casos: ${JSON.stringify(vistos)}`);
+  });
+});
+
+test("f035 R25: un pendiente del campo se pinta en atención, y solo él (review 4)", () => {
+  conVentanaFalsa(() => {
+    const c = nuevoComponente();
+    const candidatos = elementos(arbol(leer("index.html"))).filter((e) =>
+      /'Pendiente: '/.test(e.atributos["x-text"] || ""),
+    );
+    assert.ok(candidatos.length >= 1, "los orígenes de campo con pendiente");
+
+    const vistos = { pendiente: 0, otro: 0 };
+    for (const fijar of estadosDeDetalle(c)) {
+      fijar();
+      for (const e of candidatos) {
+        for (const ambito of ambitosDe(c, e)) {
+          const leido = String(evaluar(e.atributos["x-text"], ambito));
+          const pendiente = leido.startsWith("Pendiente: ");
+          vistos[pendiente ? "pendiente" : "otro"] += 1;
+          assert.equal(clasesEn(e, ambito).has("rs-nota--atencion"), pendiente, `«${leido}»: rs-nota--atencion`);
+        }
+      }
+    }
+    assert.ok(vistos.pendiente > 0 && vistos.otro > 0, `el test ve los dos casos: ${JSON.stringify(vistos)}`);
+  });
+});
+
+test("f035 R38/§5.8: la fila abierta, y solo ella, lleva rs-fila--abierta (review 4)", () => {
+  conVentanaFalsa(() => {
+    const todos = elementos(arbol(leer("index.html")));
+    // Toda fila de tabla que se abre con un botón «abrir…» de la propia fila.
+    const filas = todos.filter(
+      (e) => e.nombre === "tr" && elementos(e).some((b) => /^\s*abrir\w*\(/.test(b.atributos["@click"] || "")),
+    );
+    assert.ok(filas.length >= 2, `las tablas con detalle (bandeja y capítulos): hay ${filas.length}`);
+
+    for (const tr of filas) {
+      const boton = elementos(tr).find((b) => /^\s*abrir\w*\(/.test(b.atributos["@click"] || ""));
+      const c = nuevoComponente();
+      const ambitos = ambitosDe(c, tr);
+      assert.ok(ambitos.length >= 2, `${boton.atributos["@click"]}: al menos dos filas de ejemplo`);
+      ambitos.forEach((abierta, k) => {
+        evaluar(boton.atributos["@click"], abierta);
+        const marcadas = ambitos.map((ambito) => clasesEn(tr, ambito).has("rs-fila--abierta"));
+        assert.deepEqual(
+          marcadas,
+          ambitos.map((_, j) => j === k),
+          `${boton.atributos["@click"]}: tras abrir la fila ${k}, solo ella va marcada`,
+        );
+      });
+    }
+  });
+});
+
+test("f035 R11: el aviso de un placeholder se ve en su tarjeta, y sin aviso no hay tarjeta (review 4)", () => {
+  conVentanaFalsa(() => {
+    const c = nuevoComponente();
+    const region = elementos(arbol(leer("index.html"))).find(
+      (e) => e.atributos.role === "status" && (e.atributos["x-text"] || "").trim() === "aviso",
+    );
+    assert.ok(region, "la región role=\"status\" del aviso (R11)");
+    const tarjeta = region.padre;
+
+    assert.equal(clasesEn(tarjeta, c).has("rs-toast--visible"), false, "sin aviso, sin tarjeta");
+    c.placeholder(portal().PLACEHOLDERS[0].id);
+    assert.ok(c.aviso, "el placeholder deja su aviso");
+    assert.equal(clasesEn(tarjeta, c).has("rs-toast--visible"), true, "con aviso, en su tarjeta");
+  });
+});

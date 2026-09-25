@@ -1757,9 +1757,18 @@ def test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla(id_s
         e for e in bloque.elementos() if e.nombre == "template" and funcion in e.atributos.get("x-for", "")
     ]
     assert plantillas, f"{id_seccion}: no se pinta {funcion}"
+    # Review 4: la forma exacta, no «que contenga la función»: negada, la lista
+    # se esconde justo cuando hay filas y la sección se queda en blanco.
+    con_filas = (f"{funcion}.length", f"{funcion}.length>0")
     for plantilla in plantillas:
         contenedores = [a for a in plantilla.ancestros() if funcion in a.atributos.get("x-show", "")]
         assert contenedores, f"{id_seccion}: con cero filas, la lista no se enseña vacía (x-show en su contenedor)"
+        for contenedor in contenedores:
+            forma = re.sub(r"\s+", "", contenedor.atributos["x-show"])
+            assert forma in con_filas, (
+                f"{id_seccion}: la lista se enseña cuando {funcion} tiene filas "
+                f"(x-show=\"{funcion}.length\"), no con x-show=\"{contenedor.atributos['x-show']}\""
+            )
         assert not any(vacio.dentro_de(c) for c in contenedores), (
             f"{id_seccion}: el estado vacío no puede ir dentro de lo que se esconde"
         )
@@ -1984,3 +1993,42 @@ def test_f035_r60_styles_css_no_puede_esconder_ni_desactivar_el_circuito():
         "css/styles.css la carga el circuito en producción: ninguna regla puede esconder "
         "ni desactivar nada suyo (review 3, R-1):\n" + "\n".join(problemas)
     )
+
+
+# =============================================================================
+# Correcciones de la review 4 (progress/review4_F-035.md)
+# =============================================================================
+
+# --- R9 · La ficha que nombra cada panel es la de sus pendientes -----------------
+#
+# Cada panel de la maqueta lleva su chip «F-0NN» (`x-text="datos.<bloque>.ficha"`)
+# y su lista de pendientes (`x-for="p in datos.<bloque>.pendientes"`). Si el chip
+# apunta a otro bloque, el panel atribuye su trabajo a otra ficha (barrido de la
+# review 4: una mutación por aparición). Se cruza cada chip con los pendientes
+# del panel más cercano que los tenga.
+
+_FICHA_DE_BLOQUE = re.compile(r"^datos\.(\w+)\.ficha$")
+_PENDIENTES_DE_BLOQUE = re.compile(r"datos\.(\w+)\.pendientes")
+
+
+def test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes():
+    chips = [
+        (e, m.group(1)) for e in leer_html(PORTAL).elementos()
+        if (m := _FICHA_DE_BLOQUE.match(e.atributos.get("x-text", "").strip()))
+    ]
+
+    assert len(chips) >= 7, f"los paneles de la maqueta nombran su ficha (hay {len(chips)})"
+    for chip, bloque in chips:
+        for ancestro in chip.ancestros():
+            bloques = {
+                m.group(1)
+                for e in ancestro.elementos() if e.nombre == "template"
+                if (m := _PENDIENTES_DE_BLOQUE.search(e.atributos.get("x-for", "")))
+            }
+            if bloques:
+                assert bloques == {bloque}, (
+                    f"el chip datos.{bloque}.ficha está en el panel de los pendientes de {sorted(bloques)}"
+                )
+                break
+        else:
+            pytest.fail(f"el chip datos.{bloque}.ficha no está en ningún panel con pendientes")

@@ -1204,10 +1204,10 @@ test("f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4)", (
     for (const fijar of estadosDeDetalle(c)) {
       fijar();
       for (const e of candidatos) {
-        // Con la fila vaciada, solo los que declaran su ligadura (`:class`):
-        // el coste del capítulo (`importe(c.coste)`) no la lleva y los datos de
-        // ejemplo nunca lo dejan sin dato (hallazgo del informe, review 4).
-        for (const ambito of ambitosDe(c, e, ":class" in e.atributos)) {
+        // Siempre también con la fila vaciada, y en TODOS los candidatos: los
+        // elige su `x-text`, nunca la ligadura que se vigila (review 5: si el
+        // vaciado dependiera de tener `:class`, borrar el `:class` lo apagaría).
+        for (const ambito of ambitosDe(c, e, true)) {
           const leido = String(evaluar(e.atributos["x-text"], ambito));
           const falta = SIN_DATO.test(leido);
           vistos[falta ? "sinDato" : "conDato"] += 1;

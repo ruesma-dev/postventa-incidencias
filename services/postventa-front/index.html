@@ -937,7 +937,7 @@
                   <tr :class="capituloAbierto === c.obra ? 'rs-fila--abierta' : ''">
                     <td x-text="c.obra + ' · ' + c.nombre"></td>
                     <td class="rs-importe" x-text="c.incidencias"></td>
-                    <td class="rs-importe" x-text="importe(c.coste)"></td>
+                    <td class="rs-importe" x-text="importe(c.coste)" :class="c.coste === null ? 'rs-sin-dato' : ''"></td>
                     <td class="rs-importe" x-text="importe(c.venta)" :class="c.venta === null ? 'rs-sin-dato' : ''"></td>
                     <td class="rs-importe" x-text="importe(c.venta === null ? null : c.venta - c.coste)" :class="c.venta === null ? 'rs-sin-dato' : ''"></td>
                     <td>

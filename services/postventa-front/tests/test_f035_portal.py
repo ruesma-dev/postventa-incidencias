@@ -1999,26 +1999,36 @@ def test_f035_r60_styles_css_no_puede_esconder_ni_desactivar_el_circuito():
 # Correcciones de la review 4 (progress/review4_F-035.md)
 # =============================================================================
 
-# --- R9 · La ficha que nombra cada panel es la de sus pendientes -----------------
+# --- R29 · La ficha que nombra cada panel es la de sus pendientes ----------------
 #
-# Cada panel de la maqueta lleva su chip «F-0NN» (`x-text="datos.<bloque>.ficha"`)
-# y su lista de pendientes (`x-for="p in datos.<bloque>.pendientes"`). Si el chip
-# apunta a otro bloque, el panel atribuye su trabajo a otra ficha (barrido de la
-# review 4: una mutación por aparición). Se cruza cada chip con los pendientes
-# del panel más cercano que los tenga.
+# Cada panel de la maqueta lleva su chip «F-0NN» (`<span class="rs-ficha"
+# x-text="datos.<bloque>.ficha">`) y su lista de pendientes (`x-for="p in
+# datos.<bloque>.pendientes"`): es lo que dice qué ficha sustituirá ese bloque
+# de datos de ejemplo (R29, y la retirada de R28). Si el chip apunta a otro
+# bloque, o lleva un literal, el panel atribuye su trabajo a otra ficha, o se
+# queda desfasado al renumerar (barridos de las reviews 4 y 5).
+#
+# Los chips se eligen por su CLASE, nunca por la forma de su `x-text`, que es
+# lo que se vigila: si se eligieran por la ligadura, un chip con un literal
+# dejaría de contar como chip y el test se apagaría solo (review 5, M14/M21).
 
 _FICHA_DE_BLOQUE = re.compile(r"^datos\.(\w+)\.ficha$")
 _PENDIENTES_DE_BLOQUE = re.compile(r"datos\.(\w+)\.pendientes")
+#: Los chips F-0NN de los paneles de la maqueta (medido: 10).
+CHIPS_DE_FICHA = 10
 
 
-def test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes():
-    chips = [
-        (e, m.group(1)) for e in leer_html(PORTAL).elementos()
-        if (m := _FICHA_DE_BLOQUE.match(e.atributos.get("x-text", "").strip()))
-    ]
+def test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes():
+    chips = [e for e in leer_html(PORTAL).elementos() if "rs-ficha" in clases(e)]
 
-    assert len(chips) >= 7, f"los paneles de la maqueta nombran su ficha (hay {len(chips)})"
-    for chip, bloque in chips:
+    assert len(chips) == CHIPS_DE_FICHA, (
+        f"los paneles de la maqueta nombran su ficha con {CHIPS_DE_FICHA} chips rs-ficha (hay {len(chips)})"
+    )
+    for chip in chips:
+        ligadura = chip.atributos.get("x-text", "").strip()
+        m = _FICHA_DE_BLOQUE.match(ligadura)
+        assert m, f"el chip rs-ficha lee la ficha de su bloque (x-text=\"datos.<bloque>.ficha\"), no «{ligadura}»"
+        bloque = m.group(1)
         for ancestro in chip.ancestros():
             bloques = {
                 m.group(1)

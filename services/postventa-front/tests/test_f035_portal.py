@@ -866,10 +866,14 @@ ESTROPEOS_R59 = {
         '<button @click="cerrarParte()" type="button"',
     ),
     "el class movido delante de su x-show": (
-        "<p x-show=\"estadoAutoguardado === 'fallo'\"\n"
-        '                   class="rs-aviso rs-aviso--error rs-aviso--compacto text-red-800"',
-        '<p class="rs-aviso rs-aviso--error rs-aviso--compacto text-red-800"\n'
-        "                   x-show=\"estadoAutoguardado === 'fallo'\"",
+        (
+            "<p x-show=\"estadoAutoguardado === 'fallo'\"\n"
+            '                   class="rs-aviso rs-aviso--error rs-aviso--compacto text-red-800"'
+        ),
+        (
+            '<p class="rs-aviso rs-aviso--error rs-aviso--compacto text-red-800"\n'
+            "                   x-show=\"estadoAutoguardado === 'fallo'\""
+        ),
     ),
     "un elemento añadido": (
         '<main class="rs-contenedor rs-principal flex-1">',
@@ -885,8 +889,10 @@ ESTROPEOS_R59 = {
     ),
     "una <link> a otro dominio": (
         '<link rel="stylesheet" href="css/styles.css">',
-        '<link rel="stylesheet" href="https://ejemplo.invalid/estilo.css">\n'
-        '  <link rel="stylesheet" href="css/styles.css">',
+        (
+            '<link rel="stylesheet" href="https://ejemplo.invalid/estilo.css">\n'
+            '  <link rel="stylesheet" href="css/styles.css">'
+        ),
     ),
     "una directiva quitada (x-init)": (
         'x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()"',

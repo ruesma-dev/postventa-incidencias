@@ -387,6 +387,7 @@ a.rs-pestana:hover {
   background-color: var(--rs-atencion-suave);
   border-color: transparent;
   border-left: 3px solid var(--rs-atencion);
+  border-radius: 0 var(--rs-radio) var(--rs-radio) 0;
   box-shadow: none;
   color: var(--rs-atencion);
 }
@@ -600,7 +601,9 @@ a.rs-pestana:hover {
   padding: 0.7rem 1rem;
   border: 0;
   border-left: 3px solid currentColor;
-  border-radius: var(--rs-radio-sm);
+  /* Filete a la izquierda: solo se redondea el lado derecho (un filete
+     grueso sobre una esquina redonda se ve como un paréntesis). */
+  border-radius: 0 var(--rs-radio-sm) var(--rs-radio-sm) 0;
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -631,12 +634,12 @@ a.rs-pestana:hover {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   text-align: left;
 }
 
 .rs-tabla th {
-  padding: 0.7rem 1rem;
+  padding: 0.65rem 0.85rem;
   background-color: var(--rs-lienzo);
   border-bottom: 1px solid var(--rs-linea);
   font-size: 0.72rem;
@@ -648,7 +651,7 @@ a.rs-pestana:hover {
 }
 
 .rs-tabla td {
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.85rem;
   border-bottom: 1px solid var(--rs-linea);
   vertical-align: top;
 }

@@ -1,43 +1,1255 @@
 /* services/postventa-front/css/portal.css */
-/* F-035 · Estilos propios del portal (la maqueta). Solo lo que Tailwind no
-   resuelve con utilidades escritas enteras en el HTML. Vive aparte de
-   css/styles.css para que nada de lo que pinta el circuito cambie por la
-   maqueta (R33).
+/* =============================================================================
+   F-035 · Lo que solo usa el portal (la maqueta, index.html).
 
-   .placeholder (design.md §6.1): un botón que TODAVÍA NO HACE NADA. Borde
-   discontinuo, rayado suave, texto atenuado y cursor de ayuda. No se usa
-   `disabled`: un botón deshabilitado no recibe el clic y no podría explicar
-   qué ficha lo construirá (R11). */
+   Se apoya en la hoja de la marca, css/styles.css (tokens --rs-*, barra,
+   paneles, botones, chips, tablas), que comparte con el circuito, y sigue sus
+   mismas reglas: colores, sombras y radios solo por token (R49); sin
+   !important salvo [x-cloak] (R60); transiciones cortas y todo apagable con
+   prefers-reduced-motion (R55). Aquí, además, las ENTRADAS: la de las
+   tarjetas de inicio (escalonada, sin JavaScript) y la de los paneles.
 
-.placeholder {
-  border: 2px dashed #9ca3af;
-  background-color: #f9fafb;
-  background-image: repeating-linear-gradient(
-    135deg,
-    rgba(156, 163, 175, 0.14) 0,
-    rgba(156, 163, 175, 0.14) 6px,
-    transparent 6px,
-    transparent 12px
-  );
-  color: #6b7280;
+   Lo que es maqueta se tiene que seguir viendo maqueta (R56, design.md §6.1):
+   - el borde DISCONTINUO es solo de los placeholders (.placeholder): ninguna
+     tarjeta, zona ni panel lo usa;
+   - ningún placeholder lleva la marca (el burdeos se reserva para lo que
+     funciona);
+   - el aviso de maqueta va en su propio color (atención), nunca en burdeos.
+   ========================================================================== */
+
+/* ---------- Placeholders: un botón hueco que todavía no hace nada ----------------
+   Píldora como los botones de verdad, para que se lea «botón», pero hueca:
+   borde discontinuo, rayado suave, texto atenuado y cursor de ayuda. No se
+   usa `disabled`: un botón deshabilitado no recibe el clic y no podría
+   explicar qué ficha lo construirá (R11). `button.placeholder` sube la
+   especificidad por encima de la hoja base de Tailwind ([type='button']). */
+
+.placeholder,
+button.placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.95rem;
+  background-color: var(--rs-papel);
+  background-image: repeating-linear-gradient(135deg, var(--rs-rayado) 0 6px, transparent 6px 12px);
+  border: 1.5px dashed var(--rs-acero);
+  border-radius: var(--rs-radio-pildora);
+  font-family: var(--rs-fuente-texto);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+  color: var(--rs-acero-texto);
   cursor: help;
+  transition-property: color, border-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
 }
 
-.placeholder:hover,
-.placeholder:focus-visible {
-  border-color: #4b5563;
-  color: #374151;
+button.placeholder:hover {
+  border-color: var(--rs-tinta-suave);
+  color: var(--rs-tinta-suave);
 }
 
-/* La etiqueta F-0NN visible dentro del botón (R9). */
+/* La muestra del aviso de maqueta: la leyenda, no un botón. */
+.placeholder.placeholder--muestra {
+  padding: 0.2rem 0.7rem;
+  font-size: 0.78rem;
+  cursor: default;
+}
+
+/* La etiqueta F-0NN visible dentro del botón (R9), en un chip monoespaciado. */
 .placeholder-ficha {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.05rem 0.45rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea-fuerte);
+  border-radius: var(--rs-radio-pildora);
+  font-family: var(--rs-fuente-mono);
   font-size: 0.7rem;
+  font-weight: 500;
   letter-spacing: 0.02em;
-  opacity: 0.85;
+  color: var(--rs-acero-texto);
 }
 
-/* Lo que Alpine aún no ha montado no parpadea al cargar. */
+/* ---------- El aviso de maqueta (R13): siempre visible, en atención ------------- */
+
+.rs-maqueta {
+  background-color: var(--rs-atencion-suave);
+  background-image: repeating-linear-gradient(135deg, var(--rs-rayado) 0 1px, transparent 1px 9px);
+  border-bottom: 1px solid var(--rs-linea);
+  color: var(--rs-atencion);
+}
+
+.rs-maqueta__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  padding-block: 0.65rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.rs-maqueta__titulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.rs-maqueta__titulo::before {
+  content: "";
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+/* ---------- Secciones ---------------------------------------------------------- */
+
+.rs-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.rs-cabecera-seccion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+}
+
+/* ---------- Portada: ceja, titular y recorrido ---------------------------------- */
+
+.rs-hero {
+  max-width: 760px;
+  padding-top: 0.5rem;
+}
+
+.rs-ceja {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+  padding: 0.35rem 0.9rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea-fuerte);
+  border-radius: var(--rs-radio-pildora);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rs-acero-texto);
+}
+
+.rs-ceja::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--rs-burdeos);
+}
+
+.rs-hero__titulo {
+  margin: 0 0 1rem;
+  font-family: var(--rs-fuente-titulos);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--rs-tinta);
+}
+
+.rs-hero__titulo em {
+  font-style: normal;
+  color: var(--rs-burdeos);
+}
+
+.rs-hero__entradilla {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--rs-tinta-suave);
+}
+
+/* El ciclo, como lista ordenada de píldoras numeradas unidas por una línea. */
+.rs-recorrido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-recorrido > li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rs-recorrido > li + li::before {
+  content: "";
+  width: 1.1rem;
+  height: 1px;
+  background-color: var(--rs-linea-fuerte);
+}
+
+/* En el móvil las píldoras bajan de línea y el trazo quedaría suelto al
+   principio de cada una: fuera. */
+@media (max-width: 560px) {
+  .rs-recorrido > li + li::before {
+    display: none;
+  }
+}
+
+.rs-recorrido__paso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.85rem 0.3rem 0.3rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-pildora);
+  box-shadow: var(--rs-sombra-sm);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--rs-tinta);
+  text-decoration: none;
+  transition-property: color, border-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-recorrido__paso:hover {
+  border-color: var(--rs-burdeos);
+  color: var(--rs-burdeos);
+}
+
+.rs-recorrido__num {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  background-color: var(--rs-lienzo);
+  font-family: var(--rs-fuente-titulos);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rs-acero-texto);
+  transition-property: color, background-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-recorrido__paso:hover .rs-recorrido__num {
+  background-color: var(--rs-burdeos-suave);
+  color: var(--rs-burdeos);
+}
+
+/* ---------- Tarjetas de inicio ---------------------------------------------------- */
+
+.rs-rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 1.1rem;
+}
+
+.rs-tarjeta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 210px;
+  padding: 1.35rem 1.5rem 1.3rem;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio);
+  box-shadow: var(--rs-sombra-sm);
+  color: inherit;
+  text-decoration: none;
+  transition-property: transform, box-shadow, border-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+  /* Entrada escalonada (sin JavaScript): cada tarjeta 60 ms después de la
+     anterior. `backwards` solo afecta a la espera: al terminar, la tarjeta
+     vuelve a su estilo y el hover sigue funcionando. */
+  animation: rs-aparecer 420ms var(--rs-curva) backwards;
+}
+
+.rs-rejilla > .rs-tarjeta:nth-child(2) { animation-delay: 60ms; }
+.rs-rejilla > .rs-tarjeta:nth-child(3) { animation-delay: 120ms; }
+.rs-rejilla > .rs-tarjeta:nth-child(4) { animation-delay: 180ms; }
+.rs-rejilla > .rs-tarjeta:nth-child(5) { animation-delay: 240ms; }
+.rs-rejilla > .rs-tarjeta:nth-child(6) { animation-delay: 300ms; }
+
+/* El acento burdeos que crece de izquierda a derecha al pasar. */
+.rs-tarjeta::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 3px;
+  background-color: var(--rs-burdeos);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition-property: transform;
+  transition-duration: 240ms;
+  transition-timing-function: var(--rs-curva);
+}
+
+a.rs-tarjeta:hover {
+  border-color: transparent;
+  box-shadow: var(--rs-sombra-md);
+  transform: translateY(-3px);
+}
+
+a.rs-tarjeta:hover::before {
+  transform: scaleX(1);
+}
+
+.rs-tarjeta__indice {
+  position: absolute;
+  top: 1.15rem;
+  right: 1.3rem;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--rs-acero-300);
+}
+
+.rs-tarjeta__chip {
+  align-self: flex-start;
+  margin-bottom: 1rem;
+}
+
+.rs-tarjeta__rotulo {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-tarjeta__cifra {
+  margin: 0.35rem 0 0;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--rs-tinta);
+}
+
+.rs-tarjeta__nota {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  color: var(--rs-acero-texto);
+}
+
+.rs-tarjeta__texto {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-tarjeta__llamada {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--rs-burdeos);
+}
+
+.rs-tarjeta__flecha {
+  display: inline-block;
+  transition-property: transform;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+a.rs-tarjeta:hover .rs-tarjeta__flecha {
+  transform: translateX(4px);
+}
+
+.rs-tarjeta__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding-top: 1.1rem;
+}
+
+/* Lo que funciona de verdad: un borde más firme y un filete verde (en
+   producción) arriba, fijo. */
+.rs-tarjeta.rs-tarjeta--produccion {
+  border-color: var(--rs-linea-fuerte);
+}
+
+.rs-tarjeta.rs-tarjeta--produccion::before {
+  background-color: var(--rs-ok);
+  transform: none;
+}
+
+/* Una ruta de archivo, tal cual (con sus espacios dobles). */
+.rs-ruta {
+  display: block;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  overflow-x: auto;
+  background-color: var(--rs-lienzo);
+  border-radius: var(--rs-radio-sm);
+  font-family: var(--rs-fuente-mono);
+  font-size: 0.74rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--rs-tinta-suave);
+}
+
+/* ---------- Piezas de los paneles ------------------------------------------------ */
+
+.rs-panel__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.rs-panel__titulo {
+  margin: 0;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rs-tinta);
+}
+
+/* El pie de un panel pegado a los bordes (.rs-panel--lista). */
+.rs-panel__pie {
+  padding: 1.1rem 1.25rem;
+  border-top: 1px solid var(--rs-linea);
+}
+
+.rs-encabezado {
+  margin: 0;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--rs-tinta);
+}
+
+/* La ficha que construirá cada bloque, junto a su rótulo. */
+.rs-ficha {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.5rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea-fuerte);
+  border-radius: var(--rs-radio-pildora);
+  font-family: var(--rs-fuente-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--rs-acero-texto);
+}
+
+/* Cada «Pendiente: …»: lo que falta por decidir, en atención. */
+.rs-pendiente {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  background-color: var(--rs-atencion-suave);
+  border-left: 3px solid var(--rs-atencion);
+  border-radius: 0 var(--rs-radio-sm) var(--rs-radio-sm) 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--rs-atencion);
+}
+
+.rs-pendiente .rs-ficha {
+  margin-left: 0.35rem;
+}
+
+.rs-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.rs-acciones--centro {
+  justify-content: center;
+}
+
+.rs-acciones--separadas {
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--rs-linea);
+}
+
+/* Donde se soltará el Excel (maqueta, sin placeholder: borde CONTINUO y una
+   trama de puntos; el discontinuo es de los placeholders). */
+.rs-soltar {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background-color: var(--rs-lienzo);
+  background-image: radial-gradient(var(--rs-linea-fuerte) 1px, transparent 1px);
+  background-size: 14px 14px;
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio);
+}
+
+.rs-soltar__texto {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  color: var(--rs-tinta-suave);
+}
+
+/* Un marco para una tabla dentro de un panel. */
+.rs-marco {
+  overflow-x: auto;
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-sm);
+}
+
+.rs-desplazable {
+  overflow-x: auto;
+}
+
+.rs-subpanel {
+  padding: 1.1rem 1.25rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-sm);
+}
+
+.rs-subpanel__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.rs-subpanel__titulo {
+  margin: 0;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--rs-tinta);
+}
+
+/* Paneles que se abren: aparecen en 200 ms (opacidad y 6 px). */
+.rs-aparece {
+  animation: rs-aparecer-suave 200ms var(--rs-curva) backwards;
+}
+
+/* ---------- Filtros, selección y listas ---------------------------------------- */
+
+.rs-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.9rem 1.1rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--rs-lienzo);
+  border-bottom: 1px solid var(--rs-linea);
+}
+
+.rs-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 10.5rem;
+}
+
+.rs-filtro--ancho {
+  min-width: 15rem;
+}
+
+.rs-filtro--en-linea {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.rs-filtro--en-linea .rs-campo {
+  width: auto;
+}
+
+.rs-filtros__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.rs-filtros .rs-pendiente {
+  flex-basis: 100%;
+  padding-block: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.rs-contador {
+  font-size: 0.86rem;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-contador strong {
+  font-family: var(--rs-fuente-titulos);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rs-tinta);
+}
+
+/* Las operaciones en bloque, visibles con selección (R20). */
+.rs-seleccion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--rs-info-suave);
+  border-bottom: 1px solid var(--rs-linea);
+  font-size: 0.88rem;
+  color: var(--rs-info);
+}
+
+.rs-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-lista > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+  padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid var(--rs-linea);
+  font-size: 0.9rem;
+  transition-property: background-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-lista > li:last-child {
+  border-bottom: 0;
+}
+
+.rs-lista > li:hover {
+  background-color: var(--rs-lienzo);
+}
+
+input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--rs-burdeos);
+  cursor: pointer;
+}
+
+input[type="checkbox"]:disabled {
+  cursor: default;
+}
+
+/* ---------- Tablas del portal ---------------------------------------------------- */
+
+.rs-tabla.rs-tabla--compacta th {
+  padding: 0.55rem 0.8rem;
+}
+
+.rs-tabla.rs-tabla--compacta td {
+  padding: 0.55rem 0.8rem;
+}
+
+/* La fila abierta: un filete burdeos a la izquierda. */
+.rs-tabla tr.rs-fila--abierta {
+  background-color: var(--rs-lienzo);
+}
+
+.rs-tabla tr.rs-fila--abierta > td:first-child {
+  box-shadow: inset 3px 0 0 var(--rs-burdeos);
+}
+
+.rs-importe {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Lo que falta: «sin enlazar» (R22), «sin completar». */
+.rs-sin-dato {
+  font-style: italic;
+  color: var(--rs-acero-texto);
+}
+
+.rs-provisional {
+  margin-left: 0.4rem;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--rs-acero-texto);
+}
+
+/* ---------- Chips de estado (R57): color por data-estado, siempre con texto ---- */
+
+.rs-chip[data-estado]::before {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+/* Atención: sin atender (conest), editada (revisión), no procesado (volcado). */
+.rs-chip[data-estado="SAT"],
+.rs-chip[data-estado="editada"],
+.rs-chip[data-estado="no_procesado"] {
+  background-color: var(--rs-atencion-suave);
+  color: var(--rs-atencion);
+}
+
+/* En curso: pendiente (conest), nueva (revisión), previsto (volcado). */
+.rs-chip[data-estado="PTE"],
+.rs-chip[data-estado="nueva"],
+.rs-chip[data-estado="previsto"] {
+  background-color: var(--rs-info-suave);
+  color: var(--rs-info);
+}
+
+/* Hecho: terminada (conest), aprobada (revisión), creado (volcado). */
+.rs-chip[data-estado="TER"],
+.rs-chip[data-estado="aprobada"],
+.rs-chip[data-estado="creado"] {
+  background-color: var(--rs-ok-suave);
+  color: var(--rs-ok);
+}
+
+/* Cerrado o ya hecho antes: neutro relleno. */
+.rs-chip[data-estado="CER"],
+.rs-chip[data-estado="volcada"],
+.rs-chip[data-estado="idempotente"] {
+  background-color: var(--rs-acero-100);
+  color: var(--rs-tinta-suave);
+}
+
+/* Fuera del ciclo: neutro de contorno. */
+.rs-chip[data-estado="NPR"],
+.rs-chip[data-estado="descartada"] {
+  background-color: var(--rs-papel);
+  border-color: var(--rs-linea-fuerte);
+  color: var(--rs-tinta-suave);
+}
+
+/* No se crea: error. */
+.rs-chip[data-estado="rechazado"] {
+  background-color: var(--rs-error-suave);
+  color: var(--rs-error);
+}
+
+/* ---------- La ficha de una incidencia ------------------------------------------ */
+
+.rs-volver {
+  align-self: flex-start;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.rs-ficha-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+}
+
+.rs-ficha-cabecera__codigo {
+  margin: 0 0 0.35rem;
+  font-family: var(--rs-fuente-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: var(--rs-acero-texto);
+}
+
+.rs-titulo.rs-titulo--ficha {
+  font-size: clamp(1.3rem, 2.6vw, 1.6rem);
+}
+
+/* Pestañas de la ficha: subrayadas, la activa por aria-selected. */
+.rs-pestanas-ficha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin-top: 1.5rem;
+  border-bottom: 1px solid var(--rs-linea);
+}
+
+.rs-pestanas-ficha [role="tab"] {
+  margin-bottom: -1px;
+  padding: 0.7rem 0.1rem;
+  border-bottom: 2px solid transparent;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--rs-acero-texto);
+  cursor: pointer;
+  transition-property: color, border-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-pestanas-ficha [role="tab"]:hover {
+  color: var(--rs-tinta);
+}
+
+.rs-pestanas-ficha [role="tab"][aria-selected="true"] {
+  border-bottom-color: var(--rs-burdeos);
+  font-weight: 600;
+  color: var(--rs-tinta);
+}
+
+/* Un bloque de la ficha, con su rótulo y una línea encima. */
+.rs-bloque {
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--rs-linea);
+}
+
+/* Los datos como rejilla de definición: etiqueta a la izquierda, valor a la
+   derecha; una sola columna en el móvil. */
+.rs-datos {
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 38%) 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0.8rem 0 0;
+}
+
+.rs-datos > div {
+  display: contents;
+}
+
+.rs-datos dt {
+  padding-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rs-acero-texto);
+}
+
+.rs-datos dd {
+  margin: 0;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+  color: var(--rs-tinta);
+}
+
+.rs-datos dd.rs-sin-dato {
+  color: var(--rs-acero-texto);
+}
+
+@media (max-width: 560px) {
+  .rs-datos {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
+  }
+
+  .rs-datos dd {
+    margin-bottom: 0.55rem;
+  }
+}
+
+/* El origen de cada campo en Sigrid (R25): un chip diminuto de contorno. */
+.rs-origen {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--rs-linea-fuerte);
+  border-radius: var(--rs-radio-pildora);
+  font-family: var(--rs-fuente-mono);
+  font-size: 0.72rem;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-desplegable {
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-sm);
+}
+
+.rs-desplegable > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--rs-tinta);
+  list-style: none;
+  cursor: pointer;
+}
+
+.rs-desplegable > summary::-webkit-details-marker {
+  display: none;
+}
+
+.rs-desplegable > summary::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 1.5px solid var(--rs-acero-texto);
+  border-bottom: 1.5px solid var(--rs-acero-texto);
+  transform: rotate(-45deg);
+  transition-property: transform;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-desplegable[open] > summary {
+  border-bottom: 1px solid var(--rs-linea);
+}
+
+.rs-desplegable[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+/* Los hitos del parte (pestaña «Parte») y las cifras (pestaña «Económico»,
+   resultado de una importación). */
+.rs-hitos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-hito {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 0.9rem;
+  background-color: var(--rs-lienzo);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-sm);
+  font-size: 0.78rem;
+  color: var(--rs-acero-texto);
+}
+
+.rs-hito strong {
+  font-family: var(--rs-fuente-titulos);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--rs-tinta);
+}
+
+.rs-cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.rs-cifras > div {
+  padding: 0.8rem 1rem;
+  background-color: var(--rs-lienzo);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-sm);
+}
+
+.rs-cifras dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rs-acero-texto);
+}
+
+.rs-cifras dd {
+  margin: 0.3rem 0 0;
+  overflow-wrap: anywhere;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--rs-tinta);
+}
+
+.rs-cifras.rs-cifras--compactas dd {
+  font-size: 1rem;
+}
+
+.rs-cifras dd.rs-sin-dato {
+  font-family: var(--rs-fuente-texto);
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--rs-acero-texto);
+}
+
+/* El resumen del volcado por estado: cifra grande y el nombre del contrato. */
+.rs-contadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.rs-contadores > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 0.15rem;
+  padding: 0.6rem 0.8rem;
+  background-color: var(--rs-lienzo);
+  border-radius: var(--rs-radio-sm);
+}
+
+.rs-contadores dt {
+  font-family: var(--rs-fuente-mono);
+  font-size: 0.72rem;
+  color: var(--rs-acero-texto);
+}
+
+.rs-contadores dd {
+  margin: 0;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--rs-tinta);
+}
+
+/* Las aprobadas por obra, candidatas al volcado. */
+.rs-obras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-obras > li {
+  padding: 0.4rem 0.85rem;
+  background-color: var(--rs-lienzo);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-pildora);
+  font-size: 0.84rem;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-obras strong {
+  font-family: var(--rs-fuente-titulos);
+  font-weight: 700;
+  color: var(--rs-tinta);
+}
+
+.rs-historial {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.88rem;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-historial > li {
+  position: relative;
+  padding-left: 1.1rem;
+}
+
+.rs-historial > li::before {
+  content: "";
+  position: absolute;
+  top: 0.55em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--rs-acero-300);
+}
+
+.rs-historial > li.rs-vacio-linea::before {
+  display: none;
+}
+
+/* ---------- «No procede» y la vista previa del correo --------------------------- */
+
+.rs-no-procede {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  background-color: var(--rs-lienzo);
+  border-left: 3px solid var(--rs-atencion);
+  border-radius: 0 var(--rs-radio-sm) var(--rs-radio-sm) 0;
+}
+
+.rs-carta {
+  padding: 1.1rem 1.3rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-sm);
+  box-shadow: var(--rs-sombra-sm);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--rs-tinta);
+}
+
+.rs-carta__rotulo {
+  margin: 0 0 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rs-acero-texto);
+}
+
+.rs-carta__campo {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.rs-carta__etiqueta {
+  color: var(--rs-acero-texto);
+}
+
+.rs-carta__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rs-linea);
+}
+
+.rs-carta__cuerpo > p {
+  margin: 0;
+}
+
+.rs-carta__justificacion {
+  font-style: italic;
+  color: var(--rs-tinta-suave);
+}
+
+/* ---------- Estados vacíos (R58): borde CONTINUO (el discontinuo es de los
+   placeholders) ------------------------------------------------------------------ */
+
+.rs-vacio {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  background-color: var(--rs-lienzo);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio);
+}
+
+.rs-panel--lista > .rs-vacio {
+  margin: 1.25rem;
+}
+
+.rs-vacio__titulo {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-vacio__pista {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--rs-acero-texto);
+}
+
+/* La variante de una línea («Sin cambios … todavía»). */
+.rs-vacio-linea {
+  font-style: italic;
+  color: var(--rs-acero-texto);
+}
+
+/* ---------- El aviso del placeholder pulsado (R11) ------------------------------ */
+
+.rs-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  max-width: 42rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rs-toast.rs-toast--visible {
+  padding: 0.9rem 1rem 0.9rem 1.1rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-left: 3px solid var(--rs-atencion);
+  border-radius: var(--rs-radio);
+  box-shadow: var(--rs-sombra-md);
+  color: var(--rs-tinta);
+  animation: rs-aparecer-suave 180ms var(--rs-curva) backwards;
+}
+
+.rs-toast > p {
+  margin: 0;
+  padding-top: 0.2rem;
+}
+
+/* ---------- Entradas ------------------------------------------------------------ */
+
+@keyframes rs-aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes rs-aparecer-suave {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------- Movimiento reducido (R55) --------------------------------------------
+   Igual que en css/styles.css: :is(*, #…) da especificidad de id, para ganar a
+   las reglas de clase sin !important. */
+
+@media (prefers-reduced-motion: reduce) {
+  :is(*, #rs-movimiento-reducido),
+  :is(*, #rs-movimiento-reducido)::before,
+  :is(*, #rs-movimiento-reducido)::after {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Lo que Alpine aún no ha montado no parpadea al cargar. La única !important
+   de las hojas (R60): tiene que ganar al display de cualquier componente. */
 [x-cloak] {
   display: none !important;
 }

@@ -327,7 +327,7 @@ ya pide cada verificación.
       las clases nuevas); `git diff --stat HEAD~1` solo con `css/styles.css`,
       `img/*` y `tests/test_f035_portal.py`.
 
-- [ ] **T15**: **el portal** (`index.html` y `css/portal.css`), según
+- [x] **T15**: **el portal** (`index.html` y `css/portal.css`), según
       `design.md` §15.5: las cuatro `<link>`; la barra con logotipo, separador
       y etiqueta, pestañas `rs-pestana` pintadas por `aria-current` (fuera sus
       `:class`); aviso de maqueta; portada (ceja, titular, recorrido en

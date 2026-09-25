@@ -863,13 +863,15 @@ def test_f035_portal_app_usa_los_modulos_probados():
 # bloque de `prefers-reduced-motion`— y no depende de nada fuera de la
 # biblioteca estándar.
 #
-# `HOJAS_DE_LA_MARCA` son las hojas que ya siguen la identidad: en T14 solo
-# `css/styles.css` (el portal aún pinta con el `css/portal.css` de antes);
-# T15 añade `css/portal.css` al redibujar el portal con los tokens.
+# `HOJAS_DE_LA_MARCA` son las hojas que siguen la identidad: desde T15, las
+# dos (T14 empezó con `css/styles.css` y T15 redibujó `css/portal.css`).
+# `PAGINAS_CON_LA_MARCA` son las páginas que ya la cargan: el portal desde
+# T15; el circuito entra en T16.
 
 IMG = RAIZ_FRONT / "img"
 
-HOJAS_DE_LA_MARCA = (STYLES_CSS,)
+HOJAS_DE_LA_MARCA = (STYLES_CSS, PORTAL_CSS)
+PAGINAS_CON_LA_MARCA = (PORTAL,)
 
 #: Los tokens de `design.md` §15.3, con su valor (R49).
 TOKENS = {
@@ -1319,3 +1321,194 @@ def test_f035_r60_las_hojas_no_llevan_important_import_ni_data(hoja):
         f"{hoja.name}: !important solo en [x-cloak] de portal.css (Alpine esconde con "
         f"style=\"display: none\" y un !important lo taparía): {con_important}"
     )
+
+
+# --- R50 · Las fuentes, el favicon y la base de la marca ----------------------
+
+URL_FUENTES = (
+    "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;"
+    "12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap"
+)
+
+#: Las cuatro `<link>` de `design.md` §15.4, exactas y en su orden, justo
+#: antes de `css/styles.css` (atributos como los devuelve `html.parser`).
+LINKS_DE_LA_MARCA = (
+    {"rel": "preconnect", "href": "https://fonts.googleapis.com"},
+    {"rel": "preconnect", "href": "https://fonts.gstatic.com", "crossorigin": ""},
+    {"rel": "stylesheet", "href": URL_FUENTES},
+    {"rel": "icon", "type": "image/svg+xml", "href": "img/favicon.svg"},
+)
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_CON_LA_MARCA, ids=lambda p: p.name)
+def test_f035_r50_la_pagina_carga_las_fuentes_y_el_favicon_antes_de_la_hoja(pagina):
+    doc = leer_html(pagina)
+    cabeza = _uno([e for e in doc.elementos() if e.nombre == "head"], f"<head> en {pagina.name}")
+    enlaces = [e for e in doc.elementos() if e.nombre == "link"]
+    hoja = _uno(
+        [e for e in enlaces if e.atributos.get("href") == "css/styles.css"],
+        f"<link> a css/styles.css en {pagina.name}",
+    )
+    posicion = enlaces.index(hoja)
+
+    assert posicion >= len(LINKS_DE_LA_MARCA), f"{pagina.name}: faltan las <link> de la marca"
+    previas = enlaces[posicion - len(LINKS_DE_LA_MARCA):posicion]
+    assert [e.atributos for e in previas] == list(LINKS_DE_LA_MARCA), (
+        f"{pagina.name}: las cuatro <link> de design.md §15.4, exactas y en su orden, "
+        f"justo antes de css/styles.css; hay {[e.atributos for e in previas]}"
+    )
+    for e in [*previas, hoja]:
+        assert e.dentro_de(cabeza), f"{pagina.name}: {e.atributos.get('href')} va en el <head>"
+
+
+def test_f035_r50_la_base_da_la_fuente_la_trama_y_los_titulares():
+    reglas = reglas_css(css_sin_comentarios(STYLES_CSS))
+    cuerpo = _uno([r for r in reglas if r.selector == "body" and not r.contexto], "regla body")
+    titulo = _uno([r for r in reglas if r.selector == ".rs-titulo" and not r.contexto], "regla .rs-titulo")
+
+    assert cuerpo.valor("font-family") == "var(--rs-fuente-texto)"
+    trama = cuerpo.valor("background-image") or ""
+    assert "linear-gradient" in trama and "var(--rs-linea)" in trama, "el body lleva la trama de plano"
+    assert cuerpo.valor("background-color") == "var(--rs-lienzo)"
+    assert titulo.valor("font-family") == "var(--rs-fuente-titulos)"
+
+
+# --- R51 · La barra con el logotipo y las pestañas pintadas por aria-current -----
+
+
+def _pestanas(nav: Nodo) -> list[Nodo]:
+    etiquetas = set(SECCIONES.values())
+    return [
+        e for e in nav.elementos()
+        if (e.nombre == "a" or "aria-current" in e.atributos) and e.texto() in etiquetas
+    ]
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_CON_LA_MARCA, ids=lambda p: p.name)
+def test_f035_r51_la_barra_lleva_logo_separador_y_etiqueta_sin_enlace(pagina):
+    nav = barra(leer_html(pagina), pagina.name)
+    elementos = nav.elementos()
+
+    logo = _uno([e for e in elementos if e.nombre == "img"], f"logotipo en la barra de {pagina.name}")
+    assert "rs-barra__logo" in clases(logo)
+    assert logo.atributos.get("src") == "img/logo-ruesma.svg"
+    assert logo.atributos.get("alt") == "Construcciones Ruesma"
+    separador = _uno([e for e in elementos if "rs-barra__sep" in clases(e)], "separador de la barra")
+    assert separador.atributos.get("aria-hidden") == "true", "el separador es decorativo"
+    etiqueta = _uno([e for e in elementos if "rs-barra__etiqueta" in clases(e)], "etiqueta de la barra")
+    assert etiqueta.texto() == "Posventa"
+    for nodo, que in ((logo, "el logotipo"), (separador, "el separador"), (etiqueta, "la etiqueta")):
+        assert not any(a.nombre == "a" for a in nodo.ancestros()), (
+            f"{pagina.name}: {que} no es un enlace (en el circuito rompería R31 y perdería la remesa)"
+        )
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_CON_LA_MARCA, ids=lambda p: p.name)
+def test_f035_r51_las_pestanas_son_rs_pestana_sin_class_dinamico(pagina):
+    pestanas = _pestanas(barra(leer_html(pagina), pagina.name))
+
+    assert sorted(p.texto() for p in pestanas) == sorted(SECCIONES.values())
+    for p in pestanas:
+        assert "rs-pestana" in clases(p), f"{pagina.name}: «{p.texto()}» lleva la clase rs-pestana"
+        dinamicas = [a for a in p.atributos if a in (":class", "x-bind:class")]
+        assert dinamicas == [], (
+            f"{pagina.name}: «{p.texto()}» lleva {dinamicas}: la pestaña actual la pinta aria-current"
+        )
+        if p.nombre == "a" and p.atributos.get("href", "").startswith("#/"):
+            assert "seccion ===" in p.atributos.get(":aria-current", ""), (
+                f"{pagina.name}: «{p.texto()}» marca la sección actual con :aria-current"
+            )
+
+
+def test_f035_r51_la_pestana_actual_la_pinta_aria_current_en_la_hoja():
+    reglas = [
+        r for r in reglas_css(css_sin_comentarios(STYLES_CSS))
+        if ".rs-pestana" in r.selector and '[aria-current="page"]' in r.selector
+    ]
+
+    assert reglas, 'falta la regla .rs-pestana[aria-current="page"] en css/styles.css'
+    assert any("var(--rs-burdeos)" in (r.valor("color") or "") for r in reglas), (
+        "la pestaña actual va en el color de la marca"
+    )
+
+
+# --- R56 · Lo que es maqueta se sigue viendo maqueta -----------------------------
+
+
+def test_f035_r56_en_el_portal_el_discontinuo_y_la_marca_no_se_mezclan_con_los_placeholders():
+    problemas = []
+    for e in leer_html(PORTAL).elementos():
+        c = clases(e)
+        nombre = f"<{e.nombre} class=\"{e.atributos.get('class', '')}\"> «{e.texto()[:40]}»"
+        if "border-dashed" in c and "placeholder" not in c:
+            problemas.append(f"{nombre}: el borde discontinuo es solo de los placeholders")
+        if "placeholder" in c:
+            marca = [x for x in c if "burdeos" in x or x.startswith("rs-btn")]
+            if marca:
+                problemas.append(f"{nombre}: un placeholder no se viste de botón de verdad ({marca})")
+    assert problemas == [], "\n".join(problemas)
+
+
+def test_f035_r56_en_portal_css_el_discontinuo_es_de_los_placeholders_y_sin_burdeos():
+    problemas = []
+    for regla in reglas_css(css_sin_comentarios(PORTAL_CSS)):
+        texto = " ".join(v for _, v in regla.declaraciones)
+        if "dashed" in texto and ".placeholder" not in regla.selector:
+            problemas.append(f"{regla!r}: borde discontinuo fuera de .placeholder")
+        if ".placeholder" in regla.selector and "burdeos" in texto:
+            problemas.append(f"{regla!r}: un placeholder no lleva la marca (se reserva a lo que funciona)")
+    assert problemas == [], "\n".join(problemas)
+
+
+def test_f035_r56_el_aviso_de_maqueta_no_usa_el_burdeos():
+    doc = leer_html(PORTAL)
+    aviso = _uno([e for e in doc.elementos() if "data-aviso-maqueta" in e.atributos], "data-aviso-maqueta")
+    propias = {c for e in [aviso, *aviso.elementos()] for c in clases(e)}
+
+    assert not [c for c in propias if "burdeos" in c], f"el aviso de maqueta usa clases burdeos: {propias}"
+    assert clases(aviso), "el aviso de maqueta lleva su clase de estilo"
+    selectores = [f".{c}" for c in clases(aviso)] + ["data-aviso-maqueta"]
+    for hoja in (STYLES_CSS, PORTAL_CSS):
+        for regla in reglas_css(css_sin_comentarios(hoja)):
+            if any(s in regla.selector for s in selectores):
+                texto = " ".join(v for _, v in regla.declaraciones)
+                assert "burdeos" not in texto, f"{hoja.name} · {regla!r}: el aviso de maqueta no es burdeos"
+
+
+def test_f035_r56_el_circuito_no_tiene_placeholders():
+    con_placeholder = [e for e in leer_html(CIRCUITO).elementos() if "placeholder" in clases(e)]
+
+    assert con_placeholder == [], "en partes.html todo funciona: ni un elemento con la clase placeholder"
+
+
+# --- R58 · Cuando los filtros no dejan filas, un estado vacío --------------------
+
+#: La lista filtrada que pinta cada sección con filtros (el componente ya la da).
+LISTAS_FILTRADAS = {
+    "incidencias": "incidenciasFiltradas()",
+    "bandeja": "bandejaFiltrada()",
+    "impresion": "impresionFiltrada()",
+}
+
+
+@pytest.mark.parametrize("id_seccion", sorted(LISTAS_FILTRADAS))
+def test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla(id_seccion):
+    funcion = LISTAS_FILTRADAS[id_seccion]
+    bloque = seccion(leer_html(PORTAL), id_seccion)
+    vacio = _uno([e for e in bloque.elementos() if "data-vacio" in e.atributos], f"data-vacio en {id_seccion}")
+
+    condicion = re.sub(r"\s+", "", vacio.atributos.get("x-show", ""))
+    assert condicion in (f"!{funcion}.length", f"{funcion}.length===0"), (
+        f"{id_seccion}: el estado vacío se enseña cuando {funcion} no tiene filas (x-show=\"{condicion}\")"
+    )
+    assert vacio.texto(), f"{id_seccion}: el estado vacío dice que no hay filas"
+    plantillas = [
+        e for e in bloque.elementos() if e.nombre == "template" and funcion in e.atributos.get("x-for", "")
+    ]
+    assert plantillas, f"{id_seccion}: no se pinta {funcion}"
+    for plantilla in plantillas:
+        contenedores = [a for a in plantilla.ancestros() if funcion in a.atributos.get("x-show", "")]
+        assert contenedores, f"{id_seccion}: con cero filas, la lista no se enseña vacía (x-show en su contenedor)"
+        assert not any(vacio.dentro_de(c) for c in contenedores), (
+            f"{id_seccion}: el estado vacío no puede ir dentro de lo que se esconde"
+        )

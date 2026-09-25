@@ -1033,3 +1033,63 @@ test("f035 R6: buscarPorId devuelve la fila o null, sin lanzar", () => {
   assert.equal(buscarPorId(INCIDENCIAS_INVENTADAS, null), null);
   assert.equal(buscarPorId(undefined, "EJ-0001"), null);
 });
+
+// ── R57 · Los estados, en chip y con su texto (segunda ronda, T15) ──────────
+//
+// Con el estilo Ruesma, cada estado se pinta con su color por
+// `[data-estado="<código>"]` en `css/portal.css`, pero el color nunca es la
+// única pista: el chip lleva siempre su texto (código y resumen, o la
+// etiqueta legible del volcado).
+
+/** Los códigos de los tres catálogos de estado que pinta el portal. */
+function codigosDeEstado() {
+  const { ESTADOS } = portal();
+  const d = datos();
+  return [
+    ...ESTADOS.map((e) => e.cod),
+    ...d.bandeja.estadosRevision,
+    ...d.volcado.catalogos.estados.map((e) => e.cod),
+  ];
+}
+
+test("f035 R57: cada código de estado (conest, revisión y volcado) tiene su regla [data-estado] en css/portal.css", () => {
+  const css = leer("css/portal.css").replace(/\/\*[\s\S]*?\*\//g, " ");
+  const codigos = codigosDeEstado();
+
+  assert.equal(codigos.length, 15, "cinco de conest, cinco de revisión y cinco de volcado");
+  const faltan = codigos.filter((cod) => !css.includes(`[data-estado="${cod}"]`));
+  assert.deepEqual(faltan, [], `css/portal.css no pinta estos estados: ${faltan.join(", ")}`);
+});
+
+test("f035 R57: todo elemento de index.html con data-estado es un rs-chip con su texto", () => {
+  const todos = elementos(arbol(leer("index.html")));
+  const conEstado = todos.filter(
+    (e) => "data-estado" in e.atributos || ":data-estado" in e.atributos || "x-bind:data-estado" in e.atributos,
+  );
+
+  assert.ok(conEstado.length >= 3, "el portal pinta sus estados con data-estado");
+  for (const e of conEstado) {
+    const donde = `<${e.nombre} ${e.atributos[":data-estado"] || e.atributos["data-estado"] || ""}>`;
+    assert.ok((e.atributos.class || "").split(/\s+/).includes("rs-chip"), `${donde}: va en un rs-chip`);
+    assert.ok((e.atributos["x-text"] || "").trim(), `${donde}: el chip lleva su texto (x-text), no solo color`);
+  }
+  const expresiones = conEstado.map((e) => e.atributos[":data-estado"] || "");
+  assert.ok(expresiones.some((x) => /\binc\.estado\b/.test(x)), "los estados de conest de las incidencias");
+  assert.ok(expresiones.some((x) => /\bfila\.estado\b/.test(x)), "los estados de revisión de la bandeja");
+  assert.ok(expresiones.some((x) => /\bp\.estado\b/.test(x)), "los estados de volcado");
+});
+
+test("f035 R57: ningún estado se pinta fuera de su chip (salvo las opciones de un filtro)", () => {
+  const sueltos = elementos(arbol(leer("index.html"))).filter(
+    (e) =>
+      e.nombre !== "option" &&
+      /\b(etiquetaEstado|estadoVolcado)\(/.test(e.atributos["x-text"] || "") &&
+      !(":data-estado" in e.atributos),
+  );
+
+  assert.deepEqual(
+    sueltos.map((e) => `<${e.nombre} x-text="${e.atributos["x-text"]}">`),
+    [],
+    "un estado pintado sin chip ni data-estado",
+  );
+});

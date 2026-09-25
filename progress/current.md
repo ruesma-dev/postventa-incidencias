@@ -5,7 +5,7 @@
 >
 > implementer. Encargo: **solo** T5 (`js/maqueta_datos.js`), T6
 > (`js/portal.js`) y T7 (`js/portal_app.js` y `css/portal.css`). **No** T8,
-> T9 ni T9 bis. Tarea en curso: T5. Informe: `progress/impl_F-035.md`,
+> T9 ni T9 bis. Tarea en curso: T7 (T5 y T6 hechas). Informe: `progress/impl_F-035.md`,
 > «Bloque 3a · T5 a T7».
 
 > ## F-035 · BLOQUE 2 (RED) HECHO · 2026-09-25 · siguiente: bloque 3 (T5–T9 bis)

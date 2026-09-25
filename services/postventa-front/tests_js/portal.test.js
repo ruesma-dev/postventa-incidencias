@@ -872,3 +872,78 @@ for (const [pagina, modo] of [
     );
   });
 }
+
+// ── Bloque 3 (T6) · Funciones puras que usa el componente ──────────────────
+//
+// Añadidos en T6, con su fase RED: `contadoresInicio` es de `design.md` §8.1
+// y no tenía test (informe del bloque 2, §2.15); `seleccionadasPara` y
+// `buscarPorId` sacan del pegamento (`portal_app.js`) las dos únicas
+// decisiones que tomaría: qué selección cuenta un placeholder en bloque (R12)
+// y qué fila se abre. Regla de oro de §8.2: si algo merece un test, no vive
+// en el componente.
+
+test("f035 §5.1: contadoresInicio cuenta cada fase del ciclo desde los datos", () => {
+  const { contadoresInicio } = portal();
+  const datosInventados = {
+    bandeja: {
+      filas: [
+        { id: "B1", estado: "nueva" },
+        { id: "B2", estado: "nueva" },
+        { id: "B3", estado: "editada" },
+        { id: "B4", estado: "aprobada" },
+        { id: "B5", estado: "volcada" },
+      ],
+    },
+    incidencias: {
+      filas: [
+        { id: "EJ-0001", estado: "SAT" },
+        { id: "EJ-0002", estado: "PTE" },
+        { id: "EJ-0003", estado: "PTE" },
+        { id: "EJ-0004", estado: "TER" },
+        { id: "EJ-0005", estado: "NPR" },
+        { id: "EJ-0006", estado: "CER" },
+      ],
+    },
+    capitulos: { filas: [{ coste: 100 }, { coste: 25.5 }, { coste: 0 }] },
+  };
+
+  assert.deepEqual(contadoresInicio(datosInventados), {
+    entradasPorRevisar: 2,
+    aprobadasSinVolcar: 1,
+    incidenciasAbiertas: 3,
+    terminadasSinCerrar: 1,
+    costeDelAno: 125.5,
+  });
+});
+
+test("f035 §5.1: contadoresInicio sobre los datos de ejemplo no se escribe a mano", () => {
+  const { contadoresInicio } = portal();
+  const d = datos();
+
+  const c = contadoresInicio(d);
+
+  assert.equal(c.entradasPorRevisar, d.bandeja.filas.filter((f) => f.estado === "nueva").length);
+  assert.equal(c.incidenciasAbiertas, d.incidencias.filas.filter((f) => ["SAT", "PTE"].includes(f.estado)).length);
+  assert.ok(c.incidenciasAbiertas > 0 && c.terminadasSinCerrar > 0, "los datos de ejemplo enseñan las dos fases");
+});
+
+test("f035 R12: seleccionadasPara cuenta la selección de la sección del placeholder", () => {
+  const { seleccionadasPara } = portal();
+  const selecciones = { incidencias: ["EJ-0001", "EJ-0002"], bandeja: ["BJ-0004"], impresion: [] };
+
+  assert.equal(seleccionadasPara("incidencias.cambiarEstadoBloque", selecciones), 2);
+  assert.equal(seleccionadasPara("bandeja.aprobarSeleccionadas", selecciones), 1);
+  assert.equal(seleccionadasPara("impresion.generarPdf", selecciones), 0);
+  assert.equal(seleccionadasPara("ficha.guardar", selecciones), 0, "la ficha no tiene selección");
+  assert.equal(seleccionadasPara("no.existe", selecciones), 0);
+  assert.equal(seleccionadasPara("incidencias.imprimirBloque", {}), 0, "sin lista, cero; no lanza");
+});
+
+test("f035 R6: buscarPorId devuelve la fila o null, sin lanzar", () => {
+  const { buscarPorId } = portal();
+
+  assert.equal(buscarPorId(INCIDENCIAS_INVENTADAS, "EJ-0002"), INCIDENCIAS_INVENTADAS[1]);
+  assert.equal(buscarPorId(INCIDENCIAS_INVENTADAS, "EJ-9999"), null);
+  assert.equal(buscarPorId(INCIDENCIAS_INVENTADAS, null), null);
+  assert.equal(buscarPorId(undefined, "EJ-0001"), null);
+});

@@ -128,7 +128,7 @@
       **Verificación**: `node --test "tests_js/maqueta_datos.test.js"` en verde
       y `python -m pytest tests/test_f007_sin_datos_reales.py -q` en verde.
 
-- [ ] **T6**: `js/portal.js` con los catálogos y las funciones puras de
+- [x] **T6**: `js/portal.js` con los catálogos y las funciones puras de
       `design.md` §8.1 (catálogo de placeholders de §6.3). *(2026-09-25)*:
       incluye `etiquetaCatalogo`, `resumenVolcado`, `etiquetaEstadoVolcado` y
       el placeholder `bandeja.reintentarVolcado`.

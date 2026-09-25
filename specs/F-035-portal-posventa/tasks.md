@@ -271,7 +271,7 @@
       circuito, «Bandeja de revisión» abre el portal en otra pestaña. D-4 ya
       está decidida («si»): se publica **después** de V1 y V2.
 
-- [ ] **T13**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T13**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       ejecutadas **sin caché** (el árbol del front ha cambiado) y la puerta de
       cobertura en N/A con su motivo impreso.

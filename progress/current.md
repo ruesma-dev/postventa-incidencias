@@ -1,12 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ▶ F-035 · BLOQUE 4 (T10, T11 y T13) EN CURSO · 2026-09-25
+> ## ▶ F-035 · BLOQUE 4 (T10, T11 y T13) HECHO · 2026-09-25 · siguiente: T12 (humano) y reviewer
 >
-> implementer. T10 hecha (README del front, `docs/ARCHITECTURE.md` con la
-> sección del portal y el recuadro de la fila «Entra ID», `docs/DESPLIEGUE.md`
-> §6 con la propuesta de H-4). T11 hecha (campaña con 0 mutantes, 8/8
-> mutaciones a mano muertas en un worktree ya retirado, diffs a mano). En curso: T13.
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 4 · T10, T11 y
+> T13». Commits `da35ee2` (T10), `cbbd4f1` (T11) y el de T13. Sin push;
+> `harness/features.json`, `front-portal` y `azure-apps` sin tocar.
+>
+> - **T10**: README del front (sección «La maqueta del portal (F-035)»),
+>   `docs/ARCHITECTURE.md` (sección del portal con el mapa y la regla de los
+>   placeholders; recuadro fechado que corrige la fila «Entra ID»:
+>   `posventa-usuarios` existe y es el acceso, «como hoy»; sin GUID) y
+>   `docs/DESPLIEGUE.md` §6 (la tarjeta aterriza en el portal; propuesta de
+>   título y descripción de H-4 para `front-portal`, al publicar).
+> - **T11**: campaña del arnés con 0 mutantes; **8/8 mutaciones a mano
+>   muertas**, 0 equivalentes, en un worktree del scratchpad ya retirado;
+>   diffs a mano en verde. La mudanza se ve con `git diff -C`, no con `-M`
+>   (desviación explicada en el informe, §4 c).
+> - **T13**: `bash harness/init.sh` **en verde** (raíz 69, front 294 sin
+>   caché, JS 398; cobertura N/A con motivo).
+> - **T12 (V1 y V2) es del humano**: guion paso a paso en el informe, §5. Su
+>   resultado se anota aquí. T12 sigue `[ ]` en `tasks.md`.
+> - Para el reviewer: F-045 añadido en dos filas del mapa de
+>   `ARCHITECTURE.md` (informe §2.3) y la rama temporal de las mutaciones con
+>   prefijo `feature/F-035-` (borrada).
 
 > ## ▶ F-035 · BLOQUE 3b (T8, T9 y T9 bis) HECHO · 2026-09-25 · siguiente: bloque 4 (T10–T13)
 >

@@ -1361,7 +1361,46 @@ de esto, del reviewer y del merge a `dev`.
 
 ### 6 · T13 · `bash harness/init.sh`
 
-PENDIENTE_T13
+En `cbbd4f1` (T11 ya hecha), tal cual, sin pipes: **exit 0**.
+
+```
+$ bash harness/init.sh
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] Python: Python 3.12.7
+[OK] Existe CLAUDE.md … (los nueve ficheros)
+    48 features, 26 abiertas, en curso: ['F-035'], bloqueadas: ninguna
+[OK] features.json válido
+[OK] BACKLOG.md al día
+    niveles: critico, documental, estandar; por defecto critico; umbral de cobertura 80%
+[OK] harness/rigor.json y niveles declarados: válidos
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 61 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+.....................................................................    [100%]
+69 passed in 9.92s
+[OK] pytest en verde (con medición de cobertura)
+    2 servicio(s): api (python), front (python)
+[OK] harness/servicios.json válido
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+........................................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 73%]
+........................................................................ [ 97%]
+......                                                                   [100%]
+294 passed in 12.03s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)
+[OK] Rama actual: feature/F-035-portal-posventa
+----------------------------------------
+ENTORNO LISTO. Puedes trabajar.
+```
+
+Lo que pide la verificación de T13: la suite de la **raíz** se ejecutó (no
+se cachea nunca: 69 passed) y la del **front, sin caché** (su árbol cambió
+con el README de T10: 294 passed, con el puente que ejecuta los 398 tests de
+JavaScript); la puerta de cobertura, **N/A con su motivo impreso**. La del
+backend sale por caché porque F-035 no toca `services/postventa-api/`, y es lo
+correcto. Los 61 avisos de `ruff` son los mismos de antes del bloque 2 (deuda
+previa; F-035 no añade Python de producción).
 
 ### 7 · Qué queda fuera y qué falta
 
@@ -1383,4 +1422,10 @@ PENDIENTE_T13
 
 ### Evidencias (bloque 4)
 
-EVIDENCIAS_T13
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | pytest del front **294 passed**; JavaScript (`node --test "tests_js/*.test.js"`) **398/398**; pytest de la raíz **69 passed**. Todo en verde, sin caché (`-p no:cacheprovider`) y de nuevo dentro de `bash harness/init.sh` (§6). Tests nuevos en este bloque: **0** (R36 y R37 se escribieron en el bloque 2) |
+| Cobertura de líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`, impreso por `bash harness/init.sh`. Este bloque solo cambia Markdown |
+| Mutantes (campaña del arnés) | **0 generados, 0 supervivientes, 0.0 s, workers 1** (`progress/mutacion_F-035.md`): «Sin líneas de producción en el alcance». Coste por mutante: no calculable con 0 mutantes |
+| Mutantes a mano (compensación de `design.md` §11) | **8 aplicados, 8 muertos, 0 supervivientes, 0 equivalentes**, en un worktree aislado ya retirado (§4 b). Tiempo del recorrido entero (línea base más las ocho, suites completas): **1 min 54 s** |
+| Tiempo de las suites | pytest del front: **9,44 s** (11,5 s de reloj); `node --test "tests_js/*.test.js"`: **2,21 s**; pytest de la raíz: **7,90 s** (9,8 s de reloj). Dentro de `init.sh`: raíz 9,92 s, front 12,03 s |

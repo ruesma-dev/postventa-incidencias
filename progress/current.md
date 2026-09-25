@@ -1,6 +1,27 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 3b (T8, T9 y T9 bis) HECHO · 2026-09-25 · siguiente: bloque 4 (T10–T13)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 3b · T8, T9 y T9 bis».
+> Commits `173fd5c` (T8), `d19ac99` (T9) y `30c02b4` (T9 bis). Sin push;
+> `harness/features.json` sin tocar.
+>
+> - **T8**: el circuito se mudó a `partes.html` en un solo commit: `git mv`,
+>   la línea 1 y la línea `INDEX` de los siete tests (`1 1` en cada uno). La
+>   suite del circuito da lo mismo antes y después (255 más el puente; JS
+>   322/322).
+> - **T9**: el portal en `index.html`. **T9 bis**: la barra en `partes.html`,
+>   22 líneas añadidas y 0 quitadas, sin directivas de Alpine.
+> - Front 293/294, JS 398/398, raíz 67/69: los tres rojos son de T10 (R36 y
+>   R37 ×2). `bash harness/init.sh` en rojo por diseño, solo por T10.
+> - No se pudo abrir el portal en un navegador (extensión de Chrome sin
+>   conectar). En su lugar, humo en Node: 6038 expresiones de Alpine, 0
+>   errores. Verlo de verdad queda para V1 (T12).
+> - Para el reviewer: el botón «Entendido» del aviso (no está en la spec) y
+>   las acciones de fila en el panel de detalle (informe, §2). Para T11 (c):
+>   la mudanza se ve en el diff contra la base con `git diff -C`.
+
 > ## ▶ F-035 · BLOQUE 3a (T5–T7) HECHO · 2026-09-25 · siguiente: T8, T9 y T9 bis
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 3a · T5 a T7».

@@ -681,3 +681,236 @@ raíz, R27 ×2, R28, R29 y el control con F-044 en `done`.
 | Cobertura de líneas cambiadas | **N/A**: el bloque solo añade JavaScript y CSS; la puerta mide Python de producción (`harness/alcance.py`) y F-035 no cambia ni una línea Python de producción frente a `dev` |
 | Mutantes | **No se lanza en este bloque** (0 esperados: no hay Python de producción; la campaña y las ocho mutaciones manuales son T11). Mordisco de R16 comprobado en una copia aislada (§3) |
 | Tiempo de las suites | `node --test tests_js/*.test.js`: 0,97 s; `maqueta_datos.test.js`: 0,31 s; `portal.test.js`: 0,31 s; pytest del front: 5,97 s; pytest de la raíz: 5,83 s |
+
+## Bloque 3b · T8, T9 y T9 bis · 2026-09-25
+
+Encargo del líder: **solo** la segunda mitad del bloque 3: T8 (mudar el
+circuito a `partes.html` en un solo commit), T9 (el portal en `index.html`) y
+T9 bis (la barra común en `partes.html`, inerte). Sin push; sin tocar
+`harness/features.json`. El circuito está en producción: cuidado máximo en
+T8.
+
+Precondiciones: rama `feature/F-035-portal-posventa`, árbol limpio en
+`b912f10`. `bash harness/init.sh` en rojo **por diseño** al empezar (el
+estado que dejó el bloque 3a: raíz parada en R37, front en el puente
+`test_f007_js.py`). Leídos `tasks.md`, `design.md` entero, `requirements.md`
+§1, los tests de F-035 (`test_f035_portal.py`, `portal.test.js`, la guardia
+de la raíz) y los módulos de T5–T7.
+
+### 1 · Qué cambió
+
+| Commit | Fichero | Qué es |
+|---|---|---|
+| `173fd5c` **T8** | `services/postventa-front/index.html` → `partes.html` | `git mv`; en `partes.html` solo la **línea 1** (`<!-- services/postventa-front/partes.html -->`) |
+| `173fd5c` **T8** | `tests/test_f007_estaticos.py`, `test_f009_front.py`, `test_f012_front.py`, `test_f025_front.py`, `test_f026_autoguardado.py`, `test_f026_front.py`, `test_f028_front.py` | **Solo** la línea `INDEX`: `INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html`. Finales de línea CRLF conservados |
+| `d19ac99` **T9** | `services/postventa-front/index.html` (**contenido nuevo**) | El portal: barra común, aviso de maqueta, siete secciones, región viva del aviso, 27 placeholders |
+| `30c02b4` **T9 bis** | `services/postventa-front/partes.html` | **Solo se añaden** 22 líneas tras la del `x-data="appPostventa()"`: el `<nav data-barra-portal>` en HTML plano y la leyenda de R47 |
+| los tres | `specs/F-035-portal-posventa/tasks.md` | T8, T9 y T9 bis marcadas `[x]` |
+
+**Lo que NO se tocó** (comprobado con `git diff -M --name-status 54c0884`):
+ni un `js/*.js` del circuito, ni `css/styles.css`, ni
+`staticwebapp.config.json`, ni `dev_server.py`, ni `dev_front.ps1`, ni
+`infra/`, ni `services/postventa-api/`, ni `tests_js/` de la base, ni
+`js/portal*.js`, `js/maqueta_datos.js` o `css/portal.css` (T9 es solo HTML).
+
+**T8, comprobación de que no cambió nada más** (antes del commit):
+
+```
+$ git diff --cached -M --numstat
+1	1	services/postventa-front/{index.html => partes.html}
+1	1	services/postventa-front/tests/test_f007_estaticos.py
+1	1	services/postventa-front/tests/test_f009_front.py
+1	1	services/postventa-front/tests/test_f012_front.py
+1	1	services/postventa-front/tests/test_f025_front.py
+1	1	services/postventa-front/tests/test_f026_autoguardado.py
+1	1	services/postventa-front/tests/test_f026_front.py
+1	1	services/postventa-front/tests/test_f028_front.py
+```
+
+`git diff -U0` de los siete: la única línea quitada es
+`INDEX = RAIZ_FRONT / "index.html"` y la única puesta, la de `partes.html`.
+La suite del circuito, **igual de verde que antes**: se guardó la lista
+`PASSED/FAILED` de `pytest tests --ignore=tests/test_f035_portal.py` antes y
+después de la mudanza y `diff` dio **idéntico** (255 passed; el único rojo,
+el puente `test_f007_js.py`, ya lo estaba por los `tests_js` de F-035);
+`node --test` de los quince ficheros de `tests_js/` de la base: **322/322**
+antes y después. Tras el commit, R32, R33, R35, R42 (circuito) y R43 en
+verde.
+
+**El diff de la rama contra la base** (`git merge-base dev HEAD` =
+`54c0884`), con detección de copias: `partes.html` es el `index.html` de la
+base **más 23 líneas y menos 1** (la línea 1 y las 22 de la barra):
+
+```
+$ git diff -C --numstat 54c0884 -- services/postventa-front/index.html services/postventa-front/partes.html
+897	538	services/postventa-front/index.html
+23	1	services/postventa-front/{index.html => partes.html}
+```
+
+(Sin `-C`, git enseña `index.html` como `M` y `partes.html` como `A`, porque
+hay un `index.html` nuevo. El renombrado se ve commit a commit, en `173fd5c`.
+**Para T11 (c)**: usar `-C`.)
+
+### 2 · Decisiones de diseño (T9 y T9 bis)
+
+Ninguna contradice la spec ni los tests.
+
+1. **Un solo `x-data` en todo el portal** (R1 lo exige): la ficha y el detalle
+   de la bandeja no usan componentes anidados. Para tener un alias legible se
+   usa `x-for="inc in [incidenciaActual()].filter(Boolean)"` (y lo mismo con
+   `filaBandeja()`): cero o una iteración, sin lógica nueva en el componente.
+2. **La barra**, igual en las dos páginas: mismas clases escritas enteras,
+   marca «Posventa · Ruesma» como `<span>` (ni es un enlace ni se llama como
+   una sección). En el portal, la pestaña activa se resalta con `:class` y
+   `:aria-current`; los `href` son literales (R44, R17). En el circuito,
+   «Partes firmados» es un `<span aria-current="page">` con las clases de la
+   activa, y las otras siete llevan `target="_blank" rel="noopener"`.
+3. **La barra del circuito va justo tras la línea 16** y deja detrás la línea
+   en blanco de la base, así que el `<header>` del circuito queda como estaba.
+   `difflib` la ve como **un** `insert` (R30/R43 en verde).
+4. **Aviso de maqueta** (R13): franja ámbar bajo la barra, fuera de toda
+   sección y sin `x-show`, con una muestra de placeholder dibujada como
+   `<span class="placeholder">`. Es un `<span>` y no un `<button>` porque el
+   aviso no puede tener botones, y así R9 y R10 no lo cuentan.
+5. **Región viva del aviso** (R11): un `<p role="status" aria-live="polite"
+   x-text="aviso">` **siempre presente** (no dentro de un `x-show`, para que
+   el lector de pantalla lo anuncie), en una franja fija abajo de la
+   pantalla, para que se vea aunque el placeholder quede lejos del principio.
+   Lleva al lado un botón local **«Entendido»** (`data-local`, `aviso = ''`)
+   que **no está en la spec**: como el aviso no se va solo (§6.2: sin
+   temporizadores), sin él la franja fija taparía el pie de la página para
+   siempre. **Para el reviewer**: es la única pieza del HTML que no sale de
+   `design.md`.
+6. **Acciones por fila de la bandeja** (Editar, Descartar, Aprobar, Cambiar
+   industrial) van en el **panel de detalle** de la fila, no en cada fila de
+   la tabla: 32 botones rayados en la tabla no se leen, y dentro de una fila
+   pulsable un placeholder abriría también el detalle. La fila se abre con un
+   botón local «Ver».
+7. **Pestaña «Datos» de la ficha**, en dos partes: los campos del alta en los
+   bloques de la ficha de Sigrid, con **etiquetas escritas en el HTML** (R38,
+   decisión 9 del bloque 2); y debajo, plegado en un `<details>`, «De dónde
+   sale cada campo en Sigrid»: la tabla de `datos.incidencias.campos` con su
+   origen (R25) y la nota o el motivo del pendiente.
+8. **Lo calculado sale de `Portal` o del componente**, salvo cuatro
+   expresiones cortas en el HTML: el filtro del historial por fila o por
+   incidencia (`.filter(...)`), la «diferencia» del capítulo
+   (`c.venta === null ? null : c.venta - c.coste`), el alias de vínculo vacío
+   de la pestaña «Económico» y la unión del origen cuando son varios
+   (`[].concat(c.origen).join(' / ')`). Las aprobadas por obra del panel de
+   volcado usan `Portal.filtrarBandeja`, que está probada.
+9. **Ninguna ficha `F-0NN` escrita a mano fuera de los placeholders**: las
+   insignias de ficha de los bloques y de los pendientes salen de
+   `datos.<bloque>.ficha` con `x-text`. Así, cuando una ficha retire su bloque
+   de datos, el HTML que lo pintaba se rompe a la vista, en vez de quedarse
+   con un «F-0NN» muerto que la guardia de R28 no ve (solo lee
+   `data-placeholder`). Por eso dos textos de `design.md` van sin número: el
+   pendiente de filtros del listado («los decide la ficha de la incidencia»)
+   y la nota de la referencia externa («la forma exacta la fija el volcado»).
+10. **La ruta de archivo de ejemplo de la tarjeta «Partes firmados»**
+    (§5.7, enmienda) va escrita en el HTML, como pide el diseño: es un
+    ejemplo dentro de una frase, no un dato de la maqueta, y cumple el formato
+    de R41. Va en `<code class="whitespace-pre">` para que se vean los dos
+    blancos de la carpeta de obra.
+11. **Se carga también `css/styles.css`** (la tipografía de todo el front)
+    para que la barra se vea igual en las dos páginas. Solo se **lee**: R33
+    sigue en verde.
+
+### 3 · Fase RED
+
+T8, T9 y T9 bis no llevan tests nuevos: su RED es la del bloque 2 (§3 de este
+informe). Qué tests tenían que ponerse en verde, y con qué tarea lo hicieron:
+
+| Tarea | Estaban en rojo | En verde tras la tarea |
+|---|---|---|
+| T8 | R32 (`a estos tests les falta su línea INDEX apuntando a partes.html (T8): [...]`), R42 del circuito, R43 (`FileNotFoundError: ... partes.html`) | R32, R33, R35, R42 (circuito), R43 |
+| T9 | R1, R42 (dev_server), R3 ×2, R9 ×2, R10, R11, R13 ×2, R15, R17, R34, R38 ×2, R46; en JS, R9 ×2 y R44 ×3 de `index.html` | Todos |
+| T9 bis | R30/R43, R31, R45, R47; en JS, R44 ×3 de `partes.html`; y el puente `test_f007_js.py` | Todos |
+
+Salidas reales al acabar T9, antes de T9 bis (desde `services/postventa-front`):
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -rf --tb=line
+.........................F....FFFF....                                   [100%]
+tests\test_f035_portal.py:600: AssertionError: falta la sección «La maqueta del portal (F-035)» del README
+tests\test_f035_portal.py:702: AssertionError: falta la barra (data-barra-portal) como primer hijo del div x-data="appPostventa()"
+tests\test_f035_portal.py:213: AssertionError: tiene que haber uno y solo uno: <nav data-barra-portal> en partes.html (hay 0)
+  (tres veces: R31, R45 y R47)
+5 failed, 33 passed in 3.66s
+
+$ node --test tests_js/portal.test.js
+✖ f035 R44: la barra de partes.html tiene las ocho secciones de Portal.SECCIONES, en su orden
+✖ f035 R44: cada pestaña de partes.html enlaza a lo que da enlaceSeccion(id, "circuito")
+✖ f035 R44: la barra es el primer elemento de partes.html
+ℹ tests 52
+ℹ pass 49
+ℹ fail 3
+```
+
+Es lo que la verificación de T9 en `tasks.md` da por esperado (rojos de T9
+bis y de T10).
+
+### 4 · Humo del portal (lo que los tests estáticos no ven)
+
+Los tests leen el HTML como texto y no ejecutan Alpine: una expresión mal
+escrita (`inc.partex.cerrado`) los pasaría todos. **No se pudo abrir en un
+navegador**: la extensión de Chrome no estaba conectada. En su lugar:
+
+- **Todas las expresiones de Alpine evaluadas en Node** contra el componente
+  real (`portalPosventa()` sobre `MaquetaDatos` y `Portal`), con un script del
+  scratchpad (no versionado). El script recorre el árbol del HTML, entra en
+  cada `x-for` con **todos** sus elementos, evalúa `x-text`, `x-show`,
+  `x-if`, `:*`, `x-model` y `:key`, y comprueba que existe el método de cada
+  `@click` o `@change`. Ocho estados: `inicio`, las fichas `EJ-0001` (con el
+  panel de «no procede» abierto), `EJ-0005` (parte archivado) y `EJ-0012`,
+  las filas de bandeja `BJ-0002` («sin completar») y `BJ-0003` (tipo `0003`),
+  el capítulo `9902` y un aviso en bloque. Resultado:
+  **`expresiones evaluadas: 6038 errores: 0`**.
+- **El humo muerde**: el mismo script sobre una copia con `inc.partex.cerrado`
+  da `Cannot read properties of undefined (reading 'cerrado')` en cada ficha.
+  La copia se retiró.
+- Salidas de muestra: `contadores: {"entradasPorRevisar":3,"aprobadasSinVolcar":2,"incidenciasAbiertas":6,"terminadasSinCerrar":2,"costeDelAno":2230}`,
+  coste `2.230,00 €`; `tipo 0003: 0003 · Pendiente: qué es y cuándo se usa`;
+  `oficio null: sin completar`.
+- **`dev_server.py`** levantado en local (puerto 5188, sin backend) y parado
+  al terminar: `/`, `/index.html`, `/partes.html`, `/js/portal_app.js` y
+  `/css/portal.css` dan `200`; `/` contiene `portalPosventa()` y
+  `/partes.html`, `appPostventa()`.
+
+Lo que **sigue sin verse** hasta T12 (V1/V2): cómo se pinta de verdad con
+Tailwind y Alpine en un navegador (la franja fija del aviso, las tablas en
+pantalla estrecha, el resaltado de la pestaña activa) y que la pestaña
+**Red** no enseñe ninguna petición a `/api/`.
+
+### 5 · Resultado de las suites (al terminar T9 bis)
+
+| Suite | Resultado |
+|---|---|
+| `python -m pytest tests -q` (front, sin `-x`) | **294: 293 passed, 1 failed** (R36 README, de T10). Los 256 del circuito, en verde, **incluido el puente `test_f007_js.py`** |
+| `node --test tests_js/*.test.js` | **398/398** |
+| `python -m pytest tests -q` (raíz) | **69: 67 passed, 2 failed** (R37 ×2, `docs/ARCHITECTURE.md`, de T10) |
+| `bash harness/init.sh` | **En rojo por diseño**, dos `[KO]`, los dos de T10: la raíz se para (`-x`) en `test_f035_r37…` y el front en `test_f035_r36…`. `compileall` en verde; `ruff`, los mismos 61 avisos de antes; `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+
+### 6 · Qué queda fuera y qué falta
+
+- **Fuera de este bloque**: T10 (README, `ARCHITECTURE.md`,
+  `DESPLIEGUE.md` §6), T11 (mutación, las ocho mutaciones manuales y los diffs
+  a mano; para su apartado (c), `git diff -C`, ver §1), T12 (V1/V2 del
+  humano) y T13.
+- **`.\dev_front.ps1`** vuelve a arrancar desde T9 (hay `index.html`). Entre
+  T8 y T9 no arrancaba, como estaba previsto; ese hueco ya está cerrado.
+- **Para el reviewer**: la decisión 5 (botón «Entendido», que no está en la
+  spec), la 6 (acciones de fila en el panel de detalle), la 8 (cuatro
+  expresiones cortas en el HTML) y la 9 (ningún «F-0NN» a mano fuera de los
+  placeholders).
+- **Verificaciones MANUAL** pendientes: V1 y V2 (T12). Este bloque añade
+  una a hacer en V1: **mirar el portal en un navegador**, porque el humo en
+  Node no pinta nada.
+
+### Evidencias (bloque 3b)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | pytest del front **294** (293 passed, 1 failed: R36, de T10); JavaScript **398** (398 pass); pytest de la raíz **69** (67 passed, 2 failed: R37, de T10). Tests nuevos en este bloque: **0** (los escribió el bloque 2) |
+| Cobertura de líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`, de `bash harness/init.sh`. Este bloque cambia HTML y siete líneas de tests |
+| Mutantes | **No se lanzan en este bloque** (se esperan 0; la campaña y las ocho mutaciones manuales son T11). Humo de Alpine con una mutación a mano: la ruptura se caza (§4) |
+| Tiempo de las suites | pytest del front: 25,60 s; `node --test tests_js/*.test.js`: 3,30 s; pytest de la raíz: 26,69 s (las tres lanzadas a la vez, sin caché); `test_f035_portal.py` solo: 3,66 s |

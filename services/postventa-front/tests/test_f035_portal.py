@@ -1794,3 +1794,39 @@ def test_f035_r61_el_readme_explica_la_identidad_visual():
         ("R59", "la guardia del circuito"),
     ):
         assert imprescindible in texto, f"la sección de la identidad no explica {por_que}"
+
+
+# --- R51 · La pestaña actual la pinta aria-current: que marque LA SUYA ------------
+#
+# Desde el bloque 5 las pestañas no llevan `:class`: lo que las pinta es
+# `:aria-current` (barra) y `:aria-selected` (ficha). Una expresión con el id
+# equivocado pintaría otra pestaña y mentiría al lector de pantalla, y ningún
+# test lo veía (mutaciones P7 y P8 de T18).
+
+
+def test_f035_r51_cada_pestana_de_la_barra_marca_su_propia_seccion():
+    pestanas = [
+        a for a in barra(leer_html(PORTAL), "index.html").elementos()
+        if a.nombre == "a" and a.atributos.get("href", "").startswith("#/")
+    ]
+
+    assert len(pestanas) == len(SECCIONES_DEL_PORTAL)
+    for a in pestanas:
+        id_seccion = a.atributos["href"][2:]
+        esperada = f"seccion === '{id_seccion}' ? 'page' : false"
+        assert _normaliza(a.atributos.get(":aria-current", "")) == esperada, (
+            f"«{a.texto()}» tiene que marcarse con :aria-current=\"{esperada}\""
+        )
+
+
+def test_f035_r51_cada_pestana_de_la_ficha_se_marca_a_si_misma():
+    pestanas = [e for e in seccion(leer_html(PORTAL), "incidencias").elementos() if e.atributos.get("role") == "tab"]
+
+    assert len(pestanas) == 4, "las cuatro pestañas de la ficha"
+    for tab in pestanas:
+        abre = re.fullmatch(r"verPestanaFicha\('([a-z]+)'\)", tab.atributos.get("@click", "").strip())
+        assert abre, f"«{tab.texto()}»: @click=\"verPestanaFicha('<id>')\""
+        esperada = f"pestanaFicha === '{abre.group(1)}'"
+        assert _normaliza(tab.atributos.get(":aria-selected", "")) == esperada, (
+            f"«{tab.texto()}» abre «{abre.group(1)}» y tiene que marcarse con :aria-selected=\"{esperada}\""
+        )

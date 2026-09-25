@@ -16,6 +16,12 @@
 > `services/postventa-api/tests/test_f005_integracion_sin_secretos.py`, que
 > falla si alguno entra.
 
+> **CORTE HECHO el 2026-09-25 (11:41 UTC).** Lo que este documento describe
+> «desde el corte» está **desplegado**: el archivo va a la biblioteca de
+> Posventa (`SHAREPOINT_ESTRUCTURA=posventa`, carpeta base vacía, crear
+> carpetas activo), con F-049 (las villas que se crean llevan tres cifras,
+> `VILLA 008`). Lo que dice «hasta el corte» queda como histórico; no se borra.
+
 ## 1 · Qué consumimos hoy
 
 | Recurso | Compartido con | Qué hacemos | Desde |

@@ -1,6 +1,25 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## 🚀 CORTE DE F-013 HECHO · 2026-09-25 11:41 UTC · pendientes R33 y R42 (humano, hoy)
+>
+> Desplegado por el humano con F-013 y F-049 (`dev` y `main` en `3e3883b`):
+>
+> - Paso 2 (R31): **PASA** contra la red real, con `VILLA 008`… (bloque de F-049).
+>   Antes, un NO PASA por la hoja de VILLA 002 (`PARTES FIRMADOS 2`); el humano la
+>   renombró a `PARTES FIRMADOS` y el paso 2 se repitió.
+> - Paso 4: los dos IDs de la biblioteca de Posventa, cargados en el Key Vault: **sí**.
+> - Paso 5: `desplegar_backend.ps1` con «Destino del archivo: estructura 'posventa',
+>   carpeta base '', crear carpetas 'true'» y las dos ventanas abiertas: **sí**.
+> - Paso 6: ventana de archivo **abierta**; App Settings `SHAREPOINT_ESTRUCTURA` =
+>   `posventa`, `SHAREPOINT_CARPETA_BASE` vacía (el vacío llegó),
+>   `SHAREPOINT_CREAR_CARPETAS` = `true`: **sí**.
+> - `GET /api/health` contra el host desnudo responde **401** (lo corta la
+>   autenticación de la plataforma antes de la Function); pendiente de mirarlo
+>   desde el front.
+> - **Pendiente hoy (humano, con Posventa)**: R33 (paso 7) y R42 (paso 8), con los
+>   comandos de los bloques de abajo. Frenos en `docs/DESPLIEGUE.md` §9.
+
 > ## ✅ F-049 CERRADA · 2026-09-25 · se despliega con el corte de F-013
 >
 > Review 2 **APROBADA** (`progress/review2_F-049.md`); M7 y M8 aceptados por el

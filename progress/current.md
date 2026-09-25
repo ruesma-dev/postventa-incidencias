@@ -1,6 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-049 · IMPLEMENTADA (T1–T7) · 2026-09-25 · siguiente: review
+>
+> implementer. Informe: **`progress/impl_F-049.md`**. Rama
+> `feature/F-049-villa-tres-cifras`; sin push; `harness/features.json` e
+> `infra/00_vars_postventa.ps1` sin tocar.
+>
+> - `nombre_derivado_de_unidad` crea `VILLA 008`, `VILLA 013`, `VILLA 1000`
+>   (`:03d`); el casado no cambia (`VILLA 001` = `VILLA 01` = villa 1; las dos
+>   juntas, `unidad_ambigua`). RED commiteado (`684021d`, 42 rojos).
+> - Cascada de tests de F-013 **solo donde fijaban el ancho** del nombre
+>   creado: lista en el informe, §3. Datos medidos de T2 intactos.
+> - Recuadros fechados 2026-09-25 (F-049) en F-013 requirements (cabecera,
+>   T4-1, T4-5, vocabulario, R37, R31 **y R42**, este fuera del encargo:
+>   decía `VILLA 08` … `VILLA 15`), design (cabecera, §1, §4.5, §4.6, §7.3),
+>   tasks (paso 2), INTEGRACION §3, DESPLIEGUE §9; gemelo de `azure-apps`
+>   en `556e1b2` (local, sin push).
+> - `bash harness/init.sh` en verde: 4.356 passed; cobertura 100 % (1/1);
+>   mutación: 0 del arnés (no muta formatos de f-string), 9 a mano, 7 muertos
+>   y 2 equivalentes (`progress/mutacion_F-049.md`).
+> - **MANUAL**: relanzar el paso 2 del corte (R31) desde una copia **con
+>   F-049** (el 23 ejecuta el dominio local). Hojas de las carpetas
+>   reorganizadas: [NO MEDIDO], las dirá el 23.
+
 > ## ✅ F-013 CERRADA · 2026-09-25 · falta el merge a `dev`, desplegar y el corte
 >
 > Review **APROBADA** (`progress/review_F-013.md`), cuatro hallazgos bajos

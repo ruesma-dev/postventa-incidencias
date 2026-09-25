@@ -37,6 +37,7 @@ from domain.models.destino_posventa import (
     unidades_que_casan,
 )
 from domain.models.errores import DestinoNoResuelto
+
 from tests.utiles_destino import (
     ALTERNATIVA,
     CARPETA_OBRA_0677,

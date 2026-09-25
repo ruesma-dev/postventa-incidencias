@@ -16,5 +16,5 @@
   (`requirements.md`, `design.md`, `tasks.md`)  |  Verificación: R4 en verde
 - [x] T5: recuadros en `docs/INTEGRACION.md` §3 y `docs/DESPLIEGUE.md` §9; el
   gemelo `azure-apps/postventa_incidencias.md`, commit local allí  |  Verificación: R4 en verde; `test_f006_repo_sin_identificadores.py` en verde
-- [ ] T6: mutación `python -m harness.mutacion --feature F-049 --timeout 900 --workers 6`, sola; cada superviviente, test o justificación  |  Verificación: `progress/mutacion_F-049.md`
-- [ ] T7: `bash harness/init.sh` en verde e informe `progress/impl_F-049.md`  |  Verificación: `bash harness/init.sh`
+- [x] T6: mutación `python -m harness.mutacion --feature F-049 --timeout 900 --workers 6`, sola; cada superviviente, test o justificación  |  Verificación: `progress/mutacion_F-049.md`
+- [x] T7: `bash harness/init.sh` en verde e informe `progress/impl_F-049.md`  |  Verificación: `bash harness/init.sh`

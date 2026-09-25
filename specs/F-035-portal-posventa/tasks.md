@@ -185,7 +185,7 @@
       muestra `index.html => partes.html`. `.\dev_front.ps1` **no arranca**
       entre T8 y T9 (no hay `index.html`): es esperado y dura un commit.
 
-- [ ] **T9** *(2026-09-25, D-1, D-2, D-3)*: el portal en
+- [x] **T9** *(2026-09-25, D-1, D-2, D-3)*: el portal en
       **`services/postventa-front/index.html`**: el contenido de la T8 de la
       premisa (las secciones de `design.md` §5 con sus recuadros, salvo
       `partes`, que no tiene bloque; la tarjeta «Partes firmados» de

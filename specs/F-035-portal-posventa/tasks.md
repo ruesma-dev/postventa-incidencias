@@ -107,7 +107,7 @@
       **Verificación**: `python -m pytest tests/test_f035_portal.py -q` desde
       el front, **en rojo**, salida a `progress/impl_F-035.md`.
 
-- [ ] **T4 (RED)**: escribir `tests/test_f035_placeholders_vivos.py` en la
+- [x] **T4 (RED)**: escribir `tests/test_f035_placeholders_vivos.py` en la
       **raíz**: R27 (toda ficha citada existe), R28 (ninguna ficha `done` con
       restos), R29 (cada ficha F-036…F-048 no `done` tiene al menos un resto),
       R37 (la sección del portal existe en `docs/ARCHITECTURE.md`). Lee

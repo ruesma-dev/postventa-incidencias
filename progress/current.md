@@ -1,7 +1,30 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ▶ F-035 · APROBADA · 2026-09-25 · en implementación
+> ## ▶ F-035 · BLOQUE 2 (RED) HECHO · 2026-09-25 · siguiente: bloque 3 (T5–T9 bis)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 2 · RED». Sin
+> código de producción, sin push, `harness/features.json` sin tocar; los tests
+> del circuito, intactos (su línea `INDEX` es de T8).
+>
+> - **T2** `tests_js/portal.test.js` (48) y `tests_js/maqueta_datos.test.js`
+>   (24): 72 en rojo, 70 por `MODULE_NOT_FOUND`. **T3**
+>   `tests/test_f035_portal.py` (38): 34 rojos y 4 guardias en verde
+>   (explicadas en el informe). **T4** `tests/test_f035_placeholders_vivos.py`
+>   en la raíz (7): 7 rojos.
+> - Solo fallan los nuevos: `tests_js` 322/322 de antes en verde; front 255/256
+>   (el puente `test_f007_js.py` cae por los JS nuevos, previsto en T8); raíz
+>   62/62.
+> - `bash harness/init.sh` **en rojo por diseño**: 2 `[KO]` (raíz y front),
+>   los dos por los tests nuevos.
+> - **Para el reviewer / bloque 3** (informe §2): los tests fijan contratos que
+>   la spec dejaba abiertos (enganche `data-aviso-maqueta`, `ficha: "F-0NN"`
+>   literal, forma de los datos…). Dos desviaciones menores a mirar: R40
+>   `provisional` sigue §5.3 y el contrato (solo `previsto` es provisional),
+>   no la frase de §11; y la guardia del diff corre en ramas `feature/F-035*`,
+>   no solo en la exacta, para que T11 pueda mutar en un worktree aislado.
+
+> ## F-035 · APROBADA · 2026-09-25 · en implementación
 >
 > **T1 · Aprobación del humano, 2026-09-25** (preguntado por el líder con el
 > resumen de `progress/spec_F-035.md` §5):

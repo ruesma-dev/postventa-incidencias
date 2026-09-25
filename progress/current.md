@@ -1,6 +1,21 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 5 HECHAS · 2026-09-25 · siguiente: reviewer y T12 del humano
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 5». Commits `16daa43` y `3907c4e`. Por decisión del líder,
+> `index.html:940` (coste del capítulo) lleva ya su marca de «sin dato»: la
+> única línea de producción. Tests: el «sin dato» vacía la fila en todos los
+> candidatos (M17); el chip de ficha se elige por `rs-ficha`, se exigen los 10
+> y cita R29 (M14, M21); y el de R57 (Python) elegía por su propia ligadura:
+> ahora por lo que enseña.
+>
+> - Barrido por aparición: **41/41**. Otros operadores (borrar, literal,
+>   intercambio): antes 68/89, ahora **92/92**. 0 supervivientes.
+> - `bash harness/init.sh` en verde (raíz 73, front 353, JS 413, ruff 61).
+>   Sin push. T12 (humano) sigue pendiente.
+
 > ## ▶ F-035 · CORRECCIONES DE LA REVIEW 4 HECHAS · 2026-09-25 · siguiente: reviewer y T12 del humano
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la

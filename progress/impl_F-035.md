@@ -3021,3 +3021,242 @@ filtro del test.
 | Mutantes (campaña del arnés) | **0**, sin cambios |
 | Mutantes a mano | Barrido por aparición: **40**; antes **11/40** muertos, después **40/40**. Más las tres negaciones del cambio 1 en copia aparte: **3/3** en rojo. **0 supervivientes, 0 equivalentes** |
 | Tiempo de la suite | Front pytest 10,67 s; raíz 7,17 s; JS ~1,7 s |
+
+
+## Correcciones de la review 5 · 2026-09-25
+
+implementer. Respuesta a `progress/review5_F-035.md` (CHANGES_REQUESTED,
+commit `0ddaa56`): sus tres «Cambios requeridos», la decisión del líder de
+arreglar ya `index.html:940` (hallazgo §4 de la review 4), la R-3 (nombre del
+test) y el ejercicio del reviewer repetido con **otros operadores**. Commits
+**`16daa43`** y **`3907c4e`** y el de este informe. `git diff --stat 0ddaa56
+HEAD`: `index.html` (1 línea), `tests/test_f035_portal.py` y
+`tests_js/portal.test.js`. Ni `partes.html`, ni `css/*.css`, ni `js/*.js`. Sin
+push.
+
+### 1 · Qué cambió
+
+| Punto | Dónde | Qué |
+|---|---|---|
+| Decisión del líder (hallazgo §4) | `index.html:940` | **La única línea de producción**, del portal: `<td class="rs-importe" x-text="importe(c.coste)" :class="c.coste === null ? 'rs-sin-dato' : ''">`, la misma ligadura que la venta y el margen de su fila (941, 942) |
+| Cambio 1 (M17) | JS `f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4)` | La fila **vaciada** se aplica a **todos** los candidatos, sin excepción: se eligen por su `x-text`, nunca por el `:class` que se vigila. Con la 940 arreglada, la excepción que proponía la review sobra |
+| Cambio 2 (M14, M21) + R-3 | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` (antes `…r9_…`) | Elige los chips por la **clase `rs-ficha`** (no `rs-ficha-cabecera`: se compara el token), exige **exactamente 10** y que **cada uno** lea `datos.<bloque>.ficha`; después, la comprobación de panel de siempre. Cita **R29** (y la retirada de R28), que es lo que protege, en lugar de R9 |
+| Auditoría propia | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` | **Tenía el mismo defecto**: elegía los chips por su `:data-estado`, justo lo que vigila. Ahora los elige por lo que **enseñan** (un `rs-chip` cuyo `x-text` lee un `<x>.estado`), exige los **5**, con una excepción **nombrada** (el chip del datamart, «pendiente», que no es de los tres catálogos de R57 y va neutro), y que cada uno lleve `:data-estado` con ese mismo campo. Hoy no dejaba pasar ningún mutante (los tests de JS de R57 los cazaban), pero se desactivaba solo |
+| Cambio 3 | este informe | Los operadores nuevos, antes y después (§3) |
+
+**Auditoría de los demás tests del bloque 5** (¿eligen qué mirar por la
+ligadura que vigilan?): R58 elige el vacío por `data-vacio` y la lista por su
+`x-for`; los chips del volcado, por texto y `rs-chip`; la lista de errores, por
+su `x-for`; R51, las pestañas por `href` / `role="tab"`; los tests de JS de
+fila abierta, aviso y atención, por el botón «abrir…», la región
+`role="status"` y el texto «Pendiente: »; R55, R60, R-1 y R59 recorren la hoja
+o el HTML enteros. Solo el de R57 caía en el patrón; lo confirma el barrido de
+§3, que borra y sustituye por literal cada ligadura.
+
+### 2 · Verificaciones pedidas, con traza
+
+En un worktree desechable (`git worktree add -b feature/F-035-rev5-despues-tmp
+<scratchpad>/wt5b HEAD`, sobre `16daa43`), cada mutación escrita y restaurada
+en bytes; `git status` vacío al terminar.
+
+```
+===== M17 · 681 sin :class · pytest exit 1 · node exit 1
+    …wt\services\postventa-front\tests\test_f007_js.py:72: AssertionError: los tests de JavaScript del front están en rojo (node --test tests_js/*.test.js, código 1):
+    FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+    1 failed, 352 passed in 13.68s
+    node: ✖ f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4) (88.9505ms)
+    node: AssertionError [ERR_ASSERTION]: la marca rs-sin-dato no cuenta lo mismo que el texto
+      (detalle, con --test-name-pattern="sin dato"):
+      +   `<dd x-text="inc.ubicacion || 'sin completar'"> dice «sin completar» sin rs-sin-dato`
+===== 681 con :class='' · pytest exit 1 · node exit 1
+    FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+    1 failed, 352 passed in 11.41s
+    node: ✖ f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4) (83.4703ms)
+===== M14 · 845 x-text literal · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:2030: AssertionError: el chip rs-ficha lee la ficha de su bloque (x-text="datos.<bloque>.ficha"), no «'F-999'»
+    FAILED tests/test_f035_portal.py::test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes
+    1 failed, 352 passed in 10.36s
+===== M21 · 214 x-text literal · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:2030: AssertionError: el chip rs-ficha lee la ficha de su bloque (x-text="datos.<bloque>.ficha"), no «'F-999'»
+    FAILED tests/test_f035_portal.py::test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes
+    1 failed, 352 passed in 17.11s
+===== M13 · 179 bloque lejano · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:2039: AssertionError: el chip datos.capitulos.ficha está en el panel de los pendientes de ['entrada']
+    FAILED tests/test_f035_portal.py::test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes
+    1 failed, 352 passed in 12.57s
+===== 940 sin :class (la línea nueva) · pytest exit 1 · node exit 1
+    FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+    1 failed, 352 passed in 16.29s
+    node: ✖ f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4) (88.8326ms)
+    node: +   '<td x-text="importe(c.coste)"> dice «sin enlazar» sin rs-sin-dato'
+git status: ''
+```
+
+**Las 40 del barrido de la review 4, más la 940, siguen en rojo**: el mismo
+`barrido37.py` (con la 940 añadida) sobre `16daa43` y otra vez sobre
+`3907c4e`: `apariciones: 41 · muertos: 41 · vivos: 0 · git status tras
+restaurar: ''` las dos veces. Las 10 del bloque siguiente de los `x-text` de
+ficha mueren en `test_f035_r29_…`.
+
+### 3 · Otros operadores (el ejercicio del reviewer, repetido)
+
+`barrido_ops.py` (scratchpad): sobre **cada una** de las 41 apariciones
+(las 40 y la 940), dos operadores, y un tercero sobre **13 pares de
+hermanos**:
+
+- **borrar** el atributo entero (con su espacio);
+- **literal** en lugar de la ligadura: `:class="'<la clase que puede poner>'"`
+  (siempre puesta), `data-estado="SAT"` fijo, `x-show="true"`,
+  `x-text="'F-999'"`;
+- **intercambio** entre hermanos: coste↔venta (835/836, 971/973, 940/941),
+  lista↔vacío de cada sección (298/349, 599/639, 882/893), los dos chips del
+  volcado (489/490), cabeceras de panel entrada↔web (179/239) y los
+  pendientes vecinos (797/845, 900/988), y 630/659.
+
+Misma mecánica que el barrido anterior (una coincidencia por línea, escribir y
+restaurar en bytes, suite pytest del front entera con el puente a `node
+--test`), en dos worktrees desechables con rama temporal: **antes** sobre
+`0ddaa56` y **después** sobre `3907c4e`. Retirados los dos (`git worktree
+remove`, `git branch -D`); `git status` vacío en cada uno al terminar.
+
+**Antes**: 89 mutantes, **68 muertos y 21 vivos** (y 3 que no aplican: la 940
+no tenía ligadura). **Después**: 92 mutantes, **92 muertos, 0 vivos**. Un
+intercambio es **idéntico por construcción** (630 y 659 tienen la misma
+expresión, `inc.estado`): no llega a ser un mutante.
+
+Los 21 vivos de antes eran **M17** (681 borrada) y los **20** de borrar o poner
+un literal en los 10 chips de ficha (M14 y M21 son dos de ellos): justo los
+dos tests que elegían por la ligadura. Los `:data-estado` borrados o fijados
+ya morían antes, por los tests de JS de R57; desde `3907c4e` los mata además
+el de Python.
+
+| Mutante | Antes (`0ddaa56`) | Después (`3907c4e`) | Lo mata (después) |
+|---|---|---|---|
+| 317 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 317 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 329 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 329 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 374 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 374 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 632 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 632 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 681 borrar :class | **vivo** | muerto | JS (puente `test_f007_r32`) |
+| 681 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 739 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 739 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 834 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 834 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 835 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 835 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 836 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 836 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 937 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 937 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 940 borrar :class | no aplica | muerto | JS (puente `test_f007_r32`) |
+| 940 literal :class | no aplica | muerto | JS (puente `test_f007_r32`) |
+| 941 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 941 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 942 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 942 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 969 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 969 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 971 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 971 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 973 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 973 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 1037 borrar :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 1037 literal :class | muerto | muerto | JS (puente `test_f007_r32`) |
+| 335 borrar :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 335 literal :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 516 borrar :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 516 literal :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 630 borrar :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 630 literal :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 659 borrar :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 659 literal :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 889 borrar :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 889 literal :data-estado | muerto | muerto | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 349 borrar x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]` |
+| 349 literal x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]` |
+| 639 borrar x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]` |
+| 639 literal x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]` |
+| 893 borrar x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]` |
+| 893 literal x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]` |
+| 298 borrar x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]` |
+| 298 literal x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]` |
+| 599 borrar x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]` |
+| 599 literal x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]` |
+| 882 borrar x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]` |
+| 882 literal x-show | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]` |
+| 229 borrar x-show | muerto | muerto | `test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_errores` |
+| 229 literal x-show | muerto | muerto | `test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_errores` |
+| 489 borrar x-show | muerto | muerto | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` |
+| 489 literal x-show | muerto | muerto | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` |
+| 490 borrar x-show | muerto | muerto | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` |
+| 490 literal x-show | muerto | muerto | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` |
+| 179 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 179 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 214 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 214 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 239 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 239 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 247 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 247 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 458 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 458 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 541 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 541 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 797 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 797 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 845 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 845 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 900 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 900 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 988 borrar x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 988 literal x-text | **vivo** | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 835<->836 intercambio | muerto | muerto | JS (puente `test_f007_r32`) |
+| 971<->973 intercambio | muerto | muerto | JS (puente `test_f007_r32`) |
+| 940<->941 intercambio | no aplica | muerto | JS (puente `test_f007_r32`) |
+| 298<->349 intercambio | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]` |
+| 599<->639 intercambio | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]` |
+| 882<->893 intercambio | muerto | muerto | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]` |
+| 489<->490 intercambio | muerto | muerto | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` |
+| 179<->239 intercambio | muerto | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 797<->845 intercambio | muerto | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 900<->988 intercambio | muerto | muerto | `test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 630<->659 intercambio | idéntico | idéntico | idéntico (expresiones iguales): equivalente por construcción |
+
+(«JS (puente …)»: muere en pytest a través de
+`test_f007_r32_la_suite_de_javascript_esta_en_verde`, que ejecuta `node
+--test`; el test de JS concreto se identificó en la review 4 para las
+`:class` y aquí, con traza, para M17 y la 940.)
+
+### 4 · Verificación
+
+- `bash harness/init.sh` en `3907c4e`: **exit 0, `ENTORNO LISTO`**. Raíz
+  **73 passed**; front **353 passed** sin caché (incluye el puente con los
+  **413** de JavaScript); api desde caché; `PUERTA COBERTURA: N/A (F-035 no
+  cambia líneas Python de producción frente a dev)` —la línea de `index.html`
+  no es Python—; `ruff` **61** avisos, los de antes.
+
+### 5 · Qué queda fuera y qué falta
+
+- **R-2** (`display: NONE`, `visibility: collapse` en la guardia de R-1): el
+  encargo no la incluye; sigue abierta.
+- **P-R3** (barrido por aparición y con varios operadores como norma del
+  arnés, para `arnes-base`): del líder. `barrido37.py` y `barrido_ops.py`
+  pueden servir de base.
+- **O-1**: T12 (V1 y V2 del humano) sigue pendiente. En V1 se verá además la
+  940 con un capítulo sin coste (no hay ninguno en los datos de ejemplo: lo
+  demuestra el test con la fila vaciada).
+
+### Evidencias (correcciones de la review 5)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Front **353 passed** (pytest, sin caché, 12,02 s en `init.sh`; incluye el puente de JS) y **413/413** (`node --test`); raíz **73 passed** (8,37 s) |
+| Tests cambiados | 3 enmendados (R29 —antes R9—, R57 de Python y el JS de «sin dato»); ninguno nuevo. Producción: 1 línea de `index.html` |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+| Mutantes (campaña del arnés) | **0**, sin cambios |
+| Mutantes a mano | Barrido por aparición (41): **41/41** muertos. Otros operadores: antes **68/89** (21 vivos), después **92/92**, 1 idéntico por construcción. Verificaciones pedidas (M17, 681 vaciada, M14, M21, M13, 940): **6/6** en rojo. **0 supervivientes** |
+| Tiempo de la suite | Front pytest 12,02 s; raíz 8,37 s; JS ~1,7 s |

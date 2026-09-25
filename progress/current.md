@@ -1,6 +1,21 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · APROBADA · 2026-09-25 · en implementación
+>
+> **T1 · Aprobación del humano, 2026-09-25** (preguntado por el líder con el
+> resumen de `progress/spec_F-035.md` §5):
+>
+> - Spec enmendada (portal en la portada, circuito en `partes.html` como
+>   pestaña, una línea en siete tests, pestaña nueva del navegador al salir del
+>   circuito): **«Aprobada (Recomendado)»**.
+> - Acceso (D-5): **«posventa-usuarios, como hoy»**.
+> - Tarjeta del portal corporativo (H-4): **«Sí, al publicar»**: se cambian
+>   título y descripción en `front-portal` cuando se publique la maqueta, como
+>   trabajo de ese repositorio.
+> - El placeholder de F-045 en la tarjeta de `inicio` (consecuencia de D-7) va
+>   dentro de la spec aprobada.
+
 > ## SPEC DE F-035 ENMENDADA CON LAS DECISIONES DEL HUMANO · 2026-09-25 · `spec_ready`, **pendiente de aprobación**
 >
 > spec-author. `specs/F-035-portal-posventa/` enmendada con D-1…D-10 (acta

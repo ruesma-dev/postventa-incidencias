@@ -33,7 +33,7 @@
 
 ## Bloque 1 · Parada obligatoria
 
-- [ ] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §13
+- [x] **T1**: Enseñar al humano las decisiones abiertas de `design.md` §13
       (D-1 a D-9) y esperar respuesta. **Bloquean el arranque D-1** (página
       aparte), **D-2** (cómo se enlaza desde el circuito) y **D-6** (qué
       funciona sobre los datos de ejemplo); **D-5** (grupo de Entra) solo
@@ -52,6 +52,19 @@
       Siguen abiertas, **sin bloquear el arranque**: el alcance del acceso
       (D-5: ¿`posventa-usuarios` o el departamento?; solo condiciona el
       texto de T10) y el título y la descripción de la tarjeta (H-4).
+
+> **T1 · Aprobación del humano, 2026-09-25** (preguntado por el líder con el
+> resumen de `progress/spec_F-035.md` §5):
+>
+> - Spec enmendada (portal en la portada, circuito en `partes.html` como
+>   pestaña, una línea en siete tests, pestaña nueva del navegador al salir del
+>   circuito): **«Aprobada (Recomendado)»**.
+> - Acceso (D-5): **«posventa-usuarios, como hoy»**.
+> - Tarjeta del portal corporativo (H-4): **«Sí, al publicar»**: se cambian
+>   título y descripción en `front-portal` cuando se publique la maqueta, como
+>   trabajo de ese repositorio.
+> - El placeholder de F-045 en la tarjeta de `inicio` (consecuencia de D-7) va
+>   dentro de la spec aprobada.
 
 ## Bloque 2 · Tests en rojo (fase RED)
 

@@ -5,11 +5,13 @@
 
 Resumen: **48 features**, 26 abiertas, 22 terminadas.
 
+En curso: **F-035**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | spec lista | estandar | `feature/F-035-portal-posventa` |
+| F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | en curso | estandar | `feature/F-035-portal-posventa` |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | pendiente | critico | `feature/F-036-importar-excel` |
 | F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 3 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 4 | pendiente | critico | `feature/F-038-bandeja-revision` |
@@ -67,7 +69,7 @@ Resumen: **48 features**, 26 abiertas, 22 terminadas.
 
 ### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
 
-estado **spec lista** · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
+estado **en curso** · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal.
 

@@ -610,7 +610,7 @@
         "Ningún placeholder llama a Sigrid, SharePoint ni al correo",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "estandar",
       "priority": 1,

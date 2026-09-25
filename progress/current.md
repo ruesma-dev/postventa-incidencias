@@ -1,6 +1,22 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 3 HECHAS · 2026-09-25 · siguiente: reviewer (vuelta sobre la review 3) y T12 del humano
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 3». Solo tests: `tests/test_f035_portal.py` (`ecf0c2f`), 6 nuevos:
+> R55 gana por especificidad (las dos hojas), chips del volcado en su panel,
+> lista de errores de la importación, color del chip = estado que se lee, y
+> R-1 (styles.css no puede esconder ni desactivar el circuito). Ni
+> `partes.html`, ni `css/*.css`, ni `js/*.js`.
+>
+> - Mutantes en worktree desechable (retirado): G (las dos hojas), S1, O2,
+>   DE, H, I, R, Z **muertos**; O equivalente en comportamiento (comprobado en
+>   Chrome) pero en rojo por el test; S2 y S3 supervivientes documentados.
+> - P-R1 del bloque 5 completa: 37 directivas nuevas por clase, con su
+>   mutación o su análisis.
+> - `bash harness/init.sh` en verde (raíz 73, front 352 sin caché, ruff 61).
+
 > ## ▶ F-035 · BLOQUE 5b (T16 a T19) HECHO · 2026-09-25 · siguiente: T12 (V1/V2 del humano) y review del bloque 5
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 5b · T16 a T19».

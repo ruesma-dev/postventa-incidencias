@@ -2627,3 +2627,201 @@ registro» y `Ctrl+F5`:
 | Mutantes (campaña del arnés) | **0** generados, 0 supervivientes (`progress/mutacion_F-035.md`) |
 | Mutantes a mano | **17**: las cinco de §11 (9–13) **5/5 muertas**; guardia de R59 **4/4** (G4 tras su control nuevo); P-R1 **5/8** (P7 y P8 tras sus tests nuevos) y **3 supervivientes no equivalentes** (P4–P6, comprobado ejecutándolos) |
 | Tiempo de la suite | Front pytest 22,60 s; JS ~3,7 s; raíz 19,29 s |
+
+
+## Correcciones de la review 3 · 2026-09-25
+
+implementer. Respuesta a `progress/review3_F-035.md` (CHANGES_REQUESTED,
+commit `75e2ec0`): sus tres «Cambios requeridos» y la recomendación **R-1**,
+que el líder decide incluir. **Solo tests e informe**: un fichero de código
+tocado, `services/postventa-front/tests/test_f035_portal.py` (commit
+**`ecf0c2f`**, +148 líneas, 6 tests nuevos). Ni `partes.html`, ni
+`css/*.css`, ni `js/*.js`, ni los tests del circuito. **Ninguno de los tests
+nuevos destapó un fallo real**: los seis pasan contra la hoja y el HTML tal
+cual, que era lo que la review había comprobado en Chrome. Sin push.
+
+### 1 · Qué se añadió
+
+| Punto de la review | Test nuevo (`test_f035_portal.py`) | Qué exige |
+|---|---|---|
+| Cambio 1 (mutante G) | `test_f035_r55_el_movimiento_reducido_gana_por_especificidad[styles.css, portal.css]` | La regla que apaga `transition` y `animation` bajo `prefers-reduced-motion: reduce` tiene **todos** sus selectores con la forma `:is(*, #id)` —regex `^:is\(\s*\*\s*,\s*#[\w-]+\s*\)(::before\|::after)?$`—, cubre el elemento, `::before` y `::after`, y **ninguna** otra regla de la hoja que declare `animation*` o `transition*` usa un selector de id (empataría). Es la «forma sencilla» que propone la review. Los selectores se trocean por comas **fuera de paréntesis** (`_trocea`, el mismo de R55), porque la coma de `:is(*, #…)` no separa selectores |
+| Cambio 2 (mutante S1) | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` | «Simulación» con `x-show="r.resultado === datos.volcado.dryRun"` y «Hecho en Sigrid» con `…datos.volcado.hecho`, uno y solo uno de cada |
+| Cambio 3 (mutante O2) | `test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_errores` | La `<ul>` que pinta `datos.entrada.errores` se enseña con `x-show="datos.entrada.errores.length"` |
+| Cambio 3 (clase `:data-estado`) | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` | En los cinco chips, el `:data-estado` (el color) es un `<x>.estado` y ese mismo campo es el que lee su `x-text` (lo que se lee). Mi mutante DE lo tiró; los de la review (P3, N) ya caían por R57 de JS |
+| R-1 (decisión del líder) | `test_f035_r60_styles_css_no_puede_esconder_ni_desactivar_el_circuito` | En `css/styles.css`: ningún `pointer-events`; ningún `visibility: hidden`; ningún `opacity: 0` (`0`, `.0`, `0%`) fuera de `@keyframes`; ningún `display: none` salvo en selectores que son todos pseudoelementos (`::before`/`::after`) o, dentro de `@media (max-width: 560px)`, en `.rs-barra__sep` y `.rs-barra__etiqueta` |
+
+### 2 · Mutaciones (copia desechable, nunca en el árbol)
+
+Worktree `git worktree add -b feature/F-035-rev3-corr-tmp <scratchpad>/wt3
+HEAD` sobre `ecf0c2f` (el prefijo de rama hace que los tests de rama corran).
+El mismo script del bloque 5b (una sustitución con su número exacto de
+coincidencias, `assert`; suite pytest del front y suite de node; restaurar con
+`git checkout`), con una columna más para las sustituciones múltiples de G. Al
+terminar: `git status` del worktree vacío, `git worktree remove`, `git branch
+-D feature/F-035-rev3-corr-tmp`; `git worktree list` ya no lo enseña.
+
+| Mut. | Fichero | Cambio | Resultado | Lo mata |
+|---|---|---|---|---|
+| **G** (`styles.css`) | `css/styles.css` | las 3 apariciones de `:is(*, #rs-movimiento-reducido)` → `*` | **muerto** | R55, especificidad `[styles.css]` |
+| **G** (`portal.css`) | `css/portal.css` | lo mismo en la otra hoja | **muerto** | R55, especificidad `[portal.css]` |
+| **S1** | `index.html:489` | «Simulación» con `…=== datos.volcado.hecho` | **muerto** | R40, chips del volcado |
+| **O2** | `index.html:229` | la lista de errores con `x-show="!datos.entrada.errores.length"` | **muerto** | §5.2, lista de errores |
+| **O** | `index.html:229` | ese `x-show` a `"true"` | **rojo**, aunque es **equivalente en comportamiento** (ver §3) | el mismo test, que fija la expresión |
+| DE | `index.html:630` | el chip del listado con `:data-estado="'SAT'"` | **muerto** | R57, color = estado que se lee |
+| S2 | `index.html:988` | `x-text="datos.capitulos.ficha"` → `datos.entrada.ficha` | **superviviente, no equivalente** | nadie (§3) |
+| S3 | `index.html:739` | `:class` de la nota de motivo del capítulo → `''` | **superviviente, visual** | nadie (§3) |
+| **H** | `css/styles.css` | `display: none` en `.rs-aviso--info` | **muerto** | R-1 |
+| **I** | `css/styles.css` | `pointer-events: none` en `.rs-btn` | **muerto** | R-1 |
+| **R** | `css/styles.css` | `visibility: hidden` en `.rs-panel--destacado` | **muerto** | R-1 |
+| Z | `css/styles.css` | `opacity: 0` en `.rs-aviso--error` | **muerto** | R-1 |
+
+Trazas (salida real del script; rutas del worktree abreviadas a `…wt`):
+
+```
+===== G-styles · styles.css · pytest exit 1 · node exit 0
+    - ':is(*, #rs-movimiento-reducido)'
+    + '*'
+    …wt\services\postventa-front\tests\test_f035_portal.py:1870: AssertionError: styles.css: el movimiento reducido tiene que ganar por especificidad (:is(*, #id), sin !important); estos selectores pierden contra una clase: ['*', '*::before', '*::after']
+    FAILED tests/test_f035_portal.py::test_f035_r55_el_movimiento_reducido_gana_por_especificidad[styles.css]
+    1 failed, 351 passed in 15.35s
+===== G-portal · portal.css · pytest exit 1 · node exit 0
+    - ':is(*, #rs-movimiento-reducido)'
+    + '*'
+    …wt\services\postventa-front\tests\test_f035_portal.py:1870: AssertionError: portal.css: el movimiento reducido tiene que ganar por especificidad (:is(*, #id), sin !important); estos selectores pierden contra una clase: ['*', '*::before', '*::after']
+    FAILED tests/test_f035_portal.py::test_f035_r55_el_movimiento_reducido_gana_por_especificidad[portal.css]
+    1 failed, 351 passed in 12.82s
+===== S1 · index.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1910: AssertionError: el chip «Simulación» se enseña con x-show="r.resultado === datos.volcado.dryRun", no con «r.resultado === datos.volcado.hecho»
+    FAILED tests/test_f035_portal.py::test_f035_r40_cada_chip_del_volcado_va_en_su_panel
+    1 failed, 351 passed in 13.86s
+===== O2 · index.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1927: AssertionError: la lista de errores se enseña cuando hay errores, no con «!datos.entrada.errores.length»
+    FAILED tests/test_f035_portal.py::test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_errores
+    1 failed, 351 passed in 12.93s
+===== O · index.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1927: AssertionError: la lista de errores se enseña cuando hay errores, no con «true»
+    1 failed, 351 passed in 12.36s
+===== DE · index.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1946: AssertionError: chips cuyo color no es el del estado que se lee:
+    FAILED tests/test_f035_portal.py::test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto
+    1 failed, 351 passed in 9.58s
+===== S2 · index.html · pytest exit 0 · node exit 0
+    352 passed in 9.34s · ℹ tests 409 · ℹ pass 409 · ℹ fail 0
+===== S3 · index.html · pytest exit 0 · node exit 0
+    352 passed in 11.08s · ℹ tests 409 · ℹ pass 409 · ℹ fail 0
+===== H · styles.css · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1983: AssertionError: css/styles.css la carga el circuito en producción: ninguna regla puede esconder ni desactivar nada suyo (review 3, R-1):
+    FAILED tests/test_f035_portal.py::test_f035_r60_styles_css_no_puede_esconder_ni_desactivar_el_circuito
+    1 failed, 351 passed in 11.20s
+===== I · styles.css · pytest exit 1 · node exit 0      (misma aserción)   1 failed, 351 passed in 10.84s
+===== R · styles.css · pytest exit 1 · node exit 0      (misma aserción)   1 failed, 351 passed in 11.14s
+===== Z · styles.css · pytest exit 1 · node exit 0      (misma aserción)   1 failed, 351 passed in 10.65s
+git status del worktree tras restaurar: ''
+```
+
+La línea siguiente de la aserción de R-1 (con `--tb=short`, en el mismo
+worktree y restaurado después) nombra la regla culpable en cada uno:
+
+```
+H ['.rs-aviso--info: display: none']
+I ['.rs-btn: pointer-events (none)']
+R ['.rs-panel--destacado: visibility: hidden']
+Z ['.rs-aviso--error: opacity: 0 fuera de @keyframes']
+```
+
+Todos los mutantes caen en **pytest** y ninguno en node (los tests nuevos son
+de Python), salvo que lo diga la tabla.
+
+### 3 · P-R1 del bloque 5, completa (cambio requerido 3)
+
+**Método**: directivas (`x-*`, `:*`, `@*`, sin `x-cloak`) de `index.html` en
+`HEAD` frente a `6bc4b6c`, comparadas como multiconjunto de `(atributo,
+expresión con los blancos normalizados)`: las que están ahora y no estaban.
+Salen **37** (la review cuenta 33 con otro criterio; la diferencia está en
+las `:class` —16 aquí, 15 allí— y en contar cada `x-text` repetido una vez).
+Además, el bloque **quitó** 11 `:class`: las 7 de las pestañas de la barra y
+las 4 de las pestañas de la ficha, que pinta ahora `:aria-current` /
+`:aria-selected` (P7 y P8 del bloque 5b, con sus tests).
+
+| Clase | N | Directivas (línea de `index.html`) | Mutación | Resultado |
+|---|---|---|---|---|
+| `:class` de presentación | 16 | `rs-fila--abierta` (317, 937); `rs-sin-dato` (329, 374, 632, 681, 834, 835, 836, 941, 942, 969, 971, 973); `rs-nota--atencion` (739); `rs-toast--visible` (1037) | P4 (317), P5 (374), S3 (739), P6 (1037): **una por cada clase CSS distinta** | Las cuatro **supervivientes, no equivalentes, visuales**. P4–P6 comprobadas con `--dump-dom` en el 5b (la clase deja de pintarse); S3, del mismo mecanismo que P5: la celda del motivo pierde el color de atención y conserva su texto. Sin test: aspecto puro sin contrato (análisis del 5b, que la review acepta) |
+| `:data-estado` | 5 | `fila.estado` (335), `inc.estado` (630, 659, 889), `p.estado` (516) | P3 (335), DE (630); N de la review (516) | **Muertas** las tres. El test nuevo de R57 recorre los cinco chips, así que cubre también 659 y 889 por construcción |
+| `x-show` de estado vacío y de lista | 6 | vacío: 349, 639, 893; lista: 298, 599, 882 | P1 (639), P2 (599) | **Muertas**. R58 está parametrizado por las tres secciones con las mismas aserciones |
+| `x-show` de la lista de errores de la importación | 1 | 229 | **O2**, **O** | O2 **muerta** (test nuevo). O: **equivalente en comportamiento**, ver abajo; el test nuevo la pone igualmente en rojo porque fija la expresión |
+| `x-show` de los chips del volcado | 2 | 489, 490 | **S1** (489) | **Muerta** (cambio 2). El test fija los dos chips, así que el cruce simétrico en 490 cae igual |
+| `x-text` de la ficha F-0NN | 7 | `datos.entrada.ficha` (179, 214), `web` (239, 247), `volcado` (458, 541), `noProcede` (797), `vinculos` (845), `impresion` (900), `capitulos` (988) | **S2** (988) | **Superviviente, no equivalente**, ver abajo |
+
+**Comprobado ejecutándolo.** El portal del worktree —original y con cada
+mutante— servido con `python -m http.server` y abierto en Chrome headless
+(`--dump-dom`) en `#/entrada`, `#/bandeja` y `#/economico`; en el DOM
+resultante, sin plantillas sin pintar, se mira si la `<ul>` de errores lleva
+`display: none`, qué chips se ven en cada panel del volcado y qué ficha pinta
+cada `x-text`. Servidor parado al terminar (comprobado con `netstat`):
+
+```
+original entrada: lista de errores visible (2 filas pintadas) | bandeja, chips visibles por panel: {'Ensayo (dry-run): no se crea nada': ['Simulación'], 'Volcado hecho': ['Hecho en Sigrid']} | … ('capitulos', 'F-046')]
+O        entrada: lista de errores visible (2 filas pintadas) | bandeja, chips visibles por panel: {'Ensayo (dry-run): no se crea nada': ['Simulación'], 'Volcado hecho': ['Hecho en Sigrid']} | … ('capitulos', 'F-046')]
+O2       entrada: lista de errores oculta (2 filas pintadas) | bandeja, chips visibles por panel: {'Ensayo (dry-run): no se crea nada': ['Simulación'], 'Volcado hecho': ['Hecho en Sigrid']} | … ('capitulos', 'F-046')]
+S1       entrada: lista de errores visible (2 filas pintadas) | bandeja, chips visibles por panel: {'Ensayo (dry-run): no se crea nada': [], 'Volcado hecho': ['Simulación', 'Hecho en Sigrid']} | … ('capitulos', 'F-046')]
+S2       entrada: lista de errores visible (2 filas pintadas) | bandeja, chips visibles por panel: {'Ensayo (dry-run): no se crea nada': ['Simulación'], 'Volcado hecho': ['Hecho en Sigrid']} | … ('entrada', 'F-036')]
+```
+
+(La lista de fichas de `#/economico` va recortada a su último elemento, el
+del capítulo.)
+
+- **O2, no equivalente**: con los errores en los datos, la lista queda
+  **oculta** (las dos filas siguen en el DOM, sin verse). Muerta por el test
+  nuevo.
+- **O, equivalente en comportamiento**: se ve **igual** que el original
+  (lista visible, 2 filas). Motivo, comprobado además en el código:
+  `datos` es `window.MaquetaDatos` (`portal_app.js:21`);
+  `datos.entrada.errores` solo se define en `js/maqueta_datos.js:132` con dos
+  filas, y ningún código lo cambia (`grep` de `errores` en `js/`: esa
+  definición y un texto descriptivo de `portal.js:93`, nada que lo asigne). Mientras los datos sean estáticos,
+  `length` es 2 y `"true"` pinta lo mismo. El test nuevo la pone en rojo
+  porque fija la expresión, y lo dejo así a propósito: cuando F-036 traiga
+  errores reales, una lista vacía no debe verse.
+- **S1, no equivalente**: el panel del **volcado hecho** sale con
+  «Simulación» **y** «Hecho en Sigrid», y el del dry-run sin chip. Muerta por
+  el test nuevo (cambio 2).
+- **S2, superviviente no equivalente, sin test**: el capítulo del económico
+  pinta «F-036» en lugar de «F-046». Es la ligadura que ya existía antes del
+  bloque 5 (entonces `'(' + datos.capitulos.ficha + ')'`); el bloque solo le
+  quitó los paréntesis. Coincide con la O-2 de la review: no es nueva y no
+  la fijo aquí; la anoto para la ficha que quiera fijar qué ficha construye
+  cada panel (R28 ya cruza cada bloque de datos con su `ficha` en
+  `maqueta_datos.js`, pero no el panel que la enseña).
+- **S3, superviviente visual**: ver la tabla.
+
+### 4 · Verificación
+
+- `bash harness/init.sh` en `ecf0c2f`: **exit 0, `ENTORNO LISTO`**. Raíz
+  **73 passed**; front **352 passed** sin caché (346 + 6 nuevos; incluye el
+  puente de los 409 de JavaScript); api desde caché; `PUERTA COBERTURA: N/A
+  (F-035 no cambia líneas Python de producción frente a dev)`; `ruff` **61**
+  avisos, los de antes.
+- `git diff --stat 4d43bbd HEAD -- services/postventa-front/css
+  services/postventa-front/js services/postventa-front/partes.html
+  services/postventa-front/index.html` → **vacío** (nada de producción).
+
+### 5 · Qué queda fuera y qué falta
+
+- **S2** y las `:class` visuales (P4–P6, S3): supervivientes documentados,
+  sin test.
+- **O-1** de la review: T12 (V1 y V2 del humano, guion en «Bloque 5b» §9)
+  sigue pendiente; después, la review de estas correcciones.
+- **P-R2** de la review (llevar a `arnes-base` la enumeración de directivas
+  del HTML y la prueba de las reglas que funcionan por especificidad): es del
+  líder; no la aplico.
+
+### Evidencias (correcciones de la review 3)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Front **352 passed** (pytest, sin caché, 12,78 s en `init.sh`; incluye el puente de JS) y **409/409** (`node --test`); raíz **73 passed** (7,03 s) |
+| Tests nuevos | **6** en `test_f035_portal.py` (R55 ×2, R40, §5.2, R57, R-1) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; esta vuelta solo cambia tests |
+| Mutantes (campaña del arnés) | **0**, sin cambios (no hay Python de producción en el alcance) |
+| Mutantes a mano de esta vuelta | **12**: G en las dos hojas, S1, O2, DE, H, I, R y Z **muertos** (9); O **rojo pero equivalente en comportamiento** (comprobado en Chrome); S2 y S3 **supervivientes no equivalentes**, documentados |
+| Tiempo de la suite | Front pytest 12,78 s; raíz 7,03 s; JS ~3,7 s |

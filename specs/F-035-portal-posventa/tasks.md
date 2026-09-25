@@ -88,7 +88,7 @@
       **en rojo** (los módulos no existen), y la salida copiada a
       `progress/impl_F-035.md` como fase RED.
 
-- [ ] **T3 (RED)**: escribir `services/postventa-front/tests/test_f035_portal.py`
+- [x] **T3 (RED)**: escribir `services/postventa-front/tests/test_f035_portal.py`
       (`test_f035_rN_…`) con `html.parser` de la biblioteca estándar: R1, R3,
       R9, R10, R13, R14 (sobre los cinco ficheros de la maqueta), R15, R17,
       R18, R30 (el `<nav data-portal-nav>` existe; y, **solo en la rama de

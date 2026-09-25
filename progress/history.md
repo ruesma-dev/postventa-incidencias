@@ -2072,3 +2072,13 @@ hallazgos bajos resueltos al cerrar.
 Evidencias: 4.284 tests; cobertura 100 % de 551 líneas; mutación 109/108 y el único
 superviviente aceptado; 14/14 mutaciones de orden del reviewer en rojo. Acta:
 `progress/cierre_F-013.md`. Dos mejoras del arnés portadas a `arnes-base`.
+
+---
+
+## F-049 · Las villas que crea el archivo, siempre con tres cifras — 2026-09-25
+
+**Cerrada.** Nace del paso 2 del corte de F-013: Posventa había reorganizado sus unidades a
+`VILLA 001` …, y el sistema habría creado `VILLA 08`. Decisión del humano: «Siempre con
+tres cifras». Una línea de producción (`:02d` → `:03d`); el casado por número no cambia.
+Review 1 RECHAZADA por dos cambios de documentación, review 2 APROBADA. M7 y M8
+(equivalentes a mano) aceptados por el humano. El paso 2, contra la red real, salió PASA.

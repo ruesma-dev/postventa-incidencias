@@ -820,6 +820,22 @@
       "rigor": "estandar",
       "priority": 14,
       "branch": "feature/F-048-datamart-posventa"
+    },
+    {
+      "id": "F-049",
+      "title": "Las villas que crea el archivo, siempre con tres cifras (VILLA 008)",
+      "description": "Alta del 2026-09-25 por decisión del humano, tras el paso 2 del corte de F-013: Posventa ha reorganizado la biblioteca y sus unidades se llaman ahora VILLA 001 … VILLA 007, VILLA 012 y VILLA 013. F-013 R37 crea la unidad con dos cifras (VILLA 08). El humano eligió «Siempre con tres cifras»: VILLA 008 en todas las obras. Enmienda fechada de F-013 R37 (y de la tabla de design.md §4.6, de R31 y del runbook), sin cambiar cómo se CASA (por número, que ya reconoce VILLA 001 como la villa 1). Números de tres o más cifras, tal cual.",
+      "acceptance": [
+        "0677.03VILLA 8. crea VILLA 008; 0677.03VILLA 13. crea VILLA 013; 1000 crea VILLA 1000",
+        "Las unidades existentes VILLA 001 y VILLA 01 siguen casando con la villa 1",
+        "F-013 R37, la tabla de design.md §4.6, R31 y docs/DESPLIEGUE.md §9 enmendados con recuadro fechado",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "done",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 0,
+      "branch": "feature/F-049-villa-tres-cifras"
     }
   ]
 }

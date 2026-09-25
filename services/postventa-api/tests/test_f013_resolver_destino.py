@@ -709,8 +709,8 @@ def test_f013_r35_villa_07_no_impide_crear_la_unidad_5():
     resuelto = _resolver(explorador, sigrid)
 
     assert resuelto.carpetas_por_crear == (
-        (INC, "VILLA 05"),
-        (f"{INC}/VILLA 05", FIRMADOS),
+        (INC, "VILLA 005"),
+        (f"{INC}/VILLA 005", FIRMADOS),
     )
 
 
@@ -771,26 +771,26 @@ CREACIONES = (
         (
             ("", OBRA_NUEVA),
             (OBRA_NUEVA, INCIDENCIAS),
-            (INC_NUEVA, "VILLA 05"),
-            (f"{INC_NUEVA}/VILLA 05", FIRMADOS),
+            (INC_NUEVA, "VILLA 005"),
+            (f"{INC_NUEVA}/VILLA 005", FIRMADOS),
         ),
-        f"{INC_NUEVA}/VILLA 05/{FIRMADOS}",
+        f"{INC_NUEVA}/VILLA 005/{FIRMADOS}",
         [""],
         id="toda-la-ruta",
     ),
     pytest.param(
         5,
         _arbol(obra=_sin(DENTRO_DE_LA_OBRA_0677, INCIDENCIAS)),
-        ((OBRA, INCIDENCIAS), (INC, "VILLA 05"), (f"{INC}/VILLA 05", FIRMADOS)),
-        f"{INC}/VILLA 05/{FIRMADOS}",
+        ((OBRA, INCIDENCIAS), (INC, "VILLA 005"), (f"{INC}/VILLA 005", FIRMADOS)),
+        f"{INC}/VILLA 005/{FIRMADOS}",
         ["", OBRA],
         id="desde-incidencias",
     ),
     pytest.param(
         13,
         None,
-        ((INC, "VILLA 13"), (f"{INC}/VILLA 13", FIRMADOS)),
-        f"{INC}/VILLA 13/{FIRMADOS}",
+        ((INC, "VILLA 013"), (f"{INC}/VILLA 013", FIRMADOS)),
+        f"{INC}/VILLA 013/{FIRMADOS}",
         ["", OBRA, INC],
         id="la-villa-13",
     ),
@@ -911,7 +911,7 @@ def test_f013_r37_la_unidad_nueva_se_llama_villa_nn():
 
     resuelto = _resolver(explorador, sigrid, n=8)
 
-    assert resuelto.carpetas_por_crear[0] == (INC, "VILLA 08")
+    assert resuelto.carpetas_por_crear[0] == (INC, "VILLA 008")
 
 
 # ==========================================================================
@@ -954,7 +954,7 @@ def test_f013_r38_un_nombre_imposible_bajo_una_obra_que_falta_es_409_sin_crear_n
 
 
 def test_f013_r46_una_villa_cuyo_con_res_no_acaba_en_su_numero_es_nombre_no_casaria():
-    """R46 · `Villa 13 bis` recibiría `VILLA 13`, que no casaría con ella."""
+    """R46 · `Villa 13 bis` recibiría `VILLA 013`, que no casaría con ella."""
     registro, explorador, sigrid = _dobles(
         13, **_con_la_unidad(13, "0677.03VILLA 13.", "Viviendas Bloque Villa 13 bis")
     )
@@ -962,7 +962,7 @@ def test_f013_r46_una_villa_cuyo_con_res_no_acaba_en_su_numero_es_nombre_no_casa
     error = _no_resuelto(explorador, sigrid, n=13)
 
     assert error.motivo == M.NOMBRE_NO_CASARIA
-    assert error.candidatas == ("VILLA 13",)
+    assert error.candidatas == ("VILLA 013",)
     assert registro == [_leer(13), LEER_UNIDADES, _listar(""), _listar(OBRA), _listar(INC)]
 
 
@@ -1014,7 +1014,7 @@ def test_f013_r50_una_carpeta_que_se_crearia_para_dos_unidades_es_compartida():
     error = _no_resuelto(explorador, sigrid, n=13)
 
     assert error.motivo == M.UNIDAD_CARPETA_COMPARTIDA
-    assert error.candidatas == ("VILLA 13",)
+    assert error.candidatas == ("VILLA 013",)
     assert registro == [_leer(13), LEER_UNIDADES, _listar(""), _listar(OBRA), _listar(INC)]
 
 
@@ -1058,10 +1058,10 @@ def test_f013_r17_con_base_todo_cuelga_de_ella():
         _listar(f"{base}/{INC}"),
     ]
     assert resuelto.carpetas_por_crear == (
-        (f"{base}/{INC}", "VILLA 13"),
-        (f"{base}/{INC}/VILLA 13", FIRMADOS),
+        (f"{base}/{INC}", "VILLA 013"),
+        (f"{base}/{INC}/VILLA 013", FIRMADOS),
     )
-    assert resuelto.destino.carpeta == f"{base}/{INC}/VILLA 13/{FIRMADOS}"
+    assert resuelto.destino.carpeta == f"{base}/{INC}/VILLA 013/{FIRMADOS}"
 
 
 def test_f013_una_base_que_no_existe_es_archivo_fallido_y_no_se_crea():
@@ -1211,6 +1211,7 @@ def test_f013_r39_en_conjunto_tras_crear_lo_anotado_las_15_resuelven_sin_crear()
     assert {n: s.destino for n, s in segundas.items()} == {
         n: p.destino for n, p in primeras.items()
     }
+    # Las siete medidas en T2 (dos cifras) y las ocho creadas (tres, F-049).
     assert explorador.listar_carpetas(carpeta=INC) == tuple(
-        f"VILLA {n:02d}" for n in range(1, 16)
-    )
+        f"VILLA {n:02d}" for n in range(1, 8)
+    ) + tuple(f"VILLA {n:03d}" for n in range(8, 16))

@@ -27,6 +27,19 @@
 > R18, R22, R31, R33, R35, R36, R37, R38, R39 y R42**; se precisan R11, R25,
 > R26, R28 y R32; entran **R44–R50**. Desaparece `SHAREPOINT_NOMBRE_UNIDAD`.
 
+> **Enmienda del 2026-09-25 (F-049) · las villas que se crean, con tres
+> cifras.** En el paso 2 del corte, el script 23 contra la biblioteca real
+> mostró que Posventa ha **reorganizado** las carpetas de unidad de la 0677:
+> ya no son `VILLA 01` … `VILLA 07`, sino `VILLA 001` … `VILLA 007`,
+> `VILLA 012` y `VILLA 013`. El humano decidió ese día «**siempre con tres
+> cifras**»: la unidad que crea el sistema es `VILLA 008`, `VILLA 013`; con
+> 1.000 o más, tal cual (`VILLA 1000`). **Cómo se casa no cambia**: por número
+> entero, así que `VILLA 001` y `VILLA 01` son la villa 1. Cambian **R37**, la
+> fila **T4-1** y la **T4-5**, el vocabulario, **R31** y **R42**, cada uno con
+> su recuadro de esta fecha; la spec de la enmienda es
+> `specs/F-049-villa-tres-cifras/`. Donde este documento dice `VILLA NN`
+> sin más, léase «`VILLA` y el número con al menos tres cifras».
+
 ## 0 · Las decisiones del humano del 2026-09-18 (no se reabren)
 
 | # | Decisión, literal en lo esencial | Dónde se traduce |
@@ -66,6 +79,18 @@ literales del humano, recogidas por el líder en `progress/current.md`:
 | **T4-4** | **Casar la obra por su número** (677 = 0677), ignorando el resto del nombre: propuesto por el líder como necesario y no discutido | R10, R13, R35 |
 | **T4-5** | **Villas 8 a 15**: «no tienen carpeta, que se creen». Se crean bajo `677  MIRASIERRA / PARTES INCIDENCIAS` como `VILLA NN` con su `PARTES FIRMADOS` | R34, R37; tabla de `design.md` §4.6 |
 | **T4-6** | **La hoja de VILLA 02** se llama `PARTES FIRMADO` (singular): «que cuente como buena». Cuenta como la hoja, se archiva dentro y no se crea otra `PARTES FIRMADOS` al lado | R14, R49 |
+
+> **Enmienda del 2026-09-25 (F-049) · T4-1 y T4-5, con tres cifras.** La
+> fila T4-1 decía, literal: *«La unidad se crea como `VILLA NN`, derivada del
+> `con.cod` de Sigrid (`0677.03VILLA 13.` → `VILLA 13`, dos cifras)»*; y la
+> T4-5, que las villas 8 a 15 se crean *«como `VILLA NN` con su `PARTES
+> FIRMADOS`»*. **Qué las invalidó**: Posventa reorganizó la biblioteca a
+> `VILLA 001` … `VILLA 007`, `VILLA 012` y `VILLA 013` (script 23, paso 2 del
+> corte, 2026-09-25), y el humano decidió ese día «siempre con tres cifras».
+> Desde hoy: `0677.03VILLA 13.` → `VILLA 013`, y las villas que falten se
+> crean como `VILLA 008` … con su `PARTES FIRMADOS`. **Lo que no cambia**: la
+> unidad se sigue derivando del `con.cod` «al estilo Posventa», y T4-1 sigue
+> diciendo lo mismo de la obra.
 
 Y dos que decide **esta enmienda** (spec-author, 2026-09-24) por no dejar un
 hueco donde la medición lo abrió, **a validar por el humano sin bloquear**:
@@ -150,6 +175,14 @@ comprueba permisos; y la documentación.
 | **Ubicación de la reclamación** | Lo que Sigrid dice de la reclamación: código de la obra y código y nombre de su **unidad de posventa** (`rcp.upvide → upv`, y `upv.obride → obr`), leído por `sigrid-api` |
 | **Clave de unidad** | La forma canónica con la que se compara una unidad: mayúsculas, sin tildes, blancos colapsados y **los números comparados como enteros** (`05` = `5`) — ver `design.md` §4.3 |
 | **Destino no resuelto** | Resultado del archivado que **no sube nada** porque una carpeta del camino es ambigua, solo hay parecidas o no se puede crear. Lleva motivo y candidatas |
+
+> **Enmienda del 2026-09-25 (F-049) · el nombre derivado, con tres cifras.**
+> El término «Nombre derivado de la unidad» decía, literal: *«`VILLA NN`,
+> compuesto del `con.cod` de la unidad de Sigrid con la regla de R37»*.
+> **Qué lo invalidó**: la decisión del humano del 2026-09-25, «siempre con
+> tres cifras». Desde hoy es `VILLA` y el número de la unidad con **al menos
+> tres cifras** (`VILLA 008`, `VILLA 013`, `VILLA 1000`), con la regla de R37
+> enmendada.
 
 ---
 
@@ -443,6 +476,23 @@ fijos se crean con el literal de `SHAREPOINT_CARPETA_INCIDENCIAS` y
 > el patrón medido es un 409. **Solo `VILLA`**: la regla no se extiende a otras
 > palabras (`CHALET`, `PORTAL`…) sin medir cómo las nombra Posventa; ampliarla
 > es otra enmienda con su medición.
+
+> **Enmienda del 2026-09-25 (F-049) · al menos tres cifras.** El punto 3 de
+> R37 decía, literal: *«el nombre es `VILLA ` seguido de `<n>` como entero con
+> **al menos dos cifras**: `1` → `VILLA 01`, `13` → `VILLA 13`, `100` →
+> `VILLA 100`.»* **Qué lo invalidó**: en el paso 2 del corte (2026-09-25) el
+> script 23 mostró que Posventa ha reorganizado sus carpetas de unidad a
+> `VILLA 001` … `VILLA 007`, `VILLA 012` y `VILLA 013`; con dos cifras, lo que
+> creara el sistema (`VILLA 08`) no se parecería a lo suyo. El humano decidió
+> ese día «**siempre con tres cifras**», en todas las obras. **Desde hoy**, el
+> punto 3 es: el nombre es `VILLA ` seguido de `<n>` como entero con **al
+> menos tres cifras**: `1` → `VILLA 001`, `8` → `VILLA 008`, `13` →
+> `VILLA 013`, `100` → `VILLA 100`, `1000` → `VILLA 1000`; los ceros que traiga
+> el `con.cod` no cuentan (`0677.03VILLA 008.` → `VILLA 008`). **Lo que no
+> cambia**: los puntos 1 y 2, el 409 `unidad_sin_nombre_derivable`, y **cómo
+> se casa** (R11, `design.md` §4.3): la clave compara enteros, así que
+> `VILLA 001`, `VILLA 01` y `VILLA 1` siguen siendo la villa 1. Tests:
+> `test_f049_*` (`specs/F-049-villa-tres-cifras/`).
 
 **R38.** SI el nombre compuesto para crear una carpeta está vacío, lleva algún
 carácter que SharePoint no admite (`" * : < > ? / \ |`), empieza o acaba en
@@ -739,6 +789,26 @@ qué nombre, y cuáles quedan bloqueadas por una **parecida** o una ambigüedad.
 > líder. En particular, si VILLA 02 dice «bloquearía», el literal de su hoja no
 > es `PARTES FIRMADO` (ver `design.md` §10, riesgo 16).
 
+> **Enmienda del 2026-09-25 (F-049) · el resultado esperado, con la
+> biblioteca reorganizada.** La precisión de arriba decía, literal: *«VILLA 08
+> … VILLA 15 **crearían** `VILLA NN` y su `PARTES FIRMADOS` (T4-5)»*, y daba
+> por existentes `VILLA 01` … `VILLA 07`. **Qué la invalidó**: el propio R31,
+> lanzado en el paso 2 del corte (2026-09-25), mostró que Posventa ha
+> reorganizado las carpetas de unidad de la 0677 a `VILLA 001` … `VILLA 007`,
+> `VILLA 012` y `VILLA 013`; y el humano decidió ese día que el sistema cree
+> **siempre con tres cifras** (R37 enmendado). **Lo que tiene que decir ahora
+> el 23**: obra `677  MIRASIERRA` y `PARTES INCIDENCIAS`, «resolvería»; las
+> unidades 1 a 7, 12 y 13, «resolvería» en su carpeta de tres cifras (el
+> casado es por número: `VILLA 001` es la villa 1), o «crearía `PARTES
+> FIRMADOS`» dentro si esa carpeta no tiene hoja (R48) —las hojas de las
+> carpetas reorganizadas **no se han medido** [NO MEDIDO]: las dice el propio
+> 23, y una hoja `PARTES FIRMADO` sigue valiendo (R49)—; las unidades 8 a 11,
+> 14 y 15, «crearía `VILLA 008`» … `VILLA 011`, `VILLA 014` y `VILLA 015`, y su
+> `PARTES FIRMADOS`; y **ninguna «bloquearía»**. Si una unidad tuviera a la
+> vez `VILLA 01` y `VILLA 001`, diría «bloquearía» (`unidad_ambigua`): es lo
+> correcto, lo resuelve Posventa y **para el corte** igual que cualquier otra
+> diferencia.
+
 **R32. MANUAL.** La medición de la ubicación en Sigrid (`design.md` §4.2): qué
 devuelven `con.cod` y `con.res` de las unidades de posventa de la obra piloto.
 Sin ella, la regla de casado de R11 está **[NO MEDIDA]** contra el ERP.
@@ -790,6 +860,17 @@ persona (R43), se enmienda R36/R37 y solo entonces se vuelve a abrir.
 > ocurra». **Riesgo aceptado por el humano**: entre el despliegue y esa
 > comprobación pueden crearse varias carpetas; lo contiene que la regla de
 > creación está medida contra la obra piloto (R31) y que el freno es inmediato.
+
+> **Enmienda del 2026-09-25 (F-049) · qué se creará en la 0677.** R42 decía,
+> literal: *«(en la 0677: `VILLA 08` … `VILLA 15` según lleguen sus partes
+> —VILLA 12 y 13 tienen reclamaciones—»*. **Qué lo invalidó**: la
+> reorganización de Posventa que midió el 23 el 2026-09-25 (`VILLA 001` …
+> `VILLA 007`, `VILLA 012`, `VILLA 013`) y la decisión del humano de ese día,
+> «siempre con tres cifras». El aviso a Posventa pasa a ser: en la 0677 se
+> crearán `VILLA 008` … `VILLA 011`, `VILLA 014` y `VILLA 015` según lleguen
+> sus partes (sin reclamaciones cuando T3 las midió; las villas 12 y 13, que sí las tienen,
+> ya tienen carpeta), y `PARTES FIRMADOS` dentro de las carpetas que no tengan
+> hoja. El resto de R42 no cambia.
 
 **R43. MANUAL / documental.** El sistema **no borra, no mueve ni renombra**
 carpetas en ningún caso. `docs/INTEGRACION.md` debe llevar el procedimiento

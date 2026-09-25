@@ -710,7 +710,7 @@ R31_0677 = [
         for n in (5, 6, 7)
     ),
     *(
-        (f"0677.03VILLA {n}.", "crearia", (f"VILLA {n:02d}", FIRMADOS), None)
+        (f"0677.03VILLA {n}.", "crearia", (f"VILLA {n:03d}", FIRMADOS), None)
         for n in range(8, 16)
     ),
 ]
@@ -787,7 +787,8 @@ def test_f013_t14_la_regla_da_lo_de_r31_para_la_0677(tmp_path):
 
     VILLA 01, 02, 03, 05, 06 y 07 «resolveria» (la 02, con su `PARTES
     FIRMADO`); VILLA 04 «crearia» `PARTES FIRMADOS`; VILLA 08 … 15 «crearia»
-    `VILLA NN` y su hoja; ninguna «bloquearia». La obra y `PARTES INCIDENCIAS`,
+    `VILLA 008` … `VILLA 015` (tres cifras, F-049) y su hoja; ninguna
+    «bloquearia». La obra y `PARTES INCIDENCIAS`,
     «resolveria».
     """
     resultado = _veredicto(tmp_path, arbol_0677(), _unidades_0677())
@@ -834,7 +835,7 @@ def test_f013_t14_sin_ninguna_obra_crearia_con_el_nombre_de_r36(tmp_path):
     assert resultado["unidades"][4]["crear"] == [
         f"0677 {RES_OBRA_0677}",
         INCIDENCIAS,
-        "VILLA 05",
+        "VILLA 005",
         FIRMADOS,
     ]
 

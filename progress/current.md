@@ -1,6 +1,50 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-049 CERRADA · 2026-09-25 · se despliega con el corte de F-013
+>
+> Review 2 **APROBADA** (`progress/review2_F-049.md`); M7 y M8 aceptados por el
+> humano. El paso 2 del corte ya salió PASA con `VILLA 008` (bloque de abajo).
+> Siguiente: merge a `dev` y `main`, el cambio de `00_vars_postventa.ps1` a
+> `posventa` y el despliegue (pasos 4 y 5 de `docs/DESPLIEGUE.md` §9).
+
+> ## ✅ F-049 · IMPLEMENTADA (T1–T7) · 2026-09-25 · siguiente: review
+>
+> implementer. Informe: **`progress/impl_F-049.md`**. Rama
+> `feature/F-049-villa-tres-cifras`; sin push; `harness/features.json` e
+> `infra/00_vars_postventa.ps1` sin tocar.
+>
+> - `nombre_derivado_de_unidad` crea `VILLA 008`, `VILLA 013`, `VILLA 1000`
+>   (`:03d`); el casado no cambia (`VILLA 001` = `VILLA 01` = villa 1; las dos
+>   juntas, `unidad_ambigua`). RED commiteado (`684021d`, 42 rojos).
+> - Cascada de tests de F-013 **solo donde fijaban el ancho** del nombre
+>   creado: lista en el informe, §3. Datos medidos de T2 intactos.
+> - Recuadros fechados 2026-09-25 (F-049) en F-013 requirements (cabecera,
+>   T4-1, T4-5, vocabulario, R37, R31 **y R42**, este fuera del encargo:
+>   decía `VILLA 08` … `VILLA 15`), design (cabecera, §1, §4.5, §4.6, §7.3),
+>   tasks (paso 2), INTEGRACION §3, DESPLIEGUE §9; gemelo de `azure-apps`
+>   en `556e1b2` (local, sin push).
+> - `bash harness/init.sh` en verde: 4.356 passed; cobertura 100 % (1/1);
+>   mutación: 0 del arnés (no muta formatos de f-string), 9 a mano, 7 muertos
+>   y 2 equivalentes (`progress/mutacion_F-049.md`).
+> - **MANUAL · R31 (paso 2 del corte, antes de desplegar), con F-049.** Desde
+>   una copia que ya lleve F-049 (el 23 ejecuta el dominio de la copia local;
+>   sin ella diría «crearía `VILLA 08`»):
+>   `powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SigridBaseDatos ruesma -SalidaCsv <ruta fuera del repo>`
+>   y
+>   `powershell -ExecutionPolicy Bypass -File infra\23_destino_posventa.ps1 -UrlSitio "<URL del sitio Postventa>" -CodigoObra 0677 -DesdeKeyVault -UnidadesCsv <la misma ruta>`.
+>   **Salida esperada (sustituye a la del bloque de F-013)**: obra y `PARTES
+>   INCIDENCIAS` «resolvería»; `VILLA 001` … `VILLA 007` «resolvería»;
+>   `VILLA 012` y `VILLA 013`, «crearía `PARTES FIRMADOS`»; las unidades sin
+>   carpeta (8–11, 14 y 15), «crearía `VILLA 008`» … `VILLA 015` con su hoja;
+>   **ninguna «bloquearía»**; `DESTINO DE POSVENTA : PASA`. Cualquier
+>   diferencia: no se despliega.
+> - **Hecho el 2026-09-25 (humano)**: el paso 2 se ejecutó contra la red real
+>   desde la copia con `:03d` en su árbol y salió exactamente eso:
+>   `DESTINO DE POSVENTA : PASA`, «crearía `VILLA 008` … `VILLA 015`», 012 y
+>   013 «crearía `PARTES FIRMADOS`», 001–007 «resolvería», ninguna
+>   «bloquearía». Recibido por el líder; sin identificadores.
+
 > ## ✅ F-013 CERRADA · 2026-09-25 · falta el merge a `dev`, desplegar y el corte
 >
 > Review **APROBADA** (`progress/review_F-013.md`), cuatro hallazgos bajos
@@ -18,6 +62,10 @@
 >   Tiene que salir exactamente lo de R31 (VILLA 01–03 y 05–07 «resolvería»,
 >   VILLA 04 «crearía `PARTES FIRMADOS`», 08–15 «crearía `VILLA NN`» y su hoja,
 >   ninguna «bloquearía»). Cualquier diferencia: no se despliega.
+>   **Sustituida el 2026-09-25 por F-049**: Posventa reorganizó sus unidades
+>   (`VILLA 001` … `VILLA 007`, `VILLA 012`, `VILLA 013`) y las villas se crean
+>   con tres cifras; la salida esperada que manda es la del bloque de F-049,
+>   arriba (la de esta línea se conserva como estaba).
 > - **R33 (paso 7, el mismo día)**: `25_mediciones_despliegue.ps1` ve una
 >   segunda biblioteca con trazas `archivado`; con Posventa, uno de esos partes
 >   está en su carpeta y en su OneDrive.

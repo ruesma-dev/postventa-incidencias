@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **47 features**, 26 abiertas, 21 terminadas.
+Resumen: **48 features**, 26 abiertas, 22 terminadas.
 
 ## Trabajo abierto
 
@@ -41,6 +41,7 @@ Resumen: **47 features**, 26 abiertas, 21 terminadas.
 | # | Feature | Prioridad | Rigor |
 |---|---|---|---|
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 0 | critico |
+| F-049 | Las villas que crea el archivo, siempre con tres cifras (VILLA 008) | 0 | critico |
 | F-001 | Esqueleto del monorepo y /health | 1 | estandar |
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
@@ -225,6 +226,12 @@ DEUDA QUE SOBREVIVE AL CIERRE DE F-009 (2026-09-16). Dos scripts de infra/ NO AR
 estado **terminada** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-013-archivo-posventa`
 
 Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la de Posventa respetando la estructura que ya usan y tienen sincronizada por OneDrive: Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS.
+
+### F-049 · Las villas que crea el archivo, siempre con tres cifras (VILLA 008)
+
+estado **terminada** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-049-villa-tres-cifras`
+
+Alta del 2026-09-25 por decisión del humano, tras el paso 2 del corte de F-013: Posventa ha reorganizado la biblioteca y sus unidades se llaman ahora VILLA 001 … VILLA 007, VILLA 012 y VILLA 013. F-013 R37 crea la unidad con dos cifras (VILLA 08). El humano eligió «Siempre con tres cifras»: VILLA 008 en todas las obras. Enmienda fechada de F-013 R37 (y de la tabla de design.md §4.6, de R31 y del runbook), sin cambiar cómo se CASA (por número, que ya reconoce VILLA 001 como la villa 1). Números de tres o más cifras, tal cual.
 
 ### F-001 · Esqueleto del monorepo y /health
 

@@ -777,6 +777,29 @@ para el ecosistema, qué se rompe y los códigos del 409, en
    mismo parte a mano convivirán los dos; y si ven una carpeta que no quieren,
    **que no la borren**: nos avisan y se sigue R43.
 
+   > **Enmienda del 2026-09-25 (F-049) · la biblioteca reorganizada y las
+   > villas con tres cifras.** El paso 2 decía, literal: *«VILLA 08 … 15,
+   > «crearía `VILLA NN` + `PARTES FIRMADOS`»»*; y el 3, *«en la 0677,
+   > `VILLA 08` … `VILLA 15` según lleguen sus partes»*. **Qué lo invalidó**:
+   > el paso 2, lanzado el 2026-09-25, mostró que Posventa ha reorganizado
+   > las carpetas de unidad de la 0677 a `VILLA 001` … `VILLA 007`,
+   > `VILLA 012` y `VILLA 013`; y el humano decidió ese día que la aplicación
+   > cree **siempre con tres cifras** (F-049; F-013 R37 y R31 enmendados). Lo
+   > que tiene que salir ahora del 23: la obra y `PARTES INCIDENCIAS`,
+   > «resolvería»; las unidades 1 a 7, 12 y 13, «resolvería» en su carpeta
+   > de tres cifras (el casado es por número: `VILLA 001` es la villa 1), o
+   > «crearía `PARTES FIRMADOS`» dentro de la que no tenga hoja (las hojas de
+   > las carpetas reorganizadas no se han medido: las dice el 23); las 8 a
+   > 11, 14 y 15, «crearía `VILLA 008` + `PARTES FIRMADOS`» … `VILLA 011`,
+   > `VILLA 014`, `VILLA 015`; **ninguna «bloquearía»**, y `DESTINO DE
+   > POSVENTA : PASA`. Si una unidad tiene a la vez `VILLA 01` y `VILLA 001`,
+   > dirá «bloquearía» (`unidad_ambigua`): es lo correcto, lo resuelve
+   > Posventa, y hasta entonces no se despliega. El 23 ejecuta el código de la
+   > copia local: se lanza desde una que ya lleve F-049 (sin ella diría
+   > «crearía `VILLA 08`»). El aviso del paso 3 nombra `VILLA 008` …
+   > `VILLA 011`, `VILLA 014` y `VILLA 015`, y `PARTES FIRMADOS` dentro de las
+   > carpetas que no tengan hoja.
+
 Los **133** partes archivados en IT no piden nada: se midieron el 2026-09-18,
 se quedan allí y sus trazas no se tocan. Si se quiere confirmar que no han
 crecido, `infra\25_mediciones_despliegue.ps1` sin parámetros, que solo lee.

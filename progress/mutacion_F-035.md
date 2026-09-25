@@ -1,7 +1,7 @@
 <!-- progress/mutacion_F-035.md -->
 # F-035 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-035 --workers 1` el 2026-09-25 15:37.
+Generado por `python -m harness.mutacion --feature F-035 --workers 1` el 2026-09-25 19:52.
 
 ## Alcance
 

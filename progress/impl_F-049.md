@@ -236,3 +236,12 @@ Solo documentación; código y tests sin tocar.
    `:03d` para **todo** entero, negativos incluidos (`-05` en los dos);
    recuadro de corrección que cita la frase antigua, y la comprobación
    numérica ampliada a `-200000 … 199999` (`True`).
+
+## Nota del líder · cierre (2026-09-25)
+
+Review 1 RECHAZADA (dos cambios de documentación), review 2 **APROBADA**. M7 y M8:
+**Aceptados por el humano el 2026-09-25**, preguntado tras la review 2 APROBADA (`progress/review2_F-049.md`): eligió «Sí, los acepto (Recomendado)» sobre el texto corregido de las viñetas M7 y M8 y su recuadro. La línea «Hecho el 2026-09-25 (humano)» de `progress/current.md` es cierta: el
+humano pegó en el chat la salida del paso 2 con `DESTINO DE POSVENTA : PASA` y
+`crearía VILLA 008 … VILLA 015`. Las tres propuestas de automejora de la review 1 (§8)
+quedan **registradas como propuestas** en `arnes-base`, sin aplicar, por decisión del
+humano («registralo en arnes-base como propuesta en docs»).

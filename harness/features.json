@@ -831,7 +831,7 @@
         "F-013 R37, la tabla de design.md §4.6, R31 y docs/DESPLIEGUE.md §9 enmendados con recuadro fechado",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 0,

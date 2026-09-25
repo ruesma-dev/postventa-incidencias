@@ -80,3 +80,7 @@ Comprobado numéricamente, **también con negativos**: `format(n,'03') ==
 format(n,'03d') == format(n,'0=3d')` para todo `n` en `-200000 … 199999`
 (resultado `True`; antes solo se había comprobado `0 … 199999`). Ningún test
 puede distinguirlos, así que no se añade ninguno.
+
+## Aceptación del humano
+
+- M7 (`:03`) y M8 (`:0=3d`), equivalentes: **Aceptados por el humano el 2026-09-25**, preguntado tras la review 2 APROBADA (`progress/review2_F-049.md`): eligió «Sí, los acepto (Recomendado)» sobre el texto corregido de las viñetas M7 y M8 y su recuadro.

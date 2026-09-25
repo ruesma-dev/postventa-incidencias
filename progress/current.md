@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-049 CERRADA · 2026-09-25 · se despliega con el corte de F-013
+>
+> Review 2 **APROBADA** (`progress/review2_F-049.md`); M7 y M8 aceptados por el
+> humano. El paso 2 del corte ya salió PASA con `VILLA 008` (bloque de abajo).
+> Siguiente: merge a `dev` y `main`, el cambio de `00_vars_postventa.ps1` a
+> `posventa` y el despliegue (pasos 4 y 5 de `docs/DESPLIEGUE.md` §9).
+
 > ## ✅ F-049 · IMPLEMENTADA (T1–T7) · 2026-09-25 · siguiente: review
 >
 > implementer. Informe: **`progress/impl_F-049.md`**. Rama

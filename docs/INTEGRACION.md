@@ -337,6 +337,22 @@ En la obra piloto, la 0677: se usan las siete carpetas `VILLA 01` …
 sueltos, se crea `PARTES FIRMADOS` y **los sueltos no se tocan**; y se crean
 `VILLA 08` … `VILLA 15` según lleguen sus partes.
 
+> **Enmienda del 2026-09-25 (F-049) · las villas se crean con tres
+> cifras.** Esta sección decía, literal, que la unidad se deriva del código
+> de Sigrid *«(`0677.03VILLA 13.` → `VILLA 13`)»*, y que en la 0677 se crean
+> *«`VILLA 08` … `VILLA 15` según lleguen sus partes.»* **Qué lo invalidó**:
+> en el paso 2 del corte (2026-09-25), el script 23 mostró que Posventa ha
+> reorganizado las carpetas de unidad de la 0677 a `VILLA 001` …
+> `VILLA 007`, `VILLA 012` y `VILLA 013`; y el humano decidió ese día que el
+> sistema cree **siempre con tres cifras**, en todas las obras (F-049). Desde
+> hoy: `0677.03VILLA 13.` → `VILLA 013`; `VILLA 008`; con 1.000 o más, tal
+> cual (`VILLA 1000`). En la 0677 se usan las nueve carpetas que ya existen y
+> se crean `VILLA 008` … `VILLA 011`, `VILLA 014` y `VILLA 015` según lleguen
+> sus partes. **El casado no cambia**: compara números, y `VILLA 001`,
+> `VILLA 01` y «Viviendas Bloque Villa 1» son la misma villa; si en una obra
+> conviven `VILLA 01` y `VILLA 001`, esa unidad da 409 `unidad_ambigua` hasta
+> que Posventa deje una.
+
 **El sistema no borra, no mueve y no renombra nunca** una carpeta ni un
 fichero de Posventa: el puerto que lista y crea tiene **dos** operaciones y
 ninguna más. Tampoco lista ni nombra los ficheros que Posventa sube a mano:

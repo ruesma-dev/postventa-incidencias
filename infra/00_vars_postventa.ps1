@@ -188,8 +188,12 @@ $PostventaAppSettingsSecretas = [ordered]@{
 #
 # La forma alternativa de la hoja (SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA) NO
 # se escribe: vale su defecto del codigo, "PARTES FIRMADO".
-$EstructuraArchivo = "por_obra"
-$CarpetaBaseArchivo = "Postventa"
+# CORTE del 2026-09-25 (paso 5 de docs/DESPLIEGUE.md seccion 9): el paso 2 salio
+# PASA contra la red real y el humano pidio desplegar en produccion. Antes:
+# $EstructuraArchivo = "por_obra" y $CarpetaBaseArchivo = "Postventa", que es
+# tambien el freno 3 (volver atras), junto con los IDs de IT en el Key Vault.
+$EstructuraArchivo = "posventa"
+$CarpetaBaseArchivo = ""
 $CrearCarpetasArchivo = "true"
 
 # --- El fichero local, si existe --------------------------------------------

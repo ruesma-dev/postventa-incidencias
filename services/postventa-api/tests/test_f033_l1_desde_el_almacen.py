@@ -694,6 +694,15 @@ def test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar():
     > Éste no la abre: es lo que afirma quien llama, solo sirve para
     > **cotejarlo** contra lo guardado (F-031 R3) y no puede decidir nada
     > (F-031 R11) — mucho menos re-archivar un parte que ya consta archivado.
+
+    > **Enmienda del 2026-09-24 (F-013, T10 bis).** La firma gana
+    > `resolver_destino` —la estrategia `posventa`: la carpeta se resuelve
+    > contra Sigrid y la biblioteca de Posventa— y el test lo recoge igual
+    > que recogió `codigos_declarados`, sin relajarse a un `not in`. Éste
+    > tampoco abre una puerta: en `posventa` L1 corta **antes** de resolver
+    > (F-013 R45, `design.md` §5 enmendado), así que el resolutor solo elige
+    > la carpeta de un parte que **no** consta archivado y no puede
+    > re-archivar ninguno. Opción (a) aprobada por el humano el 2026-09-24.
     """
     parametros = set(inspect.signature(paso.paso_archivo).parameters)
 
@@ -705,6 +714,7 @@ def test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar():
         "ahora",
         "drive_id_vigente",
         "codigos_declarados",
+        "resolver_destino",
     }
 
 

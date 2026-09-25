@@ -2059,3 +2059,16 @@ orden en rojo. V1 cubierta por tests y V2 sin ejecutar, por decisión del humano
 
 De aquí salió la **regla del reviewer para las puertas que protegen un orden** (punto 7 del
 reviewer; RM7 en `arnes-base`, 2026-09-23).
+
+---
+
+## F-013 · El archivo se muda a la biblioteca de Posventa — 2026-09-25
+
+**Cerrada, sin desplegar el corte.** Spec aprobada el 2026-09-24 tras medir la biblioteca
+real (la obra es `677  MIRASIERRA`, sin cero) y enmendada dos veces; ocho bloques; un
+bloqueo resuelto como T10 bis (humano). Review **APROBADA** a la primera, con cuatro
+hallazgos bajos resueltos al cerrar.
+
+Evidencias: 4.284 tests; cobertura 100 % de 551 líneas; mutación 109/108 y el único
+superviviente aceptado; 14/14 mutaciones de orden del reviewer en rojo. Acta:
+`progress/cierre_F-013.md`. Dos mejoras del arnés portadas a `arnes-base`.

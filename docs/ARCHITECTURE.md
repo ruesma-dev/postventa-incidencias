@@ -129,6 +129,40 @@ tests/                      # unit tests: sin red, sin BBDD, sin IA
    **Solo se archiva lo que el paso 4 declaró apto**; con cualquier otro
    destino no se sube nada y ni siquiera se crea la carpeta.
 
+   > **Enmienda del 2026-09-24 (F-013) · a dónde se sube, desde el corte.** La
+   > primera frase de este paso dice «subida a SharePoint, en `<carpeta
+   > base>/<código de obra>/`». Sigue siendo cierta con
+   > `SHAREPOINT_ESTRUCTURA=por_obra`, que es lo desplegado **hasta el corte**
+   > (`docs/DESPLIEGUE.md` §9). El humano decidió el 2026-09-18 que el archivo
+   > vaya a la biblioteca de **Posventa** con **la estructura que ya usa
+   > Posventa** (H1, H2), y el 2026-09-24, con la medición de la obra piloto,
+   > cómo se casan y se crean sus carpetas (T4). Con `posventa` la ruta es
+   > `<obra>/PARTES INCIDENCIAS/<unidad>/PARTES FIRMADOS/`, en la raíz de la
+   > biblioteca, y **no se compone: se resuelve** contra lo que existe.
+   >
+   > - **Dónde entra**: entre la capa L1 (F-033) y el aviso del intento
+   >   anterior, antes de la traza `pendiente`. Un parte que ya consta
+   >   archivado —los 133 de IT, por ejemplo— no lee Sigrid ni lista nada.
+   > - **Qué hace**: lee en Sigrid la obra y la unidad de la reclamación
+   >   (dos lecturas por `sql/read`, con los códigos **guardados**, nunca los
+   >   del cuerpo ni el papel) y baja nivel a nivel listando **solo
+   >   carpetas**: la obra casa por su número (`677  MIRASIERRA` es la 0677),
+   >   la unidad por su clave (`VILLA 05` ↔ «Viviendas Bloque Villa 5»), la
+   >   hoja es `PARTES FIRMADOS` o `PARTES FIRMADO`.
+   > - **Qué crea**: un nivel que falta, solo si no hay **ninguna** carpeta
+   >   que case **ni parecida**; la unidad, como `VILLA NN`. Las creaciones
+   >   van **después** de la traza `pendiente`, una por llamada, nunca con
+   >   `asegurar_carpeta`. `SHAREPOINT_CREAR_CARPETAS=false` las apaga.
+   > - **Si no se puede decidir**: 409 con `motivo` y `candidatas`, traza en
+   >   `error` y nada subido ni creado. Si Sigrid no responde, 503: nunca se
+   >   cae a la unidad del papel.
+   > - **Lo que no cambia**: el nombre del fichero, las puertas de estado y
+   >   de cotejo, L1, el reemplazo del homónimo y la traza.
+   >
+   > El resolutor es `application/pipelines/destino_archivo.py`, puro y sin
+   > escribir nada; la regla, `domain/models/destino_posventa.py`. El detalle,
+   > en `specs/F-013-archivo-posventa/` y en `docs/INTEGRACION.md` §3.
+
    **Precisado por F-026 el 2026-09-12**: eso sigue siendo cierto **salvo
    aprobación humana registrada**. Un parte que el paso 4 mandó a
    `revision_manual` o a `cola_validacion_humana` se archiva si —y solo si— una
@@ -542,6 +576,24 @@ igual que hoy, y por debajo se suben los PDFs.
 | PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
+
+> **Enmienda del 2026-09-24 (F-013) a la fila «SharePoint (Graph)».** Dice
+> «**Mientras estemos en dev**, biblioteca propia en el sitio de **IT**» y
+> que la mudanza a Posventa «es la feature **F-013**, y sale casi gratis
+> porque la ruta es configuración». Lo primero sigue siendo cierto **hasta el
+> corte** (`docs/DESPLIEGUE.md` §9). Lo segundo no lo fue: el humano decidió
+> el 2026-09-18 archivar con **la estructura que ya usa Posventa**, cuyas
+> carpetas de obra y de unidad crean ellos a mano y no salen de ningún dato
+> nuestro, así que hay que **encontrarlas** listando la biblioteca y, si no hay
+> ninguna ni parecida, crearlas. Desde el corte, la fila gana:
+> `SHAREPOINT_ESTRUCTURA` (`por_obra` o `posventa`),
+> `SHAREPOINT_CARPETA_INCIDENCIAS`, `SHAREPOINT_CARPETA_FIRMADOS`,
+> `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA` y `SHAREPOINT_CREAR_CARPETAS`; la
+> base vacía es la raíz de la biblioteca; hay listados de carpetas (solo
+> carpetas, todas las páginas) y creaciones de un nivel; y archivar **lee
+> `sigrid-api`** —dos `sql/read` por parte, sin `CIERRE_HABILITADO`—, así que
+> la fila de `sigrid-api` gana también esas dos lecturas. La puerta de entorno
+> no cambia: listar y crear también exigen `ENTORNO` en `dev` o `pro`.
 
 **Prohibido desde local**: escribir en Sigrid (ni siquiera con `commit:false`
 contra endpoints que no sean de lectura), escribir en el SharePoint de

@@ -1,8 +1,8 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-09-16. **Última feature que
-> lo tocó**: F-028 (nació con F-005).
+> **Origen**: este repositorio. **Fecha**: 2026-09-24. **Última feature que
+> lo tocó**: F-013, antes de su corte (nació con F-005).
 >
 > Este documento es la **fuente de verdad** de lo que `postventa-incidencias`
 > consume del ecosistema de Ruesma y de lo que expone a los demás. Se copia a
@@ -41,6 +41,16 @@ toca **dos bases** —la de negocio y la documental— y la primera que
 hasta Sigrid. Va por el endpoint de dominio de la pasarela y **exige
 precondiciones de configuración que son de su dueño**, no nuestras: §3 bis y
 §6.
+
+> **Enmienda del 2026-09-24 (F-013) · dos filas de esta tabla cambian el día
+> del corte, no antes.** La de SharePoint dice, literal, que compartimos el
+> recurso con «IT» para el «Archivo de los PDF validados». Es verdad **hasta
+> el corte de F-013** (`docs/DESPLIEGUE.md` §9): desde ese día el archivo va a
+> la biblioteca «Documentos compartidos» del **sitio de Posventa** —decisión
+> del humano del 2026-09-18, H1— con la estructura que ya usa Posventa, y
+> **ahí sí escribimos en algo que es suyo**. Y la de `sigrid-api` gana **dos
+> lecturas por cada parte que se archiva**, por `sql/read`. Ni un recurso de
+> Azure nuevo, ni una tabla, ni una columna. El detalle, en §3 («Con F-013»).
 
 ## 2 · La base de datos: qué pedimos y qué no tocamos
 
@@ -156,6 +166,35 @@ Los dueños de `albaranes` y de `partes` —que ya archivan en ese mismo sitio�
 tienen derecho a saber que hay otro inquilino y otra aplicación con permiso de
 escritura sobre él.
 
+> **Enmienda del 2026-09-24 (F-013) · el archivo se muda a la biblioteca de
+> Posventa, y lo de abajo deja de describir el destino el día del corte.**
+> Nada de esta sección se borra: es lo que está desplegado **hasta el corte**
+> (`docs/DESPLIEGUE.md` §9) y lo que explica dónde están los 133 partes de IT.
+> Pero cinco frases suyas dejan de ser ciertas ese día, y se citan tal cual:
+>
+> - el sitio, «El de **IT**, el mismo donde vive la biblioteca de albaranes»,
+>   y la biblioteca, «**Propia de este proyecto**, no la de nadie más»;
+> - la carpeta, «`SHAREPOINT_CARPETA_BASE`, y debajo **una carpeta por código
+>   de obra**»;
+> - el volumen, «Una subida por parte, sin listados de carpeta: se pide el
+>   fichero por su nombre exacto, nunca el contenido entero de la carpeta de
+>   una obra.»;
+> - y la mudanza, que «es la feature **F-013**, y sale casi gratis porque la
+>   ruta es configuración y no código».
+>
+> **Qué las invalidó, y quién.** El humano decidió el 2026-09-18 el destino
+> —el sitio de **Posventa**, biblioteca «Documentos compartidos» (H1)— y la
+> estructura —**la que ya usa Posventa**, `<cod> <OBRA> / PARTES INCIDENCIAS
+> / <UNIDAD> / PARTES FIRMADOS` (H2)—, con la base en la raíz (D-1) y permiso
+> para **crear toda la ruta que falte** (D-4). El 2026-09-24, con la medición
+> de la obra piloto delante, cerró cómo se casan y cómo se crean las carpetas
+> (parada T4, `specs/F-013-archivo-posventa/requirements.md` §0 ter). La ruta
+> dejó de ser «configuración y nada más»: las carpetas de obra y de unidad
+> **las crea Posventa a mano** y no salen de ningún dato que tengamos, así
+> que hay que **encontrarlas** —listando— y, solo si no hay ninguna ni
+> parecida, crearlas. Por eso F-013 no salió casi gratis. Lo que manda desde
+> el corte está en las subsecciones **«Con F-013»**, al final de esta sección.
+
 ### Qué escribimos y dónde
 
 | Qué | Valor |
@@ -180,6 +219,10 @@ partes**, y un parte escaneado es del orden de cientos de kilobytes. El
 crecimiento anual se cuenta en cientos de megabytes, no en terabytes. Una
 subida por parte, sin listados de carpeta: se pide el fichero por su nombre
 exacto, nunca el contenido entero de la carpeta de una obra.
+
+> **Enmienda del 2026-09-24 (F-013) · deja de ser cierto.** Con `posventa` hay **hasta
+> cuatro listados de carpetas** por parte, y alguna creación: ver «Con F-013 ·
+> ahora sí hay listados de carpeta», más abajo.
 
 ### Permisos: qué necesitamos y qué tenemos hoy
 
@@ -244,6 +287,224 @@ Y al revés, lo que **nosotros** podemos romperles: mientras los permisos sigan
 siendo los amplios de hoy, esta aplicación **podría** escribir en cualquier
 sitio del tenant. No lo hace, solo toca su biblioteca, pero la única garantía
 real es el recorte de **F-018**.
+
+### Con F-013 · sitio, biblioteca y estructura (desde el corte)
+
+**Estado a 2026-09-24**: F-013 está implementada en su rama y **no
+desplegada**. Hasta el corte (`docs/DESPLIEGUE.md` §9) todo lo de arriba sigue
+igual, con `SHAREPOINT_ESTRUCTURA=por_obra`. El corte pone
+`SHAREPOINT_ESTRUCTURA=posventa`, y desde ese momento:
+
+| Qué | Con `posventa` |
+|---|---|
+| Sitio | El de **Posventa**. Por variable, `SHAREPOINT_SITE_ID`, que se carga en el Key Vault en el corte; ni un identificador en el repositorio |
+| Biblioteca | «Documentos compartidos», la de por defecto del sitio: **la de Posventa, sincronizada por OneDrive en sus equipos**. Por variable, `SHAREPOINT_DRIVE_ID` |
+| Carpeta base | La **raíz de la biblioteca** (D-1): `SHAREPOINT_CARPETA_BASE` vacía |
+| Ruta | `<carpeta de obra>/PARTES INCIDENCIAS/<carpeta de unidad>/PARTES FIRMADOS/<fichero>` |
+| Nombre del fichero | El de siempre, `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`, sin cambios |
+
+**Cada carpeta se encuentra, no se compone.** Ni Sigrid ni el papel dan el
+nombre de las carpetas de Posventa; como mucho dan con qué casarlas:
+
+- **Obra**: casa por su número. La primera palabra del nombre, solo cifras,
+  tiene que valer lo mismo que el código de la obra como entero; el resto del
+  nombre no cuenta. La carpeta real de la obra piloto es `677  MIRASIERRA`
+  —sin el cero y con dos blancos— y casa con la `0677`; `06770 X` no.
+- **`PARTES INCIDENCIAS`**: por su nombre, sin mayúsculas, tildes ni blancos
+  de más.
+- **Unidad**: la de **Sigrid** para esa reclamación —nunca la que imprime el
+  papel, que es lectura de IA—, casada por su clave: `VILLA 05` casa con
+  «Viviendas Bloque Villa 5»; `VILLA 15` no.
+- **Hoja**: `PARTES FIRMADOS` o, como **única** forma alternativa,
+  `PARTES FIRMADO` (`SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA`: la hoja de
+  VILLA 02 se llama así). Con las dos en la misma unidad, 409.
+
+**Cuándo se crea una carpeta, y con qué nombre.** Solo cuando en un nivel **no
+hay ninguna que case ni ninguna parecida** —otra grafía del mismo número de
+obra, del mismo número de unidad o de la palabra del tramo—: una parecida
+bloquea con 409, porque crear al lado partiría el archivo de Posventa en dos,
+a la vista en todos sus equipos. Los nombres: la obra, `<código> <nombre de la
+obra en Sigrid>`; los dos tramos, su literal; la unidad, **`VILLA NN`**,
+derivado del código de la unidad en Sigrid (`0677.03VILLA 13.` → `VILLA 13`),
+y si el código no tiene esa forma, 409: no se inventa. Una carpeta cada vez,
+dentro de un padre que existe, y **después** de dejar la traza `pendiente`.
+Cada una sale en los `avisos` de la respuesta y en el log como
+`F-013 carpeta creada: <ruta>`. `SHAREPOINT_CREAR_CARPETAS=false` es el freno:
+no se crea nada, y una carpeta que falta es 409 `sin_carpeta_<nivel>`.
+
+En la obra piloto, la 0677: se usan las siete carpetas `VILLA 01` …
+`VILLA 07`; en `VILLA 04`, que no tiene subcarpetas y guarda 142 partes
+sueltos, se crea `PARTES FIRMADOS` y **los sueltos no se tocan**; y se crean
+`VILLA 08` … `VILLA 15` según lleguen sus partes.
+
+**El sistema no borra, no mueve y no renombra nunca** una carpeta ni un
+fichero de Posventa: el puerto que lista y crea tiene **dos** operaciones y
+ninguna más. Tampoco lista ni nombra los ficheros que Posventa sube a mano:
+con su nomenclatura (`RS26.08 – 0123 PARTE FIRMADO`, sin obra) no coincide la
+nuestra, así que en una carpeta donde ya subieran un parte a mano convivirán
+dos ficheros del mismo parte. No se deduplica por contenido.
+
+### Con F-013 · ahora sí hay listados de carpeta
+
+Encontrar las carpetas exige listarlas: **hasta cuatro listados** por parte
+—raíz, obra, `PARTES INCIDENCIAS` y unidad—, un `GET` de los hijos con
+`$select=name,folder`, **solo carpetas**, nunca los ficheros (sus nombres
+pueden llevar el de un cliente), y siguiendo **todas** las páginas. El enlace
+a la página siguiente (`@odata.nextLink`) **solo se sigue si apunta a Graph**
+(`https://graph.microsoft.com/v1.0/`): lleva dentro el identificador de la
+biblioteca y el token viaja con cada página, así que un enlace a otro sitio es
+`ArchivoFallido` —502— sin pedirlo, y el enlace no se registra nunca. Debajo de
+una carpeta que se va a crear no se lista: no puede tener nada.
+
+Crear es un `POST` por nivel con `conflictBehavior=fail`; un `409` de Graph
+cuenta como «ya existe», así que dos partes a la vez crean **una** carpeta.
+Volumen: una remesa de 22 partes son del orden de 130 llamadas, casi todas
+lecturas. Sin caché entre partes: una caché escondería la carpeta que
+Posventa acaba de crear.
+
+**Permisos**: con los amplios de hoy, la aplicación escribirá en el sitio de
+Posventa sin que nadie le conceda nada. Al recortar a `Sites.Selected`
+(**F-018**) habrá que conceder **el sitio de Posventa** con escritura.
+
+### Con F-013 · archivar depende de `sigrid-api`: dos lecturas por parte
+
+Con `posventa`, `/api/archivar` necesita saber **en Sigrid** de qué obra y de
+qué unidad es la reclamación. Son **dos lecturas** por
+`POST /api/sql/read`, parametrizadas, y **ninguna escritura**:
+
+1. **La ubicación de la reclamación**: reclamación → unidad de posventa → obra
+   (`rcp` → `upv` → `obr`; las tres son «propiedades de `con`»), con el código
+   y el nombre de la obra y de la unidad. Hasta 10 filas: ninguna es
+   `reclamacion_no_localizada`; varias, `reclamacion_ambigua`; sin unidad o sin
+   obra, `reclamacion_sin_unidad`. Si la obra de Sigrid no es la del parte,
+   `obra_no_coincide`: dos fuentes independientes tienen que decir la misma
+   obra.
+2. **Las unidades de posventa de las obras con el mismo número** (para la 0677,
+   `LIKE '%677'` y `NOT LIKE '%[^0]%677'`; después el dominio vuelve a filtrar
+   por número). Hasta 1.000 filas, el techo de la pasarela: si llegan 1.000,
+   la lista puede venir cortada y es `unidades_sin_verificar`. Dos obras de
+   Sigrid con el mismo número irían a la misma carpeta de Posventa, y eso es
+   `obra_numero_no_unico`; una carpeta de unidad que casaría con dos unidades
+   de la obra, `unidad_carpeta_compartida`.
+
+Se lee **sin `CIERRE_HABILITADO`**: con la ventana del ERP cerrada se sigue
+pudiendo archivar. Sí hace falta el resto de la configuración de Sigrid
+(`SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`,
+`SIGRID_TIP_RECLAMACION`) y `ENTORNO` en `dev` o `pro`. Fuera de esos dos
+entornos la lectura se niega con `ArchivoDeshabilitado` —el 503 de «archivar
+deshabilitado»—, no con el error del cierre, porque no se ha intentado
+escribir en el ERP. Si la pasarela no responde, tarda o devuelve algo que no
+sirve, es `UbicacionNoDisponible`: **503**, y no se sube ni se crea nada. **No**
+se recurre a la unidad del papel (D-7). Una respuesta marcada como cortada con
+**menos** filas de las pedidas también es 503: el techo de la pasarela es
+configurable, y una lista cortada por debajo escondería la segunda obra.
+
+Ni la referencia de la obra en el ERP ni el nombre de la unidad salen en un
+log, en una respuesta ni en la base; sí los códigos, el número de filas y los
+segundos de cada lectura. El tiempo de la segunda lectura contra el ERP real
+está **sin medir**: lo dirá el log del primer archivado,
+`F-013 unidades leídas en Sigrid: obra=… filas=… segundos=…`.
+
+### Con F-013 · el destino no resuelto: 409 con motivo
+
+Cuando una carpeta del camino no se puede decidir sin una persona, **no se
+sube nada ni se crea ninguna carpeta**: `/api/archivar` responde **409** con
+`error` —qué tiene que hacer una persona—, `motivo` —un código— y `candidatas`
+—nombres de carpeta, nunca un identificador—, y la traza del parte queda en
+`error` con el código. En cuanto alguien arregla la carpeta, el siguiente
+archivado lo sube, sin tocar la base. Los códigos:
+
+| Motivo | Qué pasa | Qué hace una persona |
+|---|---|---|
+| `reclamacion_no_localizada` | Sigrid no tiene esa reclamación | Revisar el número de incidencia del parte |
+| `reclamacion_ambigua` | Sigrid devuelve varias | Mirarlo en Sigrid |
+| `reclamacion_sin_unidad` | No cuelga de ninguna unidad de posventa, o la unidad de ninguna obra | Asignarla en Sigrid |
+| `obra_no_coincide` | La obra de Sigrid no es la del parte | Revisar el código de obra guardado |
+| `obra_numero_no_unico` | Más de una obra de Sigrid (o ninguna) con ese número | Decidirlo con Posventa: el sistema no elige |
+| `unidades_sin_verificar` | La lista de unidades llegó al techo de 1.000 filas | Avisarnos: no se puede comprobar |
+| `obra_ambigua`, `incidencias_ambigua`, `unidad_ambigua`, `firmados_ambigua` | Casa más de una carpeta en ese nivel | Dejar una, renombrando la otra |
+| `obra_parecida`, `incidencias_parecida`, `unidad_parecida`, `firmados_parecida` | No casa ninguna y hay alguna parecida | Renombrar la buena, o crear la correcta |
+| `sin_carpeta_obra`, `sin_carpeta_incidencias`, `sin_carpeta_unidad`, `sin_carpeta_firmados` | Falta ese nivel y crear está apagado | Crearla a mano, o volver a encender crear |
+| `nombre_carpeta_imposible` | El nombre que habría que crear lleva algo que SharePoint no admite | Corregir el dato en Sigrid, o crear la carpeta a mano |
+| `unidad_sin_nombre_derivable` | Hay que crear la unidad y su código de Sigrid no tiene la forma `<obra>.<grupo>VILLA <n>.` | Crear la carpeta a mano |
+| `nombre_no_casaria` | La carpeta que se crearía no se volvería a encontrar en el siguiente archivado | Crear la carpeta a mano |
+| `unidad_carpeta_compartida` | Esa carpeta de unidad casaría con dos unidades de Sigrid, o con ninguna | Renombrar para distinguirlas |
+
+### Con F-013 · lo que se queda en IT
+
+> **Enmienda del 2026-09-24 (F-013), que recoge las del 2026-09-18 y del
+> 2026-09-22.** La premisa original, H4 del 2026-09-18: *«Lo ya archivado en
+> IT se queda en IT, sin migración, y se documenta que sigue allí»*. El
+> humano la enmendó en dos frases: el 2026-09-18, *«lo que esta en IT eran
+> pruebas, se puede olvidar»*, y el 2026-09-22, *«los partes en IT se pueden
+> olvidar, pero no borrar»*.
+>
+> Queda así: los **133** partes archivados hasta el corte —medidos el
+> 2026-09-18 con `infra/25_mediciones_despliegue.ps1`, todos `archivado` y
+> todos en la biblioteca de IT— siguen allí: **no se migran, no se borran y
+> no se les retira la traza** (`postventa.archivos` los sigue diciendo
+> `archivado`, con su biblioteca). Como la capa L1 de F-033 corta por `hash` y
+> estado, **nunca se volverán a subir**, y por eso el archivo de Posventa **no
+> los contiene ni los contendrá**: tendrá lo que se archive a partir del
+> corte. Y a propósito **no se documenta cómo localizarlos**: eran pruebas.
+>
+> Un matiz que se deja así a sabiendas (H-3 de F-034): la puerta de archivo
+> del gráfico y del cierre (`exigir_parte_archivado`) mira el **estado** de la
+> traza y **no su biblioteca**, así que uno de esos partes **sí** puede
+> adjuntarse y cerrarse en Sigrid. Es coherente con «olvidar sin borrar»: el
+> parte está archivado, aunque no en Posventa.
+
+### Deshacer una carpeta creada por error (R43)
+
+**El sistema no borra, no mueve ni renombra** carpetas ni ficheros, en ningún
+caso. Si una carpeta que creó no le sirve a Posventa —el nombre no les vale, o
+apareció al lado de la suya—, **lo hace una persona**, en este orden:
+
+1. **Parar**: `infra/22_ventana_archivo.ps1 -Cerrar`, sin redesplegar, si
+   puede seguir llegando algo a esa carpeta; o, si basta con dejar de crear,
+   `$CrearCarpetasArchivo = "false"` y redesplegar (`docs/DESPLIEGUE.md` §9).
+2. **Saber qué hay dentro** con la consulta de abajo, de solo lectura sobre
+   `postventa.archivos`: los partes que el sistema archivó en esa carpeta y en
+   lo que cuelga de ella. La ruta se escribe como sale en el aviso de
+   «carpeta creada», sin barra inicial.
+3. **Mover** cada PDF a la carpeta buena, **dentro de la misma biblioteca**.
+   El `item_id` y el enlace de la traza siguen al fichero; la columna
+   `carpeta` se queda con la ruta vieja, y no se persigue.
+4. **Borrar o renombrar** la sobrante. El borrado va a la **papelera del
+   sitio** y se propaga a los OneDrive sincronizados de Posventa. Si la buena
+   no existía y el nombre creado solo es feo, lo sencillo es **renombrarla**:
+   el siguiente archivado la encuentra si sigue empezando por el número de la
+   obra (obra) o casando con la unidad (unidad); si no, da 409 `…_parecida`,
+   que es el aviso correcto.
+5. Si lo que no servía era el nombre, se enmienda la regla (R36 o R37 de
+   F-013) **antes** de volver a abrir.
+
+La consulta, con la cuenta de lectura y sin copiar a ningún fichero ni el
+`drive_id` ni el `item_id`:
+
+```sql
+SELECT a.hash_parte, a.nombre_fichero, a.carpeta, a.estado, a.archivado_at_utc
+FROM postventa.archivos AS a
+WHERE a.carpeta = '<ruta de la carpeta>'
+   OR starts_with(a.carpeta, '<ruta de la carpeta>/')
+ORDER BY a.archivado_at_utc;
+```
+
+### Con F-013 · qué se rompe si alguien toca algo
+
+| Si alguien... | Nos pasa esto | Aviso |
+|---|---|---|
+| Posventa **renombra la carpeta de obra** | Si el nombre sigue empezando por el número de la obra y un blanco, nada: se sigue encontrando. Si no (`MIRASIERRA 677`), 409 `obra_parecida` en cada parte de esa obra | Lo ya archivado sigue en su sitio: la traza guarda el `item_id` y el enlace, que siguen al fichero; su columna `carpeta` se queda con el nombre viejo |
+| Posventa renombra una carpeta de unidad o una hoja | Si sigue casando, nada; si no, 409 `unidad_parecida` o `firmados_parecida` | — |
+| Posventa crea una segunda carpeta que empieza por el mismo número de obra (`0677 MIRASIERRA FASE 2`) | 409 `obra_ambigua` en toda la obra: el sistema no elige | Hablarlo antes con nosotros |
+| Posventa borra una carpeta que había creado el sistema | El siguiente parte de esa unidad la vuelve a crear, si no hay ninguna parecida | Para que no vuelva: el procedimiento de arriba |
+| Alguien tiene abierto en su OneDrive el PDF que se va a reemplazar | Graph responde `423 Locked`: `ArchivoFallido`, **502**, y **no se reintenta solo** | Lo reintenta una persona |
+| La pasarela `sigrid-api` cae o no responde | Con `posventa`, **503** en cada parte que haya que archivar, sin subir ni crear nada. Lo que ya consta archivado responde bien: L1 corta antes de leer Sigrid | Con `por_obra`, nada de esto |
+| Nuestra Function queda con `sigrid-api` sin configurar | Con `posventa`, **503** en todo archivado, e **incluso un parte ya archivado responde 503**: el lector de Sigrid se construye en el borde, antes del paso, y falla antes de que L1 devuelva la traza. **Decisión del líder del 2026-09-24: se deja así**, fallando cerrado —no se sube ni se lee nada—, y se documenta aquí | La configuración de Sigrid ya la necesita el cierre |
+| Alguien deja `SHAREPOINT_ESTRUCTURA` mal escrita | **503**: la fábrica la rechaza antes de pedir el token, y el borde también si el archivador le llegara ya construido | Solo valen `por_obra` y `posventa`, exactos |
+| Se despliega con la base vacía y **el vacío no llega** a la App Setting | La base vuelve a su defecto del código, `Postventa`, que no existe en la raíz de Posventa: **502** sin subir ni crear nada | El paso 6 del runbook lo comprueba |
+| Alguien cambia `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA` | Esa forma deja de contar como hoja; donde esté sola, pasa a ser parecida: 409 | Es la hoja de VILLA 02 |
+| Se recorta a `Sites.Selected` (F-018) sin conceder el sitio de Posventa | `403`, no reintentable: dejamos de archivar | Conceder el sitio de Posventa con escritura |
 
 ## 3 bis · Sigrid: qué escribimos en el ERP de producción (F-009)
 
@@ -460,6 +721,30 @@ despliegue no tenga que aprender dos vocabularios.
 | `GRAPH_TIMEOUT_S` | no | La Function corta a los 230 s: una llamada colgada no puede comérselos |
 | `GRAPH_REINTENTOS` | no | Intentos ante errores transitorios. Un `403` o un `404` **no** se reintentan |
 
+### Las de F-013 (el destino de Posventa)
+
+| Variable | Obligatoria | Notas |
+|---|---|---|
+| `SHAREPOINT_ESTRUCTURA` | no | `por_obra` (por defecto; la carpeta de F-006) o `posventa` (la estructura de Posventa, §3 «Con F-013»). Cualquier otro valor, exacto, es un error de configuración: **503** antes de pedir el token. El despliegue la escribe desde `$EstructuraArchivo`, `por_obra` **hasta el corte** |
+| `SHAREPOINT_CARPETA_INCIDENCIAS` | no | El literal del segundo tramo, `PARTES INCIDENCIAS` por defecto. Solo cuenta con `posventa` |
+| `SHAREPOINT_CARPETA_FIRMADOS` | no | El literal de la hoja, `PARTES FIRMADOS` por defecto. Es el nombre con el que se **crea** |
+| `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA` | no | La **única** otra forma admitida de la hoja, `PARTES FIRMADO` por defecto (la de VILLA 02); vacía, ninguna. **Nunca se crea**. El despliegue no la escribe: vale su defecto |
+| `SHAREPOINT_CREAR_CARPETAS` | no | Si se pueden crear los niveles que falten, **encendida** por defecto (D-4). `false` es el freno: una carpeta que falta es 409. El despliegue la escribe desde `$CrearCarpetasArchivo`, `true` |
+
+No hay ninguna variable para elegir de dónde sale el nombre de una unidad
+creada: es `VILLA NN`, con una regla fija (§3).
+
+> **Enmienda del 2026-09-24 (F-013) a `SHAREPOINT_CARPETA_BASE`.** La tabla de
+> F-006 dice de ella, literal, «Carpeta raíz; debajo, una por código de obra».
+> Con `posventa`, **vacía es la raíz de la biblioteca** —D-1, decisión del
+> humano del 2026-09-18— y debajo va la estructura de Posventa; con
+> `por_obra`, vacía pasa a ser un **error de configuración**, porque dejaría
+> las carpetas por código sueltas en la raíz. El despliegue la escribe desde
+> `$CarpetaBaseArchivo`: `Postventa` hasta el corte, vacía después. Y las de
+> Sigrid de la tabla siguiente pasan a ser obligatorias **también para
+> archivar** con `posventa` (§3, «dos lecturas por parte»), salvo
+> `CIERRE_HABILITADO`, que archivar no mira.
+
 ### Las de Sigrid (F-009 y F-012)
 
 | Variable | Obligatoria | Notas |
@@ -527,6 +812,7 @@ incidencia, código de obra y remesa.
 | Baja `SIGRID_DOCUMENT_MAX_BYTES` por debajo del tamaño de un parte | Los partes grandes dejan de poder adjuntarse, con **409** y sin escribir nada. Nuestro `GRAFICO_MAX_BYTES` no protege de esto: es un tope propio y más bajo, no el suyo | Es del dueño de `sigrid-api`; avisar antes |
 | Rota la clave de función de `sigrid-api` sin actualizar nuestro Key Vault | 502 en cada cierre, en cada gráfico y en cada dry-run | Coordinar la rotación |
 | Cambia el catálogo de estados `conest` del tipo de posventa | Si el código `CER` deja de existir o se duplica, **abortamos sin escribir nada** y lo decimos. No cerramos con un estado supuesto | Es del ERP; se detecta solo |
+| Baja el techo de filas de `sql/read` en `sigrid-api` por debajo de 1.000 (**F-013**, desde el corte) | Con `posventa`, una lista de unidades cortada por debajo de lo que pedimos es **503** y no se archiva: cortada, escondería la segunda obra con el mismo número | Es del dueño de `sigrid-api`; avisar antes |
 
 Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
 las reglas de §2. La única superficie compartida real es el **disco** y el
@@ -606,6 +892,16 @@ documento.
 | `POST /api/adjuntar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: adjunta el PDF del parte a la reclamación como gráfico, **tres filas en dos bases**, por el endpoint de dominio de la pasarela. Va **antes** del cierre. `multipart/form-data`, con el fichero. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP. **Su reintento es seguro**: el endpoint de la pasarela es idempotente por contenido |
 | `POST /api/cerrar` | **ESCRIBE EN EL ERP DE PRODUCCIÓN**: mueve `con.est` al estado de cierre y añade una fila a `dbo.log`, en un solo batch transaccional con tope de dos filas. **Exige que el parte conste adjuntado** (F-012): con `commit` y sin gráfico responde 409 sin tocar el ERP. **Por omisión es un dry-run** que solo lee; con `commit` exige además confirmación explícita o auto-cierre guardado. Desde un puesto de trabajo responde 503 sin tocar el ERP |
 
+> **Enmienda del 2026-09-24 (F-013), para el día del corte.** La fila de
+> `POST /api/archivar` dice, literal, que «**Escribe** en la biblioteca de dev
+> de SharePoint». Desde el corte escribe en la **biblioteca de Posventa**
+> —decisión del humano del 2026-09-18—, puede **crear carpetas** en ella (una
+> línea en `avisos` por cada una), **lee Sigrid dos veces** por parte y tiene
+> un 409 más, el del destino no resuelto (con `motivo` y `candidatas`), y un
+> 503 más, el de Sigrid (§3, «Con F-013»). Lo que no cambia: el contrato del
+> cuerpo, el nombre del fichero y que un parte que ya consta archivado no se
+> vuelve a subir.
+
 Los tres endpoints de F-019 **no dependen de `ARCHIVO_HABILITADO`**: escriben
 en el esquema propio del proyecto, no en un sistema ajeno. Con la ventana de
 escritura cerrada —que es como se despliega— se sube la remesa, se trocea, se
@@ -666,6 +962,12 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
 
+> **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo
+> cierta: F-013 está implementada en su rama y **no desplegada**. Deja de
+> serlo el día del corte (`docs/DESPLIEGUE.md` §9), que decide y ejecuta el
+> humano; desde entonces, lo nuevo se archiva en la biblioteca de Posventa y
+> los 133 partes de IT se quedan donde están (§3).
+
 ### Lo que YA se ha ejecutado contra el ERP, y con qué evidencia
 
 > **Corrige lo que este documento dijo hasta el 2026-09-15.** Sus dos primeras
@@ -720,6 +1022,12 @@ siendo verdad después.
 | Comprobar el destino de dev, solo lecturas | `infra/verificar_destino_sharepoint.ps1` |
 | Comprobar el archivo end-to-end en dev | `infra/verificar_archivo_dev.ps1` |
 | Diseño completo y decisiones del archivo | `specs/F-006-sharepoint/` |
+| Diseño completo y decisiones de la mudanza a Posventa | `specs/F-013-archivo-posventa/` |
+| La regla de casado y de creación de carpetas, pura | `services/postventa-api/domain/models/destino_posventa.py` |
+| El resolutor del destino | `services/postventa-api/application/pipelines/destino_archivo.py` |
+| Las dos lecturas de Sigrid al archivar | `services/postventa-api/infrastructure/sigrid/ubicacion.py` y `consultas_ubicacion.py` |
+| Medir en seco el destino de Posventa y las unidades de Sigrid, solo lecturas | `infra/23_destino_posventa.ps1` y `infra/24_ubicacion_sigrid.ps1` |
+| El runbook del corte de F-013 | `docs/DESPLIEGUE.md` §9 |
 | Nombres de recurso, regiones y tags del despliegue | `infra/00_vars_postventa.ps1` |
 | Runbook del despliegue y tarjeta del portal | `docs/DESPLIEGUE.md` |
 | Comprobar el despliegue, solo lecturas | `infra/verificar_despliegue.ps1` |

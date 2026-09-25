@@ -47,10 +47,21 @@ Porque el riesgo de este test no es que no cace: es que cace de más. En
 `progress/` hay páginas hablando de GUID, de `Sites.FullControl.All`, de
 `SHAREPOINT_SITE_ID` y de trazas con valores enmascarados a propósito. Si algo
 de eso disparara la alarma, el test moriría por molesto, no por incorrecto.
+
+## Añadido el 2026-09-24 por F-013 (R30): el host del inquilino
+
+F-013 muda el archivo al sitio de Posventa, y su URL —con el nombre del
+inquilino en el host— es lo primero que se pega en un informe al preparar el
+corte. R30 de `specs/F-013-archivo-posventa/requirements.md` pide barrerlo
+aquí, con el mismo recorrido que los GUID. Va **al final del fichero y solo
+añade**: ni un test de F-006 cambia (lo comprueba
+`test_f013_por_obra_intacto.py`, que nombra este fichero como la única
+excepción de la rama, T16).
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -407,3 +418,87 @@ def test_f006_r26_el_barrido_no_muerde_la_prosa_de_los_informes(texto):
     acaba comentando, y entonces ya no protege de nada.
     """
     assert PATRON_GUID.findall(texto) == []
+
+
+# --------------------------------------------------------------------------
+# R30 de F-013 · el nombre de host del inquilino (añadido el 2026-09-24)
+# --------------------------------------------------------------------------
+
+#: R30 · un nombre de host **concreto** del inquilino: el de SharePoint
+#: (`<inquilino>.…`, `<inquilino>-my.…`) y el dominio de Entra. Hace falta al
+#: menos una letra o cifra pegada al punto, así que el marcador entre ángulos
+#: (`<inquilino>.`) y el dominio suelto entre comillas no casan.
+#:
+#: Se **compone troceado**, como el nombre del adaptador en
+#: `test_f006_arquitectura.py`: escrito entero, este fichero llevaría dentro
+#: la forma que prohíbe y habría que tolerárselo a sí mismo.
+PATRON_HOST_DEL_INQUILINO = re.compile(
+    r"\b[a-z0-9][a-z0-9-]*\." + "(?:share" + "point|onmicro" + "soft)" + r"\.com\b",
+    re.IGNORECASE,
+)
+
+
+def _hallazgos_de_host(raiz: Path = RAIZ) -> dict[str, int]:
+    """Ruta relativa → cuántos hosts del inquilino lleva. **Nunca el valor.**
+
+    Mismo recorrido que el barrido de GUID (`_ficheros_barridos`): el mismo
+    alcance, las mismas exclusiones de lo que no se versiona. Y sin
+    tolerancias: no hay ningún fichero que necesite llevar el host.
+    """
+    encontrados: dict[str, int] = {}
+    for fichero in _ficheros_barridos(raiz):
+        cuantos = len(
+            PATRON_HOST_DEL_INQUILINO.findall(fichero.read_text(encoding="utf-8", errors="replace"))
+        )
+        if cuantos:
+            encontrados[fichero.relative_to(raiz).as_posix()] = cuantos
+    return encontrados
+
+
+def test_f013_r30_ningun_fichero_del_repositorio_lleva_el_host_del_inquilino():
+    """R30 · ni el host de SharePoint del inquilino ni su dominio de Entra.
+
+    F-013 lleva el archivo al sitio de Posventa, y su URL es lo primero que
+    alguien pega en un informe al preparar el corte. El host, con el nombre
+    del inquilino dentro, identifica a la empresa en Microsoft 365 tanto como
+    un GUID: entra aquí por lo mismo.
+    """
+    assert _hallazgos_de_host() == {}
+
+
+@pytest.mark.parametrize(
+    "ruta",
+    (
+        "progress/impl_F-999.md",
+        "docs/DESPLIEGUE.md",
+        "infra/23_destino_posventa.ps1",
+        "specs/F-013-archivo-posventa/design.md",
+    ),
+)
+@pytest.mark.parametrize("sufijo", (".share" + "point.com", "-my.share" + "point.com", ".onmicro" + "soft.com"))
+def test_f013_r30_el_barrido_de_host_caza_uno_escrito_en_cualquier_rincon(tmp_path, ruta, sufijo):
+    """El caso exacto que se quiere evitar: la URL del sitio pegada tal cual."""
+    host = "inquilino-inventado" + sufijo
+    fichero = tmp_path / ruta
+    fichero.parent.mkdir(parents=True, exist_ok=True)
+    fichero.write_text(f"Sitio: https://{host}/sites/Postventa\n", encoding="utf-8")
+
+    assert _hallazgos_de_host(tmp_path) == {ruta: 1}
+
+
+@pytest.mark.parametrize(
+    "texto",
+    (
+        # Lo que ya dicen, con razón, el script 23 y los informes de F-010.
+        "https://<inquilino>.share" + "point.com/sites/<sitio>",
+        '$uriSitio.Host.EndsWith(".share' + 'point.com", [StringComparison]::OrdinalIgnoreCase)',
+        "| `azurewebsites.net`, `share" + "point.com`, `blob.core.windows.net` | **0** |",
+        "`tenant`, `appId`, `client_secret`, IP privadas, `.share" + "point.com`,",
+        # Graph no es el inquilino: es de todos.
+        "GET https://graph.microsoft.com/v1.0/sites/{host}:/sites/Postventa",
+        "https://ejemplo.invalido/sitios/posventa",
+    ),
+)
+def test_f013_r30_el_barrido_de_host_no_muerde_la_prosa(texto):
+    """Hablar del dominio sin nombrar al inquilino no es un hallazgo."""
+    assert PATRON_HOST_DEL_INQUILINO.findall(texto) == []

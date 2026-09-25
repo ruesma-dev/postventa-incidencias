@@ -77,20 +77,53 @@ Desde F-031:
   obligatorios y un cuerpo incompleto sigue siendo un 400 (R6). Lo que cambia
   es para qué sirven dos de ellos. Retirarlos del contrato habría perdido la
   detección: sin lo declarado no hay con qué cotejar (D-4).
+
+## La estrategia de destino se elige aquí (F-013, 2026-09-24)
+
+**Enmienda del 2026-09-24 (F-013 T13).** Hasta hoy este handler componía el
+paso siempre igual: la carpeta salía de `componer_destino` (`<base>/<obra>`,
+F-006). Desde F-013 lo decide `SHAREPOINT_ESTRUCTURA` (`design.md` §2.2):
+
+- **`por_obra`** —el valor por omisión— compone **exactamente** lo de antes
+  (R2): el paso recibe `resolver_destino=None`, no se construye el lector de
+  Sigrid y no se lista ninguna carpeta;
+- **`posventa`** le pasa al paso el resolutor de `destino_archivo.py` ya
+  configurado (`functools.partial` con la base, los dos tramos, la hoja
+  alternativa y `SHAREPOINT_CREAR_CARPETAS`), que lee la ubicación de la
+  reclamación en Sigrid y lista la biblioteca de Posventa.
+
+Tres cosas del montaje son requisito y no estilo:
+
+- **La misma instancia** que devuelve `construir_archivador` es archivador y
+  explorador: el adaptador de Graph implementa los dos puertos
+  (`design.md` §3.2), el paso crea las carpetas con el archivador y el
+  resolutor lista con el explorador. Dos adaptadores serían, en el peor caso,
+  dos bibliotecas.
+- **`construir_ubicaciones` va después de `construir_archivador`**, y solo en
+  `posventa`: fuera de `dev`/`pro` el error es el del archivo, y en `por_obra`
+  archivar no depende de `sigrid-api`.
+- Dos costuras de test nuevas, `explorador` y `ubicaciones`. Sin `explorador`,
+  lista el archivador, que es lo que pasa siempre en producción.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import partial
 from typing import Any
 
 # F-034 · la pieza compartida con el gráfico y el cierre (D-2); ni una regla
 # de este endpoint cambia (R26).
 from application.pipelines.codigos_del_parte import CodigosDelParte
 from application.pipelines.contexto_parte import ContextoParte
-from application.pipelines.paso_archivo import paso_archivo
-from config.settings import obtener_ajustes
-from domain.models.errores import CuerpoDeArchivoInvalido
+from application.pipelines.destino_archivo import resolver_destino_posventa
+from application.pipelines.paso_archivo import ResolverDestino, paso_archivo
+from config.settings import Ajustes, obtener_ajustes
+from domain.models.destino_posventa import EstructuraArchivo
+from domain.models.errores import (
+    ConfiguracionSharePointIncompleta,
+    CuerpoDeArchivoInvalido,
+)
 from domain.models.extraccion import (
     CAMPOS_DEL_PARTE,
     CampoExtraido,
@@ -100,9 +133,12 @@ from domain.models.extraccion import (
 from domain.models.remesa import ModoDeteccion, ParteTroceado
 from domain.models.validacion import Destino, Veredicto
 from domain.ports.archivo import ArchivoPort
+from domain.ports.biblioteca import ExploradorBibliotecaPort
 from domain.ports.persistencia import RepositorioPartesPort
+from domain.ports.ubicacion import UbicacionPort
 from infrastructure.persistencia.fabrica import construir_repositorio
 from infrastructure.sharepoint.fabrica import construir_archivador
+from infrastructure.sigrid.fabrica import construir_ubicaciones
 
 #: Lo que el cuerpo tiene que traer, además del fichero.
 CAMPOS_OBLIGATORIOS = (
@@ -125,6 +161,8 @@ def archivar_parte(
     archivador: ArchivoPort | None = None,
     repositorio: RepositorioPartesPort | None = None,
     ahora: datetime | None = None,
+    explorador: ExploradorBibliotecaPort | None = None,
+    ubicaciones: UbicacionPort | None = None,
 ) -> dict[str, Any]:
     """Archiva **un** parte apto y devuelve el cuerpo de la respuesta.
 
@@ -140,6 +178,11 @@ def archivar_parte(
     `ArchivoSinTraza` significa que sí. Lo demás —incluido lo que levanta
     `construir_repositorio` aquí abajo, que corre **antes** de que se suba
     nada— deja la biblioteca de Posventa intacta.
+
+    Desde F-013, con la estrategia `posventa`, también `DestinoNoResuelto`
+    (→ 409, R19) y, sin traducirlos, los de la lectura de Sigrid:
+    `UbicacionNoDisponible` y `ConfiguracionSigridIncompleta` (→ 503, R41).
+    Ninguno de ellos ha subido ni creado nada.
     """
     _exigir_cuerpo(
         hash=hash,
@@ -149,12 +192,14 @@ def archivar_parte(
         destino=destino,
     )
     ajustes = obtener_ajustes()
+    if archivador is None:
+        archivador = construir_archivador(ajustes)
+    if repositorio is None:
+        repositorio = construir_repositorio(ajustes)
     contexto = paso_archivo(
         _como_contexto(contenido, hash_parte=hash),
-        archivador if archivador is not None else construir_archivador(ajustes),
-        repositorio
-        if repositorio is not None
-        else construir_repositorio(ajustes),
+        archivador,
+        repositorio,
         carpeta_base=ajustes.sharepoint_carpeta_base,
         ahora=ahora if ahora is not None else datetime.now(UTC),
         drive_id_vigente=ajustes.sharepoint_drive_id,
@@ -163,8 +208,58 @@ def archivar_parte(
         codigos_declarados=CodigosDelParte(
             codigo_obra=codigo_obra, numero_incidencia=numero_incidencia
         ),
+        resolver_destino=_resolutor_de_la_estrategia(
+            ajustes,
+            explorador=explorador if explorador is not None else archivador,
+            ubicaciones=ubicaciones,
+        ),
     )
     return _serializar(contexto)
+
+
+def _resolutor_de_la_estrategia(
+    ajustes: Ajustes,
+    *,
+    explorador: Any,
+    ubicaciones: UbicacionPort | None,
+) -> ResolverDestino | None:
+    """F-013 · el resolutor de Posventa ya configurado, o `None` en `por_obra`.
+
+    En `por_obra` no se construye nada más (R2): ni el lector de Sigrid, ni se
+    toca el explorador. En `posventa`, el lector de la ubicación se construye
+    **aquí**, después del archivador y del repositorio, y el resolutor queda
+    fijado con toda la configuración de destino menos los dos códigos y el
+    nombre del fichero, que pone el paso (`design.md` §5 enmendado).
+
+    `explorador` es, en producción, **el mismo** archivador (el adaptador de
+    Graph implementa los dos puertos). Se anota como `Any` porque llega tal
+    cual del borde: si no fuera un `ExploradorBibliotecaPort`, lo dice el paso
+    con un `TypeError` antes de tocar nada.
+
+    Una estrategia que no sea ninguna de las dos no llega aquí en producción:
+    `construir_archivador` la rechaza antes (R3). Si llegara —con el
+    archivador inyectado—, tampoco se adivina: `ConfiguracionSharePointIncompleta`
+    (→ 503), sin haber tocado nada.
+    """
+    if ajustes.sharepoint_estructura == EstructuraArchivo.POR_OBRA:
+        return None
+    if ajustes.sharepoint_estructura != EstructuraArchivo.POSVENTA:
+        raise ConfiguracionSharePointIncompleta(
+            "SHAREPOINT_ESTRUCTURA no es una estrategia de destino conocida: "
+            "no se archiva con una estrategia adivinada"
+        )
+    return partial(
+        resolver_destino_posventa,
+        explorador=explorador,
+        ubicaciones=ubicaciones
+        if ubicaciones is not None
+        else construir_ubicaciones(ajustes),
+        base=ajustes.sharepoint_carpeta_base,
+        incidencias=ajustes.sharepoint_carpeta_incidencias,
+        firmados=ajustes.sharepoint_carpeta_firmados,
+        firmados_alternativa=ajustes.sharepoint_carpeta_firmados_alternativa,
+        crear_carpetas=ajustes.sharepoint_crear_carpetas,
+    )
 
 
 def _exigir_cuerpo(**campos: str) -> None:

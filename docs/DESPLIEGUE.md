@@ -27,6 +27,19 @@ dev** del sitio de IT.
 - **El archivo definitivo de Posventa.** Se archiva en la biblioteca de dev;
   mudarlo es F-013.
 
+> **Enmienda del 2026-09-24 (F-013) · la mudanza ya tiene código y runbook.**
+> Esta sección dice que se despliega lo necesario para «**archivar el parte
+> apto en la biblioteca de dev** del sitio de IT» y, en lo que no se
+> despliega, «**El archivo definitivo de Posventa.** Se archiva en la
+> biblioteca de dev; mudarlo es F-013.» Las dos frases siguen siendo ciertas
+> **hasta el corte**: F-013 está implementada en su rama y no desplegada, y
+> `desplegar_backend.ps1` sigue escribiendo `por_obra` bajo `Postventa`. Lo
+> que las invalidará es el corte de la §9, que ejecuta el humano, con el
+> destino que decidió el 2026-09-18 —el sitio de Posventa y la estructura que
+> ya usa Posventa (H1, H2)— y el arranque que decidió el 2026-09-24, «crear
+> desde el principio». Tampoco es ya cierto que el ERP no se toque: eso lo
+> cambiaron F-009 y F-012 (§4 bis).
+
 ## 2 · Los cinco scripts, y en qué orden
 
 Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
@@ -704,3 +717,198 @@ frío de la primera petición del día y un día malo del proveedor de IA—.
 | Qué exponemos y qué consumimos | `docs/INTEGRACION.md` |
 | El razonamiento completo del despliegue | `specs/F-010-despliegue/design.md` |
 | El portal, su catálogo y sus avisos | `azure-apps/portal.md` |
+| El corte de F-013: la mudanza a la biblioteca de Posventa | §9 de este documento; el diseño, en `specs/F-013-archivo-posventa/design.md` §7.3 |
+
+## 9 · El corte de F-013: el archivo se muda a la biblioteca de Posventa
+
+> **Enmienda del 2026-09-24 (F-013) · «Crear desde el principio».** El
+> runbook de `specs/F-013-archivo-posventa/design.md` §7.3 se escribió dando
+> por hecho que, tras desplegar con `posventa`, la ventana de archivo quedaba
+> cerrada y se abría para **un parte autorizado**. Desde el 2026-09-23 el
+> despliegue deja **abiertas** las dos ventanas (§4), y el humano decidió el
+> 2026-09-24 (T4-3) «Crear desde el principio»: `SHAREPOINT_CREAR_CARPETAS`
+> activo desde el primer despliegue. Consecuencia: el primer archivado en
+> Posventa, y la primera carpeta creada, los provoca **quien archive
+> primero**. Lo que se conserva es la comprobación con Posventa **el mismo
+> día** (R33, R42). **Riesgo aceptado por el humano, con nombre**: entre el
+> despliegue y esa comprobación pueden crearse varias carpetas sin que nadie
+> las haya visto. Lo contienen la medición de la obra piloto (paso 2), el
+> aviso previo (paso 3) y que el primer freno es inmediato.
+
+Cada paso lo da **el humano**. Los de antes y los de después son **solo
+lecturas**; lo único que escribe es el despliegue (pasos 4 y 5). Qué cambia
+para el ecosistema, qué se rompe y los códigos del 409, en
+`docs/INTEGRACION.md` §3, «Con F-013».
+
+### Antes de desplegar (solo lecturas)
+
+1. **F-033, F-031 y F-034 desplegadas.** Ya lo están (2026-09-23). Sin F-033
+   un parte archivado en IT se volvería a subir a Posventa.
+2. **Medir en seco la obra piloto** con los dos scripts, que ya aplican la
+   regla del sistema (subsección «Los dos scripts», abajo). Desde la raíz del
+   repositorio, primero el 24 y luego el 23:
+
+   ```
+   powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SigridBaseDatos ruesma -SalidaCsv <ruta fuera del repositorio>
+   ```
+
+   ```
+   powershell -ExecutionPolicy Bypass -File infra\23_destino_posventa.ps1 -UrlSitio "<URL del sitio Postventa>" -CodigoObra 0677 -DesdeKeyVault -UnidadesCsv <la misma ruta>
+   ```
+
+   Tiene que salir **exactamente** lo de R31: la obra y `PARTES INCIDENCIAS`,
+   «resolvería»; VILLA 01, 02, 03, 05, 06 y 07, «resolvería» (la 02, con su
+   `PARTES FIRMADO`); VILLA 04, «crearía `PARTES FIRMADOS`»; VILLA 08 … 15,
+   «crearía `VILLA NN` + `PARTES FIRMADOS`»; **ninguna «bloquearía»**, y el
+   veredicto `DESTINO DE POSVENTA : PASA`. Si VILLA 02 dice «bloquearía», el
+   literal de su hoja no es `PARTES FIRMADO` (riesgo 16 de `design.md` §10):
+   relanzar con `-MostrarNombres` y llevar el literal al líder. **Cualquier
+   otra diferencia: no se despliega.** Al acabar, borrar el CSV: lleva los
+   literales de `con.res`.
+3. **Avisar a Posventa por escrito, antes de desplegar.** Lo esencial del
+   aviso: desde el despliegue, lo que se archive desde la aplicación va a su
+   biblioteca, en `<obra>/PARTES INCIDENCIAS/<villa>/PARTES FIRMADOS`; cuando
+   falte una carpeta la aplicación la creará —en la 0677, `VILLA 08` …
+   `VILLA 15` según lleguen sus partes (la 12 y la 13 ya tienen
+   reclamaciones) y `PARTES FIRMADOS` dentro de `VILLA 04`, sin tocar los
+   partes sueltos que hay allí—; en `VILLA 02` archivará en su
+   `PARTES FIRMADO`; nuestros ficheros se llaman
+   `<obra> - <incidencia> PARTE FIRMADO.pdf`, así que donde ya subieran el
+   mismo parte a mano convivirán los dos; y si ven una carpeta que no quieren,
+   **que no la borren**: nos avisan y se sigue R43.
+
+Los **133** partes archivados en IT no piden nada: se midieron el 2026-09-18,
+se quedan allí y sus trazas no se tocan. Si se quiere confirmar que no han
+crecido, `infra\25_mediciones_despliegue.ps1` sin parámetros, que solo lee.
+
+### El despliegue
+
+4. **Los IDs de la biblioteca de Posventa al Key Vault.** Los da
+   `23_destino_posventa.ps1 -MostrarIdentificadores`, y van **solo** al vault:
+   a ningún fichero, informe ni chat. Desde la propia sesión de PowerShell
+   (`-Solo` no funciona con `-File`, §2):
+
+   ```
+   .\infra\cargar_secretos_postventa.ps1 -Solo sharepoint-site-id,sharepoint-drive-id
+   ```
+
+   Los de IT no se guardan en el repositorio; si se quieren conservar para
+   volver atrás, en el propio Key Vault con otro nombre (decisión del humano).
+5. **Cambiar el destino y desplegar.** En `infra/00_vars_postventa.ps1`:
+   `$EstructuraArchivo = "posventa"`, `$CarpetaBaseArchivo = ""` (la raíz,
+   D-1) y `$CrearCarpetasArchivo = "true"`, que ya lo está. Es un cambio de un
+   fichero versionado: va en su rama, como todo. Y desplegar **sin
+   `-VentanasCerradas`**, desde `infra\`:
+
+   ```
+   powershell -ExecutionPolicy Bypass -File infra\desplegar_backend.ps1
+   ```
+
+   Antes de pedir `DESPLEGAR`, el script enseña la línea «Destino del
+   archivo: estructura 'posventa', carpeta base '', crear carpetas 'true'».
+   Si dice otra cosa, se aborta. **Desde este momento cualquier archivado va
+   a Posventa y puede crear carpetas.**
+
+### Justo después (solo lecturas, en el mismo rato)
+
+6. **La configuración que ha quedado.** La ventana de archivo, abierta:
+
+   ```
+   powershell -ExecutionPolicy Bypass -File infra\22_ventana_archivo.ps1
+   ```
+
+   Y los tres App Settings del destino, leídos sin cambiar nada:
+
+   ```
+   az functionapp config appsettings list -g rg-postventa-dev -n func-postventa-dev --query "[?name=='SHAREPOINT_ESTRUCTURA' || name=='SHAREPOINT_CARPETA_BASE' || name=='SHAREPOINT_CREAR_CARPETAS'].[name, value]" -o tsv
+   ```
+
+   Tienen que salir `posventa`, vacío y `true`. **Si `SHAREPOINT_CARPETA_BASE`
+   no sale, o no sale vacía, el vacío no ha llegado**: la base vuelve a su
+   defecto del código, `Postventa`, que no existe en la raíz de Posventa, y
+   cada archivado dará 502 sin subir nada. Freno 1 y de vuelta al líder.
+
+### El mismo día, cuando haya archivados (solo lecturas y Posventa)
+
+7. **R33**: `infra\25_mediciones_despliegue.ps1` cuenta ya trazas `archivado`
+   en una **segunda** biblioteca, la de Posventa (sin imprimir nunca su
+   identificador). Con Posventa, sobre uno de esos partes cuya ruta ya existía
+   entera: el fichero está en su carpeta y en su OneDrive. El resultado, a
+   `progress/`, sin identificadores ni nombres de cliente.
+8. **R42**: en cuanto aparezca la primera carpeta creada —un aviso en la
+   respuesta de `/api/archivar` y `F-013 carpeta creada: <ruta>` en el log,
+   con nivel `WARNING`—, relanzar el 23 (solo lectura): esa unidad pasa a
+   «resolvería». Con Posventa: el nombre les sirve y no hay duplicado. Del
+   mismo log, la línea `F-013 unidades leídas en Sigrid` da el tiempo de la
+   segunda lectura de Sigrid, que estaba sin medir.
+
+### Los tres frenos
+
+De más rápido a más completo, y ninguno toca datos:
+
+1. `infra\22_ventana_archivo.ps1 -Cerrar`: para **todo** el archivado en el
+   acto, sin redesplegar. La ventana del ERP no se toca.
+2. `$CrearCarpetasArchivo = "false"` en `00_vars_postventa.ps1` y
+   redesplegar: sigue archivando donde la ruta existe y responde 409
+   `sin_carpeta_<nivel>` donde falta.
+3. `$EstructuraArchivo = "por_obra"` y `$CarpetaBaseArchivo = "Postventa"`,
+   los IDs de IT de vuelta en el Key Vault, y redesplegar: la vuelta atrás de
+   siempre. No hay datos que deshacer: la traza de cada parte dice en qué
+   biblioteca está.
+
+Si una carpeta creada no le sirve a Posventa: freno 1, el procedimiento de R43
+(`docs/INTEGRACION.md` §3, «Deshacer una carpeta creada por error»), enmienda
+de R36/R37 y solo entonces se vuelve a abrir.
+
+### Los dos scripts de solo lectura
+
+`infra/23_destino_posventa.ps1` y `infra/24_ubicacion_sigrid.ps1`. Ninguno
+escribe: el 23 solo hace `GET` en Graph, más el `POST` del token, y el 24 solo
+`POST /api/sql/read`, a través de `08_lectura_sigrid_comun.ps1`. Los dos son
+ASCII y CRLF, sin BOM, como el resto de `infra/`: con BOM,
+`test_f010_prompt_keys_infra.py` tumba la suite. Los dos admiten `-WhatIf`,
+que no llama a nada.
+
+**`24_ubicacion_sigrid.ps1`**: las unidades de posventa de una obra en Sigrid,
+con su código, su nombre y sus reclamaciones.
+
+| Parámetro | Qué |
+|---|---|
+| `-CodigoObra` | La obra. Pregunta el código con y sin ceros (`0677` y `677`) |
+| `-SigridBaseDatos`, `-SigridBaseUrl` | La base y la raíz de la pasarela (o `$env:SIGRID_API_BASE_URL`). La clave, por consola si no está en la sesión |
+| `-Tip`, `-MaxFilas` | El tipo de concepto de la reclamación (708) y el techo de filas |
+| `-MostrarNombres` | Los literales de `con.res`; sin él, salen enmascarados |
+| `-SalidaCsv <ruta>` | Escribe las unidades para el 23, con las columnas `obra` —un ordinal, «obra 1», **nunca `obride`**, que es la referencia del ERP—, `obra_cod`, `obra_res`, `unidad_cod`, `unidad_res` y `reclamaciones`. La ruta tiene que quedar **fuera del repositorio**: si no, sale con código 3 sin preguntar nada a Sigrid |
+
+**`23_destino_posventa.ps1`**: la URL da el sitio y la biblioteca, dice los
+permisos del token y, con `-CodigoObra`, lista el árbol **solo de carpetas**
+de la obra —los ficheros se cuentan, nunca se nombran— y dice qué **haría el
+sistema** con cada unidad.
+
+| Parámetro | Qué |
+|---|---|
+| `-UrlSitio` | La URL del sitio. Obligatoria |
+| `-NombreBiblioteca` | «Documentos compartidos» por defecto |
+| `-CodigoObra` | La obra |
+| `-UnidadesCsv <ruta>` | El CSV del 24. Con él, por cada unidad de Sigrid: «resolvería <ruta>», «crearía <nombres>» o «BLOQUEARIA (<motivo>)». Sin él, solo el árbol, la obra y `PARTES INCIDENCIAS` |
+| `-CarpetaBase`, `-CarpetaIncidencias`, `-CarpetaFirmados`, `-CarpetaFirmadosAlternativa` | Los mismos valores que el servicio: raíz, `PARTES INCIDENCIAS`, `PARTES FIRMADOS` y `PARTES FIRMADO` |
+| `-CarpetaObra`, `-MaxCarpetasObra` | Fuerza el literal de la carpeta de obra (el resumen lo rotula), y cuántas carpetas de obra recorre como mucho (5) |
+| `-DesdeKeyVault` | Lee las `GRAPH_*` del Key Vault, en memoria: el secreto no se teclea ni queda en el historial de la consola |
+| `-MostrarNombres`, `-MostrarIdentificadores` | Los literales de las carpetas, y los IDs del sitio y de la biblioteca **solo** para llevarlos al Key Vault |
+
+**La regla es la del sistema, no una copia.** El 23 ejecuta, con el intérprete
+del servicio y por fichero, **el resolutor de verdad**
+(`resolver_destino_posventa`, en `application/pipelines/destino_archivo.py`)
+sobre el árbol que acaba de listar y las unidades del CSV, con crear carpetas
+encendido: lo que dice «resolvería» o «crearía» es lo que hará el sistema, con
+las mismas comprobaciones y en el mismo orden. Lo que la regla pediría y el
+script no ha listado sale «sin medir»: no se adivina. Sus códigos de salida: 0
+pasa, 3 parámetro, 5 `-CarpetaObra` inexistente, 6 no pasa, 7 credenciales o
+token, 8 Graph rechaza una lectura, 9 sin sitio, 10 sin biblioteca o
+ambigua, 11 la regla no se ha podido ejecutar.
+
+**Un límite conocido del ensayo en seco.** El 24 pregunta por las obras con
+`IN ('0677', '677')`; el sistema, con `LIKE '%677'` y filtrando después por
+número. Una obra guardada como `00677` la vería el sistema y no el 24. Con la
+0677 hay una sola obra, así que no cambia nada de R31; si algún día importa,
+se cambia la consulta del 24 por la del adaptador.

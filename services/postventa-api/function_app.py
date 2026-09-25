@@ -231,6 +231,7 @@ from domain.models.errores import (
     CuerpoDeCierreInvalido,
     CuerpoDeGraficoInvalido,
     CuerpoDeValidacionInvalido,
+    DestinoNoResuelto,
     EscrituraDocumentalDeshabilitada,
     EstadoCambiadoDesdeElDryRun,
     EstadoDeCierreNoResoluble,
@@ -253,6 +254,7 @@ from domain.models.errores import (
     ReclamacionNoLocalizada,
     ReferenciaNoConsta,
     RemesaSinPdfUtilizable,
+    UbicacionNoDisponible,
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
 )
@@ -706,6 +708,18 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
     y volviendo a archivar. Ese tercero es el único de los tres en el que
     reintentar, después de guardar, funciona.
 
+    > **Enmienda del 2026-09-24 (F-013 T13).** Con la estrategia `posventa`
+    > caben dos cosas más. Un **cuarto 409**, el destino no resuelto
+    > (`DestinoNoResuelto`, R19): una carpeta del camino es ambigua, solo hay
+    > parecidas o el nombre que habría que crear no vale. Su cuerpo añade al
+    > `error` —que dice qué tiene que hacer una persona— el `motivo` (el
+    > código de R18) y las `candidatas` (nombres de carpeta, nunca un
+    > identificador; vacía si no hay). Reintentar funciona en cuanto alguien
+    > arregla la carpeta (R20). Y un **503** más: Sigrid no dice dónde va la
+    > reclamación, o falta su configuración (`UbicacionNoDisponible`,
+    > `ConfiguracionSigridIncompleta`, R41). En `por_obra` no aparece ninguno
+    > de los dos.
+
     **La excepción, y por eso es un código aparte: 500.** Es el único caso en
     el que el PDF **sí está** en SharePoint y lo que falta es la traza
     (`ArchivoSinTraza`). Hasta el defecto 14 de F-010 salía como un 500 con el
@@ -755,9 +769,38 @@ def archivar(req: func.HttpRequest) -> func.HttpResponse:
             },
             409,
         )
+    except DestinoNoResuelto as error:
+        # F-013 R19 · falta una decisión de una persona, no ha fallado nadie.
+        log.info("archivar sin destino: motivo=%s %s", error.motivo, error.detalle)
+        return _json(
+            {
+                "error": (
+                    f"no se ha subido nada ni se ha creado ninguna carpeta en "
+                    f"la biblioteca de Posventa: {error.detalle}"
+                ),
+                "motivo": str(error.motivo),
+                "candidatas": list(error.candidatas),
+            },
+            409,
+        )
     except (ArchivoDeshabilitado, ConfiguracionSharePointIncompleta) as error:
         log.warning("archivar deshabilitado: %s", error.motivo)
         return _json({"error": error.motivo}, 503)
+    except (UbicacionNoDisponible, ConfiguracionSigridIncompleta) as error:
+        # F-013 R41 · sin la ubicación de Sigrid no se sabe la carpeta, y no
+        # se cae al campo `unidad` del papel (D-7).
+        log.warning("archivar sin la ubicación de Sigrid: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido saber en Sigrid dónde va este parte, así "
+                    f"que no se ha subido nada ni se ha creado ninguna carpeta: "
+                    f"se puede reintentar cuando Sigrid responda. "
+                    f"Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
     except ConfiguracionPgIncompleta as error:
         log.warning("archivar sin base de datos configurada: %s", error.motivo)
         return _json(

@@ -31,6 +31,16 @@ con **las mismas tres puertas y el mismo interruptor** (D-B): el gráfico es la
 primera mitad del cierre, así que una sola ventana de escritura en el ERP. La
 única diferencia es el paso 4: el gráfico **no resuelve el huso**, porque el
 sello de `gra.cod` lo pone la pasarela y aquí no hay ninguna hora que escribir.
+
+> **Enmienda del 2026-09-24 (F-013 T12).** Hay una **tercera** fábrica,
+> `construir_ubicaciones`, y es distinta de las otras dos a propósito: el
+> lector de la ubicación **solo lee**, así que tiene la puerta del entorno
+> (con la misma lista) y la de la configuración, pero **no** la del
+> interruptor `CIERRE_HABILITADO`, que es la ventana de la escritura en el
+> ERP. Con ella cerrada se tiene que poder archivar en Posventa
+> (`specs/F-013-archivo-posventa/design.md` §6.2). La consecuencia, que hay
+> que documentar: con la estrategia `posventa`, **archivar depende de
+> `sigrid-api`**.
 """
 
 from __future__ import annotations
@@ -43,6 +53,7 @@ from config.settings import Ajustes
 from domain.models.errores import ConfiguracionSigridIncompleta
 from domain.ports.erp import ErpPort
 from domain.ports.grafico import GraficoPort
+from domain.ports.ubicacion import UbicacionPort
 
 from infrastructure.sigrid.cliente import (
     ENTORNOS_CON_CIERRE,
@@ -51,12 +62,17 @@ from infrastructure.sigrid.cliente import (
     exigir_interruptor_de_cierre,
 )
 from infrastructure.sigrid.graficos import AdaptadorGraficoSigridApi
+from infrastructure.sigrid.ubicacion import (
+    AdaptadorUbicacionSigridApi,
+    exigir_entorno_con_ubicacion,
+)
 
 __all__ = [
     "ENTORNOS_CON_CIERRE",
     "VARIABLES_OBLIGATORIAS",
     "construir_erp",
     "construir_graficos",
+    "construir_ubicaciones",
     "resolver_zona",
 ]
 
@@ -137,6 +153,37 @@ def construir_graficos(ajustes: Ajustes) -> GraficoPort:
         api_key=str(ajustes.sigrid_api_key),
         base_datos=str(ajustes.sigrid_base_datos),
         timeout_s=ajustes.sigrid_timeout_s,
+    )
+
+
+def construir_ubicaciones(ajustes: Ajustes) -> UbicacionPort:
+    """El lector de la ubicación en Sigrid, o el motivo por el que aquí no.
+
+    **Dos** puertas y no tres: entorno → configuración. Sin la del interruptor
+    `CIERRE_HABILITADO` (`design.md` §6.2): estas dos lecturas no escriben en
+    el ERP, y archivar no puede depender de que la ventana del cierre esté
+    abierta. Tampoco resuelve el huso: aquí no hay ninguna hora que escribir.
+
+    Levanta `ArchivoDeshabilitado` (→ 503) si este entorno no archiva —la
+    lista es la del cierre, importada—, y `ConfiguracionSigridIncompleta`
+    (→ 503) si falta configuración, **nombrando las variables y jamás sus
+    valores**.
+    """
+    exigir_entorno_con_ubicacion(ajustes.entorno)
+    _exigir_configuracion(ajustes)
+
+    log.info(
+        "F-013 lector de la ubicación en Sigrid construido en el entorno %s",
+        ajustes.entorno,
+    )
+    return AdaptadorUbicacionSigridApi(
+        entorno=ajustes.entorno,
+        base_url=str(ajustes.sigrid_api_base_url),
+        api_key=str(ajustes.sigrid_api_key),
+        base_datos=str(ajustes.sigrid_base_datos),
+        tip_reclamacion=ajustes.sigrid_tip_reclamacion,
+        timeout_s=ajustes.sigrid_timeout_s,
+        reintentos=ajustes.sigrid_reintentos,
     )
 
 

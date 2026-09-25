@@ -1,6 +1,380 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 CERRADA · 2026-09-25 · falta el merge a `dev`, desplegar y el corte
+>
+> Review **APROBADA** (`progress/review_F-013.md`), cuatro hallazgos bajos
+> resueltos al cerrar (H-1 aquí, H-2 test renombrado, H-3 y H-4 en `design.md`
+> §10). P2, M19 y M20 aceptados por el humano. Acta: **`progress/cierre_F-013.md`**.
+>
+> **Verificaciones MANUAL (humano) pendientes, todas del corte y después del
+> merge** (detalle en `specs/F-013-archivo-posventa/tasks.md`, «Después del
+> merge», y `docs/DESPLIEGUE.md` §9):
+>
+> - **R31 (paso 2, antes de desplegar)**:
+>   `powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SigridBaseDatos ruesma -SalidaCsv <ruta fuera del repo>`
+>   y
+>   `powershell -ExecutionPolicy Bypass -File infra\23_destino_posventa.ps1 -UrlSitio "<URL del sitio Postventa>" -CodigoObra 0677 -DesdeKeyVault -UnidadesCsv <la misma ruta>`.
+>   Tiene que salir exactamente lo de R31 (VILLA 01–03 y 05–07 «resolvería»,
+>   VILLA 04 «crearía `PARTES FIRMADOS`», 08–15 «crearía `VILLA NN`» y su hoja,
+>   ninguna «bloquearía»). Cualquier diferencia: no se despliega.
+> - **R33 (paso 7, el mismo día)**: `25_mediciones_despliegue.ps1` ve una
+>   segunda biblioteca con trazas `archivado`; con Posventa, uno de esos partes
+>   está en su carpeta y en su OneDrive.
+> - **R42 (paso 8, el mismo día)**: tras la primera carpeta creada (`F-013
+>   carpeta creada:` en el log), relanzar el 23 —esa unidad pasa a
+>   «resolvería»— y confirmar con Posventa que el nombre sirve y no hay
+>   duplicado.
+
+> ## ✅ F-013 · BLOQUE 7 HECHO (T20 y T21) · 2026-09-25 · siguiente: review
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 7 · T20 y
+> T21»**. Solo tests (`ea91013`, `a5dccf5`) e informes (`bfb45f8` y el
+> cierre); sin código de producción. `harness/features.json` sin tocar; sin
+> push.
+>
+> - **T20**: campaña del arnés **109 mutantes, 108 muertos, 1 superviviente**
+>   (`_Nivel`, aceptado por el humano el 2026-09-24), 0 timeouts. Mutación a
+>   mano de `unidades_que_casan` y vecinas (la herramienta no les genera
+>   mutantes): 18/18 tras cerrar un hueco real con test (`ea91013`). Informe
+>   `progress/mutacion_F-013.md`.
+> - **T21**: estuvo bloqueada (puerta de cobertura a 0 % porque un test de
+>   T14 compilaba la regla del 23 desde el temporal de pytest, que borraban
+>   sesiones de otros proyectos). Por decisión del líder, la regla se compila
+>   como `<regla_del_23>` (`a5dccf5`); el `.ps1` no cambia.
+>   `bash harness/init.sh` en verde: **4.284 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+> - Los equivalentes a mano del bloque 2 (P2, M19, M20) los lleva el líder al
+>   humano y al reviewer.
+
+> ## ✅ F-013 · BLOQUE 6 HECHO (T16–T19) · 2026-09-25 · siguiente: Bloque 7 (T20, T21)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 6 · T16 a
+> T19»**. Sin código de producción: tests (`b1e7a67`), documentación, infra y
+> `.env.example` (`021ae39`); en `azure-apps`, `9ed8957` (T19). Sin push;
+> `.env` y `harness/features.json` sin tocar.
+>
+> - **Desviación con nombre (T16)**: la spec manda el barrido del host (R30)
+>   a `test_f006_repo_sin_identificadores.py`, y el control del diff de F-013
+>   (bloque 2) prohibía tocar tests de F-006. Resuelto como T10 bis: ese
+>   fichero es la única excepción y un control nuevo exige que **solo crezca**
+>   con lo de R30. Sin choque con F-010 ni F-031…F-034. **A validar por el
+>   líder** (informe, §0).
+> - T17: recuadros fechados que citan la premisa en INTEGRACION, DESPLIEGUE,
+>   ARCHITECTURE y la spec de F-006; runbook del corte en `docs/DESPLIEGUE.md`
+>   §9; `infra/` en `por_obra`/`Postventa`/`true` hasta el corte, ventanas
+>   intactas; la decisión 2 del bloque 5 (falla cerrado) en «qué se rompe».
+> - T18: el párrafo para la ficha de F-018, en el informe §6 (lo pega el líder).
+> - Para el líder: el gemelo de `azure-apps` ya divergía de INTEGRACION antes
+>   de F-013 (se refrescó por bloques, sin pisar lo suyo).
+> - `bash harness/init.sh` en verde: **4.283 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+
+> ## ✅ F-013 · BLOQUE 5 HECHO (T15) · 2026-09-24 · siguiente: Bloque 6 (T16)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 5 ·
+> T15»**. Solo tests (`52ce8eb`), **sin código de producción**; sin rebase
+> (`ba561b1` es solo documentación); `harness/features.json` sin tocar; sin push.
+>
+> - R25 = R45 desde el endpoint: con `posventa`, un parte `archivado` en IT
+>   responde 200 con su traza y los dos avisos de F-033, y el registro de
+>   llamadas **entero** de los cuatro dobles queda vacío (ni Sigrid, ni
+>   listados, ni carpetas, ni subida, ni traza). Control: misma biblioteca →
+>   un aviso; carpeta renombrada → un aviso; nombre viejo → dos.
+> - Pasó a la primera; mutación a mano: 10 mutantes, 9 muertos por T15 y el
+>   de la construcción anticipada muerto por T13 (T15 no la fija, a propósito).
+> - **Observación para el líder**: con `posventa` y `sigrid-api` sin
+>   configurar, lo ya archivado respondería 503 (la ubicación se construye en
+>   el borde antes del paso). No viola R25/R45; decidir si se documenta en
+>   T17 o se enmienda.
+> - `bash harness/init.sh` en verde: **4.010 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+
+> ## ✅ F-013 · BLOQUE 4 HECHO (T13 y T14) · 2026-09-24 · siguiente: Bloque 5 (T15)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 4 · T13 y
+> T14»**. Sin red ni escrituras en ningún sistema (los scripts, solo en
+> ensayo local con red falsa); `harness/features.json` sin tocar; sin push.
+>
+> - **T13** (RED `ee7e675` → `3893e5d`, `3d9c5b1`): el borde compone según
+>   `SHAREPOINT_ESTRUCTURA`; `por_obra` como F-006 (ni Sigrid ni listados);
+>   `posventa` con el `partial` del resolutor, la misma instancia como
+>   archivador y explorador, `construir_ubicaciones` tras archivador y
+>   repositorio. `DestinoNoResuelto` → 409 `{error, motivo, candidatas}`;
+>   `UbicacionNoDisponible`/`ConfiguracionSigridIncompleta` → 503.
+> - **T14** (RED `f91095c` → `b87df4c`, `3bb32e1`, `edc9984`, `84085b8`): el
+>   23 con la regla del dominio y el resolutor de verdad (por fichero),
+>   `-UnidadesCsv`, resumen corregido; el 24 con `-SalidaCsv` (sin `obride`,
+>   fuera del repo). Ensayo local: R31 exacto y resumen 1/1/7.
+> - **Decisiones para el líder**: estrategia desconocida → 503 en el borde; el
+>   23 usa el resolutor (no solo el dominio); columnas del CSV; el 24 pregunta
+>   las obras por `IN` y no por `LIKE`.
+> - Mutación a mano 26/26 (T13) y 17/17 (scripts), con 2 huecos cerrados.
+>   Arnés: 109 mutantes, 108 muertos; el superviviente es `_Nivel` (aceptado).
+> - `bash harness/init.sh` en verde: **4.005 passed**, 35 skipped; cobertura
+>   **100 % de 551 líneas cambiadas**.
+
+> ## ✅ F-013 · BLOQUE 3 HECHO (T11 y T12) · 2026-09-24 · siguiente: Bloque 4 (T13, T14)
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 3 · T11 y
+> T12»**. Sin red ni escrituras en ningún sistema; `harness/features.json` sin
+> tocar; sin push.
+>
+> - **T11** (RED `7b7d0d1`: 39 failed → `d6ab81a`): `listar_carpetas` y
+>   `crear_subcarpeta` en el adaptador de Graph, que cumple los dos puertos con
+>   la misma instancia. Solo carpetas, todas las páginas, `404` → `None`,
+>   `nextLink` solo hacia Graph y fuera de los logs; crear = un `POST`, `409`
+>   éxito, padre ausente → `ArchivoFallido`.
+> - **T12** (RED `7a3468b`: `ImportError` → `66327f7`):
+>   `consultas_ubicacion.py`, `ubicacion.py` (solo `/api/sql/read`) y
+>   `construir_ubicaciones` (sin `CIERRE_HABILITADO`; con `ENTORNO=test` se
+>   niega). `('%677', '%[^0]%677')` para la 0677.
+> - **Decisiones que el líder debe conocer** (huecos de la spec): error nuevo
+>   `UbicacionNoDisponible` para R41 (el borde lo tiene que mapear a 503 en
+>   T13, junto con `ConfiguracionSigridIncompleta`); la puerta del entorno de
+>   la ubicación levanta `ArchivoDeshabilitado`; una lista `truncated` con
+>   menos filas de las pedidas no se devuelve; el `nextLink` solo se sigue si
+>   apunta a Graph.
+> - Mutación a mano 21/21 muertos. Arnés (900 s, 6 workers, solo): 105
+>   mutantes, 101 muertos; 3 huecos reales (duración de los logs) cerrados en
+>   `4da38a3`; 1 equivalente ya conocido (`_Nivel`), **aceptado por el humano el
+>   2026-09-24** («si»).
+> - `bash harness/init.sh` en verde: **3.962 passed**, 35 skipped; cobertura
+>   **100 % de 526 líneas cambiadas**.
+
+> ## ✅ F-013 · BLOQUE 2 CERRADO (T10 bis y T10) · 2026-09-24 · siguiente: Bloque 3 (T11, T12)
+>
+> implementer. Opción (a) del humano. Informe: **`progress/impl_F-013.md`,
+> sección «Bloque 2 (cierre) · T10 bis y T10»**. Sin red ni escrituras en
+> ningún sistema; `harness/features.json` sin tocar; sin push.
+>
+> - **T10** (RED `c6ec311`: 46 failed, 18 passed → código en `e279907`):
+>   `paso_archivo` gana `resolver_destino`; en el orden de `design.md` §5
+>   enmendado (tras L1 y el cotejo, antes del aviso y de la traza previa;
+>   creaciones tras la traza previa, en orden, un nivel por llamada; R18, R40,
+>   R45, R47). Tests nuevos: `test_f013_paso_archivo_posventa.py` (46) y
+>   `test_f013_por_obra_intacto.py` (19, con los controles del diff).
+> - **T10 bis** (en `e279907`, el mismo commit que la firma): el test de firma
+>   de F-033 recoge `resolver_destino` con `==` y recuadro fechado; 10
+>   inserciones y nada más. Ningún otro test de F-031…F-034 tocado.
+> - **Decisión que el líder debe conocer**: las carpetas las crea el paso con
+>   **el mismo `archivador`** (que en `posventa` es también
+>   `ExploradorBibliotecaPort`, `design.md` §3.2); si no lo es, `TypeError`
+>   antes de nada. **T13 tiene que pasar la misma instancia** como
+>   `archivador` y como `explorador` del `partial`.
+> - Mutación a mano de orden: 12/12 muertos (1 hueco cerrado en `668145c`).
+>   Arnés (timeout 900 s, 6 workers, sin `init.sh` a la vez): 73 mutantes, 72
+>   muertos, 1 superviviente **equivalente** (`_Nivel` frozen, ya visto en el
+>   bloque 2; nivel `critico`: requiere aceptación del humano), 0 timeouts.
+> - `bash harness/init.sh` en verde: **3.807 passed**, 35 skipped;
+>   cobertura **100 % de 347 líneas cambiadas**.
+
+> ## ⛔ F-013 · BLOQUE 2: T8 y T9 HECHAS, **T10 BLOQUEADA** · 2026-09-24 · decide el líder
+>
+> implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 2»** (el
+> §0 explica el bloqueo con la traza). Sin red ni escrituras en ningún
+> sistema; `harness/features.json` **sin tocar** por indicación del líder (la
+> feature no está marcada `blocked` en el JSON: lo decide él).
+>
+> **El bloqueo.** T10 pide añadir `resolver_destino` a la firma de
+> `paso_archivo` **y** mantener en verde sin tocarlos los tests de F-033.
+> `test_f033_l1_desde_el_almacen.py::test_f033_r21_la_firma_no_ofrece_ninguna_forma_de_forzar`
+> fija la firma **entera** con `==` (F-031 ya lo enmendó el 2026-09-22 para
+> `codigos_declarados`). Comprobado con el parámetro añadido de forma temporal
+> y el fichero restaurado: **1 failed, 43 passed**, «Extra items in the left
+> set: 'resolver_destino'». No se ha improvisado nada.
+>
+> **Propuesta (a), recomendada**: una tarea con nombre («T10 bis») que enmiende
+> ese test con recuadro fechado añadiendo `resolver_destino`, y la línea de
+> verificación de T10. No abre ninguna puerta: en `posventa` L1 corta antes de
+> resolver (R45). **(b)**, no recomendada: esquivar la firma con una función
+> aparte (se desvía de `design.md` §2.2 y duplica el orden del paso).
+>
+> - **T8** (`8bfb964`): `domain/ports/biblioteca.py` (exactamente
+>   `listar_carpetas` y `crear_subcarpeta`), `domain/ports/ubicacion.py` (las
+>   dos lecturas), `tests/utiles_destino.py` (`ExploradorFalso` y
+>   `UbicacionesFalsas`, que anotan cada llamada en un registro compartido; el
+>   árbol medido de la 0677 y sus 15 unidades, igual carácter a carácter que el
+>   de T6). RED `ModuleNotFoundError` → 42 passed.
+> - **T9** (`560d88f`): `application/pipelines/destino_archivo.py`, el
+>   resolutor sin `ctx` y sin escribir, en el orden de `design.md` §5
+>   enmendado. 133 tests; el caso de conjunto (las 15 unidades de la 0677)
+>   da la última columna de §4.6. RED `ImportError` → 134 passed. Mutantes a
+>   mano: 26, 23 muertos y 3 equivalentes, incluidos los de **orden** (mover
+>   cada puerta un paso: mueren). Arnés: 68 mutantes, 66 muertos; de los 2
+>   supervivientes, 1 hueco cerrado con test (`821b27d`) y 1 equivalente.
+> - `bash harness/init.sh` en verde: **3.742 passed**, 35 skipped; cobertura
+>   **100 % de 304 líneas cambiadas**.
+> - **Decisión que el líder debe conocer**: un `None` de `listar_carpetas`
+>   (base inexistente, o carpeta borrada entre dos listados) es
+>   `ArchivoFallido` (502), no un 409: la spec no lo fijaba.
+>
+> **Queda**: desbloquear T10 (decisión del líder), después el Bloque 3 (T11
+> Graph, T12 Sigrid; no dependen de T10 y podrían ir antes) y del 4 al 7.
+
+> ## ✅ F-013 · BLOQUE 1 HECHO (T5–T7) · 2026-09-24 · siguiente: Bloque 2 (T8–T10)
+>
+> implementer. Configuración y dominio puro, sin red ni escrituras en ningún
+> sistema; `harness/features.json` sin tocar. Informe:
+> **`progress/impl_F-013.md`, sección «Bloque 1»**.
+>
+> - **T5** (`77c62dd`, estilo `cd00118`): cinco campos en `settings.py`
+>   (`SHAREPOINT_ESTRUCTURA`, `_CARPETA_INCIDENCIAS`, `_CARPETA_FIRMADOS`,
+>   `_CARPETA_FIRMADOS_ALTERNATIVA` = `PARTES FIRMADO`, `_CREAR_CARPETAS` =
+>   `true`), ninguno para el nombre de la unidad. La fábrica rechaza una
+>   estrategia desconocida (R3) y la base vacía en `por_obra` (R17) antes de
+>   construir el adaptador. RED 27 failed → 37 passed.
+> - **T6** (`4d86c99`): `test_f013_destino_dominio.py` con las tablas de
+>   `design.md` §4 enteras, en rojo por `ImportError` (traza en el commit).
+> - **T7** (`a941acf`, y `0783c54` tras la mutación): `domain/models/destino_posventa.py`
+>   (casado de la obra por número, hoja alternativa, unidad, parecidas
+>   enmendadas, `VILLA NN`, R44, R50, `unir_ruta`) y `DestinoNoResuelto`.
+>   246 passed. Los controles de alcance de F-031, F-033 y F-034, en verde sin
+>   tocarlos.
+> - **Mutación** (del arnés, informe en el scratchpad; la formal es T20): la 1.ª
+>   pasada dejó 9 supervivientes (4 huecos reales con test nuevo, el resto
+>   equivalentes por código redundante, que se simplificó); la 2.ª,
+>   **43/43 muertos, 0 supervivientes**.
+> - `bash harness/init.sh` en verde: **3.566 passed**, 35 skipped en 146 s;
+>   cobertura del 100 % sobre 178 líneas cambiadas.
+> - **Decisiones que el líder debe conocer** (informe §2): la estrategia se
+>   compara exacta (sin recortar ni pasar a minúsculas); dos funciones que §2.1
+>   no nombra (`nombre_de_obra_nueva`, `nombre_de_carpeta_admisible`);
+>   `parecidas_de_tramo` recibe también la alternativa (para la partición);
+>   `obra_ref` fuera del `repr`; y, por la regla escrita en §4.2,
+>   `PARTES-INCIDENCIAS` casa con `PARTES INCIDENCIAS`.
+>
+> **Queda**: Bloque 2 (T8 puertos y dobles con el árbol medido, T9 resolutor,
+> T10 paso), y del 3 al 7.
+
+> ## ▶ F-013 · SPEC ENMENDADA APROBADA · 2026-09-24 · arranca el Bloque 1
+>
+> El humano aprobó la enmienda de `4579d7b` con **«si»**, incluidas las tres
+> decisiones del spec-author que le tocaba validar: **R44** (dos obras con el
+> mismo número en Sigrid → 409, con una lectura más por parte), **R50** (una
+> carpeta de unidad que casaría con dos unidades → 409) y que **H-3 de F-034**
+> (la puerta de gráfico y cierre no mira en qué biblioteca se archivó) queda
+> fuera. Respuestas del mismo día ya recogidas en la enmienda: las villas 8-15
+> se crean, y `PARTES FIRMADO` cuenta como hoja (el literal real se comprueba en
+> el paso 2 del corte: si fuera otro, 409 sin archivar).
+
+> ## ✅ F-013 · SPEC ENMENDADA TRAS T4 · 2026-09-24 · siguiente: aprobación del humano y Bloque 1
+>
+> spec-author. Enmienda de `specs/F-013-archivo-posventa/` con la medición de
+> T2/T3 y las decisiones de la parada T4, en recuadros fechados que citan lo
+> que decía cada requisito (nada borrado). **Sin código de producción.**
+>
+> - **Casado de la obra por número** (R10, T4-4): primera palabra del nombre,
+>   solo cifras, igual como entero al número de la obra; el resto no cuenta.
+>   `677  MIRASIERRA` casa; `0677-MIRASIERRA` y `677MIRASIERRA` son parecidas;
+>   dos carpetas con el mismo número → `obra_ambigua` (R13). Códigos no
+>   numéricos: la literal de antes.
+> - **Nombres al crear** (T4-1): obra `<cod> <con.res>` literal (R36, sin
+>   cambios; Posventa puede renombrarla si sigue empezando por el número);
+>   unidad **`VILLA NN`** derivada del `con.cod` con un patrón fijo medido
+>   (`<obra>.<grupo>VILLA <n>.`, solo `VILLA`), tabla de los 15 casos en
+>   `design.md` §4.6; fuera del patrón → 409 `unidad_sin_nombre_derivable`,
+>   solo cuando hay que crear. **`SHAREPOINT_NOMBRE_UNIDAD` se retira.**
+> - **VILLA 04** (T4-2, R48): se crea `PARTES FIRMADOS`; el explorador solo
+>   tiene `listar_carpetas` y `crear_subcarpeta`. **VILLA 02** (T4-6, R49):
+>   `PARTES FIRMADO` casa como alternativa (config
+>   `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA`), una forma y ninguna más; con
+>   las dos → `firmados_ambigua`. **Villas 8–15** (T4-5): se crean.
+> - **Arranque** (T4-3): runbook reescrito (`design.md` §7.3, `tasks.md`
+>   «Después del merge»): medición en seco antes, aviso a Posventa **antes del
+>   despliegue**, `$CrearCarpetasArchivo = "true"` nueva en `00_vars`,
+>   comprobaciones con Posventa el mismo día (R33, R42 reescritas) y tres
+>   frenos. Cierra el punto 1 de `impl_F-013.md` §8.
+> - **Desfases técnicos** (`impl_F-013.md` §8, 2–8): línea citada (`:497`); el
+>   resolutor va **entre L1 y el aviso del intento anterior** (R22, R45) y
+>   recibe los códigos de `codigos_guardados(ctx)` **como dos cadenas, sin
+>   `ctx`**; tests de alcance de F-031/F-032/F-033/F-034 que hay que mantener
+>   en verde, con los nombres vigilados (`design.md` §2.3); T15 sin
+>   precondición pendiente; parámetros añadidos del 23 y **sin BOM**
+>   aceptados. Hallados además: L1 en `posventa` no puede comparar la carpeta
+>   (R45) y una traza `pendiente` se perdía ante un 409 (R47).
+> - **Hueco que enseñó la medición**: la regla amplia de tramo no habría
+>   marcado `PARTES FIRMADO` como parecida (habría creado un duplicado); se
+>   ensancha (sin `S` final, por prefijo), y las de obra y unidad miran todas
+>   las secuencias de cifras (`design.md` §4.5).
+> - **Defecto del resumen del script 23**: lo corrige T14, con ensayo local
+>   sobre el árbol medido.
+>
+> **Para que el humano valide, sin bloquear** (las tres fallan cerradas o no
+> cambian nada):
+>
+> 1. **R44** (spec-author): dos obras de Sigrid con el mismo **número** → 409
+>    `obra_numero_no_unico`. Cuesta una segunda lectura de Sigrid por parte
+>    (`design.md` §4.7, §6.2). En la 0677, una obra (T3). Hará parar obras
+>    con código repetido (922 obras, 846 códigos).
+> 2. **R50** (spec-author): una carpeta de unidad que casaría con dos unidades
+>    de la obra → 409 `unidad_carpeta_compartida` (la derivación ignora el
+>    grupo `03`). En la 0677 no para nada.
+> 3. **H-3 de F-034**: la puerta de gráfico y cierre no mira la biblioteca; la
+>    spec lo lee como coherente con «olvidar sin borrar» y no la toca (R26).
+>
+> **A verificar en el corte (riesgo 16 de `design.md` §10)**: el literal
+> `PARTES FIRMADO` no cuadra del todo con la medición (la regla provisional
+> del 23 exigía la palabra `FIRMADOS` y aun así la marcó parecida). No
+> bloquea: si el literal es otro, la regla da 409. El paso 2 del corte lo
+> comprueba (VILLA 02 tiene que decir «resolvería»).
+>
+> Ninguna pregunta abierta de la medición. `harness/features.json` sin tocar.
+
+> ## ⏸ F-013 · PARADA T4 CERRADA · 2026-09-24 · decisiones del humano con la medición delante
+>
+> Medición de T2 y T3 en `progress/explore_F-013.md` (commit `32ddd42`). La
+> medición **desmiente §4 de `design.md`**: la carpeta real de la obra es
+> `677  MIRASIERRA` (sin cero, dos espacios, nombre corto que no es el de
+> Sigrid), así que la regla provisional no la casaba. Por la regla de T4, **la
+> spec vuelve al spec-author** antes del Bloque 1.
+>
+> Decisiones del humano, 2026-09-24 (respuestas literales a la pregunta):
+>
+> 1. **Nombre al crear**: «Unidad al estilo Posventa (Recomendado)». Unidad
+>    `VILLA NN` derivada del `con.cod` de Sigrid (`0677.03VILLA 13.` →
+>    `VILLA 13`, dos cifras); obra `<cod> <con.res de Sigrid>`, que Posventa
+>    renombra si quiere: como se casa por número, el sistema la sigue
+>    encontrando.
+> 2. **Unidad sin subcarpetas** (VILLA 04, 142 partes sueltos): «Crear PARTES
+>    FIRMADOS (Recomendado)». Lo antiguo se queda donde está.
+> 3. **Arranque**: «Crear desde el principio». `SHAREPOINT_CREAR_CARPETAS`
+>    activo desde el primer despliegue contra Posventa, con las ventanas
+>    abiertas por defecto: el primer parte de una villa sin carpeta (VILLA 12
+>    y 13 tienen reclamaciones y no tienen carpeta) la creará.
+> 4. **Casar la obra por su número** (677 = 0677), ignorando el resto del
+>    nombre: propuesto por el líder como necesario y no discutido.
+>
+> Sin respuesta todavía (no bloquean la enmienda): el literal de la carpeta
+> **parecida** de VILLA 02 (con la regla actual, 409 y no se archiva) y si las
+> villas 8-15 tienen carpeta en otro sitio de la biblioteca.
+
+> ## ✅ F-013 · T1 HECHA · 2026-09-24 · siguiente: T2 y T3 (humano) y parada T4
+>
+> **T1 cerrada** (`553ce39`): `infra/23_destino_posventa.ps1` (Graph, solo
+> `GET` + token: sitio y biblioteca desde la URL, roles, y con `-CodigoObra` el
+> árbol **solo de carpetas** con casan/parecidas y ficheros **contados**) e
+> `infra/24_ubicacion_sigrid.ps1` (Sigrid, solo `sql/read`: unidades de
+> posventa de la obra con `con.cod`, `con.res` y reclamaciones). Test
+> `test_f013_scripts_infra.py`: RED 40 failed → **44 passed**; 5 mutantes a mano,
+> 5 muertos; ensayo local con red falsa en verde. `bash harness/init.sh` en
+> verde: **3.283 passed**, 35 skipped. **Nada ejecutado contra Azure, Graph ni
+> Sigrid.**
+>
+> - **Desviación**: los scripts van **sin BOM** (ASCII + CRLF) como los otros 25
+>   de `infra/`: con BOM, `test_f010_prompt_keys_infra.py:77` (lee todo `infra/`
+>   como `ascii`) tumbaba la suite. T1 y `design.md` §11 pedían BOM.
+> - **Añadidos al 23** que la spec no nombra: `-MostrarNombres` (por defecto los
+>   nombres salen enmascarados, `VILLA 05 - <txt>`), `-DesdeKeyVault` (lee las
+>   `GRAPH_*` del vault en memoria), `-CarpetaObra`, `-MaxCarpetasObra`.
+> - **Para el líder, antes del bloque 1**: 8 puntos de la spec desfasados, con
+>   fichero y línea, en **`progress/impl_F-013.md` §8**. El más serio: el
+>   runbook del corte da por cerrada `ARCHIVO_HABILITADO` y desde el 2026-09-23
+>   se despliega **abierta** (el primer archivado en Posventa no sería el
+>   autorizado de R33, y podría crear carpetas antes de R42).
+> - **Las líneas de T2 y T3** (y cómo cargar las `GRAPH_*` sin escribir secretos
+>   en disco): **`progress/impl_F-013.md` §7**.
+
 > ## ✅ F-034 CERRADA · 2026-09-23 · falta desplegarla
 >
 > Review 2 APROBADA. V1 y V2 cerradas por decisión del humano («dalo por

@@ -39,12 +39,32 @@ Cinco cosas suyas **no** se heredan, y las cinco por un requisito escrito:
 4. Nada de `assert` para validar precondiciones: con `python -O` desaparecen.
 5. Los reintentos son de `tenacity`, como manda `docs/CONVENTIONS.md` y como
    ya hace el adaptador de Gemini, en vez de un `time.sleep` escrito a mano.
+
+## Desde F-013, también el explorador de la biblioteca
+
+> **Enmienda del 2026-09-24 (F-013 T11).** Este adaptador implementa, además
+> de `ArchivoPort`, `ExploradorBibliotecaPort` (`domain/ports/biblioteca.py`):
+> `listar_carpetas` y `crear_subcarpeta`, y **ninguna** operación más
+> (`specs/F-013-archivo-posventa/design.md` §3.2, §6.1). La fábrica devuelve
+> una sola instancia y el borde la pasa por los dos lados. Lo de F-006 no
+> cambia: las tres operaciones de `ArchivoPort` siguen igual, carácter a
+> carácter.
+>
+> - **Listar** sigue el `@odata.nextLink` hasta agotarlo (R12) y filtra las
+>   carpetas en cliente. El `nextLink` lleva el identificador de la
+>   biblioteca y el testigo de paginación: **no se registra** ni entra en un
+>   mensaje, y solo se sigue si apunta a Graph —el token no viaja a nadie
+>   más—.
+> - **Crear** es un nivel por llamada, con `_crear_carpeta` tal cual: el `409`
+>   es «ya existe» y un padre ausente es el `404` de Graph, que aquí es
+>   `ArchivoFallido` y **nunca** una ruta creada tramo a tramo (R15).
 """
 
 from __future__ import annotations
 
 import logging
 import time
+from functools import partial
 from typing import Any
 from urllib.parse import quote
 
@@ -107,6 +127,14 @@ NO_ENCONTRADO = 404
 
 #: Los códigos con los que Graph dice que ha ido bien.
 CORRECTOS = (200, 201)
+
+#: Lo que se pide al listar carpetas (F-013 R12): el nombre y la faceta
+#: `folder`, doscientos por página.
+#:
+#: Se filtra **en cliente** por la faceta, y no con `$filter`: filtrar por
+#: `folder` no es fiable en las bibliotecas de SharePoint (`design.md` §6.1),
+#: y un filtro que se ignorara en silencio convertiría ficheros en carpetas.
+CONSULTA_DE_LISTADO = "$select=name,folder&$top=200"
 
 #: Margen con el que se renueva el token antes de que caduque, en segundos.
 MARGEN_DE_TOKEN_S = 60
@@ -298,6 +326,69 @@ class AdaptadorSharePointGraph:
         )
         return self._a_item(respuesta.json(), carpeta=carpeta)
 
+    # ------------------------------------------- el explorador (F-013)
+    def listar_carpetas(self, *, carpeta: str) -> tuple[str, ...] | None:
+        """Los nombres de las **carpetas** hijas, de todas las páginas (R12).
+
+        `carpeta=""` es la raíz. `None` si la carpeta no existe —el `404` de
+        la **primera** página—; una tupla vacía si existe y no tiene
+        subcarpetas (VILLA 04, con sus ficheros sueltos).
+
+        Un `404` en una página **siguiente** no es «no existe»: la carpeta
+        desapareció a mitad de listado, y ni «no existe» (se crearía a ciegas)
+        ni lo leído hasta entonces (faltaría la buscada) son verdad. Es
+        `ArchivoFallido`, como cualquier respuesta que no traiga la lista.
+        """
+        arranque = time.monotonic()
+        url: str | None = f"{self._url_de_hijos(carpeta)}?{CONSULTA_DE_LISTADO}"
+        tolerados: tuple[int, ...] = (NO_ENCONTRADO,)
+        nombres: list[str] = []
+        paginas = 0
+        while url is not None:
+            respuesta = self._con_reintentos(
+                "listar las carpetas",
+                partial(self._pedir_pagina, url),
+                tolerados=tolerados,
+            )
+            if respuesta.status_code == NO_ENCONTRADO:
+                return None
+            paginas += 1
+            cuerpo = _cuerpo_de_pagina(respuesta)
+            nombres.extend(_carpetas_de(cuerpo))
+            url = _pagina_siguiente(cuerpo)
+            tolerados = ()
+
+        # Ni el `nextLink` ni la URL: llevan el identificador de la biblioteca
+        # y el testigo de paginación (R23). Los nombres de carpeta, sí.
+        log.info(
+            "F-013 carpetas listadas: carpeta=%s carpetas=%d paginas=%d segundos=%.2f",
+            carpeta or "(raíz)",
+            len(nombres),
+            paginas,
+            time.monotonic() - arranque,
+        )
+        return tuple(nombres)
+
+    def crear_subcarpeta(self, *, padre: str, nombre: str) -> None:
+        """Crea `nombre` dentro de `padre`: **un nivel**, y nada más (R15).
+
+        Es `_crear_carpeta` de F-006 tal cual: `conflictBehavior=fail` y el
+        `409` tolerado, así que «ya existe» es un éxito y queda **una** (R39).
+        Sin `GET` previo y sin recorrer tramos: si el padre no existe, Graph
+        responde `404` y eso es `ArchivoFallido`, no una carpeta nueva.
+        """
+        self._crear_carpeta(padre=padre, nombre=nombre)
+
+    def _pedir_pagina(self, url: str) -> Any:
+        """Un `GET` de una página del listado, con el token en la cabecera."""
+        return self._cliente_http().get(url, headers=self._cabeceras())
+
+    def _url_de_hijos(self, carpeta: str) -> str:
+        """Los hijos de la raíz (`carpeta=""`) o de una ruta."""
+        if not carpeta:
+            return f"{GRAPH}/drives/{self._drive_id}/root/children"
+        return f"{self._url_de_ruta(carpeta)}:/children"
+
     # ------------------------------------------------------------ carpeta
     def _existe(self, ruta: str) -> bool:
         """¿Está esa carpeta? `404` es «no», no un fallo."""
@@ -446,3 +537,67 @@ class AdaptadorSharePointGraph:
             nombre=str(cuerpo["name"]),
             carpeta=carpeta,
         )
+
+
+# --------------------------------------------------------------------------
+# El listado de carpetas (F-013): lo que se lee de cada página
+# --------------------------------------------------------------------------
+
+
+def _listado_fallido(motivo: str) -> ArchivoFallido:
+    """El error de un listado que no se puede usar, sin URL ni identificadores."""
+    return ArchivoFallido(
+        f"no se han podido listar las carpetas en SharePoint: {motivo}"
+    )
+
+
+def _cuerpo_de_pagina(respuesta: Any) -> dict[str, Any]:
+    """El cuerpo de una página, que tiene que ser un objeto JSON."""
+    try:
+        cuerpo = respuesta.json()
+    except ValueError as no_es_json:
+        raise _listado_fallido(
+            "la respuesta no es JSON: puede ser la página de error de un proxy "
+            "por el camino"
+        ) from no_es_json
+    if not isinstance(cuerpo, dict):
+        raise _listado_fallido("la respuesta no tiene la forma esperada")
+    return cuerpo
+
+
+def _carpetas_de(cuerpo: dict[str, Any]) -> list[str]:
+    """Los nombres de los elementos con faceta `folder`, tal cual (R4, R12).
+
+    Una página sin lista de elementos **no** es «ninguna carpeta»: tomarla por
+    vacía sería crear una obra que ya existe. Un elemento sin nombre de texto
+    se descarta en vez de inventarle uno.
+    """
+    elementos = cuerpo.get("value")
+    if not isinstance(elementos, list):
+        raise _listado_fallido("la respuesta no trae la lista de elementos")
+    return [
+        elemento["name"]
+        for elemento in elementos
+        if isinstance(elemento, dict)
+        and "folder" in elemento
+        and isinstance(elemento.get("name"), str)
+    ]
+
+
+def _pagina_siguiente(cuerpo: dict[str, Any]) -> str | None:
+    """El `@odata.nextLink`, si lo hay y **solo** si apunta a Graph.
+
+    El token viaja en la cabecera de cada página: seguir un enlace a otro
+    sitio —un proxy que reescribe, un cuerpo manipulado— sería mandárselo a un
+    tercero. El enlace **no** entra en el mensaje: lleva el identificador de
+    la biblioteca y el testigo de paginación (R23).
+    """
+    siguiente = cuerpo.get("@odata.nextLink")
+    if siguiente is None:
+        return None
+    if not isinstance(siguiente, str) or not siguiente.startswith(f"{GRAPH}/"):
+        raise _listado_fallido(
+            "la página siguiente no apunta a Graph y no se sigue: el token solo "
+            "viaja a Graph"
+        )
+    return siguiente

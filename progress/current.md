@@ -1,12 +1,22 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ▶ F-035 · BLOQUE 3a (T5–T7) EN CURSO · 2026-09-25
+> ## ▶ F-035 · BLOQUE 3a (T5–T7) HECHO · 2026-09-25 · siguiente: T8, T9 y T9 bis
 >
-> implementer. Encargo: **solo** T5 (`js/maqueta_datos.js`), T6
-> (`js/portal.js`) y T7 (`js/portal_app.js` y `css/portal.css`). **No** T8,
-> T9 ni T9 bis. Tarea en curso: T7 (T5 y T6 hechas). Informe: `progress/impl_F-035.md`,
-> «Bloque 3a · T5 a T7».
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 3a · T5 a T7».
+> Commits `487d459` (T5), `399fe52` (T6) y `9b60f38` (T7). Sin push,
+> `harness/features.json` sin tocar; ni `index.html` ni los tests del circuito.
+>
+> - Nuevos `js/maqueta_datos.js`, `js/portal.js`, `js/portal_app.js` y
+>   `css/portal.css`. JS: 390/398 (los 8 rojos leen el HTML: T8, T9 y T9
+>   bis); front: 269/294; raíz: 67/69 (R37: T10). R16, R12 y R20 del
+>   componente, en verde.
+> - 4 tests **añadidos** al final de `portal.test.js` (solo altas de línea)
+>   para `contadoresInicio`, `seleccionadasPara` y `buscarPorId`, con fase RED.
+> - `bash harness/init.sh` **en rojo por diseño**: la raíz se para en R37 y
+>   el front en el puente `test_f007_js.py`.
+> - Para T9: montaje con `x-data="portalPosventa()"` y `x-init="iniciar()"`,
+>   y `index.html` tiene que cargar `css/portal.css` (informe §2).
 
 > ## F-035 · BLOQUE 2 (RED) HECHO · 2026-09-25 · siguiente: bloque 3 (T5–T9 bis)
 >

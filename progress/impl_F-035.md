@@ -449,3 +449,235 @@ terminar; nada de él se ha versionado:
 | Cobertura de líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`, de `bash harness/init.sh`. Los ficheros nuevos son tests (`harness/alcance.py` excluye `tests/`) |
 | Mutantes | **No se lanza en este bloque**: la campaña (0 mutantes esperados) y las ocho mutaciones manuales son T11. En el humo (§4) ya se vio morder a R45, R30/R43, R32 y R9 |
 | Tiempo de las suites | `node --test` de los dos ficheros nuevos: 0,39 s; `tests_js/*` entero: 1,28 s; `pytest` de `test_f035_portal.py`: 1,25 s; `pytest` del front entero: 6,44 s; `test_f035_placeholders_vivos.py`: 0,07 s |
+
+## Bloque 3a · T5 a T7 · 2026-09-25
+
+Encargo del líder: **solo** la primera mitad del bloque 3, T5
+(`js/maqueta_datos.js`), T6 (`js/portal.js`) y T7 (`js/portal_app.js` y
+`css/portal.css`). **Fuera**: T8 (la mudanza a `partes.html`), T9 (el portal
+en `index.html`) y T9 bis (la barra del circuito). Sin push; sin tocar
+`harness/features.json`. Ninguna llamada de red, ni nada que escriba
+(R14–R18); datos ficticios (R24); catálogos de Sigrid con códigos reales
+(D-10).
+
+Precondiciones: rama `feature/F-035-portal-posventa`, árbol limpio en
+`835d659`. `bash harness/init.sh` en rojo **por diseño** al empezar (los
+tests del bloque 2: la raíz se paraba en R27 por falta de `js/portal.js`, el
+front en el puente `test_f007_js.py`); es el estado que dejó el bloque 2 y el
+encargo es ponerlos en verde. Leídos `requirements.md`, `design.md`,
+`tasks.md`, el informe del bloque 2, `docs/CONVENTIONS.md`,
+`docs/referencia/04_alta_incidencia_sigrid.md` y `azure-apps/sigrid_api.md`
+§8.9.
+
+### 1 · Qué cambió
+
+| Commit | Fichero | Qué es |
+|---|---|---|
+| `487d459` **T5** | `services/postventa-front/js/maqueta_datos.js` (**nuevo**) | Los doce bloques de `design.md` §7.1 con su `ficha: "F-0NN"` literal, congelados en profundidad; `window.MaquetaDatos` y `module.exports` |
+| `399fe52` **T6** | `services/postventa-front/js/portal.js` (**nuevo**) | Catálogos `SECCIONES` (con `pagina`), `PLACEHOLDERS` (27, con `bandeja.reintentarVolcado`), `ESTADOS` y `TITULOS_FICHAS`; las funciones puras de §8.1 más `seleccionadasPara` y `buscarPorId`; `window.Portal` y `module.exports` |
+| `399fe52` **T6** | `services/postventa-front/tests_js/portal.test.js` | **Solo se añaden** 4 tests al final (`git diff --numstat 835d659` → `75 0`): `contadoresInicio` (2), `seleccionadasPara` y `buscarPorId`. Ninguna línea existente cambiada |
+| `9b60f38` **T7** | `services/postventa-front/js/portal_app.js` (**nuevo**) | `function portalPosventa()`: estado de §8.2 y métodos de una línea que delegan en `Portal`; `module.exports` |
+| `9b60f38` **T7** | `services/postventa-front/css/portal.css` (**nuevo**) | `.placeholder` (borde discontinuo, rayado, texto atenuado, `cursor: help`), `.placeholder-ficha` y `[x-cloak]` |
+| los tres | `specs/F-035-portal-posventa/tasks.md` | T5, T6 y T7 marcadas `[x]` |
+| T5, T6 | `progress/current.md` | Tarea en curso |
+
+Ni `index.html`, ni `partes.html`, ni un test del circuito, ni los `js/*.js`
+existentes, ni `css/styles.css`, ni configuración: R33 sigue en verde.
+
+### 2 · Decisiones de diseño
+
+Ninguna contradice la spec ni los tests; fijan lo que la spec dejaba abierto y
+son contrato para T9.
+
+**Datos (T5)**
+
+1. **Oficios: solo los cinco códigos documentados** en
+   `04_alta_incidencia_sigrid.md` §3–§4 (`0005`, `0011`, `0021`, `0024`,
+   `0143`), con su resumen real (D-10). El ejemplo de `design.md` §5.3
+   («`EJ07 · Fontanería Ejemplo, S.L.`») **no se usa**: no hay un código de
+   fontanería documentado y D-10 pide códigos reales, así que no se inventa
+   uno. Las descripciones de ejemplo se ajustan a esos cinco oficios.
+2. **Tres obras** (`9901` NORTE, `9902` SUR, `9903` ESTE); **8 filas de
+   bandeja** (6 Excel y 2 Web; `BJ-0002` sin ubicación, oficio ni
+   intervinientes y sin propuesta de industrial; `BJ-0003`, la única con tipo
+   `0003`; `BJ-0006` duplicada y descartada; `BJ-0008` volcada, con el código
+   del «creado» del volcado hecho); **12 incidencias** (3 SAT, 3 PTE, 2 TER,
+   2 NPR y 2 CER), 3 con `carpetaArchivo` (R41) y una con dos intervinientes
+   del mismo oficio, como en el alta manual. Propietarios y personas llevan
+   la obra en el nombre («Propietario Ejemplo 3 (Norte)») para no repetirse
+   entre obras.
+3. **Volcado (R40)**: dry-run de `9901` (3 `previsto` con código provisional
+   `RS99.09/0001…0003`, 1 `idempotente` y 1 `rechazado`
+   `oficio_no_esta_en_la_obra`: la `9901` no tiene jardinería) y volcado
+   hecho de `9902` (2 `creado`, 1 `idempotente`, 1 `rechazado`
+   `interviniente_ambiguo` —la `9902` tiene dos proveedores de `0143`— y 1
+   `no_procesado` `presupuesto_de_tiempo_agotado`). Los códigos tras el
+   volcado son `RS99.09/NNNN` (`design.md` §7.2): la primera versión usaba
+   `RS99.08/…` en los idempotentes y el test de R40 lo cazó; se corrigió **el
+   dato**, no el test.
+4. **Capítulos (R22)**: una venta sin enlazar (`null`, `9902`) **y un cero de
+   verdad** (`coste: 0, venta: 0`, `9903`), para que en pantalla se vean
+   «sin enlazar» y «0,00 €» distintos.
+5. **Campos de la ficha (R25)**: `incidencias.campos` con `bloque`,
+   `etiqueta`, `origen`, `clave` y `nota`. `clave` es la propiedad de la fila
+   que lo rellena, o `null` si la maqueta no tiene dato («sin datos de
+   ejemplo»); T9 pinta con ella la pestaña «Datos». «Industrial» va con
+   origen `pendiente` y su motivo (§5.5: cuál de los intervinientes es el
+   industrial lo confirman F-039 y F-040).
+6. **Claves que el diseño no nombraba**, para que T9 no escriba datos a mano:
+   `bandeja.origenes`, `bandeja.estadosRevision`, `fila.fecha`,
+   `fila.duplicada`, `fila.codSigrid`, `incidencia.hora`,
+   `incidencia.correoAvisos` (destino del correo de «no procede», en
+   `ejemplo.invalid`), `incidencia.parte` (guardado, archivado, adjunto,
+   cerrado), `entrada.columnas` (lo que necesita cada fila del Excel, §5.2),
+   `noProcede.plantillaCorreo` (asunto, saludo, cuerpo, despedida) y
+   `datamart.filas[].fichas` (una lista, **no** `ficha:`, para no crear
+   restos falsos en R28).
+7. **`congelar()`** es una función **dentro del IIFE**, no del objeto
+   exportado: «ni una función» (R23) se cumple en `MaquetaDatos`, que es lo
+   que prueba el test.
+
+**Lógica (T6)**
+
+8. **El título de R11** sale de `Portal.TITULOS_FICHAS`, copia literal de los
+   títulos de `harness/features.json` (la maqueta no puede leerlo). Sus
+   claves son `"F-0NN":`, no `ficha:`, así que no cuentan como restos; la
+   última ficha que retire sus placeholders borra el mapa (lo dice su
+   comentario).
+9. **Redacción del aviso**: «Todavía no hace nada: lo construye F-0NN ·
+   <título>. <explicación>» y, en bloque, « Con la selección actual
+   afectaría a N incidencias.» (en singular con 1).
+10. **`formatoImporte` a mano**, no con `Intl`: `Intl` en es-ES no agrupa los
+    miles de cuatro cifras («1250,00 €») y el navegador y Node podrían
+    diferir. Separador `.`, decimal `,` y espacio duro antes de «€».
+11. **Dos funciones puras nuevas, con sus tests** (fase RED abajo), para que
+    el pegamento no decida nada: `seleccionadasPara(id, selecciones)` (qué
+    selección cuenta un placeholder en bloque según el prefijo de su `id`) y
+    `buscarPorId(filas, id)`. Los tests se **añaden** al final de
+    `portal.test.js`; ninguno existente se toca.
+
+**Componente y estilos (T7)**
+
+12. **Contrato de montaje para T9**: `x-data="portalPosventa()"` **y**
+    `x-init="iniciar()"`. No hay `init()` de Alpine: si T9 pusiera además
+    `x-init`, se suscribiría dos veces a `hashchange`.
+13. `aplicarRuta()` pone `seccion`, `incidenciaAbierta` y `avisoRuta`, y
+    vuelve la ficha a la pestaña «Datos» con el panel de «no procede»
+    cerrado. `ir()` solo escribe el hash; el cambio llega por `hashchange`.
+14. **Métodos para T9** (todos de una línea): `incidenciasFiltradas`,
+    `bandejaFiltrada`, `impresionFiltrada`, `incidenciasDelCapitulo`,
+    `alternarIncidencia/Bandeja/Impresion`, `quitarSeleccionIncidencias`,
+    `incidenciaActual`, `verPestanaFicha`, `abrir/cerrarNoProcede`,
+    `filaBandeja`, `abrir/cerrarFilaBandeja`, `abrir/cerrarCapitulo`,
+    `contadores`, `etiquetaEstado`, `importe`, `obra`, `tipo`, `oficio`,
+    `forma`, `estadoVolcado`, `resumenVolcado`, `propuesta`, `oficiosDeObra`,
+    `vinculo`, `hashDe` y `placeholder`.
+15. **Para T9**: el test de R9 sobre el CSS exige que `index.html` cargue
+    `css/portal.css`; la regla `.placeholder` ya cumple su expresión regular
+    (comprobado aparte: `True`).
+
+### 3 · Fase RED
+
+- **T5 y T7**: su RED es la del bloque 2 (§3 de este informe): los 24 tests
+  de `maqueta_datos.test.js` y R16, R12 y R20 del componente fallaban con
+  `Cannot find module '../js/maqueta_datos.js'` / `'../js/portal.js'`.
+- **T6**, tests nuevos escritos antes que `js/portal.js`. Comando, desde
+  `services/postventa-front`:
+  `node --test --test-name-pattern="contadoresInicio|seleccionadasPara|buscarPorId" "tests_js/portal.test.js"`
+
+  ```
+  ✖ f035 §5.1: contadoresInicio cuenta cada fase del ciclo desde los datos (4.3307ms)
+  ✖ f035 §5.1: contadoresInicio sobre los datos de ejemplo no se escribe a mano (0.7739ms)
+  ✖ f035 R12: seleccionadasPara cuenta la selección de la sección del placeholder (0.6953ms)
+  ✖ f035 R6: buscarPorId devuelve la fila o null, sin lanzar (0.8065ms)
+  ℹ tests 4
+  ℹ pass 0
+  ℹ fail 4
+  ✖ failing tests:
+  ✖ f035 §5.1: contadoresInicio cuenta cada fase del ciclo desde los datos (4.3307ms)
+    Error: Cannot find module '../js/portal.js'
+  …
+  ```
+
+  Con `js/portal.js`, los cuatro en verde.
+- **Un rojo real durante T5** (no de módulo ausente), `node --test
+  "tests_js/maqueta_datos.test.js"`:
+
+  ```
+  ✖ f035 R40: el volcado hecho no tiene previstos y enseña los cuatro resultados reales (1.0737ms)
+    AssertionError [ERR_ASSERTION]: un idempotente lleva su código de Sigrid
+      actual: 'RS99.08/0042',
+      expected: /^RS99\.09\/\d{4}$/,
+  ```
+
+- **Mordisco de R16**, en una copia aislada en el scratchpad (no en el árbol
+  real; retirada al terminar): `placeholder()` con `fetch("/api/x");`
+  añadido → `✖ f035 R16: pulsar todos los placeholders del catálogo no llama
+  a nada…` con `Error: R16: la maqueta ha llamado a fetch`. Es la mutación 1
+  de `design.md` §11; la campaña formal de las ocho sigue siendo T11.
+
+### 4 · Resultado de las suites
+
+| Suite (desde `services/postventa-front`, salvo la raíz) | Resultado |
+|---|---|
+| `node --test "tests_js/maqueta_datos.test.js"` (**T5**) | **24/24** |
+| `python -m pytest tests/test_f007_sin_datos_reales.py -q` (**T5**) | **4 passed** |
+| `node --test "tests_js/portal.test.js"` (**T6/T7**) | **44/52**: los 8 rojos leen el HTML (abajo) |
+| `node --check` de `js/portal_app.js` (**T7**), `js/portal.js` y `js/maqueta_datos.js` | OK |
+| `node --test tests_js/*.test.js` | **398: 390 pass, 8 fail** (los 322 del circuito, en verde) |
+| `python -m pytest tests -q` (front, sin `-x`) | **294: 269 passed, 25 failed** |
+| `python -m pytest tests -q` (raíz) | **69: 67 passed, 2 failed** |
+
+**Siguen en rojo, y de qué tarea dependen** (ninguno por T5–T7):
+
+- **JavaScript (8)**, todos por HTML:
+  - `f035 R9` ×2 (placeholders de `index.html` cruzados con el catálogo) → **T9**.
+  - `f035 R44` ×3 de `index.html` (barra: las ocho pestañas, los `href` de
+    `enlaceSeccion(id, "portal")`, primer elemento) → **T9**.
+  - `f035 R44` ×3 de `partes.html` (lo mismo con `"circuito"`) → **T8** (que
+    exista `partes.html`) y **T9 bis** (la barra).
+- **Front, pytest (25)**:
+  - `test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde`, el
+    puente: cae por los 8 de JavaScript → T8, T9 y T9 bis.
+  - `test_f035_portal.py`, **T9**: `r1`, `r42` (la raíz del `dev_server`),
+    `r3` ×2, `r9` ×2 (el del CSS cae porque `index.html` aún no carga
+    `css/portal.css`), `r10`, `r11`, `r13` ×2, `r15`, `r17`, `r34`, `r38` ×2
+    y `r46`.
+  - **T8**: `r42` (el circuito en `partes.html`), `r43` (los nueve scripts) y
+    `r32` (las siete líneas `INDEX`).
+  - **T8 + T9 bis**: `r30_r43`, `r31`, `r45` y `r47`.
+  - **T10**: `r36` (README).
+- **Raíz (2)**: `r37` ×2 (`docs/ARCHITECTURE.md`) → **T10**.
+
+**En verde gracias a este bloque**: los 24 de datos; 44 de `portal.test.js`
+(entre ellos R16, R12 y R20 del componente); en el front, R14 y R18 de
+`maqueta_datos.js`, `portal.js`, `portal_app.js` y `portal.css` y las dos
+guardias de pegamento de `portal_app.js` (R33 y R35 siguen en verde); en la
+raíz, R27 ×2, R28, R29 y el control con F-044 en `done`.
+
+`bash harness/init.sh`: **en rojo por diseño**, dos `[KO]`: la raíz se para
+(`-x`) en `test_f035_r37…` (T10) y el front en el puente `test_f007_js.py`
+(los 8 de HTML). `compileall` en verde; `ruff`, en los 61 avisos de antes.
+
+### 5 · Qué queda fuera y qué falta
+
+- **Fuera de este bloque, a propósito**: T8 (mudanza), T9 (el portal en
+  `index.html`), T9 bis (la barra del circuito) y T10–T13.
+- **Para T9**: el contrato de montaje (decisión 12), los métodos del
+  componente (14), el `<link>` a `css/portal.css` (15), las claves de datos
+  nuevas (6) y la forma de `incidencias.campos` (5). Los enganches del HTML
+  que fijan los tests siguen siendo los del §2.8 del bloque 2.
+- **Para el reviewer**: la decisión 1 (sin «Fontanería», por D-10), la 8
+  (títulos copiados de `features.json`) y la 11 (dos funciones y cuatro tests
+  añadidos a `portal.test.js`, solo altas de línea).
+- **Verificaciones MANUAL** pendientes: ninguna de este bloque (V1 y V2 son
+  T12).
+
+### Evidencias (bloque 3a)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | JavaScript **398** (390 pass, 8 fail, todos de HTML); pytest del front **294** (269 passed, 25 failed); pytest de la raíz **69** (67 passed, 2 failed). Tests nuevos en este bloque: **4** (JavaScript) |
+| Cobertura de líneas cambiadas | **N/A**: el bloque solo añade JavaScript y CSS; la puerta mide Python de producción (`harness/alcance.py`) y F-035 no cambia ni una línea Python de producción frente a `dev` |
+| Mutantes | **No se lanza en este bloque** (0 esperados: no hay Python de producción; la campaña y las ocho mutaciones manuales son T11). Mordisco de R16 comprobado en una copia aislada (§3) |
+| Tiempo de las suites | `node --test tests_js/*.test.js`: 0,97 s; `maqueta_datos.test.js`: 0,31 s; `portal.test.js`: 0,31 s; pytest del front: 5,97 s; pytest de la raíz: 5,83 s |

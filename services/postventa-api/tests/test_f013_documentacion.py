@@ -517,10 +517,16 @@ def test_f013_t17_el_runbook_documenta_los_dos_scripts_como_son(texto):
 
 @pytest.mark.parametrize(
     ("variable", "valor"),
-    (("EstructuraArchivo", "por_obra"), ("CarpetaBaseArchivo", "Postventa"), ("CrearCarpetasArchivo", "true")),
+    (("EstructuraArchivo", "posventa"), ("CarpetaBaseArchivo", ""), ("CrearCarpetasArchivo", "true")),
 )
-def test_f013_t17_las_variables_del_destino_valen_lo_de_hasta_el_corte(variable, valor):
-    """`design.md` §2.2 · `por_obra` / `Postventa` hasta el corte; crear, `true` (T4-3)."""
+def test_f013_t17_las_variables_del_destino_valen_lo_del_corte(variable, valor):
+    """`design.md` §2.2 y §7.3 · desde el corte, `posventa` en la raíz; crear, `true` (T4-3).
+
+    > **Enmienda del 2026-09-25 (líder, corte de F-013).** Decía: *«`por_obra` /
+    > `Postventa` hasta el corte; crear, `true` (T4-3)»*. El paso 2 del corte salió
+    > PASA contra la red real y el humano pidió desplegar en producción: paso 5 de
+    > `docs/DESPLIEGUE.md` §9. Volver atrás es el freno 3 del runbook.
+    """
     texto = VARIABLES_INFRA.read_text(encoding="ascii")
 
     assert re.findall(rf'^\${variable} = "(.*)"\r?$', texto, re.MULTILINE) == [valor]

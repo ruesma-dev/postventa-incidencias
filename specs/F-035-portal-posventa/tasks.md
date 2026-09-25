@@ -136,7 +136,7 @@
       los tests que necesitan `portal_app.js`, `portal.html` o el `<nav>` de
       `index.html` (se anotan en el informe cuáles siguen rojos y por qué).
 
-- [ ] **T7**: `js/portal_app.js` (`design.md` §8.2) y `css/portal.css`
+- [x] **T7**: `js/portal_app.js` (`design.md` §8.2) y `css/portal.css`
       (`design.md` §6.1).
       **Verificación**: `node --test "tests_js/portal.test.js"` con R16 en
       verde; `node --check js/portal_app.js`.

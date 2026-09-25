@@ -1,0 +1,43 @@
+/* services/postventa-front/css/portal.css */
+/* F-035 · Estilos propios del portal (la maqueta). Solo lo que Tailwind no
+   resuelve con utilidades escritas enteras en el HTML. Vive aparte de
+   css/styles.css para que nada de lo que pinta el circuito cambie por la
+   maqueta (R33).
+
+   .placeholder (design.md §6.1): un botón que TODAVÍA NO HACE NADA. Borde
+   discontinuo, rayado suave, texto atenuado y cursor de ayuda. No se usa
+   `disabled`: un botón deshabilitado no recibe el clic y no podría explicar
+   qué ficha lo construirá (R11). */
+
+.placeholder {
+  border: 2px dashed #9ca3af;
+  background-color: #f9fafb;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(156, 163, 175, 0.14) 0,
+    rgba(156, 163, 175, 0.14) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  color: #6b7280;
+  cursor: help;
+}
+
+.placeholder:hover,
+.placeholder:focus-visible {
+  border-color: #4b5563;
+  color: #374151;
+}
+
+/* La etiqueta F-0NN visible dentro del botón (R9). */
+.placeholder-ficha {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+/* Lo que Alpine aún no ha montado no parpadea al cargar. */
+[x-cloak] {
+  display: none !important;
+}

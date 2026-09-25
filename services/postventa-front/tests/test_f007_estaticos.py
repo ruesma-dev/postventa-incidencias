@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 
 RAIZ_FRONT = Path(__file__).resolve().parents[1]
-INDEX = RAIZ_FRONT / "index.html"
+INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
 CONFIG_JS = RAIZ_FRONT / "js" / "config.js"
 CONFIG_SWA = RAIZ_FRONT / "staticwebapp.config.json"
 DEV_SERVER = RAIZ_FRONT / "dev_server.py"

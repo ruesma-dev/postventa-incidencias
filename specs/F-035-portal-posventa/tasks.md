@@ -166,7 +166,7 @@
 >       front entero en verde (los ~256 de antes siguen igual) y `node --test
 >       "tests_js/*.test.js"` en verde (los 322 de antes más los nuevos).
 
-- [ ] **T8** *(2026-09-25, D-3)*: **mudar el circuito**, en **un solo
+- [x] **T8** *(2026-09-25, D-3)*: **mudar el circuito**, en **un solo
       commit**: `git mv services/postventa-front/index.html
       services/postventa-front/partes.html`; en `partes.html`, **solo** la
       línea 1 (`<!-- services/postventa-front/partes.html -->`); y en los

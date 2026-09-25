@@ -55,6 +55,25 @@
 > D-7, D-8, D-9 y D-10, con la recomendación; la plantilla de impresión,
 > para F-044.
 
+> **Segunda ronda del humano, 2026-09-25, tras ver la maqueta (acta literal
+> en `design.md` §13.1, «Segunda ronda»).** Con F-035 en `6bc4b6c` (review 2
+> APROBADA, sin mergear, V1/V2 pendientes):
+>
+> - **Navegación** («en lugar de que se abran las pestañas aparte, me
+>   gustaría que se abrieran en la misma ventana como en una web normal
+>   (para la maqueta vale así)»): **en la maqueta no cambia** (D-2, R31);
+>   entra **R48**, la regla para las fichas que conviertan secciones en
+>   reales: todo navegará en la misma ventana.
+> - **Identidad visual Ruesma** («quiero que el estilo sea como el de portal
+>   ruesma (ohana.ruesma.es) […] quiero que sea muy bonito y elegante»), **en
+>   el portal y en el circuito entero** («También el circuito entero»):
+>   entran **R49–R61** (§1.11). El circuito está en producción, así que en él
+>   **solo cambia la presentación**: R59 sustituye a la comparación línea a
+>   línea de R30/R43 por una guardia que solo admite cambios de `class`, las
+>   cuatro etiquetas `<link>` de la cabecera y la barra; R33 se enmienda para
+>   dejar cambiar `css/styles.css`. **Ningún test del circuito cambia**
+>   (medido: `design.md` §15.2).
+
 ## 0 · Qué es esta feature y qué no
 
 El proyecto se amplía a **todo el ciclo de posventa**: entrada de incidencias
@@ -389,6 +408,26 @@ los envía a ningún sitio.
 >   línea, si se quiere). Ningún otro cambio en ellos; ninguno en
 >   `tests_js/`. Y todos deben seguir en verde.
 
+> **Segunda ronda del 2026-09-25 · el estilo Ruesma en el circuito.** R30,
+> R32 y R33 cambian así; R31 **no cambia** (la maqueta sigue abriéndose
+> aparte desde el circuito: «para la maqueta vale así»).
+>
+> - **R30 y R43**: la comparación **línea a línea** con el `index.html` de la
+>   base deja de servir en cuanto cambia un `class`. La sustituye **R59**
+>   (§1.11), que compara el HTML **sin los atributos `class`** y admite, además
+>   de la línea 1 y la barra, solo las cuatro etiquetas `<link>` nuevas de la
+>   cabecera. Los nueve scripts, en su orden, siguen exigidos (R43).
+> - **R32 no cambia**, y se cumple **sin tocar ningún test del circuito más**:
+>   medido en `design.md` §15.2, ninguna aserción del circuito lee una clase
+>   estática que el estilo nuevo tenga que quitar, salvo una
+>   (`test_f026_autoguardado.py:280`), y esa se respeta **conservando la
+>   clase** (`text-red-800`) en vez de cambiar el test.
+> - **R33**: `css/styles.css` **sí** se modifica (pasa a llevar los tokens y
+>   los componentes de la identidad Ruesma, que comparten las dos páginas). Lo
+>   demás sigue igual: ni `js/*.js` del circuito, ni `staticwebapp.config.json`,
+>   ni `dev_server.py`, ni `dev_front.ps1`. Entran como altas `img/logo-ruesma.svg`
+>   e `img/favicon.svg`.
+
 ### 1.8 · Carga y acceso
 
 - **R34.** `portal.html` debe cumplir el mismo contrato de carga que
@@ -453,6 +492,91 @@ Decisiones D-1, D-2 y D-3 del humano (`design.md` §13.1).
   que las demás pestañas son una maqueta con datos de ejemplo y que se abren
   aparte para no perder la remesa.
 
+### 1.11 · Navegación futura e identidad visual Ruesma (entran el 2026-09-25, segunda ronda)
+
+Decisión del humano tras ver la maqueta (`design.md` §13.1, «Segunda ronda»).
+Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
+`index.html`), leída solo en lectura. Diseño: `design.md` §15.
+
+- **R48.** DONDE una sección del portal sea **real** —todas las fichas de su
+  entrada de `Portal.SECCIONES` están `done` en `harness/features.json`; para
+  `inicio`, cuando lo son todas las demás secciones del portal—, la barra
+  superior de `partes.html` debe enlazarla **en la misma ventana** (sin
+  `target`), como una web normal; y la regla debe constar en la sección del
+  portal de `docs/ARCHITECTURE.md` y en el `README.md` del front. Mientras la
+  sección sea maqueta, R31 sigue igual.
+- **R49.** El sistema debe declarar la identidad visual como **tokens** (variables
+  CSS) en el `:root` de `css/styles.css`, con los nombres y valores de
+  `design.md` §15.3 —entre ellos `--rs-burdeos: #9f2842`, `--rs-acero:
+  #7b868c`, `--rs-radio: 16px` y `--rs-radio-sm: 10px`—; y `css/styles.css` y
+  `css/portal.css` no deben escribir un color, una sombra ni un radio fuera del
+  `:root` salvo a través de esos tokens (`var(--rs-…)`).
+- **R50.** El portal (`index.html`) y el circuito (`partes.html`) deben cargar
+  en su `<head>`, antes de `css/styles.css`, las fuentes **Bricolage Grotesque**
+  y **Archivo** de Google Fonts (con sus dos `preconnect`, URL exacta en
+  `design.md` §15.4) y el favicon `img/favicon.svg`; y `css/styles.css` debe
+  dar al `body` la fuente de texto (`--rs-fuente-texto`), el lienzo y la trama
+  de plano, y a los titulares (`.rs-titulo`) la de titulares
+  (`--rs-fuente-titulos`).
+- **R51.** La barra superior de las dos páginas debe llevar, a la izquierda,
+  el logotipo `<img src="img/logo-ruesma.svg" alt="Construcciones Ruesma">`, un
+  separador con `aria-hidden="true"` y la etiqueta «Posventa», sin que ninguno
+  de los tres sea un enlace; y cada pestaña de la barra debe llevar la clase
+  `rs-pestana` en las dos páginas, con la pestaña actual marcada **por
+  `aria-current="page"`**, que es lo que la pinta (no una clase propia).
+- **R52.** `img/logo-ruesma.svg` e `img/favicon.svg` deben ser copias
+  **byte a byte** de los de `front-portal` (SHA-256 en `design.md` §15.4) y
+  no contener `<script>`, `<foreignObject>`, `<metadata>`, `<text>`, atributos
+  `on…`, `href`/`xlink:href`, ni `data:`; y sus colores deben ser solo los de
+  la marca (`#9f2842`, `#7b868c`, `#ffffff`).
+- **R53.** Cada par de tokens texto/fondo de la tabla de `design.md` §15.6 debe
+  tener un contraste WCAG **≥ 4,5:1**, y cada par de elemento no textual
+  (bordes de control, foco) **≥ 3:1**; y `--rs-acero` no debe usarse nunca como
+  `color` de texto (su contraste sobre blanco es 3,7:1): el texto gris usa
+  `--rs-acero-texto`.
+- **R54.** Todo elemento enfocable de las dos páginas (enlaces, botones,
+  campos, pestañas) debe tener un foco visible con `:focus-visible` en el color
+  de la marca, y ninguna regla de los dos CSS debe quitar el contorno
+  (`outline: none` / `outline: 0`) sin poner otro en la misma regla.
+- **R55.** Las transiciones de los dos CSS deben ser **sobrias**: de
+  duración **≤ 250 ms**, solo sobre color, fondo, borde, sombra, opacidad o
+  `transform`; las animaciones de entrada, solo en el portal (`css/portal.css`);
+  y SI el navegador pide `prefers-reduced-motion: reduce`, ENTONCES ninguna
+  transición ni animación de los dos CSS debe ejecutarse.
+- **R56.** Los placeholders y la leyenda de maqueta deben seguir
+  **distinguiéndose** de lo que funciona: en el portal, el borde discontinuo
+  solo lo lleva `.placeholder` (y su muestra en el aviso); ningún placeholder
+  lleva `rs-btn--primario` ni el fondo de la marca; el aviso de maqueta
+  (`data-aviso-maqueta`) no usa el burdeos; y en `partes.html` no hay ni un
+  elemento con la clase `placeholder`.
+- **R57.** Todo estado que pinta el portal —de `conest` (R21), de revisión de
+  la bandeja y de volcado (R40)— debe ir en un chip `rs-chip` con
+  `data-estado="<código>"` y **su texto** (código y resumen, o la etiqueta
+  legible), nunca solo con color; y `css/portal.css` debe tener una regla
+  `[data-estado="<código>"]` para **cada** código de esos tres catálogos.
+- **R58.** CUANDO los filtros del listado de incidencias, de la bandeja o de
+  impresión dejan **cero** filas, el portal debe mostrar en esa sección un
+  estado vacío (`data-vacio`) con un texto que lo diga, en lugar de una tabla
+  sin filas.
+- **R59.** El circuito, `partes.html`, solo debe diferir del `index.html` de la
+  base (`git merge-base dev HEAD`) —comparados como secuencia de etiquetas,
+  atributos **en su orden**, texto y comentarios, con los blancos del texto
+  normalizados— en: (a) el valor de los atributos `class`; (b) la línea 1;
+  (c) la barra superior insertada como primer hijo del
+  `<div x-data="appPostventa()">`, con el comentario que la precede; y (d) las
+  cuatro etiquetas `<link>` de `design.md` §15.4, en el `<head>` y antes de
+  `css/styles.css`. Ningún atributo que no sea `class` —directivas de Alpine,
+  `id`, `type`, `data-*`, `aria-*`— puede añadirse, quitarse, reordenarse ni
+  cambiar de valor. *(Sustituye a la comparación línea a línea de R30/R43.)*
+- **R60.** `css/styles.css` y `css/portal.css` no deben llevar `!important`
+  (salvo la regla `[x-cloak]` de `css/portal.css`), ni `@import`, ni `url(data:…)`;
+  y `partes.html` no debe llevar ningún atributo `style` estático (los estilos
+  van en las hojas; el `:style` de la barra de progreso no se toca).
+- **R61.** El `README.md` del front debe tener una sección «Identidad visual
+  Ruesma (F-035)» que diga dónde viven los tokens, de dónde salen (la
+  referencia de `front-portal`), las reglas de R53, R55, R56 y R60, y que en el
+  circuito solo se cambian clases (R59).
+
 ## 2 · Trazabilidad con la ficha
 
 | Criterio de `acceptance` | Requisitos |
@@ -475,6 +599,15 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 > fila «El circuito de partes actual sigue funcionando igual dentro del
 > portal» pasa a cubrirse con **R30–R33, R35, R42–R47**; la de «todas las
 > secciones existen y se navegan», además con R44.
+
+> **Segunda ronda del 2026-09-25.** La ficha no tenía criterio de aspecto; lo
+> pone el humano. Filas añadidas:
+>
+> | Criterio | Requisitos |
+> |---|---|
+> | (humano, 2026-09-25) El portal y el circuito entero con el estilo del portal Ruesma, «muy bonito y elegante» | R49–R58, R60, R61 |
+> | El circuito de partes actual sigue funcionando igual dentro del portal | además **R59** (sustituye a la parte línea a línea de R30/R43) y R60 |
+> | (humano, 2026-09-25) Cuando las secciones sean reales, todo navega en la misma ventana | R48 |
 
 ## 3 · Verificación que no cubre un test
 
@@ -524,3 +657,38 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 >   No bloquea el cierre de F-035: es la comprobación de la publicación.
 > - **V3** añade: preguntar a Posventa si les extraña que, desde el circuito,
 >   las otras pestañas se abran aparte (D-2; `design.md` §2).
+
+> **Segunda ronda del 2026-09-25 · V1, V2 y V4 con el estilo nuevo.** Los
+> recuadros de arriba se conservan; esto se **añade** a cada una.
+>
+> - **V1** (portal, `http://localhost:5173/`): (a) la red admite, además de
+>   los estáticos y los dos CDN, **`fonts.googleapis.com` y
+>   `fonts.gstatic.com`** (las fuentes); nada más, y ni una petición a
+>   `/api/`. (b) Se ve el logotipo en la barra, las fuentes Bricolage
+>   (titulares) y Archivo (texto) —en F12 → Elementos → Calculado →
+>   `font-family` del `<h1>` y de un párrafo—, la trama del fondo y el favicon.
+>   (c) Los placeholders se siguen reconociendo a simple vista frente a los
+>   botones de verdad y al enlace «Abrir el circuito de partes firmados». (d)
+>   Solo con el teclado (`Tab`), cada enlace, pestaña y botón enseña su foco.
+>   (e) A 390 px de ancho (F12 → modo dispositivo) no hay desplazamiento
+>   horizontal de la página: las tablas se desplazan dentro de su panel. (f)
+>   Con «Emular prefers-reduced-motion: reduce» (F12 → Renderizado), las
+>   tarjetas de `inicio` aparecen sin animación.
+> - **V2** (circuito, `http://localhost:5173/partes.html`), **con `func start`**
+>   (el backend local, obligatorio esta vez: el estilo toca la pantalla que
+>   está en producción): recorrer el circuito con una remesa de `muestras/`
+>   **sin confirmar el archivo**: soltar la remesa, «Trocear la remesa», ver la
+>   barra de progreso llenarse, la lista con sus marcas (punto, anillo del
+>   aprobado, tachado del rechazado si lo hay), abrir un parte, editar un campo
+>   y ver «guardando/guardado», aprobar o rechazar uno, pulsar «Archivar y
+>   cerrar los partes aptos» y, en la pregunta, **«Cancelar»**. Todo funciona
+>   como en `dev`; solo cambia el aspecto. Además: el indicador del backend en
+>   verde, el foco visible con el teclado y ni un error en la consola.
+>   **Prohibido pulsar «Sí, archivar y cerrar»** en local (reglas duras de
+>   `CLAUDE.md`: ni SharePoint ni Sigrid desde local).
+> - **V4** (tras publicar) añade: `Ctrl+F5` **en las dos páginas** (el
+>   `css/styles.css` viejo en caché con el HTML nuevo daría una mezcla); el
+>   paso (b) incluye comprobar que el circuito se ve con el estilo nuevo y que
+>   la remesa de prueba lo recorre igual; y el aviso a Posventa dice también
+>   que el circuito **ha cambiado de aspecto, no de funcionamiento** (el botón
+>   principal pasa de verde a burdeos, `design.md` §15.7).

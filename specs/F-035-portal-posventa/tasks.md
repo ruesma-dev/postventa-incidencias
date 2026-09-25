@@ -30,6 +30,15 @@
 > cambia; T13 sigue siendo la última. Encargo por bloques: **B3** pasa a ser
 > T5–T9 bis. Tras T13, la publicación de D-4 (del humano, no del
 > implementer).
+>
+> **Segunda ronda del humano, 2026-09-25, tras ver la maqueta** (acta en
+> `design.md` §13.1, «Segunda ronda»; diseño en §15). Con los bloques 1–4
+> hechos y la review 2 APROBADA (`6bc4b6c`), entra el **bloque 5** (T14–T19):
+> el estilo del portal Ruesma en el portal y en el circuito entero, y la
+> regla de navegación para cuando las secciones sean reales (R48). Encargo
+> por bloques: **B5a** (T14–T15), **B5b** (T16–T17), **B5c** (T18–T19). T12
+> (V1/V2 del humano) pasa a hacerse **después de T19**, con el estilo nuevo, y
+> la review vuelve a pasar por el bloque 5 antes del cierre.
 
 ## Bloque 1 · Parada obligatoria
 
@@ -270,11 +279,121 @@
       funciona como el circuito de siempre con la barra encima; y desde el
       circuito, «Bandeja de revisión» abre el portal en otra pestaña. D-4 ya
       está decidida («si»): se publica **después** de V1 y V2.
+      *(Segunda ronda del 2026-09-25)*: T12 se hace **después de T19**, con
+      el estilo nuevo, y con lo que añade el recuadro de la segunda ronda de
+      `requirements.md` §3: en V1, las fuentes en la pestaña Red, el
+      logotipo, el foco con el teclado, 390 px de ancho y
+      `prefers-reduced-motion`; en V2, **con `func start`**, el circuito
+      recorrido con una remesa de `muestras/` hasta la pregunta de
+      confirmación y **«Cancelar»** (nunca «Sí, archivar y cerrar» en local).
 
 - [x] **T13**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       ejecutadas **sin caché** (el árbol del front ha cambiado) y la puerta de
       cobertura en N/A con su motivo impreso.
+
+## Bloque 5 · Identidad visual Ruesma (segunda ronda, 2026-09-25)
+
+Diseño: `design.md` §15. Reglas del bloque: **ni un `js/*.js` cambia** (ni
+del circuito ni de la maqueta); en `partes.html` solo cambian valores de
+`class`, las cuatro `<link>` y la barra (R59); **ningún test del circuito se
+toca** (§15.2): si alguno exigiera otra cosa, **PARA** y anótalo en
+`progress/current.md`. `front-portal` solo se lee. Todo sin red salvo lo que
+ya pide cada verificación.
+
+- [ ] **T14**: **tokens y logo**. (a) Copiar, sin modificar,
+      `front-portal/public/assets/img/logo-ruesma.svg` y `favicon.svg` a
+      `services/postventa-front/img/` y comprobar su SHA-256 contra
+      `design.md` §15.4. (b) `css/styles.css`: los tokens de §15.3 en el
+      `:root` (fuera `--ruesma-burdeos`, H-7), la base (`body` con fuente,
+      tinta, lienzo y trama), la barra común, los componentes compartidos y
+      los del circuito de §15.4, el foco (R54) y `prefers-reduced-motion`
+      (R55); sin `!important`, `@import` ni `data:`. (c) En
+      `tests/test_f035_portal.py`, en el **mismo commit**: los tests de R49,
+      R52, R53, R54, R55 (lado `styles.css`) y R60 (lado CSS), y **R33
+      enmendado** (admite `M css/styles.css`; sin él la suite queda en rojo
+      en este commit).
+      **Verificación**: desde `services/postventa-front`, `python -m pytest
+      tests/test_f035_portal.py -q -k "r33 or r49 or r52 or r53 or r54 or
+      r55 or r60"` en verde; `python -m pytest tests -q` y `node --test
+      "tests_js/*.test.js"` del front enteros en verde (el HTML aún no usa
+      las clases nuevas); `git diff --stat HEAD~1` solo con `css/styles.css`,
+      `img/*` y `tests/test_f035_portal.py`.
+
+- [ ] **T15**: **el portal** (`index.html` y `css/portal.css`), según
+      `design.md` §15.5: las cuatro `<link>`; la barra con logotipo, separador
+      y etiqueta, pestañas `rs-pestana` pintadas por `aria-current` (fuera sus
+      `:class`); aviso de maqueta; portada (ceja, titular, recorrido en
+      `<ol>`, tarjetas con índice, chip «Maqueta»/«En producción», entrada
+      escalonada); tablas, filtros, chips `rs-chip` con `:data-estado`;
+      ficha con pestañas por `aria-selected` y datos en `rs-datos`; paneles,
+      volcado, «no procede» con `rs-carta`; estados vacíos (`data-vacio`,
+      R58); aviso flotante; pie. `.placeholder` redibujado con tokens (§6.1,
+      recuadro). Tests en el mismo commit: R50 y R51 (lado portal), R56, R58,
+      R60 (lado `portal.css`) en `tests/test_f035_portal.py`, y R57 en
+      `tests_js/portal.test.js`.
+      **Verificación**: `python -m pytest tests -q` y `node --test
+      "tests_js/*.test.js"` del front enteros en verde —**todos** los de F-035
+      que ya había, sin tocarlos, más los nuevos—; `git diff --stat HEAD~1 --
+      services/postventa-front/js` vacío; `.\dev_front.ps1` y
+      `http://localhost:5173/` abre el portal con el estilo nuevo (vistazo
+      del implementer; la comprobación de verdad es V1).
+
+- [ ] **T16**: **el circuito** (`partes.html`), en este orden y en **un solo
+      commit**: (1) en `tests/test_f035_portal.py`, sustituir
+      `test_f035_r30_r43_…` (`difflib`) por la guardia de R59
+      (`tokens`, `diferencias_de_presentacion`, test de rama; `design.md`
+      §15.8) y **comprobar que pasa sobre el `partes.html` de antes de tocarlo**
+      (acepta el estado aprobado en la review 2); (2) en `partes.html`, las
+      cuatro `<link>`, la barra de §15.5 (logotipo, `rs-pestana`, leyenda de
+      R47) y los valores de `class` de la correspondencia de §15.7,
+      **conservando `text-red-800`** en el `<p>` del fallo del autoguardado y
+      el orden de todos los atributos; (3) los tests de R50 y R51 del lado del
+      circuito y R60 (sin `style` en `partes.html`).
+      **Verificación**: `python -m pytest tests -q` del front entero en verde,
+      con R59, R31, R32, R43 (nueve scripts), R45 y R47 en verde y **los
+      ~256 del circuito sin un cambio**; `node --test "tests_js/*.test.js"` en
+      verde (los 322 del circuito sin cambio); `git diff --stat HEAD~1` solo
+      con `partes.html` y `tests/test_f035_portal.py`; `git diff HEAD~1 --
+      services/postventa-front/tests/test_f0[0-3]*.py` vacío salvo
+      `test_f035_portal.py`; `git diff --word-diff HEAD~1 --
+      services/postventa-front/partes.html` pegado al informe (se leen solo
+      `class`, `<link>` y barra).
+
+- [ ] **T17**: **guardias**. (a) El **control permanente** de R59: copias
+      estropeadas en memoria del `partes.html` real (un `@click`, dos
+      atributos permutados, un elemento, un texto, un `style`, una `<link>` a
+      otro dominio) que la guardia **tiene que** rechazar, y una con solo un
+      `class` cambiado que tiene que aceptar (`design.md` §15.8). (b) R48 en
+      `tests/test_f035_placeholders_vivos.py` (raíz), con su control de F-048
+      `done` en memoria; y la regla escrita en la sección del portal de
+      `docs/ARCHITECTURE.md` y en el `README.md` del front, con el paso 4 de
+      la retirada (`design.md` §2, recuadro de la segunda ronda). (c) R61:
+      sección «Identidad visual Ruesma (F-035)» del README y su test.
+      **Verificación**: `python -m pytest tests/test_f035_portal.py -q -k "r59
+      or r61"` (front) y `python -m pytest tests/test_f035_placeholders_vivos.py
+      -q` (raíz) en verde; y, en una copia del test de raíz con F-048 en
+      `done`, el control **en rojo** como se espera (salida al informe).
+
+- [ ] **T18**: **evidencias**. (a) `python -m harness.mutacion --feature
+      F-035` (se espera otra vez «Sin líneas de producción en el alcance»: 0
+      mutantes). (b) Las mutaciones manuales **9 a 13** de `design.md` §11
+      (recuadro de la segunda ronda), en una copia aislada (worktree en el
+      scratchpad, nunca en el árbol real), con la traza de cada fallo y la
+      confirmación de que la copia se retiró. (c) `git diff --name-status
+      6bc4b6c -- services/postventa-front` (solo `M` en `css/*.css`,
+      `index.html`, `partes.html`, `README.md` y los dos ficheros de test de
+      F-035; `A` en `img/*`; **nada** en `js/`, `staticwebapp.config.json`,
+      `dev_server.py`, `dev_front.ps1`) y `git diff 6bc4b6c --
+      services/postventa-front/tests/test_f0[0-3]*.py` sin más cambios que
+      `test_f035_portal.py`. (d) La tabla de contraste que imprime el test de
+      R53.
+      **Verificación**: las cuatro salidas pegadas en `progress/impl_F-035.md`.
+
+- [ ] **T19**: Ejecutar `bash harness/init.sh` en verde.
+      **Verificación**: exit code 0, con la suite del front y la de la raíz
+      ejecutadas **sin caché** y la puerta de cobertura en N/A con su motivo
+      impreso. Después: T12 (humano) y la review del bloque 5.
 
 > **Después del cierre (D-4, 2026-09-25) · no es tarea del implementer.**
 > Con F-035 aprobada por el reviewer y mergeada en `dev`, **el humano**
@@ -283,3 +402,7 @@
 > `/partes.html` abre el circuito con el backend en verde, a dónde vuelve el
 > inicio de sesión desde `/partes.html`, y el aviso a Posventa. El resultado,
 > anotado por el humano en `progress/current.md`.
+> *(Segunda ronda del 2026-09-25)*: V4 con `Ctrl+F5` en **las dos** páginas,
+> el circuito comprobado también con su estilo nuevo, y el aviso a Posventa
+> diciendo que el circuito **cambia de aspecto, no de funcionamiento** (el
+> botón principal pasa de verde a burdeos).

@@ -1,6 +1,19 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · SPEC ENMENDADA POR LA SEGUNDA RONDA DEL HUMANO (estilo Ruesma) · 2026-09-25 · **pendiente de aprobación**
+>
+> spec-author. Resumen, riesgos y preguntas: **`progress/spec_F-035.md`** §8–§11;
+> diseño en `specs/F-035-portal-posventa/design.md` §15; acta literal en §13.1
+> («Segunda ronda»). Navegación: la maqueta no cambia, entra R48 (misma ventana
+> cuando una sección sea real). Estilo Ruesma en portal y circuito (R49–R61);
+> en el circuito solo cambian clases (guardia R59), **ningún test del circuito
+> cambia**. Bloque 5 nuevo (T14–T19); T12 pasa a después de T19.
+> **Decisiones abiertas para el humano**: aprobar el bloque 5; botón principal
+> del circuito verde → burdeos; Google Fonts por CDN o alojadas; R48
+> obligatorio por test. Hallazgos H-6 (Tailwind sin versión) y H-7 (burdeos
+> `#ad1833` sin uso).
+
 > ## ▶ F-035 · CORRECCIONES DE LA REVIEW 1 HECHAS · 2026-09-25 · siguiente: reviewer (vuelta 2)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la

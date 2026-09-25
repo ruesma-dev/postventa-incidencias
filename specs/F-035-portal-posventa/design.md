@@ -40,6 +40,25 @@
 > **el `index.html` del circuito se lee `partes.html`**, salvo donde un
 > recuadro diga otra cosa.
 
+> **Segunda ronda del humano · 2026-09-25, tras ver la maqueta (acta en
+> §13.1, «Segunda ronda»).** Sobre `6bc4b6c` (review 2 APROBADA, sin mergear,
+> V1/V2 pendientes). Dos decisiones:
+>
+> - **Navegación**: «en la misma ventana como en una web normal (para la
+>   maqueta vale así)». **La maqueta no cambia** (D-2 sigue); entra la regla
+>   para cuando las secciones sean reales (R48, recuadro de §2).
+> - **Estilo**: «como el de portal ruesma (ohana.ruesma.es) […] muy bonito y
+>   elegante», y «También el circuito entero». Todo el diseño está en la
+>   **§15 nueva**: tokens compartidos en `css/styles.css`, logotipo copiado de
+>   `front-portal`, sección a sección, accesibilidad y, para el circuito en
+>   producción, una guardia que **solo deja cambiar clases** (R59).
+>
+> Recuadros de esta ronda: esta cabecera, §2, §3, §6.1, §11, §12, §13.1 y
+> §14; y la §15 entera. Referencia medida, **solo lectura**:
+> `C:\Users\pgris\PycharmProjects\front-portal\public` (`index.html`,
+> `assets/css/styles.css`, `assets/img/`), commit `01fb1aa` de ese
+> repositorio.
+
 ## 1 · Lo que hay hoy, medido
 
 ### 1.1 · El front
@@ -281,6 +300,37 @@ test y la URL de la tarjeta: es la decisión **D-3**, fuera de esta ficha.
 > | `http://localhost:5173/` (`dev_front.ps1`) | El circuito | El portal |
 > | `/partes.html` | — | El circuito |
 
+> **Segunda ronda del 2026-09-25 · navegación: «en la misma ventana como en
+> una web normal (para la maqueta vale así)».** Lo de arriba **sigue
+> valiendo para la maqueta**: dentro del portal ya se navega en la misma
+> ventana (rutas `#/…` y `partes.html` sin `target`, R46), y desde el circuito
+> las pestañas de maqueta siguen abriéndose aparte (R31) porque perder la
+> remesa por ir a mirar una maqueta no compensa. Lo que entra es la **regla
+> para después (R48)**:
+>
+> - Una sección es **real** cuando todas las fichas de su entrada de
+>   `Portal.SECCIONES` están `done`; `inicio` (sin fichas propias) lo es cuando
+>   lo son todas las demás del portal. `partes` es el circuito y no cuenta.
+> - Desde que una sección es real, la barra del circuito la enlaza **sin
+>   `target`**: misma ventana. Lo vigila un test de la suite de la **raíz**
+>   (`tests/test_f035_placeholders_vivos.py`, que no se cachea y ya cruza la
+>   maqueta con `features.json`): hoy pasa sin exigir nada (ninguna de
+>   F-036…F-048 está `done`) y se pone en rojo en cuanto la última ficha de
+>   una sección se cierre sin quitar su `target="_blank"`. Lleva un control
+>   que demuestra que mira (una copia en memoria de `features.json` con F-048
+>   `done` tiene que exigir `datos` sin `target`).
+> - **Consecuencia que hereda la ficha que lo active** (no la resuelve F-035):
+>   navegar desde el circuito en la misma ventana **descarga la remesa en
+>   curso**, que vive en memoria (§2, «Por qué pestaña nueva desde el
+>   circuito»). Esa ficha, en el mismo trabajo, decide cómo no perderla —aviso
+>   al salir (`beforeunload` en `js/app.js`) o recuperar el trabajo— y lo
+>   propone al humano. Se escribe como paso 4 de la retirada (§7.3, abajo) y en
+>   `docs/ARCHITECTURE.md` y el `README.md` del front (R48).
+>
+> **§7.3, paso 4 (nuevo)**: cuando la ficha que construye una sección la deja
+> real, quita el `target="_blank"` y el `rel` de esa pestaña en la barra de
+> `partes.html`, y resuelve en el mismo trabajo lo de la remesa en curso.
+
 ## 3 · Ficheros
 
 ### 3.1 · A crear
@@ -353,6 +403,27 @@ propósito**: la suite del front se salta por caché cuando su árbol no cambia
 > existentes, **solo** la línea `INDEX` de los siete ficheros de §1.2; de
 > `tests_js/`, **nada**. `front-portal` tampoco: la tarjeta ya apunta a la
 > raíz (§1.3).
+
+> **Segunda ronda del 2026-09-25 · ficheros del estilo Ruesma.** Detalle en
+> §15.4. En resumen:
+>
+> - **A crear**: `services/postventa-front/img/logo-ruesma.svg` e
+>   `img/favicon.svg` (copias byte a byte de `front-portal`).
+> - **A modificar**: `css/styles.css` (tokens y componentes compartidos; **deja
+>   de estar en «No se tocan»**), `css/portal.css`, `index.html` (el portal),
+>   `partes.html` (**solo** valores de `class`, cuatro `<link>` en la cabecera
+>   y la barra), `README.md` del front, `docs/ARCHITECTURE.md` (R48) y dos tests
+>   de F-035: `tests/test_f035_portal.py` (la guardia R59 sustituye a la de
+>   `difflib`; R33 admite `css/styles.css`; tests nuevos) y
+>   `tests/test_f035_placeholders_vivos.py` (R48), más `tests_js/portal.test.js`
+>   (R57).
+> - **Siguen sin tocarse**: `js/*.js` **todos** —los nueve del circuito y
+>   también los tres de la maqueta: el estilo no necesita lógica—,
+>   `staticwebapp.config.json` (medido: no lleva `Content-Security-Policy`, así
+>   que Google Fonts carga sin tocarlo; y ya declara `.svg` como
+>   `image/svg+xml`), `dev_server.py`, `dev_front.ps1`, `infra/*` (sube la
+>   carpeta entera: `img/` se publica sola), `services/postventa-api/`, los
+>   tests del circuito (§15.2) y `front-portal`, del que solo se lee.
 
 ## 4 · El mapa del portal
 
@@ -741,6 +812,16 @@ antes → después). Texto: «Queda histórico de cada cambio» (criterio de F-0
 - El aviso de maqueta (R13) incluye un placeholder de muestra dibujado como
   leyenda: «así se ve un botón que todavía no hace nada».
 
+> **Segunda ronda del 2026-09-25 (R56).** Con el estilo Ruesma, el
+> placeholder se redibuja **con los tokens** y conserva lo que lo delata:
+> borde **discontinuo** de 1,5 px en `--rs-acero`, rayado diagonal suave,
+> texto `--rs-acero-texto`, forma de píldora como los botones de verdad (así
+> se ve que es «un botón», pero hueco) y la etiqueta `F-0NN` en un chip
+> monoespaciado. Dos reglas nuevas: el **borde discontinuo queda reservado**
+> a los placeholders en todo el portal (ninguna tarjeta, zona ni panel lo
+> usa), y **ningún placeholder lleva el relleno burdeos** de la acción
+> principal: la marca se reserva para lo que funciona.
+
 ### 6.2 · Qué hacen al pulsarlos
 
 `@click="placeholder('<id>')"` y nada más en el atributo. `placeholder(id)` de
@@ -1086,6 +1167,33 @@ en el informe:
 > 8. Se cambia, además de `INDEX`, una aserción de `test_f025_front.py` → cae
 >    la guardia de R32.
 
+> **Segunda ronda del 2026-09-25 · tests del estilo.** La fila «R30 / R43»
+> del recuadro de arriba (comparación con `difflib`) **se sustituye** por la
+> de R59; el resto sigue. Detalle de cada guardia en §15.8.
+>
+> | Requisitos | Test |
+> |---|---|
+> | R59 (sustituye a R30/R43 línea a línea) | `tests/test_f035_portal.py`, **solo en la rama de F-035**: `partes.html` frente a `git show <merge-base>:services/postventa-front/index.html`, como secuencia de tokens de `html.parser` sin el atributo `class`; más un control **permanente** (sin git) que aplica la misma función a copias estropeadas en memoria |
+> | R33 enmendado | El mismo test de siempre, con `css/styles.css` admitido como `M` |
+> | R48 | `tests/test_f035_placeholders_vivos.py` (raíz), con su control de F-048 `done`; y la regla presente en `docs/ARCHITECTURE.md` |
+> | R49, R50, R53, R54, R55, R60 | `tests/test_f035_portal.py`: los CSS y las cabeceras leídos como texto; el contraste calculado con la fórmula WCAG a partir de los valores del `:root` |
+> | R51, R56, R58 | `tests/test_f035_portal.py` con `html.parser` sobre las dos páginas |
+> | R52 | `tests/test_f035_portal.py`: SHA-256 de los dos SVG y barrido de lo prohibido |
+> | R57 | `tests_js/portal.test.js`: cada código de `Portal.ESTADOS`, de los estados de revisión y de `MaquetaDatos.volcado.catalogos.estados` tiene su `[data-estado="…"]` en `css/portal.css`; y en `index.html` todo `data-estado`/`:data-estado` va en un `rs-chip` con texto |
+> | R61 | `tests/test_f035_portal.py`: la sección del README y sus palabras clave |
+>
+> **Compensación manual** (sigue C4 bis), de la 9 a la 13, en la misma copia
+> aislada:
+>
+> 9. En `partes.html` se cambia `@click="reiniciar()"` por
+>    `@click="reiniciar(); x = 1"` → cae R59.
+> 10. En `partes.html` se pone el `class` del aviso de fallo del autoguardado
+>     **antes** de su `x-show` → cae R59 (atributos en su orden) y, además,
+>     `test_f026_autoguardado.py:280`.
+> 11. Se añade `display: flex !important` a `.rs-panel` → cae R60.
+> 12. `--rs-acero-texto` pasa a `#7b868c` → cae R53.
+> 13. Un placeholder del portal gana `rs-btn--primario` → cae R56.
+
 ## 12 · Riesgos
 
 | Riesgo | Mitigación |
@@ -1104,6 +1212,12 @@ en el informe:
 | *(D-2)* Posventa, desde el circuito real, toma las otras pestañas por funcionalidad | Leyenda de R47 en la barra del circuito, aviso de maqueta en el portal (R13), placeholders marcados |
 | *(D-2)* La pestaña nueva al salir del circuito extraña | Es lo que evita perder la remesa sin tocar `app.js`; se pregunta en V3 |
 | *(D-3)* Un cambio de test «de paso» al mudar el circuito | La guardia de R32 enmendado: solo la línea `INDEX` de los siete ficheros |
+
+> **Segunda ronda del 2026-09-25.** Los riesgos del estilo Ruesma, y sobre
+> todo los del circuito en producción, están en **§15.9**. La fila «Tailwind
+> por CDN no pinta clases construidas dinámicamente» sigue valiendo para las
+> utilidades de Tailwind; las clases `rs-*` son de nuestra hoja y no dependen
+> de ello.
 
 ## 13 · Decisiones abiertas (con recomendación)
 
@@ -1183,6 +1297,28 @@ recomendaciones de arriba se conservan tal cual, como premisa.
 | **D-10** | «ok» (el líder: «ok, como estaban») | Catálogos generales de Sigrid con códigos reales; todo lo que identifica a alguien o a una obra, ficticio | §7.2, R24 (sin cambios) |
 | Plantilla de impresión | Se queda para F-044 (el líder lo transmite sin cita literal) | **No se abre ni se convierte** en F-035. El pendiente de §5.6 no cambia | §5.6 |
 
+#### Segunda ronda · 2026-09-25, tras ver la maqueta
+
+Transmitida por el líder, con F-035 en `6bc4b6c` (review 2 APROBADA, sin
+mergear, V1/V2 pendientes). Palabras literales del humano:
+
+> «en lugar de que se abran las pestañas aparte, me gustaría que se abrieran
+> en la misma ventana como en una web normal (para la maqueta vale así). lo
+> que sí quiero es que el estilo sea como el de portal ruesma
+> (ohana.ruesma.es). es un buen comienzo. cámbiale el estilo. además quiero
+> que sea muy bonito y elegante»
+
+Preguntado por el líder si el estilo alcanza también al circuito:
+
+> «También el circuito entero»
+
+| Tema | Respuesta del humano | Qué queda decidido | Dónde se aplica |
+|---|---|---|---|
+| Navegación | «me gustaría que se abrieran en la misma ventana como en una web normal (para la maqueta vale así)» | **En la maqueta, como está** (D-2: desde el circuito, pestaña aparte; dentro del portal, misma ventana). Regla para las fichas que conviertan secciones en reales: misma ventana, con guardia | §2 (recuadro), §7.3 paso 4; R48 |
+| Estilo | «que el estilo sea como el de portal ruesma (ohana.ruesma.es) […] cámbiale el estilo. además quiero que sea muy bonito y elegante» | Identidad visual de `front-portal` (burdeos `#9f2842`, gris acero `#7b868c`, trama de plano, Bricolage Grotesque y Archivo, radios 16/10 px, botones en píldora, barra con logotipo), aplicada con tokens compartidos | §15; R49–R58, R60, R61 |
+| Alcance del estilo | «También el circuito entero» | El circuito en producción cambia **solo de presentación**: valores de `class`, cuatro `<link>` en la cabecera y la barra. Ni lógica, ni directivas, ni ids, ni configuración, ni backend; ningún test del circuito se toca | §15.2, §15.7; R59, R33 enmendado |
+| Valoración | «es un buen comienzo» | La estructura de la maqueta (secciones, datos, placeholders) no cambia | — |
+
 ## 14 · Hallazgos (fuera de alcance, para el líder)
 
 - **H-1**: `docs/ARCHITECTURE.md:544` (`:578` en `54c0884`) contradice lo registrado del despliegue de
@@ -1218,3 +1354,538 @@ recomendaciones de arriba se conservan tal cual, como premisa.
   pregunta por qué no se muta JavaScript. Es una capacidad del arnés, no de
   este proyecto: el líder la registra aparte como propuesta del arnés
   (`arnes-base`). F-035 no la espera.
+- **H-6** *(2026-09-25, segunda ronda)*: **Tailwind va por su CDN de juego y
+  sin versión fija** (`https://cdn.tailwindcss.com`, en las dos páginas desde
+  antes de F-035), mientras Alpine sí va fijado (F-007 R36). Tailwind
+  desaconseja ese CDN en producción, y un cambio de versión puede mover su
+  hoja base (el *preflight*) por debajo de nuestras clases. F-035 **no lo
+  cambia** (sería tocar la cabecera del circuito más allá de R59); se
+  defiende escribiendo las reglas de componente con especificidad suficiente
+  (§15.9). Propuesta para una ficha aparte: fijar la versión o compilar
+  Tailwind.
+- **H-7** *(2026-09-25, segunda ronda)*: el `css/styles.css` de la base
+  declaraba `--ruesma-burdeos: #ad1833`, **otro burdeos** que el de la marca
+  (`#9f2842`, el de `front-portal` y el del propio logotipo) y que **nadie
+  usaba** (medido con `grep` en el front). Se retira al poner los tokens
+  `--rs-*`.
+
+## 15 · Identidad visual Ruesma (segunda ronda, 2026-09-25)
+
+Decisión del humano tras ver la maqueta (acta en §13.1, «Segunda ronda»):
+el estilo del portal corporativo, «muy bonito y elegante», en el portal **y
+en el circuito entero**. Referencia, leída **solo en lectura**:
+`front-portal/public/index.html` y `front-portal/public/assets/css/styles.css`
+(commit `01fb1aa` de ese repositorio). No se copia su hoja: se toma su
+lenguaje y se escribe como tokens y componentes propios, con nombres en
+castellano y prefijo `rs-`.
+
+### 15.1 · Qué significa «muy bonito y elegante», en criterios comprobables
+
+1. **Una sola voz visual**: todo color, sombra y radio sale de un token del
+   `:root` (R49). Las dos páginas comparten hoja (`css/styles.css`), así que
+   la barra, los botones y los paneles son **los mismos** en las dos.
+2. **Tipografía con jerarquía**: Bricolage Grotesque para titulares y
+   cifras grandes (peso 700–800, interletrado negativo), Archivo para el
+   texto (400–600); cifras tabulares en tablas e importes; códigos en
+   monoespaciada (R50).
+3. **Superficie de plano**: lienzo gris muy claro con la **trama de plano**
+   de `front-portal` (cuadrícula de 34 px en acero al 22 % y un halo burdeos
+   muy suave arriba a la derecha); sobre ella, paneles blancos con borde de
+   1 px, radio 16 px (10 px en controles) y sombra suave.
+4. **El color con intención**: el burdeos es **la marca y la acción
+   principal** —logotipo, pestaña actual, botón principal, foco, acentos—, y
+   **nunca un estado**. Los estados llevan su semántica (verde hecho, ámbar
+   atención, rojo error, azul en curso, acero neutro) y **siempre texto**
+   (R57): el color no es la única pista.
+5. **Aire**: escala de espaciado 4 · 8 · 12 · 16 · 24 · 32 · 48 px, ancho
+   de lectura contenido (`--rs-ancho: 1180px`) y márgenes que crecen con la
+   pantalla (`clamp`), como `front-portal`.
+6. **Movimiento sobrio** (R55): solo realimentación (color, sombra, una
+   elevación de 1–4 px) y, en el portal, una entrada escalonada de las
+   tarjetas de `inicio`; nada en bucle salvo el pulso que ya tenía el
+   circuito; todo se apaga con `prefers-reduced-motion`.
+7. **Accesible** (R53, R54): contraste AA medido, foco siempre visible,
+   pestañas y regiones con su semántica.
+8. **Honesto** (R56): lo que es maqueta se sigue viendo maqueta —borde
+   discontinuo reservado, aviso permanente en su propio color— y lo que
+   funciona se ve más firme que nunca.
+
+No entra: cambiar textos, datos, secciones o comportamiento; modo oscuro
+(`front-portal` tampoco lo tiene); capturas versionadas.
+
+### 15.2 · El circuito en producción: qué fijan sus tests del HTML (medido sobre `6bc4b6c`)
+
+| Test | Qué lee de `partes.html` | ¿Lo toca un cambio de estilo? |
+|---|---|---|
+| `test_f007_estaticos.py` (`:109-166`, `:172-289`, `:337`) | Los `<script src>`: sitio, orden, `defer`, versión de Alpine; almacenamiento del navegador sin comentarios | **No**: las cuatro `<link>` nuevas no son scripts |
+| `test_f009_front.py` (`:102-219`, `:288`) | Textos y expresiones (`x-show="!usuario.usuarioOid"`, `resultado.incidencia`, `cargarUsuario()`) y ausencias | **No** |
+| `test_f012_front.py` (`:198-293`) | Expresiones (`parte.estado === 'adjuntado'`) y textos («Reintentar el cierre», «adjunto en Sigrid») | **No** |
+| `test_f025_front.py` (`:312-594`) | Recuentos (`pedirConfirmacionArchivo()` una vez), bloques entre marcas de texto (`<section` … `x-text="tituloDeFase()"`, `Archivar y cerrar</h2>` … `</section>`), `:key` | **No**, mientras ni se reordene ni se reescriba nada (R59) |
+| `test_f026_autoguardado.py` (`:231-371`) | Orden de scripts; bloques del detalle; y **`:280`: exige `text-(red|rose|amber)-N00` en el `<p>` del fallo**, entre `estadoAutoguardado === 'fallo'` y `</p>` | **Sí, una clase**: es la **única** clase estática del circuito que fija un test. Se **conserva** `text-red-800` en ese `<p>` (junto a `rs-aviso rs-aviso--error`) y su `class` sigue **después** del `x-show`. El test no se toca |
+| `test_f026_front.py` (`:236-345`) | Gestos en el detalle y no en la lista; `ring` en la línea del `:class` del aprobado (`:296`) | **No**: vive en un `:class`, que no se toca |
+| `test_f028_front.py` (`:131-146`, `:257-708`) | Grupos `:class="{…}"` del semáforo, `line-through` (`:502`) y `ring` (`:536`) —todos dentro de `:class`—, candado, condiciones de `<template x-if>`, `x-text`/`x-html` | **No**: todo son directivas |
+| `test_f031_front.py`, `test_f007_dev_server.py` | `js/app.js`; raíces temporales propias | **No** |
+| `test_f007_sin_datos_reales.py` | Barre `.html`, `.css`, `.js`… del árbol (DNI, base64) | **No**, con R60 (sin `data:`); los `.svg` quedan fuera de su lista, por eso R52 los barre aparte |
+| `tests_js/` del circuito (15 ficheros) | Ninguno lee HTML (`reintento_vaciado.test.js:47` nombra `index.html` en un comentario) | **No** |
+
+Tests **de F-035** que sí cambian (son de esta feature, no del circuito):
+`test_f035_portal.py::test_f035_r30_r43_partes_html_es_el_index_de_la_base_con_su_ruta_y_la_barra`
+(la comparación con `difflib` línea a línea se sustituye por la guardia de
+R59, §15.8) y `::test_f035_r33_no_se_modifica_nada_del_circuito` (admite
+`M services/postventa-front/css/styles.css`). R31, R43 (los nueve scripts),
+R45 y R47 siguen igual: `<img>`, `<span>` y `<p>` no están en la lista negra
+de R45, y el `<nav>` sigue sin directivas. `tests_js/portal.test.js` (R44)
+tampoco cambia: `pestanasDe` filtra enlaces y `aria-current` **por la
+etiqueta de la sección**, y el logotipo no tiene esa etiqueta.
+
+**Conclusión: ningún test del circuito cambia** y la guardia de R32 sigue
+exigiendo exactamente las siete líneas `INDEX`. Si durante T16 apareciera un
+test del circuito que exigiera otra cosa, **se para**: no se toca el test, se
+anota en `progress/current.md` y se vuelve a proponer.
+
+### 15.3 · Los tokens (`:root` de `css/styles.css`, R49)
+
+| Token | Valor | Origen en `front-portal` | Uso |
+|---|---|---|---|
+| `--rs-burdeos` | `#9f2842` | `--brand` | Marca, acción principal, pestaña actual, foco, acentos |
+| `--rs-burdeos-fuerte` | `#7a1e33` | `--brand-strong` | Hover de la acción principal |
+| `--rs-burdeos-suave` | `#f7eaee` | `--brand-soft` | Fondo de la pestaña actual y del hover de los secundarios |
+| `--rs-acero` | `#7b868c` | `--steel` | **Solo no texto**: bordes de campo, iconos, separadores (3,7:1 sobre blanco) |
+| `--rs-acero-300` | `#aab1b6` | `--steel-300` | Índices decorativos de las tarjetas (`aria-hidden`) |
+| `--rs-acero-100` | `#dfe2e4` | `--steel-100` | Fondo de chips neutros y de lo deshabilitado |
+| `--rs-acero-texto` | `#5d676d` | **nuevo** | El gris **de texto**: `--steel` no llega a AA (§15.6) |
+| `--rs-tinta` | `#1d2024` | `--ink` | Texto principal |
+| `--rs-tinta-suave` | `#4a4f55` | `--ink-soft` | Texto secundario |
+| `--rs-papel` | `#ffffff` | `--paper` | Paneles, barra |
+| `--rs-lienzo` | `#f3f4f5` | `--canvas` | Fondo de página, cabeceras de tabla |
+| `--rs-linea` | `rgba(123, 134, 140, 0.22)` | `--line` | Bordes de panel, separadores, trama |
+| `--rs-linea-fuerte` | `rgba(123, 134, 140, 0.4)` | `--line-strong` | Separador de la barra, bordes de secundarios |
+| `--rs-halo` | `rgba(159, 40, 66, 0.06)` | (su `radial-gradient` del `body`) | Halo burdeos de la trama |
+| `--rs-velo` | `rgba(255, 255, 255, 0.85)` | (su `.topbar`, al 82 %) | Fondo translúcido de la barra |
+| `--rs-rayado` | `rgba(123, 134, 140, 0.12)` | (su `.card__veil`) | Rayado del placeholder y del aviso de maqueta |
+| `--rs-ok` / `--rs-ok-suave` | `#047857` / `#ecfdf5` | nuevo (el `emerald` del circuito) | Hecho, aprobado, en producción |
+| `--rs-atencion` / `--rs-atencion-suave` | `#92400e` / `#fffbeb` | nuevo (`amber`) | Atención, pendientes, aviso de maqueta |
+| `--rs-error` / `--rs-error-suave` | `#b91c1c` / `#fef2f2` | nuevo (`red`) | Error, rechazo, acción irreversible |
+| `--rs-info` / `--rs-info-suave` | `#0369a1` / `#f0f9ff` | nuevo (`sky`) | En curso, información |
+| `--rs-sombra-sm` | `0 1px 2px rgba(29, 32, 36, 0.05)` | `--shadow-sm` | Paneles y tarjetas en reposo |
+| `--rs-sombra-md` | `0 18px 40px -22px rgba(29, 32, 36, 0.35)` | `--shadow-md` | Tarjeta al pasar, aviso flotante |
+| `--rs-sombra-marca` | `0 22px 48px -24px rgba(159, 40, 66, 0.55)` | `--shadow-brand` | Botón principal |
+| `--rs-fuente-titulos` | `'Bricolage Grotesque', Georgia, serif` | `--font-display` | Titulares, cifras grandes, etiqueta de la barra |
+| `--rs-fuente-texto` | `'Archivo', system-ui, sans-serif` | `--font-body` | Todo el texto |
+| `--rs-fuente-mono` | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` | (su `code`) | Códigos, hashes, orígenes de campo |
+| `--rs-radio` / `--rs-radio-sm` / `--rs-radio-pildora` | `16px` / `10px` / `999px` | `--radius`, `--radius-sm`, botones | Paneles; controles; botones, chips y pestañas |
+| `--rs-ancho` | `1180px` | `--maxw` | Ancho máximo del contenido |
+| `--rs-curva` / `--rs-duracion` | `cubic-bezier(0.2, 0.8, 0.2, 1)` / `180ms` | `--ease` | Toda transición |
+| `--rs-trama` | `34px` | (su `background-size`) | Paso de la trama de plano |
+
+Los tonos de estado son **los mismos** que el circuito ya usa en sus
+directivas `:class` (Tailwind `emerald`, `amber`, `red`, `sky`), para que lo
+que pintan las directivas —que no se tocan— y lo que pintan los componentes
+casen. Fuera del `:root`, los dos CSS solo escriben colores, sombras y radios
+con `var(--rs-…)` (o `transparent`, `currentColor`, `inherit`, `0` y `50 %`):
+es lo que comprueba R49. `--ruesma-burdeos: #ad1833` se retira (H-7).
+
+### 15.4 · Ficheros
+
+**A crear**
+
+| Ruta | Qué es | Cómo se verifica |
+|---|---|---|
+| `services/postventa-front/img/logo-ruesma.svg` | Copia **byte a byte** de `front-portal/public/assets/img/logo-ruesma.svg`. SHA-256 `1dfc97aa813fa45433191aaf6f3dff9d931b0cdbacc96933becbbb0349179959`, 2 242 bytes. Revisado en esta spec: solo `<svg>`, `<defs><style>` con dos rellenos (`#9f2842`, `#7b868c`), 3 `<rect>` y 5 `<path>`; **sin** metadatos, textos, scripts, enlaces, `data:` ni rutas de autor. Nada sensible | R52 |
+| `services/postventa-front/img/favicon.svg` | Copia byte a byte de `front-portal/public/assets/img/favicon.svg`. SHA-256 `006623f03ec06e3570db7574917baf3de146fba6ba1e970228b3f04e7348926e`, 336 bytes: 4 `<rect>` en `#9f2842`, `#ffffff` y `#7b868c` | R52 |
+
+`img/` y no `assets/img/`: el front ya sirve `css/` y `js/` en la raíz. El
+despliegue sube la carpeta entera (§1.3) y `staticwebapp.config.json` ya
+declara `.svg` como `image/svg+xml`.
+
+**Las cuatro `<link>` de la cabecera** (R50, R59), **exactas**, en este
+orden, justo **antes** de `<link rel="stylesheet" href="css/styles.css">`, en
+las dos páginas (valores de atributo tal como los devuelve `html.parser`):
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
+<link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+```
+
+Las mismas familias que `front-portal`, con el peso 600 de Bricolage (su
+etiqueta de la barra lo usa y su URL no lo pide) y el 700 de Archivo;
+`display=swap` para que el texto se vea con la fuente de reserva mientras
+llega. Por qué por Google Fonts y no alojadas: §15.10.
+
+**A modificar**
+
+| Ruta | Qué cambia |
+|---|---|
+| `css/styles.css` | Pasa a ser **la hoja de la marca**, compartida (ya la cargan las dos páginas): (1) tokens; (2) base —`body` con `--rs-fuente-texto`, `--rs-tinta` y el lienzo con la trama; `img { max-width: 100% }`—; (3) barra común (`rs-barra*`, `rs-pestana`); (4) componentes compartidos: `rs-contenedor`, `rs-titulo`, `rs-subtitulo`, `rs-entradilla`, `rs-rotulo`, `rs-panel` (y `--suave`, `--atencion`, `--destacado`, `--tabla`, `--lista`), `rs-btn` (y `--primario`, `--secundario`, `--texto`, `--ok`, `--peligro`, `--compacto`), `rs-campo`, `rs-chip` (y `--ok`, `--atencion`, `--neutro`), `rs-aviso` (y `--error`, `--atencion`, `--info`, `--compacto`), `rs-nota` (y variantes), `rs-enlace`, `rs-mono`, `rs-tabla`, `rs-pie`; (5) los del circuito: `rs-cuerpo`, `rs-cabecera`, `rs-estado-servicio`, `rs-principal`, `rs-zona`, `rs-progreso`, `rs-fila`, `rs-punto`, `rs-paso`, `rs-visor`, `rs-resumen`; (6) foco (R54); (7) `prefers-reduced-motion` (R55). Sin `!important`, `@import` ni `data:` (R60) |
+| `css/portal.css` | Lo que solo usa el portal: `.placeholder` y `.placeholder-ficha` redibujados con tokens (§6.1, recuadro), aviso de maqueta, portada (`rs-ceja`, `rs-hero`, `rs-recorrido`), tarjetas (`rs-rejilla`, `rs-tarjeta*` con su entrada escalonada), chips `[data-estado]` (R57), pestañas de la ficha (`[role="tab"][aria-selected="true"]`), datos de la ficha (`rs-datos`, `rs-origen`), `rs-pendiente`, `rs-carta` (vista previa del correo), volcado (`rs-contadores`), estados vacíos (`rs-vacio`, R58) y aviso flotante. Conserva `[x-cloak]` (la única `!important` admitida) |
+| `index.html` (portal) | Las cuatro `<link>`; la barra con el logotipo (§15.5); clases `rs-*` en todas las secciones; las directivas `:class` de las pestañas de la barra y de la ficha **se quitan** (las pinta `aria-current` / `aria-selected`, que ya estaban); las de fila abierta pasan a `'rs-fila--abierta'`; los chips ganan `:data-estado`; los estados vacíos de R58 (`data-vacio` con `x-show` sobre la lista filtrada que el componente ya expone). **Ni un `js/*.js` cambia** |
+| `partes.html` (circuito) | **Solo**: las cuatro `<link>`, la barra (F-035) con el logotipo, y **valores de `class`** según §15.7. Nada más (R59) |
+| `README.md` del front | Sección «Identidad visual Ruesma (F-035)» (R61) y la regla de R48 en la sección de la maqueta |
+| `docs/ARCHITECTURE.md` | En la sección del portal: la regla de R48 (misma ventana cuando una sección es real, y que la ficha que lo active resuelve la remesa en curso) |
+| `tests/test_f035_portal.py` | R59 sustituye a la comparación con `difflib`; R33 admite `css/styles.css`; tests nuevos de R49–R56, R58, R60, R61 (§15.8) |
+| `tests/test_f035_placeholders_vivos.py` (raíz) | R48, con su control |
+| `tests_js/portal.test.js` | R57 |
+
+**No se tocan**: `js/*.js` (los doce), `staticwebapp.config.json`,
+`dev_server.py`, `dev_front.ps1`, `infra/*`, `harness/*`,
+`services/postventa-api/`, los tests del circuito, `azure-apps/` (no cambia
+nada de lo que el proyecto expone ni consume) y `front-portal` (solo se lee).
+
+### 15.5 · Sección a sección
+
+**La barra superior (las dos páginas, R51).** Pegajosa arriba
+(`position: sticky`, por encima del aviso flotante), fondo papel al 85 % con
+desenfoque (`backdrop-filter`) y una línea inferior `--rs-linea`, como la de
+`front-portal`. A la izquierda la marca: logotipo de 28 px de alto, separador
+de 1 × 24 px en `--rs-linea-fuerte` y «POSVENTA» en Bricolage 600,
+mayúsculas, interletrado 0,06 em, `--rs-acero-texto`. A la derecha las ocho
+pestañas en píldora (Archivo 500, `--rs-tinta-suave`); al pasar, fondo
+`--rs-burdeos-suave` y texto `--rs-burdeos`; la **actual**, por
+`[aria-current="page"]`, con ese mismo fondo, texto burdeos y peso 600. Por
+debajo de 560 px la etiqueta se oculta y las pestañas se desplazan en
+horizontal dentro de la barra, con un desvanecido en los bordes. En el
+circuito, la leyenda de R47 va en una segunda línea (`rs-barra__leyenda`,
+0,78 rem, `--rs-acero-texto`, precedida de un punto ámbar decorativo). Mismo
+marcado en las dos páginas salvo los enlaces y la pestaña actual:
+
+```html
+<nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
+  <div class="rs-barra__fila">
+    <span class="rs-barra__marca">
+      <img class="rs-barra__logo" src="img/logo-ruesma.svg" alt="Construcciones Ruesma">
+      <span class="rs-barra__sep" aria-hidden="true"></span>
+      <span class="rs-barra__etiqueta">Posventa</span>
+    </span>
+    <div class="rs-barra__pestanas">
+      <!-- circuito: <a href="./#/inicio" target="_blank" rel="noopener" class="rs-pestana">Inicio</a> …
+           y <span aria-current="page" class="rs-pestana">Partes firmados</span>
+           portal:   <a href="#/inicio" class="rs-pestana" :aria-current="…">Inicio</a> …
+           y <a href="partes.html" class="rs-pestana">Partes firmados</a> -->
+    </div>
+  </div>
+  <!-- solo en el circuito: <p class="rs-barra__leyenda">Las demás pestañas son una maqueta…</p> -->
+</nav>
+```
+
+La marca **no es un enlace** en ninguna de las dos: en el circuito, un enlace
+más rompería R31 (sus enlaces son exactamente los siete de la maqueta) y, en
+la misma ventana, perdería la remesa.
+
+**Aviso de maqueta (portal, R13, R56).** Banda a todo el ancho bajo la barra,
+fondo `--rs-atencion-suave` con un rayado diagonal muy tenue —el mismo
+lenguaje que el placeholder, a propósito: «esto es maqueta»—, texto
+`--rs-atencion`; «Esto es una maqueta.» en 600 y la muestra de placeholder a
+continuación. **Nunca burdeos**: la marca no avisa de nada.
+
+**Portada (`inicio`).** Como el *hero* de `front-portal`: una ceja en píldora
+(«Posventa · maqueta del ciclo», 0,74 rem, mayúsculas, borde
+`--rs-linea-fuerte`, fondo papel), el titular «Portal de posventa» en
+Bricolage 800 con `clamp(2rem, 5vw, 3.2rem)` e interletrado −0,02 em, con
+«posventa» en burdeos (`<em>`), y la entradilla actual en 1,05 rem
+`--rs-tinta-suave`, 60 caracteres de ancho. El recorrido
+«Entrada → Revisión → … → Coste» pasa a ser una **lista ordenada**
+(`<ol class="rs-recorrido">`) de siete píldoras numeradas 01–07 unidas por
+una línea fina; los enlaces y sus destinos **no cambian**.
+
+**Tarjetas de `inicio`.** Rejilla `repeat(auto-fill, minmax(260px, 1fr))`;
+cada `rs-tarjeta`: papel, borde `--rs-linea`, radio 16, sombra pequeña,
+índice «01…06» arriba a la derecha (Bricolage 700, `--rs-acero-300`,
+`aria-hidden`), rótulo, **cifra** en Bricolage 800 a 2,6 rem con cifras
+tabulares, nota en `--rs-acero-texto` y un pie con la llamada («Ver la
+bandeja →») en burdeos 600 cuya flecha avanza 4 px al pasar. Al pasar, una
+barra de acento burdeos de 3 px crece de izquierda a derecha, la tarjeta sube
+3 px y gana `--rs-sombra-md`. Un chip arriba dice qué es cada una:
+«Maqueta» (neutro) en las cinco de ejemplo y **«En producción»** (`--ok`) en
+«Partes firmados», que además lleva el único **botón principal burdeos** de
+la portada («Abrir el circuito de partes firmados», R46) junto al placeholder
+hueco de F-045: el contraste entre lo que funciona y lo que no es máximo.
+Entrada escalonada de 60 ms entre tarjetas (420 ms, opacidad y 10 px de
+desplazamiento), sin JavaScript (`:nth-child`), apagada con
+`prefers-reduced-motion`.
+
+**Cabecera de cada sección.** `rs-titulo` (Bricolage 700, 1,9 rem) y una
+entradilla; las acciones de la sección, alineadas a la derecha en pantallas
+anchas.
+
+**Tablas (`rs-tabla`, dentro de `rs-panel rs-panel--tabla`).** El panel
+desplaza en horizontal su tabla, así que la página nunca lo hace (V1-e).
+Cabecera en 0,72 rem, 600, mayúsculas, interletrado 0,08 em, `--rs-acero-texto`
+sobre `--rs-lienzo`; filas de 0,9 rem separadas por `--rs-linea`; al pasar,
+fondo lienzo; la fila abierta (`rs-fila--abierta`) con un filete burdeos de
+3 px a la izquierda. Códigos en monoespaciada 0,82 rem; importes alineados a
+la derecha con cifras tabulares; «sin enlazar» en cursiva `--rs-acero-texto`
+(R22). Casillas con `accent-color: var(--rs-burdeos)`.
+
+**Chips de estado (R57).** Píldora de 0,72 rem, 600, con el texto de siempre
+(código · resumen, o la etiqueta del volcado) y el color por
+`[data-estado]`: `conest` — `SAT` atención, `PTE` info, `TER` ok, `CER`
+neutro relleno, `NPR` neutro de contorno; revisión — `nueva` info, `editada`
+atención, `aprobada` ok, `descartada` neutro de contorno, `volcada` neutro;
+volcado — `previsto` info, `creado` ok, `idempotente` neutro, `rechazado`
+error, `no_procesado` atención. «duplicada» es una marca, no un estado:
+`rs-chip rs-chip--atencion`. Fondo suave y texto fuerte del mismo tono
+(pares de §15.6); el neutro, `--rs-tinta-suave` sobre `--rs-acero-100`.
+
+**Filtros y campos.** En un panel lienzo sobre la tabla; `rs-campo` con radio
+10, borde `--rs-acero` (3,7:1, suficiente para el borde de un control) y foco
+burdeos.
+
+**Ficha de incidencia.** Cabecera en panel: código en monoespaciada
+`--rs-acero-texto`, descripción corta en Bricolage 700 a 1,6 rem, chip de
+estado y obra · unidad. Pestañas `role="tab"` **subrayadas**: 2 px burdeos
+bajo la activa (`[aria-selected="true"]`), sin fondo. «Datos» como rejilla de
+definición (`rs-datos`): etiqueta en 0,72 rem mayúsculas `--rs-acero-texto`,
+valor en 0,95 rem tinta, y el origen del campo (R25: `con.cod`,
+`conext[RCPCLI]`, `propio`…) como chip diminuto monoespaciado de contorno
+(`rs-origen`); los tres bloques con su subtítulo y una línea. «sin completar»
+en cursiva `--rs-acero-texto`; cada «Pendiente: …» como `rs-pendiente`
+(fondo atención suave, filete de 3 px a la izquierda, texto atención).
+
+**Paneles** (detalle de la bandeja, capítulo, volcado, no procede).
+`rs-panel` con cabecera propia —título Bricolage 600 a 1,1 rem y «Cerrar»
+como `rs-btn--texto`— y aparición de 200 ms (opacidad y 6 px). El **volcado**:
+dos paneles con su chip («Simulación» info, «Volcado hecho» ok) y el resumen
+por estado como fila de contadores (cifra en Bricolage + etiqueta);
+«provisional» en cursiva junto al código. **No procede**: filete de atención
+a la izquierda; la vista previa del correo como `rs-carta` —papel, borde,
+radio 10, cabecera «Para / Asunto» en rejilla con etiquetas acero, cuerpo a
+0,95 rem con interlineado 1,6—; «En pruebas nunca sale un correo a un cliente
+real» como `rs-aviso rs-aviso--info`.
+
+**Estados vacíos (R58).** `rs-vacio`: bloque centrado, 2,5 rem de relleno,
+fondo lienzo, radio 16, borde **continuo** `--rs-linea` (lo discontinuo es de
+los placeholders), frase en `--rs-tinta-suave` («Ninguna incidencia de
+ejemplo cumple esos filtros.») y una segunda en `--rs-acero-texto` («Prueba a
+quitar algún filtro.»). En incidencias, bandeja e impresión. Los «Sin cambios
+… todavía» que ya existen, en su variante de una línea.
+
+**Aviso del placeholder pulsado (R11).** Tarjeta flotante abajo, papel,
+filete de atención de 3 px, radio 16, `--rs-sombra-md`; «Entendido» como
+`rs-btn--secundario rs-btn--compacto`; aparece en 180 ms. La región
+`role="status"` no cambia.
+
+**Botones (las dos páginas).** `rs-btn`: píldora, Archivo 600 a 0,92 rem,
+relleno 0,6 × 1,2 rem. `--primario`: burdeos, texto papel,
+`--rs-sombra-marca`; al pasar `--rs-burdeos-fuerte` y −1 px. `--secundario`:
+papel, borde `--rs-acero`, texto tinta; al pasar borde y texto burdeos sobre
+`--rs-burdeos-suave`. `--texto`: sin borde, `--rs-acero-texto`, al pasar
+burdeos. `--ok`: `--rs-ok`. `--peligro`: `--rs-error`. `--compacto`:
+0,35 × 0,85 rem a 0,82 rem. `:disabled`: `--rs-acero-100`, texto
+`--rs-acero-texto`, sin sombra, `cursor: not-allowed` (lo deshabilitado está
+exento de AA). **Una sola acción principal por vista.**
+
+**Pie.** Como `front-portal`: línea superior, 0,8 rem, `--rs-acero-texto`.
+
+### 15.6 · Accesibilidad (R53, R54, R55)
+
+Contraste WCAG medido con los valores de §15.3 (el test lo recalcula del
+`:root`):
+
+| Texto / fondo | Contraste | Mínimo |
+|---|---|---|
+| `--rs-tinta` / `--rs-papel` · `--rs-lienzo` | 16,35 · 14,85 | 4,5 |
+| `--rs-tinta-suave` / `--rs-papel` · `--rs-lienzo` · `--rs-acero-100` | 8,27 · 7,51 · 6,35 | 4,5 |
+| `--rs-acero-texto` / `--rs-papel` · `--rs-lienzo` | 5,79 · 5,26 | 4,5 |
+| `--rs-papel` / `--rs-burdeos` · `--rs-burdeos-fuerte` (botón principal) | 7,35 · 10,19 | 4,5 |
+| `--rs-burdeos` / `--rs-papel` · `--rs-lienzo` · `--rs-burdeos-suave` (enlaces, pestaña actual) | 7,35 · 6,68 · 6,29 | 4,5 |
+| `--rs-papel` / `--rs-ok` · `--rs-error` (botones) | 5,48 · 6,47 | 4,5 |
+| `--rs-ok` / `--rs-ok-suave` | 5,21 | 4,5 |
+| `--rs-atencion` / `--rs-atencion-suave` | 6,84 | 4,5 |
+| `--rs-error` / `--rs-error-suave` | 5,91 | 4,5 |
+| `--rs-info` / `--rs-info-suave` | 5,57 | 4,5 |
+| **No texto**: `--rs-acero` / `--rs-papel` · `--rs-lienzo` (borde de campo); `--rs-burdeos` / `--rs-papel` (foco) | 3,73 · 3,39; 7,35 | 3 |
+
+Descartado por la medida: `--rs-acero` como texto (3,73 sobre blanco; es lo
+que `front-portal` usa en sus textos pequeños) y `--rs-acero-texto` sobre
+`--rs-acero-100` (4,45): por eso el chip neutro lleva `--rs-tinta-suave`.
+
+- **Foco (R54)**: `:focus-visible` con contorno de 2 px `--rs-burdeos` y
+  separación de 2 px en enlaces, botones, campos, `summary` y pestañas; en
+  los botones rellenos burdeos, separación de 3 px para que el contorno se
+  vea fuera del relleno. Ninguna regla quita el contorno sin poner otro.
+- **Movimiento (R55)**: transiciones de 180 ms (`--rs-duracion`), como
+  mucho 250 ms, solo sobre `color`, `background-color`, `border-color`,
+  `box-shadow`, `opacity` y `transform`. Animaciones de entrada solo en
+  `css/portal.css`. `@media (prefers-reduced-motion: reduce)` en **las dos**
+  hojas deja `transition: none` y `animation: none` en todo, incluido el
+  pulso del circuito (`rs-paso`).
+- **Semántica**: el logotipo con `alt`; el separador `aria-hidden`; la
+  pestaña actual por `aria-current`; las de la ficha por `aria-selected`
+  (ya estaban); los índices decorativos `aria-hidden`; el color nunca es la
+  única pista (R57).
+
+### 15.7 · El circuito: solo presentación (R59, R60)
+
+**Reglas.**
+
+1. En `partes.html` solo cambian **valores de `class`** (más las cuatro
+   `<link>` y la barra, que son de F-035). Ni una directiva (`x-*`, `@*`,
+   `:*`), ni un `id`, `type`, `data-*`, `aria-*`, ni un texto, ni un
+   comentario, ni el orden de atributos o elementos.
+2. Las **directivas `:class` se quedan como están**, con sus utilidades de
+   Tailwind: son los colores de **estado** (semáforo, dudoso, arrastrando,
+   parte abierto) y los fijan los tests de F-026 y F-028. Como el CDN de
+   Tailwind inyecta sus utilidades **después** de nuestra hoja, a igual
+   especificidad ganan ellas: justo lo que se quiere (el estado manda sobre
+   el aspecto por defecto del componente).
+3. En un mismo elemento no se mezclan una clase `rs-*` y una utilidad de
+   Tailwind **que fije la misma propiedad** (color, fondo, borde, radio,
+   relleno, tipografía): ganaría la utilidad. Las utilidades de maquetación
+   (`flex`, `grid`, `gap-*`, `mt-*`, `ml-auto`, `truncate`, `lg:col-span-*`…)
+   se pueden quedar. Excepción documentada: `text-red-800` en el `<p>` del
+   fallo del autoguardado (§15.2), que coincide con el tono de
+   `rs-aviso--error`.
+4. Las reglas de fondo y borde de `rs-btn--*` se escriben con especificidad
+   (0,2,0) (`.rs-btn.rs-btn--primario`), para no depender de la hoja base del
+   CDN de Tailwind, que va sin versión (H-6).
+5. Nada de `!important` en las hojas (R60): Alpine esconde con
+   `style="display: none"` en línea, y una regla con `!important` sobre
+   `display` lo taparía (por ejemplo, la pregunta de confirmación saldría
+   siempre).
+
+**Correspondencia** (líneas de `partes.html` en `6bc4b6c`; la columna «hoy»
+resume):
+
+| Líneas | Elemento | Hoy | Nuevo `class` |
+|---|---|---|---|
+| `:15` | `<body>` | `bg-slate-50 text-slate-800` | `rs-cuerpo` |
+| `:16` | `div` del componente | `min-h-screen flex flex-col` | igual |
+| `:23-38` | barra (F-035) | pizarra oscura | §15.5 (se reescribe entera, con R44/R45/R47) |
+| `:40-44` | cabecera, `h1`, subtítulo | borde y blanco | `rs-cabecera`; `rs-contenedor rs-cabecera__fila`; `rs-titulo`; `rs-subtitulo` |
+| `:46-54` | indicador del backend | puntos y textos | `rs-estado-servicio`; punto `rs-punto` (su `:class` sigue); textos `rs-nota`, `rs-nota rs-mono` |
+| `:59` | `<main>` | `mx-auto … space-y-6` | `rs-contenedor rs-principal flex-1` |
+| `:63`, `:124`, `:482` | secciones | `rounded-lg border … p-6` | `rs-panel`; la de archivar y cerrar, `rs-panel rs-panel--destacado` (filete burdeos arriba: es la acción del circuito) |
+| `:64`, `:125`, `:153`, `:259`, `:483` | rótulos `h2` | mayúsculas pizarra | `rs-rotulo` |
+| `:66` | zona de soltar | `mt-4 rounded-lg border-2 border-dashed p-8 text-center transition` | `rs-zona mt-4` (discontinua: en el circuito no hay placeholders y es la convención de «suelta aquí»; su `:class` de arrastre sigue) |
+| `:77`, `:83` | «Elegir ficheros», «Elegir una carpeta» | borde gris | `rs-btn rs-btn--secundario` |
+| `:92`, `:146`, `:577` | errores | rojo | `rs-aviso rs-aviso--error` |
+| `:94`, `:374`, `:538`, `:558` | avisos | ámbar | `rs-aviso rs-aviso--atencion` (+ `rs-aviso--compacto` o la maquetación que ya tenían) |
+| `:382`, `:546`, `:548` | cerrado; puertas de entorno | azul | `rs-aviso rs-aviso--info` (las puertas **no** en rojo, como dice su comentario) |
+| `:110` | «Trocear la remesa» | pizarra | `rs-btn rs-btn--primario mt-4` |
+| `:129-130` | barra de progreso | gris y cielo | `rs-progreso mt-2`; `rs-progreso__barra` (burdeos; su `:style` sigue) |
+| `:136` | avisos de la remesa | ámbar | `rs-panel rs-panel--atencion` |
+| `:151`, `:254` | lista y detalle | tarjetas | `lg:col-span-2 rs-panel rs-panel--lista`; `lg:col-span-3 rs-panel` |
+| `:154`, `:262` | «Empezar otra remesa», «Cerrar» | texto gris | `rs-btn rs-btn--texto` |
+| `:161` | fila de parte | `w-full px-4 py-3 text-left hover:bg-slate-50` | `rs-fila` (su `:class` de abierto sigue) |
+| `:179`, `:346` | punto del semáforo | `inline-block h-2.5 w-2.5 … rounded-full` | `rs-punto` (+ `shrink-0` / `mr-1`); su `:class` sigue |
+| `:191`, `:559`, `:578`, `:589`, `:605` | hashes | mono gris | `rs-mono rs-nota` (el `:class` del tachado sigue) |
+| `:199` | etiqueta de estado | `rounded px-1.5 … uppercase` | `rs-chip` (colores del `:class`, que sigue) |
+| `:212` | paso en curso | `ml-auto animate-pulse text-xs text-sky-600` | `rs-paso ml-auto` (pulso propio, apagado con R55) |
+| `:214`, `:216`, `:228`, `:298`, `:423`, `:442`, `:453` | notas pequeñas | gris | `rs-nota` |
+| `:224` | «Lo decidió una persona» | cielo | `rs-nota rs-nota--info` |
+| `:234`, `:237`, `:243`, `:432`, `:437`, `:496`, `:506` | notas de error y de atención; «reintentar» | rojo, ámbar, subrayado | `rs-nota rs-nota--error` / `--atencion`; `rs-enlace` |
+| `:275-288` | campos del parte | etiqueta, confianza, «editado», `<input>` | `rs-campo__etiqueta`; confianza `rs-chip` (su `:class` sigue); `rs-chip rs-chip--ok`; `rs-campo mt-1` (su `:class` de dudoso sigue) |
+| `:295` | «Revalidar (no gasta IA)» | pizarra | `rs-btn rs-btn--secundario` |
+| `:318` | «guardando / guardado» | `text-xs` | `rs-nota` (su `:class` sigue) |
+| `:323` | **fallo del autoguardado** | `rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800` | `rs-aviso rs-aviso--error rs-aviso--compacto text-red-800` (**`text-red-800` se conserva**: `test_f026_autoguardado.py:280`) |
+| `:340` | caja del estado del parte | gris claro | `rs-panel rs-panel--suave mt-4` |
+| `:404` | motivo (`<textarea>`) | borde gris | `rs-campo mt-1` |
+| `:410`, `:415` | «Aprobar este parte», «Rechazar este parte» | esmeralda, rosa | `rs-btn rs-btn--ok`, `rs-btn rs-btn--peligro` |
+| `:459` | visor del PDF | `mt-2 h-[28rem] … border` | `rs-visor mt-2` (28 rem en la hoja) |
+| `:514` | **«Archivar y cerrar los partes aptos»** | esmeralda | `rs-btn rs-btn--primario` (pasa a **burdeos**: la acción principal del circuito; V4 lo avisa) |
+| `:528`, `:530` | «Sí, archivar y cerrar», «Cancelar» | rosa, borde | `rs-btn rs-btn--peligro rs-btn--compacto` (escritura irreversible en el ERP: rojo, no burdeos), `rs-btn rs-btn--secundario rs-btn--compacto` |
+| `:563` | «Reintentar el cierre» | borde ámbar | `rs-btn rs-btn--secundario rs-btn--compacto` |
+| `:586`, `:602` | resúmenes | listas | `rs-resumen mt-4` |
+| `:592` | «abrir en SharePoint» | cielo subrayado | `rs-enlace ml-2` |
+| `:606` | número de incidencia | gris mono | `rs-chip rs-chip--neutro rs-mono ml-2` |
+| `:616-617` | pie | borde y gris | `rs-pie`; `rs-contenedor rs-pie__texto` |
+
+El implementer puede afinar nombres, pero **no** puede salir de las reglas
+1–5. Lo que la tabla no nombre conserva sus utilidades de maquetación y
+cambia solo lo que choque con un componente.
+
+### 15.8 · Las guardias
+
+**R59 · el circuito solo cambia en presentación.** Función pura en
+`tests/test_f035_portal.py`:
+
+- `tokens(html) -> list[tuple]` con `html.parser` (`convert_charrefs=True`):
+  etiqueta de apertura `("<", nombre, ((atributo, valor), …))` **con los
+  atributos en su orden y sin `class`**; cierre `("</", nombre)`; texto con los
+  blancos normalizados (se omite el vacío); comentario normalizado; `doctype`.
+  `style` **no** se quita: la base no lo usa y R60 prohíbe añadirlo, así que
+  la guardia es más estricta que «sin `class`/`style`».
+- `diferencias_de_presentacion(antes, ahora) -> list[str]`: a los dos lados
+  quita el primer comentario (la ruta; en `ahora` tiene que ser
+  `services/postventa-front/partes.html`), el subárbol del
+  `<nav data-barra-portal>` con los comentarios que lo preceden, y las cuatro
+  `<link>` de §15.4 **si** están en el `<head>` y antes de `css/styles.css`;
+  compara lo que queda con `difflib.SequenceMatcher` sobre las tuplas y
+  devuelve un problema legible por cada tramo distinto. Comprueba aparte que
+  la barra es el primer elemento hijo del `<div x-data="appPostventa()">`.
+- **Test de rama** (`feature/F-035*`, como el de antes): `antes` =
+  `git show <merge-base>:services/postventa-front/index.html`, `ahora` =
+  `partes.html`; tiene que dar `[]`.
+- **Control permanente** (sin git): con el `partes.html` real,
+  `diferencias_de_presentacion(real, copia)` da `[]` para una copia con un
+  `class` cambiado, y **no** `[]` para copias con: un `@click` cambiado, dos
+  atributos permutados, un elemento añadido, un texto cambiado, un
+  `style="…"` añadido y una `<link>` a otro dominio. Demuestra que la
+  guardia mira.
+
+**R33 enmendado.** El mismo test, con `M services/postventa-front/css/styles.css`
+admitido; `js/`, `staticwebapp.config.json`, `dev_server.py` y
+`dev_front.ps1`, igual que antes.
+
+**Las demás** (en `tests/test_f035_portal.py` salvo donde se dice):
+
+| R | Qué comprueba |
+|---|---|
+| R48 | Raíz: para cada sección real según `features.json` (hoy ninguna), su enlace en la barra de `partes.html` no lleva `target`; control con F-048 `done` en memoria que tiene que exigirlo para `datos`; y la regla en la sección del portal de `docs/ARCHITECTURE.md` («misma ventana») |
+| R49 | Los tokens de §15.3, con su valor, en el `:root` de `css/styles.css`; fuera del `:root`, en los dos CSS, ni `#hex`, ni `rgb(`/`rgba(`/`hsl(`, ni un `box-shadow`/`border-radius` sin `var(--rs-` (salvo `0`, `50%`, `none`) |
+| R50 | Las cuatro `<link>` exactas, en orden y antes de `css/styles.css`, en las dos páginas; `body` con `var(--rs-fuente-texto)` y la trama (`linear-gradient` con `var(--rs-linea)`); `.rs-titulo` con `var(--rs-fuente-titulos)` |
+| R51 | En las dos barras: `img.rs-barra__logo` con su `src` y `alt`, separador `aria-hidden="true"`, etiqueta «Posventa», ninguno dentro de un `<a>`; toda pestaña con `rs-pestana`; ninguna directiva `:class` en las pestañas del portal |
+| R52 | SHA-256 de los dos SVG; sin `<script`, `<foreignObject`, `<metadata`, `<text`, ` on…=`, `href=`, `data:`; colores ⊆ {`#9f2842`, `#7b868c`, `#ffffff`} |
+| R53 | Contraste calculado de los pares de §15.6 con los valores del `:root`; y ningún `color: var(--rs-acero)` en los dos CSS |
+| R54 | Regla `:focus-visible` con `outline` y `var(--rs-burdeos)` en `css/styles.css`; ningún `outline: none`/`0` sin otro `outline` o `box-shadow` en la misma regla |
+| R55 | Toda duración de `transition`/`animation` ≤ 250 ms (o `var(--rs-duracion)`); propiedades de `transition` en la lista; `@keyframes` y `animation:` solo en `css/portal.css` salvo el pulso `rs-paso`; bloque `prefers-reduced-motion: reduce` en las dos hojas con `transition: none` y `animation: none` |
+| R56 | En `index.html`, `border-dashed` solo en elementos `placeholder`; en `css/portal.css`, `dashed` solo en reglas de `.placeholder` y de la muestra; ningún elemento con `placeholder` y `rs-btn--primario` a la vez; el aviso de maqueta sin `burdeos` en sus clases ni en su regla; `partes.html` sin la clase `placeholder` |
+| R57 | `tests_js/portal.test.js`: cada código de `Portal.ESTADOS`, de los estados de revisión de los datos de la bandeja y de `MaquetaDatos.volcado.catalogos.estados` tiene su `[data-estado="…"]` en `css/portal.css`; todo elemento de `index.html` con `data-estado`/`:data-estado` lleva `rs-chip` y un `x-text` |
+| R58 | En las secciones `incidencias`, `bandeja` e `impresion`, un `data-vacio` con `x-show` y texto |
+| R60 | Sin `!important` (salvo `[x-cloak]` de `css/portal.css`), `@import` ni `data:` en los dos CSS; ningún atributo `style` en `partes.html` |
+| R61 | La sección del README y sus palabras clave (`css/styles.css`, `tokens`, `discontinuo`, `!important`, `class`, `front-portal`) |
+
+### 15.9 · Riesgos (y cómo se comprueba que el circuito sigue funcionando)
+
+| Riesgo | Mitigación | Dónde se ve |
+|---|---|---|
+| Un cambio «de estilo» toca la lógica del circuito (una directiva, un id, un texto, el orden) | R59: solo `class` cambia, atributos en su orden; control permanente con copias estropeadas; toda la suite del circuito sin tocar | `init.sh`; review |
+| Se cae una clase que fija un test del circuito | Medido (§15.2): solo `text-red-800` (`test_f026_autoguardado.py:280`), que se conserva; la suite del circuito corre entera y sin cambios | `init.sh` |
+| Las utilidades del CDN (sin versión, inyectadas después) pisan un componente, o su hoja base pisa el fondo de un botón | Reglas 2–4 de §15.7; especificidad (0,2,0) en `rs-btn--*`; H-6 propone fijar la versión | V2 (los botones se ven con su color) |
+| Una regla con `!important` tapa un `x-show` y aparece algo que debía estar oculto (p. ej. la confirmación) | R60 y regla 5 de §15.7 | `init.sh`; V2 (la pregunta de confirmación solo sale al pulsar) |
+| El burdeos se confunde con el rojo de error o con una acción irreversible | Burdeos = marca y acción principal; irreversible («Sí, archivar y cerrar») y rechazo en `--rs-error`, siempre con su texto; los estados nunca en burdeos | V2; V3 con Posventa |
+| Cambia el color del botón principal del circuito (verde → burdeos) y extraña | Es la marca; el texto no cambia; V4 avisa a Posventa. Pregunta abierta al humano | V4 |
+| Google Fonts no carga (red corporativa, caída) | `display=swap` y fuentes de reserva en los tokens (Georgia / `system-ui`): se ve con otra letra, no se rompe; `staticwebapp.config.json` no tiene CSP que lo bloquee (medido). Alternativa: alojarlas (§15.10) | V1-a, V4 |
+| Se confunden placeholders y controles reales con el estilo nuevo | R56 (discontinuo reservado, ningún placeholder relleno de marca) y la muestra en el aviso | V1-c; V3 |
+| Gris acero ilegible en textos pequeños | `--rs-acero-texto` y R53 | `init.sh` |
+| El SVG del logotipo no se sirve bien en local (tipo MIME en Windows) | `dev_server.py` usa los tipos de la biblioteca estándar; se mira en V1-b; en Azure, `.svg` ya está declarado | V1-b |
+| Caché del navegador: HTML nuevo con `css/styles.css` viejo tras publicar | `Ctrl+F5` en las dos páginas (V4) | V4 |
+| La barra pegajosa tapa contenido o el visor del PDF | No hay anclas que tape; se mira en V2 con un parte abierto | V2 |
+| Un día una sección real navega en la misma ventana desde el circuito y se pierde una remesa | R48 obliga a quitar el `target` **y** la ficha que lo haga resuelve la remesa (§2, recuadro) | test de raíz de R48 |
+
+**Cómo se comprueba que el circuito sigue funcionando**: (1) en la rama, la
+suite entera del circuito —los ~256 de Python y los 322 de JavaScript— sin un
+cambio y en verde, más R59 y R32; (2) V2 con `func start`, recorriendo el
+circuito hasta la pregunta de confirmación y cancelándola
+(`requirements.md` §3); (3) tras publicar, V4 con una remesa de prueba, como
+antes.
+
+### 15.10 · Alternativas descartadas
+
+| Alternativa | Por qué no |
+|---|---|
+| Redefinir en CSS las utilidades de Tailwind que usa el circuito (`.bg-slate-900 { … }`), para no tocar su HTML | Cambia el significado de clases que usa todo el mundo, compite con el orden de inyección del CDN (acabaría en `!important`) y colorearía también los estados de las directivas |
+| Configurar Tailwind con un `<script>` en línea (`tailwind.config = …`) | Es JavaScript nuevo en la cabecera del circuito (R59 no lo admite) y ata el estilo a un CDN sin versión |
+| Utilidades con valores arbitrarios (`bg-[#9f2842]`) | Los tokens se repetirían en cientos de atributos, sin un sitio único |
+| Hoja nueva `css/marca.css` | `css/styles.css` ya la cargan las dos páginas: otra hoja sería otra `<link>` en el circuito sin ganar nada |
+| Alojar las fuentes en el repositorio (`woff2`) | Binarios en git y otra forma distinta de la del portal corporativo; queda como plan B si la red bloquea Google Fonts |
+| Cambiar también los colores de las directivas `:class` del circuito | Son directivas y las fijan tests de F-026/F-028; los tokens de estado usan sus mismos tonos para que casen |
+| Copiar la hoja de `front-portal` tal cual | Trae la puerta de acceso, la tarjeta de catálogo y el usuario, que aquí no existen; y dos copias divergen (la misma regla que `azure-apps/`) |
+
+### 15.11 · Verificación manual
+
+V1, V2 y V4 de `requirements.md` §3 (recuadro de la segunda ronda). V2 pasa
+a exigir `func start` y el recorrido del circuito con una remesa de
+`muestras/` hasta la pregunta de confirmación, **cancelándola**.

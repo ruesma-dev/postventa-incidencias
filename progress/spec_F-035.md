@@ -232,3 +232,106 @@ propuesta del arnés** (H-5). Plantilla de impresión: para F-044, sin abrir.
 - No se ha tocado `azure-apps/`, `front-portal` ni `arnes-base`.
 - `harness/features.json`: F-035 sigue en `spec_ready`, sin cambios.
 - `bash harness/init.sh` no se ha ejecutado: solo cambia Markdown.
+
+---
+
+# F-035 · Enmienda por la segunda ronda del humano (estilo Ruesma) · 2026-09-25
+
+spec-author. Rama `feature/F-035-portal-posventa` sobre `6bc4b6c` (review 2
+APROBADA, sin mergear, V1/V2 pendientes); sin push. Sin código. Solo
+lecturas: el front, sus tests, y `front-portal/public` (`index.html`,
+`assets/css/styles.css`, `assets/img/`, commit `01fb1aa`). Acta literal:
+`design.md` §13.1, «Segunda ronda». Diseño: **`design.md` §15** (nueva).
+
+## 8 · Qué cambia
+
+**Navegación** («en la misma ventana como en una web normal (para la maqueta
+vale así)»): **la maqueta no cambia** (D-2). Entra **R48**: cuando una
+sección sea real (todas sus fichas `done`), la barra del circuito la enlaza
+sin `target`; lo vigila la suite de la raíz, con control. Consecuencia para
+la ficha que lo active: navegar en la misma ventana desde el circuito
+descarga la remesa en curso; esa ficha lo resuelve y lo propone
+(`design.md` §2, recuadro, y §7.3 paso 4).
+
+**Estilo Ruesma en el portal y en el circuito entero** (R49–R61):
+
+- **Tokens** `--rs-*` en el `:root` de `css/styles.css`, que ya cargan las dos
+  páginas (sin hoja nueva): burdeos `#9f2842`, acero `#7b868c`, neutros,
+  estados con los mismos tonos que ya usa el circuito, sombras, fuentes,
+  radios 16/10/999 px. **Nuevo** `--rs-acero-texto: #5d676d`: el acero de
+  `front-portal` da 3,7:1 sobre blanco y no vale para texto (medido).
+- **Logo y favicon** copiados byte a byte a `services/postventa-front/img/`
+  (SHA-256 en §15.4). Revisados: solo formas y dos rellenos; sin metadatos,
+  textos, scripts, enlaces ni `data:`. Nada sensible.
+- **Cuatro `<link>`** en la cabecera de las dos páginas: dos `preconnect`,
+  Google Fonts (Bricolage Grotesque + Archivo) y el favicon.
+  `staticwebapp.config.json` no tiene CSP (medido): no hay que tocarlo.
+- **Sección a sección** (§15.5): barra blanca translúcida con logotipo,
+  separador y «POSVENTA», pestañas en píldora con la actual en burdeos;
+  portada tipo *hero*; tarjetas con índice, cifra grande, acento al pasar y
+  chip «Maqueta» / «En producción»; tablas, chips por `data-estado`, ficha
+  con pestañas subrayadas, paneles, carta del correo, estados vacíos, aviso
+  flotante. Burdeos = marca y acción principal, nunca un estado.
+- **El circuito, solo presentación** (§15.2, §15.7): solo cambian valores de
+  `class` (más las cuatro `<link>` y la barra). Las directivas `:class` de
+  estado se quedan. **Medido: ningún test del circuito cambia.** El único
+  que fija una clase estática es `test_f026_autoguardado.py:280`
+  (`text-(red|rose|amber)-N00` en el aviso de fallo) y se respeta
+  **conservando** `text-red-800`.
+- **Guardia R59** (sustituye a la comparación línea a línea de R30/R43, que
+  cae en cuanto cambia un `class`): compara el HTML como secuencia de
+  etiquetas, atributos **en su orden** sin `class`, texto y comentarios
+  contra el `index.html` de la base; admite solo la línea 1, la barra y las
+  cuatro `<link>`. Control permanente con copias estropeadas. **R33
+  enmendado**: `css/styles.css` sí cambia. Tests de F-035 que cambian: esos
+  dos (`test_f035_portal.py`); ninguno del circuito.
+- Accesibilidad: contraste AA calculado por test desde el `:root` (§15.6),
+  foco visible, `prefers-reduced-motion`, sin `!important`.
+
+**tasks.md**: bloque 5 nuevo, **T14** (tokens y logo) → **T15** (portal) →
+**T16** (circuito, con la guardia R59 en el mismo commit) → **T17**
+(guardias: control de R59, R48, README) → **T18** (evidencias, mutaciones
+9–13) → **T19** (`init.sh`). T12 (V1/V2) pasa a después de T19; V1, V2 y V4
+ampliadas (fuentes en la red, foco, 390 px, movimiento reducido; V2 **con
+`func start`** y cancelando la confirmación; V4 con `Ctrl+F5` en las dos
+páginas).
+
+## 9 · Riesgos principales
+
+1. Tocar la lógica del circuito «de paso» → R59 y la suite del circuito sin
+   cambios.
+2. El CDN de Tailwind va **sin versión** e inyecta sus utilidades después
+   de nuestra hoja → reglas de componente con especificidad (0,2,0) en los
+   botones; H-6 propone fijarlo en otra ficha.
+3. Un `!important` taparía un `x-show` (p. ej. la confirmación saldría
+   siempre) → R60.
+4. Google Fonts bloqueado → fuentes de reserva; se ve distinto, no se rompe.
+5. Burdeos frente a rojo de error → irreversible y rechazo en rojo, estados
+   nunca en burdeos, siempre con texto.
+6. Caché tras publicar → `Ctrl+F5` en V4.
+
+## 10 · Abierto para el humano
+
+1. **Aprobar la enmienda** (bloque 5), en particular: el circuito en
+   producción cambia de aspecto (solo clases, sin tocar un test suyo), el
+   botón principal «Archivar y cerrar los partes aptos» pasa de **verde a
+   burdeos** (¿conforme, o se queda verde?) y V2 pasa a exigir `func start`
+   con una remesa de `muestras/`.
+2. **Google Fonts** por CDN, como el portal corporativo (recomendado), o
+   alojar las fuentes en el repositorio (plan B si la red las bloquea).
+3. **R48 con guardia**: la ficha que convierta la última pieza de una
+   sección en real tendrá que quitar el `target` y resolver en el mismo
+   trabajo cómo no perder la remesa del circuito. ¿Conforme con que sea
+   obligatorio por test?
+4. **H-6** (Tailwind sin versión fija, desde antes de F-035) y **H-7**
+   (`--ruesma-burdeos: #ad1833`, otro burdeos, sin uso: se retira): para el
+   líder.
+
+## 11 · Lo que no se ha hecho
+
+- Ni código ni tests: solo `specs/` y `progress/`.
+- No se ha tocado `front-portal` (solo lectura), `azure-apps/` (nada de lo
+  que el proyecto expone o consume cambia) ni `arnes-base` (nada del arnés
+  cambia).
+- `harness/features.json`: sin cambios (F-035 sigue `in_progress`).
+- `bash harness/init.sh` no se ha ejecutado: solo cambia Markdown.

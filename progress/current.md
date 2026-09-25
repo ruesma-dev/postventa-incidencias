@@ -1,6 +1,21 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 4 HECHAS · 2026-09-25 · siguiente: reviewer y T12 del humano
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 4». Solo tests (`e03b173`, `1c79ed1`): R58 exige la forma exacta del
+> `x-show` de la lista (las tres negaciones, en rojo); barrido por aparición
+> de las 37 directivas nuevas (40 apariciones): antes 11/40 muertas, ahora
+> **40/40**, con tests de JS que ejecutan las ligaduras contra el componente
+> y R9 (el chip F-0NN de cada panel = la ficha de sus pendientes).
+>
+> - **Hallazgo para el líder**: `index.html:940` (coste del capítulo) no
+>   lleva `rs-sin-dato`; latente (los datos de ejemplo siempre tienen coste).
+>   Arreglarlo es tocar `index.html`, fuera de este encargo.
+> - `bash harness/init.sh` en verde (raíz 73, front 353 sin caché, JS 413,
+>   ruff 61). Sin push.
+
 > ## ▶ F-035 · CORRECCIONES DE LA REVIEW 3 HECHAS · 2026-09-25 · siguiente: reviewer (vuelta sobre la review 3) y T12 del humano
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la

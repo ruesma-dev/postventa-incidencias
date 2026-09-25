@@ -2741,13 +2741,16 @@ Salen **37** (la review cuenta 33 con otro criterio; la diferencia está en
 las `:class` —16 aquí, 15 allí— y en contar cada `x-text` repetido una vez).
 Además, el bloque **quitó** 11 `:class`: las 7 de las pestañas de la barra y
 las 4 de las pestañas de la ficha, que pinta ahora `:aria-current` /
-`:aria-selected` (P7 y P8 del bloque 5b, con sus tests).
+`:aria-selected` (P7 y P8 del bloque 5b, con sus tests). *(Precisión de la review 4, O-2: en
+total se quitan 21 directivas —14 `:class`, 11 sin sustituto y 3 cambiadas
+por su versión `rs-*`, y 7 `x-text` con paréntesis—; las sustituidas ya
+cuentan entre las 37 nuevas.)*
 
 | Clase | N | Directivas (línea de `index.html`) | Mutación | Resultado |
 |---|---|---|---|---|
 | `:class` de presentación | 16 | `rs-fila--abierta` (317, 937); `rs-sin-dato` (329, 374, 632, 681, 834, 835, 836, 941, 942, 969, 971, 973); `rs-nota--atencion` (739); `rs-toast--visible` (1037) | P4 (317), P5 (374), S3 (739), P6 (1037): **una por cada clase CSS distinta** | Las cuatro **supervivientes, no equivalentes, visuales**. P4–P6 comprobadas con `--dump-dom` en el 5b (la clase deja de pintarse); S3, del mismo mecanismo que P5: la celda del motivo pierde el color de atención y conserva su texto. Sin test: aspecto puro sin contrato (análisis del 5b, que la review acepta) |
 | `:data-estado` | 5 | `fila.estado` (335), `inc.estado` (630, 659, 889), `p.estado` (516) | P3 (335), DE (630); N de la review (516) | **Muertas** las tres. El test nuevo de R57 recorre los cinco chips, así que cubre también 659 y 889 por construcción |
-| `x-show` de estado vacío y de lista | 6 | vacío: 349, 639, 893; lista: 298, 599, 882 | P1 (639), P2 (599) | **Muertas**. R58 está parametrizado por las tres secciones con las mismas aserciones |
+| `x-show` de estado vacío y de lista | 6 | vacío: 349, 639, 893; lista: 298, 599, 882 | P1 (639), P2 (599); *(corregido en la review 4)* y la **negación de la lista** en 298, 599 y 882 | *(Corregido en la review 4.)* P1 y P2 muertas, pero **la negación de la lista sobrevivía** en las tres (R58 miraba que el `x-show` del contenedor contuviera la función, no su forma): no equivalente, la sección se quedaba en blanco con filas. Desde `e03b173`, R58 exige `<lista>.length` (o `>0`) y las tres **mueren**, cada una en su parámetro («Correcciones de la review 4») |
 | `x-show` de la lista de errores de la importación | 1 | 229 | **O2**, **O** | O2 **muerta** (test nuevo). O: **equivalente en comportamiento**, ver abajo; el test nuevo la pone igualmente en rojo porque fija la expresión |
 | `x-show` de los chips del volcado | 2 | 489, 490 | **S1** (489) | **Muerta** (cambio 2). El test fija los dos chips, así que el cruce simétrico en 490 cae igual |
 | `x-text` de la ficha F-0NN | 7 | `datos.entrada.ficha` (179, 214), `web` (239, 247), `volcado` (458, 541), `noProcede` (797), `vinculos` (845), `impresion` (900), `capitulos` (988) | **S2** (988) | **Superviviente, no equivalente**, ver abajo |
@@ -2825,3 +2828,196 @@ del capítulo.)
 | Mutantes (campaña del arnés) | **0**, sin cambios (no hay Python de producción en el alcance) |
 | Mutantes a mano de esta vuelta | **12**: G en las dos hojas, S1, O2, DE, H, I, R y Z **muertos** (9); O **rojo pero equivalente en comportamiento** (comprobado en Chrome); S2 y S3 **supervivientes no equivalentes**, documentados |
 | Tiempo de la suite | Front pytest 12,78 s; raíz 7,03 s; JS ~3,7 s |
+
+
+## Correcciones de la review 4 · 2026-09-25
+
+implementer. Respuesta a `progress/review4_F-035.md` (CHANGES_REQUESTED,
+commit `effbafa`): sus dos «Cambios requeridos» y, por encargo del líder, el
+**barrido por aparición** de las directivas nuevas de `index.html` con todo
+superviviente no equivalente cubierto por un test. **Solo tests e informe**:
+commits **`e03b173`** y **`1c79ed1`** (`tests/test_f035_portal.py` +48,
+`tests_js/portal.test.js` +195; solo altas) y el de este informe. Ni
+`partes.html`, ni `index.html`, ni `css/*.css`, ni `js/*.js`
+(`git diff --stat effbafa HEAD` solo lista los dos ficheros de test). Sin
+push. **Ningún test nuevo destapó un fallo de lo que hoy se ve**; sí un hueco
+latente (§4).
+
+### 1 · Qué se añadió
+
+| Punto | Test | Qué exige |
+|---|---|---|
+| Cambio 1 | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[×3]` (enmendado) | Además de lo que ya pedía, el `x-show` del contenedor de la lista tiene, sin blancos, la forma `<lista>.length` o `<lista>.length>0`. Que contenga la función no basta |
+| Barrido: `x-text` de la ficha F-0NN (10 apariciones) | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` | El chip `x-text="datos.<bloque>.ficha"` de cada panel está en el panel que lista `datos.<bloque>.pendientes`, y en ningún otro: el panel más cercano con pendientes tiene exactamente los de ese bloque |
+| Barrido: `rs-sin-dato` (12) | JS `f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4)` | Todo elemento cuyo `x-text` puede decir que falta un dato («sin completar», «sin enlazar», «Sin histórico…» o un `importe(…)`) lleva `rs-sin-dato` **si y solo si** lo que se lee es eso. Con los datos de ejemplo abriendo cada fila de la bandeja, cada incidencia y cada capítulo; y, en los elementos que declaran su `:class`, también con la fila **vaciada** (todos sus campos a `null`), porque los datos de ejemplo no tienen ese hueco en todos los sitios (todas las incidencias tienen ubicación). Comprueba que ve los dos casos |
+| Barrido: `rs-nota--atencion` (1) | JS `f035 R25: un pendiente del campo se pinta en atención, y solo él (review 4)` | El origen de campo en atención si y solo si su texto es «Pendiente: …»; ve los dos casos |
+| Barrido: `rs-fila--abierta` (2) | JS `f035 R38/§5.8: la fila abierta, y solo ella, lleva rs-fila--abierta (review 4)` | En cada tabla con detalle (bandeja y capítulos), se ejecuta el `@click="abrir…"` de la fila k y solo la fila k queda marcada; para cada k |
+| Barrido: `rs-toast--visible` (1) | JS `f035 R11: el aviso de un placeholder se ve en su tarjeta, y sin aviso no hay tarjeta (review 4)` | Sin aviso, sin tarjeta; tras `placeholder(…)`, con tarjeta |
+
+**Cómo ejecutan los tests de JS las ligaduras.** Sin navegador: cada
+expresión de Alpine (`x-for`, `x-text`, `:class`, `@click`) se evalúa con
+`new Function` y `with`, con el componente real de `portal_app.js` (instanciado
+como en los tests de R4–R7, red prohibida) y las variables de los `x-for` que
+envuelven al elemento como ámbito (un `Proxy`, para que lo que escribe un
+método caiga en el componente). **No fijan la redacción de ninguna
+expresión**: comparan lo que la clase dice con lo que el texto dice.
+
+### 2 · Cambio 1: las tres negaciones de la lista, en rojo
+
+En una copia desechable del front (`<scratchpad>/copia_r58`, borrada al
+terminar), cada negación por separado:
+
+```
+== negada la lista de bandejaFiltrada()
+tests\test_f035_portal.py:1768: AssertionError: bandeja: la lista se enseña cuando bandejaFiltrada() tiene filas (x-show="bandejaFiltrada().length"), no con x-show="!bandejaFiltrada().length"
+1 failed, 2 passed, 94 deselected in 0.33s
+== negada la lista de incidenciasFiltradas()
+tests\test_f035_portal.py:1768: AssertionError: incidencias: la lista se enseña cuando incidenciasFiltradas() tiene filas (x-show="incidenciasFiltradas().length"), no con x-show="!incidenciasFiltradas().length"
+1 failed, 2 passed, 94 deselected in 0.18s
+== negada la lista de impresionFiltrada()
+tests\test_f035_portal.py:1768: AssertionError: impresion: la lista se enseña cuando impresionFiltrada() tiene filas (x-show="impresionFiltrada().length"), no con x-show="!impresionFiltrada().length"
+1 failed, 2 passed, 94 deselected in 0.19s
+```
+
+Cada una cae **en su parámetro** de R58 (`[bandeja]`, `[incidencias]`,
+`[impresion]`), también en el barrido de §3.
+
+**Cambio 2**: corregida en el sitio la fila «`x-show` de estado vacío y de
+lista» de la tabla P-R1 de «Correcciones de la review 3» §3 (con la
+negación de la lista, que sobrevivía, y su resultado tras el cambio 1). Y,
+al tocar esa sección, la precisión O-2 de la review 4 sobre las directivas
+quitadas (21, no 11).
+
+### 3 · El barrido por aparición
+
+**Método.** Las 37 directivas nuevas de `index.html` frente a `6bc4b6c`
+(multiconjunto de `(atributo, expresión normalizada)`, el mismo recuento que
+la review) son **40 apariciones**: 16 `:class`, 5 `:data-estado`, 3 `x-show`
+del vacío, 3 de la lista, 1 de los errores de la importación, 2 de los chips
+del volcado y 10 `x-text` de la ficha (7 expresiones, 3 repetidas). Una
+**mutación natural por aparición**: `:class` → `''`; `:data-estado` →
+`'SAT'`; `x-show` negado (o sin negar, el del vacío); chips del volcado
+cruzados; `x-text` de la ficha apuntando al bloque siguiente de la lista
+(`entrada → web → volcado → noProcede → vinculos → impresion → capitulos →
+entrada`). Script `barrido37.py` del scratchpad: localiza la sustitución en
+la línea de la etiqueta (o en las 4 siguientes, si el atributo va en otra
+línea) con **una** coincidencia (`assert`), escribe y restaura en bytes,
+ejecuta la suite pytest del front entera (que incluye el puente a `node
+--test`). Dos worktrees desechables con rama temporal `feature/F-035-rev4-…`
+(para que corran los tests de rama): **antes** sobre `effbafa` (los tests de
+la review 3) y **después** sobre `1c79ed1` (los de ahora). Al terminar, `git
+status` de los dos vacío, `git worktree remove` y `git branch -D` de los dos;
+`git worktree list` ya no los enseña.
+
+**Resultado: antes 11 muertos y 29 vivos; después, 40 muertos y 0 vivos.**
+Sin equivalentes: ninguna aparición sobrevive, así que no queda ninguna que
+justificar.
+
+| Línea | Clase | Mutación | Antes (`effbafa`) | Después (`1c79ed1`) | Lo mata |
+|---|---|---|---|---|---|
+| 317 | :class | `:class="filaBandejaAbierta === fila.id ? 'rs-fila--abierta'  -> :class="''"` | **vivo** | **muerto** | JS «R38/§5.8: la fila abierta, y solo ella…» |
+| 329 | :class | `:class="propuesta(fila.id) ? '' : 'rs-sin-dato'" -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 374 | :class | `:class="fila.ubicacion ? '' : 'rs-sin-dato'" -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 632 | :class | `:class="vinculo(inc.id) && vinculo(inc.id).proforma ? '' : ' -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 681 | :class | `:class="inc.ubicacion ? '' : 'rs-sin-dato'" -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 739 | :class | `:class="c.motivo ? 'rs-nota--atencion' : ''" -> :class="''"` | **vivo** | **muerto** | JS «R25: un pendiente del campo se pinta en atención…» |
+| 834 | :class | `:class="v.proforma ? '' : 'rs-sin-dato'" -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 835 | :class | `:class="importe(v.coste) === 'sin enlazar' ? 'rs-sin-dato' : -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 836 | :class | `:class="importe(v.venta) === 'sin enlazar' ? 'rs-sin-dato' : -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 937 | :class | `:class="capituloAbierto === c.obra ? 'rs-fila--abierta' : '' -> :class="''"` | **vivo** | **muerto** | JS «R38/§5.8: la fila abierta, y solo ella…» |
+| 941 | :class | `:class="c.venta === null ? 'rs-sin-dato' : ''" -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 942 | :class | `:class="c.venta === null ? 'rs-sin-dato' : ''" -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 969 | :class | `:class="vinculo(inc.id) && vinculo(inc.id).proforma ? '' : ' -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 971 | :class | `:class="importe(vinculo(inc.id) ? vinculo(inc.id).coste : nu -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 973 | :class | `:class="importe(vinculo(inc.id) ? vinculo(inc.id).venta : nu -> :class="''"` | **vivo** | **muerto** | JS «R22/R25: «sin dato» se marca rs-sin-dato…» |
+| 1037 | :class | `:class="aviso ? 'rs-toast--visible' : ''" -> :class="''"` | **vivo** | **muerto** | JS «R11: el aviso de un placeholder se ve en su tarjeta…» |
+| 335 | :data-estado | `:data-estado="fila.estado" -> :data-estado="'SAT'"` | muerto | **muerto** | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 516 | :data-estado | `:data-estado="p.estado" -> :data-estado="'SAT'"` | muerto | **muerto** | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 630 | :data-estado | `:data-estado="inc.estado" -> :data-estado="'SAT'"` | muerto | **muerto** | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 659 | :data-estado | `:data-estado="inc.estado" -> :data-estado="'SAT'"` | muerto | **muerto** | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 889 | :data-estado | `:data-estado="inc.estado" -> :data-estado="'SAT'"` | muerto | **muerto** | `test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto` |
+| 349 | x-show vacío | `x-show="!bandejaFiltrada().length" -> x-show="bandejaFiltrada().length"` | muerto | **muerto** | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]` |
+| 639 | x-show vacío | `x-show="!incidenciasFiltradas().length" -> x-show="incidenciasFiltradas().length"` | muerto | **muerto** | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]` |
+| 893 | x-show vacío | `x-show="!impresionFiltrada().length" -> x-show="impresionFiltrada().length"` | muerto | **muerto** | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]` |
+| 298 | x-show lista | `x-show="bandejaFiltrada().length" -> x-show="!bandejaFiltrada().length"` | **vivo** | **muerto** | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]` |
+| 599 | x-show lista | `x-show="incidenciasFiltradas().length" -> x-show="!incidenciasFiltradas().length"` | **vivo** | **muerto** | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]` |
+| 882 | x-show lista | `x-show="impresionFiltrada().length" -> x-show="!impresionFiltrada().length"` | **vivo** | **muerto** | `test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]` |
+| 229 | x-show errores | `x-show="datos.entrada.errores.length" -> x-show="!datos.entrada.errores.length"` | muerto | **muerto** | `test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_errores` |
+| 489 | x-show chip | `=== datos.volcado.dryRun -> === datos.volcado.hecho` | muerto | **muerto** | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` |
+| 490 | x-show chip | `=== datos.volcado.hecho -> === datos.volcado.dryRun` | muerto | **muerto** | `test_f035_r40_cada_chip_del_volcado_va_en_su_panel` |
+| 179 | x-text ficha | `x-text="datos.entrada.ficha" -> x-text="datos.web.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 214 | x-text ficha | `x-text="datos.entrada.ficha" -> x-text="datos.web.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 239 | x-text ficha | `x-text="datos.web.ficha" -> x-text="datos.volcado.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 247 | x-text ficha | `x-text="datos.web.ficha" -> x-text="datos.volcado.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 458 | x-text ficha | `x-text="datos.volcado.ficha" -> x-text="datos.noProcede.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 541 | x-text ficha | `x-text="datos.volcado.ficha" -> x-text="datos.noProcede.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 797 | x-text ficha | `x-text="datos.noProcede.ficha" -> x-text="datos.vinculos.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 845 | x-text ficha | `x-text="datos.vinculos.ficha" -> x-text="datos.impresion.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 900 | x-text ficha | `x-text="datos.impresion.ficha" -> x-text="datos.capitulos.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+| 988 | x-text ficha | `x-text="datos.capitulos.ficha" -> x-text="datos.entrada.ficha"` | **vivo** | **muerto** | `test_f035_r9_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` |
+
+(La columna «Mutación» va recortada a 60 caracteres por el script. Las
+`:class` mueren en pytest a través del puente `test_f007_r32_la_suite_de_javascript_esta_en_verde`;
+qué test de JS las mata se sacó ejecutando `node --test
+tests_js/portal.test.js` sobre cada una de las 16, en el mismo worktree.)
+
+Coincide con el barrido de la review en las 29 que ella vio vivas (16
+`:class`, 3 listas, 10 `x-text`). Una aparición, la **681** (la ubicación en
+la ficha de la incidencia), sobrevivió a la primera versión del test de «sin
+dato» (`e03b173`, 39/40): ninguna incidencia de ejemplo le falta la
+ubicación, así que con los datos tal cual la clase nunca se pone y vaciarla
+no cambiaba nada que se viera. No la di por equivalente: la ligadura existe
+para cuando falte el dato. `1c79ed1` añade la fila vaciada y la 681 muere.
+
+### 4 · Hallazgo (para el líder, fuera del alcance de este encargo)
+
+**`index.html:940`, el coste del capítulo (`x-text="importe(c.coste)"`), no
+lleva `rs-sin-dato`**, mientras que la venta y el margen de la misma fila sí
+(941, 942). Hoy no se ve: los tres capítulos de ejemplo tienen coste (1250,
+980 y 0). Lo destapó la fila vaciada; con ella aplicada a **todos** los
+candidatos, el test da:
+
+```
+✖ f035 R22/R25: «sin dato» se marca rs-sin-dato, y solo eso (review 4)
+  AssertionError [ERR_ASSERTION]: la marca rs-sin-dato no cuenta lo mismo que el texto
+  + [
+  +   '<td x-text="importe(c.coste)"> dice «sin enlazar» sin rs-sin-dato'
+  + ]
+```
+
+Arreglarlo es tocar `index.html` (un `:class` como el de la 941), que este
+encargo prohíbe. Por eso la fila vaciada se aplica solo a los elementos que
+**declaran** su `:class` (comentado en el test). Si el líder lo decide, es un
+cambio de una línea en el HTML de la maqueta (no del circuito) y quitar ese
+filtro del test.
+
+### 5 · Verificación
+
+- `bash harness/init.sh` en `1c79ed1`: **exit 0, `ENTORNO LISTO`**. Raíz
+  **73 passed**; front **353 passed** sin caché (352 + la de R9; el R58
+  enmendado no suma; incluye el puente con los **413** de JavaScript, 409 + 4
+  nuevos); api desde caché; `PUERTA COBERTURA: N/A (F-035 no cambia líneas
+  Python de producción frente a dev)`; `ruff` **61** avisos, los de antes.
+- `git diff --stat effbafa HEAD` → solo `tests/test_f035_portal.py` y
+  `tests_js/portal.test.js`.
+
+### 6 · Qué queda fuera y qué falta
+
+- El hallazgo de §4 (`index.html:940`), para que decida el líder.
+- **R-2** de la review 4 (`display: NONE` y `visibility: collapse` en la
+  guardia de R-1): recomendación que el encargo no incluye; no la aplico.
+- **P-R3** (el barrido por aparición como norma del arnés, para
+  `arnes-base`): es del líder. El `barrido37.py` de esta vuelta es un
+  punto de partida.
+- **O-1**: T12 (V1 y V2 del humano) sigue pendiente.
+
+### Evidencias (correcciones de la review 4)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Front **353 passed** (pytest, sin caché, 10,67 s en `init.sh`; incluye el puente de JS) y **413/413** (`node --test`, ~1,7 s); raíz **73 passed** (7,17 s) |
+| Tests nuevos o enmendados | 1 enmendado (R58, sus tres parámetros) y 5 nuevos: R9 en pytest; cuatro en JS (`rs-sin-dato`, `rs-nota--atencion`, `rs-fila--abierta`, `rs-toast--visible`) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; esta vuelta solo cambia tests |
+| Mutantes (campaña del arnés) | **0**, sin cambios |
+| Mutantes a mano | Barrido por aparición: **40**; antes **11/40** muertos, después **40/40**. Más las tres negaciones del cambio 1 en copia aparte: **3/3** en rojo. **0 supervivientes, 0 equivalentes** |
+| Tiempo de la suite | Front pytest 10,67 s; raíz 7,17 s; JS ~1,7 s |

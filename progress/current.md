@@ -1,6 +1,30 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 5a (T14 y T15) HECHO · 2026-09-25 · siguiente: bloque 5b (T16–T17)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 5a · T14 y T15».
+> Commits `83cb64f` (T14) y `b3ebbe9` (T15). Sin push; `features.json`,
+> `front-portal` y `azure-apps` sin tocar; ni un `js/*.js`, ni `partes.html`,
+> ni un test del circuito.
+>
+> - **T14**: tokens `--rs-*` en `css/styles.css` (fuera `--ruesma-burdeos`,
+>   H-7), base con la trama, barra, componentes, foco burdeos y movimiento
+>   reducido; logo y favicon byte a byte. Tests R33 enmendado, R49, R52, R53
+>   (contraste AA calculado, 21 pares en verde), R54, R55, R60.
+> - **T15**: el portal entero con la identidad (barra con logotipo, portada
+>   tipo *hero*, tarjetas, chips por `data-estado`, ficha, estados vacíos).
+>   Tests R49/R55 de `portal.css`, R50, R51, R56, R58 y R57 (JS).
+> - Front **328** pytest y **409** JS en verde; `bash harness/init.sh` en
+>   verde. Fase RED con trazas en el informe.
+> - **Desviación a revisar**: `.gitattributes` nuevo en la raíz (`img/*.svg
+>   -text`): sin él, con `core.autocrlf=true`, un checkout nuevo cambia el
+>   hash de los SVG (medido). Y R55 acota las *transiciones* a 250 ms, no las
+>   animaciones (la tabla de §15.8 lo decía de las dos; el requisito, no).
+> - Visto con Chrome headless (la extensión no estaba conectada): portal a
+>   1440 y 390 px sin desbordes; el circuito, igual que antes salvo la trama.
+>   Foco con teclado y movimiento reducido, sin mirar: V1.
+
 > ## ▶ F-035 · SPEC ENMENDADA POR LA SEGUNDA RONDA DEL HUMANO (estilo Ruesma) · 2026-09-25 · **pendiente de aprobación**
 >
 > spec-author. Resumen, riesgos y preguntas: **`progress/spec_F-035.md`** §8–§11;

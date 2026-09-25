@@ -1637,3 +1637,331 @@ texto largo del aviso de M10, a su final.
 | Tiempo de la suite JS | `duration_ms 3499` (3,5 s) con los 406 tests |
 
 `bash harness/init.sh` al cerrar esta vuelta: **exit 0, `ENTORNO LISTO`**. Raíz **69 passed** (40,80 s), front **294 passed** sin caché (22,23 s; incluye el puente que ejecuta los 406 tests de JavaScript), api desde caché (no se toca), `PUERTA COBERTURA: N/A` con su motivo, `ruff` con los mismos 61 avisos de deuda previa.
+
+
+## Bloque 5a · T14 y T15 · 2026-09-25
+
+implementer. Rama `feature/F-035-portal-posventa`. Commits **`83cb64f`**
+(T14) y **`b3ebbe9`** (T15), más el de este informe. Sin push;
+`harness/features.json`, `front-portal` y `azure-apps` sin tocar. **Ni un
+`js/*.js` cambia** (`git diff --stat af7f5f6 -- services/postventa-front/js`
+vacío). `partes.html` y los tests del circuito, intactos (son de T16).
+
+### 1 · Qué cambió
+
+| Fichero | T | Qué |
+|---|---|---|
+| `services/postventa-front/css/styles.css` | T14 (+2 retoques en T15) | Reescrita como **hoja de la marca**: los 37 tokens `--rs-*` de `design.md` §15.3 en el `:root` (**fuera `--ruesma-burdeos`, H-7**); base (`body` con Archivo, tinta, lienzo y la trama de plano de 34 px con el halo burdeos); barra común (`rs-barra*`, `rs-pestana`, actual por `[aria-current="page"]`, leyenda de R47 con punto ámbar; en ≤ 1240 px las pestañas bajan a una segunda línea desplazable con desvanecido; en ≤ 560 px se oculta la etiqueta); componentes compartidos (`rs-contenedor`, `rs-principal`, `rs-titulo`, `rs-subtitulo`, `rs-entradilla`, `rs-rotulo` con trazo burdeos, `rs-mono`, `rs-nota*`, `rs-enlace`, `rs-panel*`, `rs-btn*`, `rs-campo*`, `rs-chip*`, `rs-aviso*`, `rs-tabla`, `rs-pie*`); los del circuito de §15.4 (`rs-cuerpo`, `rs-cabecera*`, `rs-estado-servicio`, `rs-punto`, `rs-zona`, `rs-progreso*`, `rs-fila`, `rs-paso` con su pulso, `rs-visor`, `rs-resumen`); foco `:focus-visible` burdeos (R54); `prefers-reduced-motion` (R55). Fondos de botón con especificidad (0,2,0) (§15.7 regla 4). Sin `!important`, `@import` ni `data:` |
+| `services/postventa-front/img/logo-ruesma.svg`, `img/favicon.svg` | T14 | Copias con `cp -p` de `front-portal/public/assets/img/`; SHA-256 `1dfc97aa…9959` y `006623f0…926e`, los de §15.4 |
+| `.gitattributes` (raíz, **nuevo**) | T14 | `services/postventa-front/img/*.svg -text`. **Desviación**, ver §3.1 |
+| `services/postventa-front/index.html` | T15 | El portal entero con la identidad, sección a sección (§2) |
+| `services/postventa-front/css/portal.css` | T15 | Redibujada con tokens: `.placeholder` hueco (píldora, discontinuo 1,5 px acero, rayado, `cursor: help`, F-0NN en chip mono), aviso de maqueta (`rs-maqueta`, atención con rayado), portada, tarjetas con entrada escalonada, filtros, listas, ficha, datos, carta, volcado, estados vacíos, aviso flotante, `[data-estado]` de los 15 estados, `prefers-reduced-motion` y `[x-cloak]` (la única `!important`) |
+| `services/postventa-front/tests/test_f035_portal.py` | T14, T15 | R33 enmendado; R49, R52, R53, R54, R55, R60 (T14); R49/R55 del lado `portal.css`, R50, R51, R56, R58 (T15) |
+| `services/postventa-front/tests_js/portal.test.js` | T15 | R57 (tres tests) |
+| `specs/F-035-portal-posventa/tasks.md` | T14, T15 | T14 y T15 `[x]` |
+
+### 2 · El portal, sección a sección (T15)
+
+- **Barra**: logotipo de 28 px, separador `aria-hidden`, «POSVENTA» en
+  Bricolage 600; pestañas en píldora `rs-pestana`; las `:class` de las
+  pestañas **se quitaron** y la actual la pinta el `:aria-current` que ya
+  estaba. La marca no es enlace.
+- **Aviso de maqueta**: banda en atención con rayado diagonal fino; la
+  muestra es el mismo `.placeholder` (modificador `--muestra`). Sin burdeos.
+- **Inicio**: ceja «Posventa · maqueta del ciclo» con punto burdeos; titular
+  Bricolage 800 con «posventa» en burdeos (`<em>`); el recorrido es un `<ol>`
+  de siete píldoras numeradas 01–07 unidas por un trazo (los mismos enlaces);
+  seis tarjetas con índice 01–06, chip «Maqueta» / «En producción», cifra
+  grande con cifras tabulares, llamada burdeos con flecha que avanza, acento
+  burdeos que crece al pasar y entrada escalonada de 60 ms. La de «Partes
+  firmados» lleva un filete verde fijo, el **único botón principal burdeos**
+  de la portada y, al lado, el placeholder hueco de F-045.
+- **Secciones**: `rs-titulo` + entradilla; paneles `rs-panel`; rótulos
+  `rs-rotulo` con la ficha F-0NN en un chip `rs-ficha`; cada «Pendiente: …»
+  como `rs-pendiente`.
+- **Tablas y filtros**: filtros en banda lienzo dentro del panel; tabla en
+  `rs-desplazable` (se desplaza dentro del panel, nunca la página); fila
+  abierta `rs-fila--abierta` con filete burdeos; códigos en mono; importes a
+  la derecha con cifras tabulares; «sin enlazar» / «sin completar» en cursiva
+  acero (`rs-sin-dato`, puesto con `:class` en el portal); casillas con
+  `accent-color` burdeos.
+- **Estados (R57)**: `rs-chip` con `:data-estado` y su texto en incidencias
+  (listado, ficha, impresión), bandeja (revisión) y volcado (etiqueta legible
+  en el chip y el código del contrato debajo, en mono). «duplicada», chip de
+  atención sin `data-estado`. El estado del datamart («pendiente»), chip
+  neutro de contorno (no es de los tres catálogos).
+- **Ficha**: código mono encima, descripción en `rs-titulo--ficha`, chip de
+  estado a la derecha; pestañas subrayadas por `aria-selected` (fuera sus
+  `:class`); «Datos» como rejilla etiqueta/valor (`rs-datos`, una columna en
+  el móvil); origen de cada campo como chip `rs-origen` dentro del
+  desplegable; hitos del parte y cifras del económico en tarjetitas lienzo;
+  «No procede» con filete de atención, `rs-carta` y el aviso informativo.
+- **Volcado**: contadores en rejilla (cifra Bricolage + nombre del contrato),
+  chip «Simulación» / «Hecho en Sigrid», obras como píldoras.
+- **Estados vacíos (R58)**: `data-vacio` con `x-show="!…Filtrada().length"`
+  en incidencias, bandeja e impresión, y la tabla o lista con `x-show` sobre
+  la misma lista: con cero filas no queda una tabla vacía. Borde continuo.
+- **Aviso flotante**: tarjeta papel con filete de atención, `rs-sombra-md` y
+  aparición de 180 ms; «Entendido» secundario compacto.
+
+### 3 · Decisiones y desviaciones (para el reviewer)
+
+1. **`.gitattributes` nuevo (fuera de la lista de ficheros de §15.4).** Con
+   `core.autocrlf=true` (el de este equipo) git sacaría los SVG con CRLF en
+   cualquier checkout nuevo y el hash de R52 dejaría de cuadrar. **Medido**
+   antes de ponerlo: `git checkout-index` de los SVG daba `f42229ed…` y
+   `02f51237…` en vez de los de la spec; con `-text`, los de la spec. Afecta
+   a T18 (las mutaciones van en un worktree, que es un checkout nuevo). Sin
+   esto, `git diff --stat HEAD~1` de T14 tendría solo los tres ficheros
+   previstos; con él, cuatro.
+2. **R55: la cota de 250 ms es de las transiciones, no de las animaciones.**
+   La tabla de §15.8 dice «toda duración de transition/animation ≤ 250 ms»,
+   pero R55 (el requisito) acota solo las transiciones, §15.5 pide 420 ms
+   para la entrada de las tarjetas, y el pulso del circuito dura 2 s. El test
+   sigue al requisito: transiciones ≤ 250 ms y solo sobre color, fondo, borde,
+   sombra, opacidad y `transform`; animaciones no en bucle ≤ 450 ms; en bucle,
+   solo `.rs-paso`; `@keyframes` en `styles.css` solo los del pulso.
+3. **Movimiento reducido sin `!important`**: el bloque usa
+   `:is(*, #rs-movimiento-reducido)`, que toma especificidad de id (1,0,0) y
+   gana a toda regla de clase de las hojas y a las utilidades de Tailwind
+   (`animate-pulse`, `transition`), sin `!important` (R60). Ningún elemento
+   lleva ese id. Las entradas usan `animation-fill-mode: backwards`: sin
+   animación, las tarjetas se ven en su sitio.
+4. **R49 y R55 en dos pasos**: T14 los aplicó a `styles.css` (el
+   `portal.css` de antes tenía hexadecimales) y T15 añadió `portal.css` a
+   `HOJAS_DE_LA_MARCA`. Estado final: las dos hojas, como pide R49.
+5. **Fase RED**: los tests se escribieron y ejecutaron en rojo **antes** del
+   código (trazas en §4), pero se commitean **con** su código, porque
+   `tasks.md` T14 (c) pide el mismo commit (sin R33 enmendado la suite
+   quedaría en rojo en ese commit). No hay commit rojo en la historia.
+6. **Textos**: fuera los dos puntos finales de las etiquetas `<dt>` (la
+   rejilla ya separa etiqueta y valor) y el « · » entre código y descripción
+   del `<h1>` de la ficha (el código va encima). Nuevos, los que pide §15.5:
+   la ceja, los chips «Maqueta» / «En producción», las llamadas «Ver … →»,
+   las frases del estado vacío y los chips «Simulación» / «Hecho en Sigrid»
+   (afinado de «Volcado hecho», que ya es el título del bloque). Directivas
+   nuevas en el portal, solo de presentación: `:class` de `rs-sin-dato`, de
+   `rs-fila--abierta` y del aviso flotante, `x-show` de los estados vacíos y
+   de la lista de errores de la importación.
+7. **Retoques tras mirar las capturas** (en el commit de T15): la ruta de
+   archivo en `pre-wrap` (se cortaba en la tarjeta); filetes con solo el lado
+   derecho redondeado (sobre una esquina redonda parecían un paréntesis);
+   tablas algo más densas (0,88 rem y relleno 0,65 × 0,85 rem); en el móvil,
+   fuera el trazo entre píldoras del recorrido. La tarjeta «Partes firmados»
+   ocupa una columna como las demás (a dos columnas la rejilla quedaba coja).
+
+### 4 · Fase RED (trazas reales)
+
+**T14**, desde `services/postventa-front`, antes de tocar `css/styles.css`
+y sin los SVG:
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -k "r33 or r49 or r52 or r53 or r54 or r55 or r60" --tb=line
+.F.FFFF.F..F....F..                                                      [100%]
+tests\test_f035_portal.py:1099: AssertionError: tokens que faltan o con otro valor en el :root de styles.css: {'--rs-burdeos': None, '--rs-burdeos-fuerte': None, … '--rs-trama': None}
+tests\test_f035_portal.py:1132: AssertionError: falta img/favicon.svg (copia de front-portal/public/assets/img)
+tests\test_f035_portal.py:1132: AssertionError: falta img/logo-ruesma.svg (copia de front-portal/public/assets/img)
+tests\test_f035_portal.py:1142: AssertionError: falta img/favicon.svg
+tests\test_f035_portal.py:1142: AssertionError: falta img/logo-ruesma.svg
+tests\test_f035_portal.py:1173: AssertionError: faltan --rs-tinta o --rs-papel en el :root
+tests\test_f035_portal.py:1200: AssertionError: css/styles.css necesita una regla :focus-visible con outline en var(--rs-burdeos)
+tests\test_f035_portal.py:1294: AssertionError: styles.css: falta @media (prefers-reduced-motion: reduce)
+FAILED tests/test_f035_portal.py::test_f035_r49_los_tokens_de_la_marca_estan_en_el_root_con_su_valor
+FAILED tests/test_f035_portal.py::test_f035_r52_los_svg_son_copias_exactas_de_front_portal[favicon.svg]
+FAILED tests/test_f035_portal.py::test_f035_r52_los_svg_son_copias_exactas_de_front_portal[logo-ruesma.svg]
+FAILED tests/test_f035_portal.py::test_f035_r52_los_svg_no_llevan_nada_activo_ni_colores_ajenos[favicon.svg]
+FAILED tests/test_f035_portal.py::test_f035_r52_los_svg_no_llevan_nada_activo_ni_colores_ajenos[logo-ruesma.svg]
+FAILED tests/test_f035_portal.py::test_f035_r53_los_pares_de_la_marca_cumplen_aa
+FAILED tests/test_f035_portal.py::test_f035_r54_hay_un_foco_visible_en_burdeos
+FAILED tests/test_f035_portal.py::test_f035_r55_prefers_reduced_motion_lo_apaga_todo[styles.css]
+8 failed, 11 passed, 37 deselected in 0.36s
+```
+
+(Rutas acortadas a partir de `tests\`; lo demás, literal.) Los 11 que ya
+pasaban son guardias que la hoja vieja cumplía sin más (sin `!important`,
+sin colores sueltos fuera del `:root`, sin quitar el foco) y **R33
+enmendado**, que es una relajación y no puede estar en rojo.
+
+**T15**, antes de tocar `index.html` y `css/portal.css`:
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -k "r49 or r50 or r51 or r55 or r56 or r58" --tb=line -p no:cacheprovider
+..F.....FF.FF.F...FFF                                                    [100%]
+tests\test_f035_portal.py:1125: AssertionError: portal.css:
+tests\test_f035_portal.py:1296: AssertionError: portal.css: falta @media (prefers-reduced-motion: reduce)
+tests\test_f035_portal.py:1354: AssertionError: index.html: faltan las <link> de la marca
+tests\test_f035_portal.py:215: AssertionError: tiene que haber uno y solo uno: logotipo en la barra de index.html (hay 0)
+tests\test_f035_portal.py:1412: AssertionError: index.html: «Inicio» lleva la clase rs-pestana
+tests\test_f035_portal.py:1449: AssertionError: <div class="rounded-lg border-2 border-dashed border-slate-300 p-8 text-center"> «Aquí se soltará el Excel de incidencias »: el bo…
+tests\test_f035_portal.py:215: AssertionError: tiene que haber uno y solo uno: data-vacio en bandeja (hay 0)
+tests\test_f035_portal.py:215: AssertionError: tiene que haber uno y solo uno: data-vacio en impresion (hay 0)
+tests\test_f035_portal.py:215: AssertionError: tiene que haber uno y solo uno: data-vacio en incidencias (hay 0)
+FAILED …::test_f035_r49_fuera_del_root_solo_hay_colores_sombras_y_radios_de_token[portal.css]
+FAILED …::test_f035_r55_prefers_reduced_motion_lo_apaga_todo[portal.css]
+FAILED …::test_f035_r50_la_pagina_carga_las_fuentes_y_el_favicon_antes_de_la_hoja[index.html]
+FAILED …::test_f035_r51_la_barra_lleva_logo_separador_y_etiqueta_sin_enlace[index.html]
+FAILED …::test_f035_r51_las_pestanas_son_rs_pestana_sin_class_dinamico[index.html]
+FAILED …::test_f035_r56_en_el_portal_el_discontinuo_y_la_marca_no_se_mezclan_con_los_placeholders
+FAILED …::test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[bandeja]
+FAILED …::test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[impresion]
+FAILED …::test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla[incidencias]
+9 failed, 12 passed, 51 deselected in 0.76s
+```
+
+La primera línea de R49 sale vacía con `--tb=line` porque el mensaje sigue
+en líneas aparte: eran los `#9ca3af`, `rgba(156, 163, 175, 0.14)`… del
+`portal.css` de antes.
+
+```
+$ node --test --test-name-pattern="R57" tests_js/portal.test.js
+✖ f035 R57: cada código de estado (conest, revisión y volcado) tiene su regla [data-estado] en css/portal.css
+  AssertionError [ERR_ASSERTION]: css/portal.css no pinta estos estados: SAT, PTE, TER, NPR, CER, nueva, editada, aprobada, descartada, volcada, previsto, creado, idempotente, rechazado, no_procesado
+✖ f035 R57: todo elemento de index.html con data-estado es un rs-chip con su texto
+  AssertionError [ERR_ASSERTION]: el portal pinta sus estados con data-estado
+✖ f035 R57: ningún estado se pinta fuera de su chip (salvo las opciones de un filtro)
+  AssertionError [ERR_ASSERTION]: un estado pintado sin chip ni data-estado
+ℹ pass 0
+ℹ fail 3
+```
+
+**Los tests miran** (T14, a mano, con `css/styles.css` restaurado después;
+es una comprobación rápida de los tests nuevos, **no** las mutaciones 9–13
+de T18): nueve copias estropeadas de `styles.css` —`color: #fff` en una
+regla; `transition: opacity 400ms`; `transition: width 100ms`;
+`animation:` fuera de `.rs-paso`; un `!important`; `outline: none` sin
+reponer; `border-radius: 4px`; `--rs-acero-texto: #7b868c`; `color:
+var(--rs-acero)`— y **las nueve dieron rojo** (1 fallo cada una; la del
+acero, 2: R53 de contraste). Restaurada: `14 passed`.
+
+### 5 · Verificación (resultados reales)
+
+- `python -m pytest tests/test_f035_portal.py -q -k "r33 or r49 or r52 or
+  r53 or r54 or r55 or r60"` → **19 passed** (T14).
+- Front entero, `python -m pytest tests -q` → **312 passed** tras T14 y
+  **328 passed** tras T15. `node --test "tests_js/*.test.js"` → **406/406**
+  tras T14 y **409/409** tras T15. Raíz,
+  `tests/test_f035_placeholders_vivos.py` → **7 passed**.
+- **Ni un test del circuito ni de F-035 anterior tocado**: el diff de los
+  dos ficheros de test son solo altas, más la enmienda de R33 que pide la
+  spec.
+- `git diff --stat af7f5f6 -- services/postventa-front/js` → vacío.
+- `bash harness/init.sh` → **ENTORNO LISTO** (raíz 69 passed; front 328
+  passed **sin caché**; cobertura N/A con su motivo; ruff 61 avisos, los
+  mismos de antes).
+- **Contraste AA (R53)**, tabla que imprime el test con `-s`, calculada
+  desde el `:root`:
+
+```
+--rs-tinta         / --rs-papel            16.35  (mín. 4.5, texto)  ok
+--rs-tinta         / --rs-lienzo           14.85  (mín. 4.5, texto)  ok
+--rs-tinta-suave   / --rs-papel             8.27  (mín. 4.5, texto)  ok
+--rs-tinta-suave   / --rs-lienzo            7.51  (mín. 4.5, texto)  ok
+--rs-tinta-suave   / --rs-acero-100         6.35  (mín. 4.5, texto)  ok
+--rs-acero-texto   / --rs-papel             5.79  (mín. 4.5, texto)  ok
+--rs-acero-texto   / --rs-lienzo            5.26  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-burdeos           7.35  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-burdeos-fuerte   10.19  (mín. 4.5, texto)  ok
+--rs-burdeos       / --rs-papel             7.35  (mín. 4.5, texto)  ok
+--rs-burdeos       / --rs-lienzo            6.68  (mín. 4.5, texto)  ok
+--rs-burdeos       / --rs-burdeos-suave     6.29  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-ok                5.48  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-error             6.47  (mín. 4.5, texto)  ok
+--rs-ok            / --rs-ok-suave          5.21  (mín. 4.5, texto)  ok
+--rs-atencion      / --rs-atencion-suave    6.84  (mín. 4.5, texto)  ok
+--rs-error         / --rs-error-suave       5.91  (mín. 4.5, texto)  ok
+--rs-info          / --rs-info-suave        5.57  (mín. 4.5, texto)  ok
+--rs-acero         / --rs-papel             3.73  (mín. 3.0, no texto)  ok
+--rs-acero         / --rs-lienzo            3.39  (mín. 3.0, no texto)  ok
+--rs-burdeos       / --rs-papel             7.35  (mín. 3.0, no texto)  ok
+```
+
+  Coincide con §15.6 a la centésima.
+
+### 6 · Lo que se vio en el navegador
+
+**La extensión de Chrome no estaba conectada** («Browser extension is not
+connected»). En su lugar, `python dev_server.py` y capturas con **Chrome
+headless** del propio equipo (`chrome.exe --headless=new --screenshot`),
+leídas una a una; el servidor se paró al terminar. `curl` al servidor: `/`,
+`/partes.html`, `css/*.css` → 200; `img/*.svg` → 200 `image/svg+xml` (el
+riesgo de MIME en Windows de §15.9 no se da).
+
+- **Inicio (1440 px)**: barra blanca translúcida con el logotipo en burdeos
+  y acero, separador y «POSVENTA»; «Inicio» en píldora burdeos suave. Banda
+  de maqueta amarillo pálido con rayado fino y la muestra de placeholder.
+  Lienzo con la cuadrícula de plano visible y el halo burdeos arriba a la
+  derecha. Titular grande en Bricolage (se nota la letra: las fuentes
+  cargan) con «posventa» en burdeos; recorrido de siete píldoras numeradas
+  unidas por trazos; tarjetas en tres columnas × dos filas con su índice
+  gris claro, chip «Maqueta», cifra grande y «Ver … →» en burdeos. «Partes
+  firmados» con filete verde, chip «En producción», botón burdeos relleno
+  con sombra y, al lado, el placeholder de F-045, rayado y discontinuo: la
+  diferencia entre lo que funciona y lo que no se ve de un vistazo. Pie
+  gris con línea superior.
+- **Bandeja**: filtros en banda lienzo con etiquetas en versalitas; tabla
+  con cabecera en versalitas acero; «Sin histórico…» en cursiva; volcado con
+  contadores en tarjetitas, chip «Simulación», y chips de estado de colores
+  con punto («Se crearía» azul, «Ya estaba creado» gris, «No se crea» rojo)
+  y el código del contrato en mono debajo. La tabla de la bandeja (11
+  columnas) **no cabe** en 1180 px y se desplaza dentro del panel: la
+  columna «Estado» queda a la derecha, a un desplazamiento (en headless no
+  se ve la barra de desplazamiento; en un navegador normal, sí).
+- **Incidencias**: chips PTE azul, SAT ámbar, TER verde, CER gris relleno,
+  NPR de contorno; códigos en mono burdeos subrayados; la última columna
+  («Proforma») también queda a un desplazamiento.
+- **Ficha** (`#/incidencias/EJ-0001`): código mono encima, título en
+  Bricolage, chip «PTE · PENDIENTE» a la derecha; pestañas subrayadas con
+  la activa en burdeos; datos en rejilla etiqueta/valor muy limpia; bloques
+  con trazo burdeos; desplegable con cheurón; placeholders en fila.
+- **390 px** (dentro de un `<iframe>` de 390 px: el headless no baja la
+  ventana de ~500 px y la primera captura salía cortada por eso): **sin
+  desplazamiento horizontal de la página**; las pestañas bajan a su línea y
+  se desplazan; las tarjetas en una columna; filtros apilados; la tabla de
+  la bandeja se desplaza dentro de su panel.
+- **Circuito** (`/partes.html`, sin tocar): se ve **como antes** salvo la
+  trama de plano bajo su fondo gris (ver §7).
+- **No verificado aquí** (queda para V1 del humano): el foco con el teclado,
+  `prefers-reduced-motion` emulado, la pestaña Red y el hover.
+
+### 7 · Qué reglas de `css/styles.css` alcanzan ya al circuito (T14)
+
+`partes.html` no usa todavía ni una clase `rs-` (`grep -c 'rs-'` → 0), así
+que de la hoja solo le llegan las reglas de **elemento o universales**:
+
+| Regla | Efecto en el circuito hasta T16 |
+|---|---|
+| `body` | La **trama de plano** (`background-image`) aparece bajo su fondo: su `bg-slate-50` y su `text-slate-800` (utilidades de Tailwind, inyectadas después) siguen ganando en color. Fuente: `'Archivo', system-ui` → como el circuito aún no carga Google Fonts, `system-ui` (Segoe UI en Windows, la misma que salía con la regla vieja) |
+| `html` | `-webkit-text-size-adjust: 100%`: nada visible |
+| `img` | `max-width: 100%`: el circuito no tiene `<img>` |
+| `::selection` | La selección de texto, en burdeos suave |
+| `:focus-visible` | El foco con el teclado pasa a contorno burdeos de 2 px (R54) |
+| `@media (prefers-reduced-motion: reduce)` | Con movimiento reducido, se apagan también su `animate-pulse` y su `transition` (R55) |
+
+El `:root` cambia (`--ruesma-burdeos` fuera, `--rs-*` dentro), pero **nadie
+usaba** `--ruesma-burdeos` (H-7). Visto en la captura: nada se descoloca ni
+se esconde.
+
+### 8 · Fuera del alcance y lo que falta
+
+- **T16** (circuito: `partes.html`, guardia R59, R50/R51 del lado circuito,
+  R60 sin `style`) y **T17–T19**: siguientes encargos. Al añadir el circuito
+  a `PAGINAS_CON_LA_MARCA`, los tests de R50 y R51 ya parametrizados lo
+  cubren.
+- Para T16, dos cosas vistas al escribir la hoja: (a) el `<input>` del parte
+  lleva `:class="… 'border-slate-200'"` en su estado normal, que ganará al
+  borde acero de `rs-campo` (es la directiva de estado; no se toca); (b) la
+  barra de progreso pierde su `transition-all` (el ancho no es de las
+  propiedades que R55 deja animar).
+- Mutaciones 9–13 y campaña: T18. Con el `.gitattributes` de §3.1, el
+  worktree de T18 saca los SVG con su hash.
+- T12 (V1/V2 del humano), después de T19.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Front: **328 passed** (pytest, 31,15 s en `init.sh`, sin caché) y **409/409** (`node --test`); raíz: **69 passed** (22,84 s) |
+| Tests nuevos del bloque 5a | 34 de pytest (18 en T14, 16 en T15) y 3 de JS (R57) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el bloque cambia HTML, CSS y SVG |
+| Mutantes generados / supervivientes | La campaña del arnés **no se ha relanzado** en este bloque: es T18, y solo muta Python de producción (0 en F-035). Comprobación rápida a mano de los tests nuevos de CSS: 9 copias estropeadas, **9 muertas** (§4) |
+| Tiempo de la suite | Front pytest 31,15 s (`init.sh`); JS ~2,1 s; raíz 22,84 s |

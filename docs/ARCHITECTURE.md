@@ -448,6 +448,23 @@ rechaza lo que las incumpla:
    (que no se cachea): una ficha en `done` con restos pone `init.sh` en rojo,
    y ninguna ficha puede citar una que no exista en `harness/features.json`
    (R27) ni a la propia F-035. El procedimiento, en el `README.md` del front.
+4. **Cuando una sección deja de ser maqueta, del circuito se va a ella en la
+   misma ventana (R48)**, como en una web normal. Una sección es **real**
+   cuando todas las fichas de su entrada de `Portal.SECCIONES` están `done`
+   (`inicio`, cuando lo son todas las demás; `partes` es el circuito y no
+   cuenta). Desde ese momento, su enlace en la barra de `partes.html` pierde
+   el `target="_blank"`. Mientras sea maqueta, se sigue abriendo aparte (R31).
+   **Consecuencia para la ficha que lo active**: navegar desde el circuito en
+   la misma ventana descarga la **remesa** en curso, que vive en memoria; esa
+   ficha decide en el mismo trabajo cómo no perderla (aviso al salir o
+   recuperar el trabajo) y lo propone al humano. Lo vigila
+   `tests/test_f035_placeholders_vivos.py` en la suite de la raíz.
+
+> **Identidad visual (F-035, segunda ronda del 2026-09-25).** Las dos páginas
+> comparten la hoja de la marca, `css/styles.css` (tokens `--rs-*` tomados de
+> `front-portal`); en el circuito solo cambian clases, la barra y las fuentes
+> (R59). Detalle en el `README.md` del front, «Identidad visual Ruesma
+> (F-035)», y en `specs/F-035-portal-posventa/design.md` §15.
 
 El acceso al portal es el del circuito, sin configuración propia: misma
 Static Web App, `/*` con `authenticated` y la asignación obligatoria de la

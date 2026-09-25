@@ -116,7 +116,9 @@ Posventa antes de construir cada pieza (F-036 a F-048), no para trabajar.
 El **circuito de partes firmados**, el que está en producción, se mudó de
 `index.html` a **`partes.html`** con `git mv` y es la pestaña «Partes
 firmados». No cambió ni una línea de su lógica: solo su nombre de fichero, su
-línea 1 y la barra superior añadida encima, que es HTML plano sin Alpine.
+línea 1 y la barra superior añadida encima, que es HTML plano sin Alpine; y,
+desde la segunda ronda, su aspecto (clases y fuentes: ver «Identidad visual
+Ruesma (F-035)», más abajo).
 
 | Fichero | Qué es |
 |---|---|
@@ -125,7 +127,9 @@ línea 1 y la barra superior añadida encima, que es HTML plano sin Alpine.
 | `js/maqueta_datos.js` | `window.MaquetaDatos`: **solo** datos de ejemplo, por bloques, cada uno con la ficha que lo sustituirá (`ficha: "F-0NN"`) |
 | `js/portal.js` | `window.Portal`: catálogos (`SECCIONES`, `PLACEHOLDERS`, `ESTADOS`) y funciones puras. Sin DOM ni red |
 | `js/portal_app.js` | `portalPosventa()`: el componente de Alpine, pegamento sin lógica (misma regla de oro que `app.js`) |
-| `css/portal.css` | La clase `.placeholder` y poco más |
+| `css/styles.css` | La hoja de la marca, **compartida** por el portal y el circuito: tokens `--rs-*`, barra, botones, paneles… |
+| `css/portal.css` | Lo que solo usa el portal: `.placeholder`, aviso de maqueta, portada, tarjetas, chips de estado, ficha |
+| `img/logo-ruesma.svg`, `img/favicon.svg` | Copias exactas de los de `front-portal` |
 
 Los ficheros de la maqueta **no hablan con nadie**: ni `fetch`, ni
 `XMLHttpRequest`, ni `/api/`, ni Sigrid, ni SharePoint, ni correo (R14–R16 de
@@ -169,6 +173,16 @@ Cuando una ficha F-0NN construya su pieza, **en el mismo trabajo**
    `x-for` que lo pintaban por los datos reales.
 3. Si la sección real habla con el backend, lo hace desde **sus propios**
    módulos (el patrón de `js/api.js`), no desde los de la maqueta.
+4. **Si con ella la sección entera pasa a ser real** (todas las fichas de su
+   entrada de `Portal.SECCIONES` en `done`; `inicio`, cuando lo son todas las
+   demás), quita el `target="_blank"` de su enlace en la barra de
+   `partes.html`: desde el circuito se va a una sección real **en la misma
+   ventana**, como en una web normal (R48). Y en el mismo trabajo resuelve
+   lo que eso rompe: la **remesa** en curso vive en memoria y se perdería al
+   salir, así que la ficha decide cómo no perderla (aviso al salir o
+   recuperar el trabajo) y lo propone al humano. Mientras la sección sea
+   maqueta, se sigue abriendo aparte (R31). Lo vigila la guardia de la raíz
+   `tests/test_f035_placeholders_vivos.py`.
 
 Si se olvida, la guardia de la **raíz** `tests/test_f035_placeholders_vivos.py`
 (R28) se pone en rojo en cuanto la ficha pase a `done` en
@@ -177,6 +191,59 @@ raíz y no aquí porque la suite del front se salta por caché cuando su árbol 
 cambia. Cuando no quede ninguna ficha con restos, la última borra
 `js/maqueta_datos.js` y la parte de `js/portal.js` que solo sirve a la
 maqueta.
+
+## Identidad visual Ruesma (F-035)
+
+Las dos páginas —el portal y el circuito— visten la identidad del portal
+corporativo de Ruesma. La referencia es `front-portal` (su `public/index.html`
+y `public/assets/css/styles.css`), leída **solo en lectura**: no se copia su
+hoja, se toma su lenguaje (burdeos `#9f2842`, gris acero, trama de plano,
+Bricolage Grotesque para titulares y Archivo para el texto, radios de 16 y
+10 px, botones en píldora, barra con logotipo). Diseño completo:
+`specs/F-035-portal-posventa/design.md` §15.
+
+**Dónde vive.** Los **tokens** (`--rs-burdeos`, `--rs-acero-texto`,
+`--rs-radio`…) están en el `:root` de **`css/styles.css`**, la hoja que
+cargan las dos páginas; ahí van también la barra, los botones, los paneles,
+los avisos y los componentes del circuito (clases `rs-*`). `css/portal.css`
+lleva lo que solo usa el portal. Fuera del `:root`, un color, una sombra o
+un radio se escriben **siempre** con `var(--rs-…)` (R49). Las fuentes vienen
+de Google Fonts con `display=swap` (si no cargan, se ve la de reserva; no se
+rompe nada) y el logotipo y el favicon, de `img/`, copias byte a byte de los
+de `front-portal` (R52).
+
+**Reglas** (cada una con su test en `tests/test_f035_portal.py`):
+
+- **Contraste (R53)**: todo par texto/fondo de los tokens llega a AA (4,5:1),
+  calculado por el test desde el `:root`. El gris acero (`--rs-acero`, 3,7:1)
+  **no** se usa para texto: el texto gris es `--rs-acero-texto`.
+- **Foco (R54)**: `:focus-visible` con contorno burdeos en todo; ninguna regla
+  lo quita sin poner otro.
+- **Movimiento (R55)**: transiciones de 250 ms como mucho y solo de color,
+  fondo, borde, sombra, opacidad o `transform`; las entradas animadas, solo en
+  el portal; con `prefers-reduced-motion: reduce` no se mueve nada.
+- **La maqueta se sigue viendo maqueta (R56)**: el borde **discontinuo** es
+  solo de los placeholders; ningún placeholder lleva el burdeos de la marca ni
+  `rs-btn--primario`, y el aviso de maqueta va en su color de atención. El
+  burdeos es la marca y la acción principal, **nunca** un estado.
+- **Estados con texto (R57)**: cada estado va en un chip `rs-chip` con su
+  `data-estado` y su texto; el color nunca es la única pista.
+- **Sin `!important` ni `@import` ni `data:` (R60)**: Alpine esconde con
+  `style="display: none"` en línea y un `!important` sobre `display` lo
+  taparía (la pregunta de confirmación del circuito saldría siempre). Única
+  excepción, `[x-cloak]` de `css/portal.css`. Y `partes.html` no lleva
+  atributos `style`.
+
+**En el circuito solo se cambian clases (R59).** `partes.html` está en
+producción: frente al `index.html` de antes de F-035 solo pueden cambiar los
+**valores de `class`**, la barra superior y las cuatro `<link>` de las
+fuentes y el favicon. Ni una directiva de Alpine (tampoco las `:class` de
+estado, que siguen pintando el semáforo con Tailwind), ni un id, ni un
+texto, ni el orden de los atributos. Lo comprueba una guardia que compara el
+HTML como secuencia de etiquetas, con un control que demuestra que mira.
+Una sola clase estática del circuito la fija un test ajeno a F-035:
+`text-red-800` en el aviso de fallo del autoguardado
+(`test_f026_autoguardado.py`); por eso sigue ahí junto a `rs-aviso--error`.
 
 ## Tres cosas del `index.html` que parecen cosméticas y no lo son
 

@@ -13,6 +13,10 @@ se ponga en rojo:
 - **R28**: ninguna ficha `done` deja restos.
 - **R29**: cada ficha de F-036 a F-048 que no está `done` tiene al menos uno
   (todas las secciones del ciclo existen).
+- **R48** (segunda ronda, 2026-09-25): cuando una sección del portal es
+  **real** (todas sus fichas `done`), la barra del circuito la enlaza en la
+  misma ventana, sin `target`; y la regla consta en `docs/ARCHITECTURE.md` y
+  en el `README.md` del front.
 
 Vive en la suite de la **raíz** y no en la del front a propósito: la del front
 se salta por caché cuando su árbol no cambia (`init.sh`, sección 7 bis), y
@@ -180,3 +184,120 @@ def test_f035_r37_architecture_corrige_el_grupo_de_entra_sin_guid():
     )
     guid = _GUID.search(texto)
     assert guid is None, "hay un GUID en docs/ARCHITECTURE.md"
+
+
+# --- R48 · Cuando una sección sea real, del circuito se va en la misma ventana ----
+#
+# Segunda ronda del humano (2026-09-25): «en la misma ventana como en una web
+# normal (para la maqueta vale así)». Mientras una sección sea maqueta, la
+# barra del circuito la abre aparte (R31); en cuanto todas sus fichas estén
+# `done`, la enlaza SIN `target`. Vive aquí, en la raíz, por lo mismo que R28:
+# cerrar la última ficha de una sección no toca el árbol del front.
+
+CIRCUITO = FRONT / "partes.html"
+PORTAL_JS = FRONT / "js" / "portal.js"
+README_FRONT = FRONT / "README.md"
+
+_SECCION_JS = re.compile(r"""\{\s*id:\s*"([a-z]+)",[^}]*?fichas:\s*\[([^\]]*)\]""")
+_ENLACE_BARRA = re.compile(r"""<a\s[^>]*href="\./#/([a-z]+)"[^>]*>""")
+
+
+def secciones_del_portal() -> dict[str, list[str]]:
+    """`{id: [fichas]}` de `Portal.SECCIONES` (`js/portal.js`), leído como texto."""
+    secciones = {
+        seccion: re.findall(r"F-\d{3}", fichas)
+        for seccion, fichas in _SECCION_JS.findall(PORTAL_JS.read_text(encoding="utf-8"))
+    }
+    assert len(secciones) == 8 and "inicio" in secciones and "partes" in secciones, (
+        f"no se han leído las ocho secciones de Portal.SECCIONES: {sorted(secciones)}"
+    )
+    return secciones
+
+
+def secciones_reales(features: dict, secciones: dict[str, list[str]]) -> list[str]:
+    """Las secciones del portal que ya no son maqueta (R48).
+
+    Real: todas las fichas de su entrada están `done`. `inicio` (sin fichas
+    propias) lo es cuando lo son todas las demás. `partes` es el circuito y no
+    cuenta.
+    """
+    hechas = {ficha for ficha, estado in estados(features).items() if estado == "done"}
+    reales = [
+        seccion for seccion, fichas in secciones.items()
+        if seccion not in ("inicio", "partes") and fichas and set(fichas) <= hechas
+    ]
+    demas = [s for s in secciones if s not in ("inicio", "partes")]
+    if demas and set(demas) <= set(reales):
+        reales.append("inicio")
+    return reales
+
+
+def enlaces_aparte_a_secciones_reales(features: dict, html: str) -> list[str]:
+    """Los enlaces de la barra del circuito que abren aparte una sección ya real. Vacío = correcto."""
+    reales = secciones_reales(features, secciones_del_portal())
+    return [
+        f"la barra de partes.html abre «{seccion}» aparte y ya es real: quita su target (R48)"
+        for enlace in _ENLACE_BARRA.finditer(html)
+        if (seccion := enlace.group(1)) in reales and "target=" in enlace.group(0)
+    ]
+
+
+def test_f035_r48_las_secciones_reales_se_abren_en_la_misma_ventana():
+    problemas = enlaces_aparte_a_secciones_reales(_features(), CIRCUITO.read_text(encoding="utf-8"))
+
+    assert problemas == [], (
+        "\n".join(problemas)
+        + "\nY en el mismo trabajo, resuelve la remesa en curso del circuito (design.md §2 de F-035)."
+    )
+
+
+def test_f035_r48_la_guardia_mira_una_seccion_que_pasa_a_real():
+    """Control: con F-048 en `done` en una copia en memoria, `datos` es real y su `target` tiene que saltar."""
+    features = copy.deepcopy(_features())
+    for ficha in features["features"]:
+        if ficha["id"] == "F-048":
+            ficha["status"] = "done"
+
+    assert secciones_reales(features, secciones_del_portal()) == ["datos"]
+    problemas = enlaces_aparte_a_secciones_reales(features, CIRCUITO.read_text(encoding="utf-8"))
+    assert len(problemas) == 1 and "«datos»" in problemas[0], problemas
+
+
+def test_f035_r48_inicio_es_real_cuando_lo_son_todas_las_demas():
+    features = copy.deepcopy(_features())
+    fichas = {f for lista in secciones_del_portal().values() for f in lista}
+    for ficha in features["features"]:
+        if ficha["id"] in fichas:
+            ficha["status"] = "done"
+
+    assert sorted(secciones_reales(features, secciones_del_portal())) == sorted(
+        ["inicio", "entrada", "bandeja", "incidencias", "impresion", "economico", "datos"]
+    )
+
+
+def _seccion_markdown(ruta: Path, titulo: str) -> str:
+    lineas = ruta.read_text(encoding="utf-8").splitlines()
+    inicio = next(
+        (i for i, linea in enumerate(lineas) if linea.startswith("#") and titulo in linea),
+        None,
+    )
+    assert inicio is not None, f"falta la sección «{titulo}» en {ruta.name}"
+    nivel = len(lineas[inicio]) - len(lineas[inicio].lstrip("#"))
+    fin = next(
+        (i for i in range(inicio + 1, len(lineas))
+         if lineas[i].startswith("#") and len(lineas[i]) - len(lineas[i].lstrip("#")) <= nivel),
+        len(lineas),
+    )
+    return "\n".join(lineas[inicio:fin])
+
+
+def test_f035_r48_la_regla_consta_en_architecture_y_en_el_readme_del_front():
+    for ruta, titulo in (
+        (ARCHITECTURE, "El portal de posventa (F-035)"),
+        (README_FRONT, "La maqueta del portal (F-035)"),
+    ):
+        texto = " ".join(_seccion_markdown(ruta, titulo).split())  # sin los saltos del Markdown
+        for imprescindible in ("R48", "misma ventana", "remesa"):
+            assert imprescindible in texto, (
+                f"{ruta.name} · «{titulo}»: la regla de R48 no dice «{imprescindible}»"
+            )

@@ -853,6 +853,78 @@ def test_f035_r59_partes_html_solo_cambia_en_presentacion_frente_a_la_base():
     )
 
 
+#: Control permanente de R59 (design.md §15.8), sin git: copias estropeadas en
+#: memoria del `partes.html` real. Cada caso es `(viejo, nuevo)` y `viejo`
+#: aparece UNA vez (si no, el control no estropearía nada y pasaría sin mirar).
+ESTROPEOS_R59 = {
+    "un @click cambiado": (
+        '@click="reiniciar()"',
+        '@click="reiniciar(); x = 1"',
+    ),
+    "dos atributos permutados": (
+        '<button type="button" @click="cerrarParte()"',
+        '<button @click="cerrarParte()" type="button"',
+    ),
+    "el class movido delante de su x-show": (
+        "<p x-show=\"estadoAutoguardado === 'fallo'\"\n"
+        '                   class="rs-aviso rs-aviso--error rs-aviso--compacto text-red-800"',
+        '<p class="rs-aviso rs-aviso--error rs-aviso--compacto text-red-800"\n'
+        "                   x-show=\"estadoAutoguardado === 'fallo'\"",
+    ),
+    "un elemento añadido": (
+        '<main class="rs-contenedor rs-principal flex-1">',
+        '<main class="rs-contenedor rs-principal flex-1"><span></span>',
+    ),
+    "un texto cambiado": (
+        "Trocear la remesa",
+        "Trocear remesa",
+    ),
+    "un style añadido": (
+        '<main class="rs-contenedor rs-principal flex-1">',
+        '<main class="rs-contenedor rs-principal flex-1" style="display: none">',
+    ),
+    "una <link> a otro dominio": (
+        '<link rel="stylesheet" href="css/styles.css">',
+        '<link rel="stylesheet" href="https://ejemplo.invalid/estilo.css">\n'
+        '  <link rel="stylesheet" href="css/styles.css">',
+    ),
+    "una directiva quitada (x-init)": (
+        'x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()"',
+        'x-data="appPostventa()"',
+    ),
+}
+
+
+def _circuito_estropeado(viejo: str, nuevo: str) -> tuple[str, str]:
+    real = CIRCUITO.read_text(encoding="utf-8")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo[:60]!r}"
+    return real, real.replace(viejo, nuevo)
+
+
+def test_f035_r59_control_el_circuito_real_contra_si_mismo_no_da_diferencias():
+    real = CIRCUITO.read_text(encoding="utf-8")
+
+    assert diferencias_de_presentacion(real, real) == []
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R59))
+def test_f035_r59_control_la_guardia_rechaza_lo_que_no_es_presentacion(caso):
+    real, copia = _circuito_estropeado(*ESTROPEOS_R59[caso])
+
+    problemas = diferencias_de_presentacion(real, copia)
+
+    assert problemas != [], f"la guardia de R59 no ve «{caso}»"
+
+
+def test_f035_r59_control_la_guardia_acepta_un_class_cambiado():
+    real, copia = _circuito_estropeado(
+        'class="rs-btn rs-btn--primario">\n            Archivar y cerrar',
+        'class="rs-btn rs-btn--ok rs-btn--compacto mt-2">\n            Archivar y cerrar',
+    )
+
+    assert diferencias_de_presentacion(real, copia) == []
+
+
 def test_f035_r31_la_barra_del_circuito_abre_el_portal_aparte():
     nav = barra(leer_html(CIRCUITO), "partes.html")
     enlaces = [e for e in nav.elementos() if e.nombre == "a"]
@@ -1669,3 +1741,40 @@ def test_f035_r58_con_cero_filas_se_ve_un_estado_vacio_en_lugar_de_la_tabla(id_s
         assert not any(vacio.dentro_de(c) for c in contenedores), (
             f"{id_seccion}: el estado vacío no puede ir dentro de lo que se esconde"
         )
+
+
+# --- R61 · El README explica la identidad visual ---------------------------------
+
+
+def _seccion_markdown(ruta: Path, titulo: str) -> str:
+    """El texto de la sección de `ruta` cuyo encabezado contiene `titulo` (hasta el siguiente de su nivel)."""
+    lineas = ruta.read_text(encoding="utf-8").splitlines()
+    inicio = next(
+        (i for i, linea in enumerate(lineas) if linea.startswith("#") and titulo in linea),
+        None,
+    )
+    assert inicio is not None, f"falta la sección «{titulo}» en {ruta.name}"
+    nivel = len(lineas[inicio]) - len(lineas[inicio].lstrip("#"))
+    fin = next(
+        (i for i in range(inicio + 1, len(lineas))
+         if lineas[i].startswith("#") and len(lineas[i]) - len(lineas[i].lstrip("#")) <= nivel),
+        len(lineas),
+    )
+    return "\n".join(lineas[inicio:fin])
+
+
+def test_f035_r61_el_readme_explica_la_identidad_visual():
+    texto = _seccion_markdown(README, "Identidad visual Ruesma (F-035)")
+
+    for imprescindible, por_que in (
+        ("css/styles.css", "dónde viven los tokens"),
+        ("tokens", "que la identidad son tokens"),
+        ("front-portal", "de dónde sale la referencia"),
+        ("discontinuo", "que el discontinuo es de los placeholders (R56)"),
+        ("!important", "que las hojas no llevan !important (R60)"),
+        ("class", "que en el circuito solo se cambian clases (R59)"),
+        ("R53", "la regla del contraste"),
+        ("R55", "la regla del movimiento"),
+        ("R59", "la guardia del circuito"),
+    ):
+        assert imprescindible in texto, f"la sección de la identidad no explica {por_que}"

@@ -68,7 +68,7 @@
 
 ## Bloque 2 · Tests en rojo (fase RED)
 
-- [ ] **T2 (RED)**: escribir `services/postventa-front/tests_js/portal.test.js`
+- [x] **T2 (RED)**: escribir `services/postventa-front/tests_js/portal.test.js`
       y `services/postventa-front/tests_js/maqueta_datos.test.js`, un test por
       requisito con nombre trazable (`f035 Rn: …`): R2, R4–R8, R9 (cruce id ↔
       ficha leyendo `portal.html`), R11, R12, R16 (componente instanciado con

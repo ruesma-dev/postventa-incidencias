@@ -1,0 +1,874 @@
+// services/postventa-front/tests_js/portal.test.js
+// F-035 · La lógica del portal de posventa (`js/portal.js`) y su componente
+// de Alpine (`js/portal_app.js`), más el cruce de los dos catálogos con el
+// HTML de las dos páginas.
+//
+// - `js/portal.js` es **puro**: catálogos (`SECCIONES`, `PLACEHOLDERS`,
+//   `ESTADOS`) y funciones sin DOM, sin Alpine y sin red (`design.md` §8.1).
+// - `js/portal_app.js` es pegamento (`design.md` §8.2): aquí se **instancia**
+//   con un `window` falso cuyo `fetch` y `XMLHttpRequest` fallan si se les
+//   llama, y se recorren todas las secciones, todas las fichas y todo el
+//   catálogo de placeholders (R16).
+// - `index.html` (el portal) y `partes.html` (el circuito, mudado de
+//   `index.html` en T8) se leen como texto y se cruzan con los catálogos: los
+//   placeholders con su ficha (R9) y la barra superior común con
+//   `Portal.SECCIONES` y `Portal.enlaceSeccion` (R31, R44).
+//
+// Los módulos se cargan DENTRO de cada test y no en la cabecera: en la fase
+// RED no existen, y un `require` de cabecera tumbaría el fichero entero con
+// un solo error sin nombre de requisito.
+//
+// Todos los datos de las funciones puras son INVENTADOS y evidentemente
+// ficticios (R24): obras 99NN, partes RS99…, «(ejemplo)». Los catálogos de
+// Sigrid, con sus códigos reales (D-10).
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const RAIZ_FRONT = path.resolve(__dirname, "..");
+
+function portal() {
+  return require("../js/portal.js");
+}
+
+function datos() {
+  return require("../js/maqueta_datos.js");
+}
+
+function componente() {
+  return require("../js/portal_app.js");
+}
+
+function leer(relativa) {
+  return fs.readFileSync(path.join(RAIZ_FRONT, relativa), "utf8");
+}
+
+// ── Un lector de HTML mínimo ────────────────────────────────────────────────
+//
+// Node no trae parser de HTML y el front no tiene dependencias. Esto basta
+// para lo que se mira aquí: etiquetas, atributos (entre comillas, que en
+// Alpine llevan `>` y `<` dentro) y texto. Los comentarios se saltan; el
+// contenido de `<script>` y `<style>` no se interpreta.
+
+const VACIOS = new Set([
+  "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta",
+  "source", "track", "wbr",
+]);
+const TEXTO_CRUDO = new Set(["script", "style"]);
+const ATRIBUTO = /([^\s"'=<>\/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+
+function atributosDe(trozo) {
+  const atributos = {};
+  for (const m of trozo.matchAll(ATRIBUTO)) {
+    const valor = m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4];
+    atributos[m[1]] = valor === undefined ? "" : valor;
+  }
+  return atributos;
+}
+
+/** Árbol `{nombre, atributos, hijos, padre}`; los textos son `{texto}`. */
+function arbol(html) {
+  const raiz = { nombre: "#documento", atributos: {}, hijos: [], padre: null };
+  let actual = raiz;
+  let i = 0;
+  while (i < html.length) {
+    if (html.startsWith("<!--", i)) {
+      const fin = html.indexOf("-->", i + 4);
+      i = fin === -1 ? html.length : fin + 3;
+      continue;
+    }
+    const esEtiqueta = html[i] === "<" && /[a-zA-Z\/!]/.test(html[i + 1] || "");
+    if (!esEtiqueta) {
+      const siguiente = html.indexOf("<", i + 1);
+      const fin = siguiente === -1 ? html.length : siguiente;
+      actual.hijos.push({ texto: html.slice(i, fin), padre: actual });
+      i = fin;
+      continue;
+    }
+    // Fin de la etiqueta respetando las comillas de los atributos.
+    let j = i + 1;
+    let comilla = null;
+    while (j < html.length) {
+      const c = html[j];
+      if (comilla) {
+        if (c === comilla) comilla = null;
+      } else if (c === '"' || c === "'") {
+        comilla = c;
+      } else if (c === ">") {
+        break;
+      }
+      j += 1;
+    }
+    const dentro = html.slice(i + 1, j);
+    i = j + 1;
+    if (dentro.startsWith("!")) continue; // <!doctype>
+    if (dentro.startsWith("/")) {
+      const nombre = dentro.slice(1).trim().toLowerCase();
+      let n = actual;
+      while (n && n.nombre !== nombre) n = n.padre;
+      if (n && n.padre) actual = n.padre;
+      continue;
+    }
+    const nombre = (dentro.match(/^[^\s\/>]+/) || [""])[0].toLowerCase();
+    const nodo = {
+      nombre,
+      atributos: atributosDe(dentro.slice(nombre.length)),
+      hijos: [],
+      padre: actual,
+    };
+    actual.hijos.push(nodo);
+    if (TEXTO_CRUDO.has(nombre)) {
+      const cierre = html.toLowerCase().indexOf(`</${nombre}`, i);
+      const fin = cierre === -1 ? html.length : cierre;
+      nodo.hijos.push({ texto: html.slice(i, fin), padre: nodo });
+      i = fin;
+      continue;
+    }
+    if (!VACIOS.has(nombre) && !dentro.trimEnd().endsWith("/")) actual = nodo;
+  }
+  return raiz;
+}
+
+/** Elementos descendientes, en orden de documento. */
+function elementos(nodo) {
+  const lista = [];
+  for (const hijo of nodo.hijos || []) {
+    if (hijo.nombre) {
+      lista.push(hijo);
+      lista.push(...elementos(hijo));
+    }
+  }
+  return lista;
+}
+
+function texto(nodo) {
+  if (nodo.texto !== undefined) return nodo.texto;
+  if (TEXTO_CRUDO.has(nodo.nombre)) return "";
+  return nodo.hijos.map(texto).join("");
+}
+
+function textoLimpio(nodo) {
+  return texto(nodo).replace(/\s+/g, " ").trim();
+}
+
+function barraDe(relativa) {
+  const doc = arbol(leer(relativa));
+  const barras = elementos(doc).filter((e) => "data-barra-portal" in e.atributos);
+  assert.equal(barras.length, 1, `${relativa}: tiene que haber una y solo una <nav data-barra-portal>`);
+  assert.equal(barras[0].nombre, "nav", `${relativa}: la barra superior es un <nav>`);
+  return { doc, barra: barras[0] };
+}
+
+/** Las pestañas de la barra: enlaces y la marca de página actual, por etiqueta. */
+function pestanasDe(barra, etiquetas) {
+  return elementos(barra).filter(
+    (e) => (e.nombre === "a" || "aria-current" in e.atributos) && etiquetas.has(textoLimpio(e)),
+  );
+}
+
+function esAncestro(posible, nodo) {
+  for (let n = nodo.padre; n; n = n.padre) if (n === posible) return true;
+  return false;
+}
+
+// ── Dobles de red para el componente (R16) ──────────────────────────────────
+
+/**
+ * Ejecuta `cuerpo` con un `window` falso y la red prohibida. `fetch` y
+ * `XMLHttpRequest` —en `window` y como globales— fallan y dejan constancia.
+ */
+function conVentanaFalsa(cuerpo) {
+  const llamadas = [];
+  const oyentes = {};
+  const fetchQueFalla = (...args) => {
+    llamadas.push(`fetch(${args.map(String).join(", ")})`);
+    throw new Error("R16: la maqueta ha llamado a fetch");
+  };
+  function XhrQueFalla() {
+    llamadas.push("new XMLHttpRequest()");
+    throw new Error("R16: la maqueta ha creado un XMLHttpRequest");
+  }
+  const ventana = {
+    Portal: portal(),
+    MaquetaDatos: datos(),
+    location: { hash: "" },
+    addEventListener(tipo, fn) {
+      (oyentes[tipo] = oyentes[tipo] || []).push(fn);
+    },
+    removeEventListener() {},
+    fetch: fetchQueFalla,
+    XMLHttpRequest: XhrQueFalla,
+  };
+  const previos = {};
+  const globales = {
+    window: ventana,
+    location: ventana.location,
+    fetch: fetchQueFalla,
+    XMLHttpRequest: XhrQueFalla,
+  };
+  for (const [clave, valor] of Object.entries(globales)) {
+    previos[clave] = Object.getOwnPropertyDescriptor(globalThis, clave);
+    Object.defineProperty(globalThis, clave, { value: valor, configurable: true, writable: true });
+  }
+  try {
+    return cuerpo({ ventana, oyentes, llamadas });
+  } finally {
+    for (const [clave, descriptor] of Object.entries(previos)) {
+      if (descriptor) Object.defineProperty(globalThis, clave, descriptor);
+      else delete globalThis[clave];
+    }
+  }
+}
+
+/** `ir()` y, si el componente escucha `hashchange`, se le avisa como haría el navegador. */
+function navegar(c, oyentes, seccion, incidencia) {
+  c.ir(seccion, incidencia);
+  for (const fn of oyentes.hashchange || []) fn({ type: "hashchange" });
+}
+
+function nuevoComponente() {
+  const crear = componente();
+  assert.equal(typeof crear, "function", "js/portal_app.js exporta la función portalPosventa");
+  const c = crear();
+  c.iniciar();
+  return c;
+}
+
+// ── Catálogos esperados (design.md §4 y §6.3) ───────────────────────────────
+
+const SECCIONES_ESPERADAS = [
+  ["inicio", "Inicio", []],
+  ["entrada", "Entrada", ["F-036", "F-037"]],
+  ["bandeja", "Bandeja de revisión", ["F-038", "F-039", "F-040", "F-043"]],
+  ["incidencias", "Incidencias", ["F-041", "F-042", "F-043", "F-047"]],
+  ["impresion", "Impresión de partes", ["F-044"]],
+  ["partes", "Partes firmados", ["F-045"]],
+  ["economico", "Coste y venta", ["F-046", "F-047"]],
+  ["datos", "Datos y datamart", ["F-048"]],
+];
+
+const SECCIONES_DEL_PORTAL = SECCIONES_ESPERADAS.map(([id]) => id).filter((id) => id !== "partes");
+
+//: [id, ficha, etiqueta, enBloque] del catálogo inicial, con la enmienda del
+//: 2026-09-25 (`bandeja.reintentarVolcado`). Se pueden añadir; no cambiar.
+const PLACEHOLDERS_ESPERADOS = [
+  ["entrada.elegirExcel", "F-036", "Elegir el Excel", false],
+  ["entrada.importar", "F-036", "Importar a la bandeja", false],
+  ["entrada.verContratoWeb", "F-037", "Ver el contrato de entrada", false],
+  ["bandeja.editar", "F-038", "Editar", false],
+  ["bandeja.descartar", "F-038", "Descartar", false],
+  ["bandeja.aprobar", "F-038", "Aprobar", false],
+  ["bandeja.cambiarIndustrial", "F-039", "Cambiar industrial", false],
+  ["bandeja.aprobarSeleccionadas", "F-043", "Aprobar las seleccionadas", true],
+  ["bandeja.verVolcado", "F-040", "Ver qué se crearía en Sigrid", false],
+  ["bandeja.volcar", "F-040", "Volcar a Sigrid", false],
+  ["bandeja.reintentarVolcado", "F-040", "Reintentar los rechazados y no procesados", true],
+  ["incidencias.cambiarEstadoBloque", "F-043", "Cambiar estado…", true],
+  ["incidencias.asignarIndustrialBloque", "F-043", "Asignar industrial…", true],
+  ["incidencias.imprimirBloque", "F-044", "Imprimir los partes", true],
+  ["ficha.guardar", "F-041", "Guardar cambios", false],
+  ["ficha.verCambioEstado", "F-041", "Ver qué cambiaría en Sigrid", false],
+  ["ficha.aplicarEstado", "F-041", "Aplicar el cambio", false],
+  ["ficha.cambiarIndustrial", "F-039", "Cambiar industrial", false],
+  ["ficha.imprimir", "F-044", "Imprimir el parte", false],
+  ["ficha.enviarNoProcede", "F-042", "Pasar a no procede y enviar el correo", false],
+  ["ficha.registrarSinFirma", "F-045", "Registrar el parte sin firma", false],
+  ["ficha.enlazarProforma", "F-047", "Enlazar proforma", false],
+  ["impresion.generarPdf", "F-044", "Generar el PDF", true],
+  ["impresion.imprimir", "F-044", "Imprimir", true],
+  ["partes.registrarSinFirma", "F-045", "Registrar un parte sin firma", false],
+  ["economico.actualizar", "F-046", "Actualizar desde Sigrid", false],
+  ["datos.verDiccionario", "F-048", "Ver el diccionario en el datamart", false],
+];
+
+const AVISO_INCIDENCIA_INEXISTENTE = "Esa incidencia no existe en los datos de ejemplo";
+
+// ── R2 · El catálogo de secciones ───────────────────────────────────────────
+
+test("f035 R2: Portal.SECCIONES son las ocho, en su orden, con etiqueta y fichas", () => {
+  const { SECCIONES } = portal();
+
+  assert.ok(Object.isFrozen(SECCIONES), "el catálogo es de solo lectura");
+  assert.deepEqual(
+    SECCIONES.map((s) => s.id),
+    SECCIONES_ESPERADAS.map(([id]) => id),
+  );
+  for (const [id, etiqueta, fichas] of SECCIONES_ESPERADAS) {
+    const seccion = SECCIONES.find((s) => s.id === id);
+    assert.equal(seccion.etiqueta, etiqueta, `${id}: etiqueta`);
+    assert.deepEqual([...seccion.fichas].sort(), [...fichas].sort(), `${id}: fichas que la construyen`);
+  }
+});
+
+test("f035 R2: solo `partes` vive fuera del portal (pagina: partes.html)", () => {
+  const { SECCIONES } = portal();
+
+  for (const seccion of SECCIONES) {
+    const esperada = seccion.id === "partes" ? "partes.html" : null;
+    assert.equal(seccion.pagina, esperada, `${seccion.id}: pagina`);
+  }
+});
+
+// ── R4-R7 · Rutas por hash ──────────────────────────────────────────────────
+
+test("f035 R4: #/<id> de una sección del portal la muestra, sin aviso", () => {
+  const { resolverRuta } = portal();
+
+  for (const id of SECCIONES_DEL_PORTAL) {
+    const ruta = resolverRuta(`#/${id}`, ["EJ-0001"]);
+    assert.equal(ruta.seccion, id, `#/${id}`);
+    assert.equal(ruta.incidencia, null, `#/${id}: sin ficha abierta`);
+    assert.ok(!ruta.aviso, `#/${id}: sin aviso`);
+  }
+});
+
+test("f035 R4: la ruta tolera mayúsculas y la barra final", () => {
+  const { resolverRuta } = portal();
+
+  assert.equal(resolverRuta("#/BANDEJA", []).seccion, "bandeja");
+  assert.equal(resolverRuta("#/bandeja/", []).seccion, "bandeja");
+  assert.equal(resolverRuta("#/Economico", []).seccion, "economico");
+});
+
+test("f035 R5: un hash vacío o desconocido muestra inicio, sin error ni aviso", () => {
+  const { resolverRuta } = portal();
+
+  for (const hash of ["", "#", "#/", "#/no-existe"]) {
+    const ruta = resolverRuta(hash, ["EJ-0001"]);
+    assert.equal(ruta.seccion, "inicio", `«${hash}»`);
+    assert.equal(ruta.incidencia, null, `«${hash}»`);
+    assert.ok(!ruta.aviso, `«${hash}»: sin aviso`);
+  }
+});
+
+test("f035 R5: #/partes muestra inicio (la pestaña partes es el circuito, no una sección del portal)", () => {
+  const { resolverRuta } = portal();
+
+  for (const hash of ["#/partes", "#/PARTES", "#/partes/"]) {
+    const ruta = resolverRuta(hash, []);
+    assert.equal(ruta.seccion, "inicio", hash);
+    assert.ok(!ruta.aviso, `${hash}: sin aviso ni redirección`);
+  }
+});
+
+test("f035 R6: #/incidencias/<id> de una incidencia de ejemplo abre su ficha", () => {
+  const { resolverRuta } = portal();
+
+  const ruta = resolverRuta("#/incidencias/EJ-0003", ["EJ-0001", "EJ-0003"]);
+
+  assert.equal(ruta.seccion, "incidencias");
+  assert.equal(ruta.incidencia, "EJ-0003");
+  assert.ok(!ruta.aviso);
+});
+
+test("f035 R7: una incidencia que no existe muestra el listado con su aviso", () => {
+  const { resolverRuta } = portal();
+
+  const ruta = resolverRuta("#/incidencias/EJ-9999", ["EJ-0001", "EJ-0003"]);
+
+  assert.equal(ruta.seccion, "incidencias");
+  assert.equal(ruta.incidencia, null);
+  assert.equal(ruta.aviso, AVISO_INCIDENCIA_INEXISTENTE);
+});
+
+test("f035 R4-R6: hashDe es la inversa de resolverRuta", () => {
+  const { hashDe, resolverRuta } = portal();
+
+  assert.equal(hashDe("bandeja"), "#/bandeja");
+  assert.equal(hashDe("incidencias", "EJ-0003"), "#/incidencias/EJ-0003");
+  for (const id of SECCIONES_DEL_PORTAL) {
+    assert.equal(resolverRuta(hashDe(id), []).seccion, id, id);
+  }
+  const ficha = resolverRuta(hashDe("incidencias", "EJ-0003"), ["EJ-0003"]);
+  assert.equal(ficha.incidencia, "EJ-0003");
+});
+
+test("f035 R4-R7: las incidencias de los datos de ejemplo se abren por su ruta", () => {
+  const { resolverRuta, hashDe } = portal();
+  const ids = datos().incidencias.filas.map((fila) => fila.id);
+
+  for (const id of ids) {
+    assert.equal(resolverRuta(hashDe("incidencias", id), ids).incidencia, id, id);
+  }
+});
+
+// ── enlaceSeccion · la única fuente de los href de las dos barras ───────────
+
+test("f035 R44: enlaceSeccion desde el portal: #/<id>, y partes.html en la misma pestaña", () => {
+  const { enlaceSeccion } = portal();
+
+  for (const id of SECCIONES_DEL_PORTAL) {
+    assert.deepEqual(enlaceSeccion(id, "portal"), { href: `#/${id}`, nuevaPestana: false }, id);
+  }
+  assert.deepEqual(enlaceSeccion("partes", "portal"), { href: "partes.html", nuevaPestana: false });
+});
+
+test("f035 R31: enlaceSeccion desde el circuito: ./#/<id> en pestaña nueva, y partes es la página actual", () => {
+  const { enlaceSeccion } = portal();
+
+  for (const id of SECCIONES_DEL_PORTAL) {
+    assert.deepEqual(enlaceSeccion(id, "circuito"), { href: `./#/${id}`, nuevaPestana: true }, id);
+  }
+  assert.equal(enlaceSeccion("partes", "circuito"), null);
+});
+
+test("f035 R44: enlaceSeccion con un id desconocido devuelve null y no lanza", () => {
+  const { enlaceSeccion } = portal();
+
+  assert.equal(enlaceSeccion("no-existe", "portal"), null);
+  assert.equal(enlaceSeccion("no-existe", "circuito"), null);
+  assert.equal(enlaceSeccion(undefined, "portal"), null);
+});
+
+// ── R8 · El catálogo de placeholders ────────────────────────────────────────
+
+test("f035 R8: cada placeholder tiene id único, ficha F-0NN, etiqueta, explicación y enBloque", () => {
+  const { PLACEHOLDERS } = portal();
+
+  assert.ok(Object.isFrozen(PLACEHOLDERS), "el catálogo es de solo lectura");
+  const ids = PLACEHOLDERS.map((p) => p.id);
+  assert.equal(new Set(ids).size, ids.length, "hay ids de placeholder repetidos");
+  for (const p of PLACEHOLDERS) {
+    assert.ok(p.id, "un placeholder sin id");
+    assert.match(p.ficha, /^F-0\d\d$/, `${p.id}: ficha`);
+    assert.notEqual(p.ficha, "F-035", `${p.id}: F-035 no puede tener placeholders (R28 la dejaría viva)`);
+    assert.ok(p.etiqueta, `${p.id}: etiqueta`);
+    assert.ok(p.explicacion, `${p.id}: explicación`);
+    assert.equal(typeof p.enBloque, "boolean", `${p.id}: enBloque`);
+  }
+});
+
+test("f035 R8: están los placeholders del inventario, con su ficha, etiqueta y enBloque", () => {
+  const { PLACEHOLDERS } = portal();
+
+  for (const [id, ficha, etiqueta, enBloque] of PLACEHOLDERS_ESPERADOS) {
+    const p = PLACEHOLDERS.find((x) => x.id === id);
+    assert.ok(p, `falta el placeholder ${id}`);
+    assert.equal(p.ficha, ficha, `${id}: ficha`);
+    assert.equal(p.etiqueta, etiqueta, `${id}: etiqueta`);
+    assert.equal(p.enBloque, enBloque, `${id}: enBloque`);
+  }
+});
+
+test("f035 R8: el volcado explica que va por obra y que reintentar no duplica", () => {
+  const { placeholderPorId } = portal();
+
+  for (const id of ["bandeja.verVolcado", "bandeja.volcar"]) {
+    const { explicacion } = placeholderPorId(id);
+    assert.match(explicacion, /obra/i, `${id}: el volcado va por obra`);
+    assert.match(explicacion, /PVI-/, `${id}: la referencia PVI- evita duplicar`);
+  }
+});
+
+test("f035 R8: placeholderPorId encuentra cada entrada y devuelve null si no existe", () => {
+  const { PLACEHOLDERS, placeholderPorId } = portal();
+
+  for (const p of PLACEHOLDERS) assert.equal(placeholderPorId(p.id), p, p.id);
+  assert.equal(placeholderPorId("no.existe"), null);
+});
+
+// ── R11 y R12 · El aviso de un placeholder ──────────────────────────────────
+
+test("f035 R11: el aviso dice qué ficha lo construye y qué hará", () => {
+  const { PLACEHOLDERS, textoPlaceholder } = portal();
+
+  for (const p of PLACEHOLDERS) {
+    const aviso = textoPlaceholder(p.id);
+    assert.match(
+      aviso,
+      new RegExp(`^Todavía no hace nada: lo construye ${p.ficha} · \\S`),
+      `${p.id}: «${aviso}»`,
+    );
+    assert.ok(aviso.includes(p.explicacion), `${p.id}: el aviso lleva la frase del catálogo`);
+  }
+});
+
+test("f035 R11: un id desconocido da un texto genérico y no lanza", () => {
+  const { textoPlaceholder } = portal();
+
+  const aviso = textoPlaceholder("no.existe");
+
+  assert.equal(typeof aviso, "string");
+  assert.ok(aviso.length > 0);
+});
+
+test("f035 R12: una operación en bloque dice a cuántas incidencias afectaría", () => {
+  const { textoPlaceholder } = portal();
+
+  const aviso = textoPlaceholder("incidencias.cambiarEstadoBloque", { seleccionadas: 3 });
+
+  assert.match(aviso, /^Todavía no hace nada: lo construye F-043 · /);
+  assert.match(aviso, /\b3 incidencias\b/);
+});
+
+test("f035 R12: un placeholder que no es en bloque no habla de la selección", () => {
+  const { textoPlaceholder } = portal();
+
+  const aviso = textoPlaceholder("ficha.guardar", { seleccionadas: 3 });
+
+  assert.doesNotMatch(aviso, /\b3 incidencias\b/);
+});
+
+// ── R19 y R20 · Filtros y selección, solo en pantalla ───────────────────────
+
+const INCIDENCIAS_INVENTADAS = Object.freeze([
+  Object.freeze({
+    id: "EJ-0001",
+    cod: "RS99.01/0001",
+    obra: "9901",
+    estado: "PTE",
+    descripcionCorta: "Humedad en el techo del baño (ejemplo)",
+    descripcionLarga: "Mancha de humedad junto al extractor (ejemplo)",
+  }),
+  Object.freeze({
+    id: "EJ-0002",
+    cod: "RS99.01/0002",
+    obra: "9902",
+    estado: "SAT",
+    descripcionCorta: "Puerta de armario descuadrada (ejemplo)",
+    descripcionLarga: "Carpintería de madera: la hoja roza el marco (ejemplo)",
+  }),
+  Object.freeze({
+    id: "EJ-0003",
+    cod: "RS99.02/0003",
+    obra: "9901",
+    estado: "SAT",
+    descripcionCorta: "Grifo del lavabo gotea (ejemplo)",
+    descripcionLarga: "Goteo continuo en el lavabo (ejemplo)",
+  }),
+]);
+
+const ids = (filas) => filas.map((f) => f.id);
+
+test("f035 R19: con los filtros vacíos se ven todas las incidencias", () => {
+  const { filtrarIncidencias } = portal();
+
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, {})), ["EJ-0001", "EJ-0002", "EJ-0003"]);
+  assert.deepEqual(
+    ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { estado: "", obra: "", texto: "" })),
+    ["EJ-0001", "EJ-0002", "EJ-0003"],
+  );
+});
+
+test("f035 R19: se filtra por estado, por obra y por texto, cada uno por su lado", () => {
+  const { filtrarIncidencias } = portal();
+
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { estado: "SAT" })), ["EJ-0002", "EJ-0003"]);
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { obra: "9901" })), ["EJ-0001", "EJ-0003"]);
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { texto: "grifo" })), ["EJ-0003"]);
+});
+
+test("f035 R19: el texto busca en código, descripción corta y larga, sin mayúsculas ni tildes", () => {
+  const { filtrarIncidencias } = portal();
+
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { texto: "HUMEDAD" })), ["EJ-0001"]);
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { texto: "bano" })), ["EJ-0001"]);
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { texto: "carpinteria" })), ["EJ-0002"]);
+  assert.deepEqual(ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { texto: "RS99.02/0003" })), ["EJ-0003"]);
+});
+
+test("f035 R19: los filtros se cumplen todos a la vez", () => {
+  const { filtrarIncidencias } = portal();
+
+  assert.deepEqual(
+    ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { estado: "SAT", obra: "9901" })),
+    ["EJ-0003"],
+  );
+  assert.deepEqual(
+    ids(filtrarIncidencias(INCIDENCIAS_INVENTADAS, { estado: "SAT", obra: "9901", texto: "armario" })),
+    [],
+  );
+});
+
+test("f035 R19: la bandeja se filtra por origen, estado de revisión y obra, todos a la vez", () => {
+  const { filtrarBandeja } = portal();
+  const bandeja = [
+    { id: "B1", origen: "Excel", estado: "nueva", obra: "9901" },
+    { id: "B2", origen: "Web", estado: "nueva", obra: "9901" },
+    { id: "B3", origen: "Excel", estado: "aprobada", obra: "9902" },
+    { id: "B4", origen: "Excel", estado: "nueva", obra: "9902" },
+  ];
+
+  assert.deepEqual(ids(filtrarBandeja(bandeja, {})), ["B1", "B2", "B3", "B4"]);
+  assert.deepEqual(ids(filtrarBandeja(bandeja, { origen: "Excel" })), ["B1", "B3", "B4"]);
+  assert.deepEqual(ids(filtrarBandeja(bandeja, { estado: "nueva", obra: "9902" })), ["B4"]);
+  assert.deepEqual(ids(filtrarBandeja(bandeja, { origen: "Web", estado: "aprobada" })), []);
+});
+
+test("f035 R20: alternarSeleccion marca y desmarca sin mutar la lista", () => {
+  const { alternarSeleccion } = portal();
+  const inicial = Object.freeze(["EJ-0001"]);
+
+  const conDos = alternarSeleccion(inicial, "EJ-0002");
+  const sinLaPrimera = alternarSeleccion(conDos, "EJ-0001");
+
+  assert.deepEqual(conDos, ["EJ-0001", "EJ-0002"]);
+  assert.deepEqual(sinLaPrimera, ["EJ-0002"]);
+  assert.deepEqual(inicial, ["EJ-0001"], "la lista de partida no cambia");
+  assert.notEqual(conDos, inicial, "devuelve una lista nueva");
+});
+
+// ── R21 y R22 · Estados y dinero ────────────────────────────────────────────
+
+test("f035 R21: Portal.ESTADOS son los cinco de conest, por código y resumen, sin número", () => {
+  const { ESTADOS } = portal();
+
+  assert.deepEqual(
+    ESTADOS.map((e) => ({ ...e })),
+    [
+      { cod: "SAT", res: "SIN ATENDER" },
+      { cod: "PTE", res: "PENDIENTE" },
+      { cod: "TER", res: "TERMINADA" },
+      { cod: "NPR", res: "NO PROCEDE" },
+      { cod: "CER", res: "CERRADA" },
+    ],
+  );
+});
+
+test("f035 R21: el estado se enseña como «código · resumen»; uno desconocido, tal cual", () => {
+  const { etiquetaEstado } = portal();
+
+  assert.equal(etiquetaEstado("PTE"), "PTE · PENDIENTE");
+  assert.equal(etiquetaEstado("NPR"), "NPR · NO PROCEDE");
+  assert.equal(etiquetaEstado("XYZ"), "XYZ");
+});
+
+test("f035 R22: lo no enlazado se ve «sin enlazar», nunca 0,00 €", () => {
+  const { formatoImporte } = portal();
+
+  assert.equal(formatoImporte(null), "sin enlazar");
+  assert.equal(formatoImporte(undefined), "sin enlazar");
+});
+
+test("f035 R22: un cero de verdad es 0,00 €, y los importes van en formato es-ES", () => {
+  const { formatoImporte } = portal();
+
+  assert.match(formatoImporte(0), /^0,00\s€$/);
+  assert.match(formatoImporte(12345.5), /^12\.345,50\s€$/);
+});
+
+// ── R39 · Catálogos por código y resumen ────────────────────────────────────
+
+test("f035 R39: etiquetaCatalogo enseña código · resumen, el 0003 como pendiente y el vacío como sin completar", () => {
+  const { etiquetaCatalogo } = portal();
+  const tipos = [
+    { cod: "0002", res: "PRIMER LISTADO POSTVENTA" },
+    { cod: "0003", res: null },
+  ];
+  const oficios = [{ cod: "0143", res: "Carpintería de madera" }];
+
+  assert.equal(etiquetaCatalogo("0002", tipos), "0002 · PRIMER LISTADO POSTVENTA");
+  assert.equal(etiquetaCatalogo("0003", tipos), "0003 · Pendiente: qué es y cuándo se usa");
+  assert.equal(etiquetaCatalogo("0143", oficios), "0143 · Carpintería de madera");
+  assert.equal(etiquetaCatalogo(null, oficios), "sin completar");
+  assert.equal(etiquetaCatalogo("9999", oficios), "9999");
+});
+
+// ── R40 · El resumen del volcado ────────────────────────────────────────────
+
+test("f035 R40: resumenVolcado cuenta por estado con los nombres del contrato", () => {
+  const { resumenVolcado } = portal();
+
+  const resumen = resumenVolcado([
+    { estado: "previsto" },
+    { estado: "previsto" },
+    { estado: "creado" },
+    { estado: "idempotente" },
+    { estado: "rechazado" },
+    { estado: "no_procesado" },
+    { estado: "desconocido" },
+  ]);
+
+  assert.deepEqual(resumen, {
+    previstos: 2,
+    creados: 1,
+    idempotentes: 1,
+    rechazados: 1,
+    no_procesados: 1,
+  });
+});
+
+test("f035 R40: resumenVolcado de una lista vacía es todo cero", () => {
+  const { resumenVolcado } = portal();
+
+  assert.deepEqual(resumenVolcado([]), {
+    previstos: 0,
+    creados: 0,
+    idempotentes: 0,
+    rechazados: 0,
+    no_procesados: 0,
+  });
+});
+
+test("f035 R40: etiquetaEstadoVolcado da la etiqueta legible; un estado desconocido, tal cual", () => {
+  const { etiquetaEstadoVolcado } = portal();
+  const estados = [
+    { cod: "previsto", etiqueta: "Se crearía" },
+    { cod: "no_procesado", etiqueta: "No se llegó a intentar: se puede reenviar" },
+  ];
+
+  assert.equal(etiquetaEstadoVolcado("previsto", estados), "Se crearía");
+  assert.equal(etiquetaEstadoVolcado("no_procesado", estados), "No se llegó a intentar: se puede reenviar");
+  assert.equal(etiquetaEstadoVolcado("raro", estados), "raro");
+  assert.equal(etiquetaEstadoVolcado("previsto", []), "previsto");
+});
+
+test("f035 R40: el resumen de los dos resultados de ejemplo sale de sus filas", () => {
+  const { resumenVolcado } = portal();
+  const { dryRun, hecho } = datos().volcado;
+
+  assert.equal(resumenVolcado(dryRun.partes).creados, 0, "un dry-run no crea nada");
+  assert.ok(resumenVolcado(dryRun.partes).previstos > 0);
+  assert.equal(resumenVolcado(hecho.partes).previstos, 0, "un volcado hecho no deja previstos");
+  assert.ok(resumenVolcado(hecho.partes).creados > 0);
+});
+
+// ── R16 · El componente no llama a nada ─────────────────────────────────────
+
+test("f035 R16: navegar por todas las secciones, fichas y rutas no llama ni a fetch ni a XMLHttpRequest", () => {
+  conVentanaFalsa(({ oyentes, llamadas }) => {
+    const c = nuevoComponente();
+    const idsIncidencia = datos().incidencias.filas.map((fila) => fila.id);
+
+    for (const [id] of SECCIONES_ESPERADAS) navegar(c, oyentes, id);
+    for (const id of idsIncidencia) navegar(c, oyentes, "incidencias", id);
+    navegar(c, oyentes, "incidencias", "EJ-9999");
+    navegar(c, oyentes, "no-existe");
+
+    assert.deepEqual(llamadas, [], "la maqueta ha intentado salir de la pantalla");
+  });
+});
+
+test("f035 R16: pulsar todos los placeholders del catálogo no llama a nada y deja su aviso (R11)", () => {
+  conVentanaFalsa(({ oyentes, llamadas }) => {
+    const c = nuevoComponente();
+
+    for (const p of portal().PLACEHOLDERS) {
+      c.placeholder(p.id);
+      assert.match(String(c.aviso), new RegExp(`lo construye ${p.ficha}`), `${p.id}: aviso`);
+      assert.ok(String(c.aviso).includes(p.explicacion), `${p.id}: el aviso lleva la frase del catálogo`);
+    }
+
+    assert.deepEqual(llamadas, [], "un placeholder ha intentado salir de la pantalla");
+  });
+});
+
+test("f035 R12: en el componente, el aviso en bloque cuenta la selección de incidencias", () => {
+  conVentanaFalsa(({ oyentes }) => {
+    const c = nuevoComponente();
+    const [primera, segunda] = datos().incidencias.filas.map((fila) => fila.id);
+
+    c.seleccionIncidencias = [primera, segunda];
+    c.placeholder("incidencias.cambiarEstadoBloque");
+
+    assert.match(String(c.aviso), /\b2 incidencias\b/);
+  });
+});
+
+test("f035 R20: la selección se conserva al cambiar de sección", () => {
+  conVentanaFalsa(({ oyentes }) => {
+    const c = nuevoComponente();
+    const [primera] = datos().incidencias.filas.map((fila) => fila.id);
+
+    c.seleccionIncidencias = [primera];
+    navegar(c, oyentes, "bandeja");
+    navegar(c, oyentes, "incidencias");
+
+    assert.deepEqual([...c.seleccionIncidencias], [primera]);
+  });
+});
+
+// ── R9 · Cada placeholder del portal, con la ficha de su entrada ────────────
+
+test("f035 R9: cada data-placeholder de index.html lleva la ficha de su entrada en Portal.PLACEHOLDERS", () => {
+  const { placeholderPorId } = portal();
+  const botones = elementos(arbol(leer("index.html"))).filter((e) => "data-placeholder" in e.atributos);
+
+  assert.ok(botones.length > 0, "index.html no tiene ni un placeholder");
+  for (const boton of botones) {
+    const clic = boton.atributos["@click"] || boton.atributos["x-on:click"] || "";
+    const m = clic.match(/^\s*placeholder\('([^']+)'\)\s*$/);
+    assert.ok(m, `un placeholder con @click «${clic}»: tiene que ser placeholder('<id>') y nada más`);
+    const entrada = placeholderPorId(m[1]);
+    assert.ok(entrada, `index.html pinta ${m[1]}, que no está en Portal.PLACEHOLDERS`);
+    assert.equal(
+      boton.atributos["data-placeholder"],
+      entrada.ficha,
+      `${m[1]}: data-placeholder no es la ficha de su entrada`,
+    );
+  }
+});
+
+test("f035 R9: todo el catálogo de placeholders está pintado en index.html", () => {
+  const { PLACEHOLDERS } = portal();
+  const pintados = new Set(
+    elementos(arbol(leer("index.html")))
+      .filter((e) => "data-placeholder" in e.atributos)
+      .map((e) => ((e.atributos["@click"] || "").match(/placeholder\('([^']+)'\)/) || [])[1]),
+  );
+
+  for (const p of PLACEHOLDERS) {
+    assert.ok(pintados.has(p.id), `${p.id} está en el catálogo y no se pinta en ninguna parte`);
+  }
+});
+
+// ── R31 y R44 · La barra superior común ─────────────────────────────────────
+
+for (const [pagina, modo] of [
+  ["index.html", "portal"],
+  ["partes.html", "circuito"],
+]) {
+  test(`f035 R44: la barra de ${pagina} tiene las ocho secciones de Portal.SECCIONES, en su orden`, () => {
+    const { SECCIONES } = portal();
+    const { barra } = barraDe(pagina);
+    const etiquetas = new Set(SECCIONES.map((s) => s.etiqueta));
+
+    assert.deepEqual(
+      pestanasDe(barra, etiquetas).map(textoLimpio),
+      SECCIONES.map((s) => s.etiqueta),
+    );
+  });
+
+  test(`f035 R44: cada pestaña de ${pagina} enlaza a lo que da enlaceSeccion(id, "${modo}")`, () => {
+    const { SECCIONES, enlaceSeccion } = portal();
+    const { barra } = barraDe(pagina);
+    const etiquetas = new Set(SECCIONES.map((s) => s.etiqueta));
+    const pestanas = pestanasDe(barra, etiquetas);
+
+    for (const seccion of SECCIONES) {
+      const pestana = pestanas.find((p) => textoLimpio(p) === seccion.etiqueta);
+      assert.ok(pestana, `${pagina}: falta la pestaña ${seccion.etiqueta}`);
+      const enlace = enlaceSeccion(seccion.id, modo);
+      if (enlace === null) {
+        assert.ok(!("href" in pestana.atributos), `${pagina}: ${seccion.id} es la página actual, sin enlace`);
+        assert.equal(pestana.atributos["aria-current"], "page", `${pagina}: ${seccion.id} lleva aria-current`);
+        continue;
+      }
+      assert.equal(pestana.nombre, "a", `${pagina}: ${seccion.id} es un enlace`);
+      assert.equal(pestana.atributos.href, enlace.href, `${pagina}: href de ${seccion.id}`);
+      if (enlace.nuevaPestana) {
+        assert.equal(pestana.atributos.target, "_blank", `${pagina}: ${seccion.id} se abre aparte`);
+        assert.match(pestana.atributos.rel || "", /\bnoopener\b/, `${pagina}: ${seccion.id} lleva rel noopener`);
+      } else {
+        assert.ok(!("target" in pestana.atributos), `${pagina}: ${seccion.id} se abre en la misma pestaña`);
+      }
+    }
+  });
+
+  test(`f035 R44: la barra es el primer elemento de ${pagina}`, () => {
+    const { doc, barra } = barraDe(pagina);
+    const cuerpo = elementos(doc).find((e) => e.nombre === "body");
+    assert.ok(cuerpo, `${pagina} no tiene <body>`);
+    const orden = elementos(cuerpo);
+
+    const antes = orden.slice(0, orden.indexOf(barra));
+    const intrusos = antes.filter((e) => !esAncestro(e, barra));
+    assert.deepEqual(
+      intrusos.map((e) => `<${e.nombre}>`),
+      [],
+      `${pagina}: hay elementos antes de la barra superior`,
+    );
+  });
+}

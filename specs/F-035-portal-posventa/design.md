@@ -6,6 +6,18 @@
 > y `docs/referencia/03_modelo_posventa_sigrid.md`. Todas las referencias de
 > línea están medidas sobre `dev` en `5bc0ca8`.
 
+> **Puesta al día del 2026-09-25 (rebase sobre `dev` en `54c0884`).** Se
+> añaden dos fuentes: `docs/referencia/04_alta_incidencia_sigrid.md` (el alta
+> manual de Posventa, llegada el 2026-09-24) y `azure-apps/sigrid_api.md`
+> §8.9 (`sigrid/partes-reclamacion`, el contrato del volcado de F-040), más la
+> estructura de archivo de Posventa que dejaron desplegada F-013 y F-049
+> (`docs/INTEGRACION.md` §3). Re-medido sobre `54c0884`: el front,
+> `infra/desplegar_front.ps1` y los tests de la raíz no han cambiado desde
+> `5bc0ca8`, así que §1 y sus líneas siguen valiendo; la fila de Entra ID de
+> `docs/ARCHITECTURE.md` ha bajado de `:544` a **`:578`** (F-013 añadió
+> enmiendas encima). Lo que cambia va en recuadros con esta fecha: §5.2,
+> §5.3, §5.5, §5.6, §5.7, §6.3, §7, §8.1, §10, §11, §13 (D-10 nueva) y §14.
+
 ## 1 · Lo que hay hoy, medido
 
 ### 1.1 · El front
@@ -126,7 +138,7 @@ propósito**: la suite del front se salta por caché cuando su árbol no cambia
 |---|---|
 | `services/postventa-front/index.html` | **Solo se añade** el bloque `<nav data-portal-nav>` en la cabecera (§2). Ni una línea borrada ni cambiada (R30) |
 | `services/postventa-front/README.md` | Sección nueva «La maqueta del portal (F-035)» (R36) |
-| `docs/ARCHITECTURE.md` | Sección nueva «El portal de posventa (F-035)» con el mapa de §4 y la regla de los placeholders (R37). La fila de Entra ID (`:544`) se corrige según la respuesta a **D-5** |
+| `docs/ARCHITECTURE.md` | Sección nueva «El portal de posventa (F-035)» con el mapa de §4 y la regla de los placeholders (R37). La fila de Entra ID (`:544`; **`:578` en `54c0884`**) se corrige según la respuesta a **D-5** |
 | `harness/features.json`, `BACKLOG.md` | Estado de F-035, como siempre |
 
 ### 3.3 · Que NO se tocan (y tientan)
@@ -189,6 +201,16 @@ los de `js/maqueta_datos.js` (§7), todos ficticios.
   ejemplo» (F-036). Una tabla vacía de columnas «Columna 1…n» con esa nota.
 - Pendiente: «pasos de alta de una incidencia hoy — llegará el correo con los
   pasos» (F-036).
+
+  > **Enmienda del 2026-09-25.** Los dos puntos de arriba se conservan como
+  > estaban. Los pasos de alta **ya llegaron** (`04_alta_incidencia_sigrid.md`)
+  > y ese pendiente **desaparece**. La tabla de columnas pasa a enseñar lo que
+  > sí se sabe, de la ficha de F-036 (añadido del 2026-09-24): **qué necesita
+  > cada fila** —«Unidad de posventa» y «Descripción», obligatorias;
+  > «Ubicación» y «Oficio», opcionales porque se completan en la bandeja— y,
+  > debajo, el pendiente que queda: «Pendiente: los nombres reales de las
+  > columnas y el resto de columnas del Excel de la propiedad — el Excel de
+  > ejemplo no ha llegado» (F-036). Nada de «Columna 1…n».
 - **Resultado de una importación de ejemplo** (datos de F-036): fichero
   `incidencias_ejemplo.xlsx` (solo el nombre), fecha, filas leídas, filas
   válidas, filas con error y duplicadas; y la lista de errores **por fila y
@@ -229,6 +251,75 @@ Lista de lo importado **antes** de Sigrid. Datos: bloque `bandeja` (F-038).
 - **Panel de detalle [L]** al pulsar una fila: los campos de la fila en
   solo lectura y el historial de revisión de ejemplo («quién y cuándo», criterio
   de F-038; la persona es «Usuario Ejemplo»).
+
+> **Enmienda del 2026-09-25 · la bandeja con los campos del alta y el volcado
+> con su contrato (R38–R40).** Lo de arriba se conserva; esto lo **precisa**
+> donde choca. Fuentes: `04_alta_incidencia_sigrid.md` §2–§5 y
+> `azure-apps/sigrid_api.md` §8.9.
+>
+> **Columnas de la lista** (sustituyen a las de arriba): casilla [L], origen,
+> obra (código y nombre), **unidad de posventa** (`9901.03VILLA 3.` y su
+> resumen), **descripción corta**, **oficio** (código · resumen, o «sin
+> completar»), fecha de entrada, industrial propuesto y su motivo (F-039),
+> estado de revisión, marca «duplicada» (F-036) y **código de Sigrid** tras el
+> volcado («—» hasta entonces, F-040).
+>
+> **Panel de detalle [L]**, en solo lectura, en el orden de la ficha del parte
+> de Sigrid (`04_alta…` §3), para que Posventa lo reconozca:
+>
+> | Bloque | Campos |
+> |---|---|
+> | Identificación | Obra · Unidad de posventa · **Tipo de reclamación** (`0002 · PRIMER LISTADO POSTVENTA` por defecto, R39) · Ubicación · Propietario (`9901_REF/0003 · Propietario Ejemplo 3`) · Persona que reclama (`9901_PER/0003 · …`). Propietario y persona llevan la nota «los copia Sigrid de la unidad» (`sigrid_api.md` §8.9) |
+> | Datos de la reclamación | Forma de comunicación (`Escrita`, el defecto del contrato) · **Oficio** (catálogo general) · Descripción corta (≤128) · Descripción larga |
+> | Intervinientes | Tabla: oficio de la obra, proveedor (`EJ07 · Fontanería Ejemplo, S.L.`) y casilla «Causante» (solo lectura). La lista sale de los **oficios de esa obra con su proveedor** (`obrofc`), que es de donde propone F-039. Pendiente: «qué oficio lleva el parte si hay varios intervinientes y quién marca Causante» (F-040) |
+> | Volcado | Referencia externa (`PVI-EJEMPLO-0003`; nota «la forma exacta la fija F-040») · Código de Sigrid (`RS99.09/0003` o «—») |
+>
+> Sin completar: una fila de Excel sin ubicación ni oficio los enseña como «sin
+> completar», que es justo lo que F-036 permite y F-038 rellenará. Una fila
+> con tipo `0003` enseña «Pendiente: qué es y cuándo se usa» (R39).
+>
+> **Panel de volcado (F-040)**, que sustituye al de arriba:
+>
+> - Texto: «Solo lo aprobado es candidato al volcado. Se vuelca **obra a
+>   obra**: cada lote es de una sola obra.» Contador de aprobadas **por
+>   obra**.
+> - «Ver qué se crearía en Sigrid» **[P F-040]** (el dry-run), «Volcar a
+>   Sigrid» **[P F-040]** y, nuevo, «Reintentar los rechazados y no
+>   procesados» **[P F-040]** (el contrato dice que reenviar es seguro:
+>   la referencia `PVI-…` hace que lo ya creado vuelva `idempotente`).
+> - **Dos resultados de ejemplo** (R40), uno debajo del otro, con el
+>   resumen por estado (`previstos`, `creados`, `idempotentes`, `rechazados`,
+>   `no_procesados`, los nombres del contrato) y una fila por parte:
+>   referencia `PVI-…`, unidad, estado con su etiqueta y, si lo hay, código
+>   de Sigrid y motivo.
+>   - **Dry-run** de la obra `9901`: 3 `previsto` (código
+>     `RS99.09/0001…0003` marcado «provisional», como dice el contrato), 1
+>     `idempotente` (ya estaba creado: su código de verdad) y 1 `rechazado`
+>     (`oficio_no_esta_en_la_obra`).
+>   - **Volcado hecho** de la obra `9902`: 2 `creado`, 1 `idempotente`, 1
+>     `rechazado` (`interviniente_ambiguo`) y 1 `no_procesado`
+>     (`presupuesto_de_tiempo_agotado`, «se puede reenviar sin riesgo»).
+> - Etiquetas legibles de los estados (catálogo en los datos de F-040):
+>   `previsto` «Se crearía», `creado` «Creado en Sigrid», `idempotente` «Ya
+>   estaba creado: no se duplica», `rechazado` «No se crea: hay que
+>   corregirlo», `no_procesado` «No se llegó a intentar: se puede reenviar».
+> - Los códigos de motivo, de la **lista cerrada** del contrato
+>   (`sigrid_api.md` §8.9, «Códigos de parte»); la maqueta usa solo esos,
+>   con un mensaje de ejemplo en castellano.
+> - **Se quita** la nota fija «Crear una incidencia en Sigrid necesita un
+>   endpoint nuevo en `sigrid-api`»: ya no es cierta (el endpoint existe y
+>   espera despliegue, bloqueo de F-040). En su lugar, un pendiente sin
+>   fechas que caduquen: «Pendiente: el volcado real espera a que
+>   `sigrid-api` despliegue el alta en lote» (F-040).
+> - Pendiente (F-040): «en qué estado queda el parte recién creado». La
+>   captura de Posventa enseña el parte en `PTE` tras el alta
+>   (`04_alta…` §3), y `sigrid-api` lo crea en el estado inicial de la serie
+>   (`SAT`) y **no** pasa a `PTE` (§8.9, «Lo que NO hace»). La maqueta no
+>   elige: los `creado` no enseñan estado (hallazgo H-3, §14).
+>
+> **Ni una llamada** (R14, R16): el panel pinta `MaquetaDatos.volcado`; la
+> maqueta no contiene la ruta del endpoint, ni `/api/`, ni el nombre de la
+> base.
 
 ### 5.4 · `incidencias`: el listado (F-041, F-043)
 
@@ -288,6 +379,31 @@ orígenes permitidos, tomada de `azure-apps/sigrid_tablas.md` (entidades `con`,
 | Visita del técnico acordada | `upv.fecvtec` | |
 | Industrial propuesto y motivo | `propio` | F-039 |
 
+> **Enmienda del 2026-09-25 a la tabla de arriba (R25, R38, R39).** La tabla
+> se conserva; estas filas **cambian o entran**, con el alta de
+> `04_alta_incidencia_sigrid.md` §3 y el contrato de `sigrid_api.md` §8.9, y
+> la pestaña «Datos» se ordena en los mismos bloques que la ficha del parte
+> de Sigrid (Identificación, Datos de la reclamación, Intervinientes), como
+> el detalle de la bandeja (§5.3):
+>
+> | Etiqueta | Origen | Qué cambia |
+> |---|---|---|
+> | Código | `con.cod` | Nota nueva: serie `RS<aa>.<mm>/` + correlativo, **lo pone Sigrid** al crear |
+> | Resumen → **Descripción corta** | `con.res` | Renombrada como en la pantalla de Sigrid; hasta 128 caracteres. `rcp` no tiene otra columna de descripción corta (`sigrid_tablas.md`) |
+> | Propietario | `rcp.cliide` | Código `99NN_REF/NNNN` y nombre ficticio; nota «los copia Sigrid de la unidad al crear» |
+> | Persona que reclama | `rcp.recide` | Código `99NN_PER/NNNN` y nombre ficticio; misma nota |
+> | Tipo | `rcp.trcpide` | Catálogo `auxtrcp`, **por código y resumen** (R39): `0002 · PRIMER LISTADO POSTVENTA`, el defecto del contrato. El `0003` sale por defecto en el escritorio y **no se sabe qué es** |
+> | Comunicado de forma | `rcp.rcptip` | Deja de ser del todo pendiente: `1` es «Escrita», el defecto del contrato. El `0` sigue sin documentar: la maqueta solo usa «Escrita» |
+> | Ubicación | `rcp.resubi` | Hasta 48 caracteres; en Sigrid es un desplegable |
+> | Oficio | `rcp.ofcide` | Catálogo **general** `auxofc` (130 oficios), por código y resumen. El contrato exige además que esté entre los oficios de la obra |
+> | Industrial → **Intervinientes** | `rcpint.obrofcide` → `obrofc.ofcide`, `obrofc.prvide` | Deja de ser hipótesis en cuanto a **estructura**: cada interviniente apunta a un oficio **de la obra** (`obrofc`), que lleva oficio y proveedor (`sigrid_tablas.md`; `04_alta…` §5). Se enseña como tabla (oficio, proveedor, causante). **Sigue pendiente** cuál de ellos es «el industrial» cuando hay varios (F-039/F-040) |
+> | Causante de la avería | `rcpint.cauave` | Pasa a ser la columna «Causante» de la tabla de intervinientes. Pendiente: quién la marca |
+> | **Referencia externa** (nueva) | `conext[RCPCLI]` | Campo extendido de `conext` con código `RCPCLI` («Nº Referencia Externo», visible en la ficha de Sigrid): ahí guarda el volcado su `PVI-…` (`sigrid_api.md` §8.9). La columna exacta de `conext` no la dice el contrato: por eso la notación con corchetes y no `tabla.campo` |
+>
+> **Lista cerrada de orígenes** (la que comprueba el test de R25): la de la
+> tabla de arriba con estas filas aplicadas, más `obrofc.ofcide`,
+> `obrofc.prvide` y `conext[RCPCLI]`; y `propio` y `pendiente`, como antes.
+
 Acciones: «Guardar cambios» **[P F-041]**, «Cambiar estado» (un `<select>` con
 los cinco estados [L] y el botón «Ver qué cambiaría en Sigrid» **[P F-041]** +
 «Aplicar el cambio» **[P F-041]**), «Cambiar industrial» **[P F-039]**,
@@ -305,6 +421,18 @@ guardado, archivado, adjunto y cerrado (marcas de ejemplo, sin nombre de
 fichero); enlace [L] «Abrir el circuito de partes firmados» a `index.html`; y
 «Registrar el parte sin firma (queda en TER)» **[P F-045]** con la nota «exigirá
 confirmación expresa y queda constancia de quién» (criterio de F-045).
+
+> **Enmienda del 2026-09-25 (R41).** Desde el corte de F-013 (2026-09-25) el
+> circuito archiva en la **biblioteca de Posventa**, con su estructura. Las
+> incidencias de ejemplo con el parte archivado enseñan además «Archivado
+> en: `9901  EJEMPLO NORTE/PARTES INCIDENCIAS/VILLA 003/PARTES FIRMADOS`»:
+> la carpeta, **sin** nombre de fichero (sigue la regla de «sin nombre de
+> fichero» de arriba) y **sin** URL, con la carpeta de obra al modo de las
+> reales (número, dos blancos y nombre: `docs/INTEGRACION.md` §3) pero
+> ficticia —`99NN` y un nombre con «EJEMPLO»— y la villa con tres cifras
+> (F-049). Solo en unidades `VILLA`: la maqueta no inventa carpetas para
+> pisos o locales, que F-013 no ha medido. El dato vive en el bloque
+> `incidencias` (F-041), que es el de la ficha.
 
 **Económico** (F-047): proforma, coste y venta de la incidencia. Una incidencia
 de ejemplo **enlazada** y otra **sin enlazar** (R22: «sin enlazar», no cero).
@@ -324,6 +452,15 @@ antes → después). Texto: «Queda histórico de cada cambio» (criterio de F-0
 - «Generar el PDF» **[P F-044]** e «Imprimir» **[P F-044]**, con el recuento
   de R12.
 
+> **Enmienda del 2026-09-25 (R26).** La plantilla **existe** (la ficha de
+> F-044 dice dónde, fuera del repositorio) pero **nadie la ha mirado**: puede
+> traer datos personales, y ni se lee ni se convierte sin permiso del
+> humano. El pendiente pasa a decir: «Pendiente: la plantilla de posventa
+> existe y está sin revisar; se revisa, con permiso, y se convierte a
+> `docs/referencia` en la spec de F-044». La maqueta sigue sin dibujar nada
+> que imite la plantilla ni nombrar rutas personales. Pregunta abierta para
+> el humano en `progress/spec_F-035.md`.
+
 ### 5.7 · `partes` (F-045 y el circuito)
 
 - Texto: «El circuito de partes firmados ya funciona: soltar la remesa,
@@ -331,6 +468,12 @@ antes → después). Texto: «Queda histórico de cada cambio» (criterio de F-0
 - Enlace «Abrir el circuito de partes firmados» a `index.html` (misma pestaña).
 - «Registrar un parte sin firma (la incidencia queda en TER, no en CER)»
   **[P F-045]**.
+
+> **Enmienda del 2026-09-25.** El texto de la sección dice «archivar en
+> SharePoint». Desde el corte de F-013 queda: «…revisar, aprobar, archivar
+> en la **biblioteca de Posventa** (la carpeta `PARTES FIRMADOS` de cada
+> vivienda), adjuntar a Sigrid y cerrar.» Con un ejemplo de ruta que cumple
+> R41 (`9901  EJEMPLO NORTE/PARTES INCIDENCIAS/VILLA 003/PARTES FIRMADOS`).
 
 ### 5.8 · `economico` (F-046, F-047)
 
@@ -411,6 +554,15 @@ marca los que dicen a cuántas afectarían (R12). Catálogo inicial:
 | `economico.actualizar` | F-046 | Actualizar desde Sigrid | |
 | `datos.verDiccionario` | F-048 | Ver el diccionario en el datamart | |
 
+> **Enmienda del 2026-09-25.** Entra una fila, tras `bandeja.volcar`:
+>
+> | `id` | Ficha | Etiqueta | `enBloque` |
+> |---|---|---|---|
+> | `bandeja.reintentarVolcado` | F-040 | Reintentar los rechazados y no procesados | sí |
+>
+> Y la `explicacion` de `bandeja.verVolcado` y `bandeja.volcar` dice que el
+> volcado va **por obra** y que reintentar no duplica (referencia `PVI-…`).
+
 El implementer puede añadir entradas si el inventario de §5 lo pide; **no**
 puede usar una ficha que no esté en `harness/features.json` (R27) ni la propia
 F-035 (se quedaría viva para siempre: R28 la haría fallar al cerrarla).
@@ -443,6 +595,39 @@ duplicada y una sin propuesta de industrial), 12 incidencias repartidas entre
 los cinco estados, 3 capítulos de POSTV2, una incidencia enlazada con proforma
 y otra sin enlazar, 5 filas de historial.
 
+> **Enmienda del 2026-09-25 (R38–R41).** Cambia la forma de tres bloques y
+> entra uno:
+>
+> - `bandeja` (F-038): cada fila gana los campos del alta de §5.3 —`unidad`
+>   (`{cod, res}`), `descripcionCorta`, `descripcionLarga`, `ubicacion`,
+>   `oficio`, `tipo`, `forma`, `propietario`, `persona`, `intervinientes`
+>   (`[{oficio, proveedor, causante}]`) y `referenciaExterna`—, con `null`
+>   donde la bandeja puede completar (se pinta «sin completar»). Al menos una
+>   fila de Excel sin ubicación ni oficio, y exactamente una con tipo `0003`
+>   para enseñar el pendiente de R39.
+> - `propuestas` (F-039): gana `oficiosObra`, por obra, la lista de oficios de
+>   la obra con su proveedor (`[{oficio, proveedor, comentario}]`, 4–6 por
+>   obra), que es de donde sale la propuesta y la tabla de intervinientes.
+> - `incidencias` (F-041): las filas ganan los mismos campos del alta y, las
+>   que tienen el parte archivado, `carpetaArchivo` (R41). Las unidades pasan
+>   a ser `99NN.03VILLA N.` (sustituyen a `Vivienda EJ-NN`).
+> - **Nuevo** `volcado: { ficha: "F-040", catalogos: {tipos, formas,
+>   oficios, estados, motivos}, dryRun: {obra, partes: [...]}, hecho: {obra,
+>   partes: [...]}, pendientes: [...] }`. `catalogos.tipos` lleva `0002`
+>   con su resumen y `0003` con `res: null` (R39); `formas`, solo `Escrita`;
+>   `oficios`, 5–6 del catálogo general tomados de `04_alta…` §4 y §3
+>   (`0005`, `0011`, `0021`, `0024`, `0143`); `estados`, los cinco del
+>   contrato con su etiqueta de §5.3; `motivos`, la lista cerrada de códigos
+>   de parte de `sigrid_api.md` §8.9. Cada parte:
+>   `{referenciaExterna, unidad, estado, cod, provisional, motivo}`. Los
+>   partes de los dos resultados son ejemplos del resultado, no tienen por
+>   qué ser filas de la bandeja.
+>
+> Los catálogos del alta van en el bloque de **F-040** porque existen para
+> el volcado; cuando F-038 construya la edición y los necesite antes, se los
+> lleva a sus módulos en el mismo trabajo (§7.3) y quita su parte del
+> bloque.
+
 ### 7.2 · Convenciones de lo ficticio (R24)
 
 | Dato | Forma | Ejemplo |
@@ -458,6 +643,14 @@ y otra sin enlazar, 5 filas de historial.
 | Textos | inventados, sin nada de `muestras/` | «Humedad en el techo del baño (ejemplo)» |
 | Importes | redondos y claramente ilustrativos | `1.250,00 €` |
 | Estados | por **código** de `conest` | `"PTE"`, nunca `3` |
+| Unidad de posventa *(2026-09-25)* | `99NN.03VILLA N.` y resumen con «ejemplo»; **sustituye** a `Vivienda EJ-NN` | `9901.03VILLA 3.` · `Villa 3 (ejemplo)` |
+| Propietario *(2026-09-25)* | `99NN_REF/NNNN` y nombre con «Ejemplo» | `9901_REF/0003` · `Propietario Ejemplo 3` |
+| Persona que reclama *(2026-09-25)* | `99NN_PER/NNNN` y nombre con «Ejemplo» | `9901_PER/0003` · `Persona Ejemplo 3` |
+| Proveedor *(2026-09-25)* | código `EJNN` y nombre con «Ejemplo» | `EJ07` · `Fontanería Ejemplo, S.L.` |
+| Referencia externa *(2026-09-25)* | `PVI-EJEMPLO-NNNN` | `PVI-EJEMPLO-0003` |
+| Código tras el volcado *(2026-09-25)* | `RS99.09/NNNN`, «provisional» en el dry-run | `RS99.09/0001` |
+| Carpeta de archivo *(2026-09-25)* | `99NN  EJEMPLO …/PARTES INCIDENCIAS/VILLA NNN/PARTES FIRMADOS` | `9901  EJEMPLO NORTE/PARTES INCIDENCIAS/VILLA 003/PARTES FIRMADOS` |
+| Catálogos generales *(2026-09-25)* | **códigos reales** de Sigrid (D-10): tipos, formas, oficios, estados | `0002 · PRIMER LISTADO POSTVENTA`, `0143 · Carpintería de madera` |
 
 El barrido de DNI y base64 del front (`tests/test_f007_sin_datos_reales.py`)
 ya cubre los ficheros nuevos, porque recorre todo el árbol.
@@ -500,6 +693,9 @@ use.
 | `formatoImporte(valor: number \| null \| undefined): string` | R22 |
 | `contadoresInicio(datos): object` | Los contadores de §5.1 |
 | `alternarSeleccion(seleccion: string[], id: string): string[]` | R20; devuelve una lista nueva, no muta |
+| `etiquetaCatalogo(cod: string \| null, catalogo: Array<{cod, res}>): string` *(2026-09-25)* | R39. `"0002 · PRIMER LISTADO POSTVENTA"`; entrada con `res: null` → `"0003 · Pendiente: qué es y cuándo se usa"`; `null` → `"sin completar"`; código desconocido → el código tal cual |
+| `resumenVolcado(partes: Array<{estado}>): {previstos, creados, idempotentes, rechazados, no_procesados}` *(2026-09-25)* | R40. Cuenta por estado con los nombres del resumen del contrato; un estado desconocido no suma a ninguno |
+| `etiquetaEstadoVolcado(estado: string, estados: Array<{cod, etiqueta}>): string` *(2026-09-25)* | R40. Estado desconocido → el código tal cual, nunca lanza |
 
 ### 8.2 · `js/portal_app.js` (pegamento; `portalPosventa` global y `module.exports`)
 
@@ -524,11 +720,15 @@ falso y comprobar R16 recorriendo todos los placeholders y todas las rutas con
   misma asignación obligatoria de la aplicación empresarial en Entra. Ni un
   cambio de configuración.
 - **Discrepancia a resolver (D-5)**: la ficha y `docs/ARCHITECTURE.md:544`
+  (`:578` en `54c0884`)
   dicen que **no existe** grupo de Entra de Posventa; pero `docs/DESPLIEGUE.md`
   §3 manda crear `posventa-usuarios` y `progress/history.md` (2026-08-25, cierre
   de F-010) y `progress/impl_F-010.md:950-958` registran que existe, está
   asignado y que **un no miembro rebota**. `azure-apps/portal.md` §5 y §6.5 no
-  recogen ni la tarjeta ni el grupo de posventa.
+  recogen ni la tarjeta ni el grupo de posventa. *(2026-09-25)*: la fila de
+  `ARCHITECTURE.md` sigue diciendo «No existe» en `54c0884`, y
+  `azure-apps/postventa_incidencias.md` registra el front del piloto como
+  «miembros del grupo `posventa-usuarios`»: la discrepancia sigue abierta.
 - La tarjeta vive en `front-portal` (`public/assets/js/catalog.js`), **otro
   repositorio**: esta ficha **no la toca**. Si Posventa entra a la maqueta por
   el portal corporativo, hace falta la tarjeta del bloque de
@@ -550,6 +750,17 @@ primer día:
 | F-048 | El datamart | Es de `datamart-seg-anual`; se coordina vía `azure-apps` |
 | — | La tarjeta del portal | `front-portal` (§9) |
 
+> **Enmienda del 2026-09-25 a la fila de F-040.** La fila dice «endpoints
+> nuevos en `sigrid-api` (su §7.5), propuestos en **su** repositorio». Para
+> **crear** ya no hay que proponer nada: `sigrid-api` tiene
+> `POST /api/sigrid/partes-reclamacion` (`azure-apps/sigrid_api.md` §8.9,
+> su F-006), alta en lote de una obra con dry-run por defecto e idempotencia
+> por `PVI-…`; está pendiente de **su** despliegue (bloqueo actual de F-040
+> en `harness/features.json`). F-035 solo toma su **vocabulario** —estados,
+> motivos, resumen— para la maqueta; no lo consume. Para **modificar**
+> (F-041) sigue haciendo falta proponerlo allí: el contrato dice que no
+> modifica ni anula partes.
+
 ## 11 · Verificación
 
 | Requisitos | Test |
@@ -563,6 +774,10 @@ primer día:
 | R35 | `tests/test_f035_portal.py` (permanente): ninguna ruta de `staticwebapp.config.json` deja `portal.html` fuera de `authenticated`, y el `/*` sigue exigiéndolo |
 | R27–R29 | `tests/test_f035_placeholders_vivos.py` (raíz) |
 | R36, R37 | `tests/test_f035_portal.py` (README) y el test de raíz (ARCHITECTURE): presencia de las secciones |
+| R38 *(2026-09-25)* | `tests_js/maqueta_datos.test.js`: cada fila de `bandeja` e `incidencias` trae todas las claves del alta (con valor o `null` solo en ubicación, oficio e intervinientes); `tests/test_f035_portal.py`: las etiquetas de los campos están en el detalle de la bandeja y en la pestaña «Datos» |
+| R39 *(2026-09-25)* | `tests_js/portal.test.js` (`etiquetaCatalogo`: `0002`, `0003` con `res: null`, `null`, desconocido) y `tests_js/maqueta_datos.test.js` (todo `tipo` y `oficio` usado está en `volcado.catalogos`; exactamente una fila con `0003`) |
+| R40 *(2026-09-25)* | `tests_js/maqueta_datos.test.js`: cada resultado es de una sola obra; todo `estado` es de los cinco; el dry-run sin `creado` y con `provisional: true` en los que llevan código; el hecho sin `previsto`; `rechazado`/`no_procesado` con `motivo.codigo` de `catalogos.motivos` y los demás con `motivo: null`; toda referencia empieza por `PVI-`. `tests_js/portal.test.js`: `resumenVolcado` y `etiquetaEstadoVolcado` |
+| R41 *(2026-09-25)* | `tests_js/maqueta_datos.test.js`: toda `carpetaArchivo` casa con `^99\d\d  EJEMPLO [^/]+/PARTES INCIDENCIAS/VILLA \d{3}/PARTES FIRMADOS$` (sin `.pdf`, sin `://`) |
 
 **Fase RED**: los tests se escriben antes que la maqueta (`tasks.md` bloque 2)
 y fallan por ausencia de los ficheros; la traza va a `progress/impl_F-035.md`.
@@ -572,7 +787,7 @@ ninguna línea Python de producción, así que la campaña se ejecuta y sale con
 **0 mutantes** («Sin líneas de producción en el alcance»); la puerta de
 cobertura sale **N/A** con su motivo, como ya imprime hoy `init.sh` en esta
 rama. **Compensación** (CHECKPOINTS C4 bis: un N/A se justifica): cinco
-mutaciones **a mano, en una copia aislada** del front, con la traza del fallo
+(seis desde el 2026-09-25) mutaciones **a mano, en una copia aislada** del front, con la traza del fallo
 en el informe:
 
 1. `placeholder()` de `portal_app.js` llama a `fetch("/api/x")` → cae R16.
@@ -580,6 +795,7 @@ en el informe:
 3. `portal.html` carga `js/api.js` → cae R15.
 4. `formatoImporte(null)` devuelve `"0,00 €"` → cae R22.
 5. `harness/features.json` con F-044 en `done` → cae R28.
+6. *(2026-09-25)* Un parte del dry-run de ejemplo pasa a `creado` → cae R40.
 
 ## 12 · Riesgos
 
@@ -591,6 +807,8 @@ en el informe:
 | La maqueta se queda viva cuando las fichas avanzan | R28 en la suite de la raíz, que no se cachea |
 | Los tests estáticos de la maqueta frenan a las fichas siguientes | R14 aplica a los ficheros de la maqueta, no a los módulos reales que vengan (§7.3.3) |
 | Tailwind por CDN no pinta clases construidas dinámicamente | Clases escritas enteras en el HTML, como ya hace `index.html` |
+| *(2026-09-25)* Posventa toma los valores del alta de la maqueta (`0002`, «Escrita», el volcado por obra) por decididos | Son los defectos del contrato de `sigrid-api`, no decisiones de F-040; cada uno lleva su pendiente (R26) y la validación V3 los pregunta |
+| *(2026-09-25)* El contrato de `sigrid/partes-reclamacion` cambia antes de F-040 y la maqueta enseña estados o motivos viejos | Viven en un único bloque de datos (`volcado`, F-040), que F-040 retira al construir el panel real (R28) |
 
 ## 13 · Decisiones abiertas (con recomendación)
 
@@ -618,7 +836,7 @@ en el informe:
   mismo acceso que el circuito** y F-035 no toca Entra ni el catálogo del
   portal. Pregunta al humano: ¿«no existe grupo de Posventa» significa que
   `posventa-usuarios` es solo del piloto y hace falta un grupo de departamento,
-  o `ARCHITECTURE.md:544` está desactualizado? Según la respuesta, T10 corrige
+  o `ARCHITECTURE.md:544` (`:578` en `54c0884`) está desactualizado? Según la respuesta, T10 corrige
   esa fila o anota el prerrequisito, y la tarjeta queda para `front-portal`.
 - **D-6 · ¿Qué funciona y qué no?** Recomendación: **lo que lee y navega
   funciona sobre los datos de ejemplo** (filtros, selección, pestañas, abrir la
@@ -632,14 +850,27 @@ en el informe:
 - **D-8 · `azure-apps/`.** Recomendación: **no se toca en F-035**: no cambia
   ningún endpoint, tabla, variable ni grupo. La ampliación de alcance del
   proyecto se documenta en `azure-apps/postventa_incidencias.md` cuando F-036
-  añada el primer endpoint nuevo.
+  añada el primer endpoint nuevo. *(2026-09-25)*: sigue igual con el panel de
+  volcado: enseñar el vocabulario de `sigrid/partes-reclamacion` no es
+  consumirlo; `postventa-incidencias` pasa a consumidor en F-040, que ya
+  consta en `azure-apps/sigrid_api.md` §10.
 - **D-9 · Mutación de JavaScript.** Recomendación: aceptar la campaña con 0
   mutantes y la compensación manual de §11. Llevar a `arnes-base` la mutación
   de JavaScript sería trabajo de otro producto.
+- **D-10 · Catálogos de Sigrid con códigos reales** *(nueva, 2026-09-25)*.
+  Recomendación: los **catálogos generales** —estados de `conest`, tipos de
+  reclamación, formas de comunicación y oficios— con sus **códigos y
+  resúmenes reales** (`0002 · PRIMER LISTADO POSTVENTA`, `0143 · Carpintería
+  de madera`), porque no son datos de nadie y son lo que Posventa reconoce
+  al validar; **todo lo que identifica a alguien o a una obra** —obras,
+  unidades, propietarios, personas, proveedores, códigos de parte,
+  referencias, carpetas— **ficticio** (R24, §7.2). Alternativa: oficios y
+  tipos también ficticios (`EJ01 · Fontanería (ejemplo)`) — más fácil de
+  comprobar por test, peor para validar con Posventa.
 
 ## 14 · Hallazgos (fuera de alcance, para el líder)
 
-- **H-1**: `docs/ARCHITECTURE.md:544` contradice lo registrado del despliegue de
+- **H-1**: `docs/ARCHITECTURE.md:544` (`:578` en `54c0884`) contradice lo registrado del despliegue de
   F-010 sobre el grupo `posventa-usuarios` (D-5).
 - **H-2**: el `README.md` del front, «Lo que este front NO hace», sigue diciendo
   que el front no cierra en Sigrid, que es F-008/F-009 y depende de otro
@@ -647,3 +878,12 @@ en el informe:
   dice que recargar pierde el trabajo «(F-019)», texto a comprobar tras F-019.
   F-035 **no los corrige** (R30 prohíbe cambiar líneas de `index.html`); se
   anotan para una ficha de limpieza.
+- **H-3** *(2026-09-25)*: **en qué estado nace un parte dado de alta.** La
+  captura del alta manual enseña el parte recién creado en `3 (PTE :
+  PENDIENTE)` (`docs/referencia/04_alta_incidencia_sigrid.md` §3), mientras
+  que `sigrid-api` lo crea en el estado inicial de la serie, `SAT`
+  (`azure-apps/sigrid_api.md` §9.2), y **no** pasa a `PTE` porque eso crea
+  tareas y envía correos (§8.9, «Lo que NO hace»). O Posventa lo pasa a mano
+  a `PTE` después, o el escritorio lo hace solo al crear. Es de F-040, no de
+  F-035: la maqueta no enseña el estado de los `creado` y lo deja como
+  pendiente (§5.3).

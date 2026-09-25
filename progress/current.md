@@ -1,6 +1,26 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## SPEC DE F-035 AL DÍA · 2026-09-25 · `spec_ready`, **pendiente de aprobación del humano**
+>
+> spec-author. **`specs/F-035-portal-posventa/`**, rama
+> `feature/F-035-portal-posventa` **rebasada sobre `dev` (`54c0884`)**; sin
+> push. Resumen de cambios y preguntas: **`progress/spec_F-035.md`**. Sin
+> código; la plantilla de impresión **no se ha abierto**.
+>
+> - Lo esencial no cambia: maqueta `portal.html` con rutas por hash, ninguna
+>   llamada, el circuito solo gana una barra de navegación, rigor `estandar`.
+> - Entra lo llegado desde el 2026-09-23 (recuadros fechados): los campos del
+>   alta de `docs/referencia/04_alta_incidencia_sigrid.md` en la bandeja, la
+>   ficha y el volcado (R38, R39); el panel de volcado con los estados del
+>   contrato de `sigrid/partes-reclamacion` (R40, solo maqueta); la ruta de
+>   archivo de Posventa (R41); R26 enmendado (quedan pendientes el Excel, la
+>   plantilla sin revisar, la proforma y las dudas del alta).
+> - **Decisiones abiertas**: D-1…D-9 como estaban (**bloquean D-1, D-2 y
+>   D-6**), más **D-10** (catálogos de Sigrid con códigos reales) y tres
+>   preguntas: la plantilla de impresión (¿mirarla ya o en F-044?), el Excel
+>   de ejemplo y el estado en que nace un parte (H-3, de F-040).
+
 > ## 🚀 CORTE DE F-013 HECHO · 2026-09-25 11:41 UTC · pendientes R33 y R42 (humano, hoy)
 >
 > Desplegado por el humano con F-013 y F-049 (`dev` y `main` en `3e3883b`):

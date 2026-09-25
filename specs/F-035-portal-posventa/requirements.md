@@ -5,6 +5,35 @@
 > Rigor **`estandar`**, prioridad **1**. Ficha dada de alta el 2026-09-23 por
 > decisión del humano, junto con F-036 a F-048.
 
+> **Puesta al día del 2026-09-25 · la spec, rebasada sobre `dev` (`54c0884`).**
+> Sin aprobar todavía por el humano. Nada de lo esencial cambia: maqueta
+> navegable en página aparte, **ninguna llamada**, el circuito intacto, rigor
+> `estandar`. Cambia lo que ha llegado desde el 2026-09-23:
+>
+> - **Los pasos de alta de una incidencia ya están**:
+>   `docs/referencia/04_alta_incidencia_sigrid.md` (serie `RS`, tipo de
+>   reclamación, oficio, ubicación, propietario, persona que reclama, forma de
+>   comunicación, descripciones, intervinientes con los oficios de la obra y su
+>   proveedor, causante). La bandeja, su detalle, la ficha y el volcado pasan a
+>   **enseñar esos campos** con datos ficticios en vez de un «pendiente»:
+>   R26 enmendado, R38–R41 nuevos.
+> - **F-040 tiene contrato en `sigrid-api`** (`azure-apps/sigrid_api.md` §8.9,
+>   `sigrid/partes-reclamacion`): el panel de volcado de la maqueta enseña sus
+>   estados por parte (`previsto`, `creado`, `idempotente`, `rechazado`,
+>   `no_procesado`), la referencia `PVI-…` y el dry-run (R40). **Solo como
+>   maqueta**: ni una llamada (R14 y R16 no cambian).
+> - **La plantilla de impresión existe** fuera del repositorio, **sin
+>   revisar** (puede traer datos personales): sigue como pendiente (R26).
+> - **El Excel de ejemplo sigue sin llegar** (R26).
+> - **El archivo de partes va ya a la biblioteca de Posventa** (F-013 y
+>   F-049, cortadas el 2026-09-25): si la maqueta enseña dónde está archivado
+>   un parte, es con la estructura de Posventa y ficticia (R41).
+>
+> Referencias re-medidas sobre `54c0884`: `services/postventa-front/`,
+> `infra/desplegar_front.ps1` y `tests/` de la raíz están **idénticos** a
+> `5bc0ca8` (`git diff --stat 5bc0ca8 54c0884` vacío para esas rutas), así
+> que las líneas citadas del front siguen valiendo.
+
 ## 0 · Qué es esta feature y qué no
 
 El proyecto se amplía a **todo el ciclo de posventa**: entrada de incidencias
@@ -45,6 +74,16 @@ construir cada pieza.
 - el Excel de ejemplo, el correo con los pasos de alta de una incidencia y la
   plantilla de impresión: **no han llegado**; donde hacen falta, la maqueta
   pone un placeholder **marcado como pendiente**, no se inventa su contenido.
+
+  > **Enmienda del 2026-09-25 · lo que ha llegado.** El párrafo de arriba se
+  > conserva como estaba. Hoy: los **pasos de alta** ya están en
+  > `docs/referencia/04_alta_incidencia_sigrid.md` y la maqueta los usa (R38,
+  > R39); la **plantilla de impresión** existe fuera del repositorio pero
+  > **nadie la ha mirado** —puede traer datos personales y no se lee ni se
+  > convierte sin permiso del humano—, así que sigue pendiente; el **Excel de
+  > ejemplo** sigue sin llegar. Tampoco entra ninguna llamada a
+  > `sigrid/partes-reclamacion`: su contrato solo da forma al panel de
+  > volcado (R40).
 
 Vocabulario de este documento:
 
@@ -152,6 +191,16 @@ Vocabulario de este documento:
   de obra `99NN`, códigos de incidencia `RS99.NN/NNNN`, correos en el dominio
   `ejemplo.invalid`, nombres de persona o empresa que contienen «Ejemplo» y
   **ningún** DNI, NIF, teléfono real ni texto de un parte de `muestras/`.
+
+  > **Precisión del 2026-09-25 (sin cambiar la regla).** Con los campos del
+  > alta entran identificadores nuevos, todos colgados de una obra `99NN`:
+  > unidad de posventa `99NN.03VILLA N.`, propietario `99NN_REF/NNNN`, persona
+  > que reclama `99NN_PER/NNNN`, carpeta de archivo `99NN  EJEMPLO …` y
+  > referencia externa `PVI-EJEMPLO-NNNN`; los proveedores, con código `EJNN`
+  > y nombre con «Ejemplo». Los **catálogos generales** de Sigrid (estados de
+  > `conest`, tipos de reclamación, formas de comunicación y oficios) van con
+  > sus códigos reales: no son datos de nadie y son lo que Posventa reconoce
+  > (decisión abierta **D-10** de `design.md` §13).
 - **R25.** Cada campo de la ficha de incidencia en los datos de ejemplo debe
   declarar su origen: el campo de Sigrid (`tabla.campo`, de la lista cerrada de
   `design.md` §5.5), `propio` si es dato de este proyecto, o
@@ -161,6 +210,60 @@ Vocabulario de este documento:
   impresión y el campo de enlace con la proforma— debe aparecer como bloque
   **pendiente**, con el texto «Pendiente: <qué falta>» y la ficha que lo
   resolverá, sin contenido inventado.
+
+  > **Enmienda del 2026-09-25.** El texto de arriba se conserva. Los pasos de
+  > alta **ya llegaron** (`04_alta_incidencia_sigrid.md`) y dejan de ser un
+  > pendiente: los enseñan R38–R40. **R26 queda así**: lo que depende de
+  > material que no ha llegado o de una pregunta sin responder debe aparecer
+  > como bloque **pendiente**, con el texto «Pendiente: <qué falta>» y la
+  > ficha que lo resolverá, sin contenido inventado. Como mínimo:
+  >
+  > - las columnas del Excel de la propiedad, más allá de los campos mínimos
+  >   que fija la ficha de F-036 —unidad de posventa y descripción
+  >   obligatorias; ubicación y oficio, en el Excel o completados en la
+  >   bandeja— (F-036: **el Excel de ejemplo no ha llegado**);
+  > - la plantilla de impresión (F-044: **existe, sin revisar**);
+  > - el campo de enlace con la proforma (F-047);
+  > - las preguntas abiertas del alta que el contrato de `sigrid-api` no
+  >   cierra: qué es el tipo de reclamación `0003` y qué regla elige entre
+  >   `0002` y `0003`; qué oficio lleva el parte cuando hay varios
+  >   intervinientes y quién marca «Causante»; y en qué estado queda el parte
+  >   recién creado (F-040; ver `design.md` §5.3).
+
+### 1.5 bis · El alta y el volcado (entran el 2026-09-25)
+
+Fuente: `docs/referencia/04_alta_incidencia_sigrid.md` (el alta manual de
+Posventa) y `azure-apps/sigrid_api.md` §8.9 (el contrato de
+`sigrid/partes-reclamacion`). La maqueta **enseña** esos campos y estados; no
+los envía a ningún sitio.
+
+- **R38.** El sistema debe mostrar, en el detalle de cada fila de la bandeja y
+  en la pestaña «Datos» de la ficha de incidencia, los campos del alta con sus
+  datos de ejemplo: unidad de posventa, descripción corta, descripción larga,
+  ubicación, oficio, tipo de reclamación, forma de comunicación, propietario,
+  persona que reclama, intervinientes (oficio, proveedor y marca de causante)
+  y referencia externa; y cada fila de ejemplo de la bandeja debe traer todos
+  esos campos, con valor o con «sin completar» en los que la bandeja puede
+  completar (ubicación, oficio, intervinientes).
+- **R39.** El sistema debe mostrar el tipo de reclamación y el oficio por
+  **código y resumen** de su catálogo (`0002 · PRIMER LISTADO POSTVENTA`,
+  `0143 · Carpintería de madera`); y SI un dato de ejemplo usa el tipo
+  `0003`, ENTONCES debe mostrarlo con «Pendiente: qué es y cuándo se usa»,
+  sin resumen inventado.
+- **R40.** El panel de volcado de la bandeja debe mostrar dos resultados de
+  ejemplo, uno de **dry-run** y otro de **volcado hecho**, cada uno de **una
+  sola obra**, con, por parte: su referencia externa `PVI-…`, su estado —uno
+  de `previsto`, `creado`, `idempotente`, `rechazado` o `no_procesado`, con su
+  etiqueta legible— , el código de Sigrid cuando lo hay y, si está
+  `rechazado` o `no_procesado`, el código de motivo del contrato y su
+  mensaje; y el resumen por estado calculado de esas filas. En el dry-run
+  ningún parte está `creado` y el código aparece marcado **provisional**; en
+  el volcado hecho ningún parte está `previsto`.
+- **R41.** SI la maqueta muestra dónde está archivado un parte firmado,
+  ENTONCES debe hacerlo con la estructura de la biblioteca de Posventa,
+  `<carpeta de obra>/PARTES INCIDENCIAS/VILLA NNN/PARTES FIRMADOS`, con una
+  carpeta de obra ficticia (`99NN  EJEMPLO …`), **sin** nombre de fichero y
+  **sin** URL.
 
 ### 1.6 · La retirada, ficha a ficha
 
@@ -185,6 +288,11 @@ Vocabulario de este documento:
 - **R32.** Ningún test existente del front (`tests/*.py` y
   `tests_js/*.test.js` presentes en `dev` en `5bc0ca8`) debe modificarse ni
   borrarse, y todos deben seguir en verde.
+
+  > **Nota del 2026-09-25.** Tras el rebase, la base es `54c0884`; los tests
+  > del front de esa base son **los mismos ficheros, sin un byte cambiado**,
+  > que en `5bc0ca8`. El test compara contra `git merge-base dev HEAD`, así
+  > que no hay que tocarlo.
 - **R33.** Ningún módulo existente del circuito (`js/*.js` presentes en `dev`),
   ni `css/styles.css`, `staticwebapp.config.json`, `dev_server.py` o
   `dev_front.ps1`, debe modificarse.
@@ -219,9 +327,9 @@ Vocabulario de este documento:
 
 | Criterio de `acceptance` | Requisitos |
 |---|---|
-| Todas las secciones del ciclo existen y se navegan, con datos de ejemplo y botones sin efecto marcados como tal | R1–R13, R19–R26, R29 |
+| Todas las secciones del ciclo existen y se navegan, con datos de ejemplo y botones sin efecto marcados como tal | R1–R13, R19–R26, R29, R38–R41 |
 | El circuito de partes actual sigue funcionando igual dentro del portal | R30–R33, R35 |
-| Ningún placeholder llama a Sigrid, SharePoint ni al correo | R11, R14–R18 |
+| Ningún placeholder llama a Sigrid, SharePoint ni al correo | R11, R14–R18 (también para el panel de volcado de R40 y la ruta de R41) |
 | `bash harness/init.sh` en verde | tarea final de `tasks.md` |
 
 Sobre «dentro del portal»: el circuito queda **enlazado** desde el portal
@@ -243,4 +351,8 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
   maqueta abre una pestaña nueva.
 - **V3 · MANUAL (humano, con Posventa)**: validación del recorrido completo con
   el departamento. Es el propósito de la ficha y su resultado alimenta las
-  specs de F-036 a F-048; no bloquea el cierre de F-035.
+  specs de F-036 a F-048; no bloquea el cierre de F-035. **Añadido el
+  2026-09-25**: incluye preguntar a Posventa si el detalle de la bandeja
+  (R38) tiene los campos que rellenan hoy en el alta manual, y las preguntas
+  abiertas del alta de R26 (tipo `0003`, oficio con varios intervinientes,
+  causante).

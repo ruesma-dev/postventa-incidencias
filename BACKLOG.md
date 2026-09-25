@@ -3,12 +3,15 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **47 features**, 26 abiertas, 21 terminadas.
+Resumen: **48 features**, 27 abiertas, 21 terminadas.
+
+En curso: **F-049**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
+| F-049 | Las villas que crea el archivo, siempre con tres cifras (VILLA 008) | 0 | en curso | critico | `feature/F-049-villa-tres-cifras` |
 | F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | pendiente | estandar | `feature/F-035-portal-posventa` |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | pendiente | critico | `feature/F-036-importar-excel` |
 | F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 3 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
@@ -63,6 +66,12 @@ Resumen: **47 features**, 26 abiertas, 21 terminadas.
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 134 | critico |
 
 ## Detalle
+
+### F-049 · Las villas que crea el archivo, siempre con tres cifras (VILLA 008)
+
+estado **en curso** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-049-villa-tres-cifras`
+
+Alta del 2026-09-25 por decisión del humano, tras el paso 2 del corte de F-013: Posventa ha reorganizado la biblioteca y sus unidades se llaman ahora VILLA 001 … VILLA 007, VILLA 012 y VILLA 013. F-013 R37 crea la unidad con dos cifras (VILLA 08). El humano eligió «Siempre con tres cifras»: VILLA 008 en todas las obras. Enmienda fechada de F-013 R37 (y de la tabla de design.md §4.6, de R31 y del runbook), sin cambiar cómo se CASA (por número, que ya reconoce VILLA 001 como la villa 1). Números de tres o más cifras, tal cual.
 
 ### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
 

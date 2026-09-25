@@ -64,10 +64,19 @@ todos los `tests/test_f013_*.py` con `-x`, y restaura el fichero.
 
 - **M7** (`:03`): para un `int`, el formato sin tipo es `d`. `format(n, "03")
   == format(n, "03d")` para todo entero.
-- **M8** (`:0=3d`): el `0` delante del ancho ya implica la alineación `=`
-  (relleno tras el signo). Solo se distinguiría con un negativo, y `<n>` sale
-  de `PATRON_CODIGO_UNIDAD`, `[0-9]+`: nunca lo es.
+- **M8** (`:0=3d`): el `0` delante del ancho ya pone relleno `0` **y**
+  alineación `=` (relleno tras el signo), así que `:0=3d` es igual que `:03d`
+  **para todo entero, negativos incluidos**: `format(-5, '0=3d') ==
+  format(-5, '03d') == '-05'`.
 
-Comprobado numéricamente: `format(n,'03') == format(n,'03d') ==
-format(n,'0=3d')` para `n` en `0 … 199999`. Ningún test puede distinguirlos
-sin cambiar el patrón, así que no se añade ninguno.
+> **Corrección del 2026-09-25 (review de F-049, §6.2).** La viñeta de M8
+> decía, literal: *«Solo se distinguiría con un negativo, y `<n>` sale de
+> `PATRON_CODIGO_UNIDAD`, `[0-9]+`: nunca lo es.»* **Era falso**: con un
+> negativo tampoco se distingue (lo señaló el reviewer). La conclusión se
+> mantiene y queda más fuerte: M8, como M7, es equivalente para **cualquier**
+> entero, sin depender del patrón.
+
+Comprobado numéricamente, **también con negativos**: `format(n,'03') ==
+format(n,'03d') == format(n,'0=3d')` para todo `n` en `-200000 … 199999`
+(resultado `True`; antes solo se había comprobado `0 … 199999`). Ningún test
+puede distinguirlos, así que no se añade ninguno.

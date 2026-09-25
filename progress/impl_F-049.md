@@ -220,3 +220,19 @@ tras T5, `89 passed`.
 | Mutantes (arnés) | `python -m harness.mutacion --feature F-049 --timeout 900 --workers 6`: **0 generados** (10 líneas en alcance, 9 de docstring; la de código solo tiene un formato de f-string, que la herramienta no muta) |
 | Mutantes (a mano) | **9 generados, 7 muertos, 2 supervivientes equivalentes** (`:03` y `:0=3d`, iguales a `:03d` para todo entero no negativo, y `<n>` es `[0-9]+`). Análisis en `progress/mutacion_F-049.md` |
 | Tiempo de la suite | **85,93 s** (servicio api, última `init.sh`, tras T7; la anterior, 144,18 s) |
+
+## Correcciones tras la review (RECHAZADA, `progress/review_F-049.md` §6)
+
+Solo documentación; código y tests sin tocar.
+
+1. `progress/current.md`: el bloque de F-049 lleva los dos comandos exactos
+   del paso 2 y la salida esperada nueva, y anota como **hecho** (2026-09-25,
+   humano) que el paso 2 contra la red real, desde la copia con `:03d`, dio
+   `DESTINO DE POSVENTA : PASA` con «crearía `VILLA 008` … `VILLA 015`», 012 y
+   013 «crearía `PARTES FIRMADOS`», 001–007 «resolvería» y ninguna
+   «bloquearía». El bloque de F-013 conserva su salida antigua con una línea
+   fechada que remite a la nueva.
+2. `progress/mutacion_F-049.md`, M8: el motivo era falso. `:0=3d` es igual que
+   `:03d` para **todo** entero, negativos incluidos (`-05` en los dos);
+   recuadro de corrección que cita la frase antigua, y la comprobación
+   numérica ampliada a `-200000 … 199999` (`True`).

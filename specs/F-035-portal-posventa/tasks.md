@@ -346,7 +346,7 @@ ya pide cada verificación.
       `http://localhost:5173/` abre el portal con el estilo nuevo (vistazo
       del implementer; la comprobación de verdad es V1).
 
-- [ ] **T16**: **el circuito** (`partes.html`), en este orden y en **un solo
+- [x] **T16**: **el circuito** (`partes.html`), en este orden y en **un solo
       commit**: (1) en `tests/test_f035_portal.py`, sustituir
       `test_f035_r30_r43_…` (`difflib`) por la guardia de R59
       (`tokens`, `diferencias_de_presentacion`, test de rama; `design.md`
@@ -367,7 +367,7 @@ ya pide cada verificación.
       services/postventa-front/partes.html` pegado al informe (se leen solo
       `class`, `<link>` y barra).
 
-- [ ] **T17**: **guardias**. (a) El **control permanente** de R59: copias
+- [x] **T17**: **guardias**. (a) El **control permanente** de R59: copias
       estropeadas en memoria del `partes.html` real (un `@click`, dos
       atributos permutados, un elemento, un texto, un `style`, una `<link>` a
       otro dominio) que la guardia **tiene que** rechazar, y una con solo un
@@ -382,7 +382,7 @@ ya pide cada verificación.
       -q` (raíz) en verde; y, en una copia del test de raíz con F-048 en
       `done`, el control **en rojo** como se espera (salida al informe).
 
-- [ ] **T18**: **evidencias**. (a) `python -m harness.mutacion --feature
+- [x] **T18**: **evidencias**. (a) `python -m harness.mutacion --feature
       F-035` (se espera otra vez «Sin líneas de producción en el alcance»: 0
       mutantes). (b) Las mutaciones manuales **9 a 13** de `design.md` §11
       (recuadro de la segunda ronda), en una copia aislada (worktree en el
@@ -397,7 +397,7 @@ ya pide cada verificación.
       R53.
       **Verificación**: las cuatro salidas pegadas en `progress/impl_F-035.md`.
 
-- [ ] **T19**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T19**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       ejecutadas **sin caché** y la puerta de cobertura en N/A con su motivo
       impreso. Después: T12 (humano) y la review del bloque 5.

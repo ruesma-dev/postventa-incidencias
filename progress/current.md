@@ -1,6 +1,32 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 5b (T16 a T19) HECHO · 2026-09-25 · siguiente: T12 (V1/V2 del humano) y review del bloque 5
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 5b · T16 a T19».
+> Commits `4cb0603` (T16), `bf8d45e` (T17), `25a708d`, `1cbc1ea`, `05ead04`
+> (T18), `d5f38cd` (T19) y el del informe. Sin push; `features.json`,
+> `js/*.js`, `staticwebapp.config.json`, `dev_server.py`, backend,
+> `front-portal` y `azure-apps` sin tocar. **Ningún test del circuito cambia.**
+>
+> - **T16**: `partes.html` con la identidad Ruesma: solo valores de `class`,
+>   la barra (logotipo, `rs-pestana`, leyenda) y las cuatro `<link>`;
+>   `text-red-800` conservado. Guardia de R59 por tokens (el `class` pierde el
+>   valor, no el sitio) en lugar de `difflib`. Botón principal del circuito,
+>   burdeos.
+> - **T17**: control permanente de R59 (copias estropeadas en memoria); R48 en
+>   la raíz con su control (F-048 `done` → rojo, visto); regla en
+>   `ARCHITECTURE.md` y README; sección «Identidad visual Ruesma (F-035)».
+> - **T18**: campaña 0 mutantes; a mano en worktree del scratchpad (retirado):
+>   9–13 **5/5 muertas**; guardia 4/4; P-R1 5/8. Tres huecos cerrados con
+>   tests (G4, P7, P8); P4–P6 supervivientes **visuales, no equivalentes**
+>   (comprobado ejecutándolos).
+> - **T19**: `bash harness/init.sh` en verde (raíz 73, front 346 sin caché,
+>   JS 409, cobertura N/A, ruff 61).
+> - Capturas antes/después con Chrome headless y **datos ficticios**
+>   (descritas en el informe). Guion de V1, V2 y V4 actualizado en §9 del
+>   informe, **sin ejecutar**.
+
 > ## ▶ F-035 · BLOQUE 5a (T14 y T15) HECHO · 2026-09-25 · siguiente: bloque 5b (T16–T17)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 5a · T14 y T15».

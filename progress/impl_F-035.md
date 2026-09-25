@@ -1965,3 +1965,665 @@ se esconde.
 | Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el bloque cambia HTML, CSS y SVG |
 | Mutantes generados / supervivientes | La campaña del arnés **no se ha relanzado** en este bloque: es T18, y solo muta Python de producción (0 en F-035). Comprobación rápida a mano de los tests nuevos de CSS: 9 copias estropeadas, **9 muertas** (§4) |
 | Tiempo de la suite | Front pytest 31,15 s (`init.sh`); JS ~2,1 s; raíz 22,84 s |
+
+
+## Bloque 5b · T16 a T19 · 2026-09-25
+
+implementer. Rama `feature/F-035-portal-posventa`, desde `f4c8498`. Commits:
+**`4cb0603`** (T16), **`bf8d45e`** (T17), **`25a708d`**, **`1cbc1ea`** y
+**`05ead04`** (T18), **`d5f38cd`** (T19) y el de este informe (con los `[x]`
+de `tasks.md`). Sin push; `harness/features.json`, `front-portal`,
+`azure-apps`, `js/*.js`, `staticwebapp.config.json`, `dev_server.py`,
+`dev_front.ps1` y el backend, **sin tocar**. **Ningún test del circuito
+cambia** (no hizo falta parar: §15.2 era exacto).
+
+### 1 · Qué cambió
+
+| Fichero | T | Qué |
+|---|---|---|
+| `services/postventa-front/partes.html` | T16 | **Solo** valores de `class` (83 sustituciones, cada una con su contexto y su número exacto de apariciones comprobado por el script), la barra superior reescrita (logotipo, separador, «Posventa», `rs-pestana`, leyenda de R47 en `<p class="rs-barra__leyenda">`) con su comentario ampliado, y las cuatro `<link>` de §15.4 justo antes de `css/styles.css`. Se conserva **`text-red-800`** en el `<p>` del fallo del autoguardado, **detrás** de su `x-show` |
+| `services/postventa-front/tests/test_f035_portal.py` | T16–T19 | R59 sustituye a `test_f035_r30_r43_…` (`difflib` línea a línea); `PAGINAS_CON_LA_MARCA` incluye el circuito (R50, R51 del lado circuito); R60 sin `style` en `partes.html`; control permanente de R59 (nueve copias estropeadas y una aceptada); R61; y, por las mutaciones de T18, el control de la barra fuera de su sitio y dos tests de R51 (cada pestaña se marca a sí misma) |
+| `tests/test_f035_placeholders_vivos.py` (raíz) | T17 | R48: `secciones_reales`, el test de la barra del circuito, su control con F-048 `done` en memoria, el de `inicio`, y la regla en `docs/ARCHITECTURE.md` y en el README |
+| `docs/ARCHITECTURE.md` | T17 | Regla 4 de la sección del portal (R48, misma ventana, la remesa en curso para la ficha que lo active) y un recuadro de la identidad visual que remite al README |
+| `services/postventa-front/README.md` | T17 | Paso 4 de la retirada (R48); la tabla de ficheros con `css/styles.css` e `img/`; el párrafo del circuito dice que ahora también cambia su aspecto; sección nueva **«Identidad visual Ruesma (F-035)»** (R61) |
+| `progress/mutacion_F-035.md` | T18 | Regenerado por la campaña (0 mutantes) |
+| `specs/F-035-portal-posventa/tasks.md` | — | T16 a T19 `[x]`, en el commit del informe (para que el `--stat` de T16 tenga solo sus dos ficheros) |
+
+### 2 · Decisiones y desviaciones (para el reviewer)
+
+1. **La guardia de R59 ignora el valor de `class`, no su sitio.** `tokens()`
+   deja `("class", None)` en la posición del atributo. §15.8 decía «sin
+   `class`», pero con eso la **mutación 10** (el `class` del aviso de fallo
+   movido delante de su `x-show`) no caería en R59, y §11 lo exige. Efecto
+   colateral: añadir un `class` a un elemento que no lo tenía también es una
+   diferencia (más estricto que la letra de R59 a); en T16 no hizo falta.
+2. **Las cuatro `<link>` solo se descuentan si van juntas, en su orden, en el
+   `<head>` y justo antes de `css/styles.css`.** Cualquier otra `<link>`
+   —o esas mismas en otro sitio— es diferencia. Por eso en la cabecera de
+   `partes.html` **no hay comentario** nuevo: sería un token más.
+3. **Elementos que la tabla de §15.7 no nombra** conservan sus utilidades
+   (regla del final de §15.7): el `h2` ámbar de «Avisos de la remesa», su
+   lista, la cabecera de la lista de partes con su `border-slate-100`,
+   algunos `text-slate-*` dentro de frases. Afinados dentro de las reglas:
+   la confianza de cada campo es `rs-chip rs-chip--contorno` (fondo papel:
+   su `:class` pone `text-slate-400`, que sobre el `--rs-acero-100` del chip
+   neutro no se leería); «Empezar otra remesa» y «Cerrar» llevan además
+   `rs-btn--compacto`; el `h3` «N fichero(s) listos» es `rs-campo__etiqueta`
+   y «PDF del parte», `rs-rotulo`.
+4. **Consecuencias visibles de la regla 2 de §15.7** (las `:class` de estado
+   mandan, a propósito): el `<input>` del parte lleva en reposo el borde
+   `border-slate-200` de su `:class`, no el acero de `rs-campo`; la zona de
+   soltar, `border-slate-300`; los chips de estado de la lista se pintan con
+   sus tonos de Tailwind. `rs-chip` no pone mayúsculas: «APROBADO» se lee
+   ahora «Aprobado» (el texto sale del mismo `x-text`, sin tocar).
+5. **Tres tests nuevos en T18**, destapados por mutantes supervivientes
+   (G4, P7, P8, §7): son de F-035, no del circuito.
+6. **`ruff`**: el control de R59 metió tres `ISC004` (concatenación implícita
+   en una tupla); corregidos en `d5f38cd`: vuelven a ser **61** avisos, los de
+   antes.
+7. **Capturas con datos de ejemplo inyectados.** Ninguna remesa de
+   `muestras/`: el circuito, copiado al scratchpad con un `demo.js` que mete
+   en el componente un estado **ficticio** (hashes `e1a1b2c3…`, obra `9901`
+   «EJEMPLO VILLA 001», `EJ-0001`, DNI «(ejemplo)»). Ni la copia ni las
+   capturas entran en el repositorio.
+
+### 3 · Fase RED (trazas reales)
+
+**T16, paso (1)**: la guardia nueva sobre el `partes.html` **de antes** de
+tocarlo (el aprobado en la review 2), desde `services/postventa-front`:
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -k "r59" -p no:cacheprovider
+.                                                                        [100%]
+1 passed, 71 deselected in 1.98s
+```
+
+**T16, paso (3)**: R50, R51 del circuito y R60, escritos antes de tocar
+`partes.html` (rutas acortadas a `tests\`):
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -k "r50 or r51 or r60 or r59" --tb=line -p no:cacheprovider
+.....F..F.F.                                                             [100%]
+tests\test_f035_portal.py:1511: AssertionError: partes.html: faltan las <link> de la marca
+tests\test_f035_portal.py:216: AssertionError: tiene que haber uno y solo uno: logotipo en la barra de partes.html (hay 0)
+tests\test_f035_portal.py:1569: AssertionError: partes.html: «Inicio» lleva la clase rs-pestana
+FAILED tests/test_f035_portal.py::test_f035_r50_la_pagina_carga_las_fuentes_y_el_favicon_antes_de_la_hoja[partes.html]
+FAILED tests/test_f035_portal.py::test_f035_r51_la_barra_lleva_logo_separador_y_etiqueta_sin_enlace[partes.html]
+FAILED tests/test_f035_portal.py::test_f035_r51_las_pestanas_son_rs_pestana_sin_class_dinamico[partes.html]
+3 failed, 9 passed, 64 deselected in 0.95s
+```
+
+R60 (sin `style`) pasaba ya: es una guardia que la base cumplía. Después de
+`partes.html`: **12 passed**.
+
+**T17**, antes del README y de `ARCHITECTURE.md`:
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -k "r59 or r61" --tb=line -p no:cacheprovider      (front)
+...........F                                                             [100%]
+tests\test_f035_portal.py:1756: AssertionError: falta la sección «Identidad visual Ruesma (F-035)» en README.md
+FAILED tests/test_f035_portal.py::test_f035_r61_el_readme_explica_la_identidad_visual
+1 failed, 11 passed, 75 deselected in 1.16s
+
+$ python -m pytest tests/test_f035_placeholders_vivos.py -q --tb=line -p no:cacheprovider          (raíz)
+..........F                                                              [100%]
+tests\test_f035_placeholders_vivos.py:301: AssertionError: ARCHITECTURE.md · «El portal de posventa (F-035)»: la regla de R48 no dice «R48»
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r48_la_regla_consta_en_architecture_y_en_el_readme_del_front
+1 failed, 10 passed in 0.34s
+```
+
+El control permanente de R59 y el test de la barra de R48 no pueden estar en
+rojo sobre el árbol bueno (son controles de funciones que ya existían): lo
+que demuestra que miran son las mutaciones G1–G4 (§7) y la copia con F-048
+`done` (§6).
+
+### 4 · Verificación de T16
+
+- Front: `python -m pytest tests -q` → **332 passed** (328 + 4 nuevos; R59
+  sustituye 1 por 1). `node --test "tests_js/*.test.js"` → **409/409**, los
+  mismos de antes.
+- `git diff --stat HEAD~1` en `4cb0603`: **solo** `partes.html` (224 líneas
+  tocadas) y `tests/test_f035_portal.py`.
+- `git diff HEAD~1 -- services/postventa-front/tests/test_f0[0-3]*.py` →
+  solo `test_f035_portal.py`. `tests_js/`, sin cambios.
+- `git diff --word-diff -U0 4cb0603~1 4cb0603 -- services/postventa-front/partes.html`
+  (sin cabeceras de trozo; solo cambian `class`, las `<link>` y la barra con
+  su comentario):
+
+```
+  {+<link rel="preconnect" href="https://fonts.googleapis.com">+}
+{+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>+}
+{+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">+}
+{+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">+}
+<body [-class="bg-slate-50 text-slate-800">-]{+class="rs-cuerpo">+}
+         R47). Los href son los de Portal.enlaceSeccion(id, "circuito").
+         {+Identidad Ruesma (R51, design.md §15.5): la marca —logotipo,+}
+{+         separador y etiqueta— NO es un enlace (rompería R31 y, en la misma+}
+{+         ventana, perdería la remesa); la pestaña actual la pinta+}
+{+         aria-current en css/styles.css.+} -->
+    <nav data-barra-portal aria-label="Secciones de posventa" [-class="bg-slate-900 text-slate-100">-]{+class="rs-barra">+}
+      <div [-class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-6 py-2">-]{+class="rs-barra__fila">+}
+{+        <span class="rs-barra__marca">+}
+{+          <img class="rs-barra__logo" src="img/logo-ruesma.svg" alt="Construcciones Ruesma">+}
+{+          <span class="rs-barra__sep" aria-hidden="true"></span>+}
+          <span [-class="text-sm font-semibold tracking-tight text-white">Posventa · Ruesma</span>-]{+class="rs-barra__etiqueta">Posventa</span>+}
+{+        </span>+}
+        <div [-class="flex gap-1 overflow-x-auto text-sm">-]{+class="rs-barra__pestanas">+}
+          <a href="./#/inicio" target="_blank" rel="noopener" [-class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Inicio</a>-]{+class="rs-pestana">Inicio</a>+}
+          <a href="./#/entrada" target="_blank" rel="noopener" [-class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Entrada</a>-]{+class="rs-pestana">Entrada</a>+}
+          <a href="./#/bandeja" target="_blank" rel="noopener" [-class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Bandeja-]{+class="rs-pestana">Bandeja+} de revisión</a>
+          <a href="./#/incidencias" target="_blank" rel="noopener" [-class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Incidencias</a>-]{+class="rs-pestana">Incidencias</a>+}
+          <a href="./#/impresion" target="_blank" rel="noopener" [-class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Impresión-]{+class="rs-pestana">Impresión+} de partes</a>
+          <span aria-current="page" [-class="whitespace-nowrap rounded px-3 py-1.5 bg-white font-medium text-slate-900">Partes-]{+class="rs-pestana">Partes+} firmados</span>
+          <a href="./#/economico" target="_blank" rel="noopener" [-class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Coste-]{+class="rs-pestana">Coste+} y venta</a>
+          <a href="./#/datos" target="_blank" rel="noopener" [-class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Datos-]{+class="rs-pestana">Datos+} y datamart</a>
+[-        <span class="text-xs text-slate-400">Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.</span>-]
+      {+<p class="rs-barra__leyenda">Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.</p>+}
+    <header [-class="border-b border-slate-200 bg-white">-]{+class="rs-cabecera">+}
+      <div [-class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">-]{+class="rs-contenedor rs-cabecera__fila">+}
+          <h1 [-class="text-xl font-semibold tracking-tight">Incidencias-]{+class="rs-titulo">Incidencias+} de Posventa</h1>
+          <p [-class="text-sm text-slate-500">Partes-]{+class="rs-subtitulo">Partes+} firmados: validar, archivar y cerrar</p>
+        <div [-class="flex items-center gap-3 text-xs">-]{+class="rs-estado-servicio">+}
+          <span [-class="inline-block h-2.5 w-2.5 rounded-full"-]{+class="rs-punto"+}
+          <span [-class="text-slate-500"-]{+class="rs-nota"+} x-text="mensajeServicio"></span>
+          <span [-class="text-slate-400"-]{+class="rs-nota rs-mono"+} x-text="version"></span>
+    <main [-class="mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-6">-]{+class="rs-contenedor rs-principal flex-1">+}
+               [-class="rounded-lg border border-slate-200 bg-white p-6">-]{+class="rs-panel">+}
+        <h2 [-class="text-sm font-semibold uppercase tracking-wide text-slate-500">Cargar-]{+class="rs-rotulo">Cargar+} una remesa</h2>
+        <div [-class="mt-4 rounded-lg border-2 border-dashed p-8 text-center transition"-]{+class="rs-zona mt-4"+}
+          <p [-class="mt-1 text-xs text-slate-400">Nada-]{+class="rs-nota mt-1">Nada+} se envía hasta que lo confirmes</p>
+            <label [-class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">-]{+class="rs-btn rs-btn--secundario">+}
+            <label [-class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">-]{+class="rs-btn rs-btn--secundario">+}
+           [-class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>-]{+class="rs-aviso rs-aviso--error mt-4"></p>+}
+           [-class="mt-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>-]{+class="rs-aviso rs-aviso--atencion mt-4"></p>+}
+            <h3 [-class="text-xs font-semibold uppercase tracking-wide text-slate-400">-]{+class="rs-campo__etiqueta">+}
+                  <span [-class="ml-4 shrink-0 text-slate-400"-]{+class="rs-nota ml-4 shrink-0"+} x-text="tamanoDe(fichero)"></span>
+                    [-class="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">-]{+class="rs-btn rs-btn--primario mt-4">+}
+               [-class="rounded-lg border border-slate-200 bg-white p-6">-]{+class="rs-panel">+}
+        <h2 [-class="text-sm font-semibold uppercase tracking-wide text-slate-500"-]{+class="rs-rotulo"+} x-text="tituloDeFase()"></h2>
+        <div [-class="mt-2 h-2 w-full overflow-hidden rounded bg-slate-100">-]{+class="rs-progreso mt-2">+}
+          <div [-class="h-full bg-sky-500 transition-all"-]{+class="rs-progreso__barra"+}
+      <section x-show="avisosRemesa.length" [-class="rounded-lg border border-amber-200 bg-amber-50 p-4">-]{+class="rs-panel rs-panel--atencion">+}
+         [-class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>-]{+class="rs-aviso rs-aviso--error"></p>+}
+        <div class="lg:col-span-2 [-rounded-lg border border-slate-200 bg-white">-]{+rs-panel rs-panel--lista">+}
+            <h2 [-class="text-sm font-semibold uppercase tracking-wide text-slate-500">Partes</h2>-]{+class="rs-rotulo">Partes</h2>+}
+            <button type="button" @click="reiniciar()" [-class="text-xs text-slate-400 hover:text-slate-600">-]{+class="rs-btn rs-btn--texto rs-btn--compacto">+}
+                        [-class="w-full px-4 py-3 text-left hover:bg-slate-50"-]{+class="rs-fila"+}
+                    <span [-class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"-]{+class="rs-punto shrink-0"+}
+                    <span [-class="font-mono text-xs text-slate-500"-]{+class="rs-mono rs-nota"+}
+                          [-class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"-]{+class="rs-chip"+}
+                    <span x-show="parte.paso" [-class="ml-auto animate-pulse text-xs text-sky-600"-]{+class="rs-paso ml-auto"+}
+                    <span [-class="ml-auto text-xs text-slate-400"-]{+class="rs-nota ml-auto"+} x-text="parte.estado"></span>
+                  <p [-class="mt-1 truncate text-xs text-slate-400">-]{+class="rs-nota mt-1 truncate">+}
+                  <p x-show="decidioUnaPersona(parte)" [-class="mt-1 text-xs text-sky-700">-]{+class="rs-nota rs-nota--info mt-1">+}
+                      [-class="mt-1-]{+class="rs-nota mt-1+} list-disc [-pl-4 text-xs text-slate-500">-]{+pl-4">+}
+                  <p x-show="parte.error" [-class="mt-1 text-xs text-red-600">-]{+class="rs-nota rs-nota--error mt-1">+}
+                          [-class="ml-2 cursor-pointer underline">reintentar</span>-]{+class="rs-enlace ml-2">reintentar</span>+}
+                     [-class="mt-1 text-xs text-amber-700">-]{+class="rs-nota rs-nota--atencion mt-1">+}
+        <div class="lg:col-span-3 [-rounded-lg border border-slate-200 bg-white p-5"-]{+rs-panel"+}
+                <h2 [-class="text-sm font-semibold uppercase tracking-wide text-slate-500">-]{+class="rs-rotulo">+}
+                  Parte <span [-class="font-mono"-]{+class="rs-mono"+} x-text="parteAbierto.hash.slice(0, 8)"></span>
+                <button type="button" @click="cerrarParte()" [-class="text-xs text-slate-400 hover:text-slate-600">-]{+class="rs-btn rs-btn--texto rs-btn--compacto">+}
+              <p [-class="mt-2 text-xs text-slate-500">-]{+class="rs-nota mt-2">+}
+                    <span [-class="flex-]{+class="rs-campo__etiqueta flex+} items-center [-gap-2 text-slate-500">-]{+gap-2">+}
+                      <span [-class="rounded px-1"-]{+class="rs-chip rs-chip--contorno"+}
+                            [-class="rounded bg-emerald-100 px-1 text-emerald-800">editado</span>-]{+class="rs-chip rs-chip--ok">editado</span>+}
+                    <input type="text" [-class="mt-1 w-full rounded border px-2 py-1 text-sm"-]{+class="rs-campo mt-1"+}
+                        [-class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">-]{+class="rs-btn rs-btn--secundario">+}
+                <span [-class="text-xs text-slate-400"-]{+class="rs-nota"+} x-text="mensajeRevalidacion"></span>
+                <span [-class="text-xs"-]{+class="rs-nota"+}
+                   [-class="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs-]{+class="rs-aviso rs-aviso--error rs-aviso--compacto+} text-red-800"
+              <div [-class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">-]{+class="rs-panel rs-panel--suave mt-4">+}
+                  <span [-class="mr-1 inline-block h-2.5 w-2.5 rounded-full"-]{+class="rs-punto mr-1"+}
+                   [-class="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800"></p>-]{+class="rs-aviso rs-aviso--atencion rs-aviso--compacto mt-2"></p>+}
+                  <p [-class="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-2 text-sm text-sky-900">-]{+class="rs-aviso rs-aviso--info mt-2">+}
+                                [-class="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-sm"></textarea>-]{+class="rs-campo mt-1"></textarea>+}
+                              [-class="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">-]{+class="rs-btn rs-btn--ok">+}
+                              [-class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">-]{+class="rs-btn rs-btn--peligro">+}
+                    <p x-show="!hayMotivo()" [-class="text-xs text-slate-500">-]{+class="rs-nota">+}
+                    <p x-show="!hayIdentidad()" [-class="text-xs text-amber-700">-]{+class="rs-nota rs-nota--atencion">+}
+                    <p x-show="hayIdentidad() && !remesaId" [-class="text-xs text-amber-700">-]{+class="rs-nota rs-nota--atencion">+}
+                    <p [-class="text-xs text-slate-500">-]{+class="rs-nota">+}
+                   [-class="mt-2 text-xs text-slate-600"></p>-]{+class="rs-nota mt-2"></p>+}
+                <h3 [-class="text-xs font-semibold uppercase tracking-wide text-slate-400">PDF-]{+class="rs-rotulo">PDF+} del parte</h3>
+                        [-class="mt-2 h-[28rem] w-full rounded border border-slate-200"></iframe>-]{+class="rs-visor mt-2"></iframe>+}
+               [-class="rounded-lg border border-slate-200 bg-white p-6">-]{+class="rs-panel rs-panel--destacado">+}
+        <h2 [-class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar-]{+class="rs-rotulo">Archivar+} y cerrar</h2>
+        <p x-show="noArchivables().length" [-class="mt-1 text-sm text-amber-700">-]{+class="rs-nota rs-nota--atencion mt-1">+}
+        <p x-show="!usuario.usuarioOid" [-class="mt-1 text-sm text-amber-700">-]{+class="rs-nota rs-nota--atencion mt-1">+}
+                  [-class="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300">-]{+class="rs-btn rs-btn--primario">+}
+                      [-class="rounded bg-rose-700 px-3 py-1 text-xs text-white">Sí,-]{+class="rs-btn rs-btn--peligro rs-btn--compacto">Sí,+} archivar y cerrar</button>
+                      [-class="rounded border border-slate-300 px-3 py-1 text-xs">Cancelar</button>-]{+class="rs-btn rs-btn--secundario rs-btn--compacto">Cancelar</button>+}
+           [-class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>-]{+class="rs-aviso rs-aviso--atencion mt-3"></p>+}
+           [-class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>-]{+class="rs-aviso rs-aviso--info mt-4"></p>+}
+           [-class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>-]{+class="rs-aviso rs-aviso--info mt-4"></p>+}
+            <p [-class="flex-]{+class="rs-aviso rs-aviso--atencion flex+} items-center [-gap-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">-]{+gap-3">+}
+              <span [-class="font-mono text-xs"-]{+class="rs-mono rs-nota"+} x-text="parte.hash.slice(0, 8)"></span>
+                      [-class="rounded border border-amber-400 px-3 py-1 text-xs disabled:text-slate-400">-]{+class="rs-btn rs-btn--secundario rs-btn--compacto">+}
+            <p [-class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">-]{+class="rs-aviso rs-aviso--error">+}
+              <span [-class="font-mono text-xs"-]{+class="rs-mono rs-nota"+} x-text="parte.hash.slice(0, 8)"></span>
+        <ul x-show="resultadosArchivo.length" [-class="mt-4 divide-y divide-slate-100 text-sm">-]{+class="rs-resumen mt-4">+}
+              <span [-class="font-mono text-xs text-slate-500"-]{+class="rs-mono rs-nota"+} x-text="resultado.hash.slice(0, 8)"></span>
+                 [-class="ml-2 text-sky-700 underline">abrir-]{+class="rs-enlace ml-2">abrir+} en SharePoint</a>
+        <ul x-show="resultadosCierre.length" [-class="mt-4 divide-y divide-slate-100 text-sm">-]{+class="rs-resumen mt-4">+}
+              <span [-class="font-mono text-xs text-slate-500"-]{+class="rs-mono rs-nota"+} x-text="resultado.hash.slice(0, 8)"></span>
+              <span x-show="resultado.incidencia" [-class="ml-2 rounded bg-slate-100 px-1 font-mono text-xs"-]{+class="rs-chip rs-chip--neutro rs-mono ml-2"+}
+    <footer [-class="border-t border-slate-200 bg-white">-]{+class="rs-pie">+}
+      <div [-class="mx-auto max-w-6xl px-6 py-4 text-xs text-slate-400">-]{+class="rs-contenedor rs-pie__texto">+}
+```
+
+### 5 · El circuito antes y después (Chrome headless, datos ficticios)
+
+La extensión de Chrome no se usó; como en el 5a, `chrome.exe --headless=new
+--screenshot` contra una **copia** del front en el scratchpad servida con
+`python -m http.server`, con el estado ficticio de §2.7 (siete partes: verde,
+aprobado por una persona, ámbar dudoso, rojo con error, rechazado, cerrado y
+uno «leyendo»; un aviso de remesa; un parte abierto con un campo dudoso, una
+edición y el aviso de fallo del autoguardado; y, en otra escena, la pregunta
+de confirmación pendiente, una puerta de entorno y un resumen de cierre).
+Cuatro escenas × antes/después: inicial a 1440 px, revisión a 1440, archivo a
+1440 y revisión a 390 px. Servidores parados al terminar (comprobado con
+`netstat`: el primer intento dejó dos vivos por lanzarlos en una subshell; se
+pararon con `Stop-Process` y se corrigió el script).
+
+- **Antes**: barra pizarra oscura con «Posventa · Ruesma» en texto, pestaña
+  actual en píldora blanca; cabecera blanca; paneles `rounded-lg` con borde
+  gris; botón «Trocear» pizarra; «Revalidar» pizarra; «Aprobar» verde y
+  «Rechazar» rosa; **«Archivar y cerrar los partes aptos» verde**; la trama
+  de plano ya asomaba bajo el `bg-slate-50` (efecto de T14).
+- **Después**: barra blanca translúcida con el **logotipo** Ruesma, separador
+  y «POSVENTA»; «Partes firmados» en píldora burdeos suave; la leyenda de
+  R47 en segunda línea con su punto ámbar. Título «Incidencias de Posventa» en
+  Bricolage; el indicador del backend en una píldora con la versión en mono.
+  Paneles blancos de radio 16 sobre el lienzo con trama; rótulos en
+  versalitas acero con el trazo burdeos. «Avisos de la remesa» con filete
+  ámbar a la izquierda. La lista: filas limpias, punto del semáforo (el
+  **anillo** del aprobado por una persona y el **tachado** del rechazado,
+  intactos: son sus `:class`), chips «Aprobado», «Pendiente», «Rechazado»,
+  «🔒 Cerrado» en sus tonos, «leyendo» en azul. El detalle: etiquetas en
+  versalitas con la confianza en chip de contorno (el dudoso, 41 %, en
+  ámbar, y su campo con fondo ámbar), «EDITADO» en chip verde, campos de
+  radio 10; «Revalidar» secundario en píldora; **el aviso de fallo** en rojo
+  con filete; «Aprobar» verde y «Rechazar» apagado (sin motivo) en píldora.
+  «Archivar y cerrar» con **filete burdeos** arriba y el **botón principal
+  en burdeos**; la pregunta con **«Sí, archivar y cerrar» en rojo** y
+  «Cancelar» secundario; la puerta de entorno en azul informativo, nunca
+  rojo; el número de incidencia del resumen, en chip mono.
+- **390 px**: sin desplazamiento horizontal; la barra baja las pestañas a su
+  línea y se desplazan; la lista y el detalle se apilan; los campos a una
+  columna.
+- **Sin comprobar aquí** (V2 del humano): el hover, el foco con el teclado,
+  el visor del PDF con un PDF de verdad, el arrastre sobre la zona de soltar
+  y el recorrido real con el backend.
+
+### 6 · Verificación de T17
+
+- `python -m pytest tests/test_f035_portal.py -q -k "r59 or r61"` (front) →
+  **12 passed** (en `bf8d45e`; 13 desde `25a708d`).
+- `python -m pytest tests/test_f035_placeholders_vivos.py -q` (raíz) →
+  **11 passed**.
+- **El control de R48 en rojo, como se espera**: una copia del test de raíz
+  en el scratchpad cuyo `_features()` pone F-048 en `done` (en memoria),
+  ejecutada contra el árbol real; la copia se borró después:
+
+```
+$ python -m pytest test_r48_f048_done.py -q -p no:cacheprovider -k "r48_las_secciones_reales" --tb=short
+F                                                                        [100%]
+_______ test_f035_r48_las_secciones_reales_se_abren_en_la_misma_ventana _______
+test_r48_f048_done.py:259: in test_f035_r48_las_secciones_reales_se_abren_en_la_misma_ventana
+    assert problemas == [], (
+E   AssertionError: la barra de partes.html abre «datos» aparte y ya es real: quita su target (R48)
+E     Y en el mismo trabajo, resuelve la remesa en curso del circuito (design.md §2 de F-035).
+1 failed, 10 deselected in 0.33s
+```
+
+- Un detalle al escribirlo: el test de la regla en los documentos normaliza
+  los blancos, porque el Markdown parte «misma / ventana» entre líneas.
+
+### 7 · T18 · Evidencias
+
+#### (a) La campaña del arnés
+
+```
+$ python -m harness.mutacion --feature F-035
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 54c0884067f3df62ee34a00eaa1d6ff059f69d30..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+#### (b) Mutaciones a mano, en un worktree del scratchpad
+
+Worktree `git worktree add -b feature/F-035-mutaciones-tmp <scratchpad>/wt
+HEAD` (la rama temporal lleva el prefijo `feature/F-035` para que los tests
+de rama —R59 contra la base— se ejecuten y no se salten). En el worktree, los
+SVG salen con **su** SHA-256 (`1dfc97aa…`, `006623f0…`: el `.gitattributes`
+del 5a funciona) y la suite de partida está en verde (343 + 409). Un script
+aplica cada mutación como **una** sustitución con **una** coincidencia
+(`assert`), ejecuta la suite pytest del front y la de node, y restaura con
+`git checkout`. Al terminar, `git status` del worktree vacío, `git worktree
+remove` y `git branch -D feature/F-035-mutaciones-tmp`; `git worktree list`
+ya no lo enseña. **Nada se tocó en el árbol real.**
+
+| Mut. | Fichero | Cambio | Resultado | Lo mata |
+|---|---|---|---|---|
+| **9** | `partes.html` | `@click="reiniciar()"` → `@click="reiniciar(); x = 1"` | **muerto** | R59 (rama) |
+| **10** | `partes.html` | el `class` del aviso de fallo, delante de su `x-show` | **muerto** | R59 (rama) **y** `test_f026_autoguardado.py:280` |
+| **11** | `styles.css` | `display: flex !important` en `.rs-panel` | **muerto** | R60 |
+| **12** | `styles.css` | `--rs-acero-texto: #7b868c` | **muerto** | R49 (valor del token) y R53 (contraste) |
+| **13** | `index.html` | el placeholder de F-045 gana `rs-btn--primario` | **muerto** | R56 |
+| G1 | test (guardia) | `tokens()` ordena los atributos | **muerto** | control «dos atributos permutados» y «class movido»; y R59 de rama (las `<link>` ordenadas ya no casan con las de la marca) |
+| G2 | test (guardia) | `tokens()` quita el `class` entero (lo de §15.8 al pie de la letra) | **muerto** | control «class movido delante de su x-show» |
+| G3 | test (guardia) | `_quita_links_de_la_marca` quita **toda** `<link>` | **muerto** | control «una `<link>` a otro dominio» |
+| G4 | test (guardia) | sin la comprobación de «primer hijo» de la barra | **superviviente → muerto** tras `25a708d` | control nuevo «la barra tiene que ser el primer hijo» |
+| P1 | `index.html` | estado vacío de incidencias con `x-show` al revés | **muerto** | R58 |
+| P2 | `index.html` | la tabla de incidencias con `x-show="true"` | **muerto** | R58 |
+| P3 | `index.html` | `:data-estado="'nueva'"` fijo en el chip de la bandeja | **muerto** | R57 (JS) y el puente `test_f007_js.py` |
+| P4 | `index.html` | `:class` de fila abierta de la bandeja → `''` | **superviviente, no equivalente** | nadie (§ supervivientes) |
+| P5 | `index.html` | `:class` «sin dato» de la ubicación → `''` | **superviviente, no equivalente** | nadie |
+| P6 | `index.html` | `:class` del aviso flotante → `''` | **superviviente, no equivalente** | nadie |
+| P7 | `index.html` | `:aria-current` de «Bandeja» apuntando a `'inicio'` | **superviviente → muerto** tras `1cbc1ea` | R51 nuevo: cada pestaña marca su sección |
+| P8 | `index.html` | `:aria-selected` de «Parte» apuntando a `'datos'` | **superviviente → muerto** tras `1cbc1ea` | R51 nuevo: cada pestaña de la ficha se marca a sí misma |
+
+**Las cinco de §11 (9–13): 5/5 muertas.** Guardia: 4/4 muertas (una tras su
+control nuevo). P-R1: 5/8 muertas (dos tras sus tests nuevos) y 3
+supervivientes no equivalentes.
+
+**P-R1** («una por cada asignación de estado del componente que toques»).
+El bloque 5 **no toca ningún componente**: `git diff --stat 6bc4b6c --
+services/postventa-front/js` está vacío, así que las asignaciones de estado
+de `portal_app.js` y `app.js` son las de siempre, ya cubiertas (M1–M5 de la
+review 1, sin cambio). En `partes.html` no cambia ni una directiva (lo
+garantiza R59; mutaciones 9 y 10). Lo que sí añadió el bloque 5 es
+**cableado en el HTML del portal**: las ligaduras que enseñan el estado del
+componente (`x-show` de los estados vacíos, `:data-estado`, `:class` de fila
+abierta, de «sin dato» y del aviso, y —desde que se quitaron las `:class` de
+las pestañas— `:aria-current` y `:aria-selected`, que pasan a ser lo único
+que pinta la pestaña actual). He mutado **una de cada clase de ligadura**
+(P1–P8): las mismas expresiones repetidas por sección (tres `x-show` de
+vacío, tres `:data-estado`…) tienen la misma forma y el mismo test.
+
+Trazas (salida real del script; rutas del worktree abreviadas a `…wt`, y en
+cada una la primera aserción):
+
+```
+===== M9 · partes.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:851: AssertionError: partes.html cambia algo más que la presentación (R59):
+    FAILED tests/test_f035_portal.py::test_f035_r59_partes_html_solo_cambia_en_presentacion_frente_a_la_base
+    FAILED tests/test_f035_portal.py::test_f035_r59_control_la_guardia_rechaza_lo_que_no_es_presentacion[un @click cambiado]
+    2 failed, 341 passed in 17.41s
+===== M10 · partes.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f026_autoguardado.py:280: AssertionError: el aviso de fallo se pinta como el resto: hay que poder distinguirlo de un «Guardado.»
+    …wt\services\postventa-front\tests\test_f035_portal.py:851: AssertionError: partes.html cambia algo más que la presentación (R59):
+    FAILED tests/test_f026_autoguardado.py::test_f026_r52_el_aviso_de_fallo_se_ve_y_no_se_confunde_con_los_otros_dos
+    FAILED tests/test_f035_portal.py::test_f035_r59_partes_html_solo_cambia_en_presentacion_frente_a_la_base
+    FAILED tests/test_f035_portal.py::test_f035_r59_control_la_guardia_rechaza_lo_que_no_es_presentacion[el class movido delante de su x-show]
+    3 failed, 340 passed in 15.99s
+===== M11 · styles.css · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1540: AssertionError: styles.css: !important solo en [x-cloak] de portal.css (Alpine esconde con style="display: none" y un !important lo taparía): ['.rs-panel']
+    1 failed, 342 passed in 17.12s
+===== M12 · styles.css · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1321: AssertionError: tokens que faltan o con otro valor en el :root de styles.css: {'--rs-acero-texto': '#7b868c'}
+    …wt\services\postventa-front\tests\test_f035_portal.py:1402: AssertionError: pares por debajo de AA:
+    FAILED tests/test_f035_portal.py::test_f035_r49_los_tokens_de_la_marca_estan_en_el_root_con_su_valor
+    FAILED tests/test_f035_portal.py::test_f035_r53_los_pares_de_la_marca_cumplen_aa
+    2 failed, 341 passed in 17.11s
+===== M13 · index.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1678: AssertionError: <button class="placeholder rs-btn--primario"> «Registrar un parte sin firma (la inciden»: un placeholder no se viste de botón de verdad (['rs-btn--primario'])
+    1 failed, 342 passed in 16.47s
+===== G1 · test_f035_portal.py · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:916: AssertionError: la guardia de R59 no ve «dos atributos permutados»
+    …wt\services\postventa-front\tests\test_f035_portal.py:916: AssertionError: la guardia de R59 no ve «el class movido delante de su x-show»
+    3 failed, 340 passed in 29.42s
+===== G2 · test_f035_portal.py · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:916: AssertionError: la guardia de R59 no ve «el class movido delante de su x-show»
+    1 failed, 342 passed in 19.93s
+===== G3 · test_f035_portal.py · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:916: AssertionError: la guardia de R59 no ve «una <link> a otro dominio»
+    1 failed, 342 passed in 15.43s
+===== G4 · test_f035_portal.py · pytest exit 0 · node exit 0          (antes de 25a708d)
+    343 passed in 19.08s
+===== G4 · test_f035_portal.py · pytest exit 1 · node exit 0          (después)
+    …wt\services\postventa-front\tests\test_f035_portal.py:932: AssertionError: []
+    FAILED tests/test_f035_portal.py::test_f035_r59_control_la_barra_tiene_que_ser_el_primer_hijo_del_circuito
+    1 failed, 343 passed in 19.75s
+===== P1 · index.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1746: AssertionError: incidencias: el estado vacío se enseña cuando incidenciasFiltradas() no tiene filas (x-show="incidenciasFiltradas().length")
+    1 failed, 343 passed in 23.77s
+===== P2 · index.html · pytest exit 1 · node exit 0
+    …wt\services\postventa-front\tests\test_f035_portal.py:1756: AssertionError: incidencias: con cero filas, la lista no se enseña vacía (x-show en su contenedor)
+    1 failed, 343 passed in 23.35s
+===== P3 · index.html · pytest exit 1 · node exit 1
+    ✖ f035 R57: todo elemento de index.html con data-estado es un rs-chip con su texto (8.1153ms)
+    AssertionError [ERR_ASSERTION]: los estados de revisión de la bandeja
+    ℹ tests 409 · ℹ pass 408 · ℹ fail 1
+===== P4 / P5 / P6 · index.html · pytest exit 0 · node exit 0
+    344 passed · ℹ tests 409 · ℹ pass 409 · ℹ fail 0          (las tres)
+===== P7 · index.html · pytest exit 0 · node exit 0            (antes de 1cbc1ea: 344 passed)
+===== P7 · index.html · pytest exit 1 · node exit 0            (después)
+    …wt\services\postventa-front\tests\test_f035_portal.py:1817: AssertionError: «Bandeja de revisión» tiene que marcarse con :aria-current="seccion === 'bandeja' ? 'page' : false"
+    1 failed, 345 passed in 14.49s
+===== P8 · index.html · pytest exit 0 · node exit 0            (antes de 1cbc1ea: 344 passed)
+===== P8 · index.html · pytest exit 1 · node exit 0            (después)
+    …wt\services\postventa-front\tests\test_f035_portal.py:1830: AssertionError: «Parte» abre «parte» y tiene que marcarse con :aria-selected="pestanaFicha === 'parte'"
+    1 failed, 345 passed in 15.41s
+git status del worktree tras restaurar: ''
+```
+
+(M9 y M10 hacen caer además el caso del control permanente que buscaba esa
+misma cadena —«el control ya no encuentra una sola vez»—: es el `assert` que
+impide que el control se quede sin estropear nada.)
+
+#### Los supervivientes: P4, P5 y P6, **no equivalentes** (comprobado ejecutándolos)
+
+Para descartar que fueran equivalentes, el portal del worktree —original y
+con P4 + P5 + P6 aplicadas— se ejecutó en Chrome headless (`--dump-dom`), con
+la fila `BJ-0002` de la bandeja abierta (la de ubicación vacía) y un aviso
+puesto por el componente; en el DOM resultante, sin plantillas sin pintar ni
+atributos `:class`, se cuentan las clases que ponen esas tres ligaduras:
+
+```
+original  rs-fila--abierta=1  rs-sin-dato=49  rs-toast--visible=1
+mutado    rs-fila--abierta=0  rs-sin-dato=48  rs-toast--visible=0
+```
+
+Las tres cambian lo que se pinta, así que **no** son equivalentes. Qué rompe
+cada una, y por qué no llevan test:
+
+- **P4**: la fila abierta de la bandeja pierde su filete burdeos. El detalle
+  sigue abriéndose y cerrándose (eso lo prueba el componente); se pierde la
+  pista visual de qué fila es.
+- **P5**: la ubicación vacía se sigue leyendo «sin completar» (su `x-text`
+  no cambia), pero sin la cursiva acero.
+- **P6**: el aviso de un placeholder sigue apareciendo con su texto y su
+  «Entendido» (la región `role="status"` y el `x-show` no cambian: R11
+  intacto), pero sin la tarjeta flotante que lo enmarca.
+
+Son **aspecto puro**, sin semántica ni contrato: un test que fijara la
+expresión exacta de cada `:class` de presentación ataría el HTML a su
+redacción sin proteger ningún requisito. Quedan para la vista del humano
+(V1: «se ve la fila abierta», «el aviso sale en su tarjeta»). En cambio P7 y
+P8 **sí** eran semánticos —la pestaña marcada para el lector de pantalla y la
+única pista de dónde se está— y por eso llevan test.
+
+#### (c) El diff de la rama contra `6bc4b6c`
+
+```
+$ git diff --name-status 6bc4b6c -- services/postventa-front
+M	services/postventa-front/README.md
+M	services/postventa-front/css/portal.css
+M	services/postventa-front/css/styles.css
+A	services/postventa-front/img/favicon.svg
+A	services/postventa-front/img/logo-ruesma.svg
+M	services/postventa-front/index.html
+M	services/postventa-front/partes.html
+M	services/postventa-front/tests/test_f035_portal.py
+M	services/postventa-front/tests_js/portal.test.js
+
+$ git diff --stat 6bc4b6c -- services/postventa-front/tests/test_f0[0-3]*.py services/postventa-front/tests_js
+ services/postventa-front/tests/test_f035_portal.py | 1072 +++++++++++++++++++-
+ services/postventa-front/tests_js/portal.test.js   |   60 ++
+ 2 files changed, 1089 insertions(+), 43 deletions(-)
+
+$ git diff --stat 6bc4b6c -- services/postventa-front/js services/postventa-front/staticwebapp.config.json services/postventa-front/dev_server.py services/postventa-front/dev_front.ps1
+(vacío)
+```
+
+Solo `M` en `css/*.css`, `index.html`, `partes.html`, `README.md` y los dos
+ficheros de test de F-035; `A` en `img/*`; **nada** en `js/`,
+`staticwebapp.config.json`, `dev_server.py` ni `dev_front.ps1`; de los tests
+del front, solo los de F-035. (`tests_js/portal.test.js` es de F-035: R57 del
+5a.) Fuera del front, el bloque 5 toca `docs/ARCHITECTURE.md`,
+`tests/test_f035_placeholders_vivos.py`, `.gitattributes` (5a), `specs/` y
+`progress/`.
+
+#### (d) La tabla de contraste de R53
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -s -k "r53_los_pares" -p no:cacheprovider
+R53 · contraste WCAG calculado desde el :root de css/styles.css
+--rs-tinta         / --rs-papel            16.35  (mín. 4.5, texto)  ok
+--rs-tinta         / --rs-lienzo           14.85  (mín. 4.5, texto)  ok
+--rs-tinta-suave   / --rs-papel             8.27  (mín. 4.5, texto)  ok
+--rs-tinta-suave   / --rs-lienzo            7.51  (mín. 4.5, texto)  ok
+--rs-tinta-suave   / --rs-acero-100         6.35  (mín. 4.5, texto)  ok
+--rs-acero-texto   / --rs-papel             5.79  (mín. 4.5, texto)  ok
+--rs-acero-texto   / --rs-lienzo            5.26  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-burdeos           7.35  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-burdeos-fuerte   10.19  (mín. 4.5, texto)  ok
+--rs-burdeos       / --rs-papel             7.35  (mín. 4.5, texto)  ok
+--rs-burdeos       / --rs-lienzo            6.68  (mín. 4.5, texto)  ok
+--rs-burdeos       / --rs-burdeos-suave     6.29  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-ok                5.48  (mín. 4.5, texto)  ok
+--rs-papel         / --rs-error             6.47  (mín. 4.5, texto)  ok
+--rs-ok            / --rs-ok-suave          5.21  (mín. 4.5, texto)  ok
+--rs-atencion      / --rs-atencion-suave    6.84  (mín. 4.5, texto)  ok
+--rs-error         / --rs-error-suave       5.91  (mín. 4.5, texto)  ok
+--rs-info          / --rs-info-suave        5.57  (mín. 4.5, texto)  ok
+--rs-acero         / --rs-papel             3.73  (mín. 3.0, no texto)  ok
+--rs-acero         / --rs-lienzo            3.39  (mín. 3.0, no texto)  ok
+--rs-burdeos       / --rs-papel             7.35  (mín. 3.0, no texto)  ok
+1 passed, 89 deselected in 0.50s
+```
+
+### 8 · T19 · `bash harness/init.sh`
+
+En `d5f38cd`: **exit 0, `ENTORNO LISTO`**. Raíz **73 passed** (19,29 s; no
+se cachea); front **346 passed sin caché** (22,60 s; el árbol cambió; incluye
+el puente que ejecuta los 409 de JavaScript); api desde caché (no se toca);
+`PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a
+dev)`; `ruff` **61 avisos**, los de antes. (La primera pasada, en `05ead04`,
+salió también en verde pero con 64 avisos de `ruff`: los tres `ISC004` de
+§2.6, ya corregidos.)
+
+### 9 · Guion de V1, V2 y V4 para el humano (**no ejecutado**)
+
+Sustituye al de «Bloque 4 · §5» (que queda como historia). El resultado se
+anota en `progress/current.md`.
+
+**Arrancar** (PowerShell): en una terminal, el backend —obligatorio para
+V2—:
+
+```
+cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api
+func start --port 7073
+```
+
+y en otra, el front:
+
+```
+cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front
+.\dev_front.ps1
+```
+
+**V1 · el portal** (`http://localhost:5173/`), con **F12 → Red**, «Conservar
+registro» y `Ctrl+F5`:
+
+1. Arriba, la **barra blanca** con el logotipo Ruesma, «POSVENTA» y ocho
+   pestañas; «Inicio» en píldora burdeos suave. Debajo, la **banda amarilla
+   rayada** «Esto es una maqueta.» con su botón de muestra discontinuo. En la
+   pestaña del navegador, el **favicon** Ruesma.
+2. **Las fuentes**: F12 → Elementos → el `<h1>` «Portal de posventa» →
+   Calculado → `font-family`: **Bricolage Grotesque**; un párrafo:
+   **Archivo**. Al fondo, la **trama** de cuadrícula.
+3. Recorrer las siete secciones del portal, abrir una ficha (`#/incidencias`
+   → un código), recorrer sus pestañas (la activa, subrayada en burdeos),
+   abrir «No procede…» y cerrarlo, abrir el detalle de una fila de la bandeja
+   (se marca con un filete burdeos) y bajar al panel de volcado, y pulsar un
+   placeholder de cada sección: el aviso sale abajo **en una tarjeta** con
+   filete ámbar; «Entendido» lo quita.
+4. **Red**: solo estáticos de `localhost:5173`, `cdn.tailwindcss.com`,
+   `cdn.jsdelivr.net` (Alpine) y **`fonts.googleapis.com` /
+   `fonts.gstatic.com`**. Filtro `api`: **vacío**.
+5. **Placeholders frente a lo real**: se distinguen de un vistazo (borde
+   discontinuo, rayado, etiqueta F-0NN) de los botones de verdad y del botón
+   burdeos «Abrir el circuito de partes firmados».
+6. **Teclado**: solo con `Tab`, cada enlace, pestaña y botón enseña un
+   contorno burdeos.
+7. **390 px** (F12 → modo dispositivo): la página no se desplaza en
+   horizontal; las tablas, dentro de su panel.
+8. **Movimiento reducido** (F12 → ⋮ → Más herramientas → Renderizado →
+   «Emular prefers-reduced-motion: reduce»), recargar: las tarjetas de Inicio
+   aparecen sin animación.
+9. Consola sin errores.
+
+**V2 · el circuito, con `func start`** (`http://localhost:5173/partes.html`):
+
+1. Desde el portal, «Partes firmados» abre `partes.html` **en la misma
+   pestaña**. La barra es la misma (logotipo, «Partes firmados» marcada) con
+   la leyenda de la maqueta debajo.
+2. El indicador del backend **en verde** (píldora arriba a la derecha).
+3. Con **una remesa de `muestras/`** (solo en local, no se versiona nada):
+   soltarla o «Elegir ficheros», **«Trocear la remesa»** (burdeos), ver la
+   **barra de progreso** (burdeos) llenarse, la lista con sus marcas (punto,
+   **anillo** del aprobado por una persona, **tachado** del rechazado si lo
+   hay), abrir un parte (el PDF en su visor), **editar un campo** y ver
+   «guardando / guardado», **aprobar o rechazar** uno.
+4. Pulsar **«Archivar y cerrar los partes aptos»** (ahora **burdeos**): sale
+   la pregunta con «Sí, archivar y cerrar» (rojo) y «Cancelar». Pulsar
+   **«Cancelar»**. **Prohibido pulsar «Sí, archivar y cerrar» en local**
+   (`CLAUDE.md`: ni SharePoint ni Sigrid desde local).
+5. Todo funciona como en `dev`; solo cambia el aspecto. Foco visible con el
+   teclado; **consola sin errores**; la barra pegajosa no tapa el visor del
+   PDF al desplazarse.
+6. Desde el circuito, «Bandeja de revisión» abre el portal **en otra
+   pestaña** y la del circuito sigue donde estaba, con su remesa.
+
+**V4 · tras publicar** (después del APPROVED, del merge a `dev` y de
+`infra\desplegar_front.ps1 -SoloFront`, todo del humano):
+
+1. `Ctrl+F5` **en las dos páginas** (con el `css/styles.css` viejo en caché y
+   el HTML nuevo saldría una mezcla).
+2. La raíz de la Static Web App y la tarjeta del portal corporativo abren el
+   **portal** con el estilo nuevo.
+3. `/partes.html` abre el **circuito con el estilo nuevo**, el indicador del
+   backend en verde, y una remesa de prueba lo recorre como antes (sin cerrar
+   nada: el cierre sigue su propio protocolo).
+4. Abrir `/partes.html` sin sesión y anotar a dónde vuelve tras iniciarla.
+5. Aviso a Posventa: las pestañas nuevas son una **maqueta**; el circuito
+   está en «Partes firmados» y **ha cambiado de aspecto, no de
+   funcionamiento** (el botón principal pasa de verde a burdeos).
+
+### 10 · Fuera del alcance y lo que falta
+
+- **T12 (humano)**: V1 y V2 del guion de §9. Después, la **review del
+  bloque 5**. V4, tras el merge y la publicación.
+- **P4, P5 y P6**: supervivientes visuales documentados (§7), sin test.
+- **H-6** (Tailwind sin versión fija) sigue abierto como ficha aparte, fuera
+  de F-035.
+- Mejora del arnés candidata a `arnes-base` (no aplicada: no es de este
+  encargo): el guion de mutaciones a mano de este bloque —worktree con rama
+  temporal `feature/<id>…` para que los tests de rama no se salten— podría
+  ser una utilidad genérica del arnés para los lenguajes que
+  `harness.mutacion` no cubre (relacionado con H-5 y P-R1).
+
+### Evidencias (bloque 5b)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Front **346 passed** (pytest, sin caché, 22,60 s en `init.sh`; incluye el puente de JS) y **409/409** (`node --test`, ~3,7 s); raíz **73 passed** (19,29 s) |
+| Tests nuevos del bloque 5b | Front: **+18** (control de R59: 1 + 8 + 1 + 1; R50 y R51 ×2 del circuito; R60 sin `style`; R61; R51 ×2 de T18); el R59 de rama sustituye al de `difflib` uno por uno. Raíz: **+4** (R48) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el bloque cambia HTML, Markdown y tests |
+| Mutantes (campaña del arnés) | **0** generados, 0 supervivientes (`progress/mutacion_F-035.md`) |
+| Mutantes a mano | **17**: las cinco de §11 (9–13) **5/5 muertas**; guardia de R59 **4/4** (G4 tras su control nuevo); P-R1 **5/8** (P7 y P8 tras sus tests nuevos) y **3 supervivientes no equivalentes** (P4–P6, comprobado ejecutándolos) |
+| Tiempo de la suite | Front pytest 22,60 s; JS ~3,7 s; raíz 19,29 s |

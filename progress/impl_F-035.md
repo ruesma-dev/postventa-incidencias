@@ -1429,3 +1429,211 @@ previa; F-035 no añade Python de producción).
 | Mutantes (campaña del arnés) | **0 generados, 0 supervivientes, 0.0 s, workers 1** (`progress/mutacion_F-035.md`): «Sin líneas de producción en el alcance». Coste por mutante: no calculable con 0 mutantes |
 | Mutantes a mano (compensación de `design.md` §11) | **8 aplicados, 8 muertos, 0 supervivientes, 0 equivalentes**, en un worktree aislado ya retirado (§4 b). Tiempo del recorrido entero (línea base más las ocho, suites completas): **1 min 54 s** |
 | Tiempo de las suites | pytest del front: **9,44 s** (11,5 s de reloj); `node --test "tests_js/*.test.js"`: **2,21 s**; pytest de la raíz: **7,90 s** (9,8 s de reloj). Dentro de `init.sh`: raíz 9,92 s, front 12,03 s |
+
+## Correcciones de la review 1 · 2026-09-25
+
+Respuesta a `progress/review_F-035.md` (CHANGES_REQUESTED), «Cambios
+requeridos» 1 a 3. **Solo tests**: un único fichero tocado,
+`services/postventa-front/tests_js/portal.test.js` (+86 líneas, 8 tests
+nuevos). Ni código de producción, ni `partes.html`, ni los tests del
+circuito. Ningún test nuevo ha destapado un fallo real: los ocho pasan contra
+el código tal cual.
+
+### Qué se añadió
+
+| Punto de la review | Test nuevo (`f035 …`) |
+|---|---|
+| H-R1 (a) | `R4: en el componente, navegar a #/bandeja muestra la bandeja` |
+| H-R1 (b) | `R6: en el componente, #/incidencias/<id> de ejemplo abre su ficha` (la 2.ª incidencia de ejemplo, `EJ-0002`) |
+| H-R1 (c) | `R7: en el componente, una incidencia que no existe da el aviso y no abre ficha` (entra antes en una ficha válida, para que el `null` no sea el valor de partida; afirma también `seccion === "incidencias"`, que es el «listado» de R7) |
+| H-R1 (d) | `R5: en el componente, #/partes muestra inicio` (pasa antes por `bandeja`, por el mismo motivo) |
+| H-R1 (e) | `R4: iniciar() se suscribe a hashchange y respeta el enlace profundo` (`location.hash = "#/bandeja"` antes de `iniciar()`; afirma al menos un oyente de `hashchange` y que arranca en `bandeja`) |
+| H-R2 | `R22: un importe negativo conserva su signo` (`-250` → `-250,00 €`), `R22: un valor no numérico se ve «sin enlazar», nunca NaN` (`"abc"`) y `R12: con una sola seleccionada, el aviso va en singular` (termina en ` 1 incidencia.`) |
+
+El caso `formatoImporte(undefined) === "sin enlazar"` que pide el punto 2
+**ya existía** (`R22: lo no enlazado se ve «sin enlazar», nunca 0,00 €`). No
+se duplica; su mutante se analiza abajo (M8).
+
+### Mutaciones (copia desechable, nunca en el árbol)
+
+Un script del scratchpad de la sesión copia `services/postventa-front`
+entera a `scratchpad/front_mutado`, aplica **una** sustitución de texto con
+exactamente una coincidencia (lo comprueba con `assert`), ejecuta
+`node --test tests_js/*.test.js` en la copia y la borra al final. `git status`
+del árbol después: solo `M services/postventa-front/tests_js/portal.test.js`.
+
+| Mut. | Fichero | Cambio | Resultado | Lo mata |
+|---|---|---|---|---|
+| M1 | `portal_app.js` | quitar `window.addEventListener("hashchange", …)` | **muerto** (4 fallos, 402/406) | (a), (b), (c), (e) |
+| M2 | `portal_app.js` | `this.seccion = "inicio";` | **muerto** (4 fallos) | (a), (b), (c), (e) |
+| M3 | `portal_app.js` | `this.incidenciaAbierta = null;` | **muerto** (1 fallo) | (b) |
+| M4 | `portal_app.js` | `this.avisoRuta = "";` | **muerto** (1 fallo) | (c) |
+| M5 | `portal_app.js` | `iniciar()` sin el `aplicarRuta()` inicial | **muerto** (1 fallo) | (e) |
+| M6 | `portal_app.js` | `aplicarRuta` sin `this.panelNoProcede = false` | **superviviente** (406/406) | nadie (ver análisis) |
+| M7 | `portal.js` | `formatoImporte` sin el signo | **muerto** (1 fallo) | R22, negativo |
+| M8 | `portal.js` | `if (valor === null) return` (sin `undefined`) | **superviviente, equivalente** | nadie (ver análisis) |
+| M9 | `portal.js` | `formatoImporte` sin la guarda `Number.isFinite` | **muerto** (1 fallo) | R22, no numérico |
+| M10 | `portal.js` | `n === 1` → `n === 0` en `textoPlaceholder` | **muerto** (1 fallo) | R12, singular |
+
+Las cinco del cableado que pedía la review (M1 a M5) están **muertas**.
+
+#### Trazas (salida real, recortada a la primera aserción de cada una)
+
+```
+===== M1 · js/portal_app.js · exit 1
+      - 'window.addEventListener("hashchange", () => this.aplicarRuta());'
+      + ''
+    ✖ f035 R4: en el componente, navegar a #/bandeja muestra la bandeja (5.9858ms)
+    ✖ f035 R6: en el componente, #/incidencias/<id> de ejemplo abre su ficha (1.4225ms)
+    ✖ f035 R7: en el componente, una incidencia que no existe da el aviso y no abre ficha (1.2393ms)
+    ✖ f035 R4: iniciar() se suscribe a hashchange y respeta el enlace profundo (0.9529ms)
+    ℹ tests 406
+    ℹ pass 402
+    ℹ fail 4
+    | ✖ f035 R4: en el componente, navegar a #/bandeja muestra la bandeja (5.9858ms)
+    |   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    |   + actual - expected
+    |   + 'inicio'
+    |   - 'bandeja'
+    |       at …\front_mutado\tests_js\portal.test.js:816:12
+
+===== M2 · js/portal_app.js · exit 1
+      - 'this.seccion = ruta.seccion;'
+      + 'this.seccion = "inicio";'
+    ✖ f035 R4: en el componente, navegar a #/bandeja muestra la bandeja (3.5557ms)
+    ✖ f035 R6: en el componente, #/incidencias/<id> de ejemplo abre su ficha (1.5965ms)
+    ✖ f035 R7: en el componente, una incidencia que no existe da el aviso y no abre ficha (0.951ms)
+    ✖ f035 R4: iniciar() se suscribe a hashchange y respeta el enlace profundo (0.6965ms)
+    ℹ tests 406
+    ℹ pass 402
+    ℹ fail 4
+    | ✖ f035 R4: en el componente, navegar a #/bandeja muestra la bandeja (3.5557ms)
+    |   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    |   + 'inicio'
+    |   - 'bandeja'
+    |       at …\front_mutado\tests_js\portal.test.js:816:12
+
+===== M3 · js/portal_app.js · exit 1
+      - 'this.incidenciaAbierta = ruta.incidencia;'
+      + 'this.incidenciaAbierta = null;'
+    ✖ f035 R6: en el componente, #/incidencias/<id> de ejemplo abre su ficha (4.1592ms)
+    ℹ tests 406
+    ℹ pass 405
+    ℹ fail 1
+    |   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    |   null !== 'EJ-0002'
+    |       at …\front_mutado\tests_js\portal.test.js:828:12
+
+===== M4 · js/portal_app.js · exit 1
+      - 'this.avisoRuta = ruta.aviso || "";'
+      + 'this.avisoRuta = "";'
+    ✖ f035 R7: en el componente, una incidencia que no existe da el aviso y no abre ficha (5.0357ms)
+    ℹ tests 406
+    ℹ pass 405
+    ℹ fail 1
+    |   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    |   + ''
+    |   - 'Esa incidencia no existe en los datos de ejemplo'
+    |       at …\front_mutado\tests_js\portal.test.js:841:12
+
+===== M5 · js/portal_app.js · exit 1
+      - 'iniciar() {\n      this.aplicarRuta();\n'
+      + 'iniciar() {\n'
+    ✖ f035 R4: iniciar() se suscribe a hashchange y respeta el enlace profundo (3.9478ms)
+    ℹ tests 406
+    ℹ pass 405
+    ℹ fail 1
+    |   AssertionError [ERR_ASSERTION]: un enlace profundo a #/bandeja no arranca en la bandeja
+    |   + 'inicio'
+    |   - 'bandeja'
+    |       at …\front_mutado\tests_js\portal.test.js:865:12
+
+===== M6 · js/portal_app.js · exit 0
+      - 'this.panelNoProcede = false;\n    },\n\n    ir('
+      + '\n    },\n\n    ir('
+    ℹ tests 406
+    ℹ pass 406
+    ℹ fail 0
+
+===== M7 · js/portal.js · exit 1
+      - 'return (numero < 0 ? "-" : "") + entero'
+      + 'return entero'
+    ✖ f035 R22: un importe negativo conserva su signo (1.6513ms)
+    ℹ tests 406
+    ℹ pass 405
+    ℹ fail 1
+    |   AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^-250,00\s€$/. Input:
+    |   '250,00 €'
+
+===== M8 · js/portal.js · exit 0
+      - 'if (valor === null || valor === undefined) return'
+      + 'if (valor === null) return'
+    ℹ tests 406
+    ℹ pass 406
+    ℹ fail 0
+
+===== M9 · js/portal.js · exit 1
+      - '    if (!Number.isFinite(numero)) return SIN_ENLAZAR;\n'
+      + ''
+    ✖ f035 R22: un valor no numérico se ve «sin enlazar», nunca NaN (3.7016ms)
+    ℹ tests 406
+    ℹ pass 405
+    ℹ fail 1
+    |   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+    |   + 'NaN,undefined €'
+    |   - 'sin enlazar'
+
+===== M10 · js/portal.js · exit 1
+      - '(n === 1 ? " incidencia."'
+      + '(n === 0 ? " incidencia."'
+    ✖ f035 R12: con una sola seleccionada, el aviso va en singular (2.3339ms)
+    ℹ tests 406
+    ℹ pass 405
+    ℹ fail 1
+    |   AssertionError [ERR_ASSERTION]: The input did not match the regular expression / 1 incidencia\.$/. Input:
+    |   '… Con la selección actual afectaría a 1 incidencias.'
+```
+
+Las rutas absolutas del scratchpad se han abreviado a `…\front_mutado`, y el
+texto largo del aviso de M10, a su final.
+
+#### Los dos supervivientes
+
+- **M6 · `panelNoProcede` sin reiniciar al navegar: superviviente, NO
+  equivalente, documentado sin test, como permite la review.** Qué rompe: si
+  se abre el panel «no procede» en una ficha y se navega a otra (o se sale y
+  se vuelve), el panel sigue abierto en la nueva ficha. Es un detalle de
+  presentación de la maqueta: no cambia la sección, ni la ficha abierta, ni
+  el aviso de R7, ni sale de la pantalla (R14 a R18), y el panel solo lleva
+  un placeholder (`ficha.enviarNoProcede`, F-042). Ningún requisito central
+  lo cubre; cuando F-042 construya el panel de verdad, es quien debe fijar su
+  comportamiento con su propio test.
+- **M8 · tratar solo `null` como ausente: superviviente EQUIVALENTE.** El
+  test de `formatoImporte(undefined)` ya existía y sigue pasando con la
+  mutación porque la guarda siguiente cubre ese caso: `Number(undefined)` es
+  `NaN` y `Number.isFinite(NaN)` es `false`, así que la función devuelve
+  «sin enlazar» por la segunda guarda. Comprobado numéricamente, aplicando
+  M8 a una copia de `portal.js` en el scratchpad:
+
+  ```
+  M8 formatoImporte(undefined) = "sin enlazar"
+  Number(undefined) = NaN ; Number.isFinite(Number(undefined)) = false
+  ```
+
+  La salida `NaN,undefined €` que describía la review solo aparece si se
+  quitan **las dos** guardas a la vez (M8 más M9, un mutante doble); M9 sola
+  ya la caza el test nuevo del valor no numérico. El contrato de R22 («valor
+  ausente») queda protegido: `undefined` → «sin enlazar» está afirmado, y la
+  guarda que de verdad lo sostiene (M9) está probada.
+
+### Evidencias (correcciones de la review 1)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | JavaScript (`node --test tests_js/*.test.js`): **406/406** (398 más 8 nuevos). pytest del front y de la raíz: dentro de `bash harness/init.sh`, en verde (ver `progress/current.md`) |
+| Cobertura de líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`. Esta vuelta solo cambia un fichero de tests de JavaScript |
+| Mutantes (campaña del arnés) | Sin cambios: **0** (no hay líneas Python de producción en el alcance) |
+| Mutantes a mano de esta vuelta | **10 aplicados: 8 muertos, 2 supervivientes** (M6 no equivalente, documentado; M8 equivalente, con la comprobación numérica). Las cinco del cableado exigidas (M1 a M5): **5/5 muertas** |
+| Tiempo de la suite JS | `duration_ms 3499` (3,5 s) con los 406 tests |
+
+`bash harness/init.sh` al cerrar esta vuelta: **exit 0, `ENTORNO LISTO`**. Raíz **69 passed** (40,80 s), front **294 passed** sin caché (22,23 s; incluye el puente que ejecuta los 406 tests de JavaScript), api desde caché (no se toca), `PUERTA COBERTURA: N/A` con su motivo, `ruff` con los mismos 61 avisos de deuda previa.

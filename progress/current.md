@@ -1,6 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 1 HECHAS · 2026-09-25 · siguiente: reviewer (vuelta 2)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 1». Solo tests: `tests_js/portal.test.js`, +8 tests (H-R1 a–e y
+> H-R2). Nada de producción, ni `partes.html`, ni tests del circuito.
+>
+> - JS **406/406**. Mutaciones a mano en copia desechable: **M1–M5 (cableado)
+>   5/5 muertas**; M7, M9 y M10 muertas; supervivientes documentados: M6
+>   (`panelNoProcede`, no equivalente, sin test por decisión de la review) y
+>   M8 (equivalente: la guarda `Number.isFinite` cubre `undefined`).
+> - `bash harness/init.sh` en verde. Sin push; `features.json` sin tocar.
+
 > ## ▶ F-035 · BLOQUE 4 (T10, T11 y T13) HECHO · 2026-09-25 · siguiente: T12 (humano) y reviewer
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 4 · T10, T11 y

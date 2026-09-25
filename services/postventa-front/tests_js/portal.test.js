@@ -511,6 +511,14 @@ test("f035 R12: un placeholder que no es en bloque no habla de la selección", (
   assert.doesNotMatch(aviso, /\b3 incidencias\b/);
 });
 
+test("f035 R12: con una sola seleccionada, el aviso va en singular", () => {
+  const { textoPlaceholder } = portal();
+
+  const aviso = textoPlaceholder("incidencias.cambiarEstadoBloque", { seleccionadas: 1 });
+
+  assert.match(aviso, / 1 incidencia\.$/);
+});
+
 // ── R19 y R20 · Filtros y selección, solo en pantalla ───────────────────────
 
 const INCIDENCIAS_INVENTADAS = Object.freeze([
@@ -649,6 +657,18 @@ test("f035 R22: un cero de verdad es 0,00 €, y los importes van en formato es-
   assert.match(formatoImporte(12345.5), /^12\.345,50\s€$/);
 });
 
+test("f035 R22: un importe negativo conserva su signo", () => {
+  const { formatoImporte } = portal();
+
+  assert.match(formatoImporte(-250), /^-250,00\s€$/);
+});
+
+test("f035 R22: un valor no numérico se ve «sin enlazar», nunca NaN", () => {
+  const { formatoImporte } = portal();
+
+  assert.equal(formatoImporte("abc"), "sin enlazar");
+});
+
 // ── R39 · Catálogos por código y resumen ────────────────────────────────────
 
 test("f035 R39: etiquetaCatalogo enseña código · resumen, el 0003 como pendiente y el vacío como sin completar", () => {
@@ -777,6 +797,72 @@ test("f035 R20: la selección se conserva al cambiar de sección", () => {
     navegar(c, oyentes, "incidencias");
 
     assert.deepEqual([...c.seleccionIncidencias], [primera]);
+  });
+});
+
+// ── R4-R7 · El cableado de rutas del componente (review 1, H-R1) ────────────
+//
+// `resolverRuta` está probada arriba como función pura; aquí se prueba que el
+// componente la ESCUCHA y copia su resultado a lo que ve la pantalla
+// (`seccion`, `incidenciaAbierta`, `avisoRuta`). Sin estos tests, un portal
+// que nunca sale de inicio pasaba toda la suite.
+
+test("f035 R4: en el componente, navegar a #/bandeja muestra la bandeja", () => {
+  conVentanaFalsa(({ oyentes }) => {
+    const c = nuevoComponente();
+
+    navegar(c, oyentes, "bandeja");
+
+    assert.equal(c.seccion, "bandeja");
+  });
+});
+
+test("f035 R6: en el componente, #/incidencias/<id> de ejemplo abre su ficha", () => {
+  conVentanaFalsa(({ oyentes }) => {
+    const c = nuevoComponente();
+    const [, segunda] = datos().incidencias.filas.map((fila) => fila.id);
+
+    navegar(c, oyentes, "incidencias", segunda);
+
+    assert.equal(c.seccion, "incidencias");
+    assert.equal(c.incidenciaAbierta, segunda);
+  });
+});
+
+test("f035 R7: en el componente, una incidencia que no existe da el aviso y no abre ficha", () => {
+  conVentanaFalsa(({ oyentes }) => {
+    const c = nuevoComponente();
+    const [primera] = datos().incidencias.filas.map((fila) => fila.id);
+
+    navegar(c, oyentes, "incidencias", primera);
+    navegar(c, oyentes, "incidencias", "EJ-9999");
+
+    assert.equal(c.seccion, "incidencias");
+    assert.equal(c.avisoRuta, AVISO_INCIDENCIA_INEXISTENTE);
+    assert.equal(c.incidenciaAbierta, null);
+  });
+});
+
+test("f035 R5: en el componente, #/partes muestra inicio", () => {
+  conVentanaFalsa(({ oyentes }) => {
+    const c = nuevoComponente();
+
+    navegar(c, oyentes, "bandeja");
+    navegar(c, oyentes, "partes");
+
+    assert.equal(c.seccion, "inicio");
+  });
+});
+
+test("f035 R4: iniciar() se suscribe a hashchange y respeta el enlace profundo", () => {
+  conVentanaFalsa(({ ventana, oyentes }) => {
+    const c = componente()();
+    ventana.location.hash = "#/bandeja";
+
+    c.iniciar();
+
+    assert.ok((oyentes.hashchange || []).length >= 1, "iniciar() no escucha hashchange");
+    assert.equal(c.seccion, "bandeja", "un enlace profundo a #/bandeja no arranca en la bandeja");
   });
 });
 

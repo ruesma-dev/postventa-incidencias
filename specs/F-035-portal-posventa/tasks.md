@@ -120,7 +120,7 @@
 
 ## Bloque 3 · La maqueta
 
-- [ ] **T5**: `js/maqueta_datos.js` con los bloques de `design.md` §7.1 y las
+- [x] **T5**: `js/maqueta_datos.js` con los bloques de `design.md` §7.1 y las
       convenciones de §7.2 (*2026-09-25*: con el recuadro de §7.1 —campos del
       alta, `oficiosObra`, `carpetaArchivo` y el bloque `volcado` de F-040— y
       las filas nuevas de §7.2, según la respuesta a D-10). Solo datos, congelados; cabecera con la ruta; se

@@ -1,11 +1,837 @@
 /* services/postventa-front/css/styles.css */
-/* Ajustes propios sobre Tailwind. Se mantiene al mínimo a propósito: lo que
-   se pueda resolver con utilidades de Tailwind no se duplica aquí. */
+/* =============================================================================
+   Identidad visual Ruesma · la hoja de la marca (F-035, design.md §15)
+
+   La comparten las dos páginas del front: el portal (index.html) y el
+   circuito de partes firmados (partes.html). Toma el lenguaje del portal
+   corporativo (front-portal: burdeos #9f2842, gris acero #7b868c, trama de
+   plano, Bricolage Grotesque y Archivo) y lo escribe como tokens y
+   componentes propios, en castellano y con prefijo rs-. No es una copia de
+   su hoja.
+
+   Reglas de la hoja (las vigilan los tests de R49, R53, R54, R55 y R60):
+   - Todo color, sombra y radio sale de un token del :root. Fuera de él, solo
+     var(--rs-…), transparent, currentColor, 0, 50 % o none.
+   - El burdeos es la MARCA y la ACCIÓN PRINCIPAL, nunca un estado. Los
+     estados llevan su semántica (ok, atención, error, info) y siempre texto.
+   - --rs-acero no es un color de texto (3,7:1 sobre blanco): el gris de texto
+     es --rs-acero-texto.
+   - Sin !important: Alpine esconde con style="display: none" en línea, y un
+     !important sobre display lo taparía (la confirmación del archivo saldría
+     siempre). Ni @import ni data:.
+   - Transiciones de 250 ms como mucho, solo de color, fondo, borde, sombra,
+     opacidad y transform. Aquí no se anima nada salvo el pulso del paso en
+     curso del circuito (.rs-paso); las entradas del portal viven en
+     css/portal.css. Todo se apaga con prefers-reduced-motion.
+
+   Convivencia con Tailwind (CDN, sin versión fija: H-6). Sus utilidades se
+   inyectan DESPUÉS de esta hoja, así que a igual especificidad ganan ellas:
+   - Las directivas :class del circuito (semáforo, dudoso, arrastrando…)
+     siguen pintando los ESTADOS por encima del aspecto por defecto de cada
+     componente, que es justo lo que se quiere.
+   - Su hoja base pone background-color: transparent en [type='button'], con
+     especificidad (0,1,0): por eso los fondos de los botones se escriben con
+     (0,2,0), .rs-btn.rs-btn--primario (design.md §15.7, regla 4).
+   - En un mismo elemento no se mezcla una clase rs- con una utilidad que fije
+     la misma propiedad: ganaría la utilidad.
+   ========================================================================== */
 
 :root {
-  --ruesma-burdeos: #ad1833;
+  /* Marca */
+  --rs-burdeos: #9f2842;
+  --rs-burdeos-fuerte: #7a1e33;
+  --rs-burdeos-suave: #f7eaee;
+  --rs-acero: #7b868c;
+  --rs-acero-300: #aab1b6;
+  --rs-acero-100: #dfe2e4;
+  --rs-acero-texto: #5d676d;
+
+  /* Neutros */
+  --rs-tinta: #1d2024;
+  --rs-tinta-suave: #4a4f55;
+  --rs-papel: #ffffff;
+  --rs-lienzo: #f3f4f5;
+  --rs-linea: rgba(123, 134, 140, 0.22);
+  --rs-linea-fuerte: rgba(123, 134, 140, 0.4);
+  --rs-halo: rgba(159, 40, 66, 0.06);
+  --rs-velo: rgba(255, 255, 255, 0.85);
+  --rs-rayado: rgba(123, 134, 140, 0.12);
+
+  /* Estados: los mismos tonos que el circuito ya usa en sus :class
+     (emerald, amber, red, sky), para que casen con ellos. */
+  --rs-ok: #047857;
+  --rs-ok-suave: #ecfdf5;
+  --rs-atencion: #92400e;
+  --rs-atencion-suave: #fffbeb;
+  --rs-error: #b91c1c;
+  --rs-error-suave: #fef2f2;
+  --rs-info: #0369a1;
+  --rs-info-suave: #f0f9ff;
+
+  /* Sombras */
+  --rs-sombra-sm: 0 1px 2px rgba(29, 32, 36, 0.05);
+  --rs-sombra-md: 0 18px 40px -22px rgba(29, 32, 36, 0.35);
+  --rs-sombra-marca: 0 22px 48px -24px rgba(159, 40, 66, 0.55);
+
+  /* Tipografía (Google Fonts, con reserva si no cargan) */
+  --rs-fuente-titulos: 'Bricolage Grotesque', Georgia, serif;
+  --rs-fuente-texto: 'Archivo', system-ui, sans-serif;
+  --rs-fuente-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Geometría y movimiento */
+  --rs-radio: 16px;
+  --rs-radio-sm: 10px;
+  --rs-radio-pildora: 999px;
+  --rs-ancho: 1180px;
+  --rs-curva: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --rs-duracion: 180ms;
+  --rs-trama: 34px;
 }
 
+/* ---------- Base ------------------------------------------------------------ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* El lienzo con la trama de plano: cuadrícula en acero al 22 % y un halo
+   burdeos muy suave arriba a la derecha, como el portal corporativo. */
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--rs-fuente-texto);
+  color: var(--rs-tinta);
+  background-color: var(--rs-lienzo);
+  background-image:
+    linear-gradient(var(--rs-linea) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rs-linea) 1px, transparent 1px),
+    radial-gradient(140% 120% at 85% -10%, var(--rs-halo), transparent 55%);
+  background-size: var(--rs-trama) var(--rs-trama), var(--rs-trama) var(--rs-trama), 100% 100%;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  max-width: 100%;
+}
+
+::selection {
+  background-color: var(--rs-burdeos-suave);
+  color: var(--rs-burdeos-fuerte);
+}
+
+/* ---------- Barra superior común (las dos páginas, R44, R51) ---------------- */
+
+.rs-barra {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: var(--rs-velo);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+  backdrop-filter: saturate(160%) blur(10px);
+  border-bottom: 1px solid var(--rs-linea);
+}
+
+.rs-barra__fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  padding: 0.7rem clamp(1rem, 4vw, 2.4rem);
+}
+
+.rs-barra__marca {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.rs-barra__logo {
+  display: block;
+  height: 28px;
+  width: auto;
+}
+
+.rs-barra__sep {
+  width: 1px;
+  height: 24px;
+  background-color: var(--rs-linea-fuerte);
+}
+
+.rs-barra__etiqueta {
+  font-family: var(--rs-fuente-titulos);
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rs-acero-texto);
+}
+
+/* Las pestañas, a la derecha; si no caben, se desplazan en horizontal
+   dentro de la barra (nunca la página). */
+.rs-barra__pestanas {
+  display: flex;
+  gap: 0.15rem;
+  min-width: 0;
+  margin-left: auto;
+  padding-block: 0.2rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.rs-pestana {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--rs-radio-pildora);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--rs-tinta-suave);
+  text-decoration: none;
+  transition-property: color, background-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+a.rs-pestana:hover {
+  background-color: var(--rs-burdeos-suave);
+  color: var(--rs-burdeos);
+}
+
+/* La pestaña actual la pinta aria-current, no una clase (R51). */
+.rs-pestana[aria-current="page"] {
+  background-color: var(--rs-burdeos-suave);
+  color: var(--rs-burdeos);
+  font-weight: 600;
+}
+
+/* Solo en el circuito: la leyenda de R47, en una segunda línea. */
+.rs-barra__leyenda {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0 clamp(1rem, 4vw, 2.4rem) 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--rs-acero-texto);
+}
+
+.rs-barra__leyenda::before {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--rs-atencion);
+}
+
+/* Donde no caben la marca y las ocho pestañas en una línea, las pestañas
+   bajan a una segunda, a todo el ancho, con un desvanecido en los bordes. */
+@media (max-width: 1240px) {
+  .rs-barra__fila {
+    flex-wrap: wrap;
+  }
+
+  .rs-barra__pestanas {
+    flex-basis: 100%;
+    margin-left: 0;
+    margin-inline: -0.6rem;
+    padding-inline: 0.6rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent, var(--rs-tinta) 0.6rem, var(--rs-tinta) calc(100% - 1.5rem), transparent);
+    mask-image: linear-gradient(90deg, transparent, var(--rs-tinta) 0.6rem, var(--rs-tinta) calc(100% - 1.5rem), transparent);
+  }
+}
+
+@media (max-width: 560px) {
+  .rs-barra__sep,
+  .rs-barra__etiqueta {
+    display: none;
+  }
+}
+
+/* ---------- Estructura -------------------------------------------------------- */
+
+.rs-contenedor {
+  width: 100%;
+  max-width: var(--rs-ancho);
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2.4rem);
+}
+
+.rs-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-block: clamp(1.5rem, 4vw, 2.75rem) 3rem;
+}
+
+/* ---------- Texto ------------------------------------------------------------- */
+
+.rs-titulo {
+  margin: 0;
+  font-family: var(--rs-fuente-titulos);
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--rs-tinta);
+}
+
+.rs-subtitulo {
+  margin: 0.25rem 0 0;
+  font-size: 0.92rem;
+  color: var(--rs-tinta-suave);
+}
+
+.rs-entradilla {
+  max-width: 62ch;
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--rs-tinta-suave);
+}
+
+/* El rótulo de cada bloque: versalitas en acero con un trazo burdeos
+   delante, como una cota de plano. */
+.rs-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-family: var(--rs-fuente-titulos);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--rs-acero-texto);
+}
+
+.rs-rotulo::before {
+  content: "";
+  flex-shrink: 0;
+  width: 14px;
+  height: 2px;
+  border-radius: var(--rs-radio-pildora);
+  background-color: var(--rs-burdeos);
+}
+
+.rs-mono {
+  font-family: var(--rs-fuente-mono);
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-nota {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--rs-acero-texto);
+}
+
+.rs-nota--info {
+  color: var(--rs-info);
+}
+
+.rs-nota--ok {
+  color: var(--rs-ok);
+}
+
+.rs-nota--atencion {
+  color: var(--rs-atencion);
+}
+
+.rs-nota--error {
+  color: var(--rs-error);
+}
+
+.rs-enlace {
+  color: var(--rs-burdeos);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--rs-linea-fuerte);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition-property: color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-enlace:hover {
+  color: var(--rs-burdeos-fuerte);
+  text-decoration-color: currentColor;
+}
+
+/* ---------- Paneles ----------------------------------------------------------- */
+
+.rs-panel {
+  padding: clamp(1.1rem, 2.5vw, 1.6rem);
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio);
+  box-shadow: var(--rs-sombra-sm);
+}
+
+/* Un recuadro dentro de un panel: el estado del parte, un resumen. */
+.rs-panel--suave {
+  padding: 1rem 1.1rem;
+  background-color: var(--rs-lienzo);
+  border-radius: var(--rs-radio-sm);
+  box-shadow: none;
+}
+
+.rs-panel--atencion {
+  background-color: var(--rs-atencion-suave);
+  border-color: transparent;
+  border-left: 3px solid var(--rs-atencion);
+  box-shadow: none;
+  color: var(--rs-atencion);
+}
+
+/* La acción del bloque: un filete burdeos arriba. */
+.rs-panel--destacado {
+  position: relative;
+  overflow: hidden;
+}
+
+.rs-panel--destacado::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background-color: var(--rs-burdeos);
+}
+
+/* Un panel que envuelve una tabla o una lista pegada a los bordes: la tabla
+   se desplaza DENTRO del panel, nunca la página. */
+.rs-panel--tabla {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.rs-panel--lista {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ---------- Botones (una sola acción principal por vista) --------------------- */
+
+.rs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border: 1px solid transparent;
+  border-radius: var(--rs-radio-pildora);
+  font-family: var(--rs-fuente-texto);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-btn.rs-btn--primario {
+  background-color: var(--rs-burdeos);
+  color: var(--rs-papel);
+  box-shadow: var(--rs-sombra-marca);
+}
+
+.rs-btn.rs-btn--primario:hover {
+  background-color: var(--rs-burdeos-fuerte);
+  transform: translateY(-1px);
+}
+
+.rs-btn.rs-btn--secundario {
+  background-color: var(--rs-papel);
+  border-color: var(--rs-acero);
+  color: var(--rs-tinta);
+}
+
+.rs-btn.rs-btn--secundario:hover {
+  background-color: var(--rs-burdeos-suave);
+  border-color: var(--rs-burdeos);
+  color: var(--rs-burdeos);
+}
+
+.rs-btn.rs-btn--texto {
+  padding-inline: 0.6rem;
+  background-color: transparent;
+  color: var(--rs-acero-texto);
+}
+
+.rs-btn.rs-btn--texto:hover {
+  color: var(--rs-burdeos);
+}
+
+.rs-btn.rs-btn--ok {
+  background-color: var(--rs-ok);
+  color: var(--rs-papel);
+  box-shadow: var(--rs-sombra-sm);
+}
+
+.rs-btn.rs-btn--peligro {
+  background-color: var(--rs-error);
+  color: var(--rs-papel);
+  box-shadow: var(--rs-sombra-sm);
+}
+
+.rs-btn.rs-btn--ok:hover,
+.rs-btn.rs-btn--peligro:hover {
+  box-shadow: var(--rs-sombra-md);
+  transform: translateY(-1px);
+}
+
+.rs-btn.rs-btn--compacto {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.rs-btn:active {
+  transform: translateY(0);
+}
+
+/* Lo deshabilitado, apagado y sin sombra (exento de AA). Después de las
+   variantes, con su misma especificidad, para que gane. */
+.rs-btn:disabled,
+.rs-btn:disabled:hover {
+  background-color: var(--rs-acero-100);
+  border-color: transparent;
+  color: var(--rs-acero-texto);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* ---------- Campos ------------------------------------------------------------ */
+
+.rs-campo {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-acero);
+  border-radius: var(--rs-radio-sm);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--rs-tinta);
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-campo:hover {
+  border-color: var(--rs-tinta-suave);
+}
+
+.rs-campo:focus {
+  border-color: var(--rs-burdeos);
+}
+
+.rs-campo__etiqueta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rs-acero-texto);
+}
+
+/* ---------- Chips (el estado siempre con su texto, R57) ----------------------- */
+
+.rs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--rs-radio-pildora);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background-color: var(--rs-acero-100);
+  color: var(--rs-tinta-suave);
+}
+
+.rs-chip--neutro {
+  background-color: var(--rs-acero-100);
+  color: var(--rs-tinta-suave);
+}
+
+.rs-chip--contorno {
+  background-color: var(--rs-papel);
+  border-color: var(--rs-linea-fuerte);
+  color: var(--rs-tinta-suave);
+}
+
+.rs-chip--ok {
+  background-color: var(--rs-ok-suave);
+  color: var(--rs-ok);
+}
+
+.rs-chip--atencion {
+  background-color: var(--rs-atencion-suave);
+  color: var(--rs-atencion);
+}
+
+.rs-chip--info {
+  background-color: var(--rs-info-suave);
+  color: var(--rs-info);
+}
+
+.rs-chip--error {
+  background-color: var(--rs-error-suave);
+  color: var(--rs-error);
+}
+
+/* ---------- Avisos: fondo suave, filete a la izquierda, texto del tono -------- */
+
+.rs-aviso {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-radius: var(--rs-radio-sm);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rs-aviso--error {
+  background-color: var(--rs-error-suave);
+  color: var(--rs-error);
+}
+
+.rs-aviso--atencion {
+  background-color: var(--rs-atencion-suave);
+  color: var(--rs-atencion);
+}
+
+.rs-aviso--info {
+  background-color: var(--rs-info-suave);
+  color: var(--rs-info);
+}
+
+.rs-aviso--compacto {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+}
+
+/* ---------- Tablas ------------------------------------------------------------- */
+
+.rs-tabla {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.rs-tabla th {
+  padding: 0.7rem 1rem;
+  background-color: var(--rs-lienzo);
+  border-bottom: 1px solid var(--rs-linea);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--rs-acero-texto);
+}
+
+.rs-tabla td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--rs-linea);
+  vertical-align: top;
+}
+
+.rs-tabla tbody tr {
+  transition-property: background-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rs-tabla tbody tr:hover {
+  background-color: var(--rs-lienzo);
+}
+
+/* ---------- Pie ---------------------------------------------------------------- */
+
+.rs-pie {
+  margin-top: auto;
+  border-top: 1px solid var(--rs-linea);
+}
+
+.rs-pie__texto {
+  padding-block: 1.4rem 2.2rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--rs-acero-texto);
+}
+
+/* ---------- El circuito de partes firmados (partes.html, design.md §15.7) ------ */
+
+.rs-cuerpo {
+  min-height: 100vh;
+}
+
+.rs-cabecera {
+  background-color: var(--rs-papel);
+  border-bottom: 1px solid var(--rs-linea);
+}
+
+.rs-cabecera__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 2rem;
+  padding-block: 1.4rem;
+}
+
+.rs-cabecera .rs-titulo {
+  font-size: clamp(1.35rem, 2.6vw, 1.6rem);
+}
+
+/* El indicador del backend, en una píldora. */
+.rs-estado-servicio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.85rem;
+  background-color: var(--rs-papel);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-pildora);
+  font-size: 0.78rem;
+}
+
+/* El punto del semáforo: su color lo ponen las :class del circuito. */
+.rs-punto {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background-color: var(--rs-acero-300);
+}
+
+/* Donde se suelta la remesa (la convención de «suelta aquí»; en el circuito
+   no hay placeholders). El color de arrastre lo pone su :class. */
+.rs-zona {
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  background-color: var(--rs-lienzo);
+  border: 1.5px dashed var(--rs-acero);
+  border-radius: var(--rs-radio);
+  transition-property: border-color, background-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-progreso {
+  width: 100%;
+  height: 0.5rem;
+  overflow: hidden;
+  background-color: var(--rs-acero-100);
+  border-radius: var(--rs-radio-pildora);
+}
+
+/* El ancho lo pone su :style; sin transición (el ancho no es de las
+   propiedades que se animan, R55). */
+.rs-progreso__barra {
+  height: 100%;
+  background-color: var(--rs-burdeos);
+  border-radius: var(--rs-radio-pildora);
+}
+
+/* Una fila de la lista de partes (un botón a todo el ancho). */
+.rs-fila {
+  display: block;
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  text-align: left;
+  transition-property: background-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+.rs-fila:hover {
+  background-color: var(--rs-lienzo);
+}
+
+/* El paso en curso de un parte: el único pulso de la hoja (R55). */
+.rs-paso {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--rs-info);
+  animation: rs-paso-pulso 2s ease-in-out infinite;
+}
+
+@keyframes rs-paso-pulso {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* El visor del PDF del parte. */
+.rs-visor {
+  display: block;
+  width: 100%;
+  height: 28rem;
+  background-color: var(--rs-lienzo);
+  border: 1px solid var(--rs-linea);
+  border-radius: var(--rs-radio-sm);
+}
+
+.rs-resumen {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.rs-resumen > li + li {
+  border-top: 1px solid var(--rs-linea);
+}
+
+/* ---------- Foco (R54): siempre visible, en burdeos ---------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--rs-burdeos);
+  outline-offset: 2px;
+}
+
+/* En los botones rellenos, un poco más fuera, para que el contorno no se
+   confunda con el relleno. */
+.rs-btn.rs-btn--primario:focus-visible,
+.rs-btn.rs-btn--ok:focus-visible,
+.rs-btn.rs-btn--peligro:focus-visible {
+  outline-offset: 3px;
+}
+
+/* ---------- Movimiento reducido (R55) ------------------------------------------ */
+
+/* :is(*, #…) toma la especificidad de un id (1,0,0): así esta regla gana a
+   cualquier regla de clase de las hojas —y a las utilidades de Tailwind, como
+   su animate-pulse— sin recurrir a !important (R60). Ningún elemento lleva
+   ese id: solo sube la especificidad. */
+@media (prefers-reduced-motion: reduce) {
+  :is(*, #rs-movimiento-reducido),
+  :is(*, #rs-movimiento-reducido)::before,
+  :is(*, #rs-movimiento-reducido)::after {
+    transition: none;
+    animation: none;
+  }
 }

@@ -308,7 +308,7 @@ toca** (§15.2): si alguno exigiera otra cosa, **PARA** y anótalo en
 `progress/current.md`. `front-portal` solo se lee. Todo sin red salvo lo que
 ya pide cada verificación.
 
-- [ ] **T14**: **tokens y logo**. (a) Copiar, sin modificar,
+- [x] **T14**: **tokens y logo**. (a) Copiar, sin modificar,
       `front-portal/public/assets/img/logo-ruesma.svg` y `favicon.svg` a
       `services/postventa-front/img/` y comprobar su SHA-256 contra
       `design.md` §15.4. (b) `css/styles.css`: los tokens de §15.3 en el

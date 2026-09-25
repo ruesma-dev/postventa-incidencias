@@ -916,6 +916,22 @@ def test_f035_r59_control_la_guardia_rechaza_lo_que_no_es_presentacion(caso):
     assert problemas != [], f"la guardia de R59 no ve «{caso}»"
 
 
+def test_f035_r59_control_la_barra_tiene_que_ser_el_primer_hijo_del_circuito():
+    """Control: la barra movida debajo de la cabecera. Quitada la barra, lo demás es idéntico:
+    solo la comprobación de «primer hijo» lo ve (la mutación G4 de T18 lo destapó)."""
+    real = CIRCUITO.read_text(encoding="utf-8")
+    inicio = real.index("    <!-- F-035 · Barra superior común")
+    fin = real.index("</nav>", inicio) + len("</nav>\n")
+    bloque = real[inicio:fin]
+    sin_barra = real[:inicio] + real[fin:]
+    tras_cabecera = sin_barra.index("</header>\n") + len("</header>\n")
+    copia = sin_barra[:tras_cabecera] + bloque + sin_barra[tras_cabecera:]
+
+    problemas = diferencias_de_presentacion(real, copia)
+
+    assert any("primer hijo" in p for p in problemas), problemas
+
+
 def test_f035_r59_control_la_guardia_acepta_un_class_cambiado():
     real, copia = _circuito_estropeado(
         'class="rs-btn rs-btn--primario">\n            Archivar y cerrar',

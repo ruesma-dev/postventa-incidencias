@@ -1941,17 +1941,39 @@ def test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_err
 # --- R57 · Cada chip pinta el estado que dice (P-R1, :data-estado) ---------------
 
 
+#: Los chips de estado del portal (medido: 5; conest ×3, revisión y volcado).
+CHIPS_DE_ESTADO = 5
+
+
 def test_f035_r57_el_color_de_cada_chip_es_el_del_estado_que_dice_su_texto():
-    """El `:data-estado` (el color) y el `x-text` (lo que se lee) miran el mismo campo."""
+    """El `:data-estado` (el color) y el `x-text` (lo que se lee) miran el mismo campo.
+
+    Los chips se eligen por lo que ENSEÑAN (un `rs-chip` cuyo `x-text` lee un
+    `<x>.estado`), nunca por el `:data-estado` que se vigila: si se eligieran
+    por él, borrarlo o cambiarlo por un `data-estado` fijo sacaría al chip de
+    lo que el test mira (review 5, operadores «borrar» y «literal»).
+    """
+    doc = leer_html(PORTAL)
+    # Excepción NOMBRADA: el estado de publicación del datamart (sección
+    # `datos`, «pendiente») no es de los tres catálogos de R57 y va en chip
+    # neutro de contorno, sin color de estado (informe del bloque 5a, §2).
+    datamart = seccion(doc, "datos")
+    chips = [
+        e for e in doc.elementos()
+        if "rs-chip" in clases(e) and re.search(r"\b[a-z]+\.estado\b", e.atributos.get("x-text", ""))
+        and not e.dentro_de(datamart)
+    ]
+    assert len(chips) == CHIPS_DE_ESTADO, f"los chips de estado del portal (hay {len(chips)})"
+
     problemas = []
-    for e in leer_html(PORTAL).elementos():
+    for e in chips:
+        leido = re.search(r"\b([a-z]+\.estado)\b", e.atributos["x-text"]).group(1)
         estado = _normaliza(e.atributos.get(":data-estado", ""))
-        if not estado:
-            continue
-        if not re.fullmatch(r"[a-z]+\.estado", estado) or not re.search(
-            rf"(^|\(){re.escape(estado)}(\)|$)", _normaliza(e.atributos.get("x-text", ""))
-        ):
-            problemas.append(f"<{e.nombre} :data-estado=\"{estado}\" x-text=\"{e.atributos.get('x-text')}\">")
+        if estado != leido:
+            problemas.append(
+                f"<{e.nombre} x-text=\"{e.atributos['x-text']}\">: su color tiene que salir de "
+                f":data-estado=\"{leido}\", no de «{estado or e.atributos.get('data-estado', '(nada)')}»"
+            )
     assert problemas == [], "chips cuyo color no es el del estado que se lee:\n" + "\n".join(problemas)
 
 

@@ -125,6 +125,15 @@ def _hoja(n: int, hoja: str = FIRMADOS) -> str:
     return f"{_villa(n)}/{hoja}"
 
 
+def _villa_creada(n: int) -> str:
+    """La villa que **crea** el sistema: tres cifras desde F-049 (`VILLA 008`)."""
+    return f"{INC}/VILLA {n:03d}"
+
+
+def _hoja_creada(n: int) -> str:
+    return f"{_villa_creada(n)}/{FIRMADOS}"
+
+
 def _nombre(n: int) -> str:
     """El nombre del fichero de la reclamación de la villa `n` (R5)."""
     return nombre_de_archivo(codigo_obra="0677", numero_incidencia=reclamacion_0677(n))
@@ -452,7 +461,7 @@ def test_f013_r5_sin_codigos_guardados_no_hay_nombre_y_no_se_llama_a_nadie(monta
 
 
 def test_f013_r15_la_unidad_que_falta_se_crea_tras_la_traza_previa_y_en_orden(montar):
-    """R15, R34, R40 · villa 8: `VILLA 08` y su hoja, después de `pendiente`."""
+    """R15, R34, R40 · villa 8: `VILLA 008` y su hoja, después de `pendiente`."""
     m = montar(8)
 
     ctx = m.archivar()
@@ -461,17 +470,17 @@ def test_f013_r15_la_unidad_que_falta_se_crea_tras_la_traza_previa_y_en_orden(mo
         *_sigrid(8),
         *LISTADOS_HASTA_LA_UNIDAD,
         TRAZA_PREVIA,
-        _crear(INC, "VILLA 08"),
-        f"log:{LOG_CARPETA_CREADA}{_villa(8)}",
-        _crear(_villa(8), FIRMADOS),
-        f"log:{LOG_CARPETA_CREADA}{_hoja(8)}",
+        _crear(INC, "VILLA 008"),
+        f"log:{LOG_CARPETA_CREADA}{_villa_creada(8)}",
+        _crear(_villa_creada(8), FIRMADOS),
+        f"log:{LOG_CARPETA_CREADA}{_hoja_creada(8)}",
         BUSCAR,
         SUBIR,
         TRAZA_FINAL,
     ]
-    assert m.explorador.carpetas_nuevas == [_villa(8), _hoja(8)]
-    assert ctx.archivo.carpeta == _hoja(8)
-    assert ctx.avisos == [_aviso_creada(_villa(8)), _aviso_creada(_hoja(8))]
+    assert m.explorador.carpetas_nuevas == [_villa_creada(8), _hoja_creada(8)]
+    assert ctx.archivo.carpeta == _hoja_creada(8)
+    assert ctx.avisos == [_aviso_creada(_villa_creada(8)), _aviso_creada(_hoja_creada(8))]
 
 
 def test_f013_r15_sin_ninguna_carpeta_se_crean_los_cuatro_niveles_uno_a_uno(montar):
@@ -486,14 +495,14 @@ def test_f013_r15_sin_ninguna_carpeta_se_crean_los_cuatro_niveles_uno_a_uno(mont
     creaciones = [
         ("", OBRA_NUEVA),
         (OBRA_NUEVA, INCIDENCIAS),
-        (nueva_inc, "VILLA 05"),
-        (f"{nueva_inc}/VILLA 05", FIRMADOS),
+        (nueva_inc, "VILLA 005"),
+        (f"{nueva_inc}/VILLA 005", FIRMADOS),
     ]
     assert m.explorador.creaciones == creaciones
     assert all("/" not in nombre for _, nombre in creaciones)
     assert m.registro[: len(_sigrid(5)) + 2] == [*_sigrid(5), _listar(""), TRAZA_PREVIA]
-    assert ctx.archivo.carpeta == f"{nueva_inc}/VILLA 05/{FIRMADOS}"
-    rutas = [OBRA_NUEVA, nueva_inc, f"{nueva_inc}/VILLA 05", f"{nueva_inc}/VILLA 05/{FIRMADOS}"]
+    assert ctx.archivo.carpeta == f"{nueva_inc}/VILLA 005/{FIRMADOS}"
+    rutas = [OBRA_NUEVA, nueva_inc, f"{nueva_inc}/VILLA 005", f"{nueva_inc}/VILLA 005/{FIRMADOS}"]
     assert ctx.avisos == [_aviso_creada(ruta) for ruta in rutas]
     assert m.log == [f"log:{LOG_CARPETA_CREADA}{ruta}" for ruta in rutas]
 
@@ -549,8 +558,8 @@ def test_f013_r40_el_log_de_carpeta_creada_es_un_aviso_del_logger_del_paso(monta
 
     creadas = [r for r in caplog.records if r.getMessage().startswith(LOG_CARPETA_CREADA)]
     assert [r.getMessage() for r in creadas] == [
-        f"{LOG_CARPETA_CREADA}{_villa(8)}",
-        f"{LOG_CARPETA_CREADA}{_hoja(8)}",
+        f"{LOG_CARPETA_CREADA}{_villa_creada(8)}",
+        f"{LOG_CARPETA_CREADA}{_hoja_creada(8)}",
     ]
     assert all(r.levelno == logging.WARNING for r in creadas)
     assert all(r.name == LOGGER_DEL_PASO for r in creadas)
@@ -713,12 +722,12 @@ def test_f013_r21_si_falla_una_creacion_no_se_sube_y_el_reintento_sigue_donde_qu
         m.archivar()
 
     assert m.registro[-4:] == [
-        _crear(INC, "VILLA 08"),
-        f"log:{LOG_CARPETA_CREADA}{_villa(8)}",
-        _crear(_villa(8), FIRMADOS),
+        _crear(INC, "VILLA 008"),
+        f"log:{LOG_CARPETA_CREADA}{_villa_creada(8)}",
+        _crear(_villa_creada(8), FIRMADOS),
         TRAZA_ERROR,
     ]
-    assert m.repositorio.ultima_traza.carpeta == _hoja(8)
+    assert m.repositorio.ultima_traza.carpeta == _hoja_creada(8)
     assert m.repositorio.ultima_traza.motivo == "el proveedor devolvió 423: bloqueado"
     assert BUSCAR not in m.registro and SUBIR not in m.registro
 
@@ -731,12 +740,12 @@ def test_f013_r21_si_falla_una_creacion_no_se_sube_y_el_reintento_sigue_donde_qu
 
     ctx = m.archivar()
 
-    assert _listar(_villa(8)) in m.registro
+    assert _listar(_villa_creada(8)) in m.registro
     assert [linea for linea in m.registro if linea.startswith("explorador.crear")] == [
-        _crear(_villa(8), FIRMADOS)
+        _crear(_villa_creada(8), FIRMADOS)
     ]
-    assert m.explorador.carpetas_nuevas == [_villa(8), _hoja(8)]
-    assert ctx.archivo.carpeta == _hoja(8)
+    assert m.explorador.carpetas_nuevas == [_villa_creada(8), _hoja_creada(8)]
+    assert ctx.archivo.carpeta == _hoja_creada(8)
 
 
 def test_f013_r21_si_la_traza_previa_no_se_puede_escribir_no_se_crea_ni_se_sube(montar):
@@ -769,7 +778,7 @@ def test_f013_r21_en_la_carrera_de_f033_no_se_crea_ni_se_sube(montar):
         8, repositorio_cls=_RepositorioEnCarrera,
         resultados={1: ResultadoGuardado.SIN_CAMBIOS},
     )
-    m.repositorio.la_de_la_otra = _traza(nombre_fichero=_nombre(8), carpeta=_hoja(8))
+    m.repositorio.la_de_la_otra = _traza(nombre_fichero=_nombre(8), carpeta=_hoja_creada(8))
 
     ctx = m.archivar()
 

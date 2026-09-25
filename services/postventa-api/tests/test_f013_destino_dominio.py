@@ -786,21 +786,21 @@ def test_f013_r37_el_patron_es_el_medido():
 #: `design.md` §4.6, los 15 casos medidos de la 0677, fila a fila:
 #: (con.cod, con.res, carpeta en Posventa hoy, nombre derivado, qué hará el sistema).
 TABLA_4_6 = (
-    ("0677.03VILLA 1.", "Viviendas Bloque Villa 1", "VILLA 01", "VILLA 01", "resuelve"),
-    ("0677.03VILLA 2.", "Viviendas Bloque Villa 2", "VILLA 02", "VILLA 02", "resuelve en PARTES FIRMADO"),
-    ("0677.03VILLA 3.", "Viviendas Bloque Villa 3", "VILLA 03", "VILLA 03", "resuelve"),
-    ("0677.03VILLA 4.", "Viviendas Bloque Villa 4", "VILLA 04", "VILLA 04", "crea PARTES FIRMADOS"),
-    ("0677.03VILLA 5.", "Viviendas Bloque Villa 5", "VILLA 05", "VILLA 05", "resuelve"),
-    ("0677.03VILLA 6.", "Viviendas Bloque Villa 6", "VILLA 06", "VILLA 06", "resuelve"),
-    ("0677.03VILLA 7.", "Viviendas Bloque Villa 7", "VILLA 07", "VILLA 07", "resuelve"),
-    ("0677.03VILLA 8.", "Viviendas Bloque Villa 8", None, "VILLA 08", "crea VILLA 08 y su PARTES FIRMADOS"),
-    ("0677.03VILLA 9.", "Viviendas Bloque Villa 9", None, "VILLA 09", "crea VILLA 09 y su PARTES FIRMADOS"),
-    ("0677.03VILLA 10.", "Viviendas Bloque Villa 10", None, "VILLA 10", "crea VILLA 10 y su PARTES FIRMADOS"),
-    ("0677.03VILLA 11.", "Viviendas Bloque Villa 11", None, "VILLA 11", "crea VILLA 11 y su PARTES FIRMADOS"),
-    ("0677.03VILLA 12.", "Viviendas Bloque Villa 12", None, "VILLA 12", "crea VILLA 12 y su PARTES FIRMADOS"),
-    ("0677.03VILLA 13.", "Viviendas Bloque Villa 13", None, "VILLA 13", "crea VILLA 13 y su PARTES FIRMADOS"),
-    ("0677.03VILLA 14.", "Viviendas Bloque Villa 14", None, "VILLA 14", "crea VILLA 14 y su PARTES FIRMADOS"),
-    ("0677.03VILLA 15.", "Viviendas Bloque Villa 15", None, "VILLA 15", "crea VILLA 15 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 1.", "Viviendas Bloque Villa 1", "VILLA 01", "VILLA 001", "resuelve"),
+    ("0677.03VILLA 2.", "Viviendas Bloque Villa 2", "VILLA 02", "VILLA 002", "resuelve en PARTES FIRMADO"),
+    ("0677.03VILLA 3.", "Viviendas Bloque Villa 3", "VILLA 03", "VILLA 003", "resuelve"),
+    ("0677.03VILLA 4.", "Viviendas Bloque Villa 4", "VILLA 04", "VILLA 004", "crea PARTES FIRMADOS"),
+    ("0677.03VILLA 5.", "Viviendas Bloque Villa 5", "VILLA 05", "VILLA 005", "resuelve"),
+    ("0677.03VILLA 6.", "Viviendas Bloque Villa 6", "VILLA 06", "VILLA 006", "resuelve"),
+    ("0677.03VILLA 7.", "Viviendas Bloque Villa 7", "VILLA 07", "VILLA 007", "resuelve"),
+    ("0677.03VILLA 8.", "Viviendas Bloque Villa 8", None, "VILLA 008", "crea VILLA 008 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 9.", "Viviendas Bloque Villa 9", None, "VILLA 009", "crea VILLA 009 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 10.", "Viviendas Bloque Villa 10", None, "VILLA 010", "crea VILLA 010 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 11.", "Viviendas Bloque Villa 11", None, "VILLA 011", "crea VILLA 011 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 12.", "Viviendas Bloque Villa 12", None, "VILLA 012", "crea VILLA 012 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 13.", "Viviendas Bloque Villa 13", None, "VILLA 013", "crea VILLA 013 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 14.", "Viviendas Bloque Villa 14", None, "VILLA 014", "crea VILLA 014 y su PARTES FIRMADOS"),
+    ("0677.03VILLA 15.", "Viviendas Bloque Villa 15", None, "VILLA 015", "crea VILLA 015 y su PARTES FIRMADOS"),
 )
 
 
@@ -853,11 +853,11 @@ def test_f013_r37_tabla_4_6_los_15_casos_de_la_0677(cod, res, carpeta, derivado,
         ("0677.VILLA 13.", "0677", None),  # sin grupo
         (None, "0677", None),
         ("", "0677", None),
-        ("0677.03VILLA  13.", "0677", "VILLA 13"),  # dos blancos
+        ("0677.03VILLA  13.", "0677", "VILLA 013"),  # dos blancos
         ("0677.03VILLA 100.", "0677", "VILLA 100"),
-        ("00677.03VILLA 5.", "0677", "VILLA 05"),  # mismo número de obra
-        ("0677.03VILLA 5.", "677", "VILLA 05"),
-        ("  0677.03VILLA 5.  ", "0677", "VILLA 05"),  # extremos recortados
+        ("00677.03VILLA 5.", "0677", "VILLA 005"),  # mismo número de obra
+        ("0677.03VILLA 5.", "677", "VILLA 005"),
+        ("  0677.03VILLA 5.  ", "0677", "VILLA 005"),  # extremos recortados
         ("X0677.03VILLA 5.", "0677", None),  # entero: fullmatch
         ("0677.03VILLA 5.X", "0677", None),
         ("0677.03VILLA 5.", "ADM", None),  # obra sin número
@@ -953,7 +953,7 @@ def test_f013_r39_los_tramos_creados_casan_consigo_mismos(buscado):
 
 
 def test_f013_r46_un_con_res_que_no_acaba_en_su_villa_no_casaria():
-    """R46 · `Villa 13 bis` recibiría `VILLA 13`, que ni casa ni deja de ser parecida.
+    """R46 · `Villa 13 bis` recibiría `VILLA 013`, que ni casa ni deja de ser parecida.
 
     La siguiente resolución daría 409 para siempre: por eso el resolutor lo
     comprueba antes de anotar la creación (`nombre_no_casaria`).
@@ -961,7 +961,7 @@ def test_f013_r46_un_con_res_que_no_acaba_en_su_villa_no_casaria():
     ubicacion = _ubicacion("0677.03VILLA 13.", "Viviendas Bloque Villa 13 bis")
     derivado = nombre_derivado_de_unidad("0677.03VILLA 13.", codigo_obra="0677")
 
-    assert derivado == "VILLA 13"
+    assert derivado == "VILLA 013"
     assert carpetas_de_unidad([derivado], ubicacion=ubicacion) == ()
     assert parecidas_de_unidad([derivado], ubicacion=ubicacion) == (derivado,)
 

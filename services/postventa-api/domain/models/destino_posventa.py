@@ -26,7 +26,8 @@ es el resolutor (`application/pipelines/destino_archivo.py`).
 **Enmienda del 2026-09-24 (T2, T3 y la parada T4).** La medición desmintió el
 casado literal de la obra: la carpeta de la 0677 es `677  MIRASIERRA`, sin el
 cero y con dos blancos. Desde entonces la obra casa **por su número** (R10), la
-unidad nueva se llama `VILLA NN` derivado del `con.cod` (R37), la hoja admite
+unidad nueva se llama `VILLA NN` derivado del `con.cod` (R37; con **tres**
+cifras desde F-049, 2026-09-25: `VILLA 008`), la hoja admite
 **una** forma alternativa (R49) y las reglas amplias se ensancharon donde la
 medición enseñó un hueco (§4.5).
 """
@@ -471,11 +472,15 @@ def nombre_de_obra_nueva(codigo_obra: str | None, obra_nombre: str | None) -> st
 
 
 def nombre_derivado_de_unidad(unidad_codigo: str | None, *, codigo_obra: str | None) -> str | None:
-    """`VILLA NN`, derivado del `con.cod` de la unidad (R37).
+    """`VILLA NNN`, derivado del `con.cod` de la unidad (R37).
 
     Solo si el código, recortado, cumple **entero** el patrón medido y el
-    número de su `<obra>` es el de `codigo_obra`. `NN` es `<n>` como entero con
-    al menos dos cifras (`1` → `VILLA 01`, `100` → `VILLA 100`). El `<grupo>`
+    número de su `<obra>` es el de `codigo_obra`. `NNN` es `<n>` como entero
+    con **al menos tres cifras** (`8` → `VILLA 008`, `13` → `VILLA 013`,
+    `1000` → `VILLA 1000`): así llama Posventa a sus unidades desde que
+    reorganizó la biblioteca (F-049, decisión del humano del 2026-09-25; hasta
+    entonces eran dos cifras). El ancho solo es del nombre **que se crea**: el
+    casado compara enteros, y `VILLA 01` sigue siendo la villa 1. El `<grupo>`
     no entra: Posventa no lo usa (y por eso R50). En cualquier otro caso,
     `None`: el sistema no inventa, y es un 409 solo si hay que crear.
     """
@@ -485,7 +490,7 @@ def nombre_derivado_de_unidad(unidad_codigo: str | None, *, codigo_obra: str | N
     numero = numero_de_obra(codigo_obra)
     if numero is None or int(encaje["obra"]) != numero:
         return None
-    return f"VILLA {int(encaje['n']):02d}"
+    return f"VILLA {int(encaje['n']):03d}"
 
 
 def nombre_de_carpeta_admisible(nombre: str) -> bool:

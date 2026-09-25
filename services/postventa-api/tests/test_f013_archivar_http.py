@@ -352,7 +352,7 @@ def test_f013_t13_posventa_archiva_en_la_carpeta_medida(estrategia, monkeypatch)
 def test_f013_t13_posventa_crea_lo_que_falta_con_el_mismo_archivador(
     estrategia, fabricas
 ):
-    """La villa 13: crea `VILLA 13` y su hoja, y **con la misma instancia** que sube.
+    """La villa 13: crea `VILLA 013` y su hoja, y **con la misma instancia** que sube.
 
     Sin costuras: el archivador sale de `construir_archivador` (sustituida),
     y es él quien lista, crea y sube. `construir_archivador` se llama **una**
@@ -368,12 +368,13 @@ def test_f013_t13_posventa_crea_lo_que_falta_con_el_mismo_archivador(
 
     assert respuesta.status_code == 200
     cuerpo = _cuerpo(respuesta)
-    assert cuerpo["carpeta"] == f"{_villa(13)}/{FIRMADOS}"
+    # Tres cifras: la villa que se crea (F-049).
+    assert cuerpo["carpeta"] == f"{INC}/VILLA 013/{FIRMADOS}"
     archivador = fabricas.archivador
     assert fabricas.construidas.count("archivador") == 1
     assert archivador.explorador.creaciones == [
-        (INC, "VILLA 13"),
-        (_villa(13), FIRMADOS),
+        (INC, "VILLA 013"),
+        (f"{INC}/VILLA 013", FIRMADOS),
     ]
     assert archivador.biblioteca.subidas == 1
     assert len(cuerpo["avisos"]) == 2

@@ -199,7 +199,7 @@
       `node --test "tests_js/*.test.js"` en verde salvo R44 del lado del
       circuito; `.\dev_front.ps1` vuelve a arrancar y `/` abre el portal.
 
-- [ ] **T9 bis** *(2026-09-25, D-2)*: en `partes.html`, **solo añadir** la
+- [x] **T9 bis** *(2026-09-25, D-2)*: en `partes.html`, **solo añadir** la
       barra superior (`<nav data-barra-portal>`) como primer hijo del
       `<div x-data="appPostventa()">`, tras la línea `:16` (`design.md` §2):
       HTML plano, `partes` con `aria-current="page"` y sin enlace, las otras

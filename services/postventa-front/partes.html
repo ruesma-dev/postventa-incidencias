@@ -15,6 +15,28 @@
 <body class="bg-slate-50 text-slate-800">
   <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
 
+    <!-- F-035 · Barra superior común (R44), en HTML PLANO: ni una directiva de
+         Alpine, ni <script>, ni <button> (R45). «Partes firmados» es esta
+         página; las demás pestañas son el portal (una maqueta) y se abren en
+         otra pestaña del navegador para no perder la remesa en curso (R31,
+         R47). Los href son los de Portal.enlaceSeccion(id, "circuito"). -->
+    <nav data-barra-portal aria-label="Secciones de posventa" class="bg-slate-900 text-slate-100">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-6 py-2">
+        <span class="text-sm font-semibold tracking-tight text-white">Posventa · Ruesma</span>
+        <div class="flex gap-1 overflow-x-auto text-sm">
+          <a href="./#/inicio" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Inicio</a>
+          <a href="./#/entrada" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Entrada</a>
+          <a href="./#/bandeja" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Bandeja de revisión</a>
+          <a href="./#/incidencias" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Incidencias</a>
+          <a href="./#/impresion" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Impresión de partes</a>
+          <span aria-current="page" class="whitespace-nowrap rounded px-3 py-1.5 bg-white font-medium text-slate-900">Partes firmados</span>
+          <a href="./#/economico" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Coste y venta</a>
+          <a href="./#/datos" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Datos y datamart</a>
+        </div>
+        <span class="text-xs text-slate-400">Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.</span>
+      </div>
+    </nav>
+
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
         <div>

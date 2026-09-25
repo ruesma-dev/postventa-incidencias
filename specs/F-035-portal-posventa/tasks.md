@@ -231,7 +231,7 @@
       (raíz) en verde; los tests de `tests/test_f007_documentacion.py` siguen en
       verde.
 
-- [ ] **T11**: evidencias de rigor. (a) `python -m harness.mutacion --feature F-035`
+- [x] **T11**: evidencias de rigor. (a) `python -m harness.mutacion --feature F-035`
       genera `progress/mutacion_F-035.md` (se espera «Sin líneas de producción
       en el alcance»: 0 mutantes). (b) Las seis mutaciones manuales de
       `design.md` §11, **en una copia aislada** (worktree en el scratchpad,

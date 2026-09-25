@@ -5,7 +5,8 @@
 >
 > implementer. T10 hecha (README del front, `docs/ARCHITECTURE.md` con la
 > sección del portal y el recuadro de la fila «Entra ID», `docs/DESPLIEGUE.md`
-> §6 con la propuesta de H-4). En curso: T11 (evidencias).
+> §6 con la propuesta de H-4). T11 hecha (campaña con 0 mutantes, 8/8
+> mutaciones a mano muertas en un worktree ya retirado, diffs a mano). En curso: T13.
 
 > ## ▶ F-035 · BLOQUE 3b (T8, T9 y T9 bis) HECHO · 2026-09-25 · siguiente: bloque 4 (T10–T13)
 >

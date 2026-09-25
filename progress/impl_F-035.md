@@ -914,3 +914,473 @@ pantalla estrecha, el resaltado de la pestaña activa) y que la pestaña
 | Cobertura de líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`, de `bash harness/init.sh`. Este bloque cambia HTML y siete líneas de tests |
 | Mutantes | **No se lanzan en este bloque** (se esperan 0; la campaña y las ocho mutaciones manuales son T11). Humo de Alpine con una mutación a mano: la ruptura se caza (§4) |
 | Tiempo de las suites | pytest del front: 25,60 s; `node --test tests_js/*.test.js`: 3,30 s; pytest de la raíz: 26,69 s (las tres lanzadas a la vez, sin caché); `test_f035_portal.py` solo: 3,66 s |
+
+## Bloque 4 · T10, T11 y T13 · 2026-09-25
+
+Encargo del líder: **solo** el bloque 4, T10 (documentación), T11
+(evidencias de rigor) y T13 (`bash harness/init.sh` en verde); de T12, que es
+**MANUAL del humano**, solo el guion (§5). Sin push; sin tocar
+`harness/features.json`, ni `front-portal`, ni `azure-apps`.
+
+Precondiciones: rama `feature/F-035-portal-posventa`, árbol limpio en
+`ca3fe46`. `bash harness/init.sh` en rojo **por diseño** al empezar,
+exactamente con los dos `[KO]` que dejó el bloque 3b, los dos de T10 (§3).
+Leídos `tasks.md`, `requirements.md` §1.7–§1.10 y §3, `design.md` (§1–§4,
+§6, §7.3, §9, §11–§14), los tests de R36 y R37, `CHECKPOINTS.md` C4 bis, el
+`README.md` del front, `docs/ARCHITECTURE.md` y `docs/DESPLIEGUE.md` §3 y §6.
+
+### 1 · Qué cambió
+
+| Commit | Fichero | Qué es |
+|---|---|---|
+| `da35ee2` **T10** | `services/postventa-front/README.md` | **Solo altas** (87 líneas). Un recuadro tras la introducción: la portada es el portal y el circuito vive en `partes.html`. Sección nueva **«La maqueta del portal (F-035)»**: qué es (con la tabla de ficheros), cómo se abre en local (`.\dev_front.ps1`, `/` y `/partes.html`), cómo se reconoce un placeholder y cómo se retira ficha a ficha (`design.md` §7.3). Y una nota fechada en «Tres cosas del `index.html`…» diciendo que habla del circuito, ahora en `partes.html`, **sin reescribir** la sección (`design.md` §3.2, recuadro) |
+| `da35ee2` **T10** | `docs/ARCHITECTURE.md` | **Solo altas** (102 líneas). Sección nueva **«El portal de posventa (F-035)»** (antes de «Semántica de dominio imprescindible»): las dos páginas, el mapa de `design.md` §4 con la fila `partes` enmendada, y **la regla de los placeholders como norma** (R11, R14–R16, R18, R27, R28). Y el **recuadro fechado que corrige la fila «Entra ID»** (D-5), debajo del recuadro de F-013, como las demás enmiendas del documento; la fila se deja tal cual, el recuadro la cita |
+| `da35ee2` **T10** | `docs/DESPLIEGUE.md` §6 | **Solo altas** (26 líneas). Recuadro: la tarjeta ya existe, apunta a la raíz y desde F-035 aterriza en el portal; el acceso sigue siendo `posventa-usuarios`; **propuesta de título y descripción (H-4)** para `front-portal`, a aplicar al publicar. El bloque de F-010 para pegar **no se reescribe** |
+| `da35ee2` **T10** | `specs/F-035-portal-posventa/tasks.md`, `progress/current.md` | T10 `[x]`; nota de bloque en curso |
+| T11 | `progress/mutacion_F-035.md` | **Nuevo**, generado por `python -m harness.mutacion --feature F-035` |
+| T11, T13 | `specs/F-035-portal-posventa/tasks.md`, este informe, `progress/current.md` | T11 y T13 `[x]`; **T12 sigue `[ ]`** (es del humano) |
+
+**Lo que NO se tocó**: ni código del front (`*.html`, `js/`, `css/`), ni un
+test, ni `harness/features.json`, ni `BACKLOG.md`, ni `front-portal`, ni
+`azure-apps/`. En los tres documentos, ni un identificador (GUID) del grupo,
+del inquilino ni de la aplicación: lo comprueba la propia R37 sobre
+`ARCHITECTURE.md` y el barrido del arnés en `init.sh`.
+
+### 2 · Decisiones (T10)
+
+1. **La fila «Entra ID» se corrige con recuadro, no reescribiéndola** (lo
+   pide `tasks.md` T10 y `design.md` §3.2): el recuadro cita el texto viejo,
+   dice que estaba desactualizado, da lo medido por el líder el 2026-09-25
+   (grupo de seguridad `posventa-usuarios`, 7 miembros; grupo `Postventa` no
+   de seguridad, 9 miembros, que **no** da acceso) y la decisión del humano
+   literal: **«posventa-usuarios, como hoy»**. Ampliar el acceso queda escrito
+   como trabajo del humano en Entra, no de una ficha.
+2. **La fuente de «un no miembro rebota»** es la prueba del humano del
+   2026-08-21 en `progress/impl_F-010.md` (T16), y así se cita. `design.md`
+   §9 la atribuía también a `progress/history.md` (cierre de F-010); lo busqué
+   y en `history.md` no aparece esa frase, así que no la cito.
+3. **El mapa de `ARCHITECTURE.md` añade F-045 en dos filas** donde `design.md`
+   §4 no lo pone: en `incidencias` (la ficha lleva
+   `ficha.registrarSinFirma`, F-045; `design.md` §5.5 ya titula «la ficha
+   (F-041, F-042, F-045, F-047)») y en `inicio` (la tarjeta «Partes firmados»
+   lleva `partes.registrarSinFirma` desde D-7). Es lo que hay pintado en
+   `index.html`: un mapa que omitiera dónde vive un placeholder de F-045
+   engañaría al que retire la maqueta.
+4. **H-4 queda solo anotado** en `docs/DESPLIEGUE.md` §6 con la propuesta de
+   `design.md` §14 (título «Posventa»; descripción «Portal de posventa:
+   incidencias, bandeja de revisión, partes firmados y coste. Las secciones
+   nuevas son una maqueta en validación.»), para aplicar **al publicar**, en
+   `front-portal`. La columna «Hoy» de la descripción no copia el texto de
+   `front-portal` (no lo he leído): dice de qué habla, según `design.md` §1.3.
+5. **El README no reescribe nada viejo**: donde dice «`index.html`»
+   hablando del circuito, lo resuelve el recuadro de la introducción («léase
+   `partes.html`»). Los hallazgos de H-2 (el «NO hace» desactualizado) siguen
+   sin tocar, como dice `design.md` §14.
+
+### 3 · Fase RED (T10)
+
+T10 no añade tests: sus dos requisitos, R36 y R37, tienen test desde el
+bloque 2 y estaban **en rojo** al empezar este bloque. Salida real del
+`bash harness/init.sh` de las precondiciones (en `ca3fe46`):
+
+```
+$ bash harness/init.sh
+...
+_ test_f035_r37_architecture_recoge_el_portal_y_la_regla_de_los_placeholders __
+tests\test_f035_placeholders_vivos.py:159: in test_f035_r37_architecture_recoge_el_portal_y_la_regla_de_los_placeholders
+    assert inicio is not None, "falta la sección «El portal de posventa (F-035)»"
+E   AssertionError: falta la sección «El portal de posventa (F-035)»
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r37_architecture_recoge_el_portal_y_la_regla_de_los_placeholders
+1 failed, 28 passed in 1.02s
+[KO] pytest en rojo (¿pytest instalado en el venv?)
+...
+_________________ test_f035_r36_el_readme_explica_la_maqueta __________________
+tests\test_f035_portal.py:600: in test_f035_r36_el_readme_explica_la_maqueta
+    assert inicio is not None, "falta la sección «La maqueta del portal (F-035)» del README"
+E   AssertionError: falta la sección «La maqueta del portal (F-035)» del README
+FAILED tests/test_f035_portal.py::test_f035_r36_el_readme_explica_la_maqueta
+1 failed, 281 passed in 13.37s
+[KO] servicio front (services/postventa-front): pytest en rojo
+[OK] PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)
+2 comprobaciones fallidas. NO empieces a trabajar.
+```
+
+(La raíz se paró con `-x` en la primera R37; la segunda,
+`test_f035_r37_architecture_corrige_el_grupo_de_entra_sin_guid`, estaba en
+rojo desde el bloque 2: «la fila de Entra ID sigue sin decir que el grupo
+posventa-usuarios existe (D-5)».)
+
+Verificación de T10 tras escribir, **en verde**:
+
+```
+$ python -m pytest tests/test_f035_portal.py -k r36 -q          # desde services/postventa-front
+1 passed, 37 deselected in 0.13s
+$ python -m pytest tests/test_f007_documentacion.py -q          # desde services/postventa-front
+10 passed in 0.07s
+$ python -m pytest tests/test_f035_placeholders_vivos.py -k r37 -q   # desde la raíz
+2 passed, 5 deselected in 0.08s
+```
+
+### 4 · T11 · Evidencias de rigor
+
+#### (a) La campaña del arnés
+
+```
+$ python -m harness.mutacion --feature F-035
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 54c0884067f3df62ee34a00eaa1d6ff059f69d30..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+Es lo que `tasks.md` T11 (a) esperaba: `harness.mutacion` solo muta Python y
+F-035 no cambia ninguna línea Python de producción (sus `.py` son tests,
+fuera del alcance). El informe generado, `progress/mutacion_F-035.md`, dice
+**0 mutantes, 0 supervivientes, 0.0 s, workers 1** (la cabecera del informe
+registra `--workers 1` aunque la consola anuncie «hasta 8»: con 0 mutantes no
+arranca ningún worker). Sin supervivientes, no hay análisis que completar.
+
+#### (b) Las ocho mutaciones a mano (`design.md` §11 y su recuadro)
+
+**Dónde**: un worktree aislado en el scratchpad de la sesión
+(`…/scratchpad/wt-f035`), creado desde `da35ee2` (T10 ya hecha) con una rama
+temporal **`feature/F-035-mutaciones-t11`**: las guardias del diff (R30/R43,
+R32, R33) solo se ejecutan en ramas `feature/F-035…` (decisión del bloque 2),
+y sin ese nombre la mutación 8 se habría saltado en vez de caer. **Nunca en el
+árbol real.** Un script del scratchpad (no versionado) aplica cada mutación
+como una sustitución de texto que exige **exactamente una** coincidencia,
+ejecuta las suites y restaura con `git checkout -- .`, comprobando
+`git status --porcelain` vacío antes de la siguiente.
+
+**Línea base en el worktree, sin mutar**: `node --test` de los dos ficheros
+de F-035, **76/76**; `pytest` del front, **294 passed**; `pytest` de la raíz,
+**68 passed, 1 failed**: `test_servicios_declarados.py::test_f001_r4_el_venv_declarado_existe`
+(«api: falta el venv services/postventa-api/.venv»). Ese rojo es **del
+worktree, no de la mutación**: el venv del backend no está versionado y un
+worktree no lo trae. En el árbol real esa prueba está en verde (§6). Por eso
+en la mutación 5 se cuentan solo los rojos **nuevos** frente a esa base.
+
+| # | Mutación | Se esperaba | Cayó (rojos nuevos frente a la base) | ¿Muerto? |
+|---|---|---|---|---|
+| 1 | `placeholder(id)` de `js/portal_app.js` llama a `fetch("/api/x")` | R16 | JS: **`f035 R16: pulsar todos los placeholders del catálogo no llama a nada…`** y `f035 R12: en el componente, el aviso en bloque…` (los dos: `Error: R16: la maqueta ha llamado a fetch`). Front: el puente `test_f007_js.py`, `test_f035_r14_la_maqueta_no_contiene_primitivas_de_red[portal_app.js]` y `test_f035_portal_app_es_solo_pegamento` | Sí |
+| 2 | Un `<button>` de `index.html` («Elegir el Excel», F-036) pierde `data-placeholder` | R10 | Front: **`test_f035_r10_cada_boton_es_placeholder_o_control_local_nunca_los_dos`** («placeholder=False, local=False») y el puente JS por `f035 R9: todo el catálogo de placeholders está pintado en index.html` («entrada.elegirExcel está en el catálogo y no se pinta en ninguna parte») | Sí |
+| 3 | `index.html` carga `js/api.js` | R15 | Front: **`test_f035_r15_el_portal_no_carga_nada_del_circuito`** («el portal carga módulos del circuito: ['js/api.js']») y `test_f035_r34_el_portal_cumple_el_contrato_de_carga` | Sí |
+| 4 | `formatoImporte(null)` devuelve `"0,00 €"` | R22 | JS: **`f035 R22: lo no enlazado se ve «sin enlazar», nunca 0,00 €`** (`+ '0,00 €'` / `- 'sin enlazar'`). Front: el puente JS | Sí |
+| 5 | `harness/features.json` con F-044 en `done` | R28 | Raíz: **`test_f035_r28_ninguna_ficha_done_deja_restos_en_la_maqueta`** (nueve restos con fichero y línea) y `test_backlog_md_existe_y_esta_al_dia` (el `BACKLOG.md` ya no casa con el JSON, efecto esperado de tocar el JSON a mano) | Sí |
+| 6 | El parte `PVI-EJEMPLO-0201` del dry-run de ejemplo pasa de `previsto` a `creado` | R40 | JS: **`f035 R40: el dry-run no crea nada y sus códigos previstos son provisionales`** («en un dry-run ningún parte está creado») y `f035 R40: el resumen de los dos resultados de ejemplo sale de sus filas` («un dry-run no crea nada»). Front: el puente JS | Sí |
+| 7 | `@click="x()"` en el enlace «Inicio» de la barra de `partes.html` | R45 | Front: **`test_f035_r45_la_barra_del_circuito_es_html_estatico`** («<a> de la barra del circuito lleva ['@click']») | Sí |
+| 8 | En `tests/test_f025_front.py`, además de la línea `INDEX`, una aserción cambia (`<` por `<=` en el orden archivar → adjuntar) | guardia de R32 | Front: **`test_f035_r32_de_los_tests_del_circuito_solo_cambia_la_linea_index_de_siete`** («services/postventa-front/tests/test_f025_front.py: M ('2', '2') (solo 1 1)») | Sí |
+
+**8 de 8 muertas; 0 supervivientes; 0 equivalentes.** No hay ningún
+equivalente que justificar (regla de C4 bis): cada mutación la caza el test
+que `design.md` §11 le asigna, y en cinco de las ocho la caza además otro
+test independiente.
+
+Trazas reales, recortadas a las líneas del fallo (la salida entera de las
+nueve ejecuciones se generó en el scratchpad y no se versiona):
+
+```
+== Mutación 1 · node --test tests_js/portal.test.js tests_js/maqueta_datos.test.js
+✖ f035 R16: pulsar todos los placeholders del catálogo no llama a nada y deja su aviso (R11) (1.5819ms)
+  Error: R16: la maqueta ha llamado a fetch
+✖ f035 R12: en el componente, el aviso en bloque cuenta la selección de incidencias (0.9698ms)
+  Error: R16: la maqueta ha llamado a fetch
+ℹ tests 76
+ℹ pass 74
+ℹ fail 2
+== Mutación 1 · python -m pytest tests -q --tb=line -rf   (front)
+tests\test_f035_portal.py:503: AssertionError: portal_app.js contiene «fetch(»
+tests\test_f035_portal.py:837: AssertionError: portal_app.js usa `fetch(`: la maqueta no habla con nadie (R14, R16)
+FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+FAILED tests/test_f035_portal.py::test_f035_r14_la_maqueta_no_contiene_primitivas_de_red[portal_app.js]
+FAILED tests/test_f035_portal.py::test_f035_portal_app_es_solo_pegamento - As...
+3 failed, 291 passed in 8.79s
+
+== Mutación 2 · python -m pytest tests -q --tb=line -rf   (front)
+tests\test_f035_portal.py:425: AssertionError: <button> «Elegir el Excel F-036»: tiene que ser data-placeholder o data-local, uno y solo uno (placeholder=False, local=False)
+FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+FAILED tests/test_f035_portal.py::test_f035_r10_cada_boton_es_placeholder_o_control_local_nunca_los_dos
+2 failed, 292 passed in 9.15s
+== Mutación 2 · node --test tests_js/portal.test.js   (el rojo del puente)
+✖ f035 R9: todo el catálogo de placeholders está pintado en index.html (10.355ms)
+  AssertionError [ERR_ASSERTION]: entrada.elegirExcel está en el catálogo y no se pinta en ninguna parte
+
+== Mutación 3 · python -m pytest tests -q --tb=line -rf   (front)
+tests\test_f035_portal.py:512: AssertionError: el portal carga módulos del circuito: ['js/api.js']
+tests\test_f035_portal.py:559: AssertionError: assert ['js/maqueta_..., 'js/api.js'] == ['js/maqueta_...ortal_app.js']
+FAILED tests/test_f035_portal.py::test_f035_r15_el_portal_no_carga_nada_del_circuito
+FAILED tests/test_f035_portal.py::test_f035_r34_el_portal_cumple_el_contrato_de_carga
+2 failed, 292 passed in 9.24s
+
+== Mutación 4 · node --test tests_js/portal.test.js tests_js/maqueta_datos.test.js
+✖ f035 R22: lo no enlazado se ve «sin enlazar», nunca 0,00 € (2.2924ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  + '0,00 €'
+  - 'sin enlazar'
+ℹ tests 76
+ℹ pass 75
+ℹ fail 1
+== Mutación 4 · python -m pytest tests -q --tb=line -rf   (front)
+FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+1 failed, 293 passed in 10.28s
+
+== Mutación 5 · python -m pytest tests -q --tb=line -rf   (raíz)
+FAILED tests/test_backlog_md.py::test_backlog_md_existe_y_esta_al_dia - Asser...
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r28_ninguna_ficha_done_deja_restos_en_la_maqueta
+FAILED tests/test_servicios_declarados.py::test_f001_r4_el_venv_declarado_existe   <- ya en la línea base del worktree
+3 failed, 66 passed in 8.73s
+== Mutación 5 · python -m pytest tests/test_f035_placeholders_vivos.py -q --tb=short   (raíz)
+E   AssertionError: hay fichas cerradas con placeholders o datos de ejemplo en la maqueta; retíralos como dice design.md §7.3 de F-035:
+E     F-044 está done y deja index.html:547
+E     F-044 está done y deja index.html:703
+E     F-044 está done y deja index.html:838
+E     F-044 está done y deja index.html:841
+E     F-044 está done y deja js/portal.js:175
+E     F-044 está done y deja js/portal.js:210
+E     F-044 está done y deja js/portal.js:238
+E     F-044 está done y deja js/portal.js:245
+E     F-044 está done y deja js/maqueta_datos.js:711
+1 failed, 6 passed in 0.27s
+
+== Mutación 6 · node --test tests_js/portal.test.js tests_js/maqueta_datos.test.js
+✖ f035 R40: el dry-run no crea nada y sus códigos previstos son provisionales (2.3888ms)
+  AssertionError [ERR_ASSERTION]: en un dry-run ningún parte está creado
+✖ f035 R40: el resumen de los dos resultados de ejemplo sale de sus filas (2.8399ms)
+  AssertionError [ERR_ASSERTION]: un dry-run no crea nada
+ℹ tests 76
+ℹ pass 74
+ℹ fail 2
+== Mutación 6 · python -m pytest tests -q --tb=line -rf   (front)
+FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+1 failed, 293 passed in 10.65s
+
+== Mutación 7 · python -m pytest tests -q --tb=line -rf   (front)
+tests\test_f035_portal.py:736: AssertionError: <a> de la barra del circuito lleva ['@click']
+FAILED tests/test_f035_portal.py::test_f035_r45_la_barra_del_circuito_es_html_estatico
+1 failed, 293 passed in 8.93s
+
+== Mutación 8 · python -m pytest tests -q --tb=line -rf   (front)
+tests\test_f035_portal.py:778: AssertionError: tests del circuito tocados de más:
+FAILED tests/test_f035_portal.py::test_f035_r32_de_los_tests_del_circuito_solo_cambia_la_linea_index_de_siete
+1 failed, 293 passed in 7.61s
+== Mutación 8 · python -m pytest tests/test_f035_portal.py -k r32 -q --tb=short   (front)
+E   AssertionError: tests del circuito tocados de más:
+E     services/postventa-front/tests/test_f025_front.py: M ('2', '2') (solo 1 1)
+1 failed, 37 deselected in 0.59s
+```
+
+**La copia se retiró** (desde el árbol real):
+
+```
+$ git worktree remove …/scratchpad/wt-f035
+$ git branch -D feature/F-035-mutaciones-t11
+Deleted branch feature/F-035-mutaciones-t11 (was da35ee2).
+$ git worktree list
+C:/Users/pgris/PycharmProjects/postventa-incidencias                                            da35ee2 [feature/F-035-portal-posventa]
+C:/Users/pgris/PycharmProjects/postventa-incidencias/.claude/worktrees/agent-a6e2f9bed1d46cdbc  9e30f57 [worktree-agent-a6e2f9bed1d46cdbc]
+$ git branch --list 'feature/F-035*'
+* feature/F-035-portal-posventa
+$ ls …/scratchpad/wt-f035
+ls: cannot access '…/wt-f035': No such file or directory
+```
+
+(El segundo worktree, `agent-a6e2f9bed1d46cdbc`, ya estaba antes de este
+bloque y no es de F-035: no lo he tocado.)
+
+#### (c) El diff de la rama contra la base, a mano
+
+Base: `git merge-base dev HEAD` = `54c0884067f3df62ee34a00eaa1d6ff059f69d30`.
+
+```
+$ git diff --name-status 54c0884 -- services/postventa-front/tests services/postventa-front/tests_js services/postventa-front/js
+A	services/postventa-front/js/maqueta_datos.js
+A	services/postventa-front/js/portal.js
+A	services/postventa-front/js/portal_app.js
+M	services/postventa-front/tests/test_f007_estaticos.py
+M	services/postventa-front/tests/test_f009_front.py
+M	services/postventa-front/tests/test_f012_front.py
+M	services/postventa-front/tests/test_f025_front.py
+M	services/postventa-front/tests/test_f026_autoguardado.py
+M	services/postventa-front/tests/test_f026_front.py
+M	services/postventa-front/tests/test_f028_front.py
+A	services/postventa-front/tests/test_f035_portal.py
+A	services/postventa-front/tests_js/maqueta_datos.test.js
+A	services/postventa-front/tests_js/portal.test.js
+
+$ git diff --numstat 54c0884 -- services/postventa-front/tests
+1	1	services/postventa-front/tests/test_f007_estaticos.py
+1	1	services/postventa-front/tests/test_f009_front.py
+1	1	services/postventa-front/tests/test_f012_front.py
+1	1	services/postventa-front/tests/test_f025_front.py
+1	1	services/postventa-front/tests/test_f026_autoguardado.py
+1	1	services/postventa-front/tests/test_f026_front.py
+1	1	services/postventa-front/tests/test_f028_front.py
+846	0	services/postventa-front/tests/test_f035_portal.py
+```
+
+En `tests_js/` y `js/`, **solo altas `A`**; en `tests/`, altas `A` más `M` en
+**exactamente** los siete ficheros de `design.md` §1.2, con `1 1` cada uno.
+`git diff -U0 54c0884 -- <cada uno>`, en el orden de la tabla de arriba (las
+líneas `-`/`+` de cada fichero; ninguna otra):
+
+```
+test_f007_estaticos.py     -INDEX = RAIZ_FRONT / "index.html"
+                           +INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
+test_f009_front.py         -INDEX = RAIZ_FRONT / "index.html"
+                           +INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
+test_f012_front.py         -INDEX = RAIZ_FRONT / "index.html"
+                           +INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
+test_f025_front.py         -INDEX = RAIZ_FRONT / "index.html"
+                           +INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
+test_f026_autoguardado.py  -INDEX = RAIZ_FRONT / "index.html"
+                           +INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
+test_f026_front.py         -INDEX = RAIZ_FRONT / "index.html"
+                           +INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
+test_f028_front.py         -INDEX = RAIZ_FRONT / "index.html"
+                           +INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
+```
+
+**La mudanza.** Desviación respecto a la letra de `tasks.md` T11 (c), ya
+avisada en el bloque 3b: `git diff -M --name-status` contra la base **no**
+enseña la mudanza, porque `index.html` sigue existiendo (con el portal) y la
+detección de renombrados de git solo empareja un fichero **borrado** con uno
+**añadido**. La enseña la detección de copias, `-C`, que sí toma como origen
+un fichero modificado; y commit a commit, el de T8:
+
+```
+$ git diff -M --name-status 54c0884 -- services/postventa-front/index.html services/postventa-front/partes.html
+M	services/postventa-front/index.html
+A	services/postventa-front/partes.html
+
+$ git diff -C --name-status 54c0884 -- services/postventa-front/index.html services/postventa-front/partes.html
+M	services/postventa-front/index.html
+C093	services/postventa-front/index.html	services/postventa-front/partes.html
+
+$ git diff -C --numstat 54c0884 -- services/postventa-front/index.html services/postventa-front/partes.html
+897	538	services/postventa-front/index.html
+23	1	services/postventa-front/{index.html => partes.html}
+
+$ git show --stat -M --format='%h %s' 173fd5c
+173fd5c F-035 T8: el circuito se muda de index.html a partes.html
+ services/postventa-front/{index.html => partes.html}     | 2 +-
+ services/postventa-front/tests/test_f007_estaticos.py    | 2 +-
+ ...  (los otros seis tests con 2 +-, y tasks.md)
+ 9 files changed, 9 insertions(+), 9 deletions(-)
+```
+
+`partes.html` es el `index.html` de la base **con el 93 % de similitud**,
+23 líneas más y 1 menos: la línea 1 y las 22 de la barra (lo que prueba, línea
+a línea, R30/R43 con `difflib`). No lo cambio en `tasks.md`: es la spec, y el
+objetivo de la verificación («enseña la mudanza») se cumple con `-C`. **Para
+el reviewer**: si quiere reproducirlo, `-C` y no `-M`.
+
+### 5 · T12 · Guion de V1 y V2 para el humano (**no ejecutado**)
+
+T12 es **MANUAL (humano)**: no la he ejecutado ni la marco. El resultado se
+anota en `progress/current.md`. Es la única forma de ver el portal pintado:
+los tests leen el HTML como texto y el humo del bloque 3b fue en Node.
+
+**Arrancar (PowerShell, una terminal):**
+
+```
+cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front
+.\dev_front.ps1
+```
+
+Para V1 **no** hace falta `func start`. Para ver en V2 el circuito hablando
+con el backend, en **otra** terminal, antes:
+
+```
+cd C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api
+func start --port 7073
+```
+
+**V1 · el portal no sale de la pantalla.** En Edge o Chrome:
+
+1. Abrir `http://localhost:5173/` y pulsar **F12 → pestaña Red**; marcar
+   «Conservar registro» y recargar con `Ctrl+F5`.
+2. Arriba, la **barra oscura** «Posventa · Ruesma» con ocho pestañas; debajo,
+   la **franja ámbar** «Esto es una maqueta.», con un botón rayado de muestra.
+3. Recorrer las **siete secciones del portal** pulsando su pestaña: Inicio,
+   Entrada, Bandeja de revisión, Incidencias, Impresión de partes, Coste y
+   venta, Datos y datamart. En cada una, la pestaña queda resaltada y la URL
+   cambia a `#/<sección>`.
+4. **Inicio**: las tarjetas con contadores; la de «Partes firmados» lleva el
+   botón rayado «Registrar un parte sin firma … F-045».
+5. **Bandeja de revisión**: pulsar **«Ver»** en una fila → se abre su
+   detalle con los campos del alta (unidad, descripciones, ubicación, oficio,
+   tipo, forma, propietario, persona, intervinientes, referencia externa;
+   alguno «sin completar»); cerrarlo con «Cerrar el detalle». Bajar al
+   **panel «Volcado a Sigrid»**: dos resultados de ejemplo («Ensayo (dry-run):
+   no se crea nada» y «Volcado hecho») con su resumen (previstos, creados,
+   idempotentes, rechazados, no_procesados).
+6. **Incidencias**: probar un filtro y marcar dos o tres filas; pulsar
+   «Cambiar estado…» (rayado): el aviso de abajo debe decir **a cuántas**
+   afectaría. Abrir **una ficha** pulsando su código (`RS99.…`): recorrer
+   sus pestañas **Datos**, **Parte**, **Económico** e **Historial**; en la
+   ficha, pulsar **«No procede…»** → se abre el panel con el correo de
+   ejemplo; cerrarlo con «Cancelar».
+7. **Un placeholder de cada sección** (los botones de borde discontinuo con
+   su `F-0NN`): al pulsarlo, abajo aparece el aviso «Todavía no hace nada: lo
+   construye F-0NN · …»; «Entendido» lo quita. Uno por sección: Inicio
+   (F-045), Entrada (F-036 o F-037), Bandeja (F-038…F-040 o F-043),
+   Incidencias o la ficha (F-041…F-047), Impresión (F-044), Coste y venta
+   (F-046), Datos (F-048).
+8. **Lo que hay que mirar en Red**: solo peticiones a `localhost:5173` de
+   estáticos (`/`, `js/…`, `css/…`) y a los dos CDN (`cdn.tailwindcss.com` y
+   `cdn.jsdelivr.net` de Alpine). **Ninguna a `/api/`** ni a otro dominio.
+   Filtrar por `api` en la caja de filtro de Red: tiene que salir **vacío**.
+9. Mirar también, porque ningún test lo ve: que la franja del aviso de abajo
+   no tape nada importante, que las tablas se lean con la ventana estrecha y
+   que la consola (F12 → Consola) no enseñe errores de Alpine.
+
+**V2 · el circuito sigue igual.**
+
+1. En el portal, pulsar la pestaña **«Partes firmados»** → tiene que abrirse
+   `http://localhost:5173/partes.html` **en la misma pestaña** del navegador.
+2. `partes.html` pinta **el circuito de siempre**; la **única** diferencia
+   visible es la barra oscura de arriba, con «Partes firmados» marcada y, a
+   su lado, la leyenda de que las demás pestañas son una maqueta con datos de
+   ejemplo y se abren aparte para no perder la remesa.
+3. Con `func start` levantado: el indicador del backend en verde y el
+   circuito funcionando como antes (cargar una remesa **de prueba** hasta la
+   revisión; **no archivar ni cerrar nada**: el cierre sigue su propio
+   protocolo y desde local la puerta de entorno lo impide). Sin `func start`,
+   basta con que pinte igual que antes.
+4. Desde el circuito, pulsar **«Bandeja de revisión»** en la barra → el
+   portal se abre **en otra pestaña** del navegador, en `#/bandeja`, y la
+   pestaña del circuito **sigue donde estaba** (con la remesa, si la había).
+
+Qué anotar en `progress/current.md`: para V1, si hubo alguna petición a
+`/api/` o a otro dominio (y cuál), y cualquier cosa que se viera mal; para
+V2, si el circuito se ve y funciona igual y si la pestaña nueva se abrió.
+D-4 (publicar con `infra\desplegar_front.ps1 -SoloFront` y V4) va **después**
+de esto, del reviewer y del merge a `dev`.
+
+### 6 · T13 · `bash harness/init.sh`
+
+PENDIENTE_T13
+
+### 7 · Qué queda fuera y qué falta
+
+- **T12 (V1 y V2)**: del humano, con el guion de §5. Sin su resultado en
+  `progress/current.md`, `tasks.md` no queda entero `[x]` (C5).
+- **H-4, la tarjeta del portal corporativo**: propuesta escrita en
+  `docs/DESPLIEGUE.md` §6; se aplica **al publicar**, en `front-portal`, por
+  el humano o quien lleve ese repositorio.
+- **Tras el cierre (D-4)**: publicar y V4, del humano.
+- **Fuera de F-035** (sin tocar): H-2 (el «NO hace» desactualizado del
+  README y el pie del circuito), H-3 (estado en que nace un parte) y H-5 (la
+  mutación de JavaScript, propuesta del arnés).
+- **Para el reviewer**: la decisión 3 de §2 (F-045 añadido en dos filas del
+  mapa de `ARCHITECTURE.md`), la desviación de T11 (c) (`-C` en vez de `-M`)
+  y que la rama temporal de las mutaciones se llamó `feature/F-035-…` a
+  propósito (y se borró).
+- `harness/features.json` sin tocar: F-035 sigue `in_progress` hasta el
+  APPROVED del reviewer.
+
+### Evidencias (bloque 4)
+
+EVIDENCIAS_T13

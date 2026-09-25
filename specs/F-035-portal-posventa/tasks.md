@@ -212,7 +212,7 @@
 
 ## Bloque 4 · Documentación, evidencias y verde
 
-- [ ] **T10**: `services/postventa-front/README.md` (R36: qué es la maqueta,
+- [x] **T10**: `services/postventa-front/README.md` (R36: qué es la maqueta,
       cómo se abre, cómo se reconoce un placeholder, procedimiento de retirada
       de `design.md` §7.3) y `docs/ARCHITECTURE.md` (R37: sección «El portal
       de posventa (F-035)» con el mapa de §4 y la regla de los placeholders;

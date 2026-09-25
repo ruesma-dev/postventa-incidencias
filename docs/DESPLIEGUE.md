@@ -605,6 +605,32 @@ La tarjeta vive en **otro repositorio**, `front-portal`, en
 Lo que F-010 entrega es el bloque exacto y el procedimiento; aplicarlo es una
 tarea del humano, o de quien lleve ese repositorio.
 
+> **Desde F-035 (2026-09-25) · la tarjeta aterriza en el portal.** La
+> tarjeta **ya existe** en `front-portal` (medido en solo lectura el
+> 2026-09-25) y su `url` apunta a la **raíz** de la Static Web App, sin ruta.
+> Desde F-035 la raíz (`index.html`) es el **portal de posventa** —una
+> maqueta con datos de ejemplo en todas las pestañas salvo «Partes
+> firmados»— y el circuito de partes vive en `/partes.html`, a un clic en la
+> barra superior. La `url` **no cambia**: aterrizar en el portal es lo que se
+> quiere. El acceso tampoco: sigue siendo `posventa-usuarios` (decisión del
+> humano del 2026-09-25, `docs/ARCHITECTURE.md`, fila «Entra ID»).
+>
+> Lo que **deja de describir** lo que abre es el texto. **Propuesta para
+> quien lleve `front-portal`**, a aplicar **al publicar** la maqueta
+> (decisión del humano del 2026-09-25: «Sí, al publicar»), como trabajo de
+> ese repositorio y con su procedimiento de abajo:
+>
+> | Campo | Hoy | Propuesta |
+> |---|---|---|
+> | `title` | `Partes de Posventa` | `Posventa` |
+> | `description` | Habla solo del circuito de partes (leerlos y archivarlos) | `Portal de posventa: incidencias, bandeja de revisión, partes firmados y coste. Las secciones nuevas son una maqueta en validación.` |
+>
+> El resto de campos (`id`, `category`, `icon`, `url`, `requiredGroupName`,
+> `requiredGroupId`) se quedan como están. **Ningún agente de este
+> repositorio lo aplica.** El bloque de abajo es el de F-010 y **no se
+> reescribe**: sirve para dar de alta la tarjeta desde cero, no para
+> cambiarle el texto.
+
 ### El bloque, para pegar en `window.RUESMA_PORTAL.apps[]`
 
 ```js

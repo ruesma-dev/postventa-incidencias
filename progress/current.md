@@ -1,6 +1,12 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 4 (T10, T11 y T13) EN CURSO · 2026-09-25
+>
+> implementer. T10 hecha (README del front, `docs/ARCHITECTURE.md` con la
+> sección del portal y el recuadro de la fila «Entra ID», `docs/DESPLIEGUE.md`
+> §6 con la propuesta de H-4). En curso: T11 (evidencias).
+
 > ## ▶ F-035 · BLOQUE 3b (T8, T9 y T9 bis) HECHO · 2026-09-25 · siguiente: bloque 4 (T10–T13)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 3b · T8, T9 y T9 bis».

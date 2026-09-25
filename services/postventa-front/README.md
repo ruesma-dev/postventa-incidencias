@@ -9,6 +9,13 @@ En producción va desplegado como **Static Web App** con la Function enlazada al
 mismo origen; eso es **F-010**. En local, `dev_server.py` reproduce ese mismo
 comportamiento.
 
+> **Desde F-035 (2026-09-25) el front tiene dos páginas.** La portada
+> (`index.html`, lo que se abre en `/`) es el **portal de posventa**, una
+> maqueta con datos de ejemplo; el circuito de partes firmados de este README
+> vive en **`partes.html`**, byte a byte el de antes salvo la barra superior
+> común. Donde este README dice «`index.html`» hablando del circuito, léase
+> `partes.html`. La maqueta se explica en «La maqueta del portal (F-035)».
+
 ## Arrancar en local
 
 Hacen falta **dos terminales**. El humano trabaja en PowerShell: una línea por
@@ -95,7 +102,87 @@ Los módulos se exponen en las dos direcciones —`window.X` para el navegador,
 `module.exports` para `node --test`—, que es lo que permite probarlos sin
 herramientas nuevas.
 
+## La maqueta del portal (F-035)
+
+### Qué es
+
+La **portada** del front (`index.html`) es el portal de posventa: el ciclo
+entero —entrada, bandeja de revisión, incidencias con su ficha, impresión,
+partes firmados, coste y datos— en una barra superior de ocho pestañas. Salvo
+«Partes firmados», **todas son una maqueta**: datos de ejemplo ficticios y
+botones que todavía no hacen nada. Sirve para validar el recorrido con
+Posventa antes de construir cada pieza (F-036 a F-048), no para trabajar.
+
+El **circuito de partes firmados**, el que está en producción, se mudó de
+`index.html` a **`partes.html`** con `git mv` y es la pestaña «Partes
+firmados». No cambió ni una línea de su lógica: solo su nombre de fichero, su
+línea 1 y la barra superior añadida encima, que es HTML plano sin Alpine.
+
+| Fichero | Qué es |
+|---|---|
+| `index.html` | El portal (la portada `/`): barra superior, aviso de maqueta, siete secciones con rutas por hash (`#/bandeja`, `#/incidencias/EJ-0003`…) |
+| `partes.html` | El circuito de siempre, con la barra superior encima |
+| `js/maqueta_datos.js` | `window.MaquetaDatos`: **solo** datos de ejemplo, por bloques, cada uno con la ficha que lo sustituirá (`ficha: "F-0NN"`) |
+| `js/portal.js` | `window.Portal`: catálogos (`SECCIONES`, `PLACEHOLDERS`, `ESTADOS`) y funciones puras. Sin DOM ni red |
+| `js/portal_app.js` | `portalPosventa()`: el componente de Alpine, pegamento sin lógica (misma regla de oro que `app.js`) |
+| `css/portal.css` | La clase `.placeholder` y poco más |
+
+Los ficheros de la maqueta **no hablan con nadie**: ni `fetch`, ni
+`XMLHttpRequest`, ni `/api/`, ni Sigrid, ni SharePoint, ni correo (R14–R16 de
+`specs/F-035-portal-posventa/requirements.md`, vigilado por
+`tests/test_f035_portal.py` y `tests_js/portal.test.js`).
+
+### Cómo se abre en local
+
+Igual que el circuito, con `.\dev_front.ps1` desde esta carpeta (sección
+«Arrancar en local»):
+
+- `http://localhost:5173/` → el **portal** (la portada).
+- `http://localhost:5173/partes.html` → el **circuito**. Para verlo hablar con
+  el backend hace falta además `func start` (terminal A); para la maqueta, no.
+
+Desde el portal, la pestaña «Partes firmados» lleva al circuito en la misma
+pestaña del navegador. Desde el circuito, las otras siete se abren **en otra
+pestaña**: la remesa en curso vive en memoria y salir de la página la
+perdería.
+
+### Cómo se reconoce un placeholder
+
+Un botón que todavía no hace nada lleva el atributo
+**`data-placeholder="F-0NN"`** con la ficha que lo construirá, la clase
+`.placeholder` (borde discontinuo y fondo rayado), una etiqueta `F-0NN`
+visible y `aria-disabled="true"`. No está deshabilitado a propósito: al
+pulsarlo, la franja de aviso de abajo dice qué haría y qué ficha lo construye,
+y nada más (sin red, sin temporizadores). Todo lo demás —pestañas, filtros,
+selección, abrir una ficha, abrir el panel de «no procede»— funciona, pero
+solo en pantalla y sobre los datos de ejemplo.
+
+### Cómo se retira, ficha a ficha
+
+Cuando una ficha F-0NN construya su pieza, **en el mismo trabajo**
+(`specs/F-035-portal-posventa/design.md` §7.3):
+
+1. Borra de `index.html` los elementos con `data-placeholder="F-0NN"` y pone
+   en su lugar los controles reales.
+2. Borra de `Portal.PLACEHOLDERS` (`js/portal.js`) sus entradas y de
+   `js/maqueta_datos.js` su bloque (o su parte del bloque), y cambia los
+   `x-for` que lo pintaban por los datos reales.
+3. Si la sección real habla con el backend, lo hace desde **sus propios**
+   módulos (el patrón de `js/api.js`), no desde los de la maqueta.
+
+Si se olvida, la guardia de la **raíz** `tests/test_f035_placeholders_vivos.py`
+(R28) se pone en rojo en cuanto la ficha pase a `done` en
+`harness/features.json`, con el fichero y la línea de cada resto. Vive en la
+raíz y no aquí porque la suite del front se salta por caché cuando su árbol no
+cambia. Cuando no quede ninguna ficha con restos, la última borra
+`js/maqueta_datos.js` y la parte de `js/portal.js` que solo sirve a la
+maqueta.
+
 ## Tres cosas del `index.html` que parecen cosméticas y no lo son
+
+> **Nota de F-035 (2026-09-25).** Esta sección habla del **circuito**, que
+> desde F-035 vive en `partes.html`: las tres reglas se aplican ahí, y
+> también al portal de `index.html` (R34), con sus propios scripts.
 
 1. **Los scripts propios van al final del `<body>` y SIN `defer`.** Con
    `defer`, Alpine arrancaría antes de que exista `appPostventa` y la pantalla

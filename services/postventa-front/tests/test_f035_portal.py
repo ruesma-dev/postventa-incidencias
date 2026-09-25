@@ -17,10 +17,11 @@ con `Portal.enlaceSeccion`— se prueba en `tests_js/portal.test.js`. Aquí va
 lo que se ve leyendo los ficheros: el HTML con `html.parser` de la biblioteca
 estándar, los JS y el CSS como texto, y el diff de la rama con git local.
 
-Tres tests (R30/R43 contra la base, R32 y R33) describen **el diff de esta
-feature**, no una prohibición para siempre: F-045 y las siguientes sí tocarán
-el circuito. Solo se ejecutan en una rama `feature/F-035…` y en cualquier
-otra se saltan con el motivo escrito (`design.md` §11). Git local, sin red.
+Tres tests (R59 contra la base —sustituye a R30/R43 línea a línea desde la
+segunda ronda—, R32 y R33) describen **el diff de esta feature**, no una
+prohibición para siempre: F-045 y las siguientes sí tocarán el circuito. Solo
+se ejecutan en una rama `feature/F-035…` y en cualquier otra se saltan con el
+motivo escrito (`design.md` §11). Git local, sin red.
 
 Todo dato que aparece aquí es inventado (R24).
 """
@@ -651,7 +652,7 @@ def test_f035_r46_los_enlaces_al_circuito_van_en_la_misma_pestana():
         assert any(a.dentro_de(contenedor) for a in al_circuito), f"falta el enlace al circuito en {que}"
 
 
-# --- R30/R43, R31, R45, R47 · El circuito en partes.html ------------------------
+# --- R43, R31, R45, R47 · El circuito en partes.html ---------------------------
 
 
 def test_f035_r43_partes_html_carga_exactamente_los_nueve_scripts_del_circuito():
@@ -660,49 +661,195 @@ def test_f035_r43_partes_html_carga_exactamente_los_nueve_scripts_del_circuito()
     assert cargados == list(MODULOS_CIRCUITO)
 
 
-def test_f035_r30_r43_partes_html_es_el_index_de_la_base_con_su_ruta_y_la_barra():
-    """Solo dos diferencias con el `index.html` de la base: la línea 1 y la barra."""
-    base = base_de_la_rama()
-    antes = _git("show", f"{base}:services/postventa-front/index.html").splitlines()
-    assert CIRCUITO.is_file(), "no existe partes.html: el circuito se muda ahí en T8"
-    ahora = CIRCUITO.read_text(encoding="utf-8").splitlines()
+# --- R59 · El circuito solo cambia en presentación (design.md §15.8) -----------
+#
+# Sustituye a la comparación línea a línea de R30/R43, que deja de servir en
+# cuanto cambia un `class`. El HTML se compara como secuencia de tokens de
+# `html.parser`: etiquetas con sus atributos EN SU ORDEN, textos con los
+# blancos normalizados, comentarios y `doctype`. Del atributo `class` se
+# ignora el VALOR, no el sitio: sigue en la tupla, en su posición, con valor
+# `None`. Así un `class` que cambia de contenido pasa, y uno que se mueve
+# delante de su `x-show` no (mutación 10 de design.md §11). `style` no se
+# ignora: la base no lo usa y R60 prohíbe añadirlo.
 
-    cambios = [
-        op
-        for op in difflib.SequenceMatcher(None, antes, ahora, autojunk=False).get_opcodes()
-        if op[0] != "equal"
+RUTA_CIRCUITO = "services/postventa-front/partes.html"
+
+Token = tuple
+
+
+class _Tokenizador(HTMLParser):
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tokens: list[Token] = []
+
+    def _apertura(self, tag, attrs) -> Token:
+        return (
+            "<",
+            tag,
+            tuple((k, None if k == "class" else ("" if v is None else v)) for k, v in attrs),
+        )
+
+    def handle_starttag(self, tag, attrs):
+        self.tokens.append(self._apertura(tag, attrs))
+
+    def handle_startendtag(self, tag, attrs):
+        self.tokens.append(self._apertura(tag, attrs))
+
+    def handle_endtag(self, tag):
+        self.tokens.append(("</", tag))
+
+    def handle_data(self, data):
+        texto = _normaliza(data)
+        if texto:
+            self.tokens.append(("texto", texto))
+
+    def handle_comment(self, data):
+        self.tokens.append(("<!--", _normaliza(data)))
+
+    def handle_decl(self, decl):
+        self.tokens.append(("<!", _normaliza(decl)))
+
+    def handle_pi(self, data):
+        self.tokens.append(("<?", _normaliza(data)))
+
+    def unknown_decl(self, data):
+        self.tokens.append(("<![", _normaliza(data)))
+
+
+def tokens(html: str) -> list[Token]:
+    """El HTML como secuencia de tokens comparables (ver el comentario de arriba)."""
+    lector = _Tokenizador()
+    lector.feed(html)
+    lector.close()
+    return lector.tokens
+
+
+def _describe(token: Token) -> str:
+    if token[0] == "<":
+        atributos = " ".join(
+            "class=…" if v is None else (k if v == "" else f'{k}="{v}"') for k, v in token[2]
+        )
+        texto = f"<{token[1]}{' ' + atributos if atributos else ''}>"
+    elif token[0] == "</":
+        texto = f"</{token[1]}>"
+    elif token[0] == "texto":
+        texto = f"«{token[1]}»"
+    else:
+        texto = f"{token[0]} {token[1]}"
+    return _normaliza(texto)[:140]
+
+
+def _es_apertura(token: Token, nombre: str) -> bool:
+    return token[0] == "<" and token[1] == nombre
+
+
+def _quita_ruta(ts: list[Token], esperada: str | None, problemas: list[str]) -> list[Token]:
+    """Quita el primer comentario (la ruta del fichero, R59 b)."""
+    if ts and ts[0][0] == "<!--":
+        if esperada is not None and ts[0][1] != esperada:
+            problemas.append(f"la línea 1 de partes.html es su ruta: «{ts[0][1]}» (se esperaba «{esperada}»)")
+        return ts[1:]
+    if esperada is not None:
+        problemas.append("partes.html no empieza por el comentario con su ruta")
+    return ts
+
+
+def _quita_barra(ts: list[Token], problemas: list[str], lado: str) -> tuple[list[Token], int | None]:
+    """Quita el `<nav data-barra-portal>` entero y los comentarios que lo preceden (R59 c)."""
+    aperturas = [
+        i for i, t in enumerate(ts)
+        if _es_apertura(t, "nav") and any(k == "data-barra-portal" for k, _ in t[2])
     ]
-    lineas_x_data = [i for i, linea in enumerate(antes) if 'x-data="appPostventa()"' in linea]
-    assert len(lineas_x_data) == 1, "el index.html de la base monta appPostventa() una vez"
-    tras_x_data = lineas_x_data[0] + 1
+    if not aperturas:
+        return ts, None
+    if len(aperturas) > 1:
+        problemas.append(f"{lado}: hay {len(aperturas)} barras data-barra-portal")
+    inicio = aperturas[0]
+    profundidad = 0
+    fin = None
+    for i in range(inicio, len(ts)):
+        if _es_apertura(ts[i], "nav"):
+            profundidad += 1
+        elif ts[i] == ("</", "nav"):
+            profundidad -= 1
+            if profundidad == 0:
+                fin = i
+                break
+    if fin is None:
+        problemas.append(f"{lado}: la barra data-barra-portal no se cierra")
+        return ts, None
+    while inicio > 0 and ts[inicio - 1][0] == "<!--":
+        inicio -= 1
+    return ts[:inicio] + ts[fin + 1:], inicio
 
-    problemas = []
-    reemplazo_de_cabecera = False
-    barra_insertada = False
-    for etiqueta, i1, i2, j1, j2 in cambios:
-        if (etiqueta, i1, i2, j1, j2) == ("replace", 0, 1, 0, 1):
-            assert ahora[0] == "<!-- services/postventa-front/partes.html -->", (
-                f"la línea 1 de partes.html es su ruta: «{ahora[0]}»"
-            )
-            reemplazo_de_cabecera = True
-        elif (
-            etiqueta == "insert"
-            and i1 >= tras_x_data
-            and all(not linea.strip() for linea in antes[tras_x_data:i1])
-            and any("data-barra-portal" in linea for linea in ahora[j1:j2])
-            and not barra_insertada
-        ):
-            barra_insertada = True
-        else:
-            problemas.append(
-                f"{etiqueta} en la base {i1 + 1}-{i2} / partes.html {j1 + 1}-{j2}: "
-                f"{antes[i1:i2][:3]} -> {ahora[j1:j2][:3]}"
-            )
 
-    assert problemas == [], "partes.html cambia más que la línea 1 y la barra:\n" + "\n".join(problemas)
-    assert reemplazo_de_cabecera, "la línea 1 de partes.html no dice su ruta nueva"
-    assert barra_insertada, (
-        "falta la barra (data-barra-portal) como primer hijo del div x-data=\"appPostventa()\""
+def _quita_links_de_la_marca(ts: list[Token]) -> list[Token]:
+    """Quita las cuatro `<link>` de §15.4 si van juntas, en el `<head>` y justo antes de `css/styles.css` (R59 d)."""
+    marca = [("<", "link", tuple(d.items())) for d in LINKS_DE_LA_MARCA]
+    hojas = [
+        i for i, t in enumerate(ts)
+        if _es_apertura(t, "link") and ("href", "css/styles.css") in t[2]
+    ]
+    cabezas = [i for i, t in enumerate(ts) if _es_apertura(t, "head")]
+    if len(hojas) != 1 or len(cabezas) != 1:
+        return ts
+    hoja, cabeza = hojas[0], cabezas[0]
+    desde = hoja - len(marca)
+    if desde > cabeza and ts[desde:hoja] == marca:
+        return ts[:desde] + ts[hoja:]
+    return ts
+
+
+def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
+    """Lo que `ahora` cambia de `antes` más allá de lo que admite R59; `[]` si nada.
+
+    Admite: el valor de los `class`; el primer comentario (en `ahora`, la ruta
+    de `partes.html`); la barra superior con los comentarios que la preceden
+    (en `ahora`, obligatoria y primer hijo del `<div x-data="appPostventa()">`);
+    y las cuatro `<link>` de la marca en el `<head>`, justo antes de
+    `css/styles.css`. Todo lo demás —directivas, ids, `type`, `data-*`,
+    `aria-*`, `style`, textos, comentarios, elementos y el orden de los
+    atributos— tiene que ser idéntico.
+    """
+    problemas: list[str] = []
+    a = _quita_ruta(tokens(antes), None, problemas)
+    b = _quita_ruta(tokens(ahora), RUTA_CIRCUITO, problemas)
+    a, _ = _quita_barra(a, problemas, "antes")
+    b, sitio = _quita_barra(b, problemas, "partes.html")
+    if sitio is None:
+        problemas.append("falta la barra superior (<nav data-barra-portal>) en partes.html")
+    elif not (
+        sitio > 0
+        and _es_apertura(b[sitio - 1], "div")
+        and ("x-data", "appPostventa()") in b[sitio - 1][2]
+    ):
+        problemas.append(
+            'la barra superior no es el primer hijo del <div x-data="appPostventa()">: '
+            f"va tras {_describe(b[sitio - 1]) if sitio else 'el principio'}"
+        )
+    a = _quita_links_de_la_marca(a)
+    b = _quita_links_de_la_marca(b)
+
+    for etiqueta, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if etiqueta == "equal":
+            continue
+        quitado = " ".join(_describe(t) for t in a[i1:i2][:3]) or "(nada)"
+        puesto = " ".join(_describe(t) for t in b[j1:j2][:3]) or "(nada)"
+        problemas.append(f"{etiqueta}: antes {quitado} -> ahora {puesto}")
+    return problemas
+
+
+def test_f035_r59_partes_html_solo_cambia_en_presentacion_frente_a_la_base():
+    """R59 · solo `class`, la línea 1, la barra y las cuatro `<link>` (sustituye a R30/R43 línea a línea)."""
+    base = base_de_la_rama()
+    antes = _git("show", f"{base}:services/postventa-front/index.html")
+    assert CIRCUITO.is_file(), "no existe partes.html: el circuito se muda ahí en T8"
+
+    problemas = diferencias_de_presentacion(antes, CIRCUITO.read_text(encoding="utf-8"))
+
+    assert problemas == [], (
+        "partes.html cambia algo más que la presentación (R59):\n" + "\n".join(problemas)
     )
 
 
@@ -865,13 +1012,14 @@ def test_f035_portal_app_usa_los_modulos_probados():
 #
 # `HOJAS_DE_LA_MARCA` son las hojas que siguen la identidad: desde T15, las
 # dos (T14 empezó con `css/styles.css` y T15 redibujó `css/portal.css`).
-# `PAGINAS_CON_LA_MARCA` son las páginas que ya la cargan: el portal desde
-# T15; el circuito entra en T16.
+# `PAGINAS_CON_LA_MARCA` son las páginas que la cargan: el portal desde T15 y
+# el circuito desde T16 (solo cambian sus `class`, su barra y sus `<link>`:
+# R59).
 
 IMG = RAIZ_FRONT / "img"
 
 HOJAS_DE_LA_MARCA = (STYLES_CSS, PORTAL_CSS)
-PAGINAS_CON_LA_MARCA = (PORTAL,)
+PAGINAS_CON_LA_MARCA = (PORTAL, CIRCUITO)
 
 #: Los tokens de `design.md` §15.3, con su valor (R49).
 TOKENS = {
@@ -1321,6 +1469,15 @@ def test_f035_r60_las_hojas_no_llevan_important_import_ni_data(hoja):
         f"{hoja.name}: !important solo en [x-cloak] de portal.css (Alpine esconde con "
         f"style=\"display: none\" y un !important lo taparía): {con_important}"
     )
+
+
+def test_f035_r60_el_circuito_no_lleva_style_estatico():
+    """Los estilos del circuito van en las hojas; su `:style` de la barra de progreso no se toca."""
+    con_style = [
+        f"<{e.nombre}> «{e.texto()[:40]}»" for e in leer_html(CIRCUITO).elementos() if "style" in e.atributos
+    ]
+
+    assert con_style == [], f"partes.html lleva atributos style estáticos (R60): {con_style}"
 
 
 # --- R50 · Las fuentes, el favicon y la base de la marca ----------------------

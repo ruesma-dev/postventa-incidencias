@@ -10,60 +10,72 @@
        scripts (al final del body), que es lo que necesita para encontrar
        appPostventa. Con 3.x.x, un cambio del CDN podría romper el front. -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="rs-cuerpo">
   <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
 
     <!-- F-035 · Barra superior común (R44), en HTML PLANO: ni una directiva de
          Alpine, ni <script>, ni <button> (R45). «Partes firmados» es esta
          página; las demás pestañas son el portal (una maqueta) y se abren en
          otra pestaña del navegador para no perder la remesa en curso (R31,
-         R47). Los href son los de Portal.enlaceSeccion(id, "circuito"). -->
-    <nav data-barra-portal aria-label="Secciones de posventa" class="bg-slate-900 text-slate-100">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-6 py-2">
-        <span class="text-sm font-semibold tracking-tight text-white">Posventa · Ruesma</span>
-        <div class="flex gap-1 overflow-x-auto text-sm">
-          <a href="./#/inicio" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Inicio</a>
-          <a href="./#/entrada" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Entrada</a>
-          <a href="./#/bandeja" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Bandeja de revisión</a>
-          <a href="./#/incidencias" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Incidencias</a>
-          <a href="./#/impresion" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Impresión de partes</a>
-          <span aria-current="page" class="whitespace-nowrap rounded px-3 py-1.5 bg-white font-medium text-slate-900">Partes firmados</span>
-          <a href="./#/economico" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Coste y venta</a>
-          <a href="./#/datos" target="_blank" rel="noopener" class="whitespace-nowrap rounded px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white">Datos y datamart</a>
+         R47). Los href son los de Portal.enlaceSeccion(id, "circuito").
+         Identidad Ruesma (R51, design.md §15.5): la marca —logotipo,
+         separador y etiqueta— NO es un enlace (rompería R31 y, en la misma
+         ventana, perdería la remesa); la pestaña actual la pinta
+         aria-current en css/styles.css. -->
+    <nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
+      <div class="rs-barra__fila">
+        <span class="rs-barra__marca">
+          <img class="rs-barra__logo" src="img/logo-ruesma.svg" alt="Construcciones Ruesma">
+          <span class="rs-barra__sep" aria-hidden="true"></span>
+          <span class="rs-barra__etiqueta">Posventa</span>
+        </span>
+        <div class="rs-barra__pestanas">
+          <a href="./#/inicio" target="_blank" rel="noopener" class="rs-pestana">Inicio</a>
+          <a href="./#/entrada" target="_blank" rel="noopener" class="rs-pestana">Entrada</a>
+          <a href="./#/bandeja" target="_blank" rel="noopener" class="rs-pestana">Bandeja de revisión</a>
+          <a href="./#/incidencias" target="_blank" rel="noopener" class="rs-pestana">Incidencias</a>
+          <a href="./#/impresion" target="_blank" rel="noopener" class="rs-pestana">Impresión de partes</a>
+          <span aria-current="page" class="rs-pestana">Partes firmados</span>
+          <a href="./#/economico" target="_blank" rel="noopener" class="rs-pestana">Coste y venta</a>
+          <a href="./#/datos" target="_blank" rel="noopener" class="rs-pestana">Datos y datamart</a>
         </div>
-        <span class="text-xs text-slate-400">Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.</span>
       </div>
+      <p class="rs-barra__leyenda">Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.</p>
     </nav>
 
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
+    <header class="rs-cabecera">
+      <div class="rs-contenedor rs-cabecera__fila">
         <div>
-          <h1 class="text-xl font-semibold tracking-tight">Incidencias de Posventa</h1>
-          <p class="text-sm text-slate-500">Partes firmados: validar, archivar y cerrar</p>
+          <h1 class="rs-titulo">Incidencias de Posventa</h1>
+          <p class="rs-subtitulo">Partes firmados: validar, archivar y cerrar</p>
         </div>
-        <div class="flex items-center gap-3 text-xs">
-          <span class="inline-block h-2.5 w-2.5 rounded-full"
+        <div class="rs-estado-servicio">
+          <span class="rs-punto"
                 :class="{
                   'bg-emerald-500': estadoServicio === 'ok',
                   'bg-red-500': estadoServicio === 'error',
                   'bg-slate-300 animate-pulse': estadoServicio === 'comprobando'
                 }"></span>
-          <span class="text-slate-500" x-text="mensajeServicio"></span>
-          <span class="text-slate-400" x-text="version"></span>
+          <span class="rs-nota" x-text="mensajeServicio"></span>
+          <span class="rs-nota rs-mono" x-text="version"></span>
         </div>
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-6">
+    <main class="rs-contenedor rs-principal flex-1">
 
       <!-- ── 1 · Carga de la remesa (R1-R6) ─────────────────────────────── -->
       <section x-show="fase === 'inactivo' || fase === 'seleccionado'"
-               class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Cargar una remesa</h2>
+               class="rs-panel">
+        <h2 class="rs-rotulo">Cargar una remesa</h2>
 
-        <div class="mt-4 rounded-lg border-2 border-dashed p-8 text-center transition"
+        <div class="rs-zona mt-4"
              :class="arrastrando ? 'border-sky-400 bg-sky-50' : 'border-slate-300'"
              @dragover.prevent="arrastrando = true"
              @dragleave.prevent="arrastrando = false"
@@ -71,16 +83,16 @@
           <p class="text-sm text-slate-600">
             Suelta aquí uno o varios ficheros <strong>.pdf</strong> o <strong>.zip</strong>
           </p>
-          <p class="mt-1 text-xs text-slate-400">Nada se envía hasta que lo confirmes</p>
+          <p class="rs-nota mt-1">Nada se envía hasta que lo confirmes</p>
 
           <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+            <label class="rs-btn rs-btn--secundario">
               Elegir ficheros
               <input type="file" class="hidden" multiple accept=".pdf,.zip"
                      @change="alElegirFicheros($event)">
             </label>
             <!-- webkitdirectory: Edge/Chrome (D5). Firefox no lo implementa igual. -->
-            <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+            <label class="rs-btn rs-btn--secundario">
               Elegir una carpeta
               <input type="file" class="hidden" webkitdirectory directory
                      @change="alElegirFicheros($event)">
@@ -89,25 +101,25 @@
         </div>
 
         <p x-show="errorSeleccion" x-text="errorSeleccion"
-           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+           class="rs-aviso rs-aviso--error mt-4"></p>
         <p x-show="mensajeDescartes" x-text="mensajeDescartes"
-           class="mt-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+           class="rs-aviso rs-aviso--atencion mt-4"></p>
 
         <template x-if="seleccion.length">
           <div class="mt-5">
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <h3 class="rs-campo__etiqueta">
               <span x-text="seleccion.length"></span> fichero(s) listos para enviar
             </h3>
             <ul class="mt-2 divide-y divide-slate-100 text-sm">
               <template x-for="fichero in seleccion" :key="fichero.name + fichero.size">
                 <li class="flex justify-between py-1.5">
                   <span x-text="fichero.name" class="truncate"></span>
-                  <span class="ml-4 shrink-0 text-slate-400" x-text="tamanoDe(fichero)"></span>
+                  <span class="rs-nota ml-4 shrink-0" x-text="tamanoDe(fichero)"></span>
                 </li>
               </template>
             </ul>
             <button type="button" @click="confirmarCarga()"
-                    class="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
+                    class="rs-btn rs-btn--primario mt-4">
               Trocear la remesa
             </button>
           </div>
@@ -121,19 +133,19 @@
            esta hay escrituras en un ERP de producción y ~20 s por parte: un
            botón quieto invita a pulsarlo otra vez. -->
       <section x-show="fase === 'troceando' || fase === 'procesando' || fase === 'archivando_y_cerrando'"
-               class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500" x-text="tituloDeFase()"></h2>
+               class="rs-panel">
+        <h2 class="rs-rotulo" x-text="tituloDeFase()"></h2>
         <p class="mt-3 text-sm text-slate-600">
           <span x-text="terminados"></span> de <span x-text="totalTanda"></span> partes terminados
         </p>
-        <div class="mt-2 h-2 w-full overflow-hidden rounded bg-slate-100">
-          <div class="h-full bg-sky-500 transition-all"
+        <div class="rs-progreso mt-2">
+          <div class="rs-progreso__barra"
                :style="`width: ${porcentaje()}%`"></div>
         </div>
       </section>
 
       <!-- ── 3 · Avisos de la remesa ────────────────────────────────────── -->
-      <section x-show="avisosRemesa.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+      <section x-show="avisosRemesa.length" class="rs-panel rs-panel--atencion">
         <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700">Avisos de la remesa</h2>
         <ul class="mt-2 list-disc pl-5 text-sm text-amber-800">
           <template x-for="aviso in avisosRemesa" :key="aviso">
@@ -143,15 +155,15 @@
       </section>
 
       <p x-show="errorGlobal" x-text="errorGlobal"
-         class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+         class="rs-aviso rs-aviso--error"></p>
 
       <!-- ── 4 · Lista de partes y detalle (R13-R18) ────────────────────── -->
       <section x-show="partes.length" class="grid gap-6 lg:grid-cols-5">
 
-        <div class="lg:col-span-2 rounded-lg border border-slate-200 bg-white">
+        <div class="lg:col-span-2 rs-panel rs-panel--lista">
           <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Partes</h2>
-            <button type="button" @click="reiniciar()" class="text-xs text-slate-400 hover:text-slate-600">
+            <h2 class="rs-rotulo">Partes</h2>
+            <button type="button" @click="reiniciar()" class="rs-btn rs-btn--texto rs-btn--compacto">
               Empezar otra remesa
             </button>
           </div>
@@ -159,7 +171,7 @@
             <template x-for="parte in partes" :key="parte.hash">
               <li>
                 <button type="button" @click="abrirParte(parte)"
-                        class="w-full px-4 py-3 text-left hover:bg-slate-50"
+                        class="rs-fila"
                         :class="parteAbierto && parteAbierto.hash === parte.hash ? 'bg-slate-50' : ''">
                   <div class="flex items-center gap-2">
                     <!-- F-028 R38, R39 · las CUATRO marcas, y por qué son seis
@@ -176,7 +188,7 @@
                          parecer «pendiente de mirar» —de ahí el gris apagado y
                          el tachado—, y un `cerrado` no admite ningún gesto
                          (R41), de ahí el azul y el candado. -->
-                    <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                    <span class="rs-punto shrink-0"
                           :class="{
                             'bg-emerald-500': parte.semaforo === 'verde',
                             'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parte.semaforo === 'aprobado',
@@ -188,7 +200,7 @@
                             'bg-slate-300': parte.estado === 'pendiente',
                             'bg-red-700': parte.estado === 'error'
                           }"></span>
-                    <span class="font-mono text-xs text-slate-500"
+                    <span class="rs-mono rs-nota"
                           :class="parte.semaforo === 'rechazado' ? 'line-through text-slate-400' : ''"
                           x-text="parte.hash.slice(0, 8)"></span>
                     <!-- R38 · el color solo no basta: hay que poder LEER en qué
@@ -196,7 +208,7 @@
                          (R39). Sin el `oid`, sin correo y sin nombre (R42):
                          quien audite lo lee en la base. -->
                     <span x-show="etiquetaDeEstado(parte)"
-                          class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          class="rs-chip"
                           :class="{
                             'bg-emerald-100 text-emerald-800': parte.semaforo === 'verde' || parte.semaforo === 'aprobado',
                             'bg-amber-100 text-amber-800': parte.semaforo === 'ambar',
@@ -209,11 +221,11 @@
                          ahora mismo. Con la cola a tres hay siempre tres líneas
                          moviéndose: eso es lo que distingue «está trabajando»
                          de «se ha colgado» durante los ~20 s que tarda. -->
-                    <span x-show="parte.paso" class="ml-auto animate-pulse text-xs text-sky-600"
+                    <span x-show="parte.paso" class="rs-paso ml-auto"
                           x-text="parte.paso"></span>
-                    <span class="ml-auto text-xs text-slate-400" x-text="parte.estado"></span>
+                    <span class="rs-nota ml-auto" x-text="parte.estado"></span>
                   </div>
-                  <p class="mt-1 truncate text-xs text-slate-400">
+                  <p class="rs-nota mt-1 truncate">
                     <span x-text="parte.origen"></span>
                     · pág. <span x-text="(parte.paginas_origen || []).join(', ')"></span>
                   </p>
@@ -221,26 +233,26 @@
                        `oid`, ni el correo, ni el nombre, ni el motivo (R42): el
                        motivo es texto libre y puede llevar dentro el nombre de
                        un cliente; quien audite lo lee en la base. -->
-                  <p x-show="decidioUnaPersona(parte)" class="mt-1 text-xs text-sky-700">
+                  <p x-show="decidioUnaPersona(parte)" class="rs-nota rs-nota--info mt-1">
                     Lo decidió <strong>una persona</strong> ·
                     <span x-text="fechaDeDecision(parte)"></span>
                   </p>
                   <ul x-show="parte.validacion && parte.validacion.motivos.length"
-                      class="mt-1 list-disc pl-4 text-xs text-slate-500">
+                      class="rs-nota mt-1 list-disc pl-4">
                     <template x-for="motivo in (parte.validacion ? parte.validacion.motivos : [])" :key="motivo.codigo">
                       <li x-text="motivo.texto"></li>
                     </template>
                   </ul>
-                  <p x-show="parte.error" class="mt-1 text-xs text-red-600">
+                  <p x-show="parte.error" class="rs-nota rs-nota--error mt-1">
                     <span x-text="parte.error"></span>
                     <span @click.stop="reintentarParte(parte)"
-                          class="ml-2 cursor-pointer underline">reintentar</span>
+                          class="rs-enlace ml-2">reintentar</span>
                   </p>
                   <!-- F-019 R27 · el parte se leyó bien pero NO se guardó, así
                        que no se puede archivar. Se dice aquí y con su motivo:
                        callarlo devuelve al usuario al defecto 15. -->
                   <p x-show="!parte.error && parte.errorGuardado"
-                     class="mt-1 text-xs text-amber-700">
+                     class="rs-nota rs-nota--atencion mt-1">
                     No archivable: no se ha podido guardar.
                     <span x-text="parte.errorGuardado"></span>
                   </p>
@@ -251,20 +263,20 @@
         </div>
 
         <!-- Detalle del parte: nueve campos + firma + PDF (R14, R15) -->
-        <div class="lg:col-span-3 rounded-lg border border-slate-200 bg-white p-5"
+        <div class="lg:col-span-3 rs-panel"
              x-show="parteAbierto">
           <template x-if="parteAbierto">
             <div>
               <div class="flex items-baseline justify-between">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  Parte <span class="font-mono" x-text="parteAbierto.hash.slice(0, 8)"></span>
+                <h2 class="rs-rotulo">
+                  Parte <span class="rs-mono" x-text="parteAbierto.hash.slice(0, 8)"></span>
                 </h2>
-                <button type="button" @click="cerrarParte()" class="text-xs text-slate-400 hover:text-slate-600">
+                <button type="button" @click="cerrarParte()" class="rs-btn rs-btn--texto rs-btn--compacto">
                   Cerrar
                 </button>
               </div>
 
-              <p class="mt-2 text-xs text-slate-500">
+              <p class="rs-nota mt-2">
                 Firma:
                 <span x-text="parteAbierto.firma ? parteAbierto.firma.firma.clasificacion : '—'"></span>
                 (<span x-text="parteAbierto.firma ? parteAbierto.firma.firma.confianza_pct : '—'"></span>%)
@@ -273,15 +285,15 @@
               <div class="mt-4 grid gap-3 sm:grid-cols-2">
                 <template x-for="nombre in CAMPOS" :key="nombre">
                   <label class="block text-xs">
-                    <span class="flex items-center gap-2 text-slate-500">
+                    <span class="rs-campo__etiqueta flex items-center gap-2">
                       <span x-text="nombre"></span>
-                      <span class="rounded px-1"
+                      <span class="rs-chip rs-chip--contorno"
                             :class="esDudoso(nombre) ? 'bg-amber-100 text-amber-800' : 'text-slate-400'"
                             x-text="confianzaDe(nombre) + '%'"></span>
                       <span x-show="estaEditado(nombre)"
-                            class="rounded bg-emerald-100 px-1 text-emerald-800">editado</span>
+                            class="rs-chip rs-chip--ok">editado</span>
                     </span>
-                    <input type="text" class="mt-1 w-full rounded border px-2 py-1 text-sm"
+                    <input type="text" class="rs-campo mt-1"
                            :class="esDudoso(nombre) ? 'border-amber-300 bg-amber-50' : 'border-slate-200'"
                            :value="valorDe(nombre)"
                            @input="editarCampo(nombre, $event.target.value)">
@@ -292,10 +304,10 @@
               <div class="mt-4 flex flex-wrap items-center gap-3">
                 <button type="button" @click="revalidarParte()"
                         :disabled="!hayEdiciones()"
-                        class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                        class="rs-btn rs-btn--secundario">
                   Revalidar (no gasta IA)
                 </button>
-                <span class="text-xs text-slate-400" x-text="mensajeRevalidacion"></span>
+                <span class="rs-nota" x-text="mensajeRevalidacion"></span>
               </div>
 
               <!-- ── F-026 R52 · los tres estados del autoguardado ───────────
@@ -315,12 +327,12 @@
                    lee `valorDe(nombre)`, que devuelve la corrección de la
                    persona antes que lo que dijo la IA. -->
               <div class="mt-2" x-show="estadoAutoguardado">
-                <span class="text-xs"
+                <span class="rs-nota"
                       x-show="estadoAutoguardado === 'guardando' || estadoAutoguardado === 'guardado'"
                       :class="estadoAutoguardado === 'guardado' ? 'text-emerald-700' : 'text-slate-400'"
                       x-text="mensajeAutoguardado"></span>
                 <p x-show="estadoAutoguardado === 'fallo'"
-                   class="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800"
+                   class="rs-aviso rs-aviso--error rs-aviso--compacto text-red-800"
                    x-text="mensajeAutoguardado"></p>
               </div>
 
@@ -337,13 +349,13 @@
                    Toda la sección se pinta contra métodos de `js/app.js`, y el
                    `oid` no aparece ni dentro de una condición: lo pregunta
                    `hayIdentidad()` (R42). -->
-              <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+              <div class="rs-panel rs-panel--suave mt-4">
                 <!-- R38, R39, R43 · en qué estado consta y quién lo decidió. Ni
                      el identificador de quien decidió, ni su correo, ni su
                      nombre, ni el motivo que escribió (R42, R52): eso se audita
                      en la base. -->
                 <p x-show="estadoDelParte()" class="text-sm text-slate-700">
-                  <span class="mr-1 inline-block h-2.5 w-2.5 rounded-full"
+                  <span class="rs-punto mr-1"
                         :class="{
                           'bg-emerald-500': parteAbierto.semaforo === 'verde',
                           'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parteAbierto.semaforo === 'aprobado',
@@ -371,7 +383,7 @@
                      creería que sigue en pie. No acusa a nadie: corregir un
                      campo es justo lo que la pantalla pide hacer. -->
                 <p x-show="parteAbierto.avisoEstado" x-text="parteAbierto.avisoEstado"
-                   class="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800"></p>
+                   class="rs-aviso rs-aviso--atencion rs-aviso--compacto mt-2"></p>
 
                 <!-- R41 · el parte cerrado NO ofrece ningún gesto, y la pantalla
                      EXPLICA por qué en vez de fallar. Lo escrito en SharePoint y
@@ -379,7 +391,7 @@
                      conseguiría que nuestra base dijera algo distinto del ERP
                      (R7). -->
                 <template x-if="estaCerrado(parteAbierto)">
-                  <p class="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-2 text-sm text-sky-900">
+                  <p class="rs-aviso rs-aviso--info mt-2">
                     🔒 <strong>Esta incidencia ya está cerrada en el ERP, así que
                     el estado de este parte no se puede cambiar desde aquí.</strong>
                     Lo que se subió a SharePoint y lo que se escribió en Sigrid no
@@ -401,18 +413,18 @@
                       <textarea x-model="motivoDeRechazo" rows="2"
                                 :maxlength="LIMITE_MOTIVO"
                                 placeholder="Qué hay que arreglar en este parte"
-                                class="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-sm"></textarea>
+                                class="rs-campo mt-1"></textarea>
                     </label>
 
                     <div class="flex flex-wrap items-center gap-3">
                       <button type="button" @click="aprobarParte()"
                               :disabled="!puedeDecidir()"
-                              class="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                              class="rs-btn rs-btn--ok">
                         Aprobar este parte
                       </button>
                       <button type="button" @click="rechazarParte()"
                               :disabled="!puedeRechazar()"
-                              class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
+                              class="rs-btn rs-btn--peligro">
                         Rechazar este parte
                       </button>
                     </div>
@@ -420,7 +432,7 @@
                     <!-- R11 · por qué el botón de rechazar está apagado. Un
                          botón deshabilitado sin explicación deja a quien mira
                          buscando el fallo en otro sitio. -->
-                    <p x-show="!hayMotivo()" class="text-xs text-slate-500">
+                    <p x-show="!hayMotivo()" class="rs-nota">
                       Para <strong>rechazar</strong> hace falta escribir el motivo:
                       quien vuelva a mirar este parte —otra persona, o tú dentro de
                       un mes— necesita saber qué hay que arreglar.
@@ -429,17 +441,17 @@
                     <!-- R14 · sin saber quién decide no se puede registrar la
                          decisión. Se dice, en vez de dejar dos botones
                          deshabilitados sin explicación. -->
-                    <p x-show="!hayIdentidad()" class="text-xs text-amber-700">
+                    <p x-show="!hayIdentidad()" class="rs-nota rs-nota--atencion">
                       No se ha podido saber quién eres, así que no se puede
                       registrar quién decide. Vuelve a entrar desde el enlace de la
                       aplicación.
                     </p>
-                    <p x-show="hayIdentidad() && !remesaId" class="text-xs text-amber-700">
+                    <p x-show="hayIdentidad() && !remesaId" class="rs-nota rs-nota--atencion">
                       La remesa no consta registrada, así que la decisión no
                       tendría de qué colgar. Vuelve a subir la remesa.
                     </p>
 
-                    <p class="text-xs text-slate-500">
+                    <p class="rs-nota">
                       Decidir aquí no archiva ni cierra nada: un parte aprobado
                       entra en <strong>la tanda</strong> y se escribe al confirmarla.
                       Si le falta el <strong>código de obra</strong> o el
@@ -450,13 +462,13 @@
                 </template>
 
                 <p x-show="mensajeEstado" x-text="mensajeEstado"
-                   class="mt-2 text-xs text-slate-600"></p>
+                   class="rs-nota mt-2"></p>
               </div>
 
               <div class="mt-5">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">PDF del parte</h3>
+                <h3 class="rs-rotulo">PDF del parte</h3>
                 <iframe x-show="urlPdf" :src="urlPdf" title="PDF del parte"
-                        class="mt-2 h-[28rem] w-full rounded border border-slate-200"></iframe>
+                        class="rs-visor mt-2"></iframe>
               </div>
             </div>
           </template>
@@ -479,8 +491,8 @@
            reclamación antes de escribir, dentro de la misma llamada que
            escribe. Lo que desaparece es la pantalla, no la verificación. -->
       <section x-show="partes.length && fase !== 'procesando' && fase !== 'troceando'"
-               class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar y cerrar</h2>
+               class="rs-panel rs-panel--destacado">
+        <h2 class="rs-rotulo">Archivar y cerrar</h2>
         <p class="mt-2 text-sm text-slate-600">
           <!-- F-028 R33 · en la tanda entra lo que consta **aprobado**, lo diga
                la validación automática o una persona. Y nada más: un parte apto
@@ -493,7 +505,7 @@
         <!-- F-019 R27 · los aptos que NO se pudieron guardar no entran en el
              botón, y hay que decir cuántos son: si desaparecieran de la cuenta
              sin explicación, alguien daría la remesa por archivada entera. -->
-        <p x-show="noArchivables().length" class="mt-1 text-sm text-amber-700">
+        <p x-show="noArchivables().length" class="rs-nota rs-nota--atencion mt-1">
           <span x-text="noArchivables().length"></span> parte(s) apto(s) que
           <strong>no se han podido guardar</strong> y por eso no se archivan.
           El motivo está en cada parte de la lista.
@@ -503,7 +515,7 @@
              archivar sin poder cerrar deja justo el estado a medias que esta
              feature quiere evitar. Se dice, en vez de dejar un botón
              deshabilitado sin explicación. -->
-        <p x-show="!usuario.usuarioOid" class="mt-1 text-sm text-amber-700">
+        <p x-show="!usuario.usuarioOid" class="rs-nota rs-nota--atencion mt-1">
           No se ha podido saber quién eres, así que no se puede firmar ningún
           cierre en el ERP. Vuelve a entrar desde el enlace de la aplicación.
         </p>
@@ -511,7 +523,7 @@
         <div class="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" @click="pedirConfirmacionArchivo()"
                   :disabled="!pendientes().length || !usuario.usuarioOid || fase === 'archivando_y_cerrando'"
-                  class="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300">
+                  class="rs-btn rs-btn--primario">
             Archivar y cerrar los partes aptos
           </button>
           <!-- R6 · el texto nombra LAS TRES COSAS que van a pasar y cuántos
@@ -525,9 +537,9 @@
                 <span x-text="pendientes().length"></span> parte(s).
               </span>
               <button type="button" @click="confirmarArchivo()"
-                      class="rounded bg-rose-700 px-3 py-1 text-xs text-white">Sí, archivar y cerrar</button>
+                      class="rs-btn rs-btn--peligro rs-btn--compacto">Sí, archivar y cerrar</button>
               <button type="button" @click="cancelarArchivo()"
-                      class="rounded border border-slate-300 px-3 py-1 text-xs">Cancelar</button>
+                      class="rs-btn rs-btn--secundario rs-btn--compacto">Cancelar</button>
             </span>
           </template>
         </div>
@@ -535,7 +547,7 @@
         <!-- R4: la confirmación caduca. Si el segundo clic llega tarde, no se
              sube ni se escribe nada, y se dice por qué. -->
         <p x-show="avisoArchivo" x-text="avisoArchivo"
-           class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+           class="rs-aviso rs-aviso--atencion mt-3"></p>
 
         <!-- Las DOS puertas de entorno, cada una con su pantalla propia. No son
              fallos y no se pintan en rojo: pintarlas así llevaría a alguien a
@@ -543,9 +555,9 @@
              R22: la del archivo detiene la tanda. R21: la del ERP no, y por eso
              se dicen por separado. -->
         <p x-show="entornoNoArchiva" x-text="entornoNoArchiva"
-           class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
+           class="rs-aviso rs-aviso--info mt-4"></p>
         <p x-show="entornoNoCierra" x-text="entornoNoCierra"
-           class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
+           class="rs-aviso rs-aviso--info mt-4"></p>
 
         <!-- F-012 R65 · «adjuntado pero no cerrado» es un estado real y hay
              que poder verlo y salir de él. El gráfico ya está dentro de
@@ -555,12 +567,12 @@
              class="mt-4 space-y-2">
           <template x-for="parte in cerrables().filter((p) => p.estado === 'adjuntado')"
                     :key="parte.hash">
-            <p class="flex items-center gap-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
+            <p class="rs-aviso rs-aviso--atencion flex items-center gap-3">
+              <span class="rs-mono rs-nota" x-text="parte.hash.slice(0, 8)"></span>
               <span>El parte está <strong>adjunto en Sigrid</strong> y la incidencia sigue abierta.</span>
               <button type="button" @click="reintentarCierre(parte)"
                       :disabled="fase === 'archivando_y_cerrando'"
-                      class="rounded border border-amber-400 px-3 py-1 text-xs disabled:text-slate-400">
+                      class="rs-btn rs-btn--secundario rs-btn--compacto">
                 Reintentar el cierre
               </button>
             </p>
@@ -574,8 +586,8 @@
              class="mt-4 space-y-2">
           <template x-for="parte in partes.filter((p) => p.estado === 'error_grafico')"
                     :key="parte.hash">
-            <p class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
-              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
+            <p class="rs-aviso rs-aviso--error">
+              <span class="rs-mono rs-nota" x-text="parte.hash.slice(0, 8)"></span>
               <span class="ml-2">No se ha podido adjuntar el parte:</span>
               <span x-text="parte.error"></span>
             </p>
@@ -583,13 +595,13 @@
         </div>
 
         <!-- El resumen del archivo: qué fichero acabó en qué carpeta. -->
-        <ul x-show="resultadosArchivo.length" class="mt-4 divide-y divide-slate-100 text-sm">
+        <ul x-show="resultadosArchivo.length" class="rs-resumen mt-4">
           <template x-for="resultado in resultadosArchivo" :key="resultado.clave">
             <li class="py-2">
-              <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
+              <span class="rs-mono rs-nota" x-text="resultado.hash.slice(0, 8)"></span>
               <span class="ml-2" x-text="resultado.mensaje"></span>
               <a x-show="resultado.web_url" :href="resultado.web_url" target="_blank" rel="noopener"
-                 class="ml-2 text-sky-700 underline">abrir en SharePoint</a>
+                 class="rs-enlace ml-2">abrir en SharePoint</a>
             </li>
           </template>
         </ul>
@@ -599,11 +611,11 @@
              previa, este es el primer y único momento en que quien pulsó puede
              darse cuenta de que se escribió sobre la incidencia equivocada.
              Ver el recuadro «Lo que se pierde» de requirements.md §0. -->
-        <ul x-show="resultadosCierre.length" class="mt-4 divide-y divide-slate-100 text-sm">
+        <ul x-show="resultadosCierre.length" class="rs-resumen mt-4">
           <template x-for="resultado in resultadosCierre" :key="resultado.clave">
             <li class="py-2">
-              <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
-              <span x-show="resultado.incidencia" class="ml-2 rounded bg-slate-100 px-1 font-mono text-xs"
+              <span class="rs-mono rs-nota" x-text="resultado.hash.slice(0, 8)"></span>
+              <span x-show="resultado.incidencia" class="rs-chip rs-chip--neutro rs-mono ml-2"
                     x-text="resultado.incidencia"></span>
               <span class="ml-2" x-text="resultado.mensaje"></span>
             </li>
@@ -613,8 +625,8 @@
 
     </main>
 
-    <footer class="border-t border-slate-200 bg-white">
-      <div class="mx-auto max-w-6xl px-6 py-4 text-xs text-slate-400">
+    <footer class="rs-pie">
+      <div class="rs-contenedor rs-pie__texto">
         Construcciones Ruesma · el trabajo de revisión vive en esta pestaña y no se guarda:
         si la recargas, hay que volver a subir la remesa (F-019).
       </div>

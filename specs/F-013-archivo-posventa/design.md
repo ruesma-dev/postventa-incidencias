@@ -37,6 +37,16 @@
 > §5, §6.2, §7, §8, §10 y §11; cada cambio de fondo lleva recuadro con esta
 > fecha y cita lo que decía.
 
+> **Enmienda del 2026-09-25 (F-049) · las villas que se crean, con tres
+> cifras.** En el paso 2 del corte, el script 23 mostró que Posventa ha
+> reorganizado las carpetas de unidad de la 0677 a `VILLA 001` … `VILLA 007`,
+> `VILLA 012` y `VILLA 013`, y el humano decidió ese día «siempre con tres
+> cifras» (`VILLA 008`; con 1.000 o más, tal cual). Llevan recuadro de esta
+> fecha §1 (la medición), §4.5, §4.6 (la regla y su código) y §7.3 (el
+> runbook). Donde este documento dice `VILLA NN` sin más —§7.1, §9 ter,
+> §10—, léase «`VILLA` y el número con al menos tres cifras». **El casado no
+> cambia** (§4.3, §4.5): compara enteros. Spec: `specs/F-049-villa-tres-cifras/`.
+
 ## 0 · Dónde está el riesgo
 
 ### 0.1 · Lo que se rompe si esto sale mal, y quién lo ve
@@ -111,6 +121,17 @@ mutación sin supervivientes sin justificar sobre `destino_posventa.py`,
 >
 > Y las villas 8 a 15 **no tienen carpeta en ningún otro sitio** de la
 > biblioteca (humano, 2026-09-24: «no tienen carpeta, que se creen»).
+
+> **Enmienda del 2026-09-25 (F-049) · Posventa reorganizó sus unidades.** La
+> fila «Unidades en Posventa» decía, literal: *«7: `VILLA 01` … `VILLA 07`,
+> **siempre dos cifras**»*. **Qué la invalidó**: en el paso 2 del corte
+> (2026-09-25), el script 23 contra la biblioteca real listó **`VILLA 001` …
+> `VILLA 007`, `VILLA 012` y `VILLA 013`**: tres cifras, y dos villas más de
+> las que había el 2026-09-24. Las hojas de esas carpetas **no se han
+> medido** [NO MEDIDO]. El humano decidió ese día que lo que cree el sistema
+> vaya también con tres cifras (§4.6). La fila de arriba se deja como estaba:
+> es la foto del 2026-09-24, y los tests de F-013 la conservan como dato
+> medido.
 
 **Conclusión que manda sobre el diseño**: ni Sigrid ni el papel dan el nombre
 de la carpeta; como mucho dan con qué **casarla**. La carpeta se **encuentra**,
@@ -517,6 +538,18 @@ carpeta culpable en `candidatas`, y lo resuelve una persona. Se prefiere así.
 > INCIDENCIAS`) ya **no** bloquea, porque el número de la obra dejó de ser
 > número de la unidad. Es lo correcto: no es la misma villa.
 
+> **Enmienda del 2026-09-25 (F-049) · lo que se crea, con tres cifras; las
+> reglas, igual.** La tabla de arriba decía, literal, que junto a `VILLA 01` …
+> `VILLA 07` *«se crean `VILLA 08` … `VILLA 15`»*, y que junto a `VILLA 03`
+> *«se crea `VILLA 13`»*. **Qué la invalidó**: la decisión del humano del
+> 2026-09-25, «siempre con tres cifras» (§4.6). Se crean `VILLA 008` …
+> `VILLA 015` y `VILLA 013`. **Las reglas estricta y amplia no cambian**: las
+> dos comparan números enteros, así que con la biblioteca reorganizada
+> (`VILLA 001` … `VILLA 007`, `VILLA 012`, `VILLA 013`) ninguna carpeta es
+> parecida de otra unidad —`VILLA 001` no lo es de la 10 ni de la 11—, y
+> `VILLA 01` con `VILLA 001` en la misma obra son dos candidatas que casan con
+> la villa 1: `unidad_ambigua`, 409.
+
 ### 4.6 Con qué nombre se crea (R36–R38) — condicionado a T2/T3
 
 | Nivel | Nombre | Medido / condición |
@@ -614,6 +647,30 @@ en el doble, volver a resolver → casa, 0 creaciones.
 > resolutor, antes de anotar cada creación, aplica la regla estricta del
 > nivel al nombre compuesto con los mismos datos; si no casa, 409
 > `nombre_no_casaria` y nada creado.
+
+> **Enmienda del 2026-09-25 (F-049) · `VILLA` con al menos tres cifras.** El
+> código de arriba decía, literal: *«`NN = f"{int(n):02d}".`»*, y la fila de
+> la unidad, que T2 midió siete `VILLA 01` … `VILLA 07`, siempre dos cifras.
+> **Qué lo invalidó**: el script 23, en el paso 2 del corte (2026-09-25),
+> mostró que Posventa ha reorganizado sus unidades a `VILLA 001` …
+> `VILLA 007`, `VILLA 012` y `VILLA 013` (§1); el humano decidió ese día
+> «siempre con tres cifras», en todas las obras. Desde hoy:
+>
+> ```python
+> return f"VILLA {int(encaje['n']):03d}"
+> ```
+>
+> es decir, `NN = f"{int(n):03d}"`: `8` → `VILLA 008`, `13` → `VILLA 013`,
+> `100` → `VILLA 100`, `1000` → `VILLA 1000`. En la tabla de los 15 casos, la
+> columna «Nombre derivado» pasa a `VILLA 001` … `VILLA 015`, y la última
+> columna de las villas 8 a 15, a «**crea** `VILLA 008` … y su `PARTES
+> FIRMADOS`»; con la biblioteca reorganizada, las villas 12 y 13 ya **no** se
+> crean: casan con `VILLA 012` y `VILLA 013`. Los casos fuera del patrón no
+> cambian; los que se derivan, sí de ancho: `0677.03VILLA  13.` →
+> `VILLA 013`, `00677.03VILLA 5.` → `VILLA 005`. **Lo que no cambia**: el
+> patrón, el 409 `unidad_sin_nombre_derivable`, R46 (`VILLA 013` casa con la
+> unidad 13 porque su clave es `(VILLA, 13)`, sufijo de la de su `con.res`) y
+> R50.
 
 ### 4.7 · Números repetidos en Sigrid (R44, R50) — añadido el 2026-09-24
 
@@ -1056,6 +1113,20 @@ cada parte dice en qué biblioteca está (`drive_id`).
 > primer archivado en Posventa no sería el autorizado de R33, y podría crear
 > carpetas antes de R42») queda **cerrado por esta decisión**, no por un
 > arreglo técnico.
+
+> **Enmienda del 2026-09-25 (F-049) · el paso 2 y el aviso del paso 3, con
+> la biblioteca reorganizada.** El paso 2 decía, literal: *«VILLA 08–15
+> «crearía `VILLA NN`» y su hoja»*; el 3, *«en la 0677, `VILLA 08` …
+> `VILLA 15` según lleguen sus partes»*. **Qué lo invalidó**: el propio paso
+> 2, lanzado el 2026-09-25, mostró la biblioteca reorganizada (`VILLA 001` …
+> `VILLA 007`, `VILLA 012`, `VILLA 013`, §1), y el humano decidió ese día
+> «siempre con tres cifras» (§4.6). Lo que tiene que decir el 23 es lo de
+> `requirements.md` R31, enmendado con esta fecha: obra, `PARTES
+> INCIDENCIAS` y las unidades 1–7, 12 y 13 «resolvería» (o «crearía `PARTES
+> FIRMADOS`» dentro de una carpeta sin hoja); las 8–11, 14 y 15 «crearía
+> `VILLA 008`» … `VILLA 015` y su hoja; ninguna «bloquearía». El aviso a
+> Posventa (paso 3) nombra `VILLA 008` … `VILLA 011`, `VILLA 014` y
+> `VILLA 015`.
 
 ## 8 · Relación con F-033, F-031 y F-018
 

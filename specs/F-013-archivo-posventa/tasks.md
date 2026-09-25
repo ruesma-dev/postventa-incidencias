@@ -384,6 +384,21 @@
    «bloquearía». Si VILLA 02 dice «bloquearía», relanzar con `-MostrarNombres`
    y llevar el literal al líder (`design.md` §10, riesgo 16). Cualquier otra
    diferencia: **no se despliega**.
+
+   > **Enmienda del 2026-09-25 (F-049) · lo que tiene que salir ahora.** Este
+   > paso decía, literal: *«VILLA 08–15 «crearía `VILLA NN`» y su hoja»*.
+   > **Qué lo invalidó**: el propio paso 2, lanzado el 2026-09-25, mostró que
+   > Posventa ha reorganizado las carpetas de unidad de la 0677 a `VILLA 001`
+   > … `VILLA 007`, `VILLA 012` y `VILLA 013`, y el humano decidió ese día
+   > «siempre con tres cifras» (F-049). Tiene que salir lo de R31 enmendado
+   > con esta fecha: obra, `PARTES INCIDENCIAS` y las unidades 1–7, 12 y 13
+   > «resolvería» (o «crearía `PARTES FIRMADOS`» dentro de una carpeta sin
+   > hoja; las hojas reorganizadas no están medidas); las 8–11, 14 y 15
+   > «crearía `VILLA 008`» … `VILLA 011`, `VILLA 014`, `VILLA 015` y su hoja;
+   > ninguna «bloquearía». El aviso del paso 4 nombra esas mismas villas en
+   > vez de «`VILLA 08`…`VILLA 15`». El 23 ejecuta el dominio **de la copia
+   > local** del repositorio: se relanza desde una copia que ya lleve F-049;
+   > sin ella diría «crearía `VILLA 08`».
 3. ~~Consulta de solo lectura en `postventa`: recuento de `archivos` en estado
    `archivado` por `drive_id` (sin imprimir el valor), para dejar escrito
    cuántos partes siguen en IT (R26).~~ **Ya hecho, sale del corte**

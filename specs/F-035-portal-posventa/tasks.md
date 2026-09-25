@@ -294,6 +294,13 @@
 
 ## Bloque 5 · Identidad visual Ruesma (segunda ronda, 2026-09-25)
 
+> **Aprobación de la enmienda del estilo, 2026-09-25** (humano, preguntado por el
+> líder con `progress/spec_F-035.md` §10): botón principal del circuito
+> **«Burdeos (Recomendado)»**; fuentes **«Google Fonts (Recomendado)»**; R48
+> **«Sí, con test (Recomendado)»**. H-6 y H-7 quedan para el líder: H-7 (retirar
+> `--ruesma-burdeos`, sin uso) entra en T14; H-6 (fijar la versión de Tailwind)
+> se anota como ficha aparte, fuera de F-035.
+
 Diseño: `design.md` §15. Reglas del bloque: **ni un `js/*.js` cambia** (ni
 del circuito ni de la maqueta); en `partes.html` solo cambian valores de
 `class`, las cuatro `<link>` y la barra (R59); **ningún test del circuito se

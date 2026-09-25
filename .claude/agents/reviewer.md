@@ -100,6 +100,11 @@ nivel de rigor dice cuánta evidencia hay que exigir.
    rechaza. Caso de origen: en F-034 dos puertas se podían bajar por debajo del
    login contra el ERP y la suite entera seguía en verde, porque el doble del
    servicio de usuarios no anotaba ninguna llamada.
+   Si el primer test que cae con una mutación de orden es **de otra feature**,
+   repítela **sin `-x` y solo con los tests de la feature revisada**: tiene que
+   caer también uno suyo. Si solo la caza una suite vecina, la feature no ve ese
+   orden por sí misma, y eso se anota como hallazgo. Añadido el 2026-09-25, a
+   propuesta del reviewer de F-013 de `postventa-incidencias`, aprobado por el humano.
 
 En proyectos que no sean Python, las puertas de cobertura y mutación no están
 disponibles: eso es un N/A **justificado por el lenguaje**, y hay que

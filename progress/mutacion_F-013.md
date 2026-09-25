@@ -225,3 +225,9 @@ adelantar este; este es el único informe de mutación versionado de F-013.
 **Veredicto de T20**: cero supervivientes sin justificar. El único de la
 herramienta es un equivalente con aceptación escrita del humano; el único de
 la mutación a mano (U4) era un hueco real y está cerrado con test.
+
+## Aceptaciones del humano
+
+- `destino_archivo.py:102` (`_Nivel`, `frozen`): equivalente **aceptado el 2026-09-24**.
+- Mutación a mano del bloque 2, P2, M19 y M20: equivalentes **aceptados por el humano el 2026-09-25**, preguntado tras la review APROBADA (`progress/review_F-013.md` §5): eligió «Aceptar los tres (Recomendado)». M19 con la
+  salvedad del reviewer (base patológica): mejora pendiente H-3, `design.md` §10.

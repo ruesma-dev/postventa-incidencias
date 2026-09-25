@@ -1318,6 +1318,22 @@ R50 (§4.7). Con esto **no queda ninguna pregunta abierta de la medición**.
 > - **17 (nuevo) · el número de la obra ya no distingue `0677` de `677`**.
 >   Aceptado por T4-4; lo cubre R44.
 
+> **Añadido el 2026-09-25 (líder), de la review de F-013** (`progress/review_F-013.md` §8).
+>
+> - **18 (nuevo) · dos fuentes para la carpeta final (H-3).**
+>   `destino_archivo.py` compone la carpeta final con `unir_ruta(base, …)` y los
+>   padres de las creaciones con `camino.ruta`. Coinciden con toda configuración
+>   real; divergen solo con una base cuyo primer tramo, recortado, empiece por
+>   `/` (p. ej. `"/ /x"`). Es lo que deja vivo al mutante a mano M19, aceptado
+>   por el humano como equivalente el 2026-09-25. **Mejora pendiente**, sin
+>   cambio de comportamiento: `DestinoArchivo(carpeta=camino.ruta, …)`.
+> - **19 (nuevo) · el `LIKE` de las unidades es más estrecho que «mismo
+>   número» (H-4).** `SQL_UNIDADES_DEL_NUMERO` filtra con
+>   `LTRIM(RTRIM(o.cod)) LIKE '%677'`, pero `numero_de_obra` quita **todos** los
+>   blancos: una segunda obra con código `06 77` sería invisible a R44. Medido
+>   que no ocurre en la 0677 (T3: una sola obra) e improbable en `con.cod`. Si
+>   aparece, enmienda con medición.
+
 ## 11 · Tests (todos sin red, sin BBDD y sin IA)
 
 | Fichero | Cubre |

@@ -2649,3 +2649,13 @@ máquina igual de cargada que en §3. **T21 hecha.**
 | Mutantes generados y supervivientes | Arnés: **109 generados, 108 muertos, 1 superviviente** (`_Nivel`, equivalente aceptado por el humano el 2026-09-24), 0 timeouts, 2.407,1 s con 6 workers. A mano (T20): **18 generados, 18 muertos** tras cerrar U4 con test |
 | Tiempo de la suite | api 242,55 s; arnés 10,54 s (`init.sh` final) |
 | Fase RED | No aplica en sentido estricto: T20 no escribe código; el test nuevo cubre comportamiento que ya existía y pasó a la primera. Su «rojo» es el mutante U4 inyectado (traza en §2) |
+
+## Nota del líder · equivalentes a mano P2, M19 y M20 aceptados (2026-09-25)
+
+Los tres mutantes a mano del bloque 2 (§5) declarados equivalentes —P2 (R44 por
+debajo de construir `_Camino`, que no llama a nadie), M19 (la carpeta final desde
+`camino.ruta` en vez de `unir_ruta(base, …)`) y M20 (la obra nueva con el código de
+Sigrid en vez del del parte)— quedan **aceptados por el humano el 2026-09-25**, preguntado tras la review APROBADA (`progress/review_F-013.md` §5): eligió «Aceptar los tres (Recomendado)». El reviewer los da por equivalentes
+estrictos salvo M19, que lo es «en la práctica»: diverge solo con una carpeta base
+patológica (`"/ /x"`). Por eso H-3 queda como **mejora pendiente** en `design.md` §10
+(riesgo 18), sin tocar producción después de la aprobación.

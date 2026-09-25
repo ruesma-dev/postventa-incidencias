@@ -184,6 +184,11 @@ recorre estos puntos **contra ese nivel**.
 - [ ] Cada superviviente de esa campaña tiene su sección de análisis
       **completada** (ninguna en `PENDIENTE`). En nivel `critico`, además,
       cero supervivientes salvo justificación escrita aceptada por el humano.
+      Vale igual para los mutantes **a mano** (los de orden de RM7 y los que
+      se añadan donde la herramienta no genera ninguno): en `critico`, cada
+      uno declarado equivalente necesita la aceptación **escrita** del
+      humano, no solo el juicio del reviewer (aclarado el 2026-09-25 a
+      propuesta del reviewer de F-013 de `postventa-incidencias`).
 - [ ] El informe del implementer trae la sección **«Evidencias»** con los
       cuatro números: tests ejecutados y resultado, cobertura de las líneas
       cambiadas, mutantes generados y supervivientes, y tiempo de la suite.

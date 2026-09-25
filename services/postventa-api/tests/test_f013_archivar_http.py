@@ -936,10 +936,13 @@ def _mundo_con_la_villa_5_archivada(traza: TrazaArchivo):
     return registro, archivador, ubicaciones, repositorio
 
 
-def test_f013_r25_r45_archivado_en_it_no_lee_sigrid_ni_lista_ni_crea_ni_sube(
+def test_f013_r24_r25_r45_archivado_en_it_no_lee_sigrid_ni_lista_ni_crea_ni_sube(
     estrategia, monkeypatch, caplog
 ):
-    """R25, R45 · el parte de IT: 200, la traza de IT tal cual y los dos avisos.
+    """R24, R25, R45 · el parte de IT: 200, la traza de IT tal cual y los dos avisos.
+
+    R24 (nada se mueve, copia ni borra de IT): el registro vacío lo demuestra
+    para este parte. Renombrado el 2026-09-25 por el hallazgo H-2 de la review.
 
     Con `SHAREPOINT_ESTRUCTURA=posventa` y la biblioteca de Posventa
     configurada, un parte que consta `archivado` en la de IT: el registro de

@@ -1,6 +1,31 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-013 CERRADA · 2026-09-25 · falta el merge a `dev`, desplegar y el corte
+>
+> Review **APROBADA** (`progress/review_F-013.md`), cuatro hallazgos bajos
+> resueltos al cerrar (H-1 aquí, H-2 test renombrado, H-3 y H-4 en `design.md`
+> §10). P2, M19 y M20 aceptados por el humano. Acta: **`progress/cierre_F-013.md`**.
+>
+> **Verificaciones MANUAL (humano) pendientes, todas del corte y después del
+> merge** (detalle en `specs/F-013-archivo-posventa/tasks.md`, «Después del
+> merge», y `docs/DESPLIEGUE.md` §9):
+>
+> - **R31 (paso 2, antes de desplegar)**:
+>   `powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677 -SigridBaseDatos ruesma -SalidaCsv <ruta fuera del repo>`
+>   y
+>   `powershell -ExecutionPolicy Bypass -File infra\23_destino_posventa.ps1 -UrlSitio "<URL del sitio Postventa>" -CodigoObra 0677 -DesdeKeyVault -UnidadesCsv <la misma ruta>`.
+>   Tiene que salir exactamente lo de R31 (VILLA 01–03 y 05–07 «resolvería»,
+>   VILLA 04 «crearía `PARTES FIRMADOS`», 08–15 «crearía `VILLA NN`» y su hoja,
+>   ninguna «bloquearía»). Cualquier diferencia: no se despliega.
+> - **R33 (paso 7, el mismo día)**: `25_mediciones_despliegue.ps1` ve una
+>   segunda biblioteca con trazas `archivado`; con Posventa, uno de esos partes
+>   está en su carpeta y en su OneDrive.
+> - **R42 (paso 8, el mismo día)**: tras la primera carpeta creada (`F-013
+>   carpeta creada:` en el log), relanzar el 23 —esa unidad pasa a
+>   «resolvería»— y confirmar con Posventa que el nombre sirve y no hay
+>   duplicado.
+
 > ## ✅ F-013 · BLOQUE 7 HECHO (T20 y T21) · 2026-09-25 · siguiente: review
 >
 > implementer. Informe: **`progress/impl_F-013.md`, sección «Bloque 7 · T20 y

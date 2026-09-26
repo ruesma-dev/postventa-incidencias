@@ -3649,8 +3649,10 @@ Debe salir el bloque «Publicacion de la maqueta» con `Entorno : maqueta (se
 crea al subir)`, `URL de retorno : N registradas; se anade la del entorno sin
 quitar ninguna` (N ≥ 1) y `-WhatIf: no se ha escrito nada.`; código 0. Si
 para: 4 (no hay Static Web App), 7 (no se lee `swa-client-id`: falta permiso
-de lectura del Key Vault), 8 (el registro no casa con el Key Vault) o 9 (el
-entorno ya existe con backend). En cualquiera, **no seguir** y avisar.
+de lectura del Key Vault), 8 (el registro no casa con el Key Vault), 9 (el
+entorno ya existe con backend) o 12 (no se lee la lista de URL de retorno, o
+alguna lleva caracteres que `cmd.exe` rompe). En cualquiera, **no seguir** y
+avisar.
 
 **2 · Publicar**
 
@@ -3660,19 +3662,24 @@ powershell -ExecutionPolicy Bypass -File .\infra\publicar_maqueta.ps1
 
 Teclear `PUBLICAR`. Sale la salida de `swa deploy` y, al final, `RESULTADO`
 con cuatro líneas «(comprobado)» y la **URL de la maqueta**. Código 0. Si
-para con 9, 10 u 11, el entorno está subido **sin inicio de sesión** (nadie
-entra): ejecutar el paso 4 y avisar con el código y el mensaje.
+para con 7 (secreto ilegible o con caracteres que `cmd.exe` rompe), **no ha
+subido nada**. Si para con 9, 10 u 11, el entorno está subido **sin inicio de
+sesión** (nadie entra): ejecutar el paso 4 y avisar con el código y el
+mensaje.
 
 **3 · Comprobar**
 
 ```
 az staticwebapp environment list --name <swa> --resource-group <rg> --query "[].name" -o tsv
 az staticwebapp backends show --name <swa> --resource-group <rg> --environment-name maqueta
-az staticwebapp backends show --name <swa> --resource-group <rg> --query "length(@)" -o tsv
+az staticwebapp backends show --name <swa> --resource-group <rg> --query "[].backendResourceId" -o tsv
 ```
 
 La primera lista `default` y `maqueta`; la segunda devuelve `[]` (la maqueta
-sin backend); la tercera, `1` (producción conserva su backend). Y en el
+sin backend); la tercera, **una** línea (producción conserva su backend; es
+un identificador de recurso: **no se pega** en ningún sitio). *(Hasta la
+review 7 este paso usaba `--query "length(@)"`, que tampoco sobrevive a
+`az.cmd`: PowerShell no entrecomilla un argumento sin espacios.)* Y en el
 navegador, en una ventana privada:
 
 - la URL de la maqueta sin sesión lleva al inicio de sesión;
@@ -3696,8 +3703,9 @@ El primero dice `Entorno 'maqueta' : existe: se BORRA` y `URL de retorno : 1
 de 'maqueta' (se quitan); se conservan N`. El segundo, tras teclear
 `RETIRAR`, termina con `Entorno 'maqueta' : borrado` y `1 quitada(s); N
 conservada(s)`; código 0. Comprobar que `environment list` (paso 3) lista
-solo `default` y que producción sigue entrando. Si para con 12, **no** ha
-reescrito la lista (quedaría vacía): avisar.
+solo `default` y que producción sigue entrando. Si para con 12, **no ha
+tocado nada** —ni el entorno ni la lista, desde la review 7 se comprueba antes
+de confirmar—: avisar.
 
 A mano, sin el script, la vuelta atrás es la de §5; con dos trampas:
 `environment delete` **sin** `--environment-name maqueta` borra producción, y
@@ -3733,3 +3741,222 @@ antes (el test nuevo: «All checks passed!»). T22 `[x]`.
 | Mutantes a mano | T20: **20/20 muertos**; T21: **6/6 muertos**. 0 supervivientes |
 | Simulación local de T20 | **15/15 escenarios OK** (y su control con mutante, en `FALLA`) |
 | Tiempo de la suite | Raíz 7,24 s; front 9,54 s; api 88,76 s |
+
+## Correcciones de la review 7 · 2026-09-26
+
+> implementer. Review: `progress/review7_F-035.md` (RECHAZADA: `length(@)` no
+> sobrevive a `az.cmd`). Se aplican los cuatro cambios requeridos (el 4, por
+> decisión del líder) y lo que ha salido de revisar todas las llamadas a `az`
+> con la misma óptica. Commits `ed7c9bf` y `97fda38`. **`infra/desplegar_front.ps1`
+> y los tests de F-010 sin tocar.** Nada ejecutado contra Azure ni Entra.
+
+### 1 · Qué ha cambiado
+
+**`infra/publicar_maqueta.ps1`**
+
+- **Cambio 1 · `Backends-Del-Entorno`** (función propia, no duplicada). Pide
+  `backends show … --environment-name maqueta -o json`, **sin `--query`**, y
+  cuenta en PowerShell con `ConvertFrom-Json -InputObject $json -ErrorAction
+  Stop` y `@($lista).Count`. Lectura fallida o JSON que no se interpreta:
+  `$null`, que el llamador trata como «tiene backend» (falla cerrado, como
+  antes). `Valor-De-Az` no se toca. Comprobado en Windows PowerShell 5.1:
+  `[]` → 0, `[{…}]` → 1, dos elementos → 2, `null` → 1 (cerrado), texto que
+  no es JSON → error → `$null` (cerrado).
+- **Cambio 4 · `-Retirar`**: `$quedan` se calcula y `$quedan.Count -eq 0` se
+  comprueba **antes de la confirmación**, junto a la de `$retornos.Count`.
+  Si quedaría vacía, para con 12 **sin borrar el entorno**. (La R3 de antes
+  dejaba «entorno borrado, URL registrada».)
+- **Revisión de todas las llamadas a `az`** (la óptica del cambio 1). Los
+  literales se vigilan ya con un test (cambio 2). Quedaban los **valores de
+  ejecución** que viajan sin comillas por `az.cmd`:
+
+  | Llamada | Qué va sin comillas | Veredicto |
+  |---|---|---|
+  | `account show`, `staticwebapp show`, `keyvault secret show`, `ad app show`, `staticwebapp secrets list`, `environment show`, `appsettings list` | solo literales (`--query` con `.` y `[]`, sin metacaracteres de cmd) | Bien |
+  | `ad app list --display-name $PostventaAppRegistro` | «Postventa Incidencias» lleva espacio: PowerShell lo entrecomilla | Bien |
+  | `backends show` | era `length(@)` | **Corregido** (cambio 1) |
+  | `appsettings set --setting-names "AZURE_CLIENT_ID=$clientId" "AZURE_CLIENT_SECRET=$secreto"` | el **secreto**, texto libre | **Guarda nueva**: si lleva `( ) & \| < > ^ % ! "`, para con 7. Además el secreto se lee y se valida **antes de la primera escritura** (antes, tras subir los estáticos): si no sirve, no se ha subido nada |
+  | `ad app update --web-redirect-uris $todas` / `$quedan` | las URL de retorno registradas, leídas de Entra | **Guarda nueva**: si alguna lleva esos caracteres, para con 12 **antes de confirmar** (reescribirla podría corromper la lista) |
+  | `environment delete`, `--id $appId`, host del entorno | nombres, GUID y un nombre DNS | Bien |
+  | `swa deploy $copiaDeTrabajo --env maqueta` | la ruta del temporal | Bien: en esta máquina `swa` se resuelve a `swa.ps1` (PowerShell lo prefiere al `.cmd`), y en el `swa.cmd` de npm `%*` va fuera de todo bloque `IF (…)` |
+
+**`tests/test_f035_publicar_maqueta.py`** (30 → 34 tests)
+
+- **Cambio 2 · `argumentos_rotos_por_cmd`**: todo literal que el script pasa a
+  `az` o a `swa` (los `"…"` de cada `Valor-De-Az @(…)` y las piezas de cada
+  llamada directa, quitadas las variables y las redirecciones de PowerShell)
+  no puede llevar `( ) & | < > ^` si no lleva también un espacio.
+  `test_f035_t20_ningun_argumento_de_az_se_rompe_al_pasar_por_cmd`, con su
+  control `…_control_la_regla_caza_el_defecto_de_la_review_7`: la línea exacta
+  de antes da rojo, una llamada directa con `&&` también, y una consulta con
+  espacios (`| [0]`) no.
+- **`…_sin_backend_o_para_y_antes_de_las_app_settings`** ya no exige
+  `length(@)`: exige `-o json`, ningún `--query`, `ConvertFrom-Json … -ErrorAction
+  Stop`, el `return $null` de la lectura fallida y del `catch`, y el recuento.
+- **`…_nunca_se_reescribe_la_lista_vacia`**: la guarda de `$quedan` va antes de
+  la confirmación y antes del `environment delete`.
+- Nuevos: `…_un_secreto_que_cmd_romperia_para_antes_de_escribirse` (orden y
+  patrón, que caza cada metacarácter y deja pasar `~ . _ -`, los de Entra) y
+  `…_una_url_de_retorno_que_cmd_romperia_para_antes_de_confirmar`.
+- `…_los_valores_salen_del_key_vault_y_el_secreto_se_suelta` exige ahora que
+  el `$secreto = $null` vaya justo tras la comprobación (con la guarda nueva
+  había dos asignaciones y el mutante M15 sobrevivía).
+
+**`docs/DESPLIEGUE.md` §10**: un párrafo con la O4 de la review (un despliegue
+completo de producción quita la URL de retorno de `maqueta`: falla cerrado; se
+arregla republicando).
+
+**Guion del humano (§8 del bloque 6), enmendado en su sitio**: el paso 3 usaba
+`--query "length(@)"`, **el mismo defecto** en un comando que teclearía el
+humano; ahora `--query "[].backendResourceId" -o tsv` (una línea = backend, y
+no se pega). Y los códigos nuevos: 12 en el ensayo, 7 «no ha subido nada», y
+en la retirada «12 no ha tocado nada».
+
+### 2 · Fase RED
+
+Test del cambio 2 escrito **antes** de tocar el script. Comando:
+`python -m pytest tests/test_f035_publicar_maqueta.py -p no:cacheprovider -q --tb=line -k "cmd or review_7"`
+
+```
+C:\Users\pgris\PycharmProjects\postventa-incidencias\tests\test_f035_publicar_maqueta.py:451: AssertionError: estos argumentos llegan sin comillas a az.cmd y cmd.exe los rompe
+C:\Users\pgris\PycharmProjects\postventa-incidencias\tests\test_f035_publicar_maqueta.py:470: assert ["'length(@)'...taticWebApp,"] == []
+=========================== short test summary info ===========================
+FAILED tests/test_f035_publicar_maqueta.py::test_f035_t20_ningun_argumento_de_az_se_rompe_al_pasar_por_cmd
+FAILED tests/test_f035_publicar_maqueta.py::test_f035_t20_control_la_regla_caza_el_defecto_de_la_review_7
+2 failed, 30 deselected in 0.06s
+```
+
+(El control falla en su última aserción porque el texto real todavía llevaba
+el defecto; tras el cambio 1, verde.) Con el script corregido y antes de
+ajustar los tests viejos, fallaban justo los dos que la review manda cambiar:
+`…_sin_backend_o_para…` (exigía `length(@)`) y `…_nunca_se_reescribe_la_lista_vacia`.
+
+### 3 · Mutantes a mano (27, sobre copias del script)
+
+`mutar_t20.py` (scratchpad): los 20 de antes (M5 reescrito para la guarda
+nueva) y 7 nuevos.
+
+```
+M15 el secreto no se suelta: MUERTO -> ['test_f035_t20_los_valores_salen_del_key_vault_y_el_secreto_se_suelta']
+M20 confirmacion despues de borrar: MUERTO -> ['test_f035_t20_nunca_se_reescribe_la_lista_vacia', 'test_f035_t20_whatif_y_confirmacion_antes_de_la_primera_escritura']
+M21 backend ilegible cuenta como cero: MUERTO -> ['test_f035_t20_sin_backend_o_para_y_antes_de_las_app_settings']
+M22 JSON roto cuenta como cero: MUERTO -> ['test_f035_t20_sin_backend_o_para_y_antes_de_las_app_settings']
+M23 vuelve length(@): MUERTO -> ['test_f035_t20_sin_backend_o_para_y_antes_de_las_app_settings', 'test_f035_t20_ningun_argumento_de_az_se_rompe_al_pasar_por_cmd', 'test_f035_t20_control_la_regla_caza_el_defecto_de_la_review_7']
+M24 sin guarda del secreto: MUERTO -> ['test_f035_t20_un_secreto_que_cmd_romperia_para_antes_de_escribirse']
+M25 guarda del secreto sin &: MUERTO -> ['test_f035_t20_un_secreto_que_cmd_romperia_para_antes_de_escribirse']
+M26 guarda de retirada tras confirmar: MUERTO -> ['test_f035_t20_nunca_se_reescribe_la_lista_vacia']
+M27 sin guarda de URL con metacaracteres: MUERTO -> ['test_f035_t20_una_url_de_retorno_que_cmd_romperia_para_antes_de_confirmar']
+supervivientes: 0 de 27
+```
+
+(M1–M14 y M16–M19, muertos como antes; la salida completa, en
+`mutantes_t20_rev7.txt`.) M15 **sobrevivió** en la primera pasada tras las
+correcciones —la guarda del secreto añadía otro `$secreto = $null`— y se cerró
+reforzando su test.
+
+### 4 · Cambio 3 · la simulación, con `az.cmd` y `swa.cmd` de verdad
+
+`sim_cmd\` (scratchpad): `az.cmd` es una réplica **línea a línea** del de la
+instalación MSI (leído en `C:\Program Files\Microsoft SDKs\Azure\CLI2\wbin\az.cmd`:
+`@IF EXIST … (` … `%*` … `) ELSE (`), que llama a un `az_falso.py` que anota
+el `argv` **tal y como le llega tras cmd.exe** y responde con datos
+ficticios; `swa.cmd` replica el envoltorio de npm. Nada de funciones de
+PowerShell para `az` ni `swa` (solo `Read-Host`, para teclear la palabra). Cada
+ejecución **aborta si `Get-Command az` no es el `az.cmd` falso**. Se comprueba
+el código de salida, las escrituras, que el token del operador vuelve a su
+sitio, que no queda copia de trabajo, que no se imprime ningún valor y, en P3,
+que `az` recibe **exactamente** `AZURE_CLIENT_ID=…` y `AZURE_CLIENT_SECRET=…`
+con un secreto con `~ . _ -` (los caracteres de Entra), y la lista final de
+URL.
+
+**Control primero**: la versión anterior a la review (`git show
+2d46bab:infra/publicar_maqueta.ps1`, en una copia) reproduce el defecto:
+
+```
+P3 publicar, camino feliz                               salida  9 | escrituras: 1 | FALLA: codigo 9, esperado 0; App Settings recibidas por az: None; lista final ['https://anfitrion-prod.1.ejemplo/.auth/login/aad/callback']; el resumen no da la URL
+      - swa deploy <temp>\postventa-maqueta-31f24818a7f54a6794e7d19597b89ff7 --env maqueta --no-use-keychain
+P8b publicar, entorno previo sin backend (republica)    salida  9 | escrituras: 0 | FALLA: codigo 9, esperado 0
+R2 retirar, camino feliz                                salida  0 | escrituras: 2 | OK
+```
+
+**Script corregido** (`python simular.py`), todos los escenarios, incluidos
+los que pidió la review (P3, P4, P5, P8 y R2):
+
+```
+script: C:\Users\pgris\PycharmProjects\postventa-incidencias\infra\publicar_maqueta.ps1
+P1 publicar -WhatIf, entorno nuevo                      salida  0 | escrituras: 0 | OK
+P2 publicar, confirmacion denegada                      salida  5 | escrituras: 0 | OK
+P3 publicar, camino feliz                               salida  0 | escrituras: 3 | OK
+      - swa deploy <temp>\postventa-maqueta-f042e1ada2a14a3591d21ecaf510c4c7 --env maqueta --no-use-keychain
+      - az staticwebapp appsettings set --name swa-postventa-ruesma --resource-group rg-postventa-dev --environment-name maqueta --setting-names AZURE_CLIENT_ID=cid-ficticio AZURE_CLIENT_SECRET=<secreto> --only-show-errors
+      - az ad app update --id cid-ficticio --web-redirect-uris https://anfitrion-prod.1.ejemplo/.auth/login/aad/callback https://anfitrion-prod-maqueta.region.1.ejemplo/.auth/login/aad/callback --only-show-errors
+P4 publicar, el entorno sale con backend                salida  9 | escrituras: 1 | OK
+      - swa deploy <temp>\postventa-maqueta-3b992ac8e4344a66b68ef3959f4338f5 --env maqueta --no-use-keychain
+P5 publicar, no se puede leer el backend                salida  9 | escrituras: 1 | OK
+      - swa deploy <temp>\postventa-maqueta-431ec6ea95a54b25b96e6f2d2f7c205b --env maqueta --no-use-keychain
+P5b publicar, el backend no es JSON                     salida  9 | escrituras: 1 | OK
+      - swa deploy <temp>\postventa-maqueta-bf7946dc0db7491dbbc50a59a9b0f0b1 --env maqueta --no-use-keychain
+P6 publicar, App Settings no quedan en el entorno       salida 10 | escrituras: 2 | OK
+      - swa deploy <temp>\postventa-maqueta-65ce3297e870473a991e35a6d22baea9 --env maqueta --no-use-keychain
+      - az staticwebapp appsettings set --name swa-postventa-ruesma --resource-group rg-postventa-dev --environment-name maqueta --setting-names AZURE_CLIENT_ID=cid-ficticio AZURE_CLIENT_SECRET=<secreto> --only-show-errors
+P7 publicar, el host es el de produccion                salida 11 | escrituras: 1 | OK
+      - swa deploy <temp>\postventa-maqueta-c81cc272df4947138c647db6792bba1a --env maqueta --no-use-keychain
+P8 publicar, entorno previo con backend                 salida  9 | escrituras: 0 | OK
+P8b publicar, entorno previo sin backend (republica)    salida  0 | escrituras: 2 | OK
+      - swa deploy <temp>\postventa-maqueta-b5bd4226b29544fe9e079788395ea2b9 --env maqueta --no-use-keychain
+      - az staticwebapp appsettings set --name swa-postventa-ruesma --resource-group rg-postventa-dev --environment-name maqueta --setting-names AZURE_CLIENT_ID=cid-ficticio AZURE_CLIENT_SECRET=<secreto> --only-show-errors
+P9 publicar, registro distinto del vault                salida  8 | escrituras: 0 | OK
+P10 publicar, lista de retorno ilegible                 salida 12 | escrituras: 0 | OK
+P12 publicar, secreto con un metacaracter de cmd        salida  7 | escrituras: 0 | OK
+P13 publicar, una URL de retorno con & registrada       salida 12 | escrituras: 0 | OK
+R1 retirar -WhatIf                                      salida  0 | escrituras: 0 | OK
+R2 retirar, camino feliz                                salida  0 | escrituras: 2 | OK
+      - az staticwebapp environment delete --name swa-postventa-ruesma --resource-group rg-postventa-dev --environment-name maqueta --yes --only-show-errors
+      - az ad app update --id cid-ficticio --web-redirect-uris https://anfitrion-prod.1.ejemplo/.auth/login/aad/callback --only-show-errors
+R3 retirar, la lista quedaria vacia                     salida 12 | escrituras: 0 | OK
+R4 retirar, sin entorno ni URL                          salida  0 | escrituras: 0 | OK
+```
+
+**18/18 OK.** Las escrituras son el `argv` que recibió el `az` falso después
+de pasar por `cmd.exe` (el secreto, sustituido por `<secreto>` en la salida).
+R3 ya no escribe nada (antes, 1: el borrado). Los nombres de recurso que se
+ven son los de `00_vars_postventa.ps1`, que ya están en el repositorio; los
+hosts son inventados (`.ejemplo`).
+
+**Límite que sigue**: la forma de la salida real de `backends show` (lista
+JSON), `environment show` (`hostname`) y `appsettings list`
+(`properties.<clave>`) solo la confirma Azure. Si no es esa, el script para
+con 9, 11 o 10: falla cerrado.
+
+### 5 · Observaciones de la review
+
+- **O1** (`desplegar_front.ps1:475`, F-010, `length([?displayName=='swa'])`):
+  mismo defecto, sin tocar. Decisión del líder.
+- **O2** (identidad de la copia de trabajo más allá de funciones, lista y
+  marcador) y **O3** (estropeo `?v=` con otra longitud): no aplicados; no los
+  pide el encargo.
+- **O4**: aplicada en `docs/DESPLIEGUE.md` §10 (un párrafo).
+- **O5** (`azure-apps/`): sigue siendo decisión del líder.
+- **Automejora propuesta por el reviewer** (simular con envoltorios `.cmd`):
+  de acuerdo; es del líder y del humano, y valdría para `arnes-base`.
+
+### 6 · Verificación
+
+- `bash harness/init.sh` tras `97fda38`: **exit 0, `ENTORNO LISTO`**. Raíz
+  **107 passed** (7,08 s; +4 de esta ronda); front y api desde caché. Como
+  `docs/DESPLIEGUE.md` cambió y lo leen tests de la api, la api se ejecutó
+  además **sin caché** tras `ed7c9bf`: **4356 passed, 52 skipped** (87,35 s).
+  `PUERTA COBERTURA: N/A`; `ruff` 61 avisos, los de antes (el test:
+  «All checks passed!»).
+
+### Evidencias (correcciones de la review 7)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Raíz **107 passed** (7,08 s); api **4356 passed, 52 skipped** sin caché (87,35 s); front desde caché (sin cambios) |
+| Tests nuevos / cambiados | **4 nuevos** (regla de cmd y su control, guarda del secreto, guarda de las URL); **3 enmendados** (backend, lista vacía, secreto soltado) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; PowerShell no se mide |
+| Mutantes (campaña del arnés) | No aplica: sin líneas Python de producción (0, como en la review 7) |
+| Mutantes a mano | **27/27 muertos** (M15 cerrado en esta ronda) |
+| Simulación con `az.cmd`/`swa.cmd` | **18/18 OK**; el control con la versión anterior reproduce el defecto (P3 y P8b, código 9) |
+| Tiempo de la suite | Raíz 7,08 s; api 87,35 s |

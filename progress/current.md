@@ -1,6 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 7 HECHAS · 2026-09-26 · siguiente: reviewer (vuelta sobre la review 7) y guion §8 del bloque 6 (humano)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la review 7».
+> Commits `ed7c9bf` y `97fda38`. `Backends-Del-Entorno` sin `--query`, contado con
+> `ConvertFrom-Json` y cerrado si falla; test de literales de `az` con
+> metacaracteres de cmd (y control); `-Retirar` comprueba la lista antes de
+> confirmar; guardas nuevas para el secreto y las URL de retorno. Simulación con
+> `az.cmd`/`swa.cmd` réplica: 18/18 OK (la versión vieja reproduce el defecto).
+> 27/27 mutantes muertos. El guion §8 tenía el mismo `length(@)`: corregido.
+> `init.sh` en verde (raíz 107; api sin caché 4356). `desplegar_front.ps1` sin
+> tocar (O1 de la review, para el líder). Sin push.
+
 > ## ▶ F-035 · BLOQUE 6 (T20, T21, T22) HECHO · 2026-09-26 · siguiente: review del bloque 6 y guion de §8 (humano)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 6 · T20 a T22», §7 a §9.

@@ -1,6 +1,21 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 6 (T20, T21, T22) HECHO · 2026-09-26 · siguiente: review del bloque 6 y guion de §8 (humano)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 6 · T20 a T22», §7 a §9.
+> T20 por la **opción B** del líder (`42b7cbf`): `infra/publicar_maqueta.ps1`
+> (`6f6ffc3`) con las piezas duplicadas de `desplegar_front.ps1` y test de
+> identidad; `-Retirar`; comprobaciones en ejecución (backend, App Settings
+> en el entorno, host, lista de retorno entera y nunca vacía). 30 tests,
+> 20/20 mutantes muertos, simulación local sin Azure 15/15. `desplegar_front.ps1`
+> y los tests de F-010 sin tocar. `init.sh` en verde (raíz 103; api sin caché
+> 4356). Sin push; `features.json` sin tocar.
+>
+> - Pendiente del humano: guion §8 (publicar, comprobar, retirar).
+> - Para el líder: `azure-apps/postventa-incidencias.md` (una URL y una URL de
+>   retorno más cuando se publique), fuera de este repositorio.
+
 > ## ▶ F-035 · BLOQUE 6: T21 HECHA, **T20 BLOQUEADA** · 2026-09-26 · siguiente: decisión del líder/humano sobre T20
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 6 · T20 a T22».

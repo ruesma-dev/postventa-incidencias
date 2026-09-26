@@ -460,5 +460,5 @@ ya pide cada verificación.
   guardia R59 para admitir **solo** ese cambio en el `href` de la hoja en
   `partes.html`, con control de que cualquier otro cambio sigue en rojo. |
   Verificación: la suite del front y la guardia
-- [ ] **T22**: `bash harness/init.sh` en verde.
+- [x] **T22**: `bash harness/init.sh` en verde.
 

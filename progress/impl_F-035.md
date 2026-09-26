@@ -3263,7 +3263,9 @@ el de Python.
 
 ## Bloque 6 · T20 a T22 · 2026-09-26
 
-> **Estado: `blocked` en T20** (T21 hecha, `init.sh` en verde). Motivo en §1.
+> **Estado final: T20, T21 y T22 hechas.** T20 estuvo bloqueada (§1) hasta
+> la decisión del líder (opción B, `42b7cbf`): ver §7 a §9. Lo que sigue es el
+> estado en el momento del bloqueo.
 > `harness/features.json` sin tocar (lo pidió el líder); el bloqueo consta en
 > `progress/current.md`. Sin push. Nada ejecutado contra Azure ni Entra.
 
@@ -3469,3 +3471,265 @@ el script, cuando se decida §1.
 | Mutantes (campaña del arnés) | No lanzada: no hay líneas Python de producción cambiadas (misma situación que en T18, 0 mutantes) |
 | Mutantes a mano de la enmienda | **6/6 muertos** (M1–M6, arriba). 0 supervivientes |
 | Tiempo de la suite | Front 9,54 s; raíz 5,47 s |
+
+### 7 · T20 tras el desbloqueo: opción B (`6f6ffc3`)
+
+> **Estado: T20, T21 y T22 hechas.** El líder eligió la **opción B**
+> (`42b7cbf`): las piezas se duplican con un test de identidad y entra
+> `-Retirar`. `desplegar_front.ps1` y los tests de F-010 **no se han tocado**.
+> Lo de §1 (bloqueo) y el «provisional» de §5 quedan superados por esta
+> sección y la §8.
+
+**Ficheros**: `infra/publicar_maqueta.ps1` (nuevo, ASCII, CRLF, sin BOM),
+`tests/test_f035_publicar_maqueta.py` (nuevo, en la suite de la **raíz**:
+`infra/` no es de ningún servicio y la raíz no se salta por caché, así que un
+cambio en `desplegar_front.ps1` también lo ve), `docs/DESPLIEGUE.md` (§10
+nueva y una línea en §2), `tasks.md` (T20 `[x]`).
+
+**Qué hace el script** (el diseño de §2, sin cambios de fondo):
+
+- **Publicar**: lecturas (herramientas, sesión, Static Web App, `swa-client-id`
+  del Key Vault cotejado con el registro `$PostventaAppRegistro`, el entorno si
+  ya existe y **su backend**, la lista de URL de retorno) → resumen →
+  `-WhatIf` sale → lista ilegible, para (12) → `PUBLICAR` → copia de trabajo →
+  `swa deploy <copia> --env maqueta` → host **leído** (`environment show
+  --environment-name maqueta --query hostname`) y comprobado (`-maqueta.` y
+  distinto del de producción, si no 11) → **backend del entorno ≠ "0" o
+  ilegible, para (9)** antes de las App Settings → `AZURE_CLIENT_ID` y
+  `AZURE_CLIENT_SECRET` del Key Vault con `--environment-name maqueta`, y se
+  **releen del entorno** y se comparan en memoria (si no, 10) → URL de retorno:
+  la lista leída + la nueva, **en una llamada**, releída después → resumen con
+  la URL del entorno.
+- **`-Retirar`**: mismas lecturas → `RETIRAR` → `environment delete
+  --environment-name maqueta --yes` (solo si existe) → quita **solo** las URL
+  que casan con `^https://[^/]+-maqueta\.[^/]+/\.auth/login/aad/callback$`,
+  reescribiendo el resto en una llamada y releyendo; si no quedaría ninguna,
+  **para (12) sin reescribir**.
+- Códigos: 2 sesión, 3 herramienta, 4 sin Static Web App, 5 confirmación,
+  6 fallo, 7 secretos, 8 registro incoherente, 9 backend, 10 App Settings,
+  11 host, 12 lista. Ni un identificador ni el secreto en pantalla; el token
+  por `SWA_CLI_DEPLOYMENT_TOKEN`, leído antes del `try` y restaurado en el
+  `finally`, que también borra la copia de trabajo.
+- **Duplicadas de `desplegar_front.ps1`**: `Salir-Con`, `Existe-Herramienta`,
+  `Valor-De-Az`, `Id-De-Aplicacion`, `Existe-StaticWebApp`, la lista de
+  exclusiones y el marcador `<TENANT_ID>` con su comprobación.
+
+**Riesgo aceptado y declarado**: el secreto va en la línea de comandos de
+`appsettings set`, igual que en `desplegar_front.ps1` (la CLI no admite otra
+vía). Y si la CLI ignorase `--environment-name` y escribiera en producción, lo
+escrito serían los mismos valores del Key Vault que ya tiene producción; la
+relectura del entorno lo detecta si el entorno no los recibe.
+
+**Tests** (30, texto del script, nada se ejecuta): forma del fichero; `swa
+deploy` solo con `--env maqueta`; ni `production` ni `backends link`; **toda**
+llamada `staticwebapp environment|appsettings|backends` con
+`--environment-name maqueta` (6 llamadas); el borrado nombra el entorno; orden
+subida → backend → App Settings → relectura → URL de retorno; valores del Key
+Vault y secreto soltado; host leído y comprobado; registro cotejado; las dos
+reescrituras de la lista enteras y releídas; nunca vacía; el patrón de
+retirada (con casos que **no** debe quitar); **identidad** de las 5 funciones,
+la lista de exclusiones y el marcador con `desplegar_front.ps1`, con su control
+(una copia cambiada se detecta); `-WhatIf` sale y va, con la confirmación,
+antes de la primera escritura; códigos únicos; consola como estaba; nada
+impreso; ni un valor dentro, con control del barrido.
+
+**Fase RED.** El script se escribió **antes** que los tests (desviación: lo
+declaro). El rojo se demuestra de dos formas. Primero, con el script apartado
+(`python -m pytest tests/test_f035_publicar_maqueta.py -p no:cacheprovider -q --tb=no`):
+
+```
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFF.                                           [100%]
+=========================== short test summary info ===========================
+FAILED tests/test_f035_publicar_maqueta.py::test_f035_t20_el_script_existe - ...
+FAILED tests/test_f035_publicar_maqueta.py::test_f035_t20_ascii_crlf_sin_bom_y_su_ruta_en_la_linea_1
+[... 26 líneas más, una por test ...]
+FAILED tests/test_f035_publicar_maqueta.py::test_f035_t20_ni_un_valor_dentro
+29 failed, 1 passed in 0.13s
+```
+
+Segundo, y es lo que cuenta, **20 mutantes a mano** del script (cada uno en
+una copia temporal, la suite apuntada a ella; `mutar_t20.py` en el
+scratchpad). Tres tests se reforzaron por el camino (M6, M11 y M12 los
+cazaban solo a medias en la primera versión):
+
+```
+original: (<ExitCode.OK: 0>, [])
+M1 sube a produccion: MUERTO -> ['test_f035_t20_sube_solo_al_entorno_maqueta', 'test_f035_t20_ni_production_ni_backends_link_en_todo_el_texto']
+M2 borra el entorno sin nombrarlo: MUERTO -> ['test_f035_t20_toda_llamada_con_entorno_nombra_maqueta', 'test_f035_t20_el_borrado_del_entorno_nombra_maqueta_y_no_pregunta_dos_veces']
+M3 sin comprobar backend tras subir: MUERTO -> ['test_f035_t20_sin_backend_o_para_y_antes_de_las_app_settings']
+M4 la lista solo con la nueva: MUERTO -> ['test_f035_t20_cada_reescritura_de_la_lista_va_entera_y_se_comprueba']
+M5 sin guarda de lista vacia al retirar: MUERTO -> ['test_f035_t20_nunca_se_reescribe_la_lista_vacia']
+M6 las App Settings se dan por buenas: MUERTO -> ['test_f035_t20_las_app_settings_se_comprueban_en_el_entorno_despues_de_fijarlas']
+M7 imprime el appId: MUERTO -> ['test_f035_t20_no_imprime_identificadores_ni_secretos']
+M8 Valor-De-Az distinta de la de F-010: MUERTO -> ['test_f035_t20_cada_funcion_duplicada_es_identica_a_la_de_desplegar_front[Valor-De-Az]']
+M9 App Settings sin entorno: MUERTO -> ['test_f035_t20_toda_llamada_con_entorno_nombra_maqueta']
+M10 host sin comprobar maqueta: MUERTO -> ['test_f035_t20_el_host_se_lee_y_se_comprueba_que_no_es_el_de_produccion']
+M11 -WhatIf no sale: MUERTO -> ['test_f035_t20_whatif_y_confirmacion_antes_de_la_primera_escritura']
+M12 patron de retirada laxo: MUERTO -> ['test_f035_t20_retirar_solo_quita_las_de_maqueta']
+M13 sin guarda de lista ilegible: MUERTO -> ['test_f035_t20_nunca_se_reescribe_la_lista_vacia']
+M14 no restaura el token: MUERTO -> ['test_f035_t20_la_consola_queda_como_estaba']
+M15 el secreto no se suelta: MUERTO -> ['test_f035_t20_los_valores_salen_del_key_vault_y_el_secreto_se_suelta']
+M16 backend previo sin comprobar: MUERTO -> ['test_f035_t20_si_el_entorno_ya_existe_se_mira_su_backend_antes_de_subir']
+M17 registro sin cotejar con el vault: MUERTO -> ['test_f035_t20_el_registro_de_la_lista_es_el_del_key_vault']
+M18 lista de exclusiones sin tests_js: MUERTO -> ['test_f035_t20_la_lista_de_lo_que_no_se_publica_es_identica']
+M19 retirar quita las que no son de maqueta: MUERTO -> ['test_f035_t20_cada_reescritura_de_la_lista_va_entera_y_se_comprueba']
+M20 confirmacion despues de borrar: MUERTO -> ['test_f035_t20_whatif_y_confirmacion_antes_de_la_primera_escritura']
+supervivientes: 0 de 20
+```
+
+**`-WhatIf` y todo lo demás, ejecutados en local SIN Azure.** El `-WhatIf`
+del script llama a `az` (lecturas con sesión), así que no lo he lanzado
+contra Azure. En su lugar, `simular_t20.ps1` (scratchpad) ejecuta el script
+**de verdad** en Windows PowerShell 5.1 con `az`, `swa` y `Read-Host`
+sustituidos por funciones que devuelven datos ficticios y anotan cada
+llamada: ni una orden real sale de la máquina. Comprueba en cada escenario el
+código de salida, las escrituras hechas, que el token del operador vuelve a
+su sitio, que no queda copia de trabajo en el temporal y que no se imprime
+ningún valor:
+
+```
+P1 publicar -WhatIf, entorno nuevo                         salida  0 | escrituras: 0 | OK
+P2 publicar, confirmacion denegada                         salida  5 | escrituras: 0 | OK
+P3 publicar, camino feliz                                  salida  0 | escrituras: 3 | OK
+      - swa deploy C:\Users\pgris\AppData\Local\Temp\postventa-maqueta-<guid> --env maqueta --no-use-keychain
+      - staticwebapp appsettings set --name <swa> --resource-group <rg> --environment-name maqueta --setting-names AZURE_CLIENT_ID=cid-ficticio AZURE_CLIENT_SECRET=<secreto> --only-show-errors
+      - ad app update --id cid-ficticio --web-redirect-uris https://anfitrion-prod.1.ejemplo/.auth/login/aad/callback https://anfitrion-prod-maqueta.region.1.ejemplo/.auth/login/aad/callback --only-show-errors
+P4 publicar, el entorno sale con backend                   salida  9 | escrituras: 1 | OK
+P5 publicar, no se puede leer el backend                   salida  9 | escrituras: 1 | OK
+P6 publicar, App Settings no quedan en el entorno          salida 10 | escrituras: 2 | OK
+P7 publicar, el host es el de produccion                   salida 11 | escrituras: 1 | OK
+P8 publicar, entorno previo con backend                    salida  9 | escrituras: 0 | OK
+P9 publicar, registro distinto del vault                   salida  8 | escrituras: 0 | OK
+P10 publicar, lista de retorno ilegible                    salida 12 | escrituras: 0 | OK
+P11 publicar otra vez, URL ya registrada                   salida  0 | escrituras: 2 | OK
+R1 retirar -WhatIf                                         salida  0 | escrituras: 0 | OK
+R2 retirar, camino feliz                                   salida  0 | escrituras: 2 | OK
+      - staticwebapp environment delete --name <swa> --resource-group <rg> --environment-name maqueta --yes --only-show-errors
+      - ad app update --id cid-ficticio --web-redirect-uris https://anfitrion-prod.1.ejemplo/.auth/login/aad/callback --only-show-errors
+R3 retirar, solo quedaria vacia                            salida 12 | escrituras: 1 | OK
+R4 retirar, sin entorno ni URL                             salida  0 | escrituras: 0 | OK
+```
+
+(En P4, P5 y P7 la única escritura es la subida: el entorno queda **sin App
+Settings**, así que nadie puede iniciar sesión en él; el mensaje manda
+retirarlo con `-Retirar`. Los hosts son inventados: `.ejemplo`.) Control de
+la simulación: con un mutante del script (M4 + M5) la misma batería sale
+`FALLA` en P3 («la lista no es la de antes mas la nueva») y en R3
+(«reescribe la lista vacia»), así que la simulación mira.
+
+**Lo que ni tests ni simulación pueden asegurar** (depende de Azure): la forma
+exacta de la salida de `environment show` (campo `hostname`), de `backends
+show` (una lista: `length(@)` da `0`) y de `appsettings list`
+(`properties.<clave>`). Si no es esa, el script **para** con 11, 9 o 10: falla
+cerrado, no abierto.
+
+### 8 · Guion del humano (T20): publicar, comprobar y retirar
+
+Desde la raíz del repositorio, en la rama `feature/F-035-portal-posventa`
+(el script publica **esa** copia de trabajo), en Windows PowerShell con la CLI
+de Azure y la de Static Web Apps instaladas. `<swa>` y `<rg>` son
+`$PostventaStaticWebApp` y `$PostventaGrupo` de `infra/00_vars_postventa.ps1`.
+
+**0 · Sesión**
+
+```
+az login
+az account show --query name -o tsv
+```
+
+Tiene que salir la suscripción del proyecto.
+
+**1 · Ensayo**
+
+```
+powershell -ExecutionPolicy Bypass -File .\infra\publicar_maqueta.ps1 -WhatIf
+```
+
+Debe salir el bloque «Publicacion de la maqueta» con `Entorno : maqueta (se
+crea al subir)`, `URL de retorno : N registradas; se anade la del entorno sin
+quitar ninguna` (N ≥ 1) y `-WhatIf: no se ha escrito nada.`; código 0. Si
+para: 4 (no hay Static Web App), 7 (no se lee `swa-client-id`: falta permiso
+de lectura del Key Vault), 8 (el registro no casa con el Key Vault) o 9 (el
+entorno ya existe con backend). En cualquiera, **no seguir** y avisar.
+
+**2 · Publicar**
+
+```
+powershell -ExecutionPolicy Bypass -File .\infra\publicar_maqueta.ps1
+```
+
+Teclear `PUBLICAR`. Sale la salida de `swa deploy` y, al final, `RESULTADO`
+con cuatro líneas «(comprobado)» y la **URL de la maqueta**. Código 0. Si
+para con 9, 10 u 11, el entorno está subido **sin inicio de sesión** (nadie
+entra): ejecutar el paso 4 y avisar con el código y el mensaje.
+
+**3 · Comprobar**
+
+```
+az staticwebapp environment list --name <swa> --resource-group <rg> --query "[].name" -o tsv
+az staticwebapp backends show --name <swa> --resource-group <rg> --environment-name maqueta
+az staticwebapp backends show --name <swa> --resource-group <rg> --query "length(@)" -o tsv
+```
+
+La primera lista `default` y `maqueta`; la segunda devuelve `[]` (la maqueta
+sin backend); la tercera, `1` (producción conserva su backend). Y en el
+navegador, en una ventana privada:
+
+- la URL de la maqueta sin sesión lleva al inicio de sesión;
+- con una cuenta del grupo entra, se ve el portal, y en la pestaña **Red** la
+  hoja se pide como `css/styles.css?v=3c19075344`;
+- `Partes firmados` abre el circuito con su estilo; cualquier llamada a
+  `/api/` falla (no hay backend: es lo esperado);
+- la URL de **producción** sigue entrando y funcionando como antes.
+
+Anotar en `progress/` «maqueta entra: sí/no», «producción entra: sí/no»,
+**sin la URL**.
+
+**4 · Retirar (volver atrás)**
+
+```
+powershell -ExecutionPolicy Bypass -File .\infra\publicar_maqueta.ps1 -Retirar -WhatIf
+powershell -ExecutionPolicy Bypass -File .\infra\publicar_maqueta.ps1 -Retirar
+```
+
+El primero dice `Entorno 'maqueta' : existe: se BORRA` y `URL de retorno : 1
+de 'maqueta' (se quitan); se conservan N`. El segundo, tras teclear
+`RETIRAR`, termina con `Entorno 'maqueta' : borrado` y `1 quitada(s); N
+conservada(s)`; código 0. Comprobar que `environment list` (paso 3) lista
+solo `default` y que producción sigue entrando. Si para con 12, **no** ha
+reescrito la lista (quedaría vacía): avisar.
+
+A mano, sin el script, la vuelta atrás es la de §5; con dos trampas:
+`environment delete` **sin** `--environment-name maqueta` borra producción, y
+`az ad app update --web-redirect-uris` **reemplaza** la lista entera.
+
+### 9 · T22 y cierre del bloque
+
+`bash harness/init.sh` tras `6f6ffc3`: **exit 0, `ENTORNO LISTO`**. Raíz
+**103 passed** (7,24 s; +30 de T20); front y api desde caché (sus árboles no
+han cambiado desde el último verde). Como `docs/DESPLIEGUE.md` lo leen tests
+de la api, la suite de la api se ejecutó además **sin caché**: **4356 passed,
+52 skipped** (88,76 s). `PUERTA COBERTURA: N/A`; `ruff` 61 avisos, los de
+antes (el test nuevo: «All checks passed!»). T22 `[x]`.
+
+**Qué queda fuera y qué falta**:
+
+- Ejecutar el guion de §8 (humano). Hasta entonces no hay entorno `maqueta`.
+- `azure-apps/postventa-incidencias.md` (otro repositorio): cuando el humano
+  publique, el proyecto expondrá **una URL más** (el entorno `maqueta`) y el
+  registro de aplicación tendrá **una URL de retorno más**. La regla de
+  `CLAUDE.md` pide actualizarlo en el mismo trabajo; no lo he tocado porque
+  no es de este repositorio ni me lo pidieron: **decisión del líder**.
+- V1/V4 del humano con la versión de las hojas (§3).
+
+### Evidencias (bloque 6 completo)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Raíz **103 passed** (7,24 s); front **364 passed** (9,54 s, T21); api **4356 passed, 52 skipped** sin caché (88,76 s) |
+| Tests nuevos / cambiados | **41 nuevos** (30 de T20, 11 de T21); **3 enmendados** en T21 (R9, R50, estropeo de R59). Ni un test de F-010 tocado |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; PowerShell y HTML no se miden |
+| Mutantes (campaña del arnés) | No aplica: no hay líneas Python de producción cambiadas |
+| Mutantes a mano | T20: **20/20 muertos**; T21: **6/6 muertos**. 0 supervivientes |
+| Simulación local de T20 | **15/15 escenarios OK** (y su control con mutante, en `FALLA`) |
+| Tiempo de la suite | Raíz 7,24 s; front 9,54 s; api 88,76 s |

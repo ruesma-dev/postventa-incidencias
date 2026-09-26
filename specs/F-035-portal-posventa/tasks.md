@@ -413,3 +413,40 @@ ya pide cada verificación.
 > el circuito comprobado también con su estilo nuevo, y el aviso a Posventa
 > diciendo que el circuito **cambia de aspecto, no de funcionamiento** (el
 > botón principal pasa de verde a burdeos).
+
+## Bloque 6 · Maqueta publicada aparte y caché (2026-09-26)
+
+> **Decisión del humano, 2026-09-26.** Tras ver la maqueta en local con los
+> estilos sin aplicar (probable caché del navegador: `css/styles.css` es la
+> misma URL de siempre y el servidor no envía `Cache-Control`), pidió
+> «¿podríamos publicar la maqueta, para que la vean en otros pc y me reporten
+> cambios desde negocio?». El líder propuso un **entorno de vista previa** de
+> la Static Web App (plan Standard), sin tocar producción, más una versión en
+> las URL de las hojas; el humano respondió **«si»**.
+
+- [ ] **T20**: `infra/publicar_maqueta.ps1` (ASCII, CRLF, sin BOM, patrón de
+  `infra/desplegar_front.ps1` y reutilizando sus piezas, sin duplicarlas):
+  (a) publica la copia de trabajo del front de la rama con
+  `swa deploy <copia> --env maqueta`, **nunca** `production`; (b) da a ese
+  entorno las App Settings de inicio de sesión (`AZURE_CLIENT_ID`,
+  `AZURE_CLIENT_SECRET`) leyéndolas del Key Vault o de la configuración de
+  producción, sin imprimir ni escribir un valor; (c) añade la URL del
+  entorno (`https://<host del entorno>/.auth/login/aad/callback`) a las
+  direcciones de retorno de la aplicación de Entra del front **sin quitar
+  las existentes**; (d) comprueba que el entorno **no** tiene backend
+  enlazado (la maqueta no lo necesita y así el circuito publicado ahí no
+  puede escribir), y si lo tuviera, para; (e) `-WhatIf`, confirmación
+  tecleada y resumen con la URL del entorno. Lo ejecuta el humano. Tests en
+  `tests/` o `services/postventa-front/tests/` con el patrón de los de
+  `infra/` (solo lectura del texto del script: `--env maqueta`, ni
+  `production` ni `backends link`, nada de valores). | Verificación: los
+  tests, y `-WhatIf` ejecutado en local (sin Azure) si el script lo permite
+- [ ] **T21**: versión en las URL de las dos hojas propias
+  (`css/styles.css?v=<version>`, `css/portal.css?v=<version>`) en
+  `index.html` y `partes.html`, con una sola fuente de la versión que un
+  test comprueba igual en las dos páginas; enmienda con recuadro de la
+  guardia R59 para admitir **solo** ese cambio en el `href` de la hoja en
+  `partes.html`, con control de que cualquier otro cambio sigue en rojo. |
+  Verificación: la suite del front y la guardia
+- [ ] **T22**: `bash harness/init.sh` en verde.
+

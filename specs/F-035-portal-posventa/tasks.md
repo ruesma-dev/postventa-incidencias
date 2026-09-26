@@ -436,7 +436,7 @@ ya pide cada verificación.
 > **solo** su URL de retorno, reescribiendo la lista entera sin perder las
 > demás).
 
-- [ ] **T20**: `infra/publicar_maqueta.ps1` (ASCII, CRLF, sin BOM, patrón de
+- [x] **T20**: `infra/publicar_maqueta.ps1` (ASCII, CRLF, sin BOM, patrón de
   `infra/desplegar_front.ps1` y reutilizando sus piezas, sin duplicarlas):
   (a) publica la copia de trabajo del front de la rama con
   `swa deploy <copia> --env maqueta`, **nunca** `production`; (b) da a ese

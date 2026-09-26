@@ -53,6 +53,9 @@ Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
 
+`publicar_maqueta.ps1` tampoco está en la tabla: publica la maqueta del
+portal en un entorno de vista previa, **no** en producción (§10).
+
 Hay un sexto que **no** forma parte del despliegue y por eso no está en la
 tabla: `14_paso0_sigrid.ps1` orquesta el **Paso 0** del bloque 8 de F-009
 llamando al 1 y al 2, y comprueba que las referencias a Key Vault se resuelven.
@@ -961,3 +964,36 @@ ambigua, 11 la regla no se ha podido ejecutar.
 número. Una obra guardada como `00677` la vería el sistema y no el 24. Con la
 0677 hay una sola obra, así que no cambia nada de R31; si algún día importa,
 se cambia la consulta del 24 por la del adaptador.
+
+## 10 · La maqueta del portal en el entorno `maqueta` (F-035)
+
+> Decisión del humano del 2026-09-26: publicar la maqueta para que negocio la
+> vea desde otros equipos **sin tocar producción**. Script:
+> `infra/publicar_maqueta.ps1`. Se ejecuta desde `infra\`, dentro de la copia
+> del repositorio **con la rama de la maqueta** (publica esa copia de trabajo).
+
+Es un **entorno de vista previa con nombre** de la misma Static Web App (plan
+Standard): otra URL estable, el mismo inicio de sesión con el grupo
+`posventa-usuarios` y **sin backend**. El circuito se ve, pero no puede llamar
+a `/api/` y por tanto no escribe en ninguna parte.
+
+| Orden | Qué hace | Y si no cuadra |
+|---|---|---|
+| `-WhatIf` | Solo lecturas: dice qué haría | — |
+| sin parámetros | Sube la copia de trabajo con `swa deploy … --env maqueta`; lee el host del entorno; comprueba que **no tiene backend**; le da `AZURE_CLIENT_ID` y `AZURE_CLIENT_SECRET` leídos del Key Vault y comprueba que **quedan en el entorno**; añade su URL de retorno al registro de aplicación **sin quitar ninguna** | Para con su código: 9 backend, 10 App Settings, 11 host, 12 lista de retorno ilegible o que quedaría vacía |
+| `-Retirar` | Borra el entorno `maqueta` y quita **solo** su URL de retorno, reescribiendo la lista entera | 12 si la lista quedaría vacía (no la reescribe) |
+
+**Por qué comprueba en ejecución.** La documentación de Microsoft dice que
+las App Settings y los backends se gestionan **por entorno**
+(`--environment-name`), pero también que las App Settings «se copian» a los
+entornos, y no dice si un entorno con nombre hereda el backend de producción.
+El script no se fía y para si no cuadra. El detalle, con las fuentes, en
+`progress/impl_F-035.md` (bloque 6).
+
+**Dos trampas que el script evita y que a mano hay que evitar igual:**
+`az staticwebapp environment delete` **sin** `--environment-name` borra
+`default`, que es **producción**; y `az ad app update --web-redirect-uris`
+**reemplaza** la lista entera.
+
+La URL del entorno sale en el resumen para compartirla; **no se pega en el
+repositorio**.

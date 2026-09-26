@@ -193,9 +193,24 @@ function Host-Del-Entorno {
 }
 
 function Backends-Del-Entorno {
-    # Cuantos backends tiene enlazados el entorno `maqueta`: "0", otro numero,
-    # o $null si no se ha podido leer (y entonces se trata como si tuviera).
-    return Valor-De-Az @("staticwebapp", "backends", "show", "--name", $PostventaStaticWebApp, "--resource-group", $PostventaGrupo, "--environment-name", "maqueta", "--query", "length(@)", "-o", "tsv")
+    # Cuantos backends tiene enlazados el entorno `maqueta`, como texto ("0",
+    # "1"...), o $null si no se ha podido leer o interpretar: quien la llama
+    # lo trata entonces como si tuviera (falla cerrado).
+    #
+    # Se cuenta AQUI, con ConvertFrom-Json, y NO con una consulta `length(@)`
+    # (review 7 de F-035): en Windows `az` es `az.cmd`, PowerShell no
+    # entrecomilla un argumento sin espacios y cmd.exe rompe sus parentesis
+    # dentro del bloque IF del envoltorio. `az` no llegaba a ejecutarse y el
+    # script paraba siempre con el codigo 9.
+    $json = Valor-De-Az @("staticwebapp", "backends", "show", "--name", $PostventaStaticWebApp, "--resource-group", $PostventaGrupo, "--environment-name", "maqueta", "-o", "json")
+    if (-not $json) { return $null }
+    try {
+        $lista = ConvertFrom-Json -InputObject $json -ErrorAction Stop
+    }
+    catch {
+        return $null
+    }
+    return [string]@($lista).Count
 }
 
 function Retornos-Registrados {
@@ -297,6 +312,15 @@ try {
             "sin la lista actual no se puede reescribir sin perder las de produccion. Revisa el registro en Entra."
     }
 
+    # -Retirar: lo que quedaria se calcula y se comprueba AQUI, antes de
+    # confirmar y de borrar nada (review 7). Si quitar la de 'maqueta' dejara
+    # la lista vacia, se para con el entorno todavia como estaba.
+    $quedan = @($retornos | Where-Object { $_ -notmatch $patronRetornoMaqueta })
+    if ($Retirar -and $retornosMaqueta.Count -gt 0 -and $quedan.Count -eq 0) {
+        Salir-Con "Quitar la URL de 'maqueta' dejaria el registro sin ninguna URL de retorno." $SALIDA_LISTA_VACIA `
+            "no se toca nada: produccion se quedaria sin inicio de sesion. Revisa el registro en Entra."
+    }
+
     $palabra = $(if ($Retirar) { "RETIRAR" } else { "PUBLICAR" })
     $confirmacion = Read-Host "Escribe $palabra para continuar (cualquier otra cosa aborta)"
     if ($confirmacion -ne $palabra) {
@@ -319,11 +343,7 @@ try {
         }
 
         if ($retornosMaqueta.Count -gt 0) {
-            $quedan = @($retornos | Where-Object { $_ -notmatch $patronRetornoMaqueta })
-            if ($quedan.Count -eq 0) {
-                Salir-Con "Quitar la URL de 'maqueta' dejaria el registro sin ninguna URL de retorno." $SALIDA_LISTA_VACIA `
-                    "no se reescribe: produccion se quedaria sin inicio de sesion. Revisa el registro en Entra."
-            }
+            # $quedan ya esta calculada y comprobada (no vacia) antes de confirmar.
             Write-Host "Quitando la URL de retorno de 'maqueta' (se conservan las demas)..."
             # TODAS las que quedan, en UNA llamada: la lista REEMPLAZA a la anterior.
             az ad app update --id $appId --web-redirect-uris $quedan --only-show-errors | Out-Null
@@ -347,6 +367,23 @@ try {
         Write-Host ("  URL de retorno         : {0} quitada(s); {1} conservada(s)" -f $retornosMaqueta.Count, ($retornos.Count - $retornosMaqueta.Count))
         Write-Host ""
         exit 0
+    }
+
+    # El secreto se lee y se valida AQUI, antes de la primera escritura: si
+    # no se puede usar, se para sin haber subido nada (review 7).
+    $secreto = Valor-De-Az @("keyvault", "secret", "show", "--vault-name", $PostventaKeyVault, "--name", "swa-client-secret", "--query", "value", "-o", "tsv")
+    if (-not $secreto) {
+        Salir-Con ("No se ha podido leer swa-client-secret del Key Vault {0}." -f $PostventaKeyVault) $SALIDA_SIN_SECRETOS `
+            "comprueba tu permiso de lectura de secretos. No se ha escrito nada."
+    }
+    # El secreto viaja sin comillas si no lleva espacios, y pasa por cmd.exe
+    # (az.cmd): un metacaracter de cmd lo romperia y az recibiria otro valor.
+    # Los que genera Entra no los llevan; si alguno los llevara, se para aqui
+    # antes de escribir un valor corrupto (review 7).
+    if ($secreto -match '[()&|<>^%!"]') {
+        $secreto = $null
+        Salir-Con "El secreto de cliente lleva caracteres que cmd.exe rompe al pasarlo a az." $SALIDA_SIN_SECRETOS `
+            "no se ha escrito nada: rota el secreto con desplegar_front.ps1 en modo completo y vuelve a lanzarlo, o fija las App Settings del entorno a mano en el portal."
     }
 
     # --- La copia de trabajo, con el marcador sustituido ---------------------
@@ -416,11 +453,6 @@ try {
     # Se leen del Key Vault, se fijan con --environment-name y se comprueba que
     # han quedado EN EL ENTORNO. Ni un valor se imprime.
 
-    $secreto = Valor-De-Az @("keyvault", "secret", "show", "--vault-name", $PostventaKeyVault, "--name", "swa-client-secret", "--query", "value", "-o", "tsv")
-    if (-not $secreto) {
-        Salir-Con ("No se ha podido leer swa-client-secret del Key Vault {0}." -f $PostventaKeyVault) $SALIDA_SIN_SECRETOS `
-            "comprueba tu permiso de lectura de secretos. El entorno queda sin inicio de sesion: retiralo con -Retirar o vuelve a lanzarlo."
-    }
     Write-Host "Dando al entorno las App Settings del inicio de sesion..."
     az staticwebapp appsettings set --name $PostventaStaticWebApp --resource-group $PostventaGrupo --environment-name maqueta `
         --setting-names "AZURE_CLIENT_ID=$clientId" "AZURE_CLIENT_SECRET=$secreto" --only-show-errors | Out-Null

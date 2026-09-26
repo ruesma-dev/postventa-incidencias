@@ -997,3 +997,8 @@ El script no se fía y para si no cuadra. El detalle, con las fuentes, en
 
 La URL del entorno sale en el resumen para compartirla; **no se pega en el
 repositorio**.
+
+**Si se redespliega producción en modo completo** (`desplegar_front.ps1` sin
+`-SoloFront`), ese script reescribe la lista de URL de retorno con las suyas y
+**quita la de `maqueta`**: la maqueta deja de dejar entrar (falla cerrado).
+Se arregla volviendo a lanzar `publicar_maqueta.ps1` (review 7, O4).

@@ -31,6 +31,7 @@ en memoria a partir de trozos.
 from __future__ import annotations
 
 import re
+import shlex
 from pathlib import Path
 
 import pytest
@@ -118,9 +119,8 @@ def _lineas_de_codigo() -> list[str]:
     return sin_comentarios(_texto()).splitlines()
 
 
-def _llamadas(*fragmentos: str) -> list[str]:
-    """Las líneas de código (con su continuación) que contienen todos los fragmentos."""
-    lineas = _lineas_de_codigo()
+def _lineas_juntas(lineas: list[str]) -> list[str]:
+    """Cada línea con sus continuaciones (el acento grave del final) pegadas."""
     juntas = []
     for i, linea in enumerate(lineas):
         completa = linea
@@ -128,9 +128,13 @@ def _llamadas(*fragmentos: str) -> list[str]:
         while completa.rstrip().endswith("`") and j + 1 < len(lineas):
             j += 1
             completa = completa.rstrip()[:-1] + " " + lineas[j].strip()
-        if all(f in completa for f in fragmentos):
-            juntas.append(completa)
+        juntas.append(completa)
     return juntas
+
+
+def _llamadas(*fragmentos: str) -> list[str]:
+    """Las líneas de código (con su continuación) que contienen todos los fragmentos."""
+    return [c for c in _lineas_juntas(_lineas_de_codigo()) if all(f in c for f in fragmentos)]
 
 
 # --- Forma del fichero (R1 de F-010 y CONVENTIONS) ------------------------------
@@ -209,8 +213,16 @@ def test_f035_t20_sin_backend_o_para_y_antes_de_las_app_settings():
 
     assert -1 < subida < comprobacion < app_settings
     assert "$SALIDA_CON_BACKEND" in codigo[comprobacion:app_settings]
-    # Lo que no se ha podido leer cuenta como «tiene»: `$null -ne "0"`.
-    assert '"--query", "length(@)"' in _funcion(_texto(), "Backends-Del-Entorno")
+    # Review 7: se cuenta en PowerShell, sin `--query` (que pasaría por
+    # cmd.exe), y lo que no se puede leer ni interpretar vuelve `$null`, que
+    # cuenta como «tiene»: `$null -ne "0"`.
+    funcion = sin_comentarios(_funcion(_texto(), "Backends-Del-Entorno"))
+    assert '"--environment-name", "maqueta", "-o", "json")' in funcion
+    assert "--query" not in funcion
+    assert "ConvertFrom-Json -InputObject $json -ErrorAction Stop" in funcion
+    assert "if (-not $json) { return $null }" in funcion
+    assert re.search(r"catch \{\s*return \$null\s*\}", funcion)
+    assert "return [string]@($lista).Count" in funcion
 
 
 def test_f035_t20_si_el_entorno_ya_existe_se_mira_su_backend_antes_de_subir():
@@ -242,7 +254,9 @@ def test_f035_t20_los_valores_salen_del_key_vault_y_el_secreto_se_suelta():
 
     for secreto in ("swa-client-id", "swa-client-secret"):
         assert f'"keyvault", "secret", "show", "--vault-name", $PostventaKeyVault, "--name", "{secreto}"' in codigo
-    assert "$secreto = $null" in codigo
+    # Se suelta en cuanto se ha comprobado lo que quedó en el entorno (la otra
+    # asignación a `$null`, en la guarda de cmd, no cuenta: es otra salida).
+    assert re.search(r"\$quedaron = [^\n]*\n\s*\$secreto = \$null\s*\n", codigo)
 
 
 def test_f035_t20_el_host_se_lee_y_se_comprueba_que_no_es_el_de_produccion():
@@ -285,8 +299,17 @@ def test_f035_t20_nunca_se_reescribe_la_lista_vacia():
     codigo = sin_comentarios(_texto())
     primera = codigo.find("az ad app update")
 
-    assert -1 < codigo.find("if ($retornos.Count -eq 0)") < primera
-    assert -1 < codigo.find("if ($quedan.Count -eq 0)") < primera
+    confirmacion = codigo.find('Read-Host "Escribe $palabra')
+    borrado = codigo.find("az staticwebapp environment delete")
+
+    assert -1 < codigo.find("if ($retornos.Count -eq 0)") < confirmacion < primera
+    # Review 7: lo que quedaría al retirar se comprueba ANTES de confirmar y de
+    # borrar el entorno, no después.
+    guarda = codigo.find(
+        "if ($Retirar -and $retornosMaqueta.Count -gt 0 -and $quedan.Count -eq 0) {"
+    )
+    assert -1 < codigo.find("$quedan = @($retornos") < guarda < confirmacion < borrado
+    assert "$SALIDA_LISTA_VACIA" in codigo[guarda:confirmacion]
 
 
 def test_f035_t20_retirar_solo_quita_las_de_maqueta():
@@ -399,3 +422,83 @@ def test_f035_t20_control_los_barridos_cazan_un_valor_inyectado():
     assert PATRON_HOST.findall(f"https://{host}/") == [host]
     assert PATRON_ESCRITURA.search("    az ad app update --id $x")
     assert PATRON_ESCRITURA.search("    swa deploy $x --env maqueta")
+
+
+# --- Review 7 · Lo que cmd.exe rompe al pasar por az.cmd --------------------------
+#
+# En Windows `az` es `az.cmd` (y `swa`, `swa.cmd`): los argumentos llegan a un
+# bloque `IF ( ... )` de cmd.exe a través de `%*`. Windows PowerShell 5.1 solo
+# entrecomilla un argumento si lleva espacios, así que uno como `length(@)`
+# llega desnudo y su `)` cierra el `IF`: cmd falla («No se esperaba -o en este
+# momento»), `az` no llega a ejecutarse y la lectura vuelve vacía. Le pasó a
+# `Backends-Del-Entorno` (review 7): el script paraba SIEMPRE con el código 9.
+# Regla: ningún literal que el script pase a `az` o a `swa` puede llevar uno de
+# estos caracteres sin llevar también un espacio (que es lo que hace que
+# PowerShell lo entrecomille).
+
+#: Los metacaracteres de cmd.exe que rompen un argumento sin comillas.
+METACARACTERES_CMD = frozenset("()&|<>^")
+
+
+def _literales_de(linea: str) -> list[str]:
+    """Los literales que una línea de código pasa a `az`/`swa`, o `[]` si no llama."""
+    if "Valor-De-Az @(" in linea:
+        resto = linea.split("Valor-De-Az @(", 1)[1]
+        return [a or b for a, b in re.findall(r"\"([^\"]*)\"|'([^']*)'", resto)]
+    if not re.match(r"\s*(?:az|swa)\s", linea):
+        return []
+    orden = re.split(r"\s\|\s", linea, maxsplit=1)[0]
+    orden = re.sub(r"\d?>\s*\$null|\d?>&\d", "", orden)
+    try:
+        piezas = shlex.split(orden, posix=True)
+    except ValueError:
+        piezas = orden.split()
+    return [re.sub(r"\$\w+", "", p) for p in piezas if not p.startswith("$")]
+
+
+def argumentos_rotos_por_cmd(texto: str) -> list[str]:
+    """Los literales de `az`/`swa` que cmd.exe rompería: metacarácter y sin espacio."""
+    problemas = []
+    for linea in _lineas_juntas(sin_comentarios(texto).splitlines()):
+        for literal in _literales_de(linea):
+            if METACARACTERES_CMD & set(literal) and " " not in literal:
+                problemas.append(f"{literal!r} en: {linea.strip()[:90]}")
+    return problemas
+
+
+def test_f035_t20_un_secreto_que_cmd_romperia_para_antes_de_escribirse():
+    """El único valor libre que va sin comillas a `az` es el secreto: se vigila en ejecución."""
+    codigo = sin_comentarios(_texto())
+    guarda = codigo.find("if ($secreto -match '[()&|<>^%!\"]') {")
+    escritura = codigo.find("az staticwebapp appsettings set")
+
+    assert -1 < codigo.find("$secreto = Valor-De-Az") < guarda < escritura
+    assert "$SALIDA_SIN_SECRETOS" in codigo[guarda:escritura]
+    patron = re.search(r"\$secreto -match '([^']+)'", codigo).group(1)
+    for caracter in METACARACTERES_CMD:
+        assert re.search(patron, f"Ab8Q~x{caracter}y"), caracter
+    assert not re.search(patron, "Ab8Q~x.y_z-1")
+
+
+def test_f035_t20_ningun_argumento_de_az_se_rompe_al_pasar_por_cmd():
+    assert argumentos_rotos_por_cmd(_texto()) == [], (
+        "estos argumentos llegan sin comillas a az.cmd y cmd.exe los rompe"
+    )
+
+
+def test_f035_t20_control_la_regla_caza_el_defecto_de_la_review_7():
+    """La línea de antes de la review 7 da rojo; una directa con `&&`, también; con espacios, no."""
+    defecto = (
+        '    return Valor-De-Az @("staticwebapp", "backends", "show", "--name", '
+        '$PostventaStaticWebApp, "--resource-group", $PostventaGrupo, "--environment-name", '
+        '"maqueta", "--query", "length(@)", "-o", "tsv")'
+    )
+    directa = "    az ad app list --query [?a&&b] --only-show-errors | Out-Null"
+    con_espacios = (
+        "    $x = Valor-De-Az @(\"webapp\", \"--query\", \"[?name=='X'].value | [0]\", \"-o\", \"tsv\")"
+    )
+
+    assert argumentos_rotos_por_cmd(_texto() + "\n" + defecto + "\n") != []
+    assert argumentos_rotos_por_cmd(_texto() + "\n" + directa + "\n") != []
+    assert argumentos_rotos_por_cmd(_texto() + "\n" + con_espacios + "\n") == []
+

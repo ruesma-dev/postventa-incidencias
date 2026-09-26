@@ -312,6 +312,15 @@ try {
             "sin la lista actual no se puede reescribir sin perder las de produccion. Revisa el registro en Entra."
     }
 
+    # Las URL de retorno vuelven a `az` sin comillas y pasan por cmd.exe
+    # (az.cmd): una con un metacaracter de cmd llegaria rota y la lista se
+    # reescribiria mal. Las de una Static Web App no los llevan; si alguna los
+    # llevara, se para aqui, antes de confirmar y sin tocar nada (review 7).
+    if (@($retornos | Where-Object { $_ -match '[()&|<>^%!"]' }).Count -gt 0) {
+        Salir-Con "Alguna URL de retorno registrada lleva caracteres que cmd.exe rompe al pasarlos a az." $SALIDA_LISTA_VACIA `
+            "no se toca nada: reescribir la lista podria corromperla. Revisa las URL de retorno del registro en Entra."
+    }
+
     # -Retirar: lo que quedaria se calcula y se comprueba AQUI, antes de
     # confirmar y de borrar nada (review 7). Si quitar la de 'maqueta' dejara
     # la lista vacia, se para con el entorno todavia como estaba.

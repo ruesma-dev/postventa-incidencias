@@ -480,6 +480,18 @@ def test_f035_t20_un_secreto_que_cmd_romperia_para_antes_de_escribirse():
     assert not re.search(patron, "Ab8Q~x.y_z-1")
 
 
+def test_f035_t20_una_url_de_retorno_que_cmd_romperia_para_antes_de_confirmar():
+    """Las URL de retorno también vuelven a `az` sin comillas: se vigilan antes de tocar nada."""
+    codigo = sin_comentarios(_texto())
+    guarda = codigo.find(
+        "if (@($retornos | Where-Object { $_ -match '[()&|<>^%!\"]' }).Count -gt 0) {"
+    )
+    confirmacion = codigo.find('Read-Host "Escribe $palabra')
+
+    assert -1 < codigo.find("$retornos = @(Retornos-Registrados $appId)") < guarda < confirmacion
+    assert "$SALIDA_LISTA_VACIA" in codigo[guarda:confirmacion]
+
+
 def test_f035_t20_ningun_argumento_de_az_se_rompe_al_pasar_por_cmd():
     assert argumentos_rotos_por_cmd(_texto()) == [], (
         "estos argumentos llegan sin comillas a az.cmd y cmd.exe los rompe"

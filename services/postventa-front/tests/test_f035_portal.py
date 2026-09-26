@@ -409,7 +409,10 @@ def test_f035_r9_cada_placeholder_se_ve_como_tal():
 
 def test_f035_r9_la_clase_placeholder_tiene_borde_discontinuo():
     doc = leer_html(PORTAL)
-    hojas = [e.atributos.get("href") for e in doc.elementos() if e.nombre == "link"]
+    # Desde T21 las hojas propias llevan `?v=<versión>`: aquí cuenta la ruta.
+    hojas = [
+        e.atributos.get("href", "").partition("?")[0] for e in doc.elementos() if e.nombre == "link"
+    ]
 
     assert "css/portal.css" in hojas, "el portal no carga css/portal.css"
     css = sin_comentarios(PORTAL_CSS.read_text(encoding="utf-8"))
@@ -801,6 +804,34 @@ def _quita_links_de_la_marca(ts: list[Token]) -> list[Token]:
     return ts
 
 
+#: La `<link>` de la hoja del circuito tal y como la admite T21: exactamente
+#: `rel` y `href`, en ese orden, y el `href` con `?v=` y diez hexadecimales.
+_HOJA_VERSIONADA = re.compile(r"css/styles\.css\?v=[0-9a-f]{10}")
+
+
+def _quita_version_de_la_hoja(ts: list[Token]) -> list[Token]:
+    """Devuelve la `<link>` de `css/styles.css?v=<versión>` a su forma de la base (T21).
+
+    Es la enmienda de R59 del bloque 6, y admite ESO y nada más: la etiqueta
+    tiene que ser `<link rel="stylesheet" href="…">` con esos dos atributos, en
+    ese orden, y la query solo la versión. Cualquier otra `<link>`, otra hoja,
+    otro atributo, otra query o una versión en un `src` siguen siendo
+    diferencias (control: `ESTROPEOS_T21`).
+    """
+    fuera = []
+    for t in ts:
+        if (
+            _es_apertura(t, "link")
+            and len(t[2]) == 2
+            and t[2][0] == ("rel", "stylesheet")
+            and t[2][1][0] == "href"
+            and _HOJA_VERSIONADA.fullmatch(t[2][1][1])
+        ):
+            t = ("<", "link", (("rel", "stylesheet"), ("href", "css/styles.css")))
+        fuera.append(t)
+    return fuera
+
+
 def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     """Lo que `ahora` cambia de `antes` más allá de lo que admite R59; `[]` si nada.
 
@@ -808,13 +839,14 @@ def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     de `partes.html`); la barra superior con los comentarios que la preceden
     (en `ahora`, obligatoria y primer hijo del `<div x-data="appPostventa()">`);
     y las cuatro `<link>` de la marca en el `<head>`, justo antes de
-    `css/styles.css`. Todo lo demás —directivas, ids, `type`, `data-*`,
-    `aria-*`, `style`, textos, comentarios, elementos y el orden de los
-    atributos— tiene que ser idéntico.
+    `css/styles.css`; y, desde T21, la versión (`?v=`) en el `href` de esa
+    hoja. Todo lo demás —directivas, ids, `type`, `data-*`, `aria-*`, `style`,
+    textos, comentarios, elementos y el orden de los atributos— tiene que ser
+    idéntico.
     """
     problemas: list[str] = []
-    a = _quita_ruta(tokens(antes), None, problemas)
-    b = _quita_ruta(tokens(ahora), RUTA_CIRCUITO, problemas)
+    a = _quita_ruta(_quita_version_de_la_hoja(tokens(antes)), None, problemas)
+    b = _quita_ruta(_quita_version_de_la_hoja(tokens(ahora)), RUTA_CIRCUITO, problemas)
     a, _ = _quita_barra(a, problemas, "antes")
     b, sitio = _quita_barra(b, problemas, "partes.html")
     if sitio is None:
@@ -887,11 +919,12 @@ ESTROPEOS_R59 = {
         '<main class="rs-contenedor rs-principal flex-1">',
         '<main class="rs-contenedor rs-principal flex-1" style="display: none">',
     ),
+    # Desde T21 la `<link>` de la hoja lleva `?v=`: se busca por su principio.
     "una <link> a otro dominio": (
-        '<link rel="stylesheet" href="css/styles.css">',
+        '<link rel="stylesheet" href="css/styles.css',
         (
             '<link rel="stylesheet" href="https://ejemplo.invalid/estilo.css">\n'
-            '  <link rel="stylesheet" href="css/styles.css">'
+            '  <link rel="stylesheet" href="css/styles.css'
         ),
     ),
     "una directiva quitada (x-init)": (
@@ -945,6 +978,155 @@ def test_f035_r59_control_la_guardia_acepta_un_class_cambiado():
     )
 
     assert diferencias_de_presentacion(real, copia) == []
+
+
+# --- T21 · La versión en la URL de las hojas propias (bloque 6) -----------------
+#
+# Decisión del humano del 2026-09-26 (tasks.md, bloque 6): con la maqueta en
+# local, el navegador pintó el HTML nuevo con un `css/styles.css` viejo de su
+# caché, porque la URL de la hoja era la de siempre. Desde T21 cada hoja propia
+# se pide con `?v=<versión>`, y la versión tiene UNA fuente: el contenido de las
+# dos hojas (`version_de_las_hojas`). Quien cambie una hoja y no cambie la URL en
+# las dos páginas deja en rojo el primer test de este bloque, que le dice el
+# valor que tiene que poner: así la URL cambia siempre que cambia lo que sirve.
+#
+# La guardia de R59 admite ese cambio, y SOLO ese, en `partes.html`
+# (`_quita_version_de_la_hoja`, recuadro de T21 bajo R59 en `requirements.md`).
+
+#: Las dos hojas propias, en el orden en que las carga el portal.
+HOJAS_PROPIAS = ("css/styles.css", "css/portal.css")
+
+#: Qué hojas propias pide cada página, en su orden. El circuito no carga
+#: `css/portal.css`: es del portal (R15 al revés, y R59 no lo admitiría).
+HOJAS_DE_CADA_PAGINA = {"index.html": HOJAS_PROPIAS, "partes.html": ("css/styles.css",)}
+
+#: Forma de la versión: diez cifras hexadecimales del SHA-256 de las hojas.
+PATRON_VERSION = "[0-9a-f]{10}"
+
+
+def version_de(textos: dict[str, str]) -> str:
+    """La versión que corresponde a estos contenidos de las hojas propias.
+
+    Los finales de línea se normalizan: con `core.autocrlf=true` la misma hoja
+    sale con CRLF en este equipo y con LF en un clon de Linux, y la versión no
+    puede depender de quién haga el checkout.
+    """
+    resumen = hashlib.sha256()
+    for ruta in HOJAS_PROPIAS:
+        resumen.update(ruta.encode("utf-8") + b"\0")
+        resumen.update(textos[ruta].replace("\r\n", "\n").encode("utf-8") + b"\0")
+    return resumen.hexdigest()[:10]
+
+
+def version_de_las_hojas() -> str:
+    """La única fuente de la versión: el contenido actual de las dos hojas propias."""
+    return version_de(
+        {ruta: (RAIZ_FRONT / ruta).read_text(encoding="utf-8") for ruta in HOJAS_PROPIAS}
+    )
+
+
+def hojas_propias_pedidas(pagina: Path) -> list[str]:
+    """Los `href` de las `<link>` de la página que apuntan a `css/`, en su orden."""
+    return [
+        e.atributos.get("href", "")
+        for e in leer_html(pagina).elementos()
+        if e.nombre == "link" and e.atributos.get("href", "").startswith("css/")
+    ]
+
+
+@pytest.mark.parametrize("pagina", (PORTAL, CIRCUITO), ids=lambda p: p.name)
+def test_f035_t21_cada_pagina_pide_sus_hojas_con_la_version_de_su_contenido(pagina):
+    version = version_de_las_hojas()
+    esperadas = [f"{ruta}?v={version}" for ruta in HOJAS_DE_CADA_PAGINA[pagina.name]]
+
+    assert hojas_propias_pedidas(pagina) == esperadas, (
+        f"{pagina.name}: las hojas propias se piden con ?v={version}, la versión que "
+        "sale del contenido de css/styles.css y css/portal.css. Si has cambiado una "
+        "hoja, pon ese valor en las <link> de index.html y de partes.html"
+    )
+
+
+def test_f035_t21_la_version_es_la_misma_en_las_dos_paginas():
+    versiones = {
+        pagina.name: sorted({href.partition("?v=")[2] for href in hojas_propias_pedidas(pagina)})
+        for pagina in (PORTAL, CIRCUITO)
+    }
+
+    assert all(len(v) == 1 and re.fullmatch(PATRON_VERSION, v[0]) for v in versiones.values()), (
+        f"cada página pide sus hojas con una sola versión: {versiones}"
+    )
+    assert versiones["index.html"] == versiones["partes.html"], versiones
+
+
+def test_f035_t21_control_la_version_cambia_con_cada_hoja_y_no_con_los_finales_de_linea():
+    reales = {ruta: (RAIZ_FRONT / ruta).read_text(encoding="utf-8") for ruta in HOJAS_PROPIAS}
+    version = version_de(reales)
+
+    for ruta in HOJAS_PROPIAS:
+        tocada = {**reales, ruta: reales[ruta] + "\n/* un cambio */\n"}
+        assert version_de(tocada) != version, f"cambiar {ruta} no cambia la versión"
+    con_crlf = {ruta: texto.replace("\n", "\r\n") for ruta, texto in reales.items()}
+    assert version_de(con_crlf) == version, "la versión depende de los finales de línea"
+    assert re.fullmatch(PATRON_VERSION, version)
+
+
+def _circuito_sin_version() -> str:
+    """El `partes.html` real con la `<link>` de su hoja como en la base, sin `?v=`."""
+    real = CIRCUITO.read_text(encoding="utf-8")
+    sin_version, cuantas = re.subn(
+        rf'href="css/styles\.css(?:\?v={PATRON_VERSION})?"', 'href="css/styles.css"', real
+    )
+    assert cuantas == 1, f"partes.html tiene {cuantas} <link> a css/styles.css"
+    return sin_version
+
+
+def test_f035_r59_t21_la_guardia_admite_la_version_en_la_hoja_del_circuito():
+    antes = _circuito_sin_version()
+    ahora = antes.replace('href="css/styles.css"', 'href="css/styles.css?v=0123456789"')
+
+    assert diferencias_de_presentacion(antes, ahora) == []
+
+
+#: Control de T21: lo que la enmienda de R59 NO admite. Cada caso cambia la
+#: `<link>` de la hoja del circuito (o pone la versión donde no va) sobre la
+#: copia sin versión; todos tienen que seguir en rojo.
+ESTROPEOS_T21 = {
+    "la versión en otra hoja": (
+        'href="css/styles.css"',
+        'href="css/otra.css?v=0123456789"',
+    ),
+    "algo más que la versión en la query": (
+        'href="css/styles.css"',
+        'href="css/styles.css?v=0123456789&modo=1"',
+    ),
+    "una versión que no tiene la forma": (
+        'href="css/styles.css"',
+        'href="css/styles.css?v=ultima"',
+    ),
+    "la hoja pasa a ser otra cosa (rel)": (
+        '<link rel="stylesheet" href="css/styles.css"',
+        '<link rel="preload" href="css/styles.css?v=0123456789"',
+    ),
+    "un atributo más en la <link> de la hoja": (
+        '<link rel="stylesheet" href="css/styles.css"',
+        '<link rel="stylesheet" href="css/styles.css?v=0123456789" media="print"',
+    ),
+    "la versión en un script del circuito": (
+        '<script src="js/app.js"></script>',
+        '<script src="js/app.js?v=0123456789"></script>',
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_T21))
+def test_f035_r59_t21_control_la_guardia_rechaza_todo_lo_demas(caso):
+    viejo, nuevo = ESTROPEOS_T21[caso]
+    antes = _circuito_sin_version()
+    assert antes.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = diferencias_de_presentacion(antes, antes.replace(viejo, nuevo))
+
+    assert problemas != [], f"la guardia de R59 admite «{caso}»"
 
 
 def test_f035_r31_la_barra_del_circuito_abre_el_portal_aparte():
@@ -1596,8 +1778,9 @@ def test_f035_r50_la_pagina_carga_las_fuentes_y_el_favicon_antes_de_la_hoja(pagi
     doc = leer_html(pagina)
     cabeza = _uno([e for e in doc.elementos() if e.nombre == "head"], f"<head> en {pagina.name}")
     enlaces = [e for e in doc.elementos() if e.nombre == "link"]
+    # Desde T21 la hoja se pide con `?v=<versión>`: aquí cuenta la ruta.
     hoja = _uno(
-        [e for e in enlaces if e.atributos.get("href") == "css/styles.css"],
+        [e for e in enlaces if e.atributos.get("href", "").partition("?")[0] == "css/styles.css"],
         f"<link> a css/styles.css en {pagina.name}",
     )
     posicion = enlaces.index(hoja)

@@ -568,6 +568,18 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
   `css/styles.css`. Ningún atributo que no sea `class` —directivas de Alpine,
   `id`, `type`, `data-*`, `aria-*`— puede añadirse, quitarse, reordenarse ni
   cambiar de valor. *(Sustituye a la comparación línea a línea de R30/R43.)*
+
+  > **Enmienda del 2026-09-26 (bloque 6, T21, decisión del humano) · la
+  > versión de la hoja.** A (a)–(d) se suma **(e)**: el `href` de la
+  > `<link rel="stylesheet">` de `css/styles.css` puede llevar `?v=<versión>`,
+  > con la versión en diez cifras hexadecimales. **Solo eso**: la etiqueta
+  > sigue teniendo exactamente `rel="stylesheet"` y `href`, en ese orden; la
+  > query es solo la versión; ninguna otra `<link>`, `src` ni atributo puede
+  > llevarla. La versión sale del contenido de `css/styles.css` y
+  > `css/portal.css` (una sola fuente, en `tests/test_f035_portal.py`) y es
+  > la misma en `index.html` y en `partes.html`. Motivo: tras publicar, el
+  > navegador servía de su caché la hoja vieja con el HTML nuevo porque la URL
+  > no cambiaba. Control de que todo lo demás sigue en rojo: `ESTROPEOS_T21`.
 - **R60.** `css/styles.css` y `css/portal.css` no deben llevar `!important`
   (salvo la regla `[x-cloak]` de `css/portal.css`), ni `@import`, ni `url(data:…)`;
   y `partes.html` no debe llevar ningún atributo `style` estático (los estilos

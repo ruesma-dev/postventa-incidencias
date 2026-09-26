@@ -441,7 +441,7 @@ ya pide cada verificación.
   `infra/` (solo lectura del texto del script: `--env maqueta`, ni
   `production` ni `backends link`, nada de valores). | Verificación: los
   tests, y `-WhatIf` ejecutado en local (sin Azure) si el script lo permite
-- [ ] **T21**: versión en las URL de las dos hojas propias
+- [x] **T21**: versión en las URL de las dos hojas propias
   (`css/styles.css?v=<version>`, `css/portal.css?v=<version>`) en
   `index.html` y `partes.html`, con una sola fuente de la versión que un
   test comprueba igual en las dos páginas; enmienda con recuadro de la

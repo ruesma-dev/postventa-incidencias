@@ -1825,6 +1825,20 @@ cambia solo lo que choque con un componente.
   `style="…"` añadido y una `<link>` a otro dominio. Demuestra que la
   guardia mira.
 
+> **Enmienda del 2026-09-26 (bloque 6, T21) · la versión de la hoja.**
+> `diferencias_de_presentacion` pasa antes, a los dos lados,
+> `_quita_version_de_la_hoja`: la `<link rel="stylesheet"
+> href="css/styles.css?v=<10 hex>">`, con esos dos atributos y en ese orden,
+> vuelve a su forma de la base. Nada más se normaliza. La versión la calcula
+> `version_de_las_hojas()` (SHA-256 de `css/styles.css` y `css/portal.css`
+> con los finales de línea normalizados, diez primeras cifras): un test exige
+> esa versión en las hojas propias de `index.html` y de `partes.html`, así que
+> tocar una hoja sin cambiar la URL queda en rojo. Controles: la guardia
+> admite una versión cualquiera en la hoja del circuito, y rechaza la versión
+> en otra hoja, una query con algo más, una versión sin la forma, otro `rel`,
+> un atributo más y la versión en un `src` (`ESTROPEOS_T21`). El riesgo de
+> §15.9 «Caché del navegador» deja de depender de `Ctrl+F5`.
+
 **R33 enmendado.** El mismo test, con `M services/postventa-front/css/styles.css`
 admitido; `js/`, `staticwebapp.config.json`, `dev_server.py` y
 `dev_front.ps1`, igual que antes.

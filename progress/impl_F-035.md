@@ -3260,3 +3260,212 @@ el de Python.
 | Mutantes (campaña del arnés) | **0**, sin cambios |
 | Mutantes a mano | Barrido por aparición (41): **41/41** muertos. Otros operadores: antes **68/89** (21 vivos), después **92/92**, 1 idéntico por construcción. Verificaciones pedidas (M17, 681 vaciada, M14, M21, M13, 940): **6/6** en rojo. **0 supervivientes** |
 | Tiempo de la suite | Front pytest 12,02 s; raíz 8,37 s; JS ~1,7 s |
+
+## Bloque 6 · T20 a T22 · 2026-09-26
+
+> **Estado: `blocked` en T20** (T21 hecha, `init.sh` en verde). Motivo en §1.
+> `harness/features.json` sin tocar (lo pidió el líder); el bloqueo consta en
+> `progress/current.md`. Sin push. Nada ejecutado contra Azure ni Entra.
+
+### 1 · T20 · por qué para: «reutilizar sin duplicar» obliga a tocar F-010
+
+`tasks.md` pide `infra/publicar_maqueta.ps1` «con el patrón de
+`infra/desplegar_front.ps1` y reutilizando sus piezas, sin duplicarlas». Las
+piezas que hacen falta son:
+
+1. Las funciones `Salir-Con`, `Existe-Herramienta`, `Valor-De-Az`,
+   `Id-De-Aplicacion` y `Existe-StaticWebApp`.
+2. La copia de trabajo: copiar el front al temporal, quitar `tests`,
+   `tests_js`, `dev_server.py`…, comprobar el marcador `<TENANT_ID>` y
+   sustituirlo.
+
+Ninguna vive en un fichero común: están **dentro** de `desplegar_front.ps1`,
+que ejecuta su despliegue al cargarse (no se puede cargar por punto). Las
+únicas formas de reutilizarlas sin copiarlas tocan F-010, y eso es la regla
+del implementer «tu cambio toca otra feature → `blocked`»:
+
+- Extraerlas a un común nuevo cambia el **script de despliegue de producción**
+  (el de F-010) y obliga a enmendar **tests de F-010** que leen su texto:
+  `test_f010_r5_…[desplegar_front.ps1]` (busca `Que hacer:`, que solo está en
+  `Salir-Con`), `test_f010_t6_el_marcador_del_inquilino_se_sustituye_en_una_copia`
+  (`$texto -notlike`) y `test_f010_t6_no_publica_la_suite_ni_el_servidor_de_desarrollo`
+  (`dev_server.py`, `tests_js`, `Remove-Item -Path $ruta -Recurse -Force`).
+- El precedente del repositorio va en contra: F-013 **no** tocó el común de
+  F-009 para reutilizar dos funciones; las duplicó y un test exige que sean
+  idénticas (`test_f013_t1_la_mascara_es_la_misma_en_los_dos`).
+
+**Opciones para el líder / humano** (no he escrito nada de T20):
+
+| | Qué | A favor | En contra |
+|---|---|---|---|
+| **A** (recomendada si se acepta tocar F-010) | `infra/front_comun.ps1` con las 5 funciones y `Preparar-CopiaDeTrabajo -Destino -Inquilino`; `desplegar_front.ps1` lo carga por punto y pierde esas líneas (mismo comportamiento); los 3 tests de F-010 citados miran el común cuando el script lo carga | Cumple «sin duplicarlas» al pie de la letra; un solo sitio para la copia y el marcador | Toca el script de producción, que no puedo ejecutar (solo lo comprobaría el analizador de PowerShell y una prueba local de la copia de trabajo sin Azure); enmienda 3 tests de F-010 |
+| **B** | Duplicar las piezas en `publicar_maqueta.ps1` y un test que exige que cada función y la lista de exclusiones sean idénticas en los dos (patrón F-013) | No toca F-010 ni producción | Contradice «sin duplicarlas» de `tasks.md`: hay que enmendar la tarea |
+| **C** | Cargar desde `publicar_maqueta.ps1` las definiciones de función de `desplegar_front.ps1` con el analizador de PowerShell (`Parser::ParseFile` → `FunctionDefinitionAst`) | No toca F-010 | Artificio poco legible; la copia de trabajo (que no es función) seguiría duplicada |
+
+### 2 · T20 · lo averiguado (documentación de Microsoft, sin ejecutar nada)
+
+| Pregunta | Respuesta | Fuente |
+|---|---|---|
+| ¿Las App Settings son por entorno en Standard? | **Sí, según la CLI y el portal**: `az staticwebapp appsettings set/list/delete` tienen `--environment-name` («Add to or change the app settings of the static app environment»), y el portal dice «Select the environment… **You can create variables per environment**». **Pero** la misma página dice que las App Settings «Are copied to staging and production environments», que no casa del todo. **Se comprobará en ejecución**: tras fijarlas, `appsettings list --environment-name maqueta` tiene que tener las dos claves (sin imprimir valores); si no, para | [az staticwebapp appsettings](https://learn.microsoft.com/en-us/cli/azure/staticwebapp/appsettings?view=azure-cli-latest), [Configure application settings](https://learn.microsoft.com/en-us/azure/static-web-apps/application-settings) |
+| ¿Un backend enlazado se aplica a los entornos de vista previa? | **Es por entorno**: `az staticwebapp backends link/show/unlink` tienen `--environment-name` con **valor por defecto `default`** (producción); el portal enlaza desde «the *Production* row» y desenlaza «Locate the environment that you want to unlink»; la API REST devuelve `linkedBackends` **dentro de cada build/entorno**. No está en los PR («Backend integration is not supported on Static Web Apps pull request environments»). La documentación **no dice** explícitamente si un entorno con nombre hereda el de producción → **se comprobará en ejecución** (`backends show --environment-name maqueta`); si devuelve algo, para | [az staticwebapp backends](https://learn.microsoft.com/en-us/cli/azure/staticwebapp/backends?view=azure-cli-latest), [Bring your own functions](https://learn.microsoft.com/en-us/azure/static-web-apps/functions-bring-your-own), [REST · Get Static Site Build](https://learn.microsoft.com/en-us/rest/api/appservice/static-sites/get-static-site-build) |
+| ¿Formato del host de un entorno con nombre? | `<DEFAULT_HOST_NAME>-<BRANCH_OR_ENVIRONMENT_NAME>.<LOCATION>.azurestaticapps.net` («if the deployment environment is named `release`, then the environment is available at a location like `<DEFAULT_HOST_NAME>-release.<LOCATION>.azurestaticapps.net`»). Nombres: `0-9`, `a-z`, `A-Z`, **máximo 16** (`maqueta` vale). Los dominios propios no funcionan en vista previa. **El script no lo compondrá**: lo leerá (`az staticwebapp environment list`, campo `hostname` de la build `maqueta`) y parará si no contiene `-maqueta.` | [Preview environments](https://learn.microsoft.com/en-us/azure/static-web-apps/preview-environments), [Named environments](https://learn.microsoft.com/en-us/azure/static-web-apps/named-environments), [az staticwebapp environment](https://learn.microsoft.com/en-us/cli/azure/staticwebapp/environment?view=azure-cli-latest) |
+| `swa deploy --env` | «the type of deployment environment where to deploy the project (default: `preview`)»; token por `SWA_CLI_DEPLOYMENT_TOKEN` | [swa deploy](https://azure.github.io/static-web-apps-cli/docs/cli/swa-deploy) |
+
+**Diseño previsto de T20** (se escribe cuando se decida §1): comprobaciones
+de solo lectura → resumen → `-WhatIf` → confirmación `PUBLICAR` → copia de
+trabajo → `swa deploy <copia> --env maqueta` → host del entorno leído y
+comprobado → **backend del entorno: si hay, para** (antes de dar las App
+Settings: sin ellas nadie puede iniciar sesión, así que un entorno con
+backend queda cerrado) → `AZURE_CLIENT_ID`/`AZURE_CLIENT_SECRET` leídos del
+Key Vault (`swa-client-id`, `swa-client-secret`, sin imprimir) y fijados con
+`--environment-name maqueta`, comprobando que quedan → redirect URI: lee
+`web.redirectUris`, añade la del entorno si falta y reescribe la lista
+**entera** en una llamada (`--web-redirect-uris` reemplaza) → resumen con la
+URL del entorno. Extra que propongo decidir: un modo `-Retirar` que haga la
+vuelta atrás (§5) de forma segura, porque a mano es la misma trampa de
+«reemplaza la lista» que rompió el portal.
+
+### 3 · T21 · la versión en las URL de las hojas (hecha, `342a4a8`)
+
+**Ficheros**: `services/postventa-front/index.html` (2 líneas),
+`services/postventa-front/partes.html` (**1 línea**: el `href` de la hoja),
+`services/postventa-front/tests/test_f035_portal.py`,
+`specs/F-035-portal-posventa/requirements.md` (recuadro de la enmienda bajo
+R59), `design.md` §15.8 (recuadro), `tasks.md` (T21 `[x]`).
+
+**Decisiones**:
+
+- **Una sola fuente de la versión: el contenido de las hojas.**
+  `version_de_las_hojas()` = SHA-256 de `css/styles.css` y `css/portal.css`
+  (finales de línea normalizados: `core.autocrlf=true` y `styles.css` sale en
+  CRLF), diez primeras cifras hex. Hoy: `3c19075344`. El test exige esa
+  versión en las hojas propias de las dos páginas, así que **tocar una hoja
+  sin cambiar la URL deja la suite en rojo** y el mensaje dice el valor que
+  hay que poner. Alternativa descartada: una versión tecleada a mano (el
+  problema de la caché vuelve el día que alguien olvida subirla).
+- `partes.html` solo pide `css/styles.css` (no carga `portal.css`).
+- **Guardia R59, enmienda (e)**: `_quita_version_de_la_hoja` devuelve a su
+  forma de la base **solo** `<link rel="stylesheet" href="css/styles.css?v=<10 hex>">`
+  con esos dos atributos en ese orden. Se aplica a los dos lados (si no, el
+  control «el circuito real contra sí mismo» daría diferencias).
+- Tres tests existentes miraban el `href` exacto y pasan a mirar la ruta sin
+  query: R9 (`css/portal.css` en el portal), R50 (la hoja tras las cuatro
+  `<link>`) y el estropeo «una `<link>` a otro dominio» de R59 (busca por el
+  principio de la etiqueta). Ninguno pierde fuerza.
+
+**Tests nuevos** (11): `test_f035_t21_cada_pagina_pide_sus_hojas_con_la_version_de_su_contenido`
+(×2), `…_la_version_es_la_misma_en_las_dos_paginas`,
+`…_control_la_version_cambia_con_cada_hoja_y_no_con_los_finales_de_linea`,
+`test_f035_r59_t21_la_guardia_admite_la_version_en_la_hoja_del_circuito` y
+`test_f035_r59_t21_control_la_guardia_rechaza_todo_lo_demas` (×6,
+`ESTROPEOS_T21`: la versión en otra hoja, algo más en la query, versión sin
+la forma, otro `rel`, un atributo más, la versión en un `src`).
+
+**Fase RED** (tests escritos antes que la enmienda y antes de tocar las
+páginas). Comando, en `services/postventa-front`:
+`python -m pytest tests/test_f035_portal.py -k "t21" -p no:cacheprovider -q --tb=line`
+
+```
+FFF.F......                                                              [100%]
+================================== FAILURES ===================================
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\tests\test_f035_portal.py:1009: AssertionError: index.html: las hojas propias se piden con ?v=3c19075344, la versión que sale del contenido de css/styles.css y css/portal.css. Si has cambiado una hoja, pon ese valor en las <link> de index.html y de partes.html
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\tests\test_f035_portal.py:1009: AssertionError: partes.html: las hojas propias se piden con ?v=3c19075344, la versión que sale del contenido de css/styles.css y css/portal.css. Si has cambiado una hoja, pon ese valor en las <link> de index.html y de partes.html
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\tests\test_f035_portal.py:1022: AssertionError: cada página pide sus hojas con una sola versión: {'index.html': [''], 'partes.html': ['']}
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-front\tests\test_f035_portal.py:1054: assert ['replace: an...,700;12..96,'] == []
+=========================== short test summary info ===========================
+FAILED tests/test_f035_portal.py::test_f035_t21_cada_pagina_pide_sus_hojas_con_la_version_de_su_contenido[index.html]
+FAILED tests/test_f035_portal.py::test_f035_t21_cada_pagina_pide_sus_hojas_con_la_version_de_su_contenido[partes.html]
+FAILED tests/test_f035_portal.py::test_f035_t21_la_version_es_la_misma_en_las_dos_paginas
+FAILED tests/test_f035_portal.py::test_f035_r59_t21_la_guardia_admite_la_version_en_la_hoja_del_circuito
+4 failed, 7 passed, 97 deselected in 0.22s
+```
+
+Los 7 que pasaban en RED son el control de la versión (función pura) y los
+6 `ESTROPEOS_T21`, que ya estaban en rojo sin enmienda: su valor está en
+que **sigan** en rojo con ella. Para demostrarlo, **mutantes a mano** de la
+enmienda (en memoria, sobre el módulo de tests; incluyen también los 8
+`ESTROPEOS_R59` de antes):
+
+```
+original: todos los controles en verde
+M1 quita la query de todo href/src: MUERTO -> controles en rojo: ['algo más que la versión en la query', 'una versión que no tiene la forma', 'la versión en un script del circuito']
+M2 no mira rel: MUERTO -> controles en rojo: ['la hoja pasa a ser otra cosa (rel)']
+M3 no mira cuantos atributos: MUERTO -> controles en rojo: ['un atributo más en la <link> de la hoja']
+M4 cualquier query: MUERTO -> controles en rojo: ['algo más que la versión en la query', 'una versión que no tiene la forma']
+M5 sin la enmienda: MUERTO -> controles en rojo: ['admite']
+M6 cualquier hoja css/: MUERTO -> controles en rojo: ['la versión en otra hoja']
+```
+
+Tras la enmienda y las páginas: `-k "t21 or r59 or r50 or r9"` **28 passed**;
+suite del front **364 passed** (antes 353: +11). El test de rama de R59
+(`partes.html` contra el `index.html` de la base) sigue en verde.
+
+**Verificación manual pendiente** (humano): en V1/V4, que la hoja se pide
+como `css/styles.css?v=3c19075344` (pestaña Red) y que el estilo se aplica
+sin `Ctrl+F5`. `dev_server.py` y la Static Web App ignoran la query al servir
+un estático (no probado en Azure).
+
+### 4 · T22
+
+`bash harness/init.sh` tras `342a4a8`: **exit 0, `ENTORNO LISTO`**. Raíz
+**73 passed** (5,47 s); api desde caché; front **364 passed** (9,54 s,
+incluye el puente de JS); `PUERTA COBERTURA: N/A (F-035 no cambia líneas
+Python de producción frente a dev)`; `ruff` **61** avisos, los de antes
+(`test_f035_portal.py`: «All checks passed!»). T22 queda **sin marcar**: es
+la tarea final del bloque y falta T20.
+
+### 5 · Guion del humano para T20 (provisional: el script aún no existe)
+
+Lo que **no** depende de la opción de §1 es la vuelta atrás; queda aquí para
+tenerla a mano (consola con `az login`; `<swa>` es `$PostventaStaticWebApp`,
+`<rg>` es `$PostventaGrupo` y `<kv>` es `$PostventaKeyVault`, de
+`infra/00_vars_postventa.ps1`):
+
+1. **Borrar el entorno `maqueta`** (se lleva sus estáticos y sus App
+   Settings; producción no se toca porque se nombra el entorno):
+
+   ```
+   az staticwebapp environment delete --name <swa> --resource-group <rg> --environment-name maqueta --yes
+   ```
+
+   **Ojo**: sin `--environment-name` el valor por defecto es `default`, que
+   es **producción**. Comprobar después con
+   `az staticwebapp environment list --name <swa> --resource-group <rg> --query "[].name" -o tsv`
+   (tiene que quedar solo `default`). La CLI de SWA no documenta ninguna
+   orden para borrar un entorno: se hace con `az` o desde el portal, pestaña
+   *Environments*.
+2. **Quitar la URL de retorno del entorno**, conservando las demás.
+   `az ad app update --web-redirect-uris` **reemplaza la lista entera**:
+
+   ```
+   $id = az keyvault secret show --vault-name <kv> --name swa-client-id --query value -o tsv
+   $todas = az ad app show --id $id --query "web.redirectUris" -o tsv
+   $quedan = @($todas | Where-Object { $_ -notlike "*-maqueta.*" })
+   az ad app update --id $id --web-redirect-uris $quedan
+   az ad app show --id $id --query "web.redirectUris" -o tsv
+   ```
+
+   La última tiene que listar las de antes **sin** la de `-maqueta.`. Si
+   `$quedan` saliera vacío, **no** ejecutar el `update`: borraría la de
+   producción.
+
+El guion de publicación (comandos exactos y qué debe salir) se completa con
+el script, cuando se decida §1.
+
+### 6 · Qué queda fuera y qué falta
+
+- **T20**: bloqueada (§1). **T22**: se marca cuando esté T20.
+- `docs/DESPLIEGUE.md` (y, si procede, `azure-apps/`) con el entorno
+  `maqueta`: va con T20.
+- V1/V4 del humano con la versión de las hojas (§3).
+
+### Evidencias (bloque 6, hasta T21)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Front **364 passed** (pytest en `init.sh`, 9,54 s; incluye el puente de JS); raíz **73 passed** (5,47 s); api desde caché |
+| Tests nuevos / cambiados | **11 nuevos** (T21 y enmienda de R59); **3 enmendados** para mirar la ruta sin query (R9, R50, estropeo de R59) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` (HTML y tests) |
+| Mutantes (campaña del arnés) | No lanzada: no hay líneas Python de producción cambiadas (misma situación que en T18, 0 mutantes) |
+| Mutantes a mano de la enmienda | **6/6 muertos** (M1–M6, arriba). 0 supervivientes |
+| Tiempo de la suite | Front 9,54 s; raíz 5,47 s |

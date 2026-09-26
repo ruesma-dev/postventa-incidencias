@@ -1,6 +1,22 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 6: T21 HECHA, **T20 BLOQUEADA** · 2026-09-26 · siguiente: decisión del líder/humano sobre T20
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 6 · T20 a T22».
+> T21 en `342a4a8` (versión `?v=` de las hojas, una fuente = su contenido;
+> enmienda (e) de R59 con 6 controles y 6/6 mutantes muertos). `init.sh` en
+> verde (raíz 73, front 364, ruff 61). Sin push; `features.json` sin tocar
+> por indicación del líder (por eso el bloqueo consta aquí y no allí).
+>
+> - **Motivo del bloqueo de T20**: «reutilizando sus piezas, sin duplicarlas»
+>   exige sacar funciones y la copia de trabajo de `infra/desplegar_front.ps1`
+>   (F-010, script de producción) a un común y enmendar 3 tests de F-010. Es
+>   tocar otra feature, y el precedente (F-013) fue no hacerlo. Opciones A/B/C
+>   en §1 del informe. Averiguación de Azure (App Settings y backend por
+>   entorno, formato del host) hecha y citada en §2; vuelta atrás en §5.
+> - Desviación de orden: T21 se hizo antes que T20 porque no depende de ella.
+
 > ## ▶ F-035 · CORRECCIONES DE LA REVIEW 5 HECHAS · 2026-09-25 · siguiente: reviewer y T12 del humano
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la

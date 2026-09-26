@@ -424,6 +424,18 @@ ya pide cada verificación.
 > la Static Web App (plan Standard), sin tocar producción, más una versión en
 > las URL de las hojas; el humano respondió **«si»**.
 
+> **Enmienda del 2026-09-26 (líder), por el bloqueo de T20.** Decía
+> «reutilizando sus piezas, sin duplicarlas». Reutilizarlas sin copiarlas
+> obliga a sacar funciones del script de despliegue de producción de F-010 y
+> a enmendar tres tests suyos. Se elige la **opción B** del informe (patrón de
+> F-013 con el común de F-009): las piezas se **duplican** en
+> `publicar_maqueta.ps1` y un test exige que cada función duplicada y la
+> lista de exclusiones de la copia de trabajo sean **idénticas** en los dos
+> scripts. `desplegar_front.ps1` no se toca. Entra además el modo
+> `-Retirar` propuesto por el implementer (borra el entorno `maqueta` y quita
+> **solo** su URL de retorno, reescribiendo la lista entera sin perder las
+> demás).
+
 - [ ] **T20**: `infra/publicar_maqueta.ps1` (ASCII, CRLF, sin BOM, patrón de
   `infra/desplegar_front.ps1` y reutilizando sus piezas, sin duplicarlas):
   (a) publica la copia de trabajo del front de la rama con

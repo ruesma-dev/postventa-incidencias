@@ -610,11 +610,12 @@
         "Ningún placeholder llama a Sigrid, SharePoint ni al correo",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "blocked",
       "sdd": true,
       "rigor": "estandar",
       "priority": 1,
-      "branch": "feature/F-035-portal-posventa"
+      "branch": "feature/F-035-portal-posventa",
+      "blocked_by": "En pausa por decisión del humano (2026-09-28): «vamos a dejar la maqueta así, a la espera de que negocio nos de feedback». La implementación está completa y aprobada (reviews 6 y 8) en la rama feature/F-035-portal-posventa, SIN mergear. Faltan: el feedback de negocio sobre la maqueta (publicada en el entorno de vista previa `maqueta` con infra/publicar_maqueta.ps1, o por publicar), V1/V2 del humano (T12) y, después, el merge a dev y la publicación en producción (D-4) con el aviso a Posventa y el cambio de la tarjeta en front-portal (H-4)."
     },
     {
       "id": "F-036",

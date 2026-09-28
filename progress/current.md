@@ -1,6 +1,30 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⏸ PUNTO DE REANUDACIÓN · 2026-09-28 · siguiente: F-036 (importar el Excel)
+>
+> **F-035 en pausa (`blocked`)**, por decisión del humano: «vamos a dejar la
+> maqueta así, a la espera de que negocio nos de feedback». Todo está en la rama
+> `feature/F-035-portal-posventa`, **sin mergear**: implementación aprobada
+> (review 6; script de la maqueta, review 8). Para retomarla: el feedback de
+> negocio (por correo o Excel), V1/V2 del humano (T12), merge a `dev`,
+> publicación en producción con `desplegar_front.ps1 -SoloFront` (D-4), aviso a
+> Posventa y la tarjeta de `front-portal` (H-4). La maqueta se publica y se
+> retira con `infra/publicar_maqueta.ps1` (y `-Retirar`), desde la rama de
+> F-035; guion en `docs/DESPLIEGUE.md` §10 de esa rama.
+>
+> **En producción desde el 2026-09-25**: F-013 (archivo en la biblioteca de
+> Posventa) y F-049 (villas con tres cifras). Pendientes del humano con
+> Posventa: R33 y R42 (comandos en el bloque de F-013, más abajo).
+>
+> **Siguiente: F-036, importar el Excel de incidencias a una bandeja de
+> revisión.** Lo que ya hay: la ficha en `harness/features.json` (mínimos del
+> Excel: unidad de posventa y descripción), los pasos del alta manual de Sigrid
+> en `docs/referencia/04_alta_incidencia_sigrid.md`, y el contrato del volcado
+> de F-040 en `azure-apps/sigrid_api.md` §8.9. **Lo primero, preguntar al
+> humano por el Excel de ejemplo**, que sigue sin llegar: la spec se diseña
+> contra él. Si trae datos personales, no se convierte sin preguntar.
+
 > ## ▶ F-035 · CORRECCIONES DE LA REVIEW 7 HECHAS · 2026-09-26 · siguiente: reviewer (vuelta sobre la review 7) y guion §8 del bloque 6 (humano)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la review 7».

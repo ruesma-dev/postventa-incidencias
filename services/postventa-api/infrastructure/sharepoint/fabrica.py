@@ -21,7 +21,10 @@ El **orden** de lo que hace importa, y es el que protege:
    comprueba también la **estrategia** (`SHAREPOINT_ESTRUCTURA`, R3) y que la
    base no esté vacía en `por_obra` (R17), y los dice junto a lo que falte.
 4. Y solo entonces se construye el adaptador, que vuelve a comprobar el
-   entorno por su cuenta (`design.md` §5, puerta 1).
+   entorno por su cuenta (`design.md` §5, puerta 1). Justo antes, desde
+   F-051, una línea `INFO` con el destino **efectivo** —estrategia y base, sin
+   identificadores—, que es lo que el guion del corte comprueba en
+   Application Insights.
 
 Si algo falla en los tres primeros pasos, la biblioteca de Posventa no se ha
 enterado de que existimos.
@@ -89,6 +92,7 @@ def construir_archivador(ajustes: Ajustes) -> ArchivoPort:
         "F-006 archivador de SharePoint construido en el entorno %s",
         ajustes.entorno,
     )
+    _trazar_destino_efectivo(ajustes)
     return AdaptadorSharePointGraph(
         entorno=ajustes.entorno,
         drive_id=str(ajustes.sharepoint_drive_id),
@@ -118,6 +122,27 @@ def carpeta_base_efectiva(ajustes: Ajustes) -> str:
     if ajustes.sharepoint_estructura == EstructuraArchivo.POSVENTA:
         return ""
     return CARPETA_BASE_POR_OMISION
+
+
+def _trazar_destino_efectivo(ajustes: Ajustes) -> None:
+    """La línea que dice adónde se va a archivar **de verdad** (F-051).
+
+    El corte de F-013 se comprobó mirando la configuración de Azure, y la
+    configuración estaba bien: lo que la aplicación leía, no (incidente del
+    2026-10-01). Esta línea es lo que lee la aplicación, y la busca el guion
+    del corte en Application Insights (`docs/DESPLIEGUE.md` §9, paso 6).
+
+    La estrategia y la base, y nada más: ni la biblioteca, ni el sitio, ni el
+    tenant, ni la aplicación. La raíz se dice `raíz`, sin comillas, y un
+    nombre va entre comillas angulares: una carpeta que se llamara «raíz» no
+    se confunde con la raíz.
+    """
+    base = carpeta_base_efectiva(ajustes).strip().strip("/").strip()
+    log.info(
+        "F-051 destino efectivo del archivo: estructura %s, carpeta base %s",
+        ajustes.sharepoint_estructura,
+        f"«{base}»" if base else "raíz",
+    )
 
 
 def _exigir_interruptor(ajustes: Ajustes) -> None:

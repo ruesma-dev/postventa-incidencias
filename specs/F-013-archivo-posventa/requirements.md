@@ -66,6 +66,8 @@ las recomendaciones **salvo D-4**, que cambia.
 | **D-7** | Sigrid caída al archivar → 503, no se sube, no se cae al dato del papel | R41 |
 | **D-R** | Rigor `critico` | cabecera |
 
+> **Enmienda del 2026-10-01 (F-051).** La raíz se escribe `SHAREPOINT_CARPETA_BASE=/` (`$CarpetaBaseArchivo = "/"`), nunca vacía: Azure no pasa a la aplicación un App Setting vacío y la base vacía del corte no llegó a la Function (incidente del 2026-10-01; ver F-051 y `docs/DESPLIEGUE.md` §9).
+
 ### 0 ter · La parada T4, cerrada por el humano el 2026-09-24
 
 Con la medición de T2 y T3 delante (`progress/explore_F-013.md`). Respuestas

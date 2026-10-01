@@ -419,6 +419,8 @@
    `$CrearCarpetasArchivo = "true"`; `desplegar_backend.ps1` **sin**
    `-VentanasCerradas`.
 
+> **Enmienda del 2026-10-01 (F-051).** La raíz se escribe `SHAREPOINT_CARPETA_BASE=/` (`$CarpetaBaseArchivo = "/"`), nunca vacía: Azure no pasa a la aplicación un App Setting vacío y la base vacía del corte no llegó a la Function (incidente del 2026-10-01; ver F-051 y `docs/DESPLIEGUE.md` §9).
+
 **Justo después y el mismo día** (solo lecturas + Posventa):
 
 6. `22_ventana_archivo.ps1` sin parámetros: «abierta»; y los tres App

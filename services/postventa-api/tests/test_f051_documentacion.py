@@ -263,3 +263,33 @@ def test_f051_t4_hay_dos_recuadros_fechados_del_incidente(documento):
 )
 def test_f051_t4_ningun_documento_lleva_un_guid(documento):
     assert PATRON_GUID.findall(_leer(documento)) == []
+
+
+# --------------------------------------------------------------------------
+# Review 1 de F-051, H-1 · la spec de F-013 remite a F-051
+# --------------------------------------------------------------------------
+
+SPEC_F013 = RAIZ / "specs" / "F-013-archivo-posventa"
+
+
+@pytest.mark.parametrize(
+    ("fichero", "cuantos"),
+    (("requirements.md", 1), ("design.md", 2), ("tasks.md", 1)),
+)
+def test_f051_h1_la_spec_de_f013_remite_a_f051(fichero, cuantos):
+    """Quien relea F-013 para otro corte no puede volver a poner la base vacía.
+
+    Un recuadro fechado de una línea donde la spec dice `""`: tras la tabla de
+    D-1 (requirements y design), tras el paso 5 de §7.3 (design) y tras el
+    paso 5 del despliegue (tasks).
+    """
+    recuadros = [
+        linea
+        for linea in _leer(SPEC_F013 / fichero).splitlines()
+        if linea.startswith(f"> **{CABECERA_DEL_RECUADRO}")
+    ]
+
+    assert len(recuadros) == cuantos
+    for recuadro in recuadros:
+        assert "`SHAREPOINT_CARPETA_BASE=/`" in recuadro
+        assert "nunca vacía" in recuadro

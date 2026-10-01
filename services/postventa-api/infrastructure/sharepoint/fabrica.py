@@ -45,9 +45,20 @@ from infrastructure.sharepoint.graph import (
     exigir_entorno_con_archivo,
 )
 
-__all__ = ["ENTORNOS_CON_ARCHIVO", "construir_archivador"]
+__all__ = [
+    "CARPETA_BASE_POR_OMISION",
+    "ENTORNOS_CON_ARCHIVO",
+    "carpeta_base_efectiva",
+    "construir_archivador",
+]
 
 log = logging.getLogger(__name__)
+
+#: La base cuando `SHAREPOINT_CARPETA_BASE` **no está** y la estrategia no es
+#: `posventa`: la carpeta de F-006 en la biblioteca de IT. Hasta F-051 era el
+#: valor por defecto del campo en los ajustes, y por eso valía también en
+#: `posventa`, donde no existe (incidente del 2026-10-01).
+CARPETA_BASE_POR_OMISION = "Postventa"
 
 #: Lo que hace falta para archivar de verdad: el destino y la credencial.
 #:
@@ -87,6 +98,26 @@ def construir_archivador(ajustes: Ajustes) -> ArchivoPort:
         timeout_s=ajustes.graph_timeout_s,
         reintentos=ajustes.graph_reintentos,
     )
+
+
+def carpeta_base_efectiva(ajustes: Ajustes) -> str:
+    """La carpeta base con la que se archiva de verdad (F-051).
+
+    Solo la **ausencia** de `SHAREPOINT_CARPETA_BASE` depende de la
+    estrategia: en `posventa` es la raíz de la biblioteca (`""`, D-1 de
+    F-013), y en cualquier otra, `Postventa`, como siempre. Un valor **puesto**
+    —vacío, `/` o un nombre— pasa tal cual: recortarlo es cosa de quien
+    compone la ruta (`unir_ruta`, `carpeta_de_archivo`), y rechazar la raíz en
+    `por_obra` lo hace `_problemas_de_estructura` (F-013 R17).
+
+    Es el único sitio que decide esto: lo usan la validación de aquí abajo, la
+    traza del destino efectivo y el borde de `/api/archivar`.
+    """
+    if ajustes.sharepoint_carpeta_base is not None:
+        return ajustes.sharepoint_carpeta_base
+    if ajustes.sharepoint_estructura == EstructuraArchivo.POSVENTA:
+        return ""
+    return CARPETA_BASE_POR_OMISION
 
 
 def _exigir_interruptor(ajustes: Ajustes) -> None:
@@ -142,6 +173,9 @@ def _problemas_de_estructura(ajustes: Ajustes) -> list[str]:
       barras, que `carpeta_de_archivo` recortaría a nada): produciría `/0677`
       y dejaría las carpetas por código sueltas en la raíz de la biblioteca de
       Posventa. En `posventa`, vacía es la raíz (D-1) y se admite.
+    - Desde F-051 se mira la base **efectiva** (`carpeta_base_efectiva`): en
+      `por_obra`, una base ausente es `Postventa` y pasa; una puesta a vacía o
+      a `/` se sigue rechazando.
 
     El dominio no sabe de estrategias (`design.md` §2.3): por eso la base
     vacía se rechaza aquí y no en `nombrado.py`.
@@ -156,7 +190,7 @@ def _problemas_de_estructura(ajustes: Ajustes) -> list[str]:
         ]
     if (
         ajustes.sharepoint_estructura == EstructuraArchivo.POR_OBRA
-        and not ajustes.sharepoint_carpeta_base.strip().strip("/").strip()
+        and not carpeta_base_efectiva(ajustes).strip().strip("/").strip()
     ):
         return [
             (

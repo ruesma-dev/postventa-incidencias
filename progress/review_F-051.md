@@ -382,3 +382,42 @@ ningún test de contenido que busque el nombre del script.
   mano el freno con el comando **escrito a mano o copiado del script**, no de
   `DESPLIEGUE.md` §4 mientras siga R2-4.
 - Lo demás, como en §7 de la review 1, y la aceptación del cambio 4.
+
+---
+
+# Review 3 (2026-10-01)
+
+- **Veredicto:** APPROVED
+- Alcance: solo R2-3, T7 (`8730211`) y la anotación del cambio 4
+  (`baf6704`); diff `aeaf364..HEAD`: `docs/DESPLIEGUE.md`,
+  `progress/cierre_verificaciones_F-033.md`, `progress/current.md`,
+  `progress/impl_F-051.md` y el test nuevo. **Ningún cambio de producción ni
+  de `infra/`**: la cobertura y la mutación de la review 1 siguen valiendo.
+
+## R3-1 · Comprobaciones
+
+| Comprobación | Resultado |
+|---|---|
+| **R2-3** (`41045ef`) | `progress/current.md:25` dice ya `powershell -ExecutionPolicy Bypass -File infra\22_ventana_archivo.ps1 -Cerrar`, con `\22` en texto (comprobado byte a byte). [x] |
+| **R2-4**, los cuatro de la review 2 (`8730211`) | `DESPLIEGUE.md:274` → `infra\22_ventana_archivo.ps1`; `:352` → `infra\19_ventana_escritura.ps1`; `current.md` (bloques antiguos) → `infra\21_historico_estado.ps1` y `infra\19_ventana_escritura.ps1`. [x] |
+| **Los dos más** (`cierre_verificaciones_F-033.md:61` y `:63`, `0x15`) | → `infra\25_mediciones_despliegue.ps1`: `0x15` es el octal `25`, así que la reconstrucción es la correcta. [x] |
+| Los scripts reconstruidos existen y aceptan lo que se les pasa | `19_ventana_escritura.ps1` (`-Cerrar`), `21_historico_estado.ps1` (`-NumeroIncidencia`), `22_ventana_archivo.ps1`, `25_mediciones_despliegue.ps1` (`-NumeroIncidencia`, `-FotoAntes`): sí |
+| **Barrido mío** de bytes `[\x00-\x08\x0b\x0c\x0e-\x1f]` en **todos** los `.md` versionados (`git ls-files '*.md'`, 202 ficheros, no solo `docs/`, `progress/` y `specs/`) | **0**. Y en `.ps1`, `.py` y `.json` versionados, también 0 |
+| `tests/test_f051_sin_caracteres_de_control.py` | 10 passed. Barre los `.md` versionados de `docs/`, `progress/` y `specs/`; tiene control de que el barrido ve ficheros (`DESPLIEGUE.md`, `current.md`) y controles negativos con los bytes reales de R2-4 y los extremos del rango; tabulador, LF, CRLF y acentos no saltan. Fase RED con la salida real en `impl_F-051.md` §11 (los seis hallazgos, con línea y byte). [x] |
+| **Cambio 4** (`baf6704`) | el humano **acepta como equivalente** el superviviente a mano de `mutacion_F-051.md` («1, si, 2, si»), anotado en `current.md`. Queda cerrado el punto de C4 bis que quedó en `[ ]` en la review 1. [x] |
+| `bash harness/init.sh`, tal cual | exit 0, `ENTORNO LISTO`, `PUERTA COBERTURA: 100.0% (14/14, critico)` |
+| Suite del servicio api, sin caché | **4433 passed, 52 skipped** (71 s) |
+
+## R3-2 · Estado de los checkpoints tras las tres reviews
+
+Todos los `[ ]` de la review 1 quedan en `[x]`: C4 (MANUAL con comando en
+`current.md`, review 2 + R2-3), C4 bis (Evidencias con workers, review 2) y
+C4 bis (superviviente equivalente aceptado por escrito por el humano,
+`baf6704`). El resto, como en la review 1.
+
+## R3-3 · Lo que debe mirar el humano al desplegar
+
+§7 de la review 1, con R2-5: el punto 1 ya está hecho; el freno de
+`current.md` y los de `DESPLIEGUE.md` §4 y §4 bis ya se pueden copiar. Sigue
+fuera de F-051 la propuesta de `arnes-base` (aviso de bytes de control en
+`init.sh`), que el humano dejó como tarea aparte.

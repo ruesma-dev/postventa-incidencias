@@ -1,6 +1,15 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✔ F-051 · decisiones del humano tras la review 2 · 2026-10-01
+>
+> «1, si, 2, si»: (1) **acepta como equivalente** el superviviente a mano de
+> `progress/mutacion_F-051.md` (`archivar.py`, el `carpeta_base=... or "Postventa"` del paso);
+> (2) **se corrigen dentro de F-051** los caracteres de control de R2-4 (`docs/DESPLIEGUE.md`
+> líneas ~274 y ~352, los frenos de las ventanas; y dos bloques antiguos de `current.md`) con un
+> test que los prohíba en `docs/` y `progress/`. El aviso genérico en `init.sh` es mejora de
+> `arnes-base`, tarea aparte.
+
 > ## 🚨 INCIDENTE · el archivo en Posventa falla (502) desde el 2026-09-28 · mitigado el 2026-10-01 · F-051 en curso
 >
 > **Alcance corregido el 2026-10-01** (las primeras consultas usaban sin querer la ventana de 1 h

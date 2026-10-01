@@ -292,3 +292,93 @@ línea, pero no que el canal la transporte; sin esa prueba, el paso de
 verificación puede volver a ser «mirar algo que no puede ver», que es
 exactamente el incidente que arregla F-051. Vale para cualquier proyecto con
 Application Insights: candidata a `arnes-base` si el humano la aprueba.
+
+---
+
+# Review 2 (2026-10-01)
+
+- **Veredicto:** CHANGES_REQUESTED, **por un solo carácter**: el freno del
+  cambio 1 en `progress/current.md` no se puede copiar. Todo lo demás está
+  bien y queda aprobado; en cuanto se corrija esa línea, no hace falta más
+  revisión de código.
+- Alcance: solo los cambios pedidos en la review 1, `git diff 5247482..HEAD`
+  (`18b9e76`, `76fe3e2`, `46800d5`, `46b628c`, `cec619e`).
+
+## R2-1 · Comprobaciones
+
+| Comprobación | Resultado |
+|---|---|
+| `bash harness/init.sh`, tal cual | exit 0, `ENTORNO LISTO`; `PUERTA COBERTURA: 100.0% (14/14, critico)` |
+| Suite del servicio api, sin caché | **4423 passed, 52 skipped** (68 s). Tests de F-051: **67 passed**, 0 skipped |
+| ¿Cambió código de producción o infra? | **No**: el diff solo toca `docs/DESPLIEGUE.md`, `progress/`, la spec de F-013 y `test_f051_documentacion.py`. La mutación y la cobertura de la review 1 siguen valiendo |
+| Barrido de identificadores (GUID, IPv4) en lo añadido | 0 |
+| Barrido de caracteres de control en los ficheros tocados | **1 nuevo** (`current.md:25`, ver R2-3) y 4 que **ya estaban en `dev`** (R2-4) |
+
+## R2-2 · Los cambios de la review 1
+
+- **Cambio 1 (líder), `progress/current.md`:** [x] las cuatro MANUAL, en orden
+  y con su comando y salida esperada; la 1 (la línea de F-006 llega a
+  `traces`) está **hecha** con cifras (09-29: 6, 09-30: 18, 10-01: 195) y con
+  `--offset 3d`, lo que despeja el riesgo del paso 6. También está bien
+  corregido el alcance del incidente (219 fallos, 26 partes, desde el 09-28).
+  **Menos el freno de la MANUAL 3** (R2-3).
+- **Cambio 2 (implementer), «Evidencias»:** [x] **3 workers** en la tabla, con
+  la explicación (no se pasó `--workers`; `rigor.json` da 8 y la campaña los
+  recorta a `min(8, 3 mutantes)` = 3, que es lo que `comando_de` escribe en la
+  cabecera). Coste por mutante 57 × 3 / 3 = 57 s: igual que en la review 1.
+- **Cambio 3 (implementer), `DESPLIEGUE.md` §9 paso 6:** [x] las tres causas,
+  la repetición con `contains`, la comprobación de la línea de F-006 para
+  distinguir la tercera, y la verificación por el **resultado** (`requests`
+  de `archivar` por `resultCode` y el parte en su carpeta) con «no se da el
+  corte por bueno sin ninguna de las dos». Añade además el aviso de
+  `--offset` de `az monitor app-insights query`, que es lo que le falseó las
+  primeras cifras al líder: bien visto. Las tres consultas, solo lectura, y
+  con tests (`test_f051_r1_*`, `test_f051_t4_todas_las_consultas_del_paso_6_son_de_solo_lectura`).
+- **H-1 (implementer):** [x] recuadro fechado de F-051 en `requirements.md`
+  (tras D-1), `design.md` (paso 5 del corte y tabla de decisiones) y
+  `tasks.md` (paso 5); fijado por `test_f051_h1_la_spec_de_f013_remite_a_f051`.
+- **Cambio 4 (humano):** **pendiente del humano**, no de los agentes: la
+  aceptación escrita del superviviente a mano equivalente de
+  `progress/mutacion_F-051.md` (`archivar.py`, el `carpeta_base=` del paso).
+  No es motivo de rechazo del trabajo de agente.
+
+## R2-3 · Cambio requerido (líder, una línea)
+
+1. **`progress/current.md`, línea 25 (MANUAL 3, el freno 1):** dice
+   `infra<0x12>_ventana_archivo.ps1 -Cerrar`: un `\22` tomado como escape
+   octal al escribirlo, que dejó el carácter de control 0x12 en lugar de
+   `\22`. Copiado tal cual, **el freno falla** justo cuando hace falta. Debe
+   decir:
+   `powershell -ExecutionPolicy Bypass -File infra\22_ventana_archivo.ps1 -Cerrar`.
+   El implementer ya lo señaló en `impl_F-051.md` (cec619e) y no se
+   corrigió. Comprobarlo después con un barrido de bytes de control, no a
+   ojo (en pantalla no se ve).
+
+## R2-4 · Hallazgo fuera de F-051 (no bloquea esta feature)
+
+El mismo defecto **ya está en `dev`** en otros cuatro sitios, dos de ellos en
+el runbook de los frenos:
+
+- `docs/DESPLIEGUE.md:274`: `infra<0x12>_ventana_archivo.ps1` (§4, cerrar la
+  ventana de archivo);
+- `docs/DESPLIEGUE.md:352`: `infra<0x01>9_ventana_escritura.ps1` (§4 bis,
+  cerrar la ventana del ERP);
+- `progress/current.md` (bloques antiguos): `infra<0x11>_historico_estado.ps1`
+  y `infra<0x01>9_ventana_escritura.ps1`.
+
+Propuesta al líder: una corrección aparte (o dentro de F-051 si el humano lo
+prefiere, son cuatro caracteres) y un test que prohíba bytes de control en
+`docs/` y `progress/`.
+
+**Propuesta de automejora (no aplicada)**, válida para `arnes-base`: que
+`init.sh` avise de caracteres de control (`[\x00-\x08\x0b\x0c\x0e-\x1f]`) en
+los `.md` versionados. Un comando de freno que no se puede copiar no lo caza
+ningún test de contenido que busque el nombre del script.
+
+## R2-5 · Lo que debe mirar el humano al desplegar (actualiza §7)
+
+- El punto 1 de §7 ya está hecho (la línea de F-006 llega a `traces`).
+- Antes de desplegar: corregido el freno de `current.md` (R2-3), y tener a
+  mano el freno con el comando **escrito a mano o copiado del script**, no de
+  `DESPLIEGUE.md` §4 mientras siga R2-4.
+- Lo demás, como en §7 de la review 1, y la aceptación del cambio 4.

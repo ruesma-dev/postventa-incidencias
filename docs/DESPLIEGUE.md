@@ -271,7 +271,7 @@ una versión concreta archive la despliega con `-VentanasCerradas` o la cierra
 después.
 
 **La vía buena es el script**, que lee antes y después y dice el estado en
-palabras: `infra_ventana_archivo.ps1` (sin parámetros solo mira; `-Cerrar`
+palabras: `infra\22_ventana_archivo.ps1` (sin parámetros solo mira; `-Cerrar`
 la cierra sin preguntar; `-Abrir` avisa y pide una palabra). Las dos líneas de
 `az` equivalentes, por si el script no está a mano:
 
@@ -349,7 +349,7 @@ y protegen cosas distintas: poder archivar no puede implicar poder cerrar. Si
 fueran la misma, abrir la ventana para subir unos partes abriría a la vez la
 escritura en Sigrid, y nadie se daría cuenta hasta que se cerrara algo.
 
-**La vía buena es el script**: `infra9_ventana_escritura.ps1` (sin
+**La vía buena es el script**: `infra\19_ventana_escritura.ps1` (sin
 parámetros solo mira; `-Cerrar` la cierra sin preguntar; `-Abrir` avisa de que
 abre también el cierre y pide una palabra). Las dos líneas de `az`
 equivalentes:

@@ -416,3 +416,54 @@ En `progress/current.md`, bloque de F-051, MANUAL 3, el freno lleva un carácter
 de control (0x12) en lugar de `\22`: `infra<0x12>_ventana_archivo.ps1 -Cerrar`
 (un `\22` tomado como escape octal al escribirlo). Debe ser
 `infra\22_ventana_archivo.ps1 -Cerrar`. Copiado tal cual, el comando falla.
+
+## 11 · T7 · los caracteres de control de R2-4 (review 2, decisión del humano)
+
+**Qué eran.** Rutas de Windows escritas desde un programa: `\22`, `\21`,
+`\25` y `\1` (seguido de `9`) se tomaron como escapes octales y en el fichero
+quedó un byte de control invisible en lugar de `\` + número. El comando copiado
+del guion fallaría; uno de ellos es el freno 1.
+
+**Barrido** de `[\x00-\x08\x0b\x0c\x0e-\x1f]` en los **202 `.md` versionados**
+del repositorio (`git ls-files '*.md'`, no solo `docs/`, `progress/` y
+`specs/`). Antes, 6 bytes en 3 ficheros; después, 0. Cada script de destino se
+comprobó en `infra/` antes de sustituir (los cuatro existen con ese nombre):
+
+| Fichero | Línea | Byte | Quedaba | Ahora |
+|---|---|---|---|---|
+| `docs/DESPLIEGUE.md` | 274 | `0x12` | `infra<0x12>_ventana_archivo.ps1` | `infra\22_ventana_archivo.ps1` |
+| `docs/DESPLIEGUE.md` | 352 | `0x01` | `infra<0x01>9_ventana_escritura.ps1` | `infra\19_ventana_escritura.ps1` |
+| `progress/current.md` | 1914 | `0x11` | `infra<0x11>_historico_estado.ps1` | `infra\21_historico_estado.ps1` |
+| `progress/current.md` | 1966 | `0x01` | `infra<0x01>9_ventana_escritura.ps1` | `infra\19_ventana_escritura.ps1` |
+| `progress/cierre_verificaciones_F-033.md` | 61 | `0x15` | `infra<0x15>_mediciones_despliegue.ps1` | `infra\25_mediciones_despliegue.ps1` |
+| `progress/cierre_verificaciones_F-033.md` | 63 | `0x15` | `infra<0x15>_mediciones_despliegue.ps1` | `infra\25_mediciones_despliegue.ps1` |
+
+Los dos de `cierre_verificaciones_F-033.md` no estaban en la lista del
+reviewer: salieron del barrido y se corrigieron con el mismo criterio
+(`0x15` = octal `25`, y `infra/25_mediciones_despliegue.ps1` existe). La
+sustitución se hizo en bytes, sin tocar los finales de línea.
+
+**Test nuevo**: `services/postventa-api/tests/test_f051_sin_caracteres_de_control.py`
+(10 casos). Barre los `.md` versionados bajo `docs/`, `progress/` y `specs/`
+(por `git ls-files`; sin git, todos los de esas carpetas), con un caso que exige
+que el barrido vea `docs/DESPLIEGUE.md` y `progress/current.md`, y controles
+negativos (los bytes reales de R2-4 y los extremos del rango saltan; tabulador,
+LF, CRLF y acentos no).
+
+RED, sobre el árbol de antes (desde `services/postventa-api`,
+`.venv/Scripts/python -m pytest tests/test_f051_sin_caracteres_de_control.py -q -p no:cacheprovider`):
+
+```
+E       assert {'docs/DESPLI...escritura.'"]} == {}
+E         Left contains 3 more items:
+E         {'docs/DESPLIEGUE.md': ["línea 274, 0x12: b'en\r\npalabras: "
+E                                 "`infra\x12_ventana_archivo.ps1'",
+E                                 "línea 352, 0x01: b' el script**: "
+E                                 "`infra\x019_ventana_escritura.'"],
+E          'progress/cierre_verificaciones_F-033.md': ["línea 61, 0x15: b'y Bypass -File "...
+FAILED tests/test_f051_sin_caracteres_de_control.py::test_f051_t7_ningun_markdown_versionado_lleva_caracteres_de_control
+1 failed, 9 passed in 0.39s
+```
+
+Después: `10 passed in 0.29s`. Sin cambios en código de producción: cobertura y
+mutación, las de §9.

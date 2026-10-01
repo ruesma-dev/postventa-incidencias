@@ -1911,7 +1911,7 @@
 >
 > ### ✅ Verificaciones 1 y 2, HECHAS el 2026-09-16
 >
-> `infra_historico_estado.ps1 -NumeroIncidencia "RS26.09/0149"` → **PASA**.
+> `infra\21_historico_estado.ps1 -NumeroIncidencia "RS26.09/0149"` → **PASA**.
 > La semilla **no ha duplicado** ninguna fila, y **la aprobación que había
 > sobrevivió**: 1 aprobación en la tabla congelada, 1 vigente, y su fila humana
 > en el histórico con **su autor y su hora reales** —`2026-09-15 12:29:51 UTC`,
@@ -1963,7 +1963,7 @@
 > prueba que esté publicada.
 >
 > **Al terminar: cerrar las dos ventanas** con
-> `infra9_ventana_escritura.ps1 -Cerrar` y
+> `infra\19_ventana_escritura.ps1 -Cerrar` y
 > `az functionapp config appsettings set … ARCHIVO_HABILITADO=false`.
 
 > ## ✅ AL DÍA · 2026-09-16 · **T26 y T28 de F-028: la implementación está CERRADA** · solo queda T27, que es del humano

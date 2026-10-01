@@ -3,9 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **49 features**, 27 abiertas, 22 terminadas.
-
-En curso: **F-051**.
+Resumen: **49 features**, 26 abiertas, 23 terminadas.
 
 Bloqueadas: **F-035**.
 
@@ -13,7 +11,6 @@ Bloqueadas: **F-035**.
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-051 | La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla | 0 | en curso | critico | `feature/F-051-carpeta-base-raiz` |
 | F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | bloqueada | estandar | `feature/F-035-portal-posventa` |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | pendiente | critico | `feature/F-036-importar-excel` |
 | F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 3 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
@@ -47,6 +44,7 @@ Bloqueadas: **F-035**.
 |---|---|---|---|
 | F-013 | Futuro: mudar el archivo a la biblioteca de Posventa | 0 | critico |
 | F-049 | Las villas que crea el archivo, siempre con tres cifras (VILLA 008) | 0 | critico |
+| F-051 | La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla | 0 | critico |
 | F-001 | Esqueleto del monorepo y /health | 1 | estandar |
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
@@ -69,12 +67,6 @@ Bloqueadas: **F-035**.
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 134 | critico |
 
 ## Detalle
-
-### F-051 · La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla
-
-estado **en curso** · prioridad 0 · rigor `critico` · SDD no · rama `feature/F-051-carpeta-base-raiz`
-
-INCIDENTE EN PRODUCCIÓN del 2026-10-01, detectado por un correo de Posventa (un parte que «no se refleja en Sigrid»). Desde el corte de F-013 (2026-09-25) el App Setting SHAREPOINT_CARPETA_BASE se dejó VACÍO a propósito (D-1 de F-013: vacío = la raíz de la biblioteca de Posventa). Azure no pasa a la aplicación un App Setting de valor vacío, así que pydantic tomó el valor por defecto del campo, «Postventa», y el archivo buscó root:/Postventa en la biblioteca: Graph 404. El 2026-10-01, primer uso real tras el corte, las 90 peticiones de archivar de ~20 partes respondieron 502 («la carpeta «Postventa» no existe en la biblioteca»); como el cierre va detrás del archivo, tampoco se cerró ninguno en Sigrid. No se escribió nada a medias. La comprobación del corte (docs/DESPLIEGUE.md §9, paso 6, «el vacío llegó») miró la configuración de Azure, no lo que lee la aplicación. MITIGADO el 2026-10-01 por el humano: SHAREPOINT_CARPETA_BASE=/ (el dominio recorta las barras, así que «/» es la raíz). Esta feature es el arreglo definitivo, autorizado por el humano el 2026-10-01: (1) con la estrategia posventa, una SHAREPOINT_CARPETA_BASE ausente significa la raíz, no «Postventa» (que sigue siendo el valor por omisión de por_obra); (2) el despliegue nunca escribe un App Setting vacío: escribe «/» para la raíz; (3) la Function deja una traza al construir el archivador con el destino efectivo (estructura y base, sin identificadores) y el guion del corte comprueba ESO en Application Insights, no la configuración; (4) INTEGRACION, DESPLIEGUE y azure-apps/postventa_incidencias.md dicen «/» y no «vacía».
 
 ### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
 
@@ -243,6 +235,12 @@ Al pasar a producción, dejar de archivar en la biblioteca de IT y hacerlo en la
 estado **terminada** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-049-villa-tres-cifras`
 
 Alta del 2026-09-25 por decisión del humano, tras el paso 2 del corte de F-013: Posventa ha reorganizado la biblioteca y sus unidades se llaman ahora VILLA 001 … VILLA 007, VILLA 012 y VILLA 013. F-013 R37 crea la unidad con dos cifras (VILLA 08). El humano eligió «Siempre con tres cifras»: VILLA 008 en todas las obras. Enmienda fechada de F-013 R37 (y de la tabla de design.md §4.6, de R31 y del runbook), sin cambiar cómo se CASA (por número, que ya reconoce VILLA 001 como la villa 1). Números de tres o más cifras, tal cual.
+
+### F-051 · La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla
+
+estado **terminada** · prioridad 0 · rigor `critico` · SDD no · rama `feature/F-051-carpeta-base-raiz`
+
+INCIDENTE EN PRODUCCIÓN del 2026-10-01, detectado por un correo de Posventa (un parte que «no se refleja en Sigrid»). Desde el corte de F-013 (2026-09-25) el App Setting SHAREPOINT_CARPETA_BASE se dejó VACÍO a propósito (D-1 de F-013: vacío = la raíz de la biblioteca de Posventa). Azure no pasa a la aplicación un App Setting de valor vacío, así que pydantic tomó el valor por defecto del campo, «Postventa», y el archivo buscó root:/Postventa en la biblioteca: Graph 404. El 2026-10-01, primer uso real tras el corte, las 90 peticiones de archivar de ~20 partes respondieron 502 («la carpeta «Postventa» no existe en la biblioteca»); como el cierre va detrás del archivo, tampoco se cerró ninguno en Sigrid. No se escribió nada a medias. La comprobación del corte (docs/DESPLIEGUE.md §9, paso 6, «el vacío llegó») miró la configuración de Azure, no lo que lee la aplicación. MITIGADO el 2026-10-01 por el humano: SHAREPOINT_CARPETA_BASE=/ (el dominio recorta las barras, así que «/» es la raíz). Esta feature es el arreglo definitivo, autorizado por el humano el 2026-10-01: (1) con la estrategia posventa, una SHAREPOINT_CARPETA_BASE ausente significa la raíz, no «Postventa» (que sigue siendo el valor por omisión de por_obra); (2) el despliegue nunca escribe un App Setting vacío: escribe «/» para la raíz; (3) la Function deja una traza al construir el archivador con el destino efectivo (estructura y base, sin identificadores) y el guion del corte comprueba ESO en Application Insights, no la configuración; (4) INTEGRACION, DESPLIEGUE y azure-apps/postventa_incidencias.md dicen «/» y no «vacía».
 
 ### F-001 · Esqueleto del monorepo y /health
 

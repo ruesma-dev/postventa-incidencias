@@ -851,7 +851,7 @@
         "Documentación y azure-apps al día",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": false,
       "rigor": "critico",
       "priority": 0,

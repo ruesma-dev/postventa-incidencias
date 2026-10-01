@@ -58,9 +58,9 @@ Con la ventana `ARCHIVO_HABILITADO` abierta y autorización para un parte
 concreto:
 
 ```
-powershell -ExecutionPolicy Bypass -File infra_mediciones_despliegue.ps1 -NumeroIncidencia "<RS26.xx/nnnn>"
+powershell -ExecutionPolicy Bypass -File infra\25_mediciones_despliegue.ps1 -NumeroIncidencia "<RS26.xx/nnnn>"
 # re-archivar ese parte desde la web
-powershell -ExecutionPolicy Bypass -File infra_mediciones_despliegue.ps1 -NumeroIncidencia "<RS26.xx/nnnn>" -FotoAntes "<la linea FOTO de antes>"
+powershell -ExecutionPolicy Bypass -File infra\25_mediciones_despliegue.ps1 -NumeroIncidencia "<RS26.xx/nnnn>" -FotoAntes "<la linea FOTO de antes>"
 ```
 
 ## Lo que sigue abierto, y no lo cierra esta acta

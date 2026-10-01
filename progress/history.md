@@ -2082,3 +2082,16 @@ superviviente aceptado; 14/14 mutaciones de orden del reviewer en rojo. Acta:
 tres cifras». Una línea de producción (`:02d` → `:03d`); el casado por número no cambia.
 Review 1 RECHAZADA por dos cambios de documentación, review 2 APROBADA. M7 y M8
 (equivalentes a mano) aceptados por el humano. El paso 2, contra la red real, salió PASA.
+
+## 2026-10-01 · F-051 cerrada · la carpeta base vacía no llegaba a la Function
+
+Incidente: desde el corte de F-013 (2026-09-25) `SHAREPOINT_CARPETA_BASE` estaba vacía; Azure no
+pasa App Settings vacíos y se usó el defecto «Postventa». 219 `archivar` en 502 de 26 partes
+(2026-09-28 a 2026-10-01), ninguno cerrado en Sigrid, nada escrito a medias. Detectado por un correo
+de Posventa. Mitigado por el humano con `SHAREPOINT_CARPETA_BASE=/`. Arreglo (rama
+`feature/F-051-carpeta-base-raiz`): base ausente = raíz en `posventa`; el despliegue no escribe App
+Settings vacías; traza «F-051 destino efectivo del archivo» y el corte la verifica en Application
+Insights; aviso de `--offset` de `az monitor app-insights query`; fuera los bytes de control de los
+`.md` (dos frenos del runbook no se podían copiar) y test que los prohíbe. Reviews: 1 y 2
+CHANGES_REQUESTED (sin código), 3 APROBADA. Mutante equivalente aceptado por el humano.
+Pendiente del humano: desplegar y las MANUAL 2–4 de `progress/current.md`; reintentar los 26 partes.

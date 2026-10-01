@@ -12,6 +12,10 @@
       2. Lee del token QUE PERMISOS tiene concedidos la aplicacion.
       3. Resuelve el sitio y la biblioteca, y dice como se llaman.
       4. Lista la raiz de la biblioteca y dice si la carpeta base existe.
+         La base se decide como en el servicio (F-051): sin
+         SHAREPOINT_CARPETA_BASE, con `posventa` es la RAIZ y con `por_obra`
+         es `Postventa`; puesta a "/" (o vacia) es la raiz, que existe
+         siempre y que `por_obra` no admite.
 
     Lo que NO hace, y no debe hacer nunca: subir un fichero, crear una
     carpeta, borrar nada ni modificar permisos. Las cuatro llamadas son GET
@@ -57,7 +61,12 @@ $Requeridas = @(
     "SHAREPOINT_DRIVE_ID"
 )
 
-# Esta es opcional: si no esta, se usa el mismo valor por defecto del servicio.
+# Estas dos son opcionales. Sin SHAREPOINT_ESTRUCTURA, `por_obra`, como en el
+# servicio. Sin SHAREPOINT_CARPETA_BASE, lo mismo que decide el servicio desde
+# F-051 (incidente del 2026-10-01): la RAIZ con `posventa` y `Postventa` con
+# `por_obra`. Antes este script suponia siempre `Postventa`, que es justo el
+# error del incidente.
+$EstructuraPorDefecto = "por_obra"
 $CarpetaBasePorDefecto = "Postventa"
 
 # Los permisos de aplicacion de Graph que permiten escribir en el destino.
@@ -87,9 +96,16 @@ function Write-Ayuda {
         if ($puesta) { $estado = "puesta" }
         Write-Host ("  {0,-24} {1}" -f $nombre, $estado)
     }
+    $estructuraAyuda = Get-Variable-De-Entorno "SHAREPOINT_ESTRUCTURA"
+    if ($null -eq $estructuraAyuda) {
+        Write-Host ("  {0,-24} sin definir; se usara '{1}'" -f "SHAREPOINT_ESTRUCTURA", $EstructuraPorDefecto)
+    }
+    else {
+        Write-Host ("  {0,-24} {1}" -f "SHAREPOINT_ESTRUCTURA", $estructuraAyuda)
+    }
     $carpeta = Get-Variable-De-Entorno "SHAREPOINT_CARPETA_BASE"
     if ($null -eq $carpeta) {
-        Write-Host ("  {0,-24} sin definir; se usara '{1}'" -f "SHAREPOINT_CARPETA_BASE", $CarpetaBasePorDefecto)
+        Write-Host ("  {0,-24} sin definir; con posventa, la raiz; con por_obra, '{1}'" -f "SHAREPOINT_CARPETA_BASE", $CarpetaBasePorDefecto)
     }
     else {
         Write-Host ("  {0,-24} puesta" -f "SHAREPOINT_CARPETA_BASE")
@@ -159,8 +175,17 @@ $clientId = Get-Variable-De-Entorno "GRAPH_CLIENT_ID"
 $clientSecret = Get-Variable-De-Entorno "GRAPH_CLIENT_SECRET"
 $siteId = Get-Variable-De-Entorno "SHAREPOINT_SITE_ID"
 $driveId = Get-Variable-De-Entorno "SHAREPOINT_DRIVE_ID"
-$carpetaBase = Get-Variable-De-Entorno "SHAREPOINT_CARPETA_BASE"
-if ($null -eq $carpetaBase) { $carpetaBase = $CarpetaBasePorDefecto }
+$estructura = Get-Variable-De-Entorno "SHAREPOINT_ESTRUCTURA"
+if ($null -eq $estructura) { $estructura = $EstructuraPorDefecto }
+$esPosventa = $estructura -eq "posventa"
+# La base CRUDA, sin el filtro de blancos de Get-Variable-De-Entorno: "no esta"
+# y "esta vacia" no son lo mismo (F-051).
+$carpetaBase = [Environment]::GetEnvironmentVariable("SHAREPOINT_CARPETA_BASE")
+if ($null -eq $carpetaBase) {
+    if ($esPosventa) { $carpetaBase = "" } else { $carpetaBase = $CarpetaBasePorDefecto }
+}
+$carpetaBase = $carpetaBase.Trim().Trim('/').Trim()
+$baseEsRaiz = [string]::IsNullOrEmpty($carpetaBase)
 
 $grafo = "https://graph.microsoft.com/v1.0"
 
@@ -204,12 +229,26 @@ Write-Host ("    biblioteca: {0}" -f $biblioteca.name)
 
 Write-Host ""
 Write-Host "4/4 Mirando la carpeta base (sin crearla)..."
+Write-Host ("    estructura: {0}" -f $estructura)
+if ($baseEsRaiz) {
+    Write-Host "    carpeta base: la raiz de la biblioteca"
+}
+else {
+    Write-Host ("    carpeta base: '{0}'" -f $carpetaBase)
+}
 $hijos = Invoke-Graph-Get -Token $token -Url "$grafo/drives/$driveId/root/children"
 $existe = $false
-foreach ($hijo in $hijos.value) {
-    if ($hijo.name -eq $carpetaBase) { $existe = $true }
+if ($baseEsRaiz) { $existe = $true }
+else {
+    foreach ($hijo in $hijos.value) {
+        if ($hijo.name -eq $carpetaBase) { $existe = $true }
+    }
 }
 Write-Host ("    elementos en la raiz: {0}" -f @($hijos.value).Count)
+if ($baseEsRaiz -and -not $esPosventa) {
+    Write-Host "    AVISO: con por_obra la base no puede ser la raiz; el servicio" -ForegroundColor Red
+    Write-Host "    lo rechaza (F-013 R17) y no archivara." -ForegroundColor Red
+}
 
 Write-Host ""
 Write-Host "RESULTADO"

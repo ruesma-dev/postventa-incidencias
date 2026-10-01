@@ -837,6 +837,25 @@
       "rigor": "critico",
       "priority": 0,
       "branch": "feature/F-049-villa-tres-cifras"
+    },
+    {
+      "id": "F-051",
+      "title": "La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla",
+      "description": "INCIDENTE EN PRODUCCIÓN del 2026-10-01, detectado por un correo de Posventa (un parte que «no se refleja en Sigrid»). Desde el corte de F-013 (2026-09-25) el App Setting SHAREPOINT_CARPETA_BASE se dejó VACÍO a propósito (D-1 de F-013: vacío = la raíz de la biblioteca de Posventa). Azure no pasa a la aplicación un App Setting de valor vacío, así que pydantic tomó el valor por defecto del campo, «Postventa», y el archivo buscó root:/Postventa en la biblioteca: Graph 404. El 2026-10-01, primer uso real tras el corte, las 90 peticiones de archivar de ~20 partes respondieron 502 («la carpeta «Postventa» no existe en la biblioteca»); como el cierre va detrás del archivo, tampoco se cerró ninguno en Sigrid. No se escribió nada a medias. La comprobación del corte (docs/DESPLIEGUE.md §9, paso 6, «el vacío llegó») miró la configuración de Azure, no lo que lee la aplicación. MITIGADO el 2026-10-01 por el humano: SHAREPOINT_CARPETA_BASE=/ (el dominio recorta las barras, así que «/» es la raíz). Esta feature es el arreglo definitivo, autorizado por el humano el 2026-10-01: (1) con la estrategia posventa, una SHAREPOINT_CARPETA_BASE ausente significa la raíz, no «Postventa» (que sigue siendo el valor por omisión de por_obra); (2) el despliegue nunca escribe un App Setting vacío: escribe «/» para la raíz; (3) la Function deja una traza al construir el archivador con el destino efectivo (estructura y base, sin identificadores) y el guion del corte comprueba ESO en Application Insights, no la configuración; (4) INTEGRACION, DESPLIEGUE y azure-apps/postventa_incidencias.md dicen «/» y no «vacía».",
+      "acceptance": [
+        "Con SHAREPOINT_ESTRUCTURA=posventa y sin SHAREPOINT_CARPETA_BASE, el archivador usa la raíz de la biblioteca",
+        "Con SHAREPOINT_ESTRUCTURA=por_obra y sin SHAREPOINT_CARPETA_BASE, sigue usando «Postventa»",
+        "«/» y vacío significan la raíz en posventa; en por_obra se siguen rechazando",
+        "infra/desplegar_backend.ps1 no escribe nunca SHAREPOINT_CARPETA_BASE vacía",
+        "La Function traza el destino efectivo al construir el archivador y el guion del corte lo verifica en Application Insights",
+        "Documentación y azure-apps al día",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "done",
+      "sdd": false,
+      "rigor": "critico",
+      "priority": 0,
+      "branch": "feature/F-051-carpeta-base-raiz"
     }
   ]
 }

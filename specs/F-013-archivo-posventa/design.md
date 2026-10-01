@@ -1032,6 +1032,8 @@ Orden, y cada paso lo da el humano:
 6. Ventana `ARCHIVO_HABILITADO` abierta **solo** para el parte autorizado
    (R33), comprobación con Posventa en su OneDrive, y cierre de ventana.
 
+> **Enmienda del 2026-10-01 (F-051).** La raíz se escribe `SHAREPOINT_CARPETA_BASE=/` (`$CarpetaBaseArchivo = "/"`), nunca vacía: Azure no pasa a la aplicación un App Setting vacío y la base vacía del corte no llegó a la Function (incidente del 2026-10-01; ver F-051 y `docs/DESPLIEGUE.md` §9).
+
 Vuelta atrás: los pasos 4 y 5 al revés. No hay datos que deshacer: la traza de
 cada parte dice en qué biblioteca está (`drive_id`).
 
@@ -1218,6 +1220,8 @@ opciones y la recomendación se conservan para que se entienda por qué.
 | **D-6** | Regla de casado de la unidad (§4.3) | (a) la propuesta; (b) igualdad con `upv.cod`; (c) mapa a mano | (a), condicionada a T3 | **(a), condicionada a T3** |
 | **D-7** | Si la ubicación de Sigrid falla por red | (a) 503; (b) caer a la `unidad` del papel | (a) | **(a)** |
 | **D-R** | Rigor | `estandar` / `critico` | `critico` | **`critico`** |
+
+> **Enmienda del 2026-10-01 (F-051).** La raíz se escribe `SHAREPOINT_CARPETA_BASE=/` (`$CarpetaBaseArchivo = "/"`), nunca vacía: Azure no pasa a la aplicación un App Setting vacío y la base vacía del corte no llegó a la Function (incidente del 2026-10-01; ver F-051 y `docs/DESPLIEGUE.md` §9).
 
 Lo que D-4 deja **pendiente de medir**, sin reabrirla: el nombre corto de la
 obra (§4.6, T2) y el campo de la unidad (`SHAREPOINT_NOMBRE_UNIDAD`, T3). Se

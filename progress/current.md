@@ -1,6 +1,39 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✔ F-051 · decisiones del humano tras la review 2 · 2026-10-01
+>
+> «1, si, 2, si»: (1) **acepta como equivalente** el superviviente a mano de
+> `progress/mutacion_F-051.md` (`archivar.py`, el `carpeta_base=... or "Postventa"` del paso);
+> (2) **se corrigen dentro de F-051** los caracteres de control de R2-4 (`docs/DESPLIEGUE.md`
+> líneas ~274 y ~352, los frenos de las ventanas; y dos bloques antiguos de `current.md`) con un
+> test que los prohíba en `docs/` y `progress/`. El aviso genérico en `init.sh` es mejora de
+> `arnes-base`, tarea aparte.
+
+> ## 🚨 INCIDENTE · el archivo en Posventa falla (502) desde el 2026-09-28 · mitigado el 2026-10-01 · F-051 en curso
+>
+> **Alcance corregido el 2026-10-01** (las primeras consultas usaban sin querer la ventana de 1 h
+> que `az monitor app-insights query` pone por defecto; hay que pasar `--offset`): el 2026-09-24 y
+> 09-25, antes del corte, 35 archivados y cierres en 200. Desde el corte, **219 `archivar` en 502**
+> (09-28: 3, 09-29: 6, 09-30: 18, 10-01: 192) de **26 partes distintos**, el primero el 2026-09-28
+> 14:14 UTC; ninguno cerrado en Sigrid, nada escrito a medias. Causa: Azure no pasa App Settings
+> vacíos y se usó el defecto «Postventa». **Mitigado por el humano** el 2026-10-01:
+> `SHAREPOINT_CARPETA_BASE=/` (verificado en la configuración; falta verlo en ejecución con el
+> próximo archivado). Arreglo definitivo: **F-051**, rama `feature/F-051-carpeta-base-raiz`.
+>
+> **F-051 · verificaciones MANUAL (humano), en este orden** (review 1, cambio 1):
+> 1. *Antes de desplegar, solo lectura* — que las trazas INFO de la fábrica llegan a `traces`.
+>    **HECHO por el líder el 2026-10-01**: la línea «F-006 archivador de SharePoint construido» sale
+>    en `traces` el 09-29 (6), 09-30 (18) y 10-01 (195). El paso 6 del guion puede funcionar.
+> 2. Desplegar desde la rama mergeada: `powershell -ExecutionPolicy Bypass -File infra\desplegar_backend.ps1`.
+>    Antes de escribir `DESPLEGAR` tiene que decir «Destino del archivo: estructura 'posventa', carpeta
+>    base '/', crear carpetas 'true'». Si para con «App Settings sin valor: …», no forzarlo.
+> 3. Tras el primer archivado, en el portal (`appi-postventa-dev` → Registros):
+>    `traces | where timestamp > ago(1d) | where message has "F-051 destino efectivo del archivo" | project timestamp, message | order by timestamp desc | take 20`
+>    → tiene que salir «estructura posventa, carpeta base raíz». Si sale un nombre entre «»:
+>    freno 1, `powershell -ExecutionPolicy Bypass -File infra\22_ventana_archivo.ps1 -Cerrar`, y avisar.
+> 4. Con Posventa: el parte en su carpeta y el cierre hecho en Sigrid. Reintentar los 26 partes.
+
 > ## ⏸ PUNTO DE REANUDACIÓN · 2026-09-28 · siguiente: F-036 (importar el Excel)
 >
 > **F-035 en pausa (`blocked`)**, por decisión del humano: «vamos a dejar la
@@ -1878,7 +1911,7 @@
 >
 > ### ✅ Verificaciones 1 y 2, HECHAS el 2026-09-16
 >
-> `infra_historico_estado.ps1 -NumeroIncidencia "RS26.09/0149"` → **PASA**.
+> `infra\21_historico_estado.ps1 -NumeroIncidencia "RS26.09/0149"` → **PASA**.
 > La semilla **no ha duplicado** ninguna fila, y **la aprobación que había
 > sobrevivió**: 1 aprobación en la tabla congelada, 1 vigente, y su fila humana
 > en el histórico con **su autor y su hora reales** —`2026-09-15 12:29:51 UTC`,
@@ -1930,7 +1963,7 @@
 > prueba que esté publicada.
 >
 > **Al terminar: cerrar las dos ventanas** con
-> `infra9_ventana_escritura.ps1 -Cerrar` y
+> `infra\19_ventana_escritura.ps1 -Cerrar` y
 > `az functionapp config appsettings set … ARCHIVO_HABILITADO=false`.
 
 > ## ✅ AL DÍA · 2026-09-16 · **T26 y T28 de F-028: la implementación está CERRADA** · solo queda T27, que es del humano

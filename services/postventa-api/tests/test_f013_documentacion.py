@@ -447,7 +447,8 @@ def test_f013_t17_el_runbook_del_corte_existe():
         "Crear desde el principio",
         "sin -VentanasCerradas",
         '$EstructuraArchivo = "posventa"',
-        '$CarpetaBaseArchivo = ""',
+        # F-051 (2026-10-01): la raíz es "/", no vacía. Decía '$CarpetaBaseArchivo = ""'.
+        '$CarpetaBaseArchivo = "/"',
         '$CrearCarpetasArchivo = "true"',
         "cargar_secretos_postventa.ps1 -Solo",
         "az functionapp config appsettings list",

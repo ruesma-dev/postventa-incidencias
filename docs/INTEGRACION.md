@@ -18,7 +18,8 @@
 
 > **CORTE HECHO el 2026-09-25 (11:41 UTC).** Lo que este documento describe
 > «desde el corte» está **desplegado**: el archivo va a la biblioteca de
-> Posventa (`SHAREPOINT_ESTRUCTURA=posventa`, carpeta base vacía, crear
+> Posventa (`SHAREPOINT_ESTRUCTURA=posventa`, carpeta base en la raíz —escrita
+> `/` desde el 2026-10-01: vacía no llegaba a la aplicación, F-051—, crear
 > carpetas activo), con F-049 (las villas que se crean llevan tres cifras,
 > `VILLA 008`). Lo que dice «hasta el corte» queda como histórico; no se borra.
 
@@ -305,9 +306,25 @@ igual, con `SHAREPOINT_ESTRUCTURA=por_obra`. El corte pone
 |---|---|
 | Sitio | El de **Posventa**. Por variable, `SHAREPOINT_SITE_ID`, que se carga en el Key Vault en el corte; ni un identificador en el repositorio |
 | Biblioteca | «Documentos compartidos», la de por defecto del sitio: **la de Posventa, sincronizada por OneDrive en sus equipos**. Por variable, `SHAREPOINT_DRIVE_ID` |
-| Carpeta base | La **raíz de la biblioteca** (D-1): `SHAREPOINT_CARPETA_BASE` vacía |
+| Carpeta base | La **raíz de la biblioteca** (D-1): `SHAREPOINT_CARPETA_BASE=/` (o ausente). **Nunca vacía**: Azure no pasa un App Setting vacío (F-051) |
 | Ruta | `<carpeta de obra>/PARTES INCIDENCIAS/<carpeta de unidad>/PARTES FIRMADOS/<fichero>` |
 | Nombre del fichero | El de siempre, `<cod obra> - <cod incidencia> PARTE FIRMADO.pdf`, sin cambios |
+
+> **Enmienda del 2026-10-01 (F-051) · la raíz se escribe `/`, no vacía.** La
+> fila «Carpeta base» decía «`SHAREPOINT_CARPETA_BASE` vacía». **Azure no pasa
+> a la aplicación un App Setting de valor vacío**: desde el corte del
+> 2026-09-25 la Function no recibía la base, usaba el defecto del código
+> (`Postventa`) y el archivo buscaba esa carpeta en la raíz de la biblioteca
+> de Posventa, donde no existe. El 2026-10-01, primer uso real, los 90
+> archivados de ~20 partes respondieron 502 y, como el cierre va detrás del
+> archivo, ninguno se cerró en Sigrid; no se escribió nada a medias. Lo
+> mitigó el humano ese día con `SHAREPOINT_CARPETA_BASE=/`. Desde F-051:
+> `/` o vacía son la raíz en `posventa` y un error de configuración en
+> `por_obra`; **ausente** es la raíz en `posventa` y `Postventa` en
+> `por_obra`; el despliegue escribe `/` y se niega a fijar cualquier App
+> Setting vacía; y la Function deja la traza `F-051 destino efectivo del
+> archivo: …` con la estrategia y la base, sin identificadores, que es lo
+> que se comprueba tras desplegar (`docs/DESPLIEGUE.md` §9, paso 6).
 
 **Cada carpeta se encuentra, no se compone.** Ni Sigrid ni el papel dan el
 nombre de las carpetas de Posventa; como mucho dan con qué casarlas:
@@ -524,7 +541,7 @@ ORDER BY a.archivado_at_utc;
 | La pasarela `sigrid-api` cae o no responde | Con `posventa`, **503** en cada parte que haya que archivar, sin subir ni crear nada. Lo que ya consta archivado responde bien: L1 corta antes de leer Sigrid | Con `por_obra`, nada de esto |
 | Nuestra Function queda con `sigrid-api` sin configurar | Con `posventa`, **503** en todo archivado, e **incluso un parte ya archivado responde 503**: el lector de Sigrid se construye en el borde, antes del paso, y falla antes de que L1 devuelva la traza. **Decisión del líder del 2026-09-24: se deja así**, fallando cerrado —no se sube ni se lee nada—, y se documenta aquí | La configuración de Sigrid ya la necesita el cierre |
 | Alguien deja `SHAREPOINT_ESTRUCTURA` mal escrita | **503**: la fábrica la rechaza antes de pedir el token, y el borde también si el archivador le llegara ya construido | Solo valen `por_obra` y `posventa`, exactos |
-| Se despliega con la base vacía y **el vacío no llega** a la App Setting | La base vuelve a su defecto del código, `Postventa`, que no existe en la raíz de Posventa: **502** sin subir ni crear nada | El paso 6 del runbook lo comprueba |
+| Se despliega con la base vacía y **el vacío no llega** a la App Setting | **Pasó el 2026-10-01** (F-051): la base volvía a `Postventa`, que no existe en la raíz de Posventa, y cada archivado daba **502** sin subir ni crear nada. Desde F-051, con `posventa` una base ausente es la raíz | El despliegue escribe `/` y no fija ningún App Setting vacío; el paso 6 del runbook comprueba la traza `F-051 destino efectivo del archivo` en Application Insights, no la configuración |
 | Alguien cambia `SHAREPOINT_CARPETA_FIRMADOS_ALTERNATIVA` | Esa forma deja de contar como hoja; donde esté sola, pasa a ser parecida: 409 | Es la hoja de VILLA 02 |
 | Se recorta a `Sites.Selected` (F-018) sin conceder el sitio de Posventa | `403`, no reintentable: dejamos de archivar | Conceder el sitio de Posventa con escritura |
 
@@ -766,6 +783,13 @@ creada: es `VILLA NN`, con una regla fija (§3).
 > Sigrid de la tabla siguiente pasan a ser obligatorias **también para
 > archivar** con `posventa` (§3, «dos lecturas por parte»), salvo
 > `CIERRE_HABILITADO`, que archivar no mira.
+
+> **Enmienda del 2026-10-01 (F-051) a «`Postventa` hasta el corte, vacía
+> después».** Después del corte es **`/`**, no vacía: un App Setting vacío no
+> llega a la aplicación, y la base vacía del corte nunca llegó (el incidente
+> del 2026-10-01, en el recuadro de F-051 de §3). Sin la variable, la base
+> depende de la estrategia: la raíz con `posventa`, `Postventa` con
+> `por_obra`.
 
 ### Las de Sigrid (F-009 y F-012)
 

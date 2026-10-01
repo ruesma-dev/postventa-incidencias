@@ -818,7 +818,7 @@ crecido, `infra\25_mediciones_despliegue.ps1` sin parámetros, que solo lee.
    Los de IT no se guardan en el repositorio; si se quieren conservar para
    volver atrás, en el propio Key Vault con otro nombre (decisión del humano).
 5. **Cambiar el destino y desplegar.** En `infra/00_vars_postventa.ps1`:
-   `$EstructuraArchivo = "posventa"`, `$CarpetaBaseArchivo = ""` (la raíz,
+   `$EstructuraArchivo = "posventa"`, `$CarpetaBaseArchivo = "/"` (la raíz,
    D-1) y `$CrearCarpetasArchivo = "true"`, que ya lo está. Es un cambio de un
    fichero versionado: va en su rama, como todo. Y desplegar **sin
    `-VentanasCerradas`**, desde `infra\`:
@@ -828,28 +828,84 @@ crecido, `infra\25_mediciones_despliegue.ps1` sin parámetros, que solo lee.
    ```
 
    Antes de pedir `DESPLEGAR`, el script enseña la línea «Destino del
-   archivo: estructura 'posventa', carpeta base '', crear carpetas 'true'».
+   archivo: estructura 'posventa', carpeta base '/', crear carpetas 'true'».
    Si dice otra cosa, se aborta. **Desde este momento cualquier archivado va
    a Posventa y puede crear carpetas.**
 
+   > **Enmienda del 2026-10-01 (F-051) · la raíz es `/`, no vacía.** Decía
+   > `$CarpetaBaseArchivo = ""` y «carpeta base ''». **Azure no pasa a la
+   > aplicación un App Setting de valor vacío**: desde el corte del
+   > 2026-09-25 la Function no recibió la base, usó el defecto del código
+   > (`Postventa`), y el 2026-10-01, primer uso real, los 90 archivados de
+   > ~20 partes respondieron 502 («la carpeta «Postventa» no existe en la
+   > biblioteca»). Como el cierre va detrás del archivo, ninguno se cerró en
+   > Sigrid; no se escribió nada a medias. Lo mitigó el humano ese mismo día
+   > con `SHAREPOINT_CARPETA_BASE=/`. Desde F-051, `/` es la raíz; con
+   > `posventa`, una base **ausente** también lo es (con `por_obra` sigue
+   > siendo `Postventa`); `desplegar_backend.ps1` escribe `/` aunque la
+   > variable quede vacía y se niega a fijar cualquier App Setting vacía; y
+   > el paso 6 comprueba lo que lee la aplicación.
+
 ### Justo después (solo lecturas, en el mismo rato)
 
-6. **La configuración que ha quedado.** La ventana de archivo, abierta:
+6. **Lo que lee la aplicación, no lo que dice la configuración.** La
+   ventana de archivo, abierta:
 
    ```
    powershell -ExecutionPolicy Bypass -File infra\22_ventana_archivo.ps1
    ```
 
-   Y los tres App Settings del destino, leídos sin cambiar nada:
+   Los tres App Settings del destino se pueden leer sin cambiar nada, y
+   tienen que salir `posventa`, `/` y `true`:
 
    ```
    az functionapp config appsettings list -g rg-postventa-dev -n func-postventa-dev --query "[?name=='SHAREPOINT_ESTRUCTURA' || name=='SHAREPOINT_CARPETA_BASE' || name=='SHAREPOINT_CREAR_CARPETAS'].[name, value]" -o tsv
    ```
 
-   Tienen que salir `posventa`, vacío y `true`. **Si `SHAREPOINT_CARPETA_BASE`
-   no sale, o no sale vacía, el vacío no ha llegado**: la base vuelve a su
-   defecto del código, `Postventa`, que no existe en la raíz de Posventa, y
-   cada archivado dará 502 sin subir nada. Freno 1 y de vuelta al líder.
+   **Pero eso no basta**: es lo que se miró el 2026-09-25, salió bien, y la
+   aplicación leía otra cosa (recuadro de abajo). Lo que decide es la línea
+   que la Function deja, con nivel `INFO`, **cada vez que construye el
+   archivador** (F-051):
+
+   ```
+   F-051 destino efectivo del archivo: estructura posventa, carpeta base raíz
+   ```
+
+   Sale con el primer archivado tras el despliegue: cualquier
+   `/api/archivar` con el cuerpo completo construye el archivador **antes**
+   de tocar SharePoint, así que sale aunque el archivado acabe en 409 o 502.
+   Se busca en el portal de Azure, Application Insights `appi-postventa-dev`
+   → **Registros**, con esta consulta (solo lectura):
+
+   ```kusto
+   traces
+   | where timestamp > ago(1d)
+   | where message has "F-051 destino efectivo del archivo"
+   | project timestamp, message
+   | order by timestamp desc
+   | take 20
+   ```
+
+   Tiene que decir `estructura posventa, carpeta base raíz`. **Si dice
+   `carpeta base «Postventa»` —o cualquier otro nombre entre comillas
+   angulares—, la base no es la raíz**: cada archivado dará 502 sin subir
+   nada. Freno 1 y de vuelta al líder. Si no sale ninguna línea habiendo
+   archivados, ampliar el `ago(...)`; si sigue sin salir, la versión
+   desplegada no lleva F-051 (o el muestreo de `host.json` la ha descartado,
+   que con este volumen no debería pasar: con varios archivados, alguna
+   sale).
+
+   La consulta va en el portal y no por `az monitor app-insights query`:
+   PowerShell 5.1 destroza las comillas dobles que se pasan a un ejecutable
+   nativo (el defecto de F-029), y `az` es un `.cmd` que además reprocesa la
+   línea con `cmd.exe`, `|` incluidas.
+
+   > **Enmienda del 2026-10-01 (F-051) · el paso 6 miraba la configuración.**
+   > Decía: «Tienen que salir `posventa`, vacío y `true`. Si
+   > `SHAREPOINT_CARPETA_BASE` no sale, o no sale vacía, el vacío no ha
+   > llegado». Salió vacía, y el vacío **no** llegó: Azure guarda el App
+   > Setting, pero no pasa a la aplicación uno de valor vacío. La
+   > configuración de Azure no es lo que lee la Function; la traza, sí.
 
 ### El mismo día, cuando haya archivados (solo lecturas y Posventa)
 

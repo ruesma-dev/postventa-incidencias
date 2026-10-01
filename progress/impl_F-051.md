@@ -407,10 +407,12 @@ FAILED tests/test_f051_documentacion.py::test_f051_h1_la_spec_de_f013_remite_a_f
 |---|---|
 | Tests ejecutados (servicio api) | **4423 passed, 52 skipped**, 0 fallos (54,08 s lanzada sola) |
 | Tests de F-051 | **67** (los 59 de antes + 8: 5 del cambio 3 —uno de ellos el partido— y 3 de H-1) |
-| Cobertura de las líneas cambiadas | sin cambios de producción: la de `init.sh` (ver abajo) |
+| Cobertura de las líneas cambiadas | **100,0 %** (14/14), sin cambios de producción en la review; `init.sh` en verde, suite 121,62 s dentro de él |
 | Mutación | sin cambios de producción: no se relanza; vale la de §9 |
 
 ### Una cosa vista de paso (no la toco: es del líder)
 
-En `progress/current.md`, bloque de F-051, MANUAL 3, el freno se escribe
-`infra_ventana_archivo.ps1 -Cerrar`; el script es `infra\22_ventana_archivo.ps1`.
+En `progress/current.md`, bloque de F-051, MANUAL 3, el freno lleva un carácter
+de control (0x12) en lugar de `\22`: `infra<0x12>_ventana_archivo.ps1 -Cerrar`
+(un `\22` tomado como escape octal al escribirlo). Debe ser
+`infra\22_ventana_archivo.ps1 -Cerrar`. Copiado tal cual, el comando falla.

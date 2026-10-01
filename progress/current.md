@@ -1,22 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## 🚨 INCIDENTE 2026-10-01 · el archivo en Posventa falla (502) · mitigado · F-051 en curso
+> ## 🚨 INCIDENTE · el archivo en Posventa falla (502) desde el 2026-09-28 · mitigado el 2026-10-01 · F-051 en curso
 >
-> Desde el corte de F-013 la base vacía no llega a la Function (Azure no pasa App Settings
-> vacíos) y se usó el defecto «Postventa»: 90 archivados fallidos de ~20 partes hoy, ninguno
-> cerrado en Sigrid, nada escrito a medias. **Mitigado por el humano**:
+> **Alcance corregido el 2026-10-01** (las primeras consultas usaban sin querer la ventana de 1 h
+> que `az monitor app-insights query` pone por defecto; hay que pasar `--offset`): el 2026-09-24 y
+> 09-25, antes del corte, 35 archivados y cierres en 200. Desde el corte, **219 `archivar` en 502**
+> (09-28: 3, 09-29: 6, 09-30: 18, 10-01: 192) de **26 partes distintos**, el primero el 2026-09-28
+> 14:14 UTC; ninguno cerrado en Sigrid, nada escrito a medias. Causa: Azure no pasa App Settings
+> vacíos y se usó el defecto «Postventa». **Mitigado por el humano** el 2026-10-01:
 > `SHAREPOINT_CARPETA_BASE=/` (verificado en la configuración; falta verlo en ejecución con el
-> próximo archivado de Ana). Arreglo definitivo: **F-051**, rama
-> `feature/F-051-carpeta-base-raiz` desde `dev`. F-036 queda aprobada (review 5) en su rama,
-> pendiente de resumen al humano.
+> próximo archivado). Arreglo definitivo: **F-051**, rama `feature/F-051-carpeta-base-raiz`.
 >
-> **F-051 implementada (T1–T4), pendiente del reviewer** (2026-10-01): base ausente = raíz
-> en `posventa` (`Postventa` en `por_obra`); el despliegue escribe `/` y no fija ningún App
-> Setting vacío; traza `F-051 destino efectivo del archivo: …` y el paso 6 de DESPLIEGUE §9
-> la busca en Application Insights (KQL). `init.sh` verde, cobertura 100 % (14/14),
-> mutación 3/3 + 9 a mano (1 equivalente). azure-apps: commit local `59e9a8f`. Informe:
-> `progress/impl_F-051.md`. Sin desplegar.
+> **F-051 · verificaciones MANUAL (humano), en este orden** (review 1, cambio 1):
+> 1. *Antes de desplegar, solo lectura* — que las trazas INFO de la fábrica llegan a `traces`.
+>    **HECHO por el líder el 2026-10-01**: la línea «F-006 archivador de SharePoint construido» sale
+>    en `traces` el 09-29 (6), 09-30 (18) y 10-01 (195). El paso 6 del guion puede funcionar.
+> 2. Desplegar desde la rama mergeada: `powershell -ExecutionPolicy Bypass -File infra\desplegar_backend.ps1`.
+>    Antes de escribir `DESPLEGAR` tiene que decir «Destino del archivo: estructura 'posventa', carpeta
+>    base '/', crear carpetas 'true'». Si para con «App Settings sin valor: …», no forzarlo.
+> 3. Tras el primer archivado, en el portal (`appi-postventa-dev` → Registros):
+>    `traces | where timestamp > ago(1d) | where message has "F-051 destino efectivo del archivo" | project timestamp, message | order by timestamp desc | take 20`
+>    → tiene que salir «estructura posventa, carpeta base raíz». Si sale un nombre entre «»:
+>    freno 1, `powershell -ExecutionPolicy Bypass -File infra_ventana_archivo.ps1 -Cerrar`, y avisar.
+> 4. Con Posventa: el parte en su carpeta y el cierre hecho en Sigrid. Reintentar los 26 partes.
 
 > ## ⏸ PUNTO DE REANUDACIÓN · 2026-09-28 · siguiente: F-036 (importar el Excel)
 >

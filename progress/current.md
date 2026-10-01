@@ -1,6 +1,16 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## 🚨 INCIDENTE 2026-10-01 · el archivo en Posventa falla (502) · mitigado · F-051 en curso
+>
+> Desde el corte de F-013 la base vacía no llega a la Function (Azure no pasa App Settings
+> vacíos) y se usó el defecto «Postventa»: 90 archivados fallidos de ~20 partes hoy, ninguno
+> cerrado en Sigrid, nada escrito a medias. **Mitigado por el humano**:
+> `SHAREPOINT_CARPETA_BASE=/` (verificado en la configuración; falta verlo en ejecución con el
+> próximo archivado de Ana). Arreglo definitivo: **F-051**, rama
+> `feature/F-051-carpeta-base-raiz` desde `dev`. F-036 queda aprobada (review 5) en su rama,
+> pendiente de resumen al humano.
+
 > ## ⏸ PUNTO DE REANUDACIÓN · 2026-09-28 · siguiente: F-036 (importar el Excel)
 >
 > **F-035 en pausa (`blocked`)**, por decisión del humano: «vamos a dejar la

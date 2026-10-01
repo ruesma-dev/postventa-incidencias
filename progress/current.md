@@ -22,7 +22,7 @@
 > 3. Tras el primer archivado, en el portal (`appi-postventa-dev` → Registros):
 >    `traces | where timestamp > ago(1d) | where message has "F-051 destino efectivo del archivo" | project timestamp, message | order by timestamp desc | take 20`
 >    → tiene que salir «estructura posventa, carpeta base raíz». Si sale un nombre entre «»:
->    freno 1, `powershell -ExecutionPolicy Bypass -File infra_ventana_archivo.ps1 -Cerrar`, y avisar.
+>    freno 1, `powershell -ExecutionPolicy Bypass -File infra\22_ventana_archivo.ps1 -Cerrar`, y avisar.
 > 4. Con Posventa: el parte en su carpeta y el cierre hecho en Sigrid. Reintentar los 26 partes.
 
 > ## ⏸ PUNTO DE REANUDACIÓN · 2026-09-28 · siguiente: F-036 (importar el Excel)

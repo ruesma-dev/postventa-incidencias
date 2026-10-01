@@ -889,16 +889,62 @@ crecido, `infra\25_mediciones_despliegue.ps1` sin parámetros, que solo lee.
    Tiene que decir `estructura posventa, carpeta base raíz`. **Si dice
    `carpeta base «Postventa»` —o cualquier otro nombre entre comillas
    angulares—, la base no es la raíz**: cada archivado dará 502 sin subir
-   nada. Freno 1 y de vuelta al líder. Si no sale ninguna línea habiendo
-   archivados, ampliar el `ago(...)`; si sigue sin salir, la versión
-   desplegada no lleva F-051 (o el muestreo de `host.json` la ha descartado,
-   que con este volumen no debería pasar: con varios archivados, alguna
-   sale).
+   nada. Freno 1 y de vuelta al líder.
 
-   La consulta va en el portal y no por `az monitor app-insights query`:
+   **Si no sale ninguna línea habiendo archivados**, antes de concluir nada:
+
+   - Ampliar el `ago(...)` y repetirla con `contains`, que descarta cualquier
+     sorpresa del `has` con el guion de `F-051`:
+
+     ```kusto
+     traces
+     | where timestamp > ago(3d)
+     | where message contains "destino efectivo del archivo"
+     | project timestamp, message
+     | order by timestamp desc
+     ```
+
+   - Si sigue sin salir, hay **tres** causas posibles: la versión desplegada
+     no lleva F-051; el muestreo de `host.json` la ha descartado (con este
+     volumen no debería: con varios archivados, alguna sale); o **las trazas
+     `INFO` de la aplicación no llegan a `traces`**. La tercera se distingue
+     con la línea de F-006, que sale del **mismo** logger, al **mismo** nivel
+     y en el **mismo** sitio desde F-006:
+
+     ```kusto
+     traces
+     | where timestamp > ago(3d)
+     | where message has "F-006 archivador de SharePoint construido"
+     | summarize n = count() by bin(timestamp, 1h)
+     ```
+
+     Si la de F-006 sale y la de F-051 no, la versión no lleva F-051. Si
+     **tampoco** sale la de F-006 habiendo archivados, las `INFO` no llegan a
+     traces y este paso no puede ver lo que dice verificar. Entonces la
+     verificación pasa a ser el **resultado**: un `200` de `archivar` en
+     `requests` después del despliegue,
+
+     ```kusto
+     requests
+     | where timestamp > ago(1d)
+     | where name == "archivar"
+     | summarize n = count() by resultCode
+     ```
+
+     y, con Posventa, el parte en su carpeta. **No se da el corte por bueno
+     sin ninguna de las dos**; y que no lleguen las trazas se lleva al líder
+     igualmente, porque rompe este paso para la próxima vez.
+
+   Las consultas van en el portal y no por `az monitor app-insights query`:
    PowerShell 5.1 destroza las comillas dobles que se pasan a un ejecutable
    nativo (el defecto de F-029), y `az` es un `.cmd` que además reprocesa la
-   línea con `cmd.exe`, `|` incluidas.
+   línea con `cmd.exe`, `|` incluidas. **Y si se lanza desde la línea de
+   comandos de todas formas**, `az monitor app-insights query` mira por
+   defecto **solo la última hora** (`--offset 1h`) aunque la consulta diga
+   `ago(3d)`: el `ago()` filtra dentro de esa hora, no la amplía. Hay que
+   pasar `--offset` con la ventana entera (por ejemplo `--offset 3d`). Al
+   líder le dio cifras falsas en este mismo incidente. En el portal no pasa:
+   el selector de intervalo respeta el `ago()` de la consulta.
 
    > **Enmienda del 2026-10-01 (F-051) · el paso 6 miraba la configuración.**
    > Decía: «Tienen que salir `posventa`, vacío y `true`. Si

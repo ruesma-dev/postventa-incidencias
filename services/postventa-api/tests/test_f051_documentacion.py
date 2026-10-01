@@ -119,15 +119,91 @@ def test_f051_t4_el_paso_6_busca_la_traza_que_emite_la_fabrica(monkeypatch, capl
     assert linea in _paso(_corte(), 6)
 
 
+def _consultas_del_paso_6() -> list[list[str]]:
+    """Cada bloque `kusto` del paso 6, como lista de líneas sin sangría."""
+    paso = _paso(_corte(), 6).replace("\r\n", "\n")
+    return [
+        [linea.strip() for linea in bloque.strip().splitlines()]
+        for bloque in re.findall(r"```kusto\n(.*?)```", paso, re.DOTALL)
+    ]
+
+
+def _consulta_que_busca(texto: str) -> list[str]:
+    (consulta,) = [c for c in _consultas_del_paso_6() if any(texto in linea for linea in c)]
+    return consulta
+
+
 def test_f051_t4_la_consulta_kql_es_de_solo_lectura_y_busca_la_traza():
-    paso = _paso(_corte(), 6)
-    (consulta,) = re.findall(r"```kusto\n(.*?)```", paso.replace("\r\n", "\n"), re.DOTALL)
-    lineas = [linea.strip() for linea in consulta.strip().splitlines()]
+    lineas = _consulta_que_busca('message has "F-051 destino efectivo del archivo"')
 
     assert lineas[0] == "traces"
     assert '| where message has "F-051 destino efectivo del archivo"' in lineas
-    # En KQL, lo que escribe o administra empieza por punto (`.set`, `.drop`…).
-    assert not any(linea.startswith(".") for linea in lineas)
+
+
+def test_f051_t4_todas_las_consultas_del_paso_6_son_de_solo_lectura():
+    """En KQL, lo que escribe o administra empieza por punto (`.set`, `.drop`…)."""
+    consultas = _consultas_del_paso_6()
+
+    assert consultas
+    for lineas in consultas:
+        assert lineas[0] in {"traces", "requests"}
+        assert not any(linea.startswith(".") for linea in lineas)
+
+
+# --------------------------------------------------------------------------
+# Review 1 de F-051, cambio 3 · «si no sale ninguna línea», tres causas
+# --------------------------------------------------------------------------
+
+
+def test_f051_r1_si_no_sale_se_repite_con_contains():
+    """Antes de concluir nada, la misma búsqueda con `contains` (descarta el `has`)."""
+    lineas = _consulta_que_busca('message contains "destino efectivo del archivo"')
+
+    assert lineas[0] == "traces"
+
+
+def test_f051_r1_la_tercera_causa_se_distingue_con_la_linea_de_f006(monkeypatch, caplog):
+    """Que las `INFO` no lleguen a `traces` se ve con la línea de F-006.
+
+    Sale del mismo logger, al mismo nivel y en el mismo sitio desde F-006: si
+    tampoco está, no es F-051, es que la traza no llega. El literal que busca
+    la consulta es el que emite el código (se genera aquí).
+    """
+    _linea_que_emite_la_fabrica(monkeypatch, caplog)
+    (f006,) = [
+        r.getMessage() for r in caplog.records if r.getMessage().startswith("F-006 ")
+    ]
+    lineas = _consulta_que_busca('message has "F-006 archivador de SharePoint construido"')
+
+    assert f006.startswith("F-006 archivador de SharePoint construido")
+    assert lineas[0] == "traces"
+    assert "no llegan a traces" in _normal(_paso(_corte(), 6))
+
+
+def test_f051_r1_sin_traza_la_verificacion_es_el_resultado():
+    """Sin trazas, el 200 de `archivar` en `requests` y el parte en su carpeta.
+
+    Y el corte no se da por bueno sin ninguna de las dos: un paso que no puede
+    ver lo que dice verificar es la lección del incidente.
+    """
+    lineas = _consulta_que_busca("requests")
+    paso = _normal(_paso(_corte(), 6))
+
+    assert lineas[0] == "requests"
+    assert any('name == "archivar"' in linea for linea in lineas)
+    assert "resultCode" in " ".join(lineas)
+    assert "el parte en su carpeta" in paso
+    assert "no se da el corte por bueno" in paso.lower()
+
+
+def test_f051_r1_aviso_de_la_ventana_de_az_monitor():
+    """`az monitor app-insights query` mira 1 hora por defecto, diga lo que diga la consulta."""
+    paso = _normal(_paso(_corte(), 6))
+
+    assert "az monitor app-insights query" in paso
+    assert "--offset 1h" in paso
+    assert "--offset" in paso.replace("--offset 1h", "")
+    assert "En el portal no pasa" in paso
 
 
 def test_f051_t4_el_paso_6_dice_que_la_configuracion_no_basta():

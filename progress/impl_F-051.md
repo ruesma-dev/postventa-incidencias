@@ -295,7 +295,122 @@ Después: `15 passed`; con los 6 casos añadidos que ejecutan el tramo real de
 | Tests ejecutados (servicio api) | **4415 passed, 52 skipped**, 0 fallos |
 | Tests de F-051 | **59** (17 + 10 + 21 + 11), todos verdes, 4,48 s |
 | Cobertura de las líneas cambiadas | **100,0 %** (14/14, umbral 80 %, `critico`) |
-| Mutación del arnés (`python -m harness.mutacion --feature F-051 --base dev --max-mutantes 40`) | **3 generados, 3 muertos, 0 supervivientes**, 0 timeouts, 57,0 s |
+| Mutación del arnés | **3 generados, 3 muertos, 0 supervivientes**, 0 timeouts, 57,0 s, **3 workers** (ver nota) |
 | Mutantes a mano (complemento, en `progress/mutacion_F-051.md`) | **9: 8 muertos, 1 superviviente equivalente en producción** (analizado allí) |
 | Tiempo de la suite | 76,97 s dentro de `init.sh`; 41–52 s lanzada sola |
 | PowerShell | cobertura y mutación no miden `.ps1`; la evidencia es la ejecución real de las funciones y del tramo de la base en PowerShell 5.1 (§6) |
+
+**Nota sobre el comando de la mutación (review 1, cambio 2).** Lo que se
+lanzó fue, literal:
+
+```
+python -m harness.mutacion --feature F-051 --base dev --max-mutantes 40
+```
+
+y la cabecera de `progress/mutacion_F-051.md` dice
+`python -m harness.mutacion --feature F-051 --workers 3`. No son dos campañas:
+es la misma, y la cabecera la escribe `comando_de()` de `harness/mutacion.py`
+con lo que **de verdad** se usó para reproducirla:
+
+- **workers**: no se pasó `--workers`; se tomó `mutacion.workers = 8` de
+  `harness/rigor.json` («Campaña paralela: hasta 8 workers» en la salida), y
+  `harness/mutacion_paralela.py:434` lo recorta a
+  `min(workers, número de mutantes)` = **3**, que es lo que registra el
+  informe y su tabla («Workers | 3»);
+- **`--base dev`**: no sale porque es la base por defecto (el propio
+  `comando_de` omite `dev` a propósito);
+- **`--max-mutantes 40`**: no sale porque `comando_de` no lo registra y
+  además no actuó (3 mutantes < 40; «Muestreo: no: campaña completa»).
+
+Para reproducirla vale cualquiera de los dos comandos; el de la cabecera fija
+además los workers.
+
+## 10 · Review 1 (CHANGES_REQUESTED): lo que me tocaba
+
+Del `progress/review_F-051.md` §5. Sin cambios en código de producción. El
+cambio 1 (las MANUAL en `progress/current.md`) lo hizo el líder; el 4 es del
+humano (aceptar por escrito el superviviente equivalente a mano).
+
+| Cambio | Commit | Qué |
+|---|---|---|
+| 2 | (este informe) | §9: 3 workers y la explicación del comando de la mutación |
+| 3 | `76fe3e2` (T5) | `docs/DESPLIEGUE.md` §9, paso 6, «si no sale ninguna línea» |
+| H-1 | `46800d5` (T6) | recuadros fechados de una línea en `specs/F-013-archivo-posventa/` |
+
+### Cambio 3 · el paso 6 cuando no sale ninguna línea
+
+Ahora, antes de concluir: (1) ampliar el `ago` y repetir con
+`message contains "destino efectivo del archivo"` (bloque `kusto`); (2) las
+**tres** causas —versión sin F-051, muestreo de `host.json`, o **las `INFO` no
+llegan a `traces`**—; la tercera se distingue con la consulta de la línea de
+F-006 (`F-006 archivador de SharePoint construido`, mismo logger, nivel y
+sitio), con `summarize n = count() by bin(timestamp, 1h)`; (3) si tampoco sale
+la de F-006, la verificación pasa a ser el resultado: `requests` con
+`name == "archivar"` por `resultCode` (un `200` tras el despliegue) y el parte
+en su carpeta con Posventa, y **no se da el corte por bueno sin ninguna de las
+dos**. Y la advertencia: `az monitor app-insights query` mira por defecto
+**una hora** (`--offset 1h`) aunque la consulta diga `ago(3d)`; desde la línea
+de comandos hay que pasar `--offset` (p. ej. `--offset 3d`); en el portal no
+pasa. Las cuatro consultas del paso 6 son de solo lectura (test).
+
+Nombre de la función en `requests`: `archivar`, el de la función de
+`function_app.py:691` (`@app.route(route="archivar")`). No lo he podido
+comprobar contra Application Insights; si la consulta no devuelve nada habiendo
+archivados, probar `name has "archivar"`.
+
+RED (comando: `.venv/Scripts/python -m pytest tests/test_f051_documentacion.py -q -p no:cacheprovider`,
+desde `services/postventa-api`), antes de tocar el documento:
+
+```
+E       ValueError: not enough values to unpack (expected 1, got 0)
+E       ValueError: not enough values to unpack (expected 1, got 0)
+E       ValueError: not enough values to unpack (expected 1, got 0)
+E       AssertionError: assert '--offset 1h' in '6. Lo que lee la aplicación, no lo que dice la configuración. La ventana de archivo, abierta: powershell -ExecutionPo...ro no pasa a la aplicación uno de valor vacío. La > configuración de Azure no es lo que lee la Function; la traza, sí.'
+FAILED tests/test_f051_documentacion.py::test_f051_r1_si_no_sale_se_repite_con_contains
+FAILED tests/test_f051_documentacion.py::test_f051_r1_la_tercera_causa_se_distingue_con_la_linea_de_f006
+FAILED tests/test_f051_documentacion.py::test_f051_r1_sin_traza_la_verificacion_es_el_resultado
+FAILED tests/test_f051_documentacion.py::test_f051_r1_aviso_de_la_ventana_de_az_monitor
+4 failed, 12 passed in 1.04s
+```
+
+Después: verdes. El test que exigía **un solo** bloque `kusto` en el paso 6
+se partió en dos: el que busca la consulta de F-051 por su contenido y otro que
+comprueba que **todas** las consultas del paso empiezan por `traces` o
+`requests` y ninguna línea por `.` (comandos de administración de KQL).
+
+### H-1 · la spec de F-013 remite a F-051
+
+Un recuadro fechado de **una línea** («La raíz se escribe
+`SHAREPOINT_CARPETA_BASE=/` (`$CarpetaBaseArchivo = "/"`), nunca vacía: …»)
+detrás de la tabla de decisiones de `requirements.md` (D-1), detrás de la tabla
+de decisiones de `design.md` (D-1), detrás del paso 5 de `design.md` §7.3 y
+detrás del paso 5 del despliegue de `tasks.md`. Los textos originales con `""`
+no se tocan. Test `test_f051_h1_la_spec_de_f013_remite_a_f051`, en RED antes
+(mismo comando, `-k h1`):
+
+```
+E       assert 0 == 1
+E        +  where 0 = len([])
+E       assert 0 == 2
+E        +  where 0 = len([])
+E       assert 0 == 1
+E        +  where 0 = len([])
+FAILED tests/test_f051_documentacion.py::test_f051_h1_la_spec_de_f013_remite_a_f051[requirements.md-1]
+FAILED tests/test_f051_documentacion.py::test_f051_h1_la_spec_de_f013_remite_a_f051[design.md-2]
+FAILED tests/test_f051_documentacion.py::test_f051_h1_la_spec_de_f013_remite_a_f051[tasks.md-1]
+3 failed, 16 deselected in 0.45s
+```
+
+### Evidencias tras la review 1
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados (servicio api) | **4423 passed, 52 skipped**, 0 fallos (54,08 s lanzada sola) |
+| Tests de F-051 | **67** (los 59 de antes + 8: 5 del cambio 3 —uno de ellos el partido— y 3 de H-1) |
+| Cobertura de las líneas cambiadas | sin cambios de producción: la de `init.sh` (ver abajo) |
+| Mutación | sin cambios de producción: no se relanza; vale la de §9 |
+
+### Una cosa vista de paso (no la toco: es del líder)
+
+En `progress/current.md`, bloque de F-051, MANUAL 3, el freno se escribe
+`infra_ventana_archivo.ps1 -Cerrar`; el script es `infra\22_ventana_archivo.ps1`.

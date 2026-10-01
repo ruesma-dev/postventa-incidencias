@@ -10,6 +10,13 @@
 > próximo archivado de Ana). Arreglo definitivo: **F-051**, rama
 > `feature/F-051-carpeta-base-raiz` desde `dev`. F-036 queda aprobada (review 5) en su rama,
 > pendiente de resumen al humano.
+>
+> **F-051 implementada (T1–T4), pendiente del reviewer** (2026-10-01): base ausente = raíz
+> en `posventa` (`Postventa` en `por_obra`); el despliegue escribe `/` y no fija ningún App
+> Setting vacío; traza `F-051 destino efectivo del archivo: …` y el paso 6 de DESPLIEGUE §9
+> la busca en Application Insights (KQL). `init.sh` verde, cobertura 100 % (14/14),
+> mutación 3/3 + 9 a mano (1 equivalente). azure-apps: commit local `59e9a8f`. Informe:
+> `progress/impl_F-051.md`. Sin desplegar.
 
 > ## ⏸ PUNTO DE REANUDACIÓN · 2026-09-28 · siguiente: F-036 (importar el Excel)
 >

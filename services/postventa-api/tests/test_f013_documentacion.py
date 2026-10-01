@@ -517,7 +517,7 @@ def test_f013_t17_el_runbook_documenta_los_dos_scripts_como_son(texto):
 
 @pytest.mark.parametrize(
     ("variable", "valor"),
-    (("EstructuraArchivo", "posventa"), ("CarpetaBaseArchivo", ""), ("CrearCarpetasArchivo", "true")),
+    (("EstructuraArchivo", "posventa"), ("CarpetaBaseArchivo", "/"), ("CrearCarpetasArchivo", "true")),
 )
 def test_f013_t17_las_variables_del_destino_valen_lo_del_corte(variable, valor):
     """`design.md` §2.2 y §7.3 · desde el corte, `posventa` en la raíz; crear, `true` (T4-3).
@@ -526,6 +526,11 @@ def test_f013_t17_las_variables_del_destino_valen_lo_del_corte(variable, valor):
     > `Postventa` hasta el corte; crear, `true` (T4-3)»*. El paso 2 del corte salió
     > PASA contra la red real y el humano pidió desplegar en producción: paso 5 de
     > `docs/DESPLIEGUE.md` §9. Volver atrás es el freno 3 del runbook.
+
+    > **Enmienda del 2026-10-01 (F-051).** La raíz era `""`; ahora es `"/"`.
+    > Azure no pasa a la aplicación un App Setting vacío, y la base vacía del
+    > corte nunca llegó a la Function (incidente de ese día). Lo fija también
+    > `test_f051_scripts_infra.py`.
     """
     texto = VARIABLES_INFRA.read_text(encoding="ascii")
 
@@ -536,12 +541,17 @@ def test_f013_t17_las_variables_del_destino_valen_lo_del_corte(variable, valor):
     "ajuste",
     (
         '"SHAREPOINT_ESTRUCTURA=$EstructuraArchivo"',
-        '"SHAREPOINT_CARPETA_BASE=$CarpetaBaseArchivo"',
+        '"SHAREPOINT_CARPETA_BASE=$carpetaBaseAppSetting"',
         '"SHAREPOINT_CREAR_CARPETAS=$CrearCarpetasArchivo"',
     ),
 )
 def test_f013_t17_el_despliegue_escribe_el_destino_desde_las_variables(ajuste):
-    """En `$ajustes`, en cada despliegue, y con el valor de `00_vars_postventa.ps1`."""
+    """En `$ajustes`, en cada despliegue, y con el valor de `00_vars_postventa.ps1`.
+
+    > **Enmienda del 2026-10-01 (F-051).** La base se escribía como
+    > `$CarpetaBaseArchivo`; ahora pasa antes por `Carpeta-Base-Para-Azure`
+    > (`$carpetaBaseAppSetting`), que convierte la vacía en `/`.
+    """
     texto = DESPLIEGUE_BACKEND.read_text(encoding="ascii")
     (ajustes,) = re.findall(r"(?ms)^\$ajustes = @\((.*?)^\)", texto)
 
@@ -570,7 +580,8 @@ def test_f013_t17_el_despliegue_dice_a_donde_va_a_archivar():
     assert len(lineas) == 2
     for linea in lineas:
         assert "$EstructuraArchivo" in linea
-        assert "$CarpetaBaseArchivo" in linea
+        # F-051 · lo que enseña es la base que de verdad se escribe.
+        assert "$carpetaBaseAppSetting" in linea
         assert "$CrearCarpetasArchivo" in linea
 
 

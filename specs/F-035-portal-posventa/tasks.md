@@ -527,7 +527,7 @@ ya pide cada verificación.
 
 ## Bloque 7 · Verde otra vez: lo de F-036 sale de la maqueta (2026-10-05)
 
-- [ ] **T23**: en **un solo commit**: (a) en `index.html`, sección `entrada`:
+- [x] **T23**: en **un solo commit**: (a) en `index.html`, sección `entrada`:
       fuera la zona de soltar, los dos placeholders de F-036, la tabla «Qué
       necesita cada fila» y el resultado de ejemplo; dentro, las dos tarjetas
       «En producción» de `design.md` §16.5 («Importar incidencias» →
@@ -548,7 +548,7 @@ ya pide cada verificación.
       `python -m pytest tests -q` y `node --test "tests_js/*.test.js"` en
       verde; «F-036 intacto» vacío; `git diff --stat HEAD~1` solo con los
       ficheros de (a)–(e).
-- [ ] **T24**: evidencias y verde del bloque. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`
+- [x] **T24**: evidencias y verde del bloque. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`
       (se espera «Sin líneas de producción en el alcance»: 0 mutantes). (b)
       Mutaciones manuales **14** y **15** de `design.md` §16.10. (c)
       `bash harness/init.sh` en verde.

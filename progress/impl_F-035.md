@@ -3960,3 +3960,212 @@ con 9, 11 o 10: falla cerrado.
 | Mutantes a mano | **27/27 muertos** (M15 cerrado en esta ronda) |
 | Simulación con `az.cmd`/`swa.cmd` | **18/18 OK**; el control con la versión anterior reproduce el defecto (P3 y P8b, código 9) |
 | Tiempo de la suite | Raíz 7,08 s; api 87,35 s |
+
+## Bloque 7 · T23 y T24 · Verde otra vez: lo de F-036 sale de la maqueta · 2026-10-05
+
+> implementer. Encargo: **solo el bloque 7** de `tasks.md` (enmienda del
+> 2026-10-05, tras F-036). Commits: `bdf8747` (T23) y el de T24 (este
+> informe, `tasks.md`, `current.md` y `progress/mutacion_F-035.md`). Sin
+> push. Nada de `services/postventa-api/`, del circuito ni de F-036.
+
+### 1 · Qué cambió (T23, un solo commit)
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-front/index.html` | Sección `entrada`: fuera la zona de soltar, los dos placeholders de F-036 (`entrada.elegirExcel`, `entrada.importar`), la tabla «Qué necesita cada fila» y el resultado de ejemplo (todas las directivas que leían `datos.entrada`). Dentro, una `rs-rejilla` con dos tarjetas `<a class="rs-tarjeta rs-tarjeta--produccion">` (chip `rs-chip--ok` «En producción», rótulo, la frase de §16.5 y llamada con flecha) a `importar.html` y `oficios.html`, **sin `target`**. Cabecera «Entrada de incidencias» (§16.5). El panel de la web de clientes, **tal cual** (su envoltorio F-037 es del bloque 9). |
+| `services/postventa-front/js/portal.js` | Fuera las dos entradas de F-036 de `PLACEHOLDERS` y `"F-036"` de `TITULOS_FICHAS`. Entra `PAGINAS = Object.freeze({"importar.html": "entrada", "oficios.html": "entrada"})`, exportado como `Portal.PAGINAS`, **solo como dato** (sin `enlaceSeccion`, que es del bloque 10). |
+| `services/postventa-front/js/maqueta_datos.js` | Fuera el bloque `entrada` (con su pendiente del Excel, que además ya era falso). Queda un comentario de dónde vive ahora. |
+| `services/postventa-front/tests/test_f035_paginas.py` | **Nuevo** (R68 y R17 enmendado; ver §2). |
+| `services/postventa-front/tests/test_f035_portal.py` | R17 enmendado; helper `paginas_del_portal()` (lee `PAGINAS` de `portal.js` como texto); fuera el test de la lista de errores de la importación de ejemplo (describía lo retirado); `CHIPS_DE_FICHA` 10 → 8 (los dos chips del panel de F-036). |
+| `services/postventa-front/tests_js/portal.test.js` | Fuera las dos filas de F-036 de `PLACEHOLDERS_ESPERADOS`. |
+| `services/postventa-front/tests_js/maqueta_datos.test.js` | Fuera `entrada: "F-036"` de `BLOQUES` y las dos aserciones de R26 sobre el bloque `entrada` (el Excel y los pasos de alta). |
+
+**Decisiones**
+
+- La tarjeta es el propio `<a>` (patrón de las tarjetas de `inicio`, con
+  `rs-tarjeta--produccion` de `css/portal.css`): sin CSS nuevo, así que la
+  `?v=` de las hojas **no cambia** en este bloque.
+- **R17 enmendado**: el test admite `#/…`, `partes.html` o una página de
+  `Portal.PAGINAS` con ancla opcional (`^[\w.-]+\.html(#[A-Za-z][\w-]*)?$`), y
+  exige además que **ningún** `<a>` del portal lleve `target` (la enmienda
+  dice «ninguna con `target`», R73). Hoy no hay ninguno.
+- `PAGINAS` se lee en Python como texto (regex sobre
+  `const PAGINAS = Object.freeze({…})`), igual que la guardia de la raíz lee
+  `ficha:`. El lector tiene su control (un `portal.js` falso en `tmp_path`).
+  Su prueba en Node (congelado, `enlaceSeccion` desde una página) es de T29.
+- `test_f035_paginas.py` reutiliza el lector de HTML de `test_f035_portal.py`
+  por import (precedente: `test_f036_front.py` importa de
+  `test_f007_estaticos.py`).
+- No se añadió ningún test nuevo a los ficheros JS existentes (regla «lo
+  nuevo va en `test_f035_paginas.py` / `f035_paginas.test.js`»); solo se
+  quitó lo que describía lo retirado.
+- `tasks.md` se marca en el commit de T24, para que el `git diff --stat` de
+  T23 sea solo (a)–(e), como pide su verificación.
+
+### 2 · Tests nuevos o enmendados
+
+`tests/test_f035_paginas.py` (13 tests):
+
+- `test_f035_r68_entrada_enlaza_a_la_pagina_real_en_la_misma_ventana[importar.html|oficios.html]`:
+  un único `<a href>` en `entrada`, sin `target` ni `rel`, con su título; su
+  tarjeta `rs-tarjeta--produccion` con la frase de §16.5 y un solo chip,
+  «En producción», `rs-chip--ok`.
+- `test_f035_r68_no_queda_en_el_portal_nada_de_f036`: detector
+  `restos_de_f036()` sobre `index.html`, `portal.js` y `maqueta_datos.js`
+  (placeholder, `ficha: "F-036"`, título en `TITULOS_FICHAS`, bloque
+  `entrada:`, directivas `datos.entrada`, los dos `id`). Va más allá del
+  escáner de R28 de la raíz.
+- `test_f035_r68_control_el_detector_ve_cada_resto_de_f036` (×5): cada forma
+  de resto sembrada en memoria tiene que salir.
+- `test_f035_r68_el_panel_de_la_web_de_clientes_sigue_en_entrada`: «Web de
+  clientes» y su único placeholder, F-037.
+- `test_f035_r17_portal_paginas_declara_las_paginas_reales_de_entrada`,
+  `…_cada_pagina_de_portal_paginas_existe` y
+  `…_control_paginas_del_portal_lee_lo_que_hay_en_el_fichero`.
+
+### 3 · Fase RED
+
+**Rojo de partida** (antes de tocar nada), en la raíz:
+
+```
+$ python -m pytest tests/test_f035_placeholders_vivos.py -q
+E       AssertionError: hay fichas cerradas con placeholders o datos de ejemplo en la maqueta; retíralos como dice design.md §7.3 de F-035:
+E         F-036 está done y deja index.html:185
+E         F-036 está done y deja index.html:188
+E         F-036 está done y deja js/portal.js:84
+E         F-036 está done y deja js/portal.js:91
+E         F-036 está done y deja js/maqueta_datos.js:123
+E       assert ['F-036 está ...datos.js:123'] == []
+...
+E       AssertionError: ['F-036 está done y deja index.html:185', 'F-036 está done y deja index.html:188', 'F-036 está done y deja js/portal.j... deja js/portal.js:91', 'F-036 está done y deja js/maqueta_datos.js:123', 'F-044 está done y deja index.html:592', ...]
+E       assert False
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r28_ninguna_ficha_done_deja_restos_en_la_maqueta
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r28_la_guardia_mira_una_ficha_que_pasa_a_done
+2 failed, 9 passed in 0.16s
+```
+
+**RED de los tests nuevos** (escritos antes del código), desde
+`services/postventa-front`:
+
+```
+$ python -m pytest tests/test_f035_paginas.py "tests/test_f035_portal.py::test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito" -q
+E       AssertionError: tiene que haber uno y solo uno: <a href="importar.html"> en la sección entrada (hay 0)
+E       AssertionError: tiene que haber uno y solo uno: <a href="oficios.html"> en la sección entrada (hay 0)
+E       AssertionError: F-036 está done y sus restos de maqueta salen del portal (design.md §16.5):
+E         index.html:179 directiva que lee datos.entrada
+E         index.html:185 placeholder de F-036
+E         index.html:185 id de un placeholder de F-036
+E         index.html:188 placeholder de F-036
+E         index.html:188 id de un placeholder de F-036
+E         index.html:202 directiva que lee datos.entrada
+E         [index.html:212, 214, 222-227, 229 y 230: directiva que lee datos.entrada]
+E         js/portal.js:59 título de F-036 para el aviso
+E         js/portal.js:83 id de un placeholder de F-036
+E         js/portal.js:84 bloque o placeholder con ficha F-036
+E         js/portal.js:90 id de un placeholder de F-036
+E         js/portal.js:91 bloque o placeholder con ficha F-036
+E         js/maqueta_datos.js:122 bloque entrada de los datos de ejemplo
+E         js/maqueta_datos.js:123 bloque o placeholder con ficha F-036
+E       AssertionError: en entrada queda solo el placeholder de la web de clientes (F-037): ['F-036', 'F-036', 'F-037']
+E       AssertionError: portal.js no declara const PAGINAS = Object.freeze({…}) (design.md §16.8)
+        [la misma, en los dos R17 de test_f035_paginas.py y en el R17 de test_f035_portal.py]
+FAILED tests/test_f035_paginas.py::test_f035_r68_entrada_enlaza_a_la_pagina_real_en_la_misma_ventana[importar.html]
+FAILED tests/test_f035_paginas.py::test_f035_r68_entrada_enlaza_a_la_pagina_real_en_la_misma_ventana[oficios.html]
+FAILED tests/test_f035_paginas.py::test_f035_r68_no_queda_en_el_portal_nada_de_f036
+FAILED tests/test_f035_paginas.py::test_f035_r68_el_panel_de_la_web_de_clientes_sigue_en_entrada
+FAILED tests/test_f035_paginas.py::test_f035_r17_portal_paginas_declara_las_paginas_reales_de_entrada
+FAILED tests/test_f035_paginas.py::test_f035_r17_cada_pagina_de_portal_paginas_existe
+FAILED tests/test_f035_portal.py::test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito
+7 failed, 6 passed in 1.44s
+```
+
+Los 6 que pasaban en RED son los controles (los 5 del detector y el del
+lector de `PAGINAS`): prueban el detector, no el portal.
+
+**VERDE** tras el código:
+
+```
+$ python -m pytest tests/test_f035_placeholders_vivos.py -q                 (raíz)
+11 passed in 0.12s
+$ python -m pytest tests/test_f035_paginas.py "…::test_f035_r17_…" -v       (front)
+13 passed in 0.30s
+$ python -m pytest tests -q                                                 (front)
+420 passed in 8.47s
+$ node --test "tests_js/*.test.js"                                          (front)
+ℹ tests 499 / ℹ pass 499 / ℹ fail 0
+```
+
+Con el código cambiado y antes de ajustar los tests de F-035 que contaban lo
+retirado, el front dio un rojo más, esperado:
+`test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes` («10
+chips rs-ficha (hay 8)»); `CHIPS_DE_FICHA` enmendado a 8 en el mismo commit.
+
+### 4 · T24 · Evidencias y verde
+
+**(a) Mutación del arnés**
+
+```
+$ python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+Lo esperado (F-035 no tiene Python de producción).
+`progress/mutacion_F-035.md` regenerado (cambian el comando y la base).
+
+**(b) Mutaciones manuales 14 y 15** (`design.md` §16.10), en un worktree
+desechable del scratchpad (`git worktree add --detach <scratchpad>/wt_b7 HEAD`
+sobre `bdf8747`), nunca en el árbol real:
+
+| # | Mutación | Resultado |
+|---|---|---|
+| 14 | Vuelve a `index.html` (sección `entrada`) un `<button data-placeholder="F-036" @click="placeholder('entrada.importar')">` | **Muerto**. Raíz: `test_f035_r28_ninguna_ficha_done_deja_restos_en_la_maqueta` («F-036 está done y deja index.html:182») y su control (`2 failed, 9 passed`); front: `test_f035_r68_no_queda_en_el_portal_nada_de_f036` y `…_el_panel_de_la_web_de_clientes_sigue_en_entrada` (`2 failed, 10 passed`) |
+| 15 | El enlace de la tarjeta de oficios pasa a `href="otra.html"` | **Muerto**. `test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito` («`<a href="otra.html">` … solo #/…, partes.html o una página de Portal.PAGINAS (['importar.html', 'oficios.html']), con ancla opcional») y `test_f035_r68_…[oficios.html]` (`2 failed, 114 passed, 3 skipped`; los 3 saltados son los del diff de la rama, porque el worktree está en HEAD separado) |
+
+Worktree retirado con `git worktree remove --force`; `git worktree list` ya
+no lo muestra (queda solo uno ajeno a este encargo,
+`.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no se toca).
+
+**(c) `bash harness/init.sh`** tras `bdf8747`, tal cual: **exit code 0,
+`ENTORNO LISTO. Puedes trabajar.`** Raíz **107 passed** (7,91 s, con
+medición de cobertura); api en verde desde caché (árbol sin cambios); front
+**420 passed** (11,65 s); `PUERTA COBERTURA: N/A (F-035 no cambia líneas
+Python de producción frente a dev)`; `ruff: 71 avisos (deuda previa, no
+bloquea)`, los mismos 71 que antes del bloque (los 2 que daba el fichero
+nuevo se corrigieron; en `tests/` del front quedan solo los 2 previos de
+`test_f010_config_swa.py`).
+
+**Comprobaciones del bloque**
+
+- «F-036 intacto»: `git diff 2a86bca -- services/postventa-front/tests/test_f036_front.py services/postventa-front/tests_js/importacion.test.js services/postventa-front/tests_js/oficios.test.js` → **vacío** (0 líneas).
+- R76: `git diff --name-status 2a86bca -- services/postventa-api` → vacío.
+- `git diff --stat HEAD~1` de T23: solo los 7 ficheros de (a)–(e).
+
+### 5 · Fuera del alcance y pendiente
+
+- De otros bloques: los envoltorios `data-en-construccion` y el de F-037 en
+  la web de clientes (bloque 9, que completa R68), la portada (R67), el
+  `estado` de `SECCIONES` (bloque 8), `enlaceSeccion` desde una página y
+  `f035_paginas.test.js` (bloque 10) y el escáner de R28 ampliado (bloque 9).
+- `SECCIONES` sigue con `fichas: ["F-036", "F-037"]` en `entrada`: es el
+  catálogo de la sección (lo usará R62), no un resto; el escáner no lo cuenta.
+- **Apunte para el líder**: el pendiente de la web de clientes
+  (`maqueta_datos.js`, bloque `web`) dice «bloqueado por la web de clientes
+  y por la importación del Excel», y la importación ya existe. Se deja tal
+  cual porque T23 pide el panel sin tocar.
+- Sin verificación visual en navegador en este bloque (no la pide); entra en
+  V1/V2 del humano (bloque 15).
+
+### Evidencias (bloque 7)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Raíz **107 passed** (7,91 s); front pytest **420 passed** (11,65 s en `init.sh`); front Node **499 pass, 0 fail** (1,7 s); api en verde desde caché |
+| Tests nuevos / cambiados | **13 nuevos** (`test_f035_paginas.py`); **1 enmendado** (R17); **1 retirado** (lista de errores de ejemplo); ajustados por lo retirado `CHIPS_DE_FICHA`, `PLACEHOLDERS_ESPERADOS`, `BLOQUES` y R26 |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; JS y HTML no se miden |
+| Mutantes (campaña del arnés) | **0 generados, 0 supervivientes** («Sin líneas de producción en el alcance») |
+| Mutantes a mano | **2/2 muertos** (14 y 15) |
+| Tiempo de la suite | Raíz 7,91 s; front 11,65 s (pytest) + 1,7 s (Node); `init.sh` completo en unos 3 min (api desde caché) |

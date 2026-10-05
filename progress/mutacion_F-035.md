@@ -1,11 +1,11 @@
 <!-- progress/mutacion_F-035.md -->
 # F-035 · Campaña de mutación
 
-Generado por `python -m harness.mutacion --feature F-035 --workers 1` el 2026-09-25 19:52.
+Generado por `python -m harness.mutacion --feature F-035 --base 2a86bca --workers 1` el 2026-10-05 14:09.
 
 ## Alcance
 
-Origen del diff: **rama** (`54c0884067f3df62ee34a00eaa1d6ff059f69d30` .. `feature/F-035-portal-posventa`).
+Origen del diff: **rama** (`2a86bca1d7ad54fd8cc09b16bada4f62d1656b49` .. `feature/F-035-portal-posventa`).
 
 | Fichero | Líneas en alcance |
 |---|---|

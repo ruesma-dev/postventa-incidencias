@@ -1,6 +1,20 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 7 (T23, T24) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: bloque 8 (implementer), tras lo que decida el líder
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 7». Commit T23 `bdf8747`: la maqueta de
+> F-036 sale del portal (placeholders, tabla, resultado de ejemplo, bloque `entrada` de
+> `MaquetaDatos`, entradas de `PLACEHOLDERS` y su título) y `entrada` enlaza en la misma ventana a
+> `importar.html` y `oficios.html` (dos tarjetas «En producción»); entra `Portal.PAGINAS` como dato;
+> R17 enmendado; nuevo `tests/test_f035_paginas.py` (R68, RED primero). R28 y su control, en verde.
+> `bash harness/init.sh`: **exit 0** (raíz 107, front 420, api desde caché; ruff 71, los de antes).
+> Mutación del arnés: 0 mutantes (sin Python de producción); manuales 14 y 15, muertas. «F-036
+> intacto» vacío; nada de `services/postventa-api/`. Sin push.
+>
+> - Apunte para el líder: el pendiente del bloque `web` (F-037) dice «bloqueado … por la
+>   importación del Excel», que ya existe; se dejó tal cual (T23 pide el panel sin tocar).
+
 > ## ▶ F-035 · enmienda APROBADA por el humano · 2026-10-05 · siguiente: bloque 7 (implementer)
 >
 > «si» (2026-10-05) a D-15 (las cuatro condiciones de trabajo sin terminar) y D-16 (la excepción

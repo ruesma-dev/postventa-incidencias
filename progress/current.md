@@ -1,7 +1,7 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ✅ F-036 CERRADA · 2026-10-05 · siguiente: merge a `dev` (humano) y F-052
+> ## ✅ F-036 CERRADA Y EN `dev` · 2026-10-05 · siguiente: push (humano) y F-035
 >
 > Importar el Excel de incidencias a la bandeja: review 13 APROBADA, T1–T64 hechas (T16 y T27–T29
 > MANUAL del humano en verde, T30 en verde), desplegada desde su rama y verificada en el entorno.
@@ -9,11 +9,14 @@
 > `docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md` (commit local `1735322`) la dan
 > por desplegada.
 >
-> **Pendiente del humano**: el merge a `dev` con `git merge --squash` (decisión del 2026-09-30:
-> que los códigos de proveedor de commits intermedios no entren en `dev`), y después a `main`.
-> **Orden decidido por el humano** («esta bien asi», 2026-10-03): **F-052** (secretos de
-> `Ajustes`; la clave de Gemini, a rotar por el humano) → **F-035** (el portal de la maqueta, con
-> `importar.html` y `oficios.html` como secciones y los dos apuntes que lleva su ficha).
+> **Mergeada a `dev` con `--squash` el 2026-10-05** (`4a0bdaa`, hecho por el líder a petición
+> expresa del humano; mismo árbol que la rama aprobada). El push lo hace el humano con
+> `infra\90_push_dev_main.ps1`; la rama `feature/F-036-importar-excel` **no se sube** (sus commits
+> intermedios llevan códigos de proveedor).
+> **Orden cambiado por el humano el 2026-10-05**: **F-035** (el portal de la maqueta) va antes que
+> **F-052**; la clave de Gemini, según el humano, está bien. Para F-035 el humano elige la opción
+> **(b)**: se publican también las secciones que aún no funcionan, marcadas «En construcción».
+> Importar, bandeja y oficios pasan a ser secciones reales del portal, con los dos apuntes de su ficha.
 > **F-051, verificada en ejecución** (líder, solo lectura, 2026-10-05): desde el despliegue del
 > 2026-10-01, 25 `archivar` en 200 y la traza «F-051 destino efectivo del archivo: estructura
 > posventa, carpeta base raíz» desde el 2026-10-02. Falta solo que Posventa confirme que no queda

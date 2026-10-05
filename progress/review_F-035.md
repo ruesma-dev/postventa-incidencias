@@ -1074,3 +1074,548 @@ caché con una `?v=` derivada del CSS, la mutación debe **recalcularla**: si
 no, la mata la versión y no el test de la marca, y el superviviente no se
 ve. Caso de origen: F-035, bloque 8, H-6 (V1–V4; la E8 del implementer
 murió también por la `?v=`).
+
+## Review del bloque 16 · T43–T45 · 2026-10-05
+
+> reviewer. Alcance **acotado** a `git diff 8ced4bd..HEAD` (`e3842b4` T43,
+> `3a89d82` T44, `89296ce` T45) en `feature/F-035-portal-posventa`. Los
+> bloques 17 y 9–15 siguen abiertos **a propósito**: no cuentan como `[ ]`.
+> Numeración propia (`H16-n`) para no chocar con los H-8…H-12 del
+> spec-author.
+
+### Veredicto
+
+**CHANGES_REQUESTED** (del bloque 16, no de la feature). El código está
+bien:
+
+- La guarda lee lo que tiene que leer, con los nombres reales del circuito.
+- Falla abierta.
+- No toca ningún módulo del circuito.
+- Las líneas de R81 son literales.
+- No queda ningún `target` entre páginas del front.
+
+Lo que falta son **dos tests**, y los dos van a lo que este bloque viene a
+proteger: que la remesa no se pierda al salir en la misma pestaña.
+
+- **H16-1**: borrar la línea que **instala** la guarda en el navegador deja
+  toda la suite en verde (mutación G1).
+- **H16-2**: que un parte ya cerrado **corte** el recorrido de (c) también
+  deja todo en verde (G12). Es el caso más normal en que la guarda importa:
+  una tanda que cierra unos partes y falla en otros.
+
+Son dos tests en `tests_js/guarda_salida.test.js`, sin tocar código de
+producción.
+
+### Nivel de rigor
+
+`estandar` (declarado en `harness/features.json`). Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con los supervivientes
+analizados.
+
+El bloque no tiene Python de producción:
+
+- la cobertura sale N/A con el motivo impreso;
+- la campaña da 0 mutantes.
+
+La compensación son las mutaciones a mano:
+
+- las 29–35 de `design.md` §16.15.8;
+- las del implementer;
+- las del reviewer.
+
+La regla 7 de `reviewer.md` (mutaciones de orden) es para rigor `critico`:
+**N/A**. Además, la guarda no ordena llamadas a ningún colaborador.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh` (tal cual, árbol real) | **exit 0**, `ENTORNO LISTO`. Raíz **112 passed**; api en verde (caché); front **473 passed**; `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; ruff 71 avisos, deuda previa |
+| Worktree desechable del scratchpad (`git worktree add --detach`, HEAD `89296ce`), línea base | Node **563/563**; front pytest **470 passed, 3 skipped** (los 3 del diff de rama, saltados con HEAD separado) |
+| **RED de T43 reproducido** (sin `js/guarda_salida.js`) | Node: `Cannot find module '../js/guarda_salida.js'` (1 fail). Pytest `-k r80`: **14 failed**. Igual que el informe |
+| **RED de T44 reproducido**: tests de HEAD con `partes.html`, `js/portal.js`, `test_f007_estaticos.py` y `test_f036_front.py` de `e3842b4` | Front **13 failed**, 457 passed y 3 skipped. Son los del informe (R43 ×4, R59 ×2, R31 ×4, R47, R73 `partes.html` y F-007 R32/Node) **menos** el de R32 de F-035, que con HEAD separado se salta. Node **562/563** (cae R31 de `portal.test.js`) |
+| Recálculo `harness.alcance.alcance_de_feature("F-035", base=…)` | `lineas={}` con `2a86bca` y con `8ced4bd`: 0 ficheros y 0 líneas, como `progress/mutacion_F-035.md` |
+| **Reejecución de la campaña** («Tiempo total» 0,0 s, menos de 5 min), `--salida` al scratchpad | 0 evaluados, 0 muertos, 0 supervivientes y 0 timeouts en 0,0 s: **idéntico** al informe |
+| **Control del cero**: `generar_mutantes` sobre los `.py` del diff ignorando la exclusión | `test_f035_paginas.py` 41, `test_f035_portal.py` 58, `tests/test_f035_placeholders_vivos.py` 3; `test_f007_estaticos.py` y `test_f036_front.py` 0 (sus líneas nuevas son un literal y un `assert`). El generador funciona: el cero es **legítimo** (solo tests) |
+| R33: `git diff --name-status $(git merge-base dev HEAD)..HEAD -- services/postventa-front/js` | solo `A`: `guarda_salida.js`, `maqueta_datos.js`, `portal.js` y `portal_app.js`. **Ningún `M`** en un módulo del circuito |
+| `git diff --name-status 8ced4bd..HEAD` en `js/`, api, `importar.html`, `oficios.html` y `css/` | `A js/guarda_salida.js`, `M js/portal.js`; nada más |
+| «F-036 intacto», versión ajustada: `git diff 2a86bca --` los tres ficheros | **solo** las líneas de R81 en `test_f036_front.py` (+2 −3); `importacion.test.js` y `oficios.test.js` vacíos |
+| `git show --stat` de T43, T44 y T45 | T44 lleva en **un solo commit** la retirada de los `target`, la guarda en `partes.html` y las líneas de R81 |
+| `git log --diff-filter=A 8ced4bd..HEAD` | añade solo `js/guarda_salida.js` y `tests_js/guarda_salida.test.js` (ningún PDF ni parte) |
+| H-6, en el worktree: V3 (`.rs-pestana` a `inline-block`) y V4 (`::after { content: none }` en `portal.css`) **sobre las hojas reales** | las dos tumban `test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar`. V1 y V2 los cubren los controles en memoria |
+| Prueba de concepto (scratchpad, no va al repo): `js/guarda_salida.js` cargado con `vm.runInNewContext` y un `window` y un `document` falsos | registra `['beforeunload']`, deja `window.GuardaSalida`; con `Alpine.$data` y una remesa `[cerrado, aprobado sin cerrar]`, `preventDefault` 1 y `returnValue` `true`. Así se escribe el test de H16-1 |
+| Al acabar | worktree retirado (`git worktree remove --force` + `prune`); queda el ajeno `agent-a6e2f9bed1d46cdbc`, que no se toca; `git status` limpio |
+
+### Respuestas a las preguntas del líder
+
+**1 · La guarda, contra el circuito real.**
+
+Leí `js/app.js` entero, más `js/pipeline.js` (`estadoDe`, `hayTandaEnCurso`,
+`conGuardaDeTanda` y las exportaciones) y `js/autoguardado.js` (`publicar`,
+`disparar`, `alEscribir`, `cancelarPendiente` y las constantes).
+
+Cada condición de D-15 se lee de donde vive ese estado, con su nombre real:
+
+| D-15 | La guarda lee | Dónde vive en el circuito |
+|---|---|---|
+| (a) fases | `estado.fase` ∈ {`troceando`, `procesando`, `archivando_y_cerrando`} | `app.js:39` (declarada) y `:175`, `:269`, `:765` (asignadas). Las demás asignaciones (`:161`, `:204`, `:275`, `:753`, `:929`, `:944`) son `seleccionado`, `inactivo`, `revision` o `resumen`, que no cuentan |
+| (a) tanda | `pipeline.hayTandaEnCurso()` | `pipeline.js:1244–1269`: la bandera de `conGuardaDeTanda`, que `app.js:749` y `:925` envuelven. Cubre el hueco entre que acaba `_lanzarTanda` y la fase pasa a `resumen` |
+| (b) | `estado.estadoAutoguardado` frente a `GUARDANDO`/`FALLO` | `app.js:70` y `:493` (`_pintarAutoguardado`), con los valores de `publicar` (`autoguardado.js:249`, `:274`). Las constantes son `"guardando"` y `"fallo"` (`:70`, `:72`) |
+| (c) | `estado.partes[i].cerrado` y `Pipeline.estadoDe(parte)` frente a `ESTADO_RECHAZADO`/`ESTADO_CERRADO` | `cerrado` nace en `app.js:234` y se fija en `:834`. `estadoDe` lee `parte.estadoParte.estado` (`pipeline.js:260`), que nace en `app.js:257` |
+| (d) | `estado.parteAbierto` y su `.cerrado` | `app.js:61`; `abrirParte` en `:378`, `cerrarParte` en `:393`, `reiniciar` en `:953` |
+| lectura | `window.Pipeline`, `window.Autoguardado` y `Alpine.$data(document.querySelector('[x-data="appPostventa()"]'))` | `pipeline.js:1332` y `autoguardado.js:457` exportan a `window`; el selector casa con `partes.html:20` |
+
+Lo que hace el circuito y la guarda ve, aunque no esté en la tabla:
+
+- un reintento de parte (`reintentarParte`): el parte pasa a «leyendo», sin
+  marca, y lo ve (c);
+- `revalidarParte` o una decisión (`_cambiarEstado`) en vuelo: se pide con
+  el detalle abierto, y lo ve (d);
+- `reintentarCierre`: pasa por `_lanzarTanda` y lo ve (a).
+
+(c) no depende de la fase, así que unos partes que sobrevivan a un cambio de
+fase también se ven.
+
+**Lo que la guarda no ve, y deja salir perdiendo algo.** Solo un caso, y
+estrecho (H16-5):
+
+- `cerrarParte()` no cancela ni fuerza el rebote del autoguardado
+  (`autoguardado.js:355–362`).
+- Durante los 1.500 ms siguientes a cerrar el detalle, lo tecleado aún no
+  está en «guardando».
+- Si ese parte está rechazado (o cerrado según el backend), (c) lo excluye y
+  (d) ya no aplica: se sale sin pregunta.
+- Los campos se pueden editar en cualquier estado: `partes.html:306` no
+  tiene `:disabled`.
+- La guarda no lo puede ver sin `_autoguardado()`, que R80 prohíbe.
+- El diseño dice que este caso «no existe»: es inexacto (H16-5, de spec).
+
+**Lo que avisa y no debería.** Nada que contradiga D-15. Hay dos matices que
+avisan por decisión del diseño:
+
+- el detalle abierto de un parte rechazado (es (d), a propósito: el motivo
+  sin enviar);
+- el detalle abierto de un parte que el backend da por cerrado pero con
+  `parte.cerrado` en `false`, por ejemplo uno ya cerrado y subido de nuevo
+  (H16-6, nit de spec).
+
+Probé los negativos de D-15 contra lo que deja el circuito:
+
+| Caso | Por qué no avisa |
+|---|---|
+| Página recién abierta | `fase` `inactivo`, `partes` `[]` |
+| `seleccionado` | `_aceptar` no crea partes |
+| Todo cerrado o rechazado | cerrados con `cerrado: true` (`:834`); rechazados con su `estadoParte` |
+| Tras `reiniciar()` | `:941`, `:950` y `:953` vacían lo que mira la guarda |
+
+**¿Falla abierta?** **Sí.** En todos estos casos `leerEstado` da `null` o
+`hayTrabajoSinTerminar` da `false`, y no se pregunta:
+
+- sin Alpine;
+- con Alpine sin `$data`;
+- sin el elemento del circuito;
+- con un `$data` que lanza;
+- con Alpine cargado pero el componente aún sin montar: `Alpine.$data`
+  devuelve una mezcla vacía y todo lee `undefined`;
+- sin `Pipeline`.
+
+Matiz: un solo `try` envuelve las cuatro condiciones. Si faltara
+`window.Autoguardado`, (b) lanzaría y (c) y (d) no llegarían a evaluarse. No
+es realista, porque `autoguardado.js` se carga estático y antes (R43), y el
+circuito no funcionaría sin él. Sin acción.
+
+**2 · ¿El circuito sigue sin modificarse (R33)? ¿R81, literal?** **Sí a
+las dos.**
+
+- Contra `git merge-base dev HEAD` no hay ningún `M` en `js/`.
+- Comparé R81 línea a línea con `design.md` §16.15.4:
+  - **`partes.html`**: `  <script src="js/guarda_salida.js"></script>`
+    justo antes de `  <script src="js/app.js"></script>`, sin atributos ni
+    comentario. Vigilado por R43 (tres controles) y R59 (f) (dos controles:
+    un segundo script y `defer`).
+  - **`test_f007_estaticos.py`**: la línea
+    `    "js/guarda_salida.js",  # F-035 (R80, R81): solo lee el estado del circuito`,
+    entre `"js/autoguardado.js",` y `"js/app.js",`. Idéntica, con sus cuatro
+    espacios. El diff contra la base es esa línea más la de `INDEX`.
+  - **`test_f036_front.py`**: el docstring nuevo y
+    `        assert "target=" not in en_cabecera[destino]` sustituyen al
+    docstring viejo y a los dos `assert` de `target` y `rel`. Idéntico,
+    sangrías incluidas: +2 −3 contra `2a86bca`.
+- `LINEAS_R81` (`test_f035_portal.py`) guarda esas mismas líneas literales,
+  y R32 las exige por fichero con cuatro controles.
+
+**3 · ¿Queda algún `target`, `window.open` o pestaña nueva entre páginas del
+front?** **No.**
+
+- Busqué `target`, `window.open`, `.open(`, `location`, `_blank` y
+  `nuevaPestana` en las cuatro páginas y en todo `js/`.
+- El único `target` es el «abrir en SharePoint» (`partes.html:610`,
+  `:href="resultado.web_url"`). Es externo y R73 no lo cubre, a propósito.
+- `window.location.hash` en `portal_app.js:62` y `:71` es el enrutado por
+  ancla dentro del portal (mismo documento), no una pestaña nueva.
+- `enlaceSeccion` da `nuevaPestana: false` en los dos caminos.
+- R73 lo vigila en las cuatro páginas, con un control por página. Mi
+  mutación G22 (`:target` ligado en el enlace a oficios) la tumban R73 y el
+  R51 ajustado.
+
+**4 · El test de R51 de F-036 invertido: ¿sigue protegiendo lo que
+importa?** **Sí.**
+
+- Su primer `assert` (los dos destinos están entre los `href` de la primera
+  `<header>`) no cambia.
+- `…_solo_gana_los_dos_enlaces` sigue intacto: los enlaces existen y van a
+  donde deben.
+- El `assert` nuevo es una subcadena: `"target="` caza el literal y el
+  ligado (`:target=`); G22 lo confirma.
+- Lo único que no ve es un `rel` suelto sin `target` (G21). Es
+  **equivalente**: sin `target`, `rel="noopener"` no cambia la navegación, y
+  R59 (g) lo neutraliza igual.
+- Lo que el test protegía antes (que la remesa no se pierda) lo protege
+  ahora la guarda, que es justo lo que H16-1 y H16-2 piden blindar.
+
+**5 · H-2 y H-6.** **Cerrados los dos.**
+
+- **H-2**: `problemas_r73` busca `window.open` en las cuatro páginas, sin
+  comentarios, con un control por página. El estático de R80 lo prohíbe en
+  la guarda. El implementer razona bien que la guarda en ejecución no puede
+  ver clics.
+- **H-6**: `test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar` mira la
+  regla, el `display` de `.rs-pestana` y que haya una sola regla sobre el
+  `::after`. Lleva los controles V1–V4 en memoria. V3 y V4 sobre los ficheros
+  reales la tumban.
+
+**6 · Los apuntes del §5 del implementer.** Los dos son **incoherencias de
+spec**, para el spec-author, y **no bloquean**: no rompen nada.
+
+- **H16-3**: R79 (`requirements.md` l. 888) escribe
+  `hayTrabajoSinTerminar(estado, Pipeline)`, y el diseño (§16.15.3), con
+  razón, `(estado, pipeline, autoguardado)`, porque (b) necesita las
+  constantes de `Autoguardado`. El código sigue al diseño.
+- **H16-4**: el comentario de F-036 en la cabecera de `partes.html` («la
+  entrada de incidencias, en otra pestaña: salir de esta perdería la remesa
+  en curso») dice ahora lo contrario de lo que pasa, y R59 no deja tocarlo.
+  R59 compara comentarios fuera de la barra y (g) solo admite quitar
+  `target` y `rel`.
+- La reescritura del comentario **de la barra**, aunque T44 diga «ningún
+  otro cambio en el HTML», la acepto: R59 (c) la admite («con el comentario
+  que la precede») y el texto viejo afirmaba lo contrario de lo que hace la
+  página.
+
+**7 · El vistazo en el navegador de T44.** **Puede esperar a V1/V2 del
+humano, con dos matices.**
+
+- Ese vistazo (página recién abierta, «Inicio» sin pregunta) **no habría
+  detectado** una guarda sin instalar: sin trabajo, una guarda instalada y
+  una ausente se comportan igual. La instalación la cubrirá el test de
+  H16-1; esperar al navegador para eso no sirve.
+- Lo único que solo se ve en un navegador de verdad es que `Alpine.$data`
+  exista y devuelva el estado en 3.14.1 (riesgo de §16.15.9). Se puede
+  comprobar **en un minuto y sin backend**: `.\dev_front.ps1`, abrir
+  `http://localhost:5173/partes.html` y, en la consola,
+  `GuardaSalida.leerEstado(window, document).fase` (tiene que dar
+  `"inactivo"`). Después:
+  `Alpine.$data(document.querySelector('[x-data="appPostventa()"]')).fase = "procesando"`,
+  un clic en la página y otro en «Inicio»: tiene que salir el diálogo del
+  navegador, y con «Cancelar» la página se queda. Recomiendo que lo haga el
+  humano (o el implementer con la extensión conectada) **antes del bloque
+  15**. Si falla, la spec manda PARAR, y cuanto antes se sepa, menos
+  trabajo encima. No bloquea este bloque.
+
+**8 · Mutaciones a mano sobre la guarda.** Las hice en el worktree
+desechable, con el guion `mutar_b16_rev.py` del scratchpad. En cada una
+pasé Node entero (reporter TAP) y la suite pytest del front, y después
+restauré el fichero. `git status --porcelain` del worktree salió vacío al
+final y el worktree está retirado.
+
+| # | Mutación | Resultado | La mata |
+|---|---|---|---|
+| G1 | En el navegador **no se instala** (fuera `instalar(window, document);`, `guarda_salida.js:162`) | **sobrevive** | — (**H16-1**) |
+| G4 | `if (pipeline.hayTandaEnCurso)` (la función como booleano) | muerta | Node R79 (a) tanda real y los negativos ×19 |
+| G5 | (b) ignora `GUARDANDO` | muerta | R79 (b) GUARDANDO |
+| G6 | (c) ignora el `cerrado` del backend | muerta | R79 (c) negativo; «todo cerrado o rechazado» |
+| G7 | `alSalir` sin `returnValue` | muerta | R78 ×2 |
+| G8 | `returnValue = true` siempre (falla cerrada) | muerta | R78 sin trabajo; R80 falla abierta ×4 |
+| G11 | (d) no cuenta un abierto rechazado | muerta | R79 (d) |
+| G12 | (c): un parte con `cerrado: true` hace `return false` en vez de `continue` | **sobrevive** | — (**H16-2**) |
+| G13 | (c) solo mira el primer parte | muerta | R79 (c) ×4 |
+| G14 | `instalar` no pasa el evento a `alSalir` | muerta | R78 «el beforeunload instalado…» |
+| G16 | `seleccionado` entre las fases en marcha (contra D-15) | muerta | Node ×3; estático R80 ×2 |
+| G18 | (b) cuenta también `GUARDADO` | muerta | R79 (b) negativo; «todo cerrado…» |
+| G19 | Lee `estado.parteAbierta` (nombre mal escrito) | muerta | R79 (d) |
+| G20 | `leerEstado` sin comprobar que `$data` sea función | sobrevive | **equivalente**: el `$data` ausente lanza dentro del `try` y da `null` igual |
+| G21 | `rel="noopener"` sin `target` en el enlace a importar | sobrevive | **equivalente**: sin `target`, `rel` no cambia la navegación |
+| G22 | `:target="'_blank'"` en el enlace a oficios de la cabecera | muerta | R73 `partes.html`; R51 de F-036 ajustado |
+
+Mueren 13 de 16. G20 y G21 son equivalentes. **G1 y G12 son reales** y
+tocan el núcleo de R78 y R79 (c): H16-1 y H16-2.
+
+### Checkpoints (acotados al bloque)
+
+**C1**
+- [x] `init.sh` exit 0 (ejecutado por el reviewer).
+- [x] Ficheros del arnés presentes (`init.sh` los da en `[OK]`).
+
+**C2**
+- [x] Una sola feature `in_progress` (F-035).
+- [x] Rama `feature/F-035-portal-posventa`.
+- [x] `current.md`: la entrada del bloque describe lo hecho, el MANUAL
+  pendiente y lo que va al spec-author. Sigue acumulando el histórico de la
+  feature (deuda previa, O-2 de una review anterior).
+- [x] Features `done` con resumen en `history.md`: el bloque no cierra
+  ninguna.
+
+**C3**
+- [x] Hexagonal: el diff es el front estático (un módulo JS nuevo de lógica
+  pura con su enganche al navegador, HTML y tests). No toca `domain/` ni
+  los adaptadores.
+- [x] Primera línea con la ruta en los dos ficheros nuevos.
+- [x] Sin `console.*`, `debugger`, TODOs, secretos ni dependencias nuevas
+  (`node:test` y `node:assert` son de Node).
+- [x] Parte como unidad, validaciones antes de archivar, manuscrito,
+  firmado ≠ conforme, reprocesar no duplica y `conest`: **N/A
+  justificado**. El bloque no cambia ningún módulo del circuito ni el
+  backend (diffs de arriba). La guarda solo lee, y lo vigilan el `Proxy`
+  que lanza y el estático de R80.
+- [x] Ningún PDF ni parte en git (`--diff-filter=A`: solo los dos ficheros
+  de la guarda).
+
+**C3 bis** — **N/A**: el bloque no toca `docs/referencia/`.
+
+**C4**
+- [ ] **Cada requisito con un test trazable que lo cubra.** R78 se prueba
+  sobre `alSalir` e `instalar` **inyectados**. Ningún test comprueba que la
+  guarda **se instale** al cargarse en la página (G1). Y R79 (c) no tiene
+  un caso con un parte cerrado **antes** de uno pendiente (G12). Ver
+  H16-1 y H16-2.
+- [x] Sin red ni BBDD: dobles en memoria, el `Pipeline` y el `Autoguardado`
+  reales (lógica pura) y lectura de ficheros.
+- [x] MANUAL (humano): el vistazo de T44 consta como pendiente en
+  `progress/current.md`, junto a V1 (q) y V2 (k)–(p) de T12, que llevan sus
+  pasos. Mi respuesta 7 añade la comprobación de un minuto sin backend.
+
+**C4 bis**
+- [x] `rigor: "estandar"` declarado.
+- [x] Fase RED: traza real en el informe (§2) y **reproducida** (T43: 1
+  fail en Node y 14 en pytest; T44: 13 + 1).
+- [x] Cobertura: N/A **con el motivo impreso** por `init.sh`.
+- [x] Mutación: `progress/mutacion_F-035.md` lo generó la herramienta.
+  Recalculado (alcance 0 con las dos bases) y con el control del cero
+  hecho (41 + 58 + 3 mutantes ignorando la exclusión).
+- [x] Muertos comprobados: campaña **reejecutada** (0,0 s, menos de 5 min),
+  con los mismos totales.
+- [x] Coste por mutante: N/A **justificado**. Hay 0 mutantes, así que no
+  hay nada que dividir.
+- [ ] **Supervivientes analizados y sin hueco en lo central.** Las 18 del
+  implementer mueren. De las mías, G20 y G21 son equivalentes (analizadas
+  arriba). **G1 y G12 son huecos reales** de R78 y R79 (c): no son
+  equivalentes, y el arreglo es barato. Con `estandar` no hace falta la
+  aceptación escrita del humano, pero tampoco cabe dejar sin test la línea
+  que activa la guarda.
+- [x] «Evidencias» del bloque con los cuatro números y los workers (1).
+- [x] Ningún N/A sin justificar.
+
+**C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+
+**C5**
+- [x] T43, T44 y T45 `[x]`, cada una con su commit `F-035 Tn: …`. El resto
+  de `tasks.md` sigue abierto **a propósito**.
+- [x] Sin ficheros sin trackear (`git status` limpio; `coverage.json` del
+  front está ignorado).
+- [x] `features.json`: F-035 `in_progress`, correcto.
+
+### Cobertura del bloque: requisito → test
+
+| Requisito | Test |
+|---|---|
+| R78 | Node `f035 R78: con trabajo sin terminar, alSalir llama a preventDefault…`, `…sin trabajo, alSalir deja el evento intacto…`, `…lee la tanda y el autoguardado de la ventana…` y `…el beforeunload instalado pregunta con trabajo y calla sin él`. **Falta**: la instalación al cargar (H16-1) |
+| R79 (a) | Node `f035 R79 (a)` ×3 fases, tanda (doble y `conGuardaDeTanda` **real**), negativos ×4 fases; estático `test_f035_r80_las_fases_de_la_guarda_existen_en_app_js` con su control |
+| R79 (b) | Node `f035 R79 (b)` GUARDANDO, FALLO y los negativos GUARDADO e INACTIVO |
+| R79 (c) | Node `f035 R79 (c)` ×4 positivos y tres negativos. **Falta**: un cerrado antes del pendiente (H16-2) |
+| R79 (d) | Node `f035 R79 (d)`, positivo (rechazado abierto) y negativo |
+| R79 «no es trabajo» | Node: recién abierta, `seleccionado`, todo cerrado o rechazado, tras `reiniciar`; estados raros ×8 |
+| R80 | Node: el `Proxy` de solo lectura (con su control), `leerEstado` ×7 y falla abierta ×4; `test_f035_r80_la_guarda_solo_lee_y_solo_escucha_beforeunload` con 11 controles |
+| R81 / R32 / R33 | `test_f035_r32_de_los_tests_del_circuito_solo_cambian_index_y_las_lineas_de_r81` (`LINEAS_R81`) con cuatro controles; R33 con el alta de `js/guarda_salida.js`; `test_f007_estaticos.py` entero |
+| R43 ajustado | `test_f035_r43_partes_html_carga_los_nueve_scripts_y_la_guarda_justo_antes_de_app_js` con tres controles |
+| R59 (f), (g) | la guardia de R59, más tres estropeos nuevos (segundo script, `defer`, `target` fuera del enlace de SharePoint) |
+| R31 ajustado | `test_f035_r31_la_barra_del_circuito_navega_en_la_misma_pestana` con tres controles; Node `f035 R31: enlaceSeccion desde el circuito…` |
+| R47 ajustado | `test_f035_r47_la_barra_del_circuito_avisa_de_la_confirmacion_al_salir` con las dos leyendas viejas como control |
+| R73 ajustado y H-2 | `test_f035_r73_ninguna_pagina_del_front_abre_otra_aparte[×4]`, más controles de `target` ×4, `window.open` ×4 y SharePoint |
+| R48 (absorbida) | raíz `test_f035_r48_…` en verde por construcción; el control, sobre una copia en memoria |
+| R51 de F-036 (ajustado) | `test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas` y `…_solo_gana_los_dos_enlaces` |
+| H-6 (R66) | `test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar` con controles V1–V4 |
+
+### Hallazgos
+
+1. **H16-1 · MEDIA · bloqueante · Ningún test ve que la guarda se instale
+   en la página.**
+
+   *Qué pasa.* `services/postventa-front/js/guarda_salida.js:160–163` es lo
+   único que conecta la guarda con el navegador:
+   `if (typeof window !== "undefined") { window.GuardaSalida = …; instalar(window, document); }`.
+   Los tests de Node cargan el módulo con `require`, donde no hay `window`,
+   así que esa rama no se ejecuta nunca. Sin la línea `instalar(…)`, la
+   suite entera sigue en verde (G1). En producción eso es: la guarda se
+   carga, no escucha nada y la remesa se pierde sin pregunta, que es justo
+   el riesgo que el humano aceptó a cambio de la guarda.
+
+   *Por qué no basta el navegador.* El vistazo de T44 no lo vería (sin
+   trabajo, instalada y ausente se comportan igual). Hoy solo lo cazaría V2
+   (m), al final de la feature.
+
+   *Precedente.* El mismo patrón que H-R1 de la primera review: cableado sin
+   ningún test.
+
+2. **H16-2 · MEDIA · bloqueante · R79 (c) no tiene ningún caso con un parte
+   cerrado antes de uno pendiente.**
+
+   *Qué pasa.* En `services/postventa-front/tests_js/guarda_salida.test.js:281–295`,
+   los cuatro positivos de (c) usan
+   `[rechazado, <el del caso>, parte(null, true)]`, con el cerrado al
+   **final**. Cambiar `continue` por `return false` cuando un parte está
+   cerrado (`guarda_salida.js:87–88`) deja todo en verde (G12).
+
+   *Por qué importa.* Es el caso más corriente en que la guarda importa: una
+   tanda que cierra los primeros partes y falla en uno posterior. Con esa
+   mutación se saldría sin pregunta y se perderían los pendientes. El código
+   de hoy lo hace bien: lo comprobé con la prueba de concepto de arriba,
+   `[cerrado, aprobado sin cerrar]` → pregunta. Pero ningún test lo fija.
+
+3. **H16-3 · Spec, para el spec-author · Firma de R79.** `requirements.md`
+   l. 888 escribe `GuardaSalida.hayTrabajoSinTerminar(estado, Pipeline)`;
+   `design.md` §16.15.3 y el código, `(estado, pipeline, autoguardado)`.
+   Hace falta el tercero para (b). **Arreglo**: en R79, «`(estado, Pipeline,
+   Autoguardado)`». No bloquea.
+
+4. **H16-4 · Spec, para el spec-author · El comentario de F-036 en la
+   cabecera de `partes.html` queda desfasado y R59 no deja arreglarlo.**
+
+   *Dónde.* `services/postventa-front/partes.html`, el comentario
+   `<!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir de esta perdería la remesa en curso (D4 de F-007). -->`
+   que precede al `<nav>` de los dos enlaces. Dice lo contrario de lo que
+   hace la página.
+
+   *Por qué no se puede tocar.* R59 compara los comentarios fuera de la
+   barra, y (g) solo admite retirar `target` y `rel`.
+
+   *Arreglo, a elegir:*
+   - (i) añadir a R59 (g) la sustitución **literal** de ese comentario, con
+     su línea en la guardia, igual que las de R81;
+   - (ii) aceptar el desfase hasta que F-045 toque el circuito, y anotarlo en
+     §16.15.4.
+
+   Es invisible para el usuario. No bloquea.
+
+5. **H16-5 · Spec, para el spec-author · «El rebote del autoguardado sobre
+   un parte que no está abierto no existe» (`design.md` §16.15.2, último
+   párrafo) es inexacto.**
+
+   *Qué pasa.* `cerrarParte()` (`app.js:391–394`) no cancela ni fuerza el
+   rebote: el temporizador sigue vivo hasta 1.500 ms con el detalle ya
+   cerrado (`autoguardado.js:355–362`). Para un parte sin terminar lo cubre
+   (c). Para uno **rechazado** (o cerrado según el backend), que se puede
+   editar (`partes.html:306`, sin `:disabled`), es un hueco de como mucho
+   1,5 s: editar, cerrar el detalle y salir en ese instante.
+
+   *Por qué no se arregla en la guarda.* No lo puede ver sin
+   `_autoguardado()` (R80).
+
+   *Arreglo.* Pasar la frase a «Lo que la guarda no puede saber y se
+   acepta», con la ventana de 1,5 s. No bloquea.
+
+6. **H16-6 · Nit de spec · (d) mira solo el indicador `parteAbierto.cerrado`;
+   (c) acepta también `estadoDe(parte) === ESTADO_CERRADO`.**
+
+   *Qué pasa.* Con el detalle abierto de un parte que el backend da por
+   cerrado (subido otra vez), la guarda pregunta; con el detalle cerrado, no.
+   Es lo que dice D-15, literal. Es inocuo (se resuelve cerrando el
+   detalle), pero es incoherente.
+
+   *Arreglo.* Si se quiere coherencia, que (d) acepte también el estado del
+   backend; si no, nada.
+
+7. **H16-7 · Menor · El estático ata a `app.js` las fases, pero no los
+   nombres que lee la guarda.**
+
+   *Qué falta.* `test_f035_r80_las_fases_de_la_guarda_existen_en_app_js`
+   salta si se renombra una fase. Si se renombrara `partes`, `parteAbierto`,
+   `estadoAutoguardado` o `cerrado` en `app.js`, o el `x-data` de
+   `partes.html`, la guarda fallaría **abierta y en silencio**: los tests de
+   comportamiento escriben esos nombres a mano. Hoy R33 y R59 congelan esos
+   nombres, pero F-021 y F-045 tocarán el circuito.
+
+   *Arreglo.* Ampliar el estático para exigir:
+   - las declaraciones `partes:`, `parteAbierto:`, `estadoAutoguardado:` y
+     `cerrado:` en `app.js`;
+   - un único elemento de `partes.html` que case con `SELECTOR_CIRCUITO`.
+
+   *Destino.* Con H16-1 si sale barato; si no, el bloque 17. No bloquea por
+   sí solo.
+
+### Cambios requeridos
+
+1. **H16-1.** En `services/postventa-front/tests_js/guarda_salida.test.js`,
+   un test **`f035 R78: cargada en la página, la guarda se instala sola…`**.
+   Tiene que:
+   - leer `js/guarda_salida.js` con `fs`;
+   - ejecutarlo con `vm.runInNewContext(fuente, { window, document })`, con
+     un `window` falso que apunte sus `addEventListener` y lleve `Pipeline`
+     y `Autoguardado` reales, y un `Alpine.$data` que devuelva un estado con
+     trabajo;
+   - comprobar que queda **exactamente un** `beforeunload` en `window` y que
+     `window.GuardaSalida` existe;
+   - llamar a ese manejador con un evento falso y comprobar `preventDefault`
+     1 y `returnValue` `true`.
+
+   Y su **control**: la misma fuente sin la línea `instalar(window, document);`
+   (en memoria, `replace` con la cuenta exigida a 1) no deja ninguna
+   escucha. La prueba de concepto del reviewer, en el scratchpad
+   (`vm_prueba.js`), confirma que así funciona. Al terminar, G1 tiene que
+   morir.
+2. **H16-2.** En el mismo fichero, un positivo de R79 (c) con el parte
+   cerrado **antes** del pendiente. Por ejemplo,
+   `[parte(PipelineReal.ESTADO_APROBADO, true), parte(PipelineReal.ESTADO_APROBADO)]`
+   → `true`, sin violaciones. O bien, en los cuatro positivos de l. 281–295,
+   poner `parte(null, true)` el **primero**. Al terminar, G12 tiene que
+   morir.
+3. En `progress/impl_F-035.md`, una nota de las dos correcciones con G1 y
+   G12 muertas (salida real) y `bash harness/init.sh` en verde. Ningún
+   cambio de código de producción ni de HTML.
+
+H16-3 a H16-6 van al spec-author. H16-7 se puede hacer junto a 1 si sale
+barato.
+
+### Observaciones sin acción
+
+- **O16-1**: las bases de mutación. El encargo decía `8ced4bd` y T45,
+  `2a86bca`; el implementer lanzó las dos (0 mutantes en ambas). Correcto.
+- **O16-2**: el implementer declara que lanzó `init.sh` una vez con la
+  salida redirigida. Yo lo lancé limpio y sale en verde: sin efecto.
+- **O16-3**: el `bfcache` y `beforeunload` registrado siempre. Lo aceptó el
+  diseño (§16.15.3): la página vuelve vacía igual que hoy. Sin acción.
+
+### Qué queda para el humano
+
+- Nada que decidir para corregir: H16-1 y H16-2 son dos tests.
+- Recomendado, **antes del bloque 15**: la comprobación de un minuto de
+  `Alpine.$data` en el navegador (respuesta 7).
+- Para el líder: H16-3 a H16-6 al spec-author.
+
+### Automejora (propuesta, no aplicada)
+
+**P-R4 · `CHECKPOINTS.md` C4 bis, para `arnes-base` (vale para cualquier
+front con módulos duales navegador/Node).**
+
+*La regla.* Cuando un módulo se prueba en Node con `require` y se engancha
+al navegador en una rama `if (typeof window !== "undefined")`, las
+mutaciones a mano deben incluir **borrar el enganche** (la autoinstalación,
+el registro en `window`). Y el módulo debe tener un test que lo cargue con
+`vm.runInNewContext` y un `window` falso. Con `require` esa rama no se
+ejecuta nunca: el módulo puede estar perfecto y no hacer nada en la página.
+
+*Caso de origen.* F-035, bloque 16, H16-1 (G1).
+
+**P-R5 · Para el spec-author, en general.** Cuando un recorrido salta
+elementos (`continue`), al menos un caso positivo debe poner el elemento
+saltado **antes** del que decide.
+
+*Caso de origen.* F-035, bloque 16, H16-2 (G12).

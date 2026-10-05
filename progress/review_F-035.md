@@ -1619,3 +1619,234 @@ elementos (`continue`), al menos un caso positivo debe poner el elemento
 saltado **antes** del que decide.
 
 *Caso de origen.* F-035, bloque 16, H16-2 (G12).
+
+---
+
+## Re-review del bloque 16 · arreglos de H16-1 y H16-2 · 2026-10-05
+
+> reviewer. Alcance **acotado** a `git diff 82db245..HEAD` (`e00ffbc` H16-1,
+> `87e24e8` H16-2, `36cf799` informe y estado), solo tests en
+> `services/postventa-front/tests_js/guarda_salida.test.js`. H16-3 a H16-6
+> son de spec y van al bloque 14: fuera de esta re-review.
+
+### Veredicto
+
+**CHANGES_REQUESTED** (del bloque 16, no de la feature).
+
+- **H16-1 y H16-2 cierran.** G1 y G12, repetidas por mí cada una sola en una
+  copia desechable, caen en rojo, cada una con su test nuevo. El código de
+  producción no se ha tocado.
+- Pero el encargo pedía probar mutaciones **cercanas**, y una de ellas sigue
+  viva en el mismo recorrido de (c) que arregla H16-2. **N14**: el bucle de
+  (c) empieza en `i = 1` y la suite entera sigue en verde. En producción eso
+  es que **una remesa de un solo parte**, o una cuyo único pendiente es el
+  primero, se pierde al salir sin pregunta. Es el mismo criterio que bloqueó
+  G12: un hueco central de R79 (c), con un arreglo de un test (**H16-8**).
+- Otra cercana a G1 (instalar con `{ once: true }` o `{ passive: true }`)
+  también vive. Es menos probable y no bloquea, pero se arregla con una
+  aserción y conviene hacerlo en el mismo commit (**H16-9**).
+
+H16-8 es un hueco que **mi review anterior no buscó**: mi G13 (solo el
+primer parte) miraba el otro extremo del bucle. No es un fallo del
+implementer, que hizo exactamente lo pedido.
+
+### Nivel de rigor
+
+`estandar`, como en la review del bloque 16: fase RED, cobertura de lo
+cambiado y mutación con supervivientes analizados. El diff es solo de tests:
+
+- la cobertura sale N/A con el motivo impreso;
+- la campaña de la herramienta da 0 mutantes (el implementer la lanzó con
+  base `82db245`; el control del cero ya se hizo en la review del bloque);
+- la compensación son las mutaciones a mano.
+
+La regla 7 (orden) es de rigor `critico`: **N/A**.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh` (tal cual, árbol real) | **exit 0**, `ENTORNO LISTO`. Raíz 112 passed; api y front en verde (caché del árbol); `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; ruff 71 avisos, deuda previa |
+| `git diff 82db245 HEAD -- services/postventa-front/js/` | **vacío** (0 líneas) |
+| `git diff --stat 82db245 HEAD` | 3 ficheros: `guarda_salida.test.js` (+63 −1), `progress/impl_F-035.md`, `progress/current.md`. Nada más |
+| Worktree desechable del scratchpad (`git worktree add --detach`, HEAD `36cf799`), línea base | Node **567/567** (54 → 58 en `guarda_salida.test.js`, +4); front pytest **470 passed, 3 skipped** (los 3 de diff de rama, saltados con HEAD separado) |
+| Mutaciones a mano | guion `mutar_b16_rerev.py` del scratchpad: aplica cada mutación **sola** con la cuenta del patrón exigida a 1 (respetando el CRLF del fichero), pasa Node entero y el pytest del front (sin el puente a Node, que repite Node) y restaura. «restaurado: True» al acabar |
+| Al acabar | worktree retirado (`git worktree remove --force` + `prune`); el ajeno `agent-a6e2f9bed1d46cdbc` no se toca; `git status` del árbol real limpio antes del commit |
+
+### H16-1 y H16-2: ¿cierran?
+
+**Sí, las dos.**
+
+- **H16-1.** El test `f035 R78: cargada como script en la página, la guarda
+  se instala sola y su beforeunload pregunta con trabajo` hace lo pedido:
+  - lee el fichero real con `fs` y lo ejecuta con `vm.runInNewContext` en un
+    contexto con `window` y `document` y sin `module`, como `partes.html`;
+  - exige **un** `beforeunload` en la ventana y **nada** en el documento;
+  - exige `window.GuardaSalida` con `hayTrabajoSinTerminar`;
+  - llama al manejador registrado: sin trabajo no toca el evento, y con
+    `fase: "procesando"` llama a `preventDefault` una vez y pone
+    `returnValue = true`. Lee el estado **al salir**, no al cargar.
+- **H16-2.** Tres positivos con el parte terminado **delante** de uno
+  aprobado sin cerrar: cerrado por el circuito, rechazado y cerrado del
+  backend. El primero mata G12; los otros dos fijan que la rama de
+  `estadoDe` tampoco corte el recorrido. Que G12 solo la mate el primero es
+  lo esperado, y el informe lo explica.
+- El informe trae las salidas reales de G1 y G12, el `diff` de cada mutante
+  y la nota honesta del primer `sed` de G12 que no aplicó.
+
+### Mutaciones repetidas y cercanas
+
+Cada una sola, sobre `js/guarda_salida.js` del worktree.
+
+| # | Mutación | Resultado | La mata |
+|---|---|---|---|
+| **G1** | fuera `instalar(window, document);` (l. 162) | **muerta** | Node: `f035 R78: cargada como script…` (1 fail; pytest verde) |
+| **G12** | (c) parte con `cerrado: true`: `continue` → `return false` (l. 88) | **muerta** | Node: `f035 R79 (c): un parte cerrado por el circuito (cerrado: true) delante…` (1 fail) |
+| N1 | instalar con `"unload"` | muerta | Node ×2 (vm y R80 «exactamente un beforeunload»); pytest `test_f035_r80_la_guarda_solo_lee_y_solo_escucha_beforeunload` |
+| N2 | instalar con `"pagehide"` | muerta | ídem N1 |
+| N3 | instalar en `documento` | muerta | Node ×3 |
+| N4 | instalar dos veces | muerta | Node: el test vm (lista exacta de escuchas) |
+| **N5** | `addEventListener("beforeunload", fn, { once: true })` | **sobrevive** | — (**H16-9**) |
+| **N6** | `addEventListener("beforeunload", fn, { passive: true })` | **sobrevive** | — (**H16-9**) |
+| N7 | el manejador no pasa el evento a `alSalir` | muerta | Node ×2 |
+| N8 | `alSalir` sin `returnValue` | muerta | Node ×3 |
+| N9 | `alSalir` sin `preventDefault` | muerta | Node ×4 |
+| N10 | fuera `window.GuardaSalida = …` | muerta | Node: el test vm |
+| N11 | instala solo si además hay `module` | muerta | Node: el test vm |
+| N12 | `instalar(window, {})` | muerta | Node: el test vm |
+| N13 | (c) parte cerrado: `continue` → `break` | muerta | Node: el positivo nuevo de H16-2 |
+| **N14** | (c) el bucle empieza en `i = 1` | **sobrevive** | — (**H16-8**) |
+| N15 | (c) el bucle acaba en `length - 1` | muerta | Node ×3 (los tres de H16-2) |
+| N16 | (c) `return false` tras el primer parte rechazado o cerrado del backend | muerta | Node ×6 |
+| N17 | `ventana.onbeforeunload = …` en vez de `addEventListener` | muerta | Node ×3; pytest R80 ×2 |
+
+Mueren 16 de 19. Ninguna de las tres vivas es equivalente.
+
+### Checkpoints (acotados al diff)
+
+**C1**
+- [x] `init.sh` exit 0 (ejecutado por el reviewer).
+
+**C2**
+- [x] Una sola feature `in_progress` (F-035), rama correcta.
+- [x] `current.md`: entrada nueva arriba con lo hecho, lo que queda para el
+  spec-author y el MANUAL pendiente.
+
+**C3**
+- [x] Solo tests: `js/` sin diff. Primera línea con ruta (fichero ya
+  existente). Sin `console.*`, `debugger`, secretos ni dependencias nuevas
+  (`node:fs`, `node:path` y `node:vm` son de Node).
+- [x] Hexagonal y reglas de dominio: **N/A justificado**, el diff no toca
+  código de producción.
+- [x] Ningún PDF ni parte en git.
+
+**C3 bis** — **N/A**: no toca `docs/referencia/`.
+
+**C4**
+- [ ] **Cada requisito con un test trazable que lo cubra.** R78 (la
+  instalación) y R79 (c) con el terminado delante, ya sí. Pero R79 (c) no
+  tiene **ningún** positivo con el pendiente en la **primera** posición
+  (N14). Ver H16-8.
+- [x] Sin red ni BBDD: `vm` sobre el fichero local y dobles en memoria.
+
+**C4 bis**
+- [x] `rigor: "estandar"`.
+- [x] Fase RED: G1 y G12 con salida real en el informe, y **reproducidas**
+  por mí.
+- [x] Cobertura: N/A **con el motivo impreso** por `init.sh` (solo tests JS).
+- [x] Mutación de la herramienta: 0 mutantes con base `82db245`, legítimo
+  (el diff no tiene Python de producción; control del cero hecho en la
+  review del bloque). No se reejecuta: el informe va al scratchpad y no
+  pisa `progress/mutacion_F-035.md`.
+- [ ] **Supervivientes analizados y sin hueco en lo central.** N14 es un
+  hueco real de R79 (c), no equivalente (H16-8). N5 y N6 son reales pero
+  menores (H16-9).
+- [x] «Evidencias» con los cuatro números.
+- [x] Ningún N/A sin justificar.
+
+**C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+
+**C5**
+- [x] Commits `F-035 H16-1: …`, `F-035 H16-2: …` y el del informe. Sin
+  ficheros sin trackear.
+
+### Hallazgos
+
+1. **H16-8 · MEDIA · bloqueante · R79 (c) no tiene ningún positivo con el
+   pendiente en la primera posición.**
+
+   *Qué pasa.* En `services/postventa-front/tests_js/guarda_salida.test.js`,
+   todos los positivos de (c) ponen el parte pendiente en el **índice 1**:
+   los cuatro de l. 285–299 (`[rechazado, <el del caso>, cerrado]`) y los
+   tres nuevos de l. 304–317 (`[terminado, aprobado]`). Si el bucle de
+   `services/postventa-front/js/guarda_salida.js:85` empieza en `i = 1`,
+   la suite entera sigue en verde (N14).
+
+   *Por qué importa.* Con esa mutación, una **remesa de un solo parte** sin
+   cerrar, o una cuyo único pendiente es el primero, deja salir sin pregunta
+   y se pierde. Una remesa de un parte es de lo más corriente, y en
+   `revision` o `resumen` solo la ve (c). El código de hoy lo hace bien;
+   ningún test lo fija.
+
+2. **H16-9 · BAJA · no bloquea · Nada fija que el `beforeunload` se registre
+   sin opciones.**
+
+   *Qué pasa.* El doble `navegador()` (l. 147–179) ignora el tercer argumento
+   de `addEventListener`, y el estático de R80
+   (`test_f035_paginas.py`, `_ESCUCHA`) solo mira el evento. Con
+   `{ once: true }` (N5) el navegador retira la escucha tras la primera
+   salida: el usuario cancela una vez y la siguiente salida pierde la
+   remesa sin pregunta. Con `{ passive: true }` (N6) el navegador ignora
+   `preventDefault()`. Las dos sobreviven.
+
+   *Por qué no bloquea.* Requiere tocar a propósito la línea de `instalar`,
+   y no es un error de los que salen solos. Pero el arreglo es una
+   aserción.
+
+### Cambios requeridos
+
+1. **H16-8.** En `services/postventa-front/tests_js/guarda_salida.test.js`,
+   un positivo de R79 (c) con el pendiente **primero**. Por ejemplo, la
+   remesa de un solo parte:
+   `[parte(PipelineReal.ESTADO_APROBADO)]` → `true`, sin violaciones.
+   Mejor aún, ese y `[parte(PipelineReal.ESTADO_APROBADO), parte(null, true)]`
+   (pendiente delante de un terminado). Al terminar, N14 (`let i = 1` en
+   `js/guarda_salida.js:85`) tiene que morir, con su salida real en el
+   informe.
+2. **H16-9 (recomendado en el mismo commit, no bloquea).** Que `navegador()`
+   apunte también el tercer argumento de `addEventListener` (por ejemplo,
+   `registro.escuchas.push({ tipo, manejador, opciones })`), y que el test
+   vm de H16-1 y el de R80 «instalar registra exactamente un
+   beforeunload…» exijan `opciones === undefined`. Al terminar, N5 y N6
+   tienen que morir.
+3. En `progress/impl_F-035.md`, la nota con N14 (y N5 y N6 si se hace el 2)
+   muertas y `bash harness/init.sh` en verde. Ningún cambio de producción.
+
+### Observaciones sin acción
+
+- **O16-4**: el control en memoria que pedía el cambio 1 de la review
+  (la fuente sin `instalar(…)` no deja ninguna escucha) no está como test,
+  y el informe no lo menciona. G1 muere de forma reproducible (el
+  implementer y yo), así que el test **no** es vacuo hoy; el control lo
+  blindaría frente a un cambio futuro del doble. Opcional, si se toca el
+  fichero por H16-8.
+- **O16-5**: H16-7 (el estático que ata los nombres que lee la guarda) sigue
+  abierto, como estaba previsto: bloque 17.
+
+### Automejora (propuesta, no aplicada)
+
+**P-R6 · Amplía P-R5 (para `arnes-base`, vale para cualquier proyecto).**
+Cuando un test fija un recorrido, los positivos deben poner el elemento que
+decide en la **primera** posición, en una **intermedia** y en la **última**,
+y debe haber un caso de **un solo elemento**. Y las mutaciones a mano de un
+bucle incluyen siempre los dos extremos (`i = 1` y `length - 1`).
+
+*Caso de origen.* F-035, re-review del bloque 16: N14 vivo con los siete
+positivos de (c) en el índice 1. Mi G13 de la review anterior miraba solo
+uno de los dos extremos.
+
+**P-R7 · Para los dobles de `addEventListener` (`arnes-base`, fronts).** Un
+doble de `addEventListener` apunta **todos** sus argumentos, no solo el
+evento. Si no, `{ once: true }` o `{ passive: true }` pasan sin que se vean.
+
+*Caso de origen.* F-035, re-review del bloque 16, H16-9 (N5, N6).

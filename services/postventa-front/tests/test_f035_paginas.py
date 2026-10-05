@@ -908,9 +908,11 @@ ESTROPEOS_R63 = {
     # Mutación manual 18 (`design.md` §16.10), como control permanente.
     "un placeholder sale de su recuadro": (
         '<main class="rs-contenedor rs-principal flex-1">',
-        '<main class="rs-contenedor rs-principal flex-1">\n'
-        '<button type="button" data-placeholder="F-044" @click="placeholder(\'impresion.imprimir\')" '
-        'class="placeholder">Imprimir <span class="placeholder-ficha">F-044</span></button>',
+        (
+            '<main class="rs-contenedor rs-principal flex-1">\n'
+            '<button type="button" data-placeholder="F-044" @click="placeholder(\'impresion.imprimir\')" '
+            'class="placeholder">Imprimir <span class="placeholder-ficha">F-044</span></button>'
+        ),
     ),
     "un x-text de datos fuera": (
         '<main class="rs-contenedor rs-principal flex-1">',
@@ -1408,3 +1410,52 @@ def test_f035_h5_control_una_clase_sin_uso_salta():
     css = PORTAL_CSS_RUTA.read_text(encoding="utf-8") + "\n.rs-sin-usar { margin: 0; }\n"
 
     assert clases_del_portal_css_sin_uso(css, PORTAL.read_text(encoding="utf-8")) == ["rs-sin-usar"]
+
+
+# T28, mutación manual B9-19: el enlace del rótulo de bandeja (`rs-enlace`) es
+# burdeos en `css/styles.css`. Si se quita la regla que lo repinta dentro del
+# rótulo, el recuadro enseña burdeos (R65) y solo caía la versión de las hojas
+# (T21), que cae con cualquier cambio de CSS. Esto lo ata a R65.
+
+
+def burdeos_en_los_rotulos(html: str, hojas: dict[str, str]) -> list[str]:
+    """Las clases de los rótulos que alguna hoja pinta en burdeos sin que el rótulo las repinte. Vacío = correcto.
+
+    Una clase `c` de un elemento del rótulo es un problema si una regla `.c`
+    (o `.c:hover`) le da un `color` burdeos y no hay una regla
+    `.rs-obras__rotulo .c` con un `color` que no lo sea.
+    """
+    reglas = [r for css in hojas.values() for r in reglas_css(css_sin_comentarios_texto(css))]
+    en_rotulos = {
+        c
+        for e in envoltorios(leer_html_texto(html)) if _hijos(e)
+        for n in [_hijos(e)[0], *_hijos(e)[0].elementos()]
+        for c in clases(n)
+    }
+    problemas = []
+    for c in sorted(en_rotulos):
+        pintan = [r for r in reglas if r.selector in (f".{c}", f".{c}:hover") and "burdeos" in (r.valor("color") or "")]
+        repintan = [
+            r for r in reglas
+            if r.selector == f".rs-obras__rotulo .{c}" and r.valor("color") and "burdeos" not in r.valor("color")
+        ]
+        if pintan and not repintan:
+            problemas.append(f"«{c}» va en burdeos dentro de un rótulo ({pintan}) y nada lo repinta")
+    return problemas
+
+
+def test_f035_r65_lo_que_va_en_el_rotulo_no_se_pinta_en_burdeos():
+    problemas = burdeos_en_los_rotulos(PORTAL.read_text(encoding="utf-8"), _hojas())
+
+    assert problemas == [], "R65: el rótulo no usa el burdeos:\n" + "\n".join(problemas)
+
+
+def test_f035_r65_control_sin_la_regla_del_enlace_el_rotulo_ensena_burdeos():
+    """Control (mutación B9-19): sin `.rs-obras__rotulo .rs-enlace`, en memoria, la comprobación cae."""
+    hojas = {k: v.replace("\r\n", "\n") for k, v in _hojas().items()}
+    regla = ".rs-obras__rotulo .rs-enlace {\n  color: var(--rs-atencion);\n}\n"
+    assert hojas["css/portal.css"].count(regla) == 1, "el control ya no encuentra la regla del enlace del rótulo"
+    hojas["css/portal.css"] = hojas["css/portal.css"].replace(regla, "")
+
+    problemas = burdeos_en_los_rotulos(PORTAL.read_text(encoding="utf-8"), hojas)
+    assert any("«rs-enlace»" in p for p in problemas), problemas

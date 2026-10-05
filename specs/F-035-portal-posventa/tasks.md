@@ -615,7 +615,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío;
       `git diff HEAD~1 -- services/postventa-front/importar.html` con una
       sola línea cambiada (`id="bandeja"`).
-- [ ] **T28**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+- [x] **T28**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **18**, **19** y **20**. (c) `bash harness/init.sh`
       en verde.
       **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 9».

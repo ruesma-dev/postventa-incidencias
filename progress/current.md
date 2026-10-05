@@ -1,6 +1,25 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 9 (T27, T28) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 9 y después bloque 10 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 9». `39fa3e6` **T27**: recuadros
+> `data-en-construccion` (uno por sección en construcción: bandeja, incidencias, impresion,
+> economico, datos; de bloque: F-037 en entrada y F-045 en la tarjeta «Partes firmados»), cada
+> uno con su rótulo (cinta, chip «En construcción», la frase de R65 y sus fichas con título vía
+> `Portal.fichasDeSeccion` / `titulos`); bandeja enlaza a `importar.html#bandeja` (+`id="bandeja"`).
+> Portada sin cifras (fuera `contadores()` y `contadoresInicio`), chips por tarjeta, sin
+> «maqueta» visible. `rs-obras` en `portal.css`, CSS muerto fuera (H-5), `?v=4e0797b8ee` en las
+> cuatro páginas. Escáner de R28 con el recuadro (raíz). H-3 y H-4 (puntos 2 y 3) cerrados.
+> **T28**: guardia nueva que mata B9-19. Front 581, Node 576/576, raíz 114; `bash harness/init.sh`
+> **ENTORNO LISTO**. Mutación del arnés: 0 mutantes; manuales **23/23 muertas** (18, 19, 20 y 20
+> propias). Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador (no hay ninguno conectado): va con V1/V2.
+> - Para el reviewer, §5 del informe: `importar.html` cambia en 2 líneas (`id` + `?v=`, por
+>   §16.5), `rs-obras` existente renombrado a `rs-por-obra`, el enlace del rótulo repintado en
+>   atención, H-4 punto 3 hecho aquí (estaba pendiente del líder), `init.sh` corrido dos veces.
+
 > ## ▶ F-035 · BLOQUE 17 (T46, T47) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 17 y después bloque 9 (implementer)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 17». `15aa0a7` **T46**: RED de R82

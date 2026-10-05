@@ -5236,3 +5236,336 @@ cumplía contraste.
 | Mutantes (herramienta) | **0 generados, 0 supervivientes** (`--base 2a86bca --timeout 900`): sin Python de producción en el alcance |
 | Mutantes a mano | **14 generados, 14 muertos, 0 supervivientes** (C1 sobrevivía antes de `04802ed`; cerrado con una guardia) |
 | Tiempo de la suite | raíz 7,00 s y front 19,85 s (`init.sh`); front suelto 11,12 s; Node 2,12 s |
+
+
+## Bloque 9 · T27 y T28 · El rótulo «En construcción» en el portal · 2026-10-05
+
+implementer. Encargo: solo el bloque 9 de `tasks.md` (opción b del humano:
+lo que no funciona se publica visible y marcado; D-12, el rótulo en tres
+capas) y parar. Con H-3, H-4 (puntos 2 y 3) y H-5 de la review del bloque 7.
+Nada de `services/postventa-api/` (`git diff dev -- services/postventa-api`
+vacío); ningún módulo del circuito ni de F-036 tocado; sin push.
+
+Commits: `39fa3e6` **T27** (RED + recuadros + portada + CSS + escáner de
+R28) y el de **T28** (guardia nueva que mata el superviviente B9-19, este
+informe, `tasks.md` y `progress/current.md`).
+
+### 1 · Qué cambió
+
+**`index.html`** (`git diff -w`: 173 líneas añadidas, 47 quitadas; el resto
+del diff es la sangría del contenido que entra en su recuadro):
+
+- **Recuadros de sección** (R64): `bandeja`, `incidencias`, `impresion`,
+  `economico` y `datos` tienen, tras su `<header>`, un único
+  `<div data-en-construccion="<id>" class="rs-obras">` con todo su contenido.
+  `incidencias` no tiene cabecera propia (la lleva el listado), así que su
+  recuadro lo envuelve todo, listado y ficha.
+- **Recuadros de bloque** (R64): `data-en-construccion="F-037"` con el panel
+  de la web de clientes en `entrada`, y `data-en-construccion="F-045"` con el
+  placeholder del registro sin firma, dentro de la tarjeta «Partes firmados»
+  de `inicio` (debajo de su primario).
+- **El rótulo** (R65), primer hijo de cada recuadro, `.rs-obras__rotulo`:
+  la cinta de obra (`.rs-obras__cinta`, `aria-hidden`), el chip
+  `rs-chip--atencion` «En construcción» y la frase «Todavía no funciona. Lo
+  que ves son datos inventados para enseñar cómo será: no es información real
+  y no se guarda nada.». Los de sección siguen con «La construirán:» (o «La
+  construirá:» en `impresion` y `datos`, de una ficha) y la lista
+  `x-for="f in fichasDeSeccion('<id>')"` → `F-0NN · <título>`. Los de bloque,
+  en una línea: «Lo construirá F-0NN · <título>» con
+  `x-text="titulos['F-0NN']"`. Ningún botón, `x-show` ni `hidden`: no se
+  cierra ni se esconde.
+- **Bandeja** (R69): su rótulo añade «Mientras tanto, la bandeja de una obra
+  ya se puede ver, en solo lectura, en <a href="importar.html#bandeja"
+  class="rs-enlace">Importar incidencias</a>.», en la misma ventana.
+- **Portada** (R67, H-4 punto 2): ceja «Posventa»; la entradilla de
+  `design.md` §16.5, literal; el recorrido `<ol>` igual; cinco tarjetas, sin
+  ninguna cifra: 01 «Entrada de incidencias» (En producción; primario
+  «Importar incidencias» → `importar.html`, secundario «Oficios repetidos» →
+  `oficios.html`), 02 «Bandeja de revisión», 03 «Incidencias» (En
+  construcción, qué se verá ahí y «Ver cómo será →»), 04 «Partes firmados»
+  (En producción, su primario y el recuadro F-045), 05 «Coste y venta» (En
+  construcción). Las dos de bandeja y las dos de incidencias de antes se
+  funden en una por sección.
+- **Pie** (H-4 punto 2): «Construcciones Ruesma · Posventa · portal de
+  posventa. Lo que está en construcción enseña datos inventados; lo que
+  funciona lleva el sello «En producción».». Ya ningún texto visible dice
+  «maqueta» (los atributos `data-aviso-maqueta` y las clases `rs-maqueta*`
+  no se ven y se quedan, como dijo O-3 del bloque 8).
+- La lista de aprobadas por obra del panel de volcado pasa de `rs-obras` a
+  `rs-por-obra` (§5, decisión 2).
+- El comentario de cabecera del fichero describe ya los recuadros y la
+  retirada de `data-en-construccion="F-0NN"`.
+
+**`js/portal.js`**: `Portal.fichasDeSeccion(id)` (§16.8): las fichas de la
+entrada de `SECCIONES`, en su orden, que tienen título en `TITULOS_FICHAS`,
+como `{ficha, titulo}`; lista nueva en cada llamada; id desconocido → `[]`,
+nunca lanza. Fuera `contadoresInicio` (y su auxiliar `contar`). El texto
+genérico de un placeholder desconocido pasa a «Todavía no hace nada: esta
+acción está en construcción.».
+
+**`js/portal_app.js`**: `fichasDeSeccion(id)` (delega) y `titulos:
+Portal.TITULOS_FICHAS`; fuera `contadores()`.
+
+**`js/maqueta_datos.js`** (H-4 punto 3): el pendiente de F-037 ya no dice
+«…y por la importación del Excel» (existe desde F-036).
+
+**`css/portal.css`** (T27 d): `rs-obras` (borde continuo 1 px
+`--rs-atencion`, radio `--rs-radio`, `overflow: hidden`), `rs-obras__rotulo`
+(fondo `--rs-atencion-suave`, texto `--rs-atencion`), `rs-obras__cinta`
+(6 px de rayas diagonales `--rs-atencion` / `--rs-atencion-suave`),
+`rs-obras__linea`, `rs-obras__fichas`, `rs-obras__ficha`, la variante
+`rs-obras--bloque` y `rs-tarjeta__obras`; dentro del rótulo, el chip lleva
+borde y el `rs-enlace` va en atención (§5, decisión 3). Todo con tokens; ni
+discontinuo ni burdeos. Fuera el CSS muerto de H-5 (`.rs-encabezado`,
+`.rs-acciones--centro`, `.rs-soltar`, `.rs-soltar__texto`,
+`.rs-cifras--compactas`) y el que deja muerto este bloque
+(`.rs-tarjeta__cifra`, `.rs-tarjeta__nota`).
+
+**`?v=`**: `5c6cb12598` → `4e0797b8ee` en las cuatro páginas (§5,
+decisión 1).
+
+**`importar.html`**: `id="bandeja"` en la `<section>` de la bandeja (R69) y
+la `?v=`. Nada más.
+
+**Tests**:
+
+- `tests/test_f035_paginas.py` (front, +41: 39 en T27 y 2 en T28): R63 (`fuera_de_envoltorio`, con
+  3 controles; el primero es la mutación 18), R64 (`problemas_r64`, recuadros
+  de bloque y 2 controles), R65 (`problemas_r65`, conteo de recuadros y 6
+  controles), R56 ampliado (`problemas_r56_recuadros`, reglas existentes y 3
+  controles; el primero es la 19), R67 (`problemas_r67`, tarjeta de entrada,
+  ceja y entradilla, «maqueta», contadores retirados y 5 controles; el
+  primero es la 20), R69 (enlace del rótulo e `id="bandeja"`), H-3
+  (`problemas_de_entrada`, estructura cerrada y sin cifras fuera de F-037, 3
+  controles con la mutación K), H-5 (`clases_del_portal_css_sin_uso` y
+  control) y, en T28, `burdeos_en_los_rotulos` con su control.
+- `tests_js/f035_paginas.test.js` (+9): `fichasDeSeccion` (cinco casos), el
+  componente (`fichasDeSeccion`, `titulos`), contadores fuera, y ningún texto
+  que pinta el portal dice «maqueta» (placeholders, su aviso —también el
+  genérico y sin id—, `TITULOS_FICHAS` y todos los textos de `MaquetaDatos`).
+- `tests_js/portal.test.js`: fuera los dos tests de `contadoresInicio` (son de
+  F-035 y describen lo retirado, §16.9).
+- `tests/test_f035_placeholders_vivos.py` (raíz, +2): el escáner de R28
+  cuenta `data-en-construccion="F-0NN"`; `restos_de_la_maqueta` admite textos
+  en memoria; control con un recuadro de F-036 que salta, y comprobación de
+  que ve los dos recuadros de bloque de hoy.
+
+### 2 · Fase RED
+
+Tests escritos y ejecutados **antes** de tocar `index.html`, `js/` y `css/`.
+
+Raíz, `python -m pytest tests/test_f035_placeholders_vivos.py -q -k "escaner"`:
+
+```
+E        +  where None = <built-in method get of dict object at 0x0000022B7EA99500>('F-036')
+tests\test_f035_placeholders_vivos.py:179: AssertionError
+>           assert len(recuadros) == 1, f"{ficha}: el escáner no ve su recuadro de bloque ({lineas})"
+E           AssertionError: F-037: el escáner no ve su recuadro de bloque (['index.html:220'])
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r28_el_escaner_cuenta_el_recuadro_en_construccion_de_una_ficha
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r28_el_escaner_ve_los_recuadros_de_bloque_de_hoy
+2 failed, 16 deselected in 0.17s
+```
+
+Front, desde `services/postventa-front`,
+`python -m pytest tests/test_f035_paginas.py -q -k "r63 or r64 or r65 or r56_ningun or r56_las or r56_control or r67 or r69 or r68_entrada_tiene or r68_control_datos or h5" -p no:cacheprovider`
+(extracto de la salida real):
+
+```
+E       AssertionError: R63: lo que no funciona va dentro de su recuadro «En construcción»:
+E         placeholder fuera de un recuadro: <button type="button" data-placeholder="F-045" @click="placeholder('partes.registrarSinFirma')" class="placeholder" aria-disabled="true" title="Todavía no hace nada: lo construye F-045">
+E         datos de ejemplo fuera de un recuadro: x-text="datos.web.ficha"
+E         datos de ejemplo fuera de un recuadro: x-for="o in datos.bandeja.origenes"
+E       AssertionError: R64:
+E         «bandeja» está en construcción: tras su cabecera va un único data-en-construccion="bandeja" con todo su contenido (hay ['<div class="rs-panel rs-panel--lista">', '<template x-for="fila in [filaBandeja()].filter(Boolean)" :key="fila.id">', '<div class="rs-panel space-y-5">'])
+E         «incidencias» está en construcción: tras su cabecera va un único data-en-construccion="incidencias" con todo su contenido (hay ['<div x-show="!incidenciaAbierta" class="rs-seccion">', '<template x-for="inc in [incidenciaActual()].filter(Boolean)" :key="inc.id">'])
+E           AssertionError: falta la regla de .rs-obras--bloque en css/portal.css
+E       AssertionError: R67:
+E         una cifra en la portada: <p class="rs-tarjeta__cifra" x-text="contadores().entradasPorRevisar">
+E         la portada lee datos de ejemplo: x-text="contadores().entradasPorRevisar"
+E         la tarjeta «Incidencias abiertas» pinta texto calculado: <p class="rs-tarjeta__cifra" x-text="contadores().incidenciasAbiertas">
+E       AssertionError: assert 'Posventa · maqueta del ciclo' == 'Posventa'
+E       AssertionError: R67: en producción la palabra es «en construcción»: [... 'trucciones Ruesma · portal de posventa: maqueta con datos de ejemplo. El circuito de pa']
+E       AssertionError: tiene que haber uno y solo uno: el recuadro de bandeja (hay 0)
+E       AssertionError: tiene que haber uno y solo uno: id="bandeja" en importar.html (hay 0)
+E         entrada es cabecera, rejilla y recuadro F-037: ['<header class="rs-cabecera-seccion">', '<div class="rs-rejilla">', '<div class="rs-panel space-y-4">']
+E       AssertionError: CSS muerto en css/portal.css (H-5): ['rs-acciones--centro', 'rs-cifras--compactas', 'rs-encabezado', 'rs-soltar', 'rs-soltar__texto']
+31 failed, 8 passed, 112 deselected in 2.21s
+```
+
+Los 8 que pasaban en rojo eran los controles de R63 y R68 (siembran el fallo
+en memoria y no dependen del cambio) y dos comprobaciones que, sin
+recuadros, no tenían nada que mirar (`problemas_r65` y
+`problemas_r56_recuadros`); por eso existe
+`test_f035_r65_hay_un_recuadro_por_cada_seccion_en_construccion_y_los_de_bloque`,
+que sí caía.
+
+Node, `node --test --test-name-pattern="R65|R67" tests_js/f035_paginas.test.js`:
+
+```
+✖ f035 R65: fichasDeSeccion da cada ficha de la sección con su título, en su orden (5.3899ms)
+  TypeError: fichasDeSeccion is not a function
+✖ f035 R65: el componente da al rótulo fichasDeSeccion y los títulos, delegando en Portal (4.4008ms)
+✖ f035 R67: la portada ya no tiene contadores: fuera contadoresInicio y contadores() (2.405ms)
+  AssertionError [ERR_ASSERTION]: fuera Portal.contadoresInicio (design.md §16.5)
+  + [Function: contadoresInicio]
+  - undefined
+✖ f035 R67: ningún texto que pinta el portal dice «maqueta» (4.892ms)
+  +   [
+  +     'textoPlaceholder (genérico)',
+  +     'Todavía no hace nada: esta acción de la maqueta no está en el catálogo de placeholders.'
+  +   ],
+✖ f035 R67: el texto genérico de un placeholder desconocido dice que está en construcción (0.5778ms)
+ℹ tests 9
+ℹ pass 0
+ℹ fail 9
+```
+
+### 3 · Verde sobre el código real
+
+- Raíz: `python -m pytest tests/test_f035_placeholders_vivos.py -q` →
+  `18 passed in 0.18s`.
+- Front: `python -m pytest tests -q -p no:cacheprovider` → `579 passed in
+  7.32s` tras T27; **581** con la guardia de T28 (salida de `init.sh`).
+- Node: `node --test "tests_js/*.test.js"` → `tests 576, pass 576, fail 0`
+  (`duration_ms 1068.8`): 569 − 2 de `contadoresInicio` + 9 nuevos.
+- «F-036 intacto» ajustado:
+  `git diff 2a86bca --stat -- services/postventa-front/tests/test_f036_front.py services/postventa-front/tests_js/importacion.test.js services/postventa-front/tests_js/oficios.test.js`
+  → solo `test_f036_front.py | 5 ++---`, las líneas de R81 del bloque 16
+  (este bloque no lo toca); los dos de Node, vacíos.
+- `git diff HEAD~1 --numstat -- services/postventa-front/importar.html` en
+  T27 → `2 2` (§5, decisión 1).
+- R59 y R33 en verde sin tocarlos: en `partes.html` solo cambia la `?v=`.
+
+### 4 · Mutaciones (T28)
+
+**Campaña del arnés**, `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`:
+
+```
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+**Manuales** (C4 bis), en un worktree desechable del scratchpad
+(`<scratchpad>/wt9`, rama temporal `feature/F-035-mutaciones-b9-tmp`), una a
+una, restaurando el fichero tras cada una. Por familias completas: R63, R64,
+R65, R56, R67, R69, R28, H-3, H-5 y la lógica de `fichasDeSeccion`. Las de
+CSS se miden con `-k "not t21"`: la versión de las hojas (T21) cae con
+cualquier cambio de CSS y enmascararía un superviviente (es lo que pasó con
+B9-19).
+
+> **Incidencia del propio guion, corregida**: la primera pasada lanzó
+> pytest con `python` desde el subproceso, que resolvía a un Python del
+> sistema sin pytest (`No module named pytest`): todas las mutaciones de
+> Python salían «muertas» por un error de arranque. Lo detecté porque no
+> salía ningún `FAILED`; comprobé que el worktree sin mutar daba `278
+> passed`, cambié a `sys.executable` (el `.venv`) y repetí la campaña entera.
+> Lo de abajo es la segunda pasada.
+
+| Id | Mutación | Resultado | Test que la mata |
+|---|---|---|---|
+| **18** | un placeholder de F-044 sale del recuadro de `impresion` | muerta | `r63_todo_lo_inventado_esta_dentro_de_un_recuadro`, `r64_cada_seccion…`, `r9_cada_placeholder_se_ve_como_tal` |
+| **19** | `border-style: dashed` en `.rs-obras` | muerta | `r56_ningun_recuadro_usa_el_discontinuo_ni_el_burdeos`, `r56_en_portal_css_el_discontinuo_es_de_los_placeholders_y_sin_burdeos` |
+| **20** | `x-text="bandejaFiltrada().length"` en la tarjeta de bandeja | muerta | `r67_la_portada_no_ensena_cifras_y_cada_tarjeta_lleva_su_chip` |
+| B9-1 | `x-text="datos.bandeja.filas.length"` en la cabecera de bandeja (fuera del recuadro) | muerta | `r63_todo_lo_inventado…` |
+| B9-2 | sin `data-en-construccion` en el recuadro de `datos` | muerta | `r63…`, `r64_cada_seccion…`, `r64_control…`, `r65_hay_un_recuadro…` |
+| B9-3 | el recuadro F-037 pasa a `data-en-construccion="entrada"` | muerta | `r64_cada_seccion…`, `r64_los_recuadros_de_bloque…`, `r65_cada_recuadro…`, `r65_hay_un_recuadro…`, `r68_entrada_tiene_la_estructura_cerrada` |
+| B9-4 | el rótulo de bandeja sin «no es información real» | muerta | `r65_cada_recuadro_empieza_por_un_rotulo_que_lo_dice_todo` |
+| B9-5 | `x-show` en el rótulo de `economico` | muerta | `r65_cada_recuadro…` |
+| B9-6 | el rótulo de `incidencias` lista `fichasDeSeccion('bandeja')` | muerta | `r65_cada_recuadro…` |
+| B9-7 | la tarjeta «Coste y venta» con chip «En producción» | muerta | `r67_la_portada_no_ensena_cifras…` |
+| B9-8 | vuelve «Posventa · maqueta del ciclo» a la ceja | muerta | `r67_la_ceja…`, `r67_ningun_texto_visible…`, `r67_control_la_palabra_maqueta…` |
+| B9-9 | `fichasDeSeccion` sin filtrar por `TITULOS_FICHAS` | muerta | Node «fichasDeSeccion no lista una ficha ya hecha» |
+| B9-10 | `fichasDeSeccion` sin la guarda del id desconocido (lanza) | muerta | Node «…id desconocido o raro devuelve [] y no lanza», «el componente da al rótulo…» |
+| B9-11 | `fichasDeSeccion` con el título de la primera ficha | muerta | Node «…cada ficha de la sección con su título, en su orden» |
+| B9-12 | el componente sin `titulos` | muerta | Node «el componente da al rótulo…» |
+| B9-13 | el texto genérico vuelve a decir «maqueta» | muerta | Node «ningún texto que pinta el portal dice «maqueta»» |
+| B9-14 | vuelve `contadores()` al componente | muerta | `r67_contadores_retirados…` y Node «la portada ya no tiene contadores» |
+| B9-15 | `importar.html` sin `id="bandeja"` | muerta | `r69_importar_html_tiene_la_bandeja_con_id_bandeja` |
+| B9-16 | el escáner de R28 vuelve a mirar solo `data-placeholder` | muerta | raíz `r28_el_escaner_cuenta_el_recuadro…`, `r28_el_escaner_ve_los_recuadros_de_bloque_de_hoy` |
+| B9-17 | `<dl>` «Filas leídas 8» suelto en `entrada` (mutación K del bloque 7) | muerta | `r68_entrada_tiene_la_estructura_cerrada` |
+| B9-18 | vuelve `.rs-soltar` a `portal.css` | muerta | `h5_ninguna_clase_de_portal_css_queda_sin_uso` |
+| B9-19 | fuera `.rs-obras__rotulo .rs-enlace` (el enlace del rótulo, en burdeos) | **sobrevivía** (solo caía T21) → **muerta** con la guardia de T28 | `r65_lo_que_va_en_el_rotulo_no_se_pinta_en_burdeos` |
+| B9-20 | el fondo del rótulo en `--rs-burdeos-suave` | muerta | `r56_ningun_recuadro…`, `r56_control…[rotulo-burdeos]` |
+
+**23/23 muertas** (B9-19, con la guardia añadida en T28: su análisis es que
+la herencia de color no la veía ningún test del recuadro; hueco real, no
+mutante equivalente). Worktree retirado: `git worktree remove --force` y
+`git branch -D feature/F-035-mutaciones-b9-tmp`; `git worktree list` ya no
+lo enseña.
+
+### 5 · Desviaciones y decisiones (para el reviewer)
+
+1. **`importar.html` cambia en dos líneas, no en una.** La verificación de
+   T27 pide «una sola línea cambiada (`id="bandeja"`)», pero se escribió
+   antes de que el bloque 17 pusiera la `?v=` también en `importar.html` y
+   `oficios.html`, y `design.md` §16.5 dice que la `?v=` «se actualiza en las
+   cuatro páginas». Al cambiar `portal.css` cambia la versión; dejarla vieja
+   en dos páginas haría que el navegador sirviera la hoja de caché. Seguí el
+   diseño: `id="bandeja"` + `?v=`. Ninguna otra línea.
+2. **`rs-obras` ya existía**: era la lista de aprobadas por obra del panel de
+   volcado (`<ul class="rs-obras">`, con `display: flex` y `list-style:
+   none`). Con el nombre que fija el diseño para el recuadro, el recuadro
+   heredaría esas reglas; la lista pasa a `rs-por-obra` (HTML y CSS, con nota
+   en el comentario).
+3. **El enlace de R69 en el rótulo, en atención y no en burdeos.** El diseño
+   le da `rs-enlace` (burdeos en `styles.css`), y R65 dice que el rótulo no
+   usa el burdeos. Conservé `rs-enlace` (subrayado, foco de la marca) y lo
+   repinté dentro del rótulo con `.rs-obras__rotulo .rs-enlace { color:
+   var(--rs-atencion); }`. Es el par ya medido de R53 (atención sobre
+   atención suave); no entra ningún par de contraste nuevo.
+4. **`fichasDeSeccion` filtra por `TITULOS_FICHAS`.** La spec dice «con
+   `TITULOS_FICHAS`» sin más. Como ese mapa solo guarda las fichas por
+   construir (F-036 salió en T23), una ficha ya hecha no se nombra como «la
+   construirá». Hoy solo afecta a `entrada` (sin recuadro de sección).
+5. **El título en los recuadros de bloque** sale de `titulos['F-0NN']` (el
+   componente expone `Portal.TITULOS_FICHAS`), en vez de una función nueva de
+   `Portal`. Los de sección usan `fichasDeSeccion`, como pide §16.8.
+6. **`incidencias`**: no tiene `<header>` propio (lo lleva el listado y la
+   ficha tiene su `h1`), así que el rótulo va encima del título
+   «Incidencias». R64 lo admite (la cabecera es opcional); se ve en V1.
+7. **H-4 punto 3** (`maqueta_datos.js`, «…y por la importación del Excel»):
+   la review lo dejó «pendiente de decisión del líder»; el encargo dice «el
+   resto de H-4», y lo hice aquí (una frase de un pendiente, ningún test lo
+   fija). Si el líder no lo quería, se revierte con una línea.
+8. **H-5 con guardia**: además de quitar el CSS muerto, una comprobación
+   impide que vuelva (`clases_del_portal_css_sin_uso`). Va más allá de «quitar
+   lo listado», pero es lo que cierra H-5 para siempre.
+9. **Texto de las tarjetas en construcción**: sin cifras, también sin
+   «POSTV2» (lleva un 2). «Coste y venta» habla de «la obra de Sigrid» de
+   forma genérica; el detalle de POSTV2 sigue en la sección.
+10. **`init.sh` se ejecutó dos veces.** La primera dio verde pero con 72
+    avisos de ruff frente a los 71 de antes: uno era mío
+    (`ISC`, cadenas concatenadas sin paréntesis en un control de R63). Lo
+    corregí (solo paréntesis) y la ejecución final es la segunda.
+11. En la raíz, `_PLACEHOLDER_HTML` mira ahora `data-(placeholder|en-construccion)`;
+    conservé el nombre para no tocar más líneas y lo dice su comentario.
+
+### 6 · Fuera del alcance y pendiente
+
+- **MANUAL (V1/V2 del humano)**: no hay navegador conectado
+  (`list_connected_browsers` → `[]`), así que el aspecto no lo he visto. A
+  mirar: el recuadro con su cinta en las cinco secciones y en móvil; el
+  rótulo de `incidencias` encima del título y con una ficha abierta; el
+  recuadro F-045 dentro de la tarjeta «Partes firmados»; el doble marco del
+  panel de la web de clientes dentro del recuadro F-037; y que las cinco
+  tarjetas de la portada se lean bien sin cifras.
+- **H-7** (R66 y los atributos ligados) no entra: su destino es el bloque 10.
+- **Documentación** (`README.md` del front, que aún habla de «maqueta»,
+  `docs/ARCHITECTURE.md` y el apartado de contadores de `design.md` §5.1):
+  bloque 14.
+- La palabra «maqueta» sigue en atributos y clases que no se ven
+  (`data-aviso-maqueta`, `rs-maqueta*`) y en comentarios; R67 solo exige lo
+  visible.
+
+### Evidencias (bloque 9)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests ejecutados | raíz **114** passed (4,43 s, `init.sh` final); front Python **581** passed (11,55 s, `init.sh` final); Node **576/576** (1,07 s). Nuevos: 41 en Python del front (39 en T27, 2 en T28), 9 en Node, 2 en la raíz; retirados: 2 de Node (`contadoresInicio`) |
+| Cobertura de las líneas cambiadas | `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+| Mutantes (arnés) | 0 generados, 0 supervivientes (`progress/mutacion_F-035.md`): F-035 no tiene Python de producción |
+| Mutaciones manuales | **23/23 muertas** (18, 19, 20 y B9-1 a B9-20); B9-19 sobrevivía y la mata la guardia de T28 |
+| `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, en la ejecución final; ruff 71 avisos (los de antes) |
+| Tiempo de la suite | raíz 4,43 s; front 11,55 s (`init.sh` final; 6,36 s y 9,07 s en la primera); Node 1,07 s |

@@ -85,6 +85,12 @@ Bloque 11 (`tasks.md`, T31):
   se alcanza con el teclado (oculto con `sr-only`, no con `hidden`) y su
   etiqueta pinta el foco (`:focus-within`).
 
+Bloque 12 (`tasks.md`, T33):
+
+- Review del bloque 11, **O11-5**: la huella funcional de `importar.html`,
+  fijada sobre HEAD antes de R74 (L1–L4 de la review del bloque 10); R74 la
+  amplía solo con lo suyo.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -2332,6 +2338,100 @@ def test_f035_o10_3_control_la_huella_ve_el_ambito_y_el_orden():
     assert diferencias_de_huella(fuera, esperada) != []
     assert diferencias_de_huella(otro_orden, esperada) == ["las mismas entradas en otro orden"]
     assert diferencias_de_huella(html, esperada) == []
+
+
+# --- O11-5 · La huella funcional de `importar.html` ----------------------------------
+#
+# Review del bloque 11, O11-5 (y L1–L4 de la del bloque 10): las directivas de
+# `importar.html` que los tests de F-036 no fijan (el Intro del código de obra,
+# el «Importando…» con su `x-show`, la clave de la bandeja y el `x-show` de su
+# tabla) quedan fijadas aquí con la misma `huella_funcional` de O10-3. Es la de
+# HEAD antes de R74 (`9812d69`), NO la de F-036 (`2a86bca`): desde entonces la
+# spec ya cambió, a sabiendas, el `:class` del resultado (T29/T30) y el
+# `id="bandeja"` (R69). Un cambio de lógica legítimo (R74, bloque 12) la amplía
+# en el MISMO commit, para que su diff enseñe solo lo añadido.
+
+#: La huella funcional de `importar.html` en `9812d69`, generada con
+#: `huella_funcional` sobre ese fichero y escrita aquí a mano, a sabiendas.
+HUELLA_DE_IMPORTAR = (
+    ('div', (('x-data', 'appImportacion()'), ('x-init', 'iniciar()')), '', ()),
+    ('input', (('@keydown.enter.prevent', 'descargarPlantilla()'), ('autocomplete', 'off'), ('type', 'text'), ('x-model', 'obra')), '', ('div[x-data=appImportacion()]',)),
+    ('button', ((':disabled', '!puedeDescargarPlantilla()'), ('@click', 'descargarPlantilla()'), ('type', 'button')), 'Descargar la plantilla', ('div[x-data=appImportacion()]',)),
+    ('span', (('x-show', 'descargandoPlantilla'),), '', ('div[x-data=appImportacion()]',)),
+    ('p', (('x-show', 'errorPlantilla'), ('x-text', 'errorPlantilla')), '', ('div[x-data=appImportacion()]',)),
+    ('input', (('@change', 'alElegirFichero($event)'), ('accept', '.xlsx'), ('type', 'file')), '', ('div[x-data=appImportacion()]',)),
+    ('span', (('x-text', "fichero ? fichero.name : 'Ningún fichero elegido'"),), '', ('div[x-data=appImportacion()]',)),
+    ('button', ((':disabled', '!puedeImportar()'), ('@click', 'importar()'), ('type', 'button')), 'Importar a la bandeja', ('div[x-data=appImportacion()]',)),
+    ('span', (('x-show', 'importando'),), '', ('div[x-data=appImportacion()]',)),
+    ('p', (('x-show', 'motivoSinImportar() && !importando'), ('x-text', 'motivoSinImportar()')), '', ('div[x-data=appImportacion()]',)),
+    ('p', (('x-show', 'errorImportacion'), ('x-text', 'errorImportacion')), '', ('div[x-data=appImportacion()]',)),
+    ('template', (('x-if', 'resultado'),), '', ('div[x-data=appImportacion()]',)),
+    ('div', ((':class', "resultado.yaImportado ? 'rs-aviso--info' : (resultado.estado === 'parcial' ? 'rs-aviso--atencion' : 'rs-aviso--ok')"),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('span', (('x-text', 'resultado.obra'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('span', (('x-text', 'resultado.estadoTexto'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('p', (('x-text', 'resultado.resumenTexto'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('div', (('x-show', 'resultado.errores.length'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('template', ((':key', 'n'), ('x-for', '(texto, n) in resultado.errores')), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('li', (('x-text', 'texto'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]', 'template[x-for=(texto, n) in resultado.errores]')),
+    ('p', (('x-show', 'resultado.avisoRecorte'), ('x-text', 'resultado.avisoRecorte')), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('div', (('x-show', 'resultado && resultado.hayExcelDeErrores'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('button', (('@click', 'descargarExcelDeErrores()'), ('type', 'button')), 'Descargar el Excel de errores', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('span', (('x-text', 'fraseExcelErrores'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('template', ((':key', 'fila.fila'), ('x-for', 'fila in resultado.filas')), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    ('td', (('x-text', 'fila.fila'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]', 'template[x-for=fila in resultado.filas]')),
+    ('td', (('x-text', 'fila.texto'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]', 'template[x-for=fila in resultado.filas]')),
+    ('td', (('x-text', "fila.avisos.join(' · ')"),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]', 'template[x-for=fila in resultado.filas]')),
+    ('section', (('id', 'bandeja'),), '', ('div[x-data=appImportacion()]',)),
+    ('button', ((':disabled', '!obraEscrita() || cargandoBandeja'), ('@click', 'cargarBandeja()'), ('type', 'button')), 'Ver la bandeja', ('div[x-data=appImportacion()]',)),
+    ('p', (('x-show', 'errorBandeja'), ('x-text', 'errorBandeja')), '', ('div[x-data=appImportacion()]',)),
+    ('p', (('x-show', 'bandejaCargada && !bandeja.length'),), '', ('div[x-data=appImportacion()]',)),
+    ('span', (('x-text', 'bandejaObra'),), '', ('div[x-data=appImportacion()]',)),
+    ('div', (('x-show', 'bandeja.length'),), '', ('div[x-data=appImportacion()]',)),
+    ('template', ((':key', 'fila.incidencia_id'), ('x-for', 'fila in bandeja')), '', ('div[x-data=appImportacion()]',)),
+    ('td', (('x-text', 'fila.fila_origen'),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('td', (('x-text', 'fila.unidad_nombre || fila.unidad_codigo'),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('td', (('x-text', "fila.ubicacion || '—'"),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('span', (('x-text', 'fila.descripcion'),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('span', (('x-show', 'fila.detalle'), ('x-text', 'fila.detalle')), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('td', (('x-text', 'fila.oficioTexto'),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('td', (('x-text', 'fila.proveedorTexto'),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('td', (('x-text', "fila.urgencia || '—'"),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('template', ((':key', 'n'), ('x-for', '(marca, n) in fila.marcas')), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]')),
+    ('span', (('x-text', 'marca'),), '', ('div[x-data=appImportacion()]', 'template[x-for=fila in bandeja]', 'template[x-for=(marca, n) in fila.marcas]')),
+)
+
+
+def test_f035_o11_5_importar_conserva_su_huella_funcional():
+    diferencias = diferencias_de_huella(IMPORTAR.read_text(encoding="utf-8"), HUELLA_DE_IMPORTAR)
+
+    assert diferencias == [], (
+        "importar.html: directivas, ids o tipos cambiados fuera de lo que la spec añade (O11-5):\n"
+        + "\n".join(diferencias)
+    )
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        # L1–L4 de la review del bloque 10, las que los tests de F-036 no ven.
+        ('\n                   @keydown.enter.prevent="descargarPlantilla()"', ""),
+        ('<span x-show="importando" ', "<span "),
+        (':key="fila.incidencia_id"', ':key="fila.fila_origen"'),
+        ('<div x-show="bandeja.length" ', '<div x-show="bandejaCargada" '),
+        # El selector de fichero, deshabilitado (K3 de la review del bloque 11).
+        ('accept=".xlsx" @change', 'accept=".xlsx" disabled @change'),
+        # Una directiva nueva en un botón que ya estaba: también es lógica.
+        ('<button type="button" @click="descargarExcelDeErrores()"', '<button type="button" @click="descargarExcelDeErrores()" x-show="true"'),
+        # El texto de un botón cambiado con su directiva intacta.
+        (">Ver la bandeja</button>", ">Ver bandeja</button>"),
+    ],
+    ids=["sin-intro-L1", "importando-siempre-visible-L2", "otra-clave-L3", "tabla-con-bandejaCargada-L4", "selector-disabled-K3", "excel-con-x-show", "otro-texto"],
+)
+def test_f035_o11_5_control_un_cambio_de_logica_en_importar_salta(viejo, nuevo):
+    real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert diferencias_de_huella(real.replace(viejo, nuevo), HUELLA_DE_IMPORTAR) != []
 
 
 # --- O10-2 · El selector de fichero se alcanza con el teclado ----------------------

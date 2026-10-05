@@ -20,7 +20,8 @@
 //     pregunta.
 //   - R78: `alSalir` con trabajo llama a `preventDefault` y pone
 //     `returnValue`; sin trabajo deja el evento intacto. `instalar` registra
-//     un único `beforeunload` y nada más.
+//     un único `beforeunload` y nada más. Y el fichero, cargado como script
+//     en una página (con `window`), se instala solo (`vm`, H16-1).
 //
 // Los dobles de `Pipeline` y `Autoguardado` salen de los módulos REALES
 // (`require`), no de copias: si el circuito cambia un literal de estado, el
@@ -29,6 +30,9 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
 
 const GuardaSalida = require("../js/guarda_salida.js");
 const PipelineReal = require("../js/pipeline.js");
@@ -598,5 +602,45 @@ test("f035 R78: el beforeunload instalado pregunta con trabajo y calla sin él (
   const conTrabajo = eventoDeSalida();
   manejador(conTrabajo);
   assert.equal(conTrabajo.llamadas, 1);
+  assert.equal(conTrabajo.returnValue, true);
+});
+
+// ── R78 · en la página, la guarda se instala sola al cargarse ───────────────
+//
+// Con `require` no hay `window`, así que la rama del fichero que la conecta al
+// navegador (`window.GuardaSalida = …; instalar(window, document);`) no se
+// ejecuta en ninguno de los tests de arriba. Aquí se carga el fichero REAL tal
+// cual lo carga `partes.html` —como script, en un contexto con `window` y
+// `document` y sin `module`— y se mira que quede escuchando (review del
+// bloque 16, H16-1).
+
+test("f035 R78: cargada como script en la página, la guarda se instala sola y su beforeunload pregunta con trabajo", () => {
+  const ruta = path.join(__dirname, "..", "js", "guarda_salida.js");
+  const codigo = fs.readFileSync(ruta, "utf8");
+  const estado = estadoRecienAbierto();
+  const { ventana, documento, registro } = navegador(estado);
+
+  vm.runInNewContext(codigo, { window: ventana, document: documento }, { filename: ruta });
+
+  assert.deepEqual(
+    registro.escuchas.map((e) => e.tipo),
+    ["beforeunload"],
+    "al cargarse en la página tiene que quedar UN beforeunload registrado",
+  );
+  assert.deepEqual(registro.escuchasDocumento, []);
+  assert.ok(ventana.GuardaSalida, "la guarda queda expuesta como window.GuardaSalida");
+  assert.equal(typeof ventana.GuardaSalida.hayTrabajoSinTerminar, "function");
+
+  const manejador = registro.escuchas[0].manejador;
+
+  const sinTrabajo = eventoDeSalida();
+  manejador(sinTrabajo);
+  assert.equal(sinTrabajo.llamadas, 0, "sin trabajo no pregunta");
+  assert.ok(!("returnValue" in sinTrabajo));
+
+  estado.fase = "procesando";
+  const conTrabajo = eventoDeSalida();
+  manejador(conTrabajo);
+  assert.equal(conTrabajo.llamadas, 1, "con trabajo sin terminar pide confirmación");
   assert.equal(conTrabajo.returnValue, true);
 });

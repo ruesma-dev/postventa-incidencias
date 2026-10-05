@@ -2537,3 +2537,380 @@ El detector solo demuestra que no está el patrón que conoce. El listado
 demuestra que no hay nada más. Aquí fue lo que permitió afirmar que hoy no
 hay ningún contador fuera de los recuadros, aunque A2, A4 y A6 sobrevivan al
 test.
+
+## Review del bloque 10 · T29–T30 · 2026-10-05
+
+> reviewer. Alcance **acotado** a `git diff 190b726..HEAD`: `9b31674` (T29)
+> y `b72078d` (T30), en `feature/F-035-portal-posventa`. Es `importar.html`
+> remodelado al estilo del portal (barra común, migas, subnavegación, pie,
+> identidad Ruesma; R70–R73, R77), por la petición del humano de que las
+> páginas existentes sigan el estilo del resto de la app. Es presentación:
+> la lógica de F-036 no debe cambiar.
+>
+> Los bloques 11–15 siguen abiertos **a propósito** y no cuentan como `[ ]`.
+> El vistazo en navegador queda para V1/V2 del humano.
+>
+> Criterio de severidad del líder: bloqueante es un riesgo real para el
+> usuario o un incumplimiento de la spec. Una mutación que solo se distingue
+> con un marcado que nadie escribiría, o una variante de una familia ya
+> cubierta, va como informativo con su destino.
+
+### Veredicto
+
+**APPROVED** (del bloque 10, no de la feature).
+
+- **La lógica de F-036 no ha cambiado.** `js/importacion.js`, `js/api.js`,
+  `js/oficios.js`, `js/app.js`, `js/guarda_salida.js`, la API y los tres
+  ficheros de tests de F-036 no tienen diff. En `importar.html` comparé con
+  un parser los atributos funcionales de base y HEAD. La única directiva que
+  cambia es el `:class` del resultado, y ese cambio lo pide la spec.
+- **`enlaceSeccion(id, desde)`** cumple §16.8, R17, R44 y R46. Las ramas
+  `"portal"` y `"circuito"` no se tocan.
+- **Los estados se distinguen por la semántica de la marca y siempre llevan
+  texto.** El «ya importado» en `info` es una desviación de la letra de
+  §16.5, pero es la lectura coherente (O10-1).
+- **H-7 y O17-3 quedan cerrados.**
+- Hice 21 mutaciones en 6 familias y sobreviven 9. De ellas, 4 son huecos
+  previos de los tests de F-036, 1 es equivalente, 2 exigen un marcado que
+  nadie escribiría y 2 son de color, que solo se ven con el ojo. Ninguna
+  corresponde a algo que esté hoy en la página. Van como informativo, con
+  su destino.
+
+### Nivel de rigor
+
+`estandar`, declarado en `harness/features.json`. Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con los supervivientes
+analizados.
+
+El bloque no tiene Python de producción. Por eso la cobertura sale N/A, con
+el motivo impreso por `init.sh`, y la campaña da 0 mutantes (el control del
+cero está más abajo). Lo compensan las mutaciones a mano: 53 del
+implementer y 21 mías.
+
+La regla 7 de `reviewer.md` (orden) es **N/A**. Solo aplica en rigor
+`critico`, y además aquí no hay un orden entre colaboradores que proteger.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh`, tal cual, en el árbol real | **exit 0**, `ENTORNO LISTO`. Raíz: 114 passed. Front: **628 passed** (21,24 s, ejecutado, no desde caché). `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`. ruff: 71 avisos de deuda previa |
+| `node --test "tests_js/*.test.js"` | **597/597** |
+| `git diff --stat 190b726..HEAD` sobre `services/postventa-api`, `js/importacion.js`, `js/api.js`, `js/oficios.js`, `js/app.js`, `js/guarda_salida.js`, `tests/test_f036_front.py`, `tests_js/importacion.test.js` y `tests_js/oficios.test.js` | **vacío** |
+| `js/` en el diff | solo `portal.js`: +8/−1 (la rama nueva y su comentario) |
+| Atributos funcionales de `importar.html`, base contra HEAD, con un guion propio sobre `html.parser`. Mira `x-*`, `@*`, `:*`, `id`, `name`, `for`, `type`, `accept`, `value`, `href`, `disabled` y `required`, junto con su etiqueta | Las directivas, `id`, `type` y `accept` son **idénticas**, con una excepción: el `:class` del resultado (Tailwind → `rs-aviso--*`, con el caso `yaImportado` delante). No había ni hay `name` ni `for`. Lo demás que cambia son `href`: las cuatro `<link>` de la marca, la `?v=` y los enlaces de la barra, las migas y la subnavegación |
+| Recálculo `alcance_de_feature("F-035", base="2a86bca")` | `lineas={}`: 0 mutantes, igual que `progress/mutacion_F-035.md` |
+| Reejecución de la campaña (el informe declara un «Tiempo total» de 0,0 s, menos de 5 min), con `--salida` en el scratchpad | 0 evaluados, 0 muertos, 0 supervivientes y 0 timeouts: **idéntico** al informe. `git status` limpio |
+| Control del cero: `generar_mutantes` sobre `test_f035_paginas.py` entero, ignorando la exclusión | 390 mutantes. El generador funciona y el cero es **legítimo**: el diff solo trae HTML, CSS, JS y tests |
+| `git log --diff-filter=A 190b726..HEAD` | no se añade ningún fichero |
+| `console.*`, `debugger`, `print(`, `TODO` en las líneas añadidas | ninguno |
+| Mutaciones a mano | Las hice en un worktree desechable del scratchpad, sobre `b72078d`, con una rama temporal con prefijo `feature/F-035` para que no se salten las guardias de rama. Línea base: 628 passed, 0 skipped; Node, 597/597. Al terminar retiré el worktree y la rama, y `git status` quedó limpio |
+
+### Mutaciones del reviewer, por familias
+
+Apliqué cada mutación **sola**. Después corrí la suite entera del front y la
+de Node, y anoté todos los tests que caen. En las de CSS recalculé la `?v=`
+de las cuatro páginas con `version_de_las_hojas()`. Sin ese recálculo, T21 y
+R72 matan cualquier cambio de hoja por accidente, que es lo que me pasó en la
+primera pasada.
+
+| Familia | # | Mutación | Resultado | La mata |
+|---|---|---|---|---|
+| **S · Estados** | S1 | el error de la plantilla en `rs-aviso--atencion` | muerta | `t30_los_errores_y_las_marcas…` |
+| | S3 | las marcas en `rs-chip`, sin modificador | muerta | `t30_…` |
+| | S5 | `:class` reordenado: `completa` → ok **antes** de mirar `yaImportado` | muerta | Node T30 (el caso «ya importado (completa)») |
+| | S2 | `class="rs-aviso rs-aviso--ok"` estático junto al `:class`; Alpine suma los dos, y `--ok` gana a `--info` por orden en la hoja | **sobrevive** | O10-4 |
+| | S4 | la lista de errores con `rs-aviso--error rs-aviso--ok` | muerta **solo por el control** G3, que deja de encontrar su cadena; en sustancia, sobrevive | O10-4 |
+| | S6 | `.rs-aviso--ok` con los colores de error (con la `?v=` recalculada) | **sobrevive** | O10-5 |
+| **L · Lógica de F-036** | L1 | sin `@keydown.enter.prevent` en «Código de obra» | **sobrevive** | O10-3 |
+| | L2 | «Importando…» sin `x-show` (siempre visible) | **sobrevive** | O10-3 |
+| | L3 | `:key` de la bandeja a `fila.fila_origen` | **sobrevive** | O10-3 |
+| | L4 | la tabla de la bandeja con `x-show="bandejaCargada"` | **sobrevive** | O10-3 |
+| | L5 | `@change` pasa del `input` a su `label` | **sobrevive**: es equivalente, porque `change` burbujea | — |
+| **N · Navegación** | N1 | la miga «Entrada» a `#/entrada` (sin `./`, que dejaría al usuario en la misma página) | muerta | `r71_…` |
+| | N2 | «Inicio» de la barra a `index.html` | muerta | Node R70 (la guardia, no solo sus controles) |
+| | N3 | «Oficios repetidos» de la subnavegación a `./#/entrada` | muerta | `r71_…`, `test_f036_s15_6_…` (sin tocar) |
+| | N4 | el pie fuera del `<div x-data>` | muerta | `r72_…` |
+| **P · `enlaceSeccion`** | P1 | `desde === "importar.html"` en vez de la clave de `PAGINAS` (se rompe `oficios.html`) | muerta | Node R44 (×2) |
+| | P2 | `nuevaPestana: true` solo desde `oficios.html` | muerta | Node R44 (×2) |
+| **A · Accesibilidad** | A1 | la subnavegación actual sin `aria-current` | muerta | `r71_…` |
+| | A2 | «Entrada» de la barra sin `aria-current` | muerta | `r70_…` y Node R70 |
+| | A3 | las migas sin `aria-label` | muerta | `r71_…` |
+| **C · CSS** | C1 | sin la regla `.rs-subnav__item[aria-current="page"]` (con la `?v=` recalculada) | **sobrevive** | O10-5 |
+
+Mueren **12 de 21**, contando S4 entre las vivas. Ninguna de las 9 vivas
+corresponde a algo que esté hoy en la página.
+
+Además repetí las dos de O17-3 sobre el código real. Las dos **mueren**:
+
+- V-a, `importar.html` sin `?v=`: la matan `t21_…[importar.html]` y `r72_…`,
+  con sus controles.
+- V-b, `oficios.html` con la `?v=` vieja: la mata `t21_…[oficios.html]`.
+
+### Respuestas a las preguntas del líder
+
+**1 · El comportamiento está intacto.**
+
+- `js/importacion.js`, `js/api.js` y los tests de F-036 no tienen diff: lo
+  comprobé en la tabla de arriba. `test_f036_front.py` pasa entero y nadie lo
+  ha tocado. Lo mismo `importacion.test.js` y `oficios.test.js`.
+- **Recorrí `importar.html` directiva a directiva**, primero con el parser y
+  luego leyendo el diff (`git diff -w`):
+  - Todos los `@click`, `:disabled`, `x-model`, `x-show`, `x-text`, `x-for`
+    y `:key` siguen en el **mismo elemento** (misma etiqueta) y con el mismo
+    valor. También el `@keydown.enter.prevent`, el `@change` del fichero,
+    `x-data`/`x-init`, el `<template x-if="resultado">`, el
+    `id="bandeja"` y `type="file"`/`accept=".xlsx"`.
+  - La única directiva que cambia es el `:class` del resultado. §16.5 la
+    pide cambiada, y el caso `yaImportado` está explicado en la respuesta 2.
+  - La estructura tampoco altera el ámbito de Alpine. El `<template x-if>`
+    sigue teniendo un solo hijo raíz (`div.mt-5`): el `rs-desplazable`
+    nuevo va dentro de ese hijo. El `input` de la obra sigue dentro de su
+    `label`. El pie queda dentro del `<div x-data>`, como pide §16.15.5 (si
+    se saca, N4 muere).
+  - La «primera `<header>`» que lee `test_f036_front.py` sigue siendo la de
+    la página, porque la barra es un `<nav>`. Conserva `index.html` (en las
+    migas) y `oficios.html` (en la subnavegación).
+  - Se va el enlace «Partes firmados → `index.html`» de la cabecera, como
+    dice §16.5. Lo sustituye la pestaña de la barra, que lleva a
+    `partes.html`.
+  - El botón «Descargar el Excel de errores» pasa de rojo a secundario. Es
+    lo que pide §16.5, y el aviso rojo de errores que tiene encima ya marca
+    el estado.
+- **`js/portal.js`, `enlaceSeccion(id, desde)`: encaja.**
+  - La rama nueva solo entra con una clave **propia** de `PAGINAS`
+    (`hasOwnProperty`, con `PAGINAS` congelado). Devuelve `null` para la
+    sección de la página, `partes.html` para `partes` y `./#/<id>` para las
+    demás, siempre con `nuevaPestana: false`. Es la tabla de §16.8 al pie de
+    la letra.
+  - R46 y R73 se cumplen: misma pestaña.
+  - R17 enmendado no cambia, porque habla de los enlaces de `index.html`, y
+    esta rama no los genera.
+  - Las ramas `"portal"` y `"circuito"` no tienen diff, así que las barras de
+    `index.html` y `partes.html` no cambian: sus R44 y R66 de Node pasan.
+  - Esta rama la usa **solo el test**. `importar.html` no carga
+    `portal.js` (R77), y su barra es HTML estático comparado contra la
+    función (R70). P1 y P2 mueren.
+
+**2 · Los estados se distinguen, y siempre con texto.**
+
+| Estado | Clase | Texto en el mismo elemento |
+|---|---|---|
+| Completa | `rs-aviso rs-aviso--ok` | `x-text="resultado.estadoTexto"` («Importación completa…») |
+| Parcial | `rs-aviso rs-aviso--atencion` | ídem («Importación parcial…») |
+| Ya importado | `rs-aviso rs-aviso--info` | ídem («Este fichero ya se había importado: no se ha añadido nada…») |
+| Error de plantilla, de importar y de bandeja | `rs-aviso rs-aviso--error` | su `x-text` |
+| Lista de errores | `rs-aviso rs-aviso--error` | `h3` «Errores» y un `x-text` por línea |
+| Marcas de la bandeja (duplicada, oficio ambiguo) | `rs-chip rs-chip--atencion` | `x-text="marca"`. Las dos marcas comparten color y las distingue su texto, como en R93 de F-036 |
+
+Lo vigila T30 en sus dos mitades:
+
+- Node **evalúa el `:class` de verdad** con lo que devuelve
+  `presentarImportacion`, en cuatro casos: completa, parcial, ya importado
+  completa y ya importado parcial.
+- Python fija la clase y el texto de los errores y de las marcas.
+
+Mis S1, S3 y S5 mueren.
+
+**El «ya importado» en `rs-aviso--info`: es una desviación aceptable y
+corrige una incoherencia de la spec.**
+
+- El `:class` literal de §16.5 solo distingue `parcial` de lo demás.
+- `textoDelEstado` (`js/importacion.js`, l. 133–144) ya da prioridad a
+  `ya_importado` sobre `estado`.
+- Con la letra de §16.5, la frase «no se ha añadido nada a la bandeja»
+  saldría en el verde de éxito, o en ámbar si la importación original fue
+  parcial. Color y texto se contradirían.
+- `info` es lo que dice el texto. Además encaja con R74 (bloque 12), que
+  rotula esos recuentos como «de la importación original».
+- No toca ni una línea de JS: `yaImportado` ya lo devolvía
+  `presentarImportacion`.
+- Queda pendiente alinear la spec: O10-1.
+
+**3 · El `input` de fichero con `hidden`: es cierto. Importa, pero es previo
+a este bloque.**
+
+- `class="hidden"` es `display: none` en Tailwind, y el `<label>` que lo
+  envuelve no es enfocable. Con el tabulador se salta: no hay forma de abrir
+  el selector de fichero sin ratón.
+- En la base (`190b726`) ya estaba igual. Viene de F-036, no de este bloque.
+- **Cuánto importa:**
+  - Es la acción principal de la página.
+  - Incumple WCAG 2.1.1 (teclado, nivel A).
+  - En la práctica, Posventa trabaja con ratón, así que no bloquea a nadie
+    hoy.
+  - El remodelado no lo causa, pero sí lo hace más visible: ahora la
+    etiqueta tiene aspecto de botón (`rs-btn rs-btn--secundario`), y quien
+    use el teclado esperará poder llegar a ella.
+- Lo anoto como hallazgo con destino: **O10-2**.
+
+**4 · H-7 y O17-3: cerrados.**
+
+- **H-7**: `problemasR66` trata como problema las cuatro formas ligadas
+  (`FORMAS_LIGADAS_R66`, `tests_js/f035_paginas.test.js` l. 73 y 126).
+  - Tiene cuatro controles: V5 y V6 en `index.html`, y las formas
+    `x-bind:` en `importar.html`.
+  - La mutación H1 del implementer (quitar la guardia) los hace caer.
+  - Mi N2 también arrastra el control H-7 de `importar.html`.
+- **O17-3**: T21 cubre ya `importar.html` y `oficios.html`
+  (`PAGINAS_REALES_CON_VERSION`). V-a y V-b, que sobrevivían en el bloque
+  17, ahora mueren: los repetí yo.
+
+**5 · Navegador**: queda para V1/V2 del humano.
+
+- La lista de qué mirar está en el §6 del informe y en `current.md`.
+- O10-5 añade dos puntos: el aviso «completa» en verde y la píldora actual
+  de la subnavegación en burdeos.
+
+**Los apuntes del §5 del informe: están bien.**
+
+- §5.2: `rs-desplazable` se ha **movido** a `styles.css`, no duplicado.
+  `portal.css` se carga después, así que el portal no cambia.
+- §5.3: `rs-aviso__titulo` solo pone el peso de letra, y el color sigue
+  siendo el del aviso.
+- §5.4: el separador de las migas lleva `aria-hidden`, que mejora el
+  esqueleto de §16.5.
+- §5.5: `w-40` pasa a la etiqueta para no mezclar una utilidad con
+  `rs-campo` en la misma propiedad.
+- §5.7: en `oficios.html` solo cambia la `?v=`.
+- **B11 es equivalente.** Un elemento entre la barra y la cabecera no
+  incumple R70, que pide que la barra vaya primera, no que la cabecera vaya
+  pegada a ella.
+- Es **un acierto** haber detectado y cerrado G1–G5 dentro del mismo bloque.
+  La lista cerrada de R72 solo prohíbe Tailwind, no exige el `rs-*`
+  correcto, y T30 tapa justo ese hueco.
+
+### Checkpoints (acotados al diff)
+
+- **C1** [x] `init.sh` termina con exit 0 (lo ejecuté yo). [x] Existen los
+  ficheros del arnés.
+- **C2** [x] Una sola feature `in_progress` (F-035). [x] Rama
+  `feature/F-035-portal-posventa`. [x] `current.md` lleva la entrada nueva
+  arriba, como en los bloques anteriores. [x] Ninguna feature pasa a
+  `done`.
+- **C3**
+  - [x] La primera línea con la ruta está en los ficheros tocados
+    (`importar.html`, `styles.css`, `portal.js` y los dos de tests).
+  - [x] Sin depuración, TODO ni secretos, y sin dependencias nuevas: las
+    fuentes y el favicon son las `<link>` de §15.4, que ya usan las otras
+    páginas.
+  - [x] Comentarios en español.
+  - [x] Ningún PDF ni parte en git: `--diff-filter=A` vacío.
+  - Arquitectura hexagonal, unidad «parte», Sigrid, firma, «firmado no es
+    conforme», duplicados y `conest`: **N/A justificado**. El diff es front
+    de presentación (HTML, CSS y una rama de `portal.js`) y tests, y no toca
+    la API ni el circuito.
+- **C3 bis** — **N/A**: el diff no toca `docs/referencia/`.
+- **C4** [x] Cada requisito tiene tests trazables, y todos pasan:
+
+  | Requisito | Tests |
+  |---|---|
+  | R70 | `test_f035_r70_la_pagina_real_lleva_la_barra_comun_primera_y_estatica[importar.html]` y sus controles; Node «f035 R70: la barra de importar.html…» (7 controles) |
+  | R44 (enmienda) | Node «f035 R44: enlaceSeccion desde una página de PAGINAS…», «…desde importar.html y oficios.html: Entrada es la actual» y «desde desconocido…» |
+  | R66 en la barra de `importar.html` y H-7 | Node «f035 R66 … importar.html» y «f035 R66 (H-7): control…» (×4) |
+  | R71 | `test_f035_r71_la_cabecera_lleva_migas_y_subnavegacion[importar.html]` y sus controles |
+  | R72 | `test_f035_r72_la_pagina_real_lleva_la_identidad_ruesma[importar.html]` y sus controles, incluido el de la `?v=` |
+  | R73 | `test_f035_r73_…[importar.html]` (desde el bloque 16) y Node R70 |
+  | R77 | `test_f035_r77_…` y sus controles |
+  | R50, R51, R54 y R60 extendidos | `r70_…` y `r54_r60_…` |
+  | `?v=` (T21, O17-3) | `test_f035_t21_la_pagina_real_…[importar.html / oficios.html]` y sus controles |
+  | Semántica de estados (T30) | `test_f035_t30_*` y Node «f035 T30…» (4 controles cada uno) |
+
+  [x] Sin red ni BBDD. [x] El MANUAL (vistazo en navegador) consta en
+  `current.md`, enviado a V1/V2.
+- **C4 bis** [x] `rigor: "estandar"`.
+  - [x] **Fase RED**: el informe trae las salidas reales: Node, 14 fail de
+    35; Python, 26 failed y 16 passed. Explica los 16 que ya pasaban (no
+    regresión) y el `NameError` de la primera pasada.
+  - [x] **Cobertura**: N/A con el motivo impreso por `init.sh`.
+  - [x] **Mutación**: informe de la herramienta con 0 mutantes, recalculado,
+    reejecutado y con el control del cero hecho.
+  - [x] **Mutantes a mano**: 52/53 del implementer (B11 equivalente) y
+    12/21 mías, con las 9 vivas analizadas abajo. En rigor `estandar` basta
+    con documentarlas.
+  - [x] «Evidencias» con los cuatro números.
+  - [x] Ningún N/A sin justificar. La regla 7 es N/A porque es de
+    `critico`.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5** [x] T29 y T30 están `[x]`, con commits `F-035 T29: …` y
+  `F-035 T30: …`. [x] No hay ficheros sin trackear. El worktree
+  `.claude/worktrees/agent-a6e2f9bed1d46cdbc` ya existía y no es de este
+  bloque. [x] `features.json` dice `in_progress`, que es lo real.
+
+### Informativo (no bloquea), con su destino
+
+- **O10-1 · §16.5 da un `:class` del resultado que contradice el texto del
+  «ya importado».**
+  - La implementación lo corrige con `rs-aviso--info` delante, y lo vigila
+    Node T30.
+  - **Destino: spec-author, bloque 14.** Es una línea en §16.5: «el
+    resultado, `rs-aviso` con `--info` si `yaImportado`, `--atencion` si
+    `parcial` y `--ok` en otro caso».
+- **O10-2 · El selector de fichero no se alcanza con el teclado (previo, de
+  F-036).**
+  - `<input type="file" class="hidden">` dentro de una `<label>` que no es
+    enfocable.
+  - El arreglo es solo de presentación:
+    - Cambiar `hidden` por una clase de ocultación accesible (`sr-only`,
+      que ya trae Tailwind).
+    - Pintar el foco en la etiqueta con
+      `.rs-btn:focus-within { outline: … }` en `styles.css`.
+  - Es compatible con `test_f036_front.py`, que solo fija `type` y
+    `accept` (l. 360).
+  - Su test sería: el `input` de fichero no lleva `hidden` ni
+    `display: none`, y la etiqueta que lo envuelve tiene una regla de foco.
+  - **Destino: el líder, para el humano.** Puede ser una tarea pequeña
+    dentro de F-035 (la página ya se ha remodelado aquí, así que cabe en el
+    bloque 14) o una ficha aparte. No se carga a este bloque.
+- **O10-3 · Los tests de F-036 no fijan cuatro directivas de
+  `importar.html`** (L1–L4: `@keydown.enter.prevent`, `x-show="importando"`,
+  `:key` de la bandeja y `x-show="bandeja.length"`).
+  - El hueco es previo a este bloque, y aquí no se ha cambiado ninguna:
+    el parser lo confirma.
+  - Pero R72 fía «remodelar es presentación» a que «los tests de
+    comportamiento de F-036 siguen en verde», y esos tests no ven todas las
+    directivas.
+  - **Destino: bloque 11** (`oficios.html`, el siguiente remodelado).
+    Su reviewer debe repetir la comparación de atributos funcionales con el
+    parser (ver la automejora). Opcionalmente, si el líder la quiere, se
+    puede añadir una guardia de «huella de directivas» por página. Yo no la
+    exijo, porque congelaría las páginas ante cambios de lógica legítimos
+    (R74, R75).
+- **O10-4 · Un modificador de estado de más pasa la guardia T30** (S2 y S4:
+  un `rs-aviso--ok` estático junto al `:class`, o dos modificadores en la
+  lista de errores).
+  - Nadie lo escribe a propósito, y la familia G está cubierta.
+  - **Destino: opcional, en el bloque 11** si se vuelve a tocar
+    `test_f035_paginas.py`. La propuesta es que `problemas_de_estados` y
+    `avisoDelResultado` exijan **exactamente un** `rs-aviso--*` o
+    `rs-chip--*` en el `class` estático (y ninguno en el del resultado, que
+    lo pone el `:class`).
+- **O10-5 · El color solo lo ve el ojo** (S6, C1; es la familia O9-5).
+  - Que `.rs-aviso--ok` sea verde y que la píldora actual de la
+    subnavegación se distinga de la otra no lo fija ningún test. Fijar
+    colores sería sobreespecificar.
+  - **Destino: V1/V2 del humano.** Hay que mirar el resultado en verde,
+    ámbar y azul, los errores en rojo y «Importar incidencias» en burdeos
+    junto a «Oficios repetidos» en gris.
+- Siguen abiertos, como estaban:
+  - **O16-4**, que es opcional.
+  - **H16-3 a H16-6**, **O17-2**, **O9-2 a O9-4** y **O9-7**: van al
+    spec-author, en el bloque 14.
+  - **O9-1**, **O9-5** y **O9-6**: van a V1.
+
+### Automejora (propuesta, no aplicada)
+
+**`reviewer.md`: una regla para los bloques de «remodelado de
+presentación», válida para cualquier proyecto. Va también a `arnes-base`.**
+
+Cuando un encargo declare que un cambio es «solo presentación» sobre una
+página con lógica (Alpine, Vue, plantillas), el reviewer compara con un
+parser el **multiconjunto de atributos funcionales** (directivas, `id`,
+`name`, `for`, `type`, `accept`, `href`, cada uno con su etiqueta) entre la
+base y HEAD. Después lee entera la lista de diferencias.
+
+El motivo es este bloque. Los tests de comportamiento de la página no
+fijaban cuatro directivas (L1–L4 sobreviven), así que «los tests de F-036
+siguen en verde» no demostraba que la lógica estuviera intacta. El
+multiconjunto sí lo demuestra, cuesta un guion de veinte líneas y da una
+lista corta y legible.

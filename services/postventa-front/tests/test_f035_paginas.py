@@ -2804,6 +2804,10 @@ def problemas_r75(html: str) -> list[str]:
         problemas.append('la sección no va dentro de <template x-if="vista">')
     if FRASE_R75 not in seccion_r75.texto():
         problemas.append("falta la frase de §16.6")
+    # T36, superviviente E11b: un `hidden` en la sección gana al `x-show`.
+    cerrables_de_la_seccion = [a for a in _CERRABLE if a in seccion_r75.atributos and a != "x-show"]
+    if cerrables_de_la_seccion:
+        problemas.append(f"<section> se puede esconder ({', '.join(cerrables_de_la_seccion)})")
 
     bucles = [e for e in seccion_r75.elementos() if e.nombre == "template" and "x-for" in e.atributos]
     if [(b.atributos["x-for"], b.atributos.get(":key")) for b in bucles] != [("par in vista.distintos", "par.clave")]:
@@ -2866,6 +2870,9 @@ _SECCION_R75 = '<section x-show="vista.distintos.length" class="rs-panel">'
         (_BOTON_R75, _BOTON_R75.replace("rs-btn--compacto", "rs-btn--compacto sr-only"), "escondido por clase (sr-only)"),
         (_SECCION_R75, _SECCION_R75.replace("rs-panel", "rs-panel invisible"), "escondido por clase (invisible)"),
         (_SECCION_R75, _SECCION_R75.replace("vista.distintos.length", "vista.distintos"), "hay 0"),
+        # T36, supervivientes E11b y E11c: la sección escondida con un atributo.
+        (_SECCION_R75, _SECCION_R75.replace('class="rs-panel"', 'class="rs-panel" hidden'), "<section> se puede esconder (hidden)"),
+        (_SECCION_R75, _SECCION_R75.replace('class="rs-panel"', 'class="rs-panel" :hidden="true"'), "<section> se puede esconder (:hidden)"),
         ('<li class="flex flex-wrap items-center gap-2">\n                  <span x-text="par.nombre_a', '<li class="flex flex-wrap items-center gap-2" x-show="false">\n                  <span x-text="par.nombre_a', "<li> se puede esconder"),
         (_BOTON_R75, _BOTON_R75 + '\n                  <button type="button">Son distintos</button>', "hay 2"),
         ('<template x-for="par in vista.distintos" :key="par.clave">', '<template x-for="par in vista.distintos" :key="par.codigo_a">', "un solo <template"),
@@ -2883,7 +2890,8 @@ _SECCION_R75 = '<section x-show="vista.distintos.length" class="rs-panel">'
         ),
     ],
     ids=["manda-distinto-26", "sin-disabled-27", "disabled-con-otra-condicion", "otros-codigos", "boton-con-x-show",
-         "boton-hidden", "boton-sr-only", "seccion-invisible", "otro-x-show", "par-con-x-show", "dos-botones",
+         "boton-hidden", "boton-sr-only", "seccion-invisible", "otro-x-show", "seccion-hidden-E11b",
+         "seccion-hidden-ligado-E11c", "par-con-x-show", "dos-botones",
          "otra-clave", "otra-frase", "par-sin-nombres", "boton-fuera-del-bucle"],
 )
 def test_f035_r75_control_la_seccion_de_distintos_estropeada_salta(viejo, nuevo, senal):

@@ -1,6 +1,35 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 13 (T35, T36) HECHO · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 13 y después bloque 14 (documentación)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 13».
+>
+> - `75246db` **T35** (R75, D-13 (i)):
+>   - `presentarPropuestas` gana `distintos`: los pares de `oficio.distintos`,
+>     ordenados, sin repetir, con el `par()` de siempre y su clave;
+>   - es tolerante: sin el campo (F-053 aún no existe), si no es una lista o
+>     con entradas mal formadas, no pinta nada;
+>   - `sinNada` los cuenta. Ni una llamada nueva: el botón usa `decidir()`.
+> - `oficios.html`: «Decididos como distintos» entre «Grupos vigentes» y
+>   «Avisos», con la frase de §16.6 y un «Son el mismo» (`--ok` compacto) por
+>   par. La huella de O10-3 gana solo esas cuatro entradas; R33 admite `M
+>   js/oficios.js`.
+> - Commit de **T36**: el superviviente E11b (un `hidden` en la sección)
+>   cerrado en la guardia, con dos controles.
+>
+> Front 729, Node 677/677, raíz 114; `bash harness/init.sh` **ENTORNO LISTO**
+> (una vez). Mutación del arnés: 0 mutantes. Manuales: **50, con 49 muertas y
+> 1 equivalente** (A6), incluidas la 26, la 27 y la 28. «F-036 intacto»; la
+> API, sin diff. Worktree de mutación y rama auxiliar retirados. Sin push.
+>
+> - **MANUAL pendiente** (no hay navegador conectado): va con V1/V2, donde la
+>   pantalla de oficios tiene que salir como antes. La sección solo se verá
+>   con F-053 desplegada (V4 g).
+> - Para el reviewer, §5 del informe: `Array.isArray` en vez del literal
+>   `||`, los códigos solo como textos (aviso para F-053), el `@click` exacto
+>   y el botón evaluado desde el HTML con `vm`.
+
 > ## ▶ F-035 · BLOQUE 12 (T33, T34) + O11-5 y O11-1 HECHOS · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 12 y después bloque 13 (implementer, si D-13 (i))
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 12».

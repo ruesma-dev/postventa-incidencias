@@ -6588,3 +6588,334 @@ Solo queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío.
 | Mutaciones manuales | **61 en 11 familias: 59 muertas y 2 equivalentes (C1, C2)**, incluidas la **24** y la **25** de `design.md` §16.10. Cuatro supervivientes reales (B3, C4, C6, R1), cerrados en T34 |
 | `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 71 (deuda previa) |
 | Tiempo de la suite | raíz 19,54 s; front 35,75 s (`init.sh`); Node 3,68 s |
+
+## Bloque 13 · T35 y T36 · Apunte (a): «Decididos como distintos» en oficios (R75) · 2026-10-06
+
+implementer. Encargo del líder: solo el bloque 13, con D-13 (i) decidida (el
+dato `oficio.distintos` lo da el backend en F-053, que aún no existe; el front
+lo consume de forma tolerante) y parar. En `progress/review_F-035.md` no hay
+hallazgos con destino al bloque 13; sí se aplicó desde el principio la lección
+de O12-1 (que la guardia vea también las clases que esconden).
+
+Commits: `75246db` **T35** y el de **T36** (un superviviente cerrado,
+`tasks.md`, `mutacion_F-035.md`, este informe y `current.md`). Sin push.
+
+### 1 · Qué cambió
+
+- **`js/oficios.js`** (T35, R75, `design.md` §16.6). Es el único cambio de
+  lógica que admite la spec:
+  - `presentarPropuestas` gana la clave **`distintos`**:
+    `[{clave, codigo_a, codigo_b, nombre_a, nombre_b, motivos: []}]` (la firma
+    de §16.8), construida con el **mismo `par()` de siempre** más su clave
+    (`"<a>-<b>"`).
+  - Ayudantes privados `esCodigo` y `paresDistintos` (no se exportan):
+    - sin el campo, `null` o algo que no es una lista → `[]`;
+    - una entrada que no tiene dos códigos de texto no vacíos y distintos se
+      descarta (null, texto, número, lista, sin `codigo_a` o `codigo_b`,
+      códigos numéricos, en blanco o iguales), y las buenas siguen;
+    - cada par sale ordenado por dentro y una sola vez (el mismo par al revés
+      cuenta una vez), y la lista, en orden de clave;
+    - un código sin nombre en la obra sale con el marcador de siempre.
+  - `sinNada` cuenta los distintos.
+  - **Ni una llamada nueva**: `decidirCatalogos(` sale 1 vez y
+    `cuerpoDeDecision(` 2, como fija
+    `test_f036_r88_solo_decidir_llama_al_endpoint_de_decisiones` (sin tocar,
+    en verde).
+- **`oficios.html`** (T35): la sección va entre «Grupos vigentes» y «Avisos»,
+  dentro del `<template x-if="vista">`:
+  - `<section x-show="vista.distintos.length" class="rs-panel">`, el `<h2
+    class="rs-rotulo">` «Decididos como distintos» y la frase literal de §16.6
+    en `rs-nota`;
+  - `<template x-for="par in vista.distintos" :key="par.clave">`. Por cada
+    par, sus nombres y códigos (el mismo `x-text` que los pares de las otras
+    secciones) y `<button type="button" @click="decidir([par.codigo_a,
+    par.codigo_b], 'mismo')" :disabled="!puedeDecidir()" class="rs-btn
+    rs-btn--ok rs-btn--compacto">Son el mismo</button>`, con el mismo aspecto
+    que en las propuestas.
+  - Sin clases nuevas ni cambios en la hoja: la `?v=` no cambia.
+- **`tests_js/f035_paginas.test.js`** (T35): 32 tests nuevos.
+  - 22 casos de `presentarPropuestas().distintos`, por familias:
+    - lo del contrato;
+    - pares desordenados (dentro del par y en la lista) y repetidos;
+    - nombres que faltan;
+    - campo vacío o que no es una lista;
+    - entradas mal formadas.
+  - Tests sueltos:
+    - sin `oficio.distintos` sale `[]` y la vista es la misma que con la
+      lista vacía (con sus siete claves);
+    - la forma completa de un par y que las claves son distintas;
+    - «nunca lanza», también sin respuesta o sin `oficio`;
+    - `sinNada`;
+    - los distintos no cambian propuestas, grupos ni avisos.
+  - **El componente.** El botón se **lee de `oficios.html`**, y su `@click` y
+    su `:disabled` se evalúan con `vm` sobre `crearAppOficios` con un `api`
+    doble. Así el test prueba lo que dice el HTML, no lo que el test supone.
+    - Con sesión, manda `mismo` con los dos códigos del par, la obra de las
+      propuestas y `confirmado: true`, y luego recarga.
+    - Sin sesión, está deshabilitado y no manda nada.
+    - Mientras se guarda otra decisión, está deshabilitado.
+- **`tests/test_f035_paginas.py`** (T35 y T36):
+  - `problemas_r75` comprueba:
+    - que hay una sola sección, en su sitio (el orden de las cuatro
+      secciones) y dentro del `x-if="vista"`;
+    - la frase, el `x-for` con su `:key` y el texto del par;
+    - **un solo** botón «Son el mismo», con su `@click` y su `:disabled`
+      exactos y dentro del bucle;
+    - que nada lo esconde. No vale:
+      - `x-show`, `x-if`, `hidden` ni `:hidden` en el botón ni en lo que hay
+        entre él y la sección;
+      - `hidden`, `invisible` ni `sr-only` en ellos ni en la sección;
+      - (T36) `hidden` ni `:hidden` en la propia sección.
+  - 22 tests: el de la página real y 21 controles. De los controles, 17 son
+    estropeos, 3 sacan la sección de su sitio y 1 la saca del `x-if`. La 26 y
+    la 27 de §16.10 quedan como controles permanentes.
+  - `ROTULOS_DE_OFICIOS` gana el rótulo. `BOTONES_DE_OFICIOS` ya cubre el
+    nuevo «Son el mismo» (`--ok` compacto) sin cambiar.
+  - **Huella de O10-3**: `HUELLA_DE_OFICIOS` gana **solo** las cuatro
+    entradas de R75 (sección, bucle, texto del par y botón), en el mismo
+    commit, como anunciaba su comentario.
+- **`tests/test_f035_portal.py`** (T35): **R33 enmendado**, que admite
+  también `M js/oficios.js`.
+  - El control sin git pasa a llamarse
+    `test_f035_r33_control_admite_el_m_de_importacion_y_oficios_js_y_nada_mas`.
+  - Los `M` de los dos ficheros pasan. No pasan `api.js`, `app.js`, la guarda
+    ni un `A` o un `D` de cualquiera de los dos.
+
+**No se tocó**: `tests/test_f036_front.py`, `tests_js/oficios.test.js` ni
+`tests_js/importacion.test.js` (los tres en verde), `js/api.js`, `css/` ni la
+API.
+
+### 2 · Fase RED
+
+**Node**, con los tests escritos y `js/oficios.js` y `oficios.html` sin tocar:
+
+```
+$ node --test tests_js/f035_paginas.test.js
+✖ f035 R75: presentarPropuestas().distintos, un par (2.4272ms)
+  TypeError: Cannot read properties of undefined (reading 'map')
+      at resumenDe (…tests_js/f035_paginas.test.js:793:44)
+…  (los 22 casos, igual)
+✖ f035 R75: presentarPropuestas nunca lanza por distintos, ni sin respuesta (0.4852ms)
+  AssertionError [ERR_ASSERTION]: con null
+  undefined !== []
+✖ f035 R75: la sección de distintos tiene un solo botón, «Son el mismo» (0.8238ms)
+  AssertionError [ERR_ASSERTION]: oficios.html no tiene <section x-show="vista.distintos.length">
+… («manda mismo y recarga», «sin sesión», «mientras se guarda otra», igual)
+ℹ tests 120
+ℹ pass 89
+ℹ fail 31
+```
+
+Con `js/oficios.js` hecho y el HTML aún sin tocar quedaban 5 en rojo: los 4
+del botón y uno que era **un error de mi test**. Esperaba mal el orden de
+`sort()` en las claves (`grupos` va antes que `gruposVigentes`). Lo corregí
+antes del commit.
+
+**Python**, antes de tocar el HTML (las líneas `E`, contadas):
+
+```
+$ python -m pytest tests/test_f035_paginas.py tests/test_f035_portal.py -q -p no:cacheprovider -k "r75 or r33 or o10_3 or t31"
+     15 E       assert 0 == 1            (los controles: aún no hay sección)
+      1 E       AssertionError: oficios.html, «Decididos como distintos» (R75):   … hay 0
+      1 E       AssertionError: oficios.html, estados con su semántica (§16.5):   (falta el rótulo)
+      1 E       AssertionError: oficios.html: el remodelado es presentación … (O10-3):  - ('section' … vista.distintos …)
+      3 E       ValueError: substring not found   (la sección que mover no existe)
+      1 E       AssertionError: assert ['M services/...s/oficios.js'] == []   (control de R33)
+22 failed, 27 passed, 377 deselected in 3.83s
+```
+
+**R33**, con el HTML y el JS hechos y la guardia **sin enmendar**:
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -p no:cacheprovider -k "r33"
+E       AssertionError: F-035 ha tocado el circuito:
+E         M services/postventa-front/js/oficios.js
+FAILED tests/test_f035_portal.py::test_f035_r33_no_se_modifica_nada_del_circuito
+FAILED tests/test_f035_portal.py::test_f035_r33_control_admite_el_m_de_importacion_y_oficios_js_y_nada_mas
+```
+
+Con la guardia enmendada, las dos pasan.
+
+### 3 · Verde sobre el código real
+
+- `bash harness/init.sh`: **una vez**, tal cual, sobre el árbol final (con el
+  arreglo de T36, antes de su commit).
+  - **exit 0, `ENTORNO LISTO`**.
+  - Raíz **114 passed** (7,42 s); front **729 passed** (16,72 s); la API, en
+    caché (árbol sin cambios).
+  - `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción
+    frente a dev)`.
+  - ruff: **71** avisos, los de antes (deuda previa). Los dos ficheros de test
+    tocados dan `All checks passed!`.
+- Node: `node --test "tests_js/*.test.js"` → **677/677** (1,77 s).
+  `oficios.test.js` pasa entero y **sin tocar**.
+- «F-036 intacto»: `git diff 2a86bca --stat -- …/test_f036_front.py
+  …/oficios.test.js …/importacion.test.js` da solo `test_f036_front.py | 5
+  ++---` (las líneas de R81 del bloque 16), como en el bloque 12.
+- `services/postventa-api`: `git diff --stat` vacío.
+- **Vistazo en navegador: NO hecho.** `list_connected_browsers` → `[]`. Va
+  con V1/V2 (§6).
+
+### 4 · Mutaciones (T36)
+
+**Campaña del arnés**, `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`:
+
+```
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+**Manuales** (C4 bis), en un worktree desechable del scratchpad:
+
+- Worktree `wt_b13`, con la rama auxiliar `feature/F-035-mut-b13` para que
+  las guardias de rama no se salten.
+- Un guion aplica cada mutación sola, corre las suites que le tocan, anota
+  qué cae y restaura:
+  - las del JS: Node entero, `test_f036_front.py` y `test_f035_portal.py`;
+  - las del HTML: `test_f035_paginas.py`, `test_f036_front.py` y Node;
+  - las de las guardias: su fichero de tests.
+- Línea base del worktree: front 727, Node 677/677.
+- Uso la regla que propuso la review del bloque 12. Una mutación de HTML
+  solo cuenta como muerta si cae algún test que **no** sea un control de «el
+  control ya no encuentra». Si solo caen esos, «sobrevive en sustancia».
+
+| Familia | Id | Mutación | Resultado | La mata |
+|---|---|---|---|---|
+| **A · Campo ausente o vacío** | **28** | `distintos.forEach` sin comprobar (lanza sin `distintos`) | muerta (21 de Node) | R75 «sin oficio.distintos», «nunca lanza», campo null, no lista |
+| | A2 | `(distintos \|\| [])`, el literal de §16.6 | muerta (6) | R75 texto, objeto, número, `true`, «nunca lanza» |
+| | A3 | sin la clave `distintos` | muerta (29) | todos los de R75 |
+| | A4 | `sinNada` no cuenta los distintos | muerta | R75 `sinNada` |
+| | A5 | `sinNada` cuenta el campo crudo, no los pares válidos | muerta | R75 `sinNada` («un par descartado no cuenta») |
+| | A6 | `paresDistintos(oficio.distintos \|\| null, …) \|\| []` | **equivalente** | — (ver abajo) |
+| **B · Mal formado** | B1 | sin `!entrada` | muerta | entradas que no son pares (null) |
+| | B2 | sin `esCodigo` | muerta (9) | sin `codigo_a`/`codigo_b`, null, vacío, numéricos… |
+| | B3 | `esCodigo` sin `trim()` | muerta | «un código en blanco» |
+| | B4 | `esCodigo` admite números | muerta | «códigos numéricos» |
+| | B5 | sin `codigos.length !== 2` | muerta | «un código consigo mismo» |
+| | B6 | solo se mira `codigo_a` | muerta (3) | sin `codigo_b`, `codigo_b` null |
+| **C · Pares desordenados** | C1 | sin ordenar dentro del par (ni quitar repetidos) | muerta (6) | par al revés, lista desordenada, consigo mismo |
+| | C2 | la lista sin `sort()` | muerta | «la lista desordenada» |
+| | C3 | sin quitar pares repetidos | muerta | «el mismo par dos veces» |
+| | C4 | quita repetidos pero no ordena | muerta (5) | par al revés, lista desordenada |
+| **D · Nombres que faltan y forma** | D1 | sin los nombres de la obra | muerta (9) | todos los que tienen nombre |
+| | D2 | `motivos` no vacíos | muerta | «la forma completa de un par» |
+| | D3 | sin `clave` | muerta (2) | forma completa, claves distintas |
+| | D4 | `clave` = solo `codigo_a` | muerta (4) | claves distintas, forma, repetidos |
+| | D5 | `codigo_a` y `codigo_b` cambiados | muerta (9) | casi todos |
+| **E · El botón y la sección (HTML)** | **26** | el botón manda `'distinto'` | muerta | Node «manda mismo», `r75_oficios_pinta…`, huella |
+| | **27** | sin `:disabled` | muerta | Node «sin sesión» y «mientras se guarda», **`test_f036_r89_los_botones…[Son el mismo]` (sin tocar)**, `r75_…`, huella |
+| | E3 | `[par.codigo_b, par.codigo_a]` | muerta | `r75_…`, huella (el comportamiento es el mismo: ver §5) |
+| | E4 | `x-show="vista.distintos"` (una lista vacía es verdadera) | muerta | Node (4), `t31_…`, `r75_…`, huella |
+| | E5 | `:key="par.codigo_a"` | muerta | `r75_…`, huella |
+| | E6 | «Son lo mismo» | muerta | Node, `r75_…`, huella |
+| | E7 | `hidden` en el botón | muerta | `r75_…` |
+| | E8 | el botón en `--secundario` | muerta | `t31_…` (`BOTONES_DE_OFICIOS`) |
+| | E9 | otra frase | muerta | `r75_…` |
+| | E10 | el botón fuera del `x-for` | muerta | `r75_…`, huella |
+| | E11 | `x-cloak hidden` en la sección | muerta | huella (por `x-cloak`) |
+| | E11b | `hidden` en la sección | **sobrevivía en sustancia** → muerta | control nuevo `seccion-hidden-E11b` |
+| | E11c | `:hidden="true"` en la sección | muerta (solo por la huella) → la ve también la guardia | control nuevo `seccion-hidden-ligado-E11c` |
+| | E12 | `:disabled="decidiendo"` | muerta | Node «sin sesión», `test_f036_r89…` (sin tocar), `r75_…`, huella |
+| | E13 | otro rótulo | muerta | `t31_…` (`ROTULOS_DE_OFICIOS`) |
+| **F · La guardia de R75** | F1 | sin el orden | muerta | los 3 controles de «fuera de su sitio» |
+| | F2 | sin las clases que esconden | muerta | `boton-hidden`, `boton-sr-only`, `seccion-invisible` |
+| | F3 | sin `sr-only` | muerta | `boton-sr-only` |
+| | F4 | sin los atributos que esconden | muerta | `boton-con-x-show`, `par-con-x-show` |
+| | F5 | sin «dentro del bucle» | muerta | `boton-fuera-del-bucle` |
+| | F6 | sin la frase | muerta | `otra-frase` |
+| | F7 | sin `:disabled` | muerta | `sin-disabled-27`, `disabled-con-otra-condicion` |
+| | F8 | sin el `x-if` | muerta | `r75_control_la_seccion_fuera_del_x_if` |
+| | F9 | solo el botón, sin sus ancestros | muerta | `par-con-x-show` |
+| | F10 | sin el texto del par | muerta | `par-sin-nombres` |
+| | F11 | sin el `hidden` de la sección (arreglo de T36) | muerta | los dos controles nuevos |
+| | F12 | la sección no puede llevar ni su `x-show` (arreglo de T36) | muerta | la página real y los dos controles nuevos |
+| **G · R33** | G1 | sin `oficios.js` en lo admitido | muerta | `r33_no_se_modifica…` y su control |
+| | G2 | admite también `api.js` | muerta | control de R33 |
+
+**50 mutaciones en 7 familias: 49 muertas y 1 equivalente (A6)**, incluidas
+la **26**, la **27** y la **28** de `design.md` §16.10.
+
+- **Un superviviente real, E11b**: un `hidden` en la propia sección gana al
+  `x-show`, porque Alpine solo cambia `style.display`, y la sección no se
+  vería nunca.
+  - Solo caían los controles que dejaban de encontrar su texto. La huella no
+    lo ve, porque `hidden` no es uno de sus atributos funcionales.
+  - **Cerrado en T36**: `problemas_r75` rechaza en la sección cualquier
+    atributo de `_CERRABLE` que no sea su `x-show`, con dos controles
+    (`hidden` y `:hidden`).
+  - Con el arreglo, E11b y E11c mueren por la guardia, y F11 y F12 (las
+    mutaciones del propio arreglo) mueren por sus controles.
+- **A6, equivalente**: `paresDistintos` ya trata igual `undefined` y `null`
+  (ninguno es una lista) y siempre devuelve una lista. Por eso `|| null` y
+  `|| []` no cambian nada. La planteé mal; queda anotada.
+
+Worktree retirado (`git worktree remove --force`) y rama auxiliar borrada
+(`git branch -D feature/F-035-mut-b13`). `git worktree list` ya no lo enseña.
+Solo queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío.
+
+### 5 · Desviaciones y decisiones (para el reviewer)
+
+1. **`Array.isArray` en vez del literal `(oficio.distintos || [])` de
+   §16.6.**
+   - Con el literal, un `distintos` que no fuera una lista (un texto, un
+     objeto) haría **lanzar** a `presentarPropuestas`, y la pantalla entera
+     dejaría de pintarse. A2 lo demuestra.
+   - R75 pide que, sin el dato, la pantalla funcione como antes. Lo mal
+     formado se trata igual.
+2. **Qué es una entrada válida**: dos códigos de **texto**, no vacíos y
+   distintos.
+   - Un código numérico se descarta en vez de convertirse. Los códigos de
+     oficio son textos en toda la respuesta, y mandar un número a `POST
+     /api/catalogos/decisiones` no está en el contrato.
+   - **Para F-053**: los códigos, como textos.
+3. **Pares sin repetir y en orden de clave**, también si el backend los
+   manda repetidos o al revés. El `:key` del `x-for` tiene que ser único:
+   Alpine se rompe con claves repetidas.
+4. **No se filtra por los oficios de la obra.**
+   - Un código que no es de la obra sale con «(sin nombre en esta obra)»,
+     como en los avisos (R84 de F-036).
+   - El contrato ya dice que el backend solo manda pares de la obra.
+5. **La guardia exige el `@click` exacto de §16.6** (`[par.codigo_a,
+   par.codigo_b]`).
+   - E3, con los códigos al revés, hace lo mismo, porque `cuerpoDeDecision`
+     ordena. Aun así, la guardia lo rechaza.
+   - Es a sabiendas: fija la forma que escribe la spec.
+6. **El test del componente evalúa con `vm` la directiva del HTML**, en vez
+   de llamar a mano a `app.decidir([...], 'mismo')`. Así la 26 y la 27 las
+   mata también Node, no solo la guardia estática.
+7. **El estilo**:
+   - la sección, como «Grupos vigentes» (`rs-panel`, `rs-rotulo`, `rs-nota`);
+   - cada par en una línea, como los pares de las propuestas;
+   - sin clases nuevas.
+
+### 6 · Fuera del alcance y pendiente
+
+- **MANUAL (V1/V2 del humano)**: sin navegador conectado, no he visto el
+  aspecto.
+  - Hoy la sección **no se puede ver con datos reales**: el backend no manda
+    `oficio.distintos` hasta F-053.
+  - Para mirarla antes, habría que servir una respuesta inventada. Si no, se
+    comprueba en V4 g, con F-053 desplegada, como dice §16.6.
+  - Lo que sí se puede comprobar en V1/V2: que con el backend de hoy la
+    pantalla de oficios sale **como antes**, sin la sección.
+- **F-053** (la ficha de backend, R76): `oficio.distintos` en `GET
+  /api/catalogos/propuestas`, `[{codigo_a, codigo_b}]`, con los códigos como
+  textos (§5.2).
+- Lo que queda abierto de otras reviews sigue como estaba (O12-1 a O12-4,
+  O11-2 a O11-4…).
+- Lo siguiente es la documentación (bloque 14), que también tiene que contar
+  R75.
+
+### Evidencias (bloque 13)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests ejecutados | raíz **114** passed (7,42 s, `init.sh`); front Python **729** passed (16,72 s, `init.sh`); Node **677/677** (1,77 s). Nuevos: **22** en Python del front (R75: 1 + 21 controles; el control de R33 se reescribió y no suma) y **32** en Node (R75) |
+| Cobertura de las líneas cambiadas | `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+| Mutantes (arnés) | 0 generados, 0 supervivientes (`progress/mutacion_F-035.md`): F-035 no tiene Python de producción |
+| Mutaciones manuales | **50 en 7 familias: 49 muertas y 1 equivalente (A6)**, incluidas la **26**, la **27** y la **28** de `design.md` §16.10. Un superviviente real (E11b), cerrado en T36 |
+| `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 71 (deuda previa) |
+| Tiempo de la suite | raíz 7,42 s; front 16,72 s (`init.sh`); Node 1,77 s |

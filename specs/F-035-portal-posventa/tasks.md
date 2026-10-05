@@ -719,7 +719,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` en verde, con
       `tests_js/oficios.test.js` y `tests/test_f036_front.py` **sin tocar y
       en verde**; «F-036 intacto» vacío; nada en `services/postventa-api`.
-- [ ] **T36**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+- [x] **T36**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **26**, **27** y **28**. (c) `bash harness/init.sh`
       en verde.
       **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 13».

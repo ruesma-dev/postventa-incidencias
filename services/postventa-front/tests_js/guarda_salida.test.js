@@ -298,6 +298,24 @@ for (const [que, estadoDelParte] of [
   });
 }
 
+// Un parte ya terminado DELANTE de uno pendiente no corta el recorrido: es el
+// caso más corriente, una tanda que cierra los primeros partes y falla en uno
+// posterior (review del bloque 16, H16-2).
+for (const [que, terminado] of [
+  ["cerrado por el circuito (cerrado: true)", () => parte(PipelineReal.ESTADO_APROBADO, true)],
+  ["rechazado", () => parte(PipelineReal.ESTADO_RECHAZADO)],
+  ["con el estado «cerrado» del backend", () => parte(PipelineReal.ESTADO_CERRADO)],
+]) {
+  test(`f035 R79 (c): un parte ${que} delante de uno aprobado sin cerrar no corta el recorrido: hay trabajo`, () => {
+    const partes = [terminado(), parte(PipelineReal.ESTADO_APROBADO)];
+
+    const [resultado, violaciones] = juzga(estadoRecienAbierto({ fase: "resumen", partes }));
+
+    assert.equal(resultado, true);
+    assert.deepEqual(violaciones, []);
+  });
+}
+
 test("f035 R79 (c) negativo: un parte rechazado sin cerrar no es trabajo (consta en la base)", () => {
   const partes = [parte(PipelineReal.ESTADO_RECHAZADO), parte(PipelineReal.ESTADO_RECHAZADO)];
 

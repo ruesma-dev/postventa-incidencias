@@ -68,6 +68,20 @@ Bloque 10 (`tasks.md`, T29):
 - T30: los errores y las marcas de la bandeja con su estado y su texto
   (mutaciones G3-G5 del bloque 10).
 
+Bloque 11 (`tasks.md`, T31):
+
+- **R70–R73, R77** y las extensiones de R50, R51, R54 y R60, también en
+  `oficios.html` (`PAGINAS_REMODELADAS` crece), con controles sobre ella.
+- Los estados de `oficios.html` con la semántica de la marca y su texto: los
+  errores en `rs-aviso--error`, los avisos en `rs-panel--atencion` con su
+  rótulo, y los botones de decidir con su variante (`design.md` §16.5).
+  Review del bloque 10, **O10-4**: una variante de estado de más, también
+  en `importar.html`, salta.
+- Review del bloque 10, **O10-3**: la huella funcional de `oficios.html`
+  (directivas, `id`, `type`… con su ámbito de Alpine) es la de F-036, que
+  sus tests no fijan entera. El remodelado no la cambia; un cambio de lógica
+  legítimo (R75, bloque 13) la amplía en el mismo commit.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -1486,10 +1500,13 @@ def test_f035_r65_control_sin_la_regla_del_enlace_el_rotulo_ensena_burdeos():
 # tests de F-036 siguen sin tocarse. Se extienden a la página R50, R51, R54,
 # R60 y la versión de la hoja (T21; review del bloque 17, O17-3, también
 # para `oficios.html`, que ya la lleva). `oficios.html` entra en el resto de
-# guardias en el bloque 11: `PAGINAS_REMODELADAS` crece entonces.
+# guardias en el bloque 11 (T31): `PAGINAS_REMODELADAS` crece entonces.
 
-#: Las páginas reales ya remodeladas (bloque 10); `oficios.html`, en el 11.
-PAGINAS_REMODELADAS = ("importar.html",)
+#: Las páginas reales ya remodeladas: `importar.html` (bloque 10) y
+#: `oficios.html` (bloque 11).
+PAGINAS_REMODELADAS = ("importar.html", "oficios.html")
+
+OFICIOS = RAIZ_FRONT / "oficios.html"
 
 #: Las páginas reales que piden la hoja con versión (T21 extendido, O17-3).
 PAGINAS_REALES_CON_VERSION = ("importar.html", "oficios.html")
@@ -1953,11 +1970,21 @@ ESTADOS_DE_IMPORTAR = {
 }
 
 
-def problemas_de_estados(html: str) -> list[str]:
-    """Los estados de `importar.html` sin su clase de estado o sin su texto. Vacío = correcto."""
+#: Las clases que dicen el ESTADO o la variante de un componente (review del
+#: bloque 10, O10-4): un elemento lleva exactamente las que le tocan, ni una
+#: más (con dos, gana la que vaya después en la hoja). `--compacto` es tamaño.
+_VARIANTE = re.compile(r"^rs-(?:aviso|chip|btn)--(?!compacto$)[a-z]+$|^rs-panel--atencion$")
+
+
+def variantes(nombres: set[str]) -> set[str]:
+    return {c for c in nombres if _VARIANTE.match(c)}
+
+
+def problemas_de_estados(html: str, estados: dict = ESTADOS_DE_IMPORTAR) -> list[str]:
+    """Los estados de una página sin su clase de estado (o con otra de más) o sin su texto. Vacío = correcto."""
     elementos = leer_html_texto(html).elementos()
     problemas = []
-    for (atributo, valor), (obligatorias, texto) in ESTADOS_DE_IMPORTAR.items():
+    for (atributo, valor), (obligatorias, texto) in estados.items():
         hallados = [e for e in elementos if e.atributos.get(atributo) == valor]
         if len(hallados) != 1:
             problemas.append(f'{atributo}="{valor}": {len(hallados)} elementos, no uno')
@@ -1965,6 +1992,8 @@ def problemas_de_estados(html: str) -> list[str]:
         elemento = hallados[0]
         if not obligatorias <= clases(elemento):
             problemas.append(f'{atributo}="{valor}": lleva «{elemento.atributos.get("class", "")}», no {sorted(obligatorias)}')
+        elif variantes(clases(elemento)) != variantes(obligatorias):
+            problemas.append(f'{atributo}="{valor}": variantes de más {sorted(variantes(clases(elemento)) - obligatorias)} (O10-4)')
         if texto is not None and elemento.atributos.get("x-text") != texto:
             problemas.append(f'{atributo}="{valor}": sin su texto (x-text="{texto}")')
         if texto is None and not [e for e in elemento.elementos() if "x-text" in e.atributos]:
@@ -1991,11 +2020,311 @@ def test_f035_t30_los_errores_y_las_marcas_llevan_su_estado_y_su_texto():
             '<p x-show="errorImportacion" x-text="errorImportacion"\n           class="mt-4 rs-nota">',
         ),
         ('<p x-show="errorBandeja" x-text="errorBandeja"', '<p x-show="errorBandeja"'),
+        # O10-4 (S4 de la review del bloque 10): una variante de más.
+        (
+            '<div x-show="resultado.errores.length" class="rs-aviso rs-aviso--error">',
+            '<div x-show="resultado.errores.length" class="rs-aviso rs-aviso--error rs-aviso--ok">',
+        ),
+        ("rs-chip rs-chip--atencion", "rs-chip rs-chip--atencion rs-chip--info"),
     ],
-    ids=["errores-en-info-G3", "marcas-en-ok-G4", "error-como-nota-G5", "error-sin-texto"],
+    ids=["errores-en-info-G3", "marcas-en-ok-G4", "error-como-nota-G5", "error-sin-texto", "dos-variantes-S4", "marca-con-dos-variantes"],
 )
 def test_f035_t30_control_un_estado_sin_su_semantica_salta(viejo, nuevo):
     real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
     assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
 
     assert problemas_de_estados(real.replace(viejo, nuevo)) != []
+
+
+# --- Bloque 11 (T31) · `oficios.html`, sección real del portal --------------------
+#
+# `design.md` §16.5 y §16.15.5: `oficios.html` se remodela como `importar.html`
+# (bloque 10). Las guardias de R70–R73, R77, R54 y R60 ya la recorren
+# (`PAGINAS_REMODELADAS`); aquí, sus controles sobre ella, la semántica de sus
+# estados y su huella funcional (O10-3). Es PRESENTACIÓN: `js/oficios.js` y
+# `js/api.js` no cambian; las dos palabras de la quinta enmienda de F-036 no
+# salen en ningún texto (lo fija `test_f036_front.py`, sin tocar).
+
+
+@pytest.mark.parametrize(
+    ("guardia", "viejo", "nuevo", "senal"),
+    [
+        ("r70", '<span aria-current="page" class="rs-pestana">', '<span class="rs-pestana">', "la pestaña actual"),
+        ("r70", '<a href="./#/inicio" class="rs-pestana">', '<a href="./#/inicio" class="rs-pestana" x-show="vista">', "R45"),
+        (
+            "r71",
+            '<span aria-current="page" class="rs-subnav__item">Oficios repetidos</span>',
+            '<a href="oficios.html" class="rs-subnav__item">Oficios repetidos</a>',
+            "es la actual",
+        ),
+        ("r71", '<a href="importar.html" class="rs-subnav__item">', '<a href="partes.html" class="rs-subnav__item">', "es un enlace"),
+        # Mutación manual 22b (T32), como control permanente.
+        (
+            "r72",
+            'class="rs-btn rs-btn--primario">Ver los oficios',
+            'class="rs-btn rs-btn--primario bg-slate-800">Ver los oficios',
+            "bg-slate-800",
+        ),
+        ("r72", "Posventa · entrada de incidencias.</div>", "Posventa.</div>", "el pie dice"),
+        ("r72", '<body class="rs-cuerpo">', '<body class="bg-slate-50 text-slate-800">', "rs-cuerpo"),
+        ("r77", "</body>", '<script src="js/portal.js"></script>\n</body>', "js/portal.js"),
+        ("r54", 'class="rs-btn rs-btn--primario">', 'class="rs-btn rs-btn--primario focus:outline-none">', "R54"),
+    ],
+    ids=["r70-sin-actual", "r70-x-show", "r71-actual-como-enlace", "r71-otro-destino", "r72-bg-22b", "r72-otro-pie",
+         "r72-body", "r77-portal-js", "r54-sin-foco"],
+)
+def test_f035_t31_control_las_guardias_de_la_pagina_real_ven_oficios(guardia, viejo, nuevo, senal):
+    real = OFICIOS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+    copia = real.replace(viejo, nuevo)
+
+    detector = {
+        "r70": lambda h: problemas_r70("oficios.html", h),
+        "r71": lambda h: problemas_r71("oficios.html", h),
+        "r72": lambda h: _r72("oficios.html", html=h),
+        "r77": lambda h: problemas_r77("oficios.html", h),
+        "r54": lambda h: problemas_r54_r60("oficios.html", h),
+    }[guardia]
+    assert detector(real) == [], f"{guardia}: la página real ya tiene problemas"
+    assert any(senal in p for p in detector(copia)), detector(copia)
+
+
+# Los estados de `oficios.html` con la semántica de la marca y su texto
+# (`design.md` §16.5): los errores en `rs-aviso--error` con su `x-text`; los
+# avisos (grupos no aplicados por contradicción) en `rs-panel--atencion`, con
+# su rótulo «Avisos» en atención; y cada botón con su variante, una sola: «Ver
+# los oficios», la acción principal; «Son el mismo», `--ok` compacto; «Son
+# distintos» y «Separar», secundario compacto. Siempre con texto: el color
+# nunca dice nada solo.
+
+#: `(atributo, valor) -> (clases obligatorias, x-text obligatorio o None)`.
+ESTADOS_DE_OFICIOS = {
+    ("x-show", "errorCarga"): ({"rs-aviso", "rs-aviso--error"}, "errorCarga"),
+    ("x-show", "errorDecision"): ({"rs-aviso", "rs-aviso--error"}, "errorDecision"),
+    ("x-show", "vista.avisos.length"): ({"rs-panel", "rs-panel--atencion"}, None),
+}
+
+#: El texto de cada botón de `oficios.html` y las clases que lleva (todos los que lo dicen).
+BOTONES_DE_OFICIOS = {
+    "Ver los oficios": {"rs-btn", "rs-btn--primario"},
+    "Descargar los grupos vigentes": {"rs-btn", "rs-btn--secundario"},
+    "Son el mismo": {"rs-btn", "rs-btn--ok", "rs-btn--compacto"},
+    "Son distintos": {"rs-btn", "rs-btn--secundario", "rs-btn--compacto"},
+    "Separar": {"rs-btn", "rs-btn--secundario", "rs-btn--compacto"},
+}
+
+#: El rótulo de cada bloque de `oficios.html`, por su `x-show`, y sus clases.
+ROTULOS_DE_OFICIOS = {
+    "vista.propuestas.length": ("Propuestas pendientes", {"rs-rotulo"}),
+    "vista.grupos.length": ("Grupos vigentes", {"rs-rotulo"}),
+    "vista.avisos.length": ("Avisos", {"rs-rotulo", "rs-rotulo--atencion"}),
+}
+
+
+def problemas_de_oficios(html: str) -> list[str]:
+    """Los estados, botones y rótulos de `oficios.html` sin su semántica o sin su texto. Vacío = correcto."""
+    problemas = problemas_de_estados(html, ESTADOS_DE_OFICIOS)
+    elementos = leer_html_texto(html).elementos()
+    for texto, obligatorias in BOTONES_DE_OFICIOS.items():
+        botones = [e for e in elementos if e.nombre == "button" and e.texto() == texto]
+        if not botones:
+            problemas.append(f"falta el botón «{texto}»")
+        for boton in botones:
+            if not obligatorias <= clases(boton) or ("rs-btn--compacto" in clases(boton)) != ("rs-btn--compacto" in obligatorias):
+                problemas.append(f"«{texto}»: lleva «{boton.atributos.get('class', '')}», no {sorted(obligatorias)}")
+            elif variantes(clases(boton)) != variantes(obligatorias):
+                problemas.append(f"«{texto}»: variantes {sorted(variantes(clases(boton)))}, no {sorted(variantes(obligatorias))} (O10-4)")
+    for condicion, (texto, obligatorias) in ROTULOS_DE_OFICIOS.items():
+        bloques = [e for e in elementos if e.nombre == "section" and e.atributos.get("x-show") == condicion]
+        rotulos = [h for b in bloques for h in b.elementos() if h.nombre == "h2"]
+        if [(h.texto(), obligatorias <= clases(h)) for h in rotulos] != [(texto, True)]:
+            problemas.append(f'<section x-show="{condicion}">: un <h2> «{texto}» con {sorted(obligatorias)}')
+    return problemas
+
+
+def test_f035_t31_los_estados_y_los_botones_de_oficios_llevan_su_semantica_y_su_texto():
+    problemas = problemas_de_oficios(OFICIOS.read_text(encoding="utf-8"))
+
+    assert problemas == [], "oficios.html, estados con su semántica (§16.5):\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        (
+            '<p x-show="errorCarga" x-text="errorCarga"\n           class="mt-4 rs-aviso rs-aviso--error">',
+            '<p x-show="errorCarga" x-text="errorCarga"\n           class="mt-4 rs-nota">',
+        ),
+        ('<p x-show="errorDecision" x-text="errorDecision"', '<p x-show="errorDecision"'),
+        (
+            '<section x-show="vista.avisos.length" class="rs-panel rs-panel--atencion">',
+            '<section x-show="vista.avisos.length" class="rs-panel">',
+        ),
+        ('<h2 class="rs-rotulo rs-rotulo--atencion">Avisos</h2>', '<h2 class="rs-rotulo">Avisos</h2>'),
+        ('class="rs-btn rs-btn--ok rs-btn--compacto">Son el mismo', 'class="rs-btn rs-btn--peligro rs-btn--compacto">Son el mismo'),
+        ('class="rs-btn rs-btn--secundario rs-btn--compacto">Separar', 'class="rs-btn rs-btn--ok rs-btn--compacto">Separar'),
+        (
+            'class="rs-btn rs-btn--secundario rs-btn--compacto">Separar',
+            'class="rs-btn rs-btn--secundario rs-btn--ok rs-btn--compacto">Separar',
+        ),
+        ('class="rs-btn rs-btn--primario">Ver los oficios', 'class="rs-btn rs-btn--secundario">Ver los oficios'),
+        ('class="rs-btn rs-btn--secundario rs-btn--compacto">Separar', 'class="rs-btn rs-btn--secundario">Separar'),
+    ],
+    ids=["error-como-nota", "error-sin-texto", "avisos-sin-atencion", "rotulo-de-avisos-neutro", "mismo-en-peligro",
+         "separar-en-ok", "separar-con-dos-variantes", "sin-accion-principal", "separar-sin-compacto"],
+)
+def test_f035_t31_control_un_estado_o_un_boton_de_oficios_sin_su_semantica_salta(viejo, nuevo):
+    real = OFICIOS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert viejo in real, f"el control ya no encuentra {viejo!r}"
+
+    assert problemas_de_oficios(real.replace(viejo, nuevo, 1)) != []
+
+
+# O10-3 · La huella funcional de `oficios.html`
+#
+# Review del bloque 10: los tests de F-036 no fijan todas las directivas de
+# sus páginas (en `importar.html` sobrevivían cuatro mutaciones, L1–L4), así
+# que «sus tests siguen en verde» no basta para decir «remodelar es
+# presentación». Aquí se fija, para `oficios.html`, cada elemento del <body>
+# con atributo funcional, en orden de documento: su etiqueta, esos atributos
+# (directivas de Alpine, `id`, `type`…; `class` y `href` no, que son
+# presentación y navegación, ya vigiladas), su texto si es un botón y su
+# ámbito de Alpine (los `x-data`, `x-for` y `x-if` que lo envuelven). Es la de
+# F-036 (`2a86bca`) tal cual: un cambio de lógica legítimo (R75, bloque 13) la
+# amplía en el MISMO commit, a sabiendas.
+
+_FUNCIONALES = frozenset({"id", "name", "for", "type", "accept", "autocomplete", "value", "disabled", "required"})
+_DE_AMBITO = ("x-data", "x-for", "x-if")
+
+
+def huella_funcional(html: str) -> list[tuple]:
+    """`(etiqueta, ((atributo, valor), …), texto si es botón o "", (ámbito, …))` de cada elemento funcional del <body>."""
+    doc = leer_html_texto(html)
+    cuerpo = _uno([e for e in doc.elementos() if e.nombre == "body"], "<body>")
+    huella = []
+    for e in cuerpo.elementos():
+        atributos = tuple(sorted(
+            (a, v) for a, v in e.atributos.items() if a.startswith(("x-", "@", ":")) or a in _FUNCIONALES
+        ))
+        if not atributos:
+            continue
+        ambito = tuple(
+            f"{a.nombre}[{d}={a.atributos[d]}]"
+            for a in reversed(e.ancestros())
+            for d in _DE_AMBITO
+            if d in a.atributos
+        )
+        huella.append((e.nombre, atributos, e.texto() if e.nombre == "button" else "", ambito))
+    return huella
+
+
+#: La huella funcional de `oficios.html` en F-036 (`2a86bca`), generada con
+#: `huella_funcional` sobre ese fichero y escrita aquí a mano, a sabiendas.
+HUELLA_DE_OFICIOS = (
+    ('div', (('x-data', 'appOficios()'), ('x-init', 'iniciar()')), '', ()),
+    ('input', (('@keydown.enter.prevent', 'cargar()'), ('autocomplete', 'off'), ('type', 'text'), ('x-model', 'obra')), '', ('div[x-data=appOficios()]',)),
+    ('button', ((':disabled', '!obra.trim() || cargando'), ('@click', 'cargar()'), ('type', 'button')), 'Ver los oficios', ('div[x-data=appOficios()]',)),
+    ('button', ((':disabled', '!vista'), ('@click', 'descargarGrupos()'), ('type', 'button')), 'Descargar los grupos vigentes', ('div[x-data=appOficios()]',)),
+    ('span', (('x-show', 'cargando'),), '', ('div[x-data=appOficios()]',)),
+    ('p', (('x-show', 'motivoSinDecidir()'), ('x-text', 'motivoSinDecidir()')), '', ('div[x-data=appOficios()]',)),
+    ('p', (('x-show', 'errorCarga'), ('x-text', 'errorCarga')), '', ('div[x-data=appOficios()]',)),
+    ('p', (('x-show', 'errorDecision'), ('x-text', 'errorDecision')), '', ('div[x-data=appOficios()]',)),
+    ('p', (('x-show', 'vista && vista.sinNada'),), '', ('div[x-data=appOficios()]',)),
+    ('span', (('x-text', 'vista && vista.obra'),), '', ('div[x-data=appOficios()]',)),
+    ('template', (('x-if', 'vista'),), '', ('div[x-data=appOficios()]',)),
+    ('section', (('x-show', 'vista.propuestas.length'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('template', ((':key', 'propuesta.clave'), ('x-for', 'propuesta in vista.propuestas')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('template', ((':key', 'm.codigo'), ('x-for', 'm in propuesta.miembros')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]')),
+    ('span', (('x-text', 'm.nombre'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]', 'template[x-for=m in propuesta.miembros]')),
+    ('span', (('x-text', "'(' + m.codigo + ')'"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]', 'template[x-for=m in propuesta.miembros]')),
+    ('p', (('x-text', "'Por qué se proponen: ' + propuesta.motivos.join(', ')"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]')),
+    ('div', (('x-show', 'propuesta.confirmarEntero'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]')),
+    ('button', ((':disabled', '!puedeDecidir()'), ('@click', "decidir(propuesta.codigos, 'mismo')"), ('type', 'button')), 'Son el mismo', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]')),
+    ('template', ((':key', "par.codigo_a + '-' + par.codigo_b"), ('x-for', 'par in propuesta.pares')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]')),
+    ('span', (('x-text', "par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]', 'template[x-for=par in propuesta.pares]')),
+    ('span', (('x-text', "par.motivos.join(', ')"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]', 'template[x-for=par in propuesta.pares]')),
+    ('button', ((':disabled', '!puedeDecidir()'), ('@click', "decidir([par.codigo_a, par.codigo_b], 'mismo')"), ('type', 'button'), ('x-show', '!propuesta.confirmarEntero')), 'Son el mismo', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]', 'template[x-for=par in propuesta.pares]')),
+    ('button', ((':disabled', '!puedeDecidir()'), ('@click', "decidir([par.codigo_a, par.codigo_b], 'distinto')"), ('type', 'button')), 'Son distintos', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=propuesta in vista.propuestas]', 'template[x-for=par in propuesta.pares]')),
+    ('section', (('x-show', 'vista.grupos.length'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('template', ((':key', 'grupo.clave'), ('x-for', 'grupo in vista.grupos')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('p', (('x-text', 'grupo.etiqueta'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=grupo in vista.grupos]')),
+    ('template', ((':key', "par.codigo_a + '-' + par.codigo_b"), ('x-for', 'par in grupo.pares')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=grupo in vista.grupos]')),
+    ('span', (('x-text', "par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=grupo in vista.grupos]', 'template[x-for=par in grupo.pares]')),
+    ('button', ((':disabled', '!puedeDecidir()'), ('@click', "decidir([par.codigo_a, par.codigo_b], 'distinto')"), ('type', 'button')), 'Separar', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=grupo in vista.grupos]', 'template[x-for=par in grupo.pares]')),
+    ('section', (('x-show', 'vista.avisos.length'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('template', ((':key', 'aviso.clave'), ('x-for', 'aviso in vista.avisos')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('p', (('x-text', 'aviso.texto'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=aviso in vista.avisos]')),
+    ('p', (('x-text', "aviso.miembros.map(m => m.nombre + ' (' + m.codigo + ')').join(' · ')"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=aviso in vista.avisos]')),
+)
+
+
+def diferencias_de_huella(html: str, esperada: tuple = HUELLA_DE_OFICIOS) -> list[str]:
+    """Las entradas de la huella que sobran o faltan (en orden). Vacío = la lógica de la página no ha cambiado."""
+    leida = huella_funcional(html)
+    if leida == list(esperada):
+        return []
+    sobran = [f"+ {e}" for e in leida if e not in esperada]
+    faltan = [f"- {e}" for e in esperada if e not in leida]
+    return sobran + faltan or ["las mismas entradas en otro orden"]
+
+
+def test_f035_o10_3_oficios_conserva_la_huella_funcional_de_f036():
+    diferencias = diferencias_de_huella(OFICIOS.read_text(encoding="utf-8"))
+
+    assert diferencias == [], (
+        "oficios.html: el remodelado es presentación y no cambia directivas, ids ni tipos (O10-3):\n"
+        + "\n".join(diferencias)
+    )
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        # L1 de la review del bloque 10, ahora en oficios: fuera el Intro del campo.
+        ('\n                   @keydown.enter.prevent="cargar()"', ""),
+        # L2: el aviso de carga, siempre visible.
+        ('<span x-show="cargando" ', "<span "),
+        # L3: otra clave del bucle de las propuestas.
+        (':key="propuesta.clave"', ':key="propuesta.codigos"'),
+        # «Separar» pasa a juntar: los tests de F-036 solo miran «decidir(».
+        (
+            (
+                "@click=\"decidir([par.codigo_a, par.codigo_b], 'distinto')\" :disabled=\"!puedeDecidir()\"\n"
+                '                                class="rs-btn rs-btn--secundario rs-btn--compacto">Separar'
+            ),
+            (
+                "@click=\"decidir([par.codigo_a, par.codigo_b], 'mismo')\" :disabled=\"!puedeDecidir()\"\n"
+                '                                class="rs-btn rs-btn--secundario rs-btn--compacto">Separar'
+            ),
+        ),
+        # El botón de «Son el mismo» del grupo entero, sin su x-show.
+        ('<div x-show="propuesta.confirmarEntero" class="mt-3">', '<div class="mt-3">'),
+        # El texto de un botón cambiado con su directiva intacta.
+        (">Ver los oficios</button>", ">Ver oficios</button>"),
+    ],
+    ids=["sin-intro-L1", "carga-siempre-visible-L2", "otra-clave-L3", "separar-junta", "sin-x-show-del-grupo", "otro-texto"],
+)
+def test_f035_o10_3_control_un_cambio_de_logica_en_oficios_salta(viejo, nuevo):
+    real = OFICIOS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert diferencias_de_huella(real.replace(viejo, nuevo)) != []
+
+
+def test_f035_o10_3_control_la_huella_ve_el_ambito_y_el_orden():
+    # Un botón que sale de su `x-for` deja de tener `par` en su ámbito: Alpine
+    # fallaría al pulsarlo, y la huella lo ve aunque sus atributos sean los mismos.
+    html = (
+        '<body><div x-data="a()"><template x-for="par in ps"><button type="button" @click="f(par)">X</button>'
+        '</template><button type="button" @click="g()">Y</button></div></body>'
+    )
+    fuera = html.replace('<button type="button" @click="f(par)">X</button></template>', '</template><button type="button" @click="f(par)">X</button>')
+    otro_orden = html.replace(
+        '<button type="button" @click="f(par)">X</button></template><button type="button" @click="g()">Y</button>',
+        '</template><button type="button" @click="g()">Y</button><template x-for="par in ps"><button type="button" @click="f(par)">X</button></template>',
+    )
+    esperada = tuple(huella_funcional(html))
+
+    assert diferencias_de_huella(fuera, esperada) != []
+    assert diferencias_de_huella(otro_orden, esperada) != []
+    assert diferencias_de_huella(html, esperada) == []

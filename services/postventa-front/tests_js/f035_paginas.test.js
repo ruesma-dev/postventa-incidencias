@@ -13,8 +13,8 @@
 // - **R66**: en la barra de `index.html` y en la de `partes.html`, la pestaña
 //   de cada sección en `construccion` lleva `data-construccion` y
 //   `aria-label="<etiqueta> (en construcción)"`, y ninguna otra los lleva.
-//   Las barras de `importar.html` y `oficios.html` entran en los bloques 10 y
-//   11 (`PAGINAS_CON_BARRA` crece entonces).
+//   Las barras de `importar.html` y `oficios.html` entraron en los bloques 10
+//   y 11 (`PAGINAS_CON_BARRA`).
 //
 // Bloque 9 (`tasks.md`, T27):
 //
@@ -37,6 +37,15 @@
 // - T30: el resultado de importar con la semántica de estados de la marca
 //   (ok, atención, info) y su texto.
 //
+// Bloque 11 (`tasks.md`, T31):
+//
+// - **R44, R66, R70** en la barra de `oficios.html` (`PAGINAS_CON_BARRA` y
+//   `PAGINAS_REALES_CON_BARRA` crecen), con los controles de R70 también
+//   sobre ella.
+// - Review del bloque 10, **O10-4**: el aviso del resultado de importar no
+//   lleva ninguna variante de estado en su `class` estático (la pone el
+//   `:class`; con las dos, ganaría la que vaya después en la hoja).
+//
 // El módulo se carga DENTRO de cada test, como en `portal.test.js`: en la
 // fase RED un `require` de cabecera tumbaría el fichero entero sin nombre de
 // requisito.
@@ -57,14 +66,11 @@ function leer(relativa) {
   return fs.readFileSync(path.join(RAIZ_FRONT, relativa), "utf8");
 }
 
-/**
- * Las páginas que llevan hoy la barra superior común (R66). `oficios.html`
- * entra en el bloque 11.
- */
-const PAGINAS_CON_BARRA = ["index.html", "partes.html", "importar.html"];
+/** Las páginas que llevan la barra superior común (R66): las cuatro del front. */
+const PAGINAS_CON_BARRA = ["index.html", "partes.html", "importar.html", "oficios.html"];
 
-/** Las páginas reales (`Portal.PAGINAS`) que ya llevan la barra (R70). */
-const PAGINAS_REALES_CON_BARRA = ["importar.html"];
+/** Las páginas reales (`Portal.PAGINAS`) que llevan la barra (R70): las dos. */
+const PAGINAS_REALES_CON_BARRA = ["importar.html", "oficios.html"];
 
 /**
  * Las formas ligadas de los atributos de R66 (review del bloque 8, H-7): en
@@ -380,14 +386,16 @@ for (const [que, viejo, nuevo, senal] of [
   ["una pestaña de más marcada actual", '<a href="./#/inicio" class="rs-pestana">', '<a href="./#/inicio" aria-current="page" class="rs-pestana">', /no es la actual/],
   ["una pestaña que falta", /<a href="\.\/#\/economico"[^>]*>Coste y venta<\/a>/, "", /pestañas «/],
 ]) {
-  test(`f035 R70: control: ${que} en la barra de importar.html salta`, () => {
-    const html = leer("importar.html");
-    const estropeado = html.replace(viejo, nuevo);
-    assert.notEqual(estropeado, html, `el control no encuentra ${viejo}`);
+  for (const pagina of PAGINAS_REALES_CON_BARRA) {
+    test(`f035 R70: control: ${que} en la barra de ${pagina} salta`, () => {
+      const html = leer(pagina);
+      const estropeado = html.replace(viejo, nuevo);
+      assert.notEqual(estropeado, html, `el control no encuentra ${viejo}`);
 
-    const problemas = problemasR70(estropeado, "importar.html", portal());
-    assert.ok(problemas.some((p) => senal.test(p)), `${que}: R70 no lo ve:\n${problemas.join("\n")}`);
-  });
+      const problemas = problemasR70(estropeado, pagina, portal());
+      assert.ok(problemas.some((p) => senal.test(p)), `${que}: R70 no lo ve:\n${problemas.join("\n")}`);
+    });
+  }
 }
 
 // ── T30 · La semántica de estados del resultado de importar ─────────────────
@@ -425,6 +433,8 @@ function problemasDeEstadosDelResultado(html) {
   const { clase, ligada, cuerpo } = avisoDelResultado(html);
   const problemas = [];
   if (!clase.split(/\s+/).includes("rs-aviso")) problemas.push(`el aviso del resultado no es rs-aviso: «${clase}»`);
+  const fijas = clase.split(/\s+/).filter((c) => /^rs-aviso--(?:ok|atencion|error|info)$/.test(c));
+  if (fijas.length) problemas.push(`el aviso del resultado lleva ${fijas.join(" ")} fijo: el estado lo pone el :class (O10-4)`);
   if (!/x-text="resultado\.estadoTexto"/.test(cuerpo)) problemas.push("el aviso del resultado no lleva el texto del estado");
   for (const [que, cambios, esperada] of [
     ["completa", {}, "rs-aviso--ok"],
@@ -454,6 +464,8 @@ for (const [que, viejo, nuevo] of [
   ["parcial y completa cruzadas (G2)", "'rs-aviso--atencion' : 'rs-aviso--ok'", "'rs-aviso--ok' : 'rs-aviso--atencion'"],
   ["sin el caso del ya importado", "resultado.yaImportado ? 'rs-aviso--info' : ", "false ? 'x' : "],
   ["sin el texto del estado", '<span x-text="resultado.estadoTexto"></span>', "<span></span>"],
+  // O10-4 (S2 de la review del bloque 10): un --ok fijo junto al :class.
+  ["una variante fija junto al :class (S2)", /<div class="rs-aviso"(\s+:class=)/, '<div class="rs-aviso rs-aviso--ok"$1'],
 ]) {
   test(`f035 T30: control: ${que} salta`, () => {
     const html = leer("importar.html");

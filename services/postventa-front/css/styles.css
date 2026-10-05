@@ -4,7 +4,7 @@
 
    La comparten las páginas del front: el portal (index.html), el circuito
    de partes firmados (partes.html) y las páginas reales de la entrada
-   (importar.html; oficios.html, en el bloque 11), que no cargan
+   (importar.html y oficios.html), que no cargan
    css/portal.css (R77). Toma el lenguaje del portal
    corporativo (front-portal: burdeos #9f2842, gris acero #7b868c, trama de
    plano, Bricolage Grotesque y Archivo) y lo escribe como tokens y
@@ -357,6 +357,19 @@ a.rs-pestana:hover {
    lo hereda. */
 .rs-texto--apagado {
   color: var(--rs-acero-texto);
+}
+
+/* La primera línea de un recuadro dentro de un panel (el nombre de un grupo
+   de oficios, oficios.html): el peso y la tinta; el tamaño lo hereda. */
+.rs-texto--fuerte {
+  font-weight: 600;
+  color: var(--rs-tinta);
+}
+
+/* Un texto dentro de un panel de atención (los avisos de oficios.html): el
+   tono del panel, también con rs-texto. Después de .rs-texto, para que gane. */
+.rs-texto--atencion {
+  color: var(--rs-atencion);
 }
 
 .rs-mono {
@@ -773,7 +786,7 @@ a.rs-pestana:hover {
   font-size: clamp(1.35rem, 2.6vw, 1.6rem);
 }
 
-/* ---------- Las páginas reales de una sección (importar.html, R71) ----------- */
+/* ---------- Las páginas reales de una sección (importar y oficios, R71) ------ */
 
 /* Las migas: «Portal de posventa › Entrada». El separador va con
    aria-hidden; los enlaces son rs-enlace. */

@@ -660,7 +660,7 @@ ya pide cada verificación.
 
 ## Bloque 11 · `oficios.html`, sección real del portal (2026-10-05)
 
-- [ ] **T31**: `oficios.html` como `importar.html` en T29 (b): barra,
+- [x] **T31**: `oficios.html` como `importar.html` en T29 (b): barra,
       cabecera con migas y subnavegación («Oficios repetidos» actual), `?v=`,
       identidad, sin `target`, nada de la maqueta; **ni «proveedor» ni
       «actividad»** en ningún texto nuevo (quinta enmienda de F-036); los

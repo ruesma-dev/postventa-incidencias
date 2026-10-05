@@ -1555,6 +1555,32 @@ def test_f035_r32_control_cualquier_otra_linea_sale_en_rojo(caso):
     assert problemas_de_lineas(nombre, quitadas, puestas) != [], f"R32 admite «{caso}»"
 
 
+#: Las altas que admite R33: los scripts de la maqueta y, desde el ajuste del
+#: 2026-10-05 (R33 ajustado, R80), la guarda de salida, un módulo NUEVO que solo
+#: lee el estado del circuito. Alta sí; ningún `M` en los nueve del circuito.
+R33_NUEVOS_ADMITIDOS = frozenset(
+    {f"services/postventa-front/{s}" for s in SCRIPTS_MAQUETA} | {f"services/postventa-front/{GUARDA_SALIDA}"}
+)
+#: Los `M` que admite R33: `css/styles.css` (segunda ronda, R33 enmendado,
+#: design.md §15.8: la hoja de la marca que comparten las páginas) y, desde el
+#: bloque 12 (R33 enmendado de la enmienda del 2026-10-05, R74), `js/importacion.js`,
+#: que gana `rotuloResumen`. `js/oficios.js` entra con R75 (bloque 13), no antes;
+#: `api.js`, `config.js`, `traza.js` y los nueve del circuito, nunca.
+R33_MODIFICADOS_ADMITIDOS = frozenset(
+    {"services/postventa-front/css/styles.css", "services/postventa-front/js/importacion.js"}
+)
+
+
+def problemas_r33(cambios: list[tuple[str, str]]) -> list[str]:
+    """Los cambios de `git diff --name-status` que R33 no admite. Vacío = correcto."""
+    return [
+        f"{estado} {ruta}"
+        for estado, ruta in cambios
+        if not (estado == "A" and ruta in R33_NUEVOS_ADMITIDOS)
+        and not (estado == "M" and ruta in R33_MODIFICADOS_ADMITIDOS)
+    ]
+
+
 def test_f035_r33_no_se_modifica_nada_del_circuito():
     base = base_de_la_rama()
 
@@ -1566,21 +1592,25 @@ def test_f035_r33_no_se_modifica_nada_del_circuito():
         "services/postventa-front/dev_server.py",
         "services/postventa-front/dev_front.ps1",
     )
-    nuevos_admitidos = {f"services/postventa-front/{s}" for s in SCRIPTS_MAQUETA}
-    # Ajuste del 2026-10-05 (R33 ajustado, R80): la guarda de salida es un
-    # módulo NUEVO que solo lee el estado del circuito. Alta sí; ningún `M`
-    # en los nueve módulos del circuito.
-    nuevos_admitidos.add(f"services/postventa-front/{GUARDA_SALIDA}")
-    # Segunda ronda (R33 enmendado, design.md §15.8): css/styles.css pasa a
-    # ser la hoja de la marca que comparten las dos páginas, y SÍ cambia.
-    modificados_admitidos = {"services/postventa-front/css/styles.css"}
-    problemas = [
-        f"{estado} {ruta}"
-        for estado, ruta in cambios
-        if not (estado == "A" and ruta in nuevos_admitidos)
-        and not (estado == "M" and ruta in modificados_admitidos)
-    ]
+    problemas = problemas_r33(cambios)
     assert problemas == [], "F-035 ha tocado el circuito:\n" + "\n".join(problemas)
+
+
+def test_f035_r33_control_admite_el_m_de_importacion_js_y_nada_mas():
+    # Control sin git (R74, bloque 12): el `M` de js/importacion.js pasa; el de
+    # oficios.js (R75 aún no), el de api.js y el de un módulo del circuito, no;
+    # ni un borrado o un alta de importacion.js.
+    importacion = "services/postventa-front/js/importacion.js"
+    assert problemas_r33([("M", importacion), ("M", "services/postventa-front/css/styles.css")]) == []
+    for cambio in [
+        ("M", "services/postventa-front/js/oficios.js"),
+        ("M", "services/postventa-front/js/api.js"),
+        ("M", "services/postventa-front/js/app.js"),
+        ("D", importacion),
+        ("A", importacion),
+        ("M", f"services/postventa-front/{GUARDA_SALIDA}"),
+    ]:
+        assert problemas_r33([cambio]) == [f"{cambio[0]} {cambio[1]}"], cambio
 
 
 # --- Regla de oro de js/portal_app.js (design.md §8.2) --------------------------

@@ -614,3 +614,123 @@ test("f035 R67: el texto genérico de un placeholder desconocido dice que está 
   assert.match(aviso, /^Todavía no hace nada/);
   assert.match(aviso, /en construcción/);
 });
+
+// ── Bloque 12 · R74: el resumen de un fichero ya importado ───────────────────
+//
+// Apunte (b) del humano (`design.md` §16.6): si el fichero ya se había
+// importado, los recuentos son los de la importación ORIGINAL y se rotulan
+// así, con su fecha en hora de Madrid; nunca como si hubieran entrado ahora.
+// `importado_at_utc` lo añade al backend una ficha aparte (R76, F-053), así
+// que hoy no llega: sin él, o si no es una fecha válida, el rótulo va sin
+// fecha. `resumenTexto` y `textoDelEstado` no cambian (los fijan los tests de
+// F-036, que no se tocan).
+
+const RUTA_IMPORTACION = require.resolve("../js/importacion.js");
+const ROTULO_AHORA = "Resumen de esta importación";
+const ROTULO_SIN_FECHA = "Resumen de la importación original de este fichero";
+const rotuloDel = (fecha) => `Resumen de la importación original del ${fecha}`;
+
+/** `js/importacion.js` recién cargado (con la zona horaria del proceso que haya en ese momento). */
+function importacionFresca() {
+  delete require.cache[RUTA_IMPORTACION];
+  return require("../js/importacion.js");
+}
+
+/** Corre `fn(Importacion)` con otra zona horaria en el proceso y el módulo cargado bajo ella. */
+function conZonaDelProceso(zona, fn) {
+  const previa = process.env.TZ;
+  process.env.TZ = zona;
+  try {
+    return fn(importacionFresca());
+  } finally {
+    if (previa === undefined) delete process.env.TZ;
+    else process.env.TZ = previa;
+    delete require.cache[RUTA_IMPORTACION];
+  }
+}
+
+const yaImportado = (fecha) => ({ ya_importado: true, importado_at_utc: fecha });
+
+const CASOS_R74 = [
+  // Sin ya_importado: lo que acaba de entrar.
+  ["sin ya_importado", { ya_importado: false, importado_at_utc: "2026-03-10T09:15:00Z" }, ROTULO_AHORA],
+  ["sin el campo ya_importado", {}, ROTULO_AHORA],
+  // Con fecha válida.
+  ["ya importado con fecha válida", yaImportado("2026-03-10T09:15:00Z"), rotuloDel("10/03/2026")],
+  ["con +00:00 y microsegundos (isoformat de Python)", yaImportado("2026-03-10T09:15:00.123456+00:00"), rotuloDel("10/03/2026")],
+  ["solo la fecha", yaImportado("2026-03-10"), rotuloDel("10/03/2026")],
+  // Sin fecha (lo de hoy, hasta F-053).
+  ["sin importado_at_utc", { ya_importado: true }, ROTULO_SIN_FECHA],
+  ["importado_at_utc null", yaImportado(null), ROTULO_SIN_FECHA],
+  ["importado_at_utc vacío", yaImportado(""), ROTULO_SIN_FECHA],
+  // Fecha basura.
+  ["texto que no es fecha", yaImportado("ayer por la tarde"), ROTULO_SIN_FECHA],
+  ["30 de febrero", yaImportado("2026-02-30T10:00:00Z"), ROTULO_SIN_FECHA],
+  ["mes 13", yaImportado("2026-13-01T10:00:00Z"), ROTULO_SIN_FECHA],
+  ["hora 25", yaImportado("2026-03-10T25:00:00Z"), ROTULO_SIN_FECHA],
+  ["minuto 60", yaImportado("2026-03-10T10:60:00Z"), ROTULO_SIN_FECHA],
+  ["desfase imposible", yaImportado("2026-03-10T10:00:00+25:00"), ROTULO_SIN_FECHA],
+  ["dd/mm/aaaa, que Date leería como mm/dd", yaImportado("10/03/2026"), ROTULO_SIN_FECHA],
+  ["un número (epoch), no una fecha ISO", yaImportado(1773133200000), ROTULO_SIN_FECHA],
+  ["un objeto", yaImportado({ fecha: "2026-03-10" }), ROTULO_SIN_FECHA],
+  ["texto con una fecha dentro", yaImportado("importado el 2026-03-10T09:15:00Z"), ROTULO_SIN_FECHA],
+  // El día es el de Madrid, no el de UTC.
+  ["23:30 UTC de un día de verano: el día siguiente en Madrid", yaImportado("2026-07-15T23:30:00Z"), rotuloDel("16/07/2026")],
+  ["22:30 UTC de verano (UTC+2): ya es el día siguiente", yaImportado("2026-07-15T22:30:00Z"), rotuloDel("16/07/2026")],
+  ["21:30 UTC de verano: aún el mismo día", yaImportado("2026-07-15T21:30:00Z"), rotuloDel("15/07/2026")],
+  ["23:30 UTC de invierno (UTC+1): el día siguiente", yaImportado("2026-01-15T23:30:00Z"), rotuloDel("16/01/2026")],
+  ["22:30 UTC de invierno: aún el mismo día", yaImportado("2026-01-15T22:30:00Z"), rotuloDel("15/01/2026")],
+  ["la víspera del cambio de hora de marzo (aún UTC+1)", yaImportado("2026-03-28T23:30:00Z"), rotuloDel("29/03/2026")],
+  ["el día del cambio de hora de marzo (ya UTC+2)", yaImportado("2026-03-29T22:30:00Z"), rotuloDel("30/03/2026")],
+  ["la noche de fin de año", yaImportado("2026-12-31T23:30:00Z"), rotuloDel("01/01/2027")],
+  ["sin zona: se lee en UTC, como dice el nombre del campo", yaImportado("2026-07-15T23:30:00"), rotuloDel("16/07/2026")],
+  ["con el desfase de Madrid escrito", yaImportado("2026-07-16T01:30:00+02:00"), rotuloDel("16/07/2026")],
+  ["con un desfase negativo", yaImportado("2026-07-15T20:30:00-03:00"), rotuloDel("16/07/2026")],
+];
+
+for (const [que, respuesta, esperado] of CASOS_R74) {
+  test(`f035 R74: rotuloResumen, ${que}`, () => {
+    const { rotuloResumen } = require("../js/importacion.js");
+
+    assert.equal(rotuloResumen(respuesta), esperado);
+  });
+}
+
+test("f035 R74: rotuloResumen nunca lanza: sin respuesta, el rótulo de esta importación", () => {
+  const { rotuloResumen } = require("../js/importacion.js");
+
+  for (const raro of [null, undefined, 0, "", "texto", [], true]) {
+    assert.equal(rotuloResumen(raro), ROTULO_AHORA, `con ${JSON.stringify(raro)}`);
+  }
+});
+
+for (const zona of ["America/New_York", "Pacific/Kiritimati", "UTC"]) {
+  test(`f035 R74: el día sale en hora de Madrid aunque el proceso esté en ${zona}`, () => {
+    conZonaDelProceso(zona, ({ rotuloResumen }) => {
+      assert.equal(rotuloResumen(yaImportado("2026-07-15T23:30:00Z")), rotuloDel("16/07/2026"));
+      assert.equal(rotuloResumen(yaImportado("2026-07-15T21:30:00Z")), rotuloDel("15/07/2026"));
+      assert.equal(rotuloResumen(yaImportado("2026-07-15T23:30:00")), rotuloDel("16/07/2026"));
+    });
+  });
+}
+
+test("f035 R74: presentarImportacion lleva el rótulo; el estado y los recuentos, como siempre", () => {
+  const Importacion = require("../js/importacion.js");
+  const original = { ...RESPUESTA_BASE, ya_importado: true, importado_at_utc: "2026-07-15T23:30:00Z" };
+
+  for (const [respuesta, rotulo] of [
+    [RESPUESTA_BASE, ROTULO_AHORA],
+    [{ ...RESPUESTA_BASE, ya_importado: true }, ROTULO_SIN_FECHA],
+    [original, rotuloDel("16/07/2026")],
+  ]) {
+    const vista = Importacion.presentarImportacion(respuesta);
+    assert.equal(vista.rotuloResumen, rotulo);
+    // Los textos que fijan los tests de F-036, sin cambio (R43 de F-036).
+    assert.equal(vista.resumenTexto, "3 filas leídas · 3 nuevas · 0 duplicadas en el fichero · 0 ya en la bandeja · 0 con error");
+    assert.equal(vista.estadoTexto, Importacion.textoDelEstado(respuesta));
+  }
+  assert.equal(
+    Importacion.textoDelEstado(original),
+    "Este fichero ya se había importado: no se ha añadido nada a la bandeja.",
+  );
+});

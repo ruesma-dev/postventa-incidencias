@@ -188,6 +188,69 @@
     );
   }
 
+  // --- El rótulo del resumen (F-035 R74) --------------------------------------
+  //
+  // Con `ya_importado`, los recuentos son los de la importación ORIGINAL y se
+  // rotulan así, con su fecha en hora de Madrid; nunca como lo que acaba de
+  // entrar. `importado_at_utc` (ISO 8601 en UTC) lo añade al backend una ficha
+  // aparte (R76): sin él, o si no es una fecha válida, el rótulo va sin fecha.
+
+  const FECHA_DE_MADRID = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+  /** AAAA-MM-DD, con hora y desfase opcionales (`isoformat` de Python incluido). */
+  const FECHA_ISO = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?(Z|[+-]\d{2}:?\d{2})?$/i;
+
+  /**
+   * El instante de una fecha ISO 8601, o `null` si no lo es o no existe (un 30
+   * de febrero, una hora 25). Sin desfase se lee en UTC, como dice el nombre
+   * del campo: `Date` la leería en la hora local del navegador.
+   */
+  function instanteDeIso(texto) {
+    const partes = typeof texto === "string" ? FECHA_ISO.exec(texto.trim()) : null;
+    if (!partes) {
+      return null;
+    }
+    const [anio, mes, dia, hora, minuto, segundo] = partes.slice(1, 7).map(function (parte) {
+      return Number(parte || 0);
+    });
+    const enUtc = new Date(Date.UTC(anio, mes - 1, dia, hora, minuto, segundo));
+    if (
+      enUtc.getUTCFullYear() !== anio || enUtc.getUTCMonth() !== mes - 1 || enUtc.getUTCDate() !== dia ||
+      hora > 23 || minuto > 59 || segundo > 59
+    ) {
+      return null;
+    }
+    const desfase = partes[7] && partes[7].toUpperCase() !== "Z" ? partes[7] : "";
+    if (!desfase) {
+      return enUtc;
+    }
+    const cifras = desfase.slice(1).replace(":", "");
+    const horas = Number(cifras.slice(0, 2));
+    const minutos = Number(cifras.slice(2));
+    if (horas > 23 || minutos > 59) {
+      return null;
+    }
+    const signo = desfase[0] === "-" ? -1 : 1;
+    return new Date(enUtc.getTime() - signo * (horas * 60 + minutos) * 60000);
+  }
+
+  /** R74 · El rótulo de los recuentos. Nunca lanza. */
+  function rotuloResumen(respuesta) {
+    if (!respuesta || !respuesta.ya_importado) {
+      return "Resumen de esta importación";
+    }
+    const instante = instanteDeIso(respuesta.importado_at_utc);
+    if (!instante) {
+      return "Resumen de la importación original de este fichero";
+    }
+    return "Resumen de la importación original del " + FECHA_DE_MADRID.format(instante);
+  }
+
   /** Todo lo que pinta el bloque «Importar» a partir de la respuesta 200. */
   function presentarImportacion(respuesta) {
     return {
@@ -195,6 +258,7 @@
       estado: respuesta.estado,
       yaImportado: Boolean(respuesta.ya_importado),
       estadoTexto: textoDelEstado(respuesta),
+      rotuloResumen: rotuloResumen(respuesta),
       resumenTexto: resumenLegible(respuesta.resumen),
       filas: (respuesta.filas || []).map(function (fila) {
         return {
@@ -433,6 +497,7 @@
     erroresOrdenados: erroresOrdenados,
     textoDelError: textoDelError,
     avisoDeErroresRecortados: avisoDeErroresRecortados,
+    rotuloResumen: rotuloResumen,
     presentarImportacion: presentarImportacion,
     filasDeBandeja: filasDeBandeja,
     mensajeDeError: mensajeDeError,

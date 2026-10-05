@@ -123,6 +123,9 @@
             <div class="rs-aviso"
                  :class="resultado.yaImportado ? 'rs-aviso--info' : (resultado.estado === 'parcial' ? 'rs-aviso--atencion' : 'rs-aviso--ok')">
               <p class="rs-aviso__titulo">Obra <span x-text="resultado.obra"></span> · <span x-text="resultado.estadoTexto"></span></p>
+              <!-- F-035 R74: de qué importación son los recuentos (la original, con
+                   su fecha, si el fichero ya se había importado). Siempre visible. -->
+              <p class="mt-2" x-text="resultado.rotuloResumen"></p>
               <p class="mt-1" x-text="resultado.resumenTexto"></p>
             </div>
 

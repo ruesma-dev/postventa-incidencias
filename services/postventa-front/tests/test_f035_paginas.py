@@ -95,6 +95,10 @@ Bloque 12 (`tasks.md`, T33):
   `disabled`, también por un `fieldset`, `aria-hidden` e `inert`, en él o en
   un ancestro) y exige un contorno de foco sólido y visible, leído con la
   cascada (`contorno_efectivo`).
+- **R74**: `importar.html` pinta el rótulo del resumen
+  (`resultado.rotuloResumen`) justo encima de los recuentos, dentro del aviso
+  del resultado y siempre visible. `Importacion.rotuloResumen` se prueba en
+  `tests_js/f035_paginas.test.js`.
 
 Todo sin red, sin BBDD y sin IA.
 """
@@ -2357,7 +2361,8 @@ def test_f035_o10_3_control_la_huella_ve_el_ambito_y_el_orden():
 # en el MISMO commit, para que su diff enseñe solo lo añadido.
 
 #: La huella funcional de `importar.html` en `9812d69`, generada con
-#: `huella_funcional` sobre ese fichero y escrita aquí a mano, a sabiendas.
+#: `huella_funcional` sobre ese fichero y escrita aquí a mano, a sabiendas; más
+#: la entrada de R74 (bloque 12), la única que añade su commit.
 HUELLA_DE_IMPORTAR = (
     ('div', (('x-data', 'appImportacion()'), ('x-init', 'iniciar()')), '', ()),
     ('input', (('@keydown.enter.prevent', 'descargarPlantilla()'), ('autocomplete', 'off'), ('type', 'text'), ('x-model', 'obra')), '', ('div[x-data=appImportacion()]',)),
@@ -2374,6 +2379,8 @@ HUELLA_DE_IMPORTAR = (
     ('div', ((':class', "resultado.yaImportado ? 'rs-aviso--info' : (resultado.estado === 'parcial' ? 'rs-aviso--atencion' : 'rs-aviso--ok')"),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
     ('span', (('x-text', 'resultado.obra'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
     ('span', (('x-text', 'resultado.estadoTexto'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
+    # R74 (bloque 12): el rótulo del resumen, encima de los recuentos.
+    ('p', (('x-text', 'resultado.rotuloResumen'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
     ('p', (('x-text', 'resultado.resumenTexto'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
     ('div', (('x-show', 'resultado.errores.length'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
     ('template', ((':key', 'n'), ('x-for', '(texto, n) in resultado.errores')), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]')),
@@ -2645,3 +2652,88 @@ def test_f035_o11_1_control_lo_que_si_deja_llegar_al_selector_no_salta(donde, vi
 
     problemas = _o10_2("importar.html", html=copia, css=css) if donde == "html" else _o10_2("importar.html", html=html, css=copia)
     assert problemas == [], problemas
+
+
+# --- R74 · El rótulo del resumen, encima de los recuentos ---------------------------
+#
+# Apunte (b) del humano (`design.md` §16.6): un fichero ya importado enseña los
+# recuentos de la importación ORIGINAL, y la página lo dice con un rótulo justo
+# encima de ellos, dentro del aviso del resultado (que lleva el estado). El
+# rótulo lo da `Importacion.rotuloResumen` (`tests_js/f035_paginas.test.js`) y
+# se enseña SIEMPRE: sin `ya_importado` dice «Resumen de esta importación».
+
+
+def problemas_r74(html: str) -> list[str]:
+    """Dónde pinta `importar.html` el rótulo del resumen (R74). Vacío = correcto."""
+    doc = leer_html_texto(html)
+    rotulos = [e for e in doc.elementos() if e.atributos.get("x-text") == "resultado.rotuloResumen"]
+    recuentos = [e for e in doc.elementos() if e.atributos.get("x-text") == "resultado.resumenTexto"]
+    if len(rotulos) != 1 or len(recuentos) != 1:
+        return [f"un rótulo (resultado.rotuloResumen) y unos recuentos (resultado.resumenTexto): hay {len(rotulos)} y {len(recuentos)}"]
+    rotulo, recuento = rotulos[0], recuentos[0]
+    problemas = []
+    if rotulo.padre is not recuento.padre:
+        problemas.append("el rótulo y los recuentos no son hermanos")
+    else:
+        hermanos = _hijos_elemento(rotulo.padre)
+        if hermanos.index(rotulo) + 1 != hermanos.index(recuento):
+            problemas.append("el rótulo no va justo encima de los recuentos")
+    if not any(":class" in a.atributos and "rs-aviso" in clases(a) for a in rotulo.ancestros()):
+        problemas.append("el rótulo no va dentro del aviso del resultado (el que lleva el estado)")
+    cerrables = [a for a in _CERRABLE if a in rotulo.atributos]
+    if cerrables:
+        problemas.append(f"el rótulo se puede esconder ({', '.join(cerrables)}): se enseña siempre")
+    return problemas
+
+
+def test_f035_r74_importar_pinta_el_rotulo_encima_de_los_recuentos():
+    problemas = problemas_r74(IMPORTAR.read_text(encoding="utf-8"))
+
+    assert problemas == [], "\n".join(problemas)
+
+
+_ROTULO_R74 = '<p class="mt-2" x-text="resultado.rotuloResumen"></p>\n'
+_RECUENTOS_R74 = '<p class="mt-1" x-text="resultado.resumenTexto"></p>'
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        (_ROTULO_R74, "", "hay 0 y 1"),
+        (_ROTULO_R74, _ROTULO_R74 + "              " + _ROTULO_R74, "hay 2 y 1"),
+        (
+            "              " + _ROTULO_R74 + "              " + _RECUENTOS_R74,
+            "              " + _RECUENTOS_R74 + "\n              " + _ROTULO_R74.rstrip("\n"),
+            "justo encima",
+        ),
+        (
+            '<p class="mt-2" x-text="resultado.rotuloResumen"></p>',
+            '<p class="mt-2" x-show="resultado.yaImportado" x-text="resultado.rotuloResumen"></p>',
+            "se puede esconder",
+        ),
+        (
+            "              " + _ROTULO_R74 + "              " + _RECUENTOS_R74,
+            '              <div><p class="mt-2" x-text="resultado.rotuloResumen"></p></div>\n              ' + _RECUENTOS_R74,
+            "no son hermanos",
+        ),
+    ],
+    ids=["sin-rotulo", "dos-rotulos", "rotulo-debajo", "rotulo-solo-si-ya-importado", "rotulo-en-otra-caja"],
+)
+def test_f035_r74_control_el_rotulo_mal_puesto_salta(viejo, nuevo, senal):
+    real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = problemas_r74(real.replace(viejo, nuevo))
+    assert any(senal in p for p in problemas), problemas
+
+
+def test_f035_r74_control_el_rotulo_fuera_del_aviso_salta():
+    html = (
+        '<body><div x-data="a()"><template x-if="resultado"><div>'
+        """<div class="rs-aviso" :class="resultado.yaImportado ? 'rs-aviso--info' : 'rs-aviso--ok'">"""
+        '<p class="rs-aviso__titulo">Obra</p></div>'
+        '<p x-text="resultado.rotuloResumen"></p><p x-text="resultado.resumenTexto"></p>'
+        "</div></template></div></body>"
+    )
+
+    assert any("dentro del aviso" in p for p in problemas_r74(html))

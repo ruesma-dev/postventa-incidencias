@@ -681,7 +681,7 @@ ya pide cada verificación.
 
 ## Bloque 12 · Apunte (b): el resumen de un fichero ya importado (2026-10-05)
 
-- [ ] **T33**: RED primero en `tests_js/f035_paginas.test.js` (R74: con y
+- [x] **T33**: RED primero en `tests_js/f035_paginas.test.js` (R74: con y
       sin `ya_importado`, con fecha válida, sin fecha, con fecha basura, y el
       caso de las 23:30 UTC de un día de verano). Después, `js/importacion.js`:
       `rotuloResumen(respuesta)` y la clave `rotuloResumen` en

@@ -2194,3 +2194,346 @@ La regla propuesta: si la línea base del worktree trae `skipped` que en el
 árbol real no salen, crear la rama temporal y borrarla al acabar. Es
 genérica para cualquier proyecto cuyas guardias dependan de la rama, así que
 iría también a `arnes-base`.
+
+## Review del bloque 9 · T27–T28 · 2026-10-05
+
+> reviewer. Alcance **acotado** a `git diff 22d8820..HEAD`: `39fa3e6` (T27)
+> y `81b0f78` (T28), en `feature/F-035-portal-posventa`. Son los recuadros
+> «En construcción» y la portada sin cifras (R63–R67, R69), con H-3, H-4
+> (puntos 2 y 3) y H-5 de la review del bloque 7.
+>
+> Decisión del humano: opción (b). Lo que no funciona se publica visible y
+> marcado. El riesgo aceptado es que alguien tome lo inventado por real, y lo
+> mitiga el rótulo en tres capas (D-12).
+>
+> Los bloques 10–15 siguen abiertos **a propósito** y no cuentan como `[ ]`.
+> El vistazo en navegador queda para V1/V2 del humano.
+>
+> Criterio de severidad del líder: es bloqueante lo que deja un riesgo real
+> para el usuario o incumple la spec. Una mutación que solo se distingue con
+> un marcado que nadie escribiría, o una variante de una familia ya cubierta,
+> va como informativo con su destino.
+
+### Veredicto
+
+**APPROVED** (del bloque 9, no de la feature).
+
+- Recorrí `index.html` entero y lo que pinta `js/maqueta_datos.js`. Ningún
+  dato inventado de la maqueta queda fuera de un recuadro. Hay una salvedad
+  estática, ya existente y rotulada «Por ejemplo» (O9-1).
+- Ninguna sección real lleva recuadro ni rótulo de construcción.
+- La portada no enseña ninguna cifra.
+- El enlace de R69 es claro.
+- No se ha tocado nada de F-036 ni del circuito.
+- H-3, H-4 (puntos 2 y 3) y H-5 quedan cerrados.
+- De 20 mutaciones mías en 7 familias, sobreviven 9. Ninguna corresponde a
+  algo que esté hoy en la página. Todas exigen un marcado que nadie escribe a
+  propósito, o son variantes de familias que ya están cubiertas. Van como
+  informativo, con su destino.
+
+### Nivel de rigor
+
+`estandar`, declarado en `harness/features.json`. Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con los supervivientes
+analizados.
+
+El bloque no tiene Python de producción. Por eso la cobertura sale N/A, con
+el motivo impreso por `init.sh`, y la campaña da 0 mutantes (control del cero
+hecho más abajo). Lo compensan las mutaciones a mano: las 23 del implementer
+y las 20 mías.
+
+La regla 7 de `reviewer.md` (orden) es **N/A**: solo aplica en rigor
+`critico`, y aquí no hay orden entre colaboradores que proteger.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh`, tal cual, en el árbol real | **exit 0**, `ENTORNO LISTO`. Raíz 114 passed. Front 581 passed (8,28 s, ejecutado, no desde caché). `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`. ruff, 71 avisos de deuda previa |
+| `node --test "tests_js/*.test.js"` | **576/576** |
+| `git diff --stat 22d8820..HEAD` sobre `services/postventa-api`, `js/importacion.js`, `js/oficios.js`, `js/app.js`, `js/guarda_salida.js`, `tests/test_f036_front.py`, `tests_js/importacion.test.js` y `tests_js/oficios.test.js` | **vacío** |
+| `git diff --numstat 22d8820..HEAD -- *.html` | `importar.html` `2 2` (el `id="bandeja"` y la `?v=`). `oficios.html` y `partes.html`, `1 1` (solo la `?v=`) |
+| Qué páginas cargan `css/portal.css` | solo `index.html`: el recuadro y el renombrado no alcanzan a las páginas reales |
+| Directivas de Alpine **fuera** de todo `data-en-construccion` (guion propio con el parser de los tests, no el detector de R63) | Solo hay: el `x-data`/`x-init` raíz, los `:aria-current` de la barra, los `x-show` de las secciones y el aviso del placeholder (`aviso`). **Ninguna lee datos**, ni directamente ni a través de un método del componente |
+| Recálculo `alcance_de_feature("F-035", base="2a86bca")` | `{}`: 0 mutantes, igual que `progress/mutacion_F-035.md` |
+| Reejecución de la campaña (el «Tiempo total» declarado es 0,0 s, menos de 5 min), con `--salida` en el scratchpad | 0 evaluados, 0 muertos, 0 supervivientes y 0 timeouts: **idéntico** al informe. `git status` limpio |
+| Control del cero: `generar_mutantes` sobre los `.py` del diff, ignorando la exclusión | `test_f035_paginas.py`: 147 mutantes. `tests/test_f035_placeholders_vivos.py`: 9. El generador funciona y el cero es **legítimo**: solo cambian tests, HTML, CSS y JS |
+| `git log --diff-filter=A 22d8820..HEAD` | no se añade ningún fichero |
+| `console.*`, `debugger`, `print(`, `TODO` en las líneas añadidas | ninguno |
+| Mutaciones a mano | En un worktree desechable del scratchpad, sobre `81b0f78`, con una rama temporal con prefijo `feature/F-035` para que no se salten las guardias de rama. Línea base: 581 passed, 0 skipped. Al final se retiraron el worktree y la rama, y `git status` quedó limpio |
+
+### Mutaciones del reviewer, por familias
+
+Cada mutación se aplicó **sola**, con la suite entera del front, y con Node
+cuando la mutación tocaba JS. Las de CSS se midieron con `-k "not t21"`,
+porque T21 (la versión de las hojas) cae con cualquier cambio de CSS.
+
+| Familia | # | Mutación | Resultado | La mata |
+|---|---|---|---|---|
+| **A · Lo inventado fuera de un recuadro** | A3 | `x-text="bandejaFiltrada().length"` en la pestaña «Bandeja» de la barra | muerta | barra estática (Node, vía F-007 R32) |
+| | A1 | «Hay 7 entradas por revisar.» escrito a mano en la cabecera de `bandeja` | **sobrevive** | O9-2 |
+| | A2 | `x-text="bandejaFiltrada().length + ' por revisar'"` en la cabecera de `bandeja` | **sobrevive** | O9-2 |
+| | A4 | `x-text="'Última obra: ' + obra('9901')"` en la tarjeta «Partes firmados» (en producción) | **sobrevive** | O9-2 |
+| | A5 | «23 partes archivados este mes.» escrito a mano en «Partes firmados» | **sobrevive** | O9-2 |
+| | A6 | `x-text="bandejaFiltrada().length…"` en la tarjeta real «Importar» de `entrada` | **sobrevive** | O9-2 |
+| **B · Lo real vestido de construcción** | B1 | `data-en-construccion="F-036"` en la tarjeta real «Importar» | muerta | R64 (bloque) y R65 (×2) |
+| | B5 | chip «En construcción» en la tarjeta real «Importar» de `entrada` | muerta | `r68_entrada_enlaza_a_la_pagina_real…[importar.html]` |
+| | B6 | `data-construccion` en la pestaña «Entrada» | muerta | R66 (Node, vía F-007 R32) |
+| | B4 | clase `rs-obras` (el marco ámbar) en la tarjeta real «Importar», sin el atributo | **sobrevive** | O9-3 |
+| **C · El rótulo** | C1 | el rótulo F-045 con `titulos['F-037']` | muerta | `r65_cada_recuadro_empieza_por_un_rotulo…` |
+| | C4 | `class="rs-obras__rotulo hidden"` | **sobrevive** | O9-4 |
+| | C5 | `style="display:none"` en el rótulo | **sobrevive** | O9-4 |
+| **D · El enlace de R69** | D3 | el enlace sale del rótulo y pasa al contenido del recuadro | muerta | `r69_el_recuadro_de_bandeja_enlaza…` y el control de B9-19 |
+| | D5 | el texto del enlace pasa a «aquí» | muerta | `r69_el_recuadro_de_bandeja_enlaza…` |
+| **G · CSS del recuadro** | G6 | `.rs-obras__rotulo .rs-enlace:hover { color: var(--rs-burdeos) }` | muerta | `r56_ningun_recuadro_usa_el_discontinuo_ni_el_burdeos` |
+| | G1 | el borde de `.rs-obras` en `--rs-linea` (gris) | muerta **solo por el control** (deja de encontrar su cadena); en sustancia, sobrevive | O9-5 |
+| | G4 | `.rs-obras__rotulo { display: none; }` en la hoja | **sobrevive** | O9-4 |
+| **F · `fichasDeSeccion`** | F4 | la lista en orden inverso | muerta | Node (3 tests de R65) |
+| **I · El renombrado del §5** | I1 | la lista por obra vuelve a `class="rs-obras"` | muerta | `h5_ninguna_clase…` y su control |
+
+**11 de 20 muertas**, contando G1 entre las vivas. Las 9 vivas forman tres
+familias. Todas exigen un marcado que hoy no está en la página y que nadie
+escribe a propósito: no son bloqueantes con el criterio del líder.
+
+### Respuestas a las preguntas del líder
+
+**1 · Mirándolo como lo verá Posventa.** Recorrí `index.html` línea a línea
+y lo que pinta `MaquetaDatos`.
+
+- **¿Hay datos inventados fuera de un recuadro? No, salvo uno estático y
+  rotulado.**
+  - Todo lo que lee `datos.` o los métodos del componente que los usan
+    (`bandejaFiltrada`, `obra`, `propuesta`, `vinculo`, `importe`…) está
+    dentro de su recuadro. Lo comprobé con mi propio listado de directivas
+    fuera de los recuadros (tabla de arriba), no solo con el detector de
+    R63.
+  - Fuera quedan solo textos fijos: la barra, el aviso, la portada, las
+    cabeceras de sección y el pie.
+  - Única salvedad: la tarjeta «Partes firmados», que está en producción,
+    enseña «Por ejemplo: `9901  EJEMPLO NORTE/PARTES INCIDENCIAS/VILLA
+    003/PARTES FIRMADOS`». Ver O9-1.
+  - La cabecera de «Coste y venta» nombra POSTV2: es la obra real de Sigrid,
+    no un dato inventado.
+- **¿Alguna sección real lleva recuadro o un rótulo que la haga parecer de
+  mentira? No.**
+  - `partes.html`, `importar.html` y `oficios.html` solo cambian en la
+    `?v=` (más el `id` en importar) y no cargan `portal.css`.
+  - En `entrada`, las dos tarjetas reales están en su rejilla, con «En
+    producción». El recuadro F-037 va aparte, debajo, y R68 (H-3) fija esa
+    estructura.
+  - La tarjeta «Partes firmados» lleva el recuadro F-045 **debajo** de su
+    primario. Su rótulo dice «Todavía no funciona…» y «Lo construirá F-045 ·
+    Registrar un parte sin firma…». Se lee como un bloque aparte, pero
+    conviene mirarlo en V1 (O9-6).
+  - Las pestañas reales no llevan el punto ámbar (B6 muere).
+- **¿La portada enseña alguna cifra? No.**
+  - Han desaparecido `rs-tarjeta__cifra`, `contadores()` y
+    `contadoresInicio`.
+  - Las tarjetas en construcción no tienen ni un dígito ni ningún
+    `x-text`/`x-html`.
+  - Los únicos números visibles son los índices decorativos 01–05 y 01–07
+    (`aria-hidden`) y el 9901 de la ruta de ejemplo (O9-1).
+
+**2 · El enlace de «Bandeja de revisión» a `importar.html#bandeja`: sí,
+claro.**
+
+- La frase dice «Mientras tanto, la bandeja de una obra ya se puede ver, en
+  solo lectura, en Importar incidencias».
+- Va dentro del rótulo, justo después de «Todavía no funciona…», así que no
+  se confunde con el contenido inventado.
+- Se abre en la misma ventana, sin `target` ni `rel`.
+- El ancla existe y es la `<section>` correcta: la de `cargarBandeja()`,
+  «3 · Bandeja de la obra».
+- El color es el de atención, también al pasar el ratón: `.rs-obras__rotulo
+  .rs-enlace` (0,2,0) va en `portal.css`, que se carga después de
+  `.rs-enlace:hover` (0,2,0) en `styles.css`, así que gana. Conserva el
+  subrayado.
+- El anillo de foco en burdeos es el global de R54, igual que en los
+  placeholders. No es color del rótulo.
+
+**3 · Los apuntes del §5: bien.** No se ha tocado nada de la lógica de F-036
+ni del circuito.
+
+1. **`importar.html` en dos líneas: bien.** Son el `id="bandeja"` y la `?v=`,
+   nada más (`numstat 2 2`). §16.5 pide la `?v=` en las cuatro páginas, y
+   dejarla vieja serviría la hoja de caché. La verificación de T27 («una sola
+   línea») es anterior al bloque 17. Ver O9-7.
+2. **`rs-obras` → `rs-por-obra`: bien, y necesario.**
+   - Sin el renombrado, el recuadro habría heredado `flex-wrap` y
+     `list-style`.
+   - Además, `.rs-obras > li` y `.rs-obras strong` habrían pintado cada
+     `<li>` y cada `<strong>` dentro de los cinco recuadros de sección (la
+     lista de fichas del rótulo, «seleccionadas»…).
+   - No queda ningún `rs-obras` en una lista, y I1 muere por H-5.
+3. **H-4 punto 3 hecho aquí: bien.**
+   - Es una sola cadena de `maqueta_datos.js`: «…bloqueado por la web de
+     clientes» sin «y por la importación del Excel», que ya existe.
+   - Se pinta dentro del recuadro F-037.
+   - El encargo decía «el resto de H-4», y el bloque 7 ya lo proponía para
+     este bloque.
+
+Lo demás del §5 también está bien:
+
+- `fichasDeSeccion` filtra por `TITULOS_FICHAS`, así que no nombra una ficha
+  hecha.
+- `titulos['F-0NN']` sirve para los recuadros de bloque.
+- En `incidencias`, el rótulo va encima del listado y de la ficha, y sigue
+  visible con una ficha abierta.
+- La guardia de H-5 está bien.
+- La corrección de ruff no cambia nada de fondo.
+
+Me parece **bien detectado** el fallo del propio guion del implementer:
+mutaciones «muertas» por `No module named pytest`. Repitió la campaña
+entera, y es justo lo que el arnés pide vigilar.
+
+**4 · H-3, H-4 (puntos 2 y 3) y H-5: cerrados.**
+
+- **H-3**: `problemas_de_entrada` fija la estructura cerrada de `entrada`
+  (cabecera, rejilla con las dos tarjetas y recuadro F-037) y que no haya
+  cifras fuera del recuadro. La mutación K muere (B9-17 y el control
+  `dl-suelto`), y mi B5 también.
+- **H-4 punto 2**:
+  - La ceja es «Posventa».
+  - La entradilla es la literal de §16.5.
+  - Los chips son «En producción» y «En construcción».
+  - El pie es nuevo.
+  - Ningún texto visible dice «maqueta». Lo vigila
+    `r67_ningun_texto_visible…`, con su control, y en Node los textos de
+    `Portal` y de `MaquetaDatos`.
+  - Quedan «maqueta» en atributos, clases y comentarios, que no se ven
+    (O-3 del bloque 8).
+- **H-4 punto 3**: hecho (respuesta 3).
+- **H-5**: las cinco clases muertas que listaba están fuera, junto con las
+  dos que deja muertas este bloque (`rs-tarjeta__cifra` y
+  `rs-tarjeta__nota`). `clases_del_portal_css_sin_uso` impide que vuelvan.
+
+**5 · Navegador**: queda para V1/V2 del humano. En `current.md` consta lo
+que hay que mirar, y O9-5 y O9-6 lo amplían.
+
+### Checkpoints (acotados al diff)
+
+- **C1** [x] `init.sh` termina con exit 0 (lo ejecuté yo). [x] Existen los
+  ficheros del arnés.
+- **C2** [x] Una sola feature `in_progress` (F-035). [x] Rama
+  `feature/F-035-portal-posventa`. [x] `current.md` lleva la entrada nueva
+  arriba, como en los bloques anteriores. [x] Ninguna feature pasa a `done`.
+- **C3** [x] La primera línea con la ruta sigue en los ficheros tocados.
+  [x] Sin depuración, TODO ni secretos, y sin dependencias nuevas.
+  [x] Comentarios en español. [x] Ningún PDF ni parte en git:
+  `--diff-filter=A` vacío. Arquitectura hexagonal, unidad «parte», Sigrid,
+  firma, «firmado no es conforme», duplicados y `conest`: **N/A
+  justificado**, porque el diff es front de presentación (HTML, CSS, el
+  catálogo de `portal.js`) y tests. No toca la API ni el circuito.
+- **C3 bis** — **N/A**: el diff no toca `docs/referencia/`.
+- **C4** [x] Cada requisito tiene tests trazables y todos pasan:
+  - R63: `test_f035_r63_*` (3 controles).
+  - R64: `test_f035_r64_*` (2 controles).
+  - R65: `test_f035_r65_*` (6 controles, más el de B9-19) y Node.
+  - R56 ampliado: `test_f035_r56_*` (3 controles).
+  - R67: `test_f035_r67_*` (5 controles) y Node.
+  - R69: `test_f035_r69_*`.
+  - R28 (enmienda): `tests/test_f035_placeholders_vivos.py::test_f035_r28_el_escaner_*`.
+  - H-3: `test_f035_r68_entrada_tiene_la_estructura_cerrada` (3 controles).
+  - H-5: `test_f035_h5_*`.
+
+  [x] Sin red ni BBDD. [x] El MANUAL (vistazo en navegador) consta en
+  `current.md`, enviado a V1/V2.
+- **C4 bis** [x] `rigor: "estandar"`.
+  - [x] **Fase RED**: el informe trae las salidas reales: raíz 2 failed,
+    front 31 failed / 8 passed (los 8 explicados) y Node 9/9 failed.
+  - [x] **Cobertura**: N/A con el motivo impreso por `init.sh`.
+  - [x] **Mutación**: informe de la herramienta con 0 mutantes, recalculado,
+    reejecutado y con el control del cero hecho. El coste por mutante no
+    aplica, porque hay 0 mutantes.
+  - [x] **Mutantes a mano**: 23/23 del implementer y 11/20 míos, con las 9
+    vivas analizadas abajo. En rigor `estandar` basta con documentarlas.
+  - [x] «Evidencias» con los cuatro números. Los workers son los de la
+    cabecera de `mutacion_F-035.md` (1), y con 0 mutantes no influyen.
+  - [x] Ningún N/A sin justificar. La regla 7 es N/A, porque es de
+    `critico`.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5** [x] T27 y T28 están `[x]`, con commits `F-035 T27: …` y
+  `F-035 T28: …`. [x] No hay ficheros sin trackear. El worktree
+  `.claude/worktrees/agent-a6e2f9bed1d46cdbc` ya existía y no es de este
+  bloque. [x] `features.json` dice `in_progress`, que es lo real.
+
+### Informativo (no bloquea), con su destino
+
+- **O9-1 · La ruta de ejemplo de «Partes firmados».**
+  - La tarjeta, que está en producción, enseña «Por ejemplo: `9901  EJEMPLO
+    NORTE/…/VILLA 003/PARTES FIRMADOS`».
+  - La obra 9901 «PROMOCIÓN EJEMPLO NORTE» es de `MaquetaDatos`, y el texto
+    está fuera de un recuadro.
+  - Ya existía (estaba en `22d8820`), §16.5 pide «su primario de siempre», y
+    R63/R67 no la alcanzan: es texto fijo, no una cifra de cuadro de mando.
+  - Explica dónde archiva el circuito real, va rotulada «Por ejemplo» y
+    lleva «EJEMPLO» en el nombre. No veo riesgo de confusión.
+  - **Destino: V1 del humano.** Si prefiere, se puede cambiar por la forma
+    genérica (`<obra>/PARTES INCIDENCIAS/<vivienda>/PARTES FIRMADOS`).
+- **O9-2 · R63 detecta los datos de ejemplo por patrones.** Es la familia
+  de H-3, ahora fuera de `entrada`. Sobreviven A1, A2, A4, A5 y A6.
+  - El detector reconoce `datos.`/`MaquetaDatos` en una directiva. No
+    reconoce un método del componente que los lea (`bandejaFiltrada()`,
+    `obra()`) ni una cifra escrita a mano.
+  - Así que un contador en la cabecera de una sección, o en una tarjeta en
+    producción de la portada, pasaría. R67 solo lo ve en las tarjetas en
+    construcción.
+  - La spec define así «datos de ejemplo», de modo que el test cumple la
+    letra. Hoy no hay ninguno: mi listado lo confirma.
+  - **Destino: spec-author, bloque 14.** Propuesta: enmendar R63 con una
+    **lista cerrada de las directivas admitidas fuera de un recuadro**:
+    `x-data`/`x-init` raíz, `:aria-current` de la barra, `x-show` de
+    sección y las del aviso del placeholder. Es la forma robusta, porque no
+    depende de qué métodos leen datos.
+- **O9-3 · El aspecto de recuadro sin el atributo.**
+  - `class="… rs-obras"` en una tarjeta real (B4) la enmarca en ámbar, y
+    nada cae.
+  - Nadie lo escribiría a propósito.
+  - **Destino: el mismo que O9-2.** Sería una guardia de una línea: «la
+    clase `rs-obras` solo en elementos con `data-en-construccion`, y todo
+    `data-en-construccion` con `rs-obras`».
+- **O9-4 · R65 «visible» solo mira atributos.**
+  - Sobreviven C4 (`hidden` como clase), C5 (`style`) y G4
+    (`display: none` en la hoja).
+  - Es una variante de la familia «rótulo cerrable», que ya está cubierta:
+    B9-5 `x-show` y el botón mueren.
+  - La más verosímil es C4 en su forma responsive (`hidden md:flex`, para
+    «ahorrar sitio en el móvil»), que escondería el rótulo justo en el
+    teléfono.
+  - **Destino: el mismo que O9-2.** Propuesta: añadir a `_CERRABLE` las
+    clases `hidden`, `invisible` y `sr-only` (también con prefijo de
+    pantalla) y el atributo `style`. Y comprobar que ninguna regla de
+    `.rs-obras*` lleva `display: none`, `visibility: hidden` ni
+    `opacity: 0`.
+- **O9-5 · El color del marco solo lo ve el ojo.**
+  - G1 (borde gris) solo cae porque el control de R56 deja de encontrar su
+    cadena; la guardia en sí solo mira el discontinuo y el burdeos.
+  - Lo mismo vale para la cinta.
+  - Fijar colores con tests sería sobreespecificar.
+  - **Destino: V1/V2 del humano**: cinta y borde ámbar en los cinco
+    recuadros de sección y en los dos de bloque.
+- **O9-6 · El recuadro F-045 dentro de una tarjeta «En producción».**
+  - Su frase genérica («Lo que ves son datos inventados…») habla de datos
+    donde solo hay un botón placeholder.
+  - Además, queda dentro de la tarjeta que dice que el circuito funciona.
+  - Cumple R64/R65 tal como están escritos.
+  - **Destino: V1**: que se lea como «esto de aquí abajo todavía no», no
+    como «la tarjeta no funciona». El implementer ya lo dejó en su lista.
+- **O9-7 · La verificación de T27 en `tasks.md` está desfasada.** Dice «una
+  sola línea cambiada (`id="bandeja"`)» en `importar.html`, y son dos por la
+  `?v=` (§16.5). **Destino: spec-author, bloque 14**, una línea.
+- Siguen abiertos, como estaban: **O16-4** (opcional), **H16-3 a H16-6** y
+  **O17-2** (spec-author, bloque 14), y **O17-3** y **H-7** (bloque 10).
+
+### Automejora (propuesta, no aplicada)
+
+**`reviewer.md`, regla para cualquier proyecto con «detectores» de marcado
+(va también a `arnes-base`).** Cuando un test vigila que «X no aparece
+fuera de Y» con un detector por patrones, el reviewer genera además el
+**listado positivo** de lo que hay fuera de Y (en este bloque, las
+directivas fuera de los recuadros) y lo lee entero.
+
+El detector solo demuestra que no está el patrón que conoce. El listado
+demuestra que no hay nada más. Aquí fue lo que permitió afirmar que hoy no
+hay ningún contador fuera de los recuadros, aunque A2, A4 y A6 sobrevivan al
+test.

@@ -79,10 +79,10 @@ function codigos(catalogo) {
   return new Set(catalogo.map((entrada) => String(entrada.cod)));
 }
 
-//: Bloques de `design.md` §7.1 y la ficha que retira cada uno (R23, R28).
+//: Bloques de `design.md` §7.1 y la ficha que retira cada uno (R23, R28). El
+//: de `entrada` (F-036) se retiró en la enmienda del 2026-10-05: F-036 está done.
 const BLOQUES = {
   obras: "F-041",
-  entrada: "F-036",
   web: "F-037",
   bandeja: "F-038",
   propuestas: "F-039",
@@ -403,21 +403,15 @@ test("f035 R26: todo pendiente dice «Pendiente: <qué falta>»", () => {
   assert.ok(cuantos > 0, "no hay ni un pendiente en los datos de ejemplo");
 });
 
-test("f035 R26: están los pendientes mínimos (Excel, plantilla, proforma y las dudas del alta)", () => {
+test("f035 R26: están los pendientes mínimos (plantilla, proforma y las dudas del alta)", () => {
   const d = datos();
   const texto = (bloque) => (d[bloque].pendientes || []).join("\n");
 
-  assert.match(texto("entrada"), /Excel/, "F-036: falta el pendiente de las columnas del Excel");
   assert.match(texto("impresion"), /plantilla/i, "F-044: falta el pendiente de la plantilla");
   assert.match(texto("vinculos"), /proforma/i, "F-047: falta el pendiente del enlace con la proforma");
   assert.match(texto("volcado"), /0003/, "F-040: falta el pendiente del tipo 0003");
   assert.match(texto("volcado"), /causante/i, "F-040: falta el pendiente de intervinientes y causante");
   assert.match(texto("volcado"), /estado/i, "F-040: falta el pendiente del estado en que nace el parte");
-  assert.doesNotMatch(
-    texto("entrada"),
-    /pasos de alta/i,
-    "los pasos de alta ya llegaron (04_alta_incidencia_sigrid.md): ese pendiente desaparece",
-  );
 });
 
 // ── R38 · Los campos del alta en cada fila ──────────────────────────────────

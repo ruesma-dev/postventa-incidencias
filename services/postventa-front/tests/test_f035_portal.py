@@ -523,16 +523,50 @@ def test_f035_r15_el_portal_no_carga_nada_del_circuito():
     )
 
 
+_PAGINAS_JS = re.compile(r"const\s+PAGINAS\s*=\s*Object\.freeze\(\{(?P<cuerpo>.*?)\}\)", re.DOTALL)
+_PAR_PAGINA = re.compile(r"""["']([\w.-]+\.html)["']\s*:\s*["']([a-z]+)["']""")
+
+
+def paginas_del_portal(ruta: Path = RAIZ_FRONT / "js" / "portal.js") -> dict[str, str]:
+    """`Portal.PAGINAS` leído como texto: `{página real: sección}` (R17 enmendado).
+
+    Falla si no está declarado o si está vacío: sin él, R17 no sabría qué
+    páginas reales puede enlazar el portal.
+    """
+    encontrado = _PAGINAS_JS.search(ruta.read_text(encoding="utf-8"))
+    assert encontrado, f"{ruta.name} no declara const PAGINAS = Object.freeze({{…}}) (design.md §16.8)"
+    pares = dict(_PAR_PAGINA.findall(encontrado["cuerpo"]))
+    assert pares, f"{ruta.name}: PAGINAS está vacío"
+    return pares
+
+
+#: Un `href` a una página real, con un ancla opcional (`importar.html#bandeja`, R69).
+_HREF_PAGINA = re.compile(r"^(?P<pagina>[\w.-]+\.html)(?:#[A-Za-z][\w-]*)?$")
+
+
 def test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito():
+    """R17 (enmienda del 2026-10-05): `#/…`, `partes.html` o una página de `Portal.PAGINAS`.
+
+    A una página real, con un ancla opcional; y ningún enlace con `target`
+    (R73): todo el portal navega en la misma ventana.
+    """
     doc = leer_html(PORTAL)
     enlaces = [e for e in doc.elementos() if e.nombre == "a"]
+    paginas = paginas_del_portal()
 
     assert enlaces, "el portal no tiene ni un enlace"
     for a in enlaces:
+        assert "target" not in a.atributos, f"<a> «{a.texto()}»: el portal no abre pestañas (R73)"
         if "href" in a.atributos:
             href = a.atributos["href"]
-            assert href.startswith("#/") or href == "partes.html", (
-                f"<a href=\"{href}\"> «{a.texto()}»: solo #/… o partes.html"
+            a_pagina = _HREF_PAGINA.match(href)
+            assert (
+                href.startswith("#/")
+                or href == "partes.html"
+                or (a_pagina is not None and a_pagina["pagina"] in paginas)
+            ), (
+                f"<a href=\"{href}\"> «{a.texto()}»: solo #/…, partes.html o una página "
+                f"de Portal.PAGINAS ({sorted(paginas)}), con ancla opcional"
             )
         for clave in (":href", "x-bind:href"):
             if clave in a.atributos:
@@ -2107,20 +2141,12 @@ def test_f035_r40_cada_chip_del_volcado_va_en_su_panel():
         )
 
 
-# --- §5.2 · Los errores de la importación se ven cuando los hay (P-R1, mutante O2)
-
-
-def test_f035_entrada_la_lista_de_errores_de_la_importacion_se_ve_cuando_hay_errores():
-    bloque = seccion(leer_html(PORTAL), "entrada")
-    plantilla = _uno(
-        [e for e in bloque.elementos() if e.nombre == "template" and "datos.entrada.errores" in e.atributos.get("x-for", "")],
-        "x-for de los errores de la importación",
-    )
-    lista = plantilla.padre
-
-    assert _normaliza(lista.atributos.get("x-show", "")) == "datos.entrada.errores.length", (
-        f"la lista de errores se enseña cuando hay errores, no con «{lista.atributos.get('x-show')}»"
-    )
+# --- §5.2 · Los errores de la importación de ejemplo ------------------------------
+#
+# El test de la lista de errores (P-R1, mutante O2) se retiró con la maqueta de
+# F-036 en la enmienda del 2026-10-05: F-036 está done y los errores reales de
+# una importación los enseña `importar.html` (sus tests son de F-036). Lo que
+# queda de `entrada` en el portal lo prueba `test_f035_paginas.py` (R68).
 
 
 # --- R57 · Cada chip pinta el estado que dice (P-R1, :data-estado) ---------------
@@ -2221,8 +2247,9 @@ def test_f035_r60_styles_css_no_puede_esconder_ni_desactivar_el_circuito():
 
 _FICHA_DE_BLOQUE = re.compile(r"^datos\.(\w+)\.ficha$")
 _PENDIENTES_DE_BLOQUE = re.compile(r"datos\.(\w+)\.pendientes")
-#: Los chips F-0NN de los paneles de la maqueta (medido: 10).
-CHIPS_DE_FICHA = 10
+#: Los chips F-0NN de los paneles de la maqueta (medido: 10; 8 desde la
+#: enmienda del 2026-10-05, que retiró los dos del panel de F-036 en `entrada`).
+CHIPS_DE_FICHA = 8
 
 
 def test_f035_r29_el_chip_de_cada_panel_es_la_ficha_de_sus_pendientes():

@@ -6,6 +6,7 @@
 // el componente de Alpine (`js/portal_app.js`) solo delega aquí.
 //
 //   SECCIONES      las ocho pestañas de la barra superior, en su orden (R2)
+//   PAGINAS        las páginas reales de una sección, con su sección (R17, §16.8)
 //   PLACEHOLDERS   las acciones sin construir, con la ficha que las hará (R8)
 //   ESTADOS        los cinco estados de conest, por código y resumen (R21)
 //   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46)
@@ -50,13 +51,25 @@
   ]);
 
   /**
+   * Las páginas reales que son parte de una sección del portal, con su
+   * sección (`design.md` §16.2 y §16.8): funcionan de verdad, hablan con el
+   * backend desde sus propios módulos y no cargan nada de la maqueta. El
+   * portal puede enlazarlas, en la misma ventana y con un ancla opcional
+   * (R17, enmienda del 2026-10-05). `partes.html` no está aquí: es la sección
+   * `partes` entera (su `pagina` en SECCIONES).
+   */
+  const PAGINAS = Object.freeze({
+    "importar.html": "entrada",
+    "oficios.html": "entrada",
+  });
+
+  /**
    * El título de cada ficha del ciclo, tal como está en `harness/features.json`,
    * para el aviso de R11 («lo construye F-0NN · <título>»). La maqueta no lee
    * `features.json`: por eso se copia aquí. La última ficha que retire sus
    * placeholders borra también este mapa (`design.md` §7.3).
    */
   const TITULOS_FICHAS = Object.freeze({
-    "F-036": "Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión",
     "F-037": "Entrada desde la web de clientes: el contrato con el proyecto independiente",
     "F-038": "Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado",
     "F-039": "Propuesta del industrial al crear la incidencia",
@@ -79,20 +92,6 @@
    * dicen a cuántas afectarían con la selección actual (R12).
    */
   const PLACEHOLDERS = congelarLista([
-    {
-      id: "entrada.elegirExcel",
-      ficha: "F-036",
-      etiqueta: "Elegir el Excel",
-      explicacion: "Abrirá el selector de ficheros para elegir el Excel de incidencias que pasa la propiedad. La maqueta no lee ficheros.",
-      enBloque: false,
-    },
-    {
-      id: "entrada.importar",
-      ficha: "F-036",
-      etiqueta: "Importar a la bandeja",
-      explicacion: "Validará cada fila del Excel (unidad de posventa y descripción, obligatorias) y llevará las válidas a la bandeja de revisión, con los errores por fila y columna.",
-      enBloque: false,
-    },
     {
       id: "entrada.verContratoWeb",
       ficha: "F-037",
@@ -528,6 +527,7 @@
 
   const Portal = {
     SECCIONES: SECCIONES,
+    PAGINAS: PAGINAS,
     PLACEHOLDERS: PLACEHOLDERS,
     ESTADOS: ESTADOS,
     TITULOS_FICHAS: TITULOS_FICHAS,

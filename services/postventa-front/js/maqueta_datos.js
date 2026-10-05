@@ -117,33 +117,9 @@
       ],
     },
 
-    // Importar el Excel de la propiedad (`design.md` §5.2). Los pasos de alta
-    // ya llegaron (`04_alta_incidencia_sigrid.md`): no queda ese pendiente.
-    entrada: {
-      ficha: "F-036",
-      importacion: {
-        fichero: "incidencias_ejemplo.xlsx",
-        fecha: "2026-09-10",
-        filasLeidas: 8,
-        filasValidas: 6,
-        filasConError: 2,
-        duplicadas: 1,
-      },
-      errores: [
-        { fila: 7, columna: "Unidad", problema: "vacía" },
-        { fila: 9, columna: "Descripción", problema: "vacía" },
-      ],
-      // Lo que sí se sabe de cada fila, de la ficha de F-036.
-      columnas: [
-        { nombre: "Unidad de posventa", obligatoria: true, nota: "" },
-        { nombre: "Descripción", obligatoria: true, nota: "" },
-        { nombre: "Ubicación", obligatoria: false, nota: "Si no viene, se completa en la bandeja" },
-        { nombre: "Oficio", obligatoria: false, nota: "Si no viene, se completa en la bandeja" },
-      ],
-      pendientes: [
-        "Pendiente: los nombres reales de las columnas y el resto de columnas del Excel de la propiedad — el Excel de ejemplo no ha llegado",
-      ],
-    },
+    // Importar el Excel de la propiedad ya no es maqueta: F-036 está done y
+    // vive en `importar.html` (`design.md` §16.5). Su bloque `entrada` se
+    // retiró en la enmienda del 2026-10-05 (§7.3).
 
     // La web de clientes es un proyecto independiente (`design.md` §5.2).
     web: {

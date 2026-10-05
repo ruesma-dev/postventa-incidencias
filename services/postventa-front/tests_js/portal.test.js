@@ -253,9 +253,9 @@ const SECCIONES_DEL_PORTAL = SECCIONES_ESPERADAS.map(([id]) => id).filter((id) =
 
 //: [id, ficha, etiqueta, enBloque] del catálogo inicial, con la enmienda del
 //: 2026-09-25 (`bandeja.reintentarVolcado`). Se pueden añadir; no cambiar.
+//: Los dos de F-036 (`entrada.elegirExcel`, `entrada.importar`) salieron en la
+//: enmienda del 2026-10-05: F-036 está done y vive en `importar.html` (§16.5).
 const PLACEHOLDERS_ESPERADOS = [
-  ["entrada.elegirExcel", "F-036", "Elegir el Excel", false],
-  ["entrada.importar", "F-036", "Importar a la bandeja", false],
   ["entrada.verContratoWeb", "F-037", "Ver el contrato de entrada", false],
   ["bandeja.editar", "F-038", "Editar", false],
   ["bandeja.descartar", "F-038", "Descartar", false],

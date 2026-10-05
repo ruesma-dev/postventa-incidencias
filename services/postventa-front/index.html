@@ -168,70 +168,34 @@
         </div>
       </section>
 
-      <!-- ── entrada (§5.2): F-036 y F-037 ─────────────────────────────── -->
+      <!-- ── entrada (§5.2, §16.5): F-036 en producción y F-037 ─────────── -->
+      <!-- F-036 está done: importar y oficios son páginas reales del front
+           (Portal.PAGINAS) y se abren en la misma ventana. Su maqueta (la zona
+           de soltar, los placeholders y el resultado de ejemplo) salió del
+           portal en la enmienda del 2026-10-05 (design.md §7.3). -->
       <section data-seccion="entrada" x-show="seccion === 'entrada'" x-cloak class="rs-seccion">
         <header class="rs-cabecera-seccion">
-          <h1 class="rs-titulo">Entrada</h1>
+          <h1 class="rs-titulo">Entrada de incidencias</h1>
         </header>
 
-        <div class="rs-panel space-y-6">
-          <h2 class="rs-rotulo">
-            Importar el Excel de la propiedad <span class="rs-ficha" x-text="datos.entrada.ficha"></span>
-          </h2>
-
-          <div class="rs-soltar">
-            <p class="rs-soltar__texto">Aquí se soltará el Excel de incidencias que pasa la propiedad</p>
-            <div class="rs-acciones rs-acciones--centro">
-              <button type="button" data-placeholder="F-036" @click="placeholder('entrada.elegirExcel')"
-                      class="placeholder" aria-disabled="true"
-                      title="Todavía no hace nada: lo construye F-036">Elegir el Excel <span class="placeholder-ficha">F-036</span></button>
-              <button type="button" data-placeholder="F-036" @click="placeholder('entrada.importar')"
-                      class="placeholder" aria-disabled="true"
-                      title="Todavía no hace nada: lo construye F-036">Importar a la bandeja <span class="placeholder-ficha">F-036</span></button>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <h3 class="rs-encabezado">Qué necesita cada fila</h3>
-            <div class="rs-marco">
-              <table class="rs-tabla rs-tabla--compacta">
-                <thead>
-                  <tr><th>Columna</th><th>¿Obligatoria?</th><th>Nota</th></tr>
-                </thead>
-                <tbody>
-                  <template x-for="c in datos.entrada.columnas" :key="c.nombre">
-                    <tr>
-                      <td x-text="c.nombre"></td>
-                      <td x-text="c.obligatoria ? 'Sí' : 'No'"></td>
-                      <td class="rs-nota" x-text="c.nota || '—'"></td>
-                    </tr>
-                  </template>
-                </tbody>
-              </table>
-            </div>
-            <template x-for="p in datos.entrada.pendientes" :key="p">
-              <p class="rs-pendiente">
-                <span x-text="p"></span> <span class="rs-ficha" x-text="datos.entrada.ficha"></span>
-              </p>
-            </template>
-          </div>
-
-          <div class="space-y-3">
-            <h3 class="rs-encabezado">Resultado de una importación de ejemplo</h3>
-            <dl class="rs-cifras rs-cifras--compactas">
-              <div><dt>Fichero</dt><dd x-text="datos.entrada.importacion.fichero"></dd></div>
-              <div><dt>Fecha</dt><dd x-text="datos.entrada.importacion.fecha"></dd></div>
-              <div><dt>Filas leídas</dt><dd x-text="datos.entrada.importacion.filasLeidas"></dd></div>
-              <div><dt>Filas válidas</dt><dd x-text="datos.entrada.importacion.filasValidas"></dd></div>
-              <div><dt>Filas con error</dt><dd x-text="datos.entrada.importacion.filasConError"></dd></div>
-              <div><dt>Duplicadas</dt><dd x-text="datos.entrada.importacion.duplicadas"></dd></div>
-            </dl>
-            <ul x-show="datos.entrada.errores.length" class="rs-aviso rs-aviso--error space-y-1">
-              <template x-for="e in datos.entrada.errores" :key="e.fila + e.columna">
-                <li x-text="'Fila ' + e.fila + ' · columna ' + e.columna + ' · ' + e.problema"></li>
-              </template>
-            </ul>
-          </div>
+        <div class="rs-rejilla">
+          <a href="importar.html" class="rs-tarjeta rs-tarjeta--produccion">
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
+            <p class="rs-tarjeta__rotulo">Importar incidencias</p>
+            <p class="rs-tarjeta__texto">
+              Descarga la plantilla de una obra, importa el Excel a su bandeja y mira la bandeja en
+              solo lectura.
+            </p>
+            <span class="rs-tarjeta__llamada">Importar incidencias <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
+          <a href="oficios.html" class="rs-tarjeta rs-tarjeta--produccion">
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
+            <p class="rs-tarjeta__rotulo">Oficios repetidos</p>
+            <p class="rs-tarjeta__texto">
+              Junta los oficios casi iguales de Sigrid, que la plantilla enseña como uno.
+            </p>
+            <span class="rs-tarjeta__llamada">Ver los oficios repetidos <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
         </div>
 
         <div class="rs-panel space-y-4">

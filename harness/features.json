@@ -603,7 +603,7 @@
     {
       "id": "F-035",
       "title": "Diseño del portal de posventa: todas las secciones con placeholders",
-      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal. AÑADIDO EL 2026-10-05 por petición del humano (desde la T28 de F-036): al convertir oficios.html en sección del portal, añadir un bloque «Decididos como distintos» con un botón «Son el mismo» en cada par. Hoy un par marcado «Son distintos» desaparece de la pantalla y no se puede volver a juntar desde ella (Separar sí se deshace; Son distintos no). La API ya lo admite: POST /api/catalogos/decisiones con «mismo» y manda la última decisión (design.md de F-036, §7); es solo front. Primer caso real: Solados y Alicatados M.O. (0033) frente a Solados y Alicatados (0133), obra 0677. Y, del cierre de F-036 (2026-10-05): en la pantalla de importar, cuando el fichero ya se había importado, el mensaje «no se ha añadido nada» va con los recuentos de la importación original («14 nuevas»), que se leen como si hubieran entrado otra vez; rotularlos como «resumen de la importación original del …».",
+      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal. AÑADIDO EL 2026-10-05 por petición del humano (desde la T28 de F-036): al convertir oficios.html en sección del portal, añadir un bloque «Decididos como distintos» con un botón «Son el mismo» en cada par. Hoy un par marcado «Son distintos» desaparece de la pantalla y no se puede volver a juntar desde ella (Separar sí se deshace; Son distintos no). La API ya lo admite: POST /api/catalogos/decisiones con «mismo» y manda la última decisión (design.md de F-036, §7); es solo front. Primer caso real: Solados y Alicatados M.O. (0033) frente a Solados y Alicatados (0133), obra 0677. Y, del cierre de F-036 (2026-10-05): en la pantalla de importar, cuando el fichero ya se había importado, el mensaje «no se ha añadido nada» va con los recuentos de la importación original («14 nuevas»), que se leen como si hubieran entrado otra vez; rotularlos como «resumen de la importación original del …». Precisado el 2026-10-05 (H-9 de la enmienda): los dos apuntes anteriores necesitan dos datos del backend; se separan en F-053 por el límite de servicio y el portal los consume de forma tolerante (sin ellos, rotula sin fecha y no pinta «Decididos como distintos»).",
       "acceptance": [
         "Todas las secciones del ciclo existen y se navegan, con datos de ejemplo y botones sin efecto marcados como tal",
         "El circuito de partes actual sigue funcionando igual dentro del portal",
@@ -892,6 +892,23 @@
       "rigor": "critico",
       "priority": 0,
       "branch": "feature/F-052-secretos-ajustes"
+    },
+    {
+      "id": "F-053",
+      "title": "Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos",
+      "description": "Alta del 2026-10-05 por el líder, con el visto bueno del humano (D-13 de la enmienda de F-035). Los dos apuntes del humano para el portal (F-035) no son solo front: el portal los pinta de forma tolerante, pero necesitan dos datos del backend que hoy no salen. (a) POST /api/importaciones devuelve importado_at_utc (ISO 8601 en UTC) de la importación de la respuesta; con ya_importado true, el de la ORIGINAL, para rotular «resumen de la importación original del …» en vez de presentar los recuentos como si hubieran entrado otra vez. (b) GET /api/catalogos/propuestas devuelve oficio.distintos, [{codigo_a, codigo_b}] ordenados: los pares de oficios de la obra cuya última decisión es «distinto», para que la pantalla de oficios enseñe «Decididos como distintos» con un botón «Son el mismo» (la API ya admite esa decisión y manda la última). Hoy un par marcado distinto desaparece de la pantalla y no se puede deshacer desde ella; primer caso real: Solados y Alicatados M.O. (0033) · Solados y Alicatados (0133), obra 0677. Contrato propuesto en specs/F-035-portal-posventa/design.md §16.6. Solo aditiva: ningún campo existente cambia. Actualiza azure-apps/postventa_incidencias.md en el mismo trabajo.",
+      "acceptance": [
+        "POST /api/importaciones devuelve importado_at_utc; con ya_importado true, el de la importación original",
+        "GET /api/catalogos/propuestas devuelve oficio.distintos con los pares cuya última decisión es distinto, solo de oficios de la obra",
+        "Ningún campo existente cambia; los tests de F-036 siguen en verde",
+        "docs/INTEGRACION.md y azure-apps/postventa_incidencias.md al día",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 0,
+      "branch": "feature/F-053-datos-para-el-portal"
     }
   ]
 }

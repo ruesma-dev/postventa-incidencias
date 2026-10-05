@@ -1,6 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · enmienda APROBADA por el humano · 2026-10-05 · siguiente: bloque 7 (implementer)
+>
+> «si» (2026-10-05) a D-15 (las cuatro condiciones de trabajo sin terminar) y D-16 (la excepción
+> mínima de R81). D-11 la decidió el humano; D-12, D-13 (i) y D-14 quedan con la recomendación.
+> El líder da de alta **F-053** (los dos datos de backend del §16.6, prioridad 0). Orden de bloques:
+> 7 → 8 → 16 → 17 → 9 → 10 → 11 → 12 → 13 → 14 → 15, uno por encargo.
+
 > ## ▶ F-035 · ENMIENDA AJUSTADA A LA RESPUESTA DEL HUMANO · 2026-10-05 · **pendiente de que el humano valide D-15 y D-16**
 >
 > spec-author. Respuesta del humano (2026-10-05), literal: «paginas propias, pero como en la

@@ -90,6 +90,11 @@ Bloque 12 (`tasks.md`, T33):
 - Review del bloque 11, **O11-5**: la huella funcional de `importar.html`,
   fijada sobre HEAD antes de R74 (L1–L4 de la review del bloque 10); R74 la
   amplía solo con lo suyo.
+- Review del bloque 11, **O11-1**: la guardia de O10-2 ve también las otras
+  formas de sacar el selector del teclado o del lector (`tabindex` negativo,
+  `disabled`, también por un `fieldset`, `aria-hidden` e `inert`, en él o en
+  un ancestro) y exige un contorno de foco sólido y visible, leído con la
+  cascada (`contorno_efectivo`).
 
 Todo sin red, sin BBDD y sin IA.
 """
@@ -2446,12 +2451,62 @@ def test_f035_o11_5_control_un_cambio_de_logica_en_importar_salta(viejo, nuevo):
 
 _OCULTA_DEL_TODO = frozenset({"hidden", "invisible"})
 _SIN_DISPLAY = re.compile(r"display\s*:\s*none")
+_ESTILOS_DE_CONTORNO = frozenset(
+    {"none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset", "auto"}
+)
+_ANCHO = re.compile(r"^(?:[\d.]|thin$|medium$|thick$)")
+_ANCHO_CERO = re.compile(r"(?:0+\.?0*|0*\.0+)(?:[a-z%]+)?")
+_TOKEN_CSS = re.compile(r"[\w-]+\([^)]*\)|\S+")
+
+
+def contorno_efectivo(reglas: list, selector: str) -> dict[str, str]:
+    """El `outline` que deja la cascada en `selector` (O11-1): `{style, width, color}`.
+
+    Recorre, en orden de hoja, las reglas cuyo selector (o uno de su lista) es
+    `selector` exacto; el `outline` abreviado reinicia las tres partes (sin
+    estilo es `none`) y `outline-style`/`-width`/`-color` cambian la suya.
+    """
+    contorno = {"style": "none", "width": "medium", "color": "currentcolor"}
+    for regla in reglas:
+        if selector not in {parte.strip() for parte in regla.selector.split(",")}:
+            continue
+        for propiedad, valor in regla.declaraciones:
+            limpio = valor.lower().replace("!important", "").strip()
+            if propiedad == "outline":
+                contorno = {"style": "none", "width": "medium", "color": "currentcolor"}
+                for token in _TOKEN_CSS.findall(limpio):
+                    if token in _ESTILOS_DE_CONTORNO:
+                        contorno["style"] = token
+                    elif _ANCHO.match(token):
+                        contorno["width"] = token
+                    else:
+                        contorno["color"] = token
+            elif propiedad in ("outline-style", "outline-width", "outline-color"):
+                contorno[propiedad.removeprefix("outline-")] = limpio
+    return contorno
+
+
+def contorno_visible(contorno: dict[str, str]) -> bool:
+    """Sólido, con ancho y con color: como el `:focus-visible` global (R54)."""
+    return (
+        contorno["style"] == "solid"
+        and not _ANCHO_CERO.fullmatch(contorno["width"])
+        and contorno["color"] != "transparent"
+    )
+
+
+def _tabindex_negativo(valor: str | None) -> bool:
+    try:
+        return valor is not None and int(valor.strip()) < 0
+    except ValueError:
+        return False
 
 
 def problemas_o10_2(pagina: str, html: str, css: str) -> list[str]:
     """Lo que impide llegar con el teclado a un selector de fichero de la página. Vacío = correcto."""
     problemas = []
     reglas = [r for r in reglas_css(css_sin_comentarios_texto(css)) if not r.contexto]
+    selectores = {parte.strip() for r in reglas for parte in r.selector.split(",")}
     for control in [e for e in leer_html_texto(html).elementos() if e.nombre == "input" and e.atributos.get("type") == "file"]:
         nombre = f'{pagina}: <input type="file">'
         if clases(control) & _OCULTA_DEL_TODO or "hidden" in control.atributos:
@@ -2460,19 +2515,30 @@ def problemas_o10_2(pagina: str, html: str, css: str) -> list[str]:
             problemas.append(f"{nombre} lleva display: none (O10-2)")
         if "sr-only" not in clases(control):
             problemas.append(f"{nombre} sin sr-only: se oculta de forma accesible, no se enseña el control nativo")
+        # O11-1 · Las otras formas de sacarlo del teclado o del lector de pantalla.
+        if _tabindex_negativo(control.atributos.get("tabindex")):
+            problemas.append(f"{nombre} lleva tabindex negativo: el tabulador se lo salta (O11-1)")
+        if "disabled" in control.atributos or any(
+            a.nombre == "fieldset" and "disabled" in a.atributos for a in control.ancestros()
+        ):
+            problemas.append(f"{nombre} está disabled (o dentro de un fieldset disabled): no se puede usar (O11-1)")
+        for elemento in [control, *control.ancestros()]:
+            if (elemento.atributos.get("aria-hidden") or "").strip().lower() == "true":
+                problemas.append(f"{nombre}: aria-hidden en <{elemento.nombre}>: el lector de pantalla no lo anuncia (O11-1)")
+            if "inert" in elemento.atributos:
+                problemas.append(f"{nombre}: inert en <{elemento.nombre}>: ni foco ni clic (O11-1)")
         etiquetas = [a for a in control.ancestros() if a.nombre == "label"]
         if not etiquetas:
             problemas.append(f"{nombre} no va dentro de su <label>: sin nombre accesible")
             continue
         etiqueta = etiquetas[0]
-        selectores = {
-            parte.strip()
-            for r in reglas
-            if (r.valor("outline") or "none").split()[0] not in ("none", "0")
-            for parte in r.selector.split(",")
-        }
-        if not any(re.fullmatch(rf"(?:label)?\.{re.escape(c)}:focus-within", s) for c in clases(etiqueta) for s in selectores):
-            problemas.append(f"{nombre}: su <label> no pinta el foco (ninguna regla .<clase>:focus-within con outline)")
+        de_foco = [
+            s for s in selectores for c in clases(etiqueta) if re.fullmatch(rf"(?:label)?\.{re.escape(c)}:focus-within", s)
+        ]
+        if not any(contorno_visible(contorno_efectivo(reglas, s)) for s in de_foco):
+            problemas.append(
+                f"{nombre}: su <label> no pinta el foco (ninguna regla .<clase>:focus-within con un outline sólido y visible)"
+            )
     return problemas
 
 
@@ -2510,8 +2576,23 @@ def test_f035_o10_2_importar_tiene_un_selector_de_fichero_y_oficios_ninguno():
         ("html", 'type="file" class="sr-only"', 'type="file"', "sin sr-only"),
         ("css", "label.rs-btn:focus-within {", "label.rs-btn:hover {", "no pinta el foco"),
         ("css", "outline: 2px solid var(--rs-burdeos);\n  outline-offset: 2px;\n}\n\n/* ---------- Movimiento", "outline: none;\n}\n\n/* ---------- Movimiento", "no pinta el foco"),
+        # O11-1 (review del bloque 11): K1, K5, K3 y K2, y sus primas.
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only" tabindex="-1"', "tabindex negativo"),
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only" aria-hidden="true"', "aria-hidden"),
+        ("html", '<label class="rs-btn rs-btn--secundario">', '<label class="rs-btn rs-btn--secundario" aria-hidden="true">', "aria-hidden"),
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only" disabled', "disabled"),
+        ("html", '<label class="rs-btn rs-btn--secundario">', '<label class="rs-btn rs-btn--secundario" inert>', "inert"),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline: 2px solid transparent;", "no pinta el foco"),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);\n  outline-color: transparent;", "no pinta el foco"),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline: 0 solid var(--rs-burdeos);", "no pinta el foco"),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline: 2px dotted var(--rs-burdeos);", "no pinta el foco"),
+        ("css", "/* ---------- Movimiento", "label.rs-btn:focus-within { outline: none; }\n\n/* ---------- Movimiento", "no pinta el foco"),
     ],
-    ids=["hidden-G", "atributo-hidden", "invisible", "display-none", "sin-sr-only", "sin-regla-de-foco", "foco-sin-contorno"],
+    ids=[
+        "hidden-G", "atributo-hidden", "invisible", "display-none", "sin-sr-only", "sin-regla-de-foco", "foco-sin-contorno",
+        "tabindex-negativo-K1", "aria-hidden-K5", "etiqueta-aria-hidden", "disabled-K3", "etiqueta-inert",
+        "contorno-transparente-K2", "color-transparente-aparte", "contorno-de-ancho-0", "contorno-punteado", "regla-posterior-lo-quita",
+    ],
 )
 def test_f035_o10_2_control_el_selector_inalcanzable_salta(donde, viejo, nuevo, senal):
     html = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
@@ -2531,3 +2612,36 @@ def test_f035_o10_2_control_el_selector_fuera_de_su_etiqueta_salta():
     )
 
     assert any("no va dentro de su <label>" in p for p in _o10_2("x.html", html=html))
+
+
+def test_f035_o11_1_control_un_fieldset_deshabilitado_alrededor_salta():
+    html = (
+        '<body><fieldset disabled><label class="rs-btn rs-btn--secundario">Elegir el Excel'
+        '<input type="file" class="sr-only" accept=".xlsx"></label></fieldset></body>'
+    )
+
+    assert any("disabled" in p for p in _o10_2("x.html", html=html))
+
+
+@pytest.mark.parametrize(
+    ("donde", "viejo", "nuevo"),
+    [
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only" tabindex="0"'),
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only" aria-hidden="false"'),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline: 3px solid #000;"),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline-style: solid;\n  outline-width: 2px;\n  outline-color: var(--rs-burdeos);"),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline: solid var(--rs-burdeos);"),
+        ("css", "label.rs-btn:focus-within {\n  outline: 2px solid var(--rs-burdeos);", "label.rs-btn:focus-within {\n  outline: thin solid var(--rs-burdeos);"),
+    ],
+    ids=["tabindex-0", "aria-hidden-false", "otro-contorno-solido", "contorno-en-longhands", "ancho-por-defecto", "ancho-thin"],
+)
+def test_f035_o11_1_control_lo_que_si_deja_llegar_al_selector_no_salta(donde, viejo, nuevo):
+    # Que la guardia de O11-1 no se pase de estricta: esto sigue siendo alcanzable y visible.
+    html = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    css = STYLES_CSS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    texto = html if donde == "html" else css
+    assert texto.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+    copia = texto.replace(viejo, nuevo)
+
+    problemas = _o10_2("importar.html", html=copia, css=css) if donde == "html" else _o10_2("importar.html", html=html, css=copia)
+    assert problemas == [], problemas

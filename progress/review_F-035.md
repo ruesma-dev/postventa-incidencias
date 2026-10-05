@@ -1850,3 +1850,84 @@ doble de `addEventListener` apunta **todos** sus argumentos, no solo el
 evento. Si no, `{ once: true }` o `{ passive: true }` pasan sin que se vean.
 
 *Caso de origen.* F-035, re-review del bloque 16, H16-9 (N5, N6).
+
+## Re-review final del bloque 16 · cierre de H16-8 y H16-9 · 2026-10-05
+
+> reviewer. Alcance **cerrado** a `git diff df88470..HEAD`: `e20765e` (H16-8),
+> `07058b6` (H16-9) y `8f1a56c` (informe y estado). Solo tests, en
+> `services/postventa-front/tests_js/guarda_salida.test.js`. **Límite expreso
+> del humano (2026-10-05)**: esta vuelta solo comprueba que H16-8 y H16-9
+> quedan cerrados, sin abrir familias ni variantes nuevas. No se ha probado
+> ninguna mutación fuera de N14, N5 y N6.
+
+### Veredicto
+
+**APPROVED** (del bloque 16, no de la feature). H16-8 y H16-9 cierran.
+
+### Las tres preguntas del líder
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿N14, N5 y N6, cada una sola y en copia desechable, caen en rojo con los tests nuevos? | **Sí, las tres** (tabla siguiente) |
+| ¿La suite JS en verde sobre el código real? | **Sí**: `guarda_salida.test.js` **60/60**; `tests_js/*.test.js` **569/569** (Node v24.14.1) |
+| ¿`git diff df88470 HEAD -- services/postventa-front/js/` vacío? | **Sí**: 0 líneas |
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh` (tal cual, árbol real) | **exit 0**, `ENTORNO LISTO`. Raíz 112 passed; api y front en verde (caché del árbol); `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; ruff 71 avisos, deuda previa |
+| `git diff --stat df88470..HEAD` | 3 ficheros: `guarda_salida.test.js` (+36 −2), `progress/impl_F-035.md`, `progress/current.md`. Nada de producción |
+| Mutaciones a mano | guion `mutar_b16_final.py` del scratchpad: copia `services/postventa-front/` entero a una carpeta desechable, aplica cada mutación **sola** con el patrón exigido a una aparición (el fichero está en LF), pasa `guarda_salida.test.js` y la suite Node entera con reporter TAP, y rehace la copia en cada vuelta. Un **CONTROL** sin mutar en la misma copia da 60/60 y 569/569, así que los rojos son de la mutación y no del entorno. La copia se borró al final |
+| Al acabar | `git status` del árbol real limpio antes del commit |
+
+| # | Mutación (`js/guarda_salida.js`) | Resultado | La matan |
+|---|---|---|---|
+| **N14** | (c) el bucle empieza en `let i = 1` (l. 85) | **muerta** (58/60; suite 567/569) | `f035 R79 (c): una remesa de un solo parte aprobado sin cerrar…` y `f035 R79 (c): con el único pendiente en primer lugar, delante de uno cerrado…`, los dos de H16-8 |
+| **N5** | `instalar` con `}, { once: true });` (l. 148) | **muerta** (58/60; suite 567/569) | `f035 R80: instalar registra exactamente un beforeunload…` y `f035 R78: cargada como script en la página…`, por la aserción nueva de `opciones` |
+| **N6** | `instalar` con `}, { passive: true });` (l. 148) | **muerta** (58/60; suite 567/569) | los mismos dos que N5 |
+
+Coinciden con las salidas reales del informe del implementer (mismos tests,
+mismos 58/60). Las tres caen con tests **de esta feature**.
+
+### H16-8 y H16-9: ¿cierran?
+
+- **H16-8, sí.** Los dos positivos nuevos ponen el pendiente en el índice 0:
+  `[aprobado]` (la remesa de un solo parte) y `[aprobado, cerrado: true]`.
+  Los dos exigen `true` y cero violaciones del Proxy, en fase `resumen`, donde
+  solo decide (c). Es justo lo que pedía el cambio 1.
+- **H16-9, sí.** El doble `navegador()` apunta el tercer argumento
+  (`{ tipo, manejador, opciones }`), y los dos tests que pedía el cambio 2 (el
+  vm de H16-1 y el R80 de «exactamente un beforeunload») exigen
+  `opciones === undefined`. El código real registra sin tercer argumento, así
+  que la aserción es cierta hoy y cae con `once` o `passive`.
+
+### Checkpoints (acotados al diff)
+
+- **C1** [x] `init.sh` exit 0 (ejecutado por el reviewer).
+- **C2** [x] Una sola feature `in_progress` (F-035), rama
+  `feature/F-035-portal-posventa`; `current.md` con la entrada nueva arriba.
+- **C3** [x] Solo tests: `js/` sin diff; sin `console.*`, `debugger`,
+  secretos ni dependencias nuevas; comentarios en español. Hexagonal y reglas
+  de dominio: **N/A justificado**, el diff no toca código de producción.
+  [x] Ningún PDF ni parte en git.
+- **C3 bis** — **N/A**: no toca `docs/referencia/`.
+- **C4** [x] R79 (c) con el pendiente en la primera posición y en la única;
+  R78/R80 con el registro sin opciones. Sin red ni BBDD.
+- **C4 bis** [x] `rigor: "estandar"`. Fase RED: N14, N5 y N6 con salida real
+  en el informe y **reproducidas** por mí. Cobertura: N/A con el motivo
+  impreso por `init.sh` (solo tests JS). Mutación de la herramienta: 0
+  mutantes con base `df88470`, legítimo (el diff no tiene Python de
+  producción; el control del cero se hizo en la review del bloque); no se
+  reejecuta, el informe del implementer fue al scratchpad. Mutantes a mano:
+  3 de 3 muertos. «Evidencias» con los cuatro números. Regla 7 (orden): N/A,
+  es de rigor `critico`.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5** [x] Commits `F-035 H16-8: …`, `F-035 H16-9: …` y el del informe.
+  Sin ficheros sin trackear.
+
+### Informativo (para después, no bloquea)
+
+Nada nuevo: por el límite del humano no se ha buscado. Siguen abiertos, como
+estaban, O16-4 (el control en memoria sin `instalar(…)`, opcional) y H16-7
+(bloque 17); H16-3 a H16-6 siguen para el spec-author en el bloque 14.

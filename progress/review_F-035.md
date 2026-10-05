@@ -723,3 +723,354 @@ mutaciones a mano deben incluir **la forma ligada** del atributo (`:attr`,
 `x-bind:attr`, `v-bind:attr`): `html.parser` la ve como otro nombre de
 atributo y una guarda literal no la caza. Caso de origen: F-035, bloque 7,
 H-1 (mutación S).
+
+## Review del bloque 8 · T25–T26 · 2026-10-05
+
+> reviewer. Alcance **acotado** a `git diff dd67d48..HEAD` (`023b7a5` T25,
+> `0a6819f` T26) en `feature/F-035-portal-posventa`. Los bloques que vienen
+> (16 → 17 → 9 → … → 15) siguen abiertos **a propósito**: no cuentan como
+> `[ ]` de esta review. La primera pasada se cortó por un error de la API
+> (529); se retomó desde cero: el árbol estaba limpio y no quedaba ninguna
+> mutación aplicada ni ningún worktree mío.
+
+### Veredicto
+
+**APPROVED** (del bloque 8, no de la feature). T25 y T26 hacen lo que piden:
+`estado` literal en las ocho entradas de `Portal.SECCIONES` y
+`Portal.enConstruccion`; la guardia R62 en la raíz contra `features.json`,
+con su control de F-038; R66 en las dos barras que existen hoy; el punto
+ámbar con tokens; el aviso de R13 enmendado. No se toca la lógica del
+circuito ni F-036. La fase RED es real (reproducida) y las mutaciones 16 y
+17 del diseño mueren. Quedan dos hallazgos **menores** de prueba (H-6, H-7)
+y uno **de spec** (H-8), con destino; ninguno deja un checkbox vacío.
+
+### Nivel de rigor
+
+`estandar` (declarado en `harness/features.json`). Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con supervivientes analizados.
+F-035 no tiene Python de producción: la cobertura sale N/A con motivo impreso
+y la campaña da 0 mutantes; la compensación son las mutaciones a mano de
+`design.md` §16.10 (16 y 17 en este bloque), más las del implementer y las
+del reviewer.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh` (tal cual, árbol real) | **exit 0**, `ENTORNO LISTO`. Raíz **112 passed**; api en verde (caché); front **425 passed**; `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; ruff 71 avisos, deuda previa |
+| Front en un worktree desechable del scratchpad (`git worktree add --detach`, HEAD `0a6819f`) | pytest **422 passed, 3 skipped** (los 3 del diff de rama, saltados por HEAD separado); Node **509 pass, 0 fail**; raíz `tests/test_f035_placeholders_vivos.py` **16 passed** |
+| **RED reproducido**: tests de HEAD sobre `portal.js`, `index.html`, `partes.html` y `styles.css` de `dd67d48` | Raíz `-k r62`: **4 failed, 1 passed** (los mismos 4 del informe). Front `-k "r13 or r17 or r66 or r68"`: **2 failed, 18 passed** (R13 nuevo y el punto de R66). Node `f035_paginas.test.js`: **9 failed, 1 passed** (los 8 del informe más el de B8, que entró en T26; el que pasa es el control del lector) |
+| H-1, RED por mutación: mutación S del bloque 7 (`:target` ligado en la tarjeta de importar) | **muerta** ahora: `test_f035_r17_los_enlaces_…` y `test_f035_r68_…[importar.html]`. En el bloque 7 sobrevivía |
+| B8 del implementer (`enConstruccion` con `estado !== "parcial"`) | **muerta**: cae `f035 R62: enConstruccion sigue al estado…` (el test de T26) |
+| Ruff sobre los tres ficheros de test tocados | `All checks passed!` |
+| Recálculo: `harness.alcance.alcance_de_feature("F-035", base="2a86bca")` | `lineas={}`: 0 ficheros, 0 líneas; coincide con `progress/mutacion_F-035.md` |
+| **Reejecución de la campaña** («Tiempo total» 0,0 s < 5 min), `--salida` al scratchpad | 0 evaluados, 0 muertos, 0 supervivientes, 0 timeouts, 0,0 s: **idéntico** al informe. `git status` limpio después |
+| **Control del cero**: `generar_mutantes` sobre los `.py` del diff (líneas añadidas en `dd67d48..HEAD`) ignorando la exclusión | `test_f035_paginas.py` 5, `test_f035_portal.py` 4, `tests/test_f035_placeholders_vivos.py` 24: el generador funciona y el cero es **legítimo** (solo tests, excluidos por diseño) |
+| «F-036 intacto»: `git diff 2a86bca --` `test_f036_front.py`, `importacion.test.js`, `oficios.test.js` | vacío (0 líneas) |
+| R76: `git diff --name-status 2a86bca..HEAD -- services/postventa-api` | vacío |
+| `git diff --name-status dd67d48..HEAD --` `js/`, `importar.html`, `oficios.html`, `css/portal.css` | solo `js/portal.js` (la maqueta: `estado` y `enConstruccion`); ningún módulo del circuito ni de F-036 |
+| `git show --stat 023b7a5` | exactamente los ficheros de (a)–(f) de T25 más `tasks.md` |
+| `git log --diff-filter=A dd67d48..HEAD` | añade solo `tests_js/f035_paginas.test.js` (ningún PDF ni parte) |
+| Estado de las fichas en `features.json` | F-036 `done`; F-037 a F-048 `pending` |
+| `git worktree list` / `git status` al acabar | worktree retirado (`git worktree remove --force` + `prune`); quedan el árbol real y el ajeno `agent-a6e2f9bed1d46cdbc` (no se toca); árbol limpio |
+
+### Respuestas a las preguntas del líder
+
+**1 · ¿Se cumplen R62 y R66? ¿Es correcto el estado de cada sección?**
+**Sí.**
+
+- **R62**: las ocho entradas llevan `estado` literal. Hoy `inicio`,
+  `entrada` y `partes` están en `parcial`, y `bandeja`, `incidencias`,
+  `impresion`, `economico` y `datos`, en `construccion`. Es justo lo que dan
+  las fichas: F-036 está `done` y F-037 no, así que `entrada` es `parcial`;
+  ninguna de F-038 a F-044, F-046, F-047 ni F-048 está `done`; F-045 sigue
+  pendiente, así que `partes` es `parcial`; e `inicio` es `parcial` porque
+  no todas las demás son reales. Coincide con la tabla de `design.md` §16.4
+  y con el «Hoy:» de R62. La guardia de la raíz lo compara con
+  `features.json` de verdad: con F-038 `done` **en el fichero** (mutación V8,
+  abajo) cae `…_el_estado_de_cada_seccion_es_el_que_dan_sus_fichas`.
+  `enConstruccion` es `estado === "construccion"` y no lanza nunca.
+- **R66**: en `index.html` y en `partes.html`, las **cinco** pestañas de las
+  secciones en construcción llevan `data-construccion` y
+  `aria-label="<etiqueta> (en construcción)"`, y ninguna otra lleva ninguno
+  de los dos. «Partes firmados» (la `<span aria-current>` de `partes.html`)
+  e «Inicio» y «Entrada» van sin marca. El nombre accesible contiene la
+  etiqueta visible (WCAG 2.5.3). El punto ámbar es
+  `.rs-pestana[data-construccion]::after`: 6 px, redondo y en
+  `var(--rs-atencion)`. Se ve porque `.rs-pestana` es `inline-flex`, así
+  que el `::after` es un elemento flex y respeta su tamaño. La `?v=` nueva
+  (`064ee0dc11`) está en las dos páginas. `importar.html` y `oficios.html`
+  aún no llevan la barra común: R66 llega allí con los bloques 10 y 11
+  (`PAGINAS_CON_BARRA`), como dice el informe.
+
+**2 · `inicio` y `partes`, R62 frente a R48: ¿es una incoherencia de la spec?**
+Sí, **una ambigüedad de la spec**, y no bloquea porque hoy las dos lecturas
+dan lo mismo. Va como **H-8**, para el spec-author.
+
+**3 · ¿Quedan cerrados H-1 y el primer punto de H-4? ¿Y los demás?**
+
+- **H-1, cerrado.** `FORMAS_DE_TARGET` y `targets_de` sirven al test de R17
+  y al de R68, y llevan un control parametrizado (literal, ligado y
+  `x-bind`). Comprobado con la mutación S, que ahora muere.
+- **H-4, primer punto, cerrado.** El aviso ya no dice «El circuito de
+  verdad es la pestaña «Partes firmados».» ni «Esto es una maqueta». Lo
+  impide `test_f035_r13_el_aviso_dice_que_parte_del_portal_esta_en_construccion`,
+  que exige siete frases y prohíbe «maqueta» y «circuito de verdad».
+- **Los demás siguen asignados**, pero **solo en esta review y en
+  `progress/current.md`**: `tasks.md` no los recoge.
+  - H-3 (estructura cerrada de `entrada`), H-4 punto 2 (ceja, entradilla,
+    chips «Maqueta» y pie de `index.html`) y H-5 (CSS muerto de
+    `portal.css`): **bloque 9**.
+  - H-4 punto 3 (`js/maqueta_datos.js:129`, «…y por la importación del
+    Excel»): sigue **sin bloque**, pendiente de que el líder decida.
+  - H-2 (`window.open`): bloque 10 o 16. **El 16 va ahora**, así que el
+    líder tiene que decidir **antes de encargarlo** si `window.open` entra
+    en la guarda de salida o en la lista cerrada de R73.
+
+**4 · ¿Se ha tocado la lógica del circuito o de F-036?** **No.**
+
+- En `partes.html` cambian solo tres cosas: la barra (los atributos de R66),
+  la `?v=` y el `class` de los dos enlaces de F-036
+  (`text-sky-700 hover:underline` → `rs-enlace`).
+- Los `href`, `target` y `rel` de esos dos enlaces no cambian: es
+  presentación. `rs-enlace` ya existía en `css/styles.css` (l. 363). Es
+  burdeos, que §16.4 reserva a lo que funciona, y esos enlaces funcionan.
+- Ningún módulo del circuito, ni `js/api.js`, `js/importacion.js` o
+  `js/oficios.js`, ni `importar.html` u `oficios.html`. «F-036 intacto» sale
+  vacío.
+- Dos mutaciones prueban que la lógica de esos enlaces sigue vigilada por
+  los tests de F-036, sin tocar:
+  - V9, quitar el `target` del de importar: lo caza
+    `test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas`.
+  - V10, el de oficios apuntando a importar: lo cazan ese test y
+    `…_solo_gana_los_dos_enlaces`.
+- R59 sigue en verde.
+
+**5 · Mutaciones a mano sobre lo nuevo.** Se hicieron en el mismo worktree
+desechable, con el script `mutar_b8_rev.py` del scratchpad, nunca en el
+árbol real. En cada mutación se pasaron la suite **entera** del front (que
+incluye `test_f007_r32_…`, el que lanza Node), Node aparte y el fichero de
+la raíz. Después se restauraban los ficheros y se comprobaba con
+`git status --porcelain` que el worktree quedaba limpio. En las mutaciones
+de CSS **se recalculó la `?v=`** con `version_de_las_hojas()`, para que no
+las matara solo la versión de caché de T21 (la E8 del implementer murió
+también por eso).
+
+| # | Mutación | Resultado | Lo caza |
+|---|---|---|---|
+| V1 | `display: none` dentro de `.rs-pestana[data-construccion]::after` | **sobrevive** | — (H-6) |
+| V2 | `background: var(--rs-burdeos)` detrás del `background-color` de esa regla | **sobrevive** | — (H-6) |
+| V3 | `.rs-pestana` pasa de `inline-flex` a `inline-block` (el `::after` vuelve a ser inline y pierde los 6 px) | **sobrevive** | — (H-6) |
+| V4 | Una regla posterior `.rs-pestana::after { content: none }` | **sobrevive** | — (H-6) |
+| V5 | `:data-construccion="false"` ligado en «Bandeja de revisión» de `index.html` (Alpine quita el atributo al arrancar) | **sobrevive** | — (H-7) |
+| V6 | `:aria-label="'Incidencias'"` ligado en `index.html` (pisa el literal al arrancar) | **sobrevive** | — (H-7) |
+| V7 | `data-construccion` y `aria-label` en «Partes firmados» de `partes.html` | muerta | Node R66 `partes.html` y su control; F-007 R32 |
+| V8 | F-038 `done` en `harness/features.json` **del worktree** (no en memoria) | muerta | raíz R62 `…_el_estado_…` y `…_control_el_lector…`; R28 ×2 (restos de F-038 en la maqueta) |
+| V9 | Sin `target` en el enlace de F-036 a importar (`partes.html`) | muerta | `test_f036_r51_…enlaza_a_las_dos_paginas` |
+| V10 | El enlace de F-036 a oficios va a `importar.html` | muerta | `test_f036_r51_…` ×2 |
+| V11 | `enConstruccion` da `true` también para `inicio` | muerta | Node R62 ×2, R66 ×3; F-007 R32 |
+| V12 | El aviso dice «marca naranja» en vez de «punto ámbar» | muerta | R13 enmendado |
+| V13 | El aviso dentro de un `x-show` | muerta | `test_f035_r13_el_aviso_esta_siempre_y_no_se_cierra` |
+| V14 | `estado: "construcción"` (con tilde) en `datos` | muerta | raíz R62 ×3; Node R62 ×2, R66 ×3; F-007 R32 |
+| S (b7) | `:target` ligado en la tarjeta de importar | muerta | R17, R68 (H-1 cerrado) |
+| B8 (impl.) | `estado !== "parcial"` | muerta | Node R62 (test de T26) |
+
+Mueren 10 de 16. Las 6 que sobreviven son de **dos familias**, analizadas en
+H-6 y H-7. Ninguna es de las que el diseño fija para este bloque (la 16 y la
+17, que el implementer mató y que V7 y V8 confirman por otro lado), y ninguna
+toca el estado declarado ni qué pestañas se marcan: las dos familias tratan
+de **cómo se pinta** la marca. Con rigor `estandar` no bloquean.
+
+### Checkpoints (acotados al bloque)
+
+**C1**
+- [x] `init.sh` exit 0 (ejecutado por el reviewer).
+- [x] Ficheros del arnés presentes (`init.sh` los da en `[OK]`).
+
+**C2**
+- [x] Una sola feature `in_progress` (F-035; `init.sh`).
+- [x] Rama `feature/F-035-portal-posventa`.
+- [x] `current.md`: la entrada nueva describe el bloque, sus hallazgos y el
+  siguiente paso (review, después bloque 16). Sigue acumulando el histórico
+  de la feature (O-2 de una review anterior, deuda previa).
+- [x] Features `done` con resumen en `history.md`: este bloque no cierra
+  ninguna.
+
+**C3**
+- [x] Hexagonal: el diff es HTML, CSS, el JS de la maqueta (`portal.js`, que
+  sigue siendo lógica pura sin red ni DOM) y tests. No toca `domain/` ni los
+  adaptadores.
+- [x] Primera línea con la ruta: `tests_js/f035_paginas.test.js`
+  (`// services/…`); los demás ficheros conservan la suya.
+- [x] Sin `print()`, sin `console.log`, sin TODOs, sin secretos y sin
+  dependencias nuevas (`node:vm` es del propio Node).
+- [x] Parte como unidad, validaciones antes de archivar o cerrar,
+  manuscrito, firmado ≠ conforme, reprocesar no duplica y `conest`: **N/A
+  justificado**. El bloque no toca el circuito ni el backend (diffs vacíos
+  arriba) y ninguno de esos invariantes vive en los ficheros cambiados.
+- [x] Ningún PDF ni parte en git: el único fichero añadido es
+  `tests_js/f035_paginas.test.js`.
+
+**C3 bis** — **N/A**: el bloque no añade ni modifica nada en
+`docs/referencia/`.
+
+**C4**
+- [x] R62, R66, R13 enmendado y H-1 tienen tests trazables en verde (tabla
+  de cobertura abajo).
+- [x] Sin red ni BBDD: lectura de ficheros como texto y `node:vm` en un
+  contexto aislado.
+- [x] MANUAL (humano): este bloque no añade ninguna. La verificación visual
+  del punto ámbar entra en V1/V5 (bloque 15); H-6 la hace más necesaria.
+
+**C4 bis**
+- [x] `rigor: "estandar"` declarado.
+- [x] Fase RED: hay traza real en el informe (§3) y **la reproduje** (4 + 2
+  + 9 rojos).
+- [x] Cobertura: N/A **con el motivo impreso** por `init.sh`.
+- [x] Mutación: `progress/mutacion_F-035.md` lo generó la herramienta. Lo
+  recalculé (alcance 0, 0 mutantes) e hice el control del cero (5 + 4 + 24
+  mutantes ignorando la exclusión).
+- [x] Muertos comprobados: campaña **reejecutada** (0,0 s < 5 min), con los
+  mismos totales.
+- [x] Coste por mutante: N/A **justificado**. Hay 0 mutantes, así que no
+  hay nada que dividir.
+- [x] Supervivientes: la herramienta no deja ninguno. De los manuales, la 16
+  y la 17 mueren; B8 sobrevivió en la primera pasada y la mata el test de
+  T26. Las seis vivas del reviewer están analizadas en H-6 y H-7. Con nivel
+  `estandar` no hace falta que el humano las acepte por escrito.
+- [x] «Evidencias» del bloque con los cuatro números.
+- [x] Ningún N/A sin justificar.
+
+**C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+
+**C5**
+- [x] T25 y T26 `[x]`, con sus commits `F-035 T25: …` y `F-035 T26: …`. El
+  resto de `tasks.md` sigue abierto **a propósito**.
+- [x] Sin ficheros sin trackear (`git status` limpio).
+- [x] `features.json`: F-035 `in_progress`, correcto con la feature a medias.
+
+### Cobertura del bloque: requisito → test
+
+| Requisito | Test |
+|---|---|
+| R62 (estado literal y válido) | raíz `test_f035_r62_cada_seccion_declara_su_estado_literal`; Node `f035 R62: cada entrada de SECCIONES declara un estado válido` |
+| R62 (frente a `features.json`) | raíz `test_f035_r62_el_estado_de_cada_seccion_es_el_que_dan_sus_fichas`, con los controles `…_la_guardia_mira_una_ficha_que_pasa_a_done` (F-038) y `…_control_el_lector_de_estados_lee_el_texto` |
+| R62 (`inicio` y `partes`) | raíz `test_f035_r62_partes_e_inicio_siguen_su_propia_regla`; Node `f035 R62: inicio y partes nunca están en construcción` |
+| R62 (`enConstruccion`) | Node `f035 R62: enConstruccion es true justo…`, `…id desconocido o vacío…`, `…sigue al estado: real y parcial no, construccion sí` |
+| R66 (atributo y `aria-label`, dos barras) | Node `f035 R66: en la barra de index.html…` y `…de partes.html…`, más tres controles |
+| R66 (marca visual) | `test_f035_paginas.py::test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens` (con el límite de H-6) |
+| R13 enmendado | `test_f035_r13_el_aviso_dice_que_parte_del_portal_esta_en_construccion`, `…_esta_siempre_y_no_se_cierra`, `…_va_debajo_de_la_barra` |
+| R17 / R68 «misma ventana» (H-1) | `test_f035_r17_los_enlaces_…`, `test_f035_r68_entrada_enlaza_…`, `test_f035_r17_control_targets_de_ve_el_target_literal_y_el_ligado` ×3 |
+| R59 (`partes.html`: solo barra, `class` y `?v=`) | la guardia de R59 de siempre, en verde |
+
+### Hallazgos
+
+1. **H-6 · Menor · La marca visual de R66 se comprueba en su regla CSS,
+   no en la cascada.**
+   `test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens`
+   (`services/postventa-front/tests/test_f035_paginas.py`, al final) mira
+   que exista la regla y qué propiedades declara. No ve nada de lo que
+   esconde o repinta el punto desde fuera de ella:
+   - `display: none` dentro de la propia regla (V1);
+   - un atajo `background` posterior (V2);
+   - que `.rs-pestana` deje de ser flex (V3), que es de lo que depende que
+     el `::after` respete sus 6 px;
+   - otra regla que lo anule (V4).
+
+   **Arreglo barato**, en el mismo test:
+   - (a) La regla no declara `display`, `visibility`, `opacity` ni
+     `background`.
+   - (b) `.rs-pestana` declara `display: inline-flex` o `flex`.
+   - (c) Ninguna otra regla de `styles.css` ni de `portal.css` tiene un
+     selector con `.rs-pestana` y `::after`.
+
+   **Destino**: el bloque 16 o el 17, que vuelven a tocar la barra y
+   `styles.css`. Si no, el 10, cuando R66 llegue a `importar.html`. Lo
+   demás lo cubre la verificación visual del humano (V1/V5, bloque 15).
+2. **H-7 · Menor · R66 no ve la forma ligada de sus atributos** (la misma
+   familia que H-1, la P-R2 de la automejora del bloque 7).
+   `problemasR66` (`services/postventa-front/tests_js/f035_paginas.test.js`,
+   l. 84–106) lee `data-construccion` y `aria-label` literales. En
+   `index.html`, que es una página de Alpine, un `:data-construccion="false"`
+   o un `:aria-label` pisan al arrancar lo que el lector ve (V5, V6).
+
+   **Arreglo**: que la presencia de `:data-construccion`,
+   `x-bind:data-construccion`, `:aria-label` o `x-bind:aria-label` en una
+   pestaña cuente como problema. El lector ya separa esos nombres de
+   atributo, así que son dos líneas.
+
+   **Destino**: el bloque 10, cuando `PAGINAS_CON_BARRA` crezca, o antes si
+   el implementer vuelve a tocar ese fichero.
+3. **H-8 · Spec, para el spec-author · «Todas las demás del portal» tiene
+   dos lecturas, y el repositorio usa las dos.** R48
+   (`requirements.md` l. 599–602) y R62 (l. 742–752) dicen lo mismo para
+   `inicio`: real «cuando lo son todas las demás (secciones) del portal».
+   Pero en el mismo fichero de la raíz (`tests/test_f035_placeholders_vivos.py`)
+   hay dos funciones que lo leen distinto:
+   - `secciones_reales` (R48) deja fuera `partes`, porque «es el circuito y
+     no cuenta»;
+   - `estados_segun_las_fichas` (R62) la incluye.
+
+   Solo dan resultados distintos en un estado: todo `done` salvo F-045.
+   Ahí R48 diría que `inicio` es real y R62, que es parcial. Hoy dan lo
+   mismo (`parcial`) y R48 queda absorbida por R73 (§16.15.6), así que no
+   bloquea.
+
+   La lectura del implementer, **con** `partes`, es la que conviene en R62:
+   la portada no debería pasar a «real» con el registro sin firma (F-045)
+   sin hacer. En R48 tenía sentido sin ella, porque la barra de
+   `partes.html` no se enlaza a sí misma.
+
+   **Arreglo de spec**:
+   - en R62 y en la tabla de §16.4, decir «las otras siete, `partes`
+     incluida»;
+   - en R48, o en la reescritura de su control del bloque 16, anotar que su
+     `inicio` es solo a efectos de la barra del circuito.
+
+### Observaciones sin acción
+
+- **O-1**: los dos controles de R62
+  (`…_la_guardia_mira_una_ficha_que_pasa_a_done` y
+  `…_control_el_lector_de_estados_lee_el_texto`) dependen de que F-038 siga
+  pendiente y de que `bandeja` no sea `parcial`. El día que se cierre F-038
+  caerán y habrá que moverlos a otra ficha. Es el mismo patrón que los
+  controles de R28 (F-044) y R48 (F-048), y la spec fija F-038. Pero el
+  mensaje del de lector («el control no encuentra el estado de «bandeja»»)
+  despistará: conviene que quien cierre F-038 lo sepa. Lo confirma V8, que
+  tumba el del lector.
+- **O-2**: `test_f035_r46_los_enlaces_al_circuito_van_en_la_misma_pestana`
+  (`test_f035_portal.py` l. 734) sigue mirando solo el `target` literal. No
+  deja hueco: el test de R17 recorre **todos** los `<a>` del portal con
+  `targets_de`, `partes.html` incluido.
+- **O-3**: el aviso conserva `data-aviso-maqueta` y las clases `rs-maqueta*`
+  (no se ven) y la muestra de placeholder entre la frase de los datos
+  inventados y la del sello. Es razonable: la muestra es la leyenda del
+  «borde discontinuo» que nombra el texto. El renombrado, si se quiere, es
+  de R67 (bloque 9).
+
+### Qué queda para el humano
+
+- Nada que decidir para cerrar el bloque 8.
+- Para el líder, **antes de encargar el bloque 16**:
+  - dónde va H-2 (`window.open`: guarda de salida del 16 o lista cerrada de
+    R73 en el 10);
+  - si H-6 entra en el 16 o el 17;
+  - H-8 al spec-author (dos líneas de spec);
+  - el texto de `maqueta_datos.js:129` (H-4, tercer punto), que sigue sin
+    bloque.
+
+  Conviene que H-3, H-4 punto 2, H-5 y H-7 se citen en el encargo de su
+  bloque: hoy solo constan aquí y en `progress/current.md`, no en
+  `tasks.md`.
+
+### Automejora (propuesta, no aplicada)
+
+**P-R3 · `CHECKPOINTS.md` C4 bis, para `arnes-base` (vale para cualquier
+front).** Cuando una guarda estática comprueba una **marca visual** leyendo
+una regla CSS, las mutaciones a mano deben incluir al menos una que la
+**anule desde fuera de la regla**: otra regla posterior, un atajo que pisa
+la propiedad o un cambio en el `display` del padre. Y si la página fija la
+caché con una `?v=` derivada del CSS, la mutación debe **recalcularla**: si
+no, la mata la versión y no el test de la marca, y el superviviente no se
+ve. Caso de origen: F-035, bloque 8, H-6 (V1–V4; la E8 del implementer
+murió también por la `?v=`).

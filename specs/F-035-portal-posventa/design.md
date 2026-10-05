@@ -1951,6 +1951,7 @@ literal):
 | 3 | **Importar, bandeja y oficios** pasan a ser **secciones reales del portal**, con la identidad Ruesma, sustituyendo los placeholders y datos de ejemplo que hoy los representan. El spec-author decide cómo | §16.2, §16.3, §16.5; R68–R73 |
 | 4 | Los dos apuntes de la ficha: (a) en oficios, «Decididos como distintos» con «Son el mismo» en cada par; (b) en importar, rotular los recuentos de un fichero ya importado como «resumen de la importación original del …» | §16.6; R74–R76 |
 | 5 | **Fuera**: la tarjeta de `front-portal` y el grupo de Entra (H-4); construir de verdad lo que está en construcción (F-038 en adelante) | — |
+| 6 | **Respuesta del humano a la enmienda (2026-10-05)**, literal: «paginas propias, pero como en la maqueta, con un banner superior, donde cambie de ventana pero sin abrir pestaña nueva. y las paginas que ya estan deben ser remodeladas para que el front siga el estilo del resto de app» | **§16.15** (ajuste); R31, R46–R48, R59, R70, R72, R73 ajustados; R78–R82 |
 
 **Lo que hay hoy en la rama, medido:**
 
@@ -2005,6 +2006,12 @@ literal):
 
 ### 16.2 · Dónde viven importar, bandeja y oficios (D-11)
 
+> **Ajuste del 2026-10-05: D-11 decidida por el humano, P** («paginas
+> propias, pero como en la maqueta, con un banner superior»). Lo de abajo
+> sigue valiendo, con dos matices de §16.15: las páginas se navegan **en la
+> misma pestaña también desde el circuito**, y el remodelado alcanza
+> también a lo que le quedaba a `partes.html`.
+
 | | Alternativa | Por qué sí / por qué no | Veredicto |
 |---|---|---|---|
 | **I** | **Integrarlas en `index.html`** como secciones `#/entrada`, `#/oficios`…, con sus componentes Alpine anidados | El portal cargaría `js/config.js`, `js/traza.js`, `js/api.js`, `js/importacion.js` y `js/oficios.js`: rompe **R15**, y **R14/R16/V1** dejan de valer para la portada (cada carga del portal pediría `/.auth/me` desde los componentes anidados, aunque la sección esté oculta). **R10** tendría que admitir botones reales que no son ni placeholder ni `data-local`. Una página de más de mil líneas mezclaría la maqueta con escritura real (decisiones de oficios, importaciones). Y obliga a **reescribir unos veinte tests de F-036** (rigor `critico`) que fijan las páginas —scripts por página, componente, cabecera, bloques—, que R32 prohíbe tocar. A cambio no da nada: importar y oficios no comparten estado con la maqueta | Descartada |
@@ -2031,6 +2038,12 @@ literal):
   igualmente: no se adelanta.
 
 ### 16.3 · La navegación: solo el circuito abre aparte
+
+> **Ajuste del 2026-10-05: esta sección queda SUPERADA por §16.15.1–§16.15.4.**
+> El humano pide «cambie de ventana pero sin abrir pestaña nueva»: ningún
+> enlace entre páginas del front abre aparte, **tampoco desde el circuito**,
+> y la remesa la protege una guarda de salida. Se conserva abajo como
+> premisa de la propuesta anterior.
 
 **La tensión.** R46 y la segunda ronda (R48) quieren navegar en la misma
 ventana «como una web normal»; F-036 decidió abrir importar y oficios en
@@ -2161,6 +2174,13 @@ leyenda de R47 enmendado. Fuera de la barra, solo valores de `class`: los dos
 enlaces de F-036 de la cabecera pasan de `text-sky-700 hover:underline` a
 `rs-enlace` (R59 a). Y la `?v=` de la hoja (R59 e).
 
+> **Ajuste del 2026-10-05 (§16.15).** Además: la barra y esos dos enlaces
+> pierden `target` y `rel` (R73, R59 g); entra el
+> `<script src="js/guarda_salida.js">` antes de `js/app.js` (R59 f); la
+> leyenda es la de R47 ajustado; y los veinte `class` estáticos que aún
+> llevan utilidades de color o tipografía de Tailwind pasan a `rs-*` (R82,
+> §16.15.5).
+
 **`importar.html` y `oficios.html`.** Estructura común:
 
 ```html
@@ -2228,6 +2248,12 @@ enlaces de F-036 de la cabecera pasan de `text-sky-700 hover:underline` a
   `id="bandeja"` a su `<section>` (R69).
 - En `oficios.html`, ni en la barra ni en ningún texto nuevo pueden salir las
   palabras «proveedor» ni «actividad» (test de la quinta enmienda de F-036).
+- **Ajuste del 2026-10-05 (§16.15.5)**: la barra lleva también la leyenda
+  `<p class="rs-barra__leyenda">` con la frase de las pestañas en
+  construcción (R70 ajustado), y la página cierra con el pie común
+  `<footer class="rs-pie">` dentro del `<div x-data>`, tras `</main>`, con
+  «Construcciones Ruesma · Posventa · entrada de incidencias.» (R72
+  ajustado).
 
 Componentes nuevos en `css/styles.css` (los usan las páginas reales, que no
 cargan `css/portal.css`): `rs-migas`, `rs-subnav` y `rs-subnav__item`
@@ -2308,6 +2334,13 @@ desplegada (V4 g).
 | `tests/test_f035_placeholders_vivos.py` (raíz) | R62 con su control; el escáner de R28 con `data-en-construccion="F-0NN"` |
 | `services/postventa-front/README.md`, `docs/ARCHITECTURE.md`, `docs/DESPLIEGUE.md` | Bloque 14 (`tasks.md`) |
 
+> **Ajuste del 2026-10-05 (§16.15.7).** Se crean además `js/guarda_salida.js`
+> y `tests_js/guarda_salida.test.js`; se modifican además
+> `tests/test_f007_estaticos.py` (una línea) y `tests/test_f036_front.py`
+> (las líneas de R51), y en la raíz `tests/test_f035_placeholders_vivos.py`
+> (el control de R48). La frase de abajo «ningún test de la base» queda con
+> esas dos excepciones cerradas (R81).
+
 **No se tocan**: los nueve módulos del circuito, `js/api.js`, `js/config.js`,
 `js/traza.js`; **ningún test de la base** (los del circuito y los de F-036,
 R32); `staticwebapp.config.json`, `dev_server.py`, `dev_front.ps1`,
@@ -2327,6 +2360,11 @@ líder**, al publicar (§16.12): la raíz del front pasa a ser el portal.
 | `Portal.fichasDeSeccion(id): Array<{ficha, titulo}>` | Para el rótulo de un envoltorio de sección (R65), con `TITULOS_FICHAS` |
 | `Importacion.rotuloResumen(respuesta): string` | R74. Nunca lanza; sin `ya_importado`, «Resumen de esta importación» |
 | `Oficios.presentarPropuestas(respuesta).distintos` | R75. `[{clave, codigo_a, codigo_b, nombre_a, nombre_b, motivos: []}]`; sin `oficio.distintos`, `[]` |
+
+> **Ajuste del 2026-10-05.** `Portal.enlaceSeccion(id, "circuito")` devuelve
+> `nuevaPestana: false` para todas las secciones (R31 ajustado); la clave se
+> conserva, siempre `false`, para no cambiar la forma del contrato. Y entra
+> `GuardaSalida` (§16.15.3).
 
 ### 16.9 · Las guardias: qué cambia y por qué
 
@@ -2348,6 +2386,10 @@ líder**, al publicar (§16.12): la raíz del front pasa a ser el portal.
 | **R56** | **Se amplía** | Ningún envoltorio con discontinuo ni burdeos; las páginas reales sin placeholders (R77) |
 | **Versión de las hojas (T21)** | **Se amplía** | La misma `?v=` también en `importar.html` y `oficios.html` |
 | Tests de F-035 sobre el bloque `entrada`, `contadoresInicio` y la palabra «maqueta» | **Sí** | Son de F-035 y describen lo que se retira: se borran o se reescriben en el mismo commit (bloques 7–9) |
+
+> **Ajuste del 2026-10-05.** Las filas de R32, R33 y R59 de arriba cambian
+> (excepciones cerradas de R81) y se suman R31, R43, R47 y R48: tabla en
+> §16.15.6.
 
 ### 16.10 · Verificación
 
@@ -2390,6 +2432,9 @@ manual** (C4 bis), en una copia aislada (worktree en el scratchpad, nunca el
 27. Sin `:disabled` en ese botón → cae R89 de F-036 (test sin tocar) y R75.
 28. `presentarPropuestas` lanza sin `distintos` → cae R75.
 
+> **Ajuste del 2026-10-05.** Verificación de R78–R82 y mutaciones manuales
+> **29–36** en §16.15.8.
+
 ### 16.11 · Riesgos
 
 | Riesgo | Mitigación | Dónde se ve |
@@ -2404,6 +2449,10 @@ manual** (C4 bis), en una copia aislada (worktree en el scratchpad, nunca el
 | Un enlace de las páginas reales que abriera aparte rompería la regla «solo el circuito» | R73 | `init.sh` |
 | La vista previa no tiene backend y las páginas reales enseñan un error | Es lo esperado y lo dice V5; la comprobación funcional es V4, de solo lectura | V5 |
 | Re-importar en V4 un fichero que no es exactamente el mismo escribiría en la bandeja | V4 f solo con el mismo fichero sin abrir ni guardar; con la menor duda, no se hace | V4 |
+
+> **Ajuste del 2026-10-05.** La fila «Un enlace de las páginas reales que
+> abriera aparte…» queda superada (ya nada abre aparte); los riesgos de la
+> misma pestaña y de la guarda, en §16.15.9.
 
 ### 16.12 · Publicación y la parada del humano (D-4, D-14)
 
@@ -2444,7 +2493,20 @@ Orden, al terminar los bloques 7–14:
    > enseña son datos inventados para que veáis cómo será. Contadnos qué os
    > falta o qué cambiaríais.»
 
+   **Ajuste del 2026-10-05**: al texto se le añade, antes de «Contadnos»:
+   «Ahora todo se abre en la misma pestaña. Si estáis con una remesa a
+   medias en Partes firmados y pulsáis otra pestaña, el navegador os
+   preguntará si queréis salir: decid que no, o perderéis la remesa.»
+
 ### 16.13 · Decisiones abiertas (con recomendación)
+
+> **Ajuste del 2026-10-05 · estado de las decisiones.** **D-11, decidida
+> por el humano**: P, páginas propias con la barra común, en la misma
+> pestaña y remodeladas (§16.15). **D-12, D-13 (i) y D-14, decididas por
+> defecto** con la recomendación de abajo: el humano no las ha objetado, y
+> valen mientras no diga otra cosa (si objeta D-13, el bloque 13 se cae;
+> si objeta D-14, T40 se hace en local). Entran **D-15** y **D-16**
+> (§16.15.10), con recomendación, para validar.
 
 - **D-11 · ¿Dónde viven importar, bandeja y oficios?** Recomendación:
   **páginas propias con la barra común** (P, §16.2); la bandeja en solo
@@ -2481,3 +2543,306 @@ Orden, al terminar los bloques 7–14:
   enmienda es «Portal de posventa» (migas). El test no cambia y sigue
   teniendo sentido, pero su nombre y su docstring hablan del circuito: para
   una limpieza de F-036, no de F-035 (R32).
+- **H-8, ajuste del 2026-10-05**: lo arreglan igual los bloques 10/11; la
+  pestaña «Partes firmados» de las dos páginas lleva a `partes.html` en la
+  misma pestaña.
+- **H-11** (2026-10-05): el R51 **de F-036** no habla de pestañas («debe
+  enlazar a la de importación y a la de oficios repetidos»): sigue
+  cumpliéndose tal cual. Lo que cambia es el detalle de su diseño y su test
+  (`target="_blank"`), que esta rama ajusta con la excepción cerrada de R81.
+  No hace falta tocar la spec de F-036; conviene que `progress/history.md`
+  lo diga al cerrar F-035.
+- **H-12** (2026-10-05): `partes.html` **casi** sigue ya el estilo del
+  portal, medido sobre `a54cd5d`: misma barra (logotipo, separador,
+  «Posventa», ocho `rs-pestana`, actual por `aria-current`), fuentes,
+  favicon, `rs-cuerpo`, `styles.css?v=`, cabecera, paneles, botones y pie
+  `rs-*`. Le faltan tres cosas: (1) los puntos ámbar y el `aria-label` de
+  las pestañas en construcción (ya en el bloque 8); (2) la leyenda dice
+  todavía «maqueta» y «aparte» (bloque 16); (3) **35 utilidades de
+  Tailwind de color o tipografía en 20 `class` estáticos** (líneas 59–61,
+  89, 119, 144, 155–156, 170, 176, 293, 340, 363, 379, 414–415, 417, 502,
+  539–540: `text-sm`, `text-xs`, `text-slate-400…700`, `text-sky-700`,
+  `hover:underline`, `divide-y`/`divide-slate-100`, `text-amber-700/800`,
+  `border-b border-slate-100`, el `uppercase tracking-wide font-semibold`
+  de «Avisos de la remesa»), que se ven en gris o azul de Tailwind y no en
+  los tokens: R82, bloque 17. **No** le falta el aviso «En construcción»
+  del portal (es una página real, R77) ni `css/portal.css` (que es de la
+  maqueta). Los colores de estado de los `:class` se quedan (§15.7 regla 2).
+
+### 16.15 · Ajuste tras la respuesta del humano: misma pestaña, guarda de salida y remodelado (2026-10-05)
+
+#### 16.15.1 · La respuesta y cómo se lee
+
+Literal, del humano (2026-10-05), transmitida por el líder: **«paginas
+propias, pero como en la maqueta, con un banner superior, donde cambie de
+ventana pero sin abrir pestaña nueva. y las paginas que ya estan deben ser
+remodeladas para que el front siga el estilo del resto de app»**.
+
+Interpretación del líder, que esta spec adopta:
+
+1. **D-11 = páginas propias** (`importar.html`, `oficios.html` y
+   `partes.html`), **todas con la misma barra superior de la maqueta** (el
+   «banner superior»: `<nav data-barra-portal>`, R44, R51), y la navegación
+   entre secciones y páginas **siempre en la misma pestaña**: ningún
+   `target="_blank"` en la barra, en las cabeceras ni en las tarjetas,
+   **tampoco desde «Partes firmados»**. Cambia lo que §16.3 proponía (solo
+   el circuito abría aparte) y, en esta rama, el detalle de diseño de R51
+   de F-036 (los enlaces del circuito a importar y oficios ya no abren
+   pestaña nueva; H-11).
+2. **El riesgo que eso abre** —salir de `partes.html` en la misma pestaña
+   con una remesa a medias pierde el trabajo en memoria (D4 de F-007; la
+   rehidratación es F-021, pendiente)— se mitiga **por defecto** con una
+   **guarda de salida**: si hay trabajo sin terminar, el navegador pide
+   confirmación; si no, se navega sin preguntar (§16.15.2–§16.15.4).
+3. **Remodelar las páginas que ya están** (`importar.html`, `oficios.html`)
+   a la identidad Ruesma del portal —`css/styles.css`, tokens `--rs-*`,
+   tipografías, componentes `rs-*`— es **presentación**: la lógica de F-036
+   no cambia. Ya lo proponía §16.5 (R70–R72); el ajuste le añade la leyenda
+   de la barra y el pie, y **termina** el de `partes.html` (H-12, R82).
+4. **D-12, D-13 (i) y D-14, decididas por defecto** con la recomendación de
+   §16.13, a falta de que el humano diga otra cosa.
+
+#### 16.15.2 · Qué es «trabajo sin terminar» (R79), medido en el circuito
+
+Sale de lo que `js/app.js` ya declara en el estado de `appPostventa()` y de
+los selectores que exportan `js/pipeline.js` y `js/autoguardado.js`; nada
+inventado:
+
+| | Condición | Lo que lee | Por qué es trabajo que se perdería |
+|---|---|---|---|
+| (a) | **Algo en marcha** | `fase` ∈ {`troceando`, `procesando`, `archivando_y_cerrando`} (los literales que asigna `app.js:175`, `:269`, `:765`); o `Pipeline.hayTandaEnCurso()` | Trocear y procesar cuestan IA y tiempo; cortar una tanda a medias deja partes archivados sin adjuntar o adjuntados sin cerrar, que solo se recuperan desde esta pantalla (F-025 R24) |
+| (b) | **Correcciones sin guardar** | `estadoAutoguardado` ∈ {`Autoguardado.GUARDANDO`, `Autoguardado.FALLO`} | Lo tecleado no está en la base (F-026 R52; `MENSAJE_FALLO` dice que «sigue ahí», en pantalla) |
+| (c) | **Partes por terminar** | algún `parte` de `partes` con `!parte.cerrado` y `Pipeline.estadoDe(parte)` ∉ {`ESTADO_RECHAZADO`, `ESTADO_CERRADO`} | Por archivar y cerrar (`pendientesDeCircuito`), por decidir, por corregir o con error: sin F-021 no hay forma de volver a verlos sin subir otra vez la remesa (el pie de `partes.html` ya lo dice) |
+| (d) | **Un parte abierto sin cerrar** | `parteAbierto !== null && !parteAbierto.cerrado` | Cubre el rebote del autoguardado (1,5 s en los que lo tecleado aún no ha pasado a «guardando», y que la guarda no puede ver sin montar el autoguardado, R80) y el motivo escrito y sin enviar (`motivoDeRechazo`), también sobre un parte rechazado |
+
+**No** es trabajo: la página recién abierta (`fase` `inactivo`, sin
+partes); ficheros elegidos sin trocear (`seleccionado`: nada ha salido del
+navegador y volver a elegirlos es un gesto); una remesa con todos sus partes
+cerrados o rechazados y el detalle cerrado (rechazado y cerrado constan en
+la base, F-028); y lo que queda tras «Empezar otra remesa» (`reiniciar()`
+vacía `partes` y `parteAbierto`). Con eso, quien acaba una remesa y cierra
+el detalle navega sin que nadie le pregunte, que es lo que pide el humano.
+
+Lo que la guarda **no** puede saber y se acepta: una tanda cuyas peticiones
+ya salieron sigue en el servidor aunque la página se vaya (la guarda lo
+pregunta antes, por (a)); y el rebote del autoguardado sobre un parte que no
+está abierto no existe (el autoguardado guarda el anterior al cambiar de
+parte, `autoguardado.js`).
+
+#### 16.15.3 · El módulo: `js/guarda_salida.js` (R78–R80)
+
+```js
+// services/postventa-front/js/guarda_salida.js
+// La guarda de salida del circuito (F-035, R78-R80). SOLO LEE el estado de
+// appPostventa(): ni escribe, ni llama a sus métodos, ni red, ni almacenamiento.
+(function () {
+  "use strict";
+  const FASES_EN_MARCHA = Object.freeze(["troceando", "procesando", "archivando_y_cerrando"]);
+  const SELECTOR_CIRCUITO = '[x-data="appPostventa()"]';
+
+  function hayTrabajoSinTerminar(estado, pipeline, autoguardado) { … }   // pura, nunca lanza
+  function leerEstado(ventana, documento) { … }  // Alpine.$data(el) o null; nunca lanza
+  function alSalir(evento, ventana, documento) { … } // pide confirmación solo con trabajo; devuelve true si la pidió
+  function instalar(ventana, documento) { ventana.addEventListener("beforeunload", …) }
+
+  const GuardaSalida = { FASES_EN_MARCHA, SELECTOR_CIRCUITO, hayTrabajoSinTerminar, leerEstado, alSalir, instalar };
+  if (typeof window !== "undefined") { window.GuardaSalida = GuardaSalida; instalar(window, document); }
+  if (typeof module !== "undefined" && module.exports) { module.exports = GuardaSalida; }
+})();
+```
+
+| Firma | Responsabilidad |
+|---|---|
+| `hayTrabajoSinTerminar(estado, pipeline, autoguardado): boolean` | R79 (a)–(d). `pipeline` y `autoguardado` son `window.Pipeline` y `window.Autoguardado` (inyectados para el test). `estado` nulo, sin `partes` o con formas raras → `false`; **nunca lanza** (un `try` que devuelve `false`) |
+| `leerEstado(ventana, documento): object \| null` | `ventana.Alpine.$data(documento.querySelector(SELECTOR_CIRCUITO))`, **en el momento del evento** (Alpine va con `defer` y arranca después de este script). Sin `Alpine`, sin `$data`, sin el elemento o si lanza → `null` |
+| `alSalir(evento, ventana, documento): boolean` | Si `hayTrabajoSinTerminar(leerEstado(…), ventana.Pipeline, ventana.Autoguardado)`, llama a `evento.preventDefault()` y pone `evento.returnValue = true` (la receta de MDN para los navegadores que aún miran `returnValue`) y devuelve `true`; si no, no toca el evento y devuelve `false` |
+| `instalar(ventana, documento)` | Registra **un** `beforeunload` que llama a `alSalir`. Nada más: ni `click`, ni `popstate`, ni temporizadores |
+
+Por qué estas formas:
+
+- **Leer y no escribir**: `Alpine.$data(el)` es la API pública de Alpine 3
+  (`Alpine.$data`, en 3.14.1) para leer el estado de un componente desde
+  fuera; devuelve el proxy reactivo, y leerlo no dispara nada. Llamar a
+  `pendientes()` o a `_autoguardado()` sería más corto, pero son métodos
+  del componente y el segundo **monta** el autoguardado si no existía: por
+  eso R80 los prohíbe y la guarda usa los selectores puros de `Pipeline`.
+- **Falla abierta** (R80): si no se puede leer el estado, no se pregunta.
+  Sin Alpine o sin componente, el circuito no funciona y no hay remesa que
+  perder; preguntar siempre «por si acaso» enseñaría el diálogo en cada
+  salida y la gente aprendería a aceptarlo sin leer, que es justo lo que lo
+  inutilizaría cuando importa.
+- **Solo `beforeunload`** cubre todas las salidas de la pestaña: los
+  enlaces de la barra y de la cabecera (que ya no abren aparte), `F5`,
+  cerrar la pestaña, «Atrás» y escribir otra URL. Ningún enlace del
+  circuito navega dentro del mismo documento (no hay `#/` propios en
+  `partes.html`), así que todos disparan el evento; el «abrir en
+  SharePoint» abre aparte y no lo dispara. El circuito no navega solo
+  (medido: ningún `location`, `window.open` ni `.download` en sus módulos),
+  así que la guarda no salta por sorpresa.
+- **El texto del diálogo es el del navegador** («¿Salir del sitio? Es
+  posible que no se guarden los cambios»): los navegadores ignoran un texto
+  propio desde hace años. Lo que dice qué se pierde es la leyenda de la
+  barra (R47 ajustado), que se ve antes de pulsar.
+- **El navegador solo enseña el diálogo si la persona ha interactuado con
+  la página** (activación de usuario). Con trabajo sin terminar siempre la
+  ha habido (soltar la remesa es un gesto), así que no es un hueco.
+- **bfcache**: un `beforeunload` registrado puede impedir que el navegador
+  guarde la página en su caché de «Atrás/Adelante». Para el circuito da
+  igual (al volver, la página arranca vacía igual que hoy) y no se registra
+  y desregistra según el estado, porque eso exigiría observar el estado
+  (`Alpine.effect`) desde fuera: más código y más superficie que lo que
+  ahorra.
+
+#### 16.15.4 · Cómo entra en el circuito: la excepción mínima (R81)
+
+R33 no se toca: **ningún módulo del circuito cambia**. La guarda es un
+fichero nuevo, y para cargarla hacen falta tres cambios, todos cerrados:
+
+| Dónde | Cambio exacto | Por qué no hay otra forma |
+|---|---|---|
+| `partes.html` | `<script src="js/guarda_salida.js"></script>` **justo antes** de `<script src="js/app.js"></script>`, sin atributos ni comentario nuevos (R59 f, R43 ajustado) | Es el único sitio donde el circuito carga código. Va antes de `app.js` porque F-007 exige que `app.js` sea el último; el orden da igual en ejecución, porque la guarda lee el estado al salir, no al cargar |
+| `tests/test_f007_estaticos.py` (base, R32) | **Una línea añadida** en `ORDEN_CANONICO`, entre `"js/autoguardado.js",` y `"js/app.js",`: `    "js/guarda_salida.js",  # F-035 (R80, R81): solo lee el estado del circuito` | `problemas_del_index` rechaza todo script propio que no esté en `ORDEN_CANONICO`. Mismo precedente que las líneas `INDEX`: un cambio de una línea en un test de la base, declarado y vigilado por R32 |
+| `tests/test_f036_front.py` (base, R32) | En `test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas`: el docstring `"""En otra pestaña: navegar fuera perdería la remesa en curso (D4 de F-007)."""` pasa a `"""En la misma pestaña (F-035, 2026-10-05): la remesa la protege la guarda de salida del circuito."""`, y las dos líneas `assert 'target="_blank"' in en_cabecera[destino]` y `assert 'rel="noopener"' in en_cabecera[destino]` pasan a **una**: `        assert "target=" not in en_cabecera[destino]` | El test fijaba justo lo que el humano cambia. Lo que protegía (que la remesa no se pierda al ir a importar u oficios) **no se pierde**: pasa a protegerlo la guarda, con sus tests (`tests_js/guarda_salida.test.js`); y el test sigue exigiendo los dos enlaces (su primer `assert`, sin tocar) y ahora, además, la misma pestaña |
+
+Alternativas descartadas, en una línea cada una:
+
+- **Meter la guarda en `js/app.js`** (un `beforeunload` en `init`): rompe
+  R33 en el módulo que el humano pidió no tocar, y `app.js` no tiene tests
+  (regla de oro de F-007).
+- **Un `<script>` en línea en `partes.html`**: su lógica no se podría probar
+  en `node --test` y seguiría siendo código nuevo en el circuito, sin
+  ahorrarse la excepción de R59.
+- **Un `confirm()` propio al pulsar un enlace de la barra**: cubre solo esos
+  enlaces (no `F5`, ni cerrar, ni «Atrás»), sale **dos** diálogos seguidos
+  (el propio y el de `beforeunload`) salvo que se coordinen con más estado,
+  y obliga a escuchar clics sobre una barra que R45 quiere estática.
+- **Seguir abriendo aparte desde el circuito**: es lo que el humano acaba de
+  descartar.
+- **Guardar la remesa en el navegador para rehidratarla**: rompe D4 de F-007
+  (nada en `localStorage`) y es F-021, otra ficha.
+- **Preguntar siempre al salir del circuito**: el diálogo constante enseña a
+  aceptarlo sin leer y contradice «sin trabajo, se navega sin preguntar».
+- **Guarda también en `importar.html` y `oficios.html`**: no guardan nada en
+  memoria; importar es idempotente por la huella del fichero (R39 de F-036)
+  y cada decisión de oficios se guarda al pulsar. No hace falta.
+
+#### 16.15.5 · El remodelado (R70, R72 ajustados; R82)
+
+**`importar.html` y `oficios.html`**: lo de §16.5 sigue entero (barra,
+cabecera con migas y subnavegación, `rs-*` y la lista cerrada de Tailwind
+prohibida). El ajuste añade:
+
+- En la barra, tras `rs-barra__fila`, `<p class="rs-barra__leyenda">Las
+  pestañas con punto ámbar están en construcción y enseñan datos de
+  ejemplo.</p>` (R70 ajustado).
+- Al final del `<div x-data>`, tras `</main>`, el pie común:
+  `<footer class="rs-pie"><div class="rs-contenedor rs-pie__texto">Construcciones
+  Ruesma · Posventa · entrada de incidencias.</div></footer>` (R72
+  ajustado).
+- Ningún `target` en ningún enlace (R73 ajustado).
+
+**Lo que no cambia de F-036 y cómo se comprueba.** El remodelado no toca
+`js/importacion.js`, `js/oficios.js` ni `js/api.js` (los cambios de esos dos
+módulos son solo los de R74 y R75, aditivos y en sus bloques), ni ninguna
+directiva de Alpine, texto de botón, `@click`, `:disabled`, `x-text`,
+`x-show`, `id` o atributo `type`/`accept` de las páginas. **Ningún test de
+F-036 fija una clase**: medido sobre `a54cd5d`, `test_f036_front.py` no
+busca ningún valor de `class` (fija scripts, componente, botones por su
+texto y su `@click`, `x-text`, `x-show`, el comentario `<!-- ── 3 ·
+Bandeja`, los enlaces de la primera `<header>` y la ausencia de datos
+reales y de botones prohibidos), y `importacion.test.js` y `oficios.test.js`
+prueban funciones puras, sin HTML. Así que el remodelado **no obliga a
+ajustar ningún test de F-036**; el único que se ajusta es el de R51, y por
+la misma pestaña, no por el estilo (§16.15.4).
+
+**`partes.html` (R82, H-12)**: las 35 utilidades de color y tipografía de
+sus 20 `class` estáticos pasan a componentes `rs-*` existentes —`rs-nota`
+para los textos pequeños en gris, `rs-enlace` para los dos enlaces de F-036,
+`rs-rotulo` y `rs-aviso--atencion` para «Avisos de la remesa» y su lista,
+el separador de `rs-panel--lista` para la cabecera de la lista (`divide-*`,
+`border-b`)—, o a uno nuevo si ninguno sirve (con tokens, R49). Solo valores
+de `class` (R59 a); `text-red-800` se queda (§15.7 regla 3); los `:class`
+no se tocan. Medido: ningún test de la base fija ninguna de esas clases.
+
+#### 16.15.6 · Las guardias que cambian con el ajuste
+
+| Guardia | Cambio | Por qué / control |
+|---|---|---|
+| **R31** (`test_f035_portal.py`, `tests_js/portal.test.js`) | La barra de `partes.html` sin `target` ni `rel`; `enlaceSeccion(id, "circuito")` con `nuevaPestana: false` | Control en memoria: un `target="_blank"` repuesto en una pestaña tiene que saltar |
+| **R43** (`test_f035_portal.py`) | Lista esperada: los nueve con `js/guarda_salida.js` justo antes de `js/app.js` | Control: la guarda después de `app.js`, o un segundo script nuevo, en rojo |
+| **R47** | Exige «en construcción», «datos de ejemplo», «remesa», «confirmación»; prohíbe «aparte» | Control: la leyenda vieja, en rojo |
+| **R48** (raíz) | El test principal sigue (verde: no queda ningún `target`). Su control `…_la_guardia_mira_una_seccion_que_pasa_a_real` deja de poder saltar sobre el HTML real; se reescribe para aplicar `enlaces_aparte_a_secciones_reales` a una **copia en memoria** de `partes.html` con `target="_blank"` repuesto en la pestaña `datos` y F-048 `done` | Sin eso, el control fallaría (no hay nada que cazar) o, peor, se borraría |
+| **R32** (`test_f035_portal.py`) | `test_f007_estaticos.py`: admite `2 1` con las líneas añadidas **exactamente** [`INDEX` nueva, la de `ORDEN_CANONICO`] y la quitada [`INDEX` vieja]. `test_f036_front.py`: admite `3 4` con las añadidas exactamente [`INDEX` nueva, el docstring nuevo, el `assert "target=" not in …`] y las quitadas [`INDEX` vieja, el docstring viejo, los dos `assert` de `target`/`rel`] (textos literales de §16.15.4) | Una constante por fichero con las líneas literales; cualquier otra línea, en rojo |
+| **R33** | `nuevos_admitidos` gana `js/guarda_salida.js` (`A`) | Un `M` en cualquier módulo del circuito sigue en rojo |
+| **R59** | Admite (f) y (g) | `ESTROPEOS_T21` sigue en rojo, más dos controles: un segundo `<script>` nuevo y quitar el `target` del enlace de SharePoint |
+| **«F-036 intacto»** (comprobación de `tasks.md`) | Desde T44, `git diff 2a86bca -- …test_f036_front.py` muestra **solo** las líneas de R81 | — |
+| **R73** (nuevo alcance) | En las cuatro páginas, ningún `<a>` con `href` relativo (a `*.html`, `./`, `#/`) lleva `target` | Control en memoria por página |
+| **R82** (nueva) | `class` estáticos de `partes.html` contra la lista cerrada, con `text-red-800` admitido solo en el aviso del autoguardado | Control: `text-slate-600` repuesto, en rojo |
+
+#### 16.15.7 · Ficheros del ajuste
+
+| Ruta | Qué |
+|---|---|
+| `services/postventa-front/js/guarda_salida.js` (**nuevo**) | §16.15.3 |
+| `services/postventa-front/tests_js/guarda_salida.test.js` (**nuevo**) | R78–R80 con dobles: la tabla de (a)–(d) y sus negativos; el estado como `Proxy` que **lanza** al escribir o al llamar a cualquier función suya (R80); sin `Alpine`, sin elemento y con `$data` que lanza → `false` y el evento intacto; con trabajo, `preventDefault` llamado y `returnValue` puesto; `instalar` registra exactamente un `beforeunload` |
+| `services/postventa-front/partes.html` | Barra y cabecera sin `target`/`rel`; leyenda R47; `<script>` de la guarda; `class` de R82 |
+| `services/postventa-front/importar.html`, `oficios.html` | Leyenda en la barra, pie (§16.15.5) |
+| `services/postventa-front/js/portal.js` | `enlaceSeccion(…, "circuito")` → `nuevaPestana: false` |
+| `services/postventa-front/css/styles.css` | Lo que pida R82 si hace falta un componente nuevo; `?v=` en las cuatro páginas |
+| `services/postventa-front/tests/test_f035_portal.py`, `tests_js/portal.test.js` | §16.15.6 (R31, R32, R33, R43, R47, R59) |
+| `services/postventa-front/tests/test_f035_paginas.py` | R73 en las cuatro páginas, R82, la leyenda y el pie de R70/R72, y un test estático de `js/guarda_salida.js`: ni `fetch`, ni `XMLHttpRequest`, ni `localStorage`/`sessionStorage`/`indexedDB`, ni `addEventListener(` con otro evento que `"beforeunload"`, ni `_autoguardado`; y que cada literal de `FASES_EN_MARCHA` aparece en `js/app.js` como `this.fase = "<fase>"` (si el circuito renombra una fase, salta) |
+| `services/postventa-front/tests/test_f007_estaticos.py`, `tests/test_f036_front.py` (**base**) | Solo las líneas de §16.15.4 |
+| `tests/test_f035_placeholders_vivos.py` (raíz) | El control de R48 (§16.15.6) |
+| `README.md` del front, `docs/ARCHITECTURE.md`, `docs/DESPLIEGUE.md` | Bloque 14: «misma ventana» para todo y la guarda de salida, en vez de «solo el circuito abre aparte» |
+
+No cambia nada más de §16.7: ni `services/postventa-api/`, ni
+`staticwebapp.config.json`, ni `dev_server.py`, ni `infra/*`
+(`desplegar_front.ps1` y `publicar_maqueta.ps1` copian la carpeta entera:
+el fichero nuevo viaja solo).
+
+#### 16.15.8 · Verificación y mutaciones manuales 29–36
+
+Todo sin red, sin BBDD y sin IA. Además de lo de §16.15.6:
+
+| Requisito | Test |
+|---|---|
+| R78 | `tests_js/guarda_salida.test.js`: `alSalir` con trabajo → `preventDefault` y `returnValue`; sin trabajo → el evento intacto |
+| R79 | El mismo: un caso por fila de la tabla de §16.15.2 (positivos y negativos: recién abierta, `seleccionado`, todo cerrado/rechazado con el detalle cerrado, tras reiniciar) |
+| R80 | El mismo (el `Proxy` que lanza; los tres caminos de fallo) y el test estático de `test_f035_paginas.py` |
+| R81 | Las guardias R32, R33, R43 y R59 de §16.15.6 |
+| R82 | `test_f035_paginas.py` con su control |
+| V2 (k)–(p), V1 (q), V4 (i) | Manual, humano (`requirements.md` §3) |
+
+Mutaciones manuales (C4 bis), en una copia aislada, como las 14–28:
+
+29. `hayTrabajoSinTerminar` olvida `archivando_y_cerrando` → cae R79 (a).
+30. Cuenta un parte rechazado como por terminar → cae R79 (c) (el negativo).
+31. Ignora el `fallo` del autoguardado → cae R79 (b).
+32. `alSalir` no llama a `preventDefault` → cae R78.
+33. La guarda escribe `estado.fase` o llama a `estado.pendientes()` → cae R80 (el `Proxy`).
+34. Sin Alpine, la guarda pregunta igual (falla cerrada) → cae R80.
+35. `target="_blank"` repuesto en la pestaña «Inicio» de `partes.html` → cae R31 y R73.
+36. `text-slate-600` repuesto en un `class` estático de `partes.html` → cae R82.
+
+#### 16.15.9 · Riesgos del ajuste
+
+| Riesgo | Mitigación | Dónde se ve |
+|---|---|---|
+| Alguien acepta el diálogo con una remesa a medias y la pierde | La leyenda de la barra lo avisa antes; el aviso a Posventa (§16.12) lo dice; rechazado/cerrado ya están en la base; F-021 (rehidratar) sigue siendo la solución de fondo | V2 (m), T42 |
+| La guarda pregunta cuando no hay nada que perder y se convierte en ruido | Definición estrecha de R79 con negativos probados; (d) se resuelve cerrando el detalle | V2 (l), (o), (p) |
+| La guarda no pregunta cuando sí hay algo (un caso que R79 no ve) | Las cuatro condiciones cubren todo lo que el circuito tiene en memoria; el rebote del autoguardado lo cubre (d); test de fases contra `app.js` | `init.sh`, V2 |
+| La guarda toca el circuito sin querer | R80 con el `Proxy` que lanza; R33 sigue vigilando los módulos | `init.sh` |
+| `Alpine.$data` no se comporta igual en 3.14.1 | Falla abierta (no rompe nada); V2 (m) lo comprueba en el navegador de verdad. Si no pregunta en V2, **PARA**: se anota y se vuelve a proponer, sin parches | V2 |
+| El remodelado rompe algo del circuito | Solo valores de `class` (R59 a) y los `:class` intactos | V2 (k) |
+
+#### 16.15.10 · Decisiones nuevas (con recomendación, para validar)
+
+- **D-15 · Qué cuenta como trabajo sin terminar.** Recomendación: las
+  cuatro condiciones de §16.15.2, **sin** contar los ficheros elegidos sin
+  trocear. Alternativa: contar también `seleccionado` (pregunta más a
+  menudo por algo que se rehace con un gesto).
+- **D-16 · La excepción mínima de R81** (un `<script>` en `partes.html` y
+  cuatro líneas en dos tests de la base). Recomendación: aceptarla; es la
+  única forma de cargar la guarda sin modificar un módulo del circuito.
+  Alternativa: dejar el circuito abriendo aparte (lo que el humano
+  descartó) o meter la guarda en `js/app.js` (rompe R33).

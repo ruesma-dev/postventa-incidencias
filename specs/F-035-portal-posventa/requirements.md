@@ -478,6 +478,28 @@ los envía a ningún sitio.
 > `js/traza.js`, `staticwebapp.config.json`, `dev_server.py` y
 > `dev_front.ps1`.
 
+> **Ajuste del 2026-10-05 (misma pestaña; `design.md` §16.15).** El humano
+> pide que todo se navegue en la misma pestaña, también desde el circuito.
+> Cambian así:
+>
+> - **R31.** La barra superior de `partes.html` enlaza a `./#/<id>` para cada
+>   sección salvo `partes` (`aria-current="page"`, sin enlace), **sin
+>   `target`**: se abre en la misma pestaña. La remesa en curso ya no la
+>   protege abrir aparte, sino la guarda de salida (R78–R80).
+> - **R32.** Además de las líneas `INDEX`, se admiten **exactamente** estos
+>   cambios en dos tests de la base (R81): en `tests/test_f007_estaticos.py`,
+>   **una línea añadida** en `ORDEN_CANONICO` (`"js/guarda_salida.js",`
+>   justo antes de `"js/app.js"`); en `tests/test_f036_front.py`, el
+>   docstring de `test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas`
+>   y sus dos `assert` de `target`/`rel`, que pasan a uno solo que exige que
+>   **no** haya `target`. Ningún otro cambio en ningún test de la base.
+> - **R33.** Admite además el **alta** (`A`) de `js/guarda_salida.js`. Los
+>   nueve módulos del circuito siguen sin tocarse: la guarda solo **lee** su
+>   estado (R80).
+> - **R43.** `partes.html` carga los nueve scripts del circuito en su orden
+>   **y**, justo antes de `js/app.js` (que sigue siendo el último),
+>   `js/guarda_salida.js`. Ningún otro script.
+
 ### 1.8 · Carga y acceso
 
 - **R34.** `portal.html` debe cumplir el mismo contrato de carga que
@@ -548,6 +570,10 @@ Decisiones D-1, D-2 y D-3 del humano (`design.md` §13.1).
   > **Enmienda del 2026-10-05 (R46).** Igual para los enlaces del portal a
   > `importar.html` y `oficios.html`, y para los de esas dos páginas a
   > cualquier otra del front (R73).
+  >
+  > **Ajuste del 2026-10-05 (R46).** Y también para **todos** los enlaces de
+  > `partes.html` a otra página del front (R73 ajustado): ninguna página del
+  > front abre otra en una pestaña nueva.
 - **R47.** La barra superior de `partes.html` debe decir, de forma visible,
   que las demás pestañas son una maqueta con datos de ejemplo y que se abren
   aparte para no perder la remesa.
@@ -556,6 +582,13 @@ Decisiones D-1, D-2 y D-3 del humano (`design.md` §13.1).
   > queda así: «Las pestañas con punto ámbar están en construcción y enseñan
   > datos de ejemplo. Todas se abren aparte, para no perder la remesa.» El
   > test exige «en construcción», «datos de ejemplo», «aparte» y «remesa».
+  >
+  > **Ajuste del 2026-10-05 (R47), sustituye al párrafo anterior.** Nada se
+  > abre ya aparte (R31 ajustado). La leyenda queda así: «Las pestañas con
+  > punto ámbar están en construcción y enseñan datos de ejemplo. Si sales
+  > de aquí con una remesa a medias, el navegador te pedirá confirmación.» El
+  > test exige «en construcción», «datos de ejemplo», «remesa» y
+  > «confirmación», y que **no** diga «aparte».
 
 ### 1.11 · Navegación futura e identidad visual Ruesma (entran el 2026-09-25, segunda ronda)
 
@@ -570,6 +603,15 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
   `target`), como una web normal; y la regla debe constar en la sección del
   portal de `docs/ARCHITECTURE.md` y en el `README.md` del front. Mientras la
   sección sea maqueta, R31 sigue igual.
+
+  > **Ajuste del 2026-10-05 (R48).** Queda **absorbida** por R73 ajustado:
+  > desde el circuito, todas las secciones —reales o no— se abren en la
+  > misma ventana, así que lo que R48 pedía para las reales se cumple de
+  > antemano. Su guardia de la raíz sigue (en verde por construcción) y su
+  > control se reescribe para que siga mirando algo (`design.md` §16.15.6);
+  > la regla escrita en `docs/ARCHITECTURE.md` y el `README.md` pasa a decir
+  > «misma ventana» para todo y que la remesa la protege la guarda de salida
+  > (R78), sin perder «R48», «misma ventana» ni «remesa».
 - **R49.** El sistema debe declarar la identidad visual como **tokens** (variables
   CSS) en el `:root` de `css/styles.css`, con los nombres y valores de
   `design.md` §15.3 —entre ellos `--rs-burdeos: #9f2842`, `--rs-acero:
@@ -645,6 +687,17 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
   > la misma en `index.html` y en `partes.html`. Motivo: tras publicar, el
   > navegador servía de su caché la hoja vieja con el HTML nuevo porque la URL
   > no cambiaba. Control de que todo lo demás sigue en rojo: `ESTROPEOS_T21`.
+  >
+  > **Ajuste del 2026-10-05 (misma pestaña y guarda de salida).** Se suman
+  > **(f)** un único elemento `<script src="js/guarda_salida.js"></script>`,
+  > sin más atributos, inmediatamente antes del de `js/app.js` (R43
+  > ajustado, R81); y **(g)** en los dos enlaces de la cabecera a
+  > `importar.html` y `oficios.html` (los de F-036), la **retirada** de
+  > `target` y de `rel` (R73 ajustado). Solo eso: ningún otro atributo cambia
+  > y ningún otro elemento se añade. Los controles de `ESTROPEOS_T21` siguen
+  > en rojo, y entran dos más: un segundo `<script>` nuevo y la retirada de
+  > `target` en un enlace que no sea uno de esos dos (por ejemplo, el de
+  > «abrir en SharePoint», que sigue abriendo aparte porque no es del front).
 - **R60.** `css/styles.css` y `css/portal.css` no deben llevar `!important`
   (salvo la regla `[x-cloak]` de `css/portal.css`), ni `@import`, ni `url(data:…)`;
   y `partes.html` no debe llevar ningún atributo `style` estático (los estilos
@@ -658,6 +711,22 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
 
 Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
 `design.md` §16.1). Diseño: `design.md` §16. Vocabulario de esta sección:
+
+> **Ajuste del 2026-10-05, tras la respuesta del humano** (`design.md`
+> §16.15). Literal: «paginas propias, pero como en la maqueta, con un banner
+> superior, donde cambie de ventana pero sin abrir pestaña nueva. y las
+> paginas que ya estan deben ser remodeladas para que el front siga el
+> estilo del resto de app». Interpretación del líder: **D-11 = páginas
+> propias** (importar, oficios y partes), todas con la misma barra superior
+> de la maqueta; **toda** la navegación entre páginas y secciones en la
+> **misma pestaña**, también desde el circuito; la remesa a medias la
+> protege una **guarda de salida** que pide confirmación solo cuando hay
+> trabajo sin terminar; `importar.html` y `oficios.html` se **remodelan** a
+> la identidad Ruesma (presentación, no lógica) y `partes.html` termina de
+> hacerlo. D-12, D-13 y D-14, **decididas por defecto** con la
+> recomendación, a falta de que el humano diga otra cosa. Cambian **R31,
+> R32, R33, R43, R46, R47, R48, R59, R70, R72 y R73** (notas en su sitio) y
+> entran **R78–R82** (al final de esta sección).
 
 - **Página real**: página del front que funciona de verdad y es parte del
   portal: `partes.html` (el circuito), `importar.html` y `oficios.html`.
@@ -730,6 +799,11 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   `Portal.enlaceSeccion(id, "<página>")`, y la pestaña de su sección
   (`Portal.PAGINAS["<página>"]`, hoy `entrada` para las dos) como
   `<span aria-current="page">`, sin enlace.
+
+  > **Ajuste del 2026-10-05 (R70).** La barra de las dos páginas lleva
+  > también la leyenda `rs-barra__leyenda` con la primera frase de la del
+  > circuito: «Las pestañas con punto ámbar están en construcción y enseñan
+  > datos de ejemplo.» (sin la de la remesa, que allí no hay).
 - **R71.** La cabecera (`<header>`) de `importar.html` y de `oficios.html`
   debe llevar las migas «Portal de posventa › Entrada» (enlaces a `index.html`
   y a `./#/entrada`) y la subnavegación de la sección, con «Importar
@@ -741,12 +815,29 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   el `body` con `rs-cuerpo`; y ninguna utilidad de Tailwind de color, fondo,
   borde, radio, sombra o tipografía (la lista cerrada de `design.md` §16.5),
   ni en `class` ni en `:class`: el aspecto lo dan las clases `rs-*`.
+
+  > **Ajuste del 2026-10-05 (R72), «remodeladas para que el front siga el
+  > estilo del resto de app».** Además, las dos páginas terminan con el pie
+  > común (`<footer class="rs-pie">` con `rs-contenedor rs-pie__texto`),
+  > como el portal y el circuito. Remodelar es **presentación**: la lógica
+  > de F-036 (`js/importacion.js`, `js/oficios.js`, `js/api.js`) no cambia
+  > por el remodelado (los únicos cambios en esos módulos son los de R74 y
+  > R75, aditivos), y todos los tests de comportamiento de F-036 siguen en
+  > verde sin tocarse; ninguno fija una clase (`design.md` §16.15.5).
 - **R73.** Ningún enlace de `index.html`, `importar.html` ni `oficios.html` a
   otra página del front debe llevar `target`: dentro del portal se navega en
   la misma ventana. Y todo enlace de `partes.html` a otra página del front
   debe abrirse aparte (`target="_blank"` y `rel` con `noopener`): el circuito
   es la única página que guarda trabajo en memoria (R31, R48; R51 de F-036;
   D4 de F-007).
+
+  > **Ajuste del 2026-10-05 (R73), sustituye al requisito de arriba.**
+  > Ningún enlace de las cuatro páginas (`index.html`, `partes.html`,
+  > `importar.html`, `oficios.html`) a otra página del front —barra,
+  > cabeceras, tarjetas, migas, subnavegación— debe llevar `target`: todo se
+  > navega en la misma pestaña. Los enlaces a fuera del front (el «abrir en
+  > SharePoint» del circuito) no son de esta regla y siguen como están. La
+  > remesa del circuito la protege R78.
 
 **Los dos apuntes de la ficha**
 
@@ -782,6 +873,63 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   (`js/maqueta_datos.js`, `js/portal.js`, `js/portal_app.js`,
   `css/portal.css`).
 
+**La misma pestaña y la guarda de salida del circuito (ajuste del 2026-10-05)**
+
+- **R78.** MIENTRAS el circuito (`partes.html`) tenga trabajo sin terminar
+  (R79), CUANDO la persona vaya a salir de la página —un enlace de la barra
+  o de la cabecera, recargar, cerrar la pestaña o «Atrás»—, el sistema debe
+  pedir confirmación al navegador por el evento `beforeunload`
+  (`preventDefault()` y `returnValue`), de modo que «Cancelar» (o
+  «Quedarse») deje la página y la remesa como estaban; y SI no hay trabajo
+  sin terminar, ENTONCES no debe pedir nada y la navegación sigue sin
+  pregunta. El texto del diálogo es el del navegador (los navegadores no
+  enseñan uno propio); lo explica de antemano la leyenda de la barra (R47).
+- **R79.** El circuito tiene **trabajo sin terminar** cuando
+  `GuardaSalida.hayTrabajoSinTerminar(estado, Pipeline)` es verdadero, con
+  `estado` el del componente `appPostventa()`; y lo es SI y solo SI se
+  cumple alguna de estas, todas leídas de lo que el circuito ya sabe:
+  - (a) **algo en marcha**: `fase` es `troceando`, `procesando` o
+    `archivando_y_cerrando`, o `Pipeline.hayTandaEnCurso()` es verdadero;
+  - (b) **correcciones sin guardar**: `estadoAutoguardado` es `guardando` o
+    `fallo` (`Autoguardado.GUARDANDO`, `Autoguardado.FALLO`);
+  - (c) **partes por terminar**: algún parte de `partes` que no está
+    `cerrado` y cuyo `Pipeline.estadoDe(parte)` no es `rechazado` ni
+    `cerrado` (`Pipeline.ESTADO_RECHAZADO`, `Pipeline.ESTADO_CERRADO`): por
+    archivar, por cerrar, por decidir, por corregir o con error;
+  - (d) **un parte abierto** (`parteAbierto` no nulo) que no está `cerrado`.
+
+  **No** es trabajo sin terminar: la página recién abierta; ficheros
+  elegidos sin trocear (`fase` `seleccionado`, nada ha salido del
+  navegador); una remesa cuyos partes están todos cerrados o rechazados,
+  con el detalle cerrado; y lo que queda tras «Empezar otra remesa». Con un
+  estado ausente o ilegible, la función devuelve `false` y nunca lanza.
+- **R80.** La guarda de salida debe vivir en un módulo **nuevo**,
+  `js/guarda_salida.js`, y **solo leer** el estado del circuito: lo lee en el
+  momento del evento con `Alpine.$data()` del elemento
+  `[x-data="appPostventa()"]`; no debe escribir ninguna propiedad del
+  componente, ni llamar a ninguno de sus métodos (tampoco a
+  `_autoguardado()`, que montaría el autoguardado), ni hacer peticiones de
+  red, ni usar almacenamiento del navegador, ni registrar nada más que el
+  `beforeunload` de la ventana. SI no puede leer el estado (sin Alpine, sin
+  el elemento, o lanza al leerlo), ENTONCES no debe pedir confirmación: sin
+  componente no hay remesa que perder.
+- **R81.** La guarda entra en el circuito con una **excepción mínima y
+  cerrada**, y ninguna otra: un `<script src="js/guarda_salida.js">` en
+  `partes.html` justo antes del de `js/app.js` (R43 y R59 ajustados), una
+  línea en `ORDEN_CANONICO` de `tests/test_f007_estaticos.py` y el cambio
+  de R51 en `tests/test_f036_front.py` (R32 ajustado). Ningún módulo del
+  circuito (`js/*.js` de la base) se modifica (R33).
+
+**El remodelado de `partes.html` (ajuste del 2026-10-05)**
+
+- **R82.** En `partes.html`, ningún atributo `class` **estático** (fuera de
+  la barra, que ya cumple) debe llevar una utilidad de Tailwind de la lista
+  cerrada de R72 (`design.md` §16.5), salvo `text-red-800` en el aviso de
+  fallo del autoguardado (lo fija `test_f026_autoguardado.py`, §15.7 regla
+  3). Las directivas `:class` **no** entran: sus colores son los de estado
+  del circuito y los fijan los tests de F-026 y F-028 (§15.7 regla 2). Es
+  solo cambio de valores de `class` (R59 a).
+
 > **Requisitos enmendados el 2026-10-05, en resumen** (las notas van también
 > en su sitio): **R13** (el aviso habla de «en construcción»); **R17** (el
 > portal enlaza también a las páginas de `Portal.PAGINAS`); **R28** (el
@@ -795,6 +943,15 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
 > apartado de contadores de `design.md` §5.1 queda retirado por R67. **No
 > cambian**: R14, R15, R16, R18, R29, R32, R48 y R59 (`design.md` §16.9 dice
 > por qué).
+>
+> **Ajuste del mismo día, tras la respuesta del humano**: cambian además
+> **R31** (sin `target`), **R32** (dos tests de la base, líneas cerradas),
+> **R33** (alta de `js/guarda_salida.js`), **R43** (un script más, antes de
+> `app.js`), **R46** (también desde el circuito), **R47** (leyenda sin
+> «aparte», con «confirmación»), **R48** (absorbida por R73), **R59** ((f) y
+> (g)), **R70** (leyenda en la barra), **R72** (pie) y **R73** (ningún
+> `target` entre páginas del front). Entran **R78–R82**. El cuadro «no
+> cambian» de arriba queda superado para R32, R48 y R59.
 
 ## 2 · Trazabilidad con la ficha
 
@@ -837,6 +994,15 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 > | (ficha, 2026-10-05) En oficios, «Decididos como distintos» con «Son el mismo» | R75, R76 |
 > | (ficha, 2026-10-05) En importar, el resumen de un fichero ya importado rotulado como de la importación original | R74, R76 |
 > | Ningún placeholder llama a Sigrid, SharePoint ni al correo | sin cambio: R14–R16 siguen siendo de los ficheros de la maqueta; las páginas reales hablan con el backend desde sus módulos (`design.md` §7.3, paso 3) |
+>
+> **Ajuste del 2026-10-05.** Filas añadidas:
+>
+> | Criterio | Requisitos |
+> |---|---|
+> | (humano, 2026-10-05) «paginas propias, pero como en la maqueta, con un banner superior» | R44, R70 (ajustado); D-11 decidida |
+> | (humano, 2026-10-05) «donde cambie de ventana pero sin abrir pestaña nueva» | R31, R46, R73 ajustados; R48 absorbida |
+> | El circuito de partes actual sigue funcionando igual dentro del portal (con la misma pestaña, la remesa no se pierde sin avisar) | R78–R81; V2 ajustada |
+> | (humano, 2026-10-05) «las paginas que ya estan deben ser remodeladas para que el front siga el estilo del resto de app» | R72 (ajustado), R82 |
 
 ## 3 · Verificación que no cubre un test
 
@@ -947,6 +1113,30 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 >   construcción y la leyenda nueva; «Entrada» y las demás siguen abriendo el
 >   portal **aparte**; «Importar incidencias» y «Oficios repetidos» de la
 >   cabecera siguen abriéndose aparte; y la remesa en curso sigue donde estaba.
+>
+>   **Ajuste del 2026-10-05 (sustituye al párrafo anterior).** V2 añade
+>   (circuito, con `func start` y una remesa de `muestras/`, sin confirmar el
+>   archivo): (k) la barra con los puntos y la leyenda nueva, y el aspecto
+>   igual que el portal (ningún texto en gris de Tailwind ni en azul cielo
+>   fuera de los colores de estado); (l) **sin remesa** (página recién
+>   abierta), «Inicio» lleva al portal **en la misma pestaña y sin
+>   preguntar**, y «Atrás» vuelve al circuito; (m) **con la remesa troceada
+>   y en revisión**, «Entrada» hace que el navegador pida confirmación;
+>   «Cancelar» (o «Quedarse») deja la remesa entera, con el parte abierto
+>   donde estaba; (n) lo mismo con «Importar incidencias» de la cabecera y
+>   con `F5`; (o) tras «Empezar otra remesa», «Inicio» ya no pregunta; (p)
+>   con los partes que queden todos rechazados y el detalle cerrado, tampoco.
+>   **Nunca** se acepta la salida con una remesa que importe: el «Salir» del
+>   diálogo la pierde (F-021 sigue pendiente).
+>
+>   **V1** añade, con el mismo ajuste: (q) `importar.html` y `oficios.html`
+>   se ven como el portal —barra con su leyenda, migas, subnavegación,
+>   paneles, botones burdeos/secundarios, pie— y ningún enlace entre páginas
+>   abre una pestaña nueva; desde ellas, «Partes firmados» lleva al circuito
+>   en la misma pestaña y sin preguntar. **V5** recorre también (k)–(q) con
+>   lo que permite el entorno sin backend (sin remesa: solo (l) y (q)). **V4**
+>   añade (i): con la remesa de prueba de (b) en revisión, «Inicio» pide
+>   confirmación y «Cancelar» la deja entera.
 > - **V5 · MANUAL (humano), PARADA antes de producción** (nueva; `design.md`
 >   §16.12): con la rama ya aprobada por el reviewer, el humano ve **el portal
 >   entero** en el entorno de vista previa (`infra/publicar_maqueta.ps1`,

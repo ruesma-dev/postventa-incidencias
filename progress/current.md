@@ -1,40 +1,49 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ▶ F-035 · ENMIENDA DE LA SPEC TRAS F-036 ESCRITA · 2026-10-05 · **pendiente de aprobación del humano**
+> ## ▶ F-035 · ENMIENDA AJUSTADA A LA RESPUESTA DEL HUMANO · 2026-10-05 · **pendiente de que el humano valide D-15 y D-16**
 >
-> spec-author. `specs/F-035-portal-posventa/`: requisitos **R62–R77** (§1.12) y enmiendas de R13,
-> R17, R28 (escáner), R33, R44–R47, R50, R51, R54, R56, R60; V1/V2/V4 ampliadas y **V5** nueva
-> (la parada); diseño en **`design.md` §16**; tareas **T23–T42** (bloques 7–15). Sin código.
+> spec-author. Respuesta del humano (2026-10-05), literal: «paginas propias, pero como en la
+> maqueta, con un banner superior, donde cambie de ventana pero sin abrir pestaña nueva. y las
+> paginas que ya estan deben ser remodeladas para que el front siga el estilo del resto de app».
+> Recogida en `specs/F-035-portal-posventa/`: **`design.md` §16.15** (nuevo) y notas «Ajuste del
+> 2026-10-05» en §16.1–§16.14; requisitos **R78–R82** nuevos y **R31, R32, R33, R43, R46, R47,
+> R48, R59, R70, R72, R73** ajustados en su sitio; V1/V2/V4/V5 ampliadas; tareas nuevas
+> **T43–T47** (bloques **16** y **17**) y notas en T25, T29, T31, T37, T38, T12, T40, T42. Sin código.
 >
-> - **Qué decide**: importar y oficios siguen siendo **páginas propias** con la barra común (como
->   `partes.html`), migas y subnavegación de «Entrada», e identidad Ruesma; la sección `#/entrada`
->   del portal pasa a ser su puerta (dos tarjetas «En producción» + la web de clientes en
->   construcción); la bandeja en solo lectura se queda en `importar.html#bandeja` y «Bandeja de
->   revisión» sigue en construcción con un enlace a ella. Ningún test de F-036 se toca. Navegación:
->   **solo el circuito abre aparte** (es la única página con trabajo en memoria); todo lo demás,
->   misma ventana. «En construcción» en tres capas: punto ámbar + `aria-label` en la barra de las
->   cuatro páginas, recuadro que **enmarca** todo lo inventado, portada **sin cifras**; un
->   `estado` por sección en `Portal.SECCIONES` vigilado contra `features.json` desde la raíz.
-> - **Hallazgo (H-9)**: los dos apuntes **no son solo front**. «Decididos como distintos» necesita
->   que `GET /api/catalogos/propuestas` devuelva los pares «distinto» (hoy no salen en ninguna
->   lista) y el rótulo «… del <fecha>» necesita `importado_at_utc` en la respuesta de importar.
->   Por el límite de servicio, se propone **una ficha de backend aparte** (F-053 si sigue la
->   numeración; contrato en `design.md` §16.6); el front de F-035 los consume de forma tolerante.
-> - **Bloques** (uno por encargo): **7** retira lo de F-036 de la maqueta → `init.sh` en verde;
->   **8** estado por sección y barra; **9** recuadros «En construcción» y portada; **10**
->   `importar.html`; **11** `oficios.html`; **12** apunte (b); **13** apunte (a) (solo con D-13 i);
->   **14** documentación y cierre (T39 `init.sh`); **15** del humano: T12 (V1/V2), **T40 parada
->   V5** en la vista previa (`publicar_maqueta.ps1`), T41 publicación `-SoloFront` + V4, T42 aviso.
-> - **Para validar el humano** (`design.md` §16.13): **D-11** páginas propias (recomendado) frente
->   a integrarlas en `index.html`; **D-12** el rótulo y la portada sin cifras; **D-13** ficha de
->   backend aparte con front tolerante (recomendado), o sacar el apunte (a) de F-035; **D-14**
->   la parada en la vista previa (recomendado) o en local sin `func start`. Si aprueba D-13 (i),
->   el líder da de alta la ficha de backend y corrige la descripción de F-035 (H-9). H-8: en esta
->   rama «Partes firmados» de importar/oficios lleva al portal hasta los bloques 10/11.
-> - Precisión del rojo conocido (medido hoy, suite de la raíz: 105 passed, 2 failed): caen R28
->   **y su control** (`…_la_guardia_mira_una_ficha_que_pasa_a_done`, que exige que todos los
->   restos sean de F-044 y ve también los de F-036). Misma causa; el bloque 7 arregla los dos.
+> - **Decidido**: **D-11** por el humano: páginas propias (importar, oficios, partes) con la misma
+>   barra de la maqueta, y **toda** la navegación en la misma pestaña, **también desde el
+>   circuito** (ningún `target` entre páginas del front; R48 queda absorbida). **D-12, D-13 (i) y
+>   D-14, decididas por defecto** con la recomendación (rótulo en tres capas y portada sin cifras;
+>   ficha de backend aparte, F-053, con front tolerante; parada V5 en la vista previa con
+>   `publicar_maqueta.ps1`).
+> - **La guarda de salida del circuito** (R78–R80): módulo nuevo `js/guarda_salida.js`, un
+>   `beforeunload` que pide confirmación **solo** con trabajo sin terminar: algo en marcha (trocear,
+>   procesar, la tanda), correcciones guardándose o con fallo, algún parte ni cerrado ni rechazado,
+>   o un parte abierto sin cerrar. Sin eso (recién abierta, ficheros elegidos sin trocear, todo
+>   cerrado o rechazado, tras «Empezar otra remesa») se navega sin preguntar. Solo **lee** el estado
+>   con `Alpine.$data()`; si no puede leerlo, no pregunta.
+> - **La excepción mínima** (R81): ningún módulo del circuito cambia (R33 intacto), pero cargar la
+>   guarda exige un `<script>` en `partes.html` antes de `app.js`, **una línea** en `ORDEN_CANONICO`
+>   de `test_f007_estaticos.py` (sin ella, el test de F-007 rechaza el script) y, en
+>   `test_f036_front.py`, el test de R51 de F-036 pasa de exigir `target="_blank"` a exigir que no
+>   lo haya (docstring + 2 `assert` → 1). Líneas literales en `design.md` §16.15.4.
+> - **Remodelado**: `importar.html` y `oficios.html` ya iban a la identidad Ruesma (R70–R72); el
+>   ajuste añade la leyenda de la barra y el pie. **Ningún test de F-036 fija una clase**: el
+>   remodelado no obliga a tocar ninguno (el único que cambia es el de R51, por la pestaña).
+>   `partes.html` casi está (H-12): le quedan 35 utilidades de Tailwind en 20 `class` estáticos
+>   (grises, azul cielo, ámbar) → R82, bloque 17.
+> - **Orden de bloques** (uno por encargo): **7 → 8 → 16 → 17 → 9 → 10 → 11 → 12 → 13 → 14 → 15**.
+>   El **7** sigue siendo el primero y el que deja `init.sh` en verde; el 16 quita los `target` y
+>   mete la guarda en el mismo commit (T44).
+> - **Para validar el humano** (`design.md` §16.15.10): **D-15** qué cuenta como trabajo sin
+>   terminar (recomendado: las cuatro condiciones, sin contar ficheros elegidos sin trocear);
+>   **D-16** aceptar la excepción mínima de R81 (recomendado; la alternativa es tocar `js/app.js`).
+>   Riesgo que acepta con la misma pestaña: quien diga «Salir» en el diálogo pierde la remesa
+>   (F-021 sigue pendiente); lo avisan la leyenda de la barra y el aviso a Posventa.
+> - Hallazgos: H-11 (el R51 de F-036 no habla de pestañas: su spec no se toca), H-12 (lo que le
+>   falta a `partes.html`). Siguen H-8/H-9/H-10. El rojo conocido de `init.sh` (R28 y su control)
+>   no cambia: lo arregla el bloque 7.
 
 > ## ▶ F-035 REANUDADA · 2026-10-05 · `dev` traído a la rama · siguiente: enmienda de la spec (spec-author)
 >

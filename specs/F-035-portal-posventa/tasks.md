@@ -499,6 +499,32 @@ ya pide cada verificación.
 > de alta la **ficha de backend** de `design.md` §16.6 (y corrige la
 > descripción de F-035, H-9). Sin aprobación no se toca código.
 
+> **Ajuste del 2026-10-05, tras la respuesta del humano** (`design.md`
+> §16.15). Literal: «paginas propias, pero como en la maqueta, con un banner
+> superior, donde cambie de ventana pero sin abrir pestaña nueva. y las
+> paginas que ya estan deben ser remodeladas para que el front siga el
+> estilo del resto de app». D-11 decidida (páginas propias con la barra);
+> D-12, D-13 (i) y D-14 decididas por defecto. Cambian en su sitio **T25,
+> T29, T31, T37, T38, T12, T40 y T42** (con nota «Ajuste del 2026-10-05») y
+> entran dos bloques nuevos con tareas a partir de T43: **bloque 16**
+> (T43–T45, misma pestaña y guarda de salida del circuito) y **bloque 17**
+> (T46–T47, remodelado de lo que le queda a `partes.html`). La parada de
+> arriba sigue en pie para **D-15 y D-16** (`design.md` §16.15.10): el líder
+> se las enseña al humano junto con este ajuste.
+>
+> **Orden de ejecución de los bloques** (los números no se cambian, el orden
+> sí): **7 → 8 → 16 → 17 → 9 → 10 → 11 → 12 → 13 → 14 → 15**. El 7 sigue
+> siendo el primero y el que deja `init.sh` en verde; el 16 va justo
+> después del 8 porque los dos tocan la barra de `partes.html`, y la guarda
+> tiene que entrar **en el mismo commit** que quita los `target` (nunca un
+> commit con el circuito navegando en la misma pestaña sin guarda).
+>
+> **«F-036 intacto», ajustado**: hasta T44, igual que arriba (vacío). Desde
+> T44, `git diff 2a86bca -- services/postventa-front/tests/test_f036_front.py`
+> muestra **solo** las líneas de R81 (`design.md` §16.15.4: el docstring y
+> el `assert` de `target` de `test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas`),
+> y los de `importacion.test.js` y `oficios.test.js`, vacíos.
+
 ## Bloque 7 · Verde otra vez: lo de F-036 sale de la maqueta (2026-10-05)
 
 - [ ] **T23**: en **un solo commit**: (a) en `index.html`, sección `entrada`:
@@ -550,6 +576,12 @@ ya pide cada verificación.
       (salida al informe); en el front, `python -m pytest tests -q` (con
       **R59** en verde: en `partes.html` solo barra, `class` y `?v=`) y
       `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío.
+
+      > **Ajuste del 2026-10-05.** En (c), la **leyenda** de `partes.html`
+      > **no** se toca aquí: la cambia T44 (R47 ajustado), en el mismo commit
+      > que la guarda; y en (f), el test de R47 tampoco (T44). Los `target`
+      > de la barra del circuito siguen en este bloque como están. Lo demás
+      > de T25, igual.
 - [ ] **T26**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **16** y **17**. (c) `bash harness/init.sh` en
       verde.
@@ -612,6 +644,15 @@ ya pide cada verificación.
       vistazo del implementer con `.\dev_front.ps1` a
       `http://localhost:5173/importar.html` (sin `func start`; no se pulsa
       nada que escriba).
+
+      > **Ajuste del 2026-10-05.** En (b), además: la leyenda
+      > `rs-barra__leyenda` en la barra (R70 ajustado) y el pie `rs-pie` tras
+      > `</main>` (R72 ajustado), textos de `design.md` §16.15.5; ningún
+      > `target` en ningún enlace (R73 ajustado). En (d), sus tests en
+      > `tests/test_f035_paginas.py`, con control. El remodelado es solo
+      > presentación: `js/importacion.js` y `js/api.js` **no** se tocan en
+      > este bloque, y `tests/test_f036_front.py`, `importacion.test.js` y
+      > `oficios.test.js` siguen en verde sin cambiar una línea por el estilo.
 - [ ] **T30**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **21**, **22** y **23**. (c) `bash harness/init.sh`
       en verde.
@@ -629,6 +670,10 @@ ya pide cada verificación.
       `tests/test_f036_front.py` entero en verde y sin tocar) y
       `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío;
       vistazo a `http://localhost:5173/oficios.html` (sin `func start`).
+
+      > **Ajuste del 2026-10-05.** Como T29: leyenda en la barra, pie
+      > `rs-pie` y ningún `target`; `js/oficios.js` y `js/api.js` no se tocan
+      > en este bloque. «F-036 intacto», en su versión ajustada.
 - [ ] **T32**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Las mutaciones **21** y **22** repetidas sobre `oficios.html`
       (21b, 22b). (c) `bash harness/init.sh` en verde.
@@ -698,6 +743,18 @@ ya pide cada verificación.
       **Verificación**: front `python -m pytest tests -q` y raíz
       `python -m pytest tests -q` en verde; `tests/test_f007_documentacion.py`
       en verde.
+
+      > **Ajuste del 2026-10-05.** Donde decía «la regla “solo el circuito
+      > abre aparte”», va: **todo se navega en la misma pestaña** (R73
+      > ajustado; R48 absorbida, conservando «R48», «misma ventana» y
+      > «remesa») y **la guarda de salida del circuito** (R78–R80: qué cuenta
+      > como trabajo sin terminar, que solo lee, dónde vive y la excepción
+      > de R81). En «Identidad visual Ruesma (F-035)», además, que
+      > `partes.html` ya no lleva utilidades de color de Tailwind fuera de
+      > los `:class` de estado (R82). En `docs/DESPLIEGUE.md`, el aviso a
+      > Posventa con la frase nueva de `design.md` §16.12. Las palabras
+      > clave del test nuevo pasan a ser «en construcción», `PAGINAS`,
+      > «misma pestaña» y «guarda de salida» (fuera «aparte»).
 - [ ] **T38**: evidencias de la enmienda entera. (a)
       `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Tabla de las mutaciones manuales 14–28 con su resultado (las de cada
@@ -709,6 +766,12 @@ ya pide cada verificación.
       de R53, si las hojas ganaron pares.
       **Verificación**: las salidas en `progress/impl_F-035.md`,
       «Bloque 14».
+
+      > **Ajuste del 2026-10-05.** (b) La tabla llega a la **36** (29–36,
+      > `design.md` §16.15.8). (c) En el front, los ficheros de §16.7 **más**
+      > los de §16.15.7. (d) Vacíos salvo `test_f035_portal.py`, la línea de
+      > `ORDEN_CANONICO` de `test_f007_estaticos.py` y las líneas de R51 de
+      > `test_f036_front.py` (R81), que se citan con su diff.
 - [ ] **T39**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       **sin caché** y la cobertura en N/A con su motivo. Es la última tarea
@@ -725,6 +788,12 @@ ya pide cada verificación.
   pulsa nada que escriba en `importar.html` ni en `oficios.html`); para V2,
   `func start` del backend local y una remesa de `muestras/` hasta la pregunta
   de confirmación, **«Cancelar»**. Resultado real, en `progress/current.md`.
+
+  > **Ajuste del 2026-10-05.** V2 con (k)–(p) y V1 con (q) del recuadro
+  > «Ajuste» de `requirements.md` §3: con la remesa en revisión, «Entrada»,
+  > «Importar incidencias» y `F5` piden confirmación y **siempre se
+  > cancela**; sin remesa, o tras «Empezar otra remesa», se navega sin
+  > pregunta. Si con remesa **no** pregunta, PARA y se anota.
 - [ ] **T40**: **MANUAL (humano) · PARADA antes de producción (V5)**. Con la
       review APROBADA y T12 en verde, ver **el portal entero** en el entorno
       de vista previa (D-14):
@@ -739,6 +808,12 @@ ya pide cada verificación.
       `func start`.
       **Verificación**: la respuesta del humano, literal y fechada, en
       `progress/current.md`; sin un «sí, publicar», T41 no empieza.
+
+      > **Ajuste del 2026-10-05.** Recorre también (l) y (q): todo en la
+      > misma pestaña, `importar.html` y `oficios.html` con el aspecto del
+      > portal, y desde el circuito sin remesa se sale sin pregunta (en la
+      > vista previa no hay backend, así que la guarda con remesa se ve en
+      > T12, no aquí). D-14 decidida por defecto: vista previa.
 - [ ] **T41**: **MANUAL (humano) · publicación (D-4) y V4**. Tras el merge a
       `dev` (líder, a petición del humano) y el push (humano):
       `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`.
@@ -758,4 +833,94 @@ ya pide cada verificación.
       grupo de Entra siguen **fuera** de F-035.
       **Verificación**: la fecha del aviso y lo que conteste Posventa, en
       `progress/current.md`.
+
+      > **Ajuste del 2026-10-05.** El aviso lleva la frase nueva de
+      > `design.md` §16.12: todo se abre en la misma pestaña y, con una
+      > remesa a medias, al salir el navegador pregunta y hay que decir que
+      > no. Y T41 incluye V4 (i).
+
+## Bloque 16 · Misma pestaña y guarda de salida del circuito (ajuste del 2026-10-05)
+
+> Va **después del bloque 8 y antes del 17** (orden de ejecución del recuadro
+> «Ajuste» de la enmienda). Diseño: `design.md` §16.15.2–§16.15.4 y
+> §16.15.6. Requisitos: R31, R43, R46, R47, R48, R59 y R73 ajustados;
+> R78–R81. **La guarda y la retirada de los `target` van en el mismo
+> commit (T44)**: no puede existir un commit con el circuito navegando en la
+> misma pestaña sin guarda.
+
+- [ ] **T43**: RED primero: `tests_js/guarda_salida.test.js` (R78–R80, la
+      lista de `design.md` §16.15.7: cada fila de §16.15.2 en positivo y en
+      negativo, el `Proxy` que lanza al escribir o al llamar, los tres
+      caminos de fallo de `leerEstado`, `alSalir` con y sin trabajo,
+      `instalar` con un solo `beforeunload`), con los dobles de `Pipeline` y
+      `Autoguardado` construidos desde los módulos reales
+      (`require("../js/pipeline.js")`, `require("../js/autoguardado.js")`),
+      no copiados. Ejecutarlos en rojo (el módulo no existe) y anotar la
+      salida. Después, `js/guarda_salida.js` según §16.15.3, sin cargarlo
+      todavía en ninguna página. Y el test estático de la guarda en
+      `tests/test_f035_paginas.py` (sin red, sin almacenamiento, solo
+      `beforeunload`, sin `_autoguardado`, y las fases de `FASES_EN_MARCHA`
+      presentes en `js/app.js` como `this.fase = "<fase>"`), con su control.
+      **R33 ajustado** en `tests/test_f035_portal.py` (admite `A
+      js/guarda_salida.js`).
+      **Verificación**: desde `services/postventa-front`,
+      `node --test "tests_js/*.test.js"` y `python -m pytest tests -q` en
+      verde; `git diff --stat HEAD~1` con solo esos ficheros; ningún módulo
+      del circuito en el diff.
+- [ ] **T44**: en **un solo commit**: (a) `partes.html`: la barra sin
+      `target` ni `rel` en sus siete enlaces; los dos enlaces de F-036 de la
+      cabecera sin `target` ni `rel` (R59 g); la leyenda de **R47 ajustado**;
+      y `<script src="js/guarda_salida.js"></script>` justo antes del de
+      `js/app.js` (R59 f, R43 ajustado). Ningún otro cambio en el HTML. (b)
+      `js/portal.js`: `enlaceSeccion(id, "circuito")` con `nuevaPestana:
+      false`. (c) Las dos líneas de la base de R81, **literales** de
+      `design.md` §16.15.4: la de `ORDEN_CANONICO` en
+      `tests/test_f007_estaticos.py` y las de R51 en
+      `tests/test_f036_front.py`. (d) Las guardias de F-035 de §16.15.6:
+      R31 (`test_f035_portal.py`, `tests_js/portal.test.js`), R32 (las
+      líneas literales admitidas, por fichero), R43, R47, R59 (f, g y sus
+      dos controles nuevos) y R73 en las cuatro páginas
+      (`tests/test_f035_paginas.py`), cada una con su control en memoria.
+      (e) En la raíz, `tests/test_f035_placeholders_vivos.py`: el control de
+      R48 reescrito sobre una copia en memoria de `partes.html` con
+      `target="_blank"` repuesto en `datos` (§16.15.6).
+      **Verificación**: en la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py -q`
+      en verde; desde `services/postventa-front`, `python -m pytest tests -q`
+      (con `tests/test_f007_estaticos.py` y `tests/test_f036_front.py`
+      **enteros en verde**) y `node --test "tests_js/*.test.js"` en verde;
+      «F-036 intacto» en su versión ajustada (solo las líneas de R81);
+      `git diff HEAD~1 -- services/postventa-front/js` con solo
+      `js/portal.js`; vistazo del implementer con `.\dev_front.ps1` (sin
+      `func start`): en `http://localhost:5173/partes.html` recién abierta,
+      «Inicio» lleva al portal en la misma pestaña **sin preguntar**. La
+      comprobación con remesa es de T12 (V2 m), no del implementer.
+- [ ] **T45**: evidencias y verde. (a)
+      `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutaciones manuales **29** a **35** de `design.md` §16.15.8. (c)
+      `bash harness/init.sh` en verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 16».
+
+## Bloque 17 · El remodelado de lo que le queda a `partes.html` (ajuste del 2026-10-05)
+
+> Va **después del 16 y antes del 9**. Diseño: `design.md` §16.15.5 y H-12.
+> Requisito: R82. Solo valores de `class` (R59 a).
+
+- [ ] **T46**: RED primero: R82 en `tests/test_f035_paginas.py` (los `class`
+      estáticos de `partes.html` fuera de la barra contra la lista cerrada de
+      R72, con `text-red-800` admitido solo en el aviso de fallo del
+      autoguardado), con su control. Después, en `partes.html`, los 20
+      `class` de H-12 pasan a componentes `rs-*` (los que ya existen y, si
+      ninguno sirve, uno nuevo en `css/styles.css` con tokens, R49, y su
+      `?v=` en las cuatro páginas). Ni una directiva, ni un `:class`, ni un
+      texto.
+      **Verificación**: front `python -m pytest tests -q` (con **R59** y
+      todos los tests del circuito en verde) y
+      `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» ajustado;
+      vistazo con `.\dev_front.ps1` a `partes.html`: ningún texto en gris o
+      azul de Tailwind fuera de los colores de estado.
+- [ ] **T47**: evidencias y verde. (a)
+      `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutación manual **36**. (c) La tabla de contraste de R53, si
+      entraron pares nuevos. (d) `bash harness/init.sh` en verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 17».
 

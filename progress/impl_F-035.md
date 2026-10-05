@@ -4704,3 +4704,138 @@ variables, pero no fue exactamente el comando limpio de la allowlist.
 | Mutantes (herramienta) | **0 generados, 0 supervivientes** (bases `8ced4bd` y `2a86bca`): sin Python de producción |
 | Mutantes a mano | **18 generados, 18 muertos, 0 supervivientes** (29–35 del diseño, la 33 en dos variantes, y diez propias) |
 | Tiempo de la suite | raíz 7,44 s; front pytest 16,67 s; Node 1,9 s (`guarda_salida.test.js`, 0,3 s) |
+
+## Arreglos de la review del bloque 16 · H16-1 y H16-2 · 2026-10-05
+
+> implementer. Encargo corto: los dos bloqueantes de la review del bloque 16
+> (`82db245`). **Solo tests**: ninguna línea de producción.
+> `git diff --stat -- services/postventa-front/js` vacío al acabar.
+
+### 1 · Qué cambió
+
+Un único fichero: `services/postventa-front/tests_js/guarda_salida.test.js`
+(+4 tests; 54 → 58).
+
+| Commit | Hallazgo | Test |
+|---|---|---|
+| `e00ffbc` | **H16-1** | `f035 R78: cargada como script en la página, la guarda se instala sola y su beforeunload pregunta con trabajo` |
+| `87e24e8` | **H16-2** | `f035 R79 (c): un parte {cerrado por el circuito (cerrado: true) \| rechazado \| con el estado «cerrado» del backend} delante de uno aprobado sin cerrar no corta el recorrido: hay trabajo` (×3) |
+
+- **H16-1**: el test lee el fichero REAL `js/guarda_salida.js` con
+  `fs.readFileSync` y lo ejecuta con `vm.runInNewContext(codigo, { window,
+  document })`, igual que lo carga `partes.html` (script, con `window`, sin
+  `module`). `window` y `document` son los dobles de `navegador()` que ya
+  usaba el fichero. Comprueba: un único `beforeunload` registrado y nada en el
+  documento; `window.GuardaSalida` expuesto; el manejador registrado, sin
+  trabajo, no toca el evento, y con `fase: "procesando"` llama a
+  `preventDefault` una vez y pone `returnValue = true`. La condición de
+  trabajo (fase en marcha) se eligió a propósito distinta de la de H16-2, para
+  que cada mutación tenga su test propio.
+- **H16-2**: el caso pedido `[cerrado, aprobado sin cerrar]` → pregunta, y los
+  dos simétricos con el terminado delante: rechazado y con el estado
+  «cerrado» del backend. Requieren `node:fs`, `node:path` y `node:vm` (de
+  Node; ninguna dependencia nueva).
+
+### 2 · RED: las mutaciones G1 y G12, cada una SOLA, en una copia desechable
+
+Copia de `js/` y `tests_js/` en el scratchpad de la sesión (`mut_h16/`),
+mutada con `sed`, rehecha desde cero entre una y otra; el árbol real no se
+tocó. Comando en la copia:
+`node --test --test-reporter=spec tests_js/guarda_salida.test.js`.
+
+**G1** (`guarda_salida.js:162`, `instalar(window, document);` → comentario),
+diff de la copia contra el real:
+
+```
+162c162
+<     instalar(window, document);
+---
+>     // G1: sin instalar
+```
+
+Salida (exit 1):
+
+```
+✖ f035 R78: cargada como script en la página, la guarda se instala sola y su beforeunload pregunta con trabajo (4.0346ms)
+ℹ tests 55
+ℹ pass 54
+ℹ fail 1
+✖ failing tests:
+
+test at tests_js\guarda_salida.test.js:617:1
+✖ f035 R78: cargada como script en la página, la guarda se instala sola y su beforeunload pregunta con trabajo (4.0346ms)
+  AssertionError [ERR_ASSERTION]: al cargarse en la página tiene que quedar UN beforeunload registrado
+  + actual - expected
+  
+  + []
+  - [
+  -   'beforeunload'
+  - ]
+```
+
+(55 tests: la campaña de G1 se hizo antes de añadir los tres de H16-2.)
+
+**G12** (`guarda_salida.js:88`, `continue;` → `return false;` en el parte con
+`cerrado: true`), diff de la copia contra el real:
+
+```
+88c88
+<           continue;
+---
+>           return false;
+```
+
+Salida (exit 1):
+
+```
+ℹ tests 58
+ℹ pass 57
+ℹ fail 1
+✖ failing tests:
+
+test at tests_js\guarda_salida.test.js:309:3
+✖ f035 R79 (c): un parte cerrado por el circuito (cerrado: true) delante de uno aprobado sin cerrar no corta el recorrido: hay trabajo (1.5052ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+```
+
+Los dos simétricos (rechazado y cerrado del backend delante) no los mata G12,
+y es lo esperado: G12 solo toca la rama de `parte.cerrado`. Fijan que la
+rama de la marca (`estadoDe`) tampoco corte el recorrido.
+
+Nota de método: un primer `sed` de G12 no aplicó (la sangría real es de diez
+espacios, no de ocho) y la copia pasó 58/58 con el código intacto; lo vi en
+el `diff` vacío, corregí el patrón y repetí. La salida de arriba es la del
+mutante aplicado (el `diff` lo demuestra).
+
+### 3 · Verde sobre el código real
+
+- `node --test tests_js/guarda_salida.test.js`: **58/58**.
+- `node --test "tests_js/*.test.js"`: **567/567** (563 + 4), 1,9 s.
+- `python -m pytest -q tests` (front): **473 passed** en 11,67 s.
+- `bash harness/init.sh` (una vez, tal cual): **ENTORNO LISTO**. Raíz 112
+  passed; api en verde (caché); front 473 passed; `PUERTA COBERTURA: N/A
+  (F-035 no cambia líneas Python de producción frente a dev)`; ruff 71 avisos
+  (deuda previa).
+
+### 4 · Fuera del alcance
+
+- **H16-3 a H16-6** son de spec: quedan para el spec-author en el bloque 14.
+- El vistazo MANUAL en navegador (respuesta 7 de la review) sigue pendiente
+  para el humano; este test cubre la instalación, no que `Alpine.$data`
+  devuelva el estado en 3.14.1.
+
+### Evidencias (arreglos H16-1 y H16-2)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | raíz **112 passed**; front pytest **473 passed**; Node **567/567** (58 de `guarda_salida.test.js`); api en verde (caché) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el cambio es solo de tests JS |
+| Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base 82db245 --salida <scratchpad>/mutacion_h16.md` → «0 fichero(s), 0 línea(s) de producción … 0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s». Informe al scratchpad para no pisar `progress/mutacion_F-035.md` (bases de la feature) |
+| Mutantes a mano | **2 generados (G1, G12), 2 muertos, 0 supervivientes** |
+| Tiempo de la suite | raíz 6,93 s; front pytest 14,09 s (`init.sh`); Node 1,9 s |

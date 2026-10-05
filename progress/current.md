@@ -1,6 +1,20 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · ARREGLOS DE LA REVIEW DEL BLOQUE 16 (H16-1, H16-2) HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: re-review del bloque 16 y después bloque 17
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Arreglos de la review del bloque 16».
+> Solo tests en `tests_js/guarda_salida.test.js` (54 → 58); `js/` sin tocar (`git diff` vacío).
+> `e00ffbc` **H16-1**: el fichero real cargado con `vm.runInNewContext` y un `window`/`document`
+> de juguete: se instala solo (un `beforeunload`, `window.GuardaSalida`) y su manejador pregunta
+> con trabajo. `87e24e8` **H16-2**: R79 (c) con un parte terminado (cerrado, rechazado, cerrado
+> del backend) delante de uno aprobado sin cerrar → hay trabajo. Mutaciones en copia desechable:
+> **G1 muerta** (1 fail) y **G12 muerta** (1 fail), con trazas pegadas. Node 567/567; front 473;
+> `bash harness/init.sh` **ENTORNO LISTO**; campaña del arnés 0 mutantes. Sin push.
+>
+> - **H16-3 a H16-6 son de spec**: quedan para el spec-author en el bloque 14.
+> - MANUAL pendiente, sin cambios: el vistazo en navegador (respuesta 7 de la review) y V1/V2.
+
 > ## ▶ F-035 · BLOQUE 16 (T43, T44, T45) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 16 y después bloque 17 (implementer)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 16». T43 `e3842b4`: nuevo

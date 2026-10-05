@@ -57,6 +57,15 @@ Bloque 9 (`tasks.md`, T27):
 - Review del bloque 7, **H-3** (R68): la estructura cerrada de `entrada`; y
   **H-5**: ninguna clase de `css/portal.css` sin uso en el portal.
 
+Bloque 10 (`tasks.md`, T29):
+
+- **R70–R72**, `importar.html` como sección real: la barra común (primera,
+  estática, con la marca, la leyenda y «Entrada» como actual), la cabecera
+  con migas y subnavegación, y la identidad Ruesma con su pie; **R77**, nada
+  de la maqueta; y las extensiones de **R50, R51, R54, R60** y de la versión
+  de la hoja (T21; también `oficios.html`, review del bloque 17, O17-3). Los
+  `href` de la barra contra `enlaceSeccion`, en `tests_js/f035_paginas.test.js`.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -67,10 +76,12 @@ from pathlib import Path
 
 import pytest
 from test_f035_portal import (
+    LINKS_DE_LA_MARCA,
     PORTAL,
     RAIZ_FRONT,
     STYLES_CSS,
     _uno,
+    barra,
     clases,
     css_sin_comentarios,
     leer_html,
@@ -79,7 +90,9 @@ from test_f035_portal import (
     reglas_css,
     seccion,
     targets_de,
+    version_de_las_hojas,
 )
+from test_f035_portal import SECCIONES as ETIQUETAS_DE_SECCION
 
 PORTAL_JS = RAIZ_FRONT / "js" / "portal.js"
 MAQUETA_DATOS = RAIZ_FRONT / "js" / "maqueta_datos.js"
@@ -1459,3 +1472,462 @@ def test_f035_r65_control_sin_la_regla_del_enlace_el_rotulo_ensena_burdeos():
 
     problemas = burdeos_en_los_rotulos(PORTAL.read_text(encoding="utf-8"), hojas)
     assert any("«rs-enlace»" in p for p in problemas), problemas
+
+
+# --- Bloque 10 (T29) · `importar.html`, sección real del portal ------------------
+#
+# `design.md` §16.5 y §16.15.5: `importar.html` sigue siendo su página (D-11,
+# P) y gana la barra común (R70), la cabecera con migas y subnavegación de
+# «Entrada» (R71) y la identidad Ruesma con el pie común (R72); ningún enlace
+# del front con `target` (R73, ya en `PAGINAS_DEL_FRONT`); nada de la maqueta
+# (R77). Es PRESENTACIÓN: `js/importacion.js` y `js/api.js` no cambian, y los
+# tests de F-036 siguen sin tocarse. Se extienden a la página R50, R51, R54,
+# R60 y la versión de la hoja (T21; review del bloque 17, O17-3, también
+# para `oficios.html`, que ya la lleva). `oficios.html` entra en el resto de
+# guardias en el bloque 11: `PAGINAS_REMODELADAS` crece entonces.
+
+#: Las páginas reales ya remodeladas (bloque 10); `oficios.html`, en el 11.
+PAGINAS_REMODELADAS = ("importar.html",)
+
+#: Las páginas reales que piden la hoja con versión (T21 extendido, O17-3).
+PAGINAS_REALES_CON_VERSION = ("importar.html", "oficios.html")
+
+#: La leyenda de la barra de las páginas reales (R70 ajustado, §16.15.5).
+LEYENDA_PAGINAS_REALES = "Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo."
+
+#: El pie común de las páginas reales (R72 ajustado, §16.15.5).
+PIE_PAGINAS_REALES = "Construcciones Ruesma · Posventa · entrada de incidencias."
+
+#: Las migas de las páginas de `entrada` (R71): `(href, texto)`, en su orden.
+MIGAS_DE_ENTRADA = (("index.html", "Portal de posventa"), ("./#/entrada", "Entrada"))
+
+#: La subnavegación de `entrada` (R71): `(página, texto)`, en su orden.
+SUBNAV_DE_ENTRADA = (("importar.html", "Importar incidencias"), ("oficios.html", "Oficios repetidos"))
+
+#: Los ficheros de la maqueta que una página real no puede cargar (R77).
+FICHEROS_DE_LA_MAQUETA = ("js/maqueta_datos.js", "js/portal.js", "js/portal_app.js", "css/portal.css")
+
+#: Las utilidades que quitan el contorno del foco (R54 extendido).
+_QUITA_EL_FOCO = re.compile(r"^outline-(?:none|0|hidden)$")
+
+_LITERAL_JS = re.compile(r"""'([^']*)'|"([^"]*)\"""")
+
+
+def _hijos_elemento(nodo) -> list:
+    return [h for h in nodo.hijos if not isinstance(h, str)]
+
+
+def _x_data(doc):
+    """El `<div x-data>` del componente de la página (uno y solo uno)."""
+    return _uno([e for e in doc.elementos() if "x-data" in e.atributos], "elemento con x-data")
+
+
+def clases_ligadas(valor: str) -> list[str]:
+    """Las clases que nombra un `:class`: las palabras de sus literales entre comillas."""
+    return [clase for m in _LITERAL_JS.finditer(valor) for clase in (m.group(1) or m.group(2) or "").split()]
+
+
+def _clases_de(elemento) -> list[tuple[str, str]]:
+    """`(atributo, clase)` de los `class` y de los literales de `:class`/`x-bind:class` de un elemento."""
+    pares = [("class", c) for c in elemento.atributos.get("class", "").split()]
+    for ligado in (":class", "x-bind:class"):
+        pares += [(ligado, c) for c in clases_ligadas(elemento.atributos.get(ligado, ""))]
+    return pares
+
+
+# R70 · La barra común, primera, estática, con la marca, la leyenda y la actual
+
+
+def problemas_r70(pagina: str, html: str) -> list[str]:
+    """Lo que la barra de una página real incumple de R70 (R44, R45, R51). Vacío = correcto.
+
+    Los `href` contra `Portal.enlaceSeccion` los compara
+    `tests_js/f035_paginas.test.js`; aquí, la estructura.
+    """
+    doc = leer_html_texto(html)
+    problemas = []
+    cuerpo = _uno([e for e in doc.elementos() if e.nombre == "body"], f"<body> en {pagina}")
+    componente = _x_data(doc)
+    nav = barra(doc, pagina)
+    if not _hijos_elemento(cuerpo) or _hijos_elemento(cuerpo)[0] is not componente:
+        problemas.append(f"{pagina}: el <div x-data> no es el primer elemento del <body>")
+    if not _hijos_elemento(componente) or _hijos_elemento(componente)[0] is not nav:
+        problemas.append(f"{pagina}: la barra no es el primer hijo del <div x-data> (R70)")
+    if nav.atributos.get("aria-label") != "Secciones de posventa" or "rs-barra" not in clases(nav):
+        problemas.append(f'{pagina}: la barra es <nav aria-label="Secciones de posventa" class="rs-barra">')
+    for nodo in [nav, *nav.elementos()]:
+        directivas = [a for a in nodo.atributos if a.startswith(("x-", "@", ":"))]
+        if directivas:
+            problemas.append(f"{pagina}: <{nodo.nombre}> de la barra lleva {directivas} (R45)")
+        if nodo.nombre in ("script", "button", "form", "input"):
+            problemas.append(f"{pagina}: la barra lleva <{nodo.nombre}> (R45)")
+    elementos = nav.elementos()
+    logos = [e for e in elementos if e.nombre == "img"]
+    if [(e.atributos.get("src"), e.atributos.get("alt"), "rs-barra__logo" in clases(e)) for e in logos] != [
+        ("img/logo-ruesma.svg", "Construcciones Ruesma", True)
+    ]:
+        problemas.append(f"{pagina}: la barra lleva un logotipo img/logo-ruesma.svg (R51)")
+    separadores = [e for e in elementos if "rs-barra__sep" in clases(e)]
+    if [e.atributos.get("aria-hidden") for e in separadores] != ["true"]:
+        problemas.append(f'{pagina}: un separador rs-barra__sep con aria-hidden="true" (R51)')
+    etiquetas = [e for e in elementos if "rs-barra__etiqueta" in clases(e)]
+    if [e.texto() for e in etiquetas] != ["Posventa"]:
+        problemas.append(f"{pagina}: la etiqueta «Posventa» (R51)")
+    for nodo in [*logos, *separadores, *etiquetas]:
+        if any(a.nombre == "a" for a in nodo.ancestros()):
+            problemas.append(f"{pagina}: la marca no es un enlace (R51)")
+    pestanas = [e for e in elementos if "rs-pestana" in clases(e)]
+    if sorted(p.texto() for p in pestanas) != sorted(ETIQUETAS_DE_SECCION.values()):
+        problemas.append(f"{pagina}: pestañas rs-pestana {[p.texto() for p in pestanas]} (R51)")
+    actuales = [p.texto() for p in pestanas if p.atributos.get("aria-current") == "page"]
+    if actuales != [ETIQUETAS_DE_SECCION[PAGINAS_ESPERADAS[pagina]]]:
+        problemas.append(f"{pagina}: la pestaña actual es la de su sección, y solo ella: {actuales}")
+    leyendas = [e for e in elementos if "rs-barra__leyenda" in clases(e)]
+    if [(e.nombre, e.texto()) for e in leyendas] != [("p", LEYENDA_PAGINAS_REALES)]:
+        problemas.append(f"{pagina}: la leyenda de la barra es «{LEYENDA_PAGINAS_REALES}» (R70 ajustado)")
+    return problemas
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REMODELADAS)
+def test_f035_r70_la_pagina_real_lleva_la_barra_comun_primera_y_estatica(pagina):
+    problemas = problemas_r70(pagina, (RAIZ_FRONT / pagina).read_text(encoding="utf-8"))
+
+    assert problemas == [], "R70: la barra común de las páginas reales:\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        ('<nav data-barra-portal', '<span hidden></span>\n    <nav data-barra-portal', "primer hijo"),
+        ('<a href="./#/inicio" class="rs-pestana">', '<a href="./#/inicio" class="rs-pestana" x-show="true">', "R45"),
+        ('<a href="./#/inicio" class="rs-pestana">', '<a href="./#/inicio" class="rs-pestana" @click="x()">', "R45"),
+        ('<span aria-current="page" class="rs-pestana">', '<span class="rs-pestana">', "la pestaña actual"),
+        ('<span class="rs-barra__sep" aria-hidden="true">', '<span class="rs-barra__sep">', "separador"),
+        ("enseñan datos de ejemplo.</p>", "enseñan datos de ejemplo. Si sales con una remesa a medias…</p>", "leyenda"),
+        ('<img class="rs-barra__logo" src="img/logo-ruesma.svg"', '<img class="rs-barra__logo" src="img/otro.svg"', "logotipo"),
+    ],
+    ids=["algo-antes-de-la-barra", "x-show", "clic", "sin-actual", "separador-visible", "leyenda-del-circuito", "otro-logo"],
+)
+def test_f035_r70_control_la_barra_estropeada_salta(viejo, nuevo, senal):
+    real = IMPORTAR.read_text(encoding="utf-8")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = problemas_r70("importar.html", real.replace(viejo, nuevo))
+    assert any(senal in p for p in problemas), problemas
+
+
+# R71 · La cabecera: migas «Portal de posventa › Entrada» y la subnavegación
+
+
+def problemas_r71(pagina: str, html: str) -> list[str]:
+    """Lo que la cabecera de una página real incumple de R71. Vacío = correcto."""
+    doc = leer_html_texto(html)
+    problemas = []
+    cabeceras = [e for e in doc.elementos() if e.nombre == "header"]
+    if not cabeceras:
+        return [f"{pagina}: sin <header>"]
+    cabecera = cabeceras[0]
+    nav = barra(doc, pagina)
+    if nav is cabecera or nav.dentro_de(cabecera):
+        problemas.append(f"{pagina}: la barra no es la cabecera: la primera <header> es la de la página")
+    navs = {n.atributos.get("aria-label"): n for n in cabecera.elementos() if n.nombre == "nav"}
+    migas = navs.get("Estás en")
+    if migas is None or "rs-migas" not in clases(migas):
+        problemas.append(f'{pagina}: la cabecera lleva <nav aria-label="Estás en" class="rs-migas">')
+    else:
+        enlaces = [(a.atributos.get("href"), a.texto()) for a in migas.elementos() if a.nombre == "a"]
+        if tuple(enlaces) != MIGAS_DE_ENTRADA:
+            problemas.append(f"{pagina}: migas {enlaces}, no {list(MIGAS_DE_ENTRADA)}")
+    subnav = navs.get("Entrada de incidencias")
+    if subnav is None or "rs-subnav" not in clases(subnav):
+        problemas.append(f'{pagina}: la cabecera lleva <nav aria-label="Entrada de incidencias" class="rs-subnav">')
+    else:
+        items = [e for e in subnav.elementos() if "rs-subnav__item" in clases(e)]
+        if [e.texto() for e in items] != [texto for _, texto in SUBNAV_DE_ENTRADA]:
+            problemas.append(f"{pagina}: subnavegación {[e.texto() for e in items]}")
+        for (destino, texto), item in zip(SUBNAV_DE_ENTRADA, items):
+            if destino == pagina:
+                if item.nombre != "span" or "href" in item.atributos or item.atributos.get("aria-current") != "page":
+                    problemas.append(f'{pagina}: «{texto}» es la actual: <span aria-current="page">, sin enlace')
+            elif item.nombre != "a" or item.atributos.get("href") != destino or "aria-current" in item.atributos:
+                problemas.append(f'{pagina}: «{texto}» es un enlace a {destino}')
+    titulos = [e for e in cabecera.elementos() if e.nombre == "h1"]
+    if [("rs-titulo" in clases(t)) for t in titulos] != [True]:
+        problemas.append(f"{pagina}: un <h1 class=\"rs-titulo\"> en la cabecera")
+    if "rs-cabecera" not in clases(cabecera):
+        problemas.append(f"{pagina}: la cabecera es rs-cabecera")
+    return problemas
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REMODELADAS)
+def test_f035_r71_la_cabecera_lleva_migas_y_subnavegacion(pagina):
+    problemas = problemas_r71(pagina, (RAIZ_FRONT / pagina).read_text(encoding="utf-8"))
+
+    assert problemas == [], "R71: la cabecera de las páginas reales:\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        ('<a href="index.html" class="rs-enlace">Portal de posventa</a>', "Portal de posventa", "migas"),
+        ('<a href="./#/entrada" class="rs-enlace">Entrada</a>', '<a href="#/entrada" class="rs-enlace">Entrada</a>', "migas"),
+        (
+            '<span aria-current="page" class="rs-subnav__item">Importar incidencias</span>',
+            '<a href="importar.html" class="rs-subnav__item">Importar incidencias</a>',
+            "es la actual",
+        ),
+        ('<a href="oficios.html" class="rs-subnav__item">', '<a href="partes.html" class="rs-subnav__item">', "es un enlace"),
+        ('aria-label="Estás en"', 'aria-label="Migas"', "Estás en"),
+    ],
+    ids=["miga-sin-enlace", "miga-a-otro-sitio", "actual-como-enlace", "otro-destino", "sin-nombre-accesible"],
+)
+def test_f035_r71_control_la_cabecera_estropeada_salta(viejo, nuevo, senal):
+    real = IMPORTAR.read_text(encoding="utf-8")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = problemas_r71("importar.html", real.replace(viejo, nuevo))
+    assert any(senal in p for p in problemas), problemas
+
+
+# R72 · La identidad Ruesma: las <link> de la marca, la versión, rs-cuerpo, sin
+# utilidades de la lista cerrada (ni en `class` ni en `:class`), el pie común,
+# y cada clase rs-* con su regla en css/styles.css (la hoja que cargan).
+
+
+def problemas_r72(pagina: str, html: str, version: str, css: str) -> list[str]:
+    """Lo que una página real incumple de R72 (y R50 extendido). Vacío = correcto."""
+    doc = leer_html_texto(html)
+    problemas = []
+    cabeza = _uno([e for e in doc.elementos() if e.nombre == "head"], f"<head> en {pagina}")
+    enlaces = [e for e in doc.elementos() if e.nombre == "link"]
+    hojas = [e for e in enlaces if e.atributos.get("href", "").partition("?")[0] == "css/styles.css"]
+    if len(hojas) != 1:
+        problemas.append(f"{pagina}: una <link> a css/styles.css, y solo una")
+    else:
+        hoja = hojas[0]
+        posicion = enlaces.index(hoja)
+        previas = enlaces[max(0, posicion - len(LINKS_DE_LA_MARCA)):posicion]
+        if [e.atributos for e in previas] != list(LINKS_DE_LA_MARCA):
+            problemas.append(f"{pagina}: las cuatro <link> de §15.4, exactas, justo antes de css/styles.css (R50)")
+        if not all(e.dentro_de(cabeza) for e in [*previas, hoja]):
+            problemas.append(f"{pagina}: las <link> de la marca van en el <head>")
+        if hoja.atributos != {"rel": "stylesheet", "href": f"css/styles.css?v={version}"}:
+            problemas.append(f"{pagina}: la hoja con ?v={version}, la de las demás páginas (R59 e)")
+    cuerpo = _uno([e for e in doc.elementos() if e.nombre == "body"], f"<body> en {pagina}")
+    if "rs-cuerpo" not in clases(cuerpo):
+        problemas.append(f"{pagina}: el <body> lleva rs-cuerpo")
+    for elemento in [cuerpo, *cuerpo.elementos()]:
+        for atributo, clase in _clases_de(elemento):
+            if utilidades_prohibidas(clase):
+                problemas.append(f"{pagina}: <{elemento.nombre} {atributo}> lleva {clase} (lista cerrada de §16.5)")
+    componente = _x_data(doc)
+    hijos = _hijos_elemento(componente)
+    pies = [e for e in doc.elementos() if e.nombre == "footer"]
+    if len(pies) != 1 or "rs-pie" not in clases(pies[0]):
+        problemas.append(f'{pagina}: un <footer class="rs-pie">')
+    else:
+        pie = pies[0]
+        principales = [e for e in hijos if e.nombre == "main"]
+        if not hijos or hijos[-1] is not pie or len(principales) != 1 or hijos.index(principales[0]) != len(hijos) - 2:
+            problemas.append(f"{pagina}: el pie es el último hijo del <div x-data>, justo tras </main> (R72)")
+        textos = [e for e in _hijos_elemento(pie) if {"rs-contenedor", "rs-pie__texto"} <= clases(e)]
+        if [e.texto() for e in textos] != [PIE_PAGINAS_REALES]:
+            problemas.append(f"{pagina}: el pie dice «{PIE_PAGINAS_REALES}» en rs-contenedor rs-pie__texto")
+    sin_regla = sorted({
+        clase
+        for e in doc.elementos()
+        for _, clase in _clases_de(e)
+        if clase.startswith("rs-") and not re.search(r"\." + re.escape(clase) + r"(?![\w-])", css_sin_comentarios_texto(css))
+    })
+    if sin_regla:
+        problemas.append(f"{pagina}: clases rs-* sin regla en css/styles.css: {sin_regla}")
+    return problemas
+
+
+def _r72(pagina: str, html: str | None = None, css: str | None = None) -> list[str]:
+    return problemas_r72(
+        pagina,
+        (RAIZ_FRONT / pagina).read_text(encoding="utf-8") if html is None else html,
+        version_de_las_hojas(),
+        STYLES_CSS.read_text(encoding="utf-8") if css is None else css,
+    )
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REMODELADAS)
+def test_f035_r72_la_pagina_real_lleva_la_identidad_ruesma(pagina):
+    problemas = _r72(pagina)
+
+    assert problemas == [], "R72: el aspecto lo dan las clases rs-* y la marca:\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        # Mutación manual 22 (`design.md` §16.10), como control permanente.
+        (
+            'class="rs-btn rs-btn--primario">Importar a la bandeja',
+            'class="rs-btn rs-btn--primario bg-slate-800">Importar a la bandeja',
+            "bg-slate-800",
+        ),
+        ("'rs-aviso--atencion'", "'rs-aviso--atencion text-amber-800'", ":class> lleva text-amber-800"),
+        ("'rs-aviso--ok'", "'border-emerald-200 bg-emerald-50'", ":class> lleva border-emerald-200"),
+        ('<body class="rs-cuerpo">', '<body class="bg-slate-50 text-slate-800">', "rs-cuerpo"),
+        ('<link rel="icon" type="image/svg+xml" href="img/favicon.svg">\n', "", "cuatro <link>"),
+        ("<footer class=\"rs-pie\">", "<footer class=\"rs-pie hidden\"><span></span></footer><footer class=\"rs-pie\">", "un <footer"),
+        ("Posventa · entrada de incidencias.</div>", "Posventa.</div>", "el pie dice"),
+        ('class="rs-rotulo">1 · La plantilla', 'class="rs-rotulo rs-inventada">1 · La plantilla', "sin regla"),
+    ],
+    ids=["bg-en-un-boton", "texto-en-class-ligado", "colores-en-class-ligado", "body-de-tailwind", "sin-favicon", "dos-pies", "otro-pie", "clase-sin-regla"],
+)
+def test_f035_r72_control_la_identidad_estropeada_salta(viejo, nuevo, senal):
+    real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = _r72("importar.html", html=real.replace(viejo, nuevo))
+    assert any(senal in p for p in problemas), problemas
+
+
+def test_f035_r72_control_el_pie_fuera_del_componente_o_antes_de_main_salta():
+    real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    pie = re.search(r"\n *<footer class=\"rs-pie\">.*?</footer>", real, re.DOTALL)
+    assert pie, "el control no encuentra el pie"
+    sin_pie = real.replace(pie.group(0), "")
+
+    fuera = sin_pie.replace("</body>", pie.group(0) + "\n</body>", 1)
+    antes = sin_pie.replace("<main ", pie.group(0) + "\n    <main ", 1)
+    for copia in (fuera, antes):
+        assert any("justo tras </main>" in p for p in _r72("importar.html", html=copia))
+
+
+def test_f035_r72_control_la_version_vieja_de_la_hoja_salta():
+    real = IMPORTAR.read_text(encoding="utf-8")
+    copia, cuantas = re.subn(r"css/styles\.css\?v=[0-9a-f]{10}", "css/styles.css?v=0123456789", real)
+    assert cuantas == 1
+
+    assert any("?v=" in p for p in _r72("importar.html", html=copia))
+
+
+def test_f035_r72_control_clases_ligadas_lee_los_literales():
+    assert clases_ligadas("resultado.estado === 'parcial' ? 'rs-aviso--atencion' : 'a b'") == [
+        "parcial", "rs-aviso--atencion", "a", "b"
+    ]
+    assert clases_ligadas("{ 'bg-emerald-500': ok, \"text-xs\": x }") == ["bg-emerald-500", "text-xs"]
+    assert clases_ligadas("") == []
+
+
+# R73 · ya en `PAGINAS_DEL_FRONT` (arriba), con su control por página.
+
+
+# R77 · Lo real no se mezcla con lo que está en construcción
+
+
+def problemas_r77(pagina: str, html: str) -> list[str]:
+    """Placeholders, recuadros «En construcción» o ficheros de la maqueta en una página real. Vacío = correcto."""
+    problemas = []
+    for e in leer_html_texto(html).elementos():
+        if "placeholder" in clases(e) or "data-placeholder" in e.atributos:
+            problemas.append(f"{pagina}: <{e.nombre}> es un placeholder")
+        if "data-en-construccion" in e.atributos:
+            problemas.append(f"{pagina}: <{e.nombre}> es un recuadro data-en-construccion")
+        for atributo in ("src", "href"):
+            destino = e.atributos.get(atributo, "").partition("?")[0]
+            if destino in FICHEROS_DE_LA_MAQUETA:
+                problemas.append(f"{pagina}: carga {destino}, de la maqueta")
+    return problemas
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REMODELADAS)
+def test_f035_r77_la_pagina_real_no_lleva_nada_de_la_maqueta(pagina):
+    problemas = problemas_r77(pagina, (RAIZ_FRONT / pagina).read_text(encoding="utf-8"))
+
+    assert problemas == [], "R77:\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("nuevo", "senal"),
+    [
+        # Mutación manual 23 (`design.md` §16.10), como control permanente.
+        ('<script src="js/portal.js"></script>', "js/portal.js"),
+        ('<script src="js/maqueta_datos.js"></script>', "js/maqueta_datos.js"),
+        ('<script src="js/portal_app.js?v=1"></script>', "js/portal_app.js"),
+        ('<link rel="stylesheet" href="css/portal.css?v=0123456789">', "css/portal.css"),
+        ('<button type="button" data-placeholder="F-038">Aprobar</button>', "placeholder"),
+        ('<span class="placeholder">x</span>', "placeholder"),
+        ('<div data-en-construccion="F-038"></div>', "data-en-construccion"),
+    ],
+    ids=["portal-js", "maqueta-datos", "portal-app", "portal-css", "data-placeholder", "clase-placeholder", "recuadro"],
+)
+def test_f035_r77_control_lo_de_la_maqueta_en_la_pagina_real_salta(nuevo, senal):
+    real = IMPORTAR.read_text(encoding="utf-8")
+    copia = real.replace("</body>", nuevo + "\n</body>", 1)
+    assert copia != real
+
+    assert any(senal in p for p in problemas_r77("importar.html", copia))
+
+
+# R54 y R60 extendidos: ninguna utilidad que quite el foco y ningún `style` estático
+
+
+def problemas_r54_r60(pagina: str, html: str) -> list[str]:
+    problemas = []
+    for e in leer_html_texto(html).elementos():
+        for atributo, clase in _clases_de(e):
+            if _QUITA_EL_FOCO.match(clase.rsplit(":", 1)[-1]):
+                problemas.append(f"{pagina}: <{e.nombre} {atributo}> lleva {clase}: quita el foco (R54)")
+        if "style" in e.atributos:
+            problemas.append(f"{pagina}: <{e.nombre}> lleva style estático (R60)")
+    return problemas
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REMODELADAS)
+def test_f035_r54_r60_la_pagina_real_no_quita_el_foco_ni_lleva_style(pagina):
+    problemas = problemas_r54_r60(pagina, (RAIZ_FRONT / pagina).read_text(encoding="utf-8"))
+
+    assert problemas == [], "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        ('class="rs-btn rs-btn--primario">', 'class="rs-btn rs-btn--primario focus:outline-none">', "R54"),
+        ("'rs-aviso--ok'", "'rs-aviso--ok outline-0'", "R54"),
+        ('<main class="', '<main style="color: red" class="', "R60"),
+    ],
+    ids=["focus-outline-none", "outline-0-ligado", "style"],
+)
+def test_f035_r54_r60_control_salta(viejo, nuevo, senal):
+    real = IMPORTAR.read_text(encoding="utf-8")
+    assert viejo in real, f"el control no encuentra {viejo!r}"
+
+    assert any(senal in p for p in problemas_r54_r60("importar.html", real.replace(viejo, nuevo, 1)))
+
+
+# T21 extendido (review del bloque 17, O17-3): la versión de la hoja también en
+# las páginas reales, con el mismo valor que en el portal y el circuito.
+
+
+def hojas_pedidas(html: str) -> list[str]:
+    return [
+        e.atributos.get("href", "")
+        for e in leer_html_texto(html).elementos()
+        if e.nombre == "link" and e.atributos.get("href", "").startswith("css/")
+    ]
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REALES_CON_VERSION)
+def test_f035_t21_la_pagina_real_pide_la_hoja_con_la_version_de_su_contenido(pagina):
+    pedidas = hojas_pedidas((RAIZ_FRONT / pagina).read_text(encoding="utf-8"))
+
+    assert pedidas == [f"css/styles.css?v={version_de_las_hojas()}"], (
+        f"{pagina}: solo css/styles.css (nada de css/portal.css, R77) y con la versión de las hojas; "
+        "si has cambiado una hoja, pon la nueva ?v= en las cuatro páginas"
+    )
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REALES_CON_VERSION)
+def test_f035_t21_control_una_version_vieja_en_la_pagina_real_salta(pagina):
+    real = (RAIZ_FRONT / pagina).read_text(encoding="utf-8")
+    copia, cuantas = re.subn(r"css/styles\.css\?v=[0-9a-f]{10}", "css/styles.css?v=0123456789", real)
+    assert cuantas == 1, f"{pagina}: el control no encuentra la hoja con versión"
+
+    assert hojas_pedidas(copia) != [f"css/styles.css?v={version_de_las_hojas()}"]

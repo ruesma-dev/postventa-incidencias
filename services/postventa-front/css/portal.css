@@ -578,10 +578,6 @@ a.rs-tarjeta:hover .rs-tarjeta__flecha {
   border-radius: var(--rs-radio-sm);
 }
 
-.rs-desplazable {
-  overflow-x: auto;
-}
-
 .rs-subpanel {
   padding: 1.1rem 1.25rem;
   background-color: var(--rs-papel);

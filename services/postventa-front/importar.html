@@ -9,157 +9,204 @@
   <!-- Alpine con defer y versión fija, como en index.html: se ejecuta después
        de nuestros scripts (al final del body) y encuentra appImportacion. -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=4e0797b8ee">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css?v=fce64f6d72">
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="rs-cuerpo">
   <!-- F-036 · design.md §9. Tres bloques, en el orden en que se usan:
        plantilla, importar y bandeja. La bandeja es de SOLO LECTURA: editar,
-       descartar o aprobar una incidencia es F-038. -->
+       descartar o aprobar una incidencia es F-038.
+       F-035 · design.md §16.5 y §16.15.5: la página es la sección «Entrada»
+       del portal, con su identidad (R70-R72). Remodelarla es PRESENTACIÓN:
+       textos, directivas de Alpine, ids y scripts, los de F-036. -->
   <div x-data="appImportacion()" x-init="iniciar()" class="min-h-screen flex flex-col">
 
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
-        <div>
-          <h1 class="text-xl font-semibold tracking-tight">Importar incidencias</h1>
-          <p class="text-sm text-slate-500">El Excel de incidencias de la propiedad, a la bandeja de la obra</p>
+    <!-- F-035 · Barra superior común (R44, R70), en HTML PLANO como la del
+         circuito: ni una directiva de Alpine, ni script, ni botón (R45), y
+         esta página no carga nada de la maqueta (R77). «Entrada» es la
+         sección de esta página (Portal.PAGINAS), la actual; las demás
+         pestañas llevan a Portal.enlaceSeccion(id, "importar.html"), todas
+         en la MISMA pestaña (R73). La marca no es un enlace (R51). -->
+    <nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
+      <div class="rs-barra__fila">
+        <span class="rs-barra__marca">
+          <img class="rs-barra__logo" src="img/logo-ruesma.svg" alt="Construcciones Ruesma">
+          <span class="rs-barra__sep" aria-hidden="true"></span>
+          <span class="rs-barra__etiqueta">Posventa</span>
+        </span>
+        <div class="rs-barra__pestanas">
+          <a href="./#/inicio" class="rs-pestana">Inicio</a>
+          <span aria-current="page" class="rs-pestana">Entrada</span>
+          <a href="./#/bandeja" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</a>
+          <a href="./#/incidencias" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)">Incidencias</a>
+          <a href="./#/impresion" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)">Impresión de partes</a>
+          <a href="partes.html" class="rs-pestana">Partes firmados</a>
+          <a href="./#/economico" class="rs-pestana" data-construccion aria-label="Coste y venta (en construcción)">Coste y venta</a>
+          <a href="./#/datos" class="rs-pestana" data-construccion aria-label="Datos y datamart (en construcción)">Datos y datamart</a>
         </div>
-        <nav class="flex gap-4 text-sm">
-          <a href="index.html" class="text-sky-700 hover:underline">Partes firmados</a>
-          <a href="oficios.html" class="text-sky-700 hover:underline">Oficios repetidos</a>
-        </nav>
+      </div>
+      <p class="rs-barra__leyenda">Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo.</p>
+    </nav>
+
+    <!-- Migas y subnavegación de la sección «Entrada» (R71). -->
+    <header class="rs-cabecera">
+      <div class="rs-contenedor rs-cabecera__fila">
+        <div>
+          <nav aria-label="Estás en" class="rs-migas">
+            <a href="index.html" class="rs-enlace">Portal de posventa</a>
+            <span aria-hidden="true">›</span>
+            <a href="./#/entrada" class="rs-enlace">Entrada</a>
+          </nav>
+          <h1 class="rs-titulo">Importar incidencias</h1>
+          <p class="rs-subtitulo">El Excel de incidencias de la propiedad, a la bandeja de la obra</p>
+          <nav aria-label="Entrada de incidencias" class="rs-subnav">
+            <span aria-current="page" class="rs-subnav__item">Importar incidencias</span>
+            <a href="oficios.html" class="rs-subnav__item">Oficios repetidos</a>
+          </nav>
+        </div>
       </div>
     </header>
 
-    <main class="mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-6">
+    <main class="rs-contenedor rs-principal flex-1">
 
       <!-- ── 1 · Plantilla (R1, R50) ───────────────────────────────────── -->
-      <section class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">1 · La plantilla de la obra</h2>
-        <p class="mt-2 text-sm text-slate-600">
+      <section class="rs-panel">
+        <h2 class="rs-rotulo">1 · La plantilla de la obra</h2>
+        <p class="mt-3 rs-texto">
           Sale de Sigrid en el momento: las unidades, los oficios y los proveedores de la obra.
         </p>
         <div class="mt-4 flex flex-wrap items-end gap-3">
-          <label class="text-sm">
-            <span class="block text-xs text-slate-500">Código de obra</span>
+          <label class="flex w-40 flex-col gap-1">
+            <span class="rs-campo__etiqueta">Código de obra</span>
             <input type="text" x-model="obra" autocomplete="off"
                    @keydown.enter.prevent="descargarPlantilla()"
-                   class="mt-1 w-40 rounded border border-slate-300 px-2 py-1.5 text-sm">
+                   class="rs-campo">
           </label>
           <button type="button" @click="descargarPlantilla()" :disabled="!puedeDescargarPlantilla()"
-                  class="rounded bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:opacity-40">Descargar la plantilla</button>
-          <span x-show="descargandoPlantilla" class="text-xs text-slate-500">Leyendo Sigrid…</span>
+                  class="rs-btn rs-btn--secundario">Descargar la plantilla</button>
+          <span x-show="descargandoPlantilla" class="rs-nota">Leyendo Sigrid…</span>
         </div>
         <p x-show="errorPlantilla" x-text="errorPlantilla"
-           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+           class="mt-4 rs-aviso rs-aviso--error"></p>
       </section>
 
       <!-- ── 2 · Importar (R14-R22, R33, R43, R52, R65) ─────────────────── -->
-      <section class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">2 · Importar a la bandeja</h2>
+      <section class="rs-panel rs-panel--destacado">
+        <h2 class="rs-rotulo">2 · Importar a la bandeja</h2>
         <div class="mt-4 flex flex-wrap items-center gap-3">
-          <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+          <label class="rs-btn rs-btn--secundario">
             Elegir el Excel
             <input type="file" class="hidden" accept=".xlsx" @change="alElegirFichero($event)">
           </label>
-          <span class="text-sm text-slate-600" x-text="fichero ? fichero.name : 'Ningún fichero elegido'"></span>
+          <span class="rs-texto" x-text="fichero ? fichero.name : 'Ningún fichero elegido'"></span>
           <!-- Sin reintentos automáticos (R52): si falla, se enseña el motivo
                y volver a importar lo decide quien importa. -->
           <button type="button" @click="importar()" :disabled="!puedeImportar()"
-                  class="rounded bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:opacity-40">Importar a la bandeja</button>
-          <span x-show="importando" class="text-xs text-slate-500">Importando…</span>
+                  class="rs-btn rs-btn--primario">Importar a la bandeja</button>
+          <span x-show="importando" class="rs-nota">Importando…</span>
         </div>
         <p x-show="motivoSinImportar() && !importando" x-text="motivoSinImportar()"
-           class="mt-3 text-xs text-slate-500"></p>
+           class="mt-3 rs-nota"></p>
         <p x-show="errorImportacion" x-text="errorImportacion"
-           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+           class="mt-4 rs-aviso rs-aviso--error"></p>
 
         <template x-if="resultado">
           <div class="mt-5 space-y-4">
-            <div class="rounded border px-3 py-2 text-sm"
-                 :class="resultado.estado === 'parcial' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'">
-              <p class="font-medium">Obra <span x-text="resultado.obra"></span> · <span x-text="resultado.estadoTexto"></span></p>
+            <!-- El estado con su color de estado y SIEMPRE con su texto
+                 (estadoTexto): completa en ok, parcial en atención, y un
+                 fichero ya importado en info, que no es un éxito de ahora. -->
+            <div class="rs-aviso"
+                 :class="resultado.yaImportado ? 'rs-aviso--info' : (resultado.estado === 'parcial' ? 'rs-aviso--atencion' : 'rs-aviso--ok')">
+              <p class="rs-aviso__titulo">Obra <span x-text="resultado.obra"></span> · <span x-text="resultado.estadoTexto"></span></p>
               <p class="mt-1" x-text="resultado.resumenTexto"></p>
             </div>
 
-            <div x-show="resultado.errores.length" class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-              <h3 class="text-xs font-semibold uppercase tracking-wide">Errores</h3>
+            <div x-show="resultado.errores.length" class="rs-aviso rs-aviso--error">
+              <h3 class="rs-aviso__titulo">Errores</h3>
               <ul class="mt-2 list-disc space-y-0.5 pl-5">
                 <template x-for="(texto, n) in resultado.errores" :key="n">
                   <li x-text="texto"></li>
                 </template>
               </ul>
-              <p x-show="resultado.avisoRecorte" x-text="resultado.avisoRecorte" class="mt-2 text-xs"></p>
+              <p x-show="resultado.avisoRecorte" x-text="resultado.avisoRecorte" class="mt-2"></p>
             </div>
 
             <div x-show="resultado && resultado.hayExcelDeErrores" class="flex flex-wrap items-center gap-3">
               <button type="button" @click="descargarExcelDeErrores()"
-                      class="rounded bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600">Descargar el Excel de errores</button>
-              <span class="text-sm text-slate-600" x-text="fraseExcelErrores"></span>
+                      class="rs-btn rs-btn--secundario">Descargar el Excel de errores</button>
+              <span class="rs-texto" x-text="fraseExcelErrores"></span>
             </div>
 
-            <table class="w-full text-left text-sm">
-              <thead class="text-xs uppercase tracking-wide text-slate-400">
-                <tr><th class="py-1 pr-3">Fila</th><th class="py-1 pr-3">Estado</th><th class="py-1">Avisos</th></tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                <template x-for="fila in resultado.filas" :key="fila.fila">
-                  <tr>
-                    <td class="py-1 pr-3 tabular-nums" x-text="fila.fila"></td>
-                    <td class="py-1 pr-3" x-text="fila.texto"></td>
-                    <td class="py-1 text-slate-600" x-text="fila.avisos.join(' · ')"></td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
+            <div class="rs-desplazable">
+              <table class="rs-tabla">
+                <thead>
+                  <tr><th>Fila</th><th>Estado</th><th>Avisos</th></tr>
+                </thead>
+                <tbody>
+                  <template x-for="fila in resultado.filas" :key="fila.fila">
+                    <tr>
+                      <td class="tabular-nums" x-text="fila.fila"></td>
+                      <td x-text="fila.texto"></td>
+                      <td class="rs-texto--apagado" x-text="fila.avisos.join(' · ')"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
           </div>
         </template>
       </section>
 
       <!-- ── 3 · Bandeja de la obra (R45, R50, R93) · solo lectura ────────── -->
-      <section id="bandeja" class="rounded-lg border border-slate-200 bg-white p-6">
-        <div class="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">3 · Bandeja de la obra</h2>
+      <section id="bandeja" class="rs-panel">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="rs-rotulo">3 · Bandeja de la obra</h2>
           <button type="button" @click="cargarBandeja()" :disabled="!obraEscrita() || cargandoBandeja"
-                  class="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40">Ver la bandeja</button>
+                  class="rs-btn rs-btn--secundario">Ver la bandeja</button>
         </div>
-        <p class="mt-2 text-xs text-slate-500">
+        <p class="mt-3 rs-nota">
           De la obra del campo «Código de obra». Solo lectura: revisar, corregir o descartar incidencias llegará con F-038.
         </p>
         <p x-show="errorBandeja" x-text="errorBandeja"
-           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
-        <p x-show="bandejaCargada && !bandeja.length" class="mt-4 text-sm text-slate-500">
+           class="mt-4 rs-aviso rs-aviso--error"></p>
+        <p x-show="bandejaCargada && !bandeja.length" class="mt-4 rs-texto">
           La bandeja de la obra <span x-text="bandejaObra"></span> está vacía.
         </p>
-        <div x-show="bandeja.length" class="mt-4 overflow-x-auto">
-          <table class="w-full text-left text-sm">
-            <thead class="text-xs uppercase tracking-wide text-slate-400">
+        <div x-show="bandeja.length" class="mt-4 rs-desplazable">
+          <table class="rs-tabla">
+            <thead>
               <tr>
-                <th class="py-1 pr-3">Fila</th>
-                <th class="py-1 pr-3">Unidad</th>
-                <th class="py-1 pr-3">Ubicación</th>
-                <th class="py-1 pr-3">Descripción</th>
-                <th class="py-1 pr-3">Oficio</th>
-                <th class="py-1 pr-3">Proveedor</th>
-                <th class="py-1 pr-3">Urgencia</th>
-                <th class="py-1">Marcas</th>
+                <th>Fila</th>
+                <th>Unidad</th>
+                <th>Ubicación</th>
+                <th>Descripción</th>
+                <th>Oficio</th>
+                <th>Proveedor</th>
+                <th>Urgencia</th>
+                <th>Marcas</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
               <template x-for="fila in bandeja" :key="fila.incidencia_id">
                 <tr class="align-top">
-                  <td class="py-1 pr-3 tabular-nums" x-text="fila.fila_origen"></td>
-                  <td class="py-1 pr-3" x-text="fila.unidad_nombre || fila.unidad_codigo"></td>
-                  <td class="py-1 pr-3" x-text="fila.ubicacion || '—'"></td>
-                  <td class="py-1 pr-3">
+                  <td class="tabular-nums" x-text="fila.fila_origen"></td>
+                  <td x-text="fila.unidad_nombre || fila.unidad_codigo"></td>
+                  <td x-text="fila.ubicacion || '—'"></td>
+                  <td>
                     <span x-text="fila.descripcion"></span>
-                    <span x-show="fila.detalle" class="block text-xs text-slate-500" x-text="fila.detalle"></span>
+                    <span x-show="fila.detalle" class="block rs-nota" x-text="fila.detalle"></span>
                   </td>
-                  <td class="py-1 pr-3" x-text="fila.oficioTexto"></td>
-                  <td class="py-1 pr-3" x-text="fila.proveedorTexto"></td>
-                  <td class="py-1 pr-3" x-text="fila.urgencia || '—'"></td>
-                  <td class="py-1">
+                  <td x-text="fila.oficioTexto"></td>
+                  <td x-text="fila.proveedorTexto"></td>
+                  <td x-text="fila.urgencia || '—'"></td>
+                  <td>
+                    <!-- Duplicada y oficio ambiguo: un aviso, en atención y
+                         con su texto (R93). -->
                     <template x-for="(marca, n) in fila.marcas" :key="n">
-                      <span class="mr-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800" x-text="marca"></span>
+                      <span class="mb-1 mr-1 rs-chip rs-chip--atencion" x-text="marca"></span>
                     </template>
                   </td>
                 </tr>
@@ -169,6 +216,10 @@
         </div>
       </section>
     </main>
+
+    <footer class="rs-pie">
+      <div class="rs-contenedor rs-pie__texto">Construcciones Ruesma · Posventa · entrada de incidencias.</div>
+    </footer>
   </div>
 
   <script src="js/config.js"></script>

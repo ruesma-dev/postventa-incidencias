@@ -10,7 +10,7 @@
 //   PAGINAS        las páginas reales de una sección, con su sección (R17, §16.8)
 //   PLACEHOLDERS   las acciones sin construir, con la ficha que las hará (R8)
 //   ESTADOS        los cinco estados de conest, por código y resumen (R21)
-//   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46)
+//   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46, R70)
 //   enConstruccion                          si una sección está en construcción (R62, R66)
 //   fichasDeSeccion                         las fichas que nombra su rótulo (R65)
 //   textoPlaceholder / seleccionadasPara    el aviso de un placeholder (R11, R12)
@@ -356,6 +356,9 @@
    *   del 2026-10-05, R31): la remesa en curso la protege la guarda de
    *   salida (`js/guarda_salida.js`, R78); `partes` es la página actual →
    *   `null`.
+   * - Desde una página real (una clave de PAGINAS, `design.md` §16.8): la
+   *   sección de la página es la actual → `null`; `partes` → `partes.html`;
+   *   las demás → `./#/<id>`. Todo en la misma pestaña (R70, R73).
    *
    * Un id o un `desde` desconocidos → `null`, nunca lanza.
    */
@@ -368,6 +371,10 @@
     if (desde === "circuito") {
       if (seccion.pagina !== null) return null;
       return { href: "./" + hashDe(seccion.id), nuevaPestana: false };
+    }
+    if (typeof desde === "string" && Object.prototype.hasOwnProperty.call(PAGINAS, desde)) {
+      if (seccion.id === PAGINAS[desde]) return null;
+      return { href: seccion.pagina || "./" + hashDe(seccion.id), nuevaPestana: false };
     }
     return null;
   }

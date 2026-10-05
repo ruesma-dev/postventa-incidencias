@@ -25,6 +25,16 @@
 //   portal (catálogo de placeholders, su aviso —también el genérico—, los
 //   títulos de las fichas y los datos de ejemplo) dice «maqueta».
 //
+// Bloque 10 (`tasks.md`, T29):
+//
+// - **R44, R70**: `Portal.enlaceSeccion(id, desde)` con `desde` = una página de
+//   `Portal.PAGINAS` (`design.md` §16.8), y la barra de `importar.html`: sus
+//   ocho pestañas con esos `href`, la de su sección como `<span
+//   aria-current="page">`, todo en la misma pestaña.
+// - **R66** en la barra de `importar.html` (`PAGINAS_CON_BARRA` crece), y la
+//   review del bloque 8, **H-7**: la forma ligada (`:data-construccion`,
+//   `:aria-label`, `x-bind:…`) de los atributos de R66 cuenta como problema.
+//
 // El módulo se carga DENTRO de cada test, como en `portal.test.js`: en la
 // fase RED un `require` de cabecera tumbaría el fichero entero sin nombre de
 // requisito.
@@ -45,8 +55,20 @@ function leer(relativa) {
   return fs.readFileSync(path.join(RAIZ_FRONT, relativa), "utf8");
 }
 
-/** Las páginas que llevan hoy la barra superior común (R66). */
-const PAGINAS_CON_BARRA = ["index.html", "partes.html"];
+/**
+ * Las páginas que llevan hoy la barra superior común (R66). `oficios.html`
+ * entra en el bloque 11.
+ */
+const PAGINAS_CON_BARRA = ["index.html", "partes.html", "importar.html"];
+
+/** Las páginas reales (`Portal.PAGINAS`) que ya llevan la barra (R70). */
+const PAGINAS_REALES_CON_BARRA = ["importar.html"];
+
+/**
+ * Las formas ligadas de los atributos de R66 (review del bloque 8, H-7): en
+ * una página de Alpine pisan al arrancar lo que el lector ve.
+ */
+const FORMAS_LIGADAS_R66 = [":data-construccion", "x-bind:data-construccion", ":aria-label", "x-bind:aria-label"];
 
 const ESTADOS_DE_SECCION = ["real", "parcial", "construccion"];
 
@@ -98,6 +120,11 @@ function problemasR66(html, Portal) {
     if (!pestana) {
       problemas.push(`falta la pestaña «${seccion.etiqueta}»`);
       continue;
+    }
+    for (const ligada of FORMAS_LIGADAS_R66) {
+      if (ligada in pestana.atributos) {
+        problemas.push(`«${seccion.etiqueta}» lleva ${ligada}: Alpine pisaría lo que dice el HTML (H-7)`);
+      }
     }
     const marcada = "data-construccion" in pestana.atributos;
     const etiquetaAccesible = pestana.atributos["aria-label"];
@@ -231,6 +258,135 @@ test("f035 R66: control: marcar una pestaña que funciona, o cambiar su aria-lab
     "un aria-label sin «(en construcción)» tiene que saltar",
   );
 });
+
+for (const [pagina, viejo, nuevo] of [
+  ["index.html", '<a href="#/bandeja"', '<a href="#/bandeja" :data-construccion="false"'],
+  ["index.html", '<a href="#/incidencias"', `<a href="#/incidencias" :aria-label="'Incidencias'"`],
+  ["importar.html", '<a href="./#/datos"', '<a href="./#/datos" x-bind:data-construccion="false"'],
+  ["importar.html", '<a href="./#/inicio"', `<a href="./#/inicio" x-bind:aria-label="'Inicio'"`],
+]) {
+  test(`f035 R66 (H-7): control: ${nuevo.split(" ")[2].split("=")[0]} ligado en una pestaña de ${pagina} salta`, () => {
+    // Mutaciones V5 y V6 de la review del bloque 8, en todas sus formas.
+    const Portal = portal();
+    const html = leer(pagina);
+    const estropeado = html.replace(viejo, nuevo);
+
+    assert.notEqual(estropeado, html, `el control no encuentra ${viejo} en ${pagina}`);
+    assert.ok(
+      problemasR66(estropeado, Portal).some((p) => p.includes("(H-7)")),
+      `${pagina}: la forma ligada de un atributo de R66 tiene que saltar`,
+    );
+  });
+}
+
+// ── R44 y R70 · La barra de las páginas reales (bloque 10, T29) ─────────────
+//
+// `enlaceSeccion(id, desde)` acepta como `desde` una página de
+// `Portal.PAGINAS` (`design.md` §16.8): la sección de la página es la actual
+// (`null`), `partes` lleva al circuito y las demás al portal (`./#/<id>`),
+// todo en la misma pestaña (R73 ajustado).
+
+test("f035 R44: enlaceSeccion desde una página de PAGINAS: su sección es la actual, partes.html y ./#/<id>", () => {
+  const { SECCIONES, PAGINAS, enlaceSeccion } = portal();
+
+  for (const pagina of Object.keys(PAGINAS)) {
+    for (const seccion of SECCIONES) {
+      const enlace = enlaceSeccion(seccion.id, pagina);
+      if (seccion.id === PAGINAS[pagina]) {
+        assert.equal(enlace, null, `${pagina}: «${seccion.id}» es su sección, la actual`);
+      } else if (seccion.id === "partes") {
+        assert.deepEqual(enlace, { href: "partes.html", nuevaPestana: false }, `${pagina}: partes`);
+      } else {
+        assert.deepEqual(enlace, { href: `./#/${seccion.id}`, nuevaPestana: false }, `${pagina}: ${seccion.id}`);
+      }
+    }
+  }
+});
+
+test("f035 R44: enlaceSeccion desde importar.html y oficios.html: Entrada es la actual", () => {
+  const { enlaceSeccion } = portal();
+
+  for (const pagina of ["importar.html", "oficios.html"]) {
+    assert.equal(enlaceSeccion("entrada", pagina), null, pagina);
+    assert.deepEqual(enlaceSeccion("inicio", pagina), { href: "./#/inicio", nuevaPestana: false }, pagina);
+    assert.deepEqual(enlaceSeccion("bandeja", pagina), { href: "./#/bandeja", nuevaPestana: false }, pagina);
+    assert.deepEqual(enlaceSeccion("partes", pagina), { href: "partes.html", nuevaPestana: false }, pagina);
+  }
+});
+
+test("f035 R44: enlaceSeccion con un desde desconocido devuelve null para toda sección y no lanza", () => {
+  const { SECCIONES, enlaceSeccion } = portal();
+
+  for (const raro of ["otra.html", "partes.html", "index.html", "", undefined, null, 42, "toString", "__proto__", "constructor", "IMPORTAR.HTML"]) {
+    for (const seccion of SECCIONES) {
+      assert.equal(enlaceSeccion(seccion.id, raro), null, `enlaceSeccion("${seccion.id}", ${JSON.stringify(raro)})`);
+    }
+  }
+  assert.equal(enlaceSeccion("no-existe", "importar.html"), null, "un id desconocido desde una página");
+});
+
+/**
+ * Lo que la barra de una página real incumple de R70 (y R44, R73): lista
+ * vacía = correcto. Las ocho pestañas en su orden; cada una con el `href` de
+ * `enlaceSeccion(id, pagina)`, sin `target`, `rel` ni formas ligadas; la de
+ * su sección (`PAGINAS[pagina]`), un `<span aria-current="page">` sin enlace.
+ */
+function problemasR70(html, pagina, Portal) {
+  const { SECCIONES, PAGINAS, enlaceSeccion } = Portal;
+  const pestanas = pestanasDeLaBarra(html);
+  const problemas = [];
+  const leidas = pestanas.map((p) => p.texto).join(" | ");
+  const esperadas = SECCIONES.map((s) => s.etiqueta).join(" | ");
+  if (leidas !== esperadas) problemas.push(`${pagina}: pestañas «${leidas}», no «${esperadas}»`);
+  for (const seccion of SECCIONES) {
+    const pestana = pestanas.find((p) => p.texto === seccion.etiqueta);
+    if (!pestana) continue;
+    const enlace = enlaceSeccion(seccion.id, pagina);
+    for (const sobra of [":href", "x-bind:href", ":target", "x-bind:target", "target", "rel"]) {
+      if (sobra in pestana.atributos) problemas.push(`${pagina}: «${seccion.etiqueta}» lleva ${sobra}`);
+    }
+    if (enlace === null) {
+      if (seccion.id !== PAGINAS[pagina]) problemas.push(`${pagina}: «${seccion.etiqueta}» sin enlace y no es su sección`);
+      if (pestana.nombre !== "span" || "href" in pestana.atributos) {
+        problemas.push(`${pagina}: «${seccion.etiqueta}» es la actual: <span> sin enlace`);
+      }
+      if (pestana.atributos["aria-current"] !== "page") problemas.push(`${pagina}: «${seccion.etiqueta}» sin aria-current`);
+      continue;
+    }
+    if (pestana.nombre !== "a") problemas.push(`${pagina}: «${seccion.etiqueta}» no es un enlace`);
+    if (pestana.atributos.href !== enlace.href) {
+      problemas.push(`${pagina}: «${seccion.etiqueta}» va a «${pestana.atributos.href}», no a «${enlace.href}»`);
+    }
+    if (enlace.nuevaPestana !== false) problemas.push(`${pagina}: «${seccion.etiqueta}» se abriría aparte`);
+    if ("aria-current" in pestana.atributos) problemas.push(`${pagina}: «${seccion.etiqueta}» no es la actual`);
+  }
+  return problemas;
+}
+
+for (const pagina of PAGINAS_REALES_CON_BARRA) {
+  test(`f035 R70: la barra de ${pagina} tiene las ocho pestañas, en su orden, con los href de enlaceSeccion(id, "${pagina}")`, () => {
+    assert.deepEqual(problemasR70(leer(pagina), pagina, portal()), []);
+  });
+}
+
+for (const [que, viejo, nuevo, senal] of [
+  ["un href distinto", '<a href="./#/bandeja"', '<a href="#/bandeja"', /va a «#\/bandeja»/],
+  ["la pestaña actual como enlace", '<span aria-current="page" class="rs-pestana">Entrada</span>', '<a href="./#/entrada" class="rs-pestana">Entrada</a>', /es la actual/],
+  ["un target en Inicio (mutación 21)", '<a href="./#/inicio"', '<a href="./#/inicio" target="_blank"', /Inicio» lleva target/],
+  ["un :href ligado", '<a href="./#/datos"', `<a href="./#/datos" :href="'./#/datos'"`, /lleva :href/],
+  ["el circuito por el portal", '<a href="partes.html"', '<a href="./#/partes"', /Partes firmados» va a/],
+  ["una pestaña de más marcada actual", '<a href="./#/inicio" class="rs-pestana">', '<a href="./#/inicio" aria-current="page" class="rs-pestana">', /no es la actual/],
+  ["una pestaña que falta", /<a href="\.\/#\/economico"[^>]*>Coste y venta<\/a>/, "", /pestañas «/],
+]) {
+  test(`f035 R70: control: ${que} en la barra de importar.html salta`, () => {
+    const html = leer("importar.html");
+    const estropeado = html.replace(viejo, nuevo);
+    assert.notEqual(estropeado, html, `el control no encuentra ${viejo}`);
+
+    const problemas = problemasR70(estropeado, "importar.html", portal());
+    assert.ok(problemas.some((p) => senal.test(p)), `${que}: R70 no lo ve:\n${problemas.join("\n")}`);
+  });
+}
 
 // ── Bloque 9 · El rótulo «En construcción» (R65) y la portada (R67) ─────────
 //

@@ -2,8 +2,10 @@
 /* =============================================================================
    Identidad visual Ruesma · la hoja de la marca (F-035, design.md §15)
 
-   La comparten las dos páginas del front: el portal (index.html) y el
-   circuito de partes firmados (partes.html). Toma el lenguaje del portal
+   La comparten las páginas del front: el portal (index.html), el circuito
+   de partes firmados (partes.html) y las páginas reales de la entrada
+   (importar.html; oficios.html, en el bloque 11), que no cargan
+   css/portal.css (R77). Toma el lenguaje del portal
    corporativo (front-portal: burdeos #9f2842, gris acero #7b868c, trama de
    plano, Bricolage Grotesque y Archivo) y lo escribe como tokens y
    componentes propios, en castellano y con prefijo rs-. No es una copia de
@@ -221,7 +223,8 @@ a.rs-pestana:hover {
   background-color: var(--rs-atencion);
 }
 
-/* Solo en el circuito: la leyenda de R47, en una segunda línea. */
+/* La leyenda de la barra, en una segunda línea: la de R47 en el circuito y
+   la de R70 en las páginas reales (sin la frase de la remesa). */
 .rs-barra__leyenda {
   display: flex;
   align-items: center;
@@ -667,12 +670,30 @@ a.rs-pestana:hover {
   color: var(--rs-info);
 }
 
+.rs-aviso--ok {
+  background-color: var(--rs-ok-suave);
+  color: var(--rs-ok);
+}
+
+/* La primera línea de un aviso que la lleva (el resultado de importar, la
+   lista de errores): el color, el del aviso. */
+.rs-aviso__titulo {
+  margin: 0;
+  font-weight: 600;
+}
+
 .rs-aviso--compacto {
   padding: 0.35rem 0.7rem;
   font-size: 0.78rem;
 }
 
 /* ---------- Tablas ------------------------------------------------------------- */
+
+/* La tabla ancha se desplaza dentro de su caja, nunca la página. La usan el
+   portal y las páginas reales (vivía en css/portal.css hasta el bloque 10). */
+.rs-desplazable {
+  overflow-x: auto;
+}
 
 .rs-tabla {
   width: 100%;
@@ -750,6 +771,59 @@ a.rs-pestana:hover {
 
 .rs-cabecera .rs-titulo {
   font-size: clamp(1.35rem, 2.6vw, 1.6rem);
+}
+
+/* ---------- Las páginas reales de una sección (importar.html, R71) ----------- */
+
+/* Las migas: «Portal de posventa › Entrada». El separador va con
+   aria-hidden; los enlaces son rs-enlace. */
+.rs-migas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--rs-acero-texto);
+}
+
+/* La subnavegación de la sección: píldoras como las pestañas de la barra; la
+   actual la pinta aria-current, como en la barra (R51). */
+.rs-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+}
+
+.rs-subnav__item {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--rs-linea-fuerte);
+  border-radius: var(--rs-radio-pildora);
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--rs-tinta-suave);
+  text-decoration: none;
+  transition-property: color, background-color, border-color;
+  transition-duration: var(--rs-duracion);
+  transition-timing-function: var(--rs-curva);
+}
+
+a.rs-subnav__item:hover {
+  background-color: var(--rs-burdeos-suave);
+  border-color: var(--rs-burdeos);
+  color: var(--rs-burdeos);
+}
+
+.rs-subnav__item[aria-current="page"] {
+  background-color: var(--rs-burdeos-suave);
+  border-color: transparent;
+  color: var(--rs-burdeos);
+  font-weight: 600;
 }
 
 /* El indicador del backend, en una píldora. */

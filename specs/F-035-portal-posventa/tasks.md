@@ -622,7 +622,7 @@ ya pide cada verificación.
 
 ## Bloque 10 · `importar.html`, sección real del portal (2026-10-05)
 
-- [ ] **T29**: (a) `js/portal.js`: `Portal.PAGINAS` (si no entró en T23) y
+- [x] **T29**: (a) `js/portal.js`: `Portal.PAGINAS` (si no entró en T23) y
       `enlaceSeccion(id, desde)` con `desde` = una página de `PAGINAS`
       (`design.md` §16.8); RED primero en `tests_js/f035_paginas.test.js`.
       (b) `importar.html` según `design.md` §16.5: las cuatro `<link>` y la

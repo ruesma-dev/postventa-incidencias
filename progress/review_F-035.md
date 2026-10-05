@@ -451,3 +451,275 @@ mutaciones a mano tienden a atacar la lógica pura y las guardias estáticas,
 que ya están bien probadas, y dejan sin mirar el cableado, que es justo lo
 que un test de lógica pura no ve. Caso de origen: F-035, H-R1, con cinco
 mutaciones que rompen la navegación y dejan 398/398 en verde.
+
+---
+
+## Review del bloque 7 (reanudación) · T23–T24 · 2026-10-05
+
+> reviewer. Alcance **acotado** a `git diff 56b90b0..HEAD` (`bdf8747` T23,
+> `baa3317` T24) en `feature/F-035-portal-posventa`. Las tareas de los demás
+> bloques de la enmienda (8 → 16 → 17 → 9 → … → 15) siguen abiertas **a
+> propósito**: no cuentan como `[ ]` de esta review.
+
+### Veredicto
+
+**APPROVED** (del bloque 7, no de la feature). El bloque hace lo que pide
+T23/T24: retira del portal todo lo que la maqueta tenía de F-036, `entrada`
+enlaza en la misma ventana a `importar.html` y `oficios.html`, `init.sh`
+vuelve a verde sin tocar la guarda R28, y no se toca ni el circuito ni F-036.
+La fase RED es real (reproducida) y las mutaciones 14 y 15 del diseño mueren.
+Quedan cinco hallazgos **menores**, cada uno con destino en un bloque ya
+planificado (abajo); ninguno deja un checkbox vacío.
+
+### Nivel de rigor
+
+`estandar` (declarado en `harness/features.json`). Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con supervivientes analizados.
+F-035 no tiene Python de producción: la cobertura sale N/A con motivo impreso
+y la campaña da 0 mutantes; la compensación son las mutaciones a mano de
+`design.md` §16.10 (14 y 15 en este bloque) más las del reviewer.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh` (tal cual, árbol real) | **exit 0**, `ENTORNO LISTO`. Raíz 107 passed; api y front en verde (caché: árbol sin cambios desde el último verde); `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; ruff 71 avisos, deuda previa |
+| Front en un worktree desechable del scratchpad (HEAD `baa3317`, sin caché) | pytest **417 passed, 3 skipped** (los 3 son los del diff de rama, saltados por HEAD separado); Node **499 pass, 0 fail**; raíz `tests/test_f035_placeholders_vivos.py` **11 passed** |
+| **RED reproducido**: tests nuevos de `baa3317` sobre `index.html`, `js/portal.js` y `js/maqueta_datos.js` de `56b90b0` | **7 failed, 6 passed**, los mismos 7 tests y mensajes que pega el informe (§3); los 6 que pasan son los controles del detector y del lector de `PAGINAS` |
+| Ruff sobre `test_f035_paginas.py` y `test_f035_portal.py` | `All checks passed!` |
+| Recálculo de la mutación: `harness.alcance.alcance_de_feature("F-035", base="2a86bca")` | 0 ficheros, 0 líneas de producción: coincide con `progress/mutacion_F-035.md` |
+| **Reejecución de la campaña** («Tiempo total» 0,0 s < 5 min): `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900 --salida <scratchpad>` | 0 generados, 0 muertos, 0 supervivientes, 0 timeouts, 0,0 s: **idéntico** al informe. `git status` limpio después |
+| **Control del cero**: `generar_mutantes` sobre los `.py` del diff ignorando la exclusión de alcance | `test_f035_paginas.py` 15 y `test_f035_portal.py` 5 mutantes: el generador funciona y el cero es **legítimo** (en el diff solo hay tests, excluidos por diseño) |
+| «F-036 intacto»: `git diff 2a86bca -- …test_f036_front.py …importacion.test.js …oficios.test.js` | vacío (0 líneas) |
+| R76: `git diff --name-status 2a86bca..HEAD -- services/postventa-api` | vacío |
+| Circuito y F-036: `git diff --name-status 56b90b0..HEAD --` `partes.html`, `importar.html`, `oficios.html`, `js/app.js`, `js/api.js`, `js/importacion.js`, `js/oficios.js`, `css/` | vacío |
+| `git show --stat bdf8747` | exactamente los 7 ficheros de (a)–(e) de T23 |
+| `git worktree list` / `git status` al acabar | solo el árbol real y el worktree ajeno `agent-a6e2f9bed1d46cdbc` (no se toca); árbol limpio |
+
+Nota sobre la cabecera de `progress/mutacion_F-035.md`: dice `--workers 1`
+aunque el comando tecleado no lo llevaba. Lo escribe la herramienta
+(`comando_de` pone los workers efectivos; con 0 mutantes, 1). No es un
+informe a mano: la reejecución da los mismos totales.
+
+### Respuestas a las preguntas del líder
+
+**1 · ¿Quedan restos de F-036 que la guarda R28 no vea?** De **maqueta**
+(placeholders, bloques de `MaquetaDatos`, directivas `datos.entrada`, ids del
+catálogo, título en `TITULOS_FICHAS`): **ninguno**. Barrido propio de
+`index.html`, `js/portal.js`, `js/maqueta_datos.js` y `js/portal_app.js` por
+`F-036`, `Excel`, `importa`, `soltar`, `oficio`, `plantilla`, `duplicad` y
+`entrada.`. Lo que aparece y **es legítimo**: `SECCIONES` (`entrada` con
+`fichas: ["F-036", "F-037"]`, el catálogo de la sección, que R62 usará en el
+bloque 8); la fila del datamart (`fichas: ["F-036", "F-038"]`, dato de F-048:
+su «pendiente» es la publicación en el datamart, que sigue sin existir); el
+comentario de `BJ-0006` («Duplicada de BJ-0005 (F-036)») y los
+`origen: "Excel"` de la bandeja (datos de F-038). Lo que **no** es maqueta
+pero sí **texto que contradice que F-036 esté en producción**, y que ni R28
+ni R68 ven: H-4 (tres textos) y H-5 (CSS muerto).
+
+**2 · ¿El enlace de `entrada` cumple R17 enmendado y no rompe R14/R18?**
+Sí. Los dos `<a>` van a `importar.html` y `oficios.html`, **sin `target` ni
+`rel`**: misma ventana (comprobado en el HTML y con las mutaciones A, B, F y
+R). R14 (primitivas de red) y R18 (almacenamiento) siguen en verde: el cambio
+no añade ningún script ni atributo ligado, solo dos `href` estáticos. El test
+de R17 se endureció bien (además de admitir `PAGINAS` con ancla opcional,
+exige que **ningún** `<a>` del portal lleve `target`); su única grieta es la
+forma ligada `:target`, ver H-1.
+
+**3 · ¿Se ha tocado la lógica del circuito o de F-036?** **No.** Ni
+`partes.html`, ni ningún `js/` del circuito, ni `js/importacion.js`,
+`js/oficios.js`, `js/api.js`, ni `importar.html`/`oficios.html`, ni `css/`,
+ni sus tests (diffs vacíos, tabla de arriba).
+
+**4 · `tests/test_f035_paginas.py` (R68): ¿RED real y mata lo que dice?**
+**Sí** a las dos. RED reproducido con el código de `56b90b0` (7 rojos, los
+mismos mensajes). Mutaciones a mano del reviewer en un worktree desechable
+del scratchpad (`git worktree add --detach`, retirado con
+`git worktree remove --force`; árbol real limpio), con la suite **entera** del
+front + la guarda de la raíz por mutación (+ Node cuando la mutación es JS):
+
+| # | Mutación | Resultado | Lo caza |
+|---|---|---|---|
+| A | `target="_self"` en la tarjeta de importar | muerto | R68[importar], R17 |
+| B | `target="_blank" rel="noopener"` en la de oficios | muerto | R68[oficios], R17 |
+| C | `target="_blank"` en el paso 06 del recorrido (`partes.html`) | muerto | R17, R46 |
+| D | La tarjeta va a `importar.html#bandeja` | muerto | R68[importar] |
+| E | `PAGINAS` gana `"otra.html": "entrada"` | muerto | R17 `…declara_las_paginas_reales…` y `…cada_pagina…existe` |
+| F | `href="./importar.html"` | muerto | R68, R17 |
+| G | Chip de oficios «En construcción» | muerto | R68[oficios] |
+| H | Chip de importar `rs-chip--neutro` | muerto | R68[importar] |
+| I | Frase de oficios cambiada | muerto | R68[oficios] |
+| J | `<span class="rs-ficha">F-036</span>` estático en el `h1` | muerto | R29 (`CHIPS_DE_FICHA`) |
+| K | `<dl>` estático con «Filas leídas 8 · Duplicadas 1» en `entrada` (sin `datos.`) | **sobrevive** | — (H-3) |
+| L | `<button class="placeholder">Elegir el Excel</button>` sin `data-placeholder` | muerto | R10 |
+| M | `"F-036"` vuelve a `TITULOS_FICHAS` | muerto | detector de R68 |
+| N | `importacion: { ficha: "F-036" }` en `MaquetaDatos` (otro nombre de bloque) | muerto | detector de R68 y R28 de la raíz (+ su control) |
+| O | Se cambia el título «Web de clientes» | muerto | R68, panel web |
+| P | La tarjeta de oficios va a `#/datos` | muerto | R68[oficios] |
+| Q (= manual 14) | Vuelve `data-placeholder="F-036"` con `entrada.importar` | muerto | R28 de la raíz (+ control), R68 ×2, R9, F-007 R32 (suite JS) |
+| R (= manual 15) | Tarjeta de oficios a `otra.html` | muerto | R17, R68[oficios] |
+| S | `:target` ligado (`_blank`) en la tarjeta de importar | **sobrevive** | — (H-1) |
+| T | `@click.prevent` con `window.open(…)` en la tarjeta de oficios | **sobrevive** | — (H-2) |
+
+17 de 20 muertas; las 3 vivas, analizadas en H-1, H-2 y H-3. Ninguna es de
+las que el diseño fija para este bloque (14 y 15, muertas) y las tres tienen
+destino en un bloque ya planificado; por eso no bloquean.
+
+**5 · CHECKPOINTS aplicables:** a continuación.
+
+### Checkpoints (acotados al bloque)
+
+**C1**
+- [x] `init.sh` exit 0 (ejecutado por el reviewer).
+- [x] Ficheros del arnés presentes (`init.sh` los da en `[OK]`).
+
+**C2**
+- [x] Una sola feature `in_progress` (F-035; `init.sh`).
+- [x] Rama `feature/F-035-portal-posventa`.
+- [x] `current.md`: la entrada nueva describe el bloque y su siguiente paso.
+  Sigue acumulando histórico de la feature (deuda previa, O-2 de la review
+  anterior); no lo introduce este bloque.
+- [x] Features `done` con resumen en `history.md`: este bloque no cierra
+  ninguna.
+
+**C3**
+- [x] Hexagonal: el diff es HTML, JS de la maqueta y tests del front; no toca
+  `domain/` ni adaptadores, así que no hay frontera que romper.
+- [x] Primera línea con ruta: `test_f035_paginas.py` (`# services/…`); los
+  demás ficheros conservan la suya.
+- [x] Sin `print()`, sin TODOs, sin secretos, sin dependencias nuevas
+  (`test_f035_paginas.py` importa de `test_f035_portal.py`, con el precedente
+  `test_f036_front.py` → `test_f007_estaticos.py`).
+- [x] Parte como unidad, validaciones antes de archivar/cerrar, manuscrito,
+  firmado ≠ conforme, reprocesar no duplica, `conest`: **N/A justificado**:
+  el bloque no toca el circuito ni el backend (diffs vacíos arriba) y ninguno
+  de esos invariantes vive en los ficheros cambiados.
+- [x] Ningún PDF ni parte en git: `git log --diff-filter=A 56b90b0..HEAD`
+  añade solo `services/postventa-front/tests/test_f035_paginas.py`.
+
+**C3 bis** — **N/A**: el bloque no añade ni modifica nada en
+`docs/referencia/`.
+
+**C4**
+- [x] R68 y R17 enmendado con tests trazables (`test_f035_r68_*`,
+  `test_f035_r17_*`) en verde; R28 con su control, en verde.
+- [x] Sin red ni BBDD: los tests leen ficheros como texto (`html.parser` y
+  regex).
+- [x] MANUAL (humano): este bloque no añade ninguna; las de la enmienda (V1,
+  V2, V4, V5) están en la spec para el bloque 15.
+
+**C4 bis**
+- [x] `rigor: "estandar"` declarado.
+- [x] Fase RED: traza real en el informe (§3) **y reproducida** por el
+  reviewer (7 rojos).
+- [x] Cobertura: N/A **con el motivo impreso** por `init.sh` (sin líneas
+  Python de producción frente a `dev`; JS y HTML no se miden).
+- [x] Mutación: `progress/mutacion_F-035.md` generado por la herramienta;
+  alcance y nº de mutantes recalculados (0/0) y control del cero hecho.
+- [x] Muertos comprobados: campaña **reejecutada** (0,0 s < 5 min), totales
+  idénticos.
+- [x] Coste por mutante: N/A **justificado**: 0 mutantes, no hay división
+  posible; la compensación son las mutaciones a mano.
+- [x] Supervivientes: 0 de la herramienta; de las manuales, 14 y 15 muertas y
+  las tres vivas del reviewer analizadas (H-1, H-2, H-3). Nivel `estandar`:
+  no exige aceptación escrita del humano.
+- [x] «Evidencias» del bloque con los cuatro números (workers: 0 mutantes,
+  la cabecera dice 1).
+- [x] Ningún N/A sin justificar.
+
+**C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+
+**C5**
+- [x] T23 y T24 `[x]`, con sus commits `F-035 T23: …` y `F-035 T24: …`. El
+  resto de `tasks.md` sigue abierto **a propósito** (bloques 8–17 de la
+  enmienda).
+- [x] Sin ficheros sin trackear (`git status` limpio).
+- [x] `features.json`: F-035 `in_progress`, correcto con la feature a medias.
+
+### Cobertura del bloque: requisito → test
+
+| Requisito | Test |
+|---|---|
+| R68 (enlaces, misma ventana, chip, frase) | `test_f035_r68_entrada_enlaza_a_la_pagina_real_en_la_misma_ventana[importar.html]` y `[oficios.html]` |
+| R68 (nada de F-036 en el portal) | `test_f035_r68_no_queda_en_el_portal_nada_de_f036` + `…_control_el_detector_ve_cada_resto_de_f036` ×5 |
+| R68 (sigue la web de clientes) | `test_f035_r68_el_panel_de_la_web_de_clientes_sigue_en_entrada` (el envoltorio F-037 es del bloque 9) |
+| R17 enmendado | `test_f035_portal.py::test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito`; `test_f035_r17_portal_paginas_declara_…`, `…_cada_pagina_de_portal_paginas_existe`, `…_control_paginas_del_portal_lee_…` |
+| R28 | raíz `tests/test_f035_placeholders_vivos.py` (y su control), en verde |
+
+### Hallazgos
+
+1. **H-1 · menor · El test de R17 no ve un `target` ligado.** En
+   `services/postventa-front/tests/test_f035_portal.py`,
+   `test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito`,
+   `assert "target" not in a.atributos` solo mira el atributo literal:
+   `:target="…"` o `x-bind:target="…"` pasan (mutación S). El mismo test ya
+   trata `:href` y `x-bind:href`, así que es una incoherencia de una línea.
+   Lo mismo en `services/postventa-front/tests/test_f035_paginas.py:132`.
+   **Arreglo**: recorrer `("target", ":target", "x-bind:target")` en los dos.
+   **Destino**: bloque 8 (T25 (f) ya toca `test_f035_portal.py`) o, como
+   tarde, las guardias de R73 del bloque 10.
+2. **H-2 · menor · «Misma ventana» no ve un `window.open`.** Un
+   `@click.prevent` con `window.open(…)` en una tarjeta abre otra ventana con
+   el `href` intacto y nada cae (mutación T). `window.open` no está en la
+   lista de R14, que es de red, no de navegación. **Destino**: la lista
+   cerrada de R73 (bloque 10, `design.md` §16.10) debería incluir
+   `window.open` en `index.html`, `importar.html` y `oficios.html`; el
+   bloque 16 (guarda de salida) es el otro sitio natural. Lo decide el
+   líder; no es de este bloque.
+3. **H-3 · menor · El detector de R68 es por patrones.** Datos de ejemplo
+   escritos a mano en `entrada`, sin `datos.` ni `data-placeholder` (un
+   `<dl>` con «Filas leídas 8»), pasan (mutación K). La spec define «bloque
+   de datos de ejemplo» como bloque de `MaquetaDatos`, así que el test cumple
+   la letra; lo que falta es fijar la **estructura cerrada** de `entrada`.
+   **Destino**: bloque 9 (T27), cuando entre el envoltorio
+   `data-en-construccion="F-037"`: que R68 exija que `entrada` contenga solo
+   la cabecera, la rejilla de las dos tarjetas y el envoltorio F-037.
+4. **H-4 · menor · Textos visibles que siguen diciendo que solo funciona el
+   circuito.** Ni R28 ni R68 los ven y ninguno es de este bloque, pero el
+   líder pidió buscarlos:
+   - `services/postventa-front/index.html:78`, en el aviso: «El circuito de
+     verdad es la pestaña «Partes firmados».» → R13 enmendado, **bloque 8**
+     (T25 (e)).
+   - `index.html:87` («Posventa · maqueta del ciclo») y `index.html:92`
+     («lo único que funciona de verdad es el circuito de partes firmados»),
+     más los chips «Maqueta» de las tarjetas de `inicio` → R67, **bloque 9**.
+   - `services/postventa-front/js/maqueta_datos.js:129`, pendiente del bloque
+     `web` (F-037): «bloqueado por la web de clientes **y por la importación
+     del Excel**», que ya existe. **Ningún bloque lo recoge**: T23 y R68 piden
+     el panel «tal cual». Lo apuntó el implementer. **Decisión del
+     líder/humano**: quitar «y por la importación del Excel» en el bloque 9
+     (cuando ese panel entra en su envoltorio), con una nota en T27.
+5. **H-5 · nit · CSS muerto tras T23.** En
+   `services/postventa-front/css/portal.css` quedan sin uso en las cuatro
+   páginas: `.rs-encabezado` (l. 450), `.rs-acciones--centro` (l. 498),
+   `.rs-soltar` y `.rs-soltar__texto` (l. 509–520) y
+   `.rs-cifras--compactas` (l. 997). El implementer no tocó el CSS para no
+   mover la `?v=`, lo que es razonable en este bloque. **Destino**: bloque 9,
+   T27 (d), que ya toca `portal.css` y la `?v=`.
+
+### Observaciones sin acción
+
+- **O-1**: `SECCIONES.entrada.fichas` conserva `F-036`; es el catálogo de la
+  sección, no un resto (el escáner de R28 no lo cuenta, y R62 del bloque 8 le
+  pondrá estado). Correcto.
+- **O-2**: la cabecera de `progress/mutacion_F-035.md` (`--workers 1`, sin
+  `--timeout`) no coincide con el comando del informe; la escribe la
+  herramienta con los valores efectivos. Correcto.
+
+### Qué queda para el humano
+
+- Nada que decidir para cerrar el bloque 7.
+- Para el líder (y el humano si quiere): el texto de `maqueta_datos.js:129`
+  (H-4, tercer punto), que hoy no recoge ningún bloque, y si `window.open`
+  (H-2) entra en la lista cerrada de R73. H-1, H-3 y H-5 tienen ya bloque de
+  destino; conviene que el líder los cite en el encargo de ese bloque.
+
+### Automejora (propuesta, no aplicada)
+
+**P-R2 · `CHECKPOINTS.md` C4 bis, para `arnes-base` (vale para cualquier
+front con un framework reactivo: Alpine, Vue).** Cuando una guarda estática
+prohíbe o exige un **atributo HTML** (`target`, `href`, `disabled`…), las
+mutaciones a mano deben incluir **la forma ligada** del atributo (`:attr`,
+`x-bind:attr`, `v-bind:attr`): `html.parser` la ve como otro nombre de
+atributo y una guarda literal no la caza. Caso de origen: F-035, bloque 7,
+H-1 (mutación S).

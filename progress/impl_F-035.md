@@ -4839,3 +4839,138 @@ mutante aplicado (el `diff` lo demuestra).
 | Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base 82db245 --salida <scratchpad>/mutacion_h16.md` → «0 fichero(s), 0 línea(s) de producción … 0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s». Informe al scratchpad para no pisar `progress/mutacion_F-035.md` (bases de la feature) |
 | Mutantes a mano | **2 generados (G1, G12), 2 muertos, 0 supervivientes** |
 | Tiempo de la suite | raíz 6,93 s; front pytest 14,09 s (`init.sh`); Node 1,9 s |
+
+## Arreglos de la re-review del bloque 16 · H16-8 y H16-9 · 2026-10-05
+
+> implementer. **Tercera vuelta** sobre el bloque 16, autorizada expresamente
+> por el humano («si», 2026-10-05) con su límite: la re-review siguiente solo
+> comprueba estos dos casos, sin abrir variantes nuevas. **Solo tests**:
+> `git diff df88470 HEAD -- services/postventa-front/js` vacío (0 líneas).
+
+### 1 · Qué cambió
+
+Un único fichero: `services/postventa-front/tests_js/guarda_salida.test.js`
+(+2 tests; 58 → 60; dos aserciones nuevas en tests existentes).
+
+| Commit | Hallazgo | Cambio |
+|---|---|---|
+| `e20765e` | **H16-8** | Dos positivos de R79 (c) con el pendiente en **primer** lugar: `una remesa de un solo parte aprobado sin cerrar es trabajo sin terminar` (`[aprobado]`) y `con el único pendiente en primer lugar, delante de uno cerrado, hay trabajo` (`[aprobado, cerrado: true]`). Fase `resumen`, sin violaciones del Proxy |
+| `07058b6` | **H16-9** | El doble `navegador()` apunta el tercer argumento de `addEventListener` (`{ tipo, manejador, opciones }`). El test vm de H16-1 y el de R80 `instalar registra exactamente un beforeunload…` exigen `opciones === undefined` (ni `once` ni `passive`), que es lo que hace el código real |
+
+Se eligió la aserción sobre `opciones` (la vía que proponía la review) y no
+simular el comportamiento del navegador: el doble no implementa `once` ni
+`passive`, así que la única prueba directa sobre el código real es mirar con
+qué argumentos se registra.
+
+### 2 · RED: N14, N5 y N6, cada una SOLA, en una copia desechable
+
+Guion del scratchpad `mutar_h16_3.py`: copia `js/` y `tests_js/` a
+`mut_h16_3/`, exige que el patrón aparezca **una** vez, aplica la mutación,
+imprime el `diff` contra el real y lanza
+`node --test --test-reporter=spec tests_js/guarda_salida.test.js`. La copia se
+rehace desde cero en cada mutación y se borró al final; el árbol real no se
+tocó. Nota: el primer intento de N5/N6 no aplicó (el guion suponía CRLF y
+`js/guarda_salida.js` está en LF en disco); el `assert` del guion lo paró con
+«el patrón aparece 0 veces» antes de lanzar nada, se corrigió y se repitió.
+
+**N14** (`guarda_salida.js:85`, el bucle de (c) empieza en `i = 1`):
+
+```
+85c85
+<       for (let i = 0; i < partes.length; i += 1) {
+---
+>       for (let i = 1; i < partes.length; i += 1) {
+✖ f035 R79 (c): una remesa de un solo parte aprobado sin cerrar es trabajo sin terminar (2.0533ms)
+✖ f035 R79 (c): con el único pendiente en primer lugar, delante de uno cerrado, hay trabajo (0.5895ms)
+ℹ tests 60
+ℹ pass 58
+ℹ fail 2
+
+test at tests_js\guarda_salida.test.js:322:1
+✖ f035 R79 (c): una remesa de un solo parte aprobado sin cerrar es trabajo sin terminar (2.0533ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  false !== true
+
+test at tests_js\guarda_salida.test.js:331:1
+✖ f035 R79 (c): con el único pendiente en primer lugar, delante de uno cerrado, hay trabajo (0.5895ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  false !== true
+exit: 1
+```
+
+(Repetida tras el commit de H16-9 sobre el fichero de tests final: los mismos
+2 fallos, 58/60.)
+
+**N5** (`instalar` con `{ once: true }`):
+
+```
+148c148
+<     });
+---
+>     }, { once: true });
+✖ f035 R80: instalar registra exactamente un beforeunload en la ventana, y nada en el documento (2.9677ms)
+✖ f035 R78: cargada como script en la página, la guarda se instala sola y su beforeunload pregunta con trabajo (4.6384ms)
+ℹ tests 60
+ℹ pass 58
+ℹ fail 2
+
+test at tests_js\guarda_salida.test.js:619:1
+  AssertionError [ERR_ASSERTION]: el beforeunload se registra sin opciones: ni once (se iría tras la primera salida) ni passive (ignoraría preventDefault)
+  + {
+  +   once: true
+  + }
+  - undefined
+test at tests_js\guarda_salida.test.js:664:1
+  (la misma aserción, actual: { once: true }, expected: undefined)
+exit: 1
+```
+
+**N6** (`instalar` con `{ passive: true }`):
+
+```
+148c148
+<     });
+---
+>     }, { passive: true });
+✖ f035 R80: instalar registra exactamente un beforeunload en la ventana, y nada en el documento (2.8217ms)
+✖ f035 R78: cargada como script en la página, la guarda se instala sola y su beforeunload pregunta con trabajo (3.5641ms)
+ℹ tests 60
+ℹ pass 58
+ℹ fail 2
+
+test at tests_js\guarda_salida.test.js:619:1
+  AssertionError [ERR_ASSERTION]: el beforeunload se registra sin opciones: ni once (se iría tras la primera salida) ni passive (ignoraría preventDefault)
+  + {
+  +   passive: true
+  + }
+  - undefined
+test at tests_js\guarda_salida.test.js:664:1
+  (la misma aserción, actual: { passive: true }, expected: undefined)
+exit: 1
+```
+
+### 3 · Verde sobre el código real
+
+- `node --test tests_js/guarda_salida.test.js`: **60/60**.
+- `node --test "tests_js/*.test.js"`: **569/569** (567 + 2), 2,18 s.
+- `git diff df88470 HEAD -- services/postventa-front/js`: **vacío**.
+- `bash harness/init.sh` (una vez, tal cual): **ENTORNO LISTO**. Raíz 112
+  passed en 7,82 s; api en verde (caché); front 473 passed en 13,35 s;
+  `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente
+  a dev)`; ruff 71 avisos (deuda previa).
+
+### 4 · Fuera del alcance
+
+- Ninguna variante nueva, según el límite que puso el humano para esta vuelta.
+- **H16-3 a H16-6** (spec) siguen para el spec-author en el bloque 14.
+- El vistazo MANUAL en navegador y V1/V2 siguen pendientes, sin cambios.
+
+### Evidencias (arreglos H16-8 y H16-9)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | raíz **112 passed**; front pytest **473 passed**; Node **569/569** (60 de `guarda_salida.test.js`); api en verde (caché) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el cambio es solo de tests JS |
+| Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base df88470 --salida <scratchpad>/mutacion_h16_3.md` → «0 fichero(s), 0 línea(s) de producción … 0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s». Informe al scratchpad para no pisar `progress/mutacion_F-035.md` |
+| Mutantes a mano | **3 generados (N14, N5, N6), 3 muertos, 0 supervivientes** |
+| Tiempo de la suite | raíz 7,82 s; front pytest 13,35 s (`init.sh`); Node 2,18 s |

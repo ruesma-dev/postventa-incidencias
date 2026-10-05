@@ -1,6 +1,16 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · ARREGLOS DE LA RE-REVIEW DEL BLOQUE 16 (H16-8, H16-9) HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: re-review acotada a estos dos casos y después bloque 17
+>
+> implementer. **Tercera vuelta sobre el bloque 16, autorizada expresamente por el humano**
+> («si», 2026-10-05) **con su límite: la re-review siguiente solo comprueba H16-8 y H16-9, sin
+> abrir variantes nuevas.** Informe: **`progress/impl_F-035.md`**, «Arreglos de la re-review del
+> bloque 16». Solo tests (58 → 60); `js/` sin diff. `e20765e` **H16-8**: R79 (c) con el pendiente
+> primero (`[aprobado]` y `[aprobado, cerrado]`) → mata N14. `07058b6` **H16-9**: el
+> `beforeunload` se registra sin opciones (test vm y R80) → mata N5 y N6. Node 569/569;
+> `bash harness/init.sh` **ENTORNO LISTO**. Sin push.
+
 > ## ▶ F-035 · ARREGLOS DE LA REVIEW DEL BLOQUE 16 (H16-1, H16-2) HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: re-review del bloque 16 y después bloque 17
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Arreglos de la review del bloque 16».

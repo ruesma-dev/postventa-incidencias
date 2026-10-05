@@ -557,7 +557,7 @@ ya pide cada verificación.
 
 ## Bloque 8 · El estado de cada sección y la barra (2026-10-05)
 
-- [ ] **T25**: (a) `estado` en cada entrada de `Portal.SECCIONES`, escrito
+- [x] **T25**: (a) `estado` en cada entrada de `Portal.SECCIONES`, escrito
       literal (R62, tabla de `design.md` §16.4), y `Portal.enConstruccion`.
       (b) En la raíz, `tests/test_f035_placeholders_vivos.py`: R62 frente a
       `features.json`, con su control (copia en memoria con F-038 `done`:

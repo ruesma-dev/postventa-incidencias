@@ -208,6 +208,19 @@ a.rs-pestana:hover {
   font-weight: 600;
 }
 
+/* La pestaña de una sección en construcción (R66, design.md §16.4): un punto
+   ámbar tras la etiqueta, que avisa antes de entrar. Su nombre accesible lo
+   dice el aria-label de la pestaña; el punto es solo visual. */
+.rs-pestana[data-construccion]::after {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  margin-left: 0.4rem;
+  border-radius: 50%;
+  background-color: var(--rs-atencion);
+}
+
 /* Solo en el circuito: la leyenda de R47, en una segunda línea. */
 .rs-barra__leyenda {
   display: flex;

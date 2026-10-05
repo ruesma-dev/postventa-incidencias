@@ -20,6 +20,15 @@ Bloque 7 (`tasks.md`, T23):
   sección; aquí se fija el dato (§16.8). El test de R17 de
   `test_f035_portal.py` lo lee para admitir esos enlaces.
 
+Bloque 8 (`tasks.md`, T25):
+
+- **R66**, la marca visual: `css/styles.css` pinta un punto ámbar tras la
+  etiqueta de `.rs-pestana[data-construccion]`, con tokens. Qué pestañas
+  llevan el atributo se cruza con `Portal.SECCIONES` en
+  `tests_js/f035_paginas.test.js`.
+- Review del bloque 7, **H-1**: el «misma ventana» de R68 también mira el
+  `target` ligado (`targets_de`, de `test_f035_portal.py`).
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -32,11 +41,15 @@ import pytest
 from test_f035_portal import (
     PORTAL,
     RAIZ_FRONT,
+    STYLES_CSS,
     _uno,
     clases,
+    css_sin_comentarios,
     leer_html,
     paginas_del_portal,
+    reglas_css,
     seccion,
+    targets_de,
 )
 
 PORTAL_JS = RAIZ_FRONT / "js" / "portal.js"
@@ -129,7 +142,7 @@ def test_f035_r68_entrada_enlaza_a_la_pagina_real_en_la_misma_ventana(href, titu
         f'<a href="{href}"> en la sección entrada',
     )
 
-    assert "target" not in enlace.atributos, f'<a href="{href}">: a la página real se va en la misma ventana'
+    assert targets_de(enlace) == [], f'<a href="{href}"> lleva {targets_de(enlace)}: a la página real se va en la misma ventana'
     assert "rel" not in enlace.atributos, f'<a href="{href}">: sin target, el rel sobra'
     assert titulo in enlace.texto(), f'<a href="{href}"> no dice «{titulo}»: «{enlace.texto()}»'
 
@@ -207,3 +220,22 @@ def test_f035_r17_control_paginas_del_portal_lee_lo_que_hay_en_el_fichero(tmp_pa
     )
 
     assert paginas_del_portal(falso) == {"otra.html": "bandeja"}
+
+
+# --- R66 · La marca de la pestaña en construcción --------------------------------
+
+
+def test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens():
+    """`design.md` §16.4, capa 1: un punto ámbar de 6 px tras la etiqueta, con tokens."""
+    reglas = [
+        r for r in reglas_css(css_sin_comentarios(STYLES_CSS))
+        if ".rs-pestana[data-construccion]::after" in r.selector
+    ]
+
+    regla = _uno(reglas, ".rs-pestana[data-construccion]::after en css/styles.css")
+    assert regla.valor("content") in ('""', "''"), "el punto es un pseudoelemento sin texto"
+    assert regla.valor("background-color") == "var(--rs-atencion)", (
+        "el punto va en el color de atención (ámbar), nunca en burdeos (R65)"
+    )
+    assert regla.valor("width") == regla.valor("height") == "6px", "un punto de 6 px"
+    assert regla.valor("border-radius") == "50%", "redondo"

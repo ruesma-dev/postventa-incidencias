@@ -15,8 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=3c19075344">
-  <link rel="stylesheet" href="css/portal.css?v=3c19075344">
+  <link rel="stylesheet" href="css/styles.css?v=064ee0dc11">
+  <link rel="stylesheet" href="css/portal.css?v=064ee0dc11">
 </head>
 <!--
   F-035 · El PORTAL de posventa: la portada `/`. Es una MAQUETA navegable del
@@ -46,7 +46,10 @@
     <!-- ── Barra superior común (R44, R51), el primer elemento de la página ─
          Los href son los de Portal.enlaceSeccion(id, "portal"): #/<id> y,
          para «Partes firmados», partes.html en la misma pestaña (R46). La
-         pestaña actual la pinta aria-current (css/styles.css). -->
+         pestaña actual la pinta aria-current (css/styles.css). Las de las
+         secciones en construcción (Portal.enConstruccion, R62) llevan
+         data-construccion —un punto ámbar, css/styles.css— y un aria-label
+         que lo dice (R66). -->
     <nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
       <div class="rs-barra__fila">
         <span class="rs-barra__marca">
@@ -57,25 +60,27 @@
         <div class="rs-barra__pestanas">
           <a href="#/inicio" class="rs-pestana" :aria-current="seccion === 'inicio' ? 'page' : false">Inicio</a>
           <a href="#/entrada" class="rs-pestana" :aria-current="seccion === 'entrada' ? 'page' : false">Entrada</a>
-          <a href="#/bandeja" class="rs-pestana" :aria-current="seccion === 'bandeja' ? 'page' : false">Bandeja de revisión</a>
-          <a href="#/incidencias" class="rs-pestana" :aria-current="seccion === 'incidencias' ? 'page' : false">Incidencias</a>
-          <a href="#/impresion" class="rs-pestana" :aria-current="seccion === 'impresion' ? 'page' : false">Impresión de partes</a>
+          <a href="#/bandeja" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)" :aria-current="seccion === 'bandeja' ? 'page' : false">Bandeja de revisión</a>
+          <a href="#/incidencias" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)" :aria-current="seccion === 'incidencias' ? 'page' : false">Incidencias</a>
+          <a href="#/impresion" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)" :aria-current="seccion === 'impresion' ? 'page' : false">Impresión de partes</a>
           <a href="partes.html" class="rs-pestana">Partes firmados</a>
-          <a href="#/economico" class="rs-pestana" :aria-current="seccion === 'economico' ? 'page' : false">Coste y venta</a>
-          <a href="#/datos" class="rs-pestana" :aria-current="seccion === 'datos' ? 'page' : false">Datos y datamart</a>
+          <a href="#/economico" class="rs-pestana" data-construccion aria-label="Coste y venta (en construcción)" :aria-current="seccion === 'economico' ? 'page' : false">Coste y venta</a>
+          <a href="#/datos" class="rs-pestana" data-construccion aria-label="Datos y datamart (en construcción)" :aria-current="seccion === 'datos' ? 'page' : false">Datos y datamart</a>
         </div>
       </div>
     </nav>
 
-    <!-- ── Aviso de maqueta (R13, R56): siempre visible, sin forma de
-         cerrarlo, en su propio color (atención; nunca burdeos) ─────────── -->
+    <!-- ── Aviso de construcción (R13 enmendado, R56): siempre visible, sin
+         forma de cerrarlo, en su propio color (atención; nunca burdeos).
+         Texto de design.md §16.4 ──────────────────────────────────────── -->
     <div data-aviso-maqueta class="rs-maqueta">
       <div class="rs-contenedor rs-maqueta__fila">
-        <strong class="rs-maqueta__titulo">Esto es una maqueta.</strong>
-        <span>Todos los datos son ficticios, de ejemplo. Los botones con borde discontinuo y
-          una etiqueta F-0NN todavía no hacen nada: al pulsarlos dicen qué ficha los construirá.</span>
+        <strong class="rs-maqueta__titulo">Parte de este portal está en construcción.</strong>
+        <span>Las pestañas con punto ámbar y lo que va dentro de un recuadro «En construcción»
+          enseñan datos inventados (obras 99NN, incidencias RS99…) y sus botones con borde
+          discontinuo no hacen nada todavía.</span>
         <span class="placeholder placeholder--muestra">así se ve un botón que todavía no hace nada <span class="placeholder-ficha">F-0NN</span></span>
-        <span>El circuito de verdad es la pestaña «Partes firmados».</span>
+        <span>Lo que funciona de verdad lleva el sello «En producción».</span>
       </div>
     </div>
 

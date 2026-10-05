@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=3c19075344">
+  <link rel="stylesheet" href="css/styles.css?v=064ee0dc11">
 </head>
 <body class="rs-cuerpo">
   <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
@@ -38,12 +38,12 @@
         <div class="rs-barra__pestanas">
           <a href="./#/inicio" target="_blank" rel="noopener" class="rs-pestana">Inicio</a>
           <a href="./#/entrada" target="_blank" rel="noopener" class="rs-pestana">Entrada</a>
-          <a href="./#/bandeja" target="_blank" rel="noopener" class="rs-pestana">Bandeja de revisión</a>
-          <a href="./#/incidencias" target="_blank" rel="noopener" class="rs-pestana">Incidencias</a>
-          <a href="./#/impresion" target="_blank" rel="noopener" class="rs-pestana">Impresión de partes</a>
+          <a href="./#/bandeja" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</a>
+          <a href="./#/incidencias" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)">Incidencias</a>
+          <a href="./#/impresion" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)">Impresión de partes</a>
           <span aria-current="page" class="rs-pestana">Partes firmados</span>
-          <a href="./#/economico" target="_blank" rel="noopener" class="rs-pestana">Coste y venta</a>
-          <a href="./#/datos" target="_blank" rel="noopener" class="rs-pestana">Datos y datamart</a>
+          <a href="./#/economico" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Coste y venta (en construcción)">Coste y venta</a>
+          <a href="./#/datos" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Datos y datamart (en construcción)">Datos y datamart</a>
         </div>
       </div>
       <p class="rs-barra__leyenda">Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.</p>
@@ -57,8 +57,8 @@
           <!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir
                de esta perdería la remesa en curso (D4 de F-007). -->
           <nav class="mt-1 flex gap-4 text-sm">
-            <a href="importar.html" target="_blank" rel="noopener" class="text-sky-700 hover:underline">Importar incidencias</a>
-            <a href="oficios.html" target="_blank" rel="noopener" class="text-sky-700 hover:underline">Oficios repetidos</a>
+            <a href="importar.html" target="_blank" rel="noopener" class="rs-enlace">Importar incidencias</a>
+            <a href="oficios.html" target="_blank" rel="noopener" class="rs-enlace">Oficios repetidos</a>
           </nav>
         </div>
         <div class="rs-estado-servicio">

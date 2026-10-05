@@ -449,7 +449,23 @@ def test_f035_r11_hay_una_region_viva_para_el_aviso():
     )
 
 
-def test_f035_r13_el_aviso_de_maqueta_esta_siempre_y_no_se_cierra():
+#: Lo que el aviso tiene que decir desde la enmienda del 2026-10-05 (R13
+#: enmendado, texto de `design.md` §16.4): que parte del portal está en
+#: construcción, cómo se reconoce (el punto ámbar de la barra, el recuadro),
+#: que lo de dentro son datos inventados que no funcionan, el borde
+#: discontinuo, y el sello de lo que funciona.
+IMPRESCINDIBLES_DEL_AVISO = (
+    "parte de este portal está en construcción",
+    "punto ámbar",
+    "«en construcción»",
+    "datos inventados",
+    "borde discontinuo",
+    "no hacen nada",
+    "«en producción»",
+)
+
+
+def test_f035_r13_el_aviso_esta_siempre_y_no_se_cierra():
     doc = leer_html(PORTAL)
     aviso = _uno(
         [e for e in doc.elementos() if "data-aviso-maqueta" in e.atributos],
@@ -459,23 +475,35 @@ def test_f035_r13_el_aviso_de_maqueta_esta_siempre_y_no_se_cierra():
     for nodo in [aviso, *aviso.ancestros()]:
         condicionales = [a for a in nodo.atributos if a.startswith(("x-show", "x-if"))]
         assert not condicionales, (
-            f"el aviso de maqueta (o <{nodo.nombre}> que lo contiene) lleva {condicionales}: "
+            f"el aviso (o <{nodo.nombre}> que lo contiene) lleva {condicionales}: "
             "tiene que verse en todas las secciones"
         )
         assert "data-seccion" not in nodo.atributos, "el aviso está dentro de una sección"
     assert not [e for e in aviso.elementos() if e.nombre == "button"], (
-        "el aviso de maqueta no se puede cerrar: ni un botón dentro"
+        "el aviso no se puede cerrar: ni un botón dentro"
     )
-    texto = aviso.texto().lower()
-    assert "ficticio" in texto, "el aviso dice que los datos son ficticios"
-    assert "discontinuo" in texto, "el aviso explica el borde discontinuo"
-    assert "f-0" in texto, "el aviso explica la etiqueta F-0NN"
     assert any("placeholder" in clases(e) for e in aviso.elementos()), (
         "el aviso dibuja un placeholder de muestra como leyenda (design.md §6.1)"
     )
 
 
-def test_f035_r13_el_aviso_de_maqueta_va_debajo_de_la_barra():
+def test_f035_r13_el_aviso_dice_que_parte_del_portal_esta_en_construccion():
+    """R13 enmendado (2026-10-05): ni «maqueta» ni «el circuito de verdad es…»."""
+    aviso = _uno(
+        [e for e in leer_html(PORTAL).elementos() if "data-aviso-maqueta" in e.atributos],
+        "elemento data-aviso-maqueta en index.html",
+    )
+    texto = aviso.texto().lower()
+
+    faltan = [frase for frase in IMPRESCINDIBLES_DEL_AVISO if frase not in texto]
+    assert faltan == [], f"el aviso no dice {faltan}: «{aviso.texto()}»"
+    assert "maqueta" not in texto, f"el aviso ya no habla de maqueta (R13 enmendado, R67): «{aviso.texto()}»"
+    assert "circuito de verdad" not in texto, (
+        "lo que funciona ya no es solo el circuito: lo dice el sello «En producción»"
+    )
+
+
+def test_f035_r13_el_aviso_va_debajo_de_la_barra():
     doc = leer_html(PORTAL)
     orden = doc.elementos()
     nav = barra(doc, "index.html")
@@ -543,6 +571,29 @@ def paginas_del_portal(ruta: Path = RAIZ_FRONT / "js" / "portal.js") -> dict[str
 #: Un `href` a una página real, con un ancla opcional (`importar.html#bandeja`, R69).
 _HREF_PAGINA = re.compile(r"^(?P<pagina>[\w.-]+\.html)(?:#[A-Za-z][\w-]*)?$")
 
+#: Las formas de `target` que abren otra pestaña: la literal y las ligadas
+#: de Alpine, que `html.parser` ve como otro nombre de atributo (review del
+#: bloque 7, H-1).
+FORMAS_DE_TARGET = ("target", ":target", "x-bind:target")
+
+
+def targets_de(nodo: Nodo) -> list[str]:
+    """Las formas de `target` que lleva el elemento (literal o ligada). Vacío = misma ventana."""
+    return [forma for forma in FORMAS_DE_TARGET if forma in nodo.atributos]
+
+
+@pytest.mark.parametrize(
+    "atributos",
+    [{"target": "_blank"}, {":target": "'_blank'"}, {"x-bind:target": "destino"}],
+    ids=["literal", "ligado", "x-bind"],
+)
+def test_f035_r17_control_targets_de_ve_el_target_literal_y_el_ligado(atributos):
+    """Control (H-1): un `:target` o `x-bind:target` también abre aparte y tiene que verse."""
+    enlace = Nodo("a", {"href": "importar.html", **atributos}, None)
+
+    assert targets_de(enlace) == list(atributos)
+    assert targets_de(Nodo("a", {"href": "importar.html", ":href": "x"}, None)) == []
+
 
 def test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito():
     """R17 (enmienda del 2026-10-05): `#/…`, `partes.html` o una página de `Portal.PAGINAS`.
@@ -556,7 +607,7 @@ def test_f035_r17_los_enlaces_del_portal_solo_van_a_rutas_internas_o_al_circuito
 
     assert enlaces, "el portal no tiene ni un enlace"
     for a in enlaces:
-        assert "target" not in a.atributos, f"<a> «{a.texto()}»: el portal no abre pestañas (R73)"
+        assert targets_de(a) == [], f"<a> «{a.texto()}» lleva {targets_de(a)}: el portal no abre pestañas (R73)"
         if "href" in a.atributos:
             href = a.atributos["href"]
             a_pagina = _HREF_PAGINA.match(href)

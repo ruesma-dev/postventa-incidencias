@@ -17,6 +17,9 @@ se ponga en rojo:
   **real** (todas sus fichas `done`), la barra del circuito la enlaza en la
   misma ventana, sin `target`; y la regla consta en `docs/ARCHITECTURE.md` y
   en el `README.md` del front.
+- **R62** (enmienda del 2026-10-05): el `estado` que cada sección declara en
+  `Portal.SECCIONES` (`real`, `parcial`, `construccion`) es el que dan sus
+  fichas en `harness/features.json`.
 
 Vive en la suite de la **raíz** y no en la del front a propósito: la del front
 se salta por caché cuando su árbol no cambia (`init.sh`, sección 7 bis), y
@@ -273,6 +276,129 @@ def test_f035_r48_inicio_es_real_cuando_lo_son_todas_las_demas():
     assert sorted(secciones_reales(features, secciones_del_portal())) == sorted(
         ["inicio", "entrada", "bandeja", "incidencias", "impresion", "economico", "datos"]
     )
+
+
+# --- R62 · El estado de cada sección es el que dan sus fichas ----------------------
+#
+# Enmienda del 2026-10-05 (opción b): el portal se publica entero y cada
+# sección declara en `Portal.SECCIONES` su `estado` —`real`, `parcial` o
+# `construccion`—, escrito literal. De él salen la marca de la barra (R66) y
+# los recuadros «En construcción» (R63-R65). Vive aquí, en la raíz, por lo
+# mismo que R28 y R48: cerrar una ficha en `features.json` no toca el árbol
+# del front y su suite se saltaría por caché.
+
+ESTADOS_DE_SECCION = ("real", "parcial", "construccion")
+
+_ESTADO_JS = re.compile(r"""\{\s*id:\s*"([a-z]+)",[^}]*?\bestado:\s*"([a-z]*)"[^}]*\}""")
+
+
+def estados_declarados(texto: str | None = None) -> dict[str, str]:
+    """`{id: estado}` de `Portal.SECCIONES` (`js/portal.js`), leído como texto."""
+    if texto is None:
+        texto = PORTAL_JS.read_text(encoding="utf-8")
+    return dict(_ESTADO_JS.findall(texto))
+
+
+def estados_segun_las_fichas(features: dict, secciones: dict[str, list[str]]) -> dict[str, str]:
+    """El `estado` que corresponde a cada sección según `features.json` (R62).
+
+    - Las secciones que no son `inicio` ni `partes`: `construccion` si
+      ninguna de sus fichas está `done`, `parcial` si lo está alguna y `real`
+      si lo están todas.
+    - `partes` (el circuito, que ya funciona): `parcial` mientras alguna de
+      sus fichas (F-045) no esté `done`; `real` cuando lo estén.
+    - `inicio`: `real` cuando lo son todas las demás secciones del portal
+      (las siete, `partes` incluida); `parcial` mientras no.
+    """
+    hechas = {ficha for ficha, estado in estados(features).items() if estado == "done"}
+    resultado: dict[str, str] = {}
+    for seccion, fichas in secciones.items():
+        if seccion == "inicio":
+            continue
+        cerradas = [f for f in fichas if f in hechas]
+        if seccion == "partes":
+            resultado[seccion] = "real" if len(cerradas) == len(fichas) else "parcial"
+        elif not cerradas:
+            resultado[seccion] = "construccion"
+        elif len(cerradas) == len(fichas):
+            resultado[seccion] = "real"
+        else:
+            resultado[seccion] = "parcial"
+    if "inicio" in secciones:
+        todas_reales = all(estado == "real" for estado in resultado.values())
+        resultado["inicio"] = "real" if todas_reales else "parcial"
+    return resultado
+
+
+def estados_que_no_cuadran(features: dict, declarados: dict[str, str]) -> list[str]:
+    """Las secciones cuyo `estado` declarado no es el que dan sus fichas. Vacío = correcto."""
+    esperados = estados_segun_las_fichas(features, secciones_del_portal())
+    return [
+        f"«{seccion}» declara estado «{declarados.get(seccion, '(ninguno)')}» y sus fichas "
+        f"dicen «{esperado}»: cámbialo en Portal.SECCIONES (js/portal.js, R62)"
+        for seccion, esperado in esperados.items()
+        if declarados.get(seccion) != esperado
+    ]
+
+
+def test_f035_r62_cada_seccion_declara_su_estado_literal():
+    declarados = estados_declarados()
+
+    assert sorted(declarados) == sorted(secciones_del_portal()), (
+        "cada entrada de Portal.SECCIONES lleva su `estado: \"…\"` escrito literal: "
+        f"leídos {sorted(declarados)}"
+    )
+    raros = {s: e for s, e in declarados.items() if e not in ESTADOS_DE_SECCION}
+    assert raros == {}, f"estados fuera de {ESTADOS_DE_SECCION}: {raros}"
+
+
+def test_f035_r62_el_estado_de_cada_seccion_es_el_que_dan_sus_fichas():
+    problemas = estados_que_no_cuadran(_features(), estados_declarados())
+
+    assert problemas == [], "\n".join(problemas)
+
+
+def test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done():
+    """Control: con F-038 en `done` en una copia en memoria, `bandeja` pasa a `parcial` y la guardia salta."""
+    features = copy.deepcopy(_features())
+    for ficha in features["features"]:
+        if ficha["id"] == "F-038":
+            ficha["status"] = "done"
+
+    assert estados_segun_las_fichas(features, secciones_del_portal())["bandeja"] == "parcial"
+    problemas = estados_que_no_cuadran(features, estados_declarados())
+    assert len(problemas) == 1 and "«bandeja»" in problemas[0], problemas
+
+
+def test_f035_r62_control_el_lector_de_estados_lee_el_texto():
+    """Control: el lector no devuelve un dato fijo; un `estado` cambiado en el texto se ve."""
+    texto = PORTAL_JS.read_text(encoding="utf-8")
+    cambiado = re.sub(
+        r'(\{\s*id:\s*"bandeja",[^}]*?\bestado:\s*")[a-z]*(")', r"\1parcial\2", texto, count=1
+    )
+
+    assert cambiado != texto, "el control no encuentra el estado de «bandeja» en js/portal.js"
+    assert estados_declarados(cambiado)["bandeja"] == "parcial"
+    problemas = estados_que_no_cuadran(_features(), estados_declarados(cambiado))
+    assert any("«bandeja»" in p for p in problemas), problemas
+
+
+def test_f035_r62_partes_e_inicio_siguen_su_propia_regla():
+    """`partes` nunca está en construcción (el circuito funciona); `inicio`, real solo con todas reales."""
+    features = copy.deepcopy(_features())
+    secciones = secciones_del_portal()
+    por_id = {f["id"]: f for f in features["features"]}
+    for ficha in {f for lista in secciones.values() for f in lista}:
+        por_id[ficha]["status"] = "pending"
+    assert estados_segun_las_fichas(features, secciones)["partes"] == "parcial"
+    assert estados_segun_las_fichas(features, secciones)["inicio"] == "parcial"
+
+    por_id["F-045"]["status"] = "done"
+    assert estados_segun_las_fichas(features, secciones)["partes"] == "real"
+
+    for ficha in {f for lista in secciones.values() for f in lista}:
+        por_id[ficha]["status"] = "done"
+    assert set(estados_segun_las_fichas(features, secciones).values()) == {"real"}
 
 
 def _seccion_markdown(ruta: Path, titulo: str) -> str:

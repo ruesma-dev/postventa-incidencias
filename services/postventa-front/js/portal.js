@@ -5,11 +5,13 @@
 // que se pruebe con `node --test` sin navegador (`tests_js/portal.test.js`);
 // el componente de Alpine (`js/portal_app.js`) solo delega aquí.
 //
-//   SECCIONES      las ocho pestañas de la barra superior, en su orden (R2)
+//   SECCIONES      las ocho pestañas de la barra superior, en su orden (R2),
+//                  cada una con su estado (R62)
 //   PAGINAS        las páginas reales de una sección, con su sección (R17, §16.8)
 //   PLACEHOLDERS   las acciones sin construir, con la ficha que las hará (R8)
 //   ESTADOS        los cinco estados de conest, por código y resumen (R21)
 //   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46)
+//   enConstruccion                          si una sección está en construcción (R62, R66)
 //   textoPlaceholder / seleccionadasPara    el aviso de un placeholder (R11, R12)
 //   filtrarIncidencias / filtrarBandeja / alternarSeleccion   solo en pantalla (R19, R20)
 //   etiquetaEstado / formatoImporte / etiquetaCatalogo        cómo se enseña (R21, R22, R39)
@@ -38,16 +40,22 @@
    * Las secciones del portal (`design.md` §4). `pagina` es `null` para las
    * siete que viven en el portal (`index.html`, rutas `#/<id>`) y
    * `"partes.html"` para `partes`, que ES el circuito (D-1, D-3).
+   *
+   * `estado` (R62, `design.md` §16.4): `"real"`, `"parcial"` o
+   * `"construccion"`, escrito LITERAL porque lo lee como texto la guardia de
+   * la raíz (`tests/test_f035_placeholders_vivos.py`), que lo compara con las
+   * fichas de `harness/features.json`: cuando una ficha pasa a `done`, el
+   * estado de su sección se cambia aquí en el mismo trabajo.
    */
   const SECCIONES = congelarLista([
-    { id: "inicio", etiqueta: "Inicio", fichas: [], pagina: null },
-    { id: "entrada", etiqueta: "Entrada", fichas: ["F-036", "F-037"], pagina: null },
-    { id: "bandeja", etiqueta: "Bandeja de revisión", fichas: ["F-038", "F-039", "F-040", "F-043"], pagina: null },
-    { id: "incidencias", etiqueta: "Incidencias", fichas: ["F-041", "F-042", "F-043", "F-047"], pagina: null },
-    { id: "impresion", etiqueta: "Impresión de partes", fichas: ["F-044"], pagina: null },
-    { id: "partes", etiqueta: "Partes firmados", fichas: ["F-045"], pagina: "partes.html" },
-    { id: "economico", etiqueta: "Coste y venta", fichas: ["F-046", "F-047"], pagina: null },
-    { id: "datos", etiqueta: "Datos y datamart", fichas: ["F-048"], pagina: null },
+    { id: "inicio", etiqueta: "Inicio", fichas: [], pagina: null, estado: "parcial" },
+    { id: "entrada", etiqueta: "Entrada", fichas: ["F-036", "F-037"], pagina: null, estado: "parcial" },
+    { id: "bandeja", etiqueta: "Bandeja de revisión", fichas: ["F-038", "F-039", "F-040", "F-043"], pagina: null, estado: "construccion" },
+    { id: "incidencias", etiqueta: "Incidencias", fichas: ["F-041", "F-042", "F-043", "F-047"], pagina: null, estado: "construccion" },
+    { id: "impresion", etiqueta: "Impresión de partes", fichas: ["F-044"], pagina: null, estado: "construccion" },
+    { id: "partes", etiqueta: "Partes firmados", fichas: ["F-045"], pagina: "partes.html", estado: "parcial" },
+    { id: "economico", etiqueta: "Coste y venta", fichas: ["F-046", "F-047"], pagina: null, estado: "construccion" },
+    { id: "datos", etiqueta: "Datos y datamart", fichas: ["F-048"], pagina: null, estado: "construccion" },
   ]);
 
   /**
@@ -359,6 +367,16 @@
     return null;
   }
 
+  /**
+   * Si la sección está en construcción (R62): su `estado` es
+   * `"construccion"`. Es lo que marca su pestaña en las barras (R66). Un id
+   * desconocido, vacío o que no es texto → `false`, nunca lanza.
+   */
+  function enConstruccion(id) {
+    const seccion = seccionPorId(id);
+    return seccion !== null && seccion.estado === "construccion";
+  }
+
   // ── Placeholders ──────────────────────────────────────────────────────────
 
   function placeholderPorId(id) {
@@ -534,6 +552,7 @@
     resolverRuta: resolverRuta,
     hashDe: hashDe,
     enlaceSeccion: enlaceSeccion,
+    enConstruccion: enConstruccion,
     placeholderPorId: placeholderPorId,
     seleccionadasPara: seleccionadasPara,
     textoPlaceholder: textoPlaceholder,

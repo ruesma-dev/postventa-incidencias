@@ -684,6 +684,41 @@ def test_f035_r82_control_los_class_ligados_no_entran():
     assert problemas_r82(html) == []
 
 
+
+def clases_rs_sin_regla(html: str, css: str) -> list[str]:
+    """Las clases `rs-*` de los `class` estáticos de `html` sin ninguna regla en `css`. Vacío = correcto.
+
+    R82 pide que el aspecto lo den las clases `rs-*`: una clase que no existe
+    en la hoja dejaría el texto con el aspecto por defecto, sin que nada
+    fallara (lo vio la mutación manual de T47 que borra `.rs-texto`).
+    """
+    limpio = css_sin_comentarios_texto(css)
+    usadas = {
+        clase
+        for e in leer_html_texto(html).elementos()
+        for clase in e.atributos.get("class", "").split()
+        if clase.startswith("rs-")
+    }
+    return sorted(c for c in usadas if not re.search(r"\." + re.escape(c) + r"(?![\w-])", limpio))
+
+
+def test_f035_r82_cada_clase_rs_de_partes_html_tiene_regla_en_styles_css():
+    sin_regla = clases_rs_sin_regla(
+        CIRCUITO_HTML.read_text(encoding="utf-8"), STYLES_CSS.read_text(encoding="utf-8")
+    )
+
+    assert sin_regla == [], f"partes.html usa clases rs-* que css/styles.css no define: {sin_regla}"
+
+
+@pytest.mark.parametrize("clase", ["rs-texto", "rs-texto--apagado", "rs-rotulo--atencion", "rs-panel__franja"])
+def test_f035_r82_control_una_clase_nueva_sin_regla_salta(clase):
+    """Control: con la regla de la clase quitada de una copia en memoria de la hoja, la comprobación la ve."""
+    css = STYLES_CSS.read_text(encoding="utf-8")
+    sin_ella = re.sub(r"\." + re.escape(clase) + r"(?![\w-])", ".rs-quitada", css)
+    assert sin_ella != css, f"el control no encuentra .{clase} en css/styles.css"
+
+    assert clase in clases_rs_sin_regla(CIRCUITO_HTML.read_text(encoding="utf-8"), sin_ella)
+
 # --- Review del bloque 16, H16-7 · Los nombres que lee la guarda existen ---------
 #
 # `test_f035_r80_las_fases_de_la_guarda_existen_en_app_js` ata las fases. Pero

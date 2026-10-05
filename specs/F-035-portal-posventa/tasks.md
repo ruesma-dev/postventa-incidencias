@@ -894,7 +894,7 @@ ya pide cada verificación.
       `func start`): en `http://localhost:5173/partes.html` recién abierta,
       «Inicio» lleva al portal en la misma pestaña **sin preguntar**. La
       comprobación con remesa es de T12 (V2 m), no del implementer.
-- [ ] **T45**: evidencias y verde. (a)
+- [x] **T45**: evidencias y verde. (a)
       `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **29** a **35** de `design.md` §16.15.8. (c)
       `bash harness/init.sh` en verde.

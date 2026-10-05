@@ -1,6 +1,28 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 16 (T43, T44, T45) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 16 y después bloque 17 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 16». T43 `e3842b4`: nuevo
+> `js/guarda_salida.js` (R78–R80, D-15: un `beforeunload` que pregunta solo con trabajo sin
+> terminar; solo lee con `Alpine.$data`; falla abierta) + 54 tests Node con dobles de los módulos
+> reales y Proxy de solo lectura + estático de R80. T44 `3a89d82`, en un solo commit: `partes.html`
+> sin `target`/`rel` en barra y cabecera, leyenda de R47 ajustado, `<script>` de la guarda antes de
+> `app.js`; `enlaceSeccion(…, "circuito")` en la misma pestaña; las líneas literales de R81 en
+> `test_f007_estaticos.py` y `test_f036_front.py` (D-16); guardias R31, R32, R43, R47, R59 (f, g),
+> R73 en las cuatro páginas y el control de R48 de la raíz, con controles. **H-2 y H-6, cerrados**
+> aquí. `bash harness/init.sh`: **exit 0** (raíz 112, front 473, api desde caché; ruff 71, los de
+> antes); Node 563/563. Mutación del arnés: 0 mutantes (bases 8ced4bd y 2a86bca); manuales
+> **18/18 muertas** (29–35 y propias), worktree retirado. «F-036 intacto» ajustado: solo las líneas
+> de R81. Ningún módulo del circuito tocado; nada de `services/postventa-api/`. Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador de T44 no se hizo (extensión de Chrome sin
+>   conectar); solo se comprobó que `dev_server.py` sirve las páginas y la guarda (200). Va con
+>   V1 (q) / V2 (k)–(p) de T12.
+> - Para el líder/spec-author (§5 del informe): R79 escribe la firma con dos parámetros (el diseño,
+>   tres); el comentario de F-036 de la cabecera de `partes.html` queda desfasado y R59 no deja
+>   tocarlo; reescribí el comentario de la barra (R59 c lo admite).
+
 > ## ▶ F-035 · BLOQUE 8 (T25, T26) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 8 y después bloque 16 (implementer)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 8». Commit T25 `023b7a5`: `estado`

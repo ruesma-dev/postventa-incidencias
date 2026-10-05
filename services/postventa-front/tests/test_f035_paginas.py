@@ -249,6 +249,91 @@ def test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens():
     assert regla.valor("border-radius") == "50%", "redondo"
 
 
+# Review del bloque 8, H-6 (tomado en el bloque 16): el test de arriba mira la
+# regla del punto, no la cascada. Esto cierra lo que la esconde o repinta desde
+# dentro o desde fuera: V1 (`display: none` en la propia regla), V2 (un atajo
+# `background` que pisa el color), V3 (`.rs-pestana` deja de ser flex y el
+# `::after` pierde sus 6 px) y V4 (otra regla sobre el mismo pseudoelemento).
+
+PORTAL_CSS_RUTA = RAIZ_FRONT / "css" / "portal.css"
+_SELECTOR_PESTANA = re.compile(r"\.rs-pestana(?![\w-])")
+_OCULTAN_O_REPINTAN = ("display", "visibility", "opacity", "background")
+
+
+def problemas_de_la_cascada_r66(hojas: dict[str, str]) -> list[str]:
+    """Lo que, en `{hoja: css}`, esconde o repinta el punto de R66 fuera de su regla. Vacío = correcto."""
+    problemas = []
+    reglas = [(hoja, r) for hoja, css in hojas.items() for r in reglas_css(css_sin_comentarios_texto(css))]
+    del_punto = [
+        (hoja, r) for hoja, r in reglas
+        if _SELECTOR_PESTANA.search(r.selector) and ":after" in r.selector
+    ]
+    if len(del_punto) != 1:
+        problemas.append(f"hay {len(del_punto)} reglas sobre el ::after de .rs-pestana: {del_punto} (solo la de R66)")
+    for hoja, regla in del_punto:
+        problemas += [
+            f"{hoja} · {regla!r} declara {p}" for p in _OCULTAN_O_REPINTAN if regla.valor(p) is not None
+        ]
+    base = [r for _, r in reglas if r.selector == ".rs-pestana"]
+    if not base or base[-1].valor("display") not in ("inline-flex", "flex"):
+        problemas.append("la regla .rs-pestana no es flex: el ::after perdería su tamaño de 6 px")
+    for hoja, regla in reglas:
+        if _SELECTOR_PESTANA.search(regla.selector) and regla.valor("display") not in (None, "inline-flex", "flex"):
+            problemas.append(f"{hoja} · {regla!r} cambia el display de la pestaña a {regla.valor('display')}")
+    return problemas
+
+
+def css_sin_comentarios_texto(css: str) -> str:
+    return re.sub(r"/\*.*?\*/", " ", css, flags=re.DOTALL)
+
+
+def _hojas() -> dict[str, str]:
+    return {
+        "css/styles.css": STYLES_CSS.read_text(encoding="utf-8"),
+        "css/portal.css": PORTAL_CSS_RUTA.read_text(encoding="utf-8"),
+    }
+
+
+def test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar():
+    problemas = problemas_de_la_cascada_r66(_hojas())
+
+    assert problemas == [], "el punto de R66 (H-6):\n" + "\n".join(problemas)
+
+
+ESTROPEOS_H6 = {
+    "V1 display none en la regla": (
+        "css/styles.css",
+        "  margin-left: 0.4rem;\n  border-radius: 50%;\n  background-color: var(--rs-atencion);\n}",
+        "  margin-left: 0.4rem;\n  border-radius: 50%;\n  background-color: var(--rs-atencion);\n  display: none;\n}",
+    ),
+    "V2 atajo background detrás": (
+        "css/styles.css",
+        "  margin-left: 0.4rem;\n  border-radius: 50%;\n  background-color: var(--rs-atencion);\n}",
+        "  margin-left: 0.4rem;\n  border-radius: 50%;\n  background-color: var(--rs-atencion);\n  background: var(--rs-burdeos);\n}",
+    ),
+    "V3 la pestaña deja de ser flex": (
+        "css/styles.css",
+        ".rs-pestana {\n  display: inline-flex;",
+        ".rs-pestana {\n  display: inline-block;",
+    ),
+    "V4 otra regla sobre el ::after": (
+        "css/portal.css",
+        ".rs-pestanas-ficha {",
+        ".rs-pestana::after { content: none; }\n\n.rs-pestanas-ficha {",
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_H6))
+def test_f035_r66_control_la_cascada_ve_lo_que_esconde_el_punto(caso):
+    hoja, viejo, nuevo = ESTROPEOS_H6[caso]
+    hojas = {k: v.replace("\r\n", "\n") for k, v in _hojas().items()}
+    assert hojas[hoja].count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+    hojas[hoja] = hojas[hoja].replace(viejo, nuevo)
+
+    assert problemas_de_la_cascada_r66(hojas) != [], f"H-6: la comprobación no ve «{caso}»"
+
+
 # --- R80 · La guarda de salida del circuito solo lee (bloque 16, T43) -----------
 #
 # `js/guarda_salida.js` (`design.md` §16.15.3) se prueba por comportamiento en

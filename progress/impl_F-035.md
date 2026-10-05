@@ -4438,3 +4438,269 @@ aparte: **509 pass, 0 fail** (1,5 s).
 | Mutantes (campaña del arnés) | **0 generados, 0 supervivientes**, con `--base 2a86bca` y con `--base dd67d48` |
 | Mutantes a mano | **12/12 muertas** (16, 17 y diez propias); B8 sobrevivió a la primera y la mata el test añadido en T26 |
 | Tiempo de la suite | Raíz 8,56 s; front 11,25 s (pytest) + 1,5 s (Node); `init.sh` completo en unos 3 min (api desde caché) |
+
+## Bloque 16 · T43 a T45 · Misma pestaña y guarda de salida del circuito · 2026-10-05
+
+> implementer. Encargo: solo el bloque 16 (orden 7 → 8 → **16** → 17 → 9 → …),
+> y parar. Rama `feature/F-035-portal-posventa`. Commits: **T43 `e3842b4`**,
+> **T44 `3a89d82`** (la retirada de los `target` y la guarda, en el mismo
+> commit), **T45** con este informe, H-6, `tasks.md`, `current.md` y
+> `progress/mutacion_F-035.md`. Decisiones del humano aplicadas: D-15 y D-16
+> (2026-10-05). Sin push.
+
+### 1 · Qué cambió
+
+**T43 (`e3842b4`)** — la guarda, sin cargarla en ninguna página:
+
+- **Nuevo `js/guarda_salida.js`** (`design.md` §16.15.3): `FASES_EN_MARCHA`
+  (congelada), `SELECTOR_CIRCUITO`, `hayTrabajoSinTerminar(estado, pipeline,
+  autoguardado)` (R79 a–d; un `try` que devuelve `false`, nunca lanza;
+  recorre `partes` por índice, sin llamar a nada del estado), `leerEstado`
+  (`Alpine.$data` en el momento del evento; sin Alpine, sin `$data`, sin el
+  elemento o si lanza → `null`), `alSalir` (`preventDefault()` +
+  `returnValue = true` solo con trabajo) e `instalar` (un único
+  `beforeunload`). Patrón dual: `window.GuardaSalida` + autoinstalación en
+  el navegador, `module.exports` en Node.
+- **Nuevo `tests_js/guarda_salida.test.js`** (54 tests): cada fila de
+  §16.15.2 en positivo y negativo; los cuatro «no es trabajo» de D-15 (recién
+  abierta, `seleccionado`, todo cerrado/rechazado con el detalle cerrado,
+  tras `reiniciar`); estados raros; el **Proxy** de solo lectura (lanza y lo
+  apunta al escribir, definir o borrar, o al llamar a cualquier función, a
+  cualquier profundidad); los caminos de fallo de `leerEstado`; `alSalir`
+  con y sin trabajo y con falla abierta; `instalar` con un solo
+  `beforeunload` y sin leer el estado al instalar. `Pipeline` y
+  `Autoguardado` salen de `require` de los módulos reales; un caso de la
+  tanda usa el `conGuardaDeTanda` **real** con una promesa pendiente.
+- **`tests/test_f035_paginas.py`**: test estático de R80 (sin `fetch`,
+  `XMLHttpRequest`, `sendBeacon`, `WebSocket`, almacenamiento, `cookie`,
+  `window.open`, `location`, `_autoguardado` ni temporizadores; un único
+  `addEventListener("beforeunload")`) con un control de 11 formas sembradas;
+  y las fases de `FASES_EN_MARCHA` presentes en `js/app.js` como
+  `this.fase = "<fase>"`, con control (`procesando` renombrada en memoria).
+- **`tests/test_f035_portal.py`**: R33 admite el alta de
+  `js/guarda_salida.js` (constante `GUARDA_SALIDA`).
+
+**T44 (`3a89d82`)** — en un solo commit:
+
+- **`partes.html`**: las siete pestañas de la barra sin `target` ni `rel`; los
+  dos enlaces de F-036 de la cabecera sin `target` ni `rel` (R59 g); la
+  leyenda de R47 ajustado, literal; `<script src="js/guarda_salida.js"></script>`
+  justo antes del de `js/app.js` (R59 f, R43). Además, el **comentario que
+  precede a la barra** (dentro de lo que admite R59 c) se reescribió porque
+  decía lo contrario de lo que ahora pasa (ver §5).
+- **`js/portal.js`**: `enlaceSeccion(id, "circuito")` → `nuevaPestana: false`
+  y su comentario. Es el único `js/` del diff de T44.
+- **Base, las líneas literales de R81** (`design.md` §16.15.4): la de
+  `ORDEN_CANONICO` en `tests/test_f007_estaticos.py`; el docstring y el
+  `assert "target=" not in …` en `tests/test_f036_front.py`.
+- **Guardias de F-035** (§16.15.6), cada una con su control en memoria: R31
+  (`problemas_r31`; controles: `target` literal, ligado y `rel`); R32
+  (`LINEAS_R81` por fichero, `numstat_esperado` 2 1 / 3 4,
+  `problemas_de_lineas` y cuatro controles); R43 (`SCRIPTS_DE_PARTES`;
+  controles: guarda tras `app.js`, un segundo script, sin guarda); R47
+  (`problemas_r47`; controles: las dos leyendas viejas); R59
+  (`_quita_la_guarda`, `_sin_target_en_los_enlaces_de_f036` y tres estropeos
+  nuevos: segundo script, guarda con `defer`, `target` retirado del enlace de
+  SharePoint); R73 en las cuatro páginas (`problemas_r73`, control por
+  página) y **H-2** (`window.open` en las cuatro páginas, control por
+  página); `tests_js/portal.test.js` (R31 sin pestaña nueva y sin `rel`).
+- **Raíz, `tests/test_f035_placeholders_vivos.py`**: el control de R48,
+  reescrito sobre una copia en memoria de `partes.html` con `target="_blank"`
+  repuesto en `datos` y F-048 `done`; comprueba además que el real ya no abre
+  nada aparte. Lleva la nota de H-8 (el `inicio` de R48 es solo a efectos de
+  la barra del circuito).
+
+**T45** — evidencias y **H-6** (review del bloque 8), tomado aquí:
+`test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar` en
+`test_f035_paginas.py` (la regla del punto no declara `display`,
+`visibility`, `opacity` ni `background`; `.rs-pestana` es flex y ninguna
+regla le cambia el `display`; una sola regla sobre su `::after` en las dos
+hojas), con los controles V1–V4 de la review sembrados en memoria.
+
+### 2 · Fase RED (salidas reales)
+
+**T43, JS** — `node --test tests_js/guarda_salida.test.js` antes de crear el
+módulo:
+
+```
+Error: Cannot find module '../js/guarda_salida.js'
+...
+✖ tests_js\guarda_salida.test.js (214.4219ms)
+ℹ tests 1
+ℹ pass 0
+ℹ fail 1
+```
+
+Con el módulo: `ℹ tests 54 · ℹ pass 54 · ℹ fail 0`.
+
+**T43, Python** — `python -m pytest tests/test_f035_paginas.py -q -k r80`:
+
+```
+E       FileNotFoundError: [Errno 2] No such file or directory: '...\services\postventa-front\js\guarda_salida.js'
+FAILED tests/test_f035_paginas.py::test_f035_r80_la_guarda_solo_lee_y_solo_escucha_beforeunload
+FAILED tests/test_f035_paginas.py::test_f035_r80_las_fases_de_la_guarda_existen_en_app_js
+(… y los 12 controles)
+14 failed, 13 deselected in 0.96s
+```
+
+Con el módulo: `14 passed, 13 deselected in 0.16s`.
+
+**T44** — tests ajustados con el HTML, `portal.js` y los tests de la base aún
+sin tocar. Front `python -m pytest tests -q`: **14 failed, 454 passed**;
+`node --test "tests_js/*.test.js"`: **562/563** (cae `f035 R31: enlaceSeccion
+desde el circuito…`); raíz `tests/test_f035_placeholders_vivos.py`: **1
+failed, 15 passed** (el control de R48). Mensajes reales:
+
+```
+E       AssertionError: partes.html carga ['js/config.js', ..., 'js/autoguardado.js', 'js/app.js']; R43 ajustado pide [..., 'js/autoguardado.js', 'js/guarda_salida.js', 'js/app.js']
+E       AssertionError: ./#/inicio: lleva ['target', 'rel']; se navega en la misma pestaña y la remesa la protege la guarda de salida (R78)
+E         ./#/entrada: lleva ['target', 'rel']; ... (las siete)
+E       AssertionError: la leyenda de la barra del circuito (R47 ajustado):
+E         no dice «en construcción»
+E         no dice «confirmación»
+E         dice «aparte»: nada se abre ya aparte (R31 ajustado)
+E       AssertionError: tests del circuito tocados de más:
+E         services/postventa-front/tests/test_f007_estaticos.py: M ('1', '1') (solo ('2', '1'))
+E         services/postventa-front/tests/test_f036_front.py: M ('1', '1') (solo ('3', '4'))
+FAILED tests/test_f035_paginas.py::test_f035_r73_ninguna_pagina_del_front_abre_otra_aparte[partes.html]
+FAILED tests/test_f007_js.py::test_f007_r32_la_suite_de_javascript_esta_en_verde
+```
+
+Después de T44: front **468 passed**, Node **563/563**, raíz **16 passed**.
+
+**H-6** — los controles V1–V4 son la traza: con la comprobación nueva, los
+cuatro estropeos en memoria salen en rojo (los cuatro controles en verde) y
+el CSS real, en verde.
+
+### 3 · Verificación de T44
+
+- Raíz: `python -m pytest tests/test_f035_placeholders_vivos.py -q` → `16 passed`.
+- Front: `python -m pytest tests -q` → `468 passed` (con
+  `test_f007_estaticos.py` y `test_f036_front.py` enteros en verde);
+  `node --test "tests_js/*.test.js"` → `563/563`.
+- «F-036 intacto» ajustado: `git diff 2a86bca -- …test_f036_front.py`
+  muestra **solo** el docstring y el `assert` de R81 (2 añadidas, 3
+  quitadas); `importacion.test.js` y `oficios.test.js`, vacíos.
+- `git diff HEAD~1 -- services/postventa-front/js` (en T44): solo
+  `js/portal.js` (5+, 3−). Ningún módulo del circuito en ningún commit del
+  bloque. Nada de `services/postventa-api/`.
+- **Vistazo en el navegador: NO lo hizo el implementer.** La extensión de
+  Chrome no está conectada en esta sesión. Sustituto parcial:
+  `dev_server.py` en `localhost:5173` (sin `func start`) sirvió
+  `/partes.html`, `/js/guarda_salida.js` y `/` con **200**, y el
+  `partes.html` servido lleva la leyenda nueva y el `<script>` de la guarda.
+  Que «Inicio» lleve al portal en la misma pestaña **sin preguntar** con la
+  página recién abierta queda **MANUAL pendiente** (cabe en V1 q / T12 del
+  humano, con la comprobación con remesa, V2 m). Servidor parado al terminar.
+
+### 4 · T45 · Evidencias y verde
+
+**(a) Mutación del arnés**, con la base del encargo y con la de `tasks.md`:
+
+```
+python -m harness.mutacion --feature F-035 --base 8ced4bd --timeout 900
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 8ced4bda…..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+
+python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1…..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+```
+
+El bloque no tiene Python de producción y la herramienta solo muta Python.
+
+**(b) Mutaciones manuales**: las 29–35 de `design.md` §16.15.8 y diez
+propias, en un worktree desechable del scratchpad (`git worktree add
+--detach`). Un guion aplica cada reemplazo (exigiendo que aparezca una sola
+vez), ejecuta los tests indicados y restaura el fichero. Línea base del
+worktree en verde (Node 121/121 en los dos ficheros; pytest 229 passed + 3
+skipped, los que dependen de la rama). Worktree **retirado** (`git worktree
+remove --force`; `git worktree list` ya no lo muestra).
+
+| # | Mutación | Resultado | La mata |
+|---|---|---|---|
+| 29 | `FASES_EN_MARCHA` sin `archivando_y_cerrando` | muerta | `guarda_salida.test.js` (R79 a) y `test_f035_r80_las_fases…` |
+| 30 | Un rechazado cuenta como por terminar | muerta | R79 (c) negativo |
+| 31 | Ignora `Autoguardado.FALLO` | muerta | R79 (b) |
+| 32 | `alSalir` sin `preventDefault` | muerta | R78 |
+| 33a | Escribe `estado.fase` | muerta | R80 (Proxy) |
+| 33b | Llama a `estado.pendientes()` | muerta | R80 (Proxy) |
+| 34 | Sin Alpine pregunta igual (falla cerrada) | muerta | R80 (falla abierta) |
+| 35 | `target="_blank"` en «Inicio» de `partes.html` | muerta | R31 y R73 |
+| B16-a | Sin la condición (d) | muerta | R79 (d) |
+| B16-b | (c) ignora `parte.cerrado` | muerta | R79 (c) negativo |
+| B16-c | Sin mirar `hayTandaEnCurso` | muerta | R79 (a), tanda |
+| B16-d | `leerEstado` no comprueba el elemento | muerta | R80 «sin el elemento no llama a `$data`» |
+| B16-e | `instalar` registra también `click` | muerta | JS (un solo `beforeunload`) y el estático de R80 |
+| B16-f | La guarda tras `app.js` en `partes.html` | muerta | R43 y `test_f007_estaticos.py` |
+| B16-g | `enlaceSeccion(…, "circuito")` vuelve a `nuevaPestana: true` | muerta | `portal.test.js` R31 |
+| B16-h | La leyenda vuelve a decir «aparte» | muerta | R47 |
+| B16-i | `target` en el enlace a `importar.html` de la cabecera | muerta | R51 de F-036 (ajustado) y R73 |
+| B16-j | `leerEstado` devuelve un estado cuando `$data` lanza | muerta | R80 (falla abierta) |
+
+**18/18 muertas, 0 supervivientes.**
+
+**(c) `bash harness/init.sh`**: **exit 0**. Raíz `112 passed`; api en verde
+(desde caché, árbol sin cambios); front `473 passed`; `ruff: 71 avisos`
+(los de antes, no bloquea; los ficheros tocados, limpios); `PUERTA
+COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`;
+`BACKLOG.md al día`. Nota de forma: lo lancé una vez con la salida
+redirigida a un fichero del scratchpad para leerla después; sin pipes ni
+variables, pero no fue exactamente el comando limpio de la allowlist.
+
+### 5 · Decisiones y desviaciones
+
+- **Firma de `hayTrabajoSinTerminar`**: tres parámetros (`estado, pipeline,
+  autoguardado`), como en `design.md` §16.15.3; R79 de `requirements.md`
+  escribe `(estado, Pipeline)`. Sigo el diseño, que es el que necesita
+  `Autoguardado.GUARDANDO/FALLO`. Para el spec-author: dos palabras en R79.
+- **Comentario de la barra de `partes.html`**: T44 dice «ningún otro cambio
+  en el HTML», pero el comentario que precede a la barra decía que las
+  pestañas «se abren en otra pestaña del navegador para no perder la
+  remesa». Lo reescribí (misma pestaña, guarda de salida, R47); R59 (c) lo
+  admite porque va con la barra. Si el líder lo prefiere intacto, es revertir
+  ese comentario, sin efecto en ningún test.
+- **Comentario de F-036 en la cabecera de `partes.html`** («la entrada de
+  incidencias, en otra pestaña: salir de esta perdería la remesa…»): **queda
+  desfasado y no se puede tocar**, porque R59 compara los comentarios de
+  fuera de la barra y (g) solo admite quitar `target`/`rel`. Para el
+  spec-author: o se admite ese comentario en R59 (como (g)), o se acepta el
+  desfase hasta que F-045 toque el circuito.
+- **R59 (g)** quita `target`/`rel` de los dos enlaces de F-036 en los dos
+  lados de la comparación (como el valor de `class`): R59 **admite** la
+  retirada; quien la **exige** es R73. El control del enlace de SharePoint
+  confirma que ningún otro enlace se beneficia.
+- **H-2** (`window.open`): entra en **R73 de las cuatro páginas** (HTML sin
+  comentarios) y en el estático de la guarda; no en la guarda en ejecución,
+  que no ve clics (R45, R80). H-2 del bloque 7, **cerrado**.
+- **H-6**: **cerrado** aquí (test en `test_f035_paginas.py`, controles
+  V1–V4). H-7 (forma ligada de los atributos de R66) **no** se tomó: su
+  destino sigue siendo el bloque 10.
+- **Base de la mutación**: el encargo decía `--base 8ced4bd` y `tasks.md`
+  T45, `--base 2a86bca`. Ejecuté las dos (0 mutantes en ambas).
+
+### 6 · Fuera del alcance y pendiente
+
+- **MANUAL (humano)**: el vistazo en el navegador de T44 (recién abierta,
+  «Inicio» sin pregunta) y V2 (k)–(p) con remesa (`F5`, «Entrada»,
+  «Importar incidencias» preguntan; tras «Empezar otra remesa», no). Ver §3.
+  Si con remesa **no** pregunta, PARA (riesgo «`Alpine.$data` en 3.14.1»,
+  §16.15.9).
+- **Bloque 14**: el `README.md` del front, `docs/ARCHITECTURE.md` y
+  `docs/DESPLIEGUE.md` siguen diciendo «solo el circuito abre aparte»; no los
+  toqué (son del bloque 14). La regla de R48 de la raíz sigue en verde.
+- **Bloque 17** (R82, remodelado de `partes.html`): sin tocar.
+- **Para el spec-author**: la firma de R79 y el comentario de F-036 (§5).
+- H-3, H-4 (puntos 2 y 3), H-5 y H-7 siguen en sus bloques.
+
+### Evidencias (bloque 16)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | raíz **112 passed**; front pytest **473 passed** (`init.sh`); Node **563/563** (de ellos **54** de `guarda_salida.test.js`); api en verde (caché) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`. El código nuevo es JS; lo cubren los 54 tests de comportamiento y las 18 mutaciones manuales |
+| Mutantes (herramienta) | **0 generados, 0 supervivientes** (bases `8ced4bd` y `2a86bca`): sin Python de producción |
+| Mutantes a mano | **18 generados, 18 muertos, 0 supervivientes** (29–35 del diseño, la 33 en dos variantes, y diez propias) |
+| Tiempo de la suite | raíz 7,44 s; front pytest 16,67 s; Node 1,9 s (`guarda_salida.test.js`, 0,3 s) |

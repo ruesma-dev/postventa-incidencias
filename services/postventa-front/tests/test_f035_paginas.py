@@ -81,6 +81,9 @@ Bloque 11 (`tasks.md`, T31):
   (directivas, `id`, `type`… con su ámbito de Alpine) es la de F-036, que
   sus tests no fijan entera. El remodelado no la cambia; un cambio de lógica
   legítimo (R75, bloque 13) la amplía en el mismo commit.
+- Review del bloque 10, **O10-2**: el selector de fichero de `importar.html`
+  se alcanza con el teclado (oculto con `sr-only`, no con `hidden`) y su
+  etiqueta pinta el foco (`:focus-within`).
 
 Todo sin red, sin BBDD y sin IA.
 """
@@ -2328,3 +2331,102 @@ def test_f035_o10_3_control_la_huella_ve_el_ambito_y_el_orden():
     assert diferencias_de_huella(fuera, esperada) != []
     assert diferencias_de_huella(otro_orden, esperada) != []
     assert diferencias_de_huella(html, esperada) == []
+
+
+# --- O10-2 · El selector de fichero se alcanza con el teclado ----------------------
+#
+# Review del bloque 10, O10-2 (previo, de F-036): el `<input type="file">` de
+# «Elegir el Excel» iba con `hidden` (display: none) dentro de una `<label>`
+# que no es enfocable, así que con el tabulador no se llegaba a la acción
+# principal de la página (WCAG 2.1.1, nivel A). El arreglo es presentación: el
+# control se oculta de forma accesible (`sr-only`, sigue en el orden del
+# tabulador y su nombre es el texto de la etiqueta) y la etiqueta, que es lo
+# que se ve, pinta el foco del control con una regla `:focus-within`.
+
+_OCULTA_DEL_TODO = frozenset({"hidden", "invisible"})
+_SIN_DISPLAY = re.compile(r"display\s*:\s*none")
+
+
+def problemas_o10_2(pagina: str, html: str, css: str) -> list[str]:
+    """Lo que impide llegar con el teclado a un selector de fichero de la página. Vacío = correcto."""
+    problemas = []
+    reglas = [r for r in reglas_css(css_sin_comentarios_texto(css)) if not r.contexto]
+    for control in [e for e in leer_html_texto(html).elementos() if e.nombre == "input" and e.atributos.get("type") == "file"]:
+        nombre = f'{pagina}: <input type="file">'
+        if clases(control) & _OCULTA_DEL_TODO or "hidden" in control.atributos:
+            problemas.append(f"{nombre} lleva hidden: el tabulador se lo salta (O10-2)")
+        if _SIN_DISPLAY.search(control.atributos.get("style", "")):
+            problemas.append(f"{nombre} lleva display: none (O10-2)")
+        if "sr-only" not in clases(control):
+            problemas.append(f"{nombre} sin sr-only: se oculta de forma accesible, no se enseña el control nativo")
+        etiquetas = [a for a in control.ancestros() if a.nombre == "label"]
+        if not etiquetas:
+            problemas.append(f"{nombre} no va dentro de su <label>: sin nombre accesible")
+            continue
+        etiqueta = etiquetas[0]
+        selectores = {
+            parte.strip()
+            for r in reglas
+            if (r.valor("outline") or "none").split()[0] not in ("none", "0")
+            for parte in r.selector.split(",")
+        }
+        if not any(re.fullmatch(rf"(?:label)?\.{re.escape(c)}:focus-within", s) for c in clases(etiqueta) for s in selectores):
+            problemas.append(f"{nombre}: su <label> no pinta el foco (ninguna regla .<clase>:focus-within con outline)")
+    return problemas
+
+
+def _o10_2(pagina: str, html: str | None = None, css: str | None = None) -> list[str]:
+    return problemas_o10_2(
+        pagina,
+        (RAIZ_FRONT / pagina).read_text(encoding="utf-8") if html is None else html,
+        STYLES_CSS.read_text(encoding="utf-8") if css is None else css,
+    )
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_REMODELADAS)
+def test_f035_o10_2_el_selector_de_fichero_se_alcanza_con_el_teclado(pagina):
+    problemas = _o10_2(pagina)
+
+    assert problemas == [], "\n".join(problemas)
+
+
+def test_f035_o10_2_importar_tiene_un_selector_de_fichero_y_oficios_ninguno():
+    # Que la guardia no pase en vacío: «Elegir el Excel» es el único de las dos.
+    def cuantos(pagina):
+        doc = leer_html((RAIZ_FRONT / pagina))
+        return len([e for e in doc.elementos() if e.nombre == "input" and e.atributos.get("type") == "file"])
+
+    assert (cuantos("importar.html"), cuantos("oficios.html")) == (1, 0)
+
+
+@pytest.mark.parametrize(
+    ("donde", "viejo", "nuevo", "senal"),
+    [
+        ("html", 'type="file" class="sr-only"', 'type="file" class="hidden"', "lleva hidden"),
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only" hidden', "lleva hidden"),
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only invisible"', "lleva hidden"),
+        ("html", 'type="file" class="sr-only"', 'type="file" class="sr-only" style="display: none"', "display: none"),
+        ("html", 'type="file" class="sr-only"', 'type="file"', "sin sr-only"),
+        ("css", "label.rs-btn:focus-within {", "label.rs-btn:hover {", "no pinta el foco"),
+        ("css", "outline: 2px solid var(--rs-burdeos);\n  outline-offset: 2px;\n}\n\n/* ---------- Movimiento", "outline: none;\n}\n\n/* ---------- Movimiento", "no pinta el foco"),
+    ],
+    ids=["hidden-G", "atributo-hidden", "invisible", "display-none", "sin-sr-only", "sin-regla-de-foco", "foco-sin-contorno"],
+)
+def test_f035_o10_2_control_el_selector_inalcanzable_salta(donde, viejo, nuevo, senal):
+    html = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    css = STYLES_CSS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    texto = html if donde == "html" else css
+    assert texto.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+    copia = texto.replace(viejo, nuevo)
+
+    problemas = _o10_2("importar.html", html=copia, css=css) if donde == "html" else _o10_2("importar.html", html=html, css=copia)
+    assert any(senal in p for p in problemas), problemas
+
+
+def test_f035_o10_2_control_el_selector_fuera_de_su_etiqueta_salta():
+    html = (
+        '<body><label class="rs-btn rs-btn--secundario">Elegir el Excel</label>'
+        '<input type="file" class="sr-only" accept=".xlsx"></body>'
+    )
+
+    assert any("no va dentro de su <label>" in p for p in _o10_2("x.html", html=html))

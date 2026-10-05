@@ -955,6 +955,15 @@ a.rs-subnav__item:hover {
   outline-offset: 3px;
 }
 
+/* Una etiqueta con aspecto de botón que envuelve un control oculto de forma
+   accesible (sr-only): el «Elegir el Excel» de importar.html (O10-2). El
+   control recibe el foco sin verse, así que lo pinta la etiqueta. Solo en
+   <label>: en un <button>, :focus-within saltaría también con el ratón. */
+label.rs-btn:focus-within {
+  outline: 2px solid var(--rs-burdeos);
+  outline-offset: 2px;
+}
+
 /* ---------- Movimiento reducido (R55) ------------------------------------------ */
 
 /* :is(*, #…) toma la especificidad de un id (1,0,0): así esta regla gana a

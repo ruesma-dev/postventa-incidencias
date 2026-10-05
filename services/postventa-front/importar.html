@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=b988e3b33c">
+  <link rel="stylesheet" href="css/styles.css?v=43b9e97b83">
 </head>
 <body class="rs-cuerpo">
   <!-- F-036 · design.md §9. Tres bloques, en el orden en que se usan:
@@ -97,9 +97,11 @@
       <section class="rs-panel rs-panel--destacado">
         <h2 class="rs-rotulo">2 · Importar a la bandeja</h2>
         <div class="mt-4 flex flex-wrap items-center gap-3">
+          <!-- El control se oculta de forma accesible (sr-only, no hidden): sigue
+               en el orden del tabulador y su etiqueta pinta el foco (O10-2). -->
           <label class="rs-btn rs-btn--secundario">
             Elegir el Excel
-            <input type="file" class="hidden" accept=".xlsx" @change="alElegirFichero($event)">
+            <input type="file" class="sr-only" accept=".xlsx" @change="alElegirFichero($event)">
           </label>
           <span class="rs-texto" x-text="fichero ? fichero.name : 'Ningún fichero elegido'"></span>
           <!-- Sin reintentos automáticos (R52): si falla, se enseña el motivo

@@ -194,13 +194,29 @@ function Invoke-SigridLectura {
         ",""parameters"":" + (ConvertTo-SigridParametros $Parametros) +
         ",""max_rows"":$MaxFilas,""timeout_seconds"":$TimeoutS}"
 
+    # UTF-8 DE PUNTA A PUNTA, Y NO LO DECIDE POWERSHELL (F-036, 2026-09-28).
+    # La pasarela responde el JSON en UTF-8 con `Content-Type: application/json`
+    # SIN `charset` (el worker de Python de Azure Functions solo lo anade a los
+    # tipos `text/*`). Sin charset, `Invoke-RestMethod` de PowerShell 5.1
+    # decodifica el cuerpo como ISO-8859-1: la "i" con tilde de "Fontaneria"
+    # llegaba como dos caracteres raros y, al guardarla, como los bytes
+    # `C3 83 C2 AD` en vez de `C3 AD`. Por eso aqui se
+    # piden los BYTES crudos (`RawContentStream`) y se decodifican como UTF-8 a
+    # mano. Y a la ida lo mismo: el cuerpo va en bytes UTF-8 y lo dice, para que
+    # un parametro con tilde no salga en Latin-1.
+    $bytesCuerpo = [Text.Encoding]::UTF8.GetBytes($cuerpo)
+    # La barra de progreso de Invoke-WebRequest en 5.1 frena cada llamada.
+    $ProgressPreference = "SilentlyContinue"
+
     try {
-        $respuesta = Invoke-RestMethod -Method Post `
+        $web = Invoke-WebRequest -Method Post `
             -Uri ($BaseUrl + "/api/sql/read") `
             -Headers @{ "x-functions-key" = $Clave } `
-            -ContentType "application/json" `
-            -Body $cuerpo `
+            -ContentType "application/json; charset=utf-8" `
+            -Body $bytesCuerpo `
+            -UseBasicParsing `
             -TimeoutSec ($TimeoutS + 10)
+        $respuesta = [Text.Encoding]::UTF8.GetString($web.RawContentStream.ToArray()) | ConvertFrom-Json
     }
     catch {
         $codigo = ""

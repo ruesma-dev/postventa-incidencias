@@ -1,0 +1,152 @@
+<!-- services/postventa-front/oficios.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oficios repetidos en Sigrid · Posventa · Ruesma</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine con defer y versión fija, como en index.html: se ejecuta después
+       de nuestros scripts (al final del body) y encuentra appOficios. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!-- F-036 · design.md §15.6 (quinta enmienda: solo oficios; era
+       catalogos.html). Tres listas: propuestas pendientes, grupos vigentes y
+       avisos. Nada se decide sin pulsar (R80, R89): cada botón manda UNA
+       decisión con confirmado: true y la página recarga. -->
+  <div x-data="appOficios()" x-init="iniciar()" class="min-h-screen flex flex-col">
+
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight">Oficios repetidos en Sigrid</h1>
+          <p class="text-sm text-slate-500">Oficios casi iguales que el desplegable de la plantilla enseña como uno</p>
+        </div>
+        <nav class="flex gap-4 text-sm">
+          <a href="index.html" class="text-sky-700 hover:underline">Partes firmados</a>
+          <a href="importar.html" class="text-sky-700 hover:underline">Importar incidencias</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-6">
+
+      <section class="rounded-lg border border-slate-200 bg-white p-6">
+        <p class="text-sm text-slate-600">
+          Sigrid no se toca: agrupar solo cambia cómo se enseñan los oficios en la
+          plantilla. Una decisión vale para todas las obras.
+        </p>
+        <div class="mt-4 flex flex-wrap items-end gap-3">
+          <label class="text-sm">
+            <span class="block text-xs text-slate-500">Código de obra</span>
+            <input type="text" x-model="obra" autocomplete="off"
+                   @keydown.enter.prevent="cargar()"
+                   class="mt-1 w-40 rounded border border-slate-300 px-2 py-1.5 text-sm">
+          </label>
+          <button type="button" @click="cargar()" :disabled="!obra.trim() || cargando"
+                  class="rounded bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:opacity-40">Ver los oficios</button>
+          <button type="button" @click="descargarGrupos()" :disabled="!vista"
+                  class="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40">Descargar los grupos vigentes</button>
+          <span x-show="cargando" class="text-xs text-slate-500">Leyendo Sigrid…</span>
+        </div>
+        <p x-show="motivoSinDecidir()" x-text="motivoSinDecidir()" class="mt-3 text-xs text-slate-500"></p>
+        <p x-show="errorCarga" x-text="errorCarga"
+           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+        <p x-show="errorDecision" x-text="errorDecision"
+           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+        <p x-show="vista && vista.sinNada" class="mt-4 text-sm text-slate-500">
+          En la obra <span x-text="vista && vista.obra"></span> no hay oficios repetidos que revisar.
+        </p>
+      </section>
+
+      <template x-if="vista">
+        <div class="space-y-6">
+
+          <!-- ── Propuestas pendientes (R79, R80, R89) ─────────────────── -->
+          <section x-show="vista.propuestas.length" class="rounded-lg border border-slate-200 bg-white p-6">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Propuestas pendientes</h2>
+            <ul class="mt-4 space-y-4">
+              <template x-for="propuesta in vista.propuestas" :key="propuesta.clave">
+                <li class="rounded border border-slate-200 p-4 text-sm">
+                  <ul class="space-y-0.5">
+                    <template x-for="m in propuesta.miembros" :key="m.codigo">
+                      <li><span x-text="m.nombre"></span> <span class="text-slate-400" x-text="'(' + m.codigo + ')'"></span></li>
+                    </template>
+                  </ul>
+                  <p class="mt-1 text-xs text-slate-500" x-text="'Por qué se proponen: ' + propuesta.motivos.join(', ')"></p>
+
+                  <!-- Un grupo propuesto se confirma entero; «distintos» se
+                       decide par a par (design.md §15.3). -->
+                  <div x-show="propuesta.confirmarEntero" class="mt-3">
+                    <button type="button" @click="decidir(propuesta.codigos, 'mismo')" :disabled="!puedeDecidir()"
+                            class="rounded bg-emerald-700 px-3 py-1 text-xs text-white hover:bg-emerald-600 disabled:opacity-40">Son el mismo</button>
+                  </div>
+                  <ul class="mt-3 space-y-2">
+                    <template x-for="par in propuesta.pares" :key="par.codigo_a + '-' + par.codigo_b">
+                      <li class="flex flex-wrap items-center gap-2">
+                        <span x-text="par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"></span>
+                        <span class="text-xs text-slate-500" x-text="par.motivos.join(', ')"></span>
+                        <button type="button" x-show="!propuesta.confirmarEntero"
+                                @click="decidir([par.codigo_a, par.codigo_b], 'mismo')" :disabled="!puedeDecidir()"
+                                class="rounded bg-emerald-700 px-2 py-0.5 text-xs text-white hover:bg-emerald-600 disabled:opacity-40">Son el mismo</button>
+                        <button type="button" @click="decidir([par.codigo_a, par.codigo_b], 'distinto')" :disabled="!puedeDecidir()"
+                                class="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs hover:bg-slate-50 disabled:opacity-40">Son distintos</button>
+                      </li>
+                    </template>
+                  </ul>
+                </li>
+              </template>
+            </ul>
+          </section>
+
+          <!-- ── Grupos vigentes (R82, R86, R89) ───────────────────────── -->
+          <section x-show="vista.grupos.length" class="rounded-lg border border-slate-200 bg-white p-6">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Grupos vigentes</h2>
+            <p class="mt-1 text-xs text-slate-500">
+              En la plantilla, cada grupo sale como una sola opción con este nombre.
+              «Separar» dice que los dos oficios del par son distintos.
+            </p>
+            <ul class="mt-4 space-y-4">
+              <template x-for="grupo in vista.grupos" :key="grupo.clave">
+                <li class="rounded border border-slate-200 p-4 text-sm">
+                  <p class="font-medium" x-text="grupo.etiqueta"></p>
+                  <ul class="mt-2 space-y-2">
+                    <template x-for="par in grupo.pares" :key="par.codigo_a + '-' + par.codigo_b">
+                      <li class="flex flex-wrap items-center gap-2">
+                        <span x-text="par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"></span>
+                        <button type="button" @click="decidir([par.codigo_a, par.codigo_b], 'distinto')" :disabled="!puedeDecidir()"
+                                class="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs hover:bg-slate-50 disabled:opacity-40">Separar</button>
+                      </li>
+                    </template>
+                  </ul>
+                </li>
+              </template>
+            </ul>
+          </section>
+
+          <!-- ── Avisos: grupos no aplicados por contradicción (R82) ───── -->
+          <section x-show="vista.avisos.length" class="rounded-lg border border-amber-200 bg-amber-50 p-6">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-amber-800">Avisos</h2>
+            <ul class="mt-3 space-y-3 text-sm text-amber-900">
+              <template x-for="aviso in vista.avisos" :key="aviso.clave">
+                <li>
+                  <p x-text="aviso.texto"></p>
+                  <p class="mt-1 text-xs" x-text="aviso.miembros.map(m => m.nombre + ' (' + m.codigo + ')').join(' · ')"></p>
+                </li>
+              </template>
+            </ul>
+          </section>
+        </div>
+      </template>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/traza.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/importacion.js"></script>
+  <script src="js/oficios.js"></script>
+</body>
+</html>

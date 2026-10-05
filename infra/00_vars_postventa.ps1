@@ -176,8 +176,16 @@ $PostventaAppSettingsSecretas = [ordered]@{
 # biblioteca de dev del sitio de IT (F-006). EL DIA DEL CORTE (runbook en
 # docs/DESPLIEGUE.md, seccion 9) se cambian a
 #     $EstructuraArchivo = "posventa"
-#     $CarpetaBaseArchivo = ""       (la raiz de la biblioteca, D-1)
+#     $CarpetaBaseArchivo = "/"      (la raiz de la biblioteca, D-1)
 # despues de cargar en el Key Vault los IDs de la biblioteca de Posventa.
+#
+# LA RAIZ ES "/", NUNCA "" (F-051, incidente del 2026-10-01). El corte de F-013
+# la dejo en "" y Azure NO pasa a la aplicacion un App Setting de valor vacio:
+# la Function no recibio la variable, tomo el defecto del codigo ("Postventa")
+# y el archivo en Posventa busco esa carpeta en la raiz: 502 en todos los
+# archivados de ese dia. "/" llega, y el servicio la recorta a la raiz. Por si
+# alguien vuelve a poner "", desplegar_backend.ps1 la escribe como "/" de todas
+# formas y se niega a fijar cualquier App Setting vacia.
 #
 # $CrearCarpetasArchivo va en "true" desde ya: el humano decidio el 2026-09-24
 # (T4-3 de F-013) "crear desde el principio". Solo actua con `posventa`: en
@@ -193,7 +201,7 @@ $PostventaAppSettingsSecretas = [ordered]@{
 # $EstructuraArchivo = "por_obra" y $CarpetaBaseArchivo = "Postventa", que es
 # tambien el freno 3 (volver atras), junto con los IDs de IT en el Key Vault.
 $EstructuraArchivo = "posventa"
-$CarpetaBaseArchivo = ""
+$CarpetaBaseArchivo = "/"
 $CrearCarpetasArchivo = "true"
 
 # --- El fichero local, si existe --------------------------------------------

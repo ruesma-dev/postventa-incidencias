@@ -137,7 +137,10 @@ from domain.ports.biblioteca import ExploradorBibliotecaPort
 from domain.ports.persistencia import RepositorioPartesPort
 from domain.ports.ubicacion import UbicacionPort
 from infrastructure.persistencia.fabrica import construir_repositorio
-from infrastructure.sharepoint.fabrica import construir_archivador
+from infrastructure.sharepoint.fabrica import (
+    carpeta_base_efectiva,
+    construir_archivador,
+)
 from infrastructure.sigrid.fabrica import construir_ubicaciones
 
 #: Lo que el cuerpo tiene que traer, además del fichero.
@@ -200,7 +203,9 @@ def archivar_parte(
         _como_contexto(contenido, hash_parte=hash),
         archivador,
         repositorio,
-        carpeta_base=ajustes.sharepoint_carpeta_base,
+        # F-051 · la base efectiva, no el campo: ausente es la raíz en
+        # `posventa` y `Postventa` en `por_obra`.
+        carpeta_base=carpeta_base_efectiva(ajustes),
         ahora=ahora if ahora is not None else datetime.now(UTC),
         drive_id_vigente=ajustes.sharepoint_drive_id,
         # F-031 · lo que **afirma** el cuerpo. Solo sirve para cotejarlo
@@ -254,7 +259,7 @@ def _resolutor_de_la_estrategia(
         ubicaciones=ubicaciones
         if ubicaciones is not None
         else construir_ubicaciones(ajustes),
-        base=ajustes.sharepoint_carpeta_base,
+        base=carpeta_base_efectiva(ajustes),
         incidencias=ajustes.sharepoint_carpeta_incidencias,
         firmados=ajustes.sharepoint_carpeta_firmados,
         firmados_alternativa=ajustes.sharepoint_carpeta_firmados_alternativa,

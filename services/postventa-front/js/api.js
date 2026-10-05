@@ -1,5 +1,5 @@
 // services/postventa-front/js/api.js
-// R12, R23-R27 · El cliente de los diez endpoints del backend.
+// R12, R23-R27 · El cliente de los endpoints del backend (diecisiete desde F-036).
 //
 // Una sola forma de hablar con el backend y una sola forma de error hacia
 // arriba: `ErrorApi {tipo, http, mensaje, avisos}` con
@@ -13,6 +13,13 @@
 // F-002 … F-006. F-019 añade tres —`registrarRemesa`, `guardarParte` y
 // `cola`— y F-009 añade `cerrar`, el único que escribe en el ERP de
 // producción. Ninguno de los dos cambia los que ya estaban.
+//
+// F-036 añade cinco para la entrada de incidencias y los oficios repetidos
+// —`descargarPlantilla`, `importarExcel`, `bandeja`, `propuestasCatalogos` y
+// `decidirCatalogos`— con dos reglas propias (R52): enseñan el mensaje **del
+// backend** también en un 503 (aquí un 503 es «sin Sigrid o sin base», no la
+// puerta de entorno de archivar), e `importarExcel` y `decidirCatalogos` no se
+// reintentan nunca solos. Los doce de antes no cambian.
 
 (function () {
   "use strict";
@@ -30,6 +37,9 @@
       this.http = http === undefined ? null : http;
       this.mensaje = mensaje;
       this.avisos = avisos || [];
+      // F-036 · el texto y el código del backend, si los trajo (`clasificar`).
+      this.mensajeServicio = null;
+      this.codigo = null;
     }
   }
 
@@ -45,11 +55,35 @@
     "No es un fallo y no hay nada que arreglar aquí.";
 
   /**
+   * F-036 R52 · lo que se dice cuando una petición que NO se reintenta sola
+   * se queda sin respuesta (red caída o tiempo agotado). El texto genérico de
+   * `errorDeTransporte` termina en «Reintentando…», que aquí sería mentira.
+   */
+  const TEXTO_SIN_REINTENTO =
+    "No se ha podido hablar con el servicio (sin conexión, o tardó demasiado) " +
+    "y no se ha reintentado por su cuenta. Puedes volver a intentarlo: lo que " +
+    "ya hubiera entrado no se duplica.";
+
+  /**
    * Clasifica una respuesta ya leída. Función pura, y por eso comprobable.
    *
    * @returns {ErrorApi|null} `null` si la respuesta es buena.
    */
   function clasificar(status, datos) {
+    const error = clasificarSinDetalle(status, datos);
+    if (error) {
+      // F-036 · el texto y el código tal como los manda el backend. El
+      // `mensaje` de arriba no cambia (el 503 de archivar sigue siendo la
+      // puerta de entorno); quien necesite el texto del backend lo tiene
+      // aquí, y `peticion` lo usa si se le pide (`mensajeDelServicio`).
+      error.mensajeServicio =
+        (datos && typeof datos.error === "string" && datos.error) || null;
+      error.codigo = (datos && typeof datos.codigo === "string" && datos.codigo) || null;
+    }
+    return error;
+  }
+
+  function clasificarSinDetalle(status, datos) {
     if (datos === undefined) {
       // No era JSON: puede ser la página de error del proxy o de la SWA (R26).
       return new ErrorApi(
@@ -185,8 +219,8 @@
     const registrar =
       ajustes.traza || (TrazaModulo ? TrazaModulo.traza : function () {});
 
-    /** Un intento: una petición, sin reintentos. */
-    async function unIntento(ruta, opcionesPeticion) {
+    /** Abre la petición con su timeout; un fallo de transporte sale como `ErrorApi`. */
+    async function abrir(ruta, opcionesPeticion) {
       const abortador = new AbortController();
       const cancelarTimeout = programarTimeout(
         config.TIMEOUT_PETICION_MS,
@@ -197,9 +231,8 @@
         },
       );
 
-      let respuesta;
       try {
-        respuesta = await hacerFetch(baseApi + ruta, {
+        return await hacerFetch(baseApi + ruta, {
           method: opcionesPeticion.metodo,
           body: opcionesPeticion.cuerpo,
           headers: opcionesPeticion.cabeceras,
@@ -210,7 +243,10 @@
       } finally {
         cancelarTimeout();
       }
+    }
 
+    /** Lee el cuerpo de una respuesta mala y la convierte en `ErrorApi`. */
+    async function errorDeRespuesta(respuesta) {
       const textoCrudo = await respuesta.text();
       let datos;
       try {
@@ -218,13 +254,37 @@
       } catch (error) {
         datos = undefined; // no era JSON: lo clasifica `clasificar` (R26)
       }
+      return { datos: datos, problema: clasificar(respuesta.status, datos) };
+    }
 
-      const problema = clasificar(respuesta.status, datos);
-      if (problema) {
-        problema.http = respuesta.status;
-        throw problema;
+    /** Un intento: una petición, sin reintentos. */
+    async function unIntento(ruta, opcionesPeticion) {
+      const respuesta = await abrir(ruta, opcionesPeticion);
+      const leido = await errorDeRespuesta(respuesta);
+      if (leido.problema) {
+        leido.problema.http = respuesta.status;
+        throw leido.problema;
       }
-      return { datos: datos, http: respuesta.status };
+      return { datos: leido.datos, http: respuesta.status };
+    }
+
+    /**
+     * F-036 · ajusta el error de las peticiones de la entrada de incidencias.
+     *
+     * - `mensajeDelServicio`: el texto del backend manda sobre el genérico,
+     *   también en un 503 (R52).
+     * - `sinReintentos`: un fallo de transporte no puede decir «Reintentando…»
+     *   si no se va a reintentar.
+     */
+    function ajustarFallo(fallo, datosPeticion) {
+      if (datosPeticion.mensajeDelServicio && fallo.mensajeServicio) {
+        fallo.mensaje = fallo.mensajeServicio;
+        fallo.message = fallo.mensajeServicio;
+      } else if (datosPeticion.sinReintentos && fallo.http === null) {
+        fallo.mensaje = TEXTO_SIN_REINTENTO;
+        fallo.message = TEXTO_SIN_REINTENTO;
+      }
+      return fallo;
     }
 
     /**
@@ -237,7 +297,9 @@
       const datosPeticion = opcionesPeticion || {};
       const paso = datosPeticion.paso || ruta.replace("/", "");
       const hash = datosPeticion.hash || "";
-      const maximoReintentos = config.REINTENTOS;
+      // F-036 R52 · `sinReintentos`: lo que decide una persona (importar un
+      // fichero, decidir que dos oficios son el mismo) no se repite solo.
+      const maximoReintentos = datosPeticion.sinReintentos ? 0 : config.REINTENTOS;
       const esperas = config.ESPERAS_MS || [];
 
       for (let intento = 0; ; intento += 1) {
@@ -246,10 +308,12 @@
           registrar({ hash: hash, paso: paso, estado: "ok", http: resultado.http });
           return resultado.datos;
         } catch (error) {
-          const fallo =
+          const fallo = ajustarFallo(
             error instanceof ErrorApi
               ? error
-              : new ErrorApi("desconocido", null, String(error && error.message));
+              : new ErrorApi("desconocido", null, String(error && error.message)),
+            datosPeticion,
+          );
 
           const quedanIntentos = intento < maximoReintentos;
           registrar({
@@ -272,6 +336,47 @@
           throw fallo;
         }
       }
+    }
+
+    /**
+     * F-036 R50 · una descarga binaria (la plantilla): UN intento, sin
+     * reintentos, con el mismo timeout y la misma traza que `peticion`.
+     *
+     * No pasa por `peticion` porque aquel lee el cuerpo como JSON y un `.xlsx`
+     * no lo es. Si la respuesta es buena devuelve `{blob, disposicion}` (el
+     * nombre lo saca `js/importacion.js`); si no, el `ErrorApi` con el texto
+     * del backend (R52).
+     */
+    async function descarga(ruta, paso) {
+      const datosPeticion = { metodo: "GET", sinReintentos: true, mensajeDelServicio: true };
+      try {
+        const respuesta = await abrir(ruta, datosPeticion);
+        if (respuesta.status >= 200 && respuesta.status < 300) {
+          const blob = await respuesta.blob();
+          registrar({ hash: "", paso: paso, estado: "ok", http: respuesta.status });
+          return {
+            blob: blob,
+            disposicion: respuesta.headers.get("Content-Disposition") || "",
+          };
+        }
+        const leido = await errorDeRespuesta(respuesta);
+        leido.problema.http = respuesta.status;
+        throw leido.problema;
+      } catch (error) {
+        const fallo = ajustarFallo(
+          error instanceof ErrorApi
+            ? error
+            : new ErrorApi("desconocido", null, String(error && error.message)),
+          datosPeticion,
+        );
+        registrar({ hash: "", paso: paso, estado: fallo.tipo, http: fallo.http });
+        throw fallo;
+      }
+    }
+
+    /** F-036 · `?obra=` escapada: un `&` dentro no añade otra clave. */
+    function conObra(ruta, obra) {
+      return ruta + "?obra=" + encodeURIComponent(obra);
     }
 
     /** Multipart de `/api/extraer` y `/api/firma`: el fichero y su hash. */
@@ -515,6 +620,83 @@
       },
 
       /**
+       * F-036 R50 · la plantilla de una obra, en binario: `{blob, disposicion}`.
+       *
+       * Lee Sigrid en el momento (R1). Un intento y sin reintentos: si falla,
+       * la persona vuelve a pulsar. 404/409/503 traen su motivo (R52).
+       */
+      descargarPlantilla: function (obra) {
+        return descarga(conObra("/plantilla", obra), "plantilla");
+      },
+
+      /**
+       * F-036 R43, R52 · importa un Excel a la bandeja.
+       *
+       * Multipart con `fichero` y `usuario_oid` (el `oid` de `/.auth/me`),
+       * sin `Content-Type` a mano. **Nunca se reintenta sola** (R52): ni un
+       * 502, ni la red, ni el tiempo agotado. Reimportar el mismo fichero no
+       * duplica nada, pero lo decide quien importa.
+       */
+      importarExcel: function (fichero, usuarioOid, FabricaFormData) {
+        const Fabrica =
+          FabricaFormData || (typeof FormData !== "undefined" ? FormData : null);
+        if (!Fabrica) {
+          throw new Error("este entorno no tiene FormData");
+        }
+        const cuerpo = new Fabrica();
+        cuerpo.append("fichero", fichero, fichero && fichero.name);
+        cuerpo.append("usuario_oid", usuarioOid);
+        return peticion("/importaciones", {
+          metodo: "POST",
+          cuerpo: cuerpo,
+          paso: "importaciones",
+          sinReintentos: true,
+          mensajeDelServicio: true,
+        });
+      },
+
+      /**
+       * F-036 R45 · la bandeja de una obra, en solo lectura:
+       * `{obra, total, incidencias}`. Es una lectura: lo transitorio se
+       * reintenta como en `cola`.
+       */
+      bandeja: function (obra, limite) {
+        let ruta = conObra("/bandeja", obra);
+        if (limite !== undefined && limite !== null) {
+          ruta += "&limite=" + encodeURIComponent(limite);
+        }
+        return peticion(ruta, { metodo: "GET", paso: "bandeja", mensajeDelServicio: true });
+      },
+
+      /**
+       * F-036 R87 · los oficios casi duplicados de una obra:
+       * `{obra, oficio: {oficios, grupos, propuestas, avisos}}` (B6-18).
+       */
+      propuestasCatalogos: function (obra) {
+        return peticion(conObra("/catalogos/propuestas", obra), {
+          metodo: "GET",
+          paso: "propuestas",
+          mensajeDelServicio: true,
+        });
+      },
+
+      /**
+       * F-036 R88 · registra decisiones sobre oficios. El cuerpo lo compone
+       * `js/oficios.js::cuerpoDeDecision` (con `confirmado: true` booleano) y
+       * viaja tal cual. **No se reintenta sola**: es el acto de una persona.
+       */
+      decidirCatalogos: function (cuerpo) {
+        return peticion("/catalogos/decisiones", {
+          metodo: "POST",
+          cuerpo: JSON.stringify(cuerpo),
+          cabeceras: { "Content-Type": "application/json" },
+          paso: "decisiones",
+          sinReintentos: true,
+          mensajeDelServicio: true,
+        });
+      },
+
+      /**
        * F-009 · quién es el usuario de la sesión, para poder firmar el cierre.
        *
        * **No va contra `/api`**: `/.auth/me` lo sirve el proxy de la Static Web
@@ -548,6 +730,7 @@
     identidadDe: identidadDe,
     CONFIG_POR_DEFECTO: CONFIG_POR_DEFECTO,
     TEXTO_ENTORNO_NO_ARCHIVA: TEXTO_ENTORNO_NO_ARCHIVA,
+    TEXTO_SIN_REINTENTO: TEXTO_SIN_REINTENTO,
   };
 
   if (typeof window !== "undefined") {

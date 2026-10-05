@@ -120,6 +120,15 @@
     principio"). Este script no sabe de estrategias: solo escribe lo que diga
     el fichero de variables, y lo ensena antes de pedir la confirmacion.
 
+    NINGUNA APP SETTING VACIA (F-051, incidente del 2026-10-01). Azure no pasa
+    a la aplicacion un App Setting de valor vacio: la carpeta base "vacia" del
+    corte no llego a la Function, que uso su defecto del codigo ("Postventa")
+    y no encontro esa carpeta en Posventa. Desde entonces la raiz se escribe
+    como "/" (`Carpeta-Base-Para-Azure`), y si cualquier otra App Setting de
+    `$ajustes` saliera vacia, el script se para ANTES de fijarlas, nombrandola.
+    Lo que de verdad lee la aplicacion se comprueba despues en Application
+    Insights (docs/DESPLIEGUE.md, seccion 9, paso 6), no en la configuracion.
+
 .PARAMETER WhatIf
     Solo lecturas. Dice que crearia o reutilizaria y NO hace ninguna llamada
     de escritura.
@@ -326,6 +335,36 @@ function Estado-Ventana($valor) {
     return "CERRADA"
 }
 
+# F-051 (incidente del 2026-10-01). La carpeta base TAL Y COMO SE ESCRIBE en
+# Azure. Azure NO pasa a la aplicacion un App Setting de valor vacio: la raiz
+# "vacia" del corte de F-013 no llego, la Function tomo el defecto del codigo
+# ("Postventa") y el archivo en Posventa dio 502. La raiz se escribe "/", que
+# el servicio recorta a la raiz; un nombre pasa tal cual.
+function Carpeta-Base-Para-Azure {
+    param([string]$Carpeta)
+    if ([string]::IsNullOrWhiteSpace($Carpeta)) { return "/" }
+    return $Carpeta
+}
+
+# F-051. Los NOMBRES de las App Settings de la lista cuyo valor esta vacio o
+# en blanco. Ninguna puede llegar asi a Azure: no la pasaria a la aplicacion y
+# el servicio usaria su defecto del codigo sin que nadie lo viera. Las
+# referencias a Key Vault van entre comillas (ver mas abajo): se quitan para
+# mirar el valor.
+function App-Settings-Vacias {
+    param([string[]]$Lista)
+    $vacias = @()
+    foreach ($ajuste in $Lista) {
+        $partes = $ajuste.Trim('"') -split '=', 2
+        if ($partes.Count -lt 2 -or [string]::IsNullOrWhiteSpace($partes[1])) {
+            $vacias += $partes[0]
+        }
+    }
+    return $vacias
+}
+
+$carpetaBaseAppSetting = Carpeta-Base-Para-Azure $CarpetaBaseArchivo
+
 Write-Host ""
 Write-Host "Despliegue del backend"
 Write-Host "----------------------"
@@ -344,7 +383,7 @@ Write-Host ""
 Write-Host ("  Tiempos de espera    : IA {0}s, Graph {1}s (el proxy corta a los {2}s)" -f $TIEMPO_IA_S, $TIEMPO_GRAPH_S, $PostventaPresupuestoProxyS)
 Write-Host ("  Ventana de archivo (/api/archivar, SharePoint)            : se despliega {0}" -f (Estado-Ventana $ventanaArchivo))
 Write-Host ("  Ventana del ERP (/api/adjuntar y /api/cerrar, Sigrid PRO) : se despliega {0}" -f (Estado-Ventana $ventanaCierre))
-Write-Host ("  Destino del archivo  : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $CarpetaBaseArchivo, $CrearCarpetasArchivo)
+Write-Host ("  Destino del archivo  : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $carpetaBaseAppSetting, $CrearCarpetasArchivo)
 if (-not $VentanasCerradas) {
     Write-Host "  Con las ventanas abiertas, esta version escribira en SharePoint y en el" -ForegroundColor Yellow
     Write-Host "  ERP de produccion en cuanto un usuario lo confirme. Si no debe, aborta" -ForegroundColor Yellow
@@ -514,8 +553,10 @@ $ajustes = @(
     # las variables de 00_vars_postventa.ps1 y redesplegar (docs/DESPLIEGUE.md,
     # seccion 9). SHAREPOINT_CREAR_CARPETAS es el freno de la creacion de
     # carpetas en `posventa` sin tocar la estructura.
+    # La base va YA RESUELTA por `Carpeta-Base-Para-Azure`: la raiz, como "/"
+    # y nunca vacia (F-051, incidente del 2026-10-01).
     "SHAREPOINT_ESTRUCTURA=$EstructuraArchivo",
-    "SHAREPOINT_CARPETA_BASE=$CarpetaBaseArchivo",
+    "SHAREPOINT_CARPETA_BASE=$carpetaBaseAppSetting",
     "SHAREPOINT_CREAR_CARPETAS=$CrearCarpetasArchivo",
     "GRAPH_TIMEOUT_S=$TIEMPO_GRAPH_S",
     "GRAPH_REINTENTOS=3",
@@ -592,6 +633,16 @@ foreach ($appSetting in $PostventaAppSettingsSecretas.Keys) {
     $ajustes += ('"{0}={1}"' -f $appSetting, $referencia)
 }
 
+# F-051. Ninguna App Setting vacia: Azure no la pasaria a la aplicacion y el
+# servicio usaria su defecto del codigo en silencio, que es exactamente el
+# incidente del 2026-10-01. Se para ANTES de fijar nada, nombrandolas.
+$vacias = @(App-Settings-Vacias $ajustes)
+if ($vacias.Count -gt 0) {
+    Salir-Con ("App Settings sin valor: {0}. No se ha fijado ninguna." -f ($vacias -join ", ")) $SALIDA_FALLO `
+        ("Azure no pasa a la aplicacion un App Setting vacio. Dale valor en " +
+        "00_vars_postventa.ps1 (la raiz de la biblioteca es '/') y vuelve a lanzarlo.")
+}
+
 Write-Host ("Fijando {0} App Settings ({1} por referencia a Key Vault)..." -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)
 az functionapp config appsettings set --name $PostventaFunction --resource-group $PostventaGrupo `
     --settings $ajustes --only-show-errors | Out-Null
@@ -626,7 +677,7 @@ Write-Host ("  Function App          : {0}" -f $PostventaFunction)
 Write-Host ("  Identidad             : {0} (con '{1}' sobre el vault)" -f $PostventaIdentidad, $ROL_KEYVAULT)
 Write-Host ("  App Settings          : {0}, de las que {1} son referencias" -f $ajustes.Count, $PostventaAppSettingsSecretas.Count)
 Write-Host ("  Ventana de escritura  : archivo {0}; GRAFICO y cierre en el ERP {1}" -f (Estado-Ventana $ventanaArchivo), (Estado-Ventana $ventanaCierre))
-Write-Host ("  Destino del archivo   : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $CarpetaBaseArchivo, $CrearCarpetasArchivo)
+Write-Host ("  Destino del archivo   : estructura '{0}', carpeta base '{1}', crear carpetas '{2}'" -f $EstructuraArchivo, $carpetaBaseAppSetting, $CrearCarpetasArchivo)
 Write-Host ""
 Write-Host "Ahora, a mano (T14), en este orden:"
 Write-Host "  1. GET /api/health responde 200."

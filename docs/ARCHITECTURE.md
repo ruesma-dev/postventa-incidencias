@@ -24,6 +24,12 @@ Hoy ese trabajo es manual: alguien abre el PDF, localiza cada parte,
 comprueba que está firmado, lo renombra `CHALET XX - Nº INCIDENCIA`, lo
 guarda y lo cierra a mano en Sigrid.
 
+Desde **F-036** (2026-09-30, implementada en su rama y sin desplegar) hay una
+segunda vía, la de **entrada**: las incidencias que manda la propiedad de una
+promoción en un Excel se importan a una bandeja propia a partir de una
+plantilla que genera el servicio. Se describe en «Entrada de incidencias
+(F-036)», más abajo.
+
 ## Capas y estructura
 
 Monorepo con un servicio por responsabilidad, igual que `partes` y
@@ -39,7 +45,8 @@ services/
       pipelines/            # orquestación por pasos (abajo)
       services/
     infrastructure/
-      documentos/           # adaptadores de los ficheros que entran: PDF y ZIP
+      documentos/           # adaptadores de los ficheros que entran: PDF y ZIP,
+                            # y desde F-036 el .xlsx (único que importa openpyxl)
       llm/                  # adaptador Gemini (y los que vengan) + su fábrica
       prompts/              # carga de config/prompts.yaml
       sharepoint/           # adaptador Graph + su fábrica (F-006).
@@ -49,6 +56,7 @@ services/
       persistencia/         # PostgreSQL
     interface_adapters/api/ # handlers HTTP de la Function
     config/                 # settings (pydantic-settings) y prompts.yaml
+    scripts/                # scripts puntuales (F-036: migrar el Excel actual)
   postventa-front/          # front estático: HTML + Tailwind CDN + Alpine.js
 infra/                      # scripts PowerShell de despliegue
 tests/                      # unit tests: sin red, sin BBDD, sin IA
@@ -659,13 +667,221 @@ externos», con su recuadro del 2026-09-25).
    dos veces, es el mismo parte: se identifica por hash del PDF troceado y
    por número de incidencia.
 
+## Entrada de incidencias (F-036)
+
+**Añadida el 2026-09-30 por F-036, implementada en su rama y sin desplegar.**
+Todo lo anterior describe la **salida**: el parte firmado que cierra una
+incidencia. F-036 abre la **entrada**: las incidencias que manda la propiedad
+de una promoción, que hoy llegan en un Excel hecho a mano y se dan de alta en
+Sigrid tecleándolas una a una. El camino es **plantilla → importación →
+bandeja**, y termina en una bandeja del esquema propio **sin tocar Sigrid**.
+Qué consume y qué expone, con sus tablas y rutas, está en
+`docs/INTEGRACION.md` (§1, §2, §7 y §8); el diseño completo y sus decisiones,
+en `specs/F-036-importar-excel/`.
+
+### La plantilla
+
+`GET /api/plantilla?obra=` genera un `.xlsx` para **una** obra con lo que
+Sigrid dice de ella en ese momento: sus unidades de posventa y sus oficios
+con proveedor (`obrofc`). Cada columna que no es texto libre —unidad,
+ubicación, oficio, proveedor, urgencia y listado— es un **desplegable
+cerrado**: el oficio enseña **una entrada por oficio real** (los grupos de
+abajo) y el proveedor, solo los pares oficio · proveedor de la obra. Las
+ubicaciones son una lista cerrada versionada en
+`config/plantilla_incidencias.yaml`. La hoja va protegida, sin contraseña,
+con una hoja de instrucciones y unos metadatos ocultos —identificador,
+versión y obra— con los que se la reconoce al volver. Todo texto se escribe
+como texto: nada de lo que llegue de Sigrid o de la propiedad se convierte en
+una fórmula.
+
+### La importación, y el Excel de errores
+
+`POST /api/importaciones` recibe el Excel rellenado y lo lleva por seis pasos,
+en este orden (`application/pipelines/paso_importacion.py`):
+
+1. **Huella.** El `sha256` del fichero. Si ese mismo fichero ya consta en una
+   importación completa, responde `ya_importado` con el resumen de entonces,
+   sin leer Sigrid ni escribir nada.
+2. **Reconocimiento.** Solo se acepta **la plantilla**. Un fichero que no es
+   un `.xlsx`, trae macros, es sospechoso —demasiadas entradas o demasiado
+   grande al descomprimir—, no lleva los metadatos o tiene la forma del Excel
+   antiguo hecho a mano se rechaza **entero**, con su motivo, sin leer Sigrid
+   ni escribir nada. Antes de abrirlo se comprueba el ZIP, y `openpyxl` lo
+   abre con `defusedxml` por debajo, **en un proceso hijo con tope de tiempo
+   y de memoria** (abajo, «La lectura aislada»).
+3. **Catálogo.** Se vuelve a leer el de la obra en Sigrid: el que vale es el
+   del momento de importar, no el de la descarga.
+4. **Validación**, fila a fila y con **comparación exacta**: un valor tasado
+   vale si es exactamente una opción de su desplegable —ni otra mayúscula, ni
+   un blanco de más, ni algo parecido—, y el texto libre, si cabe en su tope.
+   Una fórmula, una fecha o un número en una columna tasada es un error. No hay
+   casado aproximado: lo que no es exacto, vuelve.
+5. **Registro.** Las filas válidas entran en la bandeja en una transacción.
+   Dos filas del mismo fichero con la misma clave —obra, unidad, y ubicación y
+   descripción normalizadas— entran la primera normal y la otra marcada
+   **duplicada** de ella; una clave que ya está en la bandeja de esa obra no
+   vuelve a entrar (`ya_en_bandeja`), así que reimportar no duplica nada. Cada
+   oficio se resuelve a un **código concreto** de Sigrid; si su grupo tiene
+   varios códigos en la obra y el proveedor de la fila no lo desempata, entra
+   como `oficio_ambiguo` y el código lo elige una persona al revisar.
+6. **Excel de errores.** Si alguna fila tiene error, la respuesta lleva un
+   **Excel de errores**: el mismo generador, el mismo catálogo y los mismos
+   metadatos que la plantilla, **solo** con esas filas, sus valores tal como
+   llegaron, las celdas malas marcadas y una columna `Errores` que dice qué
+   tiene cada una. Se corrige y se vuelve a importar; lo que ya entró no se
+   duplica. La importación es `completa` si no hubo ningún error y `parcial`
+   si los hubo. El Excel de errores **no se guarda**: viaja en la respuesta, y
+   el `.xlsx` importado tampoco se guarda.
+
+`GET /api/bandeja?obra=` enseña lo importado de una obra, **de solo lectura**,
+con las duplicadas y los oficios ambiguos marcados, y un tope duro de 500
+filas. Las tres cosas —plantilla, importación y bandeja— tienen su página en
+el front, **`importar.html`**.
+
+### La lectura aislada en un proceso hijo (R118–R120)
+
+**Añadida el 2026-10-01 (octava enmienda de F-036).** Leer un `.xlsx` con
+`openpyxl` puede costar mucho más de lo que pesa. Cuatro reviews encontraron
+cuatro ficheros de menos de 100 KB que costaban de 36 s a casi dos minutos y
+hasta 2,5 GB de memoria: una celda con estilo en la última fila, rangos que la
+biblioteca expande al cargar, millones de elementos pequeños y un atributo
+`sqref` con millones de rangos. En vez de un tope por cada estructura —cada
+parche cerraba un caso y el siguiente salía de leer más código de la
+biblioteca—, **`openpyxl` lee el fichero subido en un proceso hijo con tope de
+tiempo y de memoria**, y lo que se pasa se mata. Cierra la clase entera,
+también lo que la biblioteca analice mañana.
+
+| Paso | Dónde | Tope | Si se pasa |
+|---|---|---|---|
+| 1. Tamaño del fichero | padre | 2 MiB | 413 |
+| 2. ZIP: firma, entradas, macros, tamaño descomprimido | padre | 500 entradas, 17 MiB | 400 `no_es_xlsx`, `contiene_macros` o `fichero_sospechoso` |
+| 2 bis. Elementos XML de todas las partes, en *streaming* | padre | 300.000 | 400 `fichero_sospechoso` |
+| 3. Abrir en solo lectura y leer las filas | **hijo** | **30 s** de reloj, **1 GiB** de memoria | se mata; 400 `fichero_sospechoso` |
+| 4. Devolver lo leído | hijo → padre | JSON validado campo a campo, 11 MiB | 400 `fichero_sospechoso` |
+
+- **El padre no abre nunca el libro**: `infrastructure/documentos/lector_aislado.py`
+  no importa `openpyxl`, y un test lo fija. Los pasos 1–2 bis son baratos y
+  rechazan casi todo lo hostil sin arrancar un hijo.
+- **JSON y no `pickle`**: el padre no ejecuta nada al leer lo que manda el
+  hijo, y lo valida (tipos, filas, columnas). Un hijo que se pasa de tiempo, se
+  queda sin memoria, muere o manda algo de más o con otra forma da **400
+  `fichero_sospechoso`**, sin 5xx y sin escribir nada. Los 400 de siempre
+  (`no_es_xlsx`, `cabecera_distinta`…) llegan del hijo con su mismo código.
+- **Cómo arranca el hijo.** En Azure (Linux), `forkserver` con `openpyxl`
+  precargado: el primer hijo de cada proceso tarda ~0,8 s y los siguientes
+  ~0,1 s; el tope de memoria es `setrlimit(RLIMIT_AS)`, puesto dentro del hijo
+  antes de abrir el fichero. En Windows (local), `spawn` (~0,6–0,8 s) y **sin
+  tope de memoria**: con `ENTORNO` en `local` o `test` se lee solo con el de
+  tiempo y se avisa en el log; con `dev` o `pro`, **503** y no se lee
+  (`LectorSinAislamiento`): en el entorno desplegado no se lee nunca sin el
+  tope. Cada lectura deja en el log su estado, sus segundos y si el tope de
+  memoria se aplicó, sin contenido. El hijo lleva también, junto al de
+  memoria, un **tope de CPU** (`setrlimit(RLIMIT_CPU)`, sus segundos más 5:
+  35 s; cuenta CPU, no reloj, y no sustituye a los 30 s del padre), para el
+  caso del padre muerto: a un hijo huérfano, al que ya nadie mira el reloj, lo
+  mata el sistema al llegar a ese tope.
+- **Una lectura aislada a la vez por proceso** (un semáforo): otra que llega y
+  no encuentra hueco en 5 s responde **503** «otra importación en curso;
+  reintenta» (`LecturaOcupada`), sin escribir nada.
+- **Memoria.** El hijo, como mucho 1 GiB. El padre crece el resultado acotado
+  (≤ 11 MiB) más lo que gasta el recuento de elementos —*expat* guarda entera
+  la etiqueta de apertura, hasta ~5 veces el elemento más grande: 80,8 MiB
+  medidos con uno de 17 MiB—, por debajo de 102 MiB y antes de arrancar el
+  hijo, no a la vez. Con **una** lectura a la vez cabe en los **2.048 MB** de
+  la instancia de Flex Consumption; qué lo rompe, en `docs/INTEGRACION.md` §6.
+- **Tiempo.** Lo legítimo se lee en ~1 s (la plantilla completa, 1000 filas,
+  y el Excel de errores más grande). El peor caso son los 30 s del hijo más
+  los pasos del padre, por debajo de los 40 s del front y los 45 s del proxy
+  («El presupuesto de 45 segundos»). Los ficheros de la review 4 costaban
+  108 s y 1,6 GB y entraban en la bandeja; ahora son `fichero_sospechoso` en
+  24,7–30,2 s, medido en Linux con los topes de producción.
+- **El script de migración** del Excel actual sigue leyendo en proceso: corre
+  en local sobre ficheros conocidos, no sobre una subida.
+
+### La agrupación de oficios casi duplicados
+
+El catálogo de oficios de Sigrid tiene entradas casi iguales —el mismo nombre
+con y sin tilde, un singular y un plural, uno que contiene al otro—, y un
+desplegable con una entrada por código enseñaría el mismo oficio dos veces a
+quien rellena. El sistema **propone** grupos con reglas puras y sin IA
+(`domain/models/equivalencias.py`: mismo nombre salvo mayúsculas, tildes o
+puntuación; plural; posible errata; uno contiene al otro), solo entre los
+oficios de la obra, y **una persona** los confirma o los rechaza en
+**`oficios.html`** (`GET /api/catalogos/propuestas` y
+`POST /api/catalogos/decisiones`, con `confirmado: true`). **Nada se agrupa
+solo.**
+
+Las decisiones se guardan por pares en `postventa.decisiones_equivalencia`,
+**append-only** como `historico_estado`: manda la última decisión de cada par,
+«Separar» un grupo es guardar «distinto» para uno de sus pares, y una decisión
+vale para todas las obras. Un grupo con una contradicción no se aplica y se
+avisa. Se agrupa **para enseñar**, no para corregir: la plantilla enseña una
+entrada por grupo, pero lo que se guarda en la bandeja sigue siendo un código
+de Sigrid —el que resuelve la fila— o ninguno, con `oficio_ambiguo`. La
+pantalla baja además los grupos vigentes en un JSON, solo con códigos, que usa
+la migración del Excel actual.
+
+**La costura para las fichas siguientes.** La tabla lleva el discriminador
+`catalogo`, que admite ya `oficio`, `proveedor` y `actividad_oficio`, y las
+funciones del dominio reciben un `Perfil` por catálogo; F-036 solo tiene el de
+oficios. Así F-050 y F-039 añaden su perfil y su pantalla sin tocar el
+esquema ni el mecanismo.
+
+### Dónde vive cada pieza
+
+La misma hexagonal que el resto del servicio:
+
+- **Dominio puro**: `domain/models/plantilla_incidencias.py` (opciones y
+  etiquetas de la plantilla, topes), `importacion.py` (reconocer, validar,
+  resolver oficio y proveedor, clave de duplicado) y `equivalencias.py`.
+- **Puertos**: `CatalogoObraPort`, `GeneradorPlantillaPort` y
+  `LectorPlantillaPort`, `BandejaPort` y `EquivalenciasPort`.
+- **Adaptadores**: `infrastructure/sigrid/catalogo_obra.py` (las dos lecturas,
+  solo `POST /api/sql/read`), `infrastructure/documentos/excel_openpyxl.py`
+  (el único módulo que importa `openpyxl`: el generador, y la lectura que
+  corre en el hijo), `infrastructure/documentos/lector_aislado.py` (el lector
+  que usa la importación: pasos baratos, semáforo y validación del JSON) y
+  `ejecutor_aislado.py` (el proceso hijo, sus topes y cómo se mata), y
+  `infrastructure/persistencia/repositorio_bandeja_pg.py`.
+- **Aplicación**: `application/pipelines/plantilla.py`, `paso_importacion.py`
+  y `equivalencias.py`; los handlers, en `interface_adapters/api/`.
+- **Front**: `importar.html` con `js/importacion.js` y `oficios.html` con
+  `js/oficios.js`, enlazadas desde la cabecera de `index.html` en otra pestaña
+  para no perder la remesa en curso.
+- **La migración del Excel actual** de la obra piloto:
+  `scripts/migrar_excel_f036.py`, que usa el mismo lector, el mismo generador
+  y la misma validación, y no modifica el original.
+
+**Dependencias nuevas**: `openpyxl` y `defusedxml`, en `requirements.txt`.
+**Ninguna variable de entorno nueva.**
+
+### Lo que no hacen
+
+- **Nada de F-036 escribe en Sigrid.** Solo `POST /api/sql/read`: ninguna
+  pieza nombra una ruta de escritura de la pasarela, y un test lo vigila. Por
+  eso no depende de `CIERRE_HABILITADO` ni de `ARCHIVO_HABILITADO`.
+- **No crea las incidencias en Sigrid**: volcar la bandeja con el alta en lote
+  de la pasarela es **F-040**.
+- **No revisa**: editar, descartar o aprobar una fila de la bandeja, y elegir
+  el código de un oficio ambiguo, es **F-038**. La bandeja es de solo lectura.
+- **No recibe incidencias de la web** de clientes: es **F-037**; la bandeja
+  admite ya ese `origen`.
+- **No propone proveedor** cuando la fila no lo trae ni lee **las actividades
+  del proveedor** en Sigrid: es **F-039**.
+- **No sabe agrupar los proveedores casi duplicados** del maestro de Sigrid:
+  es **F-050**. En F-036 cada proveedor de la obra es su propia opción, y la
+  marca de proveedor ambiguo de la bandeja vale siempre falso.
+- **No corrige Sigrid**: ni fusiona oficios ni proveedores del ERP; eso es de
+  sus dueños.
+- **No guarda ficheros**: ni el `.xlsx` importado ni el Excel de errores.
+
 ## Acceso a datos y sistemas externos
 
 | Sistema | Uso | Límites |
 |---|---|---|
-| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. |
+| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). |
 | SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
-| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
+| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
 

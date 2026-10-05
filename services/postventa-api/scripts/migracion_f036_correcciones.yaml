@@ -1,0 +1,1929 @@
+# services/postventa-api/scripts/migracion_f036_correcciones.yaml
+#
+# PROPUESTA de migración del Excel actual de incidencias de la 0677
+# (creacion_incidencias.xlsx, doc. docs/referencia/05_excel_creacion_incidencias.md)
+# a la plantilla de F-036. design.md §10.2; la lee scripts/migrar_excel_f036.py.
+# Redactada por el implementer en T24 (2026-09-30) y ajustada en T25 con las
+# decisiones del humano sobre el informe progress/migracion_F-036.md. Los cambios se hacen AQUÍ y se
+# regenera el informe; nunca sobre el .xlsx.
+#
+# SIN nombres de proveedor ni de persona: el proveedor lo pone el script (R91).
+#
+# Cómo se lee:
+# - Una entrada por fila del original, en su orden (`origen` = fila de Excel;
+#   el original no tiene cabecera). `ubicacion_original` y `texto_original`
+#   son los del original, para el cotejo (R54).
+# - `oficio`: nombre EXACTO de Sigrid de un oficio de la 0677 (R97; lista en
+#   progress/explore_F-036.md). `urgencia` y `listado` van por código
+#   (`urgente`, `seguridad`; `primero`, `segundo`), B8-4. Listado vacío (D-5).
+# - `propuesto`: los campos que son juicio del implementer y no salen tal cual
+#   de la muestra.
+# - `# REVISAR: <motivo>` encima de una entrada: decisión dudosa, tomada con la
+#   opción más conservadora. El mismo texto va en `cambios` como
+#   «REVISAR: <motivo>», para que salga en el informe.
+#
+# Criterios aplicados (§10.2):
+# - Ubicación: la de la lista cerrada de config/plantilla_incidencias.yaml. Las
+#   que no tenían equivalente las decidió el humano en T25: «Baño del
+#   dormitorio N», «Terraza» y «Pasillo» se añadieron a la lista; BAÑO PLANTA
+#   BAJA es «Aseo»; VESTIBULO, «Vestíbulo planta baja»; y un sitio que es parte
+#   de una estancia (la terraza del dormitorio 1, la ventana del patio, el patio
+#   del sótano) va a esa estancia, con el sitio en el detalle.
+# - Se separa una fila cuando describe dos defectos de elementos u oficios
+#   distintos, o cuando el propio texto añade otro («Además…»). Varios síntomas
+#   del mismo elemento («arañada y con clavos») se quedan en una fila.
+# - «PELIGRO DE SEGURIDAD» → urgencia `seguridad` en todas las filas que salen
+#   de esa fila; «ERROR ESTRUCTURAL» → `urgente`, con el texto en el detalle.
+#   Ninguna otra urgencia se inventa.
+# - Texto: el del original, con las erratas evidentes corregidas, tildes, y las
+#   mayúsculas de énfasis pasadas a frase normal; se reescribe lo mínimo.
+# - Oficio: el de la muestra si es exactamente el de Sigrid; «Solados y
+#   alicatados» → «Solados y Alicatados» (0133). Donde la muestra no lo trae,
+#   se propone solo si el texto lo dice (pintura, mampara, ventana, tapón…) o si
+#   la muestra ya da oficio a un defecto igual en otra fila; si no, se deja
+#   vacío y `cambios` dice los candidatos.
+
+obra: "0677"
+unidad: "Viviendas Bloque Villa 1"
+
+filas:
+
+  # ---------------------------------------------------------------- SALA/ ESTUDIO
+  - origen: 1
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Choca ventana con ascensor"
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Choca ventana con ascensor"
+        oficio: "Carpintería de aluminio"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 2
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Reahacer inglentes azulejos baño, son cortantes y mal ejecutados."
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Rehacer ingletes azulejos baño, son cortantes y mal ejecutados."
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «Reahacer», «inglentes»"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [oficio]
+
+  - origen: 3
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Pintar y lijar de nuevo paredes de cuarto de baño , mal remate con encuentro azulejos."
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Pintar y lijar de nuevo paredes de cuarto de baño, mal remate con encuentro azulejos."
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "blanco de más antes de la coma"
+
+  - origen: 4
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Se mueve la parte fija de la mampara, PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Se mueve la parte fija de la mampara."
+        oficio: "Mamparas"
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+
+  - origen: 5
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Rematar agujero en pared ,  azulejo con escudo sifon"
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Rematar agujero en pared, azulejo con escudo sifón"
+        oficio: "Albañilería"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «sifon», blancos de más"
+
+  - origen: 6
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Miras de hierro que son de soporte de encimera estan oxidadas, cerrar contra pared el agujero y tapar esas miras de hierro, PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Miras de hierro que son de soporte de encimera están oxidadas"
+        detalle: "Cerrar contra pared el agujero y tapar esas miras de hierro."
+        oficio: "Mobiliario cocina"
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "descripción de más de 128 caracteres: el defecto en la descripción y el arreglo en el detalle"
+      - "erratas corregidas: «estan»"
+
+  - origen: 7
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Enlechar azulejos ducha"
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Enlechar azulejos ducha"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [oficio]
+
+  - origen: 8
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Remate de rodapie junto a puerta del baño"
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Remate de rodapié junto a puerta del baño"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «rodapie»"
+
+  - origen: 9
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "REHACER  el rodapie Y SUELO PORCELANICO inacabado en la puerta de salida a la terraza"
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Rehacer el rodapié inacabado en la puerta de salida a la terraza"
+        oficio: "Solados y Alicatados"
+      - ubicacion: "Sala/estudio"
+        descripcion: "Rehacer el suelo porcelánico inacabado en la puerta de salida a la terraza"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "separada en dos filas, una por defecto (rodapié y suelo porcelánico)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «rodapie», «PORCELANICO»"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+      - "T25: el rodapié es porcelánico, así que las dos filas van a Solados y Alicatados"
+    propuesto: [oficio]
+
+  - origen: 10
+    ubicacion_original: "SALA/ ESTUDIO"
+    texto_original: "Rematar azulejos entre mampara e inodoro"
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Rematar azulejos entre mampara e inodoro"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- TERRAZA
+  - origen: 11
+    ubicacion_original: "TERRAZA"
+    texto_original: "Mejorar uniones de albardillas, irregulares y cortantes. Ademas relleno de hueco en encuentros finales libres."
+    resultado:
+      - ubicacion: "Terraza"
+        descripcion: "Mejorar uniones de albardillas, irregulares y cortantes."
+        oficio: "Carpintería de aluminio"
+      - ubicacion: "Terraza"
+        descripcion: "Rellenar el hueco de las albardillas en los encuentros finales libres."
+        oficio: "Carpintería de aluminio"
+    cambios:
+      - "ubicación: «TERRAZA» → Terraza, genérica, añadida a la lista en T25"
+      - "separada en dos filas, una por defecto («Además…»)"
+    propuesto: [ubicacion]
+
+  - origen: 12
+    ubicacion_original: "TERRAZA"
+    texto_original: "Reparar esconchon en viguetas y limpiar restos de hormigón"
+    resultado:
+      - ubicacion: "Terraza"
+        descripcion: "Reparar desconchón en viguetas y limpiar restos de hormigón"
+        oficio: "Albañilería"
+    cambios:
+      - "ubicación: «TERRAZA» → Terraza, genérica, añadida a la lista en T25"
+      - "erratas corregidas: «esconchon»"
+    propuesto: [ubicacion]
+
+  - origen: 13
+    ubicacion_original: "TERRAZA"
+    texto_original: "Repasos de pintura en los vivos, en el paño de pared monocapa."
+    resultado:
+      - ubicacion: "Terraza"
+        descripcion: "Repasos de pintura en los vivos, en el paño de pared monocapa."
+        oficio: "Pintura"
+    cambios:
+      - "ubicación: «TERRAZA» → Terraza, genérica, añadida a la lista en T25"
+    propuesto: [ubicacion]
+
+  - origen: 14
+    ubicacion_original: "TERRAZA"
+    texto_original: "REHACER.Rodapie mal cortado enla salida de la puerta de la terraza lado izquierdo,"
+    resultado:
+      - ubicacion: "Terraza"
+        descripcion: "Rehacer el rodapié mal cortado en la salida de la puerta de la terraza, lado izquierdo"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación: «TERRAZA» → Terraza, genérica, añadida a la lista en T25"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «Rodapie», «enla», puntuación"
+    propuesto: [ubicacion]
+
+  # ---------------------------------------------------------------- TIRO DE ESCALERA
+  - origen: 15
+    ubicacion_original: "TIRO DE ESCALERA"
+    texto_original: "Pandeos en todo el tiro de la escalera, ERROR ESTRUCTURAL, se aprecia en sus verticales por miras de pladur y en sus horizontales por estructura de hormigon."
+    resultado:
+      - ubicacion: "Escalera"
+        descripcion: "Pandeos en todo el tiro de la escalera"
+        detalle: "Error estructural: se aprecia en sus verticales por miras de pladur y en sus horizontales por estructura de hormigón."
+        oficio: "Albañilería"
+        urgencia: urgente
+    cambios:
+      - "ubicación normalizada a la lista cerrada («TIRO DE ESCALERA» → Escalera)"
+      - "«ERROR ESTRUCTURAL» pasado a Urgencia (Urgente) y el texto conservado en el detalle"
+      - "descripción de más de 128 caracteres: el defecto en la descripción y la explicación en el detalle"
+      - "erratas corregidas: «hormigon»"
+
+  - origen: 16
+    ubicacion_original: "TIRO DE ESCALERA"
+    texto_original: "Sellar encuentros de rodapie en toda la escalera"
+    resultado:
+      - ubicacion: "Escalera"
+        descripcion: "Sellar encuentros de rodapié en toda la escalera"
+        oficio: "Albañilería"
+    cambios:
+      - "ubicación normalizada a la lista cerrada («TIRO DE ESCALERA» → Escalera)"
+      - "erratas corregidas: «rodapie»"
+
+  # ---------------------------------------------------------------- VENTANA PATIO
+  - origen: 17
+    ubicacion_original: "VENTANA PATIO"
+    texto_original: "AL ABRIR CHOCA CONTA PARED DE ASCENSOR"
+    resultado:
+      - ubicacion: "Sala/estudio"
+        descripcion: "Al abrir, la ventana choca contra la pared del ascensor"
+        detalle: "La ventana que da al patio."
+        oficio: "Carpintería de aluminio"
+    cambios:
+      - "ubicación: la ventana del patio se lleva a su estancia con el sitio en el detalle (T25); Sala/estudio, porque la única otra ventana que choca con el ascensor es la de la fila 1"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «CONTA»; se nombra la ventana, que estaba en la ubicación"
+    propuesto: [ubicacion]
+
+  # ---------------------------------------------------------------- DORMITORIO 1
+  - origen: 18
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Repaso de carpinteria y rodapie en la puerta de entrada a la habitación"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Repaso de carpintería y rodapié en la puerta de entrada a la habitación"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «carpinteria», «rodapie»"
+
+  - origen: 19
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Clavos en moldura puerta corredera"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Clavos en moldura puerta corredera"
+        oficio: "Carpintería de madera"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 20
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Remate moldura con rodapie en dormitorio"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Remate moldura con rodapié en dormitorio"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «rodapie»"
+
+  - origen: 21
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Lijar y pintar pintura alrededor de los mecanismos."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Lijar y pintar alrededor de los mecanismos."
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «pintar pintura»"
+
+  - origen: 22
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Lijar y pintar pintura alrededor de las luminarias en techos."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Lijar y pintar alrededor de las luminarias en techos."
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «pintar pintura»"
+
+  - origen: 23
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Falta balda en armario pequeño lado de la derecha."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Falta balda en armario pequeño lado de la derecha."
+        oficio: "Carpintería de madera"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 24
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Remate de armario con techo repasar."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Remate de armario con techo repasar."
+        oficio: "Carpintería de madera"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 25
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Descuadre en interior de armario"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Descuadre en interior de armario"
+        oficio: "Carpintería de madera"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  # ---------------------------------------------------------------- DORMITORIO 1 TERRAZA
+  - origen: 26
+    ubicacion_original: "DORMITORIO 1 TERRAZA"
+    texto_original: "Sellar encuentros de madera con vIgas de hormigón, hay agujeros."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Sellar encuentros de madera con vigas de hormigón, hay agujeros."
+        detalle: "En la terraza del dormitorio 1."
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación: la terraza del dormitorio 1 se lleva a su estancia con el sitio en el detalle (T25)"
+      - "erratas corregidas: «vIgas»"
+    propuesto: [ubicacion]
+
+  - origen: 27
+    ubicacion_original: "DORMITORIO 1 TERRAZA"
+    texto_original: "Mejorar uniones de albardillas, irregulares y cortantes. Ademas relleno de hueco en encuentros finales libres."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Mejorar uniones de albardillas, irregulares y cortantes."
+        detalle: "En la terraza del dormitorio 1."
+        oficio: "Carpintería de aluminio"
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Rellenar el hueco de las albardillas en los encuentros finales libres."
+        detalle: "En la terraza del dormitorio 1."
+        oficio: "Carpintería de aluminio"
+    cambios:
+      - "ubicación: la terraza del dormitorio 1 se lleva a su estancia con el sitio en el detalle (T25)"
+      - "separada en dos filas, una por defecto («Además…»)"
+    propuesto: [ubicacion]
+
+  # ---------------------------------------------------------------- DORMITORIO 1 (sigue)
+  - origen: 28
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Repaso de pintura en aristas del vestidor"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Repaso de pintura en aristas del vestidor"
+        oficio: "Pintura"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 29
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Repasar la lechada en solado de vestidor"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Repasar la lechada en solado de vestidor"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [oficio]
+
+  - origen: 30
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Cajones de vestidor son 4 no 2"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Cajones de vestidor son 4 no 2"
+        oficio: "Carpintería de madera"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 31
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Puertas de armario ralladas"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Puertas de armario rayadas"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «ralladas»"
+
+  - origen: 32
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Clavos en costado de armario de vestidor"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Clavos en costado de armario de vestidor"
+        oficio: "Carpintería de madera"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 33
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Ingletes de azulejos en baño defectuosos CAMBIAR."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Ingletes de azulejos en baño defectuosos: cambiar."
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [oficio]
+
+  - origen: 34
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Encuentro azulejo con pared en ducha arreglar"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Encuentro azulejo con pared en ducha arreglar"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [oficio]
+
+  - origen: 35
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Remates de mampara con plato de ducha y solado"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Remates de mampara con plato de ducha y solado"
+        oficio: "Albañilería"
+    cambios: ["ubicación normalizada a la lista cerrada"]
+
+  - origen: 36
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Lechada en azulejos ducha y repasar candileja"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Lechada en azulejos ducha y repasar candileja"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [oficio]
+
+  - origen: 37
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Mampara de ducha  no funciona  esta caida. CAMBIAR"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Mampara de ducha no funciona, está caída: cambiar"
+        oficio: "Mamparas"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «esta caida», blancos de más"
+
+  - origen: 38
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Miras de hierro que son de soporte de encimera estan OXIDADAS, cerrar contra pared el agujero y tapar esas miras de hierro, PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Miras de hierro que son de soporte de encimera están oxidadas"
+        detalle: "Cerrar contra pared el agujero y tapar esas miras de hierro."
+        oficio: "Mobiliario cocina"
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "descripción de más de 128 caracteres: el defecto en la descripción y el arreglo en el detalle"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «estan»"
+
+  # ---------------------------------------------------------------- DORMITORIO 1 BAÑO
+  - origen: 39
+    ubicacion_original: "DORMITORIO 1 BAÑO"
+    texto_original: "Fijar balda sobre cajonera, no es estable"
+    resultado:
+      - ubicacion: "Baño del dormitorio 1"
+        descripcion: "Fijar balda sobre cajonera, no es estable"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación: «DORMITORIO 1 BAÑO» → Baño del dormitorio 1, añadida a la lista en T25"
+    propuesto: [ubicacion]
+
+  - origen: 40
+    ubicacion_original: "DORMITORIO 1 BAÑO"
+    texto_original: "Repasar encuentros de azulejo con pared"
+    resultado:
+      - ubicacion: "Baño del dormitorio 1"
+        descripcion: "Repasar encuentros de azulejo con pared"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «DORMITORIO 1 BAÑO» → Baño del dormitorio 1, añadida a la lista en T25"
+      - "oficio: «Solados y alicatados» no es exactamente el de Sigrid; nombre exacto «Solados y Alicatados»"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 41
+    ubicacion_original: "DORMITORIO 1 BAÑO"
+    texto_original: "Tapon de lavavo roto"
+    resultado:
+      - ubicacion: "Baño del dormitorio 1"
+        descripcion: "Tapón de lavabo roto"
+        oficio: "Fontanería"
+    cambios:
+      - "ubicación: «DORMITORIO 1 BAÑO» → Baño del dormitorio 1, añadida a la lista en T25"
+      - "erratas corregidas: «Tapon», «lavavo»"
+    propuesto: [ubicacion]
+
+  - origen: 42
+    ubicacion_original: "DORMITORIO BAÑO 1"
+    texto_original: "HOJA DE VENTANA, NO SE ABRE, no se corta grifo. CAMBIAR VENTANA"
+    resultado:
+      - ubicacion: "Baño del dormitorio 1"
+        descripcion: "La hoja de la ventana no se abre: cambiar la ventana"
+        oficio: "Carpintería de aluminio"
+      - ubicacion: "Baño del dormitorio 1"
+        descripcion: "El grifo no corta el agua"
+        oficio: "Fontanería"
+    cambios:
+      - "ubicación: «DORMITORIO BAÑO 1» → Baño del dormitorio 1, añadida a la lista en T25"
+      - "separada en dos filas, una por defecto (ventana y grifo)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): ventana, como en las filas 1 y 17; grifo, como el tapón de la fila 41"
+      - "T25: «no se corta grifo» es un segundo defecto, así que la fila se queda partida"
+    propuesto: [ubicacion, descripcion, oficio]
+
+  - origen: 43
+    ubicacion_original: "DORMITORIO 1 BAÑO"
+    texto_original: "Clavos en puerta y molduras de baño"
+    resultado:
+      - ubicacion: "Baño del dormitorio 1"
+        descripcion: "Clavos en puerta y molduras de baño"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación: «DORMITORIO 1 BAÑO» → Baño del dormitorio 1, añadida a la lista en T25"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): clavos en molduras, como en la fila 19"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 44
+    ubicacion_original: "DORMITORIO 1"
+    texto_original: "Lijar y pintaren los encuentros techos y pared en vestidor"
+    resultado:
+      - ubicacion: "Dormitorio 1"
+        descripcion: "Lijar y pintar en los encuentros techos y pared en vestidor"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «pintaren»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  - origen: 45
+    ubicacion_original: "TIRO DE ESCALERA"
+    texto_original: "Barandilla se sale del plano del ascensor"
+    resultado:
+      - ubicacion: "Escalera"
+        descripcion: "Barandilla se sale del plano del ascensor"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada («TIRO DE ESCALERA» → Escalera)"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Cerrajería o Vidrios?)"
+
+  # REVISAR: ubicación: «VENTANAS» habla de muchas ventanas de la vivienda; se lleva a «General (toda la unidad)»
+  - origen: 46
+    ubicacion_original: "VENTANAS"
+    texto_original: "Juntas de goma de ventanas, estan sueltas muchas."
+    resultado:
+      - ubicacion: "General (toda la unidad)"
+        descripcion: "Juntas de goma de ventanas, están sueltas muchas."
+        oficio: "Carpintería de aluminio"
+    cambios:
+      - "ubicación sin equivalente en la lista: se lleva a «General (toda la unidad)»"
+      - "erratas corregidas: «estan»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): ventanas, como en las filas 1 y 17"
+      - "REVISAR: ubicación: «VENTANAS» habla de muchas ventanas de la vivienda; se lleva a «General (toda la unidad)»"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 47
+    ubicacion_original: "PASILLO"
+    texto_original: "Lijar, tender, colocar malla en Fisura en techo de pasillo"
+    resultado:
+      - ubicacion: "Pasillo"
+        descripcion: "Lijar, tender, colocar malla en fisura en techo de pasillo"
+        oficio: null
+    cambios:
+      - "ubicación: «PASILLO» → Pasillo, añadida a la lista en T25"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Pintura o Pladur?)"
+    propuesto: [ubicacion]
+
+  - origen: 48
+    ubicacion_original: "PASILLO DORMITORIO 1"
+    texto_original: "Repasar encuentro carpinteria con techo"
+    resultado:
+      - ubicacion: "Pasillo"
+        descripcion: "Repasar encuentro carpintería con techo"
+        detalle: "Pasillo del dormitorio 1."
+        oficio: null
+    cambios:
+      - "ubicación: «PASILLO DORMITORIO 1» → Pasillo (añadida a la lista en T25), con el dormitorio en el detalle"
+      - "erratas corregidas: «carpinteria»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera o Pintura?)"
+    propuesto: [ubicacion]
+
+  - origen: 49
+    ubicacion_original: "TIRO DE ESCALERA"
+    texto_original: "Repasos de pintura en techo y aristas de escalera"
+    resultado:
+      - ubicacion: "Escalera"
+        descripcion: "Repasos de pintura en techo y aristas de escalera"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada («TIRO DE ESCALERA» → Escalera)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- DORMITORIO 2 BAÑO / DORMITORIO 2
+  - origen: 50
+    ubicacion_original: "DORMITORIO 2 BAÑO"
+    texto_original: "Pared de casoneto sin asentamiento ni anclaje, pared que ofrece movimiento horizonta.Puerta corredera  del baño esta suelta  y el cerco. PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Pared de casoneto sin asentamiento ni anclaje, pared que ofrece movimiento horizontal."
+        oficio: null
+        urgencia: seguridad
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Puerta corredera del baño está suelta, y el cerco."
+        oficio: "Carpintería de madera"
+        urgencia: seguridad
+    cambios:
+      - "ubicación: «DORMITORIO 2 BAÑO» → Baño del dormitorio 2, añadida a la lista en T25"
+      - "separada en dos filas, una por defecto (pared del casoneto y puerta corredera)"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "erratas corregidas: «horizonta», «esta», salto de línea y blancos de más"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (la pared del casoneto: ¿Albañilería o Pladur?)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puerta corredera, como en la fila 19"
+      - "T25: la urgencia de seguridad, en las dos filas nuevas, como se propuso"
+    propuesto: [ubicacion, oficio, urgencia]
+
+  - origen: 51
+    ubicacion_original: "DORMITORIO 2 BAÑO"
+    texto_original: "Baldosa suelo entrada al baño rota."
+    resultado:
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Baldosa suelo entrada al baño rota."
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «DORMITORIO 2 BAÑO» → Baño del dormitorio 2, añadida a la lista en T25"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): baldosa"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 52
+    ubicacion_original: "DORMITORIO 2 BAÑO"
+    texto_original: "Mampara se mueve mucho. INESTABLE. PELIGRO DE SEGURIDAD"
+    resultado:
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Mampara se mueve mucho, inestable."
+        oficio: "Mamparas"
+        urgencia: seguridad
+    cambios:
+      - "ubicación: «DORMITORIO 2 BAÑO» → Baño del dormitorio 2, añadida a la lista en T25"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): mampara"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 53
+    ubicacion_original: "DORMITORIO 2 BAÑO"
+    texto_original: "Rematar interior de candilejas de ducha, agujeros, irregularidades."
+    resultado:
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Rematar interior de candilejas de ducha, agujeros, irregularidades."
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «DORMITORIO 2 BAÑO» → Baño del dormitorio 2, añadida a la lista en T25"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): candileja de ducha, como en la fila 36"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 54
+    ubicacion_original: "DORMITORIO 2"
+    texto_original: "Focos sin rematar, techo a reparar en pintura"
+    resultado:
+      - ubicacion: "Dormitorio 2"
+        descripcion: "Focos sin rematar, techo a reparar en pintura"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura, como en la fila 22"
+    propuesto: [oficio]
+
+  - origen: 55
+    ubicacion_original: "DORMITORIO 2 BAÑO"
+    texto_original: "Fijar balda de baño y alinear, no estable"
+    resultado:
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Fijar balda de baño y alinear, no estable"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación: «DORMITORIO 2 BAÑO» → Baño del dormitorio 2, añadida a la lista en T25"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): balda, como en la fila 39"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 56
+    ubicacion_original: "DORMITORIO 2 BAÑO"
+    texto_original: "Azulejo roto en arista de ducha"
+    resultado:
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Azulejo roto en arista de ducha"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «DORMITORIO 2 BAÑO» → Baño del dormitorio 2, añadida a la lista en T25"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): azulejo"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 57
+    ubicacion_original: "DORMITORIO 2 BAÑO"
+    texto_original: "Rematar encuentros azulejos con pared"
+    resultado:
+      - ubicacion: "Baño del dormitorio 2"
+        descripcion: "Rematar encuentros azulejos con pared"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «DORMITORIO 2 BAÑO» → Baño del dormitorio 2, añadida a la lista en T25"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): azulejos, como en la fila 40"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 58
+    ubicacion_original: "DORMITORIO 2"
+    texto_original: "HOJA DE VENTANA, CHOCA CONTRA PARED. CAMBIAR VENTANA"
+    resultado:
+      - ubicacion: "Dormitorio 2"
+        descripcion: "Hoja de ventana choca contra pared: cambiar ventana"
+        oficio: "Carpintería de aluminio"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): ventana, como en las filas 1 y 17"
+    propuesto: [oficio]
+
+  - origen: 59
+    ubicacion_original: "DORMITORIO 2"
+    texto_original: "Repaso de pintura en la pared del cabezero, agujero por golpe causado por la apertura de la ventana"
+    resultado:
+      - ubicacion: "Dormitorio 2"
+        descripcion: "Repaso de pintura en la pared del cabecero, agujero por golpe causado por la apertura de la ventana"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «cabezero»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  - origen: 60
+    ubicacion_original: "DORMITORIO 2"
+    texto_original: "Lijar y pintar. Repasar encuentros focos de habitación"
+    resultado:
+      - ubicacion: "Dormitorio 2"
+        descripcion: "Lijar y pintar. Repasar encuentros focos de habitación"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  - origen: 61
+    ubicacion_original: "DORMITORIO 2"
+    texto_original: "Repasos de pintura en pared de armarios, no pegotes de pintura, sino laca completa"
+    resultado:
+      - ubicacion: "Dormitorio 2"
+        descripcion: "Repasos de pintura en pared de armarios, no pegotes de pintura, sino laca completa"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- DORMITORIO 3
+  - origen: 62
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Puerta de entrada con silicona y rallada"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Puerta de entrada con silicona y rayada"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «rallada»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puerta de paso, como en la fila 18"
+    propuesto: [oficio]
+
+  - origen: 63
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Puerta corredera arañada, TORNILLO QUE RALLA LA PUERTA"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Puerta corredera arañada, tornillo que raya la puerta"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «RALLA»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puerta corredera, como en la fila 19"
+    propuesto: [oficio]
+
+  - origen: 64
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Repasar unión de rodapies"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Repasar unión de rodapiés"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «rodapies»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): rodapié, como en las filas 8 y 20"
+    propuesto: [oficio]
+
+  - origen: 65
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Sellar encuentro de madera con pared en terraza"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Sellar encuentro de madera con pared en terraza"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): encuentro de madera, como en la fila 26"
+    propuesto: [oficio]
+
+  - origen: 66
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Sellar encuentro de madera con peldaño en terraza"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Sellar encuentro de madera con peldaño en terraza"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): encuentro de madera, como en la fila 26"
+    propuesto: [oficio]
+
+  - origen: 67
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Repasar molduras puertas"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Repasar molduras puertas"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): molduras, como en las filas 19 y 20"
+    propuesto: [oficio]
+
+  - origen: 68
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Repaso de pintura en pared del  termostato"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Repaso de pintura en pared del termostato"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "blancos de más"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  - origen: 69
+    ubicacion_original: "DORMITORIO 3 BAÑO"
+    texto_original: "Fijar balda de madera en cuarto de baño, inestable."
+    resultado:
+      - ubicacion: "Baño del dormitorio 3"
+        descripcion: "Fijar balda de madera en cuarto de baño, inestable."
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación: «DORMITORIO 3 BAÑO» → Baño del dormitorio 3, añadida a la lista en T25"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): balda de madera, como en la fila 39"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 70
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Miras de hierro que son de soporte de encimera estan oxidadas, cerrar contra pared el agujero y tapar esas miras de hierro, PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Miras de hierro que son de soporte de encimera están oxidadas"
+        detalle: "Cerrar contra pared el agujero y tapar esas miras de hierro."
+        oficio: "Mobiliario cocina"
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "descripción de más de 128 caracteres: el defecto en la descripción y el arreglo en el detalle"
+      - "erratas corregidas: «estan»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): el mismo defecto que las filas 6 y 38"
+    propuesto: [oficio]
+
+  - origen: 71
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Mecanismo del tapon roza con el sifon"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Mecanismo del tapón roza con el sifón"
+        oficio: "Fontanería"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «tapon», «sifon»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): tapón, como en la fila 41"
+    propuesto: [oficio]
+
+  - origen: 72
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Repasar encuentro de solado con Azulejo debajo de la balda"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Repasar encuentro de solado con azulejo debajo de la balda"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): solado y azulejo"
+    propuesto: [oficio]
+
+  - origen: 73
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Repasar lechada y candileja como en los otros baños"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Repasar la lechada de los azulejos de la ducha y la candileja"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "remisión a otras filas reescrita con lo que significa: «Lechada en azulejos ducha y repasar candileja» (filas 36 y 84)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): el de la fila 36"
+    propuesto: [descripcion, oficio]
+
+  - origen: 74
+    ubicacion_original: "DORMITORIO 3"
+    texto_original: "Remates de pintura en focos de baño y mecanismos"
+    resultado:
+      - ubicacion: "Dormitorio 3"
+        descripcion: "Remates de pintura en focos de baño y mecanismos"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- DORMITORIO 4
+  - origen: 75
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Puerta de entrada termo sellada se ve en los cantos y clavos en las jambas"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Puerta de entrada termosellada: se ve en los cantos, y clavos en las jambas"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «termo sellada», puntuación"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puerta de paso, como en la fila 18"
+    propuesto: [oficio]
+
+  - origen: 76
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Encuentro de moldura con rodapie repasar"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Encuentro de moldura con rodapié repasar"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «rodapie»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): moldura con rodapié, como en la fila 20"
+    propuesto: [oficio]
+
+  - origen: 77
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Mecanismos torcidos y repaso de pintura en pared frente armario"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Mecanismos torcidos"
+        oficio: "Electricidad"
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Repaso de pintura en pared frente armario"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "separada en dos filas, una por defecto (mecanismos y pintura)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): mecanismos eléctricos; pintura"
+    propuesto: [oficio]
+
+  - origen: 78
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Puerta de entrada al baño sistema de cierre roto"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Puerta de entrada al baño sistema de cierre roto"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puerta de paso, como en la fila 18"
+    propuesto: [oficio]
+
+  - origen: 79
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Puerta corredera del baño arañada y con clavos en moldura"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Puerta corredera del baño arañada y con clavos en moldura"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puerta corredera y moldura, como en la fila 19"
+    propuesto: [oficio]
+
+  - origen: 80
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Miras de hierro que son de soporte de encimera estan oxidadas, cerrar contra pared el agujero y tapar esas miras de hierro, PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Miras de hierro que son de soporte de encimera están oxidadas"
+        detalle: "Cerrar contra pared el agujero y tapar esas miras de hierro."
+        oficio: "Mobiliario cocina"
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "descripción de más de 128 caracteres: el defecto en la descripción y el arreglo en el detalle"
+      - "erratas corregidas: «estan»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): el mismo defecto que las filas 6 y 38"
+    propuesto: [oficio]
+
+  - origen: 81
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Sellar escudos de sifones como en todos los baños. Estan todos abiertos conagujeros a pared"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Sellar escudos de sifones: están todos abiertos, con agujeros a pared"
+        detalle: "Según la muestra, pasa en todos los baños de la vivienda."
+        oficio: "Albañilería"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "remisión a otras filas reescrita con lo que significa: el defecto se repite en todos los baños, y así lo dice el detalle"
+      - "erratas corregidas: «Estan», «conagujeros»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): escudo del sifón, como en la fila 5"
+      - "T25: se queda en el dormitorio 4 con el detalle, como se propuso"
+    propuesto: [descripcion, detalle, oficio]
+
+  - origen: 82
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "El mecanismo del tapon del lavavo derecho esta roto"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "El mecanismo del tapón del lavabo derecho está roto"
+        oficio: "Fontanería"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «tapon», «lavavo», «esta»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): tapón, como en la fila 41"
+    propuesto: [oficio]
+
+  - origen: 83
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Plato de ducha roto en la arista"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Plato de ducha roto en la arista"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Fontanería o Solados y Alicatados?)"
+
+  - origen: 84
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Lechada en azulejos ducha y repasar candileja"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Lechada en azulejos ducha y repasar candileja"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): el mismo texto que la fila 36"
+    propuesto: [oficio]
+
+  - origen: 85
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Azulejo corto en esquina de candileja"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Azulejo corto en esquina de candileja"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): azulejo"
+    propuesto: [oficio]
+
+  - origen: 86
+    ubicacion_original: "DORMITORIO 4"
+    texto_original: "Revisar encuentros de mampara  con azulejos"
+    resultado:
+      - ubicacion: "Dormitorio 4"
+        descripcion: "Revisar encuentros de mampara con azulejos"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "blancos de más"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Mamparas, Albañilería como la fila 35 o Solados y Alicatados como la fila 10?)"
+
+  # ---------------------------------------------------------------- OFFICE
+  - origen: 87
+    ubicacion_original: "OFFICE"
+    texto_original: "Puertas correderas sin topes"
+    resultado:
+      - ubicacion: "Office"
+        descripcion: "Puertas correderas sin topes"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera o Tabiquería móvil?)"
+
+  - origen: 88
+    ubicacion_original: "OFFICE"
+    texto_original: "Los tornillosde la puerta corredera nos estan en la misma cara"
+    resultado:
+      - ubicacion: "Office"
+        descripcion: "Los tornillos de la puerta corredera no están en la misma cara"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «tornillosde», «nos estan»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera o Tabiquería móvil?)"
+
+  - origen: 89
+    ubicacion_original: "OFFICE"
+    texto_original: "Las puertas correderas tienen movimiento excesivo"
+    resultado:
+      - ubicacion: "Office"
+        descripcion: "Las puertas correderas tienen movimiento excesivo"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera o Tabiquería móvil?)"
+
+  # ---------------------------------------------------------------- COCINA
+  - origen: 90
+    ubicacion_original: "COCINA"
+    texto_original: "Faltan topes de puerta corredera para cerrar y abrir"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "Faltan topes de puerta corredera para cerrar y abrir"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera, Tabiquería móvil o Mobiliario cocina?)"
+
+  - origen: 91
+    ubicacion_original: "COCINA"
+    texto_original: "lacar canto de puerta corredera arañado. LACA DETERIORADA"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "Lacar canto de puerta corredera arañado: laca deteriorada"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Pintura o Carpintería de madera?)"
+
+  - origen: 92
+    ubicacion_original: "COCINA"
+    texto_original: "Arañado fijo izquierdo de corredera  y quitar silicona cristal. LACA DETERIORADA Y SILICONA ENTRRE CRISTALES PEGADA"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "Arañado fijo izquierdo de corredera: laca deteriorada"
+        oficio: null
+      - ubicacion: "Cocina"
+        descripcion: "Quitar la silicona pegada entre los cristales de la corredera"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "separada en dos filas, una por defecto (laca arañada y silicona entre cristales)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «ENTRRE», blancos de más"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Pintura, Carpintería de madera o Vidrios?)"
+
+  - origen: 93
+    ubicacion_original: "COCINA"
+    texto_original: "La puerta del congelador esta rota y la madera DE MELAMINA debajo del congelador esta rallada"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "La puerta del congelador está rota"
+        oficio: "Mobiliario cocina"
+      - ubicacion: "Cocina"
+        descripcion: "La madera de melamina debajo del congelador está rayada"
+        oficio: "Mobiliario cocina"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "separada en dos filas, una por defecto (puerta del congelador y melamina)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «esta», «rallada»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): mueble de cocina, con el nombre que usa la muestra"
+    propuesto: [oficio]
+
+  - origen: 94
+    ubicacion_original: "COCINA"
+    texto_original: "La pieza de union, GOLA, estre nevera y congelador  esta rallada y la goma suelta"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "La pieza de unión (gola) entre nevera y congelador está rayada y la goma suelta"
+        oficio: "Mobiliario cocina"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «union», «estre», «esta rallada», blancos de más"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): gola del mueble de cocina"
+    propuesto: [oficio]
+
+  - origen: 95
+    ubicacion_original: "COCINA"
+    texto_original: "Repasar encuentro techo con focos cocina"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "Repasar encuentro techo con focos cocina"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): encuentro de focos con techo, como en la fila 22"
+    propuesto: [oficio]
+
+  - origen: 96
+    ubicacion_original: "COCINA"
+    texto_original: "La gola del esquinero no esta NIVELADA"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "La gola del esquinero no está nivelada"
+        oficio: "Mobiliario cocina"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «esta»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): gola del mueble de cocina"
+    propuesto: [oficio]
+
+  - origen: 97
+    ubicacion_original: "COCINA"
+    texto_original: "El panelado del lavavajillas roza LA LACA"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "El panelado del lavavajillas roza la laca"
+        oficio: "Mobiliario cocina"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): panelado del mueble de cocina"
+    propuesto: [oficio]
+
+  - origen: 98
+    ubicacion_original: "COCINA"
+    texto_original: "La puerta de al lado de la vitrina esta espotillada y en la esquina también"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "La puerta de al lado de la vitrina está desportillada y en la esquina también"
+        oficio: "Mobiliario cocina"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «esta espotillada»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puerta del mueble de cocina junto a la vitrina"
+    propuesto: [oficio]
+
+  - origen: 99
+    ubicacion_original: "COCINA"
+    texto_original: "Repasar lechada en baldosa jonto a puerta corredera y rodapie"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "Repasar lechada en baldosa junto a puerta corredera y rodapié"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «jonto», «rodapie»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): lechada, como en la fila 29"
+    propuesto: [oficio]
+
+  - origen: 100
+    ubicacion_original: "COCINA"
+    texto_original: "Sellar encuentro suelo pared esquina de la vitrina y puerta despensa arañada"
+    resultado:
+      - ubicacion: "Cocina"
+        descripcion: "Sellar encuentro suelo pared esquina de la vitrina"
+        oficio: null
+      - ubicacion: "Cocina"
+        descripcion: "Puerta despensa arañada"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "separada en dos filas, una por defecto (encuentro suelo-pared y puerta de la despensa)"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (el sellado: ¿Albañilería o Solados y Alicatados?; la puerta: ¿Mobiliario cocina o Carpintería de madera?)"
+
+  # ---------------------------------------------------------------- VESTIBULO
+  - origen: 101
+    ubicacion_original: "VESTIBULO"
+    texto_original: "TODOS  los cantos de la candilejas que son irregulares en todos los techos de planta baja"
+    resultado:
+      - ubicacion: "Vestíbulo planta baja"
+        descripcion: "Todos los cantos de las candilejas son irregulares en todos los techos de planta baja"
+        oficio: null
+    cambios:
+      - "ubicación: «VESTIBULO» → Vestíbulo planta baja, la planta que dice el texto (confirmada en T25)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «la candilejas que son», blancos de más"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Pladur o Pintura?)"
+    propuesto: [ubicacion]
+
+  - origen: 102
+    ubicacion_original: "VESTIBULO"
+    texto_original: "TODOS  los techo de pladur est lleno de parches y pañaos de pintura mal hechos."
+    resultado:
+      - ubicacion: "Vestíbulo planta baja"
+        descripcion: "Todos los techos de pladur están llenos de parches y paños de pintura mal hechos."
+        oficio: "Pintura"
+    cambios:
+      - "ubicación: «VESTIBULO» → Vestíbulo planta baja, la planta que dice el texto (confirmada en T25)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «techo», «est lleno», «pañaos», blancos de más"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): paños de pintura"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 103
+    ubicacion_original: "VESTIBULO"
+    texto_original: "Lijar y pintar techos. Colocar velo . Se aprecia TODOS loa perfiles y conductos de aire acondicionado"
+    resultado:
+      - ubicacion: "Vestíbulo planta baja"
+        descripcion: "Lijar y pintar techos y colocar velo: se aprecian todos los perfiles y conductos de aire acondicionado"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación: «VESTIBULO» → Vestíbulo planta baja, la planta que dice el texto (confirmada en T25)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «aprecia», «loa», puntuación"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 104
+    ubicacion_original: "VESTIBULO"
+    texto_original: "PINTURA COMPPLETA DE techo frente ascensor"
+    resultado:
+      - ubicacion: "Vestíbulo planta baja"
+        descripcion: "Pintura completa de techo frente ascensor"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación: «VESTIBULO» → Vestíbulo planta baja, la planta que dice el texto (confirmada en T25)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «COMPPLETA»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 105
+    ubicacion_original: "VESTIBULO"
+    texto_original: "Rejilla de retorno rota"
+    resultado:
+      - ubicacion: "Vestíbulo planta baja"
+        descripcion: "Rejilla de retorno rota"
+        oficio: "V-Aire acondicionado"
+    cambios:
+      - "ubicación: «VESTIBULO» → Vestíbulo planta baja, la planta que dice el texto (confirmada en T25)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): rejilla de retorno del aire acondicionado"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 106
+    ubicacion_original: "VESTIBULO"
+    texto_original: "Rejilla de retorno de aacc OBSTRUIDO POR CONDUCUCTOS."
+    resultado:
+      - ubicacion: "Vestíbulo planta baja"
+        descripcion: "Rejilla de retorno de aire acondicionado obstruida por conductos."
+        oficio: "V-Aire acondicionado"
+    cambios:
+      - "ubicación: «VESTIBULO» → Vestíbulo planta baja, la planta que dice el texto (confirmada en T25)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «aacc», «OBSTRUIDO», «CONDUCUCTOS»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): aire acondicionado"
+    propuesto: [ubicacion, oficio]
+
+  # ---------------------------------------------------------------- COMEDOR
+  - origen: 107
+    ubicacion_original: "COMEDOR"
+    texto_original: "Repasar encentros de carpintería central con techo."
+    resultado:
+      - ubicacion: "Comedor"
+        descripcion: "Repasar encuentros de carpintería central con techo."
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «encentros»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera o Pintura?)"
+
+  - origen: 108
+    ubicacion_original: "COMEDOR"
+    texto_original: "TODOS LOS TECHOS ESTAN IRREEGULARES . Repasar encuentro focos y techo de toda la planta baja"
+    resultado:
+      - ubicacion: "Comedor"
+        descripcion: "Todos los techos están irregulares"
+        oficio: null
+      - ubicacion: "Comedor"
+        descripcion: "Repasar encuentro focos y techo de toda la planta baja"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "separada en dos filas, una por defecto (techos irregulares y encuentro de los focos)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «ESTAN IRREEGULARES», puntuación"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (los techos irregulares: ¿Pladur o Pintura?)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): encuentro de focos con techo, como en la fila 22"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- SALON
+  - origen: 109
+    ubicacion_original: "SALON"
+    texto_original: "Soporte de guia para la corredera esta mal rematado y ejecutado. MOVIMIENTO DE PUERTA."
+    resultado:
+      - ubicacion: "Salón"
+        descripcion: "Soporte de guía para la corredera mal rematado y ejecutado: movimiento de puerta."
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «guia», «esta»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera o Cerrajería?)"
+
+  - origen: 110
+    ubicacion_original: "SALON"
+    texto_original: "Falta tope y tornilleria en puerta corredera"
+    resultado:
+      - ubicacion: "Salón"
+        descripcion: "Falta tope y tornillería en puerta corredera"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «tornilleria»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Carpintería de madera o Cerrajería?)"
+
+  - origen: 111
+    ubicacion_original: "SALON"
+    texto_original: "Remate de techo encima de la puerta de hierro. TABICA MAL TERMINADA"
+    resultado:
+      - ubicacion: "Salón"
+        descripcion: "Remate de techo encima de la puerta de hierro: tabica mal terminada"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Pladur o Albañilería?)"
+
+  - origen: 112
+    ubicacion_original: "SALON"
+    texto_original: "La pletina de la guia de la corredera es cortante. PELIGRO DE SEGURIDAD"
+    resultado:
+      - ubicacion: "Salón"
+        descripcion: "La pletina de la guía de la corredera es cortante."
+        oficio: null
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "erratas corregidas: «guia»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Cerrajería o Carpintería de madera?)"
+
+  - origen: 113
+    ubicacion_original: "SALON"
+    texto_original: "Las barandilla salen del plano del ascensor. PELIGRO DE SEGURIDAD"
+    resultado:
+      - ubicacion: "Salón"
+        descripcion: "La barandilla sale del plano del ascensor."
+        oficio: null
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "erratas corregidas: «Las barandilla salen»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Cerrajería o Vidrios?)"
+
+  - origen: 114
+    ubicacion_original: "SALON"
+    texto_original: "Pared del ascensor repasar de pintura"
+    resultado:
+      - ubicacion: "Salón"
+        descripcion: "Pared del ascensor repasar de pintura"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pintura"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- ALMACÉN
+  - origen: 115
+    ubicacion_original: "ALMACÉN"
+    texto_original: "Baldosa  rota cerca de la puerta de salida al patio.en suelo."
+    resultado:
+      - ubicacion: "Almacén"
+        descripcion: "Baldosa rota en suelo, cerca de la puerta de salida al patio."
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: puntuación y blancos de más"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): baldosa"
+    propuesto: [oficio]
+
+  - origen: 116
+    ubicacion_original: "ALMACÉN"
+    texto_original: "Puerta de cerrajeria  da potazo no amortigüa"
+    resultado:
+      - ubicacion: "Almacén"
+        descripcion: "Puerta de cerrajería da portazo, no amortigua"
+        oficio: "Cerrajería"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «cerrajeria», «potazo», «amortigüa», blancos de más"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): el texto dice «puerta de cerrajería»"
+    propuesto: [oficio]
+
+  - origen: 117
+    ubicacion_original: "ALMACÉN"
+    texto_original: "AGUJERO de techo encima de la puerta."
+    resultado:
+      - ubicacion: "Almacén"
+        descripcion: "Agujero de techo encima de la puerta."
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Pladur o Albañilería?)"
+
+  - origen: 118
+    ubicacion_original: "ALMACÉN"
+    texto_original: "Repasar uniones de los rodapies"
+    resultado:
+      - ubicacion: "Almacén"
+        descripcion: "Repasar uniones de los rodapiés"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «rodapies»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): rodapié, como en las filas 8 y 20"
+    propuesto: [oficio]
+
+  - origen: 119
+    ubicacion_original: "ALMACÉN"
+    texto_original: "Mampara baño se mueve mucho. PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Almacén"
+        descripcion: "Mampara baño se mueve mucho."
+        oficio: "Mamparas"
+        urgencia: seguridad
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): mampara"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- PATIO SOTANO
+  # REVISAR: ubicación: el patio del sótano va al almacén, que sale a él; si es el Patio trasero o el delantero, cambiarlo
+  - origen: 120
+    ubicacion_original: "PATIO SOTANO"
+    texto_original: "TELA ASFALTICA DETERIORADA. COLOCAR UNA NUEVA. COMPROBRA DESAGUES"
+    resultado:
+      - ubicacion: "Almacén"
+        descripcion: "Tela asfáltica deteriorada: colocar una nueva"
+        detalle: "En el patio del sótano."
+        oficio: "Impermeabilizaciones"
+      - ubicacion: "Almacén"
+        descripcion: "Comprobar desagües"
+        detalle: "En el patio del sótano."
+        oficio: null
+    cambios:
+      - "ubicación: el patio del sótano se lleva a su estancia con el sitio en el detalle (T25); Almacén, la estancia que sale al patio (fila 115)"
+      - "separada en dos filas, una por defecto (tela asfáltica y desagües)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «ASFALTICA», «COMPROBRA», «DESAGUES»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): tela asfáltica"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (los desagües: ¿Fontanería o Albañilería?)"
+      - "REVISAR: ubicación: el patio del sótano va al almacén, que sale a él; si es el Patio trasero o el delantero, cambiarlo"
+    propuesto: [ubicacion, oficio]
+
+  # REVISAR: ubicación: el patio del sótano va al almacén, que sale a él; si es el Patio trasero o el delantero, cambiarlo
+  - origen: 121
+    ubicacion_original: "PATIO SOTANO"
+    texto_original: "AGUJERO EN PARED repaso de pintura en pared derecha antes de la puerta de salida al garaje"
+    resultado:
+      - ubicacion: "Almacén"
+        descripcion: "Agujero en pared, repaso de pintura en pared derecha antes de la puerta de salida al garaje"
+        detalle: "En el patio del sótano."
+        oficio: null
+    cambios:
+      - "ubicación: el patio del sótano se lleva a su estancia con el sitio en el detalle (T25); Almacén, la estancia que sale al patio (fila 115)"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Albañilería o Pintura?)"
+      - "REVISAR: ubicación: el patio del sótano va al almacén, que sale a él; si es el Patio trasero o el delantero, cambiarlo"
+    propuesto: [ubicacion]
+
+  # ---------------------------------------------------------------- GARAJE
+  - origen: 122
+    ubicacion_original: "GARAJE"
+    texto_original: "SUELO TOTALMENTE DETERIORADO, ARREGLAR ESQUINAS Y SUELO COMPLETO NIVELADO Y PINTADO"
+    resultado:
+      - ubicacion: "Garaje"
+        descripcion: "Suelo totalmente deteriorado: arreglar esquinas y suelo completo nivelado y pintado"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Hormigón pulido, Albañilería o Pintura?)"
+
+  - origen: 123
+    ubicacion_original: "GARAJE"
+    texto_original: "El hormigón no llega en su totalidad contra las esquinas"
+    resultado:
+      - ubicacion: "Garaje"
+        descripcion: "El hormigón no llega en su totalidad contra las esquinas"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Hormigón pulido o Albañilería?)"
+
+  - origen: 124
+    ubicacion_original: "GARAJE"
+    texto_original: "La estructura de la puerta del garaje esta suelta"
+    resultado:
+      - ubicacion: "Garaje"
+        descripcion: "La estructura de la puerta del garaje está suelta"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «esta»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Cerrajería? la puerta del garaje puede ser de otro oficio)"
+
+  - origen: 125
+    ubicacion_original: "GARAJE"
+    texto_original: "La puerta del garaje no asienta en su totalidad contra el suelo"
+    resultado:
+      - ubicacion: "Garaje"
+        descripcion: "La puerta del garaje no asienta en su totalidad contra el suelo"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Cerrajería? la puerta del garaje puede ser de otro oficio)"
+
+  - origen: 126
+    ubicacion_original: "GARAJE"
+    texto_original: "Sellar y limpiar las tiras de led"
+    resultado:
+      - ubicacion: "Garaje"
+        descripcion: "Sellar y limpiar las tiras de led"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Electricidad?)"
+
+  # ---------------------------------------------------------------- LAVANDERIA
+  - origen: 127
+    ubicacion_original: "LAVANDERIA"
+    texto_original: "La tapas de las arquetas falta sellar y poner un mecanismo para poder levantarse"
+    resultado:
+      - ubicacion: "Lavandería"
+        descripcion: "Las tapas de las arquetas: falta sellarlas y poner un mecanismo para poder levantarlas"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «La tapas», concordancia"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Albañilería o Fontanería?)"
+
+  # ---------------------------------------------------------------- CUARTO DE PLANCHA
+  - origen: 128
+    ubicacion_original: "CUARTO DE PLANCHA"
+    texto_original: "La mampara son endebles en general"
+    resultado:
+      - ubicacion: "Cuarto de plancha"
+        descripcion: "Las mamparas son endebles en general"
+        oficio: "Mamparas"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «La mampara son»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): mampara"
+    propuesto: [oficio]
+
+  - origen: 129
+    ubicacion_original: "CUARTO DE PLANCHA"
+    texto_original: "Maneta de puerta del baño no esta recta"
+    resultado:
+      - ubicacion: "Cuarto de plancha"
+        descripcion: "Maneta de puerta del baño no está recta"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «esta»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): herraje de la puerta de paso, como en la fila 18"
+    propuesto: [oficio]
+
+  - origen: 130
+    ubicacion_original: "CUARTO DE PLANCHA"
+    texto_original: "Mueble de baño roza el cajon primero"
+    resultado:
+      - ubicacion: "Cuarto de plancha"
+        descripcion: "Mueble de baño roza el cajón primero"
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "erratas corregidas: «cajon»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): mueble de baño, como la cajonera de la fila 39"
+    propuesto: [oficio]
+
+  - origen: 131
+    ubicacion_original: "CUARTO DE PLANCHA"
+    texto_original: "Repasar lechada azulejos"
+    resultado:
+      - ubicacion: "Cuarto de plancha"
+        descripcion: "Repasar lechada azulejos"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): lechada, como en la fila 29"
+    propuesto: [oficio]
+
+  - origen: 132
+    ubicacion_original: "CUARTO DE PLANCHA"
+    texto_original: "Repasar encuentro con focos"
+    resultado:
+      - ubicacion: "Cuarto de plancha"
+        descripcion: "Repasar encuentro con focos"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): encuentro con focos, como en la fila 22"
+    propuesto: [oficio]
+
+  # ---------------------------------------------------------------- BAÑO PLANTA BAJA
+  - origen: 133
+    ubicacion_original: "BAÑO PLANTA BAJA"
+    texto_original: "Miras de hierro que son de soporte de encimera estan oxidadas, cerrar contra pared el agujero y tapar esas miras de hierro, PELIGRO DE SEGURIDAD."
+    resultado:
+      - ubicacion: "Aseo"
+        descripcion: "Miras de hierro que son de soporte de encimera están oxidadas"
+        detalle: "Cerrar contra pared el agujero y tapar esas miras de hierro."
+        oficio: "Mobiliario cocina"
+        urgencia: seguridad
+    cambios:
+      - "ubicación: «BAÑO PLANTA BAJA» → Aseo (T25)"
+      - "«PELIGRO DE SEGURIDAD» pasado a Urgencia (Peligro para la seguridad)"
+      - "descripción de más de 128 caracteres: el defecto en la descripción y el arreglo en el detalle"
+      - "erratas corregidas: «estan»"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): el mismo defecto que las filas 6 y 38"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 134
+    ubicacion_original: "BAÑO PLANTA BAJA"
+    texto_original: "Sellar sifon"
+    resultado:
+      - ubicacion: "Aseo"
+        descripcion: "Sellar sifón"
+        oficio: null
+    cambios:
+      - "ubicación: «BAÑO PLANTA BAJA» → Aseo (T25)"
+      - "erratas corregidas: «sifon»"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Fontanería, o Albañilería si es el escudo, como en las filas 5 y 81?)"
+    propuesto: [ubicacion]
+
+  - origen: 135
+    ubicacion_original: "BAÑO PLANTA BAJA"
+    texto_original: "Remate de azulejo en candileja"
+    resultado:
+      - ubicacion: "Aseo"
+        descripcion: "Remate de azulejo en candileja"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «BAÑO PLANTA BAJA» → Aseo (T25)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): azulejo"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 136
+    ubicacion_original: "BAÑO PLANTA BAJA"
+    texto_original: "Repasar encuentro azulejos con techo en candileja"
+    resultado:
+      - ubicacion: "Aseo"
+        descripcion: "Repasar encuentro azulejos con techo en candileja"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «BAÑO PLANTA BAJA» → Aseo (T25)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): azulejos"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 137
+    ubicacion_original: "BAÑO PLANTA BAJA"
+    texto_original: "Repasar encuentro de azulejos con pared"
+    resultado:
+      - ubicacion: "Aseo"
+        descripcion: "Repasar encuentro de azulejos con pared"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «BAÑO PLANTA BAJA» → Aseo (T25)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): azulejos, como en la fila 40"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 138
+    ubicacion_original: "BAÑO PLANTA BAJA"
+    texto_original: "Azulejo roto en mecanismo de inodoro"
+    resultado:
+      - ubicacion: "Aseo"
+        descripcion: "Azulejo roto en mecanismo de inodoro"
+        oficio: "Solados y Alicatados"
+    cambios:
+      - "ubicación: «BAÑO PLANTA BAJA» → Aseo (T25)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): azulejo"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 139
+    ubicacion_original: "BAÑO PLANTA BAJA"
+    texto_original: "Perfil de mampara rematar encuentro con pared"
+    resultado:
+      - ubicacion: "Aseo"
+        descripcion: "Perfil de mampara rematar encuentro con pared"
+        oficio: null
+    cambios:
+      - "ubicación: «BAÑO PLANTA BAJA» → Aseo (T25)"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Mamparas o Albañilería, como la fila 35?)"
+    propuesto: [ubicacion]
+
+  # ---------------------------------------------------------------- GENERALES
+  - origen: 140
+    ubicacion_original: "GENERALES"
+    texto_original: "Revisar todos los mecanismos que estan sueltos  y mal rematados a su alrededor"
+    resultado:
+      - ubicacion: "General (toda la unidad)"
+        descripcion: "Revisar todos los mecanismos que están sueltos"
+        oficio: "Electricidad"
+      - ubicacion: "General (toda la unidad)"
+        descripcion: "Mecanismos mal rematados a su alrededor"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada («GENERALES» → General (toda la unidad))"
+      - "separada en dos filas, una por defecto (mecanismos sueltos y remate alrededor)"
+      - "erratas corregidas: «estan», blancos de más"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): mecanismos eléctricos; el remate alrededor, pintura como en la fila 21"
+    propuesto: [oficio]
+
+  - origen: 141
+    ubicacion_original: "GENERALES"
+    texto_original: "Repasar todos los encuentros de las luminarias y los techos"
+    resultado:
+      - ubicacion: "General (toda la unidad)"
+        descripcion: "Repasar todos los encuentros de las luminarias y los techos"
+        oficio: "Pintura"
+    cambios:
+      - "ubicación normalizada a la lista cerrada («GENERALES» → General (toda la unidad))"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): encuentro de luminarias con techo, como en la fila 22"
+    propuesto: [oficio]
+
+  - origen: 142
+    ubicacion_original: "GENERALES"
+    texto_original: "Pandeos en todo el tiro de escalera y repasar las aristas"
+    resultado:
+      - ubicacion: "Escalera"
+        descripcion: "Pandeos en todo el tiro de escalera"
+        oficio: "Albañilería"
+      - ubicacion: "Escalera"
+        descripcion: "Repasar las aristas del tiro de escalera"
+        oficio: null
+    cambios:
+      - "ubicación: la fila habla de la escalera y la muestra la pone en GENERALES → Escalera (T25)"
+      - "separada en dos filas, una por defecto (pandeos y aristas)"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): pandeos, como en la fila 15"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (las aristas: ¿Pintura, como la fila 49, o Pladur?)"
+    propuesto: [ubicacion, oficio]
+
+  - origen: 143
+    ubicacion_original: "GENERALES"
+    texto_original: "Repasar las aguas de los techos de planta baja y los cantos de las candilejas son irregulares"
+    resultado:
+      - ubicacion: "General (toda la unidad)"
+        descripcion: "Repasar las aguas de los techos de planta baja"
+        oficio: null
+      - ubicacion: "General (toda la unidad)"
+        descripcion: "Los cantos de las candilejas de los techos de planta baja son irregulares"
+        oficio: null
+    cambios:
+      - "ubicación normalizada a la lista cerrada («GENERALES» → General (toda la unidad))"
+      - "separada en dos filas, una por defecto (aguas de los techos y cantos de las candilejas)"
+      - "oficio sin proponer: el texto no permite deducirlo con seguridad (¿Pladur o Pintura?)"
+
+  - origen: 144
+    ubicacion_original: "GENERALES"
+    texto_original: "Puertas de paso  y rodapies. NO SON LACADOS, SON TERMOSELLADOS."
+    resultado:
+      - ubicacion: "General (toda la unidad)"
+        descripcion: "Puertas de paso y rodapiés: no son lacados, son termosellados."
+        oficio: "Carpintería de madera"
+    cambios:
+      - "ubicación normalizada a la lista cerrada («GENERALES» → General (toda la unidad))"
+      - "mayúsculas de énfasis pasadas a frase normal"
+      - "erratas corregidas: «rodapies», blancos de más"
+      - "oficio propuesto a partir del texto (la muestra no lo trae): puertas de paso y rodapiés, como en las filas 18 y 20"
+    propuesto: [oficio]

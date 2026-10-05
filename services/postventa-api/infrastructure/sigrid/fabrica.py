@@ -41,6 +41,13 @@ sello de `gra.cod` lo pone la pasarela y aquí no hay ninguna hora que escribir.
 > (`specs/F-013-archivo-posventa/design.md` §6.2). La consecuencia, que hay
 > que documentar: con la estrategia `posventa`, **archivar depende de
 > `sigrid-api`**.
+
+> **Enmienda del 2026-09-29 (F-036 T13).** Hay una **cuarta**,
+> `construir_catalogo_obra`, con las mismas dos puertas que
+> `construir_ubicaciones` (entorno y configuración) y por el mismo motivo:
+> **solo lee**. No mira `CIERRE_HABILITADO` ni `ARCHIVO_HABILITADO` (R48);
+> su error de entorno es `CatalogoNoDisponible`
+> (`specs/F-036-importar-excel/design.md` §5.1).
 """
 
 from __future__ import annotations
@@ -51,10 +58,15 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from config.settings import Ajustes
 from domain.models.errores import ConfiguracionSigridIncompleta
+from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.erp import ErpPort
 from domain.ports.grafico import GraficoPort
 from domain.ports.ubicacion import UbicacionPort
 
+from infrastructure.sigrid.catalogo_obra import (
+    AdaptadorCatalogoSigridApi,
+    exigir_entorno_con_catalogo,
+)
 from infrastructure.sigrid.cliente import (
     ENTORNOS_CON_CIERRE,
     AdaptadorSigridApi,
@@ -70,6 +82,7 @@ from infrastructure.sigrid.ubicacion import (
 __all__ = [
     "ENTORNOS_CON_CIERRE",
     "VARIABLES_OBLIGATORIAS",
+    "construir_catalogo_obra",
     "construir_erp",
     "construir_graficos",
     "construir_ubicaciones",
@@ -182,6 +195,36 @@ def construir_ubicaciones(ajustes: Ajustes) -> UbicacionPort:
         api_key=str(ajustes.sigrid_api_key),
         base_datos=str(ajustes.sigrid_base_datos),
         tip_reclamacion=ajustes.sigrid_tip_reclamacion,
+        timeout_s=ajustes.sigrid_timeout_s,
+        reintentos=ajustes.sigrid_reintentos,
+    )
+
+
+def construir_catalogo_obra(ajustes: Ajustes) -> CatalogoObraPort:
+    """El lector del catálogo de la obra en Sigrid, o el motivo por el que aquí no.
+
+    Las dos puertas de `construir_ubicaciones`, en el mismo orden: entorno →
+    configuración (R48, `design.md` §5.1). Sin la de ningún interruptor: estas
+    dos lecturas no escriben en el ERP ni suben nada a SharePoint. Tampoco
+    resuelve el huso: aquí no hay ninguna hora que escribir.
+
+    Levanta `CatalogoNoDisponible` (→ 503, R11) si este entorno no lee el
+    catálogo —la lista es la del cierre, importada—, y
+    `ConfiguracionSigridIncompleta` (→ 503, R11) si falta configuración,
+    **nombrando las variables y jamás sus valores**.
+    """
+    exigir_entorno_con_catalogo(ajustes.entorno)
+    _exigir_configuracion(ajustes)
+
+    log.info(
+        "F-036 lector del catálogo de la obra en Sigrid construido en el entorno %s",
+        ajustes.entorno,
+    )
+    return AdaptadorCatalogoSigridApi(
+        entorno=ajustes.entorno,
+        base_url=str(ajustes.sigrid_api_base_url),
+        api_key=str(ajustes.sigrid_api_key),
+        base_datos=str(ajustes.sigrid_base_datos),
         timeout_s=ajustes.sigrid_timeout_s,
         reintentos=ajustes.sigrid_reintentos,
     )

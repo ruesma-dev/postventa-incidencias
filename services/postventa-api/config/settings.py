@@ -257,15 +257,26 @@ class Ajustes(BaseSettings):
             "Obligatoria en la fábrica: es el destino."
         ),
     )
-    sharepoint_carpeta_base: str = Field(
-        default="Postventa",
+    # F-051 (incidente del 2026-10-01) · sin valor por defecto **aquí**, a
+    # propósito. Azure no pasa a la aplicación un App Setting de valor vacío:
+    # la base «vacía = raíz» del corte de F-013 no llegaba, el campo tomaba su
+    # defecto (`Postventa`) y el archivo en Posventa buscaba esa carpeta en la
+    # raíz de su biblioteca: 404 de Graph y 502. Qué significa la **ausencia**
+    # depende de la estrategia, y eso lo resuelve
+    # `infrastructure.sharepoint.fabrica.carpeta_base_efectiva`: la raíz en
+    # `posventa`, `Postventa` en `por_obra`. `None` es «no está», distinto de
+    # «está vacía».
+    sharepoint_carpeta_base: str | None = Field(
+        default=None,
         validation_alias="SHAREPOINT_CARPETA_BASE",
         description=(
             "Carpeta raíz dentro de la biblioteca. En `por_obra` (F-006), "
             "debajo cuelga una carpeta por código de obra y **no puede estar "
-            "vacía**: dejaría esas carpetas sueltas en la raíz (F-013 R17, lo "
-            "rechaza la fábrica). En `posventa` (F-013), vacía = la raíz de la "
-            "biblioteca, que es donde Posventa tiene sus carpetas de obra (D-1)."
+            "vacía** ni ser `/`: dejaría esas carpetas sueltas en la raíz "
+            "(F-013 R17, lo rechaza la fábrica); ausente, vale `Postventa`. En "
+            "`posventa` (F-013), vacía, `/` o ausente = la raíz de la "
+            "biblioteca, que es donde Posventa tiene sus carpetas de obra "
+            "(D-1). El despliegue escribe `/` para la raíz (F-051)."
         ),
     )
 

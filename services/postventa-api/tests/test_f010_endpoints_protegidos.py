@@ -76,8 +76,8 @@ import pytest
 #: que el runtime de Functions lo haya construido.
 FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 
-#: Los doce endpoints del servicio. Si manana hay un decimotercero, este test
-#: se entera: la cuenta tiene que cuadrar con las rutas declaradas.
+#: Los diecisiete endpoints del servicio. Si manana hay un decimoctavo, este
+#: test se entera: la cuenta tiene que cuadrar con las rutas declaradas.
 #:
 #: Eran seis hasta F-019, que anadio `remesa`, `parte` y `cola`; nueve hasta
 #: F-009, que anadio `cerrar`; diez hasta F-012, que anadio `adjuntar`; y once
@@ -88,6 +88,18 @@ FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 #: (`design.md` §5). Es la primera vez que este fichero resta en vez de sumar,
 #: y por eso se escribe: un endpoint retirado tiene que pasar por aqui igual
 #: que uno nuevo, o el barrido seguiria exigiendo una ruta que ya no existe.
+#:
+#: F-036 (T18) los lleva a **quince** con la entrada de incidencias por Excel:
+#: `plantilla` (GET, lee Sigrid), `importaciones` (POST, escribe en el esquema
+#: propio y nada en Sigrid) y `bandeja` (GET, solo lee). Anonimos como los
+#: demas y por lo mismo; ninguna comprobacion de este fichero cambia.
+#:
+#: F-036 (T19) los lleva a **diecisiete** con `catalogos/propuestas` (GET, lee
+#: Sigrid y el esquema propio) y `catalogos/decisiones` (POST, escribe en el
+#: esquema propio y nada en Sigrid). Son las primeras rutas con `/`, y el
+#: patron de abajo **no las veia** (`\w+` no casa la barra): se amplia a
+#: `[\w/]+` para que el barrido las cuente. Se amplia, no se relaja: lo que
+#: casaba antes sigue casando igual, y el control negativo lo fija.
 ENDPOINTS = (
     "health",
     "split",
@@ -101,11 +113,16 @@ ENDPOINTS = (
     "archivar",
     "adjuntar",
     "cerrar",
+    "plantilla",
+    "importaciones",
+    "bandeja",
+    "catalogos/propuestas",
+    "catalogos/decisiones",
 )
 
 #: Un decorador de ruta con su nivel de autenticacion.
 PATRON_RUTA = re.compile(
-    r"@app\.route\(\s*route=\"(?P<ruta>\w+)\".*?auth_level=func\.AuthLevel\.(?P<nivel>\w+)\s*\)",
+    r"@app\.route\(\s*route=\"(?P<ruta>[\w/]+)\".*?auth_level=func\.AuthLevel\.(?P<nivel>\w+)\s*\)",
     re.DOTALL,
 )
 
@@ -158,7 +175,7 @@ def test_f019_r30_la_cabecera_dice_que_anade_la_cola_al_cuadro(codigo):
 
 
 def test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada(codigo):
-    """R32 · los doce siguen anonimos **y** la cabecera dice por que.
+    """R32 · los diecisiete siguen anonimos **y** la cabecera dice por que.
 
     Las dos mitades en un solo test, y no en dos, porque lo que hay que
     impedir es que se separen: un `auth_level` cambiado con la nota intacta
@@ -237,7 +254,11 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 12
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 17
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]
+    # F-036 T19: una ruta con barra tambien se ve, con su nivel.
+    assert PATRON_RUTA.findall(
+        "@app.route(route=\"a/b\", methods=[\"GET\"], auth_level=func.AuthLevel.ADMIN)"
+    ) == [("a/b", "ADMIN")]

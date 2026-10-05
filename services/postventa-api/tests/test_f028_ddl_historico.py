@@ -138,10 +138,17 @@ def test_f028_el_fichero_sigue_la_convencion_y_se_aplica_el_ultimo():
     `postventa.partes`, y **la semilla lee de `postventa.aprobaciones`**, que
     nace en `10`. Aplicar esto antes que cualquiera de las dos fallaría contra
     un esquema vacío.
+
+    Era el último hasta F-036 (T14): detrás de él van solo sus tres ficheros,
+    que no leen de este. La aserción se amplía con ellos, sin relajarla.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
-    assert nombres[-1] == FICHERO
+    assert nombres[nombres.index(FICHERO) + 1 :] == [
+        "12_importaciones.sql",
+        "13_bandeja_incidencias.sql",
+        "14_decisiones_equivalencia.sql",
+    ]
     assert nombres.index("03_partes.sql") < nombres.index(FICHERO)
     assert nombres.index(FICHERO_CONGELADO) < nombres.index(FICHERO)
 

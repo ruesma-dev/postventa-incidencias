@@ -18,6 +18,11 @@ demás:
 
 Si algo falla en los dos primeros pasos, la base de datos de albaranes, partes
 y el datamart no se ha enterado de que existimos.
+
+F-036 (T15) añade `construir_bandeja` y `construir_equivalencias`: la misma
+receta de conexión, los cuatro pasos en el mismo orden, y el mismo esquema
+(`design.md` §2.2). Son dos porque los dos puertos llaman `registrar` a su
+escritura y los implementan dos clases.
 """
 
 from __future__ import annotations
@@ -30,9 +35,13 @@ from domain.models.errores import ConfiguracionPgIncompleta, PersistenciaNoDispo
 
 from infrastructure.persistencia.arranque import asegurar_esquema, puede_aplicar_ddl
 from infrastructure.persistencia.conexion import dsn_desde_ajustes, sentencias_de_sesion
+from infrastructure.persistencia.repositorio_bandeja_pg import (
+    RepositorioBandejaPostgres,
+    RepositorioEquivalenciasPostgres,
+)
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
 
-__all__ = ["construir_repositorio"]
+__all__ = ["construir_bandeja", "construir_equivalencias", "construir_repositorio"]
 
 log = logging.getLogger(__name__)
 
@@ -44,13 +53,34 @@ def construir_repositorio(ajustes: Ajustes) -> RepositorioPostgres:
     y jamás sus valores: `PG_PASSWORD` es una credencial y estos mensajes
     acaban en un log.
     """
+    return RepositorioPostgres(
+        _conexion_con_esquema(ajustes), esquema=ajustes.pg_esquema
+    )
+
+
+def construir_bandeja(ajustes: Ajustes) -> RepositorioBandejaPostgres:
+    """La bandeja de F-036 (`BandejaPort`), con la receta de `construir_repositorio`."""
+    return RepositorioBandejaPostgres(
+        _conexion_con_esquema(ajustes), esquema=ajustes.pg_esquema
+    )
+
+
+def construir_equivalencias(ajustes: Ajustes) -> RepositorioEquivalenciasPostgres:
+    """Las decisiones de equivalencia de F-036 (`EquivalenciasPort`), con la misma receta."""
+    return RepositorioEquivalenciasPostgres(
+        _conexion_con_esquema(ajustes), esquema=ajustes.pg_esquema
+    )
+
+
+def _conexion_con_esquema(ajustes: Ajustes) -> psycopg.Connection:
+    """Los cuatro pasos de la cabecera, en su orden: la conexión lista para usar."""
     _exigir_credencial(ajustes)
     dsn = dsn_desde_ajustes(ajustes)
     puede_aplicar_ddl(ajustes)
 
     conexion = _abrir(dsn, ajustes)
     asegurar_esquema(conexion, ajustes=ajustes)
-    return RepositorioPostgres(conexion, esquema=ajustes.pg_esquema)
+    return conexion
 
 
 def _exigir_credencial(ajustes: Ajustes) -> None:

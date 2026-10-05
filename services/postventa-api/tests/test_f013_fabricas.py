@@ -165,11 +165,18 @@ def test_f013_r1_la_estrategia_por_omision_es_la_de_hoy():
     """R1 y R2 · sin tocar nada, el servicio archiva como F-006.
 
     Es lo que hace que desplegar esta rama no mude nada hasta el corte.
+
+    > **Enmienda del 2026-10-01 (F-051).** Afirmaba
+    > `ajustes.sharepoint_carpeta_base == "Postventa"`: el defecto vivía en el
+    > campo y valía también en `posventa`, donde esa carpeta no existe (el
+    > incidente de ese día). Ahora el campo ausente es `None` y la base por
+    > omisión se resuelve por estrategia; en `por_obra` sigue siendo
+    > `Postventa`, que es lo que este test protege.
     """
     ajustes = Ajustes(_env_file=None)
 
     assert ajustes.sharepoint_estructura == "por_obra"
-    assert ajustes.sharepoint_carpeta_base == "Postventa"
+    assert fabrica_sharepoint.carpeta_base_efectiva(ajustes) == "Postventa"
 
 
 # --------------------------------------------------------------------------

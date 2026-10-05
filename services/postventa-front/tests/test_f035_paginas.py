@@ -2707,6 +2707,12 @@ _RECUENTOS_R74 = '<p class="mt-1" x-text="resultado.resumenTexto"></p>'
             "justo encima",
         ),
         (
+            # T34, superviviente R1: encima, pero no justo encima.
+            "              " + _ROTULO_R74 + "              " + _RECUENTOS_R74,
+            "              " + _ROTULO_R74 + '              <p class="mt-1">entre medias</p>\n              ' + _RECUENTOS_R74,
+            "justo encima",
+        ),
+        (
             '<p class="mt-2" x-text="resultado.rotuloResumen"></p>',
             '<p class="mt-2" x-show="resultado.yaImportado" x-text="resultado.rotuloResumen"></p>',
             "se puede esconder",
@@ -2717,7 +2723,7 @@ _RECUENTOS_R74 = '<p class="mt-1" x-text="resultado.resumenTexto"></p>'
             "no son hermanos",
         ),
     ],
-    ids=["sin-rotulo", "dos-rotulos", "rotulo-debajo", "rotulo-solo-si-ya-importado", "rotulo-en-otra-caja"],
+    ids=["sin-rotulo", "dos-rotulos", "rotulo-debajo", "algo-entre-medias", "rotulo-solo-si-ya-importado", "rotulo-en-otra-caja"],
 )
 def test_f035_r74_control_el_rotulo_mal_puesto_salta(viejo, nuevo, senal):
     real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")

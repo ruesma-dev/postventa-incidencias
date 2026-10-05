@@ -1,6 +1,39 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 12 (T33, T34) + O11-5 y O11-1 HECHOS · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 12 y después bloque 13 (implementer, si D-13 (i))
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 12».
+>
+> - `bcdf46a` **O11-5**: huella funcional de `importar.html` (44 entradas)
+>   fijada sobre `9812d69`, antes de R74, con L1–L4 en sus controles.
+> - `09b5660` **O11-1**: la guardia de O10-2 ve `tabindex` negativo,
+>   `disabled` (también por `fieldset`), `aria-hidden` e `inert` (en el control
+>   o en un ancestro), y un contorno de foco no sólido o transparente, leído
+>   con la cascada.
+> - `fa14520` **T33** (R74): `rotuloResumen(respuesta)` en
+>   `js/importacion.js`, pura y tolerante. Sin `importado_at_utc` (F-053 aún
+>   no existe) o con una fecha que no existe, va sin fecha; con fecha,
+>   dd/mm/aaaa en hora de Madrid; sin desfase, se lee en UTC. Más la clave en
+>   `presentarImportacion`; `resumenTexto` y `textoDelEstado` sin cambio.
+>   `importar.html` lo pinta justo encima de los recuentos; la huella gana
+>   solo esa entrada. R33 enmendado (`problemas_r33`, con control).
+> - Commit de **T34**: 4 casos y controles que matan supervivientes.
+>
+> Front 707, Node 645/645, raíz 114; `bash harness/init.sh` **ENTORNO LISTO**
+> (una vez). Mutación del arnés: 0 mutantes. Manuales: **61, con 59 muertas y
+> 2 equivalentes** (C1, C2), incluidas la 24 y la 25. «F-036 intacto»; la API,
+> sin diff. Worktree de mutación y rama auxiliar retirados. Sin push.
+>
+> - **MANUAL pendiente** (no hay navegador conectado): va con V1/V2. Es ver el
+>   rótulo en `importar.html` al importar un fichero dos veces.
+> - Para el reviewer, §5 del informe:
+>   - qué es «una fecha válida» (más estricto que `Date`);
+>   - sin desfase, UTC (aviso para F-053);
+>   - el rótulo sin clase propia;
+>   - O11-1 ampliada con `inert`, `fieldset` y la cascada;
+>   - C1 y C2, equivalentes.
+
 > ## ▶ F-035 · BLOQUE 11 (T31, T32) + O10-2 HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 11 y después bloque 12 (implementer)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 11». `0112d91` **T31**:

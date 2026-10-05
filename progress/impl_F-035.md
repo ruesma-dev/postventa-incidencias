@@ -6209,3 +6209,382 @@ lo enseña (queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío).
 | Mutaciones manuales | **58/58 muertas** (21b, 22b y 56 propias en 8 familias); G5 sobrevivía por un control mal construido, corregido |
 | `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 72 (el `UP034` mío, corregido después: 71) |
 | Tiempo de la suite | raíz 11,87 s; front 27,37 s (`init.sh`); Node 2,15 s |
+
+## Bloque 12 · T33 y T34 · Apunte (b): el resumen de un fichero ya importado (R74) · y O11-5, O11-1 · 2026-10-06
+
+implementer. Encargo del líder: solo el bloque 12, con lo que la «Review del
+bloque 11» le asigna a T33, y parar. Lo de la review son dos cosas:
+
+- **O11-5**: la huella funcional de `importar.html`, fijada sobre HEAD antes
+  del cambio.
+- **O11-1**: que la guardia de O10-2 vea las otras formas de sacar el
+  selector del teclado.
+
+Commits: `bcdf46a` **O11-5**, `09b5660` **O11-1**, `fa14520` **T33** y el de
+**T34**. Este último lleva cuatro casos y controles que matan supervivientes,
+`mutacion_F-035.md`, `tasks.md`, este informe y `current.md`. Sin push.
+
+La sesión se colgó una vez a mitad de las mutaciones manuales. La suite
+Python entera tardaba ~80 s por mutación y el proceso llegó a su límite de 30
+min. Se retomaron con las suites acotadas a cada mutación (§4).
+
+### 1 · Qué cambió
+
+- **`js/importacion.js`** (T33, R74, `design.md` §16.6). Es el único cambio
+  que la spec admite en este fichero:
+  - `rotuloResumen(respuesta)`, pura y que **nunca lanza**:
+    - sin `ya_importado`, o sin respuesta → «Resumen de esta importación»;
+    - con `ya_importado`, pero sin `importado_at_utc` o con un valor que no
+      es una fecha ISO 8601 que exista → «Resumen de la importación original
+      de este fichero»;
+    - con fecha válida → «Resumen de la importación original del
+      dd/mm/aaaa», con `Intl.DateTimeFormat("es-ES", {timeZone:
+      "Europe/Madrid", day: "2-digit", month: "2-digit", year: "numeric"})`.
+  - Su ayudante privado `instanteDeIso`, que no se exporta:
+    - Acepta `AAAA-MM-DD`, con hora y desfase opcionales (`Z`, `±hh:mm`,
+      `±hhmm` y fracciones de segundo, como el `isoformat()` de Python).
+    - Rechaza lo que no es texto, el texto con cola y las fechas que no
+      existen (30 de febrero, mes 13, minuto o segundo 60, desfase de 25 h).
+    - **Sin desfase, lee la fecha en UTC**, porque el campo se llama `_utc`.
+      `Date` la leería en la hora local del navegador.
+  - `presentarImportacion` gana la clave `rotuloResumen`. `resumenTexto` y
+    `textoDelEstado` **no cambian**. `rotuloResumen` entra en el objeto
+    `Importacion` exportado.
+- **`importar.html`** (T33):
+  - `<p class="mt-2" x-text="resultado.rotuloResumen">` va justo encima de
+    los recuentos, dentro del aviso del resultado (el que lleva el estado), y
+    siempre visible.
+  - Sin clases nuevas ni cambios en la hoja: la `?v=` no cambia.
+- **`tests/test_f035_paginas.py`**:
+  - **O11-5** (`bcdf46a`, antes de R74):
+    - `HUELLA_DE_IMPORTAR`: 44 entradas generadas con `huella_funcional`
+      sobre `importar.html` en `9812d69`. No se tomó `2a86bca` porque desde
+      F-036 la spec ya cambió el `:class` del resultado y el `id="bandeja"`.
+    - Sus 7 controles: L1–L4 de la review del bloque 10, el selector con
+      `disabled` (K3), una directiva nueva en un botón y un texto de botón
+      cambiado.
+    - En T33 la huella gana **una sola entrada**, la del rótulo:
+      `('p', (('x-text', 'resultado.rotuloResumen'),), …)`.
+  - **O11-1** (`09b5660`):
+    - `problemas_o10_2` rechaza además `tabindex` negativo (K1), `disabled`
+      (K3, también heredado de un `fieldset disabled`), `aria-hidden="true"`
+      (K5) e `inert`, en el control **o en un ancestro**.
+    - La regla de foco de la etiqueta tiene que dejar, **contando la
+      cascada**, un contorno **sólido, con ancho y no transparente** (K2).
+      Lo calcula `contorno_efectivo`: el `outline` abreviado reinicia, cada
+      `outline-*` cambia su parte y manda la última regla.
+    - 11 controles que saltan y 6 que no saltan (`tabindex="0"`,
+      `aria-hidden="false"`, otro contorno sólido, el contorno en propiedades
+      sueltas, el ancho por defecto y `thin`).
+  - **R74** (T33): `problemas_r74`, con 8 controles. Comprueba que hay un
+    rótulo y unos recuentos, que son hermanos, que el rótulo va justo encima,
+    que está dentro del aviso con `:class` y que nada lo puede esconder.
+- **`tests/test_f035_portal.py`** (T33): **R33 enmendado**.
+  - La guardia pasa a ser una función pura, `problemas_r33`, con las listas
+    de lo admitido como constantes.
+  - Admite `M js/importacion.js`, pero no `js/oficios.js`, que es de R75
+    (bloque 13).
+  - Control sin git: el `M` de `importacion.js` pasa; los de `oficios.js`,
+    `api.js`, `app.js` y `guarda_salida.js` no pasan, ni un `D` o un `A` de
+    `importacion.js`.
+- **`tests_js/f035_paginas.test.js`** (T33 y T34), sobre R74:
+  - 33 casos de `rotuloResumen`, por familias: con y sin `ya_importado`,
+    fecha válida, fecha ausente, fecha basura, zona horaria, cambio de día
+    entre UTC y Madrid, y desfases.
+  - Uno de «nunca lanza».
+  - Tres de la zona horaria del proceso (America/New_York,
+    Pacific/Kiritimati y UTC), con el módulo recargado bajo cada zona.
+  - Uno de `presentarImportacion`: lleva el rótulo, y el estado y los
+    recuentos salen como siempre.
+
+**No se tocó**: `tests/test_f036_front.py`, `tests_js/importacion.test.js` y
+`tests_js/oficios.test.js` (en verde), `js/api.js`, `css/` ni la API.
+
+### 2 · Fase RED
+
+**O11-5 no tiene RED por definición**: es una guardia de no regresión que fija
+lo que hay, así que pasa antes y después. Que muerde lo prueban sus 7
+controles, y que al meter R74 cayó con **solo** la entrada nueva:
+
+```
+$ python -m pytest tests/test_f035_paginas.py -q -p no:cacheprovider -k o11_5_importar_conserva
+E       AssertionError: importar.html: directivas, ids o tipos cambiados fuera de lo que la spec añade (O11-5):
+E         + ('p', (('x-text', 'resultado.rotuloResumen'),), '', ('div[x-data=appImportacion()]', 'template[x-if=resultado]'))
+```
+
+**O11-1**: los controles se escribieron antes que la guardia, sobre `bcdf46a`:
+
+```
+$ python -m pytest tests/test_f035_paginas.py -q -k "o10_2 or o11_1" -p no:cacheprovider
+FAILED …test_f035_o10_2_control_el_selector_inalcanzable_salta[tabindex-negativo-K1]
+FAILED …[aria-hidden-K5]
+FAILED …[etiqueta-aria-hidden]
+FAILED …[disabled-K3]
+FAILED …[etiqueta-inert]
+FAILED …[contorno-transparente-K2]
+FAILED …[color-transparente-aparte]
+FAILED …[contorno-punteado]
+FAILED …[regla-posterior-lo-quita]
+FAILED …test_f035_o11_1_control_un_fieldset_deshabilitado_alrededor_salta
+FAILED …test_f035_o11_1_control_lo_que_si_deja_llegar_al_selector_no_salta[contorno-en-longhands]
+E       assert False   (×10)
+E       assert ['importar.ht...con outline)'] == []
+11 failed, 15 passed, 242 deselected in 1.78s
+```
+
+`contorno-de-ancho-0` ya lo veía la guardia vieja.
+
+Al pasar a verde detecté un fallo mío antes del commit. Mi primera expresión
+de «ancho cero» (`^0*\.?0*(?:[a-z%]+)?$`) también daba por cero `medium` y
+`thin`, así que un `outline: solid …` con el ancho por defecto habría
+saltado. Está corregida y la fijan los controles `ancho-por-defecto` y
+`ancho-thin`.
+
+**R74 en Node**, antes de tocar `js/importacion.js`:
+
+```
+$ node --test tests_js/f035_paginas.test.js
+✖ f035 R74: rotuloResumen, sin ya_importado (0.4023ms)
+  TypeError: rotuloResumen is not a function
+…  (los 29 casos de entonces, «nunca lanza», los 3 de zona y el de presentarImportacion)
+ℹ tests 84
+ℹ pass 50
+ℹ fail 34
+```
+
+**R74 en Python** (el HTML), antes de tocar `importar.html`:
+
+```
+$ python -m pytest tests/test_f035_paginas.py tests/test_f035_portal.py -q -p no:cacheprovider -k "r74 or r33"
+E       AssertionError: un rótulo (resultado.rotuloResumen) y unos recuentos (resultado.resumenTexto): hay 0 y 1
+FAILED tests/test_f035_paginas.py::test_f035_r74_importar_pinta_el_rotulo_encima_de_los_recuentos
+FAILED …r74_control_el_rotulo_mal_puesto_salta[sin-rotulo] / [dos-rotulos] / [rotulo-debajo] / [rotulo-solo-si-ya-importado] …
+E       AssertionError: el control ya no encuentra una sola vez: '<p class="mt-2" x-text="resultado.rotuloResumen"></p>\n'
+```
+
+**R33**: con `js/importacion.js` ya modificado, la guardia **sin enmendar**
+(la lista de `M` solo con `styles.css`) cae. Enmendada, da vacío:
+
+```
+cambios: [('M', '…/css/styles.css'), ('A', '…/js/guarda_salida.js'), ('M', '…/js/importacion.js'), ('A', '…/js/maqueta_datos.js'), ('A', '…/js/portal.js'), ('A', '…/js/portal_app.js')]
+R33 enmendado -> []
+R33 sin enmendar -> ['M services/postventa-front/js/importacion.js']
+```
+
+### 3 · Verde sobre el código real
+
+- `bash harness/init.sh`: **una vez**, tal cual, sobre el árbol final (antes
+  del commit de T34).
+  - **exit 0, `ENTORNO LISTO`**.
+  - Raíz **114 passed** (19,54 s); front **707 passed** (35,75 s).
+  - `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción
+    frente a dev)`.
+  - ruff: **71** avisos, los de antes (deuda previa).
+- Node: `node --test "tests_js/*.test.js"` → **645/645** (3,68 s).
+  `importacion.test.js` pasa entero y **sin tocar**.
+- «F-036 intacto» ajustado: `git diff 2a86bca --stat -- …/test_f036_front.py
+  …/importacion.test.js …/oficios.test.js` da solo `test_f036_front.py | 5
+  ++---` (las líneas de R81 del bloque 16). Los dos de Node, vacíos.
+- `services/postventa-api` sin cambios: `git diff --stat HEAD~1` tras T33 y
+  `git diff --stat 9812d69` dan vacío.
+- **Vistazo en navegador: NO hecho.** `list_connected_browsers` → `[]`. Va con
+  V1/V2 (§6).
+
+### 4 · Mutaciones (T34)
+
+**Campaña del arnés**, `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`:
+
+```
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+**Manuales** (C4 bis), en un worktree desechable del scratchpad:
+
+- Worktree `wt_b12`, con la rama auxiliar `feature/F-035-mut-b12` para que
+  las guardias de rama no se salten.
+- Un guion (`mutar_b12.py`) aplica cada mutación sola, corre las suites,
+  anota qué cae y restaura con `git checkout`.
+- Línea base: front **706 passed**.
+- **Primera pasada**, con la suite Python entera y todo Node. Llegó hasta D5
+  a ~80 s por mutación. Se cortó al límite de 30 min del proceso, a mitad de
+  E1, y el fichero se restauró.
+- **Segunda pasada**, con suites acotadas:
+  - las de `js/importacion.js`, todo Node (el `test_f007_r32` de Python solo
+    vuelve a correr Node);
+  - las de `importar.html`, `test_f035_paginas.py` y `test_f036_front.py`;
+  - las de las guardias, su fichero de tests.
+
+| Familia | Id | Mutación | Resultado | La mata |
+|---|---|---|---|---|
+| **A · Rótulo y formato (fecha válida)** | **24** | `rotuloResumen` da «Resumen de esta importación» con `ya_importado` | muerta (31 de Node) | R74, todos los casos de ya importado |
+| | A2 | «original **de** » en vez de «original del » | muerta | R74 con fecha |
+| | A3 | `month: "numeric"` (16/7/2026) | muerta | R74 con fecha |
+| | A4 | `year: "2-digit"` | muerta | R74 con fecha |
+| | A5 | `en-US` (mm/dd) | muerta | R74 con fecha |
+| | A6 | «Resumen de la importación», sin «esta» | muerta | R74 sin `ya_importado`, «nunca lanza» |
+| **B · Fecha ausente** | B1 | sin la rama de «sin fecha» (formatea `null`) | muerta | R74 sin fecha y con basura |
+| | B2 | sin fecha → «Resumen de esta importación» | muerta | R74 sin fecha y con basura |
+| | B3 | `String(texto)` en vez de exigir texto | **sobrevivía** → muerta | caso nuevo «una lista con una fecha» |
+| **C · Fecha inválida** | C1 | sin `getUTCDate() !== dia` | **equivalente** | — (ver abajo) |
+| | C2 | sin `hora > 23` | **equivalente** | — (ver abajo) |
+| | C3 | sin `minuto > 59` | muerta | «minuto 60» |
+| | C4 | sin `segundo > 59` | **sobrevivía** → muerta | caso nuevo «segundo 60» |
+| | C5 | sin el `^` de `FECHA_ISO` | muerta | «texto con una fecha dentro» |
+| | C6 | sin el `$` de `FECHA_ISO` | **sobrevivía** → muerta | caso nuevo «una fecha con cola» |
+| | C7 | sin la comprobación del desfase | muerta | «desfase imposible» |
+| | C8 | `new Date(texto)` sin más | muerta | 30 de febrero, epoch, dd/mm/aaaa, sin zona, `null`… |
+| **D · Zona horaria** | **25** | `timeZone: "UTC"` | muerta | R74: 23:30 UTC de verano, 22:30, invierno, marzo, fin de año y las zonas del proceso |
+| | D2 | sin `timeZone` (la del proceso, aquí Madrid) | muerta | R74 «aunque el proceso esté en …» (las tres zonas) |
+| | D3 | `Atlantic/Canary` | muerta | 22:30 UTC de verano, marzo |
+| | D4 | `Etc/GMT-1` (+1 fijo) | muerta | 22:30 UTC de verano, marzo |
+| | D5 | `Etc/GMT-2` (+2 fijo) | muerta | 22:30 UTC de invierno, víspera del cambio de marzo |
+| **E · Cambio de día y desfase** | E1 | signo del desfase al revés | muerta | desfase negativo, desfase sin dos puntos |
+| | E2 | sin desfase, en hora local | muerta | «sin zona», las tres zonas del proceso y 6 más |
+| | E3 | el desfase se ignora | muerta | desfase negativo, imposible y sin dos puntos |
+| | E4 | los minutos del desfase no cuentan | muerta | caso nuevo «desfase de horas y minutos» (+0545) |
+| | E5 | no se quitan los dos puntos del desfase | muerta | `+00:00`, `+02:00`, `-03:00` |
+| | E6 | `+` en vez de `-` al aplicar el desfase | muerta | desfase negativo, +0545 |
+| **F · `presentarImportacion`** | F1 | sin la clave `rotuloResumen` | muerta | R74 `presentarImportacion` |
+| | F2 | la clave con un texto fijo | muerta | R74 `presentarImportacion` |
+| | F3 | `estadoTexto` con el rótulo | muerta | R74 `presentarImportacion`, `f036 R50` (sin tocar) |
+| **G · `importar.html`** | G1 | sin el rótulo | muerta | `r74_…`, `o11_5_…` |
+| | G2 | el rótulo debajo de los recuentos | muerta | `r74_…`, `o11_5_…` |
+| | G3 | el rótulo con `x-show="resultado.yaImportado"` | muerta | `r74_…`, `o11_5_…` |
+| | G4 | el rótulo pinta `resultado.resumenTexto` | muerta | `r74_…`, `o11_5_…` |
+| | G5 | el rótulo fuera del aviso, delante de él | muerta | `r74_…`, `o11_5_…` |
+| | G6 | el rótulo solo si ya importado (en el `x-text`) | muerta | `r74_…`, `o11_5_…` |
+| **J · Huella y selector (página real)** | L1–L4 | las cuatro de la review del bloque 10 | muertas (4/4) | `o11_5_importar_conserva…` |
+| | K1 | `tabindex="-1"` en el selector | muerta | `o10_2_…[importar.html]` |
+| | K3 | `disabled` en el selector | muerta | `o10_2_…`, `o11_5_…` |
+| | K5 | `aria-hidden="true"` en el selector | muerta | `o10_2_…` |
+| **H · Guardias nuevas (O11-1)** | H1 | sin la comprobación de `tabindex` | muerta | control `tabindex-negativo-K1` |
+| | H2 | `<= 0` en vez de `< 0` | muerta | control «no salta» `tabindex-0` |
+| | H3 | sin el `fieldset` | muerta | control del `fieldset` |
+| | H4 | solo el control, sin sus ancestros | muerta | `etiqueta-aria-hidden`, `etiqueta-inert` |
+| | H5 | vale cualquier estilo de contorno | muerta | `contorno-punteado` |
+| | H6 | sin las `outline-*` sueltas | muerta | `color-transparente-aparte`, `contorno-en-longhands` |
+| | H7 | manda la primera regla (sin cascada) | muerta | `regla-posterior-lo-quita` |
+| | H8 | sin mirar `transparent` | muerta | `contorno-transparente-K2` |
+| | H9 | la expresión vieja de ancho cero | muerta | `ancho-por-defecto`, `ancho-thin` |
+| | H10 | sin `inert` | muerta | `etiqueta-inert` |
+| | H11 | cuenta cualquier `aria-hidden` (también `false`) | muerta | `aria-hidden-false` |
+| **R · Guardia de R74** | R1 | «encima» en vez de «justo encima» | **sobrevivía** → muerta | control nuevo `algo-entre-medias` |
+| | R2 | no exige que vaya dentro del aviso | muerta | `r74_control_el_rotulo_fuera_del_aviso…` |
+| | R3 | no mira si se puede esconder | muerta | `rotulo-solo-si-ya-importado` |
+| **I · R33** | I1 | admite también `M js/oficios.js` | muerta | control de R33 |
+| | I2 | no mira el estado (`A`/`M`/`D`) | muerta | control de R33 |
+| | I3 | `importacion.js` fuera de lo admitido | muerta | `test_f035_r33_no_se_modifica…` y su control |
+
+**61 mutaciones en 11 familias: 59 muertas y 2 equivalentes.**
+
+- Al principio sobrevivían cuatro, y eran huecos de verdad. Se cerraron en el
+  commit de T34 con tres casos de Node y un control de Python:
+  - B3: una lista con una fecha;
+  - C4: segundo 60;
+  - C6: una fecha con cola;
+  - R1: algo entre medias (el control de Python).
+- E4 no llegó a sobrevivir: escribí su caso (+0545) antes de correrla, al
+  ver que ningún desfase de los tests tenía minutos.
+- Cada una se volvió a correr con el caso nuevo y muere.
+
+**Las dos equivalentes**, analizadas:
+
+- **C1** (`getUTCDate() !== dia`): un día que no existe en el mes (30 de
+  febrero, 45, 00) hace que `Date.UTC` **cambie de mes**, y eso ya lo caza
+  `getUTCMonth() !== mes - 1`. Ninguna entrada de `\d{2}` cambia el día sin
+  cambiar el mes.
+- **C2** (`hora > 23`): una hora de 24 a 99 suma al menos un día, y eso lo
+  caza la comprobación del calendario.
+- Las dos condiciones se quedan en el código porque dicen qué es una fecha
+  válida, aunque no cambien el resultado. Si el reviewer prefiere el código
+  sin redundancias, son dos condiciones que quitar.
+
+Worktree retirado (`git worktree remove --force`) y rama auxiliar borrada
+(`git branch -D feature/F-035-mut-b12`). `git worktree list` ya no lo enseña.
+Solo queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío.
+
+### 5 · Desviaciones y decisiones (para el reviewer)
+
+1. **Qué es «una fecha válida»**. R74 dice «si no es una fecha válida», sin
+   más.
+   - Decidí: un texto ISO 8601 completo, con una fecha y una hora que
+     existan y un desfase razonable.
+   - Lo que `Date` aceptaría por su cuenta **no** vale: daría un 30 de
+     febrero como el 2 de marzo, «10/03/2026» como el 3 de octubre y un
+     número como un instante epoch.
+   - El motivo: un rótulo con una fecha equivocada engaña justo donde R74
+     quiere evitarlo. Un rótulo sin fecha solo se queda corto.
+2. **Sin desfase, UTC.**
+   - El contrato propuesto (§16.6) dice «ISO 8601 en UTC».
+   - Si F-053 serializa un `datetime` naive (un `isoformat()` sin
+     `+00:00`), `Date` lo leería en la hora del navegador. Unas 23:30 UTC de
+     verano se leerían como las 23:30 de Madrid (las 21:30 UTC), y el
+     rótulo diría el día anterior.
+   - Lo fija el caso «sin zona».
+   - **Para F-053**: mejor mandar `Z` o `+00:00` de todas formas.
+3. **El rótulo no tiene estilo propio**: `mt-2`, en el tono del aviso, debajo
+   del título en negrita.
+   - No añadí ninguna clase, para no tocar la hoja ni la `?v=` de las cuatro
+     páginas.
+   - Si en V1 no se distingue bastante de los recuentos, la salida es una
+     clase con tokens en `styles.css`.
+4. **El rótulo se ve siempre**, también cuando dice «Resumen de esta
+   importación». R74 pide el rótulo en los dos casos, y la guardia prohíbe
+   esconderlo.
+5. **`instanteDeIso` es privado**: el módulo no expone más de lo necesario.
+   Lo único nuevo que se exporta es `rotuloResumen`.
+6. **La guardia de R33 se refactorizó** a `problemas_r33` y unas constantes,
+   para poder tener un control sin git. Sobre la rama se comporta igual que
+   antes, más el `M` de `importacion.js`.
+7. **O11-1 va más allá de la lista de la review.**
+   - Añadí `inert`, el `fieldset disabled` y la cascada (una regla posterior
+     que quita el contorno).
+   - La guardia **no** mira un `:disabled` o `:tabindex` ligado. Dependen
+     del estado, y uno así puede ser legítimo (deshabilitar mientras
+     importa).
+   - K3, el `disabled` estático, lo ven además la huella de O11-5 y la
+     propia guardia.
+8. **O11-5 está tomada sobre HEAD, no sobre `2a86bca`**, como pedía la
+   review. En T33, el diff de la constante es una línea más un comentario.
+9. **Los supervivientes reales se cerraron en el commit de T34**: son tests
+   que salen de la evidencia de mutación, como el G5 del bloque 11.
+
+### 6 · Fuera del alcance y pendiente
+
+- **MANUAL (V1/V2 del humano)**: sin navegador conectado, no he visto el
+  aspecto.
+  - En `http://localhost:5173/importar.html` (`.\dev_front.ps1`, sin
+    `func start`) el rótulo solo aparece con una respuesta de importar.
+  - Contra el backend local habría que subir un fichero y luego subirlo
+    otra vez:
+    - la primera vez, el aviso sale en verde o en ámbar y dice «Resumen de
+      esta importación»;
+    - la segunda, el aviso azul dice «Resumen de la importación original de
+      este fichero» encima de los recuentos (sin fecha hasta F-053).
+  - Nada de esto escribe en Sigrid, pero sí escribe en la bandeja de la BBDD
+    local. Lo decide el humano.
+- **F-053** (la ficha de backend, R76): `importado_at_utc` en `POST
+  /api/importaciones`.
+  - Hasta que esté desplegada, el rótulo va sin fecha.
+  - La recomendación del §5.2 es para esa ficha.
+- O11-2, O11-3 y O11-4 siguen como estaban (V1/V2 u opcionales), igual que
+  lo que queda abierto de otras reviews.
+- Pendientes:
+  - R75 (bloque 13);
+  - la documentación (bloque 14), que debe contar el rótulo de R74 en el
+    README del front.
+
+### Evidencias (bloque 12)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests ejecutados | raíz **114** passed (19,54 s, `init.sh`); front Python **707** passed (35,75 s, `init.sh`); Node **645/645** (3,68 s). Nuevos: **34** en Python del front (O11-5: 8; O11-1: 17; R74: 8, incluido el control de T34; R33: 1) y **38** en Node (R74) |
+| Cobertura de las líneas cambiadas | `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+| Mutantes (arnés) | 0 generados, 0 supervivientes (`progress/mutacion_F-035.md`): F-035 no tiene Python de producción |
+| Mutaciones manuales | **61 en 11 familias: 59 muertas y 2 equivalentes (C1, C2)**, incluidas la **24** y la **25** de `design.md` §16.10. Cuatro supervivientes reales (B3, C4, C6, R1), cerrados en T34 |
+| `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 71 (deuda previa) |
+| Tiempo de la suite | raíz 19,54 s; front 35,75 s (`init.sh`); Node 3,68 s |

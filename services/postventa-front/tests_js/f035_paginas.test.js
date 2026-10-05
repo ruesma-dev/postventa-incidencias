@@ -674,6 +674,10 @@ const CASOS_R74 = [
   ["un número (epoch), no una fecha ISO", yaImportado(1773133200000), ROTULO_SIN_FECHA],
   ["un objeto", yaImportado({ fecha: "2026-03-10" }), ROTULO_SIN_FECHA],
   ["texto con una fecha dentro", yaImportado("importado el 2026-03-10T09:15:00Z"), ROTULO_SIN_FECHA],
+  // T34, supervivientes de las mutaciones manuales (B3, C4, C6).
+  ["una lista con una fecha", yaImportado(["2026-03-10T09:15:00Z"]), ROTULO_SIN_FECHA],
+  ["segundo 60", yaImportado("2026-03-10T10:00:60Z"), ROTULO_SIN_FECHA],
+  ["una fecha con cola", yaImportado("2026-03-10T09:15:00Z y algo más"), ROTULO_SIN_FECHA],
   // El día es el de Madrid, no el de UTC.
   ["23:30 UTC de un día de verano: el día siguiente en Madrid", yaImportado("2026-07-15T23:30:00Z"), rotuloDel("16/07/2026")],
   ["22:30 UTC de verano (UTC+2): ya es el día siguiente", yaImportado("2026-07-15T22:30:00Z"), rotuloDel("16/07/2026")],
@@ -686,6 +690,8 @@ const CASOS_R74 = [
   ["sin zona: se lee en UTC, como dice el nombre del campo", yaImportado("2026-07-15T23:30:00"), rotuloDel("16/07/2026")],
   ["con el desfase de Madrid escrito", yaImportado("2026-07-16T01:30:00+02:00"), rotuloDel("16/07/2026")],
   ["con un desfase negativo", yaImportado("2026-07-15T20:30:00-03:00"), rotuloDel("16/07/2026")],
+  // Los minutos del desfase cuentan: 03:44+05:45 son las 21:59 UTC, las 23:59 en Madrid.
+  ["con un desfase de horas y minutos, sin dos puntos", yaImportado("2026-07-16T03:44:00+0545"), rotuloDel("15/07/2026")],
 ];
 
 for (const [que, respuesta, esperado] of CASOS_R74) {

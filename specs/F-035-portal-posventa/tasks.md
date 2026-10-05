@@ -694,7 +694,7 @@ ya pide cada verificación.
       `tests_js/importacion.test.js` **sin tocar y en verde**; «F-036
       intacto» vacío; `git diff --stat HEAD~1 -- services/postventa-api`
       vacío.
-- [ ] **T34**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+- [x] **T34**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **24** y **25**. (c) `bash harness/init.sh` en
       verde.
       **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 12».

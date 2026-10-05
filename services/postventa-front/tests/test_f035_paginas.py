@@ -682,3 +682,83 @@ def test_f035_r82_control_los_class_ligados_no_entran():
     )
 
     assert problemas_r82(html) == []
+
+
+# --- Review del bloque 16, H16-7 · Los nombres que lee la guarda existen ---------
+#
+# `test_f035_r80_las_fases_de_la_guarda_existen_en_app_js` ata las fases. Pero
+# la guarda lee además cuatro nombres del estado de `appPostventa()` y busca el
+# componente con `SELECTOR_CIRCUITO`; si F-021 o F-045 renombraran uno, la
+# guarda fallaría ABIERTA y en silencio (R80), porque los tests de
+# comportamiento escriben esos nombres a mano. Aquí se atan los dos lados: la
+# guarda los lee y `js/app.js` los declara; y `partes.html` tiene un único
+# elemento que casa con el selector.
+
+#: Lo que la guarda lee del estado (R79): `campo` del componente, como
+#: `estado.<campo>`, y `cerrado` de cada parte.
+CAMPOS_QUE_LEE_LA_GUARDA = ("fase", "partes", "parteAbierto", "estadoAutoguardado")
+_SELECTOR_DE_LA_GUARDA = re.compile(
+    r"""SELECTOR_CIRCUITO\s*=\s*'\[(?P<atributo>[\w:-]+)="(?P<valor>[^"]*)"\]'"""
+)
+
+
+def nombres_que_no_casan(guarda: str, app: str) -> list[str]:
+    """Los nombres del estado que la guarda lee y `app.js` no declara (o al revés). Vacío = correcto."""
+    limpio = _codigo_sin_comentarios(guarda)
+    problemas = []
+    for campo in CAMPOS_QUE_LEE_LA_GUARDA:
+        if not re.search(rf"\bestado\.{campo}\b", limpio):
+            problemas.append(f"la guarda ya no lee estado.{campo}")
+        if not re.search(rf"^\s*{campo}\s*:", app, re.MULTILINE):
+            problemas.append(f"js/app.js no declara {campo}: en el estado de appPostventa()")
+    if not re.search(r"\.cerrado\b", limpio):
+        problemas.append("la guarda ya no lee parte.cerrado")
+    if not re.search(r"^\s*cerrado\s*:", app, re.MULTILINE):
+        problemas.append("js/app.js no declara cerrado: en los partes")
+    return problemas
+
+
+def elementos_del_selector(guarda: str, html: str) -> int:
+    """Cuántos elementos de `html` casan con el `SELECTOR_CIRCUITO` de la guarda."""
+    encontrado = _SELECTOR_DE_LA_GUARDA.search(guarda)
+    assert encontrado is not None, "la guarda no declara SELECTOR_CIRCUITO = '[atributo=\"valor\"]'"
+    return sum(
+        1 for e in leer_html_texto(html).elementos()
+        if e.atributos.get(encontrado["atributo"]) == encontrado["valor"]
+    )
+
+
+def test_f035_h16_7_los_nombres_que_lee_la_guarda_existen_en_app_js():
+    problemas = nombres_que_no_casan(
+        GUARDA_SALIDA.read_text(encoding="utf-8"), APP_JS.read_text(encoding="utf-8")
+    )
+
+    assert problemas == [], "la guarda fallaría abierta y en silencio (R80, H16-7):\n" + "\n".join(problemas)
+
+
+def test_f035_h16_7_partes_html_tiene_un_unico_elemento_del_selector_de_la_guarda():
+    cuantos = elementos_del_selector(
+        GUARDA_SALIDA.read_text(encoding="utf-8"), CIRCUITO_HTML.read_text(encoding="utf-8")
+    )
+
+    assert cuantos == 1, f"SELECTOR_CIRCUITO casa con {cuantos} elementos de partes.html: tiene que ser uno"
+
+
+@pytest.mark.parametrize("campo", [*CAMPOS_QUE_LEE_LA_GUARDA, "cerrado"])
+def test_f035_h16_7_control_un_nombre_renombrado_en_app_js_salta(campo):
+    """Control: con la declaración renombrada en una copia en memoria de `app.js`, la comprobación cae."""
+    app = APP_JS.read_text(encoding="utf-8")
+    patron = re.compile(rf"^(\s*){campo}(\s*:)", re.MULTILINE)
+    assert len(patron.findall(app)) == 1, f"el control ya no encuentra una sola declaración de {campo}"
+    renombrado = patron.sub(rf"\g<1>{campo}_renombrado\g<2>", app)
+
+    problemas = nombres_que_no_casan(GUARDA_SALIDA.read_text(encoding="utf-8"), renombrado)
+    assert any(f"no declara {campo}:" in p for p in problemas), problemas
+
+
+def test_f035_h16_7_control_el_x_data_cambiado_deja_el_selector_sin_elemento():
+    real = CIRCUITO_HTML.read_text(encoding="utf-8")
+    assert real.count('x-data="appPostventa()"') == 1
+    copia = real.replace('x-data="appPostventa()"', 'x-data="appPostventaV2()"')
+
+    assert elementos_del_selector(GUARDA_SALIDA.read_text(encoding="utf-8"), copia) == 0

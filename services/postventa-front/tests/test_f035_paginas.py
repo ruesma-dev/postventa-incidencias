@@ -100,6 +100,16 @@ Bloque 12 (`tasks.md`, T33):
   del resultado y siempre visible. `Importacion.rotuloResumen` se prueba en
   `tests_js/f035_paginas.test.js`.
 
+Bloque 13 (`tasks.md`, T35):
+
+- **R75**: `oficios.html` pinta «Decididos como distintos» entre «Grupos
+  vigentes» y «Avisos», con la frase de `design.md` §16.6 y, por par, sus
+  nombres y códigos y un «Son el mismo» que manda `decidir([par.codigo_a,
+  par.codigo_b], 'mismo')`, deshabilitado con `!puedeDecidir()` y sin forma
+  de esconderlo. La huella de O10-3 gana solo esas entradas.
+  `Oficios.presentarPropuestas().distintos` y el botón evaluado con el
+  componente, en `tests_js/f035_paginas.test.js`.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -2060,8 +2070,9 @@ def test_f035_t30_control_un_estado_sin_su_semantica_salta(viejo, nuevo):
 # (bloque 10). Las guardias de R70–R73, R77, R54 y R60 ya la recorren
 # (`PAGINAS_REMODELADAS`); aquí, sus controles sobre ella, la semántica de sus
 # estados y su huella funcional (O10-3). Es PRESENTACIÓN: `js/oficios.js` y
-# `js/api.js` no cambian; las dos palabras de la quinta enmienda de F-036 no
-# salen en ningún texto (lo fija `test_f036_front.py`, sin tocar).
+# `js/api.js` no cambian por el remodelado (`js/oficios.js` solo gana la clave
+# `distintos` de R75, bloque 13); las dos palabras de la quinta enmienda de
+# F-036 no salen en ningún texto (lo fija `test_f036_front.py`, sin tocar).
 
 
 @pytest.mark.parametrize(
@@ -2135,6 +2146,8 @@ BOTONES_DE_OFICIOS = {
 ROTULOS_DE_OFICIOS = {
     "vista.propuestas.length": ("Propuestas pendientes", {"rs-rotulo"}),
     "vista.grupos.length": ("Grupos vigentes", {"rs-rotulo"}),
+    # R75 (bloque 13): los pares decididos como distintos.
+    "vista.distintos.length": ("Decididos como distintos", {"rs-rotulo"}),
     "vista.avisos.length": ("Avisos", {"rs-rotulo", "rs-rotulo--atencion"}),
 }
 
@@ -2237,7 +2250,8 @@ def huella_funcional(html: str) -> list[tuple]:
 
 
 #: La huella funcional de `oficios.html` en F-036 (`2a86bca`), generada con
-#: `huella_funcional` sobre ese fichero y escrita aquí a mano, a sabiendas.
+#: `huella_funcional` sobre ese fichero y escrita aquí a mano, a sabiendas; más
+#: las cuatro entradas de R75 (bloque 13), las únicas que añade su commit.
 HUELLA_DE_OFICIOS = (
     ('div', (('x-data', 'appOficios()'), ('x-init', 'iniciar()')), '', ()),
     ('input', (('@keydown.enter.prevent', 'cargar()'), ('autocomplete', 'off'), ('type', 'text'), ('x-model', 'obra')), '', ('div[x-data=appOficios()]',)),
@@ -2269,6 +2283,11 @@ HUELLA_DE_OFICIOS = (
     ('template', ((':key', "par.codigo_a + '-' + par.codigo_b"), ('x-for', 'par in grupo.pares')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=grupo in vista.grupos]')),
     ('span', (('x-text', "par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=grupo in vista.grupos]', 'template[x-for=par in grupo.pares]')),
     ('button', ((':disabled', '!puedeDecidir()'), ('@click', "decidir([par.codigo_a, par.codigo_b], 'distinto')"), ('type', 'button')), 'Separar', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=grupo in vista.grupos]', 'template[x-for=par in grupo.pares]')),
+    # R75 (bloque 13): «Decididos como distintos», con su «Son el mismo» por par.
+    ('section', (('x-show', 'vista.distintos.length'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('template', ((':key', 'par.clave'), ('x-for', 'par in vista.distintos')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
+    ('span', (('x-text', "par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=par in vista.distintos]')),
+    ('button', ((':disabled', '!puedeDecidir()'), ('@click', "decidir([par.codigo_a, par.codigo_b], 'mismo')"), ('type', 'button')), 'Son el mismo', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=par in vista.distintos]')),
     ('section', (('x-show', 'vista.avisos.length'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
     ('template', ((':key', 'aviso.clave'), ('x-for', 'aviso in vista.avisos')), '', ('div[x-data=appOficios()]', 'template[x-if=vista]')),
     ('p', (('x-text', 'aviso.texto'),), '', ('div[x-data=appOficios()]', 'template[x-if=vista]', 'template[x-for=aviso in vista.avisos]')),
@@ -2743,3 +2762,165 @@ def test_f035_r74_control_el_rotulo_fuera_del_aviso_salta():
     )
 
     assert any("dentro del aviso" in p for p in problemas_r74(html))
+
+
+# --- R75 · «Decididos como distintos» en `oficios.html` (bloque 13, T35) -------------
+#
+# Apunte (a) del humano (`design.md` §16.6): los pares de oficios cuya última
+# decisión es «distinto», cada uno con sus nombres y códigos y un «Son el mismo»
+# que manda la decisión «mismo» de ese par por `decidir()`, como los demás
+# botones (R88 y R89 de F-036: solo desde un clic y deshabilitado sin sesión o
+# mientras se guarda otra). La sección va entre «Grupos vigentes» y «Avisos» y
+# solo se pinta si hay pares (`x-show="vista.distintos.length"`): sin el dato
+# del backend (F-053, R76) no sale. Lo que hace el botón al pulsarlo, con el
+# componente de verdad, se prueba en `tests_js/f035_paginas.test.js`; aquí, que
+# la página lo dice así y que nada lo esconde (O12-1: también las clases).
+
+FRASE_R75 = (
+    "Alguien dijo que estos oficios son distintos. Si fue un error, «Son el mismo» "
+    "los vuelve a juntar: manda la última decisión."
+)
+CLICK_R75 = "decidir([par.codigo_a, par.codigo_b], 'mismo')"
+TEXTO_DEL_PAR = "par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"
+ORDEN_DE_OFICIOS = ("vista.propuestas.length", "vista.grupos.length", "vista.distintos.length", "vista.avisos.length")
+_ESCONDE_POR_CLASE = _OCULTA_DEL_TODO | {"sr-only"}
+
+
+def problemas_r75(html: str) -> list[str]:
+    """Lo que la sección «Decididos como distintos» de `oficios.html` incumple de R75. Vacío = correcto."""
+    doc = leer_html_texto(html)
+    secciones = [
+        e for e in doc.elementos() if e.nombre == "section" and e.atributos.get("x-show") == "vista.distintos.length"
+    ]
+    if len(secciones) != 1:
+        return [f'una <section x-show="vista.distintos.length">: hay {len(secciones)}']
+    seccion_r75 = secciones[0]
+    problemas = []
+
+    orden = tuple(h.atributos.get("x-show") for h in _hijos_elemento(seccion_r75.padre) if h.nombre == "section")
+    if orden != ORDEN_DE_OFICIOS:
+        problemas.append(f"las secciones van en otro orden: {orden} (la de distintos, entre grupos y avisos)")
+    if not any(a.nombre == "template" and a.atributos.get("x-if") == "vista" for a in seccion_r75.ancestros()):
+        problemas.append('la sección no va dentro de <template x-if="vista">')
+    if FRASE_R75 not in seccion_r75.texto():
+        problemas.append("falta la frase de §16.6")
+
+    bucles = [e for e in seccion_r75.elementos() if e.nombre == "template" and "x-for" in e.atributos]
+    if [(b.atributos["x-for"], b.atributos.get(":key")) for b in bucles] != [("par in vista.distintos", "par.clave")]:
+        problemas.append('un solo <template x-for="par in vista.distintos" :key="par.clave">')
+        bucle = None
+    else:
+        bucle = bucles[0]
+        if TEXTO_DEL_PAR not in [e.atributos.get("x-text") for e in bucle.elementos()]:
+            problemas.append("el par no enseña sus nombres y sus códigos")
+
+    botones = [e for e in seccion_r75.elementos() if e.nombre == "button"]
+    if len(botones) != 1:
+        problemas.append(f"un solo botón en la sección, «Son el mismo»: hay {len(botones)}")
+        return problemas
+    boton = botones[0]
+    if boton.texto() != "Son el mismo" or boton.atributos.get("type") != "button":
+        problemas.append(f'el botón es <button type="button">Son el mismo</button>, no «{boton.texto()}»')
+    if boton.atributos.get("@click") != CLICK_R75:
+        problemas.append(f'«Son el mismo» no manda la decisión «mismo» del par: @click="{boton.atributos.get("@click")}"')
+    if boton.atributos.get(":disabled") != "!puedeDecidir()":
+        problemas.append('«Son el mismo» sin :disabled="!puedeDecidir()" (R89 de F-036)')
+    if bucle is not None and not boton.dentro_de(bucle):
+        problemas.append("«Son el mismo» no va dentro del x-for de los pares")
+    hasta_la_seccion = [boton, *boton.ancestros()[: boton.ancestros().index(seccion_r75)]]
+    for nodo in hasta_la_seccion:
+        cerrables = [a for a in _CERRABLE if a in nodo.atributos]
+        if cerrables:
+            problemas.append(f"<{nodo.nombre}> se puede esconder ({', '.join(cerrables)})")
+    for nodo in [*hasta_la_seccion, seccion_r75]:
+        escondida = clases(nodo) & _ESCONDE_POR_CLASE
+        if escondida:
+            problemas.append(f"<{nodo.nombre}> escondido por clase ({', '.join(sorted(escondida))})")
+    return problemas
+
+
+def test_f035_r75_oficios_pinta_los_decididos_como_distintos_con_son_el_mismo():
+    problemas = problemas_r75(OFICIOS.read_text(encoding="utf-8"))
+
+    assert problemas == [], "oficios.html, «Decididos como distintos» (R75):\n" + "\n".join(problemas)
+
+
+_BOTON_R75 = (
+    "<button type=\"button\" @click=\"decidir([par.codigo_a, par.codigo_b], 'mismo')\" :disabled=\"!puedeDecidir()\"\n"
+    '                          class="rs-btn rs-btn--ok rs-btn--compacto">Son el mismo</button>'
+)
+_SECCION_R75 = '<section x-show="vista.distintos.length" class="rs-panel">'
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        # Mutación manual 26 (design.md §16.10), como control permanente.
+        (_BOTON_R75, _BOTON_R75.replace("'mismo'", "'distinto'"), "no manda la decisión «mismo»"),
+        # Mutación manual 27: sin :disabled (la caza también R89 de F-036, sin tocar).
+        (_BOTON_R75, _BOTON_R75.replace(' :disabled="!puedeDecidir()"', ""), "sin :disabled"),
+        (_BOTON_R75, _BOTON_R75.replace('"!puedeDecidir()"', '"decidiendo"'), "sin :disabled"),
+        (_BOTON_R75, _BOTON_R75.replace("[par.codigo_a, par.codigo_b]", "vista.distintos.map(p => p.codigo_a)"), "no manda"),
+        (_BOTON_R75, _BOTON_R75.replace('type="button" ', 'type="button" x-show="false" '), "se puede esconder (x-show)"),
+        (_BOTON_R75, _BOTON_R75.replace("rs-btn--compacto", "rs-btn--compacto hidden"), "escondido por clase (hidden)"),
+        (_BOTON_R75, _BOTON_R75.replace("rs-btn--compacto", "rs-btn--compacto sr-only"), "escondido por clase (sr-only)"),
+        (_SECCION_R75, _SECCION_R75.replace("rs-panel", "rs-panel invisible"), "escondido por clase (invisible)"),
+        (_SECCION_R75, _SECCION_R75.replace("vista.distintos.length", "vista.distintos"), "hay 0"),
+        ('<li class="flex flex-wrap items-center gap-2">\n                  <span x-text="par.nombre_a', '<li class="flex flex-wrap items-center gap-2" x-show="false">\n                  <span x-text="par.nombre_a', "<li> se puede esconder"),
+        (_BOTON_R75, _BOTON_R75 + '\n                  <button type="button">Son distintos</button>', "hay 2"),
+        ('<template x-for="par in vista.distintos" :key="par.clave">', '<template x-for="par in vista.distintos" :key="par.codigo_a">', "un solo <template"),
+        ("«Son el mismo» los vuelve a juntar", "«Son el mismo» los junta", "falta la frase"),
+        (
+            "<span x-text=\"par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'\"></span>\n"
+            "                  " + _BOTON_R75[:7],
+            "<span x-text=\"par.codigo_a + ' · ' + par.codigo_b\"></span>\n                  " + _BOTON_R75[:7],
+            "nombres y sus códigos",
+        ),
+        (
+            _BOTON_R75 + "\n                </li>\n              </template>",
+            "</li>\n              </template>\n              " + _BOTON_R75,
+            "no va dentro del x-for",
+        ),
+    ],
+    ids=["manda-distinto-26", "sin-disabled-27", "disabled-con-otra-condicion", "otros-codigos", "boton-con-x-show",
+         "boton-hidden", "boton-sr-only", "seccion-invisible", "otro-x-show", "par-con-x-show", "dos-botones",
+         "otra-clave", "otra-frase", "par-sin-nombres", "boton-fuera-del-bucle"],
+)
+def test_f035_r75_control_la_seccion_de_distintos_estropeada_salta(viejo, nuevo, senal):
+    real = OFICIOS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = problemas_r75(real.replace(viejo, nuevo))
+    assert any(senal in p for p in problemas), problemas
+
+
+def _mover_la_seccion_de_distintos(html: str, delante_de: str) -> str:
+    """`html` con la sección de distintos (y su comentario) cortada y pegada delante de `delante_de`."""
+    inicio = html.index("<!-- ── Decididos como distintos")
+    fin = html.index("</section>", inicio) + len("</section>\n")
+    trozo, resto = html[inicio:fin], html[:inicio] + html[fin:]
+    assert resto.count(delante_de) == 1, delante_de
+    return resto.replace(delante_de, trozo + delante_de)
+
+
+@pytest.mark.parametrize(
+    "delante_de",
+    ["<!-- ── Grupos vigentes", "<!-- ── Propuestas pendientes", "        </div>\n      </template>\n    </main>"],
+    ids=["antes-de-grupos", "la-primera", "despues-de-avisos"],
+)
+def test_f035_r75_control_la_seccion_de_distintos_fuera_de_su_sitio_salta(delante_de):
+    real = OFICIOS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    movida = _mover_la_seccion_de_distintos(real, delante_de)
+
+    assert any("otro orden" in p for p in problemas_r75(movida)), problemas_r75(movida)
+
+
+def test_f035_r75_control_la_seccion_fuera_del_x_if_salta():
+    html = (
+        '<body><div x-data="appOficios()"><div>'
+        '<section x-show="vista.propuestas.length"></section><section x-show="vista.grupos.length"></section>'
+        '<section x-show="vista.distintos.length"></section><section x-show="vista.avisos.length"></section>'
+        "</div></div></body>"
+    )
+
+    assert any("x-if" in p for p in problemas_r75(html))

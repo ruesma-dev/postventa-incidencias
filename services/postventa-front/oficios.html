@@ -167,6 +167,28 @@
             </ul>
           </section>
 
+          <!-- ── Decididos como distintos (F-035 R75) ──────────────────────
+               Los pares cuya última decisión es «distinto». El dato lo añade
+               al backend una ficha aparte (F-053, R76): sin él, la lista está
+               vacía y la sección no se pinta. «Son el mismo» va por el mismo
+               camino que los demás botones (R88 y R89 de F-036). -->
+          <section x-show="vista.distintos.length" class="rs-panel">
+            <h2 class="rs-rotulo">Decididos como distintos</h2>
+            <p class="mt-3 rs-nota">
+              Alguien dijo que estos oficios son distintos. Si fue un error,
+              «Son el mismo» los vuelve a juntar: manda la última decisión.
+            </p>
+            <ul class="mt-4 space-y-2 rs-texto">
+              <template x-for="par in vista.distintos" :key="par.clave">
+                <li class="flex flex-wrap items-center gap-2">
+                  <span x-text="par.nombre_a + ' (' + par.codigo_a + ') · ' + par.nombre_b + ' (' + par.codigo_b + ')'"></span>
+                  <button type="button" @click="decidir([par.codigo_a, par.codigo_b], 'mismo')" :disabled="!puedeDecidir()"
+                          class="rs-btn rs-btn--ok rs-btn--compacto">Son el mismo</button>
+                </li>
+              </template>
+            </ul>
+          </section>
+
           <!-- ── Avisos: grupos no aplicados por contradicción (R82) ─────
                En atención y con su rótulo y su texto: el color no dice nada
                solo. -->

@@ -740,3 +740,284 @@ test("f035 R74: presentarImportacion lleva el rótulo; el estado y los recuentos
     "Este fichero ya se había importado: no se ha añadido nada a la bandeja.",
   );
 });
+
+// --- R75 · «Decididos como distintos» (bloque 13, T35) ------------------------------
+//
+// Apunte (a) del humano (`design.md` §16.6): en oficios, los pares cuya última
+// decisión es «distinto», cada uno con un «Son el mismo» que manda la decisión
+// «mismo» de ese par por `decidir()`, el camino de los demás botones (R88 y R89
+// de F-036). `oficio.distintos` lo añade al backend una ficha aparte (R76,
+// F-053), así que hoy no llega: sin él, `presentarPropuestas().distintos` es
+// `[]` y la sección no se pinta. Lo que llegue mal formado se descarta sin
+// romper la pantalla: un par que no se puede pintar ni decidir no se enseña.
+
+function oficiosModulo() {
+  return require("../js/oficios.js");
+}
+
+/** `GET /api/catalogos/propuestas` inventada, sin propuestas, grupos ni avisos. */
+function propuestasSinDistintos() {
+  return {
+    obra: "9999",
+    oficio: {
+      oficios: [
+        { codigo: "9001", nombre: "Oficio inventado A", grupo: ["9001"] },
+        { codigo: "9002", nombre: "Oficio inventado B", grupo: ["9002"] },
+        { codigo: "9003", nombre: "Pintura inventada", grupo: ["9003"] },
+        { codigo: "9008", nombre: null, grupo: ["9008"] },
+      ],
+      grupos: [
+        { etiqueta: "Oficio inventado A", codigos: ["9001"] },
+        { etiqueta: "Oficio inventado B", codigos: ["9002"] },
+        { etiqueta: "Pintura inventada", codigos: ["9003"] },
+        { etiqueta: "9008", codigos: ["9008"] },
+      ],
+      propuestas: [],
+      avisos: [],
+    },
+  };
+}
+
+/** La misma respuesta con `oficio.distintos` (lo que sea, también basura). */
+function propuestasConDistintos(distintos) {
+  const respuesta = propuestasSinDistintos();
+  respuesta.oficio.distintos = distintos;
+  return respuesta;
+}
+
+const A = "Oficio inventado A";
+const B = "Oficio inventado B";
+const P = "Pintura inventada";
+
+/** `[codigo_a, codigo_b, nombre_a, nombre_b]` de cada par de la vista. */
+const resumenDe = (distintos) => distintos.map((p) => [p.codigo_a, p.codigo_b, p.nombre_a, p.nombre_b]);
+
+const CASOS_R75 = [
+  // Lo que manda el contrato de §16.6.
+  ["un par", [{ codigo_a: "9001", codigo_b: "9002" }], [["9001", "9002", A, B]]],
+  [
+    "varios pares, en su orden",
+    [{ codigo_a: "9001", codigo_b: "9002" }, { codigo_a: "9001", codigo_b: "9003" }, { codigo_a: "9002", codigo_b: "9003" }],
+    [["9001", "9002", A, B], ["9001", "9003", A, P], ["9002", "9003", B, P]],
+  ],
+  // Pares desordenados: cada par y la lista salen ordenados.
+  ["un par al revés", [{ codigo_a: "9002", codigo_b: "9001" }], [["9001", "9002", A, B]]],
+  [
+    "la lista desordenada",
+    [{ codigo_a: "9002", codigo_b: "9003" }, { codigo_a: "9003", codigo_b: "9001" }, { codigo_a: "9001", codigo_b: "9002" }],
+    [["9001", "9002", A, B], ["9001", "9003", A, P], ["9002", "9003", B, P]],
+  ],
+  ["el mismo par dos veces, una al revés", [{ codigo_a: "9001", codigo_b: "9002" }, { codigo_a: "9002", codigo_b: "9001" }], [["9001", "9002", A, B]]],
+  // Nombres que faltan: el marcador de siempre (R84, R87 de F-036).
+  ["un oficio sin nombre en Sigrid", [{ codigo_a: "9001", codigo_b: "9008" }], [["9001", "9008", A, "(sin nombre en esta obra)"]]],
+  ["un código que no es de la obra", [{ codigo_a: "9099", codigo_b: "9001" }], [["9001", "9099", A, "(sin nombre en esta obra)"]]],
+  // Campo vacío.
+  ["distintos vacío", [], []],
+  ["distintos null", null, []],
+  // Campo mal formado: no es una lista.
+  ["distintos es un texto", "9001-9002", []],
+  ["distintos es un objeto", { codigo_a: "9001", codigo_b: "9002" }, []],
+  ["distintos es un número", 42, []],
+  ["distintos es true", true, []],
+  // Entradas mal formadas: se descartan y las buenas siguen.
+  [
+    "entradas que no son pares, junto a uno bueno",
+    [null, undefined, "9001", 7, [], ["9001", "9002"], { codigo_a: "9001", codigo_b: "9002" }],
+    [["9001", "9002", A, B]],
+  ],
+  ["un par sin codigo_b", [{ codigo_a: "9001" }], []],
+  ["un par sin codigo_a", [{ codigo_b: "9002" }], []],
+  ["un par con codigo_b null", [{ codigo_a: "9001", codigo_b: null }], []],
+  ["un par de un código consigo mismo", [{ codigo_a: "9001", codigo_b: "9001" }], []],
+  ["un código vacío", [{ codigo_a: "", codigo_b: "9002" }], []],
+  ["un código en blanco", [{ codigo_a: "   ", codigo_b: "9002" }], []],
+  ["códigos numéricos, no textos", [{ codigo_a: 9001, codigo_b: 9002 }], []],
+  ["un código que es un objeto", [{ codigo_a: { codigo: "9001" }, codigo_b: "9002" }], []],
+];
+
+for (const [que, distintos, esperado] of CASOS_R75) {
+  test(`f035 R75: presentarPropuestas().distintos, ${que}`, () => {
+    const { presentarPropuestas } = oficiosModulo();
+
+    assert.deepEqual(resumenDe(presentarPropuestas(propuestasConDistintos(distintos)).distintos), esperado);
+  });
+}
+
+test("f035 R75: sin oficio.distintos (hasta F-053), distintos es [] y lo demás, como siempre", () => {
+  const { presentarPropuestas } = oficiosModulo();
+
+  const sin = presentarPropuestas(propuestasSinDistintos());
+  const vacio = presentarPropuestas(propuestasConDistintos([]));
+
+  assert.deepEqual(sin.distintos, []);
+  assert.deepEqual(sin, vacio, "sin el campo, la vista es la de una lista vacía");
+  assert.equal(sin.sinNada, true);
+  assert.deepEqual(Object.keys(sin).sort(), ["avisos", "distintos", "grupos", "gruposVigentes", "obra", "propuestas", "sinNada"]);
+});
+
+test("f035 R75: cada par lleva su clave, sus códigos, sus nombres y motivos vacíos (el par() de siempre)", () => {
+  const { presentarPropuestas } = oficiosModulo();
+
+  const [par] = presentarPropuestas(propuestasConDistintos([{ codigo_a: "9002", codigo_b: "9001" }])).distintos;
+
+  assert.deepEqual(par, {
+    clave: "9001-9002",
+    codigo_a: "9001",
+    codigo_b: "9002",
+    nombre_a: A,
+    nombre_b: B,
+    motivos: [],
+  });
+});
+
+test("f035 R75: las claves de los pares son distintas entre sí (el :key del x-for)", () => {
+  const { presentarPropuestas } = oficiosModulo();
+
+  const { distintos } = presentarPropuestas(
+    propuestasConDistintos([{ codigo_a: "9001", codigo_b: "9002" }, { codigo_a: "9001", codigo_b: "9003" }, { codigo_a: "9002", codigo_b: "9003" }]),
+  );
+
+  assert.equal(new Set(distintos.map((p) => p.clave)).size, 3);
+});
+
+test("f035 R75: presentarPropuestas nunca lanza por distintos, ni sin respuesta", () => {
+  const { presentarPropuestas } = oficiosModulo();
+
+  for (const raro of [null, undefined, {}, { obra: "9999" }, { obra: "9999", oficio: null }, { obra: "9999", oficio: {} }]) {
+    assert.deepEqual(presentarPropuestas(raro).distintos, [], `con ${JSON.stringify(raro)}`);
+  }
+  for (const raro of [0, "", "x", 42, true, {}, { length: 2 }, [[]], [{}], [{ codigo_a: [] }]]) {
+    assert.deepEqual(presentarPropuestas(propuestasConDistintos(raro)).distintos, [], `con distintos ${JSON.stringify(raro)}`);
+  }
+});
+
+test("f035 R75: sinNada cuenta los distintos: con solo distintos hay algo que enseñar", () => {
+  const { presentarPropuestas } = oficiosModulo();
+
+  assert.equal(presentarPropuestas(propuestasConDistintos([{ codigo_a: "9001", codigo_b: "9002" }])).sinNada, false);
+  assert.equal(presentarPropuestas(propuestasConDistintos([])).sinNada, true);
+  assert.equal(presentarPropuestas(propuestasConDistintos([{ codigo_a: "9001" }])).sinNada, true, "un par descartado no cuenta");
+  assert.equal(presentarPropuestas(propuestasConDistintos("basura")).sinNada, true);
+});
+
+test("f035 R75: los distintos no cambian propuestas, grupos ni avisos", () => {
+  const { presentarPropuestas } = oficiosModulo();
+
+  const sin = presentarPropuestas(propuestasSinDistintos());
+  const con = presentarPropuestas(propuestasConDistintos([{ codigo_a: "9001", codigo_b: "9002" }]));
+
+  for (const clave of ["obra", "propuestas", "grupos", "avisos", "gruposVigentes"]) {
+    assert.deepEqual(con[clave], sin[clave], clave);
+  }
+});
+
+// El botón «Son el mismo» de la sección, leído de `oficios.html` y evaluado
+// con el componente de verdad (`crearAppOficios` con un `api` doble): lo que
+// manda es lo que el HTML dice, no lo que el test supone.
+
+const BOTON = /<button((?:\s+[^\s"'=<>\/]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*>([^<]*)<\/button>/g;
+
+/** `[{atributos, texto}]` de los botones de la sección `x-show="vista.distintos.length"` de `oficios.html`. */
+function botonesDeDistintos() {
+  const html = leer("oficios.html").replace(/<!--[\s\S]*?-->/g, "");
+  const inicio = html.search(/<section\b[^>]*\bx-show="vista\.distintos\.length"/);
+  assert.notEqual(inicio, -1, 'oficios.html no tiene <section x-show="vista.distintos.length">');
+  const seccionHtml = html.slice(inicio, html.indexOf("</section>", inicio));
+  return [...seccionHtml.matchAll(BOTON)].map((m) => ({
+    atributos: atributosDe(m[1]),
+    texto: m[2].replace(/\s+/g, " ").trim(),
+  }));
+}
+
+/** Una expresión de Alpine evaluada como la evalúa Alpine: con el componente y el `par` del `x-for` en el ámbito. */
+function evaluar(expresion, app, par) {
+  return vm.runInNewContext(expresion, {
+    par,
+    decidir: (...args) => app.decidir(...args),
+    puedeDecidir: () => app.puedeDecidir(),
+  });
+}
+
+function componenteDeOficios(guion) {
+  const llamadas = [];
+  const respuestas = Object.assign(
+    {
+      identidad: { usuarioOid: "oid-inventado", correo: "" },
+      propuestasCatalogos: propuestasConDistintos([{ codigo_a: "9002", codigo_b: "9001" }]),
+      decidirCatalogos: { obra: "9999", pares_guardados: [] },
+    },
+    guion || {},
+  );
+  const api = {};
+  for (const nombre of ["identidad", "propuestasCatalogos", "decidirCatalogos"]) {
+    api[nombre] = async (...args) => {
+      llamadas.push({ nombre, args });
+      return respuestas[nombre];
+    };
+  }
+  const app = oficiosModulo().crearAppOficios({ api, guardar: () => {} });
+  return { app, llamadas };
+}
+
+test("f035 R75: la sección de distintos tiene un solo botón, «Son el mismo»", () => {
+  const botones = botonesDeDistintos();
+
+  assert.deepEqual(botones.map((b) => b.texto), ["Son el mismo"]);
+  assert.equal(botones[0].atributos.type, "button");
+});
+
+test("f035 R75: «Son el mismo» de un par manda «mismo» con sus dos códigos y la pantalla recarga", async () => {
+  const [boton] = botonesDeDistintos();
+  const { app, llamadas } = componenteDeOficios();
+  await app.iniciar();
+  app.obra = "9999";
+  await app.cargar();
+  const [par] = app.vista.distintos;
+  app.obra = "otra-escrita-despues";
+
+  assert.equal(evaluar(boton.atributos[":disabled"], app, par), false, "con sesión y sin otra guardándose, se puede pulsar");
+  await evaluar(boton.atributos["@click"], app, par);
+
+  const decisiones = llamadas.filter((l) => l.nombre === "decidirCatalogos");
+  assert.equal(decisiones.length, 1);
+  assert.deepEqual(decisiones[0].args[0], {
+    obra: "9999",
+    usuario_oid: "oid-inventado",
+    confirmado: true,
+    decisiones: [{ catalogo: "oficio", codigos: ["9001", "9002"], decision: "mismo" }],
+  });
+  assert.deepEqual(
+    llamadas.map((l) => l.nombre),
+    ["identidad", "propuestasCatalogos", "decidirCatalogos", "propuestasCatalogos"],
+    "guarda y recarga (R89 de F-036)",
+  );
+  assert.equal(llamadas[3].args[0], "9999", "recarga la obra de las propuestas, no la del campo");
+});
+
+test("f035 R75: sin sesión, «Son el mismo» está deshabilitado y no manda nada", async () => {
+  const [boton] = botonesDeDistintos();
+  const { app, llamadas } = componenteDeOficios({ identidad: { usuarioOid: "", correo: "" } });
+  await app.iniciar();
+  app.obra = "9999";
+  await app.cargar();
+  const [par] = app.vista.distintos;
+
+  assert.equal(evaluar(boton.atributos[":disabled"], app, par), true);
+  await evaluar(boton.atributos["@click"], app, par);
+
+  assert.equal(llamadas.filter((l) => l.nombre === "decidirCatalogos").length, 0);
+});
+
+test("f035 R75: mientras se guarda otra decisión, «Son el mismo» está deshabilitado", async () => {
+  const [boton] = botonesDeDistintos();
+  const { app } = componenteDeOficios();
+  await app.iniciar();
+  app.obra = "9999";
+  await app.cargar();
+  const [par] = app.vista.distintos;
+
+  app.decidiendo = true;
+  assert.equal(evaluar(boton.atributos[":disabled"], app, par), true);
+  app.decidiendo = false;
+  assert.equal(evaluar(boton.atributos[":disabled"], app, par), false);
+});

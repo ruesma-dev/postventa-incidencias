@@ -1564,10 +1564,15 @@ R33_NUEVOS_ADMITIDOS = frozenset(
 #: Los `M` que admite R33: `css/styles.css` (segunda ronda, R33 enmendado,
 #: design.md §15.8: la hoja de la marca que comparten las páginas) y, desde el
 #: bloque 12 (R33 enmendado de la enmienda del 2026-10-05, R74), `js/importacion.js`,
-#: que gana `rotuloResumen`. `js/oficios.js` entra con R75 (bloque 13), no antes;
-#: `api.js`, `config.js`, `traza.js` y los nueve del circuito, nunca.
+#: que gana `rotuloResumen`; y desde el bloque 13 (R75), `js/oficios.js`, que
+#: gana la clave `distintos` de `presentarPropuestas`. `api.js`, `config.js`,
+#: `traza.js` y los nueve del circuito, nunca.
 R33_MODIFICADOS_ADMITIDOS = frozenset(
-    {"services/postventa-front/css/styles.css", "services/postventa-front/js/importacion.js"}
+    {
+        "services/postventa-front/css/styles.css",
+        "services/postventa-front/js/importacion.js",
+        "services/postventa-front/js/oficios.js",
+    }
 )
 
 
@@ -1596,18 +1601,20 @@ def test_f035_r33_no_se_modifica_nada_del_circuito():
     assert problemas == [], "F-035 ha tocado el circuito:\n" + "\n".join(problemas)
 
 
-def test_f035_r33_control_admite_el_m_de_importacion_js_y_nada_mas():
-    # Control sin git (R74, bloque 12): el `M` de js/importacion.js pasa; el de
-    # oficios.js (R75 aún no), el de api.js y el de un módulo del circuito, no;
-    # ni un borrado o un alta de importacion.js.
+def test_f035_r33_control_admite_el_m_de_importacion_y_oficios_js_y_nada_mas():
+    # Control sin git (R74, bloque 12; R75, bloque 13): los `M` de
+    # js/importacion.js y js/oficios.js pasan; el de api.js y el de un módulo
+    # del circuito, no; ni un borrado o un alta de cualquiera de los dos.
     importacion = "services/postventa-front/js/importacion.js"
-    assert problemas_r33([("M", importacion), ("M", "services/postventa-front/css/styles.css")]) == []
+    oficios = "services/postventa-front/js/oficios.js"
+    assert problemas_r33([("M", importacion), ("M", oficios), ("M", "services/postventa-front/css/styles.css")]) == []
     for cambio in [
-        ("M", "services/postventa-front/js/oficios.js"),
         ("M", "services/postventa-front/js/api.js"),
         ("M", "services/postventa-front/js/app.js"),
         ("D", importacion),
         ("A", importacion),
+        ("D", oficios),
+        ("A", oficios),
         ("M", f"services/postventa-front/{GUARDA_SALIDA}"),
     ]:
         assert problemas_r33([cambio]) == [f"{cambio[0]} {cambio[1]}"], cambio

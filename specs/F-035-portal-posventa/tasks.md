@@ -705,7 +705,7 @@ ya pide cada verificación.
 > el apunte (a) sale de F-035; con (iii), no se hace (rompe el límite de
 > servicio).
 
-- [ ] **T35**: RED primero en `tests_js/f035_paginas.test.js` (R75:
+- [x] **T35**: RED primero en `tests_js/f035_paginas.test.js` (R75:
       `presentarPropuestas().distintos` con y sin `oficio.distintos`,
       `sinNada` con solo distintos, y el componente de `crearAppOficios` con
       un `api` doble: «Son el mismo» de un par manda `mismo` con sus dos

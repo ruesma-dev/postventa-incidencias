@@ -29,6 +29,13 @@ Bloque 8 (`tasks.md`, T25):
 - Review del bloque 7, **H-1**: el «misma ventana» de R68 también mira el
   `target` ligado (`targets_de`, de `test_f035_portal.py`).
 
+Bloque 16 (`tasks.md`, T43-T44, ajuste del 2026-10-05):
+
+- **R80**, la guarda de salida del circuito (`js/guarda_salida.js`) solo lee:
+  sin red, sin almacenamiento, sin navegar, sin `_autoguardado`, un único
+  `beforeunload`; y las fases que vigila existen en `js/app.js`. Su
+  comportamiento (R78, R79) se prueba en `tests_js/guarda_salida.test.js`.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -239,3 +246,116 @@ def test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens():
     )
     assert regla.valor("width") == regla.valor("height") == "6px", "un punto de 6 px"
     assert regla.valor("border-radius") == "50%", "redondo"
+
+
+# --- R80 · La guarda de salida del circuito solo lee (bloque 16, T43) -----------
+#
+# `js/guarda_salida.js` (`design.md` §16.15.3) se prueba por comportamiento en
+# `tests_js/guarda_salida.test.js`. Aquí, lo que se ve leyendo el fichero: que
+# no tiene con qué hacer nada más que leer y pedir confirmación, y que las
+# fases que vigila existen de verdad en `js/app.js` (si el circuito renombra
+# una, la guarda dejaría de verla sin que ningún test de comportamiento lo
+# notara, porque esos tests escriben las fases a mano).
+
+GUARDA_SALIDA = RAIZ_FRONT / "js" / "guarda_salida.js"
+APP_JS = RAIZ_FRONT / "js" / "app.js"
+
+#: Lo que la guarda no puede usar (R80): red, almacenamiento del navegador,
+#: navegar por su cuenta, y el método del componente que montaría el
+#: autoguardado. Cada entrada es `(patrón, qué es)`.
+PROHIBIDOS_EN_LA_GUARDA = (
+    (re.compile(r"\bfetch\s*\("), "fetch (red)"),
+    (re.compile(r"\bXMLHttpRequest\b"), "XMLHttpRequest (red)"),
+    (re.compile(r"\bsendBeacon\b"), "sendBeacon (red)"),
+    (re.compile(r"\bWebSocket\b|\bEventSource\b"), "WebSocket/EventSource (red)"),
+    (re.compile(r"\blocalStorage\b"), "localStorage"),
+    (re.compile(r"\bsessionStorage\b"), "sessionStorage"),
+    (re.compile(r"\bindexedDB\b"), "indexedDB"),
+    (re.compile(r"\bdocument\.cookie\b"), "document.cookie"),
+    (re.compile(r"\bwindow\.open\b|\.open\s*\("), "window.open (navegar aparte)"),
+    (re.compile(r"\blocation\b"), "location (navegar)"),
+    (re.compile(r"\b_autoguardado\b"), "_autoguardado (montaría el autoguardado)"),
+    (re.compile(r"\bsetTimeout\b|\bsetInterval\b"), "temporizadores"),
+)
+
+_ESCUCHA = re.compile(r"""addEventListener\s*\(\s*(?P<evento>["'][^"']*["']|[^,)]*)""")
+_FASES_DE_LA_GUARDA = re.compile(
+    r"FASES_EN_MARCHA\s*=\s*Object\.freeze\(\s*\[(?P<lista>[^\]]*)\]\s*\)"
+)
+
+
+def _codigo_sin_comentarios(texto: str) -> str:
+    """El JS sin comentarios `/* */` ni `//` (los textos de la guarda no llevan `//`)."""
+    sin_bloques = re.sub(r"/\*.*?\*/", " ", texto, flags=re.DOTALL)
+    return re.sub(r"//[^\n]*", " ", sin_bloques)
+
+
+def problemas_de_la_guarda(codigo: str) -> list[str]:
+    """Lo que `js/guarda_salida.js` hace además de leer y pedir confirmación (R80). Vacío = correcto."""
+    limpio = _codigo_sin_comentarios(codigo)
+    problemas = [f"usa {que}" for patron, que in PROHIBIDOS_EN_LA_GUARDA if patron.search(limpio)]
+    eventos = [m["evento"].strip().replace("'", '"') for m in _ESCUCHA.finditer(limpio)]
+    if eventos != ['"beforeunload"']:
+        problemas.append(f"registra {eventos}: solo puede registrar UN addEventListener(\"beforeunload\")")
+    return problemas
+
+
+def fases_de_la_guarda(codigo: str) -> list[str]:
+    """Los literales de `FASES_EN_MARCHA` de la guarda, en su orden."""
+    encontrado = _FASES_DE_LA_GUARDA.search(codigo)
+    assert encontrado is not None, "la guarda no declara FASES_EN_MARCHA = Object.freeze([...])"
+    return re.findall(r"""["']([a-z_]+)["']""", encontrado["lista"])
+
+
+def fases_que_app_no_asigna(fases: list[str], app: str) -> list[str]:
+    """Las fases de la guarda que `js/app.js` no asigna como `this.fase = "<fase>"`."""
+    return [f for f in fases if not re.search(rf"""this\.fase\s*=\s*["']{re.escape(f)}["']""", app)]
+
+
+def test_f035_r80_la_guarda_solo_lee_y_solo_escucha_beforeunload():
+    problemas = problemas_de_la_guarda(GUARDA_SALIDA.read_text(encoding="utf-8"))
+
+    assert problemas == [], "js/guarda_salida.js hace más que leer (R80):\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    "linea",
+    [
+        'fetch("/api/remesa");',
+        "const x = new XMLHttpRequest();",
+        'localStorage.setItem("remesa", "1");',
+        "window.sessionStorage.clear();",
+        'indexedDB.open("x");',
+        'window.open("index.html");',
+        'ventana.location.href = "index.html";',
+        "estado._autoguardado().cancelarPendiente();",
+        'ventana.addEventListener("click", function () {});',
+        'documento.addEventListener("beforeunload", function () {});',
+        "setTimeout(function () {}, 10);",
+    ],
+)
+def test_f035_r80_control_el_detector_ve_lo_que_la_guarda_no_puede_hacer(linea):
+    """Control: cada forma prohibida, sembrada en memoria en la guarda real, TIENE que salir."""
+    codigo = GUARDA_SALIDA.read_text(encoding="utf-8") + "\n" + linea + "\n"
+
+    assert problemas_de_la_guarda(codigo) != [], f"el detector de R80 no ve «{linea}»"
+
+
+def test_f035_r80_las_fases_de_la_guarda_existen_en_app_js():
+    fases = fases_de_la_guarda(GUARDA_SALIDA.read_text(encoding="utf-8"))
+
+    assert fases == ["troceando", "procesando", "archivando_y_cerrando"]
+    faltan = fases_que_app_no_asigna(fases, APP_JS.read_text(encoding="utf-8"))
+    assert faltan == [], (
+        f"js/app.js ya no asigna this.fase = … para {faltan}: la guarda dejaría de verlas (R79 a)"
+    )
+
+
+def test_f035_r80_control_una_fase_renombrada_en_app_js_salta():
+    """Control: con `procesando` renombrada en una copia en memoria de `app.js`, la comprobación cae."""
+    app = APP_JS.read_text(encoding="utf-8")
+    assert app.count('this.fase = "procesando"') == 1, "el control ya no encuentra la fase una sola vez"
+    renombrada = app.replace('this.fase = "procesando"', 'this.fase = "procesando_lote"')
+
+    fases = fases_de_la_guarda(GUARDA_SALIDA.read_text(encoding="utf-8"))
+    assert fases_que_app_no_asigna(fases, renombrada) == ["procesando"]

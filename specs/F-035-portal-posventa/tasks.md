@@ -848,7 +848,7 @@ ya pide cada verificación.
 > commit (T44)**: no puede existir un commit con el circuito navegando en la
 > misma pestaña sin guarda.
 
-- [ ] **T43**: RED primero: `tests_js/guarda_salida.test.js` (R78–R80, la
+- [x] **T43**: RED primero: `tests_js/guarda_salida.test.js` (R78–R80, la
       lista de `design.md` §16.15.7: cada fila de §16.15.2 en positivo y en
       negativo, el `Proxy` que lanza al escribir o al llamar, los tres
       caminos de fallo de `leerEstado`, `alSalir` con y sin trabajo,

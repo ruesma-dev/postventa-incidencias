@@ -80,6 +80,11 @@ MODULOS_CIRCUITO = (
     "js/app.js",
 )
 
+#: La guarda de salida del circuito (ajuste del 2026-10-05, R78-R81): módulo
+#: nuevo, el único script que `partes.html` carga además de los nueve, justo
+#: antes de `js/app.js` (R43 ajustado).
+GUARDA_SALIDA = "js/guarda_salida.js"
+
 VERSION_ALPINE = "3.14.1"
 
 #: Las ocho secciones de `Portal.SECCIONES` (R2), con su etiqueta.
@@ -1321,6 +1326,10 @@ def test_f035_r33_no_se_modifica_nada_del_circuito():
         "services/postventa-front/dev_front.ps1",
     )
     nuevos_admitidos = {f"services/postventa-front/{s}" for s in SCRIPTS_MAQUETA}
+    # Ajuste del 2026-10-05 (R33 ajustado, R80): la guarda de salida es un
+    # módulo NUEVO que solo lee el estado del circuito. Alta sí; ningún `M`
+    # en los nueve módulos del circuito.
+    nuevos_admitidos.add(f"services/postventa-front/{GUARDA_SALIDA}")
     # Segunda ronda (R33 enmendado, design.md §15.8): css/styles.css pasa a
     # ser la hoja de la marca que comparten las dos páginas, y SÍ cambia.
     modificados_admitidos = {"services/postventa-front/css/styles.css"}

@@ -21,12 +21,13 @@
 
     <!-- F-035 · Barra superior común (R44), en HTML PLANO: ni una directiva de
          Alpine, ni <script>, ni <button> (R45). «Partes firmados» es esta
-         página; las demás pestañas son el portal (una maqueta) y se abren en
-         otra pestaña del navegador para no perder la remesa en curso (R31,
-         R47). Los href son los de Portal.enlaceSeccion(id, "circuito").
+         página; las demás pestañas son el portal y se abren en la MISMA
+         pestaña (R31, ajuste del 2026-10-05): la remesa en curso la protege
+         la guarda de salida, js/guarda_salida.js, que pide confirmación al
+         salir solo si hay trabajo sin terminar (R78-R80); la leyenda lo
+         avisa (R47). Los href son los de Portal.enlaceSeccion(id, "circuito").
          Identidad Ruesma (R51, design.md §15.5): la marca —logotipo,
-         separador y etiqueta— NO es un enlace (rompería R31 y, en la misma
-         ventana, perdería la remesa); la pestaña actual la pinta
+         separador y etiqueta— NO es un enlace; la pestaña actual la pinta
          aria-current en css/styles.css. -->
     <nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
       <div class="rs-barra__fila">
@@ -36,17 +37,17 @@
           <span class="rs-barra__etiqueta">Posventa</span>
         </span>
         <div class="rs-barra__pestanas">
-          <a href="./#/inicio" target="_blank" rel="noopener" class="rs-pestana">Inicio</a>
-          <a href="./#/entrada" target="_blank" rel="noopener" class="rs-pestana">Entrada</a>
-          <a href="./#/bandeja" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</a>
-          <a href="./#/incidencias" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)">Incidencias</a>
-          <a href="./#/impresion" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)">Impresión de partes</a>
+          <a href="./#/inicio" class="rs-pestana">Inicio</a>
+          <a href="./#/entrada" class="rs-pestana">Entrada</a>
+          <a href="./#/bandeja" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)">Bandeja de revisión</a>
+          <a href="./#/incidencias" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)">Incidencias</a>
+          <a href="./#/impresion" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)">Impresión de partes</a>
           <span aria-current="page" class="rs-pestana">Partes firmados</span>
-          <a href="./#/economico" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Coste y venta (en construcción)">Coste y venta</a>
-          <a href="./#/datos" target="_blank" rel="noopener" class="rs-pestana" data-construccion aria-label="Datos y datamart (en construcción)">Datos y datamart</a>
+          <a href="./#/economico" class="rs-pestana" data-construccion aria-label="Coste y venta (en construcción)">Coste y venta</a>
+          <a href="./#/datos" class="rs-pestana" data-construccion aria-label="Datos y datamart (en construcción)">Datos y datamart</a>
         </div>
       </div>
-      <p class="rs-barra__leyenda">Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.</p>
+      <p class="rs-barra__leyenda">Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo. Si sales de aquí con una remesa a medias, el navegador te pedirá confirmación.</p>
     </nav>
 
     <header class="rs-cabecera">
@@ -57,8 +58,8 @@
           <!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir
                de esta perdería la remesa en curso (D4 de F-007). -->
           <nav class="mt-1 flex gap-4 text-sm">
-            <a href="importar.html" target="_blank" rel="noopener" class="rs-enlace">Importar incidencias</a>
-            <a href="oficios.html" target="_blank" rel="noopener" class="rs-enlace">Oficios repetidos</a>
+            <a href="importar.html" class="rs-enlace">Importar incidencias</a>
+            <a href="oficios.html" class="rs-enlace">Oficios repetidos</a>
           </nav>
         </div>
         <div class="rs-estado-servicio">
@@ -652,6 +653,7 @@
   <script src="js/pipeline.js"></script>
   <script src="js/confirmacion.js"></script>
   <script src="js/autoguardado.js"></script>
+  <script src="js/guarda_salida.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

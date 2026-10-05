@@ -52,6 +52,7 @@ ORDEN_CANONICO = (
     # es quien lo monta, y despues de `pipeline.js`, de quien lee los valores
     # efectivos de los campos.
     "js/autoguardado.js",
+    "js/guarda_salida.js",  # F-035 (R80, R81): solo lee el estado del circuito
     "js/app.js",
 )
 

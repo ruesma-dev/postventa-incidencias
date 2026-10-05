@@ -53,6 +53,7 @@ from test_f035_portal import (
     clases,
     css_sin_comentarios,
     leer_html,
+    leer_html_texto,
     paginas_del_portal,
     reglas_css,
     seccion,
@@ -359,3 +360,81 @@ def test_f035_r80_control_una_fase_renombrada_en_app_js_salta():
 
     fases = fases_de_la_guarda(GUARDA_SALIDA.read_text(encoding="utf-8"))
     assert fases_que_app_no_asigna(fases, renombrada) == ["procesando"]
+
+
+# --- R73 ajustado · Ninguna página del front abre otra aparte (bloque 16, T44) ----
+#
+# Desde el ajuste del 2026-10-05, en las cuatro páginas —barra, cabeceras,
+# tarjetas, migas, subnavegación— ningún enlace a otra página del front lleva
+# `target`: todo se navega en la misma pestaña, y la remesa del circuito la
+# protege la guarda de salida (R78). Los enlaces a fuera del front (el «abrir en
+# SharePoint» del circuito, con `:href` a una URL de SharePoint) no son de esta
+# regla. Review del bloque 7, H-2: tampoco vale abrir otra ventana con
+# `window.open` desde una directiva, que deja el `href` intacto y R73 no vería.
+
+PAGINAS_DEL_FRONT = ("index.html", "partes.html", "importar.html", "oficios.html")
+
+#: Un `href` a otra página del front: `*.html` (con query o ancla), `./…` o `#/…`.
+_HREF_DEL_FRONT = re.compile(r"^(?:[\w.-]+\.html(?:[?#].*)?|\./.*|#/.*)$")
+_WINDOW_OPEN = re.compile(r"\bwindow\s*\.\s*open\b")
+
+
+def _es_del_front(enlace) -> bool:
+    if "href" in enlace.atributos:
+        return bool(_HREF_DEL_FRONT.match(enlace.atributos["href"]))
+    calculado = enlace.atributos.get(":href", enlace.atributos.get("x-bind:href", ""))
+    return "hashDe(" in calculado
+
+
+def problemas_r73(pagina: str, html: str) -> list[str]:
+    """Los enlaces de `html` a otra página del front que no van en la misma pestaña (R73 ajustado). Vacío = correcto."""
+    problemas = [
+        f"{pagina}: <a href=\"{a.atributos.get('href', a.atributos.get(':href'))}\"> «{a.texto()}» lleva {targets_de(a)}"
+        for a in leer_html_texto(html).elementos()
+        if a.nombre == "a" and _es_del_front(a) and targets_de(a)
+    ]
+    sin_comentarios = re.sub(r"<!--.*?-->", " ", html, flags=re.DOTALL)
+    if _WINDOW_OPEN.search(sin_comentarios):
+        problemas.append(f"{pagina}: usa window.open, que abre otra ventana con el href intacto (H-2)")
+    return problemas
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_DEL_FRONT)
+def test_f035_r73_ninguna_pagina_del_front_abre_otra_aparte(pagina):
+    problemas = problemas_r73(pagina, (RAIZ_FRONT / pagina).read_text(encoding="utf-8"))
+
+    assert problemas == [], "todo el front se navega en la misma pestaña (R73 ajustado):\n" + "\n".join(problemas)
+
+
+_PRIMER_ENLACE_DEL_FRONT = re.compile(r'<a href="(?:[\w.-]+\.html|\./[^"]*|#/[^"]*)"')
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_DEL_FRONT)
+def test_f035_r73_control_un_target_repuesto_salta_en_cada_pagina(pagina):
+    """Control: un `target="_blank"` en el primer enlace del front de la página, en memoria, TIENE que salir."""
+    real = (RAIZ_FRONT / pagina).read_text(encoding="utf-8")
+    copia, cuantos = _PRIMER_ENLACE_DEL_FRONT.subn(lambda m: m.group(0) + ' target="_blank"', real, count=1)
+    assert cuantos == 1, f"el control no encuentra ningún enlace del front en {pagina}"
+
+    assert problemas_r73(pagina, copia) != []
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_DEL_FRONT)
+def test_f035_r73_control_un_window_open_salta_en_cada_pagina(pagina):
+    """Control (H-2): una tarjeta que abre otra ventana con `window.open` desde un `@click`, en memoria."""
+    real = (RAIZ_FRONT / pagina).read_text(encoding="utf-8")
+    copia = real.replace(
+        "</body>",
+        '<a href="index.html" @click.prevent="window.open(\'index.html\')">Portal</a>\n</body>',
+        1,
+    )
+    assert copia != real, f"el control no encuentra </body> en {pagina}"
+
+    assert any("window.open" in p for p in problemas_r73(pagina, copia))
+
+
+def test_f035_r73_control_el_enlace_a_sharepoint_no_es_del_front():
+    """Control: un enlace a fuera del front (`:href` a una URL) puede abrirse aparte; R73 no lo mira."""
+    html = '<a x-show="r.web_url" :href="r.web_url" target="_blank" rel="noopener">abrir en SharePoint</a>'
+
+    assert problemas_r73("partes.html", html) == []

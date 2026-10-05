@@ -11,6 +11,10 @@ Desde las decisiones del humano del 2026-09-25 (D-1, D-2, D-3):
   plano (R30, R31, R43, R45, R47).
 - Los siete tests del circuito que fijaban `index.html` cambian **una
   línea** (la constante `INDEX`) y nada más (R32).
+- Ajuste del 2026-10-05 (bloque 16): la barra y la cabecera del circuito
+  navegan en la misma pestaña (R31, R59 g) y `partes.html` carga la guarda de
+  salida justo antes de `js/app.js` (R43, R59 f); por eso, y solo por eso,
+  dos tests de la base ganan las líneas literales de R81 (R32).
 
 Lo que es lógica —rutas, catálogos, cruce de los `href` de las dos barras
 con `Portal.enlaceSeccion`— se prueba en `tests_js/portal.test.js`. Aquí va
@@ -213,8 +217,13 @@ class _Lector(HTMLParser):
 
 
 def leer_html(ruta: Path) -> Nodo:
+    return leer_html_texto(ruta.read_text(encoding="utf-8"))
+
+
+def leer_html_texto(texto: str) -> Nodo:
+    """Como `leer_html`, sobre un texto (las copias en memoria de los controles)."""
     lector = _Lector()
-    lector.feed(ruta.read_text(encoding="utf-8"))
+    lector.feed(texto)
     lector.close()
     return lector.raiz
 
@@ -750,10 +759,51 @@ def test_f035_r46_los_enlaces_al_circuito_van_en_la_misma_pestana():
 # --- R43, R31, R45, R47 · El circuito en partes.html ---------------------------
 
 
-def test_f035_r43_partes_html_carga_exactamente_los_nueve_scripts_del_circuito():
-    cargados = [s.atributos["src"] for s in propios(leer_html(CIRCUITO))]
+#: Lo que carga `partes.html` (R43 ajustado, R81): los nueve scripts del
+#: circuito en su orden y, justo antes de `js/app.js` (que sigue siendo el
+#: último), la guarda de salida. Ningún otro.
+SCRIPTS_DE_PARTES = (*MODULOS_CIRCUITO[:-1], GUARDA_SALIDA, MODULOS_CIRCUITO[-1])
 
-    assert cargados == list(MODULOS_CIRCUITO)
+
+def problemas_de_carga_del_circuito(html: str) -> list[str]:
+    """Lo que la lista de scripts propios de `html` tiene de distinto a R43 ajustado. Vacío = correcto."""
+    cargados = [s.atributos["src"] for s in propios(leer_html_texto(html))]
+    if cargados != list(SCRIPTS_DE_PARTES):
+        return [f"partes.html carga {cargados}; R43 ajustado pide {list(SCRIPTS_DE_PARTES)}"]
+    return []
+
+
+def test_f035_r43_partes_html_carga_los_nueve_scripts_y_la_guarda_justo_antes_de_app_js():
+    problemas = problemas_de_carga_del_circuito(CIRCUITO.read_text(encoding="utf-8"))
+
+    assert problemas == [], "\n".join(problemas)
+
+
+#: Control de R43 ajustado: copias en memoria de `partes.html` que TIENEN que
+#: salir en rojo. `(viejo, nuevo)`, con `viejo` una sola vez en el real.
+ESTROPEOS_R43 = {
+    "la guarda después de app.js": (
+        '<script src="js/guarda_salida.js"></script>\n  <script src="js/app.js"></script>',
+        '<script src="js/app.js"></script>\n  <script src="js/guarda_salida.js"></script>',
+    ),
+    "un segundo script nuevo": (
+        '<script src="js/guarda_salida.js"></script>',
+        '<script src="js/otro.js"></script>\n  <script src="js/guarda_salida.js"></script>',
+    ),
+    "sin la guarda": (
+        '<script src="js/guarda_salida.js"></script>\n',
+        "",
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R43))
+def test_f035_r43_control_la_carga_del_circuito_rechaza_cualquier_otra_lista(caso):
+    viejo, nuevo = ESTROPEOS_R43[caso]
+    real = CIRCUITO.read_text(encoding="utf-8")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert problemas_de_carga_del_circuito(real.replace(viejo, nuevo)) != [], f"R43 admite «{caso}»"
 
 
 # --- R59 · El circuito solo cambia en presentación (design.md §15.8) -----------
@@ -924,6 +974,38 @@ def _quita_version_de_la_hoja(ts: list[Token]) -> list[Token]:
     return fuera
 
 
+#: R59 (f), ajuste del 2026-10-05: el único `<script>` que puede añadirse,
+#: exactamente así, sin más atributos, y justo antes del de `js/app.js`.
+_SCRIPT_GUARDA = ("<", "script", (("src", GUARDA_SALIDA),))
+_SCRIPT_APP = ("<", "script", (("src", "js/app.js"),))
+
+#: R59 (g): los dos enlaces de la cabecera de F-036, de los que se retiran
+#: `target` y `rel` (misma pestaña, R73 ajustado). Solo esos dos.
+_ENLACES_F036 = frozenset({"importar.html", "oficios.html"})
+
+
+def _quita_la_guarda(ts: list[Token]) -> list[Token]:
+    """Quita UN `<script src="js/guarda_salida.js"></script>` si va justo antes del de `js/app.js` (R59 f).
+
+    Solo uno, y solo en ese sitio y con ese único atributo: un segundo script,
+    la guarda en otro sitio o con `defer` siguen siendo diferencias.
+    """
+    for i in range(len(ts) - 2):
+        if ts[i] == _SCRIPT_GUARDA and ts[i + 1] == ("</", "script") and ts[i + 2] == _SCRIPT_APP:
+            return ts[:i] + ts[i + 2:]
+    return ts
+
+
+def _sin_target_en_los_enlaces_de_f036(ts: list[Token]) -> list[Token]:
+    """Quita `target` y `rel` de los `<a>` a `importar.html` y `oficios.html` (R59 g). Ningún otro atributo ni enlace."""
+    fuera = []
+    for t in ts:
+        if _es_apertura(t, "a") and any(k == "href" and v in _ENLACES_F036 for k, v in t[2]):
+            t = ("<", "a", tuple((k, v) for k, v in t[2] if k not in ("target", "rel")))
+        fuera.append(t)
+    return fuera
+
+
 def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     """Lo que `ahora` cambia de `antes` más allá de lo que admite R59; `[]` si nada.
 
@@ -932,13 +1014,18 @@ def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     (en `ahora`, obligatoria y primer hijo del `<div x-data="appPostventa()">`);
     y las cuatro `<link>` de la marca en el `<head>`, justo antes de
     `css/styles.css`; y, desde T21, la versión (`?v=`) en el `href` de esa
-    hoja. Todo lo demás —directivas, ids, `type`, `data-*`, `aria-*`, `style`,
-    textos, comentarios, elementos y el orden de los atributos— tiene que ser
-    idéntico.
+    hoja. Desde el ajuste del 2026-10-05 (T44): (f) un único
+    `<script src="js/guarda_salida.js">` justo antes del de `js/app.js`, y (g)
+    sin `target` ni `rel` los dos enlaces de la cabecera a `importar.html` y
+    `oficios.html`. Todo lo demás —directivas, ids, `type`, `data-*`,
+    `aria-*`, `style`, textos, comentarios, elementos y el orden de los
+    atributos— tiene que ser idéntico.
     """
     problemas: list[str] = []
     a = _quita_ruta(_quita_version_de_la_hoja(tokens(antes)), None, problemas)
     b = _quita_ruta(_quita_version_de_la_hoja(tokens(ahora)), RUTA_CIRCUITO, problemas)
+    a = _sin_target_en_los_enlaces_de_f036(_quita_la_guarda(a))
+    b = _sin_target_en_los_enlaces_de_f036(_quita_la_guarda(b))
     a, _ = _quita_barra(a, problemas, "antes")
     b, sitio = _quita_barra(b, problemas, "partes.html")
     if sitio is None:
@@ -965,7 +1052,7 @@ def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
 
 
 def test_f035_r59_partes_html_solo_cambia_en_presentacion_frente_a_la_base():
-    """R59 · solo `class`, la línea 1, la barra y las cuatro `<link>` (sustituye a R30/R43 línea a línea)."""
+    """R59 · `class`, línea 1, barra, las cuatro `<link>`, la `?v=`, la guarda (f) y los `target` de F-036 (g)."""
     base = base_de_la_rama()
     antes = _git("show", f"{base}:services/postventa-front/index.html")
     assert CIRCUITO.is_file(), "no existe partes.html: el circuito se muda ahí en T8"
@@ -1022,6 +1109,20 @@ ESTROPEOS_R59 = {
     "una directiva quitada (x-init)": (
         'x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()"',
         'x-data="appPostventa()"',
+    ),
+    # Ajuste del 2026-10-05 (T44): (f) admite UN script, el de la guarda, y
+    # (g) la retirada de `target` solo en los dos enlaces de F-036.
+    "un segundo script nuevo": (
+        '<script src="js/guarda_salida.js"></script>',
+        '<script src="js/otro.js"></script>\n  <script src="js/guarda_salida.js"></script>',
+    ),
+    "la guarda con un atributo más (defer)": (
+        '<script src="js/guarda_salida.js"></script>',
+        '<script src="js/guarda_salida.js" defer></script>',
+    ),
+    "el target retirado del enlace de SharePoint": (
+        ':href="resultado.web_url" target="_blank" rel="noopener"',
+        ':href="resultado.web_url" rel="noopener"',
     ),
 }
 
@@ -1221,20 +1322,28 @@ def test_f035_r59_t21_control_la_guardia_rechaza_todo_lo_demas(caso):
     assert problemas != [], f"la guardia de R59 admite «{caso}»"
 
 
-def test_f035_r31_la_barra_del_circuito_abre_el_portal_aparte():
-    nav = barra(leer_html(CIRCUITO), "partes.html")
+def problemas_r31(doc: Nodo) -> list[str]:
+    """Las pestañas de la barra del circuito que no navegan en la misma pestaña (R31 ajustado). Vacío = correcto."""
+    nav = barra(doc, "partes.html")
+    return [
+        f"{a.atributos.get('href')}: lleva {targets_de(a) + (['rel'] if 'rel' in a.atributos else [])}; "
+        "se navega en la misma pestaña y la remesa la protege la guarda de salida (R78)"
+        for a in nav.elementos()
+        if a.nombre == "a" and (targets_de(a) or "rel" in a.atributos)
+    ]
+
+
+def test_f035_r31_la_barra_del_circuito_navega_en_la_misma_pestana():
+    """R31 ajustado (2026-10-05): `./#/<id>` sin `target` ni `rel`; «Partes firmados», la actual."""
+    doc = leer_html(CIRCUITO)
+    nav = barra(doc, "partes.html")
     enlaces = [e for e in nav.elementos() if e.nombre == "a"]
 
     assert sorted(a.atributos.get("href", "") for a in enlaces) == sorted(
         f"./#/{s}" for s in SECCIONES_DEL_PORTAL
     )
-    for a in enlaces:
-        assert a.atributos.get("target") == "_blank", (
-            f"{a.atributos.get('href')}: salir del circuito no puede descargar la remesa"
-        )
-        assert "noopener" in a.atributos.get("rel", "").split(), (
-            f"{a.atributos.get('href')}: rel con noopener"
-        )
+    problemas = problemas_r31(doc)
+    assert problemas == [], "\n".join(problemas)
     actual = _uno(
         [e for e in nav.elementos() if e.atributos.get("aria-current") == "page"],
         "pestaña con aria-current=\"page\" en la barra del circuito",
@@ -1256,11 +1365,56 @@ def test_f035_r45_la_barra_del_circuito_es_html_estatico():
         )
 
 
-def test_f035_r47_la_barra_del_circuito_avisa_de_que_lo_demas_es_maqueta():
-    texto = barra(leer_html(CIRCUITO), "partes.html").texto().lower()
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        ('href="./#/inicio" class=', 'href="./#/inicio" target="_blank" class='),
+        ('href="./#/datos" class=', 'href="./#/datos" :target="\'_blank\'" class='),
+        ('href="./#/entrada" class=', 'href="./#/entrada" rel="noopener" class='),
+    ],
+    ids=["target-en-inicio", "target-ligado-en-datos", "rel-en-entrada"],
+)
+def test_f035_r31_control_un_target_repuesto_en_una_pestana_salta(viejo, nuevo):
+    """Control: en una copia en memoria de `partes.html`, un `target` (o `rel`) repuesto TIENE que salir."""
+    real = CIRCUITO.read_text(encoding="utf-8")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
 
-    for imprescindible in ("maqueta", "datos de ejemplo", "aparte", "remesa"):
-        assert imprescindible in texto, f"la leyenda de la barra no dice «{imprescindible}»"
+    assert problemas_r31(leer_html_texto(real.replace(viejo, nuevo))) != []
+
+
+#: R47 ajustado (2026-10-05): lo que la leyenda de la barra del circuito tiene
+#: que decir, y lo que ya no puede decir (nada se abre aparte).
+IMPRESCINDIBLES_R47 = ("en construcción", "datos de ejemplo", "remesa", "confirmación")
+PROHIBIDOS_R47 = ("aparte",)
+
+
+def problemas_r47(texto: str) -> list[str]:
+    """Lo que le falta o le sobra a la leyenda de la barra del circuito (R47 ajustado). Vacío = correcto."""
+    texto = texto.lower()
+    return [f"no dice «{i}»" for i in IMPRESCINDIBLES_R47 if i not in texto] + [
+        f"dice «{p}»: nada se abre ya aparte (R31 ajustado)" for p in PROHIBIDOS_R47 if p in texto
+    ]
+
+
+def test_f035_r47_la_barra_del_circuito_avisa_de_la_confirmacion_al_salir():
+    problemas = problemas_r47(barra(leer_html(CIRCUITO), "partes.html").texto())
+
+    assert problemas == [], "la leyenda de la barra del circuito (R47 ajustado):\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    "leyenda",
+    [
+        "Las demás pestañas son una maqueta con datos de ejemplo y se abren aparte, para no perder la remesa.",
+        (
+            "Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo. "
+            "Todas se abren aparte, para no perder la remesa."
+        ),
+    ],
+    ids=["la-de-la-maqueta", "la-de-la-enmienda"],
+)
+def test_f035_r47_control_las_leyendas_viejas_salen_en_rojo(leyenda):
+    assert problemas_r47(leyenda) != []
 
 
 # --- R32, R33 · El diff de la rama (solo en la rama de F-035) -------------------
@@ -1276,7 +1430,54 @@ def _estados(base: str, *rutas: str) -> list[tuple[str, str]]:
     return filas
 
 
-def test_f035_r32_de_los_tests_del_circuito_solo_cambia_la_linea_index_de_siete():
+#: R32 ajustado (R81, `design.md` §16.15.4): además de su línea `INDEX`, las
+#: líneas LITERALES que dos tests de la base pueden ganar y perder para que el
+#: circuito cargue la guarda de salida y navegue en la misma pestaña. Ninguna
+#: otra línea, en ningún test de la base.
+LINEAS_R81 = {
+    "test_f007_estaticos.py": {
+        "puestas": [
+            '    "js/guarda_salida.js",  # F-035 (R80, R81): solo lee el estado del circuito',
+        ],
+        "quitadas": [],
+    },
+    "test_f036_front.py": {
+        "puestas": [
+            '    """En la misma pestaña (F-035, 2026-10-05): la remesa la protege la guarda de salida del circuito."""',
+            '        assert "target=" not in en_cabecera[destino]',
+        ],
+        "quitadas": [
+            '    """En otra pestaña: navegar fuera perdería la remesa en curso (D4 de F-007)."""',
+            "        assert 'target=\"_blank\"' in en_cabecera[destino]",
+            "        assert 'rel=\"noopener\"' in en_cabecera[destino]",
+        ],
+    },
+}
+_SIN_LINEAS_R81 = {"puestas": [], "quitadas": []}
+
+
+def numstat_esperado(nombre: str) -> tuple[str, str]:
+    """`(añadidas, quitadas)` que admite R32 para un test de la base: la de INDEX y las de R81."""
+    extra = LINEAS_R81.get(nombre, _SIN_LINEAS_R81)
+    return str(1 + len(extra["puestas"])), str(1 + len(extra["quitadas"]))
+
+
+def problemas_de_lineas(nombre: str, quitadas: list[str], puestas: list[str]) -> list[str]:
+    """Lo que el diff de un test de la base tiene además de su línea INDEX y de las de R81. Vacío = correcto."""
+    extra = LINEAS_R81.get(nombre, _SIN_LINEAS_R81)
+    problemas = []
+    if sorted(quitadas) != sorted([LINEA_INDEX_ANTES, *extra["quitadas"]]):
+        problemas.append(f"{nombre}: líneas quitadas {quitadas}")
+    de_index = [p for p in puestas if p.startswith(LINEA_INDEX_DESPUES)]
+    otras = [p for p in puestas if not p.startswith(LINEA_INDEX_DESPUES)]
+    if len(de_index) != 1:
+        problemas.append(f"{nombre}: la línea puesta de INDEX apunta a partes.html: {de_index}")
+    if sorted(otras) != sorted(extra["puestas"]):
+        problemas.append(f"{nombre}: líneas puestas además de INDEX {otras} (R81 admite {extra['puestas']})")
+    return problemas
+
+
+def test_f035_r32_de_los_tests_del_circuito_solo_cambian_index_y_las_lineas_de_r81():
     base = base_de_la_rama()
     carpetas = ("services/postventa-front/tests", "services/postventa-front/tests_js")
     numstat = {
@@ -1288,8 +1489,8 @@ def test_f035_r32_de_los_tests_del_circuito_solo_cambia_la_linea_index_de_siete(
     for estado, ruta in _estados(base, *carpetas):
         nombre = Path(ruta).name
         if nombre in TESTS_CON_INDEX:
-            if estado != "M" or numstat.get(ruta) != ("1", "1"):
-                problemas.append(f"{ruta}: {estado} {numstat.get(ruta)} (solo 1 1)")
+            if estado != "M" or numstat.get(ruta) != numstat_esperado(nombre):
+                problemas.append(f"{ruta}: {estado} {numstat.get(ruta)} (solo {numstat_esperado(nombre)})")
         elif estado != "A":
             problemas.append(f"{ruta}: {estado} (un test existente no se toca)")
     assert problemas == [], "tests del circuito tocados de más:\n" + "\n".join(problemas)
@@ -1297,10 +1498,10 @@ def test_f035_r32_de_los_tests_del_circuito_solo_cambia_la_linea_index_de_siete(
     sin_mudar = [
         nombre
         for nombre in TESTS_CON_INDEX
-        if numstat.get(f"services/postventa-front/tests/{nombre}") != ("1", "1")
+        if numstat.get(f"services/postventa-front/tests/{nombre}") != numstat_esperado(nombre)
     ]
     assert sin_mudar == [], (
-        f"a estos tests les falta su línea INDEX apuntando a partes.html (T8): {sin_mudar}"
+        f"a estos tests les falta su línea INDEX apuntando a partes.html (T8) o las de R81: {sin_mudar}"
     )
 
     for nombre in TESTS_CON_INDEX:
@@ -1308,10 +1509,50 @@ def test_f035_r32_de_los_tests_del_circuito_solo_cambia_la_linea_index_de_siete(
         diff = _git("diff", "-U0", base, "--", ruta).splitlines()
         quitadas = [x[1:] for x in diff if x.startswith("-") and not x.startswith("---")]
         puestas = [x[1:] for x in diff if x.startswith("+") and not x.startswith("+++")]
-        assert quitadas == [LINEA_INDEX_ANTES], f"{nombre}: la línea quitada es la de INDEX: {quitadas}"
-        assert len(puestas) == 1 and puestas[0].startswith(LINEA_INDEX_DESPUES), (
-            f"{nombre}: la línea puesta apunta INDEX a partes.html: {puestas}"
-        )
+        assert problemas_de_lineas(nombre, quitadas, puestas) == []
+
+
+#: Control de R32 ajustado, sin git: diffs inventados que TIENEN que salir en rojo.
+ESTROPEOS_R32 = {
+    "una línea más en test_f007_estaticos.py": (
+        "test_f007_estaticos.py",
+        [LINEA_INDEX_ANTES],
+        [LINEA_INDEX_DESPUES, *LINEAS_R81["test_f007_estaticos.py"]["puestas"], '    "js/otro.js",'],
+    ),
+    "la línea de ORDEN_CANONICO con otro texto": (
+        "test_f007_estaticos.py",
+        [LINEA_INDEX_ANTES],
+        [LINEA_INDEX_DESPUES, '    "js/guarda_salida.js",'],
+    ),
+    "test_f036_front.py conserva el assert del rel": (
+        "test_f036_front.py",
+        [LINEA_INDEX_ANTES, *LINEAS_R81["test_f036_front.py"]["quitadas"][:2]],
+        [LINEA_INDEX_DESPUES, *LINEAS_R81["test_f036_front.py"]["puestas"]],
+    ),
+    "las líneas de R81 en otro test de la base": (
+        "test_f009_front.py",
+        [LINEA_INDEX_ANTES],
+        [LINEA_INDEX_DESPUES, *LINEAS_R81["test_f007_estaticos.py"]["puestas"]],
+    ),
+}
+
+
+def test_f035_r32_control_las_lineas_admitidas_cuadran_por_fichero():
+    """Control: con exactamente las líneas de R81, ningún problema (y el numstat que dice §16.15.6)."""
+    for nombre, extra in LINEAS_R81.items():
+        quitadas = [LINEA_INDEX_ANTES, *extra["quitadas"]]
+        puestas = [LINEA_INDEX_DESPUES, *extra["puestas"]]
+        assert problemas_de_lineas(nombre, quitadas, puestas) == [], nombre
+    assert numstat_esperado("test_f007_estaticos.py") == ("2", "1")
+    assert numstat_esperado("test_f036_front.py") == ("3", "4")
+    assert numstat_esperado("test_f009_front.py") == ("1", "1")
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R32))
+def test_f035_r32_control_cualquier_otra_linea_sale_en_rojo(caso):
+    nombre, quitadas, puestas = ESTROPEOS_R32[caso]
+
+    assert problemas_de_lineas(nombre, quitadas, puestas) != [], f"R32 admite «{caso}»"
 
 
 def test_f035_r33_no_se_modifica_nada_del_circuito():

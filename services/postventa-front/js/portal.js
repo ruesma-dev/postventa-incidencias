@@ -349,8 +349,10 @@
    *
    * - Desde el portal: `#/<id>` y, para `partes`, `partes.html`; siempre en
    *   la misma pestaña del navegador (la maqueta no tiene nada que perder).
-   * - Desde el circuito: `./#/<id>` en pestaña nueva, para no perder la
-   *   remesa en curso; `partes` es la página actual → `null`.
+   * - Desde el circuito: `./#/<id>`, también en la misma pestaña (ajuste
+   *   del 2026-10-05, R31): la remesa en curso la protege la guarda de
+   *   salida (`js/guarda_salida.js`, R78); `partes` es la página actual →
+   *   `null`.
    *
    * Un id o un `desde` desconocidos → `null`, nunca lanza.
    */
@@ -362,7 +364,7 @@
     }
     if (desde === "circuito") {
       if (seccion.pagina !== null) return null;
-      return { href: "./" + hashDe(seccion.id), nuevaPestana: true };
+      return { href: "./" + hashDe(seccion.id), nuevaPestana: false };
     }
     return null;
   }

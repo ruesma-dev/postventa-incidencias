@@ -867,7 +867,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` y `python -m pytest tests -q` en
       verde; `git diff --stat HEAD~1` con solo esos ficheros; ningún módulo
       del circuito en el diff.
-- [ ] **T44**: en **un solo commit**: (a) `partes.html`: la barra sin
+- [x] **T44**: en **un solo commit**: (a) `partes.html`: la barra sin
       `target` ni `rel` en sus siete enlaces; los dos enlaces de F-036 de la
       cabecera sin `target` ni `rel` (R59 g); la leyenda de **R47 ajustado**;
       y `<script src="js/guarda_salida.js"></script>` justo antes del de

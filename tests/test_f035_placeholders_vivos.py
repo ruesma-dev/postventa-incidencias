@@ -196,6 +196,11 @@ def test_f035_r37_architecture_corrige_el_grupo_de_entra_sin_guid():
 # barra del circuito la abre aparte (R31); en cuanto todas sus fichas estén
 # `done`, la enlaza SIN `target`. Vive aquí, en la raíz, por lo mismo que R28:
 # cerrar la última ficha de una sección no toca el árbol del front.
+#
+# Ajuste del 2026-10-05: R48 queda absorbida por R73 ajustado (ningún enlace
+# del circuito a otra página del front lleva `target`; la remesa la protege la
+# guarda de salida, R78). La guardia sigue, en verde por construcción, y su
+# control se aplica a una copia en memoria (`design.md` §16.15.6).
 
 CIRCUITO = FRONT / "partes.html"
 PORTAL_JS = FRONT / "js" / "portal.js"
@@ -255,14 +260,29 @@ def test_f035_r48_las_secciones_reales_se_abren_en_la_misma_ventana():
 
 
 def test_f035_r48_la_guardia_mira_una_seccion_que_pasa_a_real():
-    """Control: con F-048 en `done` en una copia en memoria, `datos` es real y su `target` tiene que saltar."""
+    """Control: con F-048 en `done` y un `target` repuesto en `datos`, en memoria, tiene que saltar.
+
+    Ajuste del 2026-10-05 (`design.md` §16.15.6): R48 queda absorbida por R73
+    ajustado —desde el circuito todo se abre ya en la misma ventana—, así que
+    sobre el `partes.html` real este control no tendría nada que cazar. Se
+    aplica a una COPIA en memoria con `target="_blank"` repuesto en la pestaña
+    `datos`, para que la guardia siga demostrando que mira. (Review del bloque
+    8, H-8: el `inicio` de `secciones_reales` es solo a efectos de esta barra
+    del circuito, que no se enlaza a sí misma, y por eso deja fuera `partes`;
+    el estado de `inicio` del portal es el de R62, con `partes` incluida.)
+    """
     features = copy.deepcopy(_features())
     for ficha in features["features"]:
         if ficha["id"] == "F-048":
             ficha["status"] = "done"
+    real = CIRCUITO.read_text(encoding="utf-8")
+    sin_target = '<a href="./#/datos" class='
+    assert real.count(sin_target) == 1, "el control ya no encuentra la pestaña datos sin target"
+    copia = real.replace(sin_target, '<a href="./#/datos" target="_blank" rel="noopener" class=')
 
     assert secciones_reales(features, secciones_del_portal()) == ["datos"]
-    problemas = enlaces_aparte_a_secciones_reales(features, CIRCUITO.read_text(encoding="utf-8"))
+    assert enlaces_aparte_a_secciones_reales(features, real) == [], "el partes.html real ya no abre nada aparte"
+    problemas = enlaces_aparte_a_secciones_reales(features, copia)
     assert len(problemas) == 1 and "«datos»" in problemas[0], problemas
 
 

@@ -405,11 +405,13 @@ test("f035 R44: enlaceSeccion desde el portal: #/<id>, y partes.html en la misma
   assert.deepEqual(enlaceSeccion("partes", "portal"), { href: "partes.html", nuevaPestana: false });
 });
 
-test("f035 R31: enlaceSeccion desde el circuito: ./#/<id> en pestaña nueva, y partes es la página actual", () => {
+test("f035 R31: enlaceSeccion desde el circuito: ./#/<id> en la misma pestaña, y partes es la página actual", () => {
+  // Ajuste del 2026-10-05 (R31): nada se abre aparte, tampoco desde el
+  // circuito; la remesa en curso la protege la guarda de salida (R78).
   const { enlaceSeccion } = portal();
 
   for (const id of SECCIONES_DEL_PORTAL) {
-    assert.deepEqual(enlaceSeccion(id, "circuito"), { href: `./#/${id}`, nuevaPestana: true }, id);
+    assert.deepEqual(enlaceSeccion(id, "circuito"), { href: `./#/${id}`, nuevaPestana: false }, id);
   }
   assert.equal(enlaceSeccion("partes", "circuito"), null);
 });
@@ -939,6 +941,7 @@ for (const [pagina, modo] of [
         assert.match(pestana.atributos.rel || "", /\bnoopener\b/, `${pagina}: ${seccion.id} lleva rel noopener`);
       } else {
         assert.ok(!("target" in pestana.atributos), `${pagina}: ${seccion.id} se abre en la misma pestaña`);
+        assert.ok(!("rel" in pestana.atributos), `${pagina}: ${seccion.id} sin target, el rel sobra`);
       }
     }
   });

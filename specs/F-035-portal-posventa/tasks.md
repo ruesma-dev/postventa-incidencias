@@ -286,6 +286,9 @@
       `prefers-reduced-motion`; en V2, **con `func start`**, el circuito
       recorrido con una remesa de `muestras/` hasta la pregunta de
       confirmación y **«Cancelar»** (nunca «Sí, archivar y cerrar» en local).
+      *(Enmienda del 2026-10-05)*: sigue abierta. Se hace **después de T39**,
+      con lo que añade el recuadro del 2026-10-05 de `requirements.md` §3
+      (V1 g–j, V2): ver el bloque 15.
 
 - [x] **T13**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
@@ -461,4 +464,298 @@ ya pide cada verificación.
   `partes.html`, con control de que cualquier otro cambio sigue en rojo. |
   Verificación: la suite del front y la guardia
 - [x] **T22**: `bash harness/init.sh` en verde.
+
+## Enmienda del 2026-10-05 · el portal en producción tras F-036 (bloques 7–15)
+
+> **Qué cambia y por qué.** Con F-036 cerrada y traída a la rama (`988c086`,
+> `2a86bca`), el humano decide la **opción (b)**: publicar en producción el
+> portal entero, con lo que no funciona marcado «En construcción»; importar,
+> bandeja y oficios como secciones reales con la identidad Ruesma; y los dos
+> apuntes de la ficha. Requisitos **R62–R77** y enmiendas en
+> `requirements.md` §1.12; diseño en `design.md` §16. Las tareas T1–T22 no se
+> tocan; **T12 sigue abierta** y pasa al bloque 15.
+>
+> **Estado de partida**: `bash harness/init.sh` en **rojo a propósito** por
+> una sola guarda, R28 (F-036 `done` con cinco restos en la maqueta). El
+> bloque 7 la pone en verde **retirando** esos restos, no tocando la guarda.
+>
+> **Reglas de todos los bloques**: un encargo por bloque, y el implementer
+> **para** al terminar el suyo; un commit por tarea (`F-035 Tn: …`); fase RED
+> donde haya código nuevo (traza en `progress/impl_F-035.md`); **ningún test
+> de la base se toca** —ni los del circuito ni los de F-036—: lo nuevo va en
+> `tests/test_f035_paginas.py` y `tests_js/f035_paginas.test.js` (R32); si un
+> test de F-036 exigiera otra cosa, **PARA** y anótalo en
+> `progress/current.md`; **nada de `services/postventa-api/`** (R76); todo sin
+> red, sin BBDD y sin IA. Las mutaciones manuales, en un worktree desechable
+> del scratchpad, nunca en el árbol real, con la confirmación de que se
+> retiró. Comprobación común de cada bloque, «F-036 intacto»:
+> `git diff 2a86bca -- services/postventa-front/tests/test_f036_front.py services/postventa-front/tests_js/importacion.test.js services/postventa-front/tests_js/oficios.test.js`
+> **vacío**.
+
+> **Parada antes del bloque 7 · aprobación de la enmienda (humano).** El
+> líder enseña al humano el resumen de `progress/current.md` y las decisiones
+> abiertas **D-11 a D-14** (`design.md` §16.13); la respuesta, literal y
+> fechada, en `progress/current.md`. Si el humano elige D-13 (i), el líder da
+> de alta la **ficha de backend** de `design.md` §16.6 (y corrige la
+> descripción de F-035, H-9). Sin aprobación no se toca código.
+
+## Bloque 7 · Verde otra vez: lo de F-036 sale de la maqueta (2026-10-05)
+
+- [ ] **T23**: en **un solo commit**: (a) en `index.html`, sección `entrada`:
+      fuera la zona de soltar, los dos placeholders de F-036, la tabla «Qué
+      necesita cada fila» y el resultado de ejemplo; dentro, las dos tarjetas
+      «En producción» de `design.md` §16.5 («Importar incidencias» →
+      `importar.html`, «Oficios repetidos» → `oficios.html`, sin `target`). El
+      panel de la web de clientes, tal cual (su envoltorio llega en el bloque
+      9). (b) `js/portal.js`: fuera `entrada.elegirExcel`, `entrada.importar`
+      y `"F-036"` de `TITULOS_FICHAS`. (c) `js/maqueta_datos.js`: fuera el
+      bloque `entrada`. (d) Tests de F-035 que describen lo retirado
+      (`tests_js/portal.test.js`, `tests_js/maqueta_datos.test.js`,
+      `tests/test_f035_portal.py`), y **R17 enmendado** (enlaces a las páginas
+      de `Portal.PAGINAS`, con ancla opcional; `PAGINAS` puede entrar aquí
+      solo como dato, sin `enlaceSeccion`). (e) RED primero: crear
+      `tests/test_f035_paginas.py` con R68 (enlaces y chips de `entrada`; nada
+      de F-036 en el portal).
+      **Verificación**: en la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py -q`
+      en verde (**R28 y su control** `…_la_guardia_mira_una_ficha_que_pasa_a_done`,
+      que hoy también cae por los restos de F-036); desde `services/postventa-front`,
+      `python -m pytest tests -q` y `node --test "tests_js/*.test.js"` en
+      verde; «F-036 intacto» vacío; `git diff --stat HEAD~1` solo con los
+      ficheros de (a)–(e).
+- [ ] **T24**: evidencias y verde del bloque. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`
+      (se espera «Sin líneas de producción en el alcance»: 0 mutantes). (b)
+      Mutaciones manuales **14** y **15** de `design.md` §16.10. (c)
+      `bash harness/init.sh` en verde.
+      **Verificación**: las tres salidas en `progress/impl_F-035.md`,
+      «Bloque 7»; exit code 0 de `init.sh`.
+
+## Bloque 8 · El estado de cada sección y la barra (2026-10-05)
+
+- [ ] **T25**: (a) `estado` en cada entrada de `Portal.SECCIONES`, escrito
+      literal (R62, tabla de `design.md` §16.4), y `Portal.enConstruccion`.
+      (b) En la raíz, `tests/test_f035_placeholders_vivos.py`: R62 frente a
+      `features.json`, con su control (copia en memoria con F-038 `done`:
+      `bandeja` tiene que pasar a `parcial` y la guardia saltar). (c) Barras
+      de `index.html` y `partes.html`: `data-construccion` y `aria-label`
+      (R66) en las cinco pestañas en construcción; en `partes.html`, la
+      leyenda de **R47 enmendado** y, fuera de la barra, solo el `class` de
+      los dos enlaces de F-036 (`rs-enlace`). (d) `css/styles.css`: el punto
+      de `.rs-pestana[data-construccion]` con tokens; `?v=` nueva en las dos
+      páginas. (e) El aviso de **R13 enmendado** (texto de `design.md`
+      §16.4). (f) Tests en el mismo commit: R66 en
+      `tests_js/f035_paginas.test.js` (dos barras), R13 y R47 enmendados en
+      `tests/test_f035_portal.py`.
+      **Verificación**: en la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py -q`
+      en verde y, en una copia del test con F-038 `done`, el control en rojo
+      (salida al informe); en el front, `python -m pytest tests -q` (con
+      **R59** en verde: en `partes.html` solo barra, `class` y `?v=`) y
+      `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío.
+- [ ] **T26**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutaciones manuales **16** y **17**. (c) `bash harness/init.sh` en
+      verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 8».
+
+## Bloque 9 · El rótulo «En construcción» en el portal (2026-10-05)
+
+- [ ] **T27**: (a) En `index.html`, los envoltorios `data-en-construccion`
+      (R63–R65): uno de sección en `bandeja`, `incidencias`, `impresion`,
+      `economico` y `datos`; uno de bloque en el panel de la web de clientes
+      (`F-037`) y en el placeholder de F-045 de la tarjeta «Partes firmados»;
+      cada uno con su rótulo y, los de sección, con
+      `Portal.fichasDeSeccion` (nuevo en `js/portal.js`). (b) En el de
+      `bandeja`, el enlace a `importar.html#bandeja` (R69), y
+      `id="bandeja"` en la `<section>` de la bandeja de `importar.html` (solo
+      ese atributo en esa página). (c) La portada (R67): ceja, entradilla,
+      tarjetas con su chip, sin cifras; fuera `contadores()` de
+      `js/portal_app.js` y `contadoresInicio` de `js/portal.js`, con sus
+      tests; ningún texto visible con «maqueta», ni en `index.html` ni en
+      los textos que pinta `Portal` (el genérico de `textoPlaceholder`, hoy
+      «esta acción de la maqueta…»). (d) `css/portal.css`:
+      `rs-obras` y variantes (cinta, rótulo, bloque) con tokens, sin
+      discontinuo ni burdeos; `?v=` nueva en `index.html` y `partes.html`.
+      (e) Raíz: el escáner de R28 cuenta `data-en-construccion="F-0NN"`,
+      con su control (un `data-en-construccion="F-036"` en memoria tiene que
+      saltar). (f) Tests en el mismo commit, RED primero: R63–R65, R67, R69 y
+      la ampliación de R56 en `tests/test_f035_paginas.py`; `fichasDeSeccion`
+      en `tests_js/f035_paginas.test.js`.
+      **Verificación**: raíz `python -m pytest tests/test_f035_placeholders_vivos.py -q`
+      en verde; front `python -m pytest tests -q` y
+      `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío;
+      `git diff HEAD~1 -- services/postventa-front/importar.html` con una
+      sola línea cambiada (`id="bandeja"`).
+- [ ] **T28**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutaciones manuales **18**, **19** y **20**. (c) `bash harness/init.sh`
+      en verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 9».
+
+## Bloque 10 · `importar.html`, sección real del portal (2026-10-05)
+
+- [ ] **T29**: (a) `js/portal.js`: `Portal.PAGINAS` (si no entró en T23) y
+      `enlaceSeccion(id, desde)` con `desde` = una página de `PAGINAS`
+      (`design.md` §16.8); RED primero en `tests_js/f035_paginas.test.js`.
+      (b) `importar.html` según `design.md` §16.5: las cuatro `<link>` y la
+      `?v=` (R72), la barra estática como primer hijo del `<div x-data>`
+      con «Entrada» como `<span aria-current="page">` y los
+      `data-construccion` (R70, R66), la cabecera con migas y subnavegación
+      (R71), clases `rs-*` sin la lista prohibida (R72), sin `target` (R73),
+      nada de la maqueta (R77); **respetando todo lo que fija
+      `test_f036_front.py`** (lista de §16.5). (c) `css/styles.css`:
+      `rs-migas`, `rs-subnav`, `rs-aviso--ok`; `?v=` nueva en `index.html`,
+      `partes.html` e `importar.html` (y en `oficios.html` desde T31: con
+      cada cambio de hoja, en todas las que la lleven). (d) Tests: R44 y R66
+      sobre la barra de `importar.html` en `tests_js/f035_paginas.test.js`;
+      R70–R73, R77 y las extensiones de R50, R51, R54, R60 y de la `?v=` en
+      `tests/test_f035_paginas.py`, cada guardia con su control en memoria.
+      **Verificación**: front `python -m pytest tests -q` (con
+      `tests/test_f036_front.py` **entero en verde y sin tocar**) y
+      `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío;
+      vistazo del implementer con `.\dev_front.ps1` a
+      `http://localhost:5173/importar.html` (sin `func start`; no se pulsa
+      nada que escriba).
+- [ ] **T30**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutaciones manuales **21**, **22** y **23**. (c) `bash harness/init.sh`
+      en verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 10».
+
+## Bloque 11 · `oficios.html`, sección real del portal (2026-10-05)
+
+- [ ] **T31**: `oficios.html` como `importar.html` en T29 (b): barra,
+      cabecera con migas y subnavegación («Oficios repetidos» actual), `?v=`,
+      identidad, sin `target`, nada de la maqueta; **ni «proveedor» ni
+      «actividad»** en ningún texto nuevo (quinta enmienda de F-036); los
+      botones de decidir con sus textos, `@click` y `:disabled` de siempre.
+      Tests: las mismas guardias de T29 (d), extendidas a `oficios.html`.
+      **Verificación**: front `python -m pytest tests -q` (con
+      `tests/test_f036_front.py` entero en verde y sin tocar) y
+      `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío;
+      vistazo a `http://localhost:5173/oficios.html` (sin `func start`).
+- [ ] **T32**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Las mutaciones **21** y **22** repetidas sobre `oficios.html`
+      (21b, 22b). (c) `bash harness/init.sh` en verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 11».
+
+## Bloque 12 · Apunte (b): el resumen de un fichero ya importado (2026-10-05)
+
+- [ ] **T33**: RED primero en `tests_js/f035_paginas.test.js` (R74: con y
+      sin `ya_importado`, con fecha válida, sin fecha, con fecha basura, y el
+      caso de las 23:30 UTC de un día de verano). Después, `js/importacion.js`:
+      `rotuloResumen(respuesta)` y la clave `rotuloResumen` en
+      `presentarImportacion`, **sin cambiar** `resumenTexto` ni
+      `textoDelEstado`; `importar.html` pinta el rótulo encima de los
+      recuentos. **R33 enmendado** en `tests/test_f035_portal.py`: admite
+      `M js/importacion.js`.
+      **Verificación**: front `python -m pytest tests -q` y
+      `node --test "tests_js/*.test.js"` en verde, con
+      `tests_js/importacion.test.js` **sin tocar y en verde**; «F-036
+      intacto» vacío; `git diff --stat HEAD~1 -- services/postventa-api`
+      vacío.
+- [ ] **T34**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutaciones manuales **24** y **25**. (c) `bash harness/init.sh` en
+      verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 12».
+
+## Bloque 13 · Apunte (a): «Decididos como distintos» (2026-10-05)
+
+> Solo si el humano elige **D-13 (i)**. Con (ii), este bloque no se hace y
+> el apunte (a) sale de F-035; con (iii), no se hace (rompe el límite de
+> servicio).
+
+- [ ] **T35**: RED primero en `tests_js/f035_paginas.test.js` (R75:
+      `presentarPropuestas().distintos` con y sin `oficio.distintos`,
+      `sinNada` con solo distintos, y el componente de `crearAppOficios` con
+      un `api` doble: «Son el mismo» de un par manda `mismo` con sus dos
+      códigos y recarga). Después, `js/oficios.js` (`distintos` y `sinNada`;
+      **ni una llamada nueva**: el conteo de `decidirCatalogos(` y
+      `cuerpoDeDecision(` de los tests de F-036 no cambia) y la sección
+      «Decididos como distintos» de `oficios.html` (`design.md` §16.6).
+      **R33 enmendado**: admite también `M js/oficios.js`. Test estático del
+      bloque en `tests/test_f035_paginas.py`.
+      **Verificación**: front `python -m pytest tests -q` y
+      `node --test "tests_js/*.test.js"` en verde, con
+      `tests_js/oficios.test.js` y `tests/test_f036_front.py` **sin tocar y
+      en verde**; «F-036 intacto» vacío; nada en `services/postventa-api`.
+- [ ] **T36**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutaciones manuales **26**, **27** y **28**. (c) `bash harness/init.sh`
+      en verde.
+      **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 13».
+
+## Bloque 14 · Documentación y cierre de la enmienda (2026-10-05)
+
+- [ ] **T37**: documentación. `services/postventa-front/README.md`: en «La
+      maqueta del portal (F-035)», el portal en producción con secciones en
+      construcción, el `estado` de cada sección, el rótulo y cómo se
+      reconoce, `Portal.PAGINAS`, la regla «solo el circuito abre aparte» y
+      los pasos 5 y 6 de la retirada (sin perder lo que exige R48: «R48»,
+      «misma ventana», «remesa»); en «Identidad visual Ruesma (F-035)», las
+      dos páginas nuevas; y las secciones de `importar.html` y `oficios.html`
+      dicen que son del portal. `docs/ARCHITECTURE.md`, en «El portal de
+      posventa (F-035)»: lo mismo, más que los dos datos del backend son de
+      otra ficha (R76). `docs/DESPLIEGUE.md`: recuadro fechado con la
+      publicación del portal (orden de `design.md` §16.12, la parada V5 con
+      `publicar_maqueta.ps1` y el aviso a Posventa). Tests: los de R36, R37,
+      R48 y R61 siguen en verde; uno nuevo en `tests/test_f035_paginas.py`
+      con las palabras clave («en construcción», `PAGINAS`, «aparte»).
+      **Verificación**: front `python -m pytest tests -q` y raíz
+      `python -m pytest tests -q` en verde; `tests/test_f007_documentacion.py`
+      en verde.
+- [ ] **T38**: evidencias de la enmienda entera. (a)
+      `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Tabla de las mutaciones manuales 14–28 con su resultado (las de cada
+      bloque, ya hechas). (c) `git diff --name-status 2a86bca -- services/postventa-front services/postventa-api`:
+      nada en `services/postventa-api` (R76); en el front, solo los ficheros
+      de `design.md` §16.7. (d) «F-036 intacto» y
+      `git diff 2a86bca -- services/postventa-front/tests/test_f0[0-3]*.py`
+      vacíos salvo `test_f035_portal.py`. (e) La tabla de contraste del test
+      de R53, si las hojas ganaron pares.
+      **Verificación**: las salidas en `progress/impl_F-035.md`,
+      «Bloque 14».
+- [ ] **T39**: Ejecutar `bash harness/init.sh` en verde.
+      **Verificación**: exit code 0, con la suite del front y la de la raíz
+      **sin caché** y la cobertura en N/A con su motivo. Es la última tarea
+      del implementer; después, la review y el bloque 15.
+
+## Bloque 15 · Del humano, al final (2026-10-05)
+
+> Nada de esto lo hace el implementer. Orden de `design.md` §16.12: review
+> APROBADA → **T12** → **T40** → merge a `dev` y push → **T41** → **T42**.
+
+- **T12** (abierta desde el 2026-09-25): V1 y V2, con lo que añade el
+  recuadro del 2026-10-05 de `requirements.md` §3. En PowerShell, desde
+  `services\postventa-front`: `.\dev_front.ps1` (V1, sin `func start`; no se
+  pulsa nada que escriba en `importar.html` ni en `oficios.html`); para V2,
+  `func start` del backend local y una remesa de `muestras/` hasta la pregunta
+  de confirmación, **«Cancelar»**. Resultado real, en `progress/current.md`.
+- [ ] **T40**: **MANUAL (humano) · PARADA antes de producción (V5)**. Con la
+      review APROBADA y T12 en verde, ver **el portal entero** en el entorno
+      de vista previa (D-14):
+      `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1`
+      (guion de `docs/DESPLIEGUE.md` §10), recorrer las ocho pestañas, cada
+      recuadro «En construcción», la portada, «Entrada» y sus dos páginas
+      (sin backend: enseñarán el error del servicio, es lo esperado) y el
+      circuito; después,
+      `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1 -Retirar`.
+      Si algo se puede tomar por real, **no se publica**: se anota y se vuelve
+      a proponer. Si el humano prefiere local: `.\dev_front.ps1`, **sin**
+      `func start`.
+      **Verificación**: la respuesta del humano, literal y fechada, en
+      `progress/current.md`; sin un «sí, publicar», T41 no empieza.
+- [ ] **T41**: **MANUAL (humano) · publicación (D-4) y V4**. Tras el merge a
+      `dev` (líder, a petición del humano) y el push (humano):
+      `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`.
+      Después, V4 entero (`requirements.md` §3: a–d de antes y e–h de la
+      enmienda), con `Ctrl+F5` en las cuatro páginas; el paso f, **solo** con
+      el mismo fichero ya importado, sin abrirlo ni guardarlo; **ninguna
+      decisión de oficios** en V4. El líder actualiza, en el mismo trabajo,
+      `azure-apps/postventa_incidencias.md` (la raíz del front es el portal;
+      el circuito, en `/partes.html`; importar y oficios, secciones del
+      portal), con commit local en ese repositorio.
+      **Verificación**: el resultado real de cada paso de V4, anotado en
+      `progress/current.md`.
+- [ ] **T42**: **MANUAL (humano) · aviso a Posventa**, con el texto de
+      `design.md` §16.12 (o el que el humano prefiera): qué funciona, qué está
+      en construcción y cómo se reconoce, y que el circuito sigue en «Partes
+      firmados» con otro aspecto. La tarjeta de `front-portal` (H-4) y el
+      grupo de Entra siguen **fuera** de F-035.
+      **Verificación**: la fecha del aviso y lo que conteste Posventa, en
+      `progress/current.md`.
 

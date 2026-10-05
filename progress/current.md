@@ -1,6 +1,41 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · ENMIENDA DE LA SPEC TRAS F-036 ESCRITA · 2026-10-05 · **pendiente de aprobación del humano**
+>
+> spec-author. `specs/F-035-portal-posventa/`: requisitos **R62–R77** (§1.12) y enmiendas de R13,
+> R17, R28 (escáner), R33, R44–R47, R50, R51, R54, R56, R60; V1/V2/V4 ampliadas y **V5** nueva
+> (la parada); diseño en **`design.md` §16**; tareas **T23–T42** (bloques 7–15). Sin código.
+>
+> - **Qué decide**: importar y oficios siguen siendo **páginas propias** con la barra común (como
+>   `partes.html`), migas y subnavegación de «Entrada», e identidad Ruesma; la sección `#/entrada`
+>   del portal pasa a ser su puerta (dos tarjetas «En producción» + la web de clientes en
+>   construcción); la bandeja en solo lectura se queda en `importar.html#bandeja` y «Bandeja de
+>   revisión» sigue en construcción con un enlace a ella. Ningún test de F-036 se toca. Navegación:
+>   **solo el circuito abre aparte** (es la única página con trabajo en memoria); todo lo demás,
+>   misma ventana. «En construcción» en tres capas: punto ámbar + `aria-label` en la barra de las
+>   cuatro páginas, recuadro que **enmarca** todo lo inventado, portada **sin cifras**; un
+>   `estado` por sección en `Portal.SECCIONES` vigilado contra `features.json` desde la raíz.
+> - **Hallazgo (H-9)**: los dos apuntes **no son solo front**. «Decididos como distintos» necesita
+>   que `GET /api/catalogos/propuestas` devuelva los pares «distinto» (hoy no salen en ninguna
+>   lista) y el rótulo «… del <fecha>» necesita `importado_at_utc` en la respuesta de importar.
+>   Por el límite de servicio, se propone **una ficha de backend aparte** (F-053 si sigue la
+>   numeración; contrato en `design.md` §16.6); el front de F-035 los consume de forma tolerante.
+> - **Bloques** (uno por encargo): **7** retira lo de F-036 de la maqueta → `init.sh` en verde;
+>   **8** estado por sección y barra; **9** recuadros «En construcción» y portada; **10**
+>   `importar.html`; **11** `oficios.html`; **12** apunte (b); **13** apunte (a) (solo con D-13 i);
+>   **14** documentación y cierre (T39 `init.sh`); **15** del humano: T12 (V1/V2), **T40 parada
+>   V5** en la vista previa (`publicar_maqueta.ps1`), T41 publicación `-SoloFront` + V4, T42 aviso.
+> - **Para validar el humano** (`design.md` §16.13): **D-11** páginas propias (recomendado) frente
+>   a integrarlas en `index.html`; **D-12** el rótulo y la portada sin cifras; **D-13** ficha de
+>   backend aparte con front tolerante (recomendado), o sacar el apunte (a) de F-035; **D-14**
+>   la parada en la vista previa (recomendado) o en local sin `func start`. Si aprueba D-13 (i),
+>   el líder da de alta la ficha de backend y corrige la descripción de F-035 (H-9). H-8: en esta
+>   rama «Partes firmados» de importar/oficios lleva al portal hasta los bloques 10/11.
+> - Precisión del rojo conocido (medido hoy, suite de la raíz: 105 passed, 2 failed): caen R28
+>   **y su control** (`…_la_guardia_mira_una_ficha_que_pasa_a_done`, que exige que todos los
+>   restos sean de F-044 y ve también los de F-036). Misma causa; el bloque 7 arregla los dos.
+
 > ## ▶ F-035 REANUDADA · 2026-10-05 · `dev` traído a la rama · siguiente: enmienda de la spec (spec-author)
 >
 > Decisión del humano (2026-10-05): seguir con el portal **sin esperar el feedback de negocio**, antes

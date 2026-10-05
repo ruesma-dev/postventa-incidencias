@@ -74,6 +74,25 @@
 >   dejar cambiar `css/styles.css`. **Ningún test del circuito cambia**
 >   (medido: `design.md` §15.2).
 
+> **Enmienda del 2026-10-05 · el portal en producción tras F-036 (opción
+> b).** Con F-035 reanudada sobre `2a86bca` (merge de `dev` con F-036), el
+> humano decide: (1) seguir **sin esperar el feedback de negocio** y antes
+> que F-052; (2) **opción (b)**: se publica en producción el portal con
+> **todas** sus secciones, y las que aún no funcionan se ven marcadas **«En
+> construcción»**, sin que se puedan confundir con las que funcionan; (3)
+> **importar, bandeja y oficios** (F-036) pasan a ser **secciones reales del
+> portal** con la identidad Ruesma, en lugar de sus placeholders; (4) los dos
+> apuntes de la ficha: «Decididos como distintos» en oficios y el rótulo del
+> resumen de un fichero ya importado; (5) fuera: la tarjeta de `front-portal`
+> y el grupo de Entra (H-4), y construir de verdad lo que está en
+> construcción (F-038 en adelante). Requisitos nuevos **R62–R77** (§1.12);
+> enmendados **R13, R17, R28 (el escáner), R33, R44–R47, R50, R51, R54, R56 y
+> R60** (recuadro de §1.12 y notas en su sitio); V1, V2 y V4 añaden pasos y
+> entra **V5**, la parada del humano antes de publicar (§3). Diseño:
+> `design.md` §16. **Desde aquí, «maqueta» se lee «en construcción»** en
+> todo lo que ve el usuario; los nombres de ficheros y atributos
+> (`maqueta_datos.js`, `data-aviso-maqueta`) no cambian.
+
 ## 0 · Qué es esta feature y qué no
 
 El proyecto se amplía a **todo el ciclo de posventa**: entrada de incidencias
@@ -223,6 +242,14 @@ Vocabulario de este documento:
   cerrarlo, un aviso de **maqueta** que diga que los datos son ficticios y que
   los botones con borde discontinuo y etiqueta `F-0NN` no hacen nada todavía.
 
+  > **Enmienda del 2026-10-05 (R13, opción b).** El aviso sigue siempre
+  > visible, sin cerrarse, debajo de la barra y sin burdeos, pero deja de
+  > decir «Esto es una maqueta»: dice que **parte del portal está en
+  > construcción**, que las pestañas con el punto ámbar y lo que va dentro de
+  > un recuadro «En construcción» enseñan **datos inventados** y no funcionan
+  > (sus botones con borde discontinuo no hacen nada), y que lo que funciona
+  > de verdad lleva el sello **«En producción»**. Texto en `design.md` §16.5.
+
 ### 1.3 · Nada sale de la pantalla
 
 - **R14.** Ningún fichero de la maqueta debe contener una primitiva de red o de
@@ -244,6 +271,11 @@ Vocabulario de este documento:
   > **Decisión del 2026-09-25 (D-3).** R17 queda así: los enlaces del portal
   > (`index.html`) solo pueden apuntar a una ruta interna `#/…` o a
   > `partes.html`.
+
+  > **Enmienda del 2026-10-05 (R17).** Además, a una **página real** de
+  > `Portal.PAGINAS` (`importar.html`, `oficios.html`), con un ancla opcional
+  > (`importar.html#bandeja`, R69). Ninguna otra, y ninguna con `target`
+  > (R73).
 - **R18.** El portal no debe guardar nada en el navegador: ni `localStorage`, ni
   `sessionStorage`, ni `indexedDB`, ni `document.cookie` (misma regla que el
   circuito, F-007 R30).
@@ -354,6 +386,13 @@ los envía a ningún sitio.
 - **R28.** SI una ficha está `done` en `harness/features.json`, ENTONCES no debe
   quedar en la maqueta ningún placeholder ni bloque de datos de ejemplo de esa
   ficha.
+
+  > **Enmienda del 2026-10-05 (R28).** La regla no cambia. El escáner cuenta
+  > además como resto el envoltorio de bloque `data-en-construccion="F-0NN"`
+  > de `index.html` (R64): un recuadro «En construcción» de una ficha
+  > cerrada se pone en rojo igual que un placeholder. Hoy R28 está en rojo
+  > **a propósito** por F-036 (`done`): sus restos se retiran en el bloque 7
+  > (`tasks.md`, T23).
 - **R29.** MIENTRAS una ficha de F-036 a F-048 no esté `done`, la maqueta debe
   tener al menos un placeholder o un bloque de datos de ejemplo de esa ficha
   (criterio de la ficha: «todas las secciones del ciclo existen»).
@@ -428,6 +467,17 @@ los envía a ningún sitio.
 >   ni `dev_server.py`, ni `dev_front.ps1`. Entran como altas `img/logo-ruesma.svg`
 >   e `img/favicon.svg`.
 
+> **Enmienda del 2026-10-05 (R32, R33).** **R32 no cambia**: además de las
+> siete líneas `INDEX` y la de `test_f036_front.py` (que el líder mudó con el
+> merge), ningún test de la base se toca —tampoco los de F-036
+> (`test_f036_front.py`, `importacion.test.js`, `oficios.test.js`)—; los
+> tests de la enmienda van en ficheros nuevos (`design.md` §16.9). **R33**
+> admite además `M` en `js/importacion.js` y `js/oficios.js` (los módulos de
+> las páginas de F-036, que ahora son del portal: R74, R75). Siguen sin
+> tocarse los nueve módulos del circuito, `js/api.js`, `js/config.js`,
+> `js/traza.js`, `staticwebapp.config.json`, `dev_server.py` y
+> `dev_front.ps1`.
+
 ### 1.8 · Carga y acceso
 
 - **R34.** `portal.html` debe cumplir el mismo contrato de carga que
@@ -481,6 +531,12 @@ Decisiones D-1, D-2 y D-3 del humano (`design.md` §13.1).
   y las ocho secciones de `Portal.SECCIONES` en su orden y con sus
   etiquetas; y cada enlace de la barra debe ser el que da
   `Portal.enlaceSeccion(id, "portal" | "circuito")`.
+
+  > **Enmienda del 2026-10-05 (R44, R45).** La barra es común a **cuatro**
+  > páginas: el portal, el circuito, `importar.html` y `oficios.html` (R70).
+  > `enlaceSeccion(id, desde)` acepta como `desde`, además de `"portal"` y
+  > `"circuito"`, el nombre de una página de `Portal.PAGINAS`. R45 (barra en
+  > HTML estático) se aplica también a las barras de las dos páginas nuevas.
 - **R45.** La barra superior de `partes.html` debe ser HTML estático: ningún
   atributo que empiece por `x-`, `@` o `:`, y ningún `<script>`, `<button>`,
   `<form>` ni `<input>` dentro de ella.
@@ -488,9 +544,18 @@ Decisiones D-1, D-2 y D-3 del humano (`design.md` §13.1).
   enlace al circuito de la tarjeta de `inicio` o el de la pestaña «Parte» de
   la ficha, el sistema debe llevar a `partes.html` **en la misma pestaña**
   del navegador (enlace sin `target`).
+
+  > **Enmienda del 2026-10-05 (R46).** Igual para los enlaces del portal a
+  > `importar.html` y `oficios.html`, y para los de esas dos páginas a
+  > cualquier otra del front (R73).
 - **R47.** La barra superior de `partes.html` debe decir, de forma visible,
   que las demás pestañas son una maqueta con datos de ejemplo y que se abren
   aparte para no perder la remesa.
+
+  > **Enmienda del 2026-10-05 (R47).** Ya no todas son maqueta. La leyenda
+  > queda así: «Las pestañas con punto ámbar están en construcción y enseñan
+  > datos de ejemplo. Todas se abren aparte, para no perder la remesa.» El
+  > test exige «en construcción», «datos de ejemplo», «aparte» y «remesa».
 
 ### 1.11 · Navegación futura e identidad visual Ruesma (entran el 2026-09-25, segunda ronda)
 
@@ -589,6 +654,148 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
   referencia de `front-portal`), las reglas de R53, R55, R56 y R60, y que en el
   circuito solo se cambian clases (R59).
 
+### 1.12 · El portal en producción tras F-036 (enmienda del 2026-10-05)
+
+Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
+`design.md` §16.1). Diseño: `design.md` §16. Vocabulario de esta sección:
+
+- **Página real**: página del front que funciona de verdad y es parte del
+  portal: `partes.html` (el circuito), `importar.html` y `oficios.html`.
+  Habla con el backend desde sus propios módulos y no carga nada de la
+  maqueta. Las de una sección del portal se declaran en `Portal.PAGINAS`.
+- **Estado de una sección**: `real`, `parcial` o `construccion` (R62).
+- **En construcción**: lo que todavía no funciona y aun así se publica, con
+  datos inventados y placeholders, para que Posventa vea el recorrido
+  completo (opción b). Es lo que antes se llamaba «maqueta».
+
+**Estado y rótulo «En construcción»**
+
+- **R62.** El sistema debe declarar en `Portal.SECCIONES` (`js/portal.js`) el
+  `estado` de cada sección —`real`, `parcial` o `construccion`—, y ese estado
+  debe ser el que dan las fichas de `harness/features.json`: para las secciones
+  que no son `inicio` ni `partes`, `construccion` si ninguna de sus fichas está
+  `done`, `parcial` si lo está alguna y `real` si lo están todas; `inicio`,
+  `real` cuando lo son todas las demás del portal y `parcial` mientras no;
+  `partes` (el circuito, que ya funciona), `parcial` mientras F-045 no esté
+  `done` y `real` cuando lo esté. Hoy: `inicio`, `entrada` y `partes`,
+  `parcial`; `bandeja`, `incidencias`, `impresion`, `economico` y `datos`,
+  `construccion`.
+- **R63.** Todo placeholder (`data-placeholder`) y todo elemento que pinte
+  datos de ejemplo (una directiva que lea `datos.` o `MaquetaDatos`) de
+  `index.html` debe estar **dentro** de un elemento `data-en-construccion`; y
+  cada elemento `data-en-construccion` debe empezar por su rótulo (R65).
+- **R64.** MIENTRAS una sección del portal esté en `construccion`, su bloque
+  `data-seccion` debe tener, después de su cabecera, un único envoltorio
+  `data-en-construccion="<id de la sección>"` con todo su contenido; y SI la
+  sección no está en `construccion`, ENTONCES no debe tener envoltorio de
+  sección: lo que en ella siga sin funcionar va en envoltorios de bloque
+  `data-en-construccion="F-0NN"`, con la ficha que lo construirá (hoy: la web
+  de clientes, F-037, en `entrada`; el registro sin firma, F-045, en la
+  tarjeta «Partes firmados» de `inicio`).
+- **R65.** El rótulo de cada envoltorio `data-en-construccion` debe decir,
+  visible y sin forma de cerrarlo: «En construcción»; que todavía no funciona;
+  que lo que se ve son datos inventados, que no son información real y que no
+  se guarda nada; y qué fichas lo construirán, con su número y su título
+  (`F-0NN · <título>`). El rótulo y el envoltorio no usan el borde discontinuo
+  (reservado a los placeholders, R56) ni el burdeos (reservado a la marca y a
+  lo que funciona).
+- **R66.** En la barra superior de las cuatro páginas que la llevan
+  (`index.html`, `partes.html`, `importar.html` y `oficios.html`), cada
+  pestaña de una sección en `construccion` debe llevar el atributo
+  `data-construccion`, la marca visual de `design.md` §16.4 y el nombre
+  accesible `aria-label="<etiqueta> (en construcción)"`; y ninguna otra
+  pestaña debe llevarlos.
+- **R67.** La portada (`inicio`) no debe enseñar **ninguna cifra** de los
+  datos de ejemplo; cada tarjeta de una sección en `construccion` debe llevar
+  el chip «En construcción», y las de lo que funciona —«Entrada de
+  incidencias» (con enlaces a `importar.html` y `oficios.html`) y «Partes
+  firmados»— el chip «En producción»; y ningún texto visible del portal debe
+  decir «maqueta».
+
+**Importar, bandeja y oficios, secciones reales**
+
+- **R68.** La sección `entrada` del portal debe enlazar, en la misma ventana,
+  a `importar.html` («Importar incidencias») y a `oficios.html` («Oficios
+  repetidos»), cada uno con el chip «En producción» y una frase de lo que
+  hace; no debe quedar en el portal ningún placeholder ni bloque de datos de
+  ejemplo de F-036; y el bloque de la web de clientes debe seguir, dentro de
+  su envoltorio `data-en-construccion="F-037"`.
+- **R69.** El envoltorio de la sección `bandeja` debe decir que la bandeja de
+  una obra ya se puede ver, en solo lectura, en «Importar incidencias», con un
+  enlace a `importar.html#bandeja` en la misma ventana; y en `importar.html`
+  el bloque de la bandeja debe llevar `id="bandeja"`.
+- **R70.** `importar.html` y `oficios.html` deben mostrar, como primer
+  elemento de la página, la barra superior común (R44) en HTML estático (R45),
+  con la marca de R51, las ocho pestañas con los `href` de
+  `Portal.enlaceSeccion(id, "<página>")`, y la pestaña de su sección
+  (`Portal.PAGINAS["<página>"]`, hoy `entrada` para las dos) como
+  `<span aria-current="page">`, sin enlace.
+- **R71.** La cabecera (`<header>`) de `importar.html` y de `oficios.html`
+  debe llevar las migas «Portal de posventa › Entrada» (enlaces a `index.html`
+  y a `./#/entrada`) y la subnavegación de la sección, con «Importar
+  incidencias» y «Oficios repetidos»: la de la página actual como
+  `<span aria-current="page">` y la otra como enlace a su página.
+- **R72.** `importar.html` y `oficios.html` deben llevar la identidad Ruesma:
+  las cuatro `<link>` de `design.md` §15.4 antes de `css/styles.css` (R50);
+  `css/styles.css` con la misma `?v=<versión>` que las demás páginas (R59 e);
+  el `body` con `rs-cuerpo`; y ninguna utilidad de Tailwind de color, fondo,
+  borde, radio, sombra o tipografía (la lista cerrada de `design.md` §16.5),
+  ni en `class` ni en `:class`: el aspecto lo dan las clases `rs-*`.
+- **R73.** Ningún enlace de `index.html`, `importar.html` ni `oficios.html` a
+  otra página del front debe llevar `target`: dentro del portal se navega en
+  la misma ventana. Y todo enlace de `partes.html` a otra página del front
+  debe abrirse aparte (`target="_blank"` y `rel` con `noopener`): el circuito
+  es la única página que guarda trabajo en memoria (R31, R48; R51 de F-036;
+  D4 de F-007).
+
+**Los dos apuntes de la ficha**
+
+- **R74.** CUANDO la respuesta de `POST /api/importaciones` trae
+  `ya_importado: true`, `importar.html` debe presentar los recuentos bajo el
+  rótulo «Resumen de la importación original del <fecha>» —la fecha de
+  `importado_at_utc` en `dd/mm/aaaa`, hora de Madrid— o, SI la respuesta no
+  trae esa fecha o no es una fecha válida, «Resumen de la importación original
+  de este fichero»; nunca como lo que acaba de entrar. Con `ya_importado:
+  false`, el rótulo es «Resumen de esta importación». El texto de los
+  recuentos no cambia (R43 de F-036).
+- **R75.** DONDE la respuesta de `GET /api/catalogos/propuestas` traiga
+  `oficio.distintos` (los pares de oficios de la obra cuya última decisión es
+  «distinto»), `oficios.html` debe enseñar el bloque «Decididos como
+  distintos», con cada par (nombres y códigos) y un botón «Son el mismo» que
+  manda la decisión «mismo» de ese par por el mismo camino que los demás
+  botones (R88 y R89 de F-036: solo desde un clic, deshabilitado sin sesión o
+  mientras se guarda otra, y la pantalla recarga al guardarse); y SI la
+  respuesta no trae `distintos`, ENTONCES el bloque no se pinta y la pantalla
+  funciona como antes.
+- **R76.** La rama de F-035 no debe modificar nada de
+  `services/postventa-api/`: los dos datos que faltan —`importado_at_utc` en
+  la respuesta de importar (R74) y `oficio.distintos` en la de propuestas
+  (R75)— los añade al backend **una ficha aparte** (límite de servicio,
+  `design.md` §16.6). Hasta que esté desplegada, R74 rotula sin fecha y R75 no
+  pinta el bloque.
+
+**Lo real no se mezcla con lo que está en construcción**
+
+- **R77.** Las páginas reales no deben llevar ningún placeholder (clase
+  `placeholder` ni `data-placeholder`) ni ningún envoltorio
+  `data-en-construccion`, ni cargar ningún fichero de la maqueta
+  (`js/maqueta_datos.js`, `js/portal.js`, `js/portal_app.js`,
+  `css/portal.css`).
+
+> **Requisitos enmendados el 2026-10-05, en resumen** (las notas van también
+> en su sitio): **R13** (el aviso habla de «en construcción»); **R17** (el
+> portal enlaza también a las páginas de `Portal.PAGINAS`); **R28** (el
+> escáner cuenta `data-en-construccion="F-0NN"`); **R33** (admite `M` en
+> `js/importacion.js` y `js/oficios.js`); **R44** y **R45** (cuatro páginas
+> con barra; `enlaceSeccion` desde una página); **R46** (misma ventana también
+> hacia y desde `importar.html` y `oficios.html`); **R47** (la leyenda del
+> circuito habla de «en construcción»); **R50, R51, R54 y R60** (se aplican
+> también a `importar.html` y `oficios.html`); **R56** (además, ningún
+> envoltorio «En construcción» usa el discontinuo ni el burdeos, y R77). Y el
+> apartado de contadores de `design.md` §5.1 queda retirado por R67. **No
+> cambian**: R14, R15, R16, R18, R29, R32, R48 y R59 (`design.md` §16.9 dice
+> por qué).
+
 ## 2 · Trazabilidad con la ficha
 
 | Criterio de `acceptance` | Requisitos |
@@ -620,6 +827,16 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 > | (humano, 2026-09-25) El portal y el circuito entero con el estilo del portal Ruesma, «muy bonito y elegante» | R49–R58, R60, R61 |
 > | El circuito de partes actual sigue funcionando igual dentro del portal | además **R59** (sustituye a la parte línea a línea de R30/R43) y R60 |
 > | (humano, 2026-09-25) Cuando las secciones sean reales, todo navega en la misma ventana | R48 |
+
+> **Enmienda del 2026-10-05.** Filas añadidas:
+>
+> | Criterio | Requisitos |
+> |---|---|
+> | (humano, 2026-10-05) Publicar el portal con todas sus secciones; lo que no funciona, marcado «En construcción» y sin que se confunda con lo que funciona | R62–R67, R77; R13 y R47 enmendados; V5 |
+> | (humano, 2026-10-05) Importar, bandeja y oficios, secciones reales del portal con la identidad Ruesma | R68–R73; R17, R44–R46, R50, R51, R54 y R60 extendidos |
+> | (ficha, 2026-10-05) En oficios, «Decididos como distintos» con «Son el mismo» | R75, R76 |
+> | (ficha, 2026-10-05) En importar, el resumen de un fichero ya importado rotulado como de la importación original | R74, R76 |
+> | Ningún placeholder llama a Sigrid, SharePoint ni al correo | sin cambio: R14–R16 siguen siendo de los ficheros de la maqueta; las páginas reales hablan con el backend desde sus módulos (`design.md` §7.3, paso 3) |
 
 ## 3 · Verificación que no cubre un test
 
@@ -704,3 +921,53 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 >   la remesa de prueba lo recorre igual; y el aviso a Posventa dice también
 >   que el circuito **ha cambiado de aspecto, no de funcionamiento** (el botón
 >   principal pasa de verde a burdeos, `design.md` §15.7).
+
+> **Enmienda del 2026-10-05 · V1, V2 y V4 con lo de F-036 y el rótulo, y V5
+> (la parada antes de producción).** Lo de arriba se conserva; esto se
+> **añade**. Orden: V1 y V2 (T12), V5 (la parada) y, tras la review y el
+> merge, V4.
+>
+> - **V1** añade (portal y páginas de Entrada, en local con
+>   `.\dev_front.ps1`, sin `func start`): (g) las cinco pestañas en
+>   construcción llevan su punto y, al pasar con el lector o mirar F12, su
+>   nombre dice «(en construcción)»; cada una de esas secciones empieza por su
+>   recuadro «En construcción» con las fichas que la construirán; la portada
+>   no enseña ninguna cifra; en ningún sitio visible pone «maqueta». (h)
+>   «Entrada» enseña las dos tarjetas «En producción» y el recuadro de la web
+>   de clientes; «Importar incidencias» y «Oficios repetidos» abren **en la
+>   misma pestaña** `importar.html` y `oficios.html`, con la barra (pestaña
+>   «Entrada» marcada), las migas y la subnavegación, y el estilo Ruesma. Sin
+>   backend, esas dos páginas dicen que no hay sesión y no dejan importar ni
+>   decidir: es lo esperado; **no se pulsa nada que escriba**. (i) En la
+>   pestaña Red, el portal (`/`) sigue sin ni una petición a `/api/`; las
+>   peticiones a `/.auth/me` o `/api/…` solo salen de `importar.html` y
+>   `oficios.html`. (j) Desde la sección «Bandeja de revisión», el enlace a la
+>   bandeja en solo lectura lleva a `importar.html`, a su bloque de la bandeja.
+> - **V2** añade (circuito): la barra con los puntos en las cinco pestañas en
+>   construcción y la leyenda nueva; «Entrada» y las demás siguen abriendo el
+>   portal **aparte**; «Importar incidencias» y «Oficios repetidos» de la
+>   cabecera siguen abriéndose aparte; y la remesa en curso sigue donde estaba.
+> - **V5 · MANUAL (humano), PARADA antes de producción** (nueva; `design.md`
+>   §16.12): con la rama ya aprobada por el reviewer, el humano ve **el portal
+>   entero** en el entorno de vista previa (`infra/publicar_maqueta.ps1`,
+>   guion de `docs/DESPLIEGUE.md` §10) —o en local, si así lo decide (D-14)—:
+>   las ocho pestañas, cada recuadro «En construcción», la portada, las dos
+>   páginas de Entrada y el circuito. Allí no hay backend enlazado: importar y
+>   oficios enseñan el error del servicio, y es lo esperado. Si algo se puede
+>   confundir con algo que funciona, **no se publica**: se anota y se vuelve a
+>   proponer. Después, `-Retirar`. Su respuesta, literal y fechada, en
+>   `progress/current.md`.
+> - **V4** añade (tras publicar con `desplegar_front.ps1 -SoloFront`): (e) las
+>   cuatro páginas con `Ctrl+F5`, con la barra, los puntos y los recuadros;
+>   (f) en «Importar incidencias», la bandeja de una obra se ve (solo
+>   lectura) y, **solo si se tiene a mano el mismo fichero ya importado, sin
+>   abrirlo ni volver a guardarlo**, importarlo otra vez enseña «Este fichero
+>   ya se había importado…» bajo el rótulo «Resumen de la importación
+>   original…» (ese camino no escribe nada, R39 de F-036; con la menor duda
+>   sobre el fichero, este paso no se hace); (g) en «Oficios repetidos», las
+>   listas de una obra se ven; el bloque «Decididos como distintos» solo sale
+>   cuando la ficha de backend de R76 esté desplegada, y **ninguna decisión se
+>   toma en V4**: deshacer el primer caso real lo decide Posventa; (h) el
+>   aviso a Posventa (texto propuesto en `design.md` §16.12): qué funciona,
+>   qué está en construcción y cómo se reconoce, y que el circuito sigue en
+>   «Partes firmados».

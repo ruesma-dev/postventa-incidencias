@@ -12,11 +12,12 @@
 //   ESTADOS        los cinco estados de conest, por código y resumen (R21)
 //   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46)
 //   enConstruccion                          si una sección está en construcción (R62, R66)
+//   fichasDeSeccion                         las fichas que nombra su rótulo (R65)
 //   textoPlaceholder / seleccionadasPara    el aviso de un placeholder (R11, R12)
 //   filtrarIncidencias / filtrarBandeja / alternarSeleccion   solo en pantalla (R19, R20)
 //   etiquetaEstado / formatoImporte / etiquetaCatalogo        cómo se enseña (R21, R22, R39)
 //   resumenVolcado / etiquetaEstadoVolcado                    el panel de volcado (R40)
-//   contadoresInicio / buscarPorId                            inicio y fichas (§5.1, R6)
+//   buscarPorId                                               abrir una ficha o un detalle (R6)
 //
 // La regla de retirada (`design.md` §7.3): cuando una ficha F-0NN construya su
 // pieza, borra aquí sus entradas de PLACEHOLDERS en el mismo trabajo. Cada
@@ -73,9 +74,11 @@
 
   /**
    * El título de cada ficha del ciclo, tal como está en `harness/features.json`,
-   * para el aviso de R11 («lo construye F-0NN · <título>»). La maqueta no lee
-   * `features.json`: por eso se copia aquí. La última ficha que retire sus
-   * placeholders borra también este mapa (`design.md` §7.3).
+   * para el aviso de R11 («lo construye F-0NN · <título>») y para el rótulo de
+   * los recuadros «En construcción» (R65, `fichasDeSeccion`). La maqueta no
+   * lee `features.json`: por eso se copia aquí. Solo guarda las fichas por
+   * construir: la que se cierra borra aquí su título en el mismo trabajo, y la
+   * última borra también este mapa (`design.md` §7.3).
    */
   const TITULOS_FICHAS = Object.freeze({
     "F-037": "Entrada desde la web de clientes: el contrato con el proyecto independiente",
@@ -289,7 +292,7 @@
   const SECCION_POR_DEFECTO = "inicio";
   const AVISO_INCIDENCIA_INEXISTENTE = "Esa incidencia no existe en los datos de ejemplo";
   const TEXTO_PLACEHOLDER_DESCONOCIDO =
-    "Todavía no hace nada: esta acción de la maqueta no está en el catálogo de placeholders.";
+    "Todavía no hace nada: esta acción está en construcción.";
   const TEXTO_TIPO_PENDIENTE = "Pendiente: qué es y cuándo se usa";
   const SIN_COMPLETAR = "sin completar";
   const SIN_ENLAZAR = "sin enlazar";
@@ -377,6 +380,22 @@
   function enConstruccion(id) {
     const seccion = seccionPorId(id);
     return seccion !== null && seccion.estado === "construccion";
+  }
+
+  /**
+   * Las fichas que nombra el rótulo del recuadro «En construcción» de una
+   * sección (R65, `design.md` §16.4): «La construirán: F-0NN · <título>».
+   * Las de su entrada de SECCIONES, en su orden, que tienen título en
+   * TITULOS_FICHAS; una ficha ya hecha no lo tiene (su título se borra al
+   * cerrarla, §7.3) y no se nombra. Lista nueva en cada llamada; un id
+   * desconocido → `[]`, nunca lanza.
+   */
+  function fichasDeSeccion(id) {
+    const seccion = seccionPorId(id);
+    if (!seccion) return [];
+    return seccion.fichas
+      .filter(function (ficha) { return Object.prototype.hasOwnProperty.call(TITULOS_FICHAS, ficha); })
+      .map(function (ficha) { return { ficha: ficha, titulo: TITULOS_FICHAS[ficha] }; });
   }
 
   // ── Placeholders ──────────────────────────────────────────────────────────
@@ -524,27 +543,6 @@
     return entrada ? entrada.etiqueta : String(estado);
   }
 
-  // ── Inicio (§5.1) ─────────────────────────────────────────────────────────
-
-  function contar(filas, estados) {
-    return (filas || []).filter(function (fila) { return estados.indexOf(fila.estado) !== -1; }).length;
-  }
-
-  /** Los contadores de las tarjetas del ciclo, calculados de los datos. */
-  function contadoresInicio(datos) {
-    const d = datos || {};
-    const bandeja = (d.bandeja && d.bandeja.filas) || [];
-    const incidencias = (d.incidencias && d.incidencias.filas) || [];
-    const capitulos = (d.capitulos && d.capitulos.filas) || [];
-    return {
-      entradasPorRevisar: contar(bandeja, ["nueva"]),
-      aprobadasSinVolcar: contar(bandeja, ["aprobada"]),
-      incidenciasAbiertas: contar(incidencias, ["SAT", "PTE"]),
-      terminadasSinCerrar: contar(incidencias, ["TER"]),
-      costeDelAno: capitulos.reduce(function (total, c) { return total + (Number(c.coste) || 0); }, 0),
-    };
-  }
-
   const Portal = {
     SECCIONES: SECCIONES,
     PAGINAS: PAGINAS,
@@ -555,6 +553,7 @@
     hashDe: hashDe,
     enlaceSeccion: enlaceSeccion,
     enConstruccion: enConstruccion,
+    fichasDeSeccion: fichasDeSeccion,
     placeholderPorId: placeholderPorId,
     seleccionadasPara: seleccionadasPara,
     textoPlaceholder: textoPlaceholder,
@@ -567,7 +566,6 @@
     etiquetaCatalogo: etiquetaCatalogo,
     resumenVolcado: resumenVolcado,
     etiquetaEstadoVolcado: etiquetaEstadoVolcado,
-    contadoresInicio: contadoresInicio,
   };
 
   if (typeof window !== "undefined") {

@@ -16,6 +16,15 @@
 //   Las barras de `importar.html` y `oficios.html` entran en los bloques 10 y
 //   11 (`PAGINAS_CON_BARRA` crece entonces).
 //
+// Bloque 9 (`tasks.md`, T27):
+//
+// - **R65**: `Portal.fichasDeSeccion(id)`, las fichas que nombra el rótulo de
+//   un recuadro de sección, y lo que el componente le da al rótulo
+//   (`fichasDeSeccion`, `titulos`).
+// - **R67**: fuera los contadores de la portada, y ningún texto que pinta el
+//   portal (catálogo de placeholders, su aviso —también el genérico—, los
+//   títulos de las fichas y los datos de ejemplo) dice «maqueta».
+//
 // El módulo se carga DENTRO de cada test, como en `portal.test.js`: en la
 // fase RED un `require` de cabecera tumbaría el fichero entero sin nombre de
 // requisito.
@@ -221,4 +230,143 @@ test("f035 R66: control: marcar una pestaña que funciona, o cambiar su aria-lab
     problemasR66(otraEtiqueta, Portal).some((p) => p.startsWith("«Coste y venta»: aria-label")),
     "un aria-label sin «(en construcción)» tiene que saltar",
   );
+});
+
+// ── Bloque 9 · El rótulo «En construcción» (R65) y la portada (R67) ─────────
+//
+// `Portal.fichasDeSeccion(id)` (`design.md` §16.8) da al rótulo de cada
+// recuadro de sección la lista «La construirán: F-0NN · <título>». Salen de
+// `TITULOS_FICHAS`, que guarda solo las fichas por construir (la que se
+// cierra borra su título, `design.md` §7.3): por eso una ficha de la sección
+// sin título —F-036 en `entrada`, ya `done`— no se lista.
+
+/** El componente del portal con un `window` mínimo, sin red ni hash. */
+function componente() {
+  const previo = global.window;
+  global.window = {
+    Portal: portal(),
+    MaquetaDatos: require("../js/maqueta_datos.js"),
+    location: { hash: "" },
+    addEventListener() {},
+  };
+  try {
+    return require("../js/portal_app.js")();
+  } finally {
+    if (previo === undefined) delete global.window;
+    else global.window = previo;
+  }
+}
+
+test("f035 R65: fichasDeSeccion da cada ficha de la sección con su título, en su orden", () => {
+  const { fichasDeSeccion, TITULOS_FICHAS } = portal();
+
+  assert.deepEqual(fichasDeSeccion("bandeja"), [
+    { ficha: "F-038", titulo: TITULOS_FICHAS["F-038"] },
+    { ficha: "F-039", titulo: TITULOS_FICHAS["F-039"] },
+    { ficha: "F-040", titulo: TITULOS_FICHAS["F-040"] },
+    { ficha: "F-043", titulo: TITULOS_FICHAS["F-043"] },
+  ]);
+  assert.deepEqual(fichasDeSeccion("impresion"), [{ ficha: "F-044", titulo: TITULOS_FICHAS["F-044"] }]);
+  assert.equal(
+    fichasDeSeccion("datos")[0].titulo,
+    "Los datos de posventa al datamart",
+    "el título es el de features.json, copiado en TITULOS_FICHAS",
+  );
+});
+
+test("f035 R65: fichasDeSeccion no lista una ficha ya hecha (sin título en TITULOS_FICHAS)", () => {
+  const { fichasDeSeccion } = portal();
+
+  assert.deepEqual(
+    fichasDeSeccion("entrada").map((f) => f.ficha),
+    ["F-037"],
+    "F-036 está done: importar y oficios funcionan y no «la construirán»",
+  );
+  assert.deepEqual(fichasDeSeccion("inicio"), [], "inicio no tiene fichas propias");
+});
+
+test("f035 R65: cada sección en construcción tiene al menos una ficha que nombrar", () => {
+  const { SECCIONES, fichasDeSeccion } = portal();
+
+  for (const seccion of SECCIONES.filter((s) => s.estado === "construccion")) {
+    const fichas = fichasDeSeccion(seccion.id);
+    assert.ok(fichas.length > 0, `«${seccion.id}» está en construcción y su rótulo no nombraría ninguna ficha`);
+    assert.deepEqual(
+      fichas.map((f) => f.ficha),
+      seccion.fichas,
+      `«${seccion.id}»: todas sus fichas, en su orden`,
+    );
+    for (const f of fichas) assert.ok(f.titulo && f.titulo.trim(), `${f.ficha} sin título`);
+  }
+});
+
+test("f035 R65: fichasDeSeccion con un id desconocido o raro devuelve [] y no lanza", () => {
+  const { fichasDeSeccion } = portal();
+
+  for (const raro of ["no-existe", "", undefined, null, 42, "BANDEJA"]) {
+    assert.deepEqual(fichasDeSeccion(raro), [], `fichasDeSeccion(${JSON.stringify(raro)})`);
+  }
+});
+
+test("f035 R65: fichasDeSeccion devuelve una lista nueva cada vez (el rótulo no puede tocar el catálogo)", () => {
+  const { fichasDeSeccion, SECCIONES } = portal();
+
+  const una = fichasDeSeccion("economico");
+  una.push({ ficha: "F-999", titulo: "x" });
+  assert.deepEqual(fichasDeSeccion("economico").map((f) => f.ficha), ["F-046", "F-047"]);
+  assert.deepEqual(SECCIONES.find((s) => s.id === "economico").fichas, ["F-046", "F-047"]);
+});
+
+test("f035 R65: el componente da al rótulo fichasDeSeccion y los títulos, delegando en Portal", () => {
+  const c = componente();
+  const Portal = portal();
+
+  assert.deepEqual(c.fichasDeSeccion("bandeja"), Portal.fichasDeSeccion("bandeja"));
+  assert.deepEqual(c.fichasDeSeccion("no-existe"), []);
+  assert.equal(c.titulos, Portal.TITULOS_FICHAS, "los recuadros de bloque leen titulos['F-0NN']");
+  assert.equal(c.titulos["F-037"], Portal.TITULOS_FICHAS["F-037"]);
+  assert.equal(c.titulos["F-045"], Portal.TITULOS_FICHAS["F-045"]);
+});
+
+test("f035 R67: la portada ya no tiene contadores: fuera contadoresInicio y contadores()", () => {
+  const Portal = portal();
+  const c = componente();
+
+  assert.equal(Portal.contadoresInicio, undefined, "fuera Portal.contadoresInicio (design.md §16.5)");
+  assert.equal(c.contadores, undefined, "fuera contadores() del componente");
+});
+
+/** Todos los textos (cadenas) de un valor, recorriendo objetos y listas. */
+function textosDe(valor, ruta, lista) {
+  if (typeof valor === "string") lista.push([ruta, valor]);
+  else if (valor && typeof valor === "object") {
+    for (const [k, v] of Object.entries(valor)) textosDe(v, `${ruta}.${k}`, lista);
+  }
+  return lista;
+}
+
+test("f035 R67: ningún texto que pinta el portal dice «maqueta»", () => {
+  const Portal = portal();
+  const datos = require("../js/maqueta_datos.js");
+
+  const textos = [
+    ...textosDe(Portal.PLACEHOLDERS, "PLACEHOLDERS", []),
+    ...textosDe(Portal.TITULOS_FICHAS, "TITULOS_FICHAS", []),
+    ...textosDe(datos, "MaquetaDatos", []),
+    ...Portal.PLACEHOLDERS.map((p) => [`textoPlaceholder(${p.id})`, Portal.textoPlaceholder(p.id, { seleccionadas: 2 })]),
+    ["textoPlaceholder (genérico)", Portal.textoPlaceholder("no.existe")],
+    ["textoPlaceholder (sin id)", Portal.textoPlaceholder(undefined)],
+  ];
+  const conMaqueta = textos.filter(([, t]) => /maqueta/i.test(t));
+
+  assert.ok(textos.length > 100, `el recorrido ve los textos (${textos.length})`);
+  assert.deepEqual(conMaqueta, [], "en producción la palabra es «en construcción» (R67)");
+});
+
+test("f035 R67: el texto genérico de un placeholder desconocido dice que está en construcción", () => {
+  const { textoPlaceholder } = portal();
+
+  const aviso = textoPlaceholder("no.existe");
+  assert.match(aviso, /^Todavía no hace nada/);
+  assert.match(aviso, /en construcción/);
 });

@@ -964,57 +964,12 @@ for (const [pagina, modo] of [
 
 // ── Bloque 3 (T6) · Funciones puras que usa el componente ──────────────────
 //
-// Añadidos en T6, con su fase RED: `contadoresInicio` es de `design.md` §8.1
-// y no tenía test (informe del bloque 2, §2.15); `seleccionadasPara` y
-// `buscarPorId` sacan del pegamento (`portal_app.js`) las dos únicas
-// decisiones que tomaría: qué selección cuenta un placeholder en bloque (R12)
-// y qué fila se abre. Regla de oro de §8.2: si algo merece un test, no vive
-// en el componente.
-
-test("f035 §5.1: contadoresInicio cuenta cada fase del ciclo desde los datos", () => {
-  const { contadoresInicio } = portal();
-  const datosInventados = {
-    bandeja: {
-      filas: [
-        { id: "B1", estado: "nueva" },
-        { id: "B2", estado: "nueva" },
-        { id: "B3", estado: "editada" },
-        { id: "B4", estado: "aprobada" },
-        { id: "B5", estado: "volcada" },
-      ],
-    },
-    incidencias: {
-      filas: [
-        { id: "EJ-0001", estado: "SAT" },
-        { id: "EJ-0002", estado: "PTE" },
-        { id: "EJ-0003", estado: "PTE" },
-        { id: "EJ-0004", estado: "TER" },
-        { id: "EJ-0005", estado: "NPR" },
-        { id: "EJ-0006", estado: "CER" },
-      ],
-    },
-    capitulos: { filas: [{ coste: 100 }, { coste: 25.5 }, { coste: 0 }] },
-  };
-
-  assert.deepEqual(contadoresInicio(datosInventados), {
-    entradasPorRevisar: 2,
-    aprobadasSinVolcar: 1,
-    incidenciasAbiertas: 3,
-    terminadasSinCerrar: 1,
-    costeDelAno: 125.5,
-  });
-});
-
-test("f035 §5.1: contadoresInicio sobre los datos de ejemplo no se escribe a mano", () => {
-  const { contadoresInicio } = portal();
-  const d = datos();
-
-  const c = contadoresInicio(d);
-
-  assert.equal(c.entradasPorRevisar, d.bandeja.filas.filter((f) => f.estado === "nueva").length);
-  assert.equal(c.incidenciasAbiertas, d.incidencias.filas.filter((f) => ["SAT", "PTE"].includes(f.estado)).length);
-  assert.ok(c.incidenciasAbiertas > 0 && c.terminadasSinCerrar > 0, "los datos de ejemplo enseñan las dos fases");
-});
+// Añadidos en T6, con su fase RED: `seleccionadasPara` y `buscarPorId` sacan
+// del pegamento (`portal_app.js`) las dos únicas decisiones que tomaría: qué
+// selección cuenta un placeholder en bloque (R12) y qué fila se abre. Regla de
+// oro de §8.2: si algo merece un test, no vive en el componente.
+// (`contadoresInicio` y sus dos tests salieron en el bloque 9: la portada ya
+// no enseña cifras, R67; su retirada la prueba `f035_paginas.test.js`.)
 
 test("f035 R12: seleccionadasPara cuenta la selección de la sección del placeholder", () => {
   const { seleccionadasPara } = portal();

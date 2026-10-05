@@ -126,7 +126,7 @@
       ficha: "F-037",
       origen: "Web",
       pendientes: [
-        "Pendiente: contrato de entrada, bloqueado por la web de clientes y por la importación del Excel",
+        "Pendiente: contrato de entrada, bloqueado por la web de clientes",
       ],
     },
 

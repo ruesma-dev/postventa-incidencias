@@ -27,6 +27,9 @@ function portalPosventa() {
     datos: datos,
     secciones: Portal.SECCIONES,
     estados: Portal.ESTADOS,
+    // Los títulos de las fichas, para el rótulo de los recuadros de bloque
+    // (`titulos['F-0NN']`, R65).
+    titulos: Portal.TITULOS_FICHAS,
 
     // Dónde está el usuario (R4-R7).
     seccion: "inicio",
@@ -160,11 +163,13 @@ function portalPosventa() {
       this.capituloAbierto = null;
     },
 
-    // ── Cómo se enseña cada dato (R21, R22, R39, R40) ──────────────────────
+    // ── El rótulo «En construcción» (R65) ──────────────────────────────────
 
-    contadores() {
-      return Portal.contadoresInicio(datos);
+    fichasDeSeccion(id) {
+      return Portal.fichasDeSeccion(id);
     },
+
+    // ── Cómo se enseña cada dato (R21, R22, R39, R40) ──────────────────────
 
     etiquetaEstado(cod) {
       return Portal.etiquetaEstado(cod);

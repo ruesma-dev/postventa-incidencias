@@ -43,6 +43,20 @@ Bloque 17 (`tasks.md`, T46, ajuste del 2026-10-05):
   `text-red-800` en el aviso de fallo del autoguardado. Los `:class` (los
   colores de estado del circuito) no entran.
 
+Bloque 9 (`tasks.md`, T27):
+
+- **R63–R65**, los recuadros «En construcción» de `index.html`: todo
+  placeholder y toda directiva que lea datos de ejemplo va dentro de un
+  `data-en-construccion`; cada sección en `construccion` tiene su envoltorio
+  y ninguna otra; cada envoltorio empieza por su rótulo, que dice lo que
+  exige R65 y nombra sus fichas.
+- **R56 ampliado**: ningún envoltorio usa el discontinuo ni el burdeos.
+- **R67**, la portada sin cifras, con su chip por tarjeta, y ningún texto
+  visible del portal que diga «maqueta».
+- **R69**: la bandeja enlaza a `importar.html#bandeja`, que existe.
+- Review del bloque 7, **H-3** (R68): la estructura cerrada de `entrada`; y
+  **H-5**: ninguna clase de `css/portal.css` sin uso en el portal.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -797,3 +811,600 @@ def test_f035_h16_7_control_el_x_data_cambiado_deja_el_selector_sin_elemento():
     copia = real.replace('x-data="appPostventa()"', 'x-data="appPostventaV2()"')
 
     assert elementos_del_selector(GUARDA_SALIDA.read_text(encoding="utf-8"), copia) == 0
+
+
+# --- Bloque 9 · Los recuadros «En construcción» y la portada sin cifras ----------
+#
+# `design.md` §16.4 (D-12, el rótulo en tres capas): la capa 1 es la barra
+# (R66, bloque 8); aquí van la 2 —todo lo inventado dentro de un envoltorio
+# `data-en-construccion` que empieza por su rótulo (R63-R65)— y la 3 —la
+# portada sin cifras, con su chip por tarjeta, y sin la palabra «maqueta»
+# (R67)—. El riesgo que el humano aceptó con la opción (b) es que alguien tome
+# lo inventado por real: estas guardias no dejan que un recuadro falte, sobre
+# o se vista de lo que funciona.
+
+PORTAL_JS_TEXTO = PORTAL_JS.read_text(encoding="utf-8")
+PORTAL_APP_RUTA = RAIZ_FRONT / "js" / "portal_app.js"
+IMPORTAR = RAIZ_FRONT / "importar.html"
+
+_ESTADO_DE_SECCION = re.compile(r"""\{\s*id:\s*"([a-z]+)",[^}]*?\bestado:\s*"([a-z]*)"[^}]*\}""")
+_TITULOS_FICHAS = re.compile(r"TITULOS_FICHAS\s*=\s*Object\.freeze\(\{(?P<cuerpo>.*?)\}\)", re.DOTALL)
+_FICHA = re.compile(r"^F-\d{3}$")
+
+#: Las frases que todo rótulo dice (R65, `design.md` §16.10).
+FRASES_DEL_ROTULO = ("En construcción", "no funciona", "inventados", "no es información real", "no se guarda")
+
+#: Los recuadros de bloque de hoy (R64): {ficha: sección donde va}.
+ENVOLTORIOS_DE_BLOQUE = {"F-037": "entrada", "F-045": "inicio"}
+
+#: R67: las tarjetas de la portada, por su chip (`design.md` §16.5).
+TARJETAS_EN_PRODUCCION = ("Entrada de incidencias", "Partes firmados")
+TARJETAS_EN_CONSTRUCCION = ("#/bandeja", "#/incidencias", "#/economico")
+CEJA_DE_INICIO = "Posventa"
+ENTRADILLA_DE_INICIO = (
+    "El portal de posventa. Funcionan ya la entrada de incidencias (importar el Excel de la "
+    "obra y los oficios repetidos) y el circuito de partes firmados. El resto del ciclo está "
+    "en construcción: lo enseñamos con datos inventados para que veáis cómo será."
+)
+
+#: Los prefijos de atributo que son directivas de Alpine.
+_DIRECTIVA = re.compile(r"^(?:x-|:|@)")
+_LEE_DATOS = re.compile(r"\bdatos\.|\bMaquetaDatos\b")
+
+
+def estados_de_secciones(texto: str = PORTAL_JS_TEXTO) -> dict[str, str]:
+    """`{id: estado}` de `Portal.SECCIONES`, leído como texto (R62)."""
+    return dict(_ESTADO_DE_SECCION.findall(texto))
+
+
+def titulos_de_fichas(texto: str = PORTAL_JS_TEXTO) -> set[str]:
+    """Las fichas con título en `Portal.TITULOS_FICHAS`, leído como texto."""
+    encontrado = _TITULOS_FICHAS.search(texto)
+    assert encontrado is not None, "no se encuentra TITULOS_FICHAS = Object.freeze({...}) en js/portal.js"
+    return set(re.findall(r"""["'](F-\d{3})["']\s*:""", encontrado["cuerpo"]))
+
+
+def envoltorios(doc) -> list:
+    return [e for e in doc.elementos() if "data-en-construccion" in e.atributos]
+
+
+def _hijos(nodo) -> list:
+    return [h for h in nodo.hijos if not isinstance(h, str)]
+
+
+def _en_envoltorio(nodo) -> bool:
+    return any("data-en-construccion" in a.atributos for a in nodo.ancestros())
+
+
+def _describe(nodo) -> str:
+    atributos = " ".join(f'{k}="{v}"' for k, v in nodo.atributos.items())
+    return f"<{nodo.nombre} {atributos}>"
+
+
+# R63 · Todo lo inventado va dentro de un recuadro
+
+
+def fuera_de_envoltorio(html: str) -> list[str]:
+    """Placeholders y directivas que leen datos de ejemplo fuera de un `data-en-construccion` (R63). Vacío = correcto."""
+    problemas = []
+    for e in leer_html_texto(html).elementos():
+        if _en_envoltorio(e) or "data-en-construccion" in e.atributos:
+            continue
+        if "data-placeholder" in e.atributos:
+            problemas.append(f"placeholder fuera de un recuadro: {_describe(e)}")
+        for nombre, valor in e.atributos.items():
+            if _DIRECTIVA.match(nombre) and _LEE_DATOS.search(valor):
+                problemas.append(f"datos de ejemplo fuera de un recuadro: {nombre}=\"{valor}\"")
+    return problemas
+
+
+def test_f035_r63_todo_lo_inventado_esta_dentro_de_un_recuadro():
+    problemas = fuera_de_envoltorio(PORTAL.read_text(encoding="utf-8"))
+
+    assert problemas == [], "R63: lo que no funciona va dentro de su recuadro «En construcción»:\n" + "\n".join(problemas)
+
+
+ESTROPEOS_R63 = {
+    # Mutación manual 18 (`design.md` §16.10), como control permanente.
+    "un placeholder sale de su recuadro": (
+        '<main class="rs-contenedor rs-principal flex-1">',
+        '<main class="rs-contenedor rs-principal flex-1">\n'
+        '<button type="button" data-placeholder="F-044" @click="placeholder(\'impresion.imprimir\')" '
+        'class="placeholder">Imprimir <span class="placeholder-ficha">F-044</span></button>',
+    ),
+    "un x-text de datos fuera": (
+        '<main class="rs-contenedor rs-principal flex-1">',
+        '<main class="rs-contenedor rs-principal flex-1">\n<p x-text="datos.impresion.plantilla"></p>',
+    ),
+    "un x-for de datos fuera": (
+        "</main>",
+        '<template x-for="o in datos.obras.filas" :key="o.cod"><p x-text="o.res"></p></template>\n</main>',
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R63))
+def test_f035_r63_control_lo_inventado_fuera_de_su_recuadro_salta(caso):
+    viejo, nuevo = ESTROPEOS_R63[caso]
+    real = PORTAL.read_text(encoding="utf-8")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo}"
+
+    assert fuera_de_envoltorio(real.replace(viejo, nuevo)) != [], f"R63 no ve «{caso}»"
+
+
+# R64 · Un recuadro por sección en construcción, y ninguno de más
+
+
+def problemas_r64(html: str, estados: dict[str, str]) -> list[str]:
+    """Lo que `html` incumple de R64 con esos estados de sección. Vacío = correcto."""
+    doc = leer_html_texto(html)
+    problemas = []
+    for id_seccion, estado in estados.items():
+        if id_seccion == "partes":
+            continue
+        bloque = seccion(doc, id_seccion)
+        propios = envoltorios(bloque)
+        de_seccion = [e for e in propios if e.atributos["data-en-construccion"] == id_seccion]
+        if estado == "construccion":
+            hijos = _hijos(bloque)
+            if hijos and hijos[0].nombre == "header":
+                hijos = hijos[1:]
+            if len(hijos) != 1 or hijos[0] not in de_seccion:
+                problemas.append(
+                    f"«{id_seccion}» está en construcción: tras su cabecera va un único "
+                    f'data-en-construccion="{id_seccion}" con todo su contenido (hay {[_describe(h) for h in hijos]})'
+                )
+            if len(propios) != 1:
+                problemas.append(f"«{id_seccion}»: {len(propios)} recuadros dentro; solo el suyo")
+        else:
+            if de_seccion:
+                problemas.append(f"«{id_seccion}» no está en construcción y lleva recuadro de sección")
+            raros = [
+                e.atributos["data-en-construccion"] for e in propios
+                if not _FICHA.match(e.atributos["data-en-construccion"])
+            ]
+            if raros:
+                problemas.append(f"«{id_seccion}»: lo que no funciona va en recuadros de bloque F-0NN, no {raros}")
+    for e in envoltorios(doc):
+        valor = e.atributos["data-en-construccion"]
+        dentro = [a.atributos.get("data-seccion") for a in e.ancestros() if "data-seccion" in a.atributos]
+        if not _FICHA.match(valor) and dentro != [valor]:
+            problemas.append(f'data-en-construccion="{valor}" fuera de su sección ({dentro})')
+    return problemas
+
+
+def test_f035_r64_cada_seccion_en_construccion_tiene_su_recuadro_y_solo_ella():
+    problemas = problemas_r64(PORTAL.read_text(encoding="utf-8"), estados_de_secciones())
+
+    assert problemas == [], "R64:\n" + "\n".join(problemas)
+
+
+def test_f035_r64_los_recuadros_de_bloque_son_los_de_la_web_de_clientes_y_el_parte_sin_firma():
+    doc = leer_html(PORTAL)
+    de_bloque = {
+        e.atributos["data-en-construccion"]: [
+            a.atributos["data-seccion"] for a in e.ancestros() if "data-seccion" in a.atributos
+        ]
+        for e in envoltorios(doc) if _FICHA.match(e.atributos["data-en-construccion"])
+    }
+
+    assert de_bloque == {f: [s] for f, s in ENVOLTORIOS_DE_BLOQUE.items()}, de_bloque
+    assert set(ENVOLTORIOS_DE_BLOQUE) <= titulos_de_fichas(), "cada recuadro de bloque nombra una ficha con título"
+    sin_firma = next(e for e in envoltorios(doc) if e.atributos["data-en-construccion"] == "F-045")
+    tarjeta = _tarjeta(sin_firma)
+    assert tarjeta is not None and "Partes firmados" in tarjeta.texto(), "el de F-045 va en la tarjeta «Partes firmados»"
+    assert [e.atributos["data-placeholder"] for e in sin_firma.elementos() if "data-placeholder" in e.atributos] == ["F-045"]
+
+
+def test_f035_r64_control_una_seccion_que_deja_de_estar_en_construccion_sobra():
+    """Control: con `bandeja` declarada `parcial` (en memoria), su recuadro de sección sobra y salta."""
+    estados = {**estados_de_secciones(), "bandeja": "parcial"}
+
+    problemas = problemas_r64(PORTAL.read_text(encoding="utf-8"), estados)
+    assert any("«bandeja» no está en construcción" in p for p in problemas), problemas
+
+
+def test_f035_r64_control_un_recuadro_que_falta_o_que_no_lo_envuelve_todo_salta():
+    real = PORTAL.read_text(encoding="utf-8")
+    sin_recuadro = real.replace('data-en-construccion="datos"', 'data-sin-recuadro="datos"')
+    assert sin_recuadro != real, "el control no encuentra el recuadro de datos"
+    assert any("«datos» está en construcción" in p for p in problemas_r64(sin_recuadro, estados_de_secciones()))
+
+    viejo = '<section data-seccion="impresion" x-show="seccion === \'impresion\'" x-cloak class="rs-seccion">'
+    assert real.count(viejo) == 1, "el control no encuentra la sección impresion"
+    con_intruso = real.replace(viejo, viejo + '\n<header class="rs-cabecera-seccion"></header><p>suelto</p>')
+    assert any("«impresion» está en construcción" in p for p in problemas_r64(con_intruso, estados_de_secciones()))
+
+
+# R65 · El rótulo: primero, visible, sin forma de cerrarlo, y lo dice todo
+
+_CERRABLE = ("x-show", "x-if", ":hidden", "x-bind:hidden", "hidden")
+
+
+def problemas_r65(html: str) -> list[str]:
+    """Lo que los rótulos de `html` incumplen de R65 (y de R63: el envoltorio empieza por él). Vacío = correcto."""
+    problemas = []
+    titulos = titulos_de_fichas()
+    for e in envoltorios(leer_html_texto(html)):
+        valor = e.atributos["data-en-construccion"]
+        hijos = _hijos(e)
+        if not hijos or "rs-obras__rotulo" not in clases(hijos[0]):
+            problemas.append(f'data-en-construccion="{valor}" no empieza por su rótulo (.rs-obras__rotulo)')
+            continue
+        rotulo = hijos[0]
+        texto = rotulo.texto()
+        problemas += [f"el rótulo de «{valor}» no dice «{f}»: «{texto}»" for f in FRASES_DEL_ROTULO if f not in texto]
+        chips = [c for c in rotulo.elementos() if "rs-chip" in clases(c)]
+        if [c.texto() for c in chips] != ["En construcción"] or "rs-chip--atencion" not in clases(chips[0]):
+            problemas.append(f"el rótulo de «{valor}» lleva un único chip rs-chip--atencion «En construcción»")
+        for nodo in [e, rotulo, *rotulo.elementos()]:
+            cerrable = [a for a in nodo.atributos if a in _CERRABLE]
+            if nodo.nombre == "button" or cerrable:
+                problemas.append(f"el rótulo de «{valor}» se podría cerrar o esconder: {_describe(nodo)}")
+        if _FICHA.match(valor):
+            ligado = [
+                n for n in rotulo.elementos()
+                if n.atributos.get("x-text", "").replace('"', "'") == f"titulos['{valor}']"
+            ]
+            if valor not in texto or not ligado or valor not in titulos:
+                problemas.append(f"el rótulo de «{valor}» nombra su ficha y su título (titulos['{valor}'])")
+        else:
+            bucles = [
+                n for n in rotulo.elementos()
+                if n.nombre == "template" and re.fullmatch(
+                    rf"""\s*\w+\s+in\s+fichasDeSeccion\(\s*['"]{valor}['"]\s*\)\s*""", n.atributos.get("x-for", "")
+                )
+            ]
+            if len(bucles) != 1:
+                problemas.append(f"el rótulo de «{valor}» lista sus fichas con x-for de fichasDeSeccion('{valor}')")
+    return problemas
+
+
+def test_f035_r65_cada_recuadro_empieza_por_un_rotulo_que_lo_dice_todo():
+    problemas = problemas_r65(PORTAL.read_text(encoding="utf-8"))
+
+    assert problemas == [], "R65:\n" + "\n".join(problemas)
+
+
+def test_f035_r65_hay_un_recuadro_por_cada_seccion_en_construccion_y_los_de_bloque():
+    """Que `problemas_r65` mire algo: los recuadros que hay son los que tiene que haber."""
+    en_construccion = {s for s, e in estados_de_secciones().items() if e == "construccion"}
+
+    valores = sorted(e.atributos["data-en-construccion"] for e in envoltorios(leer_html(PORTAL)))
+    assert valores == sorted(en_construccion | set(ENVOLTORIOS_DE_BLOQUE))
+
+
+ESTROPEOS_R65 = {
+    "sin «no se guarda»": ("no es información real y no se guarda nada.", "no es información real."),
+    "un botón para cerrarlo": (
+        '<div class="rs-obras__rotulo">',
+        '<div class="rs-obras__rotulo"><button type="button" data-local @click="x = 1">Cerrar</button>',
+    ),
+    "un x-show en el rótulo": ('<div class="rs-obras__rotulo">', '<div class="rs-obras__rotulo" x-show="verRotulo">'),
+    "el rótulo no va primero": ('<div class="rs-obras__rotulo">', '<p>antes</p><div class="rs-obras__rotulo">'),
+    "sin la lista de fichas": ("fichasDeSeccion('bandeja')", "fichasDeSeccion('otra')"),
+    "sin el título de la ficha": ("titulos['F-037']", "titulos['F-099']"),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R65))
+def test_f035_r65_control_un_rotulo_incompleto_o_cerrable_salta(caso):
+    viejo, nuevo = ESTROPEOS_R65[caso]
+    real = PORTAL.read_text(encoding="utf-8")
+    assert viejo in real, f"el control no encuentra: {viejo}"
+
+    assert problemas_r65(real.replace(viejo, nuevo, 1)) != [], f"R65 no ve «{caso}»"
+
+
+# R56 ampliado · Ningún recuadro usa el discontinuo ni el burdeos
+
+_DE_LA_MARCA = ("burdeos", "border-dashed", "rs-btn--primario")
+
+
+def problemas_r56_recuadros(html: str, css_portal: str) -> list[str]:
+    """Clases del recuadro y su rótulo, y reglas `.rs-obras*` del CSS, con discontinuo o burdeos. Vacío = correcto."""
+    problemas = []
+    for e in envoltorios(leer_html_texto(html)):
+        rotulo = _hijos(e)[0] if _hijos(e) else e
+        for nodo in [e, rotulo, *rotulo.elementos()]:
+            problemas += [
+                f"{_describe(nodo)}: «{c}» en un recuadro «En construcción»"
+                for c in clases(nodo) if any(m in c for m in _DE_LA_MARCA)
+            ]
+    for regla in reglas_css(css_sin_comentarios_texto(css_portal)):
+        if ".rs-obras" in regla.selector:
+            texto = " ".join(v for _, v in regla.declaraciones)
+            problemas += [f"{regla!r}: «{m}»" for m in ("dashed", "burdeos") if m in texto]
+    return problemas
+
+
+def test_f035_r56_ningun_recuadro_usa_el_discontinuo_ni_el_burdeos():
+    problemas = problemas_r56_recuadros(
+        PORTAL.read_text(encoding="utf-8"), PORTAL_CSS_RUTA.read_text(encoding="utf-8")
+    )
+
+    assert problemas == [], "R56 / R65:\n" + "\n".join(problemas)
+
+
+def test_f035_r56_las_reglas_del_recuadro_existen():
+    """Que el control de abajo tenga sobre qué actuar: las cuatro piezas de §16.5 tienen regla."""
+    reglas = reglas_css(css_sin_comentarios_texto(PORTAL_CSS_RUTA.read_text(encoding="utf-8")))
+    selectores = " ".join(r.selector for r in reglas)
+
+    for pieza in (".rs-obras", ".rs-obras--bloque", ".rs-obras__cinta", ".rs-obras__rotulo"):
+        assert re.search(re.escape(pieza) + r"(?![\w-])", selectores), f"falta la regla de {pieza} en css/portal.css"
+
+
+@pytest.mark.parametrize(
+    ("donde", "viejo", "nuevo"),
+    [
+        # Mutación manual 19 (`design.md` §16.10).
+        ("css", "border: 1px solid var(--rs-atencion);", "border: 1px dashed var(--rs-atencion);"),
+        (
+            "css",
+            "background-color: var(--rs-atencion-suave);\n  border-bottom",
+            "background-color: var(--rs-burdeos-suave);\n  border-bottom",
+        ),
+        ("html", 'class="rs-obras__rotulo"', 'class="rs-obras__rotulo rs-btn--primario"'),
+    ],
+    ids=["borde-discontinuo", "rotulo-burdeos", "clase-de-la-marca"],
+)
+def test_f035_r56_control_un_recuadro_con_discontinuo_o_burdeos_salta(donde, viejo, nuevo):
+    html = PORTAL.read_text(encoding="utf-8")
+    css = PORTAL_CSS_RUTA.read_text(encoding="utf-8").replace("\r\n", "\n")
+    if donde == "css":
+        assert viejo in css, f"el control no encuentra en portal.css: {viejo!r}"
+        css = css.replace(viejo, nuevo, 1)
+    else:
+        assert viejo in html, f"el control no encuentra en index.html: {viejo}"
+        html = html.replace(viejo, nuevo, 1)
+
+    assert problemas_r56_recuadros(html, css) != []
+
+
+# R67 · La portada sin cifras, con su chip, y ningún texto visible con «maqueta»
+
+_CIFRA = re.compile(r"\d")
+_LEE_CIFRAS = re.compile(r"\bdatos\.|\bcontadores\s*\(|\bimporte\s*\(|\bMaquetaDatos\b")
+
+
+def _texto_sin_indice(tarjeta) -> str:
+    """El texto visible de la tarjeta sin su índice decorativo (`rs-tarjeta__indice`, `aria-hidden`)."""
+    return " ".join(
+        h if isinstance(h, str) else h.texto()
+        for h in tarjeta.hijos
+        if isinstance(h, str) or "rs-tarjeta__indice" not in clases(h)
+    )
+
+
+def problemas_r67(html: str) -> list[str]:
+    """Lo que la portada de `html` incumple de R67. Vacío = correcto."""
+    problemas = []
+    inicio = seccion(leer_html_texto(html), "inicio")
+    estados = estados_de_secciones()
+    for e in inicio.elementos():
+        if "rs-tarjeta__cifra" in clases(e):
+            problemas.append(f"una cifra en la portada: {_describe(e)}")
+        problemas += [
+            f'la portada lee datos de ejemplo: {n}="{v}"' for n, v in e.atributos.items()
+            if _DIRECTIVA.match(n) and _LEE_CIFRAS.search(v)
+        ]
+    en_produccion, en_construccion = [], []
+    for t in [e for e in inicio.elementos() if "rs-tarjeta" in clases(e)]:
+        chips = [c for c in t.elementos() if "rs-tarjeta__chip" in clases(c)]
+        rotulo = next((c.texto() for c in t.elementos() if "rs-tarjeta__rotulo" in clases(c)), "")
+        if len(chips) != 1 or "rs-chip" not in clases(chips[0]):
+            problemas.append(f"la tarjeta «{rotulo}» lleva {len(chips)} chips: uno, rs-chip")
+            continue
+        href = t.atributos.get("href", "")
+        if href.startswith("#/") and estados.get(href[2:]) == "construccion":
+            en_construccion.append(href)
+            if chips[0].texto() != "En construcción" or "rs-chip--atencion" not in clases(chips[0]):
+                problemas.append(f"la tarjeta «{rotulo}» es de una sección en construcción: chip «En construcción»")
+            visible = _texto_sin_indice(t)
+            if _CIFRA.search(visible):
+                problemas.append(f"la tarjeta «{rotulo}» enseña una cifra: «{visible}»")
+            problemas += [
+                f"la tarjeta «{rotulo}» pinta texto calculado: {_describe(n)}"
+                for n in t.elementos() if any(a in n.atributos for a in ("x-text", "x-html"))
+            ]
+        else:
+            en_produccion.append(rotulo)
+            if chips[0].texto() != "En producción" or "rs-chip--ok" not in clases(chips[0]):
+                problemas.append(f"la tarjeta «{rotulo}» funciona: chip «En producción»")
+            if "rs-tarjeta--produccion" not in clases(t):
+                problemas.append(f"la tarjeta «{rotulo}» funciona: rs-tarjeta--produccion")
+    if tuple(en_produccion) != TARJETAS_EN_PRODUCCION:
+        problemas.append(f"tarjetas en producción {en_produccion}, no {list(TARJETAS_EN_PRODUCCION)}")
+    if tuple(en_construccion) != TARJETAS_EN_CONSTRUCCION:
+        problemas.append(f"tarjetas en construcción {en_construccion}, no {list(TARJETAS_EN_CONSTRUCCION)}")
+    return problemas
+
+
+def test_f035_r67_la_portada_no_ensena_cifras_y_cada_tarjeta_lleva_su_chip():
+    problemas = problemas_r67(PORTAL.read_text(encoding="utf-8"))
+
+    assert problemas == [], "R67:\n" + "\n".join(problemas)
+
+
+def test_f035_r67_la_tarjeta_de_entrada_lleva_a_las_dos_paginas_reales():
+    inicio = seccion(leer_html(PORTAL), "inicio")
+    tarjeta = _uno(
+        [e for e in inicio.elementos() if "rs-tarjeta" in clases(e) and "Entrada de incidencias" in e.texto()],
+        "la tarjeta «Entrada de incidencias» de inicio",
+    )
+    enlaces = {a.atributos.get("href"): a for a in tarjeta.elementos() if a.nombre == "a"}
+
+    assert sorted(enlaces) == ["importar.html", "oficios.html"], sorted(enlaces)
+    assert "rs-btn--primario" in clases(enlaces["importar.html"]), "una acción principal por tarjeta en producción"
+    assert "rs-btn--secundario" in clases(enlaces["oficios.html"])
+    assert all(targets_de(a) == [] for a in enlaces.values()), "en la misma ventana"
+
+
+def test_f035_r67_la_ceja_y_la_entradilla_de_inicio_no_hablan_de_maqueta():
+    inicio = seccion(leer_html(PORTAL), "inicio")
+
+    ceja = _uno([e for e in inicio.elementos() if "rs-ceja" in clases(e)], "la ceja de inicio")
+    entradilla = _uno([e for e in inicio.elementos() if "rs-hero__entradilla" in clases(e)], "la entradilla de inicio")
+    assert ceja.texto() == CEJA_DE_INICIO
+    assert entradilla.texto() == ENTRADILLA_DE_INICIO
+
+
+def test_f035_r67_ningun_texto_visible_del_portal_dice_maqueta():
+    """Sin comentarios ni atributos: lo que se lee en pantalla (`Nodo.texto` deja fuera `<script>`)."""
+    texto = leer_html(PORTAL).texto()
+
+    assert not re.search(r"maqueta", texto, re.IGNORECASE), (
+        "R67: en producción la palabra es «en construcción»: "
+        + str(re.findall(r".{0,40}maqueta.{0,40}", texto, re.IGNORECASE))
+    )
+
+
+ESTROPEOS_R67 = {
+    # Mutación manual 20 (`design.md` §16.10).
+    "un x-text con una cifra": (
+        '<p class="rs-tarjeta__rotulo">Incidencias</p>',
+        '<p class="rs-tarjeta__rotulo">Incidencias</p><p x-text="incidenciasFiltradas().length"></p>',
+    ),
+    "una cifra escrita a mano": (
+        '<p class="rs-tarjeta__rotulo">Incidencias</p>',
+        '<p class="rs-tarjeta__rotulo">Incidencias</p><p>5 abiertas</p>',
+    ),
+    "la clase de la cifra": (
+        '<p class="rs-tarjeta__rotulo">Coste y venta</p>',
+        '<p class="rs-tarjeta__rotulo">Coste y venta</p><p class="rs-tarjeta__cifra"></p>',
+    ),
+    "el chip de otra cosa": (
+        'rs-chip--atencion rs-tarjeta__chip">En construcción',
+        'rs-chip--neutro rs-tarjeta__chip">Maqueta',
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R67))
+def test_f035_r67_control_una_cifra_o_un_chip_cambiado_en_la_portada_salta(caso):
+    viejo, nuevo = ESTROPEOS_R67[caso]
+    real = PORTAL.read_text(encoding="utf-8")
+    assert viejo in real, f"el control no encuentra: {viejo}"
+
+    assert problemas_r67(real.replace(viejo, nuevo, 1)) != [], f"R67 no ve «{caso}»"
+
+
+def test_f035_r67_control_la_palabra_maqueta_en_un_texto_visible_salta():
+    real = PORTAL.read_text(encoding="utf-8")
+    visible = real.replace("</main>", "<p>Esto es una Maqueta.</p>\n</main>", 1)
+    comentario = real.replace("</main>", "<!-- maqueta -->\n</main>", 1)
+
+    assert re.search(r"maqueta", leer_html_texto(visible).texto(), re.IGNORECASE)
+    assert not re.search(r"maqueta", leer_html_texto(comentario).texto(), re.IGNORECASE), "un comentario no se ve"
+
+
+def test_f035_r67_contadores_retirados_del_componente_y_de_portal():
+    assert not re.search(r"\bcontadores\s*\(", PORTAL_APP_RUTA.read_text(encoding="utf-8")), (
+        "fuera contadores() de js/portal_app.js"
+    )
+    assert "contadoresInicio" not in PORTAL_JS_TEXTO, "fuera contadoresInicio de js/portal.js"
+
+
+# R69 · La bandeja enlaza a la de solo lectura de importar.html
+
+
+def test_f035_r69_el_recuadro_de_bandeja_enlaza_a_la_bandeja_de_importar():
+    doc = leer_html(PORTAL)
+    recuadro = _uno(
+        [e for e in envoltorios(doc) if e.atributos["data-en-construccion"] == "bandeja"], "el recuadro de bandeja"
+    )
+    rotulo = _hijos(recuadro)[0]
+    enlace = _uno([a for a in rotulo.elementos() if a.nombre == "a"], "el enlace del rótulo de bandeja")
+
+    assert enlace.atributos.get("href") == "importar.html#bandeja"
+    assert targets_de(enlace) == [] and "rel" not in enlace.atributos, "en la misma ventana"
+    assert "rs-enlace" in clases(enlace)
+    assert "Importar incidencias" in enlace.texto()
+    assert "solo lectura" in rotulo.texto(), "dice que allí la bandeja se ve en solo lectura"
+
+
+def test_f035_r69_importar_html_tiene_la_bandeja_con_id_bandeja():
+    doc = leer_html(IMPORTAR)
+    bandeja = _uno([e for e in doc.elementos() if e.atributos.get("id") == "bandeja"], 'id="bandeja" en importar.html')
+
+    assert bandeja.nombre == "section", "el id va en la <section> de la bandeja"
+    assert any(e.atributos.get("@click") == "cargarBandeja()" for e in bandeja.elementos()), (
+        "es la sección de la bandeja de la obra (la de «Ver la bandeja»)"
+    )
+
+
+# R68 · Review del bloque 7, H-3: la estructura cerrada de `entrada`
+
+
+def problemas_de_entrada(html: str) -> list[str]:
+    """`entrada` = cabecera, rejilla de dos tarjetas y el recuadro F-037; sin cifras fuera de él. Vacío = correcto."""
+    bloque = seccion(leer_html_texto(html), "entrada")
+    hijos = _hijos(bloque)
+    forma = [(h.nombre, "rs-rejilla" in clases(h), h.atributos.get("data-en-construccion")) for h in hijos]
+    if forma != [("header", False, None), ("div", True, None), ("div", False, "F-037")]:
+        return [f"entrada es cabecera, rejilla y recuadro F-037: {[_describe(h) for h in hijos]}"]
+    problemas = []
+    tarjetas = _hijos(hijos[1])
+    if [(t.nombre, t.atributos.get("href")) for t in tarjetas] != [("a", "importar.html"), ("a", "oficios.html")]:
+        problemas.append(f"la rejilla de entrada son las dos tarjetas: {[_describe(t) for t in tarjetas]}")
+    fuera = " ".join(h.texto() for h in hijos[:2])
+    if _CIFRA.search(fuera):
+        problemas.append(f"entrada enseña cifras fuera del recuadro F-037: «{fuera}»")
+    return problemas
+
+
+def test_f035_r68_entrada_tiene_la_estructura_cerrada():
+    problemas = problemas_de_entrada(PORTAL.read_text(encoding="utf-8"))
+
+    assert problemas == [], "R68 (H-3):\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        # Mutación K de la review del bloque 7.
+        (
+            '<div class="rs-rejilla">\n          <a href="importar.html"',
+            '<dl><dt>Filas leídas</dt><dd>8</dd></dl>\n        <div class="rs-rejilla">\n          <a href="importar.html"',
+        ),
+        ("solo lectura.\n            </p>", "solo lectura. Última: 8 filas.\n            </p>"),
+        (
+            '<a href="oficios.html" class="rs-tarjeta',
+            '<div class="rs-tarjeta">Duplicadas 1</div>\n          <a href="oficios.html" class="rs-tarjeta',
+        ),
+    ],
+    ids=["dl-suelto", "cifra-en-una-tarjeta", "tercera-tarjeta"],
+)
+def test_f035_r68_control_datos_escritos_a_mano_en_entrada_saltan(viejo, nuevo):
+    real = PORTAL.read_text(encoding="utf-8")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert problemas_de_entrada(real.replace(viejo, nuevo)) != []
+
+
+# H-5 · Ninguna clase de css/portal.css sin uso en el portal
+
+
+def clases_del_portal_css_sin_uso(css: str, html: str) -> list[str]:
+    """Las clases `.rs-*` de `css/portal.css` que `index.html` no nombra en ninguna parte. Vacío = correcto.
+
+    Se busca el nombre en el texto entero, no solo en `class`: las de estado
+    (`rs-toast--visible`, `rs-fila--abierta`) entran por `:class`.
+    """
+    definidas = set(re.findall(r"\.(rs-[\w-]+)", css_sin_comentarios_texto(css)))
+    return sorted(c for c in definidas if not re.search(r"(?<![\w-])" + re.escape(c) + r"(?![\w-])", html))
+
+
+def test_f035_h5_ninguna_clase_de_portal_css_queda_sin_uso():
+    sin_uso = clases_del_portal_css_sin_uso(
+        PORTAL_CSS_RUTA.read_text(encoding="utf-8"), PORTAL.read_text(encoding="utf-8")
+    )
+
+    assert sin_uso == [], f"CSS muerto en css/portal.css (H-5): {sin_uso}"
+
+
+def test_f035_h5_control_una_clase_sin_uso_salta():
+    css = PORTAL_CSS_RUTA.read_text(encoding="utf-8") + "\n.rs-sin-usar { margin: 0; }\n"
+
+    assert clases_del_portal_css_sin_uso(css, PORTAL.read_text(encoding="utf-8")) == ["rs-sin-usar"]

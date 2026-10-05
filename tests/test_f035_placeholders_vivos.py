@@ -48,7 +48,9 @@ FICHEROS_CON_RESTOS = (
     FRONT / "js" / "maqueta_datos.js",
 )
 
-_PLACEHOLDER_HTML = re.compile(r"""data-placeholder\s*=\s*["'](F-\d{3})["']""")
+#: En el HTML, el placeholder y, desde la enmienda del 2026-10-05 (R28), el
+#: recuadro «En construcción» de bloque de una ficha (R64): los dos son restos.
+_PLACEHOLDER_HTML = re.compile(r"""data-(?:placeholder|en-construccion)\s*=\s*["'](F-\d{3})["']""")
 _FICHA_JS = re.compile(r"""\bficha\s*:\s*["'](F-\d{3})["']""")
 
 #: Las fichas del ciclo de posventa que dan contenido a la maqueta (R29).
@@ -59,16 +61,19 @@ _GUID = re.compile(
 )
 
 
-def restos_de_la_maqueta() -> dict[str, list[str]]:
+def restos_de_la_maqueta(textos: dict[Path, str] | None = None) -> dict[str, list[str]]:
     """`{ficha: ["index.html:123", "js/portal.js:45", …]}` de los tres ficheros.
 
     Si falta un fichero, falla al leerlo: una maqueta sin sus ficheros no
-    puede dar «cero restos» por las buenas.
+    puede dar «cero restos» por las buenas. `textos` sustituye, en memoria, el
+    contenido de los ficheros que nombre (los controles); los demás se leen.
     """
     restos: dict[str, list[str]] = {}
     for fichero in FICHEROS_CON_RESTOS:
         patron = _PLACEHOLDER_HTML if fichero.suffix == ".html" else _FICHA_JS
-        texto = fichero.read_text(encoding="utf-8")
+        texto = (textos or {}).get(fichero)
+        if texto is None:
+            texto = fichero.read_text(encoding="utf-8")
         for numero, linea in enumerate(texto.splitlines(), start=1):
             for ficha in patron.findall(linea):
                 donde = f"{fichero.relative_to(FRONT).as_posix()}:{numero}"
@@ -154,6 +159,39 @@ def test_f035_r28_la_guardia_mira_una_ficha_que_pasa_a_done():
 
     assert problemas, "con F-044 en done, la guardia no ha visto ningún resto"
     assert all(p.startswith("F-044 ") for p in problemas), problemas
+
+
+def test_f035_r28_el_escaner_cuenta_el_recuadro_en_construccion_de_una_ficha():
+    """Enmienda del 2026-10-05 (R28): un recuadro `data-en-construccion="F-0NN"` es un resto.
+
+    Control en memoria: un recuadro de F-036 (`done`) sembrado en una copia de
+    `index.html`, sin placeholder dentro, TIENE que salir como resto de una
+    ficha cerrada. La copia no se escribe en disco.
+    """
+    portal = FRONT / "index.html"
+    real = portal.read_text(encoding="utf-8")
+    copia = real.replace(
+        "</main>",
+        '<div data-en-construccion="F-036" class="rs-obras rs-obras--bloque"></div>\n</main>',
+        1,
+    )
+    assert copia != real, "el control no encuentra </main> en index.html"
+
+    restos = restos_de_la_maqueta({portal: copia})
+    assert restos.get("F-036"), "el escáner no cuenta data-en-construccion=\"F-036\" como resto"
+    problemas = restos_de_fichas_done(_features(), restos)
+    assert problemas and all(p.startswith("F-036 ") for p in problemas), problemas
+
+
+def test_f035_r28_el_escaner_ve_los_recuadros_de_bloque_de_hoy():
+    """Los dos recuadros de bloque de `index.html` (F-037 y F-045, R64) cuentan como resto de su ficha."""
+    restos = restos_de_la_maqueta()
+    texto = (FRONT / "index.html").read_text(encoding="utf-8").splitlines()
+
+    for ficha in ("F-037", "F-045"):
+        lineas = [d for d in restos.get(ficha, []) if d.startswith("index.html:")]
+        recuadros = [d for d in lineas if "data-en-construccion" in texto[int(d.split(":")[1]) - 1]]
+        assert len(recuadros) == 1, f"{ficha}: el escáner no ve su recuadro de bloque ({lineas})"
 
 
 def test_f035_r37_architecture_recoge_el_portal_y_la_regla_de_los_placeholders():

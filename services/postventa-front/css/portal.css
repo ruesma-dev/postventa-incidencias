@@ -9,12 +9,14 @@
    prefers-reduced-motion (R55). Aquí, además, las ENTRADAS: la de las
    tarjetas de inicio (escalonada, sin JavaScript) y la de los paneles.
 
-   Lo que es maqueta se tiene que seguir viendo maqueta (R56, design.md §6.1):
+   Lo que está en construcción se tiene que seguir viendo así (R56, R65,
+   design.md §6.1 y §16.4):
    - el borde DISCONTINUO es solo de los placeholders (.placeholder): ninguna
-     tarjeta, zona ni panel lo usa;
+     tarjeta, zona, panel ni recuadro lo usa;
    - ningún placeholder lleva la marca (el burdeos se reserva para lo que
      funciona);
-   - el aviso de maqueta va en su propio color (atención), nunca en burdeos.
+   - el aviso de construcción y los recuadros «En construcción» (.rs-obras)
+     van en su propio color (atención), nunca en burdeos.
    ========================================================================== */
 
 /* ---------- Placeholders: un botón hueco que todavía no hace nada ----------------
@@ -341,23 +343,6 @@ a.rs-tarjeta:hover::before {
   color: var(--rs-tinta-suave);
 }
 
-.rs-tarjeta__cifra {
-  margin: 0.35rem 0 0;
-  font-family: var(--rs-fuente-titulos);
-  font-size: 2.6rem;
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--rs-tinta);
-}
-
-.rs-tarjeta__nota {
-  margin: 0.55rem 0 0;
-  font-size: 0.82rem;
-  color: var(--rs-acero-texto);
-}
-
 .rs-tarjeta__texto {
   margin: 0.5rem 0 0;
   font-size: 0.88rem;
@@ -407,6 +392,101 @@ a.rs-tarjeta:hover .rs-tarjeta__flecha {
   transform: none;
 }
 
+/* El recuadro «En construcción» de bloque dentro de una tarjeta (el registro
+   sin firma, F-045, en «Partes firmados»). */
+.rs-tarjeta__obras {
+  margin-top: 1rem;
+}
+
+/* ---------- «En construcción» (R63-R65, design.md §16.4, capa 2) ----------------
+   El MARCO de todo lo que todavía no funciona, no una banda que se pierde al
+   desplazarse: borde CONTINUO en atención (el discontinuo es de los
+   placeholders, R56), una cinta de obra arriba y el rótulo, que va siempre
+   primero y no se cierra. Nunca burdeos: el burdeos es de lo que funciona.
+   Dentro, el contenido de siempre. `--bloque` es la variante compacta (la web
+   de clientes, F-037; el registro sin firma, F-045). */
+
+.rs-obras {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0 1.25rem 1.25rem;
+  overflow: hidden;
+  border: 1px solid var(--rs-atencion);
+  border-radius: var(--rs-radio);
+}
+
+.rs-obras__rotulo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 -1.25rem;
+  padding: 0 1.25rem 1rem;
+  background-color: var(--rs-atencion-suave);
+  border-bottom: 1px solid var(--rs-linea);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--rs-atencion);
+}
+
+/* La cinta de obra: rayas diagonales en atención, 6 px, de borde a borde. */
+.rs-obras__cinta {
+  display: block;
+  height: 6px;
+  margin: 0 -1.25rem 0.5rem;
+  background-image: repeating-linear-gradient(135deg, var(--rs-atencion) 0 8px, var(--rs-atencion-suave) 8px 16px);
+}
+
+.rs-obras__linea {
+  margin: 0;
+}
+
+.rs-obras__linea > .rs-chip {
+  margin-right: 0.4rem;
+}
+
+/* El chip va sobre el mismo fondo que el rótulo: un borde lo despega. */
+.rs-obras__rotulo .rs-chip--atencion {
+  border-color: var(--rs-atencion);
+}
+
+/* El enlace a lo que ya funciona (la bandeja de importar.html, R69) sigue el
+   color del rótulo: dentro del recuadro no hay burdeos (R65). */
+.rs-obras__rotulo .rs-enlace {
+  color: var(--rs-atencion);
+}
+
+.rs-obras__fichas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rs-obras__ficha {
+  font-family: var(--rs-fuente-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.rs-obras.rs-obras--bloque {
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+  border-radius: var(--rs-radio-sm);
+}
+
+.rs-obras--bloque > .rs-obras__rotulo {
+  margin: 0 -1rem;
+  padding: 0 1rem 0.75rem;
+  font-size: 0.84rem;
+}
+
+.rs-obras--bloque .rs-obras__cinta {
+  margin: 0 -1rem 0.5rem;
+}
+
 /* Una ruta de archivo, tal cual (con sus espacios dobles). */
 .rs-ruta {
   display: block;
@@ -445,15 +525,6 @@ a.rs-tarjeta:hover .rs-tarjeta__flecha {
 .rs-panel__pie {
   padding: 1.1rem 1.25rem;
   border-top: 1px solid var(--rs-linea);
-}
-
-.rs-encabezado {
-  margin: 0;
-  font-family: var(--rs-fuente-titulos);
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-  color: var(--rs-tinta);
 }
 
 /* La ficha que construirá cada bloque, junto a su rótulo. */
@@ -495,31 +566,9 @@ a.rs-tarjeta:hover .rs-tarjeta__flecha {
   gap: 0.65rem;
 }
 
-.rs-acciones--centro {
-  justify-content: center;
-}
-
 .rs-acciones--separadas {
   padding-top: 1.1rem;
   border-top: 1px solid var(--rs-linea);
-}
-
-/* Donde se soltará el Excel (maqueta, sin placeholder: borde CONTINUO y una
-   trama de puntos; el discontinuo es de los placeholders). */
-.rs-soltar {
-  padding: 2rem 1.5rem;
-  text-align: center;
-  background-color: var(--rs-lienzo);
-  background-image: radial-gradient(var(--rs-linea-fuerte) 1px, transparent 1px);
-  background-size: 14px 14px;
-  border: 1px solid var(--rs-linea);
-  border-radius: var(--rs-radio);
-}
-
-.rs-soltar__texto {
-  margin: 0 0 1rem;
-  font-size: 0.95rem;
-  color: var(--rs-tinta-suave);
 }
 
 /* Un marco para una tabla dentro de un panel. */
@@ -932,8 +981,7 @@ input[type="checkbox"]:disabled {
   transform: rotate(45deg);
 }
 
-/* Los hitos del parte (pestaña «Parte») y las cifras (pestaña «Económico»,
-   resultado de una importación). */
+/* Los hitos del parte (pestaña «Parte») y las cifras (pestaña «Económico»). */
 .rs-hitos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -994,10 +1042,6 @@ input[type="checkbox"]:disabled {
   color: var(--rs-tinta);
 }
 
-.rs-cifras.rs-cifras--compactas dd {
-  font-size: 1rem;
-}
-
 .rs-cifras dd.rs-sin-dato {
   font-family: var(--rs-fuente-texto);
   font-size: 0.95rem;
@@ -1039,8 +1083,9 @@ input[type="checkbox"]:disabled {
   color: var(--rs-tinta);
 }
 
-/* Las aprobadas por obra, candidatas al volcado. */
-.rs-obras {
+/* Las aprobadas por obra, candidatas al volcado. (Hasta el bloque 9 se
+   llamaba `rs-obras`; ese nombre es ahora el del recuadro «En construcción».) */
+.rs-por-obra {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -1049,7 +1094,7 @@ input[type="checkbox"]:disabled {
   list-style: none;
 }
 
-.rs-obras > li {
+.rs-por-obra > li {
   padding: 0.4rem 0.85rem;
   background-color: var(--rs-lienzo);
   border: 1px solid var(--rs-linea);
@@ -1058,7 +1103,7 @@ input[type="checkbox"]:disabled {
   color: var(--rs-tinta-suave);
 }
 
-.rs-obras strong {
+.rs-por-obra strong {
   font-family: var(--rs-fuente-titulos);
   font-weight: 700;
   color: var(--rs-tinta);

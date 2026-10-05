@@ -589,7 +589,7 @@ ya pide cada verificación.
 
 ## Bloque 9 · El rótulo «En construcción» en el portal (2026-10-05)
 
-- [ ] **T27**: (a) En `index.html`, los envoltorios `data-en-construccion`
+- [x] **T27**: (a) En `index.html`, los envoltorios `data-en-construccion`
       (R63–R65): uno de sección en `bandeja`, `incidencias`, `impresion`,
       `economico` y `datos`; uno de bloque en el panel de la web de clientes
       (`F-037`) y en el placeholder de F-045 de la tarjeta «Partes firmados»;

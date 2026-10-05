@@ -316,6 +316,27 @@ for (const [que, terminado] of [
   });
 }
 
+// El pendiente en la PRIMERA posición: el recorrido empieza por el primer parte
+// (re-review del bloque 16, H16-8). Una remesa de un solo parte es de lo más
+// corriente, y en «revision» o «resumen» solo la ve (c).
+test("f035 R79 (c): una remesa de un solo parte aprobado sin cerrar es trabajo sin terminar", () => {
+  const partes = [parte(PipelineReal.ESTADO_APROBADO)];
+
+  const [resultado, violaciones] = juzga(estadoRecienAbierto({ fase: "resumen", partes }));
+
+  assert.equal(resultado, true);
+  assert.deepEqual(violaciones, []);
+});
+
+test("f035 R79 (c): con el único pendiente en primer lugar, delante de uno cerrado, hay trabajo", () => {
+  const partes = [parte(PipelineReal.ESTADO_APROBADO), parte(null, true)];
+
+  const [resultado, violaciones] = juzga(estadoRecienAbierto({ fase: "resumen", partes }));
+
+  assert.equal(resultado, true);
+  assert.deepEqual(violaciones, []);
+});
+
 test("f035 R79 (c) negativo: un parte rechazado sin cerrar no es trabajo (consta en la base)", () => {
   const partes = [parte(PipelineReal.ESTADO_RECHAZADO), parte(PipelineReal.ESTADO_RECHAZADO)];
 

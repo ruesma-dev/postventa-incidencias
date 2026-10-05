@@ -1,6 +1,23 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 8 (T25, T26) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 8 y después bloque 16 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 8». Commit T25 `023b7a5`: `estado`
+> literal en `Portal.SECCIONES` y `Portal.enConstruccion` (R62); guardia R62 en la raíz con su
+> control (F-038 `done` → `bandeja` `parcial`, salta); `data-construccion` + `aria-label` en las
+> cinco pestañas en construcción de `index.html` y `partes.html` (R66) y punto ámbar en
+> `css/styles.css` (`?v=064ee0dc11`); aviso de R13 enmendado; en `partes.html`, `rs-enlace` en los
+> dos enlaces de F-036. Review del bloque 7: **H-1 y H-4 (primer punto) cerrados**; H-2, H-3, el
+> resto de H-4 y H-5, a sus bloques. `bash harness/init.sh`: **exit 0** (raíz 112, front 425, api
+> desde caché; ruff 71, los de antes); Node 509/509. Mutación del arnés: 0 mutantes (bases 2a86bca
+> y dd67d48); manuales 12/12 muertas (16, 17 y diez propias; B8 la mata un test añadido en T26).
+> «F-036 intacto» vacío; nada de `services/postventa-api/`. Sin push.
+>
+> - Sin tocar, por el ajuste del 2026-10-05: la leyenda de R47 y los `target` del circuito (T44).
+> - Para el líder: en R62, `inicio` es `real` cuando lo son las otras **siete** (con `partes`);
+>   la regla de R48 deja fuera `partes`. Hoy dan lo mismo. Ver §5 del informe.
+
 > ## ▶ F-035 · BLOQUE 7 (T23, T24) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: bloque 8 (implementer), tras lo que decida el líder
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 7». Commit T23 `bdf8747`: la maqueta de

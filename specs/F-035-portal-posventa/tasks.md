@@ -582,7 +582,7 @@ ya pide cada verificación.
       > que la guarda; y en (f), el test de R47 tampoco (T44). Los `target`
       > de la barra del circuito siguen en este bloque como están. Lo demás
       > de T25, igual.
-- [ ] **T26**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+- [x] **T26**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **16** y **17**. (c) `bash harness/init.sh` en
       verde.
       **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 8».

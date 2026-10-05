@@ -4169,3 +4169,272 @@ nuevo se corrigieron; en `tests/` del front quedan solo los 2 previos de
 | Mutantes (campaña del arnés) | **0 generados, 0 supervivientes** («Sin líneas de producción en el alcance») |
 | Mutantes a mano | **2/2 muertos** (14 y 15) |
 | Tiempo de la suite | Raíz 7,91 s; front 11,65 s (pytest) + 1,7 s (Node); `init.sh` completo en unos 3 min (api desde caché) |
+
+## Bloque 8 · T25 y T26 · El estado de cada sección y la barra · 2026-10-05
+
+> implementer. Encargo: solo el bloque 8 (orden acordado 7 → **8** → 16 →
+> 17 → 9 → …), y parar. Rama `feature/F-035-portal-posventa`. Commits:
+> **T25 `023b7a5`**; **T26** con este informe, `tasks.md`, `current.md`, el
+> test que mata el superviviente B8 y `progress/mutacion_F-035.md`. Sin push.
+
+### 1 · Qué cambió (T25, un commit)
+
+- **`js/portal.js`**: `estado` escrito literal en las ocho entradas de
+  `Portal.SECCIONES` (tabla de `design.md` §16.4): `inicio`, `entrada` y
+  `partes` → `"parcial"`; `bandeja`, `incidencias`, `impresion`, `economico`
+  y `datos` → `"construccion"`. Nuevo **`Portal.enConstruccion(id)`**
+  (`estado === "construccion"`; id desconocido, vacío o no texto → `false`,
+  nunca lanza), exportado. Comentarios de cabecera y de `SECCIONES` al día.
+- **Raíz, `tests/test_f035_placeholders_vivos.py`**: **R62** frente a
+  `harness/features.json` (`estados_declarados`, `estados_segun_las_fichas`,
+  `estados_que_no_cuadran`) con su **control** pedido (copia en memoria con
+  F-038 `done`: `bandeja` pasa a `parcial` y la guardia salta, un solo
+  problema), un control del lector (un `estado` cambiado en el texto se ve) y
+  la regla propia de `partes` e `inicio`.
+- **Barras** de `index.html` y `partes.html`: `data-construccion` y
+  `aria-label="<etiqueta> (en construcción)"` en las **cinco** pestañas en
+  construcción (R66). En `partes.html`, fuera de la barra, **solo** el
+  `class` de los dos enlaces de F-036 (`text-sky-700 hover:underline` →
+  `rs-enlace`). **No** se tocan la leyenda de R47 ni los `target` de la barra
+  del circuito (ajuste del 2026-10-05: los cambia T44, bloque 16, en el mismo
+  commit que la guarda).
+- **`css/styles.css`**: `.rs-pestana[data-construccion]::after`, punto de
+  6 px, `border-radius: 50%`, `background-color: var(--rs-atencion)`.
+  **`?v=`** nueva (`3c19075344` → `064ee0dc11`) en las dos páginas, calculada
+  con `version_de_las_hojas()` de `test_f035_portal.py`.
+- **Aviso de R13 enmendado** (texto de `design.md` §16.4): «Parte de este
+  portal está en construcción. Las pestañas con punto ámbar y lo que va
+  dentro de un recuadro «En construcción» enseñan datos inventados (obras
+  99NN, incidencias RS99…) y sus botones con borde discontinuo no hacen nada
+  todavía. [muestra de placeholder] Lo que funciona de verdad lleva el sello
+  «En producción».» Se van «Esto es una maqueta…» y **«El circuito de verdad
+  es la pestaña «Partes firmados».»** (review del bloque 7, **H-4, primer
+  punto: cerrado**).
+- **Review del bloque 7, H-1 (cerrado)**: `test_f035_portal.py` gana
+  `FORMAS_DE_TARGET = ("target", ":target", "x-bind:target")` y
+  `targets_de(nodo)`; los usan el test de R17 y el de R68
+  (`test_f035_paginas.py`, antes l. 132), con un control parametrizado
+  (literal, ligado, `x-bind`).
+
+### 2 · Tests nuevos o enmendados
+
+| Fichero | Test | Qué |
+|---|---|---|
+| raíz `tests/test_f035_placeholders_vivos.py` | `test_f035_r62_cada_seccion_declara_su_estado_literal` | las ocho entradas con `estado: "…"` literal y válido |
+| ídem | `test_f035_r62_el_estado_de_cada_seccion_es_el_que_dan_sus_fichas` | R62 frente a `features.json` |
+| ídem | `test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done` | **control** F-038 `done` en memoria |
+| ídem | `test_f035_r62_control_el_lector_de_estados_lee_el_texto` | control del lector |
+| ídem | `test_f035_r62_partes_e_inicio_siguen_su_propia_regla` | `partes` nunca `construccion`; `inicio` real solo con todas reales |
+| `tests_js/f035_paginas.test.js` (**nuevo**) | 4 de R62 (`estado` válido, `enConstruccion` = `estado === "construccion"`, id raro → `false`, `inicio`/`partes` nunca) + 1 de T26 (B8, abajo) | `Portal.enConstruccion` |
+| ídem | `f035 R66: en la barra de {index,partes}.html, …` (2) + 3 controles | R66 en las dos barras: el lector ve las ocho pestañas en orden; quitar `data-construccion` en `partes.html` salta; marcar «Entrada» o quitar «(en construcción)» del `aria-label` salta |
+| `tests/test_f035_portal.py` | `test_f035_r13_el_aviso_dice_que_parte_del_portal_esta_en_construccion` (**nuevo**) | R13 enmendado: siete frases imprescindibles, ni «maqueta» ni «circuito de verdad» |
+| ídem | `test_f035_r13_el_aviso_esta_siempre_y_no_se_cierra` (antes `…_de_maqueta_…`) | sin `ficticio`/`f-0` (texto viejo); lo demás igual |
+| ídem | `test_f035_r13_el_aviso_va_debajo_de_la_barra` (renombrado) | igual |
+| ídem | `test_f035_r17_control_targets_de_ve_el_target_literal_y_el_ligado` ×3 (**nuevo**) | H-1 |
+| `tests/test_f035_paginas.py` | `test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens` (**nuevo**) | la marca visual de R66 (§16.4, capa 1) |
+
+El lector de la barra de `f035_paginas.test.js` es propio y acotado (las
+pestañas son `<a>`/`<span>` sin hijos): no se reutiliza el de
+`portal.test.js` porque hacer `require` de un fichero de tests registraría
+sus tests otra vez en el mismo proceso.
+
+### 3 · Fase RED (tests escritos antes que el código)
+
+**Raíz** (`portal.js` sin `estado`):
+
+```
+$ python -m pytest tests/test_f035_placeholders_vivos.py -q -k r62
+E       AssertionError: cada entrada de Portal.SECCIONES lleva su `estado: "…"` escrito literal: leídos []
+E       AssertionError: «entrada» declara estado «(ninguno)» y sus fichas dicen «parcial»: cámbialo en Portal.SECCIONES (js/portal.js, R62)
+E         «bandeja» declara estado «(ninguno)» y sus fichas dicen «construccion»: cámbialo en Portal.SECCIONES (js/portal.js, R62)
+          … (las ocho secciones)
+E       assert (8 == 1)
+E       AssertionError: el control no encuentra el estado de «bandeja» en js/portal.js
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r62_cada_seccion_declara_su_estado_literal
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r62_el_estado_de_cada_seccion_es_el_que_dan_sus_fichas
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r62_la_guardia_mira_una_ficha_que_pasa_a_done
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r62_control_el_lector_de_estados_lee_el_texto
+4 failed, 1 passed, 11 deselected in 0.21s
+```
+
+(El que pasa es `…_partes_e_inicio_siguen_su_propia_regla`: prueba la
+función del test, no el fichero.)
+
+**Front, pytest** (aviso viejo, sin regla CSS):
+
+```
+$ python -m pytest tests/test_f035_portal.py tests/test_f035_paginas.py -q -k "r13 or r17 or r66 or r68"
+E       AssertionError: el aviso no dice ['parte de este portal está en construcción', 'punto ámbar', '«en construcción»', 'datos inventados', '«en producción»']: «Esto es una maqueta. Todos los datos son ficticios, de ejemplo. Los botones con borde discontinuo y una etiqueta F-0NN todavía no hacen nada: al pulsarlos dicen qué ficha los construirá. así se ve un botón que todavía no hace nada F-0NN El circuito de verdad es la pestaña «Partes firmados».»
+E       AssertionError: tiene que haber uno y solo uno: .rs-pestana[data-construccion]::after en css/styles.css (hay 0)
+FAILED tests/test_f035_portal.py::test_f035_r13_el_aviso_dice_que_parte_del_portal_esta_en_construccion
+FAILED tests/test_f035_paginas.py::test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens
+2 failed, 18 passed, 104 deselected in 0.71s
+```
+
+**Front, Node** (sin `estado`, sin `enConstruccion`, barras sin marcar):
+
+```
+$ node --test tests_js/f035_paginas.test.js
+  AssertionError [ERR_ASSERTION]: «inicio» declara estado «undefined»; solo real, parcial, construccion
+  TypeError: enConstruccion is not a function
+  TypeError: Portal.enConstruccion is not a function
+  AssertionError [ERR_ASSERTION]: el control no encuentra data-construccion en la pestaña de bandeja
+✖ f035 R62: cada entrada de SECCIONES declara un estado válido (4.7437ms)
+✖ f035 R62: enConstruccion es true justo para las secciones en construccion (0.3546ms)
+✖ f035 R62: enConstruccion con un id desconocido o vacío devuelve false y no lanza (0.2603ms)
+✖ f035 R62: inicio y partes nunca están en construcción (0.2511ms)
+✖ f035 R66: en la barra de index.html, data-construccion y aria-label solo en las secciones en construcción (3.1249ms)
+✖ f035 R66: en la barra de partes.html, data-construccion y aria-label solo en las secciones en construcción (1.1095ms)
+✖ f035 R66: control: quitar data-construccion de una pestaña de partes.html salta (1.0946ms)
+✖ f035 R66: control: marcar una pestaña que funciona, o cambiar su aria-label, salta (1.3427ms)
+ℹ tests 9
+ℹ pass 1
+ℹ fail 8
+```
+
+(El que pasa es el control del lector, que solo lee las etiquetas.) H-1 es
+solo de tests; su «RED» son las mutaciones S y S2 de abajo: con la
+comprobación vieja (`"target" not in a.atributos`) la S sobrevivía (review
+del bloque 7); ahora las dos mueren.
+
+**Control de R62 pedido por la verificación de T25** («en una copia del test
+con F-038 `done`, el control en rojo»): copia del fichero de la raíz en el
+scratchpad, con `RAIZ` apuntando al repositorio y `_features()` devolviendo
+F-038 `done`:
+
+```
+$ python -m pytest test_control_f038_done.py -q -p no:cacheprovider -k "r62_el_estado or r62_cada"
+>       assert problemas == [], "\n".join(problemas)
+E       AssertionError: «bandeja» declara estado «construccion» y sus fichas dicen «parcial»: cámbialo en Portal.SECCIONES (js/portal.js, R62)
+FAILED test_control_f038_done.py::test_f035_r62_el_estado_de_cada_seccion_es_el_que_dan_sus_fichas
+1 failed, 1 passed, 14 deselected in 0.23s
+```
+
+Verde después del código (antes de T26): raíz `16 passed`, front pytest
+`425 passed`, Node `508 pass, 0 fail`.
+
+### 4 · T26 · Evidencias y verde
+
+**(a) Mutación del arnés.** `tasks.md` (T26 y `design.md` §16.10) dice
+`--base 2a86bca`; el encargo del líder, `--base dd67d48`. Se lanzaron las
+dos; la de la tarea escribe el informe oficial:
+
+```
+$ python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+
+$ python -m harness.mutacion --feature F-035 --base dd67d48 --timeout 900 --salida <scratchpad>/mutacion_dd67d48.md
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, dd67d48c95b32f3dd54715a68d3781cb91331664..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+```
+
+Lo esperado: F-035 no tiene Python de producción (solo HTML, JS, CSS y
+tests).
+
+**(b) Mutaciones manuales** (16 y 17 de `design.md` §16.10, más diez propias
+sobre lo nuevo), en un worktree desechable del scratchpad
+(`git worktree add --detach <scratchpad>/wt_b8 HEAD` sobre `023b7a5`),
+**nunca en el árbol real**. Por cada una: la suite **entera** del front
+(pytest + Node) y el fichero de la raíz; `git checkout -- .` y comprobación
+de árbol limpio entre una y otra (script `mutaciones_b8.py` del scratchpad).
+En HEAD separado, los 3 tests del diff de rama se saltan (`3 skipped`).
+`test_f007_r32_la_suite_de_javascript_esta_en_verde` es el test de F-007 que
+lanza Node desde pytest: cae siempre que cae uno de Node.
+
+| # | Mutación | Resultado | Lo caza |
+|---|---|---|---|
+| **16** | `bandeja` declarada `parcial` en `SECCIONES` | **muerta** | raíz R62 ×3 (`…_es_el_que_dan_sus_fichas`, el control F-038 y el del lector); Node R66 ×3 |
+| **17** | Sin `data-construccion` en la pestaña «Bandeja de revisión» de `partes.html` | **muerta** | Node `f035 R66: en la barra de partes.html…` y su control |
+| S | `:target="'_blank'"` en la tarjeta de importar (`index.html`) | **muerta** (H-1) | R17 y R68[importar.html] |
+| S2 | `x-bind:target` en la tarjeta de oficios | **muerta** (H-1) | R17 y R68[oficios.html] |
+| A8 | `enConstruccion` → `true` con un id desconocido | **muerta** | Node R62 (id raro) |
+| B8 | `enConstruccion` mira `estado !== "parcial"` | **sobrevivía** → **muerta** tras T26 | ver abajo |
+| C8 | `aria-label="Coste y venta"` sin «(en construcción)» en `index.html` | **muerta** | Node R66 `index.html` y su control |
+| D8 | `data-construccion` también en «Entrada» de `index.html` | **muerta** | Node R66 `index.html` |
+| E8 | El punto en `var(--rs-burdeos)` | **muerta** | `test_f035_r66_…punto_ambar…` y T21 ×2 (la `?v=` ya no cuadra) |
+| F8 | El aviso vuelve a «Esto es una maqueta.» | **muerta** | R13 enmendado |
+| G8 | El aviso recupera «El circuito de verdad es la pestaña «Partes firmados».» | **muerta** | R13 enmendado |
+| H8 | `estado` de `partes` calculado (`["parcial"][0]`), no literal | **muerta** | raíz R62 ×3 |
+
+**Superviviente B8, analizado y cerrado.** Hueco real, no equivalente: hoy
+ninguna sección es `real`, así que `!== "parcial"` y `=== "construccion"`
+coinciden en todas; el día que `entrada` pase a `real` (F-037 `done`), la
+mutación marcaría su pestaña como en construcción. En T26 entra
+`f035 R62: enConstruccion sigue al estado: real y parcial no, construccion sí`,
+que carga `js/portal.js` con estados cambiados en un contexto aparte
+(`node:vm`, sin tocar el fichero ni la caché de `require`). Reejecutada B8
+con ese test: **muerta** (`node fail 1`, ese test). **12/12 muertas.**
+
+Worktree retirado con `git worktree remove --force` + `git worktree prune`;
+`git worktree list` muestra solo el árbol real y el ajeno
+`.claude/worktrees/agent-a6e2f9bed1d46cdbc` (no se toca). El commit temporal
+que se hizo dentro del worktree para llevarle el test de B8 quedó en HEAD
+separado, sin rama, y se fue con él.
+
+**(c) `bash harness/init.sh`**, una vez, tal cual, tras T25 y el test de
+B8: **`ENTORNO LISTO. Puedes trabajar.`** (exit 0). Raíz **112 passed**
+(8,56 s, con cobertura); api en verde desde caché; front **425 passed**
+(11,25 s); `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de
+producción frente a dev)`; `ruff: 71 avisos (deuda previa, no bloquea)`, los
+mismos 71 (los tres ficheros de test tocados: `All checks passed!`). Node
+aparte: **509 pass, 0 fail** (1,5 s).
+
+**Comprobaciones del bloque**
+
+- «F-036 intacto»: `git diff 2a86bca -- services/postventa-front/tests/test_f036_front.py services/postventa-front/tests_js/importacion.test.js services/postventa-front/tests_js/oficios.test.js` → **vacío** (0 líneas).
+- R76: `git diff --name-status 2a86bca -- services/postventa-api` → vacío.
+- Circuito y F-036: `git diff --name-status dd67d48 --` los nueve módulos del
+  circuito, `js/api.js`, `js/importacion.js`, `js/oficios.js`,
+  `importar.html`, `oficios.html` → vacío.
+- **R59 en verde** en el árbol real (rama): en `partes.html` solo cambian la
+  barra (fuera de la comparación), dos `class` y la `?v=`.
+
+### 5 · Decisiones y desviaciones
+
+- **`inicio` en R62**: «`real` cuando lo son todas las demás del portal» se
+  lee con las **siete** demás, `partes` incluida (lectura literal de R62 y de
+  la tabla de §16.4, «cuando lo sean todas las demás»). La regla de R48 de la
+  raíz (`secciones_reales`) deja fuera `partes` para `inicio`; hoy las dos
+  dan lo mismo (`parcial`). **Para el líder**: si la intención era la de R48,
+  basta cambiar una línea de `estados_segun_las_fichas`.
+- Se conservan el atributo `data-aviso-maqueta` y las clases `rs-maqueta*`
+  del aviso (no son texto visible; los tests de R13 y R56 los usan). Si
+  R67/bloque 9 quiere renombrarlos, es allí.
+- Se conserva la **muestra de placeholder** del aviso: es la leyenda del
+  «borde discontinuo» que el texto nuevo nombra.
+- Los atributos nuevos de las pestañas van **detrás de `class`** (en
+  `index.html`, antes de `:aria-current`).
+
+### 6 · Fuera del alcance y pendiente
+
+- **Ajuste del 2026-10-05**: la leyenda de R47 de `partes.html` (sigue
+  diciendo «maqueta… aparte… remesa») y su test, y los `target` de la barra
+  del circuito y de los enlaces de F-036 → **T44, bloque 16**.
+- R66 en las barras de `importar.html` y `oficios.html` → bloques 10 y 11
+  (`PAGINAS_CON_BARRA` de `f035_paginas.test.js` crece entonces).
+- Hallazgos de la review del bloque 7 que **no** son de este bloque: H-2
+  (`window.open`, lista cerrada de R73: bloque 10 o 16, lo decide el líder),
+  H-3 (estructura cerrada de `entrada`: bloque 9), H-4 puntos 2 y 3 (ceja,
+  entradilla y chips «Maqueta» de la portada; el pendiente de `web` en
+  `maqueta_datos.js`: bloque 9), H-5 (CSS muerto: bloque 9).
+- El pie de `index.html` sigue diciendo «maqueta con datos de ejemplo»: es
+  R67, bloque 9.
+- Sin verificación visual en navegador (el bloque no la pide; V1/V2/V5 del
+  humano, bloque 15).
+
+### Evidencias (bloque 8)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | Raíz **112 passed** (8,56 s); front pytest **425 passed** (11,25 s en `init.sh`); front Node **509 pass, 0 fail** (1,5 s); api en verde desde caché |
+| Tests nuevos / cambiados | Raíz **+5** (R62); front pytest **+5** (R13 nuevo, H-1 ×3, R66 CSS) y 2 de R13 renombrados o enmendados; Node **+10** (fichero nuevo `f035_paginas.test.js`) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; JS y HTML no se miden |
+| Mutantes (campaña del arnés) | **0 generados, 0 supervivientes**, con `--base 2a86bca` y con `--base dd67d48` |
+| Mutantes a mano | **12/12 muertas** (16, 17 y diez propias); B8 sobrevivió a la primera y la mata el test añadido en T26 |
+| Tiempo de la suite | Raíz 8,56 s; front 11,25 s (pytest) + 1,5 s (Node); `init.sh` completo en unos 3 min (api desde caché) |

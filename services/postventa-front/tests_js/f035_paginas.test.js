@@ -24,6 +24,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const RAIZ_FRONT = path.resolve(__dirname, "..");
 
@@ -133,6 +134,34 @@ test("f035 R62: enConstruccion con un id desconocido o vacío devuelve false y n
   for (const raro of ["no-existe", "", undefined, null, 42, "BANDEJA"]) {
     assert.equal(enConstruccion(raro), false, `enConstruccion(${JSON.stringify(raro)})`);
   }
+});
+
+/**
+ * `js/portal.js` con el `estado` de algunas secciones cambiado, cargado en un
+ * contexto aparte (`node:vm`): sin tocar el fichero ni la caché de `require`.
+ * Sirve para probar `enConstruccion` con estados que hoy no hay (`real`).
+ */
+function portalConEstados(cambios) {
+  let fuente = leer("js/portal.js");
+  for (const [id, estado] of Object.entries(cambios)) {
+    const patron = new RegExp(`(\\{ id: "${id}",[^}]*?estado: ")[a-z]+(")`);
+    assert.match(fuente, patron, `no se encuentra el estado de «${id}» en js/portal.js`);
+    fuente = fuente.replace(patron, `$1${estado}$2`);
+  }
+  const modulo = { exports: {} };
+  vm.runInNewContext(fuente, { module: modulo });
+  return modulo.exports;
+}
+
+test("f035 R62: enConstruccion sigue al estado: real y parcial no, construccion sí", () => {
+  // Mutación manual B8 del bloque 8: `estado !== "parcial"` sobrevivía porque
+  // hoy ninguna sección es `real`.
+  const Portal = portalConEstados({ entrada: "real", bandeja: "parcial", inicio: "construccion" });
+
+  assert.equal(Portal.enConstruccion("entrada"), false, "una sección real no está en construcción");
+  assert.equal(Portal.enConstruccion("bandeja"), false, "una sección parcial no está en construcción");
+  assert.equal(Portal.enConstruccion("inicio"), true, "una sección en construccion sí");
+  assert.equal(Portal.enConstruccion("datos"), true, "las demás, como estaban");
 });
 
 test("f035 R62: inicio y partes nunca están en construcción", () => {

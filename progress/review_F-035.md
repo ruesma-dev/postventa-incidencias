@@ -3331,3 +3331,423 @@ eso vi que las únicas diferencias son el logo y el favicon, y no otra cosa
 oculta.
 
 Vale para cualquier proyecto. Va también a `arnes-base`.
+
+## Review del bloque 12 · T33–T34, O11-1 y O11-5 · 2026-10-06
+
+> reviewer. Alcance **acotado** a `git diff 9812d69..HEAD`: `bcdf46a`
+> (O11-5), `09b5660` (O11-1), `fa14520` (T33) y `e5e4201` (T34), en
+> `feature/F-035-portal-posventa`. Es el apunte (b) del humano (R74): en
+> `importar.html`, con un fichero ya importado, los recuentos se rotulan
+> «Resumen de la importación original del <fecha>». Lo resuelve
+> `rotuloResumen(respuesta)` en `js/importacion.js`, tolerante a que falte
+> `importado_at_utc`, que lo dará F-053 y hoy no existe.
+>
+> Los bloques 13–15 siguen abiertos **a propósito** y no cuentan como `[ ]`.
+> El vistazo en navegador (importar el mismo fichero dos veces) queda para
+> V1/V2 del humano.
+>
+> Criterio de severidad del líder: bloqueante es un riesgo real para el
+> usuario o un incumplimiento de la spec. Una mutación que solo se distingue
+> con datos que nadie mandaría, o una variante de una familia ya cubierta, va
+> como informativo con su destino.
+
+### Veredicto
+
+**APPROVED** (del bloque 12, no de la feature).
+
+- **El único cambio de lógica es el que la spec admite.** `js/importacion.js`
+  gana 65 líneas y no pierde ninguna frente a `2a86bca`: `rotuloResumen`, su
+  ayudante privado `instanteDeIso`, la clave en `presentarImportacion` y la
+  exportación. `resumenTexto` y `textoDelEstado` no cambian. Los tests de
+  F-036 no tienen diff y pasan.
+- **La fecha es la de Madrid.** La comparé con un oráculo independiente en
+  122.198 instantes de 2024 a 2027, incluidos los cambios de hora al
+  segundo, y no falla ninguno.
+- **El rótulo «original» solo sale con `ya_importado`.** Una importación
+  nueva dice siempre «Resumen de esta importación», aunque la respuesta
+  traiga una fecha.
+- **C1 y C2 son equivalentes de verdad.** Lo comprobé con un barrido de 2
+  millones de entradas.
+- **O11-1 y O11-5 están cerrados.** Con mi parser, la huella de
+  `importar.html` solo gana la entrada del rótulo.
+- Hice 19 mutaciones mías en 4 familias. Las que sobreviven solo se
+  distinguen con datos o marcado que nadie mandaría, y ninguna produce una
+  fecha equivocada con datos reales. Van como informativo (O12-1 a O12-4).
+
+### Nivel de rigor
+
+`estandar`, declarado en `harness/features.json`. Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con los supervivientes
+analizados.
+
+El bloque no tiene Python de producción. Por eso la cobertura sale N/A, con
+el motivo impreso por `init.sh`, y la campaña da 0 mutantes (el control del
+cero está más abajo). Lo compensan las mutaciones a mano: 61 del
+implementer y 19 mías.
+
+La regla 7 de `reviewer.md` (orden) es **N/A**. Solo aplica en rigor
+`critico`, y además aquí no hay un orden entre colaboradores que proteger.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh`, tal cual, sobre HEAD. Lo relancé porque el implementer lo corrió **antes** del commit de T34, que añade tests | **exit 0**, `ENTORNO LISTO`. Raíz: 114 passed. Front: **707 passed** (30,23 s, ejecutado, no desde caché). `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`. ruff: 71 avisos, todos de deuda previa |
+| `node --test "tests_js/*.test.js"` (línea base del worktree) | **645/645** |
+| `git diff --stat 9812d69..HEAD` sobre `services/postventa-api`, `js/api.js`, `js/oficios.js`, `css/`, `tests/test_f036_front.py`, `tests_js/importacion.test.js` y `tests_js/oficios.test.js` | **vacío** |
+| `git diff --stat 2a86bca..HEAD -- js/importacion.js` y los dos tests de Node de F-036 | `importacion.js`, 65 líneas añadidas y ninguna borrada. Los tests de F-036, vacíos |
+| Huella funcional de `importar.html` con mi parser (`html.parser`). Mira `x-*`, `@*`, `:*`, `id`, `name`, `for`, `type`, `accept`, `value`, `disabled`, `required`, `autocomplete`, `src`, `href`, `tabindex`, `aria-hidden`, `inert` y `hidden`, con el ámbito de Alpine y el texto de los botones | `9812d69`: 69 entradas; HEAD: 70. La **única** diferencia es `('p', (('x-text', 'resultado.rotuloResumen'),), …template[x-if=resultado])` |
+| Diff de `HUELLA_DE_IMPORTAR` entre `09b5660` y `fa14520` | Una tupla añadida, la del rótulo, más su comentario |
+| Oráculo de fechas (Node, en el scratchpad) | Comparé `rotuloResumen` con `Intl` sobre `new Date(iso)` cada 17 min 13 s de 2024 a 2027 (122.198 instantes), en tres formas cada uno: con `Z`, sin desfase y como `isoformat()` de Python con microsegundos. **0 fallos** |
+| Barrido de C1 y C2 | Lo detallo en la respuesta 4 |
+| Recálculo `alcance_de_feature("F-035", base="2a86bca")` | `{}`: 0 mutantes, igual que `progress/mutacion_F-035.md` |
+| Reejecución de la campaña (el informe declara un «Tiempo total» de 0,0 s, menos de 5 min), con `--salida` en el scratchpad | 0 generados, 0 evaluados, 0 muertos, 0 supervivientes y 0 timeouts: **idéntico** al informe. `git status` limpio |
+| Control del cero: `generar_mutantes` sobre las líneas del diff del bloque, ignorando la exclusión | `test_f035_paginas.py`: 321 líneas y 61 mutantes; `test_f035_portal.py`: 44 líneas y 11 mutantes. El generador funciona y el cero es **legítimo** |
+| `git log --diff-filter=A 9812d69..HEAD` | No se añade ningún fichero |
+| `console.*`, `debugger`, `print(`, `TODO` y `FIXME` en las líneas añadidas | Ninguno |
+| Zona horaria del proceso en Node 24 sobre Windows | `process.env.TZ = …` en caliente sí cambia la zona (`America/New_York` y `Pacific/Kiritimati`). Los tres tests «aunque el proceso esté en …» prueban de verdad otra zona |
+| Mutaciones a mano | Las hice en un worktree desechable del scratchpad, sobre `e5e4201`, con la rama temporal `feature/F-035-rev-b12` para que las guardias de rama no se salten. Apliqué cada mutación sola, con los CRLF conservados, y Node con el reporter `tap`. Al terminar retiré el worktree y la rama, y `git status` quedó limpio |
+
+### Mutaciones del reviewer, por familias
+
+Evité repetir las 61 del implementer: estas buscan lo que su tabla no
+prueba. En las de HTML separo los tests que caen **de verdad** de los
+controles que solo dejan de encontrar su cadena, que es la muerte
+artificial de K2 y S4 en bloques anteriores.
+
+| Familia | # | Mutación | Resultado | La mata |
+|---|---|---|---|---|
+| **J · `rotuloResumen` / `instanteDeIso`** | J1 | decide por la fecha y no por `ya_importado`: `!ya_importado && !importado_at_utc` | muerta | R74 «sin ya_importado» (que trae fecha) |
+| | J2 | `rotuloResumen(respuesta.resumen)` en `presentarImportacion` | muerta | R74 `presentarImportacion` |
+| | J8 | `instante.toLocaleDateString("es-ES")`: la zona del proceso y sin ceros | muerta | 19 casos, entre ellos los tres de la zona del proceso |
+| | J9 | `new Date(anio, …)` local en vez de `Date.UTC` | muerta | 12 casos, entre ellos «sin zona», «solo la fecha» y dos de la zona del proceso |
+| | J3 | el separador solo `T` (rechaza el espacio de `str(datetime)`) | **sobrevive** | O12-2 |
+| | J4 | el regex sin la `i` (rechaza `t`/`z` en minúscula) | **sobrevive** | O12-2 |
+| | J5 | sin `trim()` | **sobrevive** | O12-2 |
+| | J6 | los segundos obligatorios (rechaza `…T23:30Z`) | **sobrevive** | O12-2 |
+| | J7 | sin `minutos > 59` en el desfase | **sobrevive** | O12-2 |
+| **H · El rótulo en `importar.html`** | H3 | `x-html` en vez de `x-text` | muerta | `o11_5_…huella…` y `r74_importar_pinta…` |
+| | H4 | `:class="resultado.yaImportado ? '' : 'hidden'"`: se esconde en una importación nueva | muerta | `o11_5_…huella…` |
+| | H5 | el rótulo, fundido en el `x-text` de los recuentos | muerta | `o11_5_…` y `r74_importar_pinta…` |
+| | H1 | `class="mt-2 hidden"` en el rótulo | **sobrevive en sustancia** (solo caen 6 controles) | O12-1 |
+| | H2 | `class="mt-2 sr-only"` en el rótulo | **sobrevive en sustancia** (solo caen 6 controles) | O12-1 |
+| **G · Guardia de O10-2 / O11-1** (probadas con `_o10_2` directamente, para que la `?v=` no las mate de forma artificial) | G1 | una regla posterior `label:focus-within { outline: none !important; }` | **sobrevive** | O12-3 |
+| | G2 | `.rs-btn:focus-within` sólido y `label.rs-btn:focus-within { outline: none }`: gana la del `label` por especificidad | **sobrevive** | O12-3 |
+| | G3 | el contorno del color del lienzo (`#fff`) | **sobrevive** | O12-3 |
+| | G4 | `tabindex="-1.5"`: el navegador lo lee como -1 | **sobrevive** | O12-3 |
+| **L · El selector desde fuera** | H6 | `class="… hidden"` en la `<label>` de «Elegir el Excel» | **sobrevive en sustancia** (solo caen 2 controles) | O12-4 |
+
+Mueren **5 de 19**. Las 14 vivas:
+
+- **Familia J**: ninguna superviviente produce una fecha **equivocada** con
+  datos que el backend vaya a mandar. Todas, salvo J7, solo hacen que una
+  fecha rara se rotule **sin fecha**, que es lo seguro. J7 acepta un
+  desfase de 99 minutos, que nadie manda.
+- **Familias H, G y L**: es marcado o CSS que nadie escribiría. Además el
+  estado (`textoDelEstado`) ya dice «Este fichero ya se había importado» y
+  el ojo de V1 lo ve.
+
+### Respuestas a las preguntas del líder
+
+**1 · El cambio en `js/importacion.js`: solo `rotuloResumen` y la clave.**
+
+- El diff contra `9812d69` y contra `2a86bca` es el mismo, y solo añade:
+  - el bloque «El rótulo del resumen»: `FECHA_DE_MADRID`, `FECHA_ISO`,
+    `instanteDeIso`, que es privada, y `rotuloResumen`;
+  - la línea `rotuloResumen: rotuloResumen(respuesta),` en
+    `presentarImportacion`;
+  - la línea `rotuloResumen: rotuloResumen,` en la exportación.
+- **`resumenTexto` y `textoDelEstado` están intactos.** Ninguna línea de
+  `resumenLegible` ni de `textoDelEstado` aparece en el diff. El caso de
+  `presentarImportacion` lo fija además con el texto literal de F-036.
+- **Los tests de F-036 no tienen diff** (`test_f036_front.py`,
+  `importacion.test.js` y `oficios.test.js`, desde `9812d69`; los dos de
+  Node, también desde `2a86bca`) y pasan: los 707 del front y los 645/645
+  de Node.
+- **R33 enmendado**: admite `M js/importacion.js` y nada más. El control sin
+  git rechaza `oficios.js`, `api.js`, `app.js`, el `M` de la guarda y el `A`
+  o el `D` de `importacion.js`. Es más estricto que la enmienda de la spec,
+  que ya admite `oficios.js`, y lo hace a propósito: R75 es del bloque 13.
+
+**2 · La fecha.**
+
+- **El día es el correcto en hora de Madrid, también cuando en UTC es otro
+  día.** El oráculo da 0 fallos en 122.198 instantes. Las fronteras exactas
+  salen bien:
+  - `2026-03-28T22:59:59Z` es el 28/03 y `23:00:00Z`, el 29/03 (todavía
+    UTC+1);
+  - `2026-03-29T21:59:59Z` es el 29/03 y `22:00:00Z`, el 30/03 (ya UTC+2);
+  - `2026-10-24T22:00:00Z` es el 25/10, y `2026-10-25T23:00:00Z`, el 26/10;
+  - el 29/02 de 2028 y la noche de fin de año también salen bien.
+
+  No depende de la zona del navegador: lo prueban los tres tests de la
+  zona del proceso, que de verdad la cambian, y mis J8 y J9 mueren.
+- **Sin desfase, se lee como UTC.** Es razonable, porque el campo se llama
+  `_utc`, y es lo contrario de lo que haría `Date`, que lo leería en la
+  hora del navegador. Pero es una **suposición sobre F-053, y F-053 tiene
+  que respetarla.** Lo que F-053 debe cumplir:
+  1. **`importado_at_utc` es un instante, con desfase explícito.**
+     Preferiblemente en UTC: `…T23:30:00Z` o `…T23:30:00+00:00`, el
+     `isoformat()` de un `datetime` *aware* pasado a
+     `astimezone(timezone.utc)`. La columna es `timestamptz`
+     (`12_importaciones.sql:38`), así que psycopg la devuelve *aware* y en
+     la zona de la sesión.
+  2. **Nunca quitar el `tzinfo`** (`replace(tzinfo=None)`, un `strftime`
+     sin `%z`) a un valor que esté en hora de Madrid. El front lo leería
+     como UTC, y entre las 22:00 y las 24:00 de Madrid (las 23:00 en
+     invierno) el rótulo diría el **día siguiente**. Es el único fallo
+     posible del contrato que da una fecha **equivocada** en vez de ninguna.
+  3. **El desfase va con cuatro cifras** (`+00:00` o `+0000`). El texto
+     crudo de PostgreSQL (`2026-07-15 23:30:00+00`, con dos cifras) no se
+     acepta, y el rótulo saldría **sin fecha**. Es seguro, pero se pierde
+     la fecha.
+  4. **Con `T` y con segundos.** El front tolera el espacio y la falta de
+     segundos, pero ningún test fija esa tolerancia (J3 y J6), así que F-053
+     no debe contar con ella.
+
+  Lo dejo escrito aquí para la ficha de F-053. El §5.2 del informe del
+  implementer dice lo mismo en corto.
+- **La validación «más estricta que `Date`» es razonable.** Un rótulo con
+  una fecha equivocada engaña justo donde R74 quiere evitarlo. Uno sin
+  fecha solo se queda corto, y R74 ya prevé ese texto. `Date` daría el 30
+  de febrero como el 2 de marzo, «10/03/2026» como el 3 de octubre y un
+  número como un instante epoch. El implementer los rechaza y los tests lo
+  fijan.
+  - Comprobé además que se rechazan la hora 24, el año `0050` (que
+    `Date.UTC` convertiría en 1950) y el desfase `+24:00`.
+  - Se aceptan `+14:00` y `+23:59`, que son instantes bien formados.
+  - El precio está en O12-2: unas pocas formas de ISO válidas que hoy se
+    aceptan no las fija ningún test. Nunca dan una fecha equivocada.
+
+**3 · El rótulo «original» solo sale con un fichero ya importado.**
+
+- `rotuloResumen` mira primero `!respuesta || !respuesta.ya_importado`. Con
+  `ya_importado` falso, ausente, `0` o `null` devuelve «Resumen de esta
+  importación», **aunque la respuesta traiga `importado_at_utc`**. Lo probé
+  con `{ya_importado: false, importado_at_utc: "…Z"}` y con
+  `{importado_at_utc: "…Z"}`, y lo fija el primer caso de Node: mi J1
+  muere.
+- Esto importa porque el contrato de §16.6 dice «de la importación de la
+  respuesta». F-053 seguramente mandará la fecha **también** en las
+  importaciones nuevas.
+- Usa la misma veracidad que `textoDelEstado` (`if (respuesta.ya_importado)`)
+  y que `yaImportado: Boolean(…)`, que elige el `:class` azul. Las tres
+  cosas no pueden discrepar.
+- En `importar.html` el rótulo **se ve siempre**: dice «de esta importación»
+  o «la original». La guardia prohíbe esconderlo con un atributo, y la
+  huella prohíbe un `:class` nuevo (H4 muere). Con una clase estática como
+  `hidden` sí se escaparía (O12-1).
+
+**4 · C1 y C2: son equivalentes de verdad.**
+
+- Barrí 2.000.000 de entradas:
+  - los años 2024, 2026, 1900 y 2000;
+  - todos los meses y días de `00` a `99`;
+  - las horas 0, 12, 23, 24, 25, 47, 48, 72, 95 y 99;
+  - los minutos y segundos `00:00`, `59:59`, `60:00`, `00:60` y `99:99`.
+
+  Lo comparé con el original (con los CRLF normalizados, para que la
+  mutación se aplicara de verdad: lo verifiqué).
+- **C1** (sin `getUTCDate() !== dia`): **0 diferencias.** Un día que no
+  existe siempre cambia el mes. El desborde de horas, minutos y segundos lo
+  paran sus propias comparaciones.
+- **C2** (sin `hora > 23`): **0 diferencias.** Una hora de 24 a 99 suma de
+  1 a 4 días, y eso siempre cambia el día del mes.
+- **Las dos a la vez sí cambian el resultado**: 19.700 diferencias, por
+  ejemplo `2026-07-15T24:00:00Z`, que pasaría a leerse como el 16/07. Las
+  dos condiciones se cubren **la una a la otra**, y el par entero lo
+  protege el caso «hora 25», que caería. Por eso está bien dejarlas las
+  dos: quitar una no cambia nada, y quitar las dos sí.
+- **Anotado: equivalentes, no bloquea.**
+
+**5 · O11-1 y O11-5: cerrados.**
+
+- **O11-5.** `HUELLA_DE_IMPORTAR` se fijó en `bcdf46a`, antes de R74.
+  Coincide con mi parser independiente sobre `9812d69`, que además mira
+  `href`, `src`, `tabindex`, `aria-hidden`, `inert` y `hidden`.
+  - En `fa14520` gana **una sola tupla**, la del rótulo. Mi parser dice lo
+    mismo entre `9812d69` y HEAD: **una sola entrada nueva**.
+  - Los 7 controles (L1–L4, K3, una directiva nueva y un texto de botón)
+    muerden.
+  - Mis H3, H4 y H5 mueren por la huella.
+- **O11-1.** Hace lo que la review del bloque 11 pidió, y algo más:
+  - el `tabindex` negativo (K1), `disabled`, también heredado de un
+    `fieldset`, `aria-hidden="true"` e `inert`, en el control o en un
+    ancestro;
+  - un contorno sólido, con ancho y no transparente, calculado con la
+    cascada por propiedades;
+  - cada caso con su control, 11 que saltan y 6 que no.
+
+  Las K1, K3 y K5 de la review anterior, aplicadas sobre la página real,
+  mueren con la guardia (no solo con los controles): lo trae la tabla del
+  implementer, familia J.
+
+  Lo que queda fuera (O12-3, O12-4) son casos de especificidad entre
+  selectores distintos, `!important`, un color igual al fondo, un
+  `tabindex` decimal y una clase `hidden` en la etiqueta. Nadie los
+  escribe, y V1 los vería.
+
+**6 · Navegador**: queda para V1/V2 del humano.
+
+- Importar el mismo fichero dos veces:
+  - la primera, aviso verde o ámbar con «Resumen de esta importación»;
+  - la segunda, aviso azul con «Resumen de la importación original de este
+    fichero», sin fecha hasta que exista F-053.
+- Comprobar que el rótulo se distingue de los recuentos (§5.3 del informe).
+
+**Los apuntes del §5 del informe: están bien.**
+
+- §5.1 y §5.2: las respuestas 2 y 3.
+- §5.3: el rótulo sin clase propia, con `mt-2` en el tono del aviso, es
+  correcto, porque evita tocar la hoja y la `?v=`. Si en V1 no se distingue,
+  la salida que propone es la buena.
+- §5.4: que se vea siempre es lo que pide R74.
+- §5.5: `instanteDeIso` privada, bien.
+- §5.6: el refactor de R33 a `problemas_r33` no cambia su comportamiento
+  sobre la rama, y gana un control sin git.
+- §5.7: no mirar `:disabled` ni `:tabindex` ligados es correcto, porque
+  dependen del estado.
+- §5.8 y §5.9: correctos.
+
+### Checkpoints (acotados al diff)
+
+- **C1** [x] `init.sh` termina con exit 0 (lo ejecuté yo, sobre HEAD).
+  [x] Existen los ficheros del arnés.
+- **C2** [x] Una sola feature `in_progress` (F-035). [x] Rama
+  `feature/F-035-portal-posventa`. [x] `current.md` lleva la entrada nueva
+  arriba. [x] Ninguna feature pasa a `done`.
+- **C3**
+  - [x] La primera línea con la ruta está en los nueve ficheros tocados.
+  - [x] Sin depuración, TODO ni secretos. Sin dependencias nuevas:
+    `Intl.DateTimeFormat` es del lenguaje.
+  - [x] Comentarios en español.
+  - [x] Ningún PDF ni parte en git: `--diff-filter=A` vacío.
+  - [x] El límite de servicio se respeta: `services/postventa-api` no tiene
+    diff, y el dato que falta se deja a F-053 (R76).
+  - Arquitectura hexagonal, unidad «parte», Sigrid, firma, «firmado no es
+    conforme», duplicados y `conest`: **N/A justificado**. El diff es front
+    (una función pura de presentación, una línea de HTML) y tests, y no
+    toca la API ni el circuito.
+- **C3 bis** — **N/A**: el diff no toca `docs/referencia/`.
+- **C4** [x] Cada requisito tiene tests trazables, y todos pasan:
+
+  | Requisito | Tests |
+  |---|---|
+  | R74, texto según `ya_importado` | Node «f035 R74: rotuloResumen, sin ya_importado / sin el campo ya_importado / ya importado con fecha válida…» y «nunca lanza» |
+  | R74, sin fecha o fecha no válida | Node, los 15 casos de fecha ausente y de fecha basura (incluidos los de T34: lista, segundo 60 y fecha con cola) |
+  | R74, día de Madrid (23:30 UTC de verano y demás) | Node, los 12 casos de cambio de día y desfase, y los 3 de la zona del proceso |
+  | R74, `presentarImportacion` con el rótulo y sin cambiar los recuentos | Node «f035 R74: presentarImportacion lleva el rótulo…» y los de F-036 sin tocar (R43, R50) |
+  | R74, en `importar.html`: justo encima, dentro del aviso y siempre visible | `test_f035_r74_importar_pinta_el_rotulo…`, 6 controles y `…fuera_del_aviso_salta` |
+  | R33 enmendado | `test_f035_r33_no_se_modifica_nada_del_circuito` y `…control_admite_el_m_de_importacion_js…` |
+  | R76 (la API, sin tocar) | `git diff --stat 9812d69..HEAD -- services/postventa-api` vacío. Lo vigilan R32 y R33 en la rama |
+  | O11-5 | `test_f035_o11_5_importar_conserva_su_huella_funcional` y 7 controles |
+  | O11-1 | `test_f035_o10_2_control_el_selector_inalcanzable_salta` (17 casos), `…o11_1_control_un_fieldset…` y `…o11_1_control_lo_que_si_deja_llegar…` (6 casos) |
+
+  [x] Sin red ni BBDD. [x] El MANUAL (vistazo en navegador) consta en
+  `current.md`, enviado a V1/V2.
+- **C4 bis** [x] `rigor: "estandar"`.
+  - [x] **Fase RED**: el informe trae las salidas reales:
+    - R74 en Node: 34 fallos de 84, con `TypeError: rotuloResumen is not a
+      function`;
+    - R74 en Python: «hay 0 y 1» y los controles;
+    - O11-1: 11 fallos de 26;
+    - R33 sin enmendar: cae con el `M` de `importacion.js`.
+
+    O11-5 no tiene RED por definición, porque es de no regresión. Que
+    muerde lo prueban sus 7 controles, y que cayó con **solo** la entrada
+    nueva al meter R74.
+  - [x] **Cobertura**: N/A con el motivo impreso por `init.sh`.
+  - [x] **Mutación**: informe de la herramienta con 0 mutantes, recalculado,
+    reejecutado con totales idénticos y con el control del cero hecho (72).
+    Que tarde 0,0 s es coherente: no hay nada que evaluar.
+  - [x] **Mutantes a mano**: del implementer, 61, con 59 muertas y 2
+    equivalentes que he comprobado (C1 y C2). Mías, 5 de 19, con las 14
+    vivas analizadas arriba. En rigor `estandar` basta con documentarlas.
+  - [x] «Evidencias» con los cuatro números.
+  - [x] Ningún N/A sin justificar. La regla 7 es N/A porque es de
+    `critico`.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5**
+  - [x] T33 y T34 están `[x]`, con sus commits `F-035 T33: …` y
+    `F-035 T34: …`.
+  - [x] O11-5 y O11-1 llevan cada una su propio commit (`F-035 O11-5: …` y
+    `F-035 O11-1: …`). Son tareas de la review, no de `tasks.md`, así que
+    no les toca número `Tn`.
+  - [x] No hay ficheros sin trackear. El worktree
+    `.claude/worktrees/agent-a6e2f9bed1d46cdbc` ya existía y no es de este
+    bloque. El del implementer y el mío están retirados.
+  - [x] `features.json` dice `in_progress`, que es lo real.
+
+### Informativo (no bloquea), con su destino
+
+- **Contrato para F-053 (no es un hallazgo de este bloque, pero hay que
+  pasarlo).** Son los cuatro puntos de la respuesta 2.
+  - El que importa es el 2: **nunca un `importado_at_utc` sin desfase que
+    esté en hora de Madrid**. Es el único caso que pintaría una fecha
+    equivocada.
+  - **Destino: el spec-author de F-053**, cuando se dé de alta: en sus
+    requisitos y en su test de contrato. El líder decide si lo apunta ya en
+    `harness/features.json`.
+- **O12-1 · La guardia de R74 no ve que el rótulo se esconda con una
+  clase** (H1 `hidden`, H2 `sr-only`; también `invisible`). Solo mira
+  `_CERRABLE`, que son atributos.
+  - El §1 del informe dice «que nada lo puede esconder». Es algo más de lo
+    que la guardia comprueba.
+  - Hoy el rótulo no lleva ninguna. Además `estadoTexto` ya dice «ya se
+    había importado», así que el riesgo es bajo.
+  - **Propuesta**: en `problemas_r74`, rechazar también `clases(rotulo) &
+    (_OCULTA_DEL_TODO | {"sr-only"})`, con su control.
+  - **Destino: bloque 14**, o el siguiente bloque que toque `importar.html`.
+- **O12-2 · Tolerancias de `instanteDeIso` que ningún test fija** (J3 el
+  espacio, J4 las minúsculas, J5 los espacios alrededor, J6 la falta de
+  segundos, J7 los minutos del desfase por encima de 59).
+  - Todas, salvo J7, solo deciden si una forma rara sale con fecha o sin
+    ella. Ninguna da una fecha equivocada.
+  - **Destino: F-053.** Si F-053 fija una forma (la recomendada es `T`,
+    segundos y `Z` o `+00:00`), basta con un caso de Node con **esa** forma
+    exacta, que ya existe: «con +00:00 y microsegundos». Si eligiera el
+    espacio de `str(datetime)`, que añada su caso.
+  - J7 es opcional: un desfase de 99 minutos no lo manda nadie.
+- **O12-3 · La cascada de O11-1 se calcula por selector exacto, no por
+  especificidad ni `!important`.** Tampoco ve un color igual al del fondo
+  ni un `tabindex="-1.5"` (G1–G4).
+  - Es la familia O11-1, con un CSS que nadie escribiría. Modelar la
+    especificidad sería sobreespecificar la guardia.
+  - **Destino: V1/V2.** Tabular hasta «Elegir el Excel» y ver el contorno
+    burdeos, que ya está en el guion.
+- **O12-4 · La guardia de O10-2 no mira las clases de ocultar en los
+  ancestros** (H6: `hidden` en la `<label>`).
+  - Sin la etiqueta no hay botón «Elegir el Excel», y cualquiera lo ve en
+    el primer vistazo.
+  - **Destino: opcional.** Si se quiere, en `problemas_o10_2` basta con
+    extender a los ancestros la comprobación de `_OCULTA_DEL_TODO` que ya
+    hace con el control.
+- Siguen abiertos, como estaban:
+  - **O11-2** (opcional), **O11-3** y **O11-4** (V1/V2);
+  - **O10-1**, **H16-3 a H16-6**, **O17-2**, **O9-2 a O9-4** y **O9-7**:
+    van al spec-author, en el bloque 14;
+  - **O10-5**, **O9-1**, **O9-5** y **O9-6**: van a V1/V2;
+  - **O16-4**, que es opcional.
+  - El README del front tiene que contar el rótulo de R74 (bloque 14, §6
+    del informe).
+
+### Automejora (propuesta, no aplicada)
+
+**`reviewer.md`, regla para las mutaciones de HTML o CSS: separar los tests
+que caen de verdad de los controles que solo dejan de encontrar su
+cadena.**
+
+Ya pasó tres veces (S4 en el bloque 10, K2 en el 11, y H1, H2 y H6 aquí).
+Una mutación sobre la página real hace caer los controles parametrizados
+que buscan el texto literal con `real.count(viejo) == 1`. La suite se pone
+en rojo, pero la guardia **no ha visto nada**.
+
+La propuesta: al anotar el resultado de una mutación, contar como muerta
+solo si cae algún test que **no** sea un control de «el control ya no
+encuentra una sola vez». Si solo caen esos, se anota **«sobrevive en
+sustancia»**. En las mutaciones de CSS, además, probar la guardia
+directamente, porque la `?v=` mata cualquier cambio de la hoja de forma
+artificial.
+
+Vale para cualquier proyecto con guardias estáticas sobre marcado, así que
+va también a `arnes-base`.

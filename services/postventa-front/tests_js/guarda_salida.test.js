@@ -160,8 +160,11 @@ function navegador(estado, opciones) {
   const ventana = {
     Pipeline: o.pipeline || PIPELINE_QUIETO,
     Autoguardado: Autoguardado,
-    addEventListener(tipo, manejador) {
-      registro.escuchas.push({ tipo, manejador });
+    // El tercer argumento se apunta: con `{ once: true }` la escucha se iría
+    // tras la primera salida cancelada, y con `{ passive: true }` el navegador
+    // ignoraría `preventDefault()` (re-review del bloque 16, H16-9).
+    addEventListener(tipo, manejador, opciones) {
+      registro.escuchas.push({ tipo, manejador, opciones });
     },
   };
   if (!o.sinAlpine) {
@@ -622,6 +625,11 @@ test("f035 R80: instalar registra exactamente un beforeunload en la ventana, y n
     registro.escuchas.map((e) => e.tipo),
     ["beforeunload"],
   );
+  assert.equal(
+    registro.escuchas[0].opciones,
+    undefined,
+    "el beforeunload se registra sin opciones: ni once (se iría tras la primera salida) ni passive (ignoraría preventDefault)",
+  );
   assert.deepEqual(registro.escuchasDocumento, []);
   assert.deepEqual(registro.selectores, [], "instalar no lee el estado: lo lee al salir");
   assert.deepEqual(registro.$data, []);
@@ -665,6 +673,11 @@ test("f035 R78: cargada como script en la página, la guarda se instala sola y s
     registro.escuchas.map((e) => e.tipo),
     ["beforeunload"],
     "al cargarse en la página tiene que quedar UN beforeunload registrado",
+  );
+  assert.equal(
+    registro.escuchas[0].opciones,
+    undefined,
+    "el beforeunload se registra sin opciones: ni once (se iría tras la primera salida) ni passive (ignoraría preventDefault)",
   );
   assert.deepEqual(registro.escuchasDocumento, []);
   assert.ok(ventana.GuardaSalida, "la guarda queda expuesta como window.GuardaSalida");

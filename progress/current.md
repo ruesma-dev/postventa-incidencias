@@ -14,6 +14,11 @@
 > `services/postventa-front/index.html`: se queda el portal; los dos enlaces de F-036 (R51) pasan a
 > la cabecera de `partes.html`, donde vive ahora el circuito, y `test_f036_front.py` apunta su
 > `INDEX` a `partes.html` (el mismo arreglo de una línea que F-035 hizo en los tests del circuito).
+>
+> **Rojo conocido y a propósito**: `tests/test_f035_placeholders_vivos.py::test_f035_r28_…` falla porque
+> F-036 está `done` y la maqueta conserva sus placeholders (`index.html:185,188`, `js/portal.js:84,91`,
+> `js/maqueta_datos.js:123`). Es la guarda de R28 haciendo su trabajo: retirarlos es el primer
+> bloque de la enmienda. El resto de `init.sh`, en verde (front 409 passed).
 
 > ## ✅ F-036 CERRADA Y EN `dev` · 2026-10-05 · siguiente: push (humano) y F-035
 >

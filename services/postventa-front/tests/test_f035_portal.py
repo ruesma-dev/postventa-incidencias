@@ -105,6 +105,8 @@ TESTS_CON_INDEX = (
     "test_f026_autoguardado.py",
     "test_f026_front.py",
     "test_f028_front.py",
+    # Llegó con el merge de dev (F-036): su INDEX también se muda a partes.html.
+    "test_f036_front.py",
 )
 LINEA_INDEX_ANTES = 'INDEX = RAIZ_FRONT / "index.html"'
 LINEA_INDEX_DESPUES = 'INDEX = RAIZ_FRONT / "partes.html"'

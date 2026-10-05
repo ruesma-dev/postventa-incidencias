@@ -332,6 +332,30 @@ a.rs-pestana:hover {
   background-color: var(--rs-burdeos);
 }
 
+/* El rótulo de un panel de atención (los avisos de la remesa del circuito):
+   el color del aviso, también en el trazo, que ahí no es la marca. */
+.rs-rotulo--atencion {
+  color: var(--rs-atencion);
+}
+
+.rs-rotulo--atencion::before {
+  background-color: currentColor;
+}
+
+/* El texto corrido de un panel, en tamaño de lectura (el circuito, R82). No
+   fija márgenes: los pone la maquetación de cada sitio. */
+.rs-texto {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--rs-tinta-suave);
+}
+
+/* Un inciso apagado dentro de un texto o una nota: solo el color, el tamaño
+   lo hereda. */
+.rs-texto--apagado {
+  color: var(--rs-acero-texto);
+}
+
 .rs-mono {
   font-family: var(--rs-fuente-mono);
   font-size: 0.9em;
@@ -429,6 +453,13 @@ a.rs-pestana:hover {
 .rs-panel--lista {
   padding: 0;
   overflow: hidden;
+}
+
+/* La franja de arriba de un panel pegado a los bordes (la cabecera de la
+   lista de partes del circuito): solo el separador; el relleno y la
+   alineación los pone su maquetación. */
+.rs-panel__franja {
+  border-bottom: 1px solid var(--rs-linea);
 }
 
 /* ---------- Botones (una sola acción principal por vista) --------------------- */

@@ -36,6 +36,13 @@ Bloque 16 (`tasks.md`, T43-T44, ajuste del 2026-10-05):
   `beforeunload`; y las fases que vigila existen en `js/app.js`. Su
   comportamiento (R78, R79) se prueba en `tests_js/guarda_salida.test.js`.
 
+Bloque 17 (`tasks.md`, T46, ajuste del 2026-10-05):
+
+- **R82**, el remodelado de `partes.html`: ningún `class` estático lleva una
+  utilidad de Tailwind de la lista cerrada de R72 (`design.md` §16.5), salvo
+  `text-red-800` en el aviso de fallo del autoguardado. Los `:class` (los
+  colores de estado del circuito) no entran.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -523,3 +530,155 @@ def test_f035_r73_control_el_enlace_a_sharepoint_no_es_del_front():
     html = '<a x-show="r.web_url" :href="r.web_url" target="_blank" rel="noopener">abrir en SharePoint</a>'
 
     assert problemas_r73("partes.html", html) == []
+
+
+# --- R82 · El remodelado de `partes.html` (bloque 17, T46) ------------------------
+#
+# `design.md` §16.15.5 y H-12: lo que le quedaba a `partes.html` de Tailwind en
+# sus `class` estáticos (grises, azul cielo, ámbar, tamaños de letra,
+# separadores) pasa a los componentes `rs-*` de `css/styles.css`. La lista
+# cerrada es la de R72 (`design.md` §16.5), la misma que se aplicará a
+# `importar.html` y `oficios.html`. Los `:class` no entran: pintan los ESTADOS
+# del circuito (semáforo, dudoso, arrastrando…), los fijan los tests de F-026 y
+# F-028 y, como el CDN de Tailwind inyecta sus utilidades después de nuestra
+# hoja, ganan sobre el aspecto por defecto del componente (§15.7, regla 2).
+
+#: Prefijos de la lista cerrada de R72, tras quitar `hover:`, `sm:`… (§16.5).
+_PROHIBIDAS_POR_PREFIJO = (
+    "bg-", "text-", "border", "rounded", "shadow", "font-", "tracking-",
+    "leading-", "divide-", "ring", "opacity-", "placeholder-",
+)
+#: Las que se prohíben enteras.
+_PROHIBIDAS_ENTERAS = frozenset({"uppercase", "lowercase", "underline"})
+#: Las `text-*` que no son color ni tipografía, sino alineación: se admiten.
+_ALINEACIONES = frozenset({"text-left", "text-center", "text-right"})
+
+#: La única excepción de R82 (§15.7, regla 3): `text-red-800` en el aviso de
+#: fallo del autoguardado, que fija `test_f026_autoguardado.py`. Se reconoce por
+#: su `x-show`, que R59 congela.
+EXCEPCION_R82 = ("text-red-800", "estadoAutoguardado === 'fallo'")
+
+
+def utilidades_prohibidas(valor_class: str) -> list[str]:
+    """Las utilidades de Tailwind de la lista cerrada de R72 que lleva un valor de `class`, en su orden."""
+    halladas = []
+    for clase in valor_class.split():
+        base = clase.rsplit(":", 1)[-1].lstrip("!-")
+        if base in _ALINEACIONES:
+            continue
+        if base in _PROHIBIDAS_ENTERAS or base.startswith(_PROHIBIDAS_POR_PREFIJO):
+            halladas.append(clase)
+    return halladas
+
+
+def problemas_r82(html: str) -> list[str]:
+    """Los `class` estáticos de `html` con utilidades de la lista cerrada (R82). Vacío = correcto.
+
+    Solo mira el atributo `class`: `:class` y `x-bind:class` son otros
+    atributos y quedan fuera. Mira la página entera, barra incluida (R82 la
+    deja fuera porque ya cumple; mirarla no cuesta nada y la mantiene así).
+    """
+    utilidad_admitida, x_show_admitido = EXCEPCION_R82
+    problemas = []
+    for elemento in leer_html_texto(html).elementos():
+        if "class" not in elemento.atributos:
+            continue
+        halladas = utilidades_prohibidas(elemento.atributos["class"])
+        if elemento.atributos.get("x-show") == x_show_admitido and utilidad_admitida in halladas:
+            halladas.remove(utilidad_admitida)
+        problemas += [
+            f'<{elemento.nombre} class="{elemento.atributos["class"]}"> lleva {utilidad}'
+            for utilidad in halladas
+        ]
+    return problemas
+
+
+CIRCUITO_HTML = RAIZ_FRONT / "partes.html"
+
+
+def test_f035_r82_partes_html_no_lleva_utilidades_de_color_ni_tipografia_de_tailwind():
+    problemas = problemas_r82(CIRCUITO_HTML.read_text(encoding="utf-8"))
+
+    assert problemas == [], (
+        "partes.html sigue el estilo del resto del front: el aspecto lo dan las clases rs-* "
+        "(R82, design.md §16.15.5):\n" + "\n".join(problemas)
+    )
+
+
+def test_f035_r82_el_aviso_de_fallo_del_autoguardado_conserva_su_excepcion():
+    """La excepción existe de verdad: si el aviso perdiera su `x-show` o su clase, R82 se quedaría sin mirar nada."""
+    utilidad, x_show = EXCEPCION_R82
+    avisos = [
+        e for e in leer_html(CIRCUITO_HTML).elementos() if e.atributos.get("x-show") == x_show
+    ]
+
+    aviso = _uno(avisos, f'el elemento x-show="{x_show}" de partes.html')
+    assert utilidad in clases(aviso), f"el aviso de fallo del autoguardado lleva {utilidad} (test_f026_autoguardado.py)"
+
+
+@pytest.mark.parametrize(
+    "clase",
+    [
+        "text-slate-600", "text-sm", "text-xs", "text-sky-700", "text-amber-800", "hover:underline",
+        "underline", "uppercase", "lowercase", "tracking-wide", "font-semibold", "leading-5",
+        "divide-y", "divide-slate-100", "border", "border-b", "border-slate-100", "rounded-lg",
+        "shadow", "shadow-sm", "bg-white", "sm:bg-slate-50", "ring-2", "ring-offset-1",
+        "opacity-60", "placeholder-slate-400", "!text-red-700",
+    ],
+)
+def test_f035_r82_control_el_detector_ve_cada_familia_de_la_lista_cerrada(clase):
+    assert utilidades_prohibidas(f"rs-nota mt-1 {clase} flex") == [clase]
+
+
+@pytest.mark.parametrize(
+    "clase",
+    [
+        "text-left", "text-center", "text-right", "flex", "grid", "gap-3", "mt-1", "-mt-1", "pl-5",
+        "list-disc", "truncate", "tabular-nums", "lg:col-span-2", "sm:grid-cols-2", "shrink-0",
+        "block", "hidden", "rs-nota", "rs-texto", "rs-rotulo", "rs-panel--lista",
+    ],
+)
+def test_f035_r82_control_el_detector_deja_la_maquetacion_y_las_clases_rs(clase):
+    assert utilidades_prohibidas(clase) == []
+
+
+def test_f035_r82_control_text_slate_600_repuesto_en_un_class_estatico_salta():
+    """Mutación manual 36 (`design.md` §16.15.8), como control permanente en memoria."""
+    real = CIRCUITO_HTML.read_text(encoding="utf-8")
+    viejo = '<main class="rs-contenedor rs-principal flex-1">'
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo}"
+    copia = real.replace(viejo, '<main class="rs-contenedor rs-principal flex-1 text-slate-600">')
+
+    assert problemas_r82(copia) == [
+        '<main class="rs-contenedor rs-principal flex-1 text-slate-600"> lleva text-slate-600'
+    ]
+
+
+def test_f035_r82_control_text_red_800_fuera_del_aviso_del_autoguardado_salta():
+    real = CIRCUITO_HTML.read_text(encoding="utf-8")
+    viejo = '<main class="rs-contenedor rs-principal flex-1">'
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo}"
+    copia = real.replace(viejo, '<main class="rs-contenedor rs-principal flex-1 text-red-800">')
+
+    assert problemas_r82(copia) != [], "text-red-800 solo se admite en el aviso de fallo del autoguardado"
+
+
+def test_f035_r82_control_la_excepcion_admite_solo_text_red_800_en_el_aviso():
+    html = (
+        "<p x-show=\"estadoAutoguardado === 'fallo'\" "
+        'class="rs-aviso rs-aviso--error text-red-800 text-xs"></p>'
+    )
+
+    assert problemas_r82(html) == [
+        "<p class=\"rs-aviso rs-aviso--error text-red-800 text-xs\"> lleva text-xs"
+    ]
+
+
+def test_f035_r82_control_los_class_ligados_no_entran():
+    """Control: los colores de estado de `:class` y `x-bind:class` son del circuito y se quedan (§15.7, regla 2)."""
+    html = (
+        "<span class=\"rs-punto\" :class=\"{ 'bg-emerald-500': ok }\"></span>"
+        "<span class=\"rs-chip\" x-bind:class=\"ok ? 'bg-sky-100 text-sky-800' : ''\"></span>"
+    )
+
+    assert problemas_r82(html) == []

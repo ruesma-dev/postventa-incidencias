@@ -905,7 +905,7 @@ ya pide cada verificación.
 > Va **después del 16 y antes del 9**. Diseño: `design.md` §16.15.5 y H-12.
 > Requisito: R82. Solo valores de `class` (R59 a).
 
-- [ ] **T46**: RED primero: R82 en `tests/test_f035_paginas.py` (los `class`
+- [x] **T46**: RED primero: R82 en `tests/test_f035_paginas.py` (los `class`
       estáticos de `partes.html` fuera de la barra contra la lista cerrada de
       R72, con `text-red-800` admitido solo en el aviso de fallo del
       autoguardado), con su control. Después, en `partes.html`, los 20

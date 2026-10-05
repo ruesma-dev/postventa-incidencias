@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=064ee0dc11">
+  <link rel="stylesheet" href="css/styles.css?v=5c6cb12598">
 </head>
 <body class="rs-cuerpo">
   <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
@@ -57,7 +57,7 @@
           <p class="rs-subtitulo">Partes firmados: validar, archivar y cerrar</p>
           <!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir
                de esta perdería la remesa en curso (D4 de F-007). -->
-          <nav class="mt-1 flex gap-4 text-sm">
+          <nav class="mt-1 flex gap-4 rs-texto">
             <a href="importar.html" class="rs-enlace">Importar incidencias</a>
             <a href="oficios.html" class="rs-enlace">Oficios repetidos</a>
           </nav>
@@ -87,7 +87,7 @@
              @dragover.prevent="arrastrando = true"
              @dragleave.prevent="arrastrando = false"
              @drop.prevent="alSoltar($event)">
-          <p class="text-sm text-slate-600">
+          <p class="rs-texto">
             Suelta aquí uno o varios ficheros <strong>.pdf</strong> o <strong>.zip</strong>
           </p>
           <p class="rs-nota mt-1">Nada se envía hasta que lo confirmes</p>
@@ -117,7 +117,7 @@
             <h3 class="rs-campo__etiqueta">
               <span x-text="seleccion.length"></span> fichero(s) listos para enviar
             </h3>
-            <ul class="mt-2 divide-y divide-slate-100 text-sm">
+            <ul class="rs-resumen mt-2">
               <template x-for="fichero in seleccion" :key="fichero.name + fichero.size">
                 <li class="flex justify-between py-1.5">
                   <span x-text="fichero.name" class="truncate"></span>
@@ -142,7 +142,7 @@
       <section x-show="fase === 'troceando' || fase === 'procesando' || fase === 'archivando_y_cerrando'"
                class="rs-panel">
         <h2 class="rs-rotulo" x-text="tituloDeFase()"></h2>
-        <p class="mt-3 text-sm text-slate-600">
+        <p class="rs-texto mt-3">
           <span x-text="terminados"></span> de <span x-text="totalTanda"></span> partes terminados
         </p>
         <div class="rs-progreso mt-2">
@@ -153,8 +153,8 @@
 
       <!-- ── 3 · Avisos de la remesa ────────────────────────────────────── -->
       <section x-show="avisosRemesa.length" class="rs-panel rs-panel--atencion">
-        <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700">Avisos de la remesa</h2>
-        <ul class="mt-2 list-disc pl-5 text-sm text-amber-800">
+        <h2 class="rs-rotulo rs-rotulo--atencion">Avisos de la remesa</h2>
+        <ul class="mt-2 list-disc pl-5 rs-nota rs-nota--atencion">
           <template x-for="aviso in avisosRemesa" :key="aviso">
             <li x-text="aviso"></li>
           </template>
@@ -168,13 +168,13 @@
       <section x-show="partes.length" class="grid gap-6 lg:grid-cols-5">
 
         <div class="lg:col-span-2 rs-panel rs-panel--lista">
-          <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div class="flex items-center justify-between px-4 py-3 rs-panel__franja">
             <h2 class="rs-rotulo">Partes</h2>
             <button type="button" @click="reiniciar()" class="rs-btn rs-btn--texto rs-btn--compacto">
               Empezar otra remesa
             </button>
           </div>
-          <ul class="divide-y divide-slate-100">
+          <ul class="rs-resumen">
             <template x-for="parte in partes" :key="parte.hash">
               <li>
                 <button type="button" @click="abrirParte(parte)"
@@ -291,7 +291,7 @@
 
               <div class="mt-4 grid gap-3 sm:grid-cols-2">
                 <template x-for="nombre in CAMPOS" :key="nombre">
-                  <label class="block text-xs">
+                  <label class="block rs-nota">
                     <span class="rs-campo__etiqueta flex items-center gap-2">
                       <span x-text="nombre"></span>
                       <span class="rs-chip rs-chip--contorno"
@@ -361,7 +361,7 @@
                      el identificador de quien decidió, ni su correo, ni su
                      nombre, ni el motivo que escribió (R42, R52): eso se audita
                      en la base. -->
-                <p x-show="estadoDelParte()" class="text-sm text-slate-700">
+                <p x-show="estadoDelParte()" class="rs-texto">
                   <span class="rs-punto mr-1"
                         :class="{
                           'bg-emerald-500': parteAbierto.semaforo === 'verde',
@@ -378,7 +378,7 @@
                     <span x-text="fechaDeDecision(parteAbierto)"></span>.
                   </span>
                   <span x-show="!decidioUnaPersona(parteAbierto) && !estaCerrado(parteAbierto)"
-                        class="text-slate-500">
+                        class="rs-texto--apagado">
                     Lo dice la validación automática: no lo ha decidido nadie.
                   </span>
                 </p>
@@ -412,10 +412,10 @@
                      obligatorio (R11) y al aprobar es opcional (R12). -->
                 <template x-if="!estaCerrado(parteAbierto)">
                   <div class="mt-3 space-y-3">
-                    <label class="block text-xs">
-                      <span class="text-slate-500">
+                    <label class="block rs-nota">
+                      <span class="rs-nota">
                         Motivo de la decisión
-                        <span class="text-slate-400">— obligatorio para rechazar, opcional al aprobar</span>
+                        <span class="rs-texto--apagado">— obligatorio para rechazar, opcional al aprobar</span>
                       </span>
                       <textarea x-model="motivoDeRechazo" rows="2"
                                 :maxlength="LIMITE_MOTIVO"
@@ -500,7 +500,7 @@
       <section x-show="partes.length && fase !== 'procesando' && fase !== 'troceando'"
                class="rs-panel rs-panel--destacado">
         <h2 class="rs-rotulo">Archivar y cerrar</h2>
-        <p class="mt-2 text-sm text-slate-600">
+        <p class="rs-texto mt-2">
           <!-- F-028 R33 · en la tanda entra lo que consta **aprobado**, lo diga
                la validación automática o una persona. Y nada más: un parte apto
                que alguien rechazó a mano se queda fuera, que es medio encargo
@@ -537,8 +537,8 @@
                partes son: quien confirma ya no ve el detalle de ninguna, así
                que el aviso tiene que ser exacto sobre el alcance. -->
           <template x-if="confirmacionPendiente()">
-            <span class="flex items-center gap-2 text-sm">
-              <span class="text-slate-600">
+            <span class="flex items-center gap-2 rs-texto">
+              <span class="rs-texto">
                 ¿Seguro? Se subirán a SharePoint, se adjuntarán a su reclamación
                 y se cerrarán en Sigrid.
                 <span x-text="pendientes().length"></span> parte(s).

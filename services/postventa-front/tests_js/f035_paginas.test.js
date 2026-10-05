@@ -34,6 +34,8 @@
 // - **R66** en la barra de `importar.html` (`PAGINAS_CON_BARRA` crece), y la
 //   review del bloque 8, **H-7**: la forma ligada (`:data-construccion`,
 //   `:aria-label`, `x-bind:…`) de los atributos de R66 cuenta como problema.
+// - T30: el resultado de importar con la semántica de estados de la marca
+//   (ok, atención, info) y su texto.
 //
 // El módulo se carga DENTRO de cada test, como en `portal.test.js`: en la
 // fase RED un `require` de cabecera tumbaría el fichero entero sin nombre de
@@ -385,6 +387,80 @@ for (const [que, viejo, nuevo, senal] of [
 
     const problemas = problemasR70(estropeado, "importar.html", portal());
     assert.ok(problemas.some((p) => senal.test(p)), `${que}: R70 no lo ve:\n${problemas.join("\n")}`);
+  });
+}
+
+// ── T30 · La semántica de estados del resultado de importar ─────────────────
+//
+// Mutaciones G1 y G2 del bloque 10: el remodelado pinta el resultado con los
+// colores de estado de la marca (`design.md` §16.5; R57 de lo que pinta el
+// portal, aquí para la página real): completa en ok, parcial en atención y un
+// fichero ya importado en info, que no es un éxito de ahora. El `:class` se
+// evalúa de verdad contra lo que da `Importacion.presentarImportacion`, y el
+// mismo elemento lleva el texto del estado (nunca solo color).
+
+/** El elemento del resultado: `{clase, ligada, cuerpo}` del `<div>` con `:class` sobre `resultado.`. */
+function avisoDelResultado(html) {
+  const m = html.match(/<div class="([^"]*)"\s+:class="([^"]*resultado\.[^"]*)">([\s\S]*?)<\/div>/);
+  assert.ok(m, "importar.html: no se encuentra el aviso del resultado (<div class=… :class=…resultado.…>)");
+  return { clase: m[1], ligada: m[2], cuerpo: m[3] };
+}
+
+function claseDeEstado(ligada, resultado) {
+  return Function("resultado", `"use strict"; return (${ligada});`)(resultado);
+}
+
+const RESPUESTA_BASE = {
+  obra: "9999",
+  estado: "completa",
+  ya_importado: false,
+  resumen: { leidas: 3, nuevas: 3, duplicadas_en_fichero: 0, ya_en_bandeja: 0, con_error: 0 },
+  filas: [],
+  errores: [],
+};
+
+/** Lo que el aviso del resultado de importar.html incumple: lista vacía = correcto. */
+function problemasDeEstadosDelResultado(html) {
+  const Importacion = require("../js/importacion.js");
+  const { clase, ligada, cuerpo } = avisoDelResultado(html);
+  const problemas = [];
+  if (!clase.split(/\s+/).includes("rs-aviso")) problemas.push(`el aviso del resultado no es rs-aviso: «${clase}»`);
+  if (!/x-text="resultado\.estadoTexto"/.test(cuerpo)) problemas.push("el aviso del resultado no lleva el texto del estado");
+  for (const [que, cambios, esperada] of [
+    ["completa", {}, "rs-aviso--ok"],
+    ["parcial", { estado: "parcial" }, "rs-aviso--atencion"],
+    ["ya importado (completa)", { ya_importado: true }, "rs-aviso--info"],
+    ["ya importado (parcial)", { ya_importado: true, estado: "parcial" }, "rs-aviso--info"],
+  ]) {
+    const resultado = Importacion.presentarImportacion({ ...RESPUESTA_BASE, ...cambios });
+    let pintada;
+    try {
+      pintada = claseDeEstado(ligada, resultado);
+    } catch (error) {
+      problemas.push(`${que}: el :class lanza (${error.message})`);
+      continue;
+    }
+    if (pintada !== esperada) problemas.push(`${que}: se pinta «${pintada}», no «${esperada}»`);
+  }
+  return problemas;
+}
+
+test("f035 T30: el resultado de importar se pinta con la semántica de estados y su texto", () => {
+  assert.deepEqual(problemasDeEstadosDelResultado(leer("importar.html")), []);
+});
+
+for (const [que, viejo, nuevo] of [
+  ["ya importado en ok (G1)", "resultado.yaImportado ? 'rs-aviso--info'", "resultado.yaImportado ? 'rs-aviso--ok'"],
+  ["parcial y completa cruzadas (G2)", "'rs-aviso--atencion' : 'rs-aviso--ok'", "'rs-aviso--ok' : 'rs-aviso--atencion'"],
+  ["sin el caso del ya importado", "resultado.yaImportado ? 'rs-aviso--info' : ", "false ? 'x' : "],
+  ["sin el texto del estado", '<span x-text="resultado.estadoTexto"></span>', "<span></span>"],
+]) {
+  test(`f035 T30: control: ${que} salta`, () => {
+    const html = leer("importar.html");
+    const estropeado = html.replace(viejo, nuevo);
+    assert.notEqual(estropeado, html, `el control no encuentra ${viejo}`);
+
+    assert.notDeepEqual(problemasDeEstadosDelResultado(estropeado), []);
   });
 }
 

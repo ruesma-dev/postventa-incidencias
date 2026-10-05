@@ -1,6 +1,25 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 10 (T29, T30) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 10 y después bloque 11 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 10». `9b31674` **T29**:
+> `enlaceSeccion(id, desde)` desde una página de `PAGINAS`; `importar.html` remodelado solo en
+> presentación (barra común estática con «Entrada» actual y leyenda, migas y subnavegación,
+> las `<link>` de la marca, `rs-cuerpo`, `rs-*` sin la lista cerrada, pie común); en
+> `styles.css` `rs-migas`, `rs-subnav*`, `rs-aviso--ok`, `rs-aviso__titulo` y `rs-desplazable`
+> (movida de `portal.css`); `?v=fce64f6d72` en las cuatro páginas. **H-7** y **O17-3**
+> cerrados. **T30**: guardia nueva de la semántica de estados (mata G1–G5). Front 628, Node
+> 597/597, raíz 114; `bash harness/init.sh` **ENTORNO LISTO** (una vez). Mutación del arnés: 0
+> mutantes; manuales **52/53 muertas** (21, 22, 23 y propias; B11 equivalente). `js/importacion.js`,
+> `js/api.js` y los tests de F-036 sin diff. Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador (no hay ninguno conectado): va con V1/V2.
+> - Para el reviewer, §5 del informe: «ya importado» en `rs-aviso--info` (más que el `:class`
+>   literal de §16.5, por el encargo); `rs-desplazable` movida; `rs-aviso__titulo` nuevo;
+>   `oficios.html` solo cambia la `?v=`. Para el líder (§6): el `input` de fichero con
+>   `hidden` no se alcanza con teclado (ya era así en F-036).
+
 > ## ▶ F-035 · BLOQUE 9 (T27, T28) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 9 y después bloque 10 (implementer)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 9». `39fa3e6` **T27**: recuadros

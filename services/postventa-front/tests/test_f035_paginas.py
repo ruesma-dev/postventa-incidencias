@@ -65,6 +65,8 @@ Bloque 10 (`tasks.md`, T29):
   de la maqueta; y las extensiones de **R50, R51, R54, R60** y de la versión
   de la hoja (T21; también `oficios.html`, review del bloque 17, O17-3). Los
   `href` de la barra contra `enlaceSeccion`, en `tests_js/f035_paginas.test.js`.
+- T30: los errores y las marcas de la bandeja con su estado y su texto
+  (mutaciones G3-G5 del bloque 10).
 
 Todo sin red, sin BBDD y sin IA.
 """
@@ -1931,3 +1933,69 @@ def test_f035_t21_control_una_version_vieja_en_la_pagina_real_salta(pagina):
     assert cuantas == 1, f"{pagina}: el control no encuentra la hoja con versión"
 
     assert hojas_pedidas(copia) != [f"css/styles.css?v={version_de_las_hojas()}"]
+
+
+# T30 · Los estados de la página, con la semántica de la marca y su texto
+#
+# Mutaciones G3-G5 del bloque 10 (`design.md` §16.5): los errores van en
+# `rs-aviso rs-aviso--error` (y su texto en el mismo elemento); las marcas de la
+# bandeja (duplicada, oficio ambiguo) en `rs-chip rs-chip--atencion`, con su
+# texto. El resultado de importar (ok, atención, info) lo prueba
+# `tests_js/f035_paginas.test.js`, que evalúa su `:class`.
+
+#: `(atributo, valor) -> (clases obligatorias, x-text obligatorio o None)`.
+ESTADOS_DE_IMPORTAR = {
+    ("x-show", "errorPlantilla"): ({"rs-aviso", "rs-aviso--error"}, "errorPlantilla"),
+    ("x-show", "errorImportacion"): ({"rs-aviso", "rs-aviso--error"}, "errorImportacion"),
+    ("x-show", "errorBandeja"): ({"rs-aviso", "rs-aviso--error"}, "errorBandeja"),
+    ("x-show", "resultado.errores.length"): ({"rs-aviso", "rs-aviso--error"}, None),
+    ("x-text", "marca"): ({"rs-chip", "rs-chip--atencion"}, "marca"),
+}
+
+
+def problemas_de_estados(html: str) -> list[str]:
+    """Los estados de `importar.html` sin su clase de estado o sin su texto. Vacío = correcto."""
+    elementos = leer_html_texto(html).elementos()
+    problemas = []
+    for (atributo, valor), (obligatorias, texto) in ESTADOS_DE_IMPORTAR.items():
+        hallados = [e for e in elementos if e.atributos.get(atributo) == valor]
+        if len(hallados) != 1:
+            problemas.append(f'{atributo}="{valor}": {len(hallados)} elementos, no uno')
+            continue
+        elemento = hallados[0]
+        if not obligatorias <= clases(elemento):
+            problemas.append(f'{atributo}="{valor}": lleva «{elemento.atributos.get("class", "")}», no {sorted(obligatorias)}')
+        if texto is not None and elemento.atributos.get("x-text") != texto:
+            problemas.append(f'{atributo}="{valor}": sin su texto (x-text="{texto}")')
+        if texto is None and not [e for e in elemento.elementos() if "x-text" in e.atributos]:
+            problemas.append(f'{atributo}="{valor}": sin texto dentro')
+    return problemas
+
+
+def test_f035_t30_los_errores_y_las_marcas_llevan_su_estado_y_su_texto():
+    problemas = problemas_de_estados(IMPORTAR.read_text(encoding="utf-8"))
+
+    assert problemas == [], "importar.html, estados con su semántica (§16.5):\n" + "\n".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        (
+            '<div x-show="resultado.errores.length" class="rs-aviso rs-aviso--error">',
+            '<div x-show="resultado.errores.length" class="rs-aviso rs-aviso--info">',
+        ),
+        ("rs-chip rs-chip--atencion", "rs-chip rs-chip--ok"),
+        (
+            '<p x-show="errorImportacion" x-text="errorImportacion"\n           class="mt-4 rs-aviso rs-aviso--error">',
+            '<p x-show="errorImportacion" x-text="errorImportacion"\n           class="mt-4 rs-nota">',
+        ),
+        ('<p x-show="errorBandeja" x-text="errorBandeja"', '<p x-show="errorBandeja"'),
+    ],
+    ids=["errores-en-info-G3", "marcas-en-ok-G4", "error-como-nota-G5", "error-sin-texto"],
+)
+def test_f035_t30_control_un_estado_sin_su_semantica_salta(viejo, nuevo):
+    real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert problemas_de_estados(real.replace(viejo, nuevo)) != []

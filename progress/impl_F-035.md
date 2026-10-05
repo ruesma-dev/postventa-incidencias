@@ -5569,3 +5569,310 @@ lo enseña.
 | Mutaciones manuales | **23/23 muertas** (18, 19, 20 y B9-1 a B9-20); B9-19 sobrevivía y la mata la guardia de T28 |
 | `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, en la ejecución final; ruff 71 avisos (los de antes) |
 | Tiempo de la suite | raíz 4,43 s; front 11,55 s (`init.sh` final; 6,36 s y 9,07 s en la primera); Node 1,07 s |
+
+## Bloque 10 · T29 y T30 · `importar.html`, sección real del portal (R70–R73, R77) · 2026-10-05
+
+implementer. Encargo del líder: solo el bloque 10 y parar. Petición del
+humano detrás: «las paginas que ya estan deben ser remodeladas para que el
+front siga el estilo del resto de app». Commits: `9b31674` **T29** (código,
+CSS, HTML y sus tests, RED primero) y el de **T30** (guardia nueva de la
+semántica de estados, evidencias, `tasks.md`, este informe y `current.md`).
+Sin push.
+
+### 1 · Qué cambió
+
+- **`js/portal.js`** (T29 a): `enlaceSeccion(id, desde)` acepta como `desde`
+  una clave de `Portal.PAGINAS` (`design.md` §16.8): la sección de la página
+  es la actual → `null`; `partes` → `{href: "partes.html", nuevaPestana:
+  false}`; las demás → `./#/<id>`. `desde` que no sea texto o no sea clave
+  **propia** de `PAGINAS` (`"toString"`, `"__proto__"`…) → `null`, sin lanzar.
+  `PAGINAS` ya existía (T23).
+- **`importar.html`** (T29 b), solo presentación:
+  - `<head>`: las cuatro `<link>` de la marca (§15.4) antes de
+    `css/styles.css?v=…`; `<body class="rs-cuerpo">`.
+  - Barra común como **primer hijo** del `<div x-data>`: estática, la marca
+    (logo, separador `aria-hidden`, «Posventa», nada enlazado), las ocho
+    pestañas con los `href` de `enlaceSeccion(id, "importar.html")`, «Entrada»
+    como `<span aria-current="page">`, `data-construccion` + `aria-label` en
+    las cinco en construcción (R66) y la leyenda de R70 ajustado (sin la
+    frase de la remesa). Ningún `target` (R73).
+  - Cabecera `rs-cabecera`: migas «Portal de posventa › Entrada» (`index.html`
+    y `./#/entrada`, separador `aria-hidden`), `h1.rs-titulo`, subtítulo de
+    siempre, y subnavegación («Importar incidencias» actual como `<span
+    aria-current>`, «Oficios repetidos» → `oficios.html`). Fuera el enlace
+    «Partes firmados» → `index.html` de la cabecera (§16.5: lo da la barra).
+  - Cuerpo: `rs-panel` por bloque (el de importar, `rs-panel--destacado`),
+    `rs-rotulo` en los `h2`, `rs-campo`/`rs-campo__etiqueta`, botones
+    `rs-btn` (primario «Importar a la bandeja»; secundario «Descargar la
+    plantilla», «Elegir el Excel», «Ver la bandeja», «Descargar el Excel de
+    errores»), errores `rs-aviso rs-aviso--error`, notas `rs-nota`, tablas
+    `rs-tabla` en `rs-desplazable`, marcas `rs-chip rs-chip--atencion`.
+  - **El resultado** (§5, decisión 1): `rs-aviso` con `:class` → `--ok`
+    (completa), `--atencion` (parcial) y `--info` (ya importado), siempre con
+    `estadoTexto` en el mismo elemento.
+  - Pie común `rs-pie` tras `</main>`, dentro del `<div x-data>`, con
+    «Construcciones Ruesma · Posventa · entrada de incidencias.».
+  - **Intacto**: textos de botones, `@click`, `:disabled`, `x-model`,
+    `x-show`, `x-text`, `x-for`, `id="bandeja"`, `type`/`accept`, el
+    comentario `<!-- ── 3 · Bandeja`, la tabla de la bandeja sin controles,
+    los cuatro scripts y su sitio. `js/importacion.js`, `js/api.js` y
+    `js/oficios.js` sin diff (`git diff 190b726 -- services/postventa-front/js`
+    → solo `portal.js`).
+- **`css/styles.css`** (T29 c): `rs-migas`, `rs-subnav`, `rs-subnav__item`
+  (+ `a…:hover` y `[aria-current="page"]`), `rs-aviso--ok`,
+  `rs-aviso__titulo` y `rs-desplazable` (**movida** desde `css/portal.css`,
+  §5 decisión 2); comentarios de cabecera y de `.rs-barra__leyenda`
+  actualizados. Todo con tokens. `?v=fce64f6d72` en las **cuatro** páginas
+  (`index.html` ×2, `partes.html`, `importar.html`, `oficios.html`).
+- **Tests** (T29 d): en `tests_js/f035_paginas.test.js`, R44 desde una página
+  (tres tests), R70 (`problemasR70` + 7 controles), R66 con `importar.html` en
+  `PAGINAS_CON_BARRA` y **H-7** (la forma ligada `:`/`x-bind:` de
+  `data-construccion` y `aria-label` cuenta como problema, 4 controles). En
+  `tests/test_f035_paginas.py`: R70 (barra primera, estática, marca, leyenda,
+  actual), R71 (migas y subnavegación), R72 (las `<link>`, la `?v=`,
+  `rs-cuerpo`, la lista cerrada en `class` **y en los literales de `:class`**,
+  el pie, cada `rs-*` con regla en `styles.css`), R77, R54/R60 extendidos y
+  T21 extendido a `importar.html` **y `oficios.html`** (cierra **O17-3**);
+  cada guardia con controles en memoria. R73 ya cubría `importar.html`
+  (`PAGINAS_DEL_FRONT`, bloque 16) y su control ahora pega en la barra.
+- **T30**: guardia nueva de la semántica de estados (§4: mata G1–G5). Node
+  evalúa de verdad el `:class` del resultado con lo que da
+  `Importacion.presentarImportacion` (completa → ok, parcial → atención, ya
+  importado → info, y el texto en el mismo elemento) + 4 controles; Python
+  fija `rs-aviso--error` y su `x-text` en los tres errores y la lista de
+  errores, y `rs-chip--atencion` con su texto en las marcas + 4 controles.
+
+### 2 · Fase RED
+
+Tests escritos antes que el código; salidas reales sobre `190b726` (sin
+`importar.html` remodelado ni el cambio de `enlaceSeccion`).
+
+`node --test tests_js/f035_paginas.test.js`:
+
+```
+ℹ tests 35
+ℹ suites 0
+ℹ pass 21
+ℹ fail 14
+✖ f035 R44: enlaceSeccion desde una página de PAGINAS: su sección es la actual, partes.html y ./#/<id> (2.3781ms)
+  AssertionError [ERR_ASSERTION]: importar.html: inicio
+  + actual - expected
+
+  + null
+  - {
+  -   href: './#/inicio',
+  -   nuevaPestana: false
+  - }
+✖ f035 R70: la barra de importar.html tiene las ocho pestañas, en su orden, con los href de enlaceSeccion(id, "importar.html") (1.4999ms)
+  AssertionError [ERR_ASSERTION]: no hay <nav data-barra-portal>
+      at pestanasDeLaBarra (…\tests_js\f035_paginas.test.js:96:10)
+      at problemasR70 (…\tests_js\f035_paginas.test.js:336:20)
+✖ f035 R66: en la barra de importar.html, data-construccion y aria-label solo en las secciones en construcción (3.0892ms)
+  AssertionError [ERR_ASSERTION]: no hay <nav data-barra-portal>
+```
+
+Los 14 que caen: R66 de `importar.html` y su lector, los dos controles H-7
+de `importar.html`, los dos R44 de páginas y R70 con sus 7 controles. Los
+controles H-7 de `index.html` ya pasaban: la guardia (5 líneas de test) entró
+con ellos; que muerden lo prueba la mutación H1 (§4).
+
+`python -m pytest tests/test_f035_paginas.py -q -p no:cacheprovider -k "r70 or r71 or r72 or r77 or r54_r60 or t21"`:
+
+```
+E       AssertionError: tiene que haber uno y solo uno: <nav data-barra-portal> en importar.html (hay 0)
+E       AssertionError: R72: el aspecto lo dan las clases rs-* y la marca:
+E         importar.html: las cuatro <link> de §15.4, exactas, justo antes de css/styles.css (R50)
+E         importar.html: el <body> lleva rs-cuerpo
+E         importar.html: <body class> lleva bg-slate-50 (lista cerrada de §16.5)
+E         importar.html: <body class> lleva text-slate-800 (lista cerrada de §16.5)
+E         importar.html: <header class> lleva border-b (lista cerrada de §16.5)
+…  (156 utilidades de la lista cerrada en total)
+E         importar.html: un <footer class="rs-pie">
+26 failed, 16 passed, 153 deselected in 4.78s
+```
+
+(La primera pasada dio `NameError: name 'barra' is not defined`: faltaba
+importar el ayudante; corregido y repetido, la de arriba es la segunda.) Los
+16 que ya pasaban son guardias de no regresión que la página ya cumplía: R77
+y sus 7 controles, T21 en las dos páginas reales y sus controles, R54/R60 sin
+problemas y el lector de `:class`. Las salidas completas quedan en el
+scratchpad de la sesión (`red_js.txt`, `red_py.txt`).
+
+### 3 · Verde sobre el código real
+
+- Front Python: `python -m pytest tests -q -p no:cacheprovider` → **623
+  passed** tras T29; **628** con la guardia de T30 (salida de `init.sh`).
+  `tests/test_f036_front.py` entero en verde (45 passed) **sin tocarlo**.
+- Node: `node --test "tests_js/*.test.js"` → **592/592** tras T29;
+  **597/597** con T30 (`duration_ms 2167.7`).
+- Raíz: `python -m pytest tests -q` → **114 passed**.
+- «F-036 intacto» ajustado:
+  `git diff 2a86bca --stat -- …/test_f036_front.py …/importacion.test.js …/oficios.test.js`
+  → solo `test_f036_front.py | 5 ++---` (las líneas de R81 del bloque 16);
+  los dos de Node, vacíos.
+- ruff: 71 avisos, los de antes (comprobado con el `.venv` antes de
+  `init.sh`; un paso intermedio con un error de sintaxis mío en un test se
+  corrigió antes de correrlo).
+- **Vistazo en navegador: NO hecho.** `list_connected_browsers` → `[]`; queda
+  para V1/V2 del humano (§6).
+
+### 4 · Mutaciones (T30)
+
+**Campaña del arnés**, `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`:
+
+```
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+**Manuales** (C4 bis), en un worktree desechable del scratchpad (`wt_b10`,
+`--detach` sobre `9b31674`), una a una con un guion que restaura el fichero
+tras cada mutante y corre `test_f035_paginas.py`, `test_f035_portal.py`,
+`test_f036_front.py`, `test_f007_estaticos.py` y los cuatro Node afectados
+(línea base del worktree: `384 passed, 3 skipped`; Node `164/164`). Las de
+CSS (F) recalculan la `?v=` en las cuatro páginas, para que no las mate T21
+por accidente. Por familias completas:
+
+| Id | Mutación | Resultado | Test que la mata |
+|---|---|---|---|
+| **21** | `target="_blank"` en «Inicio» de `importar.html` | muerta | `r73_ninguna_pagina…[importar.html]`, Node R70 |
+| **22** | `bg-slate-800` en un botón de `importar.html` | muerta | `r72_la_pagina_real_lleva_la_identidad_ruesma` |
+| **23** | `importar.html` carga `js/portal.js` | muerta | `r77_…`, y `test_f036_t22_scripts_al_final…` (sin tocar) |
+| A1 | `seccion.id !== PAGINAS[desde]` | muerta | Node R44 (×2), R70 |
+| A2 | sin el `null` de la sección actual | muerta | Node R44 (×2), R70 |
+| A3 | `partes` desde una página → `./#/partes` | muerta | Node R44 (×2), R70 |
+| A4 | sin `./` (`#/<id>`) | muerta | Node R44 (×2), R70 |
+| A5 | `nuevaPestana: true` desde una página | muerta | Node R44 (×2), R70 |
+| A6 | `desde in PAGINAS` (hereda `toString`…) | muerta | Node «desde desconocido…» |
+| A7 | rama de páginas eliminada | muerta | Node R44 (×2), R70 (×4) |
+| A8 | cualquier `*.html` vale como página | muerta | Node «desde desconocido…» |
+| B1 | sin la leyenda | muerta | `r70_la_pagina_real…` |
+| B2 | la leyenda del circuito (con «remesa») | muerta | `r70_la_pagina_real…` |
+| B3 | `x-show` en la barra | muerta | `r70_…` (R45) |
+| B4 | «Entrada» como enlace | muerta | `r70_…` y Node R70 |
+| B5 | sin `data-construccion` en «Bandeja» | muerta | Node R66 `importar.html` |
+| B6 | `:data-construccion="false"` ligado (H-7) | muerta | Node R66 (H-7), `r70_…` (R45) |
+| B7 | separador sin `aria-hidden` | muerta | `r70_…` |
+| B8 | el logotipo dentro de un enlace | muerta | `r70_…` (R51) |
+| B9 | `target`+`rel` en «Partes firmados» | muerta | `r73_…`, Node R70 |
+| B10 | «Partes firmados» → `index.html#/partes` | muerta | Node R70 |
+| B11 | un `<p>` entre la barra y la cabecera | **viva** | — (equivalente, abajo) |
+| C1 | la primera miga sin enlace | muerta | `r71_…` y `test_f036_s15_6_…` (sin tocar) |
+| C2 | la segunda miga a `./#/inicio` | muerta | `r71_…` |
+| C3 | la subnavegación actual como enlace | muerta | `r71_…` |
+| C4 | `target` en «Oficios repetidos» | muerta | `r73_…` |
+| C5 | subnavegación sin nombre accesible | muerta | `r71_…` |
+| C6 | `h1` con utilidades en vez de `rs-titulo` | muerta | `r71_…`, `r72_…` |
+| D1 | `body` con `bg-slate-50 text-slate-800` | muerta | `r72_…` |
+| D2 | sin la `<link>` del favicon | muerta | `r72_…` (R50) |
+| D3 | `?v=` vieja en `importar.html` | muerta | `r72_…`, `t21_la_pagina_real…` |
+| D4 | `text-xs text-slate-500` en una nota | muerta | `r72_…` |
+| D5 | colores de Tailwind en el `:class` del resultado | muerta | `r72_…` |
+| D6 | sin pie | muerta | `r72_…` |
+| D7 | otro texto en el pie | muerta | `r72_…` |
+| D8 | `rounded` en una marca | muerta | `r72_…` |
+| D9 | `?v=` vieja en `oficios.html` (O17-3) | muerta | `t21_la_pagina_real…[oficios.html]` |
+| E1 | `<link>` a `css/portal.css` | muerta | `r77_…` |
+| E2 | `data-en-construccion` en la página real | muerta | `r77_…` |
+| E3 | `focus:outline-none` en un botón | muerta | `r54_r60_…` |
+| E4 | `style` estático en `<main>` | muerta | `r54_r60_…` |
+| F1 | fuera `.rs-migas` | muerta | `r72_…` (clase sin regla) |
+| F2 | fuera `.rs-aviso--ok` (solo la nombra un `:class`) | muerta | `r72_…` |
+| F3 | fuera `.rs-desplazable` de `styles.css` | muerta | `r72_…` |
+| F4 | `#f7eaee` suelto en `rs-subnav__item` | muerta | `r49_fuera_del_root…` |
+| F5 | transición de 600 ms | muerta | `r55_las_transiciones…` |
+| F6 | `outline: none` sin reponer | muerta | `r54_ninguna_regla_quita…` |
+| G1 | ya importado pintado en ok | **sobrevivía** (solo caía un control por su ancla) → **muerta** con T30 | Node T30 |
+| G2 | parcial y completa cruzadas | **sobrevivía** → **muerta** con T30 | Node T30 |
+| G3 | lista de errores en `rs-aviso--info` | **sobrevivía** → **muerta** con T30 | `t30_los_errores_y_las_marcas…` |
+| G4 | marcas en `rs-chip--ok` | **sobrevivía** → **muerta** con T30 | `t30_…` |
+| G5 | el error de importar como `rs-nota` | **sobrevivía** → **muerta** con T30 | `t30_…` |
+| H1 | la guardia H-7 quitada del test (`for … of []`) | muerta | los 4 controles H-7 de Node |
+
+**52/53 muertas.** Análisis de las vivas:
+
+- **G1–G5** eran un hueco real: el encargo pide que los estados sigan
+  distinguiéndose con la semántica de la marca, y la lista cerrada de R72
+  solo prohíbe Tailwind, no exige el `rs-*` correcto. Las mata la guardia de
+  T30 (pasada de nuevo en el worktree).
+- **B11, equivalente**: R70 pide que la barra sea el primer elemento; un
+  elemento entre la barra y la cabecera no incumple ningún requisito (el
+  circuito tiene un comentario en ese hueco). No se fija.
+- **Incidencia del guion, corregida**: A2–A5 salieron «no aplica» en la
+  primera pasada porque sus patrones llevaban `\n` y el worktree tiene CRLF.
+  El guion prueba ahora la variante CRLF y las cuatro se repitieron: muertas.
+- Los 3 `skipped` del worktree son de tests que necesitan la rama
+  (`--detach`); en el árbol real no hay ninguno (`init.sh`: 628 passed).
+
+Worktree retirado: `git worktree remove --force`; `git worktree list` ya no
+lo enseña (queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío).
+
+### 5 · Desviaciones y decisiones (para el reviewer)
+
+1. **El resultado «ya importado» en `info`, no en ok/atención.** §16.5 da
+   literal `:class="resultado.estado === 'parcial' ? 'rs-aviso--atencion' :
+   'rs-aviso--ok'"`. Con eso, un fichero ya importado (que no ha añadido
+   nada) saldría en verde de éxito o en ámbar, según la importación
+   original. El encargo pide que «completa, parcial, errores, ya importado»
+   se distingan con la semántica ok/atención/error/info: añadí delante
+   `resultado.yaImportado ? 'rs-aviso--info' : …` (`yaImportado` ya lo da
+   `presentarImportacion`; ni una línea de JS). Si el líder prefiere la
+   literal de §16.5, es quitar ese tramo y el caso del test.
+2. **`.rs-desplazable` pasa de `portal.css` a `styles.css`.** §16.5 pide las
+   tablas en `rs-desplazable`, pero la clase vivía en `portal.css`, que la
+   página real no puede cargar (R77). Moverla (no duplicarla) la deja en la
+   hoja común; el portal carga las dos hojas y no cambia nada para él (H-5
+   sigue en verde).
+3. **`rs-aviso__titulo` nuevo**: el resultado y la lista de errores tenían
+   su primera línea en `font-medium`/`font-semibold`, prohibidas; el
+   componente pone solo el peso, y el color es el del aviso.
+4. **El separador de las migas** va en `<span aria-hidden="true">›</span>`
+   en vez de «›» suelto (§16.5): un lector de pantalla no lo lee.
+5. **Pequeños de maquetación**: `w-40` pasa del `input` a su `label` (la
+   regla de `styles.css`: no se mezcla una `rs-*` con una utilidad que fije
+   la misma propiedad); `rs-panel--destacado` en el bloque de importar, el
+   de la acción principal, como en el circuito. `items-baseline` → `items-center`
+   en la cabecera de la bandeja (los `rs-btn` son `inline-flex`).
+6. **La subnavegación va bajo el subtítulo**, como el esqueleto de §16.5,
+   dentro de `rs-cabecera__fila` con un único hijo (el `div` de siempre).
+7. **`oficios.html`** cambia en una línea, la `?v=` (§16.5: «en las cuatro
+   páginas»), y ya la vigila T21 extendido (O17-3). Su remodelado es el
+   bloque 11; `PAGINAS_REMODELADAS` y `PAGINAS_REALES_CON_BARRA` crecen
+   entonces.
+8. **H-1 y H-2** ya estaban cerrados (bloques 7 y 16); R73 cubre
+   `importar.html` desde el 16. **H-7** queda cerrado aquí.
+9. **R54 extendido** a la página se lee como «ninguna utilidad que quite el
+   contorno» (`outline-none`, `outline-0`, también con prefijo y en `:class`);
+   el foco en burdeos lo da la regla global de `styles.css`, ya vigilada.
+
+### 6 · Fuera del alcance y pendiente
+
+- **MANUAL (V1/V2 del humano)**: sin navegador conectado, el aspecto no lo
+  he visto. A mirar en `http://localhost:5173/importar.html` (`.\dev_front.ps1`,
+  sin pulsar nada que escriba): la barra fija con «Entrada» marcada y la
+  leyenda; migas y píldoras de la subnavegación; los tres paneles con sus
+  rótulos; el resultado en verde, ámbar y azul (completa, parcial, ya
+  importado); errores en rojo; la tabla de la bandeja con las marcas en
+  ámbar (con textos largos, se desplaza dentro del panel); el pie al fondo;
+  y en móvil, la barra en dos líneas.
+- **Accesibilidad preexistente, no tocada**: el `<input type="file">` va con
+  `class="hidden"` dentro de la etiqueta «Elegir el Excel», así que con
+  teclado no se llega a él (ya era así en F-036). Cambiarlo a `sr-only` con un
+  foco en la etiqueta sería presentación, pero no lo pide la spec: lo anoto
+  para el líder.
+- `oficios.html`: bloque 11. R74 (rótulo del resumen): bloque 12.
+- Documentación (`README.md` del front, `docs/ARCHITECTURE.md`): bloque 14.
+
+### Evidencias (bloque 10)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests ejecutados | raíz **114** passed (7,31 s, `init.sh`); front Python **628** passed (16,82 s, `init.sh`); Node **597/597** (2,17 s). Nuevos: 47 en Python del front (42 en T29, 5 en T30), 21 en Node (16 en T29, 5 en T30) |
+| Cobertura de las líneas cambiadas | `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+| Mutantes (arnés) | 0 generados, 0 supervivientes (`progress/mutacion_F-035.md`): F-035 no tiene Python de producción |
+| Mutaciones manuales | **52/53 muertas** (21, 22, 23 y 50 propias); G1–G5 sobrevivían y las mata la guardia de T30; B11, equivalente |
+| `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 71 avisos (los de antes) |
+| Tiempo de la suite | raíz 7,31 s; front 16,82 s (`init.sh`); Node 2,17 s |

@@ -653,7 +653,7 @@ ya pide cada verificación.
       > presentación: `js/importacion.js` y `js/api.js` **no** se tocan en
       > este bloque, y `tests/test_f036_front.py`, `importacion.test.js` y
       > `oficios.test.js` siguen en verde sin cambiar una línea por el estilo.
-- [ ] **T30**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+- [x] **T30**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **21**, **22** y **23**. (c) `bash harness/init.sh`
       en verde.
       **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 10».

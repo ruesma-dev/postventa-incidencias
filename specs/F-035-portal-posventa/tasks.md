@@ -674,7 +674,7 @@ ya pide cada verificación.
       > **Ajuste del 2026-10-05.** Como T29: leyenda en la barra, pie
       > `rs-pie` y ningún `target`; `js/oficios.js` y `js/api.js` no se tocan
       > en este bloque. «F-036 intacto», en su versión ajustada.
-- [ ] **T32**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+- [x] **T32**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Las mutaciones **21** y **22** repetidas sobre `oficios.html`
       (21b, 22b). (c) `bash harness/init.sh` en verde.
       **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 11».

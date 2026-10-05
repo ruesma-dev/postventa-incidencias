@@ -2322,14 +2322,15 @@ def test_f035_o10_3_control_la_huella_ve_el_ambito_y_el_orden():
         '</template><button type="button" @click="g()">Y</button></div></body>'
     )
     fuera = html.replace('<button type="button" @click="f(par)">X</button></template>', '</template><button type="button" @click="f(par)">X</button>')
-    otro_orden = html.replace(
-        '<button type="button" @click="f(par)">X</button></template><button type="button" @click="g()">Y</button>',
-        '</template><button type="button" @click="g()">Y</button><template x-for="par in ps"><button type="button" @click="f(par)">X</button></template>',
+    otro_orden = (
+        '<body><div x-data="a()"><button type="button" @click="g()">Y</button><template x-for="par in ps">'
+        '<button type="button" @click="f(par)">X</button></template></div></body>'
     )
     esperada = tuple(huella_funcional(html))
 
+    assert sorted(map(repr, huella_funcional(otro_orden))) == sorted(map(repr, esperada)), "mismas entradas"
     assert diferencias_de_huella(fuera, esperada) != []
-    assert diferencias_de_huella(otro_orden, esperada) != []
+    assert diferencias_de_huella(otro_orden, esperada) == ["las mismas entradas en otro orden"]
     assert diferencias_de_huella(html, esperada) == []
 
 
@@ -2393,7 +2394,7 @@ def test_f035_o10_2_el_selector_de_fichero_se_alcanza_con_el_teclado(pagina):
 def test_f035_o10_2_importar_tiene_un_selector_de_fichero_y_oficios_ninguno():
     # Que la guardia no pase en vacío: «Elegir el Excel» es el único de las dos.
     def cuantos(pagina):
-        doc = leer_html((RAIZ_FRONT / pagina))
+        doc = leer_html(RAIZ_FRONT / pagina)
         return len([e for e in doc.elementos() if e.nombre == "input" and e.atributos.get("type") == "file"])
 
     assert (cuantos("importar.html"), cuantos("oficios.html")) == (1, 0)

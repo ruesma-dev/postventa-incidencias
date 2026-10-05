@@ -1,6 +1,26 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 11 (T31, T32) + O10-2 HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 11 y después bloque 12 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 11». `0112d91` **T31**:
+> `oficios.html` remodelado solo en presentación (barra común con «Entrada» actual y leyenda,
+> migas, subnavegación con «Oficios repetidos» actual, `rs-*`, errores en `rs-aviso--error`,
+> avisos en `rs-panel--atencion` con rótulo, «Son el mismo» `--ok` compacto, «Son distintos» y
+> «Separar» secundario compacto, pie). Guardias de R70–R72, R77, R54/R60 y Node R66/R70 sobre
+> `oficios.html`; semántica de estados de oficios; **O10-4** (una variante de más salta);
+> **O10-3**: huella funcional de `oficios.html` = la de F-036 (`2a86bca`). `a7d6292` **O10-2**:
+> el `input` de fichero de `importar.html` con `sr-only` y `label.rs-btn:focus-within`.
+> `?v=43b9e97b83` en las cuatro páginas. Front 673, Node 607/607, raíz 114; `bash harness/init.sh`
+> **ENTORNO LISTO** (una vez). Mutación del arnés: 0 mutantes; manuales **58/58 muertas**
+> (21b, 22b y propias). `js/`, la API y los tests de F-036 sin diff. Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador (no hay ninguno conectado): va con V1/V2,
+>   incluido tabular hasta «Elegir el Excel» en `importar.html`.
+> - Para el reviewer, §5 del informe: huella solo en `oficios.html` (la de `importar.html`, al
+>   líder; el bloque 13 la amplía con R75); `label.rs-btn:focus-within` en vez de
+>   `.rs-btn:focus-within`; dos clases nuevas de texto; un `UP034` mío corregido tras `init.sh`.
+
 > ## ▶ F-035 · BLOQUE 10 (T29, T30) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 10 y después bloque 11 (implementer)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 10». `9b31674` **T29**:

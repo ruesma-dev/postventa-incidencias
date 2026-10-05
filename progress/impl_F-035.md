@@ -5876,3 +5876,336 @@ lo enseña (queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío).
 | Mutaciones manuales | **52/53 muertas** (21, 22, 23 y 50 propias); G1–G5 sobrevivían y las mata la guardia de T30; B11, equivalente |
 | `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 71 avisos (los de antes) |
 | Tiempo de la suite | raíz 7,31 s; front 16,82 s (`init.sh`); Node 2,17 s |
+
+## Bloque 11 · T31 y T32 · `oficios.html`, sección real del portal (R70–R73, R77) · y O10-2 · 2026-10-05
+
+implementer. Encargo del líder: el bloque 11 y una tarea pequeña añadida
+(**O10-2**, el selector de fichero de `importar.html` con teclado), y parar.
+Repasados también los hallazgos de la review del bloque 10 que tocan este
+bloque: **O10-3** (directivas que los tests de F-036 no fijan) y **O10-4**
+(una variante de estado de más). Commits: `0112d91` **T31**, `a7d6292`
+**O10-2** y el de **T32** (evidencias, un control corregido, `tasks.md`, este
+informe y `current.md`). Sin push.
+
+### 1 · Qué cambió
+
+- **`oficios.html`** (T31), solo presentación, igual que `importar.html` en
+  T29:
+  - `<head>`: las cuatro `<link>` de la marca antes de `css/styles.css?v=…`;
+    `<body class="rs-cuerpo">`.
+  - La barra común estática como primer hijo del `<div x-data>`, idéntica a
+    la de `importar.html` (los `href` de `enlaceSeccion(id, "oficios.html")`
+    son los mismos): «Entrada» actual, `data-construccion` + `aria-label` en
+    las cinco en construcción, la leyenda; ningún `target`.
+  - Cabecera `rs-cabecera`: migas «Portal de posventa › Entrada», `h1` y
+    subtítulo de siempre, subnavegación con «Importar incidencias» →
+    `importar.html` y «Oficios repetidos» actual (`<span aria-current>`).
+    Fuera el `<nav>` viejo «Partes firmados → index.html / Importar
+    incidencias» (§16.5: lo dan la barra y la subnavegación); la primera
+    `<header>` sigue enlazando a `index.html` (migas) e `importar.html`
+    (subnavegación), como exige `test_f036_s15_6_…` (sin tocar).
+  - Cuerpo: `rs-panel` por bloque (el de la búsqueda, `rs-panel--destacado`,
+    como el de la acción principal de `importar.html`), `rs-rotulo` en los
+    `h2`, `rs-campo`/`rs-campo__etiqueta`; «Ver los oficios» **primario**,
+    «Descargar los grupos vigentes» **secundario**, «Son el mismo» **`--ok`
+    compacto**, «Son distintos» y «Separar» **secundario compacto**
+    (§16.5); los dos errores `rs-aviso rs-aviso--error`; notas `rs-nota`;
+    cada propuesta y cada grupo en un recuadro `rs-panel rs-panel--suave`;
+    los avisos en `rs-panel rs-panel--atencion` con su rótulo
+    `rs-rotulo--atencion` «Avisos» y el texto en el tono del panel.
+  - Pie común `rs-pie` tras `</main>`, dentro del `<div x-data>`.
+  - **Intacto**: textos de botones, `@click` (con sus `'mismo'`/`'distinto'`),
+    `:disabled`, `x-model`, `@keydown.enter.prevent`, `x-show`, `x-text`,
+    `x-for`/`:key`, `x-if`, `x-data`/`x-init`, `type`, los cinco scripts y su
+    sitio. Lo demuestra la huella funcional (O10-3, abajo): idéntica a la de
+    `2a86bca`. `js/` y `services/postventa-api/` sin diff desde `f3a5bcb`.
+- **`css/styles.css`**: `rs-texto--fuerte` (el nombre de cada grupo, que era
+  `font-medium`) y `rs-texto--atencion` (el texto de los avisos, que era
+  `text-amber-900`; va tras `.rs-texto` para ganarle); y
+  `label.rs-btn:focus-within` (O10-2). Todo con tokens; comentarios de
+  cabecera al día. `?v=` en las cuatro páginas: `b988e3b33c` (T31) y
+  `43b9e97b83` (O10-2).
+- **`importar.html`** (O10-2): `class="hidden"` → `class="sr-only"` en el
+  `<input type="file">`, con un comentario. `type`, `accept` y `@change`, los
+  de siempre.
+- **Tests** (`tests/test_f035_paginas.py`, `tests_js/f035_paginas.test.js`):
+  - R70–R72, R77 y R54/R60 recorren `oficios.html` (`PAGINAS_REMODELADAS`);
+    Node R44/R66/R70 también (`PAGINAS_CON_BARRA`, `PAGINAS_REALES_CON_BARRA`),
+    y los 7 controles de R70 corren sobre las dos páginas. Nueve controles en
+    Python sobre `oficios.html` (R70, R71, R72 —con la 22b permanente—, R77,
+    R54).
+  - **T31, semántica de estados de oficios**: errores en `rs-aviso--error`
+    con su `x-text`, avisos en `rs-panel--atencion`, cada botón por su texto
+    con su variante (una sola) y su tamaño, y el `h2` de cada bloque con su
+    texto y su clase; 9 controles.
+  - **O10-4**: `problemas_de_estados` exige exactamente las variantes de
+    estado que tocan (también en `importar.html`; 2 controles nuevos, S4
+    incluido) y Node T30 rechaza una variante fija en el `class` del aviso
+    del resultado (control S2).
+  - **O10-3, huella funcional de `oficios.html`**: por cada elemento del
+    `<body>` con atributo funcional (directivas `x-`/`@`/`:`, `id`, `name`,
+    `for`, `type`, `accept`, `autocomplete`, `value`, `disabled`,
+    `required`), en orden: etiqueta, esos atributos, el texto si es botón y
+    su ámbito de Alpine (`x-data`/`x-for`/`x-if` que lo envuelven). La
+    constante `HUELLA_DE_OFICIOS` se generó con la propia función sobre
+    `git show 2a86bca:…/oficios.html` (y coincidía con la de `HEAD` antes del
+    remodelado). 6 controles sobre la página (L1–L3 de la review trasladadas,
+    «Separar» que junta, el `x-show` del grupo entero, otro texto) y uno
+    sintético de ámbito y orden.
+  - **O10-2**: el `input` de fichero no lleva `hidden`/`invisible`/atributo
+    `hidden`/`display: none`, lleva `sr-only`, va dentro de su `<label>`, y
+    hay una regla `.<clase de la etiqueta>:focus-within` (o con `label`
+    delante) con contorno que no sea `none`/`0`; corre sobre las dos páginas
+    y un test fija que hay exactamente uno (importar) y ninguno (oficios),
+    para que no pase en vacío; 8 controles.
+
+### 2 · Fase RED
+
+Tests antes que el código. **T31**, sobre `f3a5bcb` con los tests nuevos y
+`oficios.html` sin remodelar:
+
+`node --test tests_js/f035_paginas.test.js`:
+
+```
+ℹ tests 50
+ℹ pass 40
+ℹ fail 10
+✖ f035 R66: en la barra de oficios.html, data-construccion y aria-label solo en las secciones en construcción (1.4525ms)
+  AssertionError [ERR_ASSERTION]: no hay <nav data-barra-portal>
+      at pestanasDeLaBarra (…\tests_js\f035_paginas.test.js:104:10)
+      at problemasR66 (…\tests_js\f035_paginas.test.js:124:20)
+✖ f035 R66: control: el lector ve las ocho pestañas de cada barra, en su orden (3.0246ms)
+✖ f035 R70: la barra de oficios.html tiene las ocho pestañas, en su orden, con los href de enlaceSeccion(id, "oficios.html") (0.6599ms)
+✖ f035 R70: control: un href distinto en la barra de oficios.html salta (0.5335ms)
+… (los 7 controles de R70 sobre oficios.html)
+```
+
+`python -m pytest tests/test_f035_paginas.py -q -p no:cacheprovider`:
+
+```
+E       AssertionError: tiene que haber uno y solo uno: <nav data-barra-portal> en oficios.html (hay 0)
+E       AssertionError: R72: el aspecto lo dan las clases rs-* y la marca:
+E         oficios.html: las cuatro <link> de §15.4, exactas, justo antes de css/styles.css (R50)
+E         oficios.html: el <body> lleva rs-cuerpo
+E         oficios.html: <body class> lleva bg-slate-50 (lista cerrada de §16.5)
+E         oficios.html: <header class> lleva border-b (lista cerrada de §16.5)
+…  (131 líneas de la lista cerrada)
+E       AssertionError: oficios.html, estados con su semántica (§16.5):
+E         x-show="errorCarga": lleva «mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700», no ['rs-aviso', 'rs-aviso--error']
+E         x-show="vista.avisos.length": lleva «rounded-lg border border-amber-200 bg-amber-50 p-6», no ['rs-panel', 'rs-panel--atencion']
+E         «Son el mismo»: lleva «rounded bg-emerald-700 px-3 py-1 text-xs text-white hover:bg-emerald-600 disabled:opacity-40», no ['rs-btn', 'rs-btn--compacto', 'rs-btn--ok']
+E         «Separar»: lleva «rounded border border-slate-300 bg-white px-2 py-0.5 text-xs hover:bg-slate-50 disabled:opacity-40», no ['rs-btn', 'rs-btn--compacto', 'rs-btn--secundario']
+E         <section x-show="vista.avisos.length">: un <h2> «Avisos» con ['rs-rotulo', 'rs-rotulo--atencion']
+21 failed, 213 passed in 5.28s
+```
+
+Los 21: R70, R71 y R72 de `oficios.html`, 8 controles de T31 que no
+encuentran sus cadenas del HTML nuevo, la guardia de estados de T31 y 8
+de sus 9 controles, y un control de O10-3 («Separar» que junta) por lo mismo.
+Ya pasaban, como guardias de no regresión: R77 y R54/R60 sobre `oficios.html`
+(la página vieja tampoco cargaba la maqueta ni quitaba el foco), la huella de
+O10-3 (es la de F-036: el remodelado tiene que **dejarla igual**; que muerde
+lo prueban sus controles y HU1–HU12, §4) y los controles de O10-4 (la guardia
+entra con ellos; sin ella, G1 y G9 los tumban, §4).
+
+**O10-2**, sobre `0112d91` con el test nuevo y `importar.html` con `hidden`,
+`python -m pytest tests/test_f035_paginas.py -q -p no:cacheprovider -k o10_2`:
+
+```
+E       AssertionError: importar.html: <input type="file"> lleva hidden: el tabulador se lo salta (O10-2)
+E         importar.html: <input type="file"> sin sr-only: se oculta de forma accesible, no se enseña el control nativo
+E         importar.html: <input type="file">: su <label> no pinta el foco (ninguna regla .<clase>:focus-within con outline)
+…
+FAILED tests/test_f035_paginas.py::test_f035_o10_2_el_selector_de_fichero_se_alcanza_con_el_teclado[importar.html]
+FAILED tests/test_f035_paginas.py::test_f035_o10_2_control_el_selector_inalcanzable_salta[hidden-G]
+… (los 7 controles: no encuentran todavía `class="sr-only"` ni la regla)
+8 failed, 3 passed, 234 deselected in 0.74s
+```
+
+Salidas completas en el scratchpad de la sesión (`red_t31_js.txt`,
+`red_t31_py.txt`, `red_o10_2.txt`).
+
+### 3 · Verde sobre el código real
+
+- Front Python: `python -m pytest tests -q -p no:cacheprovider` → **662
+  passed** tras T31, **673** tras O10-2 (la de `init.sh`).
+  `tests/test_f036_front.py` entero en verde y **sin tocar**.
+- Node: `node --test "tests_js/*.test.js"` → **607/607** (`duration_ms
+  2147`).
+- Raíz: **114 passed**.
+- «F-036 intacto» ajustado: `git diff 2a86bca --stat -- …/test_f036_front.py
+  …/importacion.test.js …/oficios.test.js` → solo `test_f036_front.py | 5
+  ++---` (las líneas de R81 del bloque 16); los dos de Node, vacíos.
+- `git diff f3a5bcb --stat -- services/postventa-front/js services/postventa-api`
+  → **vacío**.
+- Las palabras de la quinta enmienda de F-036: ninguna en `oficios.html`
+  (`test_f036_quinta_enmienda_…` en verde; la mutación OF9 la mete en el
+  subtítulo y la caza ese test).
+- ruff: 71 avisos, los de antes. `init.sh` dio 72: el nuevo era un `UP034`
+  mío (unos paréntesis de más en `leer_html((…))` del test de O10-2), corregido
+  **después** de `init.sh`; tras el arreglo, ruff 71 y
+  `tests/test_f035_paginas.py` 245 passed. No repetí `init.sh` (una vez, como
+  pide el encargo): el cambio es esa línea del test.
+- **Vistazo en navegador: NO hecho.** `list_connected_browsers` → `[]`; va con
+  V1/V2 del humano (§6).
+
+### 4 · Mutaciones (T32)
+
+**Campaña del arnés**, `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`:
+
+```
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+**Manuales** (C4 bis), en un worktree desechable del scratchpad (`wt_b11`,
+`--detach` sobre `a7d6292`), una a una con un guion (`mutar_b11.py`) que
+aplica, recalcula la `?v=` de las cuatro páginas si toca una hoja, corre
+`test_f035_paginas.py`, `test_f035_portal.py`, `test_f036_front.py`,
+`test_f007_estaticos.py` y **todo** Node, y restaura. Línea base del
+worktree: `434 passed, 3 skipped` (los 3, de rama, por el `--detach`); Node
+`607/607`. Por familias completas:
+
+| Id | Mutación | Resultado | La mata (entre otros) |
+|---|---|---|---|
+| **21b** | `target="_blank"` en «Inicio» de `oficios.html` | muerta | `r73_…[oficios.html]`, Node R70 de `oficios.html` |
+| **22b** | `bg-slate-800` en «Descargar los grupos vigentes» | muerta | `r72_…[oficios.html]` |
+| OF1 | sin la leyenda de la barra | muerta | `r70_…[oficios.html]` |
+| OF2 | «Oficios repetidos» de la subnavegación como enlace | muerta | `r71_…[oficios.html]` |
+| OF3 | sin pie | muerta | `r72_…[oficios.html]` |
+| OF4 | `oficios.html` carga `js/portal.js` | muerta | `r77_…[oficios.html]`, `test_f036_t22_scripts…` (sin tocar) |
+| OF5 | `text-amber-800` en el rótulo de avisos | muerta | `r72_…[oficios.html]` |
+| OF6 | «Entrada» de la barra como enlace | muerta | `r70_…[oficios.html]`, Node R70 |
+| OF7 | sin `data-construccion` en «Bandeja» | muerta | Node R66 de `oficios.html` |
+| OF8 | `?v=` vieja | muerta | `t21_…[oficios.html]`, `r72_…` |
+| OF9 | «proveedores» en el subtítulo | muerta | `test_f036_quinta_enmienda_…` (sin tocar) |
+| OF10 | sin «Importar incidencias» en la subnavegación | muerta | `r71_…`, `test_f036_s15_6_…` (sin tocar) |
+| OF11 | migas sin `aria-label` | muerta | `r71_…` |
+| OF12 | `target`+`rel` en «Partes firmados» | muerta | `r73_…[oficios.html]` |
+| ES1 | `errorCarga` en `rs-aviso--info` | muerta | `t31_los_estados…` |
+| ES2 | avisos en `rs-panel` sin `--atencion` | muerta | `t31_…` |
+| ES3 | «Son el mismo» del grupo entero en primario | muerta | `t31_…` |
+| ES4 | «Separar» en `--ok` | muerta | `t31_…` |
+| ES5 | «Son distintos» con `--secundario` y `--peligro` (O10-4) | muerta | `t31_…` |
+| ES6 | rótulo «Avisos» neutro | muerta | `t31_…` |
+| ES7 | «Ver los oficios» en secundario (sin acción principal) | muerta | `t31_…` |
+| ES8 | «Son distintos» sin `--compacto` | muerta | `t31_…` |
+| ES9 | `errorDecision` sin su `x-text` | muerta | `t31_…`, `o10_3_…` |
+| ES10 | `h2` «Grupos vigentes» → `h3` | muerta | `t31_…` |
+| HU1 | sin `@keydown.enter.prevent` (L1) | muerta | `o10_3_oficios_conserva…` |
+| HU2 | «Leyendo Sigrid…» sin `x-show` (L2) | muerta | `o10_3_…` |
+| HU3 | «Separar» manda `'mismo'` | muerta | `o10_3_…` |
+| HU4 | «Son distintos» manda `'mismo'` | muerta | `o10_3_…` |
+| HU5 | «Descargar los grupos» sin `:disabled` | muerta | `o10_3_…` |
+| HU6 | `x-model.lazy` | muerta | `o10_3_…` |
+| HU7 | `:key` de grupos a `grupo.etiqueta` (L3) | muerta | `o10_3_…` |
+| HU8 | avisos sin `x-show` (L4) | muerta | `o10_3_…`, `t31_…` |
+| HU9 | «Son el mismo» par a par sin su `x-show` | muerta | `o10_3_…` |
+| HU10 | `decidir(propuesta.miembros, …)` | muerta | `o10_3_…` |
+| HU11 | `x-if="vista && !cargando"` | muerta | `o10_3_…` |
+| HU12 | `x-text` → `x-html` en un aviso | muerta | `o10_3_…` |
+| V1 | `rs-aviso--ok` fijo junto al `:class` del resultado (S2) | muerta | Node T30 |
+| V2 | lista de errores con dos variantes (S4) | muerta | `t30_los_errores…` |
+| V3 | marca con `--atencion` y `--ok` | muerta | `t30_…` |
+| K1 | el `input` de fichero vuelve a `hidden` | muerta | `o10_2_el_selector…` |
+| K2 | fuera la regla `label.rs-btn:focus-within` | muerta | `o10_2_…` |
+| K3 | la regla con `outline: none` | muerta | `o10_2_…`, `r54_ninguna_regla_quita…` |
+| K4 | el `input` fuera de su `<label>` | muerta | `o10_2_…` |
+| K5 | la regla en `button.rs-btn:focus-within` | muerta | `o10_2_…` |
+| K6 | `sr-only` + atributo `hidden` | muerta | `o10_2_…` |
+| K7 | `opacity-0` en vez de `sr-only` | muerta | `o10_2_…`, `r72_…` |
+| C1 | fuera `.rs-texto--fuerte` | muerta | `r72_…[oficios.html]` (clase sin regla) |
+| C2 | fuera `.rs-texto--atencion` | muerta | `r72_…[oficios.html]` |
+| C3 | `#92400e` suelto en `.rs-texto--atencion` | muerta | `r49_fuera_del_root…` |
+| G1 | sin la comprobación de variantes de `problemas_de_estados` | muerta | controles S4 y «marca con dos variantes» |
+| G2 | sin la de variantes de los botones | muerta | control «separar con dos variantes» |
+| G3 | la huella sin ámbito | muerta | `o10_3_…`, control de ámbito y orden |
+| G4 | la huella sin el texto del botón | muerta | `o10_3_…` |
+| G5 | la huella comparada sin orden | muerta | control de ámbito y orden |
+| G6 | `_VARIANTE` sin `rs-btn` | muerta | control «separar con dos variantes» |
+| G7 | O10-2 sin exigir `sr-only` | muerta | control `sin-sr-only` |
+| G8 | O10-2 acepta cualquier contorno | muerta | control `foco-sin-contorno` |
+| G9 | Node T30 sin la comprobación de O10-4 | muerta | control S2 de Node |
+
+**58/58 muertas.** Dos incidencias del guion, corregidas antes de dar la
+tabla por buena:
+
+- En la primera pasada OF7, V1 y G9 salieron **vivas** porque el guion
+  buscaba fallos de Node en formato TAP (`not ok`) y Node escribe en el
+  formato `spec` (`✖`). Con el lector arreglado, muertas (están arriba).
+- **G5 sobrevivía de verdad**: mi control «ámbito y orden» construía la copia
+  «en otro orden» con un reemplazo que dejaba **dos** `<template>`, así que
+  no probaba el orden. Lo reescribí con el documento reordenado explícito
+  (mismas entradas, otro orden: lo comprueba el propio test) y G5 muere. El
+  arreglo va en el commit de T32.
+
+Worktree retirado: `git worktree remove --force`; `git worktree list` ya no
+lo enseña (queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío).
+
+### 5 · Desviaciones y decisiones (para el reviewer)
+
+1. **O10-3, la huella de `oficios.html` como guardia permanente.** La review
+   la dejaba opcional por el riesgo de congelar la página ante cambios de
+   lógica legítimos; el encargo pide dejar fijadas las directivas que F-036
+   no fija. La huella falla con un diff legible (`+`/`-` por entrada) y el
+   comentario del test dice que el bloque 13 (R75, «Decididos como
+   distintos») la amplía en el mismo commit. **Solo `oficios.html`**: para
+   `importar.html` (L1–L4 de la review) la función sirve tal cual, pero el
+   bloque 12 (R74) cambia su lógica y no me lo asigna el encargo: lo decide
+   el líder.
+2. **La huella no mira `class` ni `href`**: presentación y navegación, que
+   cambian en un remodelado y ya vigilan R70–R73 y R72.
+3. **O10-4, hecho aquí** (era opcional en este bloque): `_VARIANTE` cuenta
+   como variante de estado `rs-aviso--*`, `rs-chip--*`, `rs-btn--*` (salvo
+   `--compacto`, que es tamaño) y `rs-panel--atencion`.
+4. **Dos clases nuevas** (`rs-texto--fuerte`, `rs-texto--atencion`): no
+   había componente para el peso del nombre de un grupo ni para un texto en
+   el tono de un panel de atención con `rs-texto` (que fija su color). Con
+   tokens; el par atención/atención-suave es el ya medido de los avisos.
+5. **`rs-panel--destacado` en el bloque de búsqueda** de oficios, como el de
+   importar en T29: es el de la acción principal de la página.
+6. **O10-2: `label.rs-btn:focus-within`, no `.rs-btn:focus-within`** como
+   proponía la review: en un `<button class="rs-btn">`, `:focus-within`
+   también salta con el ratón (el botón enfocado se contiene a sí mismo) y
+   pintaría un contorno en cada clic. En la etiqueta, el contorno sale cuando
+   el control oculto tiene el foco: con teclado y también tras elegir con el
+   ratón, hasta que el foco sale (aceptable: es donde está el foco).
+   `sr-only` es de Tailwind (como lo era `hidden`); no es de la lista cerrada.
+7. **El mismo repaso en `oficios.html`**: no tiene ningún control oculto; su
+   único campo es un `<input type="text">` visible dentro de su etiqueta y
+   los botones son `<button>`: nada que arreglar. La guardia de O10-2 la
+   recorre igual (y fija que tiene cero selectores de fichero).
+8. **Los controles de la página real** comprueban antes que el detector da
+   vacío sobre la página sin estropear (si no, un control podría «saltar» por
+   un problema que ya había).
+
+### 6 · Fuera del alcance y pendiente
+
+- **MANUAL (V1/V2 del humano)**: sin navegador conectado, el aspecto no lo
+  he visto. En `http://localhost:5173/oficios.html` (`.\dev_front.ps1`, sin
+  `func start`, sin pulsar nada que escriba): la barra con «Entrada» marcada
+  y la leyenda; migas y la píldora «Oficios repetidos» en burdeos junto a
+  «Importar incidencias» en gris; el bloque de búsqueda con su filete;
+  propuestas y grupos en recuadros grises dentro de su panel; «Son el mismo»
+  en verde y «Son distintos»/«Separar» en blanco, compactos; los avisos en
+  ámbar con su rótulo; los errores en rojo; el pie al fondo. Y en
+  `importar.html`: **tabular hasta «Elegir el Excel»** (contorno burdeos en
+  la etiqueta), Espacio abre el selector, y con el ratón sigue como antes.
+- **O10-1** (la línea de §16.5 sobre el `:class` del resultado): spec-author,
+  bloque 14, sin cambios.
+- Huella para `importar.html`: decisión del líder (§5.1).
+- R74 (bloque 12), R75 (bloque 13), documentación (bloque 14).
+
+### Evidencias (bloque 11)
+
+| Evidencia | Valor medido |
+|---|---|
+| Tests ejecutados | raíz **114** passed (11,87 s, `init.sh`); front Python **673** passed (27,37 s, `init.sh`); Node **607/607** (2,15 s). Nuevos: 45 en Python del front (T31 + O10-3 + O10-4 + O10-2), 10 en Node |
+| Cobertura de las líneas cambiadas | `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+| Mutantes (arnés) | 0 generados, 0 supervivientes (`progress/mutacion_F-035.md`): F-035 no tiene Python de producción |
+| Mutaciones manuales | **58/58 muertas** (21b, 22b y 56 propias en 8 familias); G5 sobrevivía por un control mal construido, corregido |
+| `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 72 (el `UP034` mío, corregido después: 71) |
+| Tiempo de la suite | raíz 11,87 s; front 27,37 s (`init.sh`); Node 2,15 s |

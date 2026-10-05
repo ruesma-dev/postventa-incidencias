@@ -21,13 +21,29 @@ const CONFIG = {
   ESPERAS_MS: [1000, 3000],
 };
 
-/** Una respuesta de `fetch` de mentira. */
-function respuesta(status, cuerpo) {
+/**
+ * Una respuesta de `fetch` de mentira.
+ *
+ * F-036 T21 · gana `blob()` y `headers.get()`, que son lo que lee la descarga
+ * de la plantilla (binaria, con su nombre en `Content-Disposition`). Lo que ya
+ * habia -`status`, `ok`, `text()`- no cambia.
+ */
+function respuesta(status, cuerpo, cabeceras) {
+  const texto = typeof cuerpo === "string" ? cuerpo : JSON.stringify(cuerpo);
+  const mapa = cabeceras || {};
   return {
     status: status,
     ok: status >= 200 && status < 300,
-    text: async () =>
-      typeof cuerpo === "string" ? cuerpo : JSON.stringify(cuerpo),
+    text: async () => texto,
+    blob: async () => new Blob([texto]),
+    headers: {
+      get: (nombre) => {
+        const clave = Object.keys(mapa).find(
+          (k) => k.toLowerCase() === String(nombre).toLowerCase(),
+        );
+        return clave === undefined ? null : mapa[clave];
+      },
+    },
   };
 }
 
@@ -185,9 +201,31 @@ const LOS_ENDPOINTS = [
   { nombre: "cerrar", ruta: "/api/cerrar", metodo: "POST", llamar: (api) => api.cerrar(cuerpoDeCierreInventado(), HASH_INVENTADO) },
   { nombre: "adjuntar", ruta: "/api/adjuntar", metodo: "POST", llamar: (api) => api.adjuntar(new FormData(), HASH_INVENTADO) },
   { nombre: "cambiarEstado", ruta: "/api/estado", metodo: "POST", llamar: (api) => api.cambiarEstado(cuerpoDeCambioDeEstadoInventado(), HASH_INVENTADO) },
+  // F-036 T21 · la entrada de incidencias y los oficios repetidos. Obra y
+  // codigos inventados: ninguno es de una obra de verdad.
+  { nombre: "descargarPlantilla", ruta: "/api/plantilla?obra=9999", metodo: "GET", llamar: (api) => api.descargarPlantilla("9999") },
+  { nombre: "importarExcel", ruta: "/api/importaciones", metodo: "POST", llamar: (api) => api.importarExcel(libroInventado(), "oid-inventado-para-el-test") },
+  { nombre: "bandeja", ruta: "/api/bandeja?obra=9999", metodo: "GET", llamar: (api) => api.bandeja("9999") },
+  { nombre: "propuestasCatalogos", ruta: "/api/catalogos/propuestas?obra=9999", metodo: "GET", llamar: (api) => api.propuestasCatalogos("9999") },
+  { nombre: "decidirCatalogos", ruta: "/api/catalogos/decisiones", metodo: "POST", llamar: (api) => api.decidirCatalogos(cuerpoDeDecisionInventado()) },
 ];
 
-test("f007 R27 / f019 / f009 / f012 / f028: los DOCE endpoints llaman a su ruta, con su metodo", async () => {
+/** Un `.xlsx` de mentira: cuatro bytes que no son el libro de nadie. */
+function libroInventado() {
+  return new File([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], "incidencias-inventadas.xlsx");
+}
+
+/** El cuerpo de `POST /api/catalogos/decisiones`, con todo inventado. */
+function cuerpoDeDecisionInventado() {
+  return {
+    obra: "9999",
+    usuario_oid: "oid-inventado-para-el-test",
+    confirmado: true,
+    decisiones: [{ catalogo: "oficio", codigos: ["9001", "9002"], decision: "mismo" }],
+  };
+}
+
+test("f007 R27 / f019 / f009 / f012 / f028 / f036: los DIECISIETE endpoints llaman a su ruta, con su metodo", async () => {
   for (const endpoint of LOS_ENDPOINTS) {
     const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
 
@@ -203,7 +241,13 @@ test("f007 R27 / f019 / f009 / f012 / f028: los DOCE endpoints llaman a su ruta,
   }
 });
 
-test("f007 R27: son doce, y la lista se entera si aparece un decimotercero", () => {
+test("f007 R27 / f036: son diecisiete, y la lista se entera si aparece otro", () => {
+  // Enmienda del 2026-09-30 · F-036 T21: eran DOCE y pasan a DIECISIETE con
+  // los cinco de la entrada de incidencias (`descargarPlantilla`,
+  // `importarExcel`, `bandeja`, `propuestasCatalogos` y `decidirCatalogos`).
+  // No se quita ninguno de los doce: la comparacion nombre a nombre de abajo
+  // lo diria.
+  //
   // El cliente expone ademas `peticion` y `cuerpoDeParte`, que son la
   // maquinaria, y desde F-009 `identidad`, que NO es un endpoint de este
   // backend: lo sirve el proxy de la Static Web App y por eso no cuelga de
@@ -221,7 +265,7 @@ test("f007 R27: son doce, y la lista se entera si aparece un decimotercero", () 
   const auxiliares = ["peticion", "cuerpoDeParte", "identidad"];
   const endpoints = Object.keys(api).filter((k) => auxiliares.indexOf(k) === -1);
 
-  assert.equal(endpoints.length, 12);
+  assert.equal(endpoints.length, 17);
   assert.deepEqual(endpoints.sort(), LOS_ENDPOINTS.map((e) => e.nombre).sort());
 });
 
@@ -899,4 +943,319 @@ test("f009: si el proxy no responde, identidad() devuelve vacio y no rompe la pa
   return api.identidad().then((identidad) => {
     assert.deepEqual(identidad, { usuarioOid: "", correo: "" });
   });
+});
+
+// --- F-036 · la entrada de incidencias y los oficios repetidos ---------------
+//
+// Cinco endpoints nuevos (`design.md` §8 de F-036, con la forma real de los
+// handlers: `progress/impl_F-036.md`, B6-7 y B6-18). Dos reglas que los de
+// antes no tenian:
+//
+// - **R52 · el mensaje es el del backend**, tambien en un 503. En el circuito
+//   de partes un 503 es la puerta de entorno de archivar y se pinta con un
+//   texto fijo; aqui un 503 es «sin Sigrid o sin base», y el backend explica
+//   cual. Tragarse ese texto por el fijo de archivar seria mentir.
+// - **R52 · la importacion no se reintenta sola.** Ni un 502, ni la red, ni
+//   el tiempo agotado. Un reintento no duplicaria nada (el `sha256` lo
+//   impide), pero R52 lo prohibe: lo decide quien importa.
+
+const DISPOSICION_INVENTADA =
+  'attachment; filename="plantilla_incidencias_9999_20260930.xlsx"';
+
+test("f036 R50: descargarPlantilla pide GET /api/plantilla y devuelve el binario con su disposicion", async () => {
+  const { api, llamadas } = apiDePrueba([
+    respuesta(200, "PK-libro-inventado", { "Content-Disposition": DISPOSICION_INVENTADA }),
+  ]);
+
+  const descarga = await api.descargarPlantilla("9999");
+
+  assert.equal(llamadas.length, 1);
+  assert.equal(llamadas[0].url, "/api/plantilla?obra=9999");
+  assert.equal(llamadas[0].opciones.method, "GET");
+  assert.equal(descarga.disposicion, DISPOSICION_INVENTADA);
+  assert.ok(descarga.blob instanceof Blob, "el cuerpo es un Blob, no un JSON");
+  assert.equal(await descarga.blob.text(), "PK-libro-inventado");
+});
+
+test("f036 R50: descargarPlantilla sin Content-Disposition devuelve la disposicion vacia", async () => {
+  const { api } = apiDePrueba([respuesta(200, "PK-libro-inventado")]);
+
+  const descarga = await api.descargarPlantilla("9999");
+
+  assert.equal(descarga.disposicion, "");
+});
+
+test("f036: las rutas con obra la escapan, asi que no se cuela un parametro de mas", async () => {
+  const casos = [
+    { llamar: (api) => api.descargarPlantilla("99&obra=1"), url: "/api/plantilla?obra=99%26obra%3D1" },
+    { llamar: (api) => api.bandeja("99&obra=1"), url: "/api/bandeja?obra=99%26obra%3D1" },
+    { llamar: (api) => api.propuestasCatalogos("99&obra=1"), url: "/api/catalogos/propuestas?obra=99%26obra%3D1" },
+  ];
+
+  for (const caso of casos) {
+    const { api, llamadas } = apiDePrueba([respuesta(200, {})]);
+
+    await caso.llamar(api);
+
+    assert.equal(llamadas[0].url, caso.url);
+  }
+});
+
+test("f036 R45: bandeja con limite lo pone en la consulta", async () => {
+  const { api, llamadas } = apiDePrueba([respuesta(200, { obra: "9999", total: 0, incidencias: [] })]);
+
+  await api.bandeja("9999", 50);
+
+  assert.equal(llamadas[0].url, "/api/bandeja?obra=9999&limite=50");
+  assert.equal(llamadas[0].opciones.body, undefined, "un GET no lleva cuerpo");
+});
+
+test("f036 R43: importarExcel manda el fichero y usuario_oid en multipart, sin Content-Type a mano", async () => {
+  const cuerpoRespuesta = { importacion_id: "id-inventado", obra: "9999", estado: "completa" };
+  const { api, llamadas } = apiDePrueba([respuesta(200, cuerpoRespuesta)]);
+  const libro = libroInventado();
+
+  const datos = await api.importarExcel(libro, "oid-inventado-para-el-test");
+
+  assert.equal(llamadas[0].url, "/api/importaciones");
+  assert.equal(llamadas[0].opciones.method, "POST");
+  assert.ok(llamadas[0].opciones.body instanceof FormData);
+  assert.deepEqual([...llamadas[0].opciones.body.keys()].sort(), ["fichero", "usuario_oid"]);
+  assert.equal(llamadas[0].opciones.body.get("usuario_oid"), "oid-inventado-para-el-test");
+  assert.equal(llamadas[0].opciones.body.get("fichero").name, "incidencias-inventadas.xlsx");
+  assert.equal(llamadas[0].opciones.headers, undefined, "el boundary lo pone el navegador");
+  assert.deepEqual(datos, cuerpoRespuesta);
+});
+
+test("f036 R52: importarExcel NO se reintenta ante un 502", async () => {
+  const { api, llamadas, esperas, trazas } = apiDePrueba([
+    respuesta(502, { error: "el proxy no ha llegado al backend" }),
+  ]);
+
+  await assert.rejects(() => api.importarExcel(libroInventado(), "oid-inventado-para-el-test"), (error) => {
+    assert.equal(error.http, 502);
+    assert.equal(error.mensaje, "el proxy no ha llegado al backend");
+    return true;
+  });
+
+  assert.equal(llamadas.length, 1, "R52: la importacion no se repite por su cuenta");
+  assert.deepEqual(esperas, []);
+  assert.ok(
+    trazas.every((t) => t.estado !== "reintentando"),
+    "la traza no puede decir que se reintenta lo que no se reintenta",
+  );
+});
+
+test("f036 R52: importarExcel NO se reintenta si la red falla, y no dice «Reintentando»", async () => {
+  const { api, llamadas, esperas } = apiDePrueba([new TypeError("Failed to fetch")]);
+
+  await assert.rejects(() => api.importarExcel(libroInventado(), "oid-inventado-para-el-test"), (error) => {
+    assert.equal(error.tipo, "transitorio");
+    assert.equal(error.http, null);
+    assert.doesNotMatch(error.mensaje, /reintentando/i);
+    assert.match(error.mensaje, /no se ha reintentado/i);
+    return true;
+  });
+
+  assert.equal(llamadas.length, 1);
+  assert.deepEqual(esperas, []);
+});
+
+test("f036 R52: importarExcel NO se reintenta si se agota el tiempo", async () => {
+  const guion = [
+    (url, opciones) =>
+      new Promise((_, rechazar) => {
+        opciones.signal.addEventListener("abort", () => {
+          const error = new Error("This operation was aborted");
+          error.name = "AbortError";
+          rechazar(error);
+        });
+      }),
+  ];
+  const { api, llamadas, esperas } = apiDePrueba(guion, {
+    programarTimeout: (ms, alDispararse) => {
+      setImmediate(() => alDispararse());
+      return () => {};
+    },
+  });
+
+  await assert.rejects(() => api.importarExcel(libroInventado(), "oid-inventado-para-el-test"), (error) => {
+    assert.equal(error.tipo, "transitorio");
+    assert.match(error.mensaje, /no se ha reintentado/i);
+    return true;
+  });
+
+  assert.equal(llamadas.length, 1);
+  assert.deepEqual(esperas, []);
+});
+
+for (const caso of [
+  { http: 400, tipo: "peticion", error: "El fichero no es la plantilla: formato antiguo", codigo: "formato_antiguo" },
+  { http: 413, tipo: "peticion", error: "El fichero pasa de 2 MiB: no se ha abierto.", codigo: null },
+  { http: 409, tipo: "no_apto", error: "hay dos obras con ese código", codigo: "obra_ambigua" },
+  { http: 503, tipo: "entorno", error: "no se ha podido hablar con Sigrid y no se ha podido importar el fichero", codigo: null },
+]) {
+  test(`f036 R52: un ${caso.http} en importarExcel ensena el mensaje del backend y no se reintenta`, async () => {
+    const cuerpo = { error: caso.error };
+    if (caso.codigo) {
+      cuerpo.codigo = caso.codigo;
+    }
+    const { api, llamadas, esperas } = apiDePrueba([respuesta(caso.http, cuerpo)]);
+
+    await assert.rejects(() => api.importarExcel(libroInventado(), "oid-inventado-para-el-test"), (error) => {
+      assert.equal(error.http, caso.http);
+      assert.equal(error.tipo, caso.tipo);
+      assert.equal(error.mensaje, caso.error, "R52: el texto del backend, tal cual");
+      assert.equal(error.codigo, caso.codigo);
+      return true;
+    });
+
+    assert.equal(llamadas.length, 1);
+    assert.deepEqual(esperas, []);
+  });
+}
+
+test("f036 R52: un 503 de la entrada NO se confunde con la puerta de entorno de archivar", async () => {
+  const casos = [
+    (api) => api.descargarPlantilla("9999"),
+    (api) => api.bandeja("9999"),
+    (api) => api.propuestasCatalogos("9999"),
+    (api) => api.decidirCatalogos(cuerpoDeDecisionInventado()),
+  ];
+
+  for (const llamar of casos) {
+    const { api } = apiDePrueba([respuesta(503, { error: "sin base de datos, inventado" })]);
+
+    await assert.rejects(() => llamar(api), (error) => {
+      assert.equal(error.http, 503);
+      assert.equal(error.mensaje, "sin base de datos, inventado");
+      assert.doesNotMatch(error.mensaje, /entorno no archiva/i);
+      return true;
+    });
+  }
+});
+
+test("f036: el 503 de archivar sigue siendo la puerta de entorno (no cambia nada de antes)", async () => {
+  const { api } = apiDePrueba([respuesta(503, { error: "ARCHIVO_HABILITADO está apagado" })]);
+
+  await assert.rejects(() => api.archivar(new FormData()), (error) => {
+    assert.match(error.mensaje, /entorno no archiva/i);
+    return true;
+  });
+});
+
+test("f036 R50: un error de descargarPlantilla trae el mensaje y el codigo del backend, sin reintentar", async () => {
+  const { api, llamadas, esperas } = apiDePrueba([
+    respuesta(404, { error: "ninguna obra 9999 tiene unidades de posventa", codigo: "obra_sin_unidades" }),
+  ]);
+
+  await assert.rejects(() => api.descargarPlantilla("9999"), (error) => {
+    assert.equal(error.http, 404);
+    assert.equal(error.mensaje, "ninguna obra 9999 tiene unidades de posventa");
+    assert.equal(error.codigo, "obra_sin_unidades");
+    return true;
+  });
+  assert.equal(llamadas.length, 1);
+  assert.deepEqual(esperas, []);
+});
+
+test("f036 R50: descargarPlantilla con la red caida no se reintenta y lo dice", async () => {
+  const { api, llamadas, trazas } = apiDePrueba([new TypeError("Failed to fetch")]);
+
+  await assert.rejects(() => api.descargarPlantilla("9999"), (error) => {
+    assert.equal(error.tipo, "transitorio");
+    assert.match(error.mensaje, /no se ha reintentado/i);
+    return true;
+  });
+  assert.equal(llamadas.length, 1);
+  assert.equal(trazas[trazas.length - 1].paso, "plantilla");
+  assert.equal(trazas[trazas.length - 1].estado, "transitorio");
+});
+
+test("f036 R50: un error de descargarPlantilla que no es JSON sale como desconocido", async () => {
+  const { api } = apiDePrueba([respuesta(500, "<html>error del proxy</html>")]);
+
+  await assert.rejects(() => api.descargarPlantilla("9999"), (error) => {
+    assert.equal(error.tipo, "desconocido");
+    assert.equal(error.http, 500);
+    assert.match(error.mensaje, /500/);
+    return true;
+  });
+});
+
+test("f036 R50: descargarPlantilla programa su timeout y lo cancela al responder", async () => {
+  const { api, llamadas, temporizadores } = apiDePrueba([respuesta(200, "PK")]);
+
+  await api.descargarPlantilla("9999");
+
+  assert.equal(temporizadores.length, 1);
+  assert.equal(temporizadores[0].ms, 180000);
+  assert.equal(temporizadores[0].cancelado, true);
+  assert.ok(llamadas[0].opciones.signal, "sin signal, el timeout no aborta nada");
+});
+
+test("f036 R88: decidirCatalogos manda el cuerpo JSON tal cual y no se reintenta", async () => {
+  const { api, llamadas, esperas } = apiDePrueba([respuesta(502, { error: "proxy caido, inventado" })]);
+
+  await assert.rejects(() => api.decidirCatalogos(cuerpoDeDecisionInventado()));
+
+  assert.equal(llamadas.length, 1, "una decision es un acto de una persona: no se repite sola");
+  assert.deepEqual(esperas, []);
+  assert.equal(llamadas[0].url, "/api/catalogos/decisiones");
+  assert.equal(llamadas[0].opciones.method, "POST");
+  assert.equal(llamadas[0].opciones.headers["Content-Type"], "application/json");
+  assert.deepEqual(JSON.parse(llamadas[0].opciones.body), cuerpoDeDecisionInventado());
+});
+
+test("f036 R45/R87: bandeja y propuestas son lecturas: un 502 si se reintenta", async () => {
+  for (const llamar of [(api) => api.bandeja("9999"), (api) => api.propuestasCatalogos("9999")]) {
+    const { api, llamadas, esperas } = apiDePrueba([
+      respuesta(502, { error: "transitorio" }),
+      respuesta(200, { obra: "9999" }),
+    ]);
+
+    const datos = await llamar(api);
+
+    assert.equal(llamadas.length, 2);
+    assert.deepEqual(esperas, [1000]);
+    assert.equal(datos.obra, "9999");
+  }
+});
+
+test("f036: los cinco trazan su paso propio, y nada mas que hash, paso, estado y http", async () => {
+  const casos = [
+    { llamar: (api) => api.descargarPlantilla("9999"), paso: "plantilla" },
+    { llamar: (api) => api.importarExcel(libroInventado(), "oid-inventado-para-el-test"), paso: "importaciones" },
+    { llamar: (api) => api.bandeja("9999"), paso: "bandeja" },
+    { llamar: (api) => api.propuestasCatalogos("9999"), paso: "propuestas" },
+    { llamar: (api) => api.decidirCatalogos(cuerpoDeDecisionInventado()), paso: "decisiones" },
+  ];
+
+  for (const caso of casos) {
+    const { api, trazas } = apiDePrueba([respuesta(200, {})]);
+
+    await caso.llamar(api);
+    const evento = trazas[trazas.length - 1];
+
+    assert.equal(evento.paso, caso.paso);
+    assert.equal(evento.estado, "ok");
+    assert.deepEqual(
+      Object.keys(evento).filter((k) => ["hash", "paso", "estado", "http"].indexOf(k) === -1),
+      [],
+    );
+  }
+});
+
+test("f036: clasificar deja el texto y el codigo del backend en el error", () => {
+  const { clasificar } = require("../js/api.js");
+
+  const error = clasificar(409, { error: "texto inventado", codigo: "obra_ambigua" });
+  const sinCodigo = clasificar(400, { error: "otro texto" });
+  const sinJson = clasificar(502, undefined);
+
+  assert.equal(error.mensajeServicio, "texto inventado");
+  assert.equal(error.codigo, "obra_ambigua");
+  assert.equal(sinCodigo.codigo, null);
+  assert.equal(sinJson.mensajeServicio, null);
+  assert.equal(sinJson.codigo, null);
 });

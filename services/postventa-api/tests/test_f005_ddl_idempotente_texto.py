@@ -85,7 +85,7 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
     el décimo y F-028 el undécimo, y los cuatro tuvieron que venir aquí a
     declararlo, que es exactamente lo que se quería —el décimo llegó a existir
     como fichero un commit antes de estar declarado aquí, y esta aserción fue
-    lo que lo dijo—.
+    lo que lo dijo—. F-036 (T14) añadió del duodécimo al decimocuarto.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
@@ -101,6 +101,9 @@ def test_f005_r1_se_aplican_todos_los_ficheros_en_orden():
         "09_graficos.sql",
         "10_aprobaciones.sql",
         "11_historico_estado.sql",
+        "12_importaciones.sql",
+        "13_bandeja_incidencias.sql",
+        "14_decisiones_equivalencia.sql",
     ]
 
 
@@ -322,6 +325,11 @@ def test_f005_d4_numero_incidencia_esta_indexado_pero_no_es_unico():
 
     Una incidencia puede tener más de un parte —más de una visita—, y un
     índice único rompería el día que F-014 reagrupe un parte de dos hojas.
+
+    F-036 (T14, R41) trae el **único** índice único del esquema,
+    `ux_bandeja_clave`, sobre la bandeja: la no duplicación de la bandeja la
+    tiene que garantizar la base. La aserción se amplía con él y sigue cazando
+    cualquier otro índice único, también sobre `partes`.
     """
     sentencias = _sentencias_reales()
     indices = [s for s in sentencias if s.upper().startswith("CREATE ")]
@@ -331,7 +339,10 @@ def test_f005_d4_numero_incidencia_esta_indexado_pero_no_es_unico():
         and "UNIQUE" not in sentencia.upper()
         for sentencia in indices
     )
-    assert not any("UNIQUE INDEX" in sentencia.upper() for sentencia in sentencias)
+    unicos = [s for s in sentencias if "UNIQUE INDEX" in s.upper()]
+    assert len(unicos) == 1
+    assert unicos[0].startswith("CREATE UNIQUE INDEX IF NOT EXISTS ux_bandeja_clave")
+    assert "partes" not in unicos[0]
 
 
 def test_f005_r22_la_cola_tiene_su_indice_parcial():

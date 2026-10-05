@@ -87,6 +87,14 @@ js/api.js        adaptador HTTP     `fetch` y temporizadores inyectables
 js/app.js        pegamento Alpine   NO se prueba: no debe tener lógica
 ```
 
+Desde F-036 hay dos páginas más, cada una con su módulo (lógica pura más su
+componente Alpine, que se prueba en `node --test` con un `api` doble):
+
+```
+importar.html   js/importacion.js   plantilla, importación y bandeja    (F-036 §9)
+oficios.html    js/oficios.js       oficios repetidos en Sigrid          (F-036 §15.6)
+```
+
 **Regla de oro: si algo merece un test, no vive en `app.js`.** Hay dos guardias
 en `tests/test_f007_estaticos.py` que lo vigilan, porque `app.js` es la única
 habitación sin tests de la casa.
@@ -144,6 +152,34 @@ en rojo. Eso es exactamente lo que expulsó al front de F-001.
 
 Resultado: `tests/test_f007_dev_server.py`, y la puerta de cobertura mide esas
 líneas en vez de contarlas como no medidas.
+
+## La entrada de incidencias (F-036)
+
+Dos páginas propias, enlazadas desde la cabecera de `index.html` y abiertas
+**en otra pestaña**: salir de `index.html` perdería la remesa en curso (D4).
+
+- **`importar.html`** (`js/importacion.js`). Tres bloques, en el orden en que
+  se usan: **1 · la plantilla** de una obra (un `.xlsx` que el backend genera
+  leyendo Sigrid en el momento; el nombre sale de `Content-Disposition`),
+  **2 · importar** un `.xlsx` a la bandeja (completa o parcial, el resumen, los
+  errores «Fila N · columna X · problema» y, si hay filas con error, el botón
+  **«Descargar el Excel de errores»**, que llega en base64 dentro de la
+  respuesta) y **3 · la bandeja** de la obra, **de solo lectura**, con las
+  duplicadas y los oficios ambiguos marcados. La importación **no se reintenta
+  sola** (R52): si falla, se enseña el mensaje del backend y volver a importar
+  lo decide quien importa (repetir no duplica nada).
+- **`oficios.html`** (`js/oficios.js`). Oficios casi iguales de Sigrid: las
+  propuestas («Son el mismo» / «Son distintos»), los grupos vigentes
+  («Separar») y los avisos de grupos que no se aplican. Cada botón manda
+  **una** decisión con `confirmado: true` y recarga; nada se decide sin pulsar.
+  **«Descargar los grupos vigentes»** baja el JSON (solo códigos) que usa la
+  migración del Excel actual. Solo oficios: los proveedores son F-050 y las
+  actividades F-039.
+
+Lo que **no** hay en ninguna de las dos, a propósito: editar, descartar o
+aprobar una incidencia de la bandeja. Eso es **F-038**. Las dos necesitan
+saber quién es el usuario (`/.auth/me`): sin sesión, importar y decidir se
+quedan deshabilitados, como el cierre.
 
 ## Lo que este front NO hace (a propósito)
 

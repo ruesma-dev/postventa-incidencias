@@ -98,13 +98,44 @@ Endpoints:
         - No cierra un parte que no sea apto **ni que no conste archivado**:
           primero el documento, después el cierre.
 
+    GET /api/plantilla
+        La plantilla de incidencias de **una** obra (F-036): un `.xlsx` con sus
+        unidades de posventa y sus oficios, leídos de Sigrid en ese momento
+        —solo `POST /api/sql/read` de la pasarela— y con los grupos de oficio
+        confirmados. No escribe en ningún sitio.
+
+    POST /api/importaciones
+        Importa a la bandeja un Excel rellenado con esa plantilla (F-036). Solo
+        acepta la plantilla: las filas buenas entran y las malas vuelven en un
+        **Excel de errores** dentro de la respuesta, que no se guarda. Escribe
+        en el esquema propio y **nada** en Sigrid; por eso no depende de
+        ninguna ventana de escritura.
+
+    GET /api/bandeja
+        Las incidencias importadas de una obra (F-036), de solo lectura y con
+        tope duro. Ver más abajo qué añade al cuadro de seguridad.
+
+    GET /api/catalogos/propuestas
+        Los oficios casi duplicados de **una** obra (F-036): sus oficios de
+        Sigrid con el grupo que se les aplica, lo que falta por decidir y los
+        grupos que no se aplican por contradicción. Solo lee: Sigrid por
+        `POST /api/sql/read` y las decisiones del esquema propio.
+
+    POST /api/catalogos/decisiones
+        Registra que **una persona** confirma que varios oficios de Sigrid son
+        el mismo, o que dos no lo son (F-036), con `confirmado: true` booleano
+        como `POST /api/estado`. Solo el catálogo `oficio`: cualquier otro es
+        **400**. Escribe en el esquema propio, append-only, y **nada** en
+        Sigrid, que no se corrige desde aquí; por eso no depende de ninguna
+        ventana de escritura.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
 
 ---
 
-## Por qué los once endpoints están en `ANONYMOUS`, y no es un descuido
+## Por qué todos los endpoints están en `ANONYMOUS`, y no es un descuido
 
 **No lo toques sin leer esto.** Un endpoint anónimo parece un olvido, y el
 arreglo evidente —`auth_level=FUNCTION`— **rompe el front el mismo día que se
@@ -122,7 +153,7 @@ El servicio está desplegado como **backend enlazado** de una Static Web App
 De ahí las dos consecuencias que fijan este fichero:
 
 1. **`auth_level=FUNCTION` no vale**: la Static Web App no aporta la clave que
-   la Function exigiría, así que los once endpoints empezarían a devolver
+   la Function exigiría, así que todos los endpoints empezarían a devolver
    `401` a través del front.
 2. **La autenticación integrada de Entra en la Function App tampoco vale**:
    espera un *bearer* que el proxy no envía.
@@ -183,9 +214,9 @@ exige sesión. Lo que decide quién usa la aplicación es la capa 2.
 ### Qué añade `GET /api/cola` a este cuadro
 
 Es el **primer endpoint del servicio que devuelve dato personal acumulado sin
-que el llamante aporte el PDF**. Los diez restantes exigen que tú mandes el
-parte, o que sepas su `hash`: quien no lo tiene no obtiene nada de él. La cola
-devuelve transcripciones manuscritas de clientes, códigos de obra y números de
+que el llamante aporte el PDF**. Los del circuito de partes exigen que tú
+mandes el parte, o que sepas su `hash`: quien no lo tiene no obtiene nada de
+él. La cola devuelve transcripciones manuscritas de clientes, códigos de obra y números de
 incidencia sin aportar nada.
 
 Eso **no** lo expone a internet, por lo dicho arriba. Lo que cambia es **de
@@ -196,6 +227,13 @@ llamada no puede convertirse en un volcado de la cola entera contra un
 servidor de 1 vCPU compartido con la producción de otros proyectos. De ahí el
 tope duro de `interface_adapters/api/cola.py` y que de la cola sólo se
 registre **cuántas** entradas volvieron.
+
+`GET /api/bandeja` (F-036) es el **segundo**: devuelve las descripciones y los
+detalles que escribe la propiedad —pueden llevar un nombre o un teléfono— y
+los nombres de los proveedores de la obra, sin aportar nada. Mismo cuadro y
+mismas cautelas: tope duro de 500 filas por llamada en
+`interface_adapters/api/bandeja.py` (además del de la consulta) y, en el log,
+la obra y **cuántas** filas volvieron.
 
 **Descartado a propósito: exigir `x-ms-client-principal`.** Parece subir el
 listón y no lo sube —va sin firma, se fabrica— y encima de algo que ya protege
@@ -219,12 +257,17 @@ from domain.models.errores import (
     ArchivoFallido,
     ArchivoSinTraza,
     CambioDeEstadoInvalido,
+    CatalogoNoDisponible,
+    CatalogoSinVerificar,
     CierreDeshabilitado,
     CierreFallido,
     CierreSinTraza,
+    CodigoDeObraInvalido,
     CodigoNoConsta,
+    CodigoNoEsDeLaObra,
     CodigosNoCoinciden,
     ConfiguracionPgIncompleta,
+    ConfiguracionPlantillaInvalida,
     ConfiguracionSharePointIncompleta,
     ConfiguracionSigridIncompleta,
     CuerpoDeArchivoInvalido,
@@ -237,19 +280,27 @@ from domain.models.errores import (
     EstadoDeCierreNoResoluble,
     EstadoNoCerrable,
     ExtraccionFallida,
+    FicheroDemasiadoGrande,
+    FicheroNoEsPlantilla,
     GraficoDemasiadoGrande,
     GraficoFallido,
     GraficoNoEsPdf,
     GraficoRechazadoPorLaPasarela,
     GraficoSinTraza,
+    LectorSinAislamiento,
+    LecturaOcupada,
     LimiteDeEntradaSuperado,
     NombradoImposible,
+    ObraAmbigua,
+    ObraSinUnidades,
     ParteCerrado,
     ParteDemasiadoGrande,
     ParteNoAdjuntado,
     ParteNoApto,
     ParteNoArchivado,
     PersistenciaNoDisponible,
+    PeticionDeDecisionInvalida,
+    PeticionDeImportacionInvalida,
     PeticionDePersistenciaInvalida,
     ReclamacionNoLocalizada,
     ReferenciaNoConsta,
@@ -261,13 +312,20 @@ from domain.models.errores import (
 from domain.models.remesa import DocumentoEntrada
 from interface_adapters.api.adjuntar import adjuntar_grafico
 from interface_adapters.api.archivar import archivar_parte
+from interface_adapters.api.bandeja import leer_bandeja
 from interface_adapters.api.cerrar import cerrar_incidencia
 from interface_adapters.api.cola import leer_cola
+from interface_adapters.api.equivalencias import (
+    decidir_equivalencias,
+    leer_propuestas,
+)
 from interface_adapters.api.estado import cambiar_estado_http
 from interface_adapters.api.extraer import extraer_parte
 from interface_adapters.api.firma import leer_firma
 from interface_adapters.api.health import estado_del_servicio
+from interface_adapters.api.importar import importar_excel
 from interface_adapters.api.parte import guardar_parte_http
+from interface_adapters.api.plantilla import descargar_plantilla
 from interface_adapters.api.remesa import registrar_remesa
 from interface_adapters.api.split import trocear_remesa
 from interface_adapters.api.validar import validar as validar_parte_http
@@ -1150,5 +1208,309 @@ def cerrar(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["numero_incidencia"],
         cuerpo["estado"],
         cuerpo["filas_afectadas"],
+    )
+    return _json(cuerpo, 200)
+
+
+# --------------------------------------------------------------------------
+# F-036 · entrada de incidencias por Excel (`design.md` §8)
+# --------------------------------------------------------------------------
+
+#: El tipo de un `.xlsx` (R1).
+TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+#: El código de cada rechazo por la obra (R10): viaja en el cuerpo con el
+#: motivo, para que el front diga qué pasa sin interpretar el texto.
+CODIGOS_DE_RECHAZO_DE_OBRA = {
+    ObraSinUnidades: "obra_sin_unidades",
+    ObraAmbigua: "obra_ambigua",
+    CatalogoSinVerificar: "catalogo_sin_verificar",
+}
+
+
+def _rechazo_de_obra(
+    error: ObraSinUnidades | ObraAmbigua | CatalogoSinVerificar, estado: int
+) -> func.HttpResponse:
+    return _json(
+        {"error": error.motivo, "codigo": CODIGOS_DE_RECHAZO_DE_OBRA[type(error)]},
+        estado,
+    )
+
+
+def _sin_sigrid_o_sin_base(
+    que: str,
+    error: CatalogoNoDisponible
+    | ConfiguracionSigridIncompleta
+    | ConfiguracionPgIncompleta
+    | PersistenciaNoDisponible,
+) -> func.HttpResponse:
+    """503 (R11): Sigrid, su configuración, el entorno o la base, con el motivo."""
+    return _json(
+        {
+            "error": (
+                f"no se ha podido {que}: falta Sigrid o la base de datos aquí y "
+                f"ahora, y no se ha escrito nada. Se puede reintentar más tarde. "
+                f"Motivo: {error.motivo}"
+            )
+        },
+        503,
+    )
+
+
+def _configuracion_rota(error: ConfiguracionPlantillaInvalida) -> func.HttpResponse:
+    """El YAML de la plantilla no carga: es un fallo nuestro, 500 con su motivo."""
+    return _json(
+        {"error": f"la configuración de la plantilla está rota: {error.motivo}"}, 500
+    )
+
+
+@app.route(route="plantilla", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def plantilla(req: func.HttpRequest) -> func.HttpResponse:
+    """La plantilla de incidencias de una obra, para descargar (F-036, R1).
+
+    Solo traduce: saca `obra` de la cadena de consulta, llama al handler y
+    mapea sus errores a códigos HTTP (§8):
+
+    - **200** · el `.xlsx`, con `Content-Disposition` y el nombre
+      `plantilla_incidencias_<obra>_<AAAAMMDD>.xlsx`;
+    - **400** · la obra falta o no es admisible (R9), sin llamar a Sigrid;
+    - **404** · ninguna obra con ese código tiene unidades de posventa (R10);
+    - **409** · hay dos obras con ese código o el catálogo llegó al techo de
+      filas (R10): lo tiene que mirar una persona;
+    - **503** · Sigrid, su configuración, el entorno o la base (R11).
+
+    Ningún error lleva fichero. El log lleva la obra y el tamaño (R47).
+    """
+    try:
+        nombre, contenido = descargar_plantilla(req.params.get("obra"))
+    except CodigoDeObraInvalido as error:
+        log.info("plantilla rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ObraSinUnidades as error:
+        log.info("plantilla sin unidades: %s", error.motivo)
+        return _rechazo_de_obra(error, 404)
+    except (ObraAmbigua, CatalogoSinVerificar) as error:
+        log.info("plantilla no procede: %s", error.motivo)
+        return _rechazo_de_obra(error, 409)
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("plantilla sin Sigrid o sin base: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("generar la plantilla", error)
+    except ConfiguracionPlantillaInvalida as error:
+        log.error("plantilla con la configuración rota: %s", error.motivo)
+        return _configuracion_rota(error)
+    log.info("plantilla: %s, %d bytes", nombre, len(contenido))
+    return func.HttpResponse(
+        body=contenido,
+        status_code=200,
+        mimetype=TIPO_XLSX,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@app.route(route="importaciones", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def importaciones(req: func.HttpRequest) -> func.HttpResponse:
+    """Importa un Excel de incidencias a la bandeja (F-036, R14–R22, R33, R43).
+
+    Solo traduce: saca los ficheros y `usuario_oid` del `multipart/form-data`,
+    llama al handler y mapea sus errores (§8):
+
+    - **200** · importada, completa o **parcial** (las filas con error vuelven
+      en `errores` y en `excel_errores`), o `ya_importado` (R39);
+    - **400** · falta quién importa o el fichero, vienen dos (R22), o el
+      fichero no es la plantilla (`{error, codigo}`, R16–R20), sin llamar a
+      Sigrid ni escribir nada (R21);
+    - **413** · el fichero pasa de 2 MiB (R15), sin abrirlo;
+    - **409** · la obra de la plantilla ya no tiene unidades, es ambigua o su
+      catálogo llegó al techo (`{error, codigo}`);
+    - **503** · Sigrid o la base (R11, R40): no queda nada a medias; o la
+      lectura aislada (octava enmienda): otra importación en curso en este
+      proceso (R120) o, en `dev`/`pro`, una plataforma sin tope de memoria
+      para el hijo (R119), sin haber leído ni escrito nada.
+
+    El log lleva la obra, recuentos, el `importacion_id` y los códigos de
+    rechazo, **nunca** el nombre del fichero, el `oid`, los textos de las
+    filas ni el motivo de un rechazo del fichero, que puede repetir la
+    cabecera que escribió quien sube (R47).
+    """
+    ficheros = [
+        (fichero.filename or "", fichero.read())
+        for _, fichero in req.files.items(multi=True)
+    ]
+    try:
+        cuerpo = importar_excel(ficheros, req.form.get("usuario_oid"))
+    except PeticionDeImportacionInvalida as error:
+        log.info("importación rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except FicheroNoEsPlantilla as error:
+        log.info("importación rechazada, no es la plantilla: %s", error.codigo)
+        return _json({"error": error.motivo, "codigo": error.codigo}, 400)
+    except FicheroDemasiadoGrande as error:
+        log.info("importación rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 413)
+    except (ObraSinUnidades, ObraAmbigua, CatalogoSinVerificar) as error:
+        log.info("importación no procede: %s", error.motivo)
+        return _rechazo_de_obra(error, 409)
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("importación sin Sigrid o sin base: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("importar el fichero", error)
+    except (LecturaOcupada, LectorSinAislamiento) as error:
+        log.warning("importación sin leer el fichero: %s", error.motivo)
+        return _json({"error": error.motivo}, 503)
+    except ConfiguracionPlantillaInvalida as error:
+        log.error("importación con la configuración rota: %s", error.motivo)
+        return _configuracion_rota(error)
+    resumen = cuerpo["resumen"]
+    log.info(
+        "importaciones: importacion=%s obra=%s estado=%s ya_importado=%s "
+        "leidas=%d nuevas=%d duplicadas_en_fichero=%d ya_en_bandeja=%d con_error=%d",
+        cuerpo["importacion_id"],
+        cuerpo["obra"],
+        cuerpo["estado"],
+        cuerpo["ya_importado"],
+        resumen["leidas"],
+        resumen["nuevas"],
+        resumen["duplicadas_en_fichero"],
+        resumen["ya_en_bandeja"],
+        resumen["con_error"],
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(route="bandeja", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def bandeja(req: func.HttpRequest) -> func.HttpResponse:
+    """Las incidencias importadas de una obra (F-036, R45). Solo lee.
+
+    Solo traduce: **400** si falta la obra o el `limite` no es un entero ≥ 1
+    —y entonces no se consulta nada— y **503** sin base. Como la cola,
+    devuelve texto de fuera acumulado: el log lleva la obra y **cuántas**
+    filas volvieron, nada más (R47).
+    """
+    try:
+        cuerpo = leer_bandeja(req.params.get("obra"), req.params.get("limite"))
+    except (CodigoDeObraInvalido, PeticionDePersistenciaInvalida) as error:
+        log.info("bandeja rechazada: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except (ConfiguracionPgIncompleta, PersistenciaNoDisponible) as error:
+        log.warning("bandeja sin base de datos: %s", error.motivo)
+        return _json(
+            {
+                "error": (
+                    f"no se ha podido hablar con la base de datos y no se ha "
+                    f"podido leer la bandeja: se puede reintentar cuando la base "
+                    f"vuelva. Motivo: {error.motivo}"
+                )
+            },
+            503,
+        )
+    log.info("bandeja: obra=%s, %d incidencias", cuerpo["obra"], cuerpo["total"])
+    return _json(cuerpo, 200)
+
+
+@app.route(
+    route="catalogos/propuestas", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS
+)
+def catalogos_propuestas(req: func.HttpRequest) -> func.HttpResponse:
+    """Los oficios casi duplicados de una obra (F-036, R87). Solo lee.
+
+    Solo traduce, con los mismos códigos que la plantilla (§8):
+
+    - **200** · `{obra, oficio: {oficios, grupos, propuestas, avisos}}`;
+    - **400** · la obra falta o no es admisible (R9), sin llamar a Sigrid;
+    - **404** · ninguna obra con ese código tiene unidades de posventa;
+    - **409** · dos obras con ese código o el catálogo llegó al techo (R10);
+    - **503** · Sigrid, su configuración, el entorno o la base (R11).
+
+    El log lleva la obra y recuentos: ni nombres ni códigos de oficio (R47).
+    """
+    try:
+        cuerpo = leer_propuestas(req.params.get("obra"))
+    except CodigoDeObraInvalido as error:
+        log.info("propuestas rechazadas: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except ObraSinUnidades as error:
+        log.info("propuestas sin unidades: %s", error.motivo)
+        return _rechazo_de_obra(error, 404)
+    except (ObraAmbigua, CatalogoSinVerificar) as error:
+        log.info("propuestas no proceden: %s", error.motivo)
+        return _rechazo_de_obra(error, 409)
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("propuestas sin Sigrid o sin base: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("leer las propuestas de oficios", error)
+    oficio = cuerpo["oficio"]
+    log.info(
+        "catalogos/propuestas: obra=%s oficios=%d grupos=%d propuestas=%d avisos=%d",
+        cuerpo["obra"],
+        len(oficio["oficios"]),
+        len(oficio["grupos"]),
+        len(oficio["propuestas"]),
+        len(oficio["avisos"]),
+    )
+    return _json(cuerpo, 200)
+
+
+@app.route(
+    route="catalogos/decisiones", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS
+)
+def catalogos_decisiones(req: func.HttpRequest) -> func.HttpResponse:
+    """Registra decisiones sobre oficios casi duplicados (F-036, R88).
+
+    Solo traduce (§8):
+
+    - **200** · `{obra, pares_guardados, grupos_vigentes: {oficio: …}}`;
+    - **400** · el cuerpo no es JSON o está mal formado, sin `confirmado: true`
+      booleano, con la obra mal o con un catálogo que no es `oficio` («no
+      disponible en esta versión»), sin leer Sigrid ni guardar nada;
+    - **409** · algún código no es un oficio de la obra en Sigrid, o la obra
+      no tiene unidades, es ambigua o su catálogo llegó al techo (con su
+      `codigo`), sin guardar nada;
+    - **503** · Sigrid, su configuración, el entorno o la base: no queda nada
+      a medias, porque todo se guarda en una transacción.
+
+    El log lleva la obra y recuentos, **nunca** los códigos, los nombres ni el
+    `oid` de quien decide (R47).
+    """
+    try:
+        datos = req.get_json()
+    except ValueError:
+        log.info("decisiones rechazadas: el cuerpo no es JSON válido")
+        return _json({"error": "el cuerpo de la petición no es JSON válido"}, 400)
+    try:
+        cuerpo = decidir_equivalencias(datos)
+    except (PeticionDeDecisionInvalida, CodigoDeObraInvalido) as error:
+        log.info("decisiones rechazadas: %s", error.motivo)
+        return _json({"error": error.motivo}, 400)
+    except CodigoNoEsDeLaObra as error:
+        log.info("decisiones no admitidas: %s", error.motivo)
+        return _json({"error": error.motivo}, 409)
+    except (ObraSinUnidades, ObraAmbigua, CatalogoSinVerificar) as error:
+        log.info("decisiones no proceden: %s", error.motivo)
+        return _rechazo_de_obra(error, 409)
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("decisiones sin Sigrid o sin base: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("guardar las decisiones", error)
+    log.info(
+        "catalogos/decisiones: obra=%s pares=%d",
+        cuerpo["obra"],
+        len(cuerpo["pares_guardados"]),
     )
     return _json(cuerpo, 200)

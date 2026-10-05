@@ -1,0 +1,179 @@
+<!-- services/postventa-front/importar.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Importar incidencias · Posventa · Ruesma</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine con defer y versión fija, como en index.html: se ejecuta después
+       de nuestros scripts (al final del body) y encuentra appImportacion. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <!-- F-036 · design.md §9. Tres bloques, en el orden en que se usan:
+       plantilla, importar y bandeja. La bandeja es de SOLO LECTURA: editar,
+       descartar o aprobar una incidencia es F-038. -->
+  <div x-data="appImportacion()" x-init="iniciar()" class="min-h-screen flex flex-col">
+
+    <header class="border-b border-slate-200 bg-white">
+      <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight">Importar incidencias</h1>
+          <p class="text-sm text-slate-500">El Excel de incidencias de la propiedad, a la bandeja de la obra</p>
+        </div>
+        <nav class="flex gap-4 text-sm">
+          <a href="index.html" class="text-sky-700 hover:underline">Partes firmados</a>
+          <a href="oficios.html" class="text-sky-700 hover:underline">Oficios repetidos</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-6">
+
+      <!-- ── 1 · Plantilla (R1, R50) ───────────────────────────────────── -->
+      <section class="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">1 · La plantilla de la obra</h2>
+        <p class="mt-2 text-sm text-slate-600">
+          Sale de Sigrid en el momento: las unidades, los oficios y los proveedores de la obra.
+        </p>
+        <div class="mt-4 flex flex-wrap items-end gap-3">
+          <label class="text-sm">
+            <span class="block text-xs text-slate-500">Código de obra</span>
+            <input type="text" x-model="obra" autocomplete="off"
+                   @keydown.enter.prevent="descargarPlantilla()"
+                   class="mt-1 w-40 rounded border border-slate-300 px-2 py-1.5 text-sm">
+          </label>
+          <button type="button" @click="descargarPlantilla()" :disabled="!puedeDescargarPlantilla()"
+                  class="rounded bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:opacity-40">Descargar la plantilla</button>
+          <span x-show="descargandoPlantilla" class="text-xs text-slate-500">Leyendo Sigrid…</span>
+        </div>
+        <p x-show="errorPlantilla" x-text="errorPlantilla"
+           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+      </section>
+
+      <!-- ── 2 · Importar (R14-R22, R33, R43, R52, R65) ─────────────────── -->
+      <section class="rounded-lg border border-slate-200 bg-white p-6">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">2 · Importar a la bandeja</h2>
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+            Elegir el Excel
+            <input type="file" class="hidden" accept=".xlsx" @change="alElegirFichero($event)">
+          </label>
+          <span class="text-sm text-slate-600" x-text="fichero ? fichero.name : 'Ningún fichero elegido'"></span>
+          <!-- Sin reintentos automáticos (R52): si falla, se enseña el motivo
+               y volver a importar lo decide quien importa. -->
+          <button type="button" @click="importar()" :disabled="!puedeImportar()"
+                  class="rounded bg-slate-800 px-3 py-1.5 text-sm text-white hover:bg-slate-700 disabled:opacity-40">Importar a la bandeja</button>
+          <span x-show="importando" class="text-xs text-slate-500">Importando…</span>
+        </div>
+        <p x-show="motivoSinImportar() && !importando" x-text="motivoSinImportar()"
+           class="mt-3 text-xs text-slate-500"></p>
+        <p x-show="errorImportacion" x-text="errorImportacion"
+           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+
+        <template x-if="resultado">
+          <div class="mt-5 space-y-4">
+            <div class="rounded border px-3 py-2 text-sm"
+                 :class="resultado.estado === 'parcial' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'">
+              <p class="font-medium">Obra <span x-text="resultado.obra"></span> · <span x-text="resultado.estadoTexto"></span></p>
+              <p class="mt-1" x-text="resultado.resumenTexto"></p>
+            </div>
+
+            <div x-show="resultado.errores.length" class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <h3 class="text-xs font-semibold uppercase tracking-wide">Errores</h3>
+              <ul class="mt-2 list-disc space-y-0.5 pl-5">
+                <template x-for="(texto, n) in resultado.errores" :key="n">
+                  <li x-text="texto"></li>
+                </template>
+              </ul>
+              <p x-show="resultado.avisoRecorte" x-text="resultado.avisoRecorte" class="mt-2 text-xs"></p>
+            </div>
+
+            <div x-show="resultado && resultado.hayExcelDeErrores" class="flex flex-wrap items-center gap-3">
+              <button type="button" @click="descargarExcelDeErrores()"
+                      class="rounded bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600">Descargar el Excel de errores</button>
+              <span class="text-sm text-slate-600" x-text="fraseExcelErrores"></span>
+            </div>
+
+            <table class="w-full text-left text-sm">
+              <thead class="text-xs uppercase tracking-wide text-slate-400">
+                <tr><th class="py-1 pr-3">Fila</th><th class="py-1 pr-3">Estado</th><th class="py-1">Avisos</th></tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <template x-for="fila in resultado.filas" :key="fila.fila">
+                  <tr>
+                    <td class="py-1 pr-3 tabular-nums" x-text="fila.fila"></td>
+                    <td class="py-1 pr-3" x-text="fila.texto"></td>
+                    <td class="py-1 text-slate-600" x-text="fila.avisos.join(' · ')"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+      </section>
+
+      <!-- ── 3 · Bandeja de la obra (R45, R50, R93) · solo lectura ────────── -->
+      <section class="rounded-lg border border-slate-200 bg-white p-6">
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">3 · Bandeja de la obra</h2>
+          <button type="button" @click="cargarBandeja()" :disabled="!obraEscrita() || cargandoBandeja"
+                  class="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40">Ver la bandeja</button>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">
+          De la obra del campo «Código de obra». Solo lectura: revisar, corregir o descartar incidencias llegará con F-038.
+        </p>
+        <p x-show="errorBandeja" x-text="errorBandeja"
+           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+        <p x-show="bandejaCargada && !bandeja.length" class="mt-4 text-sm text-slate-500">
+          La bandeja de la obra <span x-text="bandejaObra"></span> está vacía.
+        </p>
+        <div x-show="bandeja.length" class="mt-4 overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase tracking-wide text-slate-400">
+              <tr>
+                <th class="py-1 pr-3">Fila</th>
+                <th class="py-1 pr-3">Unidad</th>
+                <th class="py-1 pr-3">Ubicación</th>
+                <th class="py-1 pr-3">Descripción</th>
+                <th class="py-1 pr-3">Oficio</th>
+                <th class="py-1 pr-3">Proveedor</th>
+                <th class="py-1 pr-3">Urgencia</th>
+                <th class="py-1">Marcas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <template x-for="fila in bandeja" :key="fila.incidencia_id">
+                <tr class="align-top">
+                  <td class="py-1 pr-3 tabular-nums" x-text="fila.fila_origen"></td>
+                  <td class="py-1 pr-3" x-text="fila.unidad_nombre || fila.unidad_codigo"></td>
+                  <td class="py-1 pr-3" x-text="fila.ubicacion || '—'"></td>
+                  <td class="py-1 pr-3">
+                    <span x-text="fila.descripcion"></span>
+                    <span x-show="fila.detalle" class="block text-xs text-slate-500" x-text="fila.detalle"></span>
+                  </td>
+                  <td class="py-1 pr-3" x-text="fila.oficioTexto"></td>
+                  <td class="py-1 pr-3" x-text="fila.proveedorTexto"></td>
+                  <td class="py-1 pr-3" x-text="fila.urgencia || '—'"></td>
+                  <td class="py-1">
+                    <template x-for="(marca, n) in fila.marcas" :key="n">
+                      <span class="mr-1 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800" x-text="marca"></span>
+                    </template>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/traza.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/importacion.js"></script>
+</body>
+</html>

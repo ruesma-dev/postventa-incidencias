@@ -1,6 +1,24 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-036 CERRADA · 2026-10-05 · siguiente: merge a `dev` (humano) y F-052
+>
+> Importar el Excel de incidencias a la bandeja: review 13 APROBADA, T1–T64 hechas (T16 y T27–T29
+> MANUAL del humano en verde, T30 en verde), desplegada desde su rama y verificada en el entorno.
+> Resumen en `progress/history.md`; detalle en `progress/impl_F-036.md` y `progress/review_F-036.md`.
+> `docs/INTEGRACION.md` y `azure-apps/postventa_incidencias.md` (commit local `1735322`) la dan
+> por desplegada.
+>
+> **Pendiente del humano**: el merge a `dev` con `git merge --squash` (decisión del 2026-09-30:
+> que los códigos de proveedor de commits intermedios no entren en `dev`), y después a `main`.
+> **Orden decidido por el humano** («esta bien asi», 2026-10-03): **F-052** (secretos de
+> `Ajustes`; la clave de Gemini, a rotar por el humano) → **F-035** (el portal de la maqueta, con
+> `importar.html` y `oficios.html` como secciones y los dos apuntes que lleva su ficha).
+> **F-051, verificada en ejecución** (líder, solo lectura, 2026-10-05): desde el despliegue del
+> 2026-10-01, 25 `archivar` en 200 y la traza «F-051 destino efectivo del archivo: estructura
+> posventa, carpeta base raíz» desde el 2026-10-02. Falta solo que Posventa confirme que no queda
+> ninguno de los 26 partes del incidente por reintentar.
+
 > ## ✔ F-051 · decisiones del humano tras la review 2 · 2026-10-01
 >
 > «1, si, 2, si»: (1) **acepta como equivalente** el superviviente a mano de

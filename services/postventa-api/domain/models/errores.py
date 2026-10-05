@@ -1,7 +1,8 @@
 # services/postventa-api/domain/models/errores.py
 """Errores de dominio: de la ingesta de remesas (F-002), de la extracción
 (F-003), de la validación (F-004), de la persistencia (F-005), del archivo
-(F-006), del cierre en Sigrid (F-009) y del destino en Posventa (F-013).
+(F-006), del cierre en Sigrid (F-009), del destino en Posventa (F-013) y de
+la entrada de incidencias por Excel (F-036).
 
 Los de la ingesta son los casos en los que algo de la entrada **no se puede
 trocear**. Los dos que dejan la remesa entera sin resultado tienen su código
@@ -88,6 +89,18 @@ una decisión** —una carpeta ambigua, una parecida que impide crear, una
 reclamación que Sigrid no sitúa— y la resuelve una persona. Lleva el motivo
 **como código** (`MotivoDestino`, R18) y las carpetas candidatas por su nombre,
 nunca un identificador.
+
+Los de la **entrada de incidencias por Excel** (F-036, `design.md` §4.6) se
+reparten igual: lo que está **mal pedido** (`CodigoDeObraInvalido`,
+`PeticionDeImportacionInvalida`, `PeticionDeDecisionInvalida` → 400; el
+fichero que no es la plantilla, `FicheroNoEsPlantilla` → 400 con su código; el
+que pasa del tope, `FicheroDemasiadoGrande` → 413), lo que **no cuadra con
+Sigrid** (`ObraSinUnidades`, `ObraAmbigua`, `CatalogoSinVerificar`,
+`CodigoNoEsDeLaObra` → 404/409) y lo que **no responde**
+(`CatalogoNoDisponible` → 503). Una fila con error **no** es un error de la
+petición (R33): va al Excel de errores y no tiene excepción propia. Ningún
+motivo lleva el cuerpo de la pasarela, nombres de unidad o de proveedor, ni
+textos de fila.
 
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
@@ -1142,6 +1155,195 @@ class CambioDeEstadoInvalido(Exception):
     El motivo dice **qué** falta y nunca lo que sí venía: por aquí pasan el
     `oid` de quien decide y el texto que escribió, y esto acaba en un log
     (R52, R53).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+# --------------------------------------------------------------------------
+# F-036 · entrada de incidencias por Excel (`design.md` §4.6)
+# --------------------------------------------------------------------------
+
+#: Los únicos códigos de `FicheroNoEsPlantilla` (R16–R20). Van tal cual a la
+#: respuesta, así que es una lista cerrada: un código nuevo es un cambio del
+#: contrato y tiene que pasar por aquí.
+CODIGOS_FICHERO_NO_ES_PLANTILLA: frozenset[str] = frozenset(
+    {
+        "no_es_xlsx",
+        "contiene_macros",
+        "fichero_sospechoso",
+        "no_es_la_plantilla",
+        "formato_antiguo",
+        "version_no_soportada",
+        "cabecera_distinta",
+        "demasiadas_filas",
+        "obra_invalida",
+    }
+)
+
+
+class CodigoDeObraInvalido(Exception):
+    """El código de obra falta o no es admisible (F-036, R9). El borde: **400**.
+
+    Se levanta **antes** de llamar a Sigrid. El motivo dice qué regla incumple
+    y nunca repite lo que llegó.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class PeticionDeImportacionInvalida(Exception):
+    """La petición de importación está mal formada (F-036, R22). El borde: **400**.
+
+    Sin fichero, con más de uno, o sin un `usuario_oid` de hasta 128
+    caracteres. Se levanta sin abrir el fichero. El motivo nunca lleva el `oid`.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class FicheroDemasiadoGrande(Exception):
+    """El fichero pasa del tope (F-036, R15). El borde: **413**, sin abrirlo."""
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class FicheroNoEsPlantilla(Exception):
+    """El fichero no es la plantilla y se rechaza **entero** (F-036, R16–R21).
+
+    `codigo` es uno de `CODIGOS_FICHERO_NO_ES_PLANTILLA` y va tal cual a la
+    respuesta; `motivo` es el texto que lee una persona (qué columna falta, que
+    el formato antiguo ya no se admite…). El borde lo traduce a **400**, sin
+    haber llamado a Sigrid ni escrito en la base, y **sin** Excel de errores:
+    la importación parcial es de filas, no de ficheros.
+
+    Un código fuera de la lista es un error de programación y revienta aquí.
+    """
+
+    def __init__(self, codigo: str, motivo: str) -> None:
+        if codigo not in CODIGOS_FICHERO_NO_ES_PLANTILLA:
+            raise ValueError(f"código de rechazo desconocido: {codigo}")
+        super().__init__(f"{codigo}: {motivo}")
+        self.codigo = codigo
+        self.motivo = motivo
+
+
+class LectorSinAislamiento(Exception):
+    """El Excel no se lee: no se puede limitar la memoria del hijo (F-036, R119).
+
+    En `dev` y `pro` la lectura de un fichero subido va **siempre** con el tope
+    de memoria del proceso hijo; si la plataforma no lo permite (no hay
+    `setrlimit`), no se lee. El borde: **503**, sin haber escrito nada. No pasa
+    en Azure, que es Linux; es la red por si alguien despliega en otra cosa.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class LecturaOcupada(Exception):
+    """Ya hay una lectura aislada en curso en este proceso (F-036, R120, D-30).
+
+    Una sola a la vez, para que el hijo (1 GiB como mucho) y el padre quepan en
+    la instancia. Si no queda libre en unos segundos: **503** «otra importación
+    en curso; reintenta», sin escribir nada.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ObraSinUnidades(Exception):
+    """Ninguna obra con ese código tiene unidades de posventa (F-036, R10).
+
+    El borde: **404** en la plantilla y en las propuestas, **409** en la
+    importación (el fichero sí es una plantilla; lo que falla es la obra).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ObraAmbigua(Exception):
+    """Las unidades leídas son de más de una obra con ese código (F-036, R10).
+
+    En el maestro hay códigos de obra repetidos (la 0677 tiene dos filas). El
+    sistema no elige: **409**.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CatalogoSinVerificar(Exception):
+    """Una lectura del catálogo llegó al techo de filas (F-036, R10).
+
+    Con el techo alcanzado no se sabe si falta algo, y un desplegable
+    incompleto haría fallar filas buenas o esconder unidades. **409**.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CatalogoNoDisponible(Exception):
+    """El catálogo de la obra no se ha podido leer de Sigrid (F-036, R11).
+
+    Red, tiempo agotado, respuesta mal formada o entorno fuera de `dev`/`pro`.
+    El borde: **503**. El motivo nunca lleva el cuerpo de la pasarela.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class PeticionDeDecisionInvalida(Exception):
+    """El cuerpo de una decisión de equivalencia está mal formado (F-036, R88).
+
+    Sin `confirmado: true` booleano, con menos de dos códigos, `distinto` con
+    más de dos, o un catálogo que esta versión no admite. **400**, sin guardar
+    nada.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class CodigoNoEsDeLaObra(Exception):
+    """Un código de la decisión no está en `obrofc` de la obra (F-036, R88).
+
+    **409**, sin guardar nada. El motivo no lleva nombres de oficio ni de
+    proveedor.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ConfiguracionPlantillaInvalida(Exception):
+    """`config/plantilla_incidencias.yaml` está roto (F-036, `design.md` §3.4).
+
+    Una ubicación de más de 48 caracteres, dos iguales normalizadas, un código
+    de urgencia o de listado que no es del dominio, un texto vacío o un mensaje
+    que no cabe en Excel. Revienta **al cargar** el fichero —y con él el
+    arranque del handler—, no al generar una plantilla que luego rechazaría
+    filas buenas. Es configuración: no tiene código HTTP propio.
     """
 
     def __init__(self, motivo: str) -> None:

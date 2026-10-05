@@ -201,6 +201,16 @@ DDL_DE_F028 = (
 )
 
 
+#: Los tres de F-036 (T14), que llegaron después. La lista se **amplía** y no se
+#: relaja (`specs/F-036-importar-excel/design.md` §2.2): sigue cazando cualquier
+#: fichero de DDL que no esté declarado aquí.
+DDL_DE_F036 = (
+    "12_importaciones.sql",
+    "13_bandeja_incidencias.sql",
+    "14_decisiones_equivalencia.sql",
+)
+
+
 def test_f033_la_rama_no_toca_el_ddl():
     """Regla dura 1 · ni un fichero de `sql/` en el diff de la rama entera.
 
@@ -227,7 +237,7 @@ def test_f033_no_hay_ni_un_fichero_de_ddl_nuevo():
     carpeta = RAIZ / CARPETA_DDL
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
-    assert nombres == DDL_DE_F028
+    assert nombres == DDL_DE_F028 + DDL_DE_F036
 
 
 # --------------------------------------------------------------------------

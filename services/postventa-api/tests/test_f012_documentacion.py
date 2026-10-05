@@ -165,8 +165,10 @@ def test_f012_r68_la_nota_de_que_f012_no_tiene_por_donde_hacerse_esta_resuelta()
 
 
 #: Cómo se dicen en castellano los tamaños que puede tener hoy la tabla de
-#: endpoints de §8. Si algún día se pasa de quince, lo que hay que ampliar es
-#: esta lista, no la afirmación del documento.
+#: endpoints de §8. Si algún día se pasa de veinte, lo que hay que ampliar es
+#: esta lista, no la afirmación del documento. (F-036, T26, 2026-09-30: llegaba
+#: hasta quince y la tabla pasa a diecisiete; se amplía sin tocar la
+#: comprobación.)
 NUMERALES = {
     10: "diez",
     11: "once",
@@ -174,6 +176,11 @@ NUMERALES = {
     13: "trece",
     14: "catorce",
     15: "quince",
+    16: "dieciséis",
+    17: "diecisiete",
+    18: "dieciocho",
+    19: "diecinueve",
+    20: "veinte",
 }
 
 

@@ -301,6 +301,16 @@ DDL_DE_F028 = (
     "11_historico_estado.sql",
 )
 
+
+#: Los tres de F-036 (T14), que llegaron después. La lista se **amplía** y no se
+#: relaja (`specs/F-036-importar-excel/design.md` §2.2): sigue cazando cualquier
+#: fichero de DDL que no esté declarado aquí.
+DDL_DE_F036 = (
+    "12_importaciones.sql",
+    "13_bandeja_incidencias.sql",
+    "14_decisiones_equivalencia.sql",
+)
+
 #: Los once métodos de `RepositorioPartesPort`, escritos a mano y en su orden.
 METODOS_DEL_PUERTO_DE_PARTES = (
     "guardar_remesa",
@@ -427,7 +437,7 @@ def test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo():
     carpeta = RAIZ / CARPETA_DDL
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
-    assert nombres == DDL_DE_F028
+    assert nombres == DDL_DE_F028 + DDL_DE_F036
 
 
 def test_f034_r23_el_puerto_no_gana_ni_un_metodo_y_el_adaptador_tampoco():

@@ -2095,3 +2095,54 @@ Insights; aviso de `--offset` de `az monitor app-insights query`; fuera los byte
 `.md` (dos frenos del runbook no se podían copiar) y test que los prohíbe. Reviews: 1 y 2
 CHANGES_REQUESTED (sin código), 3 APROBADA. Mutante equivalente aceptado por el humano.
 Pendiente del humano: desplegar y las MANUAL 2–4 de `progress/current.md`; reintentar los 26 partes.
+
+---
+
+## F-036 · Importar el Excel de incidencias a una bandeja de revisión — 2026-10-05
+
+**Cerrada.** Rama `feature/F-036-importar-excel`, rigor `critico`, 64 tareas en
+14 bloques, once enmiendas de la spec y trece reviews (la 13, APROBADA). El
+merge a `dev` lo hace el humano con `git merge --squash` (decisión del
+2026-09-30, para que los códigos de proveedor de commits intermedios no
+lleguen a `dev`). Desplegada desde su rama (backend y front) y verificada en el
+entorno el 2026-10-05.
+
+Qué queda: la plantilla Excel de una obra, generada leyendo Sigrid en vivo
+(unidades, oficios agrupados y pares oficio · proveedor de `obrofc`), con
+desplegables, protección y el formato visual Ruesma; la importación a la
+bandeja (`postventa.importaciones`, `bandeja_incidencias`), con duplicados,
+reimportación idempotente y Excel de errores; la pantalla de oficios repetidos
+(`decisiones_equivalencia`, append-only, manda la última decisión); la lectura
+del Excel en un proceso hijo con 30 s y 1 GiB (más `RLIMIT_CPU`) frente a
+ficheros hostiles; y el script de migración del Excel antiguo de Posventa, que
+lee el catálogo del día y deja vacío un oficio que ha salido de la obra.
+Nada escribe en Sigrid: solo dos lecturas por `sql/read`.
+
+Evidencias: `init.sh` en verde (api 6644 passed, cobertura 99,9 % de 3.318
+líneas cambiadas), mutación sin supervivientes abiertos (20 equivalentes de
+normalización aceptados por el humano en la review 12), T16 (base efímera, 25
+passed) y T27–T29 en el entorno: importación completa con 0 errores, Excel de
+errores con sus tres filas, reimportación «ya importado», ficheros hostiles
+rechazados sin 5xx y el servicio vivo después.
+
+Lo que enseñó:
+
+- **Un catálogo guardado caduca.** El `v2` se generó con el catálogo de Sigrid
+  del 2026-09-29; el 2026-10-03 Sigrid había cambiado 18 de las 39 filas de
+  oficios de la obra y la importación dio 14 errores. La aplicación hizo lo
+  correcto; la migración pasó a leer Sigrid en el momento (undécima enmienda).
+- **Las verificaciones MANUAL se cruzan con la telemetría.** Dos veces un «todo
+  ok» del humano no era lo que había pasado (un fichero equivocado, una fila de
+  prueba guardada); Application Insights lo enseñó en segundos.
+- **Probar la normalización a trozos cuesta vueltas.** Las reviews 10, 11 y 12
+  fueron tres vueltas sobre la misma familia (tildes, puntuación, forma
+  Unicode, blancos). La automejora propuesta para el reviewer es aplicar de una
+  vez una mutación por cada palabra de «tal cual»; queda para `arnes-base`.
+- **Un test que exige una lista cerrada de tablas se pudre en silencio** si su
+  suite no corre en `init.sh` (el de F-005 llevaba roto desde F-012).
+
+Deja apuntado: en F-038, corregir el proveedor u oficio de las 144 filas
+importadas con el catálogo viejo y elegir el código de las 47 ambiguas; en
+F-035, poder deshacer «Son distintos» en la pantalla de oficios y rotular los
+recuentos de un fichero ya importado; y F-052, que los secretos de `Ajustes`
+no se impriman (una traza de pytest enseñó la clave de Gemini).

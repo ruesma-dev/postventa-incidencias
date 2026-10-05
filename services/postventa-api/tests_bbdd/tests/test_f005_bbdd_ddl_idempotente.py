@@ -84,9 +84,28 @@ def test_f005_r4_aplicar_el_ddl_dos_veces_deja_el_mismo_esquema(conexion, ajuste
     assert estado_tras_la_segunda == estado_tras_la_primera
 
 
+#: Las seis tablas del diseño de F-005, escritas a mano.
+TABLAS_DE_F005 = frozenset(
+    {
+        "archivos",
+        "cierres",
+        "partes",
+        "preferencias_usuario",
+        "remesas",
+        "validaciones",
+    }
+)
+
+
 @requiere_base
 def test_f005_r1_estan_las_seis_tablas_en_la_base(conexion, ajustes):
-    """Las seis tablas del diseño existen de verdad, no solo en el `.sql`."""
+    """Las seis tablas de F-005 existen de verdad, no solo en el `.sql`.
+
+    Se exige que **estén**, no que sean las únicas: el esquema crece con cada
+    feature que añade un fichero al DDL, y una lista cerrada convertía este
+    test en una alarma de «alguien ha añadido una tabla», que no es lo que
+    F-005 promete. Que falte una de las seis sí lo hace caer, y dice cuál.
+    """
     asegurar_esquema(conexion, ajustes=ajustes)
 
     with conexion.cursor() as cursor:
@@ -95,16 +114,10 @@ def test_f005_r1_estan_las_seis_tablas_en_la_base(conexion, ajustes):
             "WHERE table_schema = %s ORDER BY table_name",
             (ESQUEMA,),
         )
-        tablas = [fila[0] for fila in cursor.fetchall()]
+        tablas = {fila[0] for fila in cursor.fetchall()}
 
-    assert tablas == [
-        "archivos",
-        "cierres",
-        "partes",
-        "preferencias_usuario",
-        "remesas",
-        "validaciones",
-    ]
+    faltan = sorted(TABLAS_DE_F005 - tablas)
+    assert faltan == [], f"faltan tablas de F-005 en la base: {faltan}"
 
 
 @requiere_base

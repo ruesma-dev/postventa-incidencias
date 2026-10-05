@@ -4974,3 +4974,265 @@ exit: 1
 | Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base df88470 --salida <scratchpad>/mutacion_h16_3.md` → «0 fichero(s), 0 línea(s) de producción … 0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s». Informe al scratchpad para no pisar `progress/mutacion_F-035.md` |
 | Mutantes a mano | **3 generados (N14, N5, N6), 3 muertos, 0 supervivientes** |
 | Tiempo de la suite | raíz 7,82 s; front pytest 13,35 s (`init.sh`); Node 2,18 s |
+
+## Bloque 17 · T46 y T47 · El remodelado de lo que le quedaba a `partes.html` (R82, H-12) · 2026-10-05
+
+implementer. Encargo: solo el bloque 17 de `tasks.md` y parar. Solo
+presentación: ningún módulo de `js/` cambia (`git diff 7e69c69 HEAD --
+services/postventa-front/js` vacío), ni una directiva, ni un `:class`, ni un
+texto de `partes.html`. Nada de `services/postventa-api/`. Sin push.
+
+Commits: `15aa0a7` **T46** (RED + remodelado + `?v=`), `6839be6` **H16-7**
+(review del bloque 16, destino bloque 17), `04802ed` **T47** (guardia extra
+que mata un superviviente), y el de este informe.
+
+### 1 · Qué cambió
+
+**`partes.html`: 18 `class` estáticos, 30 utilidades** (H-12 contaba 35 en 20
+midiendo sobre `a54cd5d`: los dos enlaces de F-036 —4 utilidades— ya los pasó
+a `rs-enlace` el bloque 8, y `text-red-800` se queda). Solo valores de `class`:
+
+| Línea (hoy) | Elemento | Antes | Después |
+|---|---|---|---|
+| 60 | `<nav>` de los enlaces de F-036 (cabecera) | `mt-1 flex gap-4 text-sm` | `mt-1 flex gap-4 rs-texto` |
+| 90 | texto de la zona de soltar | `text-sm text-slate-600` | `rs-texto` |
+| 120 | lista de ficheros elegidos | `mt-2 divide-y divide-slate-100 text-sm` | `rs-resumen mt-2` |
+| 145 | «N de M partes terminados» | `mt-3 text-sm text-slate-600` | `rs-texto mt-3` |
+| 156 | rótulo «Avisos de la remesa» | `text-xs font-semibold uppercase tracking-wide text-amber-700` | `rs-rotulo rs-rotulo--atencion` |
+| 157 | su lista | `mt-2 list-disc pl-5 text-sm text-amber-800` | `mt-2 list-disc pl-5 rs-nota rs-nota--atencion` |
+| 171 | cabecera de la lista de partes | `flex items-center justify-between border-b border-slate-100 px-4 py-3` | `flex items-center justify-between px-4 py-3 rs-panel__franja` |
+| 177 | lista de partes | `divide-y divide-slate-100` | `rs-resumen` |
+| 294, 415 | `<label>` de los campos y del motivo | `block text-xs` | `block rs-nota` |
+| 364 | «Este parte consta…» | `text-sm text-slate-700` | `rs-texto` |
+| 381 | «Lo dice la validación automática…» | `text-slate-500` | `rs-texto--apagado` |
+| 416 | «Motivo de la decisión» | `text-slate-500` | `rs-nota` |
+| 418 | «— obligatorio para rechazar…» | `text-slate-400` | `rs-texto--apagado` |
+| 503 | «N parte(s) por archivar y cerrar…» | `mt-2 text-sm text-slate-600` | `rs-texto mt-2` |
+| 540 | la pregunta de confirmación | `flex items-center gap-2 text-sm` | `flex items-center gap-2 rs-texto` |
+| 541 | su texto | `text-slate-600` | `rs-texto` |
+
+**`css/styles.css`: componentes nuevos, todos con tokens (R49)**, porque
+ninguno de los existentes servía sin chocar:
+
+- `.rs-texto` (0,9 rem, `--rs-tinta-suave`) y `.rs-texto--apagado` (solo el
+  color, `--rs-acero-texto`, para incisos dentro de un texto o una nota: hereda
+  el tamaño). `rs-nota` no valía para el texto corrido de los paneles (0,8 rem:
+  más pequeño que el `text-sm` de antes) ni para un inciso dentro de un
+  párrafo (encogería la letra a mitad de frase).
+- `.rs-rotulo--atencion` (color y trazo en `--rs-atencion`): `rs-rotulo` a
+  secas pintaba el rótulo en gris sobre el fondo ámbar (un par sin medir en
+  §15.6) y con el trazo burdeos de la marca dentro de un aviso.
+- `.rs-panel__franja` (solo `border-bottom: 1px solid var(--rs-linea)`): el
+  separador de la cabecera de la lista. Descarté poner el separador en
+  `.rs-panel--lista` (lo que sugiere §16.15.5) porque `index.html` usa
+  `rs-panel--lista` en cuatro paneles con filtros y tablas, y la regla le
+  cambiaría el aspecto al portal.
+- Para las dos listas, `rs-resumen`, que ya existía (sin viñetas, separador
+  entre filas, 0,9 rem); el `mt-2` junto a su `margin: 0` es el mismo patrón
+  que `rs-resumen mt-4` de las líneas 605 y 621 (§15.7).
+- Regla 3 de §15.7: ninguno de los nuevos fija márgenes ni rellenos, así que
+  conviven con la maquetación (`mt-*`, `px-4 py-3`, `flex`…) sin chocar.
+
+**`?v=5c6cb12598`** en las cuatro páginas: `index.html` (sus dos hojas),
+`partes.html`, y **`importar.html` y `oficios.html`**, que hasta ahora pedían
+`css/styles.css` sin versión. Lo pide T46 literalmente («su `?v=` en las cuatro
+páginas»); ningún test lo vigila aún en esas dos (R72 llega con los bloques
+10/11), y ningún test de F-036 lee esa `<link>` (medido con `grep`).
+
+**`tests/test_f035_paginas.py`**:
+
+- **R82** (T46): `utilidades_prohibidas(valor_class)` implementa la lista
+  cerrada de R72 (§16.5) tras quitar `hover:`, `sm:`…, con
+  `text-left/center/right` admitidas; `problemas_r82(html)` la aplica a los
+  `class` estáticos (ni `:class` ni `x-bind:class`), con la excepción
+  `text-red-800` solo en el elemento `x-show="estadoAutoguardado === 'fallo'"`.
+  Mira **la página entera, barra incluida**: R82 deja la barra fuera porque ya
+  cumple; mirarla no cuesta nada y la mantiene así (más estricto que la letra).
+  Controles: cada familia de la lista (27 casos), la maquetación y las `rs-*`
+  que no deben saltar (21), la mutación 36 en memoria, `text-red-800` fuera del
+  aviso, la excepción que admite solo esa utilidad, los `:class` que no entran,
+  y que el aviso sigue existiendo con su excepción. `utilidades_prohibidas`
+  queda lista para reutilizarla en R72 (bloques 10/11).
+- **R82, guardia extra** (T47, `04802ed`): toda clase `rs-*` de los `class`
+  estáticos de `partes.html` tiene regla en `css/styles.css`, con su control
+  (las cuatro clases nuevas, una a una). Ver §4: es el superviviente C1.
+- **H16-7** (`6839be6`): la guarda lee `estado.fase`, `estado.partes`,
+  `estado.parteAbierto`, `estado.estadoAutoguardado` y `.cerrado`, y `js/app.js`
+  los declara (`<nombre>:`); y `partes.html` tiene **un único** elemento que
+  casa con el `SELECTOR_CIRCUITO` leído de la guarda. Controles: cada nombre
+  renombrado en una copia de `app.js` (5) y el `x-data` cambiado en una copia
+  de `partes.html`. Solo tests; la guarda no se toca.
+
+**`specs/F-035-portal-posventa/tasks.md`**: T46 y T47 marcadas `[x]`.
+
+### 2 · Fase RED (R82)
+
+Comando, desde `services/postventa-front`, con el test escrito y `partes.html`
+sin tocar:
+
+```
+python -m pytest "tests/test_f035_paginas.py::test_f035_r82_partes_html_no_lleva_utilidades_de_color_ni_tipografia_de_tailwind" -q -vv
+```
+
+Salida real (recortada a la aserción):
+
+```
+tests/test_f035_paginas.py::test_f035_r82_partes_html_no_lleva_utilidades_de_color_ni_tipografia_de_tailwind FAILED [100%]
+E       AssertionError: partes.html sigue el estilo del resto del front: el aspecto lo dan las clases rs-* (R82, design.md §16.15.5):
+E         <nav class="mt-1 flex gap-4 text-sm"> lleva text-sm
+E         <p class="text-sm text-slate-600"> lleva text-sm
+E         <p class="text-sm text-slate-600"> lleva text-slate-600
+E         <ul class="mt-2 divide-y divide-slate-100 text-sm"> lleva divide-y
+E         <ul class="mt-2 divide-y divide-slate-100 text-sm"> lleva divide-slate-100
+E         <ul class="mt-2 divide-y divide-slate-100 text-sm"> lleva text-sm
+E         <p class="mt-3 text-sm text-slate-600"> lleva text-sm
+E         <p class="mt-3 text-sm text-slate-600"> lleva text-slate-600
+E         <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700"> lleva text-xs
+E         <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700"> lleva font-semibold
+E         <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700"> lleva uppercase
+E         <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700"> lleva tracking-wide
+E         <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700"> lleva text-amber-700
+E         <ul class="mt-2 list-disc pl-5 text-sm text-amber-800"> lleva text-sm
+E         <ul class="mt-2 list-disc pl-5 text-sm text-amber-800"> lleva text-amber-800
+E         <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3"> lleva border-b
+E         <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3"> lleva border-slate-100
+E         <ul class="divide-y divide-slate-100"> lleva divide-y
+E         <ul class="divide-y divide-slate-100"> lleva divide-slate-100
+E         <label class="block text-xs"> lleva text-xs
+E         <p class="text-sm text-slate-700"> lleva text-sm
+E         <p class="text-sm text-slate-700"> lleva text-slate-700
+E         <span class="text-slate-500"> lleva text-slate-500
+E         <label class="block text-xs"> lleva text-xs
+E         <span class="text-slate-500"> lleva text-slate-500
+E         <span class="text-slate-400"> lleva text-slate-400
+E         <p class="mt-2 text-sm text-slate-600"> lleva text-sm
+E         <p class="mt-2 text-sm text-slate-600"> lleva text-slate-600
+E         <span class="flex items-center gap-2 text-sm"> lleva text-sm
+E         <span class="text-slate-600"> lleva text-slate-600
+FAILED tests/test_f035_paginas.py::test_f035_r82_partes_html_no_lleva_utilidades_de_color_ni_tipografia_de_tailwind
+============================== 1 failed in 0.21s ==============================
+```
+
+En la misma pasada con `-k r82` (sin `-vv`): `2 failed, 52 passed` (el
+principal y el control de la mutación 36, que sobre la página sin remodelar
+devolvía 31 problemas en vez de uno). Tras el remodelado: `54 passed`.
+
+H16-7 no tiene RED: ata nombres que hoy existen (pasa desde el principio); lo
+que demuestra que muerde son sus controles y las mutaciones G8, G9 y P1.
+
+### 3 · Verde sobre el código real
+
+- Front `python -m pytest tests -q`: **540 passed** (473 del bloque 16 + 54 de
+  R82 + 8 de H16-7 + 5 de la guardia extra), 11,12 s. Con **R59** (el circuito
+  solo cambia en presentación frente a la base), **R33** (ningún módulo del
+  circuito cambia), R43, R47, T21 (versión de las hojas) y todos los tests del
+  circuito (F-007, F-009, F-012, F-025, F-026 —incluido el `text-red-800` de
+  `test_f026_autoguardado.py`—, F-028, F-031, F-036) en verde **sin tocarlos**.
+- `node --test "tests_js/*.test.js"`: **569/569**, 2,12 s.
+- Raíz `python -m pytest tests -q`: **112 passed**, 8,97 s.
+- «F-036 intacto» ajustado: `git diff 2a86bca -- services/postventa-front/tests/test_f036_front.py`
+  muestra **solo** las líneas de R81 (el docstring y el `assert "target=" not in …`).
+- `git diff 7e69c69 HEAD -- services/postventa-front/js services/postventa-api`: **vacío**.
+- `bash harness/init.sh` (una vez, al final, tal cual): **ENTORNO LISTO**. Raíz
+  112 passed en 7,00 s; api en verde (caché: árbol sin cambios); front 540
+  passed en 19,85 s; `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de
+  producción frente a dev)`; ruff 71 avisos (la deuda de antes).
+- Comprobación estática en lugar del vistazo: las 61 clases `rs-*` que usa
+  `partes.html` tienen regla en `css/styles.css` (ahora lo vigila un test).
+
+### 4 · Mutaciones (T47)
+
+**(a) Herramienta del arnés**:
+`python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900` →
+«0 fichero(s), 0 línea(s) de producción … 0 mutantes evaluados, 0 muertos, 0
+supervivientes, 0 timeouts en 0.0 s». Informe: `progress/mutacion_F-035.md`
+(solo cambia la hora de la cabecera). El bloque no tiene Python de producción.
+
+**(b) A mano**, en un worktree desechable (`git worktree add --detach` en el
+scratchpad, sobre `04802ed`; línea base **537 passed, 3 skipped**), una a una,
+con la suite del front entera y restaurando el fichero después. Worktree
+retirado (`git worktree remove`).
+
+| # | Mutación | Resultado | Lo que la mata |
+|---|---|---|---|
+| **36** | `text-slate-600` repuesto en `<p class="rs-texto mt-3">` | **muerta** (2) | `…r82_partes_html_no_lleva_utilidades…` y el control de la 36 |
+| 36b | el rótulo de avisos con sus cinco utilidades de antes | **muerta** (3) | R82 principal, control 36, `…clase_nueva_sin_regla[rs-rotulo--atencion]` |
+| C1 | regla `.rs-texto` borrada de `styles.css` | **muerta** (4) | `…cada_clase_rs…tiene_regla…`, su control y T21 (versión) |
+| G1 | sin quitar prefijos `hover:`/`sm:` | **muerta** (2) | control de familias `[hover:underline]`, `[sm:bg-slate-50]` |
+| G2 | `divide-` fuera de la lista | **muerta** (2) | `[divide-y]`, `[divide-slate-100]` |
+| G3 | toda `text-*` admitida | **muerta** (9) | las familias `text-*` |
+| G4 | la excepción sin mirar el `x-show` | **muerta** (1) | `…text_red_800_fuera_del_aviso…salta` |
+| G5 | también mira `:class` | **muerta** (2) | R82 principal (los colores de estado) y control 36 |
+| G6 | la excepción se traga todo el aviso | **muerta** (1) | `…la_excepcion_admite_solo_text_red_800…` |
+| G7 | `uppercase` fuera de la lista | **muerta** (1) | `[uppercase]` |
+| G8 | H16-7 sin mirar las declaraciones de `app.js` | **muerta** (4) | `…h16_7_control_un_nombre_renombrado…` (cuatro campos) |
+| G9 | H16-7: el selector «casa» siempre con uno | **muerta** (1) | `…h16_7_control_el_x_data_cambiado…` |
+| G10 | la guardia extra nunca ve nada | **muerta** (4) | `…clase_nueva_sin_regla_salta[…]` (las cuatro) |
+| P1 | `x-data="appPostventaV2()"` en `partes.html` | **muerta** (7) | H16-7 (principal y control), R42, R59… |
+
+**14 de 14 muertas.** Salida completa en el scratchpad de la sesión
+(`mutaciones_b17.txt`).
+
+**Superviviente encontrado y cerrado (C1).** Antes de `04802ed`, borrar la
+regla de una clase nueva **y** actualizar la `?v=` (lo que hace cualquiera
+que toque la hoja, porque T21 lo exige) no rompía ningún test: el texto se
+quedaba con el aspecto por defecto en silencio. Era un hueco real de R82 («el
+aspecto lo dan las clases `rs-*`»), no un mutante equivalente: lo cierra
+`test_f035_r82_cada_clase_rs_de_partes_html_tiene_regla_en_styles_css`. En el
+worktree C1 sale muerta también por T21 porque la mutación no actualiza la
+`?v=`; sin la guardia, esa sería la única defensa, y es accidental.
+
+**(c) Tabla de contraste de R53**: **ningún par nuevo**. Los componentes
+nuevos usan pares ya medidos en §15.6: `--rs-tinta-suave` sobre `--rs-papel`
+y `--rs-lienzo` (8,27 · 7,51), `--rs-acero-texto` sobre `--rs-papel` y
+`--rs-lienzo` (5,79 · 5,26) y `--rs-atencion` sobre `--rs-atencion-suave`
+(6,84; el rótulo y la lista de avisos, dentro de `rs-panel--atencion`). El
+test de R53 sigue en verde. Lo que antes era `text-slate-400` (por debajo de
+4,5:1 sobre blanco) pasa a `--rs-acero-texto` (5,79): se pierde el matiz de
+«más claro todavía» en «— obligatorio para rechazar…», que era justo el que no
+cumplía contraste.
+
+**(d)** `bash harness/init.sh`: ENTORNO LISTO (§3).
+
+### 5 · Desviaciones y decisiones (para el reviewer)
+
+1. **Separador de la lista**: `rs-panel__franja` nuevo en vez de una regla sobre
+   `.rs-panel--lista` (la sugerencia de §16.15.5), que habría cambiado cuatro
+   paneles del portal.
+2. **`?v=` en `importar.html` y `oficios.html`**, por la letra de T46, aunque
+   R72 (que la exige) llega en los bloques 10/11.
+3. **R82 mira también la barra** (más estricto que la letra; hoy cumple).
+4. **Guardia extra** (cada `rs-*` con regla): no la pide T46; la añadí para
+   cerrar el superviviente C1. Solo test.
+5. **H16-7**: la review del bloque 16 lo asignó «al bloque 17 si no salía
+   barato con H16-1». Hecho aquí, solo tests, en su propio commit.
+6. **Regla 3 heredada**: `rs-resumen` fija `margin: 0` y lleva `mt-2` al lado;
+   es el mismo patrón que ya tenía `rs-resumen mt-4` (§15.7) y gana la
+   utilidad, que es lo que se quiere.
+7. El mensaje del commit `04802ed` dice que C1 «sobrevivía» sin el matiz de la
+   `?v=`; el matiz es el de §4.
+
+### 6 · Fuera del alcance y pendiente
+
+- **MANUAL pendiente: el vistazo en navegador de T46** («ningún texto en gris
+  o azul de Tailwind fuera de los colores de estado»). No lo he podido hacer:
+  la extensión de Chrome no tiene ningún navegador conectado
+  (`list_connected_browsers` → `[]`). Va con **V1/V2 del humano**. Qué mirar:
+  la zona de soltar, la barra de progreso con su contador, «Avisos de la
+  remesa» (rótulo ámbar con trazo ámbar), la cabecera de la lista de partes
+  (separador fino), el estado del parte y el motivo, y la pregunta de
+  confirmación del archivo.
+- **H-5** (CSS muerto de `portal.css`) no es de este bloque: la review del
+  bloque 7 lo asigna al bloque 9 (T27 d).
+- **O16-4** (control en memoria sin `instalar(…)`, opcional) sigue abierto.
+- H16-3 a H16-6 siguen para el spec-author en el bloque 14.
+
+### Evidencias (bloque 17)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | raíz **112 passed**; front pytest **540 passed**; Node **569/569**; api en verde (caché) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el bloque cambia HTML, CSS y tests |
+| Mutantes (herramienta) | **0 generados, 0 supervivientes** (`--base 2a86bca --timeout 900`): sin Python de producción en el alcance |
+| Mutantes a mano | **14 generados, 14 muertos, 0 supervivientes** (C1 sobrevivía antes de `04802ed`; cerrado con una guardia) |
+| Tiempo de la suite | raíz 7,00 s y front 19,85 s (`init.sh`); front suelto 11,12 s; Node 2,12 s |

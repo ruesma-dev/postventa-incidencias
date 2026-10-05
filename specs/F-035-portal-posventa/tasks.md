@@ -918,7 +918,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» ajustado;
       vistazo con `.\dev_front.ps1` a `partes.html`: ningún texto en gris o
       azul de Tailwind fuera de los colores de estado.
-- [ ] **T47**: evidencias y verde. (a)
+- [x] **T47**: evidencias y verde. (a)
       `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutación manual **36**. (c) La tabla de contraste de R53, si
       entraron pares nuevos. (d) `bash harness/init.sh` en verde.

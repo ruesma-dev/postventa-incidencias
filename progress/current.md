@@ -1,6 +1,24 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 17 (T46, T47) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 17 y después bloque 9 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 17». `15aa0a7` **T46**: RED de R82
+> (30 utilidades en 18 `class` estáticos) y `partes.html` remodelado solo en valores de `class`
+> (`rs-texto`, `rs-texto--apagado`, `rs-resumen`, `rs-nota`, `rs-rotulo--atencion`,
+> `rs-nota--atencion`, `rs-panel__franja`; los nuevos, con tokens en `css/styles.css`);
+> `?v=5c6cb12598` en las cuatro páginas. `6839be6` **H16-7** (solo tests). `04802ed` **T47**:
+> guardia de que cada `rs-*` de `partes.html` tiene regla (cierra el superviviente C1).
+> `text-red-800` y todos los `:class` intactos; `js/` sin diff; R59 y R33 en verde sin aflojar.
+> Front 540, Node 569/569, raíz 112; `bash harness/init.sh` **ENTORNO LISTO**. Mutación del
+> arnés: 0 mutantes; manuales **14/14 muertas** (36 incluida). Ningún par de contraste nuevo.
+> Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador de T46 (Chrome sin navegador conectado): va
+>   con V1/V2 del humano.
+> - Para el reviewer, §5 del informe: separador nuevo en vez de tocar `.rs-panel--lista` (lo usa
+>   el portal); `?v=` también en `importar.html`/`oficios.html`; R82 mira también la barra.
+
 > ## ▶ F-035 · ARREGLOS DE LA RE-REVIEW DEL BLOQUE 16 (H16-8, H16-9) HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: re-review acotada a estos dos casos y después bloque 17
 >
 > implementer. **Tercera vuelta sobre el bloque 16, autorizada expresamente por el humano**

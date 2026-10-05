@@ -1931,3 +1931,266 @@ mismos 58/60). Las tres caen con tests **de esta feature**.
 Nada nuevo: por el límite del humano no se ha buscado. Siguen abiertos, como
 estaban, O16-4 (el control en memoria sin `instalar(…)`, opcional) y H16-7
 (bloque 17); H16-3 a H16-6 siguen para el spec-author en el bloque 14.
+
+## Review del bloque 17 · T46–T47 y H16-7 · 2026-10-05
+
+> reviewer. Alcance **acotado** a `git diff 7e69c69..HEAD`: `15aa0a7` (T46),
+> `6839be6` (H16-7), `04802ed` (T47, guardia extra) y `9840c02` (evidencias)
+> en `feature/F-035-portal-posventa`. El remodelado de `partes.html` (R82)
+> es solo presentación. Los bloques 9–15 siguen abiertos **a propósito**: no
+> cuentan como `[ ]`. El vistazo en navegador queda para V1/V2 del humano.
+> Criterio de severidad del líder: es bloqueante lo que deja un riesgo real
+> para el usuario o incumple la spec. Lo demás va como informativo, con su
+> destino.
+
+### Veredicto
+
+**APPROVED** (del bloque 17, no de la feature).
+
+- El cambio es solo de presentación, comprobado atributo a atributo.
+- No queda ninguna utilidad de color ni de tipografía de Tailwind en los
+  `class` estáticos de `partes.html`, salvo la excepción de R82.
+- Las clases nuevas usan tokens y no traen ningún par de contraste nuevo.
+- H16-7 cierra.
+- De 26 mutaciones de 6 familias mueren 20. Las 6 que sobreviven son
+  estéticas o tienen ya un bloque de destino (ver «Informativo»).
+
+### Nivel de rigor
+
+`estandar`, declarado en `harness/features.json`. Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con los supervivientes
+analizados.
+
+El bloque no tiene Python de producción. Por eso la cobertura sale N/A, con
+el motivo impreso por `init.sh`, y la campaña da 0 mutantes. Lo compensan las
+mutaciones a mano: la 36 de §16.15.8, las 13 del implementer y las 26 del
+reviewer.
+
+La regla 7 de `reviewer.md` (orden) es **N/A**: solo aplica en rigor
+`critico`, y aquí no hay orden entre colaboradores que proteger.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh`, tal cual, en el árbol real | **exit 0**, `ENTORNO LISTO`. Raíz 112 passed; api y front en verde (desde caché); `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; ruff, 71 avisos de deuda previa |
+| Front `python -m pytest tests -q -p no:cacheprovider` en el árbol real, sin caché | **540 passed**, 13,26 s. Con `-k "r82 or h16_7"`: 67 passed |
+| `node --test "tests_js/*.test.js"` | **569/569** |
+| `git diff --stat 7e69c69..HEAD -- services/postventa-front/js services/postventa-api` | **vacío** |
+| `partes.html` de `7e69c69` frente a HEAD, con `html.parser` (guion `cmp_attrs.py` en el scratchpad) | 562 eventos en los dos lados. Cambian **17 valores de `class`** y el `href` de la hoja (`?v=064ee0dc11` → `?v=5c6cb12598`). **Nada más**: ningún otro atributo (`:class`, `x-*`, `@*`, `id`, `type`…), ningún texto, ningún comentario, ni el orden de atributos o elementos |
+| Barrido propio (no el detector del test) de los `class` estáticos de HEAD: color de cualquier paleta en `text-`, `bg-`, `border-`, `divide-`, `ring-`, `from-`/`to-`/`via-`, `fill-`, `stroke-`, `placeholder-`, `outline-`, `decoration-`, `accent-`, `caret-` y `shadow-`, más los tamaños y pesos de letra | **una sola**: `text-red-800` en `<p x-show="estadoAutoguardado === 'fallo'">` (l. 341), la excepción de R82 |
+| Las 17 reversiones en memoria, una a una (cada `class` nuevo devuelto a su valor viejo, en cada aparición) contra `problemas_r82` | **0 vivas**. Y la barra con `text-sky-700 hover:underline` en una `rs-pestana` también salta |
+| Recálculo `alcance_de_feature("F-035", base="2a86bca")` | `lineas={}`: 0 mutantes, igual que `progress/mutacion_F-035.md` |
+| Reejecución de la campaña (el «Tiempo total» declarado es 0,0 s, menos de 5 min), con `--salida` en el scratchpad | 0 evaluados, 0 muertos, 0 supervivientes y 0 timeouts: **idéntico** al informe. `git status` limpio |
+| Control del cero: `generar_mutantes` sobre los `.py` del diff, ignorando la exclusión | `test_f035_paginas.py`: 274 líneas, **42 mutantes**. El generador funciona y el cero es **legítimo**: solo cambian tests, HTML y CSS |
+| `git log --diff-filter=A 7e69c69..HEAD` | no se añade ningún fichero |
+| Mutaciones a mano | worktree desechable en el scratchpad sobre `9840c02`. Las del circuito (R59, R33) se repitieron en una rama temporal con el prefijo `feature/F-035`, porque con la HEAD separada esas 3 guardias se saltan. En las de CSS se recalculó la `?v=` de las cuatro páginas, para que no las matara T21 por accidente. Al final se retiraron el worktree y la rama temporal; `git status` limpio |
+
+### Mutaciones del reviewer, por familias
+
+Cada mutación se aplicó **sola**, con la suite del front entera. Línea base:
+540 passed en la rama con prefijo y 537 passed + 3 skipped con la HEAD
+separada.
+
+| Familia | # | Mutación | Resultado | La mata |
+|---|---|---|---|---|
+| **Reglas nuevas que faltan** | C-a | sin la regla `.rs-texto` | muerta | guardia `cada_clase_rs…tiene_regla` y su control |
+| | C-b | sin la regla `.rs-texto--apagado` | muerta | las mismas dos |
+| | C-e | sin la regla `.rs-panel__franja` | muerta | las mismas dos |
+| | C-c | sin la regla de color de `.rs-rotulo--atencion` (queda su `::before`) | **sobrevive** | informativo O17-1 |
+| | C-d | sin `.rs-rotulo--atencion::before` | **sobrevive** | informativo O17-1 |
+| **Tokens (R49, R53, R60)** | C-f | `.rs-texto` con `color: #475569` | muerta | R49 `[styles.css]` |
+| | C-k | `.rs-panel__franja` con `#e2e8f0` | muerta | R49 |
+| | C-l | `.rs-rotulo--atencion` con `rgb(146, 64, 14)` | muerta | R49 |
+| | C-g | `.rs-texto--apagado` con `var(--rs-acero)` | muerta | R53 (`el_acero_no_se_usa_como_color_de_texto`) |
+| | C-j | `!important` en `.rs-texto` | muerta | R60 |
+| | C-h | `.rs-texto--apagado` con `var(--rs-acero-100)` (contraste ≈1,3) | **sobrevive** | informativo O17-2 |
+| | C-i | `.rs-texto` a `0.5rem` | **sobrevive** | informativo O17-1 |
+| **Versión de la hoja** | V-c | `partes.html` con la `?v=` vieja | muerta | T21 (×2) |
+| | V-a | `importar.html` sin `?v=` | **sobrevive** | informativo O17-3 |
+| | V-b | `oficios.html` con la `?v=` vieja | **sobrevive** | informativo O17-3 |
+| **Solo presentación (R59, R33)** | D-a | `:class` de la zona: `bg-sky-50` → `bg-sky-100` | muerta | R59 `solo_cambia_en_presentacion` |
+| | D-b | `x-show` de los avisos: `… > 0` | muerta | R59 |
+| | D-c | texto «Avisos de la remesa» → «Avisos» | muerta | R59 |
+| | D-d | `class` delante del `x-show` en `<p class="rs-texto">` | muerta | R59 |
+| | D-e | `:class` añadido a la lista de partes | muerta | R59 |
+| | D-f | comentario `── 3 · Avisos…` recortado | muerta | R59 |
+| | D-h | `id` añadido a la pregunta de confirmación | muerta | R59 |
+| | D-g | sin `text-red-800` en el aviso del autoguardado | muerta | F-026 R52, la excepción de R82 y el control de R59 |
+| | J-a | un comentario en `js/app.js` | muerta | R33 |
+| **H16-7** | H-a | la guarda lee `estado.autoguardado` | muerta | `h16_7_los_nombres…` y F-007 R32 (Node) |
+| | H-b | `app.js` declara `estadoAutoguardo:` | muerta | `h16_7_los_nombres…` y su control |
+| | H-c | `SELECTOR_CIRCUITO` a `appCircuito()` | muerta | `h16_7_…unico_elemento_del_selector` y F-007 R32 |
+
+**20 de 26 muertas**, todas por tests de esta feature salvo D-g, que además
+cae con F-026. Las 6 vivas no son bloqueantes con el criterio del líder.
+
+### Respuestas a las preguntas del líder
+
+**1 · ¿Es solo presentación?** **Sí.**
+
+- `js/` no tiene diff, y `services/postventa-api/` tampoco.
+- En `partes.html` cambian solo los 17 valores de `class` y la `?v=`. Ningún
+  `:class`, `x-*` ni `@*`, comprobado atributo a atributo con el parser, no
+  leyendo el diff.
+- Las directivas de ESTADO están intactas: el semáforo (l. 199 y 366), el
+  dudoso (l. 298 y 304), el arrastre de la zona (l. 86) y el parte abierto
+  (l. 182).
+- Siguen ganando sobre el aspecto por defecto. Ninguna clase nueva fija
+  fondo, y el color que fijan `.rs-texto` y `.rs-texto--apagado` es
+  (0,1,0), el mismo que las utilidades que el CDN inyecta después.
+- Los `:class` del semáforo van en `rs-punto` y los del chip en `rs-chip`, no
+  en las clases nuevas. Ningún `:class` cae sobre un elemento con `rs-texto`,
+  `rs-rotulo--atencion` ni `rs-panel__franja`.
+- La lista de partes conserva su `bg-slate-50` del parte abierto sobre
+  `rs-fila`, que ya estaba así.
+
+**2 · Tailwind, tokens y contraste.**
+
+- **Utilidades de color de Tailwind en los `class` estáticos: ninguna**, con
+  mi barrido y con el detector. Solo queda la excepción `text-red-800`.
+- El detector `utilidades_prohibidas` implementa la lista cerrada de §16.5
+  tal cual: prefijos, enteras, alineaciones admitidas y quitado de `hover:`,
+  `sm:`… y de `!`.
+- **Las clases `rs-*` nuevas usan solo tokens**: `--rs-tinta-suave`,
+  `--rs-acero-texto`, `--rs-atencion`, `currentColor` y `--rs-linea`. R49 lo
+  vigila (C-f, C-k y C-l mueren).
+- **Contraste**: ningún texto queda por debajo de §15.6. Comprobé el fondo
+  real de cada elemento cambiado:
+
+| Elemento | Par | Contraste (§15.6) |
+|---|---|---|
+| `rs-texto` en la zona (`rs-zona`, o `bg-sky-50` al arrastrar), en los paneles y en la pregunta de confirmación | `--rs-tinta-suave` sobre `--rs-papel` | 8,27 (algo menos sobre `sky-50`, muy por encima de 4,5) |
+| `rs-texto` del estado del parte (`rs-panel--suave`) | `--rs-tinta-suave` sobre `--rs-lienzo` | 7,51 |
+| `rs-texto--apagado` («Lo dice la validación…» y «— obligatorio para rechazar…»), los dos dentro de `rs-panel--suave` | `--rs-acero-texto` sobre `--rs-lienzo` | 5,26 |
+| `rs-nota` del motivo (`rs-panel--suave`) | `--rs-acero-texto` sobre `--rs-lienzo` | 5,26 |
+| rótulo y lista de «Avisos de la remesa» (`rs-panel--atencion`) | `--rs-atencion` sobre `--rs-atencion-suave` | 6,84 |
+
+- Lo que era `text-slate-400`, por debajo de 4,5 sobre blanco, **mejora** a
+  5,26.
+- El implementer hizo bien en no dejar `rs-rotulo` a secas sobre el fondo
+  ámbar: ese par no está medido. Calculado por mí da unos 5,6, así que
+  tampoco habría sido un fallo.
+
+**3 · Los apuntes del §5: los tres, bien.**
+
+1. **El separador nuevo (`rs-panel__franja`) en lugar de tocar
+   `.rs-panel--lista`: bien.** `index.html` usa `rs-panel--lista` en
+   **cinco** paneles (l. 236, 529, 838, 891 y 971), no en cuatro como dice el
+   informe. Una regla ahí le cambiaría el aspecto al portal. §16.15.5 admite
+   «uno nuevo si ninguno sirve», y el nuevo no fija relleno, así que no choca
+   con `px-4 py-3` (regla 3 de §15.7).
+2. **La `?v=` también en `importar.html` y `oficios.html`: bien.** Lo pide la
+   letra de T46 («su `?v=` en las cuatro páginas»). R59 no mira esas páginas
+   y ningún test de F-036 lee esa `<link>`: la suite sigue verde. Hoy ningún
+   test la vigila (V-a y V-b sobreviven), pero el bloque 10 ya lo tiene
+   previsto (`tasks.md` l. 639: «las extensiones … de la `?v=`»). Ver O17-3.
+3. **R82 mira también la barra: bien.** Es más estricto que la letra y hoy se
+   cumple. Lo comprobé con una `rs-pestana` con `text-sky-700 hover:underline`
+   en memoria, y salta.
+
+Dos apuntes más:
+
+- La guardia extra (cada `rs-*` estático con su regla en la hoja) está bien
+  pensada. Cierra un hueco real que T21 solo tapaba por accidente.
+- `rs-resumen mt-2` mezcla `margin: 0` con `mt-2`. Es margen, que la regla 3
+  no prohíbe, y el patrón ya existía (`rs-resumen mt-4`).
+
+**4 · H16-7: cerrado.** Pedía dos cosas, y están las dos:
+
+- **Que `app.js` declare lo que lee la guarda.** El test exige
+  `estado.fase|partes|parteAbierto|estadoAutoguardado` y `.cerrado` en la
+  guarda, sin comentarios, y sus declaraciones `<nombre>:` en `app.js`.
+  Muerde por los dos lados: H-a renombra en la guarda y H-b en `app.js`, y
+  las dos mueren. El control comprueba además que hay **una sola**
+  declaración de cada nombre. Así, si F-021 o F-045 añadieran otra
+  `partes:`, sería ese control el que obligara a revisar la regla.
+- **Un único elemento de `partes.html` que case con `SELECTOR_CIRCUITO`.** El
+  selector se lee de la propia guarda, no se copia en el test, y H-c muere.
+  Con un `x-data` duplicado, R59 caería además.
+
+### Checkpoints (acotados al diff)
+
+- **C1** [x] `init.sh` termina con exit 0 (lo ejecuté yo). [x] Existen los
+  ficheros del arnés.
+- **C2** [x] Una sola feature `in_progress` (F-035). [x] Rama
+  `feature/F-035-portal-posventa`. [x] `current.md` lleva la entrada nueva
+  arriba, como en los bloques anteriores. [x] Ninguna feature pasa a `done`
+  en este diff.
+- **C3** [x] Primera línea con la ruta en los ficheros tocados (sin cambios
+  ahí). [x] Sin `print`, `console.*`, `debugger`, TODO ni secretos en el
+  diff, y sin dependencias nuevas. [x] Comentarios en español. [x] Ningún PDF
+  ni parte en git: `--diff-filter=A` vacío. Arquitectura hexagonal, unidad
+  de trabajo «parte», Sigrid, firma, «firmado no es conforme», duplicados y
+  `conest`: **N/A justificado**, porque el diff no toca código de producción
+  ni lógica (solo HTML de presentación, CSS y tests).
+- **C3 bis** — **N/A**: el diff no toca `docs/referencia/`.
+- **C4** [x] R82 tiene su test trazable
+  (`test_f035_r82_partes_html_no_lleva_utilidades…`) con controles, y H16-7
+  los suyos. Todos pasan. [x] Sin red ni BBDD: los tests leen ficheros del
+  repo. [x] El MANUAL (el vistazo de T46) consta en `current.md`, que lo
+  manda a V1/V2.
+- **C4 bis** [x] `rigor: "estandar"`. [x] **Fase RED**: el informe trae la
+  salida real del fallo de R82 sobre la página sin remodelar, con 30
+  utilidades en 17 elementos, coherente con mis 17 reversiones. H16-7 no
+  tiene RED porque ata nombres que ya existen; lo demuestran sus controles y
+  mis H-a, H-b y H-c. [x] **Cobertura**: N/A con el motivo impreso por
+  `init.sh`. [x] **Mutación**: informe de la herramienta con 0 mutantes,
+  recalculado, reejecutado y con el control del cero hecho. [x] El coste por
+  mutante no aplica, porque hay 0 mutantes. [x] Mutantes a mano: 14/14 del
+  implementer y 20/26 del reviewer, con las 6 vivas analizadas abajo (rigor
+  `estandar`: basta con documentarlas). [x] «Evidencias» con los cuatro
+  números y los workers (1). [x] Ningún N/A sin justificar. Regla 7: N/A,
+  porque es de `critico`.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5** [x] T46 y T47 están `[x]`, con commits `F-035 T46: …`,
+  `F-035 T47: …` (×2) y `F-035 H16-7: …`. [x] No hay ficheros sin trackear.
+  [x] `features.json` dice `in_progress`, que es lo real.
+
+### Informativo (no bloquea), con su destino
+
+- **O17-1 · Lo puramente visual de las clases nuevas lo ve solo el ojo.**
+  Sobreviven C-c, C-d e C-i:
+  - C-c quita el color del rótulo de avisos: queda gris sobre ámbar, unos
+    5,6, legible.
+  - C-d quita su trazo ámbar: vuelve el burdeos.
+  - C-i encoge `.rs-texto`.
+
+  Ninguna deja un riesgo de contraste ni de función, y fijar tamaños o trazos
+  con tests sería sobreespecificar. **Destino: V1/V2 del humano**, que ya
+  incluyen el vistazo de T46. El implementer dejó escrito qué mirar.
+- **O17-2 · R53 no exige que cada color de texto sea un token de texto
+  medido.** C-h (`.rs-texto--apagado` con `var(--rs-acero-100)`, contraste
+  ≈1,3) sobrevive. R53 prohíbe solo `var(--rs-acero)`, que es el error
+  plausible (C-g muere), y comprueba los pares de §15.6, no qué token usa
+  cada regla. El hueco ya existía, vale para cualquier regla de la hoja (por
+  ejemplo, `rs-nota`) y nadie escribiría ese marcado a propósito.
+  **Destino: spec-author, bloque 14.** Sería una lista blanca de tokens
+  admitidos en `color:` fuera de `:root`.
+- **O17-3 · La `?v=` de `importar.html` y `oficios.html` no la vigila nadie
+  todavía.** V-a y V-b sobreviven. **Destino: bloque 10**, que ya extiende
+  T21 a esas páginas (`tasks.md` l. 639).
+- **O17-4 · Erratas del informe, sin efecto.** Son **17** `class` estáticos,
+  no 18 (H-12 contaba 20, de los que 2 pasaron en el bloque 8 y queda
+  `text-red-800`). `rs-panel--lista` está en **5** paneles del portal, no en
+  4.
+- **O17-5 · Efecto visual que esperar en V1/V2.** La lista de partes pasa de
+  1 rem heredado a los 0,9 rem de `rs-resumen`. El separador de filas ya no
+  dibuja una línea sobre el primer parte: `li + li` frente al `divide-y` de
+  antes, que con el `<template>` delante sí la dibujaba. Es coherente con el
+  portal y no hace falta hacer nada.
+- Siguen abiertos, como estaban: **O16-4** (opcional), **H16-3 a H16-6**
+  (spec-author, bloque 14) y **H-5** (bloque 9).
+
+### Automejora (propuesta, no aplicada)
+
+**`reviewer.md`**: avisar de que, en un worktree con la HEAD separada, las
+guardias de diff de rama (R30/R43, R32, R33, R59 de F-035) se **saltan**
+(«sin rama») y las mutaciones del circuito salen vivas en falso. En esta
+review pasó con 8 mutaciones de R59/R33 hasta que las repetí en una rama
+temporal con el prefijo `feature/F-XXX`.
+
+La regla propuesta: si la línea base del worktree trae `skipped` que en el
+árbol real no salen, crear la rama temporal y borrarla al acabar. Es
+genérica para cualquier proyecto cuyas guardias dependan de la rama, así que
+iría también a `arnes-base`.

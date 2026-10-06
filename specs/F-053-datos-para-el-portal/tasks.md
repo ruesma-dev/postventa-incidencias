@@ -79,7 +79,7 @@
       Verificación: `git -C C:\Users\pgris\PycharmProjects\azure-apps log -1 --stat`
       muestra solo ese fichero, y `git -C C:\Users\pgris\PycharmProjects\azure-apps grep -n "oficio.distintos" -- postventa_incidencias.md`
       lo encuentra.
-- [ ] **T8**: evidencias de rigor. (a) Mutación:
+- [x] **T8**: evidencias de rigor. (a) Mutación:
       `python -m harness.mutacion --feature F-053 --base 349ba06 --timeout 900`,
       informe en `progress/mutacion_F-053.md`, **cero supervivientes** sin test
       nuevo o justificación escrita para el humano. (b) Alcance (R18, R19):

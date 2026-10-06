@@ -118,6 +118,12 @@ Bloque 14 (`tasks.md`, T37):
   R75 con su dependencia de F-053 (review del bloque 13, O13-3), y
   `docs/DESPLIEGUE.md` lleva el recuadro de la publicación.
 
+Bloque 14 (`tasks.md`, T49, R63 enmendado el 2026-10-06; O9-2 y O9-3):
+
+- Fuera de todo `data-en-construccion`, `index.html` solo lleva las
+  directivas de la lista cerrada, cada una en su etiqueta y con su valor; y
+  `rs-obras` va solo y siempre en un `data-en-construccion`.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -145,6 +151,7 @@ from test_f035_portal import (
     version_de_las_hojas,
 )
 from test_f035_portal import SECCIONES as ETIQUETAS_DE_SECCION
+from test_f035_portal import _VACIOS, _Lector
 
 PORTAL_JS = RAIZ_FRONT / "js" / "portal.js"
 MAQUETA_DATOS = RAIZ_FRONT / "js" / "maqueta_datos.js"
@@ -997,6 +1004,228 @@ def test_f035_r63_control_lo_inventado_fuera_de_su_recuadro_salta(caso):
     assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo}"
 
     assert fuera_de_envoltorio(real.replace(viejo, nuevo)) != [], f"R63 no ve «{caso}»"
+
+
+# R63 enmendado (2026-10-06, O9-2 y O9-3; T49) · La lista cerrada de directivas fuera de los recuadros
+#
+# Reconocer lo inventado por lo que lee (`datos.`, `MaquetaDatos`) no ve un
+# método del componente que lo lea (`bandejaFiltrada()`, `obra()`):
+# sobrevivieron A2, A4 y A6 de la review del bloque 9. Fuera de todo
+# `data-en-construccion`, `index.html` solo puede llevar estas directivas, cada
+# una en su etiqueta, con su atributo y su valor exactos. Las formas ligadas
+# (`x-bind:`, `x-on:`) son directivas y no están en la lista: saltan. El
+# propio envoltorio cuenta como «fuera» (lo de dentro es lo suyo).
+
+
+class _LectorConLineas(_Lector):
+    """El lector de `test_f035_portal.py`, que además apunta en cada nodo la línea de su etiqueta."""
+
+    def handle_starttag(self, tag, attrs):
+        super().handle_starttag(tag, attrs)
+        nodo = self.actual.hijos[-1] if tag in _VACIOS else self.actual
+        nodo.linea = self.getpos()[0]
+
+    def handle_startendtag(self, tag, attrs):
+        super().handle_startendtag(tag, attrs)
+        self.actual.hijos[-1].linea = self.getpos()[0]
+
+
+def _leer_con_lineas(html: str):
+    lector = _LectorConLineas()
+    lector.feed(html)
+    lector.close()
+    return lector.raiz
+
+
+_PESTANA_DE_LA_PAGINA = re.compile(r"^#/([a-z]+)$")
+
+
+def directivas_admitidas_r63(nodo) -> dict[str, str]:
+    """Las directivas `{atributo: valor}` que R63 enmendado admite en `nodo` fuera de un recuadro."""
+    padre = nodo.padre
+    if nodo.nombre == "div" and padre is not None and padre.nombre == "body":
+        return {"x-data": "portalPosventa()", "x-init": "iniciar()"}
+    pestana = _PESTANA_DE_LA_PAGINA.match(nodo.atributos.get("href", ""))
+    if (
+        nodo.nombre == "a" and pestana and "rs-pestana" in clases(nodo)
+        and any("data-barra-portal" in a.atributos for a in nodo.ancestros())
+    ):
+        return {":aria-current": f"seccion === '{pestana[1]}' ? 'page' : false"}
+    if nodo.nombre == "section" and "data-seccion" in nodo.atributos:
+        return {"x-show": f"seccion === '{nodo.atributos['data-seccion']}'", "x-cloak": ""}
+    if nodo.nombre == "div" and "rs-toast" in clases(nodo):
+        return {":class": "aviso ? 'rs-toast--visible' : ''"}
+    if padre is not None and "rs-toast" in clases(padre):
+        if nodo.nombre == "p":
+            return {"x-text": "aviso"}
+        if nodo.nombre == "button":
+            return {"x-show": "aviso", "x-cloak": "", "@click": "aviso = ''"}
+    return {}
+
+
+def directivas_fuera_de_la_lista_r63(html: str) -> list[str]:
+    """Directivas de `index.html` fuera de todo recuadro que no están en la lista cerrada de R63. Vacío = correcto."""
+    problemas = []
+    for e in _leer_con_lineas(html).elementos():
+        if _en_envoltorio(e):
+            continue
+        admitidas = directivas_admitidas_r63(e)
+        for nombre, valor in e.atributos.items():
+            if _DIRECTIVA.match(nombre) and admitidas.get(nombre) != " ".join(valor.split()):
+                problemas.append(
+                    f'línea {e.linea}: <{e.nombre}> {nombre}="{valor}" fuera de un recuadro '
+                    "no está en la lista cerrada de R63"
+                )
+    return problemas
+
+
+def problemas_rs_obras(html: str) -> list[str]:
+    """`rs-obras` (la clase exacta, también ligada) solo y siempre en un `data-en-construccion`. Vacío = correcto."""
+    problemas = []
+    for e in _leer_con_lineas(html).elementos():
+        con_clase = "rs-obras" in {clase for _, clase in _clases_de(e)}
+        recuadro = "data-en-construccion" in e.atributos
+        if con_clase and not recuadro:
+            problemas.append(f"línea {e.linea}: rs-obras sin data-en-construccion: {_describe(e)}")
+        if recuadro and not con_clase:
+            problemas.append(f"línea {e.linea}: data-en-construccion sin rs-obras: {_describe(e)}")
+    return problemas
+
+
+def test_f035_r63_fuera_de_los_recuadros_solo_las_directivas_de_la_lista_cerrada():
+    problemas = directivas_fuera_de_la_lista_r63(PORTAL.read_text(encoding="utf-8"))
+
+    assert problemas == [], "R63 enmendado:\n" + "\n".join(problemas)
+
+
+def test_f035_r63_la_lista_cerrada_mira_algo():
+    """Que la guardia no pase por vacía: fuera de los recuadros hay justo las directivas de la lista."""
+    doc = _leer_con_lineas(PORTAL.read_text(encoding="utf-8"))
+    vistas = sorted(
+        (e.nombre, nombre)
+        for e in doc.elementos() if not _en_envoltorio(e)
+        for nombre in e.atributos if _DIRECTIVA.match(nombre)
+    )
+
+    assert vistas == sorted(
+        [("div", "x-data"), ("div", "x-init")]
+        + [("a", ":aria-current")] * 7
+        + [("section", "x-show"), ("section", "x-cloak")] * 7  # «partes» no tiene sección: es partes.html
+        + [("div", ":class"), ("p", "x-text"), ("button", "x-show"), ("button", "x-cloak"), ("button", "@click")]
+    ), vistas
+
+
+def test_f035_r63_rs_obras_solo_y_siempre_en_un_recuadro():
+    problemas = problemas_rs_obras(PORTAL.read_text(encoding="utf-8"))
+
+    assert problemas == [], "R63 enmendado:\n" + "\n".join(problemas)
+    assert len(envoltorios(leer_html(PORTAL))) == 7, "la guardia mira los siete recuadros de hoy"
+
+
+_CABECERA_DE_BANDEJA = '<h1 class="rs-titulo">Bandeja de revisión</h1>'
+_ROTULO_PARTES_FIRMADOS = '<p class="rs-tarjeta__rotulo">Partes firmados</p>'
+_TARJETA_IMPORTAR = '<a href="importar.html" class="rs-tarjeta rs-tarjeta--produccion">'
+_PESTANA_BANDEJA = '<a href="#/bandeja" class="rs-pestana" data-construccion'
+
+ESTROPEOS_R63_LISTA = {
+    # (viejo, nuevo, lo que tiene que salir en el mensaje)
+    "A2 · x-text con un método en la cabecera de una sección": (
+        _CABECERA_DE_BANDEJA,
+        _CABECERA_DE_BANDEJA + '\n<p x-text="bandejaFiltrada().length"></p>',
+        'x-text="bandejaFiltrada().length"',
+    ),
+    "A4 · x-text con un método en una tarjeta en producción": (
+        _ROTULO_PARTES_FIRMADOS,
+        _ROTULO_PARTES_FIRMADOS + "\n<p x-text=\"'Última obra: ' + obra('9901')\"></p>",
+        "x-text=\"'Última obra: ' + obra('9901')\"",
+    ),
+    "A6 · x-text con un método en la tarjeta real de importar": (
+        _TARJETA_IMPORTAR,
+        _TARJETA_IMPORTAR + "\n<span x-text=\"bandejaFiltrada().length + ' por revisar'\"></span>",
+        "bandejaFiltrada().length + ' por revisar'",
+    ),
+    "un :title ligado en una pestaña": (
+        _PESTANA_BANDEJA,
+        _PESTANA_BANDEJA + " :title=\"'Pendientes: ' + bandejaFiltrada().length\"",
+        ":title=",
+    ),
+    "el x-show de una sección con otro id": (
+        "x-show=\"seccion === 'impresion'\"",
+        "x-show=\"seccion === 'datos'\"",
+        "x-show=\"seccion === 'datos'\"",
+    ),
+    "el :aria-current de una pestaña con otro id": (
+        "href=\"#/datos\" class=\"rs-pestana\" data-construccion aria-label=\"Datos y datamart (en construcción)\" "
+        ":aria-current=\"seccion === 'datos' ? 'page' : false\"",
+        "href=\"#/datos\" class=\"rs-pestana\" data-construccion aria-label=\"Datos y datamart (en construcción)\" "
+        ":aria-current=\"seccion === 'economico' ? 'page' : false\"",
+        "seccion === 'economico' ? 'page' : false",
+    ),
+    "una forma ligada x-bind: en una pestaña": (
+        _PESTANA_BANDEJA,
+        _PESTANA_BANDEJA + ' x-bind:title="obra(\'9901\')"',
+        "x-bind:title=",
+    ),
+    "una forma ligada x-on: en una tarjeta en producción": (
+        _TARJETA_IMPORTAR,
+        _TARJETA_IMPORTAR.replace(">", ' x-on:mouseenter="placeholder(\'x\')">'),
+        "x-on:mouseenter=",
+    ),
+    "una directiva de más en el aviso": (
+        '<p role="status" aria-live="polite" x-text="aviso"></p>',
+        '<p role="status" aria-live="polite" x-text="aviso" x-show="bandejaFiltrada().length"></p>',
+        'x-show="bandejaFiltrada().length"',
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R63_LISTA))
+def test_f035_r63_control_una_directiva_fuera_de_la_lista_salta_con_su_linea(caso):
+    viejo, nuevo, senal = ESTROPEOS_R63_LISTA[caso]
+    real = PORTAL.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo}"
+
+    estropeado = real.replace(viejo, nuevo)
+    problemas = directivas_fuera_de_la_lista_r63(estropeado)
+    linea = real[: real.index(viejo)].count("\n") + nuevo[: nuevo.index(senal)].count("\n") + 1
+    assert len(problemas) == 1 and senal in problemas[0], problemas
+    assert problemas[0].startswith(f"línea {linea}: "), (linea, problemas)
+
+
+ESTROPEOS_RS_OBRAS = {
+    # O9-3 · B4 de la review del bloque 9: el marco ámbar en una tarjeta real, sin el atributo.
+    "B4 · rs-obras en una tarjeta real": (
+        _TARJETA_IMPORTAR,
+        _TARJETA_IMPORTAR.replace("rs-tarjeta--produccion", "rs-tarjeta--produccion rs-obras"),
+        "rs-obras sin data-en-construccion",
+    ),
+    "rs-obras ligada en una tarjeta real": (
+        _TARJETA_IMPORTAR,
+        _TARJETA_IMPORTAR.replace(">", " :class=\"'rs-obras'\">"),
+        "rs-obras sin data-en-construccion",
+    ),
+    "un data-en-construccion sin rs-obras": (
+        '<div data-en-construccion="bandeja" class="rs-obras">',
+        '<div data-en-construccion="bandeja" class="rs-obras--bloque">',
+        "data-en-construccion sin rs-obras",
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_RS_OBRAS))
+def test_f035_r63_control_rs_obras_fuera_de_un_recuadro_o_que_le_falta_salta(caso):
+    viejo, nuevo, senal = ESTROPEOS_RS_OBRAS[caso]
+    real = PORTAL.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo}"
+
+    problemas = problemas_rs_obras(real.replace(viejo, nuevo))
+    assert len(problemas) == 1 and senal in problemas[0], problemas
+
+
+def test_f035_r63_control_las_subclases_de_rs_obras_no_cuentan_como_rs_obras():
+    html = '<body><div class="rs-obras__rotulo"></div><p class="rs-obras--bloque"></p></body>'
+
+    assert problemas_rs_obras(html) == []
 
 
 # R64 · Un recuadro por sección en construcción, y ninguno de más

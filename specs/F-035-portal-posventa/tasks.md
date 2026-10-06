@@ -785,7 +785,7 @@ ya pide cada verificación.
       en verde. En una copia desechable, `estados_segun_las_fichas` sin
       `partes` en el cálculo de `inicio` (la lectura de R48) tiene que caer
       con este caso y no con los de antes (salida al informe).
-- [ ] **T49** (O9-2 y O9-3, R63 enmendado): en `tests/test_f035_paginas.py`,
+- [x] **T49** (O9-2 y O9-3, R63 enmendado): en `tests/test_f035_paginas.py`,
       (a) una guardia con la **lista cerrada** de directivas admitidas fuera
       de todo `data-en-construccion` en `index.html`, como la escribe R63
       enmendado: cada una por etiqueta, atributo y valor. Las formas ligadas

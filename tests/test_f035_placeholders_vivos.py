@@ -459,6 +459,34 @@ def test_f035_r62_partes_e_inicio_siguen_su_propia_regla():
     assert set(estados_segun_las_fichas(features, secciones).values()) == {"real"}
 
 
+def test_f035_r62_inicio_cuenta_partes_con_todo_done_salvo_f045():
+    """H-8 (R62 precisado el 2026-10-06): «todas las demás» son las otras siete, `partes` incluida.
+
+    Es el único caso que separa las dos lecturas: con todas las fichas de
+    `Portal.SECCIONES` en `done` salvo F-045 (en una copia en memoria), las
+    otras seis secciones son `real`, `partes` es `parcial` y por eso `inicio`
+    sigue `parcial`. La lectura sin `partes` es la de R48 (`secciones_reales`),
+    solo para la barra del circuito, y aquí daría `inicio` `real`.
+    """
+    features = copy.deepcopy(_features())
+    secciones = secciones_del_portal()
+    por_id = {f["id"]: f for f in features["features"]}
+    assert [s for s, fichas in secciones.items() if "F-045" in fichas] == ["partes"], (
+        "F-045 ya no es solo de «partes»: este caso dejaría de separar las dos lecturas"
+    )
+    for ficha in {f for lista in secciones.values() for f in lista}:
+        por_id[ficha]["status"] = "done"
+    por_id["F-045"]["status"] = "pending"
+
+    resultado = estados_segun_las_fichas(features, secciones)
+
+    otras_seis = {s: e for s, e in resultado.items() if s not in ("inicio", "partes")}
+    assert set(otras_seis.values()) == {"real"} and len(otras_seis) == 6, resultado
+    assert resultado["partes"] == "parcial"
+    assert resultado["inicio"] == "parcial", "inicio no es real mientras partes no lo sea (R62, H-8)"
+    assert "inicio" in secciones_reales(features, secciones), "la lectura de R48, sin partes, sí lo daría real"
+
+
 def _seccion_markdown(ruta: Path, titulo: str) -> str:
     lineas = ruta.read_text(encoding="utf-8").splitlines()
     inicio = next(

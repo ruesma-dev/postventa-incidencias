@@ -775,7 +775,7 @@ ya pide cada verificación.
 > (H16-3, H16-4, H16-5, H16-6, O9-7 y O10-1) se cierran solo con texto y no
 > traen tarea.
 
-- [ ] **T48** (H-8, R62 precisado): en la raíz,
+- [x] **T48** (H-8, R62 precisado): en la raíz,
       `tests/test_f035_placeholders_vivos.py`, en
       `test_f035_r62_partes_e_inicio_siguen_su_propia_regla` (o en un test
       nuevo junto a él), el caso que separa las dos lecturas: con todas las

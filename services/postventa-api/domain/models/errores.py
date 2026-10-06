@@ -102,6 +102,14 @@ petición (R33): va al Excel de errores y no tiene excepción propia. Ningún
 motivo lleva el cuerpo de la pasarela, nombres de unidad o de proveedor, ni
 textos de fila.
 
+Los de la **revisión de la bandeja** (F-056, `design.md` §4) siguen el mismo
+reparto: lo **mal pedido** (`PeticionDeRevisionInvalida`, `ValoresNoValidos`,
+`SinCambios` → 400), lo que **no existe** (`IncidenciaNoEncontrada` → 404) y lo
+que **no admite el estado** de la incidencia (`AccionNoPermitida`,
+`RevisionDesactualizada`, `IncidenciaNoAprobable`, `BandejaDemasiadoGrande` →
+409). **En todos, sin haber escrito nada.** Ninguno lleva el `oid`, el correo,
+la descripción, el detalle ni el motivo de quien revisa: solo códigos.
+
 El dominio no sabe de HTTP: quien traduce a 400 / 409 / 413 / 500 / 502 / 503
 es el borde.
 """
@@ -1349,3 +1357,103 @@ class ConfiguracionPlantillaInvalida(Exception):
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+
+# --------------------------------------------------------------------------
+# F-056 · revisión de la bandeja (`design.md` §4)
+# --------------------------------------------------------------------------
+
+
+class PeticionDeRevisionInvalida(Exception):
+    """La petición de revisión está mal formada (F-056, R5, R18, R23). **400**.
+
+    Un cuerpo que no es el del contrato, un `oid` o un correo no admisibles, un
+    motivo de más de 500, un cursor que no emitió el sistema o un tamaño de
+    página fuera de rango. Se levanta **antes** de leer Sigrid y sin escribir.
+    El motivo dice qué regla falla y **nunca** repite lo recibido: por aquí
+    pasan el `oid`, el correo y los textos de quien revisa (R11, R41).
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class ValoresNoValidos(Exception):
+    """Los valores de una edición no valen contra el catálogo de hoy (F-056, R13).
+
+    **400** `valores_no_validos`, con **todos** los campos que fallan a la vez:
+    `errores` son pares `(campo, problema)` en el orden de los campos de
+    `valores`. Ningún problema repite el valor recibido.
+    """
+
+    def __init__(self, motivo: str, *, errores: tuple[tuple[str, str], ...]) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.errores = errores
+
+
+class SinCambios(Exception):
+    """La edición deja los valores vigentes como estaban (F-056, R16). **400**."""
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class IncidenciaNoEncontrada(Exception):
+    """La incidencia no está en la bandeja (F-056, R6, R32). **404**, sin Sigrid."""
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class AccionNoPermitida(Exception):
+    """La acción no se admite desde el estado de la incidencia (F-056, R2). **409**.
+
+    Lleva el `estado` y las `acciones` posibles desde él, como códigos, para
+    que quien lo recibe sepa qué sí puede hacer. Sin leer Sigrid ni escribir.
+    """
+
+    def __init__(self, motivo: str, *, estado: str, acciones: tuple[str, ...]) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.estado = estado
+        self.acciones = acciones
+
+
+class RevisionDesactualizada(Exception):
+    """`revision_previa` no es la última revisión (F-056, R7, R22). **409**.
+
+    Otra persona ha revisado la incidencia —o la original de una duplicada—
+    entre la lectura y la acción. No se escribe nada: se vuelve a leer.
+    """
+
+    def __init__(self, motivo: str) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+
+
+class IncidenciaNoAprobable(Exception):
+    """La incidencia tiene motivos de no aprobable (F-056, R20, R21). **409**.
+
+    `motivos` son **todos** sus códigos, en el orden de R21.
+    """
+
+    def __init__(self, motivo: str, *, motivos: tuple[str, ...]) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.motivos = motivos
+
+
+class BandejaDemasiadoGrande(Exception):
+    """La obra pasa del tope de lectura de la revisión (F-056, R24). **409**.
+
+    Lleva el `total` de incidencias de la obra: nunca se trunca en silencio.
+    """
+
+    def __init__(self, motivo: str, *, total: int) -> None:
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.total = total

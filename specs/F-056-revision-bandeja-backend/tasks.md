@@ -52,7 +52,7 @@
 
 ## Bloque 1 · El dominio
 
-- [ ] **T1 · RED**: `tests/test_f056_revision_dominio.py` y
+- [x] **T1 · RED**: `tests/test_f056_revision_dominio.py` y
   `tests/test_f056_paginacion.py` contra `domain/models/revision.py`, que aún
   no existe (`design.md` §3, §4): `ubicaciones_de_tipologia` y la ubicación
   contra la lista **de su unidad** (R47, R48, §16.2), R1–R3 (tablas de §3.2 y
@@ -66,7 +66,7 @@
   `resumen` con `por_motivo`) y R34–R35 (`es_candidata`, `CandidataAlVolcado`
   sin oficio, sin ubicación o con ambiguos). Traza del fallo pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_revision_dominio.py tests/test_f056_paginacion.py` **falla**
-- [ ] **T2 · GREEN**: `domain/models/revision.py` y los ocho errores en
+- [x] **T2 · GREEN**: `domain/models/revision.py` y los ocho errores en
   `domain/models/errores.py`. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_revision_dominio.py tests/test_f056_paginacion.py tests/test_f005_arquitectura.py tests/test_f036_arquitectura.py`
 - [ ] **T3 · Mutación del bloque.** |

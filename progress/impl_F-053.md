@@ -605,7 +605,10 @@ investigado más. Los 50 minutos se deben a la carga de la máquina (ver T8).
 
 Entre `caf3b92` y `99451f2` hay en la rama un commit **ajeno a este encargo**, `a43623e` («Backlog:
 F-038 y F-040 pasan a prioridad 1 y 2…»: `BACKLOG.md`, `harness/features.json`,
-`progress/current.md`), hecho durante la campaña. No toca código y no lo he modificado. Sin push.
+`progress/current.md`), hecho durante la campaña. Y entre `99451f2` y el commit de T9, otros dos
+ajenos hechos mientras corría `init.sh`: `a58b5cb` (alta de F-057) y `ee847d0` (alta de F-056),
+que solo tocan `BACKLOG.md` y `harness/features.json` (`git diff --stat 99451f2 ee847d0`). Ninguno
+toca código; no los he modificado. Sin push.
 
 ### Queda para cerrar (fuera de este encargo)
 

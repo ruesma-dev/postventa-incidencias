@@ -3258,6 +3258,12 @@ def problemas_r75(html: str) -> list[str]:
         escondida = clases(nodo) & _ESCONDE_POR_CLASE
         if escondida:
             problemas.append(f"<{nodo.nombre}> escondido por clase ({', '.join(sorted(escondida))})")
+    # Review del bloque 13, O13-1 (L15, L17): se ve, pero no se puede pulsar.
+    for nodo in [*hasta_la_seccion, seccion_r75]:
+        inertes = [a for a in ("inert", ":inert", "x-bind:inert") if a in nodo.atributos]
+        sin_clic = [c for _, c in _clases_de(nodo) if c.rsplit(":", 1)[-1].lstrip("!") == "pointer-events-none"]
+        if inertes or sin_clic:
+            problemas.append(f"<{nodo.nombre}> deja «Son el mismo» sin poder pulsarse ({', '.join(inertes + sin_clic)})")
     return problemas
 
 
@@ -3318,6 +3324,28 @@ def test_f035_r75_control_la_seccion_de_distintos_estropeada_salta(viejo, nuevo,
 
     problemas = problemas_r75(real.replace(viejo, nuevo))
     assert any(senal in p for p in problemas), problemas
+
+
+_LI_R75 = '<li class="flex flex-wrap items-center gap-2">\n                  <span x-text="par.nombre_a'
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo", "senal"),
+    [
+        (_SECCION_R75, _SECCION_R75.replace(">", " inert>"), "<section> deja «Son el mismo» sin poder pulsarse (inert)"),
+        (_LI_R75, _LI_R75.replace("gap-2", "gap-2 pointer-events-none"), "<li> deja «Son el mismo» sin poder pulsarse"),
+        (_BOTON_R75, _BOTON_R75.replace("rs-btn--compacto", "rs-btn--compacto md:pointer-events-none"), "<button> deja"),
+        (_BOTON_R75, _BOTON_R75.replace("<button", "<button :inert=\"true\""), "(:inert)"),
+    ],
+    ids=["L15-inert-en-la-seccion", "L17-pointer-events-none-en-el-par", "md-pointer-events-none-en-el-boton", "inert-ligado"],
+)
+def test_f035_o13_1_control_son_el_mismo_que_no_se_puede_pulsar_salta(viejo, nuevo, senal):
+    """Review del bloque 13, O13-1: un «Son el mismo» que se ve pero no se puede pulsar salta."""
+    real = OFICIOS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    problemas = problemas_r75(real.replace(viejo, nuevo))
+    assert len(problemas) == 1 and senal in problemas[0], problemas
 
 
 def _mover_la_seccion_de_distintos(html: str, delante_de: str) -> str:

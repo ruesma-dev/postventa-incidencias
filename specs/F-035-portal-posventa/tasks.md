@@ -819,7 +819,7 @@ ya pide cada verificación.
       G4 de la review del bloque 9, repetidas en una copia desechable, caen.
       En las de CSS hay que recalcular la `?v=` o probar la guardia
       directamente, para que no las mate la versión (salida al informe).
-- [ ] **T51** (O17-2, R53 enmendado): en `tests/test_f035_portal.py`,
+- [x] **T51** (O17-2, R53 enmendado): en `tests/test_f035_portal.py`,
       junto a `test_f035_r53_el_acero_no_se_usa_como_color_de_texto`, la **lista
       blanca** de R53 enmendado: fuera del `:root` de las dos hojas, toda
       declaración de la propiedad `color` vale `inherit`, `currentColor` o

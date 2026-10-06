@@ -1988,6 +1988,169 @@ def test_f035_r53_el_acero_no_se_usa_como_color_de_texto(hoja):
     assert usos == [], f"{hoja.name}: --rs-acero da 3,7:1 sobre blanco; el texto gris es --rs-acero-texto"
 
 
+# R53 enmendado (2026-10-06, O17-2; T51) · Lista blanca de colores de texto
+#
+# Prohibir solo `--rs-acero` dejaba pasar cualquier otro token sin medir (la
+# C-h de la review del bloque 17: `.rs-texto--apagado` con
+# `var(--rs-acero-100)`, contraste ≈1,3, y no caía nada). Fuera del `:root`,
+# toda declaración de la propiedad `color` vale `inherit`, `currentColor` o
+# `var(<token>)` con un token medido como texto. Una excepción cerrada:
+# `--rs-acero-300` en `.rs-tarjeta__indice`, el índice decorativo de las
+# tarjetas, que por eso lleva `aria-hidden="true"` en toda página del front.
+
+#: Los tokens de texto de la tabla de `design.md` §15.6, más `--rs-burdeos-fuerte` (R53 enmendado).
+TOKENS_DE_TEXTO = frozenset({
+    "--rs-tinta", "--rs-tinta-suave", "--rs-acero-texto", "--rs-papel", "--rs-burdeos",
+    "--rs-ok", "--rs-atencion", "--rs-error", "--rs-info", "--rs-burdeos-fuerte",
+})
+#: La única excepción: {token: selector exacto de la regla}.
+EXCEPCION_DE_COLOR = {"--rs-acero-300": ".rs-tarjeta__indice"}
+CLASE_DECORATIVA = "rs-tarjeta__indice"
+
+_VAR_SOLA = re.compile(r"var\(\s*(--[\w-]+)\s*\)")
+
+
+def colores_de_texto_fuera_de_la_lista(hojas: dict[str, str]) -> list[str]:
+    """Declaraciones `color` fuera del `:root` que no están en la lista blanca de R53. Vacío = correcto."""
+    problemas = []
+    for nombre, css in hojas.items():
+        sin_comentarios = re.sub(r"/\*.*?\*/", " ", css, flags=re.DOTALL)
+        for regla in reglas_css(sin_comentarios):
+            if regla.selector == ":root":
+                continue
+            for propiedad, valor in regla.declaraciones:
+                if propiedad != "color" or valor.lower() in ("inherit", "currentcolor"):
+                    continue
+                token = _VAR_SOLA.fullmatch(valor)
+                if token and token[1] in TOKENS_DE_TEXTO:
+                    continue
+                if token and EXCEPCION_DE_COLOR.get(token[1]) == regla.selector.strip():
+                    continue
+                problemas.append(f"{nombre} · {regla!r}: color: {valor} no está en la lista blanca de R53")
+    return problemas
+
+
+def _hojas_de_la_marca() -> dict[str, str]:
+    return {hoja.name: hoja.read_text(encoding="utf-8") for hoja in HOJAS_DE_LA_MARCA}
+
+
+def decorativos_sin_aria_hidden(paginas: dict[str, str]) -> list[str]:
+    """Elementos con `rs-tarjeta__indice` (también ligada) sin `aria-hidden="true"`. Vacío = correcto."""
+    problemas = []
+    for nombre, html in paginas.items():
+        for e in leer_html_texto(html).elementos():
+            ligadas = " ".join(
+                literal
+                for atributo in (":class", "x-bind:class")
+                for literal in re.findall(r"""['"]([^'"]*)['"]""", e.atributos.get(atributo, ""))
+            )
+            con_clase = CLASE_DECORATIVA in clases(e) or CLASE_DECORATIVA in ligadas.split()
+            if con_clase and e.atributos.get("aria-hidden") != "true":
+                problemas.append(f'{nombre}: <{e.nombre} class="{e.atributos.get("class", "")}"> sin aria-hidden="true"')
+    return problemas
+
+
+def _paginas_del_front() -> dict[str, str]:
+    paginas = {p.name: p.read_text(encoding="utf-8") for p in sorted(RAIZ_FRONT.glob("*.html"))}
+    assert set(paginas) == {"index.html", "partes.html", "importar.html", "oficios.html"}, sorted(paginas)
+    return paginas
+
+
+def test_f035_r53_todo_color_de_texto_esta_en_la_lista_blanca():
+    problemas = colores_de_texto_fuera_de_la_lista(_hojas_de_la_marca())
+
+    assert problemas == [], "\n".join(problemas)
+
+
+def test_f035_r53_la_lista_blanca_son_tokens_de_texto_medidos():
+    """Cada token de la lista existe en el `:root` y, salvo `--rs-burdeos-fuerte`, está medido como texto."""
+    raiz = raiz_de(STYLES_CSS)
+    medidos = {delante for delante, _ in PARES_DE_TEXTO}
+
+    assert TOKENS_DE_TEXTO <= set(raiz), sorted(TOKENS_DE_TEXTO - set(raiz))
+    assert TOKENS_DE_TEXTO - medidos == {"--rs-burdeos-fuerte"}, sorted(TOKENS_DE_TEXTO - medidos)
+    assert contraste(raiz["--rs-burdeos-fuerte"], raiz["--rs-papel"]) >= 4.5
+
+
+def test_f035_r53_la_excepcion_es_decorativa_y_lleva_aria_hidden():
+    paginas = _paginas_del_front()
+
+    assert decorativos_sin_aria_hidden(paginas) == []
+    assert sum(html.count(CLASE_DECORATIVA) for html in paginas.values()) >= 5, "la guardia mira los índices de hoy"
+    usos = [
+        r.selector.strip()
+        for css in _hojas_de_la_marca().values()
+        for r in reglas_css(re.sub(r"/\*.*?\*/", " ", css, flags=re.DOTALL))
+        if any(p == "color" and "--rs-acero-300" in v for p, v in r.declaraciones)
+    ]
+    assert usos == [".rs-tarjeta__indice"], usos
+
+
+ESTROPEOS_R53_LISTA = {
+    # (hoja, regla añadida al final, lo que tiene que salir en el mensaje)
+    "C-h · .rs-texto--apagado con --rs-acero-100": (
+        "styles.css", ".rs-texto--apagado { color: var(--rs-acero-100); }", "var(--rs-acero-100)"
+    ),
+    "un color suelto": ("portal.css", ".rs-algo { color: #777; }", "#777"),
+    "--rs-acero-300 en otra regla": ("portal.css", ".rs-tarjeta__rotulo { color: var(--rs-acero-300); }", "--rs-acero-300"),
+    "--rs-acero-300 en un selector compuesto (la excepción es el selector exacto)": (
+        "portal.css", ".rs-tarjeta .rs-tarjeta__indice { color: var(--rs-acero-300); }", "--rs-acero-300"
+    ),
+    "un token con reserva": ("styles.css", ".rs-algo { color: var(--rs-tinta, #000); }", "var(--rs-tinta, #000)"),
+    "dentro de un @media": (
+        "portal.css", "@media (max-width: 640px) { .rs-algo { color: var(--rs-linea); } }", "var(--rs-linea)"
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R53_LISTA))
+def test_f035_r53_control_un_color_fuera_de_la_lista_salta(caso):
+    """Se prueba la guardia directamente, para que no la mate la versión de las hojas (T21)."""
+    hoja, regla, senal = ESTROPEOS_R53_LISTA[caso]
+    hojas = _hojas_de_la_marca()
+    hojas[hoja] += "\n" + regla + "\n"
+
+    problemas = colores_de_texto_fuera_de_la_lista(hojas)
+    assert len(problemas) == 1 and senal in problemas[0], problemas
+
+
+def test_f035_r53_control_lo_que_la_lista_admite_no_salta():
+    hojas = _hojas_de_la_marca()
+    hojas["portal.css"] += (
+        "\n.a { color: inherit; } .b { color: currentColor; } .c { color: var(--rs-burdeos-fuerte); }"
+        "\n.d { background-color: var(--rs-acero-100); border-color: #777; }\n"
+    )
+
+    assert colores_de_texto_fuera_de_la_lista(hojas) == []
+
+
+@pytest.mark.parametrize(
+    ("viejo", "nuevo"),
+    [
+        (
+            '<span class="rs-tarjeta__indice" aria-hidden="true">01</span>',
+            '<span class="rs-tarjeta__indice">01</span>',
+        ),
+        (
+            '<span class="rs-tarjeta__indice" aria-hidden="true">01</span>',
+            '<span class="rs-tarjeta__indice" aria-hidden="false">01</span>',
+        ),
+        (
+            '<span class="rs-tarjeta__indice" aria-hidden="true">01</span>',
+            '<span class="rs-tarjeta__indice" aria-hidden="true">01</span><b :class="\'rs-tarjeta__indice\'">x</b>',
+        ),
+    ],
+    ids=["sin-aria-hidden", "aria-hidden-false", "ligada-sin-aria-hidden"],
+)
+def test_f035_r53_control_un_indice_decorativo_sin_aria_hidden_salta(viejo, nuevo):
+    paginas = _paginas_del_front()
+    assert paginas["index.html"].count(viejo) == 1, f"el control ya no encuentra: {viejo}"
+    paginas["index.html"] = paginas["index.html"].replace(viejo, nuevo)
+
+    problemas = decorativos_sin_aria_hidden(paginas)
+    assert len(problemas) == 1 and problemas[0].startswith("index.html:"), problemas
+
+
 # --- R54 · Foco visible en el color de la marca ---------------------------------
 
 

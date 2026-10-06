@@ -1,7 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-053 · spec APROBADA · 2026-10-06 · `in_progress` · Bloque 1 encargado al implementer
+> ## F-053 · review APROBADA · 2026-10-06 · `in_progress` · siguiente: merge a `dev`/`main`, despliegue (T10) y comprobación (T11)
+>
+> Bloques 1–3 hechos (`progress/impl_F-053.md`); review **APPROVED** sin cambios (`progress/review_F-053.md`,
+> `ae40f5b`); `init.sh` en verde (6706 passed), cobertura 100 %, 0 supervivientes. Observaciones del
+> reviewer, destino decidido por el líder: **O-1** (cabecera de `docs/INTEGRACION.md` y el test de F-036
+> que fija «F-036» como última feature) → la arregla **F-056**, la próxima que toca el documento;
+> **O-3/O-4** (timeout de mutación vs. duración de la suite; puerta de cobertura con sentencias de
+> varias líneas) → apuntadas en **F-055** (arnés); O-2 y O-5 menores.
 >
 > **Bloque 1 hecho (implementer, 2026-10-06)**: T1 `7dcd3e5` (RED), T2 `1d64c31` (GREEN). Detalle en
 > `progress/impl_F-053.md`. **Ojo**: la suite completa tiene 1 fallo **previo y ajeno** a F-053

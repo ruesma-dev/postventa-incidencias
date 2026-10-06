@@ -5,13 +5,13 @@
 
 Resumen: **57 features**, 31 abiertas, 26 terminadas.
 
-En curso: **F-056**.
+Bloqueadas: **F-056**.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-056 | Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo | 1 | en curso | critico | `feature/F-056-revision-bandeja-backend` |
+| F-056 | Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo | 1 | bloqueada | critico | `feature/F-056-revision-bandeja-backend` |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 2 | spec lista | critico | `feature/F-038-bandeja-revision` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 3 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | pendiente | critico | `feature/F-040-volcado-sigrid` |
@@ -78,7 +78,7 @@ En curso: **F-056**.
 
 ### F-056 · Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo
 
-estado **en curso** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-056-revision-bandeja-backend`
+estado **bloqueada** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-056-revision-bandeja-backend`
 
 Sacada de F-038 el 2026-10-06 por el límite de servicio (D-1, decisión del humano). El backend de la revisión de la bandeja de F-036 en services/postventa-api: tabla append-only postventa.revisiones_bandeja (15_revisiones_bandeja.sql) con una foto completa de los valores por acción, el oid y el correo de quien actúa; estados derivados (nueva, editada, aprobada, descartada); acciones editar, descartar, aprobar y recuperar con concurrencia optimista; aprobar vuelve a leer el catálogo de Sigrid (sql/read) y exige unidad de la obra, ubicación de la lista, oficio elegido de obrofc y par de obrofc si hay proveedor; tres endpoints (GET /api/revision paginado, GET /api/revision/historial, POST /api/revision/acciones); y las candidatas al volcado para F-040. Resuelve en el backend los dos apuntes de F-036: las 144 filas de la 0677 con oficio o proveedor viejos se ven por sus motivos contra el catálogo de hoy y se corrigen editando, y las 47 ambiguas eligen su código. No escribe en Sigrid. Spec: specs/F-056-revision-bandeja-backend/ (escrita en la rama de F-038; se lleva a la de F-056 antes de empezar). AÑADIDO EL 2026-10-06 (review de F-053, O-1): al tocar docs/INTEGRACION.md, poner al día su cabecera (fecha y última feature, hoy «F-036») y hacer que test_f036_documentacion.py deje de exigir «F-036» como última feature, porque esa aserción caduca con cualquier feature nueva.
 

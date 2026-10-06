@@ -3751,3 +3751,420 @@ artificial.
 
 Vale para cualquier proyecto con guardias estáticas sobre marcado, así que
 va también a `arnes-base`.
+
+## Review del bloque 13 · T35–T36 · 2026-10-06
+
+> reviewer. Alcance **acotado** a `git diff 6c7bafc..HEAD`: `75246db` (T35) y
+> `892487d` (T36), en `feature/F-035-portal-posventa`. Es el apunte (a) del
+> humano (R75): en `oficios.html`, «Decididos como distintos» con un «Son el
+> mismo» por par. El dato `oficio.distintos` lo dará F-053, que aún no existe,
+> y el front lo consume de forma tolerante. Es el único cambio de lógica que
+> se admite en `js/oficios.js`, y sin ninguna llamada nueva (R88 de F-036).
+>
+> Los bloques 14–15 siguen abiertos **a propósito** y no cuentan como `[ ]`.
+> El vistazo en navegador queda para V1/V2. La sección solo se verá con F-053
+> desplegada (V4 g).
+>
+> Criterio de severidad del líder: bloqueante es un riesgo real para el
+> usuario o un incumplimiento de la spec. Una mutación que solo se distingue
+> con datos que nadie mandaría, o una variante de una familia ya cubierta, va
+> como informativo con su destino.
+
+### Veredicto
+
+**CHANGES_REQUESTED** (del bloque 13). Hay un solo cambio, y es **solo de
+tests**. El código de producción es correcto y no hay que tocarlo.
+
+- **Lo que está bien**:
+  - el botón manda «mismo» con los códigos de su par, y nunca «distinto»;
+  - la tolerancia, cuando falta el campo o llega mal formado;
+  - «ni una llamada nueva»: los conteos de R88 no cambian;
+  - la huella de `oficios.html` solo crece con lo de R75;
+  - F-036 y la API, sin diff;
+  - A6 es equivalente de verdad.
+- **Lo que falla: ningún test de R75 junta los distintos con otras
+  secciones.** Todos usan `propuestasSinDistintos()`, que no lleva
+  propuestas, ni avisos, ni grupos de más de un código. Por eso sobreviven
+  tres mutaciones mías (K1, K12 y K13). Se distinguen con los datos
+  **normales**, no con datos raros:
+  - K1: la sección desaparece si hay cualquier otra;
+  - K12: los avisos desaparecen si hay distintos;
+  - K13: los grupos vigentes desaparecen si hay distintos.
+- **El test que debería verlo no puede fallar.** «los distintos no cambian
+  propuestas, grupos ni avisos» compara tres listas vacías, así que no
+  comprueba lo que dice su nombre.
+- **El caso no es raro, es seguro.** Un aviso (R82) solo existe si algún par
+  del grupo se decidió «distinto». Así que, con F-053 desplegada, **toda obra
+  con avisos traerá también `distintos`**. Es justo la combinación que nadie
+  prueba. El primer caso real, la obra 0677, tendrá además propuestas.
+- Por eso no lo dejo como informativo: no hacen falta datos raros para
+  verlo. La regresión dejaría al usuario sin avisos o sin la sección en el
+  caso real, con toda la suite en verde.
+
+### Nivel de rigor
+
+`estandar`, declarado en `harness/features.json`. Exige fase RED, cobertura
+de las líneas cambiadas y campaña de mutación con los supervivientes
+analizados.
+
+El bloque no tiene Python de producción. Por eso la cobertura sale N/A, con
+el motivo impreso por `init.sh`, y la campaña da 0 mutantes (el control del
+cero está más abajo). Lo compensan las mutaciones a mano: 50 del
+implementer y 14 mías.
+
+La regla 7 de `reviewer.md` (orden) es **N/A**, por dos motivos: solo aplica
+en rigor `critico`, y el bloque no añade ninguna puerta antes de un
+colaborador. La única es `puedeDecidir()` dentro de `decidir()`, que es de
+F-036 y no tiene diff. Aun así, el test «sin sesión, … no manda nada» la
+recorre con un `api` doble que anota cada llamada.
+
+### Verificación ejecutada por el reviewer
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh`, tal cual, sobre HEAD (lo pide el paso 1 del protocolo) | **exit 0**, `ENTORNO LISTO`. Raíz: 114 passed. Front: **729 passed** (21,43 s). La API, en caché (árbol sin cambios). `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)` |
+| `node --test "tests_js/*.test.js"` | **677/677** |
+| `git diff --stat 6c7bafc..HEAD` sobre `js/importacion.js`, `js/api.js`, `css/`, `services/postventa-api`, `tests/test_f036_front.py`, `tests_js/oficios.test.js` y `tests_js/importacion.test.js` | **vacío** |
+| `git diff --stat $(git merge-base dev HEAD) HEAD -- services/postventa-api` | **vacío** (R76) |
+| `git diff --stat 2a86bca HEAD -- js/oficios.js` | 43 líneas, todas de este bloque: F-035 no había tocado `oficios.js` antes |
+| Conteos de R88 sobre `js/oficios.js` sin comentarios | `decidirCatalogos(`: **1**. `cuerpoDeDecision(`: **2**. Igual que antes: el test de F-036 que los fija pasa sin tocarse |
+| Huella funcional de `oficios.html` con **mi** parser (`html.parser`). Mira `x-*`, `@*`, `:*`, `id`, `name`, `for`, `type`, `accept`, `value`, `disabled`, `required`, `autocomplete`, `src`, `href`, `tabindex`, `aria-hidden`, `inert`, `hidden` y `style`, con el ámbito de Alpine y el texto de los botones | `6c7bafc`: 60 entradas; HEAD: 64. **No se quita ninguna.** Se añaden 4: la sección, el `x-for`, el `x-text` del par y el botón. Son las mismas cuatro que añade `HUELLA_DE_OFICIOS` |
+| Recálculo `alcance_de_feature("F-035", base="2a86bca")` | `lineas={}`: 0 mutantes, igual que `progress/mutacion_F-035.md` |
+| Reejecución de la campaña (el informe declara un «Tiempo total» de 0,0 s, menos de 5 min), con `--salida` en el scratchpad | 0 generados, 0 evaluados, 0 muertos, 0 supervivientes y 0 timeouts: **idéntico** al informe. `git status` limpio |
+| Control del cero: `generar_mutantes` sobre las líneas del diff del bloque, ignorando la exclusión | `test_f035_paginas.py`: 192 líneas y 45 mutantes. `test_f035_portal.py`: 16 líneas y 1 mutante. El generador funciona y el cero es **legítimo** |
+| `git log --diff-filter=A 6c7bafc..HEAD` | No se añade ningún fichero |
+| `console.*`, `debugger`, `print(`, `TODO` y `FIXME` en las líneas añadidas | Ninguno. La única coincidencia es `_OCULTA_DEL_TODO`, un nombre |
+| Backend de F-036: ¿manda la última decisión? | Sí. `domain/models/equivalencias.py` toma la última decisión de cada par (R81, R95), y `codigo_a`/`codigo_b` son `str` con `codigo_a < codigo_b`. La frase de §16.6 («manda la última decisión») es cierta, y «Son el mismo» deshace un «distinto» |
+| Mutaciones a mano | Las hice en un worktree desechable del scratchpad, sobre `892487d`, con la rama temporal `feature/F-035-rev-b13` para que las guardias de rama no se salten. Apliqué cada mutación sola, con los CRLF conservados. Corrí Node entero y `test_f035_paginas.py`, `test_f036_front.py` y `test_f035_portal.py`. Distingo los controles que solo dejan de encontrar su cadena. La S26 (la 26 del implementer) es el control de cordura del guion: muere. Al terminar retiré el worktree y la rama, y `git status` quedó limpio |
+
+### Mutaciones del reviewer, por familias
+
+Evité repetir las 50 del implementer: estas buscan lo que su tabla no
+prueba. Las lancé en dos tandas, por familias completas.
+
+| Familia | # | Mutación | Resultado | La mata |
+|---|---|---|---|---|
+| **K · `paresDistintos` / `presentarPropuestas`** | K2 | la clave sale de la entrada cruda (`codigo_a + "-" + codigo_b`) y no del par ordenado | muerta | Node: forma del par, repetido al revés, lista desordenada |
+| | K4 | se descarta un par con un código sin nombre en la obra | muerta | Node: «un código que no es de la obra» y «un oficio sin nombre» |
+| | K5 | solo el primer par (`distintos.slice(0, 1)`) | muerta | Node: varios pares, desordenada, claves distintas… |
+| | K11 | lee `respuesta.distintos` (en la raíz) en vez de `oficio.distintos` | muerta | Node: 13 casos. Fija **dónde** va el campo, lo que importa al contrato de F-053 |
+| | K3 | gana el primer repetido en vez del último | **equivalente** | Mismo par, mismo objeto: la clave fija los códigos, y los nombres salen del mismo mapa |
+| | **K1** | `distintos = []` si hay propuestas, grupos o avisos | **sobrevive** | **Cambio requerido 1** |
+| **K' · Los distintos junto a las demás secciones** | **K12** | `avisos: distintos.length ? [] : avisos` | **sobrevive** | **Cambio requerido 1** |
+| | **K13** | `grupos: distintos.length ? [] : grupos` | **sobrevive** | **Cambio requerido 1** |
+| **L · HTML: visible pero no pulsable, o escondido por estilo** | L1 | `style="display: none"` en el botón | muerta | `test_f035_r54_r60_la_pagina_real_no_quita_el_foco_ni_lleva_style[oficios.html]` |
+| | L2 | `style="display:none"` en el `<li>` del par | muerta | el mismo de R54/R60 |
+| | L7 | `opacity-0` en la sección | muerta | `test_f035_r72_la_pagina_real_lleva_la_identidad_ruesma[oficios.html]` (lista cerrada) |
+| | L15 | `inert` en la sección: se ve, pero no se puede pulsar | **sobrevive en sustancia** (solo caen 4 controles) | O13-1 |
+| | L17 | `pointer-events-none` en el `<li>` del par | **sobrevive en sustancia** (solo cae 1 control) | O13-1 |
+| **S · Cordura del guion** | S26 | el botón manda `'distinto'` (la 26) | muerta | Node «manda mismo…», `r75_oficios_pinta…` y la huella de O10-3 |
+
+Mueren **8 de 14**, más 1 equivalente (K3). Las 5 vivas:
+
+- **K1, K12 y K13**: el **cambio requerido 1**. Se distinguen con los datos
+  de siempre (ver el veredicto).
+- **L15 y L17**: marcado que nadie escribiría para dejar un botón visible
+  pero sin respuesta. Es la familia O12-1 (lo que la guardia no ve). Va como
+  informativo.
+
+### Respuestas a las preguntas del líder
+
+**1 · El botón.**
+
+- **Manda `decidir([codigo_a, codigo_b], 'mismo')` con los códigos de su
+  par, y nunca «distinto».**
+  - En la sección hay **un solo** botón, dentro del `x-for="par in
+    vista.distintos"`. Su `@click` es literalmente
+    `decidir([par.codigo_a, par.codigo_b], 'mismo')`, con
+    `:disabled="!puedeDecidir()"`.
+  - `problemas_r75` exige ese `@click` exacto, un solo botón y que vaya
+    dentro del bucle. La 26 (`'distinto'`) y la E3 (los códigos al revés)
+    caen.
+  - El test de Node lee la directiva **del HTML** y la evalúa con `vm` sobre
+    `crearAppOficios` con un `api` doble. Comprueba que sale **una** llamada
+    a `decidirCatalogos` con:
+    - `codigos: ["9001", "9002"]`, el par de la vista, que llegó al revés;
+    - `decision: "mismo"`;
+    - la obra de las propuestas y no la del campo;
+    - `confirmado: true`.
+
+    Después recarga.
+  - Sin sesión, o mientras se guarda otra decisión, el botón está
+    deshabilitado y no manda nada (R89 de F-036).
+  - Lo confirmé con mi S26: la mata Node, no solo la guardia estática.
+- **Qué par es.** `x-for` recorre `vista.distintos`. Cada elemento es el
+  `par()` de siempre, con `codigo_a < codigo_b`, y su clave `a-b` es la del
+  `:key`. K2, K5 y K11 confirman que es el par correcto y que cada uno sale
+  una sola vez.
+- **`decidirCatalogos(` y `cuerpoDeDecision(` se cuentan igual**, 1 y 2.
+  `test_f036_r88_solo_decidir_llama_al_endpoint_de_decisiones` no tiene diff
+  y pasa. El JS no gana ninguna llamada: `paresDistintos` y `esCodigo` son
+  puras y privadas.
+
+**2 · Tolerancia.** Con el campo ausente, vacío, mal formado o con entradas
+raras, **la pantalla sale como antes**:
+
+- **Sin el campo**:
+  - `distintos` es `[]`;
+  - `sinNada` vale lo mismo que antes;
+  - las demás claves de la vista no cambian (un test compara la vista sin el
+    campo con la de una lista vacía, y comprueba sus siete claves).
+- **En el HTML**, la sección va dentro del `<template x-if="vista">` con
+  `x-show="vista.distintos.length"`. Con `[]` está en el DOM pero con
+  `display: none`, igual que «Grupos vigentes» cuando no hay grupos. No
+  parpadea antes de cargar, porque el `x-if` no la crea hasta que hay
+  vista. La huella (mi parser) solo crece en sus cuatro entradas.
+- **Si no es una lista** (texto, objeto, número, `true`, `null`):
+  `Array.isArray` da `[]`. El literal `(oficio.distintos || [])` de §16.6
+  habría **lanzado** con un texto o un objeto (A2 del implementer), y la
+  pantalla entera dejaría de pintarse. La desviación es correcta y mejora la
+  spec.
+- **Si una entrada es rara** (`null`, un texto, una lista, falta un código,
+  un código numérico, vacío, en blanco o igual al otro): se descarta, y las
+  buenas siguen. «nunca lanza» lo prueba también sin respuesta y sin
+  `oficio`.
+- **Lo que no está probado es el caso contrario**: con distintos, que el
+  resto de la pantalla siga como antes. Es el cambio requerido 1.
+
+**3 · Contrato para F-053 (`oficio.distintos`).** Es lo que el front ya
+supone, escrito para la ficha de F-053, igual que `importado_at_utc` en el
+bloque 12:
+
+1. **Dónde va: dentro de `oficio`**, en `GET /api/catalogos/propuestas`
+   (`{obra, oficio: {oficios, grupos, propuestas, avisos, distintos}}`).
+   - En la raíz de la respuesta el front **no lo ve** y no lo dice (K11).
+2. **Qué forma tiene: una lista JSON de objetos `{codigo_a, codigo_b}`.**
+   - Si no es una lista, el front lo ignora entero, sin avisar.
+   - Las claves de más se ignoran.
+   - **Sin `decidido_por` ni ningún `oid`** (R47 de F-036).
+3. **Los códigos, como textos JSON, nunca como números.**
+   - Tienen que ser **exactamente** el mismo texto que
+     `oficio.oficios[].codigo`, con los ceros a la izquierda: `"0033"`, no
+     `33` ni `"33"`.
+   - Un código numérico, vacío o en blanco hace que **el par se descarte en
+     silencio**: el usuario no lo vería.
+   - El nombre se busca por igualdad exacta. Si el texto no coincide, sale
+     «(sin nombre en esta obra)».
+   - **Este punto es el que importa**: el primer caso real es `0033` ·
+     `0133`, y como entero se perdería.
+4. **Dos códigos distintos por par.** Un par de un código consigo mismo se
+   descarta.
+5. **El orden lo arregla el front, pero el contrato lo pide.** El front
+   ordena cada par y la lista y quita los repetidos (la clave tiene que ser
+   única para el `:key`). El contrato de §16.6 pide `codigo_a < codigo_b` y
+   la lista ordenada. Es el mismo orden que el `CHECK` de la tabla y el
+   `sort()` de JS para códigos ASCII.
+6. **Sin guiones en los códigos.** El front identifica el par con `a-b`.
+   Dos pares cuyos códigos lleven guiones podrían compartir clave, y uno
+   desaparecería. Con los códigos de oficio de Sigrid (dígitos) no pasa. Si
+   F-053 lo garantiza con un test, mejor; si no, basta con que conste.
+7. **El backend filtra por obra; el front no.** Solo pares cuyos **dos**
+   códigos son oficios de la obra y cuya **última** decisión es `distinto`.
+   Un código de fuera de la obra se pintaría con «(sin nombre en esta obra)»
+   y su «Son el mismo» funcionaría igual.
+8. **Después de «Son el mismo», el par ya no viene.** El front manda
+   `POST /api/catalogos/decisiones` con `decision: "mismo"` y los dos
+   códigos ordenados, y luego recarga. Espera que ese par **ya no** venga en
+   `distintos`, porque manda la última decisión.
+   - **Test que F-053 debe tener**: «distinto, luego mismo» y el par no sale.
+   - Otro: «mismo, luego distinto» y el par sí sale.
+9. **Un par puede salir a la vez en `distintos` y entre los códigos de un
+   aviso.** Es lo esperado: el aviso existe porque hay un «distinto». El
+   front pinta las dos secciones (cambio requerido 1).
+10. **Sin el campo, el bloque no se pinta.** El orden de despliegue es
+    libre. Lo que espera a F-053 es solo V4 g.
+
+**Destino: el spec-author de F-053**, en sus requisitos y en su test de
+contrato. El líder decide si lo apunta ya en `harness/features.json`, como
+hizo con `importado_at_utc` en `6c7bafc`.
+
+**4 · Sin diff en lo de F-036 y en la API; la huella de `oficios.html` solo
+crece en lo de R75.**
+
+- `js/importacion.js`, `js/api.js`, `css/`, `services/postventa-api` y los
+  tres tests de F-036 (`test_f036_front.py`, `oficios.test.js` e
+  `importacion.test.js`): **sin diff** en `6c7bafc..HEAD`.
+- La API tampoco tiene diff contra el merge-base con `dev`.
+- `oficios.html`: +22 líneas y ninguna borrada.
+- Mi huella independiente: 60 → 64 entradas, **cero quitadas** y las cuatro
+  añadidas son las de R75. `HUELLA_DE_OFICIOS` gana exactamente esas cuatro
+  tuplas, más su comentario.
+- R33 admite el `M` de `oficios.js`. Su control sigue rechazando un `A` o un
+  `D` de ese fichero, y el `M` de `api.js` y del circuito.
+
+**5 · A6 es equivalente de verdad.** La mutación es
+`paresDistintos(oficio.distintos || null, …) || []`:
+
+- **`|| null`**: solo cambia los valores falsos (`undefined`, `null`, `0`,
+  `""`, `false`, `NaN`) por `null`. Para todos ellos, `Array.isArray(x)` ya
+  era falso, así que el resultado es `[]` igual. Los valores verdaderos
+  pasan sin cambio.
+- **`|| []`**: nunca actúa, porque `paresDistintos` siempre devuelve una
+  lista, y una lista (también `[]`) es verdadera en JS.
+- La equivalencia vale para cualquier entrada, no solo para las probadas.
+  En `estandar` basta con documentarla, y está documentada.
+
+**6 · El vistazo en navegador** queda para V1/V2: con el backend de hoy, la
+pantalla de oficios tiene que salir como antes, sin la sección. La sección
+solo se verá con F-053 desplegada (V4 g). Consta en `current.md` y en el §6
+del informe del implementer.
+
+### Cambios requeridos
+
+1. **Un test de R75 con los distintos junto a las otras tres secciones, que
+   cace K1, K12 y K13.**
+   - **Dónde**: `services/postventa-front/tests_js/f035_paginas.test.js`.
+   - **Qué está mal**: el test «f035 R75: los distintos no cambian
+     propuestas, grupos ni avisos» (línea 903) parte de
+     `propuestasSinDistintos()` (línea 759). Esa respuesta tiene
+     `propuestas: []` y `avisos: []`, y sus cuatro grupos son de un solo
+     código, que `presentarPropuestas` filtra. Así que compara listas vacías
+     y no puede fallar.
+   - **Qué hacer**: darle a ese test (o a uno nuevo, al lado) una respuesta
+     con:
+     - al menos **una propuesta**;
+     - un **grupo vigente de dos o más códigos**;
+     - un **aviso**;
+     - y `distintos` con un par que coincida con dos códigos del aviso, que
+       es el caso real.
+   - **Qué comprobar**:
+     - que `distintos` trae ese par;
+     - que `propuestas`, `grupos`, `avisos` y `gruposVigentes` son iguales
+       que sin `distintos`;
+     - que **no están vacíos**, con un `assert` explícito, para que el test
+       no vuelva a quedarse sin contenido;
+     - y que `sinNada` es `false`.
+   - **Cómo verificarlo**:
+     - las tres mutaciones tienen que caer: K1, K12 (`avisos: distintos.length
+       ? [] : avisos`) y K13 (`grupos: distintos.length ? [] : grupos`), en
+       una copia aislada;
+     - Node tiene que seguir en 677 + los nuevos, con `oficios.test.js` sin
+       tocar;
+     - y `bash harness/init.sh` en verde.
+   - **Opcional, en el mismo commit**: que el test del componente
+     («…manda «mismo»… y la pantalla recarga», `componenteDeOficios`, línea
+     941) use esa misma respuesta, y así pruebe el botón en una pantalla con
+     todo.
+
+   Es un commit de tests, sin tocar `js/oficios.js` ni `oficios.html`. Puede
+   ir como `F-035 T36: …` o como hallazgo de review (`F-035 R13-1: …`), según
+   decida el líder.
+
+### Checkpoints (acotados al diff)
+
+- **C1** [x] `init.sh` termina con exit 0 (lo ejecuté yo, sobre HEAD).
+  [x] Existen los ficheros del arnés.
+- **C2** [x] Una sola feature `in_progress` (F-035). [x] Rama
+  `feature/F-035-portal-posventa`. [x] `current.md` lleva la entrada nueva
+  arriba. [x] Ninguna feature pasa a `done`.
+- **C3**
+  - [x] La primera línea con la ruta está en los cinco ficheros de código y
+    de test tocados.
+  - [x] Sin depuración, TODO ni secretos. Sin dependencias nuevas.
+  - [x] Comentarios en español.
+  - [x] Ningún PDF ni parte en git: `--diff-filter=A` vacío.
+  - [x] El límite de servicio se respeta: `services/postventa-api` no tiene
+    diff, y el dato se deja a F-053 (R76).
+  - Arquitectura hexagonal, unidad «parte», Sigrid, firma, «firmado no es
+    conforme», duplicados y `conest`: **N/A justificado**. El diff es front
+    (una función pura de presentación y una sección de HTML) y tests. No
+    toca la API ni el circuito, y la decisión «mismo» va por el endpoint de
+    F-036 que ya existe, sin cambios.
+- **C3 bis** — **N/A**: el diff no toca `docs/referencia/`.
+- **C4**
+  - [ ] **Cada requisito tiene tests trazables, y todos pasan; pero R75 no
+    está verificado entero.** Falta el caso «con distintos, lo demás sale
+    como antes» (cambio requerido 1):
+
+    | Requisito | Tests |
+    |---|---|
+    | R75, `presentarPropuestas().distintos` (contrato, orden, repetidos, nombres) | Node, los 22 casos de `CASOS_R75`, «cada par lleva su clave…» y «las claves… son distintas» |
+    | R75, sin `distintos` la pantalla como antes | Node «sin oficio.distintos (hasta F-053)…» y «nunca lanza…» |
+    | R75, `sinNada` | Node «sinNada cuenta los distintos…» |
+    | R75, con distintos el resto como antes | Node «los distintos no cambian propuestas, grupos ni avisos»: **vacuo** (cambio requerido 1) |
+    | R75, el botón (mismo, par, sesión, guardando, recarga) | Node «…manda «mismo» con sus dos códigos y la pantalla recarga», «sin sesión…», «mientras se guarda otra…»; `test_f036_r89_…[Son el mismo]` (sin tocar) |
+    | R75, la sección en `oficios.html` (sitio, frase, bucle, botón, nada lo esconde) | `test_f035_r75_oficios_pinta_los_decididos_como_distintos_con_son_el_mismo` y 21 controles; `ROTULOS_DE_OFICIOS` (t31); la huella de O10-3 |
+    | R76 (la API, sin tocar) | `git diff` vacío, contra `6c7bafc` y contra el merge-base. Lo vigilan R32 y R33 en la rama |
+    | R33 enmendado | `test_f035_r33_no_se_modifica_nada_del_circuito` y `…control_admite_el_m_de_importacion_y_oficios_js…` |
+    | R88 de F-036 («ni una llamada nueva») | `test_f036_r88_solo_decidir_llama_al_endpoint_de_decisiones`, sin tocar |
+
+  - [x] Sin red ni BBDD.
+  - [x] El MANUAL (vistazo en navegador) consta en `current.md`, enviado a
+    V1/V2 y a V4 g.
+- **C4 bis** [x] `rigor: "estandar"`.
+  - [x] **Fase RED**: el informe trae las salidas reales:
+    - Node: 31 fallos de 120, con `TypeError … reading 'map'` y
+      `oficios.html no tiene <section …>`;
+    - Python: 22 fallos;
+    - R33 sin enmendar: cae con el `M` de `oficios.js`.
+  - [x] **Cobertura**: N/A con el motivo impreso por `init.sh`.
+  - [x] **Mutación**: informe de la herramienta con 0 mutantes, recalculado,
+    reejecutado con totales idénticos y con el control del cero hecho (46).
+    Que tarde 0,0 s es coherente: no hay nada que evaluar.
+  - [ ] **Mutantes a mano**:
+    - del implementer, 50, con 49 muertas y A6 equivalente (comprobado);
+    - míos, 14, con 8 muertas, K3 equivalente y 5 vivas.
+
+    L15 y L17 van como informativo. **K1, K12 y K13 no**, porque los
+    distingue el dato real: esto es el cambio requerido 1.
+  - [x] «Evidencias» con los cuatro números y los workers de la campaña.
+  - [x] Ningún N/A sin justificar. La regla 7 es N/A porque es de
+    `critico` y porque no hay una puerta nueva.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5**
+  - [x] T35 y T36 están `[x]`, con sus commits `F-035 T35: …` y
+    `F-035 T36: …`.
+  - [x] No hay ficheros sin trackear. El worktree
+    `.claude/worktrees/agent-a6e2f9bed1d46cdbc` ya existía y no es de este
+    bloque. El del implementer y el mío están retirados.
+  - [x] `features.json` dice `in_progress`, que es lo real.
+
+### Informativo (no bloquea), con su destino
+
+- **O13-1 · La guardia de R75 no ve un botón que se ve pero no se puede
+  pulsar** (L15 `inert` en la sección, L17 `pointer-events-none` en el par).
+  - Es la familia O12-1: marcado que nadie escribiría, y cualquiera lo
+    notaría en el primer vistazo.
+  - **Propuesta**: en `problemas_r75`, rechazar también `inert` y la clase
+    `pointer-events-none` en el botón y en sus ancestros hasta la sección.
+    Puede ser la misma lista que ya usa O11-1 para el selector.
+  - **Destino: opcional**, en el mismo commit del cambio requerido 1 si se
+    quiere.
+- **O13-2 · `esCodigo` admite códigos con espacios alrededor y no los
+  recorta.** `" 0033"` y `"0033"` serían dos pares distintos, y el primero
+  se mandaría con el espacio a `POST /api/catalogos/decisiones`.
+  - Nadie lo manda: los códigos salen de la misma tabla que
+    `oficio.oficios`.
+  - **Destino: el contrato de F-053** (punto 3: el mismo texto que
+    `oficio.oficios[].codigo`). En el front no hace falta tocar nada.
+- **O13-3 · El README del front tiene que contar R75**: la sección, que
+  solo se ve con F-053, y su botón. **Destino: bloque 14** (T37), como ya
+  dice el §6 del informe.
+- Siguen abiertos, como estaban:
+  - **O12-1 a O12-4**;
+  - **O11-2** (opcional), **O11-3** y **O11-4** (V1/V2);
+  - **O10-1**, **H16-3 a H16-6**, **O17-2**, **O9-2 a O9-4** y **O9-7**:
+    van al spec-author, en el bloque 14;
+  - **O10-5**, **O9-1**, **O9-5** y **O9-6**: van a V1/V2;
+  - **O16-4**, que es opcional.
+
+### Automejora (propuesta, no aplicada)
+
+**`reviewer.md` y la plantilla del implementer: un test que afirma «X no
+cambia Y» tiene que demostrar que Y no está vacío.**
+
+Pasó aquí: «los distintos no cambian propuestas, grupos ni avisos» compara
+tres listas vacías. La campaña del implementer no lo vio, porque sus 50
+mutaciones atacan lo que **añade** el bloque, y ninguna lo que el bloque
+podría **romper** del resto.
+
+La propuesta, en dos partes:
+
+- **En el implementer**: todo test de no interferencia lleva un `assert`
+  de que lo que dice preservar **no está vacío** en su fixture.
+- **En el reviewer**: en las mutaciones a mano, una familia fija de **no
+  interferencia**. Son mutaciones que hacen que lo nuevo borre o esconda lo
+  que ya existía cuando lo nuevo está presente (`viejo: nuevo.length ? [] :
+  viejo`).
+
+Vale para cualquier proyecto, así que va también a `arnes-base`.

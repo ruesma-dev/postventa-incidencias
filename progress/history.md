@@ -2146,3 +2146,50 @@ importadas con el catálogo viejo y elegir el código de las 47 ambiguas; en
 F-035, poder deshacer «Son distintos» en la pantalla de oficios y rotular los
 recuentos de un fichero ya importado; y F-052, que los secretos de `Ajustes`
 no se impriman (una traza de pytest enseñó la clave de Gemini).
+
+---
+
+## F-035 · El portal de posventa — 2026-10-06
+
+**Cerrada y publicada.** Rama `feature/F-035-portal-posventa`, rigor
+`estandar`. Nació el 2026-09-23 como maqueta navegable del ciclo entero; se
+pausó el 2026-09-28 a la espera de negocio y se reanudó el 2026-10-05, tras
+F-036, por decisión del humano: publicarla en producción sin esperar el
+feedback, con la **opción (b)** —todas las secciones visibles, las que no
+funcionan marcadas «En construcción»—.
+
+Qué queda en producción (`dev` y `main` en `6a77b18`): el portal en `/`, con la
+barra común y la tira de siete pasos del ciclo en las cuatro páginas (paso
+actual marcado, punto ámbar en lo que no funciona); el circuito de partes en
+`/partes.html`, con el estilo Ruesma y una guarda que pide confirmación antes
+de salir con una remesa a medias; importar y oficios (F-036) remodelados al
+mismo estilo y con el selector de fichero accesible con teclado; toda la
+navegación en la misma pestaña; y los dos apuntes del humano —«Resumen de la
+importación original del …» y «Decididos como distintos»— ya en el front,
+tolerantes a que falten los datos, que dará F-053.
+
+Evidencias: once bloques de la reanudación (7–14, 16–18), cada uno con su
+review aprobada; `init.sh` en verde (front 822, Node 706, raíz 115);
+mutaciones a mano por familias en cada bloque; V4 en producción y aviso a
+Posventa por el humano. T40 (V5) no se hizo en la vista previa: el humano
+revisó directamente en producción.
+
+Lo que enseñó:
+
+- **Publicar desde la carpeta de trabajo publica lo que haya en ella.** Un
+  `desplegar_front.ps1 -SoloFront` lanzado con un bloque a medias puso en
+  producción código sin revisar; se republicó desde una copia limpia de `dev`
+  (un worktree). El despliegue debería negarse a publicar con el árbol sucio o
+  fuera de `dev`: mejora para `arnes-base`/infra.
+- **Un merge a `dev` a mitad de feature rompe las guardias que comparan con
+  `merge-base dev HEAD`.** Se arregló con una base fija (`d5c87b4`). Las
+  guardias de alcance deberían nacer con base fija.
+- **Las reviews que prueban mutaciones a trozos cuestan vueltas.** Desde el
+  bloque 17 se pidió hacerlas por familias completas y con un criterio de
+  severidad: tres bloques seguidos aprobados a la primera.
+- **En Windows, `localhost` puede colgarse en IPv6**: el proxy de desarrollo
+  tardaba decenas de segundos. F-054.
+
+Deja apuntado: F-053 (los dos datos de backend; contratos en la ficha),
+F-054 (proxy por 127.0.0.1), y para F-038 la elección del oficio de las filas
+ambiguas y la corrección de las importadas con el catálogo viejo.

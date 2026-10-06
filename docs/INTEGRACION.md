@@ -1140,7 +1140,12 @@ Y dos páginas más en el front, detrás de la misma sesión del grupo:
 **`importar.html`** —la plantilla, la importación con su Excel de errores y la
 bandeja de la obra, de solo lectura— y **`oficios.html`** —los oficios casi
 duplicados de Sigrid: propuestas, grupos vigentes y la descarga de esos grupos
-en JSON, solo con códigos—. Se abren desde la cabecera de la página principal.
+en JSON, solo con códigos—. Desde F-035 (2026-10-06) la raíz del front es el
+**portal de posventa** (`/`), con todas las secciones del ciclo —las que no
+funcionan, marcadas «En construcción»— y una barra y una tira de siete pasos
+comunes; el circuito de partes vive en **`/partes.html`**, e importar y oficios
+son páginas del portal. Toda la navegación es en la misma pestaña; el circuito
+pide confirmación antes de salir con una remesa a medias.
 
 Los diecisiete quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de

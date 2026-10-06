@@ -3,15 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **53 features**, 29 abiertas, 24 terminadas.
-
-En curso: **F-035**.
+Resumen: **53 features**, 28 abiertas, 25 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | en curso | estandar | `feature/F-035-portal-posventa` |
 | F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 2 | pendiente | critico | `feature/F-053-datos-para-el-portal` |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | pendiente | critico | `feature/F-038-bandeja-revision` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | pendiente | critico | `feature/F-040-volcado-sigrid` |
@@ -49,6 +46,7 @@ En curso: **F-035**.
 | F-049 | Las villas que crea el archivo, siempre con tres cifras (VILLA 008) | 0 | critico |
 | F-051 | La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla | 0 | critico |
 | F-001 | Esqueleto del monorepo y /health | 1 | estandar |
+| F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | estandar |
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
@@ -71,12 +69,6 @@ En curso: **F-035**.
 | F-034 | Adjuntar y cerrar se fian del cuerpo para saber si el parte consta archivado | 134 | critico |
 
 ## Detalle
-
-### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
-
-estado **en curso** · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
-
-Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal. AÑADIDO EL 2026-10-05 por petición del humano (desde la T28 de F-036): al convertir oficios.html en sección del portal, añadir un bloque «Decididos como distintos» con un botón «Son el mismo» en cada par. Hoy un par marcado «Son distintos» desaparece de la pantalla y no se puede volver a juntar desde ella (Separar sí se deshace; Son distintos no). La API ya lo admite: POST /api/catalogos/decisiones con «mismo» y manda la última decisión (design.md de F-036, §7); es solo front. Primer caso real: Solados y Alicatados M.O. (0033) frente a Solados y Alicatados (0133), obra 0677. Y, del cierre de F-036 (2026-10-05): en la pantalla de importar, cuando el fichero ya se había importado, el mensaje «no se ha añadido nada» va con los recuentos de la importación original («14 nuevas»), que se leen como si hubieran entrado otra vez; rotularlos como «resumen de la importación original del …». Precisado el 2026-10-05 (H-9 de la enmienda): los dos apuntes anteriores necesitan dos datos del backend; se separan en F-053 por el límite de servicio y el portal los consume de forma tolerante (sin ellos, rotula sin fecha y no pinta «Decididos como distintos»).
 
 ### F-053 · Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos
 
@@ -269,6 +261,12 @@ INCIDENTE EN PRODUCCIÓN del 2026-10-01, detectado por un correo de Posventa (un
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD no · rama `feature/F-001-esqueleto`
 
 Crear services/postventa-api (Function App Python con settings, logging y un endpoint /health) y services/postventa-front vacío pero arrancable. Feature de calentamiento: valida el circuito completo del arnés antes de jugarse nada.
+
+### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
+
+estado **terminada** · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal. AÑADIDO EL 2026-10-05 por petición del humano (desde la T28 de F-036): al convertir oficios.html en sección del portal, añadir un bloque «Decididos como distintos» con un botón «Son el mismo» en cada par. Hoy un par marcado «Son distintos» desaparece de la pantalla y no se puede volver a juntar desde ella (Separar sí se deshace; Son distintos no). La API ya lo admite: POST /api/catalogos/decisiones con «mismo» y manda la última decisión (design.md de F-036, §7); es solo front. Primer caso real: Solados y Alicatados M.O. (0033) frente a Solados y Alicatados (0133), obra 0677. Y, del cierre de F-036 (2026-10-05): en la pantalla de importar, cuando el fichero ya se había importado, el mensaje «no se ha añadido nada» va con los recuentos de la importación original («14 nuevas»), que se leen como si hubieran entrado otra vez; rotularlos como «resumen de la importación original del …». Precisado el 2026-10-05 (H-9 de la enmienda): los dos apuntes anteriores necesitan dos datos del backend; se separan en F-053 por el límite de servicio y el portal los consume de forma tolerante (sin ellos, rotula sin fecha y no pinta «Decididos como distintos»).
 
 ### F-002 · Ingesta y troceado de la remesa en partes
 

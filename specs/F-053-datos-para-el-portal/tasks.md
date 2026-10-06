@@ -31,7 +31,7 @@
       Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f053_importado_at_utc.py tests/test_f036_importar_http.py -q`
       **falla**, y solo por la clave que falta (`KeyError`/aserción sobre
       `importado_at_utc`); el informe del implementer copia la salida.
-- [ ] **T2** (GREEN): `_instante_utc` y la clave en `serializar_importacion`
+- [x] **T2** (GREEN): `_instante_utc` y la clave en `serializar_importacion`
       (`interface_adapters/api/importar.py`, `design.md` §4), con el docstring
       del módulo al día.
       Verificación: el mismo `pytest` de T1 **en verde**, y

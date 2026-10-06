@@ -74,8 +74,8 @@ E   KeyError: 'importado_at_utc'
 C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_importado_at_utc.py:181: KeyError: 'importado_at_utc'
 E   KeyError: 'importado_at_utc'
 C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_importado_at_utc.py:198: KeyError: 'importado_at_utc'
-E   AssertionError: assert 'importado_at_utc' in {'importacion_id': '00000000-0000-0000-0000-000000000001', 'obra': '0677', 'ya_importado': True, 'estado': 'completa', ...}
-C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_importado_at_utc.py:221: AssertionError: assert 'importado_at_utc' in {'importacion_id': '00000000-0000-0000-0000-000000000001', 'obra': '0677', 'ya_importado': True, 'estado': 'completa', ...}
+E   AssertionError: assert 'importado_at_utc' in {'importacion_id': '<uuid de prueba>', 'obra': '0677', 'ya_importado': True, 'estado': 'completa', ...}
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_importado_at_utc.py:221: AssertionError: assert 'importado_at_utc' in {'importacion_id': '<uuid de prueba>', 'obra': '0677', 'ya_importado': True, 'estado': 'completa', ...}
 E   KeyError: 'importado_at_utc'
 C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_importado_at_utc.py:242: KeyError: 'importado_at_utc'
 E   KeyError: 'importado_at_utc'

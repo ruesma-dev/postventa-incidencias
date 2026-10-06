@@ -3,6 +3,11 @@
 
 > ## F-053 · spec APROBADA · 2026-10-06 · `in_progress` · Bloque 1 encargado al implementer
 >
+> **Bloque 1 hecho (implementer, 2026-10-06)**: T1 `7dcd3e5` (RED), T2 `1d64c31` (GREEN). Detalle en
+> `progress/impl_F-053.md`. **Ojo**: la suite completa tiene 1 fallo **previo y ajeno** a F-053
+> (`test_f006_r26…`: un GUID en `progress/review8_F-035.md`, sin cambios desde `349ba06`). Decide el
+> humano; bloquea T9.
+>
 > Humano, 2026-10-06: «si, todo ok» → D-1, D-2 y D-3 aprobadas; T7 (`azure-apps`) la hace el líder al
 > desplegar. Precondición de T11 cumplida: el `v2` de la 0677 se importó completo.
 >

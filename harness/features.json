@@ -904,7 +904,7 @@
         "docs/INTEGRACION.md y azure-apps/postventa_incidencias.md al día",
         "bash harness/init.sh en verde"
       ],
-      "status": "pending",
+      "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
       "priority": 2,

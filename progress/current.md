@@ -1,6 +1,34 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-053 · spec escrita · 2026-10-06 · `spec_ready` · pendiente de aprobación del humano
+>
+> `specs/F-053-datos-para-el-portal/` (requirements R1–R21 + V1/V2, design, tasks T1–T12 en 4 bloques).
+> Solo `services/postventa-api`, solo aditiva, **sin DDL, sin variables nuevas y sin lecturas nuevas**.
+>
+> **Qué decide la spec**
+> - `importado_at_utc` sale de `resultado.importacion.importado_at_utc`. La columna ya existe
+>   (`12_importaciones.sql`) y el camino `ya_importado` ya la lee (`select_importacion_completa_por_hash`,
+>   la original). Nunca sale de `contexto.ahora`. Forma única: `astimezone(UTC).isoformat(timespec="microseconds")`,
+>   o sea `AAAA-MM-DDTHH:MM:SS.ffffff+00:00`. Es la forma exacta del caso de Node que ya existe, así que
+>   el front no se toca (D-1). Sin zona sale `null` (D-2).
+> - `oficio.distintos` se calcula con una función pura de dominio, `pares_distintos`, que reutiliza `_ultimas`
+>   (manda la última decisión) sobre las decisiones que `propuestas_de_oficios` ya lee (D-4). Solo en
+>   `GET /api/catalogos/propuestas`: la respuesta de decisiones no cambia (D-5). Los guiones no se
+>   prueban con un test; consta en INTEGRACION (D-6).
+>
+> **Lo que debe aprobar el humano**
+> - **D-3 (bloquea el Bloque 1).** Tres aserciones de F-036 comparan la respuesta entera
+>   (`set(cuerpo) == CLAVES` y dos igualdades de `oficio`), así que cualquier campo nuevo las rompe.
+>   «Los tests de F-036 siguen en verde» se cumple con **tres líneas añadidas** en
+>   `test_f036_importar_http.py` (1) y `test_f036_catalogos_http.py` (2), sin quitar ni cambiar ninguna.
+>   T8 lo comprueba con el diff.
+> - D-1 y D-2: la forma de la fecha (con microsegundos siempre) y `null` sin zona.
+> - T7: el implementer actualiza `azure-apps/postventa_incidencias.md` con commit local en ese repo.
+>   Si prefieres que lo haga el líder al desplegar, como en F-035, se mueve a T10.
+> - T11 (V1) solo si el `v2` de la 0677 se importó **completo**. Reimportar una parcial escribe una
+>   importación más. La precondición está en la tarea.
+
 > ## ✅ F-035 CERRADA · 2026-10-06 · el portal de posventa, publicado · siguiente: F-053
 >
 > Portal en producción (`dev` y `main` en `6a77b18`, publicado con `-SoloFront`; V4 y aviso a Posventa

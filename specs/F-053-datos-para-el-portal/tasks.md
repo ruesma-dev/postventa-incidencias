@@ -39,7 +39,7 @@
 
 ## Bloque 2 · `oficio.distintos` (R8–R17)
 
-- [ ] **T3** (RED): crear `tests/test_f053_distintos_dominio.py` (R9–R13 sobre
+- [x] **T3** (RED): crear `tests/test_f053_distintos_dominio.py` (R9–R13 sobre
       `pares_distintos`) y `tests/test_f053_propuestas_distintos.py` (R8–R16 por
       la ruta HTTP con los dobles de F-036: «distinto, luego mismo» no sale y
       «mismo, luego distinto» sí, con `ahora` crecientes; el par `0033` · `0133`

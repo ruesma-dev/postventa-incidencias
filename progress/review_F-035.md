@@ -4837,3 +4837,354 @@ compruebe que el paso cabe en lo que esa verificación permite (sin
 `func start`, solo lectura…). Si no cabe, que lo mande a la que sí, aquí V4
 (f). Y en la review de cierre, que **consolide** todas las manuales en una
 sola lista, como esta.
+
+## Review del bloque 18 · T52–T58 (el recorrido, R83–R89) y la base fija de R59, R32 y R33 · 2026-10-06
+
+Alcance: `git diff 9267719..HEAD -- . ':!harness/features.json' ':!BACKLOG.md'`
+(commits `c49697d` a `70ce6a9`; `ec29285` y `4705453`, del líder, fuera).
+
+### Veredicto: **APPROVED**
+
+Ningún hallazgo bloqueante. Seis informativos con destino, al final.
+
+### Nivel de rigor
+
+`estandar`, declarado en `harness/features.json`. Exige fase RED en los
+requisitos centrales, cobertura de las líneas cambiadas y campaña de mutación
+con supervivientes analizados. La regla 7 (orden entre colaboradores) es de
+`critico`: **N/A**, porque la feature es `estandar` y el bloque no protege
+ningún orden.
+
+### Lo que he ejecutado
+
+- `bash harness/init.sh`: **exit 0**. Raíz 115 passed. Api y front, de
+  caché. `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción
+  frente a dev)`.
+- Front sin caché: `python -m pytest tests -q -p no:cacheprovider` dio
+  **822 passed**, sin ningún skip. Así que R59, R32 y R33 se ejecutan de
+  verdad en esta rama. `node --test "tests_js/*.test.js"` dio **706 pass,
+  0 fail**.
+- Comparación literal, por programa, de los bloques HTML de `design.md`
+  §16.16.5 y §16.16.6 con las páginas:
+  - `index.html`, `importar.html` y `oficios.html` (con su nombre en el
+    comentario): idénticos.
+  - `partes.html`: (h) idéntico; el comentario viejo de (i) ya no está y el
+    nuevo sí.
+  - Hay **una** `class="rs-recorrido"` por página.
+- Recálculo independiente de la mutación del arnés (`harness.alcance` y
+  `generar_mutantes`) con las bases `dev`, `2a86bca`, `d5c87b4` y `9267719`:
+  **0 ficheros, 0 líneas y 0 mutantes en las cuatro**.
+  - Prueba de control del cero: `generar_mutantes` sobre los `.py` del diff
+    del bloque, sin la exclusión de alcance. Salen **43** en
+    `test_f035_paginas.py` y **48** en `test_f035_portal.py`. El generador
+    funciona; el cero es la exclusión de tests, que es lo previsto.
+  - El «Tiempo total» del informe es de 0,0 s (menos de 5 min), así que
+    **he reejecutado la campaña** con `--base 2a86bca` y con
+    `--base d5c87b4`, con `--salida` al scratchpad. Las dos dan
+    `0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts`, igual
+    que `progress/mutacion_F-035.md`.
+  - `git status` quedó limpio.
+- 22 mutaciones propias, aplicadas una a una en un worktree desechable del
+  scratchpad, en la rama `feature/F-035-rev-b18` (para que las guardias del
+  diff no se salten). Las supervivientes, repetidas con las dos suites
+  enteras (front Python y todo `tests_js`). El worktree y la rama, retirados
+  después; el worktree estaba limpio.
+
+### Mutaciones del reviewer, por familias
+
+**Familia B · la base fija ve un cambio real del circuito.** Son cambios sin
+commit; `_estados` compara la base con el árbol de trabajo.
+
+| # | Mutación | Resultado |
+|---|---|---|
+| B-r1 | Una línea más en `js/app.js` (módulo del circuito) | MUERTA: R33 |
+| B-r2 | `dev_server.py` con `http://127.0.0.1:7073` (la tarea llevada a F-054) | MUERTA: R33 |
+| B-r3 | `test_f007_dev_server.py:502` cambiado (test de la base) | MUERTA: R32 |
+| B-r4 | `tests_js/importacion.test.js` cambiado (test de la base) | MUERTA: R32 |
+| B-r5 | `partes.html`: otro `x-init` | MUERTA: R59 |
+| B-r6 | `partes.html`: un `<script>` entre la tira y la cabecera | MUERTA: R59 |
+| B-r7 | `staticwebapp.config.json` cambiado | MUERTA: R33 |
+
+**Familia T · el marcado de la tira, más allá de las mutaciones 37–50 del
+implementer.**
+
+| # | Mutación | Resultado |
+|---|---|---|
+| T3 | Portal: sin `:aria-current` en 01 | MUERTA: R86 (JS) y R63 |
+| T4 | Portal: `:aria-current` en 06 (`'partes'`) | MUERTA: R86 y R63 |
+| T5 | `importar.html`: 02 a `./#/incidencias` | MUERTA: R85 |
+| T6 | `oficios.html`: `aria-label` de 02 sin «(en construcción)» | MUERTA: R87 |
+| T7 | `partes.html`: `rel="noopener"` en 01 de la tira | MUERTA: R85 |
+| T8 | Portal: `x-show` en la tira | MUERTA: R63 |
+| T10 | `partes.html`: (i) deshecho (vuelve el comentario viejo) | MUERTA, pero solo porque el control «otro texto en el comentario de F-036» ya no encuentra su texto (ver O-B18-3) |
+| T11 | Portal: `aria-current="step"` estático en 02 | MUERTA: R86 |
+| T12 | `.rs-recorrido-banda` pegajosa | MUERTA solo por la `?v=`. **Con la `?v=` recalculada en las cuatro páginas, sobrevive** (O-B18-4) |
+| T13 | `importar.html`: un `<div>` entre la barra y la tira | MUERTA: R84 |
+| T14 | `partes.html`: 01 de la tira a `./#/datos` | MUERTA: R85, y el control de R31 |
+| T1 | `partes.html`: `onclick="return false"` en un paso de la tira | **SOBREVIVE** (O-B18-1) |
+| T2 | `partes.html`: `hidden` en el `<nav data-recorrido>` | **SOBREVIVE** (O-B18-2) |
+| T9 | `partes.html`: otro comentario cualquiera delante de la tira | **SOBREVIVE** (O-B18-3) |
+
+Las cuatro que sobreviven son de marcado que nadie escribiría sin verlo en el
+diff, o de una decisión de diseño que no es un requisito EARS (D-17).
+Siguiendo el criterio del líder van como **informativos con destino**. Ninguna
+es un riesgo real para el usuario ni incumple R83–R89.
+
+### Respuestas a las preguntas del líder
+
+**1 · La base fija.**
+
+- **¿`d5c87b4` es el `dev` de antes del merge?** Sí.
+  - Es el **primer padre** de `93ce096` (el merge de F-035 en `dev`).
+  - Era la punta de `dev` desde el 2026-10-05 12:29.
+  - Es el segundo padre de `988c086`, el último merge de `dev` en F-035.
+  - `git merge-base c49697d d5c87b4` da `d5c87b4`: es exactamente lo que
+    devolvía `git merge-base dev HEAD` antes del merge.
+- **¿Las tres guardias vuelven a proteger lo mismo?** Sí.
+  `git diff d5c87b4 --name-status -- js tests tests_js` da el mismo conjunto
+  que antes del merge:
+  - las altas de F-035;
+  - los `M` de `importacion.js` y `oficios.js` (R74 y R75);
+  - los `M` de los tests de la base que R32 ya admitía (la línea `INDEX` y
+    las de R81).
+- **¿Su control demuestra que caen si el circuito cambia?** Hay dos piezas
+  que se reparten el trabajo:
+  - **El control de la suite demuestra que la base es la buena.**
+    `test_f035_la_base_fija_control_…` exige su motivo concreto a `HEAD`, a
+    `9267719` (el merge-base movido) y a `93ce096`. `es_el_circuito` tiene
+    además su control sin git.
+  - **Las reglas de R59, R32 y R33 tienen sus controles en memoria**
+    (`ESTROPEOS_R59`, `ESTROPEOS_T21`, `ESTROPEOS_R32` y el de los `M` de
+    R33), que no dependen de la base.
+
+  Que el conjunto cae de verdad con git y con la base fija no lo puede
+  demostrar un test sin ensuciar el árbol. Lo he demostrado con la familia B:
+  **7 de 7 muertas**, cada una por la guardia que le toca. Se suman las
+  B1–B8 del implementer (volver a `merge-base` o a `9267719` pone en rojo la
+  base fija, R59, R32 y R33).
+- **¿El aviso «frente a dev» deja algo sin medir en este bloque?** **No.**
+  Recalculado contra `d5c87b4`, la base correcta: F-035 entera tiene
+  **0 líneas Python de producción**. El front es HTML, CSS y JS, y
+  `dev_server.py` lo prohíbe R33, como acaba de confirmar B-r2. Por eso la
+  cobertura N/A y la mutación a 0 son el resultado correcto con cualquier
+  base, no un efecto del merge. Lo que ninguna herramienta mide (JS, HTML y
+  CSS) se compensa con mutaciones manuales:
+  - 37–50 del implementer: 14 de 14 muertas;
+  - B1–B8: 9 de 9;
+  - las 22 de arriba.
+
+  Lo único que queda es un riesgo de futuro y un texto engañoso (O-B18-5).
+
+**2 · La tira.**
+
+- **Idéntica a `Portal.RECORRIDO` en las cuatro páginas.** La guardia
+  `problemasDelRecorrido` da `[]` en las cuatro y el marcado es el literal de
+  la spec. La guardia lee la fuente: lo comprueba el control del `Portal`
+  falso, con 07 cambiado a `datos`.
+- **El paso actual cumple §16.16.2.**
+  - En el portal, `:aria-current` exacto en 01, 02, 04, 05 y 07. **No** en
+    03 (mutación 41 del implementer) y **no** en 06, que lleva a
+    `partes.html` (T4). La ficha cae en 04, porque `resolverRuta` devuelve
+    `seccion: "incidencias"` y `portal_app.js` copia `ruta.seccion`. En
+    inicio y en datos no se marca ninguno, porque ningún paso es de esas
+    secciones.
+  - En `importar.html` y `oficios.html`, 01 como `<span aria-current="step">`.
+  - En `partes.html`, 06 igual.
+- **Punto ámbar.** Lo llevan 02, 03, 04, 05 y 07, con la misma regla
+  compartida de `css/styles.css` (un selector más, declaraciones intactas) y
+  su `aria-label`. 01 y 06 no lo llevan.
+- **Misma pestaña.** Ningún paso lleva `target` ni `rel` (R85; T7 muerta).
+- **Desde `partes.html`, la guarda de salida.** Los pasos son `<a href>`
+  normales y la guarda escucha `beforeunload`. No hay test por diseño
+  (§16.16.8): lo comprueba V2 (s), que es del humano.
+- **La portada, sin su copia interior.** La `<ol>` de `inicio` salió, y la
+  mutación 48 confirma que volver a ponerla cae.
+
+**3 · `partes.html`.** El diff contra `9267719` son **exactamente** tres
+cosas:
+
+- (h), literal;
+- (i), literal (el comentario desfasado de F-036 sustituido);
+- la `?v=` de la hoja, que es R59 (e).
+
+No toca ningún módulo del circuito. `git diff 9267719..HEAD -- js` solo
+muestra `js/portal.js`, que es alta admitida por R33 desde `d5c87b4`. No hay
+ningún `<script>` nuevo ni ningún test de la base tocado: R32 y R33 están en
+verde contra la base fija.
+
+**4 · La desviación del control R31 `rel-en-entrada`: aceptable.** Es un
+control propio de F-035, no un test de la base. Acotarlo a
+`href="./#/entrada" class="rs-pestana"` le hace estropear **lo mismo que
+antes** (la pestaña de la barra), y sigue en rojo con la guardia de R31, que
+no ha cambiado. El `rel` y el `target` en los pasos de la tira los vigila
+R85 (T7 muerta). No se pierde nada.
+
+**5 · El vistazo en el navegador queda para el humano**: V1 (r), V2 (s) y,
+después de republicar, en producción. En la lista entran también O-B18-2,
+O-B18-4 y O-B18-6.
+
+### Cobertura requisito → test
+
+| Requisito | Test(s) |
+|---|---|
+| R83 | `tests_js/portal.test.js`: los siete `f035 R83: …` (pasos, secciones, congelado, tabla de §16.16.2, 02 y no 03, valores raros, cruce con `RECORRIDO`) |
+| R84 | `f035 R84-R87: la tira de <página> cumple…` (×4) y sus controles: «Gestion», el orden, tras `</header>`, dos tiras y la `<ol>` de inicio repuesta |
+| R85 | Los mismos tests (×4): `href` contra `enlaceSeccion` y `span` sin `href`; controles de `target` y de 06 como `<a>`. La guarda desde la tira: V2 (s) |
+| R86 | Los mismos tests (×4), más `test_f035_r86_el_paso_actual_lo_pinta_aria_current_en_burdeos` y su control. R63: `test_f035_r63_*`, con el recuento a 12 |
+| R87 | Los mismos tests (×4), más `test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar` generalizado y `ESTROPEOS_R87_CASCADA` |
+| R88 | `f035 R88: la tira de <página> es HTML estático` (×3) con sus dos controles, y `test_f035_r88_las_reglas_del_recorrido_viven_en_styles_css` |
+| R89 | `test_f035_r59_partes_html_solo_cambia…` (h, i), `test_f035_r59_control_la_tira_tras_la_cabecera…`, `…_dos_tiras…`, «otro texto en el comentario de F-036», y R32 y R33 contra la base fija |
+| Base fija | `test_f035_la_base_fija_es_dev_antes_del_merge_de_f035`, `…_control_una_base_con_el_portal_sale_en_rojo` (×3), `…_es_el_circuito_mira_las_dos_cosas` |
+
+### Checkpoints (acotados al diff)
+
+**C1**
+
+- [x] `init.sh` termina con exit 0.
+- [x] Existen los ficheros del arnés.
+
+**C2**
+
+- [x] Una sola feature `in_progress` (F-035).
+- [x] La rama es `feature/F-035-portal-posventa`.
+- [x] `current.md`: el bloque de arriba es el de la sesión activa. Los que
+  siguen son de esta misma feature en curso, como en las reviews anteriores.
+- [x] Ninguna feature pasa a `done` en este bloque.
+
+**C3**
+
+- [x] Arquitectura: solo front. Nada en `services/postventa-api`.
+- [x] Primera línea con la ruta: la de los ficheros tocados no cambia.
+- [x] Sin `print()`, sin secretos y sin dependencias nuevas. He hecho el
+  barrido del diff.
+- **N/A** (el bloque es presentación del front: no toca partes, archivo,
+  Sigrid, firmas ni deduplicado):
+  - parte como unidad;
+  - validaciones antes de archivar o cerrar;
+  - lo manuscrito;
+  - firmado no es conforme;
+  - reprocesar no duplica;
+  - `conest`.
+- [x] Ningún PDF ni parte escaneado en git: el diff no da de alta ningún
+  binario.
+
+**C3 bis**
+
+- **N/A**: el bloque no toca `docs/referencia/`.
+
+**C4**
+
+- [x] Cada requisito R83–R89 tiene al menos un test trazable, y todos pasan
+  (tabla de arriba).
+- [x] Los tests no tocan red ni BBDD. `git` solo en lectura.
+- [x] V1 (r), V2 (s) y V5 están anotadas como pendientes del humano en
+  `current.md` y en `requirements.md` §3.
+
+**C4 bis**
+
+- [x] `rigor: estandar` declarado.
+- [x] **Fase RED**: hay salida real de T52, T53, T54, T55 (dos fases) y de
+  la base fija, en el informe.
+- [x] **Cobertura: N/A con su motivo impreso** por `init.sh`. He verificado
+  que también da 0 líneas contra `d5c87b4`: no hay Python de producción en
+  F-035.
+- [x] **Mutación**:
+  - el informe existe, y sus totales los he recalculado y reejecutado
+    (iguales);
+  - el cero es legítimo: la prueba de control saca 91 mutantes de los tests
+    excluidos;
+  - las manuales son 14 de 14 y 9 de 9, más 22 mías.
+- [x] **Muertos comprobados**: campaña reejecutada (0,0 s).
+- **N/A, coste por mutante**: con 0 mutantes no hay nada que dividir.
+- [x] **Supervivientes**: el arnés no deja ninguno. De los míos manuales
+  sobreviven cuatro, analizados abajo; ninguno es `PENDIENTE` y el nivel no
+  es `critico`.
+- [x] **Evidencias**: están los cuatro números. Falta el nº de workers en la
+  tabla (O-B18-5), lo que con 0 mutantes no cambia nada.
+- [x] Ningún N/A sin motivo.
+
+**C4 ter**
+
+- **N/A**: no existe `harness/rutas_sensibles.json`.
+
+**C5**
+
+- [x] T52–T58 marcadas `[x]`. Hay un commit `F-035 Tn:` por tarea, salvo
+  T57 y T58, que van juntas en `70ce6a9`. Es aceptable porque T58 (ejecutar
+  `init.sh`) no produce ningún cambio que commitear.
+- [x] Árbol limpio. Mis worktree y rama, retirados.
+- [x] `features.json`: F-035 `in_progress`, que es su estado real.
+
+### Informativo (no bloquea), con su destino
+
+- **O-B18-1 · Un `onclick` en la tira de `partes.html` no lo ve nadie (T1).**
+  `problemasDeLaTiraEstatica` (R88) mira `x-*`, `@*` y `:*`, pero no `on*`.
+  R59 tampoco lo ve, porque quita la tira entera. Es la misma familia que la
+  guardia de la barra (`test_f035_r45_la_barra_del_circuito_es_html_estatico`),
+  así que el hueco ya existía. No hay `onclick` en ninguna página.
+  **Destino**: quien toque después esas guardias (por ejemplo F-054) puede
+  añadir `on` al patrón de las dos (`/^(x-|@|:|on)/` y
+  `("x-", "@", ":", "on")`), cada una con su control.
+- **O-B18-2 · Una tira escondida no la ve nadie (T2).** Ni el atributo
+  `hidden`, ni una clase como `hidden` de Tailwind, ni un `style`. R84 dice
+  «deben mostrar», pero es marcado que nadie escribe sin verlo. **Destino**:
+  V1 (r) y V2 (s), con los ojos. Si se quiere guardia, que la guardia de la
+  tira rechace `hidden` y `style` en el `<nav>`, la `<ol>` y los `<li>`.
+- **O-B18-3 · Comentarios en torno a la tira.**
+  - `_quita_recorrido` se traga **todos** los comentarios seguidos que haya
+    delante del `<nav data-recorrido>` (T9), igual que `_quita_barra` con la
+    barra (R59 c). Son comentarios: no afectan al usuario.
+  - Deshacer (i) (T10) solo lo caza un control: el de «otro texto en el
+    comentario de F-036» no encuentra su texto y falla. La guardia R59 en sí
+    admite la sustitución, pero no la exige, y eso es coherente con cómo
+    está escrito R59.
+
+  **Destino**: ninguno.
+- **O-B18-4 · D-17 (la tira no se pega) no tiene guardia (T12).** Con la
+  `?v=` recalculada, `position: sticky` en `.rs-recorrido-banda` pasa toda la
+  suite. Es una decisión pendiente del humano, no un requisito EARS.
+  **Destino**: D-17 en V1 (r) y V5. Si el humano la valida y quiere que no
+  se pierda, una línea en R84 con su control.
+- **O-B18-5 · «Frente a dev» y los workers.**
+  - `PUERTA COBERTURA: N/A (… frente a dev)` es cierto, pero el texto ya no
+    describe F-035, porque `dev` contiene casi toda la feature. Hoy no tiene
+    efecto: F-035 tiene 0 líneas Python de producción contra `d5c87b4`. Si
+    algún día las tuviera (R33 lo impide), habría que invocar la mutación
+    con `--base d5c87b4` y la cobertura no lo podría hacer.
+  - La cabecera de `progress/mutacion_F-035.md` dice `--workers 1`, mientras
+    que la consola dice «hasta 8 workers». La tabla de «Evidencias» del
+    bloque no da los workers.
+
+  **Destino**: el líder. Ver «Automejora».
+- **O-B18-6 · El hover sobre el paso actual del portal cambia su número.**
+  En el portal, el paso actual es un `<a>`. Las dos reglas que compiten:
+  - `a.rs-recorrido__paso:hover .rs-recorrido__num`, con especificidad
+    0,3,1;
+  - `.rs-recorrido__paso[aria-current="step"] .rs-recorrido__num`, con
+    especificidad 0,3,0.
+
+  Gana la primera, así que al pasar el ratón el círculo del número pasa de
+  burdeos con número blanco a burdeos-suave con número burdeos. Se funde con
+  el fondo de la píldora, que también es burdeos-suave. El contraste sigue
+  medido (6,29, §15.6) y es solo estético. En las páginas reales el paso
+  actual es `<span>` y no pasa. **Destino**: V1 (r). Si molesta, excluir el
+  actual del hover (`a.rs-recorrido__paso:not([aria-current]):hover …`).
+
+### Automejora (propuesta, no aplicada)
+
+**El arnés: una base por feature para la puerta de cobertura y para
+`harness.mutacion`.** Vale para cualquier proyecto y va también a
+`arnes-base`.
+
+Cuando una feature se mergea a `dev` a medias y sigue (aquí, `93ce096` con el
+bloque 18 en curso), `merge-base dev <rama>` pasa a ser la propia rama. Desde
+ese momento la puerta de cobertura y la campaña por defecto miden solo lo
+posterior al merge, y lo hacen en silencio: siguen saliendo `[OK]`.
+
+Propuesta:
+
+- un campo opcional `base` en la entrada de `harness/features.json`, que
+  `alcance_de_feature` use en vez de `dev` cuando exista;
+- y que `init.sh` avise cuando el merge-base de la rama sea su propia punta
+  (o un commit de la propia rama), porque eso significa que la feature ya
+  está en `dev`.

@@ -4168,3 +4168,135 @@ La propuesta, en dos partes:
   viejo`).
 
 Vale para cualquier proyecto, así que va también a `arnes-base`.
+
+## Re-review del bloque 13 · cierre de R13-1 · 2026-10-06
+
+> reviewer. Alcance **cerrado** a `git diff d62d420..HEAD`: `897416f` (R13-1,
+> solo `services/postventa-front/tests_js/f035_paginas.test.js`) y `d82e7a2`
+> (informe y `current.md`). Solo compruebo que el cambio requerido 1 de la
+> «Review del bloque 13» queda cerrado. No abro familias ni variantes nuevas:
+> lo que se ve fuera va como informativo.
+
+### Veredicto
+
+**APPROVED** (bloque 13). El cambio requerido 1 queda cerrado: K1, K12 y K13
+caen con el test nuevo y sobreviven con el viejo, y el código de producción no
+tiene diff.
+
+### Las preguntas del líder
+
+1. **¿K1, K12 y K13, cada una sola y en copia desechable, caen en rojo con el
+   test nuevo?** **Sí, las tres.** Las apliqué con mi propio guion: copia
+   entera del front en el scratchpad, la cadena original tiene que aparecer
+   **una** vez en `js/oficios.js`, y cada mutación se corre sola y contra los
+   dos ficheros de test, el de HEAD y el de `d62d420`.
+
+   | Mutación | Test de HEAD | Test de `d62d420` (el vacuo) |
+   |---|---|---|
+   | ninguna (control) | 677/677 | 677/677 |
+   | K1 · `distintos = [] si hay propuestas, grupos o avisos` | **1 fallo**: «el par del aviso, en distintos» | 677/677 (sobrevive) |
+   | K12 · `avisos: distintos.length ? [] : avisos` | **1 fallo**: `avisos` | 677/677 (sobrevive) |
+   | K13 · `grupos: distintos.length ? [] : grupos` | **1 fallo**: `grupos` | 677/677 (sobrevive) |
+
+   Las tres caen en «f035 R75: los distintos no cambian propuestas, grupos ni
+   avisos», cada una por su aserción. Coincide con la salida del §2 del
+   informe del implementer. Las copias se borraron tras cada corrida, y
+   `git status` quedó limpio.
+
+2. **¿El test compara listas no vacías y puede fallar?** **Sí.**
+   - La fixture nueva, `propuestasDeUnaObraConTodo`, trae una propuesta
+     (`9003`·`9004`), un grupo vigente de dos códigos (`9001`·`9002`), un
+     aviso (`9005`·`9006`·`9007`) y, si se le pasa, `distintos` con el par del
+     aviso **al revés** (`9007`·`9005`). Es el caso real que pedía la review.
+   - El test afirma con `assert` explícitos que lo que preserva **no está
+     vacío**: una propuesta, el grupo `[9001, 9002]`, el aviso y seis grupos
+     vigentes.
+   - Después compara `obra`, `propuestas`, `grupos`, `avisos` y
+     `gruposVigentes` con y sin `distintos`. También comprueba que
+     `distintos` trae el par ordenado con sus nombres y que `sinNada` es
+     `false`.
+   - Que puede fallar lo demuestra la tabla anterior.
+
+3. **¿La suite JS y la del front están en verde sobre el código real?**
+   **Sí.**
+   - `node --test "tests_js/*.test.js"`: **677/677**. Es el mismo número que
+     antes, porque se reescribió el test vacuo y no se añadió uno nuevo; la
+     review admitía las dos cosas.
+   - `python -m pytest -q` en `services/postventa-front`: **729 passed**.
+     Lo lancé directamente, porque `init.sh` lo sirvió de caché.
+   - `bash harness/init.sh`, tal cual: **ENTORNO LISTO**. Raíz: 114 passed.
+     `api` y `front`, de caché. `PUERTA COBERTURA: N/A (F-035 no cambia
+     líneas Python de producción frente a dev)`. ruff: 71 avisos, que son
+     deuda previa.
+
+4. **¿`git diff d62d420 HEAD -- services/postventa-front/js/
+   services/postventa-front/oficios.html` está vacío?** **Sí, vacío.**
+   También lo están `tests_js/oficios.test.js` y `services/postventa-api`.
+   El diff de `services/` es solo `f035_paginas.test.js` (+56, −2).
+
+5. **Los opcionales que no se hicieron: ¿hacen falta?** **No. Quedan como
+   informativos para el bloque 14, sin bloquear nada.**
+   - **El test del componente con la misma respuesta.** Lo que K1, K12 y K13
+     podían romper vive en `presentarPropuestas`, que es pura, y el test
+     reescrito ya lo fija. En `oficios.html` cada sección tiene su propio
+     `x-show` sobre su lista: lo que se pinta depende de la vista, y la vista
+     ya está probada con todo junto. Pasar el test del botón a esa respuesta
+     solo añadiría «el botón funciona en una pantalla llena». Sería otra
+     variante, y el líder pidió no abrirlas.
+     - **Destino**: el bloque 14, opcional; o el vistazo V4 g, cuando F-053
+       esté desplegada.
+   - **O13-1** (la guardia de R75 no ve `inert` ni `pointer-events-none`).
+     Sigue como estaba: es la familia O12-1, marcado que nadie escribiría.
+     - **Destino**: el bloque 14, opcional, junto con O12-1.
+
+### Checkpoints (acotados al diff)
+
+- **C1** [x] `init.sh` termina con exit 0 (lo ejecuté yo, sobre HEAD).
+- **C2**
+  - [x] Una sola feature `in_progress` (F-035), en la rama
+    `feature/F-035-portal-posventa`.
+  - [x] `current.md` lleva la entrada de R13-1 arriba.
+  - [x] Ninguna feature pasa a `done`.
+- **C3**
+  - [x] El fichero de test tocado lleva su ruta en la primera línea.
+  - [x] Las líneas añadidas no traen `console.*`, `debugger`, `TODO`,
+    `FIXME` ni secretos.
+  - [x] Comentarios en español.
+  - [x] No se añade ningún fichero.
+  - Arquitectura hexagonal: **N/A justificado**. El diff es un único test JS
+    y no toca código de producción.
+- **C3 bis** — **N/A**: el diff no toca `docs/referencia/`.
+- **C4**
+  - [x] R75, «con distintos, el resto de la pantalla sale como antes», queda
+    cubierto por «f035 R75: los distintos no cambian propuestas, grupos ni
+    avisos», que ya no es vacuo. Era el `[ ]` de la review del bloque 13.
+  - [x] Todos los tests pasan, sin red ni BBDD.
+- **C4 bis** [x] `rigor: "estandar"`.
+  - [x] **Fase RED**: el informe trae la salida real de K1, K12 y K13, que
+    sobreviven con el test viejo y caen con el nuevo. La reproduje.
+  - [x] **Cobertura**: N/A, con el motivo impreso por `init.sh`.
+  - [x] **Mutación de la herramienta**: 0 mutantes, coherente porque no hay
+    Python de producción. El control del cero ya se hizo en la review del
+    bloque 13, y este diff no cambia nada que lo afecte.
+  - [x] **Mutantes a mano**: los 3 supervivientes de la review están
+    muertos.
+  - [x] «Evidencias» con los cuatro números.
+  - [x] La regla 7 es **N/A**, como en la review: el rigor no es `critico`
+    y no hay una puerta nueva.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5**
+  - [x] Los commits son `F-035 R13-1: …`.
+  - [x] El árbol está limpio y no quedan copias ni worktrees míos.
+  - [x] `features.json` dice `in_progress`, que es lo real: siguen abiertos
+    los bloques 14 y 15.
+
+### Informativo (no bloquea)
+
+- Siguen abiertos, con el destino que tenían:
+  - **O13-1**, **O13-2** (contrato de F-053) y **O13-3** (README, bloque 14);
+  - el resto de la lista de la review del bloque 13.
+- La **automejora** de la review del bloque 13 sigue pendiente de que la
+  apruebe el humano: los tests de no interferencia tienen que afirmar que lo
+  que preservan no está vacío, y el reviewer tiene que añadir una familia
+  fija de mutaciones de no interferencia. Este arreglo la aplica ya en el
+  test que la originó, pero no está en `reviewer.md` ni en `arnes-base`.

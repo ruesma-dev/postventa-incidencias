@@ -33,7 +33,7 @@ from pathlib import Path
 import pytest
 
 RAIZ_FRONT = Path(__file__).resolve().parents[1]
-INDEX = RAIZ_FRONT / "index.html"
+INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
 CONFIG_JS = RAIZ_FRONT / "js" / "config.js"
 CONFIG_SWA = RAIZ_FRONT / "staticwebapp.config.json"
 DEV_SERVER = RAIZ_FRONT / "dev_server.py"
@@ -52,6 +52,7 @@ ORDEN_CANONICO = (
     # es quien lo monta, y despues de `pipeline.js`, de quien lee los valores
     # efectivos de los campos.
     "js/autoguardado.js",
+    "js/guarda_salida.js",  # F-035 (R80, R81): solo lee el estado del circuito
     "js/app.js",
 )
 

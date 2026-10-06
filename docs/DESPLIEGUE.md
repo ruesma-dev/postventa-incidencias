@@ -53,6 +53,9 @@ Todos viven en `infra/`, todos son **re-ejecutables** y todos admiten
 | 3 | `desplegar_front.ps1` | Registro de aplicación, asignación obligatoria y grupo asignado, Static Web App, enlace del backend y subida de los estáticos | **`infra\` obligatorio** | Con `-SoloFront` para el día a día |
 | 4 | `verificar_despliegue.ps1` | Las tres comprobaciones de después. **Solo lecturas** | `$HOME` o `infra\` | Después de cada despliegue |
 
+`publicar_maqueta.ps1` tampoco está en la tabla: publica la maqueta del
+portal en un entorno de vista previa, **no** en producción (§10).
+
 Hay un sexto que **no** forma parte del despliegue y por eso no está en la
 tabla: `14_paso0_sigrid.ps1` orquesta el **Paso 0** del bloque 8 de F-009
 llamando al 1 y al 2, y comprueba que las referencias a Key Vault se resuelven.
@@ -605,6 +608,32 @@ La tarjeta vive en **otro repositorio**, `front-portal`, en
 Lo que F-010 entrega es el bloque exacto y el procedimiento; aplicarlo es una
 tarea del humano, o de quien lleve ese repositorio.
 
+> **Desde F-035 (2026-09-25) · la tarjeta aterriza en el portal.** La
+> tarjeta **ya existe** en `front-portal` (medido en solo lectura el
+> 2026-09-25) y su `url` apunta a la **raíz** de la Static Web App, sin ruta.
+> Desde F-035 la raíz (`index.html`) es el **portal de posventa** —una
+> maqueta con datos de ejemplo en todas las pestañas salvo «Partes
+> firmados»— y el circuito de partes vive en `/partes.html`, a un clic en la
+> barra superior. La `url` **no cambia**: aterrizar en el portal es lo que se
+> quiere. El acceso tampoco: sigue siendo `posventa-usuarios` (decisión del
+> humano del 2026-09-25, `docs/ARCHITECTURE.md`, fila «Entra ID»).
+>
+> Lo que **deja de describir** lo que abre es el texto. **Propuesta para
+> quien lleve `front-portal`**, a aplicar **al publicar** la maqueta
+> (decisión del humano del 2026-09-25: «Sí, al publicar»), como trabajo de
+> ese repositorio y con su procedimiento de abajo:
+>
+> | Campo | Hoy | Propuesta |
+> |---|---|---|
+> | `title` | `Partes de Posventa` | `Posventa` |
+> | `description` | Habla solo del circuito de partes (leerlos y archivarlos) | `Portal de posventa: incidencias, bandeja de revisión, partes firmados y coste. Las secciones nuevas son una maqueta en validación.` |
+>
+> El resto de campos (`id`, `category`, `icon`, `url`, `requiredGroupName`,
+> `requiredGroupId`) se quedan como están. **Ningún agente de este
+> repositorio lo aplica.** El bloque de abajo es el de F-010 y **no se
+> reescribe**: sirve para dar de alta la tarjeta desde cero, no para
+> cambiarle el texto.
+
 ### El bloque, para pegar en `window.RUESMA_PORTAL.apps[]`
 
 ```js
@@ -1037,3 +1066,97 @@ ambigua, 11 la regla no se ha podido ejecutar.
 número. Una obra guardada como `00677` la vería el sistema y no el 24. Con la
 0677 hay una sola obra, así que no cambia nada de R31; si algún día importa,
 se cambia la consulta del 24 por la del adaptador.
+
+## 10 · La maqueta del portal en el entorno `maqueta` (F-035)
+
+> Decisión del humano del 2026-09-26: publicar la maqueta para que negocio la
+> vea desde otros equipos **sin tocar producción**. Script:
+> `infra/publicar_maqueta.ps1`. Se ejecuta desde `infra\`, dentro de la copia
+> del repositorio **con la rama de la maqueta** (publica esa copia de trabajo).
+
+Es un **entorno de vista previa con nombre** de la misma Static Web App (plan
+Standard): otra URL estable, el mismo inicio de sesión con el grupo
+`posventa-usuarios` y **sin backend**. El circuito se ve, pero no puede llamar
+a `/api/` y por tanto no escribe en ninguna parte.
+
+| Orden | Qué hace | Y si no cuadra |
+|---|---|---|
+| `-WhatIf` | Solo lecturas: dice qué haría | — |
+| sin parámetros | Sube la copia de trabajo con `swa deploy … --env maqueta`; lee el host del entorno; comprueba que **no tiene backend**; le da `AZURE_CLIENT_ID` y `AZURE_CLIENT_SECRET` leídos del Key Vault y comprueba que **quedan en el entorno**; añade su URL de retorno al registro de aplicación **sin quitar ninguna** | Para con su código: 9 backend, 10 App Settings, 11 host, 12 lista de retorno ilegible o que quedaría vacía |
+| `-Retirar` | Borra el entorno `maqueta` y quita **solo** su URL de retorno, reescribiendo la lista entera | 12 si la lista quedaría vacía (no la reescribe) |
+
+**Por qué comprueba en ejecución.** La documentación de Microsoft dice que
+las App Settings y los backends se gestionan **por entorno**
+(`--environment-name`), pero también que las App Settings «se copian» a los
+entornos, y no dice si un entorno con nombre hereda el backend de producción.
+El script no se fía y para si no cuadra. El detalle, con las fuentes, en
+`progress/impl_F-035.md` (bloque 6).
+
+**Dos trampas que el script evita y que a mano hay que evitar igual:**
+`az staticwebapp environment delete` **sin** `--environment-name` borra
+`default`, que es **producción**; y `az ad app update --web-redirect-uris`
+**reemplaza** la lista entera.
+
+La URL del entorno sale en el resumen para compartirla; **no se pega en el
+repositorio**.
+
+**Si se redespliega producción en modo completo** (`desplegar_front.ps1` sin
+`-SoloFront`), ese script reescribe la lista de URL de retorno con las suyas y
+**quita la de `maqueta`**: la maqueta deja de dejar entrar (falla cerrado).
+Se arregla volviendo a lanzar `publicar_maqueta.ps1` (review 7, O4).
+
+> **Recuadro del 2026-10-05 · la publicación del portal en producción
+> (F-035, enmienda tras F-036; `specs/F-035-portal-posventa/design.md`
+> §16.12).** El portal se publica **entero** en producción: lo que funciona y
+> lo que está «En construcción». Este entorno `maqueta` pasa a ser la
+> **parada V5**: ver el portal completo antes de producción. Orden, y nada se
+> salta:
+>
+> 1. **Review APROBADA** de F-035 contra `CHECKPOINTS.md` (líder y reviewer).
+> 2. **T12 · V1 y V2** en local (humano), con `.\dev_front.ps1` desde
+>    `services\postventa-front`. V1 sin `func start` (no se pulsa nada que
+>    escriba en `importar.html` ni en `oficios.html`); V2 con `func start`,
+>    una remesa de `muestras/` hasta la pregunta de confirmación y
+>    **«Cancelar»**, y la guarda de salida: con la remesa a medias, salir
+>    pide confirmación y **siempre se cancela**. Con `func start`, en
+>    `importar.html` y `oficios.html` **no se pulsa nada**: escribirían en la
+>    bandeja compartida.
+> 3. **V5 · la parada (humano)**, en este entorno:
+>    `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1`
+>    (los mismos estáticos y el mismo inicio de sesión que producción, sin
+>    backend: importar y oficios enseñarán el error del servicio, que es lo
+>    esperado y lo que garantiza que nada escribe). Se recorren las ocho
+>    pestañas y las cuatro páginas, se comprueba el rótulo «En
+>    construcción» donde toca y, al terminar,
+>    `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1 -Retirar`.
+>    **Con `func start` no**: importar escribiría en la bandeja compartida
+>    desde local.
+> 4. **Merge a `dev`** (líder, a petición del humano) y push (humano).
+> 5. **Publicación** (humano):
+>    `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`,
+>    y **V4 entero** (`requirements.md` §3, (a)–(i)): una remesa de prueba sin
+>    cerrar nada, la guarda con esa remesa, reimportar solo el mismo fichero
+>    ya importado y ninguna decisión de oficios. El modo completo quitaría la URL de retorno
+>    de `maqueta` (ver arriba).
+> 6. **`azure-apps/postventa_incidencias.md`** (líder, en el mismo trabajo y
+>    en su repositorio): la raíz del front es el portal, el circuito está en
+>    `/partes.html` e importar y oficios son secciones del portal.
+> 7. **Aviso a Posventa** (humano). Texto propuesto:
+>
+>    > «Desde hoy, al entrar en Posventa veis el portal nuevo. Funcionan de
+>    > verdad: **Entrada** (descargar la plantilla de una obra, importar el
+>    > Excel y ver su bandeja; y los oficios repetidos) y **Partes firmados**
+>    > (el circuito de siempre, con otro aspecto y el botón principal en
+>    > burdeos; funciona igual). Lo demás —bandeja de revisión, incidencias,
+>    > impresión, coste y datos— está **en construcción**: se reconoce por el
+>    > punto ámbar en la pestaña y por el recuadro «En construcción»; lo que
+>    > enseña son datos inventados para que veáis cómo será. Ahora todo se
+>    > abre en la misma pestaña. Si estáis con una remesa a medias en Partes
+>    > firmados y pulsáis otra pestaña, el navegador os preguntará si queréis
+>    > salir: decid que no, o perderéis la remesa. Contadnos qué os falta o
+>    > qué cambiaríais.»
+>
+> El rótulo con la fecha de la importación original (`importar.html`) y
+> «Decididos como distintos» (`oficios.html`) **no se verán** hasta que esté
+> desplegada **F-053**, la ficha de backend que añade esos dos datos: el
+> front los consume de forma tolerante y no espera a nadie.

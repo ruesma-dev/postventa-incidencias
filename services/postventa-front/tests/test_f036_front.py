@@ -30,7 +30,7 @@ import pytest
 from test_f007_estaticos import VERSION_ALPINE, _propios, _scripts, _sin_comentarios
 
 RAIZ_FRONT = Path(__file__).resolve().parents[1]
-INDEX = RAIZ_FRONT / "index.html"
+INDEX = RAIZ_FRONT / "partes.html"  # F-035 (D-3): el circuito se mudó de index.html
 IMPORTAR = RAIZ_FRONT / "importar.html"
 OFICIOS = RAIZ_FRONT / "oficios.html"
 README = RAIZ_FRONT / "README.md"
@@ -367,15 +367,14 @@ def test_f036_r50_la_pagina_de_importacion_tiene_sus_tres_bloques():
 
 
 def test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas():
-    """En otra pestaña: navegar fuera perdería la remesa en curso (D4 de F-007)."""
+    """En la misma pestaña (F-035, 2026-10-05): la remesa la protege la guarda de salida del circuito."""
     en_cabecera = enlaces(cabecera(_texto(INDEX)))
 
     for destino in ("importar.html", "oficios.html"):
         assert destino in en_cabecera, (
             f"la cabecera de index.html no enlaza a {destino}"
         )
-        assert 'target="_blank"' in en_cabecera[destino]
-        assert 'rel="noopener"' in en_cabecera[destino]
+        assert "target=" not in en_cabecera[destino]
 
 
 def test_f036_r51_la_cabecera_de_index_solo_gana_los_dos_enlaces():

@@ -387,6 +387,157 @@ Una Function App en Azure no ve `C:\...` ni un recurso de red interno. El
 front usa el selector de carpeta del navegador: el usuario elige la carpeta
 igual que hoy, y por debajo se suben los PDFs.
 
+## El portal de posventa (F-035)
+
+El proyecto deja de ser solo el circuito de partes firmados: pasa a cubrir el
+**ciclo entero de la incidencia de posventa** (entrada, revisión, alta en
+Sigrid, gestión, parte, cierre y coste). La forma no cambia: **un backend**
+(`services/postventa-api/`) y **un front** (`services/postventa-front/`), que
+ahora es un **portal con secciones**. Diseño completo:
+`specs/F-035-portal-posventa/design.md`.
+
+### Las dos páginas del front
+
+| Página | Qué es | Estado |
+|---|---|---|
+| `index.html` (la portada `/`) | El **portal**: una sola página de Alpine (`portalPosventa()`) con rutas por hash (`#/bandeja`, `#/incidencias/EJ-0003`…) | **Maqueta** con datos de ejemplo (F-035) |
+| `partes.html` | El **circuito** de partes firmados (F-001…F-034), mudado de `index.html` con `git mv` y sin tocar su lógica | En producción |
+
+Las dos llevan **la misma barra superior** (`<nav data-barra-portal>`) con las
+ocho secciones de `Portal.SECCIONES` en su orden. Desde el circuito, las otras
+siete se abrían **en otra pestaña del navegador**: la remesa en curso vive en
+memoria y salir de la página la perdería (superado el 2026-10-05: ver abajo).
+La barra del circuito es HTML plano,
+sin directivas de Alpine. El circuito **no se incrusta** en el portal (ni
+`<iframe>`, que chocaría con `X-Frame-Options: DENY`, ni copiando su marcado):
+es su pestaña `partes`.
+
+> **Enmienda del 2026-10-05 · el portal en producción, con secciones en
+> construcción** (`design.md` §16). Con F-036 cerrada, el humano decide
+> (opción b) publicar el portal **entero** en producción.
+>
+> - **Cuatro páginas**: `index.html` (el portal), `partes.html` (el
+>   circuito) y las dos páginas reales de la sección «Entrada»,
+>   `importar.html` y `oficios.html` (las de F-036, remodeladas a la
+>   identidad Ruesma: barra común, migas, subnavegación). Las páginas reales
+>   de una sección se declaran en **`Portal.PAGINAS`**
+>   (`{"importar.html": "entrada", "oficios.html": "entrada"}`), única
+>   fuente de qué página es de qué sección; el portal las enlaza desde
+>   `#/entrada`, y el recuadro de `bandeja` a `importar.html#bandeja`.
+> - **El `estado` de cada sección** (`real`, `parcial`, `construccion`) va
+>   escrito en `Portal.SECCIONES` y lo comprueba contra
+>   `harness/features.json` la guardia de R62 de la raíz. Hoy `inicio`,
+>   `entrada` y `partes` están en `parcial` y las otras cinco en
+>   `construccion`; `inicio` solo es `real` cuando lo son las otras siete,
+>   `partes` incluida.
+> - **«En construcción»** sustituye a «maqueta» en lo que ve el usuario. Se
+>   reconoce en tres capas: el punto ámbar y el `aria-label` de la pestaña
+>   (`data-construccion`, R66), el recuadro `data-en-construccion` con su
+>   rótulo que enmarca todo lo inventado (R63–R65) y la portada sin cifras
+>   inventadas, con los chips «En construcción» / «En producción» (R67).
+> - **Todo se navega en la misma pestaña** (R73 ajustado), también desde el
+>   circuito: ningún enlace entre páginas del front lleva `target`. La
+>   remesa a medias la protege la **guarda de salida** del circuito
+>   (`js/guarda_salida.js`, R78–R80): un `beforeunload` que **solo lee** el
+>   estado de `appPostventa()` (con `Alpine.$data` y los selectores puros de
+>   `Pipeline` y `Autoguardado`) y pide confirmación solo si hay trabajo sin
+>   terminar (algo en marcha, correcciones sin guardar, partes por terminar
+>   o un parte abierto sin cerrar); sin trabajo, se navega sin preguntar, y
+>   si no puede leer el estado, no pregunta. Para cargarla sin tocar ningún
+>   módulo del circuito hay una excepción cerrada (R81): un `<script>` en
+>   `partes.html`, una línea de `test_f007_estaticos.py` y las de R51 de
+>   `test_f036_front.py`.
+> - **Los dos datos del backend son de otra ficha (R76).** El rótulo del
+>   resumen original de `importar.html` (R74) y «Decididos como distintos»
+>   de `oficios.html` (R75) se pintan en el front, pero los datos
+>   (`importado_at_utc` y `oficio.distintos`) son de `services/postventa-api`,
+>   otro servicio: los añade **F-053**. El front los consume de forma
+>   tolerante (sin el campo, rótulo sin fecha y sección oculta), así que se
+>   publica antes sin romper nada. F-035 no toca `services/postventa-api/`.
+
+### El mapa: qué ficha construye cada sección
+
+| Sección (`id`) | Etiqueta | Qué muestra | Fichas que la construyen |
+|---|---|---|---|
+| `inicio` | Inicio | El ciclo en una línea, con un contador de ejemplo por fase y enlace a cada sección | — (la maqueta misma); el registro sin firma de su tarjeta «Partes firmados», F-045 |
+| `entrada` | Entrada | Importar el Excel de la propiedad y el resultado de su validación; la entrada desde la web de clientes | F-036, F-037 |
+| `bandeja` | Bandeja de revisión | Lo importado, antes de Sigrid: revisar, proponer industrial, aprobar, volcar por obra | F-038, F-039, F-040, F-043 |
+| `incidencias` | Incidencias | Listado de Sigrid con filtros, selección y operaciones en bloque; y la ficha en `#/incidencias/<id>` | F-041, F-042, F-043, F-045, F-047 |
+| `impresion` | Impresión de partes | Seleccionar partes y generar el PDF con la plantilla de posventa | F-044 |
+| `partes` | Partes firmados | **El circuito mismo** (`partes.html`); no hay bloque `partes` dentro del portal | F-045 (el circuito: F-001…F-034, ya hecho) |
+| `economico` | Coste y venta | Coste por obra (capítulo de POSTV2) y vínculo incidencia-proforma-coste-venta | F-046, F-047 |
+| `datos` | Datos y datamart | Qué publica cada fase en el datamart | F-048 |
+
+Lo que esas fichas cruzarán fuera de este repositorio (la web de clientes,
+endpoints nuevos de `sigrid-api`, el envío de correo, el datamart) está
+anotado en `design.md` §10; se decide en cada una, no aquí.
+
+### La regla de los placeholders (norma)
+
+Mientras una sección sea maqueta, se rige por estas reglas, y el reviewer
+rechaza lo que las incumpla:
+
+1. **Todo control que haría algo de verdad es un placeholder visible**:
+   `data-placeholder="F-0NN"` con la ficha que lo construirá, clase
+   `.placeholder`, la etiqueta `F-0NN` a la vista y `aria-disabled="true"`. Al
+   pulsarlo solo **dice qué haría y qué ficha lo construye** en una región
+   `role="status"`, sin temporizadores y sin tocar otro estado (R11). Lo que
+   solo lee y navega (pestañas, filtros, selección, abrir una ficha) sí
+   funciona, en pantalla y sobre los datos de ejemplo.
+2. **Los ficheros de la maqueta no salen de la pantalla** (R14–R16, R18): ni
+   `fetch`, ni `XMLHttpRequest`, ni `/api/`, ni Sigrid, ni SharePoint, ni
+   `mailto:`, ni almacenamiento del navegador. Los datos de ejemplo son **ficticios**
+   (obras `99NN`, incidencias `RS99.…`, nombres con «Ejemplo», correos en
+   `ejemplo.invalid`); solo los catálogos generales de Sigrid llevan códigos
+   reales. La regla es de los ficheros de la maqueta (`js/maqueta_datos.js`,
+   `js/portal.js`, `js/portal_app.js`), **no** una prohibición al portal de
+   tener backend: una sección real habla con él desde **sus propios**
+   módulos, como `js/api.js`.
+3. **Cada ficha retira sus restos en el mismo trabajo en que construye su
+   pieza** (R28): borra sus `data-placeholder`, sus entradas de
+   `Portal.PLACEHOLDERS` y su bloque de `MaquetaDatos` (`ficha: "F-0NN"`). Lo
+   vigila `tests/test_f035_placeholders_vivos.py` en la suite de la **raíz**
+   (que no se cachea): una ficha en `done` con restos pone `init.sh` en rojo,
+   y ninguna ficha puede citar una que no exista en `harness/features.json`
+   (R27) ni a la propia F-035. El procedimiento, en el `README.md` del front.
+4. **Cuando una sección deja de ser maqueta, del circuito se va a ella en la
+   misma ventana (R48)**, como en una web normal. Una sección es **real**
+   cuando todas las fichas de su entrada de `Portal.SECCIONES` están `done`
+   (`inicio`, cuando lo son todas las demás; `partes` es el circuito y no
+   cuenta). Desde ese momento, su enlace en la barra de `partes.html` pierde
+   el `target="_blank"`. Mientras sea maqueta, se sigue abriendo aparte (R31).
+   **Consecuencia para la ficha que lo active**: navegar desde el circuito en
+   la misma ventana descarga la **remesa** en curso, que vive en memoria; esa
+   ficha decide en el mismo trabajo cómo no perderla (aviso al salir o
+   recuperar el trabajo) y lo propone al humano. Lo vigila
+   `tests/test_f035_placeholders_vivos.py` en la suite de la raíz.
+
+   > **Ajuste del 2026-10-05: R48 queda absorbida por R73.** Desde el
+   > circuito, todas las secciones —reales o no— se abren ya en la **misma
+   > ventana**, y la **remesa** en curso la protege la guarda de salida
+   > (R78). La guardia de R48 sigue, en verde por construcción.
+5. **Al cerrar la ficha, se actualiza el `estado` de su sección** en
+   `Portal.SECCIONES` (R62): si deja de estar en `construccion`, se quita su
+   recuadro de sección y lo que siga sin funcionar va en recuadros de bloque
+   `data-en-construccion="F-0NN"` (R64); y su pestaña pierde el
+   `data-construccion` y el `aria-label` en las cuatro barras (R66). Si se
+   olvida, la guardia de R62 de la raíz se pone en rojo.
+6. **Una sección real con página propia** (el patrón de `importar.html` y
+   `oficios.html`) lleva la barra común en HTML estático, la identidad
+   Ruesma y nada de la maqueta (R70–R73, R77), y se declara en
+   `Portal.PAGINAS` con su sección.
+
+> **Identidad visual (F-035, segunda ronda del 2026-09-25).** Las dos páginas
+> comparten la hoja de la marca, `css/styles.css` (tokens `--rs-*` tomados de
+> `front-portal`); en el circuito solo cambian clases, la barra y las fuentes
+> (R59). Detalle en el `README.md` del front, «Identidad visual Ruesma
+> (F-035)», y en `specs/F-035-portal-posventa/design.md` §15.
+
+El acceso al portal es el del circuito, sin configuración propia: misma
+Static Web App, `/*` con `authenticated` y la asignación obligatoria de la
+aplicación en Entra (fila «Entra ID» de «Acceso a datos y sistemas
+externos», con su recuadro del 2026-09-25).
+
 ## Semántica de dominio imprescindible
 
 1. **La unidad de trabajo es el parte, no el fichero.** Un PDF de remesa
@@ -754,8 +905,10 @@ La misma hexagonal que el resto del servicio:
 - **Aplicación**: `application/pipelines/plantilla.py`, `paso_importacion.py`
   y `equivalencias.py`; los handlers, en `interface_adapters/api/`.
 - **Front**: `importar.html` con `js/importacion.js` y `oficios.html` con
-  `js/oficios.js`, enlazadas desde la cabecera de `index.html` en otra pestaña
-  para no perder la remesa en curso.
+  `js/oficios.js`. Desde F-035 son páginas del portal con su barra común y se
+  abren en la misma pestaña; el circuito vive en `partes.html` y una guarda
+  pide confirmación antes de salir con una remesa a medias (ver la sección del
+  portal).
 - **La migración del Excel actual** de la obra piloto:
   `scripts/migrar_excel_f036.py`, que usa el mismo lector, el mismo generador
   y la misma validación, y no modifica el original.
@@ -810,6 +963,33 @@ La misma hexagonal que el resto del servicio:
 > `sigrid-api`** —dos `sql/read` por parte, sin `CIERRE_HABILITADO`—, así que
 > la fila de `sigrid-api` gana también esas dos lecturas. La puerta de entorno
 > no cambia: listar y crear también exigen `ENTORNO` en `dev` o `pro`.
+
+> **Corrección del 2026-09-25 (F-035, decisión D-5) a la fila «Entra ID».**
+> Dice «**No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni
+> el acceso ni la tarjeta se pueden cerrar». **Estaba desactualizada**:
+>
+> - El grupo **de seguridad `posventa-usuarios` existe** (medido por el líder
+>   el 2026-09-25, solo lectura: 7 miembros). Es el que manda crear
+>   `docs/DESPLIEGUE.md` §3, el que tiene asignado la aplicación empresarial
+>   del front con **asignación obligatoria** desde F-010 (un no miembro
+>   rebota: prueba del humano del 2026-08-21, `progress/impl_F-010.md`, T16)
+>   y el que exige la tarjeta
+>   del portal corporativo (`requiredGroupName: 'posventa-usuarios'`).
+> - Existe además un grupo `Postventa` **que no es de seguridad** (9
+>   miembros), probablemente el de Microsoft 365 del sitio de Posventa. **No**
+>   da acceso al front.
+> - **Decisión del humano (2026-09-25): el acceso es «posventa-usuarios, como
+>   hoy»**, para el circuito y para el portal de F-035, que lo hereda sin
+>   configuración propia. Ampliarlo al departamento sería añadir miembros al
+>   grupo o asignar otro grupo a la aplicación en Entra: trabajo del humano,
+>   no de una ficha.
+> - **La tarjeta ya existe** en `front-portal` y apunta a la raíz del front:
+>   desde F-035 aterriza en el portal. Su título y su descripción siguen
+>   hablando solo del circuito; la propuesta para cambiarlos **al publicar**,
+>   en `front-portal`, está en `docs/DESPLIEGUE.md` §6.
+>
+> Ningún identificador del grupo, del inquilino ni de la aplicación se
+> escribe en este repositorio: viven en Entra y en `front-portal`.
 
 **Prohibido desde local**: escribir en Sigrid (ni siquiera con `commit:false`
 contra endpoints que no sean de lectura), escribir en el SharePoint de

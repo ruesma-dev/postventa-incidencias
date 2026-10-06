@@ -1,0 +1,6 @@
+# .gitattributes
+# F-035 (R52): el logotipo y el favicon del front son copias BYTE A BYTE de los
+# de front-portal, y un test compara su SHA-256. Sin esta línea, con
+# core.autocrlf=true (el de este equipo), git los sacaría con CRLF en cualquier
+# checkout nuevo (un clon, un worktree) y el hash dejaría de cuadrar.
+services/postventa-front/img/*.svg -text

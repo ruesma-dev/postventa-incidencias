@@ -1,5 +1,7 @@
 // services/postventa-front/js/oficios.js
 // F-036 R80-R82, R86, R88, R89, R98 · Oficios repetidos en Sigrid (`oficios.html`).
+// F-035 R75 · «Decididos como distintos»: la clave `distintos` de
+// `presentarPropuestas` (bloque 13). Ni una llamada nueva: su botón usa `decidir()`.
 //
 // `design.md` §15.6 con la quinta enmienda: un solo catálogo, `oficio`. Nada de
 // proveedores (F-050) ni de actividades (F-039).
@@ -20,7 +22,8 @@
 // B6-18): `{obra, oficio: {oficios: [{codigo, nombre, grupo}], grupos:
 // [{etiqueta, codigos}], propuestas: [{codigos, por_pares, motivos, pares}],
 // avisos: [{codigos}]}}`. La tabla de §8 todavía escribe una clave
-// `proveedor`, que el backend ya no manda.
+// `proveedor`, que el backend ya no manda. `oficio.distintos: [{codigo_a,
+// codigo_b}]` (R75) llegará con F-053; hasta entonces no viene.
 //
 // Usa `window.Importacion` (`js/importacion.js`) para guardar ficheros y para
 // el texto de los errores: `oficios.html` lo carga antes que este.
@@ -98,6 +101,39 @@
     };
   }
 
+  /** Un código de oficio que se puede pintar y decidir: un texto no vacío. */
+  function esCodigo(valor) {
+    return typeof valor === "string" && valor.trim() !== "";
+  }
+
+  /**
+   * F-035 R75 · Los pares de `oficio.distintos` (su última decisión es
+   * «distinto»), listos para «Decididos como distintos». El dato lo añade al
+   * backend una ficha aparte (R76, F-053), así que el consumo es tolerante: sin
+   * el campo, o si no es una lista, no hay ninguno; una entrada que no son dos
+   * códigos distintos se descarta. Cada par sale ordenado, una sola vez y en
+   * orden, con el mismo `par()` de siempre y su clave.
+   */
+  function paresDistintos(distintos, nombres) {
+    const porClave = {};
+    (Array.isArray(distintos) ? distintos : []).forEach(function (entrada) {
+      if (!entrada || !esCodigo(entrada.codigo_a) || !esCodigo(entrada.codigo_b)) {
+        return;
+      }
+      const codigos = ordenados([entrada.codigo_a, entrada.codigo_b]);
+      if (codigos.length !== 2) {
+        return;
+      }
+      const clave = codigos.join("-");
+      porClave[clave] = Object.assign({ clave: clave }, par(codigos[0], codigos[1], [], nombres));
+    });
+    return Object.keys(porClave)
+      .sort()
+      .map(function (clave) {
+        return porClave[clave];
+      });
+  }
+
   /** Todo lo que pinta la pantalla a partir de `GET /api/catalogos/propuestas`. */
   function presentarPropuestas(respuesta) {
     const oficio = (respuesta && respuesta.oficio) || {};
@@ -149,13 +185,16 @@
       };
     });
 
+    const distintos = paresDistintos(oficio.distintos, nombres);
+
     return {
       obra: respuesta && respuesta.obra,
       propuestas: propuestas,
       grupos: grupos,
       avisos: avisos,
+      distintos: distintos,
       gruposVigentes: oficio.grupos || [],
-      sinNada: !propuestas.length && !grupos.length && !avisos.length,
+      sinNada: !propuestas.length && !grupos.length && !avisos.length && !distintos.length,
     };
   }
 

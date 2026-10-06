@@ -1,6 +1,466 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · enmienda: el recorrido en todas las páginas · 2026-10-06 · solo spec · siguiente: bloque 18 (implementer), antes del bloque 15
+>
+> spec-author. La petición del humano es literal: «me gusta el flujo que
+> sale en la portada con los 7 pasos, me gustaría que saliera siempre en
+> todas las páginas para visualizar en qué parte del proceso estás». La
+> propuesta del líder está aprobada («si»). Nuevos: `requirements.md` §1.13
+> (**R83–R89**), `design.md` **§16.16** y `tasks.md` **bloque 18**
+> (**T52–T58**). Enmendados: R45, R59, R63 y R66. Ni código ni tests.
+>
+> **Lo que decido:**
+>
+> - **Fuente única**: `Portal.RECORRIDO` y `Portal.pasoDeSeccion` en
+>   `js/portal.js`. Las cuatro tiras van escritas en HTML y una guardia
+>   compara cada una con esa fuente, como ya se hace con la barra. No se
+>   generan con JS porque las páginas reales no cargan `portal.js` (R77) y
+>   en el circuito eso sería código nuevo.
+> - **Sin JS nuevo**: en `partes.html`, `importar.html` y `oficios.html` el
+>   paso actual va fijo en el HTML. En el portal se marca con
+>   `:aria-current`, igual que la barra. `portal_app.js` no cambia.
+> - **Dónde va**: inmediatamente después de la barra y **no pegajosa**. La
+>   portada pierde su copia de dentro de la cabecera, así que hay una sola
+>   tira por página. Las reglas `rs-recorrido*` pasan de `portal.css` a
+>   `styles.css`. El punto ámbar usa la misma regla que el de la barra.
+> - **Paso actual**: entrada → 01, bandeja → 02, incidencias y ficha → 04,
+>   impresión → 05, partes → 06, económico → 07. Inicio y datos no marcan
+>   ninguno. `importar.html` y `oficios.html` → 01.
+> - **02 y 03 apuntan los dos a `#/bandeja`**: se marca solo 02, y 03 no se
+>   marca hasta que el volcado tenga sitio propio.
+> - **`partes.html`**: entra con la excepción literal de R59, que suma (h)
+>   la tira y (i) la sustitución del comentario desfasado de F-036. Así
+>   **H16-4 pasa a (i)**, como ya decía §16.15.4. No cambia ningún módulo
+>   del circuito ni ningún test de la base.
+>
+> **Para el humano** (no bloquea el bloque 18; lo valida en T40/V5):
+> D-17 (la tira no es pegajosa), D-18 (la correspondencia, con 03 sin
+> marcar nunca), D-19 (la portada sin su copia) y D-20 (H16-4 en (i)), en
+> `design.md` §16.16.10. A V1, V2 y V5 se añade ver la tira y el paso
+> marcado en las cuatro páginas: V1 (r), V2 (s) y T12/T40.
+>
+> **Verificado por el humano (2026-10-06), paso 0 de la guarda de
+> salida:** en `partes.html`, con `fase = "procesando"`, pulsó «Inicio».
+> Salió el aviso del navegador, con los partes detrás, y con «Cancelar» se
+> quedó en la página (caso 1a).
+
+> ## ✔ F-035 · review del bloque 14 y del conjunto APROBADA · 2026-10-06 · siguiente: bloque 15 (humano)
+>
+> `a8d78d2`. El líder aplica O-B14-1 (`docs/DESPLIEGUE.md` §10: V2 sin pulsar en importar/oficios
+> con `func start`; V4 entero) y O-B14-2 (`docs/ARCHITECTURE.md`, la línea de F-036 que decía «otra
+> pestaña»). Tests de la raíz 115, front 799, documentación del api 603: verdes. La lista única de lo
+> que el humano mira en V1/V2/V5 está en la review, «Para el líder: lo que el humano tiene que mirar».
+> Pendiente de validar por el humano: H16-4 (ii), y los riesgos H16-5 y H16-6.
+
+> ## ▶ F-035 · BLOQUE 14 (T37, T48–T51, T38, T39) + O12-1, O13-1, O13-3 HECHOS · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 14 y después bloque 15 (humano)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 14».
+>
+> - `8c9c408` **T37**: README del front, `docs/ARCHITECTURE.md` y
+>   `docs/DESPLIEGUE.md` §10 (recuadro fechado de la publicación). Cuentan
+>   el portal en producción con secciones en construcción, el `estado`, el
+>   rótulo, `Portal.PAGINAS`, la misma pestaña y la guarda de salida (R81), y
+>   los pasos 5 y 6. El README cuenta R74 y R75 y dice que dependen de F-053
+>   (**O13-3**). Test de palabras clave con sus controles.
+> - Solo tests, ningún cambio de producción: `b496ee6` **T48** (R62),
+>   `dd9f4b4` **T49** (R63: lista cerrada de directivas y `rs-obras`),
+>   `a73991b` **T50** (R65: clases, `style` y hoja) y `6103e78` **T51**
+>   (R53: lista blanca). Ninguna guardia salió en rojo sobre el árbol real.
+> - `50192e1` **O12-1**: R74 ve el rótulo escondido por clase.
+> - `e2fc2ea` **O13-1** (opcional, hecho): R75 ve `inert` y
+>   `pointer-events-none`.
+> - Commit de **T38**: evidencias de la enmienda. Mutación del arnés: 0
+>   mutantes. Mutaciones 14–36, todas muertas. En este bloque hay **15
+>   mutantes, 13 muertos**. Nada en `services/postventa-api`. «F-036
+>   intacto»: solo las líneas de R81.
+> - Commit de **T39**: `bash harness/init.sh` **ENTORNO LISTO** (una vez):
+>   raíz 115, front 799, Node 677/677. Después arreglé 3 avisos de ruff
+>   míos; el total vuelve a 71 y el front sigue en 799 passed. Worktree
+>   retirado. Sin push.
+>
+> **Para el líder** (§6 del informe):
+>
+> - **H-B14-1**: **A1 y A5 sobreviven**. Son texto escrito a mano, sin
+>   directiva, y la lista cerrada de T49 no puede verlos: es una errata en
+>   la verificación de T49, no un fallo de la guardia. No he ampliado la
+>   regla. Va al spec-author: o se aceptan y se comprueban en V1/V5, o una
+>   regla nueva con su medida.
+> - Lecturas que he tomado:
+>   - en T49, estricta con `x-bind:` y `x-on:`;
+>   - en T50, también lo que va dentro del rótulo;
+>   - en T51, la excepción de `--rs-acero-300` solo con el selector exacto.
+>
+> **Para el humano: el bloque 15**, en el orden de `design.md` §16.12, tras
+> la review APROBADA:
+>
+> 1. **T12 · V1 y V2** en local: `.\dev_front.ps1`, y para V2 `func start`
+>    con una remesa de `muestras/` hasta la confirmación, siempre
+>    «Cancelar». Incluye la guarda de salida: con la remesa a medias, salir
+>    pregunta y se cancela.
+> 2. **T40 · parada V5** en la vista previa:
+>    `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1`.
+>    Se recorren las ocho pestañas y, al terminar, se lanza con `-Retirar`.
+> 3. **Merge a `dev`** y push.
+> 4. **T41 · publicación**:
+>    `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`,
+>    más V4. El líder actualiza `azure-apps/postventa_incidencias.md`.
+> 5. **T42 · aviso a Posventa**, con el texto de `docs/DESPLIEGUE.md` §10.
+
+> ## ▶ F-035 · erratas de spec de las reviews de la reanudación · 2026-10-06 · solo spec · siguiente: bloque 14 (implementer)
+>
+> spec-author. Enmiendas fechadas el 2026-10-06, en su sitio y sin
+> renumerar, en `specs/F-035-portal-posventa/` (requirements, design y
+> tasks). No he tocado ni código ni tests, y ningún test lee la spec: no se
+> rompe nada.
+>
+> - **H-8**: R62 y la tabla de §16.4 ahora dicen «las otras siete,
+>   `partes` incluida». R48 lleva nota: su `inicio` es sin `partes` y solo
+>   vale para la barra del circuito. Test → **T48**.
+> - **H16-3**: corregida la firma de R79, que pasa a `(estado, Pipeline,
+>   Autoguardado)`, con nota de errata.
+> - **H16-4**: se elige **(ii)**, porque es lo que menos toca: se acepta el
+>   comentario desfasado y queda anotado en §16.15.4. Lo sustituirá quien
+>   abra la excepción de R59 por otro motivo (F-045 o F-021).
+> - **H16-5**: §16.15.2 pasa a «se acepta» la ventana de 1,5 s (un parte
+>   rechazado o cerrado por el backend que se edita, se cierra el detalle y
+>   se sale en ese instante), con errata. Ajustadas también la fila (d) y el
+>   riesgo de §16.15.9.
+> - **H16-6**: precisión en R79. (d) mira solo el `cerrado` del circuito; se
+>   acepta tal cual y no cambia el código.
+> - **O17-2**: R53 enmendado con la lista blanca de colores de texto, y nota
+>   en §15.6 con el recuento medido. Hay una excepción cerrada:
+>   `--rs-acero-300` en `.rs-tarjeta__indice`, que es decorativo y lleva
+>   `aria-hidden`. Test → **T51**.
+> - **O9-2 y O9-3**: R63 enmendado con la lista cerrada de directivas fuera
+>   de los envoltorios (medida sobre `6106c5c`) y la regla de `rs-obras` ⇔
+>   `data-en-construccion`. Nota en §16.4. Test → **T49**.
+> - **O9-4**: precisado qué es «visible» en R65: clases que esconden, el
+>   atributo `style` y las reglas de `rs-obras*` que lo esconden. Test →
+>   **T50**.
+> - **O9-7**: errata en la verificación de T27. Son dos líneas en
+>   `importar.html`: `id="bandeja"` y la `?v=`.
+> - **O10-1**: errata en §16.5. El resultado lleva `--info` si
+>   `yaImportado`, `--atencion` si es `parcial` y `--ok` en otro caso.
+>
+> **Pasa al bloque 14** (`tasks.md`, entre T37 y T38, solo tests y cada uno
+> con su control): T48 (R62), T49 (R63), T50 (R65) y T51 (R53). Todas las
+> reglas se cumplen hoy; si una guardia sale en rojo sobre el árbol real,
+> **PARA**. T38 (b) suma las supervivientes que matan.
+>
+> **Para el humano** (nada bloquea):
+>
+> - validar (ii) en H16-4: si prefiere (i), es una línea en R59 (g) más su
+>   guardia;
+> - validar los dos riesgos aceptados de H16-5 y H16-6.
+>
+> **Para el líder**: hay pendientes del bloque 14 que no son de spec ni
+> están en `tasks.md`, así que no los he añadido. Son O12-1 (clases de
+> ocultar en el rótulo de R74), O13-1 (opcional) y O13-3 (que el README
+> cuente R74 y R75, en T37).
+
+> ## ▶ F-035 · R13-1 (review del bloque 13) HECHO · 2026-10-06 · `init.sh` en VERDE · siguiente: re-review de R13-1 y después bloque 14 (documentación)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Arreglos de la review
+> del bloque 13».
+>
+> - `897416f` **R13-1**, solo tests (`tests_js/f035_paginas.test.js`): «los
+>   distintos no cambian propuestas, grupos ni avisos» parte ahora de una obra
+>   con una propuesta, un grupo vigente de dos códigos, un aviso y su par en
+>   `distintos`; afirma que nada de eso está vacío y que `sinNada` es `false`.
+> - K1, K12 y K13, cada una sola en una copia desechable: **sobreviven** con
+>   el test de HEAD y **caen** con el nuevo.
+> - Node 677/677, front 729, raíz 114; `bash harness/init.sh` **ENTORNO
+>   LISTO** (una vez). `js/`, `oficios.html` y `oficios.test.js` sin diff.
+>   Sin worktree. Sin push.
+> - Opcionales sin hacer: el test del componente con la misma respuesta y
+>   O13-1.
+
+> ## ▶ F-035 · BLOQUE 13 (T35, T36) HECHO · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 13 y después bloque 14 (documentación)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 13».
+>
+> - `75246db` **T35** (R75, D-13 (i)):
+>   - `presentarPropuestas` gana `distintos`: los pares de `oficio.distintos`,
+>     ordenados, sin repetir, con el `par()` de siempre y su clave;
+>   - es tolerante: sin el campo (F-053 aún no existe), si no es una lista o
+>     con entradas mal formadas, no pinta nada;
+>   - `sinNada` los cuenta. Ni una llamada nueva: el botón usa `decidir()`.
+> - `oficios.html`: «Decididos como distintos» entre «Grupos vigentes» y
+>   «Avisos», con la frase de §16.6 y un «Son el mismo» (`--ok` compacto) por
+>   par. La huella de O10-3 gana solo esas cuatro entradas; R33 admite `M
+>   js/oficios.js`.
+> - Commit de **T36**: el superviviente E11b (un `hidden` en la sección)
+>   cerrado en la guardia, con dos controles.
+>
+> Front 729, Node 677/677, raíz 114; `bash harness/init.sh` **ENTORNO LISTO**
+> (una vez). Mutación del arnés: 0 mutantes. Manuales: **50, con 49 muertas y
+> 1 equivalente** (A6), incluidas la 26, la 27 y la 28. «F-036 intacto»; la
+> API, sin diff. Worktree de mutación y rama auxiliar retirados. Sin push.
+>
+> - **MANUAL pendiente** (no hay navegador conectado): va con V1/V2, donde la
+>   pantalla de oficios tiene que salir como antes. La sección solo se verá
+>   con F-053 desplegada (V4 g).
+> - Para el reviewer, §5 del informe: `Array.isArray` en vez del literal
+>   `||`, los códigos solo como textos (aviso para F-053), el `@click` exacto
+>   y el botón evaluado desde el HTML con `vm`.
+
+> ## ▶ F-035 · BLOQUE 12 (T33, T34) + O11-5 y O11-1 HECHOS · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 12 y después bloque 13 (implementer, si D-13 (i))
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 12».
+>
+> - `bcdf46a` **O11-5**: huella funcional de `importar.html` (44 entradas)
+>   fijada sobre `9812d69`, antes de R74, con L1–L4 en sus controles.
+> - `09b5660` **O11-1**: la guardia de O10-2 ve `tabindex` negativo,
+>   `disabled` (también por `fieldset`), `aria-hidden` e `inert` (en el control
+>   o en un ancestro), y un contorno de foco no sólido o transparente, leído
+>   con la cascada.
+> - `fa14520` **T33** (R74): `rotuloResumen(respuesta)` en
+>   `js/importacion.js`, pura y tolerante. Sin `importado_at_utc` (F-053 aún
+>   no existe) o con una fecha que no existe, va sin fecha; con fecha,
+>   dd/mm/aaaa en hora de Madrid; sin desfase, se lee en UTC. Más la clave en
+>   `presentarImportacion`; `resumenTexto` y `textoDelEstado` sin cambio.
+>   `importar.html` lo pinta justo encima de los recuentos; la huella gana
+>   solo esa entrada. R33 enmendado (`problemas_r33`, con control).
+> - Commit de **T34**: 4 casos y controles que matan supervivientes.
+>
+> Front 707, Node 645/645, raíz 114; `bash harness/init.sh` **ENTORNO LISTO**
+> (una vez). Mutación del arnés: 0 mutantes. Manuales: **61, con 59 muertas y
+> 2 equivalentes** (C1, C2), incluidas la 24 y la 25. «F-036 intacto»; la API,
+> sin diff. Worktree de mutación y rama auxiliar retirados. Sin push.
+>
+> - **MANUAL pendiente** (no hay navegador conectado): va con V1/V2. Es ver el
+>   rótulo en `importar.html` al importar un fichero dos veces.
+> - Para el reviewer, §5 del informe:
+>   - qué es «una fecha válida» (más estricto que `Date`);
+>   - sin desfase, UTC (aviso para F-053);
+>   - el rótulo sin clase propia;
+>   - O11-1 ampliada con `inert`, `fieldset` y la cascada;
+>   - C1 y C2, equivalentes.
+
+> ## ▶ F-035 · BLOQUE 11 (T31, T32) + O10-2 HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 11 y después bloque 12 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 11». `0112d91` **T31**:
+> `oficios.html` remodelado solo en presentación (barra común con «Entrada» actual y leyenda,
+> migas, subnavegación con «Oficios repetidos» actual, `rs-*`, errores en `rs-aviso--error`,
+> avisos en `rs-panel--atencion` con rótulo, «Son el mismo» `--ok` compacto, «Son distintos» y
+> «Separar» secundario compacto, pie). Guardias de R70–R72, R77, R54/R60 y Node R66/R70 sobre
+> `oficios.html`; semántica de estados de oficios; **O10-4** (una variante de más salta);
+> **O10-3**: huella funcional de `oficios.html` = la de F-036 (`2a86bca`). `a7d6292` **O10-2**:
+> el `input` de fichero de `importar.html` con `sr-only` y `label.rs-btn:focus-within`.
+> `?v=43b9e97b83` en las cuatro páginas. Front 673, Node 607/607, raíz 114; `bash harness/init.sh`
+> **ENTORNO LISTO** (una vez). Mutación del arnés: 0 mutantes; manuales **58/58 muertas**
+> (21b, 22b y propias). `js/`, la API y los tests de F-036 sin diff. Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador (no hay ninguno conectado): va con V1/V2,
+>   incluido tabular hasta «Elegir el Excel» en `importar.html`.
+> - Para el reviewer, §5 del informe: huella solo en `oficios.html` (la de `importar.html`, al
+>   líder; el bloque 13 la amplía con R75); `label.rs-btn:focus-within` en vez de
+>   `.rs-btn:focus-within`; dos clases nuevas de texto; un `UP034` mío corregido tras `init.sh`.
+
+> ## ▶ F-035 · BLOQUE 10 (T29, T30) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 10 y después bloque 11 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 10». `9b31674` **T29**:
+> `enlaceSeccion(id, desde)` desde una página de `PAGINAS`; `importar.html` remodelado solo en
+> presentación (barra común estática con «Entrada» actual y leyenda, migas y subnavegación,
+> las `<link>` de la marca, `rs-cuerpo`, `rs-*` sin la lista cerrada, pie común); en
+> `styles.css` `rs-migas`, `rs-subnav*`, `rs-aviso--ok`, `rs-aviso__titulo` y `rs-desplazable`
+> (movida de `portal.css`); `?v=fce64f6d72` en las cuatro páginas. **H-7** y **O17-3**
+> cerrados. **T30**: guardia nueva de la semántica de estados (mata G1–G5). Front 628, Node
+> 597/597, raíz 114; `bash harness/init.sh` **ENTORNO LISTO** (una vez). Mutación del arnés: 0
+> mutantes; manuales **52/53 muertas** (21, 22, 23 y propias; B11 equivalente). `js/importacion.js`,
+> `js/api.js` y los tests de F-036 sin diff. Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador (no hay ninguno conectado): va con V1/V2.
+> - Para el reviewer, §5 del informe: «ya importado» en `rs-aviso--info` (más que el `:class`
+>   literal de §16.5, por el encargo); `rs-desplazable` movida; `rs-aviso__titulo` nuevo;
+>   `oficios.html` solo cambia la `?v=`. Para el líder (§6): el `input` de fichero con
+>   `hidden` no se alcanza con teclado (ya era así en F-036).
+
+> ## ▶ F-035 · BLOQUE 9 (T27, T28) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 9 y después bloque 10 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 9». `39fa3e6` **T27**: recuadros
+> `data-en-construccion` (uno por sección en construcción: bandeja, incidencias, impresion,
+> economico, datos; de bloque: F-037 en entrada y F-045 en la tarjeta «Partes firmados»), cada
+> uno con su rótulo (cinta, chip «En construcción», la frase de R65 y sus fichas con título vía
+> `Portal.fichasDeSeccion` / `titulos`); bandeja enlaza a `importar.html#bandeja` (+`id="bandeja"`).
+> Portada sin cifras (fuera `contadores()` y `contadoresInicio`), chips por tarjeta, sin
+> «maqueta» visible. `rs-obras` en `portal.css`, CSS muerto fuera (H-5), `?v=4e0797b8ee` en las
+> cuatro páginas. Escáner de R28 con el recuadro (raíz). H-3 y H-4 (puntos 2 y 3) cerrados.
+> **T28**: guardia nueva que mata B9-19. Front 581, Node 576/576, raíz 114; `bash harness/init.sh`
+> **ENTORNO LISTO**. Mutación del arnés: 0 mutantes; manuales **23/23 muertas** (18, 19, 20 y 20
+> propias). Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador (no hay ninguno conectado): va con V1/V2.
+> - Para el reviewer, §5 del informe: `importar.html` cambia en 2 líneas (`id` + `?v=`, por
+>   §16.5), `rs-obras` existente renombrado a `rs-por-obra`, el enlace del rótulo repintado en
+>   atención, H-4 punto 3 hecho aquí (estaba pendiente del líder), `init.sh` corrido dos veces.
+
+> ## ▶ F-035 · BLOQUE 17 (T46, T47) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 17 y después bloque 9 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 17». `15aa0a7` **T46**: RED de R82
+> (30 utilidades en 18 `class` estáticos) y `partes.html` remodelado solo en valores de `class`
+> (`rs-texto`, `rs-texto--apagado`, `rs-resumen`, `rs-nota`, `rs-rotulo--atencion`,
+> `rs-nota--atencion`, `rs-panel__franja`; los nuevos, con tokens en `css/styles.css`);
+> `?v=5c6cb12598` en las cuatro páginas. `6839be6` **H16-7** (solo tests). `04802ed` **T47**:
+> guardia de que cada `rs-*` de `partes.html` tiene regla (cierra el superviviente C1).
+> `text-red-800` y todos los `:class` intactos; `js/` sin diff; R59 y R33 en verde sin aflojar.
+> Front 540, Node 569/569, raíz 112; `bash harness/init.sh` **ENTORNO LISTO**. Mutación del
+> arnés: 0 mutantes; manuales **14/14 muertas** (36 incluida). Ningún par de contraste nuevo.
+> Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador de T46 (Chrome sin navegador conectado): va
+>   con V1/V2 del humano.
+> - Para el reviewer, §5 del informe: separador nuevo en vez de tocar `.rs-panel--lista` (lo usa
+>   el portal); `?v=` también en `importar.html`/`oficios.html`; R82 mira también la barra.
+
+> ## ▶ F-035 · ARREGLOS DE LA RE-REVIEW DEL BLOQUE 16 (H16-8, H16-9) HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: re-review acotada a estos dos casos y después bloque 17
+>
+> implementer. **Tercera vuelta sobre el bloque 16, autorizada expresamente por el humano**
+> («si», 2026-10-05) **con su límite: la re-review siguiente solo comprueba H16-8 y H16-9, sin
+> abrir variantes nuevas.** Informe: **`progress/impl_F-035.md`**, «Arreglos de la re-review del
+> bloque 16». Solo tests (58 → 60); `js/` sin diff. `e20765e` **H16-8**: R79 (c) con el pendiente
+> primero (`[aprobado]` y `[aprobado, cerrado]`) → mata N14. `07058b6` **H16-9**: el
+> `beforeunload` se registra sin opciones (test vm y R80) → mata N5 y N6. Node 569/569;
+> `bash harness/init.sh` **ENTORNO LISTO**. Sin push.
+
+> ## ▶ F-035 · ARREGLOS DE LA REVIEW DEL BLOQUE 16 (H16-1, H16-2) HECHOS · 2026-10-05 · `init.sh` en VERDE · siguiente: re-review del bloque 16 y después bloque 17
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Arreglos de la review del bloque 16».
+> Solo tests en `tests_js/guarda_salida.test.js` (54 → 58); `js/` sin tocar (`git diff` vacío).
+> `e00ffbc` **H16-1**: el fichero real cargado con `vm.runInNewContext` y un `window`/`document`
+> de juguete: se instala solo (un `beforeunload`, `window.GuardaSalida`) y su manejador pregunta
+> con trabajo. `87e24e8` **H16-2**: R79 (c) con un parte terminado (cerrado, rechazado, cerrado
+> del backend) delante de uno aprobado sin cerrar → hay trabajo. Mutaciones en copia desechable:
+> **G1 muerta** (1 fail) y **G12 muerta** (1 fail), con trazas pegadas. Node 567/567; front 473;
+> `bash harness/init.sh` **ENTORNO LISTO**; campaña del arnés 0 mutantes. Sin push.
+>
+> - **H16-3 a H16-6 son de spec**: quedan para el spec-author en el bloque 14.
+> - MANUAL pendiente, sin cambios: el vistazo en navegador (respuesta 7 de la review) y V1/V2.
+
+> ## ▶ F-035 · BLOQUE 16 (T43, T44, T45) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 16 y después bloque 17 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 16». T43 `e3842b4`: nuevo
+> `js/guarda_salida.js` (R78–R80, D-15: un `beforeunload` que pregunta solo con trabajo sin
+> terminar; solo lee con `Alpine.$data`; falla abierta) + 54 tests Node con dobles de los módulos
+> reales y Proxy de solo lectura + estático de R80. T44 `3a89d82`, en un solo commit: `partes.html`
+> sin `target`/`rel` en barra y cabecera, leyenda de R47 ajustado, `<script>` de la guarda antes de
+> `app.js`; `enlaceSeccion(…, "circuito")` en la misma pestaña; las líneas literales de R81 en
+> `test_f007_estaticos.py` y `test_f036_front.py` (D-16); guardias R31, R32, R43, R47, R59 (f, g),
+> R73 en las cuatro páginas y el control de R48 de la raíz, con controles. **H-2 y H-6, cerrados**
+> aquí. `bash harness/init.sh`: **exit 0** (raíz 112, front 473, api desde caché; ruff 71, los de
+> antes); Node 563/563. Mutación del arnés: 0 mutantes (bases 8ced4bd y 2a86bca); manuales
+> **18/18 muertas** (29–35 y propias), worktree retirado. «F-036 intacto» ajustado: solo las líneas
+> de R81. Ningún módulo del circuito tocado; nada de `services/postventa-api/`. Sin push.
+>
+> - **MANUAL pendiente**: el vistazo en navegador de T44 no se hizo (extensión de Chrome sin
+>   conectar); solo se comprobó que `dev_server.py` sirve las páginas y la guarda (200). Va con
+>   V1 (q) / V2 (k)–(p) de T12.
+> - Para el líder/spec-author (§5 del informe): R79 escribe la firma con dos parámetros (el diseño,
+>   tres); el comentario de F-036 de la cabecera de `partes.html` queda desfasado y R59 no deja
+>   tocarlo; reescribí el comentario de la barra (R59 c lo admite).
+
+> ## ▶ F-035 · BLOQUE 8 (T25, T26) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: review del bloque 8 y después bloque 16 (implementer)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 8». Commit T25 `023b7a5`: `estado`
+> literal en `Portal.SECCIONES` y `Portal.enConstruccion` (R62); guardia R62 en la raíz con su
+> control (F-038 `done` → `bandeja` `parcial`, salta); `data-construccion` + `aria-label` en las
+> cinco pestañas en construcción de `index.html` y `partes.html` (R66) y punto ámbar en
+> `css/styles.css` (`?v=064ee0dc11`); aviso de R13 enmendado; en `partes.html`, `rs-enlace` en los
+> dos enlaces de F-036. Review del bloque 7: **H-1 y H-4 (primer punto) cerrados**; H-2, H-3, el
+> resto de H-4 y H-5, a sus bloques. `bash harness/init.sh`: **exit 0** (raíz 112, front 425, api
+> desde caché; ruff 71, los de antes); Node 509/509. Mutación del arnés: 0 mutantes (bases 2a86bca
+> y dd67d48); manuales 12/12 muertas (16, 17 y diez propias; B8 la mata un test añadido en T26).
+> «F-036 intacto» vacío; nada de `services/postventa-api/`. Sin push.
+>
+> - Sin tocar, por el ajuste del 2026-10-05: la leyenda de R47 y los `target` del circuito (T44).
+> - Para el líder: en R62, `inicio` es `real` cuando lo son las otras **siete** (con `partes`);
+>   la regla de R48 deja fuera `partes`. Hoy dan lo mismo. Ver §5 del informe.
+
+> ## ▶ F-035 · BLOQUE 7 (T23, T24) HECHO · 2026-10-05 · `init.sh` en VERDE · siguiente: bloque 8 (implementer), tras lo que decida el líder
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 7». Commit T23 `bdf8747`: la maqueta de
+> F-036 sale del portal (placeholders, tabla, resultado de ejemplo, bloque `entrada` de
+> `MaquetaDatos`, entradas de `PLACEHOLDERS` y su título) y `entrada` enlaza en la misma ventana a
+> `importar.html` y `oficios.html` (dos tarjetas «En producción»); entra `Portal.PAGINAS` como dato;
+> R17 enmendado; nuevo `tests/test_f035_paginas.py` (R68, RED primero). R28 y su control, en verde.
+> `bash harness/init.sh`: **exit 0** (raíz 107, front 420, api desde caché; ruff 71, los de antes).
+> Mutación del arnés: 0 mutantes (sin Python de producción); manuales 14 y 15, muertas. «F-036
+> intacto» vacío; nada de `services/postventa-api/`. Sin push.
+>
+> - Apunte para el líder: el pendiente del bloque `web` (F-037) dice «bloqueado … por la
+>   importación del Excel», que ya existe; se dejó tal cual (T23 pide el panel sin tocar).
+
+> ## ▶ F-035 · enmienda APROBADA por el humano · 2026-10-05 · siguiente: bloque 7 (implementer)
+>
+> «si» (2026-10-05) a D-15 (las cuatro condiciones de trabajo sin terminar) y D-16 (la excepción
+> mínima de R81). D-11 la decidió el humano; D-12, D-13 (i) y D-14 quedan con la recomendación.
+> El líder da de alta **F-053** (los dos datos de backend del §16.6, prioridad 0). Orden de bloques:
+> 7 → 8 → 16 → 17 → 9 → 10 → 11 → 12 → 13 → 14 → 15, uno por encargo.
+
+> ## ▶ F-035 · ENMIENDA AJUSTADA A LA RESPUESTA DEL HUMANO · 2026-10-05 · **pendiente de que el humano valide D-15 y D-16**
+>
+> spec-author. Respuesta del humano (2026-10-05), literal: «paginas propias, pero como en la
+> maqueta, con un banner superior, donde cambie de ventana pero sin abrir pestaña nueva. y las
+> paginas que ya estan deben ser remodeladas para que el front siga el estilo del resto de app».
+> Recogida en `specs/F-035-portal-posventa/`: **`design.md` §16.15** (nuevo) y notas «Ajuste del
+> 2026-10-05» en §16.1–§16.14; requisitos **R78–R82** nuevos y **R31, R32, R33, R43, R46, R47,
+> R48, R59, R70, R72, R73** ajustados en su sitio; V1/V2/V4/V5 ampliadas; tareas nuevas
+> **T43–T47** (bloques **16** y **17**) y notas en T25, T29, T31, T37, T38, T12, T40, T42. Sin código.
+>
+> - **Decidido**: **D-11** por el humano: páginas propias (importar, oficios, partes) con la misma
+>   barra de la maqueta, y **toda** la navegación en la misma pestaña, **también desde el
+>   circuito** (ningún `target` entre páginas del front; R48 queda absorbida). **D-12, D-13 (i) y
+>   D-14, decididas por defecto** con la recomendación (rótulo en tres capas y portada sin cifras;
+>   ficha de backend aparte, F-053, con front tolerante; parada V5 en la vista previa con
+>   `publicar_maqueta.ps1`).
+> - **La guarda de salida del circuito** (R78–R80): módulo nuevo `js/guarda_salida.js`, un
+>   `beforeunload` que pide confirmación **solo** con trabajo sin terminar: algo en marcha (trocear,
+>   procesar, la tanda), correcciones guardándose o con fallo, algún parte ni cerrado ni rechazado,
+>   o un parte abierto sin cerrar. Sin eso (recién abierta, ficheros elegidos sin trocear, todo
+>   cerrado o rechazado, tras «Empezar otra remesa») se navega sin preguntar. Solo **lee** el estado
+>   con `Alpine.$data()`; si no puede leerlo, no pregunta.
+> - **La excepción mínima** (R81): ningún módulo del circuito cambia (R33 intacto), pero cargar la
+>   guarda exige un `<script>` en `partes.html` antes de `app.js`, **una línea** en `ORDEN_CANONICO`
+>   de `test_f007_estaticos.py` (sin ella, el test de F-007 rechaza el script) y, en
+>   `test_f036_front.py`, el test de R51 de F-036 pasa de exigir `target="_blank"` a exigir que no
+>   lo haya (docstring + 2 `assert` → 1). Líneas literales en `design.md` §16.15.4.
+> - **Remodelado**: `importar.html` y `oficios.html` ya iban a la identidad Ruesma (R70–R72); el
+>   ajuste añade la leyenda de la barra y el pie. **Ningún test de F-036 fija una clase**: el
+>   remodelado no obliga a tocar ninguno (el único que cambia es el de R51, por la pestaña).
+>   `partes.html` casi está (H-12): le quedan 35 utilidades de Tailwind en 20 `class` estáticos
+>   (grises, azul cielo, ámbar) → R82, bloque 17.
+> - **Orden de bloques** (uno por encargo): **7 → 8 → 16 → 17 → 9 → 10 → 11 → 12 → 13 → 14 → 15**.
+>   El **7** sigue siendo el primero y el que deja `init.sh` en verde; el 16 quita los `target` y
+>   mete la guarda en el mismo commit (T44).
+> - **Para validar el humano** (`design.md` §16.15.10): **D-15** qué cuenta como trabajo sin
+>   terminar (recomendado: las cuatro condiciones, sin contar ficheros elegidos sin trocear);
+>   **D-16** aceptar la excepción mínima de R81 (recomendado; la alternativa es tocar `js/app.js`).
+>   Riesgo que acepta con la misma pestaña: quien diga «Salir» en el diálogo pierde la remesa
+>   (F-021 sigue pendiente); lo avisan la leyenda de la barra y el aviso a Posventa.
+> - Hallazgos: H-11 (el R51 de F-036 no habla de pestañas: su spec no se toca), H-12 (lo que le
+>   falta a `partes.html`). Siguen H-8/H-9/H-10. El rojo conocido de `init.sh` (R28 y su control)
+>   no cambia: lo arregla el bloque 7.
+
+> ## ▶ F-035 REANUDADA · 2026-10-05 · `dev` traído a la rama · siguiente: enmienda de la spec (spec-author)
+>
+> Decisión del humano (2026-10-05): seguir con el portal **sin esperar el feedback de negocio**, antes
+> que F-052, con la **opción (b)**: se publican también las secciones que aún no funcionan (ficha,
+> operaciones en bloque, impresión, económica), marcadas «En construcción». Importar, bandeja y
+> oficios (F-036, ya en `dev`) pasan a ser secciones reales del portal con la identidad Ruesma, más
+> los dos apuntes de la ficha (deshacer «Son distintos»; rotular los recuentos de un fichero ya
+> importado). Fuera: la tarjeta de `front-portal` y el grupo de Entra (H-4).
+>
+> Merge de `dev` (líder): conflictos en `current.md`, `BACKLOG.md` (regenerado) y
+> `services/postventa-front/index.html`: se queda el portal; los dos enlaces de F-036 (R51) pasan a
+> la cabecera de `partes.html`, donde vive ahora el circuito, y `test_f036_front.py` apunta su
+> `INDEX` a `partes.html` (el mismo arreglo de una línea que F-035 hizo en los tests del circuito).
+>
+> **Rojo conocido y a propósito**: `tests/test_f035_placeholders_vivos.py::test_f035_r28_…` falla porque
+> F-036 está `done` y la maqueta conserva sus placeholders (`index.html:185,188`, `js/portal.js:84,91`,
+> `js/maqueta_datos.js:123`). Es la guarda de R28 haciendo su trabajo: retirarlos es el primer
+> bloque de la enmienda. El resto de `init.sh`, en verde (front 409 passed).
+
 > ## ✅ F-036 CERRADA Y EN `dev` · 2026-10-05 · siguiente: push (humano) y F-035
 >
 > Importar el Excel de incidencias a la bandeja: review 13 APROBADA, T1–T64 hechas (T16 y T27–T29
@@ -78,6 +538,314 @@
 > de F-040 en `azure-apps/sigrid_api.md` §8.9. **Lo primero, preguntar al
 > humano por el Excel de ejemplo**, que sigue sin llegar: la spec se diseña
 > contra él. Si trae datos personales, no se convierte sin preguntar.
+
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 7 HECHAS · 2026-09-26 · siguiente: reviewer (vuelta sobre la review 7) y guion §8 del bloque 6 (humano)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la review 7».
+> Commits `ed7c9bf` y `97fda38`. `Backends-Del-Entorno` sin `--query`, contado con
+> `ConvertFrom-Json` y cerrado si falla; test de literales de `az` con
+> metacaracteres de cmd (y control); `-Retirar` comprueba la lista antes de
+> confirmar; guardas nuevas para el secreto y las URL de retorno. Simulación con
+> `az.cmd`/`swa.cmd` réplica: 18/18 OK (la versión vieja reproduce el defecto).
+> 27/27 mutantes muertos. El guion §8 tenía el mismo `length(@)`: corregido.
+> `init.sh` en verde (raíz 107; api sin caché 4356). `desplegar_front.ps1` sin
+> tocar (O1 de la review, para el líder). Sin push.
+
+> ## ▶ F-035 · BLOQUE 6 (T20, T21, T22) HECHO · 2026-09-26 · siguiente: review del bloque 6 y guion de §8 (humano)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 6 · T20 a T22», §7 a §9.
+> T20 por la **opción B** del líder (`42b7cbf`): `infra/publicar_maqueta.ps1`
+> (`6f6ffc3`) con las piezas duplicadas de `desplegar_front.ps1` y test de
+> identidad; `-Retirar`; comprobaciones en ejecución (backend, App Settings
+> en el entorno, host, lista de retorno entera y nunca vacía). 30 tests,
+> 20/20 mutantes muertos, simulación local sin Azure 15/15. `desplegar_front.ps1`
+> y los tests de F-010 sin tocar. `init.sh` en verde (raíz 103; api sin caché
+> 4356). Sin push; `features.json` sin tocar.
+>
+> - Pendiente del humano: guion §8 (publicar, comprobar, retirar).
+> - Para el líder: `azure-apps/postventa-incidencias.md` (una URL y una URL de
+>   retorno más cuando se publique), fuera de este repositorio.
+
+> ## ▶ F-035 · BLOQUE 6: T21 HECHA, **T20 BLOQUEADA** · 2026-09-26 · siguiente: decisión del líder/humano sobre T20
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 6 · T20 a T22».
+> T21 en `342a4a8` (versión `?v=` de las hojas, una fuente = su contenido;
+> enmienda (e) de R59 con 6 controles y 6/6 mutantes muertos). `init.sh` en
+> verde (raíz 73, front 364, ruff 61). Sin push; `features.json` sin tocar
+> por indicación del líder (por eso el bloqueo consta aquí y no allí).
+>
+> - **Motivo del bloqueo de T20**: «reutilizando sus piezas, sin duplicarlas»
+>   exige sacar funciones y la copia de trabajo de `infra/desplegar_front.ps1`
+>   (F-010, script de producción) a un común y enmendar 3 tests de F-010. Es
+>   tocar otra feature, y el precedente (F-013) fue no hacerlo. Opciones A/B/C
+>   en §1 del informe. Averiguación de Azure (App Settings y backend por
+>   entorno, formato del host) hecha y citada en §2; vuelta atrás en §5.
+> - Desviación de orden: T21 se hizo antes que T20 porque no depende de ella.
+
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 5 HECHAS · 2026-09-25 · siguiente: reviewer y T12 del humano
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 5». Commits `16daa43` y `3907c4e`. Por decisión del líder,
+> `index.html:940` (coste del capítulo) lleva ya su marca de «sin dato»: la
+> única línea de producción. Tests: el «sin dato» vacía la fila en todos los
+> candidatos (M17); el chip de ficha se elige por `rs-ficha`, se exigen los 10
+> y cita R29 (M14, M21); y el de R57 (Python) elegía por su propia ligadura:
+> ahora por lo que enseña.
+>
+> - Barrido por aparición: **41/41**. Otros operadores (borrar, literal,
+>   intercambio): antes 68/89, ahora **92/92**. 0 supervivientes.
+> - `bash harness/init.sh` en verde (raíz 73, front 353, JS 413, ruff 61).
+>   Sin push. T12 (humano) sigue pendiente.
+
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 4 HECHAS · 2026-09-25 · siguiente: reviewer y T12 del humano
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 4». Solo tests (`e03b173`, `1c79ed1`): R58 exige la forma exacta del
+> `x-show` de la lista (las tres negaciones, en rojo); barrido por aparición
+> de las 37 directivas nuevas (40 apariciones): antes 11/40 muertas, ahora
+> **40/40**, con tests de JS que ejecutan las ligaduras contra el componente
+> y R9 (el chip F-0NN de cada panel = la ficha de sus pendientes).
+>
+> - **Hallazgo para el líder**: `index.html:940` (coste del capítulo) no
+>   lleva `rs-sin-dato`; latente (los datos de ejemplo siempre tienen coste).
+>   Arreglarlo es tocar `index.html`, fuera de este encargo.
+> - `bash harness/init.sh` en verde (raíz 73, front 353 sin caché, JS 413,
+>   ruff 61). Sin push.
+
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 3 HECHAS · 2026-09-25 · siguiente: reviewer (vuelta sobre la review 3) y T12 del humano
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 3». Solo tests: `tests/test_f035_portal.py` (`ecf0c2f`), 6 nuevos:
+> R55 gana por especificidad (las dos hojas), chips del volcado en su panel,
+> lista de errores de la importación, color del chip = estado que se lee, y
+> R-1 (styles.css no puede esconder ni desactivar el circuito). Ni
+> `partes.html`, ni `css/*.css`, ni `js/*.js`.
+>
+> - Mutantes en worktree desechable (retirado): G (las dos hojas), S1, O2,
+>   DE, H, I, R, Z **muertos**; O equivalente en comportamiento (comprobado en
+>   Chrome) pero en rojo por el test; S2 y S3 supervivientes documentados.
+> - P-R1 del bloque 5 completa: 37 directivas nuevas por clase, con su
+>   mutación o su análisis.
+> - `bash harness/init.sh` en verde (raíz 73, front 352 sin caché, ruff 61).
+
+> ## ▶ F-035 · BLOQUE 5b (T16 a T19) HECHO · 2026-09-25 · siguiente: T12 (V1/V2 del humano) y review del bloque 5
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 5b · T16 a T19».
+> Commits `4cb0603` (T16), `bf8d45e` (T17), `25a708d`, `1cbc1ea`, `05ead04`
+> (T18), `d5f38cd` (T19) y el del informe. Sin push; `features.json`,
+> `js/*.js`, `staticwebapp.config.json`, `dev_server.py`, backend,
+> `front-portal` y `azure-apps` sin tocar. **Ningún test del circuito cambia.**
+>
+> - **T16**: `partes.html` con la identidad Ruesma: solo valores de `class`,
+>   la barra (logotipo, `rs-pestana`, leyenda) y las cuatro `<link>`;
+>   `text-red-800` conservado. Guardia de R59 por tokens (el `class` pierde el
+>   valor, no el sitio) en lugar de `difflib`. Botón principal del circuito,
+>   burdeos.
+> - **T17**: control permanente de R59 (copias estropeadas en memoria); R48 en
+>   la raíz con su control (F-048 `done` → rojo, visto); regla en
+>   `ARCHITECTURE.md` y README; sección «Identidad visual Ruesma (F-035)».
+> - **T18**: campaña 0 mutantes; a mano en worktree del scratchpad (retirado):
+>   9–13 **5/5 muertas**; guardia 4/4; P-R1 5/8. Tres huecos cerrados con
+>   tests (G4, P7, P8); P4–P6 supervivientes **visuales, no equivalentes**
+>   (comprobado ejecutándolos).
+> - **T19**: `bash harness/init.sh` en verde (raíz 73, front 346 sin caché,
+>   JS 409, cobertura N/A, ruff 61).
+> - Capturas antes/después con Chrome headless y **datos ficticios**
+>   (descritas en el informe). Guion de V1, V2 y V4 actualizado en §9 del
+>   informe, **sin ejecutar**.
+
+> ## ▶ F-035 · BLOQUE 5a (T14 y T15) HECHO · 2026-09-25 · siguiente: bloque 5b (T16–T17)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 5a · T14 y T15».
+> Commits `83cb64f` (T14) y `b3ebbe9` (T15). Sin push; `features.json`,
+> `front-portal` y `azure-apps` sin tocar; ni un `js/*.js`, ni `partes.html`,
+> ni un test del circuito.
+>
+> - **T14**: tokens `--rs-*` en `css/styles.css` (fuera `--ruesma-burdeos`,
+>   H-7), base con la trama, barra, componentes, foco burdeos y movimiento
+>   reducido; logo y favicon byte a byte. Tests R33 enmendado, R49, R52, R53
+>   (contraste AA calculado, 21 pares en verde), R54, R55, R60.
+> - **T15**: el portal entero con la identidad (barra con logotipo, portada
+>   tipo *hero*, tarjetas, chips por `data-estado`, ficha, estados vacíos).
+>   Tests R49/R55 de `portal.css`, R50, R51, R56, R58 y R57 (JS).
+> - Front **328** pytest y **409** JS en verde; `bash harness/init.sh` en
+>   verde. Fase RED con trazas en el informe.
+> - **Desviación a revisar**: `.gitattributes` nuevo en la raíz (`img/*.svg
+>   -text`): sin él, con `core.autocrlf=true`, un checkout nuevo cambia el
+>   hash de los SVG (medido). Y R55 acota las *transiciones* a 250 ms, no las
+>   animaciones (la tabla de §15.8 lo decía de las dos; el requisito, no).
+> - Visto con Chrome headless (la extensión no estaba conectada): portal a
+>   1440 y 390 px sin desbordes; el circuito, igual que antes salvo la trama.
+>   Foco con teclado y movimiento reducido, sin mirar: V1.
+
+> ## ▶ F-035 · SPEC ENMENDADA POR LA SEGUNDA RONDA DEL HUMANO (estilo Ruesma) · 2026-09-25 · **pendiente de aprobación**
+>
+> spec-author. Resumen, riesgos y preguntas: **`progress/spec_F-035.md`** §8–§11;
+> diseño en `specs/F-035-portal-posventa/design.md` §15; acta literal en §13.1
+> («Segunda ronda»). Navegación: la maqueta no cambia, entra R48 (misma ventana
+> cuando una sección sea real). Estilo Ruesma en portal y circuito (R49–R61);
+> en el circuito solo cambian clases (guardia R59), **ningún test del circuito
+> cambia**. Bloque 5 nuevo (T14–T19); T12 pasa a después de T19.
+> **Decisiones abiertas para el humano**: aprobar el bloque 5; botón principal
+> del circuito verde → burdeos; Google Fonts por CDN o alojadas; R48
+> obligatorio por test. Hallazgos H-6 (Tailwind sin versión) y H-7 (burdeos
+> `#ad1833` sin uso).
+
+> ## ▶ F-035 · CORRECCIONES DE LA REVIEW 1 HECHAS · 2026-09-25 · siguiente: reviewer (vuelta 2)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Correcciones de la
+> review 1». Solo tests: `tests_js/portal.test.js`, +8 tests (H-R1 a–e y
+> H-R2). Nada de producción, ni `partes.html`, ni tests del circuito.
+>
+> - JS **406/406**. Mutaciones a mano en copia desechable: **M1–M5 (cableado)
+>   5/5 muertas**; M7, M9 y M10 muertas; supervivientes documentados: M6
+>   (`panelNoProcede`, no equivalente, sin test por decisión de la review) y
+>   M8 (equivalente: la guarda `Number.isFinite` cubre `undefined`).
+> - `bash harness/init.sh` en verde. Sin push; `features.json` sin tocar.
+
+> ## ▶ F-035 · BLOQUE 4 (T10, T11 y T13) HECHO · 2026-09-25 · siguiente: T12 (humano) y reviewer
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 4 · T10, T11 y
+> T13». Commits `da35ee2` (T10), `cbbd4f1` (T11) y el de T13. Sin push;
+> `harness/features.json`, `front-portal` y `azure-apps` sin tocar.
+>
+> - **T10**: README del front (sección «La maqueta del portal (F-035)»),
+>   `docs/ARCHITECTURE.md` (sección del portal con el mapa y la regla de los
+>   placeholders; recuadro fechado que corrige la fila «Entra ID»:
+>   `posventa-usuarios` existe y es el acceso, «como hoy»; sin GUID) y
+>   `docs/DESPLIEGUE.md` §6 (la tarjeta aterriza en el portal; propuesta de
+>   título y descripción de H-4 para `front-portal`, al publicar).
+> - **T11**: campaña del arnés con 0 mutantes; **8/8 mutaciones a mano
+>   muertas**, 0 equivalentes, en un worktree del scratchpad ya retirado;
+>   diffs a mano en verde. La mudanza se ve con `git diff -C`, no con `-M`
+>   (desviación explicada en el informe, §4 c).
+> - **T13**: `bash harness/init.sh` **en verde** (raíz 69, front 294 sin
+>   caché, JS 398; cobertura N/A con motivo).
+> - **T12 (V1 y V2) es del humano**: guion paso a paso en el informe, §5. Su
+>   resultado se anota aquí. T12 sigue `[ ]` en `tasks.md`.
+> - Para el reviewer: F-045 añadido en dos filas del mapa de
+>   `ARCHITECTURE.md` (informe §2.3) y la rama temporal de las mutaciones con
+>   prefijo `feature/F-035-` (borrada).
+
+> ## ▶ F-035 · BLOQUE 3b (T8, T9 y T9 bis) HECHO · 2026-09-25 · siguiente: bloque 4 (T10–T13)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 3b · T8, T9 y T9 bis».
+> Commits `173fd5c` (T8), `d19ac99` (T9) y `30c02b4` (T9 bis). Sin push;
+> `harness/features.json` sin tocar.
+>
+> - **T8**: el circuito se mudó a `partes.html` en un solo commit: `git mv`,
+>   la línea 1 y la línea `INDEX` de los siete tests (`1 1` en cada uno). La
+>   suite del circuito da lo mismo antes y después (255 más el puente; JS
+>   322/322).
+> - **T9**: el portal en `index.html`. **T9 bis**: la barra en `partes.html`,
+>   22 líneas añadidas y 0 quitadas, sin directivas de Alpine.
+> - Front 293/294, JS 398/398, raíz 67/69: los tres rojos son de T10 (R36 y
+>   R37 ×2). `bash harness/init.sh` en rojo por diseño, solo por T10.
+> - No se pudo abrir el portal en un navegador (extensión de Chrome sin
+>   conectar). En su lugar, humo en Node: 6038 expresiones de Alpine, 0
+>   errores. Verlo de verdad queda para V1 (T12).
+> - Para el reviewer: el botón «Entendido» del aviso (no está en la spec) y
+>   las acciones de fila en el panel de detalle (informe, §2). Para T11 (c):
+>   la mudanza se ve en el diff contra la base con `git diff -C`.
+
+> ## ▶ F-035 · BLOQUE 3a (T5–T7) HECHO · 2026-09-25 · siguiente: T8, T9 y T9 bis
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 3a · T5 a T7».
+> Commits `487d459` (T5), `399fe52` (T6) y `9b60f38` (T7). Sin push,
+> `harness/features.json` sin tocar; ni `index.html` ni los tests del circuito.
+>
+> - Nuevos `js/maqueta_datos.js`, `js/portal.js`, `js/portal_app.js` y
+>   `css/portal.css`. JS: 390/398 (los 8 rojos leen el HTML: T8, T9 y T9
+>   bis); front: 269/294; raíz: 67/69 (R37: T10). R16, R12 y R20 del
+>   componente, en verde.
+> - 4 tests **añadidos** al final de `portal.test.js` (solo altas de línea)
+>   para `contadoresInicio`, `seleccionadasPara` y `buscarPorId`, con fase RED.
+> - `bash harness/init.sh` **en rojo por diseño**: la raíz se para en R37 y
+>   el front en el puente `test_f007_js.py`.
+> - Para T9: montaje con `x-data="portalPosventa()"` y `x-init="iniciar()"`,
+>   y `index.html` tiene que cargar `css/portal.css` (informe §2).
+
+> ## F-035 · BLOQUE 2 (RED) HECHO · 2026-09-25 · siguiente: bloque 3 (T5–T9 bis)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 2 · RED». Sin
+> código de producción, sin push, `harness/features.json` sin tocar; los tests
+> del circuito, intactos (su línea `INDEX` es de T8).
+>
+> - **T2** `tests_js/portal.test.js` (48) y `tests_js/maqueta_datos.test.js`
+>   (24): 72 en rojo, 70 por `MODULE_NOT_FOUND`. **T3**
+>   `tests/test_f035_portal.py` (38): 34 rojos y 4 guardias en verde
+>   (explicadas en el informe). **T4** `tests/test_f035_placeholders_vivos.py`
+>   en la raíz (7): 7 rojos.
+> - Solo fallan los nuevos: `tests_js` 322/322 de antes en verde; front 255/256
+>   (el puente `test_f007_js.py` cae por los JS nuevos, previsto en T8); raíz
+>   62/62.
+> - `bash harness/init.sh` **en rojo por diseño**: 2 `[KO]` (raíz y front),
+>   los dos por los tests nuevos.
+> - **Para el reviewer / bloque 3** (informe §2): los tests fijan contratos que
+>   la spec dejaba abiertos (enganche `data-aviso-maqueta`, `ficha: "F-0NN"`
+>   literal, forma de los datos…). Dos desviaciones menores a mirar: R40
+>   `provisional` sigue §5.3 y el contrato (solo `previsto` es provisional),
+>   no la frase de §11; y la guardia del diff corre en ramas `feature/F-035*`,
+>   no solo en la exacta, para que T11 pueda mutar en un worktree aislado.
+
+> ## F-035 · APROBADA · 2026-09-25 · en implementación
+>
+> **T1 · Aprobación del humano, 2026-09-25** (preguntado por el líder con el
+> resumen de `progress/spec_F-035.md` §5):
+>
+> - Spec enmendada (portal en la portada, circuito en `partes.html` como
+>   pestaña, una línea en siete tests, pestaña nueva del navegador al salir del
+>   circuito): **«Aprobada (Recomendado)»**.
+> - Acceso (D-5): **«posventa-usuarios, como hoy»**.
+> - Tarjeta del portal corporativo (H-4): **«Sí, al publicar»**: se cambian
+>   título y descripción en `front-portal` cuando se publique la maqueta, como
+>   trabajo de ese repositorio.
+> - El placeholder de F-045 en la tarjeta de `inicio` (consecuencia de D-7) va
+>   dentro de la spec aprobada.
+
+> ## SPEC DE F-035 ENMENDADA CON LAS DECISIONES DEL HUMANO · 2026-09-25 · `spec_ready`, **pendiente de aprobación**
+>
+> spec-author. `specs/F-035-portal-posventa/` enmendada con D-1…D-10 (acta
+> literal en `design.md` §13.1; resumen en **`progress/spec_F-035.md`** §5–§7).
+> Sin código, sin push.
+>
+> - Respuestas literales: D-1 «pagina aparte. esto que hemos hecho sera una
+>   pestaña de dicho portal»; D-2 «barra superior»; D-3 «si»; D-4 «si»; D-5
+>   «creo que existe»; D-9 «¿por qué no mutamos javascript? sino como
+>   recomiendas»; D-6 con la recomendación; D-7, D-8 y D-10 «ok»; plantilla
+>   de impresión para F-044.
+> - **Diseño de D-3**: el portal ocupa `index.html` (portada `/`); el
+>   circuito se muda con `git mv` a `partes.html` y es la pestaña `partes`,
+>   con una barra superior común en HTML plano. Ni `js/*.js`, ni
+>   `staticwebapp.config.json`, ni `dev_server.py`: solo **una línea en siete
+>   tests** (`INDEX`), con guardia. La tarjeta de `front-portal` ya apunta a
+>   la raíz y aterriza en el portal sin tocarla.
+> - **Abierto para el humano**: aprobar la spec enmendada (incluidas las
+>   siete líneas de test y la pestaña nueva del navegador al salir del
+>   circuito); D-7 (F-045 en la tarjeta de `inicio`, no en `partes`); D-5
+>   (¿`posventa-usuarios` o el departamento?); H-4 (título y descripción de
+>   la tarjeta). D-9: el líder registra aparte la mutación de JavaScript como
+>   propuesta del arnés.
+
+> ## SPEC DE F-035 AL DÍA · 2026-09-25 · `spec_ready`, **pendiente de aprobación del humano**
+>
+> spec-author. **`specs/F-035-portal-posventa/`**, rama
+> `feature/F-035-portal-posventa` **rebasada sobre `dev` (`54c0884`)**; sin
+> push. Resumen de cambios y preguntas: **`progress/spec_F-035.md`**. Sin
+> código; la plantilla de impresión **no se ha abierto**.
+>
+> - Lo esencial no cambia: maqueta `portal.html` con rutas por hash, ninguna
+>   llamada, el circuito solo gana una barra de navegación, rigor `estandar`.
+> - Entra lo llegado desde el 2026-09-23 (recuadros fechados): los campos del
+>   alta de `docs/referencia/04_alta_incidencia_sigrid.md` en la bandeja, la
+>   ficha y el volcado (R38, R39); el panel de volcado con los estados del
+>   contrato de `sigrid/partes-reclamacion` (R40, solo maqueta); la ruta de
+>   archivo de Posventa (R41); R26 enmendado (quedan pendientes el Excel, la
+>   plantilla sin revisar, la proforma y las dudas del alta).
+> - **Decisiones abiertas**: D-1…D-9 como estaban (**bloquean D-1, D-2 y
+>   D-6**), más **D-10** (catálogos de Sigrid con códigos reales) y tres
+>   preguntas: la plantilla de impresión (¿mirarla ya o en F-044?), el Excel
+>   de ejemplo y el estado en que nace un parte (H-3, de F-040).
 
 > ## 🚀 CORTE DE F-013 HECHO · 2026-09-25 11:41 UTC · pendientes R33 y R42 (humano, hoy)
 >

@@ -4,620 +4,1152 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Incidencias de Posventa · Ruesma</title>
+  <title>Portal de Posventa · Ruesma</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Alpine va con defer y con versión fija: se ejecuta después de nuestros
-       scripts (al final del body), que es lo que necesita para encontrar
-       appPostventa. Con 3.x.x, un cambio del CDN podría romper el front. -->
+  <!-- Mismo contrato de carga que el circuito (R34): Alpine con defer y
+       versión fija, para que arranque después de nuestros scripts. -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css">
+  <!-- Identidad Ruesma (R50, design.md §15.4): las fuentes del portal
+       corporativo y el favicon, antes de la hoja de la marca. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="stylesheet" href="css/styles.css?v=43b9e97b83">
+  <link rel="stylesheet" href="css/portal.css?v=43b9e97b83">
 </head>
-<body class="bg-slate-50 text-slate-800">
-  <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
+<!--
+  F-035 · El PORTAL de posventa: la portada `/`. Enseña el ciclo entero: lo que
+  funciona (importar y oficios, en importar.html y oficios.html; el circuito de
+  partes firmados, en partes.html) lleva el sello «En producción», y lo que
+  todavía no, datos de ejemplo (js/maqueta_datos.js) dentro de un recuadro
+  «En construcción» (opción b del humano, design.md §16.4).
 
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto max-w-6xl px-6 py-5 flex items-baseline justify-between gap-4">
-        <div>
-          <h1 class="text-xl font-semibold tracking-tight">Incidencias de Posventa</h1>
-          <p class="text-sm text-slate-500">Partes firmados: validar, archivar y cerrar</p>
-          <!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir
-               de esta perdería la remesa en curso (D4 de F-007). -->
-          <nav class="mt-1 flex gap-4 text-sm">
-            <a href="importar.html" target="_blank" rel="noopener" class="text-sky-700 hover:underline">Importar incidencias</a>
-            <a href="oficios.html" target="_blank" rel="noopener" class="text-sky-700 hover:underline">Oficios repetidos</a>
-          </nav>
-        </div>
-        <div class="flex items-center gap-3 text-xs">
-          <span class="inline-block h-2.5 w-2.5 rounded-full"
-                :class="{
-                  'bg-emerald-500': estadoServicio === 'ok',
-                  'bg-red-500': estadoServicio === 'error',
-                  'bg-slate-300 animate-pulse': estadoServicio === 'comprobando'
-                }"></span>
-          <span class="text-slate-500" x-text="mensajeServicio"></span>
-          <span class="text-slate-400" x-text="version"></span>
+  Reglas de este fichero (design.md §5, §6, §7.3 y §15):
+  - Nada de datos escritos a mano: listas y fichas se pintan con x-for desde
+    MaquetaDatos, y los textos calculados salen de Portal (js/portal.js).
+  - Cada <button> es o un placeholder (data-placeholder="F-0NN", clase
+    placeholder, @click="placeholder('<id>')" y nada más) o un control local
+    (data-local). Nunca los dos (R10).
+  - Ni red, ni almacenamiento del navegador, ni enlaces que no sean #/… o
+    partes.html (R14, R17, R18).
+  - Estilo Ruesma (§15): clases rs-* de css/styles.css y css/portal.css; de
+    Tailwind, solo maquetación (flex, grid, gap, márgenes). El borde
+    discontinuo es solo de los placeholders; el burdeos, solo de la marca y
+    de lo que funciona (R56); cada estado, en un rs-chip con data-estado y
+    su texto (R57).
+  - Recuadros «En construcción» (R63-R65): todo placeholder y todo lo que
+    pinte datos de ejemplo va dentro de un data-en-construccion, que empieza
+    por su rótulo. Uno de sección (data-en-construccion="<id>") en cada
+    sección en construcción de Portal.SECCIONES; en las demás, de bloque
+    (data-en-construccion="F-0NN"). Ni discontinuo ni burdeos (R56).
+  - Retirada: cuando una ficha F-0NN construya su pieza, borra aquí sus
+    data-placeholder="F-0NN" y su data-en-construccion="F-0NN" en el mismo
+    trabajo (R28).
+-->
+<body class="rs-cuerpo">
+  <div x-data="portalPosventa()" x-init="iniciar()" class="min-h-screen flex flex-col">
+
+    <!-- ── Barra superior común (R44, R51), el primer elemento de la página ─
+         Los href son los de Portal.enlaceSeccion(id, "portal"): #/<id> y,
+         para «Partes firmados», partes.html en la misma pestaña (R46). La
+         pestaña actual la pinta aria-current (css/styles.css). Las de las
+         secciones en construcción (Portal.enConstruccion, R62) llevan
+         data-construccion —un punto ámbar, css/styles.css— y un aria-label
+         que lo dice (R66). -->
+    <nav data-barra-portal aria-label="Secciones de posventa" class="rs-barra">
+      <div class="rs-barra__fila">
+        <span class="rs-barra__marca">
+          <img class="rs-barra__logo" src="img/logo-ruesma.svg" alt="Construcciones Ruesma">
+          <span class="rs-barra__sep" aria-hidden="true"></span>
+          <span class="rs-barra__etiqueta">Posventa</span>
+        </span>
+        <div class="rs-barra__pestanas">
+          <a href="#/inicio" class="rs-pestana" :aria-current="seccion === 'inicio' ? 'page' : false">Inicio</a>
+          <a href="#/entrada" class="rs-pestana" :aria-current="seccion === 'entrada' ? 'page' : false">Entrada</a>
+          <a href="#/bandeja" class="rs-pestana" data-construccion aria-label="Bandeja de revisión (en construcción)" :aria-current="seccion === 'bandeja' ? 'page' : false">Bandeja de revisión</a>
+          <a href="#/incidencias" class="rs-pestana" data-construccion aria-label="Incidencias (en construcción)" :aria-current="seccion === 'incidencias' ? 'page' : false">Incidencias</a>
+          <a href="#/impresion" class="rs-pestana" data-construccion aria-label="Impresión de partes (en construcción)" :aria-current="seccion === 'impresion' ? 'page' : false">Impresión de partes</a>
+          <a href="partes.html" class="rs-pestana">Partes firmados</a>
+          <a href="#/economico" class="rs-pestana" data-construccion aria-label="Coste y venta (en construcción)" :aria-current="seccion === 'economico' ? 'page' : false">Coste y venta</a>
+          <a href="#/datos" class="rs-pestana" data-construccion aria-label="Datos y datamart (en construcción)" :aria-current="seccion === 'datos' ? 'page' : false">Datos y datamart</a>
         </div>
       </div>
-    </header>
+    </nav>
 
-    <main class="mx-auto w-full max-w-6xl flex-1 px-6 py-8 space-y-6">
+    <!-- ── Aviso de construcción (R13 enmendado, R56): siempre visible, sin
+         forma de cerrarlo, en su propio color (atención; nunca burdeos).
+         Texto de design.md §16.4 ──────────────────────────────────────── -->
+    <div data-aviso-maqueta class="rs-maqueta">
+      <div class="rs-contenedor rs-maqueta__fila">
+        <strong class="rs-maqueta__titulo">Parte de este portal está en construcción.</strong>
+        <span>Las pestañas con punto ámbar y lo que va dentro de un recuadro «En construcción»
+          enseñan datos inventados (obras 99NN, incidencias RS99…) y sus botones con borde
+          discontinuo no hacen nada todavía.</span>
+        <span class="placeholder placeholder--muestra">así se ve un botón que todavía no hace nada <span class="placeholder-ficha">F-0NN</span></span>
+        <span>Lo que funciona de verdad lleva el sello «En producción».</span>
+      </div>
+    </div>
 
-      <!-- ── 1 · Carga de la remesa (R1-R6) ─────────────────────────────── -->
-      <section x-show="fase === 'inactivo' || fase === 'seleccionado'"
-               class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Cargar una remesa</h2>
+    <main class="rs-contenedor rs-principal flex-1">
 
-        <div class="mt-4 rounded-lg border-2 border-dashed p-8 text-center transition"
-             :class="arrastrando ? 'border-sky-400 bg-sky-50' : 'border-slate-300'"
-             @dragover.prevent="arrastrando = true"
-             @dragleave.prevent="arrastrando = false"
-             @drop.prevent="alSoltar($event)">
-          <p class="text-sm text-slate-600">
-            Suelta aquí uno o varios ficheros <strong>.pdf</strong> o <strong>.zip</strong>
+      <!-- ── inicio (§5.1, §15.5) ───────────────────────────────────────── -->
+      <section data-seccion="inicio" x-show="seccion === 'inicio'" x-cloak class="rs-seccion">
+        <header class="rs-hero">
+          <p class="rs-ceja">Posventa</p>
+          <h1 class="rs-hero__titulo">Portal de <em>posventa</em></h1>
+          <p class="rs-hero__entradilla">
+            El portal de posventa. Funcionan ya la entrada de incidencias (importar el Excel de la
+            obra y los oficios repetidos) y el circuito de partes firmados. El resto del ciclo está
+            en construcción: lo enseñamos con datos inventados para que veáis cómo será.
           </p>
-          <p class="mt-1 text-xs text-slate-400">Nada se envía hasta que lo confirmes</p>
+        </header>
 
-          <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
-              Elegir ficheros
-              <input type="file" class="hidden" multiple accept=".pdf,.zip"
-                     @change="alElegirFicheros($event)">
-            </label>
-            <!-- webkitdirectory: Edge/Chrome (D5). Firefox no lo implementa igual. -->
-            <label class="cursor-pointer rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
-              Elegir una carpeta
-              <input type="file" class="hidden" webkitdirectory directory
-                     @change="alElegirFicheros($event)">
-            </label>
+        <ol class="rs-recorrido" aria-label="El ciclo de una incidencia">
+          <li><a href="#/entrada" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
+          <li><a href="#/bandeja" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
+          <li><a href="#/bandeja" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
+          <li><a href="#/incidencias" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="#/impresion" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>
+          <li><a href="#/economico" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+
+        <!-- Las tarjetas (R67, design.md §16.5): sin una sola cifra de los datos
+             de ejemplo. Las de lo que funciona llevan «En producción» y una
+             acción principal cada una; las de lo que no, «En construcción» y
+             qué se verá ahí. -->
+        <div class="rs-rejilla">
+          <div class="rs-tarjeta rs-tarjeta--produccion">
+            <span class="rs-tarjeta__indice" aria-hidden="true">01</span>
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
+            <p class="rs-tarjeta__rotulo">Entrada de incidencias</p>
+            <p class="rs-tarjeta__texto">
+              Descarga la plantilla de una obra, importa su Excel a la bandeja y mírala en solo
+              lectura; y junta los oficios casi iguales de Sigrid.
+            </p>
+            <div class="rs-tarjeta__acciones">
+              <a href="importar.html" class="rs-btn rs-btn--primario">Importar incidencias</a>
+              <a href="oficios.html" class="rs-btn rs-btn--secundario">Oficios repetidos</a>
+            </div>
           </div>
+          <a href="#/bandeja" class="rs-tarjeta">
+            <span class="rs-tarjeta__indice" aria-hidden="true">02</span>
+            <span class="rs-chip rs-chip--atencion rs-tarjeta__chip">En construcción</span>
+            <p class="rs-tarjeta__rotulo">Bandeja de revisión</p>
+            <p class="rs-tarjeta__texto">
+              Lo importado, antes de Sigrid: revisar cada entrada, proponer el industrial, aprobar
+              y volcar a Sigrid obra a obra.
+            </p>
+            <span class="rs-tarjeta__llamada">Ver cómo será <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
+          <a href="#/incidencias" class="rs-tarjeta">
+            <span class="rs-tarjeta__indice" aria-hidden="true">03</span>
+            <span class="rs-chip rs-chip--atencion rs-tarjeta__chip">En construcción</span>
+            <p class="rs-tarjeta__rotulo">Incidencias</p>
+            <p class="rs-tarjeta__texto">
+              Las incidencias que ya están en Sigrid: buscarlas, abrir su ficha, cambiar su estado
+              y trabajar con varias a la vez.
+            </p>
+            <span class="rs-tarjeta__llamada">Ver cómo será <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
+          <!-- La tarjeta «Partes firmados» recoge lo que era la sección partes
+               (D-1, D-3): el circuito ya funciona y está en partes.html. El
+               registro sin firma (F-045) todavía no: va en su recuadro. -->
+          <div class="rs-tarjeta rs-tarjeta--produccion">
+            <span class="rs-tarjeta__indice" aria-hidden="true">04</span>
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
+            <p class="rs-tarjeta__rotulo">Partes firmados</p>
+            <p class="rs-tarjeta__texto">
+              El circuito de partes firmados ya funciona: soltar la remesa, revisar, aprobar,
+              archivar en la biblioteca de Posventa (la carpeta PARTES FIRMADOS de cada vivienda),
+              adjuntar a Sigrid y cerrar. Por ejemplo:
+              <code class="rs-ruta">9901  EJEMPLO NORTE/PARTES INCIDENCIAS/VILLA 003/PARTES FIRMADOS</code>
+            </p>
+            <div class="rs-tarjeta__acciones">
+              <a href="partes.html" class="rs-btn rs-btn--primario">Abrir el circuito de partes firmados</a>
+            </div>
+            <div data-en-construccion="F-045" class="rs-obras rs-obras--bloque rs-tarjeta__obras">
+              <div class="rs-obras__rotulo">
+                <span class="rs-obras__cinta" aria-hidden="true"></span>
+                <p class="rs-obras__linea">
+                  <span class="rs-chip rs-chip--atencion">En construcción</span>
+                  Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+                  no es información real y no se guarda nada.
+                  Lo construirá <span class="rs-obras__ficha">F-045</span> · <span x-text="titulos['F-045']"></span>.
+                </p>
+              </div>
+              <div class="rs-acciones">
+                <button type="button" data-placeholder="F-045" @click="placeholder('partes.registrarSinFirma')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-045">Registrar un parte sin firma (la incidencia queda en TER, no en CER) <span class="placeholder-ficha">F-045</span></button>
+              </div>
+            </div>
+          </div>
+          <a href="#/economico" class="rs-tarjeta">
+            <span class="rs-tarjeta__indice" aria-hidden="true">05</span>
+            <span class="rs-chip rs-chip--atencion rs-tarjeta__chip">En construcción</span>
+            <p class="rs-tarjeta__rotulo">Coste y venta</p>
+            <p class="rs-tarjeta__texto">
+              El coste de la posventa de cada obra, leído de Sigrid, junto a la venta de las
+              incidencias enlazadas a su proforma.
+            </p>
+            <span class="rs-tarjeta__llamada">Ver cómo será <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
+        </div>
+      </section>
+
+      <!-- ── entrada (§5.2, §16.5): F-036 en producción y F-037 ─────────── -->
+      <!-- F-036 está done: importar y oficios son páginas reales del front
+           (Portal.PAGINAS) y se abren en la misma ventana. Su maqueta (la zona
+           de soltar, los placeholders y el resultado de ejemplo) salió del
+           portal en la enmienda del 2026-10-05 (design.md §7.3). -->
+      <section data-seccion="entrada" x-show="seccion === 'entrada'" x-cloak class="rs-seccion">
+        <header class="rs-cabecera-seccion">
+          <h1 class="rs-titulo">Entrada de incidencias</h1>
+        </header>
+
+        <div class="rs-rejilla">
+          <a href="importar.html" class="rs-tarjeta rs-tarjeta--produccion">
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
+            <p class="rs-tarjeta__rotulo">Importar incidencias</p>
+            <p class="rs-tarjeta__texto">
+              Descarga la plantilla de una obra, importa el Excel a su bandeja y mira la bandeja en
+              solo lectura.
+            </p>
+            <span class="rs-tarjeta__llamada">Importar incidencias <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
+          <a href="oficios.html" class="rs-tarjeta rs-tarjeta--produccion">
+            <span class="rs-chip rs-chip--ok rs-tarjeta__chip">En producción</span>
+            <p class="rs-tarjeta__rotulo">Oficios repetidos</p>
+            <p class="rs-tarjeta__texto">
+              Junta los oficios casi iguales de Sigrid, que la plantilla enseña como uno.
+            </p>
+            <span class="rs-tarjeta__llamada">Ver los oficios repetidos <span class="rs-tarjeta__flecha" aria-hidden="true">→</span></span>
+          </a>
         </div>
 
-        <p x-show="errorSeleccion" x-text="errorSeleccion"
-           class="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
-        <p x-show="mensajeDescartes" x-text="mensajeDescartes"
-           class="mt-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
+        <div data-en-construccion="F-037" class="rs-obras rs-obras--bloque">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
+              Lo construirá <span class="rs-obras__ficha">F-037</span> · <span x-text="titulos['F-037']"></span>.
+            </p>
+          </div>
+          <div class="rs-panel space-y-4">
+            <h2 class="rs-rotulo">
+              Web de clientes <span class="rs-ficha" x-text="datos.web.ficha"></span>
+            </h2>
+            <p class="rs-entradilla">
+              La web de clientes es un proyecto independiente. Lo que llegue de ella caerá en la
+              misma bandeja de revisión, con origen «<span x-text="datos.web.origen"></span>».
+            </p>
+            <template x-for="p in datos.web.pendientes" :key="p">
+              <p class="rs-pendiente">
+                <span x-text="p"></span> <span class="rs-ficha" x-text="datos.web.ficha"></span>
+              </p>
+            </template>
+            <div class="rs-acciones">
+              <button type="button" data-placeholder="F-037" @click="placeholder('entrada.verContratoWeb')"
+                      class="placeholder" aria-disabled="true"
+                      title="Todavía no hace nada: lo construye F-037">Ver el contrato de entrada <span class="placeholder-ficha">F-037</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-        <template x-if="seleccion.length">
-          <div class="mt-5">
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              <span x-text="seleccion.length"></span> fichero(s) listos para enviar
-            </h3>
-            <ul class="mt-2 divide-y divide-slate-100 text-sm">
-              <template x-for="fichero in seleccion" :key="fichero.name + fichero.size">
-                <li class="flex justify-between py-1.5">
-                  <span x-text="fichero.name" class="truncate"></span>
-                  <span class="ml-4 shrink-0 text-slate-400" x-text="tamanoDe(fichero)"></span>
+      <!-- ── bandeja (§5.3): F-038, F-039, F-040 y F-043 ────────────────── -->
+      <section data-seccion="bandeja" x-show="seccion === 'bandeja'" x-cloak class="rs-seccion">
+        <header class="rs-cabecera-seccion">
+          <div>
+            <h1 class="rs-titulo">Bandeja de revisión</h1>
+            <p class="rs-entradilla">Lo importado, antes de Sigrid: revisar, proponer industrial, aprobar y volcar.</p>
+          </div>
+        </header>
+
+        <div data-en-construccion="bandeja" class="rs-obras">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
+            </p>
+            <p class="rs-obras__linea">La construirán:</p>
+            <ul class="rs-obras__fichas">
+              <template x-for="f in fichasDeSeccion('bandeja')" :key="f.ficha">
+                <li><span class="rs-obras__ficha" x-text="f.ficha"></span> · <span x-text="f.titulo"></span></li>
+              </template>
+            </ul>
+            <p class="rs-obras__linea">
+              Mientras tanto, la bandeja de una obra ya se puede ver, en solo lectura, en
+              <a href="importar.html#bandeja" class="rs-enlace">Importar incidencias</a>.
+            </p>
+          </div>
+
+          <div class="rs-panel rs-panel--lista">
+            <div class="rs-filtros">
+              <label class="rs-filtro">
+                <span class="rs-campo__etiqueta">Origen</span>
+                <select x-model="filtros.bandeja.origen" class="rs-campo">
+                  <option value="">Todos</option>
+                  <template x-for="o in datos.bandeja.origenes" :key="o"><option :value="o" x-text="o"></option></template>
+                </select>
+              </label>
+              <label class="rs-filtro">
+                <span class="rs-campo__etiqueta">Estado de revisión</span>
+                <select x-model="filtros.bandeja.estado" class="rs-campo">
+                  <option value="">Todos</option>
+                  <template x-for="e in datos.bandeja.estadosRevision" :key="e"><option :value="e" x-text="e"></option></template>
+                </select>
+              </label>
+              <label class="rs-filtro rs-filtro--ancho">
+                <span class="rs-campo__etiqueta">Obra</span>
+                <select x-model="filtros.bandeja.obra" class="rs-campo">
+                  <option value="">Todas</option>
+                  <template x-for="o in datos.obras.filas" :key="o.cod"><option :value="o.cod" x-text="obra(o.cod)"></option></template>
+                </select>
+              </label>
+              <div class="rs-filtros__acciones">
+                <span class="rs-contador"><strong x-text="seleccionBandeja.length"></strong> seleccionadas</span>
+                <button type="button" data-placeholder="F-043" @click="placeholder('bandeja.aprobarSeleccionadas')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-043">Aprobar las seleccionadas <span class="placeholder-ficha">F-043</span></button>
+              </div>
+            </div>
+
+            <div class="rs-desplazable" x-show="bandejaFiltrada().length">
+              <table class="rs-tabla">
+                <thead>
+                  <tr>
+                    <th><span class="sr-only">Seleccionar</span></th>
+                    <th>Origen</th>
+                    <th>Obra</th>
+                    <th>Unidad de posventa</th>
+                    <th>Descripción corta</th>
+                    <th>Oficio</th>
+                    <th>Entrada</th>
+                    <th>Industrial propuesto</th>
+                    <th>Estado</th>
+                    <th>Código de Sigrid</th>
+                    <th><span class="sr-only">Detalle</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="fila in bandejaFiltrada()" :key="fila.id">
+                    <tr :class="filaBandejaAbierta === fila.id ? 'rs-fila--abierta' : ''">
+                      <td>
+                        <input type="checkbox" :aria-label="'Seleccionar ' + fila.id"
+                               :checked="seleccionBandeja.includes(fila.id)" @change="alternarBandeja(fila.id)">
+                      </td>
+                      <td x-text="fila.origen"></td>
+                      <td x-text="obra(fila.obra)"></td>
+                      <td class="rs-mono whitespace-nowrap" x-text="fila.unidad.cod"></td>
+                      <td x-text="fila.descripcionCorta"></td>
+                      <td x-text="oficio(fila.oficio)"></td>
+                      <td class="whitespace-nowrap" x-text="fila.fecha"></td>
+                      <td>
+                        <span x-text="propuesta(fila.id) ? propuesta(fila.id).proveedor.res : 'Sin histórico en la obra: no se propone'"
+                              :class="propuesta(fila.id) ? '' : 'rs-sin-dato'"></span>
+                        <span class="rs-nota block" x-show="propuesta(fila.id)" x-text="propuesta(fila.id) ? propuesta(fila.id).motivo : ''"></span>
+                      </td>
+                      <td>
+                        <span class="flex flex-wrap items-center gap-1">
+                          <span class="rs-chip" :data-estado="fila.estado" x-text="fila.estado"></span>
+                          <span x-show="fila.duplicada" class="rs-chip rs-chip--atencion">duplicada</span>
+                        </span>
+                      </td>
+                      <td class="rs-mono whitespace-nowrap" x-text="fila.codSigrid || '—'"></td>
+                      <td>
+                        <button type="button" data-local @click="abrirFilaBandeja(fila.id)"
+                                class="rs-btn rs-btn--secundario rs-btn--compacto">Ver</button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div data-vacio x-show="!bandejaFiltrada().length" class="rs-vacio">
+              <p class="rs-vacio__titulo">Ninguna entrada de ejemplo cumple esos filtros.</p>
+              <p class="rs-vacio__pista">Prueba a quitar algún filtro.</p>
+            </div>
+          </div>
+
+          <!-- Panel de detalle [L]: los campos del alta, en el orden de la ficha
+               del parte de Sigrid (R38, R39), en solo lectura. -->
+          <template x-for="fila in [filaBandeja()].filter(Boolean)" :key="fila.id">
+            <div class="rs-panel rs-aparece space-y-6">
+              <div class="rs-panel__cabecera">
+                <h2 class="rs-panel__titulo">
+                  <span class="rs-mono" x-text="fila.id"></span> · <span x-text="fila.descripcionCorta"></span>
+                </h2>
+                <button type="button" data-local @click="cerrarFilaBandeja()"
+                        class="rs-btn rs-btn--texto rs-btn--compacto">Cerrar el detalle</button>
+              </div>
+
+              <div class="grid gap-6 md:grid-cols-2">
+                <div class="rs-bloque">
+                  <h3 class="rs-rotulo">Identificación</h3>
+                  <dl class="rs-datos">
+                    <div><dt>Obra</dt><dd x-text="obra(fila.obra)"></dd></div>
+                    <div><dt>Unidad de posventa</dt><dd x-text="fila.unidad.cod + ' · ' + fila.unidad.res"></dd></div>
+                    <div><dt>Tipo de reclamación</dt><dd x-text="tipo(fila.tipo)"></dd></div>
+                    <div><dt>Ubicación</dt><dd x-text="fila.ubicacion || 'sin completar'" :class="fila.ubicacion ? '' : 'rs-sin-dato'"></dd></div>
+                    <div><dt>Propietario</dt><dd x-text="fila.propietario.cod + ' · ' + fila.propietario.res"></dd></div>
+                    <div><dt>Persona que reclama</dt><dd x-text="fila.persona.cod + ' · ' + fila.persona.res"></dd></div>
+                  </dl>
+                  <p class="rs-nota mt-3">Propietario y persona que reclama los copia Sigrid de la unidad.</p>
+                </div>
+                <div class="rs-bloque">
+                  <h3 class="rs-rotulo">Datos de la reclamación</h3>
+                  <dl class="rs-datos">
+                    <div><dt>Forma de comunicación</dt><dd x-text="forma(fila.forma)"></dd></div>
+                    <div><dt>Oficio</dt><dd x-text="oficio(fila.oficio)"></dd></div>
+                    <div><dt>Descripción corta</dt><dd x-text="fila.descripcionCorta"></dd></div>
+                    <div><dt>Descripción larga</dt><dd x-text="fila.descripcionLarga"></dd></div>
+                  </dl>
+                </div>
+              </div>
+
+              <div class="rs-bloque space-y-3">
+                <h3 class="rs-rotulo">Intervinientes</h3>
+                <div class="rs-marco">
+                  <table class="rs-tabla rs-tabla--compacta">
+                    <thead>
+                      <tr><th>Oficio de la obra</th><th>Proveedor</th><th>Causante</th></tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="(i, n) in (fila.intervinientes || [])" :key="n">
+                        <tr>
+                          <td x-text="oficio(i.oficio)"></td>
+                          <td x-text="i.proveedor.cod + ' · ' + i.proveedor.res"></td>
+                          <td><input type="checkbox" disabled :checked="i.causante" aria-label="Causante"></td>
+                        </tr>
+                      </template>
+                      <tr x-show="!fila.intervinientes"><td colspan="3" class="rs-sin-dato">sin completar</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="rs-nota">
+                  Salen de los oficios de la obra con su proveedor:
+                  <template x-for="(o, n) in oficiosDeObra(fila.obra)" :key="n">
+                    <span class="mr-2 whitespace-nowrap" x-text="oficio(o.oficio) + ' (' + o.proveedor.res + ')'"></span>
+                  </template>
+                </p>
+              </div>
+
+              <div class="rs-bloque">
+                <h3 class="rs-rotulo">Volcado</h3>
+                <dl class="rs-datos">
+                  <div><dt>Referencia externa</dt><dd><span class="rs-mono" x-text="fila.referenciaExterna"></span>
+                    <span class="rs-nota">(la forma exacta la fija el volcado)</span></dd></div>
+                  <div><dt>Código de Sigrid</dt><dd class="rs-mono" x-text="fila.codSigrid || '—'"></dd></div>
+                </dl>
+              </div>
+
+              <div class="rs-acciones rs-acciones--separadas">
+                <button type="button" data-placeholder="F-038" @click="placeholder('bandeja.editar')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-038">Editar <span class="placeholder-ficha">F-038</span></button>
+                <button type="button" data-placeholder="F-038" @click="placeholder('bandeja.descartar')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-038">Descartar <span class="placeholder-ficha">F-038</span></button>
+                <button type="button" data-placeholder="F-038" @click="placeholder('bandeja.aprobar')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-038">Aprobar <span class="placeholder-ficha">F-038</span></button>
+                <button type="button" data-placeholder="F-039" @click="placeholder('bandeja.cambiarIndustrial')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-039">Cambiar industrial <span class="placeholder-ficha">F-039</span></button>
+              </div>
+
+              <div class="rs-bloque space-y-3">
+                <h3 class="rs-rotulo">Historial de revisión</h3>
+                <ul class="rs-historial">
+                  <template x-for="(h, n) in datos.bandeja.historial.filter((h) => h.fila === fila.id)" :key="n">
+                    <li x-text="h.fecha + ' · ' + h.usuario + ' · ' + h.accion"></li>
+                  </template>
+                  <li x-show="!datos.bandeja.historial.some((h) => h.fila === fila.id)" class="rs-vacio-linea">Sin cambios de revisión todavía.</li>
+                </ul>
+              </div>
+            </div>
+          </template>
+
+          <!-- Panel de volcado a Sigrid (F-040), con el vocabulario del contrato
+               del alta en lote (R40). Solo se enseña: no se llama a nada. -->
+          <div class="rs-panel space-y-5">
+            <h2 class="rs-rotulo">
+              Volcado a Sigrid <span class="rs-ficha" x-text="datos.volcado.ficha"></span>
+            </h2>
+            <p class="rs-entradilla">
+              Solo lo aprobado es candidato al volcado. Se vuelca obra a obra: cada lote es de una sola obra.
+            </p>
+            <ul class="rs-por-obra">
+              <template x-for="o in datos.obras.filas" :key="o.cod">
+                <li>
+                  <span x-text="obra(o.cod)"></span>:
+                  <strong x-text="Portal.filtrarBandeja(datos.bandeja.filas, { estado: 'aprobada', obra: o.cod }).length"></strong> aprobadas
                 </li>
               </template>
             </ul>
-            <button type="button" @click="confirmarCarga()"
-                    class="mt-4 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
-              Trocear la remesa
-            </button>
-          </div>
-        </template>
-      </section>
+            <div class="rs-acciones">
+              <button type="button" data-placeholder="F-040" @click="placeholder('bandeja.verVolcado')"
+                      class="placeholder" aria-disabled="true"
+                      title="Todavía no hace nada: lo construye F-040">Ver qué se crearía en Sigrid <span class="placeholder-ficha">F-040</span></button>
+              <button type="button" data-placeholder="F-040" @click="placeholder('bandeja.volcar')"
+                      class="placeholder" aria-disabled="true"
+                      title="Todavía no hace nada: lo construye F-040">Volcar a Sigrid <span class="placeholder-ficha">F-040</span></button>
+              <button type="button" data-placeholder="F-040" @click="placeholder('bandeja.reintentarVolcado')"
+                      class="placeholder" aria-disabled="true"
+                      title="Todavía no hace nada: lo construye F-040">Reintentar los rechazados y no procesados <span class="placeholder-ficha">F-040</span></button>
+            </div>
 
-      <!-- ── 2 · Progreso (R9; F-025 R12) ───────────────────────────────── -->
-      <!-- F-025 · el denominador es el tamaño de LA TANDA, no el de la remesa.
-           Con el viejo, archivar 4 partes de 22 enseñaba un 18 % al terminar, y
-           una barra que no llega al final parece un proceso colgado. Detrás de
-           esta hay escrituras en un ERP de producción y ~20 s por parte: un
-           botón quieto invita a pulsarlo otra vez. -->
-      <section x-show="fase === 'troceando' || fase === 'procesando' || fase === 'archivando_y_cerrando'"
-               class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500" x-text="tituloDeFase()"></h2>
-        <p class="mt-3 text-sm text-slate-600">
-          <span x-text="terminados"></span> de <span x-text="totalTanda"></span> partes terminados
-        </p>
-        <div class="mt-2 h-2 w-full overflow-hidden rounded bg-slate-100">
-          <div class="h-full bg-sky-500 transition-all"
-               :style="`width: ${porcentaje()}%`"></div>
-        </div>
-      </section>
-
-      <!-- ── 3 · Avisos de la remesa ────────────────────────────────────── -->
-      <section x-show="avisosRemesa.length" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <h2 class="text-xs font-semibold uppercase tracking-wide text-amber-700">Avisos de la remesa</h2>
-        <ul class="mt-2 list-disc pl-5 text-sm text-amber-800">
-          <template x-for="aviso in avisosRemesa" :key="aviso">
-            <li x-text="aviso"></li>
-          </template>
-        </ul>
-      </section>
-
-      <p x-show="errorGlobal" x-text="errorGlobal"
-         class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
-
-      <!-- ── 4 · Lista de partes y detalle (R13-R18) ────────────────────── -->
-      <section x-show="partes.length" class="grid gap-6 lg:grid-cols-5">
-
-        <div class="lg:col-span-2 rounded-lg border border-slate-200 bg-white">
-          <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Partes</h2>
-            <button type="button" @click="reiniciar()" class="text-xs text-slate-400 hover:text-slate-600">
-              Empezar otra remesa
-            </button>
-          </div>
-          <ul class="divide-y divide-slate-100">
-            <template x-for="parte in partes" :key="parte.hash">
-              <li>
-                <button type="button" @click="abrirParte(parte)"
-                        class="w-full px-4 py-3 text-left hover:bg-slate-50"
-                        :class="parteAbierto && parteAbierto.hash === parte.hash ? 'bg-slate-50' : ''">
-                  <div class="flex items-center gap-2">
-                    <!-- F-028 R38, R39 · las CUATRO marcas, y por qué son seis
-                         clases. `pendiente` se pinta ámbar o rojo —el único
-                         resto de color que queda del veredicto— y `aprobado` se
-                         pinta de dos maneras: verde liso si lo dio por bueno la
-                         máquina y verde CON ANILLO si lo dio por bueno una
-                         persona a pesar de la máquina. Pintarlos igual borra
-                         exactamente el dato que F-026 y F-028 existen para
-                         registrar (R39).
-
-                         Y las dos marcas nuevas no son cosméticas: un
-                         `rechazado` ya lo miró alguien, así que no puede
-                         parecer «pendiente de mirar» —de ahí el gris apagado y
-                         el tachado—, y un `cerrado` no admite ningún gesto
-                         (R41), de ahí el azul y el candado. -->
-                    <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                          :class="{
-                            'bg-emerald-500': parte.semaforo === 'verde',
-                            'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parte.semaforo === 'aprobado',
-                            'bg-amber-400': parte.semaforo === 'ambar',
-                            'bg-red-500': parte.semaforo === 'rojo',
-                            'bg-slate-400 opacity-60': parte.semaforo === 'rechazado',
-                            'bg-sky-600': parte.semaforo === 'cerrado',
-                            'bg-slate-300 animate-pulse': parte.estado === 'leyendo' || parte.estado === 'validando',
-                            'bg-slate-300': parte.estado === 'pendiente',
-                            'bg-red-700': parte.estado === 'error'
-                          }"></span>
-                    <span class="font-mono text-xs text-slate-500"
-                          :class="parte.semaforo === 'rechazado' ? 'line-through text-slate-400' : ''"
-                          x-text="parte.hash.slice(0, 8)"></span>
-                    <!-- R38 · el color solo no basta: hay que poder LEER en qué
-                         estado está, y si lo decidió una persona o la máquina
-                         (R39). Sin el `oid`, sin correo y sin nombre (R42):
-                         quien audite lo lee en la base. -->
-                    <span x-show="etiquetaDeEstado(parte)"
-                          class="rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                          :class="{
-                            'bg-emerald-100 text-emerald-800': parte.semaforo === 'verde' || parte.semaforo === 'aprobado',
-                            'bg-amber-100 text-amber-800': parte.semaforo === 'ambar',
-                            'bg-red-100 text-red-800': parte.semaforo === 'rojo',
-                            'bg-slate-200 text-slate-500': parte.semaforo === 'rechazado',
-                            'bg-sky-100 text-sky-800': parte.semaforo === 'cerrado'
-                          }"
-                          x-text="(estaCerrado(parte) ? '🔒 ' : '') + etiquetaDeEstado(parte) + (decidioUnaPersona(parte) ? ' · una persona' : '')"></span>
-                    <!-- F-025 R13 · en cuál de los tres pasos está este parte
-                         ahora mismo. Con la cola a tres hay siempre tres líneas
-                         moviéndose: eso es lo que distingue «está trabajando»
-                         de «se ha colgado» durante los ~20 s que tarda. -->
-                    <span x-show="parte.paso" class="ml-auto animate-pulse text-xs text-sky-600"
-                          x-text="parte.paso"></span>
-                    <span class="ml-auto text-xs text-slate-400" x-text="parte.estado"></span>
-                  </div>
-                  <p class="mt-1 truncate text-xs text-slate-400">
-                    <span x-text="parte.origen"></span>
-                    · pág. <span x-text="(parte.paginas_origen || []).join(', ')"></span>
-                  </p>
-                  <!-- R39, R43 · «lo decidió una persona» y cuándo. Ni el
-                       `oid`, ni el correo, ni el nombre, ni el motivo (R42): el
-                       motivo es texto libre y puede llevar dentro el nombre de
-                       un cliente; quien audite lo lee en la base. -->
-                  <p x-show="decidioUnaPersona(parte)" class="mt-1 text-xs text-sky-700">
-                    Lo decidió <strong>una persona</strong> ·
-                    <span x-text="fechaDeDecision(parte)"></span>
-                  </p>
-                  <ul x-show="parte.validacion && parte.validacion.motivos.length"
-                      class="mt-1 list-disc pl-4 text-xs text-slate-500">
-                    <template x-for="motivo in (parte.validacion ? parte.validacion.motivos : [])" :key="motivo.codigo">
-                      <li x-text="motivo.texto"></li>
-                    </template>
-                  </ul>
-                  <p x-show="parte.error" class="mt-1 text-xs text-red-600">
-                    <span x-text="parte.error"></span>
-                    <span @click.stop="reintentarParte(parte)"
-                          class="ml-2 cursor-pointer underline">reintentar</span>
-                  </p>
-                  <!-- F-019 R27 · el parte se leyó bien pero NO se guardó, así
-                       que no se puede archivar. Se dice aquí y con su motivo:
-                       callarlo devuelve al usuario al defecto 15. -->
-                  <p x-show="!parte.error && parte.errorGuardado"
-                     class="mt-1 text-xs text-amber-700">
-                    No archivable: no se ha podido guardar.
-                    <span x-text="parte.errorGuardado"></span>
-                  </p>
-                </button>
-              </li>
+            <template x-for="r in [{ titulo: 'Ensayo (dry-run): no se crea nada', resultado: datos.volcado.dryRun }, { titulo: 'Volcado hecho', resultado: datos.volcado.hecho }]" :key="r.titulo">
+              <div class="rs-subpanel">
+                <div class="rs-subpanel__cabecera">
+                  <h3 class="rs-subpanel__titulo">
+                    <span x-text="r.titulo"></span> · obra <span x-text="obra(r.resultado.obra)"></span>
+                  </h3>
+                  <span x-show="r.resultado === datos.volcado.dryRun" class="rs-chip rs-chip--info">Simulación</span>
+                  <span x-show="r.resultado === datos.volcado.hecho" class="rs-chip rs-chip--ok">Hecho en Sigrid</span>
+                </div>
+                <dl class="rs-contadores">
+                  <div><dt>previstos</dt><dd x-text="resumenVolcado(r.resultado).previstos"></dd></div>
+                  <div><dt>creados</dt><dd x-text="resumenVolcado(r.resultado).creados"></dd></div>
+                  <div><dt>idempotentes</dt><dd x-text="resumenVolcado(r.resultado).idempotentes"></dd></div>
+                  <div><dt>rechazados</dt><dd x-text="resumenVolcado(r.resultado).rechazados"></dd></div>
+                  <div><dt>no_procesados</dt><dd x-text="resumenVolcado(r.resultado).no_procesados"></dd></div>
+                </dl>
+                <div class="rs-marco mt-4">
+                  <table class="rs-tabla rs-tabla--compacta">
+                    <thead>
+                      <tr>
+                        <th>Referencia externa</th>
+                        <th>Unidad de posventa</th>
+                        <th>Estado</th>
+                        <th>Código de Sigrid</th>
+                        <th>Motivo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="p in r.resultado.partes" :key="p.referenciaExterna">
+                        <tr>
+                          <td class="rs-mono whitespace-nowrap" x-text="p.referenciaExterna"></td>
+                          <td class="rs-mono whitespace-nowrap" x-text="p.unidad.cod"></td>
+                          <td>
+                            <span class="rs-chip" :data-estado="p.estado" x-text="estadoVolcado(p.estado)"></span>
+                            <span class="rs-nota rs-mono block mt-1" x-text="p.estado"></span>
+                          </td>
+                          <td class="whitespace-nowrap">
+                            <span class="rs-mono" x-text="p.cod || '—'"></span>
+                            <span x-show="p.provisional" class="rs-provisional">provisional</span>
+                          </td>
+                          <td>
+                            <template x-if="p.motivo">
+                              <div>
+                                <span class="rs-mono rs-nota--error" x-text="p.motivo.codigo"></span>
+                                <span class="rs-nota block" x-text="p.motivo.mensaje"></span>
+                              </div>
+                            </template>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </template>
-          </ul>
-        </div>
 
-        <!-- Detalle del parte: nueve campos + firma + PDF (R14, R15) -->
-        <div class="lg:col-span-3 rounded-lg border border-slate-200 bg-white p-5"
-             x-show="parteAbierto">
-          <template x-if="parteAbierto">
-            <div>
-              <div class="flex items-baseline justify-between">
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  Parte <span class="font-mono" x-text="parteAbierto.hash.slice(0, 8)"></span>
-                </h2>
-                <button type="button" @click="cerrarParte()" class="text-xs text-slate-400 hover:text-slate-600">
-                  Cerrar
-                </button>
-              </div>
-
-              <p class="mt-2 text-xs text-slate-500">
-                Firma:
-                <span x-text="parteAbierto.firma ? parteAbierto.firma.firma.clasificacion : '—'"></span>
-                (<span x-text="parteAbierto.firma ? parteAbierto.firma.firma.confianza_pct : '—'"></span>%)
+            <template x-for="p in datos.volcado.pendientes" :key="p">
+              <p class="rs-pendiente">
+                <span x-text="p"></span> <span class="rs-ficha" x-text="datos.volcado.ficha"></span>
               </p>
+            </template>
+          </div>
+        </div>
+      </section>
 
-              <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                <template x-for="nombre in CAMPOS" :key="nombre">
-                  <label class="block text-xs">
-                    <span class="flex items-center gap-2 text-slate-500">
-                      <span x-text="nombre"></span>
-                      <span class="rounded px-1"
-                            :class="esDudoso(nombre) ? 'bg-amber-100 text-amber-800' : 'text-slate-400'"
-                            x-text="confianzaDe(nombre) + '%'"></span>
-                      <span x-show="estaEditado(nombre)"
-                            class="rounded bg-emerald-100 px-1 text-emerald-800">editado</span>
-                    </span>
-                    <input type="text" class="mt-1 w-full rounded border px-2 py-1 text-sm"
-                           :class="esDudoso(nombre) ? 'border-amber-300 bg-amber-50' : 'border-slate-200'"
-                           :value="valorDe(nombre)"
-                           @input="editarCampo(nombre, $event.target.value)">
-                  </label>
-                </template>
+      <!-- ── incidencias (§5.4 y §5.5): el listado y la ficha ───────────── -->
+      <section data-seccion="incidencias" x-show="seccion === 'incidencias'" x-cloak class="rs-seccion">
+
+        <div data-en-construccion="incidencias" class="rs-obras">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
+            </p>
+            <p class="rs-obras__linea">La construirán:</p>
+            <ul class="rs-obras__fichas">
+              <template x-for="f in fichasDeSeccion('incidencias')" :key="f.ficha">
+                <li><span class="rs-obras__ficha" x-text="f.ficha"></span> · <span x-text="f.titulo"></span></li>
+              </template>
+            </ul>
+          </div>
+
+          <!-- El listado (F-041, F-043) -->
+          <div x-show="!incidenciaAbierta" class="rs-seccion">
+            <header class="rs-cabecera-seccion">
+              <div>
+                <h1 class="rs-titulo">Incidencias</h1>
+                <p class="rs-entradilla">Las incidencias que ya están en Sigrid.</p>
+              </div>
+            </header>
+            <p x-show="avisoRuta" x-text="avisoRuta" class="rs-aviso rs-aviso--atencion"></p>
+
+            <div class="rs-panel rs-panel--lista">
+              <div class="rs-filtros">
+                <label class="rs-filtro">
+                  <span class="rs-campo__etiqueta">Estado</span>
+                  <select x-model="filtros.incidencias.estado" class="rs-campo">
+                    <option value="">Todos</option>
+                    <template x-for="e in estados" :key="e.cod"><option :value="e.cod" x-text="etiquetaEstado(e.cod)"></option></template>
+                  </select>
+                </label>
+                <label class="rs-filtro rs-filtro--ancho">
+                  <span class="rs-campo__etiqueta">Obra</span>
+                  <select x-model="filtros.incidencias.obra" class="rs-campo">
+                    <option value="">Todas</option>
+                    <template x-for="o in datos.obras.filas" :key="o.cod"><option :value="o.cod" x-text="obra(o.cod)"></option></template>
+                  </select>
+                </label>
+                <label class="rs-filtro rs-filtro--ancho">
+                  <span class="rs-campo__etiqueta">Buscar (código o descripción)</span>
+                  <input type="search" x-model="filtros.incidencias.texto" class="rs-campo">
+                </label>
+                <p class="rs-pendiente">Pendiente: los filtros de clase, tipo, oficio e industrial los decide la ficha de la incidencia.</p>
               </div>
 
-              <div class="mt-4 flex flex-wrap items-center gap-3">
-                <button type="button" @click="revalidarParte()"
-                        :disabled="!hayEdiciones()"
-                        class="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
-                  Revalidar (no gasta IA)
-                </button>
-                <span class="text-xs text-slate-400" x-text="mensajeRevalidacion"></span>
+              <!-- Operaciones en bloque, visibles con selección (R20) -->
+              <div x-show="seleccionIncidencias.length" class="rs-seleccion">
+                <span class="rs-contador"><strong x-text="seleccionIncidencias.length"></strong> seleccionadas</span>
+                <button type="button" data-placeholder="F-043" @click="placeholder('incidencias.cambiarEstadoBloque')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-043">Cambiar estado… <span class="placeholder-ficha">F-043</span></button>
+                <button type="button" data-placeholder="F-043" @click="placeholder('incidencias.asignarIndustrialBloque')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-043">Asignar industrial… <span class="placeholder-ficha">F-043</span></button>
+                <button type="button" data-placeholder="F-044" @click="placeholder('incidencias.imprimirBloque')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-044">Imprimir los partes <span class="placeholder-ficha">F-044</span></button>
+                <button type="button" data-local @click="quitarSeleccionIncidencias()"
+                        class="rs-btn rs-btn--secundario rs-btn--compacto">Quitar la selección</button>
               </div>
 
-              <!-- ── F-026 R52 · los tres estados del autoguardado ───────────
-                   Lo que se escribe se guarda solo tras una pausa, así que
-                   hace falta decir en qué punto está. Los dos primeros
-                   estados son información de fondo —gris pequeño, sin
-                   interrumpir a nadie—; el tercero NO.
-
-                   El aviso de fallo se pinta aparte, en rojo y con recuadro, y
-                   **no se va solo**: no hay temporizador que lo borre ni
-                   transición que lo esconda. Lo quita el siguiente guardado
-                   que salga bien, y solo él. Quien escribe y no ve nada supone
-                   que se guardó, y esa suposición no puede quedar sin
-                   desmentir.
-
-                   Y lo escrito sigue en pantalla pase lo que pase: el campo
-                   lee `valorDe(nombre)`, que devuelve la corrección de la
-                   persona antes que lo que dijo la IA. -->
-              <div class="mt-2" x-show="estadoAutoguardado">
-                <span class="text-xs"
-                      x-show="estadoAutoguardado === 'guardando' || estadoAutoguardado === 'guardado'"
-                      :class="estadoAutoguardado === 'guardado' ? 'text-emerald-700' : 'text-slate-400'"
-                      x-text="mensajeAutoguardado"></span>
-                <p x-show="estadoAutoguardado === 'fallo'"
-                   class="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-800"
-                   x-text="mensajeAutoguardado"></p>
+              <div class="rs-desplazable" x-show="incidenciasFiltradas().length">
+                <table class="rs-tabla">
+                  <thead>
+                    <tr>
+                      <th><span class="sr-only">Seleccionar</span></th>
+                      <th>Código</th>
+                      <th>Descripción corta</th>
+                      <th>Obra</th>
+                      <th>Unidad</th>
+                      <th>Fecha</th>
+                      <th>Oficio</th>
+                      <th>Estado</th>
+                      <th>Parte cerrado</th>
+                      <th>Proforma</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="inc in incidenciasFiltradas()" :key="inc.id">
+                      <tr>
+                        <td>
+                          <input type="checkbox" :aria-label="'Seleccionar ' + inc.cod"
+                                 :checked="seleccionIncidencias.includes(inc.id)" @change="alternarIncidencia(inc.id)">
+                        </td>
+                        <td class="whitespace-nowrap">
+                          <a :href="hashDe('incidencias', inc.id)" class="rs-enlace rs-mono" x-text="inc.cod"></a>
+                        </td>
+                        <td x-text="inc.descripcionCorta"></td>
+                        <td x-text="obra(inc.obra)"></td>
+                        <td class="rs-mono whitespace-nowrap" x-text="inc.unidad.cod"></td>
+                        <td class="whitespace-nowrap" x-text="inc.fecha"></td>
+                        <td x-text="oficio(inc.oficio)"></td>
+                        <td><span class="rs-chip" :data-estado="inc.estado" x-text="etiquetaEstado(inc.estado)"></span></td>
+                        <td x-text="inc.parte.cerrado ? 'Sí' : 'No'"></td>
+                        <td x-text="vinculo(inc.id) && vinculo(inc.id).proforma ? 'Enlazada' : 'sin enlazar'"
+                            :class="vinculo(inc.id) && vinculo(inc.id).proforma ? '' : 'rs-sin-dato'"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
               </div>
+              <div data-vacio x-show="!incidenciasFiltradas().length" class="rs-vacio">
+                <p class="rs-vacio__titulo">Ninguna incidencia de ejemplo cumple esos filtros.</p>
+                <p class="rs-vacio__pista">Prueba a quitar algún filtro.</p>
+              </div>
+            </div>
+          </div>
 
-              <!-- ── F-028 · el estado del parte y los dos gestos (R38-R43) ──
-                   Los gestos van AQUÍ, en el detalle y con el PDF delante, que
-                   es donde se mira una firma. Nunca en la lista: la decisión es
-                   de UN parte, con ese parte delante (R36).
-
-                   Y no piden una segunda confirmación (R29). Cambiar el estado
-                   no escribe en ningún sistema ajeno —escribe en el esquema
-                   propio—; la confirmación única de F-025 sigue siendo la única
-                   que precede a una escritura externa.
-
-                   Toda la sección se pinta contra métodos de `js/app.js`, y el
-                   `oid` no aparece ni dentro de una condición: lo pregunta
-                   `hayIdentidad()` (R42). -->
-              <div class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
-                <!-- R38, R39, R43 · en qué estado consta y quién lo decidió. Ni
-                     el identificador de quien decidió, ni su correo, ni su
-                     nombre, ni el motivo que escribió (R42, R52): eso se audita
-                     en la base. -->
-                <p x-show="estadoDelParte()" class="text-sm text-slate-700">
-                  <span class="mr-1 inline-block h-2.5 w-2.5 rounded-full"
-                        :class="{
-                          'bg-emerald-500': parteAbierto.semaforo === 'verde',
-                          'bg-emerald-500 ring-2 ring-offset-1 ring-sky-600': parteAbierto.semaforo === 'aprobado',
-                          'bg-amber-400': parteAbierto.semaforo === 'ambar',
-                          'bg-red-500': parteAbierto.semaforo === 'rojo',
-                          'bg-slate-400 opacity-60': parteAbierto.semaforo === 'rechazado',
-                          'bg-sky-600': parteAbierto.semaforo === 'cerrado'
-                        }"></span>
-                  Este parte consta
-                  <strong x-text="etiquetaDeEstado(parteAbierto)"></strong>.
-                  <span x-show="decidioUnaPersona(parteAbierto)">
-                    Lo decidió <strong>una persona</strong> el
-                    <span x-text="fechaDeDecision(parteAbierto)"></span>.
-                  </span>
-                  <span x-show="!decidioUnaPersona(parteAbierto) && !estaCerrado(parteAbierto)"
-                        class="text-slate-500">
-                    Lo dice la validación automática: no lo ha decidido nadie.
-                  </span>
-                </p>
-
-                <!-- R43 · el SEGUNDO hecho, que no es el mismo que el primero:
-                     había una decisión de una persona y ha dejado de contar
-                     porque el veredicto cambió. Sin decirlo, la decisión
-                     desaparecería de la pantalla en silencio y quien la tomó
-                     creería que sigue en pie. No acusa a nadie: corregir un
-                     campo es justo lo que la pantalla pide hacer. -->
-                <p x-show="parteAbierto.avisoEstado" x-text="parteAbierto.avisoEstado"
-                   class="mt-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800"></p>
-
-                <!-- R41 · el parte cerrado NO ofrece ningún gesto, y la pantalla
-                     EXPLICA por qué en vez de fallar. Lo escrito en SharePoint y
-                     en el ERP no se deshace desde aquí, y cambiar el estado solo
-                     conseguiría que nuestra base dijera algo distinto del ERP
-                     (R7). -->
-                <template x-if="estaCerrado(parteAbierto)">
-                  <p class="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-2 text-sm text-sky-900">
-                    🔒 <strong>Esta incidencia ya está cerrada en el ERP, así que
-                    el estado de este parte no se puede cambiar desde aquí.</strong>
-                    Lo que se subió a SharePoint y lo que se escribió en Sigrid no
-                    se deshace desde esta pantalla: si hay que reabrir la
-                    incidencia, se reabre en Sigrid.
-                  </p>
-                </template>
-
-                <!-- R40 · los DOS gestos, mientras el parte no esté cerrado, y
-                     el campo de motivo delante de los dos. Al rechazar es
-                     obligatorio (R11) y al aprobar es opcional (R12). -->
-                <template x-if="!estaCerrado(parteAbierto)">
-                  <div class="mt-3 space-y-3">
-                    <label class="block text-xs">
-                      <span class="text-slate-500">
-                        Motivo de la decisión
-                        <span class="text-slate-400">— obligatorio para rechazar, opcional al aprobar</span>
-                      </span>
-                      <textarea x-model="motivoDeRechazo" rows="2"
-                                :maxlength="LIMITE_MOTIVO"
-                                placeholder="Qué hay que arreglar en este parte"
-                                class="mt-1 w-full rounded border border-slate-200 px-2 py-1 text-sm"></textarea>
-                    </label>
-
-                    <div class="flex flex-wrap items-center gap-3">
-                      <button type="button" @click="aprobarParte()"
-                              :disabled="!puedeDecidir()"
-                              class="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
-                        Aprobar este parte
-                      </button>
-                      <button type="button" @click="rechazarParte()"
-                              :disabled="!puedeRechazar()"
-                              class="rounded bg-rose-700 px-3 py-1.5 text-sm text-white disabled:bg-slate-300">
-                        Rechazar este parte
-                      </button>
-                    </div>
-
-                    <!-- R11 · por qué el botón de rechazar está apagado. Un
-                         botón deshabilitado sin explicación deja a quien mira
-                         buscando el fallo en otro sitio. -->
-                    <p x-show="!hayMotivo()" class="text-xs text-slate-500">
-                      Para <strong>rechazar</strong> hace falta escribir el motivo:
-                      quien vuelva a mirar este parte —otra persona, o tú dentro de
-                      un mes— necesita saber qué hay que arreglar.
-                    </p>
-
-                    <!-- R14 · sin saber quién decide no se puede registrar la
-                         decisión. Se dice, en vez de dejar dos botones
-                         deshabilitados sin explicación. -->
-                    <p x-show="!hayIdentidad()" class="text-xs text-amber-700">
-                      No se ha podido saber quién eres, así que no se puede
-                      registrar quién decide. Vuelve a entrar desde el enlace de la
-                      aplicación.
-                    </p>
-                    <p x-show="hayIdentidad() && !remesaId" class="text-xs text-amber-700">
-                      La remesa no consta registrada, así que la decisión no
-                      tendría de qué colgar. Vuelve a subir la remesa.
-                    </p>
-
-                    <p class="text-xs text-slate-500">
-                      Decidir aquí no archiva ni cierra nada: un parte aprobado
-                      entra en <strong>la tanda</strong> y se escribe al confirmarla.
-                      Si le falta el <strong>código de obra</strong> o el
-                      <strong>número de incidencia</strong>, corrígelo arriba y
-                      revalida antes de aprobarlo.
+          <!-- La ficha (F-041, F-042, F-045, F-047), en #/incidencias/<id> -->
+          <template x-for="inc in [incidenciaActual()].filter(Boolean)" :key="inc.id">
+            <div class="rs-seccion">
+              <a href="#/incidencias" class="rs-enlace rs-volver">← Volver al listado</a>
+              <div class="rs-panel rs-aparece">
+                <div class="rs-ficha-cabecera">
+                  <div>
+                    <p class="rs-ficha-cabecera__codigo" x-text="inc.cod"></p>
+                    <h1 class="rs-titulo rs-titulo--ficha" x-text="inc.descripcionCorta"></h1>
+                    <p class="rs-subtitulo">
+                      <span x-text="obra(inc.obra)"></span> · <span x-text="inc.unidad.cod + ' · ' + inc.unidad.res"></span>
                     </p>
                   </div>
-                </template>
+                  <span class="rs-chip" :data-estado="inc.estado" x-text="etiquetaEstado(inc.estado)"></span>
+                </div>
 
-                <p x-show="mensajeEstado" x-text="mensajeEstado"
-                   class="mt-2 text-xs text-slate-600"></p>
-              </div>
+                <div class="rs-pestanas-ficha" role="tablist">
+                  <button type="button" data-local role="tab" @click="verPestanaFicha('datos')" :aria-selected="pestanaFicha === 'datos'">Datos</button>
+                  <button type="button" data-local role="tab" @click="verPestanaFicha('parte')" :aria-selected="pestanaFicha === 'parte'">Parte</button>
+                  <button type="button" data-local role="tab" @click="verPestanaFicha('economico')" :aria-selected="pestanaFicha === 'economico'">Económico</button>
+                  <button type="button" data-local role="tab" @click="verPestanaFicha('historial')" :aria-selected="pestanaFicha === 'historial'">Historial</button>
+                </div>
 
-              <div class="mt-5">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400">PDF del parte</h3>
-                <iframe x-show="urlPdf" :src="urlPdf" title="PDF del parte"
-                        class="mt-2 h-[28rem] w-full rounded border border-slate-200"></iframe>
+                <!-- Pestaña «Datos»: los campos del alta en los bloques de la
+                     ficha del parte de Sigrid (R38, R39) y, debajo, de dónde
+                     sale cada campo (R25). -->
+                <div x-show="pestanaFicha === 'datos'" class="mt-6 space-y-6">
+                  <div class="grid gap-6 md:grid-cols-2">
+                    <div class="rs-bloque">
+                      <h3 class="rs-rotulo">Identificación</h3>
+                      <dl class="rs-datos">
+                        <div><dt>Código</dt><dd class="rs-mono" x-text="inc.cod"></dd></div>
+                        <div><dt>Obra</dt><dd x-text="obra(inc.obra)"></dd></div>
+                        <div><dt>Unidad de posventa</dt><dd x-text="inc.unidad.cod + ' · ' + inc.unidad.res"></dd></div>
+                        <div><dt>Tipo de reclamación</dt><dd x-text="tipo(inc.tipo)"></dd></div>
+                        <div><dt>Ubicación</dt><dd x-text="inc.ubicacion || 'sin completar'" :class="inc.ubicacion ? '' : 'rs-sin-dato'"></dd></div>
+                        <div><dt>Propietario</dt><dd x-text="inc.propietario.cod + ' · ' + inc.propietario.res"></dd></div>
+                        <div><dt>Persona que reclama</dt><dd x-text="inc.persona.cod + ' · ' + inc.persona.res"></dd></div>
+                        <div><dt>Correo de avisos</dt><dd x-text="inc.correoAvisos"></dd></div>
+                      </dl>
+                    </div>
+                    <div class="rs-bloque">
+                      <h3 class="rs-rotulo">Datos de la reclamación</h3>
+                      <dl class="rs-datos">
+                        <div><dt>Fecha / Hora</dt><dd x-text="inc.fecha + ' ' + inc.hora"></dd></div>
+                        <div><dt>Forma de comunicación</dt><dd x-text="forma(inc.forma)"></dd></div>
+                        <div><dt>Oficio</dt><dd x-text="oficio(inc.oficio)"></dd></div>
+                        <div><dt>Descripción corta</dt><dd x-text="inc.descripcionCorta"></dd></div>
+                        <div><dt>Descripción larga</dt><dd x-text="inc.descripcionLarga"></dd></div>
+                      </dl>
+                    </div>
+                  </div>
+
+                  <div class="rs-bloque space-y-3">
+                    <h3 class="rs-rotulo">Intervinientes</h3>
+                    <div class="rs-marco">
+                      <table class="rs-tabla rs-tabla--compacta">
+                        <thead>
+                          <tr><th>Oficio de la obra</th><th>Proveedor</th><th>Causante</th></tr>
+                        </thead>
+                        <tbody>
+                          <template x-for="(i, n) in (inc.intervinientes || [])" :key="n">
+                            <tr>
+                              <td x-text="oficio(i.oficio)"></td>
+                              <td x-text="i.proveedor.cod + ' · ' + i.proveedor.res"></td>
+                              <td><input type="checkbox" disabled :checked="i.causante" aria-label="Causante"></td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div class="rs-bloque">
+                    <h3 class="rs-rotulo">Volcado</h3>
+                    <dl class="rs-datos">
+                      <div><dt>Referencia externa</dt><dd class="rs-mono" x-text="inc.referenciaExterna"></dd></div>
+                    </dl>
+                  </div>
+
+                  <details class="rs-desplegable">
+                    <summary>De dónde sale cada campo en Sigrid</summary>
+                    <div class="rs-desplazable">
+                      <table class="rs-tabla rs-tabla--compacta">
+                        <thead>
+                          <tr><th>Bloque</th><th>Campo</th><th>Origen</th><th>Nota</th></tr>
+                        </thead>
+                        <tbody>
+                          <template x-for="c in datos.incidencias.campos" :key="c.bloque + c.etiqueta">
+                            <tr>
+                              <td class="rs-nota" x-text="c.bloque"></td>
+                              <td x-text="c.etiqueta"></td>
+                              <td><span class="rs-origen" x-text="[].concat(c.origen).join(' / ')"></span></td>
+                              <td class="rs-nota" x-text="c.motivo ? 'Pendiente: ' + c.motivo : (c.nota || '')"
+                                  :class="c.motivo ? 'rs-nota--atencion' : ''"></td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+
+                  <div class="rs-acciones rs-acciones--separadas">
+                    <button type="button" data-placeholder="F-041" @click="placeholder('ficha.guardar')"
+                            class="placeholder" aria-disabled="true"
+                            title="Todavía no hace nada: lo construye F-041">Guardar cambios <span class="placeholder-ficha">F-041</span></button>
+                    <button type="button" data-placeholder="F-039" @click="placeholder('ficha.cambiarIndustrial')"
+                            class="placeholder" aria-disabled="true"
+                            title="Todavía no hace nada: lo construye F-039">Cambiar industrial <span class="placeholder-ficha">F-039</span></button>
+                    <button type="button" data-placeholder="F-044" @click="placeholder('ficha.imprimir')"
+                            class="placeholder" aria-disabled="true"
+                            title="Todavía no hace nada: lo construye F-044">Imprimir el parte <span class="placeholder-ficha">F-044</span></button>
+                  </div>
+
+                  <div class="rs-acciones">
+                    <label class="rs-filtro rs-filtro--en-linea">
+                      <span class="rs-campo__etiqueta">Cambiar estado</span>
+                      <select class="rs-campo">
+                        <template x-for="e in estados" :key="e.cod"><option :value="e.cod" x-text="etiquetaEstado(e.cod)"></option></template>
+                      </select>
+                    </label>
+                    <button type="button" data-placeholder="F-041" @click="placeholder('ficha.verCambioEstado')"
+                            class="placeholder" aria-disabled="true"
+                            title="Todavía no hace nada: lo construye F-041">Ver qué cambiaría en Sigrid <span class="placeholder-ficha">F-041</span></button>
+                    <button type="button" data-placeholder="F-041" @click="placeholder('ficha.aplicarEstado')"
+                            class="placeholder" aria-disabled="true"
+                            title="Todavía no hace nada: lo construye F-041">Aplicar el cambio <span class="placeholder-ficha">F-041</span></button>
+                  </div>
+
+                  <!-- «No procede» (F-042): el panel es local; el envío, placeholder. -->
+                  <div>
+                    <button type="button" data-local @click="abrirNoProcede()" x-show="!panelNoProcede"
+                            class="rs-btn rs-btn--secundario">No procede…</button>
+                    <div x-show="panelNoProcede" class="rs-no-procede">
+                      <label class="block">
+                        <span class="rs-campo__etiqueta">Justificación</span> <span class="rs-nota">(obligatoria)</span>
+                        <textarea x-model="justificacion" rows="3" class="rs-campo mt-1"></textarea>
+                      </label>
+                      <div class="rs-carta">
+                        <p class="rs-carta__rotulo">Vista previa del correo al cliente</p>
+                        <p class="rs-carta__campo"><span class="rs-carta__etiqueta">Para:</span> <span x-text="inc.correoAvisos"></span></p>
+                        <p class="rs-carta__campo"><span class="rs-carta__etiqueta">Asunto:</span> <span x-text="datos.noProcede.plantillaCorreo.asunto"></span></p>
+                        <div class="rs-carta__cuerpo">
+                          <p x-text="datos.noProcede.plantillaCorreo.saludo"></p>
+                          <p x-text="datos.noProcede.plantillaCorreo.cuerpo"></p>
+                          <p class="rs-carta__justificacion" x-text="justificacion || '(aquí va la justificación escrita)'"></p>
+                          <p x-text="datos.noProcede.plantillaCorreo.despedida"></p>
+                        </div>
+                      </div>
+                      <p class="rs-aviso rs-aviso--info">En pruebas nunca sale un correo a un cliente real.</p>
+                      <template x-for="p in datos.noProcede.pendientes" :key="p">
+                        <p class="rs-pendiente"><span x-text="p"></span> <span class="rs-ficha" x-text="datos.noProcede.ficha"></span></p>
+                      </template>
+                      <div class="rs-acciones">
+                        <button type="button" data-placeholder="F-042" @click="placeholder('ficha.enviarNoProcede')"
+                                class="placeholder" aria-disabled="true"
+                                title="Todavía no hace nada: lo construye F-042">Pasar a no procede y enviar el correo <span class="placeholder-ficha">F-042</span></button>
+                        <button type="button" data-local @click="cerrarNoProcede()"
+                                class="rs-btn rs-btn--secundario">Cancelar</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Pestaña «Parte»: el circuito, visto desde la incidencia -->
+                <div x-show="pestanaFicha === 'parte'" class="mt-6 space-y-4">
+                  <ul class="rs-hitos">
+                    <li class="rs-hito">Guardado: <strong x-text="inc.parte.guardado ? 'Sí' : 'No'"></strong></li>
+                    <li class="rs-hito">Archivado: <strong x-text="inc.parte.archivado ? 'Sí' : 'No'"></strong></li>
+                    <li class="rs-hito">Adjunto a Sigrid: <strong x-text="inc.parte.adjunto ? 'Sí' : 'No'"></strong></li>
+                    <li class="rs-hito">Cerrado: <strong x-text="inc.parte.cerrado ? 'Sí' : 'No'"></strong></li>
+                  </ul>
+                  <p x-show="inc.carpetaArchivo" class="rs-nota">
+                    Archivado en: <code class="rs-ruta" x-text="inc.carpetaArchivo"></code>
+                  </p>
+                  <div class="rs-acciones">
+                    <a href="partes.html" class="rs-btn rs-btn--primario">Abrir el circuito de partes firmados</a>
+                    <button type="button" data-placeholder="F-045" @click="placeholder('ficha.registrarSinFirma')"
+                            class="placeholder" aria-disabled="true"
+                            title="Todavía no hace nada: lo construye F-045">Registrar el parte sin firma (queda en TER) <span class="placeholder-ficha">F-045</span></button>
+                  </div>
+                  <p class="rs-nota">Registrar sin firma exigirá confirmación expresa y queda constancia de quién.</p>
+                </div>
+
+                <!-- Pestaña «Económico» (F-047): lo no enlazado, «sin enlazar» (R22) -->
+                <div x-show="pestanaFicha === 'economico'" class="mt-6 space-y-4">
+                  <template x-for="v in [vinculo(inc.id) || { proforma: null, coste: null, venta: null }]" :key="inc.id">
+                    <dl class="rs-cifras">
+                      <div><dt>Proforma</dt><dd x-text="v.proforma || 'sin enlazar'" :class="v.proforma ? '' : 'rs-sin-dato'"></dd></div>
+                      <div><dt>Coste</dt><dd x-text="importe(v.coste)" :class="importe(v.coste) === 'sin enlazar' ? 'rs-sin-dato' : ''"></dd></div>
+                      <div><dt>Venta</dt><dd x-text="importe(v.venta)" :class="importe(v.venta) === 'sin enlazar' ? 'rs-sin-dato' : ''"></dd></div>
+                    </dl>
+                  </template>
+                  <div class="rs-acciones">
+                    <button type="button" data-placeholder="F-047" @click="placeholder('ficha.enlazarProforma')"
+                            class="placeholder" aria-disabled="true"
+                            title="Todavía no hace nada: lo construye F-047">Enlazar proforma <span class="placeholder-ficha">F-047</span></button>
+                  </div>
+                  <template x-for="p in datos.vinculos.pendientes" :key="p">
+                    <p class="rs-pendiente"><span x-text="p"></span> <span class="rs-ficha" x-text="datos.vinculos.ficha"></span></p>
+                  </template>
+                </div>
+
+                <!-- Pestaña «Historial» (F-041) -->
+                <div x-show="pestanaFicha === 'historial'" class="mt-6 space-y-3">
+                  <p class="rs-entradilla">Queda histórico de cada cambio.</p>
+                  <ul class="rs-historial">
+                    <template x-for="(h, n) in datos.incidencias.historial.filter((h) => h.incidencia === inc.id)" :key="n">
+                      <li x-text="h.fecha + ' · ' + h.usuario + ' · ' + h.campo + ': ' + h.antes + ' → ' + h.despues"></li>
+                    </template>
+                    <li x-show="!datos.incidencias.historial.some((h) => h.incidencia === inc.id)" class="rs-vacio-linea">Sin cambios de ejemplo en esta incidencia.</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </template>
         </div>
       </section>
 
-      <!-- ── 5 · Archivar y cerrar, en un solo gesto (F-025) ─────────────── -->
-      <!-- Hasta F-025 esto eran DOS secciones, DOS confirmaciones y una
-           pantalla de cálculo previo en medio. El 2026-09-11, tras verificar el
-           circuito completo contra el ERP real, el responsable del proyecto
-           decidió que al confirmar el archivado se ejecute ya el cierre. Se le
-           planteó explícitamente que esa pantalla es lo que protege de cerrar
-           la incidencia equivocada si la extracción leyó mal el número del
-           papel, y respondió «no hace falta enseñar nada».
-
-           Lo que se pierde está escrito, entero, en
-           specs/F-025-confirmacion-unica/requirements.md §0.
-
-           Lo que NO se pierde: el backend sigue leyendo el estado real de la
-           reclamación antes de escribir, dentro de la misma llamada que
-           escribe. Lo que desaparece es la pantalla, no la verificación. -->
-      <section x-show="partes.length && fase !== 'procesando' && fase !== 'troceando'"
-               class="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Archivar y cerrar</h2>
-        <p class="mt-2 text-sm text-slate-600">
-          <!-- F-028 R33 · en la tanda entra lo que consta **aprobado**, lo diga
-               la validación automática o una persona. Y nada más: un parte apto
-               que alguien rechazó a mano se queda fuera, que es medio encargo
-               de la feature. -->
-          <span x-text="pendientes().length"></span> parte(s) por archivar y
-          cerrar: los que constan <strong>aprobados</strong>, lo diga la
-          validación automática o una persona.
-        </p>
-        <!-- F-019 R27 · los aptos que NO se pudieron guardar no entran en el
-             botón, y hay que decir cuántos son: si desaparecieran de la cuenta
-             sin explicación, alguien daría la remesa por archivada entera. -->
-        <p x-show="noArchivables().length" class="mt-1 text-sm text-amber-700">
-          <span x-text="noArchivables().length"></span> parte(s) apto(s) que
-          <strong>no se han podido guardar</strong> y por eso no se archivan.
-          El motivo está en cada parte de la lista.
-        </p>
-
-        <!-- F-025 P2 · sin identidad no se firma, y ahora tampoco se archiva:
-             archivar sin poder cerrar deja justo el estado a medias que esta
-             feature quiere evitar. Se dice, en vez de dejar un botón
-             deshabilitado sin explicación. -->
-        <p x-show="!usuario.usuarioOid" class="mt-1 text-sm text-amber-700">
-          No se ha podido saber quién eres, así que no se puede firmar ningún
-          cierre en el ERP. Vuelve a entrar desde el enlace de la aplicación.
-        </p>
-
-        <div class="mt-4 flex flex-wrap items-center gap-3">
-          <button type="button" @click="pedirConfirmacionArchivo()"
-                  :disabled="!pendientes().length || !usuario.usuarioOid || fase === 'archivando_y_cerrando'"
-                  class="rounded bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:bg-slate-300">
-            Archivar y cerrar los partes aptos
-          </button>
-          <!-- R6 · el texto nombra LAS TRES COSAS que van a pasar y cuántos
-               partes son: quien confirma ya no ve el detalle de ninguna, así
-               que el aviso tiene que ser exacto sobre el alcance. -->
-          <template x-if="confirmacionPendiente()">
-            <span class="flex items-center gap-2 text-sm">
-              <span class="text-slate-600">
-                ¿Seguro? Se subirán a SharePoint, se adjuntarán a su reclamación
-                y se cerrarán en Sigrid.
-                <span x-text="pendientes().length"></span> parte(s).
-              </span>
-              <button type="button" @click="confirmarArchivo()"
-                      class="rounded bg-rose-700 px-3 py-1 text-xs text-white">Sí, archivar y cerrar</button>
-              <button type="button" @click="cancelarArchivo()"
-                      class="rounded border border-slate-300 px-3 py-1 text-xs">Cancelar</button>
-            </span>
-          </template>
-        </div>
-
-        <!-- R4: la confirmación caduca. Si el segundo clic llega tarde, no se
-             sube ni se escribe nada, y se dice por qué. -->
-        <p x-show="avisoArchivo" x-text="avisoArchivo"
-           class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"></p>
-
-        <!-- Las DOS puertas de entorno, cada una con su pantalla propia. No son
-             fallos y no se pintan en rojo: pintarlas así llevaría a alguien a
-             «arreglar» una App Setting que está apagada a propósito.
-             R22: la del archivo detiene la tanda. R21: la del ERP no, y por eso
-             se dicen por separado. -->
-        <p x-show="entornoNoArchiva" x-text="entornoNoArchiva"
-           class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
-        <p x-show="entornoNoCierra" x-text="entornoNoCierra"
-           class="mt-4 rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"></p>
-
-        <!-- F-012 R65 · «adjuntado pero no cerrado» es un estado real y hay
-             que poder verlo y salir de él. El gráfico ya está dentro de
-             Sigrid, así que el reintento NO vuelve a mandarlo: el circuito se
-             salta lo que consta hecho y solo vuelve a pedir el cierre. -->
-        <div x-show="cerrables().some((parte) => parte.estado === 'adjuntado')"
-             class="mt-4 space-y-2">
-          <template x-for="parte in cerrables().filter((p) => p.estado === 'adjuntado')"
-                    :key="parte.hash">
-            <p class="flex items-center gap-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
-              <span>El parte está <strong>adjunto en Sigrid</strong> y la incidencia sigue abierta.</span>
-              <button type="button" @click="reintentarCierre(parte)"
-                      :disabled="fase === 'archivando_y_cerrando'"
-                      class="rounded border border-amber-400 px-3 py-1 text-xs disabled:text-slate-400">
-                Reintentar el cierre
-              </button>
+      <!-- ── impresion (§5.6): F-044 ───────────────────────────────────── -->
+      <section data-seccion="impresion" x-show="seccion === 'impresion'" x-cloak class="rs-seccion">
+        <header class="rs-cabecera-seccion">
+          <h1 class="rs-titulo">Impresión de partes</h1>
+        </header>
+        <div data-en-construccion="impresion" class="rs-obras">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
             </p>
-          </template>
-        </div>
+            <p class="rs-obras__linea">La construirá:</p>
+            <ul class="rs-obras__fichas">
+              <template x-for="f in fichasDeSeccion('impresion')" :key="f.ficha">
+                <li><span class="rs-obras__ficha" x-text="f.ficha"></span> · <span x-text="f.titulo"></span></li>
+              </template>
+            </ul>
+          </div>
 
-        <!-- F-012 R65 · y el error del gráfico, que es otra cosa: no se ha
-             adjuntado nada, o no se sabe. En los dos casos el reintento es
-             seguro, porque el endpoint es idempotente por contenido. -->
-        <div x-show="partes.some((parte) => parte.estado === 'error_grafico')"
-             class="mt-4 space-y-2">
-          <template x-for="parte in partes.filter((p) => p.estado === 'error_grafico')"
-                    :key="parte.hash">
-            <p class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
-              <span class="font-mono text-xs" x-text="parte.hash.slice(0, 8)"></span>
-              <span class="ml-2">No se ha podido adjuntar el parte:</span>
-              <span x-text="parte.error"></span>
+          <div class="rs-panel rs-panel--lista">
+            <div class="rs-filtros">
+              <label class="rs-filtro rs-filtro--ancho">
+                <span class="rs-campo__etiqueta">Obra</span>
+                <select x-model="filtros.impresion.obra" class="rs-campo">
+                  <option value="">Todas</option>
+                  <template x-for="o in datos.obras.filas" :key="o.cod"><option :value="o.cod" x-text="obra(o.cod)"></option></template>
+                </select>
+              </label>
+              <div class="rs-filtros__acciones">
+                <span class="rs-contador"><strong x-text="seleccionImpresion.length"></strong> seleccionadas</span>
+              </div>
+            </div>
+            <ul class="rs-lista" x-show="impresionFiltrada().length">
+              <template x-for="inc in impresionFiltrada()" :key="inc.id">
+                <li>
+                  <input type="checkbox" :aria-label="'Seleccionar ' + inc.cod"
+                         :checked="seleccionImpresion.includes(inc.id)" @change="alternarImpresion(inc.id)">
+                  <span class="rs-mono whitespace-nowrap" x-text="inc.cod"></span>
+                  <span x-text="inc.descripcionCorta"></span>
+                  <span class="rs-chip ml-auto" :data-estado="inc.estado" x-text="etiquetaEstado(inc.estado)"></span>
+                </li>
+              </template>
+            </ul>
+            <div data-vacio x-show="!impresionFiltrada().length" class="rs-vacio">
+              <p class="rs-vacio__titulo">Ninguna incidencia de ejemplo cumple esos filtros.</p>
+              <p class="rs-vacio__pista">Prueba a quitar algún filtro.</p>
+            </div>
+            <div class="rs-panel__pie space-y-4">
+              <p class="text-sm"><span class="rs-campo__etiqueta">Plantilla:</span> <span x-text="datos.impresion.plantilla"></span></p>
+              <template x-for="p in datos.impresion.pendientes" :key="p">
+                <p class="rs-pendiente"><span x-text="p"></span> <span class="rs-ficha" x-text="datos.impresion.ficha"></span></p>
+              </template>
+              <div class="rs-acciones">
+                <button type="button" data-placeholder="F-044" @click="placeholder('impresion.generarPdf')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-044">Generar el PDF <span class="placeholder-ficha">F-044</span></button>
+                <button type="button" data-placeholder="F-044" @click="placeholder('impresion.imprimir')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-044">Imprimir <span class="placeholder-ficha">F-044</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── economico (§5.8): F-046 y F-047 ───────────────────────────── -->
+      <section data-seccion="economico" x-show="seccion === 'economico'" x-cloak class="rs-seccion">
+        <header class="rs-cabecera-seccion">
+          <div>
+            <h1 class="rs-titulo">Coste y venta</h1>
+            <p class="rs-entradilla">POSTV2 es la obra de Sigrid donde se gestiona el coste de posventa; cada obra (promoción) es un capítulo.</p>
+          </div>
+        </header>
+        <div data-en-construccion="economico" class="rs-obras">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
             </p>
-          </template>
+            <p class="rs-obras__linea">La construirán:</p>
+            <ul class="rs-obras__fichas">
+              <template x-for="f in fichasDeSeccion('economico')" :key="f.ficha">
+                <li><span class="rs-obras__ficha" x-text="f.ficha"></span> · <span x-text="f.titulo"></span></li>
+              </template>
+            </ul>
+          </div>
+
+          <div class="rs-panel rs-panel--lista">
+            <div class="rs-desplazable">
+              <table class="rs-tabla">
+                <thead>
+                  <tr>
+                    <th>Capítulo</th>
+                    <th class="rs-importe">Incidencias</th>
+                    <th class="rs-importe">Coste</th>
+                    <th class="rs-importe">Venta enlazada</th>
+                    <th class="rs-importe">Diferencia</th>
+                    <th><span class="sr-only">Detalle</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template x-for="c in datos.capitulos.filas" :key="c.obra">
+                    <tr :class="capituloAbierto === c.obra ? 'rs-fila--abierta' : ''">
+                      <td x-text="c.obra + ' · ' + c.nombre"></td>
+                      <td class="rs-importe" x-text="c.incidencias"></td>
+                      <td class="rs-importe" x-text="importe(c.coste)" :class="c.coste === null ? 'rs-sin-dato' : ''"></td>
+                      <td class="rs-importe" x-text="importe(c.venta)" :class="c.venta === null ? 'rs-sin-dato' : ''"></td>
+                      <td class="rs-importe" x-text="importe(c.venta === null ? null : c.venta - c.coste)" :class="c.venta === null ? 'rs-sin-dato' : ''"></td>
+                      <td>
+                        <button type="button" data-local @click="abrirCapitulo(c.obra)"
+                                class="rs-btn rs-btn--secundario rs-btn--compacto">Ver incidencias</button>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="rs-panel__pie space-y-4">
+              <div x-show="capituloAbierto" class="rs-subpanel rs-aparece">
+                <div class="rs-subpanel__cabecera">
+                  <h2 class="rs-subpanel__titulo">Incidencias de <span x-text="obra(capituloAbierto)"></span></h2>
+                  <button type="button" data-local @click="cerrarCapitulo()"
+                          class="rs-btn rs-btn--texto rs-btn--compacto">Cerrar</button>
+                </div>
+                <div class="rs-marco">
+                  <table class="rs-tabla rs-tabla--compacta">
+                    <thead>
+                      <tr><th>Código</th><th>Proforma</th><th class="rs-importe">Coste</th><th class="rs-importe">Venta</th></tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="inc in incidenciasDelCapitulo()" :key="inc.id">
+                        <tr>
+                          <td class="whitespace-nowrap"><a :href="hashDe('incidencias', inc.id)" class="rs-enlace rs-mono" x-text="inc.cod"></a></td>
+                          <td x-text="vinculo(inc.id) && vinculo(inc.id).proforma ? vinculo(inc.id).proforma : 'sin enlazar'"
+                              :class="vinculo(inc.id) && vinculo(inc.id).proforma ? '' : 'rs-sin-dato'"></td>
+                          <td class="rs-importe" x-text="importe(vinculo(inc.id) ? vinculo(inc.id).coste : null)"
+                              :class="importe(vinculo(inc.id) ? vinculo(inc.id).coste : null) === 'sin enlazar' ? 'rs-sin-dato' : ''"></td>
+                          <td class="rs-importe" x-text="importe(vinculo(inc.id) ? vinculo(inc.id).venta : null)"
+                              :class="importe(vinculo(inc.id) ? vinculo(inc.id).venta : null) === 'sin enlazar' ? 'rs-sin-dato' : ''"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="rs-acciones">
+                <button type="button" data-placeholder="F-046" @click="placeholder('economico.actualizar')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-046">Actualizar desde Sigrid <span class="placeholder-ficha">F-046</span></button>
+              </div>
+              <template x-for="p in datos.capitulos.pendientes" :key="p">
+                <p class="rs-pendiente"><span x-text="p"></span> <span class="rs-ficha" x-text="datos.capitulos.ficha"></span></p>
+              </template>
+            </div>
+          </div>
         </div>
+      </section>
 
-        <!-- El resumen del archivo: qué fichero acabó en qué carpeta. -->
-        <ul x-show="resultadosArchivo.length" class="mt-4 divide-y divide-slate-100 text-sm">
-          <template x-for="resultado in resultadosArchivo" :key="resultado.clave">
-            <li class="py-2">
-              <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
-              <span class="ml-2" x-text="resultado.mensaje"></span>
-              <a x-show="resultado.web_url" :href="resultado.web_url" target="_blank" rel="noopener"
-                 class="ml-2 text-sky-700 underline">abrir en SharePoint</a>
-            </li>
-          </template>
-        </ul>
+      <!-- ── datos (§5.9): F-048 ───────────────────────────────────────── -->
+      <section data-seccion="datos" x-show="seccion === 'datos'" x-cloak class="rs-seccion">
+        <header class="rs-cabecera-seccion">
+          <div>
+            <h1 class="rs-titulo">Datos y datamart</h1>
+            <p class="rs-entradilla">Qué publicará cada fase del ciclo en el datamart.</p>
+          </div>
+        </header>
+        <div data-en-construccion="datos" class="rs-obras">
+          <div class="rs-obras__rotulo">
+            <span class="rs-obras__cinta" aria-hidden="true"></span>
+            <p class="rs-obras__linea">
+              <span class="rs-chip rs-chip--atencion">En construcción</span>
+              Todavía no funciona. Lo que ves son datos inventados para enseñar cómo será:
+              no es información real y no se guarda nada.
+            </p>
+            <p class="rs-obras__linea">La construirá:</p>
+            <ul class="rs-obras__fichas">
+              <template x-for="f in fichasDeSeccion('datos')" :key="f.ficha">
+                <li><span class="rs-obras__ficha" x-text="f.ficha"></span> · <span x-text="f.titulo"></span></li>
+              </template>
+            </ul>
+          </div>
 
-        <!-- El resumen del ERP. F-025 R37 · lleva el NÚMERO DE INCIDENCIA
-             sobre el que se escribió, y no es cosmético: al no haber pantalla
-             previa, este es el primer y único momento en que quien pulsó puede
-             darse cuenta de que se escribió sobre la incidencia equivocada.
-             Ver el recuadro «Lo que se pierde» de requirements.md §0. -->
-        <ul x-show="resultadosCierre.length" class="mt-4 divide-y divide-slate-100 text-sm">
-          <template x-for="resultado in resultadosCierre" :key="resultado.clave">
-            <li class="py-2">
-              <span class="font-mono text-xs text-slate-500" x-text="resultado.hash.slice(0, 8)"></span>
-              <span x-show="resultado.incidencia" class="ml-2 rounded bg-slate-100 px-1 font-mono text-xs"
-                    x-text="resultado.incidencia"></span>
-              <span class="ml-2" x-text="resultado.mensaje"></span>
-            </li>
-          </template>
-        </ul>
+          <div class="rs-panel rs-panel--lista">
+            <div class="rs-desplazable">
+              <table class="rs-tabla">
+                <thead>
+                  <tr><th>Fase</th><th>Qué dato</th><th>Fichas</th><th>Estado</th></tr>
+                </thead>
+                <tbody>
+                  <template x-for="f in datos.datamart.filas" :key="f.fase">
+                    <tr>
+                      <td class="font-medium" x-text="f.fase"></td>
+                      <td x-text="f.dato"></td>
+                      <td class="rs-mono whitespace-nowrap" x-text="f.fichas.join(', ')"></td>
+                      <td><span class="rs-chip rs-chip--contorno" x-text="f.estado"></span></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+            <div class="rs-panel__pie space-y-4">
+              <p class="rs-entradilla">El datamart es de datamart-seg-anual; se coordina vía azure-apps.</p>
+              <div class="rs-acciones">
+                <button type="button" data-placeholder="F-048" @click="placeholder('datos.verDiccionario')"
+                        class="placeholder" aria-disabled="true"
+                        title="Todavía no hace nada: lo construye F-048">Ver el diccionario en el datamart <span class="placeholder-ficha">F-048</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
     </main>
 
-    <footer class="border-t border-slate-200 bg-white">
-      <div class="mx-auto max-w-6xl px-6 py-4 text-xs text-slate-400">
-        Construcciones Ruesma · el trabajo de revisión vive en esta pestaña y no se guarda:
-        si la recargas, hay que volver a subir la remesa (F-019).
+    <!-- ── El aviso del último placeholder pulsado (R11, R12) ──────────────
+         Región viva siempre presente (role="status", aria-live="polite"): se
+         queda hasta el siguiente placeholder o hasta pulsar «Entendido». -->
+    <div class="pointer-events-none fixed inset-x-0 bottom-4 z-20 flex justify-center px-4">
+      <div class="pointer-events-auto rs-toast" :class="aviso ? 'rs-toast--visible' : ''">
+        <p role="status" aria-live="polite" x-text="aviso"></p>
+        <button type="button" data-local x-show="aviso" x-cloak @click="aviso = ''"
+                class="shrink-0 rs-btn rs-btn--secundario rs-btn--compacto">Entendido</button>
+      </div>
+    </div>
+
+    <footer class="rs-pie">
+      <div class="rs-contenedor rs-pie__texto">
+        Construcciones Ruesma · Posventa · portal de posventa. Lo que está en construcción
+        enseña datos inventados; lo que funciona lleva el sello «En producción».
       </div>
     </footer>
 
   </div>
 
   <!-- Los scripts PROPIOS van aquí, al final del body y SIN defer, en orden de
-       dependencia. Con defer (o con type="module", que difiere de forma
-       implícita) Alpine arrancaría antes de que exista appPostventa y la
-       pantalla quedaría muerta. Lo vigila tests/test_f007_estaticos.py. -->
-  <script src="js/config.js"></script>
-  <script src="js/traza.js"></script>
-  <script src="js/cola.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/seleccion.js"></script>
-  <script src="js/pipeline.js"></script>
-  <script src="js/confirmacion.js"></script>
-  <script src="js/autoguardado.js"></script>
-  <script src="js/app.js"></script>
+       dependencia (R34): los datos, la lógica pura y el componente. Ninguno
+       del circuito (R15). -->
+  <script src="js/maqueta_datos.js"></script>
+  <script src="js/portal.js"></script>
+  <script src="js/portal_app.js"></script>
 </body>
 </html>

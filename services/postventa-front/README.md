@@ -9,6 +9,20 @@ En producción va desplegado como **Static Web App** con la Function enlazada al
 mismo origen; eso es **F-010**. En local, `dev_server.py` reproduce ese mismo
 comportamiento.
 
+> **Desde F-035 (2026-09-25) el front tiene dos páginas.** La portada
+> (`index.html`, lo que se abre en `/`) es el **portal de posventa**, una
+> maqueta con datos de ejemplo; el circuito de partes firmados de este README
+> vive en **`partes.html`**, byte a byte el de antes salvo la barra superior
+> común. Donde este README dice «`index.html`» hablando del circuito, léase
+> `partes.html`. La maqueta se explica en «La maqueta del portal (F-035)».
+>
+> **Desde la enmienda del 2026-10-05 (F-035, opción b)** el portal se publica
+> **en producción entero**: lo que funciona (la entrada de incidencias con
+> `importar.html` y `oficios.html`, y el circuito) y lo que todavía no, marcado
+> **«En construcción»**. Las cuatro páginas llevan la misma barra superior y
+> todo se navega **en la misma pestaña**; la remesa del circuito la protege la
+> guarda de salida. Detalle en «La maqueta del portal (F-035)».
+
 ## Arrancar en local
 
 Hacen falta **dos terminales**. El humano trabaja en PowerShell: una línea por
@@ -95,6 +109,10 @@ importar.html   js/importacion.js   plantilla, importación y bandeja    (F-036 
 oficios.html    js/oficios.js       oficios repetidos en Sigrid          (F-036 §15.6)
 ```
 
+Y desde F-035, en el circuito, `js/guarda_salida.js`: la guarda de salida
+(lógica pura más un `beforeunload`, probada en `tests_js/guarda_salida.test.js`
+con dobles; ver «La maqueta del portal (F-035)»).
+
 **Regla de oro: si algo merece un test, no vive en `app.js`.** Hay dos guardias
 en `tests/test_f007_estaticos.py` que lo vigilan, porque `app.js` es la única
 habitación sin tests de la casa.
@@ -103,7 +121,277 @@ Los módulos se exponen en las dos direcciones —`window.X` para el navegador,
 `module.exports` para `node --test`—, que es lo que permite probarlos sin
 herramientas nuevas.
 
+## La maqueta del portal (F-035)
+
+### Qué es
+
+La **portada** del front (`index.html`) es el portal de posventa: el ciclo
+entero —entrada, bandeja de revisión, incidencias con su ficha, impresión,
+partes firmados, coste y datos— en una barra superior de ocho pestañas. Salvo
+«Partes firmados», **todas son una maqueta**: datos de ejemplo ficticios y
+botones que todavía no hacen nada. Sirve para validar el recorrido con
+Posventa antes de construir cada pieza (F-036 a F-048), no para trabajar.
+
+El **circuito de partes firmados**, el que está en producción, se mudó de
+`index.html` a **`partes.html`** con `git mv` y es la pestaña «Partes
+firmados». No cambió ni una línea de su lógica: solo su nombre de fichero, su
+línea 1 y la barra superior añadida encima, que es HTML plano sin Alpine; y,
+desde la segunda ronda, su aspecto (clases y fuentes: ver «Identidad visual
+Ruesma (F-035)», más abajo).
+
+| Fichero | Qué es |
+|---|---|
+| `index.html` | El portal (la portada `/`): barra superior, aviso de maqueta, siete secciones con rutas por hash (`#/bandeja`, `#/incidencias/EJ-0003`…) |
+| `partes.html` | El circuito de siempre, con la barra superior encima |
+| `js/maqueta_datos.js` | `window.MaquetaDatos`: **solo** datos de ejemplo, por bloques, cada uno con la ficha que lo sustituirá (`ficha: "F-0NN"`) |
+| `js/portal.js` | `window.Portal`: catálogos (`SECCIONES`, `PLACEHOLDERS`, `ESTADOS`) y funciones puras. Sin DOM ni red |
+| `js/portal_app.js` | `portalPosventa()`: el componente de Alpine, pegamento sin lógica (misma regla de oro que `app.js`) |
+| `css/styles.css` | La hoja de la marca, **compartida** por el portal y el circuito: tokens `--rs-*`, barra, botones, paneles… |
+| `css/portal.css` | Lo que solo usa el portal: `.placeholder`, aviso de maqueta, portada, tarjetas, chips de estado, ficha |
+| `img/logo-ruesma.svg`, `img/favicon.svg` | Copias exactas de los de `front-portal` |
+
+Los ficheros de la maqueta **no hablan con nadie**: ni `fetch`, ni
+`XMLHttpRequest`, ni `/api/`, ni Sigrid, ni SharePoint, ni correo (R14–R16 de
+`specs/F-035-portal-posventa/requirements.md`, vigilado por
+`tests/test_f035_portal.py` y `tests_js/portal.test.js`).
+
+### Cómo se abre en local
+
+Igual que el circuito, con `.\dev_front.ps1` desde esta carpeta (sección
+«Arrancar en local»):
+
+- `http://localhost:5173/` → el **portal** (la portada).
+- `http://localhost:5173/partes.html` → el **circuito**. Para verlo hablar con
+  el backend hace falta además `func start` (terminal A); para la maqueta, no.
+
+Desde el portal, la pestaña «Partes firmados» lleva al circuito en la misma
+pestaña del navegador. Desde el circuito, las otras siete se abrían **en otra
+pestaña** para no perder la remesa en curso; desde el ajuste del 2026-10-05
+ya no: ver «Todo en la misma pestaña, y la guarda de salida del circuito»,
+más abajo.
+
+### El portal en producción, con secciones en construcción (enmienda del 2026-10-05)
+
+Con F-036 cerrada, el humano decidió (opción b) **publicar el portal
+entero**: lo que funciona y lo que no, marcado. Lo que antes se llamaba
+«maqueta» es, para quien lo usa, **«En construcción»**: datos inventados y
+botones que no hacen nada todavía, para que Posventa vea el recorrido
+completo. Ningún texto visible del portal dice «maqueta» (R67). Diseño:
+`specs/F-035-portal-posventa/design.md` §16.
+
+**El `estado` de cada sección.** Cada entrada de `Portal.SECCIONES`
+(`js/portal.js`) declara, escrito literal, su `estado`: `real`, `parcial` o
+`construccion` (R62). Sale de las fichas de `harness/features.json`:
+`construccion` si ninguna está `done`, `parcial` si alguna, `real` si todas;
+`partes` (el circuito) es `parcial` mientras F-045 no esté `done`; `inicio`
+es `real` solo cuando lo son las otras siete, `partes` incluida. Hoy:
+`inicio`, `entrada` y `partes`, `parcial`; las otras cinco, `construccion`.
+Si una ficha se cierra y el `estado` no se actualiza, la guardia de la
+**raíz** `tests/test_f035_placeholders_vivos.py` se pone en rojo (sin caché,
+como R28). `Portal.enConstruccion(id)` lo consulta.
+
+**El rótulo, en tres capas, y cómo se reconoce** (`design.md` §16.4):
+
+1. **En la barra** de las cuatro páginas: la pestaña de una sección en
+   construcción lleva `data-construccion`, un **punto ámbar** tras la
+   etiqueta y `aria-label="<etiqueta> (en construcción)"` (R66). Las barras
+   de las páginas reales llevan además una leyenda (`rs-barra__leyenda`) que
+   explica el punto.
+2. **En la sección**: todo lo inventado va **dentro** de un recuadro
+   `data-en-construccion` con la clase `rs-obras` (borde ámbar continuo y una
+   cinta de obra arriba, nunca discontinuo ni burdeos), que empieza por su
+   rótulo `rs-obras__rotulo`: el chip «En construcción», «Todavía no
+   funciona…», que son datos inventados, que no es información real y que no
+   se guarda nada, y qué fichas lo construirán (`F-0NN · <título>`, de
+   `Portal.fichasDeSeccion`). Una sección en `construccion` tiene **un**
+   recuadro de sección (`data-en-construccion="<id>"`); una que no lo está
+   solo lleva recuadros de bloque (`data-en-construccion="F-0NN"`) en lo que
+   le falte: hoy, la web de clientes (F-037) en `entrada` y el registro sin
+   firma (F-045) en la tarjeta «Partes firmados» (R63–R65). El rótulo no se
+   puede cerrar ni esconder (ni `x-show`, ni `hidden`, ni `sr-only`, ni
+   `style`). Fuera de los recuadros, `index.html` solo admite una **lista
+   cerrada** de directivas de Alpine (R63 enmendado): un dato inventado que
+   se escape del recuadro pone la suite en rojo.
+3. **En la portada**: ninguna cifra inventada; las tarjetas de lo que está
+   en construcción llevan su chip «En construcción», y las de lo que
+   funciona («Entrada de incidencias» y «Partes firmados»), «En producción»
+   (R67). Y bajo la barra, el aviso permanente (R13).
+
+**Las páginas reales: `Portal.PAGINAS`.** `importar.html` y `oficios.html`
+son **páginas propias** del portal, de la sección `entrada`:
+`Portal.PAGINAS = {"importar.html": "entrada", "oficios.html": "entrada"}` es
+la única fuente de qué página real pertenece a qué sección (`partes.html` no
+entra: es la sección `partes` misma). Llevan la barra común en HTML estático
+con «Entrada» como pestaña actual, migas y subnavegación, la identidad
+Ruesma y nada de la maqueta (R70–R73, R77); los enlaces de su barra los da
+`Portal.enlaceSeccion(id, "<página>.html")`. El portal las presenta desde
+`#/entrada` con dos tarjetas «En producción», y el recuadro de `bandeja`
+enlaza a `importar.html#bandeja`, donde está la bandeja de solo lectura de
+F-036 (R68, R69).
+
+### Todo en la misma pestaña, y la guarda de salida del circuito
+
+**Regla (ajuste del 2026-10-05, R73; absorbe R48):** ningún enlace entre
+páginas del front abre aparte. Del portal, de `importar.html`, de
+`oficios.html` **y también del circuito**, todo se navega en la **misma
+pestaña** («misma ventana», como una web normal): ni la barra, ni las
+cabeceras, ni las tarjetas llevan `target`. Lo único que sigue abriendo
+aparte es lo que no es del front (el «abrir en SharePoint» del circuito).
+R48 pedía la misma ventana para las secciones reales y dejar que la ficha
+que lo activara resolviera la **remesa** en curso; con todo en la misma
+pestaña, eso queda cumplido de antemano y la remesa la protege la guarda.
+
+**La guarda de salida** (`js/guarda_salida.js`, R78–R80; `design.md`
+§16.15.2–§16.15.4):
+
+- **Qué cuenta como trabajo sin terminar** (R79): (a) algo en marcha
+  (trocear, procesar, archivar y cerrar, o una tanda en curso); (b)
+  correcciones sin guardar (el autoguardado guardando o en fallo); (c) algún
+  parte sin cerrar que no esté rechazado ni cerrado; (d) un parte abierto en
+  el detalle sin cerrar. **No** lo es la página recién abierta, los ficheros
+  elegidos sin trocear, una remesa con todo cerrado o rechazado y el detalle
+  cerrado, ni lo que queda tras «Empezar otra remesa». Con trabajo, el
+  navegador pide confirmación al salir (su texto, no uno propio); sin él, se
+  navega sin preguntar.
+- **Que solo lee** (R80): lee el estado de `appPostventa()` con
+  `Alpine.$data` en el momento de salir y usa los selectores puros de
+  `Pipeline` y `Autoguardado`; no escribe, no llama a métodos del
+  componente, ni red ni almacenamiento. Si no puede leer el estado, **no
+  pregunta** (falla abierta).
+- **Dónde vive**: un solo `beforeunload`, en su propio módulo, cargado en
+  `partes.html` con un `<script>` justo antes del de `js/app.js`.
+- **La excepción de R81**: para cargarla sin tocar ningún módulo del
+  circuito (R33) hacen falta, y solo esas, ese `<script>` en `partes.html`,
+  una línea en `ORDEN_CANONICO` de `tests/test_f007_estaticos.py` y las
+  líneas de R51 de `tests/test_f036_front.py` (los enlaces de la cabecera,
+  ahora sin `target`). Las guardias de R32, R33, R43 y R59 admiten
+  exactamente eso.
+
+### Cómo se reconoce un placeholder
+
+Un botón que todavía no hace nada lleva el atributo
+**`data-placeholder="F-0NN"`** con la ficha que lo construirá, la clase
+`.placeholder` (borde discontinuo y fondo rayado), una etiqueta `F-0NN`
+visible y `aria-disabled="true"`. No está deshabilitado a propósito: al
+pulsarlo, la franja de aviso de abajo dice qué haría y qué ficha lo construye,
+y nada más (sin red, sin temporizadores). Todo lo demás —pestañas, filtros,
+selección, abrir una ficha, abrir el panel de «no procede»— funciona, pero
+solo en pantalla y sobre los datos de ejemplo.
+
+### Cómo se retira, ficha a ficha
+
+Cuando una ficha F-0NN construya su pieza, **en el mismo trabajo**
+(`specs/F-035-portal-posventa/design.md` §7.3):
+
+1. Borra de `index.html` los elementos con `data-placeholder="F-0NN"` y pone
+   en su lugar los controles reales.
+2. Borra de `Portal.PLACEHOLDERS` (`js/portal.js`) sus entradas y de
+   `js/maqueta_datos.js` su bloque (o su parte del bloque), y cambia los
+   `x-for` que lo pintaban por los datos reales.
+3. Si la sección real habla con el backend, lo hace desde **sus propios**
+   módulos (el patrón de `js/api.js`), no desde los de la maqueta.
+4. *(Superado por el ajuste del 2026-10-05.)* Decía que, cuando la sección
+   entera pasara a ser real, se quitara el `target="_blank"` de su enlace en
+   la barra de `partes.html` (R48). Hoy no queda ningún `target` en la barra
+   del circuito: todo va en la misma ventana y la remesa la protege la
+   guarda de salida. La guardia de R48 de la raíz sigue, en verde por
+   construcción.
+5. **Actualiza el `estado` de su sección** en `Portal.SECCIONES` (R62). Si
+   la sección deja de estar en `construccion`, quita su recuadro de sección,
+   saca de él lo que ya funciona y deja en recuadros de bloque
+   `data-en-construccion="F-0NN"` lo que siga sin funcionar (R64); y quita el
+   `data-construccion` y el `aria-label` de su pestaña en **las cuatro
+   barras** (R66). Si se olvida, la guardia de R62 de la raíz se pone en rojo.
+6. **Si la sección real vive en su propia página** (el patrón de
+   `importar.html` y `oficios.html`), esa página lleva la barra común en HTML
+   estático, la identidad Ruesma y nada de la maqueta (R70–R73, R77), y se
+   declara en `Portal.PAGINAS` con su sección.
+
+Si se olvida, la guardia de la **raíz** `tests/test_f035_placeholders_vivos.py`
+(R28) se pone en rojo en cuanto la ficha pase a `done` en
+`harness/features.json`, con el fichero y la línea de cada resto. Vive en la
+raíz y no aquí porque la suite del front se salta por caché cuando su árbol no
+cambia. Cuando no quede ninguna ficha con restos, la última borra
+`js/maqueta_datos.js` y la parte de `js/portal.js` que solo sirve a la
+maqueta.
+
+## Identidad visual Ruesma (F-035)
+
+Las dos páginas —el portal y el circuito— visten la identidad del portal
+corporativo de Ruesma, y desde la enmienda del 2026-10-05 también las dos
+páginas reales de la entrada, **`importar.html`** y **`oficios.html`**
+(R70–R72): la misma barra con su leyenda, migas y subnavegación, componentes
+`rs-*`, el pie común y ninguna utilidad de color de Tailwind de la lista
+cerrada. Es presentación: su lógica (`js/importacion.js`, `js/oficios.js`,
+`js/api.js`) no cambió por el estilo. La referencia es `front-portal` (su `public/index.html`
+y `public/assets/css/styles.css`), leída **solo en lectura**: no se copia su
+hoja, se toma su lenguaje (burdeos `#9f2842`, gris acero, trama de plano,
+Bricolage Grotesque para titulares y Archivo para el texto, radios de 16 y
+10 px, botones en píldora, barra con logotipo). Diseño completo:
+`specs/F-035-portal-posventa/design.md` §15.
+
+**Dónde vive.** Los **tokens** (`--rs-burdeos`, `--rs-acero-texto`,
+`--rs-radio`…) están en el `:root` de **`css/styles.css`**, la hoja que
+cargan las dos páginas; ahí van también la barra, los botones, los paneles,
+los avisos y los componentes del circuito (clases `rs-*`). `css/portal.css`
+lleva lo que solo usa el portal. Fuera del `:root`, un color, una sombra o
+un radio se escriben **siempre** con `var(--rs-…)` (R49). Las fuentes vienen
+de Google Fonts con `display=swap` (si no cargan, se ve la de reserva; no se
+rompe nada) y el logotipo y el favicon, de `img/`, copias byte a byte de los
+de `front-portal` (R52).
+
+**Reglas** (cada una con su test en `tests/test_f035_portal.py`):
+
+- **Contraste (R53)**: todo par texto/fondo de los tokens llega a AA (4,5:1),
+  calculado por el test desde el `:root`. El gris acero (`--rs-acero`, 3,7:1)
+  **no** se usa para texto: el texto gris es `--rs-acero-texto`. Desde el
+  2026-10-06, **lista blanca**: fuera del `:root`, todo `color` vale
+  `inherit`, `currentColor` o un `var()` de los tokens medidos como texto;
+  única excepción, `--rs-acero-300` en el índice decorativo
+  `.rs-tarjeta__indice`, que lleva `aria-hidden="true"`.
+- **Foco (R54)**: `:focus-visible` con contorno burdeos en todo; ninguna regla
+  lo quita sin poner otro.
+- **Movimiento (R55)**: transiciones de 250 ms como mucho y solo de color,
+  fondo, borde, sombra, opacidad o `transform`; las entradas animadas, solo en
+  el portal; con `prefers-reduced-motion: reduce` no se mueve nada.
+- **La maqueta se sigue viendo maqueta (R56)**: el borde **discontinuo** es
+  solo de los placeholders; ningún placeholder lleva el burdeos de la marca ni
+  `rs-btn--primario`, y el aviso de maqueta va en su color de atención. El
+  burdeos es la marca y la acción principal, **nunca** un estado.
+- **Estados con texto (R57)**: cada estado va en un chip `rs-chip` con su
+  `data-estado` y su texto; el color nunca es la única pista.
+- **Sin `!important` ni `@import` ni `data:` (R60)**: Alpine esconde con
+  `style="display: none"` en línea y un `!important` sobre `display` lo
+  taparía (la pregunta de confirmación del circuito saldría siempre). Única
+  excepción, `[x-cloak]` de `css/portal.css`. Y `partes.html` no lleva
+  atributos `style`.
+
+**En el circuito solo se cambian clases (R59).** `partes.html` está en
+producción: frente al `index.html` de antes de F-035 solo pueden cambiar los
+**valores de `class`**, la barra superior y las cuatro `<link>` de las
+fuentes y el favicon. Ni una directiva de Alpine (tampoco las `:class` de
+estado, que siguen pintando el semáforo con Tailwind), ni un id, ni un
+texto, ni el orden de los atributos. Lo comprueba una guardia que compara el
+HTML como secuencia de etiquetas, con un control que demuestra que mira.
+Una sola clase estática del circuito la fija un test ajeno a F-035:
+`text-red-800` en el aviso de fallo del autoguardado
+(`test_f026_autoguardado.py`); por eso sigue ahí junto a `rs-aviso--error`.
+
+**El remodelado del circuito, terminado (R82, ajuste del 2026-10-05).**
+`partes.html` ya **no lleva utilidades de color de Tailwind** en sus `class`
+estáticos: pasaron a componentes `rs-*` (`rs-nota`, `rs-enlace`,
+`rs-rotulo`, `rs-aviso--atencion`…), con `text-red-800` como única
+excepción, por lo de arriba. Las que quedan son las de los **`:class` de
+estado** (el semáforo), que no se tocan (R59). Lo vigila una guardia con
+lista cerrada en `tests/test_f035_paginas.py`. A R59 se suman además
+(f) el `<script>` de la guarda de salida y (g) la retirada de `target` y
+`rel` en los dos enlaces de la cabecera a `importar.html` y `oficios.html`.
+
 ## Tres cosas del `index.html` que parecen cosméticas y no lo son
+
+> **Nota de F-035 (2026-09-25).** Esta sección habla del **circuito**, que
+> desde F-035 vive en `partes.html`: las tres reglas se aplican ahí, y
+> también al portal de `index.html` (R34), con sus propios scripts.
 
 1. **Los scripts propios van al final del `<body>` y SIN `defer`.** Con
    `defer`, Alpine arrancaría antes de que exista `appPostventa` y la pantalla
@@ -158,6 +446,14 @@ líneas en vez de contarlas como no medidas.
 Dos páginas propias, enlazadas desde la cabecera de `index.html` y abiertas
 **en otra pestaña**: salir de `index.html` perdería la remesa en curso (D4).
 
+> **Desde F-035 (enmienda del 2026-10-05) son secciones del portal.** Las
+> dos son páginas reales de la sección «Entrada» (`Portal.PAGINAS`), con la
+> barra común, migas y la identidad Ruesma, y se abren **en la misma
+> pestaña**, también desde el circuito (que ahora es `partes.html` y protege
+> la remesa con la guarda de salida). Ver «La maqueta del portal (F-035)».
+> Su lógica es la de F-036, con dos añadidos de F-035 que se explican al
+> final de esta sección.
+
 - **`importar.html`** (`js/importacion.js`). Tres bloques, en el orden en que
   se usan: **1 · la plantilla** de una obra (un `.xlsx` que el backend genera
   leyendo Sigrid en el momento; el nombre sale de `Content-Disposition`),
@@ -180,6 +476,32 @@ Lo que **no** hay en ninguna de las dos, a propósito: editar, descartar o
 aprobar una incidencia de la bandeja. Eso es **F-038**. Las dos necesitan
 saber quién es el usuario (`/.auth/me`): sin sesión, importar y decidir se
 quedan deshabilitados, como el cierre.
+
+**Los dos añadidos de F-035 (apuntes de la ficha, `design.md` §16.6):**
+
+- **El rótulo del resumen original (R74)**, en `importar.html`. Justo encima
+  de los recuentos, `Importacion.rotuloResumen(respuesta)` dice de qué
+  importación es el resumen: «Resumen de esta importación» normalmente, y,
+  cuando el fichero ya se había importado (`ya_importado`), «Resumen de la
+  importación original de este fichero» o, si la respuesta trae
+  `importado_at_utc`, «Resumen de la importación original del dd/mm/aaaa»,
+  con la fecha en hora de Madrid. **La fecha depende de F-053** (la ficha de
+  backend que añade ese campo a `POST /api/importaciones`): hasta que esté
+  desplegada, el rótulo sale sin fecha, que es lo correcto. Sin desfase en
+  el texto, la fecha se lee en UTC.
+- **«Decididos como distintos» (R75)**, en `oficios.html`, entre «Grupos
+  vigentes» y «Avisos»: los pares de oficios que alguien decidió que son
+  distintos, cada uno con un botón «Son el mismo» que manda la decisión
+  `mismo` con sus dos códigos (la misma llamada que los demás botones, con
+  `confirmado: true`) y recarga; manda la última decisión. **La sección
+  depende de F-053**, que añade `oficio.distintos` a
+  `GET /api/catalogos/propuestas`: sin ese campo,
+  `Oficios.presentarPropuestas` devuelve `distintos: []` y la sección **no se
+  ve**. Hasta que F-053 esté desplegada, no aparece en ningún entorno.
+
+Los dos consumos son **tolerantes**: el front puede publicarse antes que
+F-053 sin romper nada. Los dos datos son del backend, otro servicio, y por
+eso son de otra ficha y no de F-035 (R76).
 
 ## Lo que este front NO hace (a propósito)
 

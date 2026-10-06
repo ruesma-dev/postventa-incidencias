@@ -424,6 +424,440 @@ test("f035 R44: enlaceSeccion con un id desconocido devuelve null y no lanza", (
   assert.equal(enlaceSeccion(undefined, "portal"), null);
 });
 
+// ── R83 · El recorrido: Portal.RECORRIDO y pasoDeSeccion (bloque 18, T52) ───
+//
+// `design.md` §16.16.2 y §16.16.3: los siete pasos del ciclo de una
+// incidencia, la ÚNICA fuente de las cuatro tiras bajo la barra; y el paso
+// que se marca para una sección (el PRIMERO de esa sección: 02 y no 03 para
+// la bandeja).
+
+//: [num, etiqueta, seccion] de los siete pasos, en su orden (R83).
+const RECORRIDO_ESPERADO = [
+  ["01", "Entrada", "entrada"],
+  ["02", "Revisión", "bandeja"],
+  ["03", "Sigrid", "bandeja"],
+  ["04", "Gestión", "incidencias"],
+  ["05", "Parte", "impresion"],
+  ["06", "Cierre", "partes"],
+  ["07", "Coste", "economico"],
+];
+
+//: La tabla de §16.16.2: sección → paso marcado (`null`: ninguno).
+const PASO_DE_CADA_SECCION = [
+  ["inicio", null],
+  ["entrada", "01"],
+  ["bandeja", "02"],
+  ["incidencias", "04"],
+  ["impresion", "05"],
+  ["partes", "06"],
+  ["economico", "07"],
+  ["datos", null],
+];
+
+test("f035 R83: Portal.RECORRIDO son los siete pasos, en su orden, con num, etiqueta y seccion", () => {
+  const { RECORRIDO } = portal();
+
+  assert.ok(Array.isArray(RECORRIDO), "RECORRIDO es una lista");
+  assert.deepEqual(
+    RECORRIDO.map((p) => [p.num, p.etiqueta, p.seccion]),
+    RECORRIDO_ESPERADO,
+  );
+  for (const paso of RECORRIDO) {
+    assert.deepEqual(Object.keys(paso).sort(), ["etiqueta", "num", "seccion"], `${paso.num}: solo num, etiqueta y seccion`);
+  }
+});
+
+test("f035 R83: la seccion de cada paso es un id de Portal.SECCIONES", () => {
+  const { RECORRIDO, SECCIONES } = portal();
+  const ids = new Set(SECCIONES.map((s) => s.id));
+
+  for (const paso of RECORRIDO) {
+    assert.ok(ids.has(paso.seccion), `${paso.num} ${paso.etiqueta}: «${paso.seccion}» no es una sección`);
+  }
+});
+
+test("f035 R83: RECORRIDO y cada paso son de solo lectura", () => {
+  const { RECORRIDO } = portal();
+
+  assert.ok(Object.isFrozen(RECORRIDO), "la lista está congelada");
+  for (const paso of RECORRIDO) assert.ok(Object.isFrozen(paso), `${paso.num}: el paso está congelado`);
+});
+
+test("f035 R83: pasoDeSeccion da el num del primer paso de la sección (§16.16.2)", () => {
+  const { pasoDeSeccion } = portal();
+
+  for (const [id, esperado] of PASO_DE_CADA_SECCION) {
+    assert.equal(pasoDeSeccion(id), esperado, `pasoDeSeccion("${id}")`);
+  }
+});
+
+test("f035 R83: con la bandeja se marca 02 Revisión, nunca 03 Sigrid", () => {
+  const { pasoDeSeccion } = portal();
+
+  assert.equal(pasoDeSeccion("bandeja"), "02");
+});
+
+test("f035 R83: pasoDeSeccion con un id desconocido, vacío o que no es texto da null y no lanza", () => {
+  const { pasoDeSeccion } = portal();
+
+  for (const raro of ["desconocida", "", undefined, null, 7, "BANDEJA", {}]) {
+    assert.equal(pasoDeSeccion(raro), null, `pasoDeSeccion(${JSON.stringify(raro)})`);
+  }
+});
+
+test("f035 R83: pasoDeSeccion lee RECORRIDO: cada paso que da es de esa sección y es el primero", () => {
+  const { RECORRIDO, SECCIONES, pasoDeSeccion } = portal();
+
+  for (const seccion of SECCIONES) {
+    const primero = RECORRIDO.find((p) => p.seccion === seccion.id);
+    assert.equal(pasoDeSeccion(seccion.id), primero ? primero.num : null, seccion.id);
+  }
+});
+
+// ── R84–R88 · La tira del recorrido en las páginas (bloque 18, T54 y T55) ───
+//
+// `design.md` §16.16.5 y §16.16.7: la tira va escrita a mano en cada página,
+// como la barra, y esta guardia la compara con la fuente (`Portal.RECORRIDO`,
+// `enlaceSeccion`, `enConstruccion`, `pasoDeSeccion`, `PAGINAS`). Si las
+// tiras cumplen con la fuente, cumplen entre sí.
+
+//: Cada página con tira y su `desde` de `enlaceSeccion` (R85).
+const PAGINAS_CON_RECORRIDO = [
+  ["index.html", "portal"],
+  ["partes.html", "circuito"],
+  ["importar.html", "importar.html"],
+  ["oficios.html", "oficios.html"],
+];
+
+//: Las páginas reales, donde la tira es HTML estático (R88).
+const PAGINAS_CON_RECORRIDO_ESTATICO = ["partes.html", "importar.html", "oficios.html"];
+
+const ETIQUETA_DEL_RECORRIDO = "El ciclo de una incidencia";
+
+//: Formas ligadas que un paso no puede llevar (R87, H-7; R86: ningún `:class`).
+const LIGADAS_PROHIBIDAS_EN_UN_PASO = [
+  ":data-construccion", "x-bind:data-construccion",
+  ":aria-label", "x-bind:aria-label",
+  ":class", "x-bind:class",
+];
+
+function clasesDe(e) {
+  return (e.atributos.class || "").split(/\s+/).filter(Boolean);
+}
+
+/** La sección de la página desde la que se mira (`undefined` en el portal, que cambia con el hash). */
+function seccionDeLaPagina(Portal, desde) {
+  if (desde === "circuito") return "partes";
+  return Portal.PAGINAS[desde];
+}
+
+/** Lo que el texto de un paso dice además de su número: su etiqueta. */
+function etiquetaDelPaso(paso) {
+  return paso.hijos
+    .filter((h) => h.texto !== undefined)
+    .map((h) => h.texto)
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Lo que la tira del recorrido de `html` incumple de R84–R87 frente a la
+ * fuente (`Portal`), mirada desde `desde`. Lista vacía = correcto.
+ */
+function problemasDelRecorrido(html, Portal, desde) {
+  const todos = elementos(arbol(html));
+  const problemas = [];
+  const tiras = todos.filter((e) => "data-recorrido" in e.atributos);
+  if (tiras.length !== 1) return [`hay ${tiras.length} [data-recorrido]: tiene que haber una (R84)`];
+  const tira = tiras[0];
+  if (tira.nombre !== "nav") problemas.push(`la tira es un <${tira.nombre}>, no un <nav> (R84)`);
+  if (tira.atributos["aria-label"] !== ETIQUETA_DEL_RECORRIDO) {
+    problemas.push(`la tira tiene aria-label «${tira.atributos["aria-label"]}» (R84)`);
+  }
+  if (!clasesDe(tira).includes("rs-recorrido-banda")) problemas.push("la tira no lleva rs-recorrido-banda (R84)");
+
+  const barras = todos.filter((e) => "data-barra-portal" in e.atributos);
+  if (barras.length !== 1) {
+    problemas.push(`hay ${barras.length} barras: la tira va tras la única barra (R84)`);
+  } else {
+    const hermanos = barras[0].padre.hijos.filter((h) => h.nombre);
+    const siguiente = hermanos[hermanos.indexOf(barras[0]) + 1];
+    if (siguiente !== tira) {
+      problemas.push(`la tira no es el hermano siguiente de la barra: tras ella va ${siguiente ? `<${siguiente.nombre}>` : "nada"} (R84)`);
+    }
+  }
+
+  const listas = todos.filter((e) => clasesDe(e).includes("rs-recorrido"));
+  const lista = listas.find((l) => esAncestro(tira, l));
+  if (listas.length !== 1 || !lista || lista.nombre !== "ol") {
+    problemas.push(`hay ${listas.length} rs-recorrido en la página: una sola, la <ol> de la tira (R84)`);
+  }
+  if (!lista) return problemas;
+
+  const items = lista.hijos.filter((h) => h.nombre);
+  const pasos = Portal.RECORRIDO;
+  if (items.length !== pasos.length || items.some((li) => li.nombre !== "li")) {
+    problemas.push(`la lista tiene ${items.length} hijos: tienen que ser ${pasos.length} <li> (R84)`);
+  }
+  const actual = desde === "portal" ? null : Portal.pasoDeSeccion(seccionDeLaPagina(Portal, desde));
+
+  pasos.forEach((paso, i) => {
+    const li = items[i];
+    if (!li) return;
+    const quien = `paso ${i + 1} (${paso.num} ${paso.etiqueta})`;
+    const dentro = elementos(li).filter((e) => clasesDe(e).includes("rs-recorrido__paso"));
+    if (dentro.length !== 1) {
+      problemas.push(`${quien}: ${dentro.length} rs-recorrido__paso, no uno (R84)`);
+      return;
+    }
+    const e = dentro[0];
+
+    // R84: número y etiqueta, contra RECORRIDO.
+    const nums = elementos(e).filter((n) => clasesDe(n).includes("rs-recorrido__num"));
+    if (nums.length !== 1 || nums[0].nombre !== "span" || nums[0].atributos["aria-hidden"] !== "true") {
+      problemas.push(`${quien}: sin su <span class="rs-recorrido__num" aria-hidden="true"> (R84)`);
+    } else if (textoLimpio(nums[0]) !== paso.num) {
+      problemas.push(`${quien}: número «${textoLimpio(nums[0])}» (R84)`);
+    }
+    const etiqueta = etiquetaDelPaso(e);
+    if (etiqueta !== paso.etiqueta) problemas.push(`${quien}: etiqueta «${etiqueta}» (R84)`);
+
+    // R85: el enlace, el de la barra.
+    const enlace = Portal.enlaceSeccion(paso.seccion, desde);
+    if (enlace === null) {
+      if (e.nombre !== "span" || "href" in e.atributos || e.atributos["aria-current"] !== "step") {
+        problemas.push(`${quien}: es el paso de esta página: <span aria-current="step"> sin href (R85)`);
+      }
+    } else if (e.nombre !== "a" || e.atributos.href !== enlace.href) {
+      problemas.push(`${quien}: <${e.nombre}> con href «${e.atributos.href}», no <a href="${enlace.href}"> (R85)`);
+    }
+    for (const atributo of ["target", "rel"]) {
+      if (atributo in e.atributos) problemas.push(`${quien}: lleva ${atributo}: se navega en la misma pestaña (R85, R73)`);
+    }
+
+    // R86: el paso actual.
+    if (desde === "portal") {
+      if ("aria-current" in e.atributos || "x-bind:aria-current" in e.atributos) {
+        problemas.push(`${quien}: en el portal el paso actual solo lo pone :aria-current (R86)`);
+      }
+      const ligado = e.atributos[":aria-current"];
+      const esperado = `seccion === '${paso.seccion}' ? 'step' : false`;
+      // Solo los pasos a una sección del propio portal (`#/<id>`): 06 Cierre
+      // lleva a partes.html, que nunca es la sección visible (R5, R63).
+      const delPortal = enlace !== null && enlace.href === `#/${paso.seccion}`;
+      if (delPortal && Portal.pasoDeSeccion(paso.seccion) === paso.num) {
+        if (ligado !== esperado) problemas.push(`${quien}: :aria-current «${ligado}», no «${esperado}» (R86)`);
+      } else if (ligado !== undefined) {
+        problemas.push(`${quien}: lleva :aria-current y no es el primer paso de su sección (R86)`);
+      }
+    } else {
+      if (":aria-current" in e.atributos || "x-bind:aria-current" in e.atributos) {
+        problemas.push(`${quien}: :aria-current en una página real: el paso actual va fijo (R86, R88)`);
+      }
+      if (paso.num === actual && e.atributos["aria-current"] !== "step") {
+        problemas.push(`${quien}: es el paso actual y no lleva aria-current="step" (R86)`);
+      }
+      if (paso.num !== actual && "aria-current" in e.atributos) {
+        problemas.push(`${quien}: lleva aria-current y el paso actual es ${actual} (R86)`);
+      }
+    }
+
+    // R87: la marca de construcción, la de la barra.
+    for (const ligada of LIGADAS_PROHIBIDAS_EN_UN_PASO) {
+      if (ligada in e.atributos) problemas.push(`${quien}: lleva ${ligada} (R86, R87, H-7)`);
+    }
+    const marcado = "data-construccion" in e.atributos;
+    const accesible = e.atributos["aria-label"];
+    if (Portal.enConstruccion(paso.seccion)) {
+      if (!marcado) problemas.push(`${quien}: su sección está en construcción y no lleva data-construccion (R87)`);
+      if (accesible !== `${paso.etiqueta} (en construcción)`) {
+        problemas.push(`${quien}: aria-label «${accesible}», no «${paso.etiqueta} (en construcción)» (R87)`);
+      }
+    } else {
+      if (marcado) problemas.push(`${quien}: su sección no está en construcción y lleva data-construccion (R87)`);
+      if (accesible !== undefined) problemas.push(`${quien}: su sección no está en construcción y lleva aria-label (R87)`);
+    }
+  });
+  return problemas;
+}
+
+/** Lo que hace dinámica la tira de una página real (R88): lista vacía = correcto. */
+function problemasDeLaTiraEstatica(html) {
+  const tira = elementos(arbol(html)).find((e) => "data-recorrido" in e.atributos);
+  if (!tira) return ["no hay [data-recorrido] (R84)"];
+  const problemas = [];
+  for (const e of [tira, ...elementos(tira)]) {
+    for (const nombre of Object.keys(e.atributos)) {
+      if (/^(x-|@|:)/.test(nombre)) problemas.push(`<${e.nombre}> ${nombre}: la tira es HTML estático (R88)`);
+    }
+    if (["script", "button", "form", "input"].includes(e.nombre)) {
+      problemas.push(`<${e.nombre}> dentro de la tira: es HTML estático (R88)`);
+    }
+  }
+  return problemas;
+}
+
+/** El bloque de la tira tal cual está en el texto: del `<nav data-recorrido` a su `</nav>`. */
+function bloqueDeLaTira(html) {
+  const inicio = html.indexOf("<nav data-recorrido");
+  assert.notEqual(inicio, -1, "no hay <nav data-recorrido");
+  const fin = html.indexOf("</nav>", inicio) + "</nav>".length;
+  return { inicio, fin, bloque: html.slice(inicio, fin) };
+}
+
+/** `js/portal.js` con un cambio de texto, cargado aparte (`node:vm`): sin tocar el fichero ni la caché. */
+function portalCambiado(viejo, nuevo) {
+  const fuente = leer("js/portal.js");
+  assert.equal(fuente.split(viejo).length, 2, `el control no encuentra una sola vez ${viejo} en js/portal.js`);
+  const modulo = { exports: {} };
+  require("node:vm").runInNewContext(fuente.replace(viejo, nuevo), { module: modulo });
+  return modulo.exports;
+}
+
+for (const [pagina, desde] of PAGINAS_CON_RECORRIDO) {
+  test(`f035 R84-R87: la tira de ${pagina} cumple con Portal.RECORRIDO, enlaceSeccion y enConstruccion`, () => {
+    const Portal = portal();
+
+    assert.deepEqual(problemasDelRecorrido(leer(pagina), Portal, desde), []);
+  });
+}
+
+for (const pagina of PAGINAS_CON_RECORRIDO_ESTATICO) {
+  test(`f035 R88: la tira de ${pagina} es HTML estático`, () => {
+    assert.deepEqual(problemasDeLaTiraEstatica(leer(pagina)), []);
+  });
+}
+
+//: Controles en memoria de la guardia del recorrido (§16.16.7): [nombre,
+//: página, desde, estropear(html) → html, lo que tiene que decir un problema].
+const ESTROPEOS_DEL_RECORRIDO = [
+  [
+    "«Gestión» → «Gestion» en oficios.html", "oficios.html", "oficios.html",
+    (html) => html.replace(">04</span>Gestión<", ">04</span>Gestion<"),
+    /etiqueta «Gestion»/,
+  ],
+  [
+    "dos pasos cambiados de orden en el portal", "index.html", "portal",
+    (html) => {
+      const { bloque, inicio, fin } = bloqueDeLaTira(html);
+      const lineas = bloque.split("\n");
+      const i4 = lineas.findIndex((l) => l.includes(">04</span>"));
+      const i5 = lineas.findIndex((l) => l.includes(">05</span>"));
+      [lineas[i4], lineas[i5]] = [lineas[i5], lineas[i4]];
+      return html.slice(0, inicio) + lineas.join("\n") + html.slice(fin);
+    },
+    /paso 4 \(04 Gestión\): número «05»/,
+  ],
+  [
+    "sin data-construccion en 07 de oficios.html", "oficios.html", "oficios.html",
+    (html) => html.replace('class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)"', 'class="rs-recorrido__paso" aria-label="Coste (en construcción)"'),
+    /07 Coste\): su sección está en construcción y no lleva data-construccion/,
+  ],
+  [
+    "data-construccion en 01 de importar.html", "importar.html", "importar.html",
+    (html) => html.replace('<span aria-current="step" class="rs-recorrido__paso">', '<span aria-current="step" class="rs-recorrido__paso" data-construccion>'),
+    /01 Entrada\): su sección no está en construcción y lleva data-construccion/,
+  ],
+  [
+    ":aria-current en 03 del portal", "index.html", "portal",
+    (html) => html.replace('aria-label="Sigrid (en construcción)">', "aria-label=\"Sigrid (en construcción)\" :aria-current=\"seccion === 'bandeja' ? 'step' : false\">"),
+    /03 Sigrid\): lleva :aria-current y no es el primer paso/,
+  ],
+  [
+    "el :aria-current de 04 del portal con 'impresion'", "index.html", "portal",
+    (html) => html.replace(":aria-current=\"seccion === 'incidencias' ? 'step' : false\"><span class=\"rs-recorrido__num\"", ":aria-current=\"seccion === 'impresion' ? 'step' : false\"><span class=\"rs-recorrido__num\""),
+    /04 Gestión\): :aria-current «seccion === 'impresion'/,
+  ],
+  [
+    "la tira de importar.html tras </header>", "importar.html", "importar.html",
+    (html) => {
+      const { bloque, inicio, fin } = bloqueDeLaTira(html);
+      const sin = html.slice(0, inicio) + html.slice(fin);
+      const tras = sin.indexOf("</header>") + "</header>".length;
+      return sin.slice(0, tras) + "\n" + bloque + sin.slice(tras);
+    },
+    /no es el hermano siguiente de la barra/,
+  ],
+  [
+    "una segunda tira", "oficios.html", "oficios.html",
+    (html) => {
+      const { bloque, fin } = bloqueDeLaTira(html);
+      return html.slice(0, fin) + "\n" + bloque + html.slice(fin);
+    },
+    /hay 2 \[data-recorrido\]/,
+  ],
+  [
+    "la <ol> de inicio repuesta", "index.html", "portal",
+    (html) => html.replace(/(<section data-seccion="inicio"[^>]*>)/, '$1\n<ol class="rs-recorrido" aria-label="El ciclo de una incidencia"><li>01 Entrada</li></ol>'),
+    /hay 2 rs-recorrido en la página/,
+  ],
+  [
+    "target=\"_blank\" en un paso", "importar.html", "importar.html",
+    (html) => html.replace('<a href="partes.html" class="rs-recorrido__paso">', '<a href="partes.html" class="rs-recorrido__paso" target="_blank">'),
+    /06 Cierre\): lleva target/,
+  ],
+  [
+    "aria-current=\"step\" también en 05 de partes.html", "partes.html", "circuito",
+    (html) => html.replace('<li><a href="./#/impresion" class="rs-recorrido__paso"', '<li><a href="./#/impresion" aria-current="step" class="rs-recorrido__paso"'),
+    /05 Parte\): lleva aria-current y el paso actual es 06/,
+  ],
+  [
+    "06 de partes.html como <a href>", "partes.html", "circuito",
+    (html) => html.replace(
+      '<li><span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</span></li>',
+      '<li><a href="partes.html" aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>',
+    ),
+    /06 Cierre\): es el paso de esta página/,
+  ],
+];
+
+for (const [nombre, pagina, desde, estropear, senal] of ESTROPEOS_DEL_RECORRIDO) {
+  test(`f035 R84-R87: control: ${nombre} salta`, () => {
+    const Portal = portal();
+    const html = leer(pagina);
+    const estropeado = estropear(html);
+
+    assert.notEqual(estropeado, html, `el control «${nombre}» no encuentra lo que estropear en ${pagina}`);
+    const problemas = problemasDelRecorrido(estropeado, Portal, desde);
+    assert.ok(problemas.some((p) => senal.test(p)), `«${nombre}»: ${JSON.stringify(problemas)}`);
+  });
+}
+
+test("f035 R84-R87: control: la guardia lee la fuente: con la sección de 07 cambiada a datos, la tira salta", () => {
+  const PortalFalso = portalCambiado(
+    '{ num: "07", etiqueta: "Coste", seccion: "economico" }',
+    '{ num: "07", etiqueta: "Coste", seccion: "datos" }',
+  );
+
+  for (const [pagina, desde] of PAGINAS_CON_RECORRIDO) {
+    const problemas = problemasDelRecorrido(leer(pagina), PortalFalso, desde);
+    assert.ok(
+      problemas.some((p) => p.includes("07 Coste") && p.includes("#/datos")),
+      `${pagina}: ${JSON.stringify(problemas)}`,
+    );
+  }
+});
+
+test("f035 R88: control: un x-show en la tira de partes.html salta", () => {
+  const html = leer("partes.html");
+  const estropeado = html.replace('<ol class="rs-recorrido">', '<ol class="rs-recorrido" x-show="true">');
+
+  assert.notEqual(estropeado, html, "el control no encuentra la <ol> de la tira de partes.html");
+  assert.ok(problemasDeLaTiraEstatica(estropeado).some((p) => p.includes("x-show")));
+});
+
+test("f035 R88: control: un <button> en la tira de oficios.html salta", () => {
+  const html = leer("oficios.html");
+  const estropeado = html.replace(
+    '<ol class="rs-recorrido">',
+    '<ol class="rs-recorrido"><li><button type="button">Ver</button></li>',
+  );
+
+  assert.notEqual(estropeado, html, "el control no encuentra la <ol> de la tira de oficios.html");
+  assert.ok(problemasDeLaTiraEstatica(estropeado).some((p) => p.startsWith("<button>")));
+});
+
 // ── R8 · El catálogo de placeholders ────────────────────────────────────────
 
 test("f035 R8: cada placeholder tiene id único, ficha F-0NN, etiqueta, explicación y enBloque", () => {

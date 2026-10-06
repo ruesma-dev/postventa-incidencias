@@ -1047,7 +1047,7 @@ ya pide cada verificación.
 > `progress/impl_F-035.md`, «Bloque 18»; mutaciones solo en un worktree
 > desechable del scratchpad.
 
-- [ ] **T52**: la fuente. RED primero: en `tests_js/portal.test.js`, los
+- [x] **T52**: la fuente. RED primero: en `tests_js/portal.test.js`, los
       tests puros de R83 (`design.md` §16.16.7, fila R83: los siete pasos
       con `num`, `etiqueta` y `seccion`, cada `seccion` en `SECCIONES`,
       todo congelado; `pasoDeSeccion` con la tabla de §16.16.2 y los
@@ -1059,7 +1059,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` y `python -m pytest tests -q` en
       verde; `git diff --stat HEAD~1` con solo `js/portal.js` y
       `tests_js/portal.test.js`.
-- [ ] **T53**: las hojas. RED primero: en `tests/test_f035_paginas.py`,
+- [x] **T53**: las hojas. RED primero: en `tests/test_f035_paginas.py`,
       R88 (hojas), R86 (hoja) y la cascada de R87 (generalizar
       `problemas_de_la_cascada_r66` a `.rs-recorrido__paso` sin cambiar lo
       que ya mira de `.rs-pestana`), con los controles de §16.16.7 y los
@@ -1073,7 +1073,7 @@ ya pide cada verificación.
       R55, R59, R60 y R66 en verde) y `node --test "tests_js/*.test.js"` en
       verde; vistazo con `.\dev_front.ps1`: la portada se ve igual que
       antes.
-- [ ] **T54**: la tira en el portal, `importar.html` y `oficios.html`.
+- [x] **T54**: la tira en el portal, `importar.html` y `oficios.html`.
       RED primero: en `tests_js/portal.test.js`,
       `problemasDelRecorrido(html, Portal, desde)` y la guardia de R88
       (estática), con sus controles en memoria (§16.16.7). Esta tarea
@@ -1087,7 +1087,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` en verde, con las huellas de O10-3
       y O11-5, R13, R17, R44, R51, R66 y R73 en verde **sin tocarlos**;
       «F-036 intacto» ajustado.
-- [ ] **T55**: la tira en `partes.html`, en **un solo commit**. RED
+- [x] **T55**: la tira en `partes.html`, en **un solo commit**. RED
       primero: R59 (h) e (i) en `tests/test_f035_portal.py`
       (`_quita_recorrido`, el comentario nuevo por el viejo, el docstring)
       con sus tres controles nuevos, y `partes.html` (`"circuito"`) en la
@@ -1104,7 +1104,7 @@ ya pide cada verificación.
       `func start`): en `partes.html` recién abierta, 06 marcado y
       «01 Entrada» lleva al portal en la misma pestaña **sin preguntar**.
       La comprobación con remesa es de T12 (V2 s), no del implementer.
-- [ ] **T56**: documentación. `services/postventa-front/README.md`: la
+- [x] **T56**: documentación. `services/postventa-front/README.md`: la
       tira, su fuente (`Portal.RECORRIDO` y la guardia), la
       correspondencia de §16.16.2 en una frase, y en el paso 5 de la
       retirada que, al cambiar el estado de una sección, se cambian la
@@ -1114,7 +1114,7 @@ ya pide cada verificación.
       **Verificación**: front `python -m pytest tests -q` (R36, R37, R48,
       R61 y el de palabras clave de T37 en verde) y
       `tests/test_f007_documentacion.py` en verde.
-- [ ] **T57**: evidencias. (a)
+- [x] **T57**: evidencias. (a)
       `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **37** a **50** de `design.md` §16.16.8, con
       su resultado, y la confirmación de que el worktree se retiró. (c)
@@ -1126,7 +1126,7 @@ ya pide cada verificación.
       salvo `test_f035_*.py` y `portal.test.js`.
       **Verificación**: las salidas en `progress/impl_F-035.md`,
       «Bloque 18».
-- [ ] **T58**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T58**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       **sin caché**. Es la última tarea del implementer; después, la review
       del bloque 18 y el bloque 15 (T12 con V1 r y V2 s; T40 con V5).

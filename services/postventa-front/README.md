@@ -229,6 +229,26 @@ Ruesma y nada de la maqueta (R70–R73, R77); los enlaces de su barra los da
 enlaza a `importar.html#bandeja`, donde está la bandeja de solo lectura de
 F-036 (R68, R69).
 
+**El recorrido bajo la barra (enmienda del 2026-10-06, R83–R89).** Las
+cuatro páginas llevan, justo debajo de la barra y sin pegarse arriba al
+desplazarse, la **tira del recorrido**: los siete pasos del ciclo de una
+incidencia (01 Entrada · 02 Revisión · 03 Sigrid · 04 Gestión · 05 Parte ·
+06 Cierre · 07 Coste), con el paso en el que estás marcado con
+`aria-current="step"` en burdeos y el mismo punto ámbar que la barra en los
+pasos de secciones en construcción. Su **fuente** es `Portal.RECORRIDO`
+(`js/portal.js`), con `Portal.pasoDeSeccion`; las cuatro tiras van escritas
+a mano, como la barra, y una guardia (`problemasDelRecorrido`, en
+`tests_js/portal.test.js`) compara cada una con la fuente: pasos, enlaces
+(`Portal.enlaceSeccion`), paso actual, punto y `aria-label`. La
+correspondencia: cada sección marca el **primer** paso que lleva a ella
+—entrada → 01, bandeja → 02 (nunca 03, que también va a la bandeja),
+incidencias y su ficha → 04, impresión → 05, partes → 06, económico →
+07—; inicio y datos no marcan ninguno, e `importar.html` y `oficios.html`
+marcan 01. En `partes.html`, `importar.html` y `oficios.html` la tira es
+HTML estático y el paso actual va fijo; en el portal lo marca un
+`:aria-current` por paso. Sus estilos viven en `css/styles.css`, que cargan
+las cuatro páginas.
+
 ### Todo en la misma pestaña, y la guarda de salida del circuito
 
 **Regla (ajuste del 2026-10-05, R73; absorbe R48):** ningún enlace entre
@@ -301,7 +321,9 @@ Cuando una ficha F-0NN construya su pieza, **en el mismo trabajo**
    saca de él lo que ya funciona y deja en recuadros de bloque
    `data-en-construccion="F-0NN"` lo que siga sin funcionar (R64); y quita el
    `data-construccion` y el `aria-label` de su pestaña en **las cuatro
-   barras** (R66). Si se olvida, la guardia de R62 de la raíz se pone en rojo.
+   barras** (R66) **y de sus pasos en las cuatro tiras del recorrido**
+   (R87), en el mismo trabajo. Si se olvida, la guardia de R62 de la raíz se
+   pone en rojo, y la de la tira (`tests_js/portal.test.js`) también.
 6. **Si la sección real vive en su propia página** (el patrón de
    `importar.html` y `oficios.html`), esa página lleva la barra común en HTML
    estático, la identidad Ruesma y nada de la maqueta (R70–R73, R77), y se

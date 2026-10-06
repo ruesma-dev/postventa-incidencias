@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=43b9e97b83">
+  <link rel="stylesheet" href="css/styles.css?v=6e073b5414">
 </head>
 <body class="rs-cuerpo">
   <!-- F-036 · design.md §15.6 (quinta enmienda: solo oficios; era
@@ -51,6 +51,25 @@
         </div>
       </div>
       <p class="rs-barra__leyenda">Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo.</p>
+    </nav>
+
+    <!-- F-035 · El recorrido de una incidencia (R83-R88), en HTML PLANO como
+         la barra. 01 Entrada es el paso de esta página (Portal.PAGINAS): el
+         actual, sin enlace. Los demás href son los de
+         Portal.enlaceSeccion(paso.seccion, "oficios.html"), en la misma
+         pestaña (R73). -->
+    <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
+      <div class="rs-contenedor">
+        <ol class="rs-recorrido">
+          <li><span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</span></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
+          <li><a href="./#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="./#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>
+          <li><a href="./#/economico" class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+      </div>
     </nav>
 
     <!-- Migas y subnavegación de la sección «Entrada» (R71). -->

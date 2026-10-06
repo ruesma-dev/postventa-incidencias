@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&display=swap">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
-  <link rel="stylesheet" href="css/styles.css?v=43b9e97b83">
+  <link rel="stylesheet" href="css/styles.css?v=6e073b5414">
 </head>
 <body class="rs-cuerpo">
   <div x-data="appPostventa()" x-init="comprobarBackend(); cargarUsuario()" class="min-h-screen flex flex-col">
@@ -50,13 +50,34 @@
       <p class="rs-barra__leyenda">Las pestañas con punto ámbar están en construcción y enseñan datos de ejemplo. Si sales de aquí con una remesa a medias, el navegador te pedirá confirmación.</p>
     </nav>
 
+    <!-- F-035 · El recorrido de una incidencia (R83-R89), en HTML PLANO como
+         la barra: ni una directiva de Alpine, ni script, ni botón (R88).
+         06 Cierre es esta página, el paso actual, sin enlace. Los demás
+         href son los de Portal.enlaceSeccion(paso.seccion, "circuito"), en
+         la MISMA pestaña: con una remesa a medias, la guarda de salida pide
+         confirmación (R78), igual que desde la barra. -->
+    <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
+      <div class="rs-contenedor">
+        <ol class="rs-recorrido">
+          <li><a href="./#/entrada" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
+          <li><a href="./#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="./#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</span></li>
+          <li><a href="./#/economico" class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+      </div>
+    </nav>
+
     <header class="rs-cabecera">
       <div class="rs-contenedor rs-cabecera__fila">
         <div>
           <h1 class="rs-titulo">Incidencias de Posventa</h1>
           <p class="rs-subtitulo">Partes firmados: validar, archivar y cerrar</p>
-          <!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir
-               de esta perdería la remesa en curso (D4 de F-007). -->
+          <!-- F-036 (R51) · la entrada de incidencias, en la misma pestaña
+               (F-035, R73): con una remesa a medias, la guarda de salida
+               pide confirmación antes de salir (R78). -->
           <nav class="mt-1 flex gap-4 rs-texto">
             <a href="importar.html" class="rs-enlace">Importar incidencias</a>
             <a href="oficios.html" class="rs-enlace">Oficios repetidos</a>

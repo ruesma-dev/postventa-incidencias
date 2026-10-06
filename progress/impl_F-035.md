@@ -7507,3 +7507,545 @@ suite del front, `python -m pytest tests -q -p no:cacheprovider` →
 | Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900` → «Sin líneas de producción en el alcance: nada que mutar … 0 mutantes evaluados» (`progress/mutacion_F-035.md`) |
 | Mutantes a mano (bloque 14) | **15: 13 muertos y 2 supervivientes** (A1, A5: texto sin directiva, fuera de lo que puede ver R63 enmendado; H-B14-1). Más las 14–36 de los bloques anteriores, todas muertas (tabla de §5 b) |
 | Tiempo de la suite | raíz 4,70 s y front 15,39 s (`init.sh`); front 9,96 s tras el arreglo de ruff; Node 1,17 s |
+
+## Bloque 18 · T52–T58 · El recorrido en todas las páginas · 2026-10-06 · **T52–T58 HECHAS; la tarea del `dev_server`, BLOQUEADA**
+
+Encargo del líder: el bloque 18 (T52–T58, R83–R89, `design.md` §16.16) y la
+tarea añadida del `dev_server` (valor por defecto `http://127.0.0.1:7073`).
+Rama `feature/F-035-portal-posventa`. Sin push. Primera sesión parada en T53
+(ver «La base movida», abajo); segunda sesión con la decisión del humano
+(opción a, 2026-10-06): base fija `d5c87b4` para R59, R32 y R33.
+
+### Estado en una línea
+
+**T52–T58 hechas, un commit por tarea, `bash harness/init.sh` en verde
+(exit 0).** Base fija de R59/R32/R33 aplicada con su control y su nota en la
+spec. **La tarea del `dev_server` no está hecha: bloqueada** porque choca con
+dos guardias de la spec (R33 y R32/R89), ver «Tarea del `dev_server`:
+BLOQUEADA». Commits de esta sesión:
+
+| Commit | Qué |
+|---|---|
+| `1d93b85` | Base fija `d5c87b4` para R59, R32 y R33 (decisión del humano, opción a); nota en `requirements.md` |
+| `bd56710` | **T53** (las hojas: R86, R87, R88), la que estaba en el árbol de la sesión anterior; T52 y T53 marcadas |
+| `17a2a47` | **T54** (la tira en el portal, `importar.html` y `oficios.html`; R63 enmendado) |
+| `ad7ed24` | **T55** (la tira en `partes.html`, R59 h e i) |
+| `3aff48e` | **T56** (README del front y ARCHITECTURE) |
+| `ecc99fa` | La base fija, con un motivo por comprobación en su control (B7 sobrevivía) |
+| (este) | T57 y T58: evidencias, `progress/mutacion_F-035.md`, casillas, `progress/current.md` |
+
+### La base movida (la parada de la primera sesión) y su arreglo
+
+**El problema** (primera sesión, comprobado con `git stash` sobre HEAD limpio
+`c49697d`): `dev` recibió el merge de F-035 (`93ce096`, 09:49:13) un minuto
+después del commit de T52; desde entonces `git merge-base dev HEAD` es
+`9267719` (la propia rama) y R59, R32 y R33 salían en rojo sin nada del
+bloque 18 por medio:
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -p no:cacheprovider -k "r59_partes_html_solo or r32_de_los or r33_no_se"
+E       AssertionError: partes.html cambia algo más que la presentación (R59):
+E         Left contains 45 more items, first extra item: 'replace: antes «Portal de Posventa · Ruesma» -> ahora «Incidencias de Posventa · Ruesma»'
+E       AssertionError: tests del circuito tocados de más:
+E         Left contains one more item: 'services/postventa-front/tests_js/portal.test.js: M (un test existente no se toca)'
+E       AssertionError: F-035 ha tocado el circuito:
+E         M services/postventa-front/js/portal.js
+3 failed, 138 deselected in 1.10s
+```
+
+**Decisión del humano (2026-10-06), opción (a)**: base fija `d5c87b4`, el
+último commit de `dev` antes del merge de F-035 (incluye F-036 en squash).
+
+**Lo hecho** (`services/postventa-front/tests/test_f035_portal.py`):
+
+- `BASE_DE_F035 = "d5c87b424a625eeacc6a3dd71d396094f94cedef"`, constante con
+  su comentario (por qué, desde cuándo, cuál era la base anterior y su
+  control). `base_de_la_rama()` la devuelve; el `skip` fuera de una rama
+  `feature/F-035…` no cambia.
+- `problemas_de_la_base(referencia)`: sirve de base un commit que está en
+  `dev`, es antepasado de `HEAD`, no tiene `js/portal.js` y cuyo
+  `index.html` es el circuito (`es_el_circuito`, función pura).
+- Tests: `test_f035_la_base_fija_es_dev_antes_del_merge_de_f035` (la base es
+  la constante y no tiene problemas); el **control**
+  `test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo`
+  (`HEAD`, `9267719` —el merge-base movido— y `93ce096` —el merge—, cada uno
+  con los motivos que tiene que dar); y
+  `test_f035_la_base_fija_es_el_circuito_mira_las_dos_cosas` (sin git).
+- Los controles en memoria de R59 (`ESTROPEOS_R59`, `ESTROPEOS_T21`, barra
+  primer hijo, `class` cambiado), de R32 (`ESTROPEOS_R32`, líneas de R81) y
+  de R33 (los `M` admitidos) **no cambian**: no dependen de la base.
+- Nota fechada en `specs/F-035-portal-posventa/requirements.md`, tras el
+  párrafo de R30/R32/R33 que dice que esas guardias describen el diff de la
+  feature (cubre R59, R32 y R33). Ningún otro cambio en la spec.
+
+**Fase RED** (tests escritos, la constante y la función sin escribir):
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -p no:cacheprovider -k "base_fija"
+E       NameError: name 'BASE_DE_F035' is not defined
+E       NameError: name 'problemas_de_la_base' is not defined
+E       NameError: name 'problemas_de_la_base' is not defined
+FAILED tests/test_f035_portal.py::test_f035_la_base_fija_es_dev_antes_del_merge_de_f035
+FAILED tests/test_f035_portal.py::test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo[la-propia-rama]
+FAILED tests/test_f035_portal.py::test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo[el-merge-base-movido-del-2026-10-06]
+3 failed, 141 deselected in 0.74s
+```
+
+(R59, R32 y R33 seguían en los mismos tres rojos de arriba.) **Verde**:
+`-k "base_fija or r59 or r32 or r33"` → `33 passed`; front entero con T53
+en el árbol → `814 passed`; y, con T53 apartado (`git stash`) sobre el
+commit `1d93b85` → `802 passed`.
+
+**¿Otras guardias con `merge-base dev HEAD` y el mismo problema?** Revisadas
+todas las que llaman a `git` en `services/*/tests`, `tests/` y `harness/`:
+
+- `services/postventa-front/tests/test_f035_portal.py`: solo
+  `base_de_la_rama()` (R59, R32, R33). **Arreglada.**
+- `services/postventa-front/tests/test_f035_paginas.py` («F-036 intacto»,
+  huellas de O10-3/O11-5 y de R74): usan bases **fijas** ya (`2a86bca`,
+  `9812d69`), no `merge-base`. Sin problema; «F-036 intacto» sigue dando
+  solo las líneas de R81.
+- `services/postventa-api/tests/test_f013_*`, `test_f030`…`test_f036_alcance_cerrado.py`:
+  usan `merge-base dev HEAD`, pero **se saltan fuera de su propia rama**
+  (`RAMA_DE_LA_FEATURE`), así que en esta rama no miran nada. Sin problema.
+- `tests/` de la raíz: ninguna guardia con `merge-base` (los `"dev"` de
+  `test_mutacion_*` son datos de prueba de `ref_diff`).
+- `harness/alcance.py`, `harness/cobertura.py`, `harness/rutas_sensibles.py`
+  y `harness/mutacion.py` usan `dev` (o `merge-base dev <rama>`) como base
+  **por defecto**: no se ponen en rojo, pero ahora miden **solo lo posterior
+  al merge** (por eso `PUERTA COBERTURA: N/A` y la mutación da 0 líneas). No
+  los toco: son del arnés, la mutación de F-035 ya se lanza con
+  `--base 2a86bca` y en este bloque no hay Python de producción. **Lo anoto
+  para el líder** (si quiere que la puerta de cobertura de F-035 mire contra
+  `d5c87b4`, es un cambio del arnés o de cómo se invoca).
+
+### T52 · La fuente: `Portal.RECORRIDO` y `Portal.pasoDeSeccion` (R83) · HECHA · `c49697d`
+
+Ficheros: `services/postventa-front/js/portal.js` (`RECORRIDO` congelado con
+`congelarLista`, `pasoDeSeccion`, exportados y listados en el comentario de
+cabecera; el bloque literal de §16.16.3) y
+`services/postventa-front/tests_js/portal.test.js` (siete tests puros de
+R83: los siete pasos con `num`, `etiqueta` y `seccion`, y solo esas claves;
+cada `seccion` en `SECCIONES`; lista y pasos congelados; la tabla de
+§16.16.2; `bandeja` → `02`; `"desconocida"`, `""`, `undefined`, `null`, `7`,
+`"BANDEJA"` y `{}` → `null` sin lanzar; y `pasoDeSeccion` cruzado con
+`RECORRIDO` sección a sección). `js/portal_app.js` no cambia.
+
+**Fase RED** (antes de tocar `js/portal.js`):
+
+```
+$ node --test --test-name-pattern="R83" tests_js/portal.test.js
+✖ f035 R83: Portal.RECORRIDO son los siete pasos, en su orden, con num, etiqueta y seccion (12.1611ms)
+✖ f035 R83: la seccion de cada paso es un id de Portal.SECCIONES (0.5266ms)
+✖ f035 R83: RECORRIDO y cada paso son de solo lectura (0.4407ms)
+✖ f035 R83: pasoDeSeccion da el num del primer paso de la sección (§16.16.2) (0.6539ms)
+✖ f035 R83: con la bandeja se marca 02 Revisión, nunca 03 Sigrid (0.4758ms)
+✖ f035 R83: pasoDeSeccion con un id desconocido, vacío o que no es texto da null y no lanza (0.4065ms)
+✖ f035 R83: pasoDeSeccion lee RECORRIDO: cada paso que da es de esa sección y es el primero (0.3866ms)
+ℹ tests 7
+ℹ pass 0
+ℹ fail 7
+  AssertionError [ERR_ASSERTION]: RECORRIDO es una lista
+  TypeError: RECORRIDO is not iterable
+  TypeError: pasoDeSeccion is not a function
+  TypeError: Cannot read properties of undefined (reading 'find')
+```
+
+**Verde** (09:48, antes del merge de `dev`): `node --test "tests_js/*.test.js"`
+→ `tests 684 · pass 684 · fail 0` (677 + 7);
+`python -m pytest tests -q -p no:cacheprovider` → `799 passed`.
+`git diff --stat HEAD~1` → solo `js/portal.js` (+28) y
+`tests_js/portal.test.js` (+90).
+
+### T53 · Las hojas (R88, R86, la cascada de R87) · HECHA · `bd56710`
+
+Cambios **sin commit** en el árbol de trabajo (`git diff` los enseña):
+
+- `tests/test_f035_paginas.py`: `problemas_de_la_cascada_r66` generalizada a
+  `CLASES_CON_PUNTO` (`.rs-pestana`, como hasta ahora, y
+  `.rs-recorrido__paso`); `problemas_r88_hojas` y `problemas_r86_hoja` con
+  sus tests; controles: una regla del recorrido de vuelta en `portal.css`,
+  cada una de las cuatro reglas base que falte en `styles.css`, el paso
+  actual sin su regla o con otro color, y `ESTROPEOS_R87_CASCADA` (V5 el
+  paso deja de ser flex, V6 otra regla sobre el `::after` del paso, V7 una
+  regla aparte que cambia su `display`). `ESTROPEOS_H6`, sin tocar.
+  Docstring del módulo con el bloque 18.
+- `css/styles.css`: el bloque de §16.16.4 tras el de la barra (la banda, las
+  reglas movidas tal cual, el `:hover` como `a.rs-recorrido__paso:hover`, y
+  el paso actual por `aria-current="step"`), y la regla del punto con el
+  selector `.rs-recorrido__paso[data-construccion]::after` además del de la
+  pestaña (declaraciones sin cambiar).
+- `css/portal.css`: fuera las reglas `rs-recorrido*`; el título de su
+  apartado pasa a «Portada: ceja y titular (el recorrido, en
+  css/styles.css)».
+- `?v=43b9e97b83` → `?v=6e073b5414` en las cuatro páginas (la que da
+  `version_de_las_hojas()`).
+
+**Fase RED** (tests escritos, hojas todavía como estaban):
+
+```
+$ python -m pytest tests/test_f035_paginas.py -q -p no:cacheprovider -k "r88 or r86 or r87 or cascada or r66_nada"
+E       AssertionError: el punto de R66 (H-6):
+E         hay 0 reglas sobre el ::after de .rs-recorrido__paso: [] (solo la del punto)
+E       AssertionError: R88:
+E         css/portal.css · .rs-recorrido: las reglas del recorrido van en css/styles.css (R88, R77)
+E         css/portal.css · .rs-recorrido > li: las reglas del recorrido van en css/styles.css (R88, R77)
+E         [... las ocho reglas de portal.css ...]
+E         css/styles.css no tiene la regla .rs-recorrido (R88)
+E         css/styles.css no tiene la regla .rs-recorrido__paso (R88)
+E         css/styles.css no tiene la regla .rs-recorrido__num (R88)
+E         css/styles.css no tiene la regla .rs-recorrido-banda (R88)
+E       AssertionError: R86:
+E         css/styles.css no tiene la regla .rs-recorrido__paso[aria-current="step"] (R86)
+FAILED tests/test_f035_paginas.py::test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar
+FAILED tests/test_f035_paginas.py::test_f035_r88_las_reglas_del_recorrido_viven_en_styles_css
+FAILED tests/test_f035_paginas.py::test_f035_r86_el_paso_actual_lo_pinta_aria_current_en_burdeos
+[... y los controles, que todavía no encuentran lo que estropear ...]
+11 failed, 6 passed, 352 deselected in 3.31s
+```
+
+**Tras el cambio** (árbol de trabajo): `python -m pytest tests -q -p no:cacheprovider`
+→ `3 failed, 808 passed`; los tres rojos son **solo** R59, R32 y R33, los
+mismos que en HEAD limpio (arriba). R49, R53, R55, R60, R66 y los nuevos de
+R86, R87 y R88, en verde. `node --test "tests_js/*.test.js"` → `684 pass,
+0 fail`. El vistazo con `.\dev_front.ps1` (la portada igual que antes) no lo
+he hecho: queda para V1/V5.
+
+**Commit** (segunda sesión): revisado el diff entero antes de commitear (las
+reglas de `css/styles.css` son las de §16.16.4, movidas tal cual salvo el
+`:hover` como `a.rs-recorrido__paso:hover` y el paso actual; el selector más
+en la regla del punto sin tocar sus declaraciones; las cuatro `?v=` iguales a
+`version_de_las_hojas()`); con la base fija, la suite entera en verde →
+`bd56710`. El vistazo con `.\dev_front.ps1` queda para V1/V5 (no lo hago yo).
+
+### T54 · La tira en el portal, `importar.html` y `oficios.html` (R84–R88, R63 enmendado) · HECHA · `17a2a47`
+
+Ficheros:
+
+- `tests_js/portal.test.js`: `problemasDelRecorrido(html, Portal, desde)`
+  (lista de problemas, como `problemasR66`): una sola `[data-recorrido]`,
+  `<nav>` con su `aria-label` y `rs-recorrido-banda`, **hermano siguiente**
+  de la barra; una sola `rs-recorrido` en la página, la `<ol>` de la tira;
+  siete `<li>` con un `rs-recorrido__paso` y su
+  `<span class="rs-recorrido__num" aria-hidden="true">`; número y etiqueta
+  contra `RECORRIDO`; enlace contra `enlaceSeccion(paso.seccion, desde)`
+  (`null` → `<span aria-current="step">` sin `href`), sin `target` ni `rel`;
+  paso actual (en el portal, `:aria-current` exacto solo en el primer paso de
+  cada sección **del propio portal**; en las páginas reales, `aria-current`
+  fijo solo en `pasoDeSeccion(<sección de la página>)`); `data-construccion`
+  y `aria-label` según `enConstruccion`; ninguna forma ligada ni `:class`.
+  `problemasDeLaTiraEstatica(html)` (R88). Controles en memoria: los diez de
+  §16.16.7 que no son de `partes.html` y el `Portal` falso (07 → `datos`,
+  cargado con `node:vm` sin tocar el fichero), más el `<button>` en
+  `oficios.html` (R88).
+- `tests/test_f035_paginas.py`: `directivas_admitidas_r63` gana la entrada de
+  R63 enmendado (el **primer** `rs-recorrido__paso` de la tira con ese
+  `href="#/<id>"` admite `:aria-current="seccion === '<id>' ? 'step' : false"`);
+  el recuento de `test_f035_r63_la_lista_cerrada_mira_algo` de 7 a 12; tres
+  controles en `ESTROPEOS_R63_LISTA` (`:aria-current` en 03; el de 04 con
+  `'impresion'`; un `x-text` en un paso).
+- `index.html`: el bloque literal de §16.16.5 entre la barra y el aviso, y
+  fuera la `<ol>` de `inicio`. `importar.html` y `oficios.html`: el bloque
+  literal de §16.16.5 entre la barra y el comentario de las migas.
+
+**Fase RED** (tests escritos, páginas sin tira):
+
+```
+$ node --test --test-name-pattern="R84|R88" tests_js/portal.test.js
+✖ f035 R84-R87: la tira de index.html cumple con Portal.RECORRIDO, enlaceSeccion y enConstruccion
+✖ f035 R84-R87: la tira de importar.html cumple con Portal.RECORRIDO, enlaceSeccion y enConstruccion
+✖ f035 R84-R87: la tira de oficios.html cumple con Portal.RECORRIDO, enlaceSeccion y enConstruccion
+✖ f035 R88: la tira de importar.html es HTML estático
+✖ f035 R88: la tira de oficios.html es HTML estático
+✖ f035 R84-R87: control: «Gestión» → «Gestion» en oficios.html salta
+[... los doce controles, en rojo porque no encuentran lo que estropear ...]
+ℹ tests 17
+ℹ pass 0
+ℹ fail 17
+  +   'hay 0 [data-recorrido]: tiene que haber una (R84)'   (×3)
+  +   'no hay [data-recorrido] (R84)'                        (×2)
+  AssertionError [ERR_ASSERTION]: no hay <nav data-recorrido  (×3)
+
+$ python -m pytest tests/test_f035_paginas.py -q -p no:cacheprovider -k "r63"
+E         At index 7 diff: ('button', '@click') != ('a', ':aria-current')
+E         Right contains 5 more items, first extra item: ('section', 'x-show')
+E       AssertionError: el control ya no encuentra una sola vez: <a href="#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)" :aria-current="seccion === 'incidencias' ? 'step' : false">
+E       AssertionError: el control ya no encuentra una sola vez: <a href="#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">
+FAILED tests/test_f035_paginas.py::test_f035_r63_la_lista_cerrada_mira_algo
+FAILED [... los tres controles nuevos de ESTROPEOS_R63_LISTA ...]
+4 failed, 19 passed, 349 deselected in 1.38s
+```
+
+**Verde**: Node `701 pass, 0 fail`; front Python `817 passed`. Con el
+marcado puesto, la primera versión de la guardia pedía `:aria-current` en
+06 Cierre del portal (`"paso 6 (06 Cierre): :aria-current «undefined»…"`):
+06 lleva a `partes.html`, que nunca es la sección visible del portal (R5,
+y R63 dice que no lleva ninguno). Corregido en la guardia (solo pasos con
+`href="#/<seccion>"`), no en el HTML: el marcado es el literal de la spec.
+Las huellas de O10-3 y O11-5, R13, R17, R44, R51, R66 y R73, en verde sin
+tocarlos. «F-036 intacto» (ajustado): `git diff 2a86bca -- …` da solo las
+líneas de R81 de `test_f036_front.py`.
+
+### T55 · La tira en `partes.html`, en un solo commit (R59 h e i) · HECHA · `ad7ed24`
+
+Ficheros:
+
+- `tests/test_f035_portal.py`: `_quita_recorrido(ts, sitio)` (después de
+  `_quita_barra`: quita UN `<nav data-recorrido>`, con sus comentarios, solo
+  en el sitio de la barra), `_COMENTARIO_F036_VIEJO` y
+  `_COMENTARIO_F036_NUEVO` (literales, blancos normalizados) y
+  `_con_el_comentario_f036_de_la_base`; docstring de
+  `diferencias_de_presentacion` con (h) e (i). Se aplican **a los dos
+  lados**, como (f) y (g): en la base no hay tira ni comentario nuevo y no
+  hacen nada, y así el control «el circuito real contra sí mismo» sigue
+  valiendo. Tres controles nuevos: «otro texto en el comentario de F-036»
+  (en `ESTROPEOS_R59`), la tira tras `</header>` y dos tiras.
+- `tests_js/portal.test.js`: `partes.html` (`"circuito"`) en
+  `PAGINAS_CON_RECORRIDO` y en las de R88; controles: `aria-current="step"`
+  también en 05; 06 como `<a href>`; un `x-show` en la tira (R88).
+- `partes.html`: **exactamente** (h) e (i) de §16.16.6, literales.
+
+**Fase RED** (1: tests escritos, `partes.html` sin tira):
+
+```
+$ node --test --test-name-pattern="partes" tests_js/portal.test.js
+✖ f035 R84-R87: la tira de partes.html cumple con Portal.RECORRIDO, enlaceSeccion y enConstruccion
+✖ f035 R88: la tira de partes.html es HTML estático
+✖ f035 R84-R87: control: aria-current="step" también en 05 de partes.html salta
+✖ f035 R84-R87: control: 06 de partes.html como <a href> salta
+✖ f035 R88: control: un x-show en la tira de partes.html salta
+ℹ tests 13
+ℹ pass 8
+ℹ fail 5
+
+$ python -m pytest tests/test_f035_portal.py -q -p no:cacheprovider -k "r59"
+E       ValueError: substring not found
+E       ValueError: substring not found
+E       AssertionError: el control ya no encuentra una sola vez: 'pide confirmación antes de salir (R78). -->'
+3 failed, 22 passed, 122 deselected in 0.86s
+```
+
+**Fase RED** (2: (h) e (i) puestos en `partes.html`, la guardia de R59 sin
+ampliar):
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -p no:cacheprovider -k "r59"
+E       AssertionError: partes.html cambia algo más que la presentación (R59):
+E         insert: antes (nada) -> ahora <!-- F-035 · El recorrido de una incidencia (R83-R89), en HTML PLANO como la barra: ni una directiva de Alpine, ni script, ni botón (R88). 0 <nav data-recorrido aria-label="El ciclo de una incidencia" class=…> <div class=…>
+E         replace: antes <!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir de esta perdería la remesa en curso (D4 de F-007). -> ahora <!-- F-036 (R51) · la entrada de incidencias, en la misma pestaña (F-035, R73): con una remesa a medias, la guarda de salida pide confirmaci
+FAILED tests/test_f035_portal.py::test_f035_r59_partes_html_solo_cambia_en_presentacion_frente_a_la_base
+1 failed, 24 passed, 122 deselected in 0.61s
+```
+
+**Verde**: Node `706 pass, 0 fail`; front Python `820 passed` (R59, todos
+los del circuito, `test_f007_estaticos.py` y `test_f036_front.py` en verde).
+Comprobaciones de la tarea: `git diff HEAD~1 -- services/postventa-front/partes.html`
+→ solo (h) (20 líneas añadidas) e (i) (2 quitadas, 3 puestas);
+`git diff HEAD~1 -- services/postventa-front/js` → vacío; ningún test de la
+base en el diff; «F-036 intacto» igual que en T54.
+
+**Desviación (justificada)**: §16.16.7 decía que los demás tests seguirían en
+verde sin cambios, pero uno de F-035 cayó: el control de R31
+`test_f035_r31_control_un_target_repuesto_en_una_pestana_salta[rel-en-entrada]`
+buscaba `href="./#/entrada" class=` una sola vez en `partes.html`, y la tira
+añade otro `href="./#/entrada"`. **No es un test de la base ni del
+circuito** (es un control propio de F-035): lo acoto a la pestaña de la barra
+(`href="./#/entrada" class="rs-pestana"`), con un comentario. Sigue
+estropeando lo mismo y sigue en rojo con la guardia de R31.
+
+El vistazo con `.\dev_front.ps1` (06 marcado, «01 Entrada» al portal sin
+preguntar) queda para V2 (s)/T12: no lo he hecho.
+
+### T56 · Documentación · HECHA · `3aff48e`
+
+- `services/postventa-front/README.md`, en «El portal en producción…»: un
+  párrafo «El recorrido bajo la barra» (la tira, que no se pega, su fuente
+  `Portal.RECORRIDO`/`pasoDeSeccion`, la guardia `problemasDelRecorrido`, la
+  correspondencia de §16.16.2 y que sus estilos viven en `css/styles.css`);
+  y en el paso 5 de la retirada, que al cambiar el estado de una sección se
+  cambian **la barra y la tira** de las cuatro páginas en el mismo trabajo.
+- `docs/ARCHITECTURE.md`, en «El portal de posventa (F-035)»: una viñeta con
+  la tira y `Portal.RECORRIDO`.
+
+Verde: front `820 passed` (R36, R37, R48, R61, las palabras clave de T37 y
+`test_f007_documentacion.py` incluidos); raíz `115 passed`.
+
+### T57 · Evidencias · HECHA
+
+**(a) Campaña del arnés**:
+
+```
+$ python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+(El front no es Python de producción para la herramienta: las mutaciones del
+bloque son las manuales.)
+
+**(b) Mutaciones manuales 37–50** (§16.16.8), con
+`<scratchpad>/mutaciones_b18.py`, en un worktree desechable del scratchpad
+**en una rama `feature/F-035-mutantes-b18`** (en un `--detach` la guardia de
+R59 se salta por la rama: en el primer intento las de R59 «sobrevivían» por
+eso, y además el `python` del subproceso no era el del `.venv`; repetido con
+`sys.executable` y la rama). Cada una se aplica, se pasan
+`tests/test_f035_portal.py`, `tests/test_f035_paginas.py`,
+`tests_js/portal.test.js` y `tests_js/f035_paginas.test.js`, y se deshace.
+
+| # | Mutación | Resultado | Lo que la mata (además de los controles que ya no encuentran su texto) |
+|---|---|---|---|
+| 37 | `pasoDeSeccion` da el ÚLTIMO paso (`bandeja` → `03`) | MUERTA | 3 tests de R83; la tira de `index.html` (R86) |
+| 38 | `importar.html`: 01 como `<a href="./#/entrada">` | MUERTA | la tira de `importar.html` (R85/R86) |
+| 39 | `partes.html`: `aria-current="step"` también en 05 | MUERTA | la tira de `partes.html` (R86) |
+| 40 | portal: el `:aria-current` de 04 con `'impresion'` | MUERTA | la tira de `index.html` (JS, R86) y `test_f035_r63_fuera_de_los_recuadros_solo_las_directivas_de_la_lista_cerrada` (Py, R63) |
+| 41 | portal: `:aria-current` también en 03 | MUERTA | la tira de `index.html` (R86); R63 y su recuento (12 → 13) |
+| 42 | `oficios.html`: sin `data-construccion` en 07 | MUERTA | la tira de `oficios.html` (R87) |
+| 43 | `partes.html`: `data-construccion` en 06 | MUERTA | la tira de `partes.html` (R87) |
+| 44 | `partes.html`: la tira tras `</header>` | MUERTA | la tira de `partes.html` (R84) y **R59** contra la base (h) |
+| 45 | `partes.html`: `x-show="true"` en la tira | MUERTA | R88 estática de `partes.html` (R59 no la ve: quita la tira entera) |
+| 46 | una regla `rs-recorrido*` de vuelta en `css/portal.css` | MUERTA | `test_f035_r88_las_reglas_del_recorrido_viven_en_styles_css` (y la cascada de R66/R87, y la `?v=`) |
+| 47 | otro texto en el comentario de F-036 de `partes.html` | MUERTA | **R59** contra la base (i) |
+| 48 | la `<ol class="rs-recorrido">` de `inicio` repuesta | MUERTA | la tira de `index.html` (R84: «hay 2 rs-recorrido») |
+| 49 | «Gestión» → «Gestion» solo en `oficios.html` | MUERTA | la tira de `oficios.html` (R84) |
+| 50 | `.rs-recorrido__paso { display: block; }` | MUERTA | la cascada (`test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar`, generalizada a R87; y la `?v=`) |
+
+**14 de 14 muertas, ninguna superviviente.** En 46 y 50 la `?v=` también
+cae, pero no es lo único: la guardia específica (R88, la cascada) sale en
+rojo por sí misma.
+
+**Familia de la base fija** (`<scratchpad>/mutaciones_base.py`, mismo
+procedimiento, rama `feature/F-035-mutantes-base`):
+
+| # | Mutación | Resultado |
+|---|---|---|
+| B1 | `base_de_la_rama()` vuelve a `git merge-base dev HEAD` | MUERTA (la base fija, R59, R32 y R33) |
+| B2 | `BASE_DE_F035 = "9267719"` | MUERTA (los mismos cuatro) |
+| B3 | sin la comprobación «está en dev» | MUERTA (control `la-propia-rama`) |
+| B4 | sin la comprobación «antepasado de HEAD» | MUERTA (control `el-merge-de-f035-en-dev`) |
+| B5 | sin la comprobación de `js/portal.js` | MUERTA (los tres controles) |
+| B6 | sin la comprobación del `index.html` | MUERTA (los tres controles) |
+| B7a | `es_el_circuito` solo mira que no sea el portal | MUERTA (control sin git) |
+| B7b | `es_el_circuito` solo mira que monte `appPostventa()` | MUERTA (control sin git) |
+| B8 | `problemas_de_la_base` devuelve `[]` | MUERTA (los tres controles) |
+
+Antes de mutar ya había reforzado el control (con «algún problema» a secas,
+las comprobaciones se habrían tapado unas a otras): pide a cada referencia
+sus motivos, y entra `93ce096` para el de «antepasado de HEAD». Aun así, en
+la primera pasada **sobrevivió B7**: la mitad `appPostventa()` del
+`index.html` no la miraba nadie, porque ningún commit de la historia tiene un
+`index.html` que no sea ni circuito ni portal. Arreglado en `ecc99fa`:
+`es_el_circuito` sale a función pura con su control sin git. Repetido: 9 de
+9 muertas.
+
+**Worktrees retirados**: los dos (`wt_b18`, `wt_base`) con
+`git worktree remove --force` y sus ramas borradas (`git branch -D`);
+`git worktree list` queda con el árbol principal, el ajeno
+`.claude/worktrees/agent-a6e2f9bed1d46cdbc` (no es mío, no lo he tocado) y
+`postventa-publicar` (detached en `93ce096`, del líder).
+
+**(c)** `git diff --name-status fa2ed21 -- services/postventa-front services/postventa-api`:
+
+```
+M	services/postventa-front/README.md
+M	services/postventa-front/css/portal.css
+M	services/postventa-front/css/styles.css
+M	services/postventa-front/importar.html
+M	services/postventa-front/index.html
+M	services/postventa-front/js/portal.js
+M	services/postventa-front/oficios.html
+M	services/postventa-front/partes.html
+M	services/postventa-front/tests/test_f035_paginas.py
+M	services/postventa-front/tests/test_f035_portal.py
+M	services/postventa-front/tests_js/portal.test.js
+```
+
+Solo los ficheros de §16.16.7 y **nada en `services/postventa-api`**.
+
+**(d)** `git diff --stat fa2ed21 -- services/postventa-front/js` → solo
+`js/portal.js | 28 +`. `git diff fa2ed21 --name-only -- services/postventa-front/tests services/postventa-front/tests_js`
+→ `test_f035_paginas.py`, `test_f035_portal.py` y `portal.test.js`: ningún
+test de la base.
+
+### T58 · `bash harness/init.sh` · HECHA · **exit 0**
+
+Ejecutado una vez, al final, en segundo plano (la salida, a un fichero del
+scratchpad para leerla después):
+
+```
+[OK] Arnés v1.5.2 (2026-08-18)
+[OK] features.json válido
+[OK] BACKLOG.md al día
+[OK] compileall: sin errores de sintaxis
+[AVISO] ruff: 73 avisos (deuda previa, no bloquea).
+115 passed in 7.00s
+[OK] pytest en verde (con medición de cobertura)
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+822 passed in 26.20s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)
+[OK] Rama actual: feature/F-035-portal-posventa
+exit 0
+```
+
+La suite del front (que incluye la de Node por `test_f007_js.py`) corrió
+**sin caché**: el árbol del front cambió. La raíz, sin caché (no la tiene).
+El api salió de caché: su árbol no ha cambiado.
+
+### Tarea del `dev_server` (`127.0.0.1:7073`): BLOQUEADA, sin empezar
+
+El encargo: el valor por defecto pasa a `http://127.0.0.1:7073` en
+`dev_server.py` (`--api` y `DevHandler.api_target`) y en `dev_front.ps1`
+(`-Api`), con su documentación y un test con control, en un commit propio.
+**No lo hago** porque choca con tres guardias de la spec de F-035, y
+cambiarlas es enmendar la spec, que no está en el encargo:
+
+1. **R33** (`test_f035_r33_no_se_modifica_nada_del_circuito`): mira
+   `dev_server.py` y `dev_front.ps1` contra la base y solo admite `M` en
+   `css/styles.css`, `js/importacion.js` y `js/oficios.js`. Con la base fija
+   `d5c87b4`, cualquier cambio en esos dos ficheros es un `M` no admitido →
+   rojo. `design.md` §16.16.7 los lista además en «No se tocan».
+2. **R32 / R89** («ningún test de la base se toca»): dos tests de la base
+   fijan el valor de hoy y caerían con el cambio:
+   `services/postventa-front/tests/test_f007_dev_server.py:502`
+   (`assert dev_server.DevHandler.api_target == "http://localhost:7073"`) y
+   `services/postventa-front/tests/test_f007_dev_front_ps1.py:47`
+   (`assert '[string]$Api = "http://localhost:7073"' in contenido`).
+   Cambiarlos deja en rojo R32 (`test_f035_r32_de_los_tests_del_circuito…`:
+   solo admite las líneas `INDEX` y las de R81).
+3. Citan el valor, además: `services/postventa-front/README.md:52`, los
+   comentarios de cabecera de `dev_server.py` (líneas 5, 7, 17, 156) y
+   `dev_front.ps1` (línea 45); y en specs cerradas `F-007` y `F-010` (esas,
+   como histórico, no se tocarían).
+
+Opciones que veo, sin elegir (decide el líder, y el humano si hace falta):
+**(a)** enmendar R33 y R32 de F-035 para admitir exactamente esos cambios
+(los `M` de `dev_server.py` y `dev_front.ps1` y las dos líneas de los tests
+`test_f007_dev_*`), con sus controles, como se hizo con R81; **(b)** hacerlo
+fuera de F-035, en su propia ficha o rama desde `dev`, después del merge del
+bloque 18 (no toca la frontera de F-035 ni sus guardias); **(c)** hacerlo en
+F-035 tras su cierre, cuando las guardias del diff ya se salten.
+
+No he tocado `harness/features.json` (como en todo el informe de F-035, el
+implementer no lo toca): el líder decide si marca algo `blocked`.
+
+### Verificaciones MANUAL pendientes (del humano)
+
+- V1 (r), V2 (s) y V5 / T12 y T40: ver la tira y el paso marcado en las
+  cuatro páginas; en `partes.html` recién abierta, 06 marcado y «01 Entrada»
+  al portal sin preguntar; con remesa a medias, la guarda al salir por la
+  tira. 02/03 con la bandeja (03 no se marca nunca, D-18). Ninguna la he
+  hecho yo (sin navegador).
+- D-17 a D-20 (`design.md` §16.16.10), para validar.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | `init.sh`: raíz **115 passed** (7,00 s); front Python **822 passed** (26,20 s, incluye la suite de Node vía `test_f007_js.py`); api de caché (verde). Node aparte: **706 tests, 706 pass, 0 fail** (2,7 s) |
+| Cobertura de líneas cambiadas | `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`. Lo cambiado es HTML, CSS y JS del front: la puerta no lo mide. Ojo: «frente a dev», que desde el merge `93ce096` ya contiene casi toda F-035 |
+| Mutantes (herramienta) | **0 generados, 0 supervivientes** (`--base 2a86bca`: 0 líneas de producción Python) |
+| Mutantes (manuales) | **37–50: 14 generadas, 14 muertas, 0 supervivientes**; familia de la base fija **B1–B8 (9): 9 muertas** tras el arreglo de `ecc99fa` (antes sobrevivía B7, analizada arriba) |
+| Tiempo de la suite | raíz 7,00 s; front 26,20 s (dentro de `init.sh`); Node 2,7 s |

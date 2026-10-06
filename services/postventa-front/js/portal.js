@@ -8,10 +8,13 @@
 //   SECCIONES      las ocho pestañas de la barra superior, en su orden (R2),
 //                  cada una con su estado (R62)
 //   PAGINAS        las páginas reales de una sección, con su sección (R17, §16.8)
+//   RECORRIDO      los siete pasos del ciclo de una incidencia, la tira bajo la
+//                  barra de las cuatro páginas (R83, §16.16)
 //   PLACEHOLDERS   las acciones sin construir, con la ficha que las hará (R8)
 //   ESTADOS        los cinco estados de conest, por código y resumen (R21)
 //   resolverRuta / hashDe / enlaceSeccion   rutas por hash y enlaces (R4-R7, R31, R44, R46, R70)
 //   enConstruccion                          si una sección está en construcción (R62, R66)
+//   pasoDeSeccion                           el paso de la tira que marca una sección (R83, R86)
 //   fichasDeSeccion                         las fichas que nombra su rótulo (R65)
 //   textoPlaceholder / seleccionadasPara    el aviso de un placeholder (R11, R12)
 //   filtrarIncidencias / filtrarBandeja / alternarSeleccion   solo en pantalla (R19, R20)
@@ -71,6 +74,23 @@
     "importar.html": "entrada",
     "oficios.html": "entrada",
   });
+
+  /**
+   * El ciclo de una incidencia, la tira bajo la barra de las cuatro páginas
+   * (R83-R87, design.md §16.16). `seccion` es la de Portal.SECCIONES a la que
+   * lleva el paso; el enlace sale de enlaceSeccion(seccion, desde). 02 y 03
+   * van a la misma sección (la bandeja): el actual es el PRIMERO
+   * (pasoDeSeccion), así que 03 no se marca mientras no tenga sitio propio.
+   */
+  const RECORRIDO = congelarLista([
+    { num: "01", etiqueta: "Entrada", seccion: "entrada" },
+    { num: "02", etiqueta: "Revisión", seccion: "bandeja" },
+    { num: "03", etiqueta: "Sigrid", seccion: "bandeja" },
+    { num: "04", etiqueta: "Gestión", seccion: "incidencias" },
+    { num: "05", etiqueta: "Parte", seccion: "impresion" },
+    { num: "06", etiqueta: "Cierre", seccion: "partes" },
+    { num: "07", etiqueta: "Coste", seccion: "economico" },
+  ]);
 
   /**
    * El título de cada ficha del ciclo, tal como está en `harness/features.json`,
@@ -389,6 +409,12 @@
     return seccion !== null && seccion.estado === "construccion";
   }
 
+  /** El num del primer paso de esa sección, o null; nunca lanza (R83). */
+  function pasoDeSeccion(id) {
+    const paso = RECORRIDO.find(function (p) { return p.seccion === id; });
+    return paso ? paso.num : null;
+  }
+
   /**
    * Las fichas que nombra el rótulo del recuadro «En construcción» de una
    * sección (R65, `design.md` §16.4): «La construirán: F-0NN · <título>».
@@ -553,6 +579,7 @@
   const Portal = {
     SECCIONES: SECCIONES,
     PAGINAS: PAGINAS,
+    RECORRIDO: RECORRIDO,
     PLACEHOLDERS: PLACEHOLDERS,
     ESTADOS: ESTADOS,
     TITULOS_FICHAS: TITULOS_FICHAS,
@@ -560,6 +587,7 @@
     hashDe: hashDe,
     enlaceSeccion: enlaceSeccion,
     enConstruccion: enConstruccion,
+    pasoDeSeccion: pasoDeSeccion,
     fichasDeSeccion: fichasDeSeccion,
     placeholderPorId: placeholderPorId,
     seleccionadasPara: seleccionadasPara,

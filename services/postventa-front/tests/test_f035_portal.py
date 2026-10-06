@@ -122,6 +122,16 @@ LINEA_INDEX_DESPUES = 'INDEX = RAIZ_FRONT / "partes.html"'
 
 PREFIJO_RAMA_F035 = "feature/F-035"
 
+#: Base FIJA de las guardias del diff de F-035 (R59, R32 y R33): `d5c87b4`, el
+#: último commit de `dev` antes del merge de F-035 (incluye F-036 en squash).
+#: Enmienda del 2026-10-06, decisión del humano (opción a). Hasta entonces la
+#: base era `git merge-base dev HEAD`; pero ese día `dev` recibió el merge de
+#: F-035 (`93ce096`) con el bloque 18 en curso, y desde ese merge la base
+#: calculada es la propia rama (`9267719`): R59 comparaba `partes.html` con el
+#: portal, y R32 y R33 veían `portal.test.js` y `portal.js` como «de la base».
+#: Control: `test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo`.
+BASE_DE_F035 = "d5c87b424a625eeacc6a3dd71d396094f94cedef"
+
 #: Etiquetas de los campos del alta (R38), en el detalle de la bandeja y en la
 #: pestaña «Datos» de la ficha.
 ETIQUETAS_ALTA = (
@@ -296,8 +306,56 @@ def _git(*argumentos: str) -> str:
     return proceso.stdout
 
 
+def _git_da_cero(*argumentos: str) -> bool:
+    """`True` si `git <argumentos>` termina con código 0 (para las preguntas de sí o no)."""
+    return (
+        subprocess.run(
+            ["git", *argumentos], cwd=RAIZ_REPO, capture_output=True, text=True, check=False
+        ).returncode
+        == 0
+    )
+
+
+def problemas_de_la_base(referencia: str) -> list[str]:
+    """Por qué `referencia` no sirve de base de F-035; `[]` si sirve.
+
+    Sirve el `dev` de antes de F-035: ya en `dev`, antepasado de `HEAD`, sin
+    `js/portal.js` y con el circuito (no el portal) en `index.html`.
+    """
+    ruta_portal_js = "services/postventa-front/js/portal.js"
+    ruta_index = "services/postventa-front/index.html"
+    problemas = []
+    if not _git_da_cero("merge-base", "--is-ancestor", referencia, "dev"):
+        problemas.append(f"{referencia} no está en dev")
+    if not _git_da_cero("merge-base", "--is-ancestor", referencia, "HEAD"):
+        problemas.append(f"{referencia} no es antepasado de HEAD")
+    if _git_da_cero("cat-file", "-e", f"{referencia}:{ruta_portal_js}"):
+        problemas.append(f"{referencia} ya tiene {ruta_portal_js}")
+    if not es_el_circuito(_git("show", f"{referencia}:{ruta_index}")):
+        problemas.append(f"el index.html de {referencia} no es el circuito")
+    return problemas
+
+
+def es_el_circuito(html: str) -> bool:
+    """Si `html` es el circuito: monta `appPostventa()` y nada del portal."""
+    return 'x-data="appPostventa()"' in html and "portalPosventa()" not in html
+
+
+def test_f035_la_base_fija_es_el_circuito_mira_las_dos_cosas():
+    """Control sin git de `es_el_circuito`: el circuito sí; el portal, nada o los dos, no."""
+    circuito = CIRCUITO.read_text(encoding="utf-8")
+
+    assert es_el_circuito(circuito)
+    assert not es_el_circuito(PORTAL.read_text(encoding="utf-8"))
+    assert not es_el_circuito("<main></main>")
+    assert not es_el_circuito(circuito + '<div x-data="portalPosventa()"></div>')
+
+
 def base_de_la_rama() -> str:
-    """El `git merge-base dev HEAD`, o `skip` si no estamos en la rama de F-035."""
+    """La base fija de F-035 (`BASE_DE_F035`), o `skip` si no estamos en la rama de F-035.
+
+    Hasta el 2026-10-06 era `git merge-base dev HEAD` (ver `BASE_DE_F035`).
+    """
     rama = subprocess.run(
         ["git", "branch", "--show-current"],
         cwd=RAIZ_REPO,
@@ -310,7 +368,38 @@ def base_de_la_rama() -> str:
             f"verificación del diff de F-035 (rama actual: «{rama or 'sin rama'}»): "
             "las fichas siguientes sí pueden tocar el circuito"
         )
-    return _git("merge-base", "dev", "HEAD").strip()
+    return BASE_DE_F035
+
+
+def test_f035_la_base_fija_es_dev_antes_del_merge_de_f035():
+    """La base de R59, R32 y R33 es el `dev` de antes de F-035: el circuito en `index.html` y sin portal."""
+    base = base_de_la_rama()
+
+    assert base == BASE_DE_F035
+    assert problemas_de_la_base(base) == []
+
+
+@pytest.mark.parametrize(
+    ("referencia", "motivos"),
+    [
+        ("HEAD", ("no está en dev", "ya tiene", "no es el circuito")),
+        ("9267719", ("ya tiene", "no es el circuito")),
+        ("93ce096", ("no es antepasado de HEAD", "ya tiene", "no es el circuito")),
+    ],
+    ids=["la-propia-rama", "el-merge-base-movido-del-2026-10-06", "el-merge-de-f035-en-dev"],
+)
+def test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo(referencia, motivos):
+    """Control: la propia rama, el `git merge-base dev HEAD` que dejó el merge o el merge mismo no sirven de base.
+
+    Cada comprobación de `problemas_de_la_base` tiene que dar su motivo: si
+    una se quitara, las demás no la taparían.
+    """
+    base_de_la_rama()
+
+    problemas = problemas_de_la_base(referencia)
+
+    for motivo in motivos:
+        assert any(motivo in p for p in problemas), f"{referencia}: falta «{motivo}» en {problemas}"
 
 
 # --- R1, R42 · El portal es la portada -------------------------------------------
@@ -1006,6 +1095,50 @@ def _sin_target_en_los_enlaces_de_f036(ts: list[Token]) -> list[Token]:
     return fuera
 
 
+#: R59 (i), enmienda del 2026-10-06 (`design.md` §16.16.6): el comentario de
+#: F-036 de la cabecera del circuito, el de la base y el que lo sustituye,
+#: literales y con los blancos normalizados. Solo ESE cambio de texto.
+_COMENTARIO_F036_VIEJO = " ".join((
+    " F-036 (R51) · la entrada de incidencias, en otra pestaña: salir\n"
+    "               de esta perdería la remesa en curso (D4 de F-007). "
+).split())
+_COMENTARIO_F036_NUEVO = " ".join((
+    " F-036 (R51) · la entrada de incidencias, en la misma pestaña\n"
+    "               (F-035, R73): con una remesa a medias, la guarda de salida\n"
+    "               pide confirmación antes de salir (R78). "
+).split())
+
+
+def _quita_recorrido(ts: list[Token], sitio: int | None) -> list[Token]:
+    """Quita UNA tira del recorrido (`<nav data-recorrido>`, con los comentarios que la preceden) justo donde estaba la barra (R59 h).
+
+    Solo ahí: `sitio` es donde empezaba la barra, ya quitada. Una tira en
+    otro sitio, o una segunda, quedan como diferencia. En la base no hay
+    tira y no se quita nada.
+    """
+    if sitio is None:
+        return ts
+    j = sitio
+    while j < len(ts) and ts[j][0] == "<!--":
+        j += 1
+    if not (j < len(ts) and _es_apertura(ts[j], "nav") and any(k == "data-recorrido" for k, _ in ts[j][2])):
+        return ts
+    profundidad = 0
+    for i in range(j, len(ts)):
+        if _es_apertura(ts[i], "nav"):
+            profundidad += 1
+        elif ts[i] == ("</", "nav"):
+            profundidad -= 1
+            if profundidad == 0:
+                return ts[:sitio] + ts[i + 1:]
+    return ts
+
+
+def _con_el_comentario_f036_de_la_base(ts: list[Token]) -> list[Token]:
+    """Devuelve el comentario nuevo de F-036 a su texto de la base (R59 i). Cualquier otro texto, intacto."""
+    return [("<!--", _COMENTARIO_F036_VIEJO) if t == ("<!--", _COMENTARIO_F036_NUEVO) else t for t in ts]
+
+
 def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     """Lo que `ahora` cambia de `antes` más allá de lo que admite R59; `[]` si nada.
 
@@ -1017,17 +1150,22 @@ def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     hoja. Desde el ajuste del 2026-10-05 (T44): (f) un único
     `<script src="js/guarda_salida.js">` justo antes del de `js/app.js`, y (g)
     sin `target` ni `rel` los dos enlaces de la cabecera a `importar.html` y
-    `oficios.html`. Todo lo demás —directivas, ids, `type`, `data-*`,
-    `aria-*`, `style`, textos, comentarios, elementos y el orden de los
-    atributos— tiene que ser idéntico.
+    `oficios.html`. Desde la enmienda del 2026-10-06 (bloque 18): (h) UNA
+    tira del recorrido (`<nav data-recorrido>`, con su comentario) justo
+    tras la barra, y (i) el comentario de F-036 de la cabecera sustituido,
+    literal, por el de `design.md` §16.16.6. Todo lo demás —directivas, ids,
+    `type`, `data-*`, `aria-*`, `style`, textos, comentarios, elementos y el
+    orden de los atributos— tiene que ser idéntico.
     """
     problemas: list[str] = []
     a = _quita_ruta(_quita_version_de_la_hoja(tokens(antes)), None, problemas)
     b = _quita_ruta(_quita_version_de_la_hoja(tokens(ahora)), RUTA_CIRCUITO, problemas)
-    a = _sin_target_en_los_enlaces_de_f036(_quita_la_guarda(a))
-    b = _sin_target_en_los_enlaces_de_f036(_quita_la_guarda(b))
-    a, _ = _quita_barra(a, problemas, "antes")
+    a = _con_el_comentario_f036_de_la_base(_sin_target_en_los_enlaces_de_f036(_quita_la_guarda(a)))
+    b = _con_el_comentario_f036_de_la_base(_sin_target_en_los_enlaces_de_f036(_quita_la_guarda(b)))
+    a, sitio_antes = _quita_barra(a, problemas, "antes")
     b, sitio = _quita_barra(b, problemas, "partes.html")
+    a = _quita_recorrido(a, sitio_antes)
+    b = _quita_recorrido(b, sitio)
     if sitio is None:
         problemas.append("falta la barra superior (<nav data-barra-portal>) en partes.html")
     elif not (
@@ -1124,7 +1262,42 @@ ESTROPEOS_R59 = {
         ':href="resultado.web_url" target="_blank" rel="noopener"',
         ':href="resultado.web_url" rel="noopener"',
     ),
+    # Enmienda del 2026-10-06 (bloque 18, T55): (h) admite UNA tira, justo tras
+    # la barra, y (i) el comentario nuevo de F-036, literal, y nada más.
+    "otro texto en el comentario de F-036": (
+        "pide confirmación antes de salir (R78). -->",
+        "pide confirmación antes de salir. -->",
+    ),
 }
+
+
+def _tira_del_circuito(real: str) -> tuple[int, int]:
+    """`(inicio, fin)` de la tira de `partes.html` en el texto: su comentario y su `<nav>` (R59 h)."""
+    inicio = real.index("    <!-- F-035 · El recorrido de una incidencia")
+    fin = real.index("</nav>", real.index("<nav data-recorrido", inicio)) + len("</nav>\n")
+    return inicio, fin
+
+
+def test_f035_r59_control_la_tira_tras_la_cabecera_sale_en_rojo():
+    """Control de (h): la tira movida tras `</header>` ya no es la que admite R59."""
+    real = CIRCUITO.read_text(encoding="utf-8").replace("\r\n", "\n")
+    inicio, fin = _tira_del_circuito(real)
+    tira, sin_tira = real[inicio:fin], real[:inicio] + real[fin:]
+    tras_cabecera = sin_tira.index("</header>\n") + len("</header>\n")
+
+    problemas = diferencias_de_presentacion(real, sin_tira[:tras_cabecera] + tira + sin_tira[tras_cabecera:])
+
+    assert problemas != [], "R59 (h) admite la tira tras </header>"
+
+
+def test_f035_r59_control_dos_tiras_salen_en_rojo():
+    """Control de (h): solo UNA tira; la segunda es una diferencia."""
+    real = CIRCUITO.read_text(encoding="utf-8").replace("\r\n", "\n")
+    inicio, fin = _tira_del_circuito(real)
+
+    problemas = diferencias_de_presentacion(real, real[:fin] + real[inicio:fin] + real[fin:])
+
+    assert problemas != [], "R59 (h) admite dos tiras"
 
 
 def _circuito_estropeado(viejo: str, nuevo: str) -> tuple[str, str]:
@@ -1370,7 +1543,9 @@ def test_f035_r45_la_barra_del_circuito_es_html_estatico():
     [
         ('href="./#/inicio" class=', 'href="./#/inicio" target="_blank" class='),
         ('href="./#/datos" class=', 'href="./#/datos" :target="\'_blank\'" class='),
-        ('href="./#/entrada" class=', 'href="./#/entrada" rel="noopener" class='),
+        # Con `rs-pestana`: desde el bloque 18 la tira del recorrido también
+        # tiene un `href="./#/entrada"`, y el control tiene que tocar la barra.
+        ('href="./#/entrada" class="rs-pestana"', 'href="./#/entrada" rel="noopener" class="rs-pestana"'),
     ],
     ids=["target-en-inicio", "target-ligado-en-datos", "rel-en-entrada"],
 )

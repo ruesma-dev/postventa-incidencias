@@ -127,7 +127,7 @@ button.placeholder:hover {
   gap: 1rem 2rem;
 }
 
-/* ---------- Portada: ceja, titular y recorrido ---------------------------------- */
+/* ---------- Portada: ceja y titular (el recorrido, en css/styles.css) --------- */
 
 .rs-hero {
   max-width: 760px;
@@ -179,83 +179,6 @@ button.placeholder:hover {
   font-size: 1.05rem;
   line-height: 1.6;
   color: var(--rs-tinta-suave);
-}
-
-/* El ciclo, como lista ordenada de píldoras numeradas unidas por una línea. */
-.rs-recorrido {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rs-recorrido > li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.rs-recorrido > li + li::before {
-  content: "";
-  width: 1.1rem;
-  height: 1px;
-  background-color: var(--rs-linea-fuerte);
-}
-
-/* En el móvil las píldoras bajan de línea y el trazo quedaría suelto al
-   principio de cada una: fuera. */
-@media (max-width: 560px) {
-  .rs-recorrido > li + li::before {
-    display: none;
-  }
-}
-
-.rs-recorrido__paso {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.85rem 0.3rem 0.3rem;
-  background-color: var(--rs-papel);
-  border: 1px solid var(--rs-linea);
-  border-radius: var(--rs-radio-pildora);
-  box-shadow: var(--rs-sombra-sm);
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: var(--rs-tinta);
-  text-decoration: none;
-  transition-property: color, border-color;
-  transition-duration: var(--rs-duracion);
-  transition-timing-function: var(--rs-curva);
-}
-
-.rs-recorrido__paso:hover {
-  border-color: var(--rs-burdeos);
-  color: var(--rs-burdeos);
-}
-
-.rs-recorrido__num {
-  display: grid;
-  place-items: center;
-  width: 1.65rem;
-  height: 1.65rem;
-  border-radius: 50%;
-  background-color: var(--rs-lienzo);
-  font-family: var(--rs-fuente-titulos);
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--rs-acero-texto);
-  transition-property: color, background-color;
-  transition-duration: var(--rs-duracion);
-  transition-timing-function: var(--rs-curva);
-}
-
-.rs-recorrido__paso:hover .rs-recorrido__num {
-  background-color: var(--rs-burdeos-suave);
-  color: var(--rs-burdeos);
 }
 
 /* ---------- Tarjetas de inicio ---------------------------------------------------- */

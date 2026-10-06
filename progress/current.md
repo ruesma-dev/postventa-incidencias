@@ -1,6 +1,30 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⛔ F-035 · BLOQUE 18 HECHO (T52–T58, `init.sh` en VERDE) · tarea del `dev_server` BLOQUEADA · 2026-10-06 · decide el líder
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 18».
+>
+> - **Base fija** de R59, R32 y R33: `d5c87b4` (decisión del humano, opción
+>   a), constante `BASE_DE_F035` con su control; nota en `requirements.md`.
+>   Las demás guardias con `merge-base` no tienen el problema (las del api se
+>   saltan fuera de su rama; las de `test_f035_paginas.py` ya usaban bases
+>   fijas). Aviso: la puerta de cobertura y la mutación del arnés miden
+>   «frente a dev», que ya contiene F-035.
+> - **Hecho**: T53 `bd56710`, T54 `17a2a47`, T55 `ad7ed24`, T56 `3aff48e`,
+>   T57/T58 (mutaciones 37–50: 14/14 muertas; base B1–B8: 9/9). Front 822,
+>   raíz 115, Node 706: verdes. Una desviación: el control R31
+>   `rel-en-entrada` se acota a la pestaña de la barra (justificado).
+> - **BLOQUEADA, sin empezar: la tarea del `dev_server`** (`127.0.0.1:7073`).
+>   Choca con **R33** (`dev_server.py` y `dev_front.ps1` no se tocan en F-035;
+>   §16.16.7) y con **R32/R89**: `test_f007_dev_server.py:502` y
+>   `test_f007_dev_front_ps1.py:47`, tests de la base, fijan
+>   `http://localhost:7073`. Hacerla exige enmendar R32 y R33 (opción a), o
+>   llevarla fuera de F-035 (b/c). Detalle en el informe.
+> - Pendiente del humano: V1 (r), V2 (s), V5; D-17 a D-20. `features.json`
+>   sin tocar. El worktree ajeno `.claude/worktrees/agent-a6e2f9bed1d46cdbc`,
+>   sin tocar; los míos, retirados.
+
 > ## ▶ F-035 · enmienda: el recorrido en todas las páginas · 2026-10-06 · solo spec · siguiente: bloque 18 (implementer), antes del bloque 15
 >
 > spec-author. La petición del humano es literal: «me gusta el flujo que

@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **52 features**, 28 abiertas, 24 terminadas.
+Resumen: **53 features**, 29 abiertas, 24 terminadas.
 
 En curso: **F-035**.
 
@@ -11,22 +11,23 @@ En curso: **F-035**.
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 0 | pendiente | critico | `feature/F-052-secretos-ajustes` |
-| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 0 | pendiente | critico | `feature/F-053-datos-para-el-portal` |
 | F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | en curso | estandar | `feature/F-035-portal-posventa` |
-| F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 3 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
-| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 4 | pendiente | critico | `feature/F-038-bandeja-revision` |
-| F-039 | Propuesta del industrial al crear la incidencia | 5 | pendiente | critico | `feature/F-039-propuesta-industrial` |
-| F-040 | Volcar a Sigrid las incidencias aprobadas | 6 | pendiente | critico | `feature/F-040-volcado-sigrid` |
-| F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 7 | pendiente | critico | `feature/F-041-ficha-incidencia` |
-| F-042 | No procede: justificación obligatoria y email al cliente | 8 | pendiente | critico | `feature/F-042-no-procede-email` |
-| F-043 | Operaciones en bloque sobre incidencias | 9 | pendiente | critico | `feature/F-043-operaciones-bloque` |
-| F-044 | Imprimir partes en bloque a PDF o impresora con la plantilla de posventa | 10 | pendiente | estandar | `feature/F-044-impresion-bloque` |
-| F-045 | Registrar un parte sin firma: la incidencia pasa a TER, no a CER | 11 | pendiente | critico | `feature/F-045-parte-sin-firma` |
-| F-046 | Coste de la posventa desde la obra POSTV2 | 12 | pendiente | critico | `feature/F-046-coste-postv2` |
-| F-047 | Vincular incidencias con la proforma, el coste y la venta | 13 | pendiente | critico | `feature/F-047-incidencia-proforma` |
-| F-048 | Los datos de posventa al datamart | 14 | pendiente | estandar | `feature/F-048-datamart-posventa` |
-| F-050 | Agrupar los proveedores casi duplicados del maestro de Sigrid | 15 | pendiente | estandar | `feature/F-050-agrupar-proveedores` |
+| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 2 | pendiente | critico | `feature/F-053-datos-para-el-portal` |
+| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | pendiente | critico | `feature/F-038-bandeja-revision` |
+| F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | pendiente | critico | `feature/F-040-volcado-sigrid` |
+| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 5 | pendiente | critico | `feature/F-052-secretos-ajustes` |
+| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 6 | pendiente | estandar | `feature/F-054-dev-server-127` |
+| F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 8 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
+| F-039 | Propuesta del industrial al crear la incidencia | 10 | pendiente | critico | `feature/F-039-propuesta-industrial` |
+| F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 12 | pendiente | critico | `feature/F-041-ficha-incidencia` |
+| F-042 | No procede: justificación obligatoria y email al cliente | 13 | pendiente | critico | `feature/F-042-no-procede-email` |
+| F-043 | Operaciones en bloque sobre incidencias | 14 | pendiente | critico | `feature/F-043-operaciones-bloque` |
+| F-044 | Imprimir partes en bloque a PDF o impresora con la plantilla de posventa | 15 | pendiente | estandar | `feature/F-044-impresion-bloque` |
+| F-045 | Registrar un parte sin firma: la incidencia pasa a TER, no a CER | 16 | pendiente | critico | `feature/F-045-parte-sin-firma` |
+| F-046 | Coste de la posventa desde la obra POSTV2 | 17 | pendiente | critico | `feature/F-046-coste-postv2` |
+| F-047 | Vincular incidencias con la proforma, el coste y la venta | 18 | pendiente | critico | `feature/F-047-incidencia-proforma` |
+| F-048 | Los datos de posventa al datamart | 19 | pendiente | estandar | `feature/F-048-datamart-posventa` |
+| F-050 | Agrupar los proveedores casi duplicados del maestro de Sigrid | 20 | pendiente | estandar | `feature/F-050-agrupar-proveedores` |
 | F-024 | Datos del parte enlazados a Sigrid, para el datamart | 112 | spec lista | estandar | `feature/F-024-datos-parte-sigrid` |
 | F-011 | Fase 2: ingesta desde buzón de correo | 113 | pendiente | estandar | `feature/F-011-buzon-correo` |
 | F-014 | Reagrupar el parte de dos hojas con el 'Página 2' que lee la extracción | 114 | pendiente | critico | `feature/F-014-reagrupar-pagina-2` |
@@ -71,99 +72,105 @@ En curso: **F-035**.
 
 ## Detalle
 
-### F-052 · Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log
-
-estado **pendiente** · prioridad 0 · rigor `critico` · SDD no · rama `feature/F-052-secretos-ajustes`
-
-Alta del 2026-10-02 por el líder, confirmada por el humano. Al ejecutar la verificación MANUAL T16 de F-036 (suite tests_bbdd contra la base efímera) falló un test antiguo y pytest imprimió el objeto Ajustes entero: gemini_api_key es un str normal en config/settings.py, así que la clave salió casi completa en la consola y de ahí a una conversación. El valor NO está en ningún fichero del repositorio. El humano rota la clave aparte. Alcance: que ningún campo secreto de Ajustes (claves de API, contraseñas, secretos de cliente, cadenas de conexión) aparezca en repr(), str() ni en un volcado del modelo: SecretStr o repr=False, con los puntos de uso leyendo el valor de forma explícita. Revisar TODOS los campos, no solo el de Gemini, y cualquier otro objeto que guarde un secreto (clientes, fábricas). No se hizo dentro de F-036 porque su test de alcance (R49) le prohíbe tocar config/settings.py. Va justo después del merge de F-036.
-
-### F-053 · Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos
-
-estado **pendiente** · prioridad 0 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
-
-Alta del 2026-10-05 por el líder, con el visto bueno del humano (D-13 de la enmienda de F-035). Los dos apuntes del humano para el portal (F-035) no son solo front: el portal los pinta de forma tolerante, pero necesitan dos datos del backend que hoy no salen. (a) POST /api/importaciones devuelve importado_at_utc (ISO 8601 en UTC) de la importación de la respuesta; con ya_importado true, el de la ORIGINAL, para rotular «resumen de la importación original del …» en vez de presentar los recuentos como si hubieran entrado otra vez. (b) GET /api/catalogos/propuestas devuelve oficio.distintos, [{codigo_a, codigo_b}] ordenados: los pares de oficios de la obra cuya última decisión es «distinto», para que la pantalla de oficios enseñe «Decididos como distintos» con un botón «Son el mismo» (la API ya admite esa decisión y manda la última). Hoy un par marcado distinto desaparece de la pantalla y no se puede deshacer desde ella; primer caso real: Solados y Alicatados M.O. (0033) · Solados y Alicatados (0133), obra 0677. Contrato propuesto en specs/F-035-portal-posventa/design.md §16.6. Solo aditiva: ningún campo existente cambia. Actualiza azure-apps/postventa_incidencias.md en el mismo trabajo. AÑADIDO EL 2026-10-06: el front de F-035 ya consume importado_at_utc (R74, bloque 12) con unas suposiciones que F-053 debe respetar; están escritas en progress/review_F-035.md, «Review del bloque 12», apartado «Contrato para F-053» (formato ISO 8601 con desfase, qué hace el front sin él, y en qué respuestas debe ir el campo).
-
 ### F-035 · Diseño del portal de posventa: todas las secciones con placeholders
 
 estado **en curso** · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal. AÑADIDO EL 2026-10-05 por petición del humano (desde la T28 de F-036): al convertir oficios.html en sección del portal, añadir un bloque «Decididos como distintos» con un botón «Son el mismo» en cada par. Hoy un par marcado «Son distintos» desaparece de la pantalla y no se puede volver a juntar desde ella (Separar sí se deshace; Son distintos no). La API ya lo admite: POST /api/catalogos/decisiones con «mismo» y manda la última decisión (design.md de F-036, §7); es solo front. Primer caso real: Solados y Alicatados M.O. (0033) frente a Solados y Alicatados (0133), obra 0677. Y, del cierre de F-036 (2026-10-05): en la pantalla de importar, cuando el fichero ya se había importado, el mensaje «no se ha añadido nada» va con los recuentos de la importación original («14 nuevas»), que se leen como si hubieran entrado otra vez; rotularlos como «resumen de la importación original del …». Precisado el 2026-10-05 (H-9 de la enmienda): los dos apuntes anteriores necesitan dos datos del backend; se separan en F-053 por el límite de servicio y el portal los consume de forma tolerante (sin ellos, rotula sin fecha y no pinta «Decididos como distintos»).
 
-### F-037 · Entrada desde la web de clientes: el contrato con el proyecto independiente
+### F-053 · Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos
 
-estado **pendiente** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-037-entrada-web-clientes`
+estado **pendiente** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
 
-Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). La WEB DE CLIENTES es un PROYECTO INDEPENDIENTE (recomendación del líder del 2026-09-23: usuarios externos, otro acceso y otra exposición); tendrá su repositorio y su documento en azure-apps. Esta ficha es solo nuestra mitad: el contrato por el que la web deja incidencias en la MISMA bandeja que el Excel de F-036.
+Alta del 2026-10-05 por el líder, con el visto bueno del humano (D-13 de la enmienda de F-035). Los dos apuntes del humano para el portal (F-035) no son solo front: el portal los pinta de forma tolerante, pero necesitan dos datos del backend que hoy no salen. (a) POST /api/importaciones devuelve importado_at_utc (ISO 8601 en UTC) de la importación de la respuesta; con ya_importado true, el de la ORIGINAL, para rotular «resumen de la importación original del …» en vez de presentar los recuentos como si hubieran entrado otra vez. (b) GET /api/catalogos/propuestas devuelve oficio.distintos, [{codigo_a, codigo_b}] ordenados: los pares de oficios de la obra cuya última decisión es «distinto», para que la pantalla de oficios enseñe «Decididos como distintos» con un botón «Son el mismo» (la API ya admite esa decisión y manda la última). Hoy un par marcado distinto desaparece de la pantalla y no se puede deshacer desde ella; primer caso real: Solados y Alicatados M.O. (0033) · Solados y Alicatados (0133), obra 0677. Contrato propuesto en specs/F-035-portal-posventa/design.md §16.6. Solo aditiva: ningún campo existente cambia. Actualiza azure-apps/postventa_incidencias.md en el mismo trabajo. AÑADIDO EL 2026-10-06: el front de F-035 ya consume importado_at_utc (R74, bloque 12) con unas suposiciones que F-053 debe respetar; están escritas en progress/review_F-035.md, «Review del bloque 12», apartado «Contrato para F-053» (formato ISO 8601 con desfase, qué hace el front sin él, y en qué respuestas debe ir el campo).
 
 ### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
 
-estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
+estado **pendiente** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código.
 
-### F-039 · Propuesta del industrial al crear la incidencia
-
-estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-039-propuesta-industrial`
-
-Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Criterio del humano (2026-09-23): se proponen los industriales que HAN HECHO ESE TIPO DE TRABAJO EN ESA OBRA. El usuario puede cambiarlo. Lectura de Sigrid por sigrid-api. Añadido el 2026-09-24: la fuente natural de la propuesta es la lista que Sigrid enseña en la pestaña Intervinientes al pulsar Añadir, «Seleccione el oficio de la obra»: los oficios de ESA obra con su proveedor (39 en la 0677), selección múltiple. Ver docs/referencia/04_alta_incidencia_sigrid.md §5. Qué tabla la guarda está por medir. Añadido por el líder el 2026-09-29, desde la medición de F-036 (progress/explore_F-036.md) y por decisión del humano (opción A): las ACTIVIDADES del proveedor se quedan para esta feature, no para F-036. Dónde están: ficha del proveedor, pestaña Datos fiscales, caja «Naturaleza de productos, servicios y/o actividades» (correo del director de Compras del 2026-09-28); en BBDD, conact (conide, actide) → auxpronat (catálogo en árbol, padre por prefijo del código, 3 niveles, 514 actividades). confam/auxfam están vacías y homolo vale 0 en todo conact. En la 0677, 33 de 36 proveedores tienen actividades (81 filas, 58 distintas); global, 360 de 526 proveedores de obrofc. auxpronat y auxofc no comparten códigos; 21 actividades se llaman como un oficio. Hace falta una correspondencia actividad → oficio confirmada por el humano (por hoja y por rama). Dónde aporta: los oficios que están en la obra SIN proveedor (en la 0677: 0133, 0144 y 0166, justo los que usa Posventa en su Excel). OJO, dependencia: sigrid-api §8.9 solo acepta intervinientes que estén en obrofc de la obra con ese oficio; proponer un proveedor por sus actividades fuera de obrofc exige que sigrid-api dé de alta esa pareja en obrofc, cambio que se pide en su repositorio.
-
 ### F-040 · Volcar a Sigrid las incidencias aprobadas
 
-estado **pendiente** · prioridad 6 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
+estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED.
 
+### F-052 · Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log
+
+estado **pendiente** · prioridad 5 · rigor `critico` · SDD no · rama `feature/F-052-secretos-ajustes`
+
+Alta del 2026-10-02 por el líder, confirmada por el humano. Al ejecutar la verificación MANUAL T16 de F-036 (suite tests_bbdd contra la base efímera) falló un test antiguo y pytest imprimió el objeto Ajustes entero: gemini_api_key es un str normal en config/settings.py, así que la clave salió casi completa en la consola y de ahí a una conversación. El valor NO está en ningún fichero del repositorio. El humano rota la clave aparte. Alcance: que ningún campo secreto de Ajustes (claves de API, contraseñas, secretos de cliente, cadenas de conexión) aparezca en repr(), str() ni en un volcado del modelo: SecretStr o repr=False, con los puntos de uso leyendo el valor de forma explícita. Revisar TODOS los campos, no solo el de Gemini, y cualquier otro objeto que guarde un secreto (clientes, fábricas). No se hizo dentro de F-036 porque su test de alcance (R49) le prohíbe tocar config/settings.py. Va justo después del merge de F-036.
+
+### F-054 · El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost
+
+estado **pendiente** · prioridad 6 · rigor `estandar` · SDD no · rama `feature/F-054-dev-server-127`
+
+Alta del 2026-10-06 por el líder, sacada de F-035 (sus guardias R32/R33 no dejan tocar dev_server.py ni dev_front.ps1). Defecto encontrado por el humano en V2 de F-035 y reproducido por el líder: services/postventa-front/dev_server.py y dev_front.ps1 reenvían /api/* a http://localhost:7073; en Windows, localhost intenta antes ::1 (IPv6) y la conexión se cuelga decenas de segundos (medido: sin respuesta en 40 s con localhost; 0,01 s con 127.0.0.1), así que el navegador da por fallidas health, split y el resto aunque func las acabe ejecutando. Mientras tanto, se arranca con .\dev_front.ps1 -Api http://127.0.0.1:7073. Arreglo: el valor por defecto pasa a http://127.0.0.1:7073 en los dos ficheros, con la documentación al día; cambian a propósito test_f007_dev_server.py (l. ~502) y test_f007_dev_front_ps1.py (l. ~47), que fijan localhost.
+
+### F-037 · Entrada desde la web de clientes: el contrato con el proyecto independiente
+
+estado **pendiente** · prioridad 8 · rigor `critico` · SDD sí · rama `feature/F-037-entrada-web-clientes`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). La WEB DE CLIENTES es un PROYECTO INDEPENDIENTE (recomendación del líder del 2026-09-23: usuarios externos, otro acceso y otra exposición); tendrá su repositorio y su documento en azure-apps. Esta ficha es solo nuestra mitad: el contrato por el que la web deja incidencias en la MISMA bandeja que el Excel de F-036.
+
+### F-039 · Propuesta del industrial al crear la incidencia
+
+estado **pendiente** · prioridad 10 · rigor `critico` · SDD sí · rama `feature/F-039-propuesta-industrial`
+
+Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Criterio del humano (2026-09-23): se proponen los industriales que HAN HECHO ESE TIPO DE TRABAJO EN ESA OBRA. El usuario puede cambiarlo. Lectura de Sigrid por sigrid-api. Añadido el 2026-09-24: la fuente natural de la propuesta es la lista que Sigrid enseña en la pestaña Intervinientes al pulsar Añadir, «Seleccione el oficio de la obra»: los oficios de ESA obra con su proveedor (39 en la 0677), selección múltiple. Ver docs/referencia/04_alta_incidencia_sigrid.md §5. Qué tabla la guarda está por medir. Añadido por el líder el 2026-09-29, desde la medición de F-036 (progress/explore_F-036.md) y por decisión del humano (opción A): las ACTIVIDADES del proveedor se quedan para esta feature, no para F-036. Dónde están: ficha del proveedor, pestaña Datos fiscales, caja «Naturaleza de productos, servicios y/o actividades» (correo del director de Compras del 2026-09-28); en BBDD, conact (conide, actide) → auxpronat (catálogo en árbol, padre por prefijo del código, 3 niveles, 514 actividades). confam/auxfam están vacías y homolo vale 0 en todo conact. En la 0677, 33 de 36 proveedores tienen actividades (81 filas, 58 distintas); global, 360 de 526 proveedores de obrofc. auxpronat y auxofc no comparten códigos; 21 actividades se llaman como un oficio. Hace falta una correspondencia actividad → oficio confirmada por el humano (por hoja y por rama). Dónde aporta: los oficios que están en la obra SIN proveedor (en la 0677: 0133, 0144 y 0166, justo los que usa Posventa en su Excel). OJO, dependencia: sigrid-api §8.9 solo acepta intervinientes que estén en obrofc de la obra con ese oficio; proponer un proveedor por sus actividades fuera de obrofc exige que sigrid-api dé de alta esa pareja en obrofc, cambio que se pide en su repositorio.
+
 ### F-041 · Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid
 
-estado **pendiente** · prioridad 7 · rigor `critico` · SDD sí · rama `feature/F-041-ficha-incidencia`
+estado **pendiente** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-041-ficha-incidencia`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Desde el portal se gestiona la incidencia igual que en Sigrid. Escritura en el ERP; puede necesitar endpoints nuevos en sigrid-api.
 
 ### F-042 · No procede: justificación obligatoria y email al cliente
 
-estado **pendiente** · prioridad 8 · rigor `critico` · SDD sí · rama `feature/F-042-no-procede-email`
+estado **pendiente** · prioridad 13 · rigor `critico` · SDD sí · rama `feature/F-042-no-procede-email`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Si el usuario pasa una incidencia a NO PROCEDE, la app pide una justificación y envía un email al cliente. Buzón de envío por decidir; para pruebas, el de dev. Requiere permiso de envío de correo para la aplicación.
 
 ### F-043 · Operaciones en bloque sobre incidencias
 
-estado **pendiente** · prioridad 9 · rigor `critico` · SDD sí · rama `feature/F-043-operaciones-bloque`
+estado **pendiente** · prioridad 14 · rigor `critico` · SDD sí · rama `feature/F-043-operaciones-bloque`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Cambiar estado, asignar industrial y demás operaciones sobre varias incidencias a la vez.
 
 ### F-044 · Imprimir partes en bloque a PDF o impresora con la plantilla de posventa
 
-estado **pendiente** · prioridad 10 · rigor `estandar` · SDD sí · rama `feature/F-044-impresion-bloque`
+estado **pendiente** · prioridad 15 · rigor `estandar` · SDD sí · rama `feature/F-044-impresion-bloque`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Plantilla de referencia del humano: postventa_17-12-2025.pdf en su OneDrive (Documentos/postventa). Se convierte con markitdown a docs/referencia en la spec, preguntando antes si lleva datos personales; el PDF original no se versiona.
 
 ### F-045 · Registrar un parte sin firma: la incidencia pasa a TER, no a CER
 
-estado **pendiente** · prioridad 11 · rigor `critico` · SDD sí · rama `feature/F-045-parte-sin-firma`
+estado **pendiente** · prioridad 16 · rigor `critico` · SDD sí · rama `feature/F-045-parte-sin-firma`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Amplía el circuito de cierre ya hecho: forzar el registro de un parte sin firma deja la incidencia en TER en vez de CER. Escritura en el ERP.
 
 ### F-046 · Coste de la posventa desde la obra POSTV2
 
-estado **pendiente** · prioridad 12 · rigor `critico` · SDD sí · rama `feature/F-046-coste-postv2`
+estado **pendiente** · prioridad 17 · rigor `critico` · SDD sí · rama `feature/F-046-coste-postv2`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). POSTV2 es la obra de Sigrid donde se gestiona el coste de posventa; CADA OBRA (promoción) ES UN CAPÍTULO de POSTV2. Lectura por sigrid-api.
 
 ### F-047 · Vincular incidencias con la proforma, el coste y la venta
 
-estado **pendiente** · prioridad 13 · rigor `critico` · SDD sí · rama `feature/F-047-incidencia-proforma`
+estado **pendiente** · prioridad 18 · rigor `critico` · SDD sí · rama `feature/F-047-incidencia-proforma`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). En algún punto del proceso la incidencia se relaciona con la proforma; con eso se vinculan coste y venta a cada incidencia. El momento y el campo exactos los investiga la spec.
 
 ### F-048 · Los datos de posventa al datamart
 
-estado **pendiente** · prioridad 14 · rigor `estandar` · SDD sí · rama `feature/F-048-datamart-posventa`
+estado **pendiente** · prioridad 19 · rigor `estandar` · SDD sí · rama `feature/F-048-datamart-posventa`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Decisión del humano (2026-09-23): todos los datos del ciclo de posventa van al datamart para cruzarlos. Relación con F-024 (datos del parte enlazados a Sigrid). Cruza la frontera del proyecto: el datamart es de datamart-seg-anual; se coordina vía azure-apps.
 
 ### F-050 · Agrupar los proveedores casi duplicados del maestro de Sigrid
 
-estado **pendiente** · prioridad 15 · rigor `estandar` · SDD sí · rama `feature/F-050-agrupar-proveedores`
+estado **pendiente** · prioridad 20 · rigor `estandar` · SDD sí · rama `feature/F-050-agrupar-proveedores`
 
 Alta del 2026-09-29 por el líder, con el visto bueno del humano, al sacarla de F-036 (D-18). El humano pidió agrupar los proveedores de Sigrid con nombres casi iguales (tilde, plural, errata) para que un desplegable enseñe una sola entrada por empresa real. La medición de F-036 (progress/explore_F-036.md) dice que el problema está en el MAESTRO completo (9.585 proveedores: 793 grupos que comparten CIF con 1.980 códigos, 530 grupos por nombre sin mayúsculas ni tildes con 1.229 códigos, 151 sin CIF), pero NO entre los proveedores dados de alta en obras (0 grupos entre los 526 de obrofc, ni por CIF ni por nombre). Como la plantilla de F-036 solo ofrece proveedores de la obra, hoy no cambiaría nada; se hará cuando algún desplegable ofrezca proveedores de fuera de la obra (probablemente F-039). El diseño ya está hecho y se reutiliza: design.md §15 de F-036 (propuesta automática por CIF, nombre normalizado, forma jurídica, plural y errata; solo cliques; confirmación humana; decisiones sin nombres en postventa.decisiones_equivalencia con discriminador de catálogo; costura en §15.8). Hay autónomos con nombre de persona: nada de nombres en el repositorio.
 

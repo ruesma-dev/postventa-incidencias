@@ -88,7 +88,7 @@
       con exactamente **tres** líneas `+` y **cero** líneas `-` de contenido.
       Verificación: las dos salidas y el resumen del informe de mutación,
       copiados en `progress/impl_F-053.md`.
-- [ ] **T9**: `bash harness/init.sh` en verde (incluye tests, cobertura de
+- [x] **T9**: `bash harness/init.sh` en verde (incluye tests, cobertura de
       líneas cambiadas ≥ 80 % y la validación de `features.json`).
       Verificación: salida de `bash harness/init.sh` en verde, anotada en
       `progress/impl_F-053.md`.

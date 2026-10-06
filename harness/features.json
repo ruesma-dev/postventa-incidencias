@@ -202,7 +202,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 113,
+      "priority": 114,
       "branch": "feature/F-011-buzon-correo"
     },
     {
@@ -252,7 +252,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 114,
+      "priority": 115,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
     },
@@ -272,7 +272,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 115,
+      "priority": 116,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     },
@@ -291,7 +291,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 116,
+      "priority": 117,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     },
@@ -309,7 +309,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 117,
+      "priority": 118,
       "branch": "feature/F-017-checkpoints-manual"
     },
     {
@@ -327,7 +327,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 118,
+      "priority": 119,
       "branch": "feature/F-018-minimo-privilegio-graph"
     },
     {
@@ -364,7 +364,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 120,
+      "priority": 121,
       "branch": "feature/F-020-diseno-front"
     },
     {
@@ -382,7 +382,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 121,
+      "priority": 122,
       "branch": "feature/F-021-rehidratar-sesion"
     },
     {
@@ -400,7 +400,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 122,
+      "priority": 123,
       "branch": "feature/F-022-cache-prompts-gemini"
     },
     {
@@ -418,7 +418,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 112,
+      "priority": 113,
       "branch": "feature/F-024-datos-parte-sigrid"
     },
     {
@@ -470,7 +470,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 123,
+      "priority": 124,
       "branch": "feature/F-027-suite-barrido-cacheado"
     },
     {
@@ -510,7 +510,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 129,
+      "priority": 130,
       "branch": "feature/F-029-scripts-infra-comillas"
     },
     {
@@ -647,7 +647,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 8,
+      "priority": 9,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
@@ -663,7 +663,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 3,
+      "priority": 4,
       "branch": "feature/F-038-bandeja-revision"
     },
     {
@@ -679,7 +679,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 10,
+      "priority": 11,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
@@ -697,7 +697,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 4,
+      "priority": 5,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "El endpoint sigrid/partes-reclamacion está implementado en sigrid-api pero, a 2026-09-25, pendiente de despliegue y de su prueba manual en la obra 0626 (azure-apps/sigrid_api.md, consumidores). Se desbloquea cuando sigrid-api lo despliegue; no es trabajo de este repositorio."
     },
@@ -714,7 +714,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 12,
+      "priority": 13,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -730,7 +730,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 13,
+      "priority": 14,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -745,7 +745,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 14,
+      "priority": 15,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -760,7 +760,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 15,
+      "priority": 16,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -776,7 +776,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 16,
+      "priority": 17,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -791,7 +791,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 17,
+      "priority": 18,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -806,7 +806,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 18,
+      "priority": 19,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -821,7 +821,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 19,
+      "priority": 20,
       "branch": "feature/F-048-datamart-posventa"
     },
     {
@@ -853,7 +853,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 20,
+      "priority": 21,
       "branch": "feature/F-050-agrupar-proveedores",
       "blocked_by": "Depende de F-036 (mecanismo de equivalencias) y de que algún desplegable ofrezca proveedores de fuera de la obra."
     },
@@ -890,7 +890,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -923,8 +923,25 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 6,
+      "priority": 7,
       "branch": "feature/F-054-dev-server-127"
+    },
+    {
+      "id": "F-055",
+      "title": "init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado",
+      "description": "La caché de suite de init.sh se salta la suite de un servicio si su carpeta no ha cambiado. Pero algunos tests de esa suite (el barrido de GUID de F-006, R26, y sus hermanos) leen todo el repositorio: progress/, docs/, specs/, infra/. Con la caché, un fichero nuevo fuera del servicio no se barre nunca. Así entró sin que nadie lo viera el client ID real de la maqueta en progress/review8_F-035.md (2026-09-26, llegó a origin/dev y origin/main); lo destapó F-053 el 2026-10-06 y se tapó en su rama, sin reescribir la historia (decisión del humano). Arreglo: los tests que barren el repositorio se identifican (marca o lista declarada) y init.sh los ejecuta siempre, también con la caché válida. Es una mejora del arnés genérico: se porta a arnes-base en el mismo trabajo.",
+      "acceptance": [
+        "Los tests que leen fuera de la carpeta de su servicio están declarados (marca de pytest o lista en harness/servicios.json) y un control falla si uno nuevo no lo está",
+        "Con la caché de la suite válida, init.sh ejecuta igualmente esos barridos y sale en rojo si fallan",
+        "Un fichero nuevo con un GUID en progress/ hace fallar init.sh aunque la carpeta del servicio no haya cambiado (comprobado con un árbol de prueba, sin escribir un GUID en el repo)",
+        "La mejora portada a arnes-base, con su versión y nota de cambios",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 3,
+      "branch": "feature/F-055-barridos-sin-cache"
     }
   ]
 }

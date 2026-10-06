@@ -11,6 +11,14 @@
 > Humano, 2026-10-06: «si, todo ok» → D-1, D-2 y D-3 aprobadas; T7 (`azure-apps`) la hace el líder al
 > desplegar. Precondición de T11 cumplida: el `v2` de la 0677 se importó completo.
 >
+> **Bloque 1 hecho** (T1 `7dcd3e5`, T2 `1d64c31`). La suite destapó un **client ID real** en
+> `progress/review8_F-035.md` l.93 (desde `fc06596`, 2026-09-26, ya en `origin/dev` y `origin/main`): la
+> caché de suite de `init.sh` no repetía el barrido R26 de F-006 porque la carpeta del API no cambiaba.
+> Humano, 2026-10-06 («si»): (1) se tapa en esta rama (`<client-id>`); (2) **no** se reescribe la
+> historia; (3) alta de **F-055** (los barridos de repo siempre, aunque haya caché; también a `arnes-base`)
+> con prioridad 3, justo tras F-053. El informe de F-053 llevaba dos uuid de prueba de la salida RED:
+> tapados en `f068c1e`.
+>
 > `specs/F-053-datos-para-el-portal/` (requirements R1–R21 + V1/V2, design, tasks T1–T12 en 4 bloques).
 > Solo `services/postventa-api`, solo aditiva, **sin DDL, sin variables nuevas y sin lecturas nuevas**.
 >

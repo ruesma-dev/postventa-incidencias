@@ -52,7 +52,7 @@
       Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f053_distintos_dominio.py tests/test_f053_propuestas_distintos.py tests/test_f036_catalogos_http.py -q`
       **falla** por `ImportError` de `pares_distintos` y por la clave
       `distintos` que falta, y por nada más.
-- [ ] **T4** (GREEN, dominio): `pares_distintos` en
+- [x] **T4** (GREEN, dominio): `pares_distintos` en
       `domain/models/equivalencias.py` (`design.md` §4), reutilizando
       `_ultimas`.
       Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f053_distintos_dominio.py tests/test_f036_equivalencias_dominio.py -q` en verde.

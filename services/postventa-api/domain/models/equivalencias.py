@@ -14,6 +14,9 @@ entrada por código enseña el mismo oficio dos veces. Aquí:
    cuya última decisión humana es «mismo», sin las componentes contradichas.
 3. **La costura de proveedores** (§15.8): sin agrupación de proveedores
    (F-050), cada código es su propio grupo (`grupos_de_proveedor`).
+4. **Los pares decididos como distintos** (F-053, R9–R13): los de unos
+   códigos cuya última decisión es «distinto» (`pares_distintos`), con la
+   misma regla de «manda la última» que los grupos vigentes.
 
 Nada se agrupa solo (R80): proponer no cambia los grupos vigentes, que solo
 salen de decisiones humanas.
@@ -455,6 +458,32 @@ def grupos_vigentes(
         grupos.append(Grupo(perfil.catalogo, componente, _etiqueta(por_codigo[cabeza])))
     grupos.sort(key=lambda g: min(g.codigos))
     return GruposVigentes(perfil.catalogo, tuple(grupos), tuple(no_aplicados))
+
+
+# --- F-053: los pares decididos como distintos ----------------------------------
+
+
+def pares_distintos(
+    codigos: Iterable[str],
+    decisiones: Iterable[DecisionPar],
+    catalogo: Catalogo,
+) -> tuple[tuple[str, str], ...]:
+    """Los pares cuya última decisión es «distinto» entre unos códigos (F-053, R9).
+
+    La última, con la regla de `_ultimas` (manda la fecha; a igual fecha, la
+    que llega después; las de otro catálogo no cuentan, R13). Solo los pares
+    con **los dos** códigos en `codigos`, aunque quien llame ya lo filtre: la
+    función no se fía. Cada par en orden (`codigo_a < codigo_b`, como
+    `DecisionPar`), una vez, y la lista ordenada (R12).
+    """
+    dados = frozenset(codigos)
+    return tuple(
+        sorted(
+            par
+            for par, decision in _ultimas(decisiones, catalogo).items()
+            if decision.decision == DISTINTO and par[0] in dados and par[1] in dados
+        )
+    )
 
 
 # --- §15.8: la costura de proveedores -----------------------------------------

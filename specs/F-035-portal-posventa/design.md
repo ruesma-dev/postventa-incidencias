@@ -1734,6 +1734,19 @@ Descartado por la medida: `--rs-acero` como texto (3,73 sobre blanco; es lo
 que `front-portal` usa en sus textos pequeños) y `--rs-acero-texto` sobre
 `--rs-acero-100` (4,45): por eso el chip neutro lleva `--rs-tinta-suave`.
 
+> **Enmienda del 2026-10-06 (O17-2, review del bloque 17).** De esta tabla
+> sale la **lista blanca** de R53 enmendado: fuera del `:root`, la propiedad
+> `color` solo puede llevar `inherit`, `currentColor` o uno de los tokens
+> que esta tabla mide como texto (columna izquierda de las filas de texto),
+> más `--rs-burdeos-fuerte`. Única excepción: `--rs-acero-300` en
+> `.rs-tarjeta__indice`, decorativo y con `aria-hidden="true"`. Recuento
+> de los `color:` de las dos hojas sobre `6106c5c`: `--rs-acero-texto`
+> 30, `--rs-tinta-suave` 21, `--rs-tinta` 20, `--rs-atencion` 11,
+> `--rs-burdeos` 11, `--rs-info` 6, `--rs-error` 4, `--rs-ok` 4,
+> `--rs-papel` 3, `--rs-burdeos-fuerte` 2, `--rs-acero-300` 1 (el índice)
+> e `inherit` 1. Si una regla nueva necesita otro token como texto, primero
+> entra su par en esta tabla, medido, y después en la lista. Test: T51.
+
 - **Foco (R54)**: `:focus-visible` con contorno de 2 px `--rs-burdeos` y
   separación de 2 px en enlaces, botones, campos, `summary` y pestañas; en
   los botones rellenos burdeos, separación de 3 px para que el contorno se
@@ -2084,6 +2097,12 @@ R48):
 | `economico` | F-046, F-047 | `construccion` | |
 | `datos` | F-048 | `construccion` | |
 
+> **Precisión del 2026-10-06 (H-8, review del bloque 8).** En la fila de
+> `inicio`, «todas las demás» son **las otras siete, `partes` incluida**
+> (R62): con todas las fichas `done` salvo F-045, `inicio` sigue `parcial`.
+> La regla de R48, que deja fuera `partes`, es solo para la barra del
+> circuito.
+
 **El rótulo, en tres capas** (el riesgo que el humano acepta es que alguien
 tome lo inventado por real; cada capa lo ataja en un sitio distinto):
 
@@ -2121,6 +2140,30 @@ Y lo que ya había sigue: datos imposibles (`RS99…`, `99NN`, «Ejemplo»), el
 borde discontinuo reservado a los placeholders (R56), el burdeos reservado a
 lo que funciona. **Nada de «maqueta»** en lo que ve el usuario (R67): en
 producción, la palabra que se entiende es «en construcción».
+
+> **Enmienda del 2026-10-06 (O9-2, O9-3 y O9-4, review del bloque 9) · la
+> capa 2, cerrada.** El detector de R63 reconoce lo inventado por lo que
+> lee (`datos.`, `MaquetaDatos`). No ve un método del componente que lo
+> lea ni una cifra escrita a mano: sobrevivieron A1, A2, A4, A5 y A6 de esa
+> review. Hoy no hay ninguno fuera de un recuadro: el listado del reviewer
+> y la medida del spec-author sobre `6106c5c` dan solo las directivas de la
+> lista de R63 enmendado. La forma robusta es esa **lista cerrada**: no
+> depende de qué métodos leen datos. Junto a ella, dos cierres:
+>
+> - **El aspecto sin el atributo (O9-3, B4).** `rs-obras` solo en elementos
+>   `data-en-construccion`, y todo `data-en-construccion` con `rs-obras`
+>   (R63 enmendado). Así una tarjeta real no puede llevar el marco ámbar,
+>   ni un recuadro quedarse sin él.
+> - **«Visible» (O9-4, C4, C5 y G4).** `_CERRABLE` mira atributos. R65
+>   precisado suma las clases que esconden (`hidden`, `invisible` y
+>   `sr-only`, también con prefijo, como `hidden md:flex`, que escondería
+>   el rótulo justo en el móvil), el `style` y las reglas de `rs-obras*` que
+>   lo esconden en la hoja. Puede reutilizar `_ESCONDE_POR_CLASE` de
+>   `tests/test_f035_paginas.py` (la de R75), quitando antes los prefijos
+>   y sin cambiar el conjunto.
+>
+> Tests: T49 (R63) y T50 (R65), en `tests/test_f035_paginas.py`, cada
+> guardia con su control en memoria.
 
 **Alternativas descartadas**: (i) solo el aviso global —ya existía como
 «maqueta» y se pierde al desplazarse—; (ii) esconder los datos inventados y
@@ -2231,6 +2274,18 @@ enlaces de F-036 de la cabecera pasan de `text-sky-700 hover:underline` a
   `--rs-ok`/`--rs-ok-suave`, par ya medido en §15.6); tablas `rs-tabla` en
   `rs-desplazable`; marcas de la bandeja `rs-chip rs-chip--atencion`;
   avisos de oficios `rs-panel rs-panel--atencion`; notas `rs-nota`.
+
+  > **Errata del 2026-10-06 (O10-1, review del bloque 10).** El `:class`
+  > del resultado de arriba solo distingue `parcial` del resto. Con él, un
+  > fichero **ya importado** («no se ha añadido nada a la bandeja») saldría
+  > en el verde de éxito, o en ámbar si la importación original fue
+  > parcial: el color contradiría al texto, que ya da prioridad a
+  > `ya_importado` (`textoDelEstado`). Lo correcto, y lo que hace el bloque
+  > 10: el resultado, `rs-aviso` con `--info` si `yaImportado`, `--atencion`
+  > si `parcial` y `--ok` en otro caso:
+  > `:class="resultado.yaImportado ? 'rs-aviso--info' : (resultado.estado === 'parcial' ? 'rs-aviso--atencion' : 'rs-aviso--ok')"`.
+  > Lo vigila Node (T30). Encaja con el rótulo de R74 («de la importación
+  > original»).
 - **Lista cerrada de utilidades de Tailwind prohibidas en estas dos páginas
   (R72)**, en `class` y dentro de las comillas de `:class`, tras quitar los
   prefijos de estado o de pantalla (`hover:`, `disabled:`, `sm:`…): las que
@@ -2613,7 +2668,7 @@ inventado:
 | (a) | **Algo en marcha** | `fase` ∈ {`troceando`, `procesando`, `archivando_y_cerrando`} (los literales que asigna `app.js:175`, `:269`, `:765`); o `Pipeline.hayTandaEnCurso()` | Trocear y procesar cuestan IA y tiempo; cortar una tanda a medias deja partes archivados sin adjuntar o adjuntados sin cerrar, que solo se recuperan desde esta pantalla (F-025 R24) |
 | (b) | **Correcciones sin guardar** | `estadoAutoguardado` ∈ {`Autoguardado.GUARDANDO`, `Autoguardado.FALLO`} | Lo tecleado no está en la base (F-026 R52; `MENSAJE_FALLO` dice que «sigue ahí», en pantalla) |
 | (c) | **Partes por terminar** | algún `parte` de `partes` con `!parte.cerrado` y `Pipeline.estadoDe(parte)` ∉ {`ESTADO_RECHAZADO`, `ESTADO_CERRADO`} | Por archivar y cerrar (`pendientesDeCircuito`), por decidir, por corregir o con error: sin F-021 no hay forma de volver a verlos sin subir otra vez la remesa (el pie de `partes.html` ya lo dice) |
-| (d) | **Un parte abierto sin cerrar** | `parteAbierto !== null && !parteAbierto.cerrado` | Cubre el rebote del autoguardado (1,5 s en los que lo tecleado aún no ha pasado a «guardando», y que la guarda no puede ver sin montar el autoguardado, R80) y el motivo escrito y sin enviar (`motivoDeRechazo`), también sobre un parte rechazado |
+| (d) | **Un parte abierto sin cerrar** | `parteAbierto !== null && !parteAbierto.cerrado` | Cubre el rebote del autoguardado **mientras el detalle sigue abierto** (1,5 s en los que lo tecleado aún no ha pasado a «guardando», y que la guarda no puede ver sin montar el autoguardado, R80; con el detalle ya cerrado, ver «se acepta» abajo, errata del 2026-10-06) y el motivo escrito y sin enviar (`motivoDeRechazo`), también sobre un parte rechazado. Mira solo el `cerrado` del circuito, no el del backend (precisión H16-6 en R79) |
 
 **No** es trabajo: la página recién abierta (`fase` `inactivo`, sin
 partes); ficheros elegidos sin trocear (`seleccionado`: nada ha salido del
@@ -2625,9 +2680,27 @@ el detalle navega sin que nadie le pregunte, que es lo que pide el humano.
 
 Lo que la guarda **no** puede saber y se acepta: una tanda cuyas peticiones
 ya salieron sigue en el servidor aunque la página se vaya (la guarda lo
-pregunta antes, por (a)); y el rebote del autoguardado sobre un parte que no
-está abierto no existe (el autoguardado guarda el anterior al cambiar de
-parte, `autoguardado.js`).
+pregunta antes, por (a)); y **la ventana de 1,5 s del rebote del
+autoguardado tras cerrar el detalle** de un parte rechazado (o que el
+backend da por cerrado): se edita un campo, se cierra el detalle y se sale
+en ese instante, y lo tecleado se pierde sin pregunta.
+
+> **Errata del 2026-10-06 (H16-5, review del bloque 16).** Decía «el rebote
+> del autoguardado sobre un parte que no está abierto no existe (el
+> autoguardado guarda el anterior al cambiar de parte)». Es inexacto. El
+> autoguardado dispara el rebote pendiente cuando se **escribe en otro
+> parte** (`alEscribir`, `autoguardado.js`), pero `cerrarParte()`
+> (`app.js`) no lo cancela ni lo fuerza: el temporizador sigue vivo hasta
+> 1.500 ms con el detalle ya cerrado. Durante ese tiempo lo tecleado aún no
+> está en «guardando», así que (b) no lo ve, y (d) ya no aplica. Para un
+> parte sin terminar lo cubre (c). Para uno rechazado, o cerrado según el
+> backend, (c) lo excluye. Sus campos se pueden editar en cualquier estado
+> (el detalle de `partes.html` no los deshabilita), así que queda ese hueco
+> de como mucho 1,5 s. La guarda no puede verlo sin `_autoguardado()`, que
+> R80 prohíbe, y cerrarlo exigiría tocar `app.js` (R33). Se **acepta**: es
+> estrecho, exige tres gestos seguidos en 1,5 s y lo que se pierde son, como
+> mucho, las últimas pulsaciones sobre un parte ya decidido. No cambia el
+> código.
 
 #### 16.15.3 · El módulo: `js/guarda_salida.js` (R78–R80)
 
@@ -2703,6 +2776,24 @@ fichero nuevo, y para cargarla hacen falta tres cambios, todos cerrados:
 | `partes.html` | `<script src="js/guarda_salida.js"></script>` **justo antes** de `<script src="js/app.js"></script>`, sin atributos ni comentario nuevos (R59 f, R43 ajustado) | Es el único sitio donde el circuito carga código. Va antes de `app.js` porque F-007 exige que `app.js` sea el último; el orden da igual en ejecución, porque la guarda lee el estado al salir, no al cargar |
 | `tests/test_f007_estaticos.py` (base, R32) | **Una línea añadida** en `ORDEN_CANONICO`, entre `"js/autoguardado.js",` y `"js/app.js",`: `    "js/guarda_salida.js",  # F-035 (R80, R81): solo lee el estado del circuito` | `problemas_del_index` rechaza todo script propio que no esté en `ORDEN_CANONICO`. Mismo precedente que las líneas `INDEX`: un cambio de una línea en un test de la base, declarado y vigilado por R32 |
 | `tests/test_f036_front.py` (base, R32) | En `test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas`: el docstring `"""En otra pestaña: navegar fuera perdería la remesa en curso (D4 de F-007)."""` pasa a `"""En la misma pestaña (F-035, 2026-10-05): la remesa la protege la guarda de salida del circuito."""`, y las dos líneas `assert 'target="_blank"' in en_cabecera[destino]` y `assert 'rel="noopener"' in en_cabecera[destino]` pasan a **una**: `        assert "target=" not in en_cabecera[destino]` | El test fijaba justo lo que el humano cambia. Lo que protegía (que la remesa no se pierda al ir a importar u oficios) **no se pierde**: pasa a protegerlo la guarda, con sus tests (`tests_js/guarda_salida.test.js`); y el test sigue exigiendo los dos enlaces (su primer `assert`, sin tocar) y ahora, además, la misma pestaña |
+
+> **Riesgo aceptado del 2026-10-06 (H16-4, review del bloque 16) · el
+> comentario de F-036 en la cabecera de `partes.html` queda desfasado.** El
+> comentario que precede al `<nav>` de los dos enlaces de F-036 sigue
+> diciendo «la entrada de incidencias, en otra pestaña: salir de esta
+> perdería la remesa en curso (D4 de F-007)». Desde T44 es al revés: los
+> enlaces van en la misma pestaña y la remesa la protege la guarda. R59
+> compara los comentarios fuera de la barra, y (g) solo admite retirar
+> `target` y `rel`, así que no se puede tocar sin ampliar la excepción.
+> Había dos salidas: (i) sumar a R59 (g) la sustitución **literal** de ese
+> comentario, con su línea en la guardia, como las de R81; o (ii) aceptar
+> el desfase. **Se elige (ii)**, porque es lo que menos toca: ni R59, ni su
+> guardia, ni `partes.html`, ni un control más. El comentario no se ve, y
+> la regla vigente está en R73 ajustado, en esta sección y en el README del
+> front (T37). **Quien abra la excepción de R59 por otro motivo** (F-045 o
+> F-021, que tocarán el circuito) sustituye ese comentario en el mismo
+> cambio. Si el humano prefiere (i), es una línea en R59 (g), la sustitución
+> en `partes.html` y una entrada en la guardia de R59, con su control.
 
 Alternativas descartadas, en una línea cada una:
 
@@ -2830,7 +2921,7 @@ Mutaciones manuales (C4 bis), en una copia aislada, como las 14–28:
 |---|---|---|
 | Alguien acepta el diálogo con una remesa a medias y la pierde | La leyenda de la barra lo avisa antes; el aviso a Posventa (§16.12) lo dice; rechazado/cerrado ya están en la base; F-021 (rehidratar) sigue siendo la solución de fondo | V2 (m), T42 |
 | La guarda pregunta cuando no hay nada que perder y se convierte en ruido | Definición estrecha de R79 con negativos probados; (d) se resuelve cerrando el detalle | V2 (l), (o), (p) |
-| La guarda no pregunta cuando sí hay algo (un caso que R79 no ve) | Las cuatro condiciones cubren todo lo que el circuito tiene en memoria; el rebote del autoguardado lo cubre (d); test de fases contra `app.js` | `init.sh`, V2 |
+| La guarda no pregunta cuando sí hay algo (un caso que R79 no ve) | Las cuatro condiciones cubren todo lo que el circuito tiene en memoria; el rebote del autoguardado lo cubre (d) con el detalle abierto (con el detalle ya cerrado, sobre un parte rechazado o cerrado por el backend, queda la ventana de 1,5 s que §16.15.2 acepta; errata H16-5 del 2026-10-06); test de fases contra `app.js` | `init.sh`, V2 |
 | La guarda toca el circuito sin querer | R80 con el `Proxy` que lanza; R33 sigue vigilando los módulos | `init.sh` |
 | `Alpine.$data` no se comporta igual en 3.14.1 | Falla abierta (no rompe nada); V2 (m) lo comprueba en el navegador de verdad. Si no pregunta en V2, **PARA**: se anota y se vuelve a proponer, sin parches | V2 |
 | El remodelado rompe algo del circuito | Solo valores de `class` (R59 a) y los `:class` intactos | V2 (k) |

@@ -612,6 +612,14 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
   > la regla escrita en `docs/ARCHITECTURE.md` y el `README.md` pasa a decir
   > «misma ventana» para todo y que la remesa la protege la guarda de salida
   > (R78), sin perder «R48», «misma ventana» ni «remesa».
+  >
+  > **Precisión del 2026-10-06 (H-8, review del bloque 8).** El «para
+  > `inicio`, cuando lo son todas las demás secciones del portal» de R48 se
+  > lee **sin** `partes`, y solo a efectos de la barra de `partes.html` (que
+  > no se enlaza a sí misma): así lo hace `secciones_reales` en
+  > `tests/test_f035_placeholders_vivos.py`. **No** es la regla del estado de
+  > `inicio`: esa es la de R62, que cuenta `partes` (nota en R62). Con R48
+  > absorbida por R73, la diferencia no cambia ningún resultado.
 - **R49.** El sistema debe declarar la identidad visual como **tokens** (variables
   CSS) en el `:root` de `css/styles.css`, con los nombres y valores de
   `design.md` §15.3 —entre ellos `--rs-burdeos: #9f2842`, `--rs-acero:
@@ -641,6 +649,24 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
   (bordes de control, foco) **≥ 3:1**; y `--rs-acero` no debe usarse nunca como
   `color` de texto (su contraste sobre blanco es 3,7:1): el texto gris usa
   `--rs-acero-texto`.
+
+  > **Enmienda del 2026-10-06 (O17-2, review del bloque 17) · lista blanca
+  > de colores de texto.** Prohibir solo `--rs-acero` deja pasar cualquier
+  > otro token sin medir: con `var(--rs-acero-100)` en un texto (contraste
+  > ≈1,3) no cae nada. Por eso, en `css/styles.css` y `css/portal.css`,
+  > fuera del `:root`, toda declaración de la propiedad `color` (no
+  > `background-color`, `border-color` ni `outline-color`) debe valer
+  > `inherit`, `currentColor` o `var(<token>)` con un token de esta lista:
+  > los que la tabla de `design.md` §15.6 mide como **texto**
+  > (`--rs-tinta`, `--rs-tinta-suave`, `--rs-acero-texto`, `--rs-papel`,
+  > `--rs-burdeos`, `--rs-ok`, `--rs-atencion`, `--rs-error`, `--rs-info`) y
+  > `--rs-burdeos-fuerte`, más oscuro que `--rs-burdeos` (10,19 sobre
+  > `--rs-papel`; lo usan `.rs-enlace:hover` y `::selection`). Hay **una
+  > excepción, cerrada**: `--rs-acero-300` en `.rs-tarjeta__indice`, el
+  > índice decorativo de las tarjetas (01, 02…). Es decorativo y no se lee,
+  > así que todo elemento de las páginas con esa clase lleva
+  > `aria-hidden="true"`. Medido sobre `6106c5c`: hoy se cumple. Tests:
+  > T51.
 - **R54.** Todo elemento enfocable de las dos páginas (enlaces, botones,
   campos, pestañas) debe tener un foco visible con `:focus-visible` en el color
   de la marca, y ninguna regla de los dos CSS debe quitar el contorno
@@ -749,10 +775,47 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   `done` y `real` cuando lo esté. Hoy: `inicio`, `entrada` y `partes`,
   `parcial`; `bandeja`, `incidencias`, `impresion`, `economico` y `datos`,
   `construccion`.
+
+  > **Precisión del 2026-10-06 (H-8, review del bloque 8).** «Todas las
+  > demás del portal» son **las otras siete secciones, `partes` incluida**:
+  > la portada no pasa a `real` mientras el registro sin firma (F-045) no
+  > esté hecho. Es lo que ya hace `estados_segun_las_fichas` (raíz). Las dos
+  > lecturas posibles solo dan distinto con todas las fichas `done` salvo
+  > F-045: ahí `inicio` es `parcial`. Lo fija un caso del test de la raíz
+  > (T48). La lectura sin `partes` es la de R48, y solo para su barra.
 - **R63.** Todo placeholder (`data-placeholder`) y todo elemento que pinte
   datos de ejemplo (una directiva que lea `datos.` o `MaquetaDatos`) de
   `index.html` debe estar **dentro** de un elemento `data-en-construccion`; y
   cada elemento `data-en-construccion` debe empezar por su rótulo (R65).
+
+  > **Enmienda del 2026-10-06 (O9-2 y O9-3, review del bloque 9).** Lo de
+  > arriba se conserva. Reconocer los datos de ejemplo por lo que leen
+  > (`datos.`, `MaquetaDatos`) no ve un método del componente que los lea
+  > (`bandejaFiltrada()`, `obra()`) ni una cifra que se pinte con
+  > `x-text`. Por eso se suma una **lista cerrada**: fuera de todo elemento
+  > `data-en-construccion`, `index.html` solo puede llevar estas directivas
+  > de Alpine (atributos `x-*`, `:*`, `@*`, también `x-bind:*` y `x-on:*`),
+  > con estos valores (medido sobre `6106c5c`):
+  >
+  > - en el `<div>` raíz, `x-data="portalPosventa()"` y `x-init="iniciar()"`;
+  > - en las `<a class="rs-pestana">` de la barra que van a una sección de
+  >   la propia página (`href="#/<id>"`),
+  >   `:aria-current="seccion === '<id>' ? 'page' : false"`, con el `<id>` de
+  >   su `href` (la de «Partes firmados» va a `partes.html` y no lleva
+  >   ninguna);
+  > - en cada `<section data-seccion="<id>">`, `x-show="seccion === '<id>'"`
+  >   y `x-cloak`;
+  > - en el aviso de los placeholders (`rs-toast`), `:class="aviso ?
+  >   'rs-toast--visible' : ''"` en su `<div>`, `x-text="aviso"` en su `<p>`
+  >   y, en su botón, `x-show="aviso"`, `x-cloak` y `@click="aviso = ''"`.
+  >
+  > Cualquier otra directiva fuera de un envoltorio incumple R63. Si una
+  > ficha futura necesita una directiva real fuera de los envoltorios, amplía
+  > esta lista en su spec, a la vista. Además, la clase `rs-obras` (el
+  > aspecto del recuadro) solo puede ir en un elemento `data-en-construccion`,
+  > y todo elemento `data-en-construccion` lleva `rs-obras`. Las
+  > subclases `rs-obras--*` y `rs-obras__*` no cuentan como `rs-obras`. Tests:
+  > T49.
 - **R64.** MIENTRAS una sección del portal esté en `construccion`, su bloque
   `data-seccion` debe tener, después de su cabecera, un único envoltorio
   `data-en-construccion="<id de la sección>"` con todo su contenido; y SI la
@@ -768,6 +831,17 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   (`F-0NN · <título>`). El rótulo y el envoltorio no usan el borde discontinuo
   (reservado a los placeholders, R56) ni el burdeos (reservado a la marca y a
   lo que funciona).
+
+  > **Precisión del 2026-10-06 (O9-4, review del bloque 9) · qué es
+  > «visible».** Además de no poder cerrarse (ni `x-show`, ni `x-if`, ni
+  > `hidden` o `:hidden`, que ya se vigilan), ni el rótulo ni su envoltorio
+  > llevan una clase que los esconda —`hidden`, `invisible` o `sr-only`,
+  > solas o con prefijo de pantalla o de estado (`md:hidden`, `sm:sr-only`…)—
+  > ni el atributo `style`, estático o ligado (`:style`, `x-bind:style`). Y
+  > ninguna regla de `css/portal.css` ni de `css/styles.css` cuyo selector
+  > nombre una clase `rs-obras` (también `rs-obras--*` y `rs-obras__*`)
+  > declara `display: none`, `visibility: hidden` ni `opacity: 0`. Tests:
+  > T50.
 - **R66.** En la barra superior de las cuatro páginas que la llevan
   (`index.html`, `partes.html`, `importar.html` y `oficios.html`), cada
   pestaña de una sección en `construccion` debe llevar el atributo
@@ -885,9 +959,10 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   pregunta. El texto del diálogo es el del navegador (los navegadores no
   enseñan uno propio); lo explica de antemano la leyenda de la barra (R47).
 - **R79.** El circuito tiene **trabajo sin terminar** cuando
-  `GuardaSalida.hayTrabajoSinTerminar(estado, Pipeline)` es verdadero, con
-  `estado` el del componente `appPostventa()`; y lo es SI y solo SI se
-  cumple alguna de estas, todas leídas de lo que el circuito ya sabe:
+  `GuardaSalida.hayTrabajoSinTerminar(estado, Pipeline, Autoguardado)` es
+  verdadero, con `estado` el del componente `appPostventa()`; y lo es SI y
+  solo SI se cumple alguna de estas, todas leídas de lo que el circuito ya
+  sabe:
   - (a) **algo en marcha**: `fase` es `troceando`, `procesando` o
     `archivando_y_cerrando`, o `Pipeline.hayTandaEnCurso()` es verdadero;
   - (b) **correcciones sin guardar**: `estadoAutoguardado` es `guardando` o
@@ -903,6 +978,22 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   navegador); una remesa cuyos partes están todos cerrados o rechazados,
   con el detalle cerrado; y lo que queda tras «Empezar otra remesa». Con un
   estado ausente o ilegible, la función devuelve `false` y nunca lanza.
+
+  > **Errata del 2026-10-06 (H16-3, review del bloque 16).** La firma
+  > decía `hayTrabajoSinTerminar(estado, Pipeline)`. Es
+  > `(estado, Pipeline, Autoguardado)`, como en `design.md` §16.15.3 y en el
+  > código: (b) necesita las constantes de `Autoguardado`. Corregida arriba.
+  >
+  > **Precisión del 2026-10-06 (H16-6, review del bloque 16).** En (d),
+  > «no está `cerrado`» es el indicador del circuito (`parteAbierto.cerrado`)
+  > y nada más; (c), en cambio, acepta también que el backend lo dé por
+  > cerrado (`Pipeline.estadoDe(parte) === ESTADO_CERRADO`). Por eso, con el
+  > detalle abierto de un parte que el backend da por cerrado sin que el
+  > circuito lo haya cerrado (uno ya cerrado y subido otra vez), la guarda
+  > pregunta, y con el detalle cerrado no. Se **acepta** tal cual: es la
+  > letra de D-15, se resuelve cerrando el detalle y, como sus campos se
+  > pueden editar, preguntar ahí protege un posible rebote del autoguardado
+  > (`design.md` §16.15.2). No cambia el código.
 - **R80.** La guarda de salida debe vivir en un módulo **nuevo**,
   `js/guarda_salida.js`, y **solo leer** el estado del circuito: lo lee en el
   momento del evento con `Alpine.$data()` del elemento
@@ -952,6 +1043,14 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
 > (g)), **R70** (leyenda en la barra), **R72** (pie) y **R73** (ningún
 > `target` entre páginas del front). Entran **R78–R82**. El cuadro «no
 > cambian» de arriba queda superado para R32, R48 y R59.
+>
+> **Erratas y precisiones del 2026-10-06** (hallazgos de spec de las
+> reviews de la reanudación; notas en su sitio): **R48** y **R62** (H-8,
+> qué son «todas las demás»), **R53** (O17-2, lista blanca de colores de
+> texto), **R63** (O9-2 y O9-3, lista cerrada de directivas fuera de los
+> envoltorios, y `rs-obras` solo en ellos), **R65** (O9-4, qué es
+> «visible») y **R79** (H16-3, la firma; H16-6, (d) frente a (c)). Sus
+> tests nuevos son T48–T51, del bloque 14.
 
 ## 2 · Trazabilidad con la ficha
 

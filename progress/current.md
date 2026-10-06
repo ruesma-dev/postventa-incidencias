@@ -1,6 +1,58 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · erratas de spec de las reviews de la reanudación · 2026-10-06 · solo spec · siguiente: bloque 14 (implementer)
+>
+> spec-author. Enmiendas fechadas el 2026-10-06, en su sitio y sin
+> renumerar, en `specs/F-035-portal-posventa/` (requirements, design y
+> tasks). No he tocado ni código ni tests, y ningún test lee la spec: no se
+> rompe nada.
+>
+> - **H-8**: R62 y la tabla de §16.4 ahora dicen «las otras siete,
+>   `partes` incluida». R48 lleva nota: su `inicio` es sin `partes` y solo
+>   vale para la barra del circuito. Test → **T48**.
+> - **H16-3**: corregida la firma de R79, que pasa a `(estado, Pipeline,
+>   Autoguardado)`, con nota de errata.
+> - **H16-4**: se elige **(ii)**, porque es lo que menos toca: se acepta el
+>   comentario desfasado y queda anotado en §16.15.4. Lo sustituirá quien
+>   abra la excepción de R59 por otro motivo (F-045 o F-021).
+> - **H16-5**: §16.15.2 pasa a «se acepta» la ventana de 1,5 s (un parte
+>   rechazado o cerrado por el backend que se edita, se cierra el detalle y
+>   se sale en ese instante), con errata. Ajustadas también la fila (d) y el
+>   riesgo de §16.15.9.
+> - **H16-6**: precisión en R79. (d) mira solo el `cerrado` del circuito; se
+>   acepta tal cual y no cambia el código.
+> - **O17-2**: R53 enmendado con la lista blanca de colores de texto, y nota
+>   en §15.6 con el recuento medido. Hay una excepción cerrada:
+>   `--rs-acero-300` en `.rs-tarjeta__indice`, que es decorativo y lleva
+>   `aria-hidden`. Test → **T51**.
+> - **O9-2 y O9-3**: R63 enmendado con la lista cerrada de directivas fuera
+>   de los envoltorios (medida sobre `6106c5c`) y la regla de `rs-obras` ⇔
+>   `data-en-construccion`. Nota en §16.4. Test → **T49**.
+> - **O9-4**: precisado qué es «visible» en R65: clases que esconden, el
+>   atributo `style` y las reglas de `rs-obras*` que lo esconden. Test →
+>   **T50**.
+> - **O9-7**: errata en la verificación de T27. Son dos líneas en
+>   `importar.html`: `id="bandeja"` y la `?v=`.
+> - **O10-1**: errata en §16.5. El resultado lleva `--info` si
+>   `yaImportado`, `--atencion` si es `parcial` y `--ok` en otro caso.
+>
+> **Pasa al bloque 14** (`tasks.md`, entre T37 y T38, solo tests y cada uno
+> con su control): T48 (R62), T49 (R63), T50 (R65) y T51 (R53). Todas las
+> reglas se cumplen hoy; si una guardia sale en rojo sobre el árbol real,
+> **PARA**. T38 (b) suma las supervivientes que matan.
+>
+> **Para el humano** (nada bloquea):
+>
+> - validar (ii) en H16-4: si prefiere (i), es una línea en R59 (g) más su
+>   guardia;
+> - validar los dos riesgos aceptados de H16-5 y H16-6.
+>
+> **Para el líder**: hay pendientes del bloque 14 que no son de spec ni
+> están en `tasks.md`, así que no los he añadido. Son O12-1 (clases de
+> ocultar en el rótulo de R74), O13-1 (opcional) y O13-3 (que el README
+> cuente R74 y R75, en T37).
+
 > ## ▶ F-035 · R13-1 (review del bloque 13) HECHO · 2026-10-06 · `init.sh` en VERDE · siguiente: re-review de R13-1 y después bloque 14 (documentación)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Arreglos de la review

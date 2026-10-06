@@ -615,6 +615,13 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` en verde; «F-036 intacto» vacío;
       `git diff HEAD~1 -- services/postventa-front/importar.html` con una
       sola línea cambiada (`id="bandeja"`).
+
+      > **Errata del 2026-10-06 (O9-7, review del bloque 9).** Son **dos**
+      > líneas cambiadas en `importar.html`: `id="bandeja"` y la `?v=` de la
+      > hoja. Desde el bloque 17, `importar.html` lleva la `?v=`, y §16.5 la
+      > pide en las cuatro páginas con cada cambio de hoja; (d) cambia
+      > `css/portal.css`, así que cambia la versión. Lo que T27 tiene que
+      > dejar intacto en esa página es todo lo demás.
 - [x] **T28**: evidencias y verde. (a) `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **18**, **19** y **20**. (c) `bash harness/init.sh`
       en verde.
@@ -755,6 +762,77 @@ ya pide cada verificación.
       > Posventa con la frase nueva de `design.md` §16.12. Las palabras
       > clave del test nuevo pasan a ser «en construcción», `PAGINAS`,
       > «misma pestaña» y «guarda de salida» (fuera «aparte»).
+
+> **Enmienda del 2026-10-06 · hallazgos de spec de las reviews de la
+> reanudación.** Entran **T48–T51**: los tests que cierran las erratas y
+> precisiones del 2026-10-06 de `requirements.md` (R53, R62, R63 y R65).
+> Van **después de T37 y antes de T38**, y los números no se cambian. Son
+> **solo tests**: ningún cambio de producción, de HTML ni de CSS, porque
+> todas las reglas se cumplen hoy (medido sobre `6106c5c`). Si una guardia
+> nueva sale en rojo sobre el árbol real, **PARA** y anótalo en
+> `progress/current.md`: o la medida del spec-author está mal, o algo
+> cambió, y no se arregla tocando la página. El resto de hallazgos de spec
+> (H16-3, H16-4, H16-5, H16-6, O9-7 y O10-1) se cierran solo con texto y no
+> traen tarea.
+
+- [ ] **T48** (H-8, R62 precisado): en la raíz,
+      `tests/test_f035_placeholders_vivos.py`, en
+      `test_f035_r62_partes_e_inicio_siguen_su_propia_regla` (o en un test
+      nuevo junto a él), el caso que separa las dos lecturas: con todas las
+      fichas de `secciones_del_portal()` en `done` **salvo F-045**, en una
+      copia en memoria, `partes` es `parcial` e **`inicio` es `parcial`**.
+      **Verificación**: en la raíz, `python -m pytest tests/test_f035_placeholders_vivos.py -q`
+      en verde. En una copia desechable, `estados_segun_las_fichas` sin
+      `partes` en el cálculo de `inicio` (la lectura de R48) tiene que caer
+      con este caso y no con los de antes (salida al informe).
+- [ ] **T49** (O9-2 y O9-3, R63 enmendado): en `tests/test_f035_paginas.py`,
+      (a) una guardia con la **lista cerrada** de directivas admitidas fuera
+      de todo `data-en-construccion` en `index.html`, como la escribe R63
+      enmendado: cada una por etiqueta, atributo y valor. Las formas ligadas
+      cuentan (`x-bind:`, `x-on:`). Cualquier otra, en rojo, con el nombre de
+      la directiva y su línea. (b) Otra guardia: `rs-obras` (la clase
+      exacta, no `rs-obras--*` ni `rs-obras__*`) solo en elementos
+      `data-en-construccion`, y todo `data-en-construccion` con
+      `rs-obras`. Controles en memoria, uno por caso: un
+      `x-text="bandejaFiltrada().length"` en la cabecera de una sección, un
+      `x-text` con un método en una tarjeta en producción de la portada, un
+      `:title` ligado en una pestaña, el `x-show` de una sección con otro
+      `<id>`, `rs-obras` en una tarjeta real y un `data-en-construccion` sin
+      `rs-obras`.
+      **Verificación**: front `python -m pytest tests -q` en verde. Las
+      supervivientes A1, A2, A4, A5 y A6 (O9-2) y B4 (O9-3) de la review del
+      bloque 9, repetidas en una copia desechable, caen (salida al
+      informe).
+- [ ] **T50** (O9-4, R65 precisado): en `tests/test_f035_paginas.py`, la
+      guardia de R65 rechaza también, en el rótulo y en su envoltorio, las
+      clases `hidden`, `invisible` y `sr-only`, solas o con prefijo
+      (`md:hidden`, `sm:sr-only`…), y el atributo `style`, estático o ligado.
+      Y ninguna regla de `css/portal.css` ni `css/styles.css` cuyo selector
+      nombre una clase `rs-obras*` declara `display: none`,
+      `visibility: hidden` ni `opacity: 0`. Puede reutilizar
+      `_ESCONDE_POR_CLASE` (la de R75: `_OCULTA_DEL_TODO` más `sr-only`),
+      quitando antes el prefijo de cada clase; **sin cambiar** esos dos
+      conjuntos, que usan las guardias de O10-2 y R75. Controles en memoria:
+      `hidden md:flex` en un rótulo, `md:sr-only` en un envoltorio, `style`
+      en un envoltorio y `display: none` en `.rs-obras__rotulo`.
+      **Verificación**: front `python -m pytest tests -q` en verde. C4, C5 y
+      G4 de la review del bloque 9, repetidas en una copia desechable, caen.
+      En las de CSS hay que recalcular la `?v=` o probar la guardia
+      directamente, para que no las mate la versión (salida al informe).
+- [ ] **T51** (O17-2, R53 enmendado): en `tests/test_f035_portal.py`,
+      junto a `test_f035_r53_el_acero_no_se_usa_como_color_de_texto`, la **lista
+      blanca** de R53 enmendado: fuera del `:root` de las dos hojas, toda
+      declaración de la propiedad `color` vale `inherit`, `currentColor` o
+      `var(<token>)`, con un token de la lista. La excepción
+      `--rs-acero-300` solo en `.rs-tarjeta__indice`, y todo elemento con
+      esa clase en las páginas del front lleva `aria-hidden="true"`.
+      Controles en memoria: `.rs-texto--apagado` con
+      `var(--rs-acero-100)` (la C-h de la review del bloque 17), un
+      `color: #777`, `--rs-acero-300` en otra regla y un
+      `rs-tarjeta__indice` sin `aria-hidden`.
+      **Verificación**: front `python -m pytest tests -q` en verde. C-h,
+      repetida en una copia desechable y probando la guardia directamente
+      (sin que la mate la `?v=`), cae (salida al informe).
 - [ ] **T38**: evidencias de la enmienda entera. (a)
       `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Tabla de las mutaciones manuales 14–28 con su resultado (las de cada
@@ -772,6 +850,14 @@ ya pide cada verificación.
       > los de §16.15.7. (d) Vacíos salvo `test_f035_portal.py`, la línea de
       > `ORDEN_CANONICO` de `test_f007_estaticos.py` y las líneas de R51 de
       > `test_f036_front.py` (R81), que se citan con su diff.
+
+      > **Ajuste del 2026-10-06.** (b) Suma una fila por cada superviviente
+      > de review que T48–T51 matan (A1, A2, A4, A5, A6, B4, C4, C5, G4,
+      > C-h y la lectura de R48 en T48), con su resultado. (c) y (d), sin
+      > cambios: T48–T51 solo tocan `tests/test_f035_paginas.py`,
+      > `tests/test_f035_portal.py` y, en la raíz,
+      > `tests/test_f035_placeholders_vivos.py`, que ya están en esas
+      > listas.
 - [ ] **T39**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       **sin caché** y la cobertura en N/A con su motivo. Es la última tarea

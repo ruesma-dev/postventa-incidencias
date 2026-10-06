@@ -1622,6 +1622,11 @@ Bricolage 800 con `clamp(2rem, 5vw, 3.2rem)` e interletrado −0,02 em, con
 (`<ol class="rs-recorrido">`) de siete píldoras numeradas 01–07 unidas por
 una línea fina; los enlaces y sus destinos **no cambian**.
 
+> **Enmienda del 2026-10-06 (R84).** El recorrido sale de la portada y pasa
+> a ser la **tira bajo la barra** de las cuatro páginas, con el paso actual
+> marcado; sus reglas se mudan de `css/portal.css` a `css/styles.css`.
+> Ver §16.16.
+
 **Tarjetas de `inicio`.** Rejilla `repeat(auto-fill, minmax(260px, 1fr))`;
 cada `rs-tarjeta`: papel, borde `--rs-linea`, radio 16, sombra pequeña,
 índice «01…06» arriba a la derecha (Bricolage 700, `--rs-acero-300`,
@@ -2111,6 +2116,12 @@ tome lo inventado por real; cada capa lo ataja en un sitio distinto):
    la etiqueta (`.rs-pestana[data-construccion]::after`, `--rs-atencion`) y
    `aria-label="<etiqueta> (en construcción)"`, para que el lector de
    pantalla lo diga. Avisa **antes** de entrar.
+
+   > **Enmienda del 2026-10-06 (R87).** Los pasos de la tira del recorrido
+   > (§16.16) llevan la misma marca. La regla del punto pasa a ser **una**
+   > con dos selectores (`.rs-pestana[data-construccion]::after,
+   > .rs-recorrido__paso[data-construccion]::after`): es el mismo punto
+   > por construcción, no una copia.
 2. **En la sección** (R63–R65): todo lo inventado va **dentro** de un
    envoltorio `data-en-construccion` que empieza por su rótulo. No es una
    banda que se pierde al desplazarse: es el marco de todo lo que no
@@ -2178,7 +2189,9 @@ visual en tablas que se tienen que poder leer—.
 Funcionan ya la entrada de incidencias (importar el Excel de la obra y los
 oficios repetidos) y el circuito de partes firmados. El resto del ciclo está
 en construcción: lo enseñamos con datos inventados para que veáis cómo
-será.» El recorrido `<ol>` no cambia. Tarjetas: **«Entrada de incidencias»**
+será.» El recorrido `<ol>` no cambia *(enmienda del 2026-10-06: sale de
+la portada y pasa a la tira bajo la barra de las cuatro páginas, §16.16)*.
+Tarjetas: **«Entrada de incidencias»**
 (nueva, «En producción», con «Importar incidencias» → `importar.html` como
 `rs-btn--primario` y «Oficios repetidos» → `oficios.html` como
 `rs-btn--secundario`); «Bandeja de revisión», «Incidencias», «Coste y venta»
@@ -2794,6 +2807,12 @@ fichero nuevo, y para cargarla hacen falta tres cambios, todos cerrados:
 > F-021, que tocarán el circuito) sustituye ese comentario en el mismo
 > cambio. Si el humano prefiere (i), es una línea en R59 (g), la sustitución
 > en `partes.html` y una entrada en la guardia de R59, con su control.
+>
+> **Actualización del 2026-10-06 (el recorrido, §16.16.6).** La tira del
+> recorrido abre la excepción de R59 por otro motivo, así que, por la regla
+> de arriba, el comentario se sustituye **en el mismo cambio**: R59 (i),
+> con su texto literal en §16.16.6 y su control. H16-4 queda en (i) y deja
+> de estar pendiente.
 
 Alternativas descartadas, en una línea cada una:
 
@@ -2937,3 +2956,465 @@ Mutaciones manuales (C4 bis), en una copia aislada, como las 14–28:
   única forma de cargar la guarda sin modificar un módulo del circuito.
   Alternativa: dejar el circuito abriendo aparte (lo que el humano
   descartó) o meter la guarda en `js/app.js` (rompe R33).
+
+### 16.16 · El recorrido en todas las páginas (enmienda del 2026-10-06)
+
+#### 16.16.1 · La petición y cómo se lee
+
+Literal, del humano (2026-10-06): **«me gusta el flujo que sale en la
+portada con los 7 pasos, me gustaría que saliera siempre en todas las
+páginas para visualizar en qué parte del proceso estás»**. Aprobó («si») la
+propuesta del líder, que esta spec adopta:
+
+1. La tira del recorrido de la portada (01 Entrada · 02 Revisión · 03 Sigrid
+   · 04 Gestión · 05 Parte · 06 Cierre · 07 Coste, con sus enlaces) sale
+   **debajo de la barra en las cuatro páginas**: el portal (en todas sus
+   secciones), `partes.html`, `importar.html` y `oficios.html`.
+2. **Marca el paso actual** (`aria-current="step"` y su estilo).
+3. Los pasos de secciones en construcción llevan **el mismo punto ámbar y
+   el mismo nombre accesible** que la barra (R66), coherentes con
+   `Portal.SECCIONES` y su `estado` (R62).
+4. Se navega en la **misma pestaña**, con los mismos enlaces que la barra
+   (`Portal.enlaceSeccion`); desde `partes.html`, con trabajo sin terminar,
+   salta la guarda de salida (R78–R80), igual que con la barra.
+5. Entra en la cabecera de `partes.html` con una excepción **explícita y
+   literal** de R59, como la barra (R81, §16.15.4), sin tocar ningún módulo
+   del circuito.
+6. **Un único origen de verdad** para los pasos.
+
+Requisitos: R83–R89, y R45, R59, R63 y R66 enmendados. Es **presentación y
+navegación del front**: no cruza el límite de servicio, no toca
+`services/postventa-api/` ni nada de Azure, y no cambia lo que el front
+expone ni consume (no hay que tocar `azure-apps/`).
+
+#### 16.16.2 · La correspondencia sección → paso (R83, R86)
+
+`Portal.pasoDeSeccion(id)` devuelve el `num` del **primer** paso de
+`Portal.RECORRIDO` cuya `seccion` es `id`; si no hay ninguno, `null`.
+
+| Dónde se está | Sección | Paso marcado | Por qué |
+|---|---|---|---|
+| Portal, `#/inicio` (y `/`, hash vacío o desconocido, R5) | `inicio` | **ninguno** | La portada no es un paso: enseña el ciclo entero |
+| Portal, `#/entrada` | `entrada` | **01 Entrada** | |
+| Portal, `#/bandeja` | `bandeja` | **02 Revisión** | Ver la nota de 02 y 03 |
+| Portal, `#/incidencias` y `#/incidencias/<id>` (la ficha) | `incidencias` | **04 Gestión** | La ficha es la gestión de una incidencia |
+| Portal, `#/impresion` | `impresion` | **05 Parte** | |
+| Portal, `#/economico` | `economico` | **07 Coste** | |
+| Portal, `#/datos` | `datos` | **ninguno** | «Datos y datamart» no es un paso del ciclo: es transversal |
+| `importar.html`, `oficios.html` | `Portal.PAGINAS[página]` = `entrada` | **01 Entrada** | Son las dos páginas de la sección «Entrada» |
+| `partes.html` | `partes` | **06 Cierre** | El circuito cierra la incidencia con el parte firmado |
+
+**02 y 03 apuntan hoy los dos a `#/bandeja`.** La revisión y el volcado a
+Sigrid (F-040, el panel de volcado) viven en la misma sección. Como
+`aria-current` tiene que señalar **un** elemento del conjunto, con la
+bandeja visible se marca **solo 02 Revisión**, que es lo primero que hace
+la bandeja. **03 Sigrid no se marca nunca** mientras no tenga sitio
+propio. Pulsar «03 Sigrid» lleva a la bandeja y se ilumina 02. Es lo
+esperado, y V1 (r) lo pide mirar. Cuando una ficha dé al volcado un sitio
+propio, cambia la `seccion` del paso `03` en `Portal.RECORRIDO`, y las
+guardias de §16.16.7 exigen cambiar con ella las cuatro tiras.
+
+Los enlaces y sus destinos **no cambian** respecto a la tira de la
+portada (§15.5): son `enlaceSeccion(paso.seccion, desde)`.
+
+#### 16.16.3 · Un único origen de verdad: `Portal.RECORRIDO` y una guardia (R83, R84)
+
+```js
+// js/portal.js, junto a SECCIONES y PAGINAS
+/**
+ * El ciclo de una incidencia, la tira bajo la barra de las cuatro páginas
+ * (R83-R87, design.md §16.16). `seccion` es la de Portal.SECCIONES a la que
+ * lleva el paso; el enlace sale de enlaceSeccion(seccion, desde). 02 y 03
+ * van a la misma sección (la bandeja): el actual es el PRIMERO
+ * (pasoDeSeccion), así que 03 no se marca mientras no tenga sitio propio.
+ */
+const RECORRIDO = congelarLista([
+  { num: "01", etiqueta: "Entrada", seccion: "entrada" },
+  { num: "02", etiqueta: "Revisión", seccion: "bandeja" },
+  { num: "03", etiqueta: "Sigrid", seccion: "bandeja" },
+  { num: "04", etiqueta: "Gestión", seccion: "incidencias" },
+  { num: "05", etiqueta: "Parte", seccion: "impresion" },
+  { num: "06", etiqueta: "Cierre", seccion: "partes" },
+  { num: "07", etiqueta: "Coste", seccion: "economico" },
+]);
+
+/** El num del primer paso de esa sección, o null; nunca lanza (R83). */
+function pasoDeSeccion(id) { … }
+```
+
+Se exportan los dos en el objeto `Portal`, y el comentario de cabecera de
+`js/portal.js` los lista. `js/portal_app.js` **no cambia**: el portal
+marca el paso con `seccion`, que el componente ya tiene, como la barra.
+
+**Por qué el HTML está escrito en las cuatro páginas, vigilado por una
+guardia, y no se genera desde `Portal`.** Es el mismo mecanismo que la
+barra (R44: HTML a mano, comparado con `Portal.SECCIONES` y
+`enlaceSeccion` por `tests_js/portal.test.js`):
+
+- `partes.html`, `importar.html` y `oficios.html` **no pueden cargar
+  `js/portal.js`** (R77). En `partes.html`, generar la tira con JavaScript
+  sería código nuevo en el circuito: otro `<script>` y otra excepción de
+  R59 y R81, que es justo lo que se pide no tocar. R45 quiere además la
+  barra estática, y la tira va con ella.
+- Generarla solo en el portal (`x-for` sobre `Portal.RECORRIDO`) dejaría
+  igualmente tres copias a mano, y con dos mecanismos distintos para lo
+  mismo.
+- Con la guardia, la fuente es `Portal.RECORRIDO` (más `SECCIONES`,
+  `PAGINAS`, `enlaceSeccion`, `enConstruccion` y `pasoDeSeccion`), y cada
+  una de las cuatro copias se compara con ella: número, etiqueta y orden de
+  los pasos, `href`, paso actual, punto y `aria-label`. Si las cuatro
+  cumplen con la fuente, cumplen entre sí. Cambiar un paso, o el estado de
+  una sección (F-038 `done` → `bandeja` `parcial`), deja en rojo las tiras
+  que no se actualicen en el mismo trabajo, igual que pasa ya con las
+  barras.
+
+Por eso, **en ningún sitio hace falta JavaScript nuevo para el paso
+actual**. En las tres páginas reales es fijo y va escrito en el HTML. En el
+portal, un `:aria-current` por paso, con la misma forma que el de la barra
+(`seccion === '<id>' ? … : false`), que Alpine ya evalúa.
+
+#### 16.16.4 · Dónde va y cómo se ve (R84, R86, R87, R88)
+
+- **Sitio**: hermano **inmediatamente siguiente** del
+  `<nav data-barra-portal>`, en las cuatro páginas. En el portal queda
+  entre la barra y el aviso de construcción (`data-aviso-maqueta`). R13
+  solo exige que el aviso vaya tras la barra, y lo sigue haciendo. En las
+  páginas reales, entre la barra y la `<header class="rs-cabecera">`.
+- **No es pegajosa.** La barra ya lo es (`position: sticky`) y ya marca la
+  sección. Pegar también la tira sumaría arriba, siempre, una fila más en
+  escritorio y tres o cuatro en el móvil (las siete píldoras bajan de
+  línea). La tira se ve al llegar a cada página y se va al desplazarse.
+- **Una sola tira por página.** La `<ol class="rs-recorrido">` de la
+  sección `inicio` **se quita**: la tira bajo la barra se ve también en la
+  portada y repetirla dentro de su cabecera sería ruido. La cabecera
+  (`rs-hero`) termina en la entradilla y siguen las tarjetas.
+- **Aspecto**: el de la portada, sin cambios en las píldoras
+  (`rs-recorrido`, `rs-recorrido__paso`, `rs-recorrido__num`), dentro de una
+  banda `rs-recorrido-banda` al ancho del contenido (`rs-contenedor`), con
+  un filete inferior `--rs-linea` y sin fondo propio (se ve el lienzo).
+  En el móvil las píldoras bajan de línea, como hoy (sin desplazamiento
+  horizontal, V1 e).
+- **El paso actual** lo pinta `aria-current="step"`, no una clase, como la
+  pestaña actual (R51): borde y texto `--rs-burdeos` sobre
+  `--rs-burdeos-suave`, peso 600, y el número en `--rs-papel` sobre
+  `--rs-burdeos`. Los dos pares ya están medidos en §15.6 (6,29 y 7,35:
+  pestaña actual y botón principal), y sus colores de texto están en la
+  lista blanca de R53.
+- **El punto ámbar**: la **misma regla** que el de las pestañas, con un
+  selector más (§16.4, capa 1, enmendada). `.rs-recorrido__paso` ya es
+  `inline-flex`, así que el `::after` conserva sus 6 px.
+- **Las hojas**: las reglas de `rs-recorrido*` se **mudan** de
+  `css/portal.css` a `css/styles.css`, porque las páginas reales no cargan
+  `portal.css` (R77). Se mudan tal cual, salvo dos cambios: el `:hover`
+  pasa a `a.rs-recorrido__paso:hover` (y su `.rs-recorrido__num`), como
+  `a.rs-pestana:hover`, para que el paso actual sin enlace no reaccione al
+  ratón; y se suma el estilo del paso actual. Las dos hojas cambian, así
+  que la `?v=` se recalcula en las cuatro páginas (R59 e, R72).
+
+Bloque nuevo de `css/styles.css`, tras el de la barra:
+
+```css
+/* ---------- El recorrido de una incidencia (las cuatro páginas, R84-R88) ----- */
+
+/* La banda bajo la barra: no es pegajosa (la barra ya lo es) y va al ancho
+   del contenido. */
+.rs-recorrido-banda {
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--rs-linea);
+}
+
+/* .rs-recorrido, .rs-recorrido > li, .rs-recorrido > li + li::before, su
+   @media (max-width: 560px), .rs-recorrido__paso y .rs-recorrido__num:
+   movidas TAL CUAL de css/portal.css. */
+
+a.rs-recorrido__paso:hover {
+  border-color: var(--rs-burdeos);
+  color: var(--rs-burdeos);
+}
+
+a.rs-recorrido__paso:hover .rs-recorrido__num {
+  background-color: var(--rs-burdeos-suave);
+  color: var(--rs-burdeos);
+}
+
+/* El paso actual lo pinta aria-current="step", no una clase (R86). */
+.rs-recorrido__paso[aria-current="step"] {
+  border-color: var(--rs-burdeos);
+  background-color: var(--rs-burdeos-suave);
+  color: var(--rs-burdeos);
+  font-weight: 600;
+}
+
+.rs-recorrido__paso[aria-current="step"] .rs-recorrido__num {
+  background-color: var(--rs-burdeos);
+  color: var(--rs-papel);
+}
+```
+
+Y la regla del punto, en su sitio de siempre:
+
+```css
+.rs-pestana[data-construccion]::after,
+.rs-recorrido__paso[data-construccion]::after {
+  /* las mismas declaraciones de hoy, sin cambiar ninguna */
+}
+```
+
+**Alternativas descartadas**:
+
+- **La tira dentro de la barra**, como fila bajo `rs-barra__fila`. En
+  `partes.html` no habría tocado R59, porque la guardia quita la barra
+  entera. Pero la tira sería pegajosa (ver arriba), mezclaría dos
+  navegaciones en un `<nav>` y haría que las guardias de la barra (R44,
+  R51, R66, que buscan pestañas por su texto dentro de ella) tuvieran que
+  saltarse los pasos.
+- **Pegajosa, aparte de la barra**: por el espacio, como arriba.
+- **Conservar también la tira de la portada**: dos tiras iguales en la
+  misma pantalla.
+- **Marcar 02 y 03 a la vez con la bandeja visible**: `aria-current` señala
+  un elemento del conjunto, y dos marcados no dicen «dónde estás».
+- **Cambiar el destino de 03**: no hay hoy otro sitio para el volcado, y
+  los destinos de la tira no cambian (§15.5).
+
+#### 16.16.5 · El marcado, página a página
+
+**`index.html`**, entre el `</nav>` de la barra y el comentario del aviso
+de construcción:
+
+```html
+    <!-- ── El recorrido de una incidencia (R83-R87), bajo la barra ─────────
+         Los pasos, su orden y su sección son los de Portal.RECORRIDO; los
+         href, los de Portal.enlaceSeccion(paso.seccion, "portal"). El paso
+         actual lo pinta aria-current="step" (css/styles.css): el de
+         Portal.pasoDeSeccion de la sección visible; en inicio y en datos,
+         ninguno. 02 y 03 van los dos a la bandeja: solo se marca 02. Los
+         pasos de secciones en construcción, con el punto de la barra (R87). -->
+    <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
+      <div class="rs-contenedor">
+        <ol class="rs-recorrido">
+          <li><a href="#/entrada" class="rs-recorrido__paso" :aria-current="seccion === 'entrada' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
+          <li><a href="#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)" :aria-current="seccion === 'bandeja' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
+          <li><a href="#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
+          <li><a href="#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)" :aria-current="seccion === 'incidencias' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)" :aria-current="seccion === 'impresion' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>
+          <li><a href="#/economico" class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)" :aria-current="seccion === 'economico' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+      </div>
+    </nav>
+```
+
+Y en la sección `inicio` se **quita** la `<ol class="rs-recorrido"
+aria-label="El ciclo de una incidencia">` con sus siete `<li>`. Las cinco
+`:aria-current` nuevas son las de R63 enmendado. Fuera de ellas, la tira
+del portal no lleva ninguna directiva.
+
+**`importar.html` y `oficios.html`**, entre el `</nav>` de la barra y el
+comentario de las migas. Es el mismo bloque en las dos, con el nombre de
+la página en el comentario:
+
+```html
+    <!-- F-035 · El recorrido de una incidencia (R83-R88), en HTML PLANO como
+         la barra. 01 Entrada es el paso de esta página (Portal.PAGINAS): el
+         actual, sin enlace. Los demás href son los de
+         Portal.enlaceSeccion(paso.seccion, "importar.html"), en la misma
+         pestaña (R73). -->
+    <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
+      <div class="rs-contenedor">
+        <ol class="rs-recorrido">
+          <li><span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</span></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
+          <li><a href="./#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="./#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>
+          <li><a href="./#/economico" class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+      </div>
+    </nav>
+```
+
+En `oficios.html`, el comentario dice `"oficios.html"`. Ninguno de los dos
+lleva atributos funcionales, así que las huellas de O10-3 y O11-5 no
+cambian.
+
+**`partes.html`**: §16.16.6.
+
+#### 16.16.6 · La excepción de `partes.html` (R59 h e i, R89): líneas literales
+
+Dos cambios, y ninguno más. Ningún módulo del circuito, ningún `<script>`,
+ningún test de la base.
+
+**(h) La tira**, insertada entre la línea en blanco que sigue al `</nav>`
+de la barra (hoy, línea 51) y `<header class="rs-cabecera">` (hoy, línea
+53), con una línea en blanco detrás. Literal:
+
+```html
+    <!-- F-035 · El recorrido de una incidencia (R83-R89), en HTML PLANO como
+         la barra: ni una directiva de Alpine, ni script, ni botón (R88).
+         06 Cierre es esta página, el paso actual, sin enlace. Los demás
+         href son los de Portal.enlaceSeccion(paso.seccion, "circuito"), en
+         la MISMA pestaña: con una remesa a medias, la guarda de salida pide
+         confirmación (R78), igual que desde la barra. -->
+    <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
+      <div class="rs-contenedor">
+        <ol class="rs-recorrido">
+          <li><a href="./#/entrada" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
+          <li><a href="./#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
+          <li><a href="./#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="./#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</span></li>
+          <li><a href="./#/economico" class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+      </div>
+    </nav>
+```
+
+**(i) El comentario de F-036** de la cabecera (hoy, líneas 58–59). Sale:
+
+```html
+          <!-- F-036 (R51) · la entrada de incidencias, en otra pestaña: salir
+               de esta perdería la remesa en curso (D4 de F-007). -->
+```
+
+y entra, con la misma sangría:
+
+```html
+          <!-- F-036 (R51) · la entrada de incidencias, en la misma pestaña
+               (F-035, R73): con una remesa a medias, la guarda de salida
+               pide confirmación antes de salir (R78). -->
+```
+
+**La guardia de R59** (`diferencias_de_presentacion`, en
+`tests/test_f035_portal.py`) gana dos pasos, con la misma forma que los de
+(c), (f) y (g):
+
+- `_quita_recorrido(ts, sitio)`, después de `_quita_barra`. En el lado
+  `partes.html`, si en `sitio` (donde estaba la barra), tras los
+  comentarios que lo preceden, empieza un `<nav>` con `data-recorrido`,
+  quita esos comentarios y el `<nav>` entero hasta su cierre (contando la
+  profundidad de `nav`). Solo **uno** y solo **ahí**: una tira en otro
+  sitio, o una segunda, quedan como diferencia. En el lado de la base no
+  hay tira.
+- `_COMENTARIO_F036_VIEJO` y `_COMENTARIO_F036_NUEVO`, los textos
+  literales de (i) con los blancos normalizados. En el lado `partes.html`,
+  **ese** comentario nuevo se cambia por el viejo antes de comparar.
+  Cualquier otro texto, en ese comentario o en otro, sigue siendo
+  diferencia.
+
+El docstring de la función suma (h) e (i). Lo de **dentro** de la tira no
+lo mira R59, porque la quita entera: lo vigilan las guardias de R84–R88
+(§16.16.7), que también son las que exigen que en `partes.html` sea
+estática.
+
+#### 16.16.7 · Ficheros
+
+| Ruta | Qué cambia |
+|---|---|
+| `services/postventa-front/js/portal.js` | `RECORRIDO`, `pasoDeSeccion`; exportados; el comentario de cabecera los lista |
+| `services/postventa-front/index.html` | La tira tras la barra (§16.16.5); fuera la `<ol>` de `inicio`; `?v=` |
+| `services/postventa-front/importar.html`, `oficios.html` | La tira tras la barra; `?v=` |
+| `services/postventa-front/partes.html` | (h) y (i) de §16.16.6; `?v=` |
+| `services/postventa-front/css/styles.css` | El bloque de §16.16.4; el selector más en la regla del punto |
+| `services/postventa-front/css/portal.css` | Salen las reglas de `rs-recorrido*` |
+| `services/postventa-front/tests_js/portal.test.js` | Tests puros de `RECORRIDO` y `pasoDeSeccion`; la guardia de la tira en las cuatro páginas, con sus controles |
+| `services/postventa-front/tests/test_f035_portal.py` | R59 (h) e (i), con tres controles más en `ESTROPEOS_T21` o junto a ellos |
+| `services/postventa-front/tests/test_f035_paginas.py` | R63 (la entrada nueva de `directivas_admitidas_r63` y el recuento de 7 a 12); las hojas (R88); el paso actual en la hoja (R86); la cascada del punto (H-6) también para `.rs-recorrido__paso` |
+| `services/postventa-front/README.md` | La tira, su fuente y el paso 5 de la retirada (al cambiar el estado de una sección, barra **y tira** en las cuatro páginas) |
+| `docs/ARCHITECTURE.md` | Una línea en «El portal de posventa (F-035)»: la tira y `Portal.RECORRIDO` |
+
+**No se tocan**: los nueve módulos del circuito y `js/guarda_salida.js`;
+`js/portal_app.js` (el portal marca con `seccion`, que ya tiene);
+`js/maqueta_datos.js`; `js/importacion.js`, `js/oficios.js`, `js/api.js`,
+`js/config.js`, `js/traza.js`; **ningún test de la base** (`test_f007_*`,
+`test_f036_front.py`, `tests_js/importacion.test.js`,
+`tests_js/oficios.test.js` y los del circuito); `staticwebapp.config.json`,
+`dev_server.py`, `dev_front.ps1`; `infra/*`; `services/postventa-api/`;
+`harness/features.json`. Si un test de la base sale en rojo por la tira,
+**PARA**: no se toca el test, se anota y se vuelve a proponer.
+
+**Las guardias, una por requisito, cada una con su control en memoria**:
+
+| Guardia | Dónde | Qué mira | Controles (en rojo) |
+|---|---|---|---|
+| R83 | `tests_js/portal.test.js` | `RECORRIDO`: siete pasos, `num` `01`–`07`, etiquetas y secciones de la tabla de §16.16.2, cada `seccion` en `SECCIONES`, lista y pasos congelados; `pasoDeSeccion` con la tabla entera, más `"desconocida"`, `""`, `undefined`, `null` y `7`, que dan `null` sin lanzar | (la mutación manual 37) |
+| R84–R87 | `tests_js/portal.test.js`, una función `problemasDelRecorrido(html, Portal, desde)` que devuelve una lista, como `problemasR66` | Por página: una sola `[data-recorrido]`, que es un `<nav>` con su `aria-label` y es el **hermano siguiente** de la barra; una sola `rs-recorrido` en la página; siete `<li>`, en orden, cada uno con un `rs-recorrido__paso` y su `rs-recorrido__num` `aria-hidden="true"`; número y etiqueta contra `RECORRIDO`; enlace contra `enlaceSeccion(paso.seccion, desde)` (`null` → `<span aria-current="step">` sin `href`), sin `target` ni `rel`; paso actual: en las páginas reales, `aria-current="step"` solo en `pasoDeSeccion(<sección de la página>)`; en el portal, `:aria-current` exactamente `seccion === '<seccion>' ? 'step' : false` solo en los pasos con `pasoDeSeccion(paso.seccion) === paso.num`, ninguno con `aria-current` estático; `data-construccion` y `aria-label` según `enConstruccion`; ninguna forma ligada; ningún `:class` | En una copia en memoria: «Gestión» → «Gestion» en `oficios.html`; dos pasos cambiados de orden en el portal; sin `data-construccion` en 07 de `oficios.html`; `data-construccion` en 01 de `importar.html`; `aria-current="step"` también en 05 de `partes.html`; 06 de `partes.html` como `<a href>`; `:aria-current` en 03 del portal; el de 04 del portal con `'impresion'`; la tira de `importar.html` tras `</header>`; una segunda tira; la `<ol>` de `inicio` repuesta; `target="_blank"` en un paso; y `Portal` falso con la `seccion` de `07` cambiada a `datos` (la guardia lee la fuente, no una lista copiada) |
+| R88 (estática) | `tests_js/portal.test.js` | En `partes.html`, `importar.html` y `oficios.html`, dentro de `[data-recorrido]`: ningún atributo `x-*`, `@*` ni `:*`, ni `<script>`, `<button>`, `<form>` ni `<input>` | Un `x-show` en la tira de `partes.html`; un `<button>` en la de `oficios.html` |
+| R88 (hojas) | `tests/test_f035_paginas.py` | Ninguna regla de `css/portal.css` nombra `rs-recorrido`; `css/styles.css` tiene `.rs-recorrido`, `.rs-recorrido__paso`, `.rs-recorrido__num` y `.rs-recorrido-banda` | Las reglas de vuelta en `portal.css` |
+| R86 (hoja) | `tests/test_f035_paginas.py` | Existe `.rs-recorrido__paso[aria-current="step"]` en `css/styles.css` con `color: var(--rs-burdeos)` | Sin la regla; con otro color |
+| R87 (cascada) | `tests/test_f035_paginas.py`, generalizando `problemas_de_la_cascada_r66` | Lo de hoy para `.rs-pestana`, y lo mismo para `.rs-recorrido__paso`: una sola regla sobre su `::after` (la compartida), sin `display`, `visibility`, `opacity` ni `background`, y `.rs-recorrido__paso` `inline-flex` o `flex` | `ESTROPEOS_H6` sigue en rojo, y entran dos: `.rs-recorrido__paso { display: block }` y otra regla sobre `.rs-recorrido__paso::after` |
+| R63 | `tests/test_f035_paginas.py` | La entrada nueva de la lista cerrada (R63 enmendado): primer paso con su `href` `#/<id>`; recuento a 12 | `:aria-current` en 03; el de 04 con otro id; un `x-text` en un paso |
+| R59 | `tests/test_f035_portal.py` | (h) e (i) | La tira tras `</header>`; dos tiras; otro texto en el comentario de F-036 |
+
+Los demás tests que tocan lo mismo **siguen en verde sin cambios**, porque
+miran la barra y no la tira: R44, R51, R66 (`pestanasDeLaBarra` corta en
+el primer `</nav>`, que es el de la barra), R13 (el aviso, tras la barra),
+R17 (destinos admitidos), R73 (ningún `target`), y las huellas de O10-3 y
+O11-5 (la tira no tiene atributos funcionales). Los de R49, R53, R55 y R60
+también cubren las reglas movidas.
+
+#### 16.16.8 · Cómo se prueba
+
+Todo sin red, sin BBDD y sin IA.
+
+| Requisito | Test |
+|---|---|
+| R83 | `tests_js/portal.test.js`: los puros de §16.16.7 |
+| R84, R85, R86 (HTML), R87 (HTML) | `tests_js/portal.test.js`: `problemasDelRecorrido` sobre las cuatro páginas, `[]` en cada una, y sus controles |
+| R85 (la guarda desde la tira) | Sin test nuevo: la guarda escucha `beforeunload`, que se dispara con cualquier enlace (§16.15.3), y sus tests son los de R78. Lo comprueba V2 (s) |
+| R86 (hoja), R87 (cascada), R88 | `tests/test_f035_paginas.py` y `tests_js/portal.test.js`, con sus controles |
+| R63 enmendado | `tests/test_f035_paginas.py` |
+| R59 (h, i), R89 | `tests/test_f035_portal.py` (R59), y R32, R33 y R43 tal como están: siguen en verde sin tocarse |
+| V1 (r), V2 (s), V5 | Manual, humano (`requirements.md` §3) |
+
+Mutaciones manuales (C4 bis), en un worktree desechable del scratchpad,
+como las 14–36:
+
+37. `pasoDeSeccion("bandeja")` devuelve `"03"` (el último paso, no el
+    primero) → cae R83.
+38. En `importar.html`, 01 como `<a href="./#/entrada">` → cae R85/R86.
+39. En `partes.html`, `aria-current="step"` también en 05 → cae R86.
+40. En el portal, el `:aria-current` de 04 con `'impresion'` → cae R86
+    (JS) y R63 (Py).
+41. En el portal, `:aria-current` también en 03 → cae R86 y R63.
+42. Sin `data-construccion` en 07 de `oficios.html` → cae R87.
+43. `data-construccion` en 06 de `partes.html` → cae R87.
+44. La tira de `partes.html` movida tras `</header>` → cae R84 y R59 (h).
+45. Un `x-show="true"` en la tira de `partes.html` → cae R88 (R59 no lo ve
+    porque quita la tira entera: por eso existe R88).
+46. Las reglas `rs-recorrido*` de vuelta en `css/portal.css` → cae R88.
+47. Otro texto en el comentario de F-036 de `partes.html` → cae R59 (i).
+48. La `<ol class="rs-recorrido">` de `inicio` repuesta junto a la tira →
+    cae R84.
+49. «Gestión» → «Gestion» solo en `oficios.html` → cae R84.
+50. `.rs-recorrido__paso { display: block; }` → cae la cascada de R87.
+
+En las de CSS, la `?v=` se recalcula o la guardia se prueba directamente,
+para que no las mate la versión (como en T50 y T51).
+
+#### 16.16.9 · Riesgos
+
+| Riesgo | Mitigación | Dónde se ve |
+|---|---|---|
+| La tira ocupa alto, sobre todo en el móvil (tres o cuatro filas a 390 px) | No es pegajosa; la barra sí, y ya marca la sección | V1 (r), V5 |
+| «03 Sigrid» lleva a la bandeja y se marca «02 Revisión» | Decidido y explicado (§16.16.2); el humano lo mira en V1 (r) | V1 (r) |
+| Se cambia el estado de una sección y una tira se queda con el punto viejo | La guardia lee `enConstruccion` de `Portal`, y la de la raíz (R62) obliga a cambiar `SECCIONES`: mientras falte una tira, rojo. El README lo añade al paso 5 de la retirada | `init.sh` |
+| Un test de la base cae por la tira (un enlace o un `<nav>` más en `partes.html`) | No se toca el test: **PARA** y se vuelve a proponer | `init.sh` |
+| `:aria-current` con `false` deja el atributo puesto | Es el mismo patrón de la barra, ya en producción en el portal (Alpine 3 quita el atributo con `false`) | V1 (r), F12 |
+| La guarda no salta al salir por la tira | La tira son enlaces normales y la guarda escucha `beforeunload`, sin mirar por dónde se sale | V2 (s) |
+
+#### 16.16.10 · Decisiones (tomadas, para que el humano las valide)
+
+- **D-17 · La tira no es pegajosa**: se ve al llegar a cada página y se va
+  al desplazarse (la barra sigue pegada). Alternativa: pegarla con la barra
+  (más alto fijo arriba, sobre todo en el móvil).
+- **D-18 · La correspondencia de §16.16.2**: «Inicio» y «Datos y
+  datamart» no marcan ningún paso; con la bandeja se marca solo 02, y 03
+  no se marca hasta que el volcado tenga sitio propio. Alternativa: marcar
+  02 y 03 a la vez (descartada por accesibilidad).
+- **D-19 · La portada pierde su copia**, la que iba dentro de la cabecera:
+  una sola tira por página.
+- **D-20 · H16-4 pasa a (i)**: ya que se abre la excepción de R59, el
+  comentario desfasado de F-036 en `partes.html` se sustituye en el mismo
+  cambio, como dejaba escrito §16.15.4.

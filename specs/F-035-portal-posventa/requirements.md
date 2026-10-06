@@ -93,6 +93,13 @@
 > todo lo que ve el usuario; los nombres de ficheros y atributos
 > (`maqueta_datos.js`, `data-aviso-maqueta`) no cambian.
 
+> **Enmienda del 2026-10-06 · el recorrido en todas las páginas.** Con los
+> bloques de código aprobados (`a8d78d2`, `fa2ed21`), el humano pide que la
+> tira de los siete pasos de la portada salga en todas las páginas, con el
+> paso en que se está marcado. Entran **R83–R89** (§1.13); enmendados
+> **R45, R59, R63 y R66**; V1, V2 y V5 añaden pasos (§3). Diseño:
+> `design.md` §16.16. Tareas: bloque 18, antes del bloque 15.
+
 ## 0 · Qué es esta feature y qué no
 
 El proyecto se amplía a **todo el ciclo de posventa**: entrada de incidencias
@@ -562,6 +569,10 @@ Decisiones D-1, D-2 y D-3 del humano (`design.md` §13.1).
 - **R45.** La barra superior de `partes.html` debe ser HTML estático: ningún
   atributo que empiece por `x-`, `@` o `:`, y ningún `<script>`, `<button>`,
   `<form>` ni `<input>` dentro de ella.
+
+  > **Enmienda del 2026-10-06 (R88, el recorrido en todas las páginas).** Lo
+  > mismo vale para la tira del recorrido (`<nav data-recorrido>`, R84) de
+  > `partes.html`, `importar.html` y `oficios.html`.
 - **R46.** CUANDO en el portal se pulsa la pestaña «Partes firmados», el
   enlace al circuito de la tarjeta de `inicio` o el de la pestaña «Parte» de
   la ficha, el sistema debe llevar a `partes.html` **en la misma pestaña**
@@ -724,6 +735,26 @@ Referencia de estilo: `front-portal/public` (`assets/css/styles.css` e
   > en rojo, y entran dos más: un segundo `<script>` nuevo y la retirada de
   > `target` en un enlace que no sea uno de esos dos (por ejemplo, el de
   > «abrir en SharePoint», que sigue abriendo aparte porque no es del front).
+  >
+  > **Enmienda del 2026-10-06 (el recorrido en todas las páginas, R83–R89;
+  > `design.md` §16.16.6), admitida de forma explícita y literal.** Se suman
+  > **(h)** la tira del recorrido —un único `<nav data-recorrido>`, con el
+  > comentario que la precede— insertada **inmediatamente después** de la
+  > barra de (c), como su hermano siguiente dentro del
+  > `<div x-data="appPostventa()">`; y **(i)** en la cabecera, la
+  > sustitución **literal** del comentario de F-036 que precede a los dos
+  > enlaces de importar y oficios (el desfasado de H16-4, «en otra pestaña:
+  > salir de esta perdería la remesa en curso») por el de `design.md`
+  > §16.16.6. **Solo eso**: la tira en otro sitio, dos tiras, otro texto en
+  > ese comentario o cualquier otro comentario cambiado siguen siendo
+  > diferencias. R59 quita la tira entera, como quita la barra; lo que va
+  > **dentro** lo vigilan R84–R88, como lo de dentro de la barra lo vigilan
+  > R44–R47 y R66. La tira **no lleva JavaScript** en el circuito: su paso
+  > actual es fijo (06 Cierre) y va escrito en el HTML; ningún módulo del
+  > circuito cambia (R33) y no se añade ningún `<script>` (R43 y R81 no
+  > cambian). Controles: los de `ESTROPEOS_T21` y los de (f) y (g) siguen
+  > en rojo, y entran tres: la tira tras `</header>`, una segunda tira, y
+  > otro texto en el comentario de F-036.
 - **R60.** `css/styles.css` y `css/portal.css` no deben llevar `!important`
   (salvo la regla `[x-cloak]` de `css/portal.css`), ni `@import`, ni `url(data:…)`;
   y `partes.html` no debe llevar ningún atributo `style` estático (los estilos
@@ -816,6 +847,18 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   > y todo elemento `data-en-construccion` lleva `rs-obras`. Las
   > subclases `rs-obras--*` y `rs-obras__*` no cuentan como `rs-obras`. Tests:
   > T49.
+  >
+  > **Enmienda del 2026-10-06 (R86) · la tira del recorrido.** La lista
+  > cerrada gana **una** entrada: en la `<a class="rs-recorrido__paso">` de
+  > la tira (descendiente de `[data-recorrido]`) que es el **primer** paso
+  > de la tira con su `href` `#/<id>`,
+  > `:aria-current="seccion === '<id>' ? 'step' : false"`. Son cinco: 01
+  > (`entrada`), 02 (`bandeja`), 04 (`incidencias`), 05 (`impresion`) y 07
+  > (`economico`). 03 Sigrid —el segundo paso a `#/bandeja`— y 06 Cierre
+  > —a `partes.html`— no llevan ninguna. «Primer paso con ese `href`» es la
+  > regla de `Portal.pasoDeSeccion` (R83) leída en el HTML, sin ejecutar
+  > JavaScript. El recuento de `test_f035_r63_la_lista_cerrada_mira_algo`
+  > pasa de 7 a **12** `:aria-current` en `<a>`. Tests: T54.
 - **R64.** MIENTRAS una sección del portal esté en `construccion`, su bloque
   `data-seccion` debe tener, después de su cabecera, un único envoltorio
   `data-en-construccion="<id de la sección>"` con todo su contenido; y SI la
@@ -848,6 +891,15 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
   `data-construccion`, la marca visual de `design.md` §16.4 y el nombre
   accesible `aria-label="<etiqueta> (en construcción)"`; y ninguna otra
   pestaña debe llevarlos.
+
+  > **Enmienda del 2026-10-06 (R87).** Los pasos de la tira del recorrido
+  > llevan la misma marca según el estado de la sección de su paso:
+  > `data-construccion`, **el mismo punto** (la regla de `design.md` §16.4,
+  > capa 1, pasa a ser una lista de dos selectores,
+  > `.rs-pestana[data-construccion]::after` y
+  > `.rs-recorrido__paso[data-construccion]::after`) y
+  > `aria-label="<etiqueta del paso> (en construcción)"`. «Ninguna otra
+  > pestaña» sigue hablando de la barra; los pasos tienen su regla en R87.
 - **R67.** La portada (`inicio`) no debe enseñar **ninguna cifra** de los
   datos de ejemplo; cada tarjeta de una sección en `construccion` debe llevar
   el chip «En construcción», y las de lo que funciona —«Entrada de
@@ -1052,6 +1104,83 @@ Decisiones del humano del 2026-10-05, transmitidas por el líder (acta en
 > «visible») y **R79** (H16-3, la firma; H16-6, (d) frente a (c)). Sus
 > tests nuevos son T48–T51, del bloque 14.
 
+### 1.13 · El recorrido en todas las páginas (enmienda del 2026-10-06)
+
+Petición del humano (2026-10-06), literal: «me gusta el flujo que sale en la
+portada con los 7 pasos, me gustaría que saliera siempre en todas las
+páginas para visualizar en qué parte del proceso estás». Aprobó («si») la
+propuesta del líder: la tira del recorrido de la portada, debajo de la barra
+en las cuatro páginas, con el paso actual marcado, el punto ámbar de R66, la
+misma pestaña y un único origen de verdad. Diseño: `design.md` §16.16.
+Cambian **R45, R59, R63 y R66** (notas en su sitio) y entran **R83–R89**.
+
+- **R83.** El sistema debe declarar en `Portal.RECORRIDO` (`js/portal.js`)
+  los siete pasos del ciclo de una incidencia, en su orden, cada uno con
+  `num`, `etiqueta` y `seccion` (un `id` de `Portal.SECCIONES`): `01`
+  Entrada → `entrada`; `02` Revisión → `bandeja`; `03` Sigrid → `bandeja`;
+  `04` Gestión → `incidencias`; `05` Parte → `impresion`; `06` Cierre →
+  `partes`; `07` Coste → `economico`. Y `Portal.pasoDeSeccion(id)` debe
+  devolver el `num` del **primer** paso cuya `seccion` es `id` —`"02"` para
+  `bandeja`, nunca `"03"`—, o `null` SI ningún paso es de esa sección
+  (`inicio`, `datos`) o el `id` es desconocido, vacío o no es texto, sin
+  lanzar nunca.
+- **R84.** Las cuatro páginas con barra (`index.html`, `partes.html`,
+  `importar.html` y `oficios.html`) deben mostrar, como **hermano siguiente**
+  del `<nav data-barra-portal>` (sin ningún elemento en medio), una única
+  tira del recorrido: `<nav data-recorrido aria-label="El ciclo de una
+  incidencia" class="rs-recorrido-banda">` con un único
+  `<ol class="rs-recorrido">` de siete `<li>`, uno por paso de
+  `Portal.RECORRIDO` y en su orden, cada uno con un único elemento
+  `rs-recorrido__paso` que lleva su número en
+  `<span class="rs-recorrido__num" aria-hidden="true">` y su etiqueta. Y
+  ninguna página debe tener otra `rs-recorrido`: la de la sección `inicio`
+  se muda a la tira (`design.md` §16.16.4).
+- **R85.** Cada paso de la tira debe enlazar a
+  `Portal.enlaceSeccion(paso.seccion, desde)` —`desde` es `"portal"` en
+  `index.html`, `"circuito"` en `partes.html` y el nombre de la página en
+  `importar.html` y `oficios.html`, como su barra (R44)— con un `<a href>`
+  sin `target` ni `rel` (misma pestaña, R73); y SI `enlaceSeccion` devuelve
+  `null` (el paso de la propia página), ENTONCES el paso debe ser un
+  `<span aria-current="step">` sin `href`. Desde `partes.html`, salir por
+  la tira con trabajo sin terminar pide confirmación como salir por la
+  barra (R78–R80), sin nada nuevo: la guarda escucha `beforeunload`.
+- **R86.** La tira debe marcar como paso actual, con
+  `aria-current="step"`, el paso `Portal.pasoDeSeccion(<sección actual>)`
+  y **ningún otro**: en `importar.html` y `oficios.html`, el de
+  `Portal.PAGINAS[<página>]` (hoy `entrada`: 01), estático; en
+  `partes.html`, el de `partes` (06), estático; en el portal, MIENTRAS la
+  sección visible sea `<id>`, el paso `pasoDeSeccion(<id>)`, con
+  `:aria-current="seccion === '<id>' ? 'step' : false"` en ese paso y en
+  ningún otro (la ficha `#/incidencias/<id>` es `incidencias`: 04); y
+  MIENTRAS la sección visible sea `inicio` o `datos`, ninguno. Ningún paso
+  lleva `:class`: el paso actual lo pinta la regla
+  `.rs-recorrido__paso[aria-current="step"]` de `css/styles.css`, con el
+  color de la marca (`--rs-burdeos`).
+- **R87.** Cada paso cuya `seccion` esté en construcción
+  (`Portal.enConstruccion(paso.seccion)`, R62) debe llevar
+  `data-construccion`, el mismo punto ámbar que las pestañas de la barra
+  (la misma regla de `css/styles.css`, R66 enmendado) y
+  `aria-label="<etiqueta del paso> (en construcción)"`; ningún otro paso
+  debe llevar ninguno de los dos; y ninguno en forma ligada
+  (`:data-construccion`, `:aria-label`, `x-bind:…`). Hoy: 02, 03, 04, 05 y
+  07. Un paso actual sin enlace (`<span>`) no lleva `aria-label`.
+- **R88.** En `partes.html`, `importar.html` y `oficios.html` la tira debe
+  ser HTML estático (R45 enmendado); y las reglas de `rs-recorrido*`
+  deben vivir en `css/styles.css` —ninguna en `css/portal.css`, que las
+  páginas reales no cargan (R77)—, con tokens (R49) y con los colores de
+  texto de la lista blanca de R53, en pares ya medidos en `design.md` §15.6.
+- **R89.** La tira entra en `partes.html` con la excepción **mínima y
+  cerrada** de R59 (h) e (i), y ninguna otra: ningún módulo del circuito
+  (`js/*.js` de la base) cambia (R33), no se añade ningún `<script>`, y
+  ningún test de la base se toca (R32). Las demás excepciones (R81) siguen
+  como están.
+
+> **Requisitos enmendados el 2026-10-06 por el recorrido** (notas en su
+> sitio): **R45** (la tira, estática como la barra), **R59** ((h) la tira y
+> (i) el comentario de F-036 de H16-4), **R63** (cinco `:aria-current` de
+> la tira en la lista cerrada) y **R66** (la misma marca en los pasos). Sus
+> tests son los del bloque 18 (T52–T58).
+
 ## 2 · Trazabilidad con la ficha
 
 | Criterio de `acceptance` | Requisitos |
@@ -1102,6 +1231,12 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 > | (humano, 2026-10-05) «donde cambie de ventana pero sin abrir pestaña nueva» | R31, R46, R73 ajustados; R48 absorbida |
 > | El circuito de partes actual sigue funcionando igual dentro del portal (con la misma pestaña, la remesa no se pierde sin avisar) | R78–R81; V2 ajustada |
 > | (humano, 2026-10-05) «las paginas que ya estan deben ser remodeladas para que el front siga el estilo del resto de app» | R72 (ajustado), R82 |
+
+> **Enmienda del 2026-10-06 · el recorrido.** Fila añadida:
+>
+> | Criterio | Requisitos |
+> |---|---|
+> | (humano, 2026-10-06) «me gustaría que saliera siempre en todas las páginas para visualizar en qué parte del proceso estás» | R83–R89; R45, R59, R63 y R66 enmendados; V1 (r), V2 (s), V5 |
 
 ## 3 · Verificación que no cubre un test
 
@@ -1260,3 +1395,27 @@ está en `design.md` §2; la alternativa de incrustarlo es la decisión abierta
 >   aviso a Posventa (texto propuesto en `design.md` §16.12): qué funciona,
 >   qué está en construcción y cómo se reconoce, y que el circuito sigue en
 >   «Partes firmados».
+
+> **Enmienda del 2026-10-06 · el recorrido en todas las páginas (R83–R89).**
+> Lo de arriba se conserva; esto se **añade**.
+>
+> - **V1** añade **(r)**, en local con `.\dev_front.ps1`: en **las cuatro
+>   páginas**, justo debajo de la barra, la tira con los siete pasos
+>   (01 Entrada … 07 Coste), con el punto ámbar en 02, 03, 04, 05 y 07, y
+>   **el paso marcado** donde toca: en el portal, «Entrada» → 01,
+>   «Bandeja de revisión» → 02 (el 03 **no** se marca, aunque lleve también
+>   a la bandeja), «Incidencias» y una ficha → 04, «Impresión de partes» →
+>   05, «Coste y venta» → 07, e «Inicio» y «Datos y datamart» → ninguno;
+>   `importar.html` y `oficios.html` → 01; `partes.html` → 06. Pulsar un
+>   paso navega en la **misma pestaña**. Con el lector o en F12, el paso
+>   marcado dice `aria-current="step"` y los del punto, «(en
+>   construcción)». A 390 px la tira baja de línea sin desplazamiento
+>   horizontal de la página, y con `Tab` cada paso enseña su foco. La
+>   portada ya no repite la tira dentro de su cabecera.
+> - **V2** añade **(s)**: con la remesa troceada y en revisión, pulsar
+>   «01 Entrada» en la tira de `partes.html` hace que el navegador pida
+>   confirmación, igual que la barra; **«Cancelar»** deja la remesa entera.
+> - **V5** recorre también (r) en la vista previa: la tira y su paso
+>   marcado en las cuatro páginas. Si el paso marcado o los puntos se
+>   pueden malinterpretar, **no se publica**: se anota y se vuelve a
+>   proponer.

@@ -525,6 +525,15 @@ ya pide cada verificación.
 > el `assert` de `target` de `test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas`),
 > y los de `importacion.test.js` y `oficios.test.js`, vacíos.
 
+> **Enmienda del 2026-10-06 · el recorrido en todas las páginas.** Entra el
+> **bloque 18** (T52–T58; `requirements.md` §1.13, `design.md` §16.16).
+> Orden de ejecución: **7 → 8 → 16 → 17 → 9 → 10 → 11 → 12 → 13 → 14 →
+> 18 → 15**. Los bloques 7–14, 16 y 17 ya están hechos y aprobados
+> (`a8d78d2`, `fa2ed21`); el 18 va **antes** del bloque 15 del humano, con
+> su propia review. Las reglas de arriba siguen valiendo, «F-036 intacto»
+> en su versión ajustada incluido: el bloque 18 no toca ningún test de la
+> base.
+
 ## Bloque 7 · Verde otra vez: lo de F-036 sale de la maqueta (2026-10-05)
 
 - [x] **T23**: en **un solo commit**: (a) en `index.html`, sección `entrada`:
@@ -880,6 +889,15 @@ ya pide cada verificación.
   > «Importar incidencias» y `F5` piden confirmación y **siempre se
   > cancela**; sin remesa, o tras «Empezar otra remesa», se navega sin
   > pregunta. Si con remesa **no** pregunta, PARA y se anota.
+
+  > **Enmienda del 2026-10-06 (el recorrido).** V1 con **(r)**: en las
+  > **cuatro páginas**, la tira bajo la barra y **el paso marcado**
+  > (portal: Entrada → 01, Bandeja → 02 y nunca 03, Incidencias y una
+  > ficha → 04, Impresión → 05, Coste → 07, Inicio y Datos → ninguno;
+  > `importar.html` y `oficios.html` → 01; `partes.html` → 06), los puntos
+  > en 02, 03, 04, 05 y 07, la misma pestaña, 390 px y el foco. V2 con
+  > **(s)**: con la remesa en revisión, «01 Entrada» de la tira pide
+  > confirmación y **se cancela**.
 - [ ] **T40**: **MANUAL (humano) · PARADA antes de producción (V5)**. Con la
       review APROBADA y T12 en verde, ver **el portal entero** en el entorno
       de vista previa (D-14):
@@ -900,6 +918,12 @@ ya pide cada verificación.
       > portal, y desde el circuito sin remesa se sale sin pregunta (en la
       > vista previa no hay backend, así que la guarda con remesa se ve en
       > T12, no aquí). D-14 decidida por defecto: vista previa.
+
+      > **Enmienda del 2026-10-06 (el recorrido).** Recorre también (r):
+      > la tira y su **paso marcado en las cuatro páginas** (la tabla de
+      > `design.md` §16.16.2), con sus puntos. Si el paso marcado o los
+      > puntos se pueden malinterpretar, **no se publica**. La respuesta
+      > valida también D-17 a D-20 (`design.md` §16.16.10).
 - [ ] **T41**: **MANUAL (humano) · publicación (D-4) y V4**. Tras el merge a
       `dev` (líder, a petición del humano) y el push (humano):
       `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`.
@@ -1009,4 +1033,101 @@ ya pide cada verificación.
       (b) Mutación manual **36**. (c) La tabla de contraste de R53, si
       entraron pares nuevos. (d) `bash harness/init.sh` en verde.
       **Verificación**: salidas en `progress/impl_F-035.md`, «Bloque 17».
+
+## Bloque 18 · El recorrido en todas las páginas (enmienda del 2026-10-06)
+
+> Va **después del 14 y antes del bloque 15** (orden del recuadro
+> «Enmienda del 2026-10-06» de arriba). Diseño: `design.md` §16.16.
+> Requisitos: R83–R89; R45, R59, R63 y R66 enmendados. Es presentación y
+> navegación del front: **ningún módulo del circuito, ningún `<script>`
+> nuevo, ningún test de la base** (R89). Si un test de la base o del
+> circuito sale en rojo por la tira, **PARA**: no se toca el test, se anota
+> en `progress/current.md` y el líder vuelve a proponer. Un commit por
+> tarea, cada uno con la suite en verde; fase RED anotada en
+> `progress/impl_F-035.md`, «Bloque 18»; mutaciones solo en un worktree
+> desechable del scratchpad.
+
+- [ ] **T52**: la fuente. RED primero: en `tests_js/portal.test.js`, los
+      tests puros de R83 (`design.md` §16.16.7, fila R83: los siete pasos
+      con `num`, `etiqueta` y `seccion`, cada `seccion` en `SECCIONES`,
+      todo congelado; `pasoDeSeccion` con la tabla de §16.16.2 y los
+      valores raros, que dan `null` sin lanzar). Ejecutarlos en rojo y
+      anotar la salida. Después, `Portal.RECORRIDO` y
+      `Portal.pasoDeSeccion` en `js/portal.js` (§16.16.3), exportados y
+      listados en su comentario de cabecera. Ningún HTML ni CSS.
+      **Verificación**: desde `services/postventa-front`,
+      `node --test "tests_js/*.test.js"` y `python -m pytest tests -q` en
+      verde; `git diff --stat HEAD~1` con solo `js/portal.js` y
+      `tests_js/portal.test.js`.
+- [ ] **T53**: las hojas. RED primero: en `tests/test_f035_paginas.py`,
+      R88 (hojas), R86 (hoja) y la cascada de R87 (generalizar
+      `problemas_de_la_cascada_r66` a `.rs-recorrido__paso` sin cambiar lo
+      que ya mira de `.rs-pestana`), con los controles de §16.16.7 y los
+      de `ESTROPEOS_H6` en rojo como hoy. Ejecutarlos en rojo. Después,
+      `css/styles.css` con el bloque de §16.16.4 y el selector más en la
+      regla del punto; fuera de `css/portal.css` las reglas de
+      `rs-recorrido*`; y la `?v=` recalculada en las cuatro páginas. La
+      `<ol>` de `inicio` sigue en su sitio (ahora con estilos de
+      `styles.css`).
+      **Verificación**: front `python -m pytest tests -q` (con R49, R53,
+      R55, R59, R60 y R66 en verde) y `node --test "tests_js/*.test.js"` en
+      verde; vistazo con `.\dev_front.ps1`: la portada se ve igual que
+      antes.
+- [ ] **T54**: la tira en el portal, `importar.html` y `oficios.html`.
+      RED primero: en `tests_js/portal.test.js`,
+      `problemasDelRecorrido(html, Portal, desde)` y la guardia de R88
+      (estática), con sus controles en memoria (§16.16.7). Esta tarea
+      recorre `index.html` (`"portal"`), `importar.html` y `oficios.html`
+      (su nombre). Y en `tests/test_f035_paginas.py`, R63 enmendado: la
+      entrada nueva de `directivas_admitidas_r63`, el recuento de
+      `test_f035_r63_la_lista_cerrada_mira_algo` de 7 a 12 y sus tres
+      controles. Ejecutarlos en rojo. Después, el marcado **literal** de
+      §16.16.5 en las tres páginas, y fuera la `<ol>` de `inicio`.
+      **Verificación**: front `python -m pytest tests -q` y
+      `node --test "tests_js/*.test.js"` en verde, con las huellas de O10-3
+      y O11-5, R13, R17, R44, R51, R66 y R73 en verde **sin tocarlos**;
+      «F-036 intacto» ajustado.
+- [ ] **T55**: la tira en `partes.html`, en **un solo commit**. RED
+      primero: R59 (h) e (i) en `tests/test_f035_portal.py`
+      (`_quita_recorrido`, el comentario nuevo por el viejo, el docstring)
+      con sus tres controles nuevos, y `partes.html` (`"circuito"`) en la
+      lista de páginas de `problemasDelRecorrido` y de la guardia de R88.
+      Ejecutarlos en rojo. Después, en `partes.html`, **exactamente** (h) e
+      (i) de `design.md` §16.16.6, literales, y nada más.
+      **Verificación**: front `python -m pytest tests -q`, con **R59** y
+      todos los tests del circuito, `tests/test_f007_estaticos.py` y
+      `tests/test_f036_front.py` **enteros en verde y sin tocar**, y
+      `node --test "tests_js/*.test.js"` en verde;
+      `git diff HEAD~1 -- services/postventa-front/partes.html` con solo
+      (h) e (i); `git diff HEAD~1 -- services/postventa-front/js` vacío;
+      «F-036 intacto» ajustado; vistazo con `.\dev_front.ps1` (sin
+      `func start`): en `partes.html` recién abierta, 06 marcado y
+      «01 Entrada» lleva al portal en la misma pestaña **sin preguntar**.
+      La comprobación con remesa es de T12 (V2 s), no del implementer.
+- [ ] **T56**: documentación. `services/postventa-front/README.md`: la
+      tira, su fuente (`Portal.RECORRIDO` y la guardia), la
+      correspondencia de §16.16.2 en una frase, y en el paso 5 de la
+      retirada que, al cambiar el estado de una sección, se cambian la
+      barra **y la tira** de las cuatro páginas en el mismo trabajo.
+      `docs/ARCHITECTURE.md`: una línea en «El portal de posventa
+      (F-035)».
+      **Verificación**: front `python -m pytest tests -q` (R36, R37, R48,
+      R61 y el de palabras clave de T37 en verde) y
+      `tests/test_f007_documentacion.py` en verde.
+- [ ] **T57**: evidencias. (a)
+      `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
+      (b) Mutaciones manuales **37** a **50** de `design.md` §16.16.8, con
+      su resultado, y la confirmación de que el worktree se retiró. (c)
+      `git diff --name-status fa2ed21 -- services/postventa-front services/postventa-api`:
+      solo los ficheros de §16.16.7, y nada en `services/postventa-api`.
+      (d) `git diff fa2ed21 -- services/postventa-front/js` con solo
+      `js/portal.js`; y ningún test de la base en
+      `git diff fa2ed21 --name-only -- services/postventa-front/tests services/postventa-front/tests_js`
+      salvo `test_f035_*.py` y `portal.test.js`.
+      **Verificación**: las salidas en `progress/impl_F-035.md`,
+      «Bloque 18».
+- [ ] **T58**: Ejecutar `bash harness/init.sh` en verde.
+      **Verificación**: exit code 0, con la suite del front y la de la raíz
+      **sin caché**. Es la última tarea del implementer; después, la review
+      del bloque 18 y el bloque 15 (T12 con V1 r y V2 s; T40 con V5).
 

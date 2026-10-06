@@ -1,6 +1,50 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · enmienda: el recorrido en todas las páginas · 2026-10-06 · solo spec · siguiente: bloque 18 (implementer), antes del bloque 15
+>
+> spec-author. La petición del humano es literal: «me gusta el flujo que
+> sale en la portada con los 7 pasos, me gustaría que saliera siempre en
+> todas las páginas para visualizar en qué parte del proceso estás». La
+> propuesta del líder está aprobada («si»). Nuevos: `requirements.md` §1.13
+> (**R83–R89**), `design.md` **§16.16** y `tasks.md` **bloque 18**
+> (**T52–T58**). Enmendados: R45, R59, R63 y R66. Ni código ni tests.
+>
+> **Lo que decido:**
+>
+> - **Fuente única**: `Portal.RECORRIDO` y `Portal.pasoDeSeccion` en
+>   `js/portal.js`. Las cuatro tiras van escritas en HTML y una guardia
+>   compara cada una con esa fuente, como ya se hace con la barra. No se
+>   generan con JS porque las páginas reales no cargan `portal.js` (R77) y
+>   en el circuito eso sería código nuevo.
+> - **Sin JS nuevo**: en `partes.html`, `importar.html` y `oficios.html` el
+>   paso actual va fijo en el HTML. En el portal se marca con
+>   `:aria-current`, igual que la barra. `portal_app.js` no cambia.
+> - **Dónde va**: inmediatamente después de la barra y **no pegajosa**. La
+>   portada pierde su copia de dentro de la cabecera, así que hay una sola
+>   tira por página. Las reglas `rs-recorrido*` pasan de `portal.css` a
+>   `styles.css`. El punto ámbar usa la misma regla que el de la barra.
+> - **Paso actual**: entrada → 01, bandeja → 02, incidencias y ficha → 04,
+>   impresión → 05, partes → 06, económico → 07. Inicio y datos no marcan
+>   ninguno. `importar.html` y `oficios.html` → 01.
+> - **02 y 03 apuntan los dos a `#/bandeja`**: se marca solo 02, y 03 no se
+>   marca hasta que el volcado tenga sitio propio.
+> - **`partes.html`**: entra con la excepción literal de R59, que suma (h)
+>   la tira y (i) la sustitución del comentario desfasado de F-036. Así
+>   **H16-4 pasa a (i)**, como ya decía §16.15.4. No cambia ningún módulo
+>   del circuito ni ningún test de la base.
+>
+> **Para el humano** (no bloquea el bloque 18; lo valida en T40/V5):
+> D-17 (la tira no es pegajosa), D-18 (la correspondencia, con 03 sin
+> marcar nunca), D-19 (la portada sin su copia) y D-20 (H16-4 en (i)), en
+> `design.md` §16.16.10. A V1, V2 y V5 se añade ver la tira y el paso
+> marcado en las cuatro páginas: V1 (r), V2 (s) y T12/T40.
+>
+> **Verificado por el humano (2026-10-06), paso 0 de la guarda de
+> salida:** en `partes.html`, con `fase = "procesando"`, pulsó «Inicio».
+> Salió el aviso del navegador, con los partes detrás, y con «Cancelar» se
+> quedó en la página (caso 1a).
+
 > ## ✔ F-035 · review del bloque 14 y del conjunto APROBADA · 2026-10-06 · siguiente: bloque 15 (humano)
 >
 > `a8d78d2`. El líder aplica O-B14-1 (`docs/DESPLIEGUE.md` §10: V2 sin pulsar en importar/oficios

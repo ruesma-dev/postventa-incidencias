@@ -900,15 +900,69 @@ test("f035 R75: sinNada cuenta los distintos: con solo distintos hay algo que en
   assert.equal(presentarPropuestas(propuestasConDistintos("basura")).sinNada, true);
 });
 
+/**
+ * `GET /api/catalogos/propuestas` inventada con lo que trae una obra real con
+ * F-053 desplegada (review del bloque 13, R13-1): una propuesta pendiente, un
+ * grupo vigente de dos códigos, un aviso y, por ese aviso, su par «distinto».
+ * Un aviso (R82 de F-036) solo existe si algún par del grupo se decidió
+ * «distinto», así que toda obra con avisos traerá también `distintos`.
+ */
+function propuestasDeUnaObraConTodo(distintos) {
+  const respuesta = {
+    obra: "9999",
+    oficio: {
+      oficios: [
+        { codigo: "9001", nombre: "Oficio inventado A", grupo: ["9001", "9002"] },
+        { codigo: "9002", nombre: "Oficio inventado A bis", grupo: ["9001", "9002"] },
+        { codigo: "9003", nombre: "Pintura inventada", grupo: ["9003"] },
+        { codigo: "9004", nombre: "Pinturas inventada", grupo: ["9004"] },
+        { codigo: "9005", nombre: "Carpinteria inventada", grupo: ["9005"] },
+        { codigo: "9006", nombre: "Carpinteria inventada de madera", grupo: ["9006"] },
+        { codigo: "9007", nombre: "Carpinteria inventada de pino", grupo: ["9007"] },
+      ],
+      grupos: [
+        { etiqueta: "Oficio inventado A", codigos: ["9001", "9002"] },
+        { etiqueta: "Pintura inventada", codigos: ["9003"] },
+        { etiqueta: "Pinturas inventada", codigos: ["9004"] },
+        { etiqueta: "Carpinteria inventada", codigos: ["9005"] },
+        { etiqueta: "Carpinteria inventada de madera", codigos: ["9006"] },
+        { etiqueta: "Carpinteria inventada de pino", codigos: ["9007"] },
+      ],
+      propuestas: [
+        {
+          codigos: ["9003", "9004"],
+          por_pares: false,
+          motivos: ["plural"],
+          pares: [{ codigo_a: "9003", codigo_b: "9004", motivos: ["plural"] }],
+        },
+      ],
+      // 9005·9006 y 9006·9007 «mismo», 9005·9007 «distinto»: el grupo no se aplica.
+      avisos: [{ codigos: ["9005", "9006", "9007"] }],
+    },
+  };
+  if (distintos !== undefined) {
+    respuesta.oficio.distintos = distintos;
+  }
+  return respuesta;
+}
+
 test("f035 R75: los distintos no cambian propuestas, grupos ni avisos", () => {
   const { presentarPropuestas } = oficiosModulo();
 
-  const sin = presentarPropuestas(propuestasSinDistintos());
-  const con = presentarPropuestas(propuestasConDistintos([{ codigo_a: "9001", codigo_b: "9002" }]));
+  const sin = presentarPropuestas(propuestasDeUnaObraConTodo());
+  const con = presentarPropuestas(propuestasDeUnaObraConTodo([{ codigo_a: "9007", codigo_b: "9005" }]));
 
+  // Lo que se dice preservar no está vacío: si lo estuviera, el test no podría fallar.
+  assert.equal(sin.propuestas.length, 1, "la obra trae una propuesta pendiente");
+  assert.deepEqual(sin.grupos.map((g) => g.codigos), [["9001", "9002"]], "y un grupo vigente de dos códigos");
+  assert.deepEqual(sin.avisos.map((a) => a.codigos), [["9005", "9006", "9007"]], "y un aviso");
+  assert.equal(sin.gruposVigentes.length, 6);
+
+  assert.deepEqual(resumenDe(con.distintos), [["9005", "9007", "Carpinteria inventada", "Carpinteria inventada de pino"]], "el par del aviso, en distintos");
   for (const clave of ["obra", "propuestas", "grupos", "avisos", "gruposVigentes"]) {
     assert.deepEqual(con[clave], sin[clave], clave);
   }
+  assert.equal(con.sinNada, false);
 });
 
 // El botón «Son el mismo» de la sección, leído de `oficios.html` y evaluado

@@ -331,10 +331,24 @@ def problemas_de_la_base(referencia: str) -> list[str]:
         problemas.append(f"{referencia} no es antepasado de HEAD")
     if _git_da_cero("cat-file", "-e", f"{referencia}:{ruta_portal_js}"):
         problemas.append(f"{referencia} ya tiene {ruta_portal_js}")
-    index = _git("show", f"{referencia}:{ruta_index}")
-    if 'x-data="appPostventa()"' not in index or "portalPosventa()" in index:
+    if not es_el_circuito(_git("show", f"{referencia}:{ruta_index}")):
         problemas.append(f"el index.html de {referencia} no es el circuito")
     return problemas
+
+
+def es_el_circuito(html: str) -> bool:
+    """Si `html` es el circuito: monta `appPostventa()` y nada del portal."""
+    return 'x-data="appPostventa()"' in html and "portalPosventa()" not in html
+
+
+def test_f035_la_base_fija_es_el_circuito_mira_las_dos_cosas():
+    """Control sin git de `es_el_circuito`: el circuito sí; el portal, nada o los dos, no."""
+    circuito = CIRCUITO.read_text(encoding="utf-8")
+
+    assert es_el_circuito(circuito)
+    assert not es_el_circuito(PORTAL.read_text(encoding="utf-8"))
+    assert not es_el_circuito("<main></main>")
+    assert not es_el_circuito(circuito + '<div x-data="portalPosventa()"></div>')
 
 
 def base_de_la_rama() -> str:
@@ -366,15 +380,26 @@ def test_f035_la_base_fija_es_dev_antes_del_merge_de_f035():
 
 
 @pytest.mark.parametrize(
-    "referencia",
-    ["HEAD", "9267719"],
-    ids=["la-propia-rama", "el-merge-base-movido-del-2026-10-06"],
+    ("referencia", "motivos"),
+    [
+        ("HEAD", ("no está en dev", "ya tiene", "no es el circuito")),
+        ("9267719", ("ya tiene", "no es el circuito")),
+        ("93ce096", ("no es antepasado de HEAD", "ya tiene", "no es el circuito")),
+    ],
+    ids=["la-propia-rama", "el-merge-base-movido-del-2026-10-06", "el-merge-de-f035-en-dev"],
 )
-def test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo(referencia):
-    """Control: la propia rama, o el `git merge-base dev HEAD` que dejó el merge, no sirven de base."""
+def test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo(referencia, motivos):
+    """Control: la propia rama, el `git merge-base dev HEAD` que dejó el merge o el merge mismo no sirven de base.
+
+    Cada comprobación de `problemas_de_la_base` tiene que dar su motivo: si
+    una se quitara, las demás no la taparían.
+    """
     base_de_la_rama()
 
-    assert problemas_de_la_base(referencia) != [], f"{referencia} pasa por base de F-035"
+    problemas = problemas_de_la_base(referencia)
+
+    for motivo in motivos:
+        assert any(motivo in p for p in problemas), f"{referencia}: falta «{motivo}» en {problemas}"
 
 
 # --- R1, R42 · El portal es la portada -------------------------------------------

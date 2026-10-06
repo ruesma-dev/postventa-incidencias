@@ -3088,6 +3088,11 @@ def problemas_r74(html: str) -> list[str]:
     cerrables = [a for a in _CERRABLE if a in rotulo.atributos]
     if cerrables:
         problemas.append(f"el rótulo se puede esconder ({', '.join(cerrables)}): se enseña siempre")
+    # Review del bloque 12, O12-1 (H1, H2): tampoco con una clase que lo esconda
+    # (`hidden`, `invisible`, `sr-only`, con prefijo o ligada), como R65 (T50).
+    escondida = clases_que_esconden(rotulo)
+    if escondida:
+        problemas.append(f"el rótulo se esconde con la clase {escondida}: se enseña siempre")
     return problemas
 
 
@@ -3148,6 +3153,33 @@ def test_f035_r74_control_el_rotulo_fuera_del_aviso_salta():
     )
 
     assert any("dentro del aviso" in p for p in problemas_r74(html))
+
+
+@pytest.mark.parametrize(
+    ("clase", "senal"),
+    [
+        ("mt-2 hidden", "['hidden']"),
+        ("mt-2 sr-only", "['sr-only']"),
+        ("mt-2 invisible", "['invisible']"),
+        ("mt-2 md:hidden", "['md:hidden']"),
+    ],
+    ids=["H1-hidden", "H2-sr-only", "invisible", "md-hidden"],
+)
+def test_f035_o12_1_control_el_rotulo_escondido_por_clase_salta(clase, senal):
+    """Review del bloque 12, O12-1: el rótulo escondido con una clase (H1, H2 y sus variantes) salta."""
+    real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert real.count(_ROTULO_R74) == 1, "el control ya no encuentra el rótulo"
+
+    problemas = problemas_r74(real.replace(_ROTULO_R74, _ROTULO_R74.replace('"mt-2"', f'"{clase}"')))
+    assert problemas == [f"el rótulo se esconde con la clase {senal}: se enseña siempre"], problemas
+
+
+def test_f035_o12_1_control_el_rotulo_escondido_por_una_clase_ligada_salta():
+    real = IMPORTAR.read_text(encoding="utf-8").replace("\r\n", "\n")
+    ligado = _ROTULO_R74.replace('class="mt-2"', "class=\"mt-2\" :class=\"resultado ? '' : 'hidden'\"")
+
+    problemas = problemas_r74(real.replace(_ROTULO_R74, ligado))
+    assert any("se esconde con la clase ['hidden']" in p for p in problemas), problemas
 
 
 # --- R75 · «Decididos como distintos» en `oficios.html` (bloque 13, T35) -------------

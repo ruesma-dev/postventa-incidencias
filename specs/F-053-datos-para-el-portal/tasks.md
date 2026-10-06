@@ -21,7 +21,7 @@
 
 ## Bloque 1 · `importado_at_utc` (R1–R7)
 
-- [ ] **T1** (RED): crear `tests/test_f053_importado_at_utc.py` con R1–R7
+- [x] **T1** (RED): crear `tests/test_f053_importado_at_utc.py` con R1–R7
       (`design.md` §7: `ahora` distinto en la primera y la segunda subida;
       `AHORA` con microsegundo 0 y la forma exacta; `01:30+02:00` → `23:30` del
       día anterior en UTC, con `timezone(timedelta(hours=2))`; instante *naive*

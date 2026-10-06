@@ -1,7 +1,10 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-053 · spec escrita · 2026-10-06 · `spec_ready` · pendiente de aprobación del humano
+> ## F-053 · spec APROBADA · 2026-10-06 · `in_progress` · Bloque 1 encargado al implementer
+>
+> Humano, 2026-10-06: «si, todo ok» → D-1, D-2 y D-3 aprobadas; T7 (`azure-apps`) la hace el líder al
+> desplegar. Precondición de T11 cumplida: el `v2` de la 0677 se importó completo.
 >
 > `specs/F-053-datos-para-el-portal/` (requirements R1–R21 + V1/V2, design, tasks T1–T12 en 4 bloques).
 > Solo `services/postventa-api`, solo aditiva, **sin DDL, sin variables nuevas y sin lecturas nuevas**.

@@ -14,6 +14,10 @@
 > **Decisiones** (`design.md` §8): D-3 (las tres líneas añadidas en tests de
 > F-036) **requiere el visto bueno del humano** antes del Bloque 1; D-1, D-2,
 > D-4, D-5 y D-6 se implementan como están salvo que el humano diga otra cosa.
+>
+> **Aprobado por el humano el 2026-10-06** («si, todo ok»): D-1, D-2 y D-3 tal
+> cual; T7 (`azure-apps`) **pasa al líder**, que la hace al desplegar (como en
+> F-035), y no entra en el Bloque 3 del implementer.
 
 ## Bloque 1 · `importado_at_utc` (R1–R7)
 
@@ -68,7 +72,7 @@
       `oficio.distintos`, `codigo_a`, «última decisión» y «guion».
       Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f053_documentacion.py tests/test_f036_documentacion.py tests/test_f019_documentacion.py -q`
       en verde.
-- [ ] **T7**: el mismo párrafo en
+- [ ] **T7** (**líder, al desplegar**, tras T10; no es del implementer): el mismo párrafo en
       `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`, §8,
       y una línea en «LO QUE CAMBIA EN ESTA REVISIÓN» (los dos campos, aditivos,
       «desde su despliegue»); **commit local** en `azure-apps`, sin push.

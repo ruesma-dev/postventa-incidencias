@@ -5,11 +5,13 @@
 
 Resumen: **53 features**, 28 abiertas, 25 terminadas.
 
+En curso: **F-053**.
+
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 2 | spec lista | critico | `feature/F-053-datos-para-el-portal` |
+| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 2 | en curso | critico | `feature/F-053-datos-para-el-portal` |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | pendiente | critico | `feature/F-038-bandeja-revision` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | pendiente | critico | `feature/F-040-volcado-sigrid` |
 | F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 5 | pendiente | critico | `feature/F-052-secretos-ajustes` |
@@ -72,7 +74,7 @@ Resumen: **53 features**, 28 abiertas, 25 terminadas.
 
 ### F-053 · Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos
 
-estado **spec lista** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
+estado **en curso** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
 
 Alta del 2026-10-05 por el líder, con el visto bueno del humano (D-13 de la enmienda de F-035). Los dos apuntes del humano para el portal (F-035) no son solo front: el portal los pinta de forma tolerante, pero necesitan dos datos del backend que hoy no salen. (a) POST /api/importaciones devuelve importado_at_utc (ISO 8601 en UTC) de la importación de la respuesta; con ya_importado true, el de la ORIGINAL, para rotular «resumen de la importación original del …» en vez de presentar los recuentos como si hubieran entrado otra vez. (b) GET /api/catalogos/propuestas devuelve oficio.distintos, [{codigo_a, codigo_b}] ordenados: los pares de oficios de la obra cuya última decisión es «distinto», para que la pantalla de oficios enseñe «Decididos como distintos» con un botón «Son el mismo» (la API ya admite esa decisión y manda la última). Hoy un par marcado distinto desaparece de la pantalla y no se puede deshacer desde ella; primer caso real: Solados y Alicatados M.O. (0033) · Solados y Alicatados (0133), obra 0677. Contrato propuesto en specs/F-035-portal-posventa/design.md §16.6. Solo aditiva: ningún campo existente cambia. Actualiza azure-apps/postventa_incidencias.md en el mismo trabajo. AÑADIDO EL 2026-10-06: el front de F-035 ya consume importado_at_utc (R74, bloque 12) con unas suposiciones que F-053 debe respetar; están escritas en progress/review_F-035.md, «Review del bloque 12», apartado «Contrato para F-053» (formato ISO 8601 con desfase, qué hace el front sin él, y en qué respuestas debe ir el campo).
 

@@ -663,7 +663,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 4,
+      "priority": 1,
       "branch": "feature/F-038-bandeja-revision"
     },
     {
@@ -697,7 +697,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 2,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "El endpoint sigrid/partes-reclamacion está implementado en sigrid-api pero, a 2026-09-25, pendiente de despliegue y de su prueba manual en la obra 0626 (azure-apps/sigrid_api.md, consumidores). Se desbloquea cuando sigrid-api lo despliegue; no es trabajo de este repositorio."
     },
@@ -890,7 +890,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 5,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -907,7 +907,7 @@
       "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
-      "priority": 2,
+      "priority": 3,
       "branch": "feature/F-053-datos-para-el-portal"
     },
     {
@@ -923,7 +923,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 7,
+      "priority": 6,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -940,7 +940,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 3,
+      "priority": 4,
       "branch": "feature/F-055-barridos-sin-cache"
     }
   ]

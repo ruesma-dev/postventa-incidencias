@@ -16,7 +16,11 @@
 > caché de suite de `init.sh` no repetía el barrido R26 de F-006 porque la carpeta del API no cambiaba.
 > Humano, 2026-10-06 («si»): (1) se tapa en esta rama (`<client-id>`); (2) **no** se reescribe la
 > historia; (3) alta de **F-055** (los barridos de repo siempre, aunque haya caché; también a `arnes-base`)
-> con prioridad 3, justo tras F-053. El informe de F-053 llevaba dos uuid de prueba de la salida RED:
+> con prioridad 3, justo tras F-053.
+>
+> **Nuevo orden del humano (2026-10-06, «ponlas como las 2 primeras features»)**: F-038 (1) y F-040 (2),
+> para poder crear incidencias en Sigrid cuanto antes. F-053 (3) se termina igualmente, porque está en
+> curso; después F-038 → F-040 → F-055 (4) → F-052 (5) → F-054 (6). El informe de F-053 llevaba dos uuid de prueba de la salida RED:
 > tapados en `f068c1e`.
 >
 > **Bloque 2 hecho (implementer, 2026-10-06)**: T3 `5f7b3a3` (RED), T4 `371d74c`, T5 `67b5541`

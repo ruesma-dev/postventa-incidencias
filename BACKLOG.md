@@ -11,12 +11,12 @@ En curso: **F-053**.
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 2 | en curso | critico | `feature/F-053-datos-para-el-portal` |
-| F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 3 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
-| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 4 | pendiente | critico | `feature/F-038-bandeja-revision` |
-| F-040 | Volcar a Sigrid las incidencias aprobadas | 5 | pendiente | critico | `feature/F-040-volcado-sigrid` |
-| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 6 | pendiente | critico | `feature/F-052-secretos-ajustes` |
-| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 7 | pendiente | estandar | `feature/F-054-dev-server-127` |
+| F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 1 | pendiente | critico | `feature/F-038-bandeja-revision` |
+| F-040 | Volcar a Sigrid las incidencias aprobadas | 2 | pendiente | critico | `feature/F-040-volcado-sigrid` |
+| F-053 | Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos | 3 | en curso | critico | `feature/F-053-datos-para-el-portal` |
+| F-055 | init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado | 4 | pendiente | critico | `feature/F-055-barridos-sin-cache` |
+| F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 5 | pendiente | critico | `feature/F-052-secretos-ajustes` |
+| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 6 | pendiente | estandar | `feature/F-054-dev-server-127` |
 | F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 9 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
 | F-039 | Propuesta del industrial al crear la incidencia | 11 | pendiente | critico | `feature/F-039-propuesta-industrial` |
 | F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 13 | pendiente | critico | `feature/F-041-ficha-incidencia` |
@@ -73,39 +73,39 @@ En curso: **F-053**.
 
 ## Detalle
 
-### F-053 · Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos
-
-estado **en curso** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
-
-Alta del 2026-10-05 por el líder, con el visto bueno del humano (D-13 de la enmienda de F-035). Los dos apuntes del humano para el portal (F-035) no son solo front: el portal los pinta de forma tolerante, pero necesitan dos datos del backend que hoy no salen. (a) POST /api/importaciones devuelve importado_at_utc (ISO 8601 en UTC) de la importación de la respuesta; con ya_importado true, el de la ORIGINAL, para rotular «resumen de la importación original del …» en vez de presentar los recuentos como si hubieran entrado otra vez. (b) GET /api/catalogos/propuestas devuelve oficio.distintos, [{codigo_a, codigo_b}] ordenados: los pares de oficios de la obra cuya última decisión es «distinto», para que la pantalla de oficios enseñe «Decididos como distintos» con un botón «Son el mismo» (la API ya admite esa decisión y manda la última). Hoy un par marcado distinto desaparece de la pantalla y no se puede deshacer desde ella; primer caso real: Solados y Alicatados M.O. (0033) · Solados y Alicatados (0133), obra 0677. Contrato propuesto en specs/F-035-portal-posventa/design.md §16.6. Solo aditiva: ningún campo existente cambia. Actualiza azure-apps/postventa_incidencias.md en el mismo trabajo. AÑADIDO EL 2026-10-06: el front de F-035 ya consume importado_at_utc (R74, bloque 12) con unas suposiciones que F-053 debe respetar; están escritas en progress/review_F-035.md, «Review del bloque 12», apartado «Contrato para F-053» (formato ISO 8601 con desfase, qué hace el front sin él, y en qué respuestas debe ir el campo).
-
-### F-055 · init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado
-
-estado **pendiente** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-055-barridos-sin-cache`
-
-La caché de suite de init.sh se salta la suite de un servicio si su carpeta no ha cambiado. Pero algunos tests de esa suite (el barrido de GUID de F-006, R26, y sus hermanos) leen todo el repositorio: progress/, docs/, specs/, infra/. Con la caché, un fichero nuevo fuera del servicio no se barre nunca. Así entró sin que nadie lo viera el client ID real de la maqueta en progress/review8_F-035.md (2026-09-26, llegó a origin/dev y origin/main); lo destapó F-053 el 2026-10-06 y se tapó en su rama, sin reescribir la historia (decisión del humano). Arreglo: los tests que barren el repositorio se identifican (marca o lista declarada) y init.sh los ejecuta siempre, también con la caché válida. Es una mejora del arnés genérico: se porta a arnes-base en el mismo trabajo.
-
 ### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
 
-estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
+estado **pendiente** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-038-bandeja-revision`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Los usuarios internos revisan lo importado en el portal antes de que nada llegue a Sigrid. AÑADIDO EL 2026-10-05 al cerrar F-036: la bandeja decide «ya en bandeja» sin mirar el proveedor ni el oficio, así que las 144 filas de la 0677 importadas el 2026-10-02 con el catálogo de Sigrid del 2026-09-29 conservan el proveedor u oficio de entonces aunque el v2 del 2026-10-05 traiga otro; en la revisión de la bandeja hay que poder verlo y corregirlo. Además, las 47 filas con oficio ambiguo (grupo con varios códigos en la obra) esperan aquí la elección del código.
 
 ### F-040 · Volcar a Sigrid las incidencias aprobadas
 
-estado **pendiente** · prioridad 5 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
+estado **pendiente** · prioridad 2 · rigor `critico` · SDD sí · rama `feature/F-040-volcado-sigrid`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED.
 
+### F-053 · Dos datos que pide el portal: la fecha de la importación original y los oficios decididos como distintos
+
+estado **en curso** · prioridad 3 · rigor `critico` · SDD sí · rama `feature/F-053-datos-para-el-portal`
+
+Alta del 2026-10-05 por el líder, con el visto bueno del humano (D-13 de la enmienda de F-035). Los dos apuntes del humano para el portal (F-035) no son solo front: el portal los pinta de forma tolerante, pero necesitan dos datos del backend que hoy no salen. (a) POST /api/importaciones devuelve importado_at_utc (ISO 8601 en UTC) de la importación de la respuesta; con ya_importado true, el de la ORIGINAL, para rotular «resumen de la importación original del …» en vez de presentar los recuentos como si hubieran entrado otra vez. (b) GET /api/catalogos/propuestas devuelve oficio.distintos, [{codigo_a, codigo_b}] ordenados: los pares de oficios de la obra cuya última decisión es «distinto», para que la pantalla de oficios enseñe «Decididos como distintos» con un botón «Son el mismo» (la API ya admite esa decisión y manda la última). Hoy un par marcado distinto desaparece de la pantalla y no se puede deshacer desde ella; primer caso real: Solados y Alicatados M.O. (0033) · Solados y Alicatados (0133), obra 0677. Contrato propuesto en specs/F-035-portal-posventa/design.md §16.6. Solo aditiva: ningún campo existente cambia. Actualiza azure-apps/postventa_incidencias.md en el mismo trabajo. AÑADIDO EL 2026-10-06: el front de F-035 ya consume importado_at_utc (R74, bloque 12) con unas suposiciones que F-053 debe respetar; están escritas en progress/review_F-035.md, «Review del bloque 12», apartado «Contrato para F-053» (formato ISO 8601 con desfase, qué hace el front sin él, y en qué respuestas debe ir el campo).
+
+### F-055 · init.sh ejecuta siempre los barridos de todo el repositorio, aunque la caché de la suite del servicio diga que no ha cambiado
+
+estado **pendiente** · prioridad 4 · rigor `critico` · SDD sí · rama `feature/F-055-barridos-sin-cache`
+
+La caché de suite de init.sh se salta la suite de un servicio si su carpeta no ha cambiado. Pero algunos tests de esa suite (el barrido de GUID de F-006, R26, y sus hermanos) leen todo el repositorio: progress/, docs/, specs/, infra/. Con la caché, un fichero nuevo fuera del servicio no se barre nunca. Así entró sin que nadie lo viera el client ID real de la maqueta en progress/review8_F-035.md (2026-09-26, llegó a origin/dev y origin/main); lo destapó F-053 el 2026-10-06 y se tapó en su rama, sin reescribir la historia (decisión del humano). Arreglo: los tests que barren el repositorio se identifican (marca o lista declarada) y init.sh los ejecuta siempre, también con la caché válida. Es una mejora del arnés genérico: se porta a arnes-base en el mismo trabajo.
+
 ### F-052 · Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log
 
-estado **pendiente** · prioridad 6 · rigor `critico` · SDD no · rama `feature/F-052-secretos-ajustes`
+estado **pendiente** · prioridad 5 · rigor `critico` · SDD no · rama `feature/F-052-secretos-ajustes`
 
 Alta del 2026-10-02 por el líder, confirmada por el humano. Al ejecutar la verificación MANUAL T16 de F-036 (suite tests_bbdd contra la base efímera) falló un test antiguo y pytest imprimió el objeto Ajustes entero: gemini_api_key es un str normal en config/settings.py, así que la clave salió casi completa en la consola y de ahí a una conversación. El valor NO está en ningún fichero del repositorio. El humano rota la clave aparte. Alcance: que ningún campo secreto de Ajustes (claves de API, contraseñas, secretos de cliente, cadenas de conexión) aparezca en repr(), str() ni en un volcado del modelo: SecretStr o repr=False, con los puntos de uso leyendo el valor de forma explícita. Revisar TODOS los campos, no solo el de Gemini, y cualquier otro objeto que guarde un secreto (clientes, fábricas). No se hizo dentro de F-036 porque su test de alcance (R49) le prohíbe tocar config/settings.py. Va justo después del merge de F-036.
 
 ### F-054 · El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost
 
-estado **pendiente** · prioridad 7 · rigor `estandar` · SDD no · rama `feature/F-054-dev-server-127`
+estado **pendiente** · prioridad 6 · rigor `estandar` · SDD no · rama `feature/F-054-dev-server-127`
 
 Alta del 2026-10-06 por el líder, sacada de F-035 (sus guardias R32/R33 no dejan tocar dev_server.py ni dev_front.ps1). Defecto encontrado por el humano en V2 de F-035 y reproducido por el líder: services/postventa-front/dev_server.py y dev_front.ps1 reenvían /api/* a http://localhost:7073; en Windows, localhost intenta antes ::1 (IPv6) y la conexión se cuelga decenas de segundos (medido: sin respuesta en 40 s con localhost; 0,01 s con 127.0.0.1), así que el navegador da por fallidas health, split y el resto aunque func las acabe ejecutando. Mientras tanto, se arranca con .\dev_front.ps1 -Api http://127.0.0.1:7073. Arreglo: el valor por defecto pasa a http://127.0.0.1:7073 en los dos ficheros, con la documentación al día; cambian a propósito test_f007_dev_server.py (l. ~502) y test_f007_dev_front_ps1.py (l. ~47), que fijan localhost.
 

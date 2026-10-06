@@ -424,6 +424,96 @@ test("f035 R44: enlaceSeccion con un id desconocido devuelve null y no lanza", (
   assert.equal(enlaceSeccion(undefined, "portal"), null);
 });
 
+// ── R83 · El recorrido: Portal.RECORRIDO y pasoDeSeccion (bloque 18, T52) ───
+//
+// `design.md` §16.16.2 y §16.16.3: los siete pasos del ciclo de una
+// incidencia, la ÚNICA fuente de las cuatro tiras bajo la barra; y el paso
+// que se marca para una sección (el PRIMERO de esa sección: 02 y no 03 para
+// la bandeja).
+
+//: [num, etiqueta, seccion] de los siete pasos, en su orden (R83).
+const RECORRIDO_ESPERADO = [
+  ["01", "Entrada", "entrada"],
+  ["02", "Revisión", "bandeja"],
+  ["03", "Sigrid", "bandeja"],
+  ["04", "Gestión", "incidencias"],
+  ["05", "Parte", "impresion"],
+  ["06", "Cierre", "partes"],
+  ["07", "Coste", "economico"],
+];
+
+//: La tabla de §16.16.2: sección → paso marcado (`null`: ninguno).
+const PASO_DE_CADA_SECCION = [
+  ["inicio", null],
+  ["entrada", "01"],
+  ["bandeja", "02"],
+  ["incidencias", "04"],
+  ["impresion", "05"],
+  ["partes", "06"],
+  ["economico", "07"],
+  ["datos", null],
+];
+
+test("f035 R83: Portal.RECORRIDO son los siete pasos, en su orden, con num, etiqueta y seccion", () => {
+  const { RECORRIDO } = portal();
+
+  assert.ok(Array.isArray(RECORRIDO), "RECORRIDO es una lista");
+  assert.deepEqual(
+    RECORRIDO.map((p) => [p.num, p.etiqueta, p.seccion]),
+    RECORRIDO_ESPERADO,
+  );
+  for (const paso of RECORRIDO) {
+    assert.deepEqual(Object.keys(paso).sort(), ["etiqueta", "num", "seccion"], `${paso.num}: solo num, etiqueta y seccion`);
+  }
+});
+
+test("f035 R83: la seccion de cada paso es un id de Portal.SECCIONES", () => {
+  const { RECORRIDO, SECCIONES } = portal();
+  const ids = new Set(SECCIONES.map((s) => s.id));
+
+  for (const paso of RECORRIDO) {
+    assert.ok(ids.has(paso.seccion), `${paso.num} ${paso.etiqueta}: «${paso.seccion}» no es una sección`);
+  }
+});
+
+test("f035 R83: RECORRIDO y cada paso son de solo lectura", () => {
+  const { RECORRIDO } = portal();
+
+  assert.ok(Object.isFrozen(RECORRIDO), "la lista está congelada");
+  for (const paso of RECORRIDO) assert.ok(Object.isFrozen(paso), `${paso.num}: el paso está congelado`);
+});
+
+test("f035 R83: pasoDeSeccion da el num del primer paso de la sección (§16.16.2)", () => {
+  const { pasoDeSeccion } = portal();
+
+  for (const [id, esperado] of PASO_DE_CADA_SECCION) {
+    assert.equal(pasoDeSeccion(id), esperado, `pasoDeSeccion("${id}")`);
+  }
+});
+
+test("f035 R83: con la bandeja se marca 02 Revisión, nunca 03 Sigrid", () => {
+  const { pasoDeSeccion } = portal();
+
+  assert.equal(pasoDeSeccion("bandeja"), "02");
+});
+
+test("f035 R83: pasoDeSeccion con un id desconocido, vacío o que no es texto da null y no lanza", () => {
+  const { pasoDeSeccion } = portal();
+
+  for (const raro of ["desconocida", "", undefined, null, 7, "BANDEJA", {}]) {
+    assert.equal(pasoDeSeccion(raro), null, `pasoDeSeccion(${JSON.stringify(raro)})`);
+  }
+});
+
+test("f035 R83: pasoDeSeccion lee RECORRIDO: cada paso que da es de esa sección y es el primero", () => {
+  const { RECORRIDO, SECCIONES, pasoDeSeccion } = portal();
+
+  for (const seccion of SECCIONES) {
+    const primero = RECORRIDO.find((p) => p.seccion === seccion.id);
+    assert.equal(pasoDeSeccion(seccion.id), primero ? primero.num : null, seccion.id);
+  }
+});
+
 // ── R8 · El catálogo de placeholders ────────────────────────────────────────
 
 test("f035 R8: cada placeholder tiene id único, ficha F-0NN, etiqueta, explicación y enBloque", () => {

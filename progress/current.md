@@ -1,6 +1,60 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · BLOQUE 14 (T37, T48–T51, T38, T39) + O12-1, O13-1, O13-3 HECHOS · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 14 y después bloque 15 (humano)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 14».
+>
+> - `8c9c408` **T37**: README del front, `docs/ARCHITECTURE.md` y
+>   `docs/DESPLIEGUE.md` §10 (recuadro fechado de la publicación). Cuentan
+>   el portal en producción con secciones en construcción, el `estado`, el
+>   rótulo, `Portal.PAGINAS`, la misma pestaña y la guarda de salida (R81), y
+>   los pasos 5 y 6. El README cuenta R74 y R75 y dice que dependen de F-053
+>   (**O13-3**). Test de palabras clave con sus controles.
+> - Solo tests, ningún cambio de producción: `b496ee6` **T48** (R62),
+>   `dd9f4b4` **T49** (R63: lista cerrada de directivas y `rs-obras`),
+>   `a73991b` **T50** (R65: clases, `style` y hoja) y `6103e78` **T51**
+>   (R53: lista blanca). Ninguna guardia salió en rojo sobre el árbol real.
+> - `50192e1` **O12-1**: R74 ve el rótulo escondido por clase.
+> - `e2fc2ea` **O13-1** (opcional, hecho): R75 ve `inert` y
+>   `pointer-events-none`.
+> - Commit de **T38**: evidencias de la enmienda. Mutación del arnés: 0
+>   mutantes. Mutaciones 14–36, todas muertas. En este bloque hay **15
+>   mutantes, 13 muertos**. Nada en `services/postventa-api`. «F-036
+>   intacto»: solo las líneas de R81.
+> - Commit de **T39**: `bash harness/init.sh` **ENTORNO LISTO** (una vez):
+>   raíz 115, front 799, Node 677/677. Después arreglé 3 avisos de ruff
+>   míos; el total vuelve a 71 y el front sigue en 799 passed. Worktree
+>   retirado. Sin push.
+>
+> **Para el líder** (§6 del informe):
+>
+> - **H-B14-1**: **A1 y A5 sobreviven**. Son texto escrito a mano, sin
+>   directiva, y la lista cerrada de T49 no puede verlos: es una errata en
+>   la verificación de T49, no un fallo de la guardia. No he ampliado la
+>   regla. Va al spec-author: o se aceptan y se comprueban en V1/V5, o una
+>   regla nueva con su medida.
+> - Lecturas que he tomado:
+>   - en T49, estricta con `x-bind:` y `x-on:`;
+>   - en T50, también lo que va dentro del rótulo;
+>   - en T51, la excepción de `--rs-acero-300` solo con el selector exacto.
+>
+> **Para el humano: el bloque 15**, en el orden de `design.md` §16.12, tras
+> la review APROBADA:
+>
+> 1. **T12 · V1 y V2** en local: `.\dev_front.ps1`, y para V2 `func start`
+>    con una remesa de `muestras/` hasta la confirmación, siempre
+>    «Cancelar». Incluye la guarda de salida: con la remesa a medias, salir
+>    pregunta y se cancela.
+> 2. **T40 · parada V5** en la vista previa:
+>    `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1`.
+>    Se recorren las ocho pestañas y, al terminar, se lanza con `-Retirar`.
+> 3. **Merge a `dev`** y push.
+> 4. **T41 · publicación**:
+>    `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`,
+>    más V4. El líder actualiza `azure-apps/postventa_incidencias.md`.
+> 5. **T42 · aviso a Posventa**, con el texto de `docs/DESPLIEGUE.md` §10.
+
 > ## ▶ F-035 · erratas de spec de las reviews de la reanudación · 2026-10-06 · solo spec · siguiente: bloque 14 (implementer)
 >
 > spec-author. Enmiendas fechadas el 2026-10-06, en su sitio y sin

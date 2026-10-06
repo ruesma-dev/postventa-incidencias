@@ -858,7 +858,7 @@ ya pide cada verificación.
       > `tests/test_f035_portal.py` y, en la raíz,
       > `tests/test_f035_placeholders_vivos.py`, que ya están en esas
       > listas.
-- [ ] **T39**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T39**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       **sin caché** y la cobertura en N/A con su motivo. Es la última tarea
       del implementer; después, la review y el bloque 15.

@@ -141,10 +141,12 @@ from pathlib import Path
 
 import pytest
 from test_f035_portal import (
+    _VACIOS,
     LINKS_DE_LA_MARCA,
     PORTAL,
     RAIZ_FRONT,
     STYLES_CSS,
+    _Lector,
     _uno,
     barra,
     clases,
@@ -158,7 +160,6 @@ from test_f035_portal import (
     version_de_las_hojas,
 )
 from test_f035_portal import SECCIONES as ETIQUETAS_DE_SECCION
-from test_f035_portal import _VACIOS, _Lector
 
 PORTAL_JS = RAIZ_FRONT / "js" / "portal.js"
 MAQUETA_DATOS = RAIZ_FRONT / "js" / "maqueta_datos.js"
@@ -1162,10 +1163,14 @@ ESTROPEOS_R63_LISTA = {
         "x-show=\"seccion === 'datos'\"",
     ),
     "el :aria-current de una pestaña con otro id": (
-        "href=\"#/datos\" class=\"rs-pestana\" data-construccion aria-label=\"Datos y datamart (en construcción)\" "
-        ":aria-current=\"seccion === 'datos' ? 'page' : false\"",
-        "href=\"#/datos\" class=\"rs-pestana\" data-construccion aria-label=\"Datos y datamart (en construcción)\" "
-        ":aria-current=\"seccion === 'economico' ? 'page' : false\"",
+        (
+            "href=\"#/datos\" class=\"rs-pestana\" data-construccion aria-label=\"Datos y datamart (en construcción)\" "
+            ":aria-current=\"seccion === 'datos' ? 'page' : false\""
+        ),
+        (
+            "href=\"#/datos\" class=\"rs-pestana\" data-construccion aria-label=\"Datos y datamart (en construcción)\" "
+            ":aria-current=\"seccion === 'economico' ? 'page' : false\""
+        ),
         "seccion === 'economico' ? 'page' : false",
     ),
     "una forma ligada x-bind: en una pestaña": (

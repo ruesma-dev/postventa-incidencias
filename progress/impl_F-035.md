@@ -7075,8 +7075,8 @@ documentación (T37) y tests.
 | `6103e78` | **T51** | R53 enmendado (O17-2): lista blanca de colores de texto y `aria-hidden` del índice decorativo |
 | `50192e1` | **O12-1** | la guardia de R74 ve el rótulo escondido por clase |
 | `e2fc2ea` | **O13-1** (opcional, hecho) | la guardia de R75 ve `inert` y `pointer-events-none` |
-| este | **T38** | evidencias de la enmienda (este informe y `progress/mutacion_F-035.md`) |
-| siguiente | **T39** | `bash harness/init.sh` y estado en `progress/current.md` |
+| `1292e68` | **T38** | evidencias de la enmienda (este informe y `progress/mutacion_F-035.md`) |
+| (el último) | **T39** | `bash harness/init.sh`, el arreglo de ruff y el estado en `progress/current.md` |
 
 ### 2 · Ficheros tocados
 
@@ -7463,3 +7463,47 @@ ya existía y no es de este bloque. Sin ramas auxiliares.
   publicar (§16.12 paso 6), no de este bloque.
 - Las verificaciones MANUAL de bloques anteriores (vistazos en navegador de
   los bloques 10–13 y 16–17) siguen con V1/V2.
+
+### 8 · T39 · `bash harness/init.sh`
+
+Una sola vez, tal cual, sobre `1292e68`: **ENTORNO LISTO**, exit code 0.
+
+```
+[OK] Arnés v1.5.2 (2026-08-18)
+    52 features, 28 abiertas, en curso: ['F-035'], bloqueadas: ninguna
+[OK] features.json válido
+[OK] BACKLOG.md al día
+[AVISO] ruff: 74 avisos (deuda previa, no bloquea). Detalle: python -m ruff check .
+115 passed in 4.70s
+[OK] pytest en verde (con medición de cobertura)
+[OK] servicio api (services/postventa-api): pytest en verde (caché: árbol sin cambios desde el último verde)
+799 passed in 15.39s
+[OK] servicio front (services/postventa-front): pytest en verde
+[OK] PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)
+[OK] Rama actual: feature/F-035-portal-posventa
+ENTORNO LISTO. Puedes trabajar.
+```
+
+La raíz y el front corrieron **sin caché** (el árbol de los dos cambió en el
+bloque); la api, con caché, porque no se ha tocado (R76).
+
+**Tras `init.sh`, un arreglo cosmético mío**: ruff pasó de 71 a **74**
+avisos, y los 3 nuevos eran de este bloque, en
+`tests/test_f035_paginas.py`: el orden del import de `_VACIOS, _Lector`
+(I001, con `ruff --fix --select I001`) y dos concatenaciones implícitas sin
+paréntesis en un control de T49 (ISC004). Arreglados en el commit de T39, sin
+cambiar ningún test. Verificado después, sin volver a lanzar `init.sh`
+(el encargo pide una vez): `python -m ruff check .` → **Found 71 errors**
+(la deuda previa); los tres ficheros tocados, **All checks passed!**; y la
+suite del front, `python -m pytest tests -q -p no:cacheprovider` →
+**799 passed in 9.96s**.
+
+### Evidencias (bloque 14)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | raíz **115 passed** (114 + 1 de T48); front pytest **799 passed** (729 + 70: T37 16, T49 16, T50 16, T51 13, O12-1 5, O13-1 4); Node **677/677** (sin cambios); api en verde (caché) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el bloque solo cambia documentación y tests |
+| Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900` → «Sin líneas de producción en el alcance: nada que mutar … 0 mutantes evaluados» (`progress/mutacion_F-035.md`) |
+| Mutantes a mano (bloque 14) | **15: 13 muertos y 2 supervivientes** (A1, A5: texto sin directiva, fuera de lo que puede ver R63 enmendado; H-B14-1). Más las 14–36 de los bloques anteriores, todas muertas (tabla de §5 b) |
+| Tiempo de la suite | raíz 4,70 s y front 15,39 s (`init.sh`); front 9,96 s tras el arreglo de ruff; Node 1,17 s |

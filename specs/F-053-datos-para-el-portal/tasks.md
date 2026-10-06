@@ -120,7 +120,7 @@
          Alicatados M.O. · Solados y Alicatados). No se pulsa «Son el mismo».
       Verificación: MANUAL (humano). Lo que se ve en cada paso, anotado en
       `progress/current.md`.
-- [ ] **T12**: `bash harness/init.sh` en verde tras el cierre (líder).
+- [x] **T12**: `bash harness/init.sh` en verde tras el cierre (líder).
       Verificación: salida de `bash harness/init.sh` en verde.
 
 > **Cierre (2026-10-06).** T10: el humano desplegó con el script `t30_desplegar_f053.ps1` (fuera del repo)

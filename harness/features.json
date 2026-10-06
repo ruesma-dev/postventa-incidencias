@@ -992,7 +992,7 @@
         "docs/INTEGRACION.md y azure-apps/postventa_incidencias.md al día",
         "bash harness/init.sh en verde"
       ],
-      "status": "spec_ready",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,

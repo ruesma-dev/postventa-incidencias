@@ -1,6 +1,11 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-056 · `in_progress` · 2026-10-06 · Bloque 1 (el dominio) encargado al implementer
+>
+> Rama `feature/F-056-revision-bandeja-backend` desde `dev` en `f86d639` (base fija), con su spec traída de la rama
+> de F-038 (`specs/F-056-revision-bandeja-backend/`, aprobada; Q-5 resuelta, T0 hecha). Mutación con `--timeout 1800`.
+
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >
 > Merge en `dev`/`main` (`75b5b52`, con push), desplegada por el humano desde copia limpia; V1 y V2 «revisado,

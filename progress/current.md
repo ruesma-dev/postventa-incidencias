@@ -1,7 +1,18 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-053 · review APROBADA · 2026-10-06 · `in_progress` · siguiente: merge a `dev`/`main`, despliegue (T10) y comprobación (T11)
+> ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
+>
+> Merge en `dev`/`main` (`75b5b52`, con push), desplegada por el humano desde copia limpia; V1 y V2 «revisado,
+> está ok»; `azure-apps` al día. Resumen en `progress/history.md`.
+>
+> **Orden (humano, 2026-10-06)**: **F-056** (backend de la revisión; spec aprobada en el worktree
+> `postventa-f038`, rama `feature/F-038-bandeja-revision`, Q-5 resuelta: ubicaciones de `prmtpl.ubica` por
+> unidad) → **F-038** (página `bandeja.html`) → **F-057** (tabla del paso 1) → **F-040** (volcado; el endpoint
+> de sigrid-api ya está abierto desde el 2026-09-25, sin bloqueo externo) → **F-058** (ubicaciones por unidad
+> en la plantilla) → F-055 → F-052 → F-054.
+>
+> ### Histórico de F-053 en esta sesión
 >
 > Bloques 1–3 hechos (`progress/impl_F-053.md`); review **APPROVED** sin cambios (`progress/review_F-053.md`,
 > `ae40f5b`); `init.sh` en verde (6706 passed), cobertura 100 %, 0 supervivientes. Observaciones del

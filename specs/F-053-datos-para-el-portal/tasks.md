@@ -72,7 +72,7 @@
       `oficio.distintos`, `codigo_a`, «última decisión» y «guion».
       Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f053_documentacion.py tests/test_f036_documentacion.py tests/test_f019_documentacion.py -q`
       en verde.
-- [ ] **T7** (**líder, al desplegar**, tras T10; no es del implementer): el mismo párrafo en
+- [x] **T7** (**líder, al desplegar**, tras T10; no es del implementer): el mismo párrafo en
       `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`, §8,
       y una línea en «LO QUE CAMBIA EN ESTA REVISIÓN» (los dos campos, aditivos,
       «desde su despliegue»); **commit local** en `azure-apps`, sin push.
@@ -95,7 +95,7 @@
 
 ## Bloque 4 · MANUAL (humano), tras la review APROBADA y el merge a `dev`
 
-- [ ] **T10**: **MANUAL (humano) · desplegar el backend desde una copia limpia
+- [x] **T10**: **MANUAL (humano) · desplegar el backend desde una copia limpia
       de `dev`**, nunca desde la carpeta de trabajo. En PowerShell, desde la
       raíz del repositorio:
       `git worktree add --detach ..\pv-despliegue-F053 dev` (separada, para no
@@ -107,7 +107,7 @@
       F-053 en `dev`.
       Verificación: MANUAL (humano). El commit desplegado y la salida final del
       script, en `progress/current.md`.
-- [ ] **T11**: **MANUAL (humano) · comprobación en producción**, `Ctrl+F5` en
+- [x] **T11**: **MANUAL (humano) · comprobación en producción**, `Ctrl+F5` en
       cada página:
       1. *Precondición*: el `v2` de la 0677 se importó **completo** (en V4 f de
          F-035 respondió «ya se había importado»). Si no consta, **PARA** y
@@ -122,3 +122,8 @@
       `progress/current.md`.
 - [ ] **T12**: `bash harness/init.sh` en verde tras el cierre (líder).
       Verificación: salida de `bash harness/init.sh` en verde.
+
+> **Cierre (2026-10-06).** T10: el humano desplegó con el script `t30_desplegar_f053.ps1` (fuera del repo)
+> desde una copia limpia de `dev` en `75b5b52` (push de `dev` y `main` hecho; un arranque de la Function en
+> App Insights). T11: V1 y V2 revisadas por el humano en producción, «revisado, está ok». T7: `azure-apps` al
+> día (commit local en ese repositorio). T12: `init.sh` del líder sobre el commit de cierre.

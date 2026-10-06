@@ -1104,3 +1104,55 @@ repositorio**.
 `-SoloFront`), ese script reescribe la lista de URL de retorno con las suyas y
 **quita la de `maqueta`**: la maqueta deja de dejar entrar (falla cerrado).
 Se arregla volviendo a lanzar `publicar_maqueta.ps1` (review 7, O4).
+
+> **Recuadro del 2026-10-05 · la publicación del portal en producción
+> (F-035, enmienda tras F-036; `specs/F-035-portal-posventa/design.md`
+> §16.12).** El portal se publica **entero** en producción: lo que funciona y
+> lo que está «En construcción». Este entorno `maqueta` pasa a ser la
+> **parada V5**: ver el portal completo antes de producción. Orden, y nada se
+> salta:
+>
+> 1. **Review APROBADA** de F-035 contra `CHECKPOINTS.md` (líder y reviewer).
+> 2. **T12 · V1 y V2** en local (humano), con `.\dev_front.ps1` desde
+>    `services\postventa-front`. V1 sin `func start` (no se pulsa nada que
+>    escriba en `importar.html` ni en `oficios.html`); V2 con `func start`,
+>    una remesa de `muestras/` hasta la pregunta de confirmación y
+>    **«Cancelar»**, y la guarda de salida: con la remesa a medias, salir
+>    pide confirmación y **siempre se cancela**.
+> 3. **V5 · la parada (humano)**, en este entorno:
+>    `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1`
+>    (los mismos estáticos y el mismo inicio de sesión que producción, sin
+>    backend: importar y oficios enseñarán el error del servicio, que es lo
+>    esperado y lo que garantiza que nada escribe). Se recorren las ocho
+>    pestañas y las cuatro páginas, se comprueba el rótulo «En
+>    construcción» donde toca y, al terminar,
+>    `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1 -Retirar`.
+>    **Con `func start` no**: importar escribiría en la bandeja compartida
+>    desde local.
+> 4. **Merge a `dev`** (líder, a petición del humano) y push (humano).
+> 5. **Publicación** (humano):
+>    `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`,
+>    y **V4** de solo lectura. El modo completo quitaría la URL de retorno
+>    de `maqueta` (ver arriba).
+> 6. **`azure-apps/postventa_incidencias.md`** (líder, en el mismo trabajo y
+>    en su repositorio): la raíz del front es el portal, el circuito está en
+>    `/partes.html` e importar y oficios son secciones del portal.
+> 7. **Aviso a Posventa** (humano). Texto propuesto:
+>
+>    > «Desde hoy, al entrar en Posventa veis el portal nuevo. Funcionan de
+>    > verdad: **Entrada** (descargar la plantilla de una obra, importar el
+>    > Excel y ver su bandeja; y los oficios repetidos) y **Partes firmados**
+>    > (el circuito de siempre, con otro aspecto y el botón principal en
+>    > burdeos; funciona igual). Lo demás —bandeja de revisión, incidencias,
+>    > impresión, coste y datos— está **en construcción**: se reconoce por el
+>    > punto ámbar en la pestaña y por el recuadro «En construcción»; lo que
+>    > enseña son datos inventados para que veáis cómo será. Ahora todo se
+>    > abre en la misma pestaña. Si estáis con una remesa a medias en Partes
+>    > firmados y pulsáis otra pestaña, el navegador os preguntará si queréis
+>    > salir: decid que no, o perderéis la remesa. Contadnos qué os falta o
+>    > qué cambiaríais.»
+>
+> El rótulo con la fecha de la importación original (`importar.html`) y
+> «Decididos como distintos» (`oficios.html`) **no se verán** hasta que esté
+> desplegada **F-053**, la ficha de backend que añade esos dos datos: el
+> front los consume de forma tolerante y no espera a nadie.

@@ -110,6 +110,14 @@ Bloque 13 (`tasks.md`, T35):
   `Oficios.presentarPropuestas().distintos` y el botón evaluado con el
   componente, en `tests_js/f035_paginas.test.js`.
 
+Bloque 14 (`tasks.md`, T37):
+
+- La documentación del portal en producción: el `README.md` del front y la
+  sección del portal de `docs/ARCHITECTURE.md` dicen «en construcción»,
+  `PAGINAS`, «misma pestaña» y «guarda de salida»; el README cuenta R74 y
+  R75 con su dependencia de F-053 (review del bloque 13, O13-3), y
+  `docs/DESPLIEGUE.md` lleva el recuadro de la publicación.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -2932,3 +2940,102 @@ def test_f035_r75_control_la_seccion_fuera_del_x_if_salta():
     )
 
     assert any("x-if" in p for p in problemas_r75(html))
+
+
+# --- T37 · La documentación del portal en producción (bloque 14) --------------------
+#
+# Lo que el bloque 14 pide escribir, por palabras clave (no se juzga la prosa).
+# El texto se normaliza: sin los `>` de las citas, sin `*` de negrita y con los
+# saltos de línea como espacios, para que una palabra partida en dos líneas
+# cuente.
+
+ARCHITECTURE = RAIZ_FRONT.parents[1] / "docs" / "ARCHITECTURE.md"
+DESPLIEGUE = RAIZ_FRONT.parents[1] / "docs" / "DESPLIEGUE.md"
+README = RAIZ_FRONT / "README.md"
+
+PALABRAS_DEL_PORTAL_EN_PRODUCCION = ("en construcción", "PAGINAS", "misma pestaña", "guarda de salida")
+
+# (fichero, título de la sección, palabras que tiene que decir)
+DOCUMENTACION_T37 = (
+    (README, "La maqueta del portal (F-035)", PALABRAS_DEL_PORTAL_EN_PRODUCCION),
+    (ARCHITECTURE, "El portal de posventa (F-035)", (*PALABRAS_DEL_PORTAL_EN_PRODUCCION, "R76", "F-053")),
+    (README, "Identidad visual Ruesma (F-035)", ("importar.html", "oficios.html", "R82")),
+    (
+        README,
+        "La entrada de incidencias (F-036)",
+        ("secciones del portal", "R74", "rotuloResumen", "R75", "Decididos como distintos", "F-053"),
+    ),
+    (DESPLIEGUE, "La maqueta del portal en el entorno", ("V5", "publicar_maqueta.ps1", "-SoloFront", "misma pestaña")),
+)
+
+
+def _seccion_md(texto: str, titulo: str) -> str | None:
+    """La sección de `texto` cuyo encabezado contiene `titulo`, normalizada; `None` si no está."""
+    lineas = texto.replace("\r\n", "\n").split("\n")
+    inicio = next((i for i, linea in enumerate(lineas) if linea.startswith("#") and titulo in linea), None)
+    if inicio is None:
+        return None
+    nivel = len(lineas[inicio]) - len(lineas[inicio].lstrip("#"))
+    fin = next(
+        (i for i in range(inicio + 1, len(lineas))
+         if lineas[i].startswith("#") and len(lineas[i]) - len(lineas[i].lstrip("#")) <= nivel),
+        len(lineas),
+    )
+    sin_citas = (re.sub(r"^\s*(?:>\s?)+", "", linea) for linea in lineas[inicio:fin])
+    return " ".join(" ".join(sin_citas).replace("*", "").split())
+
+
+def palabras_que_faltan(texto: str, titulo: str, palabras: tuple[str, ...]) -> list[str]:
+    """Lo que la sección `titulo` de `texto` no dice. Vacío = correcto."""
+    seccion_md = _seccion_md(texto, titulo)
+    if seccion_md is None:
+        return [f"falta la sección «{titulo}»"]
+    return [f"«{titulo}» no dice «{palabra}»" for palabra in palabras if palabra not in seccion_md]
+
+
+@pytest.mark.parametrize(
+    ("ruta", "titulo", "palabras"),
+    DOCUMENTACION_T37,
+    ids=["readme-portal", "architecture-portal", "readme-identidad", "readme-entrada", "despliegue-publicacion"],
+)
+def test_f035_t37_la_documentacion_cuenta_el_portal_en_produccion(ruta, titulo, palabras):
+    problemas = palabras_que_faltan(ruta.read_text(encoding="utf-8"), titulo, palabras)
+
+    assert problemas == [], f"{ruta.name}: " + "; ".join(problemas)
+
+
+@pytest.mark.parametrize(
+    ("indice", "quitar"),
+    [
+        (0, "misma pestaña"),
+        (0, "guarda de salida"),
+        (0, "PAGINAS"),
+        (0, "en construcción"),
+        (1, "en construcción"),
+        (1, "R76"),
+        (2, "R82"),
+        (3, "F-053"),
+        (3, "Decididos como distintos"),
+        (4, "V5"),
+    ],
+    ids=["readme-sin-misma-pestana", "readme-sin-guarda", "readme-sin-paginas", "readme-sin-construccion",
+         "architecture-sin-construccion", "architecture-sin-r76", "identidad-sin-r82", "entrada-sin-f053",
+         "entrada-sin-r75", "despliegue-sin-v5"],
+)
+def test_f035_t37_control_una_palabra_que_falta_salta(indice, quitar):
+    """Control: la sección real sin una de sus palabras (en memoria) tiene que saltar, y solo por esa."""
+    ruta, titulo, palabras = DOCUMENTACION_T37[indice]
+    real = ruta.read_text(encoding="utf-8")
+    assert quitar in (_seccion_md(real, titulo) or ""), f"el control no encuentra «{quitar}»"
+
+    # Se borra en todas sus formas: también partida en dos líneas, en una cita o en negrita.
+    patron = r"(?:\s|>|\*)+".join(re.escape(trozo) for trozo in quitar.split(" "))
+    estropeado = re.sub(patron, "XXX", real)
+    problemas = palabras_que_faltan(estropeado, titulo, palabras)
+    assert problemas == [f"«{titulo}» no dice «{quitar}»"], problemas
+
+
+def test_f035_t37_control_una_seccion_que_falta_salta():
+    assert palabras_que_faltan("# Otra cosa\n\ntexto", "La maqueta del portal (F-035)", ("x",)) == [
+        "falta la sección «La maqueta del portal (F-035)»"
+    ]

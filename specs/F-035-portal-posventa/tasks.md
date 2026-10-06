@@ -733,7 +733,7 @@ ya pide cada verificación.
 
 ## Bloque 14 · Documentación y cierre de la enmienda (2026-10-05)
 
-- [ ] **T37**: documentación. `services/postventa-front/README.md`: en «La
+- [x] **T37**: documentación. `services/postventa-front/README.md`: en «La
       maqueta del portal (F-035)», el portal en producción con secciones en
       construcción, el `estado` de cada sección, el rótulo y cómo se
       reconoce, `Portal.PAGINAS`, la regla «solo el circuito abre aparte» y

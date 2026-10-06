@@ -405,11 +405,55 @@ ahora es un **portal con secciones**. Diseño completo:
 
 Las dos llevan **la misma barra superior** (`<nav data-barra-portal>`) con las
 ocho secciones de `Portal.SECCIONES` en su orden. Desde el circuito, las otras
-siete se abren **en otra pestaña del navegador**: la remesa en curso vive en
-memoria y salir de la página la perdería. La barra del circuito es HTML plano,
+siete se abrían **en otra pestaña del navegador**: la remesa en curso vive en
+memoria y salir de la página la perdería (superado el 2026-10-05: ver abajo).
+La barra del circuito es HTML plano,
 sin directivas de Alpine. El circuito **no se incrusta** en el portal (ni
 `<iframe>`, que chocaría con `X-Frame-Options: DENY`, ni copiando su marcado):
 es su pestaña `partes`.
+
+> **Enmienda del 2026-10-05 · el portal en producción, con secciones en
+> construcción** (`design.md` §16). Con F-036 cerrada, el humano decide
+> (opción b) publicar el portal **entero** en producción.
+>
+> - **Cuatro páginas**: `index.html` (el portal), `partes.html` (el
+>   circuito) y las dos páginas reales de la sección «Entrada»,
+>   `importar.html` y `oficios.html` (las de F-036, remodeladas a la
+>   identidad Ruesma: barra común, migas, subnavegación). Las páginas reales
+>   de una sección se declaran en **`Portal.PAGINAS`**
+>   (`{"importar.html": "entrada", "oficios.html": "entrada"}`), única
+>   fuente de qué página es de qué sección; el portal las enlaza desde
+>   `#/entrada`, y el recuadro de `bandeja` a `importar.html#bandeja`.
+> - **El `estado` de cada sección** (`real`, `parcial`, `construccion`) va
+>   escrito en `Portal.SECCIONES` y lo comprueba contra
+>   `harness/features.json` la guardia de R62 de la raíz. Hoy `inicio`,
+>   `entrada` y `partes` están en `parcial` y las otras cinco en
+>   `construccion`; `inicio` solo es `real` cuando lo son las otras siete,
+>   `partes` incluida.
+> - **«En construcción»** sustituye a «maqueta» en lo que ve el usuario. Se
+>   reconoce en tres capas: el punto ámbar y el `aria-label` de la pestaña
+>   (`data-construccion`, R66), el recuadro `data-en-construccion` con su
+>   rótulo que enmarca todo lo inventado (R63–R65) y la portada sin cifras
+>   inventadas, con los chips «En construcción» / «En producción» (R67).
+> - **Todo se navega en la misma pestaña** (R73 ajustado), también desde el
+>   circuito: ningún enlace entre páginas del front lleva `target`. La
+>   remesa a medias la protege la **guarda de salida** del circuito
+>   (`js/guarda_salida.js`, R78–R80): un `beforeunload` que **solo lee** el
+>   estado de `appPostventa()` (con `Alpine.$data` y los selectores puros de
+>   `Pipeline` y `Autoguardado`) y pide confirmación solo si hay trabajo sin
+>   terminar (algo en marcha, correcciones sin guardar, partes por terminar
+>   o un parte abierto sin cerrar); sin trabajo, se navega sin preguntar, y
+>   si no puede leer el estado, no pregunta. Para cargarla sin tocar ningún
+>   módulo del circuito hay una excepción cerrada (R81): un `<script>` en
+>   `partes.html`, una línea de `test_f007_estaticos.py` y las de R51 de
+>   `test_f036_front.py`.
+> - **Los dos datos del backend son de otra ficha (R76).** El rótulo del
+>   resumen original de `importar.html` (R74) y «Decididos como distintos»
+>   de `oficios.html` (R75) se pintan en el front, pero los datos
+>   (`importado_at_utc` y `oficio.distintos`) son de `services/postventa-api`,
+>   otro servicio: los añade **F-053**. El front los consume de forma
+>   tolerante (sin el campo, rótulo sin fecha y sección oculta), así que se
+>   publica antes sin romper nada. F-035 no toca `services/postventa-api/`.
 
 ### El mapa: qué ficha construye cada sección
 
@@ -467,6 +511,21 @@ rechaza lo que las incumpla:
    ficha decide en el mismo trabajo cómo no perderla (aviso al salir o
    recuperar el trabajo) y lo propone al humano. Lo vigila
    `tests/test_f035_placeholders_vivos.py` en la suite de la raíz.
+
+   > **Ajuste del 2026-10-05: R48 queda absorbida por R73.** Desde el
+   > circuito, todas las secciones —reales o no— se abren ya en la **misma
+   > ventana**, y la **remesa** en curso la protege la guarda de salida
+   > (R78). La guardia de R48 sigue, en verde por construcción.
+5. **Al cerrar la ficha, se actualiza el `estado` de su sección** en
+   `Portal.SECCIONES` (R62): si deja de estar en `construccion`, se quita su
+   recuadro de sección y lo que siga sin funcionar va en recuadros de bloque
+   `data-en-construccion="F-0NN"` (R64); y su pestaña pierde el
+   `data-construccion` y el `aria-label` en las cuatro barras (R66). Si se
+   olvida, la guardia de R62 de la raíz se pone en rojo.
+6. **Una sección real con página propia** (el patrón de `importar.html` y
+   `oficios.html`) lleva la barra común en HTML estático, la identidad
+   Ruesma y nada de la maqueta (R70–R73, R77), y se declara en
+   `Portal.PAGINAS` con su sección.
 
 > **Identidad visual (F-035, segunda ronda del 2026-09-25).** Las dos páginas
 > comparten la hoja de la marca, `css/styles.css` (tokens `--rs-*` tomados de

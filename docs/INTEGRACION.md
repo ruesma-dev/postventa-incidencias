@@ -1147,6 +1147,22 @@ comunes; el circuito de partes vive en **`/partes.html`**, e importar y oficios
 son páginas del portal. Toda la navegación es en la misma pestaña; el circuito
 pide confirmación antes de salir con una remesa a medias.
 
+**Desde F-053** (2026-10-06), dos campos más en dos respuestas, los dos
+**aditivos**: el portal (F-035) los consume de forma tolerante y no se quita
+ni se cambia nada de lo que ya había. `POST /api/importaciones` devuelve
+`importado_at_utc`, el instante de la importación en UTC con una sola forma,
+`AAAA-MM-DDTHH:MM:SS.ffffff+00:00` (siempre con microsegundos y `+00:00`), o
+`null` si no se sabe su zona; con `ya_importado: true` es el de la importación
+**original**, no el de la subida repetida. `GET /api/catalogos/propuestas`
+devuelve `oficio.distintos`, una lista de `{codigo_a, codigo_b}`: los pares de
+oficios **de la obra** cuya **última decisión** es `distinto`, con los códigos
+como texto y con sus ceros (`0033`, no `33`), `codigo_a < codigo_b` y
+ordenados. La respuesta de `POST /api/catalogos/decisiones` no lo lleva: el
+front recarga las propuestas después de decidir. Los códigos de oficio de
+Sigrid son dígitos, y el front identifica cada par con `a-b`: un código con
+guion podría chocar; no se filtra, consta aquí
+(`specs/F-053-datos-para-el-portal/`).
+
 Los diecisiete quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie

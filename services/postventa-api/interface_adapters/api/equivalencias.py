@@ -11,11 +11,13 @@ el único catálogo es **`oficio`** (quinta enmienda).
 ## `GET /api/catalogos/propuestas?obra=`
 
 La obra se normaliza **antes** de construir nada (R9 → 400). Responde
-`{obra, oficio: {oficios, grupos, propuestas, avisos}}`: los oficios de la obra
-con los códigos de su grupo vigente, los grupos con su etiqueta (R86), las
-propuestas pendientes con sus motivos (R78, R79, R85) y las componentes que no
-se aplican por contradicción (R82). No hay clave `proveedor`: esa agrupación es
-de F-050.
+`{obra, oficio: {oficios, grupos, propuestas, avisos, distintos}}`: los oficios
+de la obra con los códigos de su grupo vigente, los grupos con su etiqueta
+(R86), las propuestas pendientes con sus motivos (R78, R79, R85), las
+componentes que no se aplican por contradicción (R82) y, desde F-053, los pares
+de oficios de la obra cuya última decisión es «distinto»: `[{codigo_a,
+codigo_b}]`, códigos como texto, `codigo_a < codigo_b`, ordenados, y `[]` si no
+hay ninguno. No hay clave `proveedor`: esa agrupación es de F-050.
 
 ## `POST /api/catalogos/decisiones`
 
@@ -107,6 +109,9 @@ def leer_propuestas(
             ],
             **_grupos(grupos),
             "propuestas": [_propuesta(p) for p in resultado.propuestas],
+            "distintos": [
+                {"codigo_a": a, "codigo_b": b} for a, b in resultado.distintos
+            ],
         },
     }
 

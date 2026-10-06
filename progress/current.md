@@ -1,6 +1,65 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-053 · review APROBADA · 2026-10-06 · `in_progress` · siguiente: merge a `dev`/`main`, despliegue (T10) y comprobación (T11)
+>
+> Bloques 1–3 hechos (`progress/impl_F-053.md`); review **APPROVED** sin cambios (`progress/review_F-053.md`,
+> `ae40f5b`); `init.sh` en verde (6706 passed), cobertura 100 %, 0 supervivientes. Observaciones del
+> reviewer, destino decidido por el líder: **O-1** (cabecera de `docs/INTEGRACION.md` y el test de F-036
+> que fija «F-036» como última feature) → la arregla **F-056**, la próxima que toca el documento;
+> **O-3/O-4** (timeout de mutación vs. duración de la suite; puerta de cobertura con sentencias de
+> varias líneas) → apuntadas en **F-055** (arnés); O-2 y O-5 menores.
+>
+> **Bloque 1 hecho (implementer, 2026-10-06)**: T1 `7dcd3e5` (RED), T2 `1d64c31` (GREEN). Detalle en
+> `progress/impl_F-053.md`. **Ojo**: la suite completa tiene 1 fallo **previo y ajeno** a F-053
+> (`test_f006_r26…`: un GUID en `progress/review8_F-035.md`, sin cambios desde `349ba06`). Decide el
+> humano; bloquea T9.
+>
+> Humano, 2026-10-06: «si, todo ok» → D-1, D-2 y D-3 aprobadas; T7 (`azure-apps`) la hace el líder al
+> desplegar. Precondición de T11 cumplida: el `v2` de la 0677 se importó completo.
+>
+> **Bloque 1 hecho** (T1 `7dcd3e5`, T2 `1d64c31`). La suite destapó un **client ID real** en
+> `progress/review8_F-035.md` l.93 (desde `fc06596`, 2026-09-26, ya en `origin/dev` y `origin/main`): la
+> caché de suite de `init.sh` no repetía el barrido R26 de F-006 porque la carpeta del API no cambiaba.
+> Humano, 2026-10-06 («si»): (1) se tapa en esta rama (`<client-id>`); (2) **no** se reescribe la
+> historia; (3) alta de **F-055** (los barridos de repo siempre, aunque haya caché; también a `arnes-base`)
+> con prioridad 3, justo tras F-053.
+>
+> **Nuevo orden del humano (2026-10-06, «ponlas como las 2 primeras features»)**: F-038 (1) y F-040 (2),
+> para poder crear incidencias en Sigrid cuanto antes. F-053 (3) se termina igualmente, porque está en
+> curso; después F-038 → F-040 → F-055 (4) → F-052 (5) → F-054 (6). El informe de F-053 llevaba dos uuid de prueba de la salida RED:
+> tapados en `f068c1e`.
+>
+> **Bloque 2 hecho (implementer, 2026-10-06)**: T3 `5f7b3a3` (RED), T4 `371d74c`, T5 `67b5541`
+> (`oficio.distintos`, R8–R17). Suite completa en verde: 6687 pasan, 56 omitidos. Sin desviaciones de
+> la spec. Detalle en `progress/impl_F-053.md`, «Bloque 2». Siguiente: Bloque 3 (T6, T8, T9).
+>
+> `specs/F-053-datos-para-el-portal/` (requirements R1–R21 + V1/V2, design, tasks T1–T12 en 4 bloques).
+> Solo `services/postventa-api`, solo aditiva, **sin DDL, sin variables nuevas y sin lecturas nuevas**.
+>
+> **Qué decide la spec**
+> - `importado_at_utc` sale de `resultado.importacion.importado_at_utc`. La columna ya existe
+>   (`12_importaciones.sql`) y el camino `ya_importado` ya la lee (`select_importacion_completa_por_hash`,
+>   la original). Nunca sale de `contexto.ahora`. Forma única: `astimezone(UTC).isoformat(timespec="microseconds")`,
+>   o sea `AAAA-MM-DDTHH:MM:SS.ffffff+00:00`. Es la forma exacta del caso de Node que ya existe, así que
+>   el front no se toca (D-1). Sin zona sale `null` (D-2).
+> - `oficio.distintos` se calcula con una función pura de dominio, `pares_distintos`, que reutiliza `_ultimas`
+>   (manda la última decisión) sobre las decisiones que `propuestas_de_oficios` ya lee (D-4). Solo en
+>   `GET /api/catalogos/propuestas`: la respuesta de decisiones no cambia (D-5). Los guiones no se
+>   prueban con un test; consta en INTEGRACION (D-6).
+>
+> **Lo que debe aprobar el humano**
+> - **D-3 (bloquea el Bloque 1).** Tres aserciones de F-036 comparan la respuesta entera
+>   (`set(cuerpo) == CLAVES` y dos igualdades de `oficio`), así que cualquier campo nuevo las rompe.
+>   «Los tests de F-036 siguen en verde» se cumple con **tres líneas añadidas** en
+>   `test_f036_importar_http.py` (1) y `test_f036_catalogos_http.py` (2), sin quitar ni cambiar ninguna.
+>   T8 lo comprueba con el diff.
+> - D-1 y D-2: la forma de la fecha (con microsegundos siempre) y `null` sin zona.
+> - T7: el implementer actualiza `azure-apps/postventa_incidencias.md` con commit local en ese repo.
+>   Si prefieres que lo haga el líder al desplegar, como en F-035, se mueve a T10.
+> - T11 (V1) solo si el `v2` de la 0677 se importó **completo**. Reimportar una parcial escribe una
+>   importación más. La precondición está en la tarea.
+
 > ## ✅ F-035 CERRADA · 2026-10-06 · el portal de posventa, publicado · siguiente: F-053
 >
 > Portal en producción (`dev` y `main` en `6a77b18`, publicado con `-SoloFront`; V4 y aviso a Posventa

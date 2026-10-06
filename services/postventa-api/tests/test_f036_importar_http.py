@@ -113,6 +113,7 @@ CLAVES = {
     "filas",
     "errores",
     "total_errores",
+    "importado_at_utc",
 }
 CLAVES_RESUMEN = {
     "leidas",

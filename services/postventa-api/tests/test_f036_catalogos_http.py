@@ -254,6 +254,7 @@ def test_f036_r87_las_propuestas_de_oficios_de_la_obra(monkeypatch):
                 }
             ],
             "avisos": [],
+            "distintos": [],
         },
     }
 
@@ -381,6 +382,7 @@ def test_f036_r12_una_obra_sin_oficios_no_propone_nada(monkeypatch):
         "grupos": [],
         "propuestas": [],
         "avisos": [],
+        "distintos": [],
     }
 
 

@@ -28,9 +28,16 @@ rechaza sin llegar a Sigrid (R21), y el atajo de R39 no lee Sigrid.
 
 `importacion_id`, `obra`, `ya_importado`, `estado`, `resumen`, `filas` (las
 válidas con su estado y avisos y las que tienen error, en orden de fila),
-`errores` —hasta 200, R33— con `total_errores`, y `excel_errores {nombre,
-contenido_b64}` **solo** si hay filas con error (R65, R69). El Excel de
-errores no se guarda en ningún sitio (R68).
+`errores` —hasta 200, R33— con `total_errores`, `importado_at_utc` (F-053) y
+`excel_errores {nombre, contenido_b64}` **solo** si hay filas con error (R65,
+R69). El Excel de errores no se guarda en ningún sitio (R68).
+
+`importado_at_utc` es el instante de **la** importación que describe la
+respuesta, el guardado en `postventa.importaciones`: con `ya_importado`, el de
+la original, nunca el de la petición que repite la subida (F-053 R1, R2, R6).
+Sale en UTC con una sola forma, `AAAA-MM-DDTHH:MM:SS.ffffff+00:00` (R3, R4), y
+`null` si el instante no lleva zona (R5): una fecha sin rótulo es segura, una
+supuesta UTC puede ser la hora de Madrid.
 
 Escribe en el esquema propio y nada en Sigrid (R46); no depende de ninguna
 ventana de escritura del servicio.
@@ -238,6 +245,7 @@ def serializar_importacion(contexto: ContextoImportacion) -> dict[str, Any]:
         "filas": sorted(filas, key=lambda f: f["fila"]),
         "errores": errores[:MAX_ERRORES_EN_RESPUESTA],
         "total_errores": len(errores),
+        "importado_at_utc": _instante_utc(resultado.importacion.importado_at_utc),
     }
     if contexto.excel_errores is not None:
         cuerpo["excel_errores"] = {
@@ -251,3 +259,14 @@ def serializar_importacion(contexto: ContextoImportacion) -> dict[str, Any]:
 
 def _texto(valor: UUID | None) -> str | None:
     return None if valor is None else str(valor)
+
+
+def _instante_utc(valor: datetime) -> str | None:
+    """El instante en UTC, siempre con microsegundos y `+00:00`; sin zona, `None`.
+
+    Se **convierte** a UTC, nunca se le quita la zona: el que lee psycopg viene
+    en la zona de la sesión (F-053 R4). Uno sin zona no se da por UTC (R5).
+    """
+    if valor.utcoffset() is None:
+        return None
+    return valor.astimezone(UTC).isoformat(timespec="microseconds")

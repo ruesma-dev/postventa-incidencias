@@ -65,7 +65,7 @@
 
 ## Bloque 3 · documentación y evidencias (R18–R21)
 
-- [ ] **T6**: el párrafo de `design.md` §6 en `docs/INTEGRACION.md` (sin
+- [x] **T6**: el párrafo de `design.md` §6 en `docs/INTEGRACION.md` (sin
       encabezado, antes de «Los diecisiete quedan en nivel **anónimo**») y
       `tests/test_f053_documentacion.py`, que busca en «## 8 · Qué exponemos
       nosotros» `importado_at_utc`, `+00:00`, `ya_importado`, «original»,

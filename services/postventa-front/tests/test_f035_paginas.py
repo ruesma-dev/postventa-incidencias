@@ -124,6 +124,13 @@ Bloque 14 (`tasks.md`, T49, R63 enmendado el 2026-10-06; O9-2 y O9-3):
   directivas de la lista cerrada, cada una en su etiqueta y con su valor; y
   `rs-obras` va solo y siempre en un `data-en-construccion`.
 
+Bloque 14 (`tasks.md`, T50, R65 precisado el 2026-10-06; O9-4):
+
+- Ni el recuadro ni su rótulo llevan una clase que los esconda (`hidden`,
+  `invisible`, `sr-only`, también con prefijo o ligadas) ni `style`; y
+  ninguna regla de las hojas con una clase `rs-obras*` en el selector
+  declara `display: none`, `visibility: hidden` ni `opacity: 0`.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -1337,6 +1344,13 @@ def problemas_r65(html: str) -> list[str]:
             cerrable = [a for a in nodo.atributos if a in _CERRABLE]
             if nodo.nombre == "button" or cerrable:
                 problemas.append(f"el rótulo de «{valor}» se podría cerrar o esconder: {_describe(nodo)}")
+            # R65 precisado (2026-10-06, O9-4; T50): ni clases que esconden ni `style`.
+            escondida = clases_que_esconden(nodo)
+            if escondida:
+                problemas.append(f"el rótulo de «{valor}» se escondería con la clase {escondida}: {_describe(nodo)}")
+            con_estilo = [a for a in nodo.atributos if a in _ESTILO]
+            if con_estilo:
+                problemas.append(f"el rótulo de «{valor}» lleva {con_estilo}: los estilos van en las hojas: {_describe(nodo)}")
         if _FICHA.match(valor):
             ligado = [
                 n for n in rotulo.elementos()
@@ -1390,6 +1404,141 @@ def test_f035_r65_control_un_rotulo_incompleto_o_cerrable_salta(caso):
     assert viejo in real, f"el control no encuentra: {viejo}"
 
     assert problemas_r65(real.replace(viejo, nuevo, 1)) != [], f"R65 no ve «{caso}»"
+
+
+# R65 precisado (2026-10-06, O9-4; T50) · «Visible» también frente a clases, `style` y la hoja
+#
+# `_CERRABLE` mira atributos: sobrevivieron C4 (`hidden` como clase), C5
+# (`style`) y G4 (`display: none` en la hoja) de la review del bloque 9. Las
+# clases se comparan sin su prefijo de pantalla o de estado (`md:hidden`
+# esconde justo en el móvil) con `_ESCONDE_POR_CLASE`, la de R75, sin
+# cambiarla. Lo mira `problemas_r65` en el envoltorio, en el rótulo y en lo
+# que va dentro del rótulo, como ya hacía con `_CERRABLE`.
+
+_ESTILO = ("style", ":style", "x-bind:style")
+_SELECTOR_RS_OBRAS = re.compile(r"\.rs-obras(?![A-Za-z0-9])")
+
+
+def clases_que_esconden(nodo) -> list[str]:
+    """Las clases de `nodo`, también ligadas y con prefijo (`md:hidden`, `!hidden`), que lo esconden."""
+    return sorted({
+        clase for _, clase in _clases_de(nodo)
+        if clase.rsplit(":", 1)[-1].lstrip("!") in _ESCONDE_POR_CLASE
+    })
+
+
+def _esconde(propiedad: str, valor: str) -> bool:
+    valor = valor.lower().replace("!important", "").strip()
+    if propiedad == "display":
+        return valor == "none"
+    if propiedad == "visibility":
+        return valor == "hidden"
+    if propiedad == "opacity":
+        try:
+            return float(valor.rstrip("%")) == 0
+        except ValueError:
+            return False
+    return False
+
+
+def reglas_que_esconden_rs_obras(hojas: dict[str, str]) -> list[str]:
+    """Reglas cuyo selector nombra una clase `rs-obras*` y que la esconden (R65 precisado). Vacío = correcto."""
+    return [
+        f"{nombre} · {regla!r}: «{propiedad}: {valor}» esconde el recuadro o su rótulo (R65)"
+        for nombre, css in hojas.items()
+        for regla in reglas_css(css_sin_comentarios_texto(css))
+        if _SELECTOR_RS_OBRAS.search(regla.selector)
+        for propiedad, valor in regla.declaraciones
+        if _esconde(propiedad, valor)
+    ]
+
+
+def test_f035_r65_ninguna_regla_de_rs_obras_esconde_el_recuadro():
+    problemas = reglas_que_esconden_rs_obras(_hojas())
+
+    assert problemas == [], "\n".join(problemas)
+    reglas = [r for css in _hojas().values() for r in reglas_css(css_sin_comentarios_texto(css))]
+    assert sum(bool(_SELECTOR_RS_OBRAS.search(r.selector)) for r in reglas) >= 5, "la guardia mira las reglas rs-obras*"
+
+
+_ROTULO_R65 = '<div class="rs-obras__rotulo">'
+_RECUADRO_BANDEJA = '<div data-en-construccion="bandeja" class="rs-obras">'
+
+ESTROPEOS_R65_VISIBLE = {
+    # (viejo, nuevo, lo que tiene que salir en el mensaje)
+    "C4 · hidden como clase en el rótulo": (_ROTULO_R65, '<div class="rs-obras__rotulo hidden">', "['hidden']"),
+    "hidden md:flex en un rótulo": (_ROTULO_R65, '<div class="rs-obras__rotulo hidden md:flex">', "['hidden']"),
+    "md:sr-only en un envoltorio": (
+        _RECUADRO_BANDEJA, '<div data-en-construccion="bandeja" class="rs-obras md:sr-only">', "['md:sr-only']"
+    ),
+    "invisible ligado en el rótulo": (
+        _ROTULO_R65, "<div class=\"rs-obras__rotulo\" :class=\"{'invisible': true}\">", "['invisible']"
+    ),
+    "!hidden en el chip del rótulo": (
+        '<span class="rs-chip rs-chip--atencion">En construcción</span>',
+        '<span class="rs-chip rs-chip--atencion sm:!hidden">En construcción</span>',
+        "['sm:!hidden']",
+    ),
+    "C5 · style en el rótulo": (_ROTULO_R65, '<div class="rs-obras__rotulo" style="display:none">', "['style']"),
+    "style en un envoltorio": (
+        _RECUADRO_BANDEJA, '<div data-en-construccion="bandeja" class="rs-obras" style="opacity: 0">', "['style']"
+    ),
+    ":style ligado en el rótulo": (
+        _ROTULO_R65, "<div class=\"rs-obras__rotulo\" :style=\"{display: 'none'}\">", "[':style']"
+    ),
+    "x-bind:style en un envoltorio": (
+        _RECUADRO_BANDEJA, "<div data-en-construccion=\"bandeja\" class=\"rs-obras\" x-bind:style=\"''\">",
+        "['x-bind:style']",
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R65_VISIBLE))
+def test_f035_r65_control_un_rotulo_escondido_por_clase_o_style_salta(caso):
+    viejo, nuevo, senal = ESTROPEOS_R65_VISIBLE[caso]
+    real = PORTAL.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert viejo in real, f"el control no encuentra: {viejo}"
+
+    problemas = problemas_r65(real.replace(viejo, nuevo, 1))
+    assert len(problemas) == 1 and senal in problemas[0], problemas
+
+
+def test_f035_r65_control_las_clases_que_no_esconden_no_saltan():
+    """Control negativo: `md:flex`, `rs-obras--bloque` o `hidden-x` no esconden; la guardia no inventa."""
+    real = PORTAL.read_text(encoding="utf-8").replace("\r\n", "\n")
+
+    assert problemas_r65(real.replace(_ROTULO_R65, '<div class="rs-obras__rotulo md:flex hidden-x">', 1)) == []
+
+
+ESTROPEOS_R65_HOJA = {
+    # (hoja, regla añadida al final, lo que tiene que salir en el mensaje)
+    "G4 · display: none en .rs-obras__rotulo": ("css/portal.css", ".rs-obras__rotulo { display: none; }", "display: none"),
+    "visibility: hidden en .rs-obras": ("css/portal.css", ".rs-obras { visibility: hidden; }", "visibility: hidden"),
+    "opacity: 0 en una variante, dentro de un @media": (
+        "css/portal.css", "@media (max-width: 640px) { .rs-obras--bloque { opacity: 0; } }", "opacity: 0"
+    ),
+    "opacity: 0% en un descendiente desde styles.css": (
+        "css/styles.css", ".rs-cuerpo .rs-obras__linea { opacity: 0%; }", "opacity: 0%"
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R65_HOJA))
+def test_f035_r65_control_una_regla_que_esconde_rs_obras_salta(caso):
+    """Se prueba la guardia directamente, para que no la mate la versión de las hojas (T21)."""
+    hoja, regla, senal = ESTROPEOS_R65_HOJA[caso]
+    hojas = _hojas()
+    hojas[hoja] += "\n" + regla + "\n"
+
+    problemas = reglas_que_esconden_rs_obras(hojas)
+    assert len(problemas) == 1 and senal in problemas[0], problemas
+
+
+def test_f035_r65_control_las_reglas_que_no_esconden_no_saltan():
+    hojas = _hojas()
+    hojas["css/portal.css"] += "\n.rs-obras { opacity: 0.9; display: block; }\n.otra { display: none; }\n"
+
+    assert reglas_que_esconden_rs_obras(hojas) == []
 
 
 # R56 ampliado · Ningún recuadro usa el discontinuo ni el burdeos

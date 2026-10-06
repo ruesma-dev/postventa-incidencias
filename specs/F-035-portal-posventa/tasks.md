@@ -803,7 +803,7 @@ ya pide cada verificación.
       supervivientes A1, A2, A4, A5 y A6 (O9-2) y B4 (O9-3) de la review del
       bloque 9, repetidas en una copia desechable, caen (salida al
       informe).
-- [ ] **T50** (O9-4, R65 precisado): en `tests/test_f035_paginas.py`, la
+- [x] **T50** (O9-4, R65 precisado): en `tests/test_f035_paginas.py`, la
       guardia de R65 rechaza también, en el rótulo y en su envoltorio, las
       clases `hidden`, `invisible` y `sr-only`, solas o con prefijo
       (`md:hidden`, `sm:sr-only`…), y el atributo `style`, estático o ligado.

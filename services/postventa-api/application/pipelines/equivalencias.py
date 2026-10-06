@@ -5,8 +5,9 @@ Las dos operaciones del borde `/api/catalogos/*`:
 
 1. **Propuestas** (R87): el catálogo de la obra en Sigrid → las últimas
    decisiones del catálogo `oficio` → `grupos_vigentes` (los que se aplican,
-   con los avisos de R82) y `proponer_grupos` (lo que falta decidir, R78, R79,
-   R85).
+   con los avisos de R82), `proponer_grupos` (lo que falta decidir, R78, R79,
+   R85) y, desde F-053, `pares_distintos` (los pares cuya última decisión es
+   «distinto», con esas mismas decisiones).
 2. **Registrar decisiones** (R88): se comprueba que el catálogo está
    disponible —en F-036, **solo `oficio`**; cualquier otro es
    `PeticionDeDecisionInvalida` (→ 400, «no disponible en esta versión»)— y
@@ -58,6 +59,7 @@ from domain.models.equivalencias import (
     Propuesta,
     grupos_vigentes,
     motivos_del_par,
+    pares_distintos,
     proponer_grupos,
 )
 from domain.models.errores import CodigoNoEsDeLaObra, PeticionDeDecisionInvalida
@@ -158,12 +160,19 @@ class PeticionDeDecisiones:
 
 @dataclass(frozen=True)
 class PropuestasDeOficios:
-    """Lo que enseña la pantalla de oficios de una obra (R87)."""
+    """Lo que enseña la pantalla de oficios de una obra (R87).
+
+    `distintos` (F-053, R9): los pares de oficios de la obra cuya última
+    decisión es «distinto», en orden. Sin valor por defecto: el único
+    constructor es `propuestas_de_oficios`, y olvidarlo tiene que ser un error,
+    no un `()` silencioso.
+    """
 
     obra_codigo: str
     oficios: tuple[OficioObra, ...]
     grupos: GruposVigentes
     propuestas: tuple[Propuesta, ...]
+    distintos: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True)
@@ -208,6 +217,9 @@ def propuestas_de_oficios(
 ) -> PropuestasDeOficios:
     """Los oficios de la obra, sus grupos vigentes y lo que falta decidir (R87).
 
+    Y los pares decididos como distintos (F-053), sacados de **las mismas**
+    decisiones que ya se leen para los grupos: ni una lectura nueva (R16).
+
     `CodigoDeObraInvalido` (R9, sin llamar a Sigrid), los de R10 y R11 y
     `PersistenciaNoDisponible` suben tal cual: los traduce el borde.
     """
@@ -231,6 +243,9 @@ def propuestas_de_oficios(
         oficios=catalogo.oficios,
         grupos=grupos,
         propuestas=propuestas,
+        distintos=pares_distintos(
+            (o.codigo for o in catalogo.oficios), decisiones, Catalogo.OFICIO
+        ),
     )
 
 

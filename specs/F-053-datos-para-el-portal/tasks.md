@@ -56,7 +56,7 @@
       `domain/models/equivalencias.py` (`design.md` §4), reutilizando
       `_ultimas`.
       Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f053_distintos_dominio.py tests/test_f036_equivalencias_dominio.py -q` en verde.
-- [ ] **T5** (GREEN, aplicación y borde): `PropuestasDeOficios.distintos` (al
+- [x] **T5** (GREEN, aplicación y borde): `PropuestasDeOficios.distintos` (al
       final, sin defecto), su cálculo en `propuestas_de_oficios` y la clave en
       `leer_propuestas`, con los docstrings al día. `_grupos()` y
       `GruposVigentes` no se tocan.

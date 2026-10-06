@@ -4300,3 +4300,540 @@ tiene diff.
   que preservan no está vacío, y el reviewer tiene que añadir una familia
   fija de mutaciones de no interferencia. Este arreglo la aplica ya en el
   test que la originó, pero no está en `reviewer.md` ni en `arnes-base`.
+
+## Review del bloque 14 y del conjunto · T37, T48–T51, T38, T39, O12-1, O13-1 · 2026-10-06
+
+> reviewer. Alcance **acotado** a `git diff 1fc4ffd..HEAD` (`8c9c408` T37,
+> `b496ee6` T48, `dd9f4b4` T49, `a73991b` T50, `6103e78` T51, `50192e1`
+> O12-1, `e2fc2ea` O13-1, `1292e68` T38 y `af3fb1a` T39), más una
+> **comprobación de conjunto** de la reanudación antes del bloque 15. Las
+> erratas de `1fc4ffd` (spec-author), de pasada.
+>
+> Criterio de severidad del líder: bloqueante es un riesgo real para el
+> usuario o un incumplimiento de la spec. Una mutación que solo se distingue
+> con un marcado que nadie escribiría, o una variante de una familia ya
+> cubierta, va como informativo con destino.
+
+### Veredicto: **APPROVED**
+
+Nada bloquea:
+
+- La documentación cuenta con verdad lo que hay.
+- T48–T51 cumplen la spec enmendada, con sus controles, y no aflojan ninguna
+  regla.
+- **H-B14-1 no es un dato en el árbol**: A1 y A5 son mutaciones hipotéticas.
+  Mi listado positivo demuestra que hoy no hay texto inventado visible
+  fuera de un recuadro.
+- El conjunto está en orden:
+  - `services/postventa-api` sin diff frente a `dev`;
+  - «F-036 intacto» salvo lo permitido;
+  - `init.sh` en verde.
+
+Hay tres retoques de una línea que **conviene hacer antes de T41** (O-B14-1 y
+O-B14-2). Son documentación y no bloquean.
+
+### Nivel de rigor
+
+`estandar` (declarado en `harness/features.json`). Exige:
+
+- fase RED;
+- cobertura de las líneas cambiadas;
+- campaña de mutación con los supervivientes analizados;
+- la sección «Evidencias».
+
+La regla 7 (orden) es de `critico`: **N/A**.
+
+### Lo que he ejecutado
+
+| Qué | Resultado |
+|---|---|
+| `bash harness/init.sh` (una vez, mi protocolo lo exige) | **ENTORNO LISTO**. Raíz 115 passed; front **799 passed**; api en verde (caché, sin cambios); `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; ruff 71, la deuda previa |
+| Ruff sobre los tres ficheros de test tocados | `All checks passed!` |
+| Recálculo: `harness.alcance.alcance_de_feature("F-035", base="2a86bca")` | `lineas={}`: 0 ficheros y 0 líneas. Coincide con `progress/mutacion_F-035.md` |
+| **Reejecución de la campaña** («Tiempo total» 0,0 s, menos de 5 min): `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900 --salida <scratchpad>` | 0 evaluados, 0 muertos, 0 supervivientes, 0 timeouts, 0,0 s: **idéntico** al informe. `git status` limpio después |
+| **Control del cero**: `generar_mutantes` sobre las líneas añadidas en `1fc4ffd..HEAD`, sin la exclusión de alcance | `test_f035_paginas.py` 550 líneas → **131**; `test_f035_portal.py` 163 → **40**; `tests/test_f035_placeholders_vivos.py` 28 → **7**. El generador funciona: el cero es **legítimo** (el diff solo tiene tests y documentación) |
+| **RED de T48 reproducido**: copia del test de la raíz en el scratchpad con la lectura de R48 en `inicio` (`if s != "partes"`) | `1 failed, 18 passed`. Cae **solo** `test_f035_r62_inicio_cuenta_partes_con_todo_done_salvo_f045`, como en el informe |
+| RED de T49–T51, O12-1 y O13-1 | Los controles de cada guardia (A2, A4, A6, B4, C4, C5, G4, C-h, H1, H2, L15 y L17, y sus variantes) están en la suite y pasan: la guardia los ve. Ver mis mutaciones abajo |
+| Listado positivo del texto visible fuera de todo `data-en-construccion` en `index.html` (y de las cifras en las otras tres páginas) | Ver H-B14-1 |
+| «Conjunto» (ver su apartado) | `git diff dev..HEAD -- services/postventa-api`: **vacío** |
+
+### Documentación (T37): ¿cuenta con verdad lo que hay?
+
+**Sí.** Lo he contrastado con el código, no solo con la spec:
+
+- **El portal en producción con secciones en construcción.** El README («El
+  portal en producción…») y el recuadro de `docs/ARCHITECTURE.md` coinciden
+  con `js/portal.js`:
+  - `inicio`, `entrada` y `partes` están en `parcial`, y las otras cinco en
+    `construccion`;
+  - `PAGINAS` es `{"importar.html": "entrada", "oficios.html": "entrada"}`;
+  - hay siete recuadros: cinco de sección y dos de bloque, F-037 y F-045.
+
+  Las tres capas del rótulo y la lista cerrada de R63 están contadas como
+  son. Lo que dice el README («el rótulo no se puede cerrar ni esconder: ni
+  `x-show`, ni `hidden`, ni `sr-only`, ni `style`») es lo que vigilan R65 y
+  T50.
+- **La misma pestaña.** Ningún enlace entre páginas lleva `target`: el
+  único `target` de las cuatro páginas es el `web_url` de SharePoint en
+  `partes.html:610`. El README lo dice así, y ARCHITECTURE dice con
+  precisión «entre páginas del front».
+- **La guarda de salida y su riesgo aceptado.** El README cuenta:
+  - (a)–(d) de R79 y lo que no cuenta como trabajo;
+  - que solo lee, y que si no puede leer, no pregunta;
+  - dónde vive: el `<script>` justo antes de `js/app.js`, en
+    `partes.html:656-657`;
+  - la excepción cerrada de R81.
+
+  El riesgo de que alguien acepte el diálogo y pierda la remesa lo explican
+  dos sitios:
+  - la leyenda de la barra de `partes.html:50`;
+  - el aviso a Posventa de DESPLIEGUE («decid que no, o perderéis la
+    remesa»).
+
+  Las ventanas aceptadas de H16-5 y H16-6 viven en la spec. No hacía falta
+  repetirlas en el README.
+- **R74 y R75 dependen de F-053.** README («Los dos añadidos de F-035»),
+  ARCHITECTURE (R76) y DESPLIEGUE (último párrafo de §10) dicen lo mismo:
+  - sin `importado_at_utc`, el rótulo sale sin fecha;
+  - sin `oficio.distintos`, la sección no se ve en ningún entorno;
+  - el consumo es tolerante.
+
+  Coincide con `js/importacion.js` (`rotuloResumen`) y con `js/oficios.js`
+  (`presentarPropuestas`), que son los únicos cambios en los módulos de
+  F-036 frente a `dev`.
+- **Restos desfasados.** El README conserva en l. 447 «abiertas en otra
+  pestaña», pero lleva justo debajo la nota de F-035 que lo corrige: vale.
+  ARCHITECTURE tiene uno **sin nota**, en la sección de F-036 (O-B14-2).
+
+**`docs/DESPLIEGUE.md` §10, el recuadro del 2026-10-05.** Trae el orden de
+`design.md` §16.12, sin saltos: review → T12 (V1 sin `func start`, V2 con
+`func start` y «Cancelar», más la guarda) → V5 → merge y push → publicación y
+V4 → `azure-apps/` → aviso. Los comandos son exactos, y los he contrastado con
+los scripts:
+
+- `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1` y su
+  `-Retirar` (`param([switch]$Retirar)`, l. 84-85);
+- `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`.
+
+Los dos resuelven sus rutas con `$PSScriptRoot`, así que funcionan lanzados
+desde la raíz, como dice el recuadro. La cabecera de §10 dice «desde
+`infra\`», y también funciona. La frase de que la vista previa **no tiene
+backend** («importar y oficios enseñarán el error del servicio») es cierta: el
+script lo comprueba y para con el código 9. El aviso a Posventa es literal el
+de §16.12, con la frase del ajuste.
+
+Dos imprecisiones (O-B14-1):
+
+- **«y V4 de solo lectura»** no es lo que dice V4. V4 (b) recorre el
+  circuito de producción con **una remesa de prueba**: trocea y procesa, y
+  eso escribe en el esquema propio y llama al modelo; lo único que no hace es
+  cerrar. V4 (i) usa esa remesa para la guarda. Y V4 (f) solo reimporta el
+  mismo fichero. «Solo lectura» puede hacer que el humano se salte (b) e (i),
+  que son **la única comprobación de la guarda en producción**. T41 de
+  `tasks.md` sí dice «V4 entero».
+- V2 se lanza con `func start`, y con el backend local levantado
+  `importar.html` y `oficios.html` escriben de verdad. V1 dice «no se pulsa
+  nada que escriba», pero V2 no lo repite.
+
+**¿Qué tiene que reflejar `azure-apps/postventa_incidencias.md` al publicar?**
+Paso 6 de §16.12, del líder y en su repositorio:
+
+1. **La raíz de la Static Web App es el portal**, y el circuito pasa a
+   `/partes.html`. Hoy el documento dice que las dos páginas «se abren desde
+   la cabecera de la página principal» (l. 1304). Ahora se abren desde la
+   sección «Entrada» del portal y desde la cabecera del circuito, y todo en
+   la misma pestaña.
+2. **La tarjeta de `front-portal`** (§8, l. 1416) sigue apuntando a la raíz,
+   pero ahora entra al portal y no al circuito. No cambia el otro
+   repositorio, pero quien llegue por la tarjeta o por un favorito a `/` ve
+   otra cosa (riesgo D-3 de `design.md`).
+3. **Un consumo externo nuevo del navegador**: Google Fonts
+   (`fonts.googleapis.com`, `fonts.gstatic.com`), además de los dos CDN de
+   siempre. No es Azure, pero es «lo que consume» y alguien que endurezca una
+   CSP lo rompería.
+4. **El entorno de vista previa `maqueta`**: solo si el humano lo deja
+   publicado tras V5 (sin `-Retirar`). Añade una URL de retorno al registro
+   de aplicación del inicio de sesión y un entorno con nombre a la Static Web
+   App. Si se retira, no queda nada que documentar.
+5. **Lo que no le toca**: `importado_at_utc` y `oficio.distintos` son de
+   F-053. Los documenta F-053 cuando cambie lo que expone el backend.
+6. La línea «Origen» de la cabecera (hoy `feature/F-036…`, `5879ac3`).
+
+### H-B14-1 · A1 y A5: ¿dato visible fuera de un recuadro o texto legítimo?
+
+**Ni lo uno ni lo otro: A1 y A5 no están en el árbol.** Son las mutaciones
+de la review del bloque 9: «Hay 7 entradas por revisar.» a mano en la
+cabecera de `bandeja` y «23 partes archivados este mes.» en la tarjeta
+«Partes firmados». El implementer las aplicó en una copia y sobreviven a T49,
+porque la lista cerrada de R63 enmendado mira **directivas** y no texto. Eso
+es una errata en la verificación de T49, que dice que «caen», no un fallo de
+la guardia.
+
+Lo que importa para la opción (b) es si **hoy** hay algo inventado y visible
+fuera de un recuadro. Para saberlo he generado el **listado positivo**: todo
+el texto visible de `index.html` fuera de todo `data-en-construccion`, sin
+`script`, `style`, `template` ni `head`. Lo he leído entero. Además, el de las
+cifras de las otras tres páginas. Fuera de los recuadros, el texto con cifras
+es solo esto:
+
+| Dónde | Texto | Juicio |
+|---|---|---|
+| Aviso permanente (`index.html:86`, `:89`) | «obras 99NN, incidencias RS99…», «F-0NN» | Explica cómo reconocer lo inventado: legítimo |
+| Índices de las tarjetas y del circuito (`:109-115`, `:124`…`:190`) | 01–07 | Decorativos, con `aria-hidden` (T51 lo exige): legítimo |
+| Tarjeta «Partes firmados», en producción (`:167`) | «Por ejemplo: 9901 EJEMPLO NORTE/PARTES INCIDENCIAS/VILLA 003/PARTES FIRMADOS» | Es O9-1, ya mandada a V1: va rotulada «Por ejemplo» y lleva «EJEMPLO» en el nombre |
+| Cabecera de «Coste y venta» (`:980`) | «POSTV2 es la obra de Sigrid donde…» | Dato **real**: es la obra de coste de posventa de F-046 (`harness/features.json`) |
+| `importar.html` | «1 ·», «2 ·», «3 ·» y «F-038» | Numeración de pasos y ficha: legítimo |
+| `partes.html:636` | «(F-019)» en el pie | Legítimo |
+
+Fuera de los recuadros, **no hay ningún recuento, fecha, nombre ni cifra
+inventados**. Lo demás del listado son títulos, entradillas, botones y
+enlaces reales. La tarjeta «Partes firmados» y la cabecera de `bandeja`,
+donde irían A5 y A1, solo llevan su texto fijo.
+
+**Propuesta: aceptarlo** como «marcado que hoy nadie ha escrito y que ninguna
+guardia de directivas puede ver». Es la misma clase que O9-5 y O12-3:
+
+- **En V5, comprobarlo con los ojos**: fuera de un recuadro ámbar no hay
+  nada que parezca un dato (va en la lista de abajo).
+- **Errata de la verificación de T49** para el spec-author: A1 y A5 no
+  caen, ni pueden caer, con una lista de directivas. Que la nota lo diga y
+  los mande a V5.
+- **Opcional, a otra ficha** si se quiere guardia: una lista cerrada del
+  **texto con cifras** visible fuera de los recuadros de `index.html`. Hoy
+  serían las seis entradas de la tabla, y es medible con el mismo lector de
+  T49. Mataría A1 y A5 y no depende de qué método lea datos. No la exijo:
+  es una regla nueva, no R63 enmendado.
+
+### T48–T51, O12-1 y O13-1: ¿con su control y sin aflojar ninguna regla?
+
+**Sí.** Lo comprobé regla por regla contra la spec enmendada:
+
+- **T48** (R62, H-8): es un caso nuevo, y no se toca el de antes. Se asegura
+  de que F-045 solo sea de `partes` (si deja de serlo, el caso no separaría
+  las dos lecturas) y de que `secciones_reales` (la lectura de R48) sí daría
+  `inicio`. RED reproducido.
+- **T49** (R63 enmendado): `directivas_admitidas_r63` es **literalmente** la
+  lista de R63:
+  - el `<div>` hijo de `<body>`;
+  - las `rs-pestana` con `href="#/<id>"` **dentro** de `data-barra-portal`;
+  - cada `section[data-seccion]` con **su** id;
+  - el `rs-toast` con su `<p>` y su botón.
+
+  Compara el valor exacto, con los blancos normalizados. `_DIRECTIVA`
+  (`^(?:x-|:|@)`) cubre `x-bind:` y `x-on:`. La lectura estricta (una forma
+  ligada con el mismo valor que una admitida también salta) es más estricta
+  que la spec, no menos. «Mira algo» fija el recuento exacto: 2 + 7 + 14 + 5
+  directivas. `rs-obras` ⇔ `data-en-construccion` tiene sus tres controles,
+  y otro para las subclases.
+- **T50** (R65 precisado): mira `hidden`, `invisible` y `sr-only` con
+  prefijo y `!`, y ligadas, sin tocar `_ESCONDE_POR_CLASE` ni
+  `_OCULTA_DEL_TODO`. También `style`, `:style` y `x-bind:style`. En la
+  hoja, toda regla con `.rs-obras*` en el selector, también dentro de un
+  `@media`. Lo aplica también **dentro** del rótulo, más de lo que pide la
+  spec. Tiene controles positivos y negativos (`md:flex`, `hidden-x`,
+  `opacity: 0.9`).
+- **T51** (R53 enmendado): `TOKENS_DE_TEXTO` es la lista literal de la spec.
+  Un test ata la lista a `PARES_DE_TEXTO` más `--rs-burdeos-fuerte` (con su
+  contraste ≥ 4,5). La excepción vale solo con el selector **exacto**
+  `.rs-tarjeta__indice` (hay un control con un selector compuesto). `var()`
+  con reserva no vale. El `aria-hidden="true"` se exige en las cuatro
+  páginas, también con la clase ligada. `--rs-acero` sigue prohibido por su
+  test de antes, que no se ha tocado.
+- **O12-1**: `problemas_r74` suma `clases_que_esconden(rotulo)`. Es el
+  conjunto que proponía la review, con prefijos y ligadas, y tiene 5
+  controles.
+- **O13-1**: `problemas_r75` rechaza `inert` (las tres formas) y
+  `pointer-events-none` (con prefijo o ligada) en el botón, sus ancestros y
+  la sección. Tiene 4 controles.
+
+Ninguna guardia salió en rojo sobre el árbol real, así que no hubo que
+«arreglar la página»: ni un byte de HTML, CSS ni JS en el diff.
+
+**Mis mutaciones, por familias y de una vez.**
+
+- Las 23 primeras se aplicaron en memoria contra la guardia.
+- Seis de ellas, además, contra la **suite entera del front** (pytest y Node
+  por el puente), en un worktree desechable del scratchpad, ya retirado.
+
+| Familia | Mutación | Guardia | Suite entera |
+|---|---|---|---|
+| T49 · directivas | M1 `x-html="obra('9901')"` en una tarjeta real | **cae** | — |
+| | M2 un `x-data="{n: 7}"` anidado fuera | **cae** | — |
+| | M3 un `x-show` de sección en un `<div>` | **cae** | — |
+| | M4 `X-TEXT` en mayúsculas | **cae** | — |
+| | M5 el `x-text` del aviso con algo más | **cae** | — |
+| | M6 = A1, texto a mano | sobrevive | **sobrevive** (796 passed) · H-B14-1 |
+| T50 · rótulo visible | M8 `md:invisible` en un envoltorio | **cae** | — |
+| | M11 `DISPLAY: NONE` y M12 `display:none!important` en la hoja | **caen** | — |
+| | M7 `opacity-0` en el rótulo de un recuadro | sobrevive | **sobrevive** (796 passed) |
+| | M9 `aria-hidden="true"` en el rótulo | sobrevive | **sobrevive** (796 passed) |
+| | M10 `height: 0; overflow: hidden`, M13 `[data-en-construccion] { display: none }` y M14 `visibility: collapse` en la hoja | sobreviven | (en la suite los mataría la `?v=` de T21, no la guardia) |
+| T51 · color de texto | M16 `var( --rs-acero-100 )`, M17 `VAR(…)` y M19 `… !important` | **caen** | — |
+| | M15 `color: var(--rs-papel)` sobre un fondo claro | sobrevive | (por la `?v=`) |
+| | M18 `-webkit-text-fill-color: #ddd` | sobrevive | (por la `?v=`) |
+| O12-1 · rótulo de R74 | M20 `hidden` en el aviso padre | sobrevive | **cae** (Node, por el puente R32) |
+| | M21 `opacity-0` en el rótulo | sobrevive | **cae** (R72: identidad de `importar.html`) |
+| O13-1 · «Son el mismo» | M22 un `disabled` fijo en el botón | sobrevive | **cae** (la huella de O10-3, R75 y sus controles) |
+| | M23 `invisible` en la sección | **cae** | — |
+
+**Las que sobreviven a la suite** (M6, M7 y M9; M10, M13, M14, M15 y M18,
+salvo por la versión) son **informativas**:
+
+- M6 es H-B14-1.
+- M7, M10, M13 y M14 son variantes de «esconder el rótulo», una familia ya
+  cubierta por la letra de R65 precisado. Nadie escribe `opacity-0` en un
+  rótulo sin una transición, ni esconde un recuadro con un selector de
+  atributo.
+- M9 lo deja visible y solo lo calla para el lector de pantalla. La pestaña
+  sigue diciendo «(en construcción)» por su `aria-label`.
+- M15 es el límite de toda lista blanca por token sin el fondo: texto blanco
+  sobre blanco lo ve cualquiera.
+- M18 no es la propiedad `color` que nombra R53.
+
+**Destino: V5 con los ojos** (está en la lista de abajo). Si el líder quiere
+cerrar M7, sería añadir `opacity-0` a `_ESCONDE_POR_CLASE`, en una línea, por
+la vía del spec-author. No lo exijo.
+
+### Conjunto de la reanudación
+
+- **`git diff dev..HEAD -- services/postventa-api`: vacío** (R76).
+- **«F-036 intacto»** frente a `dev` (`git diff dev...HEAD`):
+  - `tests_js/importacion.test.js` y `tests_js/oficios.test.js`: **sin
+    diff**.
+  - `tests/test_f036_front.py`: la línea `INDEX` de la mudanza (D-3,
+    `173fd5c`, `design.md` l. 392) y las de R51 de R81 (docstring y
+    `assert "target=" not in …`), exactamente las de `design.md` §16.15.4.
+  - `tests/test_f007_estaticos.py`: la línea `INDEX` y la de
+    `ORDEN_CANONICO`.
+  - Los otros cinco tests de la base: solo su línea `INDEX`.
+  - En producción, `js/importacion.js` gana solo `rotuloResumen` e
+    `instanteDeIso` (R74), y `js/oficios.js` solo `esCodigo`, `distintos` y
+    sus comentarios (R75). `importar.html` y `oficios.html` cambian por el
+    remodelado R70–R73 (bloques 10–11) y por R74 y R75, ya revisados.
+  - Nada fuera de lo permitido.
+- **`init.sh` en verde** (ejecutado por mí, arriba).
+- Árbol limpio. El único worktree ajeno es
+  `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que ya estaba y no es de
+  esta rama.
+
+### Para el líder: lo que el humano tiene que mirar (una sola lista)
+
+Lo han ido dejando las reviews de los bloques 7–17 y el informe del
+implementer. **Ningún navegador ha estado conectado en toda la reanudación**,
+así que nada de esto se ha visto todavía.
+
+**Antes de V1, en un minuto y sin backend**: es la única suposición técnica
+que solo comprueba un navegador (review del bloque 16, respuesta 7, sin hacer
+según `current.md`).
+
+1. Lanzar `.\dev_front.ps1` y abrir `http://localhost:5173/partes.html`.
+2. En la consola, `GuardaSalida.leerEstado(window, document).fase` tiene que
+   dar `"inactivo"`.
+3. Ejecutar
+   `Alpine.$data(document.querySelector('[x-data="appPostventa()"]')).fase = "procesando"`,
+   hacer un clic en la página y otro en «Inicio»: tiene que salir el diálogo,
+   y con «Cancelar» la página se queda.
+4. Si falla, **PARA** antes de seguir.
+
+**V1** (local, `.\dev_front.ps1`, **sin `func start`**, sin pulsar nada que
+escriba):
+
+- (g) Las cinco pestañas en construcción llevan el punto ámbar y su nombre
+  accesible «(en construcción)». Cada sección empieza por su recuadro, la
+  portada no tiene cifras y no se ve «maqueta» en ningún sitio (H-6 y H-7).
+- **O9-5**: la cinta y el borde **ámbar** se ven en los cinco recuadros de
+  sección y en los dos de bloque (F-037 y F-045). Nunca discontinuos ni
+  burdeos.
+- **O9-6**: el recuadro F-045, dentro de la tarjeta «Partes firmados» («En
+  producción»), se lee como «esto de aquí abajo todavía no», no como «la
+  tarjeta no funciona».
+- **O9-1**: la ruta «Por ejemplo: 9901 EJEMPLO NORTE/…» de esa tarjeta no se
+  toma por real. Si molesta, se cambia por la forma genérica.
+- **H-B14-1 / M7 / M9**: fuera de un recuadro ámbar no hay nada que parezca
+  un dato (recuentos, fechas, nombres). Cada rótulo «En construcción» se ve
+  entero, también a 390 px.
+- (h) y (q): «Entrada» abre en la **misma pestaña** `importar.html` y
+  `oficios.html`, con la barra, la leyenda, las migas, la subnavegación y el
+  pie. Sin backend, dicen que no hay sesión.
+- **O10-5**: en `importar.html`, «Importar incidencias» en burdeos junto a
+  «Oficios repetidos» en gris, y la píldora actual de la subnavegación
+  distinguible. El verde, ámbar y azul del resultado y el rojo de los
+  errores solo se ven en V4 (f).
+- **O12-3 / O11-4**: al tabular hasta «Elegir el Excel» se ve el contorno
+  burdeos. Si molesta que se quede tras elegir con el ratón, O11-4 es
+  opcional.
+- **O11-3**: en `oficios.html`, el texto de los avisos sale en ámbar dentro
+  del panel ámbar. Sin backend quizá no haya avisos: entonces va a V4 (g).
+- **Bloque 13**: `oficios.html` sale como antes, **sin** «Decididos como
+  distintos» (no existe sin F-053).
+- (i) En la pestaña Red, el portal (`/`) no hace ni una petición a `/api/`.
+
+**V2** (circuito, `http://localhost:5173/partes.html`, **con `func start`** y
+una remesa de `muestras/`, siempre «Cancelar»; **en `importar.html` y
+`oficios.html` no se pulsa nada**: con el backend local escribirían en la
+bandeja compartida):
+
+- (k) La barra con los puntos y la leyenda nueva. Ningún gris de Tailwind ni
+  azul cielo fuera de los colores de estado (R82).
+- **O17-1 y O17-5 (vistazo de T46)**:
+  - el rótulo de avisos en su tono sobre ámbar y con su trazo ámbar, no
+    burdeos;
+  - el tamaño de `.rs-texto`;
+  - la lista de partes a 0,9 rem, sin línea sobre el primer parte.
+
+  Es esperado y coherente con el portal.
+- (l)–(p), la guarda:
+  - sin remesa, «Inicio» no pregunta;
+  - con la remesa en revisión, «Entrada», «Importar incidencias» y `F5`
+    preguntan y **siempre se cancela**;
+  - tras «Empezar otra remesa», o con todo rechazado y el detalle cerrado,
+    no pregunta.
+  - **Si con remesa no pregunta, PARA.**
+- **H16-5 y H16-6** (riesgos aceptados, para saber qué esperar):
+  - con el detalle abierto de un parte que el backend da por cerrado, la
+    guarda pregunta;
+  - en los 1,5 s posteriores a editar un parte rechazado o cerrado, puede
+    preguntar.
+
+**V5** (la parada, `infra\publicar_maqueta.ps1` y, al terminar, `-Retirar`):
+
+- Todo lo de V1 que no necesita backend, ahora con los estáticos y el
+  inicio de sesión de producción: las ocho pestañas, cada recuadro, la
+  portada y las dos páginas de Entrada, que enseñan el error del servicio y
+  es lo esperado.
+- Del circuito, solo (l) y (q).
+- La pregunta que decide: **¿algo se puede tomar por real?** Si sí, no se
+  publica.
+
+**Va a V4 (f), no a V1/V2** (corrección a lo que dejaron los bloques 12 y 13
+en `current.md`): **el rótulo de R74** («Resumen de la importación original…»).
+Para verlo hay que importar dos veces el mismo fichero, y en local eso exige
+`func start`, lo que **escribiría la primera vez** en la bandeja compartida.
+En V4 (f) se ve sin escribir, y solo con el mismo fichero ya importado, sin
+abrirlo. Sin F-053, el rótulo sale **sin fecha**, y es lo correcto.
+«Decididos como distintos» solo se verá con F-053 desplegada (V4 g).
+
+**Decisiones que el humano tiene pendientes de validar** (no son de V, pero
+caen en el mismo momento):
+
+- H16-4 (ii): el comentario desfasado de la cabecera de `partes.html` se
+  acepta.
+- Los riesgos de H16-5 y H16-6.
+- D-15 y D-16, si no constan ya.
+
+### Checkpoints (acotados al diff, más el conjunto)
+
+- **C1** [x] `init.sh` con exit 0 (lo ejecuté yo). [x] Existen los ficheros
+  del arnés.
+- **C2** [x] Una sola feature `in_progress` (F-035). [x] Rama
+  `feature/F-035-portal-posventa`. [x] `current.md` lleva la entrada del
+  bloque arriba, como en los bloques anteriores. [x] Ninguna feature pasa a
+  `done`.
+- **C3** [x] Primera línea con la ruta en los ficheros tocados. [x] Sin
+  `print`, TODO ni secretos (barrido del diff con patrones de clave, GUID, IP
+  y correo: nada), y sin dependencias nuevas. [x] Comentarios en español.
+  [x] Ningún PDF ni parte en git: `--diff-filter=A` del bloque, **vacío** (no
+  añade ficheros). **N/A justificado**: arquitectura hexagonal, unidad
+  «parte», Sigrid, firma, «firmado no es conforme», duplicados y `conest`. El
+  diff es documentación y tests del front, y no toca ni la API ni el
+  circuito.
+- **C3 bis** — **N/A**: el diff no toca `docs/referencia/`.
+- **C4** [x] Cada requisito tiene tests trazables que pasan:
+  - R62 (H-8): `tests/test_f035_placeholders_vivos.py::test_f035_r62_inicio_cuenta_partes_con_todo_done_salvo_f045`;
+  - R63 enmendado: `test_f035_r63_fuera_de_los_recuadros_solo_las_directivas_de_la_lista_cerrada`,
+    `…_la_lista_cerrada_mira_algo`, `…_rs_obras_solo_y_siempre_en_un_recuadro`
+    y 13 controles;
+  - R65 precisado: `test_f035_r65_ninguna_regla_de_rs_obras_esconde_el_recuadro`,
+    los de `problemas_r65` y 15 controles;
+  - R53 enmendado: `test_f035_r53_todo_color_de_texto_esta_en_la_lista_blanca`,
+    `…_la_lista_blanca_son_tokens_de_texto_medidos`,
+    `…_la_excepcion_es_decorativa_y_lleva_aria_hidden` y 10 controles;
+  - R74 (O12-1) y R75 (O13-1): sus guardias y 5 + 4 controles;
+  - T37: `test_f035_t37_la_documentacion_cuenta_el_portal_en_produccion` (×5)
+    y 11 controles. Los de R36, R48 y R61 y `test_f007_documentacion.py`
+    siguen en verde.
+
+  [x] Sin red ni BBDD. [x] Los MANUAL constan en `current.md`, con el bloque
+  15 y su comando. La lista consolidada está arriba, y corrige el sitio del
+  rótulo de R74.
+- **C4 bis** [x] `rigor: "estandar"`.
+  - [x] **Fase RED**: el informe trae las salidas reales (T37 con
+    `git stash`, T48, y antes/después de T49–T51, O12-1 y O13-1). Reproduje
+    la de T48.
+  - [x] **Cobertura**: N/A, con el motivo impreso por `init.sh`.
+  - [x] **Mutación**: informe de la herramienta con 0 mutantes, recalculado,
+    **reejecutado** (0,0 s, menos de 5 min) y con el control del cero hecho
+    (131 + 40 + 7).
+  - [x] El coste por mutante no aplica, porque hay 0 mutantes.
+  - [x] **Mutantes a mano**: 13/15 del implementer, con A1 y A5 analizados
+    (H-B14-1), y 23 míos, con los supervivientes analizados arriba. En
+    `estandar` basta con documentarlos.
+  - [x] «Evidencias» con los cuatro números. Los workers, en la cabecera de
+    `mutacion_F-035.md` (1); con 0 mutantes no influyen.
+  - [x] Ningún N/A sin justificar. La regla 7 es N/A, porque es de
+    `critico`.
+- **C4 ter** — **N/A**: no existe `harness/rutas_sensibles.json`.
+- **C5** [x] T37, T48, T49, T50, T51, T38 y T39 están `[x]`, cada una con su
+  commit `F-035 Tn: …`. O12-1 y O13-1 van en commits `F-035 O…`. [x] Sin
+  ficheros sin trackear. Mi worktree está retirado (`git worktree list`: solo
+  el árbol real y el ajeno de siempre). [x] `features.json` dice
+  `in_progress`, que es lo real: queda el bloque 15.
+
+### Erratas de spec de `1fc4ffd`, de pasada
+
+Son coherentes con el código:
+
+- la firma de R79 es `hayTrabajoSinTerminar(estado, pipeline, autoguardado)`
+  (`js/guarda_salida.js:58`);
+- O10-1 es el `:class` de `importar.html:124` (`--info`, `--atencion` y
+  `--ok`);
+- O9-7 son las dos líneas de `importar.html`;
+- R53, R63 y R65 enmendados son lo que miden T49–T51.
+
+Solo falta la errata nueva de H-B14-1, en la verificación de T49.
+
+### Informativo (no bloquea), con su destino
+
+- **O-B14-1 · `docs/DESPLIEGUE.md` §10, dos precisiones de una línea.**
+  Destino: el líder lo encarga **antes de T41**, o el humano se guía por
+  T41 de `tasks.md`, que dice «V4 entero».
+  - **«y V4 de solo lectura»** pasa a ser «y **V4 entero** (`requirements.md`
+    §3, (a)–(i)): una remesa de prueba sin cerrar nada, la guarda con esa
+    remesa, reimportar solo el mismo fichero y ninguna decisión de
+    oficios».
+  - En el paso 2, a V2 se le añade «con `func start`, en `importar.html` y
+    `oficios.html` no se pulsa nada».
+- **O-B14-2 · `docs/ARCHITECTURE.md` l. 907-909** (sección de F-036) sigue
+  diciendo que `importar.html` y `oficios.html` están «enlazadas desde la
+  cabecera de `index.html` en otra pestaña para no perder la remesa en
+  curso». Ahora son secciones del portal, en la misma pestaña, y el
+  circuito es `partes.html`. Queda fuera del alcance literal de T37 (que
+  pide la sección del portal), pero hoy es falso. **Destino**: una línea
+  (o una nota «superado por F-035»), junto con O-B14-1.
+- **H-B14-1 · A1 y A5.** **Destino**:
+  - el spec-author, para la errata de la verificación de T49, que los manda
+    a V5;
+  - V5;
+  - opcionalmente, una ficha con la lista cerrada del texto con cifras.
+- **O-B14-3 · Variantes de familia que sobreviven** (M7, M9, M10, M13–M15 y
+  M18). **Destino**: V5 con los ojos. Si se quiere, que el spec-author
+  añada `opacity-0` a R65.
+- Siguen abiertos, como estaban:
+  - **O12-2** y **O13-2**: contrato de F-053, a F-053;
+  - **O12-4**, **O11-2** y **O16-4**: opcionales;
+  - los de V1/V2, recogidos en la lista de arriba.
+
+### Automejora (propuesta, no aplicada)
+
+**`reviewer.md`: una verificación «MANUAL en local» que escriba debe
+declarar dónde se puede hacer sin escribir.** Vale para cualquier proyecto y
+va también a `arnes-base`.
+
+Dos bloques (12 y 13) mandaron a «V1/V2» comprobaciones que, en local, solo
+se pueden hacer escribiendo en una base compartida: importar dos veces el
+mismo fichero. Nadie lo vio porque cada review miraba su bloque. Propuesta:
+cuando el reviewer acepte que algo «va a la verificación manual», que
+compruebe que el paso cabe en lo que esa verificación permite (sin
+`func start`, solo lectura…). Si no cabe, que lo mande a la que sí, aquí V4
+(f). Y en la review de cierre, que **consolide** todas las manuales en una
+sola lista, como esta.

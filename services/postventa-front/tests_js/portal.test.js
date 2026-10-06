@@ -524,12 +524,13 @@ test("f035 R83: pasoDeSeccion lee RECORRIDO: cada paso que da es de esa sección
 //: Cada página con tira y su `desde` de `enlaceSeccion` (R85).
 const PAGINAS_CON_RECORRIDO = [
   ["index.html", "portal"],
+  ["partes.html", "circuito"],
   ["importar.html", "importar.html"],
   ["oficios.html", "oficios.html"],
 ];
 
 //: Las páginas reales, donde la tira es HTML estático (R88).
-const PAGINAS_CON_RECORRIDO_ESTATICO = ["importar.html", "oficios.html"];
+const PAGINAS_CON_RECORRIDO_ESTATICO = ["partes.html", "importar.html", "oficios.html"];
 
 const ETIQUETA_DEL_RECORRIDO = "El ciclo de una incidencia";
 
@@ -796,6 +797,19 @@ const ESTROPEOS_DEL_RECORRIDO = [
     (html) => html.replace('<a href="partes.html" class="rs-recorrido__paso">', '<a href="partes.html" class="rs-recorrido__paso" target="_blank">'),
     /06 Cierre\): lleva target/,
   ],
+  [
+    "aria-current=\"step\" también en 05 de partes.html", "partes.html", "circuito",
+    (html) => html.replace('<li><a href="./#/impresion" class="rs-recorrido__paso"', '<li><a href="./#/impresion" aria-current="step" class="rs-recorrido__paso"'),
+    /05 Parte\): lleva aria-current y el paso actual es 06/,
+  ],
+  [
+    "06 de partes.html como <a href>", "partes.html", "circuito",
+    (html) => html.replace(
+      '<li><span aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</span></li>',
+      '<li><a href="partes.html" aria-current="step" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>',
+    ),
+    /06 Cierre\): es el paso de esta página/,
+  ],
 ];
 
 for (const [nombre, pagina, desde, estropear, senal] of ESTROPEOS_DEL_RECORRIDO) {
@@ -823,6 +837,14 @@ test("f035 R84-R87: control: la guardia lee la fuente: con la sección de 07 cam
       `${pagina}: ${JSON.stringify(problemas)}`,
     );
   }
+});
+
+test("f035 R88: control: un x-show en la tira de partes.html salta", () => {
+  const html = leer("partes.html");
+  const estropeado = html.replace('<ol class="rs-recorrido">', '<ol class="rs-recorrido" x-show="true">');
+
+  assert.notEqual(estropeado, html, "el control no encuentra la <ol> de la tira de partes.html");
+  assert.ok(problemasDeLaTiraEstatica(estropeado).some((p) => p.includes("x-show")));
 });
 
 test("f035 R88: control: un <button> en la tira de oficios.html salta", () => {

@@ -1087,7 +1087,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` en verde, con las huellas de O10-3
       y O11-5, R13, R17, R44, R51, R66 y R73 en verde **sin tocarlos**;
       «F-036 intacto» ajustado.
-- [ ] **T55**: la tira en `partes.html`, en **un solo commit**. RED
+- [x] **T55**: la tira en `partes.html`, en **un solo commit**. RED
       primero: R59 (h) e (i) en `tests/test_f035_portal.py`
       (`_quita_recorrido`, el comentario nuevo por el viejo, el docstring)
       con sus tres controles nuevos, y `partes.html` (`"circuito"`) en la

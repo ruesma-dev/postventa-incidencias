@@ -1070,6 +1070,50 @@ def _sin_target_en_los_enlaces_de_f036(ts: list[Token]) -> list[Token]:
     return fuera
 
 
+#: R59 (i), enmienda del 2026-10-06 (`design.md` §16.16.6): el comentario de
+#: F-036 de la cabecera del circuito, el de la base y el que lo sustituye,
+#: literales y con los blancos normalizados. Solo ESE cambio de texto.
+_COMENTARIO_F036_VIEJO = " ".join((
+    " F-036 (R51) · la entrada de incidencias, en otra pestaña: salir\n"
+    "               de esta perdería la remesa en curso (D4 de F-007). "
+).split())
+_COMENTARIO_F036_NUEVO = " ".join((
+    " F-036 (R51) · la entrada de incidencias, en la misma pestaña\n"
+    "               (F-035, R73): con una remesa a medias, la guarda de salida\n"
+    "               pide confirmación antes de salir (R78). "
+).split())
+
+
+def _quita_recorrido(ts: list[Token], sitio: int | None) -> list[Token]:
+    """Quita UNA tira del recorrido (`<nav data-recorrido>`, con los comentarios que la preceden) justo donde estaba la barra (R59 h).
+
+    Solo ahí: `sitio` es donde empezaba la barra, ya quitada. Una tira en
+    otro sitio, o una segunda, quedan como diferencia. En la base no hay
+    tira y no se quita nada.
+    """
+    if sitio is None:
+        return ts
+    j = sitio
+    while j < len(ts) and ts[j][0] == "<!--":
+        j += 1
+    if not (j < len(ts) and _es_apertura(ts[j], "nav") and any(k == "data-recorrido" for k, _ in ts[j][2])):
+        return ts
+    profundidad = 0
+    for i in range(j, len(ts)):
+        if _es_apertura(ts[i], "nav"):
+            profundidad += 1
+        elif ts[i] == ("</", "nav"):
+            profundidad -= 1
+            if profundidad == 0:
+                return ts[:sitio] + ts[i + 1:]
+    return ts
+
+
+def _con_el_comentario_f036_de_la_base(ts: list[Token]) -> list[Token]:
+    """Devuelve el comentario nuevo de F-036 a su texto de la base (R59 i). Cualquier otro texto, intacto."""
+    return [("<!--", _COMENTARIO_F036_VIEJO) if t == ("<!--", _COMENTARIO_F036_NUEVO) else t for t in ts]
+
+
 def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     """Lo que `ahora` cambia de `antes` más allá de lo que admite R59; `[]` si nada.
 
@@ -1081,17 +1125,22 @@ def diferencias_de_presentacion(antes: str, ahora: str) -> list[str]:
     hoja. Desde el ajuste del 2026-10-05 (T44): (f) un único
     `<script src="js/guarda_salida.js">` justo antes del de `js/app.js`, y (g)
     sin `target` ni `rel` los dos enlaces de la cabecera a `importar.html` y
-    `oficios.html`. Todo lo demás —directivas, ids, `type`, `data-*`,
-    `aria-*`, `style`, textos, comentarios, elementos y el orden de los
-    atributos— tiene que ser idéntico.
+    `oficios.html`. Desde la enmienda del 2026-10-06 (bloque 18): (h) UNA
+    tira del recorrido (`<nav data-recorrido>`, con su comentario) justo
+    tras la barra, y (i) el comentario de F-036 de la cabecera sustituido,
+    literal, por el de `design.md` §16.16.6. Todo lo demás —directivas, ids,
+    `type`, `data-*`, `aria-*`, `style`, textos, comentarios, elementos y el
+    orden de los atributos— tiene que ser idéntico.
     """
     problemas: list[str] = []
     a = _quita_ruta(_quita_version_de_la_hoja(tokens(antes)), None, problemas)
     b = _quita_ruta(_quita_version_de_la_hoja(tokens(ahora)), RUTA_CIRCUITO, problemas)
-    a = _sin_target_en_los_enlaces_de_f036(_quita_la_guarda(a))
-    b = _sin_target_en_los_enlaces_de_f036(_quita_la_guarda(b))
-    a, _ = _quita_barra(a, problemas, "antes")
+    a = _con_el_comentario_f036_de_la_base(_sin_target_en_los_enlaces_de_f036(_quita_la_guarda(a)))
+    b = _con_el_comentario_f036_de_la_base(_sin_target_en_los_enlaces_de_f036(_quita_la_guarda(b)))
+    a, sitio_antes = _quita_barra(a, problemas, "antes")
     b, sitio = _quita_barra(b, problemas, "partes.html")
+    a = _quita_recorrido(a, sitio_antes)
+    b = _quita_recorrido(b, sitio)
     if sitio is None:
         problemas.append("falta la barra superior (<nav data-barra-portal>) en partes.html")
     elif not (
@@ -1188,7 +1237,42 @@ ESTROPEOS_R59 = {
         ':href="resultado.web_url" target="_blank" rel="noopener"',
         ':href="resultado.web_url" rel="noopener"',
     ),
+    # Enmienda del 2026-10-06 (bloque 18, T55): (h) admite UNA tira, justo tras
+    # la barra, y (i) el comentario nuevo de F-036, literal, y nada más.
+    "otro texto en el comentario de F-036": (
+        "pide confirmación antes de salir (R78). -->",
+        "pide confirmación antes de salir. -->",
+    ),
 }
+
+
+def _tira_del_circuito(real: str) -> tuple[int, int]:
+    """`(inicio, fin)` de la tira de `partes.html` en el texto: su comentario y su `<nav>` (R59 h)."""
+    inicio = real.index("    <!-- F-035 · El recorrido de una incidencia")
+    fin = real.index("</nav>", real.index("<nav data-recorrido", inicio)) + len("</nav>\n")
+    return inicio, fin
+
+
+def test_f035_r59_control_la_tira_tras_la_cabecera_sale_en_rojo():
+    """Control de (h): la tira movida tras `</header>` ya no es la que admite R59."""
+    real = CIRCUITO.read_text(encoding="utf-8").replace("\r\n", "\n")
+    inicio, fin = _tira_del_circuito(real)
+    tira, sin_tira = real[inicio:fin], real[:inicio] + real[fin:]
+    tras_cabecera = sin_tira.index("</header>\n") + len("</header>\n")
+
+    problemas = diferencias_de_presentacion(real, sin_tira[:tras_cabecera] + tira + sin_tira[tras_cabecera:])
+
+    assert problemas != [], "R59 (h) admite la tira tras </header>"
+
+
+def test_f035_r59_control_dos_tiras_salen_en_rojo():
+    """Control de (h): solo UNA tira; la segunda es una diferencia."""
+    real = CIRCUITO.read_text(encoding="utf-8").replace("\r\n", "\n")
+    inicio, fin = _tira_del_circuito(real)
+
+    problemas = diferencias_de_presentacion(real, real[:fin] + real[inicio:fin] + real[fin:])
+
+    assert problemas != [], "R59 (h) admite dos tiras"
 
 
 def _circuito_estropeado(viejo: str, nuevo: str) -> tuple[str, str]:
@@ -1434,7 +1518,9 @@ def test_f035_r45_la_barra_del_circuito_es_html_estatico():
     [
         ('href="./#/inicio" class=', 'href="./#/inicio" target="_blank" class='),
         ('href="./#/datos" class=', 'href="./#/datos" :target="\'_blank\'" class='),
-        ('href="./#/entrada" class=', 'href="./#/entrada" rel="noopener" class='),
+        # Con `rs-pestana`: desde el bloque 18 la tira del recorrido también
+        # tiene un `href="./#/entrada"`, y el control tiene que tocar la barra.
+        ('href="./#/entrada" class="rs-pestana"', 'href="./#/entrada" rel="noopener" class="rs-pestana"'),
     ],
     ids=["target-en-inicio", "target-ligado-en-datos", "rel-en-entrada"],
 )

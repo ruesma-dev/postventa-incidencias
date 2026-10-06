@@ -430,6 +430,17 @@ los envía a ningún sitio.
 > el circuito. Sus tests solo se ejecutan en la rama de F-035 y en cualquier
 > otra se saltan con el motivo escrito (`design.md` §11).
 
+> **Enmienda del 2026-10-06 (decisión del humano, opción a) · la base de
+> R59, R32 y R33 pasa a ser fija: `d5c87b4`.** Donde estas guardias (y R59,
+> §1.11) dicen «`git merge-base dev HEAD`», desde hoy comparan contra
+> `d5c87b4`, el último commit de `dev` antes del merge de F-035 (incluye
+> F-036 en squash). Motivo: `dev` recibió el merge de F-035 (`93ce096`) con
+> el bloque 18 en curso, y desde entonces `git merge-base dev HEAD` es la
+> propia rama (`9267719`): R59 comparaba `partes.html` con el portal y R32 y
+> R33 veían `portal.test.js` y `portal.js` como «de la base». La base es la
+> constante `BASE_DE_F035` de `tests/test_f035_portal.py`, con su control;
+> el `skip` fuera de la rama de F-035 no cambia.
+
 > **Decisión del 2026-09-25 (D-1, D-2, D-3) · el circuito se muda y sigue
 > igual.** R30, R31 y R32 se conservan arriba como premisa; quedan así. R33
 > **no cambia** (y es lo que hace de la mudanza la opción de menos riesgo:

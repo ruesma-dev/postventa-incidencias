@@ -122,6 +122,16 @@ LINEA_INDEX_DESPUES = 'INDEX = RAIZ_FRONT / "partes.html"'
 
 PREFIJO_RAMA_F035 = "feature/F-035"
 
+#: Base FIJA de las guardias del diff de F-035 (R59, R32 y R33): `d5c87b4`, el
+#: último commit de `dev` antes del merge de F-035 (incluye F-036 en squash).
+#: Enmienda del 2026-10-06, decisión del humano (opción a). Hasta entonces la
+#: base era `git merge-base dev HEAD`; pero ese día `dev` recibió el merge de
+#: F-035 (`93ce096`) con el bloque 18 en curso, y desde ese merge la base
+#: calculada es la propia rama (`9267719`): R59 comparaba `partes.html` con el
+#: portal, y R32 y R33 veían `portal.test.js` y `portal.js` como «de la base».
+#: Control: `test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo`.
+BASE_DE_F035 = "d5c87b424a625eeacc6a3dd71d396094f94cedef"
+
 #: Etiquetas de los campos del alta (R38), en el detalle de la bandeja y en la
 #: pestaña «Datos» de la ficha.
 ETIQUETAS_ALTA = (
@@ -296,8 +306,42 @@ def _git(*argumentos: str) -> str:
     return proceso.stdout
 
 
+def _git_da_cero(*argumentos: str) -> bool:
+    """`True` si `git <argumentos>` termina con código 0 (para las preguntas de sí o no)."""
+    return (
+        subprocess.run(
+            ["git", *argumentos], cwd=RAIZ_REPO, capture_output=True, text=True, check=False
+        ).returncode
+        == 0
+    )
+
+
+def problemas_de_la_base(referencia: str) -> list[str]:
+    """Por qué `referencia` no sirve de base de F-035; `[]` si sirve.
+
+    Sirve el `dev` de antes de F-035: ya en `dev`, antepasado de `HEAD`, sin
+    `js/portal.js` y con el circuito (no el portal) en `index.html`.
+    """
+    ruta_portal_js = "services/postventa-front/js/portal.js"
+    ruta_index = "services/postventa-front/index.html"
+    problemas = []
+    if not _git_da_cero("merge-base", "--is-ancestor", referencia, "dev"):
+        problemas.append(f"{referencia} no está en dev")
+    if not _git_da_cero("merge-base", "--is-ancestor", referencia, "HEAD"):
+        problemas.append(f"{referencia} no es antepasado de HEAD")
+    if _git_da_cero("cat-file", "-e", f"{referencia}:{ruta_portal_js}"):
+        problemas.append(f"{referencia} ya tiene {ruta_portal_js}")
+    index = _git("show", f"{referencia}:{ruta_index}")
+    if 'x-data="appPostventa()"' not in index or "portalPosventa()" in index:
+        problemas.append(f"el index.html de {referencia} no es el circuito")
+    return problemas
+
+
 def base_de_la_rama() -> str:
-    """El `git merge-base dev HEAD`, o `skip` si no estamos en la rama de F-035."""
+    """La base fija de F-035 (`BASE_DE_F035`), o `skip` si no estamos en la rama de F-035.
+
+    Hasta el 2026-10-06 era `git merge-base dev HEAD` (ver `BASE_DE_F035`).
+    """
     rama = subprocess.run(
         ["git", "branch", "--show-current"],
         cwd=RAIZ_REPO,
@@ -310,7 +354,27 @@ def base_de_la_rama() -> str:
             f"verificación del diff de F-035 (rama actual: «{rama or 'sin rama'}»): "
             "las fichas siguientes sí pueden tocar el circuito"
         )
-    return _git("merge-base", "dev", "HEAD").strip()
+    return BASE_DE_F035
+
+
+def test_f035_la_base_fija_es_dev_antes_del_merge_de_f035():
+    """La base de R59, R32 y R33 es el `dev` de antes de F-035: el circuito en `index.html` y sin portal."""
+    base = base_de_la_rama()
+
+    assert base == BASE_DE_F035
+    assert problemas_de_la_base(base) == []
+
+
+@pytest.mark.parametrize(
+    "referencia",
+    ["HEAD", "9267719"],
+    ids=["la-propia-rama", "el-merge-base-movido-del-2026-10-06"],
+)
+def test_f035_la_base_fija_control_una_base_con_el_portal_sale_en_rojo(referencia):
+    """Control: la propia rama, o el `git merge-base dev HEAD` que dejó el merge, no sirven de base."""
+    base_de_la_rama()
+
+    assert problemas_de_la_base(referencia) != [], f"{referencia} pasa por base de F-035"
 
 
 # --- R1, R42 · El portal es la portada -------------------------------------------

@@ -2193,3 +2193,26 @@ Lo que enseñó:
 Deja apuntado: F-053 (los dos datos de backend; contratos en la ficha),
 F-054 (proxy por 127.0.0.1), y para F-038 la elección del oficio de las filas
 ambiguas y la corrección de las importadas con el catálogo viejo.
+
+---
+
+## F-053 · Dos datos que pide el portal — 2026-10-06
+
+**Cerrada, desplegada y comprobada.** Rama `feature/F-053-datos-para-el-portal`, merge en `dev`/`main`
+`75b5b52`; review **APROBADA** sin cambios (`progress/review_F-053.md`).
+
+Qué queda: `POST /api/importaciones` devuelve `importado_at_utc` (UTC, siempre con microsegundos y
+`+00:00`, `null` sin zona; con `ya_importado`, el de la importación original) y
+`GET /api/catalogos/propuestas` devuelve `oficio.distintos` (pares de la obra cuya última decisión es
+`distinto`, ordenados y sin repetidos), con `pares_distintos` puro en el dominio. Solo aditivo: sin
+DDL, variables ni lecturas nuevas; el front de F-035 ya los consumía. En los tests de F-036, tres
+líneas añadidas y ninguna quitada (D-3).
+
+Evidencias: `init.sh` en verde (6706 passed), cobertura de líneas cambiadas 100 %, mutación 0
+supervivientes (5 generados y 13 a mano). V1 (fecha original en el rótulo) y V2 (0033 · 0133 en
+«Decididos como distintos») revisadas por el humano en producción.
+
+Incidencias de la sesión: la suite destapó un client ID real en `progress/review8_F-035.md` (desde el
+2026-09-26, ya en el remoto) que la caché de suite de `init.sh` no volvía a barrer; tapado en la rama
+sin reescribir la historia (decisión del humano) y alta de **F-055** para que los barridos del
+repositorio se ejecuten siempre. Observaciones de la review: O-1 a F-056, O-3/O-4 a F-055.

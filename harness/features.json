@@ -202,7 +202,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 116,
+      "priority": 117,
       "branch": "feature/F-011-buzon-correo"
     },
     {
@@ -252,7 +252,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 117,
+      "priority": 118,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
     },
@@ -272,7 +272,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 118,
+      "priority": 119,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     },
@@ -291,7 +291,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 119,
+      "priority": 120,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     },
@@ -309,7 +309,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 120,
+      "priority": 121,
       "branch": "feature/F-017-checkpoints-manual"
     },
     {
@@ -327,7 +327,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 121,
+      "priority": 122,
       "branch": "feature/F-018-minimo-privilegio-graph"
     },
     {
@@ -364,7 +364,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 123,
+      "priority": 124,
       "branch": "feature/F-020-diseno-front"
     },
     {
@@ -382,7 +382,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 124,
+      "priority": 125,
       "branch": "feature/F-021-rehidratar-sesion"
     },
     {
@@ -400,7 +400,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 125,
+      "priority": 126,
       "branch": "feature/F-022-cache-prompts-gemini"
     },
     {
@@ -418,7 +418,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 115,
+      "priority": 116,
       "branch": "feature/F-024-datos-parte-sigrid"
     },
     {
@@ -470,7 +470,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 126,
+      "priority": 127,
       "branch": "feature/F-027-suite-barrido-cacheado"
     },
     {
@@ -510,7 +510,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 132,
+      "priority": 133,
       "branch": "feature/F-029-scripts-infra-comillas"
     },
     {
@@ -647,7 +647,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 11,
+      "priority": 12,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
@@ -680,13 +680,13 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 13,
+      "priority": 14,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
       "id": "F-040",
       "title": "Volcar a Sigrid las incidencias aprobadas",
-      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED.",
+      "description": "Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Escritura en el ERP de producción. sigrid-api HOY NO SABE CREAR UNA INCIDENCIA (rcp + con, con reserva de ide, su documento §7.5): hace falta un endpoint de dominio NUEVO que se propone e implementa EN EL REPOSITORIO DE sigrid-api, no aquí. Dry-run previo y confirmación, como el cierre. Añadido el 2026-09-24 por petición del humano: el volcado es MASIVO. Llega un Excel (F-036) y hay que replicar, fila a fila y escribiendo en lote, el alta manual que hoy hace Posventa en Sigrid, documentada en docs/referencia/04_alta_incidencia_sigrid.md: ficha de la unidad de posventa → Reclamaciones → Nueva; serie RS<año2>.<mes>/ (Reclamaciones postventa, el código lo pone Sigrid); descripción; tipo de reclamación (sale 3 por defecto, Posventa pone 0002 PRIMER LISTADO POSTVENTA en el primer listado); oficio del catálogo; ubicación, forma de comunicación, descripciones corta y larga, propietario y persona que reclama; y los intervinientes (oficio + proveedor de la obra, F-039). NO vale sql/write a mano (además tope de 20 sentencias por petición): sigue haciendo falta el endpoint de dominio en sigrid-api, y debe admitir lotes. Preguntas abiertas para la spec (sección final de docs/referencia/04_alta_incidencia_sigrid.md): qué es el tipo 3 y qué regla elige entre 2 y 3; qué tablas escribe el alta (se mide contra el ERP, no se supone); qué oficio lleva el parte cuando hay varios intervinientes y quién marca Causante; de dónde salen propietario y persona que reclama en un alta masiva. Actualizado por el líder el 2026-09-25: sigrid-api YA TIENE el endpoint de dominio, POST /api/sigrid/partes-reclamacion (su F-006; azure-apps/sigrid_api.md §8.9), pensado para este consumidor: alta EN LOTE de partes 708 de UNA obra, una transacción por parte, dry-run por defecto; la idempotencia la da referencia_externa con prefijo PVI- (guardada en conext RCPCLI); tipo por defecto 0002 PRIMER LISTADO POSTVENTA; oficio e intervinientes resueltos contra los oficios de la obra (obrofc); propietario y persona copiados de la UPV; forma de comunicación por defecto Escrita. Responde 200 con el estado de cada parte (previsto, creado, idempotente, rechazado, no_procesado) y su motivo. NO pasa a PTE, ni crea tareas, correos ni fotos. Responde a varias de las preguntas abiertas de docs/referencia/04_alta_incidencia_sigrid.md (tablas, tipo por defecto, propietario); queda abierta la regla para elegir entre tipo 0002 y 0003. Doble llave de escritura en sigrid-api: SIGRID_DOMAIN_WRITE_ENABLED y SIGRID_RECLAMACION_WRITE_ENABLED. ACTUALIZADO POR EL LÍDER EL 2026-10-06: el endpoint ya no bloquea. azure-apps/sigrid_api.md §8.9 y su tabla de consumidores: sigrid/partes-reclamacion está desplegado, verificado y ABIERTO desde el 2026-09-25 (SIGRID_RECLAMACION_WRITE_ENABLED=true; escritura real autorizada de un parte en la obra 0626 y repetición idempotente). Lo que falta para F-040 es de este repositorio: F-056 (aprobar, con las candidatas al volcado) y F-038 (la página).",
       "acceptance": [
         "Una incidencia aprobada se crea en Sigrid con sus campos y su industrial, y su número vuelve a la bandeja",
         "Dry-run antes de escribir",
@@ -699,8 +699,7 @@
       "sdd": true,
       "rigor": "critico",
       "priority": 4,
-      "branch": "feature/F-040-volcado-sigrid",
-      "blocked_by": "El endpoint sigrid/partes-reclamacion está implementado en sigrid-api pero, a 2026-09-25, pendiente de despliegue y de su prueba manual en la obra 0626 (azure-apps/sigrid_api.md, consumidores). Se desbloquea cuando sigrid-api lo despliegue; no es trabajo de este repositorio."
+      "branch": "feature/F-040-volcado-sigrid"
     },
     {
       "id": "F-041",
@@ -715,7 +714,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 15,
+      "priority": 16,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -731,7 +730,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 16,
+      "priority": 17,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -746,7 +745,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 17,
+      "priority": 18,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -761,7 +760,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 18,
+      "priority": 19,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -777,7 +776,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 19,
+      "priority": 20,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -792,7 +791,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 20,
+      "priority": 21,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -807,7 +806,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 21,
+      "priority": 22,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -822,7 +821,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 22,
+      "priority": 23,
       "branch": "feature/F-048-datamart-posventa"
     },
     {
@@ -854,7 +853,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 23,
+      "priority": 24,
       "branch": "feature/F-050-agrupar-proveedores",
       "blocked_by": "Depende de F-036 (mecanismo de equivalencias) y de que algún desplegable ofrezca proveedores de fuera de la obra."
     },
@@ -891,7 +890,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 7,
+      "priority": 8,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -905,10 +904,10 @@
         "docs/INTEGRACION.md y azure-apps/postventa_incidencias.md al día",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-053-datos-para-el-portal"
     },
     {
@@ -924,7 +923,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 8,
+      "priority": 9,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -941,7 +940,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 7,
       "branch": "feature/F-055-barridos-sin-cache"
     },
     {
@@ -960,6 +959,25 @@
       "rigor": "estandar",
       "priority": 3,
       "branch": "feature/F-057-tabla-bandeja-paso1"
+    },
+    {
+      "id": "F-058",
+      "title": "La plantilla de incidencias ofrece en cada fila las ubicaciones de la tipología de su unidad",
+      "description": "Alta del 2026-10-06 al resolver la Q-5 de F-056 (propuesta del spec-author). Hoy la columna Ubicación de la plantilla de F-036 sale de una lista cerrada versionada (config/plantilla_incidencias.yaml), la misma para todas las filas, y la importación la valida contra ella; la revisión de F-056, en cambio, valida contra Sigrid en vivo: las ubicaciones de la tipología de la unidad (upv.obrtplide → prmtpl.ubica, separadas por ;, exactas tras recortar; medido en la 0677: 3 tipologías de 31 a 37 ubicaciones, que cubren las 1.261 reclamaciones). Una fila puede entrar con una ubicación de la plantilla que no es de su unidad y quedar luego ubicacion_fuera_de_lista. Esta ficha alinea las dos: la plantilla y la importación usan la misma lectura que F-056. Ojo: en el Excel la lista depende de la unidad de cada fila. Opciones para su spec: (a) desplegable dependiente de la columna Unidad (rangos con nombre por unidad o tipología y validación con INDIRECTO, probado en Excel, Excel web y LibreOffice); (b) pares Unidad · Ubicación en una sola columna, como los pares oficio · proveedor de F-036; (c) un desplegable con la unión de la obra y la validación por unidad solo al importar (con el Excel de errores). Retira la lista de ubicaciones del YAML. No cambia la bandeja ni la revisión.",
+      "acceptance": [
+        "La plantilla de una obra ofrece en cada fila solo ubicaciones de la tipología de la unidad de esa fila, leídas de Sigrid al generarla",
+        "La importación valida la ubicación de cada fila contra la tipología de su unidad leída de Sigrid en el momento de importar; una que no lo es vuelve en el Excel de errores con su motivo",
+        "La lista de ubicaciones deja de salir de config/plantilla_incidencias.yaml",
+        "Una plantilla generada antes del cambio se sigue importando con las mismas reglas de hoy, o se rechaza con un motivo claro (lo decide su spec)",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 5,
+      "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
+      "blocked_by": "F-056 (la lectura de ubicaciones por unidad, §16.3 de su design)."
     },
     {
       "id": "F-056",

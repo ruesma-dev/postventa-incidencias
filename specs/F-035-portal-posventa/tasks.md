@@ -1104,7 +1104,7 @@ ya pide cada verificación.
       `func start`): en `partes.html` recién abierta, 06 marcado y
       «01 Entrada» lleva al portal en la misma pestaña **sin preguntar**.
       La comprobación con remesa es de T12 (V2 s), no del implementer.
-- [ ] **T56**: documentación. `services/postventa-front/README.md`: la
+- [x] **T56**: documentación. `services/postventa-front/README.md`: la
       tira, su fuente (`Portal.RECORRIDO` y la guardia), la
       correspondencia de §16.16.2 en una frase, y en el paso 5 de la
       retirada que, al cambiar el estado de una sección, se cambian la

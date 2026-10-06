@@ -447,6 +447,11 @@ es su pestaña `partes`.
 >   módulo del circuito hay una excepción cerrada (R81): un `<script>` en
 >   `partes.html`, una línea de `test_f007_estaticos.py` y las de R51 de
 >   `test_f036_front.py`.
+> - **La tira del recorrido** (enmienda del 2026-10-06, R83–R89): bajo la
+>   barra de las cuatro páginas, los siete pasos del ciclo con el actual
+>   marcado (`aria-current="step"`); su fuente única es `Portal.RECORRIDO`
+>   (con `Portal.pasoDeSeccion`), y una guardia de `tests_js/portal.test.js`
+>   compara con ella las cuatro copias en HTML.
 > - **Los dos datos del backend son de otra ficha (R76).** El rótulo del
 >   resumen original de `importar.html` (R74) y «Decididos como distintos»
 >   de `oficios.html` (R75) se pintan en el front, pero los datos

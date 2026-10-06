@@ -258,7 +258,7 @@
       enseña la mudanza.
       **Verificación**: las tres salidas pegadas en `progress/impl_F-035.md`.
 
-- [ ] **T12**: **MANUAL (humano)**. V1 y V2 de `requirements.md` §3. En
+- [x] **T12**: **MANUAL (humano)**. V1 y V2 de `requirements.md` §3. En
       PowerShell, desde `services\postventa-front`: `.\dev_front.ps1`; abrir
       `http://localhost:5173/portal.html` con F12 → pestaña **Red**; recorrer
       las ocho secciones, abrir una ficha, abrir el panel de «no procede»,
@@ -898,7 +898,7 @@ ya pide cada verificación.
   > en 02, 03, 04, 05 y 07, la misma pestaña, 390 px y el foco. V2 con
   > **(s)**: con la remesa en revisión, «01 Entrada» de la tira pide
   > confirmación y **se cancela**.
-- [ ] **T40**: **MANUAL (humano) · PARADA antes de producción (V5)**. Con la
+- [x] **T40**: **MANUAL (humano) · PARADA antes de producción (V5)**. Con la
       review APROBADA y T12 en verde, ver **el portal entero** en el entorno
       de vista previa (D-14):
       `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1`
@@ -924,7 +924,7 @@ ya pide cada verificación.
       > `design.md` §16.16.2), con sus puntos. Si el paso marcado o los
       > puntos se pueden malinterpretar, **no se publica**. La respuesta
       > valida también D-17 a D-20 (`design.md` §16.16.10).
-- [ ] **T41**: **MANUAL (humano) · publicación (D-4) y V4**. Tras el merge a
+- [x] **T41**: **MANUAL (humano) · publicación (D-4) y V4**. Tras el merge a
       `dev` (líder, a petición del humano) y el push (humano):
       `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`.
       Después, V4 entero (`requirements.md` §3: a–d de antes y e–h de la
@@ -936,7 +936,7 @@ ya pide cada verificación.
       portal), con commit local en ese repositorio.
       **Verificación**: el resultado real de cada paso de V4, anotado en
       `progress/current.md`.
-- [ ] **T42**: **MANUAL (humano) · aviso a Posventa**, con el texto de
+- [x] **T42**: **MANUAL (humano) · aviso a Posventa**, con el texto de
       `design.md` §16.12 (o el que el humano prefiera): qué funciona, qué está
       en construcción y cómo se reconoce, y que el circuito sigue en «Partes
       firmados» con otro aspecto. La tarjeta de `front-portal` (H-4) y el
@@ -1131,3 +1131,8 @@ ya pide cada verificación.
       **sin caché**. Es la última tarea del implementer; después, la review
       del bloque 18 y el bloque 15 (T12 con V1 r y V2 s; T40 con V5).
 
+> **Cierre del 2026-10-06 (líder).** T12, T41 y T42 hechas por el humano («todo ok»): V1/V2 en local
+> (con `dev_front.ps1 -Api http://127.0.0.1:7073`, ver F-054), publicación con `-SoloFront` desde una copia
+> limpia de `dev` y V4 en producción, y el aviso a Posventa. **T40 (V5) no se hizo en la vista previa**: el
+> humano publicó directamente y revisó el portal en producción, que es la misma comprobación sobre el
+> entorno real; queda dicho para que no se lea como hecha en `maqueta`.

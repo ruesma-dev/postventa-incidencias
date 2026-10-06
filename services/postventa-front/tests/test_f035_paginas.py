@@ -1210,6 +1210,17 @@ def directivas_admitidas_r63(nodo) -> dict[str, str]:
         and any("data-barra-portal" in a.atributos for a in nodo.ancestros())
     ):
         return {":aria-current": f"seccion === '{pestana[1]}' ? 'page' : false"}
+    # R63 enmendado por R86 (bloque 18): el PRIMER paso de la tira con ese
+    # `href` (la regla de `Portal.pasoDeSeccion`, leída en el HTML).
+    tira = next((a for a in nodo.ancestros() if "data-recorrido" in a.atributos), None)
+    if nodo.nombre == "a" and pestana and "rs-recorrido__paso" in clases(nodo) and tira is not None:
+        primero = next(
+            e for e in tira.elementos()
+            if e.nombre == "a" and "rs-recorrido__paso" in clases(e) and e.atributos.get("href") == pestana[0]
+        )
+        if primero is nodo:
+            return {":aria-current": f"seccion === '{pestana[1]}' ? 'step' : false"}
+        return {}
     if nodo.nombre == "section" and "data-seccion" in nodo.atributos:
         return {"x-show": f"seccion === '{nodo.atributos['data-seccion']}'", "x-cloak": ""}
     if nodo.nombre == "div" and "rs-toast" in clases(nodo):
@@ -1268,7 +1279,9 @@ def test_f035_r63_la_lista_cerrada_mira_algo():
 
     assert vistas == sorted(
         [("div", "x-data"), ("div", "x-init")]
-        + [("a", ":aria-current")] * 7
+        # Siete de las pestañas de la barra y, desde el bloque 18 (R63 enmendado
+        # por R86), cinco de la tira del recorrido: 01, 02, 04, 05 y 07.
+        + [("a", ":aria-current")] * 12
         + [("section", "x-show"), ("section", "x-cloak")] * 7  # «partes» no tiene sección: es partes.html
         + [("div", ":class"), ("p", "x-text"), ("button", "x-show"), ("button", "x-cloak"), ("button", "@click")]
     ), vistas
@@ -1285,6 +1298,12 @@ _CABECERA_DE_BANDEJA = '<h1 class="rs-titulo">Bandeja de revisión</h1>'
 _ROTULO_PARTES_FIRMADOS = '<p class="rs-tarjeta__rotulo">Partes firmados</p>'
 _TARJETA_IMPORTAR = '<a href="importar.html" class="rs-tarjeta rs-tarjeta--produccion">'
 _PESTANA_BANDEJA = '<a href="#/bandeja" class="rs-pestana" data-construccion'
+#: Dos pasos de la tira del portal (`design.md` §16.16.5), para los controles de R63 enmendado.
+_PASO_SIGRID = '<a href="#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)">'
+_PASO_GESTION_ACTUAL = (
+    '<a href="#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)" '
+    ":aria-current=\"seccion === 'incidencias' ? 'step' : false\">"
+)
 
 ESTROPEOS_R63_LISTA = {
     # (viejo, nuevo, lo que tiene que salir en el mensaje)
@@ -1338,6 +1357,23 @@ ESTROPEOS_R63_LISTA = {
         '<p role="status" aria-live="polite" x-text="aviso"></p>',
         '<p role="status" aria-live="polite" x-text="aviso" x-show="bandejaFiltrada().length"></p>',
         'x-show="bandejaFiltrada().length"',
+    ),
+    # R63 enmendado por R86 (bloque 18, T54): en la tira del recorrido, solo el
+    # :aria-current del PRIMER paso de cada href, con su id.
+    "un :aria-current en 03 Sigrid, el segundo paso a la bandeja": (
+        _PASO_SIGRID,
+        _PASO_SIGRID.replace(">", " :aria-current=\"seccion === 'bandeja' ? 'step' : false\">", 1),
+        ":aria-current=\"seccion === 'bandeja' ? 'step' : false\"",
+    ),
+    "el :aria-current de 04 Gestión con otro id": (
+        _PASO_GESTION_ACTUAL,
+        _PASO_GESTION_ACTUAL.replace("'incidencias'", "'impresion'"),
+        "seccion === 'impresion' ? 'step' : false",
+    ),
+    "un x-text en un paso de la tira": (
+        _PASO_SIGRID,
+        _PASO_SIGRID.replace(">", ' x-text="bandejaFiltrada().length">', 1),
+        'x-text="bandejaFiltrada().length"',
     ),
 }
 

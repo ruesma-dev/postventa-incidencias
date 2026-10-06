@@ -1073,7 +1073,7 @@ ya pide cada verificación.
       R55, R59, R60 y R66 en verde) y `node --test "tests_js/*.test.js"` en
       verde; vistazo con `.\dev_front.ps1`: la portada se ve igual que
       antes.
-- [ ] **T54**: la tira en el portal, `importar.html` y `oficios.html`.
+- [x] **T54**: la tira en el portal, `importar.html` y `oficios.html`.
       RED primero: en `tests_js/portal.test.js`,
       `problemasDelRecorrido(html, Portal, desde)` y la guardia de R88
       (estática), con sus controles en memoria (§16.16.7). Esta tarea

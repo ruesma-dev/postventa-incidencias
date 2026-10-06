@@ -77,6 +77,27 @@
       </div>
     </nav>
 
+    <!-- ── El recorrido de una incidencia (R83-R87), bajo la barra ─────────
+         Los pasos, su orden y su sección son los de Portal.RECORRIDO; los
+         href, los de Portal.enlaceSeccion(paso.seccion, "portal"). El paso
+         actual lo pinta aria-current="step" (css/styles.css): el de
+         Portal.pasoDeSeccion de la sección visible; en inicio y en datos,
+         ninguno. 02 y 03 van los dos a la bandeja: solo se marca 02. Los
+         pasos de secciones en construcción, con el punto de la barra (R87). -->
+    <nav data-recorrido aria-label="El ciclo de una incidencia" class="rs-recorrido-banda">
+      <div class="rs-contenedor">
+        <ol class="rs-recorrido">
+          <li><a href="#/entrada" class="rs-recorrido__paso" :aria-current="seccion === 'entrada' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
+          <li><a href="#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Revisión (en construcción)" :aria-current="seccion === 'bandeja' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
+          <li><a href="#/bandeja" class="rs-recorrido__paso" data-construccion aria-label="Sigrid (en construcción)"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
+          <li><a href="#/incidencias" class="rs-recorrido__paso" data-construccion aria-label="Gestión (en construcción)" :aria-current="seccion === 'incidencias' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
+          <li><a href="#/impresion" class="rs-recorrido__paso" data-construccion aria-label="Parte (en construcción)" :aria-current="seccion === 'impresion' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
+          <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>
+          <li><a href="#/economico" class="rs-recorrido__paso" data-construccion aria-label="Coste (en construcción)" :aria-current="seccion === 'economico' ? 'step' : false"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
+        </ol>
+      </div>
+    </nav>
+
     <!-- ── Aviso de construcción (R13 enmendado, R56): siempre visible, sin
          forma de cerrarlo, en su propio color (atención; nunca burdeos).
          Texto de design.md §16.4 ──────────────────────────────────────── -->
@@ -104,16 +125,6 @@
             en construcción: lo enseñamos con datos inventados para que veáis cómo será.
           </p>
         </header>
-
-        <ol class="rs-recorrido" aria-label="El ciclo de una incidencia">
-          <li><a href="#/entrada" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">01</span>Entrada</a></li>
-          <li><a href="#/bandeja" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">02</span>Revisión</a></li>
-          <li><a href="#/bandeja" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">03</span>Sigrid</a></li>
-          <li><a href="#/incidencias" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">04</span>Gestión</a></li>
-          <li><a href="#/impresion" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">05</span>Parte</a></li>
-          <li><a href="partes.html" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">06</span>Cierre</a></li>
-          <li><a href="#/economico" class="rs-recorrido__paso"><span class="rs-recorrido__num" aria-hidden="true">07</span>Coste</a></li>
-        </ol>
 
         <!-- Las tarjetas (R67, design.md §16.5): sin una sola cifra de los datos
              de ejemplo. Las de lo que funciona llevan «En producción» y una

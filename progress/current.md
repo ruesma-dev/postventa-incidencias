@@ -1,6 +1,14 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✔ F-035 · review del bloque 14 y del conjunto APROBADA · 2026-10-06 · siguiente: bloque 15 (humano)
+>
+> `a8d78d2`. El líder aplica O-B14-1 (`docs/DESPLIEGUE.md` §10: V2 sin pulsar en importar/oficios
+> con `func start`; V4 entero) y O-B14-2 (`docs/ARCHITECTURE.md`, la línea de F-036 que decía «otra
+> pestaña»). Tests de la raíz 115, front 799, documentación del api 603: verdes. La lista única de lo
+> que el humano mira en V1/V2/V5 está en la review, «Para el líder: lo que el humano tiene que mirar».
+> Pendiente de validar por el humano: H16-4 (ii), y los riesgos H16-5 y H16-6.
+
 > ## ▶ F-035 · BLOQUE 14 (T37, T48–T51, T38, T39) + O12-1, O13-1, O13-3 HECHOS · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 14 y después bloque 15 (humano)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 14».

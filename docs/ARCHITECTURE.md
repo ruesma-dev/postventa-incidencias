@@ -905,8 +905,10 @@ La misma hexagonal que el resto del servicio:
 - **Aplicación**: `application/pipelines/plantilla.py`, `paso_importacion.py`
   y `equivalencias.py`; los handlers, en `interface_adapters/api/`.
 - **Front**: `importar.html` con `js/importacion.js` y `oficios.html` con
-  `js/oficios.js`, enlazadas desde la cabecera de `index.html` en otra pestaña
-  para no perder la remesa en curso.
+  `js/oficios.js`. Desde F-035 son páginas del portal con su barra común y se
+  abren en la misma pestaña; el circuito vive en `partes.html` y una guarda
+  pide confirmación antes de salir con una remesa a medias (ver la sección del
+  portal).
 - **La migración del Excel actual** de la obra piloto:
   `scripts/migrar_excel_f036.py`, que usa el mismo lector, el mismo generador
   y la misma validación, y no modifica el original.

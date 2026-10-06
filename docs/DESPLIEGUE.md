@@ -1118,7 +1118,9 @@ Se arregla volviendo a lanzar `publicar_maqueta.ps1` (review 7, O4).
 >    escriba en `importar.html` ni en `oficios.html`); V2 con `func start`,
 >    una remesa de `muestras/` hasta la pregunta de confirmación y
 >    **«Cancelar»**, y la guarda de salida: con la remesa a medias, salir
->    pide confirmación y **siempre se cancela**.
+>    pide confirmación y **siempre se cancela**. Con `func start`, en
+>    `importar.html` y `oficios.html` **no se pulsa nada**: escribirían en la
+>    bandeja compartida.
 > 3. **V5 · la parada (humano)**, en este entorno:
 >    `powershell -ExecutionPolicy Bypass -File infra\publicar_maqueta.ps1`
 >    (los mismos estáticos y el mismo inicio de sesión que producción, sin
@@ -1132,7 +1134,9 @@ Se arregla volviendo a lanzar `publicar_maqueta.ps1` (review 7, O4).
 > 4. **Merge a `dev`** (líder, a petición del humano) y push (humano).
 > 5. **Publicación** (humano):
 >    `powershell -ExecutionPolicy Bypass -File infra\desplegar_front.ps1 -SoloFront`,
->    y **V4** de solo lectura. El modo completo quitaría la URL de retorno
+>    y **V4 entero** (`requirements.md` §3, (a)–(i)): una remesa de prueba sin
+>    cerrar nada, la guarda con esa remesa, reimportar solo el mismo fichero
+>    ya importado y ninguna decisión de oficios. El modo completo quitaría la URL de retorno
 >    de `maqueta` (ver arriba).
 > 6. **`azure-apps/postventa_incidencias.md`** (líder, en el mismo trabajo y
 >    en su repositorio): la raíz del front es el portal, el circuito está en

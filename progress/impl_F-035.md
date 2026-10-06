@@ -7507,3 +7507,179 @@ suite del front, `python -m pytest tests -q -p no:cacheprovider` →
 | Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900` → «Sin líneas de producción en el alcance: nada que mutar … 0 mutantes evaluados» (`progress/mutacion_F-035.md`) |
 | Mutantes a mano (bloque 14) | **15: 13 muertos y 2 supervivientes** (A1, A5: texto sin directiva, fuera de lo que puede ver R63 enmendado; H-B14-1). Más las 14–36 de los bloques anteriores, todas muertas (tabla de §5 b) |
 | Tiempo de la suite | raíz 4,70 s y front 15,39 s (`init.sh`); front 9,96 s tras el arreglo de ruff; Node 1,17 s |
+
+## Bloque 18 · T52–T58 · El recorrido en todas las páginas · 2026-10-06 · **BLOQUEADO en T53**
+
+Encargo del líder: el bloque 18 (T52–T58, R83–R89, `design.md` §16.16) y la
+tarea añadida del `dev_server` (valor por defecto `http://127.0.0.1:7073`).
+Rama `feature/F-035-portal-posventa`. Sin push, sin worktree propio.
+
+### Estado en una línea
+
+**T52 hecha y con commit (`c49697d`). T53 hecha en el árbol de trabajo, SIN
+commit. Parado** porque, durante la sesión, `dev` recibió el merge de F-035
+(`93ce096`, «Merge: F-035, el portal de posventa (bloques 7 a 17 aprobados,
+sin el bloque 18 en curso)», 2026-10-06 09:49:13, un minuto después del
+commit de T52). Desde entonces `git merge-base dev HEAD` ya no es la base de
+F-035 sino `9267719` (la propia rama), y las tres guardias que comparan con
+esa base salen en rojo **sobre HEAD limpio**, sin nada mío por medio. T54–T58
+y la tarea del `dev_server`, sin empezar.
+
+### Lo que falla y por qué no es del bloque 18
+
+Comprobado con `git stash` sobre HEAD = `c49697d` (T52, árbol limpio):
+
+```
+$ python -m pytest tests/test_f035_portal.py -q -p no:cacheprovider -k "r59_partes_html_solo or r32_de_los or r33_no_se"
+E       AssertionError: partes.html cambia algo más que la presentación (R59):
+E         Left contains 45 more items, first extra item: 'replace: antes «Portal de Posventa · Ruesma» -> ahora «Incidencias de Posventa · Ruesma»'
+E       AssertionError: tests del circuito tocados de más:
+E         Left contains one more item: 'services/postventa-front/tests_js/portal.test.js: M (un test existente no se toca)'
+E       AssertionError: F-035 ha tocado el circuito:
+E         M services/postventa-front/js/portal.js
+FAILED tests/test_f035_portal.py::test_f035_r59_partes_html_solo_cambia_en_presentacion_frente_a_la_base
+FAILED tests/test_f035_portal.py::test_f035_r32_de_los_tests_del_circuito_solo_cambian_index_y_las_lineas_de_r81
+FAILED tests/test_f035_portal.py::test_f035_r33_no_se_modifica_nada_del_circuito
+3 failed, 138 deselected in 1.10s
+```
+
+- **R59**: compara `partes.html` con el `index.html` de la base. Con la base
+  en `9267719`, ese `index.html` es **el portal**, no el circuito: 45
+  diferencias que no tienen nada que ver con la tira.
+- **R32**: con la base en `9267719`, `tests_js/portal.test.js` ya existía en
+  la base y cuenta como «test existente tocado» (lo toca T52, como manda la
+  spec).
+- **R33**: igual con `js/portal.js`, que en la base nueva ya existe y cuenta
+  como módulo modificado (lo toca T52, como manda la spec).
+
+Con la base de antes del merge (`d5c87b4`, el `dev@{1}` del reflog) las tres
+pasaban: la suite dio 799 (Python) + 677 (Node) verdes al empezar la sesión,
+y 799 + 684 tras T52 (ejecutada a las 09:48, antes del merge).
+
+`bash harness/init.sh` saldría en rojo por estas tres en cualquier commit de
+la rama, así que ni T53 ni la tarea del `dev_server` pueden cumplir su
+verificación («suite en verde»). No lo arreglo yo: tocar `base_de_la_rama()`
+o fijar otra base es cambiar una guardia de la spec (R59 dice literalmente
+«`git merge-base dev HEAD`»), y `dev` no se toca. **Decisión del líder y del
+humano.** Opciones que veo, sin elegir: (a) fijar la base de R59/R32/R33 en
+el commit de `dev` anterior al merge (`d5c87b4`), con su enmienda en la
+spec; (b) usar `2a86bca`, la base que ya usa T57 para la mutación, si es la
+misma referencia; (c) deshacer el merge en `dev` (solo el humano).
+
+No he tocado `harness/features.json` (como dice la cabecera de este informe
+desde el bloque 2, el implementer de F-035 no lo toca): el líder decide si
+marca F-035 `blocked`.
+
+### T52 · La fuente: `Portal.RECORRIDO` y `Portal.pasoDeSeccion` (R83) · HECHA · `c49697d`
+
+Ficheros: `services/postventa-front/js/portal.js` (`RECORRIDO` congelado con
+`congelarLista`, `pasoDeSeccion`, exportados y listados en el comentario de
+cabecera; el bloque literal de §16.16.3) y
+`services/postventa-front/tests_js/portal.test.js` (siete tests puros de
+R83: los siete pasos con `num`, `etiqueta` y `seccion`, y solo esas claves;
+cada `seccion` en `SECCIONES`; lista y pasos congelados; la tabla de
+§16.16.2; `bandeja` → `02`; `"desconocida"`, `""`, `undefined`, `null`, `7`,
+`"BANDEJA"` y `{}` → `null` sin lanzar; y `pasoDeSeccion` cruzado con
+`RECORRIDO` sección a sección). `js/portal_app.js` no cambia.
+
+**Fase RED** (antes de tocar `js/portal.js`):
+
+```
+$ node --test --test-name-pattern="R83" tests_js/portal.test.js
+✖ f035 R83: Portal.RECORRIDO son los siete pasos, en su orden, con num, etiqueta y seccion (12.1611ms)
+✖ f035 R83: la seccion de cada paso es un id de Portal.SECCIONES (0.5266ms)
+✖ f035 R83: RECORRIDO y cada paso son de solo lectura (0.4407ms)
+✖ f035 R83: pasoDeSeccion da el num del primer paso de la sección (§16.16.2) (0.6539ms)
+✖ f035 R83: con la bandeja se marca 02 Revisión, nunca 03 Sigrid (0.4758ms)
+✖ f035 R83: pasoDeSeccion con un id desconocido, vacío o que no es texto da null y no lanza (0.4065ms)
+✖ f035 R83: pasoDeSeccion lee RECORRIDO: cada paso que da es de esa sección y es el primero (0.3866ms)
+ℹ tests 7
+ℹ pass 0
+ℹ fail 7
+  AssertionError [ERR_ASSERTION]: RECORRIDO es una lista
+  TypeError: RECORRIDO is not iterable
+  TypeError: pasoDeSeccion is not a function
+  TypeError: Cannot read properties of undefined (reading 'find')
+```
+
+**Verde** (09:48, antes del merge de `dev`): `node --test "tests_js/*.test.js"`
+→ `tests 684 · pass 684 · fail 0` (677 + 7);
+`python -m pytest tests -q -p no:cacheprovider` → `799 passed`.
+`git diff --stat HEAD~1` → solo `js/portal.js` (+28) y
+`tests_js/portal.test.js` (+90).
+
+### T53 · Las hojas (R88, R86, la cascada de R87) · HECHA EN EL ÁRBOL, SIN COMMIT
+
+Cambios **sin commit** en el árbol de trabajo (`git diff` los enseña):
+
+- `tests/test_f035_paginas.py`: `problemas_de_la_cascada_r66` generalizada a
+  `CLASES_CON_PUNTO` (`.rs-pestana`, como hasta ahora, y
+  `.rs-recorrido__paso`); `problemas_r88_hojas` y `problemas_r86_hoja` con
+  sus tests; controles: una regla del recorrido de vuelta en `portal.css`,
+  cada una de las cuatro reglas base que falte en `styles.css`, el paso
+  actual sin su regla o con otro color, y `ESTROPEOS_R87_CASCADA` (V5 el
+  paso deja de ser flex, V6 otra regla sobre el `::after` del paso, V7 una
+  regla aparte que cambia su `display`). `ESTROPEOS_H6`, sin tocar.
+  Docstring del módulo con el bloque 18.
+- `css/styles.css`: el bloque de §16.16.4 tras el de la barra (la banda, las
+  reglas movidas tal cual, el `:hover` como `a.rs-recorrido__paso:hover`, y
+  el paso actual por `aria-current="step"`), y la regla del punto con el
+  selector `.rs-recorrido__paso[data-construccion]::after` además del de la
+  pestaña (declaraciones sin cambiar).
+- `css/portal.css`: fuera las reglas `rs-recorrido*`; el título de su
+  apartado pasa a «Portada: ceja y titular (el recorrido, en
+  css/styles.css)».
+- `?v=43b9e97b83` → `?v=6e073b5414` en las cuatro páginas (la que da
+  `version_de_las_hojas()`).
+
+**Fase RED** (tests escritos, hojas todavía como estaban):
+
+```
+$ python -m pytest tests/test_f035_paginas.py -q -p no:cacheprovider -k "r88 or r86 or r87 or cascada or r66_nada"
+E       AssertionError: el punto de R66 (H-6):
+E         hay 0 reglas sobre el ::after de .rs-recorrido__paso: [] (solo la del punto)
+E       AssertionError: R88:
+E         css/portal.css · .rs-recorrido: las reglas del recorrido van en css/styles.css (R88, R77)
+E         css/portal.css · .rs-recorrido > li: las reglas del recorrido van en css/styles.css (R88, R77)
+E         [... las ocho reglas de portal.css ...]
+E         css/styles.css no tiene la regla .rs-recorrido (R88)
+E         css/styles.css no tiene la regla .rs-recorrido__paso (R88)
+E         css/styles.css no tiene la regla .rs-recorrido__num (R88)
+E         css/styles.css no tiene la regla .rs-recorrido-banda (R88)
+E       AssertionError: R86:
+E         css/styles.css no tiene la regla .rs-recorrido__paso[aria-current="step"] (R86)
+FAILED tests/test_f035_paginas.py::test_f035_r66_nada_esconde_ni_repinta_el_punto_ambar
+FAILED tests/test_f035_paginas.py::test_f035_r88_las_reglas_del_recorrido_viven_en_styles_css
+FAILED tests/test_f035_paginas.py::test_f035_r86_el_paso_actual_lo_pinta_aria_current_en_burdeos
+[... y los controles, que todavía no encuentran lo que estropear ...]
+11 failed, 6 passed, 352 deselected in 3.31s
+```
+
+**Tras el cambio** (árbol de trabajo): `python -m pytest tests -q -p no:cacheprovider`
+→ `3 failed, 808 passed`; los tres rojos son **solo** R59, R32 y R33, los
+mismos que en HEAD limpio (arriba). R49, R53, R55, R60, R66 y los nuevos de
+R86, R87 y R88, en verde. `node --test "tests_js/*.test.js"` → `684 pass,
+0 fail`. El vistazo con `.\dev_front.ps1` (la portada igual que antes) no lo
+he hecho: queda para V1/V5.
+
+### Lo que falta
+
+T53 (commit, en cuanto la suite pueda estar en verde), T54, T55, T56, T57,
+T58 y la tarea del `dev_server` (`127.0.0.1` en `dev_server.py` y
+`dev_front.ps1`, con su test y su control). Ninguna verificación MANUAL hecha
+(V1 r, V2 s, V5). En `tasks.md` no he marcado ninguna casilla: T52 se marca
+con el siguiente commit, para que el de T52 tuviera solo sus dos ficheros.
+
+En el repositorio hay un worktree que **no es mío**:
+`.claude/worktrees/agent-a6e2f9bed1d46cdbc` (rama
+`worktree-agent-a6e2f9bed1d46cdbc`, `9e30f57`), de otra sesión. No lo he
+tocado.
+
+### Evidencias (parciales, del bloque parado)
+
+| Evidencia | Valor |
+|---|---|
+| Tests ejecutados | front Python 811 (808 verdes, 3 rojos ajenos al bloque: R59, R32 y R33, por la base movida); Node 684/684 |
+| Cobertura de líneas cambiadas | sin medir: `init.sh` no se ha ejecutado (saldría en rojo por las tres guardias) |
+| Mutantes | sin lanzar (T57 no empezada) |
+| Tiempo de la suite | front Python 10,27 s; Node 2,0 s |

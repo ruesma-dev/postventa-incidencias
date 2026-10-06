@@ -1,6 +1,27 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⛔ F-035 · BLOQUE 18 PARADO en T53 · 2026-10-06 · `dev` recibió el merge de F-035 a mitad del bloque · decide el líder (y el humano)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 18».
+>
+> - **Motivo**: `dev` pasó a `93ce096` («Merge: F-035 … sin el bloque 18 en
+>   curso», 09:49:13), un minuto después del commit de T52. Ahora
+>   `git merge-base dev HEAD` = `9267719` (la propia rama) y R59, R32 y R33
+>   (`tests/test_f035_portal.py`) salen en **rojo sobre HEAD limpio**: R59
+>   compara `partes.html` con el portal; R32 y R33 ven `portal.test.js` y
+>   `portal.js` como «de la base». Con la base anterior (`d5c87b4`) pasaban.
+>   Arreglarlo es cambiar la base de una guardia de la spec (R59 dice
+>   «`git merge-base dev HEAD`») o tocar `dev`: no lo improviso.
+> - **Hecho**: `c49697d` **T52** (`Portal.RECORRIDO`, `pasoDeSeccion`,
+>   R83; RED y verde anotados). **T53 hecha en el árbol, SIN commit**
+>   (hojas, `?v=6e073b5414` en las cuatro páginas, tests de R86, R87 y R88):
+>   808 verdes y solo los 3 rojos de arriba; Node 684/684.
+> - **Sin empezar**: T54–T58 y la tarea del `dev_server` (`127.0.0.1`).
+> - `harness/features.json` sin tocar; `init.sh` sin ejecutar (saldría en
+>   rojo por las tres guardias). Hay un worktree ajeno,
+>   `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no he tocado.
+
 > ## ▶ F-035 · enmienda: el recorrido en todas las páginas · 2026-10-06 · solo spec · siguiente: bloque 18 (implementer), antes del bloque 15
 >
 > spec-author. La petición del humano es literal: «me gusta el flujo que

@@ -3,7 +3,7 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **52 features**, 28 abiertas, 24 terminadas.
+Resumen: **53 features**, 29 abiertas, 24 terminadas.
 
 En curso: **F-035**.
 
@@ -16,6 +16,7 @@ En curso: **F-035**.
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | pendiente | critico | `feature/F-038-bandeja-revision` |
 | F-040 | Volcar a Sigrid las incidencias aprobadas | 4 | pendiente | critico | `feature/F-040-volcado-sigrid` |
 | F-052 | Los secretos de Ajustes no se imprimen: ni en la traza de un test que falla ni en un log | 5 | pendiente | critico | `feature/F-052-secretos-ajustes` |
+| F-054 | El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost | 6 | pendiente | estandar | `feature/F-054-dev-server-127` |
 | F-037 | Entrada desde la web de clientes: el contrato con el proyecto independiente | 8 | pendiente | critico | `feature/F-037-entrada-web-clientes` |
 | F-039 | Propuesta del industrial al crear la incidencia | 10 | pendiente | critico | `feature/F-039-propuesta-industrial` |
 | F-041 | Ficha de la incidencia: cambiar estado y modificar campos como en Sigrid | 12 | pendiente | critico | `feature/F-041-ficha-incidencia` |
@@ -100,6 +101,12 @@ Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el cicl
 estado **pendiente** · prioridad 5 · rigor `critico` · SDD no · rama `feature/F-052-secretos-ajustes`
 
 Alta del 2026-10-02 por el líder, confirmada por el humano. Al ejecutar la verificación MANUAL T16 de F-036 (suite tests_bbdd contra la base efímera) falló un test antiguo y pytest imprimió el objeto Ajustes entero: gemini_api_key es un str normal en config/settings.py, así que la clave salió casi completa en la consola y de ahí a una conversación. El valor NO está en ningún fichero del repositorio. El humano rota la clave aparte. Alcance: que ningún campo secreto de Ajustes (claves de API, contraseñas, secretos de cliente, cadenas de conexión) aparezca en repr(), str() ni en un volcado del modelo: SecretStr o repr=False, con los puntos de uso leyendo el valor de forma explícita. Revisar TODOS los campos, no solo el de Gemini, y cualquier otro objeto que guarde un secreto (clientes, fábricas). No se hizo dentro de F-036 porque su test de alcance (R49) le prohíbe tocar config/settings.py. Va justo después del merge de F-036.
+
+### F-054 · El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost
+
+estado **pendiente** · prioridad 6 · rigor `estandar` · SDD no · rama `feature/F-054-dev-server-127`
+
+Alta del 2026-10-06 por el líder, sacada de F-035 (sus guardias R32/R33 no dejan tocar dev_server.py ni dev_front.ps1). Defecto encontrado por el humano en V2 de F-035 y reproducido por el líder: services/postventa-front/dev_server.py y dev_front.ps1 reenvían /api/* a http://localhost:7073; en Windows, localhost intenta antes ::1 (IPv6) y la conexión se cuelga decenas de segundos (medido: sin respuesta en 40 s con localhost; 0,01 s con 127.0.0.1), así que el navegador da por fallidas health, split y el resto aunque func las acabe ejecutando. Mientras tanto, se arranca con .\dev_front.ps1 -Api http://127.0.0.1:7073. Arreglo: el valor por defecto pasa a http://127.0.0.1:7073 en los dos ficheros, con la documentación al día; cambian a propósito test_f007_dev_server.py (l. ~502) y test_f007_dev_front_ps1.py (l. ~47), que fijan localhost.
 
 ### F-037 · Entrada desde la web de clientes: el contrato con el proyecto independiente
 

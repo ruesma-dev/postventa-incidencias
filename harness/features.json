@@ -909,6 +909,22 @@
       "rigor": "critico",
       "priority": 2,
       "branch": "feature/F-053-datos-para-el-portal"
+    },
+    {
+      "id": "F-054",
+      "title": "El servidor de desarrollo del front llama al backend por 127.0.0.1, no por localhost",
+      "description": "Alta del 2026-10-06 por el líder, sacada de F-035 (sus guardias R32/R33 no dejan tocar dev_server.py ni dev_front.ps1). Defecto encontrado por el humano en V2 de F-035 y reproducido por el líder: services/postventa-front/dev_server.py y dev_front.ps1 reenvían /api/* a http://localhost:7073; en Windows, localhost intenta antes ::1 (IPv6) y la conexión se cuelga decenas de segundos (medido: sin respuesta en 40 s con localhost; 0,01 s con 127.0.0.1), así que el navegador da por fallidas health, split y el resto aunque func las acabe ejecutando. Mientras tanto, se arranca con .\\dev_front.ps1 -Api http://127.0.0.1:7073. Arreglo: el valor por defecto pasa a http://127.0.0.1:7073 en los dos ficheros, con la documentación al día; cambian a propósito test_f007_dev_server.py (l. ~502) y test_f007_dev_front_ps1.py (l. ~47), que fijan localhost.",
+      "acceptance": [
+        "dev_server.py y dev_front.ps1 usan http://127.0.0.1:7073 por defecto",
+        "Los tests de F-007 que fijaban localhost lo fijan ahora con 127.0.0.1, con su control",
+        "README del front y la ayuda del script al día",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": false,
+      "rigor": "estandar",
+      "priority": 6,
+      "branch": "feature/F-054-dev-server-127"
     }
   ]
 }

@@ -131,6 +131,14 @@ Bloque 14 (`tasks.md`, T50, R65 precisado el 2026-10-06; O9-4):
   ninguna regla de las hojas con una clase `rs-obras*` en el selector
   declara `display: none`, `visibility: hidden` ni `opacity: 0`.
 
+Bloque 18 (`tasks.md`, T53, el recorrido en todas las páginas, 2026-10-06):
+
+- **R88** (hojas): las reglas `rs-recorrido*` viven en `css/styles.css`, que
+  cargan las cuatro páginas, y ninguna en `css/portal.css`.
+- **R86** (hoja): el paso actual lo pinta `aria-current="step"`, en burdeos.
+- **R87** (cascada): la comprobación de H-6 (`problemas_de_la_cascada_r66`)
+  mira también el punto de `.rs-recorrido__paso`, que es la misma regla.
+
 Todo sin red, sin BBDD y sin IA.
 """
 
@@ -358,29 +366,43 @@ def test_f035_r66_la_pestana_en_construccion_lleva_un_punto_ambar_con_tokens():
 
 PORTAL_CSS_RUTA = RAIZ_FRONT / "css" / "portal.css"
 _SELECTOR_PESTANA = re.compile(r"\.rs-pestana(?![\w-])")
+_SELECTOR_PASO = re.compile(r"\.rs-recorrido__paso(?![\w-])")
 _OCULTAN_O_REPINTAN = ("display", "visibility", "opacity", "background")
+
+#: Las clases que llevan el punto ámbar, con el patrón que las encuentra en un
+#: selector: la pestaña de la barra (R66) y, desde el bloque 18, el paso de la
+#: tira del recorrido (R87, `design.md` §16.16.4: la misma regla, con un
+#: selector más).
+CLASES_CON_PUNTO = ((".rs-pestana", _SELECTOR_PESTANA), (".rs-recorrido__paso", _SELECTOR_PASO))
 
 
 def problemas_de_la_cascada_r66(hojas: dict[str, str]) -> list[str]:
-    """Lo que, en `{hoja: css}`, esconde o repinta el punto de R66 fuera de su regla. Vacío = correcto."""
+    """Lo que, en `{hoja: css}`, esconde o repinta el punto de R66 y R87 fuera de su regla. Vacío = correcto.
+
+    Para cada clase de `CLASES_CON_PUNTO`: una sola regla sobre su `::after`
+    (la compartida), que no declara `display`, `visibility`, `opacity` ni
+    `background`; su regla base es `inline-flex` o `flex`, y ninguna otra le
+    cambia el `display`.
+    """
     problemas = []
     reglas = [(hoja, r) for hoja, css in hojas.items() for r in reglas_css(css_sin_comentarios_texto(css))]
-    del_punto = [
-        (hoja, r) for hoja, r in reglas
-        if _SELECTOR_PESTANA.search(r.selector) and ":after" in r.selector
-    ]
-    if len(del_punto) != 1:
-        problemas.append(f"hay {len(del_punto)} reglas sobre el ::after de .rs-pestana: {del_punto} (solo la de R66)")
-    for hoja, regla in del_punto:
-        problemas += [
-            f"{hoja} · {regla!r} declara {p}" for p in _OCULTAN_O_REPINTAN if regla.valor(p) is not None
+    for clase, patron in CLASES_CON_PUNTO:
+        del_punto = [
+            (hoja, r) for hoja, r in reglas
+            if patron.search(r.selector) and ":after" in r.selector
         ]
-    base = [r for _, r in reglas if r.selector == ".rs-pestana"]
-    if not base or base[-1].valor("display") not in ("inline-flex", "flex"):
-        problemas.append("la regla .rs-pestana no es flex: el ::after perdería su tamaño de 6 px")
-    for hoja, regla in reglas:
-        if _SELECTOR_PESTANA.search(regla.selector) and regla.valor("display") not in (None, "inline-flex", "flex"):
-            problemas.append(f"{hoja} · {regla!r} cambia el display de la pestaña a {regla.valor('display')}")
+        if len(del_punto) != 1:
+            problemas.append(f"hay {len(del_punto)} reglas sobre el ::after de {clase}: {del_punto} (solo la del punto)")
+        for hoja, regla in del_punto:
+            problemas += [
+                f"{hoja} · {regla!r} declara {p}" for p in _OCULTAN_O_REPINTAN if regla.valor(p) is not None
+            ]
+        base = [r for _, r in reglas if r.selector == clase]
+        if not base or base[-1].valor("display") not in ("inline-flex", "flex"):
+            problemas.append(f"la regla {clase} no es flex: el ::after perdería su tamaño de 6 px")
+        for hoja, regla in reglas:
+            if patron.search(regla.selector) and regla.valor("display") not in (None, "inline-flex", "flex"):
+                problemas.append(f"{hoja} · {regla!r} cambia el display de {clase} a {regla.valor('display')}")
     return problemas
 
 
@@ -433,6 +455,135 @@ def test_f035_r66_control_la_cascada_ve_lo_que_esconde_el_punto(caso):
     hojas[hoja] = hojas[hoja].replace(viejo, nuevo)
 
     assert problemas_de_la_cascada_r66(hojas) != [], f"H-6: la comprobación no ve «{caso}»"
+
+
+# --- Bloque 18 (T53) · Las hojas del recorrido: R88, R86 y la cascada de R87 ------
+#
+# `design.md` §16.16.4: la tira del recorrido sale bajo la barra en las cuatro
+# páginas, y las páginas reales no cargan `css/portal.css` (R77). Por eso las
+# reglas `rs-recorrido*` viven en `css/styles.css` y ninguna en `portal.css`
+# (R88); el paso actual lo pinta `aria-current="step"` en burdeos (R86); y el
+# punto ámbar de los pasos es la MISMA regla que el de las pestañas (R87, la
+# cascada de arriba generalizada).
+
+#: Las reglas base de la tira que tienen que estar en `css/styles.css` (R88).
+REGLAS_DEL_RECORRIDO = (".rs-recorrido", ".rs-recorrido__paso", ".rs-recorrido__num", ".rs-recorrido-banda")
+#: La regla del paso actual (R86) y el color que lo marca: el de la marca.
+REGLA_DEL_PASO_ACTUAL = '.rs-recorrido__paso[aria-current="step"]'
+COLOR_DEL_PASO_ACTUAL = "var(--rs-burdeos)"
+
+
+def problemas_r88_hojas(hojas: dict[str, str]) -> list[str]:
+    """Las reglas `rs-recorrido*`: ninguna en `css/portal.css`, y las base en `css/styles.css` (R88). Vacío = correcto."""
+    problemas = [
+        f"css/portal.css · {regla!r}: las reglas del recorrido van en css/styles.css (R88, R77)"
+        for regla in reglas_css(css_sin_comentarios_texto(hojas["css/portal.css"]))
+        if "rs-recorrido" in regla.selector
+    ]
+    en_styles = {r.selector for r in reglas_css(css_sin_comentarios_texto(hojas["css/styles.css"]))}
+    problemas += [
+        f"css/styles.css no tiene la regla {selector} (R88)" for selector in REGLAS_DEL_RECORRIDO
+        if selector not in en_styles
+    ]
+    return problemas
+
+
+def problemas_r86_hoja(css_styles: str) -> list[str]:
+    """La regla del paso actual en `css/styles.css`, con el color de la marca (R86). Vacío = correcto."""
+    reglas = [r for r in reglas_css(css_sin_comentarios_texto(css_styles)) if r.selector == REGLA_DEL_PASO_ACTUAL]
+    if not reglas:
+        return [f"css/styles.css no tiene la regla {REGLA_DEL_PASO_ACTUAL} (R86)"]
+    color = reglas[-1].valor("color")
+    if color != COLOR_DEL_PASO_ACTUAL:
+        return [f"{REGLA_DEL_PASO_ACTUAL}: color {color}, no {COLOR_DEL_PASO_ACTUAL} (R86)"]
+    return []
+
+
+def test_f035_r88_las_reglas_del_recorrido_viven_en_styles_css():
+    problemas = problemas_r88_hojas(_hojas())
+
+    assert problemas == [], "R88:\n" + "\n".join(problemas)
+
+
+def test_f035_r86_el_paso_actual_lo_pinta_aria_current_en_burdeos():
+    problemas = problemas_r86_hoja(STYLES_CSS.read_text(encoding="utf-8"))
+
+    assert problemas == [], "R86:\n" + "\n".join(problemas)
+
+
+def test_f035_r88_control_una_regla_del_recorrido_de_vuelta_en_portal_css_salta():
+    hojas = {k: v.replace("\r\n", "\n") for k, v in _hojas().items()}
+    hojas["css/portal.css"] += "\n.rs-recorrido__paso {\n  color: var(--rs-tinta);\n}\n"
+
+    problemas = problemas_r88_hojas(hojas)
+    assert any(p.startswith("css/portal.css · .rs-recorrido__paso") for p in problemas), problemas
+
+
+@pytest.mark.parametrize("selector", REGLAS_DEL_RECORRIDO)
+def test_f035_r88_control_una_regla_base_que_falta_en_styles_css_salta(selector):
+    hojas = {k: v.replace("\r\n", "\n") for k, v in _hojas().items()}
+    reglas = [r for r in reglas_css(css_sin_comentarios_texto(hojas["css/styles.css"])) if r.selector == selector]
+    assert reglas, f"el control no encuentra {selector} en css/styles.css"
+    hojas["css/styles.css"] = re.sub(
+        rf"(?m)^{re.escape(selector)} \{{", f"{selector}--fuera {{", hojas["css/styles.css"]
+    )
+
+    assert f"css/styles.css no tiene la regla {selector} (R88)" in problemas_r88_hojas(hojas)
+
+
+ESTROPEOS_R86_HOJA = {
+    "sin la regla del paso actual": (
+        REGLA_DEL_PASO_ACTUAL + " {",
+        '.rs-recorrido__paso[aria-current="page"] {',
+    ),
+    "el paso actual con otro color": (
+        REGLA_DEL_PASO_ACTUAL + " {\n  border-color: var(--rs-burdeos);\n  background-color: var(--rs-burdeos-suave);\n"
+        "  color: var(--rs-burdeos);",
+        REGLA_DEL_PASO_ACTUAL + " {\n  border-color: var(--rs-burdeos);\n  background-color: var(--rs-burdeos-suave);\n"
+        "  color: var(--rs-tinta);",
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R86_HOJA))
+def test_f035_r86_control_el_paso_actual_sin_su_regla_o_con_otro_color_salta(caso):
+    viejo, nuevo = ESTROPEOS_R86_HOJA[caso]
+    css = STYLES_CSS.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert css.count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+
+    assert problemas_r86_hoja(css.replace(viejo, nuevo)) != [], f"R86: la comprobación no ve «{caso}»"
+
+
+#: R87 · La cascada del punto, también para los pasos (`design.md` §16.16.7):
+#: los de `ESTROPEOS_H6` siguen en rojo, y entran estos.
+ESTROPEOS_R87_CASCADA = {
+    "V5 el paso deja de ser flex": (
+        "css/styles.css",
+        ".rs-recorrido__paso {\n  display: inline-flex;",
+        ".rs-recorrido__paso {\n  display: block;",
+    ),
+    "V6 otra regla sobre el ::after del paso": (
+        "css/portal.css",
+        ".rs-pestanas-ficha {",
+        ".rs-recorrido__paso::after { content: none; }\n\n.rs-pestanas-ficha {",
+    ),
+    "V7 una regla aparte que cambia el display del paso": (
+        "css/portal.css",
+        ".rs-pestanas-ficha {",
+        "a.rs-recorrido__paso { display: block; }\n\n.rs-pestanas-ficha {",
+    ),
+}
+
+
+@pytest.mark.parametrize("caso", sorted(ESTROPEOS_R87_CASCADA))
+def test_f035_r87_control_la_cascada_ve_lo_que_esconde_el_punto_del_paso(caso):
+    hoja, viejo, nuevo = ESTROPEOS_R87_CASCADA[caso]
+    hojas = {k: v.replace("\r\n", "\n") for k, v in _hojas().items()}
+    assert hojas[hoja].count(viejo) == 1, f"el control ya no encuentra una sola vez: {viejo!r}"
+    hojas[hoja] = hojas[hoja].replace(viejo, nuevo)
+
+    problemas = problemas_de_la_cascada_r66(hojas)
+    assert any(".rs-recorrido__paso" in p for p in problemas), f"R87: la comprobación no ve «{caso}»: {problemas}"
 
 
 # --- R80 · La guarda de salida del circuito solo lee (bloque 16, T43) -----------

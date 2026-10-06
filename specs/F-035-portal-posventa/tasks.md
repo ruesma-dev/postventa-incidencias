@@ -1047,7 +1047,7 @@ ya pide cada verificación.
 > `progress/impl_F-035.md`, «Bloque 18»; mutaciones solo en un worktree
 > desechable del scratchpad.
 
-- [ ] **T52**: la fuente. RED primero: en `tests_js/portal.test.js`, los
+- [x] **T52**: la fuente. RED primero: en `tests_js/portal.test.js`, los
       tests puros de R83 (`design.md` §16.16.7, fila R83: los siete pasos
       con `num`, `etiqueta` y `seccion`, cada `seccion` en `SECCIONES`,
       todo congelado; `pasoDeSeccion` con la tabla de §16.16.2 y los
@@ -1059,7 +1059,7 @@ ya pide cada verificación.
       `node --test "tests_js/*.test.js"` y `python -m pytest tests -q` en
       verde; `git diff --stat HEAD~1` con solo `js/portal.js` y
       `tests_js/portal.test.js`.
-- [ ] **T53**: las hojas. RED primero: en `tests/test_f035_paginas.py`,
+- [x] **T53**: las hojas. RED primero: en `tests/test_f035_paginas.py`,
       R88 (hojas), R86 (hoja) y la cascada de R87 (generalizar
       `problemas_de_la_cascada_r66` a `.rs-recorrido__paso` sin cambiar lo
       que ya mira de `.rs-pestana`), con los controles de §16.16.7 y los

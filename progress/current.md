@@ -1,26 +1,29 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ⛔ F-035 · BLOQUE 18 PARADO en T53 · 2026-10-06 · `dev` recibió el merge de F-035 a mitad del bloque · decide el líder (y el humano)
+> ## ⛔ F-035 · BLOQUE 18 HECHO (T52–T58, `init.sh` en VERDE) · tarea del `dev_server` BLOQUEADA · 2026-10-06 · decide el líder
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 18».
 >
-> - **Motivo**: `dev` pasó a `93ce096` («Merge: F-035 … sin el bloque 18 en
->   curso», 09:49:13), un minuto después del commit de T52. Ahora
->   `git merge-base dev HEAD` = `9267719` (la propia rama) y R59, R32 y R33
->   (`tests/test_f035_portal.py`) salen en **rojo sobre HEAD limpio**: R59
->   compara `partes.html` con el portal; R32 y R33 ven `portal.test.js` y
->   `portal.js` como «de la base». Con la base anterior (`d5c87b4`) pasaban.
->   Arreglarlo es cambiar la base de una guardia de la spec (R59 dice
->   «`git merge-base dev HEAD`») o tocar `dev`: no lo improviso.
-> - **Hecho**: `c49697d` **T52** (`Portal.RECORRIDO`, `pasoDeSeccion`,
->   R83; RED y verde anotados). **T53 hecha en el árbol, SIN commit**
->   (hojas, `?v=6e073b5414` en las cuatro páginas, tests de R86, R87 y R88):
->   808 verdes y solo los 3 rojos de arriba; Node 684/684.
-> - **Sin empezar**: T54–T58 y la tarea del `dev_server` (`127.0.0.1`).
-> - `harness/features.json` sin tocar; `init.sh` sin ejecutar (saldría en
->   rojo por las tres guardias). Hay un worktree ajeno,
->   `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no he tocado.
+> - **Base fija** de R59, R32 y R33: `d5c87b4` (decisión del humano, opción
+>   a), constante `BASE_DE_F035` con su control; nota en `requirements.md`.
+>   Las demás guardias con `merge-base` no tienen el problema (las del api se
+>   saltan fuera de su rama; las de `test_f035_paginas.py` ya usaban bases
+>   fijas). Aviso: la puerta de cobertura y la mutación del arnés miden
+>   «frente a dev», que ya contiene F-035.
+> - **Hecho**: T53 `bd56710`, T54 `17a2a47`, T55 `ad7ed24`, T56 `3aff48e`,
+>   T57/T58 (mutaciones 37–50: 14/14 muertas; base B1–B8: 9/9). Front 822,
+>   raíz 115, Node 706: verdes. Una desviación: el control R31
+>   `rel-en-entrada` se acota a la pestaña de la barra (justificado).
+> - **BLOQUEADA, sin empezar: la tarea del `dev_server`** (`127.0.0.1:7073`).
+>   Choca con **R33** (`dev_server.py` y `dev_front.ps1` no se tocan en F-035;
+>   §16.16.7) y con **R32/R89**: `test_f007_dev_server.py:502` y
+>   `test_f007_dev_front_ps1.py:47`, tests de la base, fijan
+>   `http://localhost:7073`. Hacerla exige enmendar R32 y R33 (opción a), o
+>   llevarla fuera de F-035 (b/c). Detalle en el informe.
+> - Pendiente del humano: V1 (r), V2 (s), V5; D-17 a D-20. `features.json`
+>   sin tocar. El worktree ajeno `.claude/worktrees/agent-a6e2f9bed1d46cdbc`,
+>   sin tocar; los míos, retirados.
 
 > ## ▶ F-035 · enmienda: el recorrido en todas las páginas · 2026-10-06 · solo spec · siguiente: bloque 18 (implementer), antes del bloque 15
 >

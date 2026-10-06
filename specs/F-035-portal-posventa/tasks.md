@@ -1114,7 +1114,7 @@ ya pide cada verificación.
       **Verificación**: front `python -m pytest tests -q` (R36, R37, R48,
       R61 y el de palabras clave de T37 en verde) y
       `tests/test_f007_documentacion.py` en verde.
-- [ ] **T57**: evidencias. (a)
+- [x] **T57**: evidencias. (a)
       `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Mutaciones manuales **37** a **50** de `design.md` §16.16.8, con
       su resultado, y la confirmación de que el worktree se retiró. (c)
@@ -1126,7 +1126,7 @@ ya pide cada verificación.
       salvo `test_f035_*.py` y `portal.test.js`.
       **Verificación**: las salidas en `progress/impl_F-035.md`,
       «Bloque 18».
-- [ ] **T58**: Ejecutar `bash harness/init.sh` en verde.
+- [x] **T58**: Ejecutar `bash harness/init.sh` en verde.
       **Verificación**: exit code 0, con la suite del front y la de la raíz
       **sin caché**. Es la última tarea del implementer; después, la review
       del bloque 18 y el bloque 15 (T12 con V1 r y V2 s; T40 con V5).

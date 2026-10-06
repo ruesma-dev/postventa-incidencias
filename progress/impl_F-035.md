@@ -6919,3 +6919,140 @@ Solo queda `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que no es mío.
 | Mutaciones manuales | **50 en 7 familias: 49 muertas y 1 equivalente (A6)**, incluidas la **26**, la **27** y la **28** de `design.md` §16.10. Un superviviente real (E11b), cerrado en T36 |
 | `bash harness/init.sh` | **ENTORNO LISTO**, exit 0, una sola ejecución; ruff 71 (deuda previa) |
 | Tiempo de la suite | raíz 7,42 s; front 16,72 s (`init.sh`); Node 1,77 s |
+
+## Arreglos de la review del bloque 13 · R13-1 · 2026-10-06
+
+> implementer. El único cambio requerido de la review del bloque 13
+> (`d62d420`): un test de R75 con los distintos junto a las otras tres
+> secciones, que cace K1, K12 y K13. **Solo tests**: `js/oficios.js`,
+> `oficios.html` y `tests_js/oficios.test.js` sin diff.
+
+### 1 · Qué cambió
+
+Un único fichero: `services/postventa-front/tests_js/f035_paginas.test.js`
+(+56, −2). Commit `897416f` `F-035 R13-1: los distintos junto a propuestas,
+grupos y avisos (review del bloque 13)`.
+
+- **Fixture nueva `propuestasDeUnaObraConTodo(distintos)`**: una obra como la
+  que traerá F-053 desplegada:
+  - una **propuesta** pendiente (`9003`·`9004`, «plural»);
+  - un **grupo vigente de dos códigos** (`9001`·`9002`);
+  - un **aviso** (`9005`·`9006`·`9007`: dos «mismo» y un «distinto», el grupo
+    no se aplica);
+  - y, si se le pasa, `oficio.distintos`; el test le pasa el par del aviso
+    (`9005`·`9007`), y al revés, para que lo ordene el front.
+- **El test «f035 R75: los distintos no cambian propuestas, grupos ni
+  avisos»** deja `propuestasSinDistintos()` y usa esa fixture. Comprueba:
+  - que lo que dice preservar **no está vacío**, con `assert` explícitos: una
+    propuesta, el grupo `[9001, 9002]`, el aviso `[9005, 9006, 9007]` y los
+    seis grupos vigentes;
+  - que `distintos` trae el par `9005`·`9007` con sus nombres;
+  - que `obra`, `propuestas`, `grupos`, `avisos` y `gruposVigentes` son
+    iguales que sin `distintos`;
+  - y que `sinNada` es `false`.
+- Se reescribe el test existente en vez de añadir uno al lado (la review
+  admite las dos): el viejo era vacuo y quedarse con él no aportaba nada. Por
+  eso Node sigue en **677**: el mismo número de tests, ninguno vacuo.
+- **No se hizo el opcional** (que el test del componente use la misma
+  respuesta): el encargo del líder era el cambio requerido, ni más ni menos.
+  Tampoco O13-1 (opcional), que sigue como informativo.
+
+### 2 · RED: K1, K12 y K13, cada una SOLA, en una copia desechable
+
+Guion del scratchpad `r13/correr.sh` + `r13/mutar.js`: para cada mutación,
+copia el front entero a `copia_<K>_<tests>/`, exige que la cadena aparezca
+**una** vez en `js/oficios.js`, aplica la mutación y lanza
+`node --test "tests_js/*.test.js"`. Cada mutación se corre dos veces: con el
+test de HEAD antes de este arreglo (`d62d420`, el vacuo) y con el nuevo. La
+copia se borra tras cada corrida; el árbol real no se toca.
+
+Las mutaciones, como las describe la review:
+
+- **K1**: `const distintos = propuestas.length || grupos.length || avisos.length ? [] : paresDistintos(oficio.distintos, nombres);`
+- **K12**: `avisos: distintos.length ? [] : avisos,`
+- **K13**: `grupos: distintos.length ? [] : grupos,`
+
+Salida real (filtrada a los fallos y al recuento):
+
+```
+K1 aplicada
+=== K1 con los tests HEAD ===
+ℹ tests 677
+ℹ pass 677
+ℹ fail 0
+K1 aplicada
+=== K1 con los tests NUEVOS ===
+✖ f035 R75: los distintos no cambian propuestas, grupos ni avisos (2.6176ms)
+ℹ tests 677
+ℹ pass 676
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: el par del aviso, en distintos
+  + actual - expected
+    actual: [],
+    expected: [ [ '9005', '9007', 'Carpinteria inventada', 'Carpinteria inventada de pino' ] ],
+K12 aplicada
+=== K12 con los tests HEAD ===
+ℹ tests 677
+ℹ pass 677
+ℹ fail 0
+K12 aplicada
+=== K12 con los tests NUEVOS ===
+✖ f035 R75: los distintos no cambian propuestas, grupos ni avisos (3.7114ms)
+ℹ tests 677
+ℹ pass 676
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: avisos
+  + actual - expected
+    actual: [],
+    expected: [ { clave: '9005-9006-9007', codigos: [Array], miembros: [Array], texto: 'Estos oficios no se agrupan: alguien dijo que dos de ellos son distintos, así que el grupo no se aplica y cada uno sale por su lado.' } ],
+K13 aplicada
+=== K13 con los tests HEAD ===
+ℹ tests 677
+ℹ pass 677
+ℹ fail 0
+K13 aplicada
+=== K13 con los tests NUEVOS ===
+✖ f035 R75: los distintos no cambian propuestas, grupos ni avisos (3.5084ms)
+ℹ tests 677
+ℹ pass 676
+ℹ fail 1
+  AssertionError [ERR_ASSERTION]: grupos
+  + actual - expected
+    actual: [],
+    expected: [ { clave: '9001-9002', etiqueta: 'Oficio inventado A', codigos: [Array], miembros: [Array], pares: [Array] } ],
+```
+
+Con el test de HEAD las tres sobreviven (lo que vio la review); con el nuevo,
+las tres caen, cada una por su aserción: K1 por el par que falta, K12 por los
+avisos y K13 por los grupos.
+
+### 3 · Verde sobre el código real
+
+- `node --test "tests_js/*.test.js"`: **677/677**, 1,65 s.
+- `git diff --stat -- services/postventa-front/js services/postventa-front/oficios.html services/postventa-front/tests_js/oficios.test.js`
+  antes del commit: **vacío**. El commit solo toca
+  `tests_js/f035_paginas.test.js`.
+- `bash harness/init.sh` (una vez, tal cual, sobre `897416f`): **ENTORNO
+  LISTO**. Raíz 114 passed en 7,95 s; api en verde (caché); front 729 passed
+  en 22,28 s; `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de
+  producción frente a dev)`; ruff 71 avisos (deuda previa).
+- Sin worktree: las copias del scratchpad se borraron tras cada corrida.
+
+### 4 · Fuera del alcance
+
+- El opcional de la review (el test del componente con la misma respuesta) y
+  O13-1 (la guardia que no ve `inert` ni `pointer-events-none`): opcionales,
+  no hechos.
+- O13-2 (códigos con espacios) va al contrato de F-053; O13-3 (README) al
+  bloque 14.
+- El vistazo MANUAL en navegador sigue con V1/V2, y la sección con V4 g.
+
+### Evidencias (arreglos de la review del bloque 13)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests ejecutados | raíz **114 passed**; front pytest **729 passed**; Node **677/677** (el test reescrito, no uno nuevo); api en verde (caché) |
+| Cobertura de las líneas cambiadas | **N/A**: `PUERTA COBERTURA: N/A (F-035 no cambia líneas Python de producción frente a dev)`; el cambio es solo de un test JS |
+| Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base d62d420 --salida <scratchpad>/r13/mutacion_r13.md` → «0 fichero(s), 0 línea(s) de producción … 0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s». Informe al scratchpad para no pisar `progress/mutacion_F-035.md` |
+| Mutantes a mano | **3 (K1, K12, K13), 3 muertos, 0 supervivientes** con el test nuevo; los 3 sobreviven con el de HEAD |
+| Tiempo de la suite | raíz 7,95 s; front pytest 22,28 s (`init.sh`); Node 1,65 s |

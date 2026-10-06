@@ -1,6 +1,23 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ▶ F-035 · R13-1 (review del bloque 13) HECHO · 2026-10-06 · `init.sh` en VERDE · siguiente: re-review de R13-1 y después bloque 14 (documentación)
+>
+> implementer. Informe: **`progress/impl_F-035.md`**, «Arreglos de la review
+> del bloque 13».
+>
+> - `897416f` **R13-1**, solo tests (`tests_js/f035_paginas.test.js`): «los
+>   distintos no cambian propuestas, grupos ni avisos» parte ahora de una obra
+>   con una propuesta, un grupo vigente de dos códigos, un aviso y su par en
+>   `distintos`; afirma que nada de eso está vacío y que `sinNada` es `false`.
+> - K1, K12 y K13, cada una sola en una copia desechable: **sobreviven** con
+>   el test de HEAD y **caen** con el nuevo.
+> - Node 677/677, front 729, raíz 114; `bash harness/init.sh` **ENTORNO
+>   LISTO** (una vez). `js/`, `oficios.html` y `oficios.test.js` sin diff.
+>   Sin worktree. Sin push.
+> - Opcionales sin hacer: el test del componente con la misma respuesta y
+>   O13-1.
+
 > ## ▶ F-035 · BLOQUE 13 (T35, T36) HECHO · 2026-10-06 · `init.sh` en VERDE · siguiente: review del bloque 13 y después bloque 14 (documentación)
 >
 > implementer. Informe: **`progress/impl_F-035.md`**, «Bloque 13».

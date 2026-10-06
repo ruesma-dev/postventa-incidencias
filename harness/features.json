@@ -647,7 +647,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 3,
+      "priority": 8,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
@@ -663,7 +663,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 4,
+      "priority": 3,
       "branch": "feature/F-038-bandeja-revision"
     },
     {
@@ -679,7 +679,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 10,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
@@ -697,7 +697,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 4,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "El endpoint sigrid/partes-reclamacion está implementado en sigrid-api pero, a 2026-09-25, pendiente de despliegue y de su prueba manual en la obra 0626 (azure-apps/sigrid_api.md, consumidores). Se desbloquea cuando sigrid-api lo despliegue; no es trabajo de este repositorio."
     },
@@ -714,7 +714,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 7,
+      "priority": 12,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -730,7 +730,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 8,
+      "priority": 13,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -745,7 +745,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 9,
+      "priority": 14,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -760,7 +760,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 10,
+      "priority": 15,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -776,7 +776,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 11,
+      "priority": 16,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -791,7 +791,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 12,
+      "priority": 17,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -806,7 +806,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 13,
+      "priority": 18,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -821,7 +821,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 14,
+      "priority": 19,
       "branch": "feature/F-048-datamart-posventa"
     },
     {
@@ -853,7 +853,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 15,
+      "priority": 20,
       "branch": "feature/F-050-agrupar-proveedores",
       "blocked_by": "Depende de F-036 (mecanismo de equivalencias) y de que algún desplegable ofrezca proveedores de fuera de la obra."
     },
@@ -890,7 +890,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 0,
+      "priority": 5,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -907,7 +907,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 0,
+      "priority": 2,
       "branch": "feature/F-053-datos-para-el-portal"
     }
   ]

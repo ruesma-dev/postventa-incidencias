@@ -19,6 +19,10 @@
 > con prioridad 3, justo tras F-053. El informe de F-053 llevaba dos uuid de prueba de la salida RED:
 > tapados en `f068c1e`.
 >
+> **Bloque 2 hecho (implementer, 2026-10-06)**: T3 `5f7b3a3` (RED), T4 `371d74c`, T5 `67b5541`
+> (`oficio.distintos`, R8–R17). Suite completa en verde: 6687 pasan, 56 omitidos. Sin desviaciones de
+> la spec. Detalle en `progress/impl_F-053.md`, «Bloque 2». Siguiente: Bloque 3 (T6, T8, T9).
+>
 > `specs/F-053-datos-para-el-portal/` (requirements R1–R21 + V1/V2, design, tasks T1–T12 en 4 bloques).
 > Solo `services/postventa-api`, solo aditiva, **sin DDL, sin variables nuevas y sin lecturas nuevas**.
 >

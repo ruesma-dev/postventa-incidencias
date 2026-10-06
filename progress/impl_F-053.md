@@ -185,14 +185,231 @@ Sin push. Nada escrito en Sigrid, SharePoint ni la base: todos los tests usan do
 Bloque 2 (`oficio.distintos`, T3–T5), Bloque 3 (INTEGRACION, mutación, `init.sh`, T6, T8, T9) y
 las tareas MANUAL. La cobertura de líneas cambiadas y la mutación se miden en T8/T9.
 
+## Bloque 2 · `oficio.distintos` (T3, T4, T5 · R8–R17) · 2026-10-06
+
+### Qué cambió
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/tests/test_f053_distintos_dominio.py` | **Nuevo.** 20 tests sobre `pares_distintos` (R9–R13) |
+| `services/postventa-api/tests/test_f053_propuestas_distintos.py` | **Nuevo.** 13 tests por las rutas de verdad de `function_app` con los dobles de F-036 (R8, R10, R11, R12, R14, R15, R16, R17) y dos sobre `PropuestasDeOficios` (T5) |
+| `services/postventa-api/tests/test_f036_catalogos_http.py` | **Dos líneas añadidas** (D-3): `"distintos": [],` en las igualdades de `test_f036_r87_las_propuestas_de_oficios_de_la_obra` y `test_f036_r12_una_obra_sin_oficios_no_propone_nada`. Ninguna quitada ni cambiada |
+| `services/postventa-api/domain/models/equivalencias.py` | Función pura `pares_distintos(codigos, decisiones, catalogo)` sobre `_ultimas`; docstring del módulo (punto 4) |
+| `services/postventa-api/application/pipelines/equivalencias.py` | `PropuestasDeOficios.distintos` (último campo, **sin defecto**); `propuestas_de_oficios` lo calcula con las `decisiones` que ya devuelve `_vigentes`; docstrings al día |
+| `services/postventa-api/interface_adapters/api/equivalencias.py` | `leer_propuestas` añade `"distintos": [{"codigo_a", "codigo_b"}]` dentro de `oficio`, tras `propuestas`; docstring del módulo al día |
+| `specs/F-053-datos-para-el-portal/tasks.md` | T3, T4 y T5 marcadas |
+
+No se tocan `_grupos()`, `GruposVigentes`, el log de `propuestas_de_oficios`, `infrastructure/`,
+`function_app.py`, `domain/ports` ni el front (ver «Alcance»).
+
+### Decisiones (dentro de la spec)
+
+- `pares_distintos` hace `frozenset(codigos)` una sola vez: la aplicación le pasa un generador
+  (`(o.codigo for o in catalogo.oficios)`, design §4), que solo se puede recorrer una vez. Lo fija
+  `test_f053_r9_los_codigos_pueden_llegar_en_un_generador`.
+- El filtro de la obra exige **los dos** códigos (`par[0] in dados and par[1] in dados`), aunque el
+  puerto ya filtre: la función no se fía de quien la llame (design §4).
+- Lo que el doble de F-036 ya filtra (otro catálogo, un código de fuera de la obra) no se puede ver
+  por HTTP; R9 (código fuera) y R13 se prueban en el dominio, como dice la cabecera del test HTTP.
+- R10 por HTTP: `GET` → `POST` «distinto» con `T1` → `GET` → `POST` «mismo» con `T2` (`T2 > T1`)
+  → `GET`, y al revés. El `POST` va por la ruta de verdad con un `ahora` propio por petición.
+
+### Cómo se prueba cada requisito
+
+| Requisito | Test(s) |
+|---|---|
+| R8 | `test_f053_r8_distintos_va_dentro_de_oficio_con_dos_claves_por_par` (claves de la raíz, de `oficio` y de cada par) |
+| R9 | dominio: `…_r9_un_par_decidido_distinto_sale`, `…_r9_un_par_decidido_mismo_no_sale`, `…_r9_un_par_con_algun_codigo_fuera_de_la_obra_no_sale[b_fuera\|a_fuera\|los_dos_fuera]` (mata `and` → `or`), `…_r9_sin_codigos_de_la_obra…`, `…_r9_…generador` |
+| R10 | dominio: «distinto, luego mismo» no; «mismo, luego distinto» sí; manda la fecha y no el orden de llegada; a igual fecha, la que llega después. HTTP: `test_f053_r10_distinto_y_despues_mismo_no_sale`, `test_f053_r10_mismo_y_despues_distinto_sale` |
+| R11 | `test_f053_r11_el_par_de_la_0677_sale_como_textos_con_sus_ceros` (`0033` · `0133`, `isinstance(str)`, idénticos a `oficios[].codigo`); y en el dominio |
+| R12 | dominio: cinco pares en orden inverso → ordenados; un par repetido sale una vez; `tuple` de `tuple`. HTTP: `test_f053_r12_ordenados_y_sin_repetidos_aunque_lleguen_al_reves` |
+| R13 | dominio: un «distinto» de `proveedor` no cuenta; un «mismo» de `proveedor` posterior no deshace el «distinto» de `oficio`; el catálogo es el del argumento (no `oficio` fijo) |
+| R14 | `test_f053_r14_…` (sin decisiones, solo «mismo», obra sin oficios) y las dos igualdades de F-036 (D-3) |
+| R15 | `test_f053_r15_el_par_sale_a_la_vez_en_distintos_y_en_el_aviso` (`avisos` y `grupos` como en R82 de F-036) |
+| R16 | `test_f053_r16_las_mismas_lecturas_una_llamada_a_ultimas_decisiones` (lista exacta de llamadas, una sola petición de decisiones) |
+| R17 | `test_f053_r17_la_respuesta_de_decidir_no_lleva_distintos`, más la igualdad completa (sin tocar) de `test_f036_r88_la_respuesta_lleva_los_pares_y_los_grupos_resultantes` |
+| T5 | `test_f053_t5_propuestas_de_oficios_devuelve_los_distintos`, `test_f053_t5_distintos_es_el_ultimo_campo_y_no_tiene_defecto` |
+
+Nota: `test_f053_r17_…` **pasa ya en RED** (afirma una ausencia en la respuesta de `POST`, que no
+cambia). Es lo esperado: protege contra meter `distintos` en `_grupos()`, no prueba el requisito
+central.
+
+### Fase RED (T3) · salida real
+
+Comando, desde `services/postventa-api` (con `--continue-on-collection-errors` para que el
+`ImportError` del test de dominio no tape el resto):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f053_distintos_dominio.py tests/test_f053_propuestas_distintos.py tests/test_f036_catalogos_http.py -q --tb=line --show-capture=no -p no:cacheprovider --continue-on-collection-errors
+```
+
+Salida (commit `5f7b3a3`, antes de tocar el código):
+
+```
+FFFFFFFFFFFF.F.......F.................................................. [ 54%]
+............................................................             [100%]
+=================================== ERRORS ====================================
+____________ ERROR collecting tests/test_f053_distintos_dominio.py ____________
+ImportError while importing test module 'C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_distintos_dominio.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_f053_distintos_dominio.py:26: in <module>
+    from domain.models.equivalencias import (
+E   ImportError: cannot import name 'pares_distintos' from 'domain.models.equivalencias' (C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\domain\models\equivalencias.py)
+================================== FAILURES ===================================
+E   AssertionError: assert {'avisos', 'g... 'propuestas'} == {'avisos', 'd... 'propuestas'}
+      
+      Extra items in the right set:
+      'distintos'
+      Use -v to get more diff
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:123: AssertionError: assert {'avisos', 'g... 'propuestas'} == {'avisos', 'd... 'propuestas'}
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:142: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:157: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:178: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:206: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:219: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:225: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:235: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:253: KeyError: 'distintos'
+E   KeyError: 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:269: KeyError: 'distintos'
+E   AttributeError: 'PropuestasDeOficios' object has no attribute 'distintos'
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:290: AttributeError: 'PropuestasDeOficios' object has no attribute 'distintos'
+E   AssertionError: assert 'propuestas' == 'distintos'
+      
+      - distintos
+      + propuestas
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f053_propuestas_distintos.py:297: AssertionError: assert 'propuestas' == 'distintos'
+E   AssertionError: assert {'obra': '067...': [...]}]}]}} == {'obra': '067...os': [], ...}}
+      
+      Omitting 1 identical items, use -vv to show
+      Differing items:
+      {'oficio': {'oficios': [{'codigo': '0046', 'nombre': 'Carpintería de madera', 'grupo': ['0046']}, {'codigo': '0085', '...], 'por_pares': False, 'motivos': ['plural'], 'pares': [{'codigo_a': '0085', 'codigo_b': '0166', 'motivos': [...]}]}]}} != {'oficio': {'oficios': [{'codigo': '0046', 'nombre': 'Carpintería de madera', 'grupo': ['0046']}, {'codigo': '0085', '...se, 'motivos': ['plural'], 'pares': [{'codigo_a': '0085', 'codigo_b': '0166', 'motivos': [...]}]}], 'avisos': [], ...}}
+      Use -v to get more diff
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f036_catalogos_http.py:232: AssertionError: assert {'obra': '067...': [...]}]}]}} == {'obra': '067...os': [], ...}}
+E   AssertionError: assert {'oficios': [...opuestas': []} == {'oficios': [...sos': [], ...}
+      
+      Omitting 4 identical items, use -vv to show
+      Right contains 1 more item:
+      {'distintos': []}
+      Use -v to get more diff
+C:\Users\pgris\PycharmProjects\postventa-incidencias\services\postventa-api\tests\test_f036_catalogos_http.py:380: AssertionError: assert {'oficios': [...opuestas': []} == {'oficios': [...sos': [], ...}
+=========================== short test summary info ===========================
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r8_distintos_va_dentro_de_oficio_con_dos_claves_por_par
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r10_distinto_y_despues_mismo_no_sale
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r10_mismo_y_despues_distinto_sale
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r11_el_par_de_la_0677_sale_como_textos_con_sus_ceros
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r12_ordenados_y_sin_repetidos_aunque_lleguen_al_reves
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r14_sin_decisiones_distintos_es_una_lista_vacia
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r14_con_solo_decisiones_mismo_distintos_es_una_lista_vacia
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r14_una_obra_sin_oficios_lleva_distintos_vacio
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r15_el_par_sale_a_la_vez_en_distintos_y_en_el_aviso
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_r16_las_mismas_lecturas_una_llamada_a_ultimas_decisiones
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_t5_propuestas_de_oficios_devuelve_los_distintos
+FAILED tests/test_f053_propuestas_distintos.py::test_f053_t5_distintos_es_el_ultimo_campo_y_no_tiene_defecto
+FAILED tests/test_f036_catalogos_http.py::test_f036_r87_las_propuestas_de_oficios_de_la_obra
+FAILED tests/test_f036_catalogos_http.py::test_f036_r12_una_obra_sin_oficios_no_propone_nada
+ERROR tests/test_f053_distintos_dominio.py
+14 failed, 118 passed, 1 error in 6.71s
+```
+
+Lectura: **1 error** de colección, el `ImportError` de `pares_distintos` (los 20 tests de dominio);
+**14 fallos**, todos por `distintos` que falta: 10 `KeyError: 'distintos'`, la aserción de claves
+de `oficio` de R8 («Extra items … 'distintos'»), el `AttributeError` de
+`PropuestasDeOficios.distintos`, el último campo de `PropuestasDeOficios` (`'propuestas' ==
+'distintos'`) y las dos igualdades de F-036 de D-3 (`{'distintos': []}` de más en lo esperado).
+Ningún fallo por otra causa.
+
+### Fase GREEN (T4, T5) · salida real
+
+T4, desde `services/postventa-api` (commit `371d74c`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f053_distintos_dominio.py tests/test_f036_equivalencias_dominio.py -q --tb=short --show-capture=no -p no:cacheprovider
+...
+126 passed in 1.07s
+```
+
+T5, el `pytest` de T3 (commit `67b5541`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f053_distintos_dominio.py tests/test_f053_propuestas_distintos.py tests/test_f036_catalogos_http.py -q --tb=short --show-capture=no -p no:cacheprovider
+...
+152 passed in 6.69s
+```
+
+Suite completa (con el arreglo R26 del líder, `930b812`, ya dentro):
+
+```
+.venv/Scripts/python.exe -m pytest tests -q --tb=short --show-capture=no -p no:cacheprovider
+...
+6687 passed, 56 skipped in 897.52s (0:14:57)
+```
+
+En verde. 6687 = 6653 + 1 (el R26 que fallaba en el Bloque 1) + 33 nuevos de este bloque.
+
+### Alcance (comprobado al cerrar el bloque)
+
+```
+git diff 349ba06 -- 'services/postventa-api/tests/test_f036_*.py'   (líneas +/- de contenido)
++            "distintos": [],
++        "distintos": [],
++    "importado_at_utc",
+```
+
+Tres líneas `+`, cero `-`: las tres de D-3 (dos de este bloque, una del Bloque 1).
+
+```
+git diff --stat 349ba06 -- services/postventa-front infra services/postventa-api/infrastructure services/postventa-api/function_app.py services/postventa-api/domain/ports
+```
+
+Vacío.
+
+Lint: `ruff check` limpio en los cinco ficheros tocados; `ruff format --check` limpio en los tres de
+código y en los dos tests nuevos (estos se formatearon con `ruff format` antes del commit de T3).
+`test_f036_catalogos_http.py` no se reformatea (solo las dos líneas de D-3).
+
+### `init.sh`
+
+Al empezar el bloque se lanzó `bash harness/init.sh`: superó el límite de 10 minutos de la
+herramienta y siguió en segundo plano; al cerrar el bloque iba por el 90 % de la suite, sin ningún
+fallo hasta ahí. No se esperó a su final: la verificación de T5 es el `pytest tests -q` completo,
+que sí terminó en verde (arriba). El `init.sh` en verde con la puerta de cobertura es T9 (Bloque 3).
+
+### Commits
+
+| Commit | Mensaje |
+|---|---|
+| `5f7b3a3` | `F-053 T3: fase RED de oficio.distintos (R8-R17) y "distintos": [] en las dos igualdades de F-036 (D-3)` |
+| `371d74c` | `F-053 T4: pares_distintos en el dominio, sobre _ultimas (R9-R13)` |
+| `67b5541` | `F-053 T5: oficio.distintos en GET /api/catalogos/propuestas (PropuestasDeOficios.distintos, R8-R17)` |
+
+Sin push. Nada escrito en Sigrid, SharePoint ni la base: todos los tests usan dobles en memoria.
+
+### Fuera de este bloque
+
+Bloque 3 (T6 `docs/INTEGRACION.md`, T8 mutación y alcance, T9 `init.sh`), T7 (líder) y las
+tareas MANUAL.
+
 ## Evidencias
 
-Parciales (solo Bloque 1); la sección se completa en T8/T9.
+Parciales (Bloques 1 y 2); la sección se completa en T8/T9.
 
 | Evidencia | Valor |
 |---|---|
-| Tests ejecutados (suite completa) | 6653 pasan, 1 falla (previo, ajeno: ver arriba), 56 omitidos |
-| Tests de F-053 | 17 nuevos, 17 en verde (75 con los de `test_f036_importar_http.py`) |
+| Tests ejecutados (suite completa, tras el Bloque 2) | 6687 pasan, 0 fallan, 56 omitidos |
+| Tests de F-053 | 50 nuevos (17 del Bloque 1, 33 del Bloque 2), todos en verde |
 | Cobertura de líneas cambiadas | se mide en T9 (`PUERTA COBERTURA` de `init.sh`) |
 | Mutantes | se mide en T8 (`python -m harness.mutacion --feature F-053 …`) |
-| Tiempo de la suite | 371.74 s (6 min 11 s) |
+| Tiempo de la suite | 897.52 s (14 min 57 s) tras el Bloque 2, con un `init.sh` corriendo a la vez; 371.74 s en el Bloque 1 |

@@ -202,7 +202,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 114,
+      "priority": 115,
       "branch": "feature/F-011-buzon-correo"
     },
     {
@@ -252,7 +252,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 115,
+      "priority": 116,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
     },
@@ -272,7 +272,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 116,
+      "priority": 117,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     },
@@ -291,7 +291,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 117,
+      "priority": 118,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     },
@@ -309,7 +309,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 118,
+      "priority": 119,
       "branch": "feature/F-017-checkpoints-manual"
     },
     {
@@ -327,7 +327,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 119,
+      "priority": 120,
       "branch": "feature/F-018-minimo-privilegio-graph"
     },
     {
@@ -364,7 +364,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 121,
+      "priority": 122,
       "branch": "feature/F-020-diseno-front"
     },
     {
@@ -382,7 +382,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 122,
+      "priority": 123,
       "branch": "feature/F-021-rehidratar-sesion"
     },
     {
@@ -400,7 +400,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 123,
+      "priority": 124,
       "branch": "feature/F-022-cache-prompts-gemini"
     },
     {
@@ -418,7 +418,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 113,
+      "priority": 114,
       "branch": "feature/F-024-datos-parte-sigrid"
     },
     {
@@ -470,7 +470,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 124,
+      "priority": 125,
       "branch": "feature/F-027-suite-barrido-cacheado"
     },
     {
@@ -510,7 +510,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 130,
+      "priority": 131,
       "branch": "feature/F-029-scripts-infra-comillas"
     },
     {
@@ -647,7 +647,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 9,
+      "priority": 10,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
@@ -679,7 +679,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 11,
+      "priority": 12,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
@@ -697,7 +697,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 2,
+      "priority": 3,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "El endpoint sigrid/partes-reclamacion está implementado en sigrid-api pero, a 2026-09-25, pendiente de despliegue y de su prueba manual en la obra 0626 (azure-apps/sigrid_api.md, consumidores). Se desbloquea cuando sigrid-api lo despliegue; no es trabajo de este repositorio."
     },
@@ -714,7 +714,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 13,
+      "priority": 14,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -730,7 +730,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 14,
+      "priority": 15,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -745,7 +745,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 15,
+      "priority": 16,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -760,7 +760,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 16,
+      "priority": 17,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -776,7 +776,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 17,
+      "priority": 18,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -791,7 +791,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 18,
+      "priority": 19,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -806,7 +806,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 19,
+      "priority": 20,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -821,7 +821,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 20,
+      "priority": 21,
       "branch": "feature/F-048-datamart-posventa"
     },
     {
@@ -853,7 +853,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 21,
+      "priority": 22,
       "branch": "feature/F-050-agrupar-proveedores",
       "blocked_by": "Depende de F-036 (mecanismo de equivalencias) y de que algún desplegable ofrezca proveedores de fuera de la obra."
     },
@@ -890,7 +890,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -907,7 +907,7 @@
       "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
-      "priority": 3,
+      "priority": 4,
       "branch": "feature/F-053-datos-para-el-portal"
     },
     {
@@ -923,7 +923,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 6,
+      "priority": 7,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -940,8 +940,25 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 4,
+      "priority": 5,
       "branch": "feature/F-055-barridos-sin-cache"
+    },
+    {
+      "id": "F-057",
+      "title": "Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua",
+      "description": "Alta del 2026-10-06 por petición del humano, tras la spec de F-038. La tabla «3 · Bandeja de la obra» de importar.html (paso 1 del recorrido) se ve estrecha y pobre. Pide: (1) que ocupe el ancho de la ventana; (2) cabecera de columnas con los colores corporativos de Ruesma (tokens rs-*); (3) ordenar por columna; (4) filtros, como en otros puntos del front (por ejemplo, el circuito de partes); (5) quitar la columna «Fila»; (6) una columna «Nueva» / «Antigua» que diga si la incidencia entró con la última importación o ya estaba antes en la bandeja; (7) poder editar las incidencias nuevas antes de aprobarlas. La edición y la aprobación son de F-056 (backend) y F-038 (bandeja.html): esta ficha no crea otro camino de edición, sino que enlaza o reutiliza el de F-038 (a decidir con el humano en la spec). Si la marca nueva/antigua necesita un dato que el backend no da, se parte (límite de servicio).",
+      "acceptance": [
+        "La tabla ocupa el ancho de la ventana y su cabecera usa los colores corporativos",
+        "Se puede ordenar por cada columna y filtrar, con el mismo patrón que el resto del front",
+        "No hay columna «Fila»; hay una columna «Nueva» / «Antigua» respecto de la última importación",
+        "Desde la tabla se puede editar una incidencia nueva antes de aprobarla, por el camino de F-038",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "estandar",
+      "priority": 2,
+      "branch": "feature/F-057-tabla-bandeja-paso1"
     }
   ]
 }

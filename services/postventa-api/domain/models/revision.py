@@ -108,7 +108,9 @@ MAX_OID = 128  # el `MAX_USUARIO_OID` del borde de la importación
 TAMANO_POR_DEFECTO = 100
 TAMANO_MAXIMO = 200
 TOPE_LECTURA_OBRA = 10_000
-MAX_CURSOR = 512
+#: Un cursor tiene **menos** de estos caracteres (los que emite `cursor_de`
+#: rondan los 120): lo demás se rechaza sin decodificar.
+LIMITE_CURSOR = 512
 
 #: Las claves de `valores` de una edición, en el orden en que se informan los
 #: errores (R13).
@@ -153,7 +155,7 @@ _PERMITIDAS: dict[EstadoRevision, tuple[AccionRevision, ...]] = {
     EstadoRevision.DESCARTADA: (AccionRevision.RECUPERAR,),
 }
 
-_EPOCA = datetime(1970, 1, 1, tzinfo=UTC)
+_ORIGEN = datetime.min.replace(tzinfo=UTC)
 _UN_MICROSEGUNDO = timedelta(microseconds=1)
 
 # Problemas de campo (R13): dicen qué falla y nunca repiten lo recibido.
@@ -892,14 +894,18 @@ def clave_de_orden(situacion: SituacionDeRevision) -> ClaveDeOrden:
     )
 
 
-def _orden(clave: ClaveDeOrden) -> tuple[int, bool, int, int]:
-    """`creada_at_utc` descendente, `fila_origen` ascendente (sin fila al final), id."""
-    microsegundos = (clave.creada_at_utc - _EPOCA) // _UN_MICROSEGUNDO
-    sin_fila = clave.fila_origen is None
+def _orden(clave: ClaveDeOrden) -> tuple[int, bool, int | None, int]:
+    """`creada_at_utc` descendente, `fila_origen` ascendente (sin fila al final), id.
+
+    Dos filas sin `fila_origen` empatan en `(True, None)` —la tupla compara
+    con `==` antes que con `<`, así que `None` nunca se ordena contra un
+    entero— y las desempata el id.
+    """
+    microsegundos = (clave.creada_at_utc - _ORIGEN) // _UN_MICROSEGUNDO
     return (
         -microsegundos,
-        sin_fila,
-        0 if clave.fila_origen is None else clave.fila_origen,
+        clave.fila_origen is None,
+        clave.fila_origen,
         clave.incidencia_id.int,
     )
 
@@ -924,7 +930,7 @@ def clave_de_cursor(texto: object) -> ClaveDeOrden:
     Además de leerse, tiene que ser **exactamente** el que emitiría
     `cursor_de` para esa clave. El error no repite el cursor.
     """
-    if not isinstance(texto, str) or not 0 < len(texto) <= MAX_CURSOR:
+    if not isinstance(texto, str) or len(texto) >= LIMITE_CURSOR:
         raise PeticionDeRevisionInvalida(_CURSOR_INVALIDO)
     try:
         crudo = base64.urlsafe_b64decode(texto + "=" * (-len(texto) % 4))
@@ -957,7 +963,7 @@ def fila_de_revision(
     catalogo: CatalogoObra,
     ubicaciones: Mapping[str, tuple[str, ...]],
 ) -> FilaDeRevision:
-    """Estado, motivos y cambios de una incidencia, con las funciones de siempre (R26)."""
+    """Estado, motivos y cambios de una incidencia, con las mismas funciones (R26)."""
     return FilaDeRevision(
         situacion=situacion,
         estado=estado_de(situacion),

@@ -92,7 +92,9 @@ def incidencia(
     return IncidenciaEnBandeja(**base)  # type: ignore[arg-type]
 
 
-def situacion(inc: IncidenciaEnBandeja, ultima: Revision | None = None) -> SituacionDeRevision:
+def situacion(
+    inc: IncidenciaEnBandeja, ultima: Revision | None = None
+) -> SituacionDeRevision:
     return SituacionDeRevision(
         incidencia=inc,
         obra_codigo=OBRA,
@@ -235,7 +237,11 @@ def test_f056_r25_el_cursor_es_base64url_de_json_sin_relleno() -> None:
 
 
 def _b64(obj: object) -> str:
-    crudo = obj if isinstance(obj, bytes) else json.dumps(obj, separators=(",", ":")).encode()
+    crudo = (
+        obj
+        if isinstance(obj, bytes)
+        else json.dumps(obj, separators=(",", ":")).encode()
+    )
     return base64.urlsafe_b64encode(crudo).decode().rstrip("=")
 
 
@@ -280,6 +286,26 @@ def test_f056_r23_el_cursor_bueno_construido_a_mano_vale() -> None:
     assert clave_de_cursor(_b64(_BUENO)) == ClaveDeOrden(
         creada_at_utc=T0, fila_origen=3, incidencia_id=UUID(int=77)
     )
+
+
+def _cursor_de_largo(largo: int) -> tuple[ClaveDeOrden, str]:
+    """Un cursor emitido de verdad con exactamente `largo` caracteres."""
+    for digitos in range(1, 400):
+        clave = ClaveDeOrden(
+            creada_at_utc=T0, fila_origen=int("1" * digitos), incidencia_id=UUID(int=77)
+        )
+        texto = cursor_de(clave)
+        if len(texto) == largo:
+            return clave, texto
+    raise AssertionError(f"no hay cursor de {largo} caracteres")
+
+
+def test_f056_r23_el_cursor_tiene_menos_de_512_caracteres() -> None:
+    clave, texto = _cursor_de_largo(511)
+    assert clave_de_cursor(texto) == clave
+    _, demasiado = _cursor_de_largo(512)
+    with pytest.raises(PeticionDeRevisionInvalida):
+        clave_de_cursor(demasiado)
 
 
 def test_f056_r23_el_error_del_cursor_no_lo_repite() -> None:
@@ -336,10 +362,18 @@ def test_f056_r25_una_pagina_y_la_siguiente() -> None:
     primera = paginar(filas, filtro=FiltroEstado.TODAS, tamano=3)
     assert (ids(primera.filas), primera.total_filtrado) == ([1, 2, 3], 7)
     assert primera.siguiente == clave_de_orden(filas[2].situacion)
-    segunda = paginar(filas, filtro=FiltroEstado.TODAS, tamano=3, despues_de=primera.siguiente)
+    segunda = paginar(
+        filas, filtro=FiltroEstado.TODAS, tamano=3, despues_de=primera.siguiente
+    )
     assert (ids(segunda.filas), segunda.total_filtrado) == ([4, 5, 6], 7)
-    tercera = paginar(filas, filtro=FiltroEstado.TODAS, tamano=3, despues_de=segunda.siguiente)
-    assert (ids(tercera.filas), tercera.siguiente, tercera.total_filtrado) == ([7], None, 7)
+    tercera = paginar(
+        filas, filtro=FiltroEstado.TODAS, tamano=3, despues_de=segunda.siguiente
+    )
+    assert (ids(tercera.filas), tercera.siguiente, tercera.total_filtrado) == (
+        [7],
+        None,
+        7,
+    )
 
 
 def test_f056_r25_sin_filas_no_hay_siguiente() -> None:
@@ -349,17 +383,25 @@ def test_f056_r25_sin_filas_no_hay_siguiente() -> None:
 
 def test_f056_r25_despues_de_una_fila_que_ya_no_esta_sigue_por_su_sitio() -> None:
     filas = [fila(n, fila_origen=n) for n in range(1, 8)]
-    desaparecida = ClaveDeOrden(creada_at_utc=T0, fila_origen=4, incidencia_id=UUID(int=0))
-    pagina = paginar(filas, filtro=FiltroEstado.TODAS, tamano=2, despues_de=desaparecida)
+    desaparecida = ClaveDeOrden(
+        creada_at_utc=T0, fila_origen=4, incidencia_id=UUID(int=0)
+    )
+    pagina = paginar(
+        filas, filtro=FiltroEstado.TODAS, tamano=2, despues_de=desaparecida
+    )
     assert ids(pagina.filas) == [4, 5]
     despues_de_la_4 = clave_de_orden(filas[3].situacion)
-    pagina = paginar(filas, filtro=FiltroEstado.TODAS, tamano=2, despues_de=despues_de_la_4)
+    pagina = paginar(
+        filas, filtro=FiltroEstado.TODAS, tamano=2, despues_de=despues_de_la_4
+    )
     assert ids(pagina.filas) == [5, 6]
 
 
 def test_f056_r25_despues_de_la_ultima_no_queda_nada() -> None:
     filas = [fila(n, fila_origen=n) for n in range(1, 4)]
-    pagina = paginar(filas, filtro=FiltroEstado.TODAS, despues_de=clave_de_orden(filas[2].situacion))
+    pagina = paginar(
+        filas, filtro=FiltroEstado.TODAS, despues_de=clave_de_orden(filas[2].situacion)
+    )
     assert (pagina.filas, pagina.siguiente, pagina.total_filtrado) == ((), None, 3)
 
 
@@ -372,7 +414,10 @@ def test_f056_r23_tamano_fuera_de_rango(tamano: int) -> None:
 def test_f056_r23_tamano_en_los_bordes_y_por_defecto() -> None:
     filas = [fila(n, fila_origen=n) for n in range(1, 251)]
     assert len(paginar(filas, filtro=FiltroEstado.TODAS, tamano=1).filas) == 1
-    assert len(paginar(filas, filtro=FiltroEstado.TODAS, tamano=TAMANO_MAXIMO).filas) == 200
+    assert (
+        len(paginar(filas, filtro=FiltroEstado.TODAS, tamano=TAMANO_MAXIMO).filas)
+        == 200
+    )
     por_defecto = paginar(filas)
     assert len(por_defecto.filas) == TAMANO_POR_DEFECTO == 100
 
@@ -421,8 +466,12 @@ def test_f056_r26_el_filtro_por_defecto_es_activas() -> None:
     ("con_motivos", "esperados"),
     [(None, [1, 2, 3, 4, 5]), (True, [2, 4]), (False, [1, 3, 5])],
 )
-def test_f056_r26_filtro_con_motivos(con_motivos: bool | None, esperados: list[int]) -> None:
-    pagina = paginar(_por_estados(), filtro=FiltroEstado.ACTIVAS, con_motivos=con_motivos)
+def test_f056_r26_filtro_con_motivos(
+    con_motivos: bool | None, esperados: list[int]
+) -> None:
+    pagina = paginar(
+        _por_estados(), filtro=FiltroEstado.ACTIVAS, con_motivos=con_motivos
+    )
     assert ids(pagina.filas) == esperados
     assert pagina.total_filtrado == len(esperados)
 
@@ -434,7 +483,9 @@ def test_f056_r26_los_dos_filtros_juntos() -> None:
 
 def test_f056_r26_paginar_con_filtro_recorre_solo_las_filtradas() -> None:
     filas = _por_estados()
-    vistos, tamanos = _recorrer(filas, 2, filtro=FiltroEstado.ACTIVAS, con_motivos=False)
+    vistos, tamanos = _recorrer(
+        filas, 2, filtro=FiltroEstado.ACTIVAS, con_motivos=False
+    )
     assert (vistos, tamanos) == ([1, 3, 5], [2, 1])
 
 
@@ -445,7 +496,9 @@ def test_f056_r26_paginar_con_filtro_recorre_solo_las_filtradas() -> None:
 
 def test_f056_r27_resumen_sobre_todas_las_filas() -> None:
     filas = _por_estados() + [
-        fila(8, estado=E.NUEVA, motivos=(M.SIN_UBICACION, M.OFICIO_AMBIGUO, M.DUPLICADA)),
+        fila(
+            8, estado=E.NUEVA, motivos=(M.SIN_UBICACION, M.OFICIO_AMBIGUO, M.DUPLICADA)
+        ),
     ]
     r = resumen(filas)
     assert r.total == 8
@@ -507,7 +560,9 @@ def test_f056_r29_fila_de_revision_editada() -> None:
         correo="persona@ejemplo.invalid",
         revisado_at_utc=AHORA,
     )
-    f = fila_de_revision(situacion(inc, ultima), catalogo=CATALOGO, ubicaciones={U1: ("Baño",)})
+    f = fila_de_revision(
+        situacion(inc, ultima), catalogo=CATALOGO, ubicaciones={U1: ("Baño",)}
+    )
     assert f.estado is E.EDITADA
     assert f.motivos == (M.UBICACION_FUERA_DE_LISTA,)
     assert f.cambios == ("ubicacion", "detalle")

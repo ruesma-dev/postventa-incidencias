@@ -133,7 +133,10 @@ UBICACIONES: dict[str, tuple[str, ...]] = {
 LISTAS = ListasCerradas(
     ubicaciones=("Baño",),
     urgencias=(Opcion("Urgente", "urgente"), Opcion("Seguridad", "seguridad")),
-    listados=(Opcion("Primer listado", "primero"), Opcion("Segundo listado", "segundo")),
+    listados=(
+        Opcion("Primer listado", "primero"),
+        Opcion("Segundo listado", "segundo"),
+    ),
 )
 
 
@@ -248,7 +251,9 @@ def decide(
         sit,
         pet,
         catalogo=catalogo,
-        ubicaciones=UBICACIONES if ubicaciones is None and catalogo is not None else ubicaciones,
+        ubicaciones=UBICACIONES
+        if ubicaciones is None and catalogo is not None
+        else ubicaciones,
         listas=listas,
         ahora=AHORA,
     )
@@ -293,7 +298,9 @@ def sit_nueva() -> SituacionDeRevision:
 
 
 def sit_editada() -> SituacionDeRevision:
-    return situacion(ultima=revision(3, A.EDITAR, valores(detalle="Ejemplo de detalle")))
+    return situacion(
+        ultima=revision(3, A.EDITAR, valores(detalle="Ejemplo de detalle"))
+    )
 
 
 def sit_aprobada() -> SituacionDeRevision:
@@ -484,10 +491,14 @@ def test_f056_r2_accion_no_permitida_antes_que_la_frescura() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_f056_r3_editar_una_aprobada_la_deja_editada_y_fuera_de_las_candidatas() -> None:
+def test_f056_r3_editar_una_aprobada_la_deja_editada_y_fuera_de_las_candidatas() -> (
+    None
+):
     aprobada = sit_aprobada()
     assert es_candidata(aprobada)
-    nueva = decide(aprobada, peticion(A.EDITAR, previa=3, vals=pedidos(ubicacion="Cocina")))
+    nueva = decide(
+        aprobada, peticion(A.EDITAR, previa=3, vals=pedidos(ubicacion="Cocina"))
+    )
     despues = situacion(ultima=revision(4, nueva.accion, nueva.valores))
     assert estado_de(despues) is E.EDITADA
     assert not es_candidata(despues)
@@ -510,6 +521,11 @@ def test_f056_r9_validar_quien_recorta_y_conserva_mayusculas() -> None:
     assert validar_quien("  oid-1  ", "  Persona@Ejemplo.INVALID ") == Quien(
         oid="oid-1", correo="Persona@Ejemplo.INVALID"
     )
+
+
+def test_f056_r5_el_oid_de_1_vale() -> None:
+    assert validar_quien("x", CORREO).oid == "x"
+    assert validar_quien(" x ", CORREO).oid == "x"
 
 
 def test_f056_r5_el_oid_de_128_vale_y_el_de_129_no() -> None:
@@ -617,7 +633,11 @@ def test_f056_r14_los_nombres_salen_de_sigrid_y_no_de_lo_guardado() -> None:
         proveedor_nombre="Nombre viejo Ejemplo",
     )
     v = validar_valores(
-        pedidos(), vigentes=vigentes, catalogo=CATALOGO, ubicaciones=UBICACIONES, listas=LISTAS
+        pedidos(),
+        vigentes=vigentes,
+        catalogo=CATALOGO,
+        ubicaciones=UBICACIONES,
+        listas=LISTAS,
     )
     assert (v.unidad_nombre, v.oficio_nombre, v.proveedor_nombre) == (
         "Villa Ejemplo 1",
@@ -652,7 +672,9 @@ def test_f056_r48_ubicacion_de_la_lista_de_su_unidad_vale(ubicacion: str) -> Non
     assert valida(ubicacion=ubicacion).ubicacion == ubicacion
 
 
-def test_f056_r47_ubicacion_se_recorta_antes_de_comparar_y_se_guarda_recortada() -> None:
+def test_f056_r47_ubicacion_se_recorta_antes_de_comparar_y_se_guarda_recortada() -> (
+    None
+):
     assert valida(ubicacion="  Cocina \t").ubicacion == "Cocina"
 
 
@@ -679,7 +701,11 @@ def test_f056_r48_unidad_del_catalogo_sin_entrada_en_el_mapa_es_lista_vacia() ->
     sin_u1 = {U2: ("Terraza",)}
     with pytest.raises(ValoresNoValidos) as exc:
         validar_valores(
-            pedidos(), vigentes=valores(), catalogo=CATALOGO, ubicaciones=sin_u1, listas=LISTAS
+            pedidos(),
+            vigentes=valores(),
+            catalogo=CATALOGO,
+            ubicaciones=sin_u1,
+            listas=LISTAS,
         )
     assert [c for c, _ in exc.value.errores] == ["ubicacion"]
 
@@ -697,7 +723,10 @@ def test_f056_r13_ubicacion_que_no_es_texto(ubicacion: object) -> None:
 
 
 def test_f056_r13_descripcion_colapsa_blancos() -> None:
-    assert valida(descripcion="  Ejemplo \n de   grieta\t ").descripcion == "Ejemplo de grieta"
+    assert (
+        valida(descripcion="  Ejemplo \n de   grieta\t ").descripcion
+        == "Ejemplo de grieta"
+    )
 
 
 def test_f056_r13_descripcion_de_128_vale_y_de_129_no() -> None:
@@ -721,7 +750,10 @@ def test_f056_r13_detalle_vacio_es_nulo(detalle: str | None) -> None:
 
 
 def test_f056_r13_detalle_se_recorta_y_conserva_lo_de_dentro() -> None:
-    assert valida(detalle="  Ejemplo\n\n  de detalle  ").detalle == "Ejemplo\n\n  de detalle"
+    assert (
+        valida(detalle="  Ejemplo\n\n  de detalle  ").detalle
+        == "Ejemplo\n\n  de detalle"
+    )
 
 
 def test_f056_r13_detalle_de_2000_vale_y_de_2001_no() -> None:
@@ -736,7 +768,11 @@ def test_f056_r13_detalle_que_no_es_texto() -> None:
 def test_f056_r13_oficio_nulo_sin_proveedor_vale() -> None:
     v = valida(oficio_codigo=None, proveedor_codigo=None)
     assert (v.oficio_codigo, v.oficio_nombre, v.oficio_ambiguo) == (None, None, False)
-    assert (v.proveedor_codigo, v.proveedor_nombre, v.proveedor_ambiguo) == (None, None, False)
+    assert (v.proveedor_codigo, v.proveedor_nombre, v.proveedor_ambiguo) == (
+        None,
+        None,
+        False,
+    )
 
 
 def test_f056_r14_el_nombre_del_oficio_es_el_de_ese_codigo() -> None:
@@ -756,7 +792,9 @@ def test_f056_r14_oficio_sin_nombre_en_sigrid_guarda_el_codigo() -> None:
 
 @pytest.mark.parametrize("oficio", ["0300", " 0046", "0046 ", "46", ""])
 def test_f056_r13_oficio_fuera_de_obrofc(oficio: str) -> None:
-    assert campos_con_error(oficio_codigo=oficio, proveedor_codigo=None) == ["oficio_codigo"]
+    assert campos_con_error(oficio_codigo=oficio, proveedor_codigo=None) == [
+        "oficio_codigo"
+    ]
 
 
 @pytest.mark.parametrize("oficio", [46, ["0046"]])
@@ -765,7 +803,9 @@ def test_f056_r13_oficio_que_no_es_texto(oficio: object) -> None:
 
 
 def test_f056_r13_oficio_no_valido_no_arrastra_un_error_del_proveedor() -> None:
-    assert campos_con_error(oficio_codigo="0300", proveedor_codigo="EJ07") == ["oficio_codigo"]
+    assert campos_con_error(oficio_codigo="0300", proveedor_codigo="EJ07") == [
+        "oficio_codigo"
+    ]
 
 
 def test_f056_r14_par_repetido_con_dos_nombres_guarda_el_primero() -> None:
@@ -774,7 +814,13 @@ def test_f056_r14_par_repetido_con_dos_nombres_guarda_el_primero() -> None:
 
 @pytest.mark.parametrize(
     ("oficio", "proveedor"),
-    [("0046", "EJ08"), ("0143", "EJ07"), ("0046", "ej07"), ("0046", " EJ07"), ("0200", "EJ07")],
+    [
+        ("0046", "EJ08"),
+        ("0143", "EJ07"),
+        ("0046", "ej07"),
+        ("0046", " EJ07"),
+        ("0200", "EJ07"),
+    ],
 )
 def test_f056_r13_par_fuera_de_obrofc(oficio: str, proveedor: str) -> None:
     assert campos_con_error(oficio_codigo=oficio, proveedor_codigo=proveedor) == [
@@ -783,7 +829,9 @@ def test_f056_r13_par_fuera_de_obrofc(oficio: str, proveedor: str) -> None:
 
 
 def test_f056_r13_no_hay_proveedor_sin_oficio() -> None:
-    assert campos_con_error(oficio_codigo=None, proveedor_codigo="EJ07") == ["proveedor_codigo"]
+    assert campos_con_error(oficio_codigo=None, proveedor_codigo="EJ07") == [
+        "proveedor_codigo"
+    ]
 
 
 def test_f056_r13_proveedor_que_no_es_texto() -> None:
@@ -798,12 +846,16 @@ def test_f056_r13_urgencia_y_listado_validos() -> None:
     assert isinstance(v.urgencia, Urgencia) and isinstance(v.listado, Listado)
 
 
-@pytest.mark.parametrize("urgencia", ["Urgente", "urgente ", "alta", "", 1, ["urgente"]])
+@pytest.mark.parametrize(
+    "urgencia", ["Urgente", "urgente ", "alta", "", 1, ["urgente"]]
+)
 def test_f056_r13_urgencia_no_valida(urgencia: object) -> None:
     assert campos_con_error(urgencia=urgencia) == ["urgencia"]
 
 
-@pytest.mark.parametrize("listado", ["Primero", "tercero", " segundo", "", 2, ["primero"]])
+@pytest.mark.parametrize(
+    "listado", ["Primero", "tercero", " segundo", "", 2, ["primero"]]
+)
 def test_f056_r13_listado_no_valido(listado: object) -> None:
     assert campos_con_error(listado=listado) == ["listado"]
 
@@ -942,7 +994,11 @@ def test_f056_r15_conserva_el_proveedor_vigente_tal_cual() -> None:
 def test_f056_r15_oficio_ambiguo_y_proveedor_nulo_lo_quita() -> None:
     v = _valida_desde(_ambiguos(), oficio_codigo=None, proveedor_codigo=None)
     assert (v.oficio_ambiguo, v.oficio_nombre) == (True, "Carpintería de madera")
-    assert (v.proveedor_codigo, v.proveedor_nombre, v.proveedor_ambiguo) == (None, None, False)
+    assert (v.proveedor_codigo, v.proveedor_nombre, v.proveedor_ambiguo) == (
+        None,
+        None,
+        False,
+    )
 
 
 @pytest.mark.parametrize("proveedor", ["EJ08", "ej07"])
@@ -991,7 +1047,9 @@ def test_f056_r15_solo_con_oficio_ambiguo_vigente() -> None:
         {"detalle": "   "},
     ],
 )
-def test_f056_r16_editar_con_los_vigentes_es_sin_cambios(cambios: dict[str, object]) -> None:
+def test_f056_r16_editar_con_los_vigentes_es_sin_cambios(
+    cambios: dict[str, object],
+) -> None:
     with pytest.raises(SinCambios):
         decide(situacion(), peticion(A.EDITAR, vals=pedidos(**cambios)))
 
@@ -1035,7 +1093,9 @@ def test_f056_r13_editar_sin_valores_es_peticion_invalida() -> None:
 
 
 @pytest.mark.parametrize("accion", [A.DESCARTAR, A.APROBAR])
-def test_f056_r5_valores_en_otra_accion_es_peticion_invalida(accion: AccionRevision) -> None:
+def test_f056_r5_valores_en_otra_accion_es_peticion_invalida(
+    accion: AccionRevision,
+) -> None:
     with pytest.raises(PeticionDeRevisionInvalida):
         decide(situacion(), peticion(accion, vals=pedidos()))
 
@@ -1046,7 +1106,9 @@ def test_f056_r5_valores_en_recuperar_es_peticion_invalida() -> None:
 
 
 @pytest.mark.parametrize("accion", [A.EDITAR, A.APROBAR])
-def test_f056_r5_motivo_fuera_de_descartar_es_peticion_invalida(accion: AccionRevision) -> None:
+def test_f056_r5_motivo_fuera_de_descartar_es_peticion_invalida(
+    accion: AccionRevision,
+) -> None:
     vals = pedidos(ubicacion="Cocina") if accion is A.EDITAR else None
     with pytest.raises(PeticionDeRevisionInvalida):
         decide(situacion(), peticion(accion, vals=vals, motivo="Ejemplo"))
@@ -1054,7 +1116,11 @@ def test_f056_r5_motivo_fuera_de_descartar_es_peticion_invalida(accion: AccionRe
 
 def test_f056_r13_editar_o_aprobar_sin_catalogo_es_un_error_de_programacion() -> None:
     with pytest.raises(ValueError):
-        decide(situacion(), peticion(A.EDITAR, vals=pedidos(ubicacion="Cocina")), catalogo=None)
+        decide(
+            situacion(),
+            peticion(A.EDITAR, vals=pedidos(ubicacion="Cocina")),
+            catalogo=None,
+        )
     with pytest.raises(ValueError):
         decide(situacion(), peticion(A.APROBAR), catalogo=None)
     with pytest.raises(ValueError):
@@ -1079,7 +1145,9 @@ def test_f056_decidir_exige_la_misma_incidencia() -> None:
 
 
 def test_f056_r7_sin_revisiones_la_previa_es_nula() -> None:
-    assert decide(situacion(), peticion(A.DESCARTAR), catalogo=None).accion is A.DESCARTAR
+    assert (
+        decide(situacion(), peticion(A.DESCARTAR), catalogo=None).accion is A.DESCARTAR
+    )
     with pytest.raises(RevisionDesactualizada):
         decide(situacion(), peticion(A.DESCARTAR, previa=1), catalogo=None)
 
@@ -1087,7 +1155,10 @@ def test_f056_r7_sin_revisiones_la_previa_es_nula() -> None:
 @pytest.mark.parametrize("previa", [None, 4, 6])
 def test_f056_r7_la_previa_tiene_que_ser_la_ultima(previa: int | None) -> None:
     sit = situacion(ultima=revision(5, A.EDITAR, valores(ubicacion="Cocina")))
-    assert decide(sit, peticion(A.DESCARTAR, previa=5), catalogo=None).accion is A.DESCARTAR
+    assert (
+        decide(sit, peticion(A.DESCARTAR, previa=5), catalogo=None).accion
+        is A.DESCARTAR
+    )
     with pytest.raises(RevisionDesactualizada):
         decide(sit, peticion(A.DESCARTAR, previa=previa), catalogo=None)
 
@@ -1105,22 +1176,37 @@ def test_f056_r7_la_frescura_va_antes_que_sigrid() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("motivo", "esperado"), [(None, None), ("", None), ("  \n ", None)])
+@pytest.mark.parametrize(
+    ("motivo", "esperado"), [(None, None), ("", None), ("  \n ", None)]
+)
 def test_f056_r18_motivo_vacio_es_nulo(motivo: str | None, esperado: None) -> None:
-    assert decide(situacion(), peticion(A.DESCARTAR, motivo=motivo), catalogo=None).motivo is esperado
+    assert (
+        decide(situacion(), peticion(A.DESCARTAR, motivo=motivo), catalogo=None).motivo
+        is esperado
+    )
 
 
 def test_f056_r18_el_motivo_se_recorta() -> None:
-    nueva = decide(situacion(), peticion(A.DESCARTAR, motivo="  Ejemplo  de motivo \n"), catalogo=None)
+    nueva = decide(
+        situacion(),
+        peticion(A.DESCARTAR, motivo="  Ejemplo  de motivo \n"),
+        catalogo=None,
+    )
     assert nueva.motivo == "Ejemplo  de motivo"
 
 
 def test_f056_r18_motivo_de_500_vale_y_de_501_no() -> None:
     assert MAX_MOTIVO == 500
-    nueva = decide(situacion(), peticion(A.DESCARTAR, motivo=" " + "m" * 500 + " "), catalogo=None)
+    nueva = decide(
+        situacion(), peticion(A.DESCARTAR, motivo=" " + "m" * 500 + " "), catalogo=None
+    )
     assert nueva.motivo == "m" * 500
     with pytest.raises(PeticionDeRevisionInvalida) as exc:
-        decide(situacion(), peticion(A.DESCARTAR, motivo="Ejemplo" + "m" * 494), catalogo=None)
+        decide(
+            situacion(),
+            peticion(A.DESCARTAR, motivo="Ejemplo" + "m" * 494),
+            catalogo=None,
+        )
     assert "Ejemplo" not in str(exc.value)
 
 
@@ -1133,7 +1219,9 @@ def test_f056_r18_motivo_que_no_es_texto(motivo: object) -> None:
 def test_f056_r18_descartar_guarda_los_vigentes_sin_leer_sigrid() -> None:
     vigentes = valores(ubicacion=None, oficio_codigo="0300")
     sit = situacion(ultima=revision(2, A.EDITAR, vigentes))
-    nueva = decide(sit, peticion(A.DESCARTAR, previa=2, motivo="Ejemplo"), catalogo=None)
+    nueva = decide(
+        sit, peticion(A.DESCARTAR, previa=2, motivo="Ejemplo"), catalogo=None
+    )
     assert nueva == RevisionNueva(
         incidencia_id=UUID(int=1),
         accion=A.DESCARTAR,
@@ -1176,7 +1264,17 @@ def test_f056_r21_los_nueve_motivos_en_su_orden() -> None:
 
 def test_f056_r21_una_incidencia_completa_no_tiene_motivos() -> None:
     assert motivos() == ()
-    assert motivos(valores(oficio_codigo="0200", oficio_nombre="0200", proveedor_codigo=None, proveedor_nombre=None)) == ()
+    assert (
+        motivos(
+            valores(
+                oficio_codigo="0200",
+                oficio_nombre="0200",
+                proveedor_codigo=None,
+                proveedor_nombre=None,
+            )
+        )
+        == ()
+    )
 
 
 def test_f056_r21_unidad_fuera_de_la_obra_sola() -> None:
@@ -1210,7 +1308,12 @@ def test_f056_r48_unidad_sin_entrada_en_el_mapa_da_ubicacion_fuera_de_lista() ->
 
 
 def test_f056_r21_sin_oficio_solo() -> None:
-    sin = valores(oficio_codigo=None, oficio_nombre=None, proveedor_codigo=None, proveedor_nombre=None)
+    sin = valores(
+        oficio_codigo=None,
+        oficio_nombre=None,
+        proveedor_codigo=None,
+        proveedor_nombre=None,
+    )
     assert motivos(sin) == (M.SIN_OFICIO,)
 
 
@@ -1237,11 +1340,15 @@ def test_f056_r21_par_fuera_de_la_obra_solo() -> None:
 
 
 def test_f056_r21_proveedor_ambiguo_solo() -> None:
-    amb = valores(proveedor_codigo=None, proveedor_nombre="Ejemplo", proveedor_ambiguo=True)
+    amb = valores(
+        proveedor_codigo=None, proveedor_nombre="Ejemplo", proveedor_ambiguo=True
+    )
     assert motivos(amb) == (M.PROVEEDOR_AMBIGUO,)
 
 
-def _duplicada(**cambios_propios: object) -> tuple[IncidenciaEnBandeja, SituacionDeRevision]:
+def _duplicada(
+    **cambios_propios: object,
+) -> tuple[IncidenciaEnBandeja, SituacionDeRevision]:
     original = situacion(incidencia(1))
     propia = incidencia(2, duplicada_de=UUID(int=1), **cambios_propios)
     return propia, original
@@ -1359,7 +1466,9 @@ def test_f056_r22_sin_duplicada_de_nunca_es_duplicada() -> None:
 
 def test_f056_r22_original_descartada_ya_no_es_duplicada() -> None:
     propia, _ = _duplicada()
-    original = situacion(incidencia(1), ultima=revision(3, A.DESCARTAR, motivo="Ejemplo"))
+    original = situacion(
+        incidencia(1), ultima=revision(3, A.DESCARTAR, motivo="Ejemplo")
+    )
     assert motivos(inc=propia, original=original) == ()
 
 
@@ -1379,7 +1488,9 @@ def test_f056_r22_editar_la_propia_para_distinguirla() -> None:
 
 def test_f056_r22_editar_la_original_para_distinguirlas() -> None:
     propia, _ = _duplicada()
-    original = situacion(incidencia(1), ultima=revision(3, A.EDITAR, valores(ubicacion="Cocina")))
+    original = situacion(
+        incidencia(1), ultima=revision(3, A.EDITAR, valores(ubicacion="Cocina"))
+    )
     assert motivos(inc=propia, original=original) == ()
 
 
@@ -1429,7 +1540,9 @@ ORDEN_HUELLA = (
 
 
 def test_f056_r20_la_huella_es_sha256_de_los_13_valores_en_json() -> None:
-    v = valores(urgencia=Urgencia.URGENTE, listado=Listado.PRIMERO, detalle="Ejemplo «ñ»")
+    v = valores(
+        urgencia=Urgencia.URGENTE, listado=Listado.PRIMERO, detalle="Ejemplo «ñ»"
+    )
     lista = [getattr(v, campo) for campo in ORDEN_HUELLA]
     lista = [x.value if isinstance(x, Urgencia | Listado) else x for x in lista]
     texto = json.dumps(lista, ensure_ascii=False, separators=(",", ":"))
@@ -1442,8 +1555,12 @@ def test_f056_r20_la_huella_es_determinista() -> None:
 
 
 def test_f056_r20_nulo_y_vacio_dan_huellas_distintas() -> None:
-    assert huella_de_valores(valores(detalle=None)) != huella_de_valores(valores(detalle=""))
-    assert huella_de_valores(valores(ubicacion=None)) != huella_de_valores(valores(ubicacion=""))
+    assert huella_de_valores(valores(detalle=None)) != huella_de_valores(
+        valores(detalle="")
+    )
+    assert huella_de_valores(valores(ubicacion=None)) != huella_de_valores(
+        valores(ubicacion="")
+    )
 
 
 def test_f056_r20_mover_texto_de_un_campo_a_otro_cambia_la_huella() -> None:
@@ -1560,7 +1677,9 @@ def test_f056_r34_candidata_de_lleva_lo_aprobado() -> None:
 
 
 @pytest.mark.parametrize("ultima", [None, A.EDITAR, A.DESCARTAR, A.RECUPERAR])
-def test_f056_r34_candidata_de_rechaza_lo_no_aprobado(ultima: AccionRevision | None) -> None:
+def test_f056_r34_candidata_de_rechaza_lo_no_aprobado(
+    ultima: AccionRevision | None,
+) -> None:
     sit = situacion(ultima=None if ultima is None else revision(9, ultima))
     with pytest.raises(ValueError):
         candidata_de(sit)
@@ -1586,10 +1705,24 @@ def test_f056_r35_candidata_valida() -> None:
 @pytest.mark.parametrize(
     "cambio",
     [
-        {"oficio_codigo": None, "oficio_nombre": None, "proveedor_codigo": None, "proveedor_nombre": None},
-        {"oficio_codigo": None, "oficio_ambiguo": True, "proveedor_codigo": None, "proveedor_nombre": None},
+        {
+            "oficio_codigo": None,
+            "oficio_nombre": None,
+            "proveedor_codigo": None,
+            "proveedor_nombre": None,
+        },
+        {
+            "oficio_codigo": None,
+            "oficio_ambiguo": True,
+            "proveedor_codigo": None,
+            "proveedor_nombre": None,
+        },
         {"ubicacion": None},
-        {"proveedor_codigo": None, "proveedor_nombre": "Ejemplo", "proveedor_ambiguo": True},
+        {
+            "proveedor_codigo": None,
+            "proveedor_nombre": "Ejemplo",
+            "proveedor_ambiguo": True,
+        },
     ],
 )
 def test_f056_r35_candidata_imposible(cambio: dict[str, object]) -> None:
@@ -1606,14 +1739,26 @@ def test_f056_r35_candidata_imposible(cambio: dict[str, object]) -> None:
     "cambio",
     [
         {"oficio_ambiguo": True},  # ambiguo con código
-        {"oficio_codigo": None, "oficio_ambiguo": True, "oficio_nombre": None, "proveedor_codigo": None, "proveedor_nombre": None},
-        {"oficio_codigo": None, "proveedor_codigo": None, "proveedor_nombre": None},  # nombre sin código
+        {
+            "oficio_codigo": None,
+            "oficio_ambiguo": True,
+            "oficio_nombre": None,
+            "proveedor_codigo": None,
+            "proveedor_nombre": None,
+        },
+        {
+            "oficio_codigo": None,
+            "proveedor_codigo": None,
+            "proveedor_nombre": None,
+        },  # nombre sin código
         {"proveedor_ambiguo": True},
         {"proveedor_codigo": None},  # nombre de proveedor sin código ni ambigüedad
         {"oficio_codigo": None, "oficio_nombre": None},  # proveedor sin oficio
     ],
 )
-def test_f056_valores_con_las_invariantes_de_la_bandeja(cambio: dict[str, object]) -> None:
+def test_f056_valores_con_las_invariantes_de_la_bandeja(
+    cambio: dict[str, object],
+) -> None:
     with pytest.raises(ValueError):
         valores(**cambio)
 
@@ -1627,6 +1772,11 @@ def test_f056_los_errores_llevan_sus_datos() -> None:
     assert (e3.motivo, e3.total) == ("motivo", 10_001)
     e4 = ValoresNoValidos("motivo", errores=(("descripcion", "falta"),))
     assert e4.errores == (("descripcion", "falta"),)
-    for clase in (PeticionDeRevisionInvalida, SinCambios, IncidenciaNoEncontrada, RevisionDesactualizada):
+    for clase in (
+        PeticionDeRevisionInvalida,
+        SinCambios,
+        IncidenciaNoEncontrada,
+        RevisionDesactualizada,
+    ):
         assert clase("motivo").motivo == "motivo"
         assert str(clase("motivo")) == "motivo"

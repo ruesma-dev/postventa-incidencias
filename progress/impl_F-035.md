@@ -7056,3 +7056,410 @@ avisos y K13 por los grupos.
 | Mutantes (herramienta) | **0 generados, 0 supervivientes**: `python -m harness.mutacion --feature F-035 --base d62d420 --salida <scratchpad>/r13/mutacion_r13.md` → «0 fichero(s), 0 línea(s) de producción … 0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s». Informe al scratchpad para no pisar `progress/mutacion_F-035.md` |
 | Mutantes a mano | **3 (K1, K12, K13), 3 muertos, 0 supervivientes** con el test nuevo; los 3 sobreviven con el de HEAD |
 | Tiempo de la suite | raíz 7,95 s; front pytest 22,28 s (`init.sh`); Node 1,65 s |
+
+## Bloque 14 · T37, T48–T51, T38 y T39 · Documentación y cierre de la enmienda · y O12-1, O13-1, O13-3 · 2026-10-06
+
+implementer. Rama `feature/F-035-portal-posventa`, sobre `1fc4ffd`. Un commit
+por tarea; los tres pendientes de review que me asignó el líder, en commits
+`F-035 O…` aparte. **Nada de producción**: ni HTML, ni CSS, ni JS. Solo
+documentación (T37) y tests.
+
+### 1 · Commits
+
+| Commit | Tarea | Qué |
+|---|---|---|
+| `8c9c408` | **T37** | README del front, `docs/ARCHITECTURE.md`, `docs/DESPLIEGUE.md` §10 (recuadro fechado) y el test de palabras clave (también **O13-3**) |
+| `b496ee6` | **T48** | R62 precisado (H-8): caso «todo `done` salvo F-045» en la raíz |
+| `dd9f4b4` | **T49** | R63 enmendado (O9-2, O9-3): lista cerrada de directivas fuera de los recuadros y `rs-obras` ⇔ `data-en-construccion` |
+| `a73991b` | **T50** | R65 precisado (O9-4): el rótulo no se esconde por clase, `style` ni regla de la hoja |
+| `6103e78` | **T51** | R53 enmendado (O17-2): lista blanca de colores de texto y `aria-hidden` del índice decorativo |
+| `50192e1` | **O12-1** | la guardia de R74 ve el rótulo escondido por clase |
+| `e2fc2ea` | **O13-1** (opcional, hecho) | la guardia de R75 ve `inert` y `pointer-events-none` |
+| este | **T38** | evidencias de la enmienda (este informe y `progress/mutacion_F-035.md`) |
+| siguiente | **T39** | `bash harness/init.sh` y estado en `progress/current.md` |
+
+### 2 · Ficheros tocados
+
+- `services/postventa-front/README.md` (T37): nota de cabecera de la
+  enmienda; en «La maqueta del portal (F-035)», dos subsecciones nuevas («El
+  portal en producción, con secciones en construcción» y «Todo en la misma
+  pestaña, y la guarda de salida del circuito»), el paso 4 de la retirada
+  marcado como superado y los pasos 5 y 6; en «Identidad visual Ruesma
+  (F-035)», las dos páginas nuevas, la lista blanca de R53 y el remodelado
+  de `partes.html` (R82, R59 f y g); en «La entrada de incidencias (F-036)»,
+  que son secciones del portal y los dos añadidos R74 y R75 con su
+  dependencia de F-053 (**O13-3**). Se conserva todo lo que exigen R36, R48,
+  R61, `test_f007_documentacion.py` y `test_f036_t22_el_readme_nombra_las_dos_paginas`.
+- `docs/ARCHITECTURE.md` (T37): en «El portal de posventa (F-035)», un
+  recuadro fechado (cuatro páginas, `Portal.PAGINAS`, el `estado`, las tres
+  capas del rótulo, misma pestaña y guarda de salida con R81, y que los dos
+  datos del backend son de F-053, R76); la regla 4 con su ajuste y las
+  reglas 5 y 6.
+- `docs/DESPLIEGUE.md` (T37): recuadro del 2026-10-05 al final de §10 con el
+  orden de `design.md` §16.12, la parada V5 con `publicar_maqueta.ps1` y
+  `-Retirar`, la publicación con `-SoloFront`, la línea de `azure-apps/`
+  para el líder y el aviso a Posventa con la frase nueva. Normalizado a
+  CRLF, como estaba.
+- `services/postventa-front/tests/test_f035_paginas.py`: T37 (palabras
+  clave), T49, T50, O12-1, O13-1, y el docstring del módulo.
+- `services/postventa-front/tests/test_f035_portal.py`: T51.
+- `tests/test_f035_placeholders_vivos.py` (raíz): T48.
+- `specs/F-035-portal-posventa/tasks.md`: T37, T48–T51, T38 y T39 en `[x]`.
+- **No se tocan**: `docs/INTEGRACION.md` ni `azure-apps/` (el bloque no lo
+  pide; la línea de `azure-apps/` es del líder al publicar, §16.12 paso 6),
+  ni ningún fichero de `services/postventa-api/`, ni HTML, CSS o JS del
+  front.
+
+### 3 · Decisiones de diseño
+
+- **T37, un test por palabras clave y por sección** (`DOCUMENTACION_T37`):
+  README «La maqueta del portal (F-035)» y ARCHITECTURE «El portal de
+  posventa (F-035)» con «en construcción», `PAGINAS`, «misma pestaña» y
+  «guarda de salida» (las del ajuste del 2026-10-05; fuera «aparte»);
+  ARCHITECTURE además `R76` y `F-053`; README «Identidad visual…» con las
+  dos páginas y `R82`; README «La entrada de incidencias (F-036)» con
+  «secciones del portal», `R74`, `rotuloResumen`, `R75`, «Decididos como
+  distintos» y `F-053` (**O13-3**); y DESPLIEGUE §10 con `V5`,
+  `publicar_maqueta.ps1`, `-SoloFront` y «misma pestaña». El texto se
+  normaliza (sin `>` de cita, sin `*`, saltos como espacios). Controles: la
+  sección real sin una palabra (borrada también partida en dos líneas, en
+  cita o en negrita) da exactamente un problema; una sección ausente, otro.
+- **T48**: test nuevo junto al de R62, que además comprueba que F-045 solo
+  es de `partes` (si deja de serlo, el caso dejaría de separar las dos
+  lecturas) y que `secciones_reales` (la lectura de R48) sí daría `inicio`.
+- **T49, la lista cerrada**: `directivas_admitidas_r63(nodo)` devuelve el
+  dict exacto `{atributo: valor}` admitido por etiqueta: el `<div>` hijo de
+  `<body>`, las `<a class="rs-pestana" href="#/<id>">` dentro de la barra
+  (con el `<id>` de su `href`), cada `<section data-seccion>` (con su id),
+  el `<div class="rs-toast">`, y su `<p>` y su `<button>`. Valores
+  comparados con los blancos normalizados. **Lectura estricta de «las formas
+  ligadas cuentan»**: `x-bind:` y `x-on:` son directivas y, como no están en
+  la lista, saltan aunque su valor sea el de una admitida (un
+  `x-on:click="aviso = ''"` en el botón del aviso sería rojo). El propio
+  elemento `data-en-construccion` cuenta como «fuera» (sus descendientes
+  no). Para dar la línea, un `_LectorConLineas` hereda del `_Lector` de
+  `test_f035_portal.py` y apunta `getpos()` en cada etiqueta (la línea de
+  la etiqueta, no la del atributo). `test_f035_r63_la_lista_cerrada_mira_algo`
+  fija lo que hay hoy fuera: 2 + 7 + 7×2 + 5 directivas.
+- **T49, `rs-obras`**: la clase exacta en `class` y en los literales de
+  `:class`/`x-bind:class` (con `_clases_de`); `rs-obras--*` y `rs-obras__*`
+  no cuentan (control propio).
+- **T50**: `clases_que_esconden(nodo)` quita el prefijo (`md:`, también
+  `!`) y compara con `_ESCONDE_POR_CLASE` **sin cambiarla** (ni
+  `_OCULTA_DEL_TODO`); incluye las ligadas. `problemas_r65` lo aplica, igual
+  que ya hacía con `_CERRABLE`, al envoltorio, al rótulo **y a lo que va
+  dentro del rótulo** (un chip escondido esconde «En construcción»); es algo
+  más que «el rótulo y su envoltorio» del texto de la tarea, y hoy no hay
+  nada dentro con esas clases. `style`, `:style` y `x-bind:style`, igual. En
+  la hoja, `reglas_que_esconden_rs_obras` mira toda regla (también en
+  `@media`) cuyo selector nombre `.rs-obras*`: `display: none`,
+  `visibility: hidden` y `opacity` que valga 0 (también `0%`, `0.0`).
+- **T51**: `TOKENS_DE_TEXTO` es la lista literal de R53 enmendado, y un test
+  comprueba que son los medidos como texto en `PARES_DE_TEXTO` más
+  `--rs-burdeos-fuerte` (con su contraste ≥ 4,5 sobre `--rs-papel`). La
+  excepción `--rs-acero-300` vale **solo en la regla de selector exacto**
+  `.rs-tarjeta__indice` (un selector compuesto que la contenga salta; control
+  propio). `var()` con reserva no vale. El `aria-hidden="true"` se exige en
+  las cuatro páginas del front (`*.html`, que el test fija), también si la
+  clase va ligada.
+- **O12-1**: `problemas_r74` usa `clases_que_esconden` de T50 (la propuesta
+  de la review era `_OCULTA_DEL_TODO | {"sr-only"}`; es el mismo conjunto, con
+  prefijos y ligadas).
+- **O13-1**: `problemas_r75` rechaza `inert` (`:inert`, `x-bind:inert`) y la
+  clase `pointer-events-none` (con prefijo o ligada) en el botón y sus
+  ancestros hasta la sección, incluida.
+
+### 4 · Fase RED
+
+Las tareas T48–T51 son guardias sobre reglas que **ya se cumplen**, así que
+su RED no es «el test falla sobre el árbol»: es que los supervivientes que
+nombra la spec **sobreviven sin la guardia y caen con ella**. Medido en un
+worktree desechable del scratchpad (`git worktree add --detach`), con
+`mutar.py`: cada mutante solo, la suite entera del front (pytest + Node por el
+puente) o la de la raíz, el fichero restaurado tras cada uno y
+`git status` del worktree vacío al final. Los «3 skipped» del worktree son los
+tests del diff de la rama (R76), que se saltan en HEAD separado.
+
+**T37** (RED de verdad: el test nuevo contra la documentación de HEAD,
+guardada con `git stash` y repuesta después):
+
+```
+$ git stash push -q -- docs/ARCHITECTURE.md docs/DESPLIEGUE.md services/postventa-front/README.md
+$ python -m pytest tests/test_f035_paginas.py -q -k "t37_la_documentacion" -p no:cacheprovider
+E       AssertionError: README.md: «La maqueta del portal (F-035)» no dice «en construcción»; «La maqueta del portal (F-035)» no dice «PAGINAS»; «La maqueta del portal (F-035)» no dice «guarda de salida»
+E       AssertionError: ARCHITECTURE.md: «El portal de posventa (F-035)» no dice «en construcción»; «El portal de posventa (F-035)» no dice «PAGINAS»; «El portal de posventa (F-035)» no dice «misma pestaña»; «El portal de posventa (F-035)» no dice «guarda de salida»; «El portal de posventa (F-035)» no dice «R76»; «El portal de posventa (F-035)» no dice «F-053»
+E       AssertionError: README.md: «Identidad visual Ruesma (F-035)» no dice «importar.html»; «Identidad visual Ruesma (F-035)» no dice «oficios.html»; «Identidad visual Ruesma (F-035)» no dice «R82»
+E       AssertionError: README.md: «La entrada de incidencias (F-036)» no dice «secciones del portal»; «La entrada de incidencias (F-036)» no dice «R74»; «La entrada de incidencias (F-036)» no dice «rotuloResumen»; «La entrada de incidencias (F-036)» no dice «R75»; «La entrada de incidencias (F-036)» no dice «Decididos como distintos»; «La entrada de incidencias (F-036)» no dice «F-053»
+E       AssertionError: DESPLIEGUE.md: «La maqueta del portal en el entorno» no dice «V5»; «La maqueta del portal en el entorno» no dice «misma pestaña»
+5 failed, 311 deselected in 1.03s
+$ git stash pop -q
+$ python -m pytest tests/test_f035_paginas.py -q -k "t37" -p no:cacheprovider
+16 passed, 300 deselected in 0.20s
+```
+
+**T48** (la lectura de R48 en el cálculo de `inicio`, sobre `b496ee6`, en
+`tests/test_f035_placeholders_vivos.py` del worktree:
+`todas_reales = all(e == "real" for s, e in resultado.items() if s != "partes")`):
+
+```
+$ python -m pytest tests/test_f035_placeholders_vivos.py -q -p no:cacheprovider
+E       AssertionError: inicio no es real mientras partes no lo sea (R62, H-8)
+FAILED tests/test_f035_placeholders_vivos.py::test_f035_r62_inicio_cuenta_partes_con_todo_done_salvo_f045
+1 failed, 18 passed in 0.58s
+```
+
+Cae **solo** el caso nuevo; los 18 de antes (incluido
+`test_f035_r62_partes_e_inicio_siguen_su_propia_regla`) siguen en verde con la
+mutación, que es lo que pide la verificación de T48.
+
+**T49** (`python mutar.py <wt> <commit> T49`; antes = `b496ee6`, sin T49;
+después = `dd9f4b4`):
+
+```
+== b496ee6 (sin la guardia)
+A1: SOBREVIVE · 742 passed, 3 skipped in 8.65s
+A2: SOBREVIVE · 742 passed, 3 skipped in 7.70s
+A4: SOBREVIVE · 742 passed, 3 skipped in 8.23s
+A5: SOBREVIVE · 742 passed, 3 skipped in 7.54s
+A6: SOBREVIVE · 742 passed, 3 skipped in 7.68s
+B4: SOBREVIVE · 742 passed, 3 skipped in 7.48s
+== dd9f4b4 (con la guardia)
+A1: SOBREVIVE · 758 passed, 3 skipped in 8.50s
+A2: CAE · 11 failed, 747 passed, 3 skipped   (test_f035_r63_fuera_de_los_recuadros_solo_las_directivas_de_la_lista_cerrada, …_la_lista_cerrada_mira_algo y 9 controles)
+A4: CAE · 11 failed, 747 passed, 3 skipped   (las mismas)
+A5: SOBREVIVE · 758 passed, 3 skipped in 8.66s
+A6: CAE · 11 failed, 747 passed, 3 skipped   (las mismas)
+B4: CAE · 6 failed, 752 passed, 3 skipped    (test_f035_r63_rs_obras_solo_y_siempre_en_un_recuadro y 5 controles)
+```
+
+**A1 y A5 sobreviven, y no puede ser de otra forma con la guardia que pide
+T49**: son texto escrito a mano («Hay 7 entradas por revisar.» en la
+cabecera de `bandeja`; «23 partes archivados este mes.» en la tarjeta
+«Partes firmados»), **sin ninguna directiva**. La lista cerrada de R63
+enmendado solo mira directivas de Alpine. Ver §6, hallazgo **H-B14-1**.
+
+**T50** (antes = `dd9f4b4`; después = `a73991b`; G4 con la `?v=` de las cuatro
+páginas recalculada a `59f501ce28` para que no la mate T21):
+
+```
+== dd9f4b4
+C4: SOBREVIVE · 758 passed, 3 skipped in 6.46s
+C5: SOBREVIVE · 758 passed, 3 skipped in 6.29s
+G4: SOBREVIVE · 758 passed, 3 skipped in 7.24s
+== a73991b
+C4: CAE · 11 failed, 763 passed, 3 skipped  (test_f035_r65_cada_recuadro_empieza_por_un_rotulo_que_lo_dice_todo y 10 controles)
+C5: CAE · 11 failed, 763 passed, 3 skipped  (las mismas)
+G4: CAE · 6 failed, 768 passed, 3 skipped   (test_f035_r65_ninguna_regla_de_rs_obras_esconde_el_recuadro y 5 controles)
+```
+
+**T51** (C-h: `.rs-texto--apagado { color: var(--rs-acero-100); }` en
+`css/styles.css`, con la `?v=` recalculada a `bbe9653d9d`; antes = `a73991b`,
+después = `6103e78`):
+
+```
+== a73991b
+C-h: SOBREVIVE · 774 passed, 3 skipped in 8.78s
+== 6103e78
+C-h: CAE · 8 failed, 779 passed, 3 skipped  (test_f035_r53_todo_color_de_texto_esta_en_la_lista_blanca y 7 controles)
+```
+
+**O12-1** (H1 `class="mt-2 hidden"` y H2 `class="mt-2 sr-only"` en el rótulo
+de `importar.html`; antes = `6103e78`, después = `50192e1`). Antes caen **solo
+por los controles** (dejan de encontrar su cadena): es la «sobrevive en
+sustancia» de la review. Después cae además la guardia:
+
+```
+== 6103e78
+H1: CAE · 6 failed   (solo los 6 controles de test_f035_r74_control_el_rotulo_mal_puesto_salta)
+H2: CAE · 6 failed   (los mismos)
+== 50192e1
+H1: CAE · 11 failed  (test_f035_r74_importar_pinta_el_rotulo_encima_de_los_recuentos, los 6 y 4 de O12-1)
+H2: CAE · 12 failed  (la guardia, los 6 y 5 de O12-1)
+```
+
+**O13-1** (L15 `inert` en la sección; L17 `pointer-events-none` en el `<li>`
+del par; antes = `50192e1`, después = `e2fc2ea`):
+
+```
+== 50192e1
+L15: CAE · 4 failed  (solo controles de test_f035_r75_control_la_seccion_de_distintos_estropeada_salta)
+L17: CAE · 1 failed  (solo el control par-con-x-show)
+== e2fc2ea
+L15: CAE · 9 failed  (test_f035_r75_oficios_pinta_los_decididos_como_distintos_con_son_el_mismo, los 4 y 4 de O13-1)
+L17: CAE · 6 failed  (la guardia, el control y 4 de O13-1)
+```
+
+### 5 · T38 · Evidencias de la enmienda entera
+
+**(a) Mutación del arnés**
+
+```
+$ python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900
+F-035: 0 fichero(s), 0 línea(s) de producción (origen rama, 2a86bca1d7ad54fd8cc09b16bada4f62d1656b49..feature/F-035-portal-posventa)
+Sin líneas de producción en el alcance: nada que mutar.
+Campaña paralela: hasta 8 workers, uno por worktree.
+0 mutantes evaluados, 0 muertos, 0 supervivientes, 0 timeouts en 0.0 s
+Informe: progress/mutacion_F-035.md
+```
+
+**(b) Mutaciones manuales 14–36 (`design.md` §16.10 y §16.15.8), las de cada
+bloque, ya hechas; y los supervivientes de review que matan T48–T51 y
+O12-1/O13-1**
+
+| # | Mutación | Bloque | Resultado | La mata |
+|---|---|---|---|---|
+| 14 | vuelve un placeholder de F-036 a `index.html` | 7 | muerta | raíz R28 y su control; R68 ×2 |
+| 15 | un enlace de `entrada` a `otra.html` | 7 | muerta | R17; R68 `[oficios.html]` |
+| 16 | `bandeja` declarada `parcial` | 8 | muerta | raíz R62 ×3; Node R66 ×3 |
+| 17 | sin `data-construccion` en una pestaña de `partes.html` | 8 | muerta | Node R66 y su control |
+| 18 | un placeholder sale de su recuadro | 9 | muerta | R63, R64, R9 |
+| 19 | `border-style: dashed` en `.rs-obras` | 9 | muerta | R56 ×2 |
+| 20 | `x-text` de una cifra en una tarjeta en construcción | 9 | muerta | R67 |
+| 21 | `target="_blank"` en «Inicio» de `importar.html` | 10 | muerta | R73, Node R70 |
+| 22 | `bg-slate-800` en un botón de `importar.html` | 10 | muerta | R72 |
+| 23 | `importar.html` carga `js/portal.js` | 10 | muerta | R77; `test_f036_t22_scripts_al_final…` |
+| 21b | `target="_blank"` en «Inicio» de `oficios.html` | 11 | muerta | R73 `[oficios.html]`, Node R70 |
+| 22b | `bg-slate-800` en «Descargar los grupos vigentes» | 11 | muerta | R72 `[oficios.html]` |
+| 24 | `rotuloResumen` sin fecha con `ya_importado` | 12 | muerta | Node R74 (31) |
+| 25 | la fecha en UTC | 12 | muerta | Node R74 (23:30 UTC de verano y demás) |
+| 26 | «Son el mismo» manda `'distinto'` | 13 | muerta | Node, R75, huella |
+| 27 | sin `:disabled` en «Son el mismo» | 13 | muerta | Node, `test_f036_r89_…` (sin tocar), R75, huella |
+| 28 | `presentarPropuestas` lanza sin `distintos` | 13 | muerta | Node R75 (21) |
+| 29 | `FASES_EN_MARCHA` sin `archivando_y_cerrando` | 16 | muerta | Node R79 (a), R80 fases |
+| 30 | un rechazado cuenta como por terminar | 16 | muerta | Node R79 (c) |
+| 31 | ignora `Autoguardado.FALLO` | 16 | muerta | Node R79 (b) |
+| 32 | `alSalir` sin `preventDefault` | 16 | muerta | Node R78 |
+| 33a/33b | escribe `estado.fase` / llama a `estado.pendientes()` | 16 | muertas | Node R80 (Proxy) |
+| 34 | sin Alpine pregunta igual | 16 | muerta | Node R80 |
+| 35 | `target="_blank"` en «Inicio» de `partes.html` | 16 | muerta | R31, R73 |
+| 36 | `text-slate-600` en un `class` estático de `partes.html` | 17 | muerta | R82 y su control |
+| T48 | lectura de R48 (sin `partes`) en el `inicio` de R62 | 14 | **muerta** | `test_f035_r62_inicio_cuenta_partes_con_todo_done_salvo_f045` (solo ese) |
+| A1 | «Hay 7 entradas por revisar.» a mano en la cabecera de `bandeja` | 14 | **sobrevive** | — (texto sin directiva: H-B14-1) |
+| A2 | `x-text="bandejaFiltrada().length + ' por revisar'"` en la cabecera de `bandeja` | 14 | **muerta** | T49 (lista cerrada) |
+| A4 | `x-text="'Última obra: ' + obra('9901')"` en «Partes firmados» | 14 | **muerta** | T49 |
+| A5 | «23 partes archivados este mes.» a mano en «Partes firmados» | 14 | **sobrevive** | — (texto sin directiva: H-B14-1) |
+| A6 | `x-text="bandejaFiltrada().length…"` en la tarjeta real «Importar» | 14 | **muerta** | T49 |
+| B4 | `rs-obras` en la tarjeta real «Importar» | 14 | **muerta** | T49 (`rs-obras` ⇔ recuadro) |
+| C4 | `class="rs-obras__rotulo hidden"` | 14 | **muerta** | T50 (R65) |
+| C5 | `style="display:none"` en el rótulo | 14 | **muerta** | T50 (R65) |
+| G4 | `.rs-obras__rotulo { display: none; }` (con la `?v=` recalculada) | 14 | **muerta** | T50 (la hoja) |
+| C-h | `.rs-texto--apagado` con `var(--rs-acero-100)` (con la `?v=` recalculada) | 14 | **muerta** | T51 (R53) |
+| H1/H2 | el rótulo de R74 con `hidden` / `sr-only` | 14 | **muertas en sustancia** (antes, solo por controles) | O12-1 |
+| L15/L17 | `inert` en la sección / `pointer-events-none` en el par de R75 | 14 | **muertas en sustancia** (antes, solo por controles) | O13-1 |
+
+Las de los bloques 7–13, 16 y 17 son las de sus secciones de este informe
+(no se han repetido aquí). En el bloque 14: **15 mutantes, 13 muertos y 2
+supervivientes** (A1, A5).
+
+**(c) `git diff --name-status 2a86bca -- services/postventa-front services/postventa-api`**
+
+```
+M	services/postventa-front/README.md
+M	services/postventa-front/css/portal.css
+M	services/postventa-front/css/styles.css
+M	services/postventa-front/importar.html
+M	services/postventa-front/index.html
+A	services/postventa-front/js/guarda_salida.js
+M	services/postventa-front/js/importacion.js
+M	services/postventa-front/js/maqueta_datos.js
+M	services/postventa-front/js/oficios.js
+M	services/postventa-front/js/portal.js
+M	services/postventa-front/js/portal_app.js
+M	services/postventa-front/oficios.html
+M	services/postventa-front/partes.html
+M	services/postventa-front/tests/test_f007_estaticos.py
+A	services/postventa-front/tests/test_f035_paginas.py
+M	services/postventa-front/tests/test_f035_portal.py
+M	services/postventa-front/tests/test_f036_front.py
+A	services/postventa-front/tests_js/f035_paginas.test.js
+A	services/postventa-front/tests_js/guarda_salida.test.js
+M	services/postventa-front/tests_js/maqueta_datos.test.js
+M	services/postventa-front/tests_js/portal.test.js
+```
+
+**Nada en `services/postventa-api`** (R76). En el front, cada fichero está en
+`design.md` §16.7 (los dos `A` de tests, `index.html`, `partes.html`,
+`importar.html`, `oficios.html`, `js/portal.js`, `js/portal_app.js`,
+`js/maqueta_datos.js`, `js/importacion.js`, `js/oficios.js`, las dos hojas,
+`test_f035_portal.py`, `tests_js/portal.test.js`,
+`tests_js/maqueta_datos.test.js`, el README) o en §16.15.7
+(`js/guarda_salida.js`, `tests_js/guarda_salida.test.js`,
+`test_f007_estaticos.py`, `test_f036_front.py`). Ninguno fuera.
+
+**(d) «F-036 intacto» y los tests de la base**
+
+`git diff 2a86bca -- services/postventa-front/tests/test_f036_front.py services/postventa-front/tests_js/importacion.test.js services/postventa-front/tests_js/oficios.test.js`:
+solo las líneas de R81 en `test_f036_front.py`; `importacion.test.js` y
+`oficios.test.js`, vacíos:
+
+```
+ def test_f036_r51_la_cabecera_de_index_enlaza_a_las_dos_paginas():
+-    """En otra pestaña: navegar fuera perdería la remesa en curso (D4 de F-007)."""
++    """En la misma pestaña (F-035, 2026-10-05): la remesa la protege la guarda de salida del circuito."""
+     en_cabecera = enlaces(cabecera(_texto(INDEX)))
+@@
+-        assert 'target="_blank"' in en_cabecera[destino]
+-        assert 'rel="noopener"' in en_cabecera[destino]
++        assert "target=" not in en_cabecera[destino]
+```
+
+`git diff --stat 2a86bca -- 'services/postventa-front/tests/test_f0[0-3]*.py'`:
+
+```
+ .../postventa-front/tests/test_f007_estaticos.py   |    1 +
+ .../postventa-front/tests/test_f035_paginas.py     | 3479 ++++++++++++++++++++
+ services/postventa-front/tests/test_f035_portal.py |  660 +++-
+ services/postventa-front/tests/test_f036_front.py  |    5 +-
+```
+
+`test_f007_estaticos.py`: solo la línea de `ORDEN_CANONICO`
+(`+    "js/guarda_salida.js",  # F-035 (R80, R81): solo lee el estado del circuito`).
+`test_f036_front.py`: las de R51 de arriba. `test_f035_portal.py` es de
+F-035. **`test_f035_paginas.py` también entra en el patrón** `test_f0[0-3]*`:
+es el fichero nuevo de la enmienda (§16.7, «A crear»), no un test de la base;
+la lista de excepciones de T38 (d) no lo nombra porque es nuevo.
+
+**(e) Tabla de contraste de R53**: las hojas **no ganaron pares** en la
+enmienda (`PARES_DE_TEXTO` 20 líneas y `PARES_NO_TEXTO` 5, iguales que en
+`2a86bca`; ningún token nuevo en el `:root`). La tabla, recalculada
+(`python -m pytest tests/test_f035_portal.py -q -s -k los_pares_de_la_marca_cumplen_aa`),
+sigue igual: el par más bajo de texto es `--rs-ok / --rs-ok-suave` 5,21 y el
+de no texto `--rs-acero / --rs-lienzo` 3,39. T51 añade que solo esos tokens de
+texto (más `--rs-burdeos-fuerte`, 10,19 sobre `--rs-papel`) pueden ser
+`color`.
+
+**Worktree**: el del scratchpad (`git worktree add --detach`), retirado con
+`git worktree remove --force` y `git worktree prune`; `git worktree list`
+deja solo el árbol real y el `.claude/worktrees/agent-a6e2f9bed1d46cdbc`, que
+ya existía y no es de este bloque. Sin ramas auxiliares.
+
+### 6 · Hallazgos (para el líder)
+
+- **H-B14-1 · A1 y A5 no los mata T49, y la lista cerrada no puede.** La
+  verificación de T49 dice que «A1, A2, A4, A5 y A6 … caen». A2, A4 y A6
+  caen. **A1 y A5 son texto escrito a mano, sin ninguna directiva**: la
+  lista cerrada de R63 enmendado solo mira directivas, así que es una
+  errata de la verificación, no un fallo de la guardia (la review del
+  bloque 9 ya los describía así: «ni una cifra escrita a mano»). **No he
+  ampliado la regla** (sería una regla nueva fuera de R63 enmendado). Un
+  detector de cifras tampoco es trivial: la tarjeta real «Partes firmados»
+  lleva hoy `9901` en su ruta de ejemplo y el índice decorativo `04`.
+  Destino propuesto: el spec-author (aceptarlos como «marcado que nadie
+  escribe», como O9-5 y O12-3, con su comprobación en V1/V5; o una regla
+  nueva, por ejemplo «ninguna cifra en el texto visible de las cabeceras de
+  sección», con su medida).
+- **T49, lectura estricta de las formas ligadas**: un `x-bind:aria-current`
+  con el mismo valor que el `:aria-current` admitido salta. Me parece lo que
+  dice «cada una por etiqueta, atributo y valor»; si el spec-author quería
+  admitir las dos formas, es una línea.
+- **T50, alcance**: además del rótulo y del envoltorio, lo que va dentro del
+  rótulo (como ya hacía `_CERRABLE`). Hoy no cambia nada.
+
+### 7 · Fuera del alcance (y lo que falta)
+
+- **Bloque 15, del humano**: T12 (V1 y V2), T40 (parada V5 en la vista
+  previa), T41 (publicación) y T42 (aviso a Posventa).
+- La línea de `azure-apps/postventa_incidencias.md` es del líder al
+  publicar (§16.12 paso 6), no de este bloque.
+- Las verificaciones MANUAL de bloques anteriores (vistazos en navegador de
+  los bloques 10–13 y 16–17) siguen con V1/V2.

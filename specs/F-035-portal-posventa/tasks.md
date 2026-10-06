@@ -833,7 +833,7 @@ ya pide cada verificación.
       **Verificación**: front `python -m pytest tests -q` en verde. C-h,
       repetida en una copia desechable y probando la guardia directamente
       (sin que la mate la `?v=`), cae (salida al informe).
-- [ ] **T38**: evidencias de la enmienda entera. (a)
+- [x] **T38**: evidencias de la enmienda entera. (a)
       `python -m harness.mutacion --feature F-035 --base 2a86bca --timeout 900`.
       (b) Tabla de las mutaciones manuales 14–28 con su resultado (las de cada
       bloque, ya hechas). (c) `git diff --name-status 2a86bca -- services/postventa-front services/postventa-api`:

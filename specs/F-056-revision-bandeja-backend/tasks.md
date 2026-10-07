@@ -69,7 +69,8 @@
 - [x] **T2 · GREEN**: `domain/models/revision.py` y los ocho errores en
   `domain/models/errores.py`. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_revision_dominio.py tests/test_f056_paginacion.py tests/test_f005_arquitectura.py tests/test_f036_arquitectura.py`
-- [ ] **T3 · Mutación del bloque.** |
+- [x] **T3 · Mutación del bloque.** Hecha el 2026-10-08 con `--base f86d639 --timeout 1800`: 153
+  generados, 153 muertos, 0 supervivientes, 0 timeouts (2 repasados en serie, los 2 muertos). |
   Verificación: `python -m harness.mutacion --feature F-056 --base <hash anterior a T1> --timeout 900` → `progress/mutacion_F-056.md` sin supervivientes abiertos
 
 **Parar. Review del Bloque 1.**

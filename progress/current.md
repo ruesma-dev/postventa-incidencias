@@ -8,6 +8,10 @@
 >
 > Desbloqueada el 2026-10-07: el humano aprueba la opción (a) del choque con F-012 —el dominio maneja la clave del
 > cursor como JSON canónico y el base64url lo pone y lo quita la capa HTTP (Bloque 3)—; el test de F-012 no se toca.
+>
+> **Bloque 1 hecho (implementer, 2026-10-08)**, pendiente de review: T1–T3 marcadas. Suite del servicio en verde
+> (7071 passed), mutación 153/153 muertos (0 supervivientes), PUERTA COBERTURA 100 % (486/486), `init.sh` en verde.
+> Detalle en `progress/impl_F-056.md`, «Bloque 1». No se ha pasado al Bloque 2.
 
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >

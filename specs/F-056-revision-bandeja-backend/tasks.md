@@ -77,7 +77,7 @@
 
 ## Bloque 2 · La tabla y el repositorio
 
-- [ ] **T4 · RED**: `tests/test_f056_ddl.py` (R36: la guarda real, idempotente,
+- [x] **T4 · RED**: `tests/test_f056_ddl.py` (R36: la guarda real, idempotente,
   `CHECK` de `accion` = `AccionRevision`, `CHECK` de la bandeja repetidos,
   `revisado_por` y `revisado_correo` `NOT NULL`, sin binarias ni JSON) y
   `tests/test_f056_repositorio_revision.py` con conexión falsa (R4, R7 —`FOR
@@ -88,13 +88,13 @@
   (`test_f005_ddl_idempotente_texto.py`, `test_f036_ddl.py` si fija el
   último), sin quitar nada, citándolos. Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_ddl.py tests/test_f056_repositorio_revision.py` **falla**
-- [ ] **T5**: `infrastructure/persistencia/sql/15_revisiones_bandeja.sql`, con la
+- [x] **T5**: `infrastructure/persistencia/sql/15_revisiones_bandeja.sql`, con la
   cabecera de `design.md` §6 (incluido el correo, §9). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_ddl.py tests/test_f005_ddl_idempotente_texto.py tests/test_f036_ddl.py`
-- [ ] **T6**: `domain/ports/revision.py`, `sentencias_revision.py`,
+- [x] **T6**: `domain/ports/revision.py`, `sentencias_revision.py`,
   `repositorio_revision_pg.py` y `construir_revision` en `fabrica.py` (§5). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_repositorio_revision.py`
-- [ ] **T7**: `tests_bbdd/tests/test_f056_bbdd_revision.py`: DDL dos veces y
+- [x] **T7**: `tests_bbdd/tests/test_f056_bbdd_revision.py`: DDL dos veces y
   nada en `public`; append-only y la última por `revision_id`; la clave ajena;
   los `CHECK` (descripción de 129, motivo fuera de `descartar`, oficio
   ambiguo con código, correo de 255); **dos conexiones** con la misma

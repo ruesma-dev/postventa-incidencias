@@ -115,6 +115,32 @@ alguien se la ponga, y una fila cuya ubicación (de la plantilla) no esté en la
 tipología de su unidad sale con `ubicacion_fuera_de_lista`; cuántas, lo dice
 `resumen.por_motivo` en T19.
 
+> **Aceptado por el líder el 2026-10-07** (ajustes de contrato del Bloque 1,
+> `progress/impl_F-056.md`, «Decisiones de diseño», 1 y 2; anotados aquí por la
+> N-1 de la review del Bloque 1):
+>
+> - **`sin_oficio` y el oficio ambiguo.** A efectos de `sin_oficio`, el oficio
+>   ambiguo **cuenta como oficio** (como `hay_oficio` de R99 de F-036): una fila
+>   con oficio ambiguo da **solo** `oficio_ambiguo`, nunca también
+>   `sin_oficio`. `sin_oficio` es «ni código ni oficio ambiguo». Así los 47 de
+>   la 0677 salen una vez en `por_motivo` (T19 espera `oficio_ambiguo` = 47) y
+>   una ambigua sigue sin ser aprobable, porque `oficio_ambiguo` bloquea.
+> - `motivos_no_aprobable` no recibe `listas` (tabla de §4).
+>
+> **Interpretaciones del implementer** (decisiones 3 y 4 del mismo informe),
+> revisadas en la review del Bloque 1 y anotadas aquí por encargo del líder
+> (2026-10-08):
+>
+> - **El par solo se mira con código de oficio.** `par_fuera_de_la_obra` exige
+>   código de oficio y de proveedor: con el oficio ambiguo no hay par que
+>   comprobar (el motivo ya es `oficio_ambiguo`). Con un oficio fuera de la obra
+>   y proveedor salen los dos motivos.
+> - **La ubicación se recorta** al validar, al guardar y al comparar en los
+>   motivos (R47 y §16.2 mandan sobre el «solo se recortan» de §4). En una
+>   edición, una ubicación `""` o de solo blancos es un **error** de
+>   `ubicacion` (400 `valores_no_validos`), no se convierte en `null`: quien
+>   quiera quitarla manda `null`.
+
 ### 3.6 · Duplicadas (D-5)
 
 Una fila con `duplicada_de` repite en el mismo fichero la clave de otra.
@@ -122,6 +148,14 @@ Tiene el motivo `duplicada` **mientras** la otra no esté `descartada` **y**
 las claves de las dos, con sus valores **vigentes**, coincidan. Salidas:
 descartar una, o editar una para distinguirlas. La aprobación bloquea las dos
 filas y comprueba que la última revisión de la original no ha cambiado.
+
+> **Interpretación del implementer** (decisión 8 de `progress/impl_F-056.md`),
+> revisada en la review del Bloque 1 y anotada aquí por encargo del líder
+> (2026-10-08):
+> una fila con `duplicada_de` cuya original **no viene cargada** en la
+> situación tiene el motivo `duplicada`: lo que no se puede comprobar no se
+> aprueba. El repositorio (Bloque 2) carga siempre la original con su última
+> revisión, así que en la práctica solo pasa si la original falta.
 
 ## 4 · Dominio puro: `domain/models/revision.py`
 
@@ -189,7 +223,7 @@ class CandidataAlVolcado:         # R34, R35, §10
 | `campos_cambiados(antes, despues)` | Los 8 campos lógicos, en orden | R29, R33 |
 | `ubicaciones_de_tipologia(texto) -> tuple[str, ...]` | R48: partir por `;`, recortar, fuera vacíos y > 48, quitar solo repetidos exactos, en su orden; `None` → `()` | R47, R48 |
 | `validar_valores(pedidos, *, vigentes, catalogo, ubicaciones, listas)` | R13–R15; **todos** los errores; `ubicaciones: Mapping[str, tuple[str, ...]]` (por unidad) | R13–R15, R48 |
-| `motivos_no_aprobable(situacion, *, catalogo, ubicaciones, listas)` | §3.5, §3.6; la ubicación, contra la lista de **su** unidad | R21, R22, R48 |
+| `motivos_no_aprobable(situacion, *, catalogo, ubicaciones)` (sin `listas`: ningún motivo mira urgencias ni listados; aceptado por el líder el 2026-10-07) | §3.5, §3.6; la ubicación, contra la lista de **su** unidad | R21, R22, R48 |
 | `huella_de_valores(valores)` | `sha256` de los 13 valores en orden fijo, separador imposible en un texto, `None` ≠ `""` | R20 |
 | `decidir(situacion, peticion, *, catalogo, ubicaciones, listas, ahora)` | Une todo: transición, frescura, validar o motivos, `sin_cambios`, motivo | R2–R22 |
 | `clave_de_orden`, `texto_de_clave(clave) -> str`, `clave_de_texto(texto) -> ClaveDeOrden` | R25: la clave como JSON compacto y canónico, **sin codificar** (el base64url del cursor lo pone y lo quita el borde, §8); un texto que no es el canónico es `PeticionDeRevisionInvalida` | R23, R25 |
@@ -402,6 +436,9 @@ son su costura de test.
 ```
 
 (`descartar` lleva `motivo` opcional; `aprobar` y `recuperar`, solo lo común.)
+En `valores.ubicacion`, `null` quita la ubicación; un texto se recorta por los
+extremos y, si queda vacío, es el error `{campo: "ubicacion"}` (400
+`valores_no_validos`), **no** un `null` (§3.5).
 Se comprueba el cuerpo entero antes de construir nada. El log: obra (en el
 listado), `incidencia_id`, acción y resultado; nunca `oid`, correo ni textos.
 

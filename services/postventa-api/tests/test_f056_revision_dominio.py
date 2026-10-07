@@ -1734,6 +1734,23 @@ def test_f056_r35_candidata_imposible(cambio: dict[str, object]) -> None:
         _candidata(valores(**cambio))
 
 
+@pytest.mark.parametrize(
+    "ubicacion",
+    [" Baño", "Baño ", "\tBaño", "Baño\n", "", "   ", "x" * 49],
+)
+def test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga(ubicacion: str) -> None:
+    """O-1 de la review del Bloque 1: la candidata es la última defensa antes del
+    ERP. Aprobar guarda los vigentes sin cambiarlos, así que una ubicación sin
+    recortar o de más de 48 llegaría tal cual a `rcp.resubi` (§8.9)."""
+    with pytest.raises(ValueError):
+        _candidata(valores(ubicacion=ubicacion))
+
+
+@pytest.mark.parametrize("ubicacion", ["x" * 48, "B", "Baño de la planta primera"])
+def test_f056_r35_candidata_con_ubicacion_recortada_de_hasta_48(ubicacion: str) -> None:
+    assert _candidata(valores(ubicacion=ubicacion)).valores.ubicacion == ubicacion
+
+
 # --------------------------------------------------------------------------
 # Invariantes de los valores (R99 de F-036) y los errores
 # --------------------------------------------------------------------------

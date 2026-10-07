@@ -489,6 +489,15 @@ datamart (F-048) sin otra decisión expresa.
 | `forma_comunicacion` | Escrita por defecto | **F-040** |
 | `intervinientes` | `[{oficio, proveedor}]` si hay proveedor (par de `obrofc` al aprobar) | F-056 el par; **F-040/F-039** el resto y «Causante» |
 
+> **O-1 de la review del Bloque 1, hecho en el Bloque 2 (2026-10-08):**
+> `CandidataAlVolcado` exige además que la ubicación venga **ya recortada**
+> (`ubicacion == ubicacion.strip()`, no vacía) y de **≤ 48** caracteres
+> (`MAX_UBICACION`): es la última defensa antes del ERP, y aprobar guarda los
+> vigentes sin cambiarlos. Sin `CHECK` equivalente en el DDL: §6 deja «aprobar
+> exige oficio y ubicación» en el dominio, y un `CHECK` de recorte afectaría a
+> todas las acciones (también a descartar una fila importada) y no se podría
+> cambiar después.
+
 Para F-040: Sigrid puede cambiar entre aprobar y volcar —su dry-run lo
 detecta y, para corregir, basta **editar** (saca la incidencia de las
 candidatas)—; `volcada` va en su propia tabla y la costura es

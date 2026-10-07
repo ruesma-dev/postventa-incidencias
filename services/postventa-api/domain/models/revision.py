@@ -314,7 +314,10 @@ class CandidataAlVolcado:
     """Una incidencia aprobada, lista para F-040 (R34, R35, §10).
 
     No se puede construir sin oficio resuelto, sin ubicación, ni con oficio o
-    proveedor ambiguos: lo que llega a F-040 es siempre volcable.
+    proveedor ambiguos: lo que llega a F-040 es siempre volcable. La ubicación,
+    además, ya recortada y de 48 como mucho (O-1 de la review del Bloque 1):
+    aprobar guarda los vigentes sin cambiarlos, y esta es la última defensa
+    antes de `rcp.resubi`.
     """
 
     incidencia_id: UUID
@@ -330,6 +333,15 @@ class CandidataAlVolcado:
             raise ValueError("una candidata al volcado necesita el código del oficio")
         if v.ubicacion is None:
             raise ValueError("una candidata al volcado necesita la ubicación")
+        if (
+            not v.ubicacion
+            or v.ubicacion != v.ubicacion.strip()
+            or len(v.ubicacion) > MAX_UBICACION
+        ):
+            raise ValueError(
+                "la ubicación de una candidata al volcado va recortada y con "
+                f"{MAX_UBICACION} caracteres como mucho"
+            )
         if v.proveedor_ambiguo:
             raise ValueError(
                 "una candidata al volcado no puede tener proveedor ambiguo"

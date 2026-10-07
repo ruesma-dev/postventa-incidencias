@@ -357,7 +357,7 @@ def _situacion(
         incidencia=incidencia,
         obra_codigo=d["obra_codigo"],
         origen=OrigenIncidencia(d["origen"]),
-        ultima=None if ultima[0] is None else fila_a_revision(ultima),
+        ultima=None if all(valor is None for valor in ultima) else fila_a_revision(ultima),
         original=original,
     )
 

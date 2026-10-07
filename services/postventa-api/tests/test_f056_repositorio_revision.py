@@ -819,6 +819,20 @@ def test_f056_r10_una_revision_admite_uuid_en_texto():
     assert revision.incidencia_id == UUID(int=1)
 
 
+def test_f056_r36_una_revision_con_columnas_de_mas_no_se_lee_a_medias():
+    """La fila tiene que ser exactamente la de la consulta: una columna de más
+    o de menos es un SQL que ya no casa con su traducción."""
+    with pytest.raises(ValueError):
+        sentencias_revision.fila_a_revision((*_fila_revision(4, 1), "de más"))
+
+
+def test_f056_r36_una_original_con_columnas_de_menos_no_se_lee_a_medias():
+    fila = _fila(_fila_bandeja(2, duplicada_de=UUID(int=1)), original=_fila_bandeja(1))
+
+    with pytest.raises(ValueError):
+        sentencias_revision.fila_a_situacion(fila[: 2 * len(LEIDAS_DE_LA_BANDEJA) + len(LEIDAS_DE_LA_REVISION) - 1])
+
+
 def test_f056_o4_las_fechas_vuelven_con_zona_y_en_utc():
     """O-4 · `_orden` del dominio resta contra un origen con zona: una fecha sin
     zona lanzaría `TypeError` al paginar. `timestamptz` llega con la zona de la

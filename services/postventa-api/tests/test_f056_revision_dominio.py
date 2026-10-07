@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, fields, replace
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -66,10 +66,14 @@ from domain.models.revision import (
     MAX_OID,
     AccionRevision,
     CandidataAlVolcado,
+    ClaveDeOrden,
     EstadoRevision,
+    FilaDeRevision,
     MotivoNoAprobable,
+    Pagina,
     PeticionDeAccion,
     Quien,
+    Resumen,
     Revision,
     RevisionNueva,
     SituacionDeRevision,
@@ -1780,3 +1784,40 @@ def test_f056_los_errores_llevan_sus_datos() -> None:
     ):
         assert clase("motivo").motivo == "motivo"
         assert str(clase("motivo")) == "motivo"
+
+
+# --------------------------------------------------------------------------
+# Las fotos no se cambian en memoria: todos los tipos son inmutables
+# --------------------------------------------------------------------------
+
+
+def _instancias() -> dict[str, object]:
+    sit = situacion()
+    fila = FilaDeRevision(situacion=sit, estado=E.NUEVA, motivos=(), cambios=())
+    return {
+        "Quien": QUIEN,
+        "ValoresIncidencia": valores(),
+        "ValoresPedidos": pedidos(),
+        "Revision": revision(1, A.EDITAR),
+        "RevisionNueva": decide(sit, peticion(A.DESCARTAR), catalogo=None),
+        "SituacionDeRevision": sit,
+        "PeticionDeAccion": peticion(A.APROBAR),
+        "ClaveDeOrden": ClaveDeOrden(
+            creada_at_utc=CREADA, fila_origen=2, incidencia_id=UUID(int=1)
+        ),
+        "CandidataAlVolcado": _candidata(valores()),
+        "FilaDeRevision": fila,
+        "Pagina": Pagina(filas=(fila,), total_filtrado=1, siguiente=None),
+        "Resumen": Resumen(total=0, por_estado={}, con_motivos=0, por_motivo={}),
+    }
+
+
+@pytest.mark.parametrize("tipo", list(_instancias()))
+def test_f056_r34_los_tipos_de_la_revision_son_inmutables(tipo: str) -> None:
+    # Lo aprobado es exactamente la foto guardada (§3.1): nadie la retoca en
+    # memoria entre la decisión y la escritura, ni entre la lectura y F-040.
+    instancia = _instancias()[tipo]
+    assert type(instancia).__name__ == tipo
+    primero = fields(instancia)[0].name  # type: ignore[arg-type]
+    with pytest.raises(FrozenInstanceError):
+        setattr(instancia, primero, None)

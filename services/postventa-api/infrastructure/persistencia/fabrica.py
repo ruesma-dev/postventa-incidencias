@@ -40,6 +40,9 @@ from infrastructure.persistencia.repositorio_bandeja_pg import (
     RepositorioEquivalenciasPostgres,
 )
 from infrastructure.persistencia.repositorio_pg import RepositorioPostgres
+from infrastructure.persistencia.repositorio_revision_pg import (
+    RepositorioRevisionPostgres,
+)
 
 __all__ = ["construir_bandeja", "construir_equivalencias", "construir_repositorio"]
 
@@ -70,6 +73,11 @@ def construir_equivalencias(ajustes: Ajustes) -> RepositorioEquivalenciasPostgre
     return RepositorioEquivalenciasPostgres(
         _conexion_con_esquema(ajustes), esquema=ajustes.pg_esquema
     )
+
+
+def construir_revision(ajustes: Ajustes) -> RepositorioRevisionPostgres:
+    """ESQUELETO del RED de T4 (F-056): la receta llega en T6."""
+    return RepositorioRevisionPostgres(None, esquema="")
 
 
 def _conexion_con_esquema(ajustes: Ajustes) -> psycopg.Connection:

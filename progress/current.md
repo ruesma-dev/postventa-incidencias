@@ -12,6 +12,10 @@
 > **Bloque 1 hecho (implementer, 2026-10-08)**, pendiente de review: T1–T3 marcadas. Suite del servicio en verde
 > (7071 passed), mutación 153/153 muertos (0 supervivientes), PUERTA COBERTURA 100 % (486/486), `init.sh` en verde.
 > Detalle en `progress/impl_F-056.md`, «Bloque 1». No se ha pasado al Bloque 2.
+>
+> **Bloque 2 en curso (implementer, 2026-10-08)**: review del Bloque 1 APPROVED; N-1, N-2 y O-1 hechos en commits
+> propios; T4 (RED con esqueletos neutros, O-2) en curso. T8 queda para el humano. Detalle en
+> `progress/impl_F-056.md`, «Bloque 2».
 
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >

@@ -252,3 +252,207 @@ solos. No se han borrado (no son de este encargo): `git worktree remove --force`
 | Cobertura de las líneas cambiadas (`PUERTA COBERTURA` de `init.sh`) | **100,0 %** (486/486 líneas cambiadas, umbral 80 %, nivel `critico`) |
 | Mutantes | **153 generados, 153 muertos, 0 supervivientes, 0 timeouts** (2 repasados en serie, muertos); 20961 s, 8 workers |
 | `bash harness/init.sh` | **ENTORNO LISTO** (2026-10-08): servicio api 7071 passed, 81 skipped en 1451,9 s (con medición de cobertura); front en verde por caché; arnés 115 passed; ruff 74 avisos de deuda previa, no bloquea |
+
+## Bloque 2 · La tabla y el repositorio (T4–T7, T9; T8 MANUAL) · 2026-10-08
+
+**Estado: EN CURSO.** Encargo del líder del 2026-10-08: T4 (RED), T5, T6, T7 y T9, más N-1, N-2, O-1, O-2 y O-4 de
+la review del Bloque 1. T8 es MANUAL del humano. Base de la mutación del bloque: `b88b5ef` (el commit anterior al
+bloque, fijado por el líder).
+
+### O-1 · Fase RED (antes del código)
+
+Comando, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_revision_dominio.py -q -k "candidata_con_ubicacion" -p no:cacheprovider
+```
+
+Salida real (cola), con `CandidataAlVolcado` todavía sin la comprobación:
+
+```
+tests\test_f056_revision_dominio.py:1745: Failed
+=========================== short test summary info ===========================
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga[ Ba\xf1o]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga[Ba\xf1o ]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga[\tBa\xf1o]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga[Ba\xf1o\n]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga[]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga[   ]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_candidata_con_ubicacion_sin_recortar_o_larga[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+7 failed, 3 passed, 291 deselected in 0.83s
+```
+
+Los 7 casos de «sin recortar, vacía o de 49» fallan por `DID NOT RAISE ValueError`; los 3 de «recortada y de hasta
+48» pasan (ya pasaban: son el control positivo).
+
+### T4 · Fase RED
+
+Con **esqueletos de valores neutros** (O-2): `domain/ports/revision.py` (un `Protocol` vacío),
+`sentencias_revision.py` (cada función devuelve `("", ())` o `None`), `repositorio_revision_pg.py` (devuelve `()`,
+`0` o `None`), `construir_revision` (devuelve un repositorio sin conexión) y `15_revisiones_bandeja.sql` (solo las
+dos primeras líneas de cabecera, sin sentencias). Así cada test falla **por su aserción**, no por un
+`ImportError` de recogida.
+
+Comando, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_ddl.py tests/test_f056_repositorio_revision.py -q -p no:cacheprovider --tb=no -rfp
+```
+
+Salida real (motivos recortados a 150 caracteres):
+
+```
+.FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF..F.FFFFFFFFFFFFFFFFFFFFFFFFFFFFF. [ 54%]
+..FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.FFF            [100%]
+=========================== short test summary info ===========================
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_guarda_real_acepta_cada_sentencia_y_son_dos
+FAILED tests/test_f056_ddl.py::test_f056_r36_el_ddl_real_entero_se_carga_con_el_fichero
+FAILED tests/test_f056_ddl.py::test_f056_r36_todo_es_idempotente - assert ()
+FAILED tests/test_f056_ddl.py::test_f056_r37_ni_datos_ni_escrituras_ni_borrados_en_el_ddl
+FAILED tests/test_f056_ddl.py::test_f056_r36_todo_cualificado_sin_public_ni_ambito_de_servidor
+FAILED tests/test_f056_ddl.py::test_f056_r36_sin_columnas_binarias_ni_json - ...
+FAILED tests/test_f056_ddl.py::test_f056_r36_un_esquema_configurado_distinto_se_sustituye_entero
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_dice_que_construye_y_de_que_lee
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[APPEND-ONLY]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[revision_id]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[NO SE GUARDA EL ESTADO]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[revisado_por]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[revisado_correo]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[empleado interno]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[NUNCA va a un log]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[GET /api/revision]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[ON DELETE CASCADE]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[F-040]
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_cabecera_explica_la_tabla_y_el_correo[F-048]
+FAILED tests/test_f056_ddl.py::test_f056_r36_las_columnas_son_las_del_diseno_y_ninguna_mas
+FAILED tests/test_f056_ddl.py::test_f056_r36_declaraciones_de_las_columnas - ...
+FAILED tests/test_f056_ddl.py::test_f056_r36_el_check_de_accion_es_el_enum_del_dominio
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_urgencia_y_listado_son_los_de_la_bandeja[urgencia-Urgencia]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_urgencia_y_listado_son_los_de_la_bandeja[listado-Listado]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_ambiguedad_de_la_bandeja_se_repiten[CHECK (NOT oficio_ambiguo OR (oficio_codigo IS NULL AND oficio_nombre IS NOT NULL))]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_ambiguedad_de_la_bandeja_se_repiten[CHECK (NOT proveedor_ambiguo OR (proveedor_codigo IS NULL AND proveedor_nombre IS NOT NULL))]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_ambiguedad_de_la_bandeja_se_repiten[CHECK (proveedor_nombre IS NULL OR oficio_nombre IS NOT NULL)]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_longitud_y_valor_son_los_de_la_bandeja[ubicacion]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_longitud_y_valor_son_los_de_la_bandeja[descripcion]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_longitud_y_valor_son_los_de_la_bandeja[detalle]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_longitud_y_valor_son_los_de_la_bandeja[urgencia]
+FAILED tests/test_f056_ddl.py::test_f056_r36_los_check_de_longitud_y_valor_son_los_de_la_bandeja[listado]
+FAILED tests/test_f056_ddl.py::test_f056_r18_el_motivo_solo_va_en_descartar
+FAILED tests/test_f056_ddl.py::test_f056_r36_la_tabla_lleva_exactamente_doce_check
+FAILED tests/test_f056_ddl.py::test_f056_r36_ni_unique_ni_estado_guardado - A...
+FAILED tests/test_f056_ddl.py::test_f056_r38_el_indice_da_la_ultima_revision_por_revision_id
+FAILED tests/test_f056_ddl.py::test_f056_r12_la_unica_columna_de_correo_del_esquema_es_revisado_correo
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r24_listar_pide_tope_mas_uno_filas_de_la_obra
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r25_listar_en_el_orden_total_de_r25
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original[situaciones_de_obra]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original[situacion]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r22_r38_cada_situacion_trae_su_ultima_y_la_de_su_original[aprobadas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden[situaciones_de_obra]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden[situacion]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_las_situaciones_leen_estas_columnas_en_este_orden[aprobadas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_ninguna_lectura_selecciona_revisado_por[situaciones_de_obra]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_ninguna_lectura_selecciona_revisado_por[situacion]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_ninguna_lectura_selecciona_revisado_por[aprobadas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_ninguna_lectura_selecciona_revisado_por[contar]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_ninguna_lectura_selecciona_revisado_por[bloquear]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_ninguna_lectura_selecciona_revisado_por[ultimas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_ninguna_lectura_selecciona_revisado_por[revisiones]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_el_correo_si_se_lee[situaciones_de_obra]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_el_correo_si_se_lee[situacion]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_el_correo_si_se_lee[aprobadas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_el_correo_si_se_lee[revisiones]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r23_situacion_por_su_id
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r34_aprobadas_solo_con_la_ultima_aprobar
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r24_contar_las_de_la_obra
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_el_bloqueo_es_for_update_de_la_bandeja_en_orden_fijo
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r38_la_frescura_es_la_mayor_revision_id_de_cada_una
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r33_el_historial_de_la_mas_antigua_a_la_mas_reciente
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r4_el_insert_es_una_fila_con_la_foto_el_oid_y_el_correo
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r4_sin_urgencia_ni_listado_van_nulos
+FAILED tests/test_f056_repositorio_revision.py::test_f056_o4_no_se_escribe_una_hora_sin_zona
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r17_r37_la_unica_escritura_es_el_insert_en_revisiones
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[aprobadas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[bloquear]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[contar]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[insert]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[revisiones]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[situacion]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[situaciones_de_obra]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_cada_sentencia_con_el_esquema_configurado[ultimas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>0]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>1]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>2]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>3]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>4]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>5]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>6]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r36_un_esquema_hostil_no_llega_al_sql[<lambda>7]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r1_una_fila_sin_revisiones_ni_original
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r22_una_fila_con_su_ultima_y_su_original_con_la_suya
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r22_la_original_sin_revisiones
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r29_los_tipos_de_la_fila_web_y_los_enum
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_la_revision_leida_lleva_el_correo_y_los_enum
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r10_una_revision_admite_uuid_en_texto
+FAILED tests/test_f056_repositorio_revision.py::test_f056_o4_las_fechas_vuelven_con_zona_y_en_utc
+FAILED tests/test_f056_repositorio_revision.py::test_f056_o4_una_fecha_sin_zona_no_se_adivina[creada]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_o4_una_fecha_sin_zona_no_se_adivina[revisada]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_o4_una_fecha_sin_zona_no_se_adivina[creada_original]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r24_listar_devuelve_todo_lo_que_trae_la_base_sin_truncar
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r24_contar - Assert...
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r6_situacion_que_no_existe_es_none
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_situacion_con_su_ultima
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r4_r7_registrar_bloquea_comprueba_inserta_y_confirma
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_la_primera_revision_espera_ninguna
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r22_bloquea_las_dos_en_orden_fijo_y_mira_las_dos
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r22_si_no_cuadra_no_escribe_y_deshace[otra-guardo-la-primera]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r22_si_no_cuadra_no_escribe_y_deshace[otra-guardo-despues]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r22_si_no_cuadra_no_escribe_y_deshace[la-esperada-no-existe]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r22_si_no_cuadra_no_escribe_y_deshace[la-original-gano-una]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r22_si_no_cuadra_no_escribe_y_deshace[la-original-cambio]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_r22_si_no_cuadra_no_escribe_y_deshace[la-original-perdio-las-suyas]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_registrar_exige_la_frescura_de_la_propia
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_si_la_base_falla_es_503_y_nada_a_medias[FOR UPDATE]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_si_la_base_falla_es_503_y_nada_a_medias[max(revision_id)]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r7_si_la_base_falla_es_503_y_nada_a_medias[INSERT INTO]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r41_el_log_de_registrar_no_lleva_ni_oid_ni_correo_ni_textos
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r30_si_la_base_no_responde_al_leer_es_503[<lambda>0]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r30_si_la_base_no_responde_al_leer_es_503[<lambda>1]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r30_si_la_base_no_responde_al_leer_es_503[<lambda>2]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r30_si_la_base_no_responde_al_leer_es_503[<lambda>3]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r30_si_la_base_no_responde_al_leer_es_503[<lambda>4]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r33_historial_la_situacion_y_sus_revisiones_en_una_transaccion
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r32_historial_de_una_que_no_existe_es_none
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r34_r35_aprobadas_da_las_candidatas_al_volcado
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa[editar]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa[descartar]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r34_si_la_base_devolviera_otra_cosa_que_un_aprobar_no_pasa[recuperar]
+FAILED tests/test_f056_repositorio_revision.py::test_f056_t6_construir_revision_abre_fija_la_sesion_y_asegura_el_esquema
+FAILED tests/test_f056_repositorio_revision.py::test_f056_t6_sin_contrasena_construir_revision_no_abre_nada
+FAILED tests/test_f056_repositorio_revision.py::test_f056_t6_si_no_se_puede_conectar_es_503
+PASSED tests/test_f056_ddl.py::test_f056_r36_el_fichero_va_detras_de_los_de_f036
+PASSED tests/test_f056_ddl.py::test_f056_r36_las_acciones_son_las_cuatro_de_la_spec
+PASSED tests/test_f056_ddl.py::test_f056_r36_las_longitudes_son_las_de_la_spec
+PASSED tests/test_f056_repositorio_revision.py::test_f056_r34_el_repositorio_cumple_el_puerto
+PASSED tests/test_f056_repositorio_revision.py::test_f056_r37_el_codigo_no_actualiza_ni_borra_ni_hace_ddl[sentencias_revision.py]
+PASSED tests/test_f056_repositorio_revision.py::test_f056_r37_el_codigo_no_actualiza_ni_borra_ni_hace_ddl[repositorio_revision_pg.py]
+PASSED tests/test_f056_repositorio_revision.py::test_f056_r37_el_control_del_codigo_caza_un_update
+PASSED tests/test_f056_repositorio_revision.py::test_f056_r34_aprobadas_sin_ninguna
+125 failed, 8 passed in 1.08s
+```
+
+Con `--tb=line`, los 125 fallos se reparten en **81 `AssertionError`, 32 `Failed: DID NOT RAISE …` y 12 `assert …`**:
+ningún `ImportError`, `AttributeError` ni `IndexError` (tres tests se ajustaron para comprobar el tipo antes de
+leer un atributo, y que fallaran por aserción).
+
+**Los 8 que pasan en RED, y por qué no importa:**
+
+| Test | Por qué pasa con el esqueleto |
+|---|---|
+| `test_f056_r36_el_fichero_va_detras_de_los_de_f036` | El esqueleto `15_…sql` ya existe con su nombre: el orden es del nombre, no del contenido |
+| `test_f056_r36_las_acciones_son_las_cuatro_de_la_spec`, `…_las_longitudes_son_las_de_la_spec` | Fijan el dominio del Bloque 1 a mano (el control de los tests que comparan con el `.sql`) |
+| `test_f056_r34_el_repositorio_cumple_el_puerto` | Un `Protocol` vacío lo cumple cualquiera; lo que muerde es `…_tiene_las_seis_operaciones_de_5`, que sí falla |
+| `test_f056_r37_el_codigo_no_actualiza_ni_borra_ni_hace_ddl` (×2) | Un esqueleto sin SQL no tiene `UPDATE`: es una guarda negativa, que tiene que seguir en verde |
+| `test_f056_r37_el_control_del_codigo_caza_un_update` | Control negativo de la guarda anterior, sobre un texto en memoria |
+| `test_f056_r34_aprobadas_sin_ninguna` | Sin filas, `()` es la respuesta correcta y la neutra a la vez |
+

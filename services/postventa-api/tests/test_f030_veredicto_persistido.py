@@ -1532,6 +1532,11 @@ DDL_DE_F036 = (
 )
 
 
+#: El de F-056 (T4), que llegó después. Misma regla: la lista se **amplía** y
+#: no se relaja (`specs/F-056-revision-bandeja-backend/tasks.md` T4).
+DDL_DE_F056 = ("15_revisiones_bandeja.sql",)
+
+
 def _ficheros_cambiados_en_la_rama() -> list[str] | None:
     """`git diff --name-only dev...HEAD`, o `None` si no se puede preguntar.
 
@@ -1700,7 +1705,7 @@ def test_f030_r20_no_hay_ni_un_fichero_de_ddl_nuevo():
     carpeta = RAIZ / CARPETA_DDL
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
-    assert nombres == DDL_DE_F028 + DDL_DE_F036
+    assert nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056
 
 
 # --------------------------------------------------------------------------

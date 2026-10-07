@@ -211,6 +211,11 @@ DDL_DE_F036 = (
 )
 
 
+#: El de F-056 (T4), que llegó después. Misma regla: la lista se **amplía** y
+#: no se relaja (`specs/F-056-revision-bandeja-backend/tasks.md` T4).
+DDL_DE_F056 = ("15_revisiones_bandeja.sql",)
+
+
 def test_f033_la_rama_no_toca_el_ddl():
     """Regla dura 1 · ni un fichero de `sql/` en el diff de la rama entera.
 
@@ -237,7 +242,7 @@ def test_f033_no_hay_ni_un_fichero_de_ddl_nuevo():
     carpeta = RAIZ / CARPETA_DDL
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
-    assert nombres == DDL_DE_F028 + DDL_DE_F036
+    assert nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056
 
 
 # --------------------------------------------------------------------------

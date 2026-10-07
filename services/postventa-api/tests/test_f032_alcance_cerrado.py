@@ -329,6 +329,11 @@ DDL_DE_F036 = (
 )
 
 
+#: El de F-056 (T4), que llegó después. Misma regla: la lista se **amplía** y
+#: no se relaja (`specs/F-056-revision-bandeja-backend/tasks.md` T4).
+DDL_DE_F056 = ("15_revisiones_bandeja.sql",)
+
+
 def test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo():
     """R22 · la mitad que no depende de `git`, y por eso no se puede saltar.
 
@@ -342,7 +347,7 @@ def test_f032_r22_no_hay_ni_un_fichero_de_ddl_nuevo():
     carpeta = RAIZ / CARPETA_DDL
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
-    assert nombres == DDL_DE_F028 + DDL_DE_F036
+    assert nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056
 
 
 def _codigo_sin_prosa(modulo: Any) -> str:

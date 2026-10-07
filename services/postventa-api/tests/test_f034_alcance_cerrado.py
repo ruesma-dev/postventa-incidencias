@@ -311,6 +311,11 @@ DDL_DE_F036 = (
     "14_decisiones_equivalencia.sql",
 )
 
+
+#: El de F-056 (T4), que llegó después. Misma regla: la lista se **amplía** y
+#: no se relaja (`specs/F-056-revision-bandeja-backend/tasks.md` T4).
+DDL_DE_F056 = ("15_revisiones_bandeja.sql",)
+
 #: Los once métodos de `RepositorioPartesPort`, escritos a mano y en su orden.
 METODOS_DEL_PUERTO_DE_PARTES = (
     "guardar_remesa",
@@ -437,7 +442,7 @@ def test_f034_r23_no_hay_ni_un_fichero_de_ddl_nuevo():
     carpeta = RAIZ / CARPETA_DDL
     nombres = tuple(sorted(ruta.name for ruta in carpeta.glob("*.sql")))
 
-    assert nombres == DDL_DE_F028 + DDL_DE_F036
+    assert nombres == DDL_DE_F028 + DDL_DE_F036 + DDL_DE_F056
 
 
 def test_f034_r23_el_puerto_no_gana_ni_un_metodo_y_el_adaptador_tampoco():

@@ -1,0 +1,2 @@
+-- services/postventa-api/infrastructure/persistencia/sql/15_revisiones_bandeja.sql
+-- Construye: ESQUELETO del RED de F-056 T4, sin sentencias; la tabla llega en T5.

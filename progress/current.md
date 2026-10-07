@@ -1,31 +1,13 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## ⛔ F-056 · `blocked` · 2026-10-06 · Bloque 1: la spec choca con un invariante de F-012
->
-> **Implementer, Bloque 1.** T1 (`1dbb67d`, RED) y T2 (`fe20189`, GREEN) hechas, más un ajuste previo a la
-> mutación (`ac03f9d`). Los tests de F-056 y las guardias de arquitectura que cita T2 pasan (368). **La suite
-> completa no**: `1 failed, 7054 passed, 56 skipped` (1200 s). El que falla es
-> `tests/test_f012_arquitectura.py::test_f012_arquitectura_ni_domain_ni_application_nombran_base64`: ningún
-> fichero de `domain/` ni de `application/` puede contener la palabra `base64` («el transporte es cosa del
-> adaptador»). Y `design.md` §4 pone `cursor_de` / `clave_de_cursor` —el cursor «base64url» de R25— en
-> `domain/models/revision.py`.
->
-> **No se ha improvisado** (encargo del líder): ni se ha tocado el test de F-012 ni se ha movido el cursor.
-> Opciones para decidir (detalle en `progress/impl_F-056.md`, «Bloqueo»):
-> - **(a) recomendada**: el dominio da la clave en un texto canónico (JSON, sin codificar) y lo valida; el
->   base64url lo pone y lo quita el borde (`interface_adapters/api/revision.py`, Bloque 3). R25 se cumple igual
->   (el cursor que ve el cliente sigue siendo base64url opaco); cambia solo **dónde** vive la codificación.
-> - (b) codificar el cursor en el dominio sin el módulo `base64` (hex u otra): incumple el «base64url» de R25.
-> - (c) ampliar la excepción del test de F-012: toca una guardia ajena.
->
-> T3 (mutación) **no se ha lanzado**: mutaría código que la decisión va a cambiar (la campaña cuesta horas).
-> Al desbloquear: aplicar la opción, `pytest tests -q` en verde y lanzar T3.
-
 > ## F-056 · `in_progress` · 2026-10-06 · Bloque 1 (el dominio) encargado al implementer
 >
 > Rama `feature/F-056-revision-bandeja-backend` desde `dev` en `f86d639` (base fija), con su spec traída de la rama
 > de F-038 (`specs/F-056-revision-bandeja-backend/`, aprobada; Q-5 resuelta, T0 hecha). Mutación con `--timeout 1800`.
+>
+> Desbloqueada el 2026-10-07: el humano aprueba la opción (a) del choque con F-012 —el dominio maneja la clave del
+> cursor como JSON canónico y el base64url lo pone y lo quita la capa HTTP (Bloque 3)—; el test de F-012 no se toca.
 
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >

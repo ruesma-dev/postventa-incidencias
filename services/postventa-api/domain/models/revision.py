@@ -31,8 +31,6 @@ Sin red, sin base de datos y sin reloj: la hora entra por parámetro.
 
 from __future__ import annotations
 
-import base64
-import binascii
 import hashlib
 import json
 from collections.abc import Iterable, Mapping
@@ -108,9 +106,9 @@ MAX_OID = 128  # el `MAX_USUARIO_OID` del borde de la importación
 TAMANO_POR_DEFECTO = 100
 TAMANO_MAXIMO = 200
 TOPE_LECTURA_OBRA = 10_000
-#: Un cursor tiene **menos** de estos caracteres (los que emite `cursor_de`
-#: rondan los 120): lo demás se rechaza sin decodificar.
-LIMITE_CURSOR = 512
+#: Tope del texto de una clave de orden (los que emite `texto_de_clave` rondan
+#: los 90 caracteres): lo que pasa se rechaza sin analizarlo.
+MAX_TEXTO_CLAVE = 384
 
 #: Las claves de `valores` de una edición, en el orden en que se informan los
 #: errores (R13).
@@ -910,31 +908,37 @@ def _orden(clave: ClaveDeOrden) -> tuple[int, bool, int | None, int]:
     )
 
 
-def cursor_de(clave: ClaveDeOrden) -> str:
-    """El cursor opaco de una clave: base64url, sin relleno, de un JSON (R25)."""
+def texto_de_clave(clave: ClaveDeOrden) -> str:
+    """La clave de orden como texto canónico: un JSON compacto `{c, f, i}` (R25).
+
+    **Decisión del humano del 2026-10-07**: el dominio no codifica el cursor.
+    Este texto es lo que el borde HTTP envuelve para dar el cursor opaco de
+    R25, y lo que desenvuelve antes de `clave_de_texto` (la regla de F-012:
+    el transporte es cosa del adaptador).
+    """
     datos = {
         "c": clave.creada_at_utc.isoformat(),
         "f": clave.fila_origen,
         "i": str(clave.incidencia_id),
     }
-    crudo = json.dumps(datos, separators=(",", ":")).encode("utf-8")
-    return base64.urlsafe_b64encode(crudo).decode("ascii").rstrip("=")
+    return json.dumps(datos, separators=(",", ":"))
 
 
 _CURSOR_INVALIDO = "'cursor' no es un cursor emitido por el sistema"
 
 
-def clave_de_cursor(texto: object) -> ClaveDeOrden:
-    """La clave de un cursor; uno que el sistema no emitió es un 400 (R23, R25).
+def clave_de_texto(texto: object) -> ClaveDeOrden:
+    """La clave de un texto de `texto_de_clave`; cualquier otro es un 400 (R23, R25).
 
-    Además de leerse, tiene que ser **exactamente** el que emitiría
-    `cursor_de` para esa clave. El error no repite el cursor.
+    Además de leerse, tiene que ser **exactamente** el que daría
+    `texto_de_clave` para esa clave: `f` entero ≥ 1 o nulo, `c` con zona, `i`
+    un UUID, sin claves de más ni de menos, en su orden y sin blancos. El
+    error no repite lo recibido.
     """
-    if not isinstance(texto, str) or len(texto) >= LIMITE_CURSOR:
+    if not isinstance(texto, str) or len(texto) > MAX_TEXTO_CLAVE:
         raise PeticionDeRevisionInvalida(_CURSOR_INVALIDO)
     try:
-        crudo = base64.urlsafe_b64decode(texto + "=" * (-len(texto) % 4))
-        datos = json.loads(crudo.decode("utf-8"))
+        datos = json.loads(texto)
         if not isinstance(datos, dict) or set(datos) != {"c", "f", "i"}:
             raise ValueError("forma")
         creada, fila, ident = datos["c"], datos["f"], datos["i"]
@@ -950,9 +954,9 @@ def clave_de_cursor(texto: object) -> ClaveDeOrden:
         clave = ClaveDeOrden(
             creada_at_utc=instante, fila_origen=fila, incidencia_id=UUID(ident)
         )
-    except (ValueError, TypeError, binascii.Error, UnicodeDecodeError):
+    except (ValueError, TypeError):
         raise PeticionDeRevisionInvalida(_CURSOR_INVALIDO) from None
-    if cursor_de(clave) != texto:
+    if texto_de_clave(clave) != texto:
         raise PeticionDeRevisionInvalida(_CURSOR_INVALIDO)
     return clave
 

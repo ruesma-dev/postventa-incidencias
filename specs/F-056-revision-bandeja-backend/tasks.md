@@ -127,7 +127,12 @@
 - [ ] **T11**: `application/pipelines/revision.py` (§7). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_pipeline_revision.py`
 - [ ] **T12**: `interface_adapters/api/revision.py` y, en `function_app.py`,
-  las tres rutas, los ocho errores y la cabecera (§8, §12). |
+  las tres rutas, los ocho errores y la cabecera (§8, §12). **El borde pone y
+  quita el base64url del cursor** (decisión del humano 2026-10-07, regla de
+  F-012): `texto_de_clave` → base64url sin relleno al responder; al recibir,
+  base64url → `clave_de_texto`, con el tope de longitud del cursor codificado y
+  cualquier fallo como 400 sin repetirlo. Sus tests (T10) fijan la forma
+  (`eyJjIjoi…`) y la manipulación del base64url. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_revision_http.py tests/test_f010_endpoints_protegidos.py`
 - [ ] **T13**: `tests/test_f056_alcance_cerrado.py` con el patrón de
   `test_f036_alcance_cerrado.py` y su base fija: R39, R40, R45 y «ninguna

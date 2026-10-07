@@ -6,8 +6,8 @@
 | Caso | Requisito |
 |---|---|
 | `clave_de_orden`: fecha descendente, fila ascendente (sin fila al final), id | R25 |
-| `cursor_de` / `clave_de_cursor`: ida y vuelta; forma base64url de JSON | R25 |
-| cursor manipulado → `PeticionDeRevisionInvalida`, sin repetirlo | R23, R25 |
+| `texto_de_clave` / `clave_de_texto`: ida y vuelta; JSON compacto y canónico (el base64url del cursor lo pone el borde: decisión del humano 2026-10-07) | R25 |
+| clave manipulada → `PeticionDeRevisionInvalida`, sin repetirla | R23, R25 |
 | `paginar`: recorrer todas las páginas da cada fila una vez y en orden, con empates de fecha y filas sin `fila_origen` | R25 |
 | filtros `estado` y `con_motivos` en el servidor; `total_filtrado` | R26 |
 | `tamano` de 1 a 200 | R23 |
@@ -19,7 +19,6 @@ Datos ficticios: obra `9901`; identificadores `UUID(int=n)`.
 
 from __future__ import annotations
 
-import base64
 import json
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta, timezone
@@ -36,6 +35,7 @@ from domain.models.plantilla_incidencias import (
     UnidadPosventa,
 )
 from domain.models.revision import (
+    MAX_TEXTO_CLAVE,
     TAMANO_MAXIMO,
     TAMANO_POR_DEFECTO,
     TOPE_LECTURA_OBRA,
@@ -47,13 +47,13 @@ from domain.models.revision import (
     MotivoNoAprobable,
     Revision,
     SituacionDeRevision,
-    clave_de_cursor,
+    clave_de_texto,
     clave_de_orden,
-    cursor_de,
     fila_de_revision,
     huella_de_valores,
     paginar,
     resumen,
+    texto_de_clave,
     valores_importados,
 )
 
@@ -216,33 +216,28 @@ def test_f056_r25_el_orden_distingue_microsegundos_y_zonas() -> None:
 
 
 @pytest.mark.parametrize("fila_origen", [None, 1, 7, 1000])
-def test_f056_r25_cursor_ida_y_vuelta(fila_origen: int | None) -> None:
+def test_f056_r25_texto_de_clave_ida_y_vuelta(fila_origen: int | None) -> None:
     clave = ClaveDeOrden(
         creada_at_utc=T0 + timedelta(microseconds=123),
         fila_origen=fila_origen,
         incidencia_id=UUID(int=77),
     )
-    texto = cursor_de(clave)
+    texto = texto_de_clave(clave)
     assert isinstance(texto, str)
-    assert clave_de_cursor(texto) == clave
+    assert clave_de_texto(texto) == clave
 
 
-def test_f056_r25_el_cursor_es_base64url_de_json_sin_relleno() -> None:
+def test_f056_r25_el_texto_de_la_clave_es_json_compacto_y_canonico() -> None:
+    # Decisión del humano del 2026-10-07: el dominio no codifica; el cursor
+    # opaco (base64url) lo pone y lo quita el borde HTTP (Bloque 3).
     clave = ClaveDeOrden(creada_at_utc=T0, fila_origen=None, incidencia_id=UUID(int=77))
-    texto = cursor_de(clave)
-    assert texto.startswith("eyJjIjoi")
-    assert "=" not in texto and "+" not in texto and "/" not in texto
-    datos = json.loads(base64.urlsafe_b64decode(texto + "=" * (-len(texto) % 4)))
-    assert datos == {"c": T0.isoformat(), "f": None, "i": str(UUID(int=77))}
-
-
-def _b64(obj: object) -> str:
-    crudo = (
-        obj
-        if isinstance(obj, bytes)
-        else json.dumps(obj, separators=(",", ":")).encode()
+    assert texto_de_clave(clave) == (
+        '{"c":"2026-10-01T08:00:00+00:00","f":null,"i":"' + str(UUID(int=77)) + '"}'
     )
-    return base64.urlsafe_b64encode(crudo).decode().rstrip("=")
+
+
+def _json(obj: object) -> str:
+    return json.dumps(obj, separators=(",", ":"))
 
 
 _BUENO = {"c": T0.isoformat(), "f": 3, "i": str(UUID(int=77))}
@@ -253,65 +248,68 @@ _BUENO = {"c": T0.isoformat(), "f": 3, "i": str(UUID(int=77))}
     [
         None,
         5,
+        b"{}",
         "",
         "!!!",
-        "eyJj",
-        _b64(b"no es json"),
-        _b64(b"\xff\xfe"),
-        _b64([1, 2, 3]),
-        _b64("texto"),
-        _b64({"c": T0.isoformat(), "f": 3}),
-        _b64({**_BUENO, "x": 1}),
-        _b64({**_BUENO, "f": "3"}),
-        _b64({**_BUENO, "f": True}),
-        _b64({**_BUENO, "f": 0}),
-        _b64({**_BUENO, "f": -1}),
-        _b64({**_BUENO, "f": 2.0}),
-        _b64({**_BUENO, "c": "2026-10-01T08:00:00"}),
-        _b64({**_BUENO, "c": "ayer"}),
-        _b64({**_BUENO, "c": 5}),
-        _b64({**_BUENO, "i": "no-es-uuid"}),
-        _b64({**_BUENO, "i": 77}),
-        _b64(_BUENO) + "==",
-        _b64(json.dumps(_BUENO, indent=1).encode()),
-        _b64(_BUENO) + "A" * 600,
+        "no es json",
+        _json([1, 2, 3]),
+        _json("texto"),
+        _json(None),
+        _json({"c": T0.isoformat(), "f": 3}),
+        _json({**_BUENO, "x": 1}),
+        _json({**_BUENO, "f": "3"}),
+        _json({**_BUENO, "f": True}),
+        _json({**_BUENO, "f": 0}),
+        _json({**_BUENO, "f": -1}),
+        _json({**_BUENO, "f": 2.0}),
+        _json({**_BUENO, "c": "2026-10-01T08:00:00"}),
+        _json({**_BUENO, "c": "ayer"}),
+        _json({**_BUENO, "c": 5}),
+        _json({**_BUENO, "i": "no-es-uuid"}),
+        _json({**_BUENO, "i": 77}),
+        _json({"f": 3, "c": T0.isoformat(), "i": str(UUID(int=77))}),
+        json.dumps(_BUENO),
+        json.dumps(_BUENO, indent=1),
+        " " + _json(_BUENO),
+        _json({**_BUENO, "i": str(UUID(int=77)).upper()}),
     ],
 )
-def test_f056_r23_cursor_manipulado_es_peticion_invalida(texto: object) -> None:
+def test_f056_r23_clave_manipulada_es_peticion_invalida(texto: object) -> None:
     with pytest.raises(PeticionDeRevisionInvalida):
-        clave_de_cursor(texto)
+        clave_de_texto(texto)
 
 
-def test_f056_r23_el_cursor_bueno_construido_a_mano_vale() -> None:
-    assert clave_de_cursor(_b64(_BUENO)) == ClaveDeOrden(
+def test_f056_r23_la_clave_buena_construida_a_mano_vale() -> None:
+    assert clave_de_texto(_json(_BUENO)) == ClaveDeOrden(
         creada_at_utc=T0, fila_origen=3, incidencia_id=UUID(int=77)
     )
 
 
-def _cursor_de_largo(largo: int) -> tuple[ClaveDeOrden, str]:
-    """Un cursor emitido de verdad con exactamente `largo` caracteres."""
+def _texto_de_largo(largo: int) -> tuple[ClaveDeOrden, str]:
+    """Un texto emitido de verdad con exactamente `largo` caracteres."""
     for digitos in range(1, 400):
         clave = ClaveDeOrden(
             creada_at_utc=T0, fila_origen=int("1" * digitos), incidencia_id=UUID(int=77)
         )
-        texto = cursor_de(clave)
+        texto = texto_de_clave(clave)
         if len(texto) == largo:
             return clave, texto
-    raise AssertionError(f"no hay cursor de {largo} caracteres")
+    raise AssertionError(f"no hay texto de {largo} caracteres")
 
 
-def test_f056_r23_el_cursor_tiene_menos_de_512_caracteres() -> None:
-    clave, texto = _cursor_de_largo(511)
-    assert clave_de_cursor(texto) == clave
-    _, demasiado = _cursor_de_largo(512)
+def test_f056_r23_el_texto_de_la_clave_tiene_como_mucho_384_caracteres() -> None:
+    assert MAX_TEXTO_CLAVE == 384
+    clave, texto = _texto_de_largo(384)
+    assert clave_de_texto(texto) == clave
+    _, demasiado = _texto_de_largo(385)
     with pytest.raises(PeticionDeRevisionInvalida):
-        clave_de_cursor(demasiado)
+        clave_de_texto(demasiado)
 
 
-def test_f056_r23_el_error_del_cursor_no_lo_repite() -> None:
-    texto = _b64({**_BUENO, "i": "Ejemplo-que-no-debe-salir"})
+def test_f056_r23_el_error_de_la_clave_no_la_repite() -> None:
+    texto = _json({**_BUENO, "i": "Ejemplo-que-no-debe-salir"})
     with pytest.raises(PeticionDeRevisionInvalida) as exc:
-        clave_de_cursor(texto)
+        clave_de_texto(texto)
     assert texto not in str(exc.value)
     assert "Ejemplo-que-no-debe-salir" not in str(exc.value)
 
@@ -334,7 +332,7 @@ def _recorrer(
         if pagina.siguiente is None:
             return vistos, tamanos
         assert pagina.siguiente == clave_de_orden(pagina.filas[-1].situacion)
-        despues_de = clave_de_cursor(cursor_de(pagina.siguiente))
+        despues_de = clave_de_texto(texto_de_clave(pagina.siguiente))
     raise AssertionError("la paginación no termina")
 
 

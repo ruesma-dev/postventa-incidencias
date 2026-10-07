@@ -197,7 +197,9 @@ backend; la pantalla es F-038.
   `cursor` es opaco (base64url de esa clave de la última fila de la página) y
   la página siguiente son las filas que van **después** de esa clave en ese
   orden, aplicando los mismos filtros; `siguiente` es `null` en la última
-  página.
+  página. *(Decisión del humano 2026-10-07: el base64url lo pone y lo quita la
+  capa HTTP, por la regla de F-012; el dominio maneja la clave como JSON
+  canónico. `design.md` §4.)*
 - **R26.** Los filtros `estado` y `con_motivos` (motivos de no aprobable no
   vacíos) los aplica el **servidor**, con la misma función de estado (R1) y
   de motivos (R21) que las acciones.

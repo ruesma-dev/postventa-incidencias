@@ -192,10 +192,19 @@ class CandidataAlVolcado:         # R34, R35, §10
 | `motivos_no_aprobable(situacion, *, catalogo, ubicaciones, listas)` | §3.5, §3.6; la ubicación, contra la lista de **su** unidad | R21, R22, R48 |
 | `huella_de_valores(valores)` | `sha256` de los 13 valores en orden fijo, separador imposible en un texto, `None` ≠ `""` | R20 |
 | `decidir(situacion, peticion, *, catalogo, ubicaciones, listas, ahora)` | Une todo: transición, frescura, validar o motivos, `sin_cambios`, motivo | R2–R22 |
-| `clave_de_orden`, `cursor_de(clave) -> str`, `clave_de_cursor(texto) -> ClaveDeOrden` | R25; un cursor mal formado es `PeticionDeRevisionInvalida` | R23, R25 |
+| `clave_de_orden`, `texto_de_clave(clave) -> str`, `clave_de_texto(texto) -> ClaveDeOrden` | R25: la clave como JSON compacto y canónico, **sin codificar** (el base64url del cursor lo pone y lo quita el borde, §8); un texto que no es el canónico es `PeticionDeRevisionInvalida` | R23, R25 |
 | `paginar(filas_ordenadas, *, filtro, con_motivos, despues_de, tamano)` | Filtra, corta y da la clave de la siguiente | R25, R26 |
 | `resumen(filas)` | R27 | R27 |
 | `es_candidata(situacion)` | Última revisión `aprobar` | R34 |
+
+> **Decisión del humano 2026-10-07: el base64url vive en la capa HTTP (regla de
+> F-012).** `test_f012_arquitectura_ni_domain_ni_application_nombran_base64`
+> prohíbe la palabra `base64` en `domain/` y `application/` («el transporte es
+> cosa del adaptador»). El dominio construye y valida la clave del cursor como
+> texto JSON canónico (`texto_de_clave` / `clave_de_texto`); el borde
+> (`interface_adapters/api/revision.py`, Bloque 3) la envuelve en base64url al
+> responder y la desenvuelve al recibirla. El cliente sigue recibiendo un cursor
+> opaco base64url: R25 se cumple igual. El test de F-012 no se toca.
 
 Detalles que fijan los tests: comparación exacta de códigos y valores tasados
 (solo descripción, detalle, motivo y correo se recortan; la descripción además

@@ -23,6 +23,9 @@ F-036 (T15) añade `construir_bandeja` y `construir_equivalencias`: la misma
 receta de conexión, los cuatro pasos en el mismo orden, y el mismo esquema
 (`design.md` §2.2). Son dos porque los dos puertos llaman `registrar` a su
 escritura y los implementan dos clases.
+
+F-056 (T6) añade `construir_revision`, para la revisión de la bandeja: la misma
+receta y el mismo esquema.
 """
 
 from __future__ import annotations
@@ -76,8 +79,15 @@ def construir_equivalencias(ajustes: Ajustes) -> RepositorioEquivalenciasPostgre
 
 
 def construir_revision(ajustes: Ajustes) -> RepositorioRevisionPostgres:
-    """ESQUELETO del RED de T4 (F-056): la receta llega en T6."""
-    return RepositorioRevisionPostgres(None, esquema="")
+    """La revisión de la bandeja de F-056 (`RevisionPort`), con la misma receta.
+
+    No entra en `__all__`: `test_f036_repositorio_bandeja.py` fija la lista
+    exacta de F-036, y R45 de F-056 pide que sus tests sigan sin tocarse. Se
+    importa por su nombre, como las demás.
+    """
+    return RepositorioRevisionPostgres(
+        _conexion_con_esquema(ajustes), esquema=ajustes.pg_esquema
+    )
 
 
 def _conexion_con_esquema(ajustes: Ajustes) -> psycopg.Connection:

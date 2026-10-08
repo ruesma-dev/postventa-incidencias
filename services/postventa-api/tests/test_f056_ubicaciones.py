@@ -243,8 +243,8 @@ def test_f056_r48_una_fila_mal_formada_es_un_error_que_no_la_repite(fila: Any) -
     with pytest.raises(ValueError) as fallo:
         fila_a_ubicaciones_unidad(fila)
 
-    assert SECRETA not in str(fallo.value)
-    assert U1 not in str(fallo.value)
+    # El mensaje propio, y no el de desempaquetar: la forma se comprueba antes.
+    assert str(fallo.value) == "una fila de Sigrid sin las 2 columnas esperadas"
 
 
 def test_f056_r48_la_fila_es_inmutable_y_su_ubica_no_sale_en_el_repr() -> None:
@@ -463,6 +463,20 @@ def test_f056_r46_el_log_dice_obra_unidades_y_sin_tipologia_y_nunca_el_texto(cap
     texto = _registros_de(caplog)
     for prohibido_ in (SECRETA, UBICA_U1, UBICA_U2, "Terraza", CLAVE, BASE_URL):
         assert prohibido_ not in texto
+
+
+def test_f056_r46_el_log_registra_la_duracion_y_no_la_hora(monkeypatch, caplog) -> None:
+    """Como en F-036: el reloj arranca en 10.000 s; sumar en vez de restar daría más de 20.000."""
+    caplog.set_level(logging.INFO)
+    reloj = iter(10_000.0 + 0.5 * paso for paso in range(1_000))
+    monkeypatch.setattr(modulo_adaptador.time, "monotonic", lambda: next(reloj))
+    adaptador, _ = _adaptador(_lectura(_filas()))
+
+    adaptador.leer(codigo_obra=OBRA)
+
+    lineas = [r.getMessage() for r in caplog.records if r.name == modulo_adaptador.__name__]
+    assert len(lineas) == 1
+    assert 0 < float(lineas[0].rsplit("segundos=", 1)[1]) < 60
 
 
 # ==========================================================================

@@ -7,7 +7,7 @@ esquema, y roza cosas que no son suyas. Cada frontera tiene aquí su control:
 
 | Frontera | Requisito | Por qué no se toca |
 |---|---|---|
-| Las escrituras en Sigrid (`sql/write`, `sigrid/partes-reclamacion`, `sigrid/concepto-grafico`) | **R39** | F-056 solo lee, por `POST /api/sql/read` (las dos lecturas de F-036); crear partes es F-040 |
+| Las escrituras en Sigrid (`sql/write`, `sigrid/partes-reclamacion`, `sigrid/concepto-grafico`) | **R39** | F-056 solo lee, por `POST /api/sql/read` (las dos lecturas de F-036 y, desde el Bloque 3 bis, la de las ubicaciones válidas, §16.3); crear partes es F-040 |
 | Las ventanas `ARCHIVO_HABILITADO` y `CIERRE_HABILITADO`, y las variables de entorno | **R40** | leer Sigrid y escribir en el esquema propio no abren nada ajeno; ninguna variable nueva |
 | `UPDATE`, `DELETE`, `TRUNCATE` y DDL fuera del esquema | **R37** | la tabla es append-only y la bandeja no se toca |
 | Lo de F-036 y F-053: sus tests, `GET /api/bandeja`, la importación, la plantilla, los catálogos | **R45** | y los ficheros de «No se toca» de `design.md` §12 |
@@ -171,7 +171,8 @@ def test_f056_el_control_del_diff_no_esta_mirando_una_lista_vacia():
 # --------------------------------------------------------------------------
 
 #: Los ficheros **nuevos** de producción de F-056 (`design.md` §12), escritos a
-#: mano y no leídos del disco. Los del Bloque 3 bis (§16.3) se añadirán con él.
+#: mano y no leídos del disco. Los tres últimos, del Bloque 3 bis (§16.3; O-2
+#: de la review del Bloque 3).
 NUEVOS_DE_F056 = (
     "domain/models/revision.py",
     "domain/ports/revision.py",
@@ -180,6 +181,9 @@ NUEVOS_DE_F056 = (
     "infrastructure/persistencia/sentencias_revision.py",
     "infrastructure/persistencia/repositorio_revision_pg.py",
     "interface_adapters/api/revision.py",
+    "domain/ports/ubicaciones_validas.py",
+    "infrastructure/sigrid/consultas_ubicaciones_validas.py",
+    "infrastructure/sigrid/ubicaciones_validas.py",
 )
 
 #: Lo que F-056 añade dentro de ficheros que ya existían: la función exacta.
@@ -189,6 +193,7 @@ FUNCIONES_DE_F056 = (
     ("function_app.py", "revision_historial"),
     ("function_app.py", "revision_acciones"),
     ("infrastructure/persistencia/fabrica.py", "construir_revision"),
+    ("infrastructure/sigrid/fabrica.py", "construir_ubicaciones_validas"),
 )
 
 
@@ -319,7 +324,15 @@ def test_f056_r39_ningun_modulo_de_f056_importa_las_escrituras_del_erp():
 
 
 def test_f056_r39_de_sigrid_solo_se_usa_el_catalogo_de_f036():
-    """R39 · lo único de `infrastructure/sigrid` que toca F-056 es la lectura del catálogo."""
+    """R39 · de `infrastructure/sigrid`, F-056 usa las lecturas y nada más.
+
+    Fuera de `infrastructure/sigrid`, solo el borde, y solo los dos
+    constructores de lectura: el catálogo de F-036 y, desde el Bloque 3 bis
+    (O-2 de la review del Bloque 3), `construir_ubicaciones_validas`. Dentro,
+    el adaptador nuevo reutiliza el del catálogo (su puerta de entorno, su
+    `sql/read`, sus reintentos y su techo) y sus propias consultas; ni el
+    cliente del cierre ni las escrituras.
+    """
     de_sigrid = {
         r: sorted(m for m in _modulos_importados(r) if m.startswith("infrastructure.sigrid"))
         for r in NUEVOS_DE_F056
@@ -330,7 +343,15 @@ def test_f056_r39_de_sigrid_solo_se_usa_el_catalogo_de_f036():
         "interface_adapters/api/revision.py": [
             "infrastructure.sigrid.fabrica",
             "infrastructure.sigrid.fabrica.construir_catalogo_obra",
-        ]
+            "infrastructure.sigrid.fabrica.construir_ubicaciones_validas",
+        ],
+        "infrastructure/sigrid/ubicaciones_validas.py": [
+            "infrastructure.sigrid.catalogo_obra",
+            "infrastructure.sigrid.catalogo_obra.AdaptadorCatalogoSigridApi",
+            "infrastructure.sigrid.consultas_ubicaciones_validas",
+            "infrastructure.sigrid.consultas_ubicaciones_validas.fila_a_ubicaciones_unidad",
+            "infrastructure.sigrid.consultas_ubicaciones_validas.select_ubicaciones_de_las_unidades",
+        ],
     }
 
 

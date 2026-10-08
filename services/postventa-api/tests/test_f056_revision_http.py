@@ -58,6 +58,8 @@ from domain.models.revision import (
     texto_de_clave,
     valores_importados,
 )
+from domain.ports.catalogo_obra import LecturaCatalogo
+from domain.ports.ubicaciones_validas import FilaUbicacionesUnidad
 from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 from interface_adapters.api import revision as modulo
 
@@ -587,21 +589,32 @@ def test_f056_r30_descartar_no_necesita_la_configuracion_de_sigrid(
     assert estado == 200
 
 
-def test_f056_t12_sin_la_lectura_de_ubicaciones_compuesta_es_503(monkeypatch, mundo) -> None:
-    """Bloque 3: la lectura de Sigrid de las ubicaciones es el Bloque 3 bis.
+def test_f056_o2_la_fuente_por_defecto_lee_las_ubicaciones_de_sigrid(monkeypatch, mundo) -> None:
+    """Bloque 3 bis (O-2 de la review del Bloque 3): el 503 deliberado ya no está.
 
-    Hasta entonces, la fuente por defecto **no** inventa una lista: editar,
-    aprobar y listar responden 503 sin escribir. Descartar no la usa.
+    Sustituye a `test_f056_t12_sin_la_lectura_de_ubicaciones_compuesta_es_503`.
+    Con `construir_fuente_de_ubicaciones` **sin parchear**, la fuente por
+    defecto compone el puerto de Sigrid (`construir_ubicaciones_validas`,
+    §16.3): editar, aprobar y listar leen las ubicaciones de la tipología de
+    cada unidad, una vez por petición, y responden 200.
     """
-    monkeypatch.setattr(
-        modulo, "construir_fuente_de_ubicaciones", _FUENTE_POR_DEFECTO
-    )
+    leidas: list[str] = []
 
-    assert _leer(_post(_cuerpo("editar")))[0] == 503
-    assert _leer(_post(_cuerpo("aprobar")))[0] == 503
-    assert _leer(_listar())[0] == 503
-    assert mundo.revision.guardadas == []
-    assert _leer(_post(_cuerpo("descartar")))[0] == 200
+    class PuertoDeSigrid:
+        def leer(self, *, codigo_obra: str) -> LecturaCatalogo[FilaUbicacionesUnidad]:
+            leidas.append(codigo_obra)
+            return LecturaCatalogo((FilaUbicacionesUnidad(U1, " Baño ;Cocina;;"),), False)
+
+    monkeypatch.setattr(modulo, "construir_fuente_de_ubicaciones", _FUENTE_POR_DEFECTO)
+    monkeypatch.setattr(modulo, "construir_ubicaciones_validas", lambda _ajustes: PuertoDeSigrid())
+
+    assert _leer(_post(_cuerpo("editar")))[0] == 200
+    assert _leer(_post(_cuerpo("aprobar", revision_previa=1)))[0] == 200
+    estado, datos = _leer(_listar())
+    assert estado == 200
+    assert datos["catalogo"]["ubicaciones"] == {U1: ["Baño", "Cocina"], U2: [], U3: []}
+    assert leidas == [OBRA, OBRA, OBRA]
+    assert [g.revision.accion for g in mundo.revision.guardadas] == [A.EDITAR, A.APROBAR]
 
 
 _FUENTE_POR_DEFECTO = modulo.construir_fuente_de_ubicaciones

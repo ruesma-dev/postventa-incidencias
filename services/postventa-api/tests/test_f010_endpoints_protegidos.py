@@ -76,7 +76,7 @@ import pytest
 #: que el runtime de Functions lo haya construido.
 FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 
-#: Los diecisiete endpoints del servicio. Si manana hay un decimoctavo, este
+#: Los veinte endpoints del servicio. Si manana hay un vigesimo primero, este
 #: test se entera: la cuenta tiene que cuadrar con las rutas declaradas.
 #:
 #: Eran seis hasta F-019, que anadio `remesa`, `parte` y `cola`; nueve hasta
@@ -100,6 +100,12 @@ FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 #: patron de abajo **no las veia** (`\w+` no casa la barra): se amplia a
 #: `[\w/]+` para que el barrido las cuente. Se amplia, no se relaja: lo que
 #: casaba antes sigue casando igual, y el control negativo lo fija.
+#:
+#: F-056 (T10) los lleva a **veinte** con la revision de la bandeja:
+#: `revision` (GET, lee la base y Sigrid por `sql/read`), `revision/historial`
+#: (GET, solo la base) y `revision/acciones` (POST, escribe en el esquema
+#: propio y nada en Sigrid). Anonimos como los demas y por lo mismo; ninguna
+#: comprobacion de este fichero cambia, solo la cuenta.
 ENDPOINTS = (
     "health",
     "split",
@@ -118,6 +124,9 @@ ENDPOINTS = (
     "bandeja",
     "catalogos/propuestas",
     "catalogos/decisiones",
+    "revision",
+    "revision/historial",
+    "revision/acciones",
 )
 
 #: Un decorador de ruta con su nivel de autenticacion.
@@ -175,7 +184,7 @@ def test_f019_r30_la_cabecera_dice_que_anade_la_cola_al_cuadro(codigo):
 
 
 def test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada(codigo):
-    """R32 · los diecisiete siguen anonimos **y** la cabecera dice por que.
+    """R32 · los veinte siguen anonimos **y** la cabecera dice por que.
 
     Las dos mitades en un solo test, y no en dos, porque lo que hay que
     impedir es que se separen: un `auth_level` cambiado con la nota intacta
@@ -254,7 +263,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 17
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 20
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

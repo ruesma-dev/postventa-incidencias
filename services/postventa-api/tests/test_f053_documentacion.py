@@ -15,7 +15,8 @@ Lo que fija:
   `+00:00`, `null` sin zona, la **original** con `ya_importado`) y el de
   `oficio.distintos` (`codigo_a`/`codigo_b`, la **última decisión**, y que un
   código con **guion** chocaría con el `a-b` del front).
-- Dónde va: dentro del subapartado de los endpoints, antes de «Los diecisiete»,
+- Dónde va: dentro del subapartado de los endpoints, antes de la cuenta de los
+  anónimos («Los diecisiete» cuando se escribió; «Los veinte» desde F-056),
   sin encabezado propio.
 - Que no lleva valores (el barrido de `test_f005_integracion_sin_secretos.py`).
 
@@ -40,6 +41,14 @@ INTEGRACION = RAIZ / "docs" / "INTEGRACION.md"
 SECCION_OCHO = "## 8 · Qué exponemos nosotros"
 ENDPOINTS = "### Los endpoints, y qué hace cada uno"
 DIECISIETE = "Los diecisiete quedan en nivel"
+
+#: La cuenta **vigente** de los endpoints anónimos de §8, que es la que el
+#: párrafo de F-053 tiene que preceder. **Ampliado por F-056 (T15), decisión
+#: del líder 2026-10-08** (O-1 de la review del Bloque 3 de F-056): sus tres
+#: rutas llevan la cuenta de diecisiete a veinte. Se amplía sin relajar: el
+#: párrafo sigue yendo antes de la cuenta y sin encabezado, y además la cifra
+#: vieja ya no puede quedar escrita (R45 de F-056 declara la excepción).
+CUENTA_VIGENTE = "Los veinte quedan en nivel"
 
 #: Lo que el párrafo tiene que decir (`tasks.md`, T6; R20).
 TEXTOS_DE_F053 = (
@@ -111,12 +120,17 @@ def test_f053_r20_el_parrafo_dice_que_los_dos_son_aditivos_y_desde_cuando():
 
 
 def test_f053_t6_el_parrafo_va_antes_de_los_diecisiete_y_sin_encabezado():
-    """`design.md` §6 · dentro del subapartado de los endpoints, antes de la cuenta."""
+    """`design.md` §6 · dentro del subapartado de los endpoints, antes de la cuenta.
+
+    El nombre se conserva por trazabilidad: desde F-056 la cuenta es «Los
+    veinte» (`CUENTA_VIGENTE`), y «Los diecisiete» ya no puede estar.
+    """
     endpoints = _seccion(_leer(), ENDPOINTS)
     parrafo = _parrafo_de_f053()
 
-    assert DIECISIETE in endpoints, "«Los diecisiete» ya no está en el subapartado"
-    assert endpoints.index(parrafo) < endpoints.index(DIECISIETE)
+    assert DIECISIETE not in endpoints, "«Los diecisiete» sigue en el subapartado"
+    assert CUENTA_VIGENTE in endpoints, "«Los veinte» no está en el subapartado"
+    assert endpoints.index(parrafo) < endpoints.index(CUENTA_VIGENTE)
     assert not re.search(r"^#", parrafo, re.MULTILINE)
     assert "F-053" not in "".join(re.findall(r"^#+ .*$", _leer(), re.MULTILINE))
 

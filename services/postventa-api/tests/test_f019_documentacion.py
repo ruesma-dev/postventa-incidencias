@@ -161,8 +161,9 @@ def test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints(seccion_ocho):
     antes de F-019, por nueve después, por **diez** desde que F-009 añadió
     `POST /api/cerrar`, por **once** desde `/api/adjuntar` (F-012) y por
     **doce** desde `POST /api/aprobar` (F-026, 2026-09-12), y por
-    **diecisiete** desde las cinco de F-036 (2026-09-30). Cada vez ha habido
-    que venir aquí, que es el punto.
+    **diecisiete** desde las cinco de F-036 (2026-09-30), y por **veinte**
+    desde las tres de F-056 (2026-10-08). Cada vez ha habido que venir aquí,
+    que es el punto.
     """
     assert "Los seis quedan en nivel" not in seccion_ocho
     assert "Los nueve quedan en nivel" not in seccion_ocho
@@ -177,4 +178,8 @@ def test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints(seccion_ocho):
     # `test_f012_r68_integracion_declara_el_endpoint_nuevo_que_exponemos`
     # cuenta las filas de la tabla y comprueba que el número dicho es el que
     # sale. Este test obliga a pasar; aquel comprueba que lo escrito es cierto.
-    assert "Los diecisiete quedan en nivel" in seccion_ocho
+    # F-056 (T15, decisión del líder 2026-10-08) añade tres: `revision`,
+    # `revision/historial` y `revision/acciones`. La cuenta pasa de diecisiete
+    # a veinte; se amplía sin quitar ninguna de las aserciones anteriores.
+    assert "Los diecisiete quedan en nivel" not in seccion_ocho
+    assert "Los veinte quedan en nivel" in seccion_ocho

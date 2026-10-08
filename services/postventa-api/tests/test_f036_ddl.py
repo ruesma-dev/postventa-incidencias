@@ -182,10 +182,17 @@ def test_f036_t14_los_tres_ficheros_se_aplican_detras_del_historico_y_en_orden()
     El orden es una dependencia: la bandeja referencia la importación (13 tras
     12). Las decisiones no leen de nadie, pero van detrás para que la
     numeración cuente la historia.
+
+    Eran los últimos hasta F-056 (T4), que añade detrás
+    `15_revisiones_bandeja.sql` (lee de 13): la aserción se amplía, sin
+    relajarla.
     """
     nombres = [ruta.name for ruta in ficheros_ddl(DIRECTORIO_SQL)]
 
-    assert nombres[-3:] == list(FICHEROS)
+    assert nombres[nombres.index("11_historico_estado.sql") + 1 :] == [
+        *FICHEROS,
+        "15_revisiones_bandeja.sql",
+    ]
     assert nombres.index("11_historico_estado.sql") < nombres.index(IMPORTACIONES)
 
 

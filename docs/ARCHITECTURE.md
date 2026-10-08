@@ -941,13 +941,175 @@ La misma hexagonal que el resto del servicio:
   sus dueños.
 - **No guarda ficheros**: ni el `.xlsx` importado ni el Excel de errores.
 
+> **Enmienda del 2026-10-08 (F-056).** El punto «No revisa» era verdad al
+> cerrar F-036 y lo sigue siendo de F-036; lo que cambia es quién lo hace.
+> F-038 se partió por el límite de servicio: el backend de la revisión es F-056
+> (sección siguiente) y la página es F-038. La bandeja sigue sin columna de
+> estado y nadie la modifica: la revisión vive en su propia tabla.
+
+## Revisión de la bandeja (F-056)
+
+**Añadida el 2026-10-08 por F-056, implementada en su rama y sin desplegar.**
+F-036 deja las incidencias de la propiedad en una bandeja **de solo lectura**.
+F-056 construye en el backend lo que falta para que una persona las revise
+antes de que nada llegue a Sigrid: **editar**, **descartar**, **aprobar** y
+**recuperar** cada una, con constancia de quién y cuándo, y que **solo lo
+aprobado** sea candidato al volcado de **F-040**. La página que lo usa es
+**F-038**. Qué consume y qué expone, con su tabla, sus rutas y el correo, está
+en `docs/INTEGRACION.md` (§1, §2, §7 y §8); el diseño completo y sus
+decisiones, en `specs/F-056-revision-bandeja-backend/`.
+
+### La revisión es una tabla append-only, y el estado se deriva
+
+Cada acción aceptada añade **una** fila a `postventa.revisiones_bandeja` con la
+**foto completa** de los valores vigentes tras ella —unidad, ubicación,
+descripción, detalle, oficio, proveedor, urgencia y listado—, su huella
+`sha256`, el motivo de un descarte, el instante UTC, el `oid` y el correo de
+quien la pidió. Es **append-only**, como `historico_estado`: nada la actualiza
+ni la borra, y **manda la de mayor `revision_id`**, nunca la hora.
+`postventa.bandeja_incidencias` no se toca: lo importado queda como llegó, y
+los «valores vigentes» son los de la última revisión o, sin ninguna, los
+importados.
+
+**El estado no se guarda: se deriva** de la última revisión, con la misma
+idea que F-028 aplicó a los partes. `aprobada` si la última acción es
+`aprobar`; `descartada` si es `descartar`; y, sin revisiones o con la última en
+`editar` o `recuperar`, `editada` cuando los vigentes difieren de los
+importados y `nueva` cuando no. Desde `nueva` y `editada` se puede editar,
+descartar y aprobar; desde `aprobada`, editar —y la incidencia **pierde la
+aprobación**— y descartar; desde `descartada`, solo recuperar. Cualquier otra
+es 409 `accion_no_permitida`, sin leer Sigrid ni escribir.
+
+### Validar contra el catálogo de hoy
+
+Editar y aprobar comparan contra lo que Sigrid dice **en ese momento** —el
+**catálogo de hoy**—, con **comparación exacta**: las dos lecturas del catálogo
+de F-036 (las unidades de la obra y `obrofc`) y una tercera, las **ubicaciones
+válidas** de cada unidad, que son las de la **tipología** de esa unidad
+(`prmtpl.ubica`, partida por `;` y recortada) y se comparan **por unidad**:
+una ubicación de otra unidad de la misma obra no vale, y cambiar la unidad al
+editar vuelve a validar la ubicación. Una unidad sin tipología no admite
+ninguna. No se valida contra la lista de `config/plantilla_incidencias.yaml`,
+que sigue siendo solo la del desplegable de la plantilla.
+
+Editar devuelve 400 `valores_no_validos` con **todos** los campos que fallan, o
+`sin_cambios` si no cambia nada; los nombres de unidad, oficio y proveedor se
+guardan como los da Sigrid, nunca del cuerpo. Aprobar guarda los vigentes
+**sin cambiarlos**, y solo si no tienen ningún **motivo de no aprobable**, que
+son exactamente estos y en este orden: `unidad_fuera_de_la_obra`,
+`sin_ubicacion` (la ubicación es obligatoria para aprobar),
+`ubicacion_fuera_de_lista`, `sin_oficio`, `oficio_ambiguo`,
+`oficio_fuera_de_la_obra`, `par_fuera_de_la_obra`, `proveedor_ambiguo` y
+`duplicada`. Con alguno, 409 `incidencia_no_aprobable` con todos. Así se
+resuelven los dos apuntes que dejó F-036: las filas importadas con un catálogo
+viejo se ven por sus motivos y se corrigen editando, y las de oficio ambiguo
+eligen su código.
+
+### La concurrencia: optimista, y cerrada en la base
+
+Cada acción lleva la `revision_previa` sobre la que decide —la `revision_id`
+de la última revisión que vio quien actúa, o `null` si no había—. Se comprueba
+dos veces: antes de leer Sigrid, para no gastar una lectura en balde, y otra
+dentro de la transacción que escribe, con la fila de la incidencia bloqueada
+(`SELECT … FOR UPDATE` sobre la tabla propia, en orden fijo). De dos acciones
+simultáneas sobre la misma revisión, solo una se guarda; la otra recibe 409
+`revision_desactualizada`. Al aprobar una duplicada se comprueba también, en
+la misma transacción, que la original no ha cambiado entre medias.
+
+### Los tres endpoints y la paginación
+
+- `GET /api/revision?obra=&estado=&con_motivos=&tamano=&cursor=` lee **todas**
+  las incidencias de la obra con su última revisión —hasta **10.000**; con
+  más, 409 `bandeja_demasiado_grande` con el recuento, sin truncar en
+  silencio—, calcula estado y motivos con las mismas funciones que las
+  acciones y filtra **en el servidor**. Devuelve una página de `tamano` filas
+  (100 por omisión, **200** como mucho), el `resumen` de la obra **entera**
+  (`total`, `por_estado`, `con_motivos`, `por_motivo`) y el `catalogo` para
+  editar, con las ubicaciones de cada unidad salidas **de la misma lectura**
+  que valida: lo que se ofrece es lo que se acepta.
+- `GET /api/revision/historial?incidencia_id=` da las revisiones de una
+  incidencia, de la más antigua a la más reciente, con el correo de quien
+  actuó, los campos cambiados y el motivo de un descarte. No lee Sigrid.
+- `POST /api/revision/acciones` recibe la acción, exige `confirmado: true` y
+  responde 200 con la incidencia en la forma de una fila del listado. Valida el
+  cuerpo **entero antes de construir ningún adaptador**.
+
+**El orden es total y estable** (`creada_at_utc` descendente, `fila_origen`
+ascendente y el `incidencia_id`), y el `cursor` es la clave de la última fila
+de la página. El dominio la maneja como un JSON canónico; la capa HTTP la
+pasa a **base64url** al responder y la deshace al recibir (la regla de F-012:
+el borde codifica, el dominio no), con un tope de longitud. Un cursor
+manipulado es 400. Recorrer todas las páginas da cada fila una vez y en orden.
+
+### El correo de quien revisa
+
+Hasta F-056 la regla del servicio era «el `oid` y nada más». Por decisión del
+humano del 2026-10-06, **solo** `postventa.revisiones_bandeja` guarda además el
+correo corporativo de quien actúa, en `revisado_correo`, para que la página
+enseñe quién hizo cada cosa. Sale de `/.auth/me` en el front, como el `oid`:
+es una traza de quién dice ser, no una identidad verificada. Lo devuelven
+**tres respuestas** —el listado, el historial y la 200 de la acción, con el
+de quien acaba de actuar— y ningún error; **el correo nunca va a un log**, y
+**el `oid` no sale en ninguna respuesta**. Los logs de F-056 llevan solo la
+obra, el `incidencia_id`, la acción, el resultado y recuentos.
+
+### Dónde vive cada pieza de la revisión
+
+La misma hexagonal que el resto del servicio:
+
+- **Dominio puro**: `domain/models/revision.py` —estados, transiciones,
+  validación, motivos, la huella, la clave de orden, `paginar` y
+  `CandidataAlVolcado`—; sus errores, en `domain/models/errores.py`.
+- **Puertos**: `RevisionPort` (`domain/ports/revision.py`) y
+  `UbicacionesValidasPort` (`domain/ports/ubicaciones_validas.py`), además de
+  los de F-036, que se reutilizan sin cambiar.
+- **Adaptadores**: `infrastructure/persistencia/repositorio_revision_pg.py` y
+  `sentencias_revision.py`, con su DDL `15_revisiones_bandeja.sql`; y
+  `infrastructure/sigrid/ubicaciones_validas.py` con
+  `consultas_ubicaciones_validas.py`: la tercera lectura, solo
+  `POST /api/sql/read`, que hereda la puerta de entorno, los reintentos y el
+  techo del adaptador del catálogo de F-036 sin tocarlo.
+- **Aplicación**: `application/pipelines/revision.py` (`listar_para_revisar`,
+  `aplicar_accion`, `historial` y `candidatas_al_volcado`); el borde, en
+  `interface_adapters/api/revision.py`, y tres rutas en `function_app.py`.
+
+**Ninguna variable de entorno nueva**, ninguna dependencia nueva.
+
+### Lo que hereda F-040
+
+`candidatas_al_volcado(obra)` es el punto de entrada de F-040, sin ruta HTTP:
+las incidencias cuya última revisión es `aprobar`, con los valores aprobados,
+su huella y el instante, y **ninguna otra**. Cada una es una
+`CandidataAlVolcado`, que no se puede construir sin oficio, sin ubicación
+(recortada y de 48 caracteres como mucho) ni con oficio o proveedor ambiguos:
+es la última defensa antes del ERP. Lo que decide F-040 —el login de Sigrid
+de quien vuelca, el dry-run, la referencia externa, el tipo, la urgencia en
+Sigrid y el estado `volcada`, en su propia tabla— queda fuera; y si Sigrid
+cambia entre aprobar y volcar, basta editar para sacar una incidencia de las
+candidatas.
+
+### Lo que no hace la revisión
+
+- **Nada de F-056 escribe en Sigrid.** Solo hace **tres lecturas** por
+  `POST /api/sql/read` —las dos del catálogo de F-036 y la de las ubicaciones
+  válidas—, ninguna pieza nombra una ruta de escritura de la pasarela y un test
+  lo vigila. Por eso ningún endpoint depende de `CIERRE_HABILITADO` ni de
+  `ARCHIVO_HABILITADO`.
+- **No crea las incidencias en Sigrid**: es **F-040**.
+- **No tiene pantalla**: la página de revisión, con su paginación, es **F-038**.
+- **No aprueba ni descarta varias a la vez** (F-043), ni propone industrial
+  (F-039), ni agrupa proveedores (F-050).
+- **No toca la plantilla Excel**, que sigue ofreciendo la lista de ubicaciones
+  de `config/plantilla_incidencias.yaml`: ofrecer la de cada unidad es una ficha
+  aparte.
+
 ## Acceso a datos y sistemas externos
 
 | Sistema | Uso | Límites |
 |---|---|---|
-| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). |
+| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). **Desde F-056**, una **tercera lectura** por `sql/read`, con las mismas puertas y el mismo techo: las ubicaciones válidas de la tipología de cada unidad, para validar lo que se edita o se aprueba en la revisión de la bandeja (sección «Revisión de la bandeja (F-056)»). |
 | SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
-| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
+| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Desde F-056**, `revisiones_bandeja` (append-only): una fila por cada acción de revisión, con el `oid` y el correo corporativo de quien actúa, que no salen en ningún log. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
 

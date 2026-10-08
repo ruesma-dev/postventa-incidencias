@@ -1,6 +1,46 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-056 · `in_progress` · 2026-10-09 · Bloques 1–4 hechos y aprobados por bloque · review final: cambios de texto en T19
+>
+> **Estado (líder, 2026-10-09).** Bloque 4 hecho (`55696f0`; T15 y T17, `init.sh` en verde: 7680 passed, cobertura
+> 100 % de 1060 líneas). Review final `progress/review_F-056.md`: **CHANGES_REQUESTED solo en el texto del Bloque 5**
+> (C-1 a C-3 en T19, encargados al implementer; C-4 es este párrafo); código, tests y `docs/` sin cambios.
+> **Pendientes**: T16 (líder, `azure-apps` al desplegar); **T18 y T19 (MANUAL humano; comandos exactos en
+> `specs/F-056-revision-bandeja-backend/tasks.md`, Bloque 5)**; T20 (líder, resumen en `history.md`).
+> Mutación de la feature: 257 mutantes en cuatro campañas, 0 supervivientes. T8 en verde (53 passed).
+>
+> ### Histórico de F-056 en esta sesión
+>
+> Rama `feature/F-056-revision-bandeja-backend` desde `dev` en `f86d639` (base fija), con su spec traída de la rama
+> de F-038 (`specs/F-056-revision-bandeja-backend/`, aprobada; Q-5 resuelta, T0 hecha). Mutación con `--timeout 1800`.
+>
+> Desbloqueada el 2026-10-07: el humano aprueba la opción (a) del choque con F-012 —el dominio maneja la clave del
+> cursor como JSON canónico y el base64url lo pone y lo quita la capa HTTP (Bloque 3)—; el test de F-012 no se toca.
+>
+> **Bloque 1 hecho (implementer, 2026-10-08)**, pendiente de review: T1–T3 marcadas. Suite del servicio en verde
+> (7071 passed), mutación 153/153 muertos (0 supervivientes), PUERTA COBERTURA 100 % (486/486), `init.sh` en verde.
+> Detalle en `progress/impl_F-056.md`, «Bloque 1». No se ha pasado al Bloque 2.
+>
+> **Bloque 2 hecho (implementer, 2026-10-08)**, pendiente de review y de **T8 (MANUAL del humano**: Docker +
+> `infra\pruebas_bbdd_efimera.ps1`, 53 tests esperados). T4–T7 y T9 marcadas; N-1, N-2, O-1, O-2 y O-4 hechos.
+> Suite 7219 passed; mutación 17/17 muertos; PUERTA COBERTURA 100 % (648/648); `init.sh` en verde. Para el líder:
+> confirmar la redacción de N-1 (decisión 1 del informe). Detalle en `progress/impl_F-056.md`, «Bloque 2».
+>
+> **T8 en verde** (humano, 2026-10-08, segunda ejecución tras arreglar un fallo del test en `4bf2791`): 53 passed,
+> 0 failed, 0 skipped. T8 marcada.
+>
+> **Bloque 3 hecho (implementer, 2026-10-08)**, pendiente de review: T10–T14 marcadas; N-1 (b) del Bloque 2, O-3 y
+> O-5 del Bloque 1, O-1 y O-5 del Bloque 2 hechos. Suite 7502 passed; mutación 77/77 muertos; PUERTA COBERTURA 100 %
+> (1002/1002); `init.sh` en verde. Para el líder: decisión 1 (el correo en la respuesta de una acción, R8 frente a
+> R11) y decisión 2 (la fuente de ubicaciones da 503 hasta el Bloque 3 bis). Detalle en `progress/impl_F-056.md`,
+> «Bloque 3». No se ha pasado al Bloque 3 bis.
+>
+> **Bloque 3 bis hecho (implementer, 2026-10-08)**, pendiente de review: T14a–T14c marcadas; O-2, N-1 (se mantiene
+> R8, anotado en R11 y §9) y N-2 de la review del Bloque 3 hechos. Suite 7607 passed; mutación 10/10 muertos;
+> PUERTA COBERTURA 100 % (1060/1060); `init.sh` en verde. El 503 deliberado de la fuente de ubicaciones ya no existe.
+> Detalle en `progress/impl_F-056.md`, «Bloque 3 bis». No se ha pasado al Bloque 4.
+
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >
 > Merge en `dev`/`main` (`75b5b52`, con push), desplegada por el humano desde copia limpia; V1 y V2 «revisado,

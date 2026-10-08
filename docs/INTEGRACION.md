@@ -1,11 +1,14 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-05. **Última feature que
-> lo tocó**: F-036, **desplegada** desde su rama entre el 2026-10-02 y el
-> 2026-10-05 y verificada en el entorno (T29) —el 2026-10-01, la lectura del
-> Excel en un proceso hijo y lo que exige a la instancia (§6)— (antes, F-013 el
-> 2026-09-24; nació con F-005).
+> **Origen**: este repositorio. **Fecha**: 2026-10-08. **Última feature que
+> lo tocó**: F-056, la revisión de la bandeja en el backend —una tabla
+> append-only, tres endpoints, el correo de quien revisa y una tercera lectura
+> de Sigrid (§1, §2, §7 y §8)—, implementada en su rama y **sin desplegar**.
+> Antes, F-053 el 2026-10-06 (dos campos aditivos, §8); F-036, **desplegada**
+> desde su rama entre el 2026-10-02 y el 2026-10-05 y verificada en el entorno
+> (T29) —el 2026-10-01, la lectura del Excel en un proceso hijo y lo que exige
+> a la instancia (§6)—; F-013 el 2026-09-24; nació con F-005.
 >
 > Este documento es la **fuente de verdad** de lo que `postventa-incidencias`
 > consume del ecosistema de Ruesma y de lo que expone a los demás. Se copia a
@@ -30,8 +33,8 @@
 
 | Recurso | Compartido con | Qué hacemos | Desde |
 |---|---|---|---|
-| PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo, cierres y el **histórico de estado** de cada parte (F-028); desde **F-036**, las importaciones del Excel de la propiedad, la **bandeja de incidencias** y las decisiones sobre oficios casi duplicados | **F-005** / **F-036** |
-| `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y DOS ESCRITURAS en el ERP de producción**: el **parte adjunto como gráfico** —`POST /api/sigrid/concepto-grafico`, tres filas en dos bases— y el **cierre** —`con.est` al estado de cierre y su fila de auditoría en `dbo.log`—. Solo desde el entorno desplegado y con el interruptor encendido. Desde **F-036**, además, **dos lecturas del catálogo de una obra** (sus unidades y sus oficios con proveedor), solo por `sql/read` | F-008 / **F-009** / **F-012** / **F-036** |
+| PostgreSQL `psql-albaranes-rs9k2` | `albaranes`, `partes`, `datamart-seg-anual` | Base propia `postventa`: estado de remesas, partes, validaciones, archivo, cierres y el **histórico de estado** de cada parte (F-028); desde **F-036**, las importaciones del Excel de la propiedad, la **bandeja de incidencias** y las decisiones sobre oficios casi duplicados; desde **F-056**, la **revisión** de esa bandeja (append-only, con el correo de quien revisa) | **F-005** / **F-036** / **F-056** |
+| `sigrid-api` | todo el ecosistema | Lectura de la reclamación **y DOS ESCRITURAS en el ERP de producción**: el **parte adjunto como gráfico** —`POST /api/sigrid/concepto-grafico`, tres filas en dos bases— y el **cierre** —`con.est` al estado de cierre y su fila de auditoría en `dbo.log`—. Solo desde el entorno desplegado y con el interruptor encendido. Desde **F-036**, además, **dos lecturas del catálogo de una obra** (sus unidades y sus oficios con proveedor), solo por `sql/read`; desde **F-056**, una **tercera lectura**, las **ubicaciones válidas** de la tipología de cada unidad, también solo por `sql/read` | F-008 / **F-009** / **F-012** / **F-036** / **F-056** |
 | SharePoint (Graph) | IT | Archivo de los PDF validados | F-006 |
 | Gemini | — | Extracción multimodal y clasificación de firma | F-003 |
 | Entra ID | todo el ecosistema | Autenticación del front y de la tarjeta del portal | F-010 |
@@ -126,6 +129,64 @@ son **F-039**; **agrupar los proveedores casi duplicados** del maestro es
 humano del 2026-09-29; F-036 les deja hecha la costura en la base (§2). El
 detalle está en `specs/F-036-importar-excel/`.
 
+**Lo nuevo de F-056** (2026-10-08; implementada en su rama y **sin
+desplegar**) es la **revisión de la bandeja** en el backend: editar,
+descartar, aprobar y recuperar cada incidencia importada, con constancia de
+quién y cuándo, para que solo lo aprobado sea candidato al volcado de
+**F-040**. Para validar lo que se edita o se aprueba contra lo que Sigrid dice
+**hoy**, el servicio vuelve a hacer las dos lecturas del catálogo de F-036 y
+**una tercera**, las ubicaciones válidas de cada unidad; y guarda cada acción
+en una tabla más del esquema propio (§2). **Solo lee**: F-056 no escribe nada
+en el ERP. Ni un recurso de Azure nuevo, ni una dependencia, ni una variable
+de entorno.
+
+### Con F-056 · la tercera lectura: las ubicaciones válidas
+
+Desde F-056 son **tres lecturas** por `POST /api/sql/read`, todas
+parametrizadas, con `max_rows` a 1.000 y **ninguna escritura**: las dos del
+catálogo de F-036, sin cambiar una letra, y la de las **ubicaciones válidas**
+de cada unidad de posventa de la obra. Una ubicación solo se puede aprobar si
+es una de las que Sigrid tiene para **la tipología de su unidad**.
+
+- **Qué lee.** `dbo.upv` con `dbo.con` dos veces —la obra y la unidad, con el
+  mismo filtro de obra que la lectura de unidades de F-036— y, con un
+  `LEFT JOIN`, `dbo.prmtpl` por la tipología de la unidad (`upv.obrtplide`):
+  una fila por unidad con su código y el texto de `prmtpl.ubica`, leído
+  entero. La lista se parte por `;` y cada valor se recorta; los vacíos y los
+  de más de 48 caracteres no cuentan, y solo se quitan los repetidos
+  **exactos**. Una unidad sin tipología, o con la lista vacía, no admite
+  ninguna ubicación. La comparación es **exacta** tras recortar —sin plegar
+  mayúsculas ni tildes: es el dato de Sigrid tal cual, erratas incluidas— y
+  **por unidad**: una ubicación de otra unidad de la misma obra no vale.
+- **Cuándo.** **Una vez por petición**, después de las dos de F-036 y
+  compartida por todas las filas: en cada página de `GET /api/revision` y en
+  las acciones `editar` y `aprobar` de `POST /api/revision/acciones`. Nunca en
+  `descartar`, `recuperar` ni el historial, que no leen Sigrid. Sin caché
+  entre peticiones.
+- **El techo y los errores**, los de F-036: con **1.000 filas** es
+  `catalogo_sin_verificar` (409) y no se valida ni se aprueba nada; cortada
+  por debajo del techo, o si la pasarela no responde, `CatalogoNoDisponible`
+  (**503**) sin escribir nada.
+- **Las puertas**, las de F-036: `ENTORNO` en `dev` o `pro` y la configuración
+  de la pasarela; **no** mira `CIERRE_HABILITADO` ni `ARCHIVO_HABILITADO`.
+- **Qué no sale.** El texto de la tipología no va a ningún log: solo el código
+  de obra, cuántas unidades, cuántas sin tipología y los segundos.
+- **Volumen.** Tres lecturas por cada página que se lista, cada edición y
+  cada aprobación de una persona; descartar, recuperar y el historial, cero.
+- **Lo que no cambia.** La plantilla Excel de F-036 sigue ofreciendo la lista
+  de `config/plantilla_incidencias.yaml`, igual para todas las filas; que
+  ofrezca las de la tipología de cada unidad es una ficha aparte.
+
+El SQL exacto vive en
+`services/postventa-api/infrastructure/sigrid/consultas_ubicaciones_validas.py`
+y un test lo fija carácter a carácter; el diseño, en
+`specs/F-056-revision-bandeja-backend/` (§16).
+
+**Para el dueño de `sigrid-api`**: F-056 **no pide ningún cambio**; como
+F-036, depende de que `sql/read` siga sirviendo hasta 1.000 filas por
+petición. Lo que sí le pedirá algo es **F-040**, que volcará lo aprobado con
+el alta en lote de reclamaciones (§1, «Con F-036»).
+
 ## 2 · La base de datos: qué pedimos y qué no tocamos
 
 ```
@@ -144,7 +205,8 @@ Servidor  psql-albaranes-rs9k2      COMPARTIDO — no tocamos nada suyo
                ├── historico_estado        append-only: cada cambio de estado de un parte
                ├── importaciones           F-036: cada Excel importado, con sus recuentos
                ├── bandeja_incidencias     F-036: las incidencias importadas, sin revisar
-               └── decisiones_equivalencia F-036: append-only, oficios que son el mismo
+               ├── decisiones_equivalencia F-036: append-only, oficios que son el mismo
+               └── revisiones_bandeja      F-056: append-only, cada revisión de la bandeja
 ```
 
 Las diez van en el orden en que las crea el DDL (`01_esquema.sql` …
@@ -161,6 +223,10 @@ feature que congela `aprobaciones`.
 > detrás y en este orden: `12_importaciones.sql`, `13_bandeja_incidencias.sql`
 > y `14_decisiones_equivalencia.sql`. Se describen al final de esta sección,
 > en «Con F-036».
+
+> **Enmienda del 2026-10-08 (F-056) · ya no son trece, son catorce.** F-056
+> añade una tabla más, detrás: `15_revisiones_bandeja.sql`. Se describe al
+> final de esta sección, en «Con F-056».
 
 **`aprobaciones` es la tabla nueva de F-026** y merece una línea aparte, porque
 es la única del esquema que registra **una decisión humana que contradice a la
@@ -262,6 +328,11 @@ anteriores.
   revisión**: editar, descartar o aprobar una fila es **F-038**, que la
   añadirá con su propia tabla. Nada de esta tabla viaja todavía a Sigrid:
   volcarla es **F-040**.
+
+  > **Enmienda del 2026-10-08 (F-056).** F-038 se partió por el límite de
+  > servicio: la revisión de la bandeja es F-056 en el backend —la tabla
+  > propia que se anunciaba, `revisiones_bandeja`, abajo— y F-038 la página.
+  > La bandeja sigue sin columna de estado y nadie la modifica.
 - **`postventa.decisiones_equivalencia`** (`14_decisiones_equivalencia.sql`):
   la decisión de **una persona** de que dos códigos de oficio de Sigrid son el
   mismo oficio, o de que no lo son. Por pares, **append-only** como
@@ -284,6 +355,37 @@ columna binaria—. **Volumen**: una importación son decenas o cientos de filas
 de menos de 1 KB, y las decisiones de oficios, decenas por obra; no cambia el
 orden de magnitud de lo que ocupamos en el disco compartido. El detalle
 columna a columna está en `specs/F-036-importar-excel/design.md` §6.1.
+
+### Con F-056 · la revisión de la bandeja
+
+Una tabla más en el esquema propio, `postventa.revisiones_bandeja`
+(`15_revisiones_bandeja.sql`), creada por el mismo DDL idempotente al arrancar
+y solo con `CREATE TABLE IF NOT EXISTS` y `CREATE INDEX IF NOT EXISTS`.
+Ninguna de las trece anteriores cambia.
+
+- **Una fila por acción** de una persona —`editar`, `descartar`, `aprobar` o
+  `recuperar`— sobre una incidencia de la bandeja, con la **foto completa** de
+  sus valores tras la acción (unidad, ubicación, descripción, detalle, oficio,
+  proveedor, urgencia y listado), su huella `sha256`, el motivo de un
+  descarte, el instante UTC y quién la pidió: `revisado_por`, el `oid` opaco,
+  y `revisado_correo`, su **correo corporativo** (§7).
+- **Append-only**, como `historico_estado` y `decisiones_equivalencia`: nada la
+  actualiza ni la borra, y manda la de mayor `revision_id`, nunca la hora. **El
+  estado no se guarda**: `nueva`, `editada`, `aprobada` o `descartada` se
+  derivan de la última revisión.
+- **`postventa.bandeja_incidencias` no se toca**: lo que mandó la propiedad se
+  queda como llegó, y la revisión apunta a ello por una clave ajena, sin
+  `ON DELETE CASCADE`. La concurrencia se resuelve con un `SELECT … FOR UPDATE`
+  de la fila de la bandeja dentro de la transacción que escribe —nunca un
+  bloqueo consultivo, cuyo espacio de claves es del servidor compartido—.
+- Los `CHECK` de longitud y de ambigüedad son los de la bandeja, y el de
+  `accion` lleva las cuatro del dominio; no se podrá ampliar, así que el
+  volcado de **F-040** llevará su propia tabla.
+- **Sin columnas binarias**: ninguna columna binaria ni JSON. **Volumen**: una fila de menos de 1 KB
+  por acción de una persona; decenas o cientos por obra.
+
+El detalle columna a columna está en
+`specs/F-056-revision-bandeja-backend/design.md` §6.
 
 ## 3 · SharePoint: dónde se archivan los partes
 
@@ -944,6 +1046,15 @@ código, no de configuración.
 si apunta a un host que no sea local. La suite normal del proyecto no abre ni
 una conexión.
 
+### Las de F-056: ninguna
+
+**F-056 no añade ninguna variable de entorno**, y sus tres endpoints no miran
+ninguna ventana de escritura. La tercera lectura usa la misma configuración
+de Sigrid que las del catálogo, y la revisión, la de PostgreSQL. Los topes —el
+tamaño de página (100 por omisión, 200 como mucho), las 10.000 incidencias por
+obra y los 500 caracteres del motivo— son del dominio: cambiarlos es un cambio
+de código.
+
 ## 5 · Qué le hacemos al servidor compartido, en números
 
 Los tres límites que importan, y por qué nos importan:
@@ -995,6 +1106,8 @@ incidencia, código de obra y remesa.
 | Sube la concurrencia HTTP por instancia o `FUNCTIONS_WORKER_PROCESS_COUNT` (**F-036**) | Lo mismo: el tope de **una lectura aislada a la vez** es **por proceso**, así que varios procesos, o varias peticiones de importación a la vez en una instancia, pueden tener cada uno su hijo de 1 GiB y no caben en 2.048 MB | No subirlos sin rehacer las cuentas de `specs/F-036-importar-excel/design.md` §5.2 |
 | Dos importaciones a la vez en el mismo proceso (**F-036**) | La segunda espera hasta 5 s y, si no queda libre, **503** «otra importación en curso; reintenta», sin escribir nada | Es lo esperado: se reintenta |
 | Despliega el backend en una plataforma sin `setrlimit` (que no sea Linux) con `ENTORNO` en `dev` o `pro` (**F-036**) | La importación responde **503** y no lee nada: en el entorno desplegado no se lee nunca un Excel sin el tope de memoria. La plantilla, la bandeja y los oficios siguen funcionando | Azure Functions en Linux lo tiene; se ve en el log (`tope_memoria_aplicado`) |
+| La pasarela `sigrid-api` cae, no responde o baja el techo de `sql/read` (**F-056**) | El listado para revisar y las acciones **editar** y **aprobar** responden **503** (o **409** `catalogo_sin_verificar` al techo) y no escriben nada; **descartar**, **recuperar** y el historial siguen funcionando, porque solo usan nuestra base | Es del dueño de `sigrid-api`; avisar antes |
+| Alguien cambia en Sigrid las ubicaciones de una tipología, o la tipología de una unidad (**F-056**) | Una incidencia ya aprobada **sigue aprobada** —y candidata al volcado— con la ubicación de aquel día, aunque el listado le enseñe ya `ubicacion_fuera_de_lista`; para sacarla de las candidatas basta editarla. Las demás se validan contra la lista nueva. La comparación es exacta: corregir una errata en Sigrid también cuenta como cambio | Es de Sigrid; se ve al revisar |
 
 Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
 las reglas de §2. La única superficie compartida real es el **disco** y el
@@ -1017,6 +1130,43 @@ tiene derecho a saber si lo abrió el veredicto o lo abrió una persona, y
 cuándo. Para eso basta un identificador opaco: **para saber que alguien
 decidió no hace falta saber quién es**, y por eso ahí no entra ni el correo, ni
 el nombre, ni el login del ERP.
+
+> **Enmienda del 2026-10-08 (F-056) · el correo de quien revisa.** El primer
+> párrafo de esta sección —del empleado, el `oid` y «nunca su correo ni su
+> nombre»— y el anterior siguen siendo verdad para todas las tablas que
+> había y para toda tabla que no sea esta: desde F-056, por **decisión del
+> humano del 2026-10-06**,
+> `postventa.revisiones_bandeja` guarda además, en la columna
+> `revisado_correo`, el **correo corporativo** de quien edita, descarta,
+> aprueba o recupera una incidencia de la bandeja, para que la página de
+> revisión (F-038) enseñe quién hizo cada cosa.
+>
+> - **Qué es.** El correo de un **empleado interno** del grupo
+>   `posventa-usuarios`, no un dato del cliente ni de la propiedad. Lo manda el
+>   front, que lo saca de `/.auth/me` como el `oid`: es una **traza de quién
+>   dice ser**, no una identidad verificada. Se guarda recortado y tal cual.
+> - **Dónde.** En **una sola columna de una sola tabla**: `revisado_correo`
+>   de `postventa.revisiones_bandeja`, al lado de `revisado_por`, que es el
+>   `oid`. **Ninguna otra tabla** del esquema gana una columna de correo, y
+>   las reglas de las demás no cambian.
+> - **Quién lo ve.** Lo devuelven **tres respuestas**, y ninguna más, todas
+>   detrás de la sesión del grupo: `GET /api/revision` (el de la última
+>   revisión de cada incidencia), `GET /api/revision/historial` (el de cada
+>   revisión) y la respuesta 200 de `POST /api/revision/acciones`, que lleva el
+>   de **quien acaba de actuar** —el mismo que mandó en la petición—. **Ningún
+>   error** lo lleva (400, 404, 409 ni 503).
+> - **Lo que no se hace con él.** **No va a ningún log** ni a ningún mensaje
+>   de error, y **el `oid` no sale en ninguna respuesta**, tampoco en esas
+>   tres. No se publica en el datamart (**F-048**) sin otra decisión expresa.
+> - **El motivo de un descarte** es texto libre de quien revisa, con tope de
+>   500 caracteres: como el de `historico_estado`, no va a ningún log y **solo
+>   sale en el historial**.
+> - **El texto libre de la propiedad** (§7, «desde F-036») gana sitios: cada
+>   revisión guarda la foto completa de los valores —descripción, detalle y
+>   nombres de unidad y de proveedor, editados o no—, y además de
+>   `GET /api/bandeja` lo devuelven `GET /api/revision`, por páginas, y la 200
+>   de la acción. Ninguno de esos textos va a un log: los de F-056 llevan solo
+>   la obra, el `incidencia_id`, la acción, el resultado y recuentos.
 
 Consecuencias para quien administre el servidor:
 
@@ -1097,6 +1247,9 @@ documento.
 | `GET /api/bandeja` | **F-036** · **lee** las incidencias importadas de una obra, de solo lectura, con un **tope duro de 500** filas por llamada. Es el **segundo** endpoint que devuelve dato de fuera acumulado —texto libre de la propiedad y nombres de proveedor, §7—, con las mismas cautelas que `GET /api/cola` |
 | `GET /api/catalogos/propuestas` | **F-036** · **lee** los oficios de una obra en Sigrid y las decisiones guardadas, y devuelve qué oficios parecen el mismo, qué grupos se aplican y cuáles no por contradicción. No escribe en ningún sitio |
 | `POST /api/catalogos/decisiones` | **F-036** · **escribe** en `postventa.decisiones_equivalencia` (esquema propio, append-only) que **una persona** confirma que varios oficios de Sigrid son el mismo, o que dos no lo son. Exige `confirmado: true` como booleano, como `POST /api/estado`, y **solo el catálogo `oficio`**: cualquier otro es 400. Un código que no es de la obra es 409. **Sigrid no se corrige desde aquí** |
+| `GET /api/revision` | **F-056** · **lee** la bandeja de una obra **para revisarla**, **paginada** (`?obra=&estado=&con_motivos=&tamano=&cursor=`: hasta 200 por página, 100 por omisión, y un cursor opaco): cada incidencia con sus valores importados y los vigentes, su estado, sus motivos de no aprobable contra el catálogo de Sigrid **de ese momento** y el **correo** de quien la revisó por última vez; el resumen cuenta la obra entera. Lee Sigrid por `sql/read` (§1) y **no escribe en ningún sitio**. Es el **tercer** endpoint que devuelve dato de fuera acumulado (§7): su cautela de volumen es la página, con un tope de 10.000 incidencias por obra (409 `bandeja_demasiado_grande`, sin truncar en silencio) |
+| `GET /api/revision/historial` | **F-056** · **lee** el historial de revisiones de **una** incidencia (`?incidencia_id=`), de la más antigua a la más reciente: acción, instante, **correo** de quien actuó, campos cambiados y el motivo de un descarte. Solo la base: **no lee Sigrid** ni escribe |
+| `POST /api/revision/acciones` | **F-056** · **escribe** en `postventa.revisiones_bandeja` (esquema propio, **append-only**) que **una persona** edita, descarta, aprueba o recupera una incidencia de la bandeja, con su `oid` y su correo. Exige `confirmado: true` como booleano y la `revision_previa` sobre la que decide: si otra persona actuó entre medias, 409 `revision_desactualizada`. Editar y aprobar **vuelven a leer** el catálogo de Sigrid por `sql/read`; aprobar con algún motivo es 409 `incidencia_no_aprobable`. **Nada en Sigrid**: lo aprobado se vuelca con **F-040** |
 
 > **Enmienda del 2026-09-24 (F-013), para el día del corte.** La fila de
 > `POST /api/archivar` dice, literal, que «**Escribe** en la biblioteca de dev
@@ -1163,7 +1316,34 @@ Sigrid son dígitos, y el front identifica cada par con `a-b`: un código con
 guion podría chocar; no se filtra, consta aquí
 (`specs/F-053-datos-para-el-portal/`).
 
-Los diecisiete quedan en nivel **anónimo**, y **es deliberado**: con un backend
+**Los tres endpoints de F-056 no dependen de `ARCHIVO_HABILITADO` ni de
+`CIERRE_HABILITADO`**, por el mismo motivo que los de F-036: leen Sigrid por
+`sql/read` y escriben solo en el esquema propio. Lo que exigen es `ENTORNO` en
+`dev` o `pro` para leer Sigrid (§1) y la base configurada. Desde **F-056**
+(2026-10-08; implementada en su rama y **sin desplegar**) la bandeja de F-036
+**se revisa** —el backend; la página es **F-038**—:
+
+- **La paginación.** `GET /api/revision` lee **todas** las incidencias de la
+  obra —hasta 10.000; con más, 409 `bandeja_demasiado_grande` con el recuento,
+  nunca una lista recortada en silencio—, las filtra en el servidor por
+  `estado` (`activas` por omisión, `todas` o uno de los cuatro) y por
+  `con_motivos`, y devuelve una página de `tamano` filas (100 por omisión, 200
+  como mucho) en un orden total y estable, con `siguiente`: un cursor opaco que
+  se reenvía tal cual en `cursor` para pedir la página siguiente, y `null` en
+  la última. El `resumen` cuenta siempre la obra **entera**, sin filtros: por
+  estado, con motivos y por motivo. Cada página vuelve a leer Sigrid.
+- **La concurrencia.** Cada acción lleva la `revision_previa` sobre la que
+  decide; si otra persona actuó entre medias, 409 `revision_desactualizada` sin
+  escribir, y la comprobación y la escritura van en la misma transacción.
+- **Lo que hereda F-040.** Las **candidatas al volcado** de una obra son las
+  incidencias cuya última acción es `aprobar`, con los valores aprobados, su
+  huella `sha256` y el instante, y ninguna otra; aprobar exige unidad de la
+  obra, ubicación de la tipología de su unidad, oficio elegido de `obrofc` y,
+  si hay proveedor, un par de `obrofc`, todo contra Sigrid **en ese momento**.
+  No tienen ruta HTTP: son el punto de entrada de **F-040**, que es quien
+  escribirá en el ERP. El detalle, en `specs/F-056-revision-bandeja-backend/`.
+
+Los veinte quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie
 rompe el front. Y ese nivel es **irrelevante desde internet**: la plataforma
@@ -1203,6 +1383,7 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
 | La entrada de incidencias por Excel | F-036 | **Desplegada** desde el 2026-10-02 (verificada en el entorno el 2026-10-05, T29): las rutas de la plantilla, la importación, la bandeja y los catálogos existen en el entorno desplegado. Lo importado **se queda en la bandeja**: no crea ninguna incidencia en Sigrid hasta **F-040**, ni se revisa ni se edita hasta **F-038** |
+| La revisión de la bandeja | F-056 | Implementada en su rama y **sin desplegar**: las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` no existen todavía en el entorno desplegado, ni la tabla `postventa.revisiones_bandeja`, que la crea el DDL al arrancar. Sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo
 > cierta: F-013 está implementada en su rama y **no desplegada**. Deja de
@@ -1279,4 +1460,10 @@ siendo verdad después.
 | La bandeja, las importaciones y las decisiones de oficios, en la base | `services/postventa-api/infrastructure/persistencia/repositorio_bandeja_pg.py` y `sentencias_bandeja.py` |
 | Generar y leer el `.xlsx` (único módulo que importa `openpyxl`) | `services/postventa-api/infrastructure/documentos/excel_openpyxl.py` |
 | Medir en seco el catálogo de una obra en Sigrid, solo lecturas | `infra/26_catalogos_plantilla_sigrid.ps1` |
+| Diseño completo y decisiones de la revisión de la bandeja | `specs/F-056-revision-bandeja-backend/` |
+| La revisión, pura: estados, acciones, motivos de no aprobable y paginación | `services/postventa-api/domain/models/revision.py` |
+| La aplicación de la revisión y las candidatas al volcado de F-040 | `services/postventa-api/application/pipelines/revision.py` |
+| Los tres endpoints de la revisión | `services/postventa-api/interface_adapters/api/revision.py` |
+| La revisión en la base | `services/postventa-api/infrastructure/persistencia/repositorio_revision_pg.py` y `sentencias_revision.py` |
+| La tercera lectura de Sigrid, las ubicaciones válidas | `services/postventa-api/infrastructure/sigrid/ubicaciones_validas.py` y `services/postventa-api/infrastructure/sigrid/consultas_ubicaciones_validas.py` |
 | Documento gemelo del ecosistema | `azure-apps/postventa_incidencias.md` |

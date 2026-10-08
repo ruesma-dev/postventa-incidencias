@@ -102,7 +102,7 @@
   duplicada cuya original cambia entre medias; `aprobadas` solo con última
   `aprobar`; `listar` con 10.001 filas de una obra → `tope + 1`. |
   Verificación: `.venv/Scripts/python.exe -m pytest --collect-only tests_bbdd/tests/test_f056_bbdd_revision.py` recoge sin errores
-- [ ] **T8 · MANUAL (humano)**: con Docker Desktop arrancado,
+- [x] **T8 · MANUAL (humano)**: con Docker Desktop arrancado,
   `powershell -ExecutionPolicy Bypass -File infra\pruebas_bbdd_efimera.ps1`.
   Deben pasar `test_f056_bbdd_revision.py` y los de F-036. Anotar nº de tests
   y tiempo en `progress/impl_F-056.md`. Bloquea el cierre. |

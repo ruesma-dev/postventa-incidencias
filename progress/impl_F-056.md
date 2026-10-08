@@ -643,6 +643,43 @@ script. Si algo falla: el bloque `FAILED …` y su traza, **sin** el DSN ni la c
 vuelo y no la escribe, pero si apareciera en una traza, tápala). Si sale algún `skipped`, la suite no ha visto
 `POSTVENTA_PG_TEST_DSN`: no vale como T8.
 
+#### T8, primera ejecución (humano, 2026-10-08): `1 failed, 52 passed in 23.61s` — hay que repetirla
+
+Salida que pegó el humano:
+
+```
+FAILED tests_bbdd/tests/test_f056_bbdd_revision.py::test_f056_r36_la_clave_ajena_exige_una_incidencia_de_la_bandeja
+>           _insertar_crudo(preparada, inc, incidencia_id=uuid.uuid4())
+E           TypeError: _insertar_crudo() got multiple values for argument 'incidencia_id'
+```
+
+**El fallo es del test, no del producto**: `_insertar_crudo(conexion, incidencia_id, **cambios)` chocaba cuando
+la columna que se falsea es justo `incidencia_id`. **Arreglo** (`4bf2791`, commit propio): los dos primeros
+parámetros pasan a **solo posicionales** (`/`), así que la fila se construye con la incidencia **buena** y luego
+se sustituye su `incidencia_id` por una que no está en la bandeja, que es lo que prueba la clave ajena. Además: una
+columna de `cambios` que no sea del `INSERT` hace fallar el propio test (antes habría dado un error de parámetros
+de psycopg que podía pasar por el rechazo esperado), y tras el `ForeignKeyViolation` se comprueba que no queda
+ninguna fila. Los otros tres usos (`inc` solo; `**cambios` de los dieciséis `CHECK`; `accion=`/`motivo=`) no
+tenían el problema: ninguno pasa `incidencia_id`. Comprobado sin base: `--collect-only` → **28 recogidos**; sin
+DSN, 28 skipped. En el mismo bloque, la O-1 de la review del Bloque 2 (`aa077d1`) amplía el test append-only.
+
+**Hay que repetir T8** con el mismo comando. Lo esperado sigue siendo **53 passed, 0 skipped, 0 failed**.
+
+#### T8, repetida (humano, 2026-10-08, tras `4bf2791` y `aa077d1`): **EN VERDE**
+
+Salida que pegó el humano (sin nada que tapar):
+
+```
+==> Ejecutando la suite de base de datos (tests_bbdd)
+.....................................................                    [100%]
+53 passed in 31.76s
+==> Destruyendo el contenedor
+SUITE DE BASE DE DATOS EN VERDE.
+```
+
+**53 passed, 0 failed, 0 skipped**: se cumple la condición del veredicto de la review del Bloque 2. T8 marcada en
+`tasks.md`.
+
 ### Fuera del alcance de este bloque
 
 La aplicación (`application/pipelines/revision.py`), el borde HTTP y el base64url del cursor (Bloque 3), la lectura

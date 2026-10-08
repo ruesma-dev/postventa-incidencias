@@ -115,7 +115,7 @@
 
 ## Bloque 3 · La aplicación y los tres endpoints
 
-- [ ] **T10 · RED**: `tests/test_f056_pipeline_revision.py` con dobles (el
+- [x] **T10 · RED**: `tests/test_f056_pipeline_revision.py` con dobles (el
   orden de `aplicar_accion` de §7; una lectura de Sigrid en editar, aprobar y
   cada página; ninguna en descartar, recuperar e historial; la segunda
   frescura; `motivos_no_aprobable: None`; `BandejaDemasiadoGrande` con el
@@ -126,7 +126,7 @@
   (`test_f010_endpoints_protegidos.py` y los que cuenten anónimos). Traza
   pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py` **falla**
-- [ ] **T11**: `application/pipelines/revision.py` (§7). |
+- [x] **T11**: `application/pipelines/revision.py` (§7). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_pipeline_revision.py`
 - [ ] **T12**: `interface_adapters/api/revision.py` y, en `function_app.py`,
   las tres rutas, los ocho errores y la cabecera (§8, §12). **El borde pone y

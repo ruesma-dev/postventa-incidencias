@@ -502,8 +502,12 @@ def validar_quien(oid: object, correo: object) -> Quien:
     return Quien(oid=oid.strip(), correo=limpio)
 
 
-def _motivo_de_descarte(motivo: object) -> str | None:
-    """El motivo de descartar: opcional, recortado, ≤ 500 (R18)."""
+def motivo_de_descarte(motivo: object) -> str | None:
+    """El motivo de descartar: opcional, recortado, ≤ 500 (R18).
+
+    Pública desde el Bloque 3: el borde HTTP comprueba con ella el cuerpo
+    entero antes de construir nada (§8), y `decidir` la vuelve a aplicar.
+    """
     if motivo is None:
         return None
     if not isinstance(motivo, str):
@@ -784,24 +788,16 @@ def huella_de_valores(valores: ValoresIncidencia) -> str:
 # --------------------------------------------------------------------------
 
 
-def decidir(
-    situacion: SituacionDeRevision,
-    peticion: PeticionDeAccion,
-    *,
-    catalogo: CatalogoObra | None,
-    ubicaciones: Mapping[str, tuple[str, ...]] | None,
-    listas: ListasCerradas,
-    ahora: datetime,
-) -> RevisionNueva:
-    """La revisión que deja una acción, o por qué no (R2–R22).
+def comprobar_sin_sigrid(
+    situacion: SituacionDeRevision, peticion: PeticionDeAccion
+) -> None:
+    """Lo que se decide **sin** Sigrid, antes de leerlo (§7; R2, R5, R7).
 
-    En este orden, lo barato primero: la forma de la petición (400), la
-    transición (409, R2), la frescura de `revision_previa` contra la última
-    leída (409, R7), y solo en `editar` y `aprobar` lo que necesita el
-    catálogo de Sigrid —la validación (400, R13) y `sin_cambios` (400, R16), o
-    los motivos (409, R20)—. Descartar valida el motivo (400, R18). Descartar
-    y recuperar no necesitan el catálogo: `catalogo` y `ubicaciones` pueden
-    ser `None`. Editar o aprobar sin ellos es un error de programación.
+    La forma (`valores` solo en editar y obligatorio en él; `motivo` solo en
+    descartar → 400), la transición (409 `AccionNoPermitida`) y la frescura de
+    `revision_previa` contra la última leída (409 `RevisionDesactualizada`).
+    La aplicación la llama antes de leer el catálogo, y `decidir` la repite:
+    una sola regla, en un solo sitio.
     """
     if peticion.incidencia_id != situacion.incidencia.incidencia_id:
         raise ValueError("la petición es de otra incidencia")
@@ -828,6 +824,29 @@ def decidir(
             "la incidencia ha cambiado desde que se leyó: vuelve a cargarla"
         )
 
+
+def decidir(
+    situacion: SituacionDeRevision,
+    peticion: PeticionDeAccion,
+    *,
+    catalogo: CatalogoObra | None,
+    ubicaciones: Mapping[str, tuple[str, ...]] | None,
+    listas: ListasCerradas,
+    ahora: datetime,
+) -> RevisionNueva:
+    """La revisión que deja una acción, o por qué no (R2–R22).
+
+    En este orden, lo barato primero: lo de `comprobar_sin_sigrid` —la forma
+    de la petición (400), la transición (409, R2) y la frescura de
+    `revision_previa` contra la última leída (409, R7)—, y solo en `editar` y
+    `aprobar` lo que necesita el catálogo de Sigrid —la validación (400, R13)
+    y `sin_cambios` (400, R16), o los motivos (409, R20)—. Descartar valida el
+    motivo (400, R18). Descartar y recuperar no necesitan el catálogo:
+    `catalogo` y `ubicaciones` pueden ser `None`. Editar o aprobar sin ellos
+    es un error de programación.
+    """
+    comprobar_sin_sigrid(situacion, peticion)
+    accion = peticion.accion
     vigentes = valores_vigentes(situacion)
     valores = vigentes
     motivo = None
@@ -867,7 +886,7 @@ def decidir(
                     motivos=(MotivoNoAprobable.UBICACION_FUERA_DE_LISTA.value,),
                 ) from None
     elif accion is AccionRevision.DESCARTAR:
-        motivo = _motivo_de_descarte(peticion.motivo)
+        motivo = motivo_de_descarte(peticion.motivo)
 
     return RevisionNueva(
         incidencia_id=situacion.incidencia.incidencia_id,

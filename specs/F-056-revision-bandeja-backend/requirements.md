@@ -311,6 +311,14 @@ backend; la pantalla es F-038.
   >   párrafo de F-053 vaya antes de ella y que «Los diecisiete» ya no esté;
   >   no se quita ninguna otra aserción. (`test_f019_documentacion.py` se
   >   amplía igual; no es de F-036 ni de F-053.)
+  > - `test_f036_documentacion.py` (**Decisión del líder 2026-10-08**, O-1 de
+  >   la review de F-053, anotada en la ficha de F-056): la cabecera de
+  >   `docs/INTEGRACION.md` dice la **última** feature que lo tocó, y exigir
+  >   «F-036» caducaba con cualquier feature nueva. El test exige ahora una
+  >   cabecera bien formada —**una** `Fecha: AAAA-MM-DD.` y **una** «Última
+  >   feature que lo tocó: F-NNN»—, que no retroceda de la que dejó F-036
+  >   (2026-10-05, F-036) y que F-036 siga constando en ella, con controles
+  >   negativos; no se quita ninguna otra aserción.
 
 ## 11 bis · Las ubicaciones válidas, contra Sigrid (D-4, Q-5)
 

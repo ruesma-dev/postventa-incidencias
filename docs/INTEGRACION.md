@@ -1,11 +1,14 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-05. **Última feature que
-> lo tocó**: F-036, **desplegada** desde su rama entre el 2026-10-02 y el
-> 2026-10-05 y verificada en el entorno (T29) —el 2026-10-01, la lectura del
-> Excel en un proceso hijo y lo que exige a la instancia (§6)— (antes, F-013 el
-> 2026-09-24; nació con F-005).
+> **Origen**: este repositorio. **Fecha**: 2026-10-08. **Última feature que
+> lo tocó**: F-056, la revisión de la bandeja en el backend —una tabla
+> append-only, tres endpoints, el correo de quien revisa y una tercera lectura
+> de Sigrid (§1, §2, §7 y §8)—, implementada en su rama y **sin desplegar**.
+> Antes, F-053 el 2026-10-06 (dos campos aditivos, §8); F-036, **desplegada**
+> desde su rama entre el 2026-10-02 y el 2026-10-05 y verificada en el entorno
+> (T29) —el 2026-10-01, la lectura del Excel en un proceso hijo y lo que exige
+> a la instancia (§6)—; F-013 el 2026-09-24; nació con F-005.
 >
 > Este documento es la **fuente de verdad** de lo que `postventa-incidencias`
 > consume del ecosistema de Ruesma y de lo que expone a los demás. Se copia a

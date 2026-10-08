@@ -508,9 +508,14 @@ FUNCIONES_DE_F036 = (
 #: - `test_f036_ddl.py`, por T4 (lo que va tras el 11 es 12, 13, 14 y 15);
 #: - `test_f053_documentacion.py`, por T15 (**Decisión del líder
 #:   2026-10-08**, O-1 de la review del Bloque 3): la cuenta de anónimos de
-#:   `docs/INTEGRACION.md` §8 pasa de «diecisiete» a «veinte».
+#:   `docs/INTEGRACION.md` §8 pasa de «diecisiete» a «veinte»;
+#: - `test_f036_documentacion.py`, por T15 (**Decisión del líder
+#:   2026-10-08**, O-1 de la review de F-053): la cabecera de
+#:   `docs/INTEGRACION.md` deja de exigir «F-036» como última feature y exige
+#:   una cabecera bien formada, con fecha y feature.
 TESTS_DE_F036_AMPLIADOS = (
     f"{SERVICIO}tests/test_f036_ddl.py",
+    f"{SERVICIO}tests/test_f036_documentacion.py",
     f"{SERVICIO}tests/test_f053_documentacion.py",
 )
 

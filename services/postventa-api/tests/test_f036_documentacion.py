@@ -42,6 +42,7 @@ la sección nueva de la arquitectura, que aquel no mira.
 from __future__ import annotations
 
 import re
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -71,7 +72,19 @@ DDL_DE_F036 = (
 #: El día de la última revisión de la documentación: T26 la escribió el
 #: 2026-09-30, T44 (la lectura aislada, octava enmienda) la revisó el 2026-10-01
 #: y el cierre de F-036 la dio por desplegada el 2026-10-05.
+#:
+#: **Ampliado por F-056 (T15), decisión del líder 2026-10-08** (O-1 de la
+#: review de F-053): la cabecera dice la **última** feature que tocó el
+#: documento, y exigir que fuera F-036 caducaba con la primera feature
+#: siguiente. Desde entonces, `FECHA` es el **suelo** de la fecha de la
+#: cabecera y `PRIMERA_FEATURE` el de su feature: pueden avanzar, nunca
+#: retroceder ni faltar. F-036 sigue teniendo que constar en la cabecera.
 FECHA = "2026-10-05"
+PRIMERA_FEATURE = 36
+
+#: Cómo se escriben la fecha y la feature en la cabecera, ya normalizada.
+FECHA_DE_LA_CABECERA = re.compile(r"Fecha: (\d{4}-\d{2}-\d{2})\. ")
+FEATURE_DE_LA_CABECERA = re.compile(r"Última feature que lo tocó: F-(\d{3})\b")
 
 #: Las cinco rutas de F-036 (`design.md` §8), como las escribe la tabla de §8.
 ENDPOINTS_DE_F036 = (
@@ -193,12 +206,58 @@ def test_f036_t26_los_controles_leen_algo_del_codigo():
 # --------------------------------------------------------------------------
 
 
+def _fecha_y_feature(cabecera: str) -> tuple[date, int]:
+    """La fecha y el número de la última feature de una cabecera normalizada.
+
+    Exactamente una de cada: una cabecera con dos fechas o dos «última
+    feature» no dice cuál vale.
+    """
+    fechas = FECHA_DE_LA_CABECERA.findall(cabecera)
+    features = FEATURE_DE_LA_CABECERA.findall(cabecera)
+    assert len(fechas) == 1, f"se esperaba una «Fecha: AAAA-MM-DD.»: {fechas}"
+    assert len(features) == 1, f"se esperaba una «Última feature»: {features}"
+    return date.fromisoformat(fechas[0]), int(features[0])
+
+
 def test_f036_r60_la_cabecera_dice_que_f036_lo_toco_y_cuando():
-    """La cabecera dice la última feature que tocó el documento, con fecha."""
+    """La cabecera dice la última feature que tocó el documento, con fecha.
+
+    El nombre se conserva por trazabilidad. Desde F-056 no exige que la última
+    sea F-036 (caducaba con cualquier feature nueva): exige una cabecera bien
+    formada, con **una** fecha y **una** última feature, que no retrocedan de
+    lo que dejó F-036, y que F-036 siga constando en ella.
+    """
     cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
 
-    assert f"Fecha: {FECHA}" in cabecera
-    assert "Última feature que lo tocó: F-036" in cabecera
+    fecha, feature = _fecha_y_feature(cabecera)
+
+    assert fecha >= date.fromisoformat(FECHA)
+    assert feature >= PRIMERA_FEATURE
+    assert "F-036" in cabecera
+
+
+@pytest.mark.parametrize(
+    "cabecera",
+    (
+        "Origen: este repositorio. Fecha: 5-10-2026. Última feature que lo tocó: F-056.",
+        "Origen: este repositorio. Fecha: 2026-10-08. Última feature: F-056.",
+        "Origen: este repositorio. Fecha: 2026-10-08. Última feature que lo tocó: la de revisión.",
+        "Fecha: 2026-10-08. Fecha: 2026-10-09. Última feature que lo tocó: F-056.",
+        "Fecha: 2026-10-08. Última feature que lo tocó: F-056. Última feature que lo tocó: F-057.",
+    ),
+    ids=("fecha-mal-escrita", "sin-ultima-feature", "feature-sin-codigo", "dos-fechas", "dos-features"),
+)
+def test_f036_r60_el_control_de_la_cabecera_caza(cabecera):
+    """Control negativo: una cabecera mal formada no pasa por bien formada."""
+    with pytest.raises(AssertionError):
+        _fecha_y_feature(cabecera)
+
+
+def test_f036_r60_el_control_de_la_cabecera_lee_lo_que_dice():
+    """Control positivo: lee la fecha y el número, no un valor fijo."""
+    assert _fecha_y_feature(
+        "Origen: este repositorio. Fecha: 2026-10-08. Última feature que lo tocó: F-056, …"
+    ) == (date(2026, 10, 8), 56)
 
 
 def test_f036_r60_la_fila_de_sigrid_api_de_la_seccion_uno_nombra_f036():

@@ -177,16 +177,22 @@
 
 ## Bloque 4 · La documentación
 
-- [ ] **T15 · RED y GREEN**: `tests/test_f056_documentacion.py` (R44) en rojo y
+- [x] **T15 · RED y GREEN**: `tests/test_f056_documentacion.py` (R44) en rojo y
   luego `docs/ARCHITECTURE.md` (sección «Revisión de la bandeja (F-056)»:
   `revisiones_bandeja`, append-only, tres endpoints, paginación, el correo,
   no escribe en Sigrid, lo que hereda F-040; enmienda en «Lo que no hacen» de
   F-036) y `docs/INTEGRACION.md` (§2 la tabla; §7 el correo como dato de
   empleado interno, dónde se guarda, quién lo ve y que no va a logs; §8 los
   tres endpoints y «veinte»). Si un test de documentación de F-036 fija una
-  frase que cambia, se cita. |
+  frase que cambia, se cita. **Hecha el 2026-10-08**: RED en `f04a9da` (59
+  failed, 8 passed, todos de aserción) y GREEN (67 passed). Antes, en commits
+  `F-056:` propios, las decisiones del líder del 2026-10-08: R39 con la tercera
+  lectura, la línea en blanco de PEP 8, «veinte» (`test_f053_documentacion.py`
+  y `test_f019_documentacion.py` ampliados) y la cabecera de `INTEGRACION.md`
+  (`test_f036_documentacion.py` ampliado), con las excepciones en R45. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_documentacion.py tests/test_f036_documentacion.py`
-- [ ] **T16**: `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
+- [ ] **T16 · del líder, al desplegar** (decisión del líder 2026-10-08, como en
+  F-053; no es del implementer): `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
   al día con lo mismo, sin secretos ni identificadores; commit en ese
   repositorio («postventa-incidencias: F-056, la revisión de la bandeja»). Si
   F-053 ya tocó esas secciones, encima, sin pisar. |

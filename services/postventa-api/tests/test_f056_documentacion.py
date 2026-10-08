@@ -227,7 +227,7 @@ def test_f056_r44_la_seccion_uno_describe_la_tercera_lectura():
         "1.000 filas",
         "catalogo_sin_verificar",
         "503",
-        "una vez por petición",
+        "Una vez por petición",
         "GET /api/revision",
         "editar",
         "aprobar",
@@ -273,12 +273,12 @@ def test_f056_r44_la_seccion_dos_describe_la_tabla():
     seccion = _normal(_integracion(TITULO_DE_LA_TABLA))
 
     for texto in (
-        "append-only",
+        "Append-only",
         "revision_id",
         "foto completa",
         "revisado_por",
         "revisado_correo",
-        "el estado no se guarda",
+        "El estado no se guarda",
         "postventa.bandeja_incidencias",
         "no se toca",
         "FOR UPDATE",
@@ -314,9 +314,29 @@ def test_f056_r40_la_seccion_cuatro_dice_que_no_hay_variables_nuevas():
 # --------------------------------------------------------------------------
 
 
+def _enmienda_del_correo() -> str:
+    """El recuadro de F-056 en §7: desde su línea de «Enmienda» hasta la última
+    línea seguida que empieza por `>`. Lo del correo se busca **ahí**, no en
+    toda la sección: «una sola columna de una sola tabla», por ejemplo, ya lo
+    decía §7 del DNI."""
+    lineas = _integracion("## 7 · Datos personales").splitlines()
+    inicio = [
+        i
+        for i, linea in enumerate(lineas)
+        if "Enmienda del 2026-10-08 (F-056)" in linea
+    ]
+    assert len(inicio) == 1, f"se esperaba un recuadro de F-056 en §7: {len(inicio)}"
+    recuadro = []
+    for linea in lineas[inicio[0] :]:
+        if not linea.startswith(">"):
+            break
+        recuadro.append(linea.removeprefix(">"))
+    return _normal(" ".join(recuadro))
+
+
 def test_f056_r44_la_seccion_siete_dice_que_es_el_correo_y_donde_se_guarda():
     """§7 · D-8, design §9: de quién es, dónde vive y por qué."""
-    seccion = _normal(_integracion("## 7 · Datos personales"))
+    seccion = _enmienda_del_correo()
 
     for texto in (
         "F-056",
@@ -335,7 +355,7 @@ def test_f056_r44_la_seccion_siete_dice_que_es_el_correo_y_donde_se_guarda():
 
 def test_f056_r44_la_seccion_siete_cuenta_las_tres_respuestas_con_correo():
     """§7 · R10, R11 y la decisión del líder del 2026-10-08: tres, y cuáles."""
-    seccion = _normal(_integracion("## 7 · Datos personales"))
+    seccion = _enmienda_del_correo()
 
     for texto in (
         "tres respuestas",
@@ -343,19 +363,19 @@ def test_f056_r44_la_seccion_siete_cuenta_las_tres_respuestas_con_correo():
         "GET /api/revision/historial",
         "POST /api/revision/acciones",
         "quien acaba de actuar",
-        "ningún error",
+        "Ningún error",
     ):
         assert texto in seccion, f"§7 no dice «{texto}»"
 
 
 def test_f056_r44_la_seccion_siete_dice_lo_que_no_se_hace_con_el_correo():
     """§7 · R11, R41, R12: ni logs, ni el `oid` en respuestas, ni otras tablas, ni F-048."""
-    seccion = _normal(_integracion("## 7 · Datos personales"))
+    seccion = _enmienda_del_correo()
 
     for texto in (
         "no va a ningún log",
         "el oid no sale en ninguna respuesta",
-        "ninguna otra tabla",
+        "Ninguna otra tabla",
         "F-048",
         "motivo",
         "solo sale en el historial",

@@ -1458,6 +1458,38 @@ def test_f056_r20_aprobar_no_refresca_los_nombres() -> None:
     assert decide(sit, peticion(A.APROBAR, previa=4)).valores == vigentes
 
 
+@pytest.mark.parametrize("ubicacion", [" Cocina", "Cocina ", "\tCocina", "Cocina\n"])
+def test_f056_r35_aprobar_una_ubicacion_sin_recortar_no_es_aprobable(
+    ubicacion: str,
+) -> None:
+    """N-1 de la review del Bloque 2, opción (b) (decisión del líder 2026-10-08).
+
+    Recortada, la vigente está en la lista de su unidad: R47 no cambia y
+    `motivos_no_aprobable` no la marca. Pero aprobar guarda los vigentes sin
+    cambiarlos, y esa foto no pasaría la puerta de `CandidataAlVolcado`:
+    `aprobadas()` reventaría para la obra entera al volcar. `decidir` aplica la
+    misma comprobación antes de devolver la revisión y responde 409
+    `ubicacion_fuera_de_lista` (se arregla editando, que guarda recortado).
+    """
+    sit = situacion(ultima=revision(4, A.EDITAR, valores(ubicacion=ubicacion)))
+    assert motivos_no_aprobable(sit, catalogo=CATALOGO, ubicaciones=UBICACIONES) == ()
+
+    with pytest.raises(IncidenciaNoAprobable) as exc:
+        decide(sit, peticion(A.APROBAR, previa=4))
+
+    assert exc.value.motivos == ("ubicacion_fuera_de_lista",)
+    assert "Cocina" not in str(exc.value)
+
+
+def test_f056_r35_aprobar_la_misma_ubicacion_ya_recortada_si_es_aprobable() -> None:
+    """El control positivo de la N-1: «Cocina» exacta se aprueba y es candidata."""
+    sit = situacion(ultima=revision(4, A.EDITAR, valores(ubicacion="Cocina")))
+    nueva = decide(sit, peticion(A.APROBAR, previa=4))
+    assert nueva.valores.ubicacion == "Cocina"
+    aprobada = situacion(ultima=revision(5, A.APROBAR, nueva.valores))
+    assert candidata_de(aprobada).valores.ubicacion == "Cocina"
+
+
 # --------------------------------------------------------------------------
 # R22 · las duplicadas
 # --------------------------------------------------------------------------

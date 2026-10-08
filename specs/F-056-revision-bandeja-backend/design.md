@@ -140,6 +140,17 @@ tipología de su unidad sale con `ubicacion_fuera_de_lista`; cuántas, lo dice
 >   edición, una ubicación `""` o de solo blancos es un **error** de
 >   `ubicacion` (400 `valores_no_validos`), no se convierte en `null`: quien
 >   quiera quitarla manda `null`.
+>
+> **Decisión del líder 2026-10-08** (N-1 de la review del Bloque 2, opción
+> (b)): al **aprobar**, `decidir` aplica, después de los motivos, la misma
+> puerta que `CandidataAlVolcado` (§10: la ubicación ya recortada y de ≤ 48)
+> antes de devolver la revisión, y la traduce a **409
+> `incidencia_no_aprobable`** con el motivo `ubicacion_fuera_de_lista`. R47 no
+> cambia: `motivos_no_aprobable` sigue comparando la vigente recortada, así que
+> una vigente `" Cocina"` sale sin motivos en el listado, pero aprobarla da 409
+> (se arregla editando, que guarda recortado) y nunca llega a `aprobar`, de
+> modo que `aprobadas()` no revienta por ella. Hoy es inalcanzable (la
+> importación compara exacto y editar guarda recortado): es la última defensa.
 
 ### 3.6 · Duplicadas (D-5)
 

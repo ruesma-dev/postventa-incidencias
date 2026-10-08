@@ -328,24 +328,31 @@ class CandidataAlVolcado:
     revision_id: int
 
     def __post_init__(self) -> None:
-        v = self.valores
-        if v.oficio_codigo is None or v.oficio_ambiguo:
-            raise ValueError("una candidata al volcado necesita el código del oficio")
-        if v.ubicacion is None:
-            raise ValueError("una candidata al volcado necesita la ubicación")
-        if (
-            not v.ubicacion
-            or v.ubicacion != v.ubicacion.strip()
-            or len(v.ubicacion) > MAX_UBICACION
-        ):
-            raise ValueError(
-                "la ubicación de una candidata al volcado va recortada y con "
-                f"{MAX_UBICACION} caracteres como mucho"
-            )
-        if v.proveedor_ambiguo:
-            raise ValueError(
-                "una candidata al volcado no puede tener proveedor ambiguo"
-            )
+        _exigir_volcable(self.valores)
+
+
+def _exigir_volcable(v: ValoresIncidencia) -> None:
+    """La puerta de `CandidataAlVolcado`, también la de aprobar (N-1, Bloque 2).
+
+    Sin oficio resuelto, sin ubicación, con ella sin recortar o de más de 48,
+    o con un ambiguo, `ValueError`. `decidir` la aplica **antes** de aprobar:
+    lo que se aprueba es exactamente lo que luego se puede volcar.
+    """
+    if v.oficio_codigo is None or v.oficio_ambiguo:
+        raise ValueError("una candidata al volcado necesita el código del oficio")
+    if v.ubicacion is None:
+        raise ValueError("una candidata al volcado necesita la ubicación")
+    if (
+        not v.ubicacion
+        or v.ubicacion != v.ubicacion.strip()
+        or len(v.ubicacion) > MAX_UBICACION
+    ):
+        raise ValueError(
+            "la ubicación de una candidata al volcado va recortada y con "
+            f"{MAX_UBICACION} caracteres como mucho"
+        )
+    if v.proveedor_ambiguo:
+        raise ValueError("una candidata al volcado no puede tener proveedor ambiguo")
 
 
 @dataclass(frozen=True)
@@ -848,6 +855,17 @@ def decidir(
                     f"la incidencia tiene {len(motivos)} motivo(s) de no aprobable",
                     motivos=tuple(m.value for m in motivos),
                 )
+            try:
+                _exigir_volcable(vigentes)
+            except ValueError:
+                # N-1 (review del Bloque 2, opción (b), decisión del líder del
+                # 2026-10-08): sin motivos, lo único que la puerta de la
+                # candidata aún rechaza es la forma de la ubicación guardada.
+                raise IncidenciaNoAprobable(
+                    "la ubicación guardada no está recortada o pasa de "
+                    f"{MAX_UBICACION} caracteres: edítala antes de aprobar",
+                    motivos=(MotivoNoAprobable.UBICACION_FUERA_DE_LISTA.value,),
+                ) from None
     elif accion is AccionRevision.DESCARTAR:
         motivo = _motivo_de_descarte(peticion.motivo)
 

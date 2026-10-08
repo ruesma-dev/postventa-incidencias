@@ -839,3 +839,46 @@ def test_f056_r20_aprobar_guarda_los_vigentes_sin_cambiarlos() -> None:
 
     assert _guardadas(mundo) == [(1, A.EDITAR), (2, A.APROBAR)]
     assert mundo.revision.guardadas[-1].revision.valores == vigentes
+
+
+# --------------------------------------------------------------------------
+# T14, antes de la mutación: lo que los tests de arriba no fijaban
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("accion", [A.EDITAR, A.APROBAR])
+@pytest.mark.parametrize("falta", ["catalogo", "ubicaciones"])
+def test_f056_r46_editar_y_aprobar_sin_sus_lecturas_es_un_error_de_programacion(
+    accion: AccionRevision, falta: str
+) -> None:
+    mundo = Mundo()
+    valores = pedidos(ubicacion="Cocina") if accion is A.EDITAR else None
+
+    with pytest.raises(ValueError, match="necesitan leer Sigrid"):
+        aplicar_accion(
+            PeticionDeAccion(UUID(int=1), accion, QUIEN, None, valores, None),
+            revision=mundo.revision,
+            catalogo_obra=None if falta == "catalogo" else mundo.catalogo,
+            listas=LISTAS,
+            ahora=AHORA,
+            ubicaciones=None if falta == "ubicaciones" else mundo.ubicaciones,
+        )
+
+    assert mundo.llamadas == ["revision.situacion"]
+
+
+def test_f056_r34_los_tipos_de_la_aplicacion_son_inmutables() -> None:
+    from dataclasses import FrozenInstanceError, fields
+
+    mundo = Mundo()
+    revisada = mundo.actuar(A.APROBAR)
+    instancias = (
+        PeticionDeListado(OBRA),
+        mundo.listar(),
+        revisada,
+        historial(UUID(int=1), revision=mundo.revision),
+    )
+    for instancia in instancias:
+        primero = fields(instancia)[0].name
+        with pytest.raises(FrozenInstanceError):
+            setattr(instancia, primero, None)

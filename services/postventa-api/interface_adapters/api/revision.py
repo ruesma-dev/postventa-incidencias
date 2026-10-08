@@ -76,6 +76,7 @@ from uuid import UUID
 
 from application.pipelines.revision import (
     FuenteDeUbicaciones,
+    HistorialDeRevision,
     IncidenciaRevisada,
     PeticionDeListado,
     aplicar_accion,
@@ -99,6 +100,7 @@ from domain.models.revision import (
     FiltroEstado,
     MotivoNoAprobable,
     PeticionDeAccion,
+    Revision,
     SituacionDeRevision,
     ValoresIncidencia,
     ValoresPedidos,
@@ -422,11 +424,14 @@ def historial_revision(
                 "campos_cambiados": list(cambios),
                 "motivo": cada.motivo,
             }
-            for cada, cambios in zip(
-                resultado.revisiones, resultado.cambios, strict=True
-            )
+            for cada, cambios in _con_sus_cambios(resultado)
         ],
     }
+
+
+def _con_sus_cambios(resultado: HistorialDeRevision) -> list[tuple[Revision, tuple[str, ...]]]:
+    """Cada revisión con sus campos cambiados (la aplicación da uno por revisión)."""
+    return [(cada, resultado.cambios[i]) for i, cada in enumerate(resultado.revisiones)]
 
 
 # --------------------------------------------------------------------------

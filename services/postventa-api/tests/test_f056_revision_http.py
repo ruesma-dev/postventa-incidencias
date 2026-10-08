@@ -1308,3 +1308,73 @@ def test_f056_s8_las_situaciones_no_llevan_el_oid() -> None:
     """El control de R10 en el tipo: la situación leída no tiene dónde llevarlo."""
     campos = set(SituacionDeRevision.__dataclass_fields__)
     assert "oid" not in campos and "revisado_por" not in campos
+
+
+# --------------------------------------------------------------------------
+# T14, antes de la mutación: lo que los tests de arriba no fijaban
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("cambio", "codigo"),
+    [
+        ({"al_techo": True}, "catalogo_sin_verificar"),
+        (
+            {"unidades": filas_de_unidades() + (replace(filas_de_unidades()[0], obra_ref="otra"),)},
+            "obra_ambigua",
+        ),
+    ],
+    ids=["al-techo", "ambigua"],
+)
+@pytest.mark.parametrize("accion", ["editar", "aprobar"])
+def test_f056_r30_una_accion_con_la_obra_ambigua_o_al_techo_es_409(
+    mundo: Mundo, cambio: dict, codigo: str, accion: str
+) -> None:
+    mundo.catalogo = CatalogoDeLaObra(mundo.llamadas, **cambio)
+
+    estado, datos = _leer(_post(_cuerpo(accion)))
+
+    assert (estado, datos.get("codigo")) == (409, codigo)
+    assert mundo.revision.guardadas == []
+
+
+@pytest.mark.parametrize(
+    "cursor",
+    ["eyJjIjoi=", "eyJj Ijoi", "eyJj+Ijoi", "eyJj/Ijoi", "eyJjIjoiñ", "eyJj.Ijoi"],
+    ids=["relleno", "blanco", "mas", "barra", "enye", "punto"],
+)
+def test_f056_r25_un_cursor_fuera_del_alfabeto_no_se_llega_a_decodificar(
+    monkeypatch, cursor: str
+) -> None:
+    decodificados: list[object] = []
+    original = b64.urlsafe_b64decode
+
+    def espia(dato, *args, **kwargs):
+        decodificados.append(dato)
+        return original(dato, *args, **kwargs)
+
+    monkeypatch.setattr(b64, "urlsafe_b64decode", espia)
+
+    with pytest.raises(PeticionDeRevisionInvalida):
+        modulo.clave_de_cursor(cursor)
+
+    assert decodificados == []
+
+
+@pytest.mark.parametrize("fila", [None, 1, 3, 12, 123, 1234, 12345])
+def test_f056_r25_ida_y_vuelta_del_cursor_con_cualquier_relleno(fila: int | None) -> None:
+    """Los cursores miden lo que mida su texto: con 0, 2 o 3 caracteres de cola."""
+    clave = ClaveDeOrden(CREADA, fila, UUID(int=2))
+
+    cursor = modulo.cursor_de(clave)
+
+    assert modulo.clave_de_cursor(cursor) == clave
+
+
+def test_f056_r25_los_cursores_de_prueba_cubren_todas_las_colas() -> None:
+    """El control del de arriba: entre esos cursores hay de las tres longitudes."""
+    colas = {
+        len(modulo.cursor_de(ClaveDeOrden(CREADA, f, UUID(int=2)))) % 4
+        for f in (None, 1, 3, 12, 123, 1234, 12345)
+    }
+    assert colas == {0, 2, 3}

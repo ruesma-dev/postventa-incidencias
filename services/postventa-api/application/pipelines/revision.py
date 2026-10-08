@@ -227,19 +227,19 @@ def aplicar_accion(
         raise IncidenciaNoEncontrada("la incidencia no está en la bandeja")
     comprobar_sin_sigrid(situacion, peticion)
 
-    catalogo = None
-    validas = None
+    # Lo leído de Sigrid, una vez: el catálogo y las ubicaciones de cada unidad.
+    leido: tuple[CatalogoObra, Mapping[str, tuple[str, ...]]] | None = None
     if peticion.accion in _LEEN_SIGRID:
         if catalogo_obra is None or ubicaciones is None:
             raise ValueError("editar y aprobar necesitan leer Sigrid")
         catalogo = leer_catalogo(catalogo_obra, situacion.obra_codigo)
-        validas = ubicaciones(catalogo)
+        leido = (catalogo, ubicaciones(catalogo))
 
     nueva = decidir(
         situacion,
         peticion,
-        catalogo=catalogo,
-        ubicaciones=validas,
+        catalogo=None if leido is None else leido[0],
+        ubicaciones=None if leido is None else leido[1],
         listas=listas,
         ahora=ahora,
     )
@@ -261,8 +261,8 @@ def aplicar_accion(
         ),
     )
     motivos = None
-    if catalogo is not None and validas is not None:
-        motivos = motivos_no_aprobable(tras, catalogo=catalogo, ubicaciones=validas)
+    if leido is not None:
+        motivos = motivos_no_aprobable(tras, catalogo=leido[0], ubicaciones=leido[1])
     return IncidenciaRevisada(
         situacion=tras,
         estado=estado_de(tras),

@@ -62,6 +62,7 @@ from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.erp import ErpPort
 from domain.ports.grafico import GraficoPort
 from domain.ports.ubicacion import UbicacionPort
+from domain.ports.ubicaciones_validas import UbicacionesValidasPort
 
 from infrastructure.sigrid.catalogo_obra import (
     AdaptadorCatalogoSigridApi,
@@ -78,6 +79,9 @@ from infrastructure.sigrid.ubicacion import (
     AdaptadorUbicacionSigridApi,
     exigir_entorno_con_ubicacion,
 )
+from infrastructure.sigrid.ubicaciones_validas import (
+    AdaptadorUbicacionesValidasSigridApi,
+)
 
 __all__ = [
     "ENTORNOS_CON_CIERRE",
@@ -86,6 +90,7 @@ __all__ = [
     "construir_erp",
     "construir_graficos",
     "construir_ubicaciones",
+    "construir_ubicaciones_validas",
     "resolver_zona",
 ]
 
@@ -228,6 +233,11 @@ def construir_catalogo_obra(ajustes: Ajustes) -> CatalogoObraPort:
         timeout_s=ajustes.sigrid_timeout_s,
         reintentos=ajustes.sigrid_reintentos,
     )
+
+
+def construir_ubicaciones_validas(ajustes: Ajustes) -> UbicacionesValidasPort:
+    """ESQUELETO del Bloque 3 bis (T14a); T14b lo completa."""
+    return AdaptadorUbicacionesValidasSigridApi()
 
 
 def resolver_zona(nombre: str) -> tzinfo:

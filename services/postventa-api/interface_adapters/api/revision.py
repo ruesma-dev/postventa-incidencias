@@ -119,7 +119,10 @@ from infrastructure.persistencia.fabrica import (
     construir_equivalencias,
     construir_revision,
 )
-from infrastructure.sigrid.fabrica import construir_catalogo_obra
+from infrastructure.sigrid.fabrica import (
+    construir_catalogo_obra,
+    construir_ubicaciones_validas,  # noqa: F401  (esqueleto de T14a: T14b lo compone)
+)
 
 from interface_adapters.api.plantilla import configuracion_de_la_plantilla
 

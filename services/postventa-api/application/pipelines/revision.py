@@ -88,6 +88,7 @@ from domain.models.revision import (
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.equivalencias import EquivalenciasPort
 from domain.ports.revision import RevisionPort
+from domain.ports.ubicaciones_validas import UbicacionesValidasPort
 
 from application.pipelines.catalogo_obra import leer_catalogo
 from application.pipelines.plantilla import opciones_de_la_obra
@@ -100,7 +101,9 @@ __all__ = [
     "PeticionDeListado",
     "aplicar_accion",
     "candidatas_al_volcado",
+    "fuente_de_ubicaciones",
     "historial",
+    "leer_ubicaciones_validas",
     "listar_para_revisar",
 ]
 
@@ -108,6 +111,18 @@ __all__ = [
 #: `{unidad_codigo: ubicaciones}`. Una unidad sin entrada tiene la lista vacía.
 #: Su lectura de Sigrid es el Bloque 3 bis (§16.3); aquí llega compuesta.
 FuenteDeUbicaciones = Callable[[CatalogoObra], Mapping[str, tuple[str, ...]]]
+
+def leer_ubicaciones_validas(
+    puerto: UbicacionesValidasPort, catalogo: CatalogoObra
+) -> dict[str, tuple[str, ...]]:
+    """ESQUELETO del Bloque 3 bis (T14a); T14b lo completa."""
+    return {}
+
+
+def fuente_de_ubicaciones(puerto: UbicacionesValidasPort) -> FuenteDeUbicaciones:
+    """ESQUELETO del Bloque 3 bis (T14a); T14b lo completa."""
+    return lambda catalogo: {}
+
 
 #: Las acciones que leen Sigrid (§3.4).
 _LEEN_SIGRID = (AccionRevision.EDITAR, AccionRevision.APROBAR)

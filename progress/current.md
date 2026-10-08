@@ -26,6 +26,9 @@
 > (1002/1002); `init.sh` en verde. Para el líder: decisión 1 (el correo en la respuesta de una acción, R8 frente a
 > R11) y decisión 2 (la fuente de ubicaciones da 503 hasta el Bloque 3 bis). Detalle en `progress/impl_F-056.md`,
 > «Bloque 3». No se ha pasado al Bloque 3 bis.
+>
+> **Bloque 3 bis en curso (implementer, 2026-10-08)**: T14a (RED) → O-2 (RED) → T14b → N-1 (spec) → N-2 (tests)
+> → suite → T14c (mutación, `--base c22e692`). Review del Bloque 3 APPROVED (`c22e692`).
 
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >

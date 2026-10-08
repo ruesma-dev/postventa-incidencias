@@ -1366,3 +1366,17 @@ Verificación (líder): los tests de documentación de F-056, F-036, F-053, F-01
 front en verde por caché; **PUERTA COBERTURA 100,0 % de 1060 líneas cambiadas**. Sin campaña de mutación:
 el bloque es solo documentación y tests de documentación. T16 (`azure-apps`) queda para el líder al
 desplegar.
+
+**C-1, C-2 y C-3 de la review final (2026-10-09, implementer).** Solo texto de la T19 de `tasks.md` (la T18 no
+cambia): paso 2 con JS que exige 200 y no 503, `Object.keys(r.catalogo.ubicaciones).length === 15` y ninguna
+lista vacía; paso 3 con el JS exacto para la consola de `importar.html` (`Api.identidadDe` sobre `/.auth/me`,
+`accion(cuerpo)` con `confirmado`, `usuario_oid` y `usuario_correo`, `valores` con las 8 claves de
+`CAMPOS_PEDIDOS` desde `fila.vigentes`, primer `editar` con ubicación de la lista, oficio concreto y
+`proveedor_codigo: null` esperando 200, comprobación del `oid` en cada respuesta), el 409
+`revision_desactualizada` con `recuperar` y la `revision_id` del primer `editar`, la fila que sigue en
+`estado=descartada`, un bloque de limpieza que la deja descartada si el paso para a medias, y paso 4 que
+exige seis revisiones con la última `descartar`. Nombres verificados contra `js/api.js`,
+`interface_adapters/api/revision.py`, `domain/models/revision.py` y `function_app.py`. Los cuatro bloques
+JS pasan `node --check` y una simulación en Node contra un backend falso (pasos 2, 3, 4 y limpieza en
+verde). Tests: barridos de identificadores y datos personales, `test_f056_*` y los que leen `tasks.md`,
+**1388 passed, 29 skipped** (los skipped son controles git de otras features). Sin código ni `docs/`.

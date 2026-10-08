@@ -216,49 +216,203 @@
   al arrancar la Function. Anotar el commit publicado. |
   Verificación: MANUAL (humano)
 - [ ] **T19 · MANUAL (humano)**, en producción, desde la **consola del
-  navegador** (F12) con una pestaña abierta en el front publicado (misma
-  sesión, mismo origen). Anotar en `progress/impl_F-056.md`, sin nombres ni
-  correos:
+  navegador** (F12) con una pestaña abierta en **`importar.html`** del front
+  publicado (misma sesión, mismo origen; esa página carga `js/api.js` y deja
+  `window.Api`). Los bloques JS se pegan **tal cual**, en orden, en la misma
+  pestaña: cada uno deja lo suyo en `window.T19` y **se para con un
+  `Error('T19 para: …')`** en cuanto algo no es lo esperado. Ninguno imprime
+  correos, `oid`, `incidencia_id` ni ubicaciones: solo estados, recuentos y
+  `revision_id`. Anotar en `progress/impl_F-056.md`, sin nombres ni correos.
+  **Nada escribe en Sigrid**: solo los pasos 3 y «Limpieza» escriben, y solo
+  en nuestra base, sobre la fila de prueba de la 0677.
   1. **Antes**: `powershell -ExecutionPolicy Bypass -File infra\24_ubicacion_sigrid.ps1 -CodigoObra 0677`; anotar las reclamaciones por unidad.
-  2. Listado y resumen:
+  2. **Listado, resumen y ubicaciones (el 503 ya no existe)**:
      ```js
-     const r = await (await fetch('/api/revision?obra=0677&estado=todas')).json();
-     console.log(r.resumen, r.total_filtrado, r.incidencias.length, r.siguiente);
+     window.T19 = {};
+     T19.exigir = (cond, que) => { if (!cond) throw new Error('T19 para: ' + que); };
+     // Todas las páginas de la bandeja de la 0677 con ese filtro; la primera, cronometrada.
+     T19.leer = async (estado) => {
+       const base = `/api/revision?obra=0677&estado=${estado}`;
+       const t0 = performance.now();
+       const resp = await fetch(base);
+       const segundos = (performance.now() - t0) / 1000;
+       T19.exigir(resp.status === 200, `GET ${estado}: ${resp.status} y no 200 (503 = sin Sigrid, sin base o sin ubicaciones)`);
+       const r = await resp.json();
+       const filas = [...r.incidencias];
+       let siguiente = r.siguiente;
+       let paginas = 1;
+       while (siguiente !== null) {
+         const otra = await fetch(`${base}&cursor=${siguiente}`);
+         T19.exigir(otra.status === 200, `GET ${estado}, página ${paginas + 1}: ${otra.status}`);
+         const p = await otra.json();
+         filas.push(...p.incidencias);
+         siguiente = p.siguiente;
+         paginas += 1;
+       }
+       return { r, filas, paginas, segundos };
+     };
+     await (async () => {
+       const { r, filas, paginas, segundos } = await T19.leer('todas');
+       const listas = Object.values(r.catalogo.ubicaciones);
+       T19.exigir(Object.keys(r.catalogo.ubicaciones).length === 15, `unidades con lista: ${listas.length} y no 15`);
+       T19.exigir(listas.every((l) => l.length > 0), 'hay una unidad con la lista de ubicaciones vacía');
+       T19.exigir(filas.length === r.total_filtrado, `páginas: ${filas.length} filas y total_filtrado ${r.total_filtrado}`);
+       T19.exigir(new Set(filas.map((f) => f.incidencia_id)).size === filas.length, 'un incidencia_id se repite entre páginas');
+       console.log('Paso 2 OK', { resumen: r.resumen, total_filtrado: r.total_filtrado, paginas,
+         segundos_primera: segundos, ubicaciones_por_unidad: listas.map((l) => l.length) });
+     })();
      ```
-     Anotar `resumen` (esperado: `por_motivo.oficio_ambiguo` = 47; el
-     recuento real de `oficio_fuera_de_la_obra` y `par_fuera_de_la_obra`; el de
+     Respuesta **200, y no 503**. Anotar `resumen` (esperado:
+     `por_motivo.oficio_ambiguo` = 47; el recuento real de
+     `oficio_fuera_de_la_obra` y `par_fuera_de_la_obra`; el de
      `sin_ubicacion` y el de `ubicacion_fuera_de_lista`, que dice cuántas
-     filas traen una ubicación que no está en la tipología de su unidad) y el
-     tiempo (pestaña Red, < 10 s). `r.catalogo.ubicaciones` trae un mapa con
-     las 15 unidades y, en cada una, del orden de 31 a 37 ubicaciones (T0;
-     menos si alguna pasa de 48 o se repite exacta); anotar solo recuentos.
-     Recorrer las páginas con `&cursor=` + `r.siguiente` hasta `null`: la suma
-     de páginas es `total_filtrado` y ningún `incidencia_id` se repite.
-  3. **Fila de prueba**: en `importar.html`, importar a la 0677 una fila con la
-     descripción «PRUEBA F-056 - DESCARTAR» y un oficio de la lista; buscar su
-     `incidencia_id` en el listado; en la primera edición, ponerle una
-     ubicación de `r.catalogo.ubicaciones[<su unidad>]` (y comprobar antes
-     que una que no está en la lista de esa unidad da 400
-     `valores_no_validos`); y, con
+     filas traen una ubicación que no está en la tipología de su unidad), el
+     número de páginas y `segundos_primera` (< 10 s; la pestaña Red lo
+     confirma). `r.catalogo.ubicaciones` trae un mapa con **las 15 unidades**
+     y **ninguna lista vacía** (T0: 0 unidades sin tipología), del orden de
+     31 a 37 ubicaciones en cada una (T0; menos si alguna pasa de 48 o se
+     repite exacta); anotar solo los recuentos. El bloque ya comprueba que la
+     suma de las páginas es `total_filtrado` y que ningún `incidencia_id` se
+     repite. Hasta el Bloque 3, esta llamada daba 503.
+  3. **Fila de prueba.** En `importar.html`, importar a la 0677 **una** fila
+     con la descripción «PRUEBA F-056 - DESCARTAR», una unidad de la obra y
+     un oficio de la lista. Después, en la consola:
      ```js
-     const yo = await (await fetch('/.auth/me')).json();
-     // oid y correo, como los saca js/api.js (identidadDe)
+     await (async () => {
+       const { exigir } = T19;
+       // Las 8 claves de CAMPOS_PEDIDOS (domain/models/revision.py), en su orden.
+       const CAMPOS_PEDIDOS = ['unidad_codigo', 'ubicacion', 'descripcion', 'detalle',
+         'oficio_codigo', 'proveedor_codigo', 'urgencia', 'listado'];
+       const valoresDe = (vigentes) => Object.fromEntries(CAMPOS_PEDIDOS.map((c) => [c, vigentes[c]]));
+       const yo = Api.identidadDe(await (await fetch('/.auth/me')).json());
+       exigir(yo.usuarioOid !== '' && yo.correo !== '', '/.auth/me no da oid y correo');
+       T19.yo = yo;
+       T19.accion = async (cuerpo) => {
+         const resp = await fetch('/api/revision/acciones', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ ...cuerpo, confirmado: true,
+             usuario_oid: yo.usuarioOid, usuario_correo: yo.correo }),
+         });
+         const json = await resp.json();
+         exigir(!JSON.stringify(json).includes(yo.usuarioOid), `la respuesta de ${cuerpo.accion} lleva el oid (R10, R41)`);
+         return { status: resp.status, json };
+       };
+       const { r, filas } = await T19.leer('todas');
+       const dePrueba = filas.filter((f) => f.vigentes.descripcion === 'PRUEBA F-056 - DESCARTAR');
+       exigir(dePrueba.length === 1, `filas de prueba en la 0677: ${dePrueba.length} y no 1`);
+       const fila = dePrueba[0];
+       T19.incidenciaId = fila.incidencia_id;
+       exigir(fila.estado === 'nueva' && fila.revision_id === null, `la fila de prueba está ${fila.estado}, no nueva`);
+       const lista = r.catalogo.ubicaciones[fila.vigentes.unidad_codigo];
+       exigir(Array.isArray(lista) && lista.length > 0, 'la unidad de la fila de prueba no tiene lista de ubicaciones');
+       const ubicacion = lista.find((u) => u !== fila.vigentes.ubicacion);
+       exigir(ubicacion !== undefined, 'no hay en la lista otra ubicación que la vigente');
+       // Un código de oficio concreto: el vigente o, si es ambiguo (null), el primero de su grupo.
+       let oficio = fila.vigentes.oficio_codigo;
+       if (oficio === null) {
+         const delGrupo = r.catalogo.oficios.find((o) => o.grupo.etiqueta === fila.vigentes.oficio_nombre);
+         exigir(delGrupo !== undefined, 'el oficio de la fila de prueba no es de ningún grupo de la obra');
+         oficio = delGrupo.grupo.codigos[0];
+       }
+       const primeros = { ...valoresDe(fila.vigentes), ubicacion, oficio_codigo: oficio, proveedor_codigo: null };
+       // Antes de escribir: una ubicación que no está en la lista de su unidad es 400 y no escribe.
+       const fuera = 'F-056 FUERA DE LA LISTA';
+       exigir(!lista.includes(fuera), 'la ubicación de control está en la lista');
+       const mala = await T19.accion({ incidencia_id: fila.incidencia_id, accion: 'editar',
+         revision_previa: null, valores: { ...primeros, ubicacion: fuera } });
+       exigir(mala.status === 400 && mala.json.codigo === 'valores_no_validos'
+         && mala.json.errores.length === 1 && mala.json.errores[0].campo === 'ubicacion',
+         `ubicación fuera de la lista: ${mala.status} ${mala.json.codigo} y no 400 valores_no_validos solo de ubicacion`);
+       // Las seis acciones, cada una con la revision_id de la respuesta anterior.
+       T19.ids = [];
+       let previa = null;
+       const paso = async (propio, esperado) => {
+         const { status, json } = await T19.accion({ incidencia_id: fila.incidencia_id, revision_previa: previa, ...propio });
+         exigir(status === 200 && json.estado === esperado,
+           `${propio.accion}: ${status} ${json.codigo ?? json.estado} y no 200 ${esperado}`);
+         previa = json.revision_id;
+         T19.ids.push(previa);
+         return json;
+       };
+       const e1 = await paso({ accion: 'editar', valores: primeros }, 'editada');
+       exigir(Array.isArray(e1.motivos_no_aprobable) && e1.motivos_no_aprobable.length === 0,
+         `tras el primer editar no es aprobable: ${JSON.stringify(e1.motivos_no_aprobable)}`);
+       await paso({ accion: 'aprobar' }, 'aprobada');
+       await paso({ accion: 'editar',
+         valores: { ...valoresDe(e1.vigentes), detalle: 'PRUEBA F-056 - segunda edición' } }, 'editada');
+       await paso({ accion: 'descartar', motivo: 'prueba' }, 'descartada');
+       await paso({ accion: 'recuperar' }, 'editada');
+       await paso({ accion: 'descartar', motivo: 'prueba' }, 'descartada');
+       // C-1: recuperar con la revision_id de la PRIMERA respuesta (la del primer editar), no la vigente.
+       const vieja = await T19.accion({ incidencia_id: fila.incidencia_id, accion: 'recuperar',
+         revision_previa: T19.ids[0] });
+       exigir(vieja.status === 409 && vieja.json.codigo === 'revision_desactualizada',
+         `recuperar con revision_previa vieja: ${vieja.status} ${vieja.json.codigo} y no 409 revision_desactualizada`);
+       const { filas: descartadas } = await T19.leer('descartada');
+       exigir(descartadas.some((f) => f.incidencia_id === fila.incidencia_id),
+         'la fila de prueba no sale en estado=descartada');
+       console.log('Paso 3 OK', { revision_ids: T19.ids, conflicto: vieja.json.codigo });
+     })();
      ```
-     mandar a `POST /api/revision/acciones` (`method: 'POST'`,
-     `headers: {'Content-Type': 'application/json'}`) la secuencia editar
-     (otra ubicación) → aprobar → editar → descartar (motivo «prueba») →
-     recuperar → descartar, cada una con la `revision_id` de la respuesta
-     anterior como `revision_previa`. Cada respuesta, 200 con el estado
-     esperado (`editada`, `aprobada`, `editada`, `descartada`, `editada`,
-     `descartada`). Repetir una con una `revision_previa` vieja → 409
-     `revision_desactualizada`.
-  4. `GET /api/revision/historial?incidencia_id=…`: las seis acciones, en
-     orden, con el correo de quien prueba y **sin** `oid`.
+     Se espera, en este orden: el editar con la ubicación de control, **400
+     `valores_no_validos`** (solo `ubicacion`) y sin escribir; el primer
+     `editar`, con una ubicación **de la lista** de su unidad y un
+     `oficio_codigo` concreto, **200** `editada` y sin motivos de no
+     aprobable (hasta el Bloque 3 esta llamada daba 503); después `aprobada`,
+     `editada`, `descartada`, `editada` y `descartada`, todas 200. Luego,
+     `recuperar` con `revision_previa` igual a la `revision_id` de la
+     **primera** respuesta (la del primer `editar`) da **409
+     `revision_desactualizada`** y no escribe: la transición se admite (desde
+     `descartada` solo vale `recuperar`) y para la frescura. La fila sigue
+     `descartada`: `GET /api/revision?obra=0677&estado=descartada` la
+     contiene. Anotar los seis `revision_id`.
+
+     **La fila de prueba termina `descartada`** y no puede quedar activa ni
+     aprobable: si quedara así, saldría en la bandeja de producción y podría
+     acabar en el volcado de F-040. Por eso **nunca** se manda `recuperar` con
+     la `revision_id` vigente. **Limpieza**: si el bloque del paso 3 para
+     después de alguna escritura, antes de nada más se pega este, que la deja
+     `descartada` (si ya lo está, no escribe), y se para:
+     ```js
+     await (async () => {
+       const { filas } = await T19.leer('todas');
+       const fila = filas.find((f) => f.incidencia_id === T19.incidenciaId);
+       T19.exigir(fila !== undefined, 'la fila de prueba no está en la bandeja');
+       if (fila.estado !== 'descartada') {
+         const d = await T19.accion({ incidencia_id: fila.incidencia_id, accion: 'descartar',
+           motivo: 'prueba', revision_previa: fila.revision_id });
+         T19.exigir(d.status === 200 && d.json.estado === 'descartada',
+           `limpieza: ${d.status} ${d.json.codigo ?? d.json.estado}`);
+       }
+       console.log('Limpieza OK: la fila de prueba está descartada');
+     })();
+     ```
+  4. **Historial**:
+     ```js
+     await (async () => {
+       const resp = await fetch(`/api/revision/historial?incidencia_id=${T19.incidenciaId}`);
+       T19.exigir(resp.status === 200, `historial: ${resp.status}`);
+       const h = await resp.json();
+       const acciones = h.revisiones.map((v) => v.accion);
+       T19.exigir(JSON.stringify(acciones) === JSON.stringify(
+         ['editar', 'aprobar', 'editar', 'descartar', 'recuperar', 'descartar']),
+         `historial: ${acciones.length} revisiones (${acciones.join(', ')}) y no las seis, la última descartar`);
+       T19.exigir(JSON.stringify(h.revisiones.map((v) => v.revision_id)) === JSON.stringify(T19.ids),
+         'el historial no va en el orden de las acciones');
+       T19.exigir(h.revisiones.every((v) => v.correo === T19.yo.correo), 'una revisión no lleva el correo de quien prueba');
+       T19.exigir(!JSON.stringify(h).includes(T19.yo.usuarioOid), 'el historial lleva el oid');
+       console.log('Paso 4 OK', acciones, h.revisiones.map((v) => v.campos_cambiados));
+     })();
+     ```
+     Las **seis** revisiones, en orden y **la última `descartar`**, con el
+     correo de quien prueba y **sin** `oid`.
   5. En **Application Insights**, las trazas de los pasos 2–4: obra,
      `incidencia_id`, acción y resultado; **ningún** `oid`, correo ni texto.
   6. **Después**: repetir el paso 1; los recuentos no cambian.
 
-  Si algo falla, parar y volver al spec-author. |
+  Si algo falla, parar (con la **Limpieza** si la fila de prueba no quedó
+  `descartada`) y volver al spec-author. |
   Verificación: MANUAL (humano)
 - [ ] **T20**: resumen de F-056 en `progress/history.md` (el líder, al cerrar)
   y `bash harness/init.sh` en verde. |

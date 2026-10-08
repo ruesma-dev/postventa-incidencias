@@ -13,9 +13,10 @@
 > (7071 passed), mutación 153/153 muertos (0 supervivientes), PUERTA COBERTURA 100 % (486/486), `init.sh` en verde.
 > Detalle en `progress/impl_F-056.md`, «Bloque 1». No se ha pasado al Bloque 2.
 >
-> **Bloque 2 en curso (implementer, 2026-10-08)**: review del Bloque 1 APPROVED; N-1, N-2 y O-1 hechos en commits
-> propios; T4 (RED con esqueletos neutros, O-2) en curso. T8 queda para el humano. Detalle en
-> `progress/impl_F-056.md`, «Bloque 2».
+> **Bloque 2 hecho (implementer, 2026-10-08)**, pendiente de review y de **T8 (MANUAL del humano**: Docker +
+> `infra\pruebas_bbdd_efimera.ps1`, 53 tests esperados). T4–T7 y T9 marcadas; N-1, N-2, O-1, O-2 y O-4 hechos.
+> Suite 7219 passed; mutación 17/17 muertos; PUERTA COBERTURA 100 % (648/648); `init.sh` en verde. Para el líder:
+> confirmar la redacción de N-1 (decisión 1 del informe). Detalle en `progress/impl_F-056.md`, «Bloque 2».
 
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >

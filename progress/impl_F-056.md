@@ -456,3 +456,214 @@ leer un atributo, y que fallaran por aserción).
 | `test_f056_r37_el_control_del_codigo_caza_un_update` | Control negativo de la guarda anterior, sobre un texto en memoria |
 | `test_f056_r34_aprobadas_sin_ninguna` | Sin filas, `()` es la respuesta correcta y la neutra a la vez |
 
+### Commits
+
+| Commit | Qué |
+|---|---|
+| `916fa49` | **N-2**: `ruff --fix` (I001) de `tests/test_f056_paginacion.py` |
+| `4a41ba4` | **N-1**: `design.md` §4 (firma de `motivos_no_aprobable` sin `listas`), §3.5 (recuadro «Aceptado por el líder el 2026-10-07» y las interpretaciones 3 y 4), §3.6 (interpretación 8) y §8 (la ubicación vacía es error) |
+| `dd64e09` | **O-1**: `CandidataAlVolcado` exige la ubicación recortada y de ≤ 48, test primero; nota en `design.md` §10 |
+| `6e30f73` | **T4 · RED**: `test_f056_ddl.py`, `test_f056_repositorio_revision.py`, esqueletos neutros (O-2) y la ampliación de los tests que enumeran los `.sql` |
+| `47fdbe1` | **T5**: `15_revisiones_bandeja.sql` |
+| `72a8c29` | **T6**: puerto, `sentencias_revision.py`, `repositorio_revision_pg.py`, `construir_revision` |
+| `e15fcac` | **T6, antes de la mutación**: dos tests de ancho exacto de fila (`strict`) y la revisión ausente sin índice literal |
+| `8a52dcc` | **T7**: `tests_bbdd/tests/test_f056_bbdd_revision.py` |
+| `94c0482` | T4–T7 marcadas en `tasks.md` |
+| (este commit) | **T9**: `progress/mutacion_F-056_bloque2.md`, T9 marcada y este informe |
+
+### Qué cambió
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/infrastructure/persistencia/sql/15_revisiones_bandeja.sql` | **Nuevo.** La tabla de §6, tal cual, y su índice `(incidencia_id, revision_id DESC)`; cabecera de §6 y §9 (append-only, el estado no se guarda, `revisado_por` no sale, el correo de empleado interno que nunca va a un log, el `CHECK` de `accion` no se amplía —F-040 lleva su tabla—, sin cascada, listas para F-048). ASCII, como el resto de `.sql` |
+| `services/postventa-api/domain/ports/revision.py` | **Nuevo.** `RevisionPort` con las seis operaciones de §5 |
+| `services/postventa-api/infrastructure/persistencia/sentencias_revision.py` | **Nuevo, puro.** Las ocho sentencias (situaciones de la obra con `LIMIT tope + 1`, situación, aprobadas, contar, bloquear, frescura, insert, historial) y la traducción de filas a dominio |
+| `services/postventa-api/infrastructure/persistencia/repositorio_revision_pg.py` | **Nuevo.** `RepositorioRevisionPostgres(_Transaccional)` |
+| `services/postventa-api/infrastructure/persistencia/fabrica.py` | **Solo añadido**: `construir_revision` y una línea del docstring del módulo |
+| `services/postventa-api/domain/models/revision.py` | O-1: la comprobación de la ubicación en `CandidataAlVolcado.__post_init__` y su docstring |
+| `services/postventa-api/tests/test_f056_ddl.py`, `test_f056_repositorio_revision.py` | **Nuevos** (40 + 95 tests) |
+| `services/postventa-api/tests/test_f056_revision_dominio.py` | O-1: 10 casos nuevos (7 imposibles, 3 válidos) |
+| `services/postventa-api/tests/test_f056_paginacion.py` | N-2: orden de imports |
+| `services/postventa-api/tests_bbdd/tests/test_f056_bbdd_revision.py` | **Nuevo** (28 casos; se saltan sin `POSTVENTA_PG_TEST_DSN`) |
+| Tests que enumeran los `.sql` (**ampliados, sin quitar nada**) | `test_f005_ddl_idempotente_texto.py` (la lista entera, +1), `test_f036_ddl.py` (`nombres[-3:]` pasa a «lo que va tras el 11 es 12, 13, 14 y 15»), `test_f028_ddl_historico.py` (la cola tras el 11, +1) y `test_f030_veredicto_persistido.py`, `test_f031…f034_alcance_cerrado.py` (`DDL_DE_F056` junto a `DDL_DE_F036`, el patrón con que F-036 los amplió) |
+| `specs/F-056-revision-bandeja-backend/design.md` | N-1 y la nota de O-1 en §10 |
+| `specs/F-056-revision-bandeja-backend/tasks.md` | T4–T7 y T9 marcadas (T8 no) |
+
+Nada del front, de `function_app.py`, de `application/` ni de `infrastructure/sigrid/`.
+
+### Decisiones de diseño (dentro de la spec, salvo donde se dice)
+
+1. **N-1, la redacción del encargo.** El encargo dice «en §3.5 di que el oficio ambiguo cuenta como `sin_oficio`»;
+   lo aceptado el 2026-10-07 (decisión 2 del Bloque 1, N-1 de la review) y lo que hace el código es **lo
+   contrario**: el oficio ambiguo **cuenta como oficio** a efectos de `sin_oficio` (da solo `oficio_ambiguo`). Se
+   ha escrito lo aceptado, que es lo que fijan los tests y T19 (`oficio_ambiguo` = 47 sin inflar `sin_oficio`).
+   **Que el líder lo confirme**; si de verdad se quería lo literal, es un cambio de contrato y de código, no de
+   redacción.
+2. **Las interpretaciones 3, 4 y 8** van en el design como «interpretaciones del implementer, revisadas en la
+   review», **no** bajo el recuadro «Aceptado por el líder el 2026-10-07», que cubre solo los ajustes 1 y 2 (los
+   que el líder aceptó ese día). La 3 y la 4 en §3.5 (y la 4 también en §8, el contrato con F-038); la 8 en §3.6.
+3. **O-1 sin `CHECK` en el DDL.** No encaja con §6: un `CHECK` de recorte valdría para **todas** las acciones (una
+   fila importada con blancos no se podría ni descartar), no se podría cambiar después, y `btrim` de PostgreSQL no
+   recorta lo mismo que `str.strip()` (solo espacios). §6 deja «aprobar exige oficio y ubicación» en el dominio;
+   la comprobación vive en `CandidataAlVolcado`. Nota en `design.md` §10.
+4. **`construir_revision` no entra en `__all__` de `fabrica.py`**:
+   `test_f036_t15_la_fabrica_exporta_las_tres_construcciones` fija la lista exacta y R45 pide no tocar los tests de
+   F-036. Se importa por su nombre; su docstring lo explica.
+5. **Tests de otras features tocados (R45).** `tasks.md` T4 manda ampliar «los tests que enumeran `.sql`» y cita
+   `test_f005_ddl_idempotente_texto.py` y `test_f036_ddl.py`. Al añadir el `15_` caen **además** seis tests de
+   F-028 y F-030…F-034 que fijan la lista de `.sql` (la mitad que no depende de `git`). Se han **ampliado** igual,
+   sin relajar nada, con el patrón que usó F-036 (`DDL_DE_F036` → `+ DDL_DE_F056`). `test_f036_ddl.py` es el único
+   de F-036 tocado, y lo autoriza T4 expresamente; ninguno de F-053.
+6. **`_Transaccional` reutilizado** de `repositorio_bandeja_pg.py` (import de un nombre privado): la misma forma de
+   transacción, `rollback` y 503 sin parámetros, sin duplicarla ni tocar el módulo de F-036.
+7. **`registrar` exige la propia incidencia en `esperadas`** (`ValueError`, sin abrir nada): sin ella no hay
+   frescura que comprobar. Bloquea y comprueba **todas** las esperadas (la propia y, al aprobar una duplicada, la
+   original), en orden fijo y sin repetidas.
+8. **`aprobadas`, doble defensa**: el filtro `u.accion = 'aprobar'` está en el SQL y, además, cada fila pasa por
+   `candidata_de` del dominio, que lanza si no es una aprobación (y `CandidataAlVolcado`, si no es volcable). Un SQL
+   equivocado no puede dar a F-040 algo que no se aprobó: falla en vez de colarse.
+9. **`listar` no corta**: devuelve las `tope + 1` que da la base; el 409 de R24 lo decide la aplicación (Bloque 3)
+   con `contar`.
+10. **O-4, fechas**: `creada_at_utc` y `revisado_at_utc` vuelven en **UTC** (`astimezone`, el mismo instante) y una
+    sin zona es `ValueError`; también al **escribir** una `revisado_at_utc` sin zona (en `timestamptz` se
+    interpretaría en la zona de la sesión).
+11. **Una revisión ausente** (el `LEFT JOIN LATERAL` sin fila) se reconoce porque **todas** sus columnas son nulas,
+    no por la primera: con `ultima[0]`, el mutante `0 → 1` habría sido equivalente (`revision_id` e
+    `incidencia_id` son nulos a la vez). Y las filas se leen con `zip(…, strict=True)`: una columna de más o de
+    menos es un SQL que ya no casa con su traducción, y falla (dos tests lo fijan).
+12. **El historial** lee la situación y las revisiones con dos `SELECT` en la misma transacción. En `READ
+    COMMITTED` no es una sola foto, pero de la situación solo se usan los datos de la importación (R33), que no
+    cambian.
+13. **`tests_bbdd`: la limpieza borra filas.** Es lo único con `DELETE` de F-056, y solo contra la base efímera: sin
+    vaciar `revisiones_bandeja`, la limpieza de `test_f036_bbdd_bandeja.py` chocaría con la clave ajena. R37 habla
+    del código del servicio (el test de R37 de T4 mira `sentencias_revision.py` y `repositorio_revision_pg.py`);
+    **para T13**, el alcance de R37 no debe barrer `tests_bbdd/`, igual que F-036 con su propia limpieza.
+14. **Las 10.001 filas** de T7 se crean en la base con `generate_series` (con `CAST` explícitos), no desde Python.
+
+### GREEN
+
+T5, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_ddl.py tests/test_f005_ddl_idempotente_texto.py tests/test_f036_ddl.py tests/test_f028_ddl_historico.py tests/test_f026_ddl_aprobaciones.py tests/test_f005_ddl_seguro.py tests/test_f005_ddl_orden.py tests/test_f005_ddl_troceado.py -q -p no:cacheprovider
+262 passed in 3.72s
+```
+
+T6:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_repositorio_revision.py tests/test_f056_ddl.py -q -p no:cacheprovider
+133 passed in 1.10s
+```
+
+(135 tras `e15fcac`.) Cobertura de los módulos nuevos con `test_f056_repositorio_revision.py` (`coverage run
+--include`): `ports/revision.py` 14/14, `repositorio_revision_pg.py` 57/57, `sentencias_revision.py` 86/86: **100 %**;
+en `fabrica.py`, ese fichero solo deja sin cubrir las tres construcciones de F-005/F-036, no la de F-056.
+
+Guardias de arquitectura y vecinos, sin caché:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f00*_arquitectura.py tests/test_f012_arquitectura.py tests/test_f013_arquitectura.py tests/test_f036_arquitectura.py tests/test_f036_repositorio_bandeja.py tests/test_f036_alcance_cerrado.py tests/test_f005_sentencias.py tests/test_f006_repo_sin_identificadores.py tests/test_f005_integracion_sin_secretos.py -q -p no:cacheprovider
+457 passed, 9 skipped in 42.78s
+```
+
+T7, la verificación de la tarea:
+
+```
+.venv/Scripts/python.exe -m pytest --collect-only tests_bbdd/tests/test_f056_bbdd_revision.py -q -p no:cacheprovider
+28 tests collected in 0.27s
+```
+
+(y sin DSN, `28 skipped`). `ruff check` (desde la raíz) de los ficheros nuevos o tocados de F-056: sin avisos
+nuevos; los I001 de `test_f005_ddl_idempotente_texto.py` y `test_f028_ddl_historico.py` son **previos**
+(comprobado con `git stash` sobre `HEAD`).
+
+### Suite completa
+
+`.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider`, desde `services/postventa-api`, en `94c0482`
+(antes de la mutación):
+
+```
+7219 passed, 56 skipped in 510.73s (0:08:30)
+```
+
+### Mutación (T9)
+
+Comando, desde la raíz, con el árbol limpio en `94c0482`:
+
+```
+python -m harness.mutacion --feature F-056 --base b88b5ef --timeout 1800 --salida progress/mutacion_F-056_bloque2.md
+```
+
+(con `services/postventa-api/.venv/Scripts/python.exe`; 8 workers, los de `harness/rigor.json`). Salida final:
+
+```
+17 mutantes evaluados, 17 muertos, 0 supervivientes, 0 timeouts en 1718.0 s
+Informe: progress/mutacion_F-056_bloque2.md
+```
+
+- **Alcance** (base `b88b5ef`): 5 ficheros, 677 líneas de producción. `revision.py` 5 mutantes (O-1),
+  `repositorio_revision_pg.py` 5, `sentencias_revision.py` 7; `ports/revision.py` y `fabrica.py`, 0 (un
+  `Protocol` y una llamada, sin operadores mutables).
+- **Supervivientes: 0. Timeouts: 0.** No hay familias que analizar ni equivalentes que justificar. El equivalente
+  que se veía venir (`ultima[0] → ultima[1]`) se quitó **antes** de lanzar (decisión 11), y los dos
+  `strict=True → False` se comprobaron a mano antes (los dos mueren con los tests de `e15fcac`).
+- Operadores: comparación 3, lógico 2, `not` 2, entero 4, aritmético 4, booleano 2.
+
+### Verificaciones MANUAL pendientes
+
+**T8** (abajo). Ninguna otra en este bloque.
+
+### Para el humano · T8
+
+Con **Docker Desktop arrancado**, desde la raíz del repositorio (`C:\Users\pgris\PycharmProjects\postventa-incidencias`):
+
+```
+powershell -ExecutionPolicy Bypass -File infra\pruebas_bbdd_efimera.ps1
+```
+
+Qué hace: levanta una PostgreSQL desechable en `127.0.0.1:55432`, ejecuta `pytest tests_bbdd -q` con el `.venv` del
+servicio y tira el contenedor. **No toca el servidor compartido** (el `conftest` aborta si el DSN no es local).
+
+Qué debe verse: **53 tests, todos `passed` y ninguno `skipped`**:
+
+| Fichero | Tests |
+|---|---|
+| `test_f005_bbdd_aislamiento.py` | 4 |
+| `test_f005_bbdd_ddl_idempotente.py` | 4 |
+| `test_f005_bbdd_reproceso.py` | 2 |
+| `test_f036_bbdd_bandeja.py` (los de F-036, que **también** tienen que pasar: su limpieza vacía la bandeja, y con la tabla nueva colgando de ella es lo primero que se rompería) | 15 |
+| `test_f056_bbdd_revision.py` | 28 |
+
+Entre los de F-056, el de **dos conexiones** espera 1 s a propósito (B esperando al `FOR UPDATE` de A) y el de
+**10.001 filas** crea la obra `9902` con `generate_series`: los dos tardan algo más que el resto.
+
+Qué copiar aquí, debajo: **la línea final de `pytest`** (`53 passed in N s`) y **el tiempo total** que tarde el
+script. Si algo falla: el bloque `FAILED …` y su traza, **sin** el DSN ni la contraseña (el script la genera al
+vuelo y no la escribe, pero si apareciera en una traza, tápala). Si sale algún `skipped`, la suite no ha visto
+`POSTVENTA_PG_TEST_DSN`: no vale como T8.
+
+### Fuera del alcance de este bloque
+
+La aplicación (`application/pipelines/revision.py`), el borde HTTP y el base64url del cursor (Bloque 3), la lectura
+de ubicaciones de Sigrid (Bloque 3 bis), la documentación y `azure-apps` (Bloque 4), el front (F-038). T8 es del
+humano. La guardia de alcance con `git` (R37, R39, R45) es T13.
+
+### Observaciones para el líder
+
+- **N-1 (decisión 1)**: confirmar que la redacción escrita es la que se quería.
+- **R45 (decisión 5)**: además de los dos tests que cita T4, se ampliaron seis de F-028 y F-030…F-034.
+- **T13 (decisión 13)**: el alcance de R37 no debe barrer `tests_bbdd/` (la limpieza de la base efímera).
+- `harness/init.sh` cuenta como «deuda previa» los I001 de varios tests de F-005/F-028/F-036; no son de F-056.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests de F-056 (`test_f056_*.py`) | **509 passed (2,7 s): `test_f056_ddl.py` 40, `test_f056_repositorio_revision.py` 95, `test_f056_revision_dominio.py` y `test_f056_paginacion.py` 374** |
+| Suite completa del servicio | **7219 passed, 0 failed, 56 skipped**, 510,7 s |
+| Cobertura de los módulos nuevos (sus tests, `coverage run --include`) | **100 %** (157/157 sentencias de puerto, sentencias y repositorio) |
+| Cobertura de las líneas cambiadas (`PUERTA COBERTURA` de `init.sh`) | **100,0 % (648/648 líneas cambiadas desde la base, umbral 80 %, nivel `critico`)** |
+| Mutantes (T9, base `b88b5ef`) | **17 generados, 17 muertos, 0 supervivientes, 0 timeouts**; 1718 s, 8 workers |
+| `tests_bbdd` de F-056 | 28 recogidos (T7); su ejecución es **T8, pendiente del humano** |
+| `bash harness/init.sh` | **ENTORNO LISTO (2026-10-08, tras la mutación): servicio api 7219 passed, 109 skipped en 1244,9 s (con medición de cobertura); front en verde por caché; arnés 115 passed; ruff 73 avisos de deuda previa (eran 74: N-2 quitó uno)** |

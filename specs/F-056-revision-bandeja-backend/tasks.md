@@ -107,7 +107,8 @@
   Deben pasar `test_f056_bbdd_revision.py` y los de F-036. Anotar nº de tests
   y tiempo en `progress/impl_F-056.md`. Bloquea el cierre. |
   Verificación: MANUAL (humano)
-- [ ] **T9 · Mutación del bloque.** |
+- [x] **T9 · Mutación del bloque.** Hecha el 2026-10-08 con `--base b88b5ef --timeout 1800`: 17
+  generados, 17 muertos, 0 supervivientes, 0 timeouts. |
   Verificación: `python -m harness.mutacion --feature F-056 --base <hash anterior a T4> --timeout 900 --salida progress/mutacion_F-056_bloque2.md`
 
 **Parar. Review del Bloque 2.**

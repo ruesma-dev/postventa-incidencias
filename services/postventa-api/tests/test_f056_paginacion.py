@@ -409,6 +409,14 @@ def test_f056_r23_tamano_fuera_de_rango(tamano: int) -> None:
         paginar([fila(1)], filtro=FiltroEstado.TODAS, tamano=tamano)
 
 
+@pytest.mark.parametrize("tamano", [True, False])
+def test_f056_r23_tamano_booleano_no_es_un_entero(tamano: bool) -> None:
+    """O-3 de la review del Bloque 1: `bool` es un `int` en Python, y `True`
+    pasaba por un tamaño de 1. Un tamaño es un entero, no un booleano."""
+    with pytest.raises(PeticionDeRevisionInvalida):
+        paginar([fila(1)], filtro=FiltroEstado.TODAS, tamano=tamano)
+
+
 def test_f056_r23_tamano_en_los_bordes_y_por_defecto() -> None:
     filas = [fila(n, fila_origen=n) for n in range(1, 251)]
     assert len(paginar(filas, filtro=FiltroEstado.TODAS, tamano=1).filas) == 1

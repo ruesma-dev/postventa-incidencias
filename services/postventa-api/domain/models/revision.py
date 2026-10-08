@@ -1035,7 +1035,8 @@ def paginar(
     `siguiente` es la clave de su última fila si quedan más, y `None` en la
     última página.
     """
-    if not 1 <= tamano <= TAMANO_MAXIMO:
+    # O-3 (review del Bloque 1): `True` es un `int` de Python, no un tamaño.
+    if isinstance(tamano, bool) or not 1 <= tamano <= TAMANO_MAXIMO:
         raise PeticionDeRevisionInvalida(
             f"'tamano' tiene que ser un entero de 1 a {TAMANO_MAXIMO}"
         )

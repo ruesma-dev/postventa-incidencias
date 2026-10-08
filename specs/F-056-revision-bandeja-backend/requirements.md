@@ -275,8 +275,13 @@ backend; la pantalla es F-038.
 
 ## 11 · Fronteras
 
-- **R39.** Nada de F-056 escribe en Sigrid: solo las dos lecturas de F-036 por
-  `POST /api/sql/read`; ningún módulo nuevo nombra una ruta de escritura.
+- **R39.** Nada de F-056 escribe en Sigrid: solo lee, por
+  `POST /api/sql/read`: las dos lecturas de F-036 y la de las ubicaciones
+  válidas (R46, §16.3); ningún módulo nuevo nombra una ruta de escritura.
+
+  > **Decisión del líder 2026-10-08** (N-1 de la review del Bloque 3 bis):
+  > hasta esta fecha R39 decía «solo las dos lecturas de F-036 por
+  > `POST /api/sql/read`», y desde el Bloque 3 bis hay una tercera, la de R46.
 - **R40.** Ninguno de los tres endpoints depende de `ARCHIVO_HABILITADO` ni de
   `CIERRE_HABILITADO`; ninguna variable de entorno nueva.
 - **R41.** Ningún log lleva el `oid`, el correo, la descripción, el detalle, el

@@ -301,6 +301,7 @@ def test_f056_r4_r38_append_only_y_la_ultima_por_revision_id(preparada):
         revision=_nueva(inc, _editada(importados, "dos"), cuando=AHORA + timedelta(hours=1)),
         esperadas={inc: primera},
     )
+    tras_la_segunda = _filas_de_revision(preparada)
     tercera = repositorio.registrar(
         revision=_nueva(
             inc,
@@ -316,6 +317,9 @@ def test_f056_r4_r38_append_only_y_la_ultima_por_revision_id(preparada):
     despues = _filas_de_revision(preparada)
     assert len(despues) == 3
     assert despues[:1] == antes
+    # O-1 de la review del Bloque 2: también la foto tras la segunda, entera.
+    assert len(tras_la_segunda) == 2
+    assert despues[:2] == tras_la_segunda
     situacion = repositorio.situacion(incidencia_id=inc)
     assert situacion is not None and situacion.ultima is not None
     assert situacion.ultima.revision_id == tercera

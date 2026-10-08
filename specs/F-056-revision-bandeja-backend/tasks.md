@@ -141,7 +141,8 @@
   columna de correo fuera de `revisiones_bandeja`» (R12), con las tres
   guardas de F-030. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_alcance_cerrado.py tests/test_f036_alcance_cerrado.py`
-- [ ] **T14 · Mutación del bloque.** |
+- [x] **T14 · Mutación del bloque.** Hecha el 2026-10-08 con `--base e9e815f --timeout 1800`: 77
+  generados, 77 muertos, 0 supervivientes, 0 timeouts. |
   Verificación: `python -m harness.mutacion --feature F-056 --base <hash anterior a T10> --timeout 900 --salida progress/mutacion_F-056_bloque3.md`
 
 **Parar. Review del Bloque 3.**

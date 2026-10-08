@@ -17,6 +17,15 @@
 > `infra\pruebas_bbdd_efimera.ps1`, 53 tests esperados). T4–T7 y T9 marcadas; N-1, N-2, O-1, O-2 y O-4 hechos.
 > Suite 7219 passed; mutación 17/17 muertos; PUERTA COBERTURA 100 % (648/648); `init.sh` en verde. Para el líder:
 > confirmar la redacción de N-1 (decisión 1 del informe). Detalle en `progress/impl_F-056.md`, «Bloque 2».
+>
+> **T8 en verde** (humano, 2026-10-08, segunda ejecución tras arreglar un fallo del test en `4bf2791`): 53 passed,
+> 0 failed, 0 skipped. T8 marcada.
+>
+> **Bloque 3 hecho (implementer, 2026-10-08)**, pendiente de review: T10–T14 marcadas; N-1 (b) del Bloque 2, O-3 y
+> O-5 del Bloque 1, O-1 y O-5 del Bloque 2 hechos. Suite 7502 passed; mutación 77/77 muertos; PUERTA COBERTURA 100 %
+> (1002/1002); `init.sh` en verde. Para el líder: decisión 1 (el correo en la respuesta de una acción, R8 frente a
+> R11) y decisión 2 (la fuente de ubicaciones da 503 hasta el Bloque 3 bis). Detalle en `progress/impl_F-056.md`,
+> «Bloque 3». No se ha pasado al Bloque 3 bis.
 
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >

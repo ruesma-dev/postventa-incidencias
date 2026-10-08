@@ -704,3 +704,345 @@ humano. La guardia de alcance con `git` (R37, R39, R45) es T13.
 | Mutantes (T9, base `b88b5ef`) | **17 generados, 17 muertos, 0 supervivientes, 0 timeouts**; 1718 s, 8 workers |
 | `tests_bbdd` de F-056 | 28 recogidos (T7); su ejecución es **T8, pendiente del humano** |
 | `bash harness/init.sh` | **ENTORNO LISTO (2026-10-08, tras la mutación): servicio api 7219 passed, 109 skipped en 1244,9 s (con medición de cobertura); front en verde por caché; arnés 115 passed; ruff 73 avisos de deuda previa (eran 74: N-2 quitó uno)** |
+
+## Bloque 3 · La aplicación y los tres endpoints (T10–T14) · 2026-10-08
+
+**Estado: HECHO, pendiente de review.** Encargo del líder del 2026-10-08: T10 (RED), T11, T12, T13 y T14, más N-1 de
+la review del Bloque 2 (opción (b)), O-3 y O-5 de la del Bloque 1, O-1 y O-5 de la del Bloque 2, y el base64url del
+cursor en el borde (opción (a) del humano). En mitad del bloque, el arreglo del test de `tests_bbdd` que hizo fallar
+la primera T8 (ver «Para el humano · T8», en el Bloque 2). Nada del Bloque 3 bis: las ubicaciones válidas llegan a la
+aplicación como **parámetro** (`FuenteDeUbicaciones`) y los tests usan dobles. Base de la mutación: `e9e815f`.
+
+### Commits
+
+| Commit | Qué |
+|---|---|
+| `5a23429` | **N-1** (review del Bloque 2, opción (b)): `decidir`, al aprobar, aplica la puerta de `CandidataAlVolcado` (`_exigir_volcable`, compartida) y da 409 `ubicacion_fuera_de_lista`; test primero; nota en `design.md` §3.5 «Decisión del líder 2026-10-08» |
+| `97df089` | **O-3** (review del Bloque 1): `paginar` rechaza un `tamano` booleano; test primero (el del borde va en T10) |
+| `961d0ab` | **T10 · RED**: `test_f056_pipeline_revision.py`, `test_f056_revision_http.py`, `tests/utiles_revision.py`, esqueletos neutros de la aplicación y del borde; `test_f010_endpoints_protegidos.py` a veinte rutas |
+| `e5fc0fa` | **T11**: `application/pipelines/revision.py`; en el dominio, `comprobar_sin_sigrid` (extraída de `decidir`) y `motivo_de_descarte` pública |
+| `f9e7a37` | **T12**: `interface_adapters/api/revision.py` y las tres rutas, los ocho errores y la cabecera de `function_app.py` |
+| `4bf2791` | Arreglo del test de la clave ajena de `tests_bbdd` (fallo de la primera T8) |
+| `aa077d1` | **O-1** (review del Bloque 2): el append-only de `tests_bbdd` compara también la foto tras la segunda revisión |
+| `a2817af` | T8 repetida por el humano en verde (53 passed) y marcada |
+| `a853ba0` | **T13**: `tests/test_f056_alcance_cerrado.py` (con la **O-5** del Bloque 2 escrita) |
+| `1c5da05` | **T14, antes de la mutación**: dos mutantes equivalentes quitados del código y cinco tests que cubren huecos |
+| `738f583` | **T14**: tres tests de caminos de error que la primera `PUERTA COBERTURA` dio sin cubrir (solo tests) |
+| (este commit) | **T14**: `progress/mutacion_F-056_bloque3.md`, T14 marcada y este informe |
+
+### Qué cambió
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/application/pipelines/revision.py` | **Nuevo.** `listar_para_revisar`, `aplicar_accion`, `historial`, `candidatas_al_volcado` (§7), `PeticionDeListado`, `PaginaDeRevision`, `IncidenciaRevisada`, `HistorialDeRevision` y el tipo `FuenteDeUbicaciones` |
+| `services/postventa-api/interface_adapters/api/revision.py` | **Nuevo.** `listar_revision`, `historial_revision`, `accion_de_revision`, `cursor_de`/`clave_de_cursor` (base64url), `MAX_CURSOR = 512`, `construir_fuente_de_ubicaciones` (sin componer hasta el 3 bis) |
+| `services/postventa-api/function_app.py` | **Solo añadido**: tres entradas en la lista de la cabecera, el párrafo del tercer endpoint de dato de fuera acumulado («veinte»), los imports, `CODIGOS_DE_REVISION`, `_error_de_revision` y las rutas `revision`, `revision_historial` y `revision_acciones` |
+| `services/postventa-api/domain/models/revision.py` | N-1 (`_exigir_volcable` y su uso en `decidir`), O-3 (`paginar`), `comprobar_sin_sigrid` (sin cambio de comportamiento: `decidir` la llama) y `motivo_de_descarte` pública |
+| `services/postventa-api/tests/test_f056_pipeline_revision.py`, `test_f056_revision_http.py`, `utiles_revision.py`, `test_f056_alcance_cerrado.py` | **Nuevos** (80 + 176 tests, los dobles y 22 tests) |
+| `services/postventa-api/tests/test_f056_revision_dominio.py`, `test_f056_paginacion.py` | N-1 (5 casos) y O-3 (2 casos) |
+| `services/postventa-api/tests/test_f010_endpoints_protegidos.py` | **Ampliado sin quitar nada**: `ENDPOINTS` + `revision`, `revision/historial`, `revision/acciones`, la cuenta 17 → 20 y el comentario. Es el único test que cuenta rutas de `function_app.py`; los que cuentan los anónimos de `docs/INTEGRACION.md` (F-012, F-019, F-053) son del Bloque 4 |
+| `services/postventa-api/tests_bbdd/tests/test_f056_bbdd_revision.py` | `_insertar_crudo` con parámetros solo posicionales (T8) y la O-1 |
+| `specs/F-056-revision-bandeja-backend/design.md`, `tasks.md` | Nota de la N-1 en §3.5; T10–T14 marcadas |
+
+Nada del front, de `infra/`, de `infrastructure/sigrid/` ni de ningún fichero de «No se toca» (§12): lo fija T13.
+
+### Decisiones de diseño (dentro de la spec, salvo donde se dice)
+
+1. **El correo en la respuesta de una acción (R8 frente a R11): a confirmar por el líder.** R8 dice que
+   `POST /api/revision/acciones` devuelve «la incidencia en la forma de una fila de `GET /api/revision` (R29)», y en
+   esa fila `revisado_por` es el correo de la última revisión; R11 dice que el correo no sale «en ninguna otra
+   respuesta que las dos de R10». Se ha seguido **R8**: la respuesta de la acción **es** una fila del listado (la que
+   el front sustituye en su tabla), con el correo de quien acaba de actuar —el mismo que mandó en el cuerpo—. El
+   `oid` no sale nunca. Ningún **error** lleva el correo (`test_f056_r11_el_correo_no_sale_en_ningun_error`). Si se
+   prefiere la lectura literal de R11, el cambio es una línea en `_fila_revisada` (`revisado_por` a `null` en la
+   respuesta de la acción) y su test.
+2. **Las ubicaciones válidas, como parámetro.** La aplicación recibe `ubicaciones: FuenteDeUbicaciones`, una función
+   `CatalogoObra → {unidad_codigo: ubicaciones}` que llama **una vez**, justo después de `leer_catalogo`, en listar,
+   editar y aprobar, y nunca en descartar, recuperar ni el historial. El puerto `UbicacionesValidasPort` de §16.3 es
+   de T14b: el Bloque 3 bis compondrá la función con él. **En producción, hasta el 3 bis**,
+   `construir_fuente_de_ubicaciones` no inventa una lista: la fuente responde `CatalogoNoDisponible` (→ 503) en
+   cuanto se le pide, sin escribir nada. Descartar y recuperar funcionan. Lo fija
+   `test_f056_t12_sin_la_lectura_de_ubicaciones_compuesta_es_503`, que el 3 bis tendrá que sustituir.
+3. **El orden de `aplicar_accion` (O-5 del Bloque 1)**: `situacion` → `comprobar_sin_sigrid` (transición y frescura,
+   la función del dominio que `decidir` también usa: una sola regla) → solo en editar y aprobar, `leer_catalogo` de la
+   obra **de la incidencia** y las ubicaciones → `decidir` → `registrar`. Los tests de T10 anotan cada llamada en una
+   lista común y fijan la secuencia exacta: subir Sigrid por encima de la transición o la frescura, o `registrar` por
+   encima de `decidir`, los pone en rojo (`test_f056_r2_la_transicion_va_antes_que_sigrid_y_no_escribe`,
+   `…_r7_la_frescura_va_antes_que_sigrid_y_no_escribe`, `…_r13_valores_no_validos_leen_sigrid_y_no_escriben`,
+   `…_r16_sin_cambios_no_escribe`, `…_r20_no_aprobable_lee_sigrid_y_no_escribe`).
+4. **Las `esperadas` de `registrar`**: siempre la propia; la original **solo al aprobar** una incidencia con
+   `duplicada_de` y la original cargada (R22). Editar o descartar una duplicada no la espera.
+5. **N-1, el motivo del 409.** La puerta de la candidata, sin motivos de R21, solo puede rechazar ya la forma de la
+   ubicación guardada; el 409 lleva `motivos: ["ubicacion_fuera_de_lista"]` (el que se arregla editando, que guarda
+   recortado), con un mensaje que no repite la ubicación. R47 no cambia: el listado sigue sin marcarla.
+6. **`catalogo.oficios[].grupo`** es la **opción de la plantilla** que contiene el código (`opciones_de_la_obra`, la
+   misma función que la plantilla y la importación): su etiqueta —con los códigos entre paréntesis si dos grupos solo
+   difieren en una tilde, como hace F-036— es la que guardó la bandeja en `oficio_nombre` de un oficio ambiguo, y sus
+   `codigos` son los del grupo **que están en la obra**, entre los que se elige.
+7. **`catalogo.pares`**: un par oficio–proveedor una vez, con el nombre de su **primera** fila de `obrofc`, en el
+   orden del catálogo: lo que se ofrece es lo que guarda una edición (R14).
+8. **`catalogo.ubicaciones`**: una entrada por **cada unidad del catálogo** (las que no trae el mapa, `[]`; las del
+   mapa que no son del catálogo, fuera): es el mismo mapa que validan los motivos y la edición.
+9. **La forma del cuerpo de una acción (R5)**: `revision_previa` es **obligatoria como clave** (`null` vale; R5 la
+   enumera entre las que «debe recibir»); `incidencia_id` es el texto con guiones de un UUID, en mayúsculas o
+   minúsculas (sin llaves ni `urn:`); `valores` con exactamente sus ocho claves (la forma es 400
+   `peticion_invalida`; los tipos y valores de dentro, 400 `valores_no_validos` del dominio); el motivo se comprueba
+   ya en el borde con `motivo_de_descarte` («el cuerpo entero antes de construir nada», §8). Los mensajes nombran
+   las claves **del contrato**, nunca las recibidas.
+10. **Parámetros del listado**: `tamano` es `[1-9][0-9]*` hasta 200 (sin signo, blancos ni ceros delante; `True`
+    llamando al handler, 400: O-3); `con_motivos`, `true` o `false` exactos; `estado`, uno de los seis en minúsculas.
+    La obra mal es 400 con `codigo: "peticion_invalida"`, como el resto de los 400 de estas rutas.
+11. **El cursor** (opción (a)): `cursor_de` = base64url sin relleno del texto canónico; `clave_de_cursor` rechaza,
+    **sin decodificar**, lo que pasa de `MAX_CURSOR = 512` (los 4/3 de `MAX_TEXTO_CLAVE`) o lleva algo fuera del
+    alfabeto base64url (relleno incluido); luego UTF-8 estricto, `clave_de_texto` y que el cursor sea **el que
+    emitiría el sistema** (unos bits de cola distintos decodifican igual y no lo son). Dos tests con un espía de
+    `base64.urlsafe_b64decode` fijan que lo largo y lo de otro alfabeto no se llegan a decodificar.
+12. **Qué se construye**: el catálogo y la fuente de ubicaciones solo en listar, editar y aprobar (descartar y
+    recuperar no pasan por la puerta de entorno de Sigrid: funcionan aunque falte su configuración); las
+    equivalencias solo en listar; la revisión siempre. Sigrid primero, como `plantilla.py`.
+13. **Logs**: el éxito lo registra el handler del borde —«`F-056 revision listada: obra= tamano= total_filtrado=
+    devueltas=`» (R31), «`F-056 revision accion: incidencia= accion= resultado= revision=`» y
+    «`F-056 revision historial: incidencia= revisiones=`»—; los rechazos, `function_app.py`, solo con su **código**
+    (`peticion_invalida`, `revision_desactualizada`…), nunca el motivo. El test de R41 recorre editar, aprobar,
+    descartar con motivo, recuperar con otra persona, un 409, dos 400, el listado y el historial con `caplog` a
+    `DEBUG`, y busca el `oid`, el correo (de las dos personas), la descripción, el detalle, el motivo y los nombres de
+    unidad y proveedor en cada registro.
+14. **Instantes** en UTC con microsegundos y `+00:00` (la forma de `importado_at_utc` de F-053); uno en otra zona se
+    convierte (test con `+02:00`).
+15. **`candidatas_al_volcado`** normaliza la obra (`normalizar_codigo_obra`) antes de pedir `aprobadas`.
+16. **T14, antes de la mutación** (`1c5da05`), del recálculo de los mutantes del alcance: dos eran **equivalentes por
+    construcción** y se quitaron del código, no de los tests —`catalogo is not None and validas is not None` (los dos
+    o ninguno: se guardan en una sola variable `leido`) y el `zip(..., strict=True)` del historial (la aplicación da
+    un cambio por revisión: se empareja por índice)—; y se añadieron tests para lo que ningún test fijaba:
+    inmutabilidad de los cuatro tipos de la aplicación, editar o aprobar sin sus lecturas (`ValueError`), una acción
+    con la obra ambigua o al techo (409), un cursor fuera del alfabeto que no se decodifica, e ida y vuelta del
+    cursor con las tres longitudes de cola (y un control de que las cubren).
+
+### Fase RED
+
+**N-1** (antes del código de `5a23429`), desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_revision_dominio.py -q -p no:cacheprovider -k "aprobar_una_ubicacion_sin_recortar or aprobar_la_misma_ubicacion" --tb=line
+```
+
+```
+FFFF.                                                                    [100%]
+================================== FAILURES ===================================
+E   Failed: DID NOT RAISE IncidenciaNoAprobable
+tests\test_f056_revision_dominio.py:1477: Failed: DID NOT RAISE IncidenciaNoAprobable
+E   Failed: DID NOT RAISE IncidenciaNoAprobable
+tests\test_f056_revision_dominio.py:1477: Failed: DID NOT RAISE IncidenciaNoAprobable
+E   Failed: DID NOT RAISE IncidenciaNoAprobable
+tests\test_f056_revision_dominio.py:1477: Failed: DID NOT RAISE IncidenciaNoAprobable
+E   Failed: DID NOT RAISE IncidenciaNoAprobable
+tests\test_f056_revision_dominio.py:1477: Failed: DID NOT RAISE IncidenciaNoAprobable
+=========================== short test summary info ===========================
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_aprobar_una_ubicacion_sin_recortar_no_es_aprobable[ Cocina]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_aprobar_una_ubicacion_sin_recortar_no_es_aprobable[Cocina ]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_aprobar_una_ubicacion_sin_recortar_no_es_aprobable[\tCocina]
+FAILED tests/test_f056_revision_dominio.py::test_f056_r35_aprobar_una_ubicacion_sin_recortar_no_es_aprobable[Cocina\n]
+4 failed, 1 passed, 301 deselected in 0.37s
+```
+
+Los cuatro de «sin recortar» fallan por `DID NOT RAISE`; el control positivo («Cocina» exacta) pasa.
+
+**O-3** (antes del código de `97df089`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_paginacion.py -q -p no:cacheprovider -k "booleano" --tb=line
+```
+
+```
+F.                                                                       [100%]
+================================== FAILURES ===================================
+E   Failed: DID NOT RAISE PeticionDeRevisionInvalida
+tests\test_f056_paginacion.py:416: Failed: DID NOT RAISE PeticionDeRevisionInvalida
+=========================== short test summary info ===========================
+FAILED tests/test_f056_paginacion.py::test_f056_r23_tamano_booleano_no_es_un_entero[True]
+1 failed, 1 passed, 73 deselected in 0.41s
+```
+
+(`False` ya era 400 por el rango; `True` pasaba por un 1.)
+
+**T10** (`961d0ab`, con los esqueletos neutros de la aplicación y del borde y sin las rutas en `function_app.py`):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py -q -p no:cacheprovider --tb=line
+```
+
+Cola real de la salida y los motivos de los 227 fallos, agrupados (rutas absolutas del puesto quitadas, los UUID de
+prueba tapados):
+
+```
+227 failed, 1 passed in 2.83s
+```
+
+```
+1 tests\test_f056_pipeline_revision.py:220: AssertionError: assert [] == ['revision.si...on.registrar']
+   1 tests\test_f056_pipeline_revision.py:236: AssertionError: assert [] == ['revision.si...on.registrar']
+   2 tests\test_f056_pipeline_revision.py:256: AssertionError: assert [] == ['revision.si...on.registrar']
+   2 tests\test_f056_pipeline_revision.py:278: AssertionError: assert [] == ['revision.si...on.registrar']
+   4 tests\test_f056_pipeline_revision.py:296: Failed: DID NOT RAISE IncidenciaNoEncontrada
+   6 tests\test_f056_pipeline_revision.py:323: Failed: DID NOT RAISE AccionNoPermitida
+   1 tests\test_f056_pipeline_revision.py:334: Failed: DID NOT RAISE AccionNoPermitida
+  12 tests\test_f056_pipeline_revision.py:351: Failed: DID NOT RAISE RevisionDesactualizada
+   1 tests\test_f056_pipeline_revision.py:366: Failed: DID NOT RAISE ValoresNoValidos
+   1 tests\test_f056_pipeline_revision.py:377: Failed: DID NOT RAISE ValoresNoValidos
+   1 tests\test_f056_pipeline_revision.py:391: Failed: DID NOT RAISE SinCambios
+   1 tests\test_f056_pipeline_revision.py:401: Failed: DID NOT RAISE IncidenciaNoAprobable
+   1 tests\test_f056_pipeline_revision.py:412: Failed: DID NOT RAISE Exception
+   1 tests\test_f056_pipeline_revision.py:428: assert [] == [()]
+   3 tests\test_f056_pipeline_revision.py:452: Failed: DID NOT RAISE RevisionDesactualizada
+   1 tests\test_f056_pipeline_revision.py:465: AssertionError: assert None == {UUID(<uuid de prueba>): 1}
+   1 tests\test_f056_pipeline_revision.py:473: AssertionError: assert None == {UUID(<uuid de prueba>): None}
+   1 tests\test_f056_pipeline_revision.py:488: AssertionError: assert <EstadoRevision.NUEVA: 'nueva'> is <EstadoRevision.APROBADA: 'apr
+   1 tests\test_f056_pipeline_revision.py:496: Failed: DID NOT RAISE RevisionDesactualizada
+   2 tests\test_f056_pipeline_revision.py:509: AssertionError: assert None == {UUID(<uuid de prueba>): None}
+   1 tests\test_f056_pipeline_revision.py:515: Failed: DID NOT RAISE IncidenciaNoAprobable
+   1 tests\test_f056_pipeline_revision.py:532: assert 0 == 1
+   1 tests\test_f056_pipeline_revision.py:547: assert False
+   1 tests\test_f056_pipeline_revision.py:559: AssertionError: assert [] == ['9901']
+   6 tests\test_f056_pipeline_revision.py:579: Failed: DID NOT RAISE any of (CatalogoNoDisponible, CatalogoSinVerificar)
+   1 tests\test_f056_pipeline_revision.py:594: AssertionError: assert [] == [UUID(<uuid de prueba>)...00000000001')]
+   1 tests\test_f056_pipeline_revision.py:615: AssertionError: assert [] == [(UUID(<uuid de prueba>)...0000001'), 1)]
+   1 tests\test_f056_pipeline_revision.py:643: AssertionError: assert [] == ['revision.li...'ubicaciones']
+   1 tests\test_f056_pipeline_revision.py:659: AssertionError: assert 0 == 5
+   1 tests\test_f056_pipeline_revision.py:683: AssertionError: assert {} is {'9901.03VILLA 1.': ('Baño', 'Cocina', 'cocina'), '9901.03V
+   1 tests\test_f056_pipeline_revision.py:704: assert [] == [1, 3, 4]
+   1 tests\test_f056_pipeline_revision.py:704: assert [] == [2, 5]
+   1 tests\test_f056_pipeline_revision.py:704: assert [] == [3]
+   1 tests\test_f056_pipeline_revision.py:704: assert [] == [4]
+   1 tests\test_f056_pipeline_revision.py:725: assert [] == [1, 2, 3, 4, 5]
+   1 tests\test_f056_pipeline_revision.py:739: Failed: DID NOT RAISE BandejaDemasiadoGrande
+   1 tests\test_f056_pipeline_revision.py:762: AssertionError: assert 0 == 10000
+   2 tests\test_f056_pipeline_revision.py:779: Failed: DID NOT RAISE CatalogoNoDisponible
+   1 tests\test_f056_pipeline_revision.py:779: Failed: DID NOT RAISE CatalogoSinVerificar
+   1 tests\test_f056_pipeline_revision.py:779: Failed: DID NOT RAISE PersistenciaNoDisponible
+   1 tests\test_f056_pipeline_revision.py:787: Failed: DID NOT RAISE ObraSinUnidades
+   1 tests\test_f056_pipeline_revision.py:799: Failed: DID NOT RAISE IncidenciaNoEncontrada
+   1 tests\test_f056_pipeline_revision.py:815: assert [] == [1, 2, 3, 4]
+   1 tests\test_f056_pipeline_revision.py:828: assert None is not None
+   1 tests\test_f056_pipeline_revision.py:840: AssertionError: assert [(1, <AccionR...R: 'editar'>)] == [(1, <AccionR...: 'aprobar'>)]
+  76 tests\test_f056_revision_http.py:209: AssertionError: function_app no publica la ruta «revision_acciones»
+   7 tests\test_f056_revision_http.py:209: AssertionError: function_app no publica la ruta «revision_historial»
+  49 tests\test_f056_revision_http.py:209: AssertionError: function_app no publica la ruta «revision»
+   2 tests\test_f056_revision_http.py:761: Failed: DID NOT RAISE PeticionDeRevisionInvalida
+   1 tests\test_f056_revision_http.py:821: AssertionError: assert '' == 'eyJjIjoiMjAy...DAwMDAwMDkifQ'
+   8 tests\test_f056_revision_http.py:847: AssertionError: cursor_de no da ningún cursor
+   1 tests\test_f056_revision_http.py:864: AssertionError: ningún cursor con bits sobrantes
+   1 tests\test_f056_revision_http.py:917: assert 0 == 512
+   4 tests\test_f056_revision_http.py:935: Failed: DID NOT RAISE PeticionDeRevisionInvalida
+   1 tests\utiles_rutas.py:43: AssertionError: el host no publica ninguna ruta «revision_acciones»
+   1 tests\utiles_rutas.py:43: AssertionError: el host no publica ninguna ruta «revision_historial»
+   1 tests\utiles_rutas.py:43: AssertionError: el host no publica ninguna ruta «revision»
+```
+
+**Los 227 son de aserción**: 164 `AssertionError`, 52 `Failed: DID NOT RAISE …` y 11 `assert …`; ningún
+`ImportError`, `AttributeError`, `IndexError` ni `TypeError` (las rutas que aún no existían se comprueban con un
+`assert hasattr(function_app, …)`, y cuatro tests se ajustaron para leer sin reventar lo que el esqueleto no
+devuelve). El que pasa, `test_f056_s8_las_situaciones_no_llevan_el_oid`, mira el tipo `SituacionDeRevision` del
+Bloque 1: es un control de R10, verde desde antes. `test_f010_endpoints_protegidos.py` daba además 2 fallos (la
+cuenta de veinte), que T12 pone en verde.
+
+### GREEN
+
+T11: `.venv/Scripts/python.exe -m pytest tests/test_f056_pipeline_revision.py` → `75 passed`.
+
+T12: `.venv/Scripts/python.exe -m pytest tests/test_f056_revision_http.py tests/test_f010_endpoints_protegidos.py` →
+`153 + 8 passed` (con el test del grupo de oficios confirmado, añadido en T12: 154 + 8).
+
+T13: `.venv/Scripts/python.exe -m pytest tests/test_f056_alcance_cerrado.py tests/test_f036_alcance_cerrado.py` →
+`41 passed, 7 skipped` (los 7 saltados son los controles con `git` de F-036, que viven en su rama).
+
+Tras `1c5da05`: los cuatro ficheros de F-056 del bloque, `252 passed` (aplicación 80, borde 172) + 22 de alcance.
+Cobertura de los dos módulos nuevos con sus tests (`coverage run --include`): `application/pipelines/revision.py`
+92/92, `interface_adapters/api/revision.py` 177/177: **100 %**.
+
+Guardias y vecinos, sin caché (todas las `test_f0*_arquitectura`, `test_f010_endpoints_protegidos`, los `*_http` de
+F-036, `test_f036_alcance_cerrado`, `test_f036_documentacion`, `test_f028_estado_http`,
+`test_f019_logs_sin_datos_personales`, `test_f006_repo_sin_identificadores`, `test_f005_integracion_sin_secretos` y
+todos los `test_f056_*`), tras T12: `1517 passed, 9 skipped`. `ruff check` de los ficheros nuevos o tocados: limpio.
+
+### Suite completa
+
+`.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider`, desde `services/postventa-api`, en `1c5da05`
+(antes de la mutación):
+
+```
+7502 passed, 56 skipped in 835.63s (0:13:55)
+```
+
+### Mutación (T14)
+
+Comando, desde la raíz, con el árbol limpio en `a2817af` (el código, el de `1c5da05`):
+
+```
+python -m harness.mutacion --feature F-056 --base e9e815f --timeout 1800 --salida progress/mutacion_F-056_bloque3.md
+```
+
+(con `services/postventa-api/.venv/Scripts/python.exe`; 8 workers, los de `harness/rigor.json`). Salida final:
+
+```
+F-056: 4 fichero(s), 1247 línea(s) de producción (origen rama, e9e815f..feature/F-056-revision-bandeja-backend)
+Campaña paralela: hasta 8 workers, uno por worktree.
+77 mutantes evaluados, 77 muertos, 0 supervivientes, 0 timeouts en 10501.5 s
+Informe: progress/mutacion_F-056_bloque3.md
+```
+
+- **Alcance** (base `e9e815f`): 4 ficheros, 1247 líneas. `interface_adapters/api/revision.py` 40 mutantes,
+  `function_app.py` 15 (los códigos HTTP de cada rama), `application/pipelines/revision.py` 11 y
+  `domain/models/revision.py` 11 (N-1 y O-3). Por operador: entero 23, comparación 15, lógico 15, `not` 11,
+  booleano 7, aritmético 6.
+- **Supervivientes: 0. Timeouts: 0.** No hay familias que analizar ni equivalentes que justificar: los dos
+  equivalentes que se veían venir en el recálculo previo se quitaron **del código** antes de lanzar (decisión 16,
+  `1c5da05`), y los huecos que dejaba (inmutabilidad, `or` de la guarda de lecturas, el 409 de la obra en una
+  acción, el alfabeto del cursor, la cola del relleno) se cubrieron con tests. El pre-chequeo local (cada mutante
+  contra los tests de F-056 solos) ya dio 77/77 muertos.
+- La herramienta no muta el **orden** de las llamadas ni los literales: el orden de `aplicar_accion` (O-5 del
+  Bloque 1) lo fijan las listas de llamadas de los tests de T10 (decisión 3), para la bajada a mano del reviewer.
+- Tiempo: 10501,5 s (2 h 55 min) con 8 workers; ≈ 1091 s por mutante, del orden de la suite.
+
+### T13 · lo que fija el alcance
+
+Con la **base fija `f86d639`** (no `merge-base`) y las tres guardas de F-030: R39 (ninguna línea añadida al código
+nombra una escritura de la pasarela; ningún módulo de F-056 importa las escrituras del ERP; de `infrastructure/sigrid`
+solo se usa `construir_catalogo_obra`), R40 (ni «habilitado» ni lectura del entorno en el código de F-056; la rama no
+toca la configuración), R37 (ni `UPDATE` —salvo el `FOR UPDATE`—, ni `DELETE`, ni `TRUNCATE`; DDL solo en el `15_` y
+cualificado en `postventa`), R45 y §12 (ningún fichero de «No se toca»; ningún test de F-036 salvo `test_f036_ddl.py`,
+que T4 autoriza, ni de F-053; ni el front ni `infra/`; las funciones de la plantilla, la importación, la bandeja y los
+catálogos en `function_app.py`, idénticas a la base; en `infrastructure/sigrid/fabrica.py` solo se puede **añadir**)
+y R12 (solo el `15_` declara una columna de correo; el único `.sql` que toca la rama es el suyo). **O-5 del Bloque 2**:
+la cabecera y `test_f056_r37_o5_la_guardia_no_barre_las_suites_y_por_que` dejan escrito que la guardia de R37 no
+barre `tests_bbdd/` —su limpieza es el único `DELETE` de F-056 y va contra la base efímera—, como F-036.
+
+### Verificaciones MANUAL pendientes
+
+- Ninguna de este bloque. **T8 ya está en verde**: la primera salió `1 failed, 52 passed` por un fallo **del
+  test**, arreglado en `4bf2791`; el humano la repitió el 2026-10-08 con **53 passed, 0 failed, 0 skipped**
+  («Para el humano · T8», Bloque 2), y T8 está marcada (`a2817af`).
+- T18 y T19 (Bloque 5).
+
+### Fuera del alcance de este bloque
+
+La lectura de las ubicaciones de Sigrid y su composición (Bloque 3 bis: hasta entonces editar, aprobar y listar dan
+503 en un entorno real), la documentación y `azure-apps` (Bloque 4), el front (F-038).
+
+### Observaciones para el líder
+
+- **Decisión 1** (el correo en la respuesta de la acción): confirmar R8 o pedir la lectura literal de R11.
+- **Decisión 2**: el 503 de la fuente sin componer es deliberado y vive solo hasta el 3 bis.
+- `function_app.py` sigue sin decir «veinte» en los documentos: `docs/INTEGRACION.md` y sus tests de recuento
+  (F-012, F-019, F-053) son del Bloque 4.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests de F-056 del bloque | **278**: `test_f056_pipeline_revision.py` 80, `test_f056_revision_http.py` 176, `test_f056_alcance_cerrado.py` 22 (y 7 nuevos en los del dominio) |
+| Suite completa del servicio | **7502 passed, 0 failed, 56 skipped**, 835,6 s |
+| Cobertura de los módulos nuevos (sus tests, `coverage run --include`) | **100 %** (aplicación 92/92, borde 177/177) |
+| Cobertura de las líneas cambiadas (`PUERTA COBERTURA` de `init.sh`) | **100,0 % (1002/1002 líneas cambiadas desde la base, umbral 80 %, nivel `critico`)**; la primera ejecución tras la campaña dio 99,1 % (993/1002: el 500 del YAML roto en el listado y en una acción y el 503 del historial sin base, sin test), cubiertos en `738f583` |
+| `bash harness/init.sh` | **ENTORNO LISTO** (2026-10-08, en `738f583`): servicio api 7506 passed, 109 skipped en 2067,2 s (con medición de cobertura); front en verde por caché; arnés 115 passed; ruff 73 avisos de deuda previa, no bloquea |
+| Mutantes (T14, base `e9e815f`) | **77 generados, 77 muertos, 0 supervivientes, 0 timeouts**; 10501,5 s, 8 workers |
+| `tests_bbdd` (T8, humano) | **53 passed, 0 failed, 0 skipped** en 31,76 s (repetida tras `4bf2791`) |

@@ -1,7 +1,16 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-056 · `in_progress` · 2026-10-06 · Bloque 1 (el dominio) encargado al implementer
+> ## F-056 · `in_progress` · 2026-10-09 · Bloques 1–4 hechos y aprobados por bloque · review final: cambios de texto en T19
+>
+> **Estado (líder, 2026-10-09).** Bloque 4 hecho (`55696f0`; T15 y T17, `init.sh` en verde: 7680 passed, cobertura
+> 100 % de 1060 líneas). Review final `progress/review_F-056.md`: **CHANGES_REQUESTED solo en el texto del Bloque 5**
+> (C-1 a C-3 en T19, encargados al implementer; C-4 es este párrafo); código, tests y `docs/` sin cambios.
+> **Pendientes**: T16 (líder, `azure-apps` al desplegar); **T18 y T19 (MANUAL humano; comandos exactos en
+> `specs/F-056-revision-bandeja-backend/tasks.md`, Bloque 5)**; T20 (líder, resumen en `history.md`).
+> Mutación de la feature: 257 mutantes en cuatro campañas, 0 supervivientes. T8 en verde (53 passed).
+>
+> ### Histórico de F-056 en esta sesión
 >
 > Rama `feature/F-056-revision-bandeja-backend` desde `dev` en `f86d639` (base fija), con su spec traída de la rama
 > de F-038 (`specs/F-056-revision-bandeja-backend/`, aprobada; Q-5 resuelta, T0 hecha). Mutación con `--timeout 1800`.

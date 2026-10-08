@@ -169,7 +169,8 @@
   `interface_adapters/api/revision.py` (§16.3). Nada de lo que ya hay en
   `infrastructure/sigrid/` cambia. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_ubicaciones.py tests/test_f056_revision_http.py`
-- [ ] **T14c · Mutación del bloque.** |
+- [x] **T14c · Mutación del bloque.** Hecha el 2026-10-08 con `--base c22e692 --timeout 1800`: 10
+  generados, 10 muertos, 0 supervivientes, 0 timeouts (2 repasados en serie, los 2 muertos). |
   Verificación: `python -m harness.mutacion --feature F-056 --base <hash anterior a T14a> --timeout 900 --salida progress/mutacion_F-056_bloque3bis.md`
 
 **Parar. Review del Bloque 3 bis.**

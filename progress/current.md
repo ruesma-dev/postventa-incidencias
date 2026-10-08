@@ -27,8 +27,10 @@
 > R11) y decisión 2 (la fuente de ubicaciones da 503 hasta el Bloque 3 bis). Detalle en `progress/impl_F-056.md`,
 > «Bloque 3». No se ha pasado al Bloque 3 bis.
 >
-> **Bloque 3 bis en curso (implementer, 2026-10-08)**: T14a (RED) → O-2 (RED) → T14b → N-1 (spec) → N-2 (tests)
-> → suite → T14c (mutación, `--base c22e692`). Review del Bloque 3 APPROVED (`c22e692`).
+> **Bloque 3 bis hecho (implementer, 2026-10-08)**, pendiente de review: T14a–T14c marcadas; O-2, N-1 (se mantiene
+> R8, anotado en R11 y §9) y N-2 de la review del Bloque 3 hechos. Suite 7607 passed; mutación 10/10 muertos;
+> PUERTA COBERTURA 100 % (1060/1060); `init.sh` en verde. El 503 deliberado de la fuente de ubicaciones ya no existe.
+> Detalle en `progress/impl_F-056.md`, «Bloque 3 bis». No se ha pasado al Bloque 4.
 
 > ## ✅ F-053 CERRADA · 2026-10-06 · desplegada y comprobada · siguiente: F-056
 >

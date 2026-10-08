@@ -1046,3 +1046,301 @@ La lectura de las ubicaciones de Sigrid y su composición (Bloque 3 bis: hasta e
 | `bash harness/init.sh` | **ENTORNO LISTO** (2026-10-08, en `738f583`): servicio api 7506 passed, 109 skipped en 2067,2 s (con medición de cobertura); front en verde por caché; arnés 115 passed; ruff 73 avisos de deuda previa, no bloquea |
 | Mutantes (T14, base `e9e815f`) | **77 generados, 77 muertos, 0 supervivientes, 0 timeouts**; 10501,5 s, 8 workers |
 | `tests_bbdd` (T8, humano) | **53 passed, 0 failed, 0 skipped** en 31,76 s (repetida tras `4bf2791`) |
+
+## Bloque 3 bis · La lectura de ubicaciones válidas (T14a–T14c) · 2026-10-08
+
+**Estado: HECHO, pendiente de review.** Encargo del líder del 2026-10-08: T14a (RED), T14b y T14c, más O-2, N-1 y
+N-2 de la review del Bloque 3 (`progress/review_F-056_bloque3.md`), cada uno en su commit. Base de la mutación:
+`c22e692`. Nada se escribe en Sigrid: la lectura nueva es un `POST /api/sql/read`, y en los tests, el `ClienteFalso`
+de `tests/utiles_sigrid.py` o puertos en memoria.
+
+### Commits
+
+| Commit | Qué |
+|---|---|
+| `846b844` | **T14a · RED**: `tests/test_f056_ubicaciones.py` y esqueletos neutros del puerto, las consultas, el adaptador, `construir_ubicaciones_validas`, `leer_ubicaciones_validas`/`fuente_de_ubicaciones` y el import en el borde |
+| `b05abce` | **O-2 (RED)**: `test_f056_t12_sin_la_lectura_de_ubicaciones_compuesta_es_503` sustituido por `test_f056_o2_la_fuente_por_defecto_lee_las_ubicaciones_de_sigrid`; T13 ampliado (`NUEVOS_DE_F056`, `FUNCIONES_DE_F056`, R39) |
+| `89e1a9f` | **T14b**: el puerto, las consultas, el adaptador, la fábrica, la composición en la aplicación y en el borde; T14a y T14b marcadas |
+| `498be0d` | **N-1**: se mantiene R8 (decisión del líder); nota en R11 de `requirements.md` y en `design.md` §9 |
+| `6e9d02d` | **N-2**: los tres casos de la forma canónica del `incidencia_id` en `CUERPOS_INVALIDOS` y en el historial |
+| `4a65bcc` | **T14c, antes de la mutación**: dos tests que cierran huecos del adaptador (solo tests) |
+| (este commit) | **T14c**: `progress/mutacion_F-056_bloque3bis.md`, T14c marcada y este informe |
+
+### Qué cambió
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/domain/ports/ubicaciones_validas.py` | **Nuevo.** `UbicacionesValidasPort.leer(*, codigo_obra) -> LecturaCatalogo[FilaUbicacionesUnidad]` y `FilaUbicacionesUnidad(unidad_codigo, ubica)`, inmutable y con `ubica` fuera del `repr`. Reutiliza `LecturaCatalogo` sin tocarlo |
+| `services/postventa-api/infrastructure/sigrid/consultas_ubicaciones_validas.py` | **Nuevo**, puro. `SQL_UBICACIONES_DE_LAS_UNIDADES` (la de §16.3, carácter a carácter), `select_ubicaciones_de_las_unidades` (un parámetro: el código de obra) y `fila_a_ubicaciones_unidad` |
+| `services/postventa-api/infrastructure/sigrid/ubicaciones_validas.py` | **Nuevo.** `AdaptadorUbicacionesValidasSigridApi`, que **hereda** `AdaptadorCatalogoSigridApi` (decisión 1) y añade `leer` y su log |
+| `services/postventa-api/infrastructure/sigrid/fabrica.py` | **Solo añadido**: `construir_ubicaciones_validas` (entorno → configuración, como `construir_catalogo_obra`), su entrada en `__all__`, dos imports y una enmienda en la cabecera. Ninguna función de antes cambia (lo fija `test_f056_s12_la_fabrica_de_sigrid_solo_puede_ganar_funciones`) |
+| `services/postventa-api/application/pipelines/revision.py` | `leer_ubicaciones_validas(puerto, catalogo)` y `fuente_de_ubicaciones(puerto)`; un párrafo en la cabecera |
+| `services/postventa-api/interface_adapters/api/revision.py` | `construir_fuente_de_ubicaciones` compone `fuente_de_ubicaciones(construir_ubicaciones_validas(ajustes))`; desaparecen `_sin_lectura_de_ubicaciones` y el 503 deliberado (O-2) |
+| `services/postventa-api/tests/test_f056_ubicaciones.py` | **Nuevo**: 92 tests |
+| `services/postventa-api/tests/test_f056_revision_http.py` | O-2 (un test sustituido) y N-2 (3 cuerpos más y 3 valores más del historial): 176 → 182 |
+| `services/postventa-api/tests/test_f056_alcance_cerrado.py` | O-2: los tres módulos nuevos en `NUEVOS_DE_F056`, `construir_ubicaciones_validas` en `FUNCIONES_DE_F056` y R39 con lo que cada módulo de F-056 toma de `infrastructure/sigrid` (decisión 4) |
+| `specs/F-056-revision-bandeja-backend/requirements.md`, `design.md`, `tasks.md` | N-1 en R11 y §9; T14a–T14c marcadas |
+
+Nada de `catalogo_obra.py`, `consultas_catalogo.py`, `cliente.py` ni del resto de `infrastructure/sigrid/` (son
+`INTOCABLES` de T13); nada de `.env`, del front ni de `infra/`.
+
+### Decisiones de diseño (dentro de la spec, salvo donde se dice)
+
+1. **El adaptador hereda el del catálogo** en vez de copiarlo. §16.3 pide «la misma puerta de entorno y el mismo
+   cliente que `catalogo_obra.py`», y F-036 dejó escrito que dos copias de lo mismo divergen. Heredar da, sin tocar
+   una línea de `catalogo_obra.py`: la puerta de entorno (`CatalogoNoDisponible` fuera de `dev`/`pro`), el cuerpo de
+   `sql/read` con `max_rows` = `MAX_FILAS_CATALOGO` (1.000), los reintentos de lo transitorio, el techo marcado
+   (`llego_al_techo`), lo cortado por debajo del techo como `CatalogoNoDisponible` y «todas las filas o ninguna». Lo
+   propio es la consulta, el mapeo y el log. Efecto secundario aceptado: la clase hereda también `leer_unidades` y
+   `leer_oficios`, que nadie le pide.
+2. **`FilaUbicacionesUnidad.unidad_codigo` admite `None`** (en §16.3 no lleva tipo). Es la misma columna `u.cod`
+   que `FilaUnidadCatalogo.unidad_codigo`, que también lo admite; `leer_catalogo` descarta las unidades sin código, así
+   que una fila con `None` es «una fila de una unidad que no está en el catálogo» y se ignora, como §16.3 manda para
+   las ajenas. Hacerla obligatoria convertiría en 503 una obra que el catálogo acepta.
+3. **La composición** (§16.3, R46): `leer_ubicaciones_validas(puerto, catalogo)` lee **una vez** con
+   `catalogo.obra_codigo` (el código ya normalizado de la obra que `leer_catalogo` resolvió como única); al techo,
+   `CatalogoSinVerificar` (409) con la obra y el número de filas, nunca un texto; y devuelve
+   `{unidad.codigo: ubicaciones_de_tipologia(ubica)}` **por cada unidad del catálogo** —sin fila, `()`; las filas
+   ajenas, fuera—. Los códigos de unidad casan **exactos** (las dos lecturas los sacan de `u.cod`). Un test fija que
+   un código con un blanco o en minúsculas no casa. `fuente_de_ubicaciones(puerto)` es `partial` de esa función: el
+   tipo `FuenteDeUbicaciones` del Bloque 3 no cambia, y `listar_para_revisar`/`aplicar_accion` tampoco.
+4. **R39 tras O-2**: el test fija, escrito a mano, lo que **cada** módulo de F-056 importa de `infrastructure/sigrid`.
+   Fuera de ese paquete, solo el borde, y solo `construir_catalogo_obra` y `construir_ubicaciones_validas` (lo que
+   pedía el encargo). Al entrar los módulos nuevos en `NUEVOS_DE_F056` (también pedido), el adaptador nuevo aparece con
+   lo suyo: `catalogo_obra.AdaptadorCatalogoSigridApi` y sus dos funciones de consultas. Ni `cliente`, ni
+   `escrituras`, ni `graficos`. El nombre del test no cambia, por trazabilidad.
+5. **El borde construye el lector en `construir_fuente_de_ubicaciones`**, no al primer uso: su puerta de entorno y su
+   configuración fallan (503) **antes** de construir la revisión, como el catálogo (lo fija
+   `test_f056_r46_sin_configuracion_de_sigrid_es_503_antes_de_la_base`). Se construye en cada petición: **sin caché**
+   (`test_f056_r46_sin_cache_entre_peticiones`: dos listados y una edición, tres lecturas y tres construcciones).
+6. **El log** (adaptador): `F-056 ubicaciones válidas leídas en Sigrid: obra=… unidades=… sin_tipologia=…
+   al_techo=… segundos=…`. `sin_tipologia` cuenta las filas con `ubica` nulo o en blanco (el `LEFT JOIN` no distingue
+   «sin tipología» de «tipología sin ubicaciones»). El texto de `ubica` no va a ningún registro: se busca una ubicación
+   inventada reconocible y el texto entero en todos los registros de listar, editar, aprobar, al techo, cortada y con
+   el adaptador real por la ruta. Tampoco sale en el `repr` de la fila ni en los mensajes de error.
+7. **La fábrica** registra `F-056 lector de las ubicaciones válidas en Sigrid construido en el entorno …` y nada más,
+   como la del catálogo.
+
+### Fase RED
+
+**T14a** (`846b844`, con los esqueletos neutros), desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_ubicaciones.py -q -p no:cacheprovider --tb=line
+```
+
+Los motivos de los 76 fallos, agrupados por línea (rutas absolutas del puesto quitadas):
+
+```
+   1 tests\test_f056_ubicaciones.py:160: AssertionError: assert '' == 'SELECT u.cod...RDER BY u.cod'
+   1 tests\test_f056_ubicaciones.py:182: AssertionError: assert '' == 'SELECT u.cod...RDER BY u.cod'
+   1 tests\test_f056_ubicaciones.py:196: AssertionError: assert 'FROM dbo.upv v' in []
+   1 tests\test_f056_ubicaciones.py:202: AssertionError: assert 'LEFT JOIN dbo.prmtpl t ON t.ide = v.obrtplide' in []
+   1 tests\test_f056_ubicaciones.py:211: AssertionError: assert () == ('9901',)
+   1 tests\test_f056_ubicaciones.py:211: AssertionError: assert () == ('9902',)
+   1 tests\test_f056_ubicaciones.py:211: assert () == ("9901' OR 1=1 --",)
+   3 tests\test_f056_ubicaciones.py:234: AssertionError: assert FilaUbicacion...e, ubica=None) == FilaUbicacion...Terraza;Baño')
+   1 tests\test_f056_ubicaciones.py:234: AssertionError: assert FilaUbicacion...e, ubica=None) == FilaUbicacion...', ubica=None)
+   1 tests\test_f056_ubicaciones.py:234: AssertionError: assert FilaUbicacion...e, ubica=None) == FilaUbicacion...3.', ubica='')
+   1 tests\test_f056_ubicaciones.py:234: AssertionError: assert FilaUbicacion...e, ubica=None) == FilaUbicacion...1', ubica='7')
+   7 tests\test_f056_ubicaciones.py:243: Failed: DID NOT RAISE ValueError
+   1 tests\test_f056_ubicaciones.py:254: assert 'Trastero Ejemplo Reservado' not in "FilaUbicaci... Reservado')"
+   1 tests\test_f056_ubicaciones.py:294: AssertionError: assert LecturaCatalo...l_techo=False) == LecturaCatalo...l_techo=False)
+   2 tests\test_f056_ubicaciones.py:332: assert (0, False) == (1000, True)
+   2 tests\test_f056_ubicaciones.py:332: assert (0, False) == (1001, True)
+   3 tests\test_f056_ubicaciones.py:345: Failed: DID NOT RAISE CatalogoNoDisponible
+   6 tests\test_f056_ubicaciones.py:358: AssertionError: assert 0 == 4
+   1 tests\test_f056_ubicaciones.py:365: AssertionError: assert 0 == 4
+   1 tests\test_f056_ubicaciones.py:372: Failed: DID NOT RAISE CatalogoNoDisponible
+   4 tests\test_f056_ubicaciones.py:386: Failed: DID NOT RAISE CatalogoNoDisponible
+   4 tests\test_f056_ubicaciones.py:409: Failed: DID NOT RAISE CatalogoNoDisponible
+   4 tests\test_f056_ubicaciones.py:420: Failed: DID NOT RAISE CatalogoNoDisponible
+   1 tests\test_f056_ubicaciones.py:441: assert 'entorno' in mappingproxy(OrderedDict({'_configuracion': <Parameter "**_configuracion: 'Any'"
+   1 tests\test_f056_ubicaciones.py:452: Failed: DID NOT RAISE CatalogoNoDisponible
+   2 tests\test_f056_ubicaciones.py:480: Failed: DID NOT RAISE CatalogoNoDisponible
+   1 tests\test_f056_ubicaciones.py:485: Failed: DID NOT RAISE ConfiguracionSigridIncompleta
+   1 tests\test_f056_ubicaciones.py:525: AssertionError: assert {} == {'entorno': '...'labase', ...}
+   1 tests\test_f056_ubicaciones.py:580: AssertionError: assert {} == {'9901.03VILL...VILLA 3.': ()}
+   1 tests\test_f056_ubicaciones.py:592: AssertionError: assert {} == {'9901.03VILL...VILLA 3.': ()}
+   1 tests\test_f056_ubicaciones.py:600: AssertionError: assert {} == {'9901.03VILL...VILLA 3.': ()}
+   1 tests\test_f056_ubicaciones.py:608: Failed: DID NOT RAISE CatalogoSinVerificar
+   1 tests\test_f056_ubicaciones.py:622: Failed: DID NOT RAISE CatalogoNoDisponible
+   1 tests\test_f056_ubicaciones.py:634: AssertionError: assert {} == {'9901.03VILL...VILLA 3.': ()}
+   1 tests\test_f056_ubicaciones.py:663: AssertionError: assert ['revision.li...s_decisiones'] == ['revision.li...aciones.leer']
+   1 tests\test_f056_ubicaciones.py:712: AssertionError: assert 0 == 1
+   1 tests\test_f056_ubicaciones.py:735: assert False
+   1 tests\test_f056_ubicaciones.py:841: assert [] == [<object obje...0249395A9700>]
+   1 tests\test_f056_ubicaciones.py:850: assert 503 == 200
+   1 tests\test_f056_ubicaciones.py:863: AssertionError: assert 0 == 3
+   1 tests\test_f056_ubicaciones.py:870: assert 503 == 200
+   1 tests\test_f056_ubicaciones.py:888: AssertionError: assert (503, None) == (200, 'aprobada')
+   2 tests\test_f056_ubicaciones.py:910: AssertionError: assert (503, None) == (409, 'catalo...in_verificar')
+   1 tests\test_f056_ubicaciones.py:919: AssertionError: assert (503, None) == (409, 'catalo...in_verificar')
+   1 tests\test_f056_ubicaciones.py:962: assert 503 == 200
+   1 tests\test_f056_ubicaciones.py:971: AssertionError: assert None == 'catalogo_sin_verificar'
+   1 tests\test_f056_ubicaciones.py:992: AssertionError: assert 'F-056 ubicaciones válidas leídas en Sigrid' in 'application.pipelines.catalo
+   1 tests\utiles_revision.py:212: AssertionError: no se tenía que llamar a la revisión
+76 failed, 15 passed in 5.80s
+```
+
+**Los 76 son de aserción**: `AssertionError`, `assert …` y `Failed: DID NOT RAISE …`. No hay ningún `ImportError`,
+`AttributeError`, `KeyError` ni `TypeError`. Dos tests leían una clave de una respuesta 503 y daban `KeyError`; se
+ajustaron para comprobar antes el estado. Otro dejaba escapar el `ValoresNoValidos` del esqueleto y ahora exige que
+el error **sea** `CatalogoSinVerificar`. El último de la lista es el doble «prohibido» de la revisión: el esqueleto
+construía la revisión antes de fallar Sigrid. Los **15 que pasan** son controles que el esqueleto cumple por
+casualidad:
+
+- el adaptador es un `UbicacionesValidasPort` y se construye en `dev`/`pro`;
+- cero filas y 999 filas no llegan al techo;
+- la fábrica exporta su constructor y construye con los interruptores como estén;
+- una unidad sin tipología no acepta ninguna ubicación (el esqueleto da `{}`);
+- descartar, recuperar y el historial no leen ubicaciones;
+- y sin Sigrid es 503, que el esqueleto daba con el 503 deliberado del Bloque 3.
+
+**O-2** (`b05abce`, antes de T14b):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_revision_http.py tests/test_f056_alcance_cerrado.py -q -p no:cacheprovider --tb=line -k "o2 or r39"
+```
+
+```
+tests\test_f056_revision_http.py:611: assert 503 == 200
+tests\test_f056_alcance_cerrado.py:342: AssertionError: assert {'interface_a...nes_validas']} == {'interface_a...as_unidades']}
+2 failed, 3 passed, 193 deselected in 5.30s
+```
+
+(el primero es el 503 deliberado del Bloque 3; el segundo, el adaptador-esqueleto, que aún no importaba nada de
+`infrastructure/sigrid`). Tras T14a, `test_f056_r39_…` ya estaba en rojo con su versión anterior, por el import del
+esqueleto en el borde: lo arregló este mismo commit.
+
+**N-2** (`6e9d02d`): son tests de un comportamiento que ya existía, así que su «rojo» es el mutante del reviewer. Con la
+comprobación de la forma canónica de `_uuid` (`str(identificador) == crudo.lower()`) sustituida por `True`, a mano y
+deshecha después:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_revision_http.py -q -p no:cacheprovider --tb=line -k "llaves or urn or sin-guiones or r32_historial_sin_uuid"
+```
+
+```
+FAILED tests/test_f056_revision_http.py::test_f056_r5_cuerpo_invalido_es_400_sin_construir_nada[incidencia-con-llaves]
+FAILED tests/test_f056_revision_http.py::test_f056_r5_cuerpo_invalido_es_400_sin_construir_nada[incidencia-urn]
+FAILED tests/test_f056_revision_http.py::test_f056_r5_cuerpo_invalido_es_400_sin_construir_nada[incidencia-sin-guiones]
+FAILED tests/test_f056_revision_http.py::test_f056_r32_historial_sin_uuid_es_400_sin_construir[{<uuid de prueba>}]
+FAILED tests/test_f056_revision_http.py::test_f056_r32_historial_sin_uuid_es_400_sin_construir[urn:uuid:<uuid de prueba>]
+FAILED tests/test_f056_revision_http.py::test_f056_r32_historial_sin_uuid_es_400_sin_construir[<uuid de prueba, sin guiones>]
+6 failed, 3 passed, 173 deselected in 7.68s
+```
+
+(cada uno, `AssertionError: no se tenía que llamar a obtener_ajustes`: el `nada_se_construye`). Con el código, pasan.
+
+**T14c, antes de la mutación** (`4a65bcc`): `!=` → `<` en la comprobación de columnas y `-` → `+` en la duración del
+log sobrevivían a los tests de T14a. El primero no lo genera la herramienta; el segundo, sí. Con los dos tests nuevos,
+cada mutante a mano da `1 failed`: `…una_fila_mal_formada…[tres-columnas]` y
+`…el_log_registra_la_duracion_y_no_la_hora`.
+
+### GREEN
+
+T14b: `.venv/Scripts/python.exe -m pytest tests/test_f056_ubicaciones.py tests/test_f056_revision_http.py` en verde. Con la
+aplicación y el alcance (`test_f056_ubicaciones.py`, `…_revision_http.py`, `…_alcance_cerrado.py`,
+`…_pipeline_revision.py`), **369 passed**. Guardias y vecinos sin caché —todas las `test_f0*_arquitectura*`, todos los
+`test_f036_*`, `test_f056_*` y `test_f013_*`, `test_f006_repo_sin_identificadores`, `test_f019_logs_sin_datos_personales`,
+`test_f005_integracion_sin_secretos` y `test_f010_endpoints_protegidos`—: **4252 passed, 31 skipped** en 751 s. Al cierre
+del bloque, los tres ficheros de F-056 tocados dan **296 passed** (ubicaciones 92, borde 182, alcance 22). `ruff check`
+de los ficheros nuevos o tocados: limpio.
+
+**La O-2, comprobada**: `construir_fuente_de_ubicaciones` sin parchear compone el puerto real. El 503 deliberado ya no
+existe (`_sin_lectura_de_ubicaciones` se ha borrado), y `test_f056_o2_…` lo fija por la ruta: editar → 200, aprobar
+→ 200, listar → 200 con el mapa, tres lecturas.
+
+### Suite completa
+
+`.venv/Scripts/python.exe -m pytest tests -q -p no:cacheprovider`, desde `services/postventa-api`, en `4a65bcc` (antes de la
+mutación):
+
+```
+7607 passed, 56 skipped in 770.29s (0:12:50)
+```
+
+### Mutación (T14c)
+
+Comando, desde la raíz, con el árbol limpio en `4a65bcc`:
+
+```
+python -m harness.mutacion --feature F-056 --base c22e692 --timeout 1800 --salida progress/mutacion_F-056_bloque3bis.md
+```
+
+(con `services/postventa-api/.venv/Scripts/python.exe`; 8 workers, los de `harness/rigor.json`). Salida final:
+
+```
+F-056: 6 fichero(s), 341 línea(s) de producción (origen rama, c22e692bd4c4c982042b949e8732ebd3887ccfb8..feature/F-056-revision-bandeja-backend)
+Campaña paralela: hasta 8 workers, uno por worktree.
+...
+[7/10] timeout       services/postventa-api/infrastructure/sigrid/ubicaciones_validas.py:78 [entero] sum(1 for ...) -> sum(2 for ...)
+[8/10] timeout       services/postventa-api/domain/ports/ubicaciones_validas.py:50 [booleano] field(repr=False) -> field(repr=True)
+...
+Repaso en serie de 2 mutante(s) en timeout: sin concurrencia, el reloj mide al mutante y no a la máquina.
+repaso [1/2] muerto        services/postventa-api/domain/ports/ubicaciones_validas.py:50 [booleano] ...
+repaso [2/2] muerto        services/postventa-api/infrastructure/sigrid/ubicaciones_validas.py:78 [entero] ...
+10 mutantes evaluados, 10 muertos, 0 supervivientes, 0 timeouts en 3763.6 s
+Informe: progress/mutacion_F-056_bloque3bis.md
+```
+
+- **Alcance** (base `c22e692`): 6 ficheros, 341 líneas, **10 mutantes**:
+  - por fichero: consultas 4, adaptador 4, puerto 2; la aplicación, la fábrica y el borde 0, porque sus líneas
+    nuevas no tienen comparaciones, operadores ni constantes que mutar;
+  - por operador: booleano 2, entero 2, `not` 2, lógico 2, comparación 1, aritmético 1.
+- **Supervivientes: 0. Timeouts: 0.** Dos mutantes salieron en timeout con los 8 workers en paralelo y el repaso en
+  serie los dio muertos. No hay familias que analizar ni equivalentes que justificar. El pre-chequeo local de cada
+  mutante contra `test_f056_ubicaciones.py` y `test_f056_revision_http.py` ya dio 10/10 muertos.
+- La herramienta no muta el **orden** de las llamadas. Lo fijan tres tests:
+  - la lista común de llamadas: las ubicaciones, después de `leer_catalogo`, en listar y en una acción
+    (`test_f056_r48_cada_unidad_del_catalogo_…`, `…_r46_listar_lee_las_ubicaciones_una_vez_tras_el_catalogo`);
+  - el lector, antes que la revisión (`…_r46_sin_configuracion_de_sigrid_es_503_antes_de_la_base`);
+  - ninguna lectura en descartar, recuperar e historial (`…_r46_descartar_recuperar_e_historial_no_leen_ubicaciones`,
+    con la fábrica prohibida).
+- Tiempo: 3763,6 s (1 h 3 min) con 8 workers.
+
+### Requisito → test (lo de este bloque)
+
+| R | Test(s) en `test_f056_ubicaciones.py` (salvo donde se dice) |
+|---|---|
+| R46 la consulta y su parámetro | `…r48_la_consulta_caracter_a_caracter`, `…r48_la_consulta_es_la_de_design_16_3` (lee el bloque de §16.3), `…r46_el_filtro_de_obra_es_el_de_las_unidades_de_f036`, `…r48_la_tipologia_va_con_left_join_y_el_texto_entero`, `…r46_un_solo_parametro_el_codigo_de_obra_y_nunca_en_el_texto` |
+| R48 el mapeo | `…r48_cada_fila_es_una_unidad_y_su_ubica` (6), `…r48_una_fila_mal_formada_es_un_error_que_no_la_repite` (7), `…r48_la_fila_es_inmutable_y_su_ubica_no_sale_en_el_repr` |
+| R46 el adaptador | `…r46_leer_es_un_post_a_sql_read_con_su_cuerpo`, `…cero_filas…`, `…mil_filas_o_mas_se_devuelven_marcadas_al_techo` (4), `…novecientas_noventa_y_nueve…`, `…cortada_por_debajo_del_techo_es_catalogo_no_disponible` (3), `…lo_transitorio_se_reintenta` (6), `…un_corte_de_red_se_reintenta`, `…agotados_los_reintentos…`, `…un_definitivo_no_se_reintenta` (4), `…una_respuesta_sin_la_forma_esperada…` (4), `…se_niega_fuera_de_dev_y_pro` (4), `…en_dev_y_pro_se_construye`, `…solo_lee_y_no_mira_ningun_interruptor`, los dos del log |
+| La fábrica | `…la_fabrica_exporta…`, `…se_niega_fuera_de_dev_y_pro_antes_que_la_configuracion`, `…nombra_lo_que_falta_y_ningun_valor`, `…construye_con_los_interruptores_como_esten` (4), `…pasa_la_configuracion_al_adaptador` (con su log) |
+| R46–R48 la composición | `…r48_cada_unidad_del_catalogo_con_las_ubicaciones_de_su_tipologia`, `…r48_una_unidad_sin_fila_tiene_la_lista_vacia_y_una_ajena_no_entra`, `…r48_la_unidad_se_casa_exacta…`, `…r46_al_techo_es_catalogo_sin_verificar_sin_el_texto`, `…r46_sin_sigrid_el_error_del_puerto_sube_tal_cual`, `…r46_la_fuente_compuesta_lee_el_puerto_una_vez_por_llamada`, `…r46_listar_lee_las_ubicaciones_una_vez_tras_el_catalogo`, `…r48_editar_valida_contra_la_lista_leida_de_su_unidad` (una válida en otra unidad no vale; cambiar la unidad revalida), `…r48_una_unidad_sin_tipologia_no_acepta_ninguna_ubicacion`, `…r46_editar_al_techo_es_409_sin_escribir` |
+| R28, R46, R48 el borde | `…r46_el_borde_compone_la_lectura_de_sigrid`, `…r28_el_listado_ofrece_el_mapa_leido_una_lectura_por_peticion`, `…r46_sin_cache_entre_peticiones`, `…r48_lo_que_se_ofrece_es_lo_que_se_acepta`, `…r46_aprobar_lee_una_vez`, `…r46_descartar_recuperar_e_historial_no_leen_ubicaciones`, `…r46_al_techo_la_accion_es_409_sin_escribir` (2), `…r46_al_techo_el_listado_es_409`, `…r46_sin_sigrid_es_503_sin_escribir` (3), `…r46_sin_configuracion_de_sigrid_es_503_antes_de_la_base`, `…r46_por_la_ruta_una_sola_sql_read_con_la_consulta`, `…r46_por_la_ruta_mil_filas_son_409_y_cortada_503` (adaptador real + cliente falso); `test_f056_o2_la_fuente_por_defecto_lee_las_ubicaciones_de_sigrid` (`…_revision_http.py`) |
+| §16.3, R41 el texto de `ubica` | `…r41_el_texto_de_ubica_no_va_a_ningun_registro` (`caplog` a `DEBUG`), `…r46_el_log_dice_obra_unidades_y_sin_tipologia_y_nunca_el_texto` |
+| R39 | `test_f056_r39_de_sigrid_solo_se_usa_el_catalogo_de_f036` y el resto de T13 sobre los tres módulos nuevos |
+
+### Verificaciones MANUAL pendientes
+
+- Ninguna de este bloque. La comprobación en vivo de esta lectura es **T19** (Bloque 5):
+  - `r.catalogo.ubicaciones` con las 15 unidades de la obra piloto y del orden de 31 a 37 ubicaciones en cada una;
+  - y `ubicacion_fuera_de_lista` en el `resumen`.
+
+### Fuera del alcance de este bloque
+
+- La documentación y `azure-apps`: Bloque 4, que contará también la tercera lectura y la tercera respuesta con
+  correo (N-1).
+- El front: F-038.
+- La plantilla Excel con las ubicaciones por unidad: ficha aparte, §16.4.
+
+### Observaciones para el líder
+
+- **Decisiones 1 y 2** (heredar el adaptador del catálogo; `unidad_codigo` admite `None`): dentro de §16.3, pero
+  conviene que el reviewer las vea.
+- **R39 (decisión 4)**: el test pide ahora, escrito a mano, lo que importa de `infrastructure/sigrid` cada módulo de
+  F-056. Fuera de ese paquete, solo `construir_catalogo_obra` y `construir_ubicaciones_validas`.
+- **Para el Bloque 4 (R44)**: `INTEGRACION.md` §7 tiene que contar **tres** respuestas con correo (N-1), y el texto
+  sobre lo que se lee de Sigrid, **tres** lecturas.
+
+### Evidencias
+
+| Evidencia | Valor |
+|---|---|
+| Tests de F-056 del bloque | **296** en los tres ficheros tocados: `test_f056_ubicaciones.py` 92 (nuevo), `test_f056_revision_http.py` 182 (antes 176), `test_f056_alcance_cerrado.py` 22 |
+| Suite completa del servicio | **7607 passed, 0 failed, 56 skipped**, 770,3 s |
+| Cobertura de las líneas cambiadas (`PUERTA COBERTURA` de `init.sh`) | **100,0 % (1060/1060 líneas cambiadas desde la base `f86d639`, umbral 80 %, nivel `critico`)** |
+| `bash harness/init.sh` | **ENTORNO LISTO** (2026-10-08, en `4a65bcc` con el informe de mutación sin commitear): servicio api 7607 passed, 109 skipped en 1678,8 s (con medición de cobertura); front en verde por caché; arnés 115 passed; ruff 73 avisos de deuda previa, no bloquea |
+| Mutantes (T14c, base `c22e692`) | **10 generados, 10 muertos, 0 supervivientes, 0 timeouts** (2 repasados en serie, los 2 muertos); 3763,6 s, 8 workers |

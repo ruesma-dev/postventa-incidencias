@@ -116,7 +116,14 @@ backend; la pantalla es F-038.
   `GET /api/revision` (el de la última revisión de cada incidencia) y en
   `GET /api/revision/historial` (el de cada revisión).
 - **R11.** El correo **no debe** aparecer en ningún log, en ningún mensaje de
-  error ni en ninguna otra respuesta que las dos de R10.
+  error ni en ninguna otra respuesta que las dos de R10 y la tercera de abajo.
+
+  > **Decisión del líder 2026-10-08** (N-1 de la review del Bloque 3): **se
+  > mantiene R8**. Hay una **tercera respuesta con correo**: la **200** de
+  > `POST /api/revision/acciones`, que es la fila de R29 y lleva en
+  > `revisado_por` el correo de **quien acaba de actuar** (el mismo que mandó
+  > en el cuerpo, recortado). Ningún error lo lleva, y el `oid` sigue sin salir
+  > en ninguna respuesta (R10). `design.md` §9.
 - **R12.** La excepción es **solo** de `postventa.revisiones_bandeja`: ninguna
   otra tabla del esquema gana una columna de correo, y las reglas de F-005,
   F-009, F-012, F-026, F-028 y F-036 sobre sus tablas y sus respuestas siguen

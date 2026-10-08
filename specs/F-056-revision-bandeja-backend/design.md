@@ -470,6 +470,15 @@ revisión) y `GET /api/revision/historial` (el de cada una) lo devuelven, para
 que la página enseñe quién hizo cada cosa. Decisión del humano del
 2026-10-06.
 
+> **Decisión del líder 2026-10-08** (N-1 de la review del Bloque 3): **se
+> mantiene R8**, y R11 lo dice ya. La respuesta **200** de
+> `POST /api/revision/acciones` es una fila de `GET /api/revision` (R29) y
+> lleva en `revisado_por` el correo de **quien acaba de actuar** —el mismo que
+> mandó en el cuerpo—: es la **tercera** respuesta con correo, junto al
+> listado y al historial. Ningún **error** lo lleva (400, 404, 409, 503), y el
+> `oid` no sale en ninguna. El código y el test (`test_f056_r9_…`) del Bloque
+> 3 ya lo hacen así; no cambian.
+
 **Lo que no cambia**: ninguna de esas ocho tablas, ni sus respuestas, ni sus
 tests; el `oid` sigue sin salir en ninguna respuesta (tampoco en las de
 F-056); y el correo **nunca va a un log** ni a un mensaje de error.

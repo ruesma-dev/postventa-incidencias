@@ -62,6 +62,7 @@ from infrastructure.documentos.plantilla_yaml import cargar_plantilla_yaml
 from interface_adapters.api import revision as modulo
 
 from tests.utiles_importacion import EquivalenciasEnMemoria
+from tests.utiles_plantilla import mismo
 from tests.utiles_revision import (
     CORREO,
     CORREO_2,
@@ -1017,11 +1018,14 @@ def test_f056_r28_el_catalogo_para_editar(mundo: Mundo) -> None:
     ]
     # El mismo mapa que valida, por cada unidad del catálogo (R28, R48).
     assert catalogo["ubicaciones"] == {U1: ["Baño", "Cocina"], U2: [], U3: []}
+    # La etiqueta del grupo es la de la opción de la plantilla: dos que solo
+    # difieren en una tilde llevan sus códigos (`opciones_de_oficio` de F-036),
+    # que es lo que guardó la bandeja en `oficio_nombre` de un oficio ambiguo.
     assert catalogo["oficios"] == [
         {"codigo": "0046", "nombre": "Carpintería de madera",
-         "grupo": {"etiqueta": "Carpintería de madera", "codigos": ["0046"]}},
+         "grupo": {"etiqueta": "Carpintería de madera (0046)", "codigos": ["0046"]}},
         {"codigo": "0143", "nombre": "Carpinteria de madera",
-         "grupo": {"etiqueta": "Carpinteria de madera", "codigos": ["0143"]}},
+         "grupo": {"etiqueta": "Carpinteria de madera (0143)", "codigos": ["0143"]}},
         {"codigo": "0200", "nombre": None, "grupo": {"etiqueta": "0200", "codigos": ["0200"]}},
     ]
     assert catalogo["pares"] == [
@@ -1034,6 +1038,20 @@ def test_f056_r28_el_catalogo_para_editar(mundo: Mundo) -> None:
     assert catalogo["listados"] == [
         {"codigo": o.codigo, "etiqueta": o.etiqueta} for o in CONFIG.listas.listados
     ]
+
+
+def test_f056_r28_un_grupo_de_oficios_confirmado_lleva_sus_codigos_de_la_obra(
+    mundo: Mundo,
+) -> None:
+    """Con 0046 y 0143 confirmados como el mismo oficio, los dos están en su grupo."""
+    mundo.equivalencias = EquivalenciasEnMemoria(mundo.llamadas, (mismo("0046", "0143"),))
+
+    _, datos = _leer(_listar())
+
+    grupos = {o["codigo"]: o["grupo"] for o in datos["catalogo"]["oficios"]}
+    assert grupos["0046"] == grupos["0143"]
+    assert grupos["0046"]["codigos"] == ["0046", "0143"]
+    assert grupos["0200"]["codigos"] == ["0200"]
 
 
 def test_f056_r48_lo_que_se_ofrece_es_lo_que_se_valida(mundo: Mundo) -> None:

@@ -129,6 +129,25 @@ Endpoints:
         Sigrid, que no se corrige desde aquí; por eso no depende de ninguna
         ventana de escritura.
 
+    GET /api/revision
+        La bandeja de **una** obra para revisarla (F-056), paginada: cada
+        incidencia con sus valores importados y vigentes, su estado derivado,
+        sus motivos de no aprobable y el correo de quien la revisó por última
+        vez; el resumen de toda la obra y el catálogo de Sigrid de hoy para
+        editar. Lee la base y Sigrid, solo por `POST /api/sql/read`.
+
+    GET /api/revision/historial
+        Las revisiones de **una** incidencia, de la más antigua a la más
+        reciente, con el correo de quien hizo cada una (F-056). Solo la base.
+
+    POST /api/revision/acciones
+        Registra que **una persona** edita, descarta, aprueba o recupera una
+        incidencia de la bandeja (F-056), con `confirmado: true` booleano y la
+        `revision_previa` con que la leyó (dos a la vez: solo se guarda una).
+        Escribe en el esquema propio, append-only, y **nada** en Sigrid: lo
+        aprobado lo volcará F-040. Por eso no depende de ninguna ventana de
+        escritura.
+
 Este fichero es **solo adaptador**: traduce entre Azure Functions y los
 handlers de `interface_adapters/api/`. Toda lógica que no sea traducción va
 por debajo, para poder probarla sin el runtime de Functions.
@@ -235,6 +254,14 @@ mismas cautelas: tope duro de 500 filas por llamada en
 `interface_adapters/api/bandeja.py` (además del de la consulta) y, en el log,
 la obra y **cuántas** filas volvieron.
 
+`GET /api/revision` (F-056) es el **tercero**: las mismas descripciones y
+detalles de la propiedad, y además el **correo corporativo** de quien revisó
+cada incidencia (decisión del humano del 2026-10-06; nunca el `oid`). Su
+cautela de volumen es **la paginación**: como mucho 200 incidencias por
+llamada (100 por defecto) y una lectura de la obra con tope de 10.000, que si
+se pasa responde 409 y nunca recorta en silencio; en el log, la obra, el
+tamaño de página y **cuántas** volvieron. Con él los anónimos son veinte.
+
 **Descartado a propósito: exigir `x-ms-client-principal`.** Parece subir el
 listón y no lo sube —va sin firma, se fabrica— y encima de algo que ya protege
 la plataforma sólo consigue **confundir qué protege de verdad**: quien lo lea
@@ -253,9 +280,11 @@ import logging
 import azure.functions as func
 from config.logging_config import configurar_logging
 from domain.models.errores import (
+    AccionNoPermitida,
     ArchivoDeshabilitado,
     ArchivoFallido,
     ArchivoSinTraza,
+    BandejaDemasiadoGrande,
     CambioDeEstadoInvalido,
     CatalogoNoDisponible,
     CatalogoSinVerificar,
@@ -287,6 +316,8 @@ from domain.models.errores import (
     GraficoNoEsPdf,
     GraficoRechazadoPorLaPasarela,
     GraficoSinTraza,
+    IncidenciaNoAprobable,
+    IncidenciaNoEncontrada,
     LectorSinAislamiento,
     LecturaOcupada,
     LimiteDeEntradaSuperado,
@@ -302,12 +333,16 @@ from domain.models.errores import (
     PeticionDeDecisionInvalida,
     PeticionDeImportacionInvalida,
     PeticionDePersistenciaInvalida,
+    PeticionDeRevisionInvalida,
     ReclamacionNoLocalizada,
     ReferenciaNoConsta,
     RemesaSinPdfUtilizable,
+    RevisionDesactualizada,
+    SinCambios,
     UbicacionNoDisponible,
     UsuarioSigridInexistente,
     UsuarioSigridNoMapeado,
+    ValoresNoValidos,
 )
 from domain.models.remesa import DocumentoEntrada
 from interface_adapters.api.adjuntar import adjuntar_grafico
@@ -327,6 +362,11 @@ from interface_adapters.api.importar import importar_excel
 from interface_adapters.api.parte import guardar_parte_http
 from interface_adapters.api.plantilla import descargar_plantilla
 from interface_adapters.api.remesa import registrar_remesa
+from interface_adapters.api.revision import (
+    accion_de_revision,
+    historial_revision,
+    listar_revision,
+)
 from interface_adapters.api.split import trocear_remesa
 from interface_adapters.api.validar import validar as validar_parte_http
 
@@ -1513,4 +1553,189 @@ def catalogos_decisiones(req: func.HttpRequest) -> func.HttpResponse:
         cuerpo["obra"],
         len(cuerpo["pares_guardados"]),
     )
+    return _json(cuerpo, 200)
+
+
+# --------------------------------------------------------------------------
+# F-056 · la revisión de la bandeja (`design.md` §8)
+# --------------------------------------------------------------------------
+
+#: El código de cada error de la revisión (§4): viaja en el cuerpo con el
+#: motivo, para que el front sepa qué pasa sin interpretar el texto.
+CODIGOS_DE_REVISION = {
+    PeticionDeRevisionInvalida: "peticion_invalida",
+    CodigoDeObraInvalido: "peticion_invalida",
+    ValoresNoValidos: "valores_no_validos",
+    SinCambios: "sin_cambios",
+    IncidenciaNoEncontrada: "incidencia_no_encontrada",
+    AccionNoPermitida: "accion_no_permitida",
+    RevisionDesactualizada: "revision_desactualizada",
+    IncidenciaNoAprobable: "incidencia_no_aprobable",
+    BandejaDemasiadoGrande: "bandeja_demasiado_grande",
+}
+
+
+def _error_de_revision(que: str, error: Exception, estado: int) -> func.HttpResponse:
+    """`{error, codigo}` y lo propio de cada error; al log, solo el código (R41).
+
+    El motivo va a quien hizo la petición y **no** al log: ninguno repite lo
+    recibido, pero así ningún texto de una petición puede acabar en
+    Application Insights.
+    """
+    codigo = CODIGOS_DE_REVISION[type(error)]
+    cuerpo: dict = {"error": error.motivo, "codigo": codigo}  # type: ignore[attr-defined]
+    if isinstance(error, ValoresNoValidos):
+        cuerpo["errores"] = [
+            {"campo": campo, "problema": problema} for campo, problema in error.errores
+        ]
+    elif isinstance(error, AccionNoPermitida):
+        cuerpo["estado"] = error.estado
+        cuerpo["acciones"] = list(error.acciones)
+    elif isinstance(error, IncidenciaNoAprobable):
+        cuerpo["motivos"] = list(error.motivos)
+    elif isinstance(error, BandejaDemasiadoGrande):
+        cuerpo["total"] = error.total
+    log.info("%s no procede: %s", que, codigo)
+    return _json(cuerpo, estado)
+
+
+@app.route(route="revision", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
+def revision(req: func.HttpRequest) -> func.HttpResponse:
+    """La bandeja de una obra para revisarla, paginada (F-056, R23–R31). Solo lee.
+
+    Solo traduce (§8):
+
+    - **200** · `{obra, catalogo, resumen, filtros, total_filtrado,
+      incidencias, siguiente}`;
+    - **400** · `peticion_invalida`: la obra, `estado`, `con_motivos`,
+      `tamano` o `cursor` no valen (R23), sin consultar nada;
+    - **404** · ninguna obra con ese código tiene unidades de posventa;
+    - **409** · dos obras con ese código o el catálogo llegó al techo (R30),
+      o la obra pasa de 10.000 incidencias (`bandeja_demasiado_grande`, con
+      el recuento, R24: nunca se recorta en silencio);
+    - **503** · Sigrid, su configuración, el entorno o la base (D-14).
+
+    Es el tercer endpoint que devuelve dato de fuera acumulado: el log de la
+    página (obra, tamaño, total filtrado y cuántas) lo pone el handler (R31).
+    """
+    try:
+        cuerpo = listar_revision(
+            req.params.get("obra"),
+            req.params.get("estado"),
+            req.params.get("con_motivos"),
+            req.params.get("tamano"),
+            req.params.get("cursor"),
+        )
+    except (CodigoDeObraInvalido, PeticionDeRevisionInvalida) as error:
+        return _error_de_revision("revision", error, 400)
+    except ObraSinUnidades as error:
+        log.info("revision no procede: obra_sin_unidades")
+        return _rechazo_de_obra(error, 404)
+    except (ObraAmbigua, CatalogoSinVerificar) as error:
+        log.info("revision no procede: %s", CODIGOS_DE_RECHAZO_DE_OBRA[type(error)])
+        return _rechazo_de_obra(error, 409)
+    except BandejaDemasiadoGrande as error:
+        return _error_de_revision("revision", error, 409)
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("revision sin Sigrid o sin base: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("leer la bandeja para revisarla", error)
+    except ConfiguracionPlantillaInvalida as error:
+        log.error("revision con la configuración rota: %s", error.motivo)
+        return _configuracion_rota(error)
+    return _json(cuerpo, 200)
+
+
+@app.route(
+    route="revision/historial", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS
+)
+def revision_historial(req: func.HttpRequest) -> func.HttpResponse:
+    """Las revisiones de una incidencia (F-056, R32, R33). Solo lee la base.
+
+    **400** si `incidencia_id` no es un UUID, sin consultar nada; **404** si no
+    está en la bandeja; **503** sin base. Nunca lee Sigrid.
+    """
+    try:
+        cuerpo = historial_revision(req.params.get("incidencia_id"))
+    except PeticionDeRevisionInvalida as error:
+        return _error_de_revision("revision/historial", error, 400)
+    except IncidenciaNoEncontrada as error:
+        return _error_de_revision("revision/historial", error, 404)
+    except (ConfiguracionPgIncompleta, PersistenciaNoDisponible) as error:
+        log.warning("revision/historial sin base de datos: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("leer el historial", error)
+    return _json(cuerpo, 200)
+
+
+@app.route(
+    route="revision/acciones", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS
+)
+def revision_acciones(req: func.HttpRequest) -> func.HttpResponse:
+    """Edita, descarta, aprueba o recupera una incidencia (F-056, R2–R22).
+
+    Solo traduce (§4, §8), y **en todo lo que no es 200, sin escribir nada**:
+
+    - **200** · la incidencia como queda, en la forma de una fila de
+      `GET /api/revision` (R8);
+    - **400** · `peticion_invalida` (el cuerpo no es el del contrato, R5:
+      antes de construir nada), `valores_no_validos` (con **todos** los
+      campos que fallan, R13) o `sin_cambios` (R16);
+    - **404** · `incidencia_no_encontrada` (R6), o la obra sin unidades;
+    - **409** · `accion_no_permitida` (con el estado y las acciones posibles,
+      R2), `revision_desactualizada` (otra persona ha revisado antes, R7,
+      R22), `incidencia_no_aprobable` (con todos sus motivos, R20), o la obra
+      ambigua o su catálogo al techo;
+    - **503** · Sigrid, su configuración, el entorno o la base (D-14).
+
+    El `oid` y el correo salen del **cuerpo** (R43, D-13) y nunca de una
+    cabecera. El log lleva la incidencia, la acción y el resultado, o el
+    código del rechazo: **nunca** el `oid`, el correo, el motivo ni ningún
+    texto (R41).
+    """
+    try:
+        datos = req.get_json()
+    except ValueError:
+        log.info("revision/acciones no procede: el cuerpo no es JSON")
+        return _json(
+            {
+                "error": "el cuerpo de la petición no es JSON válido",
+                "codigo": "peticion_invalida",
+            },
+            400,
+        )
+    try:
+        cuerpo = accion_de_revision(datos)
+    except (PeticionDeRevisionInvalida, ValoresNoValidos, SinCambios) as error:
+        return _error_de_revision("revision/acciones", error, 400)
+    except IncidenciaNoEncontrada as error:
+        return _error_de_revision("revision/acciones", error, 404)
+    except (
+        AccionNoPermitida,
+        RevisionDesactualizada,
+        IncidenciaNoAprobable,
+    ) as error:
+        return _error_de_revision("revision/acciones", error, 409)
+    except ObraSinUnidades as error:
+        log.info("revision/acciones no procede: obra_sin_unidades")
+        return _rechazo_de_obra(error, 404)
+    except (ObraAmbigua, CatalogoSinVerificar) as error:
+        log.info(
+            "revision/acciones no procede: %s", CODIGOS_DE_RECHAZO_DE_OBRA[type(error)]
+        )
+        return _rechazo_de_obra(error, 409)
+    except (
+        CatalogoNoDisponible,
+        ConfiguracionSigridIncompleta,
+        ConfiguracionPgIncompleta,
+        PersistenciaNoDisponible,
+    ) as error:
+        log.warning("revision/acciones sin Sigrid o sin base: %s", error.motivo)
+        return _sin_sigrid_o_sin_base("registrar la revisión", error)
+    except ConfiguracionPlantillaInvalida as error:
+        log.error("revision/acciones con la configuración rota: %s", error.motivo)
+        return _configuracion_rota(error)
     return _json(cuerpo, 200)

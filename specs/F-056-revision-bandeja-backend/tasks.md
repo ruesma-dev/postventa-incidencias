@@ -128,7 +128,7 @@
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py` **falla**
 - [x] **T11**: `application/pipelines/revision.py` (§7). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_pipeline_revision.py`
-- [ ] **T12**: `interface_adapters/api/revision.py` y, en `function_app.py`,
+- [x] **T12**: `interface_adapters/api/revision.py` y, en `function_app.py`,
   las tres rutas, los ocho errores y la cabecera (§8, §12). **El borde pone y
   quita el base64url del cursor** (decisión del humano 2026-10-07, regla de
   F-012): `texto_de_clave` → base64url sin relleno al responder; al recibir,

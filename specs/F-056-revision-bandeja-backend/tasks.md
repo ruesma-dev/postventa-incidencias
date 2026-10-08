@@ -197,7 +197,7 @@
   repositorio («postventa-incidencias: F-056, la revisión de la bandeja»). Si
   F-053 ya tocó esas secciones, encima, sin pisar. |
   Verificación: `git -C C:\Users\pgris\PycharmProjects\azure-apps show --stat HEAD` enseña solo ese fichero
-- [ ] **T17**: `bash harness/init.sh` en verde. |
+- [x] **T17**: `bash harness/init.sh` en verde. (Líder, 2026-10-09: ENTORNO LISTO; api 7680 passed, 109 skipped en 1551 s; PUERTA COBERTURA 100 % de 1060 líneas.) |
   Verificación: `bash harness/init.sh`
 
 **Parar. Review final de F-056.**

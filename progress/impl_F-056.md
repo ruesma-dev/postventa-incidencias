@@ -1344,3 +1344,25 @@ Informe: progress/mutacion_F-056_bloque3bis.md
 | Cobertura de las líneas cambiadas (`PUERTA COBERTURA` de `init.sh`) | **100,0 % (1060/1060 líneas cambiadas desde la base `f86d639`, umbral 80 %, nivel `critico`)** |
 | `bash harness/init.sh` | **ENTORNO LISTO** (2026-10-08, en `4a65bcc` con el informe de mutación sin commitear): servicio api 7607 passed, 109 skipped en 1678,8 s (con medición de cobertura); front en verde por caché; arnés 115 passed; ruff 73 avisos de deuda previa, no bloquea |
 | Mutantes (T14c, base `c22e692`) | **10 generados, 10 muertos, 0 supervivientes, 0 timeouts** (2 repasados en serie, los 2 muertos); 3763,6 s, 8 workers |
+
+## Bloque 4 · La documentación (T15, T17; T16 del líder) · 2026-10-08 a 2026-10-09
+
+Nota del líder: el implementer se cortó dos veces (corte de la API y atasco del stream) y el bloque lo
+terminó el líder sin cambiar el contenido. Commits:
+
+| Commit | Qué |
+|---|---|
+| `2236ec6` | N-1 de la review del 3 bis: R39 cuenta la tercera lectura |
+| `3bb753a` | N-2 de la review del 3 bis: PEP 8 antes de `leer_ubicaciones_validas` |
+| `3d722a0` | O-1 de la review del Bloque 3: «diecisiete» → «veinte»; tests de F-053, F-019 y F-012 ampliados sin relajar, excepción declarada en R45 (decisión del líder 2026-10-08) |
+| `2861f4f` | O-1 de la review de F-053: cabecera de `INTEGRACION.md` al día; `test_f036_documentacion.py` exige una cabecera bien formada en vez de «F-036» fija |
+| `f04a9da` | T15 · RED de `test_f056_documentacion.py` (R44) |
+| `05cd85a` | T15 · GREEN: `docs/ARCHITECTURE.md` (sección de F-056) y `docs/INTEGRACION.md` (§2, §7 con tres respuestas con correo, tres lecturas de Sigrid, §8 con los tres endpoints y «veinte») |
+| `35bf6e3` | T15: orden de imports del test (ruff I001), hecho por el líder |
+
+Verificación (líder): los tests de documentación de F-056, F-036, F-053, F-019 y F-012 más
+`test_f006_repo_sin_identificadores.py`, **257 passed**. T17, `bash harness/init.sh` en `35bf6e3`:
+**ENTORNO LISTO**; servicio api **7680 passed, 109 skipped** en 1551,6 s (sin caché, el árbol cambió);
+front en verde por caché; **PUERTA COBERTURA 100,0 % de 1060 líneas cambiadas**. Sin campaña de mutación:
+el bloque es solo documentación y tests de documentación. T16 (`azure-apps`) queda para el líder al
+desplegar.

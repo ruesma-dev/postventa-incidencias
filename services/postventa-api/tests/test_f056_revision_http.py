@@ -1378,3 +1378,42 @@ def test_f056_r25_los_cursores_de_prueba_cubren_todas_las_colas() -> None:
         for f in (None, 1, 3, 12, 123, 1234, 12345)
     }
     assert colas == {0, 2, 3}
+
+
+# --------------------------------------------------------------------------
+# T14, tras la PUERTA COBERTURA de init.sh: los tres caminos de error sin test
+# --------------------------------------------------------------------------
+
+
+def _yaml_roto() -> object:
+    from domain.models.errores import ConfiguracionPlantillaInvalida
+
+    raise ConfiguracionPlantillaInvalida("config/plantilla_incidencias.yaml: de prueba")
+
+
+@pytest.mark.parametrize("ruta", ["listar", "editar"])
+def test_f056_r30_la_configuracion_de_la_plantilla_rota_es_500(
+    monkeypatch, mundo: Mundo, ruta: str
+) -> None:
+    monkeypatch.setattr(modulo, "configuracion_de_la_plantilla", _yaml_roto)
+
+    respuesta = _listar() if ruta == "listar" else _post(_cuerpo("editar"))
+
+    estado, datos = _leer(respuesta)
+    assert estado == 500
+    assert "configuración de la plantilla" in datos["error"]
+    assert mundo.revision.guardadas == []
+
+
+@pytest.mark.parametrize("fallo", ["base", "config-pg"])
+def test_f056_r32_el_historial_sin_base_es_503(monkeypatch, mundo: Mundo, fallo: str) -> None:
+    if fallo == "base":
+        mundo.revision._fallo = PersistenciaNoDisponible("caída")
+    else:
+
+        def falla(_ajustes: object) -> object:
+            raise ConfiguracionPgIncompleta("falta PG_HOST")
+
+        monkeypatch.setattr(modulo, "construir_revision", falla)
+
+    assert _leer(_historial())[0] == 503

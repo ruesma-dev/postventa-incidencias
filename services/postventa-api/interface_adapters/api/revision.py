@@ -43,10 +43,12 @@ ubicaciones, **solo** para listar, editar y aprobar: descartar, recuperar y el
 historial no leen Sigrid (R18, R19, R32, R46), y por eso tampoco pasan por su
 puerta de entorno. Las equivalencias, solo para listar.
 
-**La fuente de las ubicaciones, en el Bloque 3**: su lectura de Sigrid es el
-Bloque 3 bis (§16.3). Hasta entonces `construir_fuente_de_ubicaciones` no
-inventa una lista: la fuente responde `CatalogoNoDisponible` (→ 503) en cuanto
-se le pide, sin haber escrito nada.
+**La fuente de las ubicaciones** (Bloque 3 bis, §16.3):
+`construir_fuente_de_ubicaciones` compone el lector de Sigrid
+(`construir_ubicaciones_validas`) con `fuente_de_ubicaciones` de la
+aplicación. Una lectura por petición, compartida por todas sus filas, y
+ninguna lista guardada entre peticiones. Hasta el Bloque 3 bis respondía 503
+a propósito; ese 503 ya no existe.
 
 ## Las respuestas
 
@@ -69,7 +71,6 @@ import base64
 import binascii
 import logging
 import re
-from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -80,11 +81,12 @@ from application.pipelines.revision import (
     IncidenciaRevisada,
     PeticionDeListado,
     aplicar_accion,
+    fuente_de_ubicaciones,
     historial,
     listar_para_revisar,
 )
 from config.settings import obtener_ajustes
-from domain.models.errores import CatalogoNoDisponible, PeticionDeRevisionInvalida
+from domain.models.errores import PeticionDeRevisionInvalida
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     OpcionOficio,
@@ -121,7 +123,7 @@ from infrastructure.persistencia.fabrica import (
 )
 from infrastructure.sigrid.fabrica import (
     construir_catalogo_obra,
-    construir_ubicaciones_validas,  # noqa: F401  (esqueleto de T14a: T14b lo compone)
+    construir_ubicaciones_validas,
 )
 
 from interface_adapters.api.plantilla import configuracion_de_la_plantilla
@@ -167,25 +169,19 @@ _CURSOR_INVALIDO = "'cursor' no es un cursor emitido por el sistema"
 
 
 # --------------------------------------------------------------------------
-# La fuente de las ubicaciones válidas (Bloque 3: sin componer)
+# La fuente de las ubicaciones válidas (Bloque 3 bis: compuesta con Sigrid)
 # --------------------------------------------------------------------------
 
 
 def construir_fuente_de_ubicaciones(ajustes: Any) -> FuenteDeUbicaciones:
-    """La fuente de las ubicaciones válidas de cada unidad (§16.3).
+    """La fuente de las ubicaciones válidas de cada unidad, leídas de Sigrid (§16.3).
 
-    Su lectura de Sigrid (`prmtpl.ubica` de la tipología de cada unidad) es
-    el **Bloque 3 bis**. Hasta entonces no se inventa ninguna lista: pedirle
-    las ubicaciones es `CatalogoNoDisponible` (→ 503), sin escribir nada.
+    Construye el lector **ya** —su puerta de entorno y su configuración fallan
+    aquí, antes de construir la revisión, como el catálogo— y lo compone con
+    `fuente_de_ubicaciones`. Se construye en cada petición: entre peticiones
+    no se guarda ninguna lista (sin caché, R46).
     """
-    return _sin_lectura_de_ubicaciones
-
-
-def _sin_lectura_de_ubicaciones(catalogo: CatalogoObra) -> Mapping[str, tuple[str, ...]]:
-    raise CatalogoNoDisponible(
-        "la lectura de las ubicaciones válidas de Sigrid aún no está disponible "
-        "en esta versión (F-056, Bloque 3 bis)"
-    )
+    return fuente_de_ubicaciones(construir_ubicaciones_validas(ajustes))
 
 
 # --------------------------------------------------------------------------

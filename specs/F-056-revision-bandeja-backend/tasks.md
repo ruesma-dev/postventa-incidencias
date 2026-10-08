@@ -149,7 +149,7 @@
 
 ## Bloque 3 bis · La lectura de ubicaciones válidas (Q-5 resuelta)
 
-- [ ] **T14a · RED**: `tests/test_f056_ubicaciones.py`: la consulta
+- [x] **T14a · RED**: `tests/test_f056_ubicaciones.py`: la consulta
   `SQL_UBICACIONES_DE_LAS_UNIDADES` de `design.md` §16.3 **carácter a
   carácter** y su parámetro (el código de obra normalizado); el mapeo de
   filas (`FilaUbicacionesUnidad`, `ubica` `None`); el adaptador con un
@@ -162,7 +162,7 @@
   petición compartida; ninguna en descartar, recuperar e historial;
   `catalogo.ubicaciones` = el mapa que valida): R46–R48. Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_ubicaciones.py` **falla**
-- [ ] **T14b**: `infrastructure/sigrid/consultas_ubicaciones_validas.py`,
+- [x] **T14b**: `infrastructure/sigrid/consultas_ubicaciones_validas.py`,
   `domain/ports/ubicaciones_validas.py`, `infrastructure/sigrid/ubicaciones_validas.py`,
   `construir_ubicaciones_validas` **añadida** a `infrastructure/sigrid/fabrica.py`
   y su composición en `application/pipelines/revision.py` e

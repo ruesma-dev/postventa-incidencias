@@ -7,6 +7,14 @@ base (`RevisionPort`), el catálogo de Sigrid (`CatalogoObraPort`, las dos
 lecturas de F-036) y las ubicaciones válidas de cada unidad
 (`FuenteDeUbicaciones`)—. La composición de los adaptadores es del borde.
 
+## Las ubicaciones válidas (Bloque 3 bis, §16.3)
+
+`leer_ubicaciones_validas` es la tercera lectura de Sigrid
+(`UbicacionesValidasPort`), **tras** `leer_catalogo`: una vez por petición,
+de la obra ya resuelta, con su techo (409) y el mapa por cada unidad del
+catálogo. `fuente_de_ubicaciones` la deja en la forma de `FuenteDeUbicaciones`,
+que es lo que reciben `listar_para_revisar` y `aplicar_accion`.
+
 ## `aplicar_accion`, lo barato primero y Sigrid fuera de la transacción
 
 1. `situacion` → `IncidenciaNoEncontrada` (404, R6) sin Sigrid ni escritura.
@@ -51,9 +59,14 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime
+from functools import partial
 from uuid import UUID
 
-from domain.models.errores import BandejaDemasiadoGrande, IncidenciaNoEncontrada
+from domain.models.errores import (
+    BandejaDemasiadoGrande,
+    CatalogoSinVerificar,
+    IncidenciaNoEncontrada,
+)
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     ListasCerradas,
@@ -82,6 +95,7 @@ from domain.models.revision import (
     motivos_no_aprobable,
     paginar,
     resumen,
+    ubicaciones_de_tipologia,
     valores_importados,
     valores_vigentes,
 )
@@ -109,19 +123,45 @@ __all__ = [
 
 #: Las ubicaciones válidas de cada unidad del catálogo recién leído (R46–R48):
 #: `{unidad_codigo: ubicaciones}`. Una unidad sin entrada tiene la lista vacía.
-#: Su lectura de Sigrid es el Bloque 3 bis (§16.3); aquí llega compuesta.
+#: La de producción es `fuente_de_ubicaciones` con el puerto de Sigrid
+#: (§16.3); el borde la compone y los tests le pasan dobles.
 FuenteDeUbicaciones = Callable[[CatalogoObra], Mapping[str, tuple[str, ...]]]
 
 def leer_ubicaciones_validas(
     puerto: UbicacionesValidasPort, catalogo: CatalogoObra
 ) -> dict[str, tuple[str, ...]]:
-    """ESQUELETO del Bloque 3 bis (T14a); T14b lo completa."""
-    return {}
+    """Las ubicaciones válidas de cada unidad del catálogo, leídas de Sigrid (§16.3).
+
+    Una lectura (R46), de la obra que el catálogo ya resolvió como única. Al
+    techo, `CatalogoSinVerificar` (409): con la lista a medias, una ubicación
+    buena podría parecer fuera de lista. Por cada unidad **del catálogo**, las
+    ubicaciones de su tipología (`ubicaciones_de_tipologia`, R47, R48); una
+    unidad sin fila tiene la lista vacía, y una fila de una unidad que no está
+    en el catálogo se ignora. Los códigos de unidad casan exactos: las dos
+    lecturas los sacan de la misma columna. El mensaje no lleva el texto de
+    ninguna tipología.
+    """
+    lectura = puerto.leer(codigo_obra=catalogo.obra_codigo)
+    if lectura.llego_al_techo:
+        raise CatalogoSinVerificar(
+            f"Sigrid ha devuelto {len(lectura.filas)} filas de ubicaciones para "
+            f"la obra «{catalogo.obra_codigo}», el máximo que sirve la pasarela, y "
+            "la lista puede venir cortada: no se puede comprobar ninguna ubicación"
+        )
+    de_la_unidad = {fila.unidad_codigo: fila.ubica for fila in lectura.filas}
+    return {
+        unidad.codigo: ubicaciones_de_tipologia(de_la_unidad.get(unidad.codigo))
+        for unidad in catalogo.unidades
+    }
 
 
 def fuente_de_ubicaciones(puerto: UbicacionesValidasPort) -> FuenteDeUbicaciones:
-    """ESQUELETO del Bloque 3 bis (T14a); T14b lo completa."""
-    return lambda catalogo: {}
+    """La fuente de las ubicaciones válidas compuesta con el puerto de Sigrid.
+
+    Cada llamada es **una** lectura (R46): la aplicación la hace una vez por
+    petición, y entre peticiones no se guarda nada (sin caché).
+    """
+    return partial(leer_ubicaciones_validas, puerto)
 
 
 #: Las acciones que leen Sigrid (§3.4).

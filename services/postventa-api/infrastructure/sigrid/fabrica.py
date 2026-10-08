@@ -48,6 +48,12 @@ sello de `gra.cod` lo pone la pasarela y aquí no hay ninguna hora que escribir.
 > **solo lee**. No mira `CIERRE_HABILITADO` ni `ARCHIVO_HABILITADO` (R48);
 > su error de entorno es `CatalogoNoDisponible`
 > (`specs/F-036-importar-excel/design.md` §5.1).
+
+> **Enmienda del 2026-10-08 (F-056, Bloque 3 bis).** Hay una **quinta**,
+> `construir_ubicaciones_validas`, **añadida** sin cambiar las demás: las
+> mismas dos puertas y el mismo error que `construir_catalogo_obra`, para la
+> lectura de las ubicaciones de la tipología de cada unidad
+> (`specs/F-056-revision-bandeja-backend/design.md` §16.3).
 """
 
 from __future__ import annotations
@@ -236,8 +242,33 @@ def construir_catalogo_obra(ajustes: Ajustes) -> CatalogoObraPort:
 
 
 def construir_ubicaciones_validas(ajustes: Ajustes) -> UbicacionesValidasPort:
-    """ESQUELETO del Bloque 3 bis (T14a); T14b lo completa."""
-    return AdaptadorUbicacionesValidasSigridApi()
+    """El lector de las ubicaciones válidas de cada unidad, o el motivo por el que aquí no.
+
+    F-056, `specs/F-056-revision-bandeja-backend/design.md` §16.3: las dos
+    puertas de `construir_catalogo_obra`, en el mismo orden y con los mismos
+    errores —entorno → configuración—, porque es la tercera lectura de la
+    misma familia. Sin la de ningún interruptor: solo lee. Tampoco resuelve
+    el huso: aquí no hay ninguna hora que escribir.
+
+    Levanta `CatalogoNoDisponible` (→ 503) si este entorno no lee Sigrid y
+    `ConfiguracionSigridIncompleta` (→ 503) si falta configuración,
+    **nombrando las variables y jamás sus valores**.
+    """
+    exigir_entorno_con_catalogo(ajustes.entorno)
+    _exigir_configuracion(ajustes)
+
+    log.info(
+        "F-056 lector de las ubicaciones válidas en Sigrid construido en el entorno %s",
+        ajustes.entorno,
+    )
+    return AdaptadorUbicacionesValidasSigridApi(
+        entorno=ajustes.entorno,
+        base_url=str(ajustes.sigrid_api_base_url),
+        api_key=str(ajustes.sigrid_api_key),
+        base_datos=str(ajustes.sigrid_base_datos),
+        timeout_s=ajustes.sigrid_timeout_s,
+        reintentos=ajustes.sigrid_reintentos,
+    )
 
 
 def resolver_zona(nombre: str) -> tzinfo:

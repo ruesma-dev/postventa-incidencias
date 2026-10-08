@@ -136,7 +136,7 @@
   cualquier fallo como 400 sin repetirlo. Sus tests (T10) fijan la forma
   (`eyJjIjoi…`) y la manipulación del base64url. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_revision_http.py tests/test_f010_endpoints_protegidos.py`
-- [ ] **T13**: `tests/test_f056_alcance_cerrado.py` con el patrón de
+- [x] **T13**: `tests/test_f056_alcance_cerrado.py` con el patrón de
   `test_f036_alcance_cerrado.py` y su base fija: R39, R40, R45 y «ninguna
   columna de correo fuera de `revisiones_bandeja`» (R12), con las tres
   guardas de F-030. |

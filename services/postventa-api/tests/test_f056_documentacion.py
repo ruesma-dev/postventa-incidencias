@@ -50,11 +50,11 @@ import re
 from pathlib import Path
 
 import pytest
-
 from domain.models.revision import AccionRevision, EstadoRevision, MotivoNoAprobable
 from infrastructure.sigrid.consultas_ubicaciones_validas import (
     SQL_UBICACIONES_DE_LAS_UNIDADES,
 )
+
 from tests.test_f005_integracion_sin_secretos import hallazgos
 
 #: Raíz del repositorio (este fichero vive en `<servicio>/tests/`).

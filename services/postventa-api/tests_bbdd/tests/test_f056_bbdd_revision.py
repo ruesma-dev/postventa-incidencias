@@ -357,14 +357,23 @@ def test_f056_r17_la_bandeja_no_cambia(preparada):
 # ==========================================================================
 
 
-def _insertar_crudo(conexion, incidencia_id: uuid.UUID, **cambios) -> None:
+def _insertar_crudo(conexion, incidencia_id: uuid.UUID, /, **cambios) -> None:
     """El `INSERT` real con una columna cambiada a mano, saltándose el dominio:
-    lo que se prueba es que la base lo rechaza por su cuenta."""
+    lo que se prueba es que la base lo rechaza por su cuenta.
+
+    La fila se construye con la incidencia **buena** (`incidencia_id`,
+    posicional) y luego se sustituyen las columnas de `cambios`, que pueden
+    incluir la propia `incidencia_id` (la clave ajena). Los dos primeros
+    parámetros son solo posicionales (`/`): sin eso, `incidencia_id=` en los
+    cambios chocaba con el parámetro (`TypeError`, T8 del 2026-10-08).
+    """
     valores = _vigentes(conexion, incidencia_id)
     sql, parametros = sentencias_revision.insert_revision(
         esquema=ESQUEMA, revision=_nueva(incidencia_id, valores)
     )
     fila = dict(zip(sentencias_revision.COLUMNAS_INSERT, parametros, strict=True))
+    desconocidas = set(cambios) - set(fila)
+    assert not desconocidas, f"columnas que no son del INSERT: {sorted(desconocidas)}"
     fila.update(cambios)
     with conexion.cursor() as cursor:
         cursor.execute(sql, tuple(fila.values()))
@@ -387,9 +396,13 @@ def test_f056_r36_la_clave_ajena_exige_una_incidencia_de_la_bandeja(preparada):
     importacion = _importacion(preparada)
     inc = _incidencia(preparada, importacion, 2)
 
+    ajena = uuid.uuid4()
+    assert ajena != inc
+
     with pytest.raises(psycopg.errors.ForeignKeyViolation):
-        _insertar_crudo(preparada, inc, incidencia_id=uuid.uuid4())
+        _insertar_crudo(preparada, inc, incidencia_id=ajena)
     preparada.rollback()
+    assert _uno(preparada, f"SELECT count(*) FROM {ESQUEMA}.{TABLA}") == 0
 
 
 @requiere_base

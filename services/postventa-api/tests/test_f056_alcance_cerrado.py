@@ -502,9 +502,17 @@ FUNCIONES_DE_F036 = (
     "_sin_sigrid_o_sin_base",
 )
 
-#: El único test de F-036 que la rama toca: `test_f036_ddl.py`, ampliado por
-#: T4 (lo que va tras el 11 es 12, 13, 14 y 15), sin relajar nada.
-TESTS_DE_F036_AMPLIADOS = (f"{SERVICIO}tests/test_f036_ddl.py",)
+#: Los tests de F-036 y de F-053 que la rama toca, ampliados sin relajar nada
+#: (cada uno, declarado en R45):
+#:
+#: - `test_f036_ddl.py`, por T4 (lo que va tras el 11 es 12, 13, 14 y 15);
+#: - `test_f053_documentacion.py`, por T15 (**Decisión del líder
+#:   2026-10-08**, O-1 de la review del Bloque 3): la cuenta de anónimos de
+#:   `docs/INTEGRACION.md` §8 pasa de «diecisiete» a «veinte».
+TESTS_DE_F036_AMPLIADOS = (
+    f"{SERVICIO}tests/test_f036_ddl.py",
+    f"{SERVICIO}tests/test_f053_documentacion.py",
+)
 
 
 def test_f056_s12_los_intocables_existen():
@@ -518,7 +526,7 @@ def test_f056_s12_la_rama_no_toca_ningun_intocable():
 
 
 def test_f056_r45_la_rama_no_toca_los_tests_de_f036_ni_de_f053():
-    """R45 · siguen en verde **sin tocarse** (salvo el `.sql` que T4 manda ampliar)."""
+    """R45 · siguen en verde **sin tocarse** (salvo los ampliados que R45 declara)."""
     cambiados = _diff_de_la_rama_o_saltar()
 
     tocados = [

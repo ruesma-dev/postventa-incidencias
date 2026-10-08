@@ -1097,6 +1097,9 @@ documento.
 | `GET /api/bandeja` | **F-036** · **lee** las incidencias importadas de una obra, de solo lectura, con un **tope duro de 500** filas por llamada. Es el **segundo** endpoint que devuelve dato de fuera acumulado —texto libre de la propiedad y nombres de proveedor, §7—, con las mismas cautelas que `GET /api/cola` |
 | `GET /api/catalogos/propuestas` | **F-036** · **lee** los oficios de una obra en Sigrid y las decisiones guardadas, y devuelve qué oficios parecen el mismo, qué grupos se aplican y cuáles no por contradicción. No escribe en ningún sitio |
 | `POST /api/catalogos/decisiones` | **F-036** · **escribe** en `postventa.decisiones_equivalencia` (esquema propio, append-only) que **una persona** confirma que varios oficios de Sigrid son el mismo, o que dos no lo son. Exige `confirmado: true` como booleano, como `POST /api/estado`, y **solo el catálogo `oficio`**: cualquier otro es 400. Un código que no es de la obra es 409. **Sigrid no se corrige desde aquí** |
+| `GET /api/revision` | **F-056** · **lee** la bandeja de una obra **para revisarla**, **paginada** (`?obra=&estado=&con_motivos=&tamano=&cursor=`: hasta 200 por página, 100 por omisión, y un cursor opaco): cada incidencia con sus valores importados y los vigentes, su estado, sus motivos de no aprobable contra el catálogo de Sigrid **de ese momento** y el **correo** de quien la revisó por última vez; el resumen cuenta la obra entera. Lee Sigrid por `sql/read` (§1) y **no escribe en ningún sitio**. Es el **tercer** endpoint que devuelve dato de fuera acumulado (§7): su cautela de volumen es la página, con un tope de 10.000 incidencias por obra (409 `bandeja_demasiado_grande`, sin truncar en silencio) |
+| `GET /api/revision/historial` | **F-056** · **lee** el historial de revisiones de **una** incidencia (`?incidencia_id=`), de la más antigua a la más reciente: acción, instante, **correo** de quien actuó, campos cambiados y el motivo de un descarte. Solo la base: **no lee Sigrid** ni escribe |
+| `POST /api/revision/acciones` | **F-056** · **escribe** en `postventa.revisiones_bandeja` (esquema propio, **append-only**) que **una persona** edita, descarta, aprueba o recupera una incidencia de la bandeja, con su `oid` y su correo. Exige `confirmado: true` como booleano y la `revision_previa` sobre la que decide: si otra persona actuó entre medias, 409 `revision_desactualizada`. Editar y aprobar **vuelven a leer** el catálogo de Sigrid por `sql/read`; aprobar con algún motivo es 409 `incidencia_no_aprobable`. **Nada en Sigrid**: lo aprobado se vuelca con **F-040** |
 
 > **Enmienda del 2026-09-24 (F-013), para el día del corte.** La fila de
 > `POST /api/archivar` dice, literal, que «**Escribe** en la biblioteca de dev
@@ -1163,7 +1166,7 @@ Sigrid son dígitos, y el front identifica cada par con `a-b`: un código con
 guion podría chocar; no se filtra, consta aquí
 (`specs/F-053-datos-para-el-portal/`).
 
-Los diecisiete quedan en nivel **anónimo**, y **es deliberado**: con un backend
+Los veinte quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie
 rompe el front. Y ese nivel es **irrelevante desde internet**: la plataforma

@@ -300,6 +300,18 @@ backend; la pantalla es F-038.
   `GET /api/bandeja`, la importación, la plantilla y los endpoints de
   catálogos no cambian.
 
+  > **Excepciones, ampliando sin relajar** (cada una, en la lista de tests
+  > ampliados de `test_f056_alcance_cerrado.py`):
+  >
+  > - `test_f036_ddl.py` (T4): lo que va tras el `11_` es `12_` … `15_`.
+  > - `test_f053_documentacion.py` (**Decisión del líder 2026-10-08**, O-1 de
+  >   la review del Bloque 3): las tres rutas de F-056 llevan la cuenta de
+  >   anónimos de `docs/INTEGRACION.md` §8 de «diecisiete» a «veinte». El test
+  >   exige ahora la cifra vigente («Los veinte quedan en nivel»), que el
+  >   párrafo de F-053 vaya antes de ella y que «Los diecisiete» ya no esté;
+  >   no se quita ninguna otra aserción. (`test_f019_documentacion.py` se
+  >   amplía igual; no es de F-036 ni de F-053.)
+
 ## 11 bis · Las ubicaciones válidas, contra Sigrid (D-4, Q-5)
 
 - **R46.** El sistema debe obtener las ubicaciones válidas con **una** lectura

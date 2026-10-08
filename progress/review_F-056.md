@@ -1,7 +1,7 @@
 <!-- progress/review_F-056.md -->
 # F-056 · Review final (revisión de la bandeja en el backend)
 
-- **Veredicto:** **CHANGES_REQUESTED.**
+- **Veredicto (primera pasada):** **CHANGES_REQUESTED.** Ver «Segunda pasada» al final: **APPROVED**.
   - El **código**, los **tests** y los **documentos** (`docs/ARCHITECTURE.md` y `docs/INTEGRACION.md`) están bien.
     No pido ningún cambio en `services/` ni en `docs/`.
   - Lo que falla es el **Bloque 5 tal como está escrito en `tasks.md`**, que es lo que esta review tenía que dar por
@@ -410,3 +410,121 @@ producción con un resultado esperado imposible para en falso la verificación. 
 deja datos de prueba vivos en producción.
 
 Vale para cualquier proyecto con MANUAL contra producción: hay que portarlo a `arnes-base` si se aprueba.
+
+## Segunda pasada (2026-10-09)
+
+- **Veredicto:** **APPROVED.** C-1, C-2, C-3 y C-4 están resueltos. No queda ningún checkpoint vacío, y la feature
+  puede pasar al Bloque 5 (T18 y T19, MANUAL del humano) y al cierre.
+- **Rama:** HEAD `3b5f16d`.
+- **Commits revisados:** `432ac4d` (C-4, el líder) y `3b5f16d` (C-1 a C-3, el implementer).
+
+### Qué ha cambiado desde `95c565e`
+
+`git diff --stat 95c565e` da **solo tres ficheros**, todos de texto:
+
+- `specs/F-056-revision-bandeja-backend/tasks.md`, en T19 (T18 no cambia);
+- `progress/current.md`;
+- `progress/impl_F-056.md`, que gana un párrafo.
+
+No cambia nada en `services/`, `docs/` ni `infra/`. Por eso no repito `init.sh`: el código es el mismo que aprobé
+en la primera pasada.
+
+### Comprobación de cada nombre del JS de T19 contra el código real
+
+| Nombre en el JS | Dónde está en el código | Resultado |
+|---|---|---|
+| `Api.identidadDe(...)`, con `usuarioOid` y `correo` | `services/postventa-front/js/api.js:140-164`; `window.Api` en `:735-737`; `importar.html` carga `js/api.js` | Coincide |
+| Rutas `/api/revision?obra=&estado=&cursor=`, `/api/revision/acciones` (POST) y `/api/revision/historial?incidencia_id=` | `function_app.py` (las tres rutas). `todas` y `descartada` son valores válidos de `FiltroEstado` | Coincide |
+| Claves del cuerpo: `incidencia_id`, `accion`, `revision_previa`, `confirmado`, `usuario_oid`, `usuario_correo`, `valores` (solo en editar) y `motivo` (solo en descartar) | `_COMUNES` y `_PROPIAS`, `interface_adapters/api/revision.py:151-166`. Aprobar y recuperar no llevan ninguna clave más | Coincide |
+| `CAMPOS_PEDIDOS`, en su orden | `domain/models/revision.py:115-124` | Coincide |
+| La forma de `catalogo`: `ubicaciones[unidad_codigo]`, y `oficios[].grupo.{etiqueta, codigos}` | `listar_revision` y `_oficios`, `revision.py:265-286` y `:350-370` | Coincide |
+| La respuesta: `incidencias`, `siguiente`, `total_filtrado`, `resumen`, `vigentes`, `estado`, `revision_id`, `motivos_no_aprobable` y `codigo` | `_fila` y `_error_de_revision` | Coincide |
+| `errores[].campo === 'ubicacion'` | `domain/models/revision.py:566` | Coincide |
+| `revisiones[].{accion, revision_id, correo, campos_cambiados}` | `historial_revision` | Coincide |
+| Códigos esperados: `valores_no_validos` (400), `revision_desactualizada` (409) y `accion_no_permitida` | `CODIGOS_DE_REVISION` | Coincide |
+
+Hay un caso que merece explicación: el **oficio ambiguo**.
+
+- La importación guarda como `oficio_nombre` la **etiqueta de la opción** de la plantilla (`Elegido.etiqueta`,
+  `domain/models/importacion.py:292-297`).
+- `catalogo.oficios[].grupo.etiqueta` es esa misma etiqueta (`_oficios`).
+- El `find` por etiqueta del JS casa, por tanto, si los grupos no han cambiado desde la importación. Si han cambiado,
+  el bloque se para con un mensaje claro, y la «Limpieza» funciona.
+- `grupo.codigos` son códigos de la obra (`codigos_en_obra`), así que el editar no puede dar
+  `oficio_fuera_de_la_obra`.
+
+### Lo que he ejecutado
+
+- **`node --check`** (Node v24.14.1) de los cuatro bloques JS sacados de `tasks.md` al scratchpad: **los cuatro
+  OK**.
+- **Simulación contra los handlers reales.**
+  - Porté la secuencia exacta de T19 a un pytest en el scratchpad: paso 2, paso 3 con la ubicación de control, las
+    seis acciones y el `recuperar` con `revision_ids[0]`, paso 4 y «Limpieza».
+  - Lo ejecuté contra `function_app.revision`, `revision_acciones` y `revision_historial` **reales**. Los dobles
+    son los de `test_f056_revision_http.py`.
+  - Usé **139 filas**, es decir, dos páginas con cursor.
+  - Lo probé en dos variantes: con el oficio resuelto y con un **oficio ambiguo de verdad** (un grupo `0046`+`0143`
+    por decisión de equivalencia, con la etiqueta de la opción como `oficio_nombre`).
+  - Añadí un caso de limpieza desde `aprobada`.
+  - Resultado: **3 passed**.
+  - Lo que comprueba la simulación:
+    - el editar de control da 400 `valores_no_validos`, con un solo error en `ubicacion`;
+    - el primer editar da 200 `editada` y sin motivos;
+    - la secuencia da `aprobada`, `editada`, `descartada`, `editada` y `descartada`;
+    - `recuperar` con la primera `revision_id` da **409 `revision_desactualizada`**;
+    - como contraste, repetir `descartar` con esa misma revisión da `accion_no_permitida`, que era el error que
+      señalaba C-1;
+    - la fila sale con `estado=descartada`;
+    - el historial tiene las seis revisiones, en el orden de los ids, con el correo y sin el `oid`;
+    - y la «Limpieza» no escribe si la fila ya está descartada.
+- **Tests sin caché.** `tests/test_f006_repo_sin_identificadores.py`, todos los `test_f056_*.py` y los **27 tests**
+  que leen `tasks.md`: **1872 passed, 37 skipped**. Los skipped son controles git de otras features.
+- **`git status`:** limpio. La simulación y los `.mjs` viven solo en el scratchpad.
+
+### Los cambios pedidos
+
+- **C-1: resuelto.**
+  - El 409 se pide con `recuperar` y `revision_previa = T19.ids[0]`, y se espera `revision_desactualizada`.
+  - Después se exige que la fila salga en `estado=descartada`.
+  - El texto prohíbe expresamente mandar `recuperar` con la `revision_id` vigente.
+  - Se añade un bloque de **Limpieza**, que deja la fila descartada si el paso 3 se para después de escribir.
+- **C-2: resuelto.**
+  - El JS es exacto y se pega tal cual.
+  - Cada bloque se para con `Error('T19 para: …')`.
+  - No imprime correos, `oid`, ids ni ubicaciones.
+  - `valores` se arma desde `vigentes` con `CAMPOS_PEDIDOS`.
+  - El oficio es concreto: el vigente o el primero de su grupo.
+  - `proveedor_codigo` va a `null`.
+  - El `oid` se comprueba en cada respuesta y en el historial.
+- **C-3: resuelto.**
+  - El paso 2 exige 200 y no 503, **15** unidades en `catalogo.ubicaciones` y ninguna lista vacía.
+  - El primer `editar`, con una ubicación de la lista, tiene que dar 200, y el texto recuerda que hasta el Bloque 3
+    esas llamadas daban 503.
+- **C-4: resuelto.** `progress/current.md` abre con el estado del 2026-10-09: Bloques 1–4 hechos, esta review, y
+  T16, T18, T19 y T20 pendientes, con los comandos en `tasks.md`.
+
+### Checkpoints que cambian respecto a la primera pasada
+
+- [x] **C4 · MANUAL listadas con su comando exacto.** T19 tiene ahora comandos exactos, y `current.md` la cita por
+  referencia con T18 (el criterio de F-053).
+- [x] **C4 bis · MANUAL de `critico` con su comando exacto.** T0 y T8 tienen ya su resultado real. T18 y T19 son
+  posteriores a la review por diseño.
+
+El resto queda como en la primera pasada.
+
+### Observaciones nuevas (no bloquean)
+
+- **O-7 · Un caso en que la fila de prueba no queda descartada.**
+  - Si el bloque del paso 3 se para **antes** de fijar `T19.incidenciaId`, la fila importada se queda `nueva` y la
+    «Limpieza» no la encuentra.
+  - Eso pasa en dos casos:
+    - `/.auth/me` no da el `oid` o el correo;
+    - o hay un número de filas de prueba distinto de una.
+  - Una fila `nueva` no es candidata al volcado, porque necesita que alguien la apruebe, y la descripción dice
+    «PRUEBA». Pero queda activa en la bandeja de producción.
+  - Propuesta: que la «Limpieza», si no tiene `T19.incidenciaId`, busque por descripción las filas «PRUEBA F-056 -
+    DESCARTAR» que no estén `descartada` y las descarte. Puede hacerse al preparar T19, sin otra review.
+- **O-1 (T18) sigue abierta.** Faltan los comandos del merge, la comprobación de que `log -1` es el merge de F-056,
+  y decir «sin parámetros» en lugar de «los mismos que el último despliegue». Basta con que el script que prepare el
+  líder lo haga.
+- O-2 a O-6 siguen como en la primera pasada.

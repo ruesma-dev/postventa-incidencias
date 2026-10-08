@@ -127,6 +127,7 @@ __all__ = [
 #: (§16.3); el borde la compone y los tests le pasan dobles.
 FuenteDeUbicaciones = Callable[[CatalogoObra], Mapping[str, tuple[str, ...]]]
 
+
 def leer_ubicaciones_validas(
     puerto: UbicacionesValidasPort, catalogo: CatalogoObra
 ) -> dict[str, tuple[str, ...]]:

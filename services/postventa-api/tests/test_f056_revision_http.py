@@ -314,6 +314,10 @@ CUERPOS_INVALIDOS: list[tuple[str, object]] = [
     ("incidencia-no-uuid", _cuerpo(incidencia_id="no-es-un-identificador")),
     ("incidencia-numero", _cuerpo(incidencia_id=1)),
     ("incidencia-vacia", _cuerpo(incidencia_id="")),
+    # N-2 de la review del Bloque 3: solo la forma canónica con guiones (decisión 9).
+    ("incidencia-con-llaves", _cuerpo(incidencia_id="{" + str(UUID(int=1)) + "}")),
+    ("incidencia-urn", _cuerpo(incidencia_id=UUID(int=1).urn)),
+    ("incidencia-sin-guiones", _cuerpo(incidencia_id=UUID(int=1).hex)),
     ("sin-accion", _cuerpo(accion=QUITAR)),
     ("accion-otra", _cuerpo(accion="borrar")),
     ("accion-mayusculas", _cuerpo(accion="DESCARTAR")),
@@ -1215,7 +1219,18 @@ def test_f056_r31_el_log_del_listado_solo_lleva_obra_tamano_y_recuentos(
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("valor", ["", "no-es-un-identificador", "1234"])
+@pytest.mark.parametrize(
+    "valor",
+    [
+        "",
+        "no-es-un-identificador",
+        "1234",
+        # N-2 de la review del Bloque 3: solo la forma canónica con guiones.
+        "{" + str(UUID(int=1)) + "}",
+        UUID(int=1).urn,
+        UUID(int=1).hex,
+    ],
+)
 def test_f056_r32_historial_sin_uuid_es_400_sin_construir(nada_se_construye, valor: str) -> None:
     respuesta = _historial(valor)
 

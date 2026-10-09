@@ -1,6 +1,37 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## F-060 · `spec_ready` · 2026-10-09 · spec escrita, pendiente de la PARADA 1 del humano
+>
+> `specs/F-060-normalizar-ubicaciones/` (requirements R1–R43 + V1–V3, design §0–§15, tasks T1–T36 en 7 bloques).
+> Rama `feature/F-060-normalizar-ubicaciones`; base fija `33d8938`. Solo `services/postventa-api`, **sin DDL**.
+>
+> **Qué propone**
+> - **D-1** la normalización es **una revisión `editar` del sistema** en `revisiones_bandeja` (los vigentes con solo
+>   la ubicación cambiada al texto de Sigrid). Descartadas: normalizar al importar (no cubre los 110) y el vigente
+>   calculado (rompe la coherencia de F-056 y el formulario de F-038).
+> - **D-2** se lanza **tras cada importación que registra filas** (mejor esfuerzo: si falla, la importación responde
+>   igual y avisa en el log) **y a demanda** con `POST /api/revision/normalizar` (`{obra, confirmado, ensayo}`,
+>   `ensayo` obligatorio), que es como se normalizan los 110 de la 0677.
+> - **D-3** coincide salvo mayúsculas (`casefold`), blancos en los extremos y forma Unicode (NFC); no blancos
+>   interiores, ni tildes, ni puntuación. Dos candidatos en la lista de la unidad → no se normaliza (sigue fuera).
+> - **D-4** constancia sin DDL: `oid` y correo = `sistema:normalizar_ubicacion` (sin `@`: ninguna persona puede
+>   enviarlo). La alternativa (columna nueva) obligaría a mover el `16_` de F-059.
+> - **D-6** solo `nueva`/`editada` (nunca `aprobada`: perdería la aprobación). **D-7** un lote, una transacción,
+>   frescura por fila; las desactualizadas se saltan.
+> - **Listado lento**: el código no permite elegir causa (dos conexiones nuevas a PostgreSQL por petición, primera
+>   petición del proceso con DDL, frío de Flex Consumption, red de la SWA…). **D-9** primero una traza con tiempos por
+>   tramo (`F-060 tiempos del listado`) y medición M1 en producción (consola + App Insights, solo lectura); el
+>   remedio se elige con el dato entre siete ya diseñados (§11.4). **D-10** objetivo en caliente: máx. < 10 s, p50 < 3 s.
+>
+> **Lo que debe validar el humano**: D-1, D-2, D-4 y **Q-1** (la normalizada queda `editada`, no `nueva`: ~110
+> pasan de `nueva` a `editada`) bloquean empezar; Q-2 (el literal), Q-3 (¿cuenta el frío?), Q-4 (NFC), Q-5 (conexión
+> viva por proceso, solo si M-1 no basta) y Q-6 (cualquiera de `posventa-usuarios` lanza la normalización).
+>
+> **Impacto**: F-038 **sin cambios de forma** (verá «editar por sistema:normalizar_ubicacion»; mejora opcional de
+> etiqueta). F-059 sin cambios de contrato; su cuenta de anónimos pasa de veintitrés a **veinticuatro** (la ajusta el
+> líder al llevar su spec a su rama). F-058 debe conservar la llamada tras importar.
+
 > ## ✅ F-056 CERRADA · 2026-10-09 · desplegada y comprobada (T19) · siguiente: F-060 (spec)
 >
 > Merge en `dev`/`main` (`2feca6e`, push hecho) y cierre en la rama (`138d8d5`, pendiente de merge y push).

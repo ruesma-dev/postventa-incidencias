@@ -1,6 +1,26 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ⏸ PAUSA · 2026-10-09 · F-056 desplegada, T19 a medias · al volver: pasos 3 a 6 de T19
+>
+> - **F-056**: merge en `dev`/`main` `2feca6e` (push hecho), **desplegada por el humano** (T18) con
+>   `t32_desplegar_f056.ps1` (en la carpeta del usuario, fuera del repo). T19: **paso 1 hecho** (0677: 15
+>   unidades, 1270 reclamaciones; por unidad 1:210, 2:169, 3:128, 4:178, 5:54, 6:34, 7:261, 12:23, 13:213, el
+>   resto 0); **paso 2 OK** (200, sin 503; 15 unidades con 31–37 ubicaciones; 158 filas en 2 páginas, todas
+>   `nueva`; primera página **11,9 s**, objetivo < 10 s, re-medir). Motivos: `ubicacion_fuera_de_lista` 148
+>   (110 solo por mayúsculas, 0 por tildes o espacios, 38 de verdad en 8 textos), `oficio_ambiguo` 47,
+>   `sin_oficio` 39, el resto 0.
+>   **Falta**: paso 3 (importar a la 0677 una fila «PRUEBA F-056 - DESCARTAR» y pegar
+>   `t33_f056_paso3_fila_de_prueba.js`; si se para, `t33_f056_limpieza.js`), paso 4
+>   (`t33_f056_paso4_historial.js`), paso 5 (App Insights sin oid, correo ni texto) y paso 6 (repetir el
+>   paso 1). Después, T16 (`azure-apps`, líder), T20 y cierre de F-056.
+> - **F-060** dada de alta (`f0a8237`, prioridad 1 tras F-056): **normalizar** las ubicaciones al texto exacto
+>   de Sigrid (decisión del humano: normalizar, no comparar sin mayúsculas). Falta su spec (PARADA 1).
+> - Orden: F-056 (cerrar) → F-060 → F-038 → F-057 → F-059 → F-040 → F-058 → F-055 → F-052 → F-054.
+> - Worktrees vivos: `postventa-f038` (rama F-038, specs de F-038/F-056) y `postventa-f040` (rama F-040, specs
+>   de F-040/F-059). Pendiente de respuesta del humano: si se manda a `arnes-base` la propuesta del «RED de
+>   recogida» (review del Bloque 1 de F-056).
+
 > ## F-056 · `in_progress` · 2026-10-09 · Bloques 1–4 hechos y aprobados por bloque · review final: cambios de texto en T19
 >
 > **Estado (líder, 2026-10-09).** Bloque 4 hecho (`55696f0`; T15 y T17, `init.sh` en verde: 7680 passed, cobertura

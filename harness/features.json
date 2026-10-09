@@ -698,7 +698,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 4,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "F-059 (el backend del volcado), done, desplegada y verificada; y F-038 (bandeja.html), done."
     },
@@ -891,7 +891,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 9,
+      "priority": 8,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -924,7 +924,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 10,
+      "priority": 9,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -941,7 +941,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 8,
+      "priority": 7,
       "branch": "feature/F-055-barridos-sin-cache"
     },
     {
@@ -958,7 +958,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 4,
+      "priority": 5,
       "branch": "feature/F-057-tabla-bandeja-paso1"
     },
     {
@@ -976,14 +976,14 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 7,
+      "priority": 6,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
       "blocked_by": "F-056 (la lectura de ubicaciones por unidad, §16.3 de su design)."
     },
     {
       "id": "F-059",
       "title": "Volcado a Sigrid en el backend: ensayo, escritura en lote y estado volcada",
-      "description": "Sacada de F-040 el 2026-10-07 por el límite de servicio (D-1, decisión del humano). El backend del volcado de la bandeja a Sigrid en services/postventa-api: tres endpoints (GET /api/volcado, POST /api/volcado/ensayo, POST /api/volcado/volcar) sobre POST /api/sigrid/partes-reclamacion de sigrid-api (azure-apps/sigrid_api.md §8.9); ensayo guardado obligatorio (misma persona, 30 min); escritura anticipada del evento enviado antes de cada commit; referencia PVI-<incidencia_id> para que reintentar no duplique; tabla append-only postventa.volcados_sigrid (16_volcados_sigrid.sql); estados derivados volcada y en_duda que amplían los de F-056 y bloquean la revisión; tipo 0002 siempre, causante false, sin urgencia ni clase; el parte queda en SAT y Posventa lo pasa a PTE a mano; ventana propia VOLCADO_HABILITADO publicada cerrada (infra/27_ventana_volcado.ps1) y lectura de verificación (infra/28_volcado_lectura_sigrid.ps1); verificación en producción en la obra 0626 con una escritura autorizada y anulación posterior. Q-6: el líder actualiza la fila de consumidores de azure-apps/sigrid_api.md al desplegar. Spec aprobada (2026-10-07): specs/F-059-volcado-sigrid-backend/ (escrita en la rama de F-040, worktree postventa-f040; se lleva a su rama al empezar). El front es F-040.",
+      "description": "Sacada de F-040 el 2026-10-07 por el límite de servicio (D-1, decisión del humano). El backend del volcado de la bandeja a Sigrid en services/postventa-api: tres endpoints (GET /api/volcado, POST /api/volcado/ensayo, POST /api/volcado/volcar) sobre POST /api/sigrid/partes-reclamacion de sigrid-api (azure-apps/sigrid_api.md §8.9); ensayo guardado obligatorio (misma persona, 30 min); escritura anticipada del evento enviado antes de cada commit; referencia PVI-<incidencia_id> para que reintentar no duplique; tabla append-only postventa.volcados_sigrid (16_volcados_sigrid.sql); estados derivados volcada y en_duda que amplían los de F-056 y bloquean la revisión; tipo 0002 siempre, causante false, sin urgencia ni clase; el parte queda en SAT y Posventa lo pasa a PTE a mano; ventana propia VOLCADO_HABILITADO publicada cerrada (infra/27_ventana_volcado.ps1) y lectura de verificación (infra/28_volcado_lectura_sigrid.ps1); verificación en producción en la obra 0626 con una escritura autorizada y anulación posterior. Q-6: el líder actualiza la fila de consumidores de azure-apps/sigrid_api.md al desplegar. Spec aprobada (2026-10-07): specs/F-059-volcado-sigrid-backend/ (escrita en la rama de F-040, worktree postventa-f040; se lleva a su rama al empezar). El front es F-040. F-056 cerrada y desplegada el 2026-10-09: ya no hay bloqueo. Orden del humano (2026-10-09): justo detrás de F-060, antes de F-038, para llegar antes a la primera escritura real en Sigrid.",
       "acceptance": [
         "Una incidencia aprobada se crea en Sigrid con sus campos (tipo 0002, oficio, ubicación, interviniente sin causante) y su código vuelve a la bandeja como volcada",
         "No se escribe en Sigrid sin un ensayo guardado de la misma persona de menos de 30 minutos, con confirmado true y con la ventana VOLCADO_HABILITADO abierta; el despliegue la deja cerrada",
@@ -998,9 +998,8 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
-      "branch": "feature/F-059-volcado-sigrid-backend",
-      "blocked_by": "F-056 (las candidatas al volcado y los estados de revisión), que tiene que estar done y mergeada en dev."
+      "priority": 2,
+      "branch": "feature/F-059-volcado-sigrid-backend"
     },
     {
       "id": "F-060",

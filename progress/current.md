@@ -8,7 +8,8 @@
 >
 > - **Siguiente: F-060** (normalizar las ubicaciones al texto exacto de Sigrid; y el listado lento, p50 7,1 s).
 >   Falta su spec y enseñarla al humano (PARADA 1).
-> - Orden: F-060 → F-038 → F-057 → F-059 → F-040 → F-058 → F-055 → F-052 → F-054.
+> - **Orden (humano, 2026-10-09, para llegar antes a escribir en Sigrid)**: F-060 → **F-059** (primera escritura real,
+>   un parte en la 0626) → F-038 → **F-040** (volcado masivo) → F-057 → F-058 → F-055 → F-052 → F-054.
 > - Worktrees vivos: `postventa-f038` (rama F-038, specs de F-038/F-056) y `postventa-f040` (rama F-040, specs
 >   de F-040/F-059). Pendiente de respuesta del humano: si se manda a `arnes-base` la propuesta del «RED de
 >   recogida» (review del Bloque 1 de F-056).

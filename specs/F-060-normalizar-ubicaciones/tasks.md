@@ -31,7 +31,7 @@
 
 ## Bloque 1 · La regla y el plan (dominio puro)
 
-- [ ] **T1 · RED**: `tests/test_f060_normalizacion_dominio.py` contra
+- [x] **T1 · RED**: `tests/test_f060_normalizacion_dominio.py` contra
   `domain/models/normalizacion.py`, que aún no existe (`design.md` §3, §4.2,
   §4.4, §6): R1–R5 (cada fila de la tabla de §3, `casefold`, NFC frente a NFD,
   blancos interiores, tildes y puntuación → `sin_coincidencia`, `ambigua` con

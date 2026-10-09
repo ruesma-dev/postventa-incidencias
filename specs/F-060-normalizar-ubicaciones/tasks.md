@@ -1,7 +1,8 @@
 <!-- specs/F-060-normalizar-ubicaciones/tasks.md -->
 # F-060 · Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid — Tareas
 
-> **Estado: pendiente de aprobación del humano** (PARADA 1; `design.md` §15).
+> **Aprobada por el humano el 2026-10-09** («si»): las recomendaciones de `design.md` §15 tal cual (D-1 a D-10;
+> Q-1: las normalizadas pasan de `nueva` a `editada`).
 > Rama `feature/F-060-normalizar-ubicaciones`, desde `dev` en `704cfca` más
 > `33d8938` (el backlog). **Base fija: `33d8938`** (para las guardias de
 > alcance y la mutación del Bloque 1); la anota el implementer en

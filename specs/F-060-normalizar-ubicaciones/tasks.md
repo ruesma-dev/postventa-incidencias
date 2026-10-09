@@ -42,7 +42,7 @@
   huella, `QUIEN_SISTEMA`, la esperada, el recuento y su suma); R11
   (`validar_quien` rechaza el correo del sistema). Traza del fallo pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_normalizacion_dominio.py` **falla**
-- [ ] **T2 · GREEN**: `domain/models/normalizacion.py` (§6), sin tocar
+- [x] **T2 · GREEN**: `domain/models/normalizacion.py` (§6), sin tocar
   `domain/models/revision.py`. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_normalizacion_dominio.py tests/test_f056_revision_dominio.py tests/test_f005_arquitectura.py tests/test_f036_arquitectura.py`
 - [ ] **T3 · Mutación del bloque.** |

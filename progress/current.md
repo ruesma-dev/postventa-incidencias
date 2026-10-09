@@ -1,7 +1,7 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-060 · `in_progress` · 2026-10-09 · spec APROBADA por el humano («si») · Bloque 1 encargado al implementer
+> ## F-060 · `in_progress` · 2026-10-09 · spec APROBADA por el humano («si») · Bloque 1 HECHO (T1–T3, 19/19 mutantes muertos), pendiente de review
 >
 > `specs/F-060-normalizar-ubicaciones/` (requirements R1–R43 + V1–V3, design §0–§15, tasks T1–T36 en 7 bloques).
 > Rama `feature/F-060-normalizar-ubicaciones`; base fija `33d8938`. Solo `services/postventa-api`, **sin DDL**.

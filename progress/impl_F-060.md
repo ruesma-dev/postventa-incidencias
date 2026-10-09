@@ -198,3 +198,71 @@ vigente **sin recortar** cuyo texto recortado está en la lista. Para F-056 no e
 (compara recortado), y para F-060 es `normalizable` por R2.2 (no es `exacta` tal cual), así que suma en
 `no_exactas`. El design §3 dice que hoy es inalcanzable (la importación y la edición guardan recortado), así que
 la comprobación de T26 vale; si alguna vez no cuadra por poco, este es el primer sospechoso.
+
+### T3 · Mutación del bloque
+
+Comando, desde la raíz: `python -m harness.mutacion --feature F-060 --base 33d8938 --timeout 1800` (8 workers, los de
+`harness/rigor.json`). Lanzado tras el commit de T2 (`fda8418`) y esperado hasta el final, con el árbol quieto.
+
+Salida real (cola):
+
+```
+F-060: 1 fichero(s), 211 línea(s) de producción (origen rama, 33d89385ccf0c76a7ba00208744282936ba9e04a..feature/F-060-normalizar-ubicaciones)
+Campaña paralela: hasta 8 workers, uno por worktree.
+...
+19 mutantes evaluados, 19 muertos, 0 supervivientes, 0 timeouts en 2768.9 s
+Informe: progress/mutacion_F-060.md
+```
+
+**19/19 muertos, 0 supervivientes, 0 timeouts** (`progress/mutacion_F-060.md`). Por familias: `frozen=True` de los
+tres tipos (3, los mata `test_f060_los_tipos_son_inmutables`); la comparación de clave y el `not candidatos` del
+recuento de candidatos (2); `> 1` → `>= 1` y `> 1` → `> 2` (2, los matan las filas `normalizable` y la `ambigua`
+de dos candidatos); `candidatos[0]` → `[1]` (1); y los contadores del plan, su `0` inicial, sus `+= 1` → `-= 1` y
+`+= 2` (11, los matan los tests de recuento de R6, R7 y R10).
+
+**Lo que el mutador no muta** (aviso del encargo): `harness.mutacion` no muta condiciones sin operadores de su tabla
+—`in`, `not in`, `is`, `is not`—, y en `normalizacion.py` las hay en ramas de verdad: `texto in lista` (exacta),
+`recortado in lista` (normalizable por recorte), `vigentes.ubicacion is None`, los `is Coincidencia.…` del plan,
+`estado_de(…) not in ESTADOS_NORMALIZABLES` y el `ultima is None` de la esperada. El fichero **no** sale con 0
+mutantes, pero esas ramas no tienen mutante. Cada una la fija un test que fallaría si se invirtiera o se quitara:
+`test_f060_r2_cada_fila_de_la_tabla` (filas `exacta` y de recorte), `test_f060_r2_el_exacto_tras_recortar_gana_a_la_ambiguedad`,
+`test_f060_r6_sin_ubicacion_o_exacta_se_examina_y_no_cuenta`, `test_f060_r7_aprobada_y_descartada_son_no_editables`,
+`test_f060_r7_nueva_y_editada_se_normalizan` y `test_f060_r9_la_esperada_es_la_ultima_revision_leida`; y la cobertura
+de ramas del módulo es del 100 % (20/20).
+
+### Ficheros tocados en el Bloque 1
+
+| Fichero | Cambio |
+|---|---|
+| `services/postventa-api/domain/models/normalizacion.py` | **Nuevo**: `Coincidencia`, `TEXTO_SISTEMA`, `QUIEN_SISTEMA`, `ESTADOS_NORMALIZABLES`, `UbicacionDeSigrid`, `RecuentoNormalizacion`, `PlanDeNormalizacion`, `clave_de_ubicacion`, `ubicacion_de_sigrid`, `revision_de_normalizacion`, `planificar_normalizacion` |
+| `services/postventa-api/tests/test_f060_normalizacion_dominio.py` | **Nuevo**: 80 casos (R1–R11, y R21–R23 en el dominio) |
+| `specs/F-060-normalizar-ubicaciones/tasks.md` | T1, T2 y T3 marcadas |
+| `progress/impl_F-060.md`, `progress/mutacion_F-060.md` | Este informe y el de la campaña |
+
+**Sin tocar**: `domain/models/revision.py` y el resto de F-056, F-036, `.env`, `services/postventa-front/`, la
+plantilla. Ningún test de F-036 ni de F-056 cambiado. Datos de los tests, ficticios (obra `9901`, «Sala Ejemplo»,
+«Patio Ficticio», `@ejemplo.invalid`, `UUID(int=n)`).
+
+### Commits del Bloque 1
+
+| Commit | Qué |
+|---|---|
+| `2c92a10` | **T1 · RED**: el test, el esqueleto neutro y la cabecera de este informe con la base fija |
+| `fda8418` | **T2 · GREEN**: `domain/models/normalizacion.py` |
+| (este commit) | **T3**: `progress/mutacion_F-060.md`, T3 marcada y este informe |
+
+### Pendiente
+
+Nada del Bloque 1. **Parar: review del Bloque 1.** El Bloque 2 (el lote en la base) no se ha empezado.
+
+### Evidencias (Bloque 1)
+
+| Evidencia | Valor real |
+|---|---|
+| Tests de F-060 | 80 passed (`tests/test_f060_normalizacion_dominio.py`) |
+| Tests de la verificación de T2 (F-060 + F-056 dominio + arquitectura F-005/F-036) | 404 passed in 17.47 s |
+| `tests/test_f006_repo_sin_identificadores.py` + F-060 | 128 passed in 50.67 s |
+| Cobertura de lo cambiado | `domain/models/normalizacion.py`: 76/76 sentencias y 20/20 ramas, **100 %** (medido con `coverage run --branch` sobre los tests de F-060; la `PUERTA COBERTURA` de `init.sh` se mide en T23 con la suite entera) |
+| Mutantes | **19 generados, 19 muertos, 0 supervivientes, 0 timeouts** |
+| Workers y tiempo de la campaña | 8 workers, 2768.9 s |
+| Suite entera | No ejecutada en este bloque (solo en T23, por `tasks.md`) |

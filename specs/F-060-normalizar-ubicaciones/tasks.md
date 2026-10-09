@@ -45,7 +45,7 @@
 - [x] **T2 · GREEN**: `domain/models/normalizacion.py` (§6), sin tocar
   `domain/models/revision.py`. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_normalizacion_dominio.py tests/test_f056_revision_dominio.py tests/test_f005_arquitectura.py tests/test_f036_arquitectura.py`
-- [ ] **T3 · Mutación del bloque.** |
+- [x] **T3 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base 33d8938 --timeout 1800` → `progress/mutacion_F-060.md` sin supervivientes abiertos
 
 **Parar. Review del Bloque 1.**

@@ -1,6 +1,20 @@
 <!-- progress/current.md -->
 # Sesión activa
 
+> ## ✅ F-056 CERRADA · 2026-10-09 · desplegada y comprobada (T19) · siguiente: F-060 (spec)
+>
+> Merge en `dev`/`main` (`2feca6e`, push hecho) y cierre en la rama (`138d8d5`, pendiente de merge y push).
+> T19 completo en producción (0677); `azure-apps` en `85f4128`. Resumen en `progress/history.md`.
+>
+> - **Siguiente: F-060** (normalizar las ubicaciones al texto exacto de Sigrid; y el listado lento, p50 7,1 s).
+>   Falta su spec y enseñarla al humano (PARADA 1).
+> - Orden: F-060 → F-038 → F-057 → F-059 → F-040 → F-058 → F-055 → F-052 → F-054.
+> - Worktrees vivos: `postventa-f038` (rama F-038, specs de F-038/F-056) y `postventa-f040` (rama F-040, specs
+>   de F-040/F-059). Pendiente de respuesta del humano: si se manda a `arnes-base` la propuesta del «RED de
+>   recogida» (review del Bloque 1 de F-056).
+
+> ### Histórico de F-056
+>
 > ## F-056 · `in_progress` · 2026-10-09 · Bloques 1–4 hechos y aprobados por bloque · review final: cambios de texto en T19
 >
 > **Estado (líder, 2026-10-09).** Bloque 4 hecho (`55696f0`; T15 y T17, `init.sh` en verde: 7680 passed, cobertura

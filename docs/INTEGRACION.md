@@ -1,10 +1,11 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-08. **Última feature que
+> **Origen**: este repositorio. **Fecha**: 2026-10-09. **Última feature que
 > lo tocó**: F-056, la revisión de la bandeja en el backend —una tabla
 > append-only, tres endpoints, el correo de quien revisa y una tercera lectura
-> de Sigrid (§1, §2, §7 y §8)—, implementada en su rama y **sin desplegar**.
+> de Sigrid (§1, §2, §7 y §8)—, **desplegada** el 2026-10-09 y verificada en
+> el entorno (T19).
 > Antes, F-053 el 2026-10-06 (dos campos aditivos, §8); F-036, **desplegada**
 > desde su rama entre el 2026-10-02 y el 2026-10-05 y verificada en el entorno
 > (T29) —el 2026-10-01, la lectura del Excel en un proceso hijo y lo que exige
@@ -1383,7 +1384,7 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
 | La entrada de incidencias por Excel | F-036 | **Desplegada** desde el 2026-10-02 (verificada en el entorno el 2026-10-05, T29): las rutas de la plantilla, la importación, la bandeja y los catálogos existen en el entorno desplegado. Lo importado **se queda en la bandeja**: no crea ninguna incidencia en Sigrid hasta **F-040**, ni se revisa ni se edita hasta **F-038** |
-| La revisión de la bandeja | F-056 | Implementada en su rama y **sin desplegar**: las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` no existen todavía en el entorno desplegado, ni la tabla `postventa.revisiones_bandeja`, que la crea el DDL al arrancar. Sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
+| La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo
 > cierta: F-013 está implementada en su rama y **no desplegada**. Deja de

@@ -202,7 +202,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 119,
+      "priority": 120,
       "branch": "feature/F-011-buzon-correo"
     },
     {
@@ -252,7 +252,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 120,
+      "priority": 121,
       "branch": "feature/F-014-reagrupar-pagina-2",
       "blocked_by": "F-003: sin la lectura multimodal del pie no hay 'Página N' que reagrupar."
     },
@@ -272,7 +272,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 121,
+      "priority": 122,
       "branch": "feature/F-015-evaluacion-prompt",
       "blocked_by": "F-003: sin prompt ni extractor no hay nada que evaluar."
     },
@@ -291,7 +291,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 122,
+      "priority": 123,
       "branch": "feature/F-016-interpretacion-observaciones",
       "blocked_by": "F-004: es quien crea la cola de validación humana y quien decide qué parte entra en ella. Consume además la transcripción de las observaciones que ya produce F-003."
     },
@@ -309,7 +309,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 123,
+      "priority": 124,
       "branch": "feature/F-017-checkpoints-manual"
     },
     {
@@ -327,7 +327,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 124,
+      "priority": 125,
       "branch": "feature/F-018-minimo-privilegio-graph"
     },
     {
@@ -364,7 +364,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "documental",
-      "priority": 126,
+      "priority": 127,
       "branch": "feature/F-020-diseno-front"
     },
     {
@@ -382,7 +382,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 127,
+      "priority": 128,
       "branch": "feature/F-021-rehidratar-sesion"
     },
     {
@@ -400,7 +400,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 128,
+      "priority": 129,
       "branch": "feature/F-022-cache-prompts-gemini"
     },
     {
@@ -418,7 +418,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 118,
+      "priority": 119,
       "branch": "feature/F-024-datos-parte-sigrid"
     },
     {
@@ -470,7 +470,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 129,
+      "priority": 130,
       "branch": "feature/F-027-suite-barrido-cacheado"
     },
     {
@@ -510,7 +510,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 135,
+      "priority": 136,
       "branch": "feature/F-029-scripts-infra-comillas"
     },
     {
@@ -647,7 +647,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 14,
+      "priority": 15,
       "branch": "feature/F-037-entrada-web-clientes",
       "blocked_by": "Depende de que exista el proyecto independiente de la web de clientes, y de F-036 (la bandeja)."
     },
@@ -663,7 +663,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 2,
+      "priority": 3,
       "branch": "feature/F-038-bandeja-revision",
       "blocked_by": "F-056 (el backend de la revisión), que tiene que estar done y desplegada."
     },
@@ -680,7 +680,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 16,
+      "priority": 17,
       "branch": "feature/F-039-propuesta-industrial"
     },
     {
@@ -698,7 +698,7 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 5,
+      "priority": 6,
       "branch": "feature/F-040-volcado-sigrid",
       "blocked_by": "F-059 (el backend del volcado), done, desplegada y verificada; y F-038 (bandeja.html), done."
     },
@@ -715,7 +715,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 18,
+      "priority": 19,
       "branch": "feature/F-041-ficha-incidencia"
     },
     {
@@ -731,7 +731,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 19,
+      "priority": 20,
       "branch": "feature/F-042-no-procede-email"
     },
     {
@@ -746,7 +746,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 20,
+      "priority": 21,
       "branch": "feature/F-043-operaciones-bloque"
     },
     {
@@ -761,7 +761,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 21,
+      "priority": 22,
       "branch": "feature/F-044-impresion-bloque"
     },
     {
@@ -777,7 +777,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 22,
+      "priority": 23,
       "branch": "feature/F-045-parte-sin-firma"
     },
     {
@@ -792,7 +792,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 23,
+      "priority": 24,
       "branch": "feature/F-046-coste-postv2"
     },
     {
@@ -807,7 +807,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 24,
+      "priority": 25,
       "branch": "feature/F-047-incidencia-proforma"
     },
     {
@@ -822,7 +822,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 25,
+      "priority": 26,
       "branch": "feature/F-048-datamart-posventa"
     },
     {
@@ -854,7 +854,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 26,
+      "priority": 27,
       "branch": "feature/F-050-agrupar-proveedores",
       "blocked_by": "Depende de F-036 (mecanismo de equivalencias) y de que algún desplegable ofrezca proveedores de fuera de la obra."
     },
@@ -891,7 +891,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "critico",
-      "priority": 8,
+      "priority": 9,
       "branch": "feature/F-052-secretos-ajustes"
     },
     {
@@ -924,7 +924,7 @@
       "status": "pending",
       "sdd": false,
       "rigor": "estandar",
-      "priority": 9,
+      "priority": 10,
       "branch": "feature/F-054-dev-server-127"
     },
     {
@@ -941,7 +941,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 7,
+      "priority": 8,
       "branch": "feature/F-055-barridos-sin-cache"
     },
     {
@@ -958,7 +958,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "estandar",
-      "priority": 3,
+      "priority": 4,
       "branch": "feature/F-057-tabla-bandeja-paso1"
     },
     {
@@ -976,7 +976,7 @@
       "status": "pending",
       "sdd": true,
       "rigor": "critico",
-      "priority": 6,
+      "priority": 7,
       "branch": "feature/F-058-plantilla-ubicaciones-sigrid",
       "blocked_by": "F-056 (la lectura de ubicaciones por unidad, §16.3 de su design)."
     },
@@ -998,9 +998,27 @@
       "status": "spec_ready",
       "sdd": true,
       "rigor": "critico",
-      "priority": 4,
+      "priority": 5,
       "branch": "feature/F-059-volcado-sigrid-backend",
       "blocked_by": "F-056 (las candidatas al volcado y los estados de revisión), que tiene que estar done y mergeada en dev."
+    },
+    {
+      "id": "F-060",
+      "title": "Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid",
+      "description": "Alta del 2026-10-09 por decisión del humano, tras el paso 2 de la T19 de F-056 en producción: de las 158 incidencias de la 0677, 148 salen con ubicacion_fuera_de_lista porque la comparación contra la tipología de la unidad (prmtpl.ubica, F-056 §16.3) es exacta; 110 de ellas solo difieren en mayúsculas (la plantilla de F-036 ofrece, p. ej., «Baño 1» y Sigrid guarda «baño 1»), 0 en tildes o espacios y 38 (8 textos distintos) no están en la lista de su unidad. El humano no quiere comparar sin mayúsculas sino NORMALIZAR: una ubicación que coincide con una de la lista de su unidad salvo mayúsculas (la spec decide si también espacios; tildes y erratas siguen distinguiéndose) pasa a ser el texto exacto de Sigrid, de modo que en la bandeja, en lo aprobado y en lo que llegue al volcado (F-059) solo haya textos de Sigrid. Cubre lo ya importado (las 110 de la 0677) y lo que se importe en adelante, con constancia (la bandeja de F-036 no se reescribe y las revisiones de F-056 son append-only: la spec decide cómo, sin perder la trazabilidad). Las 38 que no están siguen fuera de lista y se corrigen en la revisión. Solo backend; no toca la plantilla (eso es F-058). Medir también el tiempo de la primera página de GET /api/revision (11,9 s en el paso 2, objetivo < 10 s) si no era arranque en frío. AÑADIDO AL CIERRE DE F-056 (2026-10-09): el listado GET /api/revision tardó p50 7,1 s y máx. 12,7 s en 9 peticiones de la T19, con las lecturas de Sigrid en 0,1–0,3 s: el tiempo se va en otra parte (base, cálculo de motivos o arranque); medirlo y bajarlo de 10 s entra aquí.",
+      "acceptance": [
+        "Una ubicación que coincide con la lista de la tipología de su unidad salvo mayúsculas queda con el texto exacto de Sigrid y deja de salir como ubicacion_fuera_de_lista",
+        "Vale para lo ya importado y para lo que se importe, con constancia de la normalización",
+        "Una ubicación que no está en la lista de su unidad (ni salvo mayúsculas) sigue saliendo como ubicacion_fuera_de_lista",
+        "Lo aprobado y las candidatas al volcado llevan siempre el texto exacto de Sigrid",
+        "No se escribe nada en Sigrid",
+        "bash harness/init.sh en verde"
+      ],
+      "status": "pending",
+      "sdd": true,
+      "rigor": "critico",
+      "priority": 1,
+      "branch": "feature/F-060-normalizar-ubicaciones"
     },
     {
       "id": "F-056",
@@ -1015,7 +1033,7 @@
         "docs/INTEGRACION.md y azure-apps/postventa_incidencias.md al día",
         "bash harness/init.sh en verde"
       ],
-      "status": "in_progress",
+      "status": "done",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,

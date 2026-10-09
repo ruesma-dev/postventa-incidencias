@@ -191,7 +191,7 @@
   y `test_f019_documentacion.py` ampliados) y la cabecera de `INTEGRACION.md`
   (`test_f036_documentacion.py` ampliado), con las excepciones en R45. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f056_documentacion.py tests/test_f036_documentacion.py`
-- [ ] **T16 · del líder, al desplegar** (decisión del líder 2026-10-08, como en
+- [x] **T16 · del líder, al desplegar** (decisión del líder 2026-10-08, como en
   F-053; no es del implementer): `C:\Users\pgris\PycharmProjects\azure-apps\postventa_incidencias.md`
   al día con lo mismo, sin secretos ni identificadores; commit en ese
   repositorio («postventa-incidencias: F-056, la revisión de la bandeja»). Si
@@ -204,7 +204,7 @@
 
 ## Bloque 5 · Publicar y verificar (MANUAL, humano)
 
-- [ ] **T18 · MANUAL (humano)**: con T8 hecha y la review final APROBADA,
+- [x] **T18 · MANUAL (humano)**: con T8 hecha y la review final APROBADA,
   merge normal de la rama a `dev` **desde un worktree aparte**, y publicar el
   backend desde un worktree limpio de `dev`:
   ```
@@ -215,7 +215,7 @@
   (con los mismos parámetros que el último despliegue). El DDL nuevo se aplica
   al arrancar la Function. Anotar el commit publicado. |
   Verificación: MANUAL (humano)
-- [ ] **T19 · MANUAL (humano)**, en producción, desde la **consola del
+- [x] **T19 · MANUAL (humano)**, en producción, desde la **consola del
   navegador** (F12) con una pestaña abierta en **`importar.html`** del front
   publicado (misma sesión, mismo origen; esa página carga `js/api.js` y deja
   `window.Api`). Los bloques JS se pegan **tal cual**, en orden, en la misma
@@ -414,6 +414,16 @@
   Si algo falla, parar (con la **Limpieza** si la fila de prueba no quedó
   `descartada`) y volver al spec-author. |
   Verificación: MANUAL (humano)
-- [ ] **T20**: resumen de F-056 en `progress/history.md` (el líder, al cerrar)
+- [x] **T20**: resumen de F-056 en `progress/history.md` (el líder, al cerrar)
   y `bash harness/init.sh` en verde. |
   Verificación: `bash harness/init.sh`
+
+> **Cierre (líder, 2026-10-09).** T18: merge `2feca6e` en `dev`/`main` (push del humano) y despliegue del humano
+> desde copia limpia de `dev` (`t32_desplegar_f056.ps1`). T19: paso 1 y paso 6 iguales (0677: 15 unidades, 1270
+> reclamaciones, mismo reparto); paso 2 OK (200, sin 503; 15 unidades con 31–37 ubicaciones; 158 filas en 2
+> páginas); pasos 3 y 4 OK (400 de la ubicación de control, seis acciones en 200, 409 `revision_desactualizada`,
+> fila de prueba **descartada**; historial con las seis, cambios `ubicacion` y `detalle`); paso 5 OK en App
+> Insights (las trazas de la revisión solo llevan obra, incidencia, acción, resultado y número de revisión; ningún
+> correo ni texto). Hallazgos que pasan a **F-060**: 148 de 158 con `ubicacion_fuera_de_lista` (110 solo por
+> mayúsculas) y el listado lento (p50 7,1 s, máx. 12,7 s; las lecturas de Sigrid tardan 0,1–0,3 s). T16:
+> `azure-apps` en `85f4128`. T20: resumen en `history.md` e `init.sh` sobre el cierre.

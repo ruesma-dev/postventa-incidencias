@@ -216,6 +216,13 @@ def test_f060_r1_casefold_y_no_lower() -> None:
     assert clave_de_ubicacion("Straße Ejemplo") == clave_de_ubicacion("STRASSE EJEMPLO")
 
 
+def test_f060_r1_nfc_y_no_nfkc() -> None:
+    # C-1 de la review del Bloque 1: NFKC pliega «º» a «o» (y «ª» a «a»); NFC
+    # no. Son letras distintas y la clave tiene que distinguirlas.
+    assert clave_de_ubicacion("Sala Ejemplo 1º") != clave_de_ubicacion("SALA EJEMPLO 1O")
+    assert clave_de_ubicacion("Sala Ejemplo 1ª") != clave_de_ubicacion("SALA EJEMPLO 1A")
+
+
 def test_f060_r1_nfc_frente_a_nfd() -> None:
     nfc = "Baño Ejemplo"
     nfd = "Baño Ejemplo"  # «n» más la tilde combinante
@@ -296,6 +303,18 @@ def test_f060_r2_el_exacto_tras_recortar_gana_a_la_ambiguedad() -> None:
     )
 
 
+def test_f060_r2_el_recorte_es_el_de_strip_no_solo_de_espacios() -> None:
+    # C-2 de la review del Bloque 1: tabulador, salto de línea y espacio duro
+    # (U+00A0) en los extremos también se recortan en el paso 2; si no, el
+    # texto caería al paso 3 y saldría `ambigua` contra esta lista.
+    assert ubicacion_de_sigrid("\tPatio Ficticio\n", L_AMBIGUA) == UbicacionDeSigrid(
+        C.NORMALIZABLE, "Patio Ficticio"
+    )
+    assert ubicacion_de_sigrid("patio ficticio\u00a0", L_AMBIGUA) == UbicacionDeSigrid(
+        C.NORMALIZABLE, "patio ficticio"
+    )
+
+
 def test_f060_r2_ambigua_con_tres_candidatos() -> None:
     lista = ("Patio Ficticio", "patio ficticio", "PATIO FICTICIO")
     assert ubicacion_de_sigrid("Patio ficticio", lista) == UbicacionDeSigrid(
@@ -349,12 +368,30 @@ def test_f060_r3_lista_vacia(texto: str) -> None:
         "SalaEjemplo",  # uno de menos
         "Sala Ejemplo.",  # puntuación
         "Sala, Ejemplo",
+        "SALA\u00a0EJEMPLO",  # un blanco interior distinto: espacio duro (U+00A0)
         "",
         "   ",
     ],
 )
 def test_f060_r4_lo_que_no_es_la_misma_palabra_no_coincide(texto: str) -> None:
     assert ubicacion_de_sigrid(texto, ("Sala Ejemplo",)) == UbicacionDeSigrid(
+        C.SIN_COINCIDENCIA, None
+    )
+
+
+@pytest.mark.parametrize(
+    ("texto", "lista"),
+    [
+        ("SALA EJEMPLO 1O", ("Sala Ejemplo 1º",)),
+        ("SALA EJEMPLO 1A", ("Sala Ejemplo 1ª",)),
+    ],
+)
+def test_f060_r4_la_forma_de_compatibilidad_no_coincide(
+    texto: str, lista: tuple[str, ...]
+) -> None:
+    # C-1 de la review del Bloque 1: con NFKC «º» y «ª» pasarían a «o» y «a» y
+    # se cambiaría la ubicación por otra (design §0). Con NFC, otra letra.
+    assert ubicacion_de_sigrid(texto, lista) == UbicacionDeSigrid(
         C.SIN_COINCIDENCIA, None
     )
 

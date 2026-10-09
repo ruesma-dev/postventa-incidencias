@@ -456,15 +456,20 @@ def test_f056_r44_la_seccion_ocho_dice_lo_que_hereda_f040_y_lo_que_falta():
 
 
 def test_f056_r44_la_seccion_ocho_dice_que_f056_no_esta_desplegada():
-    """§8 · «Qué NO está desplegado»: F-056, con su consecuencia visible."""
+    """§8 · «Qué NO está desplegado»: F-056, con su consecuencia visible.
+
+    Al cierre (2026-10-09, T20), la fila pasa a decir que la revisión está
+    **desplegada** y verificada (T19), y que lo que falta es la página (F-038).
+    """
     tabla = _normal(_integracion("### Qué NO está desplegado"))
     fila = _normal(
         _fila(_integracion("### Qué NO está desplegado"), "| La revisión de la bandeja")
     )
 
     assert "F-056" in tabla
-    for texto in ("F-056", "sin desplegar", "F-038"):
+    for texto in ("F-056", "Desplegada el 2026-10-09", "T19", "F-038"):
         assert texto in fila, f"la fila de F-056 no dice «{texto}»"
+    assert "sin desplegar" not in fila
 
 
 # --------------------------------------------------------------------------
@@ -494,7 +499,8 @@ def test_f056_r44_la_cabecera_dice_que_f056_lo_toco():
     cabecera = _normal(_leer(INTEGRACION).split("## 1 ·")[0])
 
     assert "Última feature que lo tocó: F-056" in cabecera
-    assert "Fecha: 2026-10-08." in cabecera
+    assert "Fecha: 2026-10-09." in cabecera
+    assert "desplegada el 2026-10-09" in cabecera
 
 
 # --------------------------------------------------------------------------

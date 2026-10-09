@@ -2216,3 +2216,29 @@ Incidencias de la sesión: la suite destapó un client ID real en `progress/revi
 2026-09-26, ya en el remoto) que la caché de suite de `init.sh` no volvía a barrer; tapado en la rama
 sin reescribir la historia (decisión del humano) y alta de **F-055** para que los barridos del
 repositorio se ejecuten siempre. Observaciones de la review: O-1 a F-056, O-3/O-4 a F-055.
+
+---
+
+## F-056 · Revisión de la bandeja en el backend — 2026-10-09
+
+**Cerrada, desplegada y comprobada.** Rama `feature/F-056-revision-bandeja-backend`, merge en `dev`/`main`
+`2feca6e`; cuatro reviews de bloque y la final **APROBADAS** (`progress/review_F-056*.md`). Sacada de F-038 por
+el límite de servicio (D-1); spec aprobada por el humano el 2026-10-06/07 (D-4 ubicación obligatoria contra
+Sigrid en vivo, D-8 el correo de quien revisa, Q-2 paginada, Q-5 ubicaciones de la tipología de cada unidad,
+opción (a) del cursor).
+
+Qué queda: tabla append-only `postventa.revisiones_bandeja` (`15_revisiones_bandeja.sql`) con una foto completa
+por acción, el `oid` y el correo; estados derivados (nueva, editada, aprobada, descartada); acciones editar,
+descartar, aprobar y recuperar con concurrencia optimista; aprobar relee Sigrid (unidades, oficios y una tercera
+lectura nueva, las ubicaciones de `prmtpl.ubica` por unidad) y exige unidad, oficio concreto, par de `obrofc` y
+ubicación de la lista; tres endpoints (`GET /api/revision` paginado por cursor, `GET /api/revision/historial`,
+`POST /api/revision/acciones`); `candidatas_al_volcado` para F-059. No escribe en Sigrid.
+
+Evidencias: `init.sh` en verde (7680 passed; cobertura 100 % de 1060 líneas); mutación 257 mutantes en cuatro
+campañas, 0 supervivientes; T8 contra PostgreSQL efímera 53 passed; T19 en producción en la 0677 (seis acciones
+sobre una fila de prueba que queda descartada, historial, trazas sin correo ni texto; Sigrid sin cambios).
+
+Lo que sale de aquí: **F-060** (normalizar las ubicaciones al texto de Sigrid: 110 de 158 filas solo difieren en
+mayúsculas; y el listado lento, p50 7,1 s). Mejoras del arnés enviadas a `arnes-base` (RM7 para validar antes
+de construir y para caché/construcción perezosa; frase compartida fijada por tests ajenos; reincidencia de
+cero mutantes en `if` sin operadores).

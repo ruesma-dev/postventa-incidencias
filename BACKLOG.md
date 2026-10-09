@@ -3,15 +3,12 @@
 
 **Fichero generado por `harness/backlog.py` a partir de `harness/features.json`. No lo edites a mano**: edita el JSON y vuelve a generarlo (lo hace solo `bash harness/init.sh`).
 
-Resumen: **59 features**, 33 abiertas, 26 terminadas.
-
-En curso: **F-056**.
+Resumen: **59 features**, 32 abiertas, 27 terminadas.
 
 ## Trabajo abierto
 
 | # | Feature | Prioridad | Estado | Rigor | Rama |
 |---|---|---|---|---|---|
-| F-056 | Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo | 1 | en curso | critico | `feature/F-056-revision-bandeja-backend` |
 | F-060 | Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid | 1 | pendiente | critico | `feature/F-060-normalizar-ubicaciones` |
 | F-038 | Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado | 3 | spec lista | critico | `feature/F-038-bandeja-revision` |
 | F-057 | Paso 1 · la tabla de la bandeja en importar.html: ancha, ordenable, con filtros y la marca nueva/antigua | 4 | pendiente | estandar | `feature/F-057-tabla-bandeja-paso1` |
@@ -54,6 +51,7 @@ En curso: **F-056**.
 | F-051 | La carpeta base vacía no llega a la Function: el archivo en Posventa busca «Postventa» y falla | 0 | critico |
 | F-001 | Esqueleto del monorepo y /health | 1 | estandar |
 | F-035 | Diseño del portal de posventa: todas las secciones con placeholders | 1 | estandar |
+| F-056 | Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo | 1 | critico |
 | F-002 | Ingesta y troceado de la remesa en partes | 2 | critico |
 | F-036 | Importar el Excel de incidencias que pasa la propiedad a una bandeja de revisión | 2 | critico |
 | F-003 | Extracción multimodal del parte, manuscritos incluidos | 3 | critico |
@@ -78,17 +76,11 @@ En curso: **F-056**.
 
 ## Detalle
 
-### F-056 · Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo
-
-estado **en curso** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-056-revision-bandeja-backend`
-
-Sacada de F-038 el 2026-10-06 por el límite de servicio (D-1, decisión del humano). El backend de la revisión de la bandeja de F-036 en services/postventa-api: tabla append-only postventa.revisiones_bandeja (15_revisiones_bandeja.sql) con una foto completa de los valores por acción, el oid y el correo de quien actúa; estados derivados (nueva, editada, aprobada, descartada); acciones editar, descartar, aprobar y recuperar con concurrencia optimista; aprobar vuelve a leer el catálogo de Sigrid (sql/read) y exige unidad de la obra, ubicación de la lista, oficio elegido de obrofc y par de obrofc si hay proveedor; tres endpoints (GET /api/revision paginado, GET /api/revision/historial, POST /api/revision/acciones); y las candidatas al volcado para F-040. Resuelve en el backend los dos apuntes de F-036: las 144 filas de la 0677 con oficio o proveedor viejos se ven por sus motivos contra el catálogo de hoy y se corrigen editando, y las 47 ambiguas eligen su código. No escribe en Sigrid. Spec: specs/F-056-revision-bandeja-backend/ (escrita en la rama de F-038; se lleva a la de F-056 antes de empezar). AÑADIDO EL 2026-10-06 (review de F-053, O-1): al tocar docs/INTEGRACION.md, poner al día su cabecera (fecha y última feature, hoy «F-036») y hacer que test_f036_documentacion.py deje de exigir «F-036» como última feature, porque esa aserción caduca con cualquier feature nueva.
-
 ### F-060 · Normalizar las ubicaciones de la bandeja al texto exacto de Sigrid
 
 estado **pendiente** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-060-normalizar-ubicaciones`
 
-Alta del 2026-10-09 por decisión del humano, tras el paso 2 de la T19 de F-056 en producción: de las 158 incidencias de la 0677, 148 salen con ubicacion_fuera_de_lista porque la comparación contra la tipología de la unidad (prmtpl.ubica, F-056 §16.3) es exacta; 110 de ellas solo difieren en mayúsculas (la plantilla de F-036 ofrece, p. ej., «Baño 1» y Sigrid guarda «baño 1»), 0 en tildes o espacios y 38 (8 textos distintos) no están en la lista de su unidad. El humano no quiere comparar sin mayúsculas sino NORMALIZAR: una ubicación que coincide con una de la lista de su unidad salvo mayúsculas (la spec decide si también espacios; tildes y erratas siguen distinguiéndose) pasa a ser el texto exacto de Sigrid, de modo que en la bandeja, en lo aprobado y en lo que llegue al volcado (F-059) solo haya textos de Sigrid. Cubre lo ya importado (las 110 de la 0677) y lo que se importe en adelante, con constancia (la bandeja de F-036 no se reescribe y las revisiones de F-056 son append-only: la spec decide cómo, sin perder la trazabilidad). Las 38 que no están siguen fuera de lista y se corrigen en la revisión. Solo backend; no toca la plantilla (eso es F-058). Medir también el tiempo de la primera página de GET /api/revision (11,9 s en el paso 2, objetivo < 10 s) si no era arranque en frío.
+Alta del 2026-10-09 por decisión del humano, tras el paso 2 de la T19 de F-056 en producción: de las 158 incidencias de la 0677, 148 salen con ubicacion_fuera_de_lista porque la comparación contra la tipología de la unidad (prmtpl.ubica, F-056 §16.3) es exacta; 110 de ellas solo difieren en mayúsculas (la plantilla de F-036 ofrece, p. ej., «Baño 1» y Sigrid guarda «baño 1»), 0 en tildes o espacios y 38 (8 textos distintos) no están en la lista de su unidad. El humano no quiere comparar sin mayúsculas sino NORMALIZAR: una ubicación que coincide con una de la lista de su unidad salvo mayúsculas (la spec decide si también espacios; tildes y erratas siguen distinguiéndose) pasa a ser el texto exacto de Sigrid, de modo que en la bandeja, en lo aprobado y en lo que llegue al volcado (F-059) solo haya textos de Sigrid. Cubre lo ya importado (las 110 de la 0677) y lo que se importe en adelante, con constancia (la bandeja de F-036 no se reescribe y las revisiones de F-056 son append-only: la spec decide cómo, sin perder la trazabilidad). Las 38 que no están siguen fuera de lista y se corrigen en la revisión. Solo backend; no toca la plantilla (eso es F-058). Medir también el tiempo de la primera página de GET /api/revision (11,9 s en el paso 2, objetivo < 10 s) si no era arranque en frío. AÑADIDO AL CIERRE DE F-056 (2026-10-09): el listado GET /api/revision tardó p50 7,1 s y máx. 12,7 s en 9 peticiones de la T19, con las lecturas de Sigrid en 0,1–0,3 s: el tiempo se va en otra parte (base, cálculo de motivos o arranque); medirlo y bajarlo de 10 s entra aquí.
 
 ### F-038 · Bandeja de revisión: editar, descartar y aprobar incidencias antes del volcado
 
@@ -305,6 +297,12 @@ Crear services/postventa-api (Function App Python con settings, logging y un end
 estado **terminada** · prioridad 1 · rigor `estandar` · SDD sí · rama `feature/F-035-portal-posventa`
 
 Alta del 2026-09-23 por decisión del humano: ampliar el proyecto a todo el ciclo de posventa, desde que entra la incidencia hasta el coste y la venta. Decisiones de partida: UN SOLO BACKEND para toda la posventa (postventa-api crece, no se crea otro); un solo front de posventa con secciones; TODOS los datos van al datamart para poder cruzarlos (F-048). Ficha INICIAL, antes que cualquier funcionalidad nueva. Maqueta navegable del front de posventa con TODAS las secciones del ciclo, aunque los botones no funcionen: bandeja de importación y revisión, listado y ficha de incidencia, operaciones en bloque, impresión, el circuito de partes que ya existe (integrado, no reescrito) y la sección económica (coste y venta). Sirve para validar con Posventa el recorrido completo antes de construir cada pieza. Prerrequisito externo: no existe grupo de Entra de Posventa para el acceso y la tarjeta del portal. AÑADIDO EL 2026-10-05 por petición del humano (desde la T28 de F-036): al convertir oficios.html en sección del portal, añadir un bloque «Decididos como distintos» con un botón «Son el mismo» en cada par. Hoy un par marcado «Son distintos» desaparece de la pantalla y no se puede volver a juntar desde ella (Separar sí se deshace; Son distintos no). La API ya lo admite: POST /api/catalogos/decisiones con «mismo» y manda la última decisión (design.md de F-036, §7); es solo front. Primer caso real: Solados y Alicatados M.O. (0033) frente a Solados y Alicatados (0133), obra 0677. Y, del cierre de F-036 (2026-10-05): en la pantalla de importar, cuando el fichero ya se había importado, el mensaje «no se ha añadido nada» va con los recuentos de la importación original («14 nuevas»), que se leen como si hubieran entrado otra vez; rotularlos como «resumen de la importación original del …». Precisado el 2026-10-05 (H-9 de la enmienda): los dos apuntes anteriores necesitan dos datos del backend; se separan en F-053 por el límite de servicio y el portal los consume de forma tolerante (sin ellos, rotula sin fecha y no pinta «Decididos como distintos»).
+
+### F-056 · Revisión de la bandeja en el backend: editar, descartar, aprobar y quién lo hizo
+
+estado **terminada** · prioridad 1 · rigor `critico` · SDD sí · rama `feature/F-056-revision-bandeja-backend`
+
+Sacada de F-038 el 2026-10-06 por el límite de servicio (D-1, decisión del humano). El backend de la revisión de la bandeja de F-036 en services/postventa-api: tabla append-only postventa.revisiones_bandeja (15_revisiones_bandeja.sql) con una foto completa de los valores por acción, el oid y el correo de quien actúa; estados derivados (nueva, editada, aprobada, descartada); acciones editar, descartar, aprobar y recuperar con concurrencia optimista; aprobar vuelve a leer el catálogo de Sigrid (sql/read) y exige unidad de la obra, ubicación de la lista, oficio elegido de obrofc y par de obrofc si hay proveedor; tres endpoints (GET /api/revision paginado, GET /api/revision/historial, POST /api/revision/acciones); y las candidatas al volcado para F-040. Resuelve en el backend los dos apuntes de F-036: las 144 filas de la 0677 con oficio o proveedor viejos se ven por sus motivos contra el catálogo de hoy y se corrigen editando, y las 47 ambiguas eligen su código. No escribe en Sigrid. Spec: specs/F-056-revision-bandeja-backend/ (escrita en la rama de F-038; se lleva a la de F-056 antes de empezar). AÑADIDO EL 2026-10-06 (review de F-053, O-1): al tocar docs/INTEGRACION.md, poner al día su cabecera (fecha y última feature, hoy «F-036») y hacer que test_f036_documentacion.py deje de exigir «F-036» como última feature, porque esa aserción caduca con cualquier feature nueva.
 
 ### F-002 · Ingesta y troceado de la remesa en partes
 

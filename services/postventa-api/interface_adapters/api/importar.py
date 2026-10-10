@@ -52,6 +52,7 @@ repiten el `oid`.
 from __future__ import annotations
 
 import base64
+import logging
 import time
 import uuid
 from collections.abc import Callable, Sequence
@@ -60,7 +61,6 @@ from typing import Any
 from uuid import UUID
 
 from application.pipelines.contexto_importacion import ContextoImportacion
-from application.pipelines.revision import ResultadoNormalizacion
 from application.pipelines.paso_importacion import (
     paso_catalogo,
     paso_excel_errores,
@@ -69,14 +69,25 @@ from application.pipelines.paso_importacion import (
     paso_registro,
     paso_validacion,
 )
+from application.pipelines.revision import (
+    ResultadoNormalizacion,
+    normalizar_ubicaciones,
+)
 from config.settings import obtener_ajustes
 from domain.models.errores import (
+    BandejaDemasiadoGrande,
+    CatalogoNoDisponible,
+    CatalogoSinVerificar,
+    ConfiguracionSigridIncompleta,
+    ErrorDePersistencia,
     FicheroDemasiadoGrande,
+    ObraAmbigua,
+    ObraSinUnidades,
     PeticionDeImportacionInvalida,
 )
 from domain.models.importacion import EstadoFilaImportada
 from domain.models.plantilla_incidencias import MAX_BYTES_FICHERO, CatalogoObra
-from domain.ports.bandeja import BandejaPort
+from domain.ports.bandeja import BandejaPort, ResultadoImportacion
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.equivalencias import EquivalenciasPort
 from domain.ports.hoja_calculo import GeneradorPlantillaPort, LectorPlantillaPort
@@ -101,6 +112,8 @@ __all__ = [
     "serializar_importacion",
 ]
 
+log = logging.getLogger(__name__)
+
 #: Errores que viajan en la lista de la respuesta; el total va aparte (R33).
 MAX_ERRORES_EN_RESPUESTA = 200
 
@@ -109,6 +122,19 @@ MAX_NOMBRE_FICHERO = 255
 
 #: El `oid` de Entra, como mucho (R22).
 MAX_USUARIO_OID = 128
+
+#: Los fallos de disponibilidad o de configuración que la normalización tras
+#: importar se traga con un aviso (F-060 `design.md` §5.1, R34): la importación
+#: ya está guardada. Cualquier otro es un error de programación, y sube.
+ERRORES_DE_LA_NORMALIZACION = (
+    CatalogoNoDisponible,
+    CatalogoSinVerificar,
+    ObraSinUnidades,
+    ObraAmbigua,
+    ConfiguracionSigridIncompleta,
+    ErrorDePersistencia,
+    BandejaDemasiadoGrande,
+)
 
 
 def _usuario_oid(crudo: Any) -> str:
@@ -159,6 +185,11 @@ def importar_excel(
     `ObraSinUnidades`, `ObraAmbigua` y `CatalogoSinVerificar` (→ 409), los
     fallos de Sigrid y de la base (→ 503), y los de la lectura aislada,
     `LectorSinAislamiento` y `LecturaOcupada` (→ 503, R119, R120).
+
+    Tras el Excel de errores, si se registró alguna fila, normaliza las
+    ubicaciones de la obra (F-060, R31): con `normalizar` si se inyecta (la
+    costura de test) y, si no, con la composición real. Ningún fallo de
+    disponibilidad de esa normalización cambia la respuesta (R33, R34).
     """
     oid = _usuario_oid(usuario_oid)
     nombre, contenido = _un_fichero(ficheros)
@@ -195,7 +226,93 @@ def importar_excel(
             config.listas,
             config.textos,
         )
+        if _registro_filas(contexto.resultado):
+            _normalizar_tras_importar(
+                contexto,
+                normalizar if normalizar is not None else _normalizar_de_verdad,
+            )
     return serializar_importacion(contexto)
+
+
+# --------------------------------------------------------------------------
+# F-060 · normalizar las ubicaciones tras importar (design.md §5.1, §9.2)
+# --------------------------------------------------------------------------
+
+
+def _registro_filas(resultado: ResultadoImportacion | None) -> bool:
+    """Si la importación dejó alguna fila en la bandeja (R31, R32).
+
+    Las nuevas y las duplicadas del fichero entran; las que ya estaban en la
+    bandeja y las que tienen error, no. Con `ya_importado` no se llega aquí.
+    """
+    return (
+        resultado is not None
+        and resultado.nuevas + resultado.duplicadas_en_fichero > 0
+    )
+
+
+def _normalizar_tras_importar(
+    contexto: ContextoImportacion,
+    normalizar: Callable[[str, CatalogoObra, datetime], ResultadoNormalizacion],
+) -> None:
+    """La normalización de la obra entera, de mejor esfuerzo (R31, R34, R35).
+
+    Con el catálogo que la importación ya leyó y su instante. Si falla por
+    disponibilidad o configuración, un aviso con la obra y el **tipo** del
+    error, y nada más: ni el mensaje, que puede nombrar datos. Si sale bien,
+    la línea del endpoint con `origen=importacion` (§9.3). Nunca textos de
+    ubicación, `oid`, correo ni `incidencia_id`.
+    """
+    obra = str(contexto.obra_codigo)
+    inicio = time.perf_counter()
+    try:
+        resultado = normalizar(obra, contexto.catalogo, contexto.ahora)  # type: ignore[arg-type]
+    except ERRORES_DE_LA_NORMALIZACION as error:
+        log.warning(
+            "F-060 normalización tras importar no hecha: obra=%s motivo=%s",
+            obra,
+            type(error).__name__,
+        )
+        return
+    recuento = resultado.recuento
+    log.info(
+        "F-060 normalización de ubicaciones: origen=importacion obra=%s ensayo=%s "
+        "examinadas=%d no_exactas=%d normalizables=%d ambiguas=%d "
+        "sin_coincidencia=%d no_editables=%d normalizadas=%d conflictos=%d "
+        "segundos=%.2f",
+        resultado.obra_codigo,
+        resultado.ensayo,
+        recuento.examinadas,
+        recuento.no_exactas,
+        recuento.normalizables,
+        recuento.ambiguas,
+        recuento.sin_coincidencia,
+        recuento.no_editables,
+        resultado.normalizadas,
+        resultado.conflictos,
+        time.perf_counter() - inicio,
+    )
+
+
+def _normalizar_de_verdad(
+    obra: str, catalogo: CatalogoObra, ahora: datetime
+) -> ResultadoNormalizacion:
+    """La composición real (§9.2): Sigrid antes que la base, y sin ensayo.
+
+    La fuente de las ubicaciones es la de F-056 (las listas ya filtradas), y
+    su puerta de entorno no abre ninguna conexión: fuera de `dev` y `pro` se
+    niega antes de construir la revisión.
+    """
+    ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
+    revision = construir_revision(obtener_ajustes())
+    return normalizar_ubicaciones(
+        obra,
+        revision=revision,
+        catalogo=catalogo,
+        ubicaciones=ubicaciones,
+        ahora=ahora,
+        ensayo=False,
+    )
 
 
 def serializar_importacion(contexto: ContextoImportacion) -> dict[str, Any]:

@@ -124,7 +124,7 @@
   del error; un `ValueError` sube; `caplog` sin textos, `oid` ni correo.
   Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py` **falla**
-- [ ] **T14 · GREEN**: el parámetro `normalizar` de `importar_excel` y su
+- [x] **T14 · GREEN**: el parámetro `normalizar` de `importar_excel` y su
   composición real en `interface_adapters/api/importar.py`;
   `serializar_importacion` y `paso_importacion.py` sin cambios. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py`

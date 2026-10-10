@@ -31,7 +31,7 @@ correo, ni la descripción, el detalle, el motivo o un nombre.
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 from uuid import UUID
 
@@ -43,6 +43,7 @@ from domain.models.revision import (
     SituacionDeRevision,
     candidata_de,
 )
+from domain.ports.revision import ResultadoDelLote
 
 from infrastructure.persistencia import sentencias_revision as sql
 from infrastructure.persistencia.repositorio_bandeja_pg import _Transaccional
@@ -101,6 +102,15 @@ class RepositorioRevisionPostgres(_Transaccional):
             revision_id,
         )
         return revision_id
+
+    def registrar_lote(
+        self,
+        *,
+        revisiones: Sequence[RevisionNueva],
+        esperadas: Mapping[UUID, int | None],
+    ) -> ResultadoDelLote:
+        """ESQUELETO DE LA FASE RED (F-060 T4): no decide nada; se completa en T5."""
+        return ResultadoDelLote(registradas={}, desactualizadas=frozenset())
 
     def historial(
         self, *, incidencia_id: UUID

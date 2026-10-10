@@ -52,7 +52,7 @@
 
 ## Bloque 2 · El lote en la base
 
-- [ ] **T4 · RED**: `tests/test_f060_repositorio_lote.py` con conexión falsa
+- [x] **T4 · RED**: `tests/test_f060_repositorio_lote.py` con conexión falsa
   (`design.md` §7): R12 (`FOR UPDATE` de todas en orden fijo, últimas
   revisiones, solo las frescas insertadas y en orden de `incidencia_id`, el
   resultado), R13 (una desactualizada se salta y las demás se escriben), R14

@@ -30,6 +30,7 @@ Si la base falla, `PersistenciaNoDisponible` (503).
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 from uuid import UUID
 
@@ -40,7 +41,15 @@ from domain.models.revision import (
     SituacionDeRevision,
 )
 
-__all__ = ["RevisionPort"]
+__all__ = ["ResultadoDelLote", "RevisionPort"]
+
+
+@dataclass
+class ResultadoDelLote:
+    """ESQUELETO DE LA FASE RED (F-060 T4): se completa en T5."""
+
+    registradas: Mapping[UUID, int]
+    desactualizadas: frozenset[UUID]
 
 
 @runtime_checkable

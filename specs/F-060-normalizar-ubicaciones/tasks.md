@@ -88,7 +88,7 @@
 
 ## Bloque 3 · La normalización de una obra y su endpoint
 
-- [ ] **T9 · RED**: `tests/test_f060_pipeline_normalizacion.py` (R17–R25:
+- [x] **T9 · RED**: `tests/test_f060_pipeline_normalizacion.py` (R17–R25:
   tope con 10.001 sin leer Sigrid, una lectura de ubicaciones, ensayo sin
   lote, `normalizadas + conflictos = normalizables`, dos ejecuciones → la
   segunda 0, la fila y el historial de R22 con los dobles de F-056, R23, y

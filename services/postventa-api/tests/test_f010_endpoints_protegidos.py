@@ -76,7 +76,7 @@ import pytest
 #: que el runtime de Functions lo haya construido.
 FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 
-#: Los veinte endpoints del servicio. Si manana hay un vigesimo primero, este
+#: Los veintiun endpoints del servicio. Si manana hay un vigesimo segundo, este
 #: test se entera: la cuenta tiene que cuadrar con las rutas declaradas.
 #:
 #: Eran seis hasta F-019, que anadio `remesa`, `parte` y `cola`; nueve hasta
@@ -106,6 +106,11 @@ FUNCTION_APP = Path(__file__).resolve().parent.parent / "function_app.py"
 #: (GET, solo la base) y `revision/acciones` (POST, escribe en el esquema
 #: propio y nada en Sigrid). Anonimos como los demas y por lo mismo; ninguna
 #: comprobacion de este fichero cambia, solo la cuenta.
+#:
+#: F-060 (T9) los lleva a **veintiuno** con `revision/normalizar` (POST:
+#: escribe en el esquema propio revisiones del sistema y nada en Sigrid, que
+#: solo lee por `sql/read`). Anonimo como los demas y por lo mismo; ninguna
+#: comprobacion de este fichero cambia ni se quita, solo la cuenta.
 ENDPOINTS = (
     "health",
     "split",
@@ -127,6 +132,7 @@ ENDPOINTS = (
     "revision",
     "revision/historial",
     "revision/acciones",
+    "revision/normalizar",
 )
 
 #: Un decorador de ruta con su nivel de autenticacion.
@@ -184,7 +190,7 @@ def test_f019_r30_la_cabecera_dice_que_anade_la_cola_al_cuadro(codigo):
 
 
 def test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada(codigo):
-    """R32 · los veinte siguen anonimos **y** la cabecera dice por que.
+    """R32 · los veintiuno siguen anonimos **y** la cabecera dice por que.
 
     Las dos mitades en un solo test, y no en dos, porque lo que hay que
     impedir es que se separen: un `auth_level` cambiado con la nota intacta
@@ -263,7 +269,7 @@ def test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay(codigo):
     casar, `niveles()` devolveria un diccionario vacio y los tests de arriba
     pasarian sin comprobar nada. Este los sostiene.
     """
-    assert len(niveles(codigo)) == len(ENDPOINTS) == 20
+    assert len(niveles(codigo)) == len(ENDPOINTS) == 21
     assert PATRON_RUTA.findall("@app.route(route=\"x\", auth_level=func.AuthLevel.FUNCTION)") == [
         ("x", "FUNCTION")
     ]

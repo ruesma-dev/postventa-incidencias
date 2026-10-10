@@ -713,3 +713,312 @@ producción no cambia, así que la campaña de la herramienta sigue valiendo. De
 | Mutación (a mano) | **10 de 10 muertos** (H8 y H9 vivos en la primera pasada; muertos con dos tests nuevos) |
 | `bash harness/init.sh` | No relanzado en este bloque, por indicación del líder. Se pasa en T23 |
 | Suite completa | No ejecutada (solo en T23) |
+
+## Bloque 3 · La normalización de una obra y su endpoint · T9, T10, T11 y T12 · 2026-10-10
+
+Encargo: T9 (RED), T10, T11 y T12 (mutación). Nada del Bloque 4. Rama `feature/F-060-normalizar-ubicaciones`, HEAD de
+partida **`91ad35d`** (el hash anterior a T9: el `--base` de la mutación de este bloque).
+
+### Precondiciones
+
+- Rama comprobada: `feature/F-060-normalizar-ubicaciones`, árbol limpio en `91ad35d`.
+- `bash harness/init.sh` en verde, completo, antes de tocar nada: suite del servicio `api` **7785 passed, 123
+  skipped en 883,40 s**; `PUERTA COBERTURA: 100.0% de 110 líneas cambiadas cubiertas (110/110, umbral 80%, nivel
+  critico)`; `ENTORNO LISTO`.
+
+### T9 · Fase RED
+
+Tres ficheros de test y un doble nuevo, contra un **esqueleto neutro** (como en los Bloques 1 y 2):
+
+- `application/pipelines/revision.py` gana `ResultadoNormalizacion` (sin `frozen`) y `normalizar_ubicaciones`, que
+  devuelve un recuento a cero sin leer ni escribir nada. Lo que ya había no cambia.
+- `interface_adapters/api/normalizacion.py` (nuevo): solo los nombres que los tests sustituyen (`time`,
+  `obtener_ajustes`, `construir_catalogo_obra`, `construir_fuente_de_ubicaciones`, `construir_revision`) y
+  `normalizar_obra`, que devuelve `{}` sin validar ni construir.
+- **Sin ruta en `function_app.py`**: añadirla es T11. Por eso los tests que van por la ruta caen en la aserción de
+  `_ruta` («function_app no publica la ruta») o de `ruta_registrada` («el host no publica ninguna ruta»); los del
+  handler caen cada uno en su aserción.
+
+| Fichero | Qué fija |
+|---|---|
+| `tests/utiles_normalizacion.py` (nuevo) | `RevisionConLote`: subclase de `RevisionEnMemoria` de F-056 (**sin tocar** `utiles_revision.py`) con `registrar_lote` y la semántica del repositorio del Bloque 2: lote vacío, precondiciones, frescura por fila en orden de `incidencia_id`, fallo de la base sin nada escrito, y un gancho `antes_del_lote` para la «otra persona» |
+| `tests/test_f060_pipeline_normalizacion.py` (nuevo, 28 casos) | R17 (10.001 → `BandejaDemasiadoGrande` con `contar` y sin leer ubicaciones ni escribir, con ensayo y sin él; 10.000 justas sí); R18 (una lectura con el catálogo recibido, el mismo objeto; la lista es la de la fuente); R10 (el recuento de diez incidencias con cada caso y su suma); R19 (ensayo sin lote); R20 (el lote del plan: ids, textos de Sigrid, `editar`, `QUIEN_SISTEMA`, hora, sin motivo, huella, esperadas; la esperada de una ya editada; un conflicto se cuenta sin abortar; plan vacío sin lote); R21 (segunda ejecución a cero); R22 (fila y historial por los handlers de F-056, y el resumen baja en las normalizadas); R7/R23 (ambigua, sin coincidencia y lista vacía, iguales y fuera de lista; aprobada y descartada intactas); R24 (normalizar y aprobar → candidata con «Baño»); R25 (sin normalizar, 409 y 400); **O-3** (las listas salen de `fuente_de_ubicaciones` de F-056, ya filtradas: un valor de Sigrid de 49 con la misma clave que un texto de 48 —«Straße…»/«Strasse…»— no llega al plan; y su control: sin el filtro, la regla lo propondría); los fallos (ubicaciones caídas o al techo, la base al listar y en el lote) suben sin nada escrito; el resultado es inmutable y sin textos |
+| `tests/test_f060_normalizar_http.py` (nuevo, 98 casos) | R26 (30 cuerpos malos —lista, texto, nulo, número, vacío, sin cada clave, `confirmado` `"true"`/`1`/`false`/`null`, `ensayo` `"true"`/`"false"`/`1`/`0`/`null`/lista, claves de más `usuario_oid`/`usuario_correo`/`tope`, clave en mayúsculas, obra vacía, en blanco, número, nula, con barra, de 25, con «Ñ»—: en el handler, la excepción exacta sin construir nada y sin repetir lo recibido; en la ruta, 400 `peticion_invalida`, sin repetirlo en la respuesta ni en el log; un cuerpo que no es JSON; la obra normalizada como F-036); R27 (las diez claves exactas, solo enteros salvo `obra` y `ensayo`; la ruta, 200 sin ningún texto, `incidencia_id`, `oid` ni correo); R19/R20 (el ensayo no escribe; la real escribe la revisión del sistema con la hora inyectada; sin hora inyectada, la de ahora en UTC; la identidad es la del sistema aunque venga `x-ms-client-principal`); R29 (Sigrid antes que la base, tres lecturas; si falla la construcción de Sigrid, la base no se construye y la ruta da 503); R28 (nueve errores: sin unidades 404, ambigua 409, al techo 409, ubicaciones al techo 409, bandeja de más 409 con el total, Sigrid caído, ubicaciones caídas, la base al listar y **el lote** 503 «no se ha escrito nada» —O-3 del Bloque 2—, en el handler y en la ruta, y sin secretos en el log); **O-3** en el borde (el endpoint compone `construir_fuente_de_ubicaciones` de F-056 sin sustituirla: el valor de 49 no llega); R30 (una sola línea, con la forma exacta, con ensayo y sin él; los segundos con un reloj falso, `2.50`; sin secretos); la ruta `POST` anónima |
+| `tests/test_f010_endpoints_protegidos.py` (ampliado) | `revision/normalizar` en `ENDPOINTS` y la cuenta de 20 a **21**; el comentario de F-060 y «veintiuno» en el docstring. **No se quita nada** (`git diff`: +9 líneas, 3 cambiadas por la cuenta: «veinte» → «veintiun(o)» y `== 20` → `== 21`) |
+
+Comando, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_pipeline_normalizacion.py tests/test_f060_normalizar_http.py tests/test_f010_endpoints_protegidos.py -q -p no:cacheprovider --tb=line -rf
+```
+
+Salida real (las líneas `--tb=line` de cada fallo, la lista de `FAILED` y el total; solo se ha recortado el prefijo
+absoluto de la ruta):
+
+```
+tests\test_f060_pipeline_normalizacion.py:191: Failed: DID NOT RAISE BandejaDemasiadoGrande
+tests\test_f060_pipeline_normalizacion.py:191: Failed: DID NOT RAISE BandejaDemasiadoGrande
+tests\test_f060_pipeline_normalizacion.py:210: AssertionError: assert 0 == 10000
+tests\test_f060_pipeline_normalizacion.py:225: AssertionError: assert [] == ['revision.li...gistrar_lote']
+tests\test_f060_pipeline_normalizacion.py:237: AssertionError: assert RecuentoNorma...o_editables=0) == RecuentoNorma...o_editables=2)
+tests\test_f060_pipeline_normalizacion.py:237: AssertionError: assert RecuentoNorma...o_editables=0) == RecuentoNorma...o_editables=2)
+tests\test_f060_pipeline_normalizacion.py:256: AssertionError: assert RecuentoNorma...o_editables=0) == RecuentoNorma...o_editables=0)
+tests\test_f060_pipeline_normalizacion.py:277: AssertionError: assert [] == ['revision.li...'ubicaciones']
+tests\test_f060_pipeline_normalizacion.py:300: AssertionError: assert ResultadoNorm... conflictos=0) == ResultadoNorm... conflictos=0)
+tests\test_f060_pipeline_normalizacion.py:330: assert 0 == 1
+tests\test_f060_pipeline_normalizacion.py:346: assert (0, 0) == (2, 1)
+tests\test_f060_pipeline_normalizacion.py:363: AssertionError: assert [] == ['revision.li...'ubicaciones']
+tests\test_f060_pipeline_normalizacion.py:387: AssertionError: assert 0 == 10
+tests\test_f060_pipeline_normalizacion.py:423: AssertionError: assert 'baño' == 'Baño'
+tests\test_f060_pipeline_normalizacion.py:449: assert 0 == (0 + 3)
+tests\test_f060_pipeline_normalizacion.py:460: AssertionError: assert 0 == 3
+tests\test_f060_pipeline_normalizacion.py:498: AssertionError: assert 0 == 3
+tests\test_f060_pipeline_normalizacion.py:610: AssertionError: assert RecuentoNorma...o_editables=0) == RecuentoNorma...o_editables=0)
+tests\test_f060_pipeline_normalizacion.py:634: Failed: DID NOT RAISE CatalogoNoDisponible
+tests\test_f060_pipeline_normalizacion.py:634: Failed: DID NOT RAISE CatalogoSinVerificar
+tests\test_f060_pipeline_normalizacion.py:647: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_pipeline_normalizacion.py:658: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_pipeline_normalizacion.py:673: Failed: DID NOT RAISE FrozenInstanceError
+tests\test_f060_pipeline_normalizacion.py:685: AssertionError: assert 0 == 3
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:287: Failed: DID NOT RAISE Exception
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:324: AssertionError: assert None == '9901'
+tests\test_f060_normalizar_http.py:337: AssertionError: assert {} == {'obra': '990...ctas': 3, ...}
+tests\test_f060_normalizar_http.py:337: AssertionError: assert {} == {'obra': '990...ctas': 3, ...}
+tests\test_f060_normalizar_http.py:358: AssertionError: assert [] == [(UUID('00000...imezone.utc))]
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:410: AssertionError: assert [] == ['catalogo', ...', 'revision']
+tests\test_f060_normalizar_http.py:410: AssertionError: assert [] == ['catalogo', ...', 'revision']
+tests\test_f060_normalizar_http.py:439: Failed: DID NOT RAISE ConfiguracionSigridIncompleta
+tests\test_f060_normalizar_http.py:439: Failed: DID NOT RAISE CatalogoNoDisponible
+tests\test_f060_normalizar_http.py:439: Failed: DID NOT RAISE ConfiguracionSigridIncompleta
+tests\test_f060_normalizar_http.py:439: Failed: DID NOT RAISE ConfiguracionPgIncompleta
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE ObraSinUnidades
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE ObraAmbigua
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE CatalogoSinVerificar
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE CatalogoSinVerificar
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE BandejaDemasiadoGrande
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE CatalogoNoDisponible
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE CatalogoNoDisponible
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_normalizar_http.py:518: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:196: AssertionError: function_app no publica la ruta «revision_normalizar»
+tests\test_f060_normalizar_http.py:585: assert (None, None, None) == (1, 1, 1)
+tests\test_f060_normalizar_http.py:612: assert 0 == 1
+tests\test_f060_normalizar_http.py:612: assert 0 == 1
+tests\test_f060_normalizar_http.py:631: assert 0 == 1
+tests\utiles_rutas.py:43: AssertionError: el host no publica ninguna ruta «revision_normalizar»
+tests\test_f010_endpoints_protegidos.py:203: AssertionError: assert ['adjuntar', ...'cerrar', ...] == ['adjuntar', ...'cerrar', ...]
+tests\test_f010_endpoints_protegidos.py:272: assert 20 == 21
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r17_mas_del_tope_no_lee_ubicaciones_ni_escribe[True]
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r17_mas_del_tope_no_lee_ubicaciones_ni_escribe[False]
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r17_justo_en_el_tope_si_se_normaliza
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r18_una_lectura_de_ubicaciones_con_el_catalogo_recibido
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r10_r18_el_recuento_de_la_obra_y_su_suma[True]
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r10_r18_el_recuento_de_la_obra_y_su_suma[False]
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r18_mira_la_lista_de_la_fuente_y_no_otra
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r19_el_ensayo_no_llama_al_lote_ni_escribe
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r20_la_real_registra_el_lote_del_plan
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r9_r20_la_esperada_es_la_ultima_leida
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r13_r20_un_conflicto_se_cuenta_y_no_aborta_las_demas
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r20_un_plan_vacio_no_llama_al_lote
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r21_dos_ejecuciones_la_segunda_no_tiene_nada_que_normalizar
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r22_la_fila_normalizada_en_el_listado_y_su_historial
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r22_el_resumen_baja_en_las_normalizadas
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r7_r23_lo_que_no_se_normaliza_sigue_como_estaba
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r24_normalizar_y_aprobar_da_la_candidata_con_el_texto_de_sigrid
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_o3_las_listas_salen_de_la_fuente_de_f056_ya_filtradas
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r28_un_fallo_de_las_ubicaciones_sube_sin_escribir[sigrid-caido]
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r28_un_fallo_de_las_ubicaciones_sube_sin_escribir[al-techo]
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r14_un_fallo_de_la_base_en_el_lote_sube_sin_nada_escrito
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_r17_un_fallo_de_la_base_al_listar_sube_sin_leer_sigrid
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_el_resultado_es_inmutable
+FAILED tests/test_f060_pipeline_normalizacion.py::test_f060_el_resultado_no_lleva_textos
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[lista]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[texto]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[nulo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[numero]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[vacio]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[sin-obra]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[sin-confirmado]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[sin-ensayo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[solo-obra]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[confirmado-texto]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[confirmado-uno]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[confirmado-falso]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[confirmado-nulo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[ensayo-texto]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[ensayo-texto-falso]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[ensayo-uno]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[ensayo-cero]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[ensayo-nulo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[ensayo-lista]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[de-mas-oid]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[de-mas-correo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[de-mas-tope]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[clave-en-mayusculas]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[obra-vacia]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[obra-blancos]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[obra-numero]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[obra-nula]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[obra-con-barra]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[obra-larga]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_el_handler_rechaza_cada_cuerpo_malo_sin_construir_nada[obra-con-enye]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[lista]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[texto]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[nulo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[numero]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[vacio]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[sin-obra]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[sin-confirmado]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[sin-ensayo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[solo-obra]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[confirmado-texto]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[confirmado-uno]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[confirmado-falso]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[confirmado-nulo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[ensayo-texto]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[ensayo-texto-falso]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[ensayo-uno]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[ensayo-cero]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[ensayo-nulo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[ensayo-lista]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[de-mas-oid]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[de-mas-correo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[de-mas-tope]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[clave-en-mayusculas]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[obra-vacia]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[obra-blancos]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[obra-numero]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[obra-nula]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[obra-con-barra]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[obra-larga]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_ruta_responde_400_a_cada_cuerpo_malo_sin_construir_nada[obra-con-enye]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_un_cuerpo_que_no_es_json_es_400_sin_construir_nada
+FAILED tests/test_f060_normalizar_http.py::test_f060_r26_la_obra_se_normaliza_como_en_f036
+FAILED tests/test_f060_normalizar_http.py::test_f060_r27_responde_la_obra_el_ensayo_y_el_recuento[True]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r27_responde_la_obra_el_ensayo_y_el_recuento[False]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r20_la_real_escribe_revisiones_del_sistema_con_la_hora_de_la_peticion
+FAILED tests/test_f060_normalizar_http.py::test_f060_r27_la_ruta_responde_200_con_solo_numeros
+FAILED tests/test_f060_normalizar_http.py::test_f060_d4_la_identidad_es_la_del_sistema_aunque_vengan_cabeceras
+FAILED tests/test_f060_normalizar_http.py::test_f060_r20_sin_hora_inyectada_es_la_de_ahora_en_utc
+FAILED tests/test_f060_normalizar_http.py::test_f060_r29_sigrid_antes_que_la_base_y_tres_lecturas[True]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r29_sigrid_antes_que_la_base_y_tres_lecturas[False]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r29_sin_sigrid_no_se_llega_a_construir_la_base[config-sigrid]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r29_sin_sigrid_no_se_llega_a_construir_la_base[entorno-sin-sigrid]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r29_sin_sigrid_no_se_llega_a_construir_la_base[config-ubicaciones]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r29_sin_sigrid_no_se_llega_a_construir_la_base[config-pg]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[sin-unidades]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[ambigua]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[al-techo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[ubicaciones-al-techo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[bandeja-de-mas]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[sigrid-caido]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[ubicaciones-caidas]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[base-caida]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_el_handler_deja_subir_el_error_sin_escribir[lote-caido]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[sin-unidades]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[ambigua]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[al-techo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[ubicaciones-al-techo]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[bandeja-de-mas]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[sigrid-caido]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[ubicaciones-caidas]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[base-caida]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r28_la_ruta_responde_como_el_listado_sin_escribir[lote-caido]
+FAILED tests/test_f060_normalizar_http.py::test_f060_o3_el_endpoint_compone_la_fuente_de_f056_con_su_filtro
+FAILED tests/test_f060_normalizar_http.py::test_f060_r30_una_linea_con_la_obra_el_recuento_y_los_segundos[True]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r30_una_linea_con_la_obra_el_recuento_y_los_segundos[False]
+FAILED tests/test_f060_normalizar_http.py::test_f060_r30_los_segundos_son_los_de_la_peticion
+FAILED tests/test_f060_normalizar_http.py::test_f060_s9_la_ruta_es_post_y_anonima
+FAILED tests/test_f010_endpoints_protegidos.py::test_f010_r32_la_anonimidad_es_deliberada_y_esta_explicada
+FAILED tests/test_f010_endpoints_protegidos.py::test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay
+123 failed, 11 passed in 1.73s
+```
+
+**123 fallan, todos por aserción** (`AssertionError`, `assert …` o `Failed: DID NOT RAISE`); ninguno por
+`ImportError`, `AttributeError`, `TypeError` ni `IndexError` (una primera pasada tuvo un `IndexError` en
+`test_f060_r9_r20_la_esperada_es_la_ultima_leida`, al indexar `lotes[0]` sin comprobar antes que hubiera lote; se
+añadió `assert len(lotes) == 1` delante y la traza de arriba es la de después). De los 123, **44** son los de la
+ruta, que caen en la aserción de que la ruta no existe (T11 la añade); los demás, en su propia aserción.
+
+Los **11 que pasan en rojo**, y por qué:
+
+| Test | Por qué pasa con el esqueleto |
+|---|---|
+| `test_f060_r25_sin_normalizar_aprobar_sigue_siendo_409`, `test_f060_r25_editar_con_la_variante_sigue_siendo_400[BAÑO]` y `[bAño]` | Guardas de D-5: la comparación de F-056 no cambia y ya da 409 y 400. Su contraparte (R24: normalizar y aprobar sí da candidata) falla |
+| `test_f060_o3_el_detector_no_es_ciego_sin_filtro_se_propondria_el_de_49` | Control del test de O-3: demuestra que la regla del dominio (Bloque 1) **sí** propondría el valor de 49 si le llegara sin filtrar |
+| `test_f060_r19_el_ensayo_no_escribe_nada` (HTTP) | El esqueleto no escribe nada, que es justo lo que pide el ensayo. Su contraparte (la real escribe) falla |
+| Seis de `test_f010_endpoints_protegidos.py` (`…_cabecera_dice_donde_esta_la_proteccion_de_verdad`, `…_que_anade_la_cola_al_cuadro`, `…_donde_esta_el_control_de_acceso`, `…_de_identidad_no_protege`, `…_health_sigue_anonimo`, `…_ventana_de_escritura_en_archivar`) | No dependen de la cuenta de rutas: miran la cabecera de `function_app.py`. Los dos que cuentan rutas fallan (`assert 20 == 21` y la lista ordenada) |
+
+Colindantes con el esqueleto: `tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py` en verde (ver
+T10 y T11).

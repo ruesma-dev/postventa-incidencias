@@ -48,6 +48,16 @@ El historial no lee Sigrid; da, por revisión, los campos cambiados frente a la
 anterior (o a los importados). `candidatas_al_volcado` no tiene ruta HTTP: es
 el punto de entrada de F-040, y devuelve lo que da `RevisionPort.aprobadas`.
 
+## `normalizar_ubicaciones` (F-060, R17–R21)
+
+`specs/F-060-normalizar-ubicaciones/design.md` §8. Se **añade** a lo de
+F-056, que no cambia: `revision.listar(tope=10.000)` (si vuelven más,
+`BandejaDemasiadoGrande` con `contar`, sin leer las ubicaciones ni escribir)
+→ las ubicaciones válidas, **una** lectura con el catálogo **ya leído** que
+recibe (el endpoint lo lee con `leer_catalogo`; la importación pasa el suyo)
+→ `planificar_normalizacion` del dominio → si es un ensayo o el plan está
+vacío, el recuento y nada más; si no, `registrar_lote` y lo que dejó escrito.
+
 ## Logs
 
 Ninguno aquí: los pone el borde (R31, R41), con la obra, la incidencia, la
@@ -67,6 +77,7 @@ from domain.models.errores import (
     CatalogoSinVerificar,
     IncidenciaNoEncontrada,
 )
+from domain.models.normalizacion import RecuentoNormalizacion
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     ListasCerradas,
@@ -113,12 +124,14 @@ __all__ = [
     "IncidenciaRevisada",
     "PaginaDeRevision",
     "PeticionDeListado",
+    "ResultadoNormalizacion",
     "aplicar_accion",
     "candidatas_al_volcado",
     "fuente_de_ubicaciones",
     "historial",
     "leer_ubicaciones_validas",
     "listar_para_revisar",
+    "normalizar_ubicaciones",
 ]
 
 #: Las ubicaciones válidas de cada unidad del catálogo recién leído (R46–R48):
@@ -369,3 +382,38 @@ def candidatas_al_volcado(
 ) -> tuple[CandidataAlVolcado, ...]:
     """Las incidencias aprobadas de la obra, y ninguna otra (R34): para F-040."""
     return revision.aprobadas(obra_codigo=normalizar_codigo_obra(obra_codigo))
+
+
+# --------------------------------------------------------------------------
+# F-060 · normalizar las ubicaciones de una obra (design.md §8)
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class ResultadoNormalizacion:
+    """ESQUELETO NEUTRO de la fase RED de F-060 T9 (se completa en T10)."""
+
+    obra_codigo: str
+    ensayo: bool
+    recuento: RecuentoNormalizacion
+    normalizadas: int
+    conflictos: int
+
+
+def normalizar_ubicaciones(
+    obra_codigo: str,
+    *,
+    revision: RevisionPort,
+    catalogo: CatalogoObra,
+    ubicaciones: FuenteDeUbicaciones,
+    ahora: datetime,
+    ensayo: bool,
+) -> ResultadoNormalizacion:
+    """ESQUELETO NEUTRO de la fase RED de F-060 T9: no lee ni escribe nada."""
+    return ResultadoNormalizacion(
+        obra_codigo=obra_codigo,
+        ensayo=ensayo,
+        recuento=RecuentoNormalizacion(0, 0, 0, 0, 0, 0),
+        normalizadas=0,
+        conflictos=0,
+    )

@@ -115,7 +115,7 @@
 
 ## Bloque 4 · Tras cada importación
 
-- [ ] **T13 · RED**: `tests/test_f060_importar_normaliza.py` (R31–R35,
+- [x] **T13 · RED**: `tests/test_f060_importar_normaliza.py` (R31–R35,
   §9.2): con filas registradas, una llamada al normalizador con la obra y el
   catálogo de la importación, después del Excel de errores; con
   `ya_importado` o cero filas, ninguna; la respuesta **igual** (igualdad del

@@ -52,6 +52,7 @@ repiten el `oid`.
 from __future__ import annotations
 
 import base64
+import time
 import uuid
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
@@ -59,6 +60,7 @@ from typing import Any
 from uuid import UUID
 
 from application.pipelines.contexto_importacion import ContextoImportacion
+from application.pipelines.revision import ResultadoNormalizacion
 from application.pipelines.paso_importacion import (
     paso_catalogo,
     paso_excel_errores,
@@ -73,7 +75,7 @@ from domain.models.errores import (
     PeticionDeImportacionInvalida,
 )
 from domain.models.importacion import EstadoFilaImportada
-from domain.models.plantilla_incidencias import MAX_BYTES_FICHERO
+from domain.models.plantilla_incidencias import MAX_BYTES_FICHERO, CatalogoObra
 from domain.ports.bandeja import BandejaPort
 from domain.ports.catalogo_obra import CatalogoObraPort
 from domain.ports.equivalencias import EquivalenciasPort
@@ -84,10 +86,12 @@ from infrastructure.documentos.plantilla_yaml import ConfiguracionPlantilla
 from infrastructure.persistencia.fabrica import (
     construir_bandeja,
     construir_equivalencias,
+    construir_revision,
 )
 from infrastructure.sigrid.fabrica import construir_catalogo_obra
 
 from interface_adapters.api.plantilla import configuracion_de_la_plantilla
+from interface_adapters.api.revision import construir_fuente_de_ubicaciones
 
 __all__ = [
     "MAX_ERRORES_EN_RESPUESTA",
@@ -145,6 +149,8 @@ def importar_excel(
     configuracion: ConfiguracionPlantilla | None = None,
     ahora: datetime | None = None,
     nuevo_id: Callable[[], UUID] = uuid.uuid4,
+    normalizar: Callable[[str, CatalogoObra, datetime], ResultadoNormalizacion]
+    | None = None,
 ) -> dict[str, Any]:
     """Importa el fichero y devuelve la respuesta de R43.
 

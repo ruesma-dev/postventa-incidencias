@@ -1095,3 +1095,124 @@ Colindantes: **todos** los tests que leen o importan `function_app.py` (47 fiche
 repositorio de F-056, dominio y lote de F-060, arquitectura de F-005 y F-036, documentación de F-012, F-019 y F-053 y
 `test_f006_repo_sin_identificadores.py`: **2229 passed, 29 skipped** en 66,18 s. Los saltados son controles de diff
 que solo corren en la rama de su feature. `ruff check` de los ficheros tocados: `All checks passed!`.
+
+### T12 · Mutación del bloque
+
+```
+python -m harness.mutacion --feature F-060 --base 91ad35d --timeout 1800 --salida progress/mutacion_F-060_bloque3.md
+```
+
+Lanzada tras el commit de T11 (`97a33ff`; los worktrees de la campaña salen de ese commit) y **esperada hasta el
+final**, sin tocar el árbol mientras corría. Salida real (cabecera y cola):
+
+```
+F-060: 3 fichero(s), 308 línea(s) de producción (origen rama, 91ad35dbb0b6ae1a3c810ca2452f551987606bae..feature/F-060-normalizar-ubicaciones)
+Campaña paralela: hasta 8 workers, uno por worktree.
+...
+17 mutantes evaluados, 17 muertos, 0 supervivientes, 0 timeouts en 1801.1 s
+Informe: progress/mutacion_F-060_bloque3.md
+```
+
+**17/17 muertos, 0 supervivientes, 0 timeouts, 8 workers, 1801,1 s.** Por fichero (ninguno sale con 0 mutantes):
+`application/pipelines/revision.py` 5 (el `>` del tope, `frozen`, el `not` y el `and` de «ni ensayo ni plan
+vacío», el `0` inicial de los contadores); `function_app.py` 6 (los códigos 400 —del cuerpo que no es JSON y del
+contrato—, 404, los dos 409 y el 200); `interface_adapters/api/normalizacion.py` 6 (el `not`, el `or` y el `!=` de
+las claves exactas, `is not True`, el `not isinstance(ensayo, bool)` y el `-` de los segundos).
+
+**Lo que la herramienta no muta**, y por eso hice **mutantes a mano**: no muta `is` / `is not None`, ni llamadas, ni
+el orden de las sentencias, ni literales de texto, ni la lista de excepciones de un `except`. En este bloque hay
+decisiones de verdad en todo eso (el orden de construcción, validar antes de construir, la hora en UTC, cada
+excepción traducida). Los apliqué **solo en una copia** de `services/postventa-api` en el directorio temporal (sin
+`.venv`, `.env` ni `local.settings.json`), uno a uno y restaurando el fichero después, con un script **fuera del
+repositorio**; cada uno contra `tests/test_f060_pipeline_normalizacion.py` y/o `tests/test_f060_normalizar_http.py`
+con `-x`. El árbol de trabajo no se tocó.
+
+| # | Mutante a mano | Resultado | Primer test que cae |
+|---|---|---|---|
+| P1 | `not ensayo and plan.revisiones` → `not ensayo` (lote con el plan vacío) | MUERTO | `test_f060_r20_un_plan_vacio_no_llama_al_lote` |
+| P2 | → `plan.revisiones` (ignora el ensayo) | MUERTO | `test_f060_r17_justo_en_el_tope_si_se_normaliza` |
+| P3 | `normalizadas` y `conflictos` cruzados | MUERTO | `test_f060_r20_la_real_registra_el_lote_del_plan` |
+| P4 | `normalizadas = len(plan.revisiones)` (cree al plan, no a la base) | MUERTO | `test_f060_r13_r20_un_conflicto_se_cuenta_y_no_aborta_las_demas` |
+| P5 | `total = len(situaciones)` en vez de `contar` | MUERTO | `test_f060_r17_mas_del_tope_no_lee_ubicaciones_ni_escribe[True]` |
+| P6 | dos lecturas de las ubicaciones | MUERTO | `test_f060_r17_justo_en_el_tope_si_se_normaliza` |
+| P7 | tope `> TOPE + 1` | MUERTO | `test_f060_r17_mas_del_tope_no_lee_ubicaciones_ni_escribe[True]` |
+| P8 | esperadas todas `None` (sin frescura) | MUERTO | `test_f060_r9_r20_la_esperada_es_la_ultima_leida` |
+| P9 | `ensayo=False` en el resultado | MUERTO | `test_f060_r19_el_ensayo_no_llama_al_lote_ni_escribe` |
+| P10 | `ResultadoNormalizacion` sin `frozen` | MUERTO | `test_f060_el_resultado_es_inmutable` |
+| P11 | la hora del plan, la del reloj y no la recibida | MUERTO | `test_f060_r20_la_real_registra_el_lote_del_plan` |
+| H1 | admitir claves de más (`>=` en vez de `!=`) | MUERTO | `…_handler_rechaza_cada_cuerpo_malo…[de-mas-oid]` |
+| H2 | `is not True` → `not …` (admite `"true"`, `1`) | MUERTO | `…[confirmado-texto]` |
+| H3 | `isinstance(ensayo, bool)` → `int` (admite `0`, `1`) | MUERTO | `…[ensayo-uno]` |
+| H5 | `datetime.now()` sin zona | MUERTO | `test_f060_r20_sin_hora_inyectada_es_la_de_ahora_en_utc` |
+| H6 | ignorar la hora inyectada | MUERTO | `test_f060_r20_la_real_escribe_revisiones_del_sistema_con_la_hora_de_la_peticion` |
+| H7 | la base antes que la fuente de ubicaciones | MUERTO | `test_f060_r29_sigrid_antes_que_la_base_y_tres_lecturas[True]` |
+| H8 | validar **después** de construir el catálogo (RM7) | MUERTO | `…_handler_rechaza_cada_cuerpo_malo…[lista]` |
+| H9 | la obra sin `normalizar_codigo_obra` | MUERTO | `…[obra-vacia]` |
+| H10 | los segundos sin restar el inicio | MUERTO | `test_f060_r30_los_segundos_son_los_de_la_peticion` |
+| H11 | `leer_catalogo(catalogo_obra, cuerpo["obra"])` en vez de la obra normalizada | **VIVO · equivalente** | — |
+| H12 | una clave de más en la respuesta con el texto del sistema | MUERTO | `test_f060_r27_responde_la_obra_el_ensayo_y_el_recuento[True]` |
+| F1 | sin `CodigoDeObraInvalido` en el 400 | MUERTO | `…_la_ruta_responde_400…[obra-vacia]` |
+| F2 | sin `PersistenciaNoDisponible` en el 503 | MUERTO | `…_la_ruta_responde_como_el_listado…[base-caida]` |
+| F3 | sin unidades → 409 | MUERTO | `…[sin-unidades]` |
+| F4 | la bandeja de más sin el `total` | MUERTO | `…[bandeja-de-mas]` |
+| F5 | el cuerpo que no es JSON con otro código | MUERTO | `test_f060_r26_un_cuerpo_que_no_es_json_es_400_sin_construir_nada` |
+| F6 | la ruta admite también `GET` | MUERTO | `test_f060_s9_la_ruta_es_post_y_anonima` |
+| F7 | el 503 sin el «no se ha escrito nada» | MUERTO | `…[sigrid-caido]` |
+
+**28 de 29 muertos.** El vivo, **H11, es equivalente** y no un hueco: `leer_catalogo` (F-036) aplica ella misma
+`normalizar_codigo_obra` a lo que recibe, y `cuerpo["obra"]` ya ha pasado esa misma función en `_peticion`; con
+cualquier obra que llegue hasta ahí, las dos versiones piden a Sigrid el mismo código. Severidad: **ninguna**. No
+se añade test (no hay comportamiento que lo distinga). Dos mutantes previstos no se ejecutaron: `H4` (`ensayo` con
+valor por defecto vía `cuerpo.get`) es inalcanzable, porque el control de las claves exactas va antes y ya lo
+rechaza (lo cubren `sin-ensayo` y `solo-obra` de la tabla); y `H13` (meter el cuerpo en el log) no aporta: con las
+claves exactas, el cuerpo solo puede llevar la obra y dos booleanos, que ya van en la línea.
+
+**Supervivientes abiertos: ninguno.**
+
+### Ficheros tocados en el Bloque 3
+
+- Producción: `services/postventa-api/application/pipelines/revision.py` (se **añaden** `ResultadoNormalizacion`,
+  `normalizar_ubicaciones`, el import del dominio, dos nombres en `__all__` y un apartado del docstring),
+  `services/postventa-api/interface_adapters/api/normalizacion.py` (**nuevo**), `services/postventa-api/function_app.py`
+  (la ruta, su import, su entrada en la cabecera y el párrafo «veintiuno»).
+- Tests nuevos: `tests/test_f060_pipeline_normalizacion.py` (28), `tests/test_f060_normalizar_http.py` (99),
+  `tests/utiles_normalizacion.py` (doble).
+- Test ampliado sin quitar nada: `tests/test_f010_endpoints_protegidos.py` (la ruta y la cuenta a 21). Es uno de los
+  dos que R39 permite ampliar.
+- Spec: `tasks.md` (T9–T12 marcadas). Informes: este y `progress/mutacion_F-060_bloque3.md`.
+- **No se tocaron**: `interface_adapters/api/revision.py`, `tests/utiles_revision.py`, ningún test de F-036 ni de
+  F-056, ningún `.sql`, `docs/INTEGRACION.md` (Bloque 5), `.env`, `services/postventa-front/`, la plantilla ni
+  `Ajustes`. Nada escribe en Sigrid: el endpoint solo compone los lectores de F-036 y F-056 (`sql/read`).
+
+### Commits del Bloque 3
+
+| Commit | Qué |
+|---|---|
+| `0c7d9e9` | F-060 T9: RED (tests, doble con lote, esqueleto neutro, `test_f010` ampliado) |
+| `6a4c889` | F-060 T10: GREEN de la aplicación |
+| `97a33ff` | F-060 T11: GREEN del handler y la ruta |
+| (este commit) | F-060 T12: mutación del bloque e informe |
+
+### Pendiente
+
+Nada del Bloque 3. **Parar: review del Bloque 3.** El Bloque 4 (tras cada importación) no se ha empezado. Sigue
+pendiente la **T7** del Bloque 2 (MANUAL, humano).
+
+Para la review:
+
+- `docs/INTEGRACION.md` §8 dice «Los veinte» y el código ya tiene veintiuna rutas: lo cierra T20 (Bloque 5).
+- El `obra` de la línea de log y de la respuesta es el código normalizado (`" 99 01 "` → `9901`).
+- La línea de log lleva `ensayo=True`/`False` (el `bool` de Python, como `ya_importado` en la importación).
+
+### Evidencias (Bloque 3)
+
+| Evidencia | Valor real |
+|---|---|
+| RED (T9) | 134 casos: **123 failed** (todos por aserción; 44 de ellos, los de la ruta, por la aserción de que la ruta no existe) y 11 passed (justificados), en 1,73 s |
+| Tests del bloque en verde | `test_f060_pipeline_normalizacion.py` **28 passed**; `test_f060_normalizar_http.py` **99 passed**; verificación de T10 **108 passed** en 1,61 s; de T11 **289 passed** en 1,80 s |
+| Colindantes | Los 47 ficheros que leen o importan `function_app.py`, más F-056 (pipeline, repositorio), F-060 (dominio, lote), arquitectura, documentación de F-012/F-019/F-053 y `test_f006`: **2229 passed, 29 skipped** en 66,18 s |
+| Cobertura de lo cambiado | `interface_adapters/api/normalizacion.py` **42/42 sentencias, 12/12 ramas (100 %)**; `ResultadoNormalizacion` y `normalizar_ubicaciones` (desde la línea 395 de `revision.py`) y `revision_normalizar` (desde la 1761 de `function_app.py`), **sin líneas ni ramas sin cubrir** (`coverage run --branch` sobre los dos tests de F-060). La `PUERTA COBERTURA` de `init.sh` se pasa en T23 |
+| Mutación (herramienta) | **17 generados, 17 muertos, 0 supervivientes**, 0 timeouts, **8 workers**, 1801,1 s |
+| Mutación (a mano) | **28 de 29 muertos**; el vivo (H11), equivalente y justificado arriba |
+| `bash harness/init.sh` | En verde **al empezar** el bloque (7785 passed, 123 skipped, 883,40 s; cobertura 100 % de 110 líneas). No relanzado al terminar: la suite entera es de T23 |
+| Suite completa | Solo la de la precondición; no se relanza (T23) |

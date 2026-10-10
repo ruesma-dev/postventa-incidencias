@@ -108,7 +108,7 @@
   `POST revision/normalizar` en `function_app.py`, con su traducción de
   errores y la cabecera (veintiuna anónimas) (§9.1, §9.3). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_normalizar_http.py tests/test_f010_endpoints_protegidos.py tests/test_f056_revision_http.py`
-- [ ] **T12 · Mutación del bloque.** |
+- [x] **T12 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T9> --timeout 1800 --salida progress/mutacion_F-060_bloque3.md` sin supervivientes abiertos
 
 **Parar. Review del Bloque 3.**

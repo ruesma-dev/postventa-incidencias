@@ -104,7 +104,7 @@
 - [x] **T10 · GREEN**: `ResultadoNormalizacion` y `normalizar_ubicaciones` en
   `application/pipelines/revision.py` (§8), sin cambiar lo que ya hay. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_pipeline_normalizacion.py tests/test_f056_pipeline_revision.py`
-- [ ] **T11 · GREEN**: `interface_adapters/api/normalizacion.py` y la ruta
+- [x] **T11 · GREEN**: `interface_adapters/api/normalizacion.py` y la ruta
   `POST revision/normalizar` en `function_app.py`, con su traducción de
   errores y la cabecera (veintiuna anónimas) (§9.1, §9.3). |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_normalizar_http.py tests/test_f010_endpoints_protegidos.py tests/test_f056_revision_http.py`

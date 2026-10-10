@@ -1046,3 +1046,52 @@ Verificación de `tasks.md`, desde `services/postventa-api`:
 
 Colindantes (dominio de F-060, arquitectura de F-005 y F-036, alcance de F-056): **144 passed, 9 skipped** en
 6,74 s (los 9, los controles de diff de F-056 que solo corren en su rama). `ruff check`: `All checks passed!`.
+
+### T11 · GREEN · el handler y la ruta
+
+- `interface_adapters/api/normalizacion.py` (nuevo de verdad; sustituye al esqueleto): `normalizar_obra(cuerpo, *,
+  revision, catalogo_obra, ubicaciones, ahora)`. En este orden: el cuerpo entero (`_peticion`: objeto con
+  **exactamente** `obra`, `confirmado` y `ensayo`; `confirmado is True`; `ensayo` de tipo `bool`; la obra por
+  `normalizar_codigo_obra`) **antes** de construir nada; la hora (la inyectada o `datetime.now(UTC)`); Sigrid
+  primero (`construir_catalogo_obra`, `construir_fuente_de_ubicaciones` **de F-056, importada** de
+  `interface_adapters/api/revision.py`, que no se toca) y la base después (`construir_revision`); `leer_catalogo`
+  (las dos lecturas de F-036) y `normalizar_ubicaciones` (la tercera). Responde las diez claves de R27, solo
+  números, y registra **una** línea `F-060 normalización de ubicaciones: obra=… ensayo=… examinadas=… no_exactas=…
+  normalizables=… ambiguas=… sin_coincidencia=… no_editables=… normalizadas=… conflictos=… segundos=…` (§9.3), con
+  los segundos de `time.perf_counter` desde la entrada.
+- `function_app.py`: la ruta `revision_normalizar` (`POST revision/normalizar`, `ANONYMOUS`) con la traducción de
+  errores del listado (400 `peticion_invalida` también para el cuerpo que no es JSON, como `revision/acciones`; 404
+  `obra_sin_unidades`; 409 `obra_ambigua`, `catalogo_sin_verificar` y `bandeja_demasiado_grande` con el total; 503
+  de Sigrid, su configuración y la base). Sin `ConfiguracionPlantillaInvalida`: este endpoint no carga la
+  plantilla. En la cabecera, la entrada de la ruta en la lista de endpoints y un párrafo: no añade nada al cuadro
+  de seguridad (solo recuentos) y «con él los anónimos son veintiuno». La frase de F-056 («Con él los anónimos son
+  veinte») se conserva: es la historia del cuadro, y ningún test la fija.
+- **O-3 de la review del Bloque 2 (un `CHECK` que falla tumba el lote).** El 503 del lote dice, con el mensaje
+  común de `_sin_sigrid_o_sin_base`, «no se ha escrito nada», y es verdad: el `ROLLBACK` del Bloque 2 deshace el
+  lote entero. Lo fijan `test_f060_r28_…[lote-caido]` (handler y ruta) y `test_f060_r14_…` del pipeline. Y la causa
+  conocida de ese `CHECK` (un valor de más de 48) no puede llegar: las listas salen de la fuente de F-056
+  (**O-3 de la review del Bloque 1**), fijado en la aplicación (`test_f060_o3_las_listas_salen_de_la_fuente_de_f056_ya_filtradas`)
+  y en el borde sin sustituir la fuente (`test_f060_o3_el_endpoint_compone_la_fuente_de_f056_con_su_filtro`).
+- **`docs/INTEGRACION.md` no se toca** (la cuenta de anónimos es del Bloque 5, T20). Ningún test lo exige ahora:
+  `test_f012_…_declara_el_endpoint_nuevo…`, `test_f019_…` y `test_f053_…` cuentan las filas de la tabla de §8 del
+  documento, no las rutas de `function_app.py`, y siguen en verde con «Los veinte». Hasta T20, el documento dice
+  veinte y el código tiene veintiuna: es lo esperado entre bloques.
+
+Test añadido en GREEN (no es de requisito central, es de la costura): `test_f060_r29_los_adaptadores_inyectados_no_se_construyen`.
+Lo pidió la cobertura de ramas: sin él, los tres `if … is None` del handler solo se recorrían por un lado. Ahora
+`interface_adapters/api/normalizacion.py` da **42/42 sentencias y 12/12 ramas**.
+
+Verificación de `tasks.md`, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_normalizar_http.py tests/test_f010_endpoints_protegidos.py tests/test_f056_revision_http.py -q -p no:cacheprovider --tb=short
+288 passed in 2.06s
+```
+
+(antes del test de la costura; con él, `test_f060_normalizar_http.py` tiene 99 casos y la línea es `289 passed`).
+
+Colindantes: **todos** los tests que leen o importan `function_app.py` (47 ficheros, de F-001 a F-060, incluidos los
+`…_alcance_cerrado` de F-031, F-034, F-036 y F-056 y `test_f019_logs_sin_datos_personales.py`), más los de pipeline y
+repositorio de F-056, dominio y lote de F-060, arquitectura de F-005 y F-036, documentación de F-012, F-019 y F-053 y
+`test_f006_repo_sin_identificadores.py`: **2229 passed, 29 skipped** en 66,18 s. Los saltados son controles de diff
+que solo corren en la rama de su feature. `ruff check` de los ficheros tocados: `All checks passed!`.

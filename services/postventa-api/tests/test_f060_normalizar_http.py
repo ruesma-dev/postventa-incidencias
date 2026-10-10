@@ -418,6 +418,29 @@ def test_f060_r29_sigrid_antes_que_la_base_y_tres_lecturas(mundo: Mundo, ensayo:
     assert len([x for x in mundo.llamadas if x.startswith(("catalogo.", "ubicaciones"))]) == 3
 
 
+def test_f060_r29_los_adaptadores_inyectados_no_se_construyen(nada_se_construye) -> None:
+    """La costura de test: con los tres puertos pasados, no se construye nada."""
+    llamadas: list[str] = []
+    revision = RevisionConLote(llamadas, _cuatro())
+
+    datos = modulo.normalizar_obra(
+        _cuerpo(ensayo=False),
+        revision=revision,
+        catalogo_obra=CatalogoDeLaObra(llamadas),
+        ubicaciones=UbicacionesQueCuentan(llamadas),
+        ahora=AHORA_N,
+    )
+
+    assert datos == _respuesta(ensayo=False)
+    assert llamadas == [
+        "catalogo.leer_unidades",
+        "catalogo.leer_oficios",
+        "revision.listar",
+        "ubicaciones",
+        "revision.registrar_lote",
+    ]
+
+
 @pytest.mark.parametrize(
     ("donde", "error", "construidos"),
     [

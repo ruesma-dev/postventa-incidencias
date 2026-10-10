@@ -207,7 +207,12 @@ Ejemplos de esta spec: ficticios (obras `99NN`, ubicaciones «Sala Ejemplo»,
 - **R39.** Los tests de F-036 y de F-056 deben seguir en verde **sin
   tocarse**, salvo los que enumeran rutas o cuentan endpoints, que se
   **amplían** sin quitar nada (`test_f010_endpoints_protegidos.py`,
-  `test_f053_documentacion.py`) y se citan en el informe.
+  `test_f053_documentacion.py`) y se citan en el informe. **Excepción
+  (decisión del humano 2026-10-10):**
+  `test_f056_repositorio_revision.py::test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`
+  se amplía, sin relajarlo, para exigir el conjunto exacto de **siete**
+  operaciones de `RevisionPort` (las seis de F-056 más `registrar_lote`);
+  ninguna otra aserción de F-056 cambia.
 
 ### Medir el listado
 

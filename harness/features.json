@@ -1013,7 +1013,7 @@
         "No se escribe nada en Sigrid",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,

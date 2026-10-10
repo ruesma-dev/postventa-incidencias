@@ -28,6 +28,11 @@
 > `@ejemplo.invalid`). **No se toca `services/postventa-front/`** (F-038) ni la
 > plantilla (F-058). Si un test de F-036 o de F-056 que no depende de la rama
 > falla por un cambio de F-060, **se para y se informa**: no se relaja.
+> **Única excepción (decisión del humano 2026-10-10)**:
+> `test_f056_repositorio_revision.py::test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`
+> se amplía, sin relajarlo, al conjunto exacto de **siete** operaciones de
+> `RevisionPort` (las seis de F-056 más `registrar_lote`, T5); ninguna otra
+> aserción de F-056 cambia (`design.md` §12, R39).
 
 ## Bloque 1 · La regla y el plan (dominio puro)
 
@@ -148,7 +153,8 @@
   iguales a las de la base; ningún `.sql` cambiado; ninguna ruta de escritura
   de la pasarela ni ventana en el código de F-060; los ficheros de «No se
   toca» (`design.md` §12) sin cambios; los tests de F-036 y F-056 sin tocar
-  salvo los dos ampliados; y un control de que cada detector no es ciego. La
+  salvo los dos ampliados y el test del puerto de F-056 (siete operaciones,
+  decisión del humano 2026-10-10); y un control de que cada detector no es ciego. La
   fase RED de este test se demuestra rompiendo en una **copia aislada** lo que
   vigila (`CHECKPOINTS.md` C4 bis), con la traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_alcance_cerrado.py`

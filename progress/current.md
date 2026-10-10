@@ -1,14 +1,9 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-060 · `blocked` · 2026-10-10 · Bloque 2: T4 hecha (`e259f23`), parada antes de T5 (implementer)
->
-> **Motivo.** `design.md` §7 añade `registrar_lote` a `RevisionPort`, pero
-> `tests/test_f056_repositorio_revision.py::test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5` fija la lista
-> exacta de seis métodos. Con el método añadido de forma temporal, cae (1 failed, 356 passed; experimento revertido).
-> La spec prohíbe tocar los tests de F-056 (§12, R39, T19, la cabecera de `tasks.md`).
-> **Decide el humano**: (a) ampliar ese test sin quitar nada y enmendar §12, R39 y T19 (recomendada), o (b) un
-> puerto aparte para el lote. Detalle, traza y coste de cada opción: `progress/impl_F-060.md`, «Bloque 2».
+> **F-060 · decisión del humano 2026-10-10 (opción (a))**: `test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`
+> se amplía sin relajar a las siete operaciones de `RevisionPort` (más `registrar_lote`); excepción declarada en
+> `design.md` §12, R39, T19 y la cabecera de `tasks.md`. Bloque 2 en curso.
 
 > ## F-060 · `in_progress` · 2026-10-09 · spec APROBADA por el humano («si») · Bloque 1 HECHO (T1–T3, 19/19 mutantes muertos), pendiente de review
 >

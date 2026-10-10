@@ -514,6 +514,11 @@ tests `test_f060_normalizacion_dominio.py`, `test_f060_repositorio_lote.py`,
 - `function_app.py`: la ruta nueva y su cabecera (veintiuna anónimas).
 - Tests que enumeran rutas o las cuentan, ampliando sin quitar:
   `test_f010_endpoints_protegidos.py`, `test_f053_documentacion.py`.
+- **Decisión del humano 2026-10-10** (excepción a «No se toca»):
+  `test_f056_repositorio_revision.py::test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`
+  fija la lista exacta de los métodos de `RevisionPort`; se amplía, sin
+  relajarlo, al conjunto exacto de **siete** (las seis de F-056 más
+  `registrar_lote`). Ninguna otra aserción de F-056 cambia.
 - `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md` (R43) y, al desplegar,
   `azure-apps/postventa_incidencias.md`.
 - Bloque 7: lo que diga el remedio elegido (§11.4).
@@ -544,7 +549,7 @@ ficticios.
 | R26–R30 | Cada cuerpo malo → 400 sin construir adaptadores (también `"true"`, `1`, claves de más, sin `ensayo`); Sigrid antes que la base; errores de R28; `caplog` sin textos |
 | R31–R35 | Con filas registradas, una llamada con el catálogo de la importación; con `ya_importado` o cero filas, ninguna; respuesta idéntica con y sin normalización (igualdad del diccionario); cada error de §5.1 → misma respuesta y un aviso con el tipo; un `ValueError` sube |
 | R36 | Las claves de las tres respuestas de F-056 y la de la importación, iguales a las de la base fija |
-| R37–R39 | Alcance con base fija: ningún `.sql` cambiado; ninguna ruta de escritura ni ventana; los ficheros de «No se toca» sin cambios; los tests de F-036 y F-056 sin tocar salvo los dos ampliados |
+| R37–R39 | Alcance con base fija: ningún `.sql` cambiado; ninguna ruta de escritura ni ventana; los ficheros de «No se toca» sin cambios; los tests de F-036 y F-056 sin tocar salvo los dos ampliados y el test del puerto de F-056 (decisión del humano 2026-10-10) |
 | R40–R42 | Con reloj falso: los tramos y el cálculo; la línea con 200 y con error; el proxy devuelve lo mismo y relanza lo mismo; el orden de construcción; `caplog` sin correo, `oid` ni textos; la línea de F-056 intacta |
 | R43 | Frases clave en `ARCHITECTURE.md` e `INTEGRACION.md` |
 

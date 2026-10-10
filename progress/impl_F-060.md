@@ -343,3 +343,187 @@ El humano **acepta por escrito** («si», 2026-10-10, opción (a) de la review):
 (NFC aplicado después de `casefold`) queda vivo. Solo agrupa distinto con caracteres ajenos al castellano
 («ſ» con marca combinante, griego con diéresis y tilde, cirílico histórico); con Á, É, Í, Ó, Ú, Ü y Ñ el
 resultado es el mismo. R1 se queda como se aprobó.
+
+## Bloque 2 · El lote en la base · T4 hecha; **BLOQUEADO antes de T5** · 2026-10-10
+
+Encargo: T4 (RED), T5, T6 y T8; T7 es MANUAL del humano. Rama `feature/F-060-normalizar-ubicaciones`, HEAD de
+partida `66c981d` (el hash anterior a T4: el `--base` de la mutación de este bloque).
+
+**Resultado: T4 hecha y en su commit (`e259f23`). T5 no se puede hacer como dice la spec sin romper un test de
+F-056 que la propia spec prohíbe tocar. Paro e informo (regla de `tasks.md` y del encargo: «no se relaja»).
+T5, T6 y T8, y la sección «Para el humano · T7», quedan sin hacer.**
+
+### Precondiciones
+
+- Rama comprobada: `feature/F-060-normalizar-ubicaciones`, árbol limpio en `66c981d`.
+- `bash harness/init.sh`: en verde todo lo que llegó a correr (estructura, `features.json`, `BACKLOG.md`, rigor,
+  `compileall`, ruff con 73 avisos de deuda previa, suite de la raíz **115 passed**, `servicios.json`). La suite
+  del servicio `api` (~35 min) **la paré yo** hacia el 10 %, porque el encargo prohíbe la suite completa fuera de
+  T23. La última ejecución entera (primera pasada de la review del Bloque 1: 7767 passed, cobertura 100 %) sigue
+  representando el código de producción, que no había cambiado desde entonces.
+
+### T4 · Fase RED
+
+`tests/test_f060_repositorio_lote.py` (27 casos) contra un **esqueleto neutro**, como en el Bloque 1:
+`ResultadoDelLote` sin `frozen` en `domain/ports/revision.py`, y `RepositorioRevisionPostgres.registrar_lote`
+devolviendo un resultado vacío sin ejecutar nada. **El esqueleto no toca `RevisionPort`** (ver el bloqueo).
+
+El test usa el doble de `tests/utiles_pg.py` con una subclase local, `ConexionDeLote`, que cuenta los cursores
+abiertos, devuelve un `revision_id` distinto en cada `INSERT … RETURNING` (101, 102 y 103, en el orden de
+ejecución) y puede hacer fallar el `n`-ésimo `INSERT` (para demostrar que el `ROLLBACK` deshace los anteriores).
+Las revisiones se pasan **desordenadas** (U3, U1, U2) a propósito.
+
+| Caso | R |
+|---|---|
+| El puerto tiene `registrar_lote` (solo por nombre: `revisiones`, `esperadas`) y conserva las seis de F-056 | R12 |
+| `ResultadoDelLote` es inmutable, con `registradas` y `desactualizadas` | R12 |
+| Una transacción (un cursor, un `COMMIT`). Las sentencias ejecutadas son **exactamente** las de `sentencias_revision.py`, texto y parámetros: bloqueo de las tres en orden, últimas de las tres, `INSERT` de U1, U2 y U3 | R12, R15 |
+| El bloqueo es `ORDER BY incidencia_id FOR UPDATE`, sin `ADVISORY` | R12 |
+| Lo insertado es la revisión del sistema: `editar`, sin motivo, `TEXTO_SISTEMA` en `revisado_por` y en `revisado_correo`, la huella y la hora | R12, R8 |
+| Una desactualizada (cinco variantes; también con el `incidencia_id` en texto, como lo puede dar la base) se salta y las otras se insertan en orden; `COMMIT` sin `ROLLBACK` | R13 |
+| Todas desactualizadas (también con las esperadas cruzadas entre incidencias): ningún `INSERT` | R13 |
+| Fallo de la base al bloquear, al leer las últimas, en el primer `INSERT` y en el tercero: `ROLLBACK` y `PersistenciaNoDisponible` con `registrar_lote` y `LockNotAvailable`; sin textos, sin `sistema:…`, sin `incidencia_id` y sin el texto del error | R14 |
+| Un fallo que no es de la base (hora sin zona en la segunda): `ROLLBACK`, y el `ValueError` sube tal cual | R14 |
+| En todo lo ejecutado, ningún `UPDATE`, `DELETE`, `TRUNCATE`, `ON CONFLICT` ni `ADVISORY`. Contra `bandeja_incidencias`, solo el bloqueo; las escrituras, solo `INSERT INTO postventa.revisiones_bandeja` | R15 |
+| El código del repositorio (sin docstrings) no lleva SQL escrito a mano | R15 |
+| Lote vacío: resultado vacío, ningún cursor, nada ejecutado, ni `COMMIT` ni `ROLLBACK` | R16 |
+| Precondiciones (una revisión sin su esperada, la única sin esperada, una repetida, la misma dos veces) → `ValueError` sin abrir nada | §7, paso 2 |
+
+Comando, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_repositorio_lote.py -q -p no:cacheprovider --tb=line -rf
+```
+
+Salida real: las líneas `--tb=line` de cada fallo, con el prefijo absoluto recortado, y el total. **Los 24 fallos
+son de aserción** (`AssertionError` o `Failed: DID NOT RAISE`). Dos los levanta `ConexionDoble.primera_con` de
+`utiles_pg.py`, que es una aserción con mensaje.
+
+```
+tests\test_f060_repositorio_lote.py:163: AssertionError: assert ['aprobadas',..., 'situacion'] == ['aprobadas',...ar_lote', ...]
+tests\test_f060_repositorio_lote.py:176: AssertionError: el puerto no tiene registrar_lote
+tests\test_f060_repositorio_lote.py:188: Failed: DID NOT RAISE FrozenInstanceError
+tests\test_f060_repositorio_lote.py:206: AssertionError: assert ResultadoDelL...s=frozenset()) == ResultadoDelL...s=frozenset())
+tests\utiles_pg.py:179: AssertionError: no se ejecutó ninguna sentencia con 'FOR UPDATE'; se ejecutaron: []
+tests\utiles_pg.py:179: AssertionError: no se ejecutó ninguna sentencia con 'INSERT INTO'; se ejecutaron: []
+tests\test_f060_repositorio_lote.py:271: AssertionError: assert ResultadoDelL...s=frozenset()) == ResultadoDelL...000000002')}))
+tests\test_f060_repositorio_lote.py:271: AssertionError: assert ResultadoDelL...s=frozenset()) == ResultadoDelL...000000002')}))
+tests\test_f060_repositorio_lote.py:294: AssertionError: assert frozenset() == frozenset({UU...0000000001')})
+tests\test_f060_repositorio_lote.py:294: AssertionError: assert frozenset() == frozenset({UU...0000000003')})
+tests\test_f060_repositorio_lote.py:294: AssertionError: assert frozenset() == frozenset({UU...0000000002')})
+tests\test_f060_repositorio_lote.py:316: AssertionError: assert ResultadoDelL...s=frozenset()) == ResultadoDelL...000000003')}))
+tests\test_f060_repositorio_lote.py:316: AssertionError: assert ResultadoDelL...s=frozenset()) == ResultadoDelL...000000003')}))
+tests\test_f060_repositorio_lote.py:342: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_repositorio_lote.py:342: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_repositorio_lote.py:342: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_repositorio_lote.py:342: Failed: DID NOT RAISE PersistenciaNoDisponible
+tests\test_f060_repositorio_lote.py:368: Failed: DID NOT RAISE ValueError
+tests\test_f060_repositorio_lote.py:391: assert []
+tests\test_f060_repositorio_lote.py:391: assert []
+tests\test_f060_repositorio_lote.py:461: Failed: DID NOT RAISE ValueError
+tests\test_f060_repositorio_lote.py:461: Failed: DID NOT RAISE ValueError
+tests\test_f060_repositorio_lote.py:461: Failed: DID NOT RAISE ValueError
+tests\test_f060_repositorio_lote.py:461: Failed: DID NOT RAISE ValueError
+24 failed, 3 passed in 0.53s
+```
+
+Los **3 que pasan en rojo**, y por qué no es un problema:
+
+- `test_f060_r12_el_repositorio_cumple_el_puerto`: el esqueleto ya tiene el método y el puerto aún no lo exige. Es
+  la guarda para GREEN.
+- `test_f060_r15_el_repositorio_no_escribe_sql_propio`: guarda estática. El repositorio no tenía SQL escrito a mano
+  y no debe empezar a tenerlo.
+- `test_f060_r16_lote_vacio_sin_transaccion`: el esqueleto no abre nada. En GREEN vigila que el lote vacío no abra
+  transacción.
+
+Colindantes con el esqueleto: `tests/test_f056_repositorio_revision.py tests/test_f056_ddl.py` → **135 passed**.
+`ruff check` de los tres ficheros: `All checks passed!`.
+
+Commit: `e259f23 F-060 T4: RED del lote en la base (test con conexión falsa y esqueleto neutro)`. Lleva el test, el
+esqueleto en `domain/ports/revision.py` y `repositorio_revision_pg.py`, y T4 marcada en `tasks.md`.
+
+### BLOQUEO antes de T5 · la spec choca con un test de F-056 que no se puede tocar
+
+**Qué pide la spec.** `design.md` §7 dice que «`domain/ports/revision.py` **gana** un método» en `RevisionPort`
+(`registrar_lote`), y §12 lo repite. T5 lo implementa, y su verificación incluye
+`tests/test_f056_repositorio_revision.py`.
+
+**Qué lo impide.** `tests/test_f056_repositorio_revision.py::test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`
+fija la lista **exacta** de los públicos de `RevisionPort` (`sorted(vars(RevisionPort))` igual a las seis de
+F-056). Un séptimo método lo rompe. Y la spec prohíbe tocar ese test en tres sitios:
+
+- `design.md` §12: «No se toca: … los tests de F-036 y F-056». Los únicos que se amplían son
+  `test_f010_endpoints_protegidos.py` y `test_f053_documentacion.py`.
+- R39 y T19: «los tests de F-036 y F-056 sin tocar salvo los dos ampliados», y ninguno de esos dos es de F-056.
+- La cabecera de `tasks.md`: «si un test de F-036 o de F-056 … falla por un cambio de F-060, se para y se
+  informa: no se relaja».
+
+**Comprobado, no supuesto.** Con el esqueleto de T4 ya commiteado, añadí **de forma temporal, solo en el árbol de
+trabajo**, un `registrar_lote` vacío a `RevisionPort`, y lancé los tres ficheros de F-056 que miran el puerto, el
+pipeline y el borde:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f056_repositorio_revision.py tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py -q -p no:cacheprovider --tb=short -rf
+```
+```
+___________ test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5 ___________
+tests\test_f056_repositorio_revision.py:403: in test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5
+    assert publicos == [
+E   AssertionError: assert ['aprobadas',...ar_lote', ...] == ['aprobadas',..., 'situacion']
+E     
+E     At index 5 diff: 'registrar_lote' != 'situacion'
+E     Left contains one more item: 'situacion'
+E     Use -v to get more diff
+=========================== short test summary info ===========================
+FAILED tests/test_f056_repositorio_revision.py::test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5
+1 failed, 356 passed in 4.78s
+```
+
+Lo revertí con `git checkout -- domain/ports/revision.py`, y el árbol quedó limpio. Es el **único** test de F-056
+que cae. Los dobles de F-056 (`RevisionEnMemoria` de `tests/utiles_revision.py`) no se comprueban con `isinstance`
+contra el puerto, así que no les afecta.
+
+**No he elegido salida**: sería improvisar sobre una spec aprobada. Opciones para el humano, con lo que cuesta
+cada una:
+
+- **(a) Recomendada: ampliar ese test de F-056 sin quitar nada**, como ya se hace con `test_f010` y `test_f053`.
+  La lista pasaría a ser las seis más `registrar_lote` (o el test comprobaría que las seis siguen y que lo único
+  nuevo es `registrar_lote`). Exige enmendar la spec en tres sitios: `design.md` §12 (añadir
+  `test_f056_repositorio_revision.py` a «ampliando sin quitar»), R39 y T19 («salvo los **tres** ampliados»).
+  El código de §7 queda tal cual y T4 no cambia.
+- **(b) Un puerto aparte para el lote**, por ejemplo `LoteDeRevisionPort` en `domain/ports/revision.py`, con
+  `registrar_lote`, que implementa el mismo `RepositorioRevisionPostgres`. `RevisionPort` no cambia y no se toca
+  ningún test de F-056. A cambio, cambian `design.md` §7 y §8 (`normalizar_ubicaciones` recibiría el repositorio
+  tipado por los dos puertos, o en dos parámetros) y el primer caso de T4
+  (`…_el_puerto_gana_registrar_lote…`), que pasaría a mirar el puerto nuevo. Además deja más superficie a F-059,
+  que amplía la misma costura.
+- **Descartada:** declarar `registrar_lote` en una clase base de `RevisionPort` para que `vars(RevisionPort)` no lo
+  vea. Cumpliría el test en la letra y lo burlaría en el fondo.
+
+### Lo que queda del bloque (sin hacer)
+
+- **T5** (GREEN: `ResultadoDelLote` inmutable y `registrar_lote` en el puerto y en el repositorio, con las
+  sentencias de `sentencias_revision.py` sin cambiar): espera la decisión. El código no depende de ella; solo
+  cambia dónde se declara el método.
+- **T6** (`tests_bbdd/tests/test_f060_bbdd_lote.py`), **T8** (mutación con `--base 66c981d`) y la sección
+  «Para el humano · T7»: van detrás de T5.
+
+### Ficheros tocados en el Bloque 2 (hasta aquí)
+
+- `services/postventa-api/tests/test_f060_repositorio_lote.py` (nuevo).
+- `services/postventa-api/domain/ports/revision.py` y
+  `services/postventa-api/infrastructure/persistencia/repositorio_revision_pg.py`: **solo el esqueleto de RED**,
+  marcado como tal en sus docstrings. T5 lo sustituye.
+- `specs/F-060-normalizar-ubicaciones/tasks.md`: T4 marcada.
+- `harness/features.json` (F-060 pasa a `blocked`), `BACKLOG.md` (regenerado con `harness/backlog.py`),
+  `progress/current.md` (nota del bloqueo) y este informe.
+
+### Evidencias (Bloque 2, parciales)
+
+| Evidencia | Valor |
+|---|---|
+| Tests de T4 en rojo | 27 casos: **24 failed** (todos por aserción) y 3 passed (justificados arriba), en 0,53 s |
+| Colindantes de F-056 con el esqueleto | `test_f056_repositorio_revision.py` y `test_f056_ddl.py`: **135 passed** en 0,79 s |
+| F-056 con `registrar_lote` en el puerto (experimento revertido) | **1 failed, 356 passed** en 4,78 s: es el bloqueo |
+| Cobertura de lo cambiado | Sin medir: este bloque aún no tiene código de producción, solo el esqueleto |
+| Mutación del bloque | Sin lanzar: va detrás de T5 |

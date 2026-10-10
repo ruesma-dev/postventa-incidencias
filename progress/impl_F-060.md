@@ -336,3 +336,10 @@ mutantes de `progress/mutacion_F-060.md` siguen siendo los mismos).
 
 **Evidencias, al día**: tests de F-060 **85 passed**; los mutantes a mano M11 y X07 de la review, **muertos**; X01
 queda pendiente de C-3 (decisión del humano).
+
+### C-3 de la review del Bloque 1 · aceptación del humano (2026-10-10)
+
+El humano **acepta por escrito** («si», 2026-10-10, opción (a) de la review): el mutante a mano **X01**
+(NFC aplicado después de `casefold`) queda vivo. Solo agrupa distinto con caracteres ajenos al castellano
+(«ſ» con marca combinante, griego con diéresis y tilde, cirílico histórico); con Á, É, Í, Ó, Ú, Ü y Ñ el
+resultado es el mismo. R1 se queda como se aprobó.

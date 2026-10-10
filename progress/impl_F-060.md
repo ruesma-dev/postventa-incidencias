@@ -1225,3 +1225,309 @@ El humano **acepta por escrito** («si», 2026-10-11) que el mutante a mano **H1
 `normalizar_codigo_obra`, que es idempotente, y `cuerpo["obra"]` ya pasó por ella al validar la petición; Sigrid
 recibe el mismo código en los dos casos y no hay comportamiento observable que los distinga. Con esto, la review
 del Bloque 3 pasa a APPROVED (`progress/review_F-060_bloque3.md`).
+
+## Bloque 4 · Tras cada importación · T13 y T14 hechas; **T15 BLOQUEADA** (cae un test de F-036); T16 no lanzada · 2026-10-11
+
+Encargo: T13 (RED), T14, T15 y T16 (mutación). Nada del Bloque 5. HEAD de partida **`c8d60d1`** (el hash anterior a
+T13 y el `--base` de la mutación de este bloque).
+
+**Resultado: PARADO en T15.** Con T14 hecha, `pytest tests/ -k "f036 or f053"` da **1 failed, 2260 passed, 16
+skipped**: cae un test de F-036 que R39 no deja tocar. Como mandan T15 y el encargo, **no se ha relajado ni ampliado
+ningún test, no se ha cambiado el código para esquivarlo y no se ha lanzado la mutación (T16)**. La feature queda
+`blocked` en `harness/features.json` hasta que decida el humano (abajo, «Decisión que hace falta»).
+
+### Precondiciones
+
+- Rama comprobada: `feature/F-060-normalizar-ubicaciones`, árbol limpio en `c8d60d1`.
+- `bash harness/init.sh` **no** se ha lanzado: lanza la suite entera y el encargo pide no ejecutarla fuera de T23.
+  En su lugar, la **línea base de T15 antes de tocar nada**, desde `services/postventa-api`:
+  `.venv/Scripts/python.exe -m pytest tests/ -k "f036 or f053" -q -p no:cacheprovider --tb=short` →
+  **2261 passed, 16 skipped, 5701 deselected en 437,98 s**. Todo verde en `c8d60d1`.
+
+### T13 · Fase RED · commit `2624507`
+
+`tests/test_f060_importar_normaliza.py` (nuevo, **59 casos**) contra un **esqueleto neutro** en
+`interface_adapters/api/importar.py`: `importar_excel` acepta el parámetro `normalizar` y **lo ignora**, y el
+módulo importa los nombres que los tests sustituyen (`time`, `construir_fuente_de_ubicaciones`,
+`construir_revision`). Nada más cambia: así cada test cae por su aserción y no por un `TypeError` o un
+`AttributeError`.
+
+El mundo de la prueba es la obra **9901** de `tests/utiles_revision.py` (no la 0677 de los dobles de F-036): la
+plantilla se genera con el catálogo de la 9901 (`leer_catalogo(CatalogoDeLaObra, "9901")`), y la bandeja, el
+lector, las equivalencias y el generador son los dobles de `tests/utiles_importacion.py`, **sin tocarlos**.
+
+| Caso | Qué fija | R |
+|---|---|---|
+| `r31_con_filas_registradas_normaliza_una_vez_tras_el_excel_de_errores` | una llamada, la última, justo después de `generador.generar`; con la obra, el **mismo objeto** de catálogo que recibió el Excel de errores y el instante de la importación; Sigrid leída una sola vez | R31 |
+| `r31_sin_filas_con_error_tambien_normaliza_tras_registrar` | sin Excel de errores, justo después de `bandeja.registrar`, con `(obra, catálogo, instante)` | R31 |
+| `r31_una_duplicada_del_fichero…`, `r31_solo_duplicadas_del_fichero_tambien_cuenta` | `nuevas + duplicadas_en_fichero > 0`: con 1+1 y con 0+1 (una bandeja que solo dice duplicadas), sí | R31 |
+| `r32_ya_importado…`, `…todas_con_error…`, `…la_plantilla_vacia…`, `…todas_ya_en_la_bandeja…` | ninguna llamada | R32 |
+| `r32_sin_filas_la_composicion_real_no_construye_nada[3]` | sin normalizador inyectado, ni la fuente de ubicaciones ni la revisión se construyen | R32 |
+| `r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[13]` | igualdad del diccionario con el **oráculo** (los seis pasos de F-036 a mano y `serializar_importacion`, sin F-060), con un normalizador que normaliza, que no normaliza nada y que falla con cada error de §5.1 (y subclases de `ErrorDePersistencia`); **y** que el normalizador se llamó | R33 |
+| `r33_por_la_ruta_es_200_con_el_mismo_cuerpo[13]` | lo mismo por `function_app.importaciones`: 200 y el mismo cuerpo | R33 |
+| `r33_el_comparador_del_excel_no_es_ciego` | control del comparador (nota de abajo) | — |
+| `r34_cada_error_se_avisa_con_la_obra_y_su_tipo[11]` | **una** línea de F-060, `WARNING`, del logger de `importar`, exactamente `F-060 normalización tras importar no hecha: obra=9901 motivo=<Tipo>`; el mensaje del error no sale | R34 |
+| `s5_1_un_error_de_programacion_sube[4]` | `ValueError`, `TypeError`, `KeyError` y un error del dominio fuera de §5.1 suben (el mismo objeto) y no dejan línea | §5.1 |
+| `r35_una_linea_con_el_recuento_y_los_segundos` | con reloj falso, la línea exacta, `INFO`: `F-060 normalización de ubicaciones: origen=importacion obra=9901 ensayo=False examinadas=25 no_exactas=20 normalizables=7 ambiguas=3 sin_coincidencia=4 no_editables=6 normalizadas=5 conflictos=2 segundos=2.50` (todas las cifras distintas, cada una en su sitio) | R35 |
+| `r35_el_log_no_lleva_textos_ni_oid_ni_correo` | con la composición real sobre dobles: ni las ubicaciones (la variante ni la de Sigrid), ni la descripción, ni `sistema:normalizar_ubicacion`, ni el `oid` de quien importa, ni el nombre del fichero, ni los `incidencia_id`; y exige que la línea exista | R35 |
+| `s9_2_sin_normalizador_compone_el_real_sigrid_antes_que_la_base` | fábricas sustituidas: la fuente de ubicaciones **antes** que la revisión, con los ajustes; tras el Excel de errores, `listar` → `ubicaciones` (con el catálogo de la importación, el mismo objeto) → `registrar_lote` (**sin ensayo**): dos revisiones del sistema con «Sala Ejemplo» y «Patio Ficticio», `editar`, la hora de la importación, esperadas `None`; respuesta igual al oráculo; la línea con `normalizadas=2` | §9.2, R31 |
+| `s9_2_el_normalizador_inyectado_no_construye_nada` | con `normalizar` inyectado, las fábricas reales no se llaman | §9.2 |
+| `s9_2_en_entorno_test_la_composicion_real_no_sale_a_la_red` | sin sustituir nada (`ENTORNO=test` de `conftest.py`): la fuente se niega en su puerta (`CatalogoNoDisponible`), la revisión no se construye, aviso y misma respuesta | §9.2 |
+| `s9_2_si_la_base_no_se_construye_se_avisa_y_responde_igual` | `construir_revision` con `ConfiguracionPgIncompleta`: aviso y misma respuesta | R34 |
+
+**Nota sobre el comparador (`_comparable`).** Dos generaciones del mismo Excel de errores **no dan los mismos
+bytes** (el ZIP lleva la hora de escritura): la primera versión del RED lo destapó en `s9_2_en_entorno_test…`, que
+comparaba `contenido_b64` byte a byte con el oráculo. Por eso R33 compara el Excel por su **contenido** —el título
+de cada hoja y el valor de cada celda, en orden— y todo lo demás tal cual. Su control
+(`r33_el_comparador_del_excel_no_es_ciego`) iguala dos generaciones del mismo libro y distingue un libro con otra
+fila de error y el mismo nombre de fichero. En esa primera versión, además, tres tests caían por desempaquetar una
+lista vacía (`ValueError`) en vez de por aserción; se cambiaron por `_una_linea`, que lo afirma. La traza de abajo es
+la de la versión final, la commiteada.
+
+Comando, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py -q -p no:cacheprovider --tb=line -rf
+```
+
+Salida real (las líneas `--tb=line` de cada fallo, la lista de `FAILED` y el total; solo se ha recortado el prefijo
+absoluto de la ruta y se han quitado los `Captured log call`):
+
+```
+tests/test_f060_importar_normaliza.py:352: AssertionError: assert ['bandeja.reg...ador.generar'] == ['generador.g... 'normalizar']
+tests/test_f060_importar_normaliza.py:371: AssertionError: assert ['equivalenci...ja.registrar'] == ['bandeja.reg... 'normalizar']
+tests/test_f060_importar_normaliza.py:384: AssertionError: assert 0 == 1
+tests/test_f060_importar_normaliza.py:396: AssertionError: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:496: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:509: assert 0 == 1
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:541: Failed: DID NOT RAISE ValueError
+tests/test_f060_importar_normaliza.py:541: Failed: DID NOT RAISE TypeError
+tests/test_f060_importar_normaliza.py:541: Failed: DID NOT RAISE KeyError
+tests/test_f060_importar_normaliza.py:541: Failed: DID NOT RAISE PeticionDeRevisionInvalida
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:629: AssertionError: assert [] == [('ubicacione...orno='test'))]
+tests/test_f060_importar_normaliza.py:669: AssertionError: sin la línea, el test no prueba nada
+tests/test_f060_importar_normaliza.py:691: assert 0 == 1
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+tests/test_f060_importar_normaliza.py:311: AssertionError: []
+
+FAILED test_f060_r31_con_filas_registradas_normaliza_una_vez_tras_el_excel_de_errores
+FAILED test_f060_r31_sin_filas_con_error_tambien_normaliza_tras_registrar
+FAILED test_f060_r31_una_duplicada_del_fichero_tambien_normaliza
+FAILED test_f060_r31_solo_duplicadas_del_fichero_tambien_cuenta
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[normaliza]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[no-normaliza-nada]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-CatalogoNoDisponible]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-CatalogoSinVerificar]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-ObraSinUnidades]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-ObraAmbigua]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-ConfiguracionSigridIncompleta]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-ErrorDePersistencia]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-PersistenciaNoDisponible]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-ConfiguracionPgIncompleta]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-DdlInseguro]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-ReferenciaNoConsta]
+FAILED test_f060_r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-BandejaDemasiadoGrande]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[normaliza]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[no-normaliza-nada]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-CatalogoNoDisponible]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-CatalogoSinVerificar]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-ObraSinUnidades]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-ObraAmbigua]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-ConfiguracionSigridIncompleta]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-ErrorDePersistencia]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-PersistenciaNoDisponible]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-ConfiguracionPgIncompleta]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-DdlInseguro]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-ReferenciaNoConsta]
+FAILED test_f060_r33_por_la_ruta_es_200_con_el_mismo_cuerpo[falla-BandejaDemasiadoGrande]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[CatalogoNoDisponible]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[CatalogoSinVerificar]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[ObraSinUnidades]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[ObraAmbigua]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[ConfiguracionSigridIncompleta]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[ErrorDePersistencia]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[PersistenciaNoDisponible]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[ConfiguracionPgIncompleta]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[DdlInseguro]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[ReferenciaNoConsta]
+FAILED test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo[BandejaDemasiadoGrande]
+FAILED test_f060_s5_1_un_error_de_programacion_sube[ValueError]
+FAILED test_f060_s5_1_un_error_de_programacion_sube[TypeError]
+FAILED test_f060_s5_1_un_error_de_programacion_sube[KeyError]
+FAILED test_f060_s5_1_un_error_de_programacion_sube[PeticionDeRevisionInvalida]
+FAILED test_f060_r35_una_linea_con_el_recuento_y_los_segundos
+FAILED test_f060_s9_2_sin_normalizador_compone_el_real_sigrid_antes_que_la_base
+FAILED test_f060_r35_el_log_no_lleva_textos_ni_oid_ni_correo
+FAILED test_f060_s9_2_el_normalizador_inyectado_no_construye_nada
+FAILED test_f060_s9_2_en_entorno_test_la_composicion_real_no_sale_a_la_red
+FAILED test_f060_s9_2_si_la_base_no_se_construye_se_avisa_y_responde_igual
+51 failed, 8 passed in 69.59s (0:01:09)
+```
+
+**51 failed, todos por aserción** (`AssertionError` o `Failed: DID NOT RAISE`; los 14 de la línea 311 son la
+aserción de `_una_linea`, «no hay exactamente una línea de F-060», con la lista vacía). **8 passed, justificados**:
+los siete de R32 (cuatro con normalizador inyectado y los tres de la composición real sin construir nada), que son
+requisitos **negativos** que el esqueleto, que no hace nada, ya cumple; y el control del comparador, que no depende
+del código de producción.
+
+### T14 · GREEN · commit `5eebdc8`
+
+Solo `interface_adapters/api/importar.py`; `serializar_importacion`, `paso_importacion.py` y
+`contexto_importacion.py` **sin cambios**:
+
+- `importar_excel(…, normalizar=None)`: en el camino de una importación nueva, **después** de `paso_excel_errores`,
+  si `_registro_filas(contexto.resultado)` (`nuevas + duplicadas_en_fichero > 0`), llama a
+  `_normalizar_tras_importar(contexto, normalizar o _normalizar_de_verdad)`. Con `ya_importado` no se llega ahí (los
+  pasos 2 a 6 ya no corrían). La respuesta sigue saliendo de `serializar_importacion(contexto)`, que la
+  normalización no toca (R33).
+- `_normalizar_tras_importar`: llama a `normalizar(obra, contexto.catalogo, contexto.ahora)` —el catálogo que leyó
+  `paso_catalogo` y el instante de la importación (R8, «el instante de la petición»)—; captura **solo**
+  `ERRORES_DE_LA_NORMALIZACION` (los siete de §5.1; `ErrorDePersistencia` cubre sus subclases) con un `WARNING`
+  `F-060 normalización tras importar no hecha: obra=… motivo=<Tipo>`, sin el mensaje del error; si sale bien, un
+  `INFO` con la línea del endpoint y `origen=importacion` (§9.3), con los segundos de `time.perf_counter`.
+- `_normalizar_de_verdad(obra, catalogo, ahora)`: `construir_fuente_de_ubicaciones` (la de F-056, importada de
+  `interface_adapters/api/revision.py`, como en el endpoint del Bloque 3) **antes** que `construir_revision`, y
+  `normalizar_ubicaciones(…, ensayo=False)`.
+
+Decisión dentro de la spec: §9.3 dice «la misma línea con `origen=importacion`» sin decir dónde; va justo tras los
+dos puntos (`F-060 normalización de ubicaciones: origen=importacion obra=…`), para filtrar el origen por el prefijo
+en App Insights.
+
+Verificación de `tasks.md`, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py -q -p no:cacheprovider --tb=short
+59 passed in 83.32s (0:01:23)
+```
+
+`ruff check` de `importar.py` y del test: `All checks passed!`. Cobertura con `coverage run --branch` sobre el test
+de F-060: lo nuevo de `importar.py` (la llamada en `importar_excel`, `_registro_filas`, `_normalizar_tras_importar` y
+`_normalizar_de_verdad`) **sin sentencias ni ramas sin cubrir**; lo que el informe deja sin cubrir (líneas 144, 154,
+159, 204, 208, 212, 214 y 394) es código de F-036 que cubren sus propios tests.
+`tests/test_f006_repo_sin_identificadores.py`: **48 passed**.
+
+### T15 · BLOQUEADA: cae un test de F-036
+
+```
+.venv/Scripts/python.exe -m pytest tests/ -k "f036 or f053" -q -p no:cacheprovider --tb=short
+1 failed, 2260 passed, 16 skipped, 5760 deselected in 572.06s (0:09:32)
+```
+
+Traza real (recortado el prefijo de la ruta y el log capturado):
+
+```
+__ test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno ___
+tests\test_f036_importar_http.py:1007: in test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno
+    cuerpo = importar_excel([(NOMBRE, fichero(BUENA))], OID, **puertos)
+interface_adapters\api\importar.py:230: in importar_excel
+    _normalizar_tras_importar(
+interface_adapters\api\importar.py:269: in _normalizar_tras_importar
+    resultado = normalizar(obra, contexto.catalogo, contexto.ahora)  # type: ignore[arg-type]
+interface_adapters\api\importar.py:306: in _normalizar_de_verdad
+    ubicaciones = construir_fuente_de_ubicaciones(obtener_ajustes())
+interface_adapters\api\revision.py:184: in construir_fuente_de_ubicaciones
+    return fuente_de_ubicaciones(construir_ubicaciones_validas(ajustes))
+infrastructure\sigrid\fabrica.py:258: in construir_ubicaciones_validas
+    _exigir_configuracion(ajustes)
+infrastructure\sigrid\fabrica.py:306: in _exigir_configuracion
+    if not (getattr(ajustes, campo) or "").strip()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'sigrid_api_base_url'
+FAILED tests/test_f036_importar_http.py::test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno
+```
+
+**Por qué cae.** El test (F-036, R118) comprueba que, sin lector inyectado, se compone el lector aislado con el
+entorno. Para eso sustituye `obtener_ajustes` de `importar.py` por `SimpleNamespace(entorno="pro")` —un objeto con
+**solo** `entorno`— e inyecta los demás puertos, pero no `normalizar`, que no existía. La importación registra una
+fila, así que, según §9.2, se compone la normalización real: la puerta de entorno de la fuente de ubicaciones deja
+pasar `pro`, y la comprobación de la configuración de Sigrid pide `sigrid_api_base_url`, que el objeto no tiene →
+`AttributeError`. No es un error de §5.1, así que **sube** (como manda el diseño: un error de programación no se
+traga) y el test cae. Es el **único** test de F-036 o F-053 que finge `dev` o `pro` alrededor de `importar.py`
+(`grep` de `entorno="pro"`/`"dev"` en `tests/`); los demás corren con `ENTORNO=test`, la fuente se niega en su puerta
+(`CatalogoNoDisponible`), se avisa y siguen en verde (2260).
+
+No es un fallo de la regla ni de la respuesta: la composición real de §9.2 se **ejecuta** ahora en un test de F-036
+escrito antes de que existiera, con unos ajustes de mentira incompletos. Lo que el test afirma
+(`construidos == [{"entorno": "pro"}]`, una lectura, `estado == "completa"`) seguiría siendo cierto.
+
+**Lo que no he hecho**, porque sería improvisar: tragar `AttributeError` (escondería errores de programación,
+contra §5.1); cambiar `_normalizar_de_verdad` para que no lea la configuración; tocar el test de F-036; mover la
+composición a `function_app.py` (rompería la `envoltura(ficheros, usuario_oid)` con que los tests de ruta de F-036
+y F-053 sustituyen `importar_excel`).
+
+### Decisión que hace falta (humano)
+
+| Opción | Qué | Coste |
+|---|---|---|
+| **(a)**, recomendada | **Excepción a R39**, como la del r34 de F-056 (2026-10-10): ampliar **sin relajar** `test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno` con **una línea** que neutralice la normalización, sin tocar ninguna de sus aserciones. Por ejemplo, sustituir `construir_fuente_de_ubicaciones` del módulo por una fábrica que levante `CatalogoNoDisponible` (lo que ve con `ENTORNO=test`), o pasar `normalizar=` con un doble. Se anota en `design.md` §12, R39, T19 y la cabecera de `tasks.md`, y T19 lo admite como ampliado | Un test de F-036 más en la lista de ampliados |
+| (b) | Cambiar §9.2: componer la normalización real solo si los ajustes cumplen alguna condición más | Diseño nuevo, más superficie y más mutantes; no lo recomiendo: el test de F-036 seguiría siendo frágil ante cualquier otra lectura de los ajustes |
+| (c) | Volver a D-2 b, «solo a demanda»: sin normalización tras importar | Deshace D-2 y el Bloque 4 |
+
+Con (a), lo que sigue es: la línea en el test de F-036, T15 en verde y T16 (mutación con `--base c8d60d1`).
+
+### Ficheros tocados en el Bloque 4
+
+- Producción: `services/postventa-api/interface_adapters/api/importar.py` (el parámetro `normalizar`, tres funciones
+  privadas, `ERRORES_DE_LA_NORMALIZACION`, `log`, imports y un párrafo del docstring de `importar_excel`).
+- Tests nuevos: `services/postventa-api/tests/test_f060_importar_normaliza.py` (59).
+- Spec: `tasks.md` (T13 y T14 marcadas; **T15 y T16, sin marcar**). Arnés: `harness/features.json` (F-060 `blocked`,
+  con `blocked_by`) y `BACKLOG.md` (regenerado); `progress/current.md` (el bloqueo, arriba del todo).
+- **No se tocaron**: ningún test de F-036, F-053 ni F-056; `serializar_importacion`, `paso_importacion.py`,
+  `contexto_importacion.py`, ningún `.sql`, `.env`, `services/postventa-front/`, la plantilla ni `Ajustes`. Nada
+  escribe en Sigrid: la composición solo usa los lectores de F-056 (`sql/read`) y escribe en el esquema propio.
+
+### Commits del Bloque 4
+
+| Commit | Qué |
+|---|---|
+| `2624507` | F-060 T13: RED (tests y esqueleto neutro) |
+| `5eebdc8` | F-060 T14: GREEN de la importación |
+| (este commit) | F-060: bloqueo en T15 (informe, `features.json`, `BACKLOG.md`, `current.md`) |
+
+### Evidencias (Bloque 4, parciales: el bloque está parado)
+
+| Evidencia | Valor real |
+|---|---|
+| Línea base de T15 (antes de tocar nada) | `-k "f036 or f053"`: **2261 passed, 16 skipped** en 437,98 s |
+| RED (T13) | 59 casos: **51 failed** (todos por aserción) y 8 passed (justificados), en 69,59 s |
+| Tests del bloque en verde (T14) | `test_f060_importar_normaliza.py` **59 passed** en 83,32 s |
+| T15 | **1 failed**, 2260 passed, 16 skipped en 572,06 s: `test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno` |
+| `test_f006_repo_sin_identificadores.py` | 48 passed |
+| Cobertura de lo cambiado | lo nuevo de `importar.py`: sin sentencias ni ramas sin cubrir (`coverage run --branch`) |
+| Mutación (T16) | **No lanzada**: el bloque está parado en T15 |
+| `bash harness/init.sh` | No lanzado (suite entera; es de T23) |

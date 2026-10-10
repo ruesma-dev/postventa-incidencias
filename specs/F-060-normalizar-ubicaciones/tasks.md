@@ -70,7 +70,7 @@
   `domain/ports/revision.py` y en `repositorio_revision_pg.py`, reutilizando
   las sentencias de `sentencias_revision.py` sin cambiarlas. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_repositorio_lote.py tests/test_f056_repositorio_revision.py tests/test_f056_ddl.py`
-- [ ] **T6**: `tests_bbdd/tests/test_f060_bbdd_lote.py`: un lote de tres
+- [x] **T6**: `tests_bbdd/tests/test_f060_bbdd_lote.py`: un lote de tres
   escribe tres filas `editar` con el correo del sistema y deja la bandeja
   intacta; **dos conexiones**: una revisión humana registrada entre el plan y
   el lote → esa se salta y las otras se escriben; un lote repetido con las

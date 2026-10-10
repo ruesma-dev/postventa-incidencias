@@ -101,7 +101,7 @@
   Ampliar `tests/test_f010_endpoints_protegidos.py` con
   `revision/normalizar` (veintiuno), sin quitar nada. Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_pipeline_normalizacion.py tests/test_f060_normalizar_http.py tests/test_f010_endpoints_protegidos.py` **falla**
-- [ ] **T10 · GREEN**: `ResultadoNormalizacion` y `normalizar_ubicaciones` en
+- [x] **T10 · GREEN**: `ResultadoNormalizacion` y `normalizar_ubicaciones` en
   `application/pipelines/revision.py` (§8), sin cambiar lo que ya hay. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_pipeline_normalizacion.py tests/test_f056_pipeline_revision.py`
 - [ ] **T11 · GREEN**: `interface_adapters/api/normalizacion.py` y la ruta

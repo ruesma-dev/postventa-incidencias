@@ -77,7 +77,10 @@ from domain.models.errores import (
     CatalogoSinVerificar,
     IncidenciaNoEncontrada,
 )
-from domain.models.normalizacion import RecuentoNormalizacion
+from domain.models.normalizacion import (
+    RecuentoNormalizacion,
+    planificar_normalizacion,
+)
 from domain.models.plantilla_incidencias import (
     CatalogoObra,
     ListasCerradas,
@@ -389,9 +392,15 @@ def candidatas_al_volcado(
 # --------------------------------------------------------------------------
 
 
-@dataclass
+@dataclass(frozen=True)
 class ResultadoNormalizacion:
-    """ESQUELETO NEUTRO de la fase RED de F-060 T9 (se completa en T10)."""
+    """Lo que hizo la normalización de una obra (R10, R19, R20).
+
+    `normalizadas` son las revisiones registradas y `conflictos` las que se
+    saltaron porque alguien actuó entre la lectura y la escritura (R13): las
+    dos a 0 en un ensayo, y su suma igual a `recuento.normalizables` en la
+    real. Solo recuentos: ningún texto ni identificador.
+    """
 
     obra_codigo: str
     ensayo: bool
@@ -409,11 +418,36 @@ def normalizar_ubicaciones(
     ahora: datetime,
     ensayo: bool,
 ) -> ResultadoNormalizacion:
-    """ESQUELETO NEUTRO de la fase RED de F-060 T9: no lee ni escribe nada."""
+    """Normaliza las ubicaciones de la bandeja de una obra (R17–R21, §8).
+
+    Las incidencias, con el tope de F-056: si vuelven más, `BandejaDemasiadoGrande`
+    con el recuento, **sin** leer las ubicaciones ni escribir (R17). Las
+    ubicaciones válidas, **una** lectura con el catálogo ya leído (R18): son
+    las de la fuente de F-056, ya filtradas (de 48 como mucho), así que ningún
+    valor de la lista puede tumbar el lote con el `CHECK` de la base. El plan,
+    del dominio. En un ensayo, o sin nada que normalizar, no se llama al lote
+    (R19); si no, el lote, y lo que dejó escrito (R20).
+    """
+    situaciones = revision.listar(obra_codigo=obra_codigo, tope=TOPE_LECTURA_OBRA)
+    if len(situaciones) > TOPE_LECTURA_OBRA:
+        total = revision.contar(obra_codigo=obra_codigo)
+        raise BandejaDemasiadoGrande(
+            f"la obra tiene {total} incidencias en la bandeja y la normalización "
+            f"lee {TOPE_LECTURA_OBRA} como mucho: no se normaliza una parte en silencio",
+            total=total,
+        )
+    plan = planificar_normalizacion(situaciones, ubicaciones(catalogo), ahora=ahora)
+    normalizadas = conflictos = 0
+    if not ensayo and plan.revisiones:
+        lote = revision.registrar_lote(
+            revisiones=plan.revisiones, esperadas=plan.esperadas
+        )
+        normalizadas = len(lote.registradas)
+        conflictos = len(lote.desactualizadas)
     return ResultadoNormalizacion(
         obra_codigo=obra_codigo,
         ensayo=ensayo,
-        recuento=RecuentoNormalizacion(0, 0, 0, 0, 0, 0),
-        normalizadas=0,
-        conflictos=0,
+        recuento=plan.recuento,
+        normalizadas=normalizadas,
+        conflictos=conflictos,
     )

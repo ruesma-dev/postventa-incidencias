@@ -1022,3 +1022,27 @@ Los **11 que pasan en rojo**, y por qué:
 
 Colindantes con el esqueleto: `tests/test_f056_pipeline_revision.py tests/test_f056_revision_http.py` en verde (ver
 T10 y T11).
+
+### T10 · GREEN · la aplicación
+
+`application/pipelines/revision.py`: `ResultadoNormalizacion` pasa a `frozen` (con su docstring) y
+`normalizar_ubicaciones` hace lo de `design.md` §8, en este orden: `revision.listar(tope=10.000)`; si vuelven más,
+`contar` y `BandejaDemasiadoGrande` (sin leer las ubicaciones ni escribir); `ubicaciones(catalogo)` una vez;
+`planificar_normalizacion` del dominio; y, solo si no es un ensayo **y** el plan trae revisiones,
+`registrar_lote(revisiones=plan.revisiones, esperadas=plan.esperadas)`, con `normalizadas = len(registradas)` y
+`conflictos = len(desactualizadas)`. Lo que ya había en el módulo **no cambia** (solo se añaden el import del
+dominio, dos nombres a `__all__` y un apartado del docstring).
+
+Decisión dentro de la spec: el comprobante del tope está **repetido** y no extraído de `listar_para_revisar` a una
+función común, para no tocar el código de F-056 (T10: «sin cambiar lo que ya hay»). El mensaje del 409 dice
+«normalización» en lugar de «revisión».
+
+Verificación de `tasks.md`, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_pipeline_normalizacion.py tests/test_f056_pipeline_revision.py -q -p no:cacheprovider --tb=short
+108 passed in 1.61s
+```
+
+Colindantes (dominio de F-060, arquitectura de F-005 y F-036, alcance de F-056): **144 passed, 9 skipped** en
+6,74 s (los 9, los controles de diff de F-056 que solo corren en su rama). `ruff check`: `All checks passed!`.

@@ -642,7 +642,7 @@ el bloque `FAILURES` entero. Las trazas solo llevan datos ficticios.
 | `fabbd7f` | Decisión del humano: test del puerto de F-056 con siete operaciones; excepción en la spec |
 | `29bb77b` | F-060 T5: GREEN |
 | `5bf9686` | F-060 T6: tests contra la base efímera |
-| (siguiente) | F-060 T8: mutación del bloque, dos tests que matan mutantes a mano, e informe |
+| `be10cf2` | F-060 T8: mutación del bloque, dos tests que matan mutantes a mano, e informe |
 
 ### T8 · Mutación del bloque
 

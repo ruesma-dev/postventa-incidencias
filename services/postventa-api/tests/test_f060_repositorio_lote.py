@@ -249,6 +249,24 @@ def test_f060_r12_lo_escrito_es_la_revision_del_sistema():
     assert columnas["revisado_at_utc"] == AHORA
 
 
+def test_f060_r12_se_bloquean_solo_las_del_lote_aunque_sobre_una_esperada():
+    """R12 · el bloqueo y la frescura son de las incidencias **del lote**. Una
+    esperada de más (que el plan nunca da) no bloquea otra fila de la bandeja
+    ni se compara: se ignora (decisión de T5)."""
+    sobrante = UUID(int=9)
+    conexion = ConexionDeLote(FRESCAS)
+
+    resultado = _repositorio(conexion).registrar_lote(
+        revisiones=LOTE, esperadas={**ESPERADAS, sobrante: 5}
+    )
+
+    assert conexion.ejecutadas[0].parametros == ([U1, U2, U3],)
+    assert conexion.ejecutadas[1].parametros == ([U1, U2, U3],)
+    assert sobrante not in resultado.registradas
+    assert sobrante not in resultado.desactualizadas
+    assert _insertadas(conexion) == [U1, U2, U3]
+
+
 # ==========================================================================
 # R13 · una desactualizada se salta y las demás se escriben
 # ==========================================================================
@@ -275,6 +293,7 @@ def test_f060_r13_una_desactualizada_se_salta_y_las_demas_se_escriben(en_la_base
     assert _insertadas(conexion) == [U1, U3]
     assert conexion.ejecutadas[0].parametros == ([U1, U2, U3],)
     assert (conexion.commits, conexion.rollbacks) == (1, 0)
+    assert isinstance(resultado.desactualizadas, frozenset)
 
 
 @pytest.mark.parametrize(

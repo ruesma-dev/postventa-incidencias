@@ -344,14 +344,15 @@ El humano **acepta por escrito** («si», 2026-10-10, opción (a) de la review):
 («ſ» con marca combinante, griego con diéresis y tilde, cirílico histórico); con Á, É, Í, Ó, Ú, Ü y Ñ el
 resultado es el mismo. R1 se queda como se aprobó.
 
-## Bloque 2 · El lote en la base · T4 hecha; **BLOQUEADO antes de T5** · 2026-10-10
+## Bloque 2 · El lote en la base · T4, T5, T6 y T8 hechas; T7 MANUAL del humano · 2026-10-10
 
 Encargo: T4 (RED), T5, T6 y T8; T7 es MANUAL del humano. Rama `feature/F-060-normalizar-ubicaciones`, HEAD de
 partida `66c981d` (el hash anterior a T4: el `--base` de la mutación de este bloque).
 
-**Resultado: T4 hecha y en su commit (`e259f23`). T5 no se puede hacer como dice la spec sin romper un test de
-F-056 que la propia spec prohíbe tocar. Paro e informo (regla de `tasks.md` y del encargo: «no se relaja»).
-T5, T6 y T8, y la sección «Para el humano · T7», quedan sin hacer.**
+**Resultado.** Hice T4 (`e259f23`) y paré antes de T5: la spec chocaba con un test de F-056 que prohibía tocar
+(sección «BLOQUEO» más abajo). El humano eligió la **opción (a)** el 2026-10-10. Apliqué esa decisión en su propio
+commit (`fabbd7f`) y seguí con T5 (`29bb77b`), T6 (`5bf9686`) y T8. La sección «Para el humano · T7» está al
+final del bloque.
 
 ### Precondiciones
 
@@ -442,7 +443,7 @@ Colindantes con el esqueleto: `tests/test_f056_repositorio_revision.py tests/tes
 Commit: `e259f23 F-060 T4: RED del lote en la base (test con conexión falsa y esqueleto neutro)`. Lleva el test, el
 esqueleto en `domain/ports/revision.py` y `repositorio_revision_pg.py`, y T4 marcada en `tasks.md`.
 
-### BLOQUEO antes de T5 · la spec choca con un test de F-056 que no se puede tocar
+### BLOQUEO antes de T5 · la spec choca con un test de F-056 que no se puede tocar (resuelto: opción (a))
 
 **Qué pide la spec.** `design.md` §7 dice que «`domain/ports/revision.py` **gana** un método» en `RevisionPort`
 (`registrar_lote`), y §12 lo repite. T5 lo implementa, y su verificación incluye
@@ -500,30 +501,215 @@ cada una:
 - **Descartada:** declarar `registrar_lote` en una clase base de `RevisionPort` para que `vars(RevisionPort)` no lo
   vea. Cumpliría el test en la letra y lo burlaría en el fondo.
 
-### Lo que queda del bloque (sin hacer)
+### Decisión del humano (2026-10-10) · commit `fabbd7f`
 
-- **T5** (GREEN: `ResultadoDelLote` inmutable y `registrar_lote` en el puerto y en el repositorio, con las
-  sentencias de `sentencias_revision.py` sin cambiar): espera la decisión. El código no depende de ella; solo
-  cambia dónde se declara el método.
-- **T6** (`tests_bbdd/tests/test_f060_bbdd_lote.py`), **T8** (mutación con `--base 66c981d`) y la sección
-  «Para el humano · T7»: van detrás de T5.
+**Opción (a).** `test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5` se amplía sin relajarse: sigue
+comparando la lista **exacta** de los públicos de `RevisionPort`, que ahora tiene siete elementos (las seis de
+F-056 más `registrar_lote`). Lo único añadido es esa entrada y un docstring que cita la decisión. Ninguna otra
+aserción de F-056 cambia (`git diff 66c981d -- services/postventa-api/tests/test_f056_repositorio_revision.py`:
++4 líneas, ninguna quitada).
 
-### Ficheros tocados en el Bloque 2 (hasta aquí)
+La excepción queda declarada en la spec, con «Decisión del humano 2026-10-10»: `design.md` §12 (y su fila R37–R39
+de §13), R39 en `requirements.md`, T19 y la cabecera de `tasks.md`. En el mismo commit, F-060 volvió a
+`in_progress` en `harness/features.json`, regeneré `BACKLOG.md` con `harness/backlog.py` y sustituí el rótulo de
+bloqueo de `progress/current.md` por una línea con la decisión.
 
-- `services/postventa-api/tests/test_f060_repositorio_lote.py` (nuevo).
-- `services/postventa-api/domain/ports/revision.py` y
-  `services/postventa-api/infrastructure/persistencia/repositorio_revision_pg.py`: **solo el esqueleto de RED**,
-  marcado como tal en sus docstrings. T5 lo sustituye.
-- `specs/F-060-normalizar-ubicaciones/tasks.md`: T4 marcada.
-- `harness/features.json` (F-060 pasa a `blocked`), `BACKLOG.md` (regenerado con `harness/backlog.py`),
-  `progress/current.md` (nota del bloqueo) y este informe.
+Entre `fabbd7f` y `29bb77b` ese test de F-056 estuvo en rojo, porque el puerto aún no tenía el séptimo método. Es
+el rojo esperado de la ampliación, y T5 lo puso en verde.
 
-### Evidencias (Bloque 2, parciales)
+### T5 · GREEN · commit `29bb77b`
+
+- `domain/ports/revision.py`: `ResultadoDelLote` pasa a `frozen`, con `registradas` (incidencia → `revision_id`)
+  y `desactualizadas`. `RevisionPort` gana `registrar_lote(*, revisiones, esperadas)`. El docstring del módulo
+  cuenta la séptima operación. Las seis de F-056 no cambian.
+- `infrastructure/persistencia/repositorio_revision_pg.py`, `registrar_lote` en cuatro pasos, en el orden de §7:
+  1. Lote vacío: devuelve un resultado vacío sin abrir nada.
+  2. Precondiciones: si alguna incidencia está repetida, o si a alguna revisión le falta su esperada,
+     `ValueError` antes de abrir nada.
+  3. `_en_transaccion("registrar_lote", …)`, el mismo de F-036/F-056: `ROLLBACK` y `PersistenciaNoDisponible` con
+     la operación y el tipo si la base falla; `ROLLBACK` y el error tal cual si falla otra cosa.
+  4. `_registrar_lote`: `select_bloquear` y `select_ultimas_revisiones` de las incidencias del lote. Después,
+     recorriendo las revisiones en orden de `incidencia_id`, la frescura de cada una (`como_uuid` sobre lo que
+     devuelve la base). Las frescas van a `insert_revision` y las demás a `desactualizadas`.
+- **Sentencias reutilizadas sin cambiar**: `git diff 66c981d -- …/sentencias_revision.py` está vacío. El
+  repositorio no lleva SQL propio (lo vigila `test_f060_r15_el_repositorio_no_escribe_sql_propio`).
+- Decisiones dentro de la spec:
+  - Se bloquean y se comparan **solo** las incidencias de las revisiones del lote. Si `esperadas` trae una
+    incidencia de más, se ignora: §7 pide «cada revisión con su esperada» y no dice nada de las sobrantes. El plan
+    de F-060 da exactamente una por revisión.
+  - **Sin línea de log en el repositorio**: §9.3 pone los logs en el endpoint y en la importación (Bloques 3 y
+    4), con los recuentos.
+
+Verificación de `tasks.md`, desde `services/postventa-api`:
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_repositorio_lote.py tests/test_f056_repositorio_revision.py tests/test_f056_ddl.py -q -p no:cacheprovider --tb=short
+162 passed in 2.64s
+```
+
+Colindantes: `test_f056_pipeline_revision.py`, `test_f056_revision_http.py`, `test_f056_alcance_cerrado.py`,
+`test_f005_arquitectura.py`, `test_f036_arquitectura.py`, `test_f006_repo_sin_identificadores.py` y
+`test_f060_normalizacion_dominio.py` dan **426 passed, 9 skipped** en 27,22 s. Los 9 saltados son los controles de
+diff de `test_f056_alcance_cerrado.py`, que solo corren en la rama de F-056 (`_diff_de_la_rama_o_saltar`). No son de
+este bloque.
+
+Cobertura de los dos ficheros de producción del bloque, con `coverage run --include=…` sobre
+`test_f060_repositorio_lote.py` y `test_f056_repositorio_revision.py`: `domain/ports/revision.py` **20/20** y
+`repositorio_revision_pg.py` **82/82**, es decir, **100 %**. `ruff check` de los ficheros tocados:
+`All checks passed!`.
+
+### T6 · `tests_bbdd/tests/test_f060_bbdd_lote.py` · commit `5bf9686`
+
+Cinco tests contra la base efímera, todos con `@requiere_base`. Las fixtures son las de `tests_bbdd/tests/conftest.py`
+y la limpieza es la de `test_f056_bbdd_revision.py`, solo en la base del contenedor. El plan **no** se escribe a
+mano: sale de `planificar_normalizacion` sobre lo que devuelve `listar`, con la lista inventada `("Sala Ejemplo",
+"Patio Ficticio")` de la unidad `9903.01VIVIENDA 1.` y tres filas importadas como «sala ejemplo», «PATIO
+FICTICIO» y «Sala ejemplo».
+
+| Test | Qué demuestra | R |
+|---|---|---|
+| `test_f060_r12_r15_un_lote_de_tres_escribe_tres_del_sistema_y_la_bandeja_intacta` | 3 filas `editar` con el texto exacto, `revisado_por` y `revisado_correo` iguales a `sistema:normalizar_ubicacion` (los `CHECK` de F-056 lo admiten), en orden de `incidencia_id`; los `revision_id` devueltos son los de la base; la bandeja, igual fila a fila; la importada sigue en minúsculas | R12, R15 |
+| `test_f060_r12_la_esperada_de_una_ya_revisada_es_su_ultima` | Con una edición humana previa, la esperada es su `revision_id` y la normalización se apila encima sin perder la descripción editada | R9, R12 |
+| `test_f060_r13_una_revision_humana_entre_el_plan_y_el_lote_se_salta` | **Dos conexiones**: la otra registra una edición humana entre el plan y el lote; esa se salta (su última sigue siendo la humana, con su correo y la ubicación sin normalizar) y las otras dos se escriben | R13 |
+| `test_f060_r12_r13_el_lote_espera_al_for_update_de_otra_conexion` | **Dos conexiones con bloqueo**: la otra hace `FOR UPDATE` de una sin confirmar; el lote, en un hilo, **espera** (sigue vivo al cabo de 1 s); la otra inserta y confirma; el lote la salta y escribe las otras dos | R12, R13 |
+| `test_f060_r13_el_lote_repetido_no_escribe_nada` | El mismo lote con las esperadas viejas: las tres desactualizadas y la tabla igual; un plan nuevo ya no propone ninguna | R13, R21 |
+
+Verificación de `tasks.md`:
+
+```
+.venv/Scripts/python.exe -m pytest --collect-only -q tests_bbdd/tests/test_f060_bbdd_lote.py
+5 tests collected in 0.27s
+```
+
+Sin DSN, `pytest tests_bbdd/tests/test_f060_bbdd_lote.py -q -rs` da **5 skipped**, cada uno con el motivo de
+`requiere_base`. Es el fusible esperado. `ruff check`: `All checks passed!`. Un aviso de ruff (`BLE001`, capturar
+`Exception` en el hilo) se resolvió capturando `ErrorDePersistencia`, que es lo único que el repositorio puede
+levantar desde la base. Cualquier otra cosa deja vacía la lista de resultados y el test cae al desempaquetarla.
+
+**Que estos tests pasen contra PostgreSQL no está comprobado**: lo comprueba T7, que es del humano.
+
+### Para el humano · T7 (MANUAL)
+
+Con **Docker Desktop arrancado**, desde la raíz del repositorio en PowerShell:
+
+```
+powershell -ExecutionPolicy Bypass -File infra\pruebas_bbdd_efimera.ps1
+```
+
+El script levanta un PostgreSQL desechable en `127.0.0.1`, ejecuta `pytest tests_bbdd -q` y lo destruye pase lo que
+pase. Nunca toca `psql-albaranes-rs9k2`: el `conftest` aborta si el DSN no es local.
+
+**Lo que debe salir**: **58 passed**, con **0 skipped** y 0 failed. Desglose (recogida real con
+`--collect-only`, 2026-10-10):
+
+| Fichero | Tests |
+|---|---|
+| `test_f005_bbdd_aislamiento.py` | 4 |
+| `test_f005_bbdd_ddl_idempotente.py` | 4 |
+| `test_f005_bbdd_reproceso.py` | 2 |
+| `test_f036_bbdd_bandeja.py` | 15 |
+| `test_f056_bbdd_revision.py` | 28 |
+| `test_f060_bbdd_lote.py` | **5** (nuevos) |
+| **Total** | **58** |
+
+Sin F-060 eran 53, la misma cifra que la T8 de F-056. Si la última línea dice `skipped`, la variable
+`POSTVENTA_PG_TEST_DSN` no ha llegado a la suite y **la ejecución no vale**.
+
+**Qué copiar** a este informe (o pegárselo al líder): la última línea de `pytest`, con el número de passed y el
+tiempo (`58 passed in N.NNs`); la línea final del script (`SUITE DE BASE DE DATOS EN VERDE.`); y, si algo falla,
+el bloque `FAILURES` entero. Las trazas solo llevan datos ficticios.
+
+### Ficheros tocados en el Bloque 2
+
+- Nuevos: `services/postventa-api/tests/test_f060_repositorio_lote.py`,
+  `services/postventa-api/tests_bbdd/tests/test_f060_bbdd_lote.py`.
+- Producción: `services/postventa-api/domain/ports/revision.py`,
+  `services/postventa-api/infrastructure/persistencia/repositorio_revision_pg.py`.
+- Test de F-056 ampliado (decisión del humano): `services/postventa-api/tests/test_f056_repositorio_revision.py`
+  (+4 líneas).
+- Spec: `requirements.md` (R39), `design.md` (§12 y §13) y `tasks.md` (cabecera, T19, T4–T6 y T8 marcadas).
+- Arnés y memoria: `harness/features.json` (`blocked` y vuelta a `in_progress`), `BACKLOG.md`, `progress/current.md`,
+  `progress/mutacion_F-060_bloque2.md` y este informe.
+- **No se tocaron**: `sentencias_revision.py`, ningún `.sql` (sin DDL), `.env`, `services/postventa-front/` ni la
+  plantilla.
+
+### Commits del Bloque 2
+
+| Commit | Qué |
+|---|---|
+| `e259f23` | F-060 T4: RED (test y esqueleto neutro) |
+| `3df8399` | Bloqueo antes de T5: informe y estado |
+| `fabbd7f` | Decisión del humano: test del puerto de F-056 con siete operaciones; excepción en la spec |
+| `29bb77b` | F-060 T5: GREEN |
+| `5bf9686` | F-060 T6: tests contra la base efímera |
+| (siguiente) | F-060 T8: mutación del bloque, dos tests que matan mutantes a mano, e informe |
+
+### T8 · Mutación del bloque
+
+```
+python -m harness.mutacion --feature F-060 --base 66c981d --timeout 1800 --salida progress/mutacion_F-060_bloque2.md
+```
+
+Esperé a que terminara. Informe en `progress/mutacion_F-060_bloque2.md`. Alcance: **2 ficheros y 94 líneas** de
+producción (`domain/ports/revision.py`, 38; `repositorio_revision_pg.py`, 56). **4 mutantes, 4 muertos, 0
+supervivientes, 0 timeouts**, en 744,4 s con **4 workers**:
+
+| Mutante | Línea | Lo mata |
+|---|---|---|
+| `if not revisiones:` → `if revisiones:` | `repositorio_revision_pg.py:123` | toda la suite del lote |
+| `!=` → `==` en la frescura | `repositorio_revision_pg.py:216` | R12 y R13 |
+| `!=` → `==` en la precondición de repetidas | `repositorio_revision_pg.py:126` | R12 y las precondiciones |
+| `frozen=True` → `frozen=False` | `domain/ports/revision.py:55` | `test_f060_r12_el_resultado_del_lote_es_inmutable` |
+
+**Cuatro mutantes para 94 líneas es poco, y lo digo.** Ningún fichero del alcance sale con 0, pero la herramienta
+no muta `not in`, ni quita un `sorted`, ni cambia un `continue`, ni una llamada como `como_uuid`, ni un literal de
+texto. Por eso hice además **diez mutantes a mano** sobre las decisiones del lote. Los apliqué de forma temporal
+al fichero de producción, uno a uno, con un script fuera del repositorio. Cada uno se ejecutó contra
+`tests/test_f060_repositorio_lote.py` y `tests/test_f056_repositorio_revision.py` con `-x`, y el fichero se
+restauró al final (`git status` limpio en producción).
+
+**Primera pasada: 8 muertos y 2 vivos.** Los dos vivos eran huecos reales de los tests, no mutantes equivalentes:
+
+- **H8 · bloquear y comparar las claves de `esperadas` en vez de las incidencias del lote.** Con un lote bien
+  formado da lo mismo, pero con una esperada de más bloquearía otra fila de la bandeja. Severidad **media**: el plan
+  de F-060 nunca da esperadas de más, pero R12 dice «las filas de la bandeja de todas» (las del lote). Lo mata el
+  test nuevo `test_f060_r12_se_bloquean_solo_las_del_lote_aunque_sobre_una_esperada`.
+- **H9 · `desactualizadas` como `set` mutable en vez de `frozenset`.** `set() == frozenset()` es verdadero, así que
+  las igualdades no lo veían. Severidad **baja**: rompe el contrato del tipo, no el resultado. Lo mata una aserción
+  `isinstance(…, frozenset)` añadida a `test_f060_r13_una_desactualizada_se_salta_y_las_demas_se_escriben`.
+
+**Segunda pasada, con los dos tests añadidos: 10 de 10 muertos.**
+
+| # | Mutante a mano | Resultado | Primer test que cae |
+|---|---|---|---|
+| H1 | `not in esperadas` → `in esperadas` | MUERTO | `…_bloquea_todas_mira_todas_inserta_en_orden_y_confirma` |
+| H2 | sin `sorted` (orden de entrada) | MUERTO | `…_bloquea_todas_mira_todas_inserta_en_orden_y_confirma` |
+| H3 | sin `como_uuid` en las últimas | MUERTO | `…_una_desactualizada_se_salta…[otro-guardo-la-primera]` |
+| H4 | `continue` → `break` | MUERTO | `…_una_desactualizada_se_salta…[otro-guardo-la-primera]` |
+| H5 | sin el atajo del lote vacío | MUERTO | `test_f060_r16_lote_vacio_sin_transaccion` |
+| H6 | operación `registrar_lote` → `registrar_revision` | MUERTO | `…_si_la_base_falla_rollback_y_503_sin_parametros[al-bloquear]` |
+| H7 | sin la precondición de repetidas | MUERTO | `…_precondiciones_value_error_sin_abrir_nada[una-repetida]` |
+| H8 | bloquear las claves de `esperadas` | MUERTO (vivo antes de los tests nuevos) | `…_se_bloquean_solo_las_del_lote_aunque_sobre_una_esperada` |
+| H9 | `desactualizadas` sin `frozenset` | MUERTO (vivo antes de los tests nuevos) | `…_una_desactualizada_se_salta…[otro-guardo-la-primera]` |
+| H10 | sin la precondición de la esperada | MUERTO | `…_precondiciones_value_error_sin_abrir_nada[una-sin-esperada]` |
+
+Los dos tests añadidos solo tocan `tests/test_f060_repositorio_lote.py`, con 28 casos y +19 líneas. El código de
+producción no cambia, así que la campaña de la herramienta sigue valiendo. Después de añadirlos,
+`test_f060_repositorio_lote.py`, `test_f056_repositorio_revision.py`, `test_f056_ddl.py` y
+`test_f006_repo_sin_identificadores.py` dan **211 passed** en 18,62 s. `ruff check`: `All checks passed!`.
+
+**Supervivientes abiertos: ninguno.**
+
+### Evidencias (Bloque 2)
 
 | Evidencia | Valor |
 |---|---|
-| Tests de T4 en rojo | 27 casos: **24 failed** (todos por aserción) y 3 passed (justificados arriba), en 0,53 s |
-| Colindantes de F-056 con el esqueleto | `test_f056_repositorio_revision.py` y `test_f056_ddl.py`: **135 passed** en 0,79 s |
-| F-056 con `registrar_lote` en el puerto (experimento revertido) | **1 failed, 356 passed** en 4,78 s: es el bloqueo |
-| Cobertura de lo cambiado | Sin medir: este bloque aún no tiene código de producción, solo el esqueleto |
-| Mutación del bloque | Sin lanzar: va detrás de T5 |
+| Tests de T4 en rojo (RED) | 27 casos: **24 failed** (todos por aserción) y 3 passed (justificados), en 0,53 s |
+| Tests del bloque en verde | `test_f060_repositorio_lote.py` **28 passed**. Con `test_f056_repositorio_revision.py`, `test_f056_ddl.py` y `test_f006_repo_sin_identificadores.py`: **211 passed** en 18,62 s |
+| Colindantes (F-056 pipeline/HTTP/alcance, arquitectura F-005/F-036, F-006, dominio de F-060) | **426 passed, 9 skipped** en 27,22 s (los 9: controles de diff de F-056, que solo corren en su rama) |
+| `tests_bbdd` de F-060 | 5 recogidos; sin DSN, 5 skipped (fusible). **Contra PostgreSQL: pendiente de T7 (humano)** |
+| Cobertura de las líneas cambiadas | `domain/ports/revision.py` 20/20 y `repositorio_revision_pg.py` 82/82: **100 %** (`coverage run --include`, ficheros enteros) |
+| Mutación (herramienta) | **4 generados, 4 muertos, 0 supervivientes**, 0 timeouts, 744,4 s, **4 workers** |
+| Mutación (a mano) | **10 de 10 muertos** (H8 y H9 vivos en la primera pasada; muertos con dos tests nuevos) |
+| `bash harness/init.sh` | No relanzado en este bloque, por indicación del líder. Se pasa en T23 |
+| Suite completa | No ejecutada (solo en T23) |

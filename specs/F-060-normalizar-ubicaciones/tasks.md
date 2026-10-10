@@ -81,7 +81,7 @@
   Deben pasar `test_f060_bbdd_lote.py` y los de F-036 y F-056. Anotar nº de
   tests y tiempo en `progress/impl_F-060.md`. Bloquea el cierre. |
   Verificación: MANUAL (humano)
-- [ ] **T8 · Mutación del bloque.** |
+- [x] **T8 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T4> --timeout 1800 --salida progress/mutacion_F-060_bloque2.md` sin supervivientes abiertos
 
 **Parar. Review del Bloque 2.**

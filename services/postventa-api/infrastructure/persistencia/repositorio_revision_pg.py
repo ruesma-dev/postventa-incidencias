@@ -22,6 +22,16 @@ el `oid`, el correo y los textos—; si falla otra cosa dentro (la frescura),
 
 **Nunca `pg_advisory_lock`**: su espacio de claves es del servidor compartido.
 
+## El lote de la normalización (F-060 §7, R12–R16)
+
+`registrar_lote` hace lo mismo para **muchas** revisiones, en **una**
+transacción y con **las mismas sentencias** de `sentencias_revision.py`, sin
+cambiarlas: el bloqueo `FOR UPDATE` de todas en orden fijo, sus últimas
+`revision_id` y un `INSERT` por cada una que siga fresca, en orden de
+`incidencia_id`. La diferencia es que una desactualizada **no aborta** el lote:
+se salta y se devuelve aparte (R13). Lote vacío: ni transacción (R16). Si la
+base falla, `ROLLBACK` del lote entero y `PersistenciaNoDisponible` (R14).
+
 ## Lo que sale en el log (R41)
 
 La incidencia, la acción y la `revision_id`. Nada más: ni el `oid`, ni el
@@ -109,8 +119,18 @@ class RepositorioRevisionPostgres(_Transaccional):
         revisiones: Sequence[RevisionNueva],
         esperadas: Mapping[UUID, int | None],
     ) -> ResultadoDelLote:
-        """ESQUELETO DE LA FASE RED (F-060 T4): no decide nada; se completa en T5."""
-        return ResultadoDelLote(registradas={}, desactualizadas=frozenset())
+        """El lote de la cabecera, en una transacción (F-060 R12–R16)."""
+        if not revisiones:
+            return ResultadoDelLote(registradas={}, desactualizadas=frozenset())
+        incidencias = [revision.incidencia_id for revision in revisiones]
+        if len(set(incidencias)) != len(incidencias):
+            raise ValueError("el lote repite una incidencia")
+        if any(incidencia not in esperadas for incidencia in incidencias):
+            raise ValueError("cada revisión del lote exige su revisión esperada")
+        return self._en_transaccion(
+            "registrar_lote",
+            lambda cursor: self._registrar_lote(cursor, revisiones, esperadas),
+        )
 
     def historial(
         self, *, incidencia_id: UUID
@@ -176,3 +196,28 @@ class RepositorioRevisionPostgres(_Transaccional):
         cursor.execute(*sql.insert_revision(esquema=self._esquema, revision=revision))
         (revision_id,) = cursor.fetchone()
         return revision_id
+
+    def _registrar_lote(
+        self,
+        cursor: Any,
+        revisiones: Sequence[RevisionNueva],
+        esperadas: Mapping[UUID, int | None],
+    ) -> ResultadoDelLote:
+        incidencias = [revision.incidencia_id for revision in revisiones]
+        cursor.execute(*sql.select_bloquear(esquema=self._esquema, incidencias=incidencias))
+        cursor.execute(
+            *sql.select_ultimas_revisiones(esquema=self._esquema, incidencias=incidencias)
+        )
+        ultimas = {como_uuid(incidencia): ultima for incidencia, ultima in cursor.fetchall()}
+        registradas: dict[UUID, int] = {}
+        desactualizadas: set[UUID] = set()
+        for revision in sorted(revisiones, key=lambda r: r.incidencia_id):
+            incidencia = revision.incidencia_id
+            if ultimas.get(incidencia) != esperadas[incidencia]:
+                desactualizadas.add(incidencia)
+                continue
+            cursor.execute(*sql.insert_revision(esquema=self._esquema, revision=revision))
+            (registradas[incidencia],) = cursor.fetchone()
+        return ResultadoDelLote(
+            registradas=registradas, desactualizadas=frozenset(desactualizadas)
+        )

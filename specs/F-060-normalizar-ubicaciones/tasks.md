@@ -66,7 +66,7 @@
   salvo el bloqueo), R16 (lote vacío sin transacción), y las precondiciones
   (`ValueError`). Traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_repositorio_lote.py` **falla**
-- [ ] **T5 · GREEN**: `ResultadoDelLote` y `registrar_lote` en
+- [x] **T5 · GREEN**: `ResultadoDelLote` y `registrar_lote` en
   `domain/ports/revision.py` y en `repositorio_revision_pg.py`, reutilizando
   las sentencias de `sentencias_revision.py` sin cambiarlas. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_repositorio_lote.py tests/test_f056_repositorio_revision.py tests/test_f056_ddl.py`

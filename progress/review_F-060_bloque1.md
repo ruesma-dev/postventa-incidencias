@@ -280,3 +280,42 @@ tests, y el alcance de producción y sus 19 mutantes son los mismos.
   (normalizar, plegar mayúsculas, recortar), exigir que el reviewer pruebe a mano las variantes vecinas de cada
   transformación (forma Unicode, plegado, qué blancos se recortan), y no solo quitar la transformación: quitar
   `strip` muere, pero cambiar **qué** recorta sobrevivió.
+
+## Segunda pasada (2026-10-10)
+
+- **Veredicto:** **APPROVED**. Bloque 1 cerrado: se puede pasar al Bloque 2.
+- **Rama:** HEAD `913ea8d`. Commits revisados desde `af72c5b`: `2ea0ebd` (C-1 y C-2, solo tests) y `913ea8d` (C-3,
+  aceptación del humano).
+
+### Lo que se ha comprobado (resultados reales)
+
+| Qué | Resultado |
+|---|---|
+| Qué ha cambiado desde `af72c5b` (`git diff --name-only af72c5b..HEAD`) | Solo `services/postventa-api/tests/test_f060_normalizacion_dominio.py`, `progress/impl_F-060.md` y este informe (el de la primera pasada, `fbe260b`, sin tocar después). `git diff af72c5b HEAD -- services/postventa-api/domain` vacío: **el código de producción no ha cambiado**, así que el alcance de mutación (211 líneas, 19 mutantes, 19 muertos) sigue valiendo sin relanzar la campaña |
+| Los tests añadidos (+37 líneas, ninguna quitada) | `test_f060_r1_nfc_y_no_nfkc`; `"SALA EJEMPLO"` en `test_f060_r4_lo_que_no_es_la_misma_palabra_no_coincide`; `test_f060_r4_la_forma_de_compatibilidad_no_coincide` (×2); `test_f060_r2_el_recorte_es_el_de_strip_no_solo_de_espacios`. Son lo que pedían C-1 y C-2, con datos ficticios |
+| **M11** (NFKC) reaplicado **por el reviewer** en la copia del scratchpad, con el test y el dominio de HEAD | **MUERTO**: `4 failed, 81 passed`. Caen `test_f060_r1_nfc_y_no_nfkc`, `…_no_coincide[SALA\xa0EJEMPLO]` y los dos de `…_la_forma_de_compatibilidad_no_coincide`. Coincide con la traza del implementer |
+| **X07** (`texto.strip(' ')` en el paso 2) reaplicado | **MUERTO**: `1 failed, 84 passed` (`test_f060_r2_el_recorte_es_el_de_strip_no_solo_de_espacios`) |
+| X07b, variante extra del reviewer (`texto.strip(' \t\n')`: recorta tabulador y salto pero no el espacio duro) | **MUERTO**: el mismo test cae, por el caso `"patio ficticio "` |
+| **X01** (NFC después de `casefold`) | Sigue **vivo** (`85 passed`), como estaba previsto. **Aceptado por escrito por el humano** el 2026-10-10 («si», opción (a)), anotado en `progress/impl_F-060.md` («C-3 de la review del Bloque 1»). Cumple `CHECKPOINTS.md` C4 bis |
+| Original restaurado en la copia | `85 passed` |
+| Sin caché (`-p no:cacheprovider`, `PYTHONDONTWRITEBYTECODE=1`), desde `services/postventa-api`: `test_f060_normalizacion_dominio.py` y `test_f006_repo_sin_identificadores.py` | **133 passed in 21.23s** (85 de F-060 y 48 de F-006) |
+| `ruff check` del test desde la raíz | `All checks passed!` |
+| `git status` tras todo | Limpio: los mutantes, solo en la copia del scratchpad |
+
+`bash harness/init.sh` no se ha vuelto a lanzar en esta pasada. Solo han cambiado un fichero de tests y Markdown,
+y la ejecución de la primera pasada (ENTORNO LISTO, 7767 passed, cobertura 100 % de las 76 líneas de producción,
+que no han cambiado) sigue representando el código. La suite y la puerta se vuelven a pasar en T23.
+
+### Checkpoints que cambian respecto a la primera pasada
+
+- [x] **C4 bis · cero supervivientes sin aceptación escrita del humano.** La campaña da 0. De los mutantes a mano,
+  M11 y X07 están muertos, y X01 queda vivo con la aceptación escrita del humano (2026-10-10).
+- [x] **C4 bis · fase RED de los tests nuevos.** Las trazas reales del rojo con M11 y X07 están pegadas en
+  `progress/impl_F-060.md`, y el reviewer las ha reproducido.
+- El resto, igual que en la primera pasada: todos `[x]` o N/A justificado.
+
+### Lo que sigue abierto para bloques posteriores (sin cambios)
+
+O-2 (que `docs/INTEGRACION.md` §7 diga que la marca es el **correo**; en T20), O-3 (más de 48: que el Bloque 3 fije
+que las listas salen de la fuente de F-056, ya filtradas) y O-4 (`progress/current.md`, del líder). Las propuestas
+de automejora siguen pendientes de que las apruebe el humano.

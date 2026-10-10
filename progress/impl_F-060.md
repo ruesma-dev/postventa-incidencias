@@ -1216,3 +1216,12 @@ Para la review:
 | Mutación (a mano) | **28 de 29 muertos**; el vivo (H11), equivalente y justificado arriba |
 | `bash harness/init.sh` | En verde **al empezar** el bloque (7785 passed, 123 skipped, 883,40 s; cobertura 100 % de 110 líneas). No relanzado al terminar: la suite entera es de T23 |
 | Suite completa | Solo la de la precondición; no se relanza (T23) |
+
+### C-1 de la review del Bloque 3 · aceptación del humano (2026-10-11)
+
+El humano **acepta por escrito** («si», 2026-10-11) que el mutante a mano **H11**
+(`leer_catalogo(catalogo_obra, cuerpo["obra"])` en lugar de la obra ya normalizada, en
+`interface_adapters/api/normalizacion.py`) queda vivo por **equivalente**: `leer_catalogo` aplica ella misma
+`normalizar_codigo_obra`, que es idempotente, y `cuerpo["obra"]` ya pasó por ella al validar la petición; Sigrid
+recibe el mismo código en los dos casos y no hay comportamiento observable que los distinga. Con esto, la review
+del Bloque 3 pasa a APPROVED (`progress/review_F-060_bloque3.md`).

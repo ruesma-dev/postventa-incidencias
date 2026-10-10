@@ -1,7 +1,7 @@
 <!-- progress/review_F-060_bloque3.md -->
 # Review · F-060 · Bloque 3 · La normalización de una obra y su endpoint (T9–T12)
 
-- **Veredicto:** **CHANGES_REQUESTED**, por **un solo** punto y **sin tocar código ni tests**: el mutante a mano
+- **Veredicto:** **APPROVED** (2026-10-11, tras la aceptación escrita del humano de H11, anotada en `progress/impl_F-060.md`). Antes: **CHANGES_REQUESTED**, por **un solo** punto y **sin tocar código ni tests**: el mutante a mano
   **H11**, declarado equivalente, necesita la **aceptación escrita del humano**. Es lo que pide `CHECKPOINTS.md`
   C4 bis en nivel `critico`, y es lo mismo que se hizo con la C-3 del Bloque 1. Mi juicio es que H11 **sí es
   equivalente** (ver C-1). En todo lo demás el bloque está aprobable tal como está: el código, los tests, RM7, la

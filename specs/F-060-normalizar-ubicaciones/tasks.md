@@ -134,7 +134,7 @@
   composición real en `interface_adapters/api/importar.py`;
   `serializar_importacion` y `paso_importacion.py` sin cambios. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py`
-- [ ] **T15**: los tests de F-036 y de F-053, **sin tocarlos**, en verde. Si
+- [x] **T15**: los tests de F-036 y de F-053, **sin tocarlos**, en verde. Si
   alguno falla, parar e informar. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/ -k "f036 or f053"`
 - [ ] **T16 · Mutación del bloque.** |

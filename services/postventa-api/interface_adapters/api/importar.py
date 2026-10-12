@@ -75,14 +75,7 @@ from application.pipelines.revision import (
 )
 from config.settings import obtener_ajustes
 from domain.models.errores import (
-    BandejaDemasiadoGrande,
-    CatalogoNoDisponible,
-    CatalogoSinVerificar,
-    ConfiguracionSigridIncompleta,
-    ErrorDePersistencia,
     FicheroDemasiadoGrande,
-    ObraAmbigua,
-    ObraSinUnidades,
     PeticionDeImportacionInvalida,
 )
 from domain.models.importacion import EstadoFilaImportada
@@ -122,19 +115,6 @@ MAX_NOMBRE_FICHERO = 255
 
 #: El `oid` de Entra, como mucho (R22).
 MAX_USUARIO_OID = 128
-
-#: Los fallos de disponibilidad o de configuración que la normalización tras
-#: importar se traga con un aviso (F-060 `design.md` §5.1, R34): la importación
-#: ya está guardada. Cualquier otro es un error de programación, y sube.
-ERRORES_DE_LA_NORMALIZACION = (
-    CatalogoNoDisponible,
-    CatalogoSinVerificar,
-    ObraSinUnidades,
-    ObraAmbigua,
-    ConfiguracionSigridIncompleta,
-    ErrorDePersistencia,
-    BandejaDemasiadoGrande,
-)
 
 
 def _usuario_oid(crudo: Any) -> str:
@@ -188,8 +168,9 @@ def importar_excel(
 
     Tras el Excel de errores, si se registró alguna fila, normaliza las
     ubicaciones de la obra (F-060, R31): con `normalizar` si se inyecta (la
-    costura de test) y, si no, con la composición real. Ningún fallo de
-    disponibilidad de esa normalización cambia la respuesta (R33, R34).
+    costura de test) y, si no, con la composición real. Ningún fallo de esa
+    normalización, al componerla o al ejecutarla, cambia la respuesta (R33,
+    R34; decisión del humano 2026-10-12).
     """
     oid = _usuario_oid(usuario_oid)
     nombre, contenido = _un_fichero(ficheros)
@@ -257,17 +238,22 @@ def _normalizar_tras_importar(
 ) -> None:
     """La normalización de la obra entera, de mejor esfuerzo (R31, R34, R35).
 
-    Con el catálogo que la importación ya leyó y su instante. Si falla por
-    disponibilidad o configuración, un aviso con la obra y el **tipo** del
-    error, y nada más: ni el mensaje, que puede nombrar datos. Si sale bien,
-    la línea del endpoint con `origen=importacion` (§9.3). Nunca textos de
-    ubicación, `oid`, correo ni `incidencia_id`.
+    Con el catálogo que la importación ya leyó y su instante. **Decisión del
+    humano 2026-10-12: mejor esfuerzo = cualquier excepción de la
+    normalización se registra por su tipo y no afecta a la importación**
+    (`design.md` §5.1): la importación ya está guardada, y lo que no se
+    normalice ahora se recoge con `POST /api/revision/normalizar`. Este es el
+    **único** punto con una captura amplia: cubre componer (unos ajustes
+    incompletos dan `AttributeError`) y ejecutar. El aviso lleva la obra y el
+    **tipo** de la excepción, y nada más: ni el mensaje, que puede nombrar
+    datos. Si sale bien, la línea del endpoint con `origen=importacion`
+    (§9.3). Nunca textos de ubicación, `oid`, correo ni `incidencia_id`.
     """
     obra = str(contexto.obra_codigo)
     inicio = time.perf_counter()
     try:
         resultado = normalizar(obra, contexto.catalogo, contexto.ahora)  # type: ignore[arg-type]
-    except ERRORES_DE_LA_NORMALIZACION as error:
+    except Exception as error:  # noqa: BLE001 · mejor esfuerzo (decisión 2026-10-12)
         log.warning(
             "F-060 normalización tras importar no hecha: obra=%s motivo=%s",
             obra,

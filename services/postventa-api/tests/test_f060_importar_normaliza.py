@@ -16,7 +16,7 @@ deja un aviso en el log y la respuesta es la misma.
 | con `ya_importado`, sin filas válidas, con todas ya en la bandeja o con la plantilla vacía, ninguna llamada ni construcción | R32 |
 | la respuesta, **igual** (igualdad del diccionario) a la de la importación sin normalizar, con un normalizador que normaliza, que no normaliza nada y que falla con cada error de §5.1; también por la ruta | R33 |
 | cada error de §5.1, un aviso con la obra y el **tipo** del error, y nada más | R34 |
-| un error de programación sube | §5.1 |
+| **decisión del humano 2026-10-12**: cualquier otra excepción al componer (también un `AttributeError` por ajustes incompletos, el caso de `test_f036_r118_…`) o al ejecutar la normalización, igual: aviso con su tipo y la misma respuesta (antes: «un error de programación sube») | R34, §5.1 |
 | una línea con la obra, el recuento, `normalizadas`, `conflictos` y los segundos | R35 |
 | `caplog` sin textos, `oid` ni correo | R35 |
 | sin normalizador, la composición real: Sigrid antes que la base, sin ensayo, con el catálogo ya leído; en `ENTORNO=test` no sale a la red | §9.2 |
@@ -150,11 +150,15 @@ ERRORES_DE_DISPONIBILIDAD = (
     BandejaDemasiadoGrande("Ejemplo: de más", total=10_001),
 )
 
-#: Lo que no está en §5.1: un error de programación, que sube.
-ERRORES_DE_PROGRAMACION = (
+#: Lo que no está en la lista de §5.1. **Decisión del humano 2026-10-12**: mejor
+#: esfuerzo = cualquier excepción de la normalización se registra por su tipo y
+#: no afecta a la importación; también estas (antes subían).
+OTRAS_EXCEPCIONES = (
     ValueError("Ejemplo: lote mal formado"),
     TypeError("Ejemplo: argumento de más"),
-    KeyError("Ejemplo"),
+    KeyError("Ejemplo de clave"),
+    AttributeError("Ejemplo: falta sigrid_api_base_url"),
+    RuntimeError("Ejemplo: algo inesperado"),
     PeticionDeRevisionInvalida("Ejemplo: otro error del dominio"),
 )
 
@@ -330,11 +334,36 @@ def _comparable(cuerpo: dict[str, Any]) -> dict[str, Any]:
     return copia
 
 
-def _prohibir_la_composicion_real(monkeypatch) -> None:
+def _prohibir_la_composicion_real(monkeypatch) -> list[str]:
+    """Las dos fábricas reales, prohibidas; devuelve la lista de las que se llamaron.
+
+    Con la decisión del 2026-10-12, la importación se traga **cualquier**
+    excepción de la normalización: un `AssertionError` de `prohibido` ya no
+    tumbaría el test. Por eso las fábricas, además de fallar, **anotan**, y el
+    test afirma que la lista queda vacía.
+    """
+    llamadas: list[str] = []
+
+    def fabrica(nombre: str):
+        def construir(*_argumentos: object) -> object:
+            llamadas.append(nombre)
+            return prohibido(nombre)()
+
+        return construir
+
     monkeypatch.setattr(
-        modulo, "construir_fuente_de_ubicaciones", prohibido("la fuente de ubicaciones")
+        modulo, "construir_fuente_de_ubicaciones", fabrica("la fuente de ubicaciones")
     )
-    monkeypatch.setattr(modulo, "construir_revision", prohibido("la revisión"))
+    monkeypatch.setattr(modulo, "construir_revision", fabrica("la revisión"))
+    return llamadas
+
+
+def _importar_sin_que_suba(contenido: bytes, mundo: Mundo | None = None, **extra: Any):
+    """La importación, que **no** puede levantar: si sube algo, falla la aserción."""
+    try:
+        return _importar(contenido, mundo, **extra)
+    except Exception as error:  # noqa: BLE001 · es justo lo que se comprueba
+        pytest.fail(f"la importación no ha respondido: sube {type(error).__name__}")
 
 
 # --------------------------------------------------------------------------
@@ -454,9 +483,11 @@ def test_f060_r32_sin_filas_la_composicion_real_no_construye_nada(monkeypatch, c
         _importar(contenido, mundo, normalizar=NormalizadorQueAnota(mundo.llamadas))
     else:
         contenido = fichero(MALA) if caso == "todas-con-error" else fichero()
-    _prohibir_la_composicion_real(monkeypatch)
+    construidas = _prohibir_la_composicion_real(monkeypatch)
 
     _importar(contenido, mundo)
+
+    assert construidas == []
 
 
 # --------------------------------------------------------------------------
@@ -533,20 +564,24 @@ def test_f060_r34_cada_error_se_avisa_con_la_obra_y_su_tipo(caplog, error):
     assert str(error) not in caplog.text
 
 
-@pytest.mark.parametrize("error", ERRORES_DE_PROGRAMACION, ids=_ids(ERRORES_DE_PROGRAMACION))
-def test_f060_s5_1_un_error_de_programacion_sube(caplog, error):
+@pytest.mark.parametrize("error", OTRAS_EXCEPCIONES, ids=_ids(OTRAS_EXCEPCIONES))
+def test_f060_r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo(caplog, error):
+    """Decisión del humano 2026-10-12: también lo que no es de §5.1 (antes subía)."""
     caplog.set_level(logging.DEBUG)
+    contenido = fichero(BUENA, MALA)
     mundo = Mundo()
 
-    with pytest.raises(type(error)) as capturado:
-        _importar(
-            fichero(BUENA),
-            mundo,
-            normalizar=NormalizadorQueAnota(mundo.llamadas, fallo=error),
-        )
+    cuerpo = _importar_sin_que_suba(
+        contenido, mundo, normalizar=NormalizadorQueAnota(mundo.llamadas, fallo=error)
+    )
 
-    assert capturado.value is error
-    assert _lineas_de_f060(caplog) == []
+    assert _comparable(cuerpo) == _comparable(_sin_normalizar(contenido))
+    aviso = _una_linea(caplog)
+    assert aviso.levelno == logging.WARNING
+    assert aviso.getMessage() == (
+        f"{PREFIJO_AVISO}: obra={OBRA} motivo={type(error).__name__}"
+    )
+    assert str(error) not in caplog.text
 
 
 # --------------------------------------------------------------------------
@@ -683,12 +718,13 @@ def test_f060_r35_el_log_no_lleva_textos_ni_oid_ni_correo(monkeypatch, caplog):
 
 def test_f060_s9_2_el_normalizador_inyectado_no_construye_nada(monkeypatch):
     mundo = Mundo()
-    _prohibir_la_composicion_real(monkeypatch)
+    construidas = _prohibir_la_composicion_real(monkeypatch)
     normalizar = NormalizadorQueAnota(mundo.llamadas)
 
     _importar(fichero(BUENA), mundo, normalizar=normalizar)
 
     assert len(normalizar.recibido) == 1
+    assert construidas == []
 
 
 def test_f060_s9_2_en_entorno_test_la_composicion_real_no_sale_a_la_red(
@@ -733,3 +769,91 @@ def test_f060_s9_2_si_la_base_no_se_construye_se_avisa_y_responde_igual(
     assert aviso.getMessage() == (
         f"{PREFIJO_AVISO}: obra={OBRA} motivo=ConfiguracionPgIncompleta"
     )
+
+
+# --------------------------------------------------------------------------
+# Decisión del humano 2026-10-12 · mejor esfuerzo = cualquier excepción
+# --------------------------------------------------------------------------
+
+
+def test_f060_r34_sin_configuracion_de_sigrid_responde_igual_y_avisa(monkeypatch, caplog):
+    """El caso de `test_f036_r118_…`: `pro` con unos ajustes que solo traen el entorno.
+
+    La puerta de entorno de la fuente de ubicaciones deja pasar `pro`, y la
+    comprobación de la configuración de Sigrid cae con `AttributeError`. La
+    revisión no se llega a construir, el aviso lleva el tipo y la respuesta es
+    la misma.
+    """
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setattr(modulo, "obtener_ajustes", lambda: SimpleNamespace(entorno="pro"))
+    revisiones: list[object] = []
+    monkeypatch.setattr(modulo, "construir_revision", revisiones.append)
+    contenido = fichero(BUENA, MALA)
+
+    cuerpo = _importar_sin_que_suba(contenido)
+
+    assert revisiones == []
+    assert _comparable(cuerpo) == _comparable(_sin_normalizar(contenido))
+    aviso = _una_linea(caplog)
+    assert aviso.levelno == logging.WARNING
+    assert aviso.getMessage() == f"{PREFIJO_AVISO}: obra={OBRA} motivo=AttributeError"
+    assert "sigrid_api_base_url" not in caplog.text
+
+
+@pytest.mark.parametrize("fabrica", ["construir_fuente_de_ubicaciones", "construir_revision"])
+@pytest.mark.parametrize("error", OTRAS_EXCEPCIONES, ids=_ids(OTRAS_EXCEPCIONES))
+def test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada(
+    monkeypatch, caplog, fabrica, error
+):
+    caplog.set_level(logging.DEBUG)
+    mundo = Mundo()
+    real = ComposicionReal(monkeypatch, mundo)
+
+    def falla(_ajustes: object) -> object:
+        raise error
+
+    monkeypatch.setattr(modulo, fabrica, falla)
+    contenido = fichero(BUENA)
+
+    cuerpo = _importar_sin_que_suba(contenido, mundo)
+
+    assert _comparable(cuerpo) == _comparable(_sin_normalizar(contenido))
+    assert real.revision.lotes == [] and real.revision.guardadas == []
+    aviso = _una_linea(caplog)
+    assert aviso.getMessage() == (
+        f"{PREFIJO_AVISO}: obra={OBRA} motivo={type(error).__name__}"
+    )
+    assert str(error) not in caplog.text
+
+
+@pytest.mark.parametrize("donde", ["al-listar", "al-leer-ubicaciones", "en-el-lote"])
+@pytest.mark.parametrize(
+    "error",
+    [RuntimeError("Ejemplo: algo inesperado"), ValueError("Ejemplo: lote mal formado")],
+    ids=["RuntimeError", "ValueError"],
+)
+def test_f060_r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta(
+    monkeypatch, caplog, donde, error
+):
+    """Ya compuesta, la normalización falla al ejecutarse: aviso y misma respuesta."""
+    caplog.set_level(logging.DEBUG)
+    mundo = Mundo()
+    real = ComposicionReal(monkeypatch, mundo)
+    if donde == "al-listar":
+        real.revision._fallo = error
+    elif donde == "al-leer-ubicaciones":
+        real.ubicaciones._fallo = error
+    else:
+        real.revision.fallo_del_lote = error
+    contenido = fichero(BUENA, MALA)
+
+    cuerpo = _importar_sin_que_suba(contenido, mundo)
+
+    assert real.vistos == [("ubicaciones", AJUSTES), ("revision", AJUSTES)]
+    assert real.revision.guardadas == []
+    assert _comparable(cuerpo) == _comparable(_sin_normalizar(contenido))
+    aviso = _una_linea(caplog)
+    assert aviso.getMessage() == (
+        f"{PREFIJO_AVISO}: obra={OBRA} motivo={type(error).__name__}"
+    )
+    assert str(error) not in caplog.text

@@ -1226,7 +1226,9 @@ El humano **acepta por escrito** («si», 2026-10-11) que el mutante a mano **H1
 recibe el mismo código en los dos casos y no hay comportamiento observable que los distinga. Con esto, la review
 del Bloque 3 pasa a APPROVED (`progress/review_F-060_bloque3.md`).
 
-## Bloque 4 · Tras cada importación · T13 y T14 hechas; **T15 BLOQUEADA** (cae un test de F-036); T16 no lanzada · 2026-10-11
+## Bloque 4 · Tras cada importación · T13–T16 · 2026-10-11 y 2026-10-12
+
+> **Parado en T15 el 2026-10-11 y retomado el 2026-10-12** con la decisión del humano «mejor esfuerzo = cualquier excepción de la normalización se registra por su tipo y no afecta a la importación». Lo de abajo, hasta «continuación», es el rastro del bloqueo tal como se escribió; el estado final está en «Bloque 4 · continuación».
 
 Encargo: T13 (RED), T14, T15 y T16 (mutación). Nada del Bloque 5. HEAD de partida **`c8d60d1`** (el hash anterior a
 T13 y el `--base` de la mutación de este bloque).
@@ -1530,4 +1532,253 @@ Con (a), lo que sigue es: la línea en el test de F-036, T15 en verde y T16 (mut
 | `test_f006_repo_sin_identificadores.py` | 48 passed |
 | Cobertura de lo cambiado | lo nuevo de `importar.py`: sin sentencias ni ramas sin cubrir (`coverage run --branch`) |
 | Mutación (T16) | **No lanzada**: el bloque está parado en T15 |
+| `bash harness/init.sh` | No lanzado (suite entera; es de T23) |
+
+### Bloque 4 · continuación tras la decisión del humano 2026-10-12 · T13 bis, T14 bis, T15 y T16
+
+**Decisión del humano 2026-10-12** (la trae el líder; opción (b) en su numeración): **mejor esfuerzo = cualquier
+excepción de la normalización se registra por su tipo y no afecta a la importación.** Cualquier fallo al **componer
+o ejecutar** la normalización tras importar se captura en ese único punto, también un `AttributeError` por una
+configuración incompleta. El log lleva **solo el tipo** de la excepción. La importación responde exactamente igual
+que sin normalización, y nada más se captura de forma amplia. El test de F-036 `test_f036_r118_…` **no se toca**:
+tiene que pasar por sí solo. Esta decisión **sustituye** a lo que decían las tablas de arriba, «un error de
+programación sube» y `s5_1_un_error_de_programacion_sube`.
+
+#### La spec y el arnés · commit `918e338`
+
+- `design.md` §5.1: se tacha la lista cerrada y se añade la decisión con su motivo, que es esta T15. §9.2, la fila
+  R31–R35 de §13 y D-2 de §15 citan la decisión.
+- `requirements.md` R34: la decisión, literal, y su alcance (componer o ejecutar; solo el tipo; nada más amplio).
+- `tasks.md` T13: se tacha «un `ValueError` sube» y se anota el RED adicional.
+- `harness/features.json`: F-060 vuelve a `in_progress` y se quita el `blocked_by`. `BACKLOG.md` se regenera. En
+  `progress/current.md`, el rótulo de bloqueo se sustituye por una línea con la decisión.
+
+#### T13 bis · RED · commit `4be221b`
+
+Cambios en `tests/test_f060_importar_normaliza.py`, solo tests de F-060:
+
+| Caso | Qué fija |
+|---|---|
+| `r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo[6]` (**sustituye** a `s5_1_un_error_de_programacion_sube`) | `ValueError`, `TypeError`, `KeyError`, `AttributeError`, `RuntimeError` y un error del dominio fuera de §5.1, lanzados por el normalizador inyectado. Misma respuesta que el oráculo, **un** `WARNING` `…no hecha: obra=9901 motivo=<Tipo>` y el mensaje fuera del log |
+| `r34_sin_configuracion_de_sigrid_responde_igual_y_avisa` | el caso de `test_f036_r118_…`: `obtener_ajustes` devuelve `SimpleNamespace(entorno="pro")` y nada se sustituye salvo `construir_revision`, que anota. Resultado: `AttributeError` de la configuración de Sigrid, revisión **sin construir**, misma respuesta y `motivo=AttributeError`, sin el nombre del campo en el log |
+| `r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[12]` | cualquiera de las seis excepciones, lanzada por `construir_fuente_de_ubicaciones` o por `construir_revision`. Misma respuesta, ningún lote ni fila escrita, aviso con el tipo |
+| `r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta[6]` | ya compuesta (las dos fábricas llamadas, en su orden), `RuntimeError` o `ValueError` **al listar**, **al leer las ubicaciones** o **en el lote**. Misma respuesta, nada escrito, aviso con el tipo |
+| endurecidos: `r32_sin_filas_la_composicion_real_no_construye_nada[3]` y `s9_2_el_normalizador_inyectado_no_construye_nada` | con la captura amplia, el `AssertionError` de `prohibido` ya no tumbaría el test. Ahora las fábricas prohibidas **anotan** y el test afirma que la lista queda vacía |
+
+`_importar_sin_que_suba` envuelve la importación: si sube algo, `pytest.fail("la importación no ha respondido: sube
+<Tipo>")`. Así el RED cae por aserción y no por la excepción misma.
+
+Comando, desde `services/postventa-api`, contra `5eebdc8` (T14 con la captura cerrada de §5.1):
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py -q -p no:cacheprovider --tb=line -rf
+```
+
+Salida real: las líneas `--tb=line` de cada fallo, la lista de `FAILED` y el total. Solo se ha recortado el prefijo
+absoluto de la ruta y se han quitado los `Captured log call` y las trazas encadenadas de la excepción original:
+
+```
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube ValueError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube TypeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube KeyError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube AttributeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube RuntimeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube PeticionDeRevisionInvalida
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube AttributeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube ValueError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube ValueError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube TypeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube TypeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube KeyError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube KeyError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube AttributeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube AttributeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube RuntimeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube RuntimeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube PeticionDeRevisionInvalida
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube PeticionDeRevisionInvalida
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube RuntimeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube RuntimeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube RuntimeError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube ValueError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube ValueError
+tests/test_f060_importar_normaliza.py:366: Failed: la importación no ha respondido: sube ValueError
+
+FAILED test_f060_r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo[ValueError]
+FAILED test_f060_r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo[TypeError]
+FAILED test_f060_r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo[KeyError]
+FAILED test_f060_r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo[AttributeError]
+FAILED test_f060_r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo[RuntimeError]
+FAILED test_f060_r34_cualquier_excepcion_del_normalizador_se_avisa_por_su_tipo[PeticionDeRevisionInvalida]
+FAILED test_f060_r34_sin_configuracion_de_sigrid_responde_igual_y_avisa
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[ValueError-construir_fuente_de_ubicaciones]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[ValueError-construir_revision]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[TypeError-construir_fuente_de_ubicaciones]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[TypeError-construir_revision]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[KeyError-construir_fuente_de_ubicaciones]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[KeyError-construir_revision]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[AttributeError-construir_fuente_de_ubicaciones]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[AttributeError-construir_revision]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[RuntimeError-construir_fuente_de_ubicaciones]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[RuntimeError-construir_revision]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[PeticionDeRevisionInvalida-construir_fuente_de_ubicaciones]
+FAILED test_f060_r34_una_composicion_que_lanza_cualquier_excepcion_no_cambia_nada[PeticionDeRevisionInvalida-construir_revision]
+FAILED test_f060_r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta[RuntimeError-al-listar]
+FAILED test_f060_r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta[RuntimeError-al-leer-ubicaciones]
+FAILED test_f060_r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta[RuntimeError-en-el-lote]
+FAILED test_f060_r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta[ValueError-al-listar]
+FAILED test_f060_r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta[ValueError-al-leer-ubicaciones]
+FAILED test_f060_r34_un_fallo_dentro_de_la_normalizacion_no_altera_la_respuesta[ValueError-en-el-lote]
+25 failed, 55 passed in 95.42s (0:01:35)
+```
+
+**25 failed, todos por aserción**: `Failed: la importación no ha respondido…` (6 + 1 + 12 + 6). **55 passed**: los 59
+de antes menos los 4 sustituidos; los tests endurecidos pasan porque con la captura cerrada `prohibido` todavía
+tumbaría la importación.
+
+#### T14 bis · GREEN · commit `8e049ba`
+
+`interface_adapters/api/importar.py`: en `_normalizar_tras_importar`, `except ERRORES_DE_LA_NORMALIZACION` pasa a
+`except Exception` (con `noqa: BLE001` y la decisión en el comentario). Desaparecen la tupla y los siete imports de
+errores que solo usaba ella. Los docstrings de `importar_excel` y `_normalizar_tras_importar` citan la decisión. El
+`try` sigue envolviendo solo la llamada a `normalizar(…)`, que incluye la composición real de `_normalizar_de_verdad`:
+es el único punto con captura amplia, y la línea de éxito y todo lo demás de la importación quedan fuera.
+
+```
+.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py -q -p no:cacheprovider --tb=short
+80 passed in 135.47s (0:02:15)
+```
+
+Y el test de F-036 que paraba el bloque, solo y sin tocar, junto a `test_f006`:
+
+```
+.venv/Scripts/python.exe -m pytest "tests/test_f036_importar_http.py::test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno" tests/test_f006_repo_sin_identificadores.py -q -p no:cacheprovider
+49 passed in 164.05s (0:02:44)
+```
+
+#### T15 · commit `4c50362`
+
+```
+.venv/Scripts/python.exe -m pytest tests/ -k "f036 or f053" -q -p no:cacheprovider --tb=short
+2261 passed, 16 skipped, 5781 deselected in 513.58s (0:08:33)
+```
+
+Es el mismo recuento que la línea base en `c8d60d1` (2261 passed, 16 skipped). `git diff --stat c8d60d1 HEAD` sobre
+`tests/` solo muestra `test_f060_importar_normaliza.py`: **ningún test de F-036, F-053 ni F-056 tocado**.
+
+#### T16 · Mutación del bloque
+
+```
+python -m harness.mutacion --feature F-060 --base c8d60d1 --timeout 1800 --salida progress/mutacion_F-060_bloque4.md
+```
+
+La lancé tras el commit de T15 (`4c50362`), del que salen los worktrees, y **esperé hasta el final** sin tocar el
+árbol. Salida real (cabecera y cola):
+
+```
+F-060: 1 fichero(s), 111 línea(s) de producción (origen rama, c8d60d1a2fcaca3851deb01ce12f393c255b62fb..feature/F-060-normalizar-ubicaciones)
+Campaña paralela: hasta 8 workers, uno por worktree.
+[1/6] muerto        services/postventa-api/interface_adapters/api/importar.py:300 [booleano] ensayo=False, -> ensayo=True,
+[2/6] muerto        …importar.py:231 [aritmetico] … nuevas + … duplicadas_en_fichero > 0 -> … nuevas - … duplicadas_en_fichero > 0
+[3/6] muerto        …importar.py:231 [logico] and … -> or …
+[4/6] muerto        …importar.py:231 [comparacion] > 0 -> >= 0
+[5/6] muerto        …importar.py:231 [entero] > 0 -> > 1
+[6/6] muerto        …importar.py:279 [aritmetico] time.perf_counter() - inicio, -> time.perf_counter() + inicio,
+6 mutantes evaluados, 6 muertos, 0 supervivientes, 0 timeouts en 1042.9 s
+Informe: progress/mutacion_F-060_bloque4.md
+```
+
+**6/6 muertos, 0 supervivientes, 0 timeouts, 6 workers** (8 configurados, uno por mutante), 1042,9 s. Hay un solo
+fichero en el alcance y no sale con 0 mutantes. La herramienta muta poco aquí porque lo nuevo es sobre todo
+composición, orden, llamadas, literales y el `except`, y eso no lo muta.
+
+**Mutantes a mano.** Los apliqué **solo en una copia** de `services/postventa-api`, en el directorio temporal (sin
+`.venv`, `.env` ni `local.settings.json`), con un script **fuera del repositorio**. Cada uno, contra
+`tests/test_f060_importar_normaliza.py` con `-x`, restaurando el fichero después. El árbol de trabajo no se tocó.
+
+| # | Mutante a mano (en `importar.py`) | Resultado | Primer test que cae |
+|---|---|---|---|
+| I1 | ignorar el `normalizar` inyectado (siempre el real) | MUERTO | `r31_con_filas_registradas_normaliza_una_vez_tras_el_excel_de_errores` |
+| I2 | no componer nunca el real (pasar `None`) | MUERTO | `s9_2_sin_normalizador_compone_el_real_sigrid_antes_que_la_base` |
+| I3 | normalizar **antes** del Excel de errores | MUERTO | `r31_con_filas_registradas…` |
+| I4 | la llamada fuera del `if not ya_importado` | MUERTO | `r32_ya_importado_no_normaliza` |
+| I5 | contar solo las `nuevas` | MUERTO | `r31_solo_duplicadas_del_fichero_tambien_cuenta` |
+| I6 | contar también las `ya_en_bandeja` | MUERTO | `r32_todas_ya_en_la_bandeja_no_normaliza` |
+| I7 | la hora de ahora y no la de la importación | MUERTO | `r31_con_filas_registradas…` |
+| I8 | sin el catálogo de la importación (`None`) | MUERTO | `r31_con_filas_registradas…` |
+| I9 | la composición real con `ensayo=True` | MUERTO | `s9_2_sin_normalizador_compone_el_real…` |
+| I10 | la base antes que Sigrid | MUERTO | `s9_2_sin_normalizador_compone_el_real…` |
+| I11 | el aviso con el mensaje del error | MUERTO | `r34_cada_error_se_avisa_con_la_obra_y_su_tipo[CatalogoNoDisponible]` |
+| I12 | el aviso en `INFO` | MUERTO | el mismo |
+| I13 | sin aviso | MUERTO | el mismo |
+| I14 | la línea sin `origen=importacion` | MUERTO | `r35_una_linea_con_el_recuento_y_los_segundos` |
+| I15 | sin `return` tras el aviso | MUERTO | `r33_la_respuesta_es_la_de_la_importacion_sin_normalizar[falla-CatalogoNoDisponible]` |
+| I16 | los segundos sin restar el inicio | MUERTO | `r35_una_linea_con_el_recuento_y_los_segundos` |
+| I17 | `except BaseException` | **VIVO → MUERTO** con el test añadido | `r34_una_interrupcion_no_es_un_fallo_y_sube[KeyboardInterrupt]` |
+| I18 | volver a la lista cerrada de §5.1 | MUERTO | `r33_la_respuesta…[falla-CatalogoSinVerificar]` |
+| I19 | la línea con la `obra` de la importación y no la de `resultado.obra_codigo` | **VIVO · equivalente** | — |
+| I20 | la captura amplia solo alrededor de la composición, no de la ejecución | MUERTO | `r33_la_respuesta…[falla-CatalogoNoDisponible]` |
+
+**Supervivientes, por familias:**
+
+- **Familia «el alcance del `except`» (I17).** Era un **hueco real**, de severidad **media**. Con `except
+  BaseException`, una parada del proceso (`KeyboardInterrupt`, `SystemExit`, el apagado del worker) se tragaría
+  como si fuera un fallo de la normalización, y la importación seguiría como si nada. Lo cierra el test añadido en
+  T16, `test_f060_r34_una_interrupcion_no_es_un_fallo_y_sube[KeyboardInterrupt|SystemExit]`: suben y no dejan
+  aviso. Con él, I17 cae (repetido en la copia: `MUERTO · …[KeyboardInterrupt]`). **Para el humano:** este test fija
+  mi lectura de «cualquier excepción» como `Exception` de Python, es decir, errores y no interrupciones. Si su
+  intención era otra, hay que cambiar este test y no el código de producción.
+- **Familia «qué obra lleva la línea» (I19). Equivalente**, severidad **ninguna**. `_normalizar_de_verdad` llama a
+  `normalizar_ubicaciones(obra, …)`, que devuelve `ResultadoNormalizacion(obra_codigo=obra_codigo, …)` con la misma
+  obra que recibe (`application/pipelines/revision.py`, Bloque 3). En producción las dos versiones escriben el mismo
+  código. Solo un normalizador inyectado de test podría devolver otra obra, y fijar eso sería fijar un doble. **Pido
+  la aceptación escrita del humano**, como la de H11 en el Bloque 3. Sin ella, la alternativa es cambiar el código a
+  `obra` y quitar la pregunta, pero eso no lo he hecho: sería tocar producción después de la campaña.
+
+**Supervivientes abiertos: ninguno** (I19 queda pendiente de que el humano acepte la equivalencia).
+
+### Ficheros tocados en el Bloque 4 (final)
+
+- Producción: `services/postventa-api/interface_adapters/api/importar.py`. Lleva el parámetro `normalizar`, tres
+  funciones privadas (`_registro_filas`, `_normalizar_tras_importar` con `except Exception`, `_normalizar_de_verdad`),
+  `log`, los imports y los docstrings.
+- Tests: `services/postventa-api/tests/test_f060_importar_normaliza.py` (**82** casos).
+- Spec: `design.md` (§5.1, §9.2, §13, §15 D-2), `requirements.md` (R34) y `tasks.md` (T13 anotada; T13 a T16
+  marcadas), todo con la decisión del 2026-10-12.
+- Arnés y memoria: `harness/features.json` (`in_progress`), `BACKLOG.md`, `progress/current.md`,
+  `progress/mutacion_F-060_bloque4.md` y este informe.
+- **No se tocaron**: ningún test de F-036, F-053 ni F-056 (incluido `test_f036_r118_…`); `serializar_importacion`,
+  `paso_importacion.py`, `contexto_importacion.py`, ningún `.sql`, `.env`, `services/postventa-front/`, la plantilla
+  ni `Ajustes`. Nada escribe en Sigrid.
+
+### Commits del Bloque 4 (final)
+
+| Commit | Qué |
+|---|---|
+| `2624507` | F-060 T13: RED (tests y esqueleto neutro) |
+| `5eebdc8` | F-060 T14: GREEN de la importación (captura cerrada de §5.1) |
+| `eff95a4` | F-060: bloqueo en T15 |
+| `918e338` | F-060: decisión del humano 2026-10-12; spec anotada y ficha en `in_progress` |
+| `4be221b` | F-060 T13 (decisión 2026-10-12): RED del mejor esfuerzo amplio |
+| `8e049ba` | F-060 T14 (decisión 2026-10-12): `except Exception` y aviso por tipo |
+| `4c50362` | F-060 T15: F-036 y F-053 en verde sin tocarlos |
+| (este commit) | F-060 T16: mutación, test de la interrupción e informe |
+
+### Pendiente
+
+Nada del Bloque 4, salvo **la aceptación escrita de I19 (equivalente)** por el humano. **Parar: review del Bloque 4.**
+Sigue pendiente la **T7** del Bloque 2 (MANUAL, humano) y, para el Bloque 5, la O-1 de la review del Bloque 3.
+
+### Evidencias (Bloque 4, final)
+
+| Evidencia | Valor real |
+|---|---|
+| Línea base de T15 (en `c8d60d1`) | `-k "f036 or f053"`: **2261 passed, 16 skipped** en 437,98 s |
+| RED (T13) | 59 casos: **51 failed** (por aserción) y 8 passed (justificados), en 69,59 s |
+| RED (T13 bis, decisión 2026-10-12) | 80 casos: **25 failed** (por aserción) y 55 passed, en 95,42 s |
+| Tests del bloque en verde | `test_f060_importar_normaliza.py` **82 passed** (80 tras T14 bis más los 2 de la interrupción); con `test_f006`, **130 passed** en 385,41 s |
+| T15 | `-k "f036 or f053"`: **2261 passed, 16 skipped** en 513,58 s; sin tocar ninguno |
+| Cobertura de lo cambiado | lo nuevo de `importar.py`, sin sentencias ni ramas sin cubrir (`coverage run --branch`); las 8 líneas sin cubrir del informe (124, 134, 139, 185, 189, 193, 195 y 380) son de F-036 |
+| Mutación (herramienta) | **6 generados, 6 muertos, 0 supervivientes**, 0 timeouts, **6 workers**, 1042,9 s |
+| Mutación (a mano) | **18 de 20 muertos** en la primera pasada; I17 muerto con el test añadido (**19 de 20**); I19 equivalente, pendiente de aceptación |
 | `bash harness/init.sh` | No lanzado (suite entera; es de T23) |

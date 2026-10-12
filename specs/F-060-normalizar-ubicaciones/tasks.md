@@ -137,7 +137,7 @@
 - [x] **T15**: los tests de F-036 y de F-053, **sin tocarlos**, en verde. Si
   alguno falla, parar e informar. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/ -k "f036 or f053"`
-- [ ] **T16 · Mutación del bloque.** |
+- [x] **T16 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T13> --timeout 1800 --salida progress/mutacion_F-060_bloque4.md` sin supervivientes abiertos
 
 **Parar. Review del Bloque 4.**

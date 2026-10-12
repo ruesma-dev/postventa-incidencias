@@ -776,6 +776,31 @@ def test_f060_s9_2_si_la_base_no_se_construye_se_avisa_y_responde_igual(
 # --------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "interrupcion",
+    [KeyboardInterrupt(), SystemExit(1)],
+    ids=["KeyboardInterrupt", "SystemExit"],
+)
+def test_f060_r34_una_interrupcion_no_es_un_fallo_y_sube(caplog, interrupcion):
+    """«Cualquier excepción» es cualquier `Exception`, no una interrupción.
+
+    Una parada del proceso (`KeyboardInterrupt`, `SystemExit`) no es un fallo
+    de la normalización: no se traga ni se avisa. Lo pidió la mutación del
+    Bloque 4 (I17, `except BaseException` vivo).
+    """
+    caplog.set_level(logging.DEBUG)
+    mundo = Mundo()
+
+    with pytest.raises(type(interrupcion)):
+        _importar(
+            fichero(BUENA),
+            mundo,
+            normalizar=NormalizadorQueAnota(mundo.llamadas, fallo=interrupcion),
+        )
+
+    assert _lineas_de_f060(caplog) == []
+
+
 def test_f060_r34_sin_configuracion_de_sigrid_responde_igual_y_avisa(monkeypatch, caplog):
     """El caso de `test_f036_r118_…`: `pro` con unos ajustes que solo traen el entorno.
 

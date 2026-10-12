@@ -1,16 +1,7 @@
 <!-- progress/current.md -->
 # Sesión activa
 
-> ## F-060 · `blocked` · 2026-10-11 · Bloque 4 PARADO en T15 (implementer)
->
-> T13 (RED, `2624507`) y T14 (GREEN, `5eebdc8`) hechas: la importación normaliza la obra tras el Excel de errores
-> (mejor esfuerzo), 59 tests de F-060 en verde. **T15 cae**: `-k "f036 or f053"` → 1 failed, 2260 passed.
-> `test_f036_importar_http.py::test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno` finge
-> `ENTORNO=pro` con un `SimpleNamespace` sin configuración de Sigrid y no inyecta `normalizar`; la composición real
-> de §9.2 pasa la puerta de entorno y cae con `AttributeError` (no es de §5.1: sube). No se ha tocado ningún test de
-> F-036 ni se ha esquivado en el código; **T16 (mutación) no se ha lanzado**. Hace falta decisión del humano:
-> recomendación (a), excepción a R39 para ampliar sin relajar ese test con una línea que neutralice la
-> normalización. Detalle, traza y opciones: `progress/impl_F-060.md`, «Bloque 4».
+> **F-060 · decisión del humano 2026-10-12 (opción (b))**: mejor esfuerzo = cualquier excepción de la normalización tras importar se registra por su tipo y no afecta a la importación; el test de F-036 `test_f036_r118_…` no se toca. Bloque 4 retomado.
 
 > **F-060 · decisión del humano 2026-10-10 (opción (a))**: `test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5`
 > se amplía sin relajar a las siete operaciones de `RevisionPort` (más `registrar_lote`); excepción declarada en

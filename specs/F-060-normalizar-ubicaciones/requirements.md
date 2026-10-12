@@ -188,7 +188,13 @@ Ejemplos de esta spec: ficticios (obras `99NN`, ubicaciones «Sala Ejemplo»,
   disponibilidad o configuración (de Sigrid, de la base o el tope de la
   bandeja), ENTONCES la importación debe responder igual que si no hubiera
   normalización y registrar un aviso con la obra y el **tipo** del error;
-  ningún otro efecto.
+  ningún otro efecto. **Decisión del humano 2026-10-12: mejor esfuerzo =
+  cualquier excepción de la normalización se registra por su tipo y no afecta
+  a la importación.** Vale para **cualquier** excepción al componer o ejecutar
+  la normalización tras importar (también un `AttributeError` por una
+  configuración incompleta o un error de programación): el aviso lleva solo el
+  tipo, sin mensaje, textos de ubicación, correo ni `oid`. Nada más de la
+  importación se captura de forma amplia (`design.md` §5.1).
 - **R35.** La importación debe registrar, cuando normaliza, una línea con la
   obra, `normalizadas`, `conflictos`, `ambiguas`, `sin_coincidencia` y los
   segundos; nunca textos, `oid` ni correo.

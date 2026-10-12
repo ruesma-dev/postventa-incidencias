@@ -174,10 +174,19 @@ recarga.
    así que si la normalización no puede hacerse (Sigrid, la base, el tope), se
    avisa en el log y la respuesta es la misma. Lo que no se normaliza se ve
    como `ubicacion_fuera_de_lista` y se recoge en la siguiente ejecución.
-   Errores capturados, y solo estos: `CatalogoNoDisponible`,
+   ~~Errores capturados, y solo estos: `CatalogoNoDisponible`,
    `CatalogoSinVerificar`, `ObraSinUnidades`, `ObraAmbigua`,
    `ConfiguracionSigridIncompleta`, `ErrorDePersistencia` (y subclases) y
-   `BandejaDemasiadoGrande`. Un error de programación sube.
+   `BandejaDemasiadoGrande`. Un error de programación sube.~~
+   **Decisión del humano 2026-10-12: mejor esfuerzo = cualquier excepción de la normalización se registra por su tipo y no afecta a la importación.** Se captura **cualquier** `Exception` al **componer o
+   ejecutar** la normalización tras importar (también un `AttributeError` por
+   una configuración incompleta, y los errores de programación), en ese único
+   punto: el aviso lleva la obra y **solo el tipo** de la excepción (sin
+   mensaje, sin textos de ubicación, sin correo ni `oid`) y la importación
+   responde exactamente igual que sin normalización. Nada más de la
+   importación se captura de forma amplia. Lo dispara la T15 del Bloque 4: un
+   test de F-036 que no se toca (`test_f036_r118_…`) finge `ENTORNO=pro` con
+   unos ajustes incompletos.
 2. **A demanda** con `POST /api/revision/normalizar` (§9.1): para lo ya
    importado (los 110 de la 0677), para recoger lo que se saltó y para cuando
    Sigrid cambie una lista. Con **ensayo obligatorio en el cuerpo**
@@ -330,7 +339,9 @@ Respuesta 200 (ficticia):
 (la costura de test). Tras `paso_excel_errores`, si la importación registró
 filas (R31), lo llama; si es `None`, compone el real (`construir_revision`,
 `construir_fuente_de_ubicaciones`, `normalizar_ubicaciones` con
-`ensayo=False`). Captura solo los errores de §5.1 y registra el aviso (R34).
+`ensayo=False`). ~~Captura solo los errores de §5.1~~ Captura cualquier
+excepción al componer o ejecutar la normalización (**Decisión del humano 2026-10-12: mejor esfuerzo = cualquier excepción de la normalización se registra por su tipo y no afecta a la importación**, §5.1) y
+registra el aviso con su tipo (R34).
 `serializar_importacion` **no** cambia: la respuesta es la misma (R33).
 `paso_importacion.py` no cambia: la composición es del punto de entrada
 (`docs/CONVENTIONS.md`).
@@ -547,7 +558,7 @@ ficticios.
 | R17–R23 | Tope con 10.001 → error sin leer Sigrid; una lectura de ubicaciones; ensayo no llama al lote; dos ejecuciones → la segunda 0; tras normalizar, la fila del listado y el historial de R22 (con los dobles de F-056) |
 | R24, R25 | Normalizar y aprobar → la candidata lleva el texto de Sigrid; sin normalizar → 409; editar con la variante → 400 |
 | R26–R30 | Cada cuerpo malo → 400 sin construir adaptadores (también `"true"`, `1`, claves de más, sin `ensayo`); Sigrid antes que la base; errores de R28; `caplog` sin textos |
-| R31–R35 | Con filas registradas, una llamada con el catálogo de la importación; con `ya_importado` o cero filas, ninguna; respuesta idéntica con y sin normalización (igualdad del diccionario); cada error de §5.1 → misma respuesta y un aviso con el tipo; un `ValueError` sube |
+| R31–R35 | Con filas registradas, una llamada con el catálogo de la importación; con `ya_importado` o cero filas, ninguna; respuesta idéntica con y sin normalización (igualdad del diccionario); cada error de §5.1 → misma respuesta y un aviso con el tipo; ~~un `ValueError` sube~~ cualquier excepción al componer o ejecutar (también `ValueError` o un `AttributeError` de configuración) → misma respuesta y un aviso con su tipo (decisión del humano 2026-10-12) |
 | R36 | Las claves de las tres respuestas de F-056 y la de la importación, iguales a las de la base fija |
 | R37–R39 | Alcance con base fija: ningún `.sql` cambiado; ninguna ruta de escritura ni ventana; los ficheros de «No se toca» sin cambios; los tests de F-036 y F-056 sin tocar salvo los dos ampliados y el test del puerto de F-056 (decisión del humano 2026-10-10) |
 | R40–R42 | Con reloj falso: los tramos y el cálculo; la línea con 200 y con error; el proxy devuelve lo mismo y relanza lo mismo; el orden de construcción; `caplog` sin correo, `oid` ni textos; la línea de F-056 intacta |
@@ -583,7 +594,7 @@ lee nada más.
 | Id | Decisión propuesta | Recomendación |
 |---|---|---|
 | **D-1** | **Dónde**: una revisión `editar` del sistema en `revisiones_bandeja` (opción c de §4.1) | Sí |
-| **D-2** | **Cuándo**: automáticamente tras cada importación que registra filas (mejor esfuerzo) **y** a demanda con `POST /api/revision/normalizar` | Sí (la alternativa: solo a demanda) |
+| **D-2** | **Cuándo**: automáticamente tras cada importación que registra filas (mejor esfuerzo) **y** a demanda con `POST /api/revision/normalizar`. **Decisión del humano 2026-10-12: mejor esfuerzo = cualquier excepción de la normalización se registra por su tipo y no afecta a la importación** (§5.1) | Sí (la alternativa: solo a demanda) |
 | **D-3** | **Qué coincide**: mayúsculas (`casefold`), blancos en los extremos y forma Unicode (NFC); no blancos interiores, ni tildes, ni puntuación; dos candidatos → no se normaliza | Sí |
 | **D-4** | **Constancia sin DDL**: el `oid` y el correo de la revisión, el literal `sistema:normalizar_ubicacion`, que ninguna persona puede enviar | Sí (la alternativa: columna nueva y F-059 a `17_`) |
 | **D-5** | Editar y aprobar **siguen exactos**: no normalizan al vuelo | Sí |

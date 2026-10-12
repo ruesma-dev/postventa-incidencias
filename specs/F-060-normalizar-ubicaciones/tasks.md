@@ -121,8 +121,14 @@
   `ya_importado` o cero filas, ninguna; la respuesta **igual** (igualdad del
   diccionario) con normalizador que normaliza, que no normaliza nada y que
   falla con cada error de `design.md` §5.1; un aviso con la obra y el tipo
-  del error; un `ValueError` sube; `caplog` sin textos, `oid` ni correo.
-  Traza pegada. |
+  del error; ~~un `ValueError` sube~~; `caplog` sin textos, `oid` ni correo.
+  Traza pegada. **Decisión del humano 2026-10-12: mejor esfuerzo = cualquier
+  excepción de la normalización se registra por su tipo y no afecta a la
+  importación** (`design.md` §5.1, R34): RED adicional con un test que fije
+  que sin configuración de Sigrid (o con una composición que lance una
+  excepción cualquiera) la importación responde igual con el aviso del tipo, y
+  otro con un fallo **dentro** de la normalización; el test de F-036
+  `test_f036_r118_…` **no se toca**. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_importar_normaliza.py` **falla**
 - [x] **T14 · GREEN**: el parámetro `normalizar` de `importar_excel` y su
   composición real en `interface_adapters/api/importar.py`;

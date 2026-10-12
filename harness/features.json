@@ -1013,12 +1013,11 @@
         "No se escribe nada en Sigrid",
         "bash harness/init.sh en verde"
       ],
-      "status": "blocked",
+      "status": "in_progress",
       "sdd": true,
       "rigor": "critico",
       "priority": 1,
-      "branch": "feature/F-060-normalizar-ubicaciones",
-      "blocked_by": "Bloque 4, T15 (2026-10-11): con T14 hecha, un test de F-036 que no se puede tocar cae: test_f036_importar_http.py::test_f036_r118_sin_lector_inyectado_se_compone_el_aislado_con_el_entorno finge ENTORNO=pro con un SimpleNamespace sin configuración de Sigrid, no inyecta normalizar y la composición real de §9.2 pasa la puerta de entorno y cae con AttributeError (no es de §5.1, sube). Decide el humano: ver progress/impl_F-060.md, Bloque 4."
+      "branch": "feature/F-060-normalizar-ubicaciones"
     },
     {
       "id": "F-056",

@@ -352,6 +352,21 @@ def test_f060_r40_los_segundos_de_proceso_cuentan_desde_que_arranco(monkeypatch)
     assert 100.0 <= tiempos.segundos_de_proceso() < 110.0
 
 
+def test_f060_r40_los_segundos_de_proceso_usan_el_reloj_del_arranque(monkeypatch) -> None:
+    """T21 (mutante a mano T12): el mismo reloj que marcó el arranque, el monótono.
+
+    Restar dos relojes distintos daría un número sin sentido. En CPython,
+    `perf_counter` y `monotonic` comparten fuente en Windows y en Linux, así que
+    solo un reloj falso distingue los dos.
+    """
+    falso = type("RelojesFalsos", (), {"monotonic": staticmethod(lambda: 1234.0),
+                                       "perf_counter": staticmethod(lambda: 7.0)})
+    monkeypatch.setattr(tiempos, "time", falso)
+    monkeypatch.setattr(tiempos, "_INICIO_DEL_PROCESO", 1000.0)
+
+    assert tiempos.segundos_de_proceso() == 234.0
+
+
 # --------------------------------------------------------------------------
 # El listado: el mundo de la prueba, compuesto por las fábricas del borde
 # --------------------------------------------------------------------------
@@ -803,6 +818,28 @@ def test_f060_r41_las_mismas_excepciones_el_mismo_objeto(monkeypatch, donde: str
         )
 
     assert capturada.value is error
+
+
+@pytest.mark.parametrize("interrupcion", [KeyboardInterrupt, SystemExit])
+def test_f060_r40_una_interrupcion_tambien_deja_la_linea_y_sube(
+    monkeypatch, caplog, interrupcion
+) -> None:
+    """T21 (mutante a mano T22): la línea sale con el tipo de **cualquier** salida.
+
+    El `finally` escribe la línea siempre; si el `except` solo mirara
+    `Exception`, una parada del proceso a mitad de listado dejaría
+    `resultado=200`, que es mentira. La interrupción sigue su camino.
+    """
+    mundo = Mundo()
+    _componer(monkeypatch, mundo)
+    mundo.equivalencias = EquivalenciasEnMemoria(mundo.llamadas, fallo=interrupcion())
+    caplog.set_level(logging.INFO)
+
+    with pytest.raises(interrupcion):
+        modulo.listar_revision(OBRA)
+
+    linea = _una_linea(caplog)
+    assert linea.startswith(f"{PREFIJO}obra=9901 resultado={interrupcion.__name__} total=")
 
 
 def test_f060_r41_bandeja_demasiado_grande_sigue_contando_por_el_puerto(

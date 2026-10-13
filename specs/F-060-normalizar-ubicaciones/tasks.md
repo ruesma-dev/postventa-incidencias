@@ -177,7 +177,7 @@
   líder 2026-10-13), `test_f012_documentacion.py`, `test_f019_documentacion.py`
   y dos de `test_f056_documentacion.py`. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_documentacion.py tests/test_f053_documentacion.py tests/test_f036_documentacion.py tests/test_f056_documentacion.py`
-- [ ] **T21 · Mutación del bloque.** |
+- [x] **T21 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T17> --timeout 1800 --salida progress/mutacion_F-060_bloque5.md` sin supervivientes abiertos
 - [ ] **T22**: «Evidencias» completas en `progress/impl_F-060.md` (tests,
   cobertura, mutantes y workers de cada bloque, tiempo de la suite). |

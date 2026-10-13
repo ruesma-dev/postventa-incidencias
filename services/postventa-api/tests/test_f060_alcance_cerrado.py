@@ -22,8 +22,18 @@ puerto de la revisión). Cada frontera tiene aquí su control:
   2026-10-10, Bloque 2).
 - `test_f010_endpoints_protegidos.py`: la ruta `revision/normalizar` y la
   cuenta a **veintiuno** (T9).
-- Los de documentación que fijan la cuenta de rutas o la cabecera de
-  `docs/INTEGRACION.md`, los declara T20 cuando los amplía.
+- Por T20 —decisión del líder 2026-10-13, con el criterio que el humano
+  aprobó en F-056: un test de documentación que fija una frase que cambia se
+  amplía sin relajar y se declara—: `test_f053_documentacion.py`
+  (`CUENTA_VIGENTE`, «Los veintiuno», y «Los veinte» en `not in`),
+  `test_f012_documentacion.py` (`NUMERALES` hasta 21),
+  `test_f019_documentacion.py::test_f019_r32_…` (la cuenta de veinte pasa de
+  `in` a `not in` y se exige la de veintiuno) y `test_f056_documentacion.py`:
+  `…_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas` (la cuenta) y
+  `…_r44_la_cabecera_dice_que_f056_lo_toco` (la cabecera pasa a F-060: el
+  test deja de exigir que F-056 sea la **última** y exige una cabecera bien
+  formada que no retroceda y en la que F-056 y su despliegue sigan constando,
+  como hizo F-056 con el de F-036).
 
 ## Las dos mitades
 
@@ -641,6 +651,20 @@ AMPLIADOS: dict[str, frozenset[str]] = {
     "tests/test_f010_endpoints_protegidos.py": frozenset(
         {"ENDPOINTS", "test_f010_r32_el_barrido_de_niveles_ve_lo_que_hay"}
     ),
+    # T20: «Los veintiuno» (decisión del líder 2026-10-13).
+    "tests/test_f053_documentacion.py": frozenset(
+        {"CUENTA_VIGENTE", "test_f053_t6_el_parrafo_va_antes_de_los_diecisiete_y_sin_encabezado"}
+    ),
+    "tests/test_f012_documentacion.py": frozenset({"NUMERALES"}),
+    "tests/test_f019_documentacion.py": frozenset(
+        {"test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints"}
+    ),
+    "tests/test_f056_documentacion.py": frozenset(
+        {
+            "test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas",
+            "test_f056_r44_la_cabecera_dice_que_f056_lo_toco",
+        }
+    ),
 }
 
 #: Las aserciones que una ampliación **cambia** (no las que añade): la cuenta
@@ -652,6 +676,12 @@ ASERCIONES_QUE_CAMBIAN: dict[str, frozenset[str]] = {
     ),
     "tests/test_f056_repositorio_revision.py": frozenset(
         {"test_f056_r34_el_puerto_tiene_las_seis_operaciones_de_5"}
+    ),
+    "tests/test_f019_documentacion.py": frozenset(
+        {"test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints"}
+    ),
+    "tests/test_f056_documentacion.py": frozenset(
+        {"test_f056_r44_la_cabecera_dice_que_f056_lo_toco"}
     ),
 }
 
@@ -679,7 +709,7 @@ def test_f060_r39_los_de_f036_y_f056_que_toca_son_solo_los_declarados():
         r.removeprefix(SERVICIO) for r in cambiados if re.search(r"/tests(_bbdd/tests)?/test_f0(36|56)_", r)
     )
 
-    assert tocados == ["tests/test_f056_repositorio_revision.py"]
+    assert tocados == ["tests/test_f056_documentacion.py", "tests/test_f056_repositorio_revision.py"]
 
 
 @pytest.mark.parametrize("relativa", sorted(AMPLIADOS))

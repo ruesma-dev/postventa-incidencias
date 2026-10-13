@@ -162,8 +162,8 @@ def test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints(seccion_ocho):
     `POST /api/cerrar`, por **once** desde `/api/adjuntar` (F-012) y por
     **doce** desde `POST /api/aprobar` (F-026, 2026-09-12), y por
     **diecisiete** desde las cinco de F-036 (2026-09-30), y por **veinte**
-    desde las tres de F-056 (2026-10-08). Cada vez ha habido que venir aquí,
-    que es el punto.
+    desde las tres de F-056 (2026-10-08), y por **veintiuno** desde la de
+    F-060 (2026-10-13). Cada vez ha habido que venir aquí, que es el punto.
     """
     assert "Los seis quedan en nivel" not in seccion_ocho
     assert "Los nueve quedan en nivel" not in seccion_ocho
@@ -182,4 +182,8 @@ def test_f019_r32_la_seccion_ocho_ya_habla_de_todos_los_endpoints(seccion_ocho):
     # `revision/historial` y `revision/acciones`. La cuenta pasa de diecisiete
     # a veinte; se amplía sin quitar ninguna de las aserciones anteriores.
     assert "Los diecisiete quedan en nivel" not in seccion_ocho
-    assert "Los veinte quedan en nivel" in seccion_ocho
+    # F-060 (T20, decisión del líder 2026-10-13) añade una:
+    # `revision/normalizar`. La cuenta pasa de veinte a veintiuno: la de
+    # veinte pasa de `in` a `not in`, como cada cifra vieja antes que ella.
+    assert "Los veintiuno quedan en nivel" in seccion_ocho
+    assert "Los veinte quedan en nivel" not in seccion_ocho

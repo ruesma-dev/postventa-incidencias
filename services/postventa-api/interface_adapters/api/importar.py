@@ -24,6 +24,14 @@ y las decisiones de equivalencia, **solo** si el fichero no estaba ya
 importado y se ha reconocido como la plantilla: un fichero que no lo es se
 rechaza sin llegar a Sigrid (R21), y el atajo de R39 no lee Sigrid.
 
+Desde F-060 (`specs/F-060-normalizar-ubicaciones/design.md` §9.2): si la
+importación **registra filas** en la bandeja, después del Excel de errores se
+construyen además la fuente de las ubicaciones válidas (Sigrid, la tercera
+lectura por `sql/read`) y la revisión (PostgreSQL, esquema propio), y se
+normalizan las ubicaciones de la obra con revisiones del sistema
+(`normalizar_ubicaciones`, `ensayo=False`). Es de **mejor esfuerzo**: cualquier
+excepción al componer o ejecutar se avisa por su tipo y la respuesta no cambia.
+
 ## La respuesta (R43)
 
 `importacion_id`, `obra`, `ya_importado`, `estado`, `resumen`, `filas` (las
@@ -39,8 +47,10 @@ Sale en UTC con una sola forma, `AAAA-MM-DDTHH:MM:SS.ffffff+00:00` (R3, R4), y
 `null` si el instante no lleva zona (R5): una fecha sin rótulo es segura, una
 supuesta UTC puede ser la hora de Madrid.
 
-Escribe en el esquema propio y nada en Sigrid (R46); no depende de ninguna
-ventana de escritura del servicio.
+Escribe en el esquema propio y nada en Sigrid (R46) —desde F-060, también
+revisiones del sistema en `postventa.revisiones_bandeja`—; no depende de
+ninguna ventana de escritura del servicio. La respuesta es la misma, clave a
+clave y valor a valor, normalice o no (F-060 R33).
 
 ## Datos personales (R47)
 

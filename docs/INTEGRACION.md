@@ -1,12 +1,15 @@
 <!-- docs/INTEGRACION.md -->
 # Integración con el ecosistema · postventa-incidencias
 
-> **Origen**: este repositorio. **Fecha**: 2026-10-09. **Última feature que
-> lo tocó**: F-056, la revisión de la bandeja en el backend —una tabla
+> **Origen**: este repositorio. **Fecha**: 2026-10-13. **Última feature que
+> lo tocó**: F-060, normalizar las ubicaciones de la bandeja al texto exacto
+> de Sigrid —una ruta nueva, revisiones del **sistema** en la tabla de F-056,
+> también tras cada importación, y una línea de tiempos por listado (§1, §2,
+> §4, §6, §7, §8 y §9)—, implementada en su rama y **sin desplegar**.
+> Antes, F-056, la revisión de la bandeja en el backend —una tabla
 > append-only, tres endpoints, el correo de quien revisa y una tercera lectura
-> de Sigrid (§1, §2, §7 y §8)—, **desplegada** el 2026-10-09 y verificada en
-> el entorno (T19).
-> Antes, F-053 el 2026-10-06 (dos campos aditivos, §8); F-036, **desplegada**
+> de Sigrid—, **desplegada** el 2026-10-09 y verificada en el entorno (T19);
+> F-053 el 2026-10-06 (dos campos aditivos, §8); F-036, **desplegada**
 > desde su rama entre el 2026-10-02 y el 2026-10-05 y verificada en el entorno
 > (T29) —el 2026-10-01, la lectura del Excel en un proceso hijo y lo que exige
 > a la instancia (§6)—; F-013 el 2026-09-24; nació con F-005.
@@ -187,6 +190,27 @@ y un test lo fija carácter a carácter; el diseño, en
 F-036, depende de que `sql/read` siga sirviendo hasta 1.000 filas por
 petición. Lo que sí le pedirá algo es **F-040**, que volcará lo aprobado con
 el alta en lote de reclamaciones (§1, «Con F-036»).
+
+### Con F-060 · la tercera lectura, también tras importar
+
+F-060 **no añade ninguna lectura nueva** ni cambia ninguna: usa la tercera
+lectura de F-056, la de las ubicaciones válidas, por `POST /api/sql/read`,
+con su techo, sus errores y sus puertas. Lo que cambia es **cuándo** se hace:
+
+- **tras cada importación** de `POST /api/importaciones` que **registra filas**
+  en la bandeja (nuevas o duplicadas del fichero), **una vez por ejecución**,
+  después de las dos lecturas del catálogo que la importación ya hacía y
+  después del Excel de errores. Una importación repetida (`ya_importado`) o
+  sin filas registradas no la hace;
+- **a demanda**, con `POST /api/revision/normalizar` (§8): las dos lecturas
+  del catálogo y esta, como mucho **tres** `sql/read` por llamada, también en
+  el ensayo.
+
+Para qué: poner en el **texto exacto** de Sigrid las ubicaciones de la bandeja
+que solo difieren en mayúsculas (§2). **Volumen**: una lectura más por cada
+importación con filas, y tres por cada llamada a la ruta nueva, que es de uso
+puntual. **Nada se escribe en Sigrid.** El diseño, en
+`specs/F-060-normalizar-ubicaciones/` (§5 y §9).
 
 ## 2 · La base de datos: qué pedimos y qué no tocamos
 
@@ -387,6 +411,41 @@ Ninguna de las trece anteriores cambia.
 
 El detalle columna a columna está en
 `specs/F-056-revision-bandeja-backend/design.md` §6.
+
+### Con F-060 · las revisiones del sistema
+
+F-060 escribe en la **misma** tabla de F-056, `postventa.revisiones_bandeja`,
+**sin DDL**: ningún `.sql` nuevo ni cambiado, ninguna columna, ningún índice.
+Lo que añade son filas de un autor nuevo, **el sistema**:
+
+- **Una fila por incidencia normalizada**, con `accion = editar`, la foto
+  completa de sus valores vigentes con **solo la ubicación** cambiada al texto
+  exacto de Sigrid, su huella, sin motivo, el instante UTC y, como
+  `revisado_por` y `revisado_correo`, el literal `sistema:normalizar_ubicacion`
+  (§7). La incidencia pasa de `nueva` a `editada`. Solo se escribe sobre
+  incidencias `nueva` o `editada`: nunca sobre una aprobada o descartada.
+- **Append-only**, como las de las personas: nada se actualiza ni se borra, y
+  **`postventa.bandeja_incidencias` no se toca** —lo que mandó la propiedad
+  sigue como llegó y es lo que el listado enseña en `importados`—.
+- **En una transacción por ejecución**: un `SELECT … FOR UPDATE` de las filas
+  de la bandeja de todas las incidencias del lote, en orden fijo de
+  `incidencia_id` —nunca un bloqueo consultivo, cuyo espacio de claves es del
+  servidor compartido—, la lectura de sus últimas revisiones y un `INSERT`
+  por cada una que siga como estaba cuando se calculó. Una que una persona
+  tocó entre medias **se salta** y se cuenta en `conflictos`, sin abortar las
+  demás. Si la base falla, `ROLLBACK` del lote entero y 503.
+- **Cuándo**: tras cada importación que registra filas, y a demanda con
+  `POST /api/revision/normalizar` (§8). Es **idempotente**: una segunda
+  ejecución sin cambios no escribe nada.
+- **El ensayo** (`ensayo: true`) **no escribe ninguna fila**, pero sí abre la
+  conexión a la base como el listado —y, si es la primera petición del
+  proceso, pasa por la guarda de DDL idempotente de siempre—: «no escribe»
+  quiere decir que no inserta revisiones, no que no toque la base.
+
+**Volumen**: como mucho una fila de menos de 1 KB por incidencia y ejecución
+—en la 0677, unas 110 la primera vez y ninguna después—; el lote bloquea esas
+filas de la bandeja mientras dura la transacción, del orden de un segundo con
+mil. El diseño, en `specs/F-060-normalizar-ubicaciones/` (§4 y §7).
 
 ## 3 · SharePoint: dónde se archivan los partes
 
@@ -1056,6 +1115,13 @@ tamaño de página (100 por omisión, 200 como mucho), las 10.000 incidencias po
 obra y los 500 caracteres del motivo— son del dominio: cambiarlos es un cambio
 de código.
 
+### Las de F-060: ninguna
+
+**F-060 no añade ninguna variable de entorno** ni mira **ninguna ventana de
+escritura**: lee Sigrid con la configuración de las lecturas del catálogo y
+escribe en el esquema propio con la de PostgreSQL. El literal del sistema
+(`sistema:normalizar_ubicacion`) y la regla de qué coincide son del dominio.
+
 ## 5 · Qué le hacemos al servidor compartido, en números
 
 Los tres límites que importan, y por qué nos importan:
@@ -1108,6 +1174,7 @@ incidencia, código de obra y remesa.
 | Dos importaciones a la vez en el mismo proceso (**F-036**) | La segunda espera hasta 5 s y, si no queda libre, **503** «otra importación en curso; reintenta», sin escribir nada | Es lo esperado: se reintenta |
 | Despliega el backend en una plataforma sin `setrlimit` (que no sea Linux) con `ENTORNO` en `dev` o `pro` (**F-036**) | La importación responde **503** y no lee nada: en el entorno desplegado no se lee nunca un Excel sin el tope de memoria. La plantilla, la bandeja y los oficios siguen funcionando | Azure Functions en Linux lo tiene; se ve en el log (`tope_memoria_aplicado`) |
 | La pasarela `sigrid-api` cae, no responde o baja el techo de `sql/read` (**F-056**) | El listado para revisar y las acciones **editar** y **aprobar** responden **503** (o **409** `catalogo_sin_verificar` al techo) y no escriben nada; **descartar**, **recuperar** y el historial siguen funcionando, porque solo usan nuestra base | Es del dueño de `sigrid-api`; avisar antes |
+| La pasarela `sigrid-api` o la base fallan al normalizar tras una importación (**F-060**) | **Nada visible**: la importación ya está guardada y responde exactamente igual; la normalización no se hace y queda un aviso en el log con la obra y el **tipo** del error. Lo que no se normalizó sigue saliendo como `ubicacion_fuera_de_lista` y lo recoge la siguiente importación o `POST /api/revision/normalizar`, que con la pasarela o la base caídas responde **503** sin escribir nada | Es de mejor esfuerzo; se ve en el log |
 | Alguien cambia en Sigrid las ubicaciones de una tipología, o la tipología de una unidad (**F-056**) | Una incidencia ya aprobada **sigue aprobada** —y candidata al volcado— con la ubicación de aquel día, aunque el listado le enseñe ya `ubicacion_fuera_de_lista`; para sacarla de las candidatas basta editarla. Las demás se validan contra la lista nueva. La comparación es exacta: corregir una errata en Sigrid también cuenta como cambio | Es de Sigrid; se ve al revisar |
 
 Y al revés, lo que **nosotros** podemos romperles: nada, mientras se cumplan
@@ -1168,6 +1235,30 @@ el nombre, ni el login del ERP.
 >   `GET /api/bandeja` lo devuelven `GET /api/revision`, por páginas, y la 200
 >   de la acción. Ninguno de esos textos va a un log: los de F-056 llevan solo
 >   la obra, el `incidencia_id`, la acción, el resultado y recuentos.
+
+> **Enmienda del 2026-10-13 (F-060) · la identidad del sistema.** Desde F-060,
+> `postventa.revisiones_bandeja` tiene también filas que **no** escribe una
+> persona: las de la normalización de ubicaciones (§2), con el literal
+> `sistema:normalizar_ubicacion` en `revisado_por` y en `revisado_correo`.
+>
+> - **Qué es.** El nombre de **una regla** del servicio, siempre el mismo:
+>   **no es un dato personal**, **no es un oid** de Entra ni el correo de
+>   nadie. No amplía lo que esta sección guarda de las personas.
+> - **La marca es el correo.** Quien tenga que distinguir una revisión del
+>   sistema de una humana —la página de **F-038**, el datamart de **F-048**,
+>   quien audite— mira `revisado_correo = 'sistema:normalizar_ubicacion'`. Es
+>   fiable porque **ninguna persona puede enviar ese correo**: la ruta de las
+>   acciones exige uno con `@`, y ese literal no lo lleva. En cambio **el oid
+>   no sirve de marca**: la ruta de las acciones admite cualquier `oid` de 1 a
+>   128 caracteres, también ese literal, así que una fila con ese `oid` y un
+>   correo de persona es **de una persona**.
+> - **Dónde sale.** En las mismas respuestas que el correo de quien revisa:
+>   `revisado_por` del listado y `correo` del historial; la 200 de las
+>   acciones nunca lo lleva, porque esa revisión la escribe una persona. Ni la
+>   ruta de la normalización ni la importación lo devuelven.
+> - **Los logs de F-060** llevan solo la obra, los recuentos, `ensayo`, los
+>   segundos y nombres de tramo: ni textos de ubicación, ni `oid`, ni correo,
+>   ni el `incidencia_id`.
 
 Consecuencias para quien administre el servidor:
 
@@ -1250,6 +1341,7 @@ documento.
 | `POST /api/catalogos/decisiones` | **F-036** · **escribe** en `postventa.decisiones_equivalencia` (esquema propio, append-only) que **una persona** confirma que varios oficios de Sigrid son el mismo, o que dos no lo son. Exige `confirmado: true` como booleano, como `POST /api/estado`, y **solo el catálogo `oficio`**: cualquier otro es 400. Un código que no es de la obra es 409. **Sigrid no se corrige desde aquí** |
 | `GET /api/revision` | **F-056** · **lee** la bandeja de una obra **para revisarla**, **paginada** (`?obra=&estado=&con_motivos=&tamano=&cursor=`: hasta 200 por página, 100 por omisión, y un cursor opaco): cada incidencia con sus valores importados y los vigentes, su estado, sus motivos de no aprobable contra el catálogo de Sigrid **de ese momento** y el **correo** de quien la revisó por última vez; el resumen cuenta la obra entera. Lee Sigrid por `sql/read` (§1) y **no escribe en ningún sitio**. Es el **tercer** endpoint que devuelve dato de fuera acumulado (§7): su cautela de volumen es la página, con un tope de 10.000 incidencias por obra (409 `bandeja_demasiado_grande`, sin truncar en silencio) |
 | `GET /api/revision/historial` | **F-056** · **lee** el historial de revisiones de **una** incidencia (`?incidencia_id=`), de la más antigua a la más reciente: acción, instante, **correo** de quien actuó, campos cambiados y el motivo de un descarte. Solo la base: **no lee Sigrid** ni escribe |
+| `POST /api/revision/normalizar` | **F-060** · pone en el **texto exacto** de Sigrid la ubicación de cada incidencia de la bandeja de **una** obra que solo difiere en mayúsculas de una de la tipología de su unidad, y **escribe** en `postventa.revisiones_bandeja` (esquema propio, **append-only**) una revisión `editar` **del sistema** (`sistema:normalizar_ubicacion`) por cada una. Exige `confirmado: true` como booleano y `ensayo` booleano, **sin valor por omisión**: con `ensayo: true` lee y cuenta pero **no escribe ninguna fila**. Responde **solo números** (los recuentos, `normalizadas` y `conflictos`): ni textos, ni identificadores, ni correos. Lee Sigrid por `sql/read` (§1); los errores, los de `GET /api/revision`. **Nada en Sigrid** |
 | `POST /api/revision/acciones` | **F-056** · **escribe** en `postventa.revisiones_bandeja` (esquema propio, **append-only**) que **una persona** edita, descarta, aprueba o recupera una incidencia de la bandeja, con su `oid` y su correo. Exige `confirmado: true` como booleano y la `revision_previa` sobre la que decide: si otra persona actuó entre medias, 409 `revision_desactualizada`. Editar y aprobar **vuelven a leer** el catálogo de Sigrid por `sql/read`; aprobar con algún motivo es 409 `incidencia_no_aprobable`. **Nada en Sigrid**: lo aprobado se vuelca con **F-040** |
 
 > **Enmienda del 2026-09-24 (F-013), para el día del corte.** La fila de
@@ -1344,7 +1436,35 @@ guion podría chocar; no se filtra, consta aquí
   No tienen ruta HTTP: son el punto de entrada de **F-040**, que es quien
   escribirá en el ERP. El detalle, en `specs/F-056-revision-bandeja-backend/`.
 
-Los veinte quedan en nivel **anónimo**, y **es deliberado**: con un backend
+**Desde F-060** (2026-10-13; implementada en su rama y **sin desplegar**) las
+ubicaciones de la bandeja que solo difieren en mayúsculas de las de Sigrid se
+**normalizan** con revisiones del sistema (§2, §7), y las respuestas de F-056
+y de la importación siguen con **las mismas claves**:
+
+- **A demanda.** `POST /api/revision/normalizar` con
+  `{"obra": "9901", "confirmado": true, "ensayo": true}` —primero el ensayo,
+  se miran los números, y luego `ensayo: false`—. Responde 200 con `obra`,
+  `ensayo`, `examinadas`, `no_exactas`, `normalizables`, `ambiguas`,
+  `sin_coincidencia`, `no_editables`, `normalizadas` y `conflictos`; 400 si el
+  cuerpo no es exactamente ese, antes de construir nada; y 404, 409 o 503 como
+  `GET /api/revision`, sin escribir nada.
+- **Tras cada importación que registra filas**, la importación normaliza la
+  obra entera con el catálogo que ya leyó, después del Excel de errores. Es de
+  **mejor esfuerzo**: **la respuesta de POST /api/importaciones no cambia**,
+  normalice o no; si la normalización falla, por lo que sea, queda un aviso en
+  el log con la obra y el tipo del error, y nada más.
+- **La traza del listado.** Cada `GET /api/revision` deja además una línea
+  `F-060 tiempos del listado` con la obra, el resultado (`200` o el tipo del
+  error), el total, si es la primera petición del proceso y los segundos de
+  cada tramo —la construcción de cada adaptador, cada lectura, la aplicación,
+  el cálculo y la serialización—: solo números y nombres de tramo. Es para
+  medir en producción por qué el listado tarda, antes de optimizarlo.
+
+**POST /api/revision/normalizar tampoco depende de ninguna ventana**
+(`ARCHIVO_HABILITADO`, `CIERRE_HABILITADO`): lee Sigrid por `sql/read` y
+escribe solo en el esquema propio.
+
+Los veintiuno quedan en nivel **anónimo**, y **es deliberado**: con un backend
 enlazado, la Static Web App autentica al usuario y reenvía una cabecera de
 identidad, no una credencial que la Function pueda exigir. Quien lo cambie
 rompe el front. Y ese nivel es **irrelevante desde internet**: la plataforma
@@ -1384,6 +1504,7 @@ veredicto cruza `postventa.historico_estado` con `postventa.cierres` por
 | Mudar el archivo a la biblioteca real de Posventa | F-013 | Los partes aterrizan en la biblioteca de **dev** del sitio de IT |
 | Recortar los permisos de Graph | F-018 | La identidad de aplicación conserva permisos amplios (ver §3) |
 | La entrada de incidencias por Excel | F-036 | **Desplegada** desde el 2026-10-02 (verificada en el entorno el 2026-10-05, T29): las rutas de la plantilla, la importación, la bandeja y los catálogos existen en el entorno desplegado. Lo importado **se queda en la bandeja**: no crea ninguna incidencia en Sigrid hasta **F-040**, ni se revisa ni se edita hasta **F-038** |
+| Normalizar las ubicaciones | F-060 | Implementada en su rama y **sin desplegar**: hasta que se publique, la ruta `POST /api/revision/normalizar` no existe en el entorno, la importación no normaliza y el listado no deja la línea de tiempos. Las ubicaciones que solo difieren en mayúsculas siguen saliendo como `ubicacion_fuera_de_lista` |
 | La revisión de la bandeja | F-056 | **Desplegada** el 2026-10-09 y verificada en el entorno (T19): las rutas `/api/revision`, `/api/revision/historial` y `/api/revision/acciones` y la tabla `postventa.revisiones_bandeja` (la crea el DDL al arrancar) ya existen. Lo que aún no está: sin la página de **F-038** solo se puede usar llamando a las rutas; nada de lo aprobado llega a Sigrid hasta **F-040** |
 
 > **Precisión del 2026-09-24 (F-013).** La fila de la mudanza sigue siendo
@@ -1467,4 +1588,8 @@ siendo verdad después.
 | Los tres endpoints de la revisión | `services/postventa-api/interface_adapters/api/revision.py` |
 | La revisión en la base | `services/postventa-api/infrastructure/persistencia/repositorio_revision_pg.py` y `sentencias_revision.py` |
 | La tercera lectura de Sigrid, las ubicaciones válidas | `services/postventa-api/infrastructure/sigrid/ubicaciones_validas.py` y `services/postventa-api/infrastructure/sigrid/consultas_ubicaciones_validas.py` |
+| Diseño completo y decisiones de la normalización de ubicaciones y de la medición del listado | `specs/F-060-normalizar-ubicaciones/` |
+| La regla de la normalización, pura: la clave, la clasificación y el plan | `services/postventa-api/domain/models/normalizacion.py` |
+| La ruta `POST /api/revision/normalizar` | `services/postventa-api/interface_adapters/api/normalizacion.py` |
+| La traza de tiempos del listado | `services/postventa-api/interface_adapters/api/tiempos.py` |
 | Documento gemelo del ecosistema | `azure-apps/postventa_incidencias.md` |

@@ -474,6 +474,17 @@ ubicaciones=… aplicacion=… calculo=… serializar=…
 es su tipo y la línea sale igual. El proxy reenvía argumentos, valores y
 excepciones sin tocarlos (R41). La línea de F-056 no cambia.
 
+> **Desviación del implementer (Bloque 5, T18; pendiente de aceptación del
+> líder y del humano).** El repositorio de la revisión se mide como
+> `construir.bandeja` y `bandeja.listar` (y `bandeja.contar`), no como
+> `construir.revision` y `revision.listar`: con esos nombres la línea de
+> F-060 contiene «revision», y
+> `test_f056_revision_http.py::test_f056_r31_el_log_del_listado_solo_lleva_obra_tamano_y_recuentos`
+> —que no se toca (R39)— exige que la única línea del listado con «revision»
+> sea la de F-056. R40–R42 no fijan los nombres; los demás tramos son los de
+> arriba. Los números van con tres decimales y la obra es `-` si la de la
+> petición no valía. Detalle en `progress/impl_F-060.md`, Bloque 5.
+
 **En producción** (Bloque 6, MANUAL): 10 listados seguidos de la 0677 y uno
 tras ≥ 20 min sin uso; el tiempo del navegador de cada uno; y dos consultas
 de Application Insights, de solo lectura, que cruzan la traza con
@@ -530,6 +541,7 @@ tests `test_f060_normalizacion_dominio.py`, `test_f060_repositorio_lote.py`,
   fija la lista exacta de los métodos de `RevisionPort`; se amplía, sin
   relajarlo, al conjunto exacto de **siete** (las seis de F-056 más
   `registrar_lote`). Ninguna otra aserción de F-056 cambia.
+- **Excepción del Bloque 5 (T20; decisión del líder 2026-10-13 con el criterio que el humano aprobó en F-056: un test de documentación que fija una frase que cambia se amplía sin relajar y se declara)**: `test_f056_documentacion.py::test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas` («Los veintiuno», y «Los veinte» en `not in`) y `…::test_f056_r44_la_cabecera_dice_que_f056_lo_toco` (deja de exigir que F-056 sea la **última** feature de la cabecera de `INTEGRACION.md` y exige una cabecera bien formada que no retroceda, con F-056 y su despliegue constando, como hizo F-056 con el de F-036); fuera de F-036 y F-056, `test_f053_documentacion.py` (`CUENTA_VIGENTE`), `test_f012_documentacion.py` (`NUMERALES` hasta 21) y `test_f019_documentacion.py::test_f019_r32_…`. Ninguna otra aserción cambia; `tests/test_f060_alcance_cerrado.py` lo vigila función a función.
 - `docs/ARCHITECTURE.md`, `docs/INTEGRACION.md` (R43) y, al desplegar,
   `azure-apps/postventa_incidencias.md`.
 - Bloque 7: lo que diga el remedio elegido (§11.4).

@@ -947,6 +947,15 @@ La misma hexagonal que el resto del servicio:
 > (sección siguiente) y la página es F-038. La bandeja sigue sin columna de
 > estado y nadie la modifica: la revisión vive en su propia tabla.
 
+> **Enmienda del 2026-10-13 (F-060).** Desde F-060 **la importación escribe
+> revisiones del sistema**: tras registrar filas en la bandeja, normaliza las
+> ubicaciones de la obra que solo difieren en mayúsculas de las de Sigrid, con
+> una revisión `editar` de `sistema:normalizar_ubicacion` por incidencia
+> (sección «Normalizar las ubicaciones (F-060)»). Es de mejor esfuerzo: la
+> respuesta de la importación no cambia y un fallo solo deja un aviso. Lo
+> demás de esta lista sigue: la bandeja no se modifica y nada se escribe en
+> Sigrid.
+
 ## Revisión de la bandeja (F-056)
 
 **Añadida el 2026-10-08 por F-056, implementada en su rama y sin desplegar.**
@@ -1103,13 +1112,137 @@ candidatas.
   de `config/plantilla_incidencias.yaml`: ofrecer la de cada unidad es una ficha
   aparte.
 
+## Normalizar las ubicaciones (F-060)
+
+**Añadida el 2026-10-13 por F-060, implementada en su rama y sin desplegar.**
+La plantilla de F-036 ofrece las ubicaciones de su YAML y Sigrid guarda las de
+cada tipología con otras mayúsculas: en la 0677, 110 de las 148 incidencias
+con `ubicacion_fuera_de_lista` lo eran **solo por mayúsculas**. Por decisión
+del humano, no se compara sin mayúsculas: la ubicación que coincide **salvo
+mayúsculas** con una de la lista de su unidad **pasa a ser el texto exacto de
+Sigrid**, con constancia, para que en la bandeja, en lo aprobado y en lo que
+llegue al volcado solo haya textos de Sigrid. **La comparación de F-056 sigue
+exacta**: editar y aprobar no normalizan al vuelo. Qué consume y qué expone,
+en `docs/INTEGRACION.md` (§1, §2, §7 y §8); el diseño y sus decisiones, en
+`specs/F-060-normalizar-ubicaciones/`.
+
+### La regla
+
+La **clave** de una ubicación es
+`unicodedata.normalize("NFC", texto).strip().casefold()`: la misma letra
+escrita de dos formas Unicode es la misma, los blancos de los extremos no
+cuentan y las mayúsculas tampoco. Los **blancos interiores**, las **tildes**,
+las letras y la **puntuación**, sí: lo que no es la misma palabra con otra caja
+es una errata o una ubicación distinta, y la decide una persona. Contra la
+lista de su unidad, en este orden:
+
+- `exacta`: el texto, tal cual, está en la lista;
+- `normalizable`: el texto recortado está en la lista, o **un único** valor de
+  la lista tiene su clave;
+- `ambigua`: dos o más valores de la lista tienen su clave (Sigrid conserva
+  como opciones distintas dos textos que solo difieren en una mayúscula): no se
+  elige;
+- `sin_coincidencia`: ninguno, o la unidad no tiene lista.
+
+El texto resultante es **el valor de la lista**, carácter a carácter, **nunca
+una transformación** del de partida. Se mira la ubicación **vigente** contra la
+lista de la unidad **vigente**.
+
+### La constancia: una revisión del sistema, sin DDL
+
+Normalizar es **una revisión editar del sistema** en
+`postventa.revisiones_bandeja`: los vigentes con **solo la ubicación
+cambiada**, su huella, sin motivo, el instante y, como `oid` y correo, el
+literal `sistema:normalizar_ubicacion`. **Sin DDL**: el `CHECK` de `accion` no
+admite otra y la tabla no gana columnas. La foto anterior sigue ahí, así que el
+historial enseña lo que mandó la propiedad y quién lo cambió. **La marca es el
+correo** (`revisado_correo`), que ninguna persona puede enviar porque la ruta
+de las acciones exige un `@`; el `oid` no lo es, porque esa ruta admite
+cualquiera.
+
+Solo se normalizan las incidencias **nueva y editada** (lista permitida):
+**nunca una aprobada** —perdería la aprobación—, ni una descartada, ni, cuando
+exista F-059, una volcada o en duda; esas se cuentan en `no_editables`. La
+incidencia normalizada **pasa de nueva a editada**, por la regla de F-056 sin
+tocarla: sus vigentes ya no son los importados.
+
+### Cuándo, y la concurrencia
+
+- **Tras cada importación que registra filas**, con el catálogo que la
+  importación ya leyó y después del Excel de errores, la obra **entera**. Es de
+  **mejor esfuerzo** (decisión del humano 2026-10-12): **cualquier excepción**
+  al componer o ejecutar la normalización se registra **por su tipo** y la
+  importación responde exactamente igual; una interrupción del proceso sí sube.
+- **A demanda**, con `POST /api/revision/normalizar` y `ensayo` obligatorio,
+  **sin valor por omisión**: primero el ensayo, que cuenta sin escribir, y
+  luego la real. Sirve para lo ya importado, para lo que se saltó y para cuando
+  Sigrid cambie una lista.
+
+El plan se calcula fuera de la transacción, con la última `revision_id` leída
+de cada incidencia como esperada. La escritura es **una transacción** por
+ejecución: `SELECT … FOR UPDATE` de las filas de la bandeja en orden fijo, sus
+últimas revisiones y un `INSERT` por cada una que siga igual. La que una persona
+tocó entre medias **se salta** y se cuenta en `conflictos`, sin abortar las
+demás. Es **idempotente**: dos ejecuciones seguidas, la segunda no escribe.
+
+### La medición del listado
+
+`GET /api/revision` tardó p50 7,1 s y máx. 12,7 s en la T19 de F-056, y el
+código no dice dónde se va el tiempo (hipótesis de `design.md` §11.2). Antes de
+optimizar se mide: cada listado deja **una** línea `F-060 tiempos del listado`
+—con 200 o con error— con la obra, el resultado (`200` o el tipo del error), el
+total, `proceso_nuevo` (la primera petición del listado en ese proceso), los
+segundos desde que arrancó el proceso y los de cada tramo:
+`construir.catalogo`, `construir.ubicaciones`, `construir.bandeja`,
+`construir.equivalencias` y `configuracion` (la construcción); `bandeja.listar`
+(y `bandeja.contar` si la obra pasa del tope), `catalogo.leer_unidades`,
+`catalogo.leer_oficios`, `equivalencias.ultimas_decisiones` y `ubicaciones`
+(cada lectura de un puerto); `aplicacion`, `calculo` (la aplicación menos los
+puertos) y `serializar`. Lleva solo la obra, nombres de tramo y números: **ni
+correo, ni oid, ni textos**.
+
+La medición **no cambia nada** del listado: el cronómetro
+(`interface_adapters/api/tiempos.py`) envuelve los puertos con un proxy que
+devuelve los mismos objetos y relanza las mismas excepciones, y el orden de
+construcción es el mismo. El repositorio de la revisión se mide como
+`bandeja`, y no como «revision», porque la línea de F-056 del listado tiene
+que seguir siendo la única que lo dice (`test_f056_r31`). Con la medición en
+producción se elige el remedio entre los ya diseñados (`design.md` §11.4); ninguno se
+implementa sin el dato.
+
+### Dónde vive cada pieza
+
+- **Dominio puro**: `domain/models/normalizacion.py` —la clave, la
+  clasificación, la revisión del sistema y el plan—, sin tocar
+  `domain/models/revision.py`.
+- **Puerto y repositorio**: `registrar_lote` en `RevisionPort` y en
+  `repositorio_revision_pg.py`, con las sentencias de F-056 sin cambiarlas.
+- **Aplicación**: `normalizar_ubicaciones` en `application/pipelines/revision.py`.
+- **Borde**: `interface_adapters/api/normalizacion.py` (la ruta), la llamada
+  tras importar en `interface_adapters/api/importar.py` y la medición en
+  `interface_adapters/api/tiempos.py`, usada solo por `listar_revision`.
+
+**Ninguna variable de entorno nueva**, ninguna dependencia nueva, ningún DDL.
+
+### Lo que no hace
+
+- **Nada de F-060 escribe en Sigrid**: solo las lecturas de F-056 por
+  `POST /api/sql/read`, y ninguna ventana de escritura.
+- **No compara sin mayúsculas**: editar y aprobar siguen exactos.
+- **No toca la plantilla**: que lo nuevo llegue ya exacto es **F-058**, y
+  F-060 sigue haciendo falta después para lo ya importado y las plantillas
+  viejas.
+- **No tiene pantalla**: la página de revisión es **F-038**, que la consume sin
+  cambios de forma.
+- **No optimiza el listado**: lo mide.
+
 ## Acceso a datos y sistemas externos
 
 | Sistema | Uso | Límites |
 |---|---|---|
-| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). **Desde F-056**, una **tercera lectura** por `sql/read`, con las mismas puertas y el mismo techo: las ubicaciones válidas de la tipología de cada unidad, para validar lo que se edita o se aprueba en la revisión de la bandeja (sección «Revisión de la bandeja (F-056)»). |
+| `sigrid-api` | **Única** vía al SQL Server de Sigrid. Lectura de la reclamación (dry-run), **gráfico por escritura** (F-012, `POST /api/sigrid/concepto-grafico`: tres filas en dos bases, en una transacción de la pasarela) y **cierre por escritura** (F-009, `sql/write`): `con.est` y una fila en `dbo.log`, en un solo batch transaccional. El destino es **configuración**: `CIERRE_HABILITADO`, `SIGRID_API_BASE_URL`, `SIGRID_API_KEY`, `SIGRID_BASE_DATOS`, `SIGRID_TIMEOUT_S`, `SIGRID_REINTENTOS`, `SIGRID_TIP_RECLAMACION`, `SIGRID_ZONA_HORARIA`, `SIGRID_GRATIPIDE_PARTE`, `GRAFICO_MAX_BYTES`. | Máx. 1.000 filas por petición; el balanceador corta a 230 s. **PUERTA DE ENTORNO**: escribir —el gráfico **y** el cierre, con **la misma** variable— solo se permite con `ENTORNO` en `dev` o `pro` **y** `CIERRE_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor de los dos adaptadores**, así que componer las piezas a mano tampoco deja escribir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Encima de eso, `POST /api/cerrar` es **dry-run por omisión** y exige confirmación explícita o auto-cierre guardado. La lectura reintenta lo transitorio; **la escritura no se reintenta jamás**: un tiempo agotado no dice que el ERP no haya escrito. La diferencia entre las dos escrituras: el **cierre** no se puede reintentar solo —lo decide una persona tras mirar el ERP—, y el **gráfico** sí, porque su endpoint es idempotente por tamaño y `sha256`, así que su mensaje de error lo dice. Qué escribimos y qué se rompe si alguien cambia la configuración de escritura de la pasarela: **`docs/INTEGRACION.md`** y `azure-apps/postventa_incidencias.md`. **Desde F-036**, además, **dos lecturas** por `sql/read` del catálogo de una obra —sus unidades de posventa y sus oficios con proveedor—, para generar la plantilla y validar lo importado; se leen **sin `CIERRE_HABILITADO`** ni `ARCHIVO_HABILITADO`, con `ENTORNO` en `dev` o `pro`, y una lista que llega a las 1.000 filas es 409 `catalogo_sin_verificar` (sección «Entrada de incidencias (F-036)»). **Desde F-056**, una **tercera lectura** por `sql/read`, con las mismas puertas y el mismo techo: las ubicaciones válidas de la tipología de cada unidad, para validar lo que se edita o se aprueba en la revisión de la bandeja (sección «Revisión de la bandeja (F-056)»). **Desde F-060**, esa tercera lectura se hace también tras cada importación que registra filas y en `POST /api/revision/normalizar`, para normalizar las ubicaciones; ninguna lectura nueva y ninguna escritura (sección «Normalizar las ubicaciones (F-060)»). |
 | SharePoint (Graph) | Archivo de los PDF validados. **Mientras estemos en dev**, biblioteca propia en el sitio de **IT** (donde vive la de albaranes), ruta `Postventa/<código de obra>/`. Identidad **app-only** (client credentials) y `httpx` como cliente, igual que `partes`. El destino es **configuración**: `SHAREPOINT_SITE_ID`, `SHAREPOINT_DRIVE_ID`, `SHAREPOINT_CARPETA_BASE`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`, `GRAPH_TIMEOUT_S`, `GRAPH_REINTENTOS`. | **PUERTA DE ENTORNO**: subir solo se permite con `ENTORNO` en `dev` o `pro` **y** `ARCHIVO_HABILITADO` encendido, que está **apagado por defecto**. Las dos se comprueban en la fábrica **y en el constructor del adaptador**, así que componer las piezas a mano tampoco deja subir desde un puesto de trabajo; y la guardia de red de la suite impide que un test abra la conexión. Al pasar a producción el archivo se muda a la biblioteca de Posventa, respetando la estructura que ya usan (`Postventa - Documentos / <cod> <OBRA> / PARTES INCIDENCIAS / <UNIDAD> / PARTES FIRMADOS`): es la feature **F-013**, y sale casi gratis porque la ruta es configuración. Qué consumimos y qué se rompe si alguien mueve la biblioteca o revoca el permiso: **`docs/INTEGRACION.md`**. |
-| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Desde F-056**, `revisiones_bandeja` (append-only): una fila por cada acción de revisión, con el `oid` y el correo corporativo de quien actúa, que no salen en ningún log. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
+| PostgreSQL `psql-albaranes-rs9k2` | Estado de remesas, partes, validaciones, archivo, cierres y preferencias de usuario. **Desde F-036**, también la entrada de incidencias: `importaciones`, `bandeja_incidencias` y `decisiones_equivalencia` (append-only), con texto libre de la propiedad y nombres de proveedor que no salen en ningún log. **Desde F-056**, `revisiones_bandeja` (append-only): una fila por cada acción de revisión, con el `oid` y el correo corporativo de quien actúa, que no salen en ningún log. **Desde F-060**, también revisiones del **sistema** (`sistema:normalizar_ubicacion`), sin DDL nuevo. **Base propia `postventa` y schema propio `postventa`** dentro de ella, con `search_path` sin `public`. El DDL se aplica idempotente al arranque; la base y el rol los crea el humano, nunca la aplicación. | Servidor **compartido** con albaranes y compañía: nunca se tocan parámetros de servidor, autenticación ni almacenamiento, ni se sale del schema propio; los PDF no entran en la base. Qué consumimos, con qué variables y qué se rompe si alguien toca el servidor: **`docs/INTEGRACION.md`**, fuente de verdad que se copia a `azure-apps/`. |
 | Gemini | Extracción multimodal y clasificación de firma. | Detrás de `ExtractorPort`. **El proveedor se elige con `IA_PROVIDER` y el modelo con `GEMINI_MODEL`** (por defecto `gemini-3.7-flash`): cambiar cualquiera de los dos es tocar configuración, nunca el pipeline, el dominio ni los puertos. El prompt vive en `config/prompts.yaml`, fuera del código. |
 | Entra ID | Autenticación del front y de la tarjeta del portal. | **No existe** grupo de Posventa: hay que crearlo. Hasta entonces, ni el acceso ni la tarjeta se pueden cerrar. |
 

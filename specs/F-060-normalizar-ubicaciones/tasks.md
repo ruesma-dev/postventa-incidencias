@@ -33,6 +33,7 @@
 > se amplía, sin relajarlo, al conjunto exacto de **siete** operaciones de
 > `RevisionPort` (las seis de F-056 más `registrar_lote`, T5); ninguna otra
 > aserción de F-056 cambia (`design.md` §12, R39).
+> **Excepción del Bloque 5 (T20; decisión del líder 2026-10-13 con el criterio que el humano aprobó en F-056: un test de documentación que fija una frase que cambia se amplía sin relajar y se declara)**: `test_f056_documentacion.py::test_f056_r44_la_seccion_ocho_dice_la_cuenta_y_las_ventanas` («Los veintiuno», y «Los veinte» en `not in`) y `…::test_f056_r44_la_cabecera_dice_que_f056_lo_toco` (deja de exigir que F-056 sea la **última** feature de la cabecera de `INTEGRACION.md` y exige una cabecera bien formada que no retroceda, con F-056 y su despliegue constando, como hizo F-056 con el de F-036); fuera de F-036 y F-056, `test_f053_documentacion.py` (`CUENTA_VIGENTE`), `test_f012_documentacion.py` (`NUMERALES` hasta 21) y `test_f019_documentacion.py::test_f019_r32_…`. Ninguna otra aserción cambia; `tests/test_f060_alcance_cerrado.py` lo vigila función a función.
 
 ## Bloque 1 · La regla y el plan (dominio puro)
 
@@ -160,18 +161,21 @@
   de la pasarela ni ventana en el código de F-060; los ficheros de «No se
   toca» (`design.md` §12) sin cambios; los tests de F-036 y F-056 sin tocar
   salvo los dos ampliados y el test del puerto de F-056 (siete operaciones,
-  decisión del humano 2026-10-10); y un control de que cada detector no es ciego. La
+  decisión del humano 2026-10-10; y los de documentación que amplía T20, que T20
+  declara); y un control de que cada detector no es ciego. La
   fase RED de este test se demuestra rompiendo en una **copia aislada** lo que
   vigila (`CHECKPOINTS.md` C4 bis), con la traza pegada. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_alcance_cerrado.py`
-- [ ] **T20**: `docs/ARCHITECTURE.md` (sección «Normalizar las ubicaciones
+- [x] **T20**: `docs/ARCHITECTURE.md` (sección «Normalizar las ubicaciones
   (F-060)», con la regla, la constancia, cuándo, el estado `editada` y la
   medición; enmienda del «No revisa» de F-036: la importación escribe ahora
   revisiones del sistema) y `docs/INTEGRACION.md` (§2 la ruta y su cuerpo,
   §7 la identidad del sistema, que no es un dato personal, §8 «Los veintiuno»).
   `tests/test_f060_documentacion.py` con sus frases clave; ampliar
   `tests/test_f053_documentacion.py` (`CUENTA_VIGENTE` a «Los veintiuno»),
-  sin quitar nada. |
+  sin quitar nada; y, con la excepción declarada en la cabecera (decisión del
+  líder 2026-10-13), `test_f012_documentacion.py`, `test_f019_documentacion.py`
+  y dos de `test_f056_documentacion.py`. |
   Verificación: `.venv/Scripts/python.exe -m pytest tests/test_f060_documentacion.py tests/test_f053_documentacion.py tests/test_f036_documentacion.py tests/test_f056_documentacion.py`
 - [ ] **T21 · Mutación del bloque.** |
   Verificación: `python -m harness.mutacion --feature F-060 --base <hash anterior a T17> --timeout 1800 --salida progress/mutacion_F-060_bloque5.md` sin supervivientes abiertos

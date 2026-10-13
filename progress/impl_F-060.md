@@ -1782,3 +1782,12 @@ Sigue pendiente la **T7** del Bloque 2 (MANUAL, humano) y, para el Bloque 5, la 
 | Mutación (herramienta) | **6 generados, 6 muertos, 0 supervivientes**, 0 timeouts, **6 workers**, 1042,9 s |
 | Mutación (a mano) | **18 de 20 muertos** en la primera pasada; I17 muerto con el test añadido (**19 de 20**); I19 equivalente, pendiente de aceptación |
 | `bash harness/init.sh` | No lanzado (suite entera; es de T23) |
+
+### Aceptaciones del humano del Bloque 4 (2026-10-13)
+
+- **I19** («1 si»): el humano acepta por escrito que el mutante a mano I19 (el aviso del log con la `obra` de la
+  importación en vez de `resultado.obra_codigo`) queda vivo por **equivalente**: `normalizar_ubicaciones` devuelve
+  la obra que recibe y en producción las dos escriben el mismo código. La review del Bloque 4 pasa a APPROVED.
+- **«Cualquier excepción»** («2, si»): el humano confirma la lectura del implementer: el mejor esfuerzo captura
+  `Exception` (errores del programa); `KeyboardInterrupt` y `SystemExit` suben, como fija
+  `test_f060_r34_una_interrupcion_no_es_un_fallo_y_sube`.
